@@ -3986,6 +3986,15 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   radar_fresh?: RobotControlLiveClosureSummary["mapping_lidar_fresh_readback_ready"];
   radar_map_ready?: RobotControlLiveClosureSummary["radar_map_points_visible"];
   radar_map_points_visible?: RobotControlLiveClosureSummary["radar_map_points_visible"];
+  live_wysiwyg_radar_map_overlay_status?: RobotControlLiveClosureSummary["live_wysiwyg_radar_map_overlay_status"];
+  live_wysiwyg_radar_map_current_point_count?: RobotControlLiveClosureSummary["live_wysiwyg_radar_map_current_point_count"];
+  live_wysiwyg_radar_map_source_point_count?: RobotControlLiveClosureSummary["live_wysiwyg_radar_map_source_point_count"];
+  live_wysiwyg_radar_map_stale_source_points_suppressed?: RobotControlLiveClosureSummary["live_wysiwyg_radar_map_stale_source_points_suppressed"];
+  live_wysiwyg_radar_map_primary_blocked_reason?: RobotControlLiveClosureSummary["live_wysiwyg_radar_map_primary_blocked_reason"];
+  live_wysiwyg_radar_map_current_vs_source_plain?: RobotControlLiveClosureSummary["live_wysiwyg_radar_map_current_vs_source_plain"];
+  live_wysiwyg_radar_map_refresh_next_action_plain?: RobotControlLiveClosureSummary["live_wysiwyg_radar_map_refresh_next_action_plain"];
+  live_wysiwyg_radar_map_refresh_sequence?: RobotControlLiveClosureSummary["live_wysiwyg_radar_map_refresh_sequence"];
+  live_wysiwyg_radar_map_refresh_sequence_labels?: RobotControlLiveClosureSummary["live_wysiwyg_radar_map_refresh_sequence_labels"];
   radar_overlay_status?: RobotControlLiveClosureSummary["radar_overlay_status"];
   radar_overlay_current_point_count?: RobotControlLiveClosureSummary["radar_overlay_current_point_count"];
   radar_overlay_source_point_count?: RobotControlLiveClosureSummary["radar_overlay_source_point_count"];

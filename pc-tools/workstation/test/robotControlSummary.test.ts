@@ -591,22 +591,31 @@ describe("robotControlSummary", () => {
       "robot_pose_missing_for_map_radar_overlay",
     ]);
     expect(summary.live_closure_summary?.live_wysiwyg_radar_map_current_point_count).toBe("0");
+    expect(summary.live_wysiwyg_radar_map_current_point_count).toBe(summary.live_closure_summary?.live_wysiwyg_radar_map_current_point_count);
     expect(summary.live_closure_summary?.live_wysiwyg_radar_map_source_point_count).toBe("not_loaded");
+    expect(summary.live_wysiwyg_radar_map_source_point_count).toBe(summary.live_closure_summary?.live_wysiwyg_radar_map_source_point_count);
     expect(summary.live_closure_summary?.live_wysiwyg_radar_map_stale_source_points_suppressed).toBe(false);
+    expect(summary.live_wysiwyg_radar_map_stale_source_points_suppressed).toBe(summary.live_closure_summary?.live_wysiwyg_radar_map_stale_source_points_suppressed);
     expect(summary.live_closure_summary?.live_wysiwyg_radar_map_primary_blocked_reason).toBe("scan_preview_points_missing");
+    expect(summary.live_wysiwyg_radar_map_primary_blocked_reason).toBe(summary.live_closure_summary?.live_wysiwyg_radar_map_primary_blocked_reason);
+    expect(summary.live_wysiwyg_radar_map_overlay_status).toBe(summary.live_closure_summary?.live_wysiwyg_radar_map_overlay_status);
+    expect(summary.live_wysiwyg_radar_map_current_vs_source_plain).toBe(summary.live_closure_summary?.live_wysiwyg_radar_map_current_vs_source_plain);
     expect(summary.live_closure_summary?.live_wysiwyg_radar_map_refresh_next_action_plain).toContain("刷新雷达扫描读数");
+    expect(summary.live_wysiwyg_radar_map_refresh_next_action_plain).toBe(summary.live_closure_summary?.live_wysiwyg_radar_map_refresh_next_action_plain);
     expect(summary.live_closure_summary?.live_wysiwyg_radar_map_refresh_sequence).toEqual([
       "/api/robot-control/radar/scan-proof/refresh",
       "/api/robot-control/radar/status",
       "/api/robot-control/map/preview",
       "/api/robot-control/summary",
     ]);
+    expect(summary.live_wysiwyg_radar_map_refresh_sequence).toEqual(summary.live_closure_summary?.live_wysiwyg_radar_map_refresh_sequence);
     expect(summary.live_closure_summary?.live_wysiwyg_radar_map_refresh_sequence_labels).toEqual([
       "刷新雷达扫描读数",
       "读取雷达状态",
       "刷新地图画面",
       "刷新总览",
     ]);
+    expect(summary.live_wysiwyg_radar_map_refresh_sequence_labels).toEqual(summary.live_closure_summary?.live_wysiwyg_radar_map_refresh_sequence_labels);
     expect(summary.live_closure_summary?.radar_overlay_needs_refresh).toBe(true);
     expect(summary.live_closure_summary?.radar_overlay_blocks_wysiwyg).toBe(true);
     expect(summary.live_closure_summary?.radar_overlay_blocks_free_move).toBe(false);
