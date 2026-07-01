@@ -69,6 +69,10 @@ null 后误以为 probe 可能会独占相机、启动建图或发车。
 只用于确认地图上的雷达标记按当前读回刷新；PC 首屏“只读复验全部”也按
 `readback_all.sequence_endpoints` 的白名单顺序执行，白名单外 endpoint 跳过。该路径不启动雷达
 lifecycle、Nav2、manual、keyboard、free-roam、建图 runtime、delivery、stop 或 `/cmd_vel`。
+同轮 summary 顶层还提供不带 `action` 的 primary 短 alias：
+`field_acceptance_primary_no_motion_readback_endpoint`、`field_acceptance_primary_no_motion_readback_method`、
+`field_acceptance_primary_no_motion_readback_sequence` 和
+`field_acceptance_primary_no_motion_readback_sends_motion`，方便现场脚本不记长字段名。
 
 2026-07-02 CST 起，`GET /api/robot-control/radar/status` 回包直接声明
 `readback_only=true`、`radar_status_readback_only=true`，并固定
