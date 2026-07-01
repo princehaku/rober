@@ -294,6 +294,10 @@ manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
 该入口仍不启动雷达 lifecycle、不执行 Nav2、不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 同一合同也暴露在 summary 顶层 `map_display_direct_map_*_on_enter` 字段里，现场 `curl /api/robot-control/summary`
 即可确认 `/map` 打开会刷新雷达 proof、地图预览和雷达状态，同时不启动雷达 lifecycle。
+2026-07-02 05:20 CST 起，入场雷达 proof 或地图预览仍在刷新时，`plain-map-panel` 与
+`plain-map-wysiwyg-view` 必须显示 `data-state=地图处理中`，地图刷新按钮显示“等待地图刷新”。
+刷新返回前不得把旧 summary 点数、局部雷达点或上一轮地图状态当作最终 WYSIWYG 结果；该 pending 状态仍只读，
+不启动雷达 lifecycle、相机流、Nav2、manual、keyboard、free-roam、建图、delivery、stop 或 `/cmd_vel`。
 
 2026-07-01 23:01 CST 起，现场验收包把剩余动作分成三类并同步到 `GET /api/robot-control/summary`
 和普通首屏 DOM：`safety_confirm_ready_step_ids` 表示只差现场安全确认的运动验收，

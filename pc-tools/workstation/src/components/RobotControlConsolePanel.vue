@@ -251,8 +251,11 @@ const cleanupStatus = ref("not_started");
 const radarRefreshPending = ref(false);
 const radarLifecyclePending = ref(false);
 const mapRefreshPending = ref(false);
-const mapWysiwygRefreshPending = computed(() => mapPreviewPending.value || mapRefreshPending.value);
+const mapWysiwygRefreshPending = computed(() => mapPreviewPending.value || mapRefreshPending.value || radarRefreshPending.value);
 function mapWysiwygRefreshPendingText(): string {
+  if (radarRefreshPending.value) {
+    return "雷达贴图刷新中";
+  }
   return mapPreviewPending.value ? "地图画面刷新中" : "地图状态刷新中";
 }
 const nav2RefreshPending = ref(false);
@@ -6882,7 +6885,7 @@ const plainMapVisualSummary = computed(() => {
   const lifecycle = mapLifecycleResult.value;
   const lifecycleUsable = Boolean(lifecycle?.map_usable_for_navigation || (lifecycle?.map_quality_summary.usable_map_count ?? 0) > 0);
   const lifecycleFailed = mapLifecycleSummary.value.state === "失败";
-  const state: PlainMapVisualState = mapRefreshPending.value || mapLifecyclePending.value || mapPreviewPending.value
+  const state: PlainMapVisualState = mapWysiwygRefreshPending.value || mapLifecyclePending.value
     ? "地图处理中"
     : lifecycleFailed
       ? "地图不可用"

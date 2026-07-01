@@ -11072,6 +11072,57 @@ describe("App", () => {
     }
   });
 
+  it("keeps direct map view pending while the entrance radar proof refresh is still running", async () => {
+    // /map 入场的第一步是只读刷新雷达 proof；返回前不能把旧雷达点或局部点当成最终地图所见。
+    const originalUrl = window.location.href;
+    window.history.pushState({}, "", "/map");
+    try {
+      let resolveRadarRefresh!: () => void;
+      const fallbackFetch = stubWorkstationFetch();
+      const mockedFetch = vi.fn((url: string, options?: RequestInit) => {
+        if (url.startsWith("/api/robot-control/radar/scan-proof/refresh")) {
+          return new Promise<Response>((resolve) => {
+            resolveRadarRefresh = () => {
+              resolve({
+                ok: true,
+                status: 200,
+                json: async () => fixtures["/api/robot-control/radar/scan-proof/refresh"],
+              } as Response);
+            };
+          });
+        }
+        return fallbackFetch(url, options);
+      });
+      vi.stubGlobal("fetch", mockedFetch);
+
+      const wrapper = mount(App);
+      await flushPromises();
+      await wrapper.vm.$nextTick();
+
+      const mapPanel = wrapper.find('[data-testid="plain-map-panel"]');
+      expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/radar/scan-proof/refresh?") && options?.method === "POST")).toBe(true);
+      expect(mapPanel.attributes("data-direct-map-view-requested")).toBe("true");
+      expect(mapPanel.attributes("data-state")).toBe("地图处理中");
+      expect(wrapper.find('[data-testid="plain-map-wysiwyg-view"]').attributes("data-state")).toBe("地图处理中");
+      expect(wrapper.find('[data-testid="plain-map-preview-refresh"]').text()).toBe("等待地图刷新");
+      expect(wrapper.find('[data-testid="plain-map-radar-refresh-action"]').exists()).toBe(false);
+      expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/radar/start?"))).toBe(false);
+      expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/camera/mjpeg?"))).toBe(false);
+      expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/camera/offer?"))).toBe(false);
+      expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+      expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+
+      resolveRadarRefresh();
+      await flushPromises();
+      await wrapper.vm.$nextTick();
+
+      expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/map/preview?"))).toBe(true);
+      expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/radar/status?"))).toBe(true);
+    } finally {
+      window.history.pushState({}, "", originalUrl);
+    }
+  });
+
   it("keeps legacy query direct map URL compatible", async () => {
     // 旧现场书签可能仍是 ?view=map；兼容入口同样只改显示，不启动任何控制接口。
     const originalUrl = window.location.href;
