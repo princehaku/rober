@@ -4379,6 +4379,10 @@ const plainFieldAcceptanceCameraProof = computed(() => {
   const hardwareText = summary?.camera_hardware_action_required
     ? `现场动作：${hardwareAction}，${usbText}`
     : `现场动作：无需额外处理，${usbText}`;
+  const onlyCameraWysiwygGap = (packet?.wysiwyg_missing_surface_ids ?? []).length === 1 && missingCamera;
+  const blocksMappingStart = Boolean(summary?.camera_blocks_mapping_start ?? true);
+  const blocksFreeMove = Boolean(summary?.camera_blocks_free_move ?? false);
+  const scopeText = `${onlyCameraWysiwygGap ? "唯一所见缺口是画面" : "当前所见缺口包含画面"}；${blocksMappingStart ? "阻塞建图首帧" : "不阻塞建图"}，${blocksFreeMove ? "会影响自由移动" : "不挡自由移动"}。`;
   return {
     visible: Boolean(summary && missingCamera),
     currentVisible: Boolean(summary?.camera_current_visible ?? false),
@@ -4389,8 +4393,10 @@ const plainFieldAcceptanceCameraProof = computed(() => {
     usbFullSpeedDetected: Boolean(summary?.camera_usb_full_speed_detected ?? false),
     hardwareActionRequired: Boolean(summary?.camera_hardware_action_required ?? false),
     hardwareActionLabel: hardwareAction,
-    blocksMappingStart: Boolean(summary?.camera_blocks_mapping_start ?? true),
-    blocksFreeMove: Boolean(summary?.camera_blocks_free_move ?? false),
+    onlyCameraWysiwygGap,
+    blocksMappingStart,
+    blocksFreeMove,
+    scopeText,
     sharedPreviewClientCount: clientCount,
     sharedPreviewUpstreamActive: upstreamActive,
     sharedPreviewExclusiveCameraClaim: exclusiveCameraClaim,
@@ -4400,7 +4406,7 @@ const plainFieldAcceptanceCameraProof = computed(() => {
       || "/api/robot-control/camera/first-frame/probe,/api/robot-control/camera/mjpeg/status,/api/robot-control/summary",
     fixedCameraProbeEndpoint: summary?.fixed_camera_probe_endpoint || packet?.fixed_wysiwyg_camera_probe_endpoint || "/api/robot-control/camera/first-frame/probe",
     fixedCameraMjpegStatusEndpoint: summary?.fixed_camera_mjpeg_status_endpoint || packet?.fixed_wysiwyg_camera_mjpeg_status_endpoint || "/api/robot-control/camera/mjpeg/status",
-    text: `画面读回：${hardwareText}；${sharedPreviewText}；${plainActionCardUserText(recoveryPlain)}`,
+    text: `画面读回：${hardwareText}；${scopeText}；${sharedPreviewText}；${plainActionCardUserText(recoveryPlain)}`,
   };
 });
 const plainFieldAcceptanceRadarMapProof = computed(() => {
@@ -18191,8 +18197,10 @@ onBeforeUnmount(() => {
               :data-camera-usb-full-speed-detected="String(plainFieldAcceptanceCameraProof.usbFullSpeedDetected)"
               :data-camera-hardware-action-required="String(plainFieldAcceptanceCameraProof.hardwareActionRequired)"
               :data-camera-hardware-action-label="plainFieldAcceptanceCameraProof.hardwareActionLabel"
+              :data-camera-only-wysiwyg-gap="String(plainFieldAcceptanceCameraProof.onlyCameraWysiwygGap)"
               :data-camera-blocks-mapping-start="String(plainFieldAcceptanceCameraProof.blocksMappingStart)"
               :data-camera-blocks-free-move="String(plainFieldAcceptanceCameraProof.blocksFreeMove)"
+              :data-camera-scope-plain="plainFieldAcceptanceCameraProof.scopeText"
               :data-camera-shared-preview-client-count="plainFieldAcceptanceCameraProof.sharedPreviewClientCount"
               :data-camera-shared-preview-upstream-active="plainFieldAcceptanceCameraProof.sharedPreviewUpstreamActive"
               :data-camera-shared-preview-exclusive-camera-claim="plainFieldAcceptanceCameraProof.sharedPreviewExclusiveCameraClaim"

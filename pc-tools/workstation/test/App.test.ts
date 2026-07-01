@@ -5482,6 +5482,8 @@ describe("App", () => {
     expect(fieldAcceptanceCameraProof.text()).toContain("画面读回");
     expect(fieldAcceptanceCameraProof.text()).toContain("共享预览：0 个页面观看");
     expect(fieldAcceptanceCameraProof.text()).toContain("页面独占=false");
+    expect(fieldAcceptanceCameraProof.text()).toContain("当前所见缺口包含画面");
+    expect(fieldAcceptanceCameraProof.text()).toContain("阻塞建图首帧，不挡自由移动");
     expect(fieldAcceptanceCameraProof.text()).toContain("相机不是页面独占");
     expect(fieldAcceptanceCameraProof.text()).toContain("先复测相机首帧并读取共享预览状态");
     expect(fieldAcceptanceCameraProof.attributes("data-camera-current-visible")).toBe("false");
@@ -5492,8 +5494,10 @@ describe("App", () => {
     expect(fieldAcceptanceCameraProof.attributes("data-camera-usb-full-speed-detected")).toBe("false");
     expect(fieldAcceptanceCameraProof.attributes("data-camera-hardware-action-required")).toBe("false");
     expect(fieldAcceptanceCameraProof.attributes("data-camera-hardware-action-label")).toBe("复测相机首帧");
+    expect(fieldAcceptanceCameraProof.attributes("data-camera-only-wysiwyg-gap")).toBe("false");
     expect(fieldAcceptanceCameraProof.attributes("data-camera-blocks-mapping-start")).toBe("true");
     expect(fieldAcceptanceCameraProof.attributes("data-camera-blocks-free-move")).toBe("false");
+    expect(fieldAcceptanceCameraProof.attributes("data-camera-scope-plain")).toBe("当前所见缺口包含画面；阻塞建图首帧，不挡自由移动。");
     expect(fieldAcceptanceCameraProof.attributes("data-camera-shared-preview-client-count")).toBe("0");
     expect(fieldAcceptanceCameraProof.attributes("data-camera-shared-preview-upstream-active")).toBe("false");
     expect(fieldAcceptanceCameraProof.attributes("data-camera-shared-preview-exclusive-camera-claim")).toBe("false");
@@ -9226,6 +9230,15 @@ describe("App", () => {
       live_wysiwyg_radar_map_points_visible: true,
       live_wysiwyg_radar_map_point_count: "149",
       live_wysiwyg_radar_map_overlay_status: "loaded",
+      camera_usb_speed: "12M",
+      camera_usb_full_speed_detected: true,
+      camera_source_diagnosis_status: "uvc_full_speed_usb_not_exclusive",
+      camera_source_diagnosis_not_exclusive: "true",
+      camera_hardware_action_required: true,
+      camera_hardware_action_label: "换高速USB后复测",
+      camera_blocks_mapping_start: true,
+      camera_blocks_free_move: false,
+      live_wysiwyg_camera_recovery_next_action_plain: "相机不是页面独占；诊断显示 USB full-speed；先复测相机首帧并读取共享预览状态。若仍无画面，摄像头现在挂在 USB 12M full-speed，换高速 USB 口/线或带供电 USB Hub，减少转接并确认供电后复测。",
     });
     const fieldAcceptancePacket = cloneFixture(liveClosureSummary.field_acceptance_packet as Record<string, any>);
     liveClosureSummary.field_acceptance_packet = {
@@ -9266,7 +9279,24 @@ describe("App", () => {
     expect(fieldAcceptanceWysiwyg.text()).not.toContain("雷达点");
     expect(fieldAcceptanceWysiwyg.attributes("data-wysiwyg-missing-surface-ids")).toBe("camera");
     expect(fieldAcceptanceWysiwyg.attributes("data-wysiwyg-refresh-mode")).toBe("camera_only");
-    expect(wrapper.find('[data-testid="plain-field-acceptance-camera-proof"]').exists()).toBe(true);
+    const cameraProof = wrapper.find('[data-testid="plain-field-acceptance-camera-proof"]');
+    expect(cameraProof.exists()).toBe(true);
+    expect(cameraProof.text()).toContain("唯一所见缺口是画面");
+    expect(cameraProof.text()).toContain("阻塞建图首帧，不挡自由移动");
+    expect(cameraProof.text()).toContain("USB 12M");
+    expect(cameraProof.text()).toContain("换高速USB后复测");
+    expect(cameraProof.text()).toContain("相机不是页面独占");
+    expect(cameraProof.attributes("data-camera-only-wysiwyg-gap")).toBe("true");
+    expect(cameraProof.attributes("data-camera-usb-speed")).toBe("12M");
+    expect(cameraProof.attributes("data-camera-usb-full-speed-detected")).toBe("true");
+    expect(cameraProof.attributes("data-camera-hardware-action-required")).toBe("true");
+    expect(cameraProof.attributes("data-camera-hardware-action-label")).toBe("换高速USB后复测");
+    expect(cameraProof.attributes("data-camera-blocks-mapping-start")).toBe("true");
+    expect(cameraProof.attributes("data-camera-blocks-free-move")).toBe("false");
+    expect(cameraProof.attributes("data-camera-scope-plain")).toBe("唯一所见缺口是画面；阻塞建图首帧，不挡自由移动。");
+    expect(cameraProof.attributes("data-sends-motion-when-clicked")).toBe("false");
+    expect(cameraProof.attributes("data-starts-map-runtime")).toBe("false");
+    expect(cameraProof.attributes("data-starts-free-roam")).toBe("false");
     expect(wrapper.find('[data-testid="plain-field-acceptance-radar-map-proof"]').exists()).toBe(false);
     expect(fieldAcceptanceWysiwygRefresh.attributes("data-wysiwyg-refresh-mode")).toBe("camera_only");
     expect(fieldAcceptanceWysiwygRefresh.attributes("data-wysiwyg-refresh-sequence")).toBe("/api/robot-control/camera/first-frame/probe,/api/robot-control/camera/mjpeg/status,/api/robot-control/summary");
