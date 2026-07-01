@@ -11499,12 +11499,12 @@ const goalClosureChecklist = computed(() => {
     },
     {
       id: "delivery_success",
-      label: "delivery success",
+      label: "送达确认",
       ready: deliveryReady,
       hint: deliveryReady
         ? "delivery gate 已确认成功"
-        : deliverySuccessEvidenceIsStale.value ? "已有旧 delivery success，需本轮重新确认"
-          : deliverySuccessEvidenceRouteMismatch.value ? "已有 delivery success，但行程材料不是本轮记录"
+        : deliverySuccessEvidenceIsStale.value ? "已有旧送达确认，需本轮重新确认"
+          : deliverySuccessEvidenceRouteMismatch.value ? "已有送达确认，但行程材料不是本轮记录"
             : !deliveryNav2GoalReady.value ? "送达确认前先完成本轮完整行程"
             : "仍需现场最终确认并通过 delivery gate",
     },
@@ -23857,7 +23857,7 @@ onBeforeUnmount(() => {
             <dd>{{ deliveryCompletionPending ? "pending" : "idle" }}</dd>
             <dt>delivery gate status</dt>
             <dd>{{ deliveryCompletionResult?.proxy_status ?? "not_submitted" }} / {{ deliveryCompletionResult?.status ?? "not_loaded" }}</dd>
-            <dt>delivery success</dt>
+            <dt>送达确认</dt>
             <dd>{{ deliveryCompletionResult?.delivery_success ?? false }}</dd>
             <dt>delivery keys</dt>
             <dd>{{ recordText(deliveryCompletionResult?.delivery_key_values) }}</dd>

@@ -137,7 +137,7 @@ function fieldAcceptanceMissingEvidenceLabel(id: string): string {
     route_ready_on_map: "图上行程已显示",
     nav2_goal_succeeded: "Nav2 到点成功",
     same_window_wheel_lr_nonzero: "同窗口 wheel L/R 非零",
-    delivery_success: "delivery success",
+    delivery_success: "送达确认",
     same_hold_window_wheel_lr_nonzero: "按住同窗口 wheel L/R 非零",
     stop_after_release: "松开/失焦后 stop 已落稳",
     free_roam_latest_motion_ready: "自由移动运行读数",
@@ -9306,9 +9306,9 @@ function buildLiveClosureSummary(
     "/api/robot-control/summary",
   ];
   const wheelRerunChecklistPlain = needsSameWindowWheelRerun
-    ? "重跑闭环：先勾现场安全确认，再执行图上路线；执行后依次读取地图路线画面、latest、底盘轮速采样和 summary，确认图上路线仍可见并确认同窗口 wheel L/R 非零；轮速闭环后再到送达区确认 delivery success，确认送达不发车。"
+    ? "重跑闭环：先勾现场安全确认，再执行图上路线；执行后依次读取地图路线画面、latest、底盘轮速采样和 summary，确认图上路线仍可见并确认同窗口 wheel L/R 非零；轮速闭环后再到送达区做送达确认，确认送达不发车。"
     : "当前不需要重跑图上路线；如果后续出现同窗口轮速缺口，再按安全确认、执行、轮速读回、送达确认顺序收口。";
-  const wheelRerunAcceptancePlain = "验收口径：地图仍显示本轮图上路线，Nav2 latest 为 goal_succeeded，同一执行窗口 wheel L/R 非零，summary 不再显示 needs_wheel_rerun，最后 delivery success 与本轮行程材料对齐。";
+  const wheelRerunAcceptancePlain = "验收口径：地图仍显示本轮图上路线，Nav2 latest 为 goal_succeeded，同一执行窗口 wheel L/R 非零，summary 不再显示 needs_wheel_rerun，最后送达确认与本轮行程材料对齐。";
   const wheelRerunRequiredSuccessMarkers = [
     "map_route_visible",
     "nav2_goal_succeeded",
@@ -9322,11 +9322,11 @@ function buildLiveClosureSummary(
   const wheelRerunNoExtraPrecheckPlain = "重跑图上路线的发车前预检只看现场安全确认；相机、雷达、地图所见缺口不作为额外发车前置，路线执行后再按读回端点验收。";
   const wheelRerunDeliveryNextActionPlain = deliveryClaimReady
     ? "送达成功已经写入当前材料；轮速复验通过后可直接进入本轮闭环复核。"
-    : "轮速复验通过后，到送达区逐项确认并提交 delivery success；该提交只写送达材料，不发车。";
+    : "轮速复验通过后，到送达区逐项确认并提交送达确认；该提交只写送达材料，不发车。";
   const evidenceLabelPlain = (id: string): string => ({
     nav2_goal_succeeded: "图上行程到点成功",
     same_window_wheel_lr_nonzero: "同窗口 wheel L/R 非零",
-    delivery_success: "delivery success",
+    delivery_success: "送达确认",
     same_hold_window_wheel_lr_nonzero: "按住同窗口 wheel L/R 非零",
     stop_after_release: "松开/失焦后 stop 已落稳",
     free_roam_latest_motion_ready: "自由移动运行读数",
@@ -9373,7 +9373,7 @@ function buildLiveClosureSummary(
       proof_plain: proofPlain(
         routeReadyOnMap || needsSameWindowWheelRerun,
         runNav2RouteMissingEvidence,
-        "完整行程已闭环：Nav2 到点、同窗口轮速和 delivery success 都已满足。",
+        "完整行程已闭环：Nav2 到点、同窗口轮速和送达确认都已满足。",
         "可复验完整行程：勾现场安全确认后执行图上路线，执行后按验收端点读回",
         "完整行程暂不可复验",
       ),
@@ -9389,7 +9389,7 @@ function buildLiveClosureSummary(
         "/api/robot-control/delivery/latest",
         "/api/robot-control/summary",
       ],
-      acceptance_plain: "执行后读取地图路线画面、latest、同窗口 wheel L/R、delivery latest 和 summary，确认图上路线、到点成功、轮速非零且 delivery success 已记录。",
+      acceptance_plain: "执行后读取地图路线画面、latest、同窗口 wheel L/R、送达 latest 和 summary，确认图上路线、到点成功、轮速非零且送达确认已记录。",
       blocked_reasons: routeReadyOnMap || needsSameWindowWheelRerun ? [] : ["route_not_ready_on_map"],
     },
     {
@@ -9535,7 +9535,7 @@ function buildLiveClosureSummary(
       return "勾现场安全确认后重跑图上路线，并在同一个执行窗口复验轮速 L/R 非零。";
     }
     if (nav2GoalSucceeded && wheelLrNonzeroProven && !deliveryClaimReady) {
-      return "路线和轮速已闭环；下一步在现场确认投递成功并记录 delivery success。";
+      return "路线和轮速已闭环；下一步在现场确认投递成功并记录送达确认。";
     }
     if (!cameraCurrentVisible) {
       return camera.next_action_plain;

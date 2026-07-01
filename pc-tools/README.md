@@ -77,7 +77,7 @@ manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
 `field_acceptance_missing_evidence_items`、`field_acceptance_primary_missing_evidence_id`、
 `field_acceptance_primary_missing_evidence_action_id` 和 `field_acceptance_primary_missing_evidence_readback_endpoint`。
 清单会把完整 Nav2 行程、键盘连续手控、自由移动、建图传感器缺口逐项映射到目标动作和只读读回端点，例如
-同窗口 wheel L/R 读 `/api/robot-control/base/feedback-samples`、delivery success 读
+同窗口 wheel L/R 读 `/api/robot-control/base/feedback-samples`、送达确认读
 `/api/robot-control/delivery/latest`、相机首帧读 `/api/robot-control/camera/first-frame/probe`、
 雷达新鲜读数读 `/api/robot-control/radar/scan-proof/refresh`。该变化只改 summary/DOM 合同和读回指引，
 不执行 Nav2，不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。

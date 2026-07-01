@@ -842,7 +842,7 @@ const fixtures: Record<string, unknown> = {
       delivery_success: false,
       delivery_claim_ready: false,
       delivery_success_required: true,
-      delivery_next_action_plain: "轮速复验通过后，到送达区逐项确认并提交 delivery success；该提交只写送达材料，不发车。",
+      delivery_next_action_plain: "轮速复验通过后，到送达区逐项确认并提交送达确认；该提交只写送达材料，不发车。",
       fixed_delivery_latest_endpoint: "/api/robot-control/delivery/latest",
       fixed_delivery_complete_endpoint: "/api/robot-control/delivery/complete",
       delivery_latest_readback_only: true,
@@ -1241,14 +1241,14 @@ const fixtures: Record<string, unknown> = {
           completed: false,
           proof_status: "blocked",
           missing_evidence: ["nav2_goal_succeeded", "same_window_wheel_lr_nonzero", "delivery_success"],
-          proof_plain: "完整行程暂不可复验；还差：图上行程到点成功、同窗口 wheel L/R 非零、delivery success。",
+          proof_plain: "完整行程暂不可复验；还差：图上行程到点成功、同窗口 wheel L/R 非零、送达确认。",
           minimal_precheck_safety_only: true,
           safety_confirm_required: false,
           sends_motion_when_executed: true,
           start_endpoint: "/api/robot-control/nav2/goal/execute",
           stop_endpoint: "/api/robot-control/base/stop",
           acceptance_endpoints: ["/api/robot-control/map/preview", "/api/robot-control/nav2/goal/execution/latest", "/api/robot-control/base/feedback-samples", "/api/robot-control/delivery/latest", "/api/robot-control/summary"],
-          acceptance_plain: "执行后读取地图路线画面、latest、同窗口 wheel L/R、delivery latest 和 summary，确认图上路线、到点成功、轮速非零且 delivery success 已记录。",
+          acceptance_plain: "执行后读取地图路线画面、latest、同窗口 wheel L/R、送达 latest 和 summary，确认图上路线、到点成功、轮速非零且送达确认已记录。",
           blocked_reasons: ["route_not_ready_on_map"],
         },
         {
@@ -1408,7 +1408,7 @@ const fixtures: Record<string, unknown> = {
         missing_evidence_labels: [
           "图上行程已显示",
           "同窗口 wheel L/R 非零",
-          "delivery success",
+          "送达确认",
           "按住同窗口 wheel L/R 非零",
           "松开/失焦后 stop 已落稳",
           "自由移动运行读数",
@@ -1440,7 +1440,7 @@ const fixtures: Record<string, unknown> = {
           },
           {
             id: "delivery_success",
-            label: "delivery success",
+            label: "送达确认",
             action_id: "run_nav2_route",
             action_label: "完整行程执行",
             readback_endpoint: "/api/robot-control/delivery/latest",
@@ -1758,8 +1758,8 @@ const fixtures: Record<string, unknown> = {
       wheel_rerun_base_command_mode_counts: "{\"pwm\":49}",
       wheel_rerun_control_diagnosis_plain: "上次 PWM 模式路线返回成功但轮速 L/R 仍未非零，本次切到 ROS 模式复验控制链。 上次 PWM 模式已记录 49 次非零底盘命令，最新非零命令模式=pwm；IMU 姿态变化=true，轮速 L/R 仍为 0/0。 下一次执行会用 ROS 模式复验控制链；这不是雷达、相机或地图所见缺口。",
       wheel_rerun_readback_plain: "上次执行窗口轮速 L/R=0/0，样本 239 个，非零样本 0 个；下次将用 ROS 模式重跑图上路线。 重跑后读取 latest 与只读轮速采样。",
-      wheel_rerun_checklist_plain: "重跑闭环：先勾现场安全确认，再执行图上路线；执行后依次读取 latest、底盘轮速采样和 summary，确认同窗口 wheel L/R 非零；轮速闭环后再到送达区确认 delivery success，确认送达不发车。",
-      wheel_rerun_acceptance_plain: "验收口径：Nav2 latest 为 goal_succeeded，同一执行窗口 wheel L/R 非零，summary 不再显示 needs_wheel_rerun，最后 delivery success 与本轮行程材料对齐。",
+      wheel_rerun_checklist_plain: "重跑闭环：先勾现场安全确认，再执行图上路线；执行后依次读取 latest、底盘轮速采样和 summary，确认同窗口 wheel L/R 非零；轮速闭环后再到送达区做送达确认，确认送达不发车。",
+      wheel_rerun_acceptance_plain: "验收口径：Nav2 latest 为 goal_succeeded，同一执行窗口 wheel L/R 非零，summary 不再显示 needs_wheel_rerun，最后送达确认与本轮行程材料对齐。",
       wheel_rerun_acceptance_endpoints: ["/api/robot-control/map/preview", "/api/robot-control/nav2/goal/execution/latest", "/api/robot-control/base/feedback-samples", "/api/robot-control/delivery/latest", "/api/robot-control/summary"],
       wheel_rerun_ready_for_safety_confirm: false,
       wheel_rerun_start_endpoint: "/api/robot-control/nav2/goal/execute",
@@ -1770,7 +1770,7 @@ const fixtures: Record<string, unknown> = {
       wheel_rerun_current_gap_plain: "当前不需要同窗口轮速复验。",
       wheel_rerun_no_extra_precheck_plain: "重跑图上路线的发车前预检只看现场安全确认；相机、雷达、地图所见缺口不作为额外发车前置，路线执行后再按读回端点验收。",
       wheel_rerun_delivery_success_required: true,
-      wheel_rerun_delivery_next_action_plain: "轮速复验通过后，到送达区逐项确认并提交 delivery success；该提交只写送达材料，不发车。",
+      wheel_rerun_delivery_next_action_plain: "轮速复验通过后，到送达区逐项确认并提交送达确认；该提交只写送达材料，不发车。",
       fixed_wheel_rerun_endpoint: "/api/robot-control/nav2/goal/execute",
       fixed_wheel_rerun_latest_endpoint: "/api/robot-control/nav2/goal/execution/latest",
       fixed_wheel_rerun_delivery_latest_endpoint: "/api/robot-control/delivery/latest",
@@ -5497,7 +5497,7 @@ describe("App", () => {
     expect(liveClosureSummary.text()).not.toContain("/cmd_vel");
     expect(liveClosureSummary.attributes("data-state")).toBe("needs_wysiwyg");
     expect(liveClosureSummary.attributes("data-delivery-success-required")).toBe("true");
-    expect(liveClosureSummary.attributes("data-delivery-next-action-plain")).toContain("提交 delivery success");
+    expect(liveClosureSummary.attributes("data-delivery-next-action-plain")).toContain("提交送达确认");
     expect(liveClosureSummary.attributes("data-fixed-delivery-latest-endpoint")).toBe("/api/robot-control/delivery/latest");
     expect(liveClosureSummary.attributes("data-fixed-delivery-complete-endpoint")).toBe("/api/robot-control/delivery/complete");
     expect(liveClosureSummary.attributes("data-delivery-latest-readback-only")).toBe("true");
@@ -5580,7 +5580,7 @@ describe("App", () => {
     expect(fieldAcceptancePacket.attributes("data-primary-hardware-action-blocks-mapping-start")).toBe("false");
     expect(fieldAcceptancePacket.attributes("data-primary-hardware-action-blocks-free-move")).toBe("false");
     expect(fieldAcceptancePacket.attributes("data-missing-evidence-ids")).toBe("route_ready_on_map,same_window_wheel_lr_nonzero,delivery_success,same_hold_window_wheel_lr_nonzero,stop_after_release,free_roam_latest_motion_ready,camera_first_frame,lidar_fresh");
-    expect(fieldAcceptancePacket.attributes("data-missing-evidence-labels")).toBe("图上行程已显示,同窗口 wheel L/R 非零,delivery success,按住同窗口 wheel L/R 非零,松开/失焦后 stop 已落稳,自由移动运行读数,相机首帧,雷达新鲜读数");
+    expect(fieldAcceptancePacket.attributes("data-missing-evidence-labels")).toBe("图上行程已显示,同窗口 wheel L/R 非零,送达确认,按住同窗口 wheel L/R 非零,松开/失焦后 stop 已落稳,自由移动运行读数,相机首帧,雷达新鲜读数");
     expect(fieldAcceptancePacket.attributes("data-missing-evidence-action-ids")).toBe("run_nav2_route,run_nav2_route,run_nav2_route,hold_keyboard,hold_keyboard,start_free_move,start_mapping_when_sensors_ready,start_mapping_when_sensors_ready");
     expect(fieldAcceptancePacket.attributes("data-missing-evidence-readback-endpoints")).toBe("/api/robot-control/map/preview,/api/robot-control/base/feedback-samples,/api/robot-control/delivery/latest,/api/robot-control/base/feedback-samples,/api/robot-control/base/feedback-samples,/api/robot-control/free-roam/autonomy/latest,/api/robot-control/camera/first-frame/probe,/api/robot-control/radar/scan-proof/refresh");
     expect(fieldAcceptancePacket.attributes("data-primary-missing-evidence-id")).toBe("route_ready_on_map");
@@ -5651,7 +5651,7 @@ describe("App", () => {
     expect(fieldAcceptanceRemainingActions.attributes("data-primary-hardware-action-blocks-mapping-start")).toBe("false");
     expect(fieldAcceptanceRemainingActions.attributes("data-primary-hardware-action-blocks-free-move")).toBe("false");
     expect(fieldAcceptanceRemainingActions.attributes("data-missing-evidence-ids")).toBe("route_ready_on_map,same_window_wheel_lr_nonzero,delivery_success,same_hold_window_wheel_lr_nonzero,stop_after_release,free_roam_latest_motion_ready,camera_first_frame,lidar_fresh");
-    expect(fieldAcceptanceRemainingActions.attributes("data-missing-evidence-labels")).toBe("图上行程已显示,同窗口 wheel L/R 非零,delivery success,按住同窗口 wheel L/R 非零,松开/失焦后 stop 已落稳,自由移动运行读数,相机首帧,雷达新鲜读数");
+    expect(fieldAcceptanceRemainingActions.attributes("data-missing-evidence-labels")).toBe("图上行程已显示,同窗口 wheel L/R 非零,送达确认,按住同窗口 wheel L/R 非零,松开/失焦后 stop 已落稳,自由移动运行读数,相机首帧,雷达新鲜读数");
     expect(fieldAcceptanceRemainingActions.attributes("data-missing-evidence-action-ids")).toBe("run_nav2_route,run_nav2_route,run_nav2_route,hold_keyboard,hold_keyboard,start_free_move,start_mapping_when_sensors_ready,start_mapping_when_sensors_ready");
     expect(fieldAcceptanceRemainingActions.attributes("data-missing-evidence-readback-endpoints")).toBe("/api/robot-control/map/preview,/api/robot-control/base/feedback-samples,/api/robot-control/delivery/latest,/api/robot-control/base/feedback-samples,/api/robot-control/base/feedback-samples,/api/robot-control/free-roam/autonomy/latest,/api/robot-control/camera/first-frame/probe,/api/robot-control/radar/scan-proof/refresh");
     expect(fieldAcceptanceRemainingActions.attributes("data-primary-missing-evidence-id")).toBe("route_ready_on_map");
@@ -6893,7 +6893,7 @@ describe("App", () => {
     expect(nav2Runbook.attributes("data-completed")).toBe("false");
     expect(nav2Runbook.attributes("data-proof-status")).toBe("blocked");
     expect(nav2Runbook.attributes("data-missing-evidence")).toBe("nav2_goal_succeeded,same_window_wheel_lr_nonzero,delivery_success");
-    expect(nav2Runbook.attributes("data-proof-plain")).toContain("图上行程到点成功、同窗口 wheel L/R 非零、delivery success");
+    expect(nav2Runbook.attributes("data-proof-plain")).toContain("图上行程到点成功、同窗口 wheel L/R 非零、送达确认");
     expect(nav2Runbook.attributes("data-acceptance-endpoints")).toBe("/api/robot-control/map/preview,/api/robot-control/nav2/goal/execution/latest,/api/robot-control/base/feedback-samples,/api/robot-control/delivery/latest,/api/robot-control/summary");
     expect(nav2Runbook.attributes("data-readback-refresh-endpoints")).toBe("/api/robot-control/map/preview,/api/robot-control/nav2/goal/execution/latest,/api/robot-control/base/feedback-samples,/api/robot-control/delivery/latest,/api/robot-control/summary");
     expect(nav2Runbook.attributes("data-blocked-reasons")).toBe("route_not_ready_on_map");
@@ -9196,7 +9196,7 @@ describe("App", () => {
     const goalClosureText = wrapper.find('[data-testid="goal-closure-checklist"]').text();
     expect(goalClosureText).toContain("wheel raw L/R 非零");
     expect(goalClosureText).toContain("完整 Nav2 路线执行");
-    expect(goalClosureText).toContain("delivery success");
+    expect(goalClosureText).toContain("送达确认");
     expect(goalClosureText).toContain("PC 键盘连续手控");
     expect(goalClosureText).not.toContain("/cmd_vel");
     const keyboardClosureItem = wrapper.findAll('[data-testid="goal-closure-checklist"] li')
@@ -9301,11 +9301,11 @@ describe("App", () => {
       latest_raw_right: "0",
       feedback_sample_count: "2",
       feedback_nonzero_sample_count: "0",
-      current_gap_plain: "当前缺口：同窗口 wheel L/R 非零、delivery success。",
+      current_gap_plain: "当前缺口：同窗口 wheel L/R 非零、送达确认。",
       checklist_plain: "先勾现场安全确认，再执行图上路线。",
-      acceptance_plain: "验收：图上路线、到点成功、同窗口 wheel L/R 非零、delivery success。",
+      acceptance_plain: "验收：图上路线、到点成功、同窗口 wheel L/R 非零、送达确认。",
       no_extra_precheck_plain: "发车前预检只看现场安全确认。",
-      delivery_next_action_plain: "轮速复验通过后提交 delivery success。",
+      delivery_next_action_plain: "轮速复验通过后提交送达确认。",
       sends_motion_when_clicked: false,
     };
     const mockedFetch = stubWorkstationFetch({
@@ -9354,9 +9354,9 @@ describe("App", () => {
     expect(tripClosure.attributes("data-feedback-nonzero-sample-count")).toBe("0");
     expect(tripClosure.attributes("data-current-gap-plain")).toContain("当前缺口");
     expect(tripClosure.attributes("data-checklist-plain")).toContain("先勾现场安全确认");
-    expect(tripClosure.attributes("data-acceptance-plain")).toContain("delivery success");
+    expect(tripClosure.attributes("data-acceptance-plain")).toContain("送达确认");
     expect(tripClosure.attributes("data-no-extra-precheck-plain")).toContain("发车前预检只看现场安全确认");
-    expect(tripClosure.attributes("data-delivery-next-action-plain")).toContain("delivery success");
+    expect(tripClosure.attributes("data-delivery-next-action-plain")).toContain("送达确认");
     expect(tripClosure.attributes("data-readback-only")).toBe("true");
     expect(tripClosure.attributes("data-readback-sends-motion")).toBe("false");
     expect(tripClosure.attributes("data-starts-nav2")).toBe("false");
@@ -10221,8 +10221,8 @@ describe("App", () => {
       wheel_rerun_base_command_mode_counts: "{\"pwm\":49}",
       wheel_rerun_control_diagnosis_plain: "上次 PWM 模式路线返回成功但轮速 L/R 仍未非零，本次切到 ROS 模式复验控制链。 上次 PWM 模式已记录 49 次非零底盘命令，最新非零命令模式=pwm；IMU 姿态变化=true，轮速 L/R 仍为 0/0。 下一次执行会用 ROS 模式复验控制链；这不是雷达、相机或地图所见缺口。",
       wheel_rerun_readback_plain: "上次执行窗口轮速 L/R=0/0，样本 239 个，非零样本 0 个；下次将用 ROS 模式重跑图上路线。 重跑后读取 latest 与只读轮速采样。",
-      wheel_rerun_checklist_plain: "重跑闭环：先勾现场安全确认，再执行图上路线；执行后依次读取地图路线画面、latest、底盘轮速采样和 summary，确认图上路线仍可见并确认同窗口 wheel L/R 非零；轮速闭环后再到送达区确认 delivery success，确认送达不发车。",
-      wheel_rerun_acceptance_plain: "验收口径：地图仍显示本轮图上路线，Nav2 latest 为 goal_succeeded，同一执行窗口 wheel L/R 非零，summary 不再显示 needs_wheel_rerun，最后 delivery success 与本轮行程材料对齐。",
+      wheel_rerun_checklist_plain: "重跑闭环：先勾现场安全确认，再执行图上路线；执行后依次读取地图路线画面、latest、底盘轮速采样和 summary，确认图上路线仍可见并确认同窗口 wheel L/R 非零；轮速闭环后再到送达区做送达确认，确认送达不发车。",
+      wheel_rerun_acceptance_plain: "验收口径：地图仍显示本轮图上路线，Nav2 latest 为 goal_succeeded，同一执行窗口 wheel L/R 非零，summary 不再显示 needs_wheel_rerun，最后送达确认与本轮行程材料对齐。",
       wheel_rerun_acceptance_endpoints: ["/api/robot-control/map/preview", "/api/robot-control/nav2/goal/execution/latest", "/api/robot-control/base/feedback-samples", "/api/robot-control/delivery/latest", "/api/robot-control/summary"],
       wheel_rerun_ready_for_safety_confirm: true,
       wheel_rerun_start_endpoint: "/api/robot-control/nav2/goal/execute",
@@ -10293,9 +10293,9 @@ describe("App", () => {
     expect(liveClosureSummary.attributes("data-wheel-rerun-readback-plain")).toContain("样本 239 个");
     expect(liveClosureSummary.attributes("data-wheel-rerun-checklist-plain")).toContain("先勾现场安全确认");
     expect(liveClosureSummary.attributes("data-wheel-rerun-checklist-plain")).toContain("确认同窗口 wheel L/R 非零");
-    expect(liveClosureSummary.attributes("data-wheel-rerun-checklist-plain")).toContain("delivery success");
+    expect(liveClosureSummary.attributes("data-wheel-rerun-checklist-plain")).toContain("送达确认");
     expect(liveClosureSummary.attributes("data-wheel-rerun-acceptance-plain")).toContain("goal_succeeded");
-    expect(liveClosureSummary.attributes("data-wheel-rerun-acceptance-plain")).toContain("delivery success 与本轮行程材料对齐");
+    expect(liveClosureSummary.attributes("data-wheel-rerun-acceptance-plain")).toContain("送达确认与本轮行程材料对齐");
     expect(liveClosureSummary.attributes("data-wheel-rerun-acceptance-endpoints")).toBe("/api/robot-control/map/preview,/api/robot-control/nav2/goal/execution/latest,/api/robot-control/base/feedback-samples,/api/robot-control/delivery/latest,/api/robot-control/summary");
     expect(liveClosureSummary.attributes("data-wheel-rerun-ready-for-safety-confirm")).toBe("true");
     expect(liveClosureSummary.attributes("data-wheel-rerun-start-endpoint")).toBe("/api/robot-control/nav2/goal/execute");
@@ -10306,7 +10306,7 @@ describe("App", () => {
     expect(liveClosureSummary.attributes("data-wheel-rerun-current-gap-plain")).toContain("当前缺口");
     expect(liveClosureSummary.attributes("data-wheel-rerun-no-extra-precheck-plain")).toContain("发车前预检只看现场安全确认");
     expect(liveClosureSummary.attributes("data-wheel-rerun-delivery-success-required")).toBe("true");
-    expect(liveClosureSummary.attributes("data-wheel-rerun-delivery-next-action-plain")).toContain("提交 delivery success");
+    expect(liveClosureSummary.attributes("data-wheel-rerun-delivery-next-action-plain")).toContain("提交送达确认");
     expect(liveClosureSummary.attributes("data-last-base-command-mode")).toBe("pwm");
     expect(liveClosureSummary.attributes("data-next-base-command-mode")).toBe("ros");
     expect(liveClosureSummary.attributes("data-wheel-feedback-status")).toBe("goal_succeeded_but_wheel_lr_zero");
@@ -10322,7 +10322,7 @@ describe("App", () => {
     expect(liveClosureSummary.text()).toContain("同窗口轮速 L/R 还没有非零闭环");
     expect(liveClosureSummary.text()).toContain("49 次非零底盘命令");
     expect(liveClosureSummary.text()).toContain("不是雷达、相机或地图所见缺口");
-    expect(liveClosureSummary.text()).toContain("轮速闭环后再到送达区确认 delivery success");
+    expect(liveClosureSummary.text()).toContain("轮速闭环后再到送达区做送达确认");
     expect(liveClosureSummary.text()).toContain("重跑图上行程");
     expect(liveClosureSummary.text()).not.toContain("/cmd_vel");
     const wheelRerunClosurePlan = wrapper.find('[data-testid="plain-wheel-rerun-closure-plan"]');
@@ -10340,7 +10340,7 @@ describe("App", () => {
     expect(wheelRerunClosurePlan.text()).toContain("不是雷达、相机或地图所见缺口");
     expect(wheelRerunClosurePlan.text()).toContain("先勾现场安全确认");
     expect(wheelRerunClosurePlan.text()).toContain("同窗口 wheel L/R 非零");
-    expect(wheelRerunClosurePlan.text()).toContain("delivery success 与本轮行程材料对齐");
+    expect(wheelRerunClosurePlan.text()).toContain("送达确认与本轮行程材料对齐");
     expect(wheelRerunClosurePlan.attributes("data-acceptance-endpoints")).toBe("/api/robot-control/map/preview,/api/robot-control/nav2/goal/execution/latest,/api/robot-control/base/feedback-samples,/api/robot-control/delivery/latest,/api/robot-control/summary");
     expect(wheelRerunClosurePlan.attributes("data-delivery-success-required")).toBe("true");
     expect(wheelRerunClosurePlan.attributes("data-fixed-wheel-rerun-endpoint")).toBe("/api/robot-control/nav2/goal/execute");
@@ -10423,7 +10423,7 @@ describe("App", () => {
     expect(liveClosureGuide.attributes("data-wheel-rerun-control-diagnosis-plain")).toContain("不是雷达、相机或地图所见缺口");
     expect(liveClosureGuide.attributes("data-wheel-rerun-readback-plain")).toContain("轮速 L/R=0/0");
     expect(liveClosureGuide.attributes("data-wheel-rerun-checklist-plain")).toContain("先勾现场安全确认");
-    expect(liveClosureGuide.attributes("data-wheel-rerun-acceptance-plain")).toContain("delivery success 与本轮行程材料对齐");
+    expect(liveClosureGuide.attributes("data-wheel-rerun-acceptance-plain")).toContain("送达确认与本轮行程材料对齐");
     expect(liveClosureGuide.attributes("data-wheel-rerun-acceptance-endpoints")).toBe("/api/robot-control/map/preview,/api/robot-control/nav2/goal/execution/latest,/api/robot-control/base/feedback-samples,/api/robot-control/delivery/latest,/api/robot-control/summary");
     expect(liveClosureGuide.attributes("data-wheel-rerun-delivery-success-required")).toBe("true");
     expect(liveClosureGuide.attributes("data-last-base-command-mode")).toBe("pwm");
@@ -18277,7 +18277,7 @@ describe("App", () => {
     expect(navClosureItem?.attributes("data-ready")).toBe("false");
     expect(navClosureItem?.text()).toContain("读取最近 Nav2 结果或执行受限目标后确认");
     const deliveryClosureItem = wrapper.findAll('[data-testid="goal-closure-checklist"] li')
-      .find((item) => item.text().includes("delivery success"));
+      .find((item) => item.text().includes("送达确认"));
     expect(deliveryClosureItem?.attributes("data-ready")).toBe("false");
     expect(deliveryClosureItem?.text()).toContain("送达确认前先完成本轮完整行程");
     expect(wrapper.find('[data-testid="plain-radar-start"]').exists()).toBe(true);
@@ -18480,7 +18480,7 @@ describe("App", () => {
       .find((item) => item.text().includes("完整 Nav2 路线执行"));
     expect(navClosureItem?.text()).toContain("已有旧 goal_succeeded，需本轮复验");
     const deliveryClosureItem = wrapper.findAll('[data-testid="goal-closure-checklist"] li')
-      .find((item) => item.text().includes("delivery success"));
+      .find((item) => item.text().includes("送达确认"));
     expect(deliveryClosureItem?.text()).toContain("送达确认前先完成本轮完整行程");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/radar/start?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
@@ -22557,7 +22557,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text()).toContain("送达成功材料非本轮");
     expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toContain("验收卡点：送达成功记录的行程材料不是本轮记录");
     const deliveryClosureItem = wrapper.findAll('[data-testid="goal-closure-checklist"] li')
-      .find((item) => item.text().includes("delivery success"));
+      .find((item) => item.text().includes("送达确认"));
     expect(deliveryClosureItem?.attributes("data-ready")).toBe("false");
     expect(deliveryClosureItem?.text()).toContain("行程材料不是本轮记录");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeDefined();
@@ -25603,7 +25603,7 @@ describe("App", () => {
       .find((item) => item.text().includes("完整 Nav2 路线执行"));
     expect(navClosureItem?.text()).toContain("读取最近 Nav2 结果或执行受限目标后确认");
     const deliveryClosureItem = wrapper.findAll('[data-testid="goal-closure-checklist"] li')
-      .find((item) => item.text().includes("delivery success"));
+      .find((item) => item.text().includes("送达确认"));
     expect(deliveryClosureItem?.text()).toContain("送达确认前先完成本轮完整行程");
     expect(navClosureItem?.text()).not.toContain("雷达");
     expect(deliveryClosureItem?.text()).not.toContain("雷达");

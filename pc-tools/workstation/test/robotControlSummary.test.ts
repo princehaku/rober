@@ -138,8 +138,8 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.delivery_success_required).toBe(true);
     expect(summary.route_delivery_success).toBe(false);
     expect(summary.delivery_success_required).toBe(true);
-    expect(summary.live_closure_summary?.delivery_next_action_plain).toContain("提交 delivery success");
-    expect(summary.delivery_next_action_plain).toContain("提交 delivery success");
+    expect(summary.live_closure_summary?.delivery_next_action_plain).toContain("提交送达确认");
+    expect(summary.delivery_next_action_plain).toContain("提交送达确认");
     expect(summary.live_closure_summary?.fixed_delivery_latest_endpoint).toBe("/api/robot-control/delivery/latest");
     expect(summary.fixed_delivery_latest_endpoint).toBe("/api/robot-control/delivery/latest");
     expect(summary.live_closure_summary?.fixed_delivery_complete_endpoint).toBe("/api/robot-control/delivery/complete");
@@ -229,10 +229,10 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.wheel_rerun_readback_plain).toContain("非零样本 0 个");
     expect(summary.live_closure_summary?.wheel_rerun_checklist_plain).toContain("先勾现场安全确认");
     expect(summary.live_closure_summary?.wheel_rerun_checklist_plain).toContain("确认同窗口 wheel L/R 非零");
-    expect(summary.live_closure_summary?.wheel_rerun_checklist_plain).toContain("delivery success");
+    expect(summary.live_closure_summary?.wheel_rerun_checklist_plain).toContain("送达确认");
     expect(summary.live_closure_summary?.wheel_rerun_acceptance_plain).toContain("goal_succeeded");
     expect(summary.live_closure_summary?.wheel_rerun_acceptance_plain).toContain("地图仍显示本轮图上路线");
-    expect(summary.live_closure_summary?.wheel_rerun_acceptance_plain).toContain("delivery success 与本轮行程材料对齐");
+    expect(summary.live_closure_summary?.wheel_rerun_acceptance_plain).toContain("送达确认与本轮行程材料对齐");
     expect(summary.live_closure_summary?.wheel_rerun_acceptance_endpoints).toEqual([
       "/api/robot-control/map/preview",
       "/api/robot-control/nav2/goal/execution/latest",
@@ -275,7 +275,7 @@ describe("robotControlSummary", () => {
       "发车前预检已精简：执行运动只需勾现场安全确认；相机、雷达和现场报告不作为额外发车前置。",
     );
     expect(summary.live_closure_summary?.wheel_rerun_delivery_success_required).toBe(true);
-    expect(summary.live_closure_summary?.wheel_rerun_delivery_next_action_plain).toContain("提交 delivery success");
+    expect(summary.live_closure_summary?.wheel_rerun_delivery_next_action_plain).toContain("提交送达确认");
     expect(summary.live_closure_summary?.fixed_wheel_rerun_endpoint).toBe("/api/robot-control/nav2/goal/execute");
     expect(summary.live_closure_summary?.fixed_wheel_rerun_latest_endpoint).toBe("/api/robot-control/nav2/goal/execution/latest");
     expect(summary.live_closure_summary?.fixed_wheel_rerun_delivery_latest_endpoint).toBe("/api/robot-control/delivery/latest");
@@ -962,7 +962,7 @@ describe("robotControlSummary", () => {
     expect(summary.nav2_route_acceptance_packet?.readback_endpoints).toEqual(summary.wheel_rerun_readback_endpoints);
     expect(summary.nav2_route_acceptance_packet?.current_gap_plain).toContain("当前缺口");
     expect(summary.nav2_route_acceptance_packet?.checklist_plain).toContain("先勾现场安全确认");
-    expect(summary.nav2_route_acceptance_packet?.acceptance_plain).toContain("delivery success");
+    expect(summary.nav2_route_acceptance_packet?.acceptance_plain).toContain("送达确认");
     expect(summary.nav2_route_acceptance_packet?.no_extra_precheck_plain).toContain("发车前预检只看现场安全确认");
     expect(summary.primary_start_endpoint).toBe("/api/robot-control/nav2/goal/execute");
     expect(summary.primary_stop_endpoint).toBe("/api/robot-control/base/stop");
@@ -1026,7 +1026,7 @@ describe("robotControlSummary", () => {
     ]);
     expect(summary.field_acceptance_missing_evidence_labels).toEqual([
       "同窗口 wheel L/R 非零",
-      "delivery success",
+      "送达确认",
       "按住同窗口 wheel L/R 非零",
       "松开/失焦后 stop 已落稳",
       "自由移动运行读数",
@@ -1088,7 +1088,7 @@ describe("robotControlSummary", () => {
           "/api/robot-control/delivery/latest",
           "/api/robot-control/summary",
         ],
-        proof_plain: "可复验完整行程：勾现场安全确认后执行图上路线，执行后按验收端点读回；还差：同窗口 wheel L/R 非零、delivery success。",
+        proof_plain: "可复验完整行程：勾现场安全确认后执行图上路线，执行后按验收端点读回；还差：同窗口 wheel L/R 非零、送达确认。",
       }),
       expect.objectContaining({
         id: "hold_keyboard",
