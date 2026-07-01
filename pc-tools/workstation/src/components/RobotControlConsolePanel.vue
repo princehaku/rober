@@ -8550,10 +8550,17 @@ const plainMappingUnlockItems = computed<PlainMappingUnlockItem[]>(() => {
 });
 const plainMappingUnlockSummary = computed(() => {
   // 解锁摘要把分散在四行里的门禁事实压成一句话，现场优先判断“现在到底差谁”。
+  const summary = robotSummary.value;
+  const liveSummary = plainLiveClosureSummary.value;
   const evidence = plainFreeRoamDomEvidence.value;
   const mappingGauge = plainMappingReadinessGauge.value;
   const missingReasons = mappingGauge.missingReasons;
   const missingPlain = missingReasons && missingReasons !== "none" ? missingReasons : "无";
+  const cameraReprobeSequence = summary?.camera_reprobe_sequence?.length
+    ? summary.camera_reprobe_sequence
+    : liveSummary?.camera_reprobe_sequence?.length
+      ? liveSummary.camera_reprobe_sequence
+      : [summary?.fixed_camera_probe_endpoint ?? liveSummary?.fixed_camera_probe_endpoint, summary?.fixed_camera_mjpeg_status_endpoint ?? liveSummary?.fixed_camera_mjpeg_status_endpoint, "/api/robot-control/summary"].filter(Boolean);
   const sensorParts = [
     evidence.cameraSourceFirstFrameReady ? "画面已出帧" : "画面未出帧",
     evidence.radarFreshForMapping ? "雷达已满足" : "雷达未刷新",
@@ -8593,6 +8600,13 @@ const plainMappingUnlockSummary = computed(() => {
     fixedRadarRefreshEndpoint: "/api/robot-control/radar/scan-proof/refresh",
     fixedMapPreviewEndpoint: "/api/robot-control/map/preview",
     fixedCameraMjpegStatusEndpoint: "/api/robot-control/camera/mjpeg/status",
+    cameraHardwareActionRequired: summary?.camera_hardware_action_required ?? liveSummary?.camera_hardware_action_required ?? false,
+    cameraHardwareActionLabel: summary?.camera_hardware_action_label ?? liveSummary?.camera_hardware_action_label ?? "复测相机首帧",
+    cameraUsbFullSpeedDetected: summary?.camera_usb_full_speed_detected ?? liveSummary?.camera_usb_full_speed_detected ?? false,
+    cameraUsbSpeed: summary?.camera_usb_speed ?? liveSummary?.camera_usb_speed ?? "not_loaded",
+    cameraBlocksFreeMove: summary?.camera_blocks_free_move ?? liveSummary?.camera_blocks_free_move ?? false,
+    cameraReprobeAfterHardwareActionRequired: summary?.camera_reprobe_after_hardware_action_required ?? liveSummary?.camera_reprobe_after_hardware_action_required ?? false,
+    cameraReprobeSequence: cameraReprobeSequence.join(",") || "none",
     radarRefreshRequired: evidence.primaryActionRadarBlocksMappingStart,
   };
 });
@@ -21060,6 +21074,13 @@ onBeforeUnmount(() => {
                 :data-radar-ready-for-mapping="String(plainMappingUnlockSummary.radarReadyForMapping)"
                 :data-mapping-start-ready="String(plainMappingUnlockSummary.mappingStartReady)"
                 :data-mapping-missing-reasons="plainMappingUnlockSummary.missingReasons"
+                :data-camera-hardware-action-required="String(plainMappingUnlockSummary.cameraHardwareActionRequired)"
+                :data-camera-hardware-action-label="plainMappingUnlockSummary.cameraHardwareActionLabel"
+                :data-camera-usb-full-speed-detected="String(plainMappingUnlockSummary.cameraUsbFullSpeedDetected)"
+                :data-camera-usb-speed="plainMappingUnlockSummary.cameraUsbSpeed"
+                :data-camera-blocks-free-move="String(plainMappingUnlockSummary.cameraBlocksFreeMove)"
+                :data-camera-reprobe-after-hardware-action-required="String(plainMappingUnlockSummary.cameraReprobeAfterHardwareActionRequired)"
+                :data-camera-reprobe-sequence="plainMappingUnlockSummary.cameraReprobeSequence"
                 :data-fixed-first-frame-probe-endpoint="plainMappingUnlockSummary.fixedFirstFrameProbeEndpoint"
                 :data-fixed-radar-refresh-endpoint="plainMappingUnlockSummary.fixedRadarRefreshEndpoint"
                 :data-fixed-map-preview-endpoint="plainMappingUnlockSummary.fixedMapPreviewEndpoint"

@@ -8728,6 +8728,7 @@ describe("App", () => {
     const liveClosureSummary = wrapper.find('[data-testid="plain-live-closure-summary"]');
     const liveCameraRecoveryReadback = wrapper.find('[data-testid="plain-live-camera-recovery-readback"]');
     const liveCameraRecoveryRefresh = wrapper.find('[data-testid="plain-live-camera-recovery-refresh"]');
+    const mappingUnlockSummary = wrapper.find('[data-testid="plain-mapping-unlock-summary"]');
     expect(liveClosureSummary.attributes("data-camera-hardware-action-required")).toBe("true");
     expect(liveClosureSummary.attributes("data-camera-hardware-action-label")).toBe("换高速USB后复测");
     expect(liveClosureSummary.attributes("data-camera-usb-full-speed-detected")).toBe("true");
@@ -8756,6 +8757,17 @@ describe("App", () => {
     expect(mappingCameraUnblockPlan.attributes("data-camera-blocks-free-move")).toBe("false");
     expect(mappingCameraUnblockPlan.attributes("data-camera-reprobe-after-hardware-action-required")).toBe("true");
     expect(mappingCameraUnblockPlan.attributes("data-camera-reprobe-sequence")).toBe("/api/robot-control/camera/first-frame/probe,/api/robot-control/camera/mjpeg/status,/api/robot-control/summary");
+    expect(mappingUnlockSummary.attributes("data-camera-hardware-action-required")).toBe("true");
+    expect(mappingUnlockSummary.attributes("data-camera-hardware-action-label")).toBe("换高速USB后复测");
+    expect(mappingUnlockSummary.attributes("data-camera-usb-full-speed-detected")).toBe("true");
+    expect(mappingUnlockSummary.attributes("data-camera-usb-speed")).toBe("12M");
+    expect(mappingUnlockSummary.attributes("data-camera-blocks-free-move")).toBe("false");
+    expect(mappingUnlockSummary.attributes("data-camera-reprobe-after-hardware-action-required")).toBe("true");
+    expect(mappingUnlockSummary.attributes("data-camera-reprobe-sequence")).toBe("/api/robot-control/camera/first-frame/probe,/api/robot-control/camera/mjpeg/status,/api/robot-control/summary");
+    expect(mappingUnlockSummary.attributes("data-starts-map-runtime")).toBe("false");
+    expect(mappingUnlockSummary.attributes("data-starts-free-roam")).toBe("false");
+    expect(mappingUnlockSummary.attributes("data-sends-motion-when-clicked")).toBe("false");
+    expect(mappingUnlockSummary.text()).toContain("建图解锁");
     expect(mappingCameraRecoveryRefresh.attributes("data-sends-motion-when-clicked")).toBe("false");
     expect(mappingCameraRecoveryRefresh.attributes("data-starts-camera-exclusive-capture")).toBe("false");
     expect(mappingCameraRecoveryRefresh.attributes("data-starts-map-runtime")).toBe("false");
