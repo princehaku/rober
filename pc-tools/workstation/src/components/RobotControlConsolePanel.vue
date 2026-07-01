@@ -16829,6 +16829,17 @@ onBeforeUnmount(() => {
           :data-fixed-wheel-readback-endpoint="plainLiveClosureSummary.fixed_wheel_readback_endpoint"
           :data-fixed-delivery-latest-endpoint="plainLiveClosureSummary.fixed_wheel_rerun_delivery_latest_endpoint"
           :data-fixed-delivery-complete-endpoint="plainLiveClosureSummary.fixed_wheel_rerun_delivery_complete_endpoint"
+          :data-readback-refresh-endpoints="plainTripClosureReadbackSummary.acceptanceEndpoints.join(',')"
+          :data-readback-refresh-pending="String(plainTripClosureReadbackSummary.readbackPending)"
+          data-readback-only="true"
+          data-readback-refresh-sends-motion="false"
+          data-readback-refresh-starts-nav2="false"
+          data-readback-refresh-starts-manual="false"
+          data-readback-refresh-starts-keyboard="false"
+          data-readback-refresh-starts-free-roam="false"
+          data-readback-refresh-starts-map-runtime="false"
+          data-readback-refresh-submits-delivery="false"
+          data-readback-refresh-stops-motion="false"
           :data-delivery-complete-sends-motion="String(plainLiveClosureSummary.wheel_rerun_delivery_complete_sends_motion)"
           data-sends-motion-when-clicked="false"
           data-starts-nav2="false"
@@ -16839,6 +16850,25 @@ onBeforeUnmount(() => {
           {{ plainActionCardUserText(plainLiveClosureSummary.wheel_rerun_checklist_plain) }}
           {{ plainActionCardUserText(plainLiveClosureSummary.wheel_rerun_acceptance_plain) }}
           {{ plainActionCardUserText(plainLiveClosureSummary.wheel_rerun_delivery_next_action_plain) }}
+          <button
+            type="button"
+            class="secondary compact-stop"
+            data-testid="plain-wheel-rerun-readback-refresh"
+            :disabled="plainTripClosureReadbackSummary.readbackDisabled"
+            :data-readback-refresh-endpoints="plainTripClosureReadbackSummary.acceptanceEndpoints.join(',')"
+            data-readback-only="true"
+            data-sends-motion-when-clicked="false"
+            data-starts-nav2="false"
+            data-starts-manual="false"
+            data-starts-keyboard="false"
+            data-starts-free-roam="false"
+            data-starts-map-runtime="false"
+            data-submits-delivery="false"
+            data-stops-motion="false"
+            @click="refreshLiveMotionRunbookReadback('run_nav2_route')"
+          >
+            {{ plainTripClosureReadbackSummary.readbackPending ? "读回中" : "读回复验" }}
+          </button>
         </p>
         <p
           class="panel-note"
