@@ -10474,7 +10474,7 @@ export async function buildRobotControlSummary(
   };
   const fieldAcceptanceNoMotionReadbackActionEndpointById: Record<RobotControlFieldAcceptanceNoMotionReadbackActionId, string> = {
     readback_all: "/api/robot-control/summary",
-    refresh_current_wysiwyg: liveClosureSummary.live_wysiwyg_primary_refresh_endpoint || "/api/robot-control/summary",
+    refresh_current_wysiwyg: fieldAcceptanceWysiwygRefreshPlan.sequence[0] || liveClosureSummary.live_wysiwyg_primary_refresh_endpoint || "/api/robot-control/summary",
     refresh_camera_first_frame: liveClosureSummary.fixed_live_wysiwyg_camera_probe_endpoint,
     refresh_radar_map_overlay: liveClosureSummary.fixed_live_wysiwyg_radar_refresh_endpoint,
   };
@@ -10555,7 +10555,8 @@ export async function buildRobotControlSummary(
       };
     });
   const fieldAcceptancePrimaryNoMotionReadbackActionId: RobotControlFieldAcceptanceNoMotionReadbackActionId | "none" = liveClosureSummary.radar_overlay_needs_refresh
-    ? "refresh_radar_map_overlay"
+    && fieldAcceptanceWysiwygRefreshModeValue !== "all_wysiwyg"
+      ? "refresh_radar_map_overlay"
     : fieldAcceptanceCameraOnlyMissing
       ? "refresh_camera_first_frame"
     : !liveClosureSummary.live_wysiwyg_ready

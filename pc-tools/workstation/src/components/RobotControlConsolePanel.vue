@@ -15659,10 +15659,15 @@ async function refreshPlainWysiwygEvidence(): Promise<void> {
   if (!canRefreshPlainWysiwygEvidence.value) {
     return;
   }
-  await Promise.all([
-    refreshRadarProof({ focusAfterReady: false, mapPreviewAfter: true }),
-    refreshCameraFirstFrameProbeForWysiwyg(),
-  ]);
+  const sequence = plainFieldAcceptancePacket.value?.wysiwyg_refresh_sequence
+    ?? plainLiveClosureSummary.value?.live_wysiwyg_refresh_sequence
+    ?? [];
+  if (sequence.length > 0) {
+    await refreshFieldAcceptanceNoMotionSequence(sequence);
+    return;
+  }
+  await refreshRadarProof({ focusAfterReady: false, mapPreviewAfter: true });
+  await refreshCameraFirstFrameProbeForWysiwyg();
 }
 
 async function refreshFieldAcceptanceWysiwygEvidence(): Promise<void> {

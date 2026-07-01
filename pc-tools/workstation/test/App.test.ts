@@ -1574,7 +1574,7 @@ const fixtures: Record<string, unknown> = {
         no_motion_readback_action_labels: ["复验全部读数", "刷新当前所见", "刷新雷达贴图"],
         no_motion_readback_action_endpoints: [
           "/api/robot-control/summary",
-          "/api/robot-control/camera/first-frame/probe",
+          "/api/robot-control/radar/scan-proof/refresh",
           "/api/robot-control/radar/scan-proof/refresh",
         ],
         no_motion_readback_action_methods: ["GET", "POST", "POST"],
@@ -1627,7 +1627,7 @@ const fixtures: Record<string, unknown> = {
           {
             id: "refresh_current_wysiwyg",
             label: "刷新当前所见",
-            endpoint: "/api/robot-control/camera/first-frame/probe",
+            endpoint: "/api/robot-control/radar/scan-proof/refresh",
             method: "POST",
             sequence_endpoints: [
               "/api/robot-control/radar/scan-proof/refresh",
@@ -1685,23 +1685,25 @@ const fixtures: Record<string, unknown> = {
             stops_motion_when_clicked: false,
           },
         ],
-        primary_no_motion_readback_action_id: "refresh_radar_map_overlay",
-        primary_no_motion_readback_action_label: "刷新雷达贴图",
+        primary_no_motion_readback_action_id: "refresh_current_wysiwyg",
+        primary_no_motion_readback_action_label: "刷新当前所见",
         primary_no_motion_readback_action_endpoint: "/api/robot-control/radar/scan-proof/refresh",
         primary_no_motion_readback_action_method: "POST",
         primary_no_motion_readback_action_sequence: [
           "/api/robot-control/radar/scan-proof/refresh",
           "/api/robot-control/radar/status",
           "/api/robot-control/map/preview",
+          "/api/robot-control/camera/first-frame/probe",
+          "/api/robot-control/camera/mjpeg/status",
           "/api/robot-control/summary",
         ],
-        primary_no_motion_readback_action_sequence_labels: ["刷新雷达扫描读数", "读取雷达状态", "刷新地图画面", "刷新总览"],
+        primary_no_motion_readback_action_sequence_labels: ["刷新雷达扫描读数", "读取雷达状态", "刷新地图画面", "复测相机首帧", "读取相机 MJPEG 状态", "刷新总览"],
         primary_no_motion_readback_action_refreshes_summary: true,
         primary_no_motion_readback_action_refreshes_radar_scan_proof: true,
-        primary_no_motion_readback_action_refreshes_camera_first_frame_probe: false,
+        primary_no_motion_readback_action_refreshes_camera_first_frame_probe: true,
         primary_no_motion_readback_action_refreshes_map_preview: true,
         primary_no_motion_readback_action_refreshes_radar_status: true,
-        primary_no_motion_readback_action_refreshes_camera_mjpeg_status: false,
+        primary_no_motion_readback_action_refreshes_camera_mjpeg_status: true,
         primary_no_motion_readback_action_sends_motion: false,
         remaining_operator_action_summary_plain: "需要现场安全确认的运动验收：键盘连续手控、自由自助移动；勾一次安全确认后再手动执行，执行后只读读回复验。",
         remaining_hardware_action_summary_plain: "当前没有必须先处理的设备动作；可继续按现场验收包复验。",
@@ -5736,12 +5738,12 @@ describe("App", () => {
     expect(fieldAcceptancePacket.attributes("data-next-step-start-endpoint")).toBe("/api/robot-control/base/manual");
     expect(fieldAcceptancePacket.attributes("data-next-step-sends-motion")).toBe("true");
     expect(fieldAcceptancePacket.attributes("data-next-step-requires-safety-confirm")).toBe("true");
-    expect(fieldAcceptancePacket.attributes("data-parallel-no-motion-action-id")).toBe("refresh_radar_map_overlay");
-    expect(fieldAcceptancePacket.attributes("data-parallel-no-motion-action-label")).toBe("刷新雷达贴图");
+    expect(fieldAcceptancePacket.attributes("data-parallel-no-motion-action-id")).toBe("refresh_current_wysiwyg");
+    expect(fieldAcceptancePacket.attributes("data-parallel-no-motion-action-label")).toBe("刷新当前所见");
     expect(fieldAcceptancePacket.attributes("data-parallel-no-motion-action-endpoint")).toBe("/api/robot-control/radar/scan-proof/refresh");
     expect(fieldAcceptancePacket.attributes("data-parallel-no-motion-action-method")).toBe("POST");
-    expect(fieldAcceptancePacket.attributes("data-parallel-no-motion-action-sequence")).toBe("/api/robot-control/radar/scan-proof/refresh,/api/robot-control/radar/status,/api/robot-control/map/preview,/api/robot-control/summary");
-    expect(fieldAcceptancePacket.attributes("data-parallel-no-motion-action-sequence-labels")).toBe("刷新雷达扫描读数,读取雷达状态,刷新地图画面,刷新总览");
+    expect(fieldAcceptancePacket.attributes("data-parallel-no-motion-action-sequence")).toBe("/api/robot-control/radar/scan-proof/refresh,/api/robot-control/radar/status,/api/robot-control/map/preview,/api/robot-control/camera/first-frame/probe,/api/robot-control/camera/mjpeg/status,/api/robot-control/summary");
+    expect(fieldAcceptancePacket.attributes("data-parallel-no-motion-action-sequence-labels")).toBe("刷新雷达扫描读数,读取雷达状态,刷新地图画面,复测相机首帧,读取相机 MJPEG 状态,刷新总览");
     expect(fieldAcceptancePacket.attributes("data-parallel-safety-action-id")).toBe("hold_keyboard");
     expect(fieldAcceptancePacket.attributes("data-parallel-safety-action-label")).toBe("键盘连续手控");
     expect(fieldAcceptancePacket.attributes("data-parallel-safety-action-start-endpoint")).toBe("/api/robot-control/base/manual");
@@ -5823,22 +5825,24 @@ describe("App", () => {
     expect(fieldAcceptancePacket.attributes("data-field-acceptance-primary-blocks-field-acceptance")).toBe("true");
     expect(fieldAcceptancePacket.attributes("data-no-motion-readback-action-ids")).toBe("readback_all,refresh_current_wysiwyg,refresh_radar_map_overlay");
     expect(fieldAcceptancePacket.attributes("data-no-motion-readback-action-labels")).toBe("复验全部读数,刷新当前所见,刷新雷达贴图");
-    expect(fieldAcceptancePacket.attributes("data-no-motion-readback-action-endpoints")).toBe("/api/robot-control/summary,/api/robot-control/camera/first-frame/probe,/api/robot-control/radar/scan-proof/refresh");
+    expect(fieldAcceptancePacket.attributes("data-no-motion-readback-action-endpoints")).toBe("/api/robot-control/summary,/api/robot-control/radar/scan-proof/refresh,/api/robot-control/radar/scan-proof/refresh");
     expect(fieldAcceptancePacket.attributes("data-no-motion-readback-action-methods")).toBe("GET,POST,POST");
+    expect(fieldAcceptancePacket.attributes("data-no-motion-readback-action-sequences")).toContain("/api/robot-control/radar/scan-proof/refresh|/api/robot-control/radar/status|/api/robot-control/map/preview|/api/robot-control/camera/first-frame/probe|/api/robot-control/camera/mjpeg/status|/api/robot-control/summary");
+    expect(fieldAcceptancePacket.attributes("data-no-motion-readback-action-sequence-labels")).toContain("刷新雷达扫描读数|读取雷达状态|刷新地图画面|复测相机首帧|读取相机 MJPEG 状态|刷新总览");
     expect(fieldAcceptancePacket.attributes("data-no-motion-readback-action-sequences")).toContain("/api/robot-control/radar/scan-proof/refresh|/api/robot-control/radar/status|/api/robot-control/map/preview|/api/robot-control/summary");
     expect(fieldAcceptancePacket.attributes("data-no-motion-readback-action-sequence-labels")).toContain("刷新雷达扫描读数|读取雷达状态|刷新地图画面|刷新总览");
-    expect(fieldAcceptancePacket.attributes("data-primary-no-motion-readback-action-id")).toBe("refresh_radar_map_overlay");
-    expect(fieldAcceptancePacket.attributes("data-primary-no-motion-readback-action-label")).toBe("刷新雷达贴图");
+    expect(fieldAcceptancePacket.attributes("data-primary-no-motion-readback-action-id")).toBe("refresh_current_wysiwyg");
+    expect(fieldAcceptancePacket.attributes("data-primary-no-motion-readback-action-label")).toBe("刷新当前所见");
     expect(fieldAcceptancePacket.attributes("data-primary-no-motion-readback-action-endpoint")).toBe("/api/robot-control/radar/scan-proof/refresh");
     expect(fieldAcceptancePacket.attributes("data-primary-no-motion-readback-action-method")).toBe("POST");
-    expect(fieldAcceptancePacket.attributes("data-primary-no-motion-readback-action-sequence")).toBe("/api/robot-control/radar/scan-proof/refresh,/api/robot-control/radar/status,/api/robot-control/map/preview,/api/robot-control/summary");
-    expect(fieldAcceptancePacket.attributes("data-primary-no-motion-readback-action-sequence-labels")).toBe("刷新雷达扫描读数,读取雷达状态,刷新地图画面,刷新总览");
+    expect(fieldAcceptancePacket.attributes("data-primary-no-motion-readback-action-sequence")).toBe("/api/robot-control/radar/scan-proof/refresh,/api/robot-control/radar/status,/api/robot-control/map/preview,/api/robot-control/camera/first-frame/probe,/api/robot-control/camera/mjpeg/status,/api/robot-control/summary");
+    expect(fieldAcceptancePacket.attributes("data-primary-no-motion-readback-action-sequence-labels")).toBe("刷新雷达扫描读数,读取雷达状态,刷新地图画面,复测相机首帧,读取相机 MJPEG 状态,刷新总览");
     expect(fieldAcceptancePacket.attributes("data-primary-no-motion-readback-action-refreshes-summary")).toBe("true");
     expect(fieldAcceptancePacket.attributes("data-primary-no-motion-readback-action-refreshes-radar-scan-proof")).toBe("true");
-    expect(fieldAcceptancePacket.attributes("data-primary-no-motion-readback-action-refreshes-camera-first-frame-probe")).toBe("false");
+    expect(fieldAcceptancePacket.attributes("data-primary-no-motion-readback-action-refreshes-camera-first-frame-probe")).toBe("true");
     expect(fieldAcceptancePacket.attributes("data-primary-no-motion-readback-action-refreshes-map-preview")).toBe("true");
     expect(fieldAcceptancePacket.attributes("data-primary-no-motion-readback-action-refreshes-radar-status")).toBe("true");
-    expect(fieldAcceptancePacket.attributes("data-primary-no-motion-readback-action-refreshes-camera-mjpeg-status")).toBe("false");
+    expect(fieldAcceptancePacket.attributes("data-primary-no-motion-readback-action-refreshes-camera-mjpeg-status")).toBe("true");
     expect(fieldAcceptancePacket.attributes("data-primary-no-motion-readback-action-sends-motion")).toBe("false");
     expect(fieldAcceptancePacket.attributes("data-remaining-operator-action-summary-plain")).toContain("键盘连续手控、自由自助移动");
     expect(fieldAcceptancePacket.attributes("data-remaining-hardware-action-summary-plain")).toContain("当前没有必须先处理的设备动作");
@@ -5917,15 +5921,17 @@ describe("App", () => {
     expect(fieldAcceptanceRemainingActions.attributes("data-primary-missing-evidence-blocks-field-acceptance")).toBe("true");
     expect(fieldAcceptanceRemainingActions.attributes("data-no-motion-readback-action-ids")).toBe("readback_all,refresh_current_wysiwyg,refresh_radar_map_overlay");
     expect(fieldAcceptanceRemainingActions.attributes("data-no-motion-readback-action-labels")).toBe("复验全部读数,刷新当前所见,刷新雷达贴图");
-    expect(fieldAcceptanceRemainingActions.attributes("data-no-motion-readback-action-endpoints")).toBe("/api/robot-control/summary,/api/robot-control/camera/first-frame/probe,/api/robot-control/radar/scan-proof/refresh");
+    expect(fieldAcceptanceRemainingActions.attributes("data-no-motion-readback-action-endpoints")).toBe("/api/robot-control/summary,/api/robot-control/radar/scan-proof/refresh,/api/robot-control/radar/scan-proof/refresh");
     expect(fieldAcceptanceRemainingActions.attributes("data-no-motion-readback-action-methods")).toBe("GET,POST,POST");
+    expect(fieldAcceptanceRemainingActions.attributes("data-no-motion-readback-action-sequences")).toContain("/api/robot-control/radar/scan-proof/refresh|/api/robot-control/radar/status|/api/robot-control/map/preview|/api/robot-control/camera/first-frame/probe|/api/robot-control/camera/mjpeg/status|/api/robot-control/summary");
+    expect(fieldAcceptanceRemainingActions.attributes("data-no-motion-readback-action-sequence-labels")).toContain("刷新雷达扫描读数|读取雷达状态|刷新地图画面|复测相机首帧|读取相机 MJPEG 状态|刷新总览");
     expect(fieldAcceptanceRemainingActions.attributes("data-no-motion-readback-action-sequences")).toContain("/api/robot-control/radar/scan-proof/refresh|/api/robot-control/radar/status|/api/robot-control/map/preview|/api/robot-control/summary");
     expect(fieldAcceptanceRemainingActions.attributes("data-no-motion-readback-action-sequence-labels")).toContain("刷新雷达扫描读数|读取雷达状态|刷新地图画面|刷新总览");
-    expect(fieldAcceptanceRemainingActions.attributes("data-primary-no-motion-readback-action-id")).toBe("refresh_radar_map_overlay");
-    expect(fieldAcceptanceRemainingActions.attributes("data-primary-no-motion-readback-action-label")).toBe("刷新雷达贴图");
+    expect(fieldAcceptanceRemainingActions.attributes("data-primary-no-motion-readback-action-id")).toBe("refresh_current_wysiwyg");
+    expect(fieldAcceptanceRemainingActions.attributes("data-primary-no-motion-readback-action-label")).toBe("刷新当前所见");
     expect(fieldAcceptanceRemainingActions.attributes("data-primary-no-motion-readback-action-endpoint")).toBe("/api/robot-control/radar/scan-proof/refresh");
     expect(fieldAcceptanceRemainingActions.attributes("data-primary-no-motion-readback-action-method")).toBe("POST");
-    expect(fieldAcceptanceRemainingActions.attributes("data-primary-no-motion-readback-action-sequence")).toBe("/api/robot-control/radar/scan-proof/refresh,/api/robot-control/radar/status,/api/robot-control/map/preview,/api/robot-control/summary");
+    expect(fieldAcceptanceRemainingActions.attributes("data-primary-no-motion-readback-action-sequence")).toBe("/api/robot-control/radar/scan-proof/refresh,/api/robot-control/radar/status,/api/robot-control/map/preview,/api/robot-control/camera/first-frame/probe,/api/robot-control/camera/mjpeg/status,/api/robot-control/summary");
     expect(fieldAcceptanceRemainingActions.attributes("data-primary-no-motion-readback-action-refreshes-map-preview")).toBe("true");
     expect(fieldAcceptanceRemainingActions.attributes("data-primary-no-motion-readback-action-refreshes-radar-status")).toBe("true");
     expect(fieldAcceptanceRemainingActions.attributes("data-primary-no-motion-readback-action-sends-motion")).toBe("false");
@@ -5969,20 +5975,20 @@ describe("App", () => {
     expect(missingEvidenceCamera.attributes("data-requires-motion-before-readback")).toBe("false");
     const fieldAcceptancePrimaryNoMotionReadback = wrapper.find('[data-testid="plain-field-acceptance-primary-no-motion-readback"]');
     expect(fieldAcceptancePrimaryNoMotionReadback.exists()).toBe(true);
-    expect(fieldAcceptancePrimaryNoMotionReadback.text()).toBe("只读复验：刷新雷达贴图");
+    expect(fieldAcceptancePrimaryNoMotionReadback.text()).toBe("只读复验：刷新当前所见");
     expect(fieldAcceptancePrimaryNoMotionReadback.attributes("disabled")).toBeUndefined();
-    expect(fieldAcceptancePrimaryNoMotionReadback.attributes("data-primary-no-motion-readback-action-id")).toBe("refresh_radar_map_overlay");
-    expect(fieldAcceptancePrimaryNoMotionReadback.attributes("data-primary-no-motion-readback-action-label")).toBe("刷新雷达贴图");
+    expect(fieldAcceptancePrimaryNoMotionReadback.attributes("data-primary-no-motion-readback-action-id")).toBe("refresh_current_wysiwyg");
+    expect(fieldAcceptancePrimaryNoMotionReadback.attributes("data-primary-no-motion-readback-action-label")).toBe("刷新当前所见");
     expect(fieldAcceptancePrimaryNoMotionReadback.attributes("data-primary-no-motion-readback-action-endpoint")).toBe("/api/robot-control/radar/scan-proof/refresh");
     expect(fieldAcceptancePrimaryNoMotionReadback.attributes("data-primary-no-motion-readback-action-method")).toBe("POST");
-    expect(fieldAcceptancePrimaryNoMotionReadback.attributes("data-primary-no-motion-readback-action-sequence")).toBe("/api/robot-control/radar/scan-proof/refresh,/api/robot-control/radar/status,/api/robot-control/map/preview,/api/robot-control/summary");
-    expect(fieldAcceptancePrimaryNoMotionReadback.attributes("data-primary-no-motion-readback-action-sequence-labels")).toBe("刷新雷达扫描读数,读取雷达状态,刷新地图画面,刷新总览");
+    expect(fieldAcceptancePrimaryNoMotionReadback.attributes("data-primary-no-motion-readback-action-sequence")).toBe("/api/robot-control/radar/scan-proof/refresh,/api/robot-control/radar/status,/api/robot-control/map/preview,/api/robot-control/camera/first-frame/probe,/api/robot-control/camera/mjpeg/status,/api/robot-control/summary");
+    expect(fieldAcceptancePrimaryNoMotionReadback.attributes("data-primary-no-motion-readback-action-sequence-labels")).toBe("刷新雷达扫描读数,读取雷达状态,刷新地图画面,复测相机首帧,读取相机 MJPEG 状态,刷新总览");
     expect(fieldAcceptancePrimaryNoMotionReadback.attributes("data-primary-no-motion-readback-action-refreshes-summary")).toBe("true");
     expect(fieldAcceptancePrimaryNoMotionReadback.attributes("data-primary-no-motion-readback-action-refreshes-radar-scan-proof")).toBe("true");
-    expect(fieldAcceptancePrimaryNoMotionReadback.attributes("data-primary-no-motion-readback-action-refreshes-camera-first-frame-probe")).toBe("false");
+    expect(fieldAcceptancePrimaryNoMotionReadback.attributes("data-primary-no-motion-readback-action-refreshes-camera-first-frame-probe")).toBe("true");
     expect(fieldAcceptancePrimaryNoMotionReadback.attributes("data-primary-no-motion-readback-action-refreshes-map-preview")).toBe("true");
     expect(fieldAcceptancePrimaryNoMotionReadback.attributes("data-primary-no-motion-readback-action-refreshes-radar-status")).toBe("true");
-    expect(fieldAcceptancePrimaryNoMotionReadback.attributes("data-primary-no-motion-readback-action-refreshes-camera-mjpeg-status")).toBe("false");
+    expect(fieldAcceptancePrimaryNoMotionReadback.attributes("data-primary-no-motion-readback-action-refreshes-camera-mjpeg-status")).toBe("true");
     expect(fieldAcceptancePrimaryNoMotionReadback.attributes("data-primary-no-motion-readback-action-sends-motion")).toBe("false");
     expect(fieldAcceptancePrimaryNoMotionReadback.attributes("data-starts-nav2")).toBe("false");
     expect(fieldAcceptancePrimaryNoMotionReadback.attributes("data-starts-manual")).toBe("false");
@@ -5999,7 +6005,7 @@ describe("App", () => {
       .map((call) => String(call[0]));
     expect(primaryReadbackUrls.some((url) => url.startsWith("/api/robot-control/radar/scan-proof/refresh"))).toBe(true);
     expect(primaryReadbackUrls.some((url) => url.startsWith("/api/robot-control/map/preview"))).toBe(true);
-    expect(primaryReadbackUrls.some((url) => url.startsWith("/api/robot-control/camera/first-frame/probe"))).toBe(false);
+    expect(primaryReadbackUrls.some((url) => url.startsWith("/api/robot-control/camera/first-frame/probe"))).toBe(true);
     expect(primaryReadbackUrls.some((url) => url.startsWith("/api/robot-control/nav2/goal/execute"))).toBe(false);
     expect(primaryReadbackUrls.some((url) => url.startsWith("/api/robot-control/base/manual"))).toBe(false);
     expect(primaryReadbackUrls.some((url) => url.startsWith("/api/robot-control/base/stop"))).toBe(false);
@@ -8453,7 +8459,7 @@ describe("App", () => {
     const cameraPanel = wrapper.find('[data-testid="plain-camera-panel"]');
     expect(cameraPanel.exists()).toBe(true);
     expect(wrapper.find(".robot-console-grid").attributes("data-layout")).toBe("visual-first");
-    expect(cameraPanel.attributes("data-state")).toBe("未打开");
+    expect(cameraPanel.attributes("data-state")).toBe("失败");
     expect(cameraPanel.attributes("data-frame-state")).toBe("未绑定");
     expect(cameraPanel.attributes("data-wysiwyg-surface")).toBe("primary-camera");
     expect(cameraPanel.attributes("data-shared-preview-status-source")).toBe("mjpeg_status");
@@ -8474,11 +8480,12 @@ describe("App", () => {
     expect(cameraStartButton.attributes("data-fixed-shared-preview-endpoint")).toBe("/api/robot-control/camera/mjpeg");
     expect(cameraStartButton.attributes("data-fixed-shared-preview-status-endpoint")).toBe("/api/robot-control/camera/mjpeg/status");
     expect(wrapper.find('[data-testid="robot-camera-preview-video"]').exists()).toBe(true);
-    expect(wrapper.find('[data-testid="robot-camera-preview-frame"]').attributes("data-state")).toBe("未打开");
+    expect(wrapper.find('[data-testid="robot-camera-preview-frame"]').attributes("data-state")).toBe("失败");
     expect(wrapper.find('[data-testid="robot-camera-preview-frame"]').attributes("data-current-frame-visible")).toBe("false");
-    expect(wrapper.find('[data-testid="robot-camera-preview-overlay"]').text()).toContain("未打开");
-    expect(wrapper.find('[data-testid="robot-camera-preview-overlay"]').text()).toContain("还没有打开实时画面。");
-    expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toBe("画面状态：还没打开，本页没有显示实时画面。");
+    expect(wrapper.find('[data-testid="robot-camera-preview-overlay"]').text()).toContain("失败");
+    expect(wrapper.find('[data-testid="robot-camera-preview-overlay"]').text()).toContain("没有取到视频帧");
+    expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toContain("画面状态：不是页面独占");
+    expect(wrapper.find('[data-testid="robot-camera-wysiwyg-status"]').text()).toContain("没有取到视频帧");
     const defaultCameraFrameProof = wrapper.find('[data-testid="plain-camera-current-frame-proof"]');
     expect(defaultCameraFrameProof.text()).toBe("画面验收：共享流已有最近帧，但本页还没确认显示；2 个页面共用同一条上游流；不是浏览器独占。下一步：等待 MJPEG 出帧，必要时点只读检查。");
     expect(defaultCameraFrameProof.attributes("data-state")).toBe("等待本页出帧");
