@@ -6845,7 +6845,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.fixed_objective_audit_summary_endpoint).toBe("/api/robot-control/summary");
       expect(summary.objective_audit_sends_motion_when_clicked).toBe(false);
       expect(summary.map_display_primary_url).toBe("/map");
-      expect(summary.map_display_default_zoom_percent).toBe("300%");
+      expect(summary.map_display_default_zoom_percent).toBe("400%");
       expect(summary.map_display_ros2_companion_tools).toEqual(["rviz2", "foxglove"]);
       expect(summary.map_display_sends_motion_when_clicked).toBe(false);
       expect(summary.map_display_starts_ros2).toBe(false);
@@ -7046,6 +7046,37 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.live_motion_runbook_blocked_action_ids).toEqual(summary.live_closure_summary?.live_motion_runbook_blocked_action_ids);
       expect(summary.live_motion_runbook_primary_action_id).toBe(summary.live_closure_summary?.live_motion_runbook_primary_action_id);
       expect(summary.live_motion_runbook_summary_plain).toBe(summary.live_closure_summary?.live_motion_runbook_summary_plain);
+      expect(summary.primary_start_endpoint).toBe("/api/robot-control/nav2/goal/execute");
+      expect(summary.primary_stop_endpoint).toBe("/api/robot-control/base/stop");
+      expect(summary.primary_acceptance_endpoints).toEqual([
+        "/api/robot-control/map/preview",
+        "/api/robot-control/nav2/goal/execution/latest",
+        "/api/robot-control/base/feedback-samples",
+        "/api/robot-control/delivery/latest",
+        "/api/robot-control/summary",
+      ]);
+      expect(summary.primary_sends_motion).toBe(true);
+      expect(summary.primary_requires_safety_confirm).toBe(true);
+      expect(summary.trip_start_endpoint).toBe("/api/robot-control/nav2/goal/execute");
+      expect(summary.trip_stop_endpoint).toBe("/api/robot-control/base/stop");
+      expect(summary.trip_acceptance_endpoints).toEqual(summary.primary_acceptance_endpoints);
+      expect(summary.keyboard_start_endpoint).toBe("/api/robot-control/base/manual");
+      expect(summary.keyboard_acceptance_endpoints).toEqual([
+        "/api/robot-control/base/feedback-samples",
+        "/api/robot-control/summary",
+      ]);
+      expect(summary.free_move_start_endpoint).toBe("/api/robot-control/free-roam/autonomy/start");
+      expect(summary.free_move_stop_endpoint).toBe("/api/robot-control/free-roam/autonomy/stop");
+      expect(summary.free_move_acceptance_endpoints).toEqual([
+        "/api/robot-control/free-roam/autonomy/latest",
+        "/api/robot-control/summary",
+      ]);
+      expect(summary.mapping_start_endpoint).toBe("/api/robot-control/map/start");
+      expect(summary.mapping_preview_endpoint).toBe("/api/robot-control/map/preview");
+      expect(summary.mapping_acceptance_endpoints).toEqual([
+        "/api/robot-control/map/preview",
+        "/api/robot-control/summary",
+      ]);
       expect(summary.free_move_minimal_precheck_safety_only).toBe(true);
       expect(summary.free_move_safety_confirm_required).toBe(true);
       expect(summary.free_move_camera_preflight_required).toBe(false);

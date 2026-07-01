@@ -294,8 +294,8 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.map_display_direct_map_only).toBe(true);
     expect(summary.live_closure_summary?.map_display_direct_map_keeps_page_fullscreen_without_browser_api).toBe(true);
     expect(summary.live_closure_summary?.map_display_direct_map_browser_fullscreen_required).toBe(false);
-    expect(summary.live_closure_summary?.map_display_default_zoom_percent).toBe("300%");
-    expect(summary.map_display_default_zoom_percent).toBe("300%");
+    expect(summary.live_closure_summary?.map_display_default_zoom_percent).toBe("400%");
+    expect(summary.map_display_default_zoom_percent).toBe("400%");
     expect(summary.live_closure_summary?.map_display_max_zoom_percent).toBe("2400%");
     expect(summary.map_display_max_zoom_percent).toBe("2400%");
     expect(summary.live_closure_summary?.map_display_wysiwyg_overlays).toEqual(["image", "route", "robot", "radar"]);
@@ -327,7 +327,7 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.map_display_ros2_observe_control_tools).toBe(false);
     expect(summary.live_closure_summary?.map_display_engineering_tools_sends_motion).toBe(false);
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("普通用户地图：进入 /map 使用 PC 大地图");
-    expect(summary.live_closure_summary?.map_display_companion_plain).toContain("默认 300% 现场大图");
+    expect(summary.live_closure_summary?.map_display_companion_plain).toContain("默认 400% 现场大图");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("适配");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("100% 全图");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("点“细节放大”可查看局部");
@@ -663,6 +663,37 @@ describe("robotControlSummary", () => {
     );
     expect(summary.live_motion_runbook_summary_plain).toBe(summary.live_closure_summary?.live_motion_runbook_summary_plain);
     expect(summary.live_motion_runbook_items).toEqual(summary.live_closure_summary?.live_motion_runbook_items);
+    expect(summary.primary_start_endpoint).toBe("/api/robot-control/nav2/goal/execute");
+    expect(summary.primary_stop_endpoint).toBe("/api/robot-control/base/stop");
+    expect(summary.primary_acceptance_endpoints).toEqual([
+      "/api/robot-control/map/preview",
+      "/api/robot-control/nav2/goal/execution/latest",
+      "/api/robot-control/base/feedback-samples",
+      "/api/robot-control/delivery/latest",
+      "/api/robot-control/summary",
+    ]);
+    expect(summary.primary_sends_motion).toBe(true);
+    expect(summary.primary_requires_safety_confirm).toBe(true);
+    expect(summary.trip_start_endpoint).toBe("/api/robot-control/nav2/goal/execute");
+    expect(summary.trip_stop_endpoint).toBe("/api/robot-control/base/stop");
+    expect(summary.trip_acceptance_endpoints).toEqual(summary.primary_acceptance_endpoints);
+    expect(summary.keyboard_start_endpoint).toBe("/api/robot-control/base/manual");
+    expect(summary.keyboard_acceptance_endpoints).toEqual([
+      "/api/robot-control/base/feedback-samples",
+      "/api/robot-control/summary",
+    ]);
+    expect(summary.free_move_start_endpoint).toBe("/api/robot-control/free-roam/autonomy/start");
+    expect(summary.free_move_stop_endpoint).toBe("/api/robot-control/free-roam/autonomy/stop");
+    expect(summary.free_move_acceptance_endpoints).toEqual([
+      "/api/robot-control/free-roam/autonomy/latest",
+      "/api/robot-control/summary",
+    ]);
+    expect(summary.mapping_start_endpoint).toBe("/api/robot-control/map/start");
+    expect(summary.mapping_preview_endpoint).toBe("/api/robot-control/map/preview");
+    expect(summary.mapping_acceptance_endpoints).toEqual([
+      "/api/robot-control/map/preview",
+      "/api/robot-control/summary",
+    ]);
     expect(summary.keyboard_wheel_lr_nonzero).toBe(false);
     expect(summary.keyboard_stop_after_release).toBe(false);
     expect(summary.live_closure_summary?.live_motion_runbook_items).toEqual([

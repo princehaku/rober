@@ -9507,7 +9507,7 @@ function buildLiveClosureSummary(
   ];
   const mapDisplayRvizRolePlain = "RViz2 只给本地工程调试看 /map、/scan、TF、路径、定位和 costmap；普通用户不需要打开。";
   const mapDisplayFoxgloveRolePlain = "Foxglove 用于远程浏览器大屏观察；先在 ROS2 环境安装并启动 foxglove_bridge，再连接 ws://192.168.1.11:8765。";
-  const mapDisplayCompanionPlain = "普通用户地图：进入 /map 使用 PC 大地图，默认 300% 现场大图，点“适配”回到 100% 全图，点“细节放大”可查看局部，最高 2400%，地图、路线、小车位置和雷达点共用同一张 WYSIWYG 画布；ROS2 配套只作工程观察，本地用 RViz2，远程浏览器观察先部署 Foxglove bridge 后连接 ws://192.168.1.11:8765；观察项固定为地图、雷达、TF、路径、定位和 costmap，不提供 GoalTool，不发送底盘移动命令。";
+  const mapDisplayCompanionPlain = "普通用户地图：进入 /map 使用 PC 大地图，默认 400% 现场大图，点“适配”回到 100% 全图，点“细节放大”可查看局部，最高 2400%，地图、路线、小车位置和雷达点共用同一张 WYSIWYG 画布；ROS2 配套只作工程观察，本地用 RViz2，远程浏览器观察先部署 Foxglove bridge 后连接 ws://192.168.1.11:8765；观察项固定为地图、雷达、TF、路径、定位和 costmap，不提供 GoalTool，不发送底盘移动命令。";
   const keyboardAcceptancePlain = "键盘连续手控验收只看同一次按住窗口的 manual pulse 回包：需要读到 wheel L/R 非零；全局只读采样或旧材料不能替代本次按住读数。";
   const nav2ObjectiveDone = routeReadyOnMap && nav2GoalSucceeded && wheelLrNonzeroProven && !needsSameWindowWheelRerun;
   const keyboardObjectiveDone = keyboardMotionVerified && keyboardStopSettledAfterPulse;
@@ -9712,7 +9712,7 @@ function buildLiveClosureSummary(
     map_display_direct_map_only: true,
     map_display_direct_map_keeps_page_fullscreen_without_browser_api: true,
     map_display_direct_map_browser_fullscreen_required: false,
-    map_display_default_zoom_percent: "300%",
+    map_display_default_zoom_percent: "400%",
     map_display_max_zoom_percent: "2400%",
     map_display_wysiwyg_overlays: ["image", "route", "robot", "radar"],
     map_display_ros2_companion_required: false,
@@ -10090,6 +10090,8 @@ export async function buildRobotControlSummary(
   const runNav2RouteRunbookItem = liveClosureSummary.live_motion_runbook_items.find((item) => item.id === "run_nav2_route");
   const keyboardRunbookItem = liveClosureSummary.live_motion_runbook_items.find((item) => item.id === "hold_keyboard");
   const freeMoveRunbookItem = liveClosureSummary.live_motion_runbook_items.find((item) => item.id === "start_free_move");
+  const mappingRunbookItem = liveClosureSummary.live_motion_runbook_items.find((item) => item.id === "start_mapping_when_sensors_ready");
+  const primaryRunbookItem = liveClosureSummary.live_motion_runbook_items.find((item) => item.id === liveClosureSummary.live_motion_runbook_primary_action_id);
   const keyboardStopAfterRelease = keyboardRunbookItem ? !keyboardRunbookItem.missing_evidence.includes("stop_after_release") : false;
   const routeComplete = runNav2RouteRunbookItem?.completed === true;
   const freeMoveComplete = freeMoveRunbookItem?.completed === true;
@@ -10216,6 +10218,31 @@ export async function buildRobotControlSummary(
     live_motion_runbook_blocked_plain: liveClosureSummary.live_motion_runbook_blocked_plain,
     live_motion_runbook_primary_action_plain: liveClosureSummary.live_motion_runbook_primary_action_plain,
     live_motion_runbook_minimal_precheck_plain: liveClosureSummary.live_motion_runbook_minimal_precheck_plain,
+    primary_start_endpoint: primaryRunbookItem?.start_endpoint ?? "none",
+    primary_stop_endpoint: primaryRunbookItem?.stop_endpoint ?? "none",
+    primary_acceptance_endpoints: primaryRunbookItem?.acceptance_endpoints ?? [],
+    primary_sends_motion: primaryRunbookItem?.sends_motion_when_executed ?? false,
+    primary_requires_safety_confirm: primaryRunbookItem?.safety_confirm_required ?? false,
+    trip_start_endpoint: runNav2RouteRunbookItem?.start_endpoint ?? liveClosureSummary.wheel_rerun_start_endpoint,
+    trip_stop_endpoint: runNav2RouteRunbookItem?.stop_endpoint ?? "/api/robot-control/base/stop",
+    trip_acceptance_endpoints: runNav2RouteRunbookItem?.acceptance_endpoints ?? liveClosureSummary.wheel_rerun_readback_endpoints,
+    keyboard_start_endpoint: keyboardRunbookItem?.start_endpoint ?? liveClosureSummary.keyboard_manual_endpoint,
+    keyboard_acceptance_endpoints: keyboardRunbookItem?.acceptance_endpoints ?? [
+      liveClosureSummary.keyboard_feedback_readback_endpoint,
+      liveClosureSummary.keyboard_summary_endpoint,
+    ],
+    free_move_start_endpoint: freeMoveRunbookItem?.start_endpoint ?? liveClosureSummary.fixed_free_roam_start_endpoint,
+    free_move_stop_endpoint: freeMoveRunbookItem?.stop_endpoint ?? liveClosureSummary.fixed_free_roam_stop_endpoint,
+    free_move_acceptance_endpoints: freeMoveRunbookItem?.acceptance_endpoints ?? [
+      "/api/robot-control/free-roam/autonomy/latest",
+      "/api/robot-control/summary",
+    ],
+    mapping_start_endpoint: mappingRunbookItem?.start_endpoint ?? liveClosureSummary.fixed_mapping_start_endpoint,
+    mapping_preview_endpoint: liveClosureSummary.fixed_mapping_preview_endpoint,
+    mapping_acceptance_endpoints: mappingRunbookItem?.acceptance_endpoints ?? [
+      liveClosureSummary.fixed_mapping_preview_endpoint,
+      "/api/robot-control/summary",
+    ],
     camera_ready: liveClosureSummary.camera_current_visible,
     camera_first_frame_ready: liveClosureSummary.camera_current_visible,
     camera_visible: liveClosureSummary.camera_current_visible,
