@@ -715,6 +715,69 @@ describe("robotControlSummary", () => {
     );
     expect(summary.live_motion_runbook_summary_plain).toBe(summary.live_closure_summary?.live_motion_runbook_summary_plain);
     expect(summary.live_motion_runbook_items).toEqual(summary.live_closure_summary?.live_motion_runbook_items);
+    expect(summary.field_acceptance_status).toBe("needs_wheel_rerun");
+    expect(summary.field_acceptance_next_step_id).toBe("run_nav2_route");
+    expect(summary.field_acceptance_next_step_label).toBe("完整行程执行");
+    expect(summary.field_acceptance_next_step_start_endpoint).toBe("/api/robot-control/nav2/goal/execute");
+    expect(summary.field_acceptance_next_step_sends_motion).toBe(true);
+    expect(summary.field_acceptance_next_step_requires_safety_confirm).toBe(true);
+    expect(summary.field_acceptance_ready_step_ids).toEqual([
+      "run_nav2_route",
+      "hold_keyboard",
+      "start_free_move",
+    ]);
+    expect(summary.field_acceptance_blocked_step_ids).toEqual(["start_mapping_when_sensors_ready"]);
+    expect(summary.field_acceptance_motion_step_ids).toEqual([
+      "run_nav2_route",
+      "hold_keyboard",
+      "start_free_move",
+      "start_mapping_when_sensors_ready",
+    ]);
+    expect(summary.field_acceptance_no_motion_step_ids).toEqual([]);
+    expect(summary.field_acceptance_acceptance_endpoints).toEqual([
+      "/api/robot-control/map/preview",
+      "/api/robot-control/nav2/goal/execution/latest",
+      "/api/robot-control/base/feedback-samples",
+      "/api/robot-control/delivery/latest",
+      "/api/robot-control/summary",
+      "/api/robot-control/free-roam/autonomy/latest",
+    ]);
+    expect(summary.field_acceptance_safety_confirm_required).toBe(true);
+    expect(summary.field_acceptance_minimal_precheck_safety_only).toBe(true);
+    expect(summary.field_acceptance_summary_plain).toContain("现场验收包");
+    expect(summary.field_acceptance_summary_plain).toContain("四项目标完成");
+    expect(summary.field_acceptance_summary_plain).toContain("下一步：");
+    expect(summary.field_acceptance_packet).toEqual(expect.objectContaining({
+      status: "needs_wheel_rerun",
+      next_step_id: "run_nav2_route",
+      next_step_start_endpoint: "/api/robot-control/nav2/goal/execute",
+      next_step_sends_motion: true,
+      next_step_requires_safety_confirm: true,
+      safety_confirm_required: true,
+      minimal_precheck_safety_only: true,
+      wysiwyg_missing_surface_ids: expect.arrayContaining(["camera"]),
+      mapping_start_ready: false,
+      camera_blocks_mapping_start: true,
+      camera_blocks_free_move: false,
+      sends_motion_when_clicked: false,
+      starts_nav2_when_clicked: false,
+      starts_manual_when_clicked: false,
+      starts_free_roam_when_clicked: false,
+      starts_map_runtime_when_clicked: false,
+    }));
+    expect(summary.field_acceptance_packet?.steps).toEqual(summary.field_acceptance_steps);
+    expect(summary.field_acceptance_steps?.find((item) => item.id === "run_nav2_route")).toEqual(expect.objectContaining({
+      ready: true,
+      completed: false,
+      sends_motion_when_executed: true,
+      safety_confirm_required: true,
+      missing_evidence: ["same_window_wheel_lr_nonzero", "delivery_success"],
+    }));
+    expect(summary.field_acceptance_steps?.find((item) => item.id === "start_mapping_when_sensors_ready")).toEqual(expect.objectContaining({
+      ready: false,
+      sends_motion_when_executed: true,
+      missing_evidence: ["camera_first_frame", "lidar_fresh"],
+    }));
     expect(summary.primary_start_endpoint).toBe("/api/robot-control/nav2/goal/execute");
     expect(summary.primary_stop_endpoint).toBe("/api/robot-control/base/stop");
     expect(summary.primary_acceptance_endpoints).toEqual([

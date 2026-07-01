@@ -2765,6 +2765,55 @@ export interface RobotControlLiveMotionRunbookItem {
   blocked_reasons: string[];
 }
 
+export interface RobotControlFieldAcceptanceStep {
+  id: RobotControlLiveMotionRunbookActionId;
+  label: string;
+  ready: boolean;
+  completed: boolean;
+  proof_status: RobotControlLiveMotionRunbookItem["proof_status"];
+  sends_motion_when_executed: boolean;
+  safety_confirm_required: boolean;
+  start_endpoint: string;
+  stop_endpoint: string;
+  acceptance_endpoints: string[];
+  missing_evidence: string[];
+  proof_plain: string;
+  blocked_reasons: string[];
+}
+
+export interface RobotControlFieldAcceptancePacket {
+  status: RobotControlLiveClosureSummary["status"];
+  summary_plain: string;
+  objective_total_count: 4;
+  objective_done_count: number;
+  objective_remaining_count: number;
+  objective_missing_ids: RobotControlLiveObjectiveAuditId[];
+  objective_next_id: RobotControlLiveObjectiveAuditId | "none";
+  next_step_id: RobotControlLiveMotionRunbookActionId | "none";
+  next_step_label: string;
+  next_step_start_endpoint: string;
+  next_step_sends_motion: boolean;
+  next_step_requires_safety_confirm: boolean;
+  ready_step_ids: RobotControlLiveMotionRunbookActionId[];
+  blocked_step_ids: RobotControlLiveMotionRunbookActionId[];
+  motion_step_ids: RobotControlLiveMotionRunbookActionId[];
+  no_motion_step_ids: RobotControlLiveMotionRunbookActionId[];
+  acceptance_endpoints: string[];
+  safety_confirm_required: boolean;
+  minimal_precheck_safety_only: boolean;
+  wysiwyg_missing_surface_ids: string[];
+  mapping_start_ready: boolean;
+  mapping_missing_evidence: string[];
+  camera_blocks_mapping_start: boolean;
+  camera_blocks_free_move: false;
+  sends_motion_when_clicked: false;
+  starts_nav2_when_clicked: false;
+  starts_manual_when_clicked: false;
+  starts_free_roam_when_clicked: false;
+  starts_map_runtime_when_clicked: false;
+  steps: RobotControlFieldAcceptanceStep[];
+}
+
 export type RobotControlLiveObjectiveAuditId = "motion" | "wysiwyg" | "precheck" | "mapping";
 
 export interface RobotControlLiveObjectiveAuditItem {
@@ -3332,6 +3381,22 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   live_motion_runbook_blocked_plain?: RobotControlLiveClosureSummary["live_motion_runbook_blocked_plain"];
   live_motion_runbook_primary_action_plain?: RobotControlLiveClosureSummary["live_motion_runbook_primary_action_plain"];
   live_motion_runbook_minimal_precheck_plain?: RobotControlLiveClosureSummary["live_motion_runbook_minimal_precheck_plain"];
+  field_acceptance_packet?: RobotControlFieldAcceptancePacket;
+  field_acceptance_status?: RobotControlFieldAcceptancePacket["status"];
+  field_acceptance_next_step_id?: RobotControlFieldAcceptancePacket["next_step_id"];
+  field_acceptance_next_step_label?: RobotControlFieldAcceptancePacket["next_step_label"];
+  field_acceptance_next_step_start_endpoint?: RobotControlFieldAcceptancePacket["next_step_start_endpoint"];
+  field_acceptance_next_step_sends_motion?: RobotControlFieldAcceptancePacket["next_step_sends_motion"];
+  field_acceptance_next_step_requires_safety_confirm?: RobotControlFieldAcceptancePacket["next_step_requires_safety_confirm"];
+  field_acceptance_ready_step_ids?: RobotControlFieldAcceptancePacket["ready_step_ids"];
+  field_acceptance_blocked_step_ids?: RobotControlFieldAcceptancePacket["blocked_step_ids"];
+  field_acceptance_motion_step_ids?: RobotControlFieldAcceptancePacket["motion_step_ids"];
+  field_acceptance_no_motion_step_ids?: RobotControlFieldAcceptancePacket["no_motion_step_ids"];
+  field_acceptance_acceptance_endpoints?: RobotControlFieldAcceptancePacket["acceptance_endpoints"];
+  field_acceptance_safety_confirm_required?: RobotControlFieldAcceptancePacket["safety_confirm_required"];
+  field_acceptance_minimal_precheck_safety_only?: RobotControlFieldAcceptancePacket["minimal_precheck_safety_only"];
+  field_acceptance_summary_plain?: RobotControlFieldAcceptancePacket["summary_plain"];
+  field_acceptance_steps?: RobotControlFieldAcceptancePacket["steps"];
   primary_start_endpoint?: RobotControlLiveMotionRunbookItem["start_endpoint"];
   primary_stop_endpoint?: RobotControlLiveMotionRunbookItem["stop_endpoint"];
   primary_acceptance_endpoints?: RobotControlLiveMotionRunbookItem["acceptance_endpoints"];

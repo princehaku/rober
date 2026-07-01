@@ -27,6 +27,7 @@ import type {
   RobotControlNav2LifecycleEndpoint,
   RobotControlNav2LifecycleResponse,
   RobotControlGoalChecklistSummary,
+  RobotControlFieldAcceptancePacket,
   RobotControlLiveObjectiveAuditItem,
   RobotControlLiveWysiwygSurfaceSummary,
   RobotControlRadarLifecycleAction,
@@ -10103,6 +10104,62 @@ export async function buildRobotControlSummary(
   const cameraUsbHighSpeed = !liveClosureSummary.camera_usb_full_speed_detected
     && cameraUsbSpeed !== ""
     && !["not_loaded", "unknown", "12m", "12mbps", "full-speed"].includes(cameraUsbSpeed);
+  const fieldAcceptanceSteps = liveClosureSummary.live_motion_runbook_items.map((item) => ({
+    id: item.id,
+    label: item.label,
+    ready: item.ready,
+    completed: item.completed,
+    proof_status: item.proof_status,
+    sends_motion_when_executed: item.sends_motion_when_executed,
+    safety_confirm_required: item.safety_confirm_required,
+    start_endpoint: item.start_endpoint,
+    stop_endpoint: item.stop_endpoint,
+    acceptance_endpoints: item.acceptance_endpoints,
+    missing_evidence: item.missing_evidence,
+    proof_plain: item.proof_plain,
+    blocked_reasons: item.blocked_reasons,
+  }));
+  const fieldAcceptanceNextStep = fieldAcceptanceSteps.find((item) => item.id === liveClosureSummary.live_motion_runbook_primary_action_id)
+    ?? fieldAcceptanceSteps.find((item) => item.ready && !item.completed)
+    ?? fieldAcceptanceSteps.find((item) => !item.completed)
+    ?? null;
+  const fieldAcceptanceMotionStepIds = fieldAcceptanceSteps
+    .filter((item) => item.sends_motion_when_executed)
+    .map((item) => item.id);
+  const fieldAcceptancePacket: RobotControlFieldAcceptancePacket = {
+    status: liveClosureSummary.status,
+    summary_plain: `现场验收包：${liveClosureSummary.objective_audit_summary_plain} ${liveClosureSummary.live_motion_runbook_summary_plain} 下一步：${liveClosureSummary.next_action_plain}`,
+    objective_total_count: liveClosureSummary.objective_audit_total_count,
+    objective_done_count: liveClosureSummary.objective_audit_done_count,
+    objective_remaining_count: liveClosureSummary.objective_audit_remaining_count,
+    objective_missing_ids: liveClosureSummary.objective_audit_missing_objective_ids,
+    objective_next_id: liveClosureSummary.objective_audit_next_objective_id,
+    next_step_id: fieldAcceptanceNextStep?.id ?? "none",
+    next_step_label: fieldAcceptanceNextStep?.label ?? "无待执行步骤",
+    next_step_start_endpoint: fieldAcceptanceNextStep?.start_endpoint ?? "none",
+    next_step_sends_motion: fieldAcceptanceNextStep?.sends_motion_when_executed ?? false,
+    next_step_requires_safety_confirm: fieldAcceptanceNextStep?.safety_confirm_required ?? false,
+    ready_step_ids: liveClosureSummary.live_motion_runbook_ready_action_ids,
+    blocked_step_ids: liveClosureSummary.live_motion_runbook_blocked_action_ids,
+    motion_step_ids: fieldAcceptanceMotionStepIds,
+    no_motion_step_ids: fieldAcceptanceSteps
+      .filter((item) => !item.sends_motion_when_executed)
+      .map((item) => item.id),
+    acceptance_endpoints: Array.from(new Set(fieldAcceptanceSteps.flatMap((item) => item.acceptance_endpoints))),
+    safety_confirm_required: liveClosureSummary.live_motion_runbook_safety_confirm_required,
+    minimal_precheck_safety_only: liveClosureSummary.live_motion_runbook_minimal_precheck_safety_only,
+    wysiwyg_missing_surface_ids: liveClosureSummary.live_wysiwyg_missing_surface_ids,
+    mapping_start_ready: liveClosureSummary.mapping_start_ready,
+    mapping_missing_evidence: mappingRunbookItem?.missing_evidence ?? liveClosureSummary.mapping_start_missing_reasons,
+    camera_blocks_mapping_start: liveClosureSummary.camera_blocks_mapping_start,
+    camera_blocks_free_move: liveClosureSummary.camera_blocks_free_move,
+    sends_motion_when_clicked: false,
+    starts_nav2_when_clicked: false,
+    starts_manual_when_clicked: false,
+    starts_free_roam_when_clicked: false,
+    starts_map_runtime_when_clicked: false,
+    steps: fieldAcceptanceSteps,
+  };
 
   return {
     schema: ROBOT_CONTROL_SCHEMA,
@@ -10271,6 +10328,22 @@ export async function buildRobotControlSummary(
     live_motion_runbook_blocked_plain: liveClosureSummary.live_motion_runbook_blocked_plain,
     live_motion_runbook_primary_action_plain: liveClosureSummary.live_motion_runbook_primary_action_plain,
     live_motion_runbook_minimal_precheck_plain: liveClosureSummary.live_motion_runbook_minimal_precheck_plain,
+    field_acceptance_packet: fieldAcceptancePacket,
+    field_acceptance_status: fieldAcceptancePacket.status,
+    field_acceptance_next_step_id: fieldAcceptancePacket.next_step_id,
+    field_acceptance_next_step_label: fieldAcceptancePacket.next_step_label,
+    field_acceptance_next_step_start_endpoint: fieldAcceptancePacket.next_step_start_endpoint,
+    field_acceptance_next_step_sends_motion: fieldAcceptancePacket.next_step_sends_motion,
+    field_acceptance_next_step_requires_safety_confirm: fieldAcceptancePacket.next_step_requires_safety_confirm,
+    field_acceptance_ready_step_ids: fieldAcceptancePacket.ready_step_ids,
+    field_acceptance_blocked_step_ids: fieldAcceptancePacket.blocked_step_ids,
+    field_acceptance_motion_step_ids: fieldAcceptancePacket.motion_step_ids,
+    field_acceptance_no_motion_step_ids: fieldAcceptancePacket.no_motion_step_ids,
+    field_acceptance_acceptance_endpoints: fieldAcceptancePacket.acceptance_endpoints,
+    field_acceptance_safety_confirm_required: fieldAcceptancePacket.safety_confirm_required,
+    field_acceptance_minimal_precheck_safety_only: fieldAcceptancePacket.minimal_precheck_safety_only,
+    field_acceptance_summary_plain: fieldAcceptancePacket.summary_plain,
+    field_acceptance_steps: fieldAcceptancePacket.steps,
     primary_start_endpoint: primaryRunbookItem?.start_endpoint ?? "none",
     primary_stop_endpoint: primaryRunbookItem?.stop_endpoint ?? "none",
     primary_acceptance_endpoints: primaryRunbookItem?.acceptance_endpoints ?? [],

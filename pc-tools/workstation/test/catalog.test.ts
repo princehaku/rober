@@ -7100,6 +7100,18 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.live_motion_runbook_blocked_action_ids).toEqual(summary.live_closure_summary?.live_motion_runbook_blocked_action_ids);
       expect(summary.live_motion_runbook_primary_action_id).toBe(summary.live_closure_summary?.live_motion_runbook_primary_action_id);
       expect(summary.live_motion_runbook_summary_plain).toBe(summary.live_closure_summary?.live_motion_runbook_summary_plain);
+      expect(summary.field_acceptance_status).toBe(summary.status);
+      expect(summary.field_acceptance_next_step_id).toBe("run_nav2_route");
+      expect(summary.field_acceptance_next_step_start_endpoint).toBe("/api/robot-control/nav2/goal/execute");
+      expect(summary.field_acceptance_next_step_sends_motion).toBe(true);
+      expect(summary.field_acceptance_next_step_requires_safety_confirm).toBe(true);
+      expect(summary.field_acceptance_ready_step_ids).toEqual(summary.live_motion_runbook_ready_action_ids);
+      expect(summary.field_acceptance_blocked_step_ids).toEqual(summary.live_motion_runbook_blocked_action_ids);
+      expect(summary.field_acceptance_safety_confirm_required).toBe(true);
+      expect(summary.field_acceptance_minimal_precheck_safety_only).toBe(true);
+      expect(summary.field_acceptance_packet?.sends_motion_when_clicked).toBe(false);
+      expect(summary.field_acceptance_packet?.starts_nav2_when_clicked).toBe(false);
+      expect(summary.field_acceptance_steps?.map((item) => item.id)).toEqual(summary.live_motion_runbook_action_ids);
       expect(summary.primary_start_endpoint).toBe("/api/robot-control/nav2/goal/execute");
       expect(summary.primary_stop_endpoint).toBe("/api/robot-control/base/stop");
       expect(summary.primary_acceptance_endpoints).toEqual([
