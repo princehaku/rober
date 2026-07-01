@@ -16822,6 +16822,57 @@ onBeforeUnmount(() => {
         >
           {{ plainLiveClosureSideGapText }}
         </p>
+        <div
+          class="plain-trip-closure-readback plain-live-trip-closure-readback"
+          data-testid="plain-live-trip-closure-readback"
+          :data-state="plainTripClosureReadbackSummary.state"
+          :data-ready="String(plainTripClosureReadbackSummary.ready)"
+          :data-completed="String(plainTripClosureReadbackSummary.completed)"
+          :data-proof-status="plainTripClosureReadbackSummary.proofStatus"
+          :data-nav2-goal-succeeded="String(plainTripClosureReadbackSummary.nav2GoalSucceeded)"
+          :data-same-window-wheel-lr-nonzero="String(plainTripClosureReadbackSummary.sameWindowWheelLrNonzero)"
+          :data-delivery-success="String(plainTripClosureReadbackSummary.deliverySuccess)"
+          :data-needs-same-window-wheel-rerun="String(plainTripClosureReadbackSummary.needsSameWindowWheelRerun)"
+          :data-missing-evidence="plainTripClosureReadbackSummary.missingEvidence.join(',') || 'none'"
+          :data-proof-plain="plainTripClosureReadbackSummary.proofPlain"
+          :data-readback-refresh-endpoints="plainTripClosureReadbackSummary.acceptanceEndpoints.join(',')"
+          data-readback-only="true"
+          data-sends-motion-when-clicked="false"
+          data-starts-nav2="false"
+          data-starts-manual="false"
+          data-starts-keyboard="false"
+          data-starts-free-roam="false"
+          data-starts-map-runtime="false"
+          data-submits-delivery="false"
+          data-stops-motion="false"
+        >
+          <div class="simple-status-row">
+            <strong>完整行程闭环</strong>
+            <span class="status-chip" :data-state="plainTripClosureReadbackSummary.state">
+              {{ plainTripClosureReadbackSummary.state }}
+            </span>
+          </div>
+          <p>{{ plainActionCardUserText(plainTripClosureReadbackSummary.text) }}</p>
+          <button
+            type="button"
+            class="secondary compact-stop"
+            data-testid="plain-live-trip-closure-readback-refresh"
+            :disabled="plainTripClosureReadbackSummary.readbackDisabled"
+            :data-readback-refresh-endpoints="plainTripClosureReadbackSummary.acceptanceEndpoints.join(',')"
+            data-readback-only="true"
+            data-sends-motion-when-clicked="false"
+            data-starts-nav2="false"
+            data-starts-manual="false"
+            data-starts-keyboard="false"
+            data-starts-free-roam="false"
+            data-starts-map-runtime="false"
+            data-submits-delivery="false"
+            data-stops-motion="false"
+            @click="refreshLiveMotionRunbookReadback('run_nav2_route')"
+          >
+            {{ plainTripClosureReadbackSummary.readbackPending ? "读回中" : "读回闭环" }}
+          </button>
+        </div>
         <p
           v-if="!plainLiveClosureSummary.mapping_start_ready"
           class="panel-note"
