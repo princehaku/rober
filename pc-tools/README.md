@@ -29,6 +29,12 @@ Node 工作站 `http://127.0.0.1:7001`。因此开发时先让 `npm run api` 守
 `netstat -anv | rg '[.:]7001 .*LISTEN|7001'`。2026-06-25 起 PC 工作站默认避开
 Clash Verge 常用的 `7071`，Node 代码按 `0.0.0.0:7001` 绑定。
 
+2026-07-01 23:09 CST 起，现场验收包的只读复验从 ID 清单升级为动作清单：
+`no_motion_readback_actions[]` 同步给出 `id`、普通用户 `label`、固定 `endpoint`、`method`、短说明和所有不发车标志；
+顶层也暴露 `field_acceptance_primary_no_motion_readback_action_*`。当雷达贴图不是当前图时，primary 会指向
+`refresh_radar_map_overlay` / `POST /api/robot-control/radar/scan-proof/refresh`；只有相机缺口时，primary 指向当前所见刷新。
+这些动作仍只读，不启动 Nav2/manual/keyboard/free-roam/建图/雷达 lifecycle，不提交送达，不发送 stop 或 `/cmd_vel`。
+
 2026-07-01 23:01 CST 起，现场验收包把剩余动作分成三类并同步到 `GET /api/robot-control/summary`
 和普通首屏 DOM：`safety_confirm_ready_step_ids` 表示只差现场安全确认的运动验收，
 `hardware_action_ids` 表示需要先处理的设备动作，`no_motion_readback_action_ids` 表示可随时做的只读复验。

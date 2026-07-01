@@ -4298,6 +4298,15 @@ const plainFieldAcceptanceHardwareActionIdsText = computed(() => (
 const plainFieldAcceptanceNoMotionReadbackActionIdsText = computed(() => (
   plainFieldAcceptancePacket.value?.no_motion_readback_action_ids.join(",") || "none"
 ));
+const plainFieldAcceptanceNoMotionReadbackActionLabelsText = computed(() => (
+  plainFieldAcceptancePacket.value?.no_motion_readback_action_labels.join(",") || "none"
+));
+const plainFieldAcceptanceNoMotionReadbackActionEndpointsText = computed(() => (
+  plainFieldAcceptancePacket.value?.no_motion_readback_action_endpoints.join(",") || "none"
+));
+const plainFieldAcceptanceNoMotionReadbackActionMethodsText = computed(() => (
+  plainFieldAcceptancePacket.value?.no_motion_readback_action_methods.join(",") || "none"
+));
 const plainFieldAcceptanceEndpointText = computed(() => (
   plainFieldAcceptancePacket.value?.acceptance_endpoints.join(",") || "none"
 ));
@@ -18024,6 +18033,14 @@ onBeforeUnmount(() => {
           :data-safety-confirm-ready-step-ids="plainFieldAcceptanceSafetyConfirmReadyStepIdsText"
           :data-hardware-action-ids="plainFieldAcceptanceHardwareActionIdsText"
           :data-no-motion-readback-action-ids="plainFieldAcceptanceNoMotionReadbackActionIdsText"
+          :data-no-motion-readback-action-labels="plainFieldAcceptanceNoMotionReadbackActionLabelsText"
+          :data-no-motion-readback-action-endpoints="plainFieldAcceptanceNoMotionReadbackActionEndpointsText"
+          :data-no-motion-readback-action-methods="plainFieldAcceptanceNoMotionReadbackActionMethodsText"
+          :data-primary-no-motion-readback-action-id="plainFieldAcceptancePacket.primary_no_motion_readback_action_id"
+          :data-primary-no-motion-readback-action-label="plainFieldAcceptancePacket.primary_no_motion_readback_action_label"
+          :data-primary-no-motion-readback-action-endpoint="plainFieldAcceptancePacket.primary_no_motion_readback_action_endpoint"
+          :data-primary-no-motion-readback-action-method="plainFieldAcceptancePacket.primary_no_motion_readback_action_method"
+          :data-primary-no-motion-readback-action-sends-motion="String(plainFieldAcceptancePacket.primary_no_motion_readback_action_sends_motion)"
           :data-remaining-operator-action-summary-plain="plainFieldAcceptancePacket.remaining_operator_action_summary_plain"
           :data-remaining-hardware-action-summary-plain="plainFieldAcceptancePacket.remaining_hardware_action_summary_plain"
           :data-remaining-no-motion-action-summary-plain="plainFieldAcceptancePacket.remaining_no_motion_action_summary_plain"
@@ -18075,6 +18092,14 @@ onBeforeUnmount(() => {
             :data-safety-confirm-ready-step-ids="plainFieldAcceptanceSafetyConfirmReadyStepIdsText"
             :data-hardware-action-ids="plainFieldAcceptanceHardwareActionIdsText"
             :data-no-motion-readback-action-ids="plainFieldAcceptanceNoMotionReadbackActionIdsText"
+            :data-no-motion-readback-action-labels="plainFieldAcceptanceNoMotionReadbackActionLabelsText"
+            :data-no-motion-readback-action-endpoints="plainFieldAcceptanceNoMotionReadbackActionEndpointsText"
+            :data-no-motion-readback-action-methods="plainFieldAcceptanceNoMotionReadbackActionMethodsText"
+            :data-primary-no-motion-readback-action-id="plainFieldAcceptancePacket.primary_no_motion_readback_action_id"
+            :data-primary-no-motion-readback-action-label="plainFieldAcceptancePacket.primary_no_motion_readback_action_label"
+            :data-primary-no-motion-readback-action-endpoint="plainFieldAcceptancePacket.primary_no_motion_readback_action_endpoint"
+            :data-primary-no-motion-readback-action-method="plainFieldAcceptancePacket.primary_no_motion_readback_action_method"
+            :data-primary-no-motion-readback-action-sends-motion="String(plainFieldAcceptancePacket.primary_no_motion_readback_action_sends_motion)"
             :data-remaining-operator-action-summary-plain="plainFieldAcceptancePacket.remaining_operator_action_summary_plain"
             :data-remaining-hardware-action-summary-plain="plainFieldAcceptancePacket.remaining_hardware_action_summary_plain"
             :data-remaining-no-motion-action-summary-plain="plainFieldAcceptancePacket.remaining_no_motion_action_summary_plain"

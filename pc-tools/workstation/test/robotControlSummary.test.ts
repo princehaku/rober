@@ -760,6 +760,47 @@ describe("robotControlSummary", () => {
       "refresh_current_wysiwyg",
       "refresh_radar_map_overlay",
     ]);
+    expect(summary.field_acceptance_no_motion_readback_action_labels).toEqual([
+      "复验全部读数",
+      "刷新当前所见",
+      "刷新雷达贴图",
+    ]);
+    expect(summary.field_acceptance_no_motion_readback_action_endpoints).toEqual([
+      "/api/robot-control/summary",
+      summary.field_acceptance_wysiwyg_primary_refresh_endpoint,
+      "/api/robot-control/radar/scan-proof/refresh",
+    ]);
+    expect(summary.field_acceptance_no_motion_readback_action_methods).toEqual(["GET", "POST", "POST"]);
+    expect(summary.field_acceptance_primary_no_motion_readback_action_id).toBe("refresh_radar_map_overlay");
+    expect(summary.field_acceptance_primary_no_motion_readback_action_label).toBe("刷新雷达贴图");
+    expect(summary.field_acceptance_primary_no_motion_readback_action_endpoint).toBe("/api/robot-control/radar/scan-proof/refresh");
+    expect(summary.field_acceptance_primary_no_motion_readback_action_method).toBe("POST");
+    expect(summary.field_acceptance_primary_no_motion_readback_action_sends_motion).toBe(false);
+    expect(summary.field_acceptance_no_motion_readback_actions).toEqual([
+      expect.objectContaining({
+        id: "readback_all",
+        endpoint: "/api/robot-control/summary",
+        method: "GET",
+        sends_motion_when_clicked: false,
+        starts_nav2_when_clicked: false,
+        starts_manual_when_clicked: false,
+        starts_free_roam_when_clicked: false,
+        starts_map_runtime_when_clicked: false,
+        starts_radar_lifecycle_when_clicked: false,
+      }),
+      expect.objectContaining({
+        id: "refresh_current_wysiwyg",
+        endpoint: summary.field_acceptance_wysiwyg_primary_refresh_endpoint,
+        method: "POST",
+        sends_motion_when_clicked: false,
+      }),
+      expect.objectContaining({
+        id: "refresh_radar_map_overlay",
+        endpoint: "/api/robot-control/radar/scan-proof/refresh",
+        method: "POST",
+        sends_motion_when_clicked: false,
+      }),
+    ]);
     expect(summary.field_acceptance_remaining_operator_action_summary_plain).toContain("需要现场安全确认的运动验收");
     expect(summary.field_acceptance_remaining_operator_action_summary_plain).toContain("完整行程执行、键盘连续手控、自由自助移动");
     expect(summary.field_acceptance_remaining_hardware_action_summary_plain).toContain("当前没有必须先处理的设备动作");
@@ -787,6 +828,10 @@ describe("robotControlSummary", () => {
       next_step_requires_safety_confirm: true,
       safety_confirm_ready_step_ids: ["run_nav2_route", "hold_keyboard", "start_free_move"],
       no_motion_readback_action_ids: ["readback_all", "refresh_current_wysiwyg", "refresh_radar_map_overlay"],
+      no_motion_readback_action_labels: ["复验全部读数", "刷新当前所见", "刷新雷达贴图"],
+      primary_no_motion_readback_action_id: "refresh_radar_map_overlay",
+      primary_no_motion_readback_action_endpoint: "/api/robot-control/radar/scan-proof/refresh",
+      primary_no_motion_readback_action_sends_motion: false,
       safety_confirm_required: true,
       minimal_precheck_safety_only: true,
       wysiwyg_missing_surface_ids: expect.arrayContaining(["camera"]),

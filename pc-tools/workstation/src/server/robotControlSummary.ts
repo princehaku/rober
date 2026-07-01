@@ -28,6 +28,8 @@ import type {
   RobotControlNav2LifecycleResponse,
   RobotControlGoalChecklistSummary,
   RobotControlFieldAcceptancePacket,
+  RobotControlFieldAcceptanceNoMotionReadbackAction,
+  RobotControlFieldAcceptanceNoMotionReadbackActionId,
   RobotControlFieldAcceptanceWysiwygRefreshMode,
   RobotControlLiveObjectiveAuditItem,
   RobotControlNav2RouteAcceptancePacket,
@@ -120,6 +122,10 @@ function fieldAcceptanceFocusedWysiwygRefreshPlan(mode: RobotControlFieldAccepta
     ],
     labels: ["刷新雷达扫描读数", "复测相机首帧", "刷新地图画面", "读取雷达状态", "读取相机 MJPEG 状态"],
   };
+}
+
+function fieldAcceptanceNoMotionReadbackMethod(endpoint: string): RobotControlFieldAcceptanceNoMotionReadbackAction["method"] {
+  return endpoint.includes("/refresh") || endpoint.includes("/probe") ? "POST" : "GET";
 }
 
 const ROBOT_CONTROL_SCHEMA = "trashbot.pc_tools_workstation.robot_control_summary.v1" as const;
@@ -10254,16 +10260,64 @@ export async function buildRobotControlSummary(
       ? ["camera_usb_recovery"]
       : []),
   ];
-  const fieldAcceptanceNoMotionReadbackActionIds = [
+  const fieldAcceptanceNoMotionReadbackActionIds: RobotControlFieldAcceptanceNoMotionReadbackActionId[] = [
     "readback_all",
-    ...(!liveClosureSummary.live_wysiwyg_ready ? ["refresh_current_wysiwyg"] : []),
-    ...(liveClosureSummary.radar_overlay_needs_refresh ? ["refresh_radar_map_overlay"] : []),
   ];
+  if (!liveClosureSummary.live_wysiwyg_ready) {
+    fieldAcceptanceNoMotionReadbackActionIds.push("refresh_current_wysiwyg");
+  }
+  if (liveClosureSummary.radar_overlay_needs_refresh) {
+    fieldAcceptanceNoMotionReadbackActionIds.push("refresh_radar_map_overlay");
+  }
   const fieldAcceptanceNoMotionReadbackActionLabels = [
     "复验全部读数",
     ...(!liveClosureSummary.live_wysiwyg_ready ? ["刷新当前所见"] : []),
     ...(liveClosureSummary.radar_overlay_needs_refresh ? ["刷新雷达贴图"] : []),
   ];
+  const fieldAcceptanceNoMotionReadbackActionLabelById: Record<RobotControlFieldAcceptanceNoMotionReadbackActionId, string> = {
+    readback_all: "复验全部读数",
+    refresh_current_wysiwyg: "刷新当前所见",
+    refresh_radar_map_overlay: "刷新雷达贴图",
+  };
+  const fieldAcceptanceNoMotionReadbackActionEndpointById: Record<RobotControlFieldAcceptanceNoMotionReadbackActionId, string> = {
+    readback_all: "/api/robot-control/summary",
+    refresh_current_wysiwyg: liveClosureSummary.live_wysiwyg_primary_refresh_endpoint || "/api/robot-control/summary",
+    refresh_radar_map_overlay: liveClosureSummary.fixed_live_wysiwyg_radar_refresh_endpoint,
+  };
+  const fieldAcceptanceNoMotionReadbackActionSummaryById: Record<RobotControlFieldAcceptanceNoMotionReadbackActionId, string> = {
+    readback_all: "只读刷新行程、键盘、自由移动、画面、雷达和地图状态，不执行动作。",
+    refresh_current_wysiwyg: `只读处理当前所见缺口：${liveClosureSummary.live_wysiwyg_primary_refresh_label || "刷新当前所见"}。`,
+    refresh_radar_map_overlay: "只读刷新雷达扫描读数，再配合地图预览确认雷达点贴到当前地图。",
+  };
+  const fieldAcceptanceNoMotionReadbackActions: RobotControlFieldAcceptanceNoMotionReadbackAction[] = fieldAcceptanceNoMotionReadbackActionIds
+    .map((id) => {
+      const endpoint = fieldAcceptanceNoMotionReadbackActionEndpointById[id];
+      return {
+        id,
+        label: fieldAcceptanceNoMotionReadbackActionLabelById[id],
+        endpoint,
+        method: fieldAcceptanceNoMotionReadbackMethod(endpoint),
+        summary_plain: fieldAcceptanceNoMotionReadbackActionSummaryById[id],
+        sends_motion_when_clicked: false,
+        starts_nav2_when_clicked: false,
+        starts_manual_when_clicked: false,
+        starts_keyboard_when_clicked: false,
+        starts_free_roam_when_clicked: false,
+        starts_map_runtime_when_clicked: false,
+        starts_radar_lifecycle_when_clicked: false,
+        submits_delivery_when_clicked: false,
+        stops_motion_when_clicked: false,
+      };
+    });
+  const fieldAcceptancePrimaryNoMotionReadbackActionId: RobotControlFieldAcceptanceNoMotionReadbackActionId | "none" = liveClosureSummary.radar_overlay_needs_refresh
+    ? "refresh_radar_map_overlay"
+    : !liveClosureSummary.live_wysiwyg_ready
+      ? "refresh_current_wysiwyg"
+      : "readback_all";
+  const fieldAcceptancePrimaryNoMotionReadbackAction = fieldAcceptanceNoMotionReadbackActions
+    .find((item) => item.id === fieldAcceptancePrimaryNoMotionReadbackActionId)
+    ?? fieldAcceptanceNoMotionReadbackActions[0]
+    ?? null;
   const fieldAcceptanceCameraRecoveryActionPlain = liveClosureSummary.camera_recovery_next_action_plain
     .replace(/当前硬件提示/g, "当前设备提示");
   const fieldAcceptanceOperatorActionPlain = fieldAcceptanceSafetyConfirmReadyStepIds.length > 0
@@ -10312,6 +10366,15 @@ export async function buildRobotControlSummary(
     safety_confirm_ready_step_ids: fieldAcceptanceSafetyConfirmReadyStepIds,
     hardware_action_ids: fieldAcceptanceHardwareActionIds,
     no_motion_readback_action_ids: fieldAcceptanceNoMotionReadbackActionIds,
+    no_motion_readback_action_labels: fieldAcceptanceNoMotionReadbackActions.map((item) => item.label),
+    no_motion_readback_action_endpoints: fieldAcceptanceNoMotionReadbackActions.map((item) => item.endpoint),
+    no_motion_readback_action_methods: fieldAcceptanceNoMotionReadbackActions.map((item) => item.method),
+    no_motion_readback_actions: fieldAcceptanceNoMotionReadbackActions,
+    primary_no_motion_readback_action_id: fieldAcceptancePrimaryNoMotionReadbackAction?.id ?? "none",
+    primary_no_motion_readback_action_label: fieldAcceptancePrimaryNoMotionReadbackAction?.label ?? "无只读复验动作",
+    primary_no_motion_readback_action_endpoint: fieldAcceptancePrimaryNoMotionReadbackAction?.endpoint ?? "none",
+    primary_no_motion_readback_action_method: fieldAcceptancePrimaryNoMotionReadbackAction?.method ?? "none",
+    primary_no_motion_readback_action_sends_motion: fieldAcceptancePrimaryNoMotionReadbackAction?.sends_motion_when_clicked ?? false,
     remaining_operator_action_summary_plain: fieldAcceptanceOperatorActionPlain,
     remaining_hardware_action_summary_plain: fieldAcceptanceHardwareActionPlain,
     remaining_no_motion_action_summary_plain: fieldAcceptanceNoMotionActionPlain,
@@ -10615,6 +10678,15 @@ export async function buildRobotControlSummary(
     field_acceptance_safety_confirm_ready_step_ids: fieldAcceptancePacket.safety_confirm_ready_step_ids,
     field_acceptance_hardware_action_ids: fieldAcceptancePacket.hardware_action_ids,
     field_acceptance_no_motion_readback_action_ids: fieldAcceptancePacket.no_motion_readback_action_ids,
+    field_acceptance_no_motion_readback_action_labels: fieldAcceptancePacket.no_motion_readback_action_labels,
+    field_acceptance_no_motion_readback_action_endpoints: fieldAcceptancePacket.no_motion_readback_action_endpoints,
+    field_acceptance_no_motion_readback_action_methods: fieldAcceptancePacket.no_motion_readback_action_methods,
+    field_acceptance_no_motion_readback_actions: fieldAcceptancePacket.no_motion_readback_actions,
+    field_acceptance_primary_no_motion_readback_action_id: fieldAcceptancePacket.primary_no_motion_readback_action_id,
+    field_acceptance_primary_no_motion_readback_action_label: fieldAcceptancePacket.primary_no_motion_readback_action_label,
+    field_acceptance_primary_no_motion_readback_action_endpoint: fieldAcceptancePacket.primary_no_motion_readback_action_endpoint,
+    field_acceptance_primary_no_motion_readback_action_method: fieldAcceptancePacket.primary_no_motion_readback_action_method,
+    field_acceptance_primary_no_motion_readback_action_sends_motion: fieldAcceptancePacket.primary_no_motion_readback_action_sends_motion,
     field_acceptance_remaining_operator_action_summary_plain: fieldAcceptancePacket.remaining_operator_action_summary_plain,
     field_acceptance_remaining_hardware_action_summary_plain: fieldAcceptancePacket.remaining_hardware_action_summary_plain,
     field_acceptance_remaining_no_motion_action_summary_plain: fieldAcceptancePacket.remaining_no_motion_action_summary_plain,
