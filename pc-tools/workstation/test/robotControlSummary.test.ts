@@ -546,6 +546,11 @@ describe("robotControlSummary", () => {
     expect(summary.radar_overlay_blocks_wysiwyg).toBe(true);
     expect(summary.radar_overlay_blocks_free_move).toBe(false);
     expect(summary.radar_overlay_wysiwyg_complete).toBe(false);
+    expect(summary.radar_overlay_readback_endpoint).toBe("/api/robot-control/radar/scan-proof/refresh");
+    expect(summary.radar_overlay_refresh_endpoint).toBe("/api/robot-control/radar/scan-proof/refresh");
+    expect(summary.radar_overlay_status_endpoint).toBe("/api/robot-control/radar/status");
+    expect(summary.radar_overlay_preview_endpoint).toBe("/api/robot-control/map/preview");
+    expect(summary.radar_overlay_summary_endpoint).toBe("/api/robot-control/summary");
     expect(summary.radar_overlay_recovery_sequence).toEqual([
       "/api/robot-control/radar/scan-proof/refresh",
       "/api/robot-control/radar/status",

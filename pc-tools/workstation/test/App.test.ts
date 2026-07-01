@@ -6411,6 +6411,11 @@ describe("App", () => {
     expect(liveClosureSummary.attributes("data-live-wysiwyg-camera-recovery-sends-motion")).toBe("false");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-radar-scan-missing-observations")).toBe("scan_once,scan_hz,raw_packet_once");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-map-radar-blocked-reasons")).toBe("scan_preview_points_missing,runtime_scan_stale_for_map_radar_overlay");
+    expect(liveClosureSummary.attributes("data-radar-overlay-readback-endpoint")).toBe("/api/robot-control/radar/scan-proof/refresh");
+    expect(liveClosureSummary.attributes("data-radar-overlay-refresh-endpoint")).toBe("/api/robot-control/radar/scan-proof/refresh");
+    expect(liveClosureSummary.attributes("data-radar-overlay-status-endpoint")).toBe("/api/robot-control/radar/status");
+    expect(liveClosureSummary.attributes("data-radar-overlay-preview-endpoint")).toBe("/api/robot-control/map/preview");
+    expect(liveClosureSummary.attributes("data-radar-overlay-summary-endpoint")).toBe("/api/robot-control/summary");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-radar-map-overlay-status")).toBe("not_current");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-radar-map-current-point-count")).toBe("0");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-radar-map-source-point-count")).toBe("81");

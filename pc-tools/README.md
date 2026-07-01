@@ -135,6 +135,12 @@ lifecycle、Nav2、manual、keyboard、free-roam、建图 runtime、delivery、s
 读回推导，不启动雷达 lifecycle、Nav2、manual、keyboard、free-roam、建图、delivery、stop 或
 `/cmd_vel`。
 
+雷达贴图恢复同样暴露 `radar_overlay_readback_endpoint`、`radar_overlay_refresh_endpoint`、
+`radar_overlay_status_endpoint`、`radar_overlay_preview_endpoint` 和 `radar_overlay_summary_endpoint`；
+它们分别指向 scan proof refresh、radar status、map preview 和 summary，复用
+`radar_overlay_recovery_sequence`。这些 alias 只读，不启动雷达 lifecycle、不启动建图 runtime、
+不发送 Nav2/manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
+
 2026-07-02 CST 起，当当前所见只剩相机缺口时，现场验收包的 primary no-motion readback action
 固定为 `refresh_camera_first_frame`，label 为 `复测相机首帧`，序列为
 `/api/robot-control/camera/first-frame/probe -> /api/robot-control/camera/mjpeg/status -> /api/robot-control/summary`。
