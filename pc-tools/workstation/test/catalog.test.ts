@@ -13478,11 +13478,11 @@ describe("workstation fail-closed API contracts", () => {
           latest_result: {
             status: "blocked_missing_delivery_material",
             delivery_success: false,
-            missing_required_material: [
+            missing_required_material: JSON.stringify([
               "operator_report_latest_http_200",
               "operator_observed_motion",
               "structured_hil_claims.route_map_ref",
-            ],
+            ]),
             nav2_goal_execution: {
               status: "goal_succeeded",
               result_status: "succeeded",
@@ -13492,7 +13492,7 @@ describe("workstation fail-closed API contracts", () => {
             operator_report: {
               http_status: 404,
               operator_report_status: null,
-              evidence_ref: null,
+              evidence_ref: "delivery-draft-smoke",
               structured_hil_claims: {},
             },
           },
@@ -13507,6 +13507,15 @@ describe("workstation fail-closed API contracts", () => {
         delivery_success: boolean;
         delivery_key_values: Record<string, string>;
         missing_required_material: string[];
+        delivery_missing_required_material: string[];
+        delivery_missing_required_material_count: number;
+        delivery_missing_required_material_plain: string;
+        delivery_operator_evidence_ref: string;
+        delivery_nav2_status: string;
+        delivery_nav2_result_status: string;
+        delivery_nav2_feedback_sample_count: string;
+        delivery_latest_readback_only: boolean;
+        delivery_complete_sends_motion: boolean;
         blocked_reasons: string[];
         robot_control_executed: boolean;
       };
@@ -13517,6 +13526,19 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.delivery_key_values.status).toBe("blocked_missing_delivery_material");
       expect(body.delivery_key_values.nav2_status).toBe("goal_succeeded");
       expect(body.delivery_key_values.nav2_feedback_sample_count).toBe("8");
+      expect(body.delivery_missing_required_material).toEqual([
+        "operator_report_latest_http_200",
+        "operator_observed_motion",
+        "structured_hil_claims.route_map_ref",
+      ]);
+      expect(body.delivery_missing_required_material_count).toBe(3);
+      expect(body.delivery_missing_required_material_plain).toBe("送达还差 3 项：operator_report_latest_http_200、operator_observed_motion、structured_hil_claims.route_map_ref。");
+      expect(body.delivery_operator_evidence_ref).toBe("delivery-draft-smoke");
+      expect(body.delivery_nav2_status).toBe("goal_succeeded");
+      expect(body.delivery_nav2_result_status).toBe("succeeded");
+      expect(body.delivery_nav2_feedback_sample_count).toBe("8");
+      expect(body.delivery_latest_readback_only).toBe(true);
+      expect(body.delivery_complete_sends_motion).toBe(false);
       expect(body.blocked_reasons).toEqual([
         "operator_report_latest_http_200",
         "operator_observed_motion",

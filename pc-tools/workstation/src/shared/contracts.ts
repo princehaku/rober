@@ -2409,6 +2409,15 @@ export interface RobotControlDeliveryLatestResponse {
   delivery_key_values: Record<string, string>;
   delivery_material_refs: RobotControlDeliveryMaterialRefs;
   missing_required_material: string[];
+  delivery_missing_required_material: string[];
+  delivery_missing_required_material_count: number;
+  delivery_missing_required_material_plain: string;
+  delivery_operator_evidence_ref: string;
+  delivery_nav2_status: string;
+  delivery_nav2_result_status: string;
+  delivery_nav2_feedback_sample_count: string;
+  delivery_latest_readback_only: true;
+  delivery_complete_sends_motion: false;
   failure_reason: string;
   blocked_reasons: string[];
   hard_dangerous_true_fields: string[];

@@ -881,6 +881,58 @@ function deliveryCompleteKeyValues(payload: Record<string, unknown> | null): Rec
   };
 }
 
+function deliveryMissingRequiredMaterial(...values: unknown[]): string[] {
+  // 真实上位机有时返回数组，有时被 key/value 摘要压成 JSON 字符串；PC 顶层统一还原成短 token。
+  const items = new Set<string>();
+  const add = (value: unknown): void => {
+    if (Array.isArray(value)) {
+      value.forEach(add);
+      return;
+    }
+    if (typeof value !== "string") {
+      const text = shortValue(value, "");
+      if (text) {
+        add(text);
+      }
+      return;
+    }
+    const text = value.trim();
+    if (!text || ["[]", "none", "not_loaded", "null", "undefined"].includes(text)) {
+      return;
+    }
+    if (text.startsWith("[") || text.startsWith("{")) {
+      try {
+        const parsed = JSON.parse(text) as unknown;
+        const parsedRecord = asRecord(parsed);
+        if (Array.isArray(parsed)) {
+          parsed.forEach(add);
+          return;
+        }
+        if (parsedRecord?.missing_required_material !== undefined) {
+          add(parsedRecord.missing_required_material);
+          return;
+        }
+      } catch {
+        // 解析失败时保留原短文本，避免丢失现场缺口线索。
+      }
+    }
+    shortText(text, "").split(",").map((item) => item.trim()).filter(Boolean).forEach((item) => items.add(item));
+  };
+  values.forEach(add);
+  return [...items];
+}
+
+function deliveryLatestMissingPlain(deliverySuccess: boolean, missing: string[]): string {
+  // 送达 latest 是只读材料面板；白话只指向补材料，不暗示已经提交送达确认。
+  if (deliverySuccess) {
+    return "送达闭环已确认。";
+  }
+  if (missing.length > 0) {
+    return `送达还差 ${missing.length} 项：${missing.join("、")}。`;
+  }
+  return "送达未确认；latest 未列出具体缺口，先复验 operator report 与 Nav2 执行材料。";
+}
+
 function deliveryMaterialRefs(payload: Record<string, unknown> | null): RobotControlDeliveryLatestResponse["delivery_material_refs"] {
   // latest 只把 operator report 里的短 ref 带给前端预填，不暴露完整远端 JSON 或任何 success/control 字段。
   const result = asRecord(payload?.latest_result) ?? payload;
@@ -4072,6 +4124,15 @@ export function createWorkstationApp(): express.Express {
       delivery_key_values: {},
       delivery_material_refs: deliveryMaterialRefs(null),
       missing_required_material: [],
+      delivery_missing_required_material: [],
+      delivery_missing_required_material_count: 0,
+      delivery_missing_required_material_plain: deliveryLatestMissingPlain(false, []),
+      delivery_operator_evidence_ref: "",
+      delivery_nav2_status: "not_loaded",
+      delivery_nav2_result_status: "not_loaded",
+      delivery_nav2_feedback_sample_count: "0",
+      delivery_latest_readback_only: true,
+      delivery_complete_sends_motion: false,
       failure_reason: normalized.ok ? "" : normalized.reason,
       blocked_reasons: normalized.ok ? [] : [normalized.reason],
       hard_dangerous_true_fields: [],
@@ -4087,9 +4148,12 @@ export function createWorkstationApp(): express.Express {
       });
       const remotePayload = asRecord(await remote.json().catch(() => null));
       const latestResult = asRecord(remotePayload?.latest_result) ?? remotePayload;
-      const missingMaterial = Array.isArray(latestResult?.missing_required_material)
-        ? latestResult.missing_required_material.map((item) => shortText(item, "")).filter(Boolean)
-        : [];
+      const deliveryKeyValues = deliveryCompleteKeyValues(remotePayload);
+      const missingMaterial = deliveryMissingRequiredMaterial(
+        latestResult?.missing_required_material,
+        remotePayload?.missing_required_material,
+        deliveryKeyValues.missing_required_material,
+      );
       const dangerous = scanDangerousTrueFields(remotePayload).filter(
         (field) =>
           field !== "delivery_success" &&
@@ -4103,9 +4167,18 @@ export function createWorkstationApp(): express.Express {
         remote_http_status: remote.status,
         status: remoteDeliverySuccess ? "delivery_success_confirmed" : remote.ok ? "loaded_fail_closed_summary" : "blocked",
         delivery_success: remoteDeliverySuccess,
-        delivery_key_values: deliveryCompleteKeyValues(remotePayload),
+        delivery_key_values: deliveryKeyValues,
         delivery_material_refs: deliveryMaterialRefs(remotePayload),
         missing_required_material: missingMaterial,
+        delivery_missing_required_material: missingMaterial,
+        delivery_missing_required_material_count: missingMaterial.length,
+        delivery_missing_required_material_plain: deliveryLatestMissingPlain(remoteDeliverySuccess, missingMaterial),
+        delivery_operator_evidence_ref: deliveryKeyValues.operator_evidence_ref || "",
+        delivery_nav2_status: deliveryKeyValues.nav2_status || "not_loaded",
+        delivery_nav2_result_status: deliveryKeyValues.nav2_result_status || "not_loaded",
+        delivery_nav2_feedback_sample_count: deliveryKeyValues.nav2_feedback_sample_count || "0",
+        delivery_latest_readback_only: true,
+        delivery_complete_sends_motion: false,
         failure_reason: dangerous.length > 0 ? `dangerous_true_field:${dangerous[0]}` : remote.ok ? "" : `delivery_latest_http_status_${remote.status}`,
         blocked_reasons: [
           ...(remote.ok ? [] : [`delivery_latest_http_status_${remote.status}`]),
