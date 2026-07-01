@@ -9535,9 +9535,24 @@ function buildLiveClosureSummary(
   const objectiveAuditNextObjective = objectiveAuditItems.find((item) => !item.completed && item.actionable)
     ?? objectiveAuditItems.find((item) => !item.completed)
     ?? null;
+  const objectiveAuditMissingPlain = (item: RobotControlLiveObjectiveAuditItem): string => {
+    // 顶层摘要必须说当前真实缺口，避免“画面/地图/雷达点”这种大类掩盖地图和雷达已可见的事实。
+    if (item.id === "wysiwyg") {
+      const missingSurfaces = [
+        ...(!cameraCurrentVisible ? ["画面未显示"] : []),
+        ...(!mapCurrentVisible ? ["地图未显示"] : []),
+        ...(!radarMapPointsVisible ? ["雷达点未贴图"] : []),
+      ];
+      return missingSurfaces.join("、") || item.title;
+    }
+    if (item.id === "mapping") {
+      return mappingStartReady ? "建图待启动" : `建图启动还差${mappingStartMissingPlain}`;
+    }
+    return item.title;
+  };
   const objectiveAuditSummaryPlain = objectiveAuditMissingIds.length === 0
     ? "四项目标均已完成；继续保持现场监看。"
-    : `四项目标完成 ${objectiveAuditDoneCount}/4；下一项：${objectiveAuditNextObjective?.title ?? "继续现场监看"}；未完成：${objectiveAuditItems.filter((item) => !item.completed).map((item) => item.title).join("、")}。`;
+    : `四项目标完成 ${objectiveAuditDoneCount}/4；下一项：${objectiveAuditNextObjective?.title ?? "继续现场监看"}；未完成：${objectiveAuditItems.filter((item) => !item.completed).map(objectiveAuditMissingPlain).join("、")}。`;
   return {
     status,
     status_label: labels[status],

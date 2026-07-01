@@ -975,6 +975,9 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.mapping_start_unblock_plain).toContain("建图启动还差：画面首帧");
     expect(summary.live_closure_summary?.mapping_start_unblock_plain).not.toContain("雷达新鲜");
     expect(summary.live_closure_summary?.radar_map_points_visible).toBe(true);
+    expect(summary.live_closure_summary?.objective_audit_summary_plain).toContain("画面未显示");
+    expect(summary.live_closure_summary?.objective_audit_summary_plain).not.toContain("画面/地图/雷达点");
+    expect(summary.live_closure_summary?.objective_audit_summary_plain).not.toContain("雷达点未贴图");
   });
 
   it("does not draw stale radar scan proof points as current map overlay", async () => {
