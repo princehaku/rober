@@ -5600,9 +5600,16 @@ describe("App", () => {
     expect(liveClosureSummary.attributes("data-route-ready")).toBe("false");
     expect(liveClosureSummary.attributes("data-nav2-route-ready")).toBe("false");
     expect(liveClosureSummary.attributes("data-nav2-goal-succeeded")).toBe("false");
+    expect(liveClosureSummary.attributes("data-trip-execution-ready")).toBe("false");
+    expect(liveClosureSummary.attributes("data-trip-execution-complete")).toBe("false");
+    expect(liveClosureSummary.attributes("data-trip-execution-missing-evidence")).toBe("none");
+    expect(liveClosureSummary.attributes("data-trip-execution-required-success-markers")).toBe("none");
     expect(liveClosureSummary.attributes("data-wheel-lr-nonzero-proven")).toBe("false");
+    expect(liveClosureSummary.attributes("data-wheel-feedback-same-window-complete")).toBe("false");
+    expect(liveClosureSummary.attributes("data-same-window-wheel-lr-nonzero-complete")).toBe("false");
     expect(liveClosureSummary.attributes("data-needs-wheel-rerun")).toBe("false");
     expect(liveClosureSummary.attributes("data-delivery-success")).toBe("false");
+    expect(liveClosureSummary.attributes("data-delivery-success-current")).toBe("false");
     expect(liveClosureSummary.attributes("data-camera-current-visible")).toBe("false");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-camera-visible")).toBe("false");
     expect(liveClosureSummary.attributes("data-map-current-visible")).toBe("true");
@@ -5647,6 +5654,11 @@ describe("App", () => {
     expect(fieldAcceptancePacket.attributes("data-next-step-start-endpoint")).toBe("/api/robot-control/base/manual");
     expect(fieldAcceptancePacket.attributes("data-next-step-sends-motion")).toBe("true");
     expect(fieldAcceptancePacket.attributes("data-next-step-requires-safety-confirm")).toBe("true");
+    expect(fieldAcceptancePacket.attributes("data-trip-execution-ready")).toBe("false");
+    expect(fieldAcceptancePacket.attributes("data-trip-execution-complete")).toBe("false");
+    expect(fieldAcceptancePacket.attributes("data-trip-execution-missing-evidence")).toBe("none");
+    expect(fieldAcceptancePacket.attributes("data-wheel-feedback-same-window-complete")).toBe("false");
+    expect(fieldAcceptancePacket.attributes("data-delivery-success-current")).toBe("false");
     expect(fieldAcceptancePacket.attributes("data-ready-step-ids")).toBe("hold_keyboard,start_free_move");
     expect(fieldAcceptancePacket.attributes("data-blocked-step-ids")).toBe("run_nav2_route,start_mapping_when_sensors_ready");
     expect(fieldAcceptancePacket.attributes("data-motion-step-ids")).toBe("run_nav2_route,hold_keyboard,start_free_move,start_mapping_when_sensors_ready");

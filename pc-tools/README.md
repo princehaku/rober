@@ -79,6 +79,14 @@ lifecycle、Nav2、manual、keyboard、free-roam、建图 runtime、delivery、s
 读回推导，不启动雷达 lifecycle、Nav2、manual、keyboard、free-roam、建图、delivery、stop 或
 `/cmd_vel`。
 
+2026-07-02 CST 起，完整图上路线执行的现场读回也有顶层短 alias：
+`trip_execution_ready`、`trip_execution_complete`、`trip_execution_missing_evidence`、
+`trip_execution_required_success_markers`、`wheel_feedback_same_window_complete`、
+`same_window_wheel_lr_nonzero_complete` 和 `delivery_success_current`。这些字段全部复用
+`nav2_route_acceptance_packet`，用于现场 `curl | jq` 和普通首屏 DOM 一眼判断：路线是否已可执行/已完成、
+同窗口 wheel L/R 是否闭环、送达确认是否属于当前行程。它们只读，不执行 Nav2、manual、keyboard、
+free-roam、建图、delivery complete、stop 或 `/cmd_vel`。
+
 2026-07-02 CST 起，普通首屏 `执行图上路线` 在 execution forwarded 后，会按
 `nav2_route_acceptance_packet.readback_endpoints` 自动刷新执行后验收读回：地图预览、Nav2 latest、
 底盘 wheel feedback samples、delivery latest 和 summary。地图刷新保留 `tripExecutionRefresh`，

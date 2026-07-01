@@ -125,10 +125,21 @@ describe("robotControlSummary", () => {
     expect(summary.nav2_complete).toBe(true);
     expect(summary.nav2_goal_succeeded).toBe(true);
     expect(summary.nav2_goal_execution_proven).toBe(true);
+    expect(summary.trip_execution_ready).toBe(true);
+    expect(summary.trip_execution_complete).toBe(false);
+    expect(summary.trip_execution_missing_evidence).toEqual(["same_window_wheel_lr_nonzero", "delivery_success"]);
+    expect(summary.trip_execution_required_success_markers).toEqual([
+      "map_route_visible",
+      "nav2_goal_succeeded",
+      "same_window_wheel_lr_nonzero",
+      "delivery_success",
+    ]);
     expect(summary.route_complete).toBe(false);
     expect(summary.trip_complete).toBe(false);
     expect(summary.wheel_lr_nonzero).toBe(false);
     expect(summary.wheel_lr_nonzero_proven).toBe(false);
+    expect(summary.wheel_feedback_same_window_complete).toBe(false);
+    expect(summary.same_window_wheel_lr_nonzero_complete).toBe(false);
     expect(summary.needs_same_window_wheel_rerun).toBe(true);
     expect(summary.live_closure_summary?.camera_current_visible).toBe(false);
     expect(summary.live_closure_summary?.live_wysiwyg_camera_visible).toBe(false);
@@ -137,6 +148,7 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.live_wysiwyg_map_visible).toBe(true);
     expect(summary.live_closure_summary?.delivery_success_required).toBe(true);
     expect(summary.route_delivery_success).toBe(false);
+    expect(summary.delivery_success_current).toBe(false);
     expect(summary.delivery_success_required).toBe(true);
     expect(summary.live_closure_summary?.delivery_next_action_plain).toContain("提交送达确认");
     expect(summary.delivery_next_action_plain).toContain("提交送达确认");
