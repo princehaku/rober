@@ -3911,6 +3911,13 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   free_move_proof_status?: RobotControlLiveMotionRunbookItem["proof_status"];
   free_move_missing_evidence?: RobotControlLiveMotionRunbookItem["missing_evidence"];
   free_move_proof_plain?: RobotControlLiveMotionRunbookItem["proof_plain"];
+  free_roam_start_endpoint?: RobotControlLiveMotionRunbookItem["start_endpoint"];
+  free_roam_stop_endpoint?: RobotControlLiveMotionRunbookItem["stop_endpoint"];
+  free_roam_latest_endpoint?: RobotControlLiveClosureSummary["fixed_free_roam_latest_endpoint"];
+  free_roam_acceptance_endpoints?: RobotControlLiveMotionRunbookItem["acceptance_endpoints"];
+  free_roam_readback_endpoints?: RobotControlLiveMotionRunbookItem["acceptance_endpoints"];
+  free_roam_required_success_markers?: RobotControlLiveMotionRunbookItem["missing_evidence"];
+  free_roam_missing_evidence?: RobotControlLiveMotionRunbookItem["missing_evidence"];
   mapping_start_endpoint?: RobotControlLiveMotionRunbookItem["start_endpoint"];
   mapping_preview_endpoint?: RobotControlLiveClosureSummary["fixed_mapping_preview_endpoint"];
   mapping_acceptance_endpoints?: RobotControlLiveMotionRunbookItem["acceptance_endpoints"];

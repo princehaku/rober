@@ -1906,6 +1906,13 @@ describe("robotControlSummary", () => {
     expect(summary.fixed_free_roam_stop_endpoint).toBe("/api/robot-control/free-roam/autonomy/stop");
     expect(summary.live_closure_summary?.fixed_free_roam_latest_endpoint).toBe("/api/robot-control/free-roam/autonomy/latest");
     expect(summary.fixed_free_roam_latest_endpoint).toBe("/api/robot-control/free-roam/autonomy/latest");
+    expect(summary.free_roam_start_endpoint).toBe(summary.free_move_start_endpoint);
+    expect(summary.free_roam_stop_endpoint).toBe(summary.free_move_stop_endpoint);
+    expect(summary.free_roam_latest_endpoint).toBe(summary.fixed_free_roam_latest_endpoint);
+    expect(summary.free_roam_acceptance_endpoints).toEqual(summary.free_move_acceptance_endpoints);
+    expect(summary.free_roam_readback_endpoints).toEqual(summary.free_move_readback_endpoints);
+    expect(summary.free_roam_required_success_markers).toEqual(summary.free_move_required_success_markers);
+    expect(summary.free_roam_missing_evidence).toEqual(summary.free_move_missing_evidence);
     expect(summary.live_closure_summary?.mapping_start_ready).toBe(false);
     expect(summary.mapping_start_ready).toBe(false);
     expect(summary.free_roam_mapping_start_ready).toBe(false);
