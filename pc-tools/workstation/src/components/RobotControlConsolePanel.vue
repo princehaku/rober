@@ -67,6 +67,7 @@ import type {
   RobotControlGoalChecklistSummaryActionItem,
   RobotControlLiveObjectiveAuditItem,
   RobotControlLiveMotionRunbookItem,
+  RobotControlNav2RouteAcceptancePacket,
   RobotControlFieldAcceptanceStep,
   RobotControlFieldAcceptancePacket,
   RobotControlLiveClosureSummary,
@@ -4408,21 +4409,35 @@ const plainFieldAcceptancePrimaryStep = computed(() => {
 const plainTripRunbookItem = computed(() => (
   plainLiveClosureSummary.value?.live_motion_runbook_items.find((item) => item.id === "run_nav2_route") ?? null
 ));
+const plainNav2RouteAcceptancePacket = computed<RobotControlNav2RouteAcceptancePacket | null>(() => {
+  // 完整行程闭环优先使用后端专门的验收包；旧 live summary 只作为兼容兜底。
+  const legacySummary = plainLiveClosureSummary.value as (RobotControlLiveClosureSummary & {
+    nav2_route_acceptance_packet?: RobotControlNav2RouteAcceptancePacket;
+  }) | null;
+  return robotSummary.value?.nav2_route_acceptance_packet ?? legacySummary?.nav2_route_acceptance_packet ?? null;
+});
 const plainTripClosureReadbackSummary = computed(() => {
-  // 行程卡直接复用 live runbook 的权威闭环口径，避免顶部说一套、行程卡又让现场自己拼证据。
+  // 行程卡优先消费 Nav2 route acceptance packet，避免 UI、summary 和脚本各自拼一套验收口径。
   const summary = plainLiveClosureSummary.value;
   const item = plainTripRunbookItem.value;
-  const missing = new Set(item?.missing_evidence ?? []);
-  const routeReady = Boolean(summary?.route_ready_on_map);
+  const packet = plainNav2RouteAcceptancePacket.value;
+  const missingEvidence = packet?.missing_evidence ?? item?.missing_evidence ?? [];
+  const missing = new Set(missingEvidence);
+  const routeReady = Boolean(packet?.route_ready_on_map ?? summary?.route_ready_on_map);
+  const nav2GoalSucceeded = Boolean(packet?.nav2_goal_succeeded ?? summary?.nav2_goal_succeeded);
+  const sameWindowWheelLrNonzero = Boolean(packet?.same_window_wheel_lr_nonzero ?? summary?.wheel_lr_nonzero_proven);
+  const deliverySuccess = Boolean(packet?.delivery_success ?? summary?.delivery_success);
+  const completed = Boolean(packet?.completed ?? item?.completed);
+  const ready = Boolean(packet?.ready ?? item?.ready);
   const routeText = routeReady ? "图上路线已显示" : "图上路线未显示";
-  const arrivedText = summary?.nav2_goal_succeeded ? "到点已读到" : "到点未读到";
-  const wheelText = summary?.wheel_lr_nonzero_proven ? "同窗口轮速已非零" : "同窗口轮速未证明";
-  const deliveryText = summary?.delivery_success ? "送达确认已完成" : "送达确认未完成";
+  const arrivedText = nav2GoalSucceeded ? "到点已读到" : "到点未读到";
+  const wheelText = sameWindowWheelLrNonzero ? "同窗口轮速已非零" : "同窗口轮速未证明";
+  const deliveryText = deliverySuccess ? "送达确认已完成" : "送达确认未完成";
   const nextAction = (() => {
-    if (item?.completed) {
+    if (completed) {
       return "本轮完整行程已收口";
     }
-    if (!item?.ready) {
+    if (!ready) {
       return "先让图上路线显示到地图";
     }
     if (missing.has("same_window_wheel_lr_nonzero")) {
@@ -4435,30 +4450,72 @@ const plainTripClosureReadbackSummary = computed(() => {
     }
     return "读回行程闭环";
   })();
-  const endpoints = Array.from(new Set([
+  const acceptanceEndpoints = Array.from(new Set([
     "/api/robot-control/map/preview",
-    ...(item?.acceptance_endpoints ?? [
+    ...(packet?.acceptance_endpoints ?? item?.acceptance_endpoints ?? [
       "/api/robot-control/nav2/goal/execution/latest",
       "/api/robot-control/base/feedback-samples",
       "/api/robot-control/summary",
       "/api/robot-control/delivery/latest",
     ]),
   ]));
+  const readbackEndpoints = Array.from(new Set(packet?.readback_endpoints ?? acceptanceEndpoints));
   return {
-    state: item?.completed ? "已闭环" : item?.ready ? "待收口" : "未就绪",
+    source: packet ? "nav2_route_acceptance_packet" : "live_motion_runbook",
+    actionId: packet?.action_id ?? "run_nav2_route",
+    label: packet?.label ?? "完整行程执行",
+    state: completed ? "已闭环" : ready ? "待收口" : "未就绪",
     text: `完整行程闭环：${routeText}；${arrivedText}；${wheelText}；${deliveryText}。下一步：${nextAction}。`,
     nextAction,
     routeReady,
-    nav2GoalSucceeded: Boolean(summary?.nav2_goal_succeeded),
-    sameWindowWheelLrNonzero: Boolean(summary?.wheel_lr_nonzero_proven),
-    deliverySuccess: Boolean(summary?.delivery_success),
-    needsSameWindowWheelRerun: Boolean(summary?.needs_same_window_wheel_rerun),
-    completed: Boolean(item?.completed),
-    ready: Boolean(item?.ready),
-    proofStatus: item?.proof_status ?? "blocked",
-    missingEvidence: item?.missing_evidence ?? [],
-    proofPlain: plainActionCardUserText(item?.proof_plain ?? ""),
-    acceptanceEndpoints: endpoints,
+    nav2GoalSucceeded,
+    sameWindowWheelLrNonzero,
+    deliverySuccess,
+    needsSameWindowWheelRerun: Boolean(packet?.needs_same_window_wheel_rerun ?? summary?.needs_same_window_wheel_rerun),
+    completed,
+    ready,
+    proofStatus: packet?.proof_status ?? item?.proof_status ?? "blocked",
+    missingEvidence,
+    proofPlain: plainActionCardUserText(packet?.acceptance_plain ?? item?.proof_plain ?? ""),
+    acceptancePlain: packet?.acceptance_plain ?? "",
+    currentGapPlain: packet?.current_gap_plain ?? "",
+    checklistPlain: packet?.checklist_plain ?? "",
+    noExtraPrecheckPlain: packet?.no_extra_precheck_plain ?? "",
+    deliveryNextActionPlain: packet?.delivery_next_action_plain ?? "",
+    acceptanceEndpoints,
+    readbackEndpoints,
+    requiredSuccessMarkers: packet?.required_success_markers ?? [],
+    startEndpoint: packet?.start_endpoint ?? "/api/robot-control/nav2/goal/execute",
+    stopEndpoint: packet?.stop_endpoint ?? "/api/robot-control/base/stop",
+    startSendsMotion: packet?.start_sends_motion ?? true,
+    requiresSafetyConfirm: packet?.requires_safety_confirm ?? true,
+    minimalPrecheckSafetyOnly: packet?.minimal_precheck_safety_only ?? true,
+    cameraPreflightRequired: packet?.camera_preflight_required ?? false,
+    radarPreflightRequired: packet?.radar_preflight_required ?? false,
+    routeWysiwygPreflightRequired: packet?.route_wysiwyg_preflight_required ?? false,
+    blockedByCameraWysiwyg: packet?.blocked_by_camera_wysiwyg ?? false,
+    blockedByRadarWysiwyg: packet?.blocked_by_radar_wysiwyg ?? false,
+    deliverySuccessRequired: packet?.delivery_success_required ?? !deliverySuccess,
+    fixedLatestEndpoint: packet?.fixed_latest_endpoint ?? "/api/robot-control/nav2/goal/execution/latest",
+    fixedWheelReadbackEndpoint: packet?.fixed_wheel_readback_endpoint ?? "/api/robot-control/base/feedback-samples",
+    fixedDeliveryLatestEndpoint: packet?.fixed_delivery_latest_endpoint ?? "/api/robot-control/delivery/latest",
+    fixedDeliveryCompleteEndpoint: packet?.fixed_delivery_complete_endpoint ?? "/api/robot-control/delivery/complete",
+    deliveryCompleteSendsMotion: packet?.delivery_complete_sends_motion ?? false,
+    readbackSendsMotion: packet?.readback_sends_motion ?? false,
+    readbackStartsNav2: packet?.readback_starts_nav2 ?? false,
+    readbackStartsManual: packet?.readback_starts_manual ?? false,
+    readbackStartsKeyboard: packet?.readback_starts_keyboard ?? false,
+    readbackStartsFreeRoam: packet?.readback_starts_free_roam ?? false,
+    readbackStartsMapRuntime: packet?.readback_starts_map_runtime ?? false,
+    readbackSubmitsDelivery: packet?.readback_submits_delivery ?? false,
+    readbackStopsMotion: packet?.readback_stops_motion ?? false,
+    commandMode: packet?.command_mode ?? "",
+    nextBaseCommandMode: packet?.next_base_command_mode ?? "",
+    latestRawLeft: packet?.latest_raw_left ?? "not_loaded",
+    latestRawRight: packet?.latest_raw_right ?? "not_loaded",
+    feedbackSampleCount: packet?.feedback_sample_count ?? "0",
+    feedbackNonzeroSampleCount: packet?.feedback_nonzero_sample_count ?? "0",
+    sendsMotionWhenClicked: packet?.sends_motion_when_clicked ?? false,
     readbackPending: liveMotionRunbookReadbackPendingAction.value === "run_nav2_route",
     readbackDisabled: liveMotionRunbookReadbackPendingAction.value !== null || !robotApiBaseUrl.value.trim(),
   };
@@ -18092,16 +18149,50 @@ onBeforeUnmount(() => {
           :data-needs-same-window-wheel-rerun="String(plainTripClosureReadbackSummary.needsSameWindowWheelRerun)"
           :data-missing-evidence="plainTripClosureReadbackSummary.missingEvidence.join(',') || 'none'"
           :data-proof-plain="plainTripClosureReadbackSummary.proofPlain"
-          :data-readback-refresh-endpoints="plainTripClosureReadbackSummary.acceptanceEndpoints.join(',')"
+          :data-nav2-acceptance-source="plainTripClosureReadbackSummary.source"
+          :data-action-id="plainTripClosureReadbackSummary.actionId"
+          :data-label="plainTripClosureReadbackSummary.label"
+          :data-start-endpoint="plainTripClosureReadbackSummary.startEndpoint"
+          :data-stop-endpoint="plainTripClosureReadbackSummary.stopEndpoint"
+          :data-start-sends-motion="String(plainTripClosureReadbackSummary.startSendsMotion)"
+          :data-requires-safety-confirm="String(plainTripClosureReadbackSummary.requiresSafetyConfirm)"
+          :data-minimal-precheck-safety-only="String(plainTripClosureReadbackSummary.minimalPrecheckSafetyOnly)"
+          :data-camera-preflight-required="String(plainTripClosureReadbackSummary.cameraPreflightRequired)"
+          :data-radar-preflight-required="String(plainTripClosureReadbackSummary.radarPreflightRequired)"
+          :data-route-wysiwyg-preflight-required="String(plainTripClosureReadbackSummary.routeWysiwygPreflightRequired)"
+          :data-blocked-by-camera-wysiwyg="String(plainTripClosureReadbackSummary.blockedByCameraWysiwyg)"
+          :data-blocked-by-radar-wysiwyg="String(plainTripClosureReadbackSummary.blockedByRadarWysiwyg)"
+          :data-delivery-success-required="String(plainTripClosureReadbackSummary.deliverySuccessRequired)"
+          :data-required-success-markers="plainTripClosureReadbackSummary.requiredSuccessMarkers.join(',') || 'none'"
+          :data-acceptance-endpoints="plainTripClosureReadbackSummary.acceptanceEndpoints.join(',')"
+          :data-readback-endpoints="plainTripClosureReadbackSummary.readbackEndpoints.join(',')"
+          :data-readback-refresh-endpoints="plainTripClosureReadbackSummary.readbackEndpoints.join(',')"
+          :data-fixed-latest-endpoint="plainTripClosureReadbackSummary.fixedLatestEndpoint"
+          :data-fixed-wheel-readback-endpoint="plainTripClosureReadbackSummary.fixedWheelReadbackEndpoint"
+          :data-fixed-delivery-latest-endpoint="plainTripClosureReadbackSummary.fixedDeliveryLatestEndpoint"
+          :data-fixed-delivery-complete-endpoint="plainTripClosureReadbackSummary.fixedDeliveryCompleteEndpoint"
+          :data-delivery-complete-sends-motion="String(plainTripClosureReadbackSummary.deliveryCompleteSendsMotion)"
+          :data-command-mode="plainTripClosureReadbackSummary.commandMode"
+          :data-next-base-command-mode="plainTripClosureReadbackSummary.nextBaseCommandMode"
+          :data-latest-raw-left="plainTripClosureReadbackSummary.latestRawLeft"
+          :data-latest-raw-right="plainTripClosureReadbackSummary.latestRawRight"
+          :data-feedback-sample-count="plainTripClosureReadbackSummary.feedbackSampleCount"
+          :data-feedback-nonzero-sample-count="plainTripClosureReadbackSummary.feedbackNonzeroSampleCount"
+          :data-current-gap-plain="plainTripClosureReadbackSummary.currentGapPlain"
+          :data-checklist-plain="plainTripClosureReadbackSummary.checklistPlain"
+          :data-acceptance-plain="plainTripClosureReadbackSummary.acceptancePlain"
+          :data-no-extra-precheck-plain="plainTripClosureReadbackSummary.noExtraPrecheckPlain"
+          :data-delivery-next-action-plain="plainTripClosureReadbackSummary.deliveryNextActionPlain"
+          :data-sends-motion-when-clicked="String(plainTripClosureReadbackSummary.sendsMotionWhenClicked)"
           data-readback-only="true"
-          data-sends-motion-when-clicked="false"
-          data-starts-nav2="false"
-          data-starts-manual="false"
-          data-starts-keyboard="false"
-          data-starts-free-roam="false"
-          data-starts-map-runtime="false"
-          data-submits-delivery="false"
-          data-stops-motion="false"
+          :data-readback-sends-motion="String(plainTripClosureReadbackSummary.readbackSendsMotion)"
+          :data-starts-nav2="String(plainTripClosureReadbackSummary.readbackStartsNav2)"
+          :data-starts-manual="String(plainTripClosureReadbackSummary.readbackStartsManual)"
+          :data-starts-keyboard="String(plainTripClosureReadbackSummary.readbackStartsKeyboard)"
+          :data-starts-free-roam="String(plainTripClosureReadbackSummary.readbackStartsFreeRoam)"
+          :data-starts-map-runtime="String(plainTripClosureReadbackSummary.readbackStartsMapRuntime)"
+          :data-submits-delivery="String(plainTripClosureReadbackSummary.readbackSubmitsDelivery)"
+          :data-stops-motion="String(plainTripClosureReadbackSummary.readbackStopsMotion)"
         >
           <div class="simple-status-row">
             <strong>完整行程闭环</strong>
@@ -18115,16 +18206,21 @@ onBeforeUnmount(() => {
             class="secondary compact-stop"
             data-testid="plain-live-trip-closure-readback-refresh"
             :disabled="plainTripClosureReadbackSummary.readbackDisabled"
-            :data-readback-refresh-endpoints="plainTripClosureReadbackSummary.acceptanceEndpoints.join(',')"
+            :data-readback-refresh-endpoints="plainTripClosureReadbackSummary.readbackEndpoints.join(',')"
+            :data-readback-endpoints="plainTripClosureReadbackSummary.readbackEndpoints.join(',')"
+            :data-fixed-latest-endpoint="plainTripClosureReadbackSummary.fixedLatestEndpoint"
+            :data-fixed-wheel-readback-endpoint="plainTripClosureReadbackSummary.fixedWheelReadbackEndpoint"
+            :data-fixed-delivery-latest-endpoint="plainTripClosureReadbackSummary.fixedDeliveryLatestEndpoint"
+            :data-fixed-delivery-complete-endpoint="plainTripClosureReadbackSummary.fixedDeliveryCompleteEndpoint"
             data-readback-only="true"
-            data-sends-motion-when-clicked="false"
-            data-starts-nav2="false"
-            data-starts-manual="false"
-            data-starts-keyboard="false"
-            data-starts-free-roam="false"
-            data-starts-map-runtime="false"
-            data-submits-delivery="false"
-            data-stops-motion="false"
+            :data-sends-motion-when-clicked="String(plainTripClosureReadbackSummary.sendsMotionWhenClicked)"
+            :data-starts-nav2="String(plainTripClosureReadbackSummary.readbackStartsNav2)"
+            :data-starts-manual="String(plainTripClosureReadbackSummary.readbackStartsManual)"
+            :data-starts-keyboard="String(plainTripClosureReadbackSummary.readbackStartsKeyboard)"
+            :data-starts-free-roam="String(plainTripClosureReadbackSummary.readbackStartsFreeRoam)"
+            :data-starts-map-runtime="String(plainTripClosureReadbackSummary.readbackStartsMapRuntime)"
+            :data-submits-delivery="String(plainTripClosureReadbackSummary.readbackSubmitsDelivery)"
+            :data-stops-motion="String(plainTripClosureReadbackSummary.readbackStopsMotion)"
             @click="refreshLiveMotionRunbookReadback('run_nav2_route')"
           >
             {{ plainTripClosureReadbackSummary.readbackPending ? "读回中" : "读回闭环" }}
@@ -18340,7 +18436,7 @@ onBeforeUnmount(() => {
           :data-fixed-wheel-readback-endpoint="plainLiveClosureSummary.fixed_wheel_readback_endpoint"
           :data-fixed-delivery-latest-endpoint="plainLiveClosureSummary.fixed_wheel_rerun_delivery_latest_endpoint"
           :data-fixed-delivery-complete-endpoint="plainLiveClosureSummary.fixed_wheel_rerun_delivery_complete_endpoint"
-          :data-readback-refresh-endpoints="plainTripClosureReadbackSummary.acceptanceEndpoints.join(',')"
+          :data-readback-refresh-endpoints="plainTripClosureReadbackSummary.readbackEndpoints.join(',')"
           :data-readback-refresh-pending="String(plainTripClosureReadbackSummary.readbackPending)"
           data-readback-only="true"
           data-readback-refresh-sends-motion="false"
@@ -18369,16 +18465,21 @@ onBeforeUnmount(() => {
             class="secondary compact-stop"
             data-testid="plain-wheel-rerun-readback-refresh"
             :disabled="plainTripClosureReadbackSummary.readbackDisabled"
-            :data-readback-refresh-endpoints="plainTripClosureReadbackSummary.acceptanceEndpoints.join(',')"
+            :data-readback-refresh-endpoints="plainTripClosureReadbackSummary.readbackEndpoints.join(',')"
+            :data-readback-endpoints="plainTripClosureReadbackSummary.readbackEndpoints.join(',')"
+            :data-fixed-latest-endpoint="plainTripClosureReadbackSummary.fixedLatestEndpoint"
+            :data-fixed-wheel-readback-endpoint="plainTripClosureReadbackSummary.fixedWheelReadbackEndpoint"
+            :data-fixed-delivery-latest-endpoint="plainTripClosureReadbackSummary.fixedDeliveryLatestEndpoint"
+            :data-fixed-delivery-complete-endpoint="plainTripClosureReadbackSummary.fixedDeliveryCompleteEndpoint"
             data-readback-only="true"
-            data-sends-motion-when-clicked="false"
-            data-starts-nav2="false"
-            data-starts-manual="false"
-            data-starts-keyboard="false"
-            data-starts-free-roam="false"
-            data-starts-map-runtime="false"
-            data-submits-delivery="false"
-            data-stops-motion="false"
+            :data-sends-motion-when-clicked="String(plainTripClosureReadbackSummary.sendsMotionWhenClicked)"
+            :data-starts-nav2="String(plainTripClosureReadbackSummary.readbackStartsNav2)"
+            :data-starts-manual="String(plainTripClosureReadbackSummary.readbackStartsManual)"
+            :data-starts-keyboard="String(plainTripClosureReadbackSummary.readbackStartsKeyboard)"
+            :data-starts-free-roam="String(plainTripClosureReadbackSummary.readbackStartsFreeRoam)"
+            :data-starts-map-runtime="String(plainTripClosureReadbackSummary.readbackStartsMapRuntime)"
+            :data-submits-delivery="String(plainTripClosureReadbackSummary.readbackSubmitsDelivery)"
+            :data-stops-motion="String(plainTripClosureReadbackSummary.readbackStopsMotion)"
             @click="refreshLiveMotionRunbookReadback('run_nav2_route')"
           >
             {{ plainTripClosureReadbackSummary.readbackPending ? "读回中" : "读回复验" }}
@@ -21741,16 +21842,50 @@ onBeforeUnmount(() => {
               :data-needs-same-window-wheel-rerun="String(plainTripClosureReadbackSummary.needsSameWindowWheelRerun)"
               :data-missing-evidence="plainTripClosureReadbackSummary.missingEvidence.join(',') || 'none'"
               :data-proof-plain="plainTripClosureReadbackSummary.proofPlain"
-              :data-readback-refresh-endpoints="plainTripClosureReadbackSummary.acceptanceEndpoints.join(',')"
+              :data-nav2-acceptance-source="plainTripClosureReadbackSummary.source"
+              :data-action-id="plainTripClosureReadbackSummary.actionId"
+              :data-label="plainTripClosureReadbackSummary.label"
+              :data-start-endpoint="plainTripClosureReadbackSummary.startEndpoint"
+              :data-stop-endpoint="plainTripClosureReadbackSummary.stopEndpoint"
+              :data-start-sends-motion="String(plainTripClosureReadbackSummary.startSendsMotion)"
+              :data-requires-safety-confirm="String(plainTripClosureReadbackSummary.requiresSafetyConfirm)"
+              :data-minimal-precheck-safety-only="String(plainTripClosureReadbackSummary.minimalPrecheckSafetyOnly)"
+              :data-camera-preflight-required="String(plainTripClosureReadbackSummary.cameraPreflightRequired)"
+              :data-radar-preflight-required="String(plainTripClosureReadbackSummary.radarPreflightRequired)"
+              :data-route-wysiwyg-preflight-required="String(plainTripClosureReadbackSummary.routeWysiwygPreflightRequired)"
+              :data-blocked-by-camera-wysiwyg="String(plainTripClosureReadbackSummary.blockedByCameraWysiwyg)"
+              :data-blocked-by-radar-wysiwyg="String(plainTripClosureReadbackSummary.blockedByRadarWysiwyg)"
+              :data-delivery-success-required="String(plainTripClosureReadbackSummary.deliverySuccessRequired)"
+              :data-required-success-markers="plainTripClosureReadbackSummary.requiredSuccessMarkers.join(',') || 'none'"
+              :data-acceptance-endpoints="plainTripClosureReadbackSummary.acceptanceEndpoints.join(',')"
+              :data-readback-endpoints="plainTripClosureReadbackSummary.readbackEndpoints.join(',')"
+              :data-readback-refresh-endpoints="plainTripClosureReadbackSummary.readbackEndpoints.join(',')"
+              :data-fixed-latest-endpoint="plainTripClosureReadbackSummary.fixedLatestEndpoint"
+              :data-fixed-wheel-readback-endpoint="plainTripClosureReadbackSummary.fixedWheelReadbackEndpoint"
+              :data-fixed-delivery-latest-endpoint="plainTripClosureReadbackSummary.fixedDeliveryLatestEndpoint"
+              :data-fixed-delivery-complete-endpoint="plainTripClosureReadbackSummary.fixedDeliveryCompleteEndpoint"
+              :data-delivery-complete-sends-motion="String(plainTripClosureReadbackSummary.deliveryCompleteSendsMotion)"
+              :data-command-mode="plainTripClosureReadbackSummary.commandMode"
+              :data-next-base-command-mode="plainTripClosureReadbackSummary.nextBaseCommandMode"
+              :data-latest-raw-left="plainTripClosureReadbackSummary.latestRawLeft"
+              :data-latest-raw-right="plainTripClosureReadbackSummary.latestRawRight"
+              :data-feedback-sample-count="plainTripClosureReadbackSummary.feedbackSampleCount"
+              :data-feedback-nonzero-sample-count="plainTripClosureReadbackSummary.feedbackNonzeroSampleCount"
+              :data-current-gap-plain="plainTripClosureReadbackSummary.currentGapPlain"
+              :data-checklist-plain="plainTripClosureReadbackSummary.checklistPlain"
+              :data-acceptance-plain="plainTripClosureReadbackSummary.acceptancePlain"
+              :data-no-extra-precheck-plain="plainTripClosureReadbackSummary.noExtraPrecheckPlain"
+              :data-delivery-next-action-plain="plainTripClosureReadbackSummary.deliveryNextActionPlain"
+              :data-sends-motion-when-clicked="String(plainTripClosureReadbackSummary.sendsMotionWhenClicked)"
               data-readback-only="true"
-              data-sends-motion-when-clicked="false"
-              data-starts-nav2="false"
-              data-starts-manual="false"
-              data-starts-keyboard="false"
-              data-starts-free-roam="false"
-              data-starts-map-runtime="false"
-              data-submits-delivery="false"
-              data-stops-motion="false"
+              :data-readback-sends-motion="String(plainTripClosureReadbackSummary.readbackSendsMotion)"
+              :data-starts-nav2="String(plainTripClosureReadbackSummary.readbackStartsNav2)"
+              :data-starts-manual="String(plainTripClosureReadbackSummary.readbackStartsManual)"
+              :data-starts-keyboard="String(plainTripClosureReadbackSummary.readbackStartsKeyboard)"
+              :data-starts-free-roam="String(plainTripClosureReadbackSummary.readbackStartsFreeRoam)"
+              :data-starts-map-runtime="String(plainTripClosureReadbackSummary.readbackStartsMapRuntime)"
+              :data-submits-delivery="String(plainTripClosureReadbackSummary.readbackSubmitsDelivery)"
+              :data-stops-motion="String(plainTripClosureReadbackSummary.readbackStopsMotion)"
             >
               <span class="plain-progress-label">完整行程闭环</span>
               <span class="status-chip" :data-state="plainTripClosureReadbackSummary.state">{{ plainTripClosureReadbackSummary.state }}</span>
@@ -21760,16 +21895,21 @@ onBeforeUnmount(() => {
                 class="secondary compact-stop"
                 data-testid="plain-trip-closure-readback-refresh"
                 :disabled="plainTripClosureReadbackSummary.readbackDisabled"
-                :data-readback-refresh-endpoints="plainTripClosureReadbackSummary.acceptanceEndpoints.join(',')"
+                :data-readback-refresh-endpoints="plainTripClosureReadbackSummary.readbackEndpoints.join(',')"
+                :data-readback-endpoints="plainTripClosureReadbackSummary.readbackEndpoints.join(',')"
+                :data-fixed-latest-endpoint="plainTripClosureReadbackSummary.fixedLatestEndpoint"
+                :data-fixed-wheel-readback-endpoint="plainTripClosureReadbackSummary.fixedWheelReadbackEndpoint"
+                :data-fixed-delivery-latest-endpoint="plainTripClosureReadbackSummary.fixedDeliveryLatestEndpoint"
+                :data-fixed-delivery-complete-endpoint="plainTripClosureReadbackSummary.fixedDeliveryCompleteEndpoint"
                 data-readback-only="true"
-                data-sends-motion-when-clicked="false"
-                data-starts-nav2="false"
-                data-starts-manual="false"
-                data-starts-keyboard="false"
-                data-starts-free-roam="false"
-                data-starts-map-runtime="false"
-                data-submits-delivery="false"
-                data-stops-motion="false"
+                :data-sends-motion-when-clicked="String(plainTripClosureReadbackSummary.sendsMotionWhenClicked)"
+                :data-starts-nav2="String(plainTripClosureReadbackSummary.readbackStartsNav2)"
+                :data-starts-manual="String(plainTripClosureReadbackSummary.readbackStartsManual)"
+                :data-starts-keyboard="String(plainTripClosureReadbackSummary.readbackStartsKeyboard)"
+                :data-starts-free-roam="String(plainTripClosureReadbackSummary.readbackStartsFreeRoam)"
+                :data-starts-map-runtime="String(plainTripClosureReadbackSummary.readbackStartsMapRuntime)"
+                :data-submits-delivery="String(plainTripClosureReadbackSummary.readbackSubmitsDelivery)"
+                :data-stops-motion="String(plainTripClosureReadbackSummary.readbackStopsMotion)"
                 @click="refreshLiveMotionRunbookReadback('run_nav2_route')"
               >
                 {{ plainTripClosureReadbackSummary.readbackPending ? "读回中" : "读回闭环" }}

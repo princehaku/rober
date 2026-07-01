@@ -8574,6 +8574,146 @@ describe("App", () => {
     writePlainHomeSmokeArtifact(firstScreenText, diagnostics.text(), diagnostics.attributes("open") === undefined);
   });
 
+  it("shows Nav2 route acceptance packet on the plain trip closure readback", async () => {
+    // 行程闭环卡要优先消费专用验收包，避免 UI 从旧 runbook 自己拼 route/wheel/delivery 结论。
+    const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
+    summaryFixture.nav2_route_acceptance_packet = {
+      action_id: "run_nav2_route",
+      label: "完整行程执行",
+      status: "needs_wheel_rerun",
+      proof_status: "ready_to_verify",
+      ready: true,
+      completed: false,
+      start_endpoint: "/api/robot-control/nav2/goal/execute",
+      stop_endpoint: "/api/robot-control/base/stop",
+      start_sends_motion: true,
+      requires_safety_confirm: true,
+      minimal_precheck_safety_only: true,
+      camera_preflight_required: false,
+      radar_preflight_required: false,
+      route_wysiwyg_preflight_required: false,
+      blocked_by_camera_wysiwyg: false,
+      blocked_by_radar_wysiwyg: false,
+      route_ready_on_map: true,
+      nav2_goal_succeeded: true,
+      same_window_wheel_lr_nonzero: false,
+      delivery_success: false,
+      needs_same_window_wheel_rerun: true,
+      delivery_success_required: true,
+      missing_evidence: ["same_window_wheel_lr_nonzero", "delivery_success"],
+      required_success_markers: ["map_route_visible", "nav2_goal_succeeded", "same_window_wheel_lr_nonzero", "delivery_success"],
+      acceptance_endpoints: [
+        "/api/robot-control/map/preview",
+        "/api/robot-control/nav2/goal/execution/latest",
+        "/api/robot-control/base/feedback-samples",
+        "/api/robot-control/delivery/latest",
+        "/api/robot-control/summary",
+      ],
+      readback_endpoints: [
+        "/api/robot-control/map/preview",
+        "/api/robot-control/nav2/goal/execution/latest",
+        "/api/robot-control/base/feedback-samples",
+        "/api/robot-control/delivery/latest",
+        "/api/robot-control/summary",
+      ],
+      fixed_latest_endpoint: "/api/robot-control/nav2/goal/execution/latest",
+      fixed_wheel_readback_endpoint: "/api/robot-control/base/feedback-samples",
+      fixed_delivery_latest_endpoint: "/api/robot-control/delivery/latest",
+      fixed_delivery_complete_endpoint: "/api/robot-control/delivery/complete",
+      delivery_complete_sends_motion: false,
+      readback_sends_motion: false,
+      readback_starts_nav2: false,
+      readback_starts_manual: false,
+      readback_starts_keyboard: false,
+      readback_starts_free_roam: false,
+      readback_starts_map_runtime: false,
+      readback_submits_delivery: false,
+      readback_stops_motion: false,
+      command_mode: "ros",
+      next_base_command_mode: "ros",
+      latest_raw_left: "0",
+      latest_raw_right: "0",
+      feedback_sample_count: "2",
+      feedback_nonzero_sample_count: "0",
+      current_gap_plain: "当前缺口：同窗口 wheel L/R 非零、delivery success。",
+      checklist_plain: "先勾现场安全确认，再执行图上路线。",
+      acceptance_plain: "验收：图上路线、到点成功、同窗口 wheel L/R 非零、delivery success。",
+      no_extra_precheck_plain: "发车前预检只看现场安全确认。",
+      delivery_next_action_plain: "轮速复验通过后提交 delivery success。",
+      sends_motion_when_clicked: false,
+    };
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const tripClosure = wrapper.find('[data-testid="plain-trip-closure-readback"]');
+    expect(tripClosure.text()).toContain("图上行程已显示");
+    expect(tripClosure.text()).toContain("到点已读到");
+    expect(tripClosure.text()).toContain("同窗口轮速未证明");
+    expect(tripClosure.text()).toContain("送达确认未完成");
+    expect(tripClosure.attributes("data-nav2-acceptance-source")).toBe("nav2_route_acceptance_packet");
+    expect(tripClosure.attributes("data-action-id")).toBe("run_nav2_route");
+    expect(tripClosure.attributes("data-label")).toBe("完整行程执行");
+    expect(tripClosure.attributes("data-state")).toBe("待收口");
+    expect(tripClosure.attributes("data-route-ready")).toBe("true");
+    expect(tripClosure.attributes("data-nav2-goal-succeeded")).toBe("true");
+    expect(tripClosure.attributes("data-same-window-wheel-lr-nonzero")).toBe("false");
+    expect(tripClosure.attributes("data-delivery-success")).toBe("false");
+    expect(tripClosure.attributes("data-missing-evidence")).toBe("same_window_wheel_lr_nonzero,delivery_success");
+    expect(tripClosure.attributes("data-start-endpoint")).toBe("/api/robot-control/nav2/goal/execute");
+    expect(tripClosure.attributes("data-stop-endpoint")).toBe("/api/robot-control/base/stop");
+    expect(tripClosure.attributes("data-start-sends-motion")).toBe("true");
+    expect(tripClosure.attributes("data-requires-safety-confirm")).toBe("true");
+    expect(tripClosure.attributes("data-minimal-precheck-safety-only")).toBe("true");
+    expect(tripClosure.attributes("data-camera-preflight-required")).toBe("false");
+    expect(tripClosure.attributes("data-radar-preflight-required")).toBe("false");
+    expect(tripClosure.attributes("data-route-wysiwyg-preflight-required")).toBe("false");
+    expect(tripClosure.attributes("data-delivery-success-required")).toBe("true");
+    expect(tripClosure.attributes("data-required-success-markers")).toBe("map_route_visible,nav2_goal_succeeded,same_window_wheel_lr_nonzero,delivery_success");
+    expect(tripClosure.attributes("data-readback-endpoints")).toBe("/api/robot-control/map/preview,/api/robot-control/nav2/goal/execution/latest,/api/robot-control/base/feedback-samples,/api/robot-control/delivery/latest,/api/robot-control/summary");
+    expect(tripClosure.attributes("data-fixed-latest-endpoint")).toBe("/api/robot-control/nav2/goal/execution/latest");
+    expect(tripClosure.attributes("data-fixed-wheel-readback-endpoint")).toBe("/api/robot-control/base/feedback-samples");
+    expect(tripClosure.attributes("data-fixed-delivery-latest-endpoint")).toBe("/api/robot-control/delivery/latest");
+    expect(tripClosure.attributes("data-fixed-delivery-complete-endpoint")).toBe("/api/robot-control/delivery/complete");
+    expect(tripClosure.attributes("data-delivery-complete-sends-motion")).toBe("false");
+    expect(tripClosure.attributes("data-command-mode")).toBe("ros");
+    expect(tripClosure.attributes("data-next-base-command-mode")).toBe("ros");
+    expect(tripClosure.attributes("data-latest-raw-left")).toBe("0");
+    expect(tripClosure.attributes("data-latest-raw-right")).toBe("0");
+    expect(tripClosure.attributes("data-feedback-sample-count")).toBe("2");
+    expect(tripClosure.attributes("data-feedback-nonzero-sample-count")).toBe("0");
+    expect(tripClosure.attributes("data-current-gap-plain")).toContain("当前缺口");
+    expect(tripClosure.attributes("data-checklist-plain")).toContain("先勾现场安全确认");
+    expect(tripClosure.attributes("data-acceptance-plain")).toContain("delivery success");
+    expect(tripClosure.attributes("data-no-extra-precheck-plain")).toContain("发车前预检只看现场安全确认");
+    expect(tripClosure.attributes("data-delivery-next-action-plain")).toContain("delivery success");
+    expect(tripClosure.attributes("data-readback-only")).toBe("true");
+    expect(tripClosure.attributes("data-readback-sends-motion")).toBe("false");
+    expect(tripClosure.attributes("data-starts-nav2")).toBe("false");
+    expect(tripClosure.attributes("data-starts-manual")).toBe("false");
+    expect(tripClosure.attributes("data-starts-keyboard")).toBe("false");
+    expect(tripClosure.attributes("data-starts-free-roam")).toBe("false");
+    expect(tripClosure.attributes("data-starts-map-runtime")).toBe("false");
+    expect(tripClosure.attributes("data-submits-delivery")).toBe("false");
+    expect(tripClosure.attributes("data-stops-motion")).toBe("false");
+
+    const readbackButton = wrapper.find('[data-testid="plain-trip-closure-readback-refresh"]');
+    expect(readbackButton.attributes("data-readback-endpoints")).toBe(tripClosure.attributes("data-readback-endpoints"));
+    expect(readbackButton.attributes("data-fixed-wheel-readback-endpoint")).toBe("/api/robot-control/base/feedback-samples");
+    expect(readbackButton.attributes("data-fixed-delivery-latest-endpoint")).toBe("/api/robot-control/delivery/latest");
+    expect(readbackButton.attributes("data-sends-motion-when-clicked")).toBe("false");
+    expect(readbackButton.attributes("data-starts-nav2")).toBe("false");
+    expect(readbackButton.attributes("data-submits-delivery")).toBe("false");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
   it("rechecks mapping camera recovery without starting motion or map runtime", async () => {
     const mockedFetch = stubWorkstationFetch();
 
