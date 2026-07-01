@@ -4964,3 +4964,10 @@ full-speed 或 UVC 传输问题时，现场硬件动作仍提示“换高速USB�
 `after_action_readback_endpoint=/api/robot-control/camera/first-frame/probe`，还会暴露完整
 `after_action_readback_sequence`：首帧 probe、MJPEG status、summary。PC 按钮也按这条只读序列执行，
 保证换线/换口后同时复测首帧、共享预览和当前卡点。该链路只刷新证据，不启动车辆、不启动建图、不占用控制链。
+
+2026-07-02 07:04 CST 起，普通 PC 顶栏固定提供“地图大屏”主入口，直接打开 `/map`。该入口与地图卡内
+“进入地图大屏”共用同一只读合同：`data-direct-map-view-url=/map`、`data-direct-map-view-behavior=page_shell_map_only`、
+`data-direct-map-view-map-only=true`、`data-direct-map-view-viewport-priority=fullscreen_map_canvas`，并明确
+`data-sends-motion-when-clicked=false`、`data-starts-ros2=false`、`data-starts-rviz2=false`、`data-starts-foxglove=false`、
+`data-starts-nav2=false`、`data-starts-map-runtime=false`。普通用户不需要先展开工程观察或启动 RViz2/Foxglove；
+默认仍使用 PC 大地图，当前缩放合同为 `1600%` 现场大图、最高 `4800%` 细节放大，地图、路线、小车位置和雷达贴图共享同一张 WYSIWYG 画布。

@@ -132,6 +132,29 @@ button {
   margin-bottom: 12px;
 }
 
+.topbar-actions {
+  /* 顶部把大地图作为普通用户主入口，同时保留刷新，不让用户先去工程工具里找地图。 */
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.topbar-map-link {
+  /* 地图大屏是只读观察入口，视觉上应比普通刷新更明确，但不伪装成发车动作。 */
+  min-height: 38px;
+  border-color: #0f6b45;
+  background: #e8f6ef;
+  color: #114831;
+  font-weight: 760;
+  padding-inline: 18px;
+}
+
+.topbar-map-link:hover {
+  background: #d8f0e4;
+}
+
 .eyebrow {
   margin: 0 0 4px;
   color: #5f6b7a;
@@ -3754,6 +3777,14 @@ th {
   .section-head {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .topbar-actions {
+    justify-content: stretch;
+  }
+
+  .topbar-actions > * {
+    flex: 1 1 160px;
   }
 
   .status-strip,

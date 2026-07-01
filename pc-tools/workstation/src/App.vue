@@ -99,7 +99,29 @@ onMounted(() => {
         <h1>Rober 小车控制台</h1>
         <p class="topbar-subtitle">连接小车、查看画面和地图，必要时一键停止。</p>
       </div>
-      <button class="secondary" type="button" @click="refresh">刷新页面</button>
+      <div class="topbar-actions">
+        <a
+          class="secondary plain-link-button topbar-map-link"
+          href="/map"
+          data-testid="topbar-map-direct-link"
+          data-map-view-action="open_direct_map_view"
+          data-user-facing-primary-map-action="true"
+          data-ordinary-user-map-entry="true"
+          data-direct-map-view-url="/map"
+          data-direct-map-view-behavior="page_shell_map_only"
+          data-direct-map-view-map-only="true"
+          data-direct-map-view-viewport-priority="fullscreen_map_canvas"
+          data-sends-motion-when-clicked="false"
+          data-starts-ros2="false"
+          data-starts-rviz2="false"
+          data-starts-foxglove="false"
+          data-starts-nav2="false"
+          data-starts-map-runtime="false"
+        >
+          地图大屏
+        </a>
+        <button class="secondary" type="button" @click="refresh">刷新页面</button>
+      </div>
     </header>
 
     <div v-if="error" class="notice" role="alert">
