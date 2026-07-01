@@ -3253,6 +3253,11 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   wheel_rerun_required_success_markers?: RobotControlLiveClosureSummary["wheel_rerun_required_success_markers"];
   wheel_rerun_current_gap_plain?: RobotControlLiveClosureSummary["wheel_rerun_current_gap_plain"];
   wheel_rerun_no_extra_precheck_plain?: RobotControlLiveClosureSummary["wheel_rerun_no_extra_precheck_plain"];
+  minimal_precheck_safety_only?: RobotControlLiveClosureSummary["minimal_precheck_safety_only"];
+  safety_confirm_required_for_motion?: RobotControlLiveClosureSummary["safety_confirm_required_for_motion"];
+  live_motion_runbook_minimal_precheck_safety_only?: RobotControlLiveClosureSummary["live_motion_runbook_minimal_precheck_safety_only"];
+  live_motion_runbook_safety_confirm_required?: RobotControlLiveClosureSummary["live_motion_runbook_safety_confirm_required"];
+  live_motion_runbook_minimal_precheck_plain?: RobotControlLiveClosureSummary["live_motion_runbook_minimal_precheck_plain"];
   camera_current_visible?: RobotControlLiveClosureSummary["camera_current_visible"];
   map_current_visible?: RobotControlLiveClosureSummary["map_current_visible"];
   path_current_visible?: RobotControlLiveClosureSummary["path_current_visible"];

@@ -252,6 +252,13 @@ describe("robotControlSummary", () => {
     expect(summary.wheel_rerun_current_gap_plain).toContain("当前缺口");
     expect(summary.live_closure_summary?.wheel_rerun_no_extra_precheck_plain).toContain("发车前预检只看现场安全确认");
     expect(summary.wheel_rerun_no_extra_precheck_plain).toContain("发车前预检只看现场安全确认");
+    expect(summary.minimal_precheck_safety_only).toBe(true);
+    expect(summary.safety_confirm_required_for_motion).toBe(true);
+    expect(summary.live_motion_runbook_minimal_precheck_safety_only).toBe(true);
+    expect(summary.live_motion_runbook_safety_confirm_required).toBe(true);
+    expect(summary.live_motion_runbook_minimal_precheck_plain).toBe(
+      "发车前预检已精简：执行运动只需勾现场安全确认；相机、雷达和现场报告不作为额外发车前置。",
+    );
     expect(summary.live_closure_summary?.wheel_rerun_delivery_success_required).toBe(true);
     expect(summary.live_closure_summary?.wheel_rerun_delivery_next_action_plain).toContain("提交 delivery success");
     expect(summary.live_closure_summary?.fixed_wheel_rerun_endpoint).toBe("/api/robot-control/nav2/goal/execute");
@@ -599,7 +606,9 @@ describe("robotControlSummary", () => {
       "/api/robot-control/free-roam/autonomy/latest",
     ]);
     expect(summary.live_closure_summary?.live_motion_runbook_minimal_precheck_safety_only).toBe(true);
+    expect(summary.live_motion_runbook_minimal_precheck_safety_only).toBe(true);
     expect(summary.live_closure_summary?.live_motion_runbook_safety_confirm_required).toBe(true);
+    expect(summary.live_motion_runbook_safety_confirm_required).toBe(true);
     expect(summary.live_closure_summary?.live_motion_runbook_ready_plain).toBe(
       "可先执行：完整行程执行、键盘连续手控、自由自助移动。",
     );
@@ -610,6 +619,7 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.live_motion_runbook_minimal_precheck_plain).toBe(
       "发车前预检已精简：执行运动只需勾现场安全确认；相机、雷达和现场报告不作为额外发车前置。",
     );
+    expect(summary.live_motion_runbook_minimal_precheck_plain).toBe(summary.live_closure_summary?.live_motion_runbook_minimal_precheck_plain);
     expect(summary.live_closure_summary?.live_motion_runbook_summary_plain).toContain(
       "可先执行：完整行程执行、键盘连续手控、自由自助移动。",
     );
