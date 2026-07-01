@@ -3881,6 +3881,8 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   trip_proof_plain?: RobotControlLiveMotionRunbookItem["proof_plain"];
   keyboard_start_endpoint?: RobotControlLiveMotionRunbookItem["start_endpoint"];
   keyboard_acceptance_endpoints?: RobotControlLiveMotionRunbookItem["acceptance_endpoints"];
+  keyboard_readback_endpoints?: RobotControlLiveMotionRunbookItem["acceptance_endpoints"];
+  keyboard_required_success_markers?: RobotControlLiveMotionRunbookItem["missing_evidence"];
   keyboard_completed?: RobotControlLiveMotionRunbookItem["completed"];
   keyboard_proof_status?: RobotControlLiveMotionRunbookItem["proof_status"];
   keyboard_missing_evidence?: RobotControlLiveMotionRunbookItem["missing_evidence"];

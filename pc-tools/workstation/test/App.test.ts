@@ -811,6 +811,8 @@ const fixtures: Record<string, unknown> = {
     free_move_radar_preflight_required: false,
     free_move_blocked_by_camera_wysiwyg: false,
     free_move_blocked_by_radar_wysiwyg: false,
+    keyboard_readback_endpoints: ["/api/robot-control/base/feedback-samples", "/api/robot-control/summary"],
+    keyboard_required_success_markers: ["same_hold_window_wheel_lr_nonzero", "stop_after_release"],
     mapping_start_ready: false,
     mapping_start_missing_reasons: ["camera_first_frame", "lidar_fresh"],
     field_acceptance_primary_missing_id: "route_ready_on_map",
@@ -5676,6 +5678,8 @@ describe("App", () => {
     expect(liveClosureSummary.attributes("data-keyboard-stop-endpoint")).toBe("/api/robot-control/base/stop");
     expect(liveClosureSummary.attributes("data-keyboard-feedback-readback-endpoint")).toBe("/api/robot-control/base/feedback-samples");
     expect(liveClosureSummary.attributes("data-keyboard-summary-endpoint")).toBe("/api/robot-control/summary");
+    expect(liveClosureSummary.attributes("data-keyboard-readback-endpoints")).toBe("/api/robot-control/base/feedback-samples,/api/robot-control/summary");
+    expect(liveClosureSummary.attributes("data-keyboard-required-success-markers")).toBe("same_hold_window_wheel_lr_nonzero,stop_after_release");
     expect(liveClosureSummary.attributes("data-keyboard-post-hold-readback-endpoints")).toBe("/api/robot-control/base/feedback-samples,/api/robot-control/summary");
     expect(liveClosureSummary.attributes("data-keyboard-post-hold-readback-sequence-labels")).toBe("复验键盘轮速采样,刷新总览");
     expect(liveClosureSummary.attributes("data-keyboard-post-hold-feedback-readback-required")).toBe("true");

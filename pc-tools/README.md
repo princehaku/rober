@@ -165,6 +165,11 @@ wheel L/R 证据马上回到首屏。该 post-hold 读回不再发送 manual 脉
 summary 顶层和 `plain-live-closure-summary` DOM 同步暴露 `keyboard_post_hold_readback_endpoints`、
 `keyboard_post_hold_readback_sequence_labels`、`keyboard_post_hold_feedback_readback_required` 和
 `keyboard_post_hold_summary_refresh_required`，现场脚本不用解析键盘面板也能确认松开后必须读回轮速采样和总览。
+键盘连续手控的直觉读回 alias 也同步暴露为 `keyboard_readback_endpoints` 和
+`keyboard_required_success_markers`，分别复用 hold-keyboard runbook 的 acceptance endpoints 和 missing
+evidence；现场脚本可直接看到按住后需要读 `base/feedback-samples -> summary`，并确认还差
+`same_hold_window_wheel_lr_nonzero` 与 `stop_after_release`。这些字段仍只读，不发送 manual 脉冲、stop、
+Nav2/free-roam/建图/delivery 或 `/cmd_vel`。
 
 summary 顶层和 `plain-live-closure-summary` DOM 也同步暴露相机 WYSIWYG 恢复 alias：
 `camera_wysiwyg_recovery_readback_endpoints`、`camera_wysiwyg_recovery_readback_sequence_labels`、

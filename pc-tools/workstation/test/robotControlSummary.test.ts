@@ -1182,6 +1182,8 @@ describe("robotControlSummary", () => {
       "/api/robot-control/base/feedback-samples",
       "/api/robot-control/summary",
     ]);
+    expect(summary.keyboard_readback_endpoints).toEqual(summary.keyboard_acceptance_endpoints);
+    expect(summary.keyboard_required_success_markers).toEqual(["same_hold_window_wheel_lr_nonzero", "stop_after_release"]);
     expect(summary.keyboard_completed).toBe(false);
     expect(summary.keyboard_proof_status).toBe("ready_to_verify");
     expect(summary.keyboard_missing_evidence).toEqual(["same_hold_window_wheel_lr_nonzero", "stop_after_release"]);

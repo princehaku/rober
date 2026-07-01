@@ -11150,6 +11150,11 @@ export async function buildRobotControlSummary(
       liveClosureSummary.keyboard_feedback_readback_endpoint,
       liveClosureSummary.keyboard_summary_endpoint,
     ],
+    keyboard_readback_endpoints: keyboardRunbookItem?.acceptance_endpoints ?? [
+      liveClosureSummary.keyboard_feedback_readback_endpoint,
+      liveClosureSummary.keyboard_summary_endpoint,
+    ],
+    keyboard_required_success_markers: keyboardRunbookItem?.missing_evidence ?? [],
     keyboard_completed: keyboardRunbookItem?.completed ?? false,
     keyboard_proof_status: keyboardRunbookItem?.proof_status ?? "blocked",
     keyboard_missing_evidence: keyboardRunbookItem?.missing_evidence ?? [],
