@@ -1015,6 +1015,59 @@ describe("robotControlSummary", () => {
     expect(summary.mapping_proof_status).toBe("blocked");
     expect(summary.mapping_missing_evidence).toEqual(["camera_first_frame", "lidar_fresh"]);
     expect(summary.mapping_proof_plain).toContain("建图暂不可启动");
+    expect(summary.field_acceptance_missing_evidence_ids).toEqual([
+      "same_window_wheel_lr_nonzero",
+      "delivery_success",
+      "same_hold_window_wheel_lr_nonzero",
+      "stop_after_release",
+      "free_roam_latest_motion_ready",
+      "camera_first_frame",
+      "lidar_fresh",
+    ]);
+    expect(summary.field_acceptance_missing_evidence_labels).toEqual([
+      "同窗口 wheel L/R 非零",
+      "delivery success",
+      "按住同窗口 wheel L/R 非零",
+      "松开/失焦后 stop 已落稳",
+      "自由移动运行读数",
+      "相机首帧",
+      "雷达新鲜读数",
+    ]);
+    expect(summary.field_acceptance_primary_missing_evidence_id).toBe("same_window_wheel_lr_nonzero");
+    expect(summary.field_acceptance_primary_missing_evidence_action_id).toBe("run_nav2_route");
+    expect(summary.field_acceptance_primary_missing_evidence_readback_endpoint).toBe("/api/robot-control/base/feedback-samples");
+    expect(summary.field_acceptance_missing_evidence_items).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: "same_window_wheel_lr_nonzero",
+        action_id: "run_nav2_route",
+        readback_endpoint: "/api/robot-control/base/feedback-samples",
+        readback_method: "POST",
+        requires_motion_before_readback: true,
+        requires_safety_confirm_before_motion: true,
+        blocks_field_acceptance: true,
+      }),
+      expect.objectContaining({
+        id: "delivery_success",
+        action_id: "run_nav2_route",
+        readback_endpoint: "/api/robot-control/delivery/latest",
+        readback_method: "GET",
+        requires_motion_before_readback: true,
+      }),
+      expect.objectContaining({
+        id: "camera_first_frame",
+        action_id: "start_mapping_when_sensors_ready",
+        readback_endpoint: "/api/robot-control/camera/first-frame/probe",
+        readback_method: "POST",
+        requires_motion_before_readback: false,
+      }),
+      expect.objectContaining({
+        id: "lidar_fresh",
+        action_id: "start_mapping_when_sensors_ready",
+        readback_endpoint: "/api/robot-control/radar/scan-proof/refresh",
+        readback_method: "POST",
+        requires_motion_before_readback: false,
+      }),
+    ]));
     expect(summary.keyboard_wheel_lr_nonzero).toBe(false);
     expect(summary.keyboard_stop_after_release).toBe(false);
     expect(summary.live_closure_summary?.live_motion_runbook_items).toEqual([

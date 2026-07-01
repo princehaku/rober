@@ -4307,6 +4307,18 @@ const plainFieldAcceptanceHardwareActionLabelsText = computed(() => (
 const plainFieldAcceptanceHardwareActionAfterReadbackEndpointsText = computed(() => (
   plainFieldAcceptancePacket.value?.hardware_action_after_readback_endpoints.join(",") || "none"
 ));
+const plainFieldAcceptanceMissingEvidenceIdsText = computed(() => (
+  plainFieldAcceptancePacket.value?.missing_evidence_ids?.join(",") || "none"
+));
+const plainFieldAcceptanceMissingEvidenceLabelsText = computed(() => (
+  plainFieldAcceptancePacket.value?.missing_evidence_labels?.join(",") || "none"
+));
+const plainFieldAcceptanceMissingEvidenceReadbackEndpointsText = computed(() => (
+  plainFieldAcceptancePacket.value?.missing_evidence_items?.map((item) => item.readback_endpoint).join(",") || "none"
+));
+const plainFieldAcceptanceMissingEvidenceActionIdsText = computed(() => (
+  plainFieldAcceptancePacket.value?.missing_evidence_items?.map((item) => item.action_id).join(",") || "none"
+));
 const plainFieldAcceptanceNoMotionReadbackActionIdsText = computed(() => (
   plainFieldAcceptancePacket.value?.no_motion_readback_action_ids.join(",") || "none"
 ));
@@ -18080,6 +18092,14 @@ onBeforeUnmount(() => {
           :data-primary-hardware-action-after-readback-endpoint="plainFieldAcceptancePacket.primary_hardware_action_after_readback_endpoint"
           :data-primary-hardware-action-blocks-mapping-start="String(plainFieldAcceptancePacket.primary_hardware_action_blocks_mapping_start)"
           :data-primary-hardware-action-blocks-free-move="String(plainFieldAcceptancePacket.primary_hardware_action_blocks_free_move)"
+          :data-missing-evidence-ids="plainFieldAcceptanceMissingEvidenceIdsText"
+          :data-missing-evidence-labels="plainFieldAcceptanceMissingEvidenceLabelsText"
+          :data-missing-evidence-action-ids="plainFieldAcceptanceMissingEvidenceActionIdsText"
+          :data-missing-evidence-readback-endpoints="plainFieldAcceptanceMissingEvidenceReadbackEndpointsText"
+          :data-primary-missing-evidence-id="plainFieldAcceptancePacket.primary_missing_evidence_id"
+          :data-primary-missing-evidence-label="plainFieldAcceptancePacket.primary_missing_evidence_label"
+          :data-primary-missing-evidence-action-id="plainFieldAcceptancePacket.primary_missing_evidence_action_id"
+          :data-primary-missing-evidence-readback-endpoint="plainFieldAcceptancePacket.primary_missing_evidence_readback_endpoint"
           :data-no-motion-readback-action-ids="plainFieldAcceptanceNoMotionReadbackActionIdsText"
           :data-no-motion-readback-action-labels="plainFieldAcceptanceNoMotionReadbackActionLabelsText"
           :data-no-motion-readback-action-endpoints="plainFieldAcceptanceNoMotionReadbackActionEndpointsText"
@@ -18153,6 +18173,14 @@ onBeforeUnmount(() => {
             :data-primary-hardware-action-after-readback-endpoint="plainFieldAcceptancePacket.primary_hardware_action_after_readback_endpoint"
             :data-primary-hardware-action-blocks-mapping-start="String(plainFieldAcceptancePacket.primary_hardware_action_blocks_mapping_start)"
             :data-primary-hardware-action-blocks-free-move="String(plainFieldAcceptancePacket.primary_hardware_action_blocks_free_move)"
+            :data-missing-evidence-ids="plainFieldAcceptanceMissingEvidenceIdsText"
+            :data-missing-evidence-labels="plainFieldAcceptanceMissingEvidenceLabelsText"
+            :data-missing-evidence-action-ids="plainFieldAcceptanceMissingEvidenceActionIdsText"
+            :data-missing-evidence-readback-endpoints="plainFieldAcceptanceMissingEvidenceReadbackEndpointsText"
+            :data-primary-missing-evidence-id="plainFieldAcceptancePacket.primary_missing_evidence_id"
+            :data-primary-missing-evidence-label="plainFieldAcceptancePacket.primary_missing_evidence_label"
+            :data-primary-missing-evidence-action-id="plainFieldAcceptancePacket.primary_missing_evidence_action_id"
+            :data-primary-missing-evidence-readback-endpoint="plainFieldAcceptancePacket.primary_missing_evidence_readback_endpoint"
             :data-no-motion-readback-action-ids="plainFieldAcceptanceNoMotionReadbackActionIdsText"
             :data-no-motion-readback-action-labels="plainFieldAcceptanceNoMotionReadbackActionLabelsText"
             :data-no-motion-readback-action-endpoints="plainFieldAcceptanceNoMotionReadbackActionEndpointsText"

@@ -1395,6 +1395,120 @@ const fixtures: Record<string, unknown> = {
         primary_hardware_action_after_readback_endpoint: "none",
         primary_hardware_action_blocks_mapping_start: false,
         primary_hardware_action_blocks_free_move: false,
+        missing_evidence_ids: [
+          "route_ready_on_map",
+          "same_window_wheel_lr_nonzero",
+          "delivery_success",
+          "same_hold_window_wheel_lr_nonzero",
+          "stop_after_release",
+          "free_roam_latest_motion_ready",
+          "camera_first_frame",
+          "lidar_fresh",
+        ],
+        missing_evidence_labels: [
+          "图上行程已显示",
+          "同窗口 wheel L/R 非零",
+          "delivery success",
+          "按住同窗口 wheel L/R 非零",
+          "松开/失焦后 stop 已落稳",
+          "自由移动运行读数",
+          "相机首帧",
+          "雷达新鲜读数",
+        ],
+        missing_evidence_items: [
+          {
+            id: "route_ready_on_map",
+            label: "图上行程已显示",
+            action_id: "run_nav2_route",
+            action_label: "完整行程执行",
+            readback_endpoint: "/api/robot-control/map/preview",
+            readback_method: "GET",
+            requires_motion_before_readback: false,
+            requires_safety_confirm_before_motion: true,
+            blocks_field_acceptance: true,
+          },
+          {
+            id: "same_window_wheel_lr_nonzero",
+            label: "同窗口 wheel L/R 非零",
+            action_id: "run_nav2_route",
+            action_label: "完整行程执行",
+            readback_endpoint: "/api/robot-control/base/feedback-samples",
+            readback_method: "POST",
+            requires_motion_before_readback: true,
+            requires_safety_confirm_before_motion: true,
+            blocks_field_acceptance: true,
+          },
+          {
+            id: "delivery_success",
+            label: "delivery success",
+            action_id: "run_nav2_route",
+            action_label: "完整行程执行",
+            readback_endpoint: "/api/robot-control/delivery/latest",
+            readback_method: "GET",
+            requires_motion_before_readback: true,
+            requires_safety_confirm_before_motion: true,
+            blocks_field_acceptance: true,
+          },
+          {
+            id: "same_hold_window_wheel_lr_nonzero",
+            label: "按住同窗口 wheel L/R 非零",
+            action_id: "hold_keyboard",
+            action_label: "键盘连续手控",
+            readback_endpoint: "/api/robot-control/base/feedback-samples",
+            readback_method: "POST",
+            requires_motion_before_readback: true,
+            requires_safety_confirm_before_motion: true,
+            blocks_field_acceptance: true,
+          },
+          {
+            id: "stop_after_release",
+            label: "松开/失焦后 stop 已落稳",
+            action_id: "hold_keyboard",
+            action_label: "键盘连续手控",
+            readback_endpoint: "/api/robot-control/base/feedback-samples",
+            readback_method: "POST",
+            requires_motion_before_readback: true,
+            requires_safety_confirm_before_motion: true,
+            blocks_field_acceptance: true,
+          },
+          {
+            id: "free_roam_latest_motion_ready",
+            label: "自由移动运行读数",
+            action_id: "start_free_move",
+            action_label: "自由自助移动",
+            readback_endpoint: "/api/robot-control/free-roam/autonomy/latest",
+            readback_method: "GET",
+            requires_motion_before_readback: true,
+            requires_safety_confirm_before_motion: true,
+            blocks_field_acceptance: true,
+          },
+          {
+            id: "camera_first_frame",
+            label: "相机首帧",
+            action_id: "start_mapping_when_sensors_ready",
+            action_label: "传感器就绪后建图",
+            readback_endpoint: "/api/robot-control/camera/first-frame/probe",
+            readback_method: "POST",
+            requires_motion_before_readback: false,
+            requires_safety_confirm_before_motion: false,
+            blocks_field_acceptance: true,
+          },
+          {
+            id: "lidar_fresh",
+            label: "雷达新鲜读数",
+            action_id: "start_mapping_when_sensors_ready",
+            action_label: "传感器就绪后建图",
+            readback_endpoint: "/api/robot-control/radar/scan-proof/refresh",
+            readback_method: "POST",
+            requires_motion_before_readback: false,
+            requires_safety_confirm_before_motion: false,
+            blocks_field_acceptance: true,
+          },
+        ],
+        primary_missing_evidence_id: "route_ready_on_map",
+        primary_missing_evidence_label: "图上行程已显示",
+        primary_missing_evidence_action_id: "run_nav2_route",
+        primary_missing_evidence_readback_endpoint: "/api/robot-control/map/preview",
         no_motion_readback_action_ids: ["readback_all", "refresh_current_wysiwyg", "refresh_radar_map_overlay"],
         no_motion_readback_action_labels: ["复验全部读数", "刷新当前所见", "刷新雷达贴图"],
         no_motion_readback_action_endpoints: [
@@ -5465,6 +5579,14 @@ describe("App", () => {
     expect(fieldAcceptancePacket.attributes("data-primary-hardware-action-after-readback-endpoint")).toBe("none");
     expect(fieldAcceptancePacket.attributes("data-primary-hardware-action-blocks-mapping-start")).toBe("false");
     expect(fieldAcceptancePacket.attributes("data-primary-hardware-action-blocks-free-move")).toBe("false");
+    expect(fieldAcceptancePacket.attributes("data-missing-evidence-ids")).toBe("route_ready_on_map,same_window_wheel_lr_nonzero,delivery_success,same_hold_window_wheel_lr_nonzero,stop_after_release,free_roam_latest_motion_ready,camera_first_frame,lidar_fresh");
+    expect(fieldAcceptancePacket.attributes("data-missing-evidence-labels")).toBe("图上行程已显示,同窗口 wheel L/R 非零,delivery success,按住同窗口 wheel L/R 非零,松开/失焦后 stop 已落稳,自由移动运行读数,相机首帧,雷达新鲜读数");
+    expect(fieldAcceptancePacket.attributes("data-missing-evidence-action-ids")).toBe("run_nav2_route,run_nav2_route,run_nav2_route,hold_keyboard,hold_keyboard,start_free_move,start_mapping_when_sensors_ready,start_mapping_when_sensors_ready");
+    expect(fieldAcceptancePacket.attributes("data-missing-evidence-readback-endpoints")).toBe("/api/robot-control/map/preview,/api/robot-control/base/feedback-samples,/api/robot-control/delivery/latest,/api/robot-control/base/feedback-samples,/api/robot-control/base/feedback-samples,/api/robot-control/free-roam/autonomy/latest,/api/robot-control/camera/first-frame/probe,/api/robot-control/radar/scan-proof/refresh");
+    expect(fieldAcceptancePacket.attributes("data-primary-missing-evidence-id")).toBe("route_ready_on_map");
+    expect(fieldAcceptancePacket.attributes("data-primary-missing-evidence-label")).toBe("图上行程已显示");
+    expect(fieldAcceptancePacket.attributes("data-primary-missing-evidence-action-id")).toBe("run_nav2_route");
+    expect(fieldAcceptancePacket.attributes("data-primary-missing-evidence-readback-endpoint")).toBe("/api/robot-control/map/preview");
     expect(fieldAcceptancePacket.attributes("data-no-motion-readback-action-ids")).toBe("readback_all,refresh_current_wysiwyg,refresh_radar_map_overlay");
     expect(fieldAcceptancePacket.attributes("data-no-motion-readback-action-labels")).toBe("复验全部读数,刷新当前所见,刷新雷达贴图");
     expect(fieldAcceptancePacket.attributes("data-no-motion-readback-action-endpoints")).toBe("/api/robot-control/summary,/api/robot-control/camera/first-frame/probe,/api/robot-control/radar/scan-proof/refresh");
@@ -5528,6 +5650,14 @@ describe("App", () => {
     expect(fieldAcceptanceRemainingActions.attributes("data-primary-hardware-action-after-readback-endpoint")).toBe("none");
     expect(fieldAcceptanceRemainingActions.attributes("data-primary-hardware-action-blocks-mapping-start")).toBe("false");
     expect(fieldAcceptanceRemainingActions.attributes("data-primary-hardware-action-blocks-free-move")).toBe("false");
+    expect(fieldAcceptanceRemainingActions.attributes("data-missing-evidence-ids")).toBe("route_ready_on_map,same_window_wheel_lr_nonzero,delivery_success,same_hold_window_wheel_lr_nonzero,stop_after_release,free_roam_latest_motion_ready,camera_first_frame,lidar_fresh");
+    expect(fieldAcceptanceRemainingActions.attributes("data-missing-evidence-labels")).toBe("图上行程已显示,同窗口 wheel L/R 非零,delivery success,按住同窗口 wheel L/R 非零,松开/失焦后 stop 已落稳,自由移动运行读数,相机首帧,雷达新鲜读数");
+    expect(fieldAcceptanceRemainingActions.attributes("data-missing-evidence-action-ids")).toBe("run_nav2_route,run_nav2_route,run_nav2_route,hold_keyboard,hold_keyboard,start_free_move,start_mapping_when_sensors_ready,start_mapping_when_sensors_ready");
+    expect(fieldAcceptanceRemainingActions.attributes("data-missing-evidence-readback-endpoints")).toBe("/api/robot-control/map/preview,/api/robot-control/base/feedback-samples,/api/robot-control/delivery/latest,/api/robot-control/base/feedback-samples,/api/robot-control/base/feedback-samples,/api/robot-control/free-roam/autonomy/latest,/api/robot-control/camera/first-frame/probe,/api/robot-control/radar/scan-proof/refresh");
+    expect(fieldAcceptanceRemainingActions.attributes("data-primary-missing-evidence-id")).toBe("route_ready_on_map");
+    expect(fieldAcceptanceRemainingActions.attributes("data-primary-missing-evidence-label")).toBe("图上行程已显示");
+    expect(fieldAcceptanceRemainingActions.attributes("data-primary-missing-evidence-action-id")).toBe("run_nav2_route");
+    expect(fieldAcceptanceRemainingActions.attributes("data-primary-missing-evidence-readback-endpoint")).toBe("/api/robot-control/map/preview");
     expect(fieldAcceptanceRemainingActions.attributes("data-no-motion-readback-action-ids")).toBe("readback_all,refresh_current_wysiwyg,refresh_radar_map_overlay");
     expect(fieldAcceptanceRemainingActions.attributes("data-no-motion-readback-action-labels")).toBe("复验全部读数,刷新当前所见,刷新雷达贴图");
     expect(fieldAcceptanceRemainingActions.attributes("data-no-motion-readback-action-endpoints")).toBe("/api/robot-control/summary,/api/robot-control/camera/first-frame/probe,/api/robot-control/radar/scan-proof/refresh");

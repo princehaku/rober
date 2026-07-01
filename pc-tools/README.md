@@ -52,6 +52,16 @@ manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
 `refresh_radar_map_overlay` / `POST /api/robot-control/radar/scan-proof/refresh`；只有相机缺口时，primary 指向当前所见刷新。
 这些动作仍只读，不启动 Nav2/manual/keyboard/free-roam/建图/雷达 lifecycle，不提交送达，不发送 stop 或 `/cmd_vel`。
 
+2026-07-01 23:38 CST 起，现场验收包新增平铺缺失证据清单：`GET /api/robot-control/summary`
+和普通首屏 DOM 同步暴露 `field_acceptance_missing_evidence_ids`、`field_acceptance_missing_evidence_labels`、
+`field_acceptance_missing_evidence_items`、`field_acceptance_primary_missing_evidence_id`、
+`field_acceptance_primary_missing_evidence_action_id` 和 `field_acceptance_primary_missing_evidence_readback_endpoint`。
+清单会把完整 Nav2 行程、键盘连续手控、自由移动、建图传感器缺口逐项映射到目标动作和只读读回端点，例如
+同窗口 wheel L/R 读 `/api/robot-control/base/feedback-samples`、delivery success 读
+`/api/robot-control/delivery/latest`、相机首帧读 `/api/robot-control/camera/first-frame/probe`、
+雷达新鲜读数读 `/api/robot-control/radar/scan-proof/refresh`。该变化只改 summary/DOM 合同和读回指引，
+不执行 Nav2，不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
 2026-07-01 23:01 CST 起，现场验收包把剩余动作分成三类并同步到 `GET /api/robot-control/summary`
 和普通首屏 DOM：`safety_confirm_ready_step_ids` 表示只差现场安全确认的运动验收，
 `hardware_action_ids` 表示需要先处理的设备动作，`no_motion_readback_action_ids` 表示可随时做的只读复验。

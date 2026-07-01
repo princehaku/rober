@@ -32,6 +32,7 @@ import type {
   RobotControlFieldAcceptanceNoMotionReadbackActionId,
   RobotControlFieldAcceptanceSafetyConfirmReadyAction,
   RobotControlFieldAcceptanceHardwareAction,
+  RobotControlFieldAcceptanceMissingEvidenceItem,
   RobotControlFieldAcceptanceWysiwygRefreshMode,
   RobotControlLiveObjectiveAuditItem,
   RobotControlNav2RouteAcceptancePacket,
@@ -127,7 +128,43 @@ function fieldAcceptanceFocusedWysiwygRefreshPlan(mode: RobotControlFieldAccepta
 }
 
 function fieldAcceptanceNoMotionReadbackMethod(endpoint: string): RobotControlFieldAcceptanceNoMotionReadbackAction["method"] {
-  return endpoint.includes("/refresh") || endpoint.includes("/probe") ? "POST" : "GET";
+  return endpoint.includes("/refresh") || endpoint.includes("/probe") || endpoint.includes("/feedback-samples") ? "POST" : "GET";
+}
+
+function fieldAcceptanceMissingEvidenceLabel(id: string): string {
+  // 缺失证据清单是给现场照着做的，保留稳定 id 的同时给出普通用户能理解的中文标签。
+  const labels: Record<string, string> = {
+    route_ready_on_map: "图上行程已显示",
+    nav2_goal_succeeded: "Nav2 到点成功",
+    same_window_wheel_lr_nonzero: "同窗口 wheel L/R 非零",
+    delivery_success: "delivery success",
+    same_hold_window_wheel_lr_nonzero: "按住同窗口 wheel L/R 非零",
+    stop_after_release: "松开/失焦后 stop 已落稳",
+    free_roam_latest_motion_ready: "自由移动运行读数",
+    camera_first_frame: "相机首帧",
+    lidar_fresh: "雷达新鲜读数",
+    mapping_active: "建图已启动",
+    fresh_map_preview: "地图画面已刷新",
+  };
+  return labels[id] ?? id.replace(/_/g, " ");
+}
+
+function fieldAcceptanceMissingEvidenceReadbackEndpoint(id: string, fallbackEndpoints: string[]): string {
+  // 每个证据优先落到最直接的只读读回；fallback 保留 runbook 原验收端点，便于后续扩展新证据。
+  const endpointById: Record<string, string> = {
+    route_ready_on_map: "/api/robot-control/map/preview",
+    nav2_goal_succeeded: "/api/robot-control/nav2/goal/execution/latest",
+    same_window_wheel_lr_nonzero: "/api/robot-control/base/feedback-samples",
+    delivery_success: "/api/robot-control/delivery/latest",
+    same_hold_window_wheel_lr_nonzero: "/api/robot-control/base/feedback-samples",
+    stop_after_release: "/api/robot-control/base/feedback-samples",
+    free_roam_latest_motion_ready: "/api/robot-control/free-roam/autonomy/latest",
+    camera_first_frame: "/api/robot-control/camera/first-frame/probe",
+    lidar_fresh: "/api/robot-control/radar/scan-proof/refresh",
+    mapping_active: "/api/robot-control/map/preview",
+    fresh_map_preview: "/api/robot-control/map/preview",
+  };
+  return endpointById[id] ?? fallbackEndpoints[0] ?? "/api/robot-control/summary";
 }
 
 const ROBOT_CONTROL_SCHEMA = "trashbot.pc_tools_workstation.robot_control_summary.v1" as const;
@@ -10313,6 +10350,24 @@ export async function buildRobotControlSummary(
     }]
     : [];
   const fieldAcceptancePrimaryHardwareAction = fieldAcceptanceHardwareActions[0] ?? null;
+  const fieldAcceptanceMissingEvidenceItems: RobotControlFieldAcceptanceMissingEvidenceItem[] = fieldAcceptanceSteps
+    .filter((item) => !item.completed)
+    .flatMap((step) => step.missing_evidence.map((id) => {
+      const readbackEndpoint = fieldAcceptanceMissingEvidenceReadbackEndpoint(id, step.acceptance_endpoints);
+      const canReadWithoutMotion = ["route_ready_on_map", "camera_first_frame", "lidar_fresh", "fresh_map_preview"].includes(id);
+      return {
+        id,
+        label: fieldAcceptanceMissingEvidenceLabel(id),
+        action_id: step.id,
+        action_label: step.label,
+        readback_endpoint: readbackEndpoint,
+        readback_method: fieldAcceptanceNoMotionReadbackMethod(readbackEndpoint),
+        requires_motion_before_readback: step.sends_motion_when_executed && !canReadWithoutMotion,
+        requires_safety_confirm_before_motion: step.safety_confirm_required,
+        blocks_field_acceptance: true,
+      };
+    }));
+  const fieldAcceptancePrimaryMissingEvidence = fieldAcceptanceMissingEvidenceItems[0] ?? null;
   const fieldAcceptanceNoMotionReadbackActionIds: RobotControlFieldAcceptanceNoMotionReadbackActionId[] = [
     "readback_all",
   ];
@@ -10432,6 +10487,13 @@ export async function buildRobotControlSummary(
     primary_hardware_action_after_readback_endpoint: fieldAcceptancePrimaryHardwareAction?.after_action_readback_endpoint ?? "none",
     primary_hardware_action_blocks_mapping_start: fieldAcceptancePrimaryHardwareAction?.blocks_mapping_start ?? false,
     primary_hardware_action_blocks_free_move: fieldAcceptancePrimaryHardwareAction?.blocks_free_move ?? false,
+    missing_evidence_ids: fieldAcceptanceMissingEvidenceItems.map((item) => item.id),
+    missing_evidence_labels: fieldAcceptanceMissingEvidenceItems.map((item) => item.label),
+    missing_evidence_items: fieldAcceptanceMissingEvidenceItems,
+    primary_missing_evidence_id: fieldAcceptancePrimaryMissingEvidence?.id ?? "none",
+    primary_missing_evidence_label: fieldAcceptancePrimaryMissingEvidence?.label ?? "无缺失证据",
+    primary_missing_evidence_action_id: fieldAcceptancePrimaryMissingEvidence?.action_id ?? "none",
+    primary_missing_evidence_readback_endpoint: fieldAcceptancePrimaryMissingEvidence?.readback_endpoint ?? "none",
     no_motion_readback_action_ids: fieldAcceptanceNoMotionReadbackActionIds,
     no_motion_readback_action_labels: fieldAcceptanceNoMotionReadbackActions.map((item) => item.label),
     no_motion_readback_action_endpoints: fieldAcceptanceNoMotionReadbackActions.map((item) => item.endpoint),
@@ -10760,6 +10822,13 @@ export async function buildRobotControlSummary(
     field_acceptance_primary_hardware_action_after_readback_endpoint: fieldAcceptancePacket.primary_hardware_action_after_readback_endpoint,
     field_acceptance_primary_hardware_action_blocks_mapping_start: fieldAcceptancePacket.primary_hardware_action_blocks_mapping_start,
     field_acceptance_primary_hardware_action_blocks_free_move: fieldAcceptancePacket.primary_hardware_action_blocks_free_move,
+    field_acceptance_missing_evidence_ids: fieldAcceptancePacket.missing_evidence_ids,
+    field_acceptance_missing_evidence_labels: fieldAcceptancePacket.missing_evidence_labels,
+    field_acceptance_missing_evidence_items: fieldAcceptancePacket.missing_evidence_items,
+    field_acceptance_primary_missing_evidence_id: fieldAcceptancePacket.primary_missing_evidence_id,
+    field_acceptance_primary_missing_evidence_label: fieldAcceptancePacket.primary_missing_evidence_label,
+    field_acceptance_primary_missing_evidence_action_id: fieldAcceptancePacket.primary_missing_evidence_action_id,
+    field_acceptance_primary_missing_evidence_readback_endpoint: fieldAcceptancePacket.primary_missing_evidence_readback_endpoint,
     field_acceptance_no_motion_readback_action_ids: fieldAcceptancePacket.no_motion_readback_action_ids,
     field_acceptance_no_motion_readback_action_labels: fieldAcceptancePacket.no_motion_readback_action_labels,
     field_acceptance_no_motion_readback_action_endpoints: fieldAcceptancePacket.no_motion_readback_action_endpoints,
