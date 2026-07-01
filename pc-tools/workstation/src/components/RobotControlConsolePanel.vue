@@ -5248,18 +5248,104 @@ async function refreshLiveMotionRunbookReadback(actionId: RobotControlLiveMotion
   }
 }
 
+type FieldAcceptanceReadbackEndpointResult = "handled" | "skipped";
+
+async function refreshFieldAcceptanceNoMotionEndpoint(endpoint: string): Promise<FieldAcceptanceReadbackEndpointResult> {
+  // 现场验收 sequence 只能驱动这组固定只读端点；其他端点直接跳过，避免合同字段变成任意 API 执行器。
+  if (!robotApiBaseUrl.value.trim()) {
+    return "skipped";
+  }
+  if (endpoint === "/api/robot-control/summary") {
+    await refreshConsole();
+    return "handled";
+  }
+  if (endpoint === "/api/robot-control/map/preview") {
+    await refreshMapPreview({ radarStatusRefresh: false });
+    return "handled";
+  }
+  if (endpoint === "/api/robot-control/nav2/goal/execution/latest") {
+    await loadNavGoalExecutionLatest({ allowDuringMapRefresh: true });
+    return "handled";
+  }
+  if (endpoint === "/api/robot-control/base/feedback-samples") {
+    await runBaseFeedbackSamples({ refreshAfter: false, allowDuringMapRefresh: true });
+    return "handled";
+  }
+  if (endpoint === "/api/robot-control/delivery/latest") {
+    await loadDeliveryLatest({ allowDuringMapRefresh: true });
+    return "handled";
+  }
+  if (endpoint === "/api/robot-control/free-roam/autonomy/latest") {
+    await refreshFreeRoamAutonomyLatest({ refreshAfter: false });
+    return "handled";
+  }
+  if (endpoint === "/api/robot-control/radar/scan-proof/refresh") {
+    radarRefreshPending.value = true;
+    try {
+      radarRefreshResult.value = await postRobotControlRadarScanProofRefresh(robotApiBaseUrl.value);
+    } catch (err) {
+      radarRefreshResult.value = makeRefreshFallback(
+        "radar_scan_proof_refresh",
+        robotApiBaseUrl.value,
+        err instanceof Error ? err.message : "radar_scan_proof_refresh_request_failed",
+      );
+    } finally {
+      radarRefreshPending.value = false;
+    }
+    return "handled";
+  }
+  if (endpoint === "/api/robot-control/radar/status") {
+    try {
+      radarStatusResult.value = await getRobotControlRadarStatus(robotApiBaseUrl.value);
+    } catch (err) {
+      radarStatusResult.value = makeRadarStatusFallback(err instanceof Error ? err.message : "radar_status_request_failed");
+    }
+    return "handled";
+  }
+  if (endpoint === "/api/robot-control/camera/first-frame/probe") {
+    cameraFirstFrameProbePending.value = true;
+    try {
+      cameraFirstFrameProbeResult.value = await postRobotControlCameraFirstFrameProbe(robotApiBaseUrl.value, true);
+    } catch (err) {
+      cameraFirstFrameProbeResult.value = makeCameraFirstFrameProbeFallback(
+        err instanceof Error ? err.message : "camera_first_frame_probe_request_failed",
+      );
+    } finally {
+      cameraFirstFrameProbePending.value = false;
+    }
+    return "handled";
+  }
+  if (endpoint === "/api/robot-control/camera/mjpeg/status") {
+    await refreshCameraMjpegStatus();
+    return "handled";
+  }
+  return "skipped";
+}
+
+async function refreshFieldAcceptanceNoMotionSequence(endpoints: string[]): Promise<void> {
+  // sequence 来自 summary 合同，但执行前仍做去重和只读白名单过滤；重复 summary 保留最后一次刷新。
+  const normalized = endpoints
+    .map((endpoint) => endpoint.trim())
+    .filter((endpoint) => endpoint.length > 0 && endpoint !== "none");
+  if (normalized.length === 0) {
+    await refreshConsole();
+    return;
+  }
+  for (const endpoint of normalized) {
+    await refreshFieldAcceptanceNoMotionEndpoint(endpoint);
+  }
+}
+
 async function refreshFieldAcceptanceAllReadbacks(): Promise<void> {
-  // 一键复验全部只顺序刷新验收材料；不启动 Nav2、键盘、自由移动、建图、雷达 lifecycle 或 stop。
+  // 一键复验全部按 summary 合同里的 readback_all sequence 执行；仍只允许固定只读端点。
   if (plainFieldAcceptanceAllReadbackDisabled.value) {
     return;
   }
   fieldAcceptanceReadbackAllPending.value = true;
   try {
-    await refreshLiveMotionRunbookReadback("run_nav2_route");
-    await refreshLiveMotionRunbookReadback("hold_keyboard");
-    await refreshLiveMotionRunbookReadback("start_free_move");
-    await refreshPlainMappingUnlockEvidence();
-    await refreshConsole();
+    const packet = plainFieldAcceptancePacket.value;
+    const readbackAll = packet?.no_motion_readback_actions.find((item) => item.id === "readback_all");
+    await refreshFieldAcceptanceNoMotionSequence(readbackAll?.sequence_endpoints ?? packet?.no_motion_readback_action_endpoints ?? []);
   } finally {
     fieldAcceptanceReadbackAllPending.value = false;
   }
@@ -16798,7 +16884,7 @@ function makeFreeRoamAutonomyFallback(action: "start" | "stop", reason: string, 
   };
 }
 
-async function refreshFreeRoamAutonomyLatest(): Promise<void> {
+async function refreshFreeRoamAutonomyLatest(options: { refreshAfter?: boolean } = {}): Promise<void> {
   // 只读刷新自动扫图 runtime；不启动/停止状态机，也不发送底盘命令。
   if (!robotApiBaseUrl.value.trim() || freeRoamAutonomyLatestPending.value) {
     return;
@@ -16848,7 +16934,9 @@ async function refreshFreeRoamAutonomyLatest(): Promise<void> {
   } finally {
     freeRoamAutonomyLatestPending.value = false;
   }
-  await refreshConsole();
+  if (options.refreshAfter !== false) {
+    await refreshConsole();
+  }
 }
 
 async function startFreeRoamAutonomy(options: { forceFreeMoveOnly?: boolean } = {}): Promise<void> {

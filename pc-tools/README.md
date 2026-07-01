@@ -43,8 +43,9 @@ manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 `field_acceptance_no_motion_readback_action_sequences`、`field_acceptance_no_motion_readback_action_sequence_labels`
 以及 primary no-motion action 的 sequence/refresh flags。当前雷达贴图复验链路固定为
 `/api/robot-control/radar/scan-proof/refresh -> /api/robot-control/summary -> /api/robot-control/radar/status -> /api/robot-control/map/preview`，
-只用于确认地图上的雷达标记按当前读回刷新，不启动雷达 lifecycle、Nav2、manual、keyboard、
-free-roam、建图 runtime、delivery、stop 或 `/cmd_vel`。
+只用于确认地图上的雷达标记按当前读回刷新；PC 首屏“只读复验全部”也按
+`readback_all.sequence_endpoints` 的白名单顺序执行，白名单外 endpoint 跳过。该路径不启动雷达
+lifecycle、Nav2、manual、keyboard、free-roam、建图 runtime、delivery、stop 或 `/cmd_vel`。
 
 开发热更新入口用 `npm run dev`，默认监听 `0.0.0.0:7002`，并把 `/api` 代理到本机
 Node 工作站 `http://127.0.0.1:7001`。因此开发时先让 `npm run api` 守住 7001，

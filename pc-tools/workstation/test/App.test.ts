@@ -9361,6 +9361,49 @@ describe("App", () => {
     writePlainHomeSmokeArtifact(firstScreenText, diagnostics.text(), diagnostics.attributes("open") === undefined);
   });
 
+  it("runs field acceptance readback-all through the declared no-motion sequence", async () => {
+    // “只读复验全部”的实际点击路径必须和 summary 合同一致，不能偷偷走运动、stop 或 lifecycle endpoint。
+    const mockedFetch = stubWorkstationFetch();
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const fieldAcceptanceReadbackAllRun = wrapper.find('[data-testid="plain-field-acceptance-readback-all-run"]');
+    expect(fieldAcceptanceReadbackAllRun.exists()).toBe(true);
+    expect(fieldAcceptanceReadbackAllRun.attributes("data-readback-only")).toBe("true");
+    expect(fieldAcceptanceReadbackAllRun.attributes("data-sends-motion-when-clicked")).toBe("false");
+
+    const callsBeforeFieldAcceptanceReadbackAll = mockedFetch.mock.calls.length;
+    await fieldAcceptanceReadbackAllRun.trigger("click");
+    await flushPromises();
+    await flushPromises();
+
+    const readbackAllEndpointOrder = mockedFetch.mock.calls
+      .slice(callsBeforeFieldAcceptanceReadbackAll)
+      .map((call) => String(call[0]))
+      .filter((url) => url.startsWith("/api/robot-control/"))
+      .map((url) => url.split("?")[0] ?? "");
+    expect(readbackAllEndpointOrder).toEqual([
+      "/api/robot-control/map/preview",
+      "/api/robot-control/nav2/goal/execution/latest",
+      "/api/robot-control/base/feedback-samples",
+      "/api/robot-control/delivery/latest",
+      "/api/robot-control/summary",
+      "/api/robot-control/free-roam/autonomy/latest",
+      "/api/robot-control/radar/scan-proof/refresh",
+      "/api/robot-control/camera/first-frame/probe",
+      "/api/robot-control/radar/status",
+      "/api/robot-control/camera/mjpeg/status",
+    ]);
+    expect(readbackAllEndpointOrder.some((url) => url.startsWith("/api/robot-control/nav2/goal/execute"))).toBe(false);
+    expect(readbackAllEndpointOrder.some((url) => url.startsWith("/api/robot-control/base/manual"))).toBe(false);
+    expect(readbackAllEndpointOrder.some((url) => url.startsWith("/api/robot-control/base/stop"))).toBe(false);
+    expect(readbackAllEndpointOrder.some((url) => url.startsWith("/api/robot-control/radar/start"))).toBe(false);
+    expect(readbackAllEndpointOrder.some((url) => url.startsWith("/api/robot-control/map/start"))).toBe(false);
+    expect(readbackAllEndpointOrder.some((url) => url.startsWith("/api/robot-control/free-roam/autonomy/start"))).toBe(false);
+    expect(readbackAllEndpointOrder.some((url) => url.startsWith("/api/robot-control/delivery/complete"))).toBe(false);
+  });
+
   it("shows Nav2 route acceptance packet on the plain trip closure readback", async () => {
     // 行程闭环卡要优先消费专用验收包，避免 UI 从旧 runbook 自己拼 route/wheel/delivery 结论。
     const summaryFixture = structuredClone(fixtures["/api/robot-control/summary"] as RobotControlSummaryResponse);
