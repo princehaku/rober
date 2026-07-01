@@ -302,10 +302,10 @@ describe("robotControlSummary", () => {
     expect(summary.map_display_direct_map_keeps_page_fullscreen_without_browser_api).toBe(true);
     expect(summary.live_closure_summary?.map_display_direct_map_browser_fullscreen_required).toBe(false);
     expect(summary.map_display_direct_map_browser_fullscreen_required).toBe(false);
-    expect(summary.live_closure_summary?.map_display_default_zoom_percent).toBe("400%");
-    expect(summary.map_display_default_zoom_percent).toBe("400%");
-    expect(summary.live_closure_summary?.map_display_max_zoom_percent).toBe("2400%");
-    expect(summary.map_display_max_zoom_percent).toBe("2400%");
+    expect(summary.live_closure_summary?.map_display_default_zoom_percent).toBe("600%");
+    expect(summary.map_display_default_zoom_percent).toBe("600%");
+    expect(summary.live_closure_summary?.map_display_max_zoom_percent).toBe("3200%");
+    expect(summary.map_display_max_zoom_percent).toBe("3200%");
     expect(summary.live_closure_summary?.map_display_wysiwyg_overlays).toEqual(["image", "route", "robot", "radar"]);
     expect(summary.map_display_wysiwyg_overlays).toEqual(["image", "route", "robot", "radar"]);
     expect(summary.live_closure_summary?.map_display_ros2_companion_required).toBe(false);
@@ -352,11 +352,11 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.map_display_engineering_tools_sends_motion).toBe(false);
     expect(summary.map_display_engineering_tools_sends_motion).toBe(false);
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("普通用户地图：进入 /map 使用 PC 大地图");
-    expect(summary.live_closure_summary?.map_display_companion_plain).toContain("默认 400% 现场大图");
+    expect(summary.live_closure_summary?.map_display_companion_plain).toContain("默认 600% 现场大图");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("适配");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("100% 全图");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("点“细节放大”可查看局部");
-    expect(summary.live_closure_summary?.map_display_companion_plain).toContain("最高 2400%");
+    expect(summary.live_closure_summary?.map_display_companion_plain).toContain("最高 3200%");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("ROS2 配套只作工程观察");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("打开 Foxglove Web");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("ws://192.168.1.11:8765");

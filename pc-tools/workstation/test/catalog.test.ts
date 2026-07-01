@@ -6854,8 +6854,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.map_display_primary_tool).toBe("pc_big_map");
       expect(summary.map_display_primary_url).toBe("/map");
       expect(summary.map_display_primary_action_label).toBe("进入地图大屏");
-      expect(summary.map_display_default_zoom_percent).toBe("400%");
-      expect(summary.map_display_max_zoom_percent).toBe("2400%");
+      expect(summary.map_display_default_zoom_percent).toBe("600%");
+      expect(summary.map_display_max_zoom_percent).toBe("3200%");
       expect(summary.map_display_wysiwyg_overlays).toEqual(["image", "route", "robot", "radar"]);
       expect(summary.map_display_ros2_companion_tools).toEqual(["rviz2", "foxglove"]);
       expect(summary.map_display_rviz_launch_command).toBe("ros2 launch ros2_trashbot_bringup rviz.launch.py");
