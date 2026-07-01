@@ -4191,6 +4191,49 @@ const plainLiveWheelFeedbackReadback = computed(() => {
     readbackDisabled: liveMotionRunbookReadbackPendingAction.value !== null || !robotApiBaseUrl.value.trim(),
   };
 });
+const plainLiveKeyboardControlReadback = computed(() => {
+  // 键盘专项读回把“启用不发车、按住才动、验收看同窗口轮速”从轮速共享条里单独拎出来。
+  const summary = plainLiveClosureSummary.value;
+  const keyboardRow = plainLiveMotionRunbookRows.value.find((item) => item.id === "hold_keyboard");
+  const ready = Boolean(summary?.keyboard_continuous_control_ready || keyboardRow?.ready);
+  const verified = Boolean(summary?.keyboard_motion_verified || keyboardRow?.completed);
+  const state = verified ? "已验证" : ready ? "待验证" : "未就绪";
+  const bestPulseCount = summary?.keyboard_best_continuous_pulse_count ?? "0";
+  const minPulseCount = summary?.keyboard_verified_min_forwarded_pulses ?? String(KEYBOARD_VERIFIED_MIN_FORWARDED_PULSES);
+  const enabled = Boolean(summary?.keyboard_enabled);
+  const stopSettled = Boolean(summary?.keyboard_stop_settled_after_pulse);
+  const wheelState = plainLiveWheelFeedbackReadback.value.state;
+  const latestLeft = plainLiveWheelFeedbackReadback.value.latestLeft;
+  const latestRight = plainLiveWheelFeedbackReadback.value.latestRight;
+  const nextAction = verified
+    ? "键盘连续控制已闭环。"
+    : ready
+      ? "勾现场安全确认后启用键盘；按住 W/A/S/D 或方向键，松开后点读回键盘。"
+      : "先补齐键盘入口条件，再启用键盘。";
+  return {
+    visible: Boolean(summary || keyboardRow),
+    state,
+    ready,
+    verified,
+    enabled,
+    holdToMoveRequired: Boolean(summary?.keyboard_hold_to_move_required ?? true),
+    enableSendsMotion: Boolean(summary?.keyboard_continuous_enable_sends_motion),
+    sendsMotionWhileHeld: enabled,
+    bestPulseCount,
+    minPulseCount,
+    stopSettled,
+    wheelState,
+    latestLeft,
+    latestRight,
+    manualCommandMode: summary?.keyboard_manual_command_mode ?? "ros",
+    fixedManualEndpoint: summary?.fixed_keyboard_manual_endpoint ?? "/api/robot-control/base/manual",
+    fixedStopEndpoint: summary?.fixed_keyboard_stop_endpoint ?? "/api/robot-control/base/stop",
+    readbackEndpoints: ["/api/robot-control/base/feedback-samples", "/api/robot-control/summary"],
+    readbackPending: liveMotionRunbookReadbackPendingAction.value === "hold_keyboard",
+    readbackDisabled: liveMotionRunbookReadbackPendingAction.value !== null || !robotApiBaseUrl.value.trim(),
+    text: `键盘连续控制：启用本身不发车，按住才连续低速移动；最佳连续 ${bestPulseCount}/${minPulseCount} 次；wheel L/R=${latestLeft}/${latestRight}，${wheelState}；停止${stopSettled ? "已收口" : "未收口"}。下一步：${nextAction}`,
+  };
+});
 const plainLiveMotionExecutionStrip = computed(() => {
   // 执行条只把 runbook 压成一个普通用户入口；按钮仍只聚焦，不自动勾选或发车。
   const rows = plainLiveMotionRunbookRows.value;
@@ -17366,6 +17409,61 @@ onBeforeUnmount(() => {
               @click="refreshLiveMotionRunbookReadback('hold_keyboard')"
             >
               {{ plainLiveWheelFeedbackReadback.readbackPending ? "读回中" : "读回轮速" }}
+            </button>
+          </div>
+          <div
+            v-if="plainLiveKeyboardControlReadback.visible"
+            class="panel-note plain-live-keyboard-control-readback"
+            data-testid="plain-live-keyboard-control-readback"
+            :data-state="plainLiveKeyboardControlReadback.state"
+            :data-ready="String(plainLiveKeyboardControlReadback.ready)"
+            :data-verified="String(plainLiveKeyboardControlReadback.verified)"
+            :data-keyboard-enabled="String(plainLiveKeyboardControlReadback.enabled)"
+            :data-hold-to-move-required="String(plainLiveKeyboardControlReadback.holdToMoveRequired)"
+            :data-enable-sends-motion="String(plainLiveKeyboardControlReadback.enableSendsMotion)"
+            :data-sends-motion-while-held="String(plainLiveKeyboardControlReadback.sendsMotionWhileHeld)"
+            :data-best-continuous-pulse-count="plainLiveKeyboardControlReadback.bestPulseCount"
+            :data-verified-min-forwarded-pulses="plainLiveKeyboardControlReadback.minPulseCount"
+            :data-stop-settled-after-pulse="String(plainLiveKeyboardControlReadback.stopSettled)"
+            :data-wheel-state="plainLiveKeyboardControlReadback.wheelState"
+            :data-latest-wheel-raw-left="plainLiveKeyboardControlReadback.latestLeft"
+            :data-latest-wheel-raw-right="plainLiveKeyboardControlReadback.latestRight"
+            :data-manual-command-mode="plainLiveKeyboardControlReadback.manualCommandMode"
+            :data-fixed-keyboard-manual-endpoint="plainLiveKeyboardControlReadback.fixedManualEndpoint"
+            :data-fixed-keyboard-stop-endpoint="plainLiveKeyboardControlReadback.fixedStopEndpoint"
+            :data-readback-refresh-endpoints="plainLiveKeyboardControlReadback.readbackEndpoints.join(',')"
+            :data-readback-refresh-pending="String(plainLiveKeyboardControlReadback.readbackPending)"
+            data-readback-only="true"
+            data-sends-motion-when-clicked="false"
+            data-starts-nav2="false"
+            data-starts-manual="false"
+            data-starts-keyboard="false"
+            data-starts-free-roam="false"
+            data-starts-map-runtime="false"
+            data-submits-delivery="false"
+            data-stops-motion="false"
+          >
+            <span class="plain-progress-label">键盘连续控制</span>
+            <span class="status-chip" :data-state="plainLiveKeyboardControlReadback.state">{{ plainLiveKeyboardControlReadback.state }}</span>
+            <span class="muted">{{ plainLiveKeyboardControlReadback.text }}</span>
+            <button
+              type="button"
+              class="secondary compact-stop"
+              data-testid="plain-live-keyboard-control-readback-refresh"
+              :disabled="plainLiveKeyboardControlReadback.readbackDisabled"
+              :data-readback-refresh-endpoints="plainLiveKeyboardControlReadback.readbackEndpoints.join(',')"
+              data-readback-only="true"
+              data-sends-motion-when-clicked="false"
+              data-starts-nav2="false"
+              data-starts-manual="false"
+              data-starts-keyboard="false"
+              data-starts-free-roam="false"
+              data-starts-map-runtime="false"
+              data-submits-delivery="false"
+              data-stops-motion="false"
+              @click="refreshLiveMotionRunbookReadback('hold_keyboard')"
+            >
+              {{ plainLiveKeyboardControlReadback.readbackPending ? "读回中" : "读回键盘" }}
             </button>
           </div>
           <div
