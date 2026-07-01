@@ -851,6 +851,27 @@ h3 {
   margin: 0;
 }
 
+.plain-live-wheel-zero-next-step {
+  /* 轮速 0/0 是当前主卡点，单独突出下一手动作，但所有按钮仍不直接发车。 */
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid #d8c06f;
+  border-left: 3px solid #bf8700;
+  border-radius: 6px;
+  background: #fff8c5;
+}
+
+.plain-live-wheel-zero-next-step p {
+  margin: 0;
+}
+
+.plain-live-wheel-zero-next-step-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .plain-safety-actions {
   display: grid;
   gap: 7px;

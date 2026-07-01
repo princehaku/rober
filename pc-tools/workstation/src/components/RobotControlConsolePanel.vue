@@ -4258,6 +4258,35 @@ const plainLiveWheelFeedbackReadback = computed(() => {
     readbackDisabled: liveMotionRunbookReadbackPendingAction.value !== null || !robotApiBaseUrl.value.trim(),
   };
 });
+const plainLiveWheelZeroNextStep = computed(() => {
+  // L/R 仍为 0/0 时，现场最需要的是“下一手动作”和“只读复验”分开，避免误把读回按钮当发车。
+  const wheel = plainLiveWheelFeedbackReadback.value;
+  const summary = plainLiveClosureSummary.value;
+  const latestLeft = wheel.latestLeft;
+  const latestRight = wheel.latestRight;
+  const zeroPair = latestLeft === "0" && latestRight === "0";
+  const visible = wheel.visible && !summary?.wheel_lr_nonzero_proven && zeroPair;
+  const focusKind = plainManualSafetyConfirmed.value ? "trip_execute_button" : "trip_safety_confirm";
+  const focusLabel = plainManualSafetyConfirmed.value ? "去重跑图上行程" : "去勾安全确认";
+  const nextAction = plainManualSafetyConfirmed.value
+    ? "执行图上行程后，读回同一个执行窗口的轮速 L/R 和送达状态。"
+    : "先勾现场安全确认，再执行图上行程；相机、雷达不作为发车前额外预检。";
+  return {
+    visible,
+    state: "轮速 0/0",
+    text: `轮速 L/R 仍为 ${latestLeft}/${latestRight}；影响完整图上行程和键盘连续手控验收。${nextAction}`,
+    focusKind,
+    focusLabel,
+    safetyConfirmed: plainManualSafetyConfirmed.value,
+    latestLeft,
+    latestRight,
+    sampleCount: wheel.sampleCount,
+    nonzeroSampleCount: wheel.nonzeroSampleCount,
+    primaryActionId: wheel.primaryActionId,
+    readbackEndpoints: wheel.readbackEndpoints,
+    readbackDisabled: wheel.readbackDisabled,
+  };
+});
 const plainLiveKeyboardControlReadback = computed(() => {
   // 键盘专项读回把“启用不发车、按住才动、验收看同窗口轮速”从轮速共享条里单独拎出来。
   const summary = plainLiveClosureSummary.value;
@@ -17842,6 +17871,80 @@ onBeforeUnmount(() => {
             >
               {{ plainLiveWheelFeedbackReadback.readbackPending ? "读回中" : "读回轮速" }}
             </button>
+          </div>
+          <div
+            v-if="plainLiveWheelZeroNextStep.visible"
+            class="plain-live-wheel-zero-next-step"
+            data-testid="plain-live-wheel-zero-next-step"
+            :data-state="plainLiveWheelZeroNextStep.state"
+            :data-safety-confirmed="String(plainLiveWheelZeroNextStep.safetyConfirmed)"
+            :data-focus-target-source-card-id="'nav2_route'"
+            :data-focus-target-kind="plainLiveWheelZeroNextStep.focusKind"
+            :data-primary-action-id="plainLiveWheelZeroNextStep.primaryActionId"
+            :data-latest-wheel-raw-left="plainLiveWheelZeroNextStep.latestLeft"
+            :data-latest-wheel-raw-right="plainLiveWheelZeroNextStep.latestRight"
+            :data-feedback-sample-count="plainLiveWheelZeroNextStep.sampleCount"
+            :data-feedback-nonzero-sample-count="plainLiveWheelZeroNextStep.nonzeroSampleCount"
+            :data-readback-refresh-endpoints="plainLiveWheelZeroNextStep.readbackEndpoints.join(',')"
+            data-minimal-precheck-safety-only="true"
+            data-camera-preflight-required="false"
+            data-radar-preflight-required="false"
+            data-focus-only="true"
+            data-readback-only="true"
+            data-sends-motion-when-clicked="false"
+            data-starts-nav2="false"
+            data-starts-manual="false"
+            data-starts-keyboard="false"
+            data-starts-free-roam="false"
+            data-starts-map-runtime="false"
+            data-submits-delivery="false"
+            data-stops-motion="false"
+          >
+            <div class="simple-status-row">
+              <strong>轮速 0/0 下一步</strong>
+              <span class="status-chip" :data-state="plainLiveWheelZeroNextStep.state">{{ plainLiveWheelZeroNextStep.state }}</span>
+            </div>
+            <p>{{ plainLiveWheelZeroNextStep.text }}</p>
+            <div class="plain-live-wheel-zero-next-step-actions">
+              <button
+                type="button"
+                class="secondary compact-stop"
+                data-testid="plain-live-wheel-zero-next-step-focus"
+                :data-focus-target-source-card-id="'nav2_route'"
+                :data-focus-target-kind="plainLiveWheelZeroNextStep.focusKind"
+                data-focus-only="true"
+                data-sends-motion-when-clicked="false"
+                data-starts-nav2="false"
+                data-starts-manual="false"
+                data-starts-keyboard="false"
+                data-starts-free-roam="false"
+                data-starts-map-runtime="false"
+                data-submits-delivery="false"
+                data-stops-motion="false"
+                @click="focusPlainActionCardTarget('nav2_route')"
+              >
+                {{ plainLiveWheelZeroNextStep.focusLabel }}
+              </button>
+              <button
+                type="button"
+                class="secondary compact-stop"
+                data-testid="plain-live-wheel-zero-next-step-readback"
+                :disabled="plainLiveWheelZeroNextStep.readbackDisabled"
+                :data-readback-refresh-endpoints="plainLiveWheelZeroNextStep.readbackEndpoints.join(',')"
+                data-readback-only="true"
+                data-sends-motion-when-clicked="false"
+                data-starts-nav2="false"
+                data-starts-manual="false"
+                data-starts-keyboard="false"
+                data-starts-free-roam="false"
+                data-starts-map-runtime="false"
+                data-submits-delivery="false"
+                data-stops-motion="false"
+                @click="refreshLiveMotionRunbookReadback(plainLiveWheelZeroNextStep.primaryActionId)"
+              >
+                只读复验
+              </button>
+            </div>
           </div>
           <div
             v-if="plainLiveKeyboardControlReadback.visible"
