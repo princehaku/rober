@@ -6922,6 +6922,27 @@ describe("workstation fail-closed API contracts", () => {
       expect(live.field_acceptance_wysiwyg_refresh_submits_delivery).toBe(false);
       expect(live.field_acceptance_wysiwyg_refresh_stops_motion).toBe(false);
       expect(live.field_acceptance_steps).toEqual(summary.field_acceptance_steps);
+      expect(live.nav2_route_acceptance_packet).toEqual(summary.nav2_route_acceptance_packet);
+      expect(live.nav2_route_acceptance_packet).toEqual(expect.objectContaining({
+        action_id: "run_nav2_route",
+        start_endpoint: "/api/robot-control/nav2/goal/execute",
+        requires_safety_confirm: true,
+        minimal_precheck_safety_only: true,
+        camera_preflight_required: false,
+        radar_preflight_required: false,
+        route_wysiwyg_preflight_required: false,
+        same_window_wheel_lr_nonzero: false,
+        delivery_success: false,
+        readback_sends_motion: false,
+        readback_starts_nav2: false,
+        readback_starts_manual: false,
+        readback_starts_keyboard: false,
+        readback_starts_free_roam: false,
+        readback_starts_map_runtime: false,
+        readback_submits_delivery: false,
+        readback_stops_motion: false,
+      }));
+      expect(live.nav2_route_acceptance_packet?.readback_endpoints).toEqual(live.wheel_rerun_readback_endpoints);
       expect(live.nav2_route_ready).toBe(true);
       expect(summary.route_ready).toBe(true);
       expect(summary.nav2_route_ready).toBe(true);

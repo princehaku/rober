@@ -3066,6 +3066,7 @@ function buildRobotControlLiveSummaryResponse(summary: RobotControlSummaryRespon
     field_acceptance_wysiwyg_refresh_submits_delivery: summary.field_acceptance_wysiwyg_refresh_submits_delivery,
     field_acceptance_wysiwyg_refresh_stops_motion: summary.field_acceptance_wysiwyg_refresh_stops_motion,
     field_acceptance_steps: summary.field_acceptance_steps,
+    nav2_route_acceptance_packet: summary.nav2_route_acceptance_packet,
     readback_only: true,
     sends_motion_when_clicked: false,
     starts_nav2: false,

@@ -2849,6 +2849,60 @@ export interface RobotControlFieldAcceptancePacket {
   steps: RobotControlFieldAcceptanceStep[];
 }
 
+export interface RobotControlNav2RouteAcceptancePacket {
+  action_id: "run_nav2_route";
+  label: "完整行程执行";
+  status: RobotControlLiveClosureSummary["status"];
+  proof_status: RobotControlLiveMotionRunbookItem["proof_status"];
+  ready: boolean;
+  completed: boolean;
+  start_endpoint: "/api/robot-control/nav2/goal/execute";
+  stop_endpoint: "/api/robot-control/base/stop";
+  start_sends_motion: true;
+  requires_safety_confirm: boolean;
+  minimal_precheck_safety_only: boolean;
+  camera_preflight_required: false;
+  radar_preflight_required: false;
+  route_wysiwyg_preflight_required: false;
+  blocked_by_camera_wysiwyg: false;
+  blocked_by_radar_wysiwyg: false;
+  route_ready_on_map: boolean;
+  nav2_goal_succeeded: boolean;
+  same_window_wheel_lr_nonzero: boolean;
+  delivery_success: boolean;
+  needs_same_window_wheel_rerun: boolean;
+  delivery_success_required: boolean;
+  missing_evidence: string[];
+  required_success_markers: string[];
+  acceptance_endpoints: string[];
+  readback_endpoints: string[];
+  fixed_latest_endpoint: "/api/robot-control/nav2/goal/execution/latest";
+  fixed_wheel_readback_endpoint: "/api/robot-control/base/feedback-samples";
+  fixed_delivery_latest_endpoint: "/api/robot-control/delivery/latest";
+  fixed_delivery_complete_endpoint: "/api/robot-control/delivery/complete";
+  delivery_complete_sends_motion: false;
+  readback_sends_motion: false;
+  readback_starts_nav2: false;
+  readback_starts_manual: false;
+  readback_starts_keyboard: false;
+  readback_starts_free_roam: false;
+  readback_starts_map_runtime: false;
+  readback_submits_delivery: false;
+  readback_stops_motion: false;
+  command_mode: string;
+  next_base_command_mode: string;
+  latest_raw_left: string;
+  latest_raw_right: string;
+  feedback_sample_count: string;
+  feedback_nonzero_sample_count: string;
+  current_gap_plain: string;
+  checklist_plain: string;
+  acceptance_plain: string;
+  no_extra_precheck_plain: string;
+  delivery_next_action_plain: string;
+  sends_motion_when_clicked: false;
+}
+
 export type RobotControlLiveObjectiveAuditId = "motion" | "wysiwyg" | "precheck" | "mapping";
 
 export interface RobotControlLiveObjectiveAuditItem {
@@ -3304,6 +3358,7 @@ export interface RobotControlLiveSummaryResponse extends RobotControlLiveClosure
   field_acceptance_wysiwyg_refresh_submits_delivery?: RobotControlSummaryResponse["field_acceptance_wysiwyg_refresh_submits_delivery"];
   field_acceptance_wysiwyg_refresh_stops_motion?: RobotControlSummaryResponse["field_acceptance_wysiwyg_refresh_stops_motion"];
   field_acceptance_steps?: RobotControlSummaryResponse["field_acceptance_steps"];
+  nav2_route_acceptance_packet?: RobotControlSummaryResponse["nav2_route_acceptance_packet"];
 }
 
 export interface RobotControlSummaryResponse extends ProofFlags {
@@ -3503,6 +3558,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   field_acceptance_wysiwyg_refresh_submits_delivery?: RobotControlFieldAcceptancePacket["wysiwyg_refresh_submits_delivery"];
   field_acceptance_wysiwyg_refresh_stops_motion?: RobotControlFieldAcceptancePacket["wysiwyg_refresh_stops_motion"];
   field_acceptance_steps?: RobotControlFieldAcceptancePacket["steps"];
+  nav2_route_acceptance_packet?: RobotControlNav2RouteAcceptancePacket;
   primary_start_endpoint?: RobotControlLiveMotionRunbookItem["start_endpoint"];
   primary_stop_endpoint?: RobotControlLiveMotionRunbookItem["stop_endpoint"];
   primary_acceptance_endpoints?: RobotControlLiveMotionRunbookItem["acceptance_endpoints"];

@@ -780,6 +780,63 @@ describe("robotControlSummary", () => {
       sends_motion_when_executed: true,
       missing_evidence: ["camera_first_frame", "lidar_fresh"],
     }));
+    expect(summary.nav2_route_acceptance_packet).toEqual(expect.objectContaining({
+      action_id: "run_nav2_route",
+      label: "完整行程执行",
+      status: "needs_wheel_rerun",
+      proof_status: "ready_to_verify",
+      ready: true,
+      completed: false,
+      start_endpoint: "/api/robot-control/nav2/goal/execute",
+      stop_endpoint: "/api/robot-control/base/stop",
+      start_sends_motion: true,
+      requires_safety_confirm: true,
+      minimal_precheck_safety_only: true,
+      camera_preflight_required: false,
+      radar_preflight_required: false,
+      route_wysiwyg_preflight_required: false,
+      blocked_by_camera_wysiwyg: false,
+      blocked_by_radar_wysiwyg: false,
+      route_ready_on_map: true,
+      nav2_goal_succeeded: true,
+      same_window_wheel_lr_nonzero: false,
+      delivery_success: false,
+      needs_same_window_wheel_rerun: true,
+      delivery_success_required: true,
+      missing_evidence: ["same_window_wheel_lr_nonzero", "delivery_success"],
+      required_success_markers: [
+        "map_route_visible",
+        "nav2_goal_succeeded",
+        "same_window_wheel_lr_nonzero",
+        "delivery_success",
+      ],
+      fixed_latest_endpoint: "/api/robot-control/nav2/goal/execution/latest",
+      fixed_wheel_readback_endpoint: "/api/robot-control/base/feedback-samples",
+      fixed_delivery_latest_endpoint: "/api/robot-control/delivery/latest",
+      fixed_delivery_complete_endpoint: "/api/robot-control/delivery/complete",
+      delivery_complete_sends_motion: false,
+      readback_sends_motion: false,
+      readback_starts_nav2: false,
+      readback_starts_manual: false,
+      readback_starts_keyboard: false,
+      readback_starts_free_roam: false,
+      readback_starts_map_runtime: false,
+      readback_submits_delivery: false,
+      readback_stops_motion: false,
+      command_mode: "ros",
+      next_base_command_mode: "ros",
+      latest_raw_left: "0",
+      latest_raw_right: "0",
+      feedback_sample_count: "2",
+      feedback_nonzero_sample_count: "0",
+      sends_motion_when_clicked: false,
+    }));
+    expect(summary.nav2_route_acceptance_packet?.acceptance_endpoints).toEqual(summary.primary_acceptance_endpoints);
+    expect(summary.nav2_route_acceptance_packet?.readback_endpoints).toEqual(summary.wheel_rerun_readback_endpoints);
+    expect(summary.nav2_route_acceptance_packet?.current_gap_plain).toContain("当前缺口");
+    expect(summary.nav2_route_acceptance_packet?.checklist_plain).toContain("先勾现场安全确认");
+    expect(summary.nav2_route_acceptance_packet?.acceptance_plain).toContain("delivery success");
+    expect(summary.nav2_route_acceptance_packet?.no_extra_precheck_plain).toContain("发车前预检只看现场安全确认");
     expect(summary.primary_start_endpoint).toBe("/api/robot-control/nav2/goal/execute");
     expect(summary.primary_stop_endpoint).toBe("/api/robot-control/base/stop");
     expect(summary.primary_acceptance_endpoints).toEqual([
