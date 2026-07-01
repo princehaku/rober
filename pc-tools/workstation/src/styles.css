@@ -60,16 +60,68 @@ button {
 }
 
 .shell[data-direct-map-view-requested="true"] .plain-map-panel {
+  /* /map 直达页是纯地图屏：用真实 viewport 布局，而不是把普通卡片纵向撑高。 */
+  display: flex;
+  flex-direction: column;
+  width: 100vw;
+  height: 100vh;
   min-height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
   border: 0;
   border-radius: 0;
-  padding: 6px;
+  padding: 4px;
+}
+
+.shell[data-direct-map-view-requested="true"] .plain-map-panel[data-fullscreen="true"] {
+  /* 直达页不需要再套一层 4px fixed 浮窗，避免第一眼仍像普通面板。 */
+  position: relative;
+  inset: auto;
+  z-index: auto;
+  box-shadow: none;
+}
+
+.shell[data-direct-map-view-requested="true"] .plain-map-panel[data-observer-mode="true"] {
+  padding: 4px;
+}
+
+.shell[data-direct-map-view-requested="true"] .plain-map-heading {
+  flex: 0 0 auto;
+  margin-bottom: 4px;
+}
+
+.shell[data-direct-map-view-requested="true"] .plain-map-heading-actions {
+  gap: 6px;
+}
+
+.shell[data-direct-map-view-requested="true"] .plain-map-panel > .panel-action-row,
+.shell[data-direct-map-view-requested="true"] .plain-map-panel > .panel-note:not(.plain-map-ros2-tool-note) {
+  /* 直达地图只保留缩放、只读刷新和工程观察入口；建图/保存/说明不再挤占地图。 */
+  display: none;
+}
+
+.shell[data-direct-map-view-requested="true"] .plain-map-wysiwyg-layer-strip {
+  flex: 0 0 auto;
+  gap: 6px;
+  margin-bottom: 4px;
+  padding: 4px 6px;
+}
+
+.shell[data-direct-map-view-requested="true"] .plain-map-wysiwyg-layer-chip {
+  min-height: 24px;
+  padding: 2px 7px;
+}
+
+.shell[data-direct-map-view-requested="true"] .plain-map-viewport {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin-bottom: 0;
 }
 
 .shell[data-direct-map-view-requested="true"] .plain-map-panel[data-observer-mode="true"] .plain-map-viewport[data-size="fullscreen"] .plain-map-layer {
-  /* /map 直达页必须一打开就是地图观察屏，不能只是一张普通卡片。 */
-  height: calc(100vh - 24px);
-  min-height: calc(100vh - 24px);
+  /* /map 直达页必须一打开就是地图观察屏，地图层吃满剩余高度。 */
+  height: 100%;
+  min-height: 0;
 }
 
 .topbar {
@@ -1619,6 +1671,20 @@ h3 {
 
 .plain-map-radar-refresh-action:hover:not(:disabled) {
   background: #f7e58c;
+}
+
+.plain-map-direct-refresh-action {
+  /* /map 大屏只读刷新当前地图画面，替代普通卡片底部的一排建图/保存动作。 */
+  min-height: 34px;
+  white-space: nowrap;
+  border-color: #0f6b45;
+  background: #e8f6ef;
+  color: #114831;
+  font-weight: 760;
+}
+
+.plain-map-direct-refresh-action:hover:not(:disabled) {
+  background: #d8f0e4;
 }
 
 .plain-map-engineering-tools {

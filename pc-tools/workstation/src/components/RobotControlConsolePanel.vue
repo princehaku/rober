@@ -327,7 +327,7 @@ const PLAIN_MAP_FOXGLOVE_BRIDGE_LAUNCH_COMMAND = "ros2 launch ros2_trashbot_brin
 const PLAIN_MAP_FOXGLOVE_WS_URL = "ws://192.168.1.11:8765";
 const PLAIN_MAP_FOXGLOVE_WEB_APP_URL = "https://studio.foxglove.dev";
 const PLAIN_MAP_ENGINEERING_TOOLS_ACTION_LABEL = "工程观察：RViz2 / Foxglove";
-const PLAIN_MAP_TOO_SMALL_NEXT_ACTION_PLAIN = "地图太小先点“进入地图大屏”打开 /map，页面会把地图画布作为满屏主视图，只保留缩放和只读刷新；不需要先开 RViz2。";
+const PLAIN_MAP_TOO_SMALL_NEXT_ACTION_PLAIN = "地图太小先点“进入地图大屏”打开 /map，页面会把地图画布作为满屏主视图，只保留缩放、只读刷新和工程观察入口；建图、保存和其他卡片都会收起；不需要先开 RViz2。";
 const PLAIN_MAP_ROS2_COMPANION_ANSWER_PLAIN = "ROS2 配套：本地工程调试用 RViz2；远程浏览器观察用 Foxglove bridge + Foxglove Web；普通用户仍默认使用 PC 大地图。";
 const PLAIN_MAP_ROS2_OBSERVE_TOPICS = [
   "/map",
@@ -21588,6 +21588,9 @@ onBeforeUnmount(() => {
           data-direct-map-view-canvas-height-mode="viewport_dominant_full_height"
           :data-direct-map-view-keeps-page-fullscreen-without-browser-api="String(plainMapDirectViewRequested)"
           data-direct-map-view-browser-fullscreen-required="false"
+          data-direct-map-view-visible-controls="zoom,map_refresh,radar_refresh,ros2_observe_toggle"
+          data-direct-map-view-hides-map-lifecycle-actions="true"
+          data-direct-map-view-hides-non-map-cards="true"
           :data-direct-map-view-default-zoom-percent="PLAIN_MAP_DEFAULT_ZOOM_PERCENT"
           :data-direct-map-view-max-zoom-percent="PLAIN_MAP_MAX_ZOOM_PERCENT"
           :data-map-too-small-next-action-plain="PLAIN_MAP_TOO_SMALL_NEXT_ACTION_PLAIN"
@@ -21662,6 +21665,7 @@ onBeforeUnmount(() => {
             </div>
             <div class="plain-map-heading-actions">
               <a
+                v-if="!plainMapDirectViewRequested"
                 class="secondary plain-link-button plain-map-direct-view-link plain-map-direct-view-link-primary"
                 data-testid="plain-map-direct-view-link"
                 :href="plainMapDirectViewHref"
@@ -21702,6 +21706,27 @@ onBeforeUnmount(() => {
               >
                 进入地图大屏
               </a>
+              <button
+                v-if="plainMapDirectViewRequested"
+                type="button"
+                class="secondary plain-map-direct-refresh-action"
+                data-testid="plain-map-direct-refresh"
+                data-map-wysiwyg-action="refresh_preview"
+                data-direct-map-view-control="map_refresh"
+                data-fixed-map-preview-endpoint="/api/robot-control/map/preview"
+                data-refreshes-radar-status="true"
+                data-refresh-affects="map-image-route-robot-radar"
+                data-sends-motion-when-clicked="false"
+                data-starts-map-runtime="false"
+                data-starts-nav2="false"
+                data-starts-manual="false"
+                data-starts-keyboard="false"
+                data-starts-free-roam="false"
+                :disabled="!canRefreshMapPreview"
+                @click="refreshMapPreview({ radarStatusRefresh: true })"
+              >
+                {{ mapPreviewRefreshButtonLabel }}
+              </button>
               <button
                 type="button"
                 class="secondary compact-stop plain-map-ros2-tools-toggle"
@@ -22115,6 +22140,9 @@ onBeforeUnmount(() => {
             data-direct-map-view-canvas-height-mode="viewport_dominant_full_height"
             :data-direct-map-view-keeps-page-fullscreen-without-browser-api="String(plainMapDirectViewRequested)"
             data-direct-map-view-browser-fullscreen-required="false"
+            data-direct-map-view-visible-controls="zoom,map_refresh,radar_refresh,ros2_observe_toggle"
+            data-direct-map-view-hides-map-lifecycle-actions="true"
+            data-direct-map-view-hides-non-map-cards="true"
             data-direct-map-refreshes-radar-scan-proof-on-enter="true"
             data-direct-map-refreshes-map-preview-on-enter="true"
             data-direct-map-refreshes-radar-status-on-enter="true"

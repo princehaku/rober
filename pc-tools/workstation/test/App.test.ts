@@ -983,7 +983,7 @@ const fixtures: Record<string, unknown> = {
       map_display_direct_map_starts_radar_lifecycle_on_enter: false,
       map_display_default_zoom_percent: "1600%",
       map_display_max_zoom_percent: "4800%",
-      map_display_too_small_next_action_plain: "地图太小先点“进入地图大屏”打开 /map，页面会把地图画布作为满屏主视图，只保留缩放和只读刷新；不需要先开 RViz2。",
+      map_display_too_small_next_action_plain: "地图太小先点“进入地图大屏”打开 /map，页面会把地图画布作为满屏主视图，只保留缩放、只读刷新和工程观察入口；建图、保存和其他卡片都会收起；不需要先开 RViz2。",
       map_display_ros2_companion_answer_plain: "ROS2 配套：本地工程调试用 RViz2；远程浏览器观察用 Foxglove bridge + Foxglove Web；普通用户仍默认使用 PC 大地图。",
       map_display_ros2_companion_plain: "ROS2 配套：本地工程调试用 RViz2；远程浏览器观察用 Foxglove bridge + Foxglove Web；普通用户仍默认使用 PC 大地图。",
       map_display_operator_default_surface: "pc_big_map_direct_view",
@@ -1015,7 +1015,7 @@ const fixtures: Record<string, unknown> = {
       map_display_ros2_observe_motion_topics: false,
       map_display_ros2_observe_control_tools: false,
       map_display_engineering_tools_sends_motion: false,
-      map_display_companion_plain: "普通用户地图：进入 /map 使用 PC 大地图，默认 1600% 现场大图，点“适配”回到 100% 全图，点“细节放大”可查看局部，最高 4800%，地图、路线、小车位置和雷达点共用同一张 WYSIWYG 画布；地图太小先点“进入地图大屏”打开 /map，页面会把地图画布作为满屏主视图，只保留缩放和只读刷新；不需要先开 RViz2。ROS2 配套：本地工程调试用 RViz2；远程浏览器观察用 Foxglove bridge + Foxglove Web；普通用户仍默认使用 PC 大地图。ROS2 配套只作工程观察，本地用 RViz2，远程浏览器观察先部署 Foxglove bridge 后打开 Foxglove Web 连接 ws://192.168.1.11:8765；观察项固定为地图、雷达、TF、路径、定位和 costmap，不提供 GoalTool，不发送底盘移动命令。",
+      map_display_companion_plain: "普通用户地图：进入 /map 使用 PC 大地图，默认 1600% 现场大图，点“适配”回到 100% 全图，点“细节放大”可查看局部，最高 4800%，地图、路线、小车位置和雷达点共用同一张 WYSIWYG 画布；地图太小先点“进入地图大屏”打开 /map，页面会把地图画布作为满屏主视图，只保留缩放、只读刷新和工程观察入口；建图、保存和其他卡片都会收起；不需要先开 RViz2。ROS2 配套：本地工程调试用 RViz2；远程浏览器观察用 Foxglove bridge + Foxglove Web；普通用户仍默认使用 PC 大地图。ROS2 配套只作工程观察，本地用 RViz2，远程浏览器观察先部署 Foxglove bridge 后打开 Foxglove Web 连接 ws://192.168.1.11:8765；观察项固定为地图、雷达、TF、路径、定位和 costmap，不提供 GoalTool，不发送底盘移动命令。",
       map_display_sends_motion_when_clicked: false,
       map_display_starts_ros2: false,
       map_display_starts_rviz2: false,
@@ -8935,6 +8935,8 @@ describe("App", () => {
     expect(workstationStyles).toContain('.shell[data-direct-map-view-requested="true"] .simple-user-console > :not(.robot-console-grid)');
     expect(workstationStyles).toContain('.shell[data-direct-map-view-requested="true"] .robot-console-grid > .snapshot-panel:not(.plain-map-panel)');
     expect(workstationStyles).toContain("只隐藏非地图卡片");
+    expect(workstationStyles).toContain("直达地图只保留缩放、只读刷新和工程观察入口");
+    expect(workstationStyles).toContain(".plain-map-direct-refresh-action");
     expect(workstationStyles).toContain('.plain-map-viewport[data-state="地图可见"] .plain-map-layer');
     expect(workstationStyles).toContain('.plain-map-viewport[data-size="large"] .plain-map-layer');
     expect(workstationStyles).toContain('.plain-map-viewport[data-size="fullscreen"] .plain-map-layer');
@@ -8950,7 +8952,8 @@ describe("App", () => {
     expect(workstationStyles).toContain("--plain-map-large-target-height: calc(100vh + 520px);");
     expect(workstationStyles).toContain("--plain-map-large-max-height: 4200px;");
     expect(workstationStyles).toContain("--plain-map-fullscreen-height: 100vh;");
-    expect(workstationStyles).toContain('height: calc(100vh - 28px);');
+    expect(workstationStyles).toContain("地图层吃满剩余高度");
+    expect(workstationStyles).toContain("height: 100%;");
     expect(workstationStyles).toContain('.robot-console-grid[data-layout="visual-first"] .plain-camera-panel');
     expect(workstationStyles).toContain('.robot-console-grid[data-layout="visual-first"] .plain-radar-panel');
     expect(workstationStyles).toContain('.robot-console-grid[data-layout="visual-first"] .plain-map-panel');
@@ -10942,6 +10945,9 @@ describe("App", () => {
       expect(mapPanel.attributes("data-direct-map-view-map-only")).toBe("true");
       expect(mapPanel.attributes("data-direct-map-view-keeps-page-fullscreen-without-browser-api")).toBe("true");
       expect(mapPanel.attributes("data-direct-map-view-browser-fullscreen-required")).toBe("false");
+      expect(mapPanel.attributes("data-direct-map-view-visible-controls")).toBe("zoom,map_refresh,radar_refresh,ros2_observe_toggle");
+      expect(mapPanel.attributes("data-direct-map-view-hides-map-lifecycle-actions")).toBe("true");
+      expect(mapPanel.attributes("data-direct-map-view-hides-non-map-cards")).toBe("true");
       expect(mapPanel.attributes("data-direct-map-view-default-zoom-percent")).toBe("1600%");
       expect(mapPanel.attributes("data-direct-map-view-max-zoom-percent")).toBe("4800%");
       expect(mapPanel.attributes("data-direct-map-loads-camera-preview")).toBe("false");
@@ -10970,6 +10976,16 @@ describe("App", () => {
       expect(wrapper.find('[data-testid="plain-map-observer-toggle"]').text()).toBe("退出只看");
       expect(wrapper.find('[data-testid="plain-map-zoom-readout"]').text()).toBe("1600%");
       expect(wrapper.find('[data-testid="plain-map-zoom-in"]').attributes("disabled")).toBeUndefined();
+      expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').exists()).toBe(false);
+      const directMapRefresh = wrapper.find('[data-testid="plain-map-direct-refresh"]');
+      expect(directMapRefresh.exists()).toBe(true);
+      expect(directMapRefresh.text()).toBe("刷新地图画面");
+      expect(directMapRefresh.attributes("data-direct-map-view-control")).toBe("map_refresh");
+      expect(directMapRefresh.attributes("data-fixed-map-preview-endpoint")).toBe("/api/robot-control/map/preview");
+      expect(directMapRefresh.attributes("data-refreshes-radar-status")).toBe("true");
+      expect(directMapRefresh.attributes("data-sends-motion-when-clicked")).toBe("false");
+      expect(directMapRefresh.attributes("data-starts-map-runtime")).toBe("false");
+      expect(directMapRefresh.attributes("data-starts-nav2")).toBe("false");
       const directMapDisplayProof = wrapper.find('[data-testid="plain-map-display-proof"]');
       expect(directMapDisplayProof.attributes("data-current-map-zoom-percent")).toBe("1600%");
       expect(directMapDisplayProof.attributes("data-current-map-size")).toBe("fullscreen");
@@ -10983,6 +10999,9 @@ describe("App", () => {
       expect(directMapDisplayProof.attributes("data-direct-map-view-canvas-height-mode")).toBe("viewport_dominant_full_height");
       expect(directMapDisplayProof.attributes("data-direct-map-view-keeps-page-fullscreen-without-browser-api")).toBe("true");
       expect(directMapDisplayProof.attributes("data-direct-map-view-browser-fullscreen-required")).toBe("false");
+      expect(directMapDisplayProof.attributes("data-direct-map-view-visible-controls")).toBe("zoom,map_refresh,radar_refresh,ros2_observe_toggle");
+      expect(directMapDisplayProof.attributes("data-direct-map-view-hides-map-lifecycle-actions")).toBe("true");
+      expect(directMapDisplayProof.attributes("data-direct-map-view-hides-non-map-cards")).toBe("true");
       expect(directMapDisplayProof.attributes("data-direct-map-refreshes-radar-scan-proof-on-enter")).toBe("true");
       expect(directMapDisplayProof.attributes("data-direct-map-refreshes-map-preview-on-enter")).toBe("true");
       expect(directMapDisplayProof.attributes("data-direct-map-refreshes-radar-status-on-enter")).toBe("true");
@@ -11018,32 +11037,8 @@ describe("App", () => {
       expect(directMapDisplayProof.text()).toContain("不启动工程工具、行程执行或小车运动");
       expect(directMapDisplayProof.text()).not.toContain("ros2 launch ros2_trashbot_bringup rviz.launch.py");
       expect(directMapDisplayProof.text()).not.toContain("ros2 launch ros2_trashbot_bringup foxglove_bridge.launch.py");
-      expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').classes()).toContain("plain-map-direct-view-link-primary");
-      expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-user-facing-primary-map-action")).toBe("true");
-      expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-ordinary-user-map-entry")).toBe("true");
-      expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-opens-new-window")).toBe("false");
-      expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-opens-current-page")).toBe("true");
-      expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-direct-map-view-default-observer")).toBe("true");
-      expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-direct-map-view-map-only")).toBe("true");
-      expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-direct-map-view-keeps-page-fullscreen-without-browser-api")).toBe("true");
-      expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-direct-map-view-browser-fullscreen-required")).toBe("false");
-      expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("href")).toBe("/map");
-      expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-direct-map-view-url")).toBe("/map");
-      expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-direct-map-view-legacy-url")).toBe("?view=map");
-      expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-ros2-companion-required")).toBe("false");
-      expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-map-too-small-next-action-plain")).toContain("进入地图大屏");
-      expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-ros2-companion-answer-plain")).toContain("Foxglove bridge");
-      expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-operator-default-surface")).toBe("pc_big_map_direct_view");
-      expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-companion-replaces-pc-ui")).toBe("false");
-      expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-starts-ros2")).toBe("false");
-      expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-starts-rviz2")).toBe("false");
-      expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-starts-map-runtime")).toBe("false");
-      expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-starts-nav2")).toBe("false");
-      expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-sends-motion-when-clicked")).toBe("false");
-      expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-refreshes-radar-scan-proof-on-enter")).toBe("true");
-      expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-refreshes-map-preview-on-enter")).toBe("true");
-      expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-refreshes-radar-status-on-enter")).toBe("true");
-      expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-starts-radar-lifecycle-on-enter")).toBe("false");
+      expect(directMapDisplayProof.text()).toContain("建图、保存和其他卡片都会收起");
+      expect(mapPanel.attributes("data-direct-map-starts-radar-lifecycle-on-enter")).toBe("false");
       expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/radar/scan-proof/refresh?") && options?.method === "POST")).toBe(true);
       expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/map/preview?"))).toBe(true);
       expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/radar/status?"))).toBe(true);
@@ -11082,7 +11077,8 @@ describe("App", () => {
       expect(wrapper.find(".shell").attributes("data-direct-map-view-legacy-url")).toBe("?view=map");
       expect(wrapper.find('[data-testid="plain-map-panel"]').attributes("data-size")).toBe("fullscreen");
       expect(wrapper.find('[data-testid="plain-map-panel"]').attributes("data-map-zoom-percent")).toBe("1600%");
-      expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("href")).toBe("/map");
+      expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').exists()).toBe(false);
+      expect(wrapper.find('[data-testid="plain-map-direct-refresh"]').attributes("data-fixed-map-preview-endpoint")).toBe("/api/robot-control/map/preview");
       expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/map/preview?"))).toBe(true);
       expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
       expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);

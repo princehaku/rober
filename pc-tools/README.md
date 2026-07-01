@@ -31,8 +31,9 @@ client publish、service 和 parameter 通道关到不匹配正则；安装仍�
 2026-07-02 CST 起，PC 地图按“先解决太小”处理：普通用户点 `进入地图大屏` 打开 `/map`，
 默认 `1600%`，最高 `4800%`，summary/DOM 同步暴露
 `map_display_direct_map_viewport_priority=fullscreen_map_canvas` 和
-`map_display_direct_map_canvas_height_mode=viewport_dominant_full_height`。地图工具行的
-`ROS2观察` 只展开 RViz2/Foxglove 说明：本地工程调试用
+`map_display_direct_map_canvas_height_mode=viewport_dominant_full_height`。`/map` 直达页必须使用整屏
+flex 地图布局，只保留缩放、`刷新地图画面`、雷达贴图只读刷新和 `ROS2观察`，并收起建图、保存、
+地图列表、普通说明和非地图卡片。地图工具行的 `ROS2观察` 只展开 RViz2/Foxglove 说明：本地工程调试用
 `ros2 launch ros2_trashbot_bringup rviz.launch.py`，远程浏览器观察用
 `ros2 launch ros2_trashbot_bringup foxglove_bridge.launch.py` 后在 Foxglove Web 连接
 `ws://192.168.1.11:8765`；该按钮不启动 ROS2/RViz2/Foxglove/Nav2/建图 runtime，不发送
@@ -290,7 +291,7 @@ Nav2、manual、free-roam、lifecycle 等工程词放回首屏；技术 action i
 字段里供验收脚本读取。该变化只改 summary/DOM 合同，不执行 Nav2，不发送 manual、keyboard、free-roam、
 delivery、stop 或 `/cmd_vel`。
 
-2026-07-01 22:47 CST 起，地图卡和 `GET /api/robot-control/summary` 明确回答“地图太小 / ROS2 配套用什么”：普通用户先点“进入地图大屏”打开 `/map`，它只保留 PC 大地图、缩放和只读刷新；RViz2 只用于本地工程调试，Foxglove bridge + Foxglove Web 只用于远程浏览器观察，二者不替代 PC 简易界面。summary 同步暴露 `map_display_too_small_next_action_plain`、`map_display_ros2_companion_answer_plain`、`map_display_operator_default_surface=pc_big_map_direct_view` 和 `map_display_companion_replaces_pc_ui=false`，DOM 也在地图卡、地图说明、当前卡点摘要和 ROS2 折叠说明上暴露同名口径。该变化只改显示和只读 DOM/API 合同，不启动 RViz2/Foxglove/ROS2 runtime，不执行 Nav2，不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+2026-07-01 22:47 CST 起，地图卡和 `GET /api/robot-control/summary` 明确回答“地图太小 / ROS2 配套用什么”：普通用户先点“进入地图大屏”打开 `/map`，它只保留 PC 大地图、缩放、只读刷新和工程观察入口，建图/保存/其它卡片都会收起；RViz2 只用于本地工程调试，Foxglove bridge + Foxglove Web 只用于远程浏览器观察，二者不替代 PC 简易界面。summary 同步暴露 `map_display_too_small_next_action_plain`、`map_display_ros2_companion_answer_plain`、`map_display_operator_default_surface=pc_big_map_direct_view` 和 `map_display_companion_replaces_pc_ui=false`，DOM 也在地图卡、地图说明、当前卡点摘要和 ROS2 折叠说明上暴露同名口径。该变化只改显示和只读 DOM/API 合同，不启动 RViz2/Foxglove/ROS2 runtime，不执行 Nav2，不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 
 2026-07-01 22:36 CST 起，相机 USB/full-speed blocker 的恢复长文案也按真实现场顺序显示：`live_wysiwyg_camera_recovery_next_action_plain` 和建图解锁相机文案会先提示“换高速USB后复测”，再提示读取共享预览状态；不再先让用户反复点首帧复测。该变化只改 summary 的只读文案，不启动相机/雷达 lifecycle、不执行 Nav2，不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 
