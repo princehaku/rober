@@ -4445,6 +4445,35 @@ const plainFieldAcceptanceRows = computed(() => (
     missingEvidenceText: step.missing_evidence.join(",") || "none",
   })) ?? []
 ));
+const plainFieldAcceptanceActionQueue = computed(() => {
+  // 现场验收包可能同时有多个可先做动作；这里把“现在能做什么”前置，避免只盯主推荐。
+  const readyRows = plainFieldAcceptanceRows.value.filter((step) => step.ready && !step.completed);
+  const blockedRows = plainFieldAcceptanceRows.value.filter((step) => !step.ready && !step.completed);
+  const completedRows = plainFieldAcceptanceRows.value.filter((step) => step.completed);
+  const readyLabels = readyRows.map((step) => plainActionCardUserText(step.label));
+  const blockedLabels = blockedRows.map((step) => plainActionCardUserText(step.label));
+  const primary = readyRows.find((step) => step.id === plainFieldAcceptancePacket.value?.next_step_id) ?? readyRows[0] ?? null;
+  const safetyText = plainUnifiedSafetyConfirmed.value ? "安全确认已勾" : "先勾一次安全确认";
+  const readyText = readyLabels.length ? `可先验：${readyLabels.join("、")}` : "暂无可先验动作";
+  const blockedText = blockedLabels.length ? `暂不可做：${blockedLabels.join("、")}` : "没有暂不可做项";
+  return {
+    state: readyRows.length > 0 ? "有可先验动作" : blockedRows.length > 0 ? "先补条件" : "已完成",
+    text: `行动队列：${readyText}；${blockedText}；${safetyText}即可执行运动项，相机和雷达不作为发车前置。`,
+    readyRows,
+    blockedRows,
+    completedRows,
+    readyStepIds: readyRows.map((step) => step.id).join(",") || "none",
+    readyStepLabels: readyLabels.join(",") || "none",
+    blockedStepIds: blockedRows.map((step) => step.id).join(",") || "none",
+    blockedStepLabels: blockedLabels.join(",") || "none",
+    completedStepIds: completedRows.map((step) => step.id).join(",") || "none",
+    primaryReadyStepId: primary?.id ?? "none",
+    primaryReadyStepLabel: primary ? plainActionCardUserText(primary.label) : "none",
+    readyCount: readyRows.length,
+    blockedCount: blockedRows.length,
+    completedCount: completedRows.length,
+  };
+});
 const plainFieldAcceptanceNextText = computed(() => {
   const packet = plainFieldAcceptancePacket.value;
   if (!packet) {
@@ -17698,6 +17727,63 @@ onBeforeUnmount(() => {
           <p class="panel-note" data-testid="plain-field-acceptance-summary">
             {{ plainActionCardUserText(plainFieldAcceptancePacket.summary_plain) }}
           </p>
+          <div
+            class="plain-field-acceptance-action-queue"
+            data-testid="plain-field-acceptance-action-queue"
+            :data-state="plainFieldAcceptanceActionQueue.state"
+            :data-ready-count="String(plainFieldAcceptanceActionQueue.readyCount)"
+            :data-blocked-count="String(plainFieldAcceptanceActionQueue.blockedCount)"
+            :data-completed-count="String(plainFieldAcceptanceActionQueue.completedCount)"
+            :data-ready-step-ids="plainFieldAcceptanceActionQueue.readyStepIds"
+            :data-ready-step-labels="plainFieldAcceptanceActionQueue.readyStepLabels"
+            :data-blocked-step-ids="plainFieldAcceptanceActionQueue.blockedStepIds"
+            :data-blocked-step-labels="plainFieldAcceptanceActionQueue.blockedStepLabels"
+            :data-completed-step-ids="plainFieldAcceptanceActionQueue.completedStepIds"
+            :data-primary-ready-step-id="plainFieldAcceptanceActionQueue.primaryReadyStepId"
+            :data-primary-ready-step-label="plainFieldAcceptanceActionQueue.primaryReadyStepLabel"
+            :data-safety-confirmed="String(plainUnifiedSafetyConfirmed)"
+            data-minimal-precheck-safety-only="true"
+            data-camera-required-for-motion="false"
+            data-radar-required-for-motion="false"
+            data-operator-report-required="false"
+            data-focus-only="true"
+            data-sends-motion-when-clicked="false"
+            data-starts-nav2="false"
+            data-starts-manual="false"
+            data-starts-keyboard="false"
+            data-starts-free-roam="false"
+            data-starts-map-runtime="false"
+            data-submits-delivery="false"
+            data-stops-motion="false"
+          >
+            <span class="plain-progress-label">行动队列</span>
+            <span class="status-chip" :data-state="plainFieldAcceptanceActionQueue.state">{{ plainFieldAcceptanceActionQueue.state }}</span>
+            <span class="muted">{{ plainFieldAcceptanceActionQueue.text }}</span>
+            <button
+              v-for="step in plainFieldAcceptanceActionQueue.readyRows"
+              :key="step.id"
+              type="button"
+              class="secondary compact-stop"
+              :data-testid="`plain-field-acceptance-ready-action-${step.id}`"
+              :data-action-id="step.id"
+              :data-focus-target-source-card-id="step.sourceCardId"
+              :data-focus-target-kind="step.focusKind"
+              :data-sends-motion-when-executed="String(step.sends_motion_when_executed)"
+              :data-safety-confirm-required="String(step.safety_confirm_required)"
+              data-focus-only="true"
+              data-sends-motion-when-clicked="false"
+              data-starts-nav2="false"
+              data-starts-manual="false"
+              data-starts-keyboard="false"
+              data-starts-free-roam="false"
+              data-starts-map-runtime="false"
+              data-submits-delivery="false"
+              data-stops-motion="false"
+              @click="focusPlainActionCardTarget(step.sourceCardId)"
+            >
+              {{ step.buttonLabel }}
+            </button>
+          </div>
           <div
             class="plain-field-acceptance-wysiwyg"
             data-testid="plain-field-acceptance-wysiwyg"
