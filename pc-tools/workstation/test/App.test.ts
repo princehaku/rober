@@ -813,6 +813,26 @@ const fixtures: Record<string, unknown> = {
     free_move_blocked_by_radar_wysiwyg: false,
     mapping_start_ready: false,
     mapping_start_missing_reasons: ["camera_first_frame", "lidar_fresh"],
+    field_acceptance_primary_missing_id: "route_ready_on_map",
+    field_acceptance_primary_missing_label: "图上行程已显示",
+    field_acceptance_primary_missing_action_id: "run_nav2_route",
+    field_acceptance_primary_missing_action_label: "完整行程执行",
+    field_acceptance_primary_missing_action_start_endpoint: "/api/robot-control/nav2/goal/execute",
+    field_acceptance_primary_missing_action_stop_endpoint: "/api/robot-control/base/stop",
+    field_acceptance_primary_missing_action_acceptance_endpoints: [
+      "/api/robot-control/map/preview",
+      "/api/robot-control/nav2/goal/execution/latest",
+      "/api/robot-control/base/feedback-samples",
+      "/api/robot-control/delivery/latest",
+      "/api/robot-control/summary",
+    ],
+    field_acceptance_primary_missing_action_sends_motion: true,
+    field_acceptance_primary_missing_action_requires_safety_confirm: true,
+    field_acceptance_primary_missing_action_minimal_precheck_safety_only: true,
+    field_acceptance_primary_missing_action_camera_preflight_required: false,
+    field_acceptance_primary_missing_action_radar_preflight_required: false,
+    field_acceptance_primary_missing_action_operator_report_preflight_required: false,
+    field_acceptance_primary_missing_action_route_wysiwyg_preflight_required: false,
     live_closure_summary: {
       status: "needs_wysiwyg",
       status_label: "待当前所见",
@@ -5758,6 +5778,17 @@ describe("App", () => {
     expect(fieldAcceptancePacket.attributes("data-field-acceptance-primary-missing-id")).toBe("route_ready_on_map");
     expect(fieldAcceptancePacket.attributes("data-field-acceptance-primary-missing-label")).toBe("图上行程已显示");
     expect(fieldAcceptancePacket.attributes("data-field-acceptance-primary-missing-action-id")).toBe("run_nav2_route");
+    expect(fieldAcceptancePacket.attributes("data-field-acceptance-primary-missing-action-label")).toBe("完整行程执行");
+    expect(fieldAcceptancePacket.attributes("data-field-acceptance-primary-missing-action-start-endpoint")).toBe("/api/robot-control/nav2/goal/execute");
+    expect(fieldAcceptancePacket.attributes("data-field-acceptance-primary-missing-action-stop-endpoint")).toBe("/api/robot-control/base/stop");
+    expect(fieldAcceptancePacket.attributes("data-field-acceptance-primary-missing-action-acceptance-endpoints")).toBe("/api/robot-control/map/preview,/api/robot-control/nav2/goal/execution/latest,/api/robot-control/base/feedback-samples,/api/robot-control/delivery/latest,/api/robot-control/summary");
+    expect(fieldAcceptancePacket.attributes("data-field-acceptance-primary-missing-action-sends-motion")).toBe("true");
+    expect(fieldAcceptancePacket.attributes("data-field-acceptance-primary-missing-action-requires-safety-confirm")).toBe("true");
+    expect(fieldAcceptancePacket.attributes("data-field-acceptance-primary-missing-action-minimal-precheck-safety-only")).toBe("true");
+    expect(fieldAcceptancePacket.attributes("data-field-acceptance-primary-missing-action-camera-preflight-required")).toBe("false");
+    expect(fieldAcceptancePacket.attributes("data-field-acceptance-primary-missing-action-radar-preflight-required")).toBe("false");
+    expect(fieldAcceptancePacket.attributes("data-field-acceptance-primary-missing-action-operator-report-preflight-required")).toBe("false");
+    expect(fieldAcceptancePacket.attributes("data-field-acceptance-primary-missing-action-route-wysiwyg-preflight-required")).toBe("false");
     expect(fieldAcceptancePacket.attributes("data-field-acceptance-primary-readback-endpoint")).toBe("/api/robot-control/map/preview");
     expect(fieldAcceptancePacket.attributes("data-field-acceptance-primary-readback-method")).toBe("GET");
     expect(fieldAcceptancePacket.attributes("data-field-acceptance-primary-requires-motion-before-readback")).toBe("false");
