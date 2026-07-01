@@ -4253,6 +4253,7 @@ export interface RobotControlCameraMjpegStatusResponse extends ProofFlags {
   camera_wysiwyg_next_action_plain: string;
   failure_reason: string;
   blocked_reasons: string[];
+  hard_dangerous_true_fields: string[];
   robot_control_executed: false;
 }
 

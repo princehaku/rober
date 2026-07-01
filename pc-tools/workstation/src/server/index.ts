@@ -2574,6 +2574,8 @@ function cameraMjpegStatusResponse(
     camera_wysiwyg_next_action_plain: previewVisibility.wysiwyg_next_action_plain,
     failure_reason: failureReason,
     blocked_reasons: failureReason ? [failureReason] : [],
+    // 相机共享预览状态是纯读回端点，显式给脚本一个空数组，避免 jq 读到 null 后误判为合同缺失。
+    hard_dangerous_true_fields: [],
     robot_control_executed: false,
     ...PROOF_FLAGS,
   };

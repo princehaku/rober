@@ -14759,6 +14759,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(statusBody.camera_recovery_sends_motion).toBe(false);
       expect(statusBody.camera_recovery_starts_map_runtime).toBe(false);
       expect(statusBody.camera_status_readback_only).toBe(true);
+      expect(statusBody.hard_dangerous_true_fields).toEqual([]);
       expect(statusBody.robot_control_executed).toBe(false);
     } finally {
       await workstation.close();
