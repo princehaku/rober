@@ -3901,6 +3901,8 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   mapping_start_endpoint?: RobotControlLiveMotionRunbookItem["start_endpoint"];
   mapping_preview_endpoint?: RobotControlLiveClosureSummary["fixed_mapping_preview_endpoint"];
   mapping_acceptance_endpoints?: RobotControlLiveMotionRunbookItem["acceptance_endpoints"];
+  mapping_readback_endpoints?: RobotControlLiveMotionRunbookItem["acceptance_endpoints"];
+  mapping_required_success_markers?: RobotControlLiveMotionRunbookItem["missing_evidence"];
   mapping_proof_status?: RobotControlLiveMotionRunbookItem["proof_status"];
   mapping_missing_evidence?: RobotControlLiveMotionRunbookItem["missing_evidence"];
   mapping_proof_plain?: RobotControlLiveMotionRunbookItem["proof_plain"];

@@ -820,6 +820,18 @@ const fixtures: Record<string, unknown> = {
     keyboard_required_success_markers: ["same_hold_window_wheel_lr_nonzero", "stop_after_release"],
     mapping_start_ready: false,
     mapping_start_missing_reasons: ["camera_first_frame", "lidar_fresh"],
+    mapping_acceptance_endpoints: [
+      "/api/robot-control/free-roam/autonomy/latest",
+      "/api/robot-control/map/preview",
+      "/api/robot-control/summary",
+    ],
+    mapping_readback_endpoints: [
+      "/api/robot-control/free-roam/autonomy/latest",
+      "/api/robot-control/map/preview",
+      "/api/robot-control/summary",
+    ],
+    mapping_required_success_markers: ["camera_first_frame", "lidar_fresh"],
+    mapping_missing_evidence: ["camera_first_frame", "lidar_fresh"],
     field_acceptance_primary_missing_id: "route_ready_on_map",
     field_acceptance_primary_missing_label: "图上行程已显示",
     field_acceptance_primary_missing_action_id: "run_nav2_route",
@@ -5854,6 +5866,8 @@ describe("App", () => {
     expect(fieldAcceptancePacket.attributes("data-mapping-start-ready")).toBe("false");
     expect(fieldAcceptancePacket.attributes("data-mapping-missing-evidence")).toBe("camera_first_frame,lidar_fresh");
     expect(fieldAcceptancePacket.attributes("data-mapping-start-missing-evidence")).toBe("camera_first_frame,lidar_fresh");
+    expect(fieldAcceptancePacket.attributes("data-mapping-readback-endpoints")).toBe("/api/robot-control/free-roam/autonomy/latest,/api/robot-control/map/preview,/api/robot-control/summary");
+    expect(fieldAcceptancePacket.attributes("data-mapping-required-success-markers")).toBe("camera_first_frame,lidar_fresh");
     expect(fieldAcceptancePacket.attributes("data-mapping-start-only-camera-missing")).toBe("false");
     expect(fieldAcceptancePacket.attributes("data-camera-blocks-mapping-start")).toBe("true");
     expect(fieldAcceptancePacket.attributes("data-camera-blocks-free-move")).toBe("false");

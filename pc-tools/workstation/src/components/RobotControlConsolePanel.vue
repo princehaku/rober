@@ -18523,6 +18523,8 @@ onBeforeUnmount(() => {
           :data-mapping-start-ready="String(plainFieldAcceptancePacket.mapping_start_ready)"
           :data-mapping-missing-evidence="plainFieldAcceptanceMappingMissingText"
           :data-mapping-start-missing-evidence="robotSummary?.mapping_start_missing_evidence?.join(',') ?? plainFieldAcceptanceMappingMissingText"
+          :data-mapping-readback-endpoints="robotSummary?.mapping_readback_endpoints?.join(',') ?? robotSummary?.mapping_acceptance_endpoints?.join(',') ?? 'none'"
+          :data-mapping-required-success-markers="robotSummary?.mapping_required_success_markers?.join(',') ?? robotSummary?.mapping_missing_evidence?.join(',') ?? plainFieldAcceptanceMappingMissingText"
           :data-mapping-start-only-camera-missing="String(robotSummary?.mapping_start_only_camera_missing ?? (plainFieldAcceptancePacket.mapping_missing_evidence.length === 1 && plainFieldAcceptancePacket.mapping_missing_evidence[0] === 'camera_first_frame'))"
           :data-camera-blocks-mapping-start="String(plainFieldAcceptancePacket.camera_blocks_mapping_start)"
           :data-camera-blocks-free-move="String(plainFieldAcceptancePacket.camera_blocks_free_move)"

@@ -1210,6 +1210,8 @@ describe("robotControlSummary", () => {
       "/api/robot-control/map/preview",
       "/api/robot-control/summary",
     ]);
+    expect(summary.mapping_readback_endpoints).toEqual(summary.mapping_acceptance_endpoints);
+    expect(summary.mapping_required_success_markers).toEqual(["camera_first_frame", "lidar_fresh"]);
     expect(summary.mapping_proof_status).toBe("blocked");
     expect(summary.mapping_missing_evidence).toEqual(["camera_first_frame", "lidar_fresh"]);
     expect(summary.mapping_proof_plain).toContain("建图暂不可启动");

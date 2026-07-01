@@ -11185,6 +11185,12 @@ export async function buildRobotControlSummary(
       liveClosureSummary.fixed_mapping_preview_endpoint,
       "/api/robot-control/summary",
     ],
+    mapping_readback_endpoints: mappingRunbookItem?.acceptance_endpoints ?? [
+      liveClosureSummary.fixed_free_roam_latest_endpoint,
+      liveClosureSummary.fixed_mapping_preview_endpoint,
+      "/api/robot-control/summary",
+    ],
+    mapping_required_success_markers: mappingRunbookItem?.missing_evidence ?? [],
     mapping_proof_status: mappingRunbookItem?.proof_status ?? "blocked",
     mapping_missing_evidence: mappingRunbookItem?.missing_evidence ?? [],
     mapping_proof_plain: mappingRunbookItem?.proof_plain ?? "传感器就绪后建图未出现在当前 runbook。",

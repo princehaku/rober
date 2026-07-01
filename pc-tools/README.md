@@ -51,6 +51,10 @@ null，该字段也只作观察说明，不启动 ROS2、RViz2、Foxglove、Nav2
 同一口径也暴露 `free_move_readback_endpoint`、`free_move_latest_endpoint` 和
 `free_move_required_success_marker` 单值 alias，分别指向 `/api/robot-control/free-roam/autonomy/latest`
 和 `free_roam_latest_motion_ready`，方便现场脚本不用拆数组也能拿到自由移动最新读回入口和验收 marker。
+建图读回同样暴露 `mapping_readback_endpoints` 和 `mapping_required_success_markers`，复用
+`mapping_acceptance_endpoints` 与 `mapping_missing_evidence`；现场脚本可直接确认建图收口读回为
+free-roam latest、map preview 和 summary，并看到当前还差相机首帧等 marker。该 alias 只读，不启动
+建图 runtime 或运动控制。
 
 2026-07-02 CST 起，固定 proof refresh POST 回包本体也直接说明 no-motion 边界：
 `readback_only=true`、`no_motion_refresh=true`、`sends_motion_when_clicked=false`、
