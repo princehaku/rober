@@ -53,6 +53,11 @@ lifecycle、Nav2、manual、keyboard、free-roam、建图 runtime、delivery、s
 用于判断执行后的地图画面是否真实刷新；这条读回链路不额外发送 manual、keyboard、free-roam、
 建图 runtime、雷达 lifecycle、delivery complete、stop 或 `/cmd_vel`。
 
+2026-07-02 CST 起，PC 键盘连续手控松开/停止后，如果固定 stop 代理已转发成功，页面会自动只读刷新
+`/api/robot-control/base/feedback-samples -> /api/robot-control/summary`，让同一次按住窗口后的
+wheel L/R 证据马上回到首屏。该 post-hold 读回不再发送 manual 脉冲，不启动 Nav2/free-roam/建图、
+雷达 lifecycle、delivery complete、额外 stop 或 `/cmd_vel`。
+
 开发热更新入口用 `npm run dev`，默认监听 `0.0.0.0:7002`，并把 `/api` 代理到本机
 Node 工作站 `http://127.0.0.1:7001`。因此开发时先让 `npm run api` 守住 7001，
 再打开 7002 看热更新页；`dev:public` 只是复用 `npm run dev` 的兼容旧入口，正式现场访问仍优先使用 7001 的 Node/Express 工作站。

@@ -19980,11 +19980,27 @@ describe("App", () => {
     expect(keyboardClosureItem?.attributes("data-ready")).toBe("false");
     expect(keyboardClosureItem?.text()).toContain("本次按住 1/2 次");
 
+    const callsBeforeKeyboardRelease = mockedFetch.mock.calls.length;
     window.dispatchEvent(new KeyboardEvent("keyup", { key: "w" }));
     await flushPromises();
     await wrapper.vm.$nextTick();
+    const keyboardReleaseUrls = mockedFetch.mock.calls
+      .slice(callsBeforeKeyboardRelease)
+      .map(([url]) => String(url));
+    const keyboardReleaseEndpointOrder = keyboardReleaseUrls
+      .filter((url) => url.startsWith("/api/robot-control/"))
+      .map((url) => url.split("?")[0] ?? "");
+    expect(keyboardReleaseEndpointOrder).toEqual(expect.arrayContaining([
+      "/api/robot-control/base/stop",
+      "/api/robot-control/base/feedback-samples",
+      "/api/robot-control/summary",
+    ]));
+    expect(keyboardReleaseEndpointOrder.indexOf("/api/robot-control/base/stop")).toBeLessThan(keyboardReleaseEndpointOrder.indexOf("/api/robot-control/base/feedback-samples"));
+    expect(keyboardReleaseEndpointOrder.indexOf("/api/robot-control/base/feedback-samples")).toBeLessThan(keyboardReleaseEndpointOrder.lastIndexOf("/api/robot-control/summary"));
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(true);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/stop?"))).toBe(true);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
 
@@ -20071,11 +20087,26 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("正在前进，松开即停；本次按住 1/2 次；轮速 L/R=0/0，点动已发但仍未非零。");
     expect(wrapper.find('[data-testid="keyboard-wheel-feedback-summary"]').text()).toBe("键盘轮速：已发送点动并自动停止，但 L/R=0/0 仍未读到非零；运动帧=4。下一步：检查电机使能、供电、模式和现场空间后重试。");
 
+    const callsBeforeKeyboardZeroRelease = mockedFetch.mock.calls.length;
     window.dispatchEvent(new KeyboardEvent("keyup", { key: "w" }));
     await flushPromises();
     await wrapper.vm.$nextTick();
+    const keyboardZeroReleaseEndpointOrder = mockedFetch.mock.calls
+      .slice(callsBeforeKeyboardZeroRelease)
+      .map(([url]) => String(url))
+      .filter((url) => url.startsWith("/api/robot-control/"))
+      .map((url) => url.split("?")[0] ?? "");
+    expect(keyboardZeroReleaseEndpointOrder).toEqual(expect.arrayContaining([
+      "/api/robot-control/base/stop",
+      "/api/robot-control/base/feedback-samples",
+      "/api/robot-control/summary",
+    ]));
+    expect(keyboardZeroReleaseEndpointOrder.indexOf("/api/robot-control/base/stop")).toBeLessThan(keyboardZeroReleaseEndpointOrder.indexOf("/api/robot-control/base/feedback-samples"));
+    expect(keyboardZeroReleaseEndpointOrder.indexOf("/api/robot-control/base/feedback-samples")).toBeLessThan(keyboardZeroReleaseEndpointOrder.lastIndexOf("/api/robot-control/summary"));
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(true);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/stop?"))).toBe(true);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
 

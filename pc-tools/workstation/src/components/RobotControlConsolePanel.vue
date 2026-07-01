@@ -17543,6 +17543,12 @@ function stopKeyboardControl(reason: string): void {
   }
 }
 
+async function refreshKeyboardPostHoldReadbacks(): Promise<void> {
+  // 键盘松开后的验收必须读一次固定轮速样本，再刷新 summary；这只是只读复验，不会再发 manual 或 stop。
+  await runBaseFeedbackSamples({ refreshAfter: false, allowDuringMapRefresh: true });
+  await refreshConsole();
+}
+
 async function sendKeyboardReleaseStop(reason: string): Promise<void> {
   // 键盘验收必须等 release stop 真正转发成功；失败或不可发都不能算已验证。
   if (!canSendStop.value) {
@@ -17562,6 +17568,9 @@ async function sendKeyboardReleaseStop(reason: string): Promise<void> {
     keyboardControlArmed.value = false;
     keyboardVerifiedPulseCount.value = 0;
     keyboardHoldPulseCount.value = 0;
+  }
+  if (stopForwarded) {
+    await refreshKeyboardPostHoldReadbacks();
   }
   if (stopForwarded && mapRuntimeStarted.value && robotApiBaseUrl.value.trim()) {
     void refreshMapPreview({ countForFreeRoamSession: true });
