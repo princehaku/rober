@@ -2824,6 +2824,27 @@ export interface RobotControlFieldAcceptanceSafetyConfirmReadyAction {
   submits_delivery_when_executed: false;
 }
 
+export interface RobotControlFieldAcceptanceHardwareAction {
+  id: string;
+  label: string;
+  summary_plain: string;
+  blocks_camera_wysiwyg: boolean;
+  blocks_mapping_start: boolean;
+  blocks_free_move: boolean;
+  after_action_readback_endpoint: string;
+  after_action_readback_label: string;
+  after_action_readback_method: "GET" | "POST";
+  sends_motion_when_clicked: false;
+  starts_nav2_when_clicked: false;
+  starts_manual_when_clicked: false;
+  starts_keyboard_when_clicked: false;
+  starts_free_roam_when_clicked: false;
+  starts_map_runtime_when_clicked: false;
+  starts_radar_lifecycle_when_clicked: false;
+  submits_delivery_when_clicked: false;
+  stops_motion_when_clicked: false;
+}
+
 export type RobotControlFieldAcceptanceWysiwygRefreshMode =
   | "camera_only"
   | "radar_map_only"
@@ -2858,6 +2879,14 @@ export interface RobotControlFieldAcceptancePacket {
   primary_safety_confirm_ready_action_requires_safety_confirm: boolean;
   primary_safety_confirm_ready_action_sends_motion: boolean;
   hardware_action_ids: string[];
+  hardware_action_labels: string[];
+  hardware_action_after_readback_endpoints: string[];
+  hardware_actions: RobotControlFieldAcceptanceHardwareAction[];
+  primary_hardware_action_id: string;
+  primary_hardware_action_label: string;
+  primary_hardware_action_after_readback_endpoint: string;
+  primary_hardware_action_blocks_mapping_start: boolean;
+  primary_hardware_action_blocks_free_move: boolean;
   no_motion_readback_action_ids: string[];
   no_motion_readback_action_labels: string[];
   no_motion_readback_action_endpoints: string[];
@@ -3619,6 +3648,14 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   field_acceptance_primary_safety_confirm_ready_action_requires_safety_confirm?: RobotControlFieldAcceptancePacket["primary_safety_confirm_ready_action_requires_safety_confirm"];
   field_acceptance_primary_safety_confirm_ready_action_sends_motion?: RobotControlFieldAcceptancePacket["primary_safety_confirm_ready_action_sends_motion"];
   field_acceptance_hardware_action_ids?: RobotControlFieldAcceptancePacket["hardware_action_ids"];
+  field_acceptance_hardware_action_labels?: RobotControlFieldAcceptancePacket["hardware_action_labels"];
+  field_acceptance_hardware_action_after_readback_endpoints?: RobotControlFieldAcceptancePacket["hardware_action_after_readback_endpoints"];
+  field_acceptance_hardware_actions?: RobotControlFieldAcceptancePacket["hardware_actions"];
+  field_acceptance_primary_hardware_action_id?: RobotControlFieldAcceptancePacket["primary_hardware_action_id"];
+  field_acceptance_primary_hardware_action_label?: RobotControlFieldAcceptancePacket["primary_hardware_action_label"];
+  field_acceptance_primary_hardware_action_after_readback_endpoint?: RobotControlFieldAcceptancePacket["primary_hardware_action_after_readback_endpoint"];
+  field_acceptance_primary_hardware_action_blocks_mapping_start?: RobotControlFieldAcceptancePacket["primary_hardware_action_blocks_mapping_start"];
+  field_acceptance_primary_hardware_action_blocks_free_move?: RobotControlFieldAcceptancePacket["primary_hardware_action_blocks_free_move"];
   field_acceptance_no_motion_readback_action_ids?: RobotControlFieldAcceptancePacket["no_motion_readback_action_ids"];
   field_acceptance_no_motion_readback_action_labels?: RobotControlFieldAcceptancePacket["no_motion_readback_action_labels"];
   field_acceptance_no_motion_readback_action_endpoints?: RobotControlFieldAcceptancePacket["no_motion_readback_action_endpoints"];

@@ -29,6 +29,11 @@ Node 工作站 `http://127.0.0.1:7001`。因此开发时先让 `npm run api` 守
 `netstat -anv | rg '[.:]7001 .*LISTEN|7001'`。2026-06-25 起 PC 工作站默认避开
 Clash Verge 常用的 `7071`，Node 代码按 `0.0.0.0:7001` 绑定。
 
+2026-07-01 23:28 CST 起，现场验收包的设备处理也升级为 `hardware_actions[]`：
+当前相机 USB/full-speed blocker 会暴露 `camera_usb_recovery`、普通用户 label、处理后只读复测 endpoint、是否阻塞画面/建图/自由移动，
+以及所有不发车标志。真实口径是：相机设备缺口阻塞画面 WYSIWYG 和建图首帧，不阻塞低速自由移动；处理后固定只读复测
+`POST /api/robot-control/camera/first-frame/probe`。
+
 2026-07-01 23:22 CST 起，现场验收包的“勾安全确认后可执行”也升级为动作清单：
 `safety_confirm_ready_actions[]` 同步给出普通用户 label、固定 start/stop/readback endpoint、`requires_safety_confirm=true`、
 `minimal_precheck_safety_only=true`、`camera/radar/operator/route_wysiwyg_preflight_required=false` 和具体会启动的运动类型。

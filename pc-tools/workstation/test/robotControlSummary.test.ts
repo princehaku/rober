@@ -1266,6 +1266,29 @@ describe("robotControlSummary", () => {
     expect(summary.camera_recovery_next_action_plain).toContain("换高速 USB 口/线或带供电 USB Hub");
     expect(summary.camera_recovery_sends_motion).toBe(false);
     expect(summary.field_acceptance_hardware_action_ids).toEqual(["camera_usb_recovery"]);
+    expect(summary.field_acceptance_hardware_action_labels).toEqual(["换高速USB后复测"]);
+    expect(summary.field_acceptance_hardware_action_after_readback_endpoints).toEqual(["/api/robot-control/camera/first-frame/probe"]);
+    expect(summary.field_acceptance_primary_hardware_action_id).toBe("camera_usb_recovery");
+    expect(summary.field_acceptance_primary_hardware_action_label).toBe("换高速USB后复测");
+    expect(summary.field_acceptance_primary_hardware_action_after_readback_endpoint).toBe("/api/robot-control/camera/first-frame/probe");
+    expect(summary.field_acceptance_primary_hardware_action_blocks_mapping_start).toBe(true);
+    expect(summary.field_acceptance_primary_hardware_action_blocks_free_move).toBe(false);
+    expect(summary.field_acceptance_hardware_actions).toEqual([
+      expect.objectContaining({
+        id: "camera_usb_recovery",
+        label: "换高速USB后复测",
+        blocks_camera_wysiwyg: true,
+        blocks_mapping_start: true,
+        blocks_free_move: false,
+        after_action_readback_endpoint: "/api/robot-control/camera/first-frame/probe",
+        after_action_readback_method: "POST",
+        sends_motion_when_clicked: false,
+        starts_nav2_when_clicked: false,
+        starts_manual_when_clicked: false,
+        starts_free_roam_when_clicked: false,
+        starts_map_runtime_when_clicked: false,
+      }),
+    ]);
     expect(summary.field_acceptance_remaining_hardware_action_summary_plain).toContain("需要设备处理：换高速USB后复测");
     expect(summary.field_acceptance_remaining_hardware_action_summary_plain).toContain("当前设备提示");
     expect(summary.field_acceptance_remaining_hardware_action_summary_plain).not.toContain("当前硬件提示");

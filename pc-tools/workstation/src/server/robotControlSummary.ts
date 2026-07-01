@@ -31,6 +31,7 @@ import type {
   RobotControlFieldAcceptanceNoMotionReadbackAction,
   RobotControlFieldAcceptanceNoMotionReadbackActionId,
   RobotControlFieldAcceptanceSafetyConfirmReadyAction,
+  RobotControlFieldAcceptanceHardwareAction,
   RobotControlFieldAcceptanceWysiwygRefreshMode,
   RobotControlLiveObjectiveAuditItem,
   RobotControlNav2RouteAcceptancePacket,
@@ -10282,11 +10283,36 @@ export async function buildRobotControlSummary(
     .find((item) => item.id === fieldAcceptanceNextStep?.id)
     ?? fieldAcceptanceSafetyConfirmReadyActions[0]
     ?? null;
+  const fieldAcceptanceCameraRecoveryActionPlain = liveClosureSummary.camera_recovery_next_action_plain
+    .replace(/当前硬件提示/g, "当前设备提示");
   const fieldAcceptanceHardwareActionIds = [
     ...(liveClosureSummary.camera_hardware_action_required && !liveClosureSummary.camera_current_visible
       ? ["camera_usb_recovery"]
       : []),
   ];
+  const fieldAcceptanceHardwareActions: RobotControlFieldAcceptanceHardwareAction[] = fieldAcceptanceHardwareActionIds.includes("camera_usb_recovery")
+    ? [{
+      id: "camera_usb_recovery",
+      label: liveClosureSummary.camera_hardware_action_label,
+      summary_plain: `需要先处理相机设备链路：${fieldAcceptanceCameraRecoveryActionPlain}处理后再只读复测相机首帧。`,
+      blocks_camera_wysiwyg: true,
+      blocks_mapping_start: true,
+      blocks_free_move: false,
+      after_action_readback_endpoint: liveClosureSummary.fixed_camera_probe_endpoint,
+      after_action_readback_label: "复测相机首帧",
+      after_action_readback_method: "POST",
+      sends_motion_when_clicked: false,
+      starts_nav2_when_clicked: false,
+      starts_manual_when_clicked: false,
+      starts_keyboard_when_clicked: false,
+      starts_free_roam_when_clicked: false,
+      starts_map_runtime_when_clicked: false,
+      starts_radar_lifecycle_when_clicked: false,
+      submits_delivery_when_clicked: false,
+      stops_motion_when_clicked: false,
+    }]
+    : [];
+  const fieldAcceptancePrimaryHardwareAction = fieldAcceptanceHardwareActions[0] ?? null;
   const fieldAcceptanceNoMotionReadbackActionIds: RobotControlFieldAcceptanceNoMotionReadbackActionId[] = [
     "readback_all",
   ];
@@ -10345,8 +10371,6 @@ export async function buildRobotControlSummary(
     .find((item) => item.id === fieldAcceptancePrimaryNoMotionReadbackActionId)
     ?? fieldAcceptanceNoMotionReadbackActions[0]
     ?? null;
-  const fieldAcceptanceCameraRecoveryActionPlain = liveClosureSummary.camera_recovery_next_action_plain
-    .replace(/当前硬件提示/g, "当前设备提示");
   const fieldAcceptanceOperatorActionPlain = fieldAcceptanceSafetyConfirmReadyStepIds.length > 0
     ? `需要现场安全确认的运动验收：${fieldAcceptanceSafetyConfirmReadyLabels.join("、")}；勾一次安全确认后再手动执行，执行后只读读回复验。`
     : "当前没有只等安全确认的运动验收入口。";
@@ -10400,6 +10424,14 @@ export async function buildRobotControlSummary(
     primary_safety_confirm_ready_action_requires_safety_confirm: fieldAcceptancePrimarySafetyConfirmReadyAction?.requires_safety_confirm ?? false,
     primary_safety_confirm_ready_action_sends_motion: fieldAcceptancePrimarySafetyConfirmReadyAction?.sends_motion_when_executed ?? false,
     hardware_action_ids: fieldAcceptanceHardwareActionIds,
+    hardware_action_labels: fieldAcceptanceHardwareActions.map((item) => item.label),
+    hardware_action_after_readback_endpoints: fieldAcceptanceHardwareActions.map((item) => item.after_action_readback_endpoint),
+    hardware_actions: fieldAcceptanceHardwareActions,
+    primary_hardware_action_id: fieldAcceptancePrimaryHardwareAction?.id ?? "none",
+    primary_hardware_action_label: fieldAcceptancePrimaryHardwareAction?.label ?? "无设备处理动作",
+    primary_hardware_action_after_readback_endpoint: fieldAcceptancePrimaryHardwareAction?.after_action_readback_endpoint ?? "none",
+    primary_hardware_action_blocks_mapping_start: fieldAcceptancePrimaryHardwareAction?.blocks_mapping_start ?? false,
+    primary_hardware_action_blocks_free_move: fieldAcceptancePrimaryHardwareAction?.blocks_free_move ?? false,
     no_motion_readback_action_ids: fieldAcceptanceNoMotionReadbackActionIds,
     no_motion_readback_action_labels: fieldAcceptanceNoMotionReadbackActions.map((item) => item.label),
     no_motion_readback_action_endpoints: fieldAcceptanceNoMotionReadbackActions.map((item) => item.endpoint),
@@ -10720,6 +10752,14 @@ export async function buildRobotControlSummary(
     field_acceptance_primary_safety_confirm_ready_action_requires_safety_confirm: fieldAcceptancePacket.primary_safety_confirm_ready_action_requires_safety_confirm,
     field_acceptance_primary_safety_confirm_ready_action_sends_motion: fieldAcceptancePacket.primary_safety_confirm_ready_action_sends_motion,
     field_acceptance_hardware_action_ids: fieldAcceptancePacket.hardware_action_ids,
+    field_acceptance_hardware_action_labels: fieldAcceptancePacket.hardware_action_labels,
+    field_acceptance_hardware_action_after_readback_endpoints: fieldAcceptancePacket.hardware_action_after_readback_endpoints,
+    field_acceptance_hardware_actions: fieldAcceptancePacket.hardware_actions,
+    field_acceptance_primary_hardware_action_id: fieldAcceptancePacket.primary_hardware_action_id,
+    field_acceptance_primary_hardware_action_label: fieldAcceptancePacket.primary_hardware_action_label,
+    field_acceptance_primary_hardware_action_after_readback_endpoint: fieldAcceptancePacket.primary_hardware_action_after_readback_endpoint,
+    field_acceptance_primary_hardware_action_blocks_mapping_start: fieldAcceptancePacket.primary_hardware_action_blocks_mapping_start,
+    field_acceptance_primary_hardware_action_blocks_free_move: fieldAcceptancePacket.primary_hardware_action_blocks_free_move,
     field_acceptance_no_motion_readback_action_ids: fieldAcceptancePacket.no_motion_readback_action_ids,
     field_acceptance_no_motion_readback_action_labels: fieldAcceptancePacket.no_motion_readback_action_labels,
     field_acceptance_no_motion_readback_action_endpoints: fieldAcceptancePacket.no_motion_readback_action_endpoints,
