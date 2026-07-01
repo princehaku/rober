@@ -10703,6 +10703,12 @@ export async function buildRobotControlSummary(
     delivery_next_action_plain: liveClosureSummary.wheel_rerun_delivery_next_action_plain,
     sends_motion_when_clicked: false,
   };
+  const fieldAcceptancePrimarySafetyAction = fieldAcceptancePacket.safety_confirm_ready_actions.find(
+    (action) => action.id === fieldAcceptancePacket.primary_safety_confirm_ready_action_id,
+  );
+  const fieldAcceptanceSafetyConfirmReadyActionAcceptanceEndpoints = fieldAcceptancePacket.safety_confirm_ready_actions.map(
+    (action) => action.acceptance_endpoints.join("|"),
+  );
 
   return {
     schema: ROBOT_CONTROL_SCHEMA,
@@ -10929,10 +10935,22 @@ export async function buildRobotControlSummary(
     field_acceptance_safety_confirm_ready_step_ids: fieldAcceptancePacket.safety_confirm_ready_step_ids,
     field_acceptance_safety_confirm_ready_action_labels: fieldAcceptancePacket.safety_confirm_ready_action_labels,
     field_acceptance_safety_confirm_ready_action_start_endpoints: fieldAcceptancePacket.safety_confirm_ready_action_start_endpoints,
+    field_acceptance_safety_confirm_ready_action_stop_endpoints: fieldAcceptancePacket.safety_confirm_ready_actions.map((action) => action.stop_endpoint),
+    field_acceptance_safety_confirm_ready_action_acceptance_endpoints: fieldAcceptanceSafetyConfirmReadyActionAcceptanceEndpoints,
+    field_acceptance_safety_confirm_ready_action_minimal_precheck_safety_only: fieldAcceptancePacket.safety_confirm_ready_actions.map((action) => action.minimal_precheck_safety_only),
+    field_acceptance_safety_confirm_ready_action_camera_preflight_required: fieldAcceptancePacket.safety_confirm_ready_actions.map((action) => action.camera_preflight_required),
+    field_acceptance_safety_confirm_ready_action_radar_preflight_required: fieldAcceptancePacket.safety_confirm_ready_actions.map((action) => action.radar_preflight_required),
+    field_acceptance_safety_confirm_ready_action_route_wysiwyg_preflight_required: fieldAcceptancePacket.safety_confirm_ready_actions.map((action) => action.route_wysiwyg_preflight_required),
     field_acceptance_safety_confirm_ready_actions: fieldAcceptancePacket.safety_confirm_ready_actions,
     field_acceptance_primary_safety_confirm_ready_action_id: fieldAcceptancePacket.primary_safety_confirm_ready_action_id,
     field_acceptance_primary_safety_confirm_ready_action_label: fieldAcceptancePacket.primary_safety_confirm_ready_action_label,
     field_acceptance_primary_safety_confirm_ready_action_start_endpoint: fieldAcceptancePacket.primary_safety_confirm_ready_action_start_endpoint,
+    field_acceptance_primary_safety_confirm_ready_action_stop_endpoint: fieldAcceptancePrimarySafetyAction?.stop_endpoint ?? "none",
+    field_acceptance_primary_safety_confirm_ready_action_acceptance_endpoints: fieldAcceptancePrimarySafetyAction?.acceptance_endpoints ?? [],
+    field_acceptance_primary_safety_confirm_ready_action_minimal_precheck_safety_only: fieldAcceptancePrimarySafetyAction?.minimal_precheck_safety_only ?? false,
+    field_acceptance_primary_safety_confirm_ready_action_camera_preflight_required: fieldAcceptancePrimarySafetyAction?.camera_preflight_required ?? false,
+    field_acceptance_primary_safety_confirm_ready_action_radar_preflight_required: fieldAcceptancePrimarySafetyAction?.radar_preflight_required ?? false,
+    field_acceptance_primary_safety_confirm_ready_action_route_wysiwyg_preflight_required: fieldAcceptancePrimarySafetyAction?.route_wysiwyg_preflight_required ?? false,
     field_acceptance_primary_safety_confirm_ready_action_requires_safety_confirm: fieldAcceptancePacket.primary_safety_confirm_ready_action_requires_safety_confirm,
     field_acceptance_primary_safety_confirm_ready_action_sends_motion: fieldAcceptancePacket.primary_safety_confirm_ready_action_sends_motion,
     field_acceptance_hardware_action_ids: fieldAcceptancePacket.hardware_action_ids,

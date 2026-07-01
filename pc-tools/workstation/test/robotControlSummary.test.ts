@@ -836,9 +836,35 @@ describe("robotControlSummary", () => {
       "/api/robot-control/base/manual",
       "/api/robot-control/free-roam/autonomy/start",
     ]);
+    expect(summary.field_acceptance_safety_confirm_ready_action_stop_endpoints).toEqual([
+      "/api/robot-control/base/stop",
+      "/api/robot-control/base/stop",
+      "/api/robot-control/free-roam/autonomy/stop",
+    ]);
+    expect(summary.field_acceptance_safety_confirm_ready_action_acceptance_endpoints).toEqual([
+      "/api/robot-control/map/preview|/api/robot-control/nav2/goal/execution/latest|/api/robot-control/base/feedback-samples|/api/robot-control/delivery/latest|/api/robot-control/summary",
+      "/api/robot-control/base/feedback-samples|/api/robot-control/summary",
+      "/api/robot-control/free-roam/autonomy/latest|/api/robot-control/map/preview|/api/robot-control/summary",
+    ]);
+    expect(summary.field_acceptance_safety_confirm_ready_action_minimal_precheck_safety_only).toEqual([true, true, true]);
+    expect(summary.field_acceptance_safety_confirm_ready_action_camera_preflight_required).toEqual([false, false, false]);
+    expect(summary.field_acceptance_safety_confirm_ready_action_radar_preflight_required).toEqual([false, false, false]);
+    expect(summary.field_acceptance_safety_confirm_ready_action_route_wysiwyg_preflight_required).toEqual([false, false, false]);
     expect(summary.field_acceptance_primary_safety_confirm_ready_action_id).toBe("run_nav2_route");
     expect(summary.field_acceptance_primary_safety_confirm_ready_action_label).toBe("完整行程执行");
     expect(summary.field_acceptance_primary_safety_confirm_ready_action_start_endpoint).toBe("/api/robot-control/nav2/goal/execute");
+    expect(summary.field_acceptance_primary_safety_confirm_ready_action_stop_endpoint).toBe("/api/robot-control/base/stop");
+    expect(summary.field_acceptance_primary_safety_confirm_ready_action_acceptance_endpoints).toEqual([
+      "/api/robot-control/map/preview",
+      "/api/robot-control/nav2/goal/execution/latest",
+      "/api/robot-control/base/feedback-samples",
+      "/api/robot-control/delivery/latest",
+      "/api/robot-control/summary",
+    ]);
+    expect(summary.field_acceptance_primary_safety_confirm_ready_action_minimal_precheck_safety_only).toBe(true);
+    expect(summary.field_acceptance_primary_safety_confirm_ready_action_camera_preflight_required).toBe(false);
+    expect(summary.field_acceptance_primary_safety_confirm_ready_action_radar_preflight_required).toBe(false);
+    expect(summary.field_acceptance_primary_safety_confirm_ready_action_route_wysiwyg_preflight_required).toBe(false);
     expect(summary.field_acceptance_primary_safety_confirm_ready_action_requires_safety_confirm).toBe(true);
     expect(summary.field_acceptance_primary_safety_confirm_ready_action_sends_motion).toBe(true);
     expect(summary.field_acceptance_safety_confirm_ready_actions).toEqual([
