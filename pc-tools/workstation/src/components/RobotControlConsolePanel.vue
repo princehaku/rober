@@ -2126,6 +2126,79 @@ const plainCameraSharedPreviewProofSummary = computed(() => {
   };
 });
 
+const plainCameraUsbRecoveryProofSummary = computed(() => {
+  // USB 12M full-speed 是当前最容易被误判成页面独占的问题；相机卡片必须直接给硬件动作。
+  const summary = robotSummary.value;
+  const liveSummary = plainLiveClosureSummary.value;
+  const camera = summary?.readback_summary.camera;
+  const diagnosisStatuses = [
+    summary?.camera_source_diagnosis_status,
+    liveSummary?.camera_source_diagnosis_status,
+    liveSummary?.live_wysiwyg_camera_source_diagnosis_status,
+    camera?.source_diagnosis_status,
+    camera?.uvc_usb_topology_status,
+  ].filter((item): item is string => Boolean(item && item !== "not_loaded" && item !== "none"));
+  const usbSpeeds = [
+    summary?.camera_usb_speed,
+    liveSummary?.camera_usb_speed,
+    camera?.uvc_usb_topology_video_usb_speed,
+  ].filter((item): item is string => Boolean(item && item !== "not_loaded" && item !== "none"));
+  const sourceDiagnosisStatus = diagnosisStatuses[0] ?? "not_loaded";
+  const usbSpeed = usbSpeeds[0] ?? "not_loaded";
+  const usbFullSpeedDetected = Boolean(summary?.camera_usb_full_speed_detected ?? liveSummary?.camera_usb_full_speed_detected)
+    || diagnosisStatuses.includes("uvc_full_speed_usb_not_exclusive")
+    || diagnosisStatuses.includes("uvc_video_on_full_speed_usb")
+    || usbSpeeds.includes("12M");
+  const hardwareActionRequired = Boolean(
+    summary?.camera_hardware_action_required
+    ?? liveSummary?.camera_hardware_action_required
+    ?? usbFullSpeedDetected,
+  );
+  const hardwareActionLabel = summary?.camera_hardware_action_label
+    ?? liveSummary?.camera_hardware_action_label
+    ?? (usbFullSpeedDetected ? "换高速USB后复测" : "复测相机首帧");
+  const reprobeSequence = summary?.camera_reprobe_sequence?.length
+    ? summary.camera_reprobe_sequence
+    : liveSummary?.camera_reprobe_sequence?.length
+      ? liveSummary.camera_reprobe_sequence
+      : [
+        summary?.fixed_camera_probe_endpoint ?? liveSummary?.fixed_camera_probe_endpoint ?? "/api/robot-control/camera/first-frame/probe",
+        summary?.fixed_camera_mjpeg_status_endpoint ?? liveSummary?.fixed_camera_mjpeg_status_endpoint ?? "/api/robot-control/camera/mjpeg/status",
+        "/api/robot-control/summary",
+      ];
+  const blocksMappingStart = Boolean(summary?.camera_blocks_mapping_start ?? liveSummary?.camera_blocks_mapping_start ?? !plainCameraReadyForFreeRoamAutonomy.value);
+  const blocksFreeMove = Boolean(summary?.camera_blocks_free_move ?? liveSummary?.camera_blocks_free_move ?? false);
+  const notExclusive = summary?.camera_source_diagnosis_not_exclusive === "true"
+    || liveSummary?.camera_source_diagnosis_not_exclusive === "true"
+    || camera?.source_diagnosis_not_exclusive === "true"
+    || camera?.shared_preview_exclusive_camera_claim === "false"
+    || plainCameraSharedPreviewDomEvidence.value.exclusiveCameraClaim === false;
+  const visible = hardwareActionRequired || usbFullSpeedDetected || sourceDiagnosisStatus === "uvc_full_speed_usb_not_exclusive";
+  const state = usbFullSpeedDetected ? "USB full-speed" : hardwareActionRequired ? "需硬件处理" : "无需硬件处理";
+  const usbText = usbSpeed && !["", "not_loaded", "none"].includes(usbSpeed) ? `当前 USB=${usbSpeed}` : "USB 速度未读到";
+  const exclusiveText = notExclusive ? "不是页面独占" : "占用状态待确认";
+  const mappingText = blocksMappingStart ? "阻塞建图首帧" : "不阻塞建图首帧";
+  const freeMoveText = blocksFreeMove ? "会阻塞自由移动" : "不阻塞自由移动";
+  return {
+    visible,
+    state,
+    text: `相机硬件复验：${exclusiveText}；${usbText}；${hardwareActionLabel}；${mappingText}，${freeMoveText}。下一步：换高速 USB 口/线或带供电 Hub 后，按只读复测链路重新检查首帧。`,
+    sourceDiagnosisStatus,
+    usbSpeed,
+    usbFullSpeedDetected,
+    hardwareActionRequired,
+    hardwareActionLabel,
+    notExclusive,
+    blocksMappingStart,
+    blocksFreeMove,
+    reprobeAfterHardwareActionRequired: Boolean(summary?.camera_reprobe_after_hardware_action_required ?? liveSummary?.camera_reprobe_after_hardware_action_required ?? hardwareActionRequired),
+    reprobeSequence: reprobeSequence.join(",") || "none",
+    fixedCameraProbeEndpoint: summary?.fixed_camera_probe_endpoint ?? liveSummary?.fixed_camera_probe_endpoint ?? "/api/robot-control/camera/first-frame/probe",
+    fixedCameraMjpegStatusEndpoint: summary?.fixed_camera_mjpeg_status_endpoint ?? liveSummary?.fixed_camera_mjpeg_status_endpoint ?? "/api/robot-control/camera/mjpeg/status",
+    fixedSummaryEndpoint: "/api/robot-control/summary",
+  };
+});
+
 const plainCameraCurrentFrameProofSummary = computed(() => {
   // 画面验收必须看本页是否真的绘出帧，不能把共享流缓存或上游连接误当成本页可见。
   const evidence = plainCameraSharedPreviewDomEvidence.value;
@@ -20012,6 +20085,40 @@ onBeforeUnmount(() => {
             :data-fixed-shared-preview-status-endpoint="plainCameraSharedPreviewProofSummary.fixedSharedPreviewStatusEndpoint"
           >
             {{ plainCameraSharedPreviewProofSummary.text }}
+          </p>
+          <p
+            v-if="plainCameraUsbRecoveryProofSummary.visible"
+            class="panel-note plain-camera-usb-recovery-proof"
+            data-testid="plain-camera-usb-recovery-proof"
+            :data-state="plainCameraUsbRecoveryProofSummary.state"
+            :data-camera-source-diagnosis-status="plainCameraUsbRecoveryProofSummary.sourceDiagnosisStatus"
+            :data-camera-usb-speed="plainCameraUsbRecoveryProofSummary.usbSpeed"
+            :data-camera-usb-full-speed-detected="String(plainCameraUsbRecoveryProofSummary.usbFullSpeedDetected)"
+            :data-camera-hardware-action-required="String(plainCameraUsbRecoveryProofSummary.hardwareActionRequired)"
+            :data-camera-hardware-action-label="plainCameraUsbRecoveryProofSummary.hardwareActionLabel"
+            :data-camera-source-diagnosis-not-exclusive="String(plainCameraUsbRecoveryProofSummary.notExclusive)"
+            :data-camera-blocks-mapping-start="String(plainCameraUsbRecoveryProofSummary.blocksMappingStart)"
+            :data-camera-blocks-free-move="String(plainCameraUsbRecoveryProofSummary.blocksFreeMove)"
+            :data-camera-reprobe-after-hardware-action-required="String(plainCameraUsbRecoveryProofSummary.reprobeAfterHardwareActionRequired)"
+            :data-camera-reprobe-sequence="plainCameraUsbRecoveryProofSummary.reprobeSequence"
+            :data-fixed-camera-probe-endpoint="plainCameraUsbRecoveryProofSummary.fixedCameraProbeEndpoint"
+            :data-fixed-camera-mjpeg-status-endpoint="plainCameraUsbRecoveryProofSummary.fixedCameraMjpegStatusEndpoint"
+            :data-fixed-summary-endpoint="plainCameraUsbRecoveryProofSummary.fixedSummaryEndpoint"
+            data-readback-only="true"
+            data-refreshes-camera-first-frame-probe="true"
+            data-refreshes-camera-mjpeg-status="true"
+            data-refreshes-summary="true"
+            data-starts-camera-exclusive-capture="false"
+            data-starts-map-runtime="false"
+            data-starts-nav2="false"
+            data-starts-manual="false"
+            data-starts-keyboard="false"
+            data-starts-free-roam="false"
+            data-submits-delivery="false"
+            data-stops-motion="false"
+            data-sends-motion-when-clicked="false"
+          >
+            {{ plainCameraUsbRecoveryProofSummary.text }}
           </p>
           <p v-if="plainCameraWysiwygReadback" class="panel-note" data-testid="robot-camera-wysiwyg-readback">{{ plainCameraWysiwygReadback }}</p>
           <p v-if="plainCameraDeviceReadback" class="panel-note" data-testid="robot-camera-device-readback">{{ plainCameraDeviceReadback }}</p>
