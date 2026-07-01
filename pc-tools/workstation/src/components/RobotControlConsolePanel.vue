@@ -313,6 +313,9 @@ const plainMapViewSize = computed(() => (plainMapFullscreenView.value ? "fullscr
 const plainMapDirectViewHref = "/map";
 const plainMapLegacyDirectViewHref = "?view=map";
 const PLAIN_MAP_RVIZ_LAUNCH_COMMAND = "ros2 launch ros2_trashbot_bringup rviz.launch.py";
+const PLAIN_MAP_RVIZ_ROLE_PLAIN = "RViz2 只给本地工程调试看 /map、/scan、TF、路径、定位和 costmap；普通用户不需要打开。";
+const PLAIN_MAP_FOXGLOVE_ROLE_PLAIN = "Foxglove 用于远程浏览器大屏观察；先在 ROS2 环境安装并启动 foxglove_bridge，再连接 ws://192.168.1.11:8765。";
+const PLAIN_MAP_FOXGLOVE_BRIDGE_INSTALL_COMMAND = "sudo apt install ros-humble-foxglove-bridge";
 const PLAIN_MAP_FOXGLOVE_BRIDGE_LAUNCH_COMMAND = "ros2 launch foxglove_bridge foxglove_bridge_launch.xml";
 const PLAIN_MAP_FOXGLOVE_WS_URL = "ws://192.168.1.11:8765";
 const PLAIN_MAP_ROS2_OBSERVE_TOPICS = [
@@ -16927,6 +16930,18 @@ onBeforeUnmount(() => {
         :data-keyboard-continuous-ready="String(plainLiveClosureSummary.keyboard_continuous_ready)"
         :data-keyboard-continuous-motion-verified="String(plainLiveClosureSummary.keyboard_continuous_motion_verified)"
         :data-keyboard-continuous-forwarded-pulses="String(plainLiveClosureSummary.keyboard_continuous_forwarded_pulses)"
+        :data-keyboard-ready="String(plainLiveClosureSummary.keyboard_ready)"
+        :data-keyboard-safety-confirm-required="String(plainLiveClosureSummary.keyboard_safety_confirm_required)"
+        :data-keyboard-enable-sends-motion="String(plainLiveClosureSummary.keyboard_enable_sends_motion)"
+        :data-keyboard-hold-to-move-required-short="String(plainLiveClosureSummary.keyboard_hold_to_move_required)"
+        :data-keyboard-pulse-interval-ms="String(plainLiveClosureSummary.keyboard_pulse_interval_ms)"
+        :data-keyboard-pulse-duration-ms="String(plainLiveClosureSummary.keyboard_pulse_duration_ms)"
+        :data-keyboard-stop-triggers="plainLiveClosureSummary.keyboard_stop_triggers?.join(',') || 'none'"
+        :data-keyboard-acceptance-plain="plainLiveClosureSummary.keyboard_acceptance_plain"
+        :data-keyboard-manual-endpoint="plainLiveClosureSummary.keyboard_manual_endpoint"
+        :data-keyboard-stop-endpoint="plainLiveClosureSummary.keyboard_stop_endpoint"
+        :data-keyboard-feedback-readback-endpoint="plainLiveClosureSummary.keyboard_feedback_readback_endpoint"
+        :data-keyboard-summary-endpoint="plainLiveClosureSummary.keyboard_summary_endpoint"
         :data-map-display-primary-tool="plainLiveClosureSummary.map_display_primary_tool"
         :data-map-display-primary-url="plainLiveClosureSummary.map_display_primary_url"
         :data-map-display-legacy-url="plainLiveClosureSummary.map_display_legacy_url"
@@ -16935,13 +16950,20 @@ onBeforeUnmount(() => {
         :data-map-display-wysiwyg-overlays="plainLiveClosureSummary.map_display_wysiwyg_overlays?.join(',') || 'none'"
         :data-map-display-ros2-companion-required="String(plainLiveClosureSummary.map_display_ros2_companion_required)"
         :data-map-display-ros2-companion-tools="plainLiveClosureSummary.map_display_ros2_companion_tools?.join(',') || 'none'"
+        :data-map-display-engineering-tools-visible-by-default="String(plainLiveClosureSummary.map_display_engineering_tools_visible_by_default)"
+        :data-map-display-engineering-tools-action-label="plainLiveClosureSummary.map_display_engineering_tools_action_label"
+        :data-map-display-ordinary-user-tool="plainLiveClosureSummary.map_display_ordinary_user_tool"
+        :data-map-display-rviz-role-plain="plainLiveClosureSummary.map_display_rviz_role_plain"
         :data-map-display-rviz-launch-command="plainLiveClosureSummary.map_display_rviz_launch_command"
+        :data-map-display-foxglove-role-plain="plainLiveClosureSummary.map_display_foxglove_role_plain"
         :data-map-display-foxglove-bridge-package="plainLiveClosureSummary.map_display_foxglove_bridge_package"
+        :data-map-display-foxglove-bridge-install-command="plainLiveClosureSummary.map_display_foxglove_bridge_install_command"
         :data-map-display-foxglove-bridge-launch-command="plainLiveClosureSummary.map_display_foxglove_bridge_launch_command"
         :data-map-display-foxglove-websocket-url="plainLiveClosureSummary.map_display_foxglove_websocket_url"
         :data-map-display-ros2-observe-topics="plainLiveClosureSummary.map_display_ros2_observe_topics?.join(',') || 'none'"
         :data-map-display-ros2-observe-motion-topics="String(plainLiveClosureSummary.map_display_ros2_observe_motion_topics)"
         :data-map-display-ros2-observe-control-tools="String(plainLiveClosureSummary.map_display_ros2_observe_control_tools)"
+        :data-map-display-engineering-tools-sends-motion="String(plainLiveClosureSummary.map_display_engineering_tools_sends_motion)"
         :data-map-display-sends-motion-when-clicked="String(plainLiveClosureSummary.map_display_sends_motion_when_clicked)"
         :data-map-display-starts-ros2="String(plainLiveClosureSummary.map_display_starts_ros2)"
         :data-map-display-starts-rviz2="String(plainLiveClosureSummary.map_display_starts_rviz2)"
@@ -17641,13 +17663,20 @@ onBeforeUnmount(() => {
           :data-wysiwyg-overlays="plainLiveClosureSummary.map_display_wysiwyg_overlays?.join(',') || 'none'"
           :data-ros2-companion-required="String(plainLiveClosureSummary.map_display_ros2_companion_required)"
           :data-ros2-companion-tools="plainLiveClosureSummary.map_display_ros2_companion_tools?.join(',') || 'none'"
+          :data-engineering-tools-visible-by-default="String(plainLiveClosureSummary.map_display_engineering_tools_visible_by_default)"
+          :data-engineering-tools-action-label="plainLiveClosureSummary.map_display_engineering_tools_action_label"
+          :data-ordinary-user-tool="plainLiveClosureSummary.map_display_ordinary_user_tool"
+          :data-rviz-role-plain="plainLiveClosureSummary.map_display_rviz_role_plain"
           :data-rviz-launch-command="plainLiveClosureSummary.map_display_rviz_launch_command"
+          :data-foxglove-role-plain="plainLiveClosureSummary.map_display_foxglove_role_plain"
           :data-foxglove-bridge-package="plainLiveClosureSummary.map_display_foxglove_bridge_package"
+          :data-foxglove-bridge-install-command="plainLiveClosureSummary.map_display_foxglove_bridge_install_command"
           :data-foxglove-bridge-launch-command="plainLiveClosureSummary.map_display_foxglove_bridge_launch_command"
           :data-foxglove-websocket-url="plainLiveClosureSummary.map_display_foxglove_websocket_url"
           :data-ros2-observe-topics="plainLiveClosureSummary.map_display_ros2_observe_topics?.join(',') || 'none'"
           :data-ros2-observe-motion-topics="String(plainLiveClosureSummary.map_display_ros2_observe_motion_topics)"
           :data-ros2-observe-control-tools="String(plainLiveClosureSummary.map_display_ros2_observe_control_tools)"
+          :data-engineering-tools-sends-motion="String(plainLiveClosureSummary.map_display_engineering_tools_sends_motion)"
           :data-sends-motion-when-clicked="String(plainLiveClosureSummary.map_display_sends_motion_when_clicked)"
           :data-starts-ros2="String(plainLiveClosureSummary.map_display_starts_ros2)"
           :data-starts-rviz2="String(plainLiveClosureSummary.map_display_starts_rviz2)"
@@ -19723,14 +19752,21 @@ onBeforeUnmount(() => {
             data-ros2-companion-tool="rviz2"
             data-ros2-remote-companion-tool="foxglove"
             data-ros2-companion-required="false"
+            data-engineering-tools-visible-by-default="false"
+            data-engineering-tools-action-label="工程观察"
+            data-ordinary-user-tool="pc_big_map"
+            :data-rviz-role-plain="PLAIN_MAP_RVIZ_ROLE_PLAIN"
             :data-rviz-launch-command="PLAIN_MAP_RVIZ_LAUNCH_COMMAND"
+            :data-foxglove-role-plain="PLAIN_MAP_FOXGLOVE_ROLE_PLAIN"
             data-foxglove-bridge-status="handoff_required"
             data-foxglove-bridge-package="foxglove_bridge"
+            :data-foxglove-bridge-install-command="PLAIN_MAP_FOXGLOVE_BRIDGE_INSTALL_COMMAND"
             :data-foxglove-bridge-launch-command="PLAIN_MAP_FOXGLOVE_BRIDGE_LAUNCH_COMMAND"
             :data-foxglove-websocket-url="PLAIN_MAP_FOXGLOVE_WS_URL"
             :data-ros2-observe-topics="PLAIN_MAP_ROS2_OBSERVE_TOPICS_TEXT"
             data-ros2-observe-motion-topics="false"
             data-ros2-observe-control-tools="false"
+            data-engineering-tools-sends-motion="false"
             data-sends-motion-when-clicked="false"
             data-starts-ros2="false"
             data-starts-rviz2="false"
@@ -19756,13 +19792,19 @@ onBeforeUnmount(() => {
             data-rviz-companion-purpose="local_engineering_debug_map_scan_tf_path_pose"
             data-foxglove-companion-purpose="browser_remote_observation_map_scan_tf_path_pose"
             data-foxglove-bridge-handoff="deploy_bridge_then_open_foxglove_studio"
+            data-engineering-tools-action-label="工程观察"
+            data-ordinary-user-tool="pc_big_map"
+            :data-rviz-role-plain="PLAIN_MAP_RVIZ_ROLE_PLAIN"
+            :data-foxglove-role-plain="PLAIN_MAP_FOXGLOVE_ROLE_PLAIN"
             :data-ros2-observe-topics="PLAIN_MAP_ROS2_OBSERVE_TOPICS_TEXT"
             data-ros2-observe-motion-topics="false"
             data-ros2-observe-control-tools="false"
             :data-rviz-launch-command="PLAIN_MAP_RVIZ_LAUNCH_COMMAND"
             data-foxglove-bridge-package="foxglove_bridge"
+            :data-foxglove-bridge-install-command="PLAIN_MAP_FOXGLOVE_BRIDGE_INSTALL_COMMAND"
             :data-foxglove-bridge-launch-command="PLAIN_MAP_FOXGLOVE_BRIDGE_LAUNCH_COMMAND"
             :data-foxglove-websocket-url="PLAIN_MAP_FOXGLOVE_WS_URL"
+            data-engineering-tools-sends-motion="false"
             data-sends-motion-when-clicked="false"
             data-starts-ros2="false"
             data-starts-rviz2="false"
@@ -19793,11 +19835,14 @@ onBeforeUnmount(() => {
               <dl>
                 <div>
                   <dt>本地 RViz2</dt>
+                  <dd>{{ PLAIN_MAP_RVIZ_ROLE_PLAIN }}</dd>
                   <dd><code>{{ PLAIN_MAP_RVIZ_LAUNCH_COMMAND }}</code></dd>
                 </div>
                 <div>
                   <dt>远程 Foxglove</dt>
-                  <dd><code>{{ PLAIN_MAP_FOXGLOVE_BRIDGE_LAUNCH_COMMAND }}</code>，然后连接 <code>{{ PLAIN_MAP_FOXGLOVE_WS_URL }}</code></dd>
+                  <dd>{{ PLAIN_MAP_FOXGLOVE_ROLE_PLAIN }}</dd>
+                  <dd><code>{{ PLAIN_MAP_FOXGLOVE_BRIDGE_INSTALL_COMMAND }}</code></dd>
+                  <dd><code>{{ PLAIN_MAP_FOXGLOVE_BRIDGE_LAUNCH_COMMAND }}</code></dd>
                 </div>
                 <div class="plain-map-engineering-tools-wide">
                   <dt>观察 topic</dt>

@@ -211,8 +211,14 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.map_display_wysiwyg_overlays).toEqual(["image", "route", "robot", "radar"]);
     expect(summary.live_closure_summary?.map_display_ros2_companion_required).toBe(false);
     expect(summary.live_closure_summary?.map_display_ros2_companion_tools).toEqual(["rviz2", "foxglove"]);
+    expect(summary.live_closure_summary?.map_display_engineering_tools_visible_by_default).toBe(false);
+    expect(summary.live_closure_summary?.map_display_engineering_tools_action_label).toBe("工程观察");
+    expect(summary.live_closure_summary?.map_display_ordinary_user_tool).toBe("pc_big_map");
+    expect(summary.live_closure_summary?.map_display_rviz_role_plain).toContain("本地工程调试");
     expect(summary.live_closure_summary?.map_display_rviz_launch_command).toBe("ros2 launch ros2_trashbot_bringup rviz.launch.py");
+    expect(summary.live_closure_summary?.map_display_foxglove_role_plain).toContain("远程浏览器大屏观察");
     expect(summary.live_closure_summary?.map_display_foxglove_bridge_package).toBe("foxglove_bridge");
+    expect(summary.live_closure_summary?.map_display_foxglove_bridge_install_command).toBe("sudo apt install ros-humble-foxglove-bridge");
     expect(summary.live_closure_summary?.map_display_foxglove_bridge_launch_command).toBe("ros2 launch foxglove_bridge foxglove_bridge_launch.xml");
     expect(summary.live_closure_summary?.map_display_foxglove_websocket_url).toBe("ws://192.168.1.11:8765");
     expect(summary.live_closure_summary?.map_display_ros2_observe_topics).toEqual([
@@ -227,6 +233,7 @@ describe("robotControlSummary", () => {
     ]);
     expect(summary.live_closure_summary?.map_display_ros2_observe_motion_topics).toBe(false);
     expect(summary.live_closure_summary?.map_display_ros2_observe_control_tools).toBe(false);
+    expect(summary.live_closure_summary?.map_display_engineering_tools_sends_motion).toBe(false);
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("普通用户地图：进入 /map 使用 PC 大地图");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("默认 600% 细节视图");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("适配");
@@ -409,6 +416,18 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.keyboard_continuous_pulse_duration_ms).toBe(240);
     expect(summary.live_closure_summary?.keyboard_continuous_stop_triggers).toEqual(["key_release", "window_blur", "page_hidden", "direction_change", "stop_button"]);
     expect(summary.live_closure_summary?.keyboard_continuous_wheel_feedback_acceptance).toBe("same_hold_window_wheel_lr_nonzero");
+    expect(summary.live_closure_summary?.keyboard_ready).toBe(true);
+    expect(summary.live_closure_summary?.keyboard_safety_confirm_required).toBe(true);
+    expect(summary.live_closure_summary?.keyboard_enable_sends_motion).toBe(false);
+    expect(summary.live_closure_summary?.keyboard_hold_to_move_required).toBe(true);
+    expect(summary.live_closure_summary?.keyboard_pulse_interval_ms).toBe(260);
+    expect(summary.live_closure_summary?.keyboard_pulse_duration_ms).toBe(240);
+    expect(summary.live_closure_summary?.keyboard_stop_triggers).toEqual(["key_release", "window_blur", "page_hidden", "direction_change", "stop_button"]);
+    expect(summary.live_closure_summary?.keyboard_acceptance_plain).toContain("同一次按住窗口");
+    expect(summary.live_closure_summary?.keyboard_manual_endpoint).toBe("/api/robot-control/base/manual");
+    expect(summary.live_closure_summary?.keyboard_stop_endpoint).toBe("/api/robot-control/base/stop");
+    expect(summary.live_closure_summary?.keyboard_feedback_readback_endpoint).toBe("/api/robot-control/base/feedback-samples");
+    expect(summary.live_closure_summary?.keyboard_summary_endpoint).toBe("/api/robot-control/summary");
     expect(summary.live_closure_summary?.fixed_keyboard_manual_endpoint).toBe("/api/robot-control/base/manual");
     expect(summary.live_closure_summary?.fixed_keyboard_stop_endpoint).toBe("/api/robot-control/base/stop");
     expect(summary.live_closure_summary?.fixed_keyboard_feedback_readback_endpoint).toBe("/api/robot-control/base/feedback-samples");

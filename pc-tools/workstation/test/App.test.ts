@@ -837,6 +837,17 @@ const fixtures: Record<string, unknown> = {
       keyboard_continuous_ready: true,
       keyboard_continuous_motion_verified: false,
       keyboard_continuous_forwarded_pulses: 0,
+      keyboard_ready: true,
+      keyboard_safety_confirm_required: true,
+      keyboard_enable_sends_motion: false,
+      keyboard_pulse_interval_ms: 260,
+      keyboard_pulse_duration_ms: 240,
+      keyboard_stop_triggers: ["key_release", "window_blur", "page_hidden", "direction_change", "stop_button"],
+      keyboard_acceptance_plain: "键盘连续手控验收只看同一次按住窗口的 manual pulse 回包：需要读到 wheel L/R 非零；全局只读采样或旧材料不能替代本次按住读数。",
+      keyboard_manual_endpoint: "/api/robot-control/base/manual",
+      keyboard_stop_endpoint: "/api/robot-control/base/stop",
+      keyboard_feedback_readback_endpoint: "/api/robot-control/base/feedback-samples",
+      keyboard_summary_endpoint: "/api/robot-control/summary",
       objective_audit_status: "in_progress",
       objective_audit_total_count: 4,
       objective_audit_done_count: 1,
@@ -908,8 +919,14 @@ const fixtures: Record<string, unknown> = {
       map_display_wysiwyg_overlays: ["image", "route", "robot", "radar"],
       map_display_ros2_companion_required: false,
       map_display_ros2_companion_tools: ["rviz2", "foxglove"],
+      map_display_engineering_tools_visible_by_default: false,
+      map_display_engineering_tools_action_label: "工程观察",
+      map_display_ordinary_user_tool: "pc_big_map",
+      map_display_rviz_role_plain: "RViz2 只给本地工程调试看 /map、/scan、TF、路径、定位和 costmap；普通用户不需要打开。",
       map_display_rviz_launch_command: "ros2 launch ros2_trashbot_bringup rviz.launch.py",
+      map_display_foxglove_role_plain: "Foxglove 用于远程浏览器大屏观察；先在 ROS2 环境安装并启动 foxglove_bridge，再连接 ws://192.168.1.11:8765。",
       map_display_foxglove_bridge_package: "foxglove_bridge",
+      map_display_foxglove_bridge_install_command: "sudo apt install ros-humble-foxglove-bridge",
       map_display_foxglove_bridge_launch_command: "ros2 launch foxglove_bridge foxglove_bridge_launch.xml",
       map_display_foxglove_websocket_url: "ws://192.168.1.11:8765",
       map_display_ros2_observe_topics: [
@@ -924,6 +941,7 @@ const fixtures: Record<string, unknown> = {
       ],
       map_display_ros2_observe_motion_topics: false,
       map_display_ros2_observe_control_tools: false,
+      map_display_engineering_tools_sends_motion: false,
       map_display_companion_plain: "普通用户地图：进入 /map 使用 PC 大地图，默认 600% 细节视图，点“适配”可回到 100% 看全图，细节放大最高 2400%，地图、路线、小车位置和雷达点共用同一张 WYSIWYG 画布；ROS2 配套只作工程观察，本地用 RViz2，远程浏览器观察先部署 Foxglove bridge 后连接 ws://192.168.1.11:8765；观察项固定为地图、雷达、TF、路径、定位和 costmap，不提供 GoalTool，不发送底盘移动命令。",
       map_display_sends_motion_when_clicked: false,
       map_display_starts_ros2: false,
@@ -4980,6 +4998,18 @@ describe("App", () => {
     expect(liveClosureSummary.attributes("data-keyboard-continuous-ready")).toBe("true");
     expect(liveClosureSummary.attributes("data-keyboard-continuous-motion-verified")).toBe("false");
     expect(liveClosureSummary.attributes("data-keyboard-continuous-forwarded-pulses")).toBe("0");
+    expect(liveClosureSummary.attributes("data-keyboard-ready")).toBe("true");
+    expect(liveClosureSummary.attributes("data-keyboard-safety-confirm-required")).toBe("true");
+    expect(liveClosureSummary.attributes("data-keyboard-enable-sends-motion")).toBe("false");
+    expect(liveClosureSummary.attributes("data-keyboard-hold-to-move-required-short")).toBe("true");
+    expect(liveClosureSummary.attributes("data-keyboard-pulse-interval-ms")).toBe("260");
+    expect(liveClosureSummary.attributes("data-keyboard-pulse-duration-ms")).toBe("240");
+    expect(liveClosureSummary.attributes("data-keyboard-stop-triggers")).toBe("key_release,window_blur,page_hidden,direction_change,stop_button");
+    expect(liveClosureSummary.attributes("data-keyboard-acceptance-plain")).toContain("同一次按住窗口");
+    expect(liveClosureSummary.attributes("data-keyboard-manual-endpoint")).toBe("/api/robot-control/base/manual");
+    expect(liveClosureSummary.attributes("data-keyboard-stop-endpoint")).toBe("/api/robot-control/base/stop");
+    expect(liveClosureSummary.attributes("data-keyboard-feedback-readback-endpoint")).toBe("/api/robot-control/base/feedback-samples");
+    expect(liveClosureSummary.attributes("data-keyboard-summary-endpoint")).toBe("/api/robot-control/summary");
     const liveRobotConnection = wrapper.find('[data-testid="plain-live-robot-connection"]');
     expect(liveRobotConnection.exists()).toBe(true);
     expect(liveRobotConnection.text()).toContain("小车连接可读");
@@ -4996,13 +5026,20 @@ describe("App", () => {
     expect(liveClosureSummary.attributes("data-map-display-wysiwyg-overlays")).toBe("image,route,robot,radar");
     expect(liveClosureSummary.attributes("data-map-display-ros2-companion-required")).toBe("false");
     expect(liveClosureSummary.attributes("data-map-display-ros2-companion-tools")).toBe("rviz2,foxglove");
+    expect(liveClosureSummary.attributes("data-map-display-engineering-tools-visible-by-default")).toBe("false");
+    expect(liveClosureSummary.attributes("data-map-display-engineering-tools-action-label")).toBe("工程观察");
+    expect(liveClosureSummary.attributes("data-map-display-ordinary-user-tool")).toBe("pc_big_map");
+    expect(liveClosureSummary.attributes("data-map-display-rviz-role-plain")).toContain("本地工程调试");
     expect(liveClosureSummary.attributes("data-map-display-rviz-launch-command")).toBe("ros2 launch ros2_trashbot_bringup rviz.launch.py");
+    expect(liveClosureSummary.attributes("data-map-display-foxglove-role-plain")).toContain("远程浏览器大屏观察");
     expect(liveClosureSummary.attributes("data-map-display-foxglove-bridge-package")).toBe("foxglove_bridge");
+    expect(liveClosureSummary.attributes("data-map-display-foxglove-bridge-install-command")).toBe("sudo apt install ros-humble-foxglove-bridge");
     expect(liveClosureSummary.attributes("data-map-display-foxglove-bridge-launch-command")).toBe("ros2 launch foxglove_bridge foxglove_bridge_launch.xml");
     expect(liveClosureSummary.attributes("data-map-display-foxglove-websocket-url")).toBe("ws://192.168.1.11:8765");
     expect(liveClosureSummary.attributes("data-map-display-ros2-observe-topics")).toBe("/map,/scan,/tf,/plan,/local_plan,/amcl_pose,/global_costmap/costmap,/local_costmap/costmap");
     expect(liveClosureSummary.attributes("data-map-display-ros2-observe-motion-topics")).toBe("false");
     expect(liveClosureSummary.attributes("data-map-display-ros2-observe-control-tools")).toBe("false");
+    expect(liveClosureSummary.attributes("data-map-display-engineering-tools-sends-motion")).toBe("false");
     expect(liveClosureSummary.attributes("data-map-display-sends-motion-when-clicked")).toBe("false");
     expect(liveClosureSummary.attributes("data-map-display-starts-ros2")).toBe("false");
     expect(liveClosureSummary.attributes("data-map-display-starts-rviz2")).toBe("false");
@@ -7233,14 +7270,21 @@ describe("App", () => {
     expect(mapDisplayProof.attributes("data-ros2-companion-tool")).toBe("rviz2");
     expect(mapDisplayProof.attributes("data-ros2-remote-companion-tool")).toBe("foxglove");
     expect(mapDisplayProof.attributes("data-ros2-companion-required")).toBe("false");
+    expect(mapDisplayProof.attributes("data-engineering-tools-visible-by-default")).toBe("false");
+    expect(mapDisplayProof.attributes("data-engineering-tools-action-label")).toBe("工程观察");
+    expect(mapDisplayProof.attributes("data-ordinary-user-tool")).toBe("pc_big_map");
+    expect(mapDisplayProof.attributes("data-rviz-role-plain")).toContain("本地工程调试");
     expect(mapDisplayProof.attributes("data-rviz-launch-command")).toBe("ros2 launch ros2_trashbot_bringup rviz.launch.py");
+    expect(mapDisplayProof.attributes("data-foxglove-role-plain")).toContain("远程浏览器大屏观察");
     expect(mapDisplayProof.attributes("data-foxglove-bridge-status")).toBe("handoff_required");
     expect(mapDisplayProof.attributes("data-foxglove-bridge-package")).toBe("foxglove_bridge");
+    expect(mapDisplayProof.attributes("data-foxglove-bridge-install-command")).toBe("sudo apt install ros-humble-foxglove-bridge");
     expect(mapDisplayProof.attributes("data-foxglove-bridge-launch-command")).toBe("ros2 launch foxglove_bridge foxglove_bridge_launch.xml");
     expect(mapDisplayProof.attributes("data-foxglove-websocket-url")).toBe("ws://192.168.1.11:8765");
     expect(mapDisplayProof.attributes("data-ros2-observe-topics")).toBe("/map,/scan,/tf,/plan,/local_plan,/amcl_pose,/global_costmap/costmap,/local_costmap/costmap");
     expect(mapDisplayProof.attributes("data-ros2-observe-motion-topics")).toBe("false");
     expect(mapDisplayProof.attributes("data-ros2-observe-control-tools")).toBe("false");
+    expect(mapDisplayProof.attributes("data-engineering-tools-sends-motion")).toBe("false");
     expect(mapDisplayProof.attributes("data-sends-motion-when-clicked")).toBe("false");
     expect(mapDisplayProof.attributes("data-starts-ros2")).toBe("false");
     expect(mapDisplayProof.attributes("data-starts-rviz2")).toBe("false");
@@ -7291,13 +7335,19 @@ describe("App", () => {
     expect(mapRos2ToolNote.attributes("data-rviz-companion-purpose")).toBe("local_engineering_debug_map_scan_tf_path_pose");
     expect(mapRos2ToolNote.attributes("data-foxglove-companion-purpose")).toBe("browser_remote_observation_map_scan_tf_path_pose");
     expect(mapRos2ToolNote.attributes("data-foxglove-bridge-handoff")).toBe("deploy_bridge_then_open_foxglove_studio");
+    expect(mapRos2ToolNote.attributes("data-engineering-tools-action-label")).toBe("工程观察");
+    expect(mapRos2ToolNote.attributes("data-ordinary-user-tool")).toBe("pc_big_map");
+    expect(mapRos2ToolNote.attributes("data-rviz-role-plain")).toContain("本地工程调试");
+    expect(mapRos2ToolNote.attributes("data-foxglove-role-plain")).toContain("远程浏览器大屏观察");
     expect(mapRos2ToolNote.attributes("data-rviz-launch-command")).toBe("ros2 launch ros2_trashbot_bringup rviz.launch.py");
     expect(mapRos2ToolNote.attributes("data-foxglove-bridge-package")).toBe("foxglove_bridge");
+    expect(mapRos2ToolNote.attributes("data-foxglove-bridge-install-command")).toBe("sudo apt install ros-humble-foxglove-bridge");
     expect(mapRos2ToolNote.attributes("data-foxglove-bridge-launch-command")).toBe("ros2 launch foxglove_bridge foxglove_bridge_launch.xml");
     expect(mapRos2ToolNote.attributes("data-foxglove-websocket-url")).toBe("ws://192.168.1.11:8765");
     expect(mapRos2ToolNote.attributes("data-ros2-observe-topics")).toBe("/map,/scan,/tf,/plan,/local_plan,/amcl_pose,/global_costmap/costmap,/local_costmap/costmap");
     expect(mapRos2ToolNote.attributes("data-ros2-observe-motion-topics")).toBe("false");
     expect(mapRos2ToolNote.attributes("data-ros2-observe-control-tools")).toBe("false");
+    expect(mapRos2ToolNote.attributes("data-engineering-tools-sends-motion")).toBe("false");
     expect(mapRos2ToolNote.attributes("data-sends-motion-when-clicked")).toBe("false");
     expect(mapRos2ToolNote.attributes("data-starts-ros2")).toBe("false");
     expect(mapRos2ToolNote.attributes("data-starts-rviz2")).toBe("false");
@@ -7314,8 +7364,11 @@ describe("App", () => {
     expect(openedMapRos2ToolNote.attributes("data-open")).toBe("true");
     expect(wrapper.find('[data-testid="plain-map-ros2-tool-summary"]').attributes("aria-expanded")).toBe("true");
     expect(openedMapRos2ToolNote.text()).toContain("RViz2");
+    expect(openedMapRos2ToolNote.text()).toContain("本地工程调试");
     expect(openedMapRos2ToolNote.text()).toContain("Foxglove");
+    expect(openedMapRos2ToolNote.text()).toContain("远程浏览器大屏观察");
     expect(openedMapRos2ToolNote.text()).toContain("bridge");
+    expect(openedMapRos2ToolNote.text()).toContain("sudo apt install ros-humble-foxglove-bridge");
     expect(openedMapRos2ToolNote.text()).toContain("ros2 launch ros2_trashbot_bringup rviz.launch.py");
     expect(openedMapRos2ToolNote.text()).toContain("ros2 launch foxglove_bridge foxglove_bridge_launch.xml");
     expect(openedMapRos2ToolNote.text()).toContain("ws://192.168.1.11:8765");

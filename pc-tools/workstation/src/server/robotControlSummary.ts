@@ -9370,7 +9370,10 @@ function buildLiveClosureSummary(
     "/global_costmap/costmap",
     "/local_costmap/costmap",
   ];
+  const mapDisplayRvizRolePlain = "RViz2 只给本地工程调试看 /map、/scan、TF、路径、定位和 costmap；普通用户不需要打开。";
+  const mapDisplayFoxgloveRolePlain = "Foxglove 用于远程浏览器大屏观察；先在 ROS2 环境安装并启动 foxglove_bridge，再连接 ws://192.168.1.11:8765。";
   const mapDisplayCompanionPlain = "普通用户地图：进入 /map 使用 PC 大地图，默认 600% 细节视图，点“适配”可回到 100% 看全图，细节放大最高 2400%，地图、路线、小车位置和雷达点共用同一张 WYSIWYG 画布；ROS2 配套只作工程观察，本地用 RViz2，远程浏览器观察先部署 Foxglove bridge 后连接 ws://192.168.1.11:8765；观察项固定为地图、雷达、TF、路径、定位和 costmap，不提供 GoalTool，不发送底盘移动命令。";
+  const keyboardAcceptancePlain = "键盘连续手控验收只看同一次按住窗口的 manual pulse 回包：需要读到 wheel L/R 非零；全局只读采样或旧材料不能替代本次按住读数。";
   const nav2ObjectiveDone = routeReadyOnMap && nav2GoalSucceeded && wheelLrNonzeroProven && !needsSameWindowWheelRerun;
   const keyboardObjectiveDone = keyboardMotionVerified && keyboardStopSettledAfterPulse;
   const freeMoveObjectiveDone = readback.free_roam.motion_ready === "true"
@@ -9505,6 +9508,17 @@ function buildLiveClosureSummary(
     keyboard_continuous_ready: keyboardContinuousControlReady,
     keyboard_continuous_motion_verified: keyboardMotionVerified,
     keyboard_continuous_forwarded_pulses: keyboardBestContinuousPulseCount,
+    keyboard_ready: keyboardContinuousControlReady,
+    keyboard_safety_confirm_required: keyboardContinuousControlReady,
+    keyboard_enable_sends_motion: false,
+    keyboard_pulse_interval_ms: ROBOT_CONTROL_KEYBOARD_JOG_INTERVAL_MS,
+    keyboard_pulse_duration_ms: ROBOT_CONTROL_KEYBOARD_JOG_DURATION_MS,
+    keyboard_stop_triggers: ["key_release", "window_blur", "page_hidden", "direction_change", "stop_button"],
+    keyboard_acceptance_plain: keyboardAcceptancePlain,
+    keyboard_manual_endpoint: "/api/robot-control/base/manual",
+    keyboard_stop_endpoint: "/api/robot-control/base/stop",
+    keyboard_feedback_readback_endpoint: "/api/robot-control/base/feedback-samples",
+    keyboard_summary_endpoint: "/api/robot-control/summary",
     objective_audit_status: objectiveAuditMissingIds.length === 0 ? "complete" : "in_progress",
     objective_audit_total_count: 4,
     objective_audit_done_count: objectiveAuditDoneCount,
@@ -9528,13 +9542,20 @@ function buildLiveClosureSummary(
     map_display_wysiwyg_overlays: ["image", "route", "robot", "radar"],
     map_display_ros2_companion_required: false,
     map_display_ros2_companion_tools: ["rviz2", "foxglove"],
+    map_display_engineering_tools_visible_by_default: false,
+    map_display_engineering_tools_action_label: "工程观察",
+    map_display_ordinary_user_tool: "pc_big_map",
+    map_display_rviz_role_plain: mapDisplayRvizRolePlain,
     map_display_rviz_launch_command: "ros2 launch ros2_trashbot_bringup rviz.launch.py",
+    map_display_foxglove_role_plain: mapDisplayFoxgloveRolePlain,
     map_display_foxglove_bridge_package: "foxglove_bridge",
+    map_display_foxglove_bridge_install_command: "sudo apt install ros-humble-foxglove-bridge",
     map_display_foxglove_bridge_launch_command: "ros2 launch foxglove_bridge foxglove_bridge_launch.xml",
     map_display_foxglove_websocket_url: "ws://192.168.1.11:8765",
     map_display_ros2_observe_topics: mapDisplayRos2ObserveTopics,
     map_display_ros2_observe_motion_topics: false,
     map_display_ros2_observe_control_tools: false,
+    map_display_engineering_tools_sends_motion: false,
     map_display_companion_plain: mapDisplayCompanionPlain,
     map_display_sends_motion_when_clicked: false,
     map_display_starts_ros2: false,
