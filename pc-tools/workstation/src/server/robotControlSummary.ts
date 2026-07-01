@@ -9533,9 +9533,10 @@ function buildLiveClosureSummary(
   })();
   const liveMotionRunbookStartEndpoints = Array.from(new Set(liveMotionRunbookReadyItems.map((item) => item.start_endpoint)));
   const liveMotionRunbookAcceptanceEndpoints = Array.from(new Set(liveMotionRunbookItems.flatMap((item) => item.acceptance_endpoints)));
-  const liveMotionRunbookReadyLabels = liveMotionRunbookReadyItems.map((item) => item.label);
-  const liveMotionRunbookBlockedLabels = liveMotionRunbookBlockedItems.map((item) => item.label);
-  const liveMotionRunbookPrimaryActionLabel = liveMotionRunbookItems.find((item) => item.id === liveMotionRunbookPrimaryActionId)?.label ?? "暂无";
+  const liveMotionRunbookReadyLabels = liveMotionRunbookReadyItems.map((item) => item.display_label ?? item.label);
+  const liveMotionRunbookBlockedLabels = liveMotionRunbookBlockedItems.map((item) => item.display_label ?? item.label);
+  const liveMotionRunbookPrimaryAction = liveMotionRunbookItems.find((item) => item.id === liveMotionRunbookPrimaryActionId);
+  const liveMotionRunbookPrimaryActionLabel = liveMotionRunbookPrimaryAction?.display_label ?? liveMotionRunbookPrimaryAction?.label ?? "暂无";
   const liveMotionRunbookReadyPlain = liveMotionRunbookReadyLabels.length > 0
     ? `可先执行：${liveMotionRunbookReadyLabels.join("、")}。`
     : "暂无可执行运动入口；先刷新小车状态。";
@@ -10355,9 +10356,6 @@ export async function buildRobotControlSummary(
   const fieldAcceptanceSafetyConfirmReadyStepIds = fieldAcceptanceSteps
     .filter((item) => item.ready && !item.completed && item.sends_motion_when_executed && item.safety_confirm_required)
     .map((item) => item.id);
-  const fieldAcceptanceSafetyConfirmReadyLabels = fieldAcceptanceSteps
-    .filter((item) => fieldAcceptanceSafetyConfirmReadyStepIds.includes(item.id))
-    .map((item) => item.label);
   const fieldAcceptanceSafetyConfirmReadyDisplayLabels = fieldAcceptanceSteps
     .filter((item) => fieldAcceptanceSafetyConfirmReadyStepIds.includes(item.id))
     .map((item) => item.display_label ?? item.label);
@@ -10567,7 +10565,7 @@ export async function buildRobotControlSummary(
     ?? fieldAcceptanceNoMotionReadbackActions[0]
     ?? null;
   const fieldAcceptanceOperatorActionPlain = fieldAcceptanceSafetyConfirmReadyStepIds.length > 0
-    ? `需要现场安全确认的运动验收：${fieldAcceptanceSafetyConfirmReadyLabels.join("、")}；勾一次安全确认后再手动执行，执行后只读读回复验。`
+    ? `需要现场安全确认的运动验收：${fieldAcceptanceSafetyConfirmReadyDisplayLabels.join("、")}；勾一次安全确认后再手动执行，执行后只读读回复验。`
     : "当前没有只等安全确认的运动验收入口。";
   const fieldAcceptanceHardwareActionPlain = fieldAcceptanceHardwareActionIds.includes("camera_usb_recovery")
     ? `需要设备处理：${liveClosureSummary.camera_hardware_action_label}；${fieldAcceptanceCameraRecoveryActionPlain}该相机缺口阻塞画面和建图首帧，不阻塞低速自由移动。`
@@ -10776,7 +10774,7 @@ export async function buildRobotControlSummary(
       : `只读复验：${fieldAcceptancePacket.primary_no_motion_readback_action_label}`,
     fieldAcceptancePacket.primary_safety_confirm_ready_action_id === "none"
       ? "安全确认后动作：暂无"
-      : `安全确认后动作：${fieldAcceptancePacket.primary_safety_confirm_ready_action_label}`,
+      : `安全确认后动作：${fieldAcceptancePacket.primary_safety_confirm_ready_action_display_label ?? fieldAcceptancePacket.primary_safety_confirm_ready_action_label}`,
     fieldAcceptancePacket.primary_hardware_action_id === "none"
       ? "设备处理：暂无"
       : `设备处理：${fieldAcceptancePacket.primary_hardware_action_label}`,

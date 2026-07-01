@@ -806,24 +806,24 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.live_motion_runbook_safety_confirm_required).toBe(true);
     expect(summary.live_motion_runbook_safety_confirm_required).toBe(true);
     expect(summary.live_closure_summary?.live_motion_runbook_ready_plain).toBe(
-      "可先执行：完整行程执行、键盘连续手控、自由自助移动。",
+      "可先执行：重跑图上行程并复验轮速、键盘连续手控、自由自助移动。",
     );
     expect(summary.live_motion_runbook_ready_plain).toBe(summary.live_closure_summary?.live_motion_runbook_ready_plain);
     expect(summary.live_closure_summary?.live_motion_runbook_blocked_plain).toBe(
       "暂不可执行：传感器就绪后建图。",
     );
     expect(summary.live_motion_runbook_blocked_plain).toBe(summary.live_closure_summary?.live_motion_runbook_blocked_plain);
-    expect(summary.live_closure_summary?.live_motion_runbook_primary_action_plain).toBe("完整行程执行");
-    expect(summary.live_motion_runbook_primary_action_plain).toBe("完整行程执行");
+    expect(summary.live_closure_summary?.live_motion_runbook_primary_action_plain).toBe("重跑图上行程并复验轮速");
+    expect(summary.live_motion_runbook_primary_action_plain).toBe("重跑图上行程并复验轮速");
     expect(summary.live_closure_summary?.live_motion_runbook_minimal_precheck_plain).toBe(
       "发车前预检已精简：执行运动只需勾现场安全确认；相机、雷达和现场报告不作为额外发车前置。",
     );
     expect(summary.live_motion_runbook_minimal_precheck_plain).toBe(summary.live_closure_summary?.live_motion_runbook_minimal_precheck_plain);
     expect(summary.live_closure_summary?.live_motion_runbook_summary_plain).toContain(
-      "可先执行：完整行程执行、键盘连续手控、自由自助移动。",
+      "可先执行：重跑图上行程并复验轮速、键盘连续手控、自由自助移动。",
     );
     expect(summary.live_closure_summary?.live_motion_runbook_summary_plain).toContain(
-      "主推荐：完整行程执行",
+      "主推荐：重跑图上行程并复验轮速",
     );
     expect(summary.live_closure_summary?.live_motion_runbook_summary_plain).toContain(
       "发车前预检已精简",
@@ -838,7 +838,7 @@ describe("robotControlSummary", () => {
     expect(summary.field_acceptance_next_step_sends_motion).toBe(true);
     expect(summary.field_acceptance_next_step_requires_safety_confirm).toBe(true);
     expect(summary.field_acceptance_parallel_status_plain).toContain("只读复验：刷新当前所见");
-    expect(summary.field_acceptance_parallel_status_plain).toContain("安全确认后动作：完整行程执行");
+    expect(summary.field_acceptance_parallel_status_plain).toContain("安全确认后动作：重跑图上行程并复验轮速");
     expect(summary.field_acceptance_parallel_no_motion_action_id).toBe("refresh_current_wysiwyg");
     expect(summary.field_acceptance_parallel_no_motion_action_label).toBe("刷新当前所见");
     expect(summary.field_acceptance_parallel_no_motion_action_endpoint).toBe("/api/robot-control/radar/scan-proof/refresh");
@@ -1069,7 +1069,7 @@ describe("robotControlSummary", () => {
       }),
     ]);
     expect(summary.field_acceptance_remaining_operator_action_summary_plain).toContain("需要现场安全确认的运动验收");
-    expect(summary.field_acceptance_remaining_operator_action_summary_plain).toContain("完整行程执行、键盘连续手控、自由自助移动");
+    expect(summary.field_acceptance_remaining_operator_action_summary_plain).toContain("重跑图上行程并复验轮速、键盘连续手控、自由自助移动");
     expect(summary.field_acceptance_remaining_hardware_action_summary_plain).toContain("当前没有必须先处理的设备动作");
     expect(summary.field_acceptance_remaining_no_motion_action_summary_plain).toContain("复验全部读数、刷新当前所见、刷新雷达贴图");
     expect(summary.field_acceptance_remaining_no_motion_action_summary_plain).toContain("不启动车辆");
