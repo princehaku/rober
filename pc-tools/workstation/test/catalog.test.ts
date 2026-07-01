@@ -7082,26 +7082,46 @@ describe("workstation fail-closed API contracts", () => {
       ]);
       expect(summary.primary_sends_motion).toBe(true);
       expect(summary.primary_requires_safety_confirm).toBe(true);
+      expect(summary.primary_ready).toBe(true);
+      expect(summary.primary_completed).toBe(false);
+      expect(summary.primary_proof_status).toBe("ready_to_verify");
+      expect(summary.primary_missing_evidence).toEqual(["same_window_wheel_lr_nonzero", "delivery_success"]);
+      expect(summary.primary_proof_plain).toContain("可复验完整行程");
       expect(summary.trip_start_endpoint).toBe("/api/robot-control/nav2/goal/execute");
       expect(summary.trip_stop_endpoint).toBe("/api/robot-control/base/stop");
       expect(summary.trip_acceptance_endpoints).toEqual(summary.primary_acceptance_endpoints);
+      expect(summary.trip_ready).toBe(true);
+      expect(summary.trip_completed).toBe(false);
+      expect(summary.trip_proof_status).toBe("ready_to_verify");
+      expect(summary.trip_missing_evidence).toEqual(summary.primary_missing_evidence);
+      expect(summary.trip_proof_plain).toBe(summary.primary_proof_plain);
       expect(summary.keyboard_start_endpoint).toBe("/api/robot-control/base/manual");
       expect(summary.keyboard_acceptance_endpoints).toEqual([
         "/api/robot-control/base/feedback-samples",
         "/api/robot-control/summary",
       ]);
+      expect(summary.keyboard_completed).toBe(false);
+      expect(summary.keyboard_proof_status).toBe("ready_to_verify");
+      expect(summary.keyboard_missing_evidence).toEqual(["same_hold_window_wheel_lr_nonzero", "stop_after_release"]);
+      expect(summary.keyboard_proof_plain).toContain("可验证键盘连续手控");
       expect(summary.free_move_start_endpoint).toBe("/api/robot-control/free-roam/autonomy/start");
       expect(summary.free_move_stop_endpoint).toBe("/api/robot-control/free-roam/autonomy/stop");
       expect(summary.free_move_acceptance_endpoints).toEqual([
         "/api/robot-control/free-roam/autonomy/latest",
         "/api/robot-control/summary",
       ]);
+      expect(summary.free_move_proof_status).toBe("ready_to_verify");
+      expect(summary.free_move_missing_evidence).toEqual(["free_roam_latest_motion_ready"]);
+      expect(summary.free_move_proof_plain).toContain("可验证自由自助移动");
       expect(summary.mapping_start_endpoint).toBe("/api/robot-control/map/start");
       expect(summary.mapping_preview_endpoint).toBe("/api/robot-control/map/preview");
       expect(summary.mapping_acceptance_endpoints).toEqual([
         "/api/robot-control/map/preview",
         "/api/robot-control/summary",
       ]);
+      expect(summary.mapping_proof_status).toBe("blocked");
+      expect(summary.mapping_missing_evidence).toContain("camera_first_frame");
+      expect(summary.mapping_proof_plain).toContain("建图暂不可启动");
       expect(summary.free_move_minimal_precheck_safety_only).toBe(true);
       expect(summary.free_move_safety_confirm_required).toBe(true);
       expect(summary.free_move_camera_preflight_required).toBe(false);
