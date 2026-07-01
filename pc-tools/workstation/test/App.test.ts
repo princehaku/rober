@@ -7930,6 +7930,9 @@ describe("App", () => {
     expect(mapDisplayProof.text()).toContain("3200%");
     expect(mapDisplayProof.text()).toContain("点“进入地图大屏”直接切到 /map");
     expect(mapDisplayProof.text()).toContain("?view=map 兼容入口");
+    expect(mapDisplayProof.text()).toContain("ROS2 配套是本地 RViz2 和远程 Foxglove");
+    expect(mapDisplayProof.text()).toContain("入口在“工程观察”");
+    expect(mapDisplayProof.text()).toContain("只看地图/雷达/TF/路径/定位，不发车");
     expect(mapDisplayProof.text()).toContain("图上行程、小车位置和雷达标记共用同一张 WYSIWYG 画布");
     expect(mapDisplayProof.text()).toContain("不启动工程工具、行程执行或小车运动");
     expect(mapDisplayProof.text()).not.toContain("ros2 launch ros2_trashbot_bringup rviz.launch.py");
