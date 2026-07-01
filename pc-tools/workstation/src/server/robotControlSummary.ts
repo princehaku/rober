@@ -9538,8 +9538,11 @@ function buildLiveClosureSummary(
   const objectiveAuditMissingPlain = (item: RobotControlLiveObjectiveAuditItem): string => {
     // 顶层摘要必须说当前真实缺口，避免“画面/地图/雷达点”这种大类掩盖地图和雷达已可见的事实。
     if (item.id === "wysiwyg") {
+      const cameraMissingPlain = cameraHardwareActionRequired
+        ? `画面未显示（${cameraHardwareActionLabel}）`
+        : "画面未显示";
       const missingSurfaces = [
-        ...(!cameraCurrentVisible ? ["画面未显示"] : []),
+        ...(!cameraCurrentVisible ? [cameraMissingPlain] : []),
         ...(!mapCurrentVisible ? ["地图未显示"] : []),
         ...(!radarMapPointsVisible ? ["雷达点未贴图"] : []),
       ];

@@ -754,6 +754,8 @@ describe("robotControlSummary", () => {
       "/api/robot-control/camera/mjpeg/status",
       "/api/robot-control/summary",
     ]);
+    expect(summary.live_closure_summary?.objective_audit_summary_plain).toContain("画面未显示（换高速USB后复测）");
+    expect(summary.live_closure_summary?.objective_audit_summary_plain).not.toContain("画面/地图/雷达点");
     expect(summary.live_closure_summary?.live_wysiwyg_missing_surface_ids).toContain("camera");
   });
 
