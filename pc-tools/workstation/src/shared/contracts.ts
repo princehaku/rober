@@ -3948,6 +3948,10 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   camera_recovery_starts_map_runtime?: RobotControlLiveClosureSummary["camera_recovery_starts_map_runtime"];
   fixed_camera_probe_endpoint?: RobotControlLiveClosureSummary["fixed_camera_probe_endpoint"];
   fixed_camera_mjpeg_status_endpoint?: RobotControlLiveClosureSummary["fixed_camera_mjpeg_status_endpoint"];
+  live_wysiwyg_camera_source_diagnosis_status?: RobotControlLiveClosureSummary["live_wysiwyg_camera_source_diagnosis_status"];
+  live_wysiwyg_camera_source_diagnosis_plain_hint?: RobotControlLiveClosureSummary["live_wysiwyg_camera_source_diagnosis_plain_hint"];
+  live_wysiwyg_camera_source_diagnosis_next_action_plain?: RobotControlLiveClosureSummary["live_wysiwyg_camera_source_diagnosis_next_action_plain"];
+  live_wysiwyg_camera_source_diagnosis_not_exclusive?: RobotControlLiveClosureSummary["live_wysiwyg_camera_source_diagnosis_not_exclusive"];
   live_wysiwyg_camera_shared_preview_client_count?: RobotControlLiveClosureSummary["live_wysiwyg_camera_shared_preview_client_count"];
   live_wysiwyg_camera_shared_preview_upstream_active?: RobotControlLiveClosureSummary["live_wysiwyg_camera_shared_preview_upstream_active"];
   live_wysiwyg_camera_shared_preview_exclusive_camera_claim?: RobotControlLiveClosureSummary["live_wysiwyg_camera_shared_preview_exclusive_camera_claim"];
@@ -3964,6 +3968,11 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   camera_shared_preview_realtime_plain?: RobotControlSummaryResponse["readback_summary"]["camera"]["shared_preview_realtime_plain"];
   camera_wysiwyg_recovery_status?: RobotControlLiveClosureSummary["live_wysiwyg_camera_recovery_status"];
   camera_wysiwyg_recovery_next_action_plain?: RobotControlLiveClosureSummary["live_wysiwyg_camera_recovery_next_action_plain"];
+  live_wysiwyg_camera_recovery_status?: RobotControlLiveClosureSummary["live_wysiwyg_camera_recovery_status"];
+  live_wysiwyg_camera_recovery_next_action_plain?: RobotControlLiveClosureSummary["live_wysiwyg_camera_recovery_next_action_plain"];
+  live_wysiwyg_camera_recovery_sequence?: RobotControlLiveClosureSummary["live_wysiwyg_camera_recovery_sequence"];
+  live_wysiwyg_camera_recovery_sequence_labels?: RobotControlLiveClosureSummary["live_wysiwyg_camera_recovery_sequence_labels"];
+  live_wysiwyg_camera_recovery_sends_motion?: RobotControlLiveClosureSummary["live_wysiwyg_camera_recovery_sends_motion"];
   camera_wysiwyg_recovery_readback_endpoint?: RobotControlLiveClosureSummary["fixed_camera_probe_endpoint"];
   camera_wysiwyg_recovery_probe_endpoint?: RobotControlLiveClosureSummary["fixed_camera_probe_endpoint"];
   camera_wysiwyg_recovery_status_endpoint?: RobotControlLiveClosureSummary["fixed_camera_mjpeg_status_endpoint"];

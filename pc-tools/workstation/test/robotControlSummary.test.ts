@@ -505,6 +505,10 @@ describe("robotControlSummary", () => {
     expect(summary.camera_recovery_sends_motion).toBe(false);
     expect(summary.fixed_camera_probe_endpoint).toBe("/api/robot-control/camera/first-frame/probe");
     expect(summary.fixed_camera_mjpeg_status_endpoint).toBe("/api/robot-control/camera/mjpeg/status");
+    expect(summary.live_wysiwyg_camera_source_diagnosis_status).toBe(summary.live_closure_summary?.live_wysiwyg_camera_source_diagnosis_status);
+    expect(summary.live_wysiwyg_camera_source_diagnosis_plain_hint).toBe(summary.live_closure_summary?.live_wysiwyg_camera_source_diagnosis_plain_hint);
+    expect(summary.live_wysiwyg_camera_source_diagnosis_next_action_plain).toBe(summary.live_closure_summary?.live_wysiwyg_camera_source_diagnosis_next_action_plain);
+    expect(summary.live_wysiwyg_camera_source_diagnosis_not_exclusive).toBe(summary.live_closure_summary?.live_wysiwyg_camera_source_diagnosis_not_exclusive);
     expect(summary.live_wysiwyg_camera_shared_preview_client_count).toBe(summary.live_closure_summary?.live_wysiwyg_camera_shared_preview_client_count);
     expect(summary.live_wysiwyg_camera_shared_preview_upstream_active).toBe(summary.live_closure_summary?.live_wysiwyg_camera_shared_preview_upstream_active);
     expect(summary.live_wysiwyg_camera_shared_preview_exclusive_camera_claim).toBe("false");
@@ -521,6 +525,11 @@ describe("robotControlSummary", () => {
     expect(summary.camera_shared_preview_realtime_plain).toContain("当前没有实时画面");
     expect(summary.camera_wysiwyg_recovery_status).toBe("needs_probe");
     expect(summary.camera_wysiwyg_recovery_next_action_plain).toBe(summary.live_closure_summary?.live_wysiwyg_camera_recovery_next_action_plain);
+    expect(summary.live_wysiwyg_camera_recovery_status).toBe(summary.live_closure_summary?.live_wysiwyg_camera_recovery_status);
+    expect(summary.live_wysiwyg_camera_recovery_next_action_plain).toBe(summary.live_closure_summary?.live_wysiwyg_camera_recovery_next_action_plain);
+    expect(summary.live_wysiwyg_camera_recovery_sequence).toEqual(summary.live_closure_summary?.live_wysiwyg_camera_recovery_sequence);
+    expect(summary.live_wysiwyg_camera_recovery_sequence_labels).toEqual(summary.live_closure_summary?.live_wysiwyg_camera_recovery_sequence_labels);
+    expect(summary.live_wysiwyg_camera_recovery_sends_motion).toBe(false);
     expect(summary.camera_wysiwyg_recovery_readback_endpoints).toEqual([
       "/api/robot-control/camera/first-frame/probe",
       "/api/robot-control/camera/mjpeg/status",
@@ -1622,6 +1631,15 @@ describe("robotControlSummary", () => {
     expect(summary.camera_source_diagnosis_next_action_plain).toContain("换高速 USB 口/线或带供电 USB Hub");
     expect(summary.camera_recovery_next_action_plain).toContain("换高速 USB 口/线或带供电 USB Hub");
     expect(summary.camera_recovery_sends_motion).toBe(false);
+    expect(summary.live_wysiwyg_camera_source_diagnosis_status).toBe("uvc_full_speed_usb_not_exclusive");
+    expect(summary.live_wysiwyg_camera_source_diagnosis_plain_hint).toContain("USB 12M full-speed");
+    expect(summary.live_wysiwyg_camera_source_diagnosis_next_action_plain).toContain("换高速 USB 口/线或带供电 USB Hub");
+    expect(summary.live_wysiwyg_camera_source_diagnosis_not_exclusive).toBe("true");
+    expect(summary.live_wysiwyg_camera_recovery_status).toBe(summary.live_closure_summary?.live_wysiwyg_camera_recovery_status);
+    expect(summary.live_wysiwyg_camera_recovery_next_action_plain).toContain("换高速 USB 口/线或带供电 USB Hub");
+    expect(summary.live_wysiwyg_camera_recovery_sequence).toEqual(summary.live_closure_summary?.live_wysiwyg_camera_recovery_sequence);
+    expect(summary.live_wysiwyg_camera_recovery_sequence_labels).toEqual(summary.live_closure_summary?.live_wysiwyg_camera_recovery_sequence_labels);
+    expect(summary.live_wysiwyg_camera_recovery_sends_motion).toBe(false);
     expect(summary.camera_wysiwyg_recovery_status).toBe(summary.live_closure_summary?.live_wysiwyg_camera_recovery_status);
     expect(summary.camera_wysiwyg_recovery_next_action_plain).toContain("换高速 USB 口/线或带供电 USB Hub");
     expect(summary.camera_wysiwyg_recovery_readback_endpoint).toBe("/api/robot-control/camera/first-frame/probe");
