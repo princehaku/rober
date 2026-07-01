@@ -749,6 +749,23 @@ describe("robotControlSummary", () => {
       "start_mapping_when_sensors_ready",
     ]);
     expect(summary.field_acceptance_no_motion_step_ids).toEqual([]);
+    expect(summary.field_acceptance_safety_confirm_ready_step_ids).toEqual([
+      "run_nav2_route",
+      "hold_keyboard",
+      "start_free_move",
+    ]);
+    expect(summary.field_acceptance_hardware_action_ids).toEqual([]);
+    expect(summary.field_acceptance_no_motion_readback_action_ids).toEqual([
+      "readback_all",
+      "refresh_current_wysiwyg",
+      "refresh_radar_map_overlay",
+    ]);
+    expect(summary.field_acceptance_remaining_operator_action_summary_plain).toContain("需要现场安全确认的运动验收");
+    expect(summary.field_acceptance_remaining_operator_action_summary_plain).toContain("完整行程执行、键盘连续手控、自由自助移动");
+    expect(summary.field_acceptance_remaining_hardware_action_summary_plain).toContain("当前没有必须先处理的设备动作");
+    expect(summary.field_acceptance_remaining_no_motion_action_summary_plain).toContain("复验全部读数、刷新当前所见、刷新雷达贴图");
+    expect(summary.field_acceptance_remaining_no_motion_action_summary_plain).toContain("不启动车辆");
+    expect(summary.field_acceptance_remaining_action_summary_plain).toContain("需要现场安全确认的运动验收");
     expect(summary.field_acceptance_acceptance_endpoints).toEqual([
       "/api/robot-control/map/preview",
       "/api/robot-control/nav2/goal/execution/latest",
@@ -768,6 +785,8 @@ describe("robotControlSummary", () => {
       next_step_start_endpoint: "/api/robot-control/nav2/goal/execute",
       next_step_sends_motion: true,
       next_step_requires_safety_confirm: true,
+      safety_confirm_ready_step_ids: ["run_nav2_route", "hold_keyboard", "start_free_move"],
+      no_motion_readback_action_ids: ["readback_all", "refresh_current_wysiwyg", "refresh_radar_map_overlay"],
       safety_confirm_required: true,
       minimal_precheck_safety_only: true,
       wysiwyg_missing_surface_ids: expect.arrayContaining(["camera"]),
@@ -1153,6 +1172,13 @@ describe("robotControlSummary", () => {
     expect(summary.camera_source_diagnosis_plain_hint).toContain("USB 12M full-speed");
     expect(summary.camera_recovery_next_action_plain).toContain("换高速 USB 口/线或带供电 USB Hub");
     expect(summary.camera_recovery_sends_motion).toBe(false);
+    expect(summary.field_acceptance_hardware_action_ids).toEqual(["camera_usb_recovery"]);
+    expect(summary.field_acceptance_remaining_hardware_action_summary_plain).toContain("需要设备处理：换高速USB后复测");
+    expect(summary.field_acceptance_remaining_hardware_action_summary_plain).toContain("当前设备提示");
+    expect(summary.field_acceptance_remaining_hardware_action_summary_plain).not.toContain("当前硬件提示");
+    expect(summary.field_acceptance_remaining_hardware_action_summary_plain).toContain("USB 12M full-speed");
+    expect(summary.field_acceptance_remaining_hardware_action_summary_plain).toContain("不阻塞低速自由移动");
+    expect(summary.field_acceptance_remaining_action_summary_plain).toContain("相机缺口");
     expect(summary.live_closure_summary?.camera_blocks_mapping_start).toBe(true);
     expect(summary.camera_blocks_mapping_start).toBe(true);
     expect(summary.live_closure_summary?.camera_blocks_free_move).toBe(false);

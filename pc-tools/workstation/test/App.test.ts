@@ -1333,6 +1333,13 @@ const fixtures: Record<string, unknown> = {
         blocked_step_ids: ["run_nav2_route", "start_mapping_when_sensors_ready"],
         motion_step_ids: ["run_nav2_route", "hold_keyboard", "start_free_move", "start_mapping_when_sensors_ready"],
         no_motion_step_ids: [],
+        safety_confirm_ready_step_ids: ["hold_keyboard", "start_free_move"],
+        hardware_action_ids: [],
+        no_motion_readback_action_ids: ["readback_all", "refresh_current_wysiwyg", "refresh_radar_map_overlay"],
+        remaining_operator_action_summary_plain: "需要现场安全确认的运动验收：键盘连续手控、自由自助移动；勾一次安全确认后再手动执行，执行后只读读回复验。",
+        remaining_hardware_action_summary_plain: "当前没有必须先处理的设备动作；可继续按现场验收包复验。",
+        remaining_no_motion_action_summary_plain: "可随时只读复验：复验全部读数、刷新当前所见、刷新雷达贴图；这些读回只刷新状态，不启动车辆、不进入手控、不会进入建图或雷达流程。",
+        remaining_action_summary_plain: "需要现场安全确认的运动验收：键盘连续手控、自由自助移动；勾一次安全确认后再手动执行，执行后只读读回复验。 当前没有必须先处理的设备动作；可继续按现场验收包复验。 可随时只读复验：复验全部读数、刷新当前所见、刷新雷达贴图；这些读回只刷新状态，不启动车辆、不进入手控、不会进入建图或雷达流程。",
         acceptance_endpoints: [
           "/api/robot-control/map/preview",
           "/api/robot-control/nav2/goal/execution/latest",
@@ -5320,6 +5327,13 @@ describe("App", () => {
     expect(fieldAcceptancePacket.attributes("data-blocked-step-ids")).toBe("run_nav2_route,start_mapping_when_sensors_ready");
     expect(fieldAcceptancePacket.attributes("data-motion-step-ids")).toBe("run_nav2_route,hold_keyboard,start_free_move,start_mapping_when_sensors_ready");
     expect(fieldAcceptancePacket.attributes("data-no-motion-step-ids")).toBe("none");
+    expect(fieldAcceptancePacket.attributes("data-safety-confirm-ready-step-ids")).toBe("hold_keyboard,start_free_move");
+    expect(fieldAcceptancePacket.attributes("data-hardware-action-ids")).toBe("none");
+    expect(fieldAcceptancePacket.attributes("data-no-motion-readback-action-ids")).toBe("readback_all,refresh_current_wysiwyg,refresh_radar_map_overlay");
+    expect(fieldAcceptancePacket.attributes("data-remaining-operator-action-summary-plain")).toContain("键盘连续手控、自由自助移动");
+    expect(fieldAcceptancePacket.attributes("data-remaining-hardware-action-summary-plain")).toContain("当前没有必须先处理的设备动作");
+    expect(fieldAcceptancePacket.attributes("data-remaining-no-motion-action-summary-plain")).toContain("不启动车辆");
+    expect(fieldAcceptancePacket.attributes("data-remaining-action-summary-plain")).toContain("需要现场安全确认的运动验收");
     expect(fieldAcceptancePacket.attributes("data-safety-confirm-required")).toBe("true");
     expect(fieldAcceptancePacket.attributes("data-minimal-precheck-safety-only")).toBe("true");
     expect(fieldAcceptancePacket.attributes("data-unified-safety-confirmed")).toBe("false");
@@ -5350,6 +5364,21 @@ describe("App", () => {
     expect(fieldAcceptancePacket.attributes("data-starts-manual")).toBe("false");
     expect(fieldAcceptancePacket.attributes("data-starts-free-roam")).toBe("false");
     expect(fieldAcceptancePacket.attributes("data-starts-map-runtime")).toBe("false");
+    const fieldAcceptanceRemainingActions = wrapper.find('[data-testid="plain-field-acceptance-remaining-actions"]');
+    expect(fieldAcceptanceRemainingActions.exists()).toBe(true);
+    expect(fieldAcceptanceRemainingActions.text()).toContain("需要现场安全确认的运动验收");
+    expect(fieldAcceptanceRemainingActions.text()).toContain("可随时只读复验");
+    expect(fieldAcceptanceRemainingActions.attributes("data-safety-confirm-ready-step-ids")).toBe("hold_keyboard,start_free_move");
+    expect(fieldAcceptanceRemainingActions.attributes("data-hardware-action-ids")).toBe("none");
+    expect(fieldAcceptanceRemainingActions.attributes("data-no-motion-readback-action-ids")).toBe("readback_all,refresh_current_wysiwyg,refresh_radar_map_overlay");
+    expect(fieldAcceptanceRemainingActions.attributes("data-remaining-operator-action-summary-plain")).toContain("键盘连续手控、自由自助移动");
+    expect(fieldAcceptanceRemainingActions.attributes("data-remaining-hardware-action-summary-plain")).toContain("当前没有必须先处理的设备动作");
+    expect(fieldAcceptanceRemainingActions.attributes("data-remaining-no-motion-action-summary-plain")).toContain("不启动车辆");
+    expect(fieldAcceptanceRemainingActions.attributes("data-sends-motion-when-clicked")).toBe("false");
+    expect(fieldAcceptanceRemainingActions.attributes("data-starts-nav2")).toBe("false");
+    expect(fieldAcceptanceRemainingActions.attributes("data-starts-manual")).toBe("false");
+    expect(fieldAcceptanceRemainingActions.attributes("data-starts-free-roam")).toBe("false");
+    expect(fieldAcceptanceRemainingActions.attributes("data-starts-map-runtime")).toBe("false");
     const fieldAcceptanceActionQueue = wrapper.find('[data-testid="plain-field-acceptance-action-queue"]');
     expect(fieldAcceptanceActionQueue.exists()).toBe(true);
     expect(fieldAcceptanceActionQueue.text()).toContain("行动队列");
@@ -9282,6 +9311,11 @@ describe("App", () => {
       ...fieldAcceptancePacket,
       wysiwyg_ready: false,
       wysiwyg_missing_surface_ids: ["camera"],
+      hardware_action_ids: ["camera_usb_recovery"],
+      no_motion_readback_action_ids: ["readback_all", "refresh_current_wysiwyg"],
+      remaining_hardware_action_summary_plain: "需要设备处理：换高速USB后复测；相机不是页面独占；诊断显示 USB full-speed；先复测相机首帧并读取共享预览状态。若仍无画面，摄像头现在挂在 USB 12M full-speed，换高速 USB 口/线或带供电 USB Hub，减少转接并确认供电后复测。该相机缺口阻塞画面和建图首帧，不阻塞低速自由移动。",
+      remaining_no_motion_action_summary_plain: "可随时只读复验：复验全部读数、刷新当前所见；这些读回只刷新状态，不启动车辆、不进入手控、不会进入建图或雷达流程。",
+      remaining_action_summary_plain: "需要现场安全确认的运动验收：键盘连续手控、自由自助移动；勾一次安全确认后再手动执行，执行后只读读回复验。 需要设备处理：换高速USB后复测；相机不是页面独占；诊断显示 USB full-speed；先复测相机首帧并读取共享预览状态。若仍无画面，摄像头现在挂在 USB 12M full-speed，换高速 USB 口/线或带供电 USB Hub，减少转接并确认供电后复测。该相机缺口阻塞画面和建图首帧，不阻塞低速自由移动。 可随时只读复验：复验全部读数、刷新当前所见；这些读回只刷新状态，不启动车辆、不进入手控、不会进入建图或雷达流程。",
       wysiwyg_primary_refresh_endpoint: "/api/robot-control/camera/first-frame/probe",
       wysiwyg_primary_refresh_label: "复测相机首帧",
       wysiwyg_next_action_plain: liveClosureSummary.live_wysiwyg_camera_recovery_next_action_plain,
@@ -9301,6 +9335,11 @@ describe("App", () => {
     summaryFixture.field_acceptance_wysiwyg_next_action_plain = liveClosureSummary.live_wysiwyg_camera_recovery_next_action_plain;
     summaryFixture.field_acceptance_wysiwyg_refresh_sequence = cameraOnlySequence;
     summaryFixture.field_acceptance_wysiwyg_refresh_sequence_labels = cameraOnlyLabels;
+    summaryFixture.field_acceptance_hardware_action_ids = ["camera_usb_recovery"];
+    summaryFixture.field_acceptance_no_motion_readback_action_ids = ["readback_all", "refresh_current_wysiwyg"];
+    summaryFixture.field_acceptance_remaining_hardware_action_summary_plain = liveClosureSummary.field_acceptance_packet.remaining_hardware_action_summary_plain;
+    summaryFixture.field_acceptance_remaining_no_motion_action_summary_plain = liveClosureSummary.field_acceptance_packet.remaining_no_motion_action_summary_plain;
+    summaryFixture.field_acceptance_remaining_action_summary_plain = liveClosureSummary.field_acceptance_packet.remaining_action_summary_plain;
 
     const mockedFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
@@ -9334,6 +9373,14 @@ describe("App", () => {
     expect(cameraProof.attributes("data-sends-motion-when-clicked")).toBe("false");
     expect(cameraProof.attributes("data-starts-map-runtime")).toBe("false");
     expect(cameraProof.attributes("data-starts-free-roam")).toBe("false");
+    const fieldAcceptanceRemainingActions = wrapper.find('[data-testid="plain-field-acceptance-remaining-actions"]');
+    expect(fieldAcceptanceRemainingActions.exists()).toBe(true);
+    expect(fieldAcceptanceRemainingActions.text()).toContain("需要设备处理：换高速USB后复测");
+    expect(fieldAcceptanceRemainingActions.text()).toContain("不阻塞低速自由移动");
+    expect(fieldAcceptanceRemainingActions.attributes("data-hardware-action-ids")).toBe("camera_usb_recovery");
+    expect(fieldAcceptanceRemainingActions.attributes("data-no-motion-readback-action-ids")).toBe("readback_all,refresh_current_wysiwyg");
+    expect(fieldAcceptanceRemainingActions.attributes("data-remaining-hardware-action-summary-plain")).toContain("USB 12M full-speed");
+    expect(fieldAcceptanceRemainingActions.attributes("data-sends-motion-when-clicked")).toBe("false");
     expect(wrapper.find('[data-testid="plain-field-acceptance-radar-map-proof"]').exists()).toBe(false);
     expect(fieldAcceptanceWysiwygRefresh.attributes("data-wysiwyg-refresh-mode")).toBe("camera_only");
     expect(fieldAcceptanceWysiwygRefresh.attributes("data-wysiwyg-refresh-sequence")).toBe("/api/robot-control/camera/first-frame/probe,/api/robot-control/camera/mjpeg/status,/api/robot-control/summary");

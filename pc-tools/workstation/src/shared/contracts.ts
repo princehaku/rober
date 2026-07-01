@@ -2805,6 +2805,13 @@ export interface RobotControlFieldAcceptancePacket {
   blocked_step_ids: RobotControlLiveMotionRunbookActionId[];
   motion_step_ids: RobotControlLiveMotionRunbookActionId[];
   no_motion_step_ids: RobotControlLiveMotionRunbookActionId[];
+  safety_confirm_ready_step_ids: RobotControlLiveMotionRunbookActionId[];
+  hardware_action_ids: string[];
+  no_motion_readback_action_ids: string[];
+  remaining_operator_action_summary_plain: string;
+  remaining_hardware_action_summary_plain: string;
+  remaining_no_motion_action_summary_plain: string;
+  remaining_action_summary_plain: string;
   acceptance_endpoints: string[];
   safety_confirm_required: boolean;
   minimal_precheck_safety_only: boolean;
@@ -3542,6 +3549,13 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   field_acceptance_blocked_step_ids?: RobotControlFieldAcceptancePacket["blocked_step_ids"];
   field_acceptance_motion_step_ids?: RobotControlFieldAcceptancePacket["motion_step_ids"];
   field_acceptance_no_motion_step_ids?: RobotControlFieldAcceptancePacket["no_motion_step_ids"];
+  field_acceptance_safety_confirm_ready_step_ids?: RobotControlFieldAcceptancePacket["safety_confirm_ready_step_ids"];
+  field_acceptance_hardware_action_ids?: RobotControlFieldAcceptancePacket["hardware_action_ids"];
+  field_acceptance_no_motion_readback_action_ids?: RobotControlFieldAcceptancePacket["no_motion_readback_action_ids"];
+  field_acceptance_remaining_operator_action_summary_plain?: RobotControlFieldAcceptancePacket["remaining_operator_action_summary_plain"];
+  field_acceptance_remaining_hardware_action_summary_plain?: RobotControlFieldAcceptancePacket["remaining_hardware_action_summary_plain"];
+  field_acceptance_remaining_no_motion_action_summary_plain?: RobotControlFieldAcceptancePacket["remaining_no_motion_action_summary_plain"];
+  field_acceptance_remaining_action_summary_plain?: RobotControlFieldAcceptancePacket["remaining_action_summary_plain"];
   field_acceptance_acceptance_endpoints?: RobotControlFieldAcceptancePacket["acceptance_endpoints"];
   field_acceptance_safety_confirm_required?: RobotControlFieldAcceptancePacket["safety_confirm_required"];
   field_acceptance_minimal_precheck_safety_only?: RobotControlFieldAcceptancePacket["minimal_precheck_safety_only"];

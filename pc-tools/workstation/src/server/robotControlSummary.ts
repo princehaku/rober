@@ -10243,6 +10243,37 @@ export async function buildRobotControlSummary(
   const fieldAcceptanceMotionStepIds = fieldAcceptanceSteps
     .filter((item) => item.sends_motion_when_executed)
     .map((item) => item.id);
+  const fieldAcceptanceSafetyConfirmReadyStepIds = fieldAcceptanceSteps
+    .filter((item) => item.ready && !item.completed && item.sends_motion_when_executed && item.safety_confirm_required)
+    .map((item) => item.id);
+  const fieldAcceptanceSafetyConfirmReadyLabels = fieldAcceptanceSteps
+    .filter((item) => fieldAcceptanceSafetyConfirmReadyStepIds.includes(item.id))
+    .map((item) => item.label);
+  const fieldAcceptanceHardwareActionIds = [
+    ...(liveClosureSummary.camera_hardware_action_required && !liveClosureSummary.camera_current_visible
+      ? ["camera_usb_recovery"]
+      : []),
+  ];
+  const fieldAcceptanceNoMotionReadbackActionIds = [
+    "readback_all",
+    ...(!liveClosureSummary.live_wysiwyg_ready ? ["refresh_current_wysiwyg"] : []),
+    ...(liveClosureSummary.radar_overlay_needs_refresh ? ["refresh_radar_map_overlay"] : []),
+  ];
+  const fieldAcceptanceNoMotionReadbackActionLabels = [
+    "复验全部读数",
+    ...(!liveClosureSummary.live_wysiwyg_ready ? ["刷新当前所见"] : []),
+    ...(liveClosureSummary.radar_overlay_needs_refresh ? ["刷新雷达贴图"] : []),
+  ];
+  const fieldAcceptanceCameraRecoveryActionPlain = liveClosureSummary.camera_recovery_next_action_plain
+    .replace(/当前硬件提示/g, "当前设备提示");
+  const fieldAcceptanceOperatorActionPlain = fieldAcceptanceSafetyConfirmReadyStepIds.length > 0
+    ? `需要现场安全确认的运动验收：${fieldAcceptanceSafetyConfirmReadyLabels.join("、")}；勾一次安全确认后再手动执行，执行后只读读回复验。`
+    : "当前没有只等安全确认的运动验收入口。";
+  const fieldAcceptanceHardwareActionPlain = fieldAcceptanceHardwareActionIds.includes("camera_usb_recovery")
+    ? `需要设备处理：${liveClosureSummary.camera_hardware_action_label}；${fieldAcceptanceCameraRecoveryActionPlain}该相机缺口阻塞画面和建图首帧，不阻塞低速自由移动。`
+    : "当前没有必须先处理的设备动作；可继续按现场验收包复验。";
+  const fieldAcceptanceNoMotionActionPlain = `可随时只读复验：${fieldAcceptanceNoMotionReadbackActionLabels.join("、")}；这些读回只刷新状态，不启动车辆、不进入手控、不会进入建图或雷达流程。`;
+  const fieldAcceptanceRemainingActionPlain = `${fieldAcceptanceOperatorActionPlain} ${fieldAcceptanceHardwareActionPlain} ${fieldAcceptanceNoMotionActionPlain}`;
   const fieldAcceptanceWysiwygNextActions = [
     liveClosureSummary.live_wysiwyg_missing_surface_ids.includes("camera")
       ? liveClosureSummary.live_wysiwyg_camera_recovery_next_action_plain
@@ -10278,6 +10309,13 @@ export async function buildRobotControlSummary(
     no_motion_step_ids: fieldAcceptanceSteps
       .filter((item) => !item.sends_motion_when_executed)
       .map((item) => item.id),
+    safety_confirm_ready_step_ids: fieldAcceptanceSafetyConfirmReadyStepIds,
+    hardware_action_ids: fieldAcceptanceHardwareActionIds,
+    no_motion_readback_action_ids: fieldAcceptanceNoMotionReadbackActionIds,
+    remaining_operator_action_summary_plain: fieldAcceptanceOperatorActionPlain,
+    remaining_hardware_action_summary_plain: fieldAcceptanceHardwareActionPlain,
+    remaining_no_motion_action_summary_plain: fieldAcceptanceNoMotionActionPlain,
+    remaining_action_summary_plain: fieldAcceptanceRemainingActionPlain,
     acceptance_endpoints: Array.from(new Set(fieldAcceptanceSteps.flatMap((item) => item.acceptance_endpoints))),
     safety_confirm_required: liveClosureSummary.live_motion_runbook_safety_confirm_required,
     minimal_precheck_safety_only: liveClosureSummary.live_motion_runbook_minimal_precheck_safety_only,
@@ -10574,6 +10612,13 @@ export async function buildRobotControlSummary(
     field_acceptance_blocked_step_ids: fieldAcceptancePacket.blocked_step_ids,
     field_acceptance_motion_step_ids: fieldAcceptancePacket.motion_step_ids,
     field_acceptance_no_motion_step_ids: fieldAcceptancePacket.no_motion_step_ids,
+    field_acceptance_safety_confirm_ready_step_ids: fieldAcceptancePacket.safety_confirm_ready_step_ids,
+    field_acceptance_hardware_action_ids: fieldAcceptancePacket.hardware_action_ids,
+    field_acceptance_no_motion_readback_action_ids: fieldAcceptancePacket.no_motion_readback_action_ids,
+    field_acceptance_remaining_operator_action_summary_plain: fieldAcceptancePacket.remaining_operator_action_summary_plain,
+    field_acceptance_remaining_hardware_action_summary_plain: fieldAcceptancePacket.remaining_hardware_action_summary_plain,
+    field_acceptance_remaining_no_motion_action_summary_plain: fieldAcceptancePacket.remaining_no_motion_action_summary_plain,
+    field_acceptance_remaining_action_summary_plain: fieldAcceptancePacket.remaining_action_summary_plain,
     field_acceptance_acceptance_endpoints: fieldAcceptancePacket.acceptance_endpoints,
     field_acceptance_safety_confirm_required: fieldAcceptancePacket.safety_confirm_required,
     field_acceptance_minimal_precheck_safety_only: fieldAcceptancePacket.minimal_precheck_safety_only,

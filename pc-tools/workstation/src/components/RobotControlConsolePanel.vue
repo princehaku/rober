@@ -4289,6 +4289,15 @@ const plainFieldAcceptanceMotionStepIdsText = computed(() => (
 const plainFieldAcceptanceNoMotionStepIdsText = computed(() => (
   plainFieldAcceptancePacket.value?.no_motion_step_ids.join(",") || "none"
 ));
+const plainFieldAcceptanceSafetyConfirmReadyStepIdsText = computed(() => (
+  plainFieldAcceptancePacket.value?.safety_confirm_ready_step_ids.join(",") || "none"
+));
+const plainFieldAcceptanceHardwareActionIdsText = computed(() => (
+  plainFieldAcceptancePacket.value?.hardware_action_ids.join(",") || "none"
+));
+const plainFieldAcceptanceNoMotionReadbackActionIdsText = computed(() => (
+  plainFieldAcceptancePacket.value?.no_motion_readback_action_ids.join(",") || "none"
+));
 const plainFieldAcceptanceEndpointText = computed(() => (
   plainFieldAcceptancePacket.value?.acceptance_endpoints.join(",") || "none"
 ));
@@ -18012,6 +18021,13 @@ onBeforeUnmount(() => {
           :data-blocked-step-ids="plainFieldAcceptanceBlockedStepIdsText"
           :data-motion-step-ids="plainFieldAcceptanceMotionStepIdsText"
           :data-no-motion-step-ids="plainFieldAcceptanceNoMotionStepIdsText"
+          :data-safety-confirm-ready-step-ids="plainFieldAcceptanceSafetyConfirmReadyStepIdsText"
+          :data-hardware-action-ids="plainFieldAcceptanceHardwareActionIdsText"
+          :data-no-motion-readback-action-ids="plainFieldAcceptanceNoMotionReadbackActionIdsText"
+          :data-remaining-operator-action-summary-plain="plainFieldAcceptancePacket.remaining_operator_action_summary_plain"
+          :data-remaining-hardware-action-summary-plain="plainFieldAcceptancePacket.remaining_hardware_action_summary_plain"
+          :data-remaining-no-motion-action-summary-plain="plainFieldAcceptancePacket.remaining_no_motion_action_summary_plain"
+          :data-remaining-action-summary-plain="plainFieldAcceptancePacket.remaining_action_summary_plain"
           :data-acceptance-endpoints="plainFieldAcceptanceEndpointText"
           :data-safety-confirm-required="String(plainFieldAcceptancePacket.safety_confirm_required)"
           :data-minimal-precheck-safety-only="String(plainFieldAcceptancePacket.minimal_precheck_safety_only)"
@@ -18052,6 +18068,23 @@ onBeforeUnmount(() => {
           <p data-testid="plain-field-acceptance-next">{{ plainFieldAcceptanceNextText }}</p>
           <p class="panel-note" data-testid="plain-field-acceptance-summary">
             {{ plainActionCardUserText(plainFieldAcceptancePacket.summary_plain) }}
+          </p>
+          <p
+            class="panel-note"
+            data-testid="plain-field-acceptance-remaining-actions"
+            :data-safety-confirm-ready-step-ids="plainFieldAcceptanceSafetyConfirmReadyStepIdsText"
+            :data-hardware-action-ids="plainFieldAcceptanceHardwareActionIdsText"
+            :data-no-motion-readback-action-ids="plainFieldAcceptanceNoMotionReadbackActionIdsText"
+            :data-remaining-operator-action-summary-plain="plainFieldAcceptancePacket.remaining_operator_action_summary_plain"
+            :data-remaining-hardware-action-summary-plain="plainFieldAcceptancePacket.remaining_hardware_action_summary_plain"
+            :data-remaining-no-motion-action-summary-plain="plainFieldAcceptancePacket.remaining_no_motion_action_summary_plain"
+            :data-sends-motion-when-clicked="String(plainFieldAcceptancePacket.sends_motion_when_clicked)"
+            :data-starts-nav2="String(plainFieldAcceptancePacket.starts_nav2_when_clicked)"
+            :data-starts-manual="String(plainFieldAcceptancePacket.starts_manual_when_clicked)"
+            :data-starts-free-roam="String(plainFieldAcceptancePacket.starts_free_roam_when_clicked)"
+            :data-starts-map-runtime="String(plainFieldAcceptancePacket.starts_map_runtime_when_clicked)"
+          >
+            {{ plainActionCardUserText(plainFieldAcceptancePacket.remaining_action_summary_plain) }}
           </p>
           <div
             class="plain-field-acceptance-action-queue"
