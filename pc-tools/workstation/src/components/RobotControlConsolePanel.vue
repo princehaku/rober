@@ -19822,6 +19822,7 @@ onBeforeUnmount(() => {
           :data-max-zoom-percent="plainLiveClosureSummary.map_display_max_zoom_percent"
           :data-map-too-small-next-action-plain="plainLiveClosureSummary.map_display_too_small_next_action_plain"
           :data-ros2-companion-answer-plain="plainLiveClosureSummary.map_display_ros2_companion_answer_plain"
+          :data-ros2-companion-plain="plainLiveClosureSummary.map_display_ros2_companion_plain"
           :data-operator-default-surface="plainLiveClosureSummary.map_display_operator_default_surface"
           :data-companion-replaces-pc-ui="String(plainLiveClosureSummary.map_display_companion_replaces_pc_ui)"
           :data-wysiwyg-overlays="plainLiveClosureSummary.map_display_wysiwyg_overlays?.join(',') || 'none'"

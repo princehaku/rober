@@ -966,6 +966,7 @@ const fixtures: Record<string, unknown> = {
       map_display_max_zoom_percent: "4800%",
       map_display_too_small_next_action_plain: "地图太小先点“进入地图大屏”打开 /map，页面会把地图画布作为满屏主视图，只保留缩放和只读刷新；不需要先开 RViz2。",
       map_display_ros2_companion_answer_plain: "ROS2 配套：本地工程调试用 RViz2；远程浏览器观察用 Foxglove bridge + Foxglove Web；普通用户仍默认使用 PC 大地图。",
+      map_display_ros2_companion_plain: "ROS2 配套：本地工程调试用 RViz2；远程浏览器观察用 Foxglove bridge + Foxglove Web；普通用户仍默认使用 PC 大地图。",
       map_display_operator_default_surface: "pc_big_map_direct_view",
       map_display_companion_replaces_pc_ui: false,
       map_display_wysiwyg_overlays: ["image", "route", "robot", "radar"],
@@ -6602,6 +6603,7 @@ describe("App", () => {
     expect(liveMapCompanionSummary.attributes("data-max-zoom-percent")).toBe("4800%");
     expect(liveMapCompanionSummary.attributes("data-map-too-small-next-action-plain")).toContain("进入地图大屏");
     expect(liveMapCompanionSummary.attributes("data-ros2-companion-answer-plain")).toContain("Foxglove bridge");
+    expect(liveMapCompanionSummary.attributes("data-ros2-companion-plain")).toContain("Foxglove bridge");
     expect(liveMapCompanionSummary.attributes("data-operator-default-surface")).toBe("pc_big_map_direct_view");
     expect(liveMapCompanionSummary.attributes("data-companion-replaces-pc-ui")).toBe("false");
     expect(liveMapCompanionSummary.attributes("data-wysiwyg-overlays")).toBe("image,route,robot,radar");

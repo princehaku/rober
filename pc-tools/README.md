@@ -37,6 +37,10 @@ client publish、service 和 parameter 通道关到不匹配正则；安装仍�
 `ros2 launch ros2_trashbot_bringup foxglove_bridge.launch.py` 后在 Foxglove Web 连接
 `ws://192.168.1.11:8765`；该按钮不启动 ROS2/RViz2/Foxglove/Nav2/建图 runtime，不发送
 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+summary 顶层和 `plain-live-map-companion-summary` DOM 同步暴露短 alias
+`map_display_ros2_companion_plain` / `data-ros2-companion-plain`，与
+`map_display_ros2_companion_answer_plain` 同源；现场脚本按直觉查 ROS2 配套白话答案时不会读到
+null，该字段也只作观察说明，不启动 ROS2、RViz2、Foxglove、Nav2、建图 runtime 或任何运动控制。
 
 2026-07-02 CST 起，`GET /api/robot-control/summary` 的自由移动顶层读回别名补齐为
 `free_move_readback_endpoints` 和 `free_move_required_success_markers`，分别复用既有

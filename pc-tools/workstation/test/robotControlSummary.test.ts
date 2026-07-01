@@ -344,6 +344,8 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.map_display_ros2_companion_answer_plain).toContain("Foxglove bridge");
     expect(summary.live_closure_summary?.map_display_ros2_companion_answer_plain).toContain("PC 大地图");
     expect(summary.map_display_ros2_companion_answer_plain).toBe(summary.live_closure_summary?.map_display_ros2_companion_answer_plain);
+    expect(summary.live_closure_summary?.map_display_ros2_companion_plain).toBe(summary.live_closure_summary?.map_display_ros2_companion_answer_plain);
+    expect(summary.map_display_ros2_companion_plain).toBe(summary.live_closure_summary?.map_display_ros2_companion_plain);
     expect(summary.live_closure_summary?.map_display_operator_default_surface).toBe("pc_big_map_direct_view");
     expect(summary.map_display_operator_default_surface).toBe("pc_big_map_direct_view");
     expect(summary.live_closure_summary?.map_display_companion_replaces_pc_ui).toBe(false);
