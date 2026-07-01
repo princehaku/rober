@@ -225,6 +225,8 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.map_display_primary_action_opens_current_page).toBe(true);
     expect(summary.live_closure_summary?.map_display_direct_map_default_observer).toBe(true);
     expect(summary.live_closure_summary?.map_display_direct_map_only).toBe(true);
+    expect(summary.live_closure_summary?.map_display_direct_map_keeps_page_fullscreen_without_browser_api).toBe(true);
+    expect(summary.live_closure_summary?.map_display_direct_map_browser_fullscreen_required).toBe(false);
     expect(summary.live_closure_summary?.map_display_default_zoom_percent).toBe("600%");
     expect(summary.live_closure_summary?.map_display_max_zoom_percent).toBe("2400%");
     expect(summary.live_closure_summary?.map_display_wysiwyg_overlays).toEqual(["image", "route", "robot", "radar"]);

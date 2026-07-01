@@ -397,6 +397,13 @@ function syncPlainMapBrowserFullscreenState(): void {
   // 用户按 Esc 退出原生全屏时同步收起地图状态，避免按钮还显示“退出全屏”。
   const active = document.fullscreenElement === plainMapPanel.value;
   plainMapBrowserFullscreenActive.value = active;
+  if (!active && plainMapDirectViewRequested.value) {
+    // `/map` 直达页依赖页面内 fixed 全屏兜底；浏览器原生 fullscreen 退出不能把地图缩回普通卡片。
+    plainMapLargeView.value = true;
+    plainMapFullscreenView.value = true;
+    plainMapObserverView.value = true;
+    return;
+  }
   if (!active && plainMapFullscreenView.value) {
     plainMapFullscreenView.value = false;
     plainMapObserverView.value = false;
@@ -16950,6 +16957,8 @@ onBeforeUnmount(() => {
         :data-map-display-wysiwyg-overlays="plainLiveClosureSummary.map_display_wysiwyg_overlays?.join(',') || 'none'"
         :data-map-display-ros2-companion-required="String(plainLiveClosureSummary.map_display_ros2_companion_required)"
         :data-map-display-ros2-companion-tools="plainLiveClosureSummary.map_display_ros2_companion_tools?.join(',') || 'none'"
+        :data-map-display-direct-map-keeps-page-fullscreen-without-browser-api="String(plainLiveClosureSummary.map_display_direct_map_keeps_page_fullscreen_without_browser_api)"
+        :data-map-display-direct-map-browser-fullscreen-required="String(plainLiveClosureSummary.map_display_direct_map_browser_fullscreen_required)"
         :data-map-display-engineering-tools-visible-by-default="String(plainLiveClosureSummary.map_display_engineering_tools_visible_by_default)"
         :data-map-display-engineering-tools-action-label="plainLiveClosureSummary.map_display_engineering_tools_action_label"
         :data-map-display-ordinary-user-tool="plainLiveClosureSummary.map_display_ordinary_user_tool"
@@ -19343,6 +19352,8 @@ onBeforeUnmount(() => {
           data-direct-map-view-behavior="page_fixed_fullscreen_map_only"
           data-direct-map-view-default-observer="true"
           data-direct-map-view-map-only="true"
+          :data-direct-map-view-keeps-page-fullscreen-without-browser-api="String(plainMapDirectViewRequested)"
+          data-direct-map-view-browser-fullscreen-required="false"
           :data-direct-map-view-default-zoom-percent="PLAIN_MAP_DEFAULT_ZOOM_PERCENT"
           :data-direct-map-view-max-zoom-percent="PLAIN_MAP_MAX_ZOOM_PERCENT"
           data-direct-map-loads-camera-preview="false"
@@ -19393,6 +19404,8 @@ onBeforeUnmount(() => {
                 data-direct-map-view-url="/map"
                 data-direct-map-view-legacy-url="?view=map"
                 data-direct-map-view-behavior="page_fixed_fullscreen_map_only"
+                data-direct-map-view-keeps-page-fullscreen-without-browser-api="true"
+                data-direct-map-view-browser-fullscreen-required="false"
                 :data-direct-map-view-default-zoom-percent="PLAIN_MAP_DEFAULT_ZOOM_PERCENT"
                 :data-direct-map-view-max-zoom-percent="PLAIN_MAP_MAX_ZOOM_PERCENT"
                 data-sends-motion-when-clicked="false"
@@ -19788,6 +19801,8 @@ onBeforeUnmount(() => {
             data-direct-map-view-behavior="page_fixed_fullscreen_map_only"
             data-direct-map-view-default-observer="true"
             data-direct-map-view-map-only="true"
+            :data-direct-map-view-keeps-page-fullscreen-without-browser-api="String(plainMapDirectViewRequested)"
+            data-direct-map-view-browser-fullscreen-required="false"
             data-ros2-companion-tool="rviz2"
             data-ros2-remote-companion-tool="foxglove"
             data-ros2-companion-required="false"
