@@ -847,11 +847,27 @@ function cameraProbePlainFailureHint(): string {
   if (!failed) {
     return "";
   }
+  const camera = robotSummary.value?.readback_summary.camera;
+  if (
+    camera?.source_diagnosis_status === "uvc_full_speed_usb_not_exclusive"
+    || camera?.uvc_usb_topology_status === "uvc_video_on_full_speed_usb"
+    || camera?.uvc_usb_topology_video_usb_speed === "12M"
+  ) {
+    return "相机不是页面独占；探针没有拿到首帧，仍按 USB 12M full-speed 处理：换高速 USB 口/线或带供电 USB Hub，减少转接并确认供电后复测。";
+  }
   if (values.backend_smoke_status === "backend_no_frame_observed") {
     const attempts = values.backend_attempts && values.backend_attempts !== "0"
       ? `，OpenCV/V4L2 后端尝试 ${values.backend_attempts} 种方式`
       : "";
     return `不是页面独占：摄像头能打开${attempts}也没有取到视频帧；检查 USB、摄像头输入、格式或供电。`;
+  }
+  if (/aborted due to timeout|timeout/i.test(result.failure_reason || values.failure_reason || "")) {
+    const diagnosisHint = loadedAliasText(camera?.source_diagnosis_plain_hint)
+      || loadedAliasText(camera?.source_diagnosis_next_action_plain)
+      || loadedAliasText(camera?.camera_wysiwyg_next_action_plain);
+    if (diagnosisHint) {
+      return `${diagnosisHint.replace(/[。；\s]+$/g, "")}；探针超时未返回新画面。`;
+    }
   }
   if (values.failure_reason === "capture_read_call_timeout" || result.failure_reason === "capture_read_call_timeout") {
     return "相机能打开但读帧超时；检查 USB、摄像头输入、格式或供电。";

@@ -7391,8 +7391,28 @@ describe("App", () => {
     };
     summaryFixture.readback_summary.camera.source_diagnosis_status = "uvc_full_speed_usb_not_exclusive";
     summaryFixture.readback_summary.camera.source_diagnosis_next_action_plain = "摄像头现在挂在 USB 12M full-speed，换高速 USB 口/线或带供电 USB Hub，减少转接并确认供电后复测；共享预览不是页面独占。";
+    summaryFixture.readback_summary.camera.uvc_usb_topology_status = "uvc_video_on_full_speed_usb";
+    summaryFixture.readback_summary.camera.uvc_usb_topology_video_usb_speed = "12M";
     const mockedFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/camera/first-frame/probe": {
+        ...cloneFixture(fixtures["/api/robot-control/camera/first-frame/probe"] as Record<string, unknown>),
+        proxy_status: "probe_failed",
+        remote_http_status: null,
+        status: "blocked",
+        failure_reason: "The operation was aborted due to timeout",
+        probe_key_values: {
+          schema: "trashbot.upper_robot_api.v1.camera_first_frame_probe",
+          device: "not_loaded",
+          requested_fourcc: "not_loaded",
+          open_ok: "not_loaded",
+          read_ok: "not_loaded",
+          first_frame_timeout: "not_loaded",
+          failure_reason: "The operation was aborted due to timeout",
+          visible_content_proven: "not_loaded",
+        },
+        robot_control_executed: false,
+      },
     });
 
     const wrapper = mount(App);
@@ -7406,6 +7426,11 @@ describe("App", () => {
     expect(mappingCameraRecoveryRefresh.attributes("data-sends-motion-when-clicked")).toBe("false");
     expect(mappingCameraRecoveryRefresh.attributes("data-starts-camera-exclusive-capture")).toBe("false");
     expect(mappingCameraRecoveryRefresh.attributes("data-starts-map-runtime")).toBe("false");
+    await mappingCameraRecoveryRefresh.trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="plain-camera-probe-summary"]').text()).toBe("只读检查：相机不是页面独占；探针没有拿到首帧，仍按 USB 12M full-speed 处理：换高速 USB 口/线或带供电 USB Hub，减少转接并确认供电后复测。");
+    expect(wrapper.find('[data-testid="plain-camera-probe-summary"]').text()).not.toContain("The operation was aborted");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
   });
