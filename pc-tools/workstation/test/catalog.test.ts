@@ -6947,6 +6947,12 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.free_roam_mapping_start_missing_reasons).toEqual(summary.live_closure_summary?.mapping_start_missing_reasons);
       expect(live.free_roam_mapping_ready).toBe(false);
       expect(live.free_roam_mapping_missing_reasons).toEqual(summary.live_closure_summary?.mapping_acceptance_missing_reasons);
+      expect(summary.mapping_acceptance_missing_reasons).toEqual(summary.live_closure_summary?.mapping_acceptance_missing_reasons);
+      expect(summary.mapping_start_requires_camera_first_frame).toBe(true);
+      expect(summary.mapping_start_requires_lidar_fresh).toBe(true);
+      expect(summary.mapping_unblock_allows_free_move).toBe(true);
+      expect(summary.fixed_mapping_start_endpoint).toBe("/api/robot-control/map/start");
+      expect(summary.fixed_mapping_preview_endpoint).toBe("/api/robot-control/map/preview");
       expect(live.keyboard_ready).toBe(true);
       expect(summary.keyboard_ready).toBe(true);
       expect(summary.keyboard_continuous_ready).toBe(true);

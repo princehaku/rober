@@ -897,7 +897,9 @@ describe("robotControlSummary", () => {
     expect(summary.mapping_start_ready).toBe(false);
     expect(summary.free_roam_mapping_start_ready).toBe(false);
     expect(summary.live_closure_summary?.mapping_start_requires_camera_first_frame).toBe(true);
+    expect(summary.mapping_start_requires_camera_first_frame).toBe(true);
     expect(summary.live_closure_summary?.mapping_start_requires_lidar_fresh).toBe(true);
+    expect(summary.mapping_start_requires_lidar_fresh).toBe(true);
     expect(summary.live_closure_summary?.mapping_start_missing_reasons).toEqual(["camera_first_frame", "lidar_fresh"]);
     expect(summary.mapping_start_missing_reasons).toEqual(["camera_first_frame", "lidar_fresh"]);
     expect(summary.free_roam_mapping_start_missing_reasons).toEqual(["camera_first_frame", "lidar_fresh"]);
@@ -907,25 +909,39 @@ describe("robotControlSummary", () => {
       "mapping_active",
       "fresh_map_preview",
     ]);
+    expect(summary.mapping_acceptance_missing_reasons).toEqual(summary.live_closure_summary?.mapping_acceptance_missing_reasons);
     expect(summary.live_closure_summary?.mapping_start_unblock_plain).toContain("建图启动还差：画面首帧、雷达新鲜");
+    expect(summary.mapping_start_unblock_plain).toContain("建图启动还差：画面首帧、雷达新鲜");
     expect(summary.live_closure_summary?.mapping_start_unblock_plain).toContain("自由移动仍可先做");
+    expect(summary.mapping_start_unblock_plain).toContain("自由移动仍可先做");
     expect(summary.live_closure_summary?.mapping_start_unblock_plain).toContain("只读复测相机首帧和 MJPEG 状态");
     expect(summary.live_closure_summary?.mapping_start_unblock_plain).not.toContain("。；");
     expect(summary.live_closure_summary?.mapping_camera_blocks_start).toBe(true);
+    expect(summary.mapping_camera_blocks_start).toBe(true);
     expect(summary.live_closure_summary?.mapping_lidar_blocks_start).toBe(true);
+    expect(summary.mapping_lidar_blocks_start).toBe(true);
     expect(summary.live_closure_summary?.mapping_lidar_fresh_readback_ready).toBe(false);
+    expect(summary.mapping_lidar_fresh_readback_ready).toBe(false);
     expect(summary.live_closure_summary?.mapping_lidar_fresh_gate_conflict).toBe(false);
+    expect(summary.mapping_lidar_fresh_gate_conflict).toBe(false);
     expect(summary.live_closure_summary?.mapping_lidar_fresh_gate_status).toBe("missing");
+    expect(summary.mapping_lidar_fresh_gate_status).toBe("missing");
     expect(summary.live_closure_summary?.mapping_lidar_fresh_next_action_plain).toContain("建图启动仍缺雷达新鲜读数");
+    expect(summary.mapping_lidar_fresh_next_action_plain).toContain("建图启动仍缺雷达新鲜读数");
     expect(summary.live_closure_summary?.mapping_lidar_fresh_refresh_sequence).toEqual([
       "/api/robot-control/radar/scan-proof/refresh",
       "/api/robot-control/radar/status",
       "/api/robot-control/summary",
     ]);
+    expect(summary.mapping_lidar_fresh_refresh_sequence).toEqual(summary.live_closure_summary?.mapping_lidar_fresh_refresh_sequence);
     expect(summary.live_closure_summary?.mapping_lidar_fresh_refresh_sends_motion).toBe(false);
+    expect(summary.mapping_lidar_fresh_refresh_sends_motion).toBe(false);
     expect(summary.live_closure_summary?.mapping_lidar_fresh_refresh_starts_radar_lifecycle).toBe(false);
+    expect(summary.mapping_lidar_fresh_refresh_starts_radar_lifecycle).toBe(false);
     expect(summary.live_closure_summary?.mapping_lidar_fresh_blocks_free_move).toBe(false);
+    expect(summary.mapping_lidar_fresh_blocks_free_move).toBe(false);
     expect(summary.live_closure_summary?.mapping_unblock_allows_free_move).toBe(true);
+    expect(summary.mapping_unblock_allows_free_move).toBe(true);
     expect(summary.live_closure_summary?.mapping_unblock_camera_diagnosis_status).toBe("not_loaded");
     expect(summary.live_closure_summary?.mapping_unblock_camera_not_exclusive).toBe("not_loaded");
     expect(summary.live_closure_summary?.mapping_unblock_camera_recovery_next_action_plain).toBe("先复测相机首帧并读取共享预览状态；拿到首帧后再刷新当前所见和建图条件。");
@@ -956,7 +972,9 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.fixed_mapping_unblock_camera_mjpeg_status_endpoint).toBe("/api/robot-control/camera/mjpeg/status");
     expect(summary.live_closure_summary?.mapping_unblock_sends_motion_when_clicked).toBe(false);
     expect(summary.live_closure_summary?.fixed_mapping_start_endpoint).toBe("/api/robot-control/map/start");
+    expect(summary.fixed_mapping_start_endpoint).toBe("/api/robot-control/map/start");
     expect(summary.live_closure_summary?.fixed_mapping_preview_endpoint).toBe("/api/robot-control/map/preview");
+    expect(summary.fixed_mapping_preview_endpoint).toBe("/api/robot-control/map/preview");
   });
 
   it("suppresses stale lidar_fresh mapping start gap when live radar readback is already fresh", async () => {
