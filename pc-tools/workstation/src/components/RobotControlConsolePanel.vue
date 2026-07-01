@@ -67,6 +67,7 @@ import type {
   RobotControlGoalChecklistSummaryActionItem,
   RobotControlLiveObjectiveAuditItem,
   RobotControlLiveMotionRunbookItem,
+  RobotControlLiveClosureSummary,
   RobotControlSummaryResponse,
 } from "../shared/contracts";
 
@@ -3888,6 +3889,30 @@ const plainLiveClosureSummary = computed(() => {
   // 这是首屏给普通用户看的“当前卡点”，只读展示，不会替代原本的安全确认或运动按钮。
   return robotSummary.value?.live_closure_summary ?? null;
 });
+function plainLiveMappingStartMissingText(summary: RobotControlLiveClosureSummary): string {
+  // 建图启动缺口要用普通中文展示；token 只留给 DOM 和自动化脚本做验收。
+  const missing = freeRoamMappingMissingPlainLabels(summary.mapping_start_missing_reasons).map((label) => (
+    label === "画面首帧未出" ? cameraFirstFrameMissingPlainLabel() : label
+  ));
+  return missing.length > 0 ? missing.join("、") : "无";
+}
+function plainFreeMoveMappingFrontloadText(summary: RobotControlLiveClosureSummary): string {
+  // 当前卡点可能是 Nav2 或轮速，但普通用户仍需要先知道自由移动和建图是不是可推进。
+  const freeMove = summary.free_move_start_ready
+    ? "自由移动：可先做，发车前只需要现场安全确认"
+    : "自由移动：等待现场安全确认或停止兜底";
+  const precheck = !summary.free_move_camera_preflight_required && !summary.free_move_radar_preflight_required
+    ? "相机/雷达不作为自由移动发车前预检"
+    : "按当前回包处理自由移动预检";
+  const mappingMissing = plainLiveMappingStartMissingText(summary);
+  const mapping = summary.mapping_start_ready
+    ? "建图启动：画面和雷达已就绪"
+    : `建图启动：还差 ${mappingMissing}`;
+  const lidar = summary.mapping_lidar_blocks_start
+    ? "雷达新鲜扫描会影响建图启动"
+    : "雷达本轮不阻塞建图启动";
+  return `${freeMove}；${precheck}；${mapping}；${lidar}。`;
+}
 const plainMappingCameraRecoveryActionLabel = computed(() => {
   // USB full-speed 不是页面独占问题；按钮要先提示现场换高速 USB 链路，再复测只读首帧。
   if (cameraFirstFrameProbePending.value) {
@@ -17202,6 +17227,38 @@ onBeforeUnmount(() => {
             {{ deliveryLatestPending ? "读回中" : "读回送达" }}
           </button>
         </div>
+        <p
+          v-if="plainLiveClosureSummary.free_move_start_ready || !plainLiveClosureSummary.mapping_start_ready"
+          class="panel-note"
+          data-testid="plain-free-move-mapping-frontload"
+          :data-free-move-start-ready="String(plainLiveClosureSummary.free_move_start_ready)"
+          :data-free-move-minimal-precheck-safety-only="String(plainLiveClosureSummary.free_move_minimal_precheck_safety_only)"
+          :data-free-move-safety-confirm-required="String(plainLiveClosureSummary.free_move_safety_confirm_required)"
+          :data-free-move-camera-preflight-required="String(plainLiveClosureSummary.free_move_camera_preflight_required)"
+          :data-free-move-radar-preflight-required="String(plainLiveClosureSummary.free_move_radar_preflight_required)"
+          :data-mapping-start-ready="String(plainLiveClosureSummary.mapping_start_ready)"
+          :data-mapping-start-missing-reasons="plainLiveClosureSummary.mapping_start_missing_reasons.join(',') || 'none'"
+          :data-mapping-start-missing-plain="plainLiveMappingStartMissingText(plainLiveClosureSummary)"
+          :data-mapping-camera-blocks-start="String(plainLiveClosureSummary.mapping_camera_blocks_start)"
+          :data-mapping-lidar-blocks-start="String(plainLiveClosureSummary.mapping_lidar_blocks_start)"
+          :data-mapping-unblock-allows-free-move="String(plainLiveClosureSummary.mapping_unblock_allows_free_move)"
+          :data-fixed-free-roam-start-endpoint="plainLiveClosureSummary.fixed_free_roam_start_endpoint"
+          data-fixed-free-roam-latest-endpoint="/api/robot-control/free-roam/autonomy/latest"
+          :data-fixed-mapping-start-endpoint="plainLiveClosureSummary.fixed_mapping_start_endpoint"
+          data-fixed-summary-endpoint="/api/robot-control/summary"
+          data-readback-only="true"
+          data-focus-only="true"
+          data-sends-motion-when-clicked="false"
+          data-starts-nav2="false"
+          data-starts-manual="false"
+          data-starts-keyboard="false"
+          data-starts-free-roam="false"
+          data-starts-map-runtime="false"
+          data-submits-delivery="false"
+          data-stops-motion="false"
+        >
+          {{ plainFreeMoveMappingFrontloadText(plainLiveClosureSummary) }}
+        </p>
         <p
           v-if="!plainLiveClosureSummary.mapping_start_ready"
           class="panel-note"
