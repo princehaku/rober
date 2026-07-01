@@ -48,6 +48,9 @@ null，该字段也只作观察说明，不启动 ROS2、RViz2、Foxglove、Nav2
 启动后要读 `/api/robot-control/free-roam/autonomy/latest`、地图预览和 summary，以及仍缺
 `free_roam_latest_motion_ready`；该 alias 只读，不启动 free-roam、不发 Nav2/manual/keyboard/delivery/stop
 或 `/cmd_vel`。
+同一口径也暴露 `free_move_readback_endpoint`、`free_move_latest_endpoint` 和
+`free_move_required_success_marker` 单值 alias，分别指向 `/api/robot-control/free-roam/autonomy/latest`
+和 `free_roam_latest_motion_ready`，方便现场脚本不用拆数组也能拿到自由移动最新读回入口和验收 marker。
 
 2026-07-02 CST 起，固定 proof refresh POST 回包本体也直接说明 no-motion 边界：
 `readback_only=true`、`no_motion_refresh=true`、`sends_motion_when_clicked=false`、

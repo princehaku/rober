@@ -802,6 +802,11 @@ const fixtures: Record<string, unknown> = {
     free_move_start_endpoint: "/api/robot-control/free-roam/autonomy/start",
     free_move_stop_endpoint: "/api/robot-control/free-roam/autonomy/stop",
     free_move_acceptance_endpoints: ["/api/robot-control/free-roam/autonomy/latest", "/api/robot-control/map/preview", "/api/robot-control/summary"],
+    free_move_readback_endpoint: "/api/robot-control/free-roam/autonomy/latest",
+    free_move_latest_endpoint: "/api/robot-control/free-roam/autonomy/latest",
+    free_move_readback_endpoints: ["/api/robot-control/free-roam/autonomy/latest", "/api/robot-control/map/preview", "/api/robot-control/summary"],
+    free_move_required_success_marker: "free_roam_latest_motion_ready",
+    free_move_required_success_markers: ["free_roam_latest_motion_ready"],
     free_move_proof_status: "ready_to_verify",
     free_move_missing_evidence: ["free_roam_latest_motion_ready"],
     free_move_proof_plain: "可验证自由自助移动：勾现场安全确认后启动，再读 free-roam latest、地图预览和 summary；还差：自由移动运行读数。",
@@ -6048,7 +6053,10 @@ describe("App", () => {
     expect(fieldAcceptanceMotionProof.attributes("data-keyboard-stop-after-release")).toBe("false");
     expect(fieldAcceptanceMotionProof.attributes("data-keyboard-readback-endpoints")).toBe("/api/robot-control/base/feedback-samples,/api/robot-control/summary");
     expect(fieldAcceptanceMotionProof.attributes("data-free-move-motion-ready")).toBe("false");
+    expect(fieldAcceptanceMotionProof.attributes("data-free-move-readback-endpoint")).toBe("/api/robot-control/free-roam/autonomy/latest");
     expect(fieldAcceptanceMotionProof.attributes("data-free-move-readback-endpoints")).toBe("/api/robot-control/free-roam/autonomy/latest,/api/robot-control/map/preview,/api/robot-control/summary");
+    expect(fieldAcceptanceMotionProof.attributes("data-free-move-required-success-marker")).toBe("free_roam_latest_motion_ready");
+    expect(fieldAcceptanceMotionProof.attributes("data-free-move-required-success-markers")).toBe("free_roam_latest_motion_ready");
     expect(fieldAcceptanceMotionProof.attributes("data-safety-confirmed")).toBe("false");
     expect(fieldAcceptanceMotionProof.attributes("data-minimal-precheck-safety-only")).toBe("true");
     expect(fieldAcceptanceMotionProof.attributes("data-camera-required-for-motion")).toBe("false");
