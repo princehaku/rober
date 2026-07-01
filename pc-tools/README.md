@@ -47,6 +47,12 @@ manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 `readback_all.sequence_endpoints` 的白名单顺序执行，白名单外 endpoint 跳过。该路径不启动雷达
 lifecycle、Nav2、manual、keyboard、free-roam、建图 runtime、delivery、stop 或 `/cmd_vel`。
 
+2026-07-02 CST 起，`GET /api/robot-control/summary` 顶层同步暴露四项目标短 alias：
+`objective_missing_ids`、`objective_next_id`、`motion_objective_complete`、`wysiwyg_objective_complete`、
+`precheck_objective_complete`、`mapping_objective_complete`。这些字段直接来自
+`live_closure_summary.objective_audit_*` 和同源 objective item，不重算、不触发运动，方便现场
+`curl | jq` 一眼确认 PC 易用性、WYSIWYG、最小预检和自由移动/建图还差哪一项。
+
 2026-07-02 CST 起，普通首屏 `执行图上路线` 在 execution forwarded 后，会按
 `nav2_route_acceptance_packet.readback_endpoints` 自动刷新执行后验收读回：地图预览、Nav2 latest、
 底盘 wheel feedback samples、delivery latest 和 summary。地图刷新保留 `tripExecutionRefresh`，

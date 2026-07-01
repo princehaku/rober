@@ -7231,6 +7231,12 @@ describe("workstation fail-closed API contracts", () => {
       expect(live.map_display_foxglove_web_app_url).toBe("https://studio.foxglove.dev");
       expect(live.map_display_engineering_tools_sends_motion).toBe(false);
       expect(live.objective_audit_missing_objective_ids).toContain("motion");
+      expect(summary.objective_missing_ids).toEqual(live.objective_audit_missing_objective_ids);
+      expect(summary.objective_next_id).toBe(live.objective_audit_next_objective_id);
+      expect(summary.motion_objective_complete).toBe(false);
+      expect(summary.wysiwyg_objective_complete).toBe(false);
+      expect(summary.precheck_objective_complete).toBe(true);
+      expect(summary.mapping_objective_complete).toBe(false);
       expect(live.sends_motion_when_clicked).toBe(false);
       expect(live.starts_nav2).toBe(false);
       expect(live.starts_manual).toBe(false);

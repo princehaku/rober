@@ -171,6 +171,12 @@ describe("robotControlSummary", () => {
     expect(summary.objective_audit_next_objective_id).toBe(summary.live_closure_summary?.objective_audit_next_objective_id);
     expect(summary.live_closure_summary?.objective_audit_missing_objective_ids).toContain("motion");
     expect(summary.objective_audit_missing_objective_ids).toContain("motion");
+    expect(summary.objective_missing_ids).toEqual(summary.live_closure_summary?.objective_audit_missing_objective_ids);
+    expect(summary.objective_next_id).toBe(summary.live_closure_summary?.objective_audit_next_objective_id);
+    expect(summary.motion_objective_complete).toBe(false);
+    expect(summary.wysiwyg_objective_complete).toBe(false);
+    expect(summary.precheck_objective_complete).toBe(true);
+    expect(summary.mapping_objective_complete).toBe(false);
     expect(summary.live_closure_summary?.objective_audit_summary_plain).toContain("四项目标完成");
     expect(summary.objective_audit_summary_plain).toContain("四项目标完成");
     expect(summary.live_closure_summary?.fixed_objective_audit_summary_endpoint).toBe("/api/robot-control/summary");

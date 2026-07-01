@@ -3558,6 +3558,12 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   objective_audit_items?: RobotControlLiveClosureSummary["objective_audit_items"];
   fixed_objective_audit_summary_endpoint?: RobotControlLiveClosureSummary["fixed_objective_audit_summary_endpoint"];
   objective_audit_sends_motion_when_clicked?: RobotControlLiveClosureSummary["objective_audit_sends_motion_when_clicked"];
+  objective_missing_ids?: RobotControlLiveClosureSummary["objective_audit_missing_objective_ids"];
+  objective_next_id?: RobotControlLiveClosureSummary["objective_audit_next_objective_id"];
+  motion_objective_complete?: boolean;
+  wysiwyg_objective_complete?: RobotControlLiveClosureSummary["live_wysiwyg_ready"];
+  precheck_objective_complete?: RobotControlLiveClosureSummary["minimal_precheck_safety_only"];
+  mapping_objective_complete?: boolean;
   motion_ready?: boolean;
   motion_complete?: boolean;
   wysiwyg_ready?: RobotControlLiveClosureSummary["live_wysiwyg_ready"];
