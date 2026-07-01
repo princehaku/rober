@@ -4335,6 +4335,38 @@ const plainLiveMotionExecutionStrip = computed(() => {
     minimalPrecheckSafetyOnly: Boolean(plainLiveClosureSummary.value?.live_motion_runbook_minimal_precheck_safety_only),
   };
 });
+const plainLiveReadyMotionActionCards = computed(() => {
+  // ready 动作是现场可处理入口；这里仍只做聚焦卡片，真实动作必须由 operator 在目标卡片再点一次。
+  return plainLiveMotionRunbookRows.value
+    .filter((item) => item.ready && !item.completed)
+    .map((item) => {
+      const executionText = item.id === "run_nav2_route"
+        ? "会执行图上行程"
+        : item.id === "hold_keyboard"
+          ? "按住才会移动"
+          : item.id === "start_free_move"
+            ? "会启动自由移动"
+            : "会启动建图";
+      const precheckText = item.safety_confirm_required
+        ? "只需现场安全确认"
+        : "按当前卡片处理";
+      return {
+        id: item.id,
+        label: item.label,
+        state: item.state,
+        executionText,
+        precheckText,
+        sourceCardId: item.sourceCardId,
+        focusKind: item.focusKind,
+        buttonLabel: item.buttonLabel,
+        proofText: item.proofText,
+        startEndpoint: item.start_endpoint,
+        stopEndpoint: item.stop_endpoint,
+        acceptanceEndpoints: item.acceptance_endpoints,
+        sendsMotionWhenExecuted: item.sends_motion_when_executed,
+      };
+    });
+});
 
 async function refreshLiveMotionRunbookReadback(actionId: RobotControlLiveMotionRunbookItem["id"]): Promise<void> {
   // 动作清单的验收读回只刷新固定验收端点；不会执行路线、手控、自由移动、建图或 stop。
@@ -17566,6 +17598,76 @@ onBeforeUnmount(() => {
             >
               {{ plainLiveMotionExecutionStrip.primaryButtonLabel }}
             </button>
+          </div>
+          <div
+            v-if="plainLiveReadyMotionActionCards.length"
+            class="plain-live-ready-motion-actions"
+            data-testid="plain-live-ready-motion-actions"
+            :data-ready-action-ids="plainLiveReadyMotionActionCards.map((item) => item.id).join(',')"
+            :data-ready-count="String(plainLiveReadyMotionActionCards.length)"
+            :data-safety-confirmed="String(plainManualSafetyConfirmed)"
+            :data-minimal-precheck-safety-only="String(plainLiveMotionExecutionStrip.minimalPrecheckSafetyOnly)"
+            data-focus-only="true"
+            data-sends-motion-when-clicked="false"
+            data-starts-nav2="false"
+            data-starts-manual="false"
+            data-starts-keyboard="false"
+            data-starts-free-roam="false"
+            data-starts-map-runtime="false"
+            data-submits-delivery="false"
+            data-stops-motion="false"
+          >
+            <div
+              v-for="item in plainLiveReadyMotionActionCards"
+              :key="item.id"
+              class="plain-live-ready-motion-action"
+              :data-testid="`plain-live-ready-motion-action-${item.id}`"
+              :data-action-id="item.id"
+              :data-state="item.state"
+              :data-execution-text="item.executionText"
+              :data-precheck-text="item.precheckText"
+              :data-focus-target-source-card-id="item.sourceCardId"
+              :data-focus-target-kind="item.focusKind"
+              :data-start-endpoint="item.startEndpoint"
+              :data-stop-endpoint="item.stopEndpoint"
+              :data-acceptance-endpoints="item.acceptanceEndpoints.join(',') || 'none'"
+              :data-sends-motion-when-executed="String(item.sendsMotionWhenExecuted)"
+              data-focus-only="true"
+              data-sends-motion-when-clicked="false"
+              data-starts-nav2="false"
+              data-starts-manual="false"
+              data-starts-keyboard="false"
+              data-starts-free-roam="false"
+              data-starts-map-runtime="false"
+              data-submits-delivery="false"
+              data-stops-motion="false"
+            >
+              <div class="simple-status-row">
+                <strong>{{ item.label }}</strong>
+                <span class="status-chip" :data-state="item.state">{{ item.state }}</span>
+              </div>
+              <p>{{ item.executionText }}；{{ item.precheckText }}。</p>
+              <p class="muted">{{ item.proofText }}</p>
+              <button
+                type="button"
+                class="secondary compact-stop"
+                :data-testid="`plain-live-ready-motion-action-go-${item.id}`"
+                :data-focus-target-source-card-id="item.sourceCardId"
+                :data-focus-target-kind="item.focusKind"
+                data-focus-only="true"
+                data-sends-motion-when-clicked="false"
+                data-starts-nav2="false"
+                data-starts-manual="false"
+                data-starts-keyboard="false"
+                data-starts-free-roam="false"
+                data-starts-map-runtime="false"
+                data-submits-delivery="false"
+                data-stops-motion="false"
+                @click="focusPlainActionCardTarget(item.sourceCardId)"
+              >
+                {{ item.buttonLabel }}
+              </button>
+            </div>
           </div>
           <div
             v-if="plainLiveWheelFeedbackReadback.visible"

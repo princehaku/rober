@@ -787,6 +787,32 @@ h3 {
   color: #57606a;
 }
 
+.plain-live-ready-motion-actions {
+  /* ready 动作卡只做现场导流，真实发车仍在目标卡片由 operator 再点一次。 */
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 8px;
+}
+
+.plain-live-ready-motion-action {
+  display: grid;
+  gap: 7px;
+  padding: 10px;
+  border: 1px solid #d0d7de;
+  border-left: 3px solid #0969da;
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.plain-live-ready-motion-action[data-state="可验证"] {
+  border-left-color: #238636;
+  background: #f3fbf6;
+}
+
+.plain-live-ready-motion-action p {
+  margin: 0;
+}
+
 .plain-safety-actions {
   display: grid;
   gap: 7px;
