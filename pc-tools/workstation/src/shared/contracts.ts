@@ -2781,6 +2781,13 @@ export interface RobotControlFieldAcceptanceStep {
   blocked_reasons: string[];
 }
 
+export type RobotControlFieldAcceptanceWysiwygRefreshMode =
+  | "camera_only"
+  | "radar_map_only"
+  | "map_only"
+  | "all_wysiwyg"
+  | "none";
+
 export interface RobotControlFieldAcceptancePacket {
   status: RobotControlLiveClosureSummary["status"];
   summary_plain: string;
@@ -2810,16 +2817,17 @@ export interface RobotControlFieldAcceptancePacket {
   wysiwyg_radar_map_next_action_plain: string;
   wysiwyg_refresh_sequence: string[];
   wysiwyg_refresh_sequence_labels: string[];
+  wysiwyg_refresh_mode?: RobotControlFieldAcceptanceWysiwygRefreshMode;
   fixed_wysiwyg_radar_refresh_endpoint: "/api/robot-control/radar/scan-proof/refresh";
   fixed_wysiwyg_camera_probe_endpoint: "/api/robot-control/camera/first-frame/probe";
   fixed_wysiwyg_map_preview_endpoint: "/api/robot-control/map/preview";
   fixed_wysiwyg_radar_status_endpoint: "/api/robot-control/radar/status";
   fixed_wysiwyg_camera_mjpeg_status_endpoint: "/api/robot-control/camera/mjpeg/status";
-  wysiwyg_refreshes_radar_scan_proof: true;
-  wysiwyg_refreshes_camera_first_frame_probe: true;
-  wysiwyg_refreshes_map_preview: true;
-  wysiwyg_refreshes_radar_status: true;
-  wysiwyg_refreshes_camera_mjpeg_status: true;
+  wysiwyg_refreshes_radar_scan_proof: boolean;
+  wysiwyg_refreshes_camera_first_frame_probe: boolean;
+  wysiwyg_refreshes_map_preview: boolean;
+  wysiwyg_refreshes_radar_status: boolean;
+  wysiwyg_refreshes_camera_mjpeg_status: boolean;
   wysiwyg_refresh_sends_motion: false;
   wysiwyg_refresh_starts_nav2: false;
   wysiwyg_refresh_starts_manual: false;
@@ -3261,6 +3269,41 @@ export interface RobotControlLiveSummaryResponse extends RobotControlLiveClosure
   submits_delivery: false;
   stops_motion: false;
   publishes_cmd_vel: false;
+  field_acceptance_packet?: RobotControlSummaryResponse["field_acceptance_packet"];
+  field_acceptance_status?: RobotControlSummaryResponse["field_acceptance_status"];
+  field_acceptance_next_step_id?: RobotControlSummaryResponse["field_acceptance_next_step_id"];
+  field_acceptance_next_step_label?: RobotControlSummaryResponse["field_acceptance_next_step_label"];
+  field_acceptance_next_step_start_endpoint?: RobotControlSummaryResponse["field_acceptance_next_step_start_endpoint"];
+  field_acceptance_next_step_sends_motion?: RobotControlSummaryResponse["field_acceptance_next_step_sends_motion"];
+  field_acceptance_next_step_requires_safety_confirm?: RobotControlSummaryResponse["field_acceptance_next_step_requires_safety_confirm"];
+  field_acceptance_ready_step_ids?: RobotControlSummaryResponse["field_acceptance_ready_step_ids"];
+  field_acceptance_blocked_step_ids?: RobotControlSummaryResponse["field_acceptance_blocked_step_ids"];
+  field_acceptance_motion_step_ids?: RobotControlSummaryResponse["field_acceptance_motion_step_ids"];
+  field_acceptance_no_motion_step_ids?: RobotControlSummaryResponse["field_acceptance_no_motion_step_ids"];
+  field_acceptance_acceptance_endpoints?: RobotControlSummaryResponse["field_acceptance_acceptance_endpoints"];
+  field_acceptance_safety_confirm_required?: RobotControlSummaryResponse["field_acceptance_safety_confirm_required"];
+  field_acceptance_minimal_precheck_safety_only?: RobotControlSummaryResponse["field_acceptance_minimal_precheck_safety_only"];
+  field_acceptance_summary_plain?: RobotControlSummaryResponse["field_acceptance_summary_plain"];
+  field_acceptance_wysiwyg_ready?: RobotControlSummaryResponse["field_acceptance_wysiwyg_ready"];
+  field_acceptance_wysiwyg_missing_surface_ids?: RobotControlSummaryResponse["field_acceptance_wysiwyg_missing_surface_ids"];
+  field_acceptance_wysiwyg_primary_refresh_endpoint?: RobotControlSummaryResponse["field_acceptance_wysiwyg_primary_refresh_endpoint"];
+  field_acceptance_wysiwyg_primary_refresh_label?: RobotControlSummaryResponse["field_acceptance_wysiwyg_primary_refresh_label"];
+  field_acceptance_wysiwyg_next_action_plain?: RobotControlSummaryResponse["field_acceptance_wysiwyg_next_action_plain"];
+  field_acceptance_wysiwyg_camera_next_action_plain?: RobotControlSummaryResponse["field_acceptance_wysiwyg_camera_next_action_plain"];
+  field_acceptance_wysiwyg_radar_map_next_action_plain?: RobotControlSummaryResponse["field_acceptance_wysiwyg_radar_map_next_action_plain"];
+  field_acceptance_wysiwyg_refresh_sequence?: RobotControlSummaryResponse["field_acceptance_wysiwyg_refresh_sequence"];
+  field_acceptance_wysiwyg_refresh_sequence_labels?: RobotControlSummaryResponse["field_acceptance_wysiwyg_refresh_sequence_labels"];
+  field_acceptance_wysiwyg_refresh_mode?: RobotControlSummaryResponse["field_acceptance_wysiwyg_refresh_mode"];
+  field_acceptance_wysiwyg_refresh_sends_motion?: RobotControlSummaryResponse["field_acceptance_wysiwyg_refresh_sends_motion"];
+  field_acceptance_wysiwyg_refresh_starts_nav2?: RobotControlSummaryResponse["field_acceptance_wysiwyg_refresh_starts_nav2"];
+  field_acceptance_wysiwyg_refresh_starts_manual?: RobotControlSummaryResponse["field_acceptance_wysiwyg_refresh_starts_manual"];
+  field_acceptance_wysiwyg_refresh_starts_keyboard?: RobotControlSummaryResponse["field_acceptance_wysiwyg_refresh_starts_keyboard"];
+  field_acceptance_wysiwyg_refresh_starts_free_roam?: RobotControlSummaryResponse["field_acceptance_wysiwyg_refresh_starts_free_roam"];
+  field_acceptance_wysiwyg_refresh_starts_radar_lifecycle?: RobotControlSummaryResponse["field_acceptance_wysiwyg_refresh_starts_radar_lifecycle"];
+  field_acceptance_wysiwyg_refresh_starts_map_runtime?: RobotControlSummaryResponse["field_acceptance_wysiwyg_refresh_starts_map_runtime"];
+  field_acceptance_wysiwyg_refresh_submits_delivery?: RobotControlSummaryResponse["field_acceptance_wysiwyg_refresh_submits_delivery"];
+  field_acceptance_wysiwyg_refresh_stops_motion?: RobotControlSummaryResponse["field_acceptance_wysiwyg_refresh_stops_motion"];
+  field_acceptance_steps?: RobotControlSummaryResponse["field_acceptance_steps"];
 }
 
 export interface RobotControlSummaryResponse extends ProofFlags {
@@ -3449,6 +3492,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   field_acceptance_wysiwyg_radar_map_next_action_plain?: RobotControlFieldAcceptancePacket["wysiwyg_radar_map_next_action_plain"];
   field_acceptance_wysiwyg_refresh_sequence?: RobotControlFieldAcceptancePacket["wysiwyg_refresh_sequence"];
   field_acceptance_wysiwyg_refresh_sequence_labels?: RobotControlFieldAcceptancePacket["wysiwyg_refresh_sequence_labels"];
+  field_acceptance_wysiwyg_refresh_mode?: RobotControlFieldAcceptanceWysiwygRefreshMode;
   field_acceptance_wysiwyg_refresh_sends_motion?: RobotControlFieldAcceptancePacket["wysiwyg_refresh_sends_motion"];
   field_acceptance_wysiwyg_refresh_starts_nav2?: RobotControlFieldAcceptancePacket["wysiwyg_refresh_starts_nav2"];
   field_acceptance_wysiwyg_refresh_starts_manual?: RobotControlFieldAcceptancePacket["wysiwyg_refresh_starts_manual"];

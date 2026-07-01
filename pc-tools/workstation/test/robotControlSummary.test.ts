@@ -765,6 +765,8 @@ describe("robotControlSummary", () => {
       starts_free_roam_when_clicked: false,
       starts_map_runtime_when_clicked: false,
     }));
+    expect(summary.field_acceptance_packet?.wysiwyg_refresh_mode).toBe("all_wysiwyg");
+    expect(summary.field_acceptance_wysiwyg_refresh_mode).toBe("all_wysiwyg");
     expect(summary.field_acceptance_packet?.steps).toEqual(summary.field_acceptance_steps);
     expect(summary.field_acceptance_steps?.find((item) => item.id === "run_nav2_route")).toEqual(expect.objectContaining({
       ready: true,
@@ -1287,6 +1289,12 @@ describe("robotControlSummary", () => {
             cmd_vel_publish_enabled: false,
           },
         },
+        "/api/map/proof/latest": {
+          ...basePayload,
+          schema: "trashbot.upper_robot_api.v1.map_lifecycle_proof_latest",
+          status: "map_once_artifact_metadata_observed",
+          map_once_observed: true,
+        },
         "/api/map/preview": {
           ...basePayload,
           schema: "trashbot.upper_robot_api.v1.map_preview_result",
@@ -1365,6 +1373,24 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.objective_audit_summary_plain).not.toContain("未完成：行程/键盘/自由移动、");
     expect(summary.live_closure_summary?.objective_audit_summary_plain).not.toContain("画面/地图/雷达点");
     expect(summary.live_closure_summary?.objective_audit_summary_plain).not.toContain("雷达点未贴图");
+    expect(summary.field_acceptance_wysiwyg_missing_surface_ids).toEqual(["camera"]);
+    expect(summary.field_acceptance_wysiwyg_refresh_mode).toBe("camera_only");
+    expect(summary.field_acceptance_packet?.wysiwyg_refresh_mode).toBe("camera_only");
+    expect(summary.field_acceptance_wysiwyg_refresh_sequence).toEqual([
+      "/api/robot-control/camera/first-frame/probe",
+      "/api/robot-control/camera/mjpeg/status",
+      "/api/robot-control/summary",
+    ]);
+    expect(summary.field_acceptance_wysiwyg_refresh_sequence_labels).toEqual([
+      "复测相机首帧",
+      "读取相机 MJPEG 状态",
+      "刷新总览",
+    ]);
+    expect(summary.field_acceptance_packet?.wysiwyg_refreshes_camera_first_frame_probe).toBe(true);
+    expect(summary.field_acceptance_packet?.wysiwyg_refreshes_camera_mjpeg_status).toBe(true);
+    expect(summary.field_acceptance_packet?.wysiwyg_refreshes_radar_scan_proof).toBe(false);
+    expect(summary.field_acceptance_packet?.wysiwyg_refreshes_map_preview).toBe(false);
+    expect(summary.field_acceptance_packet?.wysiwyg_refreshes_radar_status).toBe(false);
   });
 
   it("uses free-roam latest mapping start gaps before stale runtime gate rows", async () => {

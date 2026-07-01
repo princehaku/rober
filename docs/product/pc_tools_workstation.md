@@ -4889,3 +4889,9 @@ summary 同步暴露 `map_display_foxglove_web_app_url`、`map_display_foxglove_
 `radar_map_only` 只刷新雷达 scan proof 并随后读取地图预览；`map_only` 只刷新地图预览、雷达状态和 summary；
 `all_wysiwyg` 才走完整画面、雷达、地图刷新链。所有模式都保持只读，不启动雷达 lifecycle、建图 runtime、Nav2、
 键盘、自由移动、delivery complete、stop，也不发送 `/cmd_vel`。
+
+同日继续补齐 `/api/robot-control/live-summary` 的现场验收扁平字段。live-summary 顶层现在直接暴露
+`field_acceptance_packet`、`field_acceptance_wysiwyg_missing_surface_ids`、`field_acceptance_wysiwyg_primary_refresh_label`、
+`field_acceptance_wysiwyg_refresh_sequence` 和 `field_acceptance_wysiwyg_refresh_mode`，脚本无需再读取
+`/api/robot-control/summary` 或解析 nested packet 才能判断当前是 `camera_only`、`radar_map_only`、`map_only`
+还是 `all_wysiwyg`。这些字段仍只描述证据刷新路径，不代表会发车或启动控制链。

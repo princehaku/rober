@@ -28,6 +28,7 @@ import type {
   RobotControlNav2LifecycleResponse,
   RobotControlGoalChecklistSummary,
   RobotControlFieldAcceptancePacket,
+  RobotControlFieldAcceptanceWysiwygRefreshMode,
   RobotControlLiveObjectiveAuditItem,
   RobotControlLiveWysiwygSurfaceSummary,
   RobotControlRadarLifecycleAction,
@@ -53,6 +54,72 @@ type MapPreviewOverlayReadback = {
   pathPreview: MapPreviewPathPreview;
   sourceEndpointIds: RobotApiReadEndpointId[];
 };
+
+function fieldAcceptanceWysiwygRefreshMode(
+  missingSurfaceIds: string[],
+): RobotControlFieldAcceptanceWysiwygRefreshMode {
+  // 现场 curl 和 PC 按钮必须共享同一套最小刷新口径，避免“只差相机”时误触雷达/地图刷新。
+  if (missingSurfaceIds.length === 1 && missingSurfaceIds[0] === "camera") {
+    return "camera_only";
+  }
+  if (missingSurfaceIds.length === 1 && missingSurfaceIds[0] === "radar_map_points") {
+    return "radar_map_only";
+  }
+  if (missingSurfaceIds.length === 1 && missingSurfaceIds[0] === "map") {
+    return "map_only";
+  }
+  return missingSurfaceIds.length > 0 ? "all_wysiwyg" : "none";
+}
+
+function fieldAcceptanceFocusedWysiwygRefreshPlan(mode: RobotControlFieldAcceptanceWysiwygRefreshMode): {
+  sequence: string[];
+  labels: string[];
+} {
+  // 这个 plan 只描述现场验收按钮的最小只读链路；真正发车动作由 motion runbook 另行门禁。
+  if (mode === "camera_only") {
+    return {
+      sequence: [
+        "/api/robot-control/camera/first-frame/probe",
+        "/api/robot-control/camera/mjpeg/status",
+        "/api/robot-control/summary",
+      ],
+      labels: ["复测相机首帧", "读取相机 MJPEG 状态", "刷新总览"],
+    };
+  }
+  if (mode === "radar_map_only") {
+    return {
+      sequence: [
+        "/api/robot-control/radar/scan-proof/refresh",
+        "/api/robot-control/radar/status",
+        "/api/robot-control/map/preview",
+      ],
+      labels: ["刷新雷达扫描读数", "读取雷达状态", "刷新地图画面"],
+    };
+  }
+  if (mode === "map_only") {
+    return {
+      sequence: [
+        "/api/robot-control/map/preview",
+        "/api/robot-control/radar/status",
+        "/api/robot-control/summary",
+      ],
+      labels: ["刷新地图画面", "读取雷达状态", "刷新总览"],
+    };
+  }
+  if (mode === "none") {
+    return { sequence: [], labels: [] };
+  }
+  return {
+    sequence: [
+      "/api/robot-control/radar/scan-proof/refresh",
+      "/api/robot-control/camera/first-frame/probe",
+      "/api/robot-control/map/preview",
+      "/api/robot-control/radar/status",
+      "/api/robot-control/camera/mjpeg/status",
+    ],
+    labels: ["刷新雷达扫描读数", "复测相机首帧", "刷新地图画面", "读取雷达状态", "读取相机 MJPEG 状态"],
+  };
+}
 
 const ROBOT_CONTROL_SCHEMA = "trashbot.pc_tools_workstation.robot_control_summary.v1" as const;
 const DEFAULT_REQUEST_TIMEOUT_MS = 1500;
@@ -10169,6 +10236,10 @@ export async function buildRobotControlSummary(
     ? "当前所见已满足：画面、地图、路线、小车位置和雷达点都按当前读数显示。"
     : fieldAcceptanceWysiwygNextActions.join("；")
       || `当前所见还差 ${liveClosureSummary.live_wysiwyg_missing_surface_ids.join(",") || "unknown"}；点击${liveClosureSummary.live_wysiwyg_primary_refresh_label || "刷新当前所见"}只刷新证据。`;
+  const fieldAcceptanceWysiwygRefreshModeValue = fieldAcceptanceWysiwygRefreshMode(
+    liveClosureSummary.live_wysiwyg_missing_surface_ids,
+  );
+  const fieldAcceptanceWysiwygRefreshPlan = fieldAcceptanceFocusedWysiwygRefreshPlan(fieldAcceptanceWysiwygRefreshModeValue);
   const fieldAcceptancePacket: RobotControlFieldAcceptancePacket = {
     status: liveClosureSummary.status,
     summary_plain: `现场验收包：${liveClosureSummary.objective_audit_summary_plain} ${liveClosureSummary.live_motion_runbook_summary_plain} 下一步：${liveClosureSummary.next_action_plain}`,
@@ -10198,18 +10269,19 @@ export async function buildRobotControlSummary(
     wysiwyg_next_action_plain: fieldAcceptanceWysiwygNextActionPlain,
     wysiwyg_camera_next_action_plain: liveClosureSummary.live_wysiwyg_camera_recovery_next_action_plain,
     wysiwyg_radar_map_next_action_plain: liveClosureSummary.live_wysiwyg_radar_map_refresh_next_action_plain,
-    wysiwyg_refresh_sequence: liveClosureSummary.live_wysiwyg_refresh_sequence,
-    wysiwyg_refresh_sequence_labels: liveClosureSummary.live_wysiwyg_refresh_sequence_labels,
+    wysiwyg_refresh_sequence: fieldAcceptanceWysiwygRefreshPlan.sequence,
+    wysiwyg_refresh_sequence_labels: fieldAcceptanceWysiwygRefreshPlan.labels,
+    wysiwyg_refresh_mode: fieldAcceptanceWysiwygRefreshModeValue,
     fixed_wysiwyg_radar_refresh_endpoint: liveClosureSummary.fixed_live_wysiwyg_radar_refresh_endpoint,
     fixed_wysiwyg_camera_probe_endpoint: liveClosureSummary.fixed_live_wysiwyg_camera_probe_endpoint,
     fixed_wysiwyg_map_preview_endpoint: liveClosureSummary.fixed_live_wysiwyg_map_preview_endpoint,
     fixed_wysiwyg_radar_status_endpoint: liveClosureSummary.fixed_live_wysiwyg_radar_status_endpoint,
     fixed_wysiwyg_camera_mjpeg_status_endpoint: liveClosureSummary.fixed_live_wysiwyg_camera_mjpeg_status_endpoint,
-    wysiwyg_refreshes_radar_scan_proof: true,
-    wysiwyg_refreshes_camera_first_frame_probe: true,
-    wysiwyg_refreshes_map_preview: true,
-    wysiwyg_refreshes_radar_status: true,
-    wysiwyg_refreshes_camera_mjpeg_status: true,
+    wysiwyg_refreshes_radar_scan_proof: fieldAcceptanceWysiwygRefreshPlan.sequence.includes("/api/robot-control/radar/scan-proof/refresh"),
+    wysiwyg_refreshes_camera_first_frame_probe: fieldAcceptanceWysiwygRefreshPlan.sequence.includes("/api/robot-control/camera/first-frame/probe"),
+    wysiwyg_refreshes_map_preview: fieldAcceptanceWysiwygRefreshPlan.sequence.includes("/api/robot-control/map/preview"),
+    wysiwyg_refreshes_radar_status: fieldAcceptanceWysiwygRefreshPlan.sequence.includes("/api/robot-control/radar/status"),
+    wysiwyg_refreshes_camera_mjpeg_status: fieldAcceptanceWysiwygRefreshPlan.sequence.includes("/api/robot-control/camera/mjpeg/status"),
     wysiwyg_refresh_sends_motion: false,
     wysiwyg_refresh_starts_nav2: false,
     wysiwyg_refresh_starts_manual: false,
@@ -10439,6 +10511,7 @@ export async function buildRobotControlSummary(
     field_acceptance_wysiwyg_radar_map_next_action_plain: fieldAcceptancePacket.wysiwyg_radar_map_next_action_plain,
     field_acceptance_wysiwyg_refresh_sequence: fieldAcceptancePacket.wysiwyg_refresh_sequence,
     field_acceptance_wysiwyg_refresh_sequence_labels: fieldAcceptancePacket.wysiwyg_refresh_sequence_labels,
+    field_acceptance_wysiwyg_refresh_mode: fieldAcceptanceWysiwygRefreshModeValue,
     field_acceptance_wysiwyg_refresh_sends_motion: fieldAcceptancePacket.wysiwyg_refresh_sends_motion,
     field_acceptance_wysiwyg_refresh_starts_nav2: fieldAcceptancePacket.wysiwyg_refresh_starts_nav2,
     field_acceptance_wysiwyg_refresh_starts_manual: fieldAcceptancePacket.wysiwyg_refresh_starts_manual,
