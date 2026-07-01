@@ -774,6 +774,8 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.fixed_keyboard_stop_endpoint).toBe("/api/robot-control/base/stop");
     expect(summary.live_closure_summary?.fixed_keyboard_feedback_readback_endpoint).toBe("/api/robot-control/base/feedback-samples");
     expect(summary.live_closure_summary?.fixed_keyboard_summary_endpoint).toBe("/api/robot-control/summary");
+    expect(summary.fixed_keyboard_manual_endpoint).toBe("/api/robot-control/base/manual");
+    expect(summary.fixed_keyboard_stop_endpoint).toBe("/api/robot-control/base/stop");
     expect(summary.fixed_keyboard_feedback_readback_endpoint).toBe("/api/robot-control/base/feedback-samples");
     expect(summary.fixed_keyboard_summary_endpoint).toBe("/api/robot-control/summary");
     expect(summary.keyboard_post_hold_readback_endpoints).toEqual([

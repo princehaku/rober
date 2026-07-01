@@ -4065,6 +4065,8 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   keyboard_stop_endpoint?: RobotControlLiveClosureSummary["keyboard_stop_endpoint"];
   keyboard_feedback_readback_endpoint?: RobotControlLiveClosureSummary["keyboard_feedback_readback_endpoint"];
   keyboard_summary_endpoint?: RobotControlLiveClosureSummary["keyboard_summary_endpoint"];
+  fixed_keyboard_manual_endpoint?: RobotControlLiveClosureSummary["fixed_keyboard_manual_endpoint"];
+  fixed_keyboard_stop_endpoint?: RobotControlLiveClosureSummary["fixed_keyboard_stop_endpoint"];
   fixed_keyboard_feedback_readback_endpoint?: RobotControlLiveClosureSummary["fixed_keyboard_feedback_readback_endpoint"];
   fixed_keyboard_summary_endpoint?: RobotControlLiveClosureSummary["fixed_keyboard_summary_endpoint"];
   keyboard_post_hold_readback_endpoints?: Array<
