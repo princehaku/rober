@@ -821,6 +821,12 @@ const fixtures: Record<string, unknown> = {
       needs_same_window_wheel_rerun: false,
       delivery_success: false,
       delivery_claim_ready: false,
+      delivery_success_required: true,
+      delivery_next_action_plain: "轮速复验通过后，到送达区逐项确认并提交 delivery success；该提交只写送达材料，不发车。",
+      fixed_delivery_latest_endpoint: "/api/robot-control/delivery/latest",
+      fixed_delivery_complete_endpoint: "/api/robot-control/delivery/complete",
+      delivery_latest_readback_only: true,
+      delivery_complete_sends_motion: false,
       camera_current_visible: false,
       live_wysiwyg_camera_visible: false,
       map_current_visible: true,
@@ -4945,6 +4951,12 @@ describe("App", () => {
     expect(liveClosureSummary.text()).toContain("下一步：打开页面会自动接入共享 MJPEG");
     expect(liveClosureSummary.text()).not.toContain("/cmd_vel");
     expect(liveClosureSummary.attributes("data-state")).toBe("needs_wysiwyg");
+    expect(liveClosureSummary.attributes("data-delivery-success-required")).toBe("true");
+    expect(liveClosureSummary.attributes("data-delivery-next-action-plain")).toContain("提交 delivery success");
+    expect(liveClosureSummary.attributes("data-fixed-delivery-latest-endpoint")).toBe("/api/robot-control/delivery/latest");
+    expect(liveClosureSummary.attributes("data-fixed-delivery-complete-endpoint")).toBe("/api/robot-control/delivery/complete");
+    expect(liveClosureSummary.attributes("data-delivery-latest-readback-only")).toBe("true");
+    expect(liveClosureSummary.attributes("data-delivery-complete-sends-motion")).toBe("false");
     expect(liveClosureSummary.attributes("data-robot-api-connection-status")).toBe("readable");
     expect(liveClosureSummary.attributes("data-robot-api-connection-loaded-count")).toBe("14");
     expect(liveClosureSummary.attributes("data-robot-api-connection-failed-count")).toBe("0");

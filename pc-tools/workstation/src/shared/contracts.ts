@@ -2795,6 +2795,12 @@ export interface RobotControlLiveClosureSummary {
   needs_same_window_wheel_rerun: boolean;
   delivery_success: boolean;
   delivery_claim_ready: boolean;
+  delivery_success_required: boolean;
+  delivery_next_action_plain: string;
+  fixed_delivery_latest_endpoint: "/api/robot-control/delivery/latest";
+  fixed_delivery_complete_endpoint: "/api/robot-control/delivery/complete";
+  delivery_latest_readback_only: true;
+  delivery_complete_sends_motion: false;
   camera_current_visible: boolean;
   live_wysiwyg_camera_visible: boolean;
   map_current_visible: boolean;

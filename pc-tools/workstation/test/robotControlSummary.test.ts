@@ -120,6 +120,12 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.map_current_visible).toBe(true);
     expect(summary.live_closure_summary?.path_current_visible).toBe(true);
     expect(summary.live_closure_summary?.live_wysiwyg_map_visible).toBe(true);
+    expect(summary.live_closure_summary?.delivery_success_required).toBe(true);
+    expect(summary.live_closure_summary?.delivery_next_action_plain).toContain("提交 delivery success");
+    expect(summary.live_closure_summary?.fixed_delivery_latest_endpoint).toBe("/api/robot-control/delivery/latest");
+    expect(summary.live_closure_summary?.fixed_delivery_complete_endpoint).toBe("/api/robot-control/delivery/complete");
+    expect(summary.live_closure_summary?.delivery_latest_readback_only).toBe(true);
+    expect(summary.live_closure_summary?.delivery_complete_sends_motion).toBe(false);
     expect(summary.live_closure_summary?.primary_action_id).toBe("run_nav2_route");
     expect(summary.live_closure_summary?.keyboard_continuous_ready).toBe(true);
     expect(summary.live_closure_summary?.keyboard_continuous_motion_verified).toBe(false);

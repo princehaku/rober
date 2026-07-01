@@ -6835,6 +6835,12 @@ describe("workstation fail-closed API contracts", () => {
       expect(live.nav2_goal_succeeded).toBe(true);
       expect(live.wheel_lr_nonzero_proven).toBe(false);
       expect(live.delivery_success).toBe(false);
+      expect(live.delivery_success_required).toBe(true);
+      expect(live.delivery_next_action_plain).toContain("delivery success");
+      expect(live.fixed_delivery_latest_endpoint).toBe("/api/robot-control/delivery/latest");
+      expect(live.fixed_delivery_complete_endpoint).toBe("/api/robot-control/delivery/complete");
+      expect(live.delivery_latest_readback_only).toBe(true);
+      expect(live.delivery_complete_sends_motion).toBe(false);
       expect(live.live_wysiwyg_map_visible).toBe(true);
       expect(live.path_current_visible).toBe(true);
       expect(live.live_wysiwyg_camera_visible).toBe(false);
