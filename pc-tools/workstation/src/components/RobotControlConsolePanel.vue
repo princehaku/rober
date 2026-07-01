@@ -4316,6 +4316,11 @@ const plainFieldAcceptanceSafetyConfirmReadyActionIdsText = computed(() => (
 const plainFieldAcceptanceSafetyConfirmReadyActionLabelsText = computed(() => (
   plainFieldAcceptancePacket.value?.safety_confirm_ready_action_labels.join(",") || "none"
 ));
+const plainFieldAcceptanceSafetyConfirmReadyActionDisplayLabelsText = computed(() => (
+  plainFieldAcceptancePacket.value?.safety_confirm_ready_action_display_labels?.join(",")
+    || plainFieldAcceptancePacket.value?.safety_confirm_ready_actions.map((action) => action.display_label ?? action.label).join(",")
+    || plainFieldAcceptanceSafetyConfirmReadyActionLabelsText.value
+));
 const plainFieldAcceptanceSafetyConfirmReadyActionEndpointsText = computed(() => (
   robotSummary.value?.field_acceptance_safety_confirm_ready_action_endpoints?.join(",")
     || plainFieldAcceptancePacket.value?.safety_confirm_ready_action_start_endpoints.join(",")
@@ -4396,7 +4401,7 @@ function plainFieldAcceptanceMissingEvidenceReadbackLabel(item: RobotControlFiel
 const plainFieldAcceptanceMissingEvidenceRows = computed(() => (
   (plainFieldAcceptancePacket.value?.missing_evidence_items ?? []).map((item) => {
     const state = plainFieldAcceptanceMissingEvidenceState(item);
-    const actionLabel = plainActionCardUserText(item.action_label);
+    const actionLabel = plainActionCardUserText(item.action_display_label ?? item.action_label);
     const readbackText = `${item.readback_method} ${item.readback_endpoint}`;
     const readbackLabel = plainFieldAcceptanceMissingEvidenceReadbackLabel(item);
     const motionText = item.requires_motion_before_readback
@@ -4712,6 +4717,7 @@ function plainFieldAcceptanceStepButtonLabel(step: RobotControlFieldAcceptanceSt
 const plainFieldAcceptanceRows = computed(() => (
   plainFieldAcceptancePacket.value?.steps.map((step) => ({
     ...step,
+    displayLabel: plainActionCardUserText(step.display_label ?? step.label),
     state: plainFieldAcceptanceStepState(step),
     proofText: plainActionCardUserText(step.proof_plain),
     missingText: plainFieldAcceptanceMissingEvidenceText(step),
@@ -4728,8 +4734,8 @@ const plainFieldAcceptanceActionQueue = computed(() => {
   const readyRows = plainFieldAcceptanceRows.value.filter((step) => step.ready && !step.completed);
   const blockedRows = plainFieldAcceptanceRows.value.filter((step) => !step.ready && !step.completed);
   const completedRows = plainFieldAcceptanceRows.value.filter((step) => step.completed);
-  const readyLabels = readyRows.map((step) => plainActionCardUserText(step.label));
-  const blockedLabels = blockedRows.map((step) => plainActionCardUserText(step.label));
+  const readyLabels = readyRows.map((step) => step.displayLabel);
+  const blockedLabels = blockedRows.map((step) => step.displayLabel);
   const primary = readyRows.find((step) => step.id === plainFieldAcceptancePacket.value?.next_step_id) ?? readyRows[0] ?? null;
   const safetyText = plainUnifiedSafetyConfirmed.value ? "安全确认已勾" : "先勾一次安全确认";
   const readyText = readyLabels.length ? `可先验：${readyLabels.join("、")}` : "暂无可先验动作";
@@ -4746,7 +4752,7 @@ const plainFieldAcceptanceActionQueue = computed(() => {
     blockedStepLabels: blockedLabels.join(",") || "none",
     completedStepIds: completedRows.map((step) => step.id).join(",") || "none",
     primaryReadyStepId: primary?.id ?? "none",
-    primaryReadyStepLabel: primary ? plainActionCardUserText(primary.label) : "none",
+    primaryReadyStepLabel: primary ? primary.displayLabel : "none",
     readyCount: readyRows.length,
     blockedCount: blockedRows.length,
     completedCount: completedRows.length,
@@ -4803,7 +4809,7 @@ const plainFieldAcceptanceMotionProof = computed(() => {
       ready: Boolean(step?.ready),
       completed: Boolean(step?.completed),
       state: step?.completed ? "已收口" : step?.ready ? "可现场验证" : "未就绪",
-      label: step ? plainActionCardUserText(step.label) : id,
+      label: step ? step.displayLabel : id,
       text: plainFieldAcceptanceMotionGapText(id, missingEvidence, Boolean(step?.completed)),
       missingEvidenceText: missingEvidence.join(",") || "none",
       readbackEndpointsText: plainFieldAcceptanceMotionEndpointText(id, step?.acceptance_endpoints ?? []),
@@ -4868,7 +4874,7 @@ const plainFieldAcceptanceNextText = computed(() => {
     ? plainUnifiedSafetyConfirmed.value ? "安全确认已勾" : "先勾现场安全确认"
     : "无需额外安全确认";
   const motionText = packet.next_step_sends_motion ? "这一步会让车动" : "这一步只读";
-  return `下一步：${plainActionCardUserText(packet.next_step_label)}；${safetyText}；${motionText}。`;
+  return `下一步：${plainActionCardUserText(packet.next_step_display_label ?? packet.next_step_label)}；${safetyText}；${motionText}。`;
 });
 const plainFieldAcceptancePrimaryStep = computed(() => {
   // 现场验收卡顶部只压出一个主入口，避免 operator 在长清单里猜下一步。
@@ -4887,7 +4893,7 @@ const plainFieldAcceptancePrimaryStep = computed(() => {
   const motionText = primary.sends_motion_when_executed ? "目标动作会让车动" : "目标动作只读";
   return {
     ...primary,
-    text: `下一步：${plainActionCardUserText(primary.label)}；${safetyText}；${motionText}。去处理只跳到对应卡片，只读读回只刷新验收材料。`,
+    text: `下一步：${primary.displayLabel}；${safetyText}；${motionText}。去处理只跳到对应卡片，只读读回只刷新验收材料。`,
     readbackPending: liveMotionRunbookReadbackPendingAction.value === primary.id,
     readbackDisabled: liveMotionRunbookReadbackPendingAction.value !== null || !robotApiBaseUrl.value.trim(),
     safetyConfirmed: plainUnifiedSafetyConfirmed.value,
@@ -4951,6 +4957,7 @@ const plainTripClosureReadbackSummary = computed(() => {
     source: packet ? "nav2_route_acceptance_packet" : "live_motion_runbook",
     actionId: packet?.action_id ?? "run_nav2_route",
     label: packet?.label ?? "完整行程执行",
+    displayLabel: plainActionCardUserText(packet?.display_label ?? item?.display_label ?? packet?.label ?? "完整行程执行"),
     state: completed ? "已闭环" : ready ? "待收口" : "未就绪",
     text: `完整行程闭环：${routeText}；${arrivedText}；${wheelText}；${deliveryText}。下一步：${nextAction}。`,
     nextAction,
@@ -18400,6 +18407,7 @@ onBeforeUnmount(() => {
           :data-objective-next-id="plainFieldAcceptancePacket.objective_next_id"
           :data-next-step-id="plainFieldAcceptancePacket.next_step_id"
           :data-next-step-label="plainFieldAcceptancePacket.next_step_label"
+          :data-next-step-display-label="plainFieldAcceptancePacket.next_step_display_label ?? plainFieldAcceptancePacket.next_step_label"
           :data-next-step-start-endpoint="plainFieldAcceptancePacket.next_step_start_endpoint"
           :data-next-step-sends-motion="String(plainFieldAcceptancePacket.next_step_sends_motion)"
           :data-next-step-requires-safety-confirm="String(plainFieldAcceptancePacket.next_step_requires_safety_confirm)"
@@ -18412,6 +18420,7 @@ onBeforeUnmount(() => {
           :data-parallel-no-motion-action-sequence-labels="robotSummary?.field_acceptance_parallel_no_motion_action_sequence_labels?.join(',') ?? plainFieldAcceptancePacket.primary_no_motion_readback_action_sequence_labels?.join(',') ?? 'none'"
           :data-parallel-safety-action-id="robotSummary?.field_acceptance_parallel_safety_action_id ?? plainFieldAcceptancePacket.primary_safety_confirm_ready_action_id"
           :data-parallel-safety-action-label="robotSummary?.field_acceptance_parallel_safety_action_label ?? plainFieldAcceptancePacket.primary_safety_confirm_ready_action_label"
+          :data-parallel-safety-action-display-label="robotSummary?.field_acceptance_parallel_safety_action_display_label ?? plainFieldAcceptancePacket.primary_safety_confirm_ready_action_display_label ?? plainFieldAcceptancePacket.primary_safety_confirm_ready_action_label"
           :data-parallel-safety-action-start-endpoint="robotSummary?.field_acceptance_parallel_safety_action_start_endpoint ?? plainFieldAcceptancePacket.primary_safety_confirm_ready_action_start_endpoint"
           :data-parallel-safety-action-acceptance-endpoints="robotSummary?.field_acceptance_parallel_safety_action_acceptance_endpoints?.join(',') ?? plainFieldAcceptancePacket.safety_confirm_ready_actions.find((action) => action.id === plainFieldAcceptancePacket.primary_safety_confirm_ready_action_id)?.acceptance_endpoints.join(',') ?? 'none'"
           :data-parallel-hardware-action-id="robotSummary?.field_acceptance_parallel_hardware_action_id ?? plainFieldAcceptancePacket.primary_hardware_action_id"
@@ -18435,6 +18444,7 @@ onBeforeUnmount(() => {
           :data-safety-confirm-ready-step-ids="plainFieldAcceptanceSafetyConfirmReadyStepIdsText"
           :data-safety-confirm-ready-action-ids="plainFieldAcceptanceSafetyConfirmReadyActionIdsText"
           :data-safety-confirm-ready-action-labels="plainFieldAcceptanceSafetyConfirmReadyActionLabelsText"
+          :data-safety-confirm-ready-action-display-labels="plainFieldAcceptanceSafetyConfirmReadyActionDisplayLabelsText"
           :data-safety-confirm-ready-action-endpoints="plainFieldAcceptanceSafetyConfirmReadyActionEndpointsText"
           :data-safety-confirm-ready-action-start-endpoints="plainFieldAcceptanceSafetyConfirmReadyActionStartEndpointsText"
           :data-safety-confirm-ready-action-stop-endpoints="robotSummary?.field_acceptance_safety_confirm_ready_action_stop_endpoints?.join(',') ?? plainFieldAcceptancePacket.safety_confirm_ready_actions.map((action) => action.stop_endpoint).join(',') ?? 'none'"
@@ -18445,6 +18455,7 @@ onBeforeUnmount(() => {
           :data-safety-confirm-ready-action-route-wysiwyg-preflight-required="robotSummary?.field_acceptance_safety_confirm_ready_action_route_wysiwyg_preflight_required?.map(String).join(',') ?? plainFieldAcceptancePacket.safety_confirm_ready_actions.map((action) => String(action.route_wysiwyg_preflight_required)).join(',') ?? 'none'"
           :data-primary-safety-confirm-ready-action-id="plainFieldAcceptancePacket.primary_safety_confirm_ready_action_id"
           :data-primary-safety-confirm-ready-action-label="plainFieldAcceptancePacket.primary_safety_confirm_ready_action_label"
+          :data-primary-safety-confirm-ready-action-display-label="plainFieldAcceptancePacket.primary_safety_confirm_ready_action_display_label ?? plainFieldAcceptancePacket.primary_safety_confirm_ready_action_label"
           :data-primary-safety-confirm-ready-action-start-endpoint="plainFieldAcceptancePacket.primary_safety_confirm_ready_action_start_endpoint"
           :data-primary-safety-confirm-ready-action-stop-endpoint="robotSummary?.field_acceptance_primary_safety_confirm_ready_action_stop_endpoint ?? plainFieldAcceptancePacket.safety_confirm_ready_actions.find((action) => action.id === plainFieldAcceptancePacket.primary_safety_confirm_ready_action_id)?.stop_endpoint ?? 'none'"
           :data-primary-safety-confirm-ready-action-acceptance-endpoints="robotSummary?.field_acceptance_primary_safety_confirm_ready_action_acceptance_endpoints?.join(',') ?? plainFieldAcceptancePacket.safety_confirm_ready_actions.find((action) => action.id === plainFieldAcceptancePacket.primary_safety_confirm_ready_action_id)?.acceptance_endpoints.join(',') ?? 'none'"
@@ -18482,6 +18493,7 @@ onBeforeUnmount(() => {
           :data-field-acceptance-primary-missing-label="robotSummary?.field_acceptance_primary_missing_label ?? plainFieldAcceptancePacket.primary_missing_evidence_label"
           :data-field-acceptance-primary-missing-action-id="robotSummary?.field_acceptance_primary_missing_action_id ?? plainFieldAcceptancePacket.primary_missing_evidence_action_id"
           :data-field-acceptance-primary-missing-action-label="robotSummary?.field_acceptance_primary_missing_action_label ?? 'none'"
+          :data-field-acceptance-primary-missing-action-display-label="robotSummary?.field_acceptance_primary_missing_action_display_label ?? plainFieldAcceptancePacket.missing_evidence_items.find((item) => item.action_id === plainFieldAcceptancePacket.primary_missing_evidence_action_id)?.action_display_label ?? robotSummary?.field_acceptance_primary_missing_action_label ?? 'none'"
           :data-field-acceptance-primary-missing-action-start-endpoint="robotSummary?.field_acceptance_primary_missing_action_start_endpoint ?? 'none'"
           :data-field-acceptance-primary-missing-action-stop-endpoint="robotSummary?.field_acceptance_primary_missing_action_stop_endpoint ?? 'none'"
           :data-field-acceptance-primary-missing-action-acceptance-endpoints="robotSummary?.field_acceptance_primary_missing_action_acceptance_endpoints?.join(',') || 'none'"
@@ -18574,10 +18586,12 @@ onBeforeUnmount(() => {
             :data-safety-confirm-ready-step-ids="plainFieldAcceptanceSafetyConfirmReadyStepIdsText"
             :data-safety-confirm-ready-action-ids="plainFieldAcceptanceSafetyConfirmReadyActionIdsText"
             :data-safety-confirm-ready-action-labels="plainFieldAcceptanceSafetyConfirmReadyActionLabelsText"
+            :data-safety-confirm-ready-action-display-labels="plainFieldAcceptanceSafetyConfirmReadyActionDisplayLabelsText"
             :data-safety-confirm-ready-action-endpoints="plainFieldAcceptanceSafetyConfirmReadyActionEndpointsText"
             :data-safety-confirm-ready-action-start-endpoints="plainFieldAcceptanceSafetyConfirmReadyActionStartEndpointsText"
             :data-primary-safety-confirm-ready-action-id="plainFieldAcceptancePacket.primary_safety_confirm_ready_action_id"
             :data-primary-safety-confirm-ready-action-label="plainFieldAcceptancePacket.primary_safety_confirm_ready_action_label"
+            :data-primary-safety-confirm-ready-action-display-label="plainFieldAcceptancePacket.primary_safety_confirm_ready_action_display_label ?? plainFieldAcceptancePacket.primary_safety_confirm_ready_action_label"
             :data-primary-safety-confirm-ready-action-start-endpoint="plainFieldAcceptancePacket.primary_safety_confirm_ready_action_start_endpoint"
             :data-primary-safety-confirm-ready-action-requires-safety-confirm="String(plainFieldAcceptancePacket.primary_safety_confirm_ready_action_requires_safety_confirm)"
             :data-primary-safety-confirm-ready-action-sends-motion="String(plainFieldAcceptancePacket.primary_safety_confirm_ready_action_sends_motion)"
@@ -19125,6 +19139,8 @@ onBeforeUnmount(() => {
             class="plain-field-acceptance-primary"
             data-testid="plain-field-acceptance-primary"
             :data-action-id="plainFieldAcceptancePrimaryStep.id"
+            :data-label="plainFieldAcceptancePrimaryStep.label"
+            :data-display-label="plainFieldAcceptancePrimaryStep.displayLabel"
             :data-state="plainFieldAcceptancePrimaryStep.state"
             :data-ready="String(plainFieldAcceptancePrimaryStep.ready)"
             :data-completed="String(plainFieldAcceptancePrimaryStep.completed)"
@@ -19208,6 +19224,8 @@ onBeforeUnmount(() => {
               class="plain-field-acceptance-step"
               :data-testid="`plain-field-acceptance-step-${step.id}`"
               :data-step-id="step.id"
+              :data-step-label="step.label"
+              :data-step-display-label="step.displayLabel"
               :data-state="step.state"
               :data-ready="String(step.ready)"
               :data-completed="String(step.completed)"
@@ -19231,7 +19249,7 @@ onBeforeUnmount(() => {
               data-submits-delivery="false"
               data-stops-motion="false"
             >
-              <span class="plain-progress-label">{{ plainActionCardUserText(step.label) }}</span>
+              <span class="plain-progress-label">{{ step.displayLabel }}</span>
               <span class="status-chip" :data-state="step.state">{{ step.state }}</span>
               <span class="muted">{{ step.missingText }}。{{ step.proofText }}</span>
               <button
@@ -19514,6 +19532,7 @@ onBeforeUnmount(() => {
           :data-nav2-acceptance-source="plainTripClosureReadbackSummary.source"
           :data-action-id="plainTripClosureReadbackSummary.actionId"
           :data-label="plainTripClosureReadbackSummary.label"
+          :data-display-label="plainTripClosureReadbackSummary.displayLabel"
           :data-start-endpoint="plainTripClosureReadbackSummary.startEndpoint"
           :data-stop-endpoint="plainTripClosureReadbackSummary.stopEndpoint"
           :data-start-sends-motion="String(plainTripClosureReadbackSummary.startSendsMotion)"
@@ -23425,6 +23444,7 @@ onBeforeUnmount(() => {
               :data-nav2-acceptance-source="plainTripClosureReadbackSummary.source"
               :data-action-id="plainTripClosureReadbackSummary.actionId"
               :data-label="plainTripClosureReadbackSummary.label"
+              :data-display-label="plainTripClosureReadbackSummary.displayLabel"
               :data-start-endpoint="plainTripClosureReadbackSummary.startEndpoint"
               :data-stop-endpoint="plainTripClosureReadbackSummary.stopEndpoint"
               :data-start-sends-motion="String(plainTripClosureReadbackSummary.startSendsMotion)"

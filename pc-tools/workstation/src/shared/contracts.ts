@@ -2752,6 +2752,7 @@ export type RobotControlLiveMotionRunbookActionId =
 export interface RobotControlLiveMotionRunbookItem {
   id: RobotControlLiveMotionRunbookActionId;
   label: string;
+  display_label?: string;
   ready: boolean;
   completed: boolean;
   proof_status: "completed" | "ready_to_verify" | "blocked";
@@ -2770,6 +2771,7 @@ export interface RobotControlLiveMotionRunbookItem {
 export interface RobotControlFieldAcceptanceStep {
   id: RobotControlLiveMotionRunbookActionId;
   label: string;
+  display_label?: string;
   ready: boolean;
   completed: boolean;
   proof_status: RobotControlLiveMotionRunbookItem["proof_status"];
@@ -2817,6 +2819,7 @@ export interface RobotControlFieldAcceptanceNoMotionReadbackAction {
 export interface RobotControlFieldAcceptanceSafetyConfirmReadyAction {
   id: RobotControlLiveMotionRunbookActionId;
   label: string;
+  display_label?: string;
   start_endpoint: string;
   stop_endpoint: string;
   acceptance_endpoints: string[];
@@ -2863,6 +2866,7 @@ export interface RobotControlFieldAcceptanceMissingEvidenceItem {
   label: string;
   action_id: RobotControlLiveMotionRunbookActionId;
   action_label: string;
+  action_display_label?: string;
   readback_endpoint: string;
   readback_method: "GET" | "POST";
   requires_motion_before_readback: boolean;
@@ -2887,6 +2891,7 @@ export interface RobotControlFieldAcceptancePacket {
   objective_next_id: RobotControlLiveObjectiveAuditId | "none";
   next_step_id: RobotControlLiveMotionRunbookActionId | "none";
   next_step_label: string;
+  next_step_display_label?: string;
   next_step_start_endpoint: string;
   next_step_sends_motion: boolean;
   next_step_requires_safety_confirm: boolean;
@@ -2896,10 +2901,12 @@ export interface RobotControlFieldAcceptancePacket {
   no_motion_step_ids: RobotControlLiveMotionRunbookActionId[];
   safety_confirm_ready_step_ids: RobotControlLiveMotionRunbookActionId[];
   safety_confirm_ready_action_labels: string[];
+  safety_confirm_ready_action_display_labels?: string[];
   safety_confirm_ready_action_start_endpoints: string[];
   safety_confirm_ready_actions: RobotControlFieldAcceptanceSafetyConfirmReadyAction[];
   primary_safety_confirm_ready_action_id: RobotControlLiveMotionRunbookActionId | "none";
   primary_safety_confirm_ready_action_label: string;
+  primary_safety_confirm_ready_action_display_label?: string;
   primary_safety_confirm_ready_action_start_endpoint: string;
   primary_safety_confirm_ready_action_requires_safety_confirm: boolean;
   primary_safety_confirm_ready_action_sends_motion: boolean;
@@ -2998,6 +3005,7 @@ export interface RobotControlFieldAcceptancePacket {
 export interface RobotControlNav2RouteAcceptancePacket {
   action_id: "run_nav2_route";
   label: "完整行程执行";
+  display_label?: string;
   status: RobotControlLiveClosureSummary["status"];
   proof_status: RobotControlLiveMotionRunbookItem["proof_status"];
   ready: boolean;
@@ -3715,6 +3723,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   field_acceptance_status?: RobotControlFieldAcceptancePacket["status"];
   field_acceptance_next_step_id?: RobotControlFieldAcceptancePacket["next_step_id"];
   field_acceptance_next_step_label?: RobotControlFieldAcceptancePacket["next_step_label"];
+  field_acceptance_next_step_display_label?: RobotControlFieldAcceptancePacket["next_step_display_label"];
   field_acceptance_next_step_start_endpoint?: RobotControlFieldAcceptancePacket["next_step_start_endpoint"];
   field_acceptance_next_step_sends_motion?: RobotControlFieldAcceptancePacket["next_step_sends_motion"];
   field_acceptance_next_step_requires_safety_confirm?: RobotControlFieldAcceptancePacket["next_step_requires_safety_confirm"];
@@ -3727,6 +3736,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   field_acceptance_parallel_no_motion_action_sequence_labels?: RobotControlFieldAcceptancePacket["primary_no_motion_readback_action_sequence_labels"];
   field_acceptance_parallel_safety_action_id?: RobotControlFieldAcceptancePacket["primary_safety_confirm_ready_action_id"];
   field_acceptance_parallel_safety_action_label?: RobotControlFieldAcceptancePacket["primary_safety_confirm_ready_action_label"];
+  field_acceptance_parallel_safety_action_display_label?: RobotControlFieldAcceptancePacket["primary_safety_confirm_ready_action_display_label"];
   field_acceptance_parallel_safety_action_start_endpoint?: RobotControlFieldAcceptancePacket["primary_safety_confirm_ready_action_start_endpoint"];
   field_acceptance_parallel_safety_action_acceptance_endpoints?: string[];
   field_acceptance_parallel_hardware_action_id?: RobotControlFieldAcceptancePacket["primary_hardware_action_id"];
@@ -3742,6 +3752,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   field_acceptance_safety_confirm_ready_step_ids?: RobotControlFieldAcceptancePacket["safety_confirm_ready_step_ids"];
   field_acceptance_safety_confirm_ready_action_ids?: RobotControlFieldAcceptancePacket["safety_confirm_ready_step_ids"];
   field_acceptance_safety_confirm_ready_action_labels?: RobotControlFieldAcceptancePacket["safety_confirm_ready_action_labels"];
+  field_acceptance_safety_confirm_ready_action_display_labels?: RobotControlFieldAcceptancePacket["safety_confirm_ready_action_display_labels"];
   field_acceptance_safety_confirm_ready_action_endpoints?: RobotControlFieldAcceptancePacket["safety_confirm_ready_action_start_endpoints"];
   field_acceptance_safety_confirm_ready_action_start_endpoints?: RobotControlFieldAcceptancePacket["safety_confirm_ready_action_start_endpoints"];
   field_acceptance_safety_confirm_ready_action_stop_endpoints?: string[];
@@ -3753,6 +3764,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   field_acceptance_safety_confirm_ready_actions?: RobotControlFieldAcceptancePacket["safety_confirm_ready_actions"];
   field_acceptance_primary_safety_confirm_ready_action_id?: RobotControlFieldAcceptancePacket["primary_safety_confirm_ready_action_id"];
   field_acceptance_primary_safety_confirm_ready_action_label?: RobotControlFieldAcceptancePacket["primary_safety_confirm_ready_action_label"];
+  field_acceptance_primary_safety_confirm_ready_action_display_label?: RobotControlFieldAcceptancePacket["primary_safety_confirm_ready_action_display_label"];
   field_acceptance_primary_safety_confirm_ready_action_start_endpoint?: RobotControlFieldAcceptancePacket["primary_safety_confirm_ready_action_start_endpoint"];
   field_acceptance_primary_safety_confirm_ready_action_stop_endpoint?: string;
   field_acceptance_primary_safety_confirm_ready_action_acceptance_endpoints?: string[];
@@ -3782,6 +3794,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   field_acceptance_primary_missing_label?: RobotControlFieldAcceptancePacket["primary_missing_evidence_label"];
   field_acceptance_primary_missing_action_id?: RobotControlFieldAcceptancePacket["primary_missing_evidence_action_id"];
   field_acceptance_primary_missing_action_label?: RobotControlFieldAcceptanceStep["label"] | "none";
+  field_acceptance_primary_missing_action_display_label?: RobotControlFieldAcceptanceStep["display_label"] | "none";
   field_acceptance_primary_missing_action_start_endpoint?: RobotControlFieldAcceptanceStep["start_endpoint"] | "none";
   field_acceptance_primary_missing_action_stop_endpoint?: RobotControlFieldAcceptanceStep["stop_endpoint"] | "none";
   field_acceptance_primary_missing_action_acceptance_endpoints?: RobotControlFieldAcceptanceStep["acceptance_endpoints"];

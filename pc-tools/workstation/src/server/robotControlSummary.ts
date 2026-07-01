@@ -9406,10 +9406,12 @@ function buildLiveClosureSummary(
     }
     return `${blockedPlain}；还差：${evidencePlain(missing)}。`;
   };
+  const runNav2RouteDisplayLabel = needsSameWindowWheelRerun ? "重跑图上行程并复验轮速" : "完整行程执行";
   const liveMotionRunbookItems: NonNullable<RobotControlSummaryResponse["live_closure_summary"]>["live_motion_runbook_items"] = [
     {
       id: "run_nav2_route",
       label: "完整行程执行",
+      display_label: runNav2RouteDisplayLabel,
       ready: routeReadyOnMap || needsSameWindowWheelRerun,
       completed: runNav2RouteMissingEvidence.length === 0,
       proof_status: proofStatus(routeReadyOnMap || needsSameWindowWheelRerun, runNav2RouteMissingEvidence),
@@ -9439,6 +9441,7 @@ function buildLiveClosureSummary(
     {
       id: "hold_keyboard",
       label: "键盘连续手控",
+      display_label: "键盘连续手控",
       ready: keyboardContinuousControlReady,
       completed: keyboardMissingEvidence.length === 0,
       proof_status: proofStatus(keyboardContinuousControlReady, keyboardMissingEvidence),
@@ -9465,6 +9468,7 @@ function buildLiveClosureSummary(
     {
       id: "start_free_move",
       label: "自由自助移动",
+      display_label: "自由自助移动",
       ready: freeMoveStartReady,
       completed: freeMoveMissingEvidence.length === 0,
       proof_status: proofStatus(freeMoveStartReady, freeMoveMissingEvidence),
@@ -9492,6 +9496,7 @@ function buildLiveClosureSummary(
     {
       id: "start_mapping_when_sensors_ready",
       label: "传感器就绪后建图",
+      display_label: "传感器就绪后建图",
       ready: mappingStartReady,
       completed: mappingMissingEvidence.length === 0,
       proof_status: proofStatus(mappingStartReady, mappingMissingEvidence),
@@ -10324,6 +10329,7 @@ export async function buildRobotControlSummary(
   const fieldAcceptanceSteps = liveClosureSummary.live_motion_runbook_items.map((item) => ({
     id: item.id,
     label: item.label,
+    display_label: item.display_label ?? item.label,
     ready: item.ready,
     completed: item.completed,
     proof_status: item.proof_status,
@@ -10349,11 +10355,15 @@ export async function buildRobotControlSummary(
   const fieldAcceptanceSafetyConfirmReadyLabels = fieldAcceptanceSteps
     .filter((item) => fieldAcceptanceSafetyConfirmReadyStepIds.includes(item.id))
     .map((item) => item.label);
+  const fieldAcceptanceSafetyConfirmReadyDisplayLabels = fieldAcceptanceSteps
+    .filter((item) => fieldAcceptanceSafetyConfirmReadyStepIds.includes(item.id))
+    .map((item) => item.display_label ?? item.label);
   const fieldAcceptanceSafetyConfirmReadyActions: RobotControlFieldAcceptanceSafetyConfirmReadyAction[] = fieldAcceptanceSteps
     .filter((item) => fieldAcceptanceSafetyConfirmReadyStepIds.includes(item.id))
     .map((item) => ({
       id: item.id,
       label: item.label,
+      display_label: item.display_label ?? item.label,
       start_endpoint: item.start_endpoint,
       stop_endpoint: item.stop_endpoint,
       acceptance_endpoints: item.acceptance_endpoints,
@@ -10417,6 +10427,7 @@ export async function buildRobotControlSummary(
         label: fieldAcceptanceMissingEvidenceLabel(id),
         action_id: step.id,
         action_label: step.label,
+        action_display_label: step.display_label ?? step.label,
         readback_endpoint: readbackEndpoint,
         readback_method: fieldAcceptanceNoMotionReadbackMethod(readbackEndpoint),
         requires_motion_before_readback: step.sends_motion_when_executed && !canReadWithoutMotion,
@@ -10581,6 +10592,7 @@ export async function buildRobotControlSummary(
     objective_next_id: liveClosureSummary.objective_audit_next_objective_id,
     next_step_id: fieldAcceptanceNextStep?.id ?? "none",
     next_step_label: fieldAcceptanceNextStep?.label ?? "无待执行步骤",
+    next_step_display_label: fieldAcceptanceNextStep?.display_label ?? fieldAcceptanceNextStep?.label ?? "无待执行步骤",
     next_step_start_endpoint: fieldAcceptanceNextStep?.start_endpoint ?? "none",
     next_step_sends_motion: fieldAcceptanceNextStep?.sends_motion_when_executed ?? false,
     next_step_requires_safety_confirm: fieldAcceptanceNextStep?.safety_confirm_required ?? false,
@@ -10592,10 +10604,14 @@ export async function buildRobotControlSummary(
       .map((item) => item.id),
     safety_confirm_ready_step_ids: fieldAcceptanceSafetyConfirmReadyStepIds,
     safety_confirm_ready_action_labels: fieldAcceptanceSafetyConfirmReadyActions.map((item) => item.label),
+    safety_confirm_ready_action_display_labels: fieldAcceptanceSafetyConfirmReadyDisplayLabels,
     safety_confirm_ready_action_start_endpoints: fieldAcceptanceSafetyConfirmReadyActions.map((item) => item.start_endpoint),
     safety_confirm_ready_actions: fieldAcceptanceSafetyConfirmReadyActions,
     primary_safety_confirm_ready_action_id: fieldAcceptancePrimarySafetyConfirmReadyAction?.id ?? "none",
     primary_safety_confirm_ready_action_label: fieldAcceptancePrimarySafetyConfirmReadyAction?.label ?? "无待执行运动验收",
+    primary_safety_confirm_ready_action_display_label: fieldAcceptancePrimarySafetyConfirmReadyAction?.display_label
+      ?? fieldAcceptancePrimarySafetyConfirmReadyAction?.label
+      ?? "无待执行运动验收",
     primary_safety_confirm_ready_action_start_endpoint: fieldAcceptancePrimarySafetyConfirmReadyAction?.start_endpoint ?? "none",
     primary_safety_confirm_ready_action_requires_safety_confirm: fieldAcceptancePrimarySafetyConfirmReadyAction?.requires_safety_confirm ?? false,
     primary_safety_confirm_ready_action_sends_motion: fieldAcceptancePrimarySafetyConfirmReadyAction?.sends_motion_when_executed ?? false,
@@ -10693,6 +10709,7 @@ export async function buildRobotControlSummary(
   const nav2RouteAcceptancePacket: RobotControlNav2RouteAcceptancePacket = {
     action_id: "run_nav2_route",
     label: "完整行程执行",
+    display_label: liveClosureSummary.needs_same_window_wheel_rerun ? "重跑图上行程并复验轮速" : "完整行程执行",
     status: liveClosureSummary.status,
     proof_status: runNav2RouteRunbookItem?.proof_status ?? "blocked",
     ready: runNav2RouteRunbookItem?.ready ?? false,
@@ -10981,6 +10998,7 @@ export async function buildRobotControlSummary(
     field_acceptance_status: fieldAcceptancePacket.status,
     field_acceptance_next_step_id: fieldAcceptancePacket.next_step_id,
     field_acceptance_next_step_label: fieldAcceptancePacket.next_step_label,
+    field_acceptance_next_step_display_label: fieldAcceptancePacket.next_step_display_label,
     field_acceptance_next_step_start_endpoint: fieldAcceptancePacket.next_step_start_endpoint,
     field_acceptance_next_step_sends_motion: fieldAcceptancePacket.next_step_sends_motion,
     field_acceptance_next_step_requires_safety_confirm: fieldAcceptancePacket.next_step_requires_safety_confirm,
@@ -10993,6 +11011,7 @@ export async function buildRobotControlSummary(
     field_acceptance_parallel_no_motion_action_sequence_labels: fieldAcceptancePacket.primary_no_motion_readback_action_sequence_labels,
     field_acceptance_parallel_safety_action_id: fieldAcceptancePacket.primary_safety_confirm_ready_action_id,
     field_acceptance_parallel_safety_action_label: fieldAcceptancePacket.primary_safety_confirm_ready_action_label,
+    field_acceptance_parallel_safety_action_display_label: fieldAcceptancePacket.primary_safety_confirm_ready_action_display_label,
     field_acceptance_parallel_safety_action_start_endpoint: fieldAcceptancePacket.primary_safety_confirm_ready_action_start_endpoint,
     field_acceptance_parallel_safety_action_acceptance_endpoints: fieldAcceptancePrimarySafetyAction?.acceptance_endpoints ?? [],
     field_acceptance_parallel_hardware_action_id: fieldAcceptancePacket.primary_hardware_action_id,
@@ -11008,6 +11027,7 @@ export async function buildRobotControlSummary(
     field_acceptance_safety_confirm_ready_step_ids: fieldAcceptancePacket.safety_confirm_ready_step_ids,
     field_acceptance_safety_confirm_ready_action_ids: fieldAcceptancePacket.safety_confirm_ready_step_ids,
     field_acceptance_safety_confirm_ready_action_labels: fieldAcceptancePacket.safety_confirm_ready_action_labels,
+    field_acceptance_safety_confirm_ready_action_display_labels: fieldAcceptancePacket.safety_confirm_ready_action_display_labels,
     field_acceptance_safety_confirm_ready_action_endpoints: fieldAcceptancePacket.safety_confirm_ready_action_start_endpoints,
     field_acceptance_safety_confirm_ready_action_start_endpoints: fieldAcceptancePacket.safety_confirm_ready_action_start_endpoints,
     field_acceptance_safety_confirm_ready_action_stop_endpoints: fieldAcceptancePacket.safety_confirm_ready_actions.map((action) => action.stop_endpoint),
@@ -11019,6 +11039,7 @@ export async function buildRobotControlSummary(
     field_acceptance_safety_confirm_ready_actions: fieldAcceptancePacket.safety_confirm_ready_actions,
     field_acceptance_primary_safety_confirm_ready_action_id: fieldAcceptancePacket.primary_safety_confirm_ready_action_id,
     field_acceptance_primary_safety_confirm_ready_action_label: fieldAcceptancePacket.primary_safety_confirm_ready_action_label,
+    field_acceptance_primary_safety_confirm_ready_action_display_label: fieldAcceptancePacket.primary_safety_confirm_ready_action_display_label,
     field_acceptance_primary_safety_confirm_ready_action_start_endpoint: fieldAcceptancePacket.primary_safety_confirm_ready_action_start_endpoint,
     field_acceptance_primary_safety_confirm_ready_action_stop_endpoint: fieldAcceptancePrimarySafetyAction?.stop_endpoint ?? "none",
     field_acceptance_primary_safety_confirm_ready_action_acceptance_endpoints: fieldAcceptancePrimarySafetyAction?.acceptance_endpoints ?? [],
@@ -11048,6 +11069,7 @@ export async function buildRobotControlSummary(
     field_acceptance_primary_missing_label: fieldAcceptancePacket.primary_missing_evidence_label,
     field_acceptance_primary_missing_action_id: fieldAcceptancePacket.primary_missing_evidence_action_id,
     field_acceptance_primary_missing_action_label: fieldAcceptancePrimaryMissingEvidenceAction?.label ?? "none",
+    field_acceptance_primary_missing_action_display_label: fieldAcceptancePrimaryMissingEvidenceAction?.display_label ?? "none",
     field_acceptance_primary_missing_action_start_endpoint: fieldAcceptancePrimaryMissingEvidenceAction?.start_endpoint ?? "none",
     field_acceptance_primary_missing_action_stop_endpoint: fieldAcceptancePrimaryMissingEvidenceAction?.stop_endpoint ?? "none",
     field_acceptance_primary_missing_action_acceptance_endpoints: fieldAcceptancePrimaryMissingEvidenceAction?.acceptance_endpoints ?? [],

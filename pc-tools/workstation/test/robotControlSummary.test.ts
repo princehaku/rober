@@ -831,6 +831,7 @@ describe("robotControlSummary", () => {
     expect(summary.field_acceptance_status).toBe("needs_wheel_rerun");
     expect(summary.field_acceptance_next_step_id).toBe("run_nav2_route");
     expect(summary.field_acceptance_next_step_label).toBe("完整行程执行");
+    expect(summary.field_acceptance_next_step_display_label).toBe("重跑图上行程并复验轮速");
     expect(summary.field_acceptance_next_step_start_endpoint).toBe("/api/robot-control/nav2/goal/execute");
     expect(summary.field_acceptance_next_step_sends_motion).toBe(true);
     expect(summary.field_acceptance_next_step_requires_safety_confirm).toBe(true);
@@ -887,6 +888,11 @@ describe("robotControlSummary", () => {
       "键盘连续手控",
       "自由自助移动",
     ]);
+    expect(summary.field_acceptance_safety_confirm_ready_action_display_labels).toEqual([
+      "重跑图上行程并复验轮速",
+      "键盘连续手控",
+      "自由自助移动",
+    ]);
     expect(summary.field_acceptance_safety_confirm_ready_action_endpoints).toEqual([
       "/api/robot-control/nav2/goal/execute",
       "/api/robot-control/base/manual",
@@ -913,6 +919,7 @@ describe("robotControlSummary", () => {
     expect(summary.field_acceptance_safety_confirm_ready_action_route_wysiwyg_preflight_required).toEqual([false, false, false]);
     expect(summary.field_acceptance_primary_safety_confirm_ready_action_id).toBe("run_nav2_route");
     expect(summary.field_acceptance_primary_safety_confirm_ready_action_label).toBe("完整行程执行");
+    expect(summary.field_acceptance_primary_safety_confirm_ready_action_display_label).toBe("重跑图上行程并复验轮速");
     expect(summary.field_acceptance_primary_safety_confirm_ready_action_start_endpoint).toBe("/api/robot-control/nav2/goal/execute");
     expect(summary.field_acceptance_primary_safety_confirm_ready_action_stop_endpoint).toBe("/api/robot-control/base/stop");
     expect(summary.field_acceptance_primary_safety_confirm_ready_action_acceptance_endpoints).toEqual([
@@ -1261,6 +1268,7 @@ describe("robotControlSummary", () => {
     expect(summary.field_acceptance_primary_missing_label).toBe("同窗口 wheel L/R 非零");
     expect(summary.field_acceptance_primary_missing_action_id).toBe("run_nav2_route");
     expect(summary.field_acceptance_primary_missing_action_label).toBe("完整行程执行");
+    expect(summary.field_acceptance_primary_missing_action_display_label).toBe("重跑图上行程并复验轮速");
     expect(summary.field_acceptance_primary_missing_action_start_endpoint).toBe("/api/robot-control/nav2/goal/execute");
     expect(summary.field_acceptance_primary_missing_action_stop_endpoint).toBe("/api/robot-control/base/stop");
     expect(summary.field_acceptance_primary_missing_action_acceptance_endpoints).toEqual([
@@ -1284,6 +1292,8 @@ describe("robotControlSummary", () => {
     expect(summary.field_acceptance_primary_blocks_field_acceptance).toBe(true);
     const fieldAcceptancePacket = summary.field_acceptance_packet;
     expect(fieldAcceptancePacket).toBeDefined();
+    expect(fieldAcceptancePacket?.next_step_display_label).toBe("重跑图上行程并复验轮速");
+    expect(fieldAcceptancePacket?.primary_safety_confirm_ready_action_display_label).toBe("重跑图上行程并复验轮速");
     expect(fieldAcceptancePacket?.primary_missing_evidence_readback_method).toBe("POST");
     expect(fieldAcceptancePacket?.primary_missing_evidence_requires_motion_before_readback).toBe(true);
     expect(fieldAcceptancePacket?.primary_missing_evidence_requires_safety_confirm_before_motion).toBe(true);
@@ -1292,6 +1302,7 @@ describe("robotControlSummary", () => {
       expect.objectContaining({
         id: "same_window_wheel_lr_nonzero",
         action_id: "run_nav2_route",
+        action_display_label: "重跑图上行程并复验轮速",
         readback_endpoint: "/api/robot-control/base/feedback-samples",
         readback_method: "POST",
         requires_motion_before_readback: true,
@@ -1320,6 +1331,7 @@ describe("robotControlSummary", () => {
         requires_motion_before_readback: false,
       }),
     ]));
+    expect(summary.nav2_route_acceptance_packet?.display_label).toBe("重跑图上行程并复验轮速");
     expect(summary.keyboard_wheel_lr_nonzero).toBe(false);
     expect(summary.keyboard_stop_after_release).toBe(false);
     expect(summary.live_closure_summary?.live_motion_runbook_items).toEqual([

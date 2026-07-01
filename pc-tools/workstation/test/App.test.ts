@@ -9605,6 +9605,7 @@ describe("App", () => {
     summaryFixture.nav2_route_acceptance_packet = {
       action_id: "run_nav2_route",
       label: "完整行程执行",
+      display_label: "重跑图上行程并复验轮速",
       status: "needs_wheel_rerun",
       proof_status: "ready_to_verify",
       ready: true,
@@ -9686,6 +9687,7 @@ describe("App", () => {
     expect(tripClosure.attributes("data-nav2-acceptance-source")).toBe("nav2_route_acceptance_packet");
     expect(tripClosure.attributes("data-action-id")).toBe("run_nav2_route");
     expect(tripClosure.attributes("data-label")).toBe("完整行程执行");
+    expect(tripClosure.attributes("data-display-label")).toBe("重跑图上行程并复验轮速");
     expect(tripClosure.attributes("data-state")).toBe("待收口");
     expect(tripClosure.attributes("data-route-ready")).toBe("true");
     expect(tripClosure.attributes("data-nav2-goal-succeeded")).toBe("true");
@@ -10389,6 +10391,7 @@ describe("App", () => {
       }
       return {
         ...step,
+        display_label: "重跑图上行程并复验轮速",
         ready: true,
         proof_status: "ready_to_verify",
         missing_evidence: ["same_window_wheel_lr_nonzero", "delivery_success"],
@@ -10400,11 +10403,14 @@ describe("App", () => {
       ...fieldAcceptancePacket,
       next_step_id: "run_nav2_route",
       next_step_label: "完整行程执行",
+      next_step_display_label: "重跑图上行程并复验轮速",
       next_step_start_endpoint: "/api/robot-control/nav2/goal/execute",
       next_step_sends_motion: true,
       next_step_requires_safety_confirm: true,
       ready_step_ids: ["run_nav2_route", "hold_keyboard", "start_free_move"],
       blocked_step_ids: ["start_mapping_when_sensors_ready"],
+      safety_confirm_ready_action_display_labels: ["重跑图上行程并复验轮速", "键盘连续手控", "自由自助移动"],
+      primary_safety_confirm_ready_action_display_label: "重跑图上行程并复验轮速",
       steps,
     };
     Object.assign(liveClosureSummary, {
@@ -10431,6 +10437,7 @@ describe("App", () => {
     summaryFixture.field_acceptance_packet = readyPacket as RobotControlSummaryResponse["field_acceptance_packet"];
     summaryFixture.field_acceptance_next_step_id = "run_nav2_route";
     summaryFixture.field_acceptance_next_step_label = "完整行程执行";
+    summaryFixture.field_acceptance_next_step_display_label = "重跑图上行程并复验轮速";
     summaryFixture.field_acceptance_ready_step_ids = ["run_nav2_route", "hold_keyboard", "start_free_move"];
     summaryFixture.field_acceptance_blocked_step_ids = ["start_mapping_when_sensors_ready"];
 
@@ -10465,6 +10472,17 @@ describe("App", () => {
     expect(motionProof.attributes("data-starts-manual")).toBe("false");
     expect(motionProof.attributes("data-starts-keyboard")).toBe("false");
     expect(motionProof.attributes("data-starts-free-roam")).toBe("false");
+
+    const fieldAcceptancePacketNode = wrapper.find('[data-testid="plain-field-acceptance-packet"]');
+    expect(fieldAcceptancePacketNode.attributes("data-next-step-label")).toBe("完整行程执行");
+    expect(fieldAcceptancePacketNode.attributes("data-next-step-display-label")).toBe("重跑图上行程并复验轮速");
+    expect(fieldAcceptancePacketNode.attributes("data-safety-confirm-ready-action-display-labels")).toContain("重跑图上行程并复验轮速");
+    expect(fieldAcceptancePacketNode.text()).toContain("下一步：重跑图上行程并复验轮速");
+
+    const primaryStep = wrapper.find('[data-testid="plain-field-acceptance-primary"]');
+    expect(primaryStep.attributes("data-label")).toBe("完整行程执行");
+    expect(primaryStep.attributes("data-display-label")).toBe("重跑图上行程并复验轮速");
+    expect(primaryStep.text()).toContain("下一步：重跑图上行程并复验轮速");
 
     const tripRow = wrapper.find('[data-testid="plain-field-acceptance-motion-proof-run_nav2_route"]');
     expect(tripRow.attributes("data-state")).toBe("可现场验证");
