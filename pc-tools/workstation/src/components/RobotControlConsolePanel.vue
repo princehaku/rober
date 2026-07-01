@@ -16957,11 +16957,18 @@ onBeforeUnmount(() => {
           :data-camera-probe-failure-reason="plainLiveClosureSummary.live_wysiwyg_camera_probe_failure_reason"
           :data-camera-source-diagnosis-status="plainLiveClosureSummary.live_wysiwyg_camera_source_diagnosis_status"
           :data-camera-source-diagnosis-not-exclusive="plainLiveClosureSummary.live_wysiwyg_camera_source_diagnosis_not_exclusive"
+          :data-camera-shared-preview-client-count="plainLiveClosureSummary.live_wysiwyg_camera_shared_preview_client_count"
+          :data-camera-shared-preview-upstream-active="plainLiveClosureSummary.live_wysiwyg_camera_shared_preview_upstream_active"
+          :data-camera-shared-preview-exclusive-camera-claim="plainLiveClosureSummary.live_wysiwyg_camera_shared_preview_exclusive_camera_claim"
+          data-camera-shared-preview-single-upstream="true"
+          data-camera-shared-preview-auto-joins="true"
           :data-camera-recovery-status="plainLiveClosureSummary.live_wysiwyg_camera_recovery_status"
           :data-camera-recovery-next-action-plain="plainLiveClosureSummary.live_wysiwyg_camera_recovery_next_action_plain"
           :data-camera-recovery-sequence="plainLiveClosureSummary.live_wysiwyg_camera_recovery_sequence?.join(',') || 'none'"
           :data-camera-recovery-sequence-labels="plainLiveClosureSummary.live_wysiwyg_camera_recovery_sequence_labels?.join(',') || 'none'"
           :data-camera-recovery-action-label="plainMappingCameraRecoveryActionLabel"
+          data-fixed-shared-preview-endpoint="/api/robot-control/camera/mjpeg"
+          :data-fixed-shared-preview-status-endpoint="plainLiveClosureSummary.fixed_live_wysiwyg_camera_mjpeg_status_endpoint"
           :data-fixed-camera-probe-endpoint="plainLiveClosureSummary.fixed_live_wysiwyg_camera_probe_endpoint"
           :data-fixed-camera-mjpeg-status-endpoint="plainLiveClosureSummary.fixed_live_wysiwyg_camera_mjpeg_status_endpoint"
           data-fixed-summary-endpoint="/api/robot-control/summary"
@@ -16982,6 +16989,7 @@ onBeforeUnmount(() => {
           data-sends-motion-when-clicked="false"
         >
           画面复测：{{ plainActionCardUserText(plainLiveClosureSummary.live_wysiwyg_camera_recovery_next_action_plain) }}
+          共享预览：单上游多人共享，当前 {{ plainLiveClosureSummary.live_wysiwyg_camera_shared_preview_client_count }} 个页面观看；上游 {{ plainLiveClosureSummary.live_wysiwyg_camera_shared_preview_upstream_active === "true" ? "已连接" : "未连接" }}；页面独占={{ plainLiveClosureSummary.live_wysiwyg_camera_shared_preview_exclusive_camera_claim }}。
           <button
             type="button"
             class="secondary compact-stop"
