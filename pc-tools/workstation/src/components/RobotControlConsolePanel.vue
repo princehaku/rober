@@ -7941,6 +7941,53 @@ const plainMappingUnlockItems = computed<PlainMappingUnlockItem[]>(() => {
     },
   ];
 });
+const plainMappingUnlockSummary = computed(() => {
+  // 解锁摘要把分散在四行里的门禁事实压成一句话，现场优先判断“现在到底差谁”。
+  const evidence = plainFreeRoamDomEvidence.value;
+  const mappingGauge = plainMappingReadinessGauge.value;
+  const missingReasons = mappingGauge.missingReasons;
+  const missingPlain = missingReasons && missingReasons !== "none" ? missingReasons : "无";
+  const sensorParts = [
+    evidence.cameraSourceFirstFrameReady ? "画面已出帧" : "画面未出帧",
+    evidence.radarFreshForMapping ? "雷达已满足" : "雷达未刷新",
+  ];
+  const blockerParts: string[] = [];
+  if (evidence.primaryActionCameraBlocksMappingStart) {
+    blockerParts.push("画面首帧");
+  }
+  if (evidence.primaryActionRadarBlocksMappingStart) {
+    blockerParts.push("雷达刷新");
+  }
+  const blockerText = blockerParts.length > 0 ? blockerParts.join("、") : "无";
+  const status = evidence.mappingStartReady
+    ? "可启动建图"
+    : evidence.radarFreshForMapping && evidence.primaryActionCameraBlocksMappingStart && !evidence.primaryActionRadarBlocksMappingStart
+      ? "只差画面"
+      : evidence.cameraSourceFirstFrameReady && evidence.primaryActionRadarBlocksMappingStart && !evidence.primaryActionCameraBlocksMappingStart
+        ? "只差雷达"
+        : "待补条件";
+  const nextAction = evidence.mappingStartReady
+    ? "勾安全确认后可启动建图记录。"
+    : evidence.radarFreshForMapping && evidence.primaryActionCameraBlocksMappingStart && !evidence.primaryActionRadarBlocksMappingStart
+      ? "先按相机提示处理 USB/首帧；低速自由移动仍可先做。"
+      : evidence.cameraSourceFirstFrameReady && evidence.primaryActionRadarBlocksMappingStart && !evidence.primaryActionCameraBlocksMappingStart
+        ? "先刷新雷达扫描和地图画面；低速自由移动仍可先做。"
+        : "先补齐画面首帧和雷达刷新；低速自由移动仍可先做。";
+  return {
+    status,
+    text: `建图解锁：${sensorParts.join("；")}；阻塞建图=${blockerText}；当前缺口=${missingPlain}。下一步：${nextAction}`,
+    cameraBlocksStart: evidence.primaryActionCameraBlocksMappingStart,
+    radarBlocksStart: evidence.primaryActionRadarBlocksMappingStart,
+    cameraReadyForMapping: evidence.cameraSourceFirstFrameReady,
+    radarReadyForMapping: evidence.radarFreshForMapping,
+    mappingStartReady: evidence.mappingStartReady,
+    missingReasons: missingPlain,
+    fixedFirstFrameProbeEndpoint: "/api/robot-control/camera/first-frame/probe",
+    fixedRadarRefreshEndpoint: "/api/robot-control/radar/scan-proof/refresh",
+    fixedMapPreviewEndpoint: "/api/robot-control/map/preview",
+    fixedCameraMjpegStatusEndpoint: "/api/robot-control/camera/mjpeg/status",
+  };
+});
 const plainFreeRoamDomEvidence = computed<PlainFreeRoamDomEvidence>(() => {
   // 主面板直接暴露同一份门禁事实：移动只看安全确认和停止兜底，建图启动才看画面首帧和雷达新鲜。
   const summary = robotSummary.value;
@@ -19055,6 +19102,35 @@ onBeforeUnmount(() => {
                   {{ plainMappingUnlockRefreshButtonLabel }}
                 </button>
               </div>
+              <p
+                class="panel-note"
+                data-testid="plain-mapping-unlock-summary"
+                :data-state="plainMappingUnlockSummary.status"
+                :data-camera-blocks-mapping-start="String(plainMappingUnlockSummary.cameraBlocksStart)"
+                :data-radar-blocks-mapping-start="String(plainMappingUnlockSummary.radarBlocksStart)"
+                :data-camera-ready-for-mapping="String(plainMappingUnlockSummary.cameraReadyForMapping)"
+                :data-radar-ready-for-mapping="String(plainMappingUnlockSummary.radarReadyForMapping)"
+                :data-mapping-start-ready="String(plainMappingUnlockSummary.mappingStartReady)"
+                :data-mapping-missing-reasons="plainMappingUnlockSummary.missingReasons"
+                :data-fixed-first-frame-probe-endpoint="plainMappingUnlockSummary.fixedFirstFrameProbeEndpoint"
+                :data-fixed-radar-refresh-endpoint="plainMappingUnlockSummary.fixedRadarRefreshEndpoint"
+                :data-fixed-map-preview-endpoint="plainMappingUnlockSummary.fixedMapPreviewEndpoint"
+                :data-fixed-camera-mjpeg-status-endpoint="plainMappingUnlockSummary.fixedCameraMjpegStatusEndpoint"
+                data-refreshes-camera-first-frame-probe="true"
+                data-refreshes-radar-scan-proof="true"
+                data-refreshes-map-preview="true"
+                data-refreshes-camera-mjpeg-status="true"
+                data-starts-map-runtime="false"
+                data-starts-free-roam="false"
+                data-starts-nav2="false"
+                data-starts-manual="false"
+                data-starts-keyboard="false"
+                data-submits-delivery="false"
+                data-stops-motion="false"
+                data-sends-motion-when-clicked="false"
+              >
+                {{ plainMappingUnlockSummary.text }}
+              </p>
               <div
                 v-for="item in plainMappingUnlockItems"
                 :key="item.id"
