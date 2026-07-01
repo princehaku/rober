@@ -4925,3 +4925,9 @@ free-roam latest、地图预览和 summary。`GET /api/robot-control/summary` �
 这样“安全确认后可以自由移动”和“传感器 ready 后可以建图”不再只证明按钮可点，还能在启动后证明状态机 latest
 和地图 WYSIWYG 画面都被读取。本变化不自动发车、不启动建图 runtime、不执行 Nav2、不发送 manual/keyboard/stop、
 不提交 delivery complete，也不发送 `/cmd_vel`。
+
+2026-07-02 01:35 CST 起，画面 WYSIWYG 的硬件恢复路径补齐“处理后复测”序列合同。相机被诊断为 USB 12M
+full-speed 或 UVC 传输问题时，现场硬件动作仍提示“换高速USB后复测”，但 action 不再只暴露
+`after_action_readback_endpoint=/api/robot-control/camera/first-frame/probe`，还会暴露完整
+`after_action_readback_sequence`：首帧 probe、MJPEG status、summary。PC 按钮也按这条只读序列执行，
+保证换线/换口后同时复测首帧、共享预览和当前卡点。该链路只刷新证据，不启动车辆、不启动建图、不占用控制链。

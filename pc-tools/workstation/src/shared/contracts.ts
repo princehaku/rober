@@ -2842,6 +2842,8 @@ export interface RobotControlFieldAcceptanceHardwareAction {
   after_action_readback_endpoint: string;
   after_action_readback_label: string;
   after_action_readback_method: "GET" | "POST";
+  after_action_readback_sequence: string[];
+  after_action_readback_sequence_labels: string[];
   sends_motion_when_clicked: false;
   starts_nav2_when_clicked: false;
   starts_manual_when_clicked: false;
@@ -2901,10 +2903,14 @@ export interface RobotControlFieldAcceptancePacket {
   hardware_action_ids: string[];
   hardware_action_labels: string[];
   hardware_action_after_readback_endpoints: string[];
+  hardware_action_after_readback_sequences: string[];
+  hardware_action_after_readback_sequence_labels: string[];
   hardware_actions: RobotControlFieldAcceptanceHardwareAction[];
   primary_hardware_action_id: string;
   primary_hardware_action_label: string;
   primary_hardware_action_after_readback_endpoint: string;
+  primary_hardware_action_after_readback_sequence: string[];
+  primary_hardware_action_after_readback_sequence_labels: string[];
   primary_hardware_action_blocks_mapping_start: boolean;
   primary_hardware_action_blocks_free_move: boolean;
   missing_evidence_ids: string[];
@@ -3700,10 +3706,14 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   field_acceptance_hardware_action_ids?: RobotControlFieldAcceptancePacket["hardware_action_ids"];
   field_acceptance_hardware_action_labels?: RobotControlFieldAcceptancePacket["hardware_action_labels"];
   field_acceptance_hardware_action_after_readback_endpoints?: RobotControlFieldAcceptancePacket["hardware_action_after_readback_endpoints"];
+  field_acceptance_hardware_action_after_readback_sequences?: RobotControlFieldAcceptancePacket["hardware_action_after_readback_sequences"];
+  field_acceptance_hardware_action_after_readback_sequence_labels?: RobotControlFieldAcceptancePacket["hardware_action_after_readback_sequence_labels"];
   field_acceptance_hardware_actions?: RobotControlFieldAcceptancePacket["hardware_actions"];
   field_acceptance_primary_hardware_action_id?: RobotControlFieldAcceptancePacket["primary_hardware_action_id"];
   field_acceptance_primary_hardware_action_label?: RobotControlFieldAcceptancePacket["primary_hardware_action_label"];
   field_acceptance_primary_hardware_action_after_readback_endpoint?: RobotControlFieldAcceptancePacket["primary_hardware_action_after_readback_endpoint"];
+  field_acceptance_primary_hardware_action_after_readback_sequence?: RobotControlFieldAcceptancePacket["primary_hardware_action_after_readback_sequence"];
+  field_acceptance_primary_hardware_action_after_readback_sequence_labels?: RobotControlFieldAcceptancePacket["primary_hardware_action_after_readback_sequence_labels"];
   field_acceptance_primary_hardware_action_blocks_mapping_start?: RobotControlFieldAcceptancePacket["primary_hardware_action_blocks_mapping_start"];
   field_acceptance_primary_hardware_action_blocks_free_move?: RobotControlFieldAcceptancePacket["primary_hardware_action_blocks_free_move"];
   field_acceptance_missing_evidence_ids?: RobotControlFieldAcceptancePacket["missing_evidence_ids"];

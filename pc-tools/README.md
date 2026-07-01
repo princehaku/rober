@@ -1370,3 +1370,10 @@ PC 地图口径保持默认大地图主视图：普通用户优先用本页大�
 `fixed_free_roam_latest_endpoint=/api/robot-control/free-roam/autonomy/latest`，PC DOM 也使用该字段而不是散落硬编码。
 这让现场在勾安全确认并启动后，可以证明自由移动状态机和 WYSIWYG 地图画面都被读回；本变化只改读回合同和展示，
 不自动启动 free-roam、map runtime、Nav2、keyboard、manual、delivery 或 stop。
+
+2026-07-02 01:35 CST 起，相机硬件处理后的现场读回从单个首帧 probe 明确升级为完整只读序列：
+`/api/robot-control/camera/first-frame/probe`、`/api/robot-control/camera/mjpeg/status`、`/api/robot-control/summary`。
+`field_acceptance_hardware_actions[]` 新增 `after_action_readback_sequence` 和 sequence labels，现场设备动作卡和
+primary hardware action DOM 也暴露同一序列。这样“换高速USB后复测”不再只验证首帧，还会同步读取共享 MJPEG
+预览状态和当前卡点；该按钮仍只读，不启动 Nav2、manual、keyboard、free-roam、map runtime、radar lifecycle、
+delivery 或 stop。

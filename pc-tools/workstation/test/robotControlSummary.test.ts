@@ -1376,9 +1376,25 @@ describe("robotControlSummary", () => {
     expect(summary.field_acceptance_hardware_action_ids).toEqual(["camera_usb_recovery"]);
     expect(summary.field_acceptance_hardware_action_labels).toEqual(["换高速USB后复测"]);
     expect(summary.field_acceptance_hardware_action_after_readback_endpoints).toEqual(["/api/robot-control/camera/first-frame/probe"]);
+    expect(summary.field_acceptance_hardware_action_after_readback_sequences).toEqual([
+      "/api/robot-control/camera/first-frame/probe|/api/robot-control/camera/mjpeg/status|/api/robot-control/summary",
+    ]);
+    expect(summary.field_acceptance_hardware_action_after_readback_sequence_labels).toEqual([
+      "复测相机首帧|读取共享预览状态|刷新当前卡点",
+    ]);
     expect(summary.field_acceptance_primary_hardware_action_id).toBe("camera_usb_recovery");
     expect(summary.field_acceptance_primary_hardware_action_label).toBe("换高速USB后复测");
     expect(summary.field_acceptance_primary_hardware_action_after_readback_endpoint).toBe("/api/robot-control/camera/first-frame/probe");
+    expect(summary.field_acceptance_primary_hardware_action_after_readback_sequence).toEqual([
+      "/api/robot-control/camera/first-frame/probe",
+      "/api/robot-control/camera/mjpeg/status",
+      "/api/robot-control/summary",
+    ]);
+    expect(summary.field_acceptance_primary_hardware_action_after_readback_sequence_labels).toEqual([
+      "复测相机首帧",
+      "读取共享预览状态",
+      "刷新当前卡点",
+    ]);
     expect(summary.field_acceptance_primary_hardware_action_blocks_mapping_start).toBe(true);
     expect(summary.field_acceptance_primary_hardware_action_blocks_free_move).toBe(false);
     expect(summary.field_acceptance_hardware_actions).toEqual([
@@ -1390,6 +1406,16 @@ describe("robotControlSummary", () => {
         blocks_free_move: false,
         after_action_readback_endpoint: "/api/robot-control/camera/first-frame/probe",
         after_action_readback_method: "POST",
+        after_action_readback_sequence: [
+          "/api/robot-control/camera/first-frame/probe",
+          "/api/robot-control/camera/mjpeg/status",
+          "/api/robot-control/summary",
+        ],
+        after_action_readback_sequence_labels: [
+          "复测相机首帧",
+          "读取共享预览状态",
+          "刷新当前卡点",
+        ],
         sends_motion_when_clicked: false,
         starts_nav2_when_clicked: false,
         starts_manual_when_clicked: false,

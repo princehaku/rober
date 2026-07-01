@@ -1396,10 +1396,14 @@ const fixtures: Record<string, unknown> = {
         hardware_action_ids: [],
         hardware_action_labels: [],
         hardware_action_after_readback_endpoints: [],
+        hardware_action_after_readback_sequences: [],
+        hardware_action_after_readback_sequence_labels: [],
         hardware_actions: [],
         primary_hardware_action_id: "none",
         primary_hardware_action_label: "无设备处理动作",
         primary_hardware_action_after_readback_endpoint: "none",
+        primary_hardware_action_after_readback_sequence: [],
+        primary_hardware_action_after_readback_sequence_labels: [],
         primary_hardware_action_blocks_mapping_start: false,
         primary_hardware_action_blocks_free_move: false,
         missing_evidence_ids: [
@@ -9807,6 +9811,7 @@ describe("App", () => {
       "/api/robot-control/summary",
     ];
     const cameraOnlyLabels = ["复测相机首帧", "读取相机 MJPEG 状态", "刷新总览"];
+    const cameraHardwareReadbackLabels = ["复测相机首帧", "读取共享预览状态", "刷新当前卡点"];
     const liveClosureSummary = summaryFixture.live_closure_summary as Record<string, any>;
     Object.assign(liveClosureSummary, {
       live_wysiwyg_missing_surface_ids: ["camera"],
@@ -9831,17 +9836,21 @@ describe("App", () => {
       hardware_action_ids: ["camera_usb_recovery"],
       hardware_action_labels: ["换高速USB后复测"],
       hardware_action_after_readback_endpoints: ["/api/robot-control/camera/first-frame/probe"],
+      hardware_action_after_readback_sequences: [cameraOnlySequence.join("|")],
+      hardware_action_after_readback_sequence_labels: [cameraHardwareReadbackLabels.join("|")],
       hardware_actions: [
         {
           id: "camera_usb_recovery",
           label: "换高速USB后复测",
-          summary_plain: "需要先处理相机设备链路：相机不是页面独占；诊断显示 USB full-speed；先复测相机首帧并读取共享预览状态。若仍无画面，摄像头现在挂在 USB 12M full-speed，换高速 USB 口/线或带供电 USB Hub，减少转接并确认供电后复测。处理后再只读复测相机首帧。",
+          summary_plain: "需要先处理相机设备链路：相机不是页面独占；诊断显示 USB full-speed；先复测相机首帧并读取共享预览状态。若仍无画面，摄像头现在挂在 USB 12M full-speed，换高速 USB 口/线或带供电 USB Hub，减少转接并确认供电后复测。处理后再只读复测相机首帧、共享预览状态和总览。",
           blocks_camera_wysiwyg: true,
           blocks_mapping_start: true,
           blocks_free_move: false,
           after_action_readback_endpoint: "/api/robot-control/camera/first-frame/probe",
           after_action_readback_label: "复测相机首帧",
           after_action_readback_method: "POST",
+          after_action_readback_sequence: cameraOnlySequence,
+          after_action_readback_sequence_labels: cameraHardwareReadbackLabels,
           sends_motion_when_clicked: false,
           starts_nav2_when_clicked: false,
           starts_manual_when_clicked: false,
@@ -9856,6 +9865,8 @@ describe("App", () => {
       primary_hardware_action_id: "camera_usb_recovery",
       primary_hardware_action_label: "换高速USB后复测",
       primary_hardware_action_after_readback_endpoint: "/api/robot-control/camera/first-frame/probe",
+      primary_hardware_action_after_readback_sequence: cameraOnlySequence,
+      primary_hardware_action_after_readback_sequence_labels: cameraHardwareReadbackLabels,
       primary_hardware_action_blocks_mapping_start: true,
       primary_hardware_action_blocks_free_move: false,
       no_motion_readback_action_ids: ["readback_all", "refresh_current_wysiwyg"],
@@ -9970,10 +9981,14 @@ describe("App", () => {
     summaryFixture.field_acceptance_hardware_action_ids = ["camera_usb_recovery"];
     summaryFixture.field_acceptance_hardware_action_labels = liveClosureSummary.field_acceptance_packet.hardware_action_labels;
     summaryFixture.field_acceptance_hardware_action_after_readback_endpoints = liveClosureSummary.field_acceptance_packet.hardware_action_after_readback_endpoints;
+    summaryFixture.field_acceptance_hardware_action_after_readback_sequences = liveClosureSummary.field_acceptance_packet.hardware_action_after_readback_sequences;
+    summaryFixture.field_acceptance_hardware_action_after_readback_sequence_labels = liveClosureSummary.field_acceptance_packet.hardware_action_after_readback_sequence_labels;
     summaryFixture.field_acceptance_hardware_actions = liveClosureSummary.field_acceptance_packet.hardware_actions;
     summaryFixture.field_acceptance_primary_hardware_action_id = "camera_usb_recovery";
     summaryFixture.field_acceptance_primary_hardware_action_label = "换高速USB后复测";
     summaryFixture.field_acceptance_primary_hardware_action_after_readback_endpoint = "/api/robot-control/camera/first-frame/probe";
+    summaryFixture.field_acceptance_primary_hardware_action_after_readback_sequence = cameraOnlySequence;
+    summaryFixture.field_acceptance_primary_hardware_action_after_readback_sequence_labels = cameraHardwareReadbackLabels;
     summaryFixture.field_acceptance_primary_hardware_action_blocks_mapping_start = true;
     summaryFixture.field_acceptance_primary_hardware_action_blocks_free_move = false;
     summaryFixture.field_acceptance_no_motion_readback_action_ids = ["readback_all", "refresh_current_wysiwyg"];
@@ -10039,9 +10054,13 @@ describe("App", () => {
     expect(fieldAcceptanceRemainingActions.attributes("data-hardware-action-ids")).toBe("camera_usb_recovery");
     expect(fieldAcceptanceRemainingActions.attributes("data-hardware-action-labels")).toBe("换高速USB后复测");
     expect(fieldAcceptanceRemainingActions.attributes("data-hardware-action-after-readback-endpoints")).toBe("/api/robot-control/camera/first-frame/probe");
+    expect(fieldAcceptanceRemainingActions.attributes("data-hardware-action-after-readback-sequences")).toBe("/api/robot-control/camera/first-frame/probe|/api/robot-control/camera/mjpeg/status|/api/robot-control/summary");
+    expect(fieldAcceptanceRemainingActions.attributes("data-hardware-action-after-readback-sequence-labels")).toBe("复测相机首帧|读取共享预览状态|刷新当前卡点");
     expect(fieldAcceptanceRemainingActions.attributes("data-primary-hardware-action-id")).toBe("camera_usb_recovery");
     expect(fieldAcceptanceRemainingActions.attributes("data-primary-hardware-action-label")).toBe("换高速USB后复测");
     expect(fieldAcceptanceRemainingActions.attributes("data-primary-hardware-action-after-readback-endpoint")).toBe("/api/robot-control/camera/first-frame/probe");
+    expect(fieldAcceptanceRemainingActions.attributes("data-primary-hardware-action-after-readback-sequence")).toBe("/api/robot-control/camera/first-frame/probe,/api/robot-control/camera/mjpeg/status,/api/robot-control/summary");
+    expect(fieldAcceptanceRemainingActions.attributes("data-primary-hardware-action-after-readback-sequence-labels")).toBe("复测相机首帧,读取共享预览状态,刷新当前卡点");
     expect(fieldAcceptanceRemainingActions.attributes("data-primary-hardware-action-blocks-mapping-start")).toBe("true");
     expect(fieldAcceptanceRemainingActions.attributes("data-primary-hardware-action-blocks-free-move")).toBe("false");
     expect(fieldAcceptanceRemainingActions.attributes("data-no-motion-readback-action-ids")).toBe("readback_all,refresh_current_wysiwyg");
@@ -10073,6 +10092,8 @@ describe("App", () => {
     expect(fieldAcceptanceHardwareAction.attributes("data-state")).toBe("先处理设备");
     expect(fieldAcceptanceHardwareAction.attributes("data-after-action-readback-endpoint")).toBe("/api/robot-control/camera/first-frame/probe");
     expect(fieldAcceptanceHardwareAction.attributes("data-after-action-readback-method")).toBe("POST");
+    expect(fieldAcceptanceHardwareAction.attributes("data-after-action-readback-sequence")).toBe("/api/robot-control/camera/first-frame/probe,/api/robot-control/camera/mjpeg/status,/api/robot-control/summary");
+    expect(fieldAcceptanceHardwareAction.attributes("data-after-action-readback-sequence-labels")).toBe("复测相机首帧,读取共享预览状态,刷新当前卡点");
     expect(fieldAcceptanceHardwareAction.attributes("data-blocks-camera-wysiwyg")).toBe("true");
     expect(fieldAcceptanceHardwareAction.attributes("data-blocks-mapping-start")).toBe("true");
     expect(fieldAcceptanceHardwareAction.attributes("data-blocks-free-move")).toBe("false");
@@ -10080,6 +10101,8 @@ describe("App", () => {
     expect(fieldAcceptanceHardwareReadback.text()).toBe("换好后复测");
     expect(fieldAcceptanceHardwareReadback.attributes("data-readback-only")).toBe("true");
     expect(fieldAcceptanceHardwareReadback.attributes("data-after-action-readback-endpoint")).toBe("/api/robot-control/camera/first-frame/probe");
+    expect(fieldAcceptanceHardwareReadback.attributes("data-after-action-readback-sequence")).toBe("/api/robot-control/camera/first-frame/probe,/api/robot-control/camera/mjpeg/status,/api/robot-control/summary");
+    expect(fieldAcceptanceHardwareReadback.attributes("data-after-action-readback-sequence-labels")).toBe("复测相机首帧,读取共享预览状态,刷新当前卡点");
     expect(fieldAcceptanceHardwareReadback.attributes("data-sends-motion-when-clicked")).toBe("false");
     const callsBeforeHardwareReadback = mockedFetch.mock.calls.length;
     await fieldAcceptanceHardwareReadback.trigger("click");
