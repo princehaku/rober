@@ -7310,6 +7310,8 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-wysiwyg-view"]').attributes("data-state")).toBe("地图可见");
     expect(wrapper.find('[data-testid="plain-map-wysiwyg-view"]').attributes("data-size")).toBe("large");
     expect(wrapper.find('[data-testid="plain-map-wysiwyg-view"]').attributes("data-wysiwyg-surface")).toBe("primary-map");
+    expect(wrapper.find(".plain-map-layer").attributes("data-scroll-origin")).toBe("top_left_full_canvas");
+    expect(wrapper.find(".plain-map-layer").attributes("data-auto-center-on-zoom")).toBe("true");
     const mapZoomControls = wrapper.find('[data-testid="plain-map-zoom-controls"]');
     expect(mapZoomControls.exists()).toBe(true);
     expect(mapZoomControls.attributes("data-map-zoom-scale")).toBe("6");
@@ -7533,8 +7535,11 @@ describe("App", () => {
     expect(workstationStyles).toContain("height: clamp(var(--plain-map-large-min-height), var(--plain-map-large-target-height), var(--plain-map-large-max-height));");
     expect(workstationStyles).toContain("height: var(--plain-map-fullscreen-height);");
     expect(workstationStyles).toContain(".plain-map-zoom-controls");
+    expect(workstationStyles).toContain("align-items: flex-start;");
+    expect(workstationStyles).toContain("justify-content: flex-start;");
     expect(workstationStyles).toContain("width: calc(100% * var(--plain-map-zoom, 1));");
     expect(workstationStyles).toContain("height: calc(100% * var(--plain-map-zoom, 1));");
+    expect(workstationStyles).toContain("左上溢出保证 600% 大地图每个边缘都能滚到");
     expect(workstationStyles).toContain("真实地图优先撑满宽屏 PC 的宽度");
     expect(workstationStyles).toContain("height: auto;");
     expect(workstationStyles).toContain("min-width: 100%;");

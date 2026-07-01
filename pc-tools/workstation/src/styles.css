@@ -1799,8 +1799,8 @@ h3 {
 .plain-map-layer {
   position: relative;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  align-items: flex-start;
+  justify-content: flex-start;
   height: clamp(520px, 72vh, 980px);
   min-height: 420px;
   overflow: auto;
@@ -1850,7 +1850,7 @@ h3 {
 }
 
 .plain-map-overlay-frame {
-  /* 缩放作用在同一个 overlay frame 上，保证底图、路线、车位和雷达点同步放大。 */
+  /* 缩放作用在同一个 overlay frame 上；左上溢出保证 600% 大地图每个边缘都能滚到。 */
   position: relative;
   flex: 0 0 auto;
   width: calc(100% * var(--plain-map-zoom, 1));

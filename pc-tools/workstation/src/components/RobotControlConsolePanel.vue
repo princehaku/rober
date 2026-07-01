@@ -302,6 +302,7 @@ const plainRadarRefreshButton = ref<HTMLButtonElement | null>(null);
 const plainRadarStartButton = ref<HTMLButtonElement | null>(null);
 const plainRadarRestartButton = ref<HTMLButtonElement | null>(null);
 const plainMapPanel = ref<HTMLElement | null>(null);
+const plainMapLayer = ref<HTMLElement | null>(null);
 const plainMapPreviewButton = ref<HTMLButtonElement | null>(null);
 const plainMapRuntimeStartButton = ref<HTMLButtonElement | null>(null);
 const plainMapLargeView = ref(true);
@@ -349,6 +350,26 @@ const PLAIN_MAP_MAX_ZOOM_PERCENT = "2400%";
 const plainMapZoomStyle = computed(() => ({
   "--plain-map-zoom": String(plainMapZoomScale.value),
 }));
+function centerPlainMapViewport(): void {
+  // 放大地图后滚动原点必须覆盖完整画布；居中只是视角选择，不改变任何地图/路线/雷达坐标。
+  void nextTick().then(() => {
+    const layer = plainMapLayer.value;
+    if (!layer) {
+      return;
+    }
+    const center = (): void => {
+      const maxScrollLeft = Math.max(0, layer.scrollWidth - layer.clientWidth);
+      const maxScrollTop = Math.max(0, layer.scrollHeight - layer.clientHeight);
+      layer.scrollLeft = Math.round(maxScrollLeft / 2);
+      layer.scrollTop = Math.round(maxScrollTop / 2);
+    };
+    if (typeof window.requestAnimationFrame === "function") {
+      window.requestAnimationFrame(center);
+      return;
+    }
+    window.setTimeout(center, 0);
+  });
+}
 const plainMapDisplayProofText = computed(() => {
   // 这行只给普通用户确认“当前就是大地图”；工程命令收进折叠区，避免首屏重新变复杂。
   const viewText = plainMapObserverView.value || plainMapDirectViewRequested.value ? "只看地图大屏" : "PC 默认大地图主视图";
@@ -360,14 +381,17 @@ function zoomPlainMap(delta: number): void {
   // 缩放只改变本页地图视图，不改变地图数据、Nav2 目标或任何运动安全门禁。
   const nextIndex = Math.min(PLAIN_MAP_ZOOM_LEVELS.length - 1, Math.max(0, plainMapZoomIndex.value + delta));
   plainMapZoomIndex.value = nextIndex;
+  centerPlainMapViewport();
 }
 function resetPlainMapZoom(): void {
   // “适配”回到完整地图，方便现场在放大查看细节后恢复全局路线视角。
   plainMapZoomIndex.value = 0;
+  centerPlainMapViewport();
 }
 function zoomPlainMapToDetail(): void {
   // 细节放大只改变同一张只读画布的比例，不拆分路线、车位或雷达点坐标。
   plainMapZoomIndex.value = PLAIN_MAP_ZOOM_LEVELS.length - 1;
+  centerPlainMapViewport();
 }
 async function enterPlainMapBrowserFullscreen(): Promise<void> {
   // 优先使用浏览器原生全屏，让现场 PC 真的把地图铺满；失败时保留 fixed 大图兜底。
@@ -419,12 +443,14 @@ function applyPlainMapDirectViewIfRequested(): void {
   plainMapFullscreenView.value = true;
   plainMapObserverView.value = true;
   plainMapZoomIndex.value = PLAIN_MAP_DEFAULT_ZOOM_INDEX;
+  centerPlainMapViewport();
 }
 async function togglePlainMapObserverView(): Promise<void> {
   // 观测模式只改变 PC 显示密度；进入时顺手拉起全屏，退出时回到普通大地图。
   plainMapObserverView.value = !plainMapObserverView.value;
   plainMapFullscreenView.value = plainMapObserverView.value;
   if (plainMapObserverView.value) {
+    centerPlainMapViewport();
     await enterPlainMapBrowserFullscreen();
     await refreshMapPreview({ radarStatusRefresh: true });
   } else {
@@ -436,6 +462,7 @@ async function togglePlainMapFullscreenView(): Promise<void> {
   // 手动退出全屏时同步退出观测模式，避免界面状态和实际地图尺寸不一致。
   plainMapFullscreenView.value = !plainMapFullscreenView.value;
   if (plainMapFullscreenView.value) {
+    centerPlainMapViewport();
     await enterPlainMapBrowserFullscreen();
     await refreshMapPreview({ radarStatusRefresh: true });
   } else {
@@ -14742,6 +14769,7 @@ async function refreshMapPreview(options: { countForFreeRoamSession?: boolean; f
     }
   } finally {
     mapPreviewPending.value = false;
+    centerPlainMapViewport();
   }
 }
 
@@ -19598,7 +19626,13 @@ onBeforeUnmount(() => {
             </span>
           </div>
           <div class="plain-map-viewport" data-testid="plain-map-wysiwyg-view" data-wysiwyg-surface="primary-map" :data-state="plainMapVisualSummary.state" :data-size="plainMapViewSize">
-            <div class="plain-map-layer" :class="{ 'has-real-map': plainMapVisualSummary.imageDataUrl }">
+            <div
+              ref="plainMapLayer"
+              class="plain-map-layer"
+              :class="{ 'has-real-map': plainMapVisualSummary.imageDataUrl }"
+              data-scroll-origin="top_left_full_canvas"
+              data-auto-center-on-zoom="true"
+            >
               <div
                 class="plain-map-overlay-frame"
                 :style="[plainMapVisualSummary.frameStyle, plainMapZoomStyle]"
