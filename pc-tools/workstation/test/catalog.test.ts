@@ -6919,8 +6919,12 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.live_wysiwyg_missing_surface_ids).toEqual(summary.live_closure_summary?.live_wysiwyg_missing_surface_ids);
       expect(summary.live_wysiwyg_refresh_sends_motion).toBe(false);
       expect(summary.camera_current_visible).toBe(summary.live_closure_summary?.camera_current_visible);
+      expect(summary.camera_ready).toBe(summary.live_closure_summary?.camera_current_visible);
+      expect(summary.camera_first_frame_ready).toBe(summary.live_closure_summary?.camera_current_visible);
       expect(summary.camera_visible).toBe(summary.live_closure_summary?.camera_current_visible);
       expect(summary.live_wysiwyg_camera_visible).toBe(summary.live_closure_summary?.live_wysiwyg_camera_visible);
+      expect(summary.camera_needs_usb_fix).toBe(summary.live_closure_summary?.camera_hardware_action_required);
+      expect(summary.camera_usb_high_speed).toBe(false);
       expect(summary.camera_source_diagnosis_status).toBe(summary.live_closure_summary?.camera_source_diagnosis_status);
       expect(summary.camera_source_diagnosis_not_exclusive).toBe(summary.live_closure_summary?.camera_source_diagnosis_not_exclusive);
       expect(summary.camera_recovery_next_action_plain).toBe(summary.live_closure_summary?.camera_recovery_next_action_plain);
@@ -6937,6 +6941,9 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.live_wysiwyg_map_visible).toBe(summary.live_closure_summary?.live_wysiwyg_map_visible);
       expect(summary.radar_visible).toBe(summary.live_closure_summary?.radar_map_points_visible);
       expect(summary.radar_points_visible).toBe(summary.live_closure_summary?.radar_map_points_visible);
+      expect(summary.radar_ready).toBe(summary.live_closure_summary?.mapping_lidar_fresh_readback_ready);
+      expect(summary.radar_fresh).toBe(summary.live_closure_summary?.mapping_lidar_fresh_readback_ready);
+      expect(summary.radar_map_ready).toBe(summary.live_closure_summary?.radar_map_points_visible);
       expect(summary.radar_map_points_visible).toBe(summary.live_closure_summary?.radar_map_points_visible);
       expect(summary.radar_overlay_status).toBe(summary.live_closure_summary?.radar_overlay_status);
       expect(live.radar_overlay_current_point_count).toBe(summary.live_closure_summary?.radar_overlay_current_point_count);

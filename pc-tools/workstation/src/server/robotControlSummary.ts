@@ -10088,6 +10088,10 @@ export async function buildRobotControlSummary(
   const keyboardStopAfterRelease = keyboardRunbookItem ? !keyboardRunbookItem.missing_evidence.includes("stop_after_release") : false;
   const routeComplete = runNav2RouteRunbookItem?.completed === true;
   const freeMoveComplete = freeMoveRunbookItem?.completed === true;
+  const cameraUsbSpeed = String(liveClosureSummary.camera_usb_speed ?? "").trim().toLowerCase();
+  const cameraUsbHighSpeed = !liveClosureSummary.camera_usb_full_speed_detected
+    && cameraUsbSpeed !== ""
+    && !["not_loaded", "unknown", "12m", "12mbps", "full-speed"].includes(cameraUsbSpeed);
 
   return {
     schema: ROBOT_CONTROL_SCHEMA,
@@ -10199,8 +10203,12 @@ export async function buildRobotControlSummary(
     live_motion_runbook_blocked_plain: liveClosureSummary.live_motion_runbook_blocked_plain,
     live_motion_runbook_primary_action_plain: liveClosureSummary.live_motion_runbook_primary_action_plain,
     live_motion_runbook_minimal_precheck_plain: liveClosureSummary.live_motion_runbook_minimal_precheck_plain,
+    camera_ready: liveClosureSummary.camera_current_visible,
+    camera_first_frame_ready: liveClosureSummary.camera_current_visible,
     camera_visible: liveClosureSummary.camera_current_visible,
     camera_current_visible: liveClosureSummary.camera_current_visible,
+    camera_needs_usb_fix: liveClosureSummary.camera_hardware_action_required,
+    camera_usb_high_speed: cameraUsbHighSpeed,
     map_visible: liveClosureSummary.map_current_visible,
     map_current_visible: liveClosureSummary.map_current_visible,
     path_visible: liveClosureSummary.path_current_visible,
@@ -10221,6 +10229,9 @@ export async function buildRobotControlSummary(
     live_wysiwyg_camera_shared_preview_exclusive_camera_claim: liveClosureSummary.live_wysiwyg_camera_shared_preview_exclusive_camera_claim,
     radar_visible: liveClosureSummary.radar_map_points_visible,
     radar_points_visible: liveClosureSummary.radar_map_points_visible,
+    radar_ready: liveClosureSummary.mapping_lidar_fresh_readback_ready,
+    radar_fresh: liveClosureSummary.mapping_lidar_fresh_readback_ready,
+    radar_map_ready: liveClosureSummary.radar_map_points_visible,
     radar_map_points_visible: liveClosureSummary.radar_map_points_visible,
     radar_overlay_status: liveClosureSummary.radar_overlay_status,
     radar_overlay_current_point_count: liveClosureSummary.radar_overlay_current_point_count,

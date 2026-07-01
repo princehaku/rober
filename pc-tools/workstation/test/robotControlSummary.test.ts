@@ -411,6 +411,9 @@ describe("robotControlSummary", () => {
     expect(summary.live_wysiwyg_camera_shared_preview_exclusive_camera_claim).toBe("false");
     expect(summary.radar_visible).toBe(false);
     expect(summary.radar_points_visible).toBe(false);
+    expect(summary.radar_ready).toBe(false);
+    expect(summary.radar_fresh).toBe(false);
+    expect(summary.radar_map_ready).toBe(false);
     expect(summary.radar_map_points_visible).toBe(false);
     expect(summary.radar_overlay_status).toBe(summary.live_closure_summary?.radar_overlay_status);
     expect(summary.radar_overlay_current_point_count).toBe(summary.live_closure_summary?.radar_overlay_current_point_count);
@@ -887,6 +890,10 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.camera_hardware_action_required).toBe(true);
     expect(summary.live_closure_summary?.camera_hardware_action_label).toBe("换高速USB后复测");
     expect(summary.live_closure_summary?.camera_usb_full_speed_detected).toBe(true);
+    expect(summary.camera_ready).toBe(false);
+    expect(summary.camera_first_frame_ready).toBe(false);
+    expect(summary.camera_needs_usb_fix).toBe(true);
+    expect(summary.camera_usb_high_speed).toBe(false);
     expect(summary.camera_hardware_action_required).toBe(true);
     expect(summary.camera_hardware_action_label).toBe("换高速USB后复测");
     expect(summary.camera_usb_full_speed_detected).toBe(true);

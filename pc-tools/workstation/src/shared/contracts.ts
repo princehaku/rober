@@ -3274,8 +3274,12 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   live_motion_runbook_blocked_plain?: RobotControlLiveClosureSummary["live_motion_runbook_blocked_plain"];
   live_motion_runbook_primary_action_plain?: RobotControlLiveClosureSummary["live_motion_runbook_primary_action_plain"];
   live_motion_runbook_minimal_precheck_plain?: RobotControlLiveClosureSummary["live_motion_runbook_minimal_precheck_plain"];
+  camera_ready?: RobotControlLiveClosureSummary["camera_current_visible"];
+  camera_first_frame_ready?: RobotControlLiveClosureSummary["camera_current_visible"];
   camera_visible?: RobotControlLiveClosureSummary["camera_current_visible"];
   camera_current_visible?: RobotControlLiveClosureSummary["camera_current_visible"];
+  camera_needs_usb_fix?: RobotControlLiveClosureSummary["camera_hardware_action_required"];
+  camera_usb_high_speed?: boolean;
   map_visible?: RobotControlLiveClosureSummary["map_current_visible"];
   map_current_visible?: RobotControlLiveClosureSummary["map_current_visible"];
   path_visible?: RobotControlLiveClosureSummary["path_current_visible"];
@@ -3296,6 +3300,9 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   live_wysiwyg_camera_shared_preview_exclusive_camera_claim?: RobotControlLiveClosureSummary["live_wysiwyg_camera_shared_preview_exclusive_camera_claim"];
   radar_visible?: RobotControlLiveClosureSummary["radar_map_points_visible"];
   radar_points_visible?: RobotControlLiveClosureSummary["radar_map_points_visible"];
+  radar_ready?: RobotControlLiveClosureSummary["mapping_lidar_fresh_readback_ready"];
+  radar_fresh?: RobotControlLiveClosureSummary["mapping_lidar_fresh_readback_ready"];
+  radar_map_ready?: RobotControlLiveClosureSummary["radar_map_points_visible"];
   radar_map_points_visible?: RobotControlLiveClosureSummary["radar_map_points_visible"];
   radar_overlay_status?: RobotControlLiveClosureSummary["radar_overlay_status"];
   radar_overlay_current_point_count?: RobotControlLiveClosureSummary["radar_overlay_current_point_count"];
