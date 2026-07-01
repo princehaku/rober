@@ -987,6 +987,19 @@ describe("robotControlSummary", () => {
     expect(summary.field_acceptance_primary_safety_confirm_ready_action_route_wysiwyg_preflight_required).toBe(false);
     expect(summary.field_acceptance_primary_safety_confirm_ready_action_requires_safety_confirm).toBe(true);
     expect(summary.field_acceptance_primary_safety_confirm_ready_action_sends_motion).toBe(true);
+    expect(summary.current_motion_action_required).toBe(true);
+    expect(summary.current_motion_action_id).toBe("run_nav2_route");
+    expect(summary.current_motion_action_label).toBe("完整行程执行");
+    expect(summary.current_motion_action_display_label).toBe("重跑图上行程并复验轮速");
+    expect(summary.current_motion_action_start_endpoint).toBe("/api/robot-control/nav2/goal/execute");
+    expect(summary.current_motion_action_stop_endpoint).toBe("/api/robot-control/base/stop");
+    expect(summary.current_motion_action_acceptance_endpoints).toEqual(summary.field_acceptance_primary_safety_confirm_ready_action_acceptance_endpoints);
+    expect(summary.current_motion_action_requires_safety_confirm).toBe(true);
+    expect(summary.current_motion_action_minimal_precheck_safety_only).toBe(true);
+    expect(summary.current_motion_action_camera_preflight_required).toBe(false);
+    expect(summary.current_motion_action_radar_preflight_required).toBe(false);
+    expect(summary.current_motion_action_route_wysiwyg_preflight_required).toBe(false);
+    expect(summary.current_motion_action_sends_motion).toBe(true);
     expect(summary.field_acceptance_safety_confirm_ready_actions).toEqual([
       expect.objectContaining({
         id: "run_nav2_route",

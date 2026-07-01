@@ -5010,3 +5010,11 @@ full-speed 或 UVC 传输问题时，现场硬件动作仍提示“换高速USB�
 `current_hardware_action_after_readback_sequence=[camera first-frame probe, camera MJPEG status, summary]`、
 `current_hardware_action_blocks_mapping_start=true`、`current_hardware_action_blocks_free_move=false`、
 `current_hardware_action_sends_motion=false`。这样普通现场脚本不需要再拼 `field_acceptance_primary_hardware_action_*`。
+
+2026-07-02 07:45 CST 起，summary 顶层新增 `current_motion_action_*` 短字段，直接表达勾选现场安全确认后当前可执行的运动动作。
+当前动作会显示 `current_motion_action_id=run_nav2_route`、`current_motion_action_display_label=重跑图上行程并复验轮速`、
+`current_motion_action_start_endpoint=/api/robot-control/nav2/goal/execute`、`current_motion_action_stop_endpoint=/api/robot-control/base/stop`、
+`current_motion_action_acceptance_endpoints=[map preview, nav2 latest, base feedback samples, delivery latest, summary]`、
+`current_motion_action_requires_safety_confirm=true`、`current_motion_action_minimal_precheck_safety_only=true`，
+并明确 `current_motion_action_camera_preflight_required=false`、`current_motion_action_radar_preflight_required=false`、
+`current_motion_action_route_wysiwyg_preflight_required=false`。字段只描述当前动作和执行后读回口径，不自动勾安全确认、不发车。
