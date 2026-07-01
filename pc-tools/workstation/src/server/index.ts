@@ -200,6 +200,12 @@ type CameraMjpegRelayLastFailure = {
   source_usage_owner_count?: string;
   source_usage_scope?: "free" | "camera_service_self" | "external_holder" | "unknown";
   source_usage_not_exclusive?: string;
+  uvc_usb_topology_status?: string;
+  uvc_usb_topology_plain_hint?: string;
+  uvc_usb_topology_next_action?: string;
+  uvc_usb_topology_video_usb_speed?: string;
+  uvc_usb_topology_kernel_usb_address?: string;
+  uvc_usb_topology_video_interface_count?: string;
 };
 
 function cameraSourceUsageScope(
@@ -2472,6 +2478,18 @@ function cameraMjpegStatusResponse(
     ?? (previewStatus === "source_first_frame_failed" ? lastFailureReason || "first_frame_failed" : "not_loaded");
   const sourceUsageScope = cameraSourceUsageScope(diagnosisSource?.source_usage_status, diagnosisSource?.source_usage_owner_count);
   const sourceUsageNotExclusive = cameraSourceUsageNotExclusive(sourceUsageScope);
+  const cameraUsbSpeed = diagnosisSource?.uvc_usb_topology_video_usb_speed ?? "not_loaded";
+  const cameraUsbFullSpeedDetected = cameraUsbSpeed === "12M"
+    || diagnosisSource?.source_diagnosis_status === "uvc_full_speed_usb_not_exclusive"
+    || diagnosisSource?.uvc_usb_topology_status === "uvc_video_on_full_speed_usb";
+  const cameraCurrentVisible = previewVisibility.visible_status === "visible_cached_frame";
+  const cameraHardwareActionRequired = cameraUsbFullSpeedDetected && !cameraCurrentVisible;
+  const cameraHardwareActionLabel = cameraHardwareActionRequired ? "换高速USB后复测" : "复测相机首帧";
+  const cameraRecoverySequence = [
+    "/api/robot-control/camera/first-frame/probe",
+    "/api/robot-control/camera/mjpeg/status",
+    "/api/robot-control/summary",
+  ];
   return {
     schema: "trashbot.pc_tools_workstation.robot_control_camera_mjpeg_status.v1",
     proxy_status: failureReason ? "status_rejected" : "status_loaded",
@@ -2522,6 +2540,26 @@ function cameraMjpegStatusResponse(
     source_usage_owner_count: diagnosisSource?.source_usage_owner_count ?? "not_loaded",
     source_usage_scope: sourceUsageScope,
     source_usage_not_exclusive: sourceUsageNotExclusive,
+    uvc_usb_topology_status: diagnosisSource?.uvc_usb_topology_status ?? "not_loaded",
+    uvc_usb_topology_plain_hint: diagnosisSource?.uvc_usb_topology_plain_hint ?? "not_loaded",
+    uvc_usb_topology_next_action: diagnosisSource?.uvc_usb_topology_next_action ?? "not_loaded",
+    uvc_usb_topology_video_usb_speed: cameraUsbSpeed,
+    uvc_usb_topology_kernel_usb_address: diagnosisSource?.uvc_usb_topology_kernel_usb_address ?? "not_loaded",
+    uvc_usb_topology_video_interface_count: diagnosisSource?.uvc_usb_topology_video_interface_count ?? "not_loaded",
+    camera_usb_speed: cameraUsbSpeed,
+    camera_usb_full_speed_detected: cameraUsbFullSpeedDetected,
+    camera_hardware_action_required: cameraHardwareActionRequired,
+    camera_hardware_action_label: cameraHardwareActionLabel,
+    camera_blocks_mapping_start: !cameraCurrentVisible,
+    camera_blocks_free_move: false,
+    camera_reprobe_after_hardware_action_required: cameraHardwareActionRequired,
+    camera_reprobe_sequence: cameraRecoverySequence,
+    fixed_camera_probe_endpoint: "/api/robot-control/camera/first-frame/probe",
+    fixed_camera_mjpeg_status_endpoint: "/api/robot-control/camera/mjpeg/status",
+    fixed_summary_endpoint: "/api/robot-control/summary",
+    camera_recovery_sends_motion: false,
+    camera_recovery_starts_map_runtime: false,
+    camera_status_readback_only: true,
     // status/plain_hint 是 preview_* 的顶层别名，方便现场脚本直接读共享画面是否可见。
     status: previewStatus,
     plain_hint: previewGuidance.plain_hint,
@@ -2716,6 +2754,9 @@ async function cameraSourceFirstFrameFailureForStatus(
       ?? asRecord(asRecord(payload?.media_diagnostics)?.source_diagnosis);
     const sourceUsage = asRecord(payload?.source_usage)
       ?? asRecord(asRecord(payload?.media_diagnostics)?.source_usage);
+    const uvcUsbTopology = asRecord(payload?.uvc_usb_topology)
+      ?? asRecord(asRecord(payload?.media_diagnostics)?.uvc_usb_topology)
+      ?? asRecord(sourceDiagnosis?.uvc_usb_topology);
     const currentSelection = asRecord(payload?.current_selection);
     const selectedName = cameraSourceDisplayName(
       payload?.selected_name
@@ -2764,6 +2805,14 @@ async function cameraSourceFirstFrameFailureForStatus(
       ? "check_usb_camera_input_power_or_known_good_uvc"
       : diagnosisNextAction;
     const resolvedDiagnosisNotExclusive = canExplainNoFrameAsNotExclusive ? "true" : rawDiagnosisNotExclusive;
+    const usbTopologyFields = {
+      uvc_usb_topology_status: shortText(uvcUsbTopology?.status ?? sourceDiagnosis?.uvc_usb_topology_status, "not_loaded"),
+      uvc_usb_topology_plain_hint: shortText(uvcUsbTopology?.plain_hint ?? sourceDiagnosis?.uvc_usb_topology_plain_hint, "not_loaded"),
+      uvc_usb_topology_next_action: shortText(uvcUsbTopology?.next_action ?? sourceDiagnosis?.uvc_usb_topology_next_action, "not_loaded"),
+      uvc_usb_topology_video_usb_speed: shortText(uvcUsbTopology?.video_usb_speed ?? sourceDiagnosis?.uvc_usb_topology_video_usb_speed, "not_loaded"),
+      uvc_usb_topology_kernel_usb_address: shortText(uvcUsbTopology?.kernel_usb_address ?? sourceDiagnosis?.uvc_usb_topology_kernel_usb_address, "not_loaded"),
+      uvc_usb_topology_video_interface_count: shortText(uvcUsbTopology?.video_interface_count ?? sourceDiagnosis?.uvc_usb_topology_video_interface_count, "not_loaded"),
+    };
     const sourceSelectedNotProbed = status === "source_not_probed" || readiness === "source_selected_not_probed";
     const hasUsefulSourceDiagnosis = Boolean(
       diagnosisStatus && diagnosisStatus !== "not_loaded" && diagnosisStatus !== "none",
@@ -2789,6 +2838,7 @@ async function cameraSourceFirstFrameFailureForStatus(
         source_usage_owner_count: sourceUsageOwnerCount,
         source_usage_scope: sourceUsageScope,
         source_usage_not_exclusive: sourceUsageNotExclusive,
+        ...usbTopologyFields,
         last_first_frame_format_attempts_summary: cameraMjpegFormatAttemptsSummary(payload),
       };
     }
@@ -2809,6 +2859,7 @@ async function cameraSourceFirstFrameFailureForStatus(
       source_usage_owner_count: sourceUsageOwnerCount,
       source_usage_scope: sourceUsageScope,
       source_usage_not_exclusive: sourceUsageNotExclusive,
+      ...usbTopologyFields,
       last_first_frame_format_attempts_summary: cameraMjpegFormatAttemptsSummary(payload),
     };
   } catch {

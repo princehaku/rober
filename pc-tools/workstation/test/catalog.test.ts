@@ -14707,6 +14707,26 @@ describe("workstation fail-closed API contracts", () => {
       expect(statusBody.source_diagnosis_next_action_plain).toBe("摄像头现在挂在 USB 12M full-speed，换高速 USB 口/线或带供电 USB Hub，减少转接并确认供电后复测；共享预览不是页面独占。");
       expect(statusBody.preview_next_action_plain).toBe("摄像头现在挂在 USB 12M full-speed，换高速 USB 口/线或带供电 USB Hub，减少转接并确认供电后复测；共享预览不是页面独占。");
       expect(statusBody.camera_wysiwyg_next_action_plain).toBe("摄像头现在挂在 USB 12M full-speed，换高速 USB 口/线或带供电 USB Hub，减少转接并确认供电后复测；共享预览不是页面独占。");
+      expect(statusBody.uvc_usb_topology_status).toBe("uvc_video_on_full_speed_usb");
+      expect(statusBody.uvc_usb_topology_video_usb_speed).toBe("12M");
+      expect(statusBody.camera_usb_speed).toBe("12M");
+      expect(statusBody.camera_usb_full_speed_detected).toBe(true);
+      expect(statusBody.camera_hardware_action_required).toBe(true);
+      expect(statusBody.camera_hardware_action_label).toBe("换高速USB后复测");
+      expect(statusBody.camera_blocks_mapping_start).toBe(true);
+      expect(statusBody.camera_blocks_free_move).toBe(false);
+      expect(statusBody.camera_reprobe_after_hardware_action_required).toBe(true);
+      expect(statusBody.camera_reprobe_sequence).toEqual([
+        "/api/robot-control/camera/first-frame/probe",
+        "/api/robot-control/camera/mjpeg/status",
+        "/api/robot-control/summary",
+      ]);
+      expect(statusBody.fixed_camera_probe_endpoint).toBe("/api/robot-control/camera/first-frame/probe");
+      expect(statusBody.fixed_camera_mjpeg_status_endpoint).toBe("/api/robot-control/camera/mjpeg/status");
+      expect(statusBody.fixed_summary_endpoint).toBe("/api/robot-control/summary");
+      expect(statusBody.camera_recovery_sends_motion).toBe(false);
+      expect(statusBody.camera_recovery_starts_map_runtime).toBe(false);
+      expect(statusBody.camera_status_readback_only).toBe(true);
       expect(statusBody.robot_control_executed).toBe(false);
     } finally {
       await workstation.close();
