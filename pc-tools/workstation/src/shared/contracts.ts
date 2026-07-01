@@ -3260,8 +3260,11 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   live_motion_runbook_minimal_precheck_safety_only?: RobotControlLiveClosureSummary["live_motion_runbook_minimal_precheck_safety_only"];
   live_motion_runbook_safety_confirm_required?: RobotControlLiveClosureSummary["live_motion_runbook_safety_confirm_required"];
   live_motion_runbook_minimal_precheck_plain?: RobotControlLiveClosureSummary["live_motion_runbook_minimal_precheck_plain"];
+  camera_visible?: RobotControlLiveClosureSummary["camera_current_visible"];
   camera_current_visible?: RobotControlLiveClosureSummary["camera_current_visible"];
+  map_visible?: RobotControlLiveClosureSummary["map_current_visible"];
   map_current_visible?: RobotControlLiveClosureSummary["map_current_visible"];
+  path_visible?: RobotControlLiveClosureSummary["path_current_visible"];
   path_current_visible?: RobotControlLiveClosureSummary["path_current_visible"];
   live_wysiwyg_map_visible?: RobotControlLiveClosureSummary["live_wysiwyg_map_visible"];
   live_wysiwyg_camera_visible?: RobotControlLiveClosureSummary["live_wysiwyg_camera_visible"];
@@ -3277,6 +3280,8 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   live_wysiwyg_camera_shared_preview_client_count?: RobotControlLiveClosureSummary["live_wysiwyg_camera_shared_preview_client_count"];
   live_wysiwyg_camera_shared_preview_upstream_active?: RobotControlLiveClosureSummary["live_wysiwyg_camera_shared_preview_upstream_active"];
   live_wysiwyg_camera_shared_preview_exclusive_camera_claim?: RobotControlLiveClosureSummary["live_wysiwyg_camera_shared_preview_exclusive_camera_claim"];
+  radar_visible?: RobotControlLiveClosureSummary["radar_map_points_visible"];
+  radar_points_visible?: RobotControlLiveClosureSummary["radar_map_points_visible"];
   radar_map_points_visible?: RobotControlLiveClosureSummary["radar_map_points_visible"];
   radar_overlay_status?: RobotControlLiveClosureSummary["radar_overlay_status"];
   radar_overlay_current_point_count?: RobotControlLiveClosureSummary["radar_overlay_current_point_count"];
