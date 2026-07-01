@@ -2932,6 +2932,10 @@ export interface RobotControlLiveClosureSummary {
   radar_overlay_primary_blocked_reason: string;
   radar_overlay_current_vs_source_plain: string;
   radar_overlay_refresh_next_action_plain: string;
+  radar_overlay_needs_refresh: boolean;
+  radar_overlay_blocks_wysiwyg: boolean;
+  radar_overlay_blocks_free_move: false;
+  radar_overlay_recovery_sequence: string[];
   fixed_radar_overlay_refresh_endpoint: "/api/robot-control/radar/scan-proof/refresh";
   fixed_radar_overlay_map_preview_endpoint: "/api/robot-control/map/preview";
   radar_overlay_refresh_sends_motion: false;

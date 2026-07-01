@@ -1027,6 +1027,13 @@ const fixtures: Record<string, unknown> = {
       radar_overlay_primary_blocked_reason: "scan_preview_points_missing",
       radar_overlay_current_vs_source_plain: "地图雷达点：当前 0 个，来源 81 个；状态=not_current，旧来源点已抑制，未贴到当前地图。下一步：旧雷达来源点 81 个已抑制；先刷新雷达扫描读数，再刷新地图画面，确认同轮雷达点贴图。",
       radar_overlay_refresh_next_action_plain: "旧雷达来源点 81 个已抑制；先刷新雷达扫描读数，再刷新地图画面，确认同轮雷达点贴图。",
+      radar_overlay_needs_refresh: true,
+      radar_overlay_blocks_wysiwyg: true,
+      radar_overlay_blocks_free_move: false,
+      radar_overlay_recovery_sequence: [
+        "/api/robot-control/radar/scan-proof/refresh",
+        "/api/robot-control/map/preview",
+      ],
       fixed_radar_overlay_refresh_endpoint: "/api/robot-control/radar/scan-proof/refresh",
       fixed_radar_overlay_map_preview_endpoint: "/api/robot-control/map/preview",
       radar_overlay_refresh_sends_motion: false,
@@ -5155,6 +5162,10 @@ describe("App", () => {
     expect(liveClosureWysiwygDiagnostics.attributes("data-radar-overlay-primary-blocked-reason")).toBe("scan_preview_points_missing");
     expect(liveClosureWysiwygDiagnostics.attributes("data-radar-overlay-current-vs-source-plain")).toContain("当前 0 个，来源 81 个");
     expect(liveClosureWysiwygDiagnostics.attributes("data-radar-overlay-refresh-next-action-plain")).toContain("刷新雷达扫描读数");
+    expect(liveClosureWysiwygDiagnostics.attributes("data-radar-overlay-needs-refresh")).toBe("true");
+    expect(liveClosureWysiwygDiagnostics.attributes("data-radar-overlay-blocks-wysiwyg")).toBe("true");
+    expect(liveClosureWysiwygDiagnostics.attributes("data-radar-overlay-blocks-free-move")).toBe("false");
+    expect(liveClosureWysiwygDiagnostics.attributes("data-radar-overlay-recovery-sequence")).toBe("/api/robot-control/radar/scan-proof/refresh,/api/robot-control/map/preview");
     expect(liveClosureWysiwygDiagnostics.attributes("data-fixed-radar-overlay-refresh-endpoint")).toBe("/api/robot-control/radar/scan-proof/refresh");
     expect(liveClosureWysiwygDiagnostics.attributes("data-fixed-radar-overlay-map-preview-endpoint")).toBe("/api/robot-control/map/preview");
     expect(liveClosureWysiwygDiagnostics.attributes("data-radar-overlay-refresh-sends-motion")).toBe("false");

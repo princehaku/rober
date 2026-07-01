@@ -6882,6 +6882,10 @@ describe("workstation fail-closed API contracts", () => {
       expect(live.radar_overlay_current_point_count).toBe(summary.live_closure_summary?.radar_overlay_current_point_count);
       expect(live.radar_overlay_source_point_count).toBe(summary.live_closure_summary?.radar_overlay_source_point_count);
       expect(live.radar_overlay_primary_blocked_reason).toBe(summary.live_closure_summary?.radar_overlay_primary_blocked_reason);
+      expect(live.radar_overlay_needs_refresh).toBe(summary.live_closure_summary?.radar_overlay_needs_refresh);
+      expect(live.radar_overlay_blocks_wysiwyg).toBe(summary.live_closure_summary?.radar_overlay_blocks_wysiwyg);
+      expect(live.radar_overlay_blocks_free_move).toBe(false);
+      expect(live.radar_overlay_recovery_sequence).toEqual(summary.live_closure_summary?.radar_overlay_recovery_sequence);
       expect(live.fixed_radar_overlay_refresh_endpoint).toBe("/api/robot-control/radar/scan-proof/refresh");
       expect(live.fixed_radar_overlay_map_preview_endpoint).toBe("/api/robot-control/map/preview");
       expect(live.radar_overlay_refresh_sends_motion).toBe(false);

@@ -350,6 +350,13 @@ describe("robotControlSummary", () => {
       "刷新雷达扫描读数",
       "刷新地图画面",
     ]);
+    expect(summary.live_closure_summary?.radar_overlay_needs_refresh).toBe(true);
+    expect(summary.live_closure_summary?.radar_overlay_blocks_wysiwyg).toBe(true);
+    expect(summary.live_closure_summary?.radar_overlay_blocks_free_move).toBe(false);
+    expect(summary.live_closure_summary?.radar_overlay_recovery_sequence).toEqual([
+      "/api/robot-control/radar/scan-proof/refresh",
+      "/api/robot-control/map/preview",
+    ]);
     expect(summary.live_closure_summary?.radar_overlay_status).toBe(summary.live_closure_summary?.live_wysiwyg_radar_map_overlay_status);
     expect(summary.live_closure_summary?.radar_overlay_current_point_count).toBe(summary.live_closure_summary?.live_wysiwyg_radar_map_current_point_count);
     expect(summary.live_closure_summary?.radar_overlay_source_point_count).toBe(summary.live_closure_summary?.live_wysiwyg_radar_map_source_point_count);
@@ -1080,5 +1087,8 @@ describe("robotControlSummary", () => {
     expect(summary.readback_summary.map.radar_overlay_source_point_count).toBe("138");
     expect(summary.readback_summary.map.radar_overlay_refresh_required).toBe("false");
     expect(summary.live_closure_summary?.radar_map_points_visible).toBe(true);
+    expect(summary.live_closure_summary?.radar_overlay_needs_refresh).toBe(false);
+    expect(summary.live_closure_summary?.radar_overlay_blocks_wysiwyg).toBe(false);
+    expect(summary.live_closure_summary?.radar_overlay_blocks_free_move).toBe(false);
   });
 });

@@ -8830,6 +8830,12 @@ function buildLiveClosureSummary(
     : radarMapStaleSourcePointsSuppressed
       ? `旧雷达来源点 ${radarMapSourcePointCount} 个已抑制；先刷新雷达扫描读数，再刷新地图画面，确认同轮雷达点贴图。`
       : "先刷新雷达扫描读数，再刷新地图画面，确认地图雷达点来自同轮新读数。";
+  const radarOverlayNeedsRefresh = !radarMapPointsVisible;
+  const radarOverlayBlocksWysiwyg = !radarMapPointsVisible;
+  const radarOverlayRecoverySequence = [
+    "/api/robot-control/radar/scan-proof/refresh",
+    "/api/robot-control/map/preview",
+  ];
   const radarMapCurrentVsSourcePlain = radarMapPointsVisible
     ? `地图雷达点：当前 ${radarMapCurrentPointCount} 个，来源 ${radarMapSourcePointCount} 个；状态=${radarMapOverlayStatus}，已贴到当前地图。`
     : radarMapStaleSourcePointsSuppressed
@@ -9652,6 +9658,10 @@ function buildLiveClosureSummary(
     radar_overlay_primary_blocked_reason: mapRadarBlockedReasons[0] ?? "none",
     radar_overlay_current_vs_source_plain: radarMapCurrentVsSourcePlain,
     radar_overlay_refresh_next_action_plain: radarMapRefreshNextActionPlain,
+    radar_overlay_needs_refresh: radarOverlayNeedsRefresh,
+    radar_overlay_blocks_wysiwyg: radarOverlayBlocksWysiwyg,
+    radar_overlay_blocks_free_move: false,
+    radar_overlay_recovery_sequence: radarOverlayRecoverySequence,
     fixed_radar_overlay_refresh_endpoint: "/api/robot-control/radar/scan-proof/refresh",
     fixed_radar_overlay_map_preview_endpoint: "/api/robot-control/map/preview",
     radar_overlay_refresh_sends_motion: false,
