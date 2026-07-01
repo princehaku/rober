@@ -16779,6 +16779,9 @@ onBeforeUnmount(() => {
       data-testid="pc-simple-user-first-screen"
       :data-direct-map-view-requested="String(plainMapDirectViewRequested)"
       data-direct-map-view-behavior="hide_non_map_cards"
+      data-first-screen-map-priority="map_before_status_summaries"
+      data-first-screen-map-order="robot_console_grid_first"
+      data-status-summaries-order="after_primary_map"
     >
       <div class="robot-quick-connect">
         <div class="plain-default-robot">

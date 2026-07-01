@@ -6900,6 +6900,10 @@ describe("App", () => {
     expect(wrapper.find(".shell").attributes("data-direct-map-view-url")).toBe("/map");
     expect(wrapper.find(".shell").attributes("data-direct-map-view-legacy-url")).toBe("?view=map");
     expect(wrapper.find(".shell").attributes("data-direct-map-view-behavior")).toBe("page_shell_map_only");
+    const simpleUserConsole = wrapper.find('[data-testid="pc-simple-user-first-screen"]');
+    expect(simpleUserConsole.attributes("data-first-screen-map-priority")).toBe("map_before_status_summaries");
+    expect(simpleUserConsole.attributes("data-first-screen-map-order")).toBe("robot_console_grid_first");
+    expect(simpleUserConsole.attributes("data-status-summaries-order")).toBe("after_primary_map");
     expect(mapPanel.exists()).toBe(true);
     expect(mapPanel.attributes("data-state")).toBe("地图可见");
     expect(mapPanel.attributes("data-visual-priority")).toBe("pc-primary-map-first");
@@ -7223,6 +7227,8 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-size-toggle"]').text()).toBe("放大地图");
     const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
     expect(workstationStyles).toContain("width: min(2600px, calc(100% - 2px));");
+    expect(workstationStyles).toContain('.simple-user-console[data-first-screen-map-priority="map_before_status_summaries"] > .robot-console-grid');
+    expect(workstationStyles).toContain("状态摘要仍保留，但不能继续把主地图挤到首屏下面");
     expect(workstationStyles).toContain('.shell[data-direct-map-view-requested="true"]');
     expect(workstationStyles).toContain("width: 100vw;");
     expect(workstationStyles).toContain('.shell[data-direct-map-view-requested="true"] .simple-user-console > :not(.robot-console-grid)');
