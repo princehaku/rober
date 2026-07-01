@@ -970,7 +970,10 @@ describe("robotControlSummary", () => {
       "mapping_active",
       "fresh_map_preview",
     ]);
+    expect(summary.mapping_acceptance_ready).toBe(false);
     expect(summary.mapping_acceptance_missing_reasons).toEqual(summary.live_closure_summary?.mapping_acceptance_missing_reasons);
+    expect(summary.free_roam_mapping_ready).toBe(false);
+    expect(summary.free_roam_mapping_missing_reasons).toEqual(summary.live_closure_summary?.mapping_acceptance_missing_reasons);
     expect(summary.live_closure_summary?.mapping_start_unblock_plain).toContain("建图启动还差：画面首帧、雷达新鲜");
     expect(summary.mapping_start_unblock_plain).toContain("建图启动还差：画面首帧、雷达新鲜");
     expect(summary.live_closure_summary?.mapping_start_unblock_plain).toContain("自由移动仍可先做");

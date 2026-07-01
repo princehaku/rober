@@ -3331,6 +3331,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   fixed_free_roam_stop_endpoint?: RobotControlLiveClosureSummary["fixed_free_roam_stop_endpoint"];
   mapping_start_ready?: RobotControlLiveClosureSummary["mapping_start_ready"];
   mapping_start_missing_reasons?: RobotControlLiveClosureSummary["mapping_start_missing_reasons"];
+  mapping_acceptance_ready?: RobotControlLiveClosureSummary["free_roam_mapping_ready"];
   mapping_acceptance_missing_reasons?: RobotControlLiveClosureSummary["mapping_acceptance_missing_reasons"];
   mapping_start_requires_camera_first_frame?: RobotControlLiveClosureSummary["mapping_start_requires_camera_first_frame"];
   mapping_start_requires_lidar_fresh?: RobotControlLiveClosureSummary["mapping_start_requires_lidar_fresh"];
@@ -3350,6 +3351,8 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   fixed_mapping_preview_endpoint?: RobotControlLiveClosureSummary["fixed_mapping_preview_endpoint"];
   free_roam_mapping_start_ready?: RobotControlLiveClosureSummary["free_roam_mapping_start_ready"];
   free_roam_mapping_start_missing_reasons?: RobotControlLiveClosureSummary["free_roam_mapping_start_missing_reasons"];
+  free_roam_mapping_ready?: RobotControlLiveClosureSummary["free_roam_mapping_ready"];
+  free_roam_mapping_missing_reasons?: RobotControlLiveClosureSummary["free_roam_mapping_missing_reasons"];
   camera_summary?: RobotControlSummaryResponse["readback_summary"]["camera"];
   map_summary?: RobotControlSummaryResponse["readback_summary"]["map"];
   radar_summary?: RobotControlSummaryResponse["readback_summary"]["radar"];

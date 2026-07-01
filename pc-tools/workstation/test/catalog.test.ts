@@ -6981,7 +6981,10 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.mapping_start_missing_reasons).toEqual(summary.live_closure_summary?.mapping_start_missing_reasons);
       expect(summary.free_roam_mapping_start_missing_reasons).toEqual(summary.live_closure_summary?.mapping_start_missing_reasons);
       expect(live.free_roam_mapping_ready).toBe(false);
+      expect(summary.free_roam_mapping_ready).toBe(false);
+      expect(summary.mapping_acceptance_ready).toBe(false);
       expect(live.free_roam_mapping_missing_reasons).toEqual(summary.live_closure_summary?.mapping_acceptance_missing_reasons);
+      expect(summary.free_roam_mapping_missing_reasons).toEqual(summary.live_closure_summary?.mapping_acceptance_missing_reasons);
       expect(summary.mapping_acceptance_missing_reasons).toEqual(summary.live_closure_summary?.mapping_acceptance_missing_reasons);
       expect(summary.mapping_start_requires_camera_first_frame).toBe(true);
       expect(summary.mapping_start_requires_lidar_fresh).toBe(true);
