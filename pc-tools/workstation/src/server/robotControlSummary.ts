@@ -34,6 +34,7 @@ import type {
   RobotControlFieldAcceptanceHardwareAction,
   RobotControlFieldAcceptanceMissingEvidenceItem,
   RobotControlFieldAcceptanceWysiwygRefreshMode,
+  RobotControlLiveClosureSummary,
   RobotControlLiveObjectiveAuditItem,
   RobotControlNav2RouteAcceptancePacket,
   RobotControlLiveWysiwygSurfaceSummary,
@@ -3800,7 +3801,9 @@ function mapPreviewRadarOverlayAliases(
     radar_overlay_blocks_free_move: false,
     radar_overlay_recovery_sequence: [
       "/api/robot-control/radar/scan-proof/refresh",
+      "/api/robot-control/radar/status",
       "/api/robot-control/map/preview",
+      "/api/robot-control/summary",
     ],
     fixed_radar_overlay_refresh_endpoint: "/api/robot-control/radar/scan-proof/refresh",
     fixed_radar_overlay_map_preview_endpoint: "/api/robot-control/map/preview",
@@ -9012,9 +9015,17 @@ function buildLiveClosureSummary(
       : "先刷新雷达扫描读数，再刷新地图画面，确认地图雷达点来自同轮新读数。";
   const radarOverlayNeedsRefresh = !radarMapPointsVisible;
   const radarOverlayBlocksWysiwyg = !radarMapPointsVisible;
-  const radarOverlayRecoverySequence = [
+  const radarOverlayRecoverySequence: RobotControlLiveClosureSummary["live_wysiwyg_radar_map_refresh_sequence"] = [
     "/api/robot-control/radar/scan-proof/refresh",
+    "/api/robot-control/radar/status",
     "/api/robot-control/map/preview",
+    "/api/robot-control/summary",
+  ];
+  const radarOverlayRecoverySequenceLabels: RobotControlLiveClosureSummary["live_wysiwyg_radar_map_refresh_sequence_labels"] = [
+    "刷新雷达扫描读数",
+    "读取雷达状态",
+    "刷新地图画面",
+    "刷新总览",
   ];
   const radarStartMapWysiwygSequence = [
     "/api/robot-control/radar/start",
@@ -9949,14 +9960,8 @@ function buildLiveClosureSummary(
     live_wysiwyg_radar_map_primary_blocked_reason: mapRadarBlockedReasons[0] ?? "none",
     live_wysiwyg_radar_map_current_vs_source_plain: radarMapCurrentVsSourcePlain,
     live_wysiwyg_radar_map_refresh_next_action_plain: radarMapRefreshNextActionPlain,
-    live_wysiwyg_radar_map_refresh_sequence: [
-      "/api/robot-control/radar/scan-proof/refresh",
-      "/api/robot-control/map/preview",
-    ],
-    live_wysiwyg_radar_map_refresh_sequence_labels: [
-      "刷新雷达扫描读数",
-      "刷新地图画面",
-    ],
+    live_wysiwyg_radar_map_refresh_sequence: radarOverlayRecoverySequence,
+    live_wysiwyg_radar_map_refresh_sequence_labels: radarOverlayRecoverySequenceLabels,
     radar_overlay_status: radarMapOverlayStatus,
     radar_overlay_current_point_count: radarMapCurrentPointCount,
     radar_overlay_source_point_count: radarMapSourcePointCount,
@@ -10418,9 +10423,9 @@ export async function buildRobotControlSummary(
       : ["/api/robot-control/summary"],
     refresh_radar_map_overlay: [
       liveClosureSummary.fixed_live_wysiwyg_radar_refresh_endpoint,
-      "/api/robot-control/summary",
       liveClosureSummary.fixed_live_wysiwyg_radar_status_endpoint,
       liveClosureSummary.fixed_live_wysiwyg_map_preview_endpoint,
+      "/api/robot-control/summary",
     ],
   };
   const fieldAcceptanceNoMotionReadbackActionSequenceLabelsById: Record<RobotControlFieldAcceptanceNoMotionReadbackActionId, string[]> = {
@@ -10440,12 +10445,12 @@ export async function buildRobotControlSummary(
     refresh_current_wysiwyg: fieldAcceptanceWysiwygRefreshPlan.labels.length > 0
       ? fieldAcceptanceWysiwygRefreshPlan.labels
       : ["刷新总览"],
-    refresh_radar_map_overlay: ["刷新雷达扫描读数", "刷新总览", "读取雷达状态", "刷新地图画面"],
+    refresh_radar_map_overlay: ["刷新雷达扫描读数", "读取雷达状态", "刷新地图画面", "刷新总览"],
   };
   const fieldAcceptanceNoMotionReadbackActionSummaryById: Record<RobotControlFieldAcceptanceNoMotionReadbackActionId, string> = {
     readback_all: `只读刷新行程、键盘、自由移动、画面、雷达和地图状态，不执行动作；链路：${fieldAcceptanceNoMotionReadbackActionSequenceLabelsById.readback_all.join("、")}。`,
     refresh_current_wysiwyg: `只读处理当前所见缺口：${fieldAcceptanceNoMotionReadbackActionSequenceLabelsById.refresh_current_wysiwyg.join("、")}。`,
-    refresh_radar_map_overlay: "只读刷新雷达扫描读数、刷新总览、读取雷达状态，再刷新地图画面确认雷达点贴到当前地图。",
+    refresh_radar_map_overlay: "只读刷新雷达扫描读数、读取雷达状态、刷新地图画面，再刷新总览确认雷达点贴到当前地图。",
   };
   const fieldAcceptanceNoMotionReadbackActions: RobotControlFieldAcceptanceNoMotionReadbackAction[] = fieldAcceptanceNoMotionReadbackActionIds
     .map((id) => {

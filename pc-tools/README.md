@@ -42,7 +42,7 @@ manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 每项都带 `sequence_endpoints`、`sequence_labels` 和 refresh flags；summary 顶层也暴露
 `field_acceptance_no_motion_readback_action_sequences`、`field_acceptance_no_motion_readback_action_sequence_labels`
 以及 primary no-motion action 的 sequence/refresh flags。当前雷达贴图复验链路固定为
-`/api/robot-control/radar/scan-proof/refresh -> /api/robot-control/summary -> /api/robot-control/radar/status -> /api/robot-control/map/preview`，
+`/api/robot-control/radar/scan-proof/refresh -> /api/robot-control/radar/status -> /api/robot-control/map/preview -> /api/robot-control/summary`，
 只用于确认地图上的雷达标记按当前读回刷新；PC 首屏“只读复验全部”也按
 `readback_all.sequence_endpoints` 的白名单顺序执行，白名单外 endpoint 跳过。该路径不启动雷达
 lifecycle、Nav2、manual、keyboard、free-roam、建图 runtime、delivery、stop 或 `/cmd_vel`。

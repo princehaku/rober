@@ -12035,7 +12035,9 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.radar_overlay_blocks_free_move).toBe(false);
       expect(body.radar_overlay_recovery_sequence).toEqual([
         "/api/robot-control/radar/scan-proof/refresh",
+        "/api/robot-control/radar/status",
         "/api/robot-control/map/preview",
+        "/api/robot-control/summary",
       ]);
       expect(body.fixed_radar_overlay_refresh_endpoint).toBe("/api/robot-control/radar/scan-proof/refresh");
       expect(body.fixed_radar_overlay_map_preview_endpoint).toBe("/api/robot-control/map/preview");

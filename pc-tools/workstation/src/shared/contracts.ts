@@ -3220,9 +3220,11 @@ export interface RobotControlLiveClosureSummary {
   live_wysiwyg_radar_map_refresh_next_action_plain: string;
   live_wysiwyg_radar_map_refresh_sequence: [
     "/api/robot-control/radar/scan-proof/refresh",
+    "/api/robot-control/radar/status",
     "/api/robot-control/map/preview",
+    "/api/robot-control/summary",
   ];
-  live_wysiwyg_radar_map_refresh_sequence_labels: ["刷新雷达扫描读数", "刷新地图画面"];
+  live_wysiwyg_radar_map_refresh_sequence_labels: ["刷新雷达扫描读数", "读取雷达状态", "刷新地图画面", "刷新总览"];
   radar_overlay_status: string;
   radar_overlay_current_point_count: string;
   radar_overlay_source_point_count: string;

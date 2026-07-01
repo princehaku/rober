@@ -15663,7 +15663,8 @@ async function refreshFieldAcceptancePrimaryReadback(): Promise<void> {
     return;
   }
   if (actionId === "refresh_radar_map_overlay") {
-    await refreshRadarProof({ focusAfterReady: false, mapPreviewAfter: true });
+    const action = plainFieldAcceptancePacket.value?.no_motion_readback_actions.find((item) => item.id === actionId);
+    await refreshFieldAcceptanceNoMotionSequence(action?.sequence_endpoints ?? []);
     return;
   }
   await refreshFieldAcceptanceWysiwygEvidence();
@@ -19287,6 +19288,7 @@ onBeforeUnmount(() => {
           data-refreshes-radar-scan-proof="true"
           data-refreshes-map-after-radar="true"
           data-refreshes-radar-status="true"
+          data-refreshes-summary="true"
           data-refreshes-camera-first-frame-probe="false"
           data-refreshes-camera-mjpeg-status="false"
           data-starts-radar-lifecycle="false"
@@ -19310,6 +19312,7 @@ onBeforeUnmount(() => {
             data-refreshes-radar-scan-proof="true"
             data-refreshes-map-after-radar="true"
             data-refreshes-radar-status="true"
+            data-refreshes-summary="true"
             data-refreshes-camera-first-frame-probe="false"
             data-refreshes-camera-mjpeg-status="false"
             data-starts-radar-lifecycle="false"
