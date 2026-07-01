@@ -7986,6 +7986,7 @@ const plainMappingUnlockSummary = computed(() => {
     fixedRadarRefreshEndpoint: "/api/robot-control/radar/scan-proof/refresh",
     fixedMapPreviewEndpoint: "/api/robot-control/map/preview",
     fixedCameraMjpegStatusEndpoint: "/api/robot-control/camera/mjpeg/status",
+    radarRefreshRequired: evidence.primaryActionRadarBlocksMappingStart,
   };
 });
 const plainFreeRoamDomEvidence = computed<PlainFreeRoamDomEvidence>(() => {
@@ -19120,6 +19121,7 @@ onBeforeUnmount(() => {
                 data-refreshes-radar-scan-proof="true"
                 data-refreshes-map-preview="true"
                 data-refreshes-camera-mjpeg-status="true"
+                :data-radar-refresh-required="String(plainMappingUnlockSummary.radarRefreshRequired)"
                 data-starts-map-runtime="false"
                 data-starts-free-roam="false"
                 data-starts-nav2="false"
@@ -19130,6 +19132,30 @@ onBeforeUnmount(() => {
                 data-sends-motion-when-clicked="false"
               >
                 {{ plainMappingUnlockSummary.text }}
+                <button
+                  v-if="plainMappingUnlockSummary.radarRefreshRequired"
+                  type="button"
+                  class="secondary compact-stop"
+                  :disabled="!canRefreshRadarProof"
+                  data-testid="plain-mapping-radar-overlay-refresh"
+                  :data-fixed-radar-refresh-endpoint="plainMappingUnlockSummary.fixedRadarRefreshEndpoint"
+                  :data-fixed-map-preview-endpoint="plainMappingUnlockSummary.fixedMapPreviewEndpoint"
+                  data-refreshes-radar-scan-proof="true"
+                  data-refreshes-map-preview-after-radar="true"
+                  data-refreshes-radar-status="true"
+                  data-starts-radar-lifecycle="false"
+                  data-starts-map-runtime="false"
+                  data-starts-free-roam="false"
+                  data-starts-nav2="false"
+                  data-starts-manual="false"
+                  data-starts-keyboard="false"
+                  data-submits-delivery="false"
+                  data-stops-motion="false"
+                  data-sends-motion-when-clicked="false"
+                  @click="refreshRadarProof({ mapPreviewAfter: true, focusAfterReady: false })"
+                >
+                  刷新雷达贴图
+                </button>
               </p>
               <div
                 v-for="item in plainMappingUnlockItems"
