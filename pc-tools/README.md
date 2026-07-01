@@ -179,6 +179,8 @@ evidence；现场脚本可直接看到按住后需要读 `base/feedback-samples 
 Nav2/free-roam/建图/delivery 或 `/cmd_vel`。
 
 summary 顶层和 `plain-live-closure-summary` DOM 也同步暴露相机 WYSIWYG 恢复 alias：
+`camera_wysiwyg_recovery_readback_endpoint`、`camera_wysiwyg_recovery_probe_endpoint`、
+`camera_wysiwyg_recovery_status_endpoint`、`camera_wysiwyg_recovery_summary_endpoint`、
 `camera_wysiwyg_recovery_readback_endpoints`、`camera_wysiwyg_recovery_readback_sequence_labels`、
 `camera_wysiwyg_recovery_requires_usb_fix`、`camera_wysiwyg_recovery_blocks_mapping_start`、
 `camera_wysiwyg_recovery_blocks_free_move=false`、`camera_wysiwyg_recovery_sends_motion=false` 和

@@ -3940,6 +3940,10 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   live_wysiwyg_camera_shared_preview_exclusive_camera_claim?: RobotControlLiveClosureSummary["live_wysiwyg_camera_shared_preview_exclusive_camera_claim"];
   camera_wysiwyg_recovery_status?: RobotControlLiveClosureSummary["live_wysiwyg_camera_recovery_status"];
   camera_wysiwyg_recovery_next_action_plain?: RobotControlLiveClosureSummary["live_wysiwyg_camera_recovery_next_action_plain"];
+  camera_wysiwyg_recovery_readback_endpoint?: RobotControlLiveClosureSummary["fixed_camera_probe_endpoint"];
+  camera_wysiwyg_recovery_probe_endpoint?: RobotControlLiveClosureSummary["fixed_camera_probe_endpoint"];
+  camera_wysiwyg_recovery_status_endpoint?: RobotControlLiveClosureSummary["fixed_camera_mjpeg_status_endpoint"];
+  camera_wysiwyg_recovery_summary_endpoint?: RobotControlLiveClosureSummary["fixed_objective_audit_summary_endpoint"];
   camera_wysiwyg_recovery_readback_endpoints?: RobotControlLiveClosureSummary["live_wysiwyg_camera_recovery_sequence"];
   camera_wysiwyg_recovery_readback_sequence_labels?: RobotControlLiveClosureSummary["live_wysiwyg_camera_recovery_sequence_labels"];
   camera_wysiwyg_recovery_requires_hardware_action?: RobotControlLiveClosureSummary["camera_hardware_action_required"];

@@ -1559,6 +1559,10 @@ describe("robotControlSummary", () => {
     expect(summary.camera_recovery_sends_motion).toBe(false);
     expect(summary.camera_wysiwyg_recovery_status).toBe(summary.live_closure_summary?.live_wysiwyg_camera_recovery_status);
     expect(summary.camera_wysiwyg_recovery_next_action_plain).toContain("换高速 USB 口/线或带供电 USB Hub");
+    expect(summary.camera_wysiwyg_recovery_readback_endpoint).toBe("/api/robot-control/camera/first-frame/probe");
+    expect(summary.camera_wysiwyg_recovery_probe_endpoint).toBe("/api/robot-control/camera/first-frame/probe");
+    expect(summary.camera_wysiwyg_recovery_status_endpoint).toBe("/api/robot-control/camera/mjpeg/status");
+    expect(summary.camera_wysiwyg_recovery_summary_endpoint).toBe("/api/robot-control/summary");
     expect(summary.camera_wysiwyg_recovery_readback_endpoints).toEqual([
       "/api/robot-control/camera/first-frame/probe",
       "/api/robot-control/camera/mjpeg/status",

@@ -9903,6 +9903,10 @@ describe("App", () => {
     expect(liveClosureSummary.attributes("data-camera-wysiwyg-recovery-source-not-exclusive")).toBe("true");
     expect(liveClosureSummary.attributes("data-camera-wysiwyg-recovery-sends-motion")).toBe("false");
     expect(liveClosureSummary.attributes("data-camera-wysiwyg-recovery-starts-map-runtime")).toBe("false");
+    expect(liveClosureSummary.attributes("data-camera-wysiwyg-recovery-readback-endpoint")).toBe("/api/robot-control/camera/first-frame/probe");
+    expect(liveClosureSummary.attributes("data-camera-wysiwyg-recovery-probe-endpoint")).toBe("/api/robot-control/camera/first-frame/probe");
+    expect(liveClosureSummary.attributes("data-camera-wysiwyg-recovery-status-endpoint")).toBe("/api/robot-control/camera/mjpeg/status");
+    expect(liveClosureSummary.attributes("data-camera-wysiwyg-recovery-summary-endpoint")).toBe("/api/robot-control/summary");
     expect(liveCameraRecoveryReadback.text()).toContain("USB full-speed");
     expect(liveCameraRecoveryReadback.attributes("data-camera-source-diagnosis-status")).toBe("uvc_full_speed_usb_not_exclusive");
     expect(liveCameraRecoveryReadback.attributes("data-camera-recovery-action-label")).toBe("换USB后复测");
@@ -10165,6 +10169,10 @@ describe("App", () => {
     summaryFixture.field_acceptance_wysiwyg_next_action_plain = liveClosureSummary.live_wysiwyg_camera_recovery_next_action_plain;
     summaryFixture.field_acceptance_wysiwyg_refresh_sequence = cameraOnlySequence;
     summaryFixture.field_acceptance_wysiwyg_refresh_sequence_labels = cameraOnlyLabels;
+    summaryFixture.camera_wysiwyg_recovery_readback_endpoint = "/api/robot-control/camera/first-frame/probe";
+    summaryFixture.camera_wysiwyg_recovery_probe_endpoint = "/api/robot-control/camera/first-frame/probe";
+    summaryFixture.camera_wysiwyg_recovery_status_endpoint = "/api/robot-control/camera/mjpeg/status";
+    summaryFixture.camera_wysiwyg_recovery_summary_endpoint = "/api/robot-control/summary";
     summaryFixture.field_acceptance_hardware_action_ids = ["camera_usb_recovery"];
     summaryFixture.field_acceptance_hardware_action_labels = liveClosureSummary.field_acceptance_packet.hardware_action_labels;
     summaryFixture.field_acceptance_hardware_action_after_readback_endpoints = liveClosureSummary.field_acceptance_packet.hardware_action_after_readback_endpoints;
