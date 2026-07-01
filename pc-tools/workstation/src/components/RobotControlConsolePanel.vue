@@ -4559,6 +4559,94 @@ const plainFieldAcceptanceActionQueue = computed(() => {
     completedCount: completedRows.length,
   };
 });
+function plainFieldAcceptanceMotionGapText(id: RobotControlLiveMotionRunbookItem["id"], missing: string[], completed: boolean): string {
+  // 运动验收要把后端英文证据翻成现场动作；否则 operator 还得从端点和 id 里猜下一步。
+  if (completed) {
+    return id === "run_nav2_route" ? "行程已收口" : id === "hold_keyboard" ? "键盘已收口" : "自由移动已收口";
+  }
+  const labelByAction: Record<string, string> = {
+    route_ready_on_map: "图上行程",
+    nav2_goal_succeeded: "到点成功",
+    same_window_wheel_lr_nonzero: "同窗口轮速 L/R 非零",
+    delivery_success: "送达确认",
+    same_hold_window_wheel_lr_nonzero: "按住时轮速 L/R 非零",
+    stop_after_release: "松开后停稳",
+    free_roam_latest_motion_ready: "运行读数",
+  };
+  const missingText = missing.map((item) => labelByAction[item] ?? plainFieldAcceptanceEvidenceLabel(item)).join("、") || "当前证据已满足";
+  if (id === "run_nav2_route") {
+    return `行程还差${missingText}`;
+  }
+  if (id === "hold_keyboard") {
+    return `键盘还差${missingText}`;
+  }
+  if (id === "start_free_move") {
+    return `自由移动还差${missingText}`;
+  }
+  return `还差${missingText}`;
+}
+function plainFieldAcceptanceMotionEndpointText(
+  id: RobotControlLiveMotionRunbookItem["id"],
+  acceptanceEndpoints: string[],
+): string {
+  // 行程读回必须包含地图预览；旧 step 里如果缺 map preview，用固定顺序补齐。
+  if (id === "run_nav2_route") {
+    const summaryEndpoints = plainLiveClosureSummary.value?.wheel_rerun_readback_endpoints;
+    return (summaryEndpoints?.length ? summaryEndpoints : Array.from(new Set([
+      "/api/robot-control/map/preview",
+      ...acceptanceEndpoints,
+    ]))).join(",");
+  }
+  return acceptanceEndpoints.join(",") || "none";
+}
+const plainFieldAcceptanceMotionProof = computed(() => {
+  // 这是给现场看的“运动三项验收清单”：只展示证据缺口和只读端点，不替代任何安全确认或执行按钮。
+  const motionIds: RobotControlLiveMotionRunbookItem["id"][] = ["run_nav2_route", "hold_keyboard", "start_free_move"];
+  const rows = motionIds.map((id) => {
+    const step = plainFieldAcceptanceRows.value.find((item) => item.id === id) ?? null;
+    const missingEvidence = step?.missing_evidence ?? [];
+    return {
+      id,
+      ready: Boolean(step?.ready),
+      completed: Boolean(step?.completed),
+      state: step?.completed ? "已收口" : step?.ready ? "可现场验证" : "未就绪",
+      label: step ? plainActionCardUserText(step.label) : id,
+      text: plainFieldAcceptanceMotionGapText(id, missingEvidence, Boolean(step?.completed)),
+      missingEvidenceText: missingEvidence.join(",") || "none",
+      readbackEndpointsText: plainFieldAcceptanceMotionEndpointText(id, step?.acceptance_endpoints ?? []),
+      startEndpoint: step?.start_endpoint ?? "none",
+      stopEndpoint: step?.stop_endpoint ?? "none",
+      sendsMotionWhenExecuted: Boolean(step?.sends_motion_when_executed ?? true),
+      safetyConfirmRequired: Boolean(step?.safety_confirm_required ?? true),
+    };
+  });
+  const readyRows = rows.filter((item) => item.ready && !item.completed);
+  const completedRows = rows.filter((item) => item.completed);
+  const incompleteRows = rows.filter((item) => !item.completed);
+  const primaryActionId = rows.find((item) => item.id === plainFieldAcceptancePacket.value?.next_step_id)?.id
+    ?? readyRows[0]?.id
+    ?? incompleteRows[0]?.id
+    ?? "none";
+  const tripRow = rows.find((item) => item.id === "run_nav2_route");
+  const keyboardRow = rows.find((item) => item.id === "hold_keyboard");
+  const freeMoveRow = rows.find((item) => item.id === "start_free_move");
+  const routeRequiredSuccessMarkers = plainLiveClosureSummary.value?.wheel_rerun_required_success_markers?.length
+    ? plainLiveClosureSummary.value.wheel_rerun_required_success_markers
+    : ["map_route_visible", "nav2_goal_succeeded", "same_window_wheel_lr_nonzero", "delivery_success"];
+  return {
+    state: completedRows.length === rows.length ? "已收口" : readyRows.length > 0 ? "可现场验证" : "先补条件",
+    text: `运动验收：${readyRows.length} 项可现场验证；${tripRow?.text ?? "行程未出现在验收包"}；${keyboardRow?.text ?? "键盘未出现在验收包"}；${freeMoveRow?.text ?? "自由移动未出现在验收包"}；勾一次安全确认后分别在对应卡片执行。`,
+    rows,
+    readyActionIds: readyRows.map((item) => item.id).join(",") || "none",
+    incompleteActionIds: incompleteRows.map((item) => item.id).join(",") || "none",
+    completedActionIds: completedRows.map((item) => item.id).join(",") || "none",
+    primaryActionId,
+    routeReadbackEndpoints: tripRow?.readbackEndpointsText ?? "none",
+    routeRequiredSuccessMarkers: routeRequiredSuccessMarkers.join(","),
+    keyboardReadbackEndpoints: keyboardRow?.readbackEndpointsText ?? "none",
+    freeMoveReadbackEndpoints: freeMoveRow?.readbackEndpointsText ?? "none",
+  };
+});
 const plainFieldAcceptanceNextText = computed(() => {
   const packet = plainFieldAcceptancePacket.value;
   if (!packet) {
@@ -17962,6 +18050,57 @@ onBeforeUnmount(() => {
             >
               {{ step.buttonLabel }}
             </button>
+          </div>
+          <div
+            class="plain-field-acceptance-motion-proof"
+            data-testid="plain-field-acceptance-motion-proof"
+            :data-state="plainFieldAcceptanceMotionProof.state"
+            :data-ready-action-ids="plainFieldAcceptanceMotionProof.readyActionIds"
+            :data-incomplete-action-ids="plainFieldAcceptanceMotionProof.incompleteActionIds"
+            :data-completed-action-ids="plainFieldAcceptanceMotionProof.completedActionIds"
+            :data-primary-action-id="plainFieldAcceptanceMotionProof.primaryActionId"
+            :data-trip-readback-endpoints="plainFieldAcceptanceMotionProof.routeReadbackEndpoints"
+            :data-trip-required-success-markers="plainFieldAcceptanceMotionProof.routeRequiredSuccessMarkers"
+            :data-keyboard-readback-endpoints="plainFieldAcceptanceMotionProof.keyboardReadbackEndpoints"
+            :data-free-move-readback-endpoints="plainFieldAcceptanceMotionProof.freeMoveReadbackEndpoints"
+            :data-safety-confirmed="String(plainUnifiedSafetyConfirmed)"
+            data-minimal-precheck-safety-only="true"
+            data-camera-required-for-motion="false"
+            data-radar-required-for-motion="false"
+            data-readback-only="true"
+            data-focus-only="true"
+            data-sends-motion-when-clicked="false"
+            data-starts-nav2="false"
+            data-starts-manual="false"
+            data-starts-keyboard="false"
+            data-starts-free-roam="false"
+            data-starts-map-runtime="false"
+            data-submits-delivery="false"
+            data-stops-motion="false"
+          >
+            <span class="plain-progress-label">运动验收</span>
+            <span class="status-chip" :data-state="plainFieldAcceptanceMotionProof.state">{{ plainFieldAcceptanceMotionProof.state }}</span>
+            <span class="muted">{{ plainFieldAcceptanceMotionProof.text }}</span>
+            <span
+              v-for="row in plainFieldAcceptanceMotionProof.rows"
+              :key="row.id"
+              class="muted plain-field-acceptance-motion-proof-row"
+              :data-testid="`plain-field-acceptance-motion-proof-${row.id}`"
+              :data-action-id="row.id"
+              :data-state="row.state"
+              :data-ready="String(row.ready)"
+              :data-completed="String(row.completed)"
+              :data-missing-evidence="row.missingEvidenceText"
+              :data-readback-endpoints="row.readbackEndpointsText"
+              :data-start-endpoint="row.startEndpoint"
+              :data-stop-endpoint="row.stopEndpoint"
+              :data-sends-motion-when-executed="String(row.sendsMotionWhenExecuted)"
+              :data-safety-confirm-required="String(row.safetyConfirmRequired)"
+              data-readback-only="true"
+              data-sends-motion-when-clicked="false"
+            >
+              {{ row.text }}
+            </span>
           </div>
           <div
             class="plain-field-acceptance-wysiwyg"

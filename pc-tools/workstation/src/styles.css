@@ -843,6 +843,26 @@ h3 {
   background: #ffffff;
 }
 
+.plain-field-acceptance-motion-proof {
+  /* 运动验收只汇总证据缺口和只读端点，真实执行仍落在各动作卡片的安全门禁后。 */
+  display: grid;
+  grid-template-columns: minmax(72px, auto) auto minmax(260px, 1fr);
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #d8dee6;
+  border-radius: 6px;
+  padding: 8px;
+  background: #ffffff;
+}
+
+.plain-field-acceptance-motion-proof-row {
+  border: 1px solid #d8dee6;
+  border-radius: 999px;
+  padding: 3px 8px;
+  background: #f6f8fa;
+  white-space: nowrap;
+}
+
 .plain-field-acceptance-step {
   display: grid;
   grid-template-columns: minmax(96px, 0.42fr) auto minmax(180px, 1fr) auto;
