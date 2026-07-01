@@ -528,6 +528,8 @@ describe("robotControlSummary", () => {
     expect(summary.camera_shared_preview_realtime_plain).toContain("当前没有实时画面");
     expect(summary.camera_wysiwyg_recovery_status).toBe("needs_probe");
     expect(summary.camera_wysiwyg_recovery_next_action_plain).toBe(summary.live_closure_summary?.live_wysiwyg_camera_recovery_next_action_plain);
+    expect(summary.camera_wysiwyg_recovery_sequence).toEqual(summary.live_closure_summary?.live_wysiwyg_camera_recovery_sequence);
+    expect(summary.camera_wysiwyg_recovery_sequence_labels).toEqual(summary.live_closure_summary?.live_wysiwyg_camera_recovery_sequence_labels);
     expect(summary.live_wysiwyg_camera_recovery_status).toBe(summary.live_closure_summary?.live_wysiwyg_camera_recovery_status);
     expect(summary.live_wysiwyg_camera_recovery_next_action_plain).toBe(summary.live_closure_summary?.live_wysiwyg_camera_recovery_next_action_plain);
     expect(summary.live_wysiwyg_camera_recovery_sequence).toEqual(summary.live_closure_summary?.live_wysiwyg_camera_recovery_sequence);
@@ -1756,6 +1758,9 @@ describe("robotControlSummary", () => {
       "/api/robot-control/summary",
     ]);
     expect(summary.camera_reprobe_sequence).toEqual(summary.live_closure_summary?.camera_reprobe_sequence);
+    expect(summary.camera_reprobe_sequence_labels).toEqual(summary.live_closure_summary?.live_wysiwyg_camera_recovery_sequence_labels);
+    expect(summary.camera_reprobe_sequence_sends_motion).toBe(false);
+    expect(summary.camera_hardware_action_next_action_plain).toContain("换高速USB后复测");
     expect(summary.camera_recovery_starts_map_runtime).toBe(false);
     expect(summary.live_closure_summary?.objective_audit_summary_plain).toContain("画面未显示（换高速USB后复测）");
     expect(summary.live_closure_summary?.objective_audit_summary_plain).not.toContain("画面/地图/雷达点");
@@ -1995,6 +2000,10 @@ describe("robotControlSummary", () => {
       "读取共享预览状态",
       "刷新当前卡点",
     ]);
+    expect(summary.mapping_unblock_camera_recovery_next_action_plain).toBe(summary.live_closure_summary?.mapping_unblock_camera_recovery_next_action_plain);
+    expect(summary.mapping_unblock_camera_recovery_sequence).toEqual(summary.live_closure_summary?.mapping_unblock_camera_recovery_sequence);
+    expect(summary.mapping_unblock_camera_recovery_sequence_labels).toEqual(summary.live_closure_summary?.mapping_unblock_camera_recovery_sequence_labels);
+    expect(summary.mapping_unblock_camera_recovery_sends_motion).toBe(false);
     expect(summary.live_closure_summary?.camera_hardware_action_required).toBe(false);
     expect(summary.live_closure_summary?.camera_hardware_action_label).toBe("复测相机首帧");
     expect(summary.live_closure_summary?.camera_usb_full_speed_detected).toBe(false);
@@ -2010,6 +2019,9 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.mapping_unblock_camera_recovery_sends_motion).toBe(false);
     expect(summary.live_closure_summary?.fixed_mapping_unblock_camera_probe_endpoint).toBe("/api/robot-control/camera/first-frame/probe");
     expect(summary.live_closure_summary?.fixed_mapping_unblock_camera_mjpeg_status_endpoint).toBe("/api/robot-control/camera/mjpeg/status");
+    expect(summary.fixed_mapping_unblock_camera_probe_endpoint).toBe("/api/robot-control/camera/first-frame/probe");
+    expect(summary.fixed_mapping_unblock_camera_mjpeg_status_endpoint).toBe("/api/robot-control/camera/mjpeg/status");
+    expect(summary.fixed_mapping_unblock_summary_endpoint).toBe("/api/robot-control/summary");
     expect(summary.live_closure_summary?.mapping_unblock_sends_motion_when_clicked).toBe(false);
     expect(summary.live_closure_summary?.fixed_mapping_start_endpoint).toBe("/api/robot-control/map/start");
     expect(summary.fixed_mapping_start_endpoint).toBe("/api/robot-control/map/start");

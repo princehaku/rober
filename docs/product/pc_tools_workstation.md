@@ -4983,3 +4983,9 @@ full-speed 或 UVC 传输问题时，现场硬件动作仍提示“换高速USB�
 和 `keyboard_continuous_post_hold_summary_refresh_required`。这些字段与 `live_closure_summary` 的轮速复验、键盘按住后读回合同保持同源，
 现场脚本不必解析 nested summary 就能看到“重跑图上行程后读地图/latest/轮速/送达/summary”和“键盘松开后读轮速采样并刷新 summary”。
 该变化只补只读 summary 合同，不执行 Nav2、不发送 keyboard/manual/stop，不提交送达，也不启动 ROS2、RViz2、Foxglove 或建图 runtime。
+
+2026-07-02 07:23 CST 起，相机 WYSIWYG 恢复和建图解锁恢复的只读序列也在 summary 顶层直接可读：
+`camera_wysiwyg_recovery_sequence`、`camera_wysiwyg_recovery_sequence_labels`、`camera_reprobe_sequence_labels`、
+`camera_reprobe_sequence_sends_motion`、`camera_hardware_action_next_action_plain`、`mapping_unblock_camera_recovery_sequence`
+及其 labels/endpoint 字段。现场换高速 USB 口/线后，脚本可以按“首帧 probe -> MJPEG status -> summary”复测，
+同时知道这条链路 `sends_motion=false`，不会启动 Nav2、keyboard/manual、free-roam、delivery、stop、RViz2/Foxglove 或建图 runtime。
