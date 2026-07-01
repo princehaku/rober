@@ -3871,6 +3871,11 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   field_acceptance_wysiwyg_refresh_sequence?: RobotControlFieldAcceptancePacket["wysiwyg_refresh_sequence"];
   field_acceptance_wysiwyg_refresh_sequence_labels?: RobotControlFieldAcceptancePacket["wysiwyg_refresh_sequence_labels"];
   field_acceptance_wysiwyg_refresh_mode?: RobotControlFieldAcceptanceWysiwygRefreshMode;
+  field_acceptance_wysiwyg_refreshes_camera_first_frame_probe?: RobotControlFieldAcceptancePacket["wysiwyg_refreshes_camera_first_frame_probe"];
+  field_acceptance_wysiwyg_refreshes_camera_mjpeg_status?: RobotControlFieldAcceptancePacket["wysiwyg_refreshes_camera_mjpeg_status"];
+  field_acceptance_wysiwyg_refreshes_radar_scan_proof?: RobotControlFieldAcceptancePacket["wysiwyg_refreshes_radar_scan_proof"];
+  field_acceptance_wysiwyg_refreshes_radar_status?: RobotControlFieldAcceptancePacket["wysiwyg_refreshes_radar_status"];
+  field_acceptance_wysiwyg_refreshes_map_preview?: RobotControlFieldAcceptancePacket["wysiwyg_refreshes_map_preview"];
   field_acceptance_wysiwyg_refresh_sends_motion?: RobotControlFieldAcceptancePacket["wysiwyg_refresh_sends_motion"];
   field_acceptance_wysiwyg_refresh_starts_nav2?: RobotControlFieldAcceptancePacket["wysiwyg_refresh_starts_nav2"];
   field_acceptance_wysiwyg_refresh_starts_manual?: RobotControlFieldAcceptancePacket["wysiwyg_refresh_starts_manual"];

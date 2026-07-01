@@ -4989,3 +4989,10 @@ full-speed 或 UVC 传输问题时，现场硬件动作仍提示“换高速USB�
 `camera_reprobe_sequence_sends_motion`、`camera_hardware_action_next_action_plain`、`mapping_unblock_camera_recovery_sequence`
 及其 labels/endpoint 字段。现场换高速 USB 口/线后，脚本可以按“首帧 probe -> MJPEG status -> summary”复测，
 同时知道这条链路 `sends_motion=false`，不会启动 Nav2、keyboard/manual、free-roam、delivery、stop、RViz2/Foxglove 或建图 runtime。
+
+2026-07-02 07:28 CST 起，现场验收 WYSIWYG 刷新能力标记也在 summary 顶层补齐：
+`field_acceptance_wysiwyg_refreshes_camera_first_frame_probe`、`field_acceptance_wysiwyg_refreshes_camera_mjpeg_status`、
+`field_acceptance_wysiwyg_refreshes_radar_scan_proof`、`field_acceptance_wysiwyg_refreshes_radar_status` 和
+`field_acceptance_wysiwyg_refreshes_map_preview`。当当前所见同时缺相机和雷达地图点时，现场脚本可以直接确认这条
+`all_wysiwyg` 序列会复测相机、刷新雷达扫描、读取雷达状态并刷新地图画面；这些标记仍只描述只读刷新，不发车、不启动雷达 lifecycle、
+不启动建图 runtime，也不发送 `/cmd_vel`。

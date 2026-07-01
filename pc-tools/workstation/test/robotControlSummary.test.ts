@@ -878,6 +878,11 @@ describe("robotControlSummary", () => {
       "/api/robot-control/camera/mjpeg/status",
       "/api/robot-control/summary",
     ]);
+    expect(summary.field_acceptance_wysiwyg_refreshes_radar_scan_proof).toBe(true);
+    expect(summary.field_acceptance_wysiwyg_refreshes_radar_status).toBe(true);
+    expect(summary.field_acceptance_wysiwyg_refreshes_map_preview).toBe(true);
+    expect(summary.field_acceptance_wysiwyg_refreshes_camera_first_frame_probe).toBe(true);
+    expect(summary.field_acceptance_wysiwyg_refreshes_camera_mjpeg_status).toBe(true);
     expect(summary.field_acceptance_parallel_safety_action_id).toBe("run_nav2_route");
     expect(summary.field_acceptance_parallel_safety_action_start_endpoint).toBe("/api/robot-control/nav2/goal/execute");
     expect(summary.field_acceptance_parallel_safety_action_acceptance_endpoints).toEqual([
@@ -2164,6 +2169,11 @@ describe("robotControlSummary", () => {
     expect(summary.field_acceptance_packet?.wysiwyg_refreshes_radar_scan_proof).toBe(false);
     expect(summary.field_acceptance_packet?.wysiwyg_refreshes_map_preview).toBe(false);
     expect(summary.field_acceptance_packet?.wysiwyg_refreshes_radar_status).toBe(false);
+    expect(summary.field_acceptance_wysiwyg_refreshes_camera_first_frame_probe).toBe(true);
+    expect(summary.field_acceptance_wysiwyg_refreshes_camera_mjpeg_status).toBe(true);
+    expect(summary.field_acceptance_wysiwyg_refreshes_radar_scan_proof).toBe(false);
+    expect(summary.field_acceptance_wysiwyg_refreshes_map_preview).toBe(false);
+    expect(summary.field_acceptance_wysiwyg_refreshes_radar_status).toBe(false);
     expect(summary.field_acceptance_no_motion_readback_action_ids).toEqual([
       "readback_all",
       "refresh_camera_first_frame",
