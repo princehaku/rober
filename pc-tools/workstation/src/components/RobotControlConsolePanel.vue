@@ -4182,18 +4182,45 @@ const plainLiveWheelFeedbackReadback = computed(() => {
   const latestRight = summary?.wheel_rerun_latest_raw_right || "not_loaded";
   const actionLabels = wheelRows.map((item) => item.label).join("、") || "暂无";
   const proven = Boolean(summary?.wheel_lr_nonzero_proven && summary.keyboard_motion_verified);
+  const hasNav2SameWindowGap = wheelRows.some((item) => item.id === "run_nav2_route");
+  const hasKeyboardHoldGap = wheelRows.some((item) => item.id === "hold_keyboard");
+  const primaryActionId = hasNav2SameWindowGap ? "run_nav2_route" : "hold_keyboard";
+  const readbackEndpoints = hasNav2SameWindowGap
+    ? (plainTripClosureReadbackSummary.value.acceptanceEndpoints ?? [
+      "/api/robot-control/map/preview",
+      "/api/robot-control/nav2/goal/execution/latest",
+      "/api/robot-control/base/feedback-samples",
+      "/api/robot-control/delivery/latest",
+      "/api/robot-control/summary",
+    ])
+    : ["/api/robot-control/base/feedback-samples", "/api/robot-control/summary"];
+  const scope = hasNav2SameWindowGap && hasKeyboardHoldGap
+    ? "nav2_same_window_and_keyboard_hold"
+    : hasNav2SameWindowGap
+      ? "nav2_same_window"
+      : "keyboard_hold";
+  const scopePlain = hasNav2SameWindowGap && hasKeyboardHoldGap
+    ? "完整行程看执行窗口轮速，键盘看按住窗口轮速"
+    : hasNav2SameWindowGap
+      ? "完整行程必须读同一次执行窗口的轮速"
+      : "键盘必须读同一次按住窗口的轮速";
   return {
     visible: wheelRows.length > 0,
     state: proven ? "已证明" : "待轮速",
     actionIds: wheelRows.map((item) => item.id),
     actionLabels,
+    primaryActionId,
+    scope,
+    scopePlain,
+    nav2SameWindowRequired: hasNav2SameWindowGap,
+    keyboardHoldWindowRequired: hasKeyboardHoldGap,
     sampleCount,
     nonzeroSampleCount,
     latestLeft,
     latestRight,
-    text: `轮速验收：wheel L/R=${latestLeft}/${latestRight}；样本 ${sampleCount} 个，非零 ${nonzeroSampleCount} 个；影响：${actionLabels}。下一步：勾现场安全确认后执行对应动作，再读回轮速。`,
-    readbackEndpoints: ["/api/robot-control/base/feedback-samples", "/api/robot-control/summary"],
-    readbackPending: liveMotionRunbookReadbackPendingAction.value === "hold_keyboard",
+    text: `轮速验收：wheel L/R=${latestLeft}/${latestRight}；样本 ${sampleCount} 个，非零 ${nonzeroSampleCount} 个；影响：${actionLabels}；${scopePlain}。下一步：勾现场安全确认后执行对应动作，再读回轮速。`,
+    readbackEndpoints,
+    readbackPending: liveMotionRunbookReadbackPendingAction.value === primaryActionId,
     readbackDisabled: liveMotionRunbookReadbackPendingAction.value !== null || !robotApiBaseUrl.value.trim(),
   };
 });
@@ -17405,6 +17432,11 @@ onBeforeUnmount(() => {
             :data-state="plainLiveWheelFeedbackReadback.state"
             :data-action-ids="plainLiveWheelFeedbackReadback.actionIds.join(',') || 'none'"
             :data-action-labels="plainLiveWheelFeedbackReadback.actionLabels"
+            :data-primary-action-id="plainLiveWheelFeedbackReadback.primaryActionId"
+            :data-wheel-readback-scope="plainLiveWheelFeedbackReadback.scope"
+            :data-wheel-readback-scope-plain="plainLiveWheelFeedbackReadback.scopePlain"
+            :data-nav2-same-window-required="String(plainLiveWheelFeedbackReadback.nav2SameWindowRequired)"
+            :data-keyboard-hold-window-required="String(plainLiveWheelFeedbackReadback.keyboardHoldWindowRequired)"
             :data-latest-wheel-raw-left="plainLiveWheelFeedbackReadback.latestLeft"
             :data-latest-wheel-raw-right="plainLiveWheelFeedbackReadback.latestRight"
             :data-feedback-sample-count="plainLiveWheelFeedbackReadback.sampleCount"
@@ -17439,7 +17471,7 @@ onBeforeUnmount(() => {
               data-starts-map-runtime="false"
               data-submits-delivery="false"
               data-stops-motion="false"
-              @click="refreshLiveMotionRunbookReadback('hold_keyboard')"
+              @click="refreshLiveMotionRunbookReadback(plainLiveWheelFeedbackReadback.primaryActionId)"
             >
               {{ plainLiveWheelFeedbackReadback.readbackPending ? "读回中" : "读回轮速" }}
             </button>
