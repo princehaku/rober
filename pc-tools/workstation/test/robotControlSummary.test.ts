@@ -128,8 +128,15 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.delivery_complete_sends_motion).toBe(false);
     expect(summary.live_closure_summary?.primary_action_id).toBe("run_nav2_route");
     expect(summary.live_closure_summary?.keyboard_continuous_ready).toBe(true);
+    expect(summary.keyboard_continuous_ready).toBe(true);
+    expect(summary.keyboard_ready).toBe(true);
     expect(summary.live_closure_summary?.keyboard_continuous_motion_verified).toBe(false);
+    expect(summary.keyboard_continuous_motion_verified).toBe(false);
     expect(summary.live_closure_summary?.keyboard_continuous_forwarded_pulses).toBe(0);
+    expect(summary.keyboard_enable_sends_motion).toBe(false);
+    expect(summary.keyboard_manual_endpoint).toBe("/api/robot-control/base/manual");
+    expect(summary.keyboard_stop_endpoint).toBe("/api/robot-control/base/stop");
+    expect(summary.keyboard_feedback_readback_endpoint).toBe("/api/robot-control/base/feedback-samples");
     expect(summary.live_closure_summary?.objective_audit_status).toBe("in_progress");
     expect(summary.live_closure_summary?.objective_audit_total_count).toBe(4);
     expect(summary.live_closure_summary?.objective_audit_done_count).toBeGreaterThanOrEqual(1);
@@ -302,7 +309,9 @@ describe("robotControlSummary", () => {
       "其它缺口：画面所见即所得、雷达点贴到地图、传感器就绪后建图；可先做：自由自助移动、键盘连续手控、完整行程执行。",
     );
     expect(summary.live_closure_summary?.live_wysiwyg_ready).toBe(false);
+    expect(summary.live_wysiwyg_ready).toBe(false);
     expect(summary.live_closure_summary?.live_wysiwyg_missing_surface_ids).toEqual(["camera", "radar_map_points"]);
+    expect(summary.live_wysiwyg_missing_surface_ids).toEqual(["camera", "radar_map_points"]);
     expect(summary.live_closure_summary?.live_wysiwyg_needs_refresh).toBe(true);
     expect(summary.live_closure_summary?.live_wysiwyg_readback_gap_surface_ids).toEqual([]);
     expect(summary.live_closure_summary?.live_wysiwyg_primary_readback_gap_surface_id).toBe("none");
@@ -315,7 +324,9 @@ describe("robotControlSummary", () => {
       "刷新雷达扫描读数",
     ]);
     expect(summary.live_closure_summary?.live_wysiwyg_primary_refresh_endpoint).toBe("/api/robot-control/camera/first-frame/probe");
+    expect(summary.live_wysiwyg_primary_refresh_endpoint).toBe("/api/robot-control/camera/first-frame/probe");
     expect(summary.live_closure_summary?.live_wysiwyg_primary_refresh_label).toBe("复测相机首帧");
+    expect(summary.live_wysiwyg_refresh_sends_motion).toBe(false);
     expect(summary.live_closure_summary?.live_wysiwyg_camera_probe_failure_reason).toBe("none");
     expect(summary.live_closure_summary?.live_wysiwyg_camera_source_diagnosis_status).toBe("not_loaded");
     expect(summary.live_closure_summary?.live_wysiwyg_camera_source_diagnosis_not_exclusive).toBe("not_loaded");
@@ -333,6 +344,11 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.camera_recovery_next_action_plain).toBe(summary.live_closure_summary?.live_wysiwyg_camera_recovery_next_action_plain);
     expect(summary.live_closure_summary?.fixed_camera_probe_endpoint).toBe("/api/robot-control/camera/first-frame/probe");
     expect(summary.live_closure_summary?.fixed_camera_mjpeg_status_endpoint).toBe("/api/robot-control/camera/mjpeg/status");
+    expect(summary.camera_current_visible).toBe(false);
+    expect(summary.radar_map_points_visible).toBe(false);
+    expect(summary.radar_overlay_status).toBe(summary.live_closure_summary?.radar_overlay_status);
+    expect(summary.radar_overlay_current_point_count).toBe(summary.live_closure_summary?.radar_overlay_current_point_count);
+    expect(summary.radar_overlay_source_point_count).toBe(summary.live_closure_summary?.radar_overlay_source_point_count);
     expect(summary.live_closure_summary?.camera_recovery_sends_motion).toBe(false);
     expect(summary.live_closure_summary?.camera_recovery_starts_map_runtime).toBe(false);
     expect(summary.live_closure_summary?.live_wysiwyg_camera_recovery_sequence).toEqual([
@@ -818,6 +834,12 @@ describe("robotControlSummary", () => {
     });
 
     expect(summary.live_closure_summary?.free_move_start_ready).toBe(true);
+    expect(summary.free_move_start_ready).toBe(true);
+    expect(summary.free_roam_ready).toBe(true);
+    expect(summary.free_roam_motion_start_ready).toBe(true);
+    expect(summary.free_roam_motion_ready).toBe(false);
+    expect(summary.free_move_without_camera_allowed).toBe(true);
+    expect(summary.free_roam_motion_without_radar_allowed).toBe(true);
     expect(summary.live_closure_summary?.free_move_minimal_precheck_safety_only).toBe(true);
     expect(summary.live_closure_summary?.free_move_safety_confirm_required).toBe(true);
     expect(summary.live_closure_summary?.free_move_camera_preflight_required).toBe(false);
@@ -827,9 +849,13 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.fixed_free_roam_start_endpoint).toBe("/api/robot-control/free-roam/autonomy/start");
     expect(summary.live_closure_summary?.fixed_free_roam_stop_endpoint).toBe("/api/robot-control/free-roam/autonomy/stop");
     expect(summary.live_closure_summary?.mapping_start_ready).toBe(false);
+    expect(summary.mapping_start_ready).toBe(false);
+    expect(summary.free_roam_mapping_start_ready).toBe(false);
     expect(summary.live_closure_summary?.mapping_start_requires_camera_first_frame).toBe(true);
     expect(summary.live_closure_summary?.mapping_start_requires_lidar_fresh).toBe(true);
     expect(summary.live_closure_summary?.mapping_start_missing_reasons).toEqual(["camera_first_frame", "lidar_fresh"]);
+    expect(summary.mapping_start_missing_reasons).toEqual(["camera_first_frame", "lidar_fresh"]);
+    expect(summary.free_roam_mapping_start_missing_reasons).toEqual(["camera_first_frame", "lidar_fresh"]);
     expect(summary.live_closure_summary?.mapping_acceptance_missing_reasons).toEqual([
       "camera_first_frame",
       "lidar_fresh",
