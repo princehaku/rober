@@ -9079,6 +9079,10 @@ function buildLiveClosureSummary(
   const radarSurfaceMissingEvidence = radarMapPointsVisible
     ? []
     : Array.from(new Set(mapRadarBlockedReasons.length > 0 ? mapRadarBlockedReasons : ["radar_current_map_points_visible"]));
+  const cameraUsbSpeed = readback.camera.uvc_usb_topology_video_usb_speed || "not_loaded";
+  const cameraUsbFullSpeedDetected = cameraUsbSpeed === "12M" || readback.camera.source_diagnosis_status === "uvc_full_speed_usb_not_exclusive";
+  const cameraHardwareActionRequired = cameraUsbFullSpeedDetected && !cameraCurrentVisible;
+  const cameraHardwareActionLabel = cameraHardwareActionRequired ? "换高速USB后复测" : "复测相机首帧";
   const liveWysiwygSurfaceSummaries: NonNullable<RobotControlSummaryResponse["live_closure_summary"]>["live_wysiwyg_surface_summaries"] = [
     {
       id: "camera",
@@ -9130,8 +9134,17 @@ function buildLiveClosureSummary(
     .filter((surface): surface is RobotControlLiveWysiwygSurfaceSummary => Boolean(surface));
   const liveWysiwygMissingSurfaceRefreshEndpoints = liveWysiwygMissingSurfaceRefreshItems.map((surface) => surface.fixed_refresh_endpoint);
   const liveWysiwygMissingSurfaceRefreshLabels = liveWysiwygMissingSurfaceRefreshItems.map((surface) => liveWysiwygSurfaceLabel(surface.id));
-  const liveWysiwygPrimaryRefreshEndpoint = liveWysiwygMissingSurfaceRefreshEndpoints[0] ?? "none";
-  const liveWysiwygPrimaryRefreshLabel = liveWysiwygMissingSurfaceRefreshLabels[0] ?? "无";
+  const liveWysiwygPrimaryRefreshItem = (
+    // 相机已经诊断成硬件/USB blocker 时，优先给普通用户一个能 no-motion 修复的雷达贴图动作。
+    cameraHardwareActionRequired
+      ? liveWysiwygMissingSurfaceRefreshItems.find((surface) => surface.id === "radar_map_points")
+      : null
+  ) ?? liveWysiwygMissingSurfaceRefreshItems[0] ?? null;
+  const liveWysiwygPrimarySurfaceId = liveWysiwygPrimaryRefreshItem?.id ?? "none";
+  const liveWysiwygPrimaryRefreshEndpoint = liveWysiwygPrimaryRefreshItem?.fixed_refresh_endpoint ?? "none";
+  const liveWysiwygPrimaryRefreshLabel = liveWysiwygPrimaryRefreshItem
+    ? liveWysiwygSurfaceLabel(liveWysiwygPrimaryRefreshItem.id)
+    : "无";
   const freeMoveStartReady = boundary.free_roam_motion_start_ready || goalSummary.ready_action_ids.includes("free_move");
   const freeRoamMotionReady = readback.free_roam.free_roam_motion_ready === "true" || readback.free_roam.motion_ready === "true";
   const rawMappingStartMissingReasons = boundary.free_roam_mapping_start_missing_reasons;
@@ -9188,10 +9201,6 @@ function buildLiveClosureSummary(
       : "相机首帧已满足。";
     return `建图启动还差：${mappingStartMissingPlain}；自由移动仍可先做，不被相机/雷达画面缺口阻塞。${cameraTail}；只读复测相机首帧和 MJPEG 状态，首帧 ready 后再启动建图。`;
   })();
-  const cameraUsbSpeed = readback.camera.uvc_usb_topology_video_usb_speed || "not_loaded";
-  const cameraUsbFullSpeedDetected = cameraUsbSpeed === "12M" || readback.camera.source_diagnosis_status === "uvc_full_speed_usb_not_exclusive";
-  const cameraHardwareActionRequired = cameraUsbFullSpeedDetected && !cameraCurrentVisible;
-  const cameraHardwareActionLabel = cameraHardwareActionRequired ? "换高速USB后复测" : "复测相机首帧";
   const cameraReprobeSequence = [
     "/api/robot-control/camera/first-frame/probe",
     "/api/robot-control/camera/mjpeg/status",
@@ -9647,9 +9656,9 @@ function buildLiveClosureSummary(
       completed: wysiwygObjectiveCompleted,
       actionable: !wysiwygObjectiveCompleted,
       missing_count: 3 - wysiwygObjectiveDoneCount,
-      source_card_id: liveWysiwygMissingSurfaceIds.includes("camera")
+      source_card_id: liveWysiwygPrimarySurfaceId === "camera"
         ? "camera_preview"
-        : liveWysiwygMissingSurfaceIds.includes("radar_map_points")
+        : liveWysiwygPrimarySurfaceId === "radar_map_points"
           ? "radar_map_points"
           : "map_preview",
       sends_motion_when_clicked: false,

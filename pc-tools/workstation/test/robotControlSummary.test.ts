@@ -1154,6 +1154,12 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.objective_audit_summary_plain).toContain("画面未显示（换高速USB后复测）");
     expect(summary.live_closure_summary?.objective_audit_summary_plain).not.toContain("画面/地图/雷达点");
     expect(summary.live_closure_summary?.live_wysiwyg_missing_surface_ids).toContain("camera");
+    expect(summary.live_closure_summary?.live_wysiwyg_missing_surface_ids).toContain("radar_map_points");
+    expect(summary.live_closure_summary?.live_wysiwyg_primary_refresh_endpoint).toBe("/api/robot-control/radar/scan-proof/refresh");
+    expect(summary.live_closure_summary?.live_wysiwyg_primary_refresh_label).toBe("刷新雷达扫描读数");
+    const wysiwygObjective = summary.live_closure_summary?.objective_audit_items.find((item) => item.id === "wysiwyg");
+    expect(wysiwygObjective?.next_action_plain).toBe("下一步：刷新雷达扫描读数。");
+    expect(wysiwygObjective?.source_card_id).toBe("radar_map_points");
   });
 
   it("separates free movement from mapping sensor readiness in live closure", async () => {
