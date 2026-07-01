@@ -52,6 +52,13 @@ manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
 `refresh_radar_map_overlay` / `POST /api/robot-control/radar/scan-proof/refresh`；只有相机缺口时，primary 指向当前所见刷新。
 这些动作仍只读，不启动 Nav2/manual/keyboard/free-roam/建图/雷达 lifecycle，不提交送达，不发送 stop 或 `/cmd_vel`。
 
+2026-07-01 23:52 CST 起，现场验收包在普通首屏新增“设备处理”区域：
+当 summary 返回 `field_acceptance_hardware_actions[]`（例如 `camera_usb_recovery`）时，PC 会直接显示“换高速USB后复测”、
+是否阻塞建图首帧、是否不挡自由移动，并提供“换好后复测”按钮。按钮只执行处理后的只读复测链路
+（相机首帧探针、MJPEG 状态、summary 刷新），DOM 固定暴露 `data-sends-motion-when-clicked=false`、
+`data-starts-map-runtime=false`、`data-starts-free-roam=false` 和 `data-starts-radar-lifecycle=false`；
+它不启动 Nav2/manual/keyboard/free-roam/建图/雷达 lifecycle，不提交送达，不发送 stop 或 `/cmd_vel`。
+
 2026-07-01 23:47 CST 起，现场验收包把平铺缺失清单做成普通首屏可见的“还差项目”区域：
 每一行显示缺口、对应动作、读回对象和是否需要先完成动作，例如“同窗口轮速 L/R 非零：需要先完成对应动作，归属完整行程执行；
 复验读轮速采样”。真实 endpoint、method 和安全门禁仍保留在 DOM data 属性里供自动验收脚本读取，但普通可见文案不显示

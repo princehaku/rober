@@ -863,6 +863,27 @@ h3 {
   white-space: nowrap;
 }
 
+.plain-field-acceptance-hardware-actions {
+  /* 设备处理是现场人手动作，放在验收卡内提醒，但按钮只做处理后的只读复测。 */
+  display: grid;
+  gap: 6px;
+  border: 1px solid #d8dee6;
+  border-left: 3px solid #bf8700;
+  border-radius: 6px;
+  padding: 8px;
+  background: #fff8c5;
+}
+
+.plain-field-acceptance-hardware-action-row {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  color: #24292f;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
 .plain-field-acceptance-missing-evidence {
   /* 缺口清单服务现场逐项复验；它只解释证据和读回端点，不提供发车按钮。 */
   display: grid;

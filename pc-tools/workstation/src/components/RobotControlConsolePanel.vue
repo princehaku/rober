@@ -70,6 +70,7 @@ import type {
   RobotControlNav2RouteAcceptancePacket,
   RobotControlFieldAcceptanceStep,
   RobotControlFieldAcceptancePacket,
+  RobotControlFieldAcceptanceHardwareAction,
   RobotControlFieldAcceptanceMissingEvidenceItem,
   RobotControlLiveClosureSummary,
   RobotControlSummaryResponse,
@@ -4307,6 +4308,25 @@ const plainFieldAcceptanceHardwareActionLabelsText = computed(() => (
 ));
 const plainFieldAcceptanceHardwareActionAfterReadbackEndpointsText = computed(() => (
   plainFieldAcceptancePacket.value?.hardware_action_after_readback_endpoints.join(",") || "none"
+));
+const fieldAcceptanceHardwareReadbackPendingAction = ref<string | null>(null);
+function plainFieldAcceptanceHardwareActionState(action: RobotControlFieldAcceptanceHardwareAction): string {
+  // 硬件动作不是网页能自动完成的事情；状态只提示先处理设备，再做只读复测。
+  return action.blocks_mapping_start ? "先处理设备" : "可复测";
+}
+const plainFieldAcceptanceHardwareActionRows = computed(() => (
+  (plainFieldAcceptancePacket.value?.hardware_actions ?? []).map((action) => {
+    const state = plainFieldAcceptanceHardwareActionState(action);
+    const mappingText = action.blocks_mapping_start ? "影响建图首帧" : "不影响建图";
+    const freeMoveText = action.blocks_free_move ? "会影响自由移动" : "不挡自由移动";
+    return {
+      ...action,
+      state,
+      busy: fieldAcceptanceHardwareReadbackPendingAction.value === action.id,
+      readbackText: action.after_action_readback_label,
+      text: `${action.label}：${plainActionCardUserText(action.summary_plain)} ${mappingText}，${freeMoveText}。处理后点“换好后复测”只读复查。`,
+    };
+  })
 ));
 const plainFieldAcceptanceMissingEvidenceIdsText = computed(() => (
   plainFieldAcceptancePacket.value?.missing_evidence_ids?.join(",") || "none"
@@ -15532,6 +15552,24 @@ async function refreshFieldAcceptancePrimaryReadback(): Promise<void> {
   await refreshFieldAcceptanceWysiwygEvidence();
 }
 
+async function refreshFieldAcceptanceHardwareAction(actionId: string): Promise<void> {
+  // 设备动作需要人先在线下处理；按钮只在处理后做只读复测，不启动任何运动或建图 runtime。
+  const action = plainFieldAcceptancePacket.value?.hardware_actions.find((item) => item.id === actionId);
+  if (!action || fieldAcceptanceHardwareReadbackPendingAction.value !== null) {
+    return;
+  }
+  fieldAcceptanceHardwareReadbackPendingAction.value = action.id;
+  try {
+    if (action.after_action_readback_endpoint.includes("/camera/first-frame/probe")) {
+      await refreshMappingCameraRecovery();
+      return;
+    }
+    await refreshConsole();
+  } finally {
+    fieldAcceptanceHardwareReadbackPendingAction.value = null;
+  }
+}
+
 async function refreshPlainMappingUnlockEvidence(): Promise<void> {
   // 建图解锁条件必须复测相机首帧和雷达新扫描，再读同轮地图画面；这仍是只读证据刷新，不启动建图或自由移动。
   await refreshPlainWysiwygEvidence();
@@ -18247,6 +18285,79 @@ onBeforeUnmount(() => {
           >
             {{ plainActionCardUserText(plainFieldAcceptancePacket.remaining_action_summary_plain) }}
           </p>
+          <div
+            v-if="plainFieldAcceptanceHardwareActionRows.length > 0"
+            class="plain-field-acceptance-hardware-actions"
+            data-testid="plain-field-acceptance-hardware-actions"
+            :data-hardware-action-ids="plainFieldAcceptanceHardwareActionIdsText"
+            :data-hardware-action-labels="plainFieldAcceptanceHardwareActionLabelsText"
+            :data-hardware-action-after-readback-endpoints="plainFieldAcceptanceHardwareActionAfterReadbackEndpointsText"
+            :data-primary-hardware-action-id="plainFieldAcceptancePacket.primary_hardware_action_id"
+            :data-primary-hardware-action-label="plainFieldAcceptancePacket.primary_hardware_action_label"
+            :data-primary-hardware-action-after-readback-endpoint="plainFieldAcceptancePacket.primary_hardware_action_after_readback_endpoint"
+            :data-primary-hardware-action-blocks-mapping-start="String(plainFieldAcceptancePacket.primary_hardware_action_blocks_mapping_start)"
+            :data-primary-hardware-action-blocks-free-move="String(plainFieldAcceptancePacket.primary_hardware_action_blocks_free_move)"
+            data-readback-only="true"
+            data-sends-motion-when-clicked="false"
+            data-starts-nav2="false"
+            data-starts-manual="false"
+            data-starts-keyboard="false"
+            data-starts-free-roam="false"
+            data-starts-map-runtime="false"
+            data-starts-radar-lifecycle="false"
+            data-submits-delivery="false"
+            data-stops-motion="false"
+          >
+            <span class="plain-progress-label">设备处理</span>
+            <span
+              v-for="action in plainFieldAcceptanceHardwareActionRows"
+              :key="action.id"
+              class="plain-field-acceptance-hardware-action-row"
+              :data-testid="`plain-field-acceptance-hardware-action-${action.id}`"
+              :data-action-id="action.id"
+              :data-action-label="action.label"
+              :data-state="action.state"
+              :data-after-action-readback-endpoint="action.after_action_readback_endpoint"
+              :data-after-action-readback-label="action.after_action_readback_label"
+              :data-after-action-readback-method="action.after_action_readback_method"
+              :data-blocks-camera-wysiwyg="String(action.blocks_camera_wysiwyg)"
+              :data-blocks-mapping-start="String(action.blocks_mapping_start)"
+              :data-blocks-free-move="String(action.blocks_free_move)"
+              :data-sends-motion-when-clicked="String(action.sends_motion_when_clicked)"
+              :data-starts-nav2="String(action.starts_nav2_when_clicked)"
+              :data-starts-manual="String(action.starts_manual_when_clicked)"
+              :data-starts-keyboard="String(action.starts_keyboard_when_clicked)"
+              :data-starts-free-roam="String(action.starts_free_roam_when_clicked)"
+              :data-starts-map-runtime="String(action.starts_map_runtime_when_clicked)"
+              :data-starts-radar-lifecycle="String(action.starts_radar_lifecycle_when_clicked)"
+              :data-submits-delivery="String(action.submits_delivery_when_clicked)"
+              :data-stops-motion="String(action.stops_motion_when_clicked)"
+            >
+              <span>{{ action.text }}</span>
+              <button
+                type="button"
+                class="secondary compact-stop"
+                :disabled="action.busy"
+                :data-testid="`plain-field-acceptance-hardware-action-readback-${action.id}`"
+                :data-action-id="action.id"
+                :data-readback-only="String(true)"
+                :data-after-action-readback-endpoint="action.after_action_readback_endpoint"
+                :data-after-action-readback-method="action.after_action_readback_method"
+                data-sends-motion-when-clicked="false"
+                data-starts-nav2="false"
+                data-starts-manual="false"
+                data-starts-keyboard="false"
+                data-starts-free-roam="false"
+                data-starts-map-runtime="false"
+                data-starts-radar-lifecycle="false"
+                data-submits-delivery="false"
+                data-stops-motion="false"
+                @click="refreshFieldAcceptanceHardwareAction(action.id)"
+              >
+                {{ action.busy ? "复测中" : "换好后复测" }}
+              </button>
+            </span>
+          </div>
           <div
             v-if="plainFieldAcceptanceMissingEvidenceRows.length > 0"
             class="plain-field-acceptance-missing-evidence"
