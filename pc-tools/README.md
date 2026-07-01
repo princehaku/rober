@@ -47,6 +47,12 @@ manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 `readback_all.sequence_endpoints` 的白名单顺序执行，白名单外 endpoint 跳过。该路径不启动雷达
 lifecycle、Nav2、manual、keyboard、free-roam、建图 runtime、delivery、stop 或 `/cmd_vel`。
 
+2026-07-02 CST 起，普通首屏 `执行图上路线` 在 execution forwarded 后，会按
+`nav2_route_acceptance_packet.readback_endpoints` 自动刷新执行后验收读回：地图预览、Nav2 latest、
+底盘 wheel feedback samples、delivery latest 和 summary。地图刷新保留 `tripExecutionRefresh`，
+用于判断执行后的地图画面是否真实刷新；这条读回链路不额外发送 manual、keyboard、free-roam、
+建图 runtime、雷达 lifecycle、delivery complete、stop 或 `/cmd_vel`。
+
 开发热更新入口用 `npm run dev`，默认监听 `0.0.0.0:7002`，并把 `/api` 代理到本机
 Node 工作站 `http://127.0.0.1:7001`。因此开发时先让 `npm run api` 守住 7001，
 再打开 7002 看热更新页；`dev:public` 只是复用 `npm run dev` 的兼容旧入口，正式现场访问仍优先使用 7001 的 Node/Express 工作站。

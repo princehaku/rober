@@ -16067,15 +16067,14 @@ async function runPlainTripExecution(): Promise<void> {
     return;
   }
   await runNavGoalExecution(routeGoal);
-  await refreshMapPreview({ tripExecutionRefresh: true });
   if (navGoalExecutionResult.value?.proxy_status === "execution_forwarded") {
-    await loadNavGoalExecutionLatest();
-    // latest proof 写盘后再读一次 summary，确保完整路线证据、wheel L/R 和 delivery gate 立刻回到首屏。
-    await refreshConsole();
+    // 执行成功后立即按验收包顺序刷新地图、latest、轮速、送达和 summary，避免现场手工逐个点读回。
+    await refreshNav2RoutePostExecutionReadbacks();
+  } else {
+    await refreshMapPreview({ tripExecutionRefresh: true });
   }
   fillDeliveryRouteRefFromLatestNav2();
   if (deliveryNav2GoalReady.value) {
-    await loadDeliveryLatest();
     await focusPlainDeliveryStatusPanel();
   }
 }
@@ -16134,6 +16133,49 @@ async function loadDeliveryLatest(options: { allowDuringMapRefresh?: boolean } =
     deliveryLatestResult.value = makeDeliveryLatestFallback(err instanceof Error ? err.message : "delivery_latest_request_failed");
   } finally {
     deliveryLatestPending.value = false;
+  }
+}
+
+async function refreshNav2RoutePostExecutionEndpoint(endpoint: string): Promise<void> {
+  // Nav2 执行后的验收读回只允许固定只读端点；地图读取保留 tripExecutionRefresh，便于 UI 标记执行后画面是否刷新成功。
+  if (!robotApiBaseUrl.value.trim()) {
+    return;
+  }
+  if (endpoint === "/api/robot-control/map/preview") {
+    await refreshMapPreview({ tripExecutionRefresh: true, radarStatusRefresh: true });
+    return;
+  }
+  if (endpoint === "/api/robot-control/nav2/goal/execution/latest") {
+    await loadNavGoalExecutionLatest({ allowDuringMapRefresh: true });
+    return;
+  }
+  if (endpoint === "/api/robot-control/base/feedback-samples") {
+    await runBaseFeedbackSamples({ refreshAfter: false, allowDuringMapRefresh: true });
+    return;
+  }
+  if (endpoint === "/api/robot-control/delivery/latest") {
+    await loadDeliveryLatest({ allowDuringMapRefresh: true });
+    return;
+  }
+  if (endpoint === "/api/robot-control/summary") {
+    await refreshConsole();
+  }
+}
+
+async function refreshNav2RoutePostExecutionReadbacks(): Promise<void> {
+  // 成功发车后的自动读回使用后端 route acceptance packet，避免 UI、summary 和验收脚本各刷一套端点。
+  const packetEndpoints = plainNav2RouteAcceptancePacket.value?.readback_endpoints ?? [];
+  const endpoints = packetEndpoints.length > 0
+    ? packetEndpoints
+    : [
+      "/api/robot-control/map/preview",
+      "/api/robot-control/nav2/goal/execution/latest",
+      "/api/robot-control/base/feedback-samples",
+      "/api/robot-control/delivery/latest",
+      "/api/robot-control/summary",
+    ];
+  for (const endpoint of endpoints) {
+    await refreshNav2RoutePostExecutionEndpoint(endpoint);
   }
 }
 

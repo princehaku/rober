@@ -15540,10 +15540,25 @@ describe("App", () => {
     const urls = mockedFetch.mock.calls.map(([url]) => String(url));
     const executeIndex = urls.findIndex((url) => url.startsWith("/api/robot-control/nav2/goal/execute?"));
     const latestIndex = urls.findIndex((url, index) => index > executeIndex && url.startsWith("/api/robot-control/nav2/goal/execution/latest?"));
+    const endpointOrderAfterExecute = urls
+      .slice(executeIndex + 1)
+      .filter((url) => url.startsWith("/api/robot-control/"))
+      .map((url) => url.split("?")[0] ?? "");
     const summaryAfterLatestIndex = urls.findIndex((url, index) => index > latestIndex && url.startsWith("/api/robot-control/summary?"));
     expect(summaryCalls).toBeGreaterThanOrEqual(3);
     expect(latestCalls).toBeGreaterThanOrEqual(2);
     expect(executeIndex).toBeGreaterThan(-1);
+    expect(endpointOrderAfterExecute).toEqual(expect.arrayContaining([
+      "/api/robot-control/map/preview",
+      "/api/robot-control/nav2/goal/execution/latest",
+      "/api/robot-control/base/feedback-samples",
+      "/api/robot-control/delivery/latest",
+      "/api/robot-control/summary",
+    ]));
+    expect(endpointOrderAfterExecute.indexOf("/api/robot-control/map/preview")).toBeLessThan(endpointOrderAfterExecute.indexOf("/api/robot-control/nav2/goal/execution/latest"));
+    expect(endpointOrderAfterExecute.indexOf("/api/robot-control/nav2/goal/execution/latest")).toBeLessThan(endpointOrderAfterExecute.indexOf("/api/robot-control/base/feedback-samples"));
+    expect(endpointOrderAfterExecute.indexOf("/api/robot-control/base/feedback-samples")).toBeLessThan(endpointOrderAfterExecute.indexOf("/api/robot-control/delivery/latest"));
+    expect(endpointOrderAfterExecute.indexOf("/api/robot-control/delivery/latest")).toBeLessThan(endpointOrderAfterExecute.lastIndexOf("/api/robot-control/summary"));
     expect(latestIndex).toBeGreaterThan(executeIndex);
     expect(summaryAfterLatestIndex).toBeGreaterThan(latestIndex);
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("行程：路线返回成功，轮速已复验 L/R=166/167。");
