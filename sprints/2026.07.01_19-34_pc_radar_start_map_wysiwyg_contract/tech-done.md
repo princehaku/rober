@@ -34,7 +34,7 @@ sprint_type: micro
 - `npm --prefix pc-tools/workstation test -- --run`
   - 通过：`Test Files 3 passed (3)`，`Tests 421 passed (421)`。
 - PC 7001 smoke：
-  - 已重启 PC 工作站到 `0.0.0.0:7001`，监听进程为 `node` PID `30064`。
+  - 已重启 PC 工作站到 `0.0.0.0:7001`；最终复核监听进程为 `node` PID `30096`。
   - `GET http://127.0.0.1:7001/` 返回 `200`。
   - `GET http://127.0.0.1:7001/map` 返回 `200`。
   - `GET http://127.0.0.1:7001/api/robot-control/summary` 返回 `radar_start_map_wysiwyg_required=true`，刷新顺序为 `/api/robot-control/radar/start,/api/robot-control/summary,/api/robot-control/radar/scan-proof/refresh,/api/robot-control/radar/status,/api/robot-control/map/preview`，且 `radar_start_sends_motion=false`、`radar_start_starts_nav2=false`、`radar_start_starts_manual=false`、`radar_start_starts_keyboard=false`、`radar_start_starts_free_roam=false`、`radar_start_starts_map_runtime=false`、`radar_start_submits_delivery=false`、`radar_start_stops_motion=false`。
