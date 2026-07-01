@@ -2798,6 +2798,7 @@ export interface RobotControlLiveClosureSummary {
   camera_current_visible: boolean;
   live_wysiwyg_camera_visible: boolean;
   map_current_visible: boolean;
+  path_current_visible: boolean;
   live_wysiwyg_map_visible: boolean;
   radar_map_points_visible: boolean;
   primary_action_id: RobotControlLiveMotionRunbookActionId | "none";

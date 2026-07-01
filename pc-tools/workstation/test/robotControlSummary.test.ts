@@ -118,6 +118,7 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.camera_current_visible).toBe(false);
     expect(summary.live_closure_summary?.live_wysiwyg_camera_visible).toBe(false);
     expect(summary.live_closure_summary?.map_current_visible).toBe(true);
+    expect(summary.live_closure_summary?.path_current_visible).toBe(true);
     expect(summary.live_closure_summary?.live_wysiwyg_map_visible).toBe(true);
     expect(summary.live_closure_summary?.primary_action_id).toBe("run_nav2_route");
     expect(summary.live_closure_summary?.keyboard_continuous_ready).toBe(true);

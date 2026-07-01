@@ -6836,6 +6836,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(live.wheel_lr_nonzero_proven).toBe(false);
       expect(live.delivery_success).toBe(false);
       expect(live.live_wysiwyg_map_visible).toBe(true);
+      expect(live.path_current_visible).toBe(true);
       expect(live.live_wysiwyg_camera_visible).toBe(false);
       expect(live.objective_audit_missing_objective_ids).toContain("motion");
       expect(live.sends_motion_when_clicked).toBe(false);

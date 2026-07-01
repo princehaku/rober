@@ -824,6 +824,7 @@ const fixtures: Record<string, unknown> = {
       camera_current_visible: false,
       live_wysiwyg_camera_visible: false,
       map_current_visible: true,
+      path_current_visible: true,
       live_wysiwyg_map_visible: true,
       radar_map_points_visible: false,
       primary_action_id: "run_nav2_route",
@@ -4939,6 +4940,7 @@ describe("App", () => {
     expect(liveClosureSummary.attributes("data-camera-current-visible")).toBe("false");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-camera-visible")).toBe("false");
     expect(liveClosureSummary.attributes("data-map-current-visible")).toBe("true");
+    expect(liveClosureSummary.attributes("data-path-current-visible")).toBe("true");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-map-visible")).toBe("true");
     expect(liveClosureSummary.attributes("data-radar-map-points-visible")).toBe("false");
     expect(liveClosureSummary.attributes("data-primary-action-id")).toBe("run_nav2_route");
@@ -8051,6 +8053,7 @@ describe("App", () => {
       next_action_plain: "先刷新当前所见，确认相机、地图和雷达贴图读数是否恢复。",
       camera_current_visible: false,
       map_current_visible: false,
+      path_current_visible: false,
       radar_map_points_visible: false,
       live_wysiwyg_ready: false,
       live_wysiwyg_missing_surface_ids: ["camera", "map", "radar_map_points"],
@@ -8131,6 +8134,7 @@ describe("App", () => {
       delivery_success: false,
       camera_current_visible: false,
       map_current_visible: true,
+      path_current_visible: true,
       radar_map_points_visible: false,
       live_wysiwyg_ready: false,
       live_wysiwyg_missing_surface_ids: ["camera", "radar_map_points"],

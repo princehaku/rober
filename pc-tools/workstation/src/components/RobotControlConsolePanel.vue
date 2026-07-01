@@ -16914,6 +16914,7 @@ onBeforeUnmount(() => {
         :data-camera-current-visible="String(plainLiveClosureSummary.camera_current_visible)"
         :data-live-wysiwyg-camera-visible="String(plainLiveClosureSummary.live_wysiwyg_camera_visible)"
         :data-map-current-visible="String(plainLiveClosureSummary.map_current_visible)"
+        :data-path-current-visible="String(plainLiveClosureSummary.path_current_visible)"
         :data-live-wysiwyg-map-visible="String(plainLiveClosureSummary.live_wysiwyg_map_visible)"
         :data-radar-map-points-visible="String(plainLiveClosureSummary.radar_map_points_visible)"
         :data-primary-action-id="plainLiveClosureSummary.primary_action_id"

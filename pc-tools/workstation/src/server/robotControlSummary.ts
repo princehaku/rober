@@ -8747,6 +8747,7 @@ function buildLiveClosureSummary(
   const deliveryClaimReady = operatorHilMaterialSummary.delivery_claim === "true";
   const cameraCurrentVisible = camera.evidence?.camera_current_frame_visible === true || camera.status === "visible";
   const mapCurrentVisible = map.evidence?.map_current_visible === true || map.status === "visible";
+  const pathCurrentVisible = readback.map.path_current_visible === "true" || routeReadyOnMap;
   const radarMapPointsVisible = radar.evidence?.current_on_map === true || radar.status === "current_on_map";
   const liveWysiwygMissingSurfaceIds = [
     ...(!cameraCurrentVisible ? ["camera"] : []),
@@ -9491,6 +9492,7 @@ function buildLiveClosureSummary(
     camera_current_visible: cameraCurrentVisible,
     live_wysiwyg_camera_visible: cameraCurrentVisible,
     map_current_visible: mapCurrentVisible,
+    path_current_visible: pathCurrentVisible,
     live_wysiwyg_map_visible: mapCurrentVisible,
     radar_map_points_visible: radarMapPointsVisible,
     primary_action_id: liveMotionRunbookPrimaryActionId,
