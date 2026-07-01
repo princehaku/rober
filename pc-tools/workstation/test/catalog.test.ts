@@ -12297,6 +12297,17 @@ describe("workstation fail-closed API contracts", () => {
         radar_overlay_source_point_count: string;
         radar_overlay_wysiwyg_status_plain: string;
         radar_overlay_wysiwyg_next_action_plain: string;
+        readback_only: boolean;
+        radar_status_readback_only: boolean;
+        sends_motion_when_clicked: boolean;
+        starts_radar_lifecycle: boolean;
+        starts_nav2: boolean;
+        starts_manual: boolean;
+        starts_keyboard: boolean;
+        starts_free_roam: boolean;
+        starts_map_runtime: boolean;
+        submits_delivery: boolean;
+        stops_motion: boolean;
         robot_control_executed: boolean;
       };
 
@@ -12373,6 +12384,17 @@ describe("workstation fail-closed API contracts", () => {
         radar_map_overlay_readiness_status: string;
         radar_map_overlay_next_action_plain: string;
         radar_overlay_wysiwyg_next_action_plain: string;
+        readback_only: boolean;
+        radar_status_readback_only: boolean;
+        sends_motion_when_clicked: boolean;
+        starts_radar_lifecycle: boolean;
+        starts_nav2: boolean;
+        starts_manual: boolean;
+        starts_keyboard: boolean;
+        starts_free_roam: boolean;
+        starts_map_runtime: boolean;
+        submits_delivery: boolean;
+        stops_motion: boolean;
         robot_control_executed: boolean;
       };
 
@@ -12385,6 +12407,17 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.radar_map_overlay_next_action_plain).toBe("先补齐雷达扫描材料：没有读到一帧雷达、雷达频率未确认、雷达原始包未确认；有新扫描后再刷新地图画面。");
       expect(body.radar_map_overlay_next_action_plain).not.toContain("raw_packet_once");
       expect(body.radar_overlay_wysiwyg_next_action_plain).toBe(body.radar_map_overlay_next_action_plain);
+      expect(body.readback_only).toBe(true);
+      expect(body.radar_status_readback_only).toBe(true);
+      expect(body.sends_motion_when_clicked).toBe(false);
+      expect(body.starts_radar_lifecycle).toBe(false);
+      expect(body.starts_nav2).toBe(false);
+      expect(body.starts_manual).toBe(false);
+      expect(body.starts_keyboard).toBe(false);
+      expect(body.starts_free_roam).toBe(false);
+      expect(body.starts_map_runtime).toBe(false);
+      expect(body.submits_delivery).toBe(false);
+      expect(body.stops_motion).toBe(false);
       expect(body.robot_control_executed).toBe(false);
       expect(upstream.receivedGets).toEqual(["/api/radar/status"]);
       expect(Object.keys(upstream.receivedBodies)).toEqual([]);

@@ -1591,6 +1591,34 @@ function radarStatusPlainFields(
   };
 }
 
+const RADAR_STATUS_READBACK_FLAGS = {
+  // radar/status 只读取雷达与贴图诊断，不启动 lifecycle，也不触发任何底盘/导航动作。
+  readback_only: true,
+  radar_status_readback_only: true,
+  sends_motion_when_clicked: false,
+  starts_radar_lifecycle: false,
+  starts_nav2: false,
+  starts_manual: false,
+  starts_keyboard: false,
+  starts_free_roam: false,
+  starts_map_runtime: false,
+  submits_delivery: false,
+  stops_motion: false,
+} satisfies Pick<
+  RobotControlRadarStatusResponse,
+  | "readback_only"
+  | "radar_status_readback_only"
+  | "sends_motion_when_clicked"
+  | "starts_radar_lifecycle"
+  | "starts_nav2"
+  | "starts_manual"
+  | "starts_keyboard"
+  | "starts_free_roam"
+  | "starts_map_runtime"
+  | "submits_delivery"
+  | "stops_motion"
+>;
+
 function evidenceReadbackSummary(
   endpoints: RobotControlEvidenceEndpointCapture[],
   phase: RobotControlEvidenceCapturePhase,
@@ -3883,6 +3911,7 @@ export function createWorkstationApp(): express.Express {
       remote_method: "GET",
       remote_http_status: null,
       status: "blocked",
+      ...RADAR_STATUS_READBACK_FLAGS,
       radar_key_values: {},
       ...radarStatusPlainFields({}),
       failure_reason: normalized.ok ? "" : normalized.reason,

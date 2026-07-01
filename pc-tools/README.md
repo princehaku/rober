@@ -63,6 +63,13 @@ null 后误以为 probe 可能会独占相机、启动建图或发车。
 `readback_all.sequence_endpoints` 的白名单顺序执行，白名单外 endpoint 跳过。该路径不启动雷达
 lifecycle、Nav2、manual、keyboard、free-roam、建图 runtime、delivery、stop 或 `/cmd_vel`。
 
+2026-07-02 CST 起，`GET /api/robot-control/radar/status` 回包直接声明
+`readback_only=true`、`radar_status_readback_only=true`，并固定
+`sends_motion_when_clicked=false`、`starts_radar_lifecycle=false`、`starts_nav2=false`、
+`starts_manual=false`、`starts_keyboard=false`、`starts_free_roam=false`、
+`starts_map_runtime=false`、`submits_delivery=false` 和 `stops_motion=false`。它只读取雷达状态和贴图诊断，
+不启动雷达 lifecycle、不发底盘/导航/键盘/自由移动/建图/送达/stop 指令。
+
 2026-07-02 CST 起，`GET /api/robot-control/summary` 顶层同步暴露四项目标短 alias：
 `objective_missing_ids`、`objective_next_id`、`motion_objective_complete`、`wysiwyg_objective_complete`、
 `precheck_objective_complete`、`mapping_objective_complete`。这些字段直接来自

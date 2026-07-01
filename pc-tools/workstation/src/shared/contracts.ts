@@ -4637,6 +4637,17 @@ export interface RobotControlRadarStatusResponse extends ProofFlags {
   remote_method: "GET";
   remote_http_status: number | null;
   status: "blocked" | "loaded_fail_closed_summary";
+  readback_only: true;
+  radar_status_readback_only: true;
+  sends_motion_when_clicked: false;
+  starts_radar_lifecycle: false;
+  starts_nav2: false;
+  starts_manual: false;
+  starts_keyboard: false;
+  starts_free_roam: false;
+  starts_map_runtime: false;
+  submits_delivery: false;
+  stops_motion: false;
   radar_key_values: Record<string, string>;
   plain_hint: string;
   next_action_plain: string;
