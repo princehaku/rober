@@ -3930,6 +3930,14 @@ const plainLiveClosureWysiwygMissingSurfaceIds = computed(() => {
 });
 const plainLiveClosureWysiwygReady = computed(() => plainLiveClosureSummary.value?.live_wysiwyg_ready ?? plainLiveClosureWysiwygMissingSurfaceIds.value === "none");
 const plainLiveClosureNeedsWysiwygRefresh = computed(() => plainLiveClosureSummary.value?.live_wysiwyg_needs_refresh ?? plainLiveClosureSummary.value?.status === "needs_wysiwyg");
+const plainLiveCameraRecoveryVisible = computed(() => {
+  // 相机首帧是“画面所见即所得”的独立缺口；当前卡点要给出只复测相机的入口，不强迫同时刷新雷达。
+  const summary = plainLiveClosureSummary.value;
+  if (!summary || summary.camera_current_visible) {
+    return false;
+  }
+  return summary.live_wysiwyg_camera_recovery_sequence?.includes("/api/robot-control/camera/first-frame/probe") ?? false;
+});
 const plainLiveRadarMapRefreshVisible = computed(() => {
   // 雷达贴图可以独立只读刷新；相机已知卡住时，不能强迫 operator 等相机 probe 才能收口雷达 WYSIWYG。
   const summary = plainLiveClosureSummary.value;
@@ -16819,6 +16827,68 @@ onBeforeUnmount(() => {
           {{ plainActionCardUserText(plainLiveClosureSummary.live_wysiwyg_diagnostic_plain) }}
           {{ plainActionCardUserText(plainLiveClosureSummary.live_wysiwyg_camera_recovery_next_action_plain) }}
           {{ plainActionCardUserText(plainLiveClosureSummary.live_wysiwyg_radar_map_refresh_next_action_plain) }}
+        </p>
+        <p
+          v-if="plainLiveCameraRecoveryVisible"
+          class="panel-note"
+          data-testid="plain-live-camera-recovery-readback"
+          :data-camera-probe-failure-reason="plainLiveClosureSummary.live_wysiwyg_camera_probe_failure_reason"
+          :data-camera-source-diagnosis-status="plainLiveClosureSummary.live_wysiwyg_camera_source_diagnosis_status"
+          :data-camera-source-diagnosis-not-exclusive="plainLiveClosureSummary.live_wysiwyg_camera_source_diagnosis_not_exclusive"
+          :data-camera-recovery-status="plainLiveClosureSummary.live_wysiwyg_camera_recovery_status"
+          :data-camera-recovery-next-action-plain="plainLiveClosureSummary.live_wysiwyg_camera_recovery_next_action_plain"
+          :data-camera-recovery-sequence="plainLiveClosureSummary.live_wysiwyg_camera_recovery_sequence?.join(',') || 'none'"
+          :data-camera-recovery-sequence-labels="plainLiveClosureSummary.live_wysiwyg_camera_recovery_sequence_labels?.join(',') || 'none'"
+          :data-camera-recovery-action-label="plainMappingCameraRecoveryActionLabel"
+          :data-fixed-camera-probe-endpoint="plainLiveClosureSummary.fixed_live_wysiwyg_camera_probe_endpoint"
+          :data-fixed-camera-mjpeg-status-endpoint="plainLiveClosureSummary.fixed_live_wysiwyg_camera_mjpeg_status_endpoint"
+          data-fixed-summary-endpoint="/api/robot-control/summary"
+          data-refreshes-camera-first-frame-probe="true"
+          data-refreshes-camera-mjpeg-status="true"
+          data-refreshes-summary="true"
+          data-refreshes-radar-scan-proof="false"
+          data-refreshes-map-preview="false"
+          data-starts-camera-exclusive-capture="false"
+          data-starts-radar-lifecycle="false"
+          data-starts-map-runtime="false"
+          data-starts-nav2="false"
+          data-starts-manual="false"
+          data-starts-keyboard="false"
+          data-starts-free-roam="false"
+          data-submits-delivery="false"
+          data-stops-motion="false"
+          data-sends-motion-when-clicked="false"
+        >
+          画面复测：{{ plainActionCardUserText(plainLiveClosureSummary.live_wysiwyg_camera_recovery_next_action_plain) }}
+          <button
+            type="button"
+            class="secondary compact-stop"
+            data-testid="plain-live-camera-recovery-refresh"
+            :disabled="!canRunPlainCameraProbe"
+            :data-camera-recovery-sequence="plainLiveClosureSummary.live_wysiwyg_camera_recovery_sequence?.join(',') || 'none'"
+            :data-camera-recovery-sequence-labels="plainLiveClosureSummary.live_wysiwyg_camera_recovery_sequence_labels?.join(',') || 'none'"
+            :data-fixed-camera-probe-endpoint="plainLiveClosureSummary.fixed_live_wysiwyg_camera_probe_endpoint"
+            :data-fixed-camera-mjpeg-status-endpoint="plainLiveClosureSummary.fixed_live_wysiwyg_camera_mjpeg_status_endpoint"
+            data-fixed-summary-endpoint="/api/robot-control/summary"
+            data-refreshes-camera-first-frame-probe="true"
+            data-refreshes-camera-mjpeg-status="true"
+            data-refreshes-summary="true"
+            data-refreshes-radar-scan-proof="false"
+            data-refreshes-map-preview="false"
+            data-starts-camera-exclusive-capture="false"
+            data-starts-radar-lifecycle="false"
+            data-starts-map-runtime="false"
+            data-starts-nav2="false"
+            data-starts-manual="false"
+            data-starts-keyboard="false"
+            data-starts-free-roam="false"
+            data-submits-delivery="false"
+            data-stops-motion="false"
+            data-sends-motion-when-clicked="false"
+            @click="refreshMappingCameraRecovery"
+          >
+            {{ plainMappingCameraRecoveryActionLabel }}
+          </button>
         </p>
         <p
           v-if="plainLiveRadarMapRefreshVisible"
