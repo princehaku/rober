@@ -327,11 +327,11 @@ const plainMapDirectViewRequested = computed(() => {
   return view === "map" || view === "map-only" || window.location.hash === "#map";
 });
 const PLAIN_MAP_ZOOM_LEVELS = [1, 1.5, 2, 3, 4, 5, 6, 8, 10, 12, 16, 20, 24] as const;
-const PLAIN_MAP_DEFAULT_ZOOM_INDEX = 1;
+const PLAIN_MAP_DEFAULT_ZOOM_INDEX = 3;
 const plainMapZoomIndex = ref(PLAIN_MAP_DEFAULT_ZOOM_INDEX);
 const plainMapZoomScale = computed(() => PLAIN_MAP_ZOOM_LEVELS[plainMapZoomIndex.value] ?? 1);
 const plainMapZoomPercent = computed(() => `${Math.round(plainMapZoomScale.value * 100)}%`);
-const PLAIN_MAP_DEFAULT_ZOOM_PERCENT = "150%";
+const PLAIN_MAP_DEFAULT_ZOOM_PERCENT = "300%";
 const PLAIN_MAP_MAX_ZOOM_PERCENT = "2400%";
 const plainMapZoomStyle = computed(() => ({
   "--plain-map-zoom": String(plainMapZoomScale.value),
@@ -17038,6 +17038,57 @@ onBeforeUnmount(() => {
             @click="refreshLiveMotionRunbookReadback('run_nav2_route')"
           >
             {{ plainTripClosureReadbackSummary.readbackPending ? "读回中" : "读回闭环" }}
+          </button>
+        </div>
+        <div
+          class="plain-trip-closure-readback plain-live-delivery-closure-readback"
+          data-testid="plain-live-delivery-closure-readback"
+          :data-state="plainDeliveryClosureSummary.state"
+          :data-nav2-ready="String(plainDeliveryClosureSummary.nav2Ready)"
+          :data-material-ready="String(plainDeliveryClosureSummary.materialReady)"
+          :data-route-map-matches-current-nav2="String(plainDeliveryClosureSummary.routeMapMatches)"
+          :data-confirmation-ready="String(plainDeliveryClosureSummary.confirmationReady)"
+          :data-delivery-success-ready="String(plainDeliveryClosureSummary.deliverySuccessReady)"
+          :data-confirm-ready="String(plainDeliveryClosureSummary.confirmReady)"
+          :data-missing-count="String(plainDeliveryClosureSummary.missingCount)"
+          :data-current-nav2-route-map-ref="plainDeliveryClosureSummary.currentNav2RouteMapRef"
+          :data-delivery-route-map-ref="plainDeliveryClosureSummary.deliveryRouteMapRef"
+          data-fixed-delivery-latest-endpoint="/api/robot-control/delivery/latest"
+          data-readback-only="true"
+          data-sends-motion-when-clicked="false"
+          data-starts-nav2="false"
+          data-starts-manual="false"
+          data-starts-keyboard="false"
+          data-starts-free-roam="false"
+          data-starts-map-runtime="false"
+          data-submits-delivery="false"
+          data-stops-motion="false"
+        >
+          <div class="simple-status-row">
+            <strong>送达闭环</strong>
+            <span class="status-chip" :data-state="plainDeliveryClosureSummary.state">
+              {{ plainDeliveryClosureSummary.state }}
+            </span>
+          </div>
+          <p>{{ plainDeliveryClosureSummary.text }}</p>
+          <button
+            type="button"
+            class="secondary compact-stop"
+            data-testid="plain-live-delivery-closure-readback-refresh"
+            :disabled="!canLoadDeliveryLatest"
+            data-fixed-delivery-latest-endpoint="/api/robot-control/delivery/latest"
+            data-readback-only="true"
+            data-sends-motion-when-clicked="false"
+            data-starts-nav2="false"
+            data-starts-manual="false"
+            data-starts-keyboard="false"
+            data-starts-free-roam="false"
+            data-starts-map-runtime="false"
+            data-submits-delivery="false"
+            data-stops-motion="false"
+            @click="loadDeliveryLatest({ allowDuringMapRefresh: true })"
+          >
+            {{ deliveryLatestPending ? "读回中" : "读回送达" }}
           </button>
         </div>
         <p
