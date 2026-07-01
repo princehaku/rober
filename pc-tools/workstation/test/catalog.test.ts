@@ -39,7 +39,7 @@ import {
   buildTrainingLabelingResponse,
 } from "../src/server/catalog";
 import { createWorkstationApp, listenFailureHint, robotControlFixedProxyQueryBaseUrl, robotControlReadOnlyQueryBaseUrl, robotControlSummaryQueryBaseUrl, workstationListenAddress } from "../src/server/index";
-import type { RobotControlCameraMjpegStatusResponse, RobotControlSummaryResponse } from "../src/shared/contracts";
+import type { RobotControlCameraMjpegStatusResponse, RobotControlLiveSummaryResponse, RobotControlSummaryResponse } from "../src/shared/contracts";
 import { WORKSTATION_DEV_API_PROXY_TARGET, WORKSTATION_DEV_PORT, WORKSTATION_NODE_PORT, WORKSTATION_PUBLIC_HOST } from "../src/shared/workstationDefaults";
 
 function sampleStatus(evidenceRef: string) {
@@ -6711,6 +6711,153 @@ describe("workstation fail-closed API contracts", () => {
       await robotApi.close();
     }
   }, 12_000);
+
+  it("workstation live-summary route exposes a flat read-only current card for field curl checks", async () => {
+    // 现场只想 curl 当前卡点时，不应要求记住 live_closure_summary 嵌套路径；新端点仍必须复用 summary 的只读聚合。
+    const safePayload = (schema: string, status = "loaded") => ({
+      schema,
+      status,
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+      robot_control_executed: false,
+      evidence_ref: `${status}-proof`,
+    });
+    const pathPreviewPoints = [
+      { x: 0, y: 0, frame_id: "map", source_index: 0 },
+      { x: 0.8, y: 0, frame_id: "map", source_index: 1 },
+    ];
+    const robotApi = await listenSerialRobotApiReadbackByPath({
+      "/api/status": {
+        payload: {
+          ...safePayload("trashbot.upper_robot_api.v1.status", "ready"),
+          nav2_base_command_mode: "ros",
+        },
+      },
+      "/api/map/proof/latest": {
+        payload: {
+          ...safePayload("trashbot.upper_robot_api.v1.map_lifecycle_proof_latest", "map_once_artifact_metadata_observed"),
+          map_once_observed: true,
+        },
+      },
+      "/api/map/preview": {
+        payload: {
+          ...safePayload("trashbot.upper_robot_api.v1.map_preview_result", "loaded"),
+          path_preview_points: pathPreviewPoints,
+          path_preview_frame_id: "map",
+        },
+      },
+      "/api/localize/proof/latest": {
+        payload: safePayload("trashbot.upper_robot_api.v1.localization_proof_latest", "localization_reset_observed"),
+      },
+      "/api/nav2/status": {
+        payload: {
+          ...safePayload("trashbot.upper_robot_api.v1.nav2_lifecycle_status", "path_generated"),
+          path_generated: true,
+          path_generation_succeeded: true,
+          path_point_count: 2,
+          path_preview_points: pathPreviewPoints,
+          path_preview_frame_id: "map",
+        },
+      },
+      "/api/nav2/proof/latest": {
+        payload: {
+          ...safePayload("trashbot.upper_robot_api.v1.nav2_runtime_proof_latest", "path_generated"),
+          path_generated: true,
+          path_generation_succeeded: true,
+          path_point_count: 2,
+          path_preview_points: pathPreviewPoints,
+          path_preview_frame_id: "map",
+        },
+      },
+      "/api/nav2/goal/execution/latest": {
+        payload: {
+          ...safePayload("trashbot.upper_robot_api.v1.nav2_goal_execution_latest", "goal_succeeded"),
+          latest_result: {
+            status: "goal_succeeded",
+            result_status: "succeeded",
+            nav2_goal_execution_proven: true,
+            base_command_mode: "ros",
+            base_feedback_summary: {
+              wheel_feedback_lr_nonzero_proven: false,
+              sample_count: 2,
+              nonzero_sample_count: 0,
+              latest_pair: { left_speed: 0, right_speed: 0 },
+            },
+          },
+        },
+      },
+      "/api/base/status": {
+        payload: safePayload("trashbot.upper_robot_api.v1.base_status", "loaded"),
+      },
+      "/api/base/feedback-samples/latest": {
+        payload: safePayload("trashbot.upper_robot_api.v1.base_feedback_samples_latest_result", "loaded"),
+      },
+      "/api/delivery/latest": {
+        payload: safePayload("trashbot.upper_robot_api.v1.delivery_latest", "not_submitted"),
+      },
+      "/api/free-roam/autonomy/latest": {
+        payload: safePayload("trashbot.upper_robot_api.v1.free_roam_autonomy_latest", "loaded"),
+      },
+      "/api/camera/health": {
+        payload: safePayload("trashbot.local_webrtc_camera_smoke.v1", "source_first_frame_failed"),
+      },
+      "/api/camera/devices": {
+        payload: safePayload("trashbot.local_webrtc_camera_devices.v1", "loaded"),
+      },
+      "/api/radar/status": {
+        payload: safePayload("trashbot.upper_robot_api.v1.radar_status", "loaded"),
+      },
+      "/api/radar/scan-proof/latest": {
+        payload: safePayload("trashbot.upper_robot_api.v1.lidar_scan_proof_latest_result", "loaded"),
+      },
+      "/api/radar/raw-packet-proof/latest": {
+        payload: safePayload("trashbot.upper_robot_api.v1.lidar_raw_packet_proof_latest_result", "loaded"),
+      },
+    });
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const summaryResponse = await requestJson(`${workstation.baseUrl}/api/robot-control/summary?baseUrl=${encodeURIComponent(robotApi.baseUrl)}`);
+      const liveResponse = await requestJson(`${workstation.baseUrl}/api/robot-control/live-summary?baseUrl=${encodeURIComponent(robotApi.baseUrl)}`);
+      const summary = summaryResponse.body as RobotControlSummaryResponse;
+      const live = liveResponse.body as RobotControlLiveSummaryResponse;
+
+      expect(liveResponse.status).toBe(200);
+      expect(live.schema).toBe("trashbot.pc_tools_workstation.robot_control_live_summary.v1");
+      expect(live.workstation_endpoint).toBe("/api/robot-control/live-summary");
+      expect(live.summary_endpoint).toBe("/api/robot-control/summary");
+      expect(live.readback_only).toBe(true);
+      expect(live.status).toBe(summary.live_closure_summary?.status);
+      expect(live.status).toBe("needs_wheel_rerun");
+      expect(live.summary_plain).toBe(summary.live_closure_summary?.summary_plain);
+      expect(live.next_action_plain).toBe(summary.live_closure_summary?.next_action_plain);
+      expect(live.nav2_route_ready).toBe(true);
+      expect(live.nav2_goal_succeeded).toBe(true);
+      expect(live.wheel_lr_nonzero_proven).toBe(false);
+      expect(live.delivery_success).toBe(false);
+      expect(live.live_wysiwyg_map_visible).toBe(true);
+      expect(live.live_wysiwyg_camera_visible).toBe(false);
+      expect(live.objective_audit_missing_objective_ids).toContain("motion");
+      expect(live.sends_motion_when_clicked).toBe(false);
+      expect(live.starts_nav2).toBe(false);
+      expect(live.starts_manual).toBe(false);
+      expect(live.starts_keyboard).toBe(false);
+      expect(live.starts_free_roam).toBe(false);
+      expect(live.starts_map_runtime).toBe(false);
+      expect(live.submits_delivery).toBe(false);
+      expect(live.stops_motion).toBe(false);
+      expect(live.publishes_cmd_vel).toBe(false);
+      expect(Object.prototype.hasOwnProperty.call(live, "live_closure_summary")).toBe(false);
+      expect(robotApi.requestedUrls).not.toContain("/api/nav2/goal/execute");
+      expect(robotApi.requestedUrls).not.toContain("/api/base/manual");
+      expect(robotApi.requestedUrls).not.toContain("/api/free-roam/autonomy/start");
+      expect(robotApi.requestedUrls).not.toContain("/api/map/start");
+      expect(robotApi.requestedUrls).not.toContain("/api/delivery/complete");
+    } finally {
+      await workstation.close();
+      await robotApi.close();
+    }
+  });
 
   it("Robot Control summary caps slow camera devices readback for a responsive plain first screen", async () => {
     // 板端 camera devices 会做 v4l2 只读枚举；summary 首屏不能为了设备列表卡住地图/路线/雷达状态。

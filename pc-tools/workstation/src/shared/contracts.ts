@@ -3047,6 +3047,26 @@ export interface RobotControlKeyboardReadbackSummary {
   robot_control_executed: string;
 }
 
+export interface RobotControlLiveSummaryResponse extends RobotControlLiveClosureSummary {
+  schema: "trashbot.pc_tools_workstation.robot_control_live_summary.v1";
+  console_status: RobotControlSummaryResponse["console_status"];
+  source_base_url: string;
+  normalized_base_url: string;
+  observed_at_ms: number;
+  workstation_endpoint: "/api/robot-control/live-summary";
+  summary_endpoint: "/api/robot-control/summary";
+  readback_only: true;
+  sends_motion_when_clicked: false;
+  starts_nav2: false;
+  starts_manual: false;
+  starts_keyboard: false;
+  starts_free_roam: false;
+  starts_map_runtime: false;
+  submits_delivery: false;
+  stops_motion: false;
+  publishes_cmd_vel: false;
+}
+
 export interface RobotControlSummaryResponse extends ProofFlags {
   schema: "trashbot.pc_tools_workstation.robot_control_summary.v1";
   console_status: "blocked" | "loaded_fail_closed_summary";

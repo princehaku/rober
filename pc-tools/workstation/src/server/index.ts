@@ -76,6 +76,7 @@ import type {
   RobotControlFreeRoamAutonomyEndpoint,
   RobotControlFreeRoamAutonomyLatestResponse,
   RobotControlFreeRoamAutonomyResponse,
+  RobotControlLiveSummaryResponse,
   RobotControlOperatorReportPreflight,
   RobotControlMapLifecycleAction,
   RobotControlNav2LifecycleAction,
@@ -90,6 +91,7 @@ import type {
   RobotControlDeliveryCompleteResponse,
   RobotControlDeliveryLatestResponse,
   RobotControlDeliveryGapCheckResponse,
+  RobotControlSummaryResponse,
 } from "../shared/contracts";
 import type {
   RobotControlCameraFirstFrameProbeOverlay,
@@ -2734,6 +2736,102 @@ async function cameraSourceFirstFrameFailureForStatus(
   }
 }
 
+async function buildRobotControlSummaryForHttp(sourceBaseUrl: string): Promise<RobotControlSummaryResponse> {
+  // summary 与 live-summary 共用同一份只读 overlay，避免两个现场入口对相机/共享预览状态说法不一致。
+  const normalized = normalizeRobotApiBaseUrl(sourceBaseUrl);
+  const relayKey = normalized.ok ? cameraMjpegRelayKey(normalized.normalized) : "";
+  const firstFrameOverlay = normalized.ok
+    ? cameraFirstFrameProbeOverlays.get(relayKey) ?? null
+    : null;
+  const relay = normalized.ok ? cameraMjpegRelays.get(relayKey) ?? null : null;
+  const lastFailure = normalized.ok ? cameraMjpegRelayLastFailures.get(relayKey) ?? null : null;
+  const sourceFailure = normalized.ok
+    ? await cameraSourceFirstFrameFailureForStatus(normalized.normalized, ROBOT_CONTROL_SUMMARY_CAMERA_STATUS_TIMEOUT_MS)
+    : null;
+  const lastFailureForOverlay = lastFailure ?? sourceFailure;
+  const mjpegRelayOverlay: RobotControlCameraMjpegRelayOverlay | null = relay
+    ? {
+      relay_key: relayKey,
+      client_count: relay.clients.size,
+      upstream_active: relay.upstreamActive,
+      content_type_loaded: Boolean(relay.contentType),
+      cached_frame_loaded: Boolean(relay.latestFrameChunk),
+      cached_frame_age_ms: relay.latestFrameUpdatedAtMs ? Math.max(0, Date.now() - relay.latestFrameUpdatedAtMs) : null,
+      shared_capture: true,
+      exclusive_camera_claim: false,
+      last_failure_reason: lastFailureForOverlay?.failure_reason ?? "",
+      last_remote_http_status: lastFailureForOverlay?.remote_http_status ?? null,
+      last_failure_at_ms: lastFailureForOverlay?.failed_at_ms ?? null,
+      source_diagnosis_status: lastFailureForOverlay?.source_diagnosis_status,
+      source_diagnosis_plain_hint: lastFailureForOverlay?.source_diagnosis_plain_hint,
+      source_diagnosis_next_action: lastFailureForOverlay?.source_diagnosis_next_action,
+      source_diagnosis_not_exclusive: lastFailureForOverlay?.source_diagnosis_not_exclusive,
+      source_readiness: lastFailureForOverlay?.source_readiness,
+      source_failure_reason: lastFailureForOverlay?.source_failure_reason,
+      selected_path: lastFailureForOverlay?.selected_path,
+      selected_name: lastFailureForOverlay?.selected_name,
+      selected_is_uvc_or_usb: lastFailureForOverlay?.selected_is_uvc_or_usb,
+      source_usage_status: lastFailureForOverlay?.source_usage_status,
+      source_usage_owner_count: lastFailureForOverlay?.source_usage_owner_count,
+      last_error_payload: lastFailureForOverlay?.last_error_payload ?? null,
+    }
+    : lastFailureForOverlay
+      ? {
+        relay_key: relayKey,
+        client_count: 0,
+        upstream_active: false,
+        content_type_loaded: false,
+        cached_frame_loaded: false,
+        cached_frame_age_ms: null,
+        shared_capture: true,
+        exclusive_camera_claim: false,
+        last_failure_reason: lastFailureForOverlay.failure_reason,
+        last_remote_http_status: lastFailureForOverlay.remote_http_status,
+        last_failure_at_ms: lastFailureForOverlay.failed_at_ms,
+        source_diagnosis_status: lastFailureForOverlay.source_diagnosis_status,
+        source_diagnosis_plain_hint: lastFailureForOverlay.source_diagnosis_plain_hint,
+        source_diagnosis_next_action: lastFailureForOverlay.source_diagnosis_next_action,
+        source_diagnosis_not_exclusive: lastFailureForOverlay.source_diagnosis_not_exclusive,
+        source_readiness: lastFailureForOverlay.source_readiness,
+        source_failure_reason: lastFailureForOverlay.source_failure_reason,
+        selected_path: lastFailureForOverlay.selected_path,
+        selected_name: lastFailureForOverlay.selected_name,
+        selected_is_uvc_or_usb: lastFailureForOverlay.selected_is_uvc_or_usb,
+        source_usage_status: lastFailureForOverlay.source_usage_status,
+        source_usage_owner_count: lastFailureForOverlay.source_usage_owner_count,
+        last_error_payload: lastFailureForOverlay.last_error_payload ?? null,
+      }
+      : null;
+  // HTTP 首屏固定快预算；慢 wheel L/R 证据由内部 builder/独立刷新读取，不能拖慢普通用户首屏。
+  return buildRobotControlSummary(sourceBaseUrl, firstFrameOverlay, mjpegRelayOverlay, {
+    readbackTimeoutMs: ROBOT_CONTROL_SUMMARY_HTTP_READBACK_TIMEOUT_MS,
+  });
+}
+
+function buildRobotControlLiveSummaryResponse(summary: RobotControlSummaryResponse): RobotControlLiveSummaryResponse {
+  // 扁平 live-summary 是给现场 curl/jq 用的只读视图；权威数据仍来自同一次 summary 聚合。
+  return {
+    ...(summary.live_closure_summary as NonNullable<RobotControlSummaryResponse["live_closure_summary"]>),
+    schema: "trashbot.pc_tools_workstation.robot_control_live_summary.v1",
+    console_status: summary.console_status,
+    source_base_url: summary.source_base_url,
+    normalized_base_url: summary.normalized_base_url,
+    observed_at_ms: summary.observed_at_ms,
+    workstation_endpoint: "/api/robot-control/live-summary",
+    summary_endpoint: "/api/robot-control/summary",
+    readback_only: true,
+    sends_motion_when_clicked: false,
+    starts_nav2: false,
+    starts_manual: false,
+    starts_keyboard: false,
+    starts_free_roam: false,
+    starts_map_runtime: false,
+    submits_delivery: false,
+    stops_motion: false,
+    publishes_cmd_vel: false,
+  };
+}
+
 function startCameraMjpegClient(client: CameraMjpegRelayClient, contentType: string): void {
   // 浏览器端只能看到只读 multipart 流；这里不透传上位机控制字段。
   if (client.headersStarted || client.response.headersSent) {
@@ -3115,74 +3213,14 @@ export function createWorkstationApp(): express.Express {
   workstationApp.get("/api/robot-control/summary", async (req, res) => {
     // Robot Control V1 只读代理默认连固定上位机；危险 URL 仍由 summary builder fail-closed。
     const sourceBaseUrl = robotControlSummaryQueryBaseUrl(req.query.baseUrl);
-    const normalized = normalizeRobotApiBaseUrl(sourceBaseUrl);
-    const relayKey = normalized.ok ? cameraMjpegRelayKey(normalized.normalized) : "";
-    const firstFrameOverlay = normalized.ok
-      ? cameraFirstFrameProbeOverlays.get(relayKey) ?? null
-      : null;
-    const relay = normalized.ok ? cameraMjpegRelays.get(relayKey) ?? null : null;
-    const lastFailure = normalized.ok ? cameraMjpegRelayLastFailures.get(relayKey) ?? null : null;
-    const sourceFailure = normalized.ok
-      ? await cameraSourceFirstFrameFailureForStatus(normalized.normalized, ROBOT_CONTROL_SUMMARY_CAMERA_STATUS_TIMEOUT_MS)
-      : null;
-    const lastFailureForOverlay = lastFailure ?? sourceFailure;
-    const mjpegRelayOverlay: RobotControlCameraMjpegRelayOverlay | null = relay
-      ? {
-        relay_key: relayKey,
-        client_count: relay.clients.size,
-        upstream_active: relay.upstreamActive,
-        content_type_loaded: Boolean(relay.contentType),
-        cached_frame_loaded: Boolean(relay.latestFrameChunk),
-        cached_frame_age_ms: relay.latestFrameUpdatedAtMs ? Math.max(0, Date.now() - relay.latestFrameUpdatedAtMs) : null,
-        shared_capture: true,
-        exclusive_camera_claim: false,
-        last_failure_reason: lastFailureForOverlay?.failure_reason ?? "",
-        last_remote_http_status: lastFailureForOverlay?.remote_http_status ?? null,
-        last_failure_at_ms: lastFailureForOverlay?.failed_at_ms ?? null,
-        source_diagnosis_status: lastFailureForOverlay?.source_diagnosis_status,
-        source_diagnosis_plain_hint: lastFailureForOverlay?.source_diagnosis_plain_hint,
-        source_diagnosis_next_action: lastFailureForOverlay?.source_diagnosis_next_action,
-        source_diagnosis_not_exclusive: lastFailureForOverlay?.source_diagnosis_not_exclusive,
-        source_readiness: lastFailureForOverlay?.source_readiness,
-        source_failure_reason: lastFailureForOverlay?.source_failure_reason,
-        selected_path: lastFailureForOverlay?.selected_path,
-        selected_name: lastFailureForOverlay?.selected_name,
-        selected_is_uvc_or_usb: lastFailureForOverlay?.selected_is_uvc_or_usb,
-        source_usage_status: lastFailureForOverlay?.source_usage_status,
-        source_usage_owner_count: lastFailureForOverlay?.source_usage_owner_count,
-        last_error_payload: lastFailureForOverlay?.last_error_payload ?? null,
-      }
-      : lastFailureForOverlay
-        ? {
-          relay_key: relayKey,
-          client_count: 0,
-          upstream_active: false,
-          content_type_loaded: false,
-          cached_frame_loaded: false,
-          cached_frame_age_ms: null,
-          shared_capture: true,
-          exclusive_camera_claim: false,
-          last_failure_reason: lastFailureForOverlay.failure_reason,
-          last_remote_http_status: lastFailureForOverlay.remote_http_status,
-          last_failure_at_ms: lastFailureForOverlay.failed_at_ms,
-          source_diagnosis_status: lastFailureForOverlay.source_diagnosis_status,
-          source_diagnosis_plain_hint: lastFailureForOverlay.source_diagnosis_plain_hint,
-          source_diagnosis_next_action: lastFailureForOverlay.source_diagnosis_next_action,
-          source_diagnosis_not_exclusive: lastFailureForOverlay.source_diagnosis_not_exclusive,
-          source_readiness: lastFailureForOverlay.source_readiness,
-          source_failure_reason: lastFailureForOverlay.source_failure_reason,
-          selected_path: lastFailureForOverlay.selected_path,
-          selected_name: lastFailureForOverlay.selected_name,
-          selected_is_uvc_or_usb: lastFailureForOverlay.selected_is_uvc_or_usb,
-          source_usage_status: lastFailureForOverlay.source_usage_status,
-          source_usage_owner_count: lastFailureForOverlay.source_usage_owner_count,
-          last_error_payload: lastFailureForOverlay.last_error_payload ?? null,
-        }
-        : null;
-    // HTTP 首屏固定快预算；慢 wheel L/R 证据由内部 builder/独立刷新读取，不能拖慢普通用户首屏。
-    res.json(await buildRobotControlSummary(sourceBaseUrl, firstFrameOverlay, mjpegRelayOverlay, {
-      readbackTimeoutMs: ROBOT_CONTROL_SUMMARY_HTTP_READBACK_TIMEOUT_MS,
-    }));
+    res.json(await buildRobotControlSummaryForHttp(sourceBaseUrl));
+  });
+
+  workstationApp.get("/api/robot-control/live-summary", async (req, res) => {
+    // 给现场脚本一个扁平只读入口，避免每次都记 live_closure_summary 嵌套路径。
+    const sourceBaseUrl = robotControlSummaryQueryBaseUrl(req.query.baseUrl);
+    const summary = await buildRobotControlSummaryForHttp(sourceBaseUrl);
+    res.json(buildRobotControlLiveSummaryResponse(summary));
   });
 
   workstationApp.post("/api/robot-control/base/first-jog", async (req, res) => {
