@@ -498,6 +498,28 @@ describe("robotControlSummary", () => {
     expect(summary.live_wysiwyg_camera_shared_preview_client_count).toBe(summary.live_closure_summary?.live_wysiwyg_camera_shared_preview_client_count);
     expect(summary.live_wysiwyg_camera_shared_preview_upstream_active).toBe(summary.live_closure_summary?.live_wysiwyg_camera_shared_preview_upstream_active);
     expect(summary.live_wysiwyg_camera_shared_preview_exclusive_camera_claim).toBe("false");
+    expect(summary.camera_wysiwyg_recovery_status).toBe("needs_probe");
+    expect(summary.camera_wysiwyg_recovery_next_action_plain).toBe(summary.live_closure_summary?.live_wysiwyg_camera_recovery_next_action_plain);
+    expect(summary.camera_wysiwyg_recovery_readback_endpoints).toEqual([
+      "/api/robot-control/camera/first-frame/probe",
+      "/api/robot-control/camera/mjpeg/status",
+      "/api/robot-control/summary",
+    ]);
+    expect(summary.camera_wysiwyg_recovery_readback_sequence_labels).toEqual([
+      "复测相机首帧",
+      "读取共享预览状态",
+      "刷新当前卡点",
+    ]);
+    expect(summary.camera_wysiwyg_recovery_requires_hardware_action).toBe(false);
+    expect(summary.camera_wysiwyg_recovery_hardware_action_label).toBe("复测相机首帧");
+    expect(summary.camera_wysiwyg_recovery_requires_usb_fix).toBe(false);
+    expect(summary.camera_wysiwyg_recovery_blocks_mapping_start).toBe(true);
+    expect(summary.camera_wysiwyg_recovery_blocks_free_move).toBe(false);
+    expect(summary.camera_wysiwyg_recovery_sends_motion).toBe(false);
+    expect(summary.camera_wysiwyg_recovery_starts_map_runtime).toBe(false);
+    expect(summary.camera_wysiwyg_recovery_source_diagnosis_status).toBe("not_loaded");
+    expect(summary.camera_wysiwyg_recovery_source_not_exclusive).toBe("not_loaded");
+    expect(summary.camera_wysiwyg_recovery_shared_preview_single_upstream).toBe(true);
     expect(summary.radar_visible).toBe(false);
     expect(summary.radar_points_visible).toBe(false);
     expect(summary.radar_ready).toBe(false);
@@ -1430,6 +1452,28 @@ describe("robotControlSummary", () => {
     expect(summary.camera_source_diagnosis_plain_hint).toContain("USB 12M full-speed");
     expect(summary.camera_recovery_next_action_plain).toContain("换高速 USB 口/线或带供电 USB Hub");
     expect(summary.camera_recovery_sends_motion).toBe(false);
+    expect(summary.camera_wysiwyg_recovery_status).toBe(summary.live_closure_summary?.live_wysiwyg_camera_recovery_status);
+    expect(summary.camera_wysiwyg_recovery_next_action_plain).toContain("换高速 USB 口/线或带供电 USB Hub");
+    expect(summary.camera_wysiwyg_recovery_readback_endpoints).toEqual([
+      "/api/robot-control/camera/first-frame/probe",
+      "/api/robot-control/camera/mjpeg/status",
+      "/api/robot-control/summary",
+    ]);
+    expect(summary.camera_wysiwyg_recovery_readback_sequence_labels).toEqual([
+      "复测相机首帧",
+      "读取共享预览状态",
+      "刷新当前卡点",
+    ]);
+    expect(summary.camera_wysiwyg_recovery_requires_hardware_action).toBe(true);
+    expect(summary.camera_wysiwyg_recovery_hardware_action_label).toBe("换高速USB后复测");
+    expect(summary.camera_wysiwyg_recovery_requires_usb_fix).toBe(true);
+    expect(summary.camera_wysiwyg_recovery_blocks_mapping_start).toBe(true);
+    expect(summary.camera_wysiwyg_recovery_blocks_free_move).toBe(false);
+    expect(summary.camera_wysiwyg_recovery_sends_motion).toBe(false);
+    expect(summary.camera_wysiwyg_recovery_starts_map_runtime).toBe(false);
+    expect(summary.camera_wysiwyg_recovery_source_diagnosis_status).toBe("uvc_full_speed_usb_not_exclusive");
+    expect(summary.camera_wysiwyg_recovery_source_not_exclusive).toBe("true");
+    expect(summary.camera_wysiwyg_recovery_shared_preview_single_upstream).toBe(true);
     expect(summary.field_acceptance_hardware_action_ids).toEqual(["camera_usb_recovery"]);
     expect(summary.field_acceptance_hardware_action_labels).toEqual(["换高速USB后复测"]);
     expect(summary.field_acceptance_hardware_action_after_readback_endpoints).toEqual(["/api/robot-control/camera/first-frame/probe"]);
