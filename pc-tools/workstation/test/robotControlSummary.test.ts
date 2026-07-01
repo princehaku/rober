@@ -398,6 +398,20 @@ describe("robotControlSummary", () => {
     expect(summary.radar_overlay_status).toBe(summary.live_closure_summary?.radar_overlay_status);
     expect(summary.radar_overlay_current_point_count).toBe(summary.live_closure_summary?.radar_overlay_current_point_count);
     expect(summary.radar_overlay_source_point_count).toBe(summary.live_closure_summary?.radar_overlay_source_point_count);
+    expect(summary.radar_overlay_primary_blocked_reason).toBe(summary.live_closure_summary?.radar_overlay_primary_blocked_reason);
+    expect(summary.radar_overlay_current_vs_source_plain).toBe(summary.live_closure_summary?.radar_overlay_current_vs_source_plain);
+    expect(summary.radar_overlay_refresh_next_action_plain).toBe(summary.live_closure_summary?.radar_overlay_refresh_next_action_plain);
+    expect(summary.radar_overlay_needs_refresh).toBe(true);
+    expect(summary.radar_overlay_blocks_wysiwyg).toBe(true);
+    expect(summary.radar_overlay_blocks_free_move).toBe(false);
+    expect(summary.radar_overlay_recovery_sequence).toEqual([
+      "/api/robot-control/radar/scan-proof/refresh",
+      "/api/robot-control/map/preview",
+    ]);
+    expect(summary.fixed_radar_overlay_refresh_endpoint).toBe("/api/robot-control/radar/scan-proof/refresh");
+    expect(summary.fixed_radar_overlay_map_preview_endpoint).toBe("/api/robot-control/map/preview");
+    expect(summary.radar_overlay_refresh_sends_motion).toBe(false);
+    expect(summary.radar_overlay_refresh_starts_radar_lifecycle).toBe(false);
     expect(summary.live_closure_summary?.camera_recovery_sends_motion).toBe(false);
     expect(summary.live_closure_summary?.camera_recovery_starts_map_runtime).toBe(false);
     expect(summary.live_closure_summary?.live_wysiwyg_camera_recovery_sequence).toEqual([
