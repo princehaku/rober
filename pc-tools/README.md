@@ -142,6 +142,13 @@ summary 顶层和 `plain-live-closure-summary` DOM 也同步暴露相机 WYSIWYG
 `camera_wysiwyg_recovery_starts_map_runtime=false`。现场换高速 USB 或打开共享预览后，按这条只读链复验
 相机首帧、MJPEG 状态和 summary；该链路不启动独占相机、不启动建图 runtime、不发送任何运动命令。
 
+2026-07-02 CST 起，`GET /api/robot-control/camera/mjpeg/status` 回包也直接声明
+`readback_only=true`、`camera_status_readback_only=true`，并固定
+`sends_motion_when_clicked=false`、`starts_camera_exclusive_capture=false`、`starts_radar_lifecycle=false`、
+`starts_nav2=false`、`starts_manual=false`、`starts_keyboard=false`、`starts_free_roam=false`、
+`starts_map_runtime=false`、`submits_delivery=false` 和 `stops_motion=false`。该接口只读取共享 MJPEG relay
+和上车 camera health，不会打开独占采集、不启动建图或任何运动链路。
+
 开发热更新入口用 `npm run dev`，默认监听 `0.0.0.0:7002`，并把 `/api` 代理到本机
 Node 工作站 `http://127.0.0.1:7001`。因此开发时先让 `npm run api` 守住 7001，
 再打开 7002 看热更新页；`dev:public` 只是复用 `npm run dev` 的兼容旧入口，正式现场访问仍优先使用 7001 的 Node/Express 工作站。

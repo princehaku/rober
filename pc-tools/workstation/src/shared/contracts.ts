@@ -5086,7 +5086,18 @@ export interface RobotControlCameraMjpegStatusResponse extends ProofFlags {
   fixed_summary_endpoint: "/api/robot-control/summary";
   camera_recovery_sends_motion: false;
   camera_recovery_starts_map_runtime: false;
+  readback_only: true;
   camera_status_readback_only: true;
+  sends_motion_when_clicked: false;
+  starts_camera_exclusive_capture: false;
+  starts_radar_lifecycle: false;
+  starts_nav2: false;
+  starts_manual: false;
+  starts_keyboard: false;
+  starts_free_roam: false;
+  starts_map_runtime: false;
+  submits_delivery: false;
+  stops_motion: false;
   source_readiness: string;
   source_failure_reason: string;
   last_first_frame_format_attempts_summary: string;

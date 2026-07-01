@@ -15144,7 +15144,18 @@ describe("workstation fail-closed API contracts", () => {
       expect(statusBody.fixed_summary_endpoint).toBe("/api/robot-control/summary");
       expect(statusBody.camera_recovery_sends_motion).toBe(false);
       expect(statusBody.camera_recovery_starts_map_runtime).toBe(false);
+      expect(statusBody.readback_only).toBe(true);
       expect(statusBody.camera_status_readback_only).toBe(true);
+      expect(statusBody.sends_motion_when_clicked).toBe(false);
+      expect(statusBody.starts_camera_exclusive_capture).toBe(false);
+      expect(statusBody.starts_radar_lifecycle).toBe(false);
+      expect(statusBody.starts_nav2).toBe(false);
+      expect(statusBody.starts_manual).toBe(false);
+      expect(statusBody.starts_keyboard).toBe(false);
+      expect(statusBody.starts_free_roam).toBe(false);
+      expect(statusBody.starts_map_runtime).toBe(false);
+      expect(statusBody.submits_delivery).toBe(false);
+      expect(statusBody.stops_motion).toBe(false);
       expect(statusBody.hard_dangerous_true_fields).toEqual([]);
       expect(statusBody.robot_control_executed).toBe(false);
     } finally {
