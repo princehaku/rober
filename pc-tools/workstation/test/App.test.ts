@@ -5303,6 +5303,7 @@ describe("App", () => {
     expect(fieldAcceptancePacket.attributes("data-wysiwyg-primary-refresh-label")).toBe("复测相机首帧");
     expect(fieldAcceptancePacket.attributes("data-wysiwyg-next-action-plain")).toContain("复测相机首帧");
     expect(fieldAcceptancePacket.attributes("data-wysiwyg-next-action-plain")).toContain("刷新雷达扫描读数");
+    expect(fieldAcceptancePacket.attributes("data-wysiwyg-refresh-mode")).toBe("all_wysiwyg");
     expect(fieldAcceptancePacket.attributes("data-wysiwyg-refresh-sequence")).toBe("/api/robot-control/radar/scan-proof/refresh,/api/robot-control/camera/first-frame/probe,/api/robot-control/map/preview,/api/robot-control/radar/status,/api/robot-control/camera/mjpeg/status");
     expect(fieldAcceptancePacket.attributes("data-wysiwyg-refresh-sequence-labels")).toBe("刷新雷达扫描读数,复测相机首帧,刷新地图画面,读取雷达状态,读取相机 MJPEG 状态");
     expect(fieldAcceptancePacket.attributes("data-wysiwyg-refresh-sends-motion")).toBe("false");
@@ -5335,6 +5336,7 @@ describe("App", () => {
     expect(fieldAcceptanceWysiwyg.attributes("data-wysiwyg-missing-surface-ids")).toBe("camera,radar_map_points");
     expect(fieldAcceptanceWysiwyg.attributes("data-wysiwyg-missing-surface-labels")).toBe("画面、雷达点");
     expect(fieldAcceptanceWysiwyg.attributes("data-wysiwyg-primary-refresh-endpoint")).toBe("/api/robot-control/camera/first-frame/probe");
+    expect(fieldAcceptanceWysiwyg.attributes("data-wysiwyg-refresh-mode")).toBe("all_wysiwyg");
     expect(fieldAcceptanceWysiwyg.attributes("data-wysiwyg-refresh-sequence")).toBe("/api/robot-control/radar/scan-proof/refresh,/api/robot-control/camera/first-frame/probe,/api/robot-control/map/preview,/api/robot-control/radar/status,/api/robot-control/camera/mjpeg/status");
     expect(fieldAcceptanceWysiwyg.attributes("data-fixed-wysiwyg-radar-refresh-endpoint")).toBe("/api/robot-control/radar/scan-proof/refresh");
     expect(fieldAcceptanceWysiwyg.attributes("data-fixed-wysiwyg-camera-probe-endpoint")).toBe("/api/robot-control/camera/first-frame/probe");
@@ -5357,6 +5359,7 @@ describe("App", () => {
     expect(fieldAcceptanceWysiwyg.attributes("data-stops-motion")).toBe("false");
     expect(fieldAcceptanceWysiwygRefresh.text()).toBe("刷新当前所见（含雷达贴图）");
     expect(fieldAcceptanceWysiwygRefresh.attributes("disabled")).toBeUndefined();
+    expect(fieldAcceptanceWysiwygRefresh.attributes("data-wysiwyg-refresh-mode")).toBe("all_wysiwyg");
     expect(fieldAcceptanceWysiwygRefresh.attributes("data-sends-motion-when-clicked")).toBe("false");
     expect(fieldAcceptanceWysiwygRefresh.attributes("data-starts-radar-lifecycle")).toBe("false");
     expect(fieldAcceptanceWysiwygRefresh.attributes("data-starts-map-runtime")).toBe("false");
@@ -8778,6 +8781,83 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-camera-probe-summary"]').text()).not.toContain("The operation was aborted");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+  });
+
+  it("focuses field acceptance WYSIWYG refresh on camera only when radar and map are already visible", async () => {
+    // 现场只剩画面缺口时，按钮应只复测相机，不能顺手刷新雷达/地图，更不能触发任何运动入口。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as RobotControlSummaryResponse;
+    const cameraOnlySequence = [
+      "/api/robot-control/camera/first-frame/probe",
+      "/api/robot-control/camera/mjpeg/status",
+      "/api/robot-control/summary",
+    ];
+    const cameraOnlyLabels = ["复测相机首帧", "读取相机 MJPEG 状态", "刷新总览"];
+    const liveClosureSummary = summaryFixture.live_closure_summary as Record<string, any>;
+    Object.assign(liveClosureSummary, {
+      live_wysiwyg_missing_surface_ids: ["camera"],
+      live_wysiwyg_radar_map_points_visible: true,
+      live_wysiwyg_radar_map_point_count: "149",
+      live_wysiwyg_radar_map_overlay_status: "loaded",
+    });
+    const fieldAcceptancePacket = cloneFixture(liveClosureSummary.field_acceptance_packet as Record<string, any>);
+    liveClosureSummary.field_acceptance_packet = {
+      ...fieldAcceptancePacket,
+      wysiwyg_ready: false,
+      wysiwyg_missing_surface_ids: ["camera"],
+      wysiwyg_primary_refresh_endpoint: "/api/robot-control/camera/first-frame/probe",
+      wysiwyg_primary_refresh_label: "复测相机首帧",
+      wysiwyg_next_action_plain: liveClosureSummary.live_wysiwyg_camera_recovery_next_action_plain,
+      wysiwyg_camera_next_action_plain: liveClosureSummary.live_wysiwyg_camera_recovery_next_action_plain,
+      wysiwyg_radar_map_next_action_plain: "雷达点已贴到当前地图，继续观察。",
+      wysiwyg_refresh_sequence: cameraOnlySequence,
+      wysiwyg_refresh_sequence_labels: cameraOnlyLabels,
+      wysiwyg_refreshes_radar_scan_proof: false,
+      wysiwyg_refreshes_map_preview: false,
+      wysiwyg_refreshes_radar_status: false,
+      wysiwyg_refreshes_camera_first_frame_probe: true,
+      wysiwyg_refreshes_camera_mjpeg_status: true,
+    };
+    summaryFixture.field_acceptance_wysiwyg_missing_surface_ids = ["camera"];
+    summaryFixture.field_acceptance_wysiwyg_primary_refresh_endpoint = "/api/robot-control/camera/first-frame/probe";
+    summaryFixture.field_acceptance_wysiwyg_primary_refresh_label = "复测相机首帧";
+    summaryFixture.field_acceptance_wysiwyg_next_action_plain = liveClosureSummary.live_wysiwyg_camera_recovery_next_action_plain;
+    summaryFixture.field_acceptance_wysiwyg_refresh_sequence = cameraOnlySequence;
+    summaryFixture.field_acceptance_wysiwyg_refresh_sequence_labels = cameraOnlyLabels;
+
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+    });
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const fieldAcceptanceWysiwyg = wrapper.find('[data-testid="plain-field-acceptance-wysiwyg"]');
+    const fieldAcceptanceWysiwygRefresh = wrapper.find('[data-testid="plain-field-acceptance-wysiwyg-refresh"]');
+    expect(fieldAcceptanceWysiwyg.exists()).toBe(true);
+    expect(fieldAcceptanceWysiwyg.text()).toContain("当前所见还差：画面");
+    expect(fieldAcceptanceWysiwyg.text()).not.toContain("雷达点");
+    expect(fieldAcceptanceWysiwyg.attributes("data-wysiwyg-missing-surface-ids")).toBe("camera");
+    expect(fieldAcceptanceWysiwyg.attributes("data-wysiwyg-refresh-mode")).toBe("camera_only");
+    expect(fieldAcceptanceWysiwygRefresh.attributes("data-wysiwyg-refresh-mode")).toBe("camera_only");
+    expect(fieldAcceptanceWysiwygRefresh.attributes("data-wysiwyg-refresh-sequence")).toBe("/api/robot-control/camera/first-frame/probe,/api/robot-control/camera/mjpeg/status,/api/robot-control/summary");
+
+    const callsBeforeRefresh = mockedFetch.mock.calls.length;
+    await fieldAcceptanceWysiwygRefresh.trigger("click");
+    await flushPromises();
+    await flushPromises();
+    const refreshUrls = mockedFetch.mock.calls.slice(callsBeforeRefresh).map((call) => String(call[0]));
+    expect(refreshUrls.some((url) => url.startsWith("/api/robot-control/camera/first-frame/probe"))).toBe(true);
+    expect(refreshUrls.some((url) => url.startsWith("/api/robot-control/camera/mjpeg/status"))).toBe(true);
+    expect(refreshUrls.some((url) => url.startsWith("/api/robot-control/summary"))).toBe(true);
+    expect(refreshUrls.some((url) => url.startsWith("/api/robot-control/radar/scan-proof/refresh"))).toBe(false);
+    expect(refreshUrls.some((url) => url.startsWith("/api/robot-control/radar/status"))).toBe(false);
+    expect(refreshUrls.some((url) => url.startsWith("/api/robot-control/map/preview"))).toBe(false);
+    expect(refreshUrls.some((url) => url.startsWith("/api/robot-control/nav2/goal/execute"))).toBe(false);
+    expect(refreshUrls.some((url) => url.startsWith("/api/robot-control/base/manual"))).toBe(false);
+    expect(refreshUrls.some((url) => url.startsWith("/api/robot-control/base/stop"))).toBe(false);
+    expect(refreshUrls.some((url) => url.startsWith("/api/robot-control/free-roam/autonomy/start"))).toBe(false);
+    expect(refreshUrls.some((url) => url.startsWith("/api/robot-control/map/start"))).toBe(false);
+    expect(refreshUrls.some((url) => url.startsWith("/api/robot-control/delivery/complete"))).toBe(false);
   });
 
   it("exposes live WYSIWYG readback gaps when camera map and radar are unreadable", async () => {

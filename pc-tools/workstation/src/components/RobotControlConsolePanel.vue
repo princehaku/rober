@@ -4277,6 +4277,20 @@ const plainFieldAcceptanceWysiwygNextText = computed(() => {
   const statusText = packet.wysiwyg_ready ? "当前所见已满足" : `当前所见还差：${plainFieldAcceptanceWysiwygMissingLabelText.value}`;
   return `${statusText}；下一步：${plainActionCardUserText(packet.wysiwyg_next_action_plain)}。`;
 });
+const plainFieldAcceptanceWysiwygRefreshMode = computed(() => {
+  // 现场验收只刷新当前还缺的“所见”；单缺口不要顺手刷新其它传感器，避免现场误解为启动了更多东西。
+  const missing = plainFieldAcceptancePacket.value?.wysiwyg_missing_surface_ids ?? [];
+  if (missing.length === 1 && missing[0] === "camera") {
+    return "camera_only";
+  }
+  if (missing.length === 1 && missing[0] === "radar_map_points") {
+    return "radar_map_only";
+  }
+  if (missing.length === 1 && missing[0] === "map") {
+    return "map_only";
+  }
+  return missing.length > 0 ? "all_wysiwyg" : "none";
+});
 const plainFieldAcceptanceWysiwygRefreshDisabled = computed(() => !canRefreshPlainWysiwygEvidence.value);
 const plainFieldAcceptanceMappingMissingText = computed(() => (
   plainFieldAcceptancePacket.value?.mapping_missing_evidence.join(",") || "none"
@@ -14908,6 +14922,25 @@ async function refreshPlainWysiwygEvidence(): Promise<void> {
   ]);
 }
 
+async function refreshFieldAcceptanceWysiwygEvidence(): Promise<void> {
+  // 现场验收卡按当前缺口选择最小只读刷新链路；真正运动动作仍必须在对应运动卡片里二次触发。
+  const mode = plainFieldAcceptanceWysiwygRefreshMode.value;
+  if (mode === "camera_only") {
+    await refreshMappingCameraRecovery();
+    return;
+  }
+  if (mode === "radar_map_only") {
+    await refreshRadarProof({ focusAfterReady: false, mapPreviewAfter: true });
+    return;
+  }
+  if (mode === "map_only") {
+    await refreshMapPreview({ radarStatusRefresh: true });
+    await refreshConsole();
+    return;
+  }
+  await refreshPlainWysiwygEvidence();
+}
+
 async function refreshPlainMappingUnlockEvidence(): Promise<void> {
   // 建图解锁条件必须复测相机首帧和雷达新扫描，再读同轮地图画面；这仍是只读证据刷新，不启动建图或自由移动。
   await refreshPlainWysiwygEvidence();
@@ -17503,6 +17536,7 @@ onBeforeUnmount(() => {
           :data-wysiwyg-primary-refresh-endpoint="plainFieldAcceptanceWysiwygPrimaryEndpoint"
           :data-wysiwyg-primary-refresh-label="plainFieldAcceptanceWysiwygPrimaryLabel"
           :data-wysiwyg-next-action-plain="plainFieldAcceptancePacket.wysiwyg_next_action_plain"
+          :data-wysiwyg-refresh-mode="plainFieldAcceptanceWysiwygRefreshMode"
           :data-wysiwyg-refresh-sequence="plainFieldAcceptanceWysiwygRefreshSequence"
           :data-wysiwyg-refresh-sequence-labels="plainFieldAcceptanceWysiwygRefreshSequenceLabels"
           :data-wysiwyg-refresh-sends-motion="String(plainFieldAcceptancePacket.wysiwyg_refresh_sends_motion)"
@@ -17542,6 +17576,7 @@ onBeforeUnmount(() => {
             :data-wysiwyg-missing-surface-labels="plainFieldAcceptanceWysiwygMissingLabelText"
             :data-wysiwyg-primary-refresh-endpoint="plainFieldAcceptanceWysiwygPrimaryEndpoint"
             :data-wysiwyg-primary-refresh-label="plainFieldAcceptanceWysiwygPrimaryLabel"
+            :data-wysiwyg-refresh-mode="plainFieldAcceptanceWysiwygRefreshMode"
             :data-wysiwyg-refresh-sequence="plainFieldAcceptanceWysiwygRefreshSequence"
             :data-wysiwyg-refresh-sequence-labels="plainFieldAcceptanceWysiwygRefreshSequenceLabels"
             :data-fixed-wysiwyg-radar-refresh-endpoint="plainFieldAcceptancePacket.fixed_wysiwyg_radar_refresh_endpoint"
@@ -17577,6 +17612,7 @@ onBeforeUnmount(() => {
               :disabled="plainFieldAcceptanceWysiwygRefreshDisabled"
               :data-wysiwyg-primary-refresh-endpoint="plainFieldAcceptanceWysiwygPrimaryEndpoint"
               :data-wysiwyg-primary-refresh-label="plainFieldAcceptanceWysiwygPrimaryLabel"
+              :data-wysiwyg-refresh-mode="plainFieldAcceptanceWysiwygRefreshMode"
               :data-wysiwyg-refresh-sequence="plainFieldAcceptanceWysiwygRefreshSequence"
               :data-wysiwyg-refresh-sequence-labels="plainFieldAcceptanceWysiwygRefreshSequenceLabels"
               data-refreshes-camera-first-frame-probe="true"
@@ -17594,7 +17630,7 @@ onBeforeUnmount(() => {
               data-starts-free-roam="false"
               data-submits-delivery="false"
               data-stops-motion="false"
-              @click="refreshPlainWysiwygEvidence"
+              @click="refreshFieldAcceptanceWysiwygEvidence"
             >
               {{ plainWysiwygEvidenceRefreshButtonLabel }}
             </button>

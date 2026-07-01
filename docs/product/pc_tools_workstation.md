@@ -4858,7 +4858,7 @@ Foxglove 做浏览器远程观察，但二者都不是普通用户发车、键�
 scan proof refresh、地图 preview、Nav2、键盘、自由移动或建图的执行 gate。
 
 同日起，PC 地图太小的处理口径保持三层：普通用户优先点本页 `进入地图大屏` 或直接访问 `/map`，继续使用同一张
-WYSIWYG 地图画布和 2400% 缩放上限；ROS2 本机工程调试使用 `ros2 launch ros2_trashbot_bringup rviz.launch.py`
+WYSIWYG 地图画布和 3200% 缩放上限；ROS2 本机工程调试使用 `ros2 launch ros2_trashbot_bringup rviz.launch.py`
 查看 map/scan/tf/path/pose；需要浏览器远程观察时先运行 `ros2 launch foxglove_bridge foxglove_bridge_launch.xml`
 再接 Foxglove Studio。RViz2/Foxglove 是配套观察工具，不作为普通发车、键盘手控、自由移动或建图的前置条件。
 
@@ -4883,3 +4883,9 @@ WYSIWYG 地图画布和 2400% 缩放上限；ROS2 本机工程调试使用 `ros2
 summary 同步暴露 `map_display_foxglove_web_app_url`、`map_display_foxglove_websocket_url` 和 bridge 启动命令；
 该入口只观察 `/map`、`/scan`、TF、路径、定位和 costmap，不提供 GoalTool，不启动 ROS2、不执行 Nav2，
 不发送 `/cmd_vel` 或任何底盘运动命令。
+
+2026-07-01 现场验收 WYSIWYG 刷新改为按当前缺口聚焦。`plain-field-acceptance-wysiwyg-refresh`
+新增 `data-wysiwyg-refresh-mode`：`camera_only` 只调用相机首帧 probe、MJPEG status 和 summary；
+`radar_map_only` 只刷新雷达 scan proof 并随后读取地图预览；`map_only` 只刷新地图预览、雷达状态和 summary；
+`all_wysiwyg` 才走完整画面、雷达、地图刷新链。所有模式都保持只读，不启动雷达 lifecycle、建图 runtime、Nav2、
+键盘、自由移动、delivery complete、stop，也不发送 `/cmd_vel`。
