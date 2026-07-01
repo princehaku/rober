@@ -4351,6 +4351,58 @@ const plainFieldAcceptanceWysiwygNextText = computed(() => {
   const statusText = packet.wysiwyg_ready ? "当前所见已满足" : `当前所见还差：${plainFieldAcceptanceWysiwygMissingLabelText.value}`;
   return `${statusText}；下一步：${plainActionCardUserText(packet.wysiwyg_next_action_plain)}。`;
 });
+const plainFieldAcceptanceCameraProof = computed(() => {
+  // 相机缺口要在现场验收卡里直接说明“不是页面独占/是否 USB 降速/是否阻塞建图”，避免用户继续猜。
+  const summary = plainLiveClosureSummary.value;
+  const packet = plainFieldAcceptancePacket.value;
+  const missingCamera = packet?.wysiwyg_missing_surface_ids.includes("camera") ?? false;
+  const recoveryPlain = summary?.live_wysiwyg_camera_recovery_next_action_plain
+    || summary?.camera_recovery_next_action_plain
+    || summary?.mapping_unblock_camera_recovery_next_action_plain
+    || summary?.mapping_unblock_camera_next_action_plain
+    || packet?.wysiwyg_camera_next_action_plain
+    || "";
+  const diagnosisStatus = summary?.camera_source_diagnosis_status
+    || summary?.live_wysiwyg_camera_source_diagnosis_status
+    || "not_loaded";
+  const notExclusive = summary?.camera_source_diagnosis_not_exclusive
+    || summary?.live_wysiwyg_camera_source_diagnosis_not_exclusive
+    || "not_loaded";
+  const clientCount = summary?.live_wysiwyg_camera_shared_preview_client_count || "0";
+  const upstreamActive = summary?.live_wysiwyg_camera_shared_preview_upstream_active || "false";
+  const exclusiveCameraClaim = summary?.live_wysiwyg_camera_shared_preview_exclusive_camera_claim || "false";
+  const hardwareAction = summary?.camera_hardware_action_label || "复测相机首帧";
+  const usbText = summary?.camera_usb_speed && summary.camera_usb_speed !== "not_loaded"
+    ? `USB ${summary.camera_usb_speed}`
+    : "USB 未读到";
+  const sharedPreviewText = `共享预览：${clientCount} 个页面观看，上游${upstreamActive === "true" ? "已连接" : "未连接"}，页面独占=${exclusiveCameraClaim}`;
+  const hardwareText = summary?.camera_hardware_action_required
+    ? `现场动作：${hardwareAction}，${usbText}`
+    : `现场动作：无需额外处理，${usbText}`;
+  return {
+    visible: Boolean(summary && missingCamera),
+    currentVisible: Boolean(summary?.camera_current_visible ?? false),
+    firstFrameReady: Boolean(summary?.live_wysiwyg_camera_visible ?? summary?.camera_current_visible ?? false),
+    diagnosisStatus,
+    notExclusive,
+    usbSpeed: summary?.camera_usb_speed || "not_loaded",
+    usbFullSpeedDetected: Boolean(summary?.camera_usb_full_speed_detected ?? false),
+    hardwareActionRequired: Boolean(summary?.camera_hardware_action_required ?? false),
+    hardwareActionLabel: hardwareAction,
+    blocksMappingStart: Boolean(summary?.camera_blocks_mapping_start ?? true),
+    blocksFreeMove: Boolean(summary?.camera_blocks_free_move ?? false),
+    sharedPreviewClientCount: clientCount,
+    sharedPreviewUpstreamActive: upstreamActive,
+    sharedPreviewExclusiveCameraClaim: exclusiveCameraClaim,
+    recoveryPlain,
+    reprobeSequence: summary?.camera_reprobe_sequence?.join(",")
+      || summary?.live_wysiwyg_camera_recovery_sequence?.join(",")
+      || "/api/robot-control/camera/first-frame/probe,/api/robot-control/camera/mjpeg/status,/api/robot-control/summary",
+    fixedCameraProbeEndpoint: summary?.fixed_camera_probe_endpoint || packet?.fixed_wysiwyg_camera_probe_endpoint || "/api/robot-control/camera/first-frame/probe",
+    fixedCameraMjpegStatusEndpoint: summary?.fixed_camera_mjpeg_status_endpoint || packet?.fixed_wysiwyg_camera_mjpeg_status_endpoint || "/api/robot-control/camera/mjpeg/status",
+    text: `画面读回：${hardwareText}；${sharedPreviewText}；${plainActionCardUserText(recoveryPlain)}`,
+  };
+});
 const plainFieldAcceptanceRadarMapProof = computed(() => {
   // 现场验收卡要直接说清雷达“当前地图点”和“来源点”的差异，避免旧点被误认为当前画布所见。
   const summary = plainLiveClosureSummary.value;
@@ -17948,6 +18000,43 @@ onBeforeUnmount(() => {
               {{ plainFieldAcceptancePacket.wysiwyg_ready ? "已满足" : "待刷新" }}
             </span>
             <span class="muted">{{ plainFieldAcceptanceWysiwygNextText }}</span>
+            <span
+              v-if="plainFieldAcceptanceCameraProof.visible"
+              class="muted plain-field-acceptance-camera-proof"
+              data-testid="plain-field-acceptance-camera-proof"
+              :data-camera-current-visible="String(plainFieldAcceptanceCameraProof.currentVisible)"
+              :data-camera-first-frame-ready="String(plainFieldAcceptanceCameraProof.firstFrameReady)"
+              :data-camera-source-diagnosis-status="plainFieldAcceptanceCameraProof.diagnosisStatus"
+              :data-camera-source-diagnosis-not-exclusive="plainFieldAcceptanceCameraProof.notExclusive"
+              :data-camera-usb-speed="plainFieldAcceptanceCameraProof.usbSpeed"
+              :data-camera-usb-full-speed-detected="String(plainFieldAcceptanceCameraProof.usbFullSpeedDetected)"
+              :data-camera-hardware-action-required="String(plainFieldAcceptanceCameraProof.hardwareActionRequired)"
+              :data-camera-hardware-action-label="plainFieldAcceptanceCameraProof.hardwareActionLabel"
+              :data-camera-blocks-mapping-start="String(plainFieldAcceptanceCameraProof.blocksMappingStart)"
+              :data-camera-blocks-free-move="String(plainFieldAcceptanceCameraProof.blocksFreeMove)"
+              :data-camera-shared-preview-client-count="plainFieldAcceptanceCameraProof.sharedPreviewClientCount"
+              :data-camera-shared-preview-upstream-active="plainFieldAcceptanceCameraProof.sharedPreviewUpstreamActive"
+              :data-camera-shared-preview-exclusive-camera-claim="plainFieldAcceptanceCameraProof.sharedPreviewExclusiveCameraClaim"
+              :data-camera-recovery-next-action-plain="plainFieldAcceptanceCameraProof.recoveryPlain"
+              :data-camera-reprobe-sequence="plainFieldAcceptanceCameraProof.reprobeSequence"
+              :data-fixed-camera-probe-endpoint="plainFieldAcceptanceCameraProof.fixedCameraProbeEndpoint"
+              :data-fixed-camera-mjpeg-status-endpoint="plainFieldAcceptanceCameraProof.fixedCameraMjpegStatusEndpoint"
+              data-refreshes-camera-first-frame-probe="true"
+              data-refreshes-camera-mjpeg-status="true"
+              data-refreshes-summary="true"
+              data-starts-camera-exclusive-capture="false"
+              data-sends-motion-when-clicked="false"
+              data-starts-radar-lifecycle="false"
+              data-starts-map-runtime="false"
+              data-starts-nav2="false"
+              data-starts-manual="false"
+              data-starts-keyboard="false"
+              data-starts-free-roam="false"
+              data-submits-delivery="false"
+              data-stops-motion="false"
+            >
+              {{ plainFieldAcceptanceCameraProof.text }}
+            </span>
             <span
               v-if="plainFieldAcceptanceRadarMapProof.visible"
               class="muted plain-field-acceptance-radar-map-proof"
