@@ -10082,6 +10082,11 @@ export async function buildRobotControlSummary(
     },
   ) as NonNullable<RobotControlSummaryResponse["live_closure_summary"]>;
 
+  const objectiveAuditItem = (id: RobotControlLiveObjectiveAuditItem["id"]) =>
+    liveClosureSummary.objective_audit_items.find((item) => item.id === id);
+  const motionObjectiveAlias = objectiveAuditItem("motion");
+  const precheckObjectiveAlias = objectiveAuditItem("precheck");
+  const mappingObjectiveAlias = objectiveAuditItem("mapping");
   const runNav2RouteRunbookItem = liveClosureSummary.live_motion_runbook_items.find((item) => item.id === "run_nav2_route");
   const keyboardRunbookItem = liveClosureSummary.live_motion_runbook_items.find((item) => item.id === "hold_keyboard");
   const freeMoveRunbookItem = liveClosureSummary.live_motion_runbook_items.find((item) => item.id === "start_free_move");
@@ -10141,6 +10146,14 @@ export async function buildRobotControlSummary(
     objective_audit_items: liveClosureSummary.objective_audit_items,
     fixed_objective_audit_summary_endpoint: liveClosureSummary.fixed_objective_audit_summary_endpoint,
     objective_audit_sends_motion_when_clicked: liveClosureSummary.objective_audit_sends_motion_when_clicked,
+    motion_ready: motionObjectiveAlias?.actionable === true,
+    motion_complete: motionObjectiveAlias?.completed === true,
+    wysiwyg_ready: liveClosureSummary.live_wysiwyg_ready,
+    wysiwyg_complete: liveClosureSummary.live_wysiwyg_ready,
+    precheck_ready: liveClosureSummary.minimal_precheck_safety_only,
+    precheck_complete: precheckObjectiveAlias?.completed === true,
+    mapping_ready: liveClosureSummary.mapping_start_ready,
+    mapping_complete: mappingObjectiveAlias?.completed === true,
     // summary 是现场最常 curl 的入口；地图入口别名放到顶层，避免 operator 为了找 /map 和缩放比例再记嵌套路径。
     map_display_primary_url: liveClosureSummary.map_display_primary_url,
     map_display_legacy_url: liveClosureSummary.map_display_legacy_url,

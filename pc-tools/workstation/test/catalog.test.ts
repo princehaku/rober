@@ -6859,6 +6859,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.nav2_goal_succeeded).toBe(true);
       expect(summary.route_complete).toBe(false);
       expect(summary.trip_complete).toBe(false);
+      expect(summary.motion_ready).toBe(true);
+      expect(summary.motion_complete).toBe(false);
       expect(live.wheel_lr_nonzero_proven).toBe(false);
       expect(summary.wheel_lr_nonzero).toBe(false);
       expect(summary.wheel_lr_nonzero_proven).toBe(false);
@@ -6916,6 +6918,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(live.camera_recovery_starts_map_runtime).toBe(false);
       expect(live.radar_overlay_status).toBe(summary.live_closure_summary?.radar_overlay_status);
       expect(summary.live_wysiwyg_ready).toBe(summary.live_closure_summary?.live_wysiwyg_ready);
+      expect(summary.wysiwyg_ready).toBe(false);
+      expect(summary.wysiwyg_complete).toBe(false);
       expect(summary.live_wysiwyg_missing_surface_ids).toEqual(summary.live_closure_summary?.live_wysiwyg_missing_surface_ids);
       expect(summary.live_wysiwyg_refresh_sends_motion).toBe(false);
       expect(summary.camera_current_visible).toBe(summary.live_closure_summary?.camera_current_visible);
@@ -6994,6 +6998,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.free_roam_motion_without_radar_allowed).toBe(true);
       expect(live.free_roam_mapping_start_ready).toBe(summary.live_closure_summary?.mapping_start_ready);
       expect(summary.mapping_start_ready).toBe(summary.live_closure_summary?.mapping_start_ready);
+      expect(summary.mapping_ready).toBe(false);
+      expect(summary.mapping_complete).toBe(false);
       expect(summary.free_roam_mapping_start_ready).toBe(summary.live_closure_summary?.mapping_start_ready);
       expect(live.free_roam_mapping_start_missing_reasons).toEqual(summary.live_closure_summary?.mapping_start_missing_reasons);
       expect(summary.mapping_start_missing_reasons).toEqual(summary.live_closure_summary?.mapping_start_missing_reasons);
@@ -7006,6 +7012,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.mapping_acceptance_missing_reasons).toEqual(summary.live_closure_summary?.mapping_acceptance_missing_reasons);
       expect(summary.mapping_start_requires_camera_first_frame).toBe(true);
       expect(summary.mapping_start_requires_lidar_fresh).toBe(true);
+      expect(summary.precheck_ready).toBe(true);
+      expect(summary.precheck_complete).toBe(true);
       expect(summary.mapping_unblock_allows_free_move).toBe(true);
       expect(summary.fixed_mapping_start_endpoint).toBe("/api/robot-control/map/start");
       expect(summary.fixed_mapping_preview_endpoint).toBe("/api/robot-control/map/preview");

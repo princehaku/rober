@@ -3214,6 +3214,14 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   objective_audit_items?: RobotControlLiveClosureSummary["objective_audit_items"];
   fixed_objective_audit_summary_endpoint?: RobotControlLiveClosureSummary["fixed_objective_audit_summary_endpoint"];
   objective_audit_sends_motion_when_clicked?: RobotControlLiveClosureSummary["objective_audit_sends_motion_when_clicked"];
+  motion_ready?: boolean;
+  motion_complete?: boolean;
+  wysiwyg_ready?: RobotControlLiveClosureSummary["live_wysiwyg_ready"];
+  wysiwyg_complete?: RobotControlLiveClosureSummary["live_wysiwyg_ready"];
+  precheck_ready?: RobotControlLiveClosureSummary["minimal_precheck_safety_only"];
+  precheck_complete?: RobotControlLiveClosureSummary["minimal_precheck_safety_only"];
+  mapping_ready?: RobotControlLiveClosureSummary["mapping_start_ready"];
+  mapping_complete?: boolean;
   map_display_primary_url?: RobotControlLiveClosureSummary["map_display_primary_url"];
   map_display_legacy_url?: RobotControlLiveClosureSummary["map_display_legacy_url"];
   map_display_default_zoom_percent?: RobotControlLiveClosureSummary["map_display_default_zoom_percent"];
