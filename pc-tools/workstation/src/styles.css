@@ -1874,7 +1874,7 @@ h3 {
 }
 
 .plain-map-overlay-frame {
-  /* 缩放作用在同一个 overlay frame 上；左上溢出保证 600% 大地图每个边缘都能滚到。 */
+  /* 缩放作用在同一个 overlay frame 上；默认 100% 看全图，手动放大后每个边缘都能滚到。 */
   position: relative;
   flex: 0 0 auto;
   width: calc(100% * var(--plain-map-zoom, 1));
@@ -1888,7 +1888,7 @@ h3 {
   width: calc(100% * var(--plain-map-zoom, 1));
   height: auto;
   min-width: 100%;
-  min-height: 100%;
+  min-height: auto;
   max-width: none;
   aspect-ratio: var(--map-aspect, 1);
 }
