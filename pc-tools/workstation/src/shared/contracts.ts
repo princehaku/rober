@@ -3326,6 +3326,7 @@ export interface RobotControlLiveClosureSummary {
   mapping_lidar_fresh_gate_status: string;
   mapping_lidar_fresh_next_action_plain: string;
   mapping_lidar_fresh_refresh_sequence: string[];
+  mapping_lidar_fresh_refresh_sequence_labels: string[];
   mapping_lidar_fresh_refresh_sends_motion: false;
   mapping_lidar_fresh_refresh_starts_radar_lifecycle: false;
   mapping_lidar_fresh_blocks_free_move: false;
@@ -4117,6 +4118,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   mapping_lidar_fresh_gate_status?: RobotControlLiveClosureSummary["mapping_lidar_fresh_gate_status"];
   mapping_lidar_fresh_next_action_plain?: RobotControlLiveClosureSummary["mapping_lidar_fresh_next_action_plain"];
   mapping_lidar_fresh_refresh_sequence?: RobotControlLiveClosureSummary["mapping_lidar_fresh_refresh_sequence"];
+  mapping_lidar_fresh_refresh_sequence_labels?: RobotControlLiveClosureSummary["mapping_lidar_fresh_refresh_sequence_labels"];
   mapping_lidar_fresh_refresh_sends_motion?: RobotControlLiveClosureSummary["mapping_lidar_fresh_refresh_sends_motion"];
   mapping_lidar_fresh_refresh_starts_radar_lifecycle?: RobotControlLiveClosureSummary["mapping_lidar_fresh_refresh_starts_radar_lifecycle"];
   mapping_lidar_fresh_blocks_free_move?: RobotControlLiveClosureSummary["mapping_lidar_fresh_blocks_free_move"];

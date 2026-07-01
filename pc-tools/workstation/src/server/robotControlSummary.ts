@@ -9279,6 +9279,11 @@ function buildLiveClosureSummary(
     "/api/robot-control/radar/status",
     "/api/robot-control/summary",
   ];
+  const mappingLidarFreshRefreshSequenceLabels = [
+    "刷新雷达扫描读数",
+    "读取雷达状态",
+    "刷新总览",
+  ];
   const mappingLidarFreshNextActionPlain = mappingLidarFreshGateConflict
     ? "雷达读回已显示 fresh 且地图贴图已加载，但建图安全边界仍缺 lidar_fresh；先只读刷新雷达扫描、读取雷达状态，再刷新 summary 复核 gate。"
     : mappingLidarBlocksStart
@@ -10103,6 +10108,7 @@ function buildLiveClosureSummary(
     mapping_lidar_fresh_gate_status: mappingLidarFreshGateStatus,
     mapping_lidar_fresh_next_action_plain: mappingLidarFreshNextActionPlain,
     mapping_lidar_fresh_refresh_sequence: mappingLidarFreshRefreshSequence,
+    mapping_lidar_fresh_refresh_sequence_labels: mappingLidarFreshRefreshSequenceLabels,
     mapping_lidar_fresh_refresh_sends_motion: false,
     mapping_lidar_fresh_refresh_starts_radar_lifecycle: false,
     mapping_lidar_fresh_blocks_free_move: false,
@@ -11426,6 +11432,7 @@ export async function buildRobotControlSummary(
     mapping_lidar_fresh_gate_status: liveClosureSummary.mapping_lidar_fresh_gate_status,
     mapping_lidar_fresh_next_action_plain: liveClosureSummary.mapping_lidar_fresh_next_action_plain,
     mapping_lidar_fresh_refresh_sequence: liveClosureSummary.mapping_lidar_fresh_refresh_sequence,
+    mapping_lidar_fresh_refresh_sequence_labels: liveClosureSummary.mapping_lidar_fresh_refresh_sequence_labels,
     mapping_lidar_fresh_refresh_sends_motion: liveClosureSummary.mapping_lidar_fresh_refresh_sends_motion,
     mapping_lidar_fresh_refresh_starts_radar_lifecycle: liveClosureSummary.mapping_lidar_fresh_refresh_starts_radar_lifecycle,
     mapping_lidar_fresh_blocks_free_move: liveClosureSummary.mapping_lidar_fresh_blocks_free_move,

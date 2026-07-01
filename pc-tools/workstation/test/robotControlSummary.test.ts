@@ -1959,6 +1959,12 @@ describe("robotControlSummary", () => {
       "/api/robot-control/summary",
     ]);
     expect(summary.mapping_lidar_fresh_refresh_sequence).toEqual(summary.live_closure_summary?.mapping_lidar_fresh_refresh_sequence);
+    expect(summary.live_closure_summary?.mapping_lidar_fresh_refresh_sequence_labels).toEqual([
+      "刷新雷达扫描读数",
+      "读取雷达状态",
+      "刷新总览",
+    ]);
+    expect(summary.mapping_lidar_fresh_refresh_sequence_labels).toEqual(summary.live_closure_summary?.mapping_lidar_fresh_refresh_sequence_labels);
     expect(summary.live_closure_summary?.mapping_lidar_fresh_refresh_sends_motion).toBe(false);
     expect(summary.mapping_lidar_fresh_refresh_sends_motion).toBe(false);
     expect(summary.live_closure_summary?.mapping_lidar_fresh_refresh_starts_radar_lifecycle).toBe(false);
