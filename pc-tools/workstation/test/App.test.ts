@@ -5399,15 +5399,20 @@ describe("App", () => {
     expect(fieldAcceptanceMotionProof.text()).toContain("行程还差图上行程、同窗口轮速 L/R 非零、送达确认");
     expect(fieldAcceptanceMotionProof.text()).toContain("键盘还差按住时轮速 L/R 非零、松开后停稳");
     expect(fieldAcceptanceMotionProof.text()).toContain("自由移动还差运行读数");
-    expect(fieldAcceptanceMotionProof.text()).toContain("勾一次安全确认后分别在对应卡片执行");
+    expect(fieldAcceptanceMotionProof.text()).toContain("行程暂未就绪：先让图上行程达到可验证，再做运动复验");
     expect(fieldAcceptanceMotionProof.attributes("data-state")).toBe("可现场验证");
     expect(fieldAcceptanceMotionProof.attributes("data-ready-action-ids")).toBe("hold_keyboard,start_free_move");
     expect(fieldAcceptanceMotionProof.attributes("data-incomplete-action-ids")).toBe("run_nav2_route,hold_keyboard,start_free_move");
     expect(fieldAcceptanceMotionProof.attributes("data-completed-action-ids")).toBe("none");
     expect(fieldAcceptanceMotionProof.attributes("data-primary-action-id")).toBe("hold_keyboard");
+    expect(fieldAcceptanceMotionProof.attributes("data-trip-next-action-plain")).toBe("行程暂未就绪：先让图上行程达到可验证，再做运动复验。");
+    expect(fieldAcceptanceMotionProof.attributes("data-trip-ready-for-safety-confirm")).toBe("false");
     expect(fieldAcceptanceMotionProof.attributes("data-trip-readback-endpoints")).toBe("/api/robot-control/map/preview,/api/robot-control/nav2/goal/execution/latest,/api/robot-control/base/feedback-samples,/api/robot-control/delivery/latest,/api/robot-control/summary");
     expect(fieldAcceptanceMotionProof.attributes("data-trip-required-success-markers")).toBe("map_route_visible,nav2_goal_succeeded,same_window_wheel_lr_nonzero,delivery_success");
+    expect(fieldAcceptanceMotionProof.attributes("data-keyboard-motion-verified")).toBe("false");
+    expect(fieldAcceptanceMotionProof.attributes("data-keyboard-stop-after-release")).toBe("false");
     expect(fieldAcceptanceMotionProof.attributes("data-keyboard-readback-endpoints")).toBe("/api/robot-control/base/feedback-samples,/api/robot-control/summary");
+    expect(fieldAcceptanceMotionProof.attributes("data-free-move-motion-ready")).toBe("false");
     expect(fieldAcceptanceMotionProof.attributes("data-free-move-readback-endpoints")).toBe("/api/robot-control/free-roam/autonomy/latest,/api/robot-control/summary");
     expect(fieldAcceptanceMotionProof.attributes("data-safety-confirmed")).toBe("false");
     expect(fieldAcceptanceMotionProof.attributes("data-minimal-precheck-safety-only")).toBe("true");
@@ -9275,6 +9280,108 @@ describe("App", () => {
     expect(refreshUrls.some((url) => url.startsWith("/api/robot-control/free-roam/autonomy/start"))).toBe(false);
     expect(refreshUrls.some((url) => url.startsWith("/api/robot-control/map/start"))).toBe(false);
     expect(refreshUrls.some((url) => url.startsWith("/api/robot-control/delivery/complete"))).toBe(false);
+  });
+
+  it("shows field acceptance motion proof when route keyboard and free move are all ready", async () => {
+    // 当前真机状态是三项运动都可现场验证；清单必须把行程复验放回主推荐，同时仍然不自动发车。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as RobotControlSummaryResponse;
+    const liveClosureSummary = summaryFixture.live_closure_summary as Record<string, any>;
+    const fieldAcceptancePacket = cloneFixture(liveClosureSummary.field_acceptance_packet as Record<string, any>);
+    const steps = (fieldAcceptancePacket.steps as Record<string, any>[]).map((step) => {
+      if (step.id !== "run_nav2_route") {
+        return step;
+      }
+      return {
+        ...step,
+        ready: true,
+        proof_status: "ready_to_verify",
+        missing_evidence: ["same_window_wheel_lr_nonzero", "delivery_success"],
+        proof_plain: "可复验完整行程：图上行程和到点已读到，还差同窗口轮速 L/R 非零和送达确认。",
+        blocked_reasons: [],
+      };
+    });
+    const readyPacket = {
+      ...fieldAcceptancePacket,
+      next_step_id: "run_nav2_route",
+      next_step_label: "完整行程执行",
+      next_step_start_endpoint: "/api/robot-control/nav2/goal/execute",
+      next_step_sends_motion: true,
+      next_step_requires_safety_confirm: true,
+      ready_step_ids: ["run_nav2_route", "hold_keyboard", "start_free_move"],
+      blocked_step_ids: ["start_mapping_when_sensors_ready"],
+      steps,
+    };
+    Object.assign(liveClosureSummary, {
+      status: "needs_wheel_rerun",
+      status_label: "待轮速复验",
+      summary_plain: "当前卡点：图上行程已经有执行成功读数，但同窗口轮速 L/R 还没有非零闭环。",
+      route_ready_on_map: true,
+      nav2_goal_succeeded: true,
+      nav2_goal_execution_proven: true,
+      wheel_lr_nonzero_proven: false,
+      delivery_success: false,
+      needs_same_window_wheel_rerun: true,
+      field_acceptance_packet: readyPacket,
+      wheel_rerun_ready_for_safety_confirm: true,
+      wheel_rerun_current_gap_plain: "当前缺口：同窗口轮速 L/R 非零尚未闭环；当前读数 L/R=0/0，非零样本 0/239。",
+      wheel_rerun_next_mode_plain: "下次将用 ROS 模式重跑图上行程。",
+      wheel_rerun_delivery_next_action_plain: "轮速复验通过后，到送达区逐项确认并提交送达确认；该提交只写送达材料，不发车。",
+      wheel_rerun_readback_endpoints: ["/api/robot-control/map/preview", "/api/robot-control/nav2/goal/execution/latest", "/api/robot-control/base/feedback-samples", "/api/robot-control/delivery/latest", "/api/robot-control/summary"],
+      wheel_rerun_required_success_markers: ["map_route_visible", "nav2_goal_succeeded", "same_window_wheel_lr_nonzero", "delivery_success"],
+      keyboard_continuous_motion_verified: false,
+      keyboard_stop_after_release: false,
+      free_roam_motion_ready: false,
+    });
+    summaryFixture.field_acceptance_packet = readyPacket as RobotControlSummaryResponse["field_acceptance_packet"];
+    summaryFixture.field_acceptance_next_step_id = "run_nav2_route";
+    summaryFixture.field_acceptance_next_step_label = "完整行程执行";
+    summaryFixture.field_acceptance_ready_step_ids = ["run_nav2_route", "hold_keyboard", "start_free_move"];
+    summaryFixture.field_acceptance_blocked_step_ids = ["start_mapping_when_sensors_ready"];
+
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+    });
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const motionProof = wrapper.find('[data-testid="plain-field-acceptance-motion-proof"]');
+    expect(motionProof.exists()).toBe(true);
+    expect(motionProof.text()).toContain("3 项可现场验证");
+    expect(motionProof.text()).toContain("行程还差同窗口轮速 L/R 非零、送达确认");
+    expect(motionProof.text()).toContain("键盘还差按住时轮速 L/R 非零、松开后停稳");
+    expect(motionProof.text()).toContain("自由移动还差运行读数");
+    expect(motionProof.text()).toContain("行程可复验：先勾安全确认，再去行程卡执行，之后只读回行程、轮速和送达");
+    expect(motionProof.attributes("data-ready-action-ids")).toBe("run_nav2_route,hold_keyboard,start_free_move");
+    expect(motionProof.attributes("data-incomplete-action-ids")).toBe("run_nav2_route,hold_keyboard,start_free_move");
+    expect(motionProof.attributes("data-primary-action-id")).toBe("run_nav2_route");
+    expect(motionProof.attributes("data-trip-ready-for-safety-confirm")).toBe("true");
+    expect(motionProof.attributes("data-trip-next-action-plain")).toBe("行程可复验：先勾安全确认，再去行程卡执行，之后只读回行程、轮速和送达。");
+    expect(motionProof.attributes("data-trip-current-gap-plain")).toContain("同窗口轮速 L/R 非零尚未闭环");
+    expect(motionProof.attributes("data-trip-next-mode-plain")).toContain("ROS 模式");
+    expect(motionProof.attributes("data-trip-delivery-next-action-plain")).toContain("送达确认");
+    expect(motionProof.attributes("data-trip-readback-endpoints")).toBe("/api/robot-control/map/preview,/api/robot-control/nav2/goal/execution/latest,/api/robot-control/base/feedback-samples,/api/robot-control/delivery/latest,/api/robot-control/summary");
+    expect(motionProof.attributes("data-keyboard-motion-verified")).toBe("false");
+    expect(motionProof.attributes("data-keyboard-stop-after-release")).toBe("false");
+    expect(motionProof.attributes("data-free-move-motion-ready")).toBe("false");
+    expect(motionProof.attributes("data-sends-motion-when-clicked")).toBe("false");
+    expect(motionProof.attributes("data-starts-nav2")).toBe("false");
+    expect(motionProof.attributes("data-starts-manual")).toBe("false");
+    expect(motionProof.attributes("data-starts-keyboard")).toBe("false");
+    expect(motionProof.attributes("data-starts-free-roam")).toBe("false");
+
+    const tripRow = wrapper.find('[data-testid="plain-field-acceptance-motion-proof-run_nav2_route"]');
+    expect(tripRow.attributes("data-state")).toBe("可现场验证");
+    expect(tripRow.attributes("data-ready")).toBe("true");
+    expect(tripRow.attributes("data-missing-evidence")).toBe("same_window_wheel_lr_nonzero,delivery_success");
+    expect(tripRow.attributes("data-readback-endpoints")).toBe("/api/robot-control/map/preview,/api/robot-control/nav2/goal/execution/latest,/api/robot-control/base/feedback-samples,/api/robot-control/delivery/latest,/api/robot-control/summary");
+
+    const callsBeforeSafety = mockedFetch.mock.calls.length;
+    await wrapper.find('[data-testid="plain-field-acceptance-safety-confirm"]').setValue(true);
+    await wrapper.vm.$nextTick();
+    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeSafety);
+    expect(wrapper.find('[data-testid="plain-field-acceptance-motion-proof"]').attributes("data-safety-confirmed")).toBe("true");
+    expect(wrapper.find('[data-testid="plain-field-acceptance-motion-proof"]').text()).toContain("行程可复验：去行程卡执行，之后只读回行程、轮速和送达");
   });
 
   it("exposes live WYSIWYG readback gaps when camera map and radar are unreadable", async () => {

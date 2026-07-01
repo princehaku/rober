@@ -4633,16 +4633,35 @@ const plainFieldAcceptanceMotionProof = computed(() => {
   const routeRequiredSuccessMarkers = plainLiveClosureSummary.value?.wheel_rerun_required_success_markers?.length
     ? plainLiveClosureSummary.value.wheel_rerun_required_success_markers
     : ["map_route_visible", "nav2_goal_succeeded", "same_window_wheel_lr_nonzero", "delivery_success"];
+  const routeNextText = (() => {
+    if (tripRow?.completed) {
+      return "行程已收口，继续做键盘和自由移动验收。";
+    }
+    if (tripRow?.ready) {
+      return plainUnifiedSafetyConfirmed.value
+        ? "行程可复验：去行程卡执行，之后只读回行程、轮速和送达。"
+        : "行程可复验：先勾安全确认，再去行程卡执行，之后只读回行程、轮速和送达。";
+    }
+    return "行程暂未就绪：先让图上行程达到可验证，再做运动复验。";
+  })();
   return {
     state: completedRows.length === rows.length ? "已收口" : readyRows.length > 0 ? "可现场验证" : "先补条件",
-    text: `运动验收：${readyRows.length} 项可现场验证；${tripRow?.text ?? "行程未出现在验收包"}；${keyboardRow?.text ?? "键盘未出现在验收包"}；${freeMoveRow?.text ?? "自由移动未出现在验收包"}；勾一次安全确认后分别在对应卡片执行。`,
+    text: `运动验收：${readyRows.length} 项可现场验证；${tripRow?.text ?? "行程未出现在验收包"}；${keyboardRow?.text ?? "键盘未出现在验收包"}；${freeMoveRow?.text ?? "自由移动未出现在验收包"}；${routeNextText}`,
     rows,
     readyActionIds: readyRows.map((item) => item.id).join(",") || "none",
     incompleteActionIds: incompleteRows.map((item) => item.id).join(",") || "none",
     completedActionIds: completedRows.map((item) => item.id).join(",") || "none",
     primaryActionId,
+    routeNextText,
     routeReadbackEndpoints: tripRow?.readbackEndpointsText ?? "none",
     routeRequiredSuccessMarkers: routeRequiredSuccessMarkers.join(","),
+    routeCurrentGapPlain: plainLiveClosureSummary.value?.wheel_rerun_current_gap_plain || "",
+    routeNextModePlain: plainLiveClosureSummary.value?.wheel_rerun_next_mode_plain || "",
+    routeDeliveryNextActionPlain: plainLiveClosureSummary.value?.wheel_rerun_delivery_next_action_plain || "",
+    routeReadyForSafetyConfirm: Boolean(plainLiveClosureSummary.value?.wheel_rerun_ready_for_safety_confirm ?? tripRow?.ready ?? false),
+    keyboardMotionVerified: Boolean(plainLiveClosureSummary.value?.keyboard_continuous_motion_verified ?? false),
+    keyboardStopAfterRelease: Boolean(plainLiveClosureSummary.value?.keyboard_stop_after_release ?? false),
+    freeMoveMotionReady: Boolean(plainLiveClosureSummary.value?.free_roam_motion_ready ?? false),
     keyboardReadbackEndpoints: keyboardRow?.readbackEndpointsText ?? "none",
     freeMoveReadbackEndpoints: freeMoveRow?.readbackEndpointsText ?? "none",
   };
@@ -18059,9 +18078,17 @@ onBeforeUnmount(() => {
             :data-incomplete-action-ids="plainFieldAcceptanceMotionProof.incompleteActionIds"
             :data-completed-action-ids="plainFieldAcceptanceMotionProof.completedActionIds"
             :data-primary-action-id="plainFieldAcceptanceMotionProof.primaryActionId"
+            :data-trip-next-action-plain="plainFieldAcceptanceMotionProof.routeNextText"
+            :data-trip-current-gap-plain="plainFieldAcceptanceMotionProof.routeCurrentGapPlain"
+            :data-trip-next-mode-plain="plainFieldAcceptanceMotionProof.routeNextModePlain"
+            :data-trip-delivery-next-action-plain="plainFieldAcceptanceMotionProof.routeDeliveryNextActionPlain"
+            :data-trip-ready-for-safety-confirm="String(plainFieldAcceptanceMotionProof.routeReadyForSafetyConfirm)"
             :data-trip-readback-endpoints="plainFieldAcceptanceMotionProof.routeReadbackEndpoints"
             :data-trip-required-success-markers="plainFieldAcceptanceMotionProof.routeRequiredSuccessMarkers"
+            :data-keyboard-motion-verified="String(plainFieldAcceptanceMotionProof.keyboardMotionVerified)"
+            :data-keyboard-stop-after-release="String(plainFieldAcceptanceMotionProof.keyboardStopAfterRelease)"
             :data-keyboard-readback-endpoints="plainFieldAcceptanceMotionProof.keyboardReadbackEndpoints"
+            :data-free-move-motion-ready="String(plainFieldAcceptanceMotionProof.freeMoveMotionReady)"
             :data-free-move-readback-endpoints="plainFieldAcceptanceMotionProof.freeMoveReadbackEndpoints"
             :data-safety-confirmed="String(plainUnifiedSafetyConfirmed)"
             data-minimal-precheck-safety-only="true"
