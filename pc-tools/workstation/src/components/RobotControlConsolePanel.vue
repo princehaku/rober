@@ -325,6 +325,8 @@ const PLAIN_MAP_FOXGLOVE_BRIDGE_LAUNCH_COMMAND = "ros2 launch foxglove_bridge fo
 const PLAIN_MAP_FOXGLOVE_WS_URL = "ws://192.168.1.11:8765";
 const PLAIN_MAP_FOXGLOVE_WEB_APP_URL = "https://studio.foxglove.dev";
 const PLAIN_MAP_ENGINEERING_TOOLS_ACTION_LABEL = "工程观察：RViz2 / Foxglove";
+const PLAIN_MAP_TOO_SMALL_NEXT_ACTION_PLAIN = "地图太小先点“进入地图大屏”打开 /map，只保留地图画布、缩放和只读刷新；不需要先开 RViz2。";
+const PLAIN_MAP_ROS2_COMPANION_ANSWER_PLAIN = "ROS2 配套：本地工程调试用 RViz2；远程浏览器观察用 Foxglove bridge + Foxglove Web；普通用户仍默认使用 PC 大地图。";
 const PLAIN_MAP_ROS2_OBSERVE_TOPICS = [
   "/map",
   "/scan",
@@ -379,7 +381,7 @@ function centerPlainMapViewport(): void {
 const plainMapDisplayProofText = computed(() => {
   // 这行先回答现场“地图太小/ROS2 配套用什么”，工程命令仍收进折叠区，避免首屏重新变复杂。
   const viewText = plainMapObserverView.value || plainMapDirectViewRequested.value ? "只看地图大屏" : "PC 默认大地图主视图";
-  return `地图显示：${viewText}，默认 ${PLAIN_MAP_DEFAULT_ZOOM_PERCENT} 现场大图，当前 ${plainMapZoomPercent.value}，点“适配”回到 100% 全图，点“细节放大”可查看局部，最高 ${PLAIN_MAP_MAX_ZOOM_PERCENT}；图上行程、小车位置和雷达标记共用同一张 WYSIWYG 画布；普通用户点“进入地图大屏”直接切到 /map，本页也保留 ${plainMapLegacyDirectViewHref} 兼容入口；ROS2 配套是本地 RViz2 和远程 Foxglove，入口在“${PLAIN_MAP_ENGINEERING_TOOLS_ACTION_LABEL}”，只看地图/雷达/TF/路径/定位，不发车。本条只读，不启动工程工具、行程执行或小车运动。`;
+  return `地图显示：${viewText}，默认 ${PLAIN_MAP_DEFAULT_ZOOM_PERCENT} 现场大图，当前 ${plainMapZoomPercent.value}，点“适配”回到 100% 全图，点“细节放大”可查看局部，最高 ${PLAIN_MAP_MAX_ZOOM_PERCENT}；图上行程、小车位置和雷达标记共用同一张 WYSIWYG 画布；普通用户点“进入地图大屏”直接切到 /map，本页也保留 ${plainMapLegacyDirectViewHref} 兼容入口；${PLAIN_MAP_TOO_SMALL_NEXT_ACTION_PLAIN}${PLAIN_MAP_ROS2_COMPANION_ANSWER_PLAIN}入口在“${PLAIN_MAP_ENGINEERING_TOOLS_ACTION_LABEL}”，只看地图/雷达/TF/路径/定位，不发车。本条只读，不启动工程工具、行程执行或小车运动。`;
 });
 const canZoomPlainMapIn = computed(() => plainMapZoomIndex.value < PLAIN_MAP_ZOOM_LEVELS.length - 1);
 const canZoomPlainMapOut = computed(() => plainMapZoomIndex.value > 0);
@@ -17737,6 +17739,10 @@ onBeforeUnmount(() => {
         :data-map-display-legacy-url="plainLiveClosureSummary.map_display_legacy_url"
         :data-map-display-default-zoom-percent="plainLiveClosureSummary.map_display_default_zoom_percent"
         :data-map-display-max-zoom-percent="plainLiveClosureSummary.map_display_max_zoom_percent"
+        :data-map-display-too-small-next-action-plain="plainLiveClosureSummary.map_display_too_small_next_action_plain"
+        :data-map-display-ros2-companion-answer-plain="plainLiveClosureSummary.map_display_ros2_companion_answer_plain"
+        :data-map-display-operator-default-surface="plainLiveClosureSummary.map_display_operator_default_surface"
+        :data-map-display-companion-replaces-pc-ui="String(plainLiveClosureSummary.map_display_companion_replaces_pc_ui)"
         :data-map-display-wysiwyg-overlays="plainLiveClosureSummary.map_display_wysiwyg_overlays?.join(',') || 'none'"
         :data-map-display-ros2-companion-required="String(plainLiveClosureSummary.map_display_ros2_companion_required)"
         :data-map-display-ros2-companion-tools="plainLiveClosureSummary.map_display_ros2_companion_tools?.join(',') || 'none'"
@@ -19103,6 +19109,10 @@ onBeforeUnmount(() => {
           :data-legacy-url="plainLiveClosureSummary.map_display_legacy_url"
           :data-default-zoom-percent="plainLiveClosureSummary.map_display_default_zoom_percent"
           :data-max-zoom-percent="plainLiveClosureSummary.map_display_max_zoom_percent"
+          :data-map-too-small-next-action-plain="plainLiveClosureSummary.map_display_too_small_next_action_plain"
+          :data-ros2-companion-answer-plain="plainLiveClosureSummary.map_display_ros2_companion_answer_plain"
+          :data-operator-default-surface="plainLiveClosureSummary.map_display_operator_default_surface"
+          :data-companion-replaces-pc-ui="String(plainLiveClosureSummary.map_display_companion_replaces_pc_ui)"
           :data-wysiwyg-overlays="plainLiveClosureSummary.map_display_wysiwyg_overlays?.join(',') || 'none'"
           :data-ros2-companion-required="String(plainLiveClosureSummary.map_display_ros2_companion_required)"
           :data-ros2-companion-tools="plainLiveClosureSummary.map_display_ros2_companion_tools?.join(',') || 'none'"
@@ -20846,6 +20856,10 @@ onBeforeUnmount(() => {
           data-direct-map-view-browser-fullscreen-required="false"
           :data-direct-map-view-default-zoom-percent="PLAIN_MAP_DEFAULT_ZOOM_PERCENT"
           :data-direct-map-view-max-zoom-percent="PLAIN_MAP_MAX_ZOOM_PERCENT"
+          :data-map-too-small-next-action-plain="PLAIN_MAP_TOO_SMALL_NEXT_ACTION_PLAIN"
+          :data-ros2-companion-answer-plain="PLAIN_MAP_ROS2_COMPANION_ANSWER_PLAIN"
+          data-operator-default-surface="pc_big_map_direct_view"
+          data-companion-replaces-pc-ui="false"
           data-direct-map-loads-camera-preview="false"
           data-direct-map-refreshes-camera-mjpeg-status="false"
           data-direct-map-starts-camera-webrtc="false"
@@ -20894,6 +20908,10 @@ onBeforeUnmount(() => {
                 :data-current-map-zoom-percent="plainMapZoomPercent"
                 :data-default-map-zoom-percent="PLAIN_MAP_DEFAULT_ZOOM_PERCENT"
                 :data-max-map-zoom-percent="PLAIN_MAP_MAX_ZOOM_PERCENT"
+                :data-map-too-small-next-action-plain="PLAIN_MAP_TOO_SMALL_NEXT_ACTION_PLAIN"
+                :data-ros2-companion-answer-plain="PLAIN_MAP_ROS2_COMPANION_ANSWER_PLAIN"
+                data-operator-default-surface="pc_big_map_direct_view"
+                data-companion-replaces-pc-ui="false"
                 data-sends-motion-when-clicked="false"
                 data-starts-ros2="false"
                 data-starts-rviz2="false"
@@ -20923,6 +20941,10 @@ onBeforeUnmount(() => {
                 data-direct-map-view-browser-fullscreen-required="false"
                 :data-direct-map-view-default-zoom-percent="PLAIN_MAP_DEFAULT_ZOOM_PERCENT"
                 :data-direct-map-view-max-zoom-percent="PLAIN_MAP_MAX_ZOOM_PERCENT"
+                :data-map-too-small-next-action-plain="PLAIN_MAP_TOO_SMALL_NEXT_ACTION_PLAIN"
+                :data-ros2-companion-answer-plain="PLAIN_MAP_ROS2_COMPANION_ANSWER_PLAIN"
+                data-operator-default-surface="pc_big_map_direct_view"
+                data-companion-replaces-pc-ui="false"
                 data-sends-motion-when-clicked="false"
                 data-starts-ros2="false"
                 data-starts-rviz2="false"
@@ -21314,6 +21336,10 @@ onBeforeUnmount(() => {
             :data-default-map-zoom-percent="PLAIN_MAP_DEFAULT_ZOOM_PERCENT"
             :data-max-map-zoom-percent="PLAIN_MAP_MAX_ZOOM_PERCENT"
             :data-current-map-zoom-percent="plainMapZoomPercent"
+            :data-map-too-small-next-action-plain="PLAIN_MAP_TOO_SMALL_NEXT_ACTION_PLAIN"
+            :data-ros2-companion-answer-plain="PLAIN_MAP_ROS2_COMPANION_ANSWER_PLAIN"
+            data-operator-default-surface="pc_big_map_direct_view"
+            data-companion-replaces-pc-ui="false"
             :data-current-map-size="plainMapViewSize"
             :data-observer-mode="plainMapObserverView ? 'true' : 'false'"
             :data-direct-map-view-requested="String(plainMapDirectViewRequested)"
@@ -21369,6 +21395,10 @@ onBeforeUnmount(() => {
             data-foxglove-companion-purpose="browser_remote_observation_map_scan_tf_path_pose"
             data-foxglove-bridge-handoff="deploy_bridge_then_open_foxglove_studio"
             :data-engineering-tools-action-label="PLAIN_MAP_ENGINEERING_TOOLS_ACTION_LABEL"
+            :data-map-too-small-next-action-plain="PLAIN_MAP_TOO_SMALL_NEXT_ACTION_PLAIN"
+            :data-ros2-companion-answer-plain="PLAIN_MAP_ROS2_COMPANION_ANSWER_PLAIN"
+            data-operator-default-surface="pc_big_map_direct_view"
+            data-companion-replaces-pc-ui="false"
             data-ordinary-user-tool="pc_big_map"
             :data-rviz-role-plain="PLAIN_MAP_RVIZ_ROLE_PLAIN"
             :data-foxglove-role-plain="PLAIN_MAP_FOXGLOVE_ROLE_PLAIN"

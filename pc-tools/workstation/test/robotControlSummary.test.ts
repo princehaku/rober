@@ -306,6 +306,18 @@ describe("robotControlSummary", () => {
     expect(summary.map_display_default_zoom_percent).toBe("1000%");
     expect(summary.live_closure_summary?.map_display_max_zoom_percent).toBe("3200%");
     expect(summary.map_display_max_zoom_percent).toBe("3200%");
+    expect(summary.live_closure_summary?.map_display_too_small_next_action_plain).toContain("进入地图大屏");
+    expect(summary.live_closure_summary?.map_display_too_small_next_action_plain).toContain("/map");
+    expect(summary.live_closure_summary?.map_display_too_small_next_action_plain).toContain("不需要先开 RViz2");
+    expect(summary.map_display_too_small_next_action_plain).toBe(summary.live_closure_summary?.map_display_too_small_next_action_plain);
+    expect(summary.live_closure_summary?.map_display_ros2_companion_answer_plain).toContain("RViz2");
+    expect(summary.live_closure_summary?.map_display_ros2_companion_answer_plain).toContain("Foxglove bridge");
+    expect(summary.live_closure_summary?.map_display_ros2_companion_answer_plain).toContain("PC 大地图");
+    expect(summary.map_display_ros2_companion_answer_plain).toBe(summary.live_closure_summary?.map_display_ros2_companion_answer_plain);
+    expect(summary.live_closure_summary?.map_display_operator_default_surface).toBe("pc_big_map_direct_view");
+    expect(summary.map_display_operator_default_surface).toBe("pc_big_map_direct_view");
+    expect(summary.live_closure_summary?.map_display_companion_replaces_pc_ui).toBe(false);
+    expect(summary.map_display_companion_replaces_pc_ui).toBe(false);
     expect(summary.live_closure_summary?.map_display_wysiwyg_overlays).toEqual(["image", "route", "robot", "radar"]);
     expect(summary.map_display_wysiwyg_overlays).toEqual(["image", "route", "robot", "radar"]);
     expect(summary.live_closure_summary?.map_display_ros2_companion_required).toBe(false);
@@ -357,6 +369,9 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("100% 全图");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("点“细节放大”可查看局部");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("最高 3200%");
+    expect(summary.live_closure_summary?.map_display_companion_plain).toContain("地图太小先点“进入地图大屏”");
+    expect(summary.live_closure_summary?.map_display_companion_plain).toContain("不需要先开 RViz2");
+    expect(summary.live_closure_summary?.map_display_companion_plain).toContain("普通用户仍默认使用 PC 大地图");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("ROS2 配套只作工程观察");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("打开 Foxglove Web");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("ws://192.168.1.11:8765");

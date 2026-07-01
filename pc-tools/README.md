@@ -29,6 +29,8 @@ Node 工作站 `http://127.0.0.1:7001`。因此开发时先让 `npm run api` 守
 `netstat -anv | rg '[.:]7001 .*LISTEN|7001'`。2026-06-25 起 PC 工作站默认避开
 Clash Verge 常用的 `7071`，Node 代码按 `0.0.0.0:7001` 绑定。
 
+2026-07-01 22:47 CST 起，地图卡和 `GET /api/robot-control/summary` 明确回答“地图太小 / ROS2 配套用什么”：普通用户先点“进入地图大屏”打开 `/map`，它只保留 PC 大地图、缩放和只读刷新；RViz2 只用于本地工程调试，Foxglove bridge + Foxglove Web 只用于远程浏览器观察，二者不替代 PC 简易界面。summary 同步暴露 `map_display_too_small_next_action_plain`、`map_display_ros2_companion_answer_plain`、`map_display_operator_default_surface=pc_big_map_direct_view` 和 `map_display_companion_replaces_pc_ui=false`，DOM 也在地图卡、地图说明、当前卡点摘要和 ROS2 折叠说明上暴露同名口径。该变化只改显示和只读 DOM/API 合同，不启动 RViz2/Foxglove/ROS2 runtime，不执行 Nav2，不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
 2026-07-01 22:36 CST 起，相机 USB/full-speed blocker 的恢复长文案也按真实现场顺序显示：`live_wysiwyg_camera_recovery_next_action_plain` 和建图解锁相机文案会先提示“换高速USB后复测”，再提示读取共享预览状态；不再先让用户反复点首帧复测。该变化只改 summary 的只读文案，不启动相机/雷达 lifecycle、不执行 Nav2，不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 
 2026-07-01 22:31 CST 起，当前所见只剩相机缺口且 `camera_hardware_action_required=true` 时，summary 的 `live_wysiwyg_primary_refresh_label` 从泛化的“复测相机首帧”改为“换高速USB后复测相机首帧”，WYSIWYG objective 的下一步也同步使用该文案。地图和雷达已 WYSIWYG 时，普通用户能直接看到剩余动作是先处理 USB 12M full-speed 硬件链路，再做只读首帧复测；`live_wysiwyg_primary_refresh_endpoint` 仍是 `/api/robot-control/camera/first-frame/probe`。该变化只改 summary 的只读文案和验收合同，不启动相机/雷达 lifecycle、不执行 Nav2，不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。

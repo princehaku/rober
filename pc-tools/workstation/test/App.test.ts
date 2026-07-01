@@ -938,6 +938,10 @@ const fixtures: Record<string, unknown> = {
       map_display_direct_map_browser_fullscreen_required: false,
       map_display_default_zoom_percent: "1000%",
       map_display_max_zoom_percent: "3200%",
+      map_display_too_small_next_action_plain: "地图太小先点“进入地图大屏”打开 /map，只保留地图画布、缩放和只读刷新；不需要先开 RViz2。",
+      map_display_ros2_companion_answer_plain: "ROS2 配套：本地工程调试用 RViz2；远程浏览器观察用 Foxglove bridge + Foxglove Web；普通用户仍默认使用 PC 大地图。",
+      map_display_operator_default_surface: "pc_big_map_direct_view",
+      map_display_companion_replaces_pc_ui: false,
       map_display_wysiwyg_overlays: ["image", "route", "robot", "radar"],
       map_display_ros2_companion_required: false,
       map_display_ros2_companion_tools: ["rviz2", "foxglove"],
@@ -965,7 +969,7 @@ const fixtures: Record<string, unknown> = {
       map_display_ros2_observe_motion_topics: false,
       map_display_ros2_observe_control_tools: false,
       map_display_engineering_tools_sends_motion: false,
-      map_display_companion_plain: "普通用户地图：进入 /map 使用 PC 大地图，默认 1000% 现场大图，点“适配”回到 100% 全图，点“细节放大”可查看局部，最高 3200%，地图、路线、小车位置和雷达点共用同一张 WYSIWYG 画布；ROS2 配套只作工程观察，本地用 RViz2，远程浏览器观察先部署 Foxglove bridge 后打开 Foxglove Web 连接 ws://192.168.1.11:8765；观察项固定为地图、雷达、TF、路径、定位和 costmap，不提供 GoalTool，不发送底盘移动命令。",
+      map_display_companion_plain: "普通用户地图：进入 /map 使用 PC 大地图，默认 1000% 现场大图，点“适配”回到 100% 全图，点“细节放大”可查看局部，最高 3200%，地图、路线、小车位置和雷达点共用同一张 WYSIWYG 画布；地图太小先点“进入地图大屏”打开 /map，只保留地图画布、缩放和只读刷新；不需要先开 RViz2。ROS2 配套：本地工程调试用 RViz2；远程浏览器观察用 Foxglove bridge + Foxglove Web；普通用户仍默认使用 PC 大地图。ROS2 配套只作工程观察，本地用 RViz2，远程浏览器观察先部署 Foxglove bridge 后打开 Foxglove Web 连接 ws://192.168.1.11:8765；观察项固定为地图、雷达、TF、路径、定位和 costmap，不提供 GoalTool，不发送底盘移动命令。",
       map_display_sends_motion_when_clicked: false,
       map_display_starts_ros2: false,
       map_display_starts_rviz2: false,
@@ -5957,6 +5961,8 @@ describe("App", () => {
     expect(liveMapCompanionSummary.text()).toContain("默认 1000% 现场大图");
     expect(liveMapCompanionSummary.text()).toContain("点“细节放大”可查看局部");
     expect(liveMapCompanionSummary.text()).toContain("最高 3200%");
+    expect(liveMapCompanionSummary.text()).toContain("地图太小先点“进入地图大屏”");
+    expect(liveMapCompanionSummary.text()).toContain("普通用户仍默认使用 PC 大地图");
     expect(liveMapCompanionSummary.text()).toContain("ROS2 配套只作工程观察");
     expect(liveMapCompanionSummary.text()).toContain("RViz2");
     expect(liveMapCompanionSummary.text()).toContain("Foxglove bridge");
@@ -5966,6 +5972,10 @@ describe("App", () => {
     expect(liveMapCompanionSummary.attributes("data-legacy-url")).toBe("?view=map");
     expect(liveMapCompanionSummary.attributes("data-default-zoom-percent")).toBe("1000%");
     expect(liveMapCompanionSummary.attributes("data-max-zoom-percent")).toBe("3200%");
+    expect(liveMapCompanionSummary.attributes("data-map-too-small-next-action-plain")).toContain("进入地图大屏");
+    expect(liveMapCompanionSummary.attributes("data-ros2-companion-answer-plain")).toContain("Foxglove bridge");
+    expect(liveMapCompanionSummary.attributes("data-operator-default-surface")).toBe("pc_big_map_direct_view");
+    expect(liveMapCompanionSummary.attributes("data-companion-replaces-pc-ui")).toBe("false");
     expect(liveMapCompanionSummary.attributes("data-wysiwyg-overlays")).toBe("image,route,robot,radar");
     expect(liveMapCompanionSummary.attributes("data-ros2-companion-required")).toBe("false");
     expect(liveMapCompanionSummary.attributes("data-ros2-companion-tools")).toBe("rviz2,foxglove");
@@ -7845,6 +7855,14 @@ describe("App", () => {
     expect(mapPanel.attributes("data-direct-map-view-behavior")).toBe("page_fixed_fullscreen_map_only");
     expect(mapPanel.attributes("data-direct-map-view-default-zoom-percent")).toBe("1000%");
     expect(mapPanel.attributes("data-direct-map-view-max-zoom-percent")).toBe("3200%");
+    expect(mapPanel.attributes("data-map-too-small-next-action-plain")).toContain("进入地图大屏");
+    expect(mapPanel.attributes("data-map-too-small-next-action-plain")).toContain("/map");
+    expect(mapPanel.attributes("data-map-too-small-next-action-plain")).toContain("不需要先开 RViz2");
+    expect(mapPanel.attributes("data-ros2-companion-answer-plain")).toContain("RViz2");
+    expect(mapPanel.attributes("data-ros2-companion-answer-plain")).toContain("Foxglove bridge");
+    expect(mapPanel.attributes("data-ros2-companion-answer-plain")).toContain("PC 大地图");
+    expect(mapPanel.attributes("data-operator-default-surface")).toBe("pc_big_map_direct_view");
+    expect(mapPanel.attributes("data-companion-replaces-pc-ui")).toBe("false");
     expect(mapPanel.attributes("data-ros2-companion-style")).toBe("rviz2-map-focus");
     expect(mapPanel.attributes("data-ros2-companion-tools")).toBe("rviz2,foxglove");
     expect(mapPanel.attributes("data-ros2-companion-tool")).toBe("rviz2");
@@ -7954,6 +7972,10 @@ describe("App", () => {
     expect(mapDirectViewLink.attributes("data-direct-map-view-behavior")).toBe("page_fixed_fullscreen_map_only");
     expect(mapDirectViewLink.attributes("data-direct-map-view-default-zoom-percent")).toBe("1000%");
     expect(mapDirectViewLink.attributes("data-direct-map-view-max-zoom-percent")).toBe("3200%");
+    expect(mapDirectViewLink.attributes("data-map-too-small-next-action-plain")).toContain("进入地图大屏");
+    expect(mapDirectViewLink.attributes("data-ros2-companion-answer-plain")).toContain("Foxglove bridge");
+    expect(mapDirectViewLink.attributes("data-operator-default-surface")).toBe("pc_big_map_direct_view");
+    expect(mapDirectViewLink.attributes("data-companion-replaces-pc-ui")).toBe("false");
     expect(mapDirectViewLink.attributes("data-sends-motion-when-clicked")).toBe("false");
     expect(mapDirectViewLink.attributes("data-starts-ros2")).toBe("false");
     expect(mapDirectViewLink.attributes("data-starts-rviz2")).toBe("false");
@@ -7996,6 +8018,10 @@ describe("App", () => {
     expect(mapHeadingProof.attributes("data-ros2-companion-tools")).toBe("rviz2,foxglove");
     expect(mapHeadingProof.attributes("data-current-map-zoom-percent")).toBe("1000%");
     expect(mapHeadingProof.attributes("data-default-map-zoom-percent")).toBe("1000%");
+    expect(mapHeadingProof.attributes("data-map-too-small-next-action-plain")).toContain("进入地图大屏");
+    expect(mapHeadingProof.attributes("data-ros2-companion-answer-plain")).toContain("普通用户仍默认使用 PC 大地图");
+    expect(mapHeadingProof.attributes("data-operator-default-surface")).toBe("pc_big_map_direct_view");
+    expect(mapHeadingProof.attributes("data-companion-replaces-pc-ui")).toBe("false");
     expect(mapHeadingProof.attributes("data-max-map-zoom-percent")).toBe("3200%");
     expect(mapHeadingProof.attributes("data-sends-motion-when-clicked")).toBe("false");
     expect(mapHeadingProof.attributes("data-starts-ros2")).toBe("false");
@@ -8018,6 +8044,11 @@ describe("App", () => {
     expect(mapDisplayProof.attributes("data-default-map-zoom-percent")).toBe("1000%");
     expect(mapDisplayProof.attributes("data-max-map-zoom-percent")).toBe("3200%");
     expect(mapDisplayProof.attributes("data-current-map-zoom-percent")).toBe("1000%");
+    expect(mapDisplayProof.attributes("data-map-too-small-next-action-plain")).toContain("进入地图大屏");
+    expect(mapDisplayProof.attributes("data-map-too-small-next-action-plain")).toContain("不需要先开 RViz2");
+    expect(mapDisplayProof.attributes("data-ros2-companion-answer-plain")).toContain("Foxglove bridge");
+    expect(mapDisplayProof.attributes("data-operator-default-surface")).toBe("pc_big_map_direct_view");
+    expect(mapDisplayProof.attributes("data-companion-replaces-pc-ui")).toBe("false");
     expect(mapDisplayProof.attributes("data-current-map-size")).toBe("large");
     expect(mapDisplayProof.attributes("data-observer-mode")).toBe("false");
     expect(mapDisplayProof.attributes("data-direct-map-view-requested")).toBe("false");
@@ -8056,8 +8087,10 @@ describe("App", () => {
     expect(mapDisplayProof.text()).toContain("点“细节放大”可查看局部");
     expect(mapDisplayProof.text()).toContain("3200%");
     expect(mapDisplayProof.text()).toContain("点“进入地图大屏”直接切到 /map");
+    expect(mapDisplayProof.text()).toContain("地图太小先点“进入地图大屏”");
     expect(mapDisplayProof.text()).toContain("?view=map 兼容入口");
-    expect(mapDisplayProof.text()).toContain("ROS2 配套是本地 RViz2 和远程 Foxglove");
+    expect(mapDisplayProof.text()).toContain("ROS2 配套：本地工程调试用 RViz2");
+    expect(mapDisplayProof.text()).toContain("普通用户仍默认使用 PC 大地图");
     expect(mapDisplayProof.text()).toContain("入口在“工程观察：RViz2 / Foxglove”");
     expect(mapDisplayProof.text()).toContain("只看地图/雷达/TF/路径/定位，不发车");
     expect(mapDisplayProof.text()).toContain("图上行程、小车位置和雷达标记共用同一张 WYSIWYG 画布");
@@ -8104,6 +8137,10 @@ describe("App", () => {
     expect(mapRos2ToolNote.attributes("data-foxglove-companion-purpose")).toBe("browser_remote_observation_map_scan_tf_path_pose");
     expect(mapRos2ToolNote.attributes("data-foxglove-bridge-handoff")).toBe("deploy_bridge_then_open_foxglove_studio");
     expect(mapRos2ToolNote.attributes("data-engineering-tools-action-label")).toBe("工程观察：RViz2 / Foxglove");
+    expect(mapRos2ToolNote.attributes("data-map-too-small-next-action-plain")).toContain("进入地图大屏");
+    expect(mapRos2ToolNote.attributes("data-ros2-companion-answer-plain")).toContain("Foxglove bridge");
+    expect(mapRos2ToolNote.attributes("data-operator-default-surface")).toBe("pc_big_map_direct_view");
+    expect(mapRos2ToolNote.attributes("data-companion-replaces-pc-ui")).toBe("false");
     expect(mapRos2ToolNote.attributes("data-ordinary-user-tool")).toBe("pc_big_map");
     expect(mapRos2ToolNote.attributes("data-rviz-role-plain")).toContain("本地工程调试");
     expect(mapRos2ToolNote.attributes("data-foxglove-role-plain")).toContain("远程浏览器大屏观察");
@@ -9937,6 +9974,10 @@ describe("App", () => {
       expect(directMapDisplayProof.attributes("data-primary-map-action-label")).toBe("进入地图大屏");
       expect(directMapDisplayProof.attributes("data-primary-map-action-opens-new-window")).toBe("false");
       expect(directMapDisplayProof.attributes("data-primary-map-action-opens-current-page")).toBe("true");
+      expect(directMapDisplayProof.attributes("data-map-too-small-next-action-plain")).toContain("进入地图大屏");
+      expect(directMapDisplayProof.attributes("data-ros2-companion-answer-plain")).toContain("Foxglove bridge");
+      expect(directMapDisplayProof.attributes("data-operator-default-surface")).toBe("pc_big_map_direct_view");
+      expect(directMapDisplayProof.attributes("data-companion-replaces-pc-ui")).toBe("false");
       expect(directMapDisplayProof.attributes("data-ros2-companion-tool")).toBe("rviz2");
       expect(directMapDisplayProof.attributes("data-ros2-remote-companion-tool")).toBe("foxglove");
       expect(directMapDisplayProof.attributes("data-ros2-companion-required")).toBe("false");
@@ -9955,6 +9996,8 @@ describe("App", () => {
       expect(directMapDisplayProof.text()).toContain("点“细节放大”可查看局部");
       expect(directMapDisplayProof.text()).toContain("3200%");
       expect(directMapDisplayProof.text()).toContain("点“进入地图大屏”直接切到 /map");
+      expect(directMapDisplayProof.text()).toContain("地图太小先点“进入地图大屏”");
+      expect(directMapDisplayProof.text()).toContain("普通用户仍默认使用 PC 大地图");
       expect(directMapDisplayProof.text()).toContain("不启动工程工具、行程执行或小车运动");
       expect(directMapDisplayProof.text()).not.toContain("ros2 launch ros2_trashbot_bringup rviz.launch.py");
       expect(directMapDisplayProof.text()).not.toContain("ros2 launch foxglove_bridge foxglove_bridge_launch.xml");
@@ -9971,6 +10014,10 @@ describe("App", () => {
       expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-direct-map-view-url")).toBe("/map");
       expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-direct-map-view-legacy-url")).toBe("?view=map");
       expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-ros2-companion-required")).toBe("false");
+      expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-map-too-small-next-action-plain")).toContain("进入地图大屏");
+      expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-ros2-companion-answer-plain")).toContain("Foxglove bridge");
+      expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-operator-default-surface")).toBe("pc_big_map_direct_view");
+      expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-companion-replaces-pc-ui")).toBe("false");
       expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-starts-ros2")).toBe("false");
       expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-starts-rviz2")).toBe("false");
       expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-starts-map-runtime")).toBe("false");

@@ -2991,6 +2991,10 @@ export interface RobotControlLiveClosureSummary {
   map_display_direct_map_browser_fullscreen_required: false;
   map_display_default_zoom_percent: "1000%";
   map_display_max_zoom_percent: "3200%";
+  map_display_too_small_next_action_plain: string;
+  map_display_ros2_companion_answer_plain: string;
+  map_display_operator_default_surface: "pc_big_map_direct_view";
+  map_display_companion_replaces_pc_ui: false;
   map_display_wysiwyg_overlays: string[];
   map_display_ros2_companion_required: false;
   map_display_ros2_companion_tools: string[];
@@ -3426,6 +3430,10 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   map_display_direct_map_browser_fullscreen_required?: RobotControlLiveClosureSummary["map_display_direct_map_browser_fullscreen_required"];
   map_display_default_zoom_percent?: RobotControlLiveClosureSummary["map_display_default_zoom_percent"];
   map_display_max_zoom_percent?: RobotControlLiveClosureSummary["map_display_max_zoom_percent"];
+  map_display_too_small_next_action_plain?: RobotControlLiveClosureSummary["map_display_too_small_next_action_plain"];
+  map_display_ros2_companion_answer_plain?: RobotControlLiveClosureSummary["map_display_ros2_companion_answer_plain"];
+  map_display_operator_default_surface?: RobotControlLiveClosureSummary["map_display_operator_default_surface"];
+  map_display_companion_replaces_pc_ui?: RobotControlLiveClosureSummary["map_display_companion_replaces_pc_ui"];
   map_display_wysiwyg_overlays?: RobotControlLiveClosureSummary["map_display_wysiwyg_overlays"];
   map_display_ros2_companion_required?: RobotControlLiveClosureSummary["map_display_ros2_companion_required"];
   map_display_ros2_companion_tools?: RobotControlLiveClosureSummary["map_display_ros2_companion_tools"];
