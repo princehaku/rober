@@ -9300,6 +9300,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-field-acceptance-radar-map-proof"]').exists()).toBe(false);
     expect(fieldAcceptanceWysiwygRefresh.attributes("data-wysiwyg-refresh-mode")).toBe("camera_only");
     expect(fieldAcceptanceWysiwygRefresh.attributes("data-wysiwyg-refresh-sequence")).toBe("/api/robot-control/camera/first-frame/probe,/api/robot-control/camera/mjpeg/status,/api/robot-control/summary");
+    expect(fieldAcceptanceWysiwygRefresh.text()).toBe("换USB后复测画面");
 
     const callsBeforeRefresh = mockedFetch.mock.calls.length;
     await fieldAcceptanceWysiwygRefresh.trigger("click");

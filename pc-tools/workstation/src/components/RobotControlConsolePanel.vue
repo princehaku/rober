@@ -4343,6 +4343,20 @@ const plainFieldAcceptanceWysiwygPrimaryLabel = computed(() => (
   || plainLiveClosureSummary.value?.live_wysiwyg_primary_refresh_label
   || "刷新当前所见"
 ));
+const plainFieldAcceptanceWysiwygRefreshButtonLabel = computed(() => {
+  // 现场只剩 USB/full-speed 相机缺口时，按钮必须先提示硬件动作，再说复测，避免继续误判成页面刷新。
+  const missing = plainFieldAcceptancePacket.value?.wysiwyg_missing_surface_ids ?? [];
+  const cameraOnly = missing.length === 1 && missing[0] === "camera";
+  const summary = plainLiveClosureSummary.value;
+  const needsUsbAction = Boolean(summary?.camera_hardware_action_required)
+    || summary?.camera_source_diagnosis_status === "uvc_full_speed_usb_not_exclusive"
+    || summary?.camera_usb_full_speed_detected === true
+    || summary?.camera_usb_speed === "12M";
+  if (!loading.value && !cameraFirstFrameProbePending.value && cameraOnly && needsUsbAction) {
+    return "换USB后复测画面";
+  }
+  return plainWysiwygEvidenceRefreshButtonLabel.value;
+});
 const plainFieldAcceptanceWysiwygNextText = computed(() => {
   const packet = plainFieldAcceptancePacket.value;
   if (!packet) {
@@ -18284,7 +18298,7 @@ onBeforeUnmount(() => {
               data-stops-motion="false"
               @click="refreshFieldAcceptanceWysiwygEvidence"
             >
-              {{ plainWysiwygEvidenceRefreshButtonLabel }}
+              {{ plainFieldAcceptanceWysiwygRefreshButtonLabel }}
             </button>
           </div>
           <label
