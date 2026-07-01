@@ -3643,6 +3643,7 @@ function mapPreviewRadarOverlayAliases(
   | "radar_overlay_count"
   | "radar_overlay_source_count"
   | "radar_overlay_point_count"
+  | "radar_overlay_current_point_count"
   | "radar_overlay_source_point_count"
   | "radar_overlay_refresh_required"
   | "radar_overlay_stale_source_points_suppressed"
@@ -3674,6 +3675,7 @@ function mapPreviewRadarOverlayAliases(
     radar_overlay_count: radarOverlay.count,
     radar_overlay_source_count: radarOverlay.source_count,
     radar_overlay_point_count: radarOverlay.count,
+    radar_overlay_current_point_count: radarOverlay.count,
     radar_overlay_source_point_count: radarOverlay.source_count,
     radar_overlay_refresh_required: radarOverlay.refresh_required,
     radar_overlay_stale_source_points_suppressed: radarOverlay.stale_source_points_suppressed,

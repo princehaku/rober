@@ -11200,6 +11200,7 @@ describe("workstation fail-closed API contracts", () => {
           blocked_reason_labels: string[];
         };
         radar_overlay_point_count: number;
+        radar_overlay_current_point_count: number;
         radar_overlay_source_point_count: number | null;
         radar_overlay_refresh_required: boolean;
         radar_overlay_stale_source_points_suppressed: boolean;
@@ -11264,6 +11265,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(previewBody.radar_overlay.frame_id).toBe("laser_frame");
       expect(previewBody.radar_overlay.source_frame_id).toBe("laser_frame");
       expect(previewBody.radar_overlay_point_count).toBe(1);
+      expect(previewBody.radar_overlay_current_point_count).toBe(1);
       expect(previewBody.radar_overlay_source_point_count).toBe(65);
       expect(previewBody.radar_overlay_refresh_required).toBe(false);
       expect(previewBody.radar_overlay_stale_source_points_suppressed).toBe(false);
@@ -11438,6 +11440,7 @@ describe("workstation fail-closed API contracts", () => {
         radar_overlay_next_action: string;
         radar_overlay_next_action_plain: string;
         radar_overlay_count: number;
+        radar_overlay_current_point_count: number;
         radar_overlay_source_count: number | null;
         radar_overlay_needs_refresh: boolean;
         radar_overlay_blocks_wysiwyg: boolean;
@@ -11641,6 +11644,7 @@ describe("workstation fail-closed API contracts", () => {
         radar_overlay_next_action: string;
         radar_overlay_next_action_plain: string;
         radar_overlay_count: number;
+        radar_overlay_current_point_count: number;
         radar_overlay_source_count: number | null;
         radar_overlay_needs_refresh: boolean;
         radar_overlay_blocks_wysiwyg: boolean;
@@ -11720,6 +11724,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.radar_overlay_next_action).toBe(body.radar_overlay.next_action);
       expect(body.radar_overlay_next_action_plain).toBe(body.radar_overlay.next_action_plain);
       expect(body.radar_overlay_count).toBe(0);
+      expect(body.radar_overlay_current_point_count).toBe(0);
       expect(body.radar_overlay_points).toEqual([]);
       expect(body.radar_overlay_source_count).toBe(65);
       expect(body.radar_overlay_needs_refresh).toBe(true);

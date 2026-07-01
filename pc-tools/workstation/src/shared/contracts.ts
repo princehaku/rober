@@ -4093,6 +4093,7 @@ export interface RobotControlMapPreviewResponse extends ProofFlags {
   radar_overlay_count: number;
   radar_overlay_source_count: number | null;
   radar_overlay_point_count: number;
+  radar_overlay_current_point_count: number;
   radar_overlay_source_point_count: number | null;
   radar_overlay_refresh_required: boolean;
   radar_overlay_needs_refresh: boolean;
