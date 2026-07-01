@@ -17160,6 +17160,16 @@ onBeforeUnmount(() => {
           :data-radar-map-refresh-next-action-plain="plainLiveClosureSummary.live_wysiwyg_radar_map_refresh_next_action_plain"
           :data-radar-map-refresh-sequence="plainLiveClosureSummary.live_wysiwyg_radar_map_refresh_sequence?.join(',') || 'none'"
           :data-radar-map-refresh-sequence-labels="plainLiveClosureSummary.live_wysiwyg_radar_map_refresh_sequence_labels?.join(',') || 'none'"
+          :data-radar-overlay-status="plainLiveClosureSummary.radar_overlay_status"
+          :data-radar-overlay-current-point-count="plainLiveClosureSummary.radar_overlay_current_point_count"
+          :data-radar-overlay-source-point-count="plainLiveClosureSummary.radar_overlay_source_point_count"
+          :data-radar-overlay-primary-blocked-reason="plainLiveClosureSummary.radar_overlay_primary_blocked_reason"
+          :data-radar-overlay-current-vs-source-plain="plainLiveClosureSummary.radar_overlay_current_vs_source_plain"
+          :data-radar-overlay-refresh-next-action-plain="plainLiveClosureSummary.radar_overlay_refresh_next_action_plain"
+          :data-fixed-radar-overlay-refresh-endpoint="plainLiveClosureSummary.fixed_radar_overlay_refresh_endpoint"
+          :data-fixed-radar-overlay-map-preview-endpoint="plainLiveClosureSummary.fixed_radar_overlay_map_preview_endpoint"
+          :data-radar-overlay-refresh-sends-motion="String(plainLiveClosureSummary.radar_overlay_refresh_sends_motion)"
+          :data-radar-overlay-refresh-starts-radar-lifecycle="String(plainLiveClosureSummary.radar_overlay_refresh_starts_radar_lifecycle)"
           data-sends-motion-when-clicked="false"
         >
           {{ plainActionCardUserText(plainLiveClosureSummary.live_wysiwyg_diagnostic_plain) }}

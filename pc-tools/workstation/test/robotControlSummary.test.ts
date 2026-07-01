@@ -305,6 +305,16 @@ describe("robotControlSummary", () => {
       "刷新雷达扫描读数",
       "刷新地图画面",
     ]);
+    expect(summary.live_closure_summary?.radar_overlay_status).toBe(summary.live_closure_summary?.live_wysiwyg_radar_map_overlay_status);
+    expect(summary.live_closure_summary?.radar_overlay_current_point_count).toBe(summary.live_closure_summary?.live_wysiwyg_radar_map_current_point_count);
+    expect(summary.live_closure_summary?.radar_overlay_source_point_count).toBe(summary.live_closure_summary?.live_wysiwyg_radar_map_source_point_count);
+    expect(summary.live_closure_summary?.radar_overlay_primary_blocked_reason).toBe(summary.live_closure_summary?.live_wysiwyg_radar_map_primary_blocked_reason);
+    expect(summary.live_closure_summary?.radar_overlay_current_vs_source_plain).toBe(summary.live_closure_summary?.live_wysiwyg_radar_map_current_vs_source_plain);
+    expect(summary.live_closure_summary?.radar_overlay_refresh_next_action_plain).toBe(summary.live_closure_summary?.live_wysiwyg_radar_map_refresh_next_action_plain);
+    expect(summary.live_closure_summary?.fixed_radar_overlay_refresh_endpoint).toBe("/api/robot-control/radar/scan-proof/refresh");
+    expect(summary.live_closure_summary?.fixed_radar_overlay_map_preview_endpoint).toBe("/api/robot-control/map/preview");
+    expect(summary.live_closure_summary?.radar_overlay_refresh_sends_motion).toBe(false);
+    expect(summary.live_closure_summary?.radar_overlay_refresh_starts_radar_lifecycle).toBe(false);
     expect(summary.live_closure_summary?.live_wysiwyg_diagnostic_plain).toContain("画面诊断：首帧未证明");
     expect(summary.live_closure_summary?.live_wysiwyg_diagnostic_plain).toContain("还差=地图缺雷达点；小车地图位置未读到");
     expect(summary.live_closure_summary?.fixed_live_wysiwyg_radar_refresh_endpoint).toBe("/api/robot-control/radar/scan-proof/refresh");

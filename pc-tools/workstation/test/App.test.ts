@@ -973,6 +973,16 @@ const fixtures: Record<string, unknown> = {
         "/api/robot-control/map/preview",
       ],
       live_wysiwyg_radar_map_refresh_sequence_labels: ["刷新雷达扫描读数", "刷新地图画面"],
+      radar_overlay_status: "not_current",
+      radar_overlay_current_point_count: "0",
+      radar_overlay_source_point_count: "81",
+      radar_overlay_primary_blocked_reason: "scan_preview_points_missing",
+      radar_overlay_current_vs_source_plain: "地图雷达点：当前 0 个，来源 81 个；状态=not_current，旧来源点已抑制，未贴到当前地图。下一步：旧雷达来源点 81 个已抑制；先刷新雷达扫描读数，再刷新地图画面，确认同轮雷达点贴图。",
+      radar_overlay_refresh_next_action_plain: "旧雷达来源点 81 个已抑制；先刷新雷达扫描读数，再刷新地图画面，确认同轮雷达点贴图。",
+      fixed_radar_overlay_refresh_endpoint: "/api/robot-control/radar/scan-proof/refresh",
+      fixed_radar_overlay_map_preview_endpoint: "/api/robot-control/map/preview",
+      radar_overlay_refresh_sends_motion: false,
+      radar_overlay_refresh_starts_radar_lifecycle: false,
       fixed_live_wysiwyg_radar_refresh_endpoint: "/api/robot-control/radar/scan-proof/refresh",
       fixed_live_wysiwyg_camera_probe_endpoint: "/api/robot-control/camera/first-frame/probe",
       fixed_live_wysiwyg_map_preview_endpoint: "/api/robot-control/map/preview",
@@ -5038,6 +5048,16 @@ describe("App", () => {
     expect(liveClosureWysiwygDiagnostics.attributes("data-radar-map-refresh-next-action-plain")).toBe("旧雷达来源点 81 个已抑制；先刷新雷达扫描读数，再刷新地图画面，确认同轮雷达点贴图。");
     expect(liveClosureWysiwygDiagnostics.attributes("data-radar-map-refresh-sequence")).toBe("/api/robot-control/radar/scan-proof/refresh,/api/robot-control/map/preview");
     expect(liveClosureWysiwygDiagnostics.attributes("data-radar-map-refresh-sequence-labels")).toBe("刷新雷达扫描读数,刷新地图画面");
+    expect(liveClosureWysiwygDiagnostics.attributes("data-radar-overlay-status")).toBe("not_current");
+    expect(liveClosureWysiwygDiagnostics.attributes("data-radar-overlay-current-point-count")).toBe("0");
+    expect(liveClosureWysiwygDiagnostics.attributes("data-radar-overlay-source-point-count")).toBe("81");
+    expect(liveClosureWysiwygDiagnostics.attributes("data-radar-overlay-primary-blocked-reason")).toBe("scan_preview_points_missing");
+    expect(liveClosureWysiwygDiagnostics.attributes("data-radar-overlay-current-vs-source-plain")).toContain("当前 0 个，来源 81 个");
+    expect(liveClosureWysiwygDiagnostics.attributes("data-radar-overlay-refresh-next-action-plain")).toContain("刷新雷达扫描读数");
+    expect(liveClosureWysiwygDiagnostics.attributes("data-fixed-radar-overlay-refresh-endpoint")).toBe("/api/robot-control/radar/scan-proof/refresh");
+    expect(liveClosureWysiwygDiagnostics.attributes("data-fixed-radar-overlay-map-preview-endpoint")).toBe("/api/robot-control/map/preview");
+    expect(liveClosureWysiwygDiagnostics.attributes("data-radar-overlay-refresh-sends-motion")).toBe("false");
+    expect(liveClosureWysiwygDiagnostics.attributes("data-radar-overlay-refresh-starts-radar-lifecycle")).toBe("false");
     expect(liveClosureWysiwygDiagnostics.attributes("data-sends-motion-when-clicked")).toBe("false");
     const liveCameraRecoveryReadback = wrapper.find('[data-testid="plain-live-camera-recovery-readback"]');
     expect(liveCameraRecoveryReadback.exists()).toBe(true);
