@@ -754,6 +754,49 @@ describe("robotControlSummary", () => {
       "hold_keyboard",
       "start_free_move",
     ]);
+    expect(summary.field_acceptance_safety_confirm_ready_action_labels).toEqual([
+      "完整行程执行",
+      "键盘连续手控",
+      "自由自助移动",
+    ]);
+    expect(summary.field_acceptance_safety_confirm_ready_action_start_endpoints).toEqual([
+      "/api/robot-control/nav2/goal/execute",
+      "/api/robot-control/base/manual",
+      "/api/robot-control/free-roam/autonomy/start",
+    ]);
+    expect(summary.field_acceptance_primary_safety_confirm_ready_action_id).toBe("run_nav2_route");
+    expect(summary.field_acceptance_primary_safety_confirm_ready_action_label).toBe("完整行程执行");
+    expect(summary.field_acceptance_primary_safety_confirm_ready_action_start_endpoint).toBe("/api/robot-control/nav2/goal/execute");
+    expect(summary.field_acceptance_primary_safety_confirm_ready_action_requires_safety_confirm).toBe(true);
+    expect(summary.field_acceptance_primary_safety_confirm_ready_action_sends_motion).toBe(true);
+    expect(summary.field_acceptance_safety_confirm_ready_actions).toEqual([
+      expect.objectContaining({
+        id: "run_nav2_route",
+        start_endpoint: "/api/robot-control/nav2/goal/execute",
+        requires_safety_confirm: true,
+        minimal_precheck_safety_only: true,
+        sends_motion_when_executed: true,
+        camera_preflight_required: false,
+        radar_preflight_required: false,
+        starts_nav2_when_executed: true,
+      }),
+      expect.objectContaining({
+        id: "hold_keyboard",
+        start_endpoint: "/api/robot-control/base/manual",
+        requires_safety_confirm: true,
+        camera_preflight_required: false,
+        radar_preflight_required: false,
+        starts_keyboard_when_executed: true,
+      }),
+      expect.objectContaining({
+        id: "start_free_move",
+        start_endpoint: "/api/robot-control/free-roam/autonomy/start",
+        requires_safety_confirm: true,
+        camera_preflight_required: false,
+        radar_preflight_required: false,
+        starts_free_roam_when_executed: true,
+      }),
+    ]);
     expect(summary.field_acceptance_hardware_action_ids).toEqual([]);
     expect(summary.field_acceptance_no_motion_readback_action_ids).toEqual([
       "readback_all",
@@ -827,6 +870,11 @@ describe("robotControlSummary", () => {
       next_step_sends_motion: true,
       next_step_requires_safety_confirm: true,
       safety_confirm_ready_step_ids: ["run_nav2_route", "hold_keyboard", "start_free_move"],
+      safety_confirm_ready_action_labels: ["完整行程执行", "键盘连续手控", "自由自助移动"],
+      primary_safety_confirm_ready_action_id: "run_nav2_route",
+      primary_safety_confirm_ready_action_start_endpoint: "/api/robot-control/nav2/goal/execute",
+      primary_safety_confirm_ready_action_requires_safety_confirm: true,
+      primary_safety_confirm_ready_action_sends_motion: true,
       no_motion_readback_action_ids: ["readback_all", "refresh_current_wysiwyg", "refresh_radar_map_overlay"],
       no_motion_readback_action_labels: ["复验全部读数", "刷新当前所见", "刷新雷达贴图"],
       primary_no_motion_readback_action_id: "refresh_radar_map_overlay",

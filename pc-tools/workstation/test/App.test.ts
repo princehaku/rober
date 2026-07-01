@@ -1334,6 +1334,58 @@ const fixtures: Record<string, unknown> = {
         motion_step_ids: ["run_nav2_route", "hold_keyboard", "start_free_move", "start_mapping_when_sensors_ready"],
         no_motion_step_ids: [],
         safety_confirm_ready_step_ids: ["hold_keyboard", "start_free_move"],
+        safety_confirm_ready_action_labels: ["键盘连续手控", "自由自助移动"],
+        safety_confirm_ready_action_start_endpoints: [
+          "/api/robot-control/base/manual",
+          "/api/robot-control/free-roam/autonomy/start",
+        ],
+        safety_confirm_ready_actions: [
+          {
+            id: "hold_keyboard",
+            label: "键盘连续手控",
+            start_endpoint: "/api/robot-control/base/manual",
+            stop_endpoint: "/api/robot-control/base/stop",
+            acceptance_endpoints: ["/api/robot-control/base/feedback-samples", "/api/robot-control/summary"],
+            requires_safety_confirm: true,
+            minimal_precheck_safety_only: true,
+            sends_motion_when_executed: true,
+            camera_preflight_required: false,
+            radar_preflight_required: false,
+            operator_report_preflight_required: false,
+            route_wysiwyg_preflight_required: false,
+            starts_nav2_when_executed: false,
+            starts_manual_when_executed: true,
+            starts_keyboard_when_executed: true,
+            starts_free_roam_when_executed: false,
+            starts_map_runtime_when_executed: false,
+            submits_delivery_when_executed: false,
+          },
+          {
+            id: "start_free_move",
+            label: "自由自助移动",
+            start_endpoint: "/api/robot-control/free-roam/autonomy/start",
+            stop_endpoint: "/api/robot-control/free-roam/autonomy/stop",
+            acceptance_endpoints: ["/api/robot-control/free-roam/autonomy/latest", "/api/robot-control/summary"],
+            requires_safety_confirm: true,
+            minimal_precheck_safety_only: true,
+            sends_motion_when_executed: true,
+            camera_preflight_required: false,
+            radar_preflight_required: false,
+            operator_report_preflight_required: false,
+            route_wysiwyg_preflight_required: false,
+            starts_nav2_when_executed: false,
+            starts_manual_when_executed: false,
+            starts_keyboard_when_executed: false,
+            starts_free_roam_when_executed: true,
+            starts_map_runtime_when_executed: false,
+            submits_delivery_when_executed: false,
+          },
+        ],
+        primary_safety_confirm_ready_action_id: "hold_keyboard",
+        primary_safety_confirm_ready_action_label: "键盘连续手控",
+        primary_safety_confirm_ready_action_start_endpoint: "/api/robot-control/base/manual",
+        primary_safety_confirm_ready_action_requires_safety_confirm: true,
+        primary_safety_confirm_ready_action_sends_motion: true,
         hardware_action_ids: [],
         no_motion_readback_action_ids: ["readback_all", "refresh_current_wysiwyg", "refresh_radar_map_overlay"],
         no_motion_readback_action_labels: ["复验全部读数", "刷新当前所见", "刷新雷达贴图"],
@@ -5390,6 +5442,13 @@ describe("App", () => {
     expect(fieldAcceptancePacket.attributes("data-motion-step-ids")).toBe("run_nav2_route,hold_keyboard,start_free_move,start_mapping_when_sensors_ready");
     expect(fieldAcceptancePacket.attributes("data-no-motion-step-ids")).toBe("none");
     expect(fieldAcceptancePacket.attributes("data-safety-confirm-ready-step-ids")).toBe("hold_keyboard,start_free_move");
+    expect(fieldAcceptancePacket.attributes("data-safety-confirm-ready-action-labels")).toBe("键盘连续手控,自由自助移动");
+    expect(fieldAcceptancePacket.attributes("data-safety-confirm-ready-action-start-endpoints")).toBe("/api/robot-control/base/manual,/api/robot-control/free-roam/autonomy/start");
+    expect(fieldAcceptancePacket.attributes("data-primary-safety-confirm-ready-action-id")).toBe("hold_keyboard");
+    expect(fieldAcceptancePacket.attributes("data-primary-safety-confirm-ready-action-label")).toBe("键盘连续手控");
+    expect(fieldAcceptancePacket.attributes("data-primary-safety-confirm-ready-action-start-endpoint")).toBe("/api/robot-control/base/manual");
+    expect(fieldAcceptancePacket.attributes("data-primary-safety-confirm-ready-action-requires-safety-confirm")).toBe("true");
+    expect(fieldAcceptancePacket.attributes("data-primary-safety-confirm-ready-action-sends-motion")).toBe("true");
     expect(fieldAcceptancePacket.attributes("data-hardware-action-ids")).toBe("none");
     expect(fieldAcceptancePacket.attributes("data-no-motion-readback-action-ids")).toBe("readback_all,refresh_current_wysiwyg,refresh_radar_map_overlay");
     expect(fieldAcceptancePacket.attributes("data-no-motion-readback-action-labels")).toBe("复验全部读数,刷新当前所见,刷新雷达贴图");
@@ -5439,6 +5498,13 @@ describe("App", () => {
     expect(fieldAcceptanceRemainingActions.text()).toContain("需要现场安全确认的运动验收");
     expect(fieldAcceptanceRemainingActions.text()).toContain("可随时只读复验");
     expect(fieldAcceptanceRemainingActions.attributes("data-safety-confirm-ready-step-ids")).toBe("hold_keyboard,start_free_move");
+    expect(fieldAcceptanceRemainingActions.attributes("data-safety-confirm-ready-action-labels")).toBe("键盘连续手控,自由自助移动");
+    expect(fieldAcceptanceRemainingActions.attributes("data-safety-confirm-ready-action-start-endpoints")).toBe("/api/robot-control/base/manual,/api/robot-control/free-roam/autonomy/start");
+    expect(fieldAcceptanceRemainingActions.attributes("data-primary-safety-confirm-ready-action-id")).toBe("hold_keyboard");
+    expect(fieldAcceptanceRemainingActions.attributes("data-primary-safety-confirm-ready-action-label")).toBe("键盘连续手控");
+    expect(fieldAcceptanceRemainingActions.attributes("data-primary-safety-confirm-ready-action-start-endpoint")).toBe("/api/robot-control/base/manual");
+    expect(fieldAcceptanceRemainingActions.attributes("data-primary-safety-confirm-ready-action-requires-safety-confirm")).toBe("true");
+    expect(fieldAcceptanceRemainingActions.attributes("data-primary-safety-confirm-ready-action-sends-motion")).toBe("true");
     expect(fieldAcceptanceRemainingActions.attributes("data-hardware-action-ids")).toBe("none");
     expect(fieldAcceptanceRemainingActions.attributes("data-no-motion-readback-action-ids")).toBe("readback_all,refresh_current_wysiwyg,refresh_radar_map_overlay");
     expect(fieldAcceptanceRemainingActions.attributes("data-no-motion-readback-action-labels")).toBe("复验全部读数,刷新当前所见,刷新雷达贴图");

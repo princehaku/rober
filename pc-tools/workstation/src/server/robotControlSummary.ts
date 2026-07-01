@@ -30,6 +30,7 @@ import type {
   RobotControlFieldAcceptancePacket,
   RobotControlFieldAcceptanceNoMotionReadbackAction,
   RobotControlFieldAcceptanceNoMotionReadbackActionId,
+  RobotControlFieldAcceptanceSafetyConfirmReadyAction,
   RobotControlFieldAcceptanceWysiwygRefreshMode,
   RobotControlLiveObjectiveAuditItem,
   RobotControlNav2RouteAcceptancePacket,
@@ -10255,6 +10256,32 @@ export async function buildRobotControlSummary(
   const fieldAcceptanceSafetyConfirmReadyLabels = fieldAcceptanceSteps
     .filter((item) => fieldAcceptanceSafetyConfirmReadyStepIds.includes(item.id))
     .map((item) => item.label);
+  const fieldAcceptanceSafetyConfirmReadyActions: RobotControlFieldAcceptanceSafetyConfirmReadyAction[] = fieldAcceptanceSteps
+    .filter((item) => fieldAcceptanceSafetyConfirmReadyStepIds.includes(item.id))
+    .map((item) => ({
+      id: item.id,
+      label: item.label,
+      start_endpoint: item.start_endpoint,
+      stop_endpoint: item.stop_endpoint,
+      acceptance_endpoints: item.acceptance_endpoints,
+      requires_safety_confirm: true,
+      minimal_precheck_safety_only: true,
+      sends_motion_when_executed: true,
+      camera_preflight_required: false,
+      radar_preflight_required: false,
+      operator_report_preflight_required: false,
+      route_wysiwyg_preflight_required: false,
+      starts_nav2_when_executed: item.id === "run_nav2_route",
+      starts_manual_when_executed: item.id === "hold_keyboard",
+      starts_keyboard_when_executed: item.id === "hold_keyboard",
+      starts_free_roam_when_executed: item.id === "start_free_move",
+      starts_map_runtime_when_executed: item.id === "start_mapping_when_sensors_ready",
+      submits_delivery_when_executed: false,
+    }));
+  const fieldAcceptancePrimarySafetyConfirmReadyAction = fieldAcceptanceSafetyConfirmReadyActions
+    .find((item) => item.id === fieldAcceptanceNextStep?.id)
+    ?? fieldAcceptanceSafetyConfirmReadyActions[0]
+    ?? null;
   const fieldAcceptanceHardwareActionIds = [
     ...(liveClosureSummary.camera_hardware_action_required && !liveClosureSummary.camera_current_visible
       ? ["camera_usb_recovery"]
@@ -10364,6 +10391,14 @@ export async function buildRobotControlSummary(
       .filter((item) => !item.sends_motion_when_executed)
       .map((item) => item.id),
     safety_confirm_ready_step_ids: fieldAcceptanceSafetyConfirmReadyStepIds,
+    safety_confirm_ready_action_labels: fieldAcceptanceSafetyConfirmReadyActions.map((item) => item.label),
+    safety_confirm_ready_action_start_endpoints: fieldAcceptanceSafetyConfirmReadyActions.map((item) => item.start_endpoint),
+    safety_confirm_ready_actions: fieldAcceptanceSafetyConfirmReadyActions,
+    primary_safety_confirm_ready_action_id: fieldAcceptancePrimarySafetyConfirmReadyAction?.id ?? "none",
+    primary_safety_confirm_ready_action_label: fieldAcceptancePrimarySafetyConfirmReadyAction?.label ?? "无待执行运动验收",
+    primary_safety_confirm_ready_action_start_endpoint: fieldAcceptancePrimarySafetyConfirmReadyAction?.start_endpoint ?? "none",
+    primary_safety_confirm_ready_action_requires_safety_confirm: fieldAcceptancePrimarySafetyConfirmReadyAction?.requires_safety_confirm ?? false,
+    primary_safety_confirm_ready_action_sends_motion: fieldAcceptancePrimarySafetyConfirmReadyAction?.sends_motion_when_executed ?? false,
     hardware_action_ids: fieldAcceptanceHardwareActionIds,
     no_motion_readback_action_ids: fieldAcceptanceNoMotionReadbackActionIds,
     no_motion_readback_action_labels: fieldAcceptanceNoMotionReadbackActions.map((item) => item.label),
@@ -10676,6 +10711,14 @@ export async function buildRobotControlSummary(
     field_acceptance_motion_step_ids: fieldAcceptancePacket.motion_step_ids,
     field_acceptance_no_motion_step_ids: fieldAcceptancePacket.no_motion_step_ids,
     field_acceptance_safety_confirm_ready_step_ids: fieldAcceptancePacket.safety_confirm_ready_step_ids,
+    field_acceptance_safety_confirm_ready_action_labels: fieldAcceptancePacket.safety_confirm_ready_action_labels,
+    field_acceptance_safety_confirm_ready_action_start_endpoints: fieldAcceptancePacket.safety_confirm_ready_action_start_endpoints,
+    field_acceptance_safety_confirm_ready_actions: fieldAcceptancePacket.safety_confirm_ready_actions,
+    field_acceptance_primary_safety_confirm_ready_action_id: fieldAcceptancePacket.primary_safety_confirm_ready_action_id,
+    field_acceptance_primary_safety_confirm_ready_action_label: fieldAcceptancePacket.primary_safety_confirm_ready_action_label,
+    field_acceptance_primary_safety_confirm_ready_action_start_endpoint: fieldAcceptancePacket.primary_safety_confirm_ready_action_start_endpoint,
+    field_acceptance_primary_safety_confirm_ready_action_requires_safety_confirm: fieldAcceptancePacket.primary_safety_confirm_ready_action_requires_safety_confirm,
+    field_acceptance_primary_safety_confirm_ready_action_sends_motion: fieldAcceptancePacket.primary_safety_confirm_ready_action_sends_motion,
     field_acceptance_hardware_action_ids: fieldAcceptancePacket.hardware_action_ids,
     field_acceptance_no_motion_readback_action_ids: fieldAcceptancePacket.no_motion_readback_action_ids,
     field_acceptance_no_motion_readback_action_labels: fieldAcceptancePacket.no_motion_readback_action_labels,

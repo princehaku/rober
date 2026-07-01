@@ -29,6 +29,12 @@ Node 工作站 `http://127.0.0.1:7001`。因此开发时先让 `npm run api` 守
 `netstat -anv | rg '[.:]7001 .*LISTEN|7001'`。2026-06-25 起 PC 工作站默认避开
 Clash Verge 常用的 `7071`，Node 代码按 `0.0.0.0:7001` 绑定。
 
+2026-07-01 23:22 CST 起，现场验收包的“勾安全确认后可执行”也升级为动作清单：
+`safety_confirm_ready_actions[]` 同步给出普通用户 label、固定 start/stop/readback endpoint、`requires_safety_confirm=true`、
+`minimal_precheck_safety_only=true`、`camera/radar/operator/route_wysiwyg_preflight_required=false` 和具体会启动的运动类型。
+顶层同步暴露 `field_acceptance_primary_safety_confirm_ready_action_*`；真实现场可直接看到完整行程、键盘连续手控、自由自助移动
+都只差现场安全确认，不把相机或雷达当作发车前置。
+
 2026-07-01 23:16 CST 起，普通首屏现场验收卡新增 `plain-field-acceptance-primary-no-motion-readback`
 主按钮，文案为“只读复验：刷新雷达贴图 / 刷新当前所见 / 复验全部读数”。按钮直接使用
 `field_acceptance_primary_no_motion_readback_action_*` 的 label、endpoint、method 和不发车标志；雷达贴图过期时点击只刷新

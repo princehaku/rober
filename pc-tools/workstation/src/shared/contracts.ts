@@ -2803,6 +2803,27 @@ export interface RobotControlFieldAcceptanceNoMotionReadbackAction {
   stops_motion_when_clicked: false;
 }
 
+export interface RobotControlFieldAcceptanceSafetyConfirmReadyAction {
+  id: RobotControlLiveMotionRunbookActionId;
+  label: string;
+  start_endpoint: string;
+  stop_endpoint: string;
+  acceptance_endpoints: string[];
+  requires_safety_confirm: true;
+  minimal_precheck_safety_only: true;
+  sends_motion_when_executed: true;
+  camera_preflight_required: false;
+  radar_preflight_required: false;
+  operator_report_preflight_required: false;
+  route_wysiwyg_preflight_required: false;
+  starts_nav2_when_executed: boolean;
+  starts_manual_when_executed: boolean;
+  starts_keyboard_when_executed: boolean;
+  starts_free_roam_when_executed: boolean;
+  starts_map_runtime_when_executed: boolean;
+  submits_delivery_when_executed: false;
+}
+
 export type RobotControlFieldAcceptanceWysiwygRefreshMode =
   | "camera_only"
   | "radar_map_only"
@@ -2828,6 +2849,14 @@ export interface RobotControlFieldAcceptancePacket {
   motion_step_ids: RobotControlLiveMotionRunbookActionId[];
   no_motion_step_ids: RobotControlLiveMotionRunbookActionId[];
   safety_confirm_ready_step_ids: RobotControlLiveMotionRunbookActionId[];
+  safety_confirm_ready_action_labels: string[];
+  safety_confirm_ready_action_start_endpoints: string[];
+  safety_confirm_ready_actions: RobotControlFieldAcceptanceSafetyConfirmReadyAction[];
+  primary_safety_confirm_ready_action_id: RobotControlLiveMotionRunbookActionId | "none";
+  primary_safety_confirm_ready_action_label: string;
+  primary_safety_confirm_ready_action_start_endpoint: string;
+  primary_safety_confirm_ready_action_requires_safety_confirm: boolean;
+  primary_safety_confirm_ready_action_sends_motion: boolean;
   hardware_action_ids: string[];
   no_motion_readback_action_ids: string[];
   no_motion_readback_action_labels: string[];
@@ -3581,6 +3610,14 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   field_acceptance_motion_step_ids?: RobotControlFieldAcceptancePacket["motion_step_ids"];
   field_acceptance_no_motion_step_ids?: RobotControlFieldAcceptancePacket["no_motion_step_ids"];
   field_acceptance_safety_confirm_ready_step_ids?: RobotControlFieldAcceptancePacket["safety_confirm_ready_step_ids"];
+  field_acceptance_safety_confirm_ready_action_labels?: RobotControlFieldAcceptancePacket["safety_confirm_ready_action_labels"];
+  field_acceptance_safety_confirm_ready_action_start_endpoints?: RobotControlFieldAcceptancePacket["safety_confirm_ready_action_start_endpoints"];
+  field_acceptance_safety_confirm_ready_actions?: RobotControlFieldAcceptancePacket["safety_confirm_ready_actions"];
+  field_acceptance_primary_safety_confirm_ready_action_id?: RobotControlFieldAcceptancePacket["primary_safety_confirm_ready_action_id"];
+  field_acceptance_primary_safety_confirm_ready_action_label?: RobotControlFieldAcceptancePacket["primary_safety_confirm_ready_action_label"];
+  field_acceptance_primary_safety_confirm_ready_action_start_endpoint?: RobotControlFieldAcceptancePacket["primary_safety_confirm_ready_action_start_endpoint"];
+  field_acceptance_primary_safety_confirm_ready_action_requires_safety_confirm?: RobotControlFieldAcceptancePacket["primary_safety_confirm_ready_action_requires_safety_confirm"];
+  field_acceptance_primary_safety_confirm_ready_action_sends_motion?: RobotControlFieldAcceptancePacket["primary_safety_confirm_ready_action_sends_motion"];
   field_acceptance_hardware_action_ids?: RobotControlFieldAcceptancePacket["hardware_action_ids"];
   field_acceptance_no_motion_readback_action_ids?: RobotControlFieldAcceptancePacket["no_motion_readback_action_ids"];
   field_acceptance_no_motion_readback_action_labels?: RobotControlFieldAcceptancePacket["no_motion_readback_action_labels"];
