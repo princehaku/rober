@@ -794,6 +794,58 @@ h3 {
   color: #57606a;
 }
 
+.plain-field-acceptance-packet {
+  /* 现场验收卡放在首屏卡点内，只压缩行动顺序，不替代任何安全确认或运动按钮。 */
+  display: grid;
+  gap: 8px;
+  border: 1px solid #d0d7de;
+  border-left: 3px solid #0969da;
+  border-radius: 6px;
+  padding: 10px;
+  background: #f6f8fa;
+}
+
+.plain-field-acceptance-packet p {
+  margin: 0;
+}
+
+.plain-field-acceptance-steps {
+  display: grid;
+  gap: 7px;
+}
+
+.plain-field-acceptance-step {
+  display: grid;
+  grid-template-columns: minmax(96px, 0.42fr) auto minmax(180px, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  border-top: 1px solid #d8dee6;
+  padding-top: 7px;
+}
+
+.plain-field-acceptance-step:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.plain-field-acceptance-step[data-state="已完成"] .status-chip {
+  border-color: #9fdfb2;
+  background: #dafbe1;
+  color: #116329;
+}
+
+.plain-field-acceptance-step[data-state="可现场验证"] .status-chip {
+  border-color: #b6e3ff;
+  background: #ddf4ff;
+  color: #0969da;
+}
+
+.plain-field-acceptance-step[data-state="未就绪"] .status-chip {
+  border-color: #d8c06f;
+  background: #fff8d6;
+  color: #7d4e00;
+}
+
 .plain-live-ready-motion-actions {
   /* ready 动作卡只做现场导流，真实发车仍在目标卡片由 operator 再点一次。 */
   display: grid;

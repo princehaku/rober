@@ -1269,6 +1269,120 @@ const fixtures: Record<string, unknown> = {
       live_motion_runbook_blocked_plain: "暂不可执行：完整行程执行、传感器就绪后建图。",
       live_motion_runbook_primary_action_plain: "键盘连续手控",
       live_motion_runbook_minimal_precheck_plain: "发车前预检已精简：执行运动只需勾现场安全确认；相机、雷达和现场报告不作为额外发车前置。",
+      field_acceptance_packet: {
+        status: "needs_wysiwyg",
+        summary_plain: "现场验收：四项目标完成 1/4；下一步先做键盘连续手控；发车前预检只需现场安全确认。",
+        objective_total_count: 4,
+        objective_done_count: 1,
+        objective_remaining_count: 3,
+        objective_missing_ids: ["motion", "wysiwyg", "mapping"],
+        objective_next_id: "motion",
+        next_step_id: "hold_keyboard",
+        next_step_label: "键盘连续手控",
+        next_step_start_endpoint: "/api/robot-control/base/manual",
+        next_step_sends_motion: true,
+        next_step_requires_safety_confirm: true,
+        ready_step_ids: ["hold_keyboard", "start_free_move"],
+        blocked_step_ids: ["run_nav2_route", "start_mapping_when_sensors_ready"],
+        motion_step_ids: ["run_nav2_route", "hold_keyboard", "start_free_move", "start_mapping_when_sensors_ready"],
+        no_motion_step_ids: [],
+        acceptance_endpoints: [
+          "/api/robot-control/map/preview",
+          "/api/robot-control/nav2/goal/execution/latest",
+          "/api/robot-control/base/feedback-samples",
+          "/api/robot-control/delivery/latest",
+          "/api/robot-control/summary",
+          "/api/robot-control/free-roam/autonomy/latest",
+        ],
+        safety_confirm_required: true,
+        minimal_precheck_safety_only: true,
+        wysiwyg_missing_surface_ids: ["camera", "radar_map_points"],
+        mapping_start_ready: false,
+        mapping_missing_evidence: ["camera_first_frame", "lidar_fresh"],
+        camera_blocks_mapping_start: true,
+        camera_blocks_free_move: false,
+        sends_motion_when_clicked: false,
+        starts_nav2_when_clicked: false,
+        starts_manual_when_clicked: false,
+        starts_free_roam_when_clicked: false,
+        starts_map_runtime_when_clicked: false,
+        steps: [
+          {
+            id: "run_nav2_route",
+            label: "完整行程执行",
+            ready: false,
+            completed: false,
+            proof_status: "blocked",
+            sends_motion_when_executed: true,
+            safety_confirm_required: true,
+            start_endpoint: "/api/robot-control/nav2/goal/execute",
+            stop_endpoint: "/api/robot-control/base/stop",
+            acceptance_endpoints: ["/api/robot-control/nav2/goal/execution/latest", "/api/robot-control/base/feedback-samples", "/api/robot-control/delivery/latest", "/api/robot-control/summary"],
+            missing_evidence: ["route_ready_on_map", "same_window_wheel_lr_nonzero", "delivery_success"],
+            proof_plain: "完整行程暂不可验证：先让图上路线显示，再执行并读回轮速和送达确认。",
+            blocked_reasons: ["route_ready_on_map"],
+          },
+          {
+            id: "hold_keyboard",
+            label: "键盘连续手控",
+            ready: true,
+            completed: false,
+            proof_status: "ready_to_verify",
+            sends_motion_when_executed: true,
+            safety_confirm_required: true,
+            start_endpoint: "/api/robot-control/base/manual",
+            stop_endpoint: "/api/robot-control/base/stop",
+            acceptance_endpoints: ["/api/robot-control/base/feedback-samples", "/api/robot-control/summary"],
+            missing_evidence: ["same_hold_window_wheel_lr_nonzero", "stop_after_release"],
+            proof_plain: "可验证键盘连续手控：按住方向键或 WASD 后读取同窗口 wheel L/R 非零，松开后确认停稳。",
+            blocked_reasons: [],
+          },
+          {
+            id: "start_free_move",
+            label: "自由自助移动",
+            ready: true,
+            completed: false,
+            proof_status: "ready_to_verify",
+            sends_motion_when_executed: true,
+            safety_confirm_required: true,
+            start_endpoint: "/api/robot-control/free-roam/autonomy/start",
+            stop_endpoint: "/api/robot-control/free-roam/autonomy/stop",
+            acceptance_endpoints: ["/api/robot-control/free-roam/autonomy/latest", "/api/robot-control/summary"],
+            missing_evidence: ["free_roam_latest_motion_ready"],
+            proof_plain: "可验证自由自助移动：勾现场安全确认后启动，再读 free-roam latest 和 summary。",
+            blocked_reasons: [],
+          },
+          {
+            id: "start_mapping_when_sensors_ready",
+            label: "传感器就绪后建图",
+            ready: false,
+            completed: false,
+            proof_status: "blocked",
+            sends_motion_when_executed: true,
+            safety_confirm_required: false,
+            start_endpoint: "/api/robot-control/map/start",
+            stop_endpoint: "/api/robot-control/free-roam/autonomy/stop",
+            acceptance_endpoints: ["/api/robot-control/map/preview", "/api/robot-control/summary"],
+            missing_evidence: ["camera_first_frame", "lidar_fresh"],
+            proof_plain: "建图暂不可启动；还差：相机首帧、雷达新鲜读数。",
+            blocked_reasons: ["camera_first_frame", "lidar_fresh"],
+          },
+        ],
+      },
+      field_acceptance_status: "needs_wysiwyg",
+      field_acceptance_next_step_id: "hold_keyboard",
+      field_acceptance_next_step_label: "键盘连续手控",
+      field_acceptance_next_step_start_endpoint: "/api/robot-control/base/manual",
+      field_acceptance_next_step_sends_motion: true,
+      field_acceptance_next_step_requires_safety_confirm: true,
+      field_acceptance_ready_step_ids: ["hold_keyboard", "start_free_move"],
+      field_acceptance_blocked_step_ids: ["run_nav2_route", "start_mapping_when_sensors_ready"],
+      field_acceptance_motion_step_ids: ["run_nav2_route", "hold_keyboard", "start_free_move", "start_mapping_when_sensors_ready"],
+      field_acceptance_no_motion_step_ids: [],
+      field_acceptance_acceptance_endpoints: ["/api/robot-control/base/feedback-samples", "/api/robot-control/summary"],
+      field_acceptance_safety_confirm_required: true,
+      field_acceptance_minimal_precheck_safety_only: true,
+      field_acceptance_summary_plain: "现场验收：四项目标完成 1/4；下一步先做键盘连续手控；发车前预检只需现场安全确认。",
       minimal_precheck_safety_only: true,
       safety_confirm_required_for_motion: true,
       wheel_rerun_minimal_precheck_safety_only: false,
@@ -5059,6 +5173,53 @@ describe("App", () => {
     expect(liveRobotConnection.attributes("data-loaded-count")).toBe("14");
     expect(liveRobotConnection.attributes("data-failed-count")).toBe("0");
     expect(liveRobotConnection.attributes("data-sends-motion-when-clicked")).toBe("false");
+    const fieldAcceptancePacket = wrapper.find('[data-testid="plain-field-acceptance-packet"]');
+    expect(fieldAcceptancePacket.exists()).toBe(true);
+    expect(fieldAcceptancePacket.text()).toContain("现场验收");
+    expect(fieldAcceptancePacket.text()).toContain("下一步：键盘连续手控");
+    expect(fieldAcceptancePacket.text()).toContain("先勾现场安全确认");
+    expect(fieldAcceptancePacket.text()).toContain("这一步会让车动");
+    expect(fieldAcceptancePacket.text()).toContain("按住时轮速 L/R 非零");
+    expect(fieldAcceptancePacket.text()).toContain("松开后停稳");
+    expect(fieldAcceptancePacket.attributes("data-status")).toBe("needs_wysiwyg");
+    expect(fieldAcceptancePacket.attributes("data-next-step-id")).toBe("hold_keyboard");
+    expect(fieldAcceptancePacket.attributes("data-next-step-label")).toBe("键盘连续手控");
+    expect(fieldAcceptancePacket.attributes("data-next-step-start-endpoint")).toBe("/api/robot-control/base/manual");
+    expect(fieldAcceptancePacket.attributes("data-next-step-sends-motion")).toBe("true");
+    expect(fieldAcceptancePacket.attributes("data-next-step-requires-safety-confirm")).toBe("true");
+    expect(fieldAcceptancePacket.attributes("data-ready-step-ids")).toBe("hold_keyboard,start_free_move");
+    expect(fieldAcceptancePacket.attributes("data-blocked-step-ids")).toBe("run_nav2_route,start_mapping_when_sensors_ready");
+    expect(fieldAcceptancePacket.attributes("data-motion-step-ids")).toBe("run_nav2_route,hold_keyboard,start_free_move,start_mapping_when_sensors_ready");
+    expect(fieldAcceptancePacket.attributes("data-no-motion-step-ids")).toBe("none");
+    expect(fieldAcceptancePacket.attributes("data-safety-confirm-required")).toBe("true");
+    expect(fieldAcceptancePacket.attributes("data-minimal-precheck-safety-only")).toBe("true");
+    expect(fieldAcceptancePacket.attributes("data-wysiwyg-missing-surface-ids")).toBe("camera,radar_map_points");
+    expect(fieldAcceptancePacket.attributes("data-mapping-start-ready")).toBe("false");
+    expect(fieldAcceptancePacket.attributes("data-mapping-missing-evidence")).toBe("camera_first_frame,lidar_fresh");
+    expect(fieldAcceptancePacket.attributes("data-camera-blocks-mapping-start")).toBe("true");
+    expect(fieldAcceptancePacket.attributes("data-camera-blocks-free-move")).toBe("false");
+    expect(fieldAcceptancePacket.attributes("data-sends-motion-when-clicked")).toBe("false");
+    expect(fieldAcceptancePacket.attributes("data-starts-nav2")).toBe("false");
+    expect(fieldAcceptancePacket.attributes("data-starts-manual")).toBe("false");
+    expect(fieldAcceptancePacket.attributes("data-starts-free-roam")).toBe("false");
+    expect(fieldAcceptancePacket.attributes("data-starts-map-runtime")).toBe("false");
+    const keyboardAcceptanceStep = wrapper.find('[data-testid="plain-field-acceptance-step-hold_keyboard"]');
+    expect(keyboardAcceptanceStep.exists()).toBe(true);
+    expect(keyboardAcceptanceStep.text()).toContain("键盘连续手控");
+    expect(keyboardAcceptanceStep.text()).toContain("可现场验证");
+    expect(keyboardAcceptanceStep.text()).toContain("按住时轮速 L/R 非零");
+    expect(keyboardAcceptanceStep.attributes("data-state")).toBe("可现场验证");
+    expect(keyboardAcceptanceStep.attributes("data-ready")).toBe("true");
+    expect(keyboardAcceptanceStep.attributes("data-start-endpoint")).toBe("/api/robot-control/base/manual");
+    expect(keyboardAcceptanceStep.attributes("data-missing-evidence")).toBe("same_hold_window_wheel_lr_nonzero,stop_after_release");
+    expect(keyboardAcceptanceStep.attributes("data-focus-target-source-card-id")).toBe("keyboard_control");
+    expect(keyboardAcceptanceStep.attributes("data-sends-motion-when-clicked")).toBe("false");
+    expect(keyboardAcceptanceStep.attributes("data-starts-keyboard")).toBe("false");
+    const mappingAcceptanceStep = wrapper.find('[data-testid="plain-field-acceptance-step-start_mapping_when_sensors_ready"]');
+    expect(mappingAcceptanceStep.text()).toContain("画面首帧");
+    expect(mappingAcceptanceStep.text()).toContain("雷达新鲜读数");
+    expect(mappingAcceptanceStep.attributes("data-state")).toBe("未就绪");
+    expect(mappingAcceptanceStep.attributes("data-starts-map-runtime")).toBe("false");
     expect(liveClosureSummary.attributes("data-map-display-primary-tool")).toBe("pc_big_map");
     expect(liveClosureSummary.attributes("data-map-display-primary-url")).toBe("/map");
     expect(liveClosureSummary.attributes("data-map-display-legacy-url")).toBe("?view=map");

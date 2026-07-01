@@ -67,6 +67,8 @@ import type {
   RobotControlGoalChecklistSummaryActionItem,
   RobotControlLiveObjectiveAuditItem,
   RobotControlLiveMotionRunbookItem,
+  RobotControlFieldAcceptanceStep,
+  RobotControlFieldAcceptancePacket,
   RobotControlLiveClosureSummary,
   RobotControlSummaryResponse,
 } from "../shared/contracts";
@@ -4179,6 +4181,102 @@ const plainLiveMotionRunbookPreflightPlain = computed(() => {
     return `发车前：只需现场安全确认（${safetyText}）；画面和雷达不作为运动前置，建图另看传感器。`;
   }
   return `发车前：按当前动作卡片提示确认安全（${safetyText}）。`;
+});
+const plainFieldAcceptancePacket = computed<RobotControlFieldAcceptancePacket | null>(() => {
+  // 新合同在 summary 顶层；兼容旧聚合/mock 放在 live closure 内的形状，避免现场旧进程重启前首屏空白。
+  const legacyLiveSummary = plainLiveClosureSummary.value as (RobotControlLiveClosureSummary & {
+    field_acceptance_packet?: RobotControlFieldAcceptancePacket;
+  }) | null;
+  return robotSummary.value?.field_acceptance_packet ?? legacyLiveSummary?.field_acceptance_packet ?? null;
+});
+const plainFieldAcceptanceReadyStepIdsText = computed(() => (
+  plainFieldAcceptancePacket.value?.ready_step_ids.join(",") || "none"
+));
+const plainFieldAcceptanceBlockedStepIdsText = computed(() => (
+  plainFieldAcceptancePacket.value?.blocked_step_ids.join(",") || "none"
+));
+const plainFieldAcceptanceMotionStepIdsText = computed(() => (
+  plainFieldAcceptancePacket.value?.motion_step_ids.join(",") || "none"
+));
+const plainFieldAcceptanceNoMotionStepIdsText = computed(() => (
+  plainFieldAcceptancePacket.value?.no_motion_step_ids.join(",") || "none"
+));
+const plainFieldAcceptanceEndpointText = computed(() => (
+  plainFieldAcceptancePacket.value?.acceptance_endpoints.join(",") || "none"
+));
+const plainFieldAcceptanceWysiwygMissingText = computed(() => (
+  plainFieldAcceptancePacket.value?.wysiwyg_missing_surface_ids.join(",") || "none"
+));
+const plainFieldAcceptanceMappingMissingText = computed(() => (
+  plainFieldAcceptancePacket.value?.mapping_missing_evidence.join(",") || "none"
+));
+function plainFieldAcceptanceStepState(step: RobotControlFieldAcceptanceStep): string {
+  // 验收包状态要比 proof_status 更贴近现场语言：已完成、可验证、未就绪三档足够。
+  if (step.completed) {
+    return "已完成";
+  }
+  return step.ready ? "可现场验证" : "未就绪";
+}
+function plainFieldAcceptanceEvidenceLabel(id: string): string {
+  // 后端保留稳定英文证据 id；首屏翻译成人能立刻判断的缺口。
+  const labels: Record<string, string> = {
+    same_window_wheel_lr_nonzero: "同窗口轮速 L/R 非零",
+    same_hold_window_wheel_lr_nonzero: "按住时轮速 L/R 非零",
+    stop_after_release: "松开后停稳",
+    delivery_success: "送达确认",
+    free_roam_latest_motion_ready: "自由移动运行读数",
+    camera_first_frame: "画面首帧",
+    lidar_fresh: "雷达新鲜读数",
+    mapping_active: "建图已启动",
+    fresh_map_preview: "地图画面已刷新",
+    route_ready_on_map: "图上行程已显示",
+    nav2_goal_succeeded: "Nav2 到点成功",
+  };
+  return labels[id] ?? id;
+}
+function plainFieldAcceptanceMissingEvidenceText(step: RobotControlFieldAcceptanceStep): string {
+  const labels = step.missing_evidence.map((id) => plainFieldAcceptanceEvidenceLabel(id));
+  return labels.length ? `还差：${labels.join("、")}` : "证据已满足";
+}
+function plainFieldAcceptanceStepTarget(step: RobotControlFieldAcceptanceStep): RobotControlActionStatusCardId {
+  const targetByAction: Record<RobotControlLiveMotionRunbookItem["id"], RobotControlActionStatusCardId> = {
+    run_nav2_route: "nav2_route",
+    hold_keyboard: "keyboard_control",
+    start_free_move: "free_move",
+    start_mapping_when_sensors_ready: "mapping_start",
+  };
+  return targetByAction[step.id];
+}
+function plainFieldAcceptanceStepButtonLabel(step: RobotControlFieldAcceptanceStep): string {
+  const labels: Record<RobotControlLiveMotionRunbookItem["id"], string> = {
+    run_nav2_route: step.ready ? "去处理行程" : "去看行程",
+    hold_keyboard: "去启用键盘",
+    start_free_move: "去自由移动",
+    start_mapping_when_sensors_ready: "去看建图",
+  };
+  return labels[step.id];
+}
+const plainFieldAcceptanceRows = computed(() => (
+  plainFieldAcceptancePacket.value?.steps.map((step) => ({
+    ...step,
+    state: plainFieldAcceptanceStepState(step),
+    proofText: plainActionCardUserText(step.proof_plain),
+    missingText: plainFieldAcceptanceMissingEvidenceText(step),
+    sourceCardId: plainFieldAcceptanceStepTarget(step),
+    buttonLabel: plainFieldAcceptanceStepButtonLabel(step),
+    acceptanceEndpointsText: step.acceptance_endpoints.join(",") || "none",
+    blockedReasonsText: step.blocked_reasons.join(",") || "none",
+    missingEvidenceText: step.missing_evidence.join(",") || "none",
+  })) ?? []
+));
+const plainFieldAcceptanceNextText = computed(() => {
+  const packet = plainFieldAcceptancePacket.value;
+  if (!packet) {
+    return "";
+  }
+  const safetyText = packet.next_step_requires_safety_confirm ? "先勾现场安全确认" : "无需额外安全确认";
+  const motionText = packet.next_step_sends_motion ? "这一步会让车动" : "这一步只读";
+  return `下一步：${plainActionCardUserText(packet.next_step_label)}；${safetyText}；${motionText}。`;
 });
 const plainTripRunbookItem = computed(() => (
   plainLiveClosureSummary.value?.live_motion_runbook_items.find((item) => item.id === "run_nav2_route") ?? null
@@ -17215,6 +17313,103 @@ onBeforeUnmount(() => {
           <span class="status-chip" :data-state="plainLiveClosureSummary.status_label">{{ plainLiveClosureSummary.status_label }}</span>
         </div>
         <p>{{ plainActionCardUserText(plainLiveClosureSummary.summary_plain) }}</p>
+        <div
+          v-if="plainFieldAcceptancePacket"
+          class="plain-field-acceptance-packet"
+          data-testid="plain-field-acceptance-packet"
+          :data-status="plainFieldAcceptancePacket.status"
+          :data-summary-plain="plainFieldAcceptancePacket.summary_plain"
+          :data-objective-total-count="String(plainFieldAcceptancePacket.objective_total_count)"
+          :data-objective-done-count="String(plainFieldAcceptancePacket.objective_done_count)"
+          :data-objective-remaining-count="String(plainFieldAcceptancePacket.objective_remaining_count)"
+          :data-objective-missing-ids="plainFieldAcceptancePacket.objective_missing_ids.join(',') || 'none'"
+          :data-objective-next-id="plainFieldAcceptancePacket.objective_next_id"
+          :data-next-step-id="plainFieldAcceptancePacket.next_step_id"
+          :data-next-step-label="plainFieldAcceptancePacket.next_step_label"
+          :data-next-step-start-endpoint="plainFieldAcceptancePacket.next_step_start_endpoint"
+          :data-next-step-sends-motion="String(plainFieldAcceptancePacket.next_step_sends_motion)"
+          :data-next-step-requires-safety-confirm="String(plainFieldAcceptancePacket.next_step_requires_safety_confirm)"
+          :data-ready-step-ids="plainFieldAcceptanceReadyStepIdsText"
+          :data-blocked-step-ids="plainFieldAcceptanceBlockedStepIdsText"
+          :data-motion-step-ids="plainFieldAcceptanceMotionStepIdsText"
+          :data-no-motion-step-ids="plainFieldAcceptanceNoMotionStepIdsText"
+          :data-acceptance-endpoints="plainFieldAcceptanceEndpointText"
+          :data-safety-confirm-required="String(plainFieldAcceptancePacket.safety_confirm_required)"
+          :data-minimal-precheck-safety-only="String(plainFieldAcceptancePacket.minimal_precheck_safety_only)"
+          :data-wysiwyg-missing-surface-ids="plainFieldAcceptanceWysiwygMissingText"
+          :data-mapping-start-ready="String(plainFieldAcceptancePacket.mapping_start_ready)"
+          :data-mapping-missing-evidence="plainFieldAcceptanceMappingMissingText"
+          :data-camera-blocks-mapping-start="String(plainFieldAcceptancePacket.camera_blocks_mapping_start)"
+          :data-camera-blocks-free-move="String(plainFieldAcceptancePacket.camera_blocks_free_move)"
+          :data-sends-motion-when-clicked="String(plainFieldAcceptancePacket.sends_motion_when_clicked)"
+          :data-starts-nav2="String(plainFieldAcceptancePacket.starts_nav2_when_clicked)"
+          :data-starts-manual="String(plainFieldAcceptancePacket.starts_manual_when_clicked)"
+          :data-starts-free-roam="String(plainFieldAcceptancePacket.starts_free_roam_when_clicked)"
+          :data-starts-map-runtime="String(plainFieldAcceptancePacket.starts_map_runtime_when_clicked)"
+        >
+          <div class="simple-status-row">
+            <strong>现场验收</strong>
+            <span class="status-chip" :data-state="plainFieldAcceptancePacket.next_step_requires_safety_confirm ? '先勾安全确认' : '只读'">
+              {{ plainFieldAcceptancePacket.next_step_requires_safety_confirm ? "先勾安全确认" : "只读" }}
+            </span>
+          </div>
+          <p data-testid="plain-field-acceptance-next">{{ plainFieldAcceptanceNextText }}</p>
+          <p class="panel-note" data-testid="plain-field-acceptance-summary">
+            {{ plainActionCardUserText(plainFieldAcceptancePacket.summary_plain) }}
+          </p>
+          <div class="plain-field-acceptance-steps" data-testid="plain-field-acceptance-steps">
+            <div
+              v-for="step in plainFieldAcceptanceRows"
+              :key="step.id"
+              class="plain-field-acceptance-step"
+              :data-testid="`plain-field-acceptance-step-${step.id}`"
+              :data-step-id="step.id"
+              :data-state="step.state"
+              :data-ready="String(step.ready)"
+              :data-completed="String(step.completed)"
+              :data-proof-status="step.proof_status"
+              :data-sends-motion-when-executed="String(step.sends_motion_when_executed)"
+              :data-safety-confirm-required="String(step.safety_confirm_required)"
+              :data-start-endpoint="step.start_endpoint"
+              :data-stop-endpoint="step.stop_endpoint"
+              :data-acceptance-endpoints="step.acceptanceEndpointsText"
+              :data-missing-evidence="step.missingEvidenceText"
+              :data-blocked-reasons="step.blockedReasonsText"
+              :data-focus-target-source-card-id="step.sourceCardId"
+              data-focus-only="true"
+              data-sends-motion-when-clicked="false"
+              data-starts-nav2="false"
+              data-starts-manual="false"
+              data-starts-keyboard="false"
+              data-starts-free-roam="false"
+              data-starts-map-runtime="false"
+              data-submits-delivery="false"
+              data-stops-motion="false"
+            >
+              <span class="plain-progress-label">{{ plainActionCardUserText(step.label) }}</span>
+              <span class="status-chip" :data-state="step.state">{{ step.state }}</span>
+              <span class="muted">{{ step.missingText }}。{{ step.proofText }}</span>
+              <button
+                type="button"
+                class="secondary compact-stop"
+                :data-testid="`plain-field-acceptance-step-go-${step.id}`"
+                :data-focus-target-source-card-id="step.sourceCardId"
+                data-focus-only="true"
+                data-sends-motion-when-clicked="false"
+                data-starts-nav2="false"
+                data-starts-manual="false"
+                data-starts-keyboard="false"
+                data-starts-free-roam="false"
+                data-starts-map-runtime="false"
+                data-submits-delivery="false"
+                data-stops-motion="false"
+                @click="focusPlainActionCardTarget(step.sourceCardId)"
+              >
+                {{ step.buttonLabel }}
+              </button>
+            </div>
+          </div>
+        </div>
         <p
           class="panel-note"
           data-testid="plain-live-robot-connection"
