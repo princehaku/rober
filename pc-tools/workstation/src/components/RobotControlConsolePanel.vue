@@ -4152,12 +4152,12 @@ const plainLiveClosureWysiwygPrimaryReadbackGapSurfaceId = computed(() => (
 const plainLiveClosureWysiwygRefreshSequence = computed(() => (
   plainLiveClosureSummary.value?.live_wysiwyg_refresh_sequence?.length
     ? plainLiveClosureSummary.value.live_wysiwyg_refresh_sequence.join(",")
-    : "/api/robot-control/radar/scan-proof/refresh,/api/robot-control/camera/first-frame/probe,/api/robot-control/map/preview,/api/robot-control/radar/status,/api/robot-control/camera/mjpeg/status"
+    : "/api/robot-control/radar/scan-proof/refresh,/api/robot-control/radar/status,/api/robot-control/map/preview,/api/robot-control/camera/first-frame/probe,/api/robot-control/camera/mjpeg/status,/api/robot-control/summary"
 ));
 const plainLiveClosureWysiwygRefreshSequenceLabels = computed(() => (
   plainLiveClosureSummary.value?.live_wysiwyg_refresh_sequence_labels?.length
     ? plainLiveClosureSummary.value.live_wysiwyg_refresh_sequence_labels.join(",")
-    : "刷新雷达扫描读数,复测相机首帧,刷新地图画面,读取雷达状态,读取相机 MJPEG 状态"
+    : "刷新雷达扫描读数,读取雷达状态,刷新地图画面,复测相机首帧,读取相机 MJPEG 状态,刷新总览"
 ));
 const plainLiveClosureWysiwygRefreshPlanAvailable = computed(() => (
   plainLiveClosureSummary.value?.live_wysiwyg_refresh_plan_available ?? true
