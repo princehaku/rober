@@ -4351,6 +4351,39 @@ const plainFieldAcceptanceWysiwygNextText = computed(() => {
   const statusText = packet.wysiwyg_ready ? "当前所见已满足" : `当前所见还差：${plainFieldAcceptanceWysiwygMissingLabelText.value}`;
   return `${statusText}；下一步：${plainActionCardUserText(packet.wysiwyg_next_action_plain)}。`;
 });
+const plainFieldAcceptanceRadarMapProof = computed(() => {
+  // 现场验收卡要直接说清雷达“当前地图点”和“来源点”的差异，避免旧点被误认为当前画布所见。
+  const summary = plainLiveClosureSummary.value;
+  const packet = plainFieldAcceptancePacket.value;
+  const missingRadar = packet?.wysiwyg_missing_surface_ids.includes("radar_map_points") ?? false;
+  const currentVsSourcePlain = summary?.live_wysiwyg_radar_map_current_vs_source_plain
+    || summary?.radar_overlay_current_vs_source_plain
+    || "";
+  const nextActionPlain = summary?.live_wysiwyg_radar_map_refresh_next_action_plain
+    || summary?.radar_overlay_refresh_next_action_plain
+    || packet?.wysiwyg_radar_map_next_action_plain
+    || "";
+  return {
+    visible: Boolean(summary && missingRadar),
+    overlayStatus: summary?.live_wysiwyg_radar_map_overlay_status || summary?.radar_overlay_status || "not_loaded",
+    currentPointCount: summary?.live_wysiwyg_radar_map_current_point_count || summary?.radar_overlay_current_point_count || "0",
+    sourcePointCount: summary?.live_wysiwyg_radar_map_source_point_count || summary?.radar_overlay_source_point_count || "0",
+    staleSourcePointsSuppressed: Boolean(summary?.live_wysiwyg_radar_map_stale_source_points_suppressed ?? false),
+    currentVsSourcePlain,
+    nextActionPlain,
+    fixedRadarRefreshEndpoint: summary?.fixed_live_wysiwyg_radar_refresh_endpoint
+      || summary?.fixed_radar_overlay_refresh_endpoint
+      || packet?.fixed_wysiwyg_radar_refresh_endpoint
+      || "/api/robot-control/radar/scan-proof/refresh",
+    fixedRadarMapPreviewEndpoint: summary?.fixed_live_wysiwyg_map_preview_endpoint
+      || summary?.fixed_radar_overlay_map_preview_endpoint
+      || packet?.fixed_wysiwyg_map_preview_endpoint
+      || "/api/robot-control/map/preview",
+    text: currentVsSourcePlain
+      ? `雷达贴图读回：${plainActionCardUserText(currentVsSourcePlain)} ${nextActionPlain ? `下一步：${plainActionCardUserText(nextActionPlain)}` : ""}`.trim()
+      : `雷达贴图读回：当前地图点 ${summary?.live_wysiwyg_radar_map_current_point_count || "0"} 个，来源点 ${summary?.live_wysiwyg_radar_map_source_point_count || "0"} 个。`,
+  };
+});
 const plainFieldAcceptanceWysiwygRefreshMode = computed(() => {
   // 现场验收只刷新当前还缺的“所见”；单缺口不要顺手刷新其它传感器，避免现场误解为启动了更多东西。
   const missing = plainFieldAcceptancePacket.value?.wysiwyg_missing_surface_ids ?? [];
@@ -17915,6 +17948,33 @@ onBeforeUnmount(() => {
               {{ plainFieldAcceptancePacket.wysiwyg_ready ? "已满足" : "待刷新" }}
             </span>
             <span class="muted">{{ plainFieldAcceptanceWysiwygNextText }}</span>
+            <span
+              v-if="plainFieldAcceptanceRadarMapProof.visible"
+              class="muted plain-field-acceptance-radar-map-proof"
+              data-testid="plain-field-acceptance-radar-map-proof"
+              :data-radar-map-overlay-status="plainFieldAcceptanceRadarMapProof.overlayStatus"
+              :data-radar-map-current-point-count="plainFieldAcceptanceRadarMapProof.currentPointCount"
+              :data-radar-map-source-point-count="plainFieldAcceptanceRadarMapProof.sourcePointCount"
+              :data-radar-map-stale-source-points-suppressed="String(plainFieldAcceptanceRadarMapProof.staleSourcePointsSuppressed)"
+              :data-radar-map-current-vs-source-plain="plainFieldAcceptanceRadarMapProof.currentVsSourcePlain"
+              :data-radar-map-refresh-next-action-plain="plainFieldAcceptanceRadarMapProof.nextActionPlain"
+              :data-fixed-radar-refresh-endpoint="plainFieldAcceptanceRadarMapProof.fixedRadarRefreshEndpoint"
+              :data-fixed-radar-map-preview-endpoint="plainFieldAcceptanceRadarMapProof.fixedRadarMapPreviewEndpoint"
+              data-refreshes-radar-scan-proof="true"
+              data-refreshes-map-after-radar="true"
+              data-refreshes-summary="true"
+              data-sends-motion-when-clicked="false"
+              data-starts-radar-lifecycle="false"
+              data-starts-map-runtime="false"
+              data-starts-nav2="false"
+              data-starts-manual="false"
+              data-starts-keyboard="false"
+              data-starts-free-roam="false"
+              data-submits-delivery="false"
+              data-stops-motion="false"
+            >
+              {{ plainFieldAcceptanceRadarMapProof.text }}
+            </span>
             <button
               type="button"
               class="secondary compact-stop"
