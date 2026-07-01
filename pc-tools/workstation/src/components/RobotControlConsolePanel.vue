@@ -8639,6 +8639,33 @@ type PlainFreeRoamHandoffGauge = {
   fixedSharedPreviewStatusEndpoint: string;
   fixedRadarMapPreviewEndpoint: string;
 };
+type PlainFreeMoveAcceptanceProof = {
+  state: string;
+  text: string;
+  proofStatus: string;
+  proofPlain: string;
+  missingEvidence: string[];
+  missingEvidenceText: string;
+  acceptanceEndpoints: string[];
+  acceptanceEndpointsText: string;
+  startEndpoint: string;
+  stopEndpoint: string;
+  startReady: boolean;
+  freeMoveReady: boolean;
+  motionStartReady: boolean;
+  motionReady: boolean;
+  running: boolean;
+  complete: boolean;
+  minimalPrecheckSafetyOnly: boolean;
+  safetyConfirmRequired: boolean;
+  cameraPreflightRequired: boolean;
+  radarPreflightRequired: boolean;
+  blockedByCameraWysiwyg: boolean;
+  blockedByRadarWysiwyg: boolean;
+  mappingStartReady: boolean;
+  mappingStartMissingReasons: string[];
+  mappingStartMissingText: string;
+};
 type PlainMappingStartGateGauge = {
   state: string;
   text: string;
@@ -8873,6 +8900,73 @@ const plainFreeRoamDomEvidence = computed<PlainFreeRoamDomEvidence>(() => {
     fixedMappingPreviewEndpoint: "/api/robot-control/map/preview",
     fixedRadarRefreshEndpoint: "/api/robot-control/radar/scan-proof/refresh",
     fixedRadarStatusEndpoint: "/api/robot-control/radar/status",
+  };
+});
+const plainFreeMoveAcceptanceProof = computed<PlainFreeMoveAcceptanceProof>(() => {
+  // 自由移动验收以 summary 顶层 alias 为准；缺字段时兼容 runbook，避免 UI 和现场 curl 口径分叉。
+  const summary = robotSummary.value;
+  const evidence = plainFreeRoamDomEvidence.value;
+  const item = plainLiveClosureSummary.value?.live_motion_runbook_items.find((row) => row.id === "start_free_move");
+  const missingEvidence = summary?.free_move_missing_evidence ?? item?.missing_evidence ?? [];
+  const acceptanceEndpoints = summary?.free_move_acceptance_endpoints ?? item?.acceptance_endpoints ?? [
+    "/api/robot-control/free-roam/autonomy/latest",
+    "/api/robot-control/summary",
+  ];
+  const startReady = Boolean(summary?.free_move_start_ready ?? evidence.freeMoveStartReady);
+  const freeMoveReady = Boolean(summary?.free_move_ready ?? startReady);
+  const motionStartReady = Boolean(summary?.free_roam_motion_start_ready ?? evidence.freeMoveStartReady);
+  const motionReady = Boolean(summary?.free_roam_motion_ready ?? false);
+  const running = Boolean(summary?.free_move_running ?? motionReady);
+  const complete = Boolean(summary?.free_move_complete ?? false);
+  const proofStatus = summary?.free_move_proof_status ?? item?.proof_status ?? (complete ? "completed" : freeMoveReady ? "ready_to_verify" : "blocked");
+  const proofPlain = plainActionCardUserText(summary?.free_move_proof_plain ?? item?.proof_plain ?? "");
+  const missingEvidenceText = missingEvidence.length
+    ? missingEvidence.map((id) => plainFieldAcceptanceEvidenceLabel(id)).join("、")
+    : "无";
+  const state = complete
+    ? "已闭环"
+    : running || motionReady
+      ? "运行读回中"
+      : freeMoveReady
+        ? "可现场验证"
+        : "未就绪";
+  const mappingStartMissingReasons = summary?.mapping_start_missing_reasons ?? [];
+  const mappingStartMissingText = mappingStartMissingReasons.length
+    ? mappingStartMissingReasons.map((id) => plainFieldAcceptanceEvidenceLabel(id)).join("、")
+    : "none";
+  const nextAction = complete
+    ? "自由移动已经收口。"
+    : freeMoveReady
+      ? "勾现场安全确认后启动自由移动；启动后只读读取 free-roam latest 和 summary。"
+      : "先连接上车自由移动状态机和停止兜底。";
+  const startEndpoint = summary?.free_move_start_endpoint ?? item?.start_endpoint ?? evidence.fixedFreeRoamStartEndpoint;
+  const stopEndpoint = summary?.free_move_stop_endpoint ?? item?.stop_endpoint ?? evidence.fixedFreeRoamStopEndpoint;
+  return {
+    state,
+    text: `自由移动验收：${freeMoveReady ? "可启动" : "未就绪"}；${motionReady ? "已读到运行态" : `还差：${missingEvidenceText}`}；发车前只需安全确认，画面和雷达不作为移动前置；建图缺口=${mappingStartMissingText}。下一步：${nextAction}`,
+    proofStatus,
+    proofPlain,
+    missingEvidence,
+    missingEvidenceText: missingEvidence.join(",") || "none",
+    acceptanceEndpoints,
+    acceptanceEndpointsText: acceptanceEndpoints.join(",") || "none",
+    startEndpoint,
+    stopEndpoint,
+    startReady,
+    freeMoveReady,
+    motionStartReady,
+    motionReady,
+    running,
+    complete,
+    minimalPrecheckSafetyOnly: Boolean(summary?.free_move_minimal_precheck_safety_only ?? true),
+    safetyConfirmRequired: Boolean(summary?.free_move_safety_confirm_required ?? true),
+    cameraPreflightRequired: Boolean(summary?.free_move_camera_preflight_required ?? evidence.cameraPreflightRequiredForMotion),
+    radarPreflightRequired: Boolean(summary?.free_move_radar_preflight_required ?? evidence.radarPreflightRequiredForMotion),
+    blockedByCameraWysiwyg: Boolean(summary?.free_move_blocked_by_camera_wysiwyg ?? evidence.cameraBlocksFreeMotion),
+    blockedByRadarWysiwyg: Boolean(summary?.free_move_blocked_by_radar_wysiwyg ?? evidence.radarBlocksFreeMotion),
+    mappingStartReady: Boolean(summary?.mapping_start_ready ?? evidence.mappingStartReady),
+    mappingStartMissingReasons,
+    mappingStartMissingText,
   };
 });
 const plainMappingReadinessGauge = computed<PlainMappingReadinessGauge>(() => {
@@ -21063,6 +21157,50 @@ onBeforeUnmount(() => {
             data-sends-motion-when-clicked="false"
           >
             {{ plainFreeRoamMotionGauge.text }}
+          </p>
+          <p
+            class="panel-note plain-free-move-acceptance-proof"
+            data-testid="plain-free-move-acceptance-proof"
+            :data-state="plainFreeMoveAcceptanceProof.state"
+            :data-proof-status="plainFreeMoveAcceptanceProof.proofStatus"
+            :data-proof-plain="plainFreeMoveAcceptanceProof.proofPlain"
+            :data-missing-evidence="plainFreeMoveAcceptanceProof.missingEvidenceText"
+            :data-acceptance-endpoints="plainFreeMoveAcceptanceProof.acceptanceEndpointsText"
+            :data-start-endpoint="plainFreeMoveAcceptanceProof.startEndpoint"
+            :data-stop-endpoint="plainFreeMoveAcceptanceProof.stopEndpoint"
+            :data-start-ready="String(plainFreeMoveAcceptanceProof.startReady)"
+            :data-free-move-ready="String(plainFreeMoveAcceptanceProof.freeMoveReady)"
+            :data-motion-start-ready="String(plainFreeMoveAcceptanceProof.motionStartReady)"
+            :data-motion-ready="String(plainFreeMoveAcceptanceProof.motionReady)"
+            :data-running="String(plainFreeMoveAcceptanceProof.running)"
+            :data-complete="String(plainFreeMoveAcceptanceProof.complete)"
+            :data-minimal-precheck-safety-only="String(plainFreeMoveAcceptanceProof.minimalPrecheckSafetyOnly)"
+            :data-safety-confirm-required="String(plainFreeMoveAcceptanceProof.safetyConfirmRequired)"
+            :data-camera-preflight-required="String(plainFreeMoveAcceptanceProof.cameraPreflightRequired)"
+            :data-radar-preflight-required="String(plainFreeMoveAcceptanceProof.radarPreflightRequired)"
+            :data-blocked-by-camera-wysiwyg="String(plainFreeMoveAcceptanceProof.blockedByCameraWysiwyg)"
+            :data-blocked-by-radar-wysiwyg="String(plainFreeMoveAcceptanceProof.blockedByRadarWysiwyg)"
+            :data-mapping-start-ready="String(plainFreeMoveAcceptanceProof.mappingStartReady)"
+            :data-mapping-start-missing-reasons="plainFreeMoveAcceptanceProof.mappingStartMissingReasons.join(',') || 'none'"
+            data-readback-only="true"
+            data-readback-sends-motion="false"
+            data-readback-starts-nav2="false"
+            data-readback-starts-manual="false"
+            data-readback-starts-keyboard="false"
+            data-readback-starts-free-roam="false"
+            data-readback-starts-map-runtime="false"
+            data-readback-submits-delivery="false"
+            data-readback-stops-motion="false"
+            data-sends-motion-when-clicked="false"
+            data-starts-nav2="false"
+            data-starts-manual="false"
+            data-starts-keyboard="false"
+            data-starts-free-roam="false"
+            data-starts-map-runtime="false"
+            data-submits-delivery="false"
+            data-stops-motion="false"
+          >
+            {{ plainFreeMoveAcceptanceProof.text }}
           </p>
           <p
             class="panel-note plain-free-roam-handoff-proof"

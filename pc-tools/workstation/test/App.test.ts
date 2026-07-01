@@ -793,6 +793,26 @@ const fixtures: Record<string, unknown> = {
         },
       ],
     },
+    free_move_ready: true,
+    free_move_start_ready: true,
+    free_roam_motion_start_ready: true,
+    free_roam_motion_ready: false,
+    free_move_running: false,
+    free_move_complete: false,
+    free_move_start_endpoint: "/api/robot-control/free-roam/autonomy/start",
+    free_move_stop_endpoint: "/api/robot-control/free-roam/autonomy/stop",
+    free_move_acceptance_endpoints: ["/api/robot-control/free-roam/autonomy/latest", "/api/robot-control/summary"],
+    free_move_proof_status: "ready_to_verify",
+    free_move_missing_evidence: ["free_roam_latest_motion_ready"],
+    free_move_proof_plain: "可验证自由自助移动：勾现场安全确认后启动，再读 free-roam latest 和 summary；还差：自由移动运行读数。",
+    free_move_minimal_precheck_safety_only: true,
+    free_move_safety_confirm_required: true,
+    free_move_camera_preflight_required: false,
+    free_move_radar_preflight_required: false,
+    free_move_blocked_by_camera_wysiwyg: false,
+    free_move_blocked_by_radar_wysiwyg: false,
+    mapping_start_ready: false,
+    mapping_start_missing_reasons: ["camera_first_frame", "lidar_fresh"],
     live_closure_summary: {
       status: "needs_wysiwyg",
       status_label: "待当前所见",
@@ -4844,6 +4864,8 @@ function cloneFixture<T>(value: T): T {
 function markMappingSensorsReady(summary: RobotControlSummaryResponse | Record<string, any>): void {
   // 建图成功路径必须显式证明相机和雷达就绪；默认 fixture 继续保留未证明状态用于 fail-closed 用例。
   markCameraFrameObserved(summary);
+  summary.mapping_start_ready = true;
+  summary.mapping_start_missing_reasons = [];
 
   const lidar = summary.readback_summary.lidar;
   lidar.continuous_scan_status = "latest_proof_fresh_while_lifecycle_running";
@@ -17943,6 +17965,8 @@ describe("App", () => {
     summaryFixture.readback_summary.camera.status = "ready";
     summaryFixture.readback_summary.camera.source_readiness = "source_selected_not_probed";
     summaryFixture.readback_summary.camera.source_failure_reason = "";
+    summaryFixture.mapping_start_ready = false;
+    summaryFixture.mapping_start_missing_reasons = ["camera_first_frame"];
     const mockedFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
     });
@@ -17998,6 +18022,36 @@ describe("App", () => {
     expect(freeMoveOnlyGauge.attributes("data-start-will-clear-stop-request")).toBe("false");
     expect(freeMoveOnlyGauge.attributes("data-motion-start-blocked-by-stop-request")).toBe("false");
     expect(freeMoveOnlyGauge.attributes("data-sends-motion-when-clicked")).toBe("false");
+    const freeMoveAcceptanceProof = wrapper.find('[data-testid="plain-free-move-acceptance-proof"]');
+    expect(freeMoveAcceptanceProof.text()).toBe("自由移动验收：可启动；还差：自由移动运行读数；发车前只需安全确认，画面和雷达不作为移动前置；建图缺口=画面首帧。下一步：勾现场安全确认后启动自由移动；启动后只读读取 free-roam latest 和 summary。");
+    expect(freeMoveAcceptanceProof.attributes("data-state")).toBe("可现场验证");
+    expect(freeMoveAcceptanceProof.attributes("data-proof-status")).toBe("ready_to_verify");
+    expect(freeMoveAcceptanceProof.attributes("data-missing-evidence")).toBe("free_roam_latest_motion_ready");
+    expect(freeMoveAcceptanceProof.attributes("data-acceptance-endpoints")).toBe("/api/robot-control/free-roam/autonomy/latest,/api/robot-control/summary");
+    expect(freeMoveAcceptanceProof.attributes("data-start-endpoint")).toBe("/api/robot-control/free-roam/autonomy/start");
+    expect(freeMoveAcceptanceProof.attributes("data-stop-endpoint")).toBe("/api/robot-control/free-roam/autonomy/stop");
+    expect(freeMoveAcceptanceProof.attributes("data-start-ready")).toBe("true");
+    expect(freeMoveAcceptanceProof.attributes("data-free-move-ready")).toBe("true");
+    expect(freeMoveAcceptanceProof.attributes("data-motion-start-ready")).toBe("true");
+    expect(freeMoveAcceptanceProof.attributes("data-motion-ready")).toBe("false");
+    expect(freeMoveAcceptanceProof.attributes("data-minimal-precheck-safety-only")).toBe("true");
+    expect(freeMoveAcceptanceProof.attributes("data-safety-confirm-required")).toBe("true");
+    expect(freeMoveAcceptanceProof.attributes("data-camera-preflight-required")).toBe("false");
+    expect(freeMoveAcceptanceProof.attributes("data-radar-preflight-required")).toBe("false");
+    expect(freeMoveAcceptanceProof.attributes("data-blocked-by-camera-wysiwyg")).toBe("false");
+    expect(freeMoveAcceptanceProof.attributes("data-blocked-by-radar-wysiwyg")).toBe("false");
+    expect(freeMoveAcceptanceProof.attributes("data-mapping-start-ready")).toBe("false");
+    expect(freeMoveAcceptanceProof.attributes("data-mapping-start-missing-reasons")).toBe("camera_first_frame");
+    expect(freeMoveAcceptanceProof.attributes("data-readback-only")).toBe("true");
+    expect(freeMoveAcceptanceProof.attributes("data-readback-sends-motion")).toBe("false");
+    expect(freeMoveAcceptanceProof.attributes("data-readback-starts-nav2")).toBe("false");
+    expect(freeMoveAcceptanceProof.attributes("data-readback-starts-manual")).toBe("false");
+    expect(freeMoveAcceptanceProof.attributes("data-readback-starts-keyboard")).toBe("false");
+    expect(freeMoveAcceptanceProof.attributes("data-readback-starts-free-roam")).toBe("false");
+    expect(freeMoveAcceptanceProof.attributes("data-readback-starts-map-runtime")).toBe("false");
+    expect(freeMoveAcceptanceProof.attributes("data-readback-submits-delivery")).toBe("false");
+    expect(freeMoveAcceptanceProof.attributes("data-readback-stops-motion")).toBe("false");
+    expect(freeMoveAcceptanceProof.attributes("data-sends-motion-when-clicked")).toBe("false");
     const freeMoveOnlyHandoff = wrapper.find('[data-testid="plain-free-roam-handoff-proof"]');
     expect(freeMoveOnlyHandoff.text()).toBe("自由移动到建图：现在可先低速自由移动；画面未就绪，雷达已就绪，补齐后再启动建图记录。下一步：先低速自由移动，同时补齐画面和雷达。");
     expect(freeMoveOnlyHandoff.attributes("data-state")).toBe("可先移动");
