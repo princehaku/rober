@@ -17,9 +17,10 @@ sprint_type: micro
 - `cd pc-tools/workstation && npm run build`：通过，保留既有 Vite chunk size warning。
 - PC Node 已重启到 `0.0.0.0:7001`，监听 PID `41830`。
 - 真实只读 summary smoke：`status=needs_wheel_rerun`，`field_acceptance_primary_missing_id=same_window_wheel_lr_nonzero`，`field_acceptance_primary_missing_action_id=run_nav2_route`，`field_acceptance_primary_missing_action_start_endpoint=/api/robot-control/nav2/goal/execute`，`field_acceptance_primary_missing_action_stop_endpoint=/api/robot-control/base/stop`，`field_acceptance_primary_missing_action_acceptance_endpoints=[/api/robot-control/map/preview,/api/robot-control/nav2/goal/execution/latest,/api/robot-control/base/feedback-samples,/api/robot-control/delivery/latest,/api/robot-control/summary]`，`field_acceptance_primary_missing_action_sends_motion=true`，`field_acceptance_primary_missing_action_requires_safety_confirm=true`，`field_acceptance_primary_readback_endpoint=/api/robot-control/base/feedback-samples`。
+- 收尾 summary 一度显示 `radar_overlay_status=not_current`、`radar_overlay_wysiwyg_complete=false`；按 summary 声明的 no-motion primary action 执行 `/api/robot-control/radar/scan-proof/refresh -> /api/robot-control/radar/status -> /api/robot-control/map/preview -> /api/robot-control/summary` 后，真实 summary 恢复为 `live_wysiwyg_missing_surface_ids=[camera]`、`radar_overlay_status=loaded`、`radar_overlay_wysiwyg_complete=true`、`radar_map_points_visible=true`。该链路 `field_acceptance_primary_no_motion_readback_sends_motion=false`。
 
 ## 剩余风险
 
-- 本轮只读 summary smoke，没有执行 Nav2、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+- 本轮没有执行 Nav2、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`；仅在收尾使用 no-motion 雷达贴图复验链路恢复 WYSIWYG。
 - `motion` 目标仍缺现场安全确认后的 Nav2 同窗口 wheel L/R 非零、delivery success、PC 键盘连续手控和自由移动 latest 运行读数。
 - `wysiwyg` / `mapping` 仍只剩相机首帧硬件缺口；当前诊断仍指向 USB 12M full-speed，需要现场换高速 USB 口/线或带供电 Hub 后再复测。
