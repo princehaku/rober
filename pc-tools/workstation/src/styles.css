@@ -1,7 +1,7 @@
 :root {
-  --plain-map-large-min-height: 1520px;
-  --plain-map-large-target-height: calc(100vh + 520px);
-  --plain-map-large-max-height: 4200px;
+  --plain-map-large-min-height: 1680px;
+  --plain-map-large-target-height: calc(100vh + 720px);
+  --plain-map-large-max-height: 5200px;
   --plain-map-fullscreen-height: 100vh;
   color: #17202a;
   background: #f4f6f8;
@@ -22,9 +22,9 @@ button {
 
 .shell {
   /* 现场 PC 大屏优先服务地图观察，普通控制台应接近占满浏览器宽度。 */
-  width: min(2600px, calc(100% - 2px));
+  width: min(2800px, 100%);
   margin: 0 auto;
-  padding: 2px 0 12px;
+  padding: 0 0 10px;
 }
 
 .shell[data-direct-map-view-requested="true"] {
@@ -119,9 +119,9 @@ button {
 }
 
 .shell[data-direct-map-view-requested="true"] .plain-map-panel[data-observer-mode="true"] .plain-map-viewport[data-size="fullscreen"] .plain-map-layer {
-  /* /map 直达页必须一打开就是地图观察屏，地图层吃满剩余高度。 */
-  height: 100%;
-  min-height: 0;
+  /* /map 直达页必须一打开就是地图观察屏，地图层直接按视口扣除标题和工具条，避免百分比高度退回小画布。 */
+  height: calc(100vh - 88px);
+  min-height: calc(100vh - 88px);
 }
 
 .topbar {
@@ -1527,7 +1527,7 @@ h3 {
 
 .plain-map-panel[data-size="large"] {
   /* 普通 PC 首屏默认把地图当主视图，不再退化成一张小卡片。 */
-  min-height: calc(100vh + 260px);
+  min-height: calc(100vh + 420px);
 }
 
 .plain-map-heading {
@@ -1563,7 +1563,7 @@ h3 {
   color: #114831;
   font-size: 13px;
   font-weight: 760;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .plain-map-heading-actions {
@@ -1626,6 +1626,8 @@ h3 {
   background: #e8f6ef;
   color: #114831;
   font-weight: 760;
+  min-height: 38px;
+  padding-inline: 18px;
 }
 
 .plain-map-direct-view-link-primary:hover {
@@ -2068,8 +2070,8 @@ h3 {
   display: flex;
   align-items: flex-start;
   justify-content: flex-start;
-  height: clamp(520px, 72vh, 980px);
-  min-height: 420px;
+  height: clamp(680px, calc(100vh + 120px), 1280px);
+  min-height: 640px;
   overflow: auto;
   overscroll-behavior: contain;
   border: 1px solid #c8d2dc;

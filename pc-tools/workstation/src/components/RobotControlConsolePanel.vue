@@ -330,8 +330,9 @@ const PLAIN_MAP_FOXGLOVE_BRIDGE_LAUNCH_COMMAND = "ros2 launch ros2_trashbot_brin
 const PLAIN_MAP_FOXGLOVE_WS_URL = "ws://192.168.1.11:8765";
 const PLAIN_MAP_FOXGLOVE_WEB_APP_URL = "https://studio.foxglove.dev";
 const PLAIN_MAP_ENGINEERING_TOOLS_ACTION_LABEL = "工程观察：RViz2 / Foxglove";
-const PLAIN_MAP_TOO_SMALL_NEXT_ACTION_PLAIN = "地图太小先点“进入地图大屏”打开 /map，页面会把地图画布作为满屏主视图，只保留缩放、只读刷新和工程观察入口；建图、保存和其他卡片都会收起；不需要先开 RViz2。";
-const PLAIN_MAP_ROS2_COMPANION_ANSWER_PLAIN = "ROS2 配套：本地工程调试用 RViz2；远程浏览器观察用 Foxglove bridge + Foxglove Web；普通用户仍默认使用 PC 大地图。";
+const PLAIN_MAP_TOO_SMALL_NEXT_ACTION_PLAIN = "地图太小先点“进入地图大屏”打开 /map，PC 首页和 /map 都把地图画布作为主视图，只保留缩放、只读刷新和工程观察入口；建图、保存和其他卡片都会收起；不需要先开 RViz2。";
+const PLAIN_MAP_ROS2_COMPANION_ANSWER_PLAIN = "ROS2 配套：本地工程调试用 RViz2；远程浏览器观察用 Foxglove bridge + Foxglove Web；普通用户仍默认使用 PC 大地图和 /map。";
+const PLAIN_MAP_HEADER_SHORT_ANSWER = "普通看 /map；工程看 RViz2 / Foxglove";
 const PLAIN_MAP_ROS2_OBSERVE_TOPICS = [
   "/map",
   "/scan",
@@ -21674,7 +21675,7 @@ onBeforeUnmount(() => {
                 data-starts-nav2="false"
                 data-starts-map-runtime="false"
               >
-                PC 大地图 {{ plainMapZoomPercent }} · /map 满屏
+                PC 大地图 {{ plainMapZoomPercent }} · /map 满屏 · {{ PLAIN_MAP_HEADER_SHORT_ANSWER }}
               </span>
             </div>
             <div class="plain-map-heading-actions">

@@ -983,9 +983,9 @@ const fixtures: Record<string, unknown> = {
       map_display_direct_map_starts_radar_lifecycle_on_enter: false,
       map_display_default_zoom_percent: "1600%",
       map_display_max_zoom_percent: "4800%",
-      map_display_too_small_next_action_plain: "地图太小先点“进入地图大屏”打开 /map，页面会把地图画布作为满屏主视图，只保留缩放、只读刷新和工程观察入口；建图、保存和其他卡片都会收起；不需要先开 RViz2。",
-      map_display_ros2_companion_answer_plain: "ROS2 配套：本地工程调试用 RViz2；远程浏览器观察用 Foxglove bridge + Foxglove Web；普通用户仍默认使用 PC 大地图。",
-      map_display_ros2_companion_plain: "ROS2 配套：本地工程调试用 RViz2；远程浏览器观察用 Foxglove bridge + Foxglove Web；普通用户仍默认使用 PC 大地图。",
+      map_display_too_small_next_action_plain: "地图太小先点“进入地图大屏”打开 /map，PC 首页和 /map 都把地图画布作为主视图，只保留缩放、只读刷新和工程观察入口；建图、保存和其他卡片都会收起；不需要先开 RViz2。",
+      map_display_ros2_companion_answer_plain: "ROS2 配套：本地工程调试用 RViz2；远程浏览器观察用 Foxglove bridge + Foxglove Web；普通用户仍默认使用 PC 大地图和 /map。",
+      map_display_ros2_companion_plain: "ROS2 配套：本地工程调试用 RViz2；远程浏览器观察用 Foxglove bridge + Foxglove Web；普通用户仍默认使用 PC 大地图和 /map。",
       map_display_operator_default_surface: "pc_big_map_direct_view",
       map_display_companion_replaces_pc_ui: false,
       map_display_wysiwyg_overlays: ["image", "route", "robot", "radar"],
@@ -1015,7 +1015,7 @@ const fixtures: Record<string, unknown> = {
       map_display_ros2_observe_motion_topics: false,
       map_display_ros2_observe_control_tools: false,
       map_display_engineering_tools_sends_motion: false,
-      map_display_companion_plain: "普通用户地图：进入 /map 使用 PC 大地图，默认 1600% 现场大图，点“适配”回到 100% 全图，点“细节放大”可查看局部，最高 4800%，地图、路线、小车位置和雷达点共用同一张 WYSIWYG 画布；地图太小先点“进入地图大屏”打开 /map，页面会把地图画布作为满屏主视图，只保留缩放、只读刷新和工程观察入口；建图、保存和其他卡片都会收起；不需要先开 RViz2。ROS2 配套：本地工程调试用 RViz2；远程浏览器观察用 Foxglove bridge + Foxglove Web；普通用户仍默认使用 PC 大地图。ROS2 配套只作工程观察，本地用 RViz2，远程浏览器观察先部署 Foxglove bridge 后打开 Foxglove Web 连接 ws://192.168.1.11:8765；观察项固定为地图、雷达、TF、路径、定位和 costmap，不提供 GoalTool，不发送底盘移动命令。",
+      map_display_companion_plain: "普通用户地图：进入 /map 使用 PC 大地图，默认 1600% 现场大图，点“适配”回到 100% 全图，点“细节放大”可查看局部，最高 4800%，地图、路线、小车位置和雷达点共用同一张 WYSIWYG 画布；地图太小先点“进入地图大屏”打开 /map，PC 首页和 /map 都把地图画布作为主视图，只保留缩放、只读刷新和工程观察入口；建图、保存和其他卡片都会收起；不需要先开 RViz2。ROS2 配套：本地工程调试用 RViz2；远程浏览器观察用 Foxglove bridge + Foxglove Web；普通用户仍默认使用 PC 大地图和 /map。ROS2 配套只作工程观察，本地用 RViz2，远程浏览器观察先部署 Foxglove bridge 后打开 Foxglove Web 连接 ws://192.168.1.11:8765；观察项固定为地图、雷达、TF、路径、定位和 costmap，不提供 GoalTool，不发送底盘移动命令。",
       map_display_sends_motion_when_clicked: false,
       map_display_starts_ros2: false,
       map_display_starts_rviz2: false,
@@ -8684,7 +8684,7 @@ describe("App", () => {
     expect(wrapper.find(".plain-map-overlay-frame").attributes("data-map-zoom-affects")).toBe("image-route-robot-radar");
     const mapHeadingProof = wrapper.find('[data-testid="plain-map-heading-proof"]');
     expect(mapHeadingProof.exists()).toBe(true);
-    expect(mapHeadingProof.text()).toBe("PC 大地图 1600% · /map 满屏");
+    expect(mapHeadingProof.text()).toBe("PC 大地图 1600% · /map 满屏 · 普通看 /map；工程看 RViz2 / Foxglove");
     expect(mapHeadingProof.attributes("data-map-surface")).toBe("pc_big_map");
     expect(mapHeadingProof.attributes("data-primary-map-action-label")).toBe("进入地图大屏");
     expect(mapHeadingProof.attributes("data-direct-map-view-url")).toBe("/map");
@@ -8799,14 +8799,14 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="plain-map-panel"]').attributes("data-map-zoom-scale")).toBe("48");
     expect(wrapper.find('[data-testid="plain-map-zoom-readout"]').text()).toBe("4800%");
-    expect(wrapper.find('[data-testid="plain-map-heading-proof"]').text()).toBe("PC 大地图 4800% · /map 满屏");
+    expect(wrapper.find('[data-testid="plain-map-heading-proof"]').text()).toBe("PC 大地图 4800% · /map 满屏 · 普通看 /map；工程看 RViz2 / Foxglove");
     expect(wrapper.find('[data-testid="plain-map-heading-proof"]').attributes("data-current-map-zoom-percent")).toBe("4800%");
     expect(wrapper.find('[data-testid="plain-map-display-proof"]').attributes("data-current-map-zoom-percent")).toBe("4800%");
     await wrapper.find('[data-testid="plain-map-zoom-reset"]').trigger("click");
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="plain-map-panel"]').attributes("data-map-zoom-scale")).toBe("1");
     expect(wrapper.find('[data-testid="plain-map-zoom-readout"]').text()).toBe("100%");
-    expect(wrapper.find('[data-testid="plain-map-heading-proof"]').text()).toBe("PC 大地图 100% · /map 满屏");
+    expect(wrapper.find('[data-testid="plain-map-heading-proof"]').text()).toBe("PC 大地图 100% · /map 满屏 · 普通看 /map；工程看 RViz2 / Foxglove");
     expect(wrapper.find('[data-testid="plain-map-heading-proof"]').attributes("data-current-map-zoom-percent")).toBe("100%");
     expect(wrapper.find('[data-testid="plain-map-display-proof"]').attributes("data-current-map-zoom-percent")).toBe("100%");
     expect(wrapper.find('[data-testid="plain-map-zoom-out"]').attributes("disabled")).toBeDefined();
@@ -8938,7 +8938,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-panel"]').attributes("data-size")).toBe("normal");
     expect(wrapper.find('[data-testid="plain-map-size-toggle"]').text()).toBe("放大地图");
     const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
-    expect(workstationStyles).toContain("width: min(2600px, calc(100% - 2px));");
+    expect(workstationStyles).toContain("width: min(2800px, 100%);");
     expect(workstationStyles).toContain('.simple-user-console[data-first-screen-map-priority="map_before_status_summaries"] > .robot-console-grid');
     expect(workstationStyles).toContain("状态摘要仍保留，但不能继续把主地图挤到首屏下面");
     expect(workstationStyles).toContain('.shell[data-direct-map-view-requested="true"]');
@@ -8959,12 +8959,13 @@ describe("App", () => {
     expect(workstationStyles).toContain("border-color: #0f6b45;");
     expect(workstationStyles).toContain('/map 直达页必须一打开就是地图观察屏');
     expect(workstationStyles).toContain('.shell[data-direct-map-view-requested="true"] .plain-map-panel[data-observer-mode="true"] .plain-map-viewport[data-size="fullscreen"] .plain-map-layer');
-    expect(workstationStyles).toContain("--plain-map-large-min-height: 1520px;");
-    expect(workstationStyles).toContain("--plain-map-large-target-height: calc(100vh + 520px);");
-    expect(workstationStyles).toContain("--plain-map-large-max-height: 4200px;");
+    expect(workstationStyles).toContain("--plain-map-large-min-height: 1680px;");
+    expect(workstationStyles).toContain("--plain-map-large-target-height: calc(100vh + 720px);");
+    expect(workstationStyles).toContain("--plain-map-large-max-height: 5200px;");
     expect(workstationStyles).toContain("--plain-map-fullscreen-height: 100vh;");
-    expect(workstationStyles).toContain("地图层吃满剩余高度");
-    expect(workstationStyles).toContain("height: 100%;");
+    expect(workstationStyles).toContain("避免百分比高度退回小画布");
+    expect(workstationStyles).toContain("height: calc(100vh - 88px);");
+    expect(workstationStyles).toContain("min-height: calc(100vh - 88px);");
     expect(workstationStyles).toContain('.robot-console-grid[data-layout="visual-first"] .plain-camera-panel');
     expect(workstationStyles).toContain('.robot-console-grid[data-layout="visual-first"] .plain-radar-panel');
     expect(workstationStyles).toContain('.robot-console-grid[data-layout="visual-first"] .plain-map-panel');
