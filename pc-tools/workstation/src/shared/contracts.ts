@@ -3802,6 +3802,16 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   field_acceptance_primary_hardware_action_after_readback_sequence_labels?: RobotControlFieldAcceptancePacket["primary_hardware_action_after_readback_sequence_labels"];
   field_acceptance_primary_hardware_action_blocks_mapping_start?: RobotControlFieldAcceptancePacket["primary_hardware_action_blocks_mapping_start"];
   field_acceptance_primary_hardware_action_blocks_free_move?: RobotControlFieldAcceptancePacket["primary_hardware_action_blocks_free_move"];
+  current_hardware_action_required?: boolean;
+  current_hardware_action_id?: RobotControlFieldAcceptancePacket["primary_hardware_action_id"];
+  current_hardware_action_label?: RobotControlFieldAcceptancePacket["primary_hardware_action_label"];
+  current_hardware_action_plain?: RobotControlFieldAcceptancePacket["remaining_hardware_action_summary_plain"];
+  current_hardware_action_after_readback_endpoint?: RobotControlFieldAcceptancePacket["primary_hardware_action_after_readback_endpoint"];
+  current_hardware_action_after_readback_sequence?: RobotControlFieldAcceptancePacket["primary_hardware_action_after_readback_sequence"];
+  current_hardware_action_after_readback_sequence_labels?: RobotControlFieldAcceptancePacket["primary_hardware_action_after_readback_sequence_labels"];
+  current_hardware_action_blocks_mapping_start?: RobotControlFieldAcceptancePacket["primary_hardware_action_blocks_mapping_start"];
+  current_hardware_action_blocks_free_move?: RobotControlFieldAcceptancePacket["primary_hardware_action_blocks_free_move"];
+  current_hardware_action_sends_motion?: false;
   field_acceptance_missing_evidence_ids?: RobotControlFieldAcceptancePacket["missing_evidence_ids"];
   field_acceptance_missing_evidence_labels?: RobotControlFieldAcceptancePacket["missing_evidence_labels"];
   field_acceptance_missing_evidence_items?: RobotControlFieldAcceptancePacket["missing_evidence_items"];

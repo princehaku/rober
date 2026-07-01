@@ -902,6 +902,13 @@ describe("robotControlSummary", () => {
       "/api/robot-control/summary",
     ]);
     expect(summary.field_acceptance_parallel_hardware_action_id).toBe("none");
+    expect(summary.current_hardware_action_required).toBe(false);
+    expect(summary.current_hardware_action_id).toBe("none");
+    expect(summary.current_hardware_action_label).toBe("无设备处理动作");
+    expect(summary.current_hardware_action_after_readback_sequence).toEqual([]);
+    expect(summary.current_hardware_action_blocks_mapping_start).toBe(false);
+    expect(summary.current_hardware_action_blocks_free_move).toBe(false);
+    expect(summary.current_hardware_action_sends_motion).toBe(false);
     expect(summary.field_acceptance_parallel_mapping_missing_evidence).toEqual(["camera_first_frame", "lidar_fresh"]);
     expect(summary.field_acceptance_parallel_free_move_allowed_while_mapping_blocked).toBe(true);
     expect(summary.field_acceptance_parallel_sends_motion_when_clicked).toBe(false);
@@ -1728,6 +1735,16 @@ describe("robotControlSummary", () => {
     ]);
     expect(summary.field_acceptance_primary_hardware_action_blocks_mapping_start).toBe(true);
     expect(summary.field_acceptance_primary_hardware_action_blocks_free_move).toBe(false);
+    expect(summary.current_hardware_action_required).toBe(true);
+    expect(summary.current_hardware_action_id).toBe("camera_usb_recovery");
+    expect(summary.current_hardware_action_label).toBe("换高速USB后复测");
+    expect(summary.current_hardware_action_plain).toContain("需要设备处理：换高速USB后复测");
+    expect(summary.current_hardware_action_after_readback_endpoint).toBe("/api/robot-control/camera/first-frame/probe");
+    expect(summary.current_hardware_action_after_readback_sequence).toEqual(summary.field_acceptance_primary_hardware_action_after_readback_sequence);
+    expect(summary.current_hardware_action_after_readback_sequence_labels).toEqual(summary.field_acceptance_primary_hardware_action_after_readback_sequence_labels);
+    expect(summary.current_hardware_action_blocks_mapping_start).toBe(true);
+    expect(summary.current_hardware_action_blocks_free_move).toBe(false);
+    expect(summary.current_hardware_action_sends_motion).toBe(false);
     expect(summary.field_acceptance_hardware_actions).toEqual([
       expect.objectContaining({
         id: "camera_usb_recovery",

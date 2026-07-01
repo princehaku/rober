@@ -5003,3 +5003,10 @@ full-speed 或 UVC 传输问题时，现场硬件动作仍提示“换高速USB�
 `radar scan-proof -> radar status -> map preview -> camera probe -> camera mjpeg status -> summary` 后，雷达地图贴图从
 `not_current` 恢复为 `loaded`，当前地图雷达点 43 个，WYSIWYG 缺口收敛为只剩 `camera`；随后 focused refresh mode 变为
 `camera_only`，只需继续按“首帧 probe -> MJPEG status -> summary”复测相机。相机仍报告 USB 12M/full-speed，需要现场换高速 USB 后再复测。
+
+2026-07-02 07:39 CST 起，summary 顶层新增 `current_hardware_action_*` 短字段，直接表达当前是否需要外部设备处理、
+处理动作、处理后读回序列、是否阻塞建图、是否阻塞自由移动和是否会发车。当前相机缺口会显示
+`current_hardware_action_required=true`、`current_hardware_action_label=换高速USB后复测`、
+`current_hardware_action_after_readback_sequence=[camera first-frame probe, camera MJPEG status, summary]`、
+`current_hardware_action_blocks_mapping_start=true`、`current_hardware_action_blocks_free_move=false`、
+`current_hardware_action_sends_motion=false`。这样普通现场脚本不需要再拼 `field_acceptance_primary_hardware_action_*`。
