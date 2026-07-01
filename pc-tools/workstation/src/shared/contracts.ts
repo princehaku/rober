@@ -2788,6 +2788,7 @@ export interface RobotControlLiveClosureSummary {
   robot_api_connection_recovery_endpoints: string[];
   robot_api_connection_sends_motion_when_clicked: false;
   route_ready_on_map: boolean;
+  nav2_route_ready: boolean;
   nav2_goal_succeeded: boolean;
   nav2_goal_execution_proven: boolean;
   wheel_lr_nonzero_proven: boolean;
@@ -2795,8 +2796,14 @@ export interface RobotControlLiveClosureSummary {
   delivery_success: boolean;
   delivery_claim_ready: boolean;
   camera_current_visible: boolean;
+  live_wysiwyg_camera_visible: boolean;
   map_current_visible: boolean;
+  live_wysiwyg_map_visible: boolean;
   radar_map_points_visible: boolean;
+  primary_action_id: RobotControlLiveMotionRunbookActionId | "none";
+  keyboard_continuous_ready: boolean;
+  keyboard_continuous_motion_verified: boolean;
+  keyboard_continuous_forwarded_pulses: number;
   objective_audit_status: "complete" | "in_progress";
   objective_audit_total_count: 4;
   objective_audit_done_count: number;

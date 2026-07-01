@@ -113,6 +113,16 @@ describe("robotControlSummary", () => {
       "勾现场安全确认后重跑图上路线，并在同一个执行窗口复验轮速 L/R 非零。",
     );
     expect(summary.live_closure_summary?.next_action_plain).not.toContain("wheel raw");
+    expect(summary.live_closure_summary?.route_ready_on_map).toBe(true);
+    expect(summary.live_closure_summary?.nav2_route_ready).toBe(true);
+    expect(summary.live_closure_summary?.camera_current_visible).toBe(false);
+    expect(summary.live_closure_summary?.live_wysiwyg_camera_visible).toBe(false);
+    expect(summary.live_closure_summary?.map_current_visible).toBe(true);
+    expect(summary.live_closure_summary?.live_wysiwyg_map_visible).toBe(true);
+    expect(summary.live_closure_summary?.primary_action_id).toBe("run_nav2_route");
+    expect(summary.live_closure_summary?.keyboard_continuous_ready).toBe(true);
+    expect(summary.live_closure_summary?.keyboard_continuous_motion_verified).toBe(false);
+    expect(summary.live_closure_summary?.keyboard_continuous_forwarded_pulses).toBe(0);
     expect(summary.live_closure_summary?.objective_audit_status).toBe("in_progress");
     expect(summary.live_closure_summary?.objective_audit_total_count).toBe(4);
     expect(summary.live_closure_summary?.objective_audit_done_count).toBeGreaterThanOrEqual(1);
