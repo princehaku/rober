@@ -4971,3 +4971,9 @@ full-speed 或 UVC 传输问题时，现场硬件动作仍提示“换高速USB�
 `data-sends-motion-when-clicked=false`、`data-starts-ros2=false`、`data-starts-rviz2=false`、`data-starts-foxglove=false`、
 `data-starts-nav2=false`、`data-starts-map-runtime=false`。普通用户不需要先展开工程观察或启动 RViz2/Foxglove；
 默认仍使用 PC 大地图，当前缩放合同为 `1600%` 现场大图、最高 `4800%` 细节放大，地图、路线、小车位置和雷达贴图共享同一张 WYSIWYG 画布。
+
+2026-07-02 07:09 CST 起，PC 固定相机首帧复测代理 `POST /api/robot-control/camera/first-frame/probe`
+在上车返回 503、首帧 timeout 或 PC 代理 fetch timeout 时，HTTP 层仍返回 `200` 的 fail-closed JSON，
+让现场 `curl -fsS` 和普通脚本可以稳定读到 `proxy_status=probe_failed`、`remote_http_status`、`failure_reason`、
+`camera_hardware_action_label` 和所有 no-motion flags。本地请求错误如非法 `baseUrl` 仍可返回 400；真实失败状态不得靠 HTTP 5xx 表达，
+必须放在 body 中，同时继续保持 `readback_only=true`、`camera_probe_readback_only=true`、`robot_control_executed=false`。

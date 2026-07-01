@@ -4966,7 +4966,8 @@ export function createWorkstationApp(): express.Express {
         ...cameraProbeDiagnosticAliases(probeValues, sourceFailure),
       };
       cameraFirstFrameProbeOverlays.set(cameraMjpegRelayKey(normalized.normalized), cameraProbeOverlayFromResponse(failureBody));
-      res.status(502).json(failureBody);
+      // 首帧失败是现场诊断材料，不是 PC 代理传输失败；保持 HTTP 200，避免 curl -fsS 隐藏换线/换口提示。
+      res.status(200).json(failureBody);
       return;
     }
     const dangerous = scanDangerousTrueFields(remote.payload);
@@ -5008,7 +5009,8 @@ export function createWorkstationApp(): express.Express {
       robot_control_executed: false,
     };
     cameraFirstFrameProbeOverlays.set(cameraMjpegRelayKey(normalized.normalized), cameraProbeOverlayFromResponse(responseBody));
-    res.status(responseBody.proxy_status === "probe_forwarded" ? 200 : 502).json(responseBody);
+    // 上车返回 503/timeout 时仍把完整 fail-closed JSON 交给普通脚本读取，真实失败状态保留在 body 字段。
+    res.status(200).json(responseBody);
   });
 
   workstationApp.get("/api/proof-boundary", (_req, res) => {
