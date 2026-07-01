@@ -10126,6 +10126,18 @@ export async function buildRobotControlSummary(
   const fieldAcceptanceMotionStepIds = fieldAcceptanceSteps
     .filter((item) => item.sends_motion_when_executed)
     .map((item) => item.id);
+  const fieldAcceptanceWysiwygNextActions = [
+    liveClosureSummary.live_wysiwyg_missing_surface_ids.includes("camera")
+      ? liveClosureSummary.live_wysiwyg_camera_recovery_next_action_plain
+      : "",
+    liveClosureSummary.live_wysiwyg_missing_surface_ids.includes("radar_map_points")
+      ? liveClosureSummary.live_wysiwyg_radar_map_refresh_next_action_plain
+      : "",
+  ].filter((item) => item.trim().length > 0);
+  const fieldAcceptanceWysiwygNextActionPlain = liveClosureSummary.live_wysiwyg_ready
+    ? "当前所见已满足：画面、地图、路线、小车位置和雷达点都按当前读数显示。"
+    : fieldAcceptanceWysiwygNextActions.join("；")
+      || `当前所见还差 ${liveClosureSummary.live_wysiwyg_missing_surface_ids.join(",") || "unknown"}；点击${liveClosureSummary.live_wysiwyg_primary_refresh_label || "刷新当前所见"}只刷新证据。`;
   const fieldAcceptancePacket: RobotControlFieldAcceptancePacket = {
     status: liveClosureSummary.status,
     summary_plain: `现场验收包：${liveClosureSummary.objective_audit_summary_plain} ${liveClosureSummary.live_motion_runbook_summary_plain} 下一步：${liveClosureSummary.next_action_plain}`,
@@ -10148,7 +10160,34 @@ export async function buildRobotControlSummary(
     acceptance_endpoints: Array.from(new Set(fieldAcceptanceSteps.flatMap((item) => item.acceptance_endpoints))),
     safety_confirm_required: liveClosureSummary.live_motion_runbook_safety_confirm_required,
     minimal_precheck_safety_only: liveClosureSummary.live_motion_runbook_minimal_precheck_safety_only,
+    wysiwyg_ready: liveClosureSummary.live_wysiwyg_ready,
     wysiwyg_missing_surface_ids: liveClosureSummary.live_wysiwyg_missing_surface_ids,
+    wysiwyg_primary_refresh_endpoint: liveClosureSummary.live_wysiwyg_primary_refresh_endpoint,
+    wysiwyg_primary_refresh_label: liveClosureSummary.live_wysiwyg_primary_refresh_label,
+    wysiwyg_next_action_plain: fieldAcceptanceWysiwygNextActionPlain,
+    wysiwyg_camera_next_action_plain: liveClosureSummary.live_wysiwyg_camera_recovery_next_action_plain,
+    wysiwyg_radar_map_next_action_plain: liveClosureSummary.live_wysiwyg_radar_map_refresh_next_action_plain,
+    wysiwyg_refresh_sequence: liveClosureSummary.live_wysiwyg_refresh_sequence,
+    wysiwyg_refresh_sequence_labels: liveClosureSummary.live_wysiwyg_refresh_sequence_labels,
+    fixed_wysiwyg_radar_refresh_endpoint: liveClosureSummary.fixed_live_wysiwyg_radar_refresh_endpoint,
+    fixed_wysiwyg_camera_probe_endpoint: liveClosureSummary.fixed_live_wysiwyg_camera_probe_endpoint,
+    fixed_wysiwyg_map_preview_endpoint: liveClosureSummary.fixed_live_wysiwyg_map_preview_endpoint,
+    fixed_wysiwyg_radar_status_endpoint: liveClosureSummary.fixed_live_wysiwyg_radar_status_endpoint,
+    fixed_wysiwyg_camera_mjpeg_status_endpoint: liveClosureSummary.fixed_live_wysiwyg_camera_mjpeg_status_endpoint,
+    wysiwyg_refreshes_radar_scan_proof: true,
+    wysiwyg_refreshes_camera_first_frame_probe: true,
+    wysiwyg_refreshes_map_preview: true,
+    wysiwyg_refreshes_radar_status: true,
+    wysiwyg_refreshes_camera_mjpeg_status: true,
+    wysiwyg_refresh_sends_motion: false,
+    wysiwyg_refresh_starts_nav2: false,
+    wysiwyg_refresh_starts_manual: false,
+    wysiwyg_refresh_starts_keyboard: false,
+    wysiwyg_refresh_starts_free_roam: false,
+    wysiwyg_refresh_starts_radar_lifecycle: false,
+    wysiwyg_refresh_starts_map_runtime: false,
+    wysiwyg_refresh_submits_delivery: false,
+    wysiwyg_refresh_stops_motion: false,
     mapping_start_ready: liveClosureSummary.mapping_start_ready,
     mapping_missing_evidence: mappingRunbookItem?.missing_evidence ?? liveClosureSummary.mapping_start_missing_reasons,
     camera_blocks_mapping_start: liveClosureSummary.camera_blocks_mapping_start,
@@ -10343,6 +10382,24 @@ export async function buildRobotControlSummary(
     field_acceptance_safety_confirm_required: fieldAcceptancePacket.safety_confirm_required,
     field_acceptance_minimal_precheck_safety_only: fieldAcceptancePacket.minimal_precheck_safety_only,
     field_acceptance_summary_plain: fieldAcceptancePacket.summary_plain,
+    field_acceptance_wysiwyg_ready: fieldAcceptancePacket.wysiwyg_ready,
+    field_acceptance_wysiwyg_missing_surface_ids: fieldAcceptancePacket.wysiwyg_missing_surface_ids,
+    field_acceptance_wysiwyg_primary_refresh_endpoint: fieldAcceptancePacket.wysiwyg_primary_refresh_endpoint,
+    field_acceptance_wysiwyg_primary_refresh_label: fieldAcceptancePacket.wysiwyg_primary_refresh_label,
+    field_acceptance_wysiwyg_next_action_plain: fieldAcceptancePacket.wysiwyg_next_action_plain,
+    field_acceptance_wysiwyg_camera_next_action_plain: fieldAcceptancePacket.wysiwyg_camera_next_action_plain,
+    field_acceptance_wysiwyg_radar_map_next_action_plain: fieldAcceptancePacket.wysiwyg_radar_map_next_action_plain,
+    field_acceptance_wysiwyg_refresh_sequence: fieldAcceptancePacket.wysiwyg_refresh_sequence,
+    field_acceptance_wysiwyg_refresh_sequence_labels: fieldAcceptancePacket.wysiwyg_refresh_sequence_labels,
+    field_acceptance_wysiwyg_refresh_sends_motion: fieldAcceptancePacket.wysiwyg_refresh_sends_motion,
+    field_acceptance_wysiwyg_refresh_starts_nav2: fieldAcceptancePacket.wysiwyg_refresh_starts_nav2,
+    field_acceptance_wysiwyg_refresh_starts_manual: fieldAcceptancePacket.wysiwyg_refresh_starts_manual,
+    field_acceptance_wysiwyg_refresh_starts_keyboard: fieldAcceptancePacket.wysiwyg_refresh_starts_keyboard,
+    field_acceptance_wysiwyg_refresh_starts_free_roam: fieldAcceptancePacket.wysiwyg_refresh_starts_free_roam,
+    field_acceptance_wysiwyg_refresh_starts_radar_lifecycle: fieldAcceptancePacket.wysiwyg_refresh_starts_radar_lifecycle,
+    field_acceptance_wysiwyg_refresh_starts_map_runtime: fieldAcceptancePacket.wysiwyg_refresh_starts_map_runtime,
+    field_acceptance_wysiwyg_refresh_submits_delivery: fieldAcceptancePacket.wysiwyg_refresh_submits_delivery,
+    field_acceptance_wysiwyg_refresh_stops_motion: fieldAcceptancePacket.wysiwyg_refresh_stops_motion,
     field_acceptance_steps: fieldAcceptancePacket.steps,
     primary_start_endpoint: primaryRunbookItem?.start_endpoint ?? "none",
     primary_stop_endpoint: primaryRunbookItem?.stop_endpoint ?? "none",

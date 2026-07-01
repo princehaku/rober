@@ -4225,6 +4225,49 @@ const plainFieldAcceptanceAllReadbackDisabled = computed(() => (
 const plainFieldAcceptanceWysiwygMissingText = computed(() => (
   plainFieldAcceptancePacket.value?.wysiwyg_missing_surface_ids.join(",") || "none"
 ));
+function plainFieldAcceptanceWysiwygSurfaceLabel(id: string): string {
+  const labels: Record<string, string> = {
+    camera: "画面",
+    map: "地图",
+    path: "图上路线",
+    robot_pose: "小车位置",
+    radar_map_points: "雷达点",
+  };
+  return labels[id] ?? id;
+}
+const plainFieldAcceptanceWysiwygMissingLabelText = computed(() => {
+  const ids = plainFieldAcceptancePacket.value?.wysiwyg_missing_surface_ids ?? [];
+  return ids.length ? ids.map((id) => plainFieldAcceptanceWysiwygSurfaceLabel(id)).join("、") : "无";
+});
+const plainFieldAcceptanceWysiwygRefreshSequence = computed(() => (
+  plainFieldAcceptancePacket.value?.wysiwyg_refresh_sequence?.length
+    ? plainFieldAcceptancePacket.value.wysiwyg_refresh_sequence.join(",")
+    : plainLiveClosureWysiwygRefreshSequence.value
+));
+const plainFieldAcceptanceWysiwygRefreshSequenceLabels = computed(() => (
+  plainFieldAcceptancePacket.value?.wysiwyg_refresh_sequence_labels?.length
+    ? plainFieldAcceptancePacket.value.wysiwyg_refresh_sequence_labels.join(",")
+    : plainLiveClosureWysiwygRefreshSequenceLabels.value
+));
+const plainFieldAcceptanceWysiwygPrimaryEndpoint = computed(() => (
+  plainFieldAcceptancePacket.value?.wysiwyg_primary_refresh_endpoint
+  || plainLiveClosureSummary.value?.live_wysiwyg_primary_refresh_endpoint
+  || "/api/robot-control/map/preview"
+));
+const plainFieldAcceptanceWysiwygPrimaryLabel = computed(() => (
+  plainFieldAcceptancePacket.value?.wysiwyg_primary_refresh_label
+  || plainLiveClosureSummary.value?.live_wysiwyg_primary_refresh_label
+  || "刷新当前所见"
+));
+const plainFieldAcceptanceWysiwygNextText = computed(() => {
+  const packet = plainFieldAcceptancePacket.value;
+  if (!packet) {
+    return "";
+  }
+  const statusText = packet.wysiwyg_ready ? "当前所见已满足" : `当前所见还差：${plainFieldAcceptanceWysiwygMissingLabelText.value}`;
+  return `${statusText}；下一步：${plainActionCardUserText(packet.wysiwyg_next_action_plain)}。`;
+});
+const plainFieldAcceptanceWysiwygRefreshDisabled = computed(() => !canRefreshPlainWysiwygEvidence.value);
 const plainFieldAcceptanceMappingMissingText = computed(() => (
   plainFieldAcceptancePacket.value?.mapping_missing_evidence.join(",") || "none"
 ));
@@ -17414,7 +17457,22 @@ onBeforeUnmount(() => {
           :data-safety-confirm-required="String(plainFieldAcceptancePacket.safety_confirm_required)"
           :data-minimal-precheck-safety-only="String(plainFieldAcceptancePacket.minimal_precheck_safety_only)"
           :data-unified-safety-confirmed="String(plainUnifiedSafetyConfirmed)"
+          :data-wysiwyg-ready="String(plainFieldAcceptancePacket.wysiwyg_ready)"
           :data-wysiwyg-missing-surface-ids="plainFieldAcceptanceWysiwygMissingText"
+          :data-wysiwyg-primary-refresh-endpoint="plainFieldAcceptanceWysiwygPrimaryEndpoint"
+          :data-wysiwyg-primary-refresh-label="plainFieldAcceptanceWysiwygPrimaryLabel"
+          :data-wysiwyg-next-action-plain="plainFieldAcceptancePacket.wysiwyg_next_action_plain"
+          :data-wysiwyg-refresh-sequence="plainFieldAcceptanceWysiwygRefreshSequence"
+          :data-wysiwyg-refresh-sequence-labels="plainFieldAcceptanceWysiwygRefreshSequenceLabels"
+          :data-wysiwyg-refresh-sends-motion="String(plainFieldAcceptancePacket.wysiwyg_refresh_sends_motion)"
+          :data-wysiwyg-refresh-starts-radar-lifecycle="String(plainFieldAcceptancePacket.wysiwyg_refresh_starts_radar_lifecycle)"
+          :data-wysiwyg-refresh-starts-map-runtime="String(plainFieldAcceptancePacket.wysiwyg_refresh_starts_map_runtime)"
+          :data-wysiwyg-refresh-starts-nav2="String(plainFieldAcceptancePacket.wysiwyg_refresh_starts_nav2)"
+          :data-wysiwyg-refresh-starts-manual="String(plainFieldAcceptancePacket.wysiwyg_refresh_starts_manual)"
+          :data-wysiwyg-refresh-starts-keyboard="String(plainFieldAcceptancePacket.wysiwyg_refresh_starts_keyboard)"
+          :data-wysiwyg-refresh-starts-free-roam="String(plainFieldAcceptancePacket.wysiwyg_refresh_starts_free_roam)"
+          :data-wysiwyg-refresh-submits-delivery="String(plainFieldAcceptancePacket.wysiwyg_refresh_submits_delivery)"
+          :data-wysiwyg-refresh-stops-motion="String(plainFieldAcceptancePacket.wysiwyg_refresh_stops_motion)"
           :data-mapping-start-ready="String(plainFieldAcceptancePacket.mapping_start_ready)"
           :data-mapping-missing-evidence="plainFieldAcceptanceMappingMissingText"
           :data-camera-blocks-mapping-start="String(plainFieldAcceptancePacket.camera_blocks_mapping_start)"
@@ -17435,6 +17493,71 @@ onBeforeUnmount(() => {
           <p class="panel-note" data-testid="plain-field-acceptance-summary">
             {{ plainActionCardUserText(plainFieldAcceptancePacket.summary_plain) }}
           </p>
+          <div
+            class="plain-field-acceptance-wysiwyg"
+            data-testid="plain-field-acceptance-wysiwyg"
+            :data-wysiwyg-ready="String(plainFieldAcceptancePacket.wysiwyg_ready)"
+            :data-wysiwyg-missing-surface-ids="plainFieldAcceptanceWysiwygMissingText"
+            :data-wysiwyg-missing-surface-labels="plainFieldAcceptanceWysiwygMissingLabelText"
+            :data-wysiwyg-primary-refresh-endpoint="plainFieldAcceptanceWysiwygPrimaryEndpoint"
+            :data-wysiwyg-primary-refresh-label="plainFieldAcceptanceWysiwygPrimaryLabel"
+            :data-wysiwyg-refresh-sequence="plainFieldAcceptanceWysiwygRefreshSequence"
+            :data-wysiwyg-refresh-sequence-labels="plainFieldAcceptanceWysiwygRefreshSequenceLabels"
+            :data-fixed-wysiwyg-radar-refresh-endpoint="plainFieldAcceptancePacket.fixed_wysiwyg_radar_refresh_endpoint"
+            :data-fixed-wysiwyg-camera-probe-endpoint="plainFieldAcceptancePacket.fixed_wysiwyg_camera_probe_endpoint"
+            :data-fixed-wysiwyg-map-preview-endpoint="plainFieldAcceptancePacket.fixed_wysiwyg_map_preview_endpoint"
+            :data-fixed-wysiwyg-radar-status-endpoint="plainFieldAcceptancePacket.fixed_wysiwyg_radar_status_endpoint"
+            :data-fixed-wysiwyg-camera-mjpeg-status-endpoint="plainFieldAcceptancePacket.fixed_wysiwyg_camera_mjpeg_status_endpoint"
+            :data-refreshes-camera-first-frame-probe="String(plainFieldAcceptancePacket.wysiwyg_refreshes_camera_first_frame_probe)"
+            :data-refreshes-camera-mjpeg-status="String(plainFieldAcceptancePacket.wysiwyg_refreshes_camera_mjpeg_status)"
+            :data-refreshes-radar-scan-proof="String(plainFieldAcceptancePacket.wysiwyg_refreshes_radar_scan_proof)"
+            :data-refreshes-radar-status="String(plainFieldAcceptancePacket.wysiwyg_refreshes_radar_status)"
+            :data-refreshes-map-preview="String(plainFieldAcceptancePacket.wysiwyg_refreshes_map_preview)"
+            :data-refreshes-summary="String(true)"
+            :data-sends-motion-when-clicked="String(plainFieldAcceptancePacket.wysiwyg_refresh_sends_motion)"
+            :data-starts-radar-lifecycle="String(plainFieldAcceptancePacket.wysiwyg_refresh_starts_radar_lifecycle)"
+            :data-starts-map-runtime="String(plainFieldAcceptancePacket.wysiwyg_refresh_starts_map_runtime)"
+            :data-starts-nav2="String(plainFieldAcceptancePacket.wysiwyg_refresh_starts_nav2)"
+            :data-starts-manual="String(plainFieldAcceptancePacket.wysiwyg_refresh_starts_manual)"
+            :data-starts-keyboard="String(plainFieldAcceptancePacket.wysiwyg_refresh_starts_keyboard)"
+            :data-starts-free-roam="String(plainFieldAcceptancePacket.wysiwyg_refresh_starts_free_roam)"
+            :data-submits-delivery="String(plainFieldAcceptancePacket.wysiwyg_refresh_submits_delivery)"
+            :data-stops-motion="String(plainFieldAcceptancePacket.wysiwyg_refresh_stops_motion)"
+          >
+            <span class="plain-progress-label">当前所见</span>
+            <span class="status-chip" :data-state="plainFieldAcceptancePacket.wysiwyg_ready ? '已满足' : '待刷新'">
+              {{ plainFieldAcceptancePacket.wysiwyg_ready ? "已满足" : "待刷新" }}
+            </span>
+            <span class="muted">{{ plainFieldAcceptanceWysiwygNextText }}</span>
+            <button
+              type="button"
+              class="secondary compact-stop"
+              data-testid="plain-field-acceptance-wysiwyg-refresh"
+              :disabled="plainFieldAcceptanceWysiwygRefreshDisabled"
+              :data-wysiwyg-primary-refresh-endpoint="plainFieldAcceptanceWysiwygPrimaryEndpoint"
+              :data-wysiwyg-primary-refresh-label="plainFieldAcceptanceWysiwygPrimaryLabel"
+              :data-wysiwyg-refresh-sequence="plainFieldAcceptanceWysiwygRefreshSequence"
+              :data-wysiwyg-refresh-sequence-labels="plainFieldAcceptanceWysiwygRefreshSequenceLabels"
+              data-refreshes-camera-first-frame-probe="true"
+              data-refreshes-camera-mjpeg-status="true"
+              data-refreshes-radar-scan-proof="true"
+              data-refreshes-radar-status="true"
+              data-refreshes-map-preview="true"
+              data-refreshes-summary="true"
+              data-sends-motion-when-clicked="false"
+              data-starts-radar-lifecycle="false"
+              data-starts-map-runtime="false"
+              data-starts-nav2="false"
+              data-starts-manual="false"
+              data-starts-keyboard="false"
+              data-starts-free-roam="false"
+              data-submits-delivery="false"
+              data-stops-motion="false"
+              @click="refreshPlainWysiwygEvidence"
+            >
+              {{ plainWysiwygEvidenceRefreshButtonLabel }}
+            </button>
+          </div>
           <label
             class="plain-unified-safety-confirm plain-field-acceptance-safety"
             data-testid="plain-field-acceptance-safety-gate"

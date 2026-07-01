@@ -1296,7 +1296,40 @@ const fixtures: Record<string, unknown> = {
         ],
         safety_confirm_required: true,
         minimal_precheck_safety_only: true,
+        wysiwyg_ready: false,
         wysiwyg_missing_surface_ids: ["camera", "radar_map_points"],
+        wysiwyg_primary_refresh_endpoint: "/api/robot-control/camera/first-frame/probe",
+        wysiwyg_primary_refresh_label: "复测相机首帧",
+        wysiwyg_next_action_plain: "相机不是页面独占；先复测相机首帧并读取共享预览状态。若仍无画面，检查 USB 线、接口、摄像头供电或换 known-good UVC 后再复测。；旧雷达来源点 81 个已抑制；先刷新雷达扫描读数，再刷新地图画面，确认同轮雷达点贴图。",
+        wysiwyg_camera_next_action_plain: "相机不是页面独占；先复测相机首帧并读取共享预览状态。若仍无画面，检查 USB 线、接口、摄像头供电或换 known-good UVC 后再复测。",
+        wysiwyg_radar_map_next_action_plain: "旧雷达来源点 81 个已抑制；先刷新雷达扫描读数，再刷新地图画面，确认同轮雷达点贴图。",
+        wysiwyg_refresh_sequence: [
+          "/api/robot-control/radar/scan-proof/refresh",
+          "/api/robot-control/camera/first-frame/probe",
+          "/api/robot-control/map/preview",
+          "/api/robot-control/radar/status",
+          "/api/robot-control/camera/mjpeg/status",
+        ],
+        wysiwyg_refresh_sequence_labels: ["刷新雷达扫描读数", "复测相机首帧", "刷新地图画面", "读取雷达状态", "读取相机 MJPEG 状态"],
+        fixed_wysiwyg_radar_refresh_endpoint: "/api/robot-control/radar/scan-proof/refresh",
+        fixed_wysiwyg_camera_probe_endpoint: "/api/robot-control/camera/first-frame/probe",
+        fixed_wysiwyg_map_preview_endpoint: "/api/robot-control/map/preview",
+        fixed_wysiwyg_radar_status_endpoint: "/api/robot-control/radar/status",
+        fixed_wysiwyg_camera_mjpeg_status_endpoint: "/api/robot-control/camera/mjpeg/status",
+        wysiwyg_refreshes_radar_scan_proof: true,
+        wysiwyg_refreshes_camera_first_frame_probe: true,
+        wysiwyg_refreshes_map_preview: true,
+        wysiwyg_refreshes_radar_status: true,
+        wysiwyg_refreshes_camera_mjpeg_status: true,
+        wysiwyg_refresh_sends_motion: false,
+        wysiwyg_refresh_starts_nav2: false,
+        wysiwyg_refresh_starts_manual: false,
+        wysiwyg_refresh_starts_keyboard: false,
+        wysiwyg_refresh_starts_free_roam: false,
+        wysiwyg_refresh_starts_radar_lifecycle: false,
+        wysiwyg_refresh_starts_map_runtime: false,
+        wysiwyg_refresh_submits_delivery: false,
+        wysiwyg_refresh_stops_motion: false,
         mapping_start_ready: false,
         mapping_missing_evidence: ["camera_first_frame", "lidar_fresh"],
         camera_blocks_mapping_start: true,
@@ -1383,6 +1416,30 @@ const fixtures: Record<string, unknown> = {
       field_acceptance_safety_confirm_required: true,
       field_acceptance_minimal_precheck_safety_only: true,
       field_acceptance_summary_plain: "现场验收：四项目标完成 1/4；下一步先做键盘连续手控；发车前预检只需现场安全确认。",
+      field_acceptance_wysiwyg_ready: false,
+      field_acceptance_wysiwyg_missing_surface_ids: ["camera", "radar_map_points"],
+      field_acceptance_wysiwyg_primary_refresh_endpoint: "/api/robot-control/camera/first-frame/probe",
+      field_acceptance_wysiwyg_primary_refresh_label: "复测相机首帧",
+      field_acceptance_wysiwyg_next_action_plain: "相机不是页面独占；先复测相机首帧并读取共享预览状态。若仍无画面，检查 USB 线、接口、摄像头供电或换 known-good UVC 后再复测。；旧雷达来源点 81 个已抑制；先刷新雷达扫描读数，再刷新地图画面，确认同轮雷达点贴图。",
+      field_acceptance_wysiwyg_camera_next_action_plain: "相机不是页面独占；先复测相机首帧并读取共享预览状态。若仍无画面，检查 USB 线、接口、摄像头供电或换 known-good UVC 后再复测。",
+      field_acceptance_wysiwyg_radar_map_next_action_plain: "旧雷达来源点 81 个已抑制；先刷新雷达扫描读数，再刷新地图画面，确认同轮雷达点贴图。",
+      field_acceptance_wysiwyg_refresh_sequence: [
+        "/api/robot-control/radar/scan-proof/refresh",
+        "/api/robot-control/camera/first-frame/probe",
+        "/api/robot-control/map/preview",
+        "/api/robot-control/radar/status",
+        "/api/robot-control/camera/mjpeg/status",
+      ],
+      field_acceptance_wysiwyg_refresh_sequence_labels: ["刷新雷达扫描读数", "复测相机首帧", "刷新地图画面", "读取雷达状态", "读取相机 MJPEG 状态"],
+      field_acceptance_wysiwyg_refresh_sends_motion: false,
+      field_acceptance_wysiwyg_refresh_starts_nav2: false,
+      field_acceptance_wysiwyg_refresh_starts_manual: false,
+      field_acceptance_wysiwyg_refresh_starts_keyboard: false,
+      field_acceptance_wysiwyg_refresh_starts_free_roam: false,
+      field_acceptance_wysiwyg_refresh_starts_radar_lifecycle: false,
+      field_acceptance_wysiwyg_refresh_starts_map_runtime: false,
+      field_acceptance_wysiwyg_refresh_submits_delivery: false,
+      field_acceptance_wysiwyg_refresh_stops_motion: false,
       minimal_precheck_safety_only: true,
       safety_confirm_required_for_motion: true,
       wheel_rerun_minimal_precheck_safety_only: false,
@@ -5194,7 +5251,23 @@ describe("App", () => {
     expect(fieldAcceptancePacket.attributes("data-safety-confirm-required")).toBe("true");
     expect(fieldAcceptancePacket.attributes("data-minimal-precheck-safety-only")).toBe("true");
     expect(fieldAcceptancePacket.attributes("data-unified-safety-confirmed")).toBe("false");
+    expect(fieldAcceptancePacket.attributes("data-wysiwyg-ready")).toBe("false");
     expect(fieldAcceptancePacket.attributes("data-wysiwyg-missing-surface-ids")).toBe("camera,radar_map_points");
+    expect(fieldAcceptancePacket.attributes("data-wysiwyg-primary-refresh-endpoint")).toBe("/api/robot-control/camera/first-frame/probe");
+    expect(fieldAcceptancePacket.attributes("data-wysiwyg-primary-refresh-label")).toBe("复测相机首帧");
+    expect(fieldAcceptancePacket.attributes("data-wysiwyg-next-action-plain")).toContain("复测相机首帧");
+    expect(fieldAcceptancePacket.attributes("data-wysiwyg-next-action-plain")).toContain("刷新雷达扫描读数");
+    expect(fieldAcceptancePacket.attributes("data-wysiwyg-refresh-sequence")).toBe("/api/robot-control/radar/scan-proof/refresh,/api/robot-control/camera/first-frame/probe,/api/robot-control/map/preview,/api/robot-control/radar/status,/api/robot-control/camera/mjpeg/status");
+    expect(fieldAcceptancePacket.attributes("data-wysiwyg-refresh-sequence-labels")).toBe("刷新雷达扫描读数,复测相机首帧,刷新地图画面,读取雷达状态,读取相机 MJPEG 状态");
+    expect(fieldAcceptancePacket.attributes("data-wysiwyg-refresh-sends-motion")).toBe("false");
+    expect(fieldAcceptancePacket.attributes("data-wysiwyg-refresh-starts-radar-lifecycle")).toBe("false");
+    expect(fieldAcceptancePacket.attributes("data-wysiwyg-refresh-starts-map-runtime")).toBe("false");
+    expect(fieldAcceptancePacket.attributes("data-wysiwyg-refresh-starts-nav2")).toBe("false");
+    expect(fieldAcceptancePacket.attributes("data-wysiwyg-refresh-starts-manual")).toBe("false");
+    expect(fieldAcceptancePacket.attributes("data-wysiwyg-refresh-starts-keyboard")).toBe("false");
+    expect(fieldAcceptancePacket.attributes("data-wysiwyg-refresh-starts-free-roam")).toBe("false");
+    expect(fieldAcceptancePacket.attributes("data-wysiwyg-refresh-submits-delivery")).toBe("false");
+    expect(fieldAcceptancePacket.attributes("data-wysiwyg-refresh-stops-motion")).toBe("false");
     expect(fieldAcceptancePacket.attributes("data-mapping-start-ready")).toBe("false");
     expect(fieldAcceptancePacket.attributes("data-mapping-missing-evidence")).toBe("camera_first_frame,lidar_fresh");
     expect(fieldAcceptancePacket.attributes("data-camera-blocks-mapping-start")).toBe("true");
@@ -5204,6 +5277,67 @@ describe("App", () => {
     expect(fieldAcceptancePacket.attributes("data-starts-manual")).toBe("false");
     expect(fieldAcceptancePacket.attributes("data-starts-free-roam")).toBe("false");
     expect(fieldAcceptancePacket.attributes("data-starts-map-runtime")).toBe("false");
+    const fieldAcceptanceWysiwyg = wrapper.find('[data-testid="plain-field-acceptance-wysiwyg"]');
+    const fieldAcceptanceWysiwygRefresh = wrapper.find('[data-testid="plain-field-acceptance-wysiwyg-refresh"]');
+    expect(fieldAcceptanceWysiwyg.exists()).toBe(true);
+    expect(fieldAcceptanceWysiwyg.text()).toContain("当前所见");
+    expect(fieldAcceptanceWysiwyg.text()).toContain("待刷新");
+    expect(fieldAcceptanceWysiwyg.text()).toContain("当前所见还差：画面、雷达点");
+    expect(fieldAcceptanceWysiwyg.text()).toContain("复测相机首帧");
+    expect(fieldAcceptanceWysiwyg.text()).toContain("刷新雷达扫描读数");
+    expect(fieldAcceptanceWysiwyg.attributes("data-wysiwyg-ready")).toBe("false");
+    expect(fieldAcceptanceWysiwyg.attributes("data-wysiwyg-missing-surface-ids")).toBe("camera,radar_map_points");
+    expect(fieldAcceptanceWysiwyg.attributes("data-wysiwyg-missing-surface-labels")).toBe("画面、雷达点");
+    expect(fieldAcceptanceWysiwyg.attributes("data-wysiwyg-primary-refresh-endpoint")).toBe("/api/robot-control/camera/first-frame/probe");
+    expect(fieldAcceptanceWysiwyg.attributes("data-wysiwyg-refresh-sequence")).toBe("/api/robot-control/radar/scan-proof/refresh,/api/robot-control/camera/first-frame/probe,/api/robot-control/map/preview,/api/robot-control/radar/status,/api/robot-control/camera/mjpeg/status");
+    expect(fieldAcceptanceWysiwyg.attributes("data-fixed-wysiwyg-radar-refresh-endpoint")).toBe("/api/robot-control/radar/scan-proof/refresh");
+    expect(fieldAcceptanceWysiwyg.attributes("data-fixed-wysiwyg-camera-probe-endpoint")).toBe("/api/robot-control/camera/first-frame/probe");
+    expect(fieldAcceptanceWysiwyg.attributes("data-fixed-wysiwyg-map-preview-endpoint")).toBe("/api/robot-control/map/preview");
+    expect(fieldAcceptanceWysiwyg.attributes("data-fixed-wysiwyg-radar-status-endpoint")).toBe("/api/robot-control/radar/status");
+    expect(fieldAcceptanceWysiwyg.attributes("data-fixed-wysiwyg-camera-mjpeg-status-endpoint")).toBe("/api/robot-control/camera/mjpeg/status");
+    expect(fieldAcceptanceWysiwyg.attributes("data-refreshes-camera-first-frame-probe")).toBe("true");
+    expect(fieldAcceptanceWysiwyg.attributes("data-refreshes-camera-mjpeg-status")).toBe("true");
+    expect(fieldAcceptanceWysiwyg.attributes("data-refreshes-radar-scan-proof")).toBe("true");
+    expect(fieldAcceptanceWysiwyg.attributes("data-refreshes-radar-status")).toBe("true");
+    expect(fieldAcceptanceWysiwyg.attributes("data-refreshes-map-preview")).toBe("true");
+    expect(fieldAcceptanceWysiwyg.attributes("data-sends-motion-when-clicked")).toBe("false");
+    expect(fieldAcceptanceWysiwyg.attributes("data-starts-radar-lifecycle")).toBe("false");
+    expect(fieldAcceptanceWysiwyg.attributes("data-starts-map-runtime")).toBe("false");
+    expect(fieldAcceptanceWysiwyg.attributes("data-starts-nav2")).toBe("false");
+    expect(fieldAcceptanceWysiwyg.attributes("data-starts-manual")).toBe("false");
+    expect(fieldAcceptanceWysiwyg.attributes("data-starts-keyboard")).toBe("false");
+    expect(fieldAcceptanceWysiwyg.attributes("data-starts-free-roam")).toBe("false");
+    expect(fieldAcceptanceWysiwyg.attributes("data-submits-delivery")).toBe("false");
+    expect(fieldAcceptanceWysiwyg.attributes("data-stops-motion")).toBe("false");
+    expect(fieldAcceptanceWysiwygRefresh.text()).toBe("刷新当前所见（含雷达贴图）");
+    expect(fieldAcceptanceWysiwygRefresh.attributes("disabled")).toBeUndefined();
+    expect(fieldAcceptanceWysiwygRefresh.attributes("data-sends-motion-when-clicked")).toBe("false");
+    expect(fieldAcceptanceWysiwygRefresh.attributes("data-starts-radar-lifecycle")).toBe("false");
+    expect(fieldAcceptanceWysiwygRefresh.attributes("data-starts-map-runtime")).toBe("false");
+    expect(fieldAcceptanceWysiwygRefresh.attributes("data-starts-nav2")).toBe("false");
+    expect(fieldAcceptanceWysiwygRefresh.attributes("data-starts-manual")).toBe("false");
+    expect(fieldAcceptanceWysiwygRefresh.attributes("data-starts-keyboard")).toBe("false");
+    expect(fieldAcceptanceWysiwygRefresh.attributes("data-starts-free-roam")).toBe("false");
+    expect(fieldAcceptanceWysiwygRefresh.attributes("data-submits-delivery")).toBe("false");
+    expect(fieldAcceptanceWysiwygRefresh.attributes("data-stops-motion")).toBe("false");
+    const callsBeforeFieldAcceptanceWysiwygRefresh = mockedFetch.mock.calls.length;
+    await fieldAcceptanceWysiwygRefresh.trigger("click");
+    await flushPromises();
+    await flushPromises();
+    const wysiwygRefreshUrls = mockedFetch.mock.calls
+      .slice(callsBeforeFieldAcceptanceWysiwygRefresh)
+      .map((call) => String(call[0]));
+    expect(wysiwygRefreshUrls.some((url) => url.startsWith("/api/robot-control/radar/scan-proof/refresh"))).toBe(true);
+    expect(wysiwygRefreshUrls.some((url) => url.startsWith("/api/robot-control/radar/status"))).toBe(true);
+    expect(wysiwygRefreshUrls.some((url) => url.startsWith("/api/robot-control/map/preview"))).toBe(true);
+    expect(wysiwygRefreshUrls.some((url) => url.startsWith("/api/robot-control/camera/first-frame/probe"))).toBe(true);
+    expect(wysiwygRefreshUrls.some((url) => url.startsWith("/api/robot-control/camera/mjpeg/status"))).toBe(true);
+    expect(wysiwygRefreshUrls.some((url) => url.startsWith("/api/robot-control/summary"))).toBe(true);
+    expect(wysiwygRefreshUrls.some((url) => url.startsWith("/api/robot-control/nav2/goal/execute"))).toBe(false);
+    expect(wysiwygRefreshUrls.some((url) => url.startsWith("/api/robot-control/base/manual"))).toBe(false);
+    expect(wysiwygRefreshUrls.some((url) => url.startsWith("/api/robot-control/base/stop"))).toBe(false);
+    expect(wysiwygRefreshUrls.some((url) => url.startsWith("/api/robot-control/free-roam/autonomy/start"))).toBe(false);
+    expect(wysiwygRefreshUrls.some((url) => url.startsWith("/api/robot-control/delivery/complete"))).toBe(false);
     const fieldAcceptanceSafetyGate = wrapper.find('[data-testid="plain-field-acceptance-safety-gate"]');
     const fieldAcceptanceSafetyConfirm = wrapper.find('[data-testid="plain-field-acceptance-safety-confirm"]');
     expect(fieldAcceptanceSafetyGate.exists()).toBe(true);
