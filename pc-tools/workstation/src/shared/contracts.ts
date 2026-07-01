@@ -3670,6 +3670,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   trip_execution_complete?: RobotControlNav2RouteAcceptancePacket["completed"];
   trip_execution_missing_evidence?: RobotControlNav2RouteAcceptancePacket["missing_evidence"];
   trip_execution_required_success_markers?: RobotControlNav2RouteAcceptancePacket["required_success_markers"];
+  trip_execution_readback_endpoints?: RobotControlNav2RouteAcceptancePacket["readback_endpoints"];
   route_complete?: boolean;
   trip_complete?: boolean;
   wheel_lr_nonzero?: RobotControlLiveClosureSummary["wheel_lr_nonzero_proven"];
@@ -3689,6 +3690,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   wheel_rerun_start_endpoint?: RobotControlLiveClosureSummary["wheel_rerun_start_endpoint"];
   wheel_rerun_start_sends_motion?: RobotControlLiveClosureSummary["wheel_rerun_start_sends_motion"];
   wheel_rerun_requires_safety_confirm?: RobotControlLiveClosureSummary["wheel_rerun_requires_safety_confirm"];
+  wheel_rerun_readback_endpoint?: RobotControlLiveClosureSummary["fixed_wheel_readback_endpoint"];
   wheel_rerun_readback_endpoints?: RobotControlLiveClosureSummary["wheel_rerun_readback_endpoints"];
   wheel_rerun_required_success_markers?: RobotControlLiveClosureSummary["wheel_rerun_required_success_markers"];
   wheel_rerun_current_gap_plain?: RobotControlLiveClosureSummary["wheel_rerun_current_gap_plain"];

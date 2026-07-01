@@ -141,6 +141,11 @@ lifecycle、Nav2、manual、keyboard、free-roam、建图 runtime、delivery、s
 `nav2_route_acceptance_packet`，用于现场 `curl | jq` 和普通首屏 DOM 一眼判断：路线是否已可执行/已完成、
 同窗口 wheel L/R 是否闭环、送达确认是否属于当前行程。它们只读，不执行 Nav2、manual、keyboard、
 free-roam、建图、delivery complete、stop 或 `/cmd_vel`。
+同一读回链路也同步暴露 `trip_execution_readback_endpoints`、
+`wheel_rerun_readback_endpoint=/api/robot-control/base/feedback-samples` 和
+`wheel_rerun_readback_endpoints`，让现场脚本不用解析 `nav2_route_acceptance_packet` 就能按顺序读取
+地图预览、Nav2 latest、底盘 wheel L/R、delivery latest 和 summary；这些 alias 仍只读，不自动执行
+Nav2、manual、keyboard、free-roam、建图、delivery、stop 或 `/cmd_vel`。
 
 2026-07-02 CST 起，`GET /api/robot-control/delivery/latest` 回包直接暴露
 `delivery_claim_ready` 和 `delivery_material_ready`。前者只表示上车 delivery success 已成立，后者只表示

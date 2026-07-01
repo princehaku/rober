@@ -134,6 +134,13 @@ describe("robotControlSummary", () => {
       "same_window_wheel_lr_nonzero",
       "delivery_success",
     ]);
+    expect(summary.trip_execution_readback_endpoints).toEqual([
+      "/api/robot-control/map/preview",
+      "/api/robot-control/nav2/goal/execution/latest",
+      "/api/robot-control/base/feedback-samples",
+      "/api/robot-control/delivery/latest",
+      "/api/robot-control/summary",
+    ]);
     expect(summary.route_complete).toBe(false);
     expect(summary.trip_complete).toBe(false);
     expect(summary.wheel_lr_nonzero).toBe(false);
@@ -273,6 +280,7 @@ describe("robotControlSummary", () => {
       "/api/robot-control/delivery/latest",
       "/api/robot-control/summary",
     ]);
+    expect(summary.wheel_rerun_readback_endpoint).toBe("/api/robot-control/base/feedback-samples");
     expect(summary.wheel_rerun_readback_endpoints).toEqual(summary.live_closure_summary?.wheel_rerun_readback_endpoints);
     expect(summary.live_closure_summary?.wheel_rerun_required_success_markers).toEqual([
       "map_route_visible",

@@ -9621,6 +9621,9 @@ describe("App", () => {
       delivery_next_action_plain: "轮速复验通过后提交送达确认。",
       sends_motion_when_clicked: false,
     };
+    summaryFixture.trip_execution_readback_endpoints = summaryFixture.nav2_route_acceptance_packet.readback_endpoints;
+    summaryFixture.wheel_rerun_readback_endpoint = "/api/robot-control/base/feedback-samples";
+    summaryFixture.wheel_rerun_readback_endpoints = summaryFixture.nav2_route_acceptance_packet.readback_endpoints;
     const mockedFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
     });
@@ -9691,6 +9694,11 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+
+    const fieldAcceptancePacket = wrapper.find('[data-testid="plain-field-acceptance-packet"]');
+    expect(fieldAcceptancePacket.attributes("data-trip-execution-readback-endpoints")).toBe(tripClosure.attributes("data-readback-endpoints"));
+    expect(fieldAcceptancePacket.attributes("data-wheel-rerun-readback-endpoint")).toBe("/api/robot-control/base/feedback-samples");
+    expect(fieldAcceptancePacket.attributes("data-wheel-rerun-readback-endpoints")).toBe(tripClosure.attributes("data-readback-endpoints"));
   });
 
   it("rechecks mapping camera recovery without starting motion or map runtime", async () => {
