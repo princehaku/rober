@@ -29,6 +29,12 @@ Node 工作站 `http://127.0.0.1:7001`。因此开发时先让 `npm run api` 守
 `netstat -anv | rg '[.:]7001 .*LISTEN|7001'`。2026-06-25 起 PC 工作站默认避开
 Clash Verge 常用的 `7071`，Node 代码按 `0.0.0.0:7001` 绑定。
 
+2026-07-01 23:16 CST 起，普通首屏现场验收卡新增 `plain-field-acceptance-primary-no-motion-readback`
+主按钮，文案为“只读复验：刷新雷达贴图 / 刷新当前所见 / 复验全部读数”。按钮直接使用
+`field_acceptance_primary_no_motion_readback_action_*` 的 label、endpoint、method 和不发车标志；雷达贴图过期时点击只刷新
+雷达 proof 和地图预览，相机-only 缺口时只复测相机首帧和共享预览状态。这仍然不勾安全确认、不执行 Nav2、不发送
+manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
+
 2026-07-01 23:09 CST 起，现场验收包的只读复验从 ID 清单升级为动作清单：
 `no_motion_readback_actions[]` 同步给出 `id`、普通用户 `label`、固定 `endpoint`、`method`、短说明和所有不发车标志；
 顶层也暴露 `field_acceptance_primary_no_motion_readback_action_*`。当雷达贴图不是当前图时，primary 会指向

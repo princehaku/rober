@@ -4505,6 +4505,11 @@ const plainFieldAcceptanceWysiwygRefreshMode = computed(() => {
   return missing.length > 0 ? "all_wysiwyg" : "none";
 });
 const plainFieldAcceptanceWysiwygRefreshDisabled = computed(() => !canRefreshPlainWysiwygEvidence.value);
+const plainFieldAcceptancePrimaryReadbackDisabled = computed(() => (
+  loading.value
+  || !plainFieldAcceptancePacket.value
+  || plainFieldAcceptancePacket.value.primary_no_motion_readback_action_id === "none"
+));
 const plainFieldAcceptanceMappingMissingText = computed(() => (
   plainFieldAcceptancePacket.value?.mapping_missing_evidence.join(",") || "none"
 ));
@@ -15440,6 +15445,23 @@ async function refreshFieldAcceptanceWysiwygEvidence(): Promise<void> {
   await refreshPlainWysiwygEvidence();
 }
 
+async function refreshFieldAcceptancePrimaryReadback(): Promise<void> {
+  // 主只读复验动作只按 packet 中的安全动作清单分发；它不复用任何运动按钮的执行路径。
+  const actionId = plainFieldAcceptancePacket.value?.primary_no_motion_readback_action_id;
+  if (!actionId || actionId === "none") {
+    return;
+  }
+  if (actionId === "readback_all") {
+    await refreshConsole();
+    return;
+  }
+  if (actionId === "refresh_radar_map_overlay") {
+    await refreshRadarProof({ focusAfterReady: false, mapPreviewAfter: true });
+    return;
+  }
+  await refreshFieldAcceptanceWysiwygEvidence();
+}
+
 async function refreshPlainMappingUnlockEvidence(): Promise<void> {
   // 建图解锁条件必须复测相机首帧和雷达新扫描，再读同轮地图画面；这仍是只读证据刷新，不启动建图或自由移动。
   await refreshPlainWysiwygEvidence();
@@ -18111,6 +18133,28 @@ onBeforeUnmount(() => {
           >
             {{ plainActionCardUserText(plainFieldAcceptancePacket.remaining_action_summary_plain) }}
           </p>
+          <button
+            type="button"
+            class="secondary compact-stop"
+            data-testid="plain-field-acceptance-primary-no-motion-readback"
+            :disabled="plainFieldAcceptancePrimaryReadbackDisabled"
+            :data-primary-no-motion-readback-action-id="plainFieldAcceptancePacket.primary_no_motion_readback_action_id"
+            :data-primary-no-motion-readback-action-label="plainFieldAcceptancePacket.primary_no_motion_readback_action_label"
+            :data-primary-no-motion-readback-action-endpoint="plainFieldAcceptancePacket.primary_no_motion_readback_action_endpoint"
+            :data-primary-no-motion-readback-action-method="plainFieldAcceptancePacket.primary_no_motion_readback_action_method"
+            :data-primary-no-motion-readback-action-sends-motion="String(plainFieldAcceptancePacket.primary_no_motion_readback_action_sends_motion)"
+            data-starts-nav2="false"
+            data-starts-manual="false"
+            data-starts-keyboard="false"
+            data-starts-free-roam="false"
+            data-starts-map-runtime="false"
+            data-starts-radar-lifecycle="false"
+            data-submits-delivery="false"
+            data-stops-motion="false"
+            @click="refreshFieldAcceptancePrimaryReadback"
+          >
+            只读复验：{{ plainFieldAcceptancePacket.primary_no_motion_readback_action_label }}
+          </button>
           <div
             class="plain-field-acceptance-action-queue"
             data-testid="plain-field-acceptance-action-queue"

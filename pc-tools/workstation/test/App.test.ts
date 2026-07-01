@@ -5457,6 +5457,36 @@ describe("App", () => {
     expect(fieldAcceptanceRemainingActions.attributes("data-starts-manual")).toBe("false");
     expect(fieldAcceptanceRemainingActions.attributes("data-starts-free-roam")).toBe("false");
     expect(fieldAcceptanceRemainingActions.attributes("data-starts-map-runtime")).toBe("false");
+    const fieldAcceptancePrimaryNoMotionReadback = wrapper.find('[data-testid="plain-field-acceptance-primary-no-motion-readback"]');
+    expect(fieldAcceptancePrimaryNoMotionReadback.exists()).toBe(true);
+    expect(fieldAcceptancePrimaryNoMotionReadback.text()).toBe("只读复验：刷新雷达贴图");
+    expect(fieldAcceptancePrimaryNoMotionReadback.attributes("disabled")).toBeUndefined();
+    expect(fieldAcceptancePrimaryNoMotionReadback.attributes("data-primary-no-motion-readback-action-id")).toBe("refresh_radar_map_overlay");
+    expect(fieldAcceptancePrimaryNoMotionReadback.attributes("data-primary-no-motion-readback-action-label")).toBe("刷新雷达贴图");
+    expect(fieldAcceptancePrimaryNoMotionReadback.attributes("data-primary-no-motion-readback-action-endpoint")).toBe("/api/robot-control/radar/scan-proof/refresh");
+    expect(fieldAcceptancePrimaryNoMotionReadback.attributes("data-primary-no-motion-readback-action-method")).toBe("POST");
+    expect(fieldAcceptancePrimaryNoMotionReadback.attributes("data-primary-no-motion-readback-action-sends-motion")).toBe("false");
+    expect(fieldAcceptancePrimaryNoMotionReadback.attributes("data-starts-nav2")).toBe("false");
+    expect(fieldAcceptancePrimaryNoMotionReadback.attributes("data-starts-manual")).toBe("false");
+    expect(fieldAcceptancePrimaryNoMotionReadback.attributes("data-starts-keyboard")).toBe("false");
+    expect(fieldAcceptancePrimaryNoMotionReadback.attributes("data-starts-free-roam")).toBe("false");
+    expect(fieldAcceptancePrimaryNoMotionReadback.attributes("data-starts-map-runtime")).toBe("false");
+    expect(fieldAcceptancePrimaryNoMotionReadback.attributes("data-starts-radar-lifecycle")).toBe("false");
+    const callsBeforePrimaryReadback = mockedFetch.mock.calls.length;
+    await fieldAcceptancePrimaryNoMotionReadback.trigger("click");
+    await flushPromises();
+    await flushPromises();
+    const primaryReadbackUrls = mockedFetch.mock.calls
+      .slice(callsBeforePrimaryReadback)
+      .map((call) => String(call[0]));
+    expect(primaryReadbackUrls.some((url) => url.startsWith("/api/robot-control/radar/scan-proof/refresh"))).toBe(true);
+    expect(primaryReadbackUrls.some((url) => url.startsWith("/api/robot-control/map/preview"))).toBe(true);
+    expect(primaryReadbackUrls.some((url) => url.startsWith("/api/robot-control/camera/first-frame/probe"))).toBe(false);
+    expect(primaryReadbackUrls.some((url) => url.startsWith("/api/robot-control/nav2/goal/execute"))).toBe(false);
+    expect(primaryReadbackUrls.some((url) => url.startsWith("/api/robot-control/base/manual"))).toBe(false);
+    expect(primaryReadbackUrls.some((url) => url.startsWith("/api/robot-control/base/stop"))).toBe(false);
+    expect(primaryReadbackUrls.some((url) => url.startsWith("/api/robot-control/free-roam/autonomy/start"))).toBe(false);
+    expect(primaryReadbackUrls.some((url) => url.startsWith("/api/robot-control/delivery/complete"))).toBe(false);
     const fieldAcceptanceActionQueue = wrapper.find('[data-testid="plain-field-acceptance-action-queue"]');
     expect(fieldAcceptanceActionQueue.exists()).toBe(true);
     expect(fieldAcceptanceActionQueue.text()).toContain("行动队列");
@@ -9521,6 +9551,27 @@ describe("App", () => {
     expect(fieldAcceptanceRemainingActions.attributes("data-primary-no-motion-readback-action-sends-motion")).toBe("false");
     expect(fieldAcceptanceRemainingActions.attributes("data-remaining-hardware-action-summary-plain")).toContain("USB 12M full-speed");
     expect(fieldAcceptanceRemainingActions.attributes("data-sends-motion-when-clicked")).toBe("false");
+    const fieldAcceptancePrimaryNoMotionReadback = wrapper.find('[data-testid="plain-field-acceptance-primary-no-motion-readback"]');
+    expect(fieldAcceptancePrimaryNoMotionReadback.exists()).toBe(true);
+    expect(fieldAcceptancePrimaryNoMotionReadback.text()).toBe("只读复验：刷新当前所见");
+    expect(fieldAcceptancePrimaryNoMotionReadback.attributes("data-primary-no-motion-readback-action-id")).toBe("refresh_current_wysiwyg");
+    expect(fieldAcceptancePrimaryNoMotionReadback.attributes("data-primary-no-motion-readback-action-endpoint")).toBe("/api/robot-control/camera/first-frame/probe");
+    expect(fieldAcceptancePrimaryNoMotionReadback.attributes("data-primary-no-motion-readback-action-method")).toBe("POST");
+    expect(fieldAcceptancePrimaryNoMotionReadback.attributes("data-primary-no-motion-readback-action-sends-motion")).toBe("false");
+    const callsBeforePrimaryReadback = mockedFetch.mock.calls.length;
+    await fieldAcceptancePrimaryNoMotionReadback.trigger("click");
+    await flushPromises();
+    await flushPromises();
+    const primaryReadbackUrls = mockedFetch.mock.calls
+      .slice(callsBeforePrimaryReadback)
+      .map((call) => String(call[0]));
+    expect(primaryReadbackUrls.some((url) => url.startsWith("/api/robot-control/camera/first-frame/probe"))).toBe(true);
+    expect(primaryReadbackUrls.some((url) => url.startsWith("/api/robot-control/camera/mjpeg/status"))).toBe(true);
+    expect(primaryReadbackUrls.some((url) => url.startsWith("/api/robot-control/summary"))).toBe(true);
+    expect(primaryReadbackUrls.some((url) => url.startsWith("/api/robot-control/radar/scan-proof/refresh"))).toBe(false);
+    expect(primaryReadbackUrls.some((url) => url.startsWith("/api/robot-control/nav2/goal/execute"))).toBe(false);
+    expect(primaryReadbackUrls.some((url) => url.startsWith("/api/robot-control/base/manual"))).toBe(false);
+    expect(primaryReadbackUrls.some((url) => url.startsWith("/api/robot-control/free-roam/autonomy/start"))).toBe(false);
     expect(wrapper.find('[data-testid="plain-field-acceptance-radar-map-proof"]').exists()).toBe(false);
     expect(fieldAcceptanceWysiwygRefresh.attributes("data-wysiwyg-refresh-mode")).toBe("camera_only");
     expect(fieldAcceptanceWysiwygRefresh.attributes("data-wysiwyg-refresh-sequence")).toBe("/api/robot-control/camera/first-frame/probe,/api/robot-control/camera/mjpeg/status,/api/robot-control/summary");
