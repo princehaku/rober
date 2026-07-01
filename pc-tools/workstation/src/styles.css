@@ -863,6 +863,34 @@ h3 {
   white-space: nowrap;
 }
 
+.plain-field-acceptance-missing-evidence {
+  /* 缺口清单服务现场逐项复验；它只解释证据和读回端点，不提供发车按钮。 */
+  display: grid;
+  gap: 6px;
+  border: 1px solid #d8dee6;
+  border-radius: 6px;
+  padding: 8px;
+  background: #ffffff;
+}
+
+.plain-field-acceptance-missing-evidence-row {
+  display: block;
+  border-left: 3px solid #d0d7de;
+  padding: 5px 8px;
+  background: #f6f8fa;
+  color: #24292f;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.plain-field-acceptance-missing-evidence-row[data-state="执行后复验"] {
+  border-left-color: #d1242f;
+}
+
+.plain-field-acceptance-missing-evidence-row[data-state="可先只读复验"] {
+  border-left-color: #1a7f37;
+}
+
 .plain-field-acceptance-step {
   display: grid;
   grid-template-columns: minmax(96px, 0.42fr) auto minmax(180px, 1fr) auto;

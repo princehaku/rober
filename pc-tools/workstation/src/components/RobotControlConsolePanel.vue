@@ -70,6 +70,7 @@ import type {
   RobotControlNav2RouteAcceptancePacket,
   RobotControlFieldAcceptanceStep,
   RobotControlFieldAcceptancePacket,
+  RobotControlFieldAcceptanceMissingEvidenceItem,
   RobotControlLiveClosureSummary,
   RobotControlSummaryResponse,
 } from "../shared/contracts";
@@ -4318,6 +4319,51 @@ const plainFieldAcceptanceMissingEvidenceReadbackEndpointsText = computed(() => 
 ));
 const plainFieldAcceptanceMissingEvidenceActionIdsText = computed(() => (
   plainFieldAcceptancePacket.value?.missing_evidence_items?.map((item) => item.action_id).join(",") || "none"
+));
+function plainFieldAcceptanceMissingEvidenceState(item: RobotControlFieldAcceptanceMissingEvidenceItem): string {
+  // “需要先动车”是现场最关键的区别：有些证据只能执行后读回，有些只需刷新传感器/地图。
+  return item.requires_motion_before_readback ? "执行后复验" : "可先只读复验";
+}
+function plainFieldAcceptanceMissingEvidenceReadbackLabel(item: RobotControlFieldAcceptanceMissingEvidenceItem): string {
+  // 可见文案不展示 /api 或 proof 这类工程词；真实端点保留在 DOM data 属性给自动验收脚本。
+  const labels: Record<string, string> = {
+    route_ready_on_map: "地图画面",
+    nav2_goal_succeeded: "行程结果",
+    same_window_wheel_lr_nonzero: "轮速采样",
+    delivery_success: "送达状态",
+    same_hold_window_wheel_lr_nonzero: "轮速采样",
+    stop_after_release: "停止状态",
+    free_roam_latest_motion_ready: "自由移动状态",
+    camera_first_frame: "画面首帧",
+    lidar_fresh: "雷达新鲜读数",
+    mapping_active: "建图状态",
+    fresh_map_preview: "地图画面",
+  };
+  return labels[item.id] ?? "对应状态";
+}
+const plainFieldAcceptanceMissingEvidenceRows = computed(() => (
+  (plainFieldAcceptancePacket.value?.missing_evidence_items ?? []).map((item) => {
+    const state = plainFieldAcceptanceMissingEvidenceState(item);
+    const actionLabel = plainActionCardUserText(item.action_label);
+    const readbackText = `${item.readback_method} ${item.readback_endpoint}`;
+    const readbackLabel = plainFieldAcceptanceMissingEvidenceReadbackLabel(item);
+    const motionText = item.requires_motion_before_readback
+      ? "需要先完成对应动作"
+      : "可先只读刷新";
+    const safetyText = item.requires_safety_confirm_before_motion
+      ? "动作前勾安全确认"
+      : "读回不需要安全确认";
+    return {
+      ...item,
+      state,
+      actionLabel,
+      readbackText,
+      readbackLabel,
+      motionText,
+      safetyText,
+      text: `${plainFieldAcceptanceEvidenceLabel(item.id)}：${motionText}，归属 ${actionLabel}；复验读 ${readbackLabel}；${safetyText}。`,
+    };
+  })
 ));
 const plainFieldAcceptanceNoMotionReadbackActionIdsText = computed(() => (
   plainFieldAcceptancePacket.value?.no_motion_readback_action_ids.join(",") || "none"
@@ -18201,6 +18247,50 @@ onBeforeUnmount(() => {
           >
             {{ plainActionCardUserText(plainFieldAcceptancePacket.remaining_action_summary_plain) }}
           </p>
+          <div
+            v-if="plainFieldAcceptanceMissingEvidenceRows.length > 0"
+            class="plain-field-acceptance-missing-evidence"
+            data-testid="plain-field-acceptance-missing-evidence"
+            :data-missing-evidence-ids="plainFieldAcceptanceMissingEvidenceIdsText"
+            :data-missing-evidence-labels="plainFieldAcceptanceMissingEvidenceLabelsText"
+            :data-missing-evidence-action-ids="plainFieldAcceptanceMissingEvidenceActionIdsText"
+            :data-missing-evidence-readback-endpoints="plainFieldAcceptanceMissingEvidenceReadbackEndpointsText"
+            :data-primary-missing-evidence-id="plainFieldAcceptancePacket.primary_missing_evidence_id"
+            :data-primary-missing-evidence-label="plainFieldAcceptancePacket.primary_missing_evidence_label"
+            :data-primary-missing-evidence-action-id="plainFieldAcceptancePacket.primary_missing_evidence_action_id"
+            :data-primary-missing-evidence-readback-endpoint="plainFieldAcceptancePacket.primary_missing_evidence_readback_endpoint"
+            data-readback-only="true"
+            data-sends-motion-when-clicked="false"
+            data-starts-nav2="false"
+            data-starts-manual="false"
+            data-starts-keyboard="false"
+            data-starts-free-roam="false"
+            data-starts-map-runtime="false"
+            data-starts-radar-lifecycle="false"
+            data-submits-delivery="false"
+            data-stops-motion="false"
+          >
+            <span class="plain-progress-label">还差项目</span>
+            <span
+              v-for="item in plainFieldAcceptanceMissingEvidenceRows"
+              :key="`${item.action_id}-${item.id}`"
+              class="plain-field-acceptance-missing-evidence-row"
+              :data-testid="`plain-field-acceptance-missing-evidence-${item.id}`"
+              :data-evidence-id="item.id"
+              :data-evidence-label="item.label"
+              :data-action-id="item.action_id"
+              :data-action-label="item.actionLabel"
+              :data-readback-endpoint="item.readback_endpoint"
+              :data-readback-method="item.readback_method"
+              :data-requires-motion-before-readback="String(item.requires_motion_before_readback)"
+              :data-requires-safety-confirm-before-motion="String(item.requires_safety_confirm_before_motion)"
+              :data-blocks-field-acceptance="String(item.blocks_field_acceptance)"
+              :data-state="item.state"
+              data-sends-motion-when-clicked="false"
+            >
+              {{ item.text }}
+            </span>
+          </div>
           <button
             type="button"
             class="secondary compact-stop"

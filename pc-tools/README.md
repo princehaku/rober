@@ -52,6 +52,12 @@ manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
 `refresh_radar_map_overlay` / `POST /api/robot-control/radar/scan-proof/refresh`；只有相机缺口时，primary 指向当前所见刷新。
 这些动作仍只读，不启动 Nav2/manual/keyboard/free-roam/建图/雷达 lifecycle，不提交送达，不发送 stop 或 `/cmd_vel`。
 
+2026-07-01 23:47 CST 起，现场验收包把平铺缺失清单做成普通首屏可见的“还差项目”区域：
+每一行显示缺口、对应动作、读回对象和是否需要先完成动作，例如“同窗口轮速 L/R 非零：需要先完成对应动作，归属完整行程执行；
+复验读轮速采样”。真实 endpoint、method 和安全门禁仍保留在 DOM data 属性里供自动验收脚本读取，但普通可见文案不显示
+`/api`、`proof`、`Nav2` 等工程词，避免 PC 简易界面退回调试台。该区域固定 `data-sends-motion-when-clicked=false`，
+不启动 Nav2/manual/keyboard/free-roam/建图/雷达 lifecycle，不提交送达，不发送 stop 或 `/cmd_vel`。
+
 2026-07-01 23:38 CST 起，现场验收包新增平铺缺失证据清单：`GET /api/robot-control/summary`
 和普通首屏 DOM 同步暴露 `field_acceptance_missing_evidence_ids`、`field_acceptance_missing_evidence_labels`、
 `field_acceptance_missing_evidence_items`、`field_acceptance_primary_missing_evidence_id`、
