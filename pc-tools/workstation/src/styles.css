@@ -831,6 +831,18 @@ h3 {
   background: #ffffff;
 }
 
+.plain-field-acceptance-readback-all {
+  /* 全量复验只是读回聚合，和安全确认同层展示，避免 operator 到处找单项读回。 */
+  display: grid;
+  grid-template-columns: minmax(72px, auto) minmax(220px, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #d8dee6;
+  border-radius: 6px;
+  padding: 8px;
+  background: #ffffff;
+}
+
 .plain-field-acceptance-step {
   display: grid;
   grid-template-columns: minmax(96px, 0.42fr) auto minmax(180px, 1fr) auto;

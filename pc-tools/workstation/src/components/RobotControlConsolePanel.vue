@@ -162,6 +162,7 @@ const freeRoamAutonomyPending = ref(false);
 const freeRoamAutonomyLatestPending = ref(false);
 const freeRoamAutonomyLatestResult = ref<RobotControlFreeRoamAutonomyLatestResponse | null>(null);
 const liveMotionRunbookReadbackPendingAction = ref<RobotControlLiveMotionRunbookItem["id"] | null>(null);
+const fieldAcceptanceReadbackAllPending = ref(false);
 const mapLifecycleMapName = ref("");
 const mapLifecycleArtifactPath = ref("");
 const plainFreeRoamMappingConfirmed = ref(false);
@@ -4204,6 +4205,23 @@ const plainFieldAcceptanceNoMotionStepIdsText = computed(() => (
 const plainFieldAcceptanceEndpointText = computed(() => (
   plainFieldAcceptancePacket.value?.acceptance_endpoints.join(",") || "none"
 ));
+const plainFieldAcceptanceAllReadbackEndpoints = computed(() => {
+  // 全量复验只串起既有 no-motion 读回端点，方便现场一次刷新所有证据。
+  const endpoints = [
+    ...(plainFieldAcceptancePacket.value?.acceptance_endpoints ?? []),
+    "/api/robot-control/camera/first-frame/probe",
+    "/api/robot-control/camera/mjpeg/status",
+    "/api/robot-control/radar/scan-proof/refresh",
+    "/api/robot-control/radar/status",
+  ];
+  return Array.from(new Set(endpoints)).join(",") || "none";
+});
+const plainFieldAcceptanceAllReadbackDisabled = computed(() => (
+  fieldAcceptanceReadbackAllPending.value
+  || liveMotionRunbookReadbackPendingAction.value !== null
+  || mapWysiwygRefreshPending.value
+  || !robotApiBaseUrl.value.trim()
+));
 const plainFieldAcceptanceWysiwygMissingText = computed(() => (
   plainFieldAcceptancePacket.value?.wysiwyg_missing_surface_ids.join(",") || "none"
 ));
@@ -4638,6 +4656,23 @@ async function refreshLiveMotionRunbookReadback(actionId: RobotControlLiveMotion
     await refreshConsole();
   } finally {
     liveMotionRunbookReadbackPendingAction.value = null;
+  }
+}
+
+async function refreshFieldAcceptanceAllReadbacks(): Promise<void> {
+  // 一键复验全部只顺序刷新验收材料；不启动 Nav2、键盘、自由移动、建图、雷达 lifecycle 或 stop。
+  if (plainFieldAcceptanceAllReadbackDisabled.value) {
+    return;
+  }
+  fieldAcceptanceReadbackAllPending.value = true;
+  try {
+    await refreshLiveMotionRunbookReadback("run_nav2_route");
+    await refreshLiveMotionRunbookReadback("hold_keyboard");
+    await refreshLiveMotionRunbookReadback("start_free_move");
+    await refreshPlainMappingUnlockEvidence();
+    await refreshConsole();
+  } finally {
+    fieldAcceptanceReadbackAllPending.value = false;
   }
 }
 
@@ -17420,6 +17455,54 @@ onBeforeUnmount(() => {
             >
             <span>现场安全确认：人在旁边、周围安全、停止手段就绪（勾一次，行程、键盘和自由移动都生效）</span>
           </label>
+          <div
+            class="plain-field-acceptance-readback-all"
+            data-testid="plain-field-acceptance-readback-all"
+            :data-readback-refresh-endpoints="plainFieldAcceptanceAllReadbackEndpoints"
+            :data-readback-refresh-pending="String(fieldAcceptanceReadbackAllPending)"
+            data-readback-only="true"
+            data-refreshes-trip-readback="true"
+            data-refreshes-keyboard-readback="true"
+            data-refreshes-free-roam-latest="true"
+            data-refreshes-camera-first-frame-probe="true"
+            data-refreshes-camera-mjpeg-status="true"
+            data-refreshes-radar-scan-proof="true"
+            data-refreshes-radar-status="true"
+            data-refreshes-map-preview="true"
+            data-refreshes-summary="true"
+            data-sends-motion-when-clicked="false"
+            data-starts-nav2="false"
+            data-starts-manual="false"
+            data-starts-keyboard="false"
+            data-starts-free-roam="false"
+            data-starts-map-runtime="false"
+            data-starts-radar-lifecycle="false"
+            data-submits-delivery="false"
+            data-stops-motion="false"
+          >
+            <span class="plain-progress-label">复验读回</span>
+            <span class="muted">一次刷新行程、键盘、自由移动、画面、雷达和地图读回，不执行任何动作。</span>
+            <button
+              type="button"
+              class="secondary compact-stop"
+              data-testid="plain-field-acceptance-readback-all-run"
+              :disabled="plainFieldAcceptanceAllReadbackDisabled"
+              :data-readback-refresh-endpoints="plainFieldAcceptanceAllReadbackEndpoints"
+              data-readback-only="true"
+              data-sends-motion-when-clicked="false"
+              data-starts-nav2="false"
+              data-starts-manual="false"
+              data-starts-keyboard="false"
+              data-starts-free-roam="false"
+              data-starts-map-runtime="false"
+              data-starts-radar-lifecycle="false"
+              data-submits-delivery="false"
+              data-stops-motion="false"
+              @click="refreshFieldAcceptanceAllReadbacks"
+            >
+              {{ fieldAcceptanceReadbackAllPending ? "复验中" : "只读复验全部" }}
+            </button>
+          </div>
           <div
             v-if="plainFieldAcceptancePrimaryStep"
             class="plain-field-acceptance-primary"
