@@ -219,7 +219,9 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.fixed_wheel_readback_endpoint).toBe("/api/robot-control/base/feedback-samples");
     expect(summary.live_closure_summary?.map_display_primary_tool).toBe("pc_big_map");
     expect(summary.live_closure_summary?.map_display_primary_url).toBe("/map");
+    expect(summary.map_display_primary_url).toBe("/map");
     expect(summary.live_closure_summary?.map_display_legacy_url).toBe("?view=map");
+    expect(summary.map_display_legacy_url).toBe("?view=map");
     expect(summary.live_closure_summary?.map_display_primary_action_label).toBe("进入地图大屏");
     expect(summary.live_closure_summary?.map_display_primary_action_opens_new_window).toBe(false);
     expect(summary.live_closure_summary?.map_display_primary_action_opens_current_page).toBe(true);
@@ -228,10 +230,14 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.map_display_direct_map_keeps_page_fullscreen_without_browser_api).toBe(true);
     expect(summary.live_closure_summary?.map_display_direct_map_browser_fullscreen_required).toBe(false);
     expect(summary.live_closure_summary?.map_display_default_zoom_percent).toBe("150%");
+    expect(summary.map_display_default_zoom_percent).toBe("150%");
     expect(summary.live_closure_summary?.map_display_max_zoom_percent).toBe("2400%");
+    expect(summary.map_display_max_zoom_percent).toBe("2400%");
     expect(summary.live_closure_summary?.map_display_wysiwyg_overlays).toEqual(["image", "route", "robot", "radar"]);
     expect(summary.live_closure_summary?.map_display_ros2_companion_required).toBe(false);
+    expect(summary.map_display_ros2_companion_required).toBe(false);
     expect(summary.live_closure_summary?.map_display_ros2_companion_tools).toEqual(["rviz2", "foxglove"]);
+    expect(summary.map_display_ros2_companion_tools).toEqual(["rviz2", "foxglove"]);
     expect(summary.live_closure_summary?.map_display_engineering_tools_visible_by_default).toBe(false);
     expect(summary.live_closure_summary?.map_display_engineering_tools_action_label).toBe("工程观察");
     expect(summary.live_closure_summary?.map_display_ordinary_user_tool).toBe("pc_big_map");
@@ -266,12 +272,19 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("不提供 GoalTool");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("不发送底盘移动命令");
     expect(summary.live_closure_summary?.map_display_companion_plain).not.toContain("/cmd_vel");
+    expect(summary.map_display_companion_plain).toBe(summary.live_closure_summary?.map_display_companion_plain);
     expect(summary.live_closure_summary?.map_display_sends_motion_when_clicked).toBe(false);
+    expect(summary.map_display_sends_motion_when_clicked).toBe(false);
     expect(summary.live_closure_summary?.map_display_starts_ros2).toBe(false);
+    expect(summary.map_display_starts_ros2).toBe(false);
     expect(summary.live_closure_summary?.map_display_starts_rviz2).toBe(false);
+    expect(summary.map_display_starts_rviz2).toBe(false);
     expect(summary.live_closure_summary?.map_display_starts_foxglove).toBe(false);
+    expect(summary.map_display_starts_foxglove).toBe(false);
     expect(summary.live_closure_summary?.map_display_starts_nav2).toBe(false);
+    expect(summary.map_display_starts_nav2).toBe(false);
     expect(summary.live_closure_summary?.map_display_starts_map_runtime).toBe(false);
+    expect(summary.map_display_starts_map_runtime).toBe(false);
     expect(summary.live_closure_summary?.primary_status_item_id).toBe("nav2_route_execution");
     expect(summary.live_closure_summary?.side_blocker_ids).toEqual([
       "camera_wysiwyg",

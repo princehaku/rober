@@ -10080,7 +10080,7 @@ export async function buildRobotControlSummary(
         "/api/robot-control/camera/mjpeg/status",
       ],
     },
-  );
+  ) as NonNullable<RobotControlSummaryResponse["live_closure_summary"]>;
 
   return {
     schema: ROBOT_CONTROL_SCHEMA,
@@ -10115,6 +10115,20 @@ export async function buildRobotControlSummary(
     goal_checklist_summary: goalSummary,
     live_closure_summary: liveClosureSummary,
     goal_summary: goalSummary,
+    // summary 是现场最常 curl 的入口；地图入口别名放到顶层，避免 operator 为了找 /map 和缩放比例再记嵌套路径。
+    map_display_primary_url: liveClosureSummary.map_display_primary_url,
+    map_display_legacy_url: liveClosureSummary.map_display_legacy_url,
+    map_display_default_zoom_percent: liveClosureSummary.map_display_default_zoom_percent,
+    map_display_max_zoom_percent: liveClosureSummary.map_display_max_zoom_percent,
+    map_display_ros2_companion_required: liveClosureSummary.map_display_ros2_companion_required,
+    map_display_ros2_companion_tools: liveClosureSummary.map_display_ros2_companion_tools,
+    map_display_companion_plain: liveClosureSummary.map_display_companion_plain,
+    map_display_sends_motion_when_clicked: liveClosureSummary.map_display_sends_motion_when_clicked,
+    map_display_starts_ros2: liveClosureSummary.map_display_starts_ros2,
+    map_display_starts_rviz2: liveClosureSummary.map_display_starts_rviz2,
+    map_display_starts_foxglove: liveClosureSummary.map_display_starts_foxglove,
+    map_display_starts_nav2: liveClosureSummary.map_display_starts_nav2,
+    map_display_starts_map_runtime: liveClosureSummary.map_display_starts_map_runtime,
     camera_summary: readbackSummary.camera,
     map_summary: readbackSummary.map,
     radar_summary: readbackSummary.radar,

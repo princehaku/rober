@@ -6836,6 +6836,13 @@ describe("workstation fail-closed API contracts", () => {
       expect(live.status).toBe("needs_wheel_rerun");
       expect(live.summary_plain).toBe(summary.live_closure_summary?.summary_plain);
       expect(live.next_action_plain).toBe(summary.live_closure_summary?.next_action_plain);
+      expect(summary.map_display_primary_url).toBe("/map");
+      expect(summary.map_display_default_zoom_percent).toBe("150%");
+      expect(summary.map_display_ros2_companion_tools).toEqual(["rviz2", "foxglove"]);
+      expect(summary.map_display_sends_motion_when_clicked).toBe(false);
+      expect(summary.map_display_starts_ros2).toBe(false);
+      expect(summary.map_display_starts_nav2).toBe(false);
+      expect(summary.map_display_starts_map_runtime).toBe(false);
       expect(live.nav2_route_ready).toBe(true);
       expect(live.nav2_goal_succeeded).toBe(true);
       expect(live.wheel_lr_nonzero_proven).toBe(false);
