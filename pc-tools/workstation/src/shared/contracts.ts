@@ -3626,6 +3626,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   live_wysiwyg_ready?: RobotControlLiveClosureSummary["live_wysiwyg_ready"];
   live_wysiwyg_missing_surface_ids?: RobotControlLiveClosureSummary["live_wysiwyg_missing_surface_ids"];
   live_wysiwyg_missing_reasons?: RobotControlLiveClosureSummary["live_wysiwyg_missing_surface_ids"];
+  live_wysiwyg_only_camera_missing?: boolean;
   live_wysiwyg_needs_refresh?: RobotControlLiveClosureSummary["live_wysiwyg_needs_refresh"];
   live_wysiwyg_readback_gap_surface_ids?: RobotControlLiveClosureSummary["live_wysiwyg_readback_gap_surface_ids"];
   live_wysiwyg_primary_readback_gap_surface_id?: RobotControlLiveClosureSummary["live_wysiwyg_primary_readback_gap_surface_id"];
@@ -3879,6 +3880,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   radar_overlay_needs_refresh?: RobotControlLiveClosureSummary["radar_overlay_needs_refresh"];
   radar_overlay_blocks_wysiwyg?: RobotControlLiveClosureSummary["radar_overlay_blocks_wysiwyg"];
   radar_overlay_blocks_free_move?: RobotControlLiveClosureSummary["radar_overlay_blocks_free_move"];
+  radar_overlay_wysiwyg_complete?: boolean;
   radar_overlay_recovery_sequence?: RobotControlLiveClosureSummary["radar_overlay_recovery_sequence"];
   fixed_radar_overlay_refresh_endpoint?: RobotControlLiveClosureSummary["fixed_radar_overlay_refresh_endpoint"];
   fixed_radar_overlay_map_preview_endpoint?: RobotControlLiveClosureSummary["fixed_radar_overlay_map_preview_endpoint"];
@@ -3947,6 +3949,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   mapping_start_ready?: RobotControlLiveClosureSummary["mapping_start_ready"];
   mapping_start_missing_reasons?: RobotControlLiveClosureSummary["mapping_start_missing_reasons"];
   mapping_start_missing_evidence?: RobotControlLiveClosureSummary["mapping_start_missing_reasons"];
+  mapping_start_only_camera_missing?: boolean;
   mapping_acceptance_ready?: RobotControlLiveClosureSummary["free_roam_mapping_ready"];
   mapping_acceptance_missing_reasons?: RobotControlLiveClosureSummary["mapping_acceptance_missing_reasons"];
   mapping_start_requires_camera_first_frame?: RobotControlLiveClosureSummary["mapping_start_requires_camera_first_frame"];

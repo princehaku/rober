@@ -72,6 +72,13 @@ lifecycle、Nav2、manual、keyboard、free-roam、建图 runtime、delivery、s
 `data-live-wysiwyg-missing-reasons` 和 `data-mapping-start-missing-evidence`，方便现场脚本不解析
 嵌套 packet 也能核对主缺口、所见缺口和建图缺口。
 
+2026-07-02 CST 起，summary 和 `plain-field-acceptance-packet` DOM 还暴露
+`radar_overlay_wysiwyg_complete`、`live_wysiwyg_only_camera_missing`、
+`mapping_start_only_camera_missing`。当只读刷新雷达贴图后地图已显示当前雷达点，这些字段能直接说明：
+雷达贴图不再是 WYSIWYG blocker，当前所见和建图只剩相机首帧。它们只由既有 map/radar/camera
+读回推导，不启动雷达 lifecycle、Nav2、manual、keyboard、free-roam、建图、delivery、stop 或
+`/cmd_vel`。
+
 2026-07-02 CST 起，普通首屏 `执行图上路线` 在 execution forwarded 后，会按
 `nav2_route_acceptance_packet.readback_endpoints` 自动刷新执行后验收读回：地图预览、Nav2 latest、
 底盘 wheel feedback samples、delivery latest 和 summary。地图刷新保留 `tripExecutionRefresh`，

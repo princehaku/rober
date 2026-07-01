@@ -10280,6 +10280,13 @@ export async function buildRobotControlSummary(
   const cameraUsbHighSpeed = !liveClosureSummary.camera_usb_full_speed_detected
     && cameraUsbSpeed !== ""
     && !["not_loaded", "unknown", "12m", "12mbps", "full-speed"].includes(cameraUsbSpeed);
+  const liveWysiwygOnlyCameraMissing = liveClosureSummary.live_wysiwyg_missing_surface_ids.length === 1
+    && liveClosureSummary.live_wysiwyg_missing_surface_ids[0] === "camera";
+  const mappingStartOnlyCameraMissing = liveClosureSummary.mapping_start_missing_reasons.length === 1
+    && liveClosureSummary.mapping_start_missing_reasons[0] === "camera_first_frame";
+  const radarOverlayWysiwygComplete = liveClosureSummary.radar_overlay_status === "loaded"
+    && liveClosureSummary.radar_map_points_visible
+    && !liveClosureSummary.radar_overlay_blocks_wysiwyg;
   const fieldAcceptanceSteps = liveClosureSummary.live_motion_runbook_items.map((item) => ({
     id: item.id,
     label: item.label,
@@ -10798,6 +10805,7 @@ export async function buildRobotControlSummary(
     live_wysiwyg_missing_surface_ids: liveClosureSummary.live_wysiwyg_missing_surface_ids,
     // 兼容现场脚本的直观命名：这里的 reason 与 surface id 保持同源，避免脚本再猜字段。
     live_wysiwyg_missing_reasons: liveClosureSummary.live_wysiwyg_missing_surface_ids,
+    live_wysiwyg_only_camera_missing: liveWysiwygOnlyCameraMissing,
     live_wysiwyg_needs_refresh: liveClosureSummary.live_wysiwyg_needs_refresh,
     live_wysiwyg_readback_gap_surface_ids: liveClosureSummary.live_wysiwyg_readback_gap_surface_ids,
     live_wysiwyg_primary_readback_gap_surface_id: liveClosureSummary.live_wysiwyg_primary_readback_gap_surface_id,
@@ -11079,6 +11087,7 @@ export async function buildRobotControlSummary(
     radar_overlay_needs_refresh: liveClosureSummary.radar_overlay_needs_refresh,
     radar_overlay_blocks_wysiwyg: liveClosureSummary.radar_overlay_blocks_wysiwyg,
     radar_overlay_blocks_free_move: liveClosureSummary.radar_overlay_blocks_free_move,
+    radar_overlay_wysiwyg_complete: radarOverlayWysiwygComplete,
     radar_overlay_recovery_sequence: liveClosureSummary.radar_overlay_recovery_sequence,
     fixed_radar_overlay_refresh_endpoint: liveClosureSummary.fixed_radar_overlay_refresh_endpoint,
     fixed_radar_overlay_map_preview_endpoint: liveClosureSummary.fixed_radar_overlay_map_preview_endpoint,
@@ -11130,6 +11139,7 @@ export async function buildRobotControlSummary(
     mapping_start_ready: liveClosureSummary.mapping_start_ready,
     mapping_start_missing_reasons: liveClosureSummary.mapping_start_missing_reasons,
     mapping_start_missing_evidence: liveClosureSummary.mapping_start_missing_reasons,
+    mapping_start_only_camera_missing: mappingStartOnlyCameraMissing,
     mapping_acceptance_ready: liveClosureSummary.free_roam_mapping_ready,
     mapping_acceptance_missing_reasons: liveClosureSummary.mapping_acceptance_missing_reasons,
     mapping_start_requires_camera_first_frame: liveClosureSummary.mapping_start_requires_camera_first_frame,

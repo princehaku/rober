@@ -5716,6 +5716,8 @@ describe("App", () => {
     expect(fieldAcceptancePacket.attributes("data-wysiwyg-ready")).toBe("false");
     expect(fieldAcceptancePacket.attributes("data-wysiwyg-missing-surface-ids")).toBe("camera,radar_map_points");
     expect(fieldAcceptancePacket.attributes("data-live-wysiwyg-missing-reasons")).toBe("camera,radar_map_points");
+    expect(fieldAcceptancePacket.attributes("data-live-wysiwyg-only-camera-missing")).toBe("false");
+    expect(fieldAcceptancePacket.attributes("data-radar-overlay-wysiwyg-complete")).toBe("false");
     expect(fieldAcceptancePacket.attributes("data-wysiwyg-primary-refresh-endpoint")).toBe("/api/robot-control/camera/first-frame/probe");
     expect(fieldAcceptancePacket.attributes("data-wysiwyg-primary-refresh-label")).toBe("复测相机首帧");
     expect(fieldAcceptancePacket.attributes("data-wysiwyg-next-action-plain")).toContain("复测相机首帧");
@@ -5735,6 +5737,7 @@ describe("App", () => {
     expect(fieldAcceptancePacket.attributes("data-mapping-start-ready")).toBe("false");
     expect(fieldAcceptancePacket.attributes("data-mapping-missing-evidence")).toBe("camera_first_frame,lidar_fresh");
     expect(fieldAcceptancePacket.attributes("data-mapping-start-missing-evidence")).toBe("camera_first_frame,lidar_fresh");
+    expect(fieldAcceptancePacket.attributes("data-mapping-start-only-camera-missing")).toBe("false");
     expect(fieldAcceptancePacket.attributes("data-camera-blocks-mapping-start")).toBe("true");
     expect(fieldAcceptancePacket.attributes("data-camera-blocks-free-move")).toBe("false");
     expect(fieldAcceptancePacket.attributes("data-sends-motion-when-clicked")).toBe("false");

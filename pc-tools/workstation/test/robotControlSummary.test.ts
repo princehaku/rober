@@ -430,6 +430,7 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.live_wysiwyg_missing_surface_ids).toEqual(["camera", "radar_map_points"]);
     expect(summary.live_wysiwyg_missing_surface_ids).toEqual(["camera", "radar_map_points"]);
     expect(summary.live_wysiwyg_missing_reasons).toEqual(["camera", "radar_map_points"]);
+    expect(summary.live_wysiwyg_only_camera_missing).toBe(false);
     expect(summary.live_closure_summary?.live_wysiwyg_needs_refresh).toBe(true);
     expect(summary.live_wysiwyg_needs_refresh).toBe(true);
     expect(summary.live_closure_summary?.live_wysiwyg_readback_gap_surface_ids).toEqual([]);
@@ -500,6 +501,7 @@ describe("robotControlSummary", () => {
     expect(summary.radar_overlay_needs_refresh).toBe(true);
     expect(summary.radar_overlay_blocks_wysiwyg).toBe(true);
     expect(summary.radar_overlay_blocks_free_move).toBe(false);
+    expect(summary.radar_overlay_wysiwyg_complete).toBe(false);
     expect(summary.radar_overlay_recovery_sequence).toEqual([
       "/api/robot-control/radar/scan-proof/refresh",
       "/api/robot-control/radar/status",
@@ -1644,6 +1646,7 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.mapping_start_missing_reasons).toEqual(["camera_first_frame", "lidar_fresh"]);
     expect(summary.mapping_start_missing_reasons).toEqual(["camera_first_frame", "lidar_fresh"]);
     expect(summary.mapping_start_missing_evidence).toEqual(["camera_first_frame", "lidar_fresh"]);
+    expect(summary.mapping_start_only_camera_missing).toBe(false);
     expect(summary.free_roam_mapping_start_missing_reasons).toEqual(["camera_first_frame", "lidar_fresh"]);
     expect(summary.live_closure_summary?.mapping_acceptance_missing_reasons).toEqual([
       "camera_first_frame",
@@ -1826,6 +1829,7 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.mapping_lidar_fresh_gate_status).toBe("readback_ready_boundary_missing");
     expect(summary.live_closure_summary?.mapping_start_missing_reasons).toEqual(["camera_first_frame"]);
     expect(summary.live_closure_summary?.free_roam_mapping_start_missing_reasons).toEqual(["camera_first_frame"]);
+    expect(summary.mapping_start_only_camera_missing).toBe(true);
     expect(summary.live_closure_summary?.mapping_lidar_blocks_start).toBe(false);
     expect(summary.live_closure_summary?.mapping_camera_blocks_start).toBe(true);
     expect(summary.live_closure_summary?.mapping_start_unblock_plain).toContain("建图启动还差：画面首帧");
@@ -2163,6 +2167,7 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.radar_overlay_needs_refresh).toBe(false);
     expect(summary.live_closure_summary?.radar_overlay_blocks_wysiwyg).toBe(false);
     expect(summary.live_closure_summary?.radar_overlay_blocks_free_move).toBe(false);
+    expect(summary.radar_overlay_wysiwyg_complete).toBe(true);
     expect(summary.live_closure_summary?.live_wysiwyg_missing_surface_ids).not.toContain("radar_map_points");
     expect(summary.live_closure_summary?.side_blocker_ids).not.toContain("radar_map_points_wysiwyg");
     expect(summary.live_closure_summary?.side_gap_summary_plain).not.toContain("雷达点贴到地图");
