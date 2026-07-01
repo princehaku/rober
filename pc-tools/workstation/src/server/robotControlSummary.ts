@@ -8990,6 +8990,10 @@ function buildLiveClosureSummary(
     : radarMapStaleSourcePointsSuppressed
       ? `地图雷达点：当前 ${radarMapCurrentPointCount} 个，来源 ${radarMapSourcePointCount} 个；状态=${radarMapOverlayStatus}，旧来源点已抑制，未贴到当前地图。下一步：${radarMapRefreshNextActionPlain}`
       : `地图雷达点：当前 ${radarMapCurrentPointCount} 个，来源 ${radarMapSourcePointCount} 个；状态=${radarMapOverlayStatus}。下一步：${radarMapRefreshNextActionPlain}`;
+  const cameraUsbSpeed = readback.camera.uvc_usb_topology_video_usb_speed || "not_loaded";
+  const cameraUsbFullSpeedDetected = cameraUsbSpeed === "12M" || readback.camera.source_diagnosis_status === "uvc_full_speed_usb_not_exclusive";
+  const cameraHardwareActionRequired = cameraUsbFullSpeedDetected && !cameraCurrentVisible;
+  const cameraHardwareActionLabel = cameraHardwareActionRequired ? "换高速USB后复测" : "复测相机首帧";
   const cameraRecoveryStatus = cameraCurrentVisible
     ? "visible"
     : cameraSourceDiagnosisNotExclusive
@@ -9006,7 +9010,9 @@ function buildLiveClosureSummary(
     : cameraSourceDiagnosisNextAction;
   const cameraRecoveryNextActionPlain = cameraCurrentVisible
     ? "相机画面已显示；继续监看共享实时预览。"
-    : cameraRecoveryHasSpecificSourceAction
+    : cameraHardwareActionRequired
+      ? `相机不是页面独占；诊断显示 ${cameraSourceDiagnosisLabel(cameraSourceDiagnosisStatus)}；先${cameraHardwareActionLabel}，再读取共享预览状态。当前硬件提示：${cameraRecoverySpecificSourceAction || "摄像头现在挂在 USB 12M full-speed，换高速 USB 口/线或带供电 USB Hub 后复测"}。`
+      : cameraRecoveryHasSpecificSourceAction
       ? cameraSourceDiagnosisNotExclusive
         ? `相机不是页面独占；诊断显示 ${cameraSourceDiagnosisLabel(cameraSourceDiagnosisStatus)}；先复测相机首帧并读取共享预览状态。若仍无画面，${cameraRecoverySpecificSourceAction}。`
         : `先复测相机首帧并读取共享预览状态；若仍无画面，按诊断处理：${cameraRecoverySpecificSourceAction}。`
@@ -9079,10 +9085,6 @@ function buildLiveClosureSummary(
   const radarSurfaceMissingEvidence = radarMapPointsVisible
     ? []
     : Array.from(new Set(mapRadarBlockedReasons.length > 0 ? mapRadarBlockedReasons : ["radar_current_map_points_visible"]));
-  const cameraUsbSpeed = readback.camera.uvc_usb_topology_video_usb_speed || "not_loaded";
-  const cameraUsbFullSpeedDetected = cameraUsbSpeed === "12M" || readback.camera.source_diagnosis_status === "uvc_full_speed_usb_not_exclusive";
-  const cameraHardwareActionRequired = cameraUsbFullSpeedDetected && !cameraCurrentVisible;
-  const cameraHardwareActionLabel = cameraHardwareActionRequired ? "换高速USB后复测" : "复测相机首帧";
   const liveWysiwygSurfaceSummaries: NonNullable<RobotControlSummaryResponse["live_closure_summary"]>["live_wysiwyg_surface_summaries"] = [
     {
       id: "camera",
