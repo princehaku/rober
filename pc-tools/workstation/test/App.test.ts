@@ -1128,6 +1128,18 @@ const fixtures: Record<string, unknown> = {
       mapping_start_unblock_plain: "建图启动还差：画面首帧、雷达新鲜；自由移动仍可先做，不被相机/雷达画面缺口阻塞。当前相机提示：不是页面独占：USB 摄像头当前没人占用，但 UVC 设备没有输出视频帧；检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测；只读复测相机首帧和 MJPEG 状态，首帧 ready 后再启动建图。",
       mapping_camera_blocks_start: true,
       mapping_lidar_blocks_start: true,
+      mapping_lidar_fresh_readback_ready: false,
+      mapping_lidar_fresh_gate_conflict: false,
+      mapping_lidar_fresh_gate_status: "missing",
+      mapping_lidar_fresh_next_action_plain: "建图启动仍缺雷达新鲜读数；先只读刷新雷达扫描并读取雷达状态，再刷新 summary。",
+      mapping_lidar_fresh_refresh_sequence: [
+        "/api/robot-control/radar/scan-proof/refresh",
+        "/api/robot-control/radar/status",
+        "/api/robot-control/summary",
+      ],
+      mapping_lidar_fresh_refresh_sends_motion: false,
+      mapping_lidar_fresh_refresh_starts_radar_lifecycle: false,
+      mapping_lidar_fresh_blocks_free_move: false,
       mapping_unblock_allows_free_move: true,
       mapping_unblock_camera_diagnosis_status: "uvc_no_frame_not_exclusive",
       mapping_unblock_camera_not_exclusive: "true",
@@ -5368,6 +5380,14 @@ describe("App", () => {
     expect(liveClosureSummary.attributes("data-mapping-start-unblock-plain")).toContain("自由移动仍可先做");
     expect(liveClosureSummary.attributes("data-mapping-camera-blocks-start")).toBe("true");
     expect(liveClosureSummary.attributes("data-mapping-lidar-blocks-start")).toBe("true");
+    expect(liveClosureSummary.attributes("data-mapping-lidar-fresh-readback-ready")).toBe("false");
+    expect(liveClosureSummary.attributes("data-mapping-lidar-fresh-gate-conflict")).toBe("false");
+    expect(liveClosureSummary.attributes("data-mapping-lidar-fresh-gate-status")).toBe("missing");
+    expect(liveClosureSummary.attributes("data-mapping-lidar-fresh-next-action-plain")).toContain("建图启动仍缺雷达新鲜读数");
+    expect(liveClosureSummary.attributes("data-mapping-lidar-fresh-refresh-sequence")).toBe("/api/robot-control/radar/scan-proof/refresh,/api/robot-control/radar/status,/api/robot-control/summary");
+    expect(liveClosureSummary.attributes("data-mapping-lidar-fresh-refresh-sends-motion")).toBe("false");
+    expect(liveClosureSummary.attributes("data-mapping-lidar-fresh-refresh-starts-radar-lifecycle")).toBe("false");
+    expect(liveClosureSummary.attributes("data-mapping-lidar-fresh-blocks-free-move")).toBe("false");
     expect(liveClosureSummary.attributes("data-mapping-unblock-allows-free-move")).toBe("true");
     expect(liveClosureSummary.attributes("data-mapping-unblock-camera-diagnosis-status")).toBe("uvc_no_frame_not_exclusive");
     expect(liveClosureSummary.attributes("data-mapping-unblock-camera-not-exclusive")).toBe("true");
@@ -5389,6 +5409,14 @@ describe("App", () => {
     expect(mappingCameraUnblockPlan.attributes("data-mapping-start-ready")).toBe("false");
     expect(mappingCameraUnblockPlan.attributes("data-camera-blocks-start")).toBe("true");
     expect(mappingCameraUnblockPlan.attributes("data-lidar-blocks-start")).toBe("true");
+    expect(mappingCameraUnblockPlan.attributes("data-lidar-fresh-readback-ready")).toBe("false");
+    expect(mappingCameraUnblockPlan.attributes("data-lidar-fresh-gate-conflict")).toBe("false");
+    expect(mappingCameraUnblockPlan.attributes("data-lidar-fresh-gate-status")).toBe("missing");
+    expect(mappingCameraUnblockPlan.attributes("data-lidar-fresh-next-action-plain")).toContain("建图启动仍缺雷达新鲜读数");
+    expect(mappingCameraUnblockPlan.attributes("data-lidar-fresh-refresh-sequence")).toBe("/api/robot-control/radar/scan-proof/refresh,/api/robot-control/radar/status,/api/robot-control/summary");
+    expect(mappingCameraUnblockPlan.attributes("data-lidar-fresh-refresh-sends-motion")).toBe("false");
+    expect(mappingCameraUnblockPlan.attributes("data-lidar-fresh-refresh-starts-radar-lifecycle")).toBe("false");
+    expect(mappingCameraUnblockPlan.attributes("data-lidar-fresh-blocks-free-move")).toBe("false");
     expect(mappingCameraUnblockPlan.attributes("data-allows-free-move")).toBe("true");
     expect(mappingCameraUnblockPlan.attributes("data-camera-diagnosis-status")).toBe("uvc_no_frame_not_exclusive");
     expect(mappingCameraUnblockPlan.attributes("data-camera-not-exclusive")).toBe("true");
@@ -5457,6 +5485,8 @@ describe("App", () => {
     expect(freeMoveMappingFrontload.attributes("data-mapping-start-missing-plain")).toContain("雷达未刷新");
     expect(freeMoveMappingFrontload.attributes("data-mapping-camera-blocks-start")).toBe("true");
     expect(freeMoveMappingFrontload.attributes("data-mapping-lidar-blocks-start")).toBe("true");
+    expect(freeMoveMappingFrontload.attributes("data-mapping-lidar-fresh-gate-status")).toBe("missing");
+    expect(freeMoveMappingFrontload.attributes("data-mapping-lidar-fresh-blocks-free-move")).toBe("false");
     expect(freeMoveMappingFrontload.attributes("data-mapping-unblock-allows-free-move")).toBe("true");
     expect(freeMoveMappingFrontload.attributes("data-fixed-free-roam-start-endpoint")).toBe("/api/robot-control/free-roam/autonomy/start");
     expect(freeMoveMappingFrontload.attributes("data-fixed-free-roam-latest-endpoint")).toBe("/api/robot-control/free-roam/autonomy/latest");

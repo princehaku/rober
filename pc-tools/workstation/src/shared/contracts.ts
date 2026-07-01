@@ -2978,6 +2978,14 @@ export interface RobotControlLiveClosureSummary {
   mapping_start_unblock_plain: string;
   mapping_camera_blocks_start: boolean;
   mapping_lidar_blocks_start: boolean;
+  mapping_lidar_fresh_readback_ready: boolean;
+  mapping_lidar_fresh_gate_conflict: boolean;
+  mapping_lidar_fresh_gate_status: string;
+  mapping_lidar_fresh_next_action_plain: string;
+  mapping_lidar_fresh_refresh_sequence: string[];
+  mapping_lidar_fresh_refresh_sends_motion: false;
+  mapping_lidar_fresh_refresh_starts_radar_lifecycle: false;
+  mapping_lidar_fresh_blocks_free_move: false;
   mapping_unblock_allows_free_move: true;
   mapping_unblock_camera_diagnosis_status: string;
   mapping_unblock_camera_not_exclusive: string;

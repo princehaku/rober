@@ -826,6 +826,18 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.mapping_start_unblock_plain).not.toContain("。；");
     expect(summary.live_closure_summary?.mapping_camera_blocks_start).toBe(true);
     expect(summary.live_closure_summary?.mapping_lidar_blocks_start).toBe(true);
+    expect(summary.live_closure_summary?.mapping_lidar_fresh_readback_ready).toBe(false);
+    expect(summary.live_closure_summary?.mapping_lidar_fresh_gate_conflict).toBe(false);
+    expect(summary.live_closure_summary?.mapping_lidar_fresh_gate_status).toBe("missing");
+    expect(summary.live_closure_summary?.mapping_lidar_fresh_next_action_plain).toContain("建图启动仍缺雷达新鲜读数");
+    expect(summary.live_closure_summary?.mapping_lidar_fresh_refresh_sequence).toEqual([
+      "/api/robot-control/radar/scan-proof/refresh",
+      "/api/robot-control/radar/status",
+      "/api/robot-control/summary",
+    ]);
+    expect(summary.live_closure_summary?.mapping_lidar_fresh_refresh_sends_motion).toBe(false);
+    expect(summary.live_closure_summary?.mapping_lidar_fresh_refresh_starts_radar_lifecycle).toBe(false);
+    expect(summary.live_closure_summary?.mapping_lidar_fresh_blocks_free_move).toBe(false);
     expect(summary.live_closure_summary?.mapping_unblock_allows_free_move).toBe(true);
     expect(summary.live_closure_summary?.mapping_unblock_camera_diagnosis_status).toBe("not_loaded");
     expect(summary.live_closure_summary?.mapping_unblock_camera_not_exclusive).toBe("not_loaded");

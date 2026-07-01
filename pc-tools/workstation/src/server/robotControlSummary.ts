@@ -8989,6 +8989,27 @@ function buildLiveClosureSummary(
   const mappingAcceptanceMissingReasons = boundary.free_roam_mapping_missing_reasons;
   const mappingCameraBlocksStart = mappingStartMissingReasons.includes("camera_first_frame");
   const mappingLidarBlocksStart = mappingStartMissingReasons.includes("lidar_fresh");
+  const mappingLidarFreshReadbackReady = readback.radar.latest_scan_proof_fresh === "true"
+    && readback.radar.lifecycle_running === "true"
+    && ["loaded", "partial"].includes(radarMapOverlayStatus);
+  const mappingLidarFreshGateConflict = mappingLidarBlocksStart && mappingLidarFreshReadbackReady;
+  const mappingLidarFreshGateStatus = mappingLidarFreshGateConflict
+    ? "readback_ready_boundary_missing"
+    : mappingLidarBlocksStart
+      ? "missing"
+      : mappingLidarFreshReadbackReady
+        ? "ready"
+        : "not_loaded";
+  const mappingLidarFreshRefreshSequence = [
+    "/api/robot-control/radar/scan-proof/refresh",
+    "/api/robot-control/radar/status",
+    "/api/robot-control/summary",
+  ];
+  const mappingLidarFreshNextActionPlain = mappingLidarFreshGateConflict
+    ? "雷达读回已显示 fresh 且地图贴图已加载，但建图安全边界仍缺 lidar_fresh；先只读刷新雷达扫描、读取雷达状态，再刷新 summary 复核 gate。"
+    : mappingLidarBlocksStart
+      ? "建图启动仍缺雷达新鲜读数；先只读刷新雷达扫描并读取雷达状态，再刷新 summary。"
+      : "建图雷达新鲜 gate 已满足；继续处理相机首帧或其他建图条件。";
   const mappingStartMissingPlain = [
     ...(mappingCameraBlocksStart ? ["画面首帧"] : []),
     ...(mappingLidarBlocksStart ? ["雷达新鲜"] : []),
@@ -9704,6 +9725,14 @@ function buildLiveClosureSummary(
     mapping_start_unblock_plain: mappingStartUnblockPlain,
     mapping_camera_blocks_start: mappingCameraBlocksStart,
     mapping_lidar_blocks_start: mappingLidarBlocksStart,
+    mapping_lidar_fresh_readback_ready: mappingLidarFreshReadbackReady,
+    mapping_lidar_fresh_gate_conflict: mappingLidarFreshGateConflict,
+    mapping_lidar_fresh_gate_status: mappingLidarFreshGateStatus,
+    mapping_lidar_fresh_next_action_plain: mappingLidarFreshNextActionPlain,
+    mapping_lidar_fresh_refresh_sequence: mappingLidarFreshRefreshSequence,
+    mapping_lidar_fresh_refresh_sends_motion: false,
+    mapping_lidar_fresh_refresh_starts_radar_lifecycle: false,
+    mapping_lidar_fresh_blocks_free_move: false,
     mapping_unblock_allows_free_move: true,
     mapping_unblock_camera_diagnosis_status: readback.camera.source_diagnosis_status || "not_loaded",
     mapping_unblock_camera_not_exclusive: readback.camera.source_diagnosis_not_exclusive || "not_loaded",

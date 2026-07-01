@@ -6890,6 +6890,13 @@ describe("workstation fail-closed API contracts", () => {
       expect(live.fixed_radar_overlay_map_preview_endpoint).toBe("/api/robot-control/map/preview");
       expect(live.radar_overlay_refresh_sends_motion).toBe(false);
       expect(live.radar_overlay_refresh_starts_radar_lifecycle).toBe(false);
+      expect(live.mapping_lidar_fresh_readback_ready).toBe(summary.live_closure_summary?.mapping_lidar_fresh_readback_ready);
+      expect(live.mapping_lidar_fresh_gate_conflict).toBe(summary.live_closure_summary?.mapping_lidar_fresh_gate_conflict);
+      expect(live.mapping_lidar_fresh_gate_status).toBe(summary.live_closure_summary?.mapping_lidar_fresh_gate_status);
+      expect(live.mapping_lidar_fresh_refresh_sequence).toEqual(summary.live_closure_summary?.mapping_lidar_fresh_refresh_sequence);
+      expect(live.mapping_lidar_fresh_refresh_sends_motion).toBe(false);
+      expect(live.mapping_lidar_fresh_refresh_starts_radar_lifecycle).toBe(false);
+      expect(live.mapping_lidar_fresh_blocks_free_move).toBe(false);
       expect(live.keyboard_ready).toBe(true);
       expect(live.keyboard_enable_sends_motion).toBe(false);
       expect(live.keyboard_hold_to_move_required).toBe(true);
