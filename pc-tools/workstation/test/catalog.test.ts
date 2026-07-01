@@ -6855,7 +6855,10 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.route_ready).toBe(true);
       expect(summary.nav2_route_ready).toBe(true);
       expect(live.nav2_goal_succeeded).toBe(true);
+      expect(summary.nav2_complete).toBe(true);
       expect(summary.nav2_goal_succeeded).toBe(true);
+      expect(summary.route_complete).toBe(false);
+      expect(summary.trip_complete).toBe(false);
       expect(live.wheel_lr_nonzero_proven).toBe(false);
       expect(summary.wheel_lr_nonzero).toBe(false);
       expect(summary.wheel_lr_nonzero_proven).toBe(false);
@@ -6971,9 +6974,12 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.free_roam_ready).toBe(true);
       expect(live.free_roam_start_ready).toBe(true);
       expect(summary.free_roam_start_ready).toBe(true);
+      expect(summary.free_move_ready).toBe(true);
       expect(live.free_roam_motion_start_ready).toBe(true);
       expect(summary.free_roam_motion_start_ready).toBe(true);
       expect(live.free_roam_motion_ready).toBe(false);
+      expect(summary.free_move_running).toBe(false);
+      expect(summary.free_move_complete).toBe(false);
       expect(summary.free_roam_motion_ready).toBe(false);
       expect(live.free_move_without_camera_allowed).toBe(true);
       expect(summary.free_move_without_camera_allowed).toBe(true);

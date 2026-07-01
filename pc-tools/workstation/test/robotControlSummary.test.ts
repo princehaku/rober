@@ -122,8 +122,11 @@ describe("robotControlSummary", () => {
     expect(summary.route_ready_on_map).toBe(true);
     expect(summary.live_closure_summary?.nav2_route_ready).toBe(true);
     expect(summary.nav2_route_ready).toBe(true);
+    expect(summary.nav2_complete).toBe(true);
     expect(summary.nav2_goal_succeeded).toBe(true);
     expect(summary.nav2_goal_execution_proven).toBe(true);
+    expect(summary.route_complete).toBe(false);
+    expect(summary.trip_complete).toBe(false);
     expect(summary.wheel_lr_nonzero).toBe(false);
     expect(summary.wheel_lr_nonzero_proven).toBe(false);
     expect(summary.needs_same_window_wheel_rerun).toBe(true);
@@ -950,6 +953,9 @@ describe("robotControlSummary", () => {
 
     expect(summary.live_closure_summary?.free_move_start_ready).toBe(true);
     expect(summary.free_move_start_ready).toBe(true);
+    expect(summary.free_move_ready).toBe(true);
+    expect(summary.free_move_running).toBe(false);
+    expect(summary.free_move_complete).toBe(false);
     expect(summary.free_roam_start_ready).toBe(true);
     expect(summary.free_roam_ready).toBe(true);
     expect(summary.free_roam_motion_start_ready).toBe(true);

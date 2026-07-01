@@ -3235,8 +3235,11 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   route_ready?: RobotControlLiveClosureSummary["route_ready_on_map"];
   route_ready_on_map?: RobotControlLiveClosureSummary["route_ready_on_map"];
   nav2_route_ready?: RobotControlLiveClosureSummary["nav2_route_ready"];
+  nav2_complete?: RobotControlLiveClosureSummary["nav2_goal_execution_proven"];
   nav2_goal_succeeded?: RobotControlLiveClosureSummary["nav2_goal_succeeded"];
   nav2_goal_execution_proven?: RobotControlLiveClosureSummary["nav2_goal_execution_proven"];
+  route_complete?: boolean;
+  trip_complete?: boolean;
   wheel_lr_nonzero?: RobotControlLiveClosureSummary["wheel_lr_nonzero_proven"];
   wheel_lr_nonzero_proven?: RobotControlLiveClosureSummary["wheel_lr_nonzero_proven"];
   needs_same_window_wheel_rerun?: RobotControlLiveClosureSummary["needs_same_window_wheel_rerun"];
@@ -3333,6 +3336,9 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   keyboard_feedback_readback_endpoint?: RobotControlLiveClosureSummary["keyboard_feedback_readback_endpoint"];
   keyboard_summary_endpoint?: RobotControlLiveClosureSummary["keyboard_summary_endpoint"];
   free_move_start_ready?: RobotControlLiveClosureSummary["free_move_start_ready"];
+  free_move_ready?: RobotControlLiveClosureSummary["free_move_start_ready"];
+  free_move_running?: RobotControlLiveClosureSummary["free_roam_motion_ready"];
+  free_move_complete?: boolean;
   free_roam_start_ready?: RobotControlLiveClosureSummary["free_roam_start_ready"];
   free_roam_ready?: RobotControlLiveClosureSummary["free_roam_ready"];
   free_roam_motion_start_ready?: RobotControlLiveClosureSummary["free_roam_motion_start_ready"];

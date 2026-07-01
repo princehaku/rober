@@ -10082,8 +10082,12 @@ export async function buildRobotControlSummary(
     },
   ) as NonNullable<RobotControlSummaryResponse["live_closure_summary"]>;
 
+  const runNav2RouteRunbookItem = liveClosureSummary.live_motion_runbook_items.find((item) => item.id === "run_nav2_route");
   const keyboardRunbookItem = liveClosureSummary.live_motion_runbook_items.find((item) => item.id === "hold_keyboard");
+  const freeMoveRunbookItem = liveClosureSummary.live_motion_runbook_items.find((item) => item.id === "start_free_move");
   const keyboardStopAfterRelease = keyboardRunbookItem ? !keyboardRunbookItem.missing_evidence.includes("stop_after_release") : false;
+  const routeComplete = runNav2RouteRunbookItem?.completed === true;
+  const freeMoveComplete = freeMoveRunbookItem?.completed === true;
 
   return {
     schema: ROBOT_CONTROL_SCHEMA,
@@ -10156,8 +10160,11 @@ export async function buildRobotControlSummary(
     route_ready: liveClosureSummary.route_ready_on_map,
     route_ready_on_map: liveClosureSummary.route_ready_on_map,
     nav2_route_ready: liveClosureSummary.nav2_route_ready,
+    nav2_complete: liveClosureSummary.nav2_goal_execution_proven,
     nav2_goal_succeeded: liveClosureSummary.nav2_goal_succeeded,
     nav2_goal_execution_proven: liveClosureSummary.nav2_goal_execution_proven,
+    route_complete: routeComplete,
+    trip_complete: routeComplete,
     wheel_lr_nonzero: liveClosureSummary.wheel_lr_nonzero_proven,
     wheel_lr_nonzero_proven: liveClosureSummary.wheel_lr_nonzero_proven,
     needs_same_window_wheel_rerun: liveClosureSummary.needs_same_window_wheel_rerun,
@@ -10254,6 +10261,9 @@ export async function buildRobotControlSummary(
     keyboard_feedback_readback_endpoint: liveClosureSummary.keyboard_feedback_readback_endpoint,
     keyboard_summary_endpoint: liveClosureSummary.keyboard_summary_endpoint,
     free_move_start_ready: liveClosureSummary.free_move_start_ready,
+    free_move_ready: liveClosureSummary.free_move_start_ready,
+    free_move_running: liveClosureSummary.free_roam_motion_ready,
+    free_move_complete: freeMoveComplete,
     free_roam_start_ready: liveClosureSummary.free_roam_start_ready,
     free_roam_ready: liveClosureSummary.free_roam_ready,
     free_roam_motion_start_ready: liveClosureSummary.free_roam_motion_start_ready,
