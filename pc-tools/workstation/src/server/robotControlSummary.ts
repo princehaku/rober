@@ -9389,7 +9389,22 @@ function buildLiveClosureSummary(
       sourceCardId: goalSummary.first_incomplete_source_card_id || goalSummary.primary_ready_action_source_card_id,
     };
   })();
-  const sideBlockerItems = goalSummary.blocked_action_items.filter((item) => item.id !== primaryStatusTarget.itemId);
+  const liveSideBlockerStillCurrent = (item: (typeof goalSummary.blocked_action_items)[number]): boolean => {
+    // live 摘要只描述当前所见；如果同轮画布已经可见，就不能继续把旧 checklist blocker 写进“其它缺口”。
+    if (item.id === "camera_wysiwyg") {
+      return !cameraCurrentVisible;
+    }
+    if (item.id === "map_wysiwyg") {
+      return !mapCurrentVisible;
+    }
+    if (item.id === "radar_map_points_wysiwyg") {
+      return !radarMapPointsVisible;
+    }
+    return true;
+  };
+  const sideBlockerItems = goalSummary.blocked_action_items
+    .filter((item) => item.id !== primaryStatusTarget.itemId)
+    .filter(liveSideBlockerStillCurrent);
   const readyActionItems = goalSummary.ready_action_items;
   const sideBlockerTitles = sideBlockerItems.map((item) => item.title).join("、") || "暂无";
   const readyActionTitles = readyActionItems.map((item) => item.title).join("、") || "暂无";

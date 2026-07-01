@@ -1102,5 +1102,9 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.radar_overlay_needs_refresh).toBe(false);
     expect(summary.live_closure_summary?.radar_overlay_blocks_wysiwyg).toBe(false);
     expect(summary.live_closure_summary?.radar_overlay_blocks_free_move).toBe(false);
+    expect(summary.live_closure_summary?.live_wysiwyg_missing_surface_ids).not.toContain("radar_map_points");
+    expect(summary.live_closure_summary?.side_blocker_ids).not.toContain("radar_map_points_wysiwyg");
+    expect(summary.live_closure_summary?.side_gap_summary_plain).not.toContain("雷达点贴到地图");
+    expect(summary.live_closure_summary?.side_gap_summary_plain).toContain("传感器就绪后建图");
   });
 });
