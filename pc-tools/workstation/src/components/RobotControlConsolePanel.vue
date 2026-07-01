@@ -4415,12 +4415,25 @@ const plainFieldAcceptanceRadarMapProof = computed(() => {
     || summary?.radar_overlay_refresh_next_action_plain
     || packet?.wysiwyg_radar_map_next_action_plain
     || "";
+  const mappingMissing = summary?.mapping_start_missing_reasons ?? [];
+  const blocksMappingStart = mappingMissing.includes("lidar_fresh");
+  const blocksFreeMove = Boolean(summary?.radar_overlay_blocks_free_move ?? false);
+  const mappingGapText = blocksMappingStart
+    ? "雷达新鲜读数仍影响建图启动"
+    : `建图当前不被雷达贴图阻塞${mappingMissing.includes("camera_first_frame") ? "，只差画面首帧" : ""}`;
+  const movementScopeText = `${mappingGapText}；雷达贴图${blocksFreeMove ? "会影响自由移动" : "不挡自由移动"}，只阻塞当前所见。`;
   return {
     visible: Boolean(summary && missingRadar),
     overlayStatus: summary?.live_wysiwyg_radar_map_overlay_status || summary?.radar_overlay_status || "not_loaded",
     currentPointCount: summary?.live_wysiwyg_radar_map_current_point_count || summary?.radar_overlay_current_point_count || "0",
     sourcePointCount: summary?.live_wysiwyg_radar_map_source_point_count || summary?.radar_overlay_source_point_count || "0",
     staleSourcePointsSuppressed: Boolean(summary?.live_wysiwyg_radar_map_stale_source_points_suppressed ?? false),
+    blocksWysiwyg: Boolean(summary?.radar_overlay_blocks_wysiwyg ?? true),
+    blocksMappingStart,
+    blocksFreeMove,
+    mappingMissingText: mappingMissing.join(",") || "none",
+    mappingGapText,
+    movementScopeText,
     currentVsSourcePlain,
     nextActionPlain,
     fixedRadarRefreshEndpoint: summary?.fixed_live_wysiwyg_radar_refresh_endpoint
@@ -4432,8 +4445,8 @@ const plainFieldAcceptanceRadarMapProof = computed(() => {
       || packet?.fixed_wysiwyg_map_preview_endpoint
       || "/api/robot-control/map/preview",
     text: currentVsSourcePlain
-      ? `雷达贴图读回：${plainActionCardUserText(currentVsSourcePlain)} ${nextActionPlain ? `下一步：${plainActionCardUserText(nextActionPlain)}` : ""}`.trim()
-      : `雷达贴图读回：当前地图点 ${summary?.live_wysiwyg_radar_map_current_point_count || "0"} 个，来源点 ${summary?.live_wysiwyg_radar_map_source_point_count || "0"} 个。`,
+      ? `雷达贴图读回：${plainActionCardUserText(currentVsSourcePlain)} ${movementScopeText} ${nextActionPlain ? `下一步：${plainActionCardUserText(nextActionPlain)}` : ""}`.trim()
+      : `雷达贴图读回：当前地图点 ${summary?.live_wysiwyg_radar_map_current_point_count || "0"} 个，来源点 ${summary?.live_wysiwyg_radar_map_source_point_count || "0"} 个。${movementScopeText}`,
   };
 });
 const plainFieldAcceptanceWysiwygRefreshMode = computed(() => {
@@ -18211,6 +18224,12 @@ onBeforeUnmount(() => {
               :data-radar-map-current-point-count="plainFieldAcceptanceRadarMapProof.currentPointCount"
               :data-radar-map-source-point-count="plainFieldAcceptanceRadarMapProof.sourcePointCount"
               :data-radar-map-stale-source-points-suppressed="String(plainFieldAcceptanceRadarMapProof.staleSourcePointsSuppressed)"
+              :data-radar-map-blocks-wysiwyg="String(plainFieldAcceptanceRadarMapProof.blocksWysiwyg)"
+              :data-radar-map-blocks-mapping-start="String(plainFieldAcceptanceRadarMapProof.blocksMappingStart)"
+              :data-radar-map-blocks-free-move="String(plainFieldAcceptanceRadarMapProof.blocksFreeMove)"
+              :data-radar-map-mapping-missing-reasons="plainFieldAcceptanceRadarMapProof.mappingMissingText"
+              :data-radar-map-mapping-gap-plain="plainFieldAcceptanceRadarMapProof.mappingGapText"
+              :data-radar-map-movement-scope-plain="plainFieldAcceptanceRadarMapProof.movementScopeText"
               :data-radar-map-current-vs-source-plain="plainFieldAcceptanceRadarMapProof.currentVsSourcePlain"
               :data-radar-map-refresh-next-action-plain="plainFieldAcceptanceRadarMapProof.nextActionPlain"
               :data-fixed-radar-refresh-endpoint="plainFieldAcceptanceRadarMapProof.fixedRadarRefreshEndpoint"
