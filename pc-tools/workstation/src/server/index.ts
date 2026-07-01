@@ -499,6 +499,9 @@ function baseFeedbackSampleAliases(
   RobotControlBaseFeedbackSamplesProxyResponse,
   | "wheel_raw_left"
   | "wheel_raw_right"
+  | "latest_raw_left"
+  | "latest_raw_right"
+  | "base_feedback_lr_nonzero_proven"
   | "wheel_feedback_lr_nonzero_proven"
   | "wheel_feedback_source"
   | "wheel_feedback_plain_hint"
@@ -516,6 +519,9 @@ function baseFeedbackSampleAliases(
     return {
       wheel_raw_left: left,
       wheel_raw_right: right,
+      latest_raw_left: left,
+      latest_raw_right: right,
+      base_feedback_lr_nonzero_proven: proven,
       wheel_feedback_lr_nonzero_proven: proven,
       wheel_feedback_source: source,
       wheel_feedback_plain_hint: `只读反馈采样读到 ${pairText}，非零帧 ${nonzeroFrames}/${frameCount}；这不是运动命令，也不能单独替代试动或 Nav2 执行窗口材料。`,
@@ -526,6 +532,9 @@ function baseFeedbackSampleAliases(
     return {
       wheel_raw_left: left,
       wheel_raw_right: right,
+      latest_raw_left: left,
+      latest_raw_right: right,
+      base_feedback_lr_nonzero_proven: proven,
       wheel_feedback_lr_nonzero_proven: proven,
       wheel_feedback_source: source,
       wheel_feedback_plain_hint: `只读反馈采样读到 ${pairText}，非零未证明，T1001 帧 ${frameCount}；这不是运动命令。`,
@@ -535,6 +544,9 @@ function baseFeedbackSampleAliases(
   return {
     wheel_raw_left: left,
     wheel_raw_right: right,
+    latest_raw_left: left,
+    latest_raw_right: right,
+    base_feedback_lr_nonzero_proven: proven,
     wheel_feedback_lr_nonzero_proven: proven,
     wheel_feedback_source: source,
     wheel_feedback_plain_hint: "只读反馈采样没有读到可用 wheel raw L/R；这不是运动命令。",

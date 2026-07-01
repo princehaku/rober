@@ -4290,6 +4290,9 @@ export interface RobotControlBaseFeedbackSamplesProxyResponse extends ProofFlags
   };
   wheel_raw_left: string;
   wheel_raw_right: string;
+  latest_raw_left: string;
+  latest_raw_right: string;
+  base_feedback_lr_nonzero_proven: string;
   wheel_feedback_lr_nonzero_proven: string;
   wheel_feedback_source: string;
   wheel_feedback_plain_hint: string;

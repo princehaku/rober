@@ -15986,6 +15986,9 @@ describe("workstation fail-closed API contracts", () => {
         sample_key_values: Record<string, string>;
         wheel_raw_left: string;
         wheel_raw_right: string;
+        latest_raw_left: string;
+        latest_raw_right: string;
+        base_feedback_lr_nonzero_proven: string;
         wheel_feedback_lr_nonzero_proven: string;
         wheel_feedback_source: string;
         wheel_feedback_plain_hint: string;
@@ -16000,6 +16003,9 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.sample_key_values.wheel_feedback_latest_right_speed).toBe("0");
       expect(body.wheel_raw_left).toBe("0");
       expect(body.wheel_raw_right).toBe("0");
+      expect(body.latest_raw_left).toBe("0");
+      expect(body.latest_raw_right).toBe("0");
+      expect(body.base_feedback_lr_nonzero_proven).toBe("false");
       expect(body.wheel_feedback_lr_nonzero_proven).toBe("false");
       expect(body.wheel_feedback_source).toBe("vendor_t1001_L_R");
       expect(body.wheel_feedback_plain_hint).toContain("wheel raw L/R=0/0");
@@ -16075,6 +16081,9 @@ describe("workstation fail-closed API contracts", () => {
         sample_key_values: Record<string, string>;
         wheel_raw_left: string;
         wheel_raw_right: string;
+        latest_raw_left: string;
+        latest_raw_right: string;
+        base_feedback_lr_nonzero_proven: string;
         wheel_feedback_lr_nonzero_proven: string;
         sends_motion_commands: boolean;
         robot_control_executed: boolean;
@@ -16091,6 +16100,9 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.sample_key_values.wheel_feedback_source).toBe("vendor_t1001_L_R");
       expect(body.wheel_raw_left).toBe("12");
       expect(body.wheel_raw_right).toBe("13");
+      expect(body.latest_raw_left).toBe("12");
+      expect(body.latest_raw_right).toBe("13");
+      expect(body.base_feedback_lr_nonzero_proven).toBe("true");
       expect(body.wheel_feedback_lr_nonzero_proven).toBe("true");
       expect(body.sends_motion_commands).toBe(false);
       expect(body.robot_control_executed).toBe(false);
