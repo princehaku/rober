@@ -271,6 +271,40 @@ class LaunchContractStaticTest(unittest.TestCase):
         self.assertNotIn("SetGoal", rviz_source)
         self.assertNotIn("Nav Goal", rviz_source)
 
+    def test_foxglove_bridge_launch_is_remote_observation_only(self):
+        # Foxglove 给远程浏览器看图和雷达，不能绕过 PC 安全确认变成另一条控制入口。
+        source = read_launch("foxglove_bridge.launch.py")
+        ast.parse(source)
+
+        for expected in (
+            'default_value="0.0.0.0"',
+            'default_value="8765"',
+            'package="foxglove_bridge"',
+            'executable="foxglove_bridge"',
+            '"topic_whitelist": observe_topic_whitelist',
+            '"client_topic_whitelist": ["(?!)"]',
+            '"service_whitelist": ["(?!)"]',
+            '"param_whitelist": ["(?!)"]',
+            '"capabilities": ["connectionGraph", "assets", "time"]',
+            "^/(map|map_metadata|scan|tf|tf_static|odom|plan|local_plan|amcl_pose|pose)$",
+            "^/(global_costmap|local_costmap)/(costmap|costmap_updates)$",
+            "^/camera/(image_raw|camera_info)$",
+            "^/foxglove_bridge/sysinfo$",
+        ):
+            self.assertIn(expected, source)
+
+        for forbidden in (
+            "/cmd_vel",
+            "clientPublish",
+            '"services"',
+            '"parameters"',
+            '"parametersSubscribe"',
+            "/api/robot-control",
+            "/trashbot/collect_trash",
+            "/trashbot/confirm_dropoff",
+        ):
+            self.assertNotIn(forbidden, source)
+
     def test_field_camera_default_uses_verified_capture_device(self):
         # 实板上 /dev/video0 是 Cedrus decoder；默认指向 /dev/video1，避免相机启用后误绑非采集节点。
         for launch_name in ("bringup.launch.py", "learn.launch.py"):

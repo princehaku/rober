@@ -9874,7 +9874,7 @@ function buildLiveClosureSummary(
     map_display_foxglove_role_plain: mapDisplayFoxgloveRolePlain,
     map_display_foxglove_bridge_package: "foxglove_bridge",
     map_display_foxglove_bridge_install_command: "sudo apt install ros-humble-foxglove-bridge",
-    map_display_foxglove_bridge_launch_command: "ros2 launch foxglove_bridge foxglove_bridge_launch.xml",
+    map_display_foxglove_bridge_launch_command: "ros2 launch ros2_trashbot_bringup foxglove_bridge.launch.py",
     map_display_foxglove_websocket_url: "ws://192.168.1.11:8765",
     map_display_foxglove_web_app_url: mapDisplayFoxgloveWebAppUrl,
     map_display_ros2_observe_topics: mapDisplayRos2ObserveTopics,

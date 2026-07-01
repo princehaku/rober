@@ -953,7 +953,7 @@ const fixtures: Record<string, unknown> = {
       map_display_foxglove_role_plain: "Foxglove 用于远程浏览器大屏观察；先在 ROS2 环境安装并启动 foxglove_bridge，再连接 ws://192.168.1.11:8765。",
       map_display_foxglove_bridge_package: "foxglove_bridge",
       map_display_foxglove_bridge_install_command: "sudo apt install ros-humble-foxglove-bridge",
-      map_display_foxglove_bridge_launch_command: "ros2 launch foxglove_bridge foxglove_bridge_launch.xml",
+      map_display_foxglove_bridge_launch_command: "ros2 launch ros2_trashbot_bringup foxglove_bridge.launch.py",
       map_display_foxglove_websocket_url: "ws://192.168.1.11:8765",
       map_display_foxglove_web_app_url: "https://studio.foxglove.dev",
       map_display_ros2_observe_topics: [
@@ -6103,7 +6103,7 @@ describe("App", () => {
     expect(liveClosureSummary.attributes("data-map-display-foxglove-role-plain")).toContain("远程浏览器大屏观察");
     expect(liveClosureSummary.attributes("data-map-display-foxglove-bridge-package")).toBe("foxglove_bridge");
     expect(liveClosureSummary.attributes("data-map-display-foxglove-bridge-install-command")).toBe("sudo apt install ros-humble-foxglove-bridge");
-    expect(liveClosureSummary.attributes("data-map-display-foxglove-bridge-launch-command")).toBe("ros2 launch foxglove_bridge foxglove_bridge_launch.xml");
+    expect(liveClosureSummary.attributes("data-map-display-foxglove-bridge-launch-command")).toBe("ros2 launch ros2_trashbot_bringup foxglove_bridge.launch.py");
     expect(liveClosureSummary.attributes("data-map-display-foxglove-websocket-url")).toBe("ws://192.168.1.11:8765");
     expect(liveClosureSummary.attributes("data-map-display-ros2-observe-topics")).toBe("/map,/scan,/tf,/plan,/local_plan,/amcl_pose,/global_costmap/costmap,/local_costmap/costmap");
     expect(liveClosureSummary.attributes("data-map-display-ros2-observe-motion-topics")).toBe("false");
@@ -6362,7 +6362,7 @@ describe("App", () => {
     expect(liveMapCompanionSummary.attributes("data-ros2-companion-tools")).toBe("rviz2,foxglove");
     expect(liveMapCompanionSummary.attributes("data-rviz-launch-command")).toBe("ros2 launch ros2_trashbot_bringup rviz.launch.py");
     expect(liveMapCompanionSummary.attributes("data-foxglove-bridge-package")).toBe("foxglove_bridge");
-    expect(liveMapCompanionSummary.attributes("data-foxglove-bridge-launch-command")).toBe("ros2 launch foxglove_bridge foxglove_bridge_launch.xml");
+    expect(liveMapCompanionSummary.attributes("data-foxglove-bridge-launch-command")).toBe("ros2 launch ros2_trashbot_bringup foxglove_bridge.launch.py");
     expect(liveMapCompanionSummary.attributes("data-foxglove-websocket-url")).toBe("ws://192.168.1.11:8765");
     expect(liveMapCompanionSummary.attributes("data-ros2-observe-topics")).toBe("/map,/scan,/tf,/plan,/local_plan,/amcl_pose,/global_costmap/costmap,/local_costmap/costmap");
     expect(liveMapCompanionSummary.attributes("data-ros2-observe-motion-topics")).toBe("false");
@@ -8253,7 +8253,7 @@ describe("App", () => {
     expect(mapPanel.attributes("data-foxglove-bridge-handoff")).toBe("deploy_bridge_then_open_foxglove_studio");
     expect(mapPanel.attributes("data-rviz-launch-command")).toBe("ros2 launch ros2_trashbot_bringup rviz.launch.py");
     expect(mapPanel.attributes("data-foxglove-bridge-package")).toBe("foxglove_bridge");
-    expect(mapPanel.attributes("data-foxglove-bridge-launch-command")).toBe("ros2 launch foxglove_bridge foxglove_bridge_launch.xml");
+    expect(mapPanel.attributes("data-foxglove-bridge-launch-command")).toBe("ros2 launch ros2_trashbot_bringup foxglove_bridge.launch.py");
     expect(mapPanel.attributes("data-foxglove-websocket-url")).toBe("ws://192.168.1.11:8765");
     expect(mapPanel.attributes("data-ros2-observe-topics")).toBe("/map,/scan,/tf,/plan,/local_plan,/amcl_pose,/global_costmap/costmap,/local_costmap/costmap");
     expect(mapPanel.attributes("data-ros2-observe-motion-topics")).toBe("false");
@@ -8450,7 +8450,7 @@ describe("App", () => {
     expect(mapDisplayProof.attributes("data-foxglove-bridge-status")).toBe("handoff_required");
     expect(mapDisplayProof.attributes("data-foxglove-bridge-package")).toBe("foxglove_bridge");
     expect(mapDisplayProof.attributes("data-foxglove-bridge-install-command")).toBe("sudo apt install ros-humble-foxglove-bridge");
-    expect(mapDisplayProof.attributes("data-foxglove-bridge-launch-command")).toBe("ros2 launch foxglove_bridge foxglove_bridge_launch.xml");
+    expect(mapDisplayProof.attributes("data-foxglove-bridge-launch-command")).toBe("ros2 launch ros2_trashbot_bringup foxglove_bridge.launch.py");
     expect(mapDisplayProof.attributes("data-foxglove-websocket-url")).toBe("ws://192.168.1.11:8765");
     expect(mapDisplayProof.attributes("data-foxglove-web-app-url")).toBe("https://studio.foxglove.dev");
     expect(mapDisplayProof.attributes("data-ros2-observe-topics")).toBe("/map,/scan,/tf,/plan,/local_plan,/amcl_pose,/global_costmap/costmap,/local_costmap/costmap");
@@ -8477,7 +8477,7 @@ describe("App", () => {
     expect(mapDisplayProof.text()).toContain("图上行程、小车位置和雷达标记共用同一张 WYSIWYG 画布");
     expect(mapDisplayProof.text()).toContain("不启动工程工具、行程执行或小车运动");
     expect(mapDisplayProof.text()).not.toContain("ros2 launch ros2_trashbot_bringup rviz.launch.py");
-    expect(mapDisplayProof.text()).not.toContain("ros2 launch foxglove_bridge foxglove_bridge_launch.xml");
+    expect(mapDisplayProof.text()).not.toContain("ros2 launch ros2_trashbot_bringup foxglove_bridge.launch.py");
     expect(mapDisplayProof.text()).toContain("点“适配”回到 100% 全图");
     await wrapper.find('[data-testid="plain-map-zoom-in"]').trigger("click");
     await wrapper.vm.$nextTick();
@@ -8528,7 +8528,7 @@ describe("App", () => {
     expect(mapRos2ToolNote.attributes("data-rviz-launch-command")).toBe("ros2 launch ros2_trashbot_bringup rviz.launch.py");
     expect(mapRos2ToolNote.attributes("data-foxglove-bridge-package")).toBe("foxglove_bridge");
     expect(mapRos2ToolNote.attributes("data-foxglove-bridge-install-command")).toBe("sudo apt install ros-humble-foxglove-bridge");
-    expect(mapRos2ToolNote.attributes("data-foxglove-bridge-launch-command")).toBe("ros2 launch foxglove_bridge foxglove_bridge_launch.xml");
+    expect(mapRos2ToolNote.attributes("data-foxglove-bridge-launch-command")).toBe("ros2 launch ros2_trashbot_bringup foxglove_bridge.launch.py");
     expect(mapRos2ToolNote.attributes("data-foxglove-websocket-url")).toBe("ws://192.168.1.11:8765");
     expect(mapRos2ToolNote.attributes("data-foxglove-web-app-url")).toBe("https://studio.foxglove.dev");
     expect(mapRos2ToolNote.attributes("data-ros2-observe-topics")).toBe("/map,/scan,/tf,/plan,/local_plan,/amcl_pose,/global_costmap/costmap,/local_costmap/costmap");
@@ -8544,7 +8544,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-ros2-tool-summary"]').text()).toBe("工程观察：RViz2 / Foxglove");
     expect(wrapper.find('[data-testid="plain-map-ros2-tool-summary"]').attributes("aria-expanded")).toBe("false");
     expect(mapRos2ToolNote.text()).not.toContain("ros2 launch ros2_trashbot_bringup rviz.launch.py");
-    expect(mapRos2ToolNote.text()).not.toContain("ros2 launch foxglove_bridge foxglove_bridge_launch.xml");
+    expect(mapRos2ToolNote.text()).not.toContain("ros2 launch ros2_trashbot_bringup foxglove_bridge.launch.py");
     await wrapper.find('[data-testid="plain-map-ros2-tool-summary"]').trigger("click");
     await wrapper.vm.$nextTick();
     const openedMapRos2ToolNote = wrapper.find('[data-testid="plain-map-ros2-tool-note"]');
@@ -8557,7 +8557,7 @@ describe("App", () => {
     expect(openedMapRos2ToolNote.text()).toContain("bridge");
     expect(openedMapRos2ToolNote.text()).toContain("sudo apt install ros-humble-foxglove-bridge");
     expect(openedMapRos2ToolNote.text()).toContain("ros2 launch ros2_trashbot_bringup rviz.launch.py");
-    expect(openedMapRos2ToolNote.text()).toContain("ros2 launch foxglove_bridge foxglove_bridge_launch.xml");
+    expect(openedMapRos2ToolNote.text()).toContain("ros2 launch ros2_trashbot_bringup foxglove_bridge.launch.py");
     expect(openedMapRos2ToolNote.text()).toContain("ws://192.168.1.11:8765");
     const foxgloveLink = wrapper.find('[data-testid="plain-map-foxglove-link"]');
     expect(foxgloveLink.exists()).toBe(true);
@@ -10519,7 +10519,7 @@ describe("App", () => {
       expect(mapPanel.attributes("data-ros2-remote-companion-tool")).toBe("foxglove");
       expect(mapPanel.attributes("data-rviz-launch-command")).toBe("ros2 launch ros2_trashbot_bringup rviz.launch.py");
       expect(mapPanel.attributes("data-foxglove-bridge-package")).toBe("foxglove_bridge");
-      expect(mapPanel.attributes("data-foxglove-bridge-launch-command")).toBe("ros2 launch foxglove_bridge foxglove_bridge_launch.xml");
+      expect(mapPanel.attributes("data-foxglove-bridge-launch-command")).toBe("ros2 launch ros2_trashbot_bringup foxglove_bridge.launch.py");
       expect(mapPanel.attributes("data-foxglove-websocket-url")).toBe("ws://192.168.1.11:8765");
       expect(wrapper.find('[data-testid="plain-map-wysiwyg-view"]').attributes("data-size")).toBe("fullscreen");
       expect(wrapper.find('[data-testid="plain-map-observer-toggle"]').text()).toBe("退出只看");
@@ -10550,7 +10550,7 @@ describe("App", () => {
       expect(directMapDisplayProof.attributes("data-foxglove-bridge-status")).toBe("handoff_required");
       expect(directMapDisplayProof.attributes("data-rviz-launch-command")).toBe("ros2 launch ros2_trashbot_bringup rviz.launch.py");
       expect(directMapDisplayProof.attributes("data-foxglove-bridge-package")).toBe("foxglove_bridge");
-      expect(directMapDisplayProof.attributes("data-foxglove-bridge-launch-command")).toBe("ros2 launch foxglove_bridge foxglove_bridge_launch.xml");
+      expect(directMapDisplayProof.attributes("data-foxglove-bridge-launch-command")).toBe("ros2 launch ros2_trashbot_bringup foxglove_bridge.launch.py");
       expect(directMapDisplayProof.attributes("data-foxglove-websocket-url")).toBe("ws://192.168.1.11:8765");
       expect(directMapDisplayProof.attributes("data-starts-ros2")).toBe("false");
       expect(directMapDisplayProof.attributes("data-starts-rviz2")).toBe("false");
@@ -10566,7 +10566,7 @@ describe("App", () => {
       expect(directMapDisplayProof.text()).toContain("普通用户仍默认使用 PC 大地图");
       expect(directMapDisplayProof.text()).toContain("不启动工程工具、行程执行或小车运动");
       expect(directMapDisplayProof.text()).not.toContain("ros2 launch ros2_trashbot_bringup rviz.launch.py");
-      expect(directMapDisplayProof.text()).not.toContain("ros2 launch foxglove_bridge foxglove_bridge_launch.xml");
+      expect(directMapDisplayProof.text()).not.toContain("ros2 launch ros2_trashbot_bringup foxglove_bridge.launch.py");
       expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').classes()).toContain("plain-map-direct-view-link-primary");
       expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-user-facing-primary-map-action")).toBe("true");
       expect(wrapper.find('[data-testid="plain-map-direct-view-link"]').attributes("data-ordinary-user-map-entry")).toBe("true");

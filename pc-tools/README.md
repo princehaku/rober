@@ -21,6 +21,13 @@ pc-tools/workstation/
 工作站，不会自动执行 Nav2、manual、delivery complete、keyboard pulse、stop 或
 `/cmd_vel`。
 
+2026-07-02 CST 起，远程浏览器地图观察不再只给裸 Foxglove 命令，而是使用项目包装入口
+`ros2 launch ros2_trashbot_bringup foxglove_bridge.launch.py`。该 launch 默认绑定
+`0.0.0.0:8765`，只开放地图、雷达、TF、路线、定位、相机图像和 costmap 观察 topic，并把
+client publish、service 和 parameter 通道关到不匹配正则；安装仍按官方 ROS 包入口
+`sudo apt install ros-humble-foxglove-bridge`。它只服务 Foxglove Web 远程观察，不替代 PC
+简易界面，不发送 `/cmd_vel`。
+
 开发热更新入口用 `npm run dev`，默认监听 `0.0.0.0:7002`，并把 `/api` 代理到本机
 Node 工作站 `http://127.0.0.1:7001`。因此开发时先让 `npm run api` 守住 7001，
 再打开 7002 看热更新页；`dev:public` 只是复用 `npm run dev` 的兼容旧入口，正式现场访问仍优先使用 7001 的 Node/Express 工作站。

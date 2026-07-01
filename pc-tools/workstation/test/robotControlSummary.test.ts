@@ -340,8 +340,8 @@ describe("robotControlSummary", () => {
     expect(summary.map_display_foxglove_bridge_package).toBe("foxglove_bridge");
     expect(summary.live_closure_summary?.map_display_foxglove_bridge_install_command).toBe("sudo apt install ros-humble-foxglove-bridge");
     expect(summary.map_display_foxglove_bridge_install_command).toBe("sudo apt install ros-humble-foxglove-bridge");
-    expect(summary.live_closure_summary?.map_display_foxglove_bridge_launch_command).toBe("ros2 launch foxglove_bridge foxglove_bridge_launch.xml");
-    expect(summary.map_display_foxglove_bridge_launch_command).toBe("ros2 launch foxglove_bridge foxglove_bridge_launch.xml");
+    expect(summary.live_closure_summary?.map_display_foxglove_bridge_launch_command).toBe("ros2 launch ros2_trashbot_bringup foxglove_bridge.launch.py");
+    expect(summary.map_display_foxglove_bridge_launch_command).toBe("ros2 launch ros2_trashbot_bringup foxglove_bridge.launch.py");
     expect(summary.live_closure_summary?.map_display_foxglove_websocket_url).toBe("ws://192.168.1.11:8765");
     expect(summary.map_display_foxglove_websocket_url).toBe("ws://192.168.1.11:8765");
     expect(summary.live_closure_summary?.map_display_foxglove_web_app_url).toBe("https://studio.foxglove.dev");
