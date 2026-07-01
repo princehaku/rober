@@ -953,10 +953,12 @@ const fixtures: Record<string, unknown> = {
       live_wysiwyg_camera_recovery_sends_motion: false,
       live_wysiwyg_radar_scan_missing_observations: ["scan_once", "scan_hz", "raw_packet_once"],
       live_wysiwyg_map_radar_blocked_reasons: ["scan_preview_points_missing", "runtime_scan_stale_for_map_radar_overlay"],
+      live_wysiwyg_radar_map_overlay_status: "not_current",
       live_wysiwyg_radar_map_current_point_count: "0",
       live_wysiwyg_radar_map_source_point_count: "81",
       live_wysiwyg_radar_map_stale_source_points_suppressed: true,
       live_wysiwyg_radar_map_primary_blocked_reason: "scan_preview_points_missing",
+      live_wysiwyg_radar_map_current_vs_source_plain: "地图雷达点：当前 0 个，来源 81 个；状态=not_current，旧来源点已抑制，未贴到当前地图。下一步：旧雷达来源点 81 个已抑制；先刷新雷达扫描读数，再刷新地图画面，确认同轮雷达点贴图。",
       live_wysiwyg_radar_map_refresh_next_action_plain: "旧雷达来源点 81 个已抑制；先刷新雷达扫描读数，再刷新地图画面，确认同轮雷达点贴图。",
       live_wysiwyg_radar_map_refresh_sequence: [
         "/api/robot-control/radar/scan-proof/refresh",
@@ -4972,10 +4974,12 @@ describe("App", () => {
     expect(liveClosureSummary.attributes("data-live-wysiwyg-camera-recovery-sends-motion")).toBe("false");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-radar-scan-missing-observations")).toBe("scan_once,scan_hz,raw_packet_once");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-map-radar-blocked-reasons")).toBe("scan_preview_points_missing,runtime_scan_stale_for_map_radar_overlay");
+    expect(liveClosureSummary.attributes("data-live-wysiwyg-radar-map-overlay-status")).toBe("not_current");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-radar-map-current-point-count")).toBe("0");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-radar-map-source-point-count")).toBe("81");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-radar-map-stale-source-points-suppressed")).toBe("true");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-radar-map-primary-blocked-reason")).toBe("scan_preview_points_missing");
+    expect(liveClosureSummary.attributes("data-live-wysiwyg-radar-map-current-vs-source-plain")).toContain("状态=not_current");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-radar-map-refresh-next-action-plain")).toBe("旧雷达来源点 81 个已抑制；先刷新雷达扫描读数，再刷新地图画面，确认同轮雷达点贴图。");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-radar-map-refresh-sequence")).toBe("/api/robot-control/radar/scan-proof/refresh,/api/robot-control/map/preview");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-radar-map-refresh-sequence-labels")).toBe("刷新雷达扫描读数,刷新地图画面");
@@ -4987,6 +4991,7 @@ describe("App", () => {
     expect(liveClosureWysiwygDiagnostics.text()).toContain("相机不是页面独占；先复测相机首帧并读取共享预览状态");
     expect(liveClosureWysiwygDiagnostics.text()).toContain("还差=没有读到一帧雷达；雷达频率未确认；雷达原始包未确认");
     expect(liveClosureWysiwygDiagnostics.text()).toContain("还差=地图缺雷达点；雷达点不是当前新读数");
+    expect(liveClosureWysiwygDiagnostics.text()).toContain("地图雷达点：当前 0 个，来源 81 个；状态=not_current");
     expect(liveClosureWysiwygDiagnostics.text()).toContain("旧雷达来源点 81 个已抑制");
     expect(liveClosureWysiwygDiagnostics.text()).toContain("刷新雷达扫描读数，再刷新地图画面");
     expect(liveClosureWysiwygDiagnostics.attributes("data-camera-probe-failure-reason")).toBe("first_frame_total_timeout");
@@ -5001,9 +5006,11 @@ describe("App", () => {
     expect(liveClosureWysiwygDiagnostics.attributes("data-camera-recovery-sends-motion")).toBe("false");
     expect(liveClosureWysiwygDiagnostics.attributes("data-radar-scan-missing-observations")).toBe("scan_once,scan_hz,raw_packet_once");
     expect(liveClosureWysiwygDiagnostics.attributes("data-map-radar-blocked-reasons")).toBe("scan_preview_points_missing,runtime_scan_stale_for_map_radar_overlay");
+    expect(liveClosureWysiwygDiagnostics.attributes("data-radar-map-overlay-status")).toBe("not_current");
     expect(liveClosureWysiwygDiagnostics.attributes("data-radar-map-current-point-count")).toBe("0");
     expect(liveClosureWysiwygDiagnostics.attributes("data-radar-map-source-point-count")).toBe("81");
     expect(liveClosureWysiwygDiagnostics.attributes("data-radar-map-stale-source-points-suppressed")).toBe("true");
+    expect(liveClosureWysiwygDiagnostics.attributes("data-radar-map-current-vs-source-plain")).toContain("当前 0 个，来源 81 个；状态=not_current");
     expect(liveClosureWysiwygDiagnostics.attributes("data-radar-map-refresh-next-action-plain")).toBe("旧雷达来源点 81 个已抑制；先刷新雷达扫描读数，再刷新地图画面，确认同轮雷达点贴图。");
     expect(liveClosureWysiwygDiagnostics.attributes("data-radar-map-refresh-sequence")).toBe("/api/robot-control/radar/scan-proof/refresh,/api/robot-control/map/preview");
     expect(liveClosureWysiwygDiagnostics.attributes("data-radar-map-refresh-sequence-labels")).toBe("刷新雷达扫描读数,刷新地图画面");
@@ -5060,12 +5067,15 @@ describe("App", () => {
     const liveRadarMapReadback = wrapper.find('[data-testid="plain-live-radar-map-readback"]');
     expect(liveRadarMapReadback.exists()).toBe(true);
     expect(liveRadarMapReadback.text()).toContain("雷达贴图");
+    expect(liveRadarMapReadback.text()).toContain("当前 0 个，来源 81 个；状态=not_current");
     expect(liveRadarMapReadback.text()).toContain("旧雷达来源点 81 个已抑制");
     expect(liveRadarMapReadback.text()).toContain("先刷新雷达扫描读数，再刷新地图画面");
+    expect(liveRadarMapReadback.attributes("data-radar-map-overlay-status")).toBe("not_current");
     expect(liveRadarMapReadback.attributes("data-radar-map-current-point-count")).toBe("0");
     expect(liveRadarMapReadback.attributes("data-radar-map-source-point-count")).toBe("81");
     expect(liveRadarMapReadback.attributes("data-radar-map-stale-source-points-suppressed")).toBe("true");
     expect(liveRadarMapReadback.attributes("data-radar-map-primary-blocked-reason")).toBe("scan_preview_points_missing");
+    expect(liveRadarMapReadback.attributes("data-radar-map-current-vs-source-plain")).toContain("当前 0 个，来源 81 个；状态=not_current");
     expect(liveRadarMapReadback.attributes("data-radar-map-refresh-sequence")).toBe("/api/robot-control/radar/scan-proof/refresh,/api/robot-control/map/preview");
     expect(liveRadarMapReadback.attributes("data-radar-map-refresh-sequence-labels")).toBe("刷新雷达扫描读数,刷新地图画面");
     expect(liveRadarMapReadback.attributes("data-fixed-radar-refresh-endpoint")).toBe("/api/robot-control/radar/scan-proof/refresh");

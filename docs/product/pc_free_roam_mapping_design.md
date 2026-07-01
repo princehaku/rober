@@ -273,6 +273,8 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   直连 map preview 返回 `radar_overlay_status=not_loaded` 或 `not_current`，当前显示点数固定为 0，并提示先启动/刷新雷达后再刷新地图画面。
   这样不会因为地图上有小车位置，就把雷达层误报成 partial。该变化只修正只读地图预览判定，不启动雷达、不执行 Nav2、
   不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+- 2026-07-01 09:49 CST 起，普通首屏当前卡点的雷达贴图读回直接显示 overlay 状态和当前/来源点数对照：
+  `live_wysiwyg_radar_map_overlay_status`、`live_wysiwyg_radar_map_current_vs_source_plain`。当状态为 `not_current` 时，用户无需推理来源点是否已贴图，页面会直接说明“当前 0 个、来源 N 个、旧来源点已抑制，未贴到当前地图”。该读回仍只消费 summary 和 map preview 材料，不启动雷达、不执行 Nav2、不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 - 2026-06-29 19:47 起，PC 普通首屏和高级诊断里的“读取最近 Nav2 结果”会在 latest 读回后自动刷新一次地图预览：
   最近行程结果、地图底图、图上路线、小车位置和雷达贴图因此在同一轮用户动作后同步更新，避免 latest 已变化但地图仍停在旧画面。
   该变化只串联两个只读 GET 代理，不执行 Nav2 goal、不启动 Nav2 lifecycle、不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。

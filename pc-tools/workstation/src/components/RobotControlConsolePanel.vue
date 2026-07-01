@@ -16723,10 +16723,12 @@ onBeforeUnmount(() => {
         :data-live-wysiwyg-camera-recovery-sends-motion="String(plainLiveClosureSummary.live_wysiwyg_camera_recovery_sends_motion)"
         :data-live-wysiwyg-radar-scan-missing-observations="plainLiveClosureSummary.live_wysiwyg_radar_scan_missing_observations?.join(',') || 'none'"
         :data-live-wysiwyg-map-radar-blocked-reasons="plainLiveClosureSummary.live_wysiwyg_map_radar_blocked_reasons?.join(',') || 'none'"
+        :data-live-wysiwyg-radar-map-overlay-status="plainLiveClosureSummary.live_wysiwyg_radar_map_overlay_status"
         :data-live-wysiwyg-radar-map-current-point-count="plainLiveClosureSummary.live_wysiwyg_radar_map_current_point_count"
         :data-live-wysiwyg-radar-map-source-point-count="plainLiveClosureSummary.live_wysiwyg_radar_map_source_point_count"
         :data-live-wysiwyg-radar-map-stale-source-points-suppressed="String(plainLiveClosureSummary.live_wysiwyg_radar_map_stale_source_points_suppressed)"
         :data-live-wysiwyg-radar-map-primary-blocked-reason="plainLiveClosureSummary.live_wysiwyg_radar_map_primary_blocked_reason"
+        :data-live-wysiwyg-radar-map-current-vs-source-plain="plainLiveClosureSummary.live_wysiwyg_radar_map_current_vs_source_plain"
         :data-live-wysiwyg-radar-map-refresh-next-action-plain="plainLiveClosureSummary.live_wysiwyg_radar_map_refresh_next_action_plain"
         :data-live-wysiwyg-radar-map-refresh-sequence="plainLiveClosureSummary.live_wysiwyg_radar_map_refresh_sequence?.join(',') || 'none'"
         :data-live-wysiwyg-radar-map-refresh-sequence-labels="plainLiveClosureSummary.live_wysiwyg_radar_map_refresh_sequence_labels?.join(',') || 'none'"
@@ -16897,9 +16899,11 @@ onBeforeUnmount(() => {
           :data-camera-recovery-sends-motion="String(plainLiveClosureSummary.live_wysiwyg_camera_recovery_sends_motion)"
           :data-radar-scan-missing-observations="plainLiveClosureSummary.live_wysiwyg_radar_scan_missing_observations?.join(',') || 'none'"
           :data-map-radar-blocked-reasons="plainLiveClosureSummary.live_wysiwyg_map_radar_blocked_reasons?.join(',') || 'none'"
+          :data-radar-map-overlay-status="plainLiveClosureSummary.live_wysiwyg_radar_map_overlay_status"
           :data-radar-map-current-point-count="plainLiveClosureSummary.live_wysiwyg_radar_map_current_point_count"
           :data-radar-map-source-point-count="plainLiveClosureSummary.live_wysiwyg_radar_map_source_point_count"
           :data-radar-map-stale-source-points-suppressed="String(plainLiveClosureSummary.live_wysiwyg_radar_map_stale_source_points_suppressed)"
+          :data-radar-map-current-vs-source-plain="plainLiveClosureSummary.live_wysiwyg_radar_map_current_vs_source_plain"
           :data-radar-map-refresh-next-action-plain="plainLiveClosureSummary.live_wysiwyg_radar_map_refresh_next_action_plain"
           :data-radar-map-refresh-sequence="plainLiveClosureSummary.live_wysiwyg_radar_map_refresh_sequence?.join(',') || 'none'"
           :data-radar-map-refresh-sequence-labels="plainLiveClosureSummary.live_wysiwyg_radar_map_refresh_sequence_labels?.join(',') || 'none'"
@@ -16907,6 +16911,7 @@ onBeforeUnmount(() => {
         >
           {{ plainActionCardUserText(plainLiveClosureSummary.live_wysiwyg_diagnostic_plain) }}
           {{ plainActionCardUserText(plainLiveClosureSummary.live_wysiwyg_camera_recovery_next_action_plain) }}
+          {{ plainActionCardUserText(plainLiveClosureSummary.live_wysiwyg_radar_map_current_vs_source_plain) }}
           {{ plainActionCardUserText(plainLiveClosureSummary.live_wysiwyg_radar_map_refresh_next_action_plain) }}
         </p>
         <p
@@ -16975,10 +16980,12 @@ onBeforeUnmount(() => {
           v-if="plainLiveRadarMapRefreshVisible"
           class="panel-note"
           data-testid="plain-live-radar-map-readback"
+          :data-radar-map-overlay-status="plainLiveClosureSummary.live_wysiwyg_radar_map_overlay_status"
           :data-radar-map-current-point-count="plainLiveClosureSummary.live_wysiwyg_radar_map_current_point_count"
           :data-radar-map-source-point-count="plainLiveClosureSummary.live_wysiwyg_radar_map_source_point_count"
           :data-radar-map-stale-source-points-suppressed="String(plainLiveClosureSummary.live_wysiwyg_radar_map_stale_source_points_suppressed)"
           :data-radar-map-primary-blocked-reason="plainLiveClosureSummary.live_wysiwyg_radar_map_primary_blocked_reason"
+          :data-radar-map-current-vs-source-plain="plainLiveClosureSummary.live_wysiwyg_radar_map_current_vs_source_plain"
           :data-radar-map-refresh-next-action-plain="plainLiveClosureSummary.live_wysiwyg_radar_map_refresh_next_action_plain"
           :data-radar-map-refresh-sequence="plainLiveClosureSummary.live_wysiwyg_radar_map_refresh_sequence?.join(',') || 'none'"
           :data-radar-map-refresh-sequence-labels="plainLiveClosureSummary.live_wysiwyg_radar_map_refresh_sequence_labels?.join(',') || 'none'"
@@ -16999,7 +17006,7 @@ onBeforeUnmount(() => {
           data-stops-motion="false"
           data-sends-motion-when-clicked="false"
         >
-          雷达贴图：{{ plainActionCardUserText(plainLiveClosureSummary.live_wysiwyg_radar_map_refresh_next_action_plain) }}
+          雷达贴图：{{ plainActionCardUserText(plainLiveClosureSummary.live_wysiwyg_radar_map_current_vs_source_plain) }}
           <button
             type="button"
             class="secondary compact-stop"

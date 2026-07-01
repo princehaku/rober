@@ -2862,10 +2862,12 @@ export interface RobotControlLiveClosureSummary {
   live_wysiwyg_camera_recovery_sends_motion: false;
   live_wysiwyg_radar_scan_missing_observations: string[];
   live_wysiwyg_map_radar_blocked_reasons: string[];
+  live_wysiwyg_radar_map_overlay_status: string;
   live_wysiwyg_radar_map_current_point_count: string;
   live_wysiwyg_radar_map_source_point_count: string;
   live_wysiwyg_radar_map_stale_source_points_suppressed: boolean;
   live_wysiwyg_radar_map_primary_blocked_reason: string;
+  live_wysiwyg_radar_map_current_vs_source_plain: string;
   live_wysiwyg_radar_map_refresh_next_action_plain: string;
   live_wysiwyg_radar_map_refresh_sequence: [
     "/api/robot-control/radar/scan-proof/refresh",

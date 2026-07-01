@@ -8814,6 +8814,7 @@ function buildLiveClosureSummary(
   ].filter(Boolean).join("；");
   const radarScanMissingObservations = splitDiagnosticList(readback.radar.radar_scan_observation_missing_reasons);
   const mapRadarBlockedReasons = splitDiagnosticList(readback.map.radar_overlay_blocked_reasons);
+  const radarMapOverlayStatus = readback.map.radar_overlay_status || readback.radar.radar_overlay_status || "not_loaded";
   const radarMapCurrentPointCount = readback.map.radar_overlay_point_count || readback.radar.radar_overlay_point_count || "not_loaded";
   const radarMapSourcePointCount = readback.map.radar_overlay_source_point_count || readback.radar.radar_overlay_source_point_count || "not_loaded";
   const parsedRadarMapCurrentPointCount = Number(radarMapCurrentPointCount);
@@ -8828,6 +8829,11 @@ function buildLiveClosureSummary(
     : radarMapStaleSourcePointsSuppressed
       ? `旧雷达来源点 ${radarMapSourcePointCount} 个已抑制；先刷新雷达扫描读数，再刷新地图画面，确认同轮雷达点贴图。`
       : "先刷新雷达扫描读数，再刷新地图画面，确认地图雷达点来自同轮新读数。";
+  const radarMapCurrentVsSourcePlain = radarMapPointsVisible
+    ? `地图雷达点：当前 ${radarMapCurrentPointCount} 个，来源 ${radarMapSourcePointCount} 个；状态=${radarMapOverlayStatus}，已贴到当前地图。`
+    : radarMapStaleSourcePointsSuppressed
+      ? `地图雷达点：当前 ${radarMapCurrentPointCount} 个，来源 ${radarMapSourcePointCount} 个；状态=${radarMapOverlayStatus}，旧来源点已抑制，未贴到当前地图。下一步：${radarMapRefreshNextActionPlain}`
+      : `地图雷达点：当前 ${radarMapCurrentPointCount} 个，来源 ${radarMapSourcePointCount} 个；状态=${radarMapOverlayStatus}。下一步：${radarMapRefreshNextActionPlain}`;
   const cameraRecoveryStatus = cameraCurrentVisible
     ? "visible"
     : cameraSourceDiagnosisNotExclusive
@@ -9535,10 +9541,12 @@ function buildLiveClosureSummary(
     live_wysiwyg_camera_recovery_sends_motion: false,
     live_wysiwyg_radar_scan_missing_observations: radarScanMissingObservations,
     live_wysiwyg_map_radar_blocked_reasons: mapRadarBlockedReasons,
+    live_wysiwyg_radar_map_overlay_status: radarMapOverlayStatus,
     live_wysiwyg_radar_map_current_point_count: radarMapCurrentPointCount,
     live_wysiwyg_radar_map_source_point_count: radarMapSourcePointCount,
     live_wysiwyg_radar_map_stale_source_points_suppressed: radarMapStaleSourcePointsSuppressed,
     live_wysiwyg_radar_map_primary_blocked_reason: mapRadarBlockedReasons[0] ?? "none",
+    live_wysiwyg_radar_map_current_vs_source_plain: radarMapCurrentVsSourcePlain,
     live_wysiwyg_radar_map_refresh_next_action_plain: radarMapRefreshNextActionPlain,
     live_wysiwyg_radar_map_refresh_sequence: [
       "/api/robot-control/radar/scan-proof/refresh",
