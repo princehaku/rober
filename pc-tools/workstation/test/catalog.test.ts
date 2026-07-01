@@ -6854,12 +6854,14 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.map_display_primary_tool).toBe("pc_big_map");
       expect(summary.map_display_primary_url).toBe("/map");
       expect(summary.map_display_primary_action_label).toBe("进入地图大屏");
-      expect(summary.map_display_default_zoom_percent).toBe("1000%");
-      expect(summary.map_display_max_zoom_percent).toBe("3200%");
+      expect(summary.map_display_direct_map_viewport_priority).toBe("fullscreen_map_canvas");
+      expect(summary.map_display_direct_map_canvas_height_mode).toBe("viewport_dominant_full_height");
+      expect(summary.map_display_default_zoom_percent).toBe("1600%");
+      expect(summary.map_display_max_zoom_percent).toBe("4800%");
       expect(summary.map_display_wysiwyg_overlays).toEqual(["image", "route", "robot", "radar"]);
       expect(summary.map_display_ros2_companion_tools).toEqual(["rviz2", "foxglove"]);
       expect(summary.map_display_rviz_launch_command).toBe("ros2 launch ros2_trashbot_bringup rviz.launch.py");
-      expect(summary.map_display_foxglove_bridge_launch_command).toBe("ros2 launch foxglove_bridge foxglove_bridge_launch.xml");
+      expect(summary.map_display_foxglove_bridge_launch_command).toBe("ros2 launch ros2_trashbot_bringup foxglove_bridge.launch.py");
       expect(summary.map_display_foxglove_websocket_url).toBe("ws://192.168.1.11:8765");
       expect(summary.map_display_foxglove_web_app_url).toBe("https://studio.foxglove.dev");
       expect(summary.map_display_ros2_observe_topics).toEqual([
@@ -6985,7 +6987,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.route_delivery_success).toBe(false);
       expect(live.delivery_success_required).toBe(true);
       expect(summary.delivery_success_required).toBe(true);
-      expect(live.delivery_next_action_plain).toContain("delivery success");
+      expect(live.delivery_next_action_plain).toContain("送达确认");
       expect(live.fixed_delivery_latest_endpoint).toBe("/api/robot-control/delivery/latest");
       expect(live.fixed_delivery_complete_endpoint).toBe("/api/robot-control/delivery/complete");
       expect(live.delivery_latest_readback_only).toBe(true);

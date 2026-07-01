@@ -9650,9 +9650,9 @@ function buildLiveClosureSummary(
   const mapDisplayFoxgloveRolePlain = "Foxglove 用于远程浏览器大屏观察；先在 ROS2 环境安装并启动 foxglove_bridge，再连接 ws://192.168.1.11:8765。";
   const mapDisplayFoxgloveWebAppUrl = "https://studio.foxglove.dev";
   const mapDisplayEngineeringToolsActionLabel = "工程观察：RViz2 / Foxglove";
-  const mapDisplayTooSmallNextActionPlain = "地图太小先点“进入地图大屏”打开 /map，只保留地图画布、缩放和只读刷新；不需要先开 RViz2。";
+  const mapDisplayTooSmallNextActionPlain = "地图太小先点“进入地图大屏”打开 /map，页面会把地图画布作为满屏主视图，只保留缩放和只读刷新；不需要先开 RViz2。";
   const mapDisplayRos2CompanionAnswerPlain = "ROS2 配套：本地工程调试用 RViz2；远程浏览器观察用 Foxglove bridge + Foxglove Web；普通用户仍默认使用 PC 大地图。";
-  const mapDisplayCompanionPlain = `普通用户地图：进入 /map 使用 PC 大地图，默认 1000% 现场大图，点“适配”回到 100% 全图，点“细节放大”可查看局部，最高 3200%，地图、路线、小车位置和雷达点共用同一张 WYSIWYG 画布；${mapDisplayTooSmallNextActionPlain}${mapDisplayRos2CompanionAnswerPlain}ROS2 配套只作工程观察，本地用 RViz2，远程浏览器观察先部署 Foxglove bridge 后打开 Foxglove Web 连接 ws://192.168.1.11:8765；观察项固定为地图、雷达、TF、路径、定位和 costmap，不提供 GoalTool，不发送底盘移动命令。`;
+  const mapDisplayCompanionPlain = `普通用户地图：进入 /map 使用 PC 大地图，默认 1600% 现场大图，地图画布按 viewport-dominant full-height 处理，点“适配”回到 100% 全图，点“细节放大”可查看局部，最高 4800%，地图、路线、小车位置和雷达点共用同一张 WYSIWYG 画布；${mapDisplayTooSmallNextActionPlain}${mapDisplayRos2CompanionAnswerPlain}ROS2 配套只作工程观察，本地用 RViz2，远程浏览器观察先部署 Foxglove bridge 后打开 Foxglove Web 连接 ws://192.168.1.11:8765；观察项固定为地图、雷达、TF、路径、定位和 costmap，不提供 GoalTool，不发送底盘移动命令。`;
   const keyboardAcceptancePlain = "键盘连续手控验收只看同一次按住窗口的 manual pulse 回包：需要读到 wheel L/R 非零；全局只读采样或旧材料不能替代本次按住读数。";
   const nav2ObjectiveDone = routeReadyOnMap && nav2GoalSucceeded && wheelLrNonzeroProven && !needsSameWindowWheelRerun;
   const keyboardObjectiveDone = keyboardMotionVerified && keyboardStopSettledAfterPulse;
@@ -9855,14 +9855,16 @@ function buildLiveClosureSummary(
     map_display_primary_action_opens_current_page: true,
     map_display_direct_map_default_observer: true,
     map_display_direct_map_only: true,
+    map_display_direct_map_viewport_priority: "fullscreen_map_canvas",
+    map_display_direct_map_canvas_height_mode: "viewport_dominant_full_height",
     map_display_direct_map_keeps_page_fullscreen_without_browser_api: true,
     map_display_direct_map_browser_fullscreen_required: false,
     map_display_direct_map_refreshes_radar_scan_proof_on_enter: true,
     map_display_direct_map_refreshes_map_preview_on_enter: true,
     map_display_direct_map_refreshes_radar_status_on_enter: true,
     map_display_direct_map_starts_radar_lifecycle_on_enter: false,
-    map_display_default_zoom_percent: "1000%",
-    map_display_max_zoom_percent: "3200%",
+    map_display_default_zoom_percent: "1600%",
+    map_display_max_zoom_percent: "4800%",
     map_display_too_small_next_action_plain: mapDisplayTooSmallNextActionPlain,
     map_display_ros2_companion_answer_plain: mapDisplayRos2CompanionAnswerPlain,
     map_display_operator_default_surface: "pc_big_map_direct_view",
@@ -10674,6 +10676,8 @@ export async function buildRobotControlSummary(
     map_display_primary_action_opens_current_page: liveClosureSummary.map_display_primary_action_opens_current_page,
     map_display_direct_map_default_observer: liveClosureSummary.map_display_direct_map_default_observer,
     map_display_direct_map_only: liveClosureSummary.map_display_direct_map_only,
+    map_display_direct_map_viewport_priority: liveClosureSummary.map_display_direct_map_viewport_priority,
+    map_display_direct_map_canvas_height_mode: liveClosureSummary.map_display_direct_map_canvas_height_mode,
     map_display_direct_map_keeps_page_fullscreen_without_browser_api: liveClosureSummary.map_display_direct_map_keeps_page_fullscreen_without_browser_api,
     map_display_direct_map_browser_fullscreen_required: liveClosureSummary.map_display_direct_map_browser_fullscreen_required,
     map_display_direct_map_refreshes_radar_scan_proof_on_enter: liveClosureSummary.map_display_direct_map_refreshes_radar_scan_proof_on_enter,

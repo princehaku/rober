@@ -1,7 +1,7 @@
 :root {
-  --plain-map-large-min-height: 1320px;
-  --plain-map-large-target-height: calc(100vh + 360px);
-  --plain-map-large-max-height: 3200px;
+  --plain-map-large-min-height: 1520px;
+  --plain-map-large-target-height: calc(100vh + 520px);
+  --plain-map-large-max-height: 4200px;
   --plain-map-fullscreen-height: 100vh;
   color: #17202a;
   background: #f4f6f8;
@@ -1580,6 +1580,20 @@ h3 {
   background: #d8f0e4;
 }
 
+.plain-map-ros2-tools-toggle {
+  /* ROS2 配套是工程观察入口，给出明确按钮但不抢普通用户“进入地图大屏”的主动作。 */
+  min-height: 34px;
+  border-color: #8eb6d8;
+  background: #eef7ff;
+  color: #17466f;
+  font-weight: 720;
+  white-space: nowrap;
+}
+
+.plain-map-ros2-tools-toggle:hover:not(:disabled) {
+  background: #dcedff;
+}
+
 .plain-map-foxglove-link {
   /* Foxglove 入口只是外部观察面，不参与普通发车流程，所以保持轻量链接按钮样式。 */
   display: inline-flex;
@@ -2013,7 +2027,7 @@ h3 {
 
 .plain-map-viewport[data-size="fullscreen"] .plain-map-layer {
   height: var(--plain-map-fullscreen-height);
-  min-height: var(--plain-map-large-min-height);
+  min-height: calc(var(--plain-map-large-min-height) - 240px);
 }
 
 .plain-map-viewport[data-state="地图可见"] .plain-map-layer {
@@ -2037,7 +2051,7 @@ h3 {
 }
 
 .plain-map-overlay-frame {
-  /* 缩放作用在同一个 overlay frame 上；默认 1000% 现场大图，适配 100% 仍能看全图。 */
+  /* 缩放作用在同一个 overlay frame 上；默认 1600% 现场大图，适配 100% 仍能看全图。 */
   position: relative;
   flex: 0 0 auto;
   width: calc(100% * var(--plain-map-zoom, 1));
@@ -3744,7 +3758,7 @@ th {
   .plain-map-viewport[data-size="normal"] .plain-map-layer,
   .plain-map-layer {
     /* 窄 PC 窗口也要保持地图主视图，不能因为媒体查询退回小卡片。 */
-    height: clamp(720px, calc(100vh + 80px), 1280px);
-    min-height: 720px;
+    height: clamp(820px, calc(100vh + 160px), 1480px);
+    min-height: 820px;
   }
 }
