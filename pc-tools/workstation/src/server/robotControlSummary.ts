@@ -9509,7 +9509,8 @@ function buildLiveClosureSummary(
   ];
   const mapDisplayRvizRolePlain = "RViz2 只给本地工程调试看 /map、/scan、TF、路径、定位和 costmap；普通用户不需要打开。";
   const mapDisplayFoxgloveRolePlain = "Foxglove 用于远程浏览器大屏观察；先在 ROS2 环境安装并启动 foxglove_bridge，再连接 ws://192.168.1.11:8765。";
-  const mapDisplayCompanionPlain = "普通用户地图：进入 /map 使用 PC 大地图，默认 400% 现场大图，点“适配”回到 100% 全图，点“细节放大”可查看局部，最高 2400%，地图、路线、小车位置和雷达点共用同一张 WYSIWYG 画布；ROS2 配套只作工程观察，本地用 RViz2，远程浏览器观察先部署 Foxglove bridge 后连接 ws://192.168.1.11:8765；观察项固定为地图、雷达、TF、路径、定位和 costmap，不提供 GoalTool，不发送底盘移动命令。";
+  const mapDisplayFoxgloveWebAppUrl = "https://studio.foxglove.dev";
+  const mapDisplayCompanionPlain = "普通用户地图：进入 /map 使用 PC 大地图，默认 400% 现场大图，点“适配”回到 100% 全图，点“细节放大”可查看局部，最高 2400%，地图、路线、小车位置和雷达点共用同一张 WYSIWYG 画布；ROS2 配套只作工程观察，本地用 RViz2，远程浏览器观察先部署 Foxglove bridge 后打开 Foxglove Web 连接 ws://192.168.1.11:8765；观察项固定为地图、雷达、TF、路径、定位和 costmap，不提供 GoalTool，不发送底盘移动命令。";
   const keyboardAcceptancePlain = "键盘连续手控验收只看同一次按住窗口的 manual pulse 回包：需要读到 wheel L/R 非零；全局只读采样或旧材料不能替代本次按住读数。";
   const nav2ObjectiveDone = routeReadyOnMap && nav2GoalSucceeded && wheelLrNonzeroProven && !needsSameWindowWheelRerun;
   const keyboardObjectiveDone = keyboardMotionVerified && keyboardStopSettledAfterPulse;
@@ -9729,6 +9730,7 @@ function buildLiveClosureSummary(
     map_display_foxglove_bridge_install_command: "sudo apt install ros-humble-foxglove-bridge",
     map_display_foxglove_bridge_launch_command: "ros2 launch foxglove_bridge foxglove_bridge_launch.xml",
     map_display_foxglove_websocket_url: "ws://192.168.1.11:8765",
+    map_display_foxglove_web_app_url: mapDisplayFoxgloveWebAppUrl,
     map_display_ros2_observe_topics: mapDisplayRos2ObserveTopics,
     map_display_ros2_observe_motion_topics: false,
     map_display_ros2_observe_control_tools: false,
@@ -10184,6 +10186,7 @@ export async function buildRobotControlSummary(
     map_display_foxglove_bridge_install_command: liveClosureSummary.map_display_foxglove_bridge_install_command,
     map_display_foxglove_bridge_launch_command: liveClosureSummary.map_display_foxglove_bridge_launch_command,
     map_display_foxglove_websocket_url: liveClosureSummary.map_display_foxglove_websocket_url,
+    map_display_foxglove_web_app_url: liveClosureSummary.map_display_foxglove_web_app_url,
     map_display_ros2_observe_topics: liveClosureSummary.map_display_ros2_observe_topics,
     map_display_ros2_observe_motion_topics: liveClosureSummary.map_display_ros2_observe_motion_topics,
     map_display_ros2_observe_control_tools: liveClosureSummary.map_display_ros2_observe_control_tools,

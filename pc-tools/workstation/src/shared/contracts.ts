@@ -2866,6 +2866,7 @@ export interface RobotControlLiveClosureSummary {
   map_display_foxglove_bridge_install_command: "sudo apt install ros-humble-foxglove-bridge";
   map_display_foxglove_bridge_launch_command: "ros2 launch foxglove_bridge foxglove_bridge_launch.xml";
   map_display_foxglove_websocket_url: "ws://192.168.1.11:8765";
+  map_display_foxglove_web_app_url: "https://studio.foxglove.dev";
   map_display_ros2_observe_topics: string[];
   map_display_ros2_observe_motion_topics: false;
   map_display_ros2_observe_control_tools: false;
@@ -3247,6 +3248,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   map_display_foxglove_bridge_install_command?: RobotControlLiveClosureSummary["map_display_foxglove_bridge_install_command"];
   map_display_foxglove_bridge_launch_command?: RobotControlLiveClosureSummary["map_display_foxglove_bridge_launch_command"];
   map_display_foxglove_websocket_url?: RobotControlLiveClosureSummary["map_display_foxglove_websocket_url"];
+  map_display_foxglove_web_app_url?: RobotControlLiveClosureSummary["map_display_foxglove_web_app_url"];
   map_display_ros2_observe_topics?: RobotControlLiveClosureSummary["map_display_ros2_observe_topics"];
   map_display_ros2_observe_motion_topics?: RobotControlLiveClosureSummary["map_display_ros2_observe_motion_topics"];
   map_display_ros2_observe_control_tools?: RobotControlLiveClosureSummary["map_display_ros2_observe_control_tools"];

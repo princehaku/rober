@@ -332,6 +332,8 @@ describe("robotControlSummary", () => {
     expect(summary.map_display_foxglove_bridge_launch_command).toBe("ros2 launch foxglove_bridge foxglove_bridge_launch.xml");
     expect(summary.live_closure_summary?.map_display_foxglove_websocket_url).toBe("ws://192.168.1.11:8765");
     expect(summary.map_display_foxglove_websocket_url).toBe("ws://192.168.1.11:8765");
+    expect(summary.live_closure_summary?.map_display_foxglove_web_app_url).toBe("https://studio.foxglove.dev");
+    expect(summary.map_display_foxglove_web_app_url).toBe("https://studio.foxglove.dev");
     expect(summary.live_closure_summary?.map_display_ros2_observe_topics).toEqual([
       "/map",
       "/scan",
@@ -356,6 +358,7 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("点“细节放大”可查看局部");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("最高 2400%");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("ROS2 配套只作工程观察");
+    expect(summary.live_closure_summary?.map_display_companion_plain).toContain("打开 Foxglove Web");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("ws://192.168.1.11:8765");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("不提供 GoalTool");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("不发送底盘移动命令");

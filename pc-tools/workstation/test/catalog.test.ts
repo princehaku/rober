@@ -6861,6 +6861,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.map_display_rviz_launch_command).toBe("ros2 launch ros2_trashbot_bringup rviz.launch.py");
       expect(summary.map_display_foxglove_bridge_launch_command).toBe("ros2 launch foxglove_bridge foxglove_bridge_launch.xml");
       expect(summary.map_display_foxglove_websocket_url).toBe("ws://192.168.1.11:8765");
+      expect(summary.map_display_foxglove_web_app_url).toBe("https://studio.foxglove.dev");
       expect(summary.map_display_ros2_observe_topics).toEqual([
         "/map",
         "/scan",
@@ -7166,6 +7167,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(live.map_display_rviz_role_plain).toContain("本地工程调试");
       expect(live.map_display_foxglove_role_plain).toContain("远程浏览器大屏观察");
       expect(live.map_display_foxglove_bridge_install_command).toBe("sudo apt install ros-humble-foxglove-bridge");
+      expect(live.map_display_foxglove_web_app_url).toBe("https://studio.foxglove.dev");
       expect(live.map_display_engineering_tools_sends_motion).toBe(false);
       expect(live.objective_audit_missing_objective_ids).toContain("motion");
       expect(live.sends_motion_when_clicked).toBe(false);

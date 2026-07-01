@@ -319,6 +319,7 @@ const PLAIN_MAP_FOXGLOVE_ROLE_PLAIN = "Foxglove 用于远程浏览器大屏观�
 const PLAIN_MAP_FOXGLOVE_BRIDGE_INSTALL_COMMAND = "sudo apt install ros-humble-foxglove-bridge";
 const PLAIN_MAP_FOXGLOVE_BRIDGE_LAUNCH_COMMAND = "ros2 launch foxglove_bridge foxglove_bridge_launch.xml";
 const PLAIN_MAP_FOXGLOVE_WS_URL = "ws://192.168.1.11:8765";
+const PLAIN_MAP_FOXGLOVE_WEB_APP_URL = "https://studio.foxglove.dev";
 const PLAIN_MAP_ROS2_OBSERVE_TOPICS = [
   "/map",
   "/scan",
@@ -19433,6 +19434,7 @@ onBeforeUnmount(() => {
           data-foxglove-bridge-package="foxglove_bridge"
           :data-foxglove-bridge-launch-command="PLAIN_MAP_FOXGLOVE_BRIDGE_LAUNCH_COMMAND"
           :data-foxglove-websocket-url="PLAIN_MAP_FOXGLOVE_WS_URL"
+          :data-foxglove-web-app-url="PLAIN_MAP_FOXGLOVE_WEB_APP_URL"
           :data-radar-map-points-visible="String(plainMapVisualSummary.radarMapPointsVisible)"
           :data-radar-map-point-count="String(plainMapVisualSummary.radarMapPointCount)"
           :data-radar-map-source-point-count="String(plainMapVisualSummary.radarMapSourcePointCount)"
@@ -19907,6 +19909,7 @@ onBeforeUnmount(() => {
             :data-foxglove-bridge-install-command="PLAIN_MAP_FOXGLOVE_BRIDGE_INSTALL_COMMAND"
             :data-foxglove-bridge-launch-command="PLAIN_MAP_FOXGLOVE_BRIDGE_LAUNCH_COMMAND"
             :data-foxglove-websocket-url="PLAIN_MAP_FOXGLOVE_WS_URL"
+            :data-foxglove-web-app-url="PLAIN_MAP_FOXGLOVE_WEB_APP_URL"
             :data-ros2-observe-topics="PLAIN_MAP_ROS2_OBSERVE_TOPICS_TEXT"
             data-ros2-observe-motion-topics="false"
             data-ros2-observe-control-tools="false"
@@ -19948,6 +19951,7 @@ onBeforeUnmount(() => {
             :data-foxglove-bridge-install-command="PLAIN_MAP_FOXGLOVE_BRIDGE_INSTALL_COMMAND"
             :data-foxglove-bridge-launch-command="PLAIN_MAP_FOXGLOVE_BRIDGE_LAUNCH_COMMAND"
             :data-foxglove-websocket-url="PLAIN_MAP_FOXGLOVE_WS_URL"
+            :data-foxglove-web-app-url="PLAIN_MAP_FOXGLOVE_WEB_APP_URL"
             data-engineering-tools-sends-motion="false"
             data-sends-motion-when-clicked="false"
             data-starts-ros2="false"
@@ -19985,8 +19989,30 @@ onBeforeUnmount(() => {
                 <div>
                   <dt>远程 Foxglove</dt>
                   <dd>{{ PLAIN_MAP_FOXGLOVE_ROLE_PLAIN }}</dd>
+                  <dd>
+                    <a
+                      class="secondary plain-link-button plain-map-foxglove-link"
+                      data-testid="plain-map-foxglove-link"
+                      :href="PLAIN_MAP_FOXGLOVE_WEB_APP_URL"
+                      target="_blank"
+                      rel="noreferrer"
+                      data-map-view-action="open_foxglove_web_observer"
+                      data-foxglove-web-app-url="https://studio.foxglove.dev"
+                      :data-foxglove-websocket-url="PLAIN_MAP_FOXGLOVE_WS_URL"
+                      data-sends-motion-when-clicked="false"
+                      data-starts-ros2="false"
+                      data-starts-rviz2="false"
+                      data-starts-foxglove="false"
+                      data-starts-nav2="false"
+                      data-starts-map-runtime="false"
+                      data-ros2-observe-control-tools="false"
+                    >
+                      打开 Foxglove Web
+                    </a>
+                  </dd>
                   <dd><code>{{ PLAIN_MAP_FOXGLOVE_BRIDGE_INSTALL_COMMAND }}</code></dd>
                   <dd><code>{{ PLAIN_MAP_FOXGLOVE_BRIDGE_LAUNCH_COMMAND }}</code></dd>
+                  <dd><code>{{ PLAIN_MAP_FOXGLOVE_WS_URL }}</code></dd>
                 </div>
                 <div class="plain-map-engineering-tools-wide">
                   <dt>观察 topic</dt>

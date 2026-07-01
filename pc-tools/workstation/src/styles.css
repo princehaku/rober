@@ -1430,6 +1430,19 @@ h3 {
   background: #d8f0e4;
 }
 
+.plain-map-foxglove-link {
+  /* Foxglove 入口只是外部观察面，不参与普通发车流程，所以保持轻量链接按钮样式。 */
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  margin: 2px 0;
+  padding: 0 10px;
+  border-color: #8eb6d8;
+  background: #eef7ff;
+  color: #17466f;
+  font-weight: 720;
+}
+
 .plain-map-radar-refresh-action {
   /* 大地图里雷达贴图 stale 时给普通用户一个就地刷新入口；动作只刷新 proof 和 map preview。 */
   min-height: 34px;

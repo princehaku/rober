@@ -4867,3 +4867,10 @@ WYSIWYG 地图画布和 2400% 缩放上限；ROS2 本机工程调试使用 `ros2
 可先执行完整行程/键盘/自由移动中的哪些项，传感器就绪后建图是否仍阻塞，主推荐动作是什么，以及“发车前只需勾现场安全确认；
 相机、雷达和 operator report 不作为额外发车前置”。该变化只改只读文案和 DOM 合同，不改变任何发车按钮、键盘按住逻辑、
 自由移动启动逻辑或建图 gate。
+
+2026-07-01 23:58 CST 起，PC 大地图的“工程观察”折叠区提供 Foxglove Web 入口：
+`https://studio.foxglove.dev`。现场仍优先使用普通用户 `/map` 大屏；需要 ROS2 配套观察时，先在小车 ROS2 环境启动
+`ros2 launch foxglove_bridge foxglove_bridge_launch.xml`，再在 Foxglove Web 里连接 `ws://192.168.1.11:8765`。
+summary 同步暴露 `map_display_foxglove_web_app_url`、`map_display_foxglove_websocket_url` 和 bridge 启动命令；
+该入口只观察 `/map`、`/scan`、TF、路径、定位和 costmap，不提供 GoalTool，不启动 ROS2、不执行 Nav2，
+不发送 `/cmd_vel` 或任何底盘运动命令。
