@@ -3938,6 +3938,17 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   live_wysiwyg_camera_shared_preview_client_count?: RobotControlLiveClosureSummary["live_wysiwyg_camera_shared_preview_client_count"];
   live_wysiwyg_camera_shared_preview_upstream_active?: RobotControlLiveClosureSummary["live_wysiwyg_camera_shared_preview_upstream_active"];
   live_wysiwyg_camera_shared_preview_exclusive_camera_claim?: RobotControlLiveClosureSummary["live_wysiwyg_camera_shared_preview_exclusive_camera_claim"];
+  camera_shared_preview_endpoint?: "/api/robot-control/camera/mjpeg";
+  camera_shared_preview_status_endpoint?: RobotControlLiveClosureSummary["fixed_camera_mjpeg_status_endpoint"];
+  camera_shared_preview_single_upstream?: true;
+  camera_shared_preview_auto_joins?: true;
+  camera_shared_preview_shared_capture?: RobotControlSummaryResponse["readback_summary"]["camera"]["shared_preview_shared_capture"];
+  camera_shared_preview_exclusive_camera_claim?: RobotControlSummaryResponse["readback_summary"]["camera"]["shared_preview_exclusive_camera_claim"];
+  camera_shared_preview_contract?: RobotControlSummaryResponse["readback_summary"]["camera"]["shared_preview_contract"];
+  camera_shared_preview_multi_viewer_status?: RobotControlSummaryResponse["readback_summary"]["camera"]["shared_preview_multi_viewer_status"];
+  camera_shared_preview_multi_viewer_plain?: RobotControlSummaryResponse["readback_summary"]["camera"]["shared_preview_multi_viewer_plain"];
+  camera_shared_preview_access_plain?: RobotControlSummaryResponse["readback_summary"]["camera"]["shared_preview_access_plain"];
+  camera_shared_preview_realtime_plain?: RobotControlSummaryResponse["readback_summary"]["camera"]["shared_preview_realtime_plain"];
   camera_wysiwyg_recovery_status?: RobotControlLiveClosureSummary["live_wysiwyg_camera_recovery_status"];
   camera_wysiwyg_recovery_next_action_plain?: RobotControlLiveClosureSummary["live_wysiwyg_camera_recovery_next_action_plain"];
   camera_wysiwyg_recovery_readback_endpoint?: RobotControlLiveClosureSummary["fixed_camera_probe_endpoint"];

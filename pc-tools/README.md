@@ -204,6 +204,18 @@ summary 顶层 `camera_source_diagnosis_next_action_plain` 也会在底层未给
 `starts_map_runtime=false`、`submits_delivery=false` 和 `stops_motion=false`。该接口只读取共享 MJPEG relay
 和上车 camera health，不会打开独占采集、不启动建图或任何运动链路。
 
+2026-07-02 CST 起，summary 顶层还暴露共享预览直觉 alias：
+`camera_shared_preview_endpoint=/api/robot-control/camera/mjpeg`、
+`camera_shared_preview_status_endpoint=/api/robot-control/camera/mjpeg/status`、
+`camera_shared_preview_single_upstream=true`、`camera_shared_preview_auto_joins=true`、
+`camera_shared_preview_shared_capture=true`、`camera_shared_preview_exclusive_camera_claim=false`、
+`camera_shared_preview_contract=single_shared_capture_for_multiple_clients`、
+`camera_shared_preview_multi_viewer_status=single_upstream_multi_viewer`、
+`camera_shared_preview_multi_viewer_plain`、`camera_shared_preview_access_plain` 和
+`camera_shared_preview_realtime_plain`。普通 DOM 同步暴露 `data-camera-shared-preview-*`，
+现场不用钻 `readback_summary.camera` 就能确认“谁打开页面都接同一条共享预览，不是页面独占”；
+这些字段只读，不打开独占相机、不创建第二条上游、不启动建图或任何运动命令。
+
 开发热更新入口用 `npm run dev`，默认监听 `0.0.0.0:7002`，并把 `/api` 代理到本机
 Node 工作站 `http://127.0.0.1:7001`。因此开发时先让 `npm run api` 守住 7001，
 再打开 7002 看热更新页；`dev:public` 只是复用 `npm run dev` 的兼容旧入口，正式现场访问仍优先使用 7001 的 Node/Express 工作站。

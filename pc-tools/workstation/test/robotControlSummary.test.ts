@@ -508,6 +508,17 @@ describe("robotControlSummary", () => {
     expect(summary.live_wysiwyg_camera_shared_preview_client_count).toBe(summary.live_closure_summary?.live_wysiwyg_camera_shared_preview_client_count);
     expect(summary.live_wysiwyg_camera_shared_preview_upstream_active).toBe(summary.live_closure_summary?.live_wysiwyg_camera_shared_preview_upstream_active);
     expect(summary.live_wysiwyg_camera_shared_preview_exclusive_camera_claim).toBe("false");
+    expect(summary.camera_shared_preview_endpoint).toBe("/api/robot-control/camera/mjpeg");
+    expect(summary.camera_shared_preview_status_endpoint).toBe("/api/robot-control/camera/mjpeg/status");
+    expect(summary.camera_shared_preview_single_upstream).toBe(true);
+    expect(summary.camera_shared_preview_auto_joins).toBe(true);
+    expect(summary.camera_shared_preview_shared_capture).toBe("true");
+    expect(summary.camera_shared_preview_exclusive_camera_claim).toBe("false");
+    expect(summary.camera_shared_preview_contract).toBe("single_shared_capture_for_multiple_clients");
+    expect(summary.camera_shared_preview_multi_viewer_status).toBe("single_upstream_multi_viewer");
+    expect(summary.camera_shared_preview_multi_viewer_plain).toContain("谁打开页面都接入");
+    expect(summary.camera_shared_preview_access_plain).toContain("不是页面独占");
+    expect(summary.camera_shared_preview_realtime_plain).toContain("当前没有实时画面");
     expect(summary.camera_wysiwyg_recovery_status).toBe("needs_probe");
     expect(summary.camera_wysiwyg_recovery_next_action_plain).toBe(summary.live_closure_summary?.live_wysiwyg_camera_recovery_next_action_plain);
     expect(summary.camera_wysiwyg_recovery_readback_endpoints).toEqual([
@@ -1588,6 +1599,17 @@ describe("robotControlSummary", () => {
     expect(summary.camera_wysiwyg_recovery_source_diagnosis_status).toBe("uvc_full_speed_usb_not_exclusive");
     expect(summary.camera_wysiwyg_recovery_source_not_exclusive).toBe("true");
     expect(summary.camera_wysiwyg_recovery_shared_preview_single_upstream).toBe(true);
+    expect(summary.camera_shared_preview_endpoint).toBe("/api/robot-control/camera/mjpeg");
+    expect(summary.camera_shared_preview_status_endpoint).toBe("/api/robot-control/camera/mjpeg/status");
+    expect(summary.camera_shared_preview_single_upstream).toBe(true);
+    expect(summary.camera_shared_preview_auto_joins).toBe(true);
+    expect(summary.camera_shared_preview_shared_capture).toBe("true");
+    expect(summary.camera_shared_preview_exclusive_camera_claim).toBe("false");
+    expect(summary.camera_shared_preview_contract).toBe("single_shared_capture_for_multiple_clients");
+    expect(summary.camera_shared_preview_multi_viewer_status).toBe("single_upstream_multi_viewer");
+    expect(summary.camera_shared_preview_multi_viewer_plain).toContain("谁打开页面都接入");
+    expect(summary.camera_shared_preview_access_plain).toContain("不是页面独占");
+    expect(summary.camera_shared_preview_realtime_plain).toContain("当前没有实时画面");
     expect(summary.field_acceptance_hardware_action_ids).toEqual(["camera_usb_recovery"]);
     expect(summary.field_acceptance_hardware_action_labels).toEqual(["换高速USB后复测"]);
     expect(summary.field_acceptance_hardware_action_after_readback_endpoints).toEqual(["/api/robot-control/camera/first-frame/probe"]);
