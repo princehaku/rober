@@ -1361,6 +1361,9 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.free_roam_mapping_start_missing_reasons).toEqual(["camera_first_frame"]);
     expect(summary.live_closure_summary?.mapping_lidar_blocks_start).toBe(false);
     expect(summary.live_closure_summary?.mapping_lidar_fresh_gate_status).toBe("not_loaded");
+    expect(summary.live_closure_summary?.mapping_lidar_fresh_next_action_plain).toContain("建图雷达新鲜读回尚未证明");
+    expect(summary.live_closure_summary?.mapping_lidar_fresh_next_action_plain).not.toContain("gate 已满足");
+    expect(summary.mapping_lidar_fresh_next_action_plain).toBe(summary.live_closure_summary?.mapping_lidar_fresh_next_action_plain);
     expect(summary.live_closure_summary?.mapping_start_unblock_plain).toContain("建图启动还差：画面首帧");
     expect(summary.live_closure_summary?.mapping_start_unblock_plain).not.toContain("雷达新鲜");
     expect(summary.live_closure_summary?.objective_audit_summary_plain).toContain("建图启动还差画面首帧");

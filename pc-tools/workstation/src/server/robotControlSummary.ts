@@ -9082,7 +9082,9 @@ function buildLiveClosureSummary(
     ? "雷达读回已显示 fresh 且地图贴图已加载，但建图安全边界仍缺 lidar_fresh；先只读刷新雷达扫描、读取雷达状态，再刷新 summary 复核 gate。"
     : mappingLidarBlocksStart
       ? "建图启动仍缺雷达新鲜读数；先只读刷新雷达扫描并读取雷达状态，再刷新 summary。"
-      : "建图雷达新鲜 gate 已满足；继续处理相机首帧或其他建图条件。";
+      : mappingLidarFreshReadbackReady
+        ? "建图雷达新鲜 gate 已满足；继续处理相机首帧或其他建图条件。"
+        : "建图雷达新鲜读回尚未证明；先只读刷新雷达扫描、读取雷达状态，再刷新 summary，避免把旧读数当作 ready。";
   const mappingStartMissingPlain = [
     ...(mappingCameraBlocksStart ? ["画面首帧"] : []),
     ...(mappingLidarBlocksStart ? ["雷达新鲜"] : []),
