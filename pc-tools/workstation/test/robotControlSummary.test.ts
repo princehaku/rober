@@ -439,13 +439,13 @@ describe("robotControlSummary", () => {
     ]);
     expect(summary.live_closure_summary?.side_blocker_count).toBe(3);
     expect(summary.live_closure_summary?.ready_action_ids).toEqual([
-      "free_move",
-      "keyboard_continuous_control",
       "nav2_route_execution",
+      "keyboard_continuous_control",
+      "free_move",
     ]);
     expect(summary.live_closure_summary?.ready_action_count).toBe(3);
     expect(summary.live_closure_summary?.side_gap_summary_plain).toBe(
-      "其它缺口：画面所见即所得、雷达点贴到地图、传感器就绪后建图；可先做：自由自助移动、键盘连续手控、完整行程执行。",
+      "其它缺口：画面所见即所得、雷达点贴到地图、传感器就绪后建图；可先做：重跑图上行程并复验轮速、键盘连续手控、自由自助移动。",
     );
     expect(summary.live_closure_summary?.live_wysiwyg_ready).toBe(false);
     expect(summary.live_wysiwyg_ready).toBe(false);

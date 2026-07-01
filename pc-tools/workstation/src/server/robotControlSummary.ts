@@ -8526,6 +8526,9 @@ function buildGoalChecklist(
   const freeMove = actionCardById(cards, "free_move");
   const mapping = actionCardById(cards, "mapping_start");
   const nav2Done = readback.nav2.route_execution_readiness_plain.startsWith("完整路线执行已证明");
+  const nav2Title = nav2.status === "ready_needs_wheel_rerun"
+    ? "重跑图上行程并复验轮速"
+    : "完整行程执行";
   const keyboardReady = boundary.keyboard_control_start_ready;
   const freeMoveRunning = boundary.free_roam_autonomy === "ready";
   return [
@@ -8570,11 +8573,11 @@ function buildGoalChecklist(
     },
     {
       id: "nav2_route_execution",
-      title: "完整行程执行",
+      title: nav2Title,
       status: nav2Done ? "done" : boundary.nav2_goal_ready ? "needs_safety_confirm" : "not_ready",
       status_label: nav2Done ? "已完成" : boundary.nav2_goal_ready ? "待安全确认" : "未就绪",
       summary_plain: nav2.summary_plain,
-      evidence_plain: actionCardText(readback.nav2.goal_execution_wheel_raw_lr_status_plain, "完整行程执行读数未读到"),
+      evidence_plain: actionCardText(readback.nav2.goal_execution_wheel_raw_lr_status_plain, `${nav2Title}读数未读到`),
       next_action_plain: nav2.next_action_plain,
       source_card_id: "nav2_route",
       requires_safety_confirmation: !nav2Done,
@@ -8644,12 +8647,22 @@ function buildGoalChecklistSummary(
     blocks_goal_completion: item.blocks_goal_completion,
   });
   const nextActionItems = remaining.map(toActionItem);
-  const readyActionPriority: Record<string, number> = {
-    free_move: 0,
-    keyboard_continuous_control: 1,
-    nav2_route_execution: 2,
-    mapping_start: 3,
-  };
+  const nav2ReadyForRerun = remaining.some((item) =>
+    item.id === "nav2_route_execution" && (item.status === "ready" || item.status === "needs_safety_confirm")
+  );
+  const readyActionPriority: Record<string, number> = nav2ReadyForRerun
+    ? {
+      nav2_route_execution: 0,
+      keyboard_continuous_control: 1,
+      free_move: 2,
+      mapping_start: 3,
+    }
+    : {
+      free_move: 0,
+      keyboard_continuous_control: 1,
+      nav2_route_execution: 2,
+      mapping_start: 3,
+    };
   const sortReadyActionItems = (items: ReturnType<typeof toActionItem>[]): ReturnType<typeof toActionItem>[] =>
     [...items].sort((left, right) => (readyActionPriority[left.id] ?? 50) - (readyActionPriority[right.id] ?? 50));
   const readyActionItems = remaining
