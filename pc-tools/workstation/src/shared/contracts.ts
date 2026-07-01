@@ -2406,6 +2406,8 @@ export interface RobotControlDeliveryLatestResponse {
   remote_endpoint: "/api/delivery/latest";
   remote_http_status: number | null;
   status: "blocked" | "delivery_success_confirmed" | "loaded_fail_closed_summary";
+  delivery_claim_ready: boolean;
+  delivery_material_ready: boolean;
   delivery_key_values: Record<string, string>;
   delivery_material_refs: RobotControlDeliveryMaterialRefs;
   missing_required_material: string[];

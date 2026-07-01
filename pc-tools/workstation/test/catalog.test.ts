@@ -13886,6 +13886,8 @@ describe("workstation fail-closed API contracts", () => {
       const body = (await response.json()) as {
         proxy_status: string;
         delivery_success: boolean;
+        delivery_claim_ready: boolean;
+        delivery_material_ready: boolean;
         delivery_key_values: Record<string, string>;
         missing_required_material: string[];
         delivery_missing_required_material: string[];
@@ -13904,6 +13906,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(response.status).toBe(200);
       expect(body.proxy_status).toBe("latest_loaded");
       expect(body.delivery_success).toBe(false);
+      expect(body.delivery_claim_ready).toBe(false);
+      expect(body.delivery_material_ready).toBe(false);
       expect(body.delivery_key_values.status).toBe("blocked_missing_delivery_material");
       expect(body.delivery_key_values.nav2_status).toBe("goal_succeeded");
       expect(body.delivery_key_values.nav2_feedback_sample_count).toBe("8");

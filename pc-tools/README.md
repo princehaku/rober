@@ -109,6 +109,11 @@ lifecycle、Nav2、manual、keyboard、free-roam、建图 runtime、delivery、s
 同窗口 wheel L/R 是否闭环、送达确认是否属于当前行程。它们只读，不执行 Nav2、manual、keyboard、
 free-roam、建图、delivery complete、stop 或 `/cmd_vel`。
 
+2026-07-02 CST 起，`GET /api/robot-control/delivery/latest` 回包直接暴露
+`delivery_claim_ready` 和 `delivery_material_ready`。前者只表示上车 delivery success 已成立，后者只表示
+`missing_required_material` 为空；当前仍缺现场运动/停稳/投放确认时两者都为 false，避免把 Nav2 action
+success 误读成完整送达闭环。
+
 2026-07-02 CST 起，普通首屏 `执行图上路线` 在 execution forwarded 后，会按
 `nav2_route_acceptance_packet.readback_endpoints` 自动刷新执行后验收读回：地图预览、Nav2 latest、
 底盘 wheel feedback samples、delivery latest 和 summary。地图刷新保留 `tripExecutionRefresh`，
