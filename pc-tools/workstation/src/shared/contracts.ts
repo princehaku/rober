@@ -5102,6 +5102,18 @@ export interface RobotControlCameraMjpegStatusResponse extends ProofFlags {
 export interface RobotControlCameraFirstFrameProbeProxyResponse extends ProofFlags {
   schema: "trashbot.pc_tools_workstation.robot_control_camera_first_frame_probe_proxy.v1";
   proxy_status: "probe_forwarded" | "probe_rejected" | "probe_failed";
+  readback_only: true;
+  camera_probe_readback_only: true;
+  sends_motion_when_clicked: false;
+  starts_camera_exclusive_capture: false;
+  starts_radar_lifecycle: false;
+  starts_nav2: false;
+  starts_manual: false;
+  starts_keyboard: false;
+  starts_free_roam: false;
+  starts_map_runtime: false;
+  submits_delivery: false;
+  stops_motion: false;
   source_base_url: string;
   normalized_base_url: string;
   remote_endpoint: "/api/camera/first-frame/probe";
@@ -5155,8 +5167,6 @@ export interface RobotControlCameraFirstFrameProbeProxyResponse extends ProofFla
   fixed_summary_endpoint: "/api/robot-control/summary";
   camera_recovery_sends_motion: false;
   camera_recovery_starts_map_runtime: false;
-  sends_motion_when_clicked: false;
-  starts_map_runtime: false;
   dangerous_true_fields: string[];
   hard_dangerous_true_fields: string[];
   robot_control_executed: false;

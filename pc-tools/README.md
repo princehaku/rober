@@ -46,6 +46,14 @@ manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 `/api/robot-control/nav2/proof/refresh`，方便现场 `curl` 单看 proof refresh 回包就能确认它不发车、
 不启动雷达 lifecycle、不启动建图 runtime、不提交 delivery，也不发送 stop 或 `/cmd_vel`。
 
+2026-07-02 CST 起，当前相机所见缺口的主复验动作
+`POST /api/robot-control/camera/first-frame/probe` 也在回包本体直接暴露只读边界：
+`readback_only=true`、`camera_probe_readback_only=true`、`sends_motion_when_clicked=false`、
+`starts_camera_exclusive_capture=false`、`starts_radar_lifecycle=false`、`starts_nav2=false`、
+`starts_manual=false`、`starts_keyboard=false`、`starts_free_roam=false`、`starts_map_runtime=false`、
+`submits_delivery=false` 和 `stops_motion=false`。即使相机仍返回 503/timeout，现场脚本也不会再读到
+null 后误以为 probe 可能会独占相机、启动建图或发车。
+
 2026-07-02 CST 起，现场验收包的只读复验动作不再只暴露单个 endpoint。`no_motion_readback_actions[]`
 每项都带 `sequence_endpoints`、`sequence_labels` 和 refresh flags；summary 顶层也暴露
 `field_acceptance_no_motion_readback_action_sequences`、`field_acceptance_no_motion_readback_action_sequence_labels`

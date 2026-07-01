@@ -15771,6 +15771,18 @@ describe("workstation fail-closed API contracts", () => {
           fallback_attempts_summary: string;
         };
         safe_to_control: boolean;
+        readback_only: boolean;
+        camera_probe_readback_only: boolean;
+        sends_motion_when_clicked: boolean;
+        starts_camera_exclusive_capture: boolean;
+        starts_radar_lifecycle: boolean;
+        starts_nav2: boolean;
+        starts_manual: boolean;
+        starts_keyboard: boolean;
+        starts_free_roam: boolean;
+        starts_map_runtime: boolean;
+        submits_delivery: boolean;
+        stops_motion: boolean;
       };
 
       expect(response.status).toBe(502);
@@ -15783,6 +15795,18 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.probe_key_values.fallback_attempt_count).toBe("1");
       expect(body.probe_key_values.fallback_attempts_summary).toContain("MJPG@640x480:open_failed/opencv_capture_not_opened");
       expect(body.safe_to_control).toBe(false);
+      expect(body.readback_only).toBe(true);
+      expect(body.camera_probe_readback_only).toBe(true);
+      expect(body.sends_motion_when_clicked).toBe(false);
+      expect(body.starts_camera_exclusive_capture).toBe(false);
+      expect(body.starts_radar_lifecycle).toBe(false);
+      expect(body.starts_nav2).toBe(false);
+      expect(body.starts_manual).toBe(false);
+      expect(body.starts_keyboard).toBe(false);
+      expect(body.starts_free_roam).toBe(false);
+      expect(body.starts_map_runtime).toBe(false);
+      expect(body.submits_delivery).toBe(false);
+      expect(body.stops_motion).toBe(false);
       expect(upstream.receivedBodies["/api/camera/first-frame/probe"]).toEqual([
         {
           include_backend_smoke: false,
@@ -15916,8 +15940,17 @@ describe("workstation fail-closed API contracts", () => {
         camera_hardware_action_label: string;
         camera_blocks_mapping_start: boolean;
         camera_blocks_free_move: boolean;
+        readback_only: boolean;
+        camera_probe_readback_only: boolean;
         sends_motion_when_clicked: boolean;
+        starts_camera_exclusive_capture: boolean;
+        starts_nav2: boolean;
+        starts_manual: boolean;
+        starts_keyboard: boolean;
+        starts_free_roam: boolean;
         starts_map_runtime: boolean;
+        submits_delivery: boolean;
+        stops_motion: boolean;
         robot_control_executed: boolean;
         dangerous_true_fields: string[];
         probe_key_values: {
@@ -15947,8 +15980,17 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.camera_hardware_action_label).toBe("换高速USB后复测");
       expect(body.camera_blocks_mapping_start).toBe(true);
       expect(body.camera_blocks_free_move).toBe(false);
+      expect(body.readback_only).toBe(true);
+      expect(body.camera_probe_readback_only).toBe(true);
       expect(body.sends_motion_when_clicked).toBe(false);
+      expect(body.starts_camera_exclusive_capture).toBe(false);
+      expect(body.starts_nav2).toBe(false);
+      expect(body.starts_manual).toBe(false);
+      expect(body.starts_keyboard).toBe(false);
+      expect(body.starts_free_roam).toBe(false);
       expect(body.starts_map_runtime).toBe(false);
+      expect(body.submits_delivery).toBe(false);
+      expect(body.stops_motion).toBe(false);
       expect(body.robot_control_executed).toBe(false);
       expect(body.dangerous_true_fields).toEqual([]);
       expect(body.safe_to_control).toBe(false);
@@ -16009,6 +16051,11 @@ describe("workstation fail-closed API contracts", () => {
       expect(quickBody.blocked_reasons).toEqual(["fetch_timeout_60000ms"]);
       expect(quickBody.normalized_base_url).toBe(upstream.baseUrl);
       expect(quickBody.remote_http_status).toBeNull();
+      expect(quickBody.readback_only).toBe(true);
+      expect(quickBody.camera_probe_readback_only).toBe(true);
+      expect(quickBody.starts_camera_exclusive_capture).toBe(false);
+      expect(quickBody.starts_nav2).toBe(false);
+      expect(quickBody.starts_map_runtime).toBe(false);
       expect(quickBody.robot_control_executed).toBe(false);
 
       const smokeResponse = await fetch(`${workstation.baseUrl}/api/robot-control/camera/first-frame/probe?baseUrl=${encodeURIComponent(upstream.baseUrl)}&backendSmoke=1`, {
@@ -16023,6 +16070,11 @@ describe("workstation fail-closed API contracts", () => {
       expect(smokeBody.blocked_reasons).toEqual(["fetch_timeout_75000ms"]);
       expect(smokeBody.normalized_base_url).toBe(upstream.baseUrl);
       expect(smokeBody.remote_http_status).toBeNull();
+      expect(smokeBody.readback_only).toBe(true);
+      expect(smokeBody.camera_probe_readback_only).toBe(true);
+      expect(smokeBody.starts_camera_exclusive_capture).toBe(false);
+      expect(smokeBody.starts_nav2).toBe(false);
+      expect(smokeBody.starts_map_runtime).toBe(false);
       expect(smokeBody.robot_control_executed).toBe(false);
     } finally {
       timeoutSpy.mockRestore();

@@ -2403,6 +2403,36 @@ function unsafeProxyFailure(
   };
 }
 
+const CAMERA_FIRST_FRAME_PROBE_NO_MOTION_FLAGS = {
+  // 首帧 probe 是固定诊断 POST：只读相机首帧证据，不抢占控制链路，也不启动运动或建图。
+  readback_only: true,
+  camera_probe_readback_only: true,
+  sends_motion_when_clicked: false,
+  starts_camera_exclusive_capture: false,
+  starts_radar_lifecycle: false,
+  starts_nav2: false,
+  starts_manual: false,
+  starts_keyboard: false,
+  starts_free_roam: false,
+  starts_map_runtime: false,
+  submits_delivery: false,
+  stops_motion: false,
+} satisfies Pick<
+  RobotControlCameraFirstFrameProbeProxyResponse,
+  | "readback_only"
+  | "camera_probe_readback_only"
+  | "sends_motion_when_clicked"
+  | "starts_camera_exclusive_capture"
+  | "starts_radar_lifecycle"
+  | "starts_nav2"
+  | "starts_manual"
+  | "starts_keyboard"
+  | "starts_free_roam"
+  | "starts_map_runtime"
+  | "submits_delivery"
+  | "stops_motion"
+>;
+
 function cameraProbeFailure(sourceBaseUrl: string, reason: string): RobotControlCameraFirstFrameProbeProxyResponse {
   // 本机拒绝或 fetch 失败也返回完整合同，避免高级诊断分叉成异常栈展示。
   const probeValues = cameraProbeKeyValues(null);
@@ -2414,6 +2444,7 @@ function cameraProbeFailure(sourceBaseUrl: string, reason: string): RobotControl
     delivery_success: false,
     primary_actions_enabled: false,
     pc_only: true,
+    ...CAMERA_FIRST_FRAME_PROBE_NO_MOTION_FLAGS,
     proxy_status: "probe_rejected",
     source_base_url: sourceBaseUrl,
     normalized_base_url: "not_loaded",
@@ -4912,6 +4943,7 @@ export function createWorkstationApp(): express.Express {
       delivery_success: false,
       primary_actions_enabled: false,
       pc_only: true,
+      ...CAMERA_FIRST_FRAME_PROBE_NO_MOTION_FLAGS,
       proxy_status:
         remote.remote_http_status === 200 && dangerous.length === 0 ? "probe_forwarded" : "probe_failed",
       source_base_url: sourceBaseUrl,
