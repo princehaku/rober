@@ -105,13 +105,17 @@ describe("robotControlSummary", () => {
     });
 
     expect(summary.live_closure_summary?.status).toBe("needs_wheel_rerun");
+    expect(summary.status).toBe("needs_wheel_rerun");
+    expect(summary.live_status).toBe("needs_wheel_rerun");
     expect(summary.live_closure_summary?.summary_plain).toBe(
       "当前卡点：图上路线已经有执行成功读数，但同窗口轮速 L/R 还没有非零闭环。",
     );
+    expect(summary.summary_plain).toBe(summary.live_closure_summary?.summary_plain);
     expect(summary.live_closure_summary?.summary_plain).not.toContain("wheel raw");
     expect(summary.live_closure_summary?.next_action_plain).toBe(
       "勾现场安全确认后重跑图上路线，并在同一个执行窗口复验轮速 L/R 非零。",
     );
+    expect(summary.next_action_plain).toBe(summary.live_closure_summary?.next_action_plain);
     expect(summary.live_closure_summary?.next_action_plain).not.toContain("wheel raw");
     expect(summary.live_closure_summary?.route_ready_on_map).toBe(true);
     expect(summary.route_ready_on_map).toBe(true);
@@ -152,14 +156,24 @@ describe("robotControlSummary", () => {
     expect(summary.keyboard_stop_endpoint).toBe("/api/robot-control/base/stop");
     expect(summary.keyboard_feedback_readback_endpoint).toBe("/api/robot-control/base/feedback-samples");
     expect(summary.live_closure_summary?.objective_audit_status).toBe("in_progress");
+    expect(summary.objective_audit_status).toBe("in_progress");
     expect(summary.live_closure_summary?.objective_audit_total_count).toBe(4);
+    expect(summary.objective_audit_total_count).toBe(4);
     expect(summary.live_closure_summary?.objective_audit_done_count).toBeGreaterThanOrEqual(1);
+    expect(summary.objective_audit_done_count).toBe(summary.live_closure_summary?.objective_audit_done_count);
     expect(summary.live_closure_summary?.objective_audit_remaining_count).toBeGreaterThan(0);
+    expect(summary.objective_audit_remaining_count).toBe(summary.live_closure_summary?.objective_audit_remaining_count);
+    expect(summary.objective_audit_next_objective_id).toBe(summary.live_closure_summary?.objective_audit_next_objective_id);
     expect(summary.live_closure_summary?.objective_audit_missing_objective_ids).toContain("motion");
+    expect(summary.objective_audit_missing_objective_ids).toContain("motion");
     expect(summary.live_closure_summary?.objective_audit_summary_plain).toContain("四项目标完成");
+    expect(summary.objective_audit_summary_plain).toContain("四项目标完成");
     expect(summary.live_closure_summary?.fixed_objective_audit_summary_endpoint).toBe("/api/robot-control/summary");
+    expect(summary.fixed_objective_audit_summary_endpoint).toBe("/api/robot-control/summary");
     expect(summary.live_closure_summary?.objective_audit_sends_motion_when_clicked).toBe(false);
+    expect(summary.objective_audit_sends_motion_when_clicked).toBe(false);
     expect(summary.live_closure_summary?.objective_audit_items).toHaveLength(4);
+    expect(summary.objective_audit_items).toHaveLength(4);
     const motionObjective = summary.live_closure_summary?.objective_audit_items.find((item) => item.id === "motion");
     expect(motionObjective?.completed).toBe(false);
     expect(motionObjective?.actionable).toBe(true);

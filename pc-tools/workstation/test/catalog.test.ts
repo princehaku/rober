@@ -6834,8 +6834,16 @@ describe("workstation fail-closed API contracts", () => {
       expect(live.readback_only).toBe(true);
       expect(live.status).toBe(summary.live_closure_summary?.status);
       expect(live.status).toBe("needs_wheel_rerun");
+      expect(summary.status).toBe(live.status);
+      expect(summary.live_status).toBe(live.status);
       expect(live.summary_plain).toBe(summary.live_closure_summary?.summary_plain);
+      expect(summary.summary_plain).toBe(live.summary_plain);
       expect(live.next_action_plain).toBe(summary.live_closure_summary?.next_action_plain);
+      expect(summary.next_action_plain).toBe(live.next_action_plain);
+      expect(summary.objective_audit_summary_plain).toBe(summary.live_closure_summary?.objective_audit_summary_plain);
+      expect(summary.objective_audit_next_objective_id).toBe(summary.live_closure_summary?.objective_audit_next_objective_id);
+      expect(summary.fixed_objective_audit_summary_endpoint).toBe("/api/robot-control/summary");
+      expect(summary.objective_audit_sends_motion_when_clicked).toBe(false);
       expect(summary.map_display_primary_url).toBe("/map");
       expect(summary.map_display_default_zoom_percent).toBe("150%");
       expect(summary.map_display_ros2_companion_tools).toEqual(["rviz2", "foxglove"]);
