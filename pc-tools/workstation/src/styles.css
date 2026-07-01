@@ -826,6 +826,11 @@ h3 {
   background: #ffffff;
 }
 
+.plain-field-acceptance-safety {
+  /* 复用全局安全确认样式，但放在验收卡内承担“勾一次即可”的首屏入口。 */
+  background: #ffffff;
+}
+
 .plain-field-acceptance-step {
   display: grid;
   grid-template-columns: minmax(96px, 0.42fr) auto minmax(180px, 1fr) auto;

@@ -4291,7 +4291,9 @@ const plainFieldAcceptanceNextText = computed(() => {
   if (!packet) {
     return "";
   }
-  const safetyText = packet.next_step_requires_safety_confirm ? "先勾现场安全确认" : "无需额外安全确认";
+  const safetyText = packet.next_step_requires_safety_confirm
+    ? plainUnifiedSafetyConfirmed.value ? "安全确认已勾" : "先勾现场安全确认"
+    : "无需额外安全确认";
   const motionText = packet.next_step_sends_motion ? "这一步会让车动" : "这一步只读";
   return `下一步：${plainActionCardUserText(packet.next_step_label)}；${safetyText}；${motionText}。`;
 });
@@ -4306,13 +4308,16 @@ const plainFieldAcceptancePrimaryStep = computed(() => {
   if (!primary) {
     return null;
   }
-  const safetyText = primary.safety_confirm_required ? "先勾现场安全确认" : "按当前卡片处理";
+  const safetyText = primary.safety_confirm_required
+    ? plainUnifiedSafetyConfirmed.value ? "安全确认已勾" : "先勾现场安全确认"
+    : "按当前卡片处理";
   const motionText = primary.sends_motion_when_executed ? "目标动作会让车动" : "目标动作只读";
   return {
     ...primary,
     text: `下一步：${plainActionCardUserText(primary.label)}；${safetyText}；${motionText}。去处理只跳到对应卡片，只读读回只刷新验收材料。`,
     readbackPending: liveMotionRunbookReadbackPendingAction.value === primary.id,
     readbackDisabled: liveMotionRunbookReadbackPendingAction.value !== null || !robotApiBaseUrl.value.trim(),
+    safetyConfirmed: plainUnifiedSafetyConfirmed.value,
   };
 });
 const plainTripRunbookItem = computed(() => (
@@ -17373,6 +17378,7 @@ onBeforeUnmount(() => {
           :data-acceptance-endpoints="plainFieldAcceptanceEndpointText"
           :data-safety-confirm-required="String(plainFieldAcceptancePacket.safety_confirm_required)"
           :data-minimal-precheck-safety-only="String(plainFieldAcceptancePacket.minimal_precheck_safety_only)"
+          :data-unified-safety-confirmed="String(plainUnifiedSafetyConfirmed)"
           :data-wysiwyg-missing-surface-ids="plainFieldAcceptanceWysiwygMissingText"
           :data-mapping-start-ready="String(plainFieldAcceptancePacket.mapping_start_ready)"
           :data-mapping-missing-evidence="plainFieldAcceptanceMappingMissingText"
@@ -17394,6 +17400,26 @@ onBeforeUnmount(() => {
           <p class="panel-note" data-testid="plain-field-acceptance-summary">
             {{ plainActionCardUserText(plainFieldAcceptancePacket.summary_plain) }}
           </p>
+          <label
+            class="plain-unified-safety-confirm plain-field-acceptance-safety"
+            data-testid="plain-field-acceptance-safety-gate"
+            :data-safety-confirmed="String(plainUnifiedSafetyConfirmed)"
+            data-minimal-precheck-safety-only="true"
+            data-camera-required-for-motion="false"
+            data-radar-required-for-motion="false"
+            data-operator-report-required="false"
+            data-syncs-trip-safety-confirm="true"
+            data-syncs-keyboard-safety-confirm="true"
+            data-syncs-free-roam-safety-confirm="true"
+            data-sends-motion-when-clicked="false"
+          >
+            <input
+              v-model="plainUnifiedSafetyConfirmed"
+              type="checkbox"
+              data-testid="plain-field-acceptance-safety-confirm"
+            >
+            <span>现场安全确认：人在旁边、周围安全、停止手段就绪（勾一次，行程、键盘和自由移动都生效）</span>
+          </label>
           <div
             v-if="plainFieldAcceptancePrimaryStep"
             class="plain-field-acceptance-primary"
@@ -17413,6 +17439,7 @@ onBeforeUnmount(() => {
             :data-readback-refresh-pending="String(plainFieldAcceptancePrimaryStep.readbackPending)"
             :data-sends-motion-when-executed="String(plainFieldAcceptancePrimaryStep.sends_motion_when_executed)"
             :data-safety-confirm-required="String(plainFieldAcceptancePrimaryStep.safety_confirm_required)"
+            :data-safety-confirmed="String(plainFieldAcceptancePrimaryStep.safetyConfirmed)"
             data-focus-only="true"
             data-readback-only="true"
             data-readback-refresh-sends-motion="false"
