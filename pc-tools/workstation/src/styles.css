@@ -1340,6 +1340,30 @@ h3 {
   margin: 0;
 }
 
+.plain-map-heading-title {
+  /* 地图太小时先把“当前就是 PC 大地图、可进 /map 满屏”的事实放到标题旁。 */
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.plain-map-heading-proof {
+  /* 这是只读状态标识，不做成按钮，避免普通用户误以为它会启动 ROS2 或发车。 */
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  border: 1px solid #9fd4b3;
+  border-radius: 999px;
+  padding: 0 10px;
+  background: #edf8f1;
+  color: #114831;
+  font-size: 13px;
+  font-weight: 760;
+  white-space: nowrap;
+}
+
 .plain-map-heading-actions {
   display: flex;
   flex-wrap: wrap;
@@ -3516,6 +3540,16 @@ th {
   .plain-map-heading {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .plain-map-heading-title {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .plain-map-heading-proof {
+    justify-content: center;
+    white-space: normal;
   }
 
   .plain-map-heading-actions {

@@ -19448,7 +19448,31 @@ onBeforeUnmount(() => {
           :data-radar-refresh-action-label="plainMapVisualSummary.radarRefreshActionLabel"
         >
           <div class="plain-map-heading">
-            <h3>地图</h3>
+            <div class="plain-map-heading-title">
+              <h3>地图</h3>
+              <span
+                class="plain-map-heading-proof"
+                data-testid="plain-map-heading-proof"
+                data-map-surface="pc_big_map"
+                data-primary-map-action-label="进入地图大屏"
+                data-direct-map-view-url="/map"
+                data-direct-map-view-map-only="true"
+                data-ordinary-user-tool="pc_big_map"
+                data-ros2-companion-required="false"
+                data-ros2-companion-tools="rviz2,foxglove"
+                :data-current-map-zoom-percent="plainMapZoomPercent"
+                :data-default-map-zoom-percent="PLAIN_MAP_DEFAULT_ZOOM_PERCENT"
+                :data-max-map-zoom-percent="PLAIN_MAP_MAX_ZOOM_PERCENT"
+                data-sends-motion-when-clicked="false"
+                data-starts-ros2="false"
+                data-starts-rviz2="false"
+                data-starts-foxglove="false"
+                data-starts-nav2="false"
+                data-starts-map-runtime="false"
+              >
+                PC 大地图 {{ plainMapZoomPercent }} · /map 满屏
+              </span>
+            </div>
             <div class="plain-map-heading-actions">
               <a
                 class="secondary plain-link-button plain-map-direct-view-link plain-map-direct-view-link-primary"
