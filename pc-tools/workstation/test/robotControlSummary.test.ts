@@ -1511,6 +1511,7 @@ describe("robotControlSummary", () => {
     expect(summary.camera_source_diagnosis_status).toBe("uvc_full_speed_usb_not_exclusive");
     expect(summary.camera_source_diagnosis_not_exclusive).toBe("true");
     expect(summary.camera_source_diagnosis_plain_hint).toContain("USB 12M full-speed");
+    expect(summary.camera_source_diagnosis_next_action_plain).toContain("换高速 USB 口/线或带供电 USB Hub");
     expect(summary.camera_recovery_next_action_plain).toContain("换高速 USB 口/线或带供电 USB Hub");
     expect(summary.camera_recovery_sends_motion).toBe(false);
     expect(summary.camera_wysiwyg_recovery_status).toBe(summary.live_closure_summary?.live_wysiwyg_camera_recovery_status);

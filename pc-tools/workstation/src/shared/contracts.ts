@@ -3898,6 +3898,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   camera_source_diagnosis_status?: RobotControlLiveClosureSummary["camera_source_diagnosis_status"];
   camera_source_diagnosis_not_exclusive?: RobotControlLiveClosureSummary["camera_source_diagnosis_not_exclusive"];
   camera_source_diagnosis_plain_hint?: RobotControlLiveClosureSummary["live_wysiwyg_camera_source_diagnosis_plain_hint"];
+  camera_source_diagnosis_next_action_plain?: RobotControlLiveClosureSummary["live_wysiwyg_camera_source_diagnosis_next_action_plain"];
   camera_recovery_next_action_plain?: RobotControlLiveClosureSummary["camera_recovery_next_action_plain"];
   camera_recovery_sends_motion?: RobotControlLiveClosureSummary["camera_recovery_sends_motion"];
   camera_recovery_starts_map_runtime?: RobotControlLiveClosureSummary["camera_recovery_starts_map_runtime"];

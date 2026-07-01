@@ -141,6 +141,9 @@ summary 顶层和 `plain-live-closure-summary` DOM 也同步暴露相机 WYSIWYG
 `camera_wysiwyg_recovery_blocks_free_move=false`、`camera_wysiwyg_recovery_sends_motion=false` 和
 `camera_wysiwyg_recovery_starts_map_runtime=false`。现场换高速 USB 或打开共享预览后，按这条只读链复验
 相机首帧、MJPEG 状态和 summary；该链路不启动独占相机、不启动建图 runtime、不发送任何运动命令。
+summary 顶层 `camera_source_diagnosis_next_action_plain` 也会在底层未给白话时 fallback 到
+`camera_recovery_next_action_plain`，USB full-speed 场景不再返回 `null`，现场脚本可直接读到“换高速 USB
+口/线或带供电 USB Hub 后复测”。
 
 2026-07-02 CST 起，`GET /api/robot-control/camera/mjpeg/status` 回包也直接声明
 `readback_only=true`、`camera_status_readback_only=true`，并固定
