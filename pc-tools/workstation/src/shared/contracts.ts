@@ -3338,10 +3338,15 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   camera_hardware_action_required?: RobotControlLiveClosureSummary["camera_hardware_action_required"];
   camera_hardware_action_label?: RobotControlLiveClosureSummary["camera_hardware_action_label"];
   camera_usb_full_speed_detected?: RobotControlLiveClosureSummary["camera_usb_full_speed_detected"];
+  camera_blocks_mapping_start?: RobotControlLiveClosureSummary["camera_blocks_mapping_start"];
+  camera_blocks_free_move?: RobotControlLiveClosureSummary["camera_blocks_free_move"];
+  camera_reprobe_after_hardware_action_required?: RobotControlLiveClosureSummary["camera_reprobe_after_hardware_action_required"];
+  camera_reprobe_sequence?: RobotControlLiveClosureSummary["camera_reprobe_sequence"];
   camera_source_diagnosis_status?: RobotControlLiveClosureSummary["camera_source_diagnosis_status"];
   camera_source_diagnosis_not_exclusive?: RobotControlLiveClosureSummary["camera_source_diagnosis_not_exclusive"];
   camera_recovery_next_action_plain?: RobotControlLiveClosureSummary["camera_recovery_next_action_plain"];
   camera_recovery_sends_motion?: RobotControlLiveClosureSummary["camera_recovery_sends_motion"];
+  camera_recovery_starts_map_runtime?: RobotControlLiveClosureSummary["camera_recovery_starts_map_runtime"];
   fixed_camera_probe_endpoint?: RobotControlLiveClosureSummary["fixed_camera_probe_endpoint"];
   fixed_camera_mjpeg_status_endpoint?: RobotControlLiveClosureSummary["fixed_camera_mjpeg_status_endpoint"];
   live_wysiwyg_camera_shared_preview_client_count?: RobotControlLiveClosureSummary["live_wysiwyg_camera_shared_preview_client_count"];

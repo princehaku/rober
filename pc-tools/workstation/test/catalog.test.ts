@@ -6953,6 +6953,11 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.camera_source_diagnosis_not_exclusive).toBe(summary.live_closure_summary?.camera_source_diagnosis_not_exclusive);
       expect(summary.camera_recovery_next_action_plain).toBe(summary.live_closure_summary?.camera_recovery_next_action_plain);
       expect(summary.camera_recovery_sends_motion).toBe(false);
+      expect(summary.camera_blocks_mapping_start).toBe(summary.live_closure_summary?.camera_blocks_mapping_start);
+      expect(summary.camera_blocks_free_move).toBe(false);
+      expect(summary.camera_reprobe_after_hardware_action_required).toBe(summary.live_closure_summary?.camera_reprobe_after_hardware_action_required);
+      expect(summary.camera_reprobe_sequence).toEqual(summary.live_closure_summary?.camera_reprobe_sequence);
+      expect(summary.camera_recovery_starts_map_runtime).toBe(false);
       expect(summary.fixed_camera_probe_endpoint).toBe("/api/robot-control/camera/first-frame/probe");
       expect(summary.fixed_camera_mjpeg_status_endpoint).toBe("/api/robot-control/camera/mjpeg/status");
       expect(summary.live_wysiwyg_camera_shared_preview_client_count).toBe(summary.live_closure_summary?.live_wysiwyg_camera_shared_preview_client_count);
