@@ -3338,6 +3338,7 @@ function buildRobotControlLiveSummaryResponse(summary: RobotControlSummaryRespon
     submits_delivery: false,
     stops_motion: false,
     publishes_cmd_vel: false,
+    robot_control_executed: false,
   };
 }
 

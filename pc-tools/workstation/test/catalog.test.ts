@@ -6855,6 +6855,9 @@ describe("workstation fail-closed API contracts", () => {
       expect(live.workstation_endpoint).toBe("/api/robot-control/live-summary");
       expect(live.summary_endpoint).toBe("/api/robot-control/summary");
       expect(live.readback_only).toBe(true);
+      expect(live.robot_control_executed).toBe(false);
+      expect(summary.readback_only).toBe(true);
+      expect(summary.robot_control_executed).toBe(false);
       expect(live.status).toBe(summary.live_closure_summary?.status);
       expect(live.status).toBe("needs_wheel_rerun");
       expect(summary.status).toBe(live.status);
@@ -7356,6 +7359,15 @@ describe("workstation fail-closed API contracts", () => {
       expect(live.submits_delivery).toBe(false);
       expect(live.stops_motion).toBe(false);
       expect(live.publishes_cmd_vel).toBe(false);
+      expect(summary.sends_motion_when_clicked).toBe(false);
+      expect(summary.starts_nav2).toBe(false);
+      expect(summary.starts_manual).toBe(false);
+      expect(summary.starts_keyboard).toBe(false);
+      expect(summary.starts_free_roam).toBe(false);
+      expect(summary.starts_map_runtime).toBe(false);
+      expect(summary.submits_delivery).toBe(false);
+      expect(summary.stops_motion).toBe(false);
+      expect(summary.publishes_cmd_vel).toBe(false);
       expect(Object.prototype.hasOwnProperty.call(live, "live_closure_summary")).toBe(false);
       expect(robotApi.requestedUrls).not.toContain("/api/nav2/goal/execute");
       expect(robotApi.requestedUrls).not.toContain("/api/base/manual");

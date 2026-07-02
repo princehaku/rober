@@ -3522,6 +3522,7 @@ export interface RobotControlLiveSummaryResponse extends RobotControlLiveClosure
   submits_delivery: false;
   stops_motion: false;
   publishes_cmd_vel: false;
+  robot_control_executed: false;
   field_acceptance_packet?: RobotControlSummaryResponse["field_acceptance_packet"];
   field_acceptance_status?: RobotControlSummaryResponse["field_acceptance_status"];
   field_acceptance_next_step_id?: RobotControlSummaryResponse["field_acceptance_next_step_id"];
@@ -3573,6 +3574,17 @@ export interface RobotControlSummaryResponse extends ProofFlags {
     unsafe_urls_rejected: true;
   };
   observed_at_ms: number;
+  readback_only: true;
+  sends_motion_when_clicked: false;
+  starts_nav2: false;
+  starts_manual: false;
+  starts_keyboard: false;
+  starts_free_roam: false;
+  starts_map_runtime: false;
+  submits_delivery: false;
+  stops_motion: false;
+  publishes_cmd_vel: false;
+  robot_control_executed: false;
   read_endpoints: RobotApiEndpointReadback[];
   o3_proof_summary: RobotApiProofSummary;
   robot_api_connection: {
