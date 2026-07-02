@@ -1989,6 +1989,11 @@ function baseCommandMinimalPrecheckFields(confirmHilChecklist: boolean) {
   };
 }
 
+function finiteManualSpeedFromPayload(payload: Record<string, unknown> | null): number | null {
+  // PC 前端使用 speed，现场脚本更常写 speed_mps；两个名字都收敛到同一条低速手控合同。
+  return finiteNumber(payload?.speed ?? payload?.speed_mps ?? payload?.linear_x_mps ?? payload?.linear_mps);
+}
+
 async function fetchFixedRobotPostSummary(
   baseUrl: string,
   endpoint: "/api/base/manual" | "/api/base/stop" | RobotControlFreeRoamAutonomyEndpoint,
@@ -3755,7 +3760,7 @@ export function createWorkstationApp(): express.Express {
     const normalized = normalizeRobotApiBaseUrl(sourceBaseUrl);
     const payload = asRecord(req.body);
     const direction = allowedDirection(payload?.direction);
-    const speed = finiteNumber(payload?.speed);
+    const speed = finiteManualSpeedFromPayload(payload);
     const durationMs = finiteNumber(payload?.duration_ms);
     const confirmHilChecklist = true;
     if (!normalized.ok) {
@@ -3870,7 +3875,7 @@ export function createWorkstationApp(): express.Express {
     const normalized = normalizeRobotApiBaseUrl(sourceBaseUrl);
     const payload = asRecord(req.body);
     const direction = allowedDirection(payload?.direction);
-    const speed = finiteNumber(payload?.speed);
+    const speed = finiteManualSpeedFromPayload(payload);
     const durationMs = finiteNumber(payload?.duration_ms);
     const confirmHilChecklist = true;
     if (!normalized.ok) {

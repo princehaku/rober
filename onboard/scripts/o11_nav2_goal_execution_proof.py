@@ -85,6 +85,124 @@ def managed_esp32_bridge_command(
     )
 
 
+def existing_navigate_action_probe(timeout_s: float = 2.0) -> dict[str, Any]:
+    """托管 runtime 启动前先看现场是否已有 NavigateToPose，避免重复启动 Nav2/串口桥。"""
+    command = (
+        "source /opt/ros/humble/setup.bash && "
+        f"if [ -f {DEFAULT_ONBOARD_SETUP} ]; then source {DEFAULT_ONBOARD_SETUP}; fi && "
+        f"timeout {max(float(timeout_s), 0.5):.1f} ros2 action list -t"
+    )
+    started = now_ms()
+    try:
+        completed = subprocess.run(
+            ["bash", "-lc", command],
+            cwd=DEFAULT_WORKDIR,
+            capture_output=True,
+            text=True,
+            timeout=max(float(timeout_s), 0.5) + 1.0,
+            check=False,
+        )
+    except Exception as exc:  # noqa: BLE001
+        return {
+            "available": False,
+            "checked": True,
+            "elapsed_ms": now_ms() - started,
+            "error": compact_error(exc),
+            "reason": "existing_action_probe_failed",
+        }
+    stdout = completed.stdout or ""
+    stderr = completed.stderr or ""
+    available = any(
+        line.split(" ", 1)[0] in NAVIGATE_ACTION_CANDIDATES
+        and "nav2_msgs/action/NavigateToPose" in line
+        for line in stdout.splitlines()
+    )
+    return {
+        "available": available,
+        "checked": True,
+        "elapsed_ms": now_ms() - started,
+        "returncode": completed.returncode,
+        "stdout_preview": stdout[-1000:],
+        "stderr_preview": stderr[-1000:],
+        "reason": "navigate_to_pose_action_observed" if available else "navigate_to_pose_action_not_observed",
+    }
+
+
+def existing_runtime_process_probe(timeout_s: float = 1.5) -> dict[str, Any]:
+    """ROS graph 卡顿时退回进程探针；看到现有 bridge/Nav2 就不再抢串口。"""
+    started = now_ms()
+    try:
+        completed = subprocess.run(
+            ["ps", "-eo", "pid=,args="],
+            capture_output=True,
+            text=True,
+            timeout=max(float(timeout_s), 0.5),
+            check=False,
+        )
+    except Exception as exc:  # noqa: BLE001
+        return {
+            "checked": True,
+            "elapsed_ms": now_ms() - started,
+            "reuse_recommended": False,
+            "error": compact_error(exc),
+            "reason": "existing_runtime_process_probe_failed",
+        }
+
+    observed: list[dict[str, Any]] = []
+    for line in (completed.stdout or "").splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        pid_text, _, args_text = stripped.partition(" ")
+        try:
+            pid = int(pid_text)
+        except ValueError:
+            continue
+        if pid == os.getpid():
+            continue
+        process_tags: list[str] = []
+        if "esp32_bridge" in args_text and "ros2_trashbot_hardware" in args_text:
+            process_tags.append("base_bridge")
+        if "autonomous.launch.py" in args_text:
+            process_tags.append("autonomous_launch")
+        if "nav2_container" in args_text:
+            process_tags.append("nav2_container")
+        if not process_tags:
+            continue
+        observed.append({"pid": pid, "tags": process_tags, "cmd_preview": args_text[:500]})
+
+    base_bridge_observed = any("base_bridge" in item["tags"] for item in observed)
+    nav2_observed = any(
+        "autonomous_launch" in item["tags"] or "nav2_container" in item["tags"]
+        for item in observed
+    )
+    return {
+        "checked": True,
+        "elapsed_ms": now_ms() - started,
+        "returncode": completed.returncode,
+        "process_count": len(observed),
+        "observed_processes": observed[:12],
+        "base_bridge_observed": base_bridge_observed,
+        "nav2_observed": nav2_observed,
+        "reuse_recommended": base_bridge_observed or nav2_observed,
+        "reason": "existing_runtime_process_observed" if observed else "existing_runtime_process_not_observed",
+    }
+
+
+def should_reuse_existing_runtime(action_probe: dict[str, Any], process_probe: dict[str, Any]) -> bool:
+    """action 可用或现场已有相关进程时都复用；避免坏 graph 里 action list 超时后误开第二套。"""
+    return bool(action_probe.get("available") or process_probe.get("reuse_recommended"))
+
+
+def existing_runtime_reuse_reason(action_probe: dict[str, Any], process_probe: dict[str, Any]) -> str:
+    """把复用原因写进 artifact，现场复盘能区分 action 证据和保守进程保护。"""
+    if action_probe.get("available"):
+        return "navigate_to_pose_action_observed"
+    if process_probe.get("reuse_recommended"):
+        return str(process_probe.get("reason") or "existing_runtime_process_observed")
+    return "existing_runtime_not_observed"
+
+
 def start_managed_autonomous_runtime(args: argparse.Namespace) -> dict[str, Any]:
     """短暂启动 Nav2 执行 runtime，让 NavigateToPose action server 可用。"""
     if not args.managed_runtime_opt_in:
@@ -552,9 +670,28 @@ def build_payload(args: argparse.Namespace) -> dict[str, Any]:
     initialized = False
     managed_runtime: dict[str, Any] = {"requested": bool(args.managed_runtime_opt_in), "started": False}
     try:
-        managed_runtime = start_managed_autonomous_runtime(args)
+        existing_action_probe = existing_navigate_action_probe() if args.managed_runtime_opt_in else {"checked": False, "available": False}
+        existing_process_probe = (
+            existing_runtime_process_probe() if args.managed_runtime_opt_in else {"checked": False, "reuse_recommended": False}
+        )
+        if args.managed_runtime_opt_in and should_reuse_existing_runtime(existing_action_probe, existing_process_probe):
+            # 现场已有 action server 或相关进程时优先复用当前 ROS graph；否则第二个 esp32_bridge 会抢占 /dev/ttyS5。
+            managed_runtime = {
+                "requested": True,
+                "started": False,
+                "reuse_existing_runtime": True,
+                "reuse_reason": existing_runtime_reuse_reason(existing_action_probe, existing_process_probe),
+                "existing_action_probe": existing_action_probe,
+                "existing_runtime_process_probe": existing_process_probe,
+                "cleanup": {"ok": True, "boundary": "reused_existing_runtime"},
+            }
+        else:
+            managed_runtime = start_managed_autonomous_runtime(args)
+            if args.managed_runtime_opt_in:
+                managed_runtime["existing_action_probe"] = existing_action_probe
+                managed_runtime["existing_runtime_process_probe"] = existing_process_probe
         result["managed_runtime"] = {key: value for key, value in managed_runtime.items() if key != "process"}
-        if args.managed_runtime_opt_in:
+        if args.managed_runtime_opt_in and managed_runtime.get("started"):
             lifecycle_ready = wait_for_nav2_lifecycle_active(
                 float(args.managed_ready_timeout_s),
                 log_path=str(managed_runtime.get("log_path") or ""),
@@ -623,7 +760,15 @@ def build_payload(args: argparse.Namespace) -> dict[str, Any]:
         result["goal_accepted"] = bool(getattr(goal_handle, "accepted", False))
         result.update(safe_flags(executed=result["goal_accepted"]))
         if not result["goal_accepted"]:
-            result.update({"status": "goal_rejected", "elapsed_ms": now_ms() - started_ms})
+            result.update(
+                {
+                    "status": "goal_rejected",
+                    "failure_reason": "navigate_to_pose_goal_rejected",
+                    "next_action_plain": "重启 Nav2 lifecycle 后再执行；当前 action server 可达但拒收目标，多见于 BT/Controller lifecycle 未完全 active。",
+                    "elapsed_ms": now_ms() - started_ms,
+                    "not_proven": ["nav2_goal_accepted", "nav2_goal_execution", "delivery_success"],
+                }
+            )
             return result
 
         result_future = goal_handle.get_result_async()

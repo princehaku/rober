@@ -6274,6 +6274,52 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("Robot Control manual proxy accepts speed_mps alias for script callers", async () => {
+    // 现场脚本常按响应字段写 speed_mps；PC 代理要兼容别名，但转给上位机仍保持 speed 合同。
+    const upstream = await listenRobotBaseCommandApi({
+      "/api/base/manual": {
+        payload: {
+          status: "manual_command_completed",
+          manual_command_executed: true,
+          auto_stop_executed: true,
+          manual_wheel_feedback_summary: {
+            lr_nonzero_observed: false,
+            nonzero_frame_count: 0,
+            latest_pair: { left_speed: 0, right_speed: 0 },
+          },
+          wheel_feedback_lr_nonzero_proven: false,
+          wheel_feedback_nonzero_observed: false,
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+    }, {});
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const response = await fetch(`${workstation.baseUrl}/api/robot-control/base/manual?baseUrl=${encodeURIComponent(upstream.baseUrl)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ direction: "forward", speed_mps: 0.05, duration_ms: 500, confirm_hil_checklist: true }),
+      });
+      const payload = await response.json();
+      expect(response.status).toBe(200);
+      expect(payload.proxy_status).toBe("command_forwarded");
+      expect(payload.requested_speed_mps).toBe(0.05);
+      expect(upstream.receivedBodies["/api/base/manual"]).toContainEqual(expect.objectContaining({
+        direction: "forward",
+        speed: 0.05,
+        duration_ms: 500,
+        command_mode: "ros",
+        feedback_mode: "realtime",
+        confirm_hil_checklist: true,
+      }));
+    } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+  });
+
   it("summarizes first-jog as ready when only visual material is missing", async () => {
     // 最新普通首屏口径：低速试动只需要安全确认；外部视频/可见相机材料只影响后续验收。
     const robotApi = await listenRobotApiReadbackByPath({

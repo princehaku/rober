@@ -9,6 +9,7 @@ import importlib.util
 import json
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 
@@ -164,6 +165,45 @@ class O11Nav2GoalExecutionProofTests(unittest.TestCase):
         self.assertEqual(summary["command_mode_counts"], {"ros": 2})
         self.assertEqual(summary["latest_nonzero_command_mode"], "ros")
         self.assertEqual(summary["latest_nonzero_command"]["vendor_command"], {"T": 13, "X": 0.08, "Z": 0.0})
+
+    def test_existing_runtime_process_probe_recommends_reuse_when_bridge_exists(self) -> None:
+        """action list 在坏 graph 上可能超时；已有 bridge 进程时必须保守复用现场 runtime。"""
+        fake_ps = "\n".join(
+            [
+                "101 /usr/bin/python3 /opt/ros/humble/bin/ros2 run ros2_trashbot_hardware esp32_bridge --ros-args -p serial_port:=/dev/ttyS5",
+                "202 /opt/ros/humble/lib/rclcpp_components/component_container_isolated --ros-args -r __node:=nav2_container",
+            ]
+        )
+        completed = mock.Mock(returncode=0, stdout=fake_ps)
+
+        with mock.patch.object(HELPER.subprocess, "run", return_value=completed):
+            probe = HELPER.existing_runtime_process_probe()
+
+        self.assertTrue(probe["checked"])
+        self.assertTrue(probe["base_bridge_observed"])
+        self.assertTrue(probe["nav2_observed"])
+        self.assertTrue(probe["reuse_recommended"])
+        self.assertEqual(probe["reason"], "existing_runtime_process_observed")
+
+    def test_reuse_existing_runtime_when_action_probe_times_out_but_process_exists(self) -> None:
+        """NavigateToPose 探针失败也不能直接启动第二套 runtime；进程证据足够触发复用。"""
+        action_probe = {
+            "checked": True,
+            "available": False,
+            "reason": "existing_action_probe_failed",
+            "error": {"type": "TimeoutExpired"},
+        }
+        process_probe = {
+            "checked": True,
+            "reuse_recommended": True,
+            "reason": "existing_runtime_process_observed",
+        }
+
+        self.assertTrue(HELPER.should_reuse_existing_runtime(action_probe, process_probe))
+        self.assertEqual(
+            HELPER.existing_runtime_reuse_reason(action_probe, process_probe),
+            "existing_runtime_process_observed",
+        )
 
     def test_feedback_debug_log_tracks_imu_delta_separately_from_wheel_feedback(self) -> None:
         """IMU 姿态变化是运动迹象，不能被误包装成 L/R 轮速非零。"""

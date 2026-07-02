@@ -310,6 +310,34 @@ L/R 非零。下一步必须在人工在场条件下检查电机供电、急停�
 WAVE ROVER `T=1001 L/R` 非零已经可被上位机和 PC proxy 读取。它仍不是完整 HIL 通过：
 本轮没有证明 Nav2 NavigateToPose 真实执行、路线到达、垃圾投放或 delivery success。
 
+## 2026-07-03 PC manual speed alias and PWM255 recheck
+
+本轮继续按 `docs/vendor/VENDOR_INDEX.md`、
+`docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py` 与
+`docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h` 复核 WAVE ROVER 控制协议。
+底盘运动命令仍采用 vendor newline JSON；现场串口仍是 `/dev/ttyS5 @ 115200`。`T=11`
+是 PWM 输入，`T=13` 在 vendor 文件中标注为不适用于无编码器产品，因此当前 PC/WASD
+默认通过 ROS `/cmd_vel` 到常驻 `esp32_bridge`，再由 bridge 输出 `T=11` PWM。
+
+PC 固定代理 `/api/robot-control/base/manual` 现在同时接受 `speed` 与 `speed_mps`。
+兼容 `speed_mps` 是为了外部脚本按响应字段名调用时不再被判成
+`manual_request_invalid_numbers`；转给上位机 `/api/base/manual` 的 body 仍保持
+`speed`，避免改变上位机合同。
+
+2026-07-03 05:32 CST 真实上位机 `root@192.168.1.11:7878`、PC Node
+`0.0.0.0:7001` 复测：
+
+- PC 手控 body `{"direction":"forward","speed_mps":0.05,"duration_ms":500,
+  "command_mode":"ros","feedback_mode":"realtime","confirm_hil_checklist":true}` 返回
+  `proxy_status=command_forwarded`、`remote_http_status=200`、`requested_speed_mps=0.05`
+  和 `clamped_speed_mps=0.05`。上位机 `remote_motion_key_values` 中
+  `manual_command_executed=true`、`auto_stop_executed=true`。
+- 常驻 `esp32_bridge` 命令日志写出多帧 `{"T":11,"L":255,"R":255}`，随后写出
+  `{"T":11,"L":0,"R":0}` stop。
+- 同窗口与后续 `T=1001` 反馈仍为 `L/R=0/0`。因此本轮证明 PC/API/ROS
+  `/cmd_vel`/bridge/UART 命令链路和自动停车链路可达，但不能把 wheel raw 非零、
+  物理移动、HIL pass、Nav2 成功或 delivery success 标记为完成。
+
 ## Run-time Validation Checklist
 
 - 确认 Orange Pi 串口与波特率（不要复用 Raspberry Pi 示例路径）。

@@ -455,3 +455,37 @@ FastDDS shared-memory port 锁文件上，表现为 `RTPS_TRANSPORT_SHM open_and
   SHM 历史锁警告，但 returncode 为 `0`，不再阻塞 API。
 - 同窗口 bridge debug 仍显示 `wheel_feedback_lr_nonzero_proven=false`、`latest_pair L/R=0/0`；因此该修复只证明
   ROS `/cmd_vel` 发布链路恢复，不证明完整 Nav2 路线、wheel raw L/R 非零或 delivery success 已完成。
+
+## 2026-07-03 NavigateToPose runtime reuse and rejection boundary
+
+2026-07-03 05:17-05:20 CST 在真实上位机 `root@192.168.1.11:7878` 复核完整路线执行时，
+发现同一台车上已经存在常驻 `esp32_bridge`，它持有 `/dev/ttyS5 @ 115200` 并订阅 `/cmd_vel`。
+旧的 O11 goal helper 在 `managed_runtime_opt_in=true` 时会再启动一个 `esp32_bridge`，导致日志出现
+`Serial read error ... device disconnected or multiple access on port?`。这不是相机或雷达 gate，
+而是自动驾驶执行 helper 与常驻 bridge 抢同一个 WAVE ROVER UART。
+
+本轮调整 `onboard/scripts/o11_nav2_goal_execution_proof.py`：托管 runtime 启动前先只读
+`ros2 action list -t`。如果已经观察到 `/navigate_to_pose [nav2_msgs/action/NavigateToPose]`，
+helper 复用现有 ROS graph，不再启动第二套 Nav2/bridge runtime，也就不会重复打开
+`/dev/ttyS5`。现场坏 graph 会让 `ros2 action list -t` 本身超时，因此 helper 还新增只读进程级
+保护：只要 `ps` 观察到现有 `esp32_bridge`、`autonomous.launch.py` 或 `nav2_container`，
+也按“现场 runtime 已存在”处理。该分支会在 artifact 的
+`managed_runtime.reuse_existing_runtime=true` 与 `managed_runtime.reuse_reason` 中留证。
+
+现场复测结果：
+
+- `POST /api/nav2/goal/execute`，body 使用 `managed_runtime_opt_in=true`、
+  `base_command_mode=pwm`、`server_timeout_s=5`、`result_timeout_s=4` 和预览终点
+  `goal=(0.8,0.05)`，13.9s 内返回 `status=goal_rejected`。
+- artifact 显示 `managed_runtime.reuse_existing_runtime=true`、
+  `reuse_reason=existing_runtime_process_observed`、`started=false`、
+  `cleanup.boundary=no_process_started`；进程探针同时观察到常驻 `esp32_bridge`、`autonomous.launch.py`
+  和 `nav2_container`。这证明 helper 没有再启动第二套 bridge，也没有再抢 `/dev/ttyS5`。
+- action server 可达，但 `goal_accepted=false`，没有进入 `/cmd_vel` 运动阶段。
+- 常驻 Nav2 日志显示 local costmap 曾持续报 `Invalid frame ID "map"`，随后
+  `lifecycle_manager_navigation` 在 planner/server bond 阶段失败，说明当前失败层级是
+  Nav2 lifecycle/BT/controller 运行态不健康，而不是 PC 安全确认、摄像头、雷达或目标点坐标本身。
+- 因 goal 被拒收，`sends_motion_commands=false`、`publishes_cmd_vel=false`、
+  `robot_control_executed=false`、`delivery_success=false` 必须保持关闭；下一步应先通过
+  `POST /api/nav2/stop` 与 `POST /api/nav2/start` 恢复 lifecycle，再重跑 goal execution 并复验
+  同窗口 wheel raw L/R 与 delivery result。
