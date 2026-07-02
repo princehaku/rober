@@ -1529,6 +1529,32 @@ describe("workstation fail-closed API contracts", () => {
     expect(source).toContain("confirm_navigation_execution: plainManualSafetyConfirmed.value");
   });
 
+  it("keeps the open PC page live and keyboard-ready without changing motion gates", async () => {
+    // 打开即用的合同必须体现在源码 DOM 和循环函数里，避免页面退回小地图、手点刷新或写死旧 ROS 手控模式。
+    const source = await readFile(path.join(process.cwd(), "src/components/RobotControlConsolePanel.vue"), "utf8");
+
+    expect(source).toContain("const LIVE_MAP_REFRESH_INTERVAL_MS = 2500");
+    expect(source).toContain("const LIVE_RADAR_REFRESH_INTERVAL_MS = 5000");
+    expect(source).toContain("const LIVE_CAMERA_STATUS_REFRESH_INTERVAL_MS = 2000");
+    expect(source).toContain("const KEYBOARD_AUTO_ARM_ON_LOAD = true");
+    expect(source).toContain("function refreshLiveMapSnapshot()");
+    expect(source).toContain("function refreshLiveCameraStatus()");
+    expect(source).toContain("function autoArmKeyboardControl(reason: string)");
+    expect(source).toContain('data-open-page-live-map-refresh="true"');
+    expect(source).toContain('data-open-page-live-camera-preview="true"');
+    expect(source).toContain('data-open-page-keyboard-auto-ready="true"');
+    expect(source).toContain('data-live-map-refresh="true"');
+    expect(source).toContain('data-live-map-refreshes="map_preview,radar_status,radar_scan_proof"');
+    expect(source).toContain('data-live-map-keeps-overlays="robot_pose,nav2_route,radar_points,goal"');
+    expect(source).toContain('data-live-camera-auto-joins-shared-mjpeg="true"');
+    expect(source).toContain('data-keyboard-auto-arm-on-load="true"');
+    expect(source).toContain('data-keyboard-click-to-arm-required="false"');
+    expect(source).toContain('data-keyboard-event-scope="page_non_editable"');
+    expect(source).toContain('manualBoundary.value?.keyboard_manual_command_mode ?? "pwm"');
+    expect(source).not.toContain('manualCommandMode: "ros"');
+    expect(source).not.toContain('data-keyboard-event-scope="focused_panel_or_page_non_editable"');
+  });
+
   it("formats public API port conflict with operator next steps", () => {
     // 公网绑定失败是现场访问问题；提示必须给出占用排查和换端口兜底。
     const message = listenFailureHint(
@@ -4599,7 +4625,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.safe_command_boundary.keyboard_control_start_ready).toBe(true);
       expect(summary.safe_command_boundary.keyboard_control_status).toBe("start_ready");
       expect(summary.safe_command_boundary.keyboard_control_label).toBe("键盘手控（勾确认后可启用）");
-      expect(summary.safe_command_boundary.keyboard_control_next_action).toBe("勾选现场安全确认后点击启用键盘；按住 W/A/S/D 或方向键才会连续低速移动，松开/失焦/切页会停");
+      expect(summary.safe_command_boundary.keyboard_control_next_action).toBe("页面自动准备键盘；准备本身不发车；按住 W/A/S/D 或方向键才会连续低速移动，松开/失焦/切页会停");
       expect(summary.safe_command_boundary.keyboard_minimal_precheck_plain).toBe("键盘连续手控只复用现场安全确认；启用键盘不发车，只有按住方向键/WASD 才发送低速短脉冲。");
       expect(summary.readback_summary.keyboard.status).toBe("start_ready");
       expect(summary.readback_summary.keyboard.control_mode).toBe("bounded_repeating_manual_pulse");

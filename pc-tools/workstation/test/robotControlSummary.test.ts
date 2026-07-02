@@ -1497,7 +1497,7 @@ describe("robotControlSummary", () => {
     expect(summary.current_keyboard_action_post_hold_readback_stops_motion).toBe(false);
     expect(summary.current_keyboard_control_pack_status).toBe("ready_for_safety_confirm");
     expect(summary.current_keyboard_control_pack_plain).toContain("键盘连续手控可复验");
-    expect(summary.current_keyboard_control_pack_next_action_plain).toBe("勾现场安全确认后点击启用键盘；启用不发车，按住 W/A/S/D 或方向键才连续低速移动，松开后只读复验轮速和停止。");
+    expect(summary.current_keyboard_control_pack_next_action_plain).toBe("页面自动准备不发车，按住 W/A/S/D 或方向键才连续低速移动，松开后只读复验轮速和停止。");
     expect(summary.current_keyboard_control_pack_action_id).toBe("hold_keyboard");
     expect(summary.current_keyboard_control_pack_display_label).toBe("键盘连续手控");
     expect(summary.current_keyboard_control_pack_start_endpoint).toBe("/api/robot-control/base/manual");

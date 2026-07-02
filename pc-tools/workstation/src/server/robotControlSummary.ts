@@ -7794,7 +7794,7 @@ function lockedBoundary(
   const freeRoamMappingReady = freeRoamStartReady && freeRoamMappingMissingReasons.length === 0;
   const freeRoamStatus = freeRoamReady ? "ready" : freeRoamStartReady ? "start_ready" : "locked";
   const freeRoamNextAction = freeRoamAutonomyNextAction(freeRoamStatus, freeRoamMappingReady, freeRoamMappingMissingReasons, freeRoamRuntime, manualMotionFallbackActive);
-  const keyboardNextAction = "勾选现场安全确认后点击启用键盘；按住 W/A/S/D 或方向键才会连续低速移动，松开/失焦/切页会停";
+  const keyboardNextAction = "页面自动准备键盘；准备本身不发车；按住 W/A/S/D 或方向键才会连续低速移动，松开/失焦/切页会停";
   const keyboardStopTriggers = ["key_released", "window_blur", "page_hidden", "direction_changed", "button_stop"];
   const nav2MinimalPrecheckPlain = "执行图上路线只要求现场安全确认；固定白名单是代理护栏，不是普通用户额外预检；相机、雷达和现场报告不作为发车前额外预检。";
   return {
@@ -8091,7 +8091,7 @@ function keyboardSummaryReadback(): RobotControlSummaryResponse["readback_summar
     stop_triggers_plain: "松开按键、窗口失焦、页面隐藏、切换方向或点击停止都会发送停止请求。",
     pulse_timing_plain: `按住时约每 ${ROBOT_CONTROL_KEYBOARD_JOG_INTERVAL_MS / 1000} 秒发送一次 ${ROBOT_CONTROL_KEYBOARD_JOG_DURATION_MS / 1000} 秒低速脉冲。`,
     wheel_feedback_acceptance_plain: "键盘连续手控验收只看同一次按住窗口的 manual pulse 回包：需要读到 wheel L/R 非零；全局只读采样或旧材料不能替代本次按住读数。",
-    next_action_plain: "勾选现场安全确认后点击启用键盘；按住 W/A/S/D 或方向键才会连续低速移动，松开/失焦/切页会停。",
+    next_action_plain: "页面自动准备键盘；准备本身不发车；按住 W/A/S/D 或方向键才会连续低速移动，松开/失焦/切页会停。",
     minimal_precheck_plain: "键盘连续手控只复用现场安全确认；启用键盘不发车，只有按住方向键/WASD 才发送低速短脉冲。",
     robot_control_executed: "false",
   };
@@ -11034,7 +11034,7 @@ export async function buildRobotControlSummary(
       return "键盘连续手控已闭环：按住窗口 wheel L/R 非零，松开/失焦后停稳；继续保持现场可接管。";
     }
     if (currentKeyboardControlPackStatus === "ready_for_safety_confirm") {
-      return `键盘连续手控可复验：先勾现场安全确认，点击启用不会发车，按住 W/A/S/D 或方向键才会连续低速移动；松开后按轮速采样和总览只读复验。当前缺口：${keyboardActionMissingEvidence.join("、") || "无"}。`;
+      return `键盘连续手控可复验：页面自动准备不发车，按住 W/A/S/D 或方向键才会连续低速移动；松开后按轮速采样和总览只读复验。当前缺口：${keyboardActionMissingEvidence.join("、") || "无"}。`;
     }
     return `键盘连续手控暂未就绪：先恢复键盘入口或上车连接；当前缺口：${keyboardActionMissingEvidence.join("、") || "键盘入口未就绪"}。`;
   })();
@@ -11043,7 +11043,7 @@ export async function buildRobotControlSummary(
       return "继续保持现场可接管；需要停下时点击停止。";
     }
     if (currentKeyboardControlPackStatus === "ready_for_safety_confirm") {
-      return "勾现场安全确认后点击启用键盘；启用不发车，按住 W/A/S/D 或方向键才连续低速移动，松开后只读复验轮速和停止。";
+      return "页面自动准备不发车，按住 W/A/S/D 或方向键才连续低速移动，松开后只读复验轮速和停止。";
     }
     return "先恢复键盘入口或上车连接，再回到安全确认启用。";
   })();

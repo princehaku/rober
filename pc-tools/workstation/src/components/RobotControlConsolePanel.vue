@@ -113,6 +113,10 @@ const KEYBOARD_VERIFIED_MIN_FORWARDED_PULSES = 2;
 const RADAR_MAP_PREVIEW_AFTER_PROOF_RETRY_DELAYS_MS = [750, 1500] as const;
 const WHEEL_ZERO_NEXT_ACTION_SUMMARY = "下一步：检查电机使能、供电、模式和现场空间后重试读取轮速。";
 const EVIDENCE_STALE_AFTER_MS = 15 * 60 * 1000;
+const LIVE_MAP_REFRESH_INTERVAL_MS = 2500;
+const LIVE_RADAR_REFRESH_INTERVAL_MS = 5000;
+const LIVE_CAMERA_STATUS_REFRESH_INTERVAL_MS = 2000;
+const KEYBOARD_AUTO_ARM_ON_LOAD = true;
 const NAV2_GOAL_MINIMAL_PRECHECK_PLAIN = "执行图上路线只要求现场安全确认；目标白名单和危险 true 字段属于固定代理安全护栏，不是普通用户额外预检；相机、雷达、现场报告、路线读回、定位读回和自动驾驶状态只做显示或复验。";
 const NAV2_GOAL_PREFLIGHT_BLOCKING_REQUIREMENTS = ["confirm_navigation_preflight", "goal_limits", "hard_dangerous_true_fields"] as const;
 const NAV2_GOAL_EXECUTION_BLOCKING_REQUIREMENTS = ["confirm_navigation_execution", "goal_limits", "hard_dangerous_true_fields"] as const;
@@ -540,6 +544,11 @@ let mjpegPreviewRetryTimer: number | null = null;
 let keyboardJogTimer: number | null = null;
 let keyboardJogInFlight = false;
 let keyboardStopAfterPulseReason: string | null = null;
+let liveMapRefreshTimer: number | null = null;
+let liveCameraStatusTimer: number | null = null;
+let liveMapRefreshInFlight = false;
+let liveCameraStatusRefreshInFlight = false;
+let lastLiveRadarRefreshAtMs = 0;
 const keyboardControlOwnerId = `keyboard-owner-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 const KEYBOARD_CONTROL_OWNER_KEY = "__roberPcKeyboardControlOwner" as const;
 
@@ -4603,7 +4612,7 @@ function plainCurrentControlPackEvidenceLabel(id: string): string {
   }[id] ?? id;
 }
 const plainCurrentKeyboardControlPack = computed(() => {
-  // 键盘包只说明“启用不发车、按住才动、松开后只读复验”，不替用户自动启用或发送按键。
+  // 键盘包只说明“自动准备不发车、按住才动、松开后只读复验”，不替用户发送方向按键。
   const summary = robotSummary.value;
   const fallback = plainKeyboardHoldGateGauge.value;
   const missingEvidence = summary?.current_keyboard_control_pack_missing_evidence
@@ -4625,7 +4634,7 @@ const plainCurrentKeyboardControlPack = computed(() => {
   const defaultPlain = status === "complete"
     ? "键盘连续手控已闭环：按住窗口 wheel L/R 非零，松开/失焦后停稳；继续保持现场可接管。"
     : status === "ready_for_safety_confirm"
-      ? `键盘连续手控可复验：先勾现场安全确认，点击启用不会发车，按住 W/A/S/D 或方向键才会连续低速移动；松开后按轮速采样和总览只读复验。当前缺口：${missingEvidence.join("、") || "无"}。`
+      ? `键盘连续手控可复验：页面自动准备不会发车，按住 W/A/S/D 或方向键才会连续低速移动；松开后按轮速采样和总览只读复验。当前缺口：${missingEvidence.join("、") || "无"}。`
       : `键盘连续手控暂未就绪：先恢复键盘入口或上车连接；当前缺口：${missingEvidence.join("、") || "键盘入口未就绪"}。`;
   return {
     status,
@@ -4634,7 +4643,7 @@ const plainCurrentKeyboardControlPack = computed(() => {
       ?? (status === "complete"
         ? "继续保持现场可接管；需要停下时点击停止。"
         : status === "ready_for_safety_confirm"
-          ? "勾现场安全确认后点击启用键盘；启用不发车，按住 W/A/S/D 或方向键才连续低速移动，松开后只读复验轮速和停止。"
+          ? "页面自动准备键盘；不按方向不发车，按住 W/A/S/D 或方向键才连续低速移动，松开后只读复验轮速和停止。"
           : "先恢复键盘入口或上车连接，再回到安全确认启用。"),
     actionId: summary?.current_keyboard_control_pack_action_id ?? fallback.actionId,
     displayLabel: summary?.current_keyboard_control_pack_display_label ?? fallback.actionDisplayLabel,
@@ -8850,8 +8859,8 @@ const plainSafetyActionItems = computed<PlainSafetyActionItem[]>(() => {
       id: "keyboard",
       title: "键盘",
       state: keyboardReady ? "可启用" : "未就绪",
-      summary: boundary.keyboard_minimal_precheck_plain || "键盘只复用安全确认；启用后按住方向键才会移动。",
-      nextAction: boundary.keyboard_control_next_action || "现场安全已确认，启用键盘后按住方向键或 W/A/S/D 才会移动。",
+      summary: boundary.keyboard_minimal_precheck_plain || "键盘只复用安全确认；页面准备后按住方向键才会移动。",
+      nextAction: boundary.keyboard_control_next_action || "现场安全已确认，页面准备后按住方向键或 W/A/S/D 才会移动。",
       sourceCardId: "keyboard_control",
     },
     {
@@ -9196,7 +9205,7 @@ const keyboardContractReady = computed(() => {
     && robotSummary.value.safe_command_boundary.keyboard_reuses_manual_gate === true;
 });
 const canUseKeyboardControl = computed(() => keyboardContractReady.value && canSendManualMotion.value);
-const canArmKeyboardControl = computed(() => canUseKeyboardControl.value);
+const canArmKeyboardControl = computed(() => canUseKeyboardControl.value && !keyboardControlArmed.value);
 const keyboardManualPulseObserved = computed(() => keyboardVerifiedPulseCount.value >= KEYBOARD_VERIFIED_MIN_FORWARDED_PULSES);
 const keyboardStopSettledAfterPulse = computed(() => keyboardManualPulseObserved.value && !keyboardHeldDirection.value && keyboardControlStatus.value.startsWith("stop_sent"));
 const keyboardStopFailedAfterPulse = computed(() => (
@@ -9343,7 +9352,7 @@ const plainKeyboardDirectionButtonEvidence = computed<PlainKeyboardDirectionButt
   fixedStopEndpoint: manualBoundary.value?.keyboard_stop_proxy_endpoint ?? "/api/robot-control/base/stop",
   fixedFeedbackSamplesEndpoint: "/api/robot-control/base/feedback-samples",
   fixedSummaryEndpoint: "/api/robot-control/summary",
-  manualCommandMode: "ros",
+  manualCommandMode: manualBoundary.value?.keyboard_manual_command_mode ?? "pwm",
   pulseIntervalMs: keyboardJogIntervalMs.value,
   pulseDurationMs: keyboardJogDurationMs.value,
   verifiedMinForwardedPulses: KEYBOARD_VERIFIED_MIN_FORWARDED_PULSES,
@@ -9357,7 +9366,7 @@ const plainKeyboardDirectionButtonEvidence = computed<PlainKeyboardDirectionButt
   stopSettledRequiredAfterHold: true,
 }));
 const plainKeyboardHoldGateGauge = computed<PlainKeyboardHoldGateGauge>(() => {
-  // 键盘入口仪表把“点击启用”和“按住才动”拆开，避免把启用键盘误读成发车。
+  // 键盘入口仪表把“自动准备”和“按住才动”拆开，避免把键盘 ready 误读成发车。
   const summary = robotSummary.value;
   const evidence = plainKeyboardDirectionButtonEvidence.value;
   const telemetry = plainKeyboardTelemetrySummary.value;
@@ -9393,7 +9402,7 @@ const plainKeyboardHoldGateGauge = computed<PlainKeyboardHoldGateGauge>(() => {
     state = "待入口";
   }
   const safetyText = plainManualSafetyConfirmed.value ? "安全确认已勾" : "安全确认未勾";
-  const armText = "点击启用不发车";
+  const armText = "自动准备不发车";
   const holdText = evidence.sendsMotionWhileHeld ? "按住会连续低速脉冲" : "按住前不发车";
   const pulseText = evidence.bestContinuousPulseCount >= evidence.verifiedMinForwardedPulses
     ? `已连续 ${evidence.bestContinuousPulseCount}/${evidence.verifiedMinForwardedPulses} 次`
@@ -9416,7 +9425,7 @@ const plainKeyboardHoldGateGauge = computed<PlainKeyboardHoldGateGauge>(() => {
       return "键盘连续手控已验证，可继续按住方向键移动";
     }
     if (canUseKeyboardControl.value) {
-      return keyboardControlArmed.value ? "按住方向键或 W/A/S/D 才会移动" : "点击启用键盘；启用本身不发车";
+      return keyboardControlArmed.value ? "按住方向键或 W/A/S/D 才会移动" : "等待页面自动准备键盘；不按方向不发车";
     }
     return "刷新键盘入口";
   })();
@@ -9648,6 +9657,28 @@ const canArmPlainFreeRoamKeyboard = computed(() => (
   && (!plainFreeRoamKeyboardRequiresMapRuntime.value || mapRuntimeStarted.value)
   && canArmKeyboardControl.value
 ));
+const plainFreeRoamKeyboardReadyForHold = computed(() => (
+  // auto-ready 只表示键盘已经接管页面按键；它不等于正在移动，也不应隐藏自由移动/雷达状态。
+  plainManualSafetyConfirmed.value
+  && !navGoalExecutionPending.value
+  && (!plainFreeRoamKeyboardRequiresMapRuntime.value || mapRuntimeStarted.value)
+  && keyboardControlArmed.value
+  && canUseKeyboardControl.value
+));
+const canUsePlainFreeRoamKeyboardAction = computed(() => (
+  // 备用按钮在已准备时仍保持可聚焦，让现场能看到“按住方向键”而不是误以为键盘被锁。
+  canArmPlainFreeRoamKeyboard.value || plainFreeRoamKeyboardReadyForHold.value
+));
+const canPressPlainFreeRoamKeyboardDirection = computed(() => (
+  // 屏幕方向键是自由移动卡片内的动作按钮，必须继续尊重“扫图先记录”的局部门禁。
+  canPressKeyboardDirection.value
+  && (!plainFreeRoamKeyboardRequiresMapRuntime.value || mapRuntimeStarted.value)
+));
+const plainFreeRoamDirectionSendsMotionWhileHeld = computed(() => (
+  // disabled 的局部方向键不能再声明“按住会动”，否则 DOM 证据会和真实门禁矛盾。
+  canPressPlainFreeRoamKeyboardDirection.value
+  && plainKeyboardDirectionButtonEvidence.value.sendsMotionWhileHeld
+));
 
 function plainFreeRoamBoundaryNextActionForHint(): string {
   // 上车端 next_action 是自由移动和建图验收分层后的结论；这里只翻译展示，不自动触发 start。
@@ -9840,8 +9871,8 @@ const plainFreeRoamKeyboardLabel = computed(() => {
   if (plainFreeRoamKeyboardRequiresMapRuntime.value && !mapRuntimeStarted.value) {
     return "先开始扫图记录";
   }
-  if (keyboardControlArmed.value && canUseKeyboardControl.value) {
-    return "键盘已启用（按住才动）";
+  if (plainFreeRoamKeyboardReadyForHold.value) {
+    return plainFreeRoamKeyboardRequiresMapRuntime.value ? "按住方向键扫图" : "按住方向键自由移动";
   }
   if (!canArmPlainFreeRoamKeyboard.value) {
     return "键盘条件未满足";
@@ -9896,7 +9927,7 @@ const plainFreeRoamNextActionLabel = computed(() => {
       if (keyboardHeldDirection.value) {
         return "下一步：松开按键停止";
       }
-      if (keyboardControlArmed.value && canUseKeyboardControl.value) {
+      if (plainFreeRoamKeyboardReadyForHold.value) {
         return "下一步：按住方向键自由移动";
       }
       if (canStartFreeRoamAutonomy.value) {
@@ -10097,12 +10128,6 @@ const plainFreeRoamDriveStatus = computed(() => {
       ? "扫图状态：已停止，地图画面已刷新，可以保存当前地图。"
       : "扫图状态：已停止，先刷新扫图画面，再保存地图。";
   }
-  if (keyboardControlArmed.value && canUseKeyboardControl.value) {
-    if (statusPrefix === "自由移动状态") {
-      return "自由移动状态：键盘已启用，按住方向键/WASD 低速移动；松开即停。";
-    }
-    return "扫图状态：键盘已启用，按住方向键/WASD 低速扫图；松开即停。";
-  }
   if (!mapRuntimeStarted.value && !mapSavedThisSession.value) {
     if (statusPrefix === "自由移动状态") {
       const readyText = robotSummary.value?.safe_command_boundary.free_roam_autonomy_start_ready === true
@@ -10115,6 +10140,9 @@ const plainFreeRoamDriveStatus = computed(() => {
     return "扫图状态：还没开始记录，键盘扫图锁定。";
   }
   if (mapRuntimeStarted.value) {
+    if (plainFreeRoamKeyboardReadyForHold.value) {
+      return "扫图状态：地图记录中，按住方向键/WASD 低速扫图；松开即停。";
+    }
     return canArmPlainFreeRoamKeyboard.value
       ? "扫图状态：地图记录中，先启用键盘扫图；启用本身不会移动。"
       : "扫图状态：地图记录中，键盘条件未满足，不能扫图移动。";
@@ -11825,7 +11853,7 @@ const plainKeyboardLiveStatus = computed(() => {
     return `等待按键，按住才会动；${keyboardPulseContractShortText()}。`;
   }
   if (canUseKeyboardControl.value) {
-    return `未启用，先点启用键盘；${keyboardPulseContractShortText()}。`;
+    return `页面正在准备键盘；准备后直接按住 W/A/S/D 或方向键，${keyboardPulseContractShortText()}。`;
   }
   return plainKeyboardMissingSummary.value || "键盘手控暂未满足。";
 });
@@ -11898,7 +11926,7 @@ const plainKeyboardContinuousProofSummary = computed(() => {
       : keyboardControlArmed.value && canUseKeyboardControl.value
         ? "按住 W/A/S/D 或方向键"
         : plainManualSafetyConfirmed.value
-          ? "点击启用键盘"
+          ? "等待自动准备键盘，或按住前点备用启用"
           : "勾选现场安全确认";
   return {
     state,
@@ -11926,9 +11954,9 @@ const plainKeyboardMainActionSummary = computed(() => {
     case "armed_waiting_for_keydown":
       return `键盘主动作：已启用但不会发车；只有按住 W/A/S/D 或方向键才发送连续低速脉冲，${keyboardPulseContractShortText()}。`;
     case "arm_keyboard_no_motion":
-      return "键盘主动作：点击启用只拿本页按键控制权，不发车；启用后必须按住方向键才会动。";
+      return "键盘主动作：页面会自动拿本页按键控制权，不发车；必须按住方向键才会动。";
     case "await_safety_confirm":
-      return "键盘主动作：现场安全已确认；启用后按住方向键才会发车。";
+      return "键盘主动作：现场安全已确认；页面准备后按住方向键才会发车。";
     case "refresh_keyboard_gate_no_motion":
       return "键盘主动作：先只读复查键盘入口，不发车。";
     case "wait_trip_execution":
@@ -13789,7 +13817,7 @@ const plainGoalProgressItems = computed(() => {
       actionLabel: "去键盘",
       state: canUseKeyboardControl.value ? (keyboardStopSettledAfterPulse.value ? "已验证" : "待验证") : "未满足",
       hint: canUseKeyboardControl.value
-        ? keyboardStopSettledAfterPulse.value ? `已连续转发键盘方向输入，${keyboardForwardedPulseProgressText.value}，停止已发送；现场可继续按住方向键手控。` : keyboardManualPulseObserved.value ? `已连续转发键盘方向输入，${keyboardForwardedPulseProgressText.value}；松开按键完成停止收口。` : !wheelClosureEvidence.value.ready ? `键盘已解锁；点击启用键盘后按住方向键读取非零 L/R 并连续验证，${keyboardForwardedPulseProgressText.value}。` : `键盘已解锁；点击启用键盘后按住方向键连续验证，${keyboardForwardedPulseProgressText.value}。`
+        ? keyboardStopSettledAfterPulse.value ? `已连续转发键盘方向输入，${keyboardForwardedPulseProgressText.value}，停止已发送；现场可继续按住方向键手控。` : keyboardManualPulseObserved.value ? `已连续转发键盘方向输入，${keyboardForwardedPulseProgressText.value}；松开按键完成停止收口。` : !wheelClosureEvidence.value.ready ? `键盘会自动准备；按住方向键读取非零 L/R 并连续验证，${keyboardForwardedPulseProgressText.value}。` : `键盘会自动准备；按住方向键连续验证，${keyboardForwardedPulseProgressText.value}。`
         : `先补齐键盘手控条件。${plainKeyboardMissingSummary.value} ${plainKeyboardNextActionSummary.value}`,
       nextAction: plainKeyboardGoalNextAction.value,
     },
@@ -13959,7 +13987,7 @@ const plainGoalProgressBlockerSummary = computed(() => {
     if (keyboardManualPulseObserved.value) {
       return `验收卡点：键盘已连续转发 ${KEYBOARD_VERIFIED_MIN_FORWARDED_PULSES}/${KEYBOARD_VERIFIED_MIN_FORWARDED_PULSES} 次，松开按键完成停止收口。`;
     }
-    return `验收卡点：键盘已解锁，点击启用键盘后按住方向键连续验证，${keyboardForwardedPulseProgressText.value}。`;
+    return `验收卡点：键盘会自动准备，按住方向键连续验证，${keyboardForwardedPulseProgressText.value}。`;
   }
   if (!canUseKeyboardControl.value) {
     return `验收卡点：键盘手控未满足，${plainKeyboardNextActionSummary.value}`;
@@ -15171,7 +15199,7 @@ const plainMotionReadinessGauge = computed<PlainMotionReadinessGauge>(() => {
   const keyboardText = keyboardCanMoveAfterHold
     ? `键盘按住会动，已验证 ${keyboard.bestContinuousPulseCount} 次连续脉冲`
     : keyboardCanBeArmed
-      ? "键盘可启用，按住才会动"
+      ? "键盘会自动准备，按住才会动"
       : safetyConfirmed ? "键盘待恢复入口" : "键盘待确认";
   const freeText = free.canFreeMoveNow
     ? "自由移动可启动"
@@ -15714,7 +15742,7 @@ const keyboardControlSummary = computed(() => {
     return { state: "已启用", hint: "键盘手控已启用：在本页非输入区按住 W/A/S/D 或方向键连续点动，松开即停。" };
   }
   if (canUseKeyboardControl.value) {
-    return { state: "可手控", hint: "点击“启用键盘”后，按住 W/A/S/D 或方向键连续点动，松开即停。" };
+    return { state: "可手控", hint: "页面会自动准备键盘；在本页非输入区按住 W/A/S/D 或方向键连续点动，松开即停。" };
   }
   if (!keyboardContractReady.value) {
     return { state: "未满足", hint: "键盘合同未从 summary 读到；本机不会启用连续手控。" };
@@ -15793,7 +15821,10 @@ function plainKeyboardBlockedActionLabel(missingLabels: string[]): string {
 }
 
 const plainKeyboardArmButtonLabel = computed(() => {
-  // 启用后拿到本页键盘控制权；真正手控仍必须后续按住方向键。
+  // 自动准备或手动启用只拿到本页键盘控制权；真正手控仍必须后续按住方向键。
+  if (keyboardControlArmed.value && canUseKeyboardControl.value) {
+    return "键盘已准备（按住才动）";
+  }
   if (navGoalExecutionPending.value) {
     return "启用键盘（行程中）";
   }
@@ -15839,7 +15870,7 @@ const plainKeyboardNextActionSummary = computed(() => {
     if (!wheelClosureEvidence.value.ready) {
       const { left, right } = currentWheelReadback.value;
       const readbackText = currentWheelReadbackLoaded.value ? `当前 L/R=${left}/${right}；` : "";
-      return `下一步：启用键盘并按住方向键，${readbackText}读取非零 L/R 并连续验证。`;
+      return `下一步：按住方向键，${readbackText}读取非零 L/R 并连续验证。`;
     }
     return "";
   }
@@ -15875,7 +15906,7 @@ const plainKeyboardSafetySummary = computed(() => {
     return "键盘手控：勾选安全确认后即可启用；按住方向键才会动。";
   }
   return canUseKeyboardControl.value
-    ? "键盘手控：安全确认已完成；现在可启用键盘，按住方向键才会动。"
+    ? "键盘手控：页面已自动准备；现在按住方向键或 W/A/S/D 才会动。"
     : "键盘手控：安全确认已完成，等待手控入口复查。";
 });
 
@@ -15909,7 +15940,7 @@ const plainKeyboardWheelReadbackGoal = computed(() => {
   }
   const actionText = keyboardControlArmed.value
     ? "按住方向键读取非零 L/R"
-    : "启用后按住方向键读取非零 L/R";
+    : "准备后按住方向键读取非零 L/R";
   if (!currentWheelReadbackLoaded.value) {
     return `键盘轮速目标：${actionText}；当前还没读到 L/R。`;
   }
@@ -15941,7 +15972,7 @@ const plainKeyboardControlSummary = computed(() => {
     return { state: "已启用", hint: "已启用；在本页非输入区按住 W/A/S/D 或方向键连续手控，松开即停。" };
   }
   if (canUseKeyboardControl.value) {
-    return { state: "可手控", hint: "点击启用键盘后，在本页非输入区按住 W/A/S/D 或方向键；输入框内按键不会发车。" };
+    return { state: "可手控", hint: "页面会自动准备键盘；在本页非输入区按住 W/A/S/D 或方向键；输入框内按键不会发车。" };
   }
   if (keyboardControlArmed.value || keyboardControlStatus.value.startsWith("blocked")) {
     return { state: "未满足", hint: `移动条件还没满足，暂不发送键盘手控。${plainKeyboardMissingSummary.value} ${plainKeyboardNextActionSummary.value}` };
@@ -17248,6 +17279,68 @@ async function refreshCameraMjpegStatus(): Promise<void> {
   }
 }
 
+function shouldRefreshLiveSurfaces(): boolean {
+  // 页面隐藏时停止后台刷新，回到前台后再补读，避免无人观看时持续压上位机。
+  return !document.hidden && robotApiBaseUrl.value.trim().length > 0;
+}
+
+async function refreshLiveMapSnapshot(): Promise<void> {
+  // 实时地图只循环读取地图/路线/小车/雷达 overlay；雷达 scan proof 低频刷新，避免旧点停在大屏上。
+  if (!shouldRefreshLiveSurfaces() || liveMapRefreshInFlight || loading.value || mapPreviewPending.value || mapRefreshPending.value) {
+    return;
+  }
+  liveMapRefreshInFlight = true;
+  try {
+    const now = Date.now();
+    if (!radarRefreshPending.value && now - lastLiveRadarRefreshAtMs >= LIVE_RADAR_REFRESH_INTERVAL_MS) {
+      lastLiveRadarRefreshAtMs = now;
+      await refreshRadarProof({ focusAfterReady: false, mapPreviewAfter: true });
+      return;
+    }
+    await refreshMapPreview({ radarStatusRefresh: true });
+  } finally {
+    liveMapRefreshInFlight = false;
+  }
+}
+
+async function refreshLiveCameraStatus(): Promise<void> {
+  // 相机状态刷新只读 PC 共享 relay；真正图像帧由 img/video 自己保持连接。
+  if (!shouldRefreshLiveSurfaces() || liveCameraStatusRefreshInFlight || cameraMjpegStatusPending.value) {
+    return;
+  }
+  liveCameraStatusRefreshInFlight = true;
+  try {
+    await refreshCameraMjpegStatus();
+  } finally {
+    liveCameraStatusRefreshInFlight = false;
+  }
+}
+
+function startLiveSurfaceRefreshLoops(): void {
+  // 打开页面即开始维持实时大地图和共享图传状态，不要求用户先点刷新。
+  clearLiveSurfaceRefreshLoops();
+  liveMapRefreshTimer = window.setInterval(() => {
+    void refreshLiveMapSnapshot();
+  }, LIVE_MAP_REFRESH_INTERVAL_MS);
+  liveCameraStatusTimer = window.setInterval(() => {
+    void refreshLiveCameraStatus();
+  }, LIVE_CAMERA_STATUS_REFRESH_INTERVAL_MS);
+}
+
+function clearLiveSurfaceRefreshLoops(): void {
+  // 所有循环集中释放，防止热更新或页面切换后重复轮询。
+  if (liveMapRefreshTimer !== null) {
+    window.clearInterval(liveMapRefreshTimer);
+    liveMapRefreshTimer = null;
+  }
+  if (liveCameraStatusTimer !== null) {
+    window.clearInterval(liveCameraStatusTimer);
+    liveCameraStatusTimer = null;
+  }
+  liveMapRefreshInFlight = false;
+  liveCameraStatusRefreshInFlight = false;
+}
+
 function handleMjpegPreviewLoaded(): void {
   // MJPEG 的 load 事件说明浏览器已拿到真实 JPEG 帧；它只作为画面 fallback，不改变任何控制 gate。
   clearMjpegPreviewRetryTimer();
@@ -18233,7 +18326,10 @@ function plainFreeRoamNextTarget(): HTMLElement | null {
         return enabledButton(plainFreeRoamStopButton.value) ?? keyboardControlPanel.value;
       }
       if (keyboardControlArmed.value && canUseKeyboardControl.value) {
-        return keyboardControlPanel.value ?? enabledButton(plainFreeRoamAutoStartButton.value);
+        // 用户点自由移动/建图向导时，优先落到明确的低速自由移动按钮；键盘自动准备只作为按钮不可用时的兜底入口。
+        return enabledButton(plainFreeRoamAutoStartButton.value)
+          ?? keyboardControlPanel.value
+          ?? enabledButton(plainFreeRoamKeyboardButton.value);
       }
       return enabledButton(plainFreeRoamAutoStartButton.value)
         ?? enabledButton(plainFreeRoamKeyboardButton.value)
@@ -19290,7 +19386,7 @@ function eventTargetIsEditable(target: EventTarget | null): boolean {
 }
 
 function eventTargetIsKeyboardControlScope(target: EventTarget | null): boolean {
-  // 启用后就是全页面键盘窗口；真正的安全边界由 armed、editable 拦截和后端 manual gate 负责。
+  // 准备后就是全页面键盘窗口；真正的安全边界由 armed、editable 拦截和后端 manual gate 负责。
   void target;
   return true;
 }
@@ -19301,7 +19397,7 @@ function keyboardControlWindow(): KeyboardControlWindow {
 }
 
 function setKeyboardControlOwner(): void {
-  // 点击启用键盘才拿到全局按键所有权；新挂载实例会先清空旧 owner。
+  // 自动准备或点击备用启用都会拿到全局按键所有权；新挂载实例会先清空旧 owner。
   keyboardControlWindow()[KEYBOARD_CONTROL_OWNER_KEY] = keyboardControlOwnerId;
 }
 
@@ -19313,7 +19409,7 @@ function clearKeyboardControlOwner(): void {
 }
 
 function resetKeyboardControlOwnerOnMount(): void {
-  // 新控制台挂载时默认没有任何实例持有全局按键，必须重新点“启用键盘”。
+  // 新控制台挂载时先清掉旧 owner，再由 auto-arm 在状态读回后接管当前页面。
   keyboardControlWindow()[KEYBOARD_CONTROL_OWNER_KEY] = "";
 }
 
@@ -19322,8 +19418,28 @@ function ownsKeyboardControl(): boolean {
   return keyboardControlWindow()[KEYBOARD_CONTROL_OWNER_KEY] === keyboardControlOwnerId;
 }
 
+function autoArmKeyboardControl(reason: string): void {
+  // 自动准备键盘只拿页面按键所有权，不发送任何方向命令；真正运动仍必须按住方向键/WASD。
+  if (
+    !KEYBOARD_AUTO_ARM_ON_LOAD
+    || document.hidden
+    || keyboardControlArmed.value
+    || keyboardHeldDirection.value
+    || !canUseKeyboardControl.value
+    || keyboardStopFailedAfterPulse.value
+  ) {
+    return;
+  }
+  setKeyboardControlOwner();
+  keyboardControlArmed.value = true;
+  keyboardControlStatus.value = `armed_waiting_for_key:${reason}`;
+  void nextTick(() => {
+    keyboardControlPanel.value?.focus({ preventScroll: true });
+  });
+}
+
 function activateKeyboardControl(): void {
-  // 现场 operator 需要先显式启用键盘；启用后全局按键才进入同一个 manual gate。
+  // 手动点击仍保留给恢复场景；默认页面会自动准备键盘，但点击不会发送任何底盘命令。
   setKeyboardControlOwner();
   keyboardControlArmed.value = true;
   keyboardControlStatus.value = canSendManualMotion.value ? "armed_waiting_for_key" : `blocked_keyboard_manual_gate:${manualBlockedReason.value}`;
@@ -19478,7 +19594,7 @@ function handleGlobalKeyUp(event: KeyboardEvent): void {
 }
 
 function handleKeyboardControlFocusOut(event: FocusEvent): void {
-  // 启用后允许 operator 看地图或点击空白处继续按键；只有进入可编辑控件才退出手控窗口。
+  // 准备后允许 operator 看地图或点击空白处继续按键；只有进入可编辑控件才退出手控窗口。
   const nextTarget = event.relatedTarget;
   if (!(nextTarget instanceof HTMLElement) || !eventTargetIsEditable(nextTarget)) {
     return;
@@ -19490,7 +19606,11 @@ function handlePageVisibilityChange(): void {
   // 页面隐藏时 operator 不再能观察现场，必须立即退出连续手控。
   if (document.hidden && (keyboardControlArmed.value || keyboardHeldDirection.value)) {
     disarmKeyboardControl("page_hidden");
+    return;
   }
+  autoArmKeyboardControl("page_visible");
+  void refreshLiveMapSnapshot();
+  void refreshLiveCameraStatus();
 }
 
 function handleWindowBlur(): void {
@@ -19498,6 +19618,11 @@ function handleWindowBlur(): void {
   if (keyboardControlArmed.value || keyboardHeldDirection.value) {
     disarmKeyboardControl("window_blur");
   }
+}
+
+function handleWindowFocus(): void {
+  // 回到页面后重新准备 WASD，不需要用户再找“启用键盘”；仍然只有按住方向键才会发车。
+  autoArmKeyboardControl("window_focus");
 }
 
 async function sendStop(): Promise<RobotControlBaseCommandProxyResponse | null> {
@@ -19731,24 +19856,34 @@ watch(plainManualSafetyConfirmed, (confirmed) => {
   disarmKeyboardControl("safety_confirmation_removed");
 });
 
+watch(canUseKeyboardControl, (ready) => {
+  // summary 到达后自动把 WASD 准备好；这只拿键盘 owner，不发任何 motion command。
+  if (ready) {
+    autoArmKeyboardControl("summary_ready");
+  }
+}, { immediate: false });
+
 watch(manualBoundary, () => {
   // 后端边界一旦变化，前端输入立即重新 clamp，避免显示值与实际允许值分叉。
   syncJogInputsToBoundary();
 }, { immediate: true });
 
 onMounted(() => {
-  // 初次加载直接读取固定上位机地址；实时画面可自动接入，运动控制仍需要显式点击或按键。
+  // 初次加载直接读取固定上位机地址；地图/画面自动保持刷新，键盘自动准备但必须按住才动。
   applyPlainMapDirectViewIfRequested();
   resetKeyboardControlOwnerOnMount();
+  startLiveSurfaceRefreshLoops();
   window.addEventListener("keydown", handleGlobalKeyDown);
   window.addEventListener("keyup", handleGlobalKeyUp);
   window.addEventListener("blur", handleWindowBlur);
+  window.addEventListener("focus", handleWindowFocus);
   document.addEventListener("visibilitychange", handlePageVisibilityChange);
   document.addEventListener("fullscreenchange", syncPlainMapBrowserFullscreenState);
   void refreshConsole().then(() => {
     void refreshPlainMapDirectViewOnEnter();
     void preloadGoalClosureReadbacks();
     void refreshCameraMjpegStatus();
+    autoArmKeyboardControl("initial_load");
   });
 });
 
@@ -19757,9 +19892,11 @@ onBeforeUnmount(() => {
   clearKeyboardControlOwner();
   clearKeyboardJogTimer();
   clearMjpegPreviewRetryTimer();
+  clearLiveSurfaceRefreshLoops();
   window.removeEventListener("keydown", handleGlobalKeyDown);
   window.removeEventListener("keyup", handleGlobalKeyUp);
   window.removeEventListener("blur", handleWindowBlur);
+  window.removeEventListener("focus", handleWindowFocus);
   document.removeEventListener("visibilitychange", handlePageVisibilityChange);
   document.removeEventListener("fullscreenchange", syncPlainMapBrowserFullscreenState);
   void exitPlainMapBrowserFullscreen();
@@ -19777,6 +19914,12 @@ onBeforeUnmount(() => {
       data-first-screen-map-priority="map_before_status_summaries"
       data-first-screen-map-order="robot_console_grid_first"
       data-status-summaries-order="after_primary_map"
+      data-open-page-live-map-refresh="true"
+      data-open-page-live-camera-preview="true"
+      data-open-page-keyboard-auto-ready="true"
+      :data-live-map-refresh-interval-ms="String(LIVE_MAP_REFRESH_INTERVAL_MS)"
+      :data-live-camera-status-refresh-interval-ms="String(LIVE_CAMERA_STATUS_REFRESH_INTERVAL_MS)"
+      :data-keyboard-auto-arm-on-load="String(KEYBOARD_AUTO_ARM_ON_LOAD)"
     >
       <div class="robot-quick-connect">
         <div class="plain-default-robot">
@@ -23941,6 +24084,9 @@ onBeforeUnmount(() => {
           :data-current-video-frame-visible="String(plainCameraSharedPreviewDomEvidence.currentVideoFrameVisible)"
           :data-fixed-shared-preview-endpoint="plainCameraSharedPreviewDomEvidence.fixedSharedPreviewEndpoint"
           :data-fixed-shared-preview-status-endpoint="plainCameraSharedPreviewDomEvidence.fixedSharedPreviewStatusEndpoint"
+          data-live-camera-status-refresh="true"
+          :data-live-camera-status-refresh-interval-ms="String(LIVE_CAMERA_STATUS_REFRESH_INTERVAL_MS)"
+          data-live-camera-auto-joins-shared-mjpeg="true"
         >
           <h3>实时画面</h3>
           <div class="panel-action-row">
@@ -24372,6 +24518,11 @@ onBeforeUnmount(() => {
           :data-fixed-radar-refresh-endpoint="plainMapVisualSummary.fixedRadarRefreshEndpoint"
           :data-radar-refresh-action-visible="String(plainMapVisualSummary.radarRefreshActionVisible)"
           :data-radar-refresh-action-label="plainMapVisualSummary.radarRefreshActionLabel"
+          data-live-map-refresh="true"
+          :data-live-map-refresh-interval-ms="String(LIVE_MAP_REFRESH_INTERVAL_MS)"
+          :data-live-radar-refresh-interval-ms="String(LIVE_RADAR_REFRESH_INTERVAL_MS)"
+          data-live-map-refreshes="map_preview,radar_status,radar_scan_proof"
+          data-live-map-keeps-overlays="robot_pose,nav2_route,radar_points,goal"
         >
           <div class="plain-map-heading">
             <div class="plain-map-heading-title">
@@ -25305,7 +25456,7 @@ onBeforeUnmount(() => {
               ref="plainFreeRoamKeyboardButton"
               type="button"
               class="secondary compact-stop"
-              :disabled="!canArmPlainFreeRoamKeyboard"
+              :disabled="!canUsePlainFreeRoamKeyboardAction"
               data-testid="plain-free-roam-keyboard"
               :data-main-action-kind="plainKeyboardMainActionKind"
               :data-target-source="plainKeyboardTargetSource"
@@ -25349,10 +25500,10 @@ onBeforeUnmount(() => {
           <div class="keyboard-direction-pad" data-testid="plain-free-roam-direction-pad">
             <button
               type="button"
-              :disabled="!canPressKeyboardDirection"
+              :disabled="!canPressPlainFreeRoamKeyboardDirection"
               data-testid="plain-free-roam-screen-forward"
               data-direction="forward"
-              :data-sends-motion-while-held="String(plainKeyboardDirectionButtonEvidence.sendsMotionWhileHeld)"
+              :data-sends-motion-while-held="String(plainFreeRoamDirectionSendsMotionWhileHeld)"
               :data-requires-hold-to-move="String(plainKeyboardDirectionButtonEvidence.requiresHoldToMove)"
               :data-stop-trigger="plainKeyboardDirectionButtonEvidence.stopTrigger"
               :data-fixed-keyboard-manual-endpoint="plainKeyboardDirectionButtonEvidence.fixedManualEndpoint"
@@ -25375,10 +25526,10 @@ onBeforeUnmount(() => {
             <div class="motion-middle-row">
               <button
                 type="button"
-                :disabled="!canPressKeyboardDirection"
+                :disabled="!canPressPlainFreeRoamKeyboardDirection"
                 data-testid="plain-free-roam-screen-left"
                 data-direction="left"
-                :data-sends-motion-while-held="String(plainKeyboardDirectionButtonEvidence.sendsMotionWhileHeld)"
+                :data-sends-motion-while-held="String(plainFreeRoamDirectionSendsMotionWhileHeld)"
                 :data-requires-hold-to-move="String(plainKeyboardDirectionButtonEvidence.requiresHoldToMove)"
                 :data-stop-trigger="plainKeyboardDirectionButtonEvidence.stopTrigger"
                 :data-fixed-keyboard-manual-endpoint="plainKeyboardDirectionButtonEvidence.fixedManualEndpoint"
@@ -25412,10 +25563,10 @@ onBeforeUnmount(() => {
               </button>
               <button
                 type="button"
-                :disabled="!canPressKeyboardDirection"
+                :disabled="!canPressPlainFreeRoamKeyboardDirection"
                 data-testid="plain-free-roam-screen-right"
                 data-direction="right"
-                :data-sends-motion-while-held="String(plainKeyboardDirectionButtonEvidence.sendsMotionWhileHeld)"
+                :data-sends-motion-while-held="String(plainFreeRoamDirectionSendsMotionWhileHeld)"
                 :data-requires-hold-to-move="String(plainKeyboardDirectionButtonEvidence.requiresHoldToMove)"
                 :data-stop-trigger="plainKeyboardDirectionButtonEvidence.stopTrigger"
                 :data-fixed-keyboard-manual-endpoint="plainKeyboardDirectionButtonEvidence.fixedManualEndpoint"
@@ -25438,10 +25589,10 @@ onBeforeUnmount(() => {
             </div>
             <button
               type="button"
-              :disabled="!canPressKeyboardDirection"
+              :disabled="!canPressPlainFreeRoamKeyboardDirection"
               data-testid="plain-free-roam-screen-back"
               data-direction="back"
-              :data-sends-motion-while-held="String(plainKeyboardDirectionButtonEvidence.sendsMotionWhileHeld)"
+              :data-sends-motion-while-held="String(plainFreeRoamDirectionSendsMotionWhileHeld)"
               :data-requires-hold-to-move="String(plainKeyboardDirectionButtonEvidence.requiresHoldToMove)"
               :data-stop-trigger="plainKeyboardDirectionButtonEvidence.stopTrigger"
               :data-fixed-keyboard-manual-endpoint="plainKeyboardDirectionButtonEvidence.fixedManualEndpoint"
@@ -25774,12 +25925,14 @@ onBeforeUnmount(() => {
             :data-keyboard-feedback-readback-endpoint="plainLiveClosureSummary?.keyboard_feedback_readback_endpoint ?? plainKeyboardDirectionButtonEvidence.fixedFeedbackSamplesEndpoint"
             :data-keyboard-summary-endpoint="plainLiveClosureSummary?.keyboard_summary_endpoint ?? plainKeyboardDirectionButtonEvidence.fixedSummaryEndpoint"
             :data-keyboard-readback-endpoints="plainLiveKeyboardControlReadback.readbackEndpoints.join(',')"
-            data-keyboard-event-scope="focused_panel_or_page_non_editable"
+            data-keyboard-event-scope="page_non_editable"
+            data-keyboard-auto-arm-on-load="true"
+            data-keyboard-click-to-arm-required="false"
             data-keyboard-auto-focus-after-arm="true"
             data-keyboard-editable-fields-block-motion="true"
             data-keyboard-global-listener-owner-required="true"
             data-keyboard-input-fields-safe="true"
-            aria-label="键盘连续手控面板：启用后自动聚焦，非输入区按住 W/A/S/D 或方向键才移动"
+            aria-label="键盘连续手控面板：页面自动准备，非输入区按住 W/A/S/D 或方向键才移动"
             data-readback-only="true"
             data-readback-sends-motion="false"
             data-readback-starts-nav2="false"
@@ -25810,6 +25963,8 @@ onBeforeUnmount(() => {
                 :data-sends-motion-when-clicked="String(false)"
                 :data-sends-motion-when-holding="String(plainKeyboardMainActionSendsMotion)"
                 :data-requires-hold-to-move="String(true)"
+                data-keyboard-auto-arm-on-load="true"
+                data-keyboard-click-to-arm-required="false"
                 :data-manual-command-mode="plainKeyboardDirectionButtonEvidence.manualCommandMode"
                 :data-fixed-keyboard-manual-endpoint="plainKeyboardDirectionButtonEvidence.fixedManualEndpoint"
                 :data-fixed-keyboard-stop-endpoint="plainKeyboardDirectionButtonEvidence.fixedStopEndpoint"
@@ -25838,12 +25993,14 @@ onBeforeUnmount(() => {
             <p
               class="panel-note"
               data-testid="keyboard-focus-contract"
-              data-keyboard-event-scope="focused_panel_or_page_non_editable"
+              data-keyboard-event-scope="page_non_editable"
+              data-keyboard-auto-arm-on-load="true"
+              data-keyboard-click-to-arm-required="false"
               data-keyboard-auto-focus-after-arm="true"
               data-keyboard-editable-fields-block-motion="true"
               data-sends-motion-when-clicked="false"
             >
-              键盘生效区：启用后本面板自动聚焦；本页非输入区按住 W/A/S/D 或方向键才动；输入框里按键只输入文字，不发车。
+              键盘生效区：打开页面后自动准备；本页非输入区按住 W/A/S/D 或方向键才动；输入框里按键只输入文字，不发车。
             </p>
             <p class="panel-note" data-testid="plain-keyboard-safety-summary">{{ plainKeyboardSafetySummary }}</p>
             <p v-if="plainKeyboardReadbackSummary" class="panel-note" data-testid="plain-keyboard-readback-summary">{{ plainKeyboardReadbackSummary }}</p>
