@@ -1552,6 +1552,22 @@ describe("workstation fail-closed API contracts", () => {
     expect(health.delivery_success).toBe(false);
     expect(health.primary_actions_enabled).toBe(false);
     expect(health.pc_only).toBe(true);
+    expect(health.workstation_host).toBe("0.0.0.0");
+    expect(health.workstation_port).toBe(7001);
+    expect(health.workstation_listen_address).toBe("http://0.0.0.0:7001");
+    expect(health.default_robot_api_base_url).toBe("http://192.168.1.11:8787");
+    expect(Number.isFinite(health.server_started_at_ms)).toBe(true);
+    expect(new Date(health.server_started_at_iso).getTime()).toBe(health.server_started_at_ms);
+    expect(health.health_readback_only).toBe(true);
+    expect(health.robot_api_probe_executed).toBe(false);
+    expect(health.sends_motion_when_clicked).toBe(false);
+    expect(health.starts_nav2).toBe(false);
+    expect(health.starts_manual).toBe(false);
+    expect(health.starts_keyboard).toBe(false);
+    expect(health.starts_free_roam).toBe(false);
+    expect(health.starts_map_runtime).toBe(false);
+    expect(health.submits_delivery).toBe(false);
+    expect(health.stops_motion).toBe(false);
   });
 
   it("indexes JSON fixtures without requiring Python files", async () => {

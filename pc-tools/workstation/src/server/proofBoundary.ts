@@ -4,7 +4,11 @@ import {
   PROOF_FLAGS,
   WORKSTATION_VERSION,
 } from "../shared/contracts";
+import { DEFAULT_ROBOT_API_BASE_URL } from "../shared/robotDefaults";
+import { WORKSTATION_NODE_PORT, WORKSTATION_PUBLIC_HOST } from "../shared/workstationDefaults";
 import type { HealthResponse, ProofBoundaryResponse } from "../shared/contracts";
+
+const WORKSTATION_SERVER_STARTED_AT_MS = Date.now();
 
 export function buildProofBoundary(): ProofBoundaryResponse {
   // Proof Boundary 把 Node/Vue 可证明的软件形状与真实机器人能力明确分开。
@@ -29,11 +33,28 @@ export function buildProofBoundary(): ProofBoundaryResponse {
 
 export function buildHealth(): HealthResponse {
   // health 只证明 Node API 存活，不证明机器人、ROS2 或云端链路存活。
+  // 启动时间和监听地址给现场识别旧进程；它们不触发任何 Robot API 探测或运动动作。
   return {
     schema: "trashbot.pc_tools_workstation.health.v1",
     ...PROOF_FLAGS,
     version: WORKSTATION_VERSION,
     mode: "pc_only_readonly_workstation",
+    workstation_host: WORKSTATION_PUBLIC_HOST,
+    workstation_port: WORKSTATION_NODE_PORT,
+    workstation_listen_address: `http://${WORKSTATION_PUBLIC_HOST}:${WORKSTATION_NODE_PORT}`,
+    default_robot_api_base_url: DEFAULT_ROBOT_API_BASE_URL,
+    server_started_at_ms: WORKSTATION_SERVER_STARTED_AT_MS,
+    server_started_at_iso: new Date(WORKSTATION_SERVER_STARTED_AT_MS).toISOString(),
+    health_readback_only: true,
+    robot_api_probe_executed: false,
+    sends_motion_when_clicked: false,
+    starts_nav2: false,
+    starts_manual: false,
+    starts_keyboard: false,
+    starts_free_roam: false,
+    starts_map_runtime: false,
+    submits_delivery: false,
+    stops_motion: false,
     api_routes: [...API_ROUTES],
   };
 }

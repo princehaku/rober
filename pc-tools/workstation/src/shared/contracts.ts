@@ -5984,6 +5984,22 @@ export interface HealthResponse extends ProofFlags {
   schema: "trashbot.pc_tools_workstation.health.v1";
   version: string;
   mode: "pc_only_readonly_workstation";
+  workstation_host: "0.0.0.0";
+  workstation_port: 7001;
+  workstation_listen_address: "http://0.0.0.0:7001";
+  default_robot_api_base_url: "http://192.168.1.11:8787";
+  server_started_at_ms: number;
+  server_started_at_iso: string;
+  health_readback_only: true;
+  robot_api_probe_executed: false;
+  sends_motion_when_clicked: false;
+  starts_nav2: false;
+  starts_manual: false;
+  starts_keyboard: false;
+  starts_free_roam: false;
+  starts_map_runtime: false;
+  submits_delivery: false;
+  stops_motion: false;
   api_routes: string[];
 }
 
