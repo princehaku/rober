@@ -100,6 +100,13 @@ button {
   display: none;
 }
 
+.shell[data-direct-map-view-requested="true"] .plain-map-panel[data-observer-mode="true"] > .plain-map-ros2-tool-note {
+  /* `/map` 默认也是 observer 模式；这里单独恢复工程观察折叠区，避免 ROS2/RViz2/Foxglove 配套答案被通用只看地图规则隐藏。 */
+  display: block;
+  flex: 0 0 auto;
+  margin: 4px 0 0;
+}
+
 .shell[data-direct-map-view-requested="true"] .plain-map-wysiwyg-layer-strip {
   flex: 0 0 auto;
   gap: 6px;
