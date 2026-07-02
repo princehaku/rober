@@ -9785,7 +9785,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-panel"]').attributes("data-size")).toBe("normal");
     expect(wrapper.find('[data-testid="plain-map-size-toggle"]').text()).toBe("放大地图");
     const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
-    expect(workstationStyles).toContain("width: min(2800px, 100%);");
+    expect(workstationStyles).toContain("width: min(3200px, 100%);");
     expect(workstationStyles).toContain(".topbar-actions");
     expect(workstationStyles).toContain(".topbar-map-link");
     expect(workstationStyles).toContain("顶部把大地图作为普通用户主入口");
@@ -9815,9 +9815,9 @@ describe("App", () => {
     expect(workstationStyles).toContain('.shell[data-direct-map-view-requested="true"] .plain-map-panel[data-observer-mode="true"] > .plain-map-ros2-tool-note');
     expect(workstationStyles).toContain("避免 ROS2/RViz2/Foxglove 配套答案被通用只看地图规则隐藏");
     expect(workstationStyles).toContain("display: block;");
-    expect(workstationStyles).toContain("--plain-map-large-min-height: 840px;");
-    expect(workstationStyles).toContain("--plain-map-large-target-height: calc(100vh - 24px);");
-    expect(workstationStyles).toContain("--plain-map-large-max-height: 1400px;");
+    expect(workstationStyles).toContain("--plain-map-large-min-height: 960px;");
+    expect(workstationStyles).toContain("--plain-map-large-target-height: calc(100vh - 8px);");
+    expect(workstationStyles).toContain("--plain-map-large-max-height: 1800px;");
     expect(workstationStyles).toContain("--plain-map-fullscreen-height: 100vh;");
     expect(workstationStyles).toContain("避免 grid 百分比把内部画布算小");
     expect(workstationStyles).toContain("height: calc(100vh - 44px);");
@@ -9825,7 +9825,7 @@ describe("App", () => {
     expect(workstationStyles).toContain('.robot-console-grid[data-layout="visual-first"] .plain-camera-panel');
     expect(workstationStyles).toContain('.robot-console-grid[data-layout="visual-first"] .plain-radar-panel');
     expect(workstationStyles).toContain('.robot-console-grid[data-layout="visual-first"] .plain-map-panel');
-    expect(workstationStyles).toContain("grid-template-columns: minmax(0, 2.35fr) minmax(330px, 0.75fr);");
+    expect(workstationStyles).toContain("grid-template-columns: minmax(0, 4fr) minmax(300px, 0.75fr);");
     expect(workstationStyles).toContain('"map camera"');
     expect(workstationStyles).toContain('"map drive"');
     expect(workstationStyles).toContain("图传必须在第一屏右上角");
@@ -9838,8 +9838,8 @@ describe("App", () => {
     expect(workstationStyles).toContain('.robot-console-grid[data-layout="visual-first"] .plain-keyboard-control > .keyboard-direction-pad');
     expect(workstationStyles).toContain("首页要先看到能按的方向键");
     expect(workstationStyles).toContain("grid-column: 1 / -1;");
-    expect(workstationStyles).toContain("height: clamp(600px, calc(100vh - 72px), 900px);");
-    expect(workstationStyles).toContain("height: clamp(600px, calc(100vh - 104px), 900px);");
+    expect(workstationStyles).toContain("height: clamp(760px, calc(100vh - 12px), 1400px);");
+    expect(workstationStyles).toContain("height: clamp(720px, calc(100vh - 84px), 1280px);");
     expect(workstationStyles).toContain("height: clamp(var(--plain-map-large-min-height), var(--plain-map-large-target-height), var(--plain-map-large-max-height));");
     expect(workstationStyles).toContain("height: var(--plain-map-fullscreen-height);");
     expect(workstationStyles).toContain(".plain-map-zoom-controls");
