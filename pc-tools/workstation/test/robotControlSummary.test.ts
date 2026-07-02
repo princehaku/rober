@@ -994,6 +994,11 @@ describe("robotControlSummary", () => {
     expect(summary.current_motion_action_start_endpoint).toBe("/api/robot-control/nav2/goal/execute");
     expect(summary.current_motion_action_stop_endpoint).toBe("/api/robot-control/base/stop");
     expect(summary.current_motion_action_acceptance_endpoints).toEqual(summary.field_acceptance_primary_safety_confirm_ready_action_acceptance_endpoints);
+    expect(summary.current_motion_action_readback_endpoints).toEqual(summary.field_acceptance_primary_safety_confirm_ready_action_acceptance_endpoints);
+    expect(summary.current_motion_action_required_success_markers).toEqual(["same_window_wheel_lr_nonzero", "delivery_success"]);
+    expect(summary.current_motion_action_proof_status).toBe("ready_to_verify");
+    expect(summary.current_motion_action_missing_evidence).toEqual(["same_window_wheel_lr_nonzero", "delivery_success"]);
+    expect(summary.current_motion_action_proof_plain).toContain("可复验完整行程");
     expect(summary.current_motion_action_requires_safety_confirm).toBe(true);
     expect(summary.current_motion_action_minimal_precheck_safety_only).toBe(true);
     expect(summary.current_motion_action_camera_preflight_required).toBe(false);

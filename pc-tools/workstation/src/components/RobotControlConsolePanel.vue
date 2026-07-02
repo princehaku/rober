@@ -5079,6 +5079,31 @@ const plainCurrentMotionActionGauge = computed(() => {
   const acceptanceEndpoints = summary?.current_motion_action_acceptance_endpoints?.length
     ? summary.current_motion_action_acceptance_endpoints
     : fallback.acceptanceEndpoints;
+  const readbackEndpoints = summary?.current_motion_action_readback_endpoints?.length
+    ? summary.current_motion_action_readback_endpoints
+    : acceptanceEndpoints;
+  const requiredSuccessMarkers = summary?.current_motion_action_required_success_markers?.length
+    ? summary.current_motion_action_required_success_markers
+    : fallback.requiredSuccessMarkers;
+  const missingEvidence = summary?.current_motion_action_missing_evidence?.length
+    ? summary.current_motion_action_missing_evidence
+    : fallback.missingEvidence;
+  const proofStatus = summary?.current_motion_action_proof_status ?? fallback.proofStatus;
+  const motionEvidenceLabel = (item: string): string => {
+    const labels: Record<string, string> = {
+      map_route_visible: "图上行程已显示",
+      nav2_goal_succeeded: "到点成功",
+      same_window_wheel_lr_nonzero: "同窗口 wheel L/R 非零",
+      delivery_success: "送达确认",
+    };
+    return labels[item] ?? item;
+  };
+  const proofPlain = plainActionCardUserText(summary?.current_motion_action_proof_plain ?? fallback.proofPlain ?? "")
+    .replace(/\bNav2 latest\b/g, "行程结果")
+    .replace(/\bNav2\b/g, "自动驾驶")
+    .replace(/\bsummary\b/g, "总览")
+    .replace(/\bdelivery_success\b/g, "送达确认")
+    .replace(/\bsame_window_wheel_lr_nonzero\b/g, "同窗口 wheel L/R 非零");
   const actionId = summary?.current_motion_action_id ?? fallback.actionId;
   const actionRequired = summary?.current_motion_action_required ?? actionId !== "none";
   const displayLabel = plainActionCardUserText(
@@ -5104,6 +5129,7 @@ const plainCurrentMotionActionGauge = computed(() => {
   const readbackText = acceptanceEndpoints.length
     ? `执行后读回 ${acceptanceEndpoints.length} 个验收端点`
     : "执行后读回验收端点未加载";
+  const missingText = missingEvidence.length ? `还差 ${missingEvidence.map(motionEvidenceLabel).join("、")}` : "缺口已清空";
   const state = !actionRequired
     ? "无动作"
     : sendsMotion && plainManualSafetyConfirmed.value
@@ -5117,11 +5143,19 @@ const plainCurrentMotionActionGauge = computed(() => {
     label: summary?.current_motion_action_label ?? fallback.label,
     displayLabel,
     state,
-    text: `当前运动动作：${displayLabel}；${safetyText}；${precheckText}；${readbackText}。`,
+    text: `当前运动动作：${displayLabel}；${safetyText}；${precheckText}；${readbackText}；${missingText}。${proofPlain ? ` ${proofPlain}` : ""}`,
     startEndpoint,
     stopEndpoint,
     acceptanceEndpoints,
     acceptanceEndpointsText: acceptanceEndpoints.join(","),
+    readbackEndpoints,
+    readbackEndpointsText: readbackEndpoints.join(","),
+    requiredSuccessMarkers,
+    requiredSuccessMarkersText: requiredSuccessMarkers.join(","),
+    missingEvidence,
+    missingEvidenceText: missingEvidence.join(","),
+    proofStatus,
+    proofPlain,
     requiresSafetyConfirm,
     minimalPrecheckSafetyOnly,
     cameraPreflightRequired,
@@ -21012,6 +21046,10 @@ onBeforeUnmount(() => {
           :data-current-motion-action-start-endpoint="plainCurrentMotionActionGauge.startEndpoint"
           :data-current-motion-action-stop-endpoint="plainCurrentMotionActionGauge.stopEndpoint"
           :data-current-motion-action-acceptance-endpoints="plainCurrentMotionActionGauge.acceptanceEndpointsText"
+          :data-current-motion-action-readback-endpoints="plainCurrentMotionActionGauge.readbackEndpointsText"
+          :data-current-motion-action-required-success-markers="plainCurrentMotionActionGauge.requiredSuccessMarkersText"
+          :data-current-motion-action-missing-evidence="plainCurrentMotionActionGauge.missingEvidenceText"
+          :data-current-motion-action-proof-status="plainCurrentMotionActionGauge.proofStatus"
           :data-current-motion-action-requires-safety-confirm="String(plainCurrentMotionActionGauge.requiresSafetyConfirm)"
           :data-current-motion-action-minimal-precheck-safety-only="String(plainCurrentMotionActionGauge.minimalPrecheckSafetyOnly)"
           :data-current-motion-action-camera-preflight-required="String(plainCurrentMotionActionGauge.cameraPreflightRequired)"
@@ -23771,6 +23809,10 @@ onBeforeUnmount(() => {
                 :data-current-motion-action-start-endpoint="plainCurrentMotionActionGauge.startEndpoint"
                 :data-current-motion-action-stop-endpoint="plainCurrentMotionActionGauge.stopEndpoint"
                 :data-current-motion-action-acceptance-endpoints="plainCurrentMotionActionGauge.acceptanceEndpointsText"
+                :data-current-motion-action-readback-endpoints="plainCurrentMotionActionGauge.readbackEndpointsText"
+                :data-current-motion-action-required-success-markers="plainCurrentMotionActionGauge.requiredSuccessMarkersText"
+                :data-current-motion-action-missing-evidence="plainCurrentMotionActionGauge.missingEvidenceText"
+                :data-current-motion-action-proof-status="plainCurrentMotionActionGauge.proofStatus"
                 :data-current-motion-action-requires-safety-confirm="String(plainCurrentMotionActionGauge.requiresSafetyConfirm)"
                 :data-current-motion-action-minimal-precheck-safety-only="String(plainCurrentMotionActionGauge.minimalPrecheckSafetyOnly)"
                 :data-current-motion-action-camera-preflight-required="String(plainCurrentMotionActionGauge.cameraPreflightRequired)"
@@ -23809,6 +23851,10 @@ onBeforeUnmount(() => {
               :data-current-motion-action-start-endpoint="plainCurrentMotionActionGauge.startEndpoint"
               :data-current-motion-action-stop-endpoint="plainCurrentMotionActionGauge.stopEndpoint"
               :data-current-motion-action-acceptance-endpoints="plainCurrentMotionActionGauge.acceptanceEndpointsText"
+              :data-current-motion-action-readback-endpoints="plainCurrentMotionActionGauge.readbackEndpointsText"
+              :data-current-motion-action-required-success-markers="plainCurrentMotionActionGauge.requiredSuccessMarkersText"
+              :data-current-motion-action-missing-evidence="plainCurrentMotionActionGauge.missingEvidenceText"
+              :data-current-motion-action-proof-status="plainCurrentMotionActionGauge.proofStatus"
               :data-current-motion-action-requires-safety-confirm="String(plainCurrentMotionActionGauge.requiresSafetyConfirm)"
               :data-current-motion-action-minimal-precheck-safety-only="String(plainCurrentMotionActionGauge.minimalPrecheckSafetyOnly)"
               :data-current-motion-action-camera-preflight-required="String(plainCurrentMotionActionGauge.cameraPreflightRequired)"
@@ -23868,6 +23914,10 @@ onBeforeUnmount(() => {
               :data-current-motion-action-start-endpoint="plainCurrentMotionActionGauge.startEndpoint"
               :data-current-motion-action-stop-endpoint="plainCurrentMotionActionGauge.stopEndpoint"
               :data-current-motion-action-acceptance-endpoints="plainCurrentMotionActionGauge.acceptanceEndpointsText"
+              :data-current-motion-action-readback-endpoints="plainCurrentMotionActionGauge.readbackEndpointsText"
+              :data-current-motion-action-required-success-markers="plainCurrentMotionActionGauge.requiredSuccessMarkersText"
+              :data-current-motion-action-missing-evidence="plainCurrentMotionActionGauge.missingEvidenceText"
+              :data-current-motion-action-proof-status="plainCurrentMotionActionGauge.proofStatus"
               :data-current-motion-action-requires-safety-confirm="String(plainCurrentMotionActionGauge.requiresSafetyConfirm)"
               :data-current-motion-action-minimal-precheck-safety-only="String(plainCurrentMotionActionGauge.minimalPrecheckSafetyOnly)"
               :data-current-motion-action-camera-preflight-required="String(plainCurrentMotionActionGauge.cameraPreflightRequired)"

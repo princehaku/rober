@@ -7183,6 +7183,18 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.trip_proof_status).toBe("ready_to_verify");
       expect(summary.trip_missing_evidence).toEqual(summary.primary_missing_evidence);
       expect(summary.trip_proof_plain).toBe(summary.primary_proof_plain);
+      expect(summary.current_motion_action_required).toBe(true);
+      expect(summary.current_motion_action_id).toBe(summary.field_acceptance_primary_safety_confirm_ready_action_id);
+      expect(summary.current_motion_action_start_endpoint).toBe(summary.field_acceptance_primary_safety_confirm_ready_action_start_endpoint);
+      expect(summary.current_motion_action_acceptance_endpoints).toEqual(summary.field_acceptance_primary_safety_confirm_ready_action_acceptance_endpoints);
+      expect(summary.current_motion_action_readback_endpoints).toEqual(summary.field_acceptance_primary_safety_confirm_ready_action_acceptance_endpoints);
+      expect(summary.current_motion_action_required_success_markers).toEqual(summary.trip_missing_evidence);
+      expect(summary.current_motion_action_proof_status).toBe(summary.trip_proof_status);
+      expect(summary.current_motion_action_missing_evidence).toEqual(summary.trip_missing_evidence);
+      expect(summary.current_motion_action_proof_plain).toBe(summary.trip_proof_plain);
+      expect(summary.current_motion_action_minimal_precheck_safety_only).toBe(true);
+      expect(summary.current_motion_action_camera_preflight_required).toBe(false);
+      expect(summary.current_motion_action_radar_preflight_required).toBe(false);
       expect(summary.keyboard_start_endpoint).toBe("/api/robot-control/base/manual");
       expect(summary.keyboard_acceptance_endpoints).toEqual([
         "/api/robot-control/base/feedback-samples",

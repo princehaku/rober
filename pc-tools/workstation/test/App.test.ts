@@ -954,6 +954,22 @@ const fixtures: Record<string, unknown> = {
       "/api/robot-control/delivery/latest",
       "/api/robot-control/summary",
     ],
+    current_motion_action_readback_endpoints: [
+      "/api/robot-control/map/preview",
+      "/api/robot-control/nav2/goal/execution/latest",
+      "/api/robot-control/base/feedback-samples",
+      "/api/robot-control/delivery/latest",
+      "/api/robot-control/summary",
+    ],
+    current_motion_action_required_success_markers: [
+      "map_route_visible",
+      "nav2_goal_succeeded",
+      "same_window_wheel_lr_nonzero",
+      "delivery_success",
+    ],
+    current_motion_action_proof_status: "ready_to_verify",
+    current_motion_action_missing_evidence: ["same_window_wheel_lr_nonzero", "delivery_success"],
+    current_motion_action_proof_plain: "可验证完整行程执行：勾现场安全确认后重跑图上路线，再读地图、Nav2 latest、轮速、送达和 summary；还差：同窗口 wheel L/R 非零、送达确认。",
     current_motion_action_requires_safety_confirm: true,
     current_motion_action_minimal_precheck_safety_only: true,
     current_motion_action_camera_preflight_required: false,
@@ -9498,7 +9514,8 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-trip-main-action-summary"]').text()).toBe("主按钮：先勾选现场安全确认；未勾选时不会发车。");
     const currentMotionAction = wrapper.find('[data-testid="plain-trip-current-motion-action"]');
     expect(currentMotionAction.exists()).toBe(true);
-    expect(currentMotionAction.text()).toBe("当前运动动作：重跑图上行程并复验轮速；先勾现场安全确认；发车前只看安全确认；执行后读回 5 个验收端点。");
+    expect(currentMotionAction.text()).toContain("当前运动动作：重跑图上行程并复验轮速；先勾现场安全确认；发车前只看安全确认；执行后读回 5 个验收端点；还差 同窗口 wheel L/R 非零、送达确认。");
+    expect(currentMotionAction.text()).toContain("可验证完整行程执行");
     expect(currentMotionAction.text()).not.toContain("Nav2");
     expect(currentMotionAction.text()).not.toContain("raw");
     expect(currentMotionAction.text()).not.toContain("/api/");
@@ -9510,6 +9527,10 @@ describe("App", () => {
     expect(currentMotionAction.attributes("data-current-motion-action-start-endpoint")).toBe("/api/robot-control/nav2/goal/execute");
     expect(currentMotionAction.attributes("data-current-motion-action-stop-endpoint")).toBe("/api/robot-control/base/stop");
     expect(currentMotionAction.attributes("data-current-motion-action-acceptance-endpoints")).toBe("/api/robot-control/map/preview,/api/robot-control/nav2/goal/execution/latest,/api/robot-control/base/feedback-samples,/api/robot-control/delivery/latest,/api/robot-control/summary");
+    expect(currentMotionAction.attributes("data-current-motion-action-readback-endpoints")).toBe("/api/robot-control/map/preview,/api/robot-control/nav2/goal/execution/latest,/api/robot-control/base/feedback-samples,/api/robot-control/delivery/latest,/api/robot-control/summary");
+    expect(currentMotionAction.attributes("data-current-motion-action-required-success-markers")).toBe("map_route_visible,nav2_goal_succeeded,same_window_wheel_lr_nonzero,delivery_success");
+    expect(currentMotionAction.attributes("data-current-motion-action-missing-evidence")).toBe("same_window_wheel_lr_nonzero,delivery_success");
+    expect(currentMotionAction.attributes("data-current-motion-action-proof-status")).toBe("ready_to_verify");
     expect(currentMotionAction.attributes("data-current-motion-action-requires-safety-confirm")).toBe("true");
     expect(currentMotionAction.attributes("data-current-motion-action-minimal-precheck-safety-only")).toBe("true");
     expect(currentMotionAction.attributes("data-current-motion-action-camera-preflight-required")).toBe("false");
