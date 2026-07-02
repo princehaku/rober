@@ -1180,6 +1180,9 @@ const fixtures: Record<string, unknown> = {
       live_wysiwyg_camera_shared_preview_client_count: "0",
       live_wysiwyg_camera_shared_preview_upstream_active: "false",
       live_wysiwyg_camera_shared_preview_exclusive_camera_claim: "false",
+      live_wysiwyg_camera_shared_preview_everyone_can_join: true,
+      live_wysiwyg_camera_shared_preview_current_frame_visible: false,
+      live_wysiwyg_camera_shared_preview_gap_plain: "共享入口可加入且不独占摄像头；当前还没有可显示画面帧，先按只读链路复测相机首帧和共享预览状态。",
       live_wysiwyg_camera_recovery_status: "not_exclusive_needs_source_check",
       live_wysiwyg_camera_recovery_next_action_plain: "相机不是页面独占；先复测相机首帧并读取共享预览状态。若仍无画面，检查 USB 线、接口、摄像头供电或换 known-good UVC 后再复测。",
       live_wysiwyg_camera_recovery_sequence: [
@@ -1198,6 +1201,9 @@ const fixtures: Record<string, unknown> = {
       camera_source_diagnosis_status: "uvc_no_frame_not_exclusive",
       camera_source_diagnosis_not_exclusive: "true",
       camera_shared_preview_exclusive_camera_claim: "false",
+      camera_shared_preview_everyone_can_join: true,
+      camera_shared_preview_current_frame_visible: false,
+      camera_shared_preview_gap_plain: "共享入口可加入且不独占摄像头；当前还没有可显示画面帧，先按只读链路复测相机首帧和共享预览状态。",
       camera_usb_speed: "not_loaded",
       camera_recovery_next_action_plain: "相机不是页面独占；先复测相机首帧并读取共享预览状态。若仍无画面，检查 USB 线、接口、摄像头供电或换 known-good UVC 后再复测。",
       camera_hardware_action_required: false,
@@ -6715,15 +6721,17 @@ describe("App", () => {
     expect(liveCameraRecoveryReadback.text()).toContain("画面复测");
     expect(liveCameraRecoveryReadback.text()).toContain("相机不是页面独占");
     expect(liveCameraRecoveryReadback.text()).toContain("先复测相机首帧并读取共享预览状态");
-    expect(liveCameraRecoveryReadback.text()).toContain("共享预览：单上游多人共享，当前 0 个页面观看");
-    expect(liveCameraRecoveryReadback.text()).toContain("上游 未连接");
-    expect(liveCameraRecoveryReadback.text()).toContain("页面独占=false");
+    expect(liveCameraRecoveryReadback.text()).toContain("共享预览：共享入口可加入且不独占摄像头");
+    expect(liveCameraRecoveryReadback.text()).toContain("当前还没有可显示画面帧");
     expect(liveCameraRecoveryReadback.attributes("data-camera-probe-failure-reason")).toBe("first_frame_total_timeout");
     expect(liveCameraRecoveryReadback.attributes("data-camera-source-diagnosis-status")).toBe("uvc_no_frame_not_exclusive");
     expect(liveCameraRecoveryReadback.attributes("data-camera-source-diagnosis-not-exclusive")).toBe("true");
     expect(liveCameraRecoveryReadback.attributes("data-camera-shared-preview-client-count")).toBe("0");
     expect(liveCameraRecoveryReadback.attributes("data-camera-shared-preview-upstream-active")).toBe("false");
     expect(liveCameraRecoveryReadback.attributes("data-camera-shared-preview-exclusive-camera-claim")).toBe("false");
+    expect(liveCameraRecoveryReadback.attributes("data-camera-shared-preview-everyone-can-join")).toBe("true");
+    expect(liveCameraRecoveryReadback.attributes("data-camera-shared-preview-current-frame-visible")).toBe("false");
+    expect(liveCameraRecoveryReadback.attributes("data-camera-shared-preview-gap-plain")).toContain("共享入口可加入");
     expect(liveCameraRecoveryReadback.attributes("data-camera-shared-preview-single-upstream")).toBe("true");
     expect(liveCameraRecoveryReadback.attributes("data-camera-shared-preview-auto-joins")).toBe("true");
     expect(liveCameraRecoveryReadback.attributes("data-camera-recovery-status")).toBe("not_exclusive_needs_source_check");
@@ -30031,6 +30039,17 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-camera-start"]').attributes("data-current-frame-visible")).toBe("false");
     expect(wrapper.find('[data-testid="plain-camera-start"]').attributes("data-fixed-shared-preview-endpoint")).toBe("/api/robot-control/camera/mjpeg");
     expect(wrapper.find('[data-testid="plain-camera-start"]').attributes("data-fixed-shared-preview-status-endpoint")).toBe("/api/robot-control/camera/mjpeg/status");
+    const liveClosure = wrapper.find('[data-testid="plain-live-closure-summary"]');
+    expect(liveClosure.attributes("data-camera-shared-preview-everyone-can-join")).toBe("true");
+    expect(liveClosure.attributes("data-camera-shared-preview-current-frame-visible")).toBe("false");
+    expect(liveClosure.attributes("data-camera-shared-preview-readback-only")).toBe("true");
+    expect(liveClosure.attributes("data-camera-shared-preview-starts-camera-exclusive-capture")).toBe("false");
+    expect(liveClosure.attributes("data-camera-shared-preview-sends-motion")).toBe("false");
+    expect(liveClosure.attributes("data-camera-shared-preview-gap-plain")).toContain("共享入口可加入");
+    const cameraRecovery = wrapper.find('[data-testid="plain-live-camera-recovery-readback"]');
+    expect(cameraRecovery.attributes("data-camera-shared-preview-everyone-can-join")).toBe("true");
+    expect(cameraRecovery.attributes("data-camera-shared-preview-current-frame-visible")).toBe("false");
+    expect(cameraRecovery.attributes("data-camera-shared-preview-gap-plain")).toContain("共享入口可加入");
     expect(wrapper.find('[data-testid="plain-camera-panel"]').attributes("data-state")).toBe("失败");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("画面：共享预览支持多人观看，0 个页面观看，共享流未连接，不是独占，USB Composite Device: DV20 USB OpenCV/V4L2 4 种方式也没有取到视频帧。");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("画面首帧未出（不是页面独占；检查 USB/输入/供电，必要时换 known-good UVC）");

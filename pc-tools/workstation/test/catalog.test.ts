@@ -7039,6 +7039,9 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.live_wysiwyg_camera_shared_preview_client_count).toBe(summary.live_closure_summary?.live_wysiwyg_camera_shared_preview_client_count);
       expect(summary.live_wysiwyg_camera_shared_preview_upstream_active).toBe(summary.live_closure_summary?.live_wysiwyg_camera_shared_preview_upstream_active);
       expect(summary.live_wysiwyg_camera_shared_preview_exclusive_camera_claim).toBe(summary.live_closure_summary?.live_wysiwyg_camera_shared_preview_exclusive_camera_claim);
+      expect(summary.live_wysiwyg_camera_shared_preview_everyone_can_join).toBe(summary.live_closure_summary?.live_wysiwyg_camera_shared_preview_everyone_can_join);
+      expect(summary.live_wysiwyg_camera_shared_preview_current_frame_visible).toBe(summary.live_closure_summary?.live_wysiwyg_camera_shared_preview_current_frame_visible);
+      expect(summary.live_wysiwyg_camera_shared_preview_gap_plain).toBe(summary.live_closure_summary?.live_wysiwyg_camera_shared_preview_gap_plain);
       expect(summary.map_current_visible).toBe(summary.live_closure_summary?.map_current_visible);
       expect(summary.map_visible).toBe(summary.live_closure_summary?.map_current_visible);
       expect(summary.path_current_visible).toBe(summary.live_closure_summary?.path_current_visible);

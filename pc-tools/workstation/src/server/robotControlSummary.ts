@@ -9860,6 +9860,14 @@ function buildLiveClosureSummary(
   const objectiveAuditSummaryPlain = objectiveAuditMissingIds.length === 0
     ? "四项目标均已完成；继续保持现场监看。"
     : `四项目标完成 ${objectiveAuditDoneCount}/4；下一项：${objectiveAuditNextObjective?.title ?? "继续现场监看"}；未完成：${objectiveAuditItems.filter((item) => !item.completed).map(objectiveAuditMissingPlain).join("、")}。`;
+  const cameraSharedPreviewClientCount = readback.camera.shared_preview_client_count || "0";
+  const cameraSharedPreviewUpstreamActive = readback.camera.shared_preview_upstream_active || "not_loaded";
+  const cameraSharedPreviewExclusiveClaim = readback.camera.shared_preview_exclusive_camera_claim || "not_loaded";
+  const cameraSharedPreviewGapPlain = cameraCurrentVisible
+    ? `共享画面已显示；当前 ${cameraSharedPreviewClientCount} 个页面共用同一条上游流，后进页面不会独占摄像头。`
+    : cameraHardwareActionRequired
+      ? `共享入口可加入且不独占摄像头；当前相机源未出首帧，请${cameraHardwareActionLabel}，再按只读链路复测。`
+      : `共享入口可加入且不独占摄像头；当前还没有可显示画面帧，先按只读链路复测相机首帧和共享预览状态。`;
   return {
     status,
     status_label: labels[status],
@@ -9986,9 +9994,12 @@ function buildLiveClosureSummary(
     live_wysiwyg_camera_source_diagnosis_plain_hint: readback.camera.source_diagnosis_plain_hint || "not_loaded",
     live_wysiwyg_camera_source_diagnosis_next_action_plain: readback.camera.source_diagnosis_next_action_plain || "not_loaded",
     live_wysiwyg_camera_source_diagnosis_not_exclusive: readback.camera.source_diagnosis_not_exclusive || "not_loaded",
-    live_wysiwyg_camera_shared_preview_client_count: readback.camera.shared_preview_client_count || "0",
-    live_wysiwyg_camera_shared_preview_upstream_active: readback.camera.shared_preview_upstream_active || "not_loaded",
-    live_wysiwyg_camera_shared_preview_exclusive_camera_claim: readback.camera.shared_preview_exclusive_camera_claim || "not_loaded",
+    live_wysiwyg_camera_shared_preview_client_count: cameraSharedPreviewClientCount,
+    live_wysiwyg_camera_shared_preview_upstream_active: cameraSharedPreviewUpstreamActive,
+    live_wysiwyg_camera_shared_preview_exclusive_camera_claim: cameraSharedPreviewExclusiveClaim,
+    live_wysiwyg_camera_shared_preview_everyone_can_join: true,
+    live_wysiwyg_camera_shared_preview_current_frame_visible: cameraCurrentVisible,
+    live_wysiwyg_camera_shared_preview_gap_plain: cameraSharedPreviewGapPlain,
     live_wysiwyg_camera_recovery_status: cameraRecoveryStatus,
     live_wysiwyg_camera_recovery_next_action_plain: cameraRecoveryNextActionPlain,
     live_wysiwyg_camera_recovery_sequence: cameraRecoverySequence,
@@ -9998,7 +10009,10 @@ function buildLiveClosureSummary(
     camera_first_frame_failure_reason: readback.camera.first_frame_probe_failure_reason || cameraProbeFailureReason,
     camera_source_diagnosis_status: readback.camera.source_diagnosis_status || "not_loaded",
     camera_source_diagnosis_not_exclusive: readback.camera.source_diagnosis_not_exclusive || "not_loaded",
-    camera_shared_preview_exclusive_camera_claim: readback.camera.shared_preview_exclusive_camera_claim || "not_loaded",
+    camera_shared_preview_exclusive_camera_claim: cameraSharedPreviewExclusiveClaim,
+    camera_shared_preview_everyone_can_join: true,
+    camera_shared_preview_current_frame_visible: cameraCurrentVisible,
+    camera_shared_preview_gap_plain: cameraSharedPreviewGapPlain,
     camera_usb_speed: cameraUsbSpeed,
     camera_recovery_next_action_plain: cameraRecoveryNextActionPlain,
     camera_hardware_action_required: cameraHardwareActionRequired,
@@ -11470,10 +11484,20 @@ export async function buildRobotControlSummary(
     live_wysiwyg_camera_shared_preview_client_count: liveClosureSummary.live_wysiwyg_camera_shared_preview_client_count,
     live_wysiwyg_camera_shared_preview_upstream_active: liveClosureSummary.live_wysiwyg_camera_shared_preview_upstream_active,
     live_wysiwyg_camera_shared_preview_exclusive_camera_claim: liveClosureSummary.live_wysiwyg_camera_shared_preview_exclusive_camera_claim,
+    live_wysiwyg_camera_shared_preview_everyone_can_join: liveClosureSummary.live_wysiwyg_camera_shared_preview_everyone_can_join,
+    live_wysiwyg_camera_shared_preview_current_frame_visible:
+      liveClosureSummary.live_wysiwyg_camera_shared_preview_current_frame_visible,
+    live_wysiwyg_camera_shared_preview_gap_plain: liveClosureSummary.live_wysiwyg_camera_shared_preview_gap_plain,
     camera_shared_preview_endpoint: "/api/robot-control/camera/mjpeg",
     camera_shared_preview_status_endpoint: liveClosureSummary.fixed_camera_mjpeg_status_endpoint,
     camera_shared_preview_single_upstream: true,
     camera_shared_preview_auto_joins: true,
+    camera_shared_preview_everyone_can_join: liveClosureSummary.camera_shared_preview_everyone_can_join,
+    camera_shared_preview_current_frame_visible: liveClosureSummary.camera_shared_preview_current_frame_visible,
+    camera_shared_preview_gap_plain: liveClosureSummary.camera_shared_preview_gap_plain,
+    camera_shared_preview_readback_only: true,
+    camera_shared_preview_starts_camera_exclusive_capture: false,
+    camera_shared_preview_sends_motion: false,
     camera_shared_preview_shared_capture: readbackSummary.camera.shared_preview_shared_capture,
     camera_shared_preview_exclusive_camera_claim: readbackSummary.camera.shared_preview_exclusive_camera_claim,
     camera_shared_preview_contract: readbackSummary.camera.shared_preview_contract,

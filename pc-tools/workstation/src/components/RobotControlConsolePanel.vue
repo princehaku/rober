@@ -18525,10 +18525,19 @@ onBeforeUnmount(() => {
         :data-live-wysiwyg-camera-shared-preview-client-count="plainLiveClosureSummary.live_wysiwyg_camera_shared_preview_client_count"
         :data-live-wysiwyg-camera-shared-preview-upstream-active="plainLiveClosureSummary.live_wysiwyg_camera_shared_preview_upstream_active"
         :data-live-wysiwyg-camera-shared-preview-exclusive-camera-claim="plainLiveClosureSummary.live_wysiwyg_camera_shared_preview_exclusive_camera_claim"
+        :data-live-wysiwyg-camera-shared-preview-everyone-can-join="String(plainLiveClosureSummary.live_wysiwyg_camera_shared_preview_everyone_can_join)"
+        :data-live-wysiwyg-camera-shared-preview-current-frame-visible="String(plainLiveClosureSummary.live_wysiwyg_camera_shared_preview_current_frame_visible)"
+        :data-live-wysiwyg-camera-shared-preview-gap-plain="plainLiveClosureSummary.live_wysiwyg_camera_shared_preview_gap_plain"
         :data-camera-shared-preview-endpoint="robotSummary?.camera_shared_preview_endpoint ?? '/api/robot-control/camera/mjpeg'"
         :data-camera-shared-preview-status-endpoint="robotSummary?.camera_shared_preview_status_endpoint ?? plainLiveClosureSummary.fixed_camera_mjpeg_status_endpoint"
         :data-camera-shared-preview-single-upstream="String(robotSummary?.camera_shared_preview_single_upstream ?? true)"
         :data-camera-shared-preview-auto-joins="String(robotSummary?.camera_shared_preview_auto_joins ?? true)"
+        :data-camera-shared-preview-everyone-can-join="String(robotSummary?.camera_shared_preview_everyone_can_join ?? true)"
+        :data-camera-shared-preview-current-frame-visible="String(robotSummary?.camera_shared_preview_current_frame_visible ?? plainLiveClosureSummary.camera_shared_preview_current_frame_visible)"
+        :data-camera-shared-preview-gap-plain="robotSummary?.camera_shared_preview_gap_plain ?? plainLiveClosureSummary.camera_shared_preview_gap_plain"
+        :data-camera-shared-preview-readback-only="String(robotSummary?.camera_shared_preview_readback_only ?? true)"
+        :data-camera-shared-preview-starts-camera-exclusive-capture="String(robotSummary?.camera_shared_preview_starts_camera_exclusive_capture ?? false)"
+        :data-camera-shared-preview-sends-motion="String(robotSummary?.camera_shared_preview_sends_motion ?? false)"
         :data-camera-shared-preview-shared-capture="robotSummary?.camera_shared_preview_shared_capture ?? 'true'"
         :data-camera-shared-preview-exclusive-camera-claim-short="robotSummary?.camera_shared_preview_exclusive_camera_claim ?? plainLiveClosureSummary.live_wysiwyg_camera_shared_preview_exclusive_camera_claim"
         :data-camera-shared-preview-contract="robotSummary?.camera_shared_preview_contract ?? 'single_shared_capture_for_multiple_clients'"
@@ -19763,6 +19772,9 @@ onBeforeUnmount(() => {
           :data-camera-shared-preview-client-count="plainLiveClosureSummary.live_wysiwyg_camera_shared_preview_client_count"
           :data-camera-shared-preview-upstream-active="plainLiveClosureSummary.live_wysiwyg_camera_shared_preview_upstream_active"
           :data-camera-shared-preview-exclusive-camera-claim="plainLiveClosureSummary.live_wysiwyg_camera_shared_preview_exclusive_camera_claim"
+          :data-camera-shared-preview-everyone-can-join="String(plainLiveClosureSummary.live_wysiwyg_camera_shared_preview_everyone_can_join)"
+          :data-camera-shared-preview-current-frame-visible="String(plainLiveClosureSummary.live_wysiwyg_camera_shared_preview_current_frame_visible)"
+          :data-camera-shared-preview-gap-plain="plainLiveClosureSummary.live_wysiwyg_camera_shared_preview_gap_plain"
           data-camera-shared-preview-single-upstream="true"
           data-camera-shared-preview-auto-joins="true"
           :data-camera-recovery-status="plainLiveClosureSummary.live_wysiwyg_camera_recovery_status"
@@ -19792,7 +19804,7 @@ onBeforeUnmount(() => {
           data-sends-motion-when-clicked="false"
         >
           画面复测：{{ plainActionCardUserText(plainLiveClosureSummary.live_wysiwyg_camera_recovery_next_action_plain) }}
-          共享预览：单上游多人共享，当前 {{ plainLiveClosureSummary.live_wysiwyg_camera_shared_preview_client_count }} 个页面观看；上游 {{ plainLiveClosureSummary.live_wysiwyg_camera_shared_preview_upstream_active === "true" ? "已连接" : "未连接" }}；页面独占={{ plainLiveClosureSummary.live_wysiwyg_camera_shared_preview_exclusive_camera_claim }}。
+          共享预览：{{ plainActionCardUserText(plainLiveClosureSummary.live_wysiwyg_camera_shared_preview_gap_plain) }}
           <a
             v-if="cameraMjpegSharedPreviewLink"
             class="secondary compact-stop plain-link-button"

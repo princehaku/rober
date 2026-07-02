@@ -2622,6 +2622,9 @@ function cameraMjpegStatusResponse(
   const cameraCurrentVisible = previewVisibility.visible_status === "visible_cached_frame";
   const cameraHardwareActionRequired = cameraUsbFullSpeedDetected && !cameraCurrentVisible;
   const cameraHardwareActionLabel = cameraHardwareActionRequired ? "换高速USB后复测" : "复测相机首帧";
+  const sharedPreviewGapPlain = cameraCurrentVisible
+    ? `共享预览已读到画面帧；当前 ${clientCount} 个页面共用同一条上游流，不会因为新页面进入而独占摄像头。`
+    : `${previewVisibility.visible_plain.replace(/[。；\s]+$/g, "")}；共享入口可加入，但当前相机源还没有可显示帧。`;
   const cameraRecoverySequence = [
     "/api/robot-control/camera/first-frame/probe",
     "/api/robot-control/camera/mjpeg/status",
@@ -2656,6 +2659,12 @@ function cameraMjpegStatusResponse(
     shared_preview_contract: "single_shared_capture_for_multiple_clients",
     shared_preview_multi_viewer_status: "single_upstream_multi_viewer",
     shared_preview_multi_viewer_plain: cameraMjpegMultiViewerPlain(relayKey, clientCount),
+    shared_preview_everyone_can_join: true,
+    shared_preview_current_frame_visible: cameraCurrentVisible,
+    shared_preview_gap_plain: sharedPreviewGapPlain,
+    shared_preview_readback_only: true,
+    shared_preview_starts_camera_exclusive_capture: false,
+    shared_preview_sends_motion: false,
     last_failure_reason: lastFailureReason,
     shared_preview_last_failure_reason: lastFailureReason,
     last_remote_http_status: lastRemoteHttpStatus,
