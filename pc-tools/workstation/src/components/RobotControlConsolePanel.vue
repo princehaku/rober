@@ -4365,6 +4365,60 @@ const plainCurrentMotionVerificationPack = computed(() => {
     stopsMotionWhenClicked: summary?.current_motion_verification_pack_stops_motion_when_clicked ?? false,
   };
 });
+const plainCurrentTripExecutionPack = computed(() => {
+  // 完整行程包把 Nav2 执行和执行后的只读验收压到同一行，现场不用在多个卡片里找证据。
+  const summary = robotSummary.value;
+  const packet = summary?.nav2_route_acceptance_packet;
+  const missingEvidence = summary?.current_trip_execution_pack_missing_evidence ?? packet?.missing_evidence ?? [];
+  const readbackEndpoints = summary?.current_trip_execution_pack_readback_endpoints ?? packet?.readback_endpoints ?? [];
+  const requiredSuccessMarkers = summary?.current_trip_execution_pack_required_success_markers ?? packet?.required_success_markers ?? [];
+  const status = summary?.current_trip_execution_pack_status
+    ?? (packet?.completed ? "complete" : packet?.ready ? "ready_for_safety_confirm" : "blocked");
+  const defaultPlain = status === "complete"
+    ? "完整行程已闭环：图上行程、到点成功、同窗口轮速 L/R 非零和送达确认都已通过；继续监看地图和停止兜底。"
+    : status === "ready_for_safety_confirm"
+      ? `完整行程可复验：先勾现场安全确认，再执行图上行程；执行后按地图、最近行程、轮速、送达、总览顺序只读复验。当前缺口：${missingEvidence.join("、") || "无"}。`
+      : `完整行程暂不能执行：先补齐图上行程或自动驾驶读回；当前缺口：${missingEvidence.join("、") || "行程未就绪"}。`;
+  return {
+    status,
+    plain: summary?.current_trip_execution_pack_plain ?? defaultPlain,
+    actionId: summary?.current_trip_execution_pack_action_id ?? packet?.action_id ?? "run_nav2_route",
+    displayLabel: summary?.current_trip_execution_pack_display_label ?? packet?.display_label ?? "重跑图上行程并复验轮速",
+    startEndpoint: summary?.current_trip_execution_pack_start_endpoint ?? packet?.start_endpoint ?? "/api/robot-control/nav2/goal/execute",
+    stopEndpoint: summary?.current_trip_execution_pack_stop_endpoint ?? packet?.stop_endpoint ?? "/api/robot-control/base/stop",
+    readbackEndpointsText: readbackEndpoints.join(",") || "none",
+    requiredSuccessMarkersText: requiredSuccessMarkers.join(",") || "none",
+    missingEvidenceText: missingEvidence.join(",") || "none",
+    routeReadyOnMap: summary?.current_trip_execution_pack_route_ready_on_map ?? packet?.route_ready_on_map ?? false,
+    nav2GoalSucceeded: summary?.current_trip_execution_pack_nav2_goal_succeeded ?? packet?.nav2_goal_succeeded ?? false,
+    sameWindowWheelLrNonzero: summary?.current_trip_execution_pack_same_window_wheel_lr_nonzero ?? packet?.same_window_wheel_lr_nonzero ?? false,
+    deliverySuccess: summary?.current_trip_execution_pack_delivery_success ?? packet?.delivery_success ?? false,
+    needsSameWindowWheelRerun: summary?.current_trip_execution_pack_needs_same_window_wheel_rerun ?? packet?.needs_same_window_wheel_rerun ?? false,
+    deliverySuccessRequired: summary?.current_trip_execution_pack_delivery_success_required ?? packet?.delivery_success_required ?? false,
+    latestRawLeft: summary?.current_trip_execution_pack_latest_raw_left ?? packet?.latest_raw_left ?? "0",
+    latestRawRight: summary?.current_trip_execution_pack_latest_raw_right ?? packet?.latest_raw_right ?? "0",
+    feedbackSampleCount: summary?.current_trip_execution_pack_feedback_sample_count ?? packet?.feedback_sample_count ?? "0",
+    feedbackNonzeroSampleCount: summary?.current_trip_execution_pack_feedback_nonzero_sample_count ?? packet?.feedback_nonzero_sample_count ?? "0",
+    currentGapPlain: summary?.current_trip_execution_pack_current_gap_plain ?? packet?.current_gap_plain ?? "",
+    deliveryNextActionPlain: summary?.current_trip_execution_pack_delivery_next_action_plain ?? packet?.delivery_next_action_plain ?? "",
+    requiresSafetyConfirm: summary?.current_trip_execution_pack_requires_safety_confirm ?? packet?.requires_safety_confirm ?? true,
+    minimalPrecheckSafetyOnly: summary?.current_trip_execution_pack_minimal_precheck_safety_only ?? packet?.minimal_precheck_safety_only ?? true,
+    cameraPreflightRequired: summary?.current_trip_execution_pack_camera_preflight_required ?? false,
+    radarPreflightRequired: summary?.current_trip_execution_pack_radar_preflight_required ?? false,
+    routeWysiwygPreflightRequired: summary?.current_trip_execution_pack_route_wysiwyg_preflight_required ?? false,
+    sendsMotionWhenExecuted: summary?.current_trip_execution_pack_sends_motion_when_executed ?? true,
+    startsNav2WhenExecuted: summary?.current_trip_execution_pack_starts_nav2_when_executed ?? true,
+    sendsMotionWhenClicked: summary?.current_trip_execution_pack_sends_motion_when_clicked ?? false,
+    readbackSendsMotion: summary?.current_trip_execution_pack_readback_sends_motion ?? false,
+    startsNav2WhenClicked: summary?.current_trip_execution_pack_starts_nav2_when_clicked ?? false,
+    startsManualWhenClicked: summary?.current_trip_execution_pack_starts_manual_when_clicked ?? false,
+    startsKeyboardWhenClicked: summary?.current_trip_execution_pack_starts_keyboard_when_clicked ?? false,
+    startsFreeRoamWhenClicked: summary?.current_trip_execution_pack_starts_free_roam_when_clicked ?? false,
+    startsMapRuntimeWhenClicked: summary?.current_trip_execution_pack_starts_map_runtime_when_clicked ?? false,
+    submitsDeliveryWhenClicked: summary?.current_trip_execution_pack_submits_delivery_when_clicked ?? false,
+    stopsMotionWhenClicked: summary?.current_trip_execution_pack_stops_motion_when_clicked ?? false,
+  };
+});
 const plainFieldAcceptanceReadyStepIdsText = computed(() => (
   plainFieldAcceptancePacket.value?.ready_step_ids.join(",") || "none"
 ));
@@ -19363,6 +19417,48 @@ onBeforeUnmount(() => {
             :data-stops-motion-when-clicked="String(plainCurrentMotionVerificationPack.stopsMotionWhenClicked)"
           >
             {{ plainCurrentMotionVerificationPack.plain }}
+          </p>
+          <p
+            class="panel-note"
+            data-testid="plain-current-trip-execution-pack"
+            :data-status="plainCurrentTripExecutionPack.status"
+            :data-action-id="plainCurrentTripExecutionPack.actionId"
+            :data-display-label="plainCurrentTripExecutionPack.displayLabel"
+            :data-start-endpoint="plainCurrentTripExecutionPack.startEndpoint"
+            :data-stop-endpoint="plainCurrentTripExecutionPack.stopEndpoint"
+            :data-readback-endpoints="plainCurrentTripExecutionPack.readbackEndpointsText"
+            :data-required-success-markers="plainCurrentTripExecutionPack.requiredSuccessMarkersText"
+            :data-missing-evidence="plainCurrentTripExecutionPack.missingEvidenceText"
+            :data-route-ready-on-map="String(plainCurrentTripExecutionPack.routeReadyOnMap)"
+            :data-nav2-goal-succeeded="String(plainCurrentTripExecutionPack.nav2GoalSucceeded)"
+            :data-same-window-wheel-lr-nonzero="String(plainCurrentTripExecutionPack.sameWindowWheelLrNonzero)"
+            :data-delivery-success="String(plainCurrentTripExecutionPack.deliverySuccess)"
+            :data-needs-same-window-wheel-rerun="String(plainCurrentTripExecutionPack.needsSameWindowWheelRerun)"
+            :data-delivery-success-required="String(plainCurrentTripExecutionPack.deliverySuccessRequired)"
+            :data-latest-raw-left="plainCurrentTripExecutionPack.latestRawLeft"
+            :data-latest-raw-right="plainCurrentTripExecutionPack.latestRawRight"
+            :data-feedback-sample-count="plainCurrentTripExecutionPack.feedbackSampleCount"
+            :data-feedback-nonzero-sample-count="plainCurrentTripExecutionPack.feedbackNonzeroSampleCount"
+            :data-current-gap-plain="plainCurrentTripExecutionPack.currentGapPlain"
+            :data-delivery-next-action-plain="plainCurrentTripExecutionPack.deliveryNextActionPlain"
+            :data-requires-safety-confirm="String(plainCurrentTripExecutionPack.requiresSafetyConfirm)"
+            :data-minimal-precheck-safety-only="String(plainCurrentTripExecutionPack.minimalPrecheckSafetyOnly)"
+            :data-camera-preflight-required="String(plainCurrentTripExecutionPack.cameraPreflightRequired)"
+            :data-radar-preflight-required="String(plainCurrentTripExecutionPack.radarPreflightRequired)"
+            :data-route-wysiwyg-preflight-required="String(plainCurrentTripExecutionPack.routeWysiwygPreflightRequired)"
+            :data-sends-motion-when-executed="String(plainCurrentTripExecutionPack.sendsMotionWhenExecuted)"
+            :data-starts-nav2-when-executed="String(plainCurrentTripExecutionPack.startsNav2WhenExecuted)"
+            :data-sends-motion-when-clicked="String(plainCurrentTripExecutionPack.sendsMotionWhenClicked)"
+            :data-readback-sends-motion="String(plainCurrentTripExecutionPack.readbackSendsMotion)"
+            :data-starts-nav2-when-clicked="String(plainCurrentTripExecutionPack.startsNav2WhenClicked)"
+            :data-starts-manual-when-clicked="String(plainCurrentTripExecutionPack.startsManualWhenClicked)"
+            :data-starts-keyboard-when-clicked="String(plainCurrentTripExecutionPack.startsKeyboardWhenClicked)"
+            :data-starts-free-roam-when-clicked="String(plainCurrentTripExecutionPack.startsFreeRoamWhenClicked)"
+            :data-starts-map-runtime-when-clicked="String(plainCurrentTripExecutionPack.startsMapRuntimeWhenClicked)"
+            :data-submits-delivery-when-clicked="String(plainCurrentTripExecutionPack.submitsDeliveryWhenClicked)"
+            :data-stops-motion-when-clicked="String(plainCurrentTripExecutionPack.stopsMotionWhenClicked)"
+          >
+            {{ plainCurrentTripExecutionPack.plain }}
           </p>
           <p
             class="panel-note"

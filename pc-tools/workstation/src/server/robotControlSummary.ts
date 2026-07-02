@@ -10962,6 +10962,20 @@ export async function buildRobotControlSummary(
     delivery_next_action_plain: liveClosureSummary.wheel_rerun_delivery_next_action_plain,
     sends_motion_when_clicked: false,
   };
+  const currentTripExecutionPackStatus: "complete" | "ready_for_safety_confirm" | "blocked" = nav2RouteAcceptancePacket.completed
+    ? "complete"
+    : nav2RouteAcceptancePacket.ready
+      ? "ready_for_safety_confirm"
+      : "blocked";
+  const currentTripExecutionPackPlain = (() => {
+    if (currentTripExecutionPackStatus === "complete") {
+      return "完整行程已闭环：图上行程、到点成功、同窗口轮速 L/R 非零和送达确认都已通过；继续监看地图和停止兜底。";
+    }
+    if (currentTripExecutionPackStatus === "ready_for_safety_confirm") {
+      return `完整行程可复验：先勾现场安全确认，再执行图上行程；执行后按地图、最近行程、轮速、送达、总览顺序只读复验。当前缺口：${nav2RouteAcceptancePacket.missing_evidence.join("、") || "无"}。`;
+    }
+    return `完整行程暂不能执行：先补齐图上行程或自动驾驶读回；当前缺口：${nav2RouteAcceptancePacket.missing_evidence.join("、") || "行程未就绪"}。`;
+  })();
   const nav2PostExecuteReadbackSequenceLabels = nav2RouteAcceptancePacket.readback_endpoints.map((endpoint) => {
     if (endpoint.includes("/map/preview")) return "刷新地图画面";
     if (endpoint.includes("/nav2/goal/execution/latest")) return "读取最近行程";
@@ -11339,6 +11353,43 @@ export async function buildRobotControlSummary(
     current_motion_action_current_gap_plain: nav2RouteAcceptancePacket.current_gap_plain,
     current_motion_action_no_extra_precheck_plain: nav2RouteAcceptancePacket.no_extra_precheck_plain,
     current_motion_action_delivery_next_action_plain: nav2RouteAcceptancePacket.delivery_next_action_plain,
+    current_trip_execution_pack_status: currentTripExecutionPackStatus,
+    current_trip_execution_pack_plain: currentTripExecutionPackPlain,
+    current_trip_execution_pack_action_id: nav2RouteAcceptancePacket.action_id,
+    current_trip_execution_pack_display_label: nav2RouteAcceptancePacket.display_label,
+    current_trip_execution_pack_start_endpoint: nav2RouteAcceptancePacket.start_endpoint,
+    current_trip_execution_pack_stop_endpoint: nav2RouteAcceptancePacket.stop_endpoint,
+    current_trip_execution_pack_readback_endpoints: nav2RouteAcceptancePacket.readback_endpoints,
+    current_trip_execution_pack_required_success_markers: nav2RouteAcceptancePacket.required_success_markers,
+    current_trip_execution_pack_missing_evidence: nav2RouteAcceptancePacket.missing_evidence,
+    current_trip_execution_pack_route_ready_on_map: nav2RouteAcceptancePacket.route_ready_on_map,
+    current_trip_execution_pack_nav2_goal_succeeded: nav2RouteAcceptancePacket.nav2_goal_succeeded,
+    current_trip_execution_pack_same_window_wheel_lr_nonzero: nav2RouteAcceptancePacket.same_window_wheel_lr_nonzero,
+    current_trip_execution_pack_delivery_success: nav2RouteAcceptancePacket.delivery_success,
+    current_trip_execution_pack_needs_same_window_wheel_rerun: nav2RouteAcceptancePacket.needs_same_window_wheel_rerun,
+    current_trip_execution_pack_delivery_success_required: nav2RouteAcceptancePacket.delivery_success_required,
+    current_trip_execution_pack_latest_raw_left: nav2RouteAcceptancePacket.latest_raw_left,
+    current_trip_execution_pack_latest_raw_right: nav2RouteAcceptancePacket.latest_raw_right,
+    current_trip_execution_pack_feedback_sample_count: nav2RouteAcceptancePacket.feedback_sample_count,
+    current_trip_execution_pack_feedback_nonzero_sample_count: nav2RouteAcceptancePacket.feedback_nonzero_sample_count,
+    current_trip_execution_pack_current_gap_plain: nav2RouteAcceptancePacket.current_gap_plain,
+    current_trip_execution_pack_delivery_next_action_plain: nav2RouteAcceptancePacket.delivery_next_action_plain,
+    current_trip_execution_pack_requires_safety_confirm: nav2RouteAcceptancePacket.requires_safety_confirm,
+    current_trip_execution_pack_minimal_precheck_safety_only: nav2RouteAcceptancePacket.minimal_precheck_safety_only,
+    current_trip_execution_pack_camera_preflight_required: false,
+    current_trip_execution_pack_radar_preflight_required: false,
+    current_trip_execution_pack_route_wysiwyg_preflight_required: false,
+    current_trip_execution_pack_sends_motion_when_executed: true,
+    current_trip_execution_pack_starts_nav2_when_executed: true,
+    current_trip_execution_pack_sends_motion_when_clicked: false,
+    current_trip_execution_pack_readback_sends_motion: false,
+    current_trip_execution_pack_starts_nav2_when_clicked: false,
+    current_trip_execution_pack_starts_manual_when_clicked: false,
+    current_trip_execution_pack_starts_keyboard_when_clicked: false,
+    current_trip_execution_pack_starts_free_roam_when_clicked: false,
+    current_trip_execution_pack_starts_map_runtime_when_clicked: false,
+    current_trip_execution_pack_submits_delivery_when_clicked: false,
+    current_trip_execution_pack_stops_motion_when_clicked: false,
     current_motion_verification_pack_status: currentMotionVerificationPackStatus,
     current_motion_verification_pack_plain: currentMotionVerificationPackPlain,
     current_motion_verification_pack_action_ids: currentMotionVerificationPackActionIds,
