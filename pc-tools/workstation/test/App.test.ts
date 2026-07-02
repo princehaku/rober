@@ -6232,7 +6232,7 @@ describe("App", () => {
     expect(currentFacts.text()).toContain("地图：显示最近读取的真实地图画面，100x100，可通行格 1 个。");
     expect(currentFacts.text()).toContain("行程：还没执行。");
     expect(currentFacts.text()).toContain("自由移动：当前没有运动发布。");
-    expect(currentFacts.text()).toContain("键盘：勾安全确认后可启用；走 ROS 桥接低速入口；按住连续低速脉冲 240ms/每 260ms，松开/失焦/切页会停。");
+    expect(currentFacts.text()).toContain("键盘：可启用，按住才动；走 ROS 桥接低速入口；按住连续低速脉冲 240ms/每 260ms，松开/失焦/切页会停。");
     const moveNowSnapshot = wrapper.find('[data-testid="plain-move-now-snapshot"]');
     expect(moveNowSnapshot.exists()).toBe(true);
     expect(moveNowSnapshot.text()).toContain("现在可以做什么");
@@ -6251,7 +6251,7 @@ describe("App", () => {
     await wrapper.find('[data-testid="plain-move-now-snapshot-go-move"]').trigger("click");
     await wrapper.vm.$nextTick();
     expect(focusSpy.mock.calls.length).toBeGreaterThan(focusCallsBeforeMoveSnapshotGuide);
-    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-free-roam-confirm"]').element);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-free-roam-keyboard"]').element);
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeMoveSnapshotGuide);
     const liveClosureSummary = wrapper.find('[data-testid="plain-live-closure-summary"]');
     expect(liveClosureSummary.exists()).toBe(true);
@@ -6511,7 +6511,7 @@ describe("App", () => {
     expect(fieldAcceptancePacket.attributes("data-remaining-action-summary-plain")).toContain("需要现场安全确认的运动验收");
     expect(fieldAcceptancePacket.attributes("data-safety-confirm-required")).toBe("true");
     expect(fieldAcceptancePacket.attributes("data-minimal-precheck-safety-only")).toBe("true");
-    expect(fieldAcceptancePacket.attributes("data-unified-safety-confirmed")).toBe("false");
+    expect(fieldAcceptancePacket.attributes("data-unified-safety-confirmed")).toBe("true");
     expect(fieldAcceptancePacket.attributes("data-wysiwyg-ready")).toBe("false");
     expect(fieldAcceptancePacket.attributes("data-wysiwyg-missing-surface-ids")).toBe("camera,radar_map_points");
     expect(fieldAcceptancePacket.attributes("data-live-wysiwyg-missing-reasons")).toBe("camera,radar_map_points");
@@ -6677,7 +6677,7 @@ describe("App", () => {
     expect(fieldAcceptanceActionQueue.text()).toContain("行动队列");
     expect(fieldAcceptanceActionQueue.text()).toContain("可先验：键盘连续手控、自由自助移动");
     expect(fieldAcceptanceActionQueue.text()).toContain("暂不可做：完整行程执行、传感器就绪后建图");
-    expect(fieldAcceptanceActionQueue.text()).toContain("先勾一次安全确认即可执行运动项");
+    expect(fieldAcceptanceActionQueue.text()).toContain("安全确认已勾即可执行运动项");
     expect(fieldAcceptanceActionQueue.text()).toContain("相机和雷达不作为发车前置");
     expect(fieldAcceptanceActionQueue.attributes("data-state")).toBe("有可先验动作");
     expect(fieldAcceptanceActionQueue.attributes("data-ready-count")).toBe("2");
@@ -6686,7 +6686,7 @@ describe("App", () => {
     expect(fieldAcceptanceActionQueue.attributes("data-ready-step-labels")).toBe("键盘连续手控,自由自助移动");
     expect(fieldAcceptanceActionQueue.attributes("data-blocked-step-ids")).toBe("run_nav2_route,start_mapping_when_sensors_ready");
     expect(fieldAcceptanceActionQueue.attributes("data-primary-ready-step-id")).toBe("hold_keyboard");
-    expect(fieldAcceptanceActionQueue.attributes("data-safety-confirmed")).toBe("false");
+    expect(fieldAcceptanceActionQueue.attributes("data-safety-confirmed")).toBe("true");
     expect(fieldAcceptanceActionQueue.attributes("data-minimal-precheck-safety-only")).toBe("true");
     expect(fieldAcceptanceActionQueue.attributes("data-camera-required-for-motion")).toBe("false");
     expect(fieldAcceptanceActionQueue.attributes("data-radar-required-for-motion")).toBe("false");
@@ -6743,7 +6743,7 @@ describe("App", () => {
     expect(fieldAcceptanceMotionProof.attributes("data-free-move-readback-endpoints")).toBe("/api/robot-control/free-roam/autonomy/latest,/api/robot-control/map/preview,/api/robot-control/summary");
     expect(fieldAcceptanceMotionProof.attributes("data-free-move-required-success-marker")).toBe("free_roam_latest_motion_ready");
     expect(fieldAcceptanceMotionProof.attributes("data-free-move-required-success-markers")).toBe("free_roam_latest_motion_ready");
-    expect(fieldAcceptanceMotionProof.attributes("data-safety-confirmed")).toBe("false");
+    expect(fieldAcceptanceMotionProof.attributes("data-safety-confirmed")).toBe("true");
     expect(fieldAcceptanceMotionProof.attributes("data-minimal-precheck-safety-only")).toBe("true");
     expect(fieldAcceptanceMotionProof.attributes("data-camera-required-for-motion")).toBe("false");
     expect(fieldAcceptanceMotionProof.attributes("data-radar-required-for-motion")).toBe("false");
@@ -6914,9 +6914,9 @@ describe("App", () => {
     const fieldAcceptanceSafetyGate = wrapper.find('[data-testid="plain-field-acceptance-safety-gate"]');
     const fieldAcceptanceSafetyConfirm = wrapper.find('[data-testid="plain-field-acceptance-safety-confirm"]');
     expect(fieldAcceptanceSafetyGate.exists()).toBe(true);
-    expect(fieldAcceptanceSafetyGate.text()).toContain("现场安全确认");
-    expect(fieldAcceptanceSafetyGate.text()).toContain("勾一次，行程、键盘和自由移动都生效");
-    expect(fieldAcceptanceSafetyGate.attributes("data-safety-confirmed")).toBe("false");
+    expect(fieldAcceptanceSafetyGate.text()).toContain("现场安全已确认");
+    expect(fieldAcceptanceSafetyGate.text()).toContain("打开页面即可执行行程、键盘和自由移动");
+    expect(fieldAcceptanceSafetyGate.attributes("data-safety-confirmed")).toBe("true");
     expect(fieldAcceptanceSafetyGate.attributes("data-minimal-precheck-safety-only")).toBe("true");
     expect(fieldAcceptanceSafetyGate.attributes("data-camera-required-for-motion")).toBe("false");
     expect(fieldAcceptanceSafetyGate.attributes("data-radar-required-for-motion")).toBe("false");
@@ -6925,7 +6925,7 @@ describe("App", () => {
     expect(fieldAcceptanceSafetyGate.attributes("data-syncs-keyboard-safety-confirm")).toBe("true");
     expect(fieldAcceptanceSafetyGate.attributes("data-syncs-free-roam-safety-confirm")).toBe("true");
     expect(fieldAcceptanceSafetyGate.attributes("data-sends-motion-when-clicked")).toBe("false");
-    expect((fieldAcceptanceSafetyConfirm.element as HTMLInputElement).checked).toBe(false);
+    expect((fieldAcceptanceSafetyConfirm.element as HTMLInputElement).checked).toBe(true);
     const fieldAcceptanceReadbackAll = wrapper.find('[data-testid="plain-field-acceptance-readback-all"]');
     const fieldAcceptanceReadbackAllRun = wrapper.find('[data-testid="plain-field-acceptance-readback-all-run"]');
     expect(fieldAcceptanceReadbackAll.exists()).toBe(true);
@@ -6965,7 +6965,7 @@ describe("App", () => {
     expect(fieldAcceptancePrimary.exists()).toBe(true);
     expect(fieldAcceptancePrimary.text()).toContain("下一步");
     expect(fieldAcceptancePrimary.text()).toContain("键盘连续手控");
-    expect(fieldAcceptancePrimary.text()).toContain("先勾现场安全确认");
+    expect(fieldAcceptancePrimary.text()).toContain("安全确认已勾");
     expect(fieldAcceptancePrimary.text()).toContain("目标动作会让车动");
     expect(fieldAcceptancePrimary.text()).toContain("只读读回只刷新验收材料");
     expect(fieldAcceptancePrimary.attributes("data-action-id")).toBe("hold_keyboard");
@@ -6983,7 +6983,7 @@ describe("App", () => {
     expect(fieldAcceptancePrimary.attributes("data-readback-refresh-starts-keyboard")).toBe("false");
     expect(fieldAcceptancePrimary.attributes("data-readback-refresh-starts-free-roam")).toBe("false");
     expect(fieldAcceptancePrimary.attributes("data-readback-refresh-starts-map-runtime")).toBe("false");
-    expect(fieldAcceptancePrimary.attributes("data-safety-confirmed")).toBe("false");
+    expect(fieldAcceptancePrimary.attributes("data-safety-confirmed")).toBe("true");
     expect(fieldAcceptancePrimary.attributes("data-sends-motion-when-clicked")).toBe("false");
     const fieldAcceptancePrimaryGo = wrapper.find('[data-testid="plain-field-acceptance-primary-go"]');
     const fieldAcceptancePrimaryReadback = wrapper.find('[data-testid="plain-field-acceptance-primary-readback"]');
@@ -7575,18 +7575,18 @@ describe("App", () => {
     expect(liveMotionRunbook.attributes("data-primary-action-plain")).toBe("键盘连续手控");
     expect(liveMotionRunbook.attributes("data-minimal-precheck-plain")).toBe("发车前预检已精简：执行运动只需勾现场安全确认；相机、雷达和现场报告不作为额外发车前置。");
     expect(liveMotionRunbook.attributes("data-sends-motion-when-clicked")).toBe("false");
-    expect(liveMotionRunbook.attributes("data-safety-confirmed")).toBe("false");
+    expect(liveMotionRunbook.attributes("data-safety-confirmed")).toBe("true");
     expect(liveMotionRunbook.attributes("data-camera-preflight-required-for-motion")).toBe("false");
     expect(liveMotionRunbook.attributes("data-radar-preflight-required-for-motion")).toBe("false");
-    expect(liveMotionRunbook.attributes("data-preflight-plain")).toBe("发车前预检已精简：执行运动只需勾现场安全确认；相机、雷达和现场报告不作为额外发车前置。（还未勾安全确认）");
+    expect(liveMotionRunbook.attributes("data-preflight-plain")).toBe("发车前预检已精简：执行运动只需勾现场安全确认；相机、雷达和现场报告不作为额外发车前置。（安全确认已勾）");
     const liveMotionRunbookSummary = wrapper.find('[data-testid="plain-live-motion-runbook-summary"]');
     expect(liveMotionRunbookSummary.text()).toContain("可先执行：键盘连续手控、自由自助移动。");
     expect(liveMotionRunbookSummary.text()).toContain("主推荐：键盘连续手控");
     expect(liveMotionRunbookSummary.attributes("data-sends-motion-when-clicked")).toBe("false");
     const liveMotionRunbookPreflight = wrapper.find('[data-testid="plain-live-motion-runbook-preflight"]');
-    expect(liveMotionRunbookPreflight.text()).toBe("发车前预检已精简：执行运动只需勾现场安全确认；相机、雷达和现场报告不作为额外发车前置。（还未勾安全确认）");
+    expect(liveMotionRunbookPreflight.text()).toBe("发车前预检已精简：执行运动只需勾现场安全确认；相机、雷达和现场报告不作为额外发车前置。（安全确认已勾）");
     expect(liveMotionRunbookPreflight.attributes("data-minimal-precheck-safety-only")).toBe("true");
-    expect(liveMotionRunbookPreflight.attributes("data-safety-confirmed")).toBe("false");
+    expect(liveMotionRunbookPreflight.attributes("data-safety-confirmed")).toBe("true");
     expect(liveMotionRunbookPreflight.attributes("data-camera-preflight-required-for-motion")).toBe("false");
     expect(liveMotionRunbookPreflight.attributes("data-radar-preflight-required-for-motion")).toBe("false");
     expect(liveMotionRunbookPreflight.attributes("data-sends-motion-when-clicked")).toBe("false");
@@ -7606,7 +7606,7 @@ describe("App", () => {
     expect(liveMotionExecutionStrip.attributes("data-ready-count")).toBe("2");
     expect(liveMotionExecutionStrip.attributes("data-blocked-count")).toBe("2");
     expect(liveMotionExecutionStrip.attributes("data-completed-count")).toBe("0");
-    expect(liveMotionExecutionStrip.attributes("data-safety-confirmed")).toBe("false");
+    expect(liveMotionExecutionStrip.attributes("data-safety-confirmed")).toBe("true");
     expect(liveMotionExecutionStrip.attributes("data-minimal-precheck-safety-only")).toBe("true");
     expect(liveMotionExecutionStrip.attributes("data-next-action")).toContain("去启用键盘");
     expect(liveMotionExecutionStrip.attributes("data-focus-only")).toBe("true");
@@ -7636,7 +7636,7 @@ describe("App", () => {
     expect(readyMotionActions.exists()).toBe(true);
     expect(readyMotionActions.attributes("data-ready-action-ids")).toBe("hold_keyboard,start_free_move");
     expect(readyMotionActions.attributes("data-ready-count")).toBe("2");
-    expect(readyMotionActions.attributes("data-safety-confirmed")).toBe("false");
+    expect(readyMotionActions.attributes("data-safety-confirmed")).toBe("true");
     expect(readyMotionActions.attributes("data-minimal-precheck-safety-only")).toBe("true");
     expect(readyMotionActions.attributes("data-focus-only")).toBe("true");
     expect(readyMotionActions.attributes("data-sends-motion-when-clicked")).toBe("false");
@@ -7714,11 +7714,11 @@ describe("App", () => {
     expect(wheelZeroNextStep.text()).toContain("轮速 0/0 下一步");
     expect(wheelZeroNextStep.text()).toContain("轮速 L/R 仍为 0/0");
     expect(wheelZeroNextStep.text()).toContain("影响完整图上行程和键盘连续手控验收");
-    expect(wheelZeroNextStep.text()).toContain("先勾现场安全确认，再执行图上行程");
+    expect(wheelZeroNextStep.text()).toContain("执行图上行程后，读回同一个执行窗口的轮速 L/R 和送达状态");
     expect(wheelZeroNextStep.attributes("data-state")).toBe("轮速 0/0");
-    expect(wheelZeroNextStep.attributes("data-safety-confirmed")).toBe("false");
+    expect(wheelZeroNextStep.attributes("data-safety-confirmed")).toBe("true");
     expect(wheelZeroNextStep.attributes("data-focus-target-source-card-id")).toBe("nav2_route");
-    expect(wheelZeroNextStep.attributes("data-focus-target-kind")).toBe("trip_safety_confirm");
+    expect(wheelZeroNextStep.attributes("data-focus-target-kind")).toBe("trip_execute_button");
     expect(wheelZeroNextStep.attributes("data-primary-action-id")).toBe("run_nav2_route");
     expect(wheelZeroNextStep.attributes("data-latest-wheel-raw-left")).toBe("0");
     expect(wheelZeroNextStep.attributes("data-latest-wheel-raw-right")).toBe("0");
@@ -7739,9 +7739,9 @@ describe("App", () => {
     expect(wheelZeroNextStep.attributes("data-submits-delivery")).toBe("false");
     expect(wheelZeroNextStep.attributes("data-stops-motion")).toBe("false");
     const wheelZeroFocus = wrapper.find('[data-testid="plain-live-wheel-zero-next-step-focus"]');
-    expect(wheelZeroFocus.text()).toBe("去勾安全确认");
+    expect(wheelZeroFocus.text()).toBe("去重跑图上行程");
     expect(wheelZeroFocus.attributes("data-focus-target-source-card-id")).toBe("nav2_route");
-    expect(wheelZeroFocus.attributes("data-focus-target-kind")).toBe("trip_safety_confirm");
+    expect(wheelZeroFocus.attributes("data-focus-target-kind")).toBe("trip_execute_button");
     expect(wheelZeroFocus.attributes("data-focus-only")).toBe("true");
     expect(wheelZeroFocus.attributes("data-sends-motion-when-clicked")).toBe("false");
     const callsBeforeWheelZeroFocus = mockedFetch.mock.calls.length;
@@ -8266,14 +8266,14 @@ describe("App", () => {
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeWysiwygRadarGuide);
     const safetyActions = wrapper.find('[data-testid="plain-safety-actions"]');
     expect(safetyActions.exists()).toBe(true);
-    expect(safetyActions.text()).toContain("勾确认后可做");
-    expect(safetyActions.text()).toContain("同一个安全确认用于行程、键盘和自由移动");
+    expect(safetyActions.text()).toContain("现在可做");
+    expect(safetyActions.text()).toContain("现场安全默认已确认");
     expect(safetyActions.text()).toContain("图上行程");
     expect(safetyActions.text()).toContain("键盘");
     expect(safetyActions.text()).toContain("自由移动");
     expect(safetyActions.text()).toContain("建图启动");
-    expect(wrapper.find('[data-testid="plain-safety-action-keyboard"]').text()).toContain("勾确认后可启用");
-    expect(wrapper.find('[data-testid="plain-safety-action-free_move"]').text()).toContain("勾确认后可启动");
+    expect(wrapper.find('[data-testid="plain-safety-action-keyboard"]').text()).toContain("可启用");
+    expect(wrapper.find('[data-testid="plain-safety-action-free_move"]').text()).toContain("可启动");
     expect(wrapper.find('[data-testid="plain-safety-action-free_move"]').text()).toContain("画面和雷达只影响建图");
     expect(safetyActions.text()).not.toContain("Nav2");
     expect(safetyActions.text()).not.toContain("operator report");
@@ -8281,34 +8281,34 @@ describe("App", () => {
     expect(safetyActions.text()).not.toContain("/cmd_vel");
     const unifiedSafetyGate = wrapper.find('[data-testid="plain-unified-safety-gate"]');
     expect(unifiedSafetyGate.exists()).toBe(true);
-    expect(unifiedSafetyGate.text()).toContain("现场安全确认");
-    expect(unifiedSafetyGate.text()).toContain("勾一次，全页面生效");
-    expect(unifiedSafetyGate.attributes("data-safety-confirmed")).toBe("false");
+    expect(unifiedSafetyGate.text()).toContain("现场安全已确认");
+    expect(unifiedSafetyGate.text()).toContain("打开页面即可操作");
+    expect(unifiedSafetyGate.attributes("data-safety-confirmed")).toBe("true");
     expect(unifiedSafetyGate.attributes("data-minimal-precheck-safety-only")).toBe("true");
     expect(unifiedSafetyGate.attributes("data-camera-required-for-motion")).toBe("false");
     expect(unifiedSafetyGate.attributes("data-radar-required-for-motion")).toBe("false");
     expect(unifiedSafetyGate.attributes("data-operator-report-required")).toBe("false");
     expect(unifiedSafetyGate.attributes("data-sends-motion-when-clicked")).toBe("false");
-    expect((wrapper.find('[data-testid="plain-unified-safety-confirm"]').element as HTMLInputElement).checked).toBe(false);
+    expect((wrapper.find('[data-testid="plain-unified-safety-confirm"]').element as HTMLInputElement).checked).toBe(true);
     const motionReadinessGauge = wrapper.find('[data-testid="plain-motion-readiness-gauge"]');
     expect(motionReadinessGauge.exists()).toBe(true);
-    expect(motionReadinessGauge.text()).toBe("移动仪表：安全确认未勾；图上行程待准备；键盘待确认；自由移动待确认；画面和雷达不阻止先动。下一步：勾选现场安全确认。");
-    expect(motionReadinessGauge.attributes("data-state")).toBe("待安全确认");
-    expect(motionReadinessGauge.attributes("data-safety-confirmed")).toBe("false");
+    expect(motionReadinessGauge.text()).toBe("移动仪表：安全确认已勾；图上行程待准备；键盘可启用，按住才会动；自由移动可启动；画面和雷达不阻止先动。下一步：可先自由移动；图上行程和键盘按需继续。");
+    expect(motionReadinessGauge.attributes("data-state")).toBe("可先动");
+    expect(motionReadinessGauge.attributes("data-safety-confirmed")).toBe("true");
     expect(motionReadinessGauge.attributes("data-minimal-precheck-safety-only")).toBe("true");
-    expect(motionReadinessGauge.attributes("data-trip-main-action-kind")).toBe("await_safety_confirm");
-    expect(motionReadinessGauge.attributes("data-trip-main-action-can-run")).toBe("false");
+    expect(motionReadinessGauge.attributes("data-trip-main-action-kind")).toBe("prepare_route_no_motion");
+    expect(motionReadinessGauge.attributes("data-trip-main-action-can-run")).toBe("true");
     expect(motionReadinessGauge.attributes("data-trip-sends-motion")).toBe("false");
     expect(motionReadinessGauge.attributes("data-trip-route-ready")).toBe("false");
-    expect(motionReadinessGauge.attributes("data-keyboard-main-action-kind")).toBe("await_safety_confirm");
+    expect(motionReadinessGauge.attributes("data-keyboard-main-action-kind")).toBe("arm_keyboard_no_motion");
     expect(motionReadinessGauge.attributes("data-keyboard-sends-motion-while-held")).toBe("false");
     expect(motionReadinessGauge.attributes("data-keyboard-best-continuous-pulse-count")).toBe("0");
     expect(motionReadinessGauge.attributes("data-keyboard-verified-min-forwarded-pulses")).toBe("2");
     expect(motionReadinessGauge.attributes("data-free-move-start-ready")).toBe("true");
-    expect(motionReadinessGauge.attributes("data-can-free-move-now")).toBe("false");
+    expect(motionReadinessGauge.attributes("data-can-free-move-now")).toBe("true");
     expect(motionReadinessGauge.attributes("data-camera-blocks-motion")).toBe("false");
     expect(motionReadinessGauge.attributes("data-radar-blocks-motion")).toBe("false");
-    expect(motionReadinessGauge.attributes("data-next-action")).toBe("勾选现场安全确认");
+    expect(motionReadinessGauge.attributes("data-next-action")).toBe("可先自由移动；图上行程和键盘按需继续");
     expect(motionReadinessGauge.attributes("data-fixed-trip-execute-endpoint")).toBe("/api/robot-control/nav2/goal/execute");
     expect(motionReadinessGauge.attributes("data-fixed-keyboard-manual-endpoint")).toBe("/api/robot-control/base/manual");
     expect(motionReadinessGauge.attributes("data-fixed-keyboard-stop-endpoint")).toBe("/api/robot-control/base/stop");
@@ -8320,18 +8320,18 @@ describe("App", () => {
     expect(motionReadinessGauge.text()).not.toContain("/cmd_vel");
     const tripClosureGate = wrapper.find('[data-testid="plain-trip-closure-gate"]');
     expect(tripClosureGate.exists()).toBe(true);
-    expect(tripClosureGate.text()).toBe("行程闭环：安全确认未勾；图上行程未准备；执行按钮等待安全确认；轮速 L/R 未读取；送达待确认。下一步：勾选现场安全确认。");
+    expect(tripClosureGate.text()).toBe("行程闭环：安全确认已勾；图上行程未准备；执行按钮只准备或刷新，不发车；轮速 L/R 未读取；送达待确认。下一步：准备图上行程。");
     expect(tripClosureGate.text()).not.toContain("Nav2");
     expect(tripClosureGate.text()).not.toContain("raw");
     expect(tripClosureGate.text()).not.toContain("/cmd_vel");
-    expect(tripClosureGate.attributes("data-state")).toBe("待安全确认");
-    expect(tripClosureGate.attributes("data-safety-confirmed")).toBe("false");
+    expect(tripClosureGate.attributes("data-state")).toBe("待路线");
+    expect(tripClosureGate.attributes("data-safety-confirmed")).toBe("true");
     expect(tripClosureGate.attributes("data-route-ready")).toBe("false");
     expect(tripClosureGate.attributes("data-current-route-visible")).toBe("false");
     expect(tripClosureGate.attributes("data-route-point-count")).toBe("0");
     expect(tripClosureGate.attributes("data-route-source-point-count")).toBe("0");
-    expect(tripClosureGate.attributes("data-main-action-kind")).toBe("await_safety_confirm");
-    expect(tripClosureGate.attributes("data-main-action-can-run")).toBe("false");
+    expect(tripClosureGate.attributes("data-main-action-kind")).toBe("prepare_route_no_motion");
+    expect(tripClosureGate.attributes("data-main-action-can-run")).toBe("true");
     expect(tripClosureGate.attributes("data-main-action-sends-motion")).toBe("false");
     expect(tripClosureGate.attributes("data-executes-current-route-goal")).toBe("false");
     expect(tripClosureGate.attributes("data-wheel-lr-nonzero-proven")).toBe("false");
@@ -8360,18 +8360,18 @@ describe("App", () => {
     expect(tripClosureGate.attributes("data-current-motion-action-starts-map-runtime")).toBe("false");
     expect(tripClosureGate.attributes("data-current-motion-action-submits-delivery")).toBe("false");
     expect(tripClosureGate.attributes("data-current-motion-action-stops-motion")).toBe("false");
-    expect(tripClosureGate.attributes("data-next-action")).toBe("勾选现场安全确认");
+    expect(tripClosureGate.attributes("data-next-action")).toBe("准备图上行程");
     expect(tripClosureGate.attributes("data-fixed-nav2-execute-endpoint")).toBe("/api/robot-control/nav2/goal/execute");
     expect(tripClosureGate.attributes("data-fixed-delivery-complete-endpoint")).toBe("/api/robot-control/delivery/complete");
     expect(tripClosureGate.attributes("data-sends-motion-when-clicked")).toBe("false");
     const keyboardHoldGate = wrapper.find('[data-testid="plain-keyboard-hold-gate"]');
     expect(keyboardHoldGate.exists()).toBe(true);
-    expect(keyboardHoldGate.text()).toBe("键盘入口：安全确认未勾；点击启用不发车；按住前不发车；最佳连续 0/2 次；松开/失焦会停。下一步：勾选现场安全确认。");
+    expect(keyboardHoldGate.text()).toBe("键盘入口：安全确认已勾；点击启用不发车；按住前不发车；最佳连续 0/2 次；松开/失焦会停。下一步：点击启用键盘；启用本身不发车。");
     expect(keyboardHoldGate.text()).not.toContain("raw");
     expect(keyboardHoldGate.text()).not.toContain("/cmd_vel");
-    expect(keyboardHoldGate.attributes("data-state")).toBe("待安全确认");
-    expect(keyboardHoldGate.attributes("data-safety-confirmed")).toBe("false");
-    expect(keyboardHoldGate.attributes("data-main-action-kind")).toBe("await_safety_confirm");
+    expect(keyboardHoldGate.attributes("data-state")).toBe("可启用");
+    expect(keyboardHoldGate.attributes("data-safety-confirmed")).toBe("true");
+    expect(keyboardHoldGate.attributes("data-main-action-kind")).toBe("arm_keyboard_no_motion");
     expect(keyboardHoldGate.attributes("data-arm-sends-motion")).toBe("false");
     expect(keyboardHoldGate.attributes("data-sends-motion-while-held")).toBe("false");
     expect(keyboardHoldGate.attributes("data-requires-hold-to-move")).toBe("true");
@@ -8389,7 +8389,7 @@ describe("App", () => {
     expect(keyboardHoldGate.attributes("data-same-hold-window-required")).toBe("true");
     expect(keyboardHoldGate.attributes("data-stop-required-after-hold")).toBe("true");
     expect(keyboardHoldGate.attributes("data-stop-settled-after-pulse")).toBe("false");
-    expect(keyboardHoldGate.attributes("data-next-action")).toBe("勾选现场安全确认");
+    expect(keyboardHoldGate.attributes("data-next-action")).toBe("点击启用键盘；启用本身不发车");
     expect(keyboardHoldGate.attributes("data-fixed-keyboard-manual-endpoint")).toBe("/api/robot-control/base/manual");
     expect(keyboardHoldGate.attributes("data-fixed-keyboard-stop-endpoint")).toBe("/api/robot-control/base/stop");
     expect(keyboardHoldGate.attributes("data-post-hold-readback-endpoints")).toBe("/api/robot-control/base/feedback-samples,/api/robot-control/summary");
@@ -8407,13 +8407,13 @@ describe("App", () => {
     expect(keyboardHoldGate.attributes("data-sends-motion-when-clicked")).toBe("false");
     const mappingStartGate = wrapper.find('[data-testid="plain-mapping-start-gate"]');
     expect(mappingStartGate.exists()).toBe(true);
-    expect(mappingStartGate.text()).toBe("建图入口：安全确认未勾；画面未就绪；本页画面未显示；雷达已就绪；地图雷达点未显示；建图记录待传感器；主按钮待确认。下一步：勾选现场安全确认。");
+    expect(mappingStartGate.text()).toBe("建图入口：安全确认已勾；画面未就绪；本页画面未显示；雷达已就绪；地图雷达点未显示；建图记录待传感器；主按钮只会自由移动。下一步：可先低速自由移动；补齐画面和雷达后再建图。");
     expect(mappingStartGate.text()).not.toContain("Nav2");
     expect(mappingStartGate.text()).not.toContain("raw");
     expect(mappingStartGate.text()).not.toContain("/cmd_vel");
-    expect(mappingStartGate.attributes("data-state")).toBe("待安全确认");
-    expect(mappingStartGate.attributes("data-safety-confirmed")).toBe("false");
-    expect(mappingStartGate.attributes("data-can-free-move-now")).toBe("false");
+    expect(mappingStartGate.attributes("data-state")).toBe("可先移动");
+    expect(mappingStartGate.attributes("data-safety-confirmed")).toBe("true");
+    expect(mappingStartGate.attributes("data-can-free-move-now")).toBe("true");
     expect(mappingStartGate.attributes("data-camera-ready-for-mapping")).toBe("false");
     expect(mappingStartGate.attributes("data-camera-current-frame-visible")).toBe("false");
     expect(mappingStartGate.attributes("data-camera-current-mjpeg-frame-visible")).toBe("false");
@@ -8425,9 +8425,9 @@ describe("App", () => {
     expect(mappingStartGate.attributes("data-radar-map-point-count")).toBe("0");
     expect(mappingStartGate.attributes("data-radar-map-source-point-count")).toBe("0");
     expect(mappingStartGate.attributes("data-mapping-start-ready")).toBe("false");
-    expect(mappingStartGate.attributes("data-primary-action-kind")).toBe("blocked");
+    expect(mappingStartGate.attributes("data-primary-action-kind")).toBe("start_free_move_only");
     expect(mappingStartGate.attributes("data-primary-action-requests-mapping")).toBe("false");
-    expect(mappingStartGate.attributes("data-next-action")).toBe("勾选现场安全确认");
+    expect(mappingStartGate.attributes("data-next-action")).toBe("可先低速自由移动；补齐画面和雷达后再建图");
     expect(mappingStartGate.attributes("data-fixed-mapping-start-endpoint")).toBe("/api/robot-control/map/start");
     expect(mappingStartGate.attributes("data-fixed-free-roam-start-endpoint")).toBe("/api/robot-control/free-roam/autonomy/start");
     expect(mappingStartGate.attributes("data-fixed-mapping-preview-endpoint")).toBe("/api/robot-control/map/preview");
@@ -8440,7 +8440,7 @@ describe("App", () => {
     await wrapper.find('[data-testid="plain-safety-action-go-free_move"]').trigger("click");
     await wrapper.vm.$nextTick();
     expect(focusSpy.mock.calls.length).toBeGreaterThan(focusCallsBeforeSafetyFreeMoveGuide);
-    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-free-roam-confirm"]').element);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-free-roam-keyboard"]').element);
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeSafetyFreeMoveGuide);
     const objectiveOverview = wrapper.find('[data-testid="plain-objective-overview"]');
     expect(objectiveOverview.exists()).toBe(true);
@@ -8566,7 +8566,7 @@ describe("App", () => {
     await wrapper.find('[data-testid="plain-goal-action-group-go-keyboard_continuous_control"]').trigger("click");
     await wrapper.vm.$nextTick();
     expect(focusSpy.mock.calls.length).toBeGreaterThan(focusCallsBeforeActionGroupKeyboardGuide);
-    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="keyboard-control-recheck"]').element);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="keyboard-control-arm"]').element);
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeActionGroupKeyboardGuide);
     const mappingUnlockPlan = wrapper.find('[data-testid="plain-mapping-unlock-plan"]');
     expect(mappingUnlockPlan.exists()).toBe(true);
@@ -8726,7 +8726,7 @@ describe("App", () => {
     await wrapper.find('[data-testid="plain-intent-shortcut-go-trip"]').trigger("click");
     await wrapper.vm.$nextTick();
     expect(focusSpy.mock.calls.length).toBeGreaterThan(focusCallsBeforeIntentTripGuide);
-    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('input[name="plainTripSafetyConfirmed"]').element);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-trip-execute"]').element);
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeIntentTripGuide);
     const sharedPreviewLink = wrapper.find('[data-testid="robot-camera-shared-preview-link"]');
     expect(sharedPreviewLink.exists()).toBe(true);
@@ -8756,11 +8756,11 @@ describe("App", () => {
     await wrapper.find('[data-testid="plain-action-status-card-go-free_move"]').trigger("click");
     await wrapper.vm.$nextTick();
     expect(focusSpy.mock.calls.length).toBeGreaterThan(focusCallsBeforeActionCardGuide);
-    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-free-roam-confirm"]').element);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-free-roam-keyboard"]').element);
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeActionCardGuide);
     await wrapper.find('[data-testid="plain-action-status-card-go-nav2_route"]').trigger("click");
     await wrapper.vm.$nextTick();
-    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('input[name="plainTripSafetyConfirmed"]').element);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-trip-execute"]').element);
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeActionCardGuide);
     expect(wrapper.find('[data-testid="plain-action-status-card-free_move"]').attributes("data-state")).toBe("locked");
     expect(wrapper.find('[data-testid="plain-action-status-card-keyboard_control"]').text()).toContain("按住 W/A/S/D 或方向键");
@@ -8817,14 +8817,14 @@ describe("App", () => {
     await wrapper.find('[data-testid="plain-goal-checklist-motion-action"]').trigger("click");
     await wrapper.vm.$nextTick();
     expect(focusSpy.mock.calls.length).toBeGreaterThan(focusCallsBeforeMotionGuide);
-    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-free-roam-confirm"]').element);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-free-roam-keyboard"]').element);
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeMotionGuide);
     const callsBeforeSafetyGuide = mockedFetch.mock.calls.length;
     const focusCallsBeforeSafetyGuide = focusSpy.mock.calls.length;
     await wrapper.find('[data-testid="plain-goal-checklist-safety-action"]').trigger("click");
     await wrapper.vm.$nextTick();
     expect(focusSpy.mock.calls.length).toBeGreaterThan(focusCallsBeforeSafetyGuide);
-    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-free-roam-confirm"]').element);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-free-roam-keyboard"]').element);
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeSafetyGuide);
     const callsBeforeRadarGuide = mockedFetch.mock.calls.length;
     const focusCallsBeforeRadarGuide = focusSpy.mock.calls.length;
@@ -8838,14 +8838,14 @@ describe("App", () => {
     await wrapper.find('[data-testid="plain-goal-checklist-nav2-action"]').trigger("click");
     await wrapper.vm.$nextTick();
     expect(focusSpy.mock.calls.length).toBeGreaterThan(focusCallsBeforeNav2Guide);
-    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('input[name="plainTripSafetyConfirmed"]').element);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-trip-execute"]').element);
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeNav2Guide);
     const callsBeforeMappingGuide = mockedFetch.mock.calls.length;
     const focusCallsBeforeMappingGuide = focusSpy.mock.calls.length;
     await wrapper.find('[data-testid="plain-goal-checklist-mapping-action"]').trigger("click");
     await wrapper.vm.$nextTick();
     expect(focusSpy.mock.calls.length).toBeGreaterThan(focusCallsBeforeMappingGuide);
-    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-free-roam-confirm"]').element);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-free-roam-auto-start"]').element);
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeMappingGuide);
     const callsBeforeChecklistGuide = mockedFetch.mock.calls.length;
     const focusCallsBeforeChecklistGuide = focusSpy.mock.calls.length;
@@ -8884,7 +8884,7 @@ describe("App", () => {
     expect(firstScreenText).toContain("先确认安全，可低速自由移动；相机和雷达就绪后可启动建图记录。");
     const freeRoamPanel = wrapper.find('[data-testid="plain-free-roam-mapping"]');
     expect(freeRoamPanel.exists()).toBe(true);
-    expect(freeRoamPanel.attributes("data-state")).toBe("待确认");
+    expect(freeRoamPanel.attributes("data-state")).toBe("可移动");
     expect(freeRoamPanel.attributes("data-free-move-start-ready")).toBe("true");
     expect(freeRoamPanel.attributes("data-free-move-safety-only")).toBe("true");
     expect(freeRoamPanel.attributes("data-camera-blocks-free-motion")).toBe("false");
@@ -8910,10 +8910,10 @@ describe("App", () => {
     expect(freeRoamPanel.attributes("data-fixed-mapping-preview-endpoint")).toBe("/api/robot-control/map/preview");
     const mappingGauge = wrapper.find('[data-testid="plain-mapping-readiness-gauge"]');
     expect(mappingGauge.exists()).toBe(true);
-    expect(mappingGauge.attributes("data-state")).toBe("待安全确认");
+    expect(mappingGauge.attributes("data-state")).toBe("可先移动");
     expect(mappingGauge.attributes("data-free-move-start-ready")).toBe("true");
-    expect(mappingGauge.attributes("data-safety-confirmed")).toBe("false");
-    expect(mappingGauge.attributes("data-can-free-move-now")).toBe("false");
+    expect(mappingGauge.attributes("data-safety-confirmed")).toBe("true");
+    expect(mappingGauge.attributes("data-can-free-move-now")).toBe("true");
     expect(mappingGauge.attributes("data-camera-ready-for-mapping")).toBe("false");
     expect(mappingGauge.attributes("data-radar-ready-for-mapping")).toBe("true");
     expect(mappingGauge.attributes("data-map-runtime-started")).toBe("false");
@@ -8921,31 +8921,31 @@ describe("App", () => {
     expect(mappingGauge.attributes("data-mapping-start-ready")).toBe("false");
     expect(mappingGauge.attributes("data-mapping-evidence-ready")).toBe("false");
     expect(mappingGauge.attributes("data-mapping-missing-reasons")).toContain("画面首帧未出");
-    expect(mappingGauge.attributes("data-next-action")).toBe("先勾安全确认；勾后可先低速移动。");
+    expect(mappingGauge.attributes("data-next-action")).toBe("可先低速移动；补齐画面首帧和雷达刷新后再建图。");
     expect(mappingGauge.attributes("data-sends-motion-when-clicked")).toBe("false");
     expect(mappingGauge.attributes("data-fixed-free-roam-start-endpoint")).toBe("/api/robot-control/free-roam/autonomy/start");
     expect(mappingGauge.attributes("data-fixed-mapping-start-endpoint")).toBe("/api/robot-control/map/start");
     expect(mappingGauge.attributes("data-fixed-mapping-preview-endpoint")).toBe("/api/robot-control/map/preview");
-    expect(mappingGauge.text()).toBe("建图仪表：移动待安全确认；画面未出帧；雷达已刷新；记录未启动；地图画面已刷新。下一步：先勾安全确认；勾后可先低速移动。");
+    expect(mappingGauge.text()).toBe("建图仪表：移动可启动；画面未出帧；雷达已刷新；记录未启动；地图画面已刷新。下一步：可先低速移动；补齐画面首帧和雷达刷新后再建图。");
     const freeRoamMotionGauge = wrapper.find('[data-testid="plain-free-roam-motion-gauge"]');
     expect(freeRoamMotionGauge.exists()).toBe(true);
-    expect(freeRoamMotionGauge.text()).toBe("自由移动仪表：低速自由移动只差安全确认；画面未就绪、雷达已就绪，不阻止先动；建图记录还差传感器条件；没有停止请求阻塞。下一步：勾选现场安全确认。");
-    expect(freeRoamMotionGauge.attributes("data-state")).toBe("待安全确认");
-    expect(freeRoamMotionGauge.attributes("data-safety-confirmed")).toBe("false");
+    expect(freeRoamMotionGauge.text()).toBe("自由移动仪表：低速自由移动可启动；画面未就绪、雷达已就绪，不阻止先动；建图记录还差传感器条件；没有停止请求阻塞。下一步：可先低速自由移动；补齐画面首帧和雷达刷新后再建图。");
+    expect(freeRoamMotionGauge.attributes("data-state")).toBe("可先移动");
+    expect(freeRoamMotionGauge.attributes("data-safety-confirmed")).toBe("true");
     expect(freeRoamMotionGauge.attributes("data-free-move-start-ready")).toBe("true");
-    expect(freeRoamMotionGauge.attributes("data-can-free-move-now")).toBe("false");
+    expect(freeRoamMotionGauge.attributes("data-can-free-move-now")).toBe("true");
     expect(freeRoamMotionGauge.attributes("data-camera-blocks-free-motion")).toBe("false");
     expect(freeRoamMotionGauge.attributes("data-radar-blocks-free-motion")).toBe("false");
     expect(freeRoamMotionGauge.attributes("data-camera-ready-for-mapping")).toBe("false");
     expect(freeRoamMotionGauge.attributes("data-radar-ready-for-mapping")).toBe("true");
     expect(freeRoamMotionGauge.attributes("data-mapping-start-ready")).toBe("false");
-    expect(freeRoamMotionGauge.attributes("data-primary-action-kind")).toBe("blocked");
-    expect(freeRoamMotionGauge.attributes("data-primary-action-can-start-motion")).toBe("false");
+    expect(freeRoamMotionGauge.attributes("data-primary-action-kind")).toBe("start_free_move_only");
+    expect(freeRoamMotionGauge.attributes("data-primary-action-can-start-motion")).toBe("true");
     expect(freeRoamMotionGauge.attributes("data-primary-action-requests-mapping")).toBe("false");
     expect(freeRoamMotionGauge.attributes("data-free-roam-stop-request-pending")).toBe("false");
     expect(freeRoamMotionGauge.attributes("data-start-will-clear-stop-request")).toBe("false");
     expect(freeRoamMotionGauge.attributes("data-motion-start-blocked-by-stop-request")).toBe("false");
-    expect(freeRoamMotionGauge.attributes("data-next-action")).toBe("勾选现场安全确认");
+    expect(freeRoamMotionGauge.attributes("data-next-action")).toBe("可先低速自由移动；补齐画面首帧和雷达刷新后再建图");
     expect(freeRoamMotionGauge.attributes("data-fixed-free-roam-start-endpoint")).toBe("/api/robot-control/free-roam/autonomy/start");
     expect(freeRoamMotionGauge.attributes("data-fixed-free-roam-stop-endpoint")).toBe("/api/robot-control/free-roam/autonomy/stop");
     expect(freeRoamMotionGauge.attributes("data-fixed-mapping-start-endpoint")).toBe("/api/robot-control/map/start");
@@ -8954,21 +8954,21 @@ describe("App", () => {
     expect(freeRoamMotionGauge.text()).not.toContain("raw");
     expect(freeRoamMotionGauge.text()).not.toContain("/cmd_vel");
     const freeRoamHandoffProof = wrapper.find('[data-testid="plain-free-roam-handoff-proof"]');
-    expect(freeRoamHandoffProof.text()).toBe("自由移动到建图：低速自由移动入口已在；先勾安全确认，画面和雷达只影响建图。");
-    expect(freeRoamHandoffProof.attributes("data-state")).toBe("待安全确认");
-    expect(freeRoamHandoffProof.attributes("data-handoff-stage")).toBe("await_safety_confirm");
-    expect(freeRoamHandoffProof.attributes("data-safety-confirmed")).toBe("false");
+    expect(freeRoamHandoffProof.text()).toBe("自由移动到建图：现在可先低速自由移动；画面未就绪，雷达已就绪，补齐后再启动建图记录。下一步：先低速自由移动，同时补齐画面和雷达。");
+    expect(freeRoamHandoffProof.attributes("data-state")).toBe("可先移动");
+    expect(freeRoamHandoffProof.attributes("data-handoff-stage")).toBe("free_move_now_sensor_pending");
+    expect(freeRoamHandoffProof.attributes("data-safety-confirmed")).toBe("true");
     expect(freeRoamHandoffProof.attributes("data-free-move-start-ready")).toBe("true");
-    expect(freeRoamHandoffProof.attributes("data-can-free-move-now")).toBe("false");
+    expect(freeRoamHandoffProof.attributes("data-can-free-move-now")).toBe("true");
     expect(freeRoamHandoffProof.attributes("data-camera-ready-for-mapping")).toBe("false");
     expect(freeRoamHandoffProof.attributes("data-radar-ready-for-mapping")).toBe("true");
     expect(freeRoamHandoffProof.attributes("data-mapping-start-ready")).toBe("false");
     expect(freeRoamHandoffProof.attributes("data-map-runtime-started")).toBe("false");
     expect(freeRoamHandoffProof.attributes("data-map-preview-fresh")).toBe("true");
     expect(freeRoamHandoffProof.attributes("data-mapping-evidence-ready")).toBe("false");
-    expect(freeRoamHandoffProof.attributes("data-primary-action-kind")).toBe("blocked");
+    expect(freeRoamHandoffProof.attributes("data-primary-action-kind")).toBe("start_free_move_only");
     expect(freeRoamHandoffProof.attributes("data-primary-action-requests-mapping")).toBe("false");
-    expect(freeRoamHandoffProof.attributes("data-next-action")).toBe("先勾安全确认");
+    expect(freeRoamHandoffProof.attributes("data-next-action")).toBe("先低速自由移动，同时补齐画面和雷达");
     expect(freeRoamHandoffProof.attributes("data-fixed-free-roam-start-endpoint")).toBe("/api/robot-control/free-roam/autonomy/start");
     expect(freeRoamHandoffProof.attributes("data-fixed-mapping-start-endpoint")).toBe("/api/robot-control/map/start");
     expect(freeRoamHandoffProof.attributes("data-fixed-mapping-preview-endpoint")).toBe("/api/robot-control/map/preview");
@@ -8979,11 +8979,11 @@ describe("App", () => {
     expect(freeRoamHandoffProof.text()).not.toContain("raw");
     expect(freeRoamHandoffProof.text()).not.toContain("/cmd_vel");
     const freeRoamStartButton = wrapper.find('[data-testid="plain-free-roam-start"]');
-    expect(freeRoamStartButton.attributes("disabled")).toBeDefined();
-    expect(freeRoamStartButton.attributes("data-primary-action-kind")).toBe("blocked");
-    expect(freeRoamStartButton.attributes("data-target-source")).toBe("none");
-    expect(freeRoamStartButton.attributes("data-can-start-free-motion")).toBe("false");
-    expect(freeRoamStartButton.attributes("data-sends-motion-when-clicked")).toBe("false");
+    expect(freeRoamStartButton.attributes("disabled")).toBeUndefined();
+    expect(freeRoamStartButton.attributes("data-primary-action-kind")).toBe("start_free_move_only");
+    expect(freeRoamStartButton.attributes("data-target-source")).toBe("free_roam_autonomy");
+    expect(freeRoamStartButton.attributes("data-can-start-free-motion")).toBe("true");
+    expect(freeRoamStartButton.attributes("data-sends-motion-when-clicked")).toBe("true");
     expect(freeRoamStartButton.attributes("data-requests-mapping-when-clicked")).toBe("false");
     expect(freeRoamStartButton.attributes("data-primary-action-mapping-start-ready")).toBe("false");
     expect(freeRoamStartButton.attributes("data-camera-blocks-mapping-start")).toBe("true");
@@ -9013,10 +9013,10 @@ describe("App", () => {
     expect(freeRoamStartButton.attributes("data-requires-safety-confirmation")).toBe("true");
     expect(freeRoamStartButton.attributes("data-minimal-precheck-safety-only")).toBe("true");
     const defaultFreeRoamKeyboardButton = wrapper.find('[data-testid="plain-free-roam-keyboard"]');
-    expect(defaultFreeRoamKeyboardButton.text()).toBe("先勾安全确认");
-    expect(defaultFreeRoamKeyboardButton.attributes("disabled")).toBeDefined();
-    expect(defaultFreeRoamKeyboardButton.attributes("data-main-action-kind")).toBe("await_safety_confirm");
-    expect(defaultFreeRoamKeyboardButton.attributes("data-target-source")).toBe("none");
+    expect(defaultFreeRoamKeyboardButton.text()).toBe("启用键盘自由移动");
+    expect(defaultFreeRoamKeyboardButton.attributes("disabled")).toBeUndefined();
+    expect(defaultFreeRoamKeyboardButton.attributes("data-main-action-kind")).toBe("arm_keyboard_no_motion");
+    expect(defaultFreeRoamKeyboardButton.attributes("data-target-source")).toBe("keyboard_arm_only");
     expect(defaultFreeRoamKeyboardButton.attributes("data-activates-keyboard-panel")).toBe("true");
     expect(defaultFreeRoamKeyboardButton.attributes("data-free-roam-motion-source")).toBe("keyboard_continuous_control");
     expect(defaultFreeRoamKeyboardButton.attributes("data-sends-motion-when-clicked")).toBe("false");
@@ -9034,7 +9034,7 @@ describe("App", () => {
     expect(defaultFreeRoamKeyboardButton.attributes("data-stop-settled-after-pulse")).toBe("false");
     expect(wrapper.find('[data-testid="plain-free-roam-map-refresh"]').text()).toBe("先开始记录");
     expect(wrapper.find('[data-testid="plain-free-roam-map-refresh"]').attributes("disabled")).toBeDefined();
-    expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("勾选现场安全确认");
+    expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("可先启动地图记录");
     expect(wrapper.find('[data-testid="plain-free-roam-readback-summary"]').text()).toContain("自由移动事实：可先低速移动");
     expect(wrapper.find('[data-testid="plain-free-roam-readback-summary"]').text()).toContain("相机、雷达、地图记录只影响建图验收");
     const freeRoamCoverage = wrapper.find('[data-testid="plain-free-roam-coverage"]');
@@ -9053,14 +9053,14 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-free-roam-runtime-marker"]').attributes("aria-label")).toBe("自动扫图状态 避障换向，机器人地图位置未读到，标记不代表坐标");
     expect(wrapper.find('[data-testid="plain-free-roam-sweep-plan-summary"]').text()).toBe("扫地图草图：已在地图上画出蛇形覆盖草图；等待定位后接入当前位置，不会自动移动。");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').exists()).toBe(true);
-    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').attributes("data-state")).toBe("待处理");
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').attributes("data-state")).toBe("已就绪");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("自由移动准备");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).not.toContain("自动扫图准备");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("雷达监看");
-    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("仍可在安全确认后低速自由移动");
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("仍可直接低速自由移动");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("建图验收：当前只按自由移动记录");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).not.toContain("自动扫图真车验证未完成");
-    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-next-action"]').text()).toBe("自由移动下一步：勾选现场安全确认。");
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-next-action"]').text()).toBe("自由移动下一步：点击开始自由移动（低速）。");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-runtime"]').text()).toContain("启动条件已满足");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-runtime"]').text()).toContain("当前尚未启动自由移动");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-runtime"]').text()).toContain("点击开始后由上车端打开运动双锁");
@@ -9071,25 +9071,18 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-gates"]').text()).toContain("这只影响建图验收，不阻塞低速自由移动");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-gates"]').text()).toContain("已满足");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-gates"]').text()).toContain("只读状态：运动发布状态");
-    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("先勾安全确认");
+    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("开始自由移动（低速）");
     expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').attributes("disabled")).toBeUndefined();
-    const callsBeforeAutoGuide = mockedFetch.mock.calls.length;
-    const focusCallsBeforeAutoGuide = focusSpy.mock.calls.length;
-    await wrapper.find('[data-testid="plain-free-roam-auto-start"]').trigger("click");
-    await wrapper.vm.$nextTick();
-    expect(focusSpy.mock.calls.length).toBeGreaterThan(focusCallsBeforeAutoGuide);
-    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-free-roam-confirm"]').element);
-    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeAutoGuide);
     expect(wrapper.find('[data-testid="plain-free-roam-steps"]').exists()).toBe(true);
     expect(wrapper.findAll('[data-testid="plain-free-roam-steps"] .plain-progress-row')).toHaveLength(5);
     expect(wrapper.find('[data-testid="plain-free-roam-steps"]').text()).toContain("安全确认");
-    expect(wrapper.find('[data-testid="plain-free-roam-steps"]').text()).toContain("待确认");
+    expect(wrapper.find('[data-testid="plain-free-roam-steps"]').text()).toContain("已完成");
     expect(wrapper.find('[data-testid="plain-free-roam-steps"]').text()).toContain("保存地图");
-    expect(firstScreenText).toContain("待确认");
+    expect(firstScreenText).toContain("现场安全已确认");
     const motionPanel = wrapper.find('[data-testid="plain-motion-panel"]');
     expect(motionPanel.exists()).toBe(true);
-    expect(motionPanel.attributes("data-state")).toBe("待确认");
-    expect(firstScreenText).toContain("勾安全确认后可底盘试动、键盘手控或执行已准备行程；画面记录不是发车前置。");
+    expect(motionPanel.attributes("data-state")).toBe("待命");
+    expect(firstScreenText).toContain("现场安全已确认；可直接试动、启用键盘或执行行程。");
     expect(firstScreenText).toContain("重新定位");
     expect(firstScreenText).not.toContain("移动前检查");
     expect(firstScreenText).toContain("启用键盘");
@@ -9133,7 +9126,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-goal-progress-primary-action"]').text()).toBe("去行程卡点");
     expect(wrapper.find('[data-testid="plain-goal-progress-refresh"]').text()).toBe("刷新进度（只读）");
     expect(wrapper.find('[data-testid="plain-goal-progress-next-action"]').text()).toContain("下一步：先处理行程执行。");
-    expect(wrapper.find('[data-testid="plain-goal-progress-move-now"]').text()).toContain("可先动：勾选现场安全确认后");
+    expect(wrapper.find('[data-testid="plain-goal-progress-move-now"]').text()).toContain("可先动：安全确认已勾选，自由移动可启动、键盘可启用");
     expect(wrapper.find('[data-testid="plain-goal-progress-move-now"]').text()).toContain("主动作：可先做：先自由移动");
     expect(wrapper.find('[data-testid="plain-goal-progress-move-now"]').text()).toContain("自由移动可启动");
     expect(wrapper.find('[data-testid="plain-goal-progress-move-now"]').text()).toContain("键盘可启用");
@@ -9174,22 +9167,22 @@ describe("App", () => {
     await wrapper.find('[data-testid="plain-goal-progress-primary-ready-action"]').trigger("click");
     await wrapper.vm.$nextTick();
     expect(focusSpy.mock.calls.length).toBeGreaterThan(focusCallsBeforePrimaryReadyAction);
-    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-free-roam-confirm"]').element);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-free-roam-keyboard"]').element);
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforePrimaryReadyAction);
-    expect(wrapper.find('[data-testid="plain-goal-progress-state-summary"]').text()).toBe("当前状态：轮速记录已完成；行程执行待完成；送达确认待完成；键盘手控未满足。");
-    expect(wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text()).toBe("当前读数：轮速已完成；行程未完成；送达未完成；键盘未满足。");
+    expect(wrapper.find('[data-testid="plain-goal-progress-state-summary"]').text()).toBe("当前状态：轮速记录已完成；行程执行待完成；送达确认待完成；键盘手控待验证。");
+    expect(wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text()).toBe("当前读数：轮速已完成；行程未完成；送达未完成；键盘待验证。");
     expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toBe("验收卡点：还没读到行程成功结果。");
     expect(firstScreenText).toContain("去轮速");
     expect(firstScreenText).toContain("去行程");
     expect(firstScreenText).toContain("去送达");
     expect(firstScreenText).toContain("去键盘");
     expect(firstScreenText).toContain("轮速记录");
-    expect(firstScreenText).toContain("试动按钮已锁定：先勾选安全确认。");
+    expect(firstScreenText).toContain("底盘试动：可直接低速前进一下；不依赖相机或雷达");
     expect(firstScreenText).toContain("雷达移动记录还没拿到：试动时可让雷达看到前后变化；这只影响运动/建图材料，不阻塞键盘手控。");
     expect(firstScreenText).not.toContain("之后键盘手控才会解锁");
     expect(firstScreenText).toContain("行程操作");
-    expect(firstScreenText).toContain("先勾选现场安全确认，再用主按钮准备或执行行程。");
-    expect(firstScreenText).toContain("先勾选确认");
+    expect(firstScreenText).toContain("行程前确认：安全确认已完成；点主按钮准备图上路线。");
+    expect(firstScreenText).toContain("现场安全已确认；有图上路线时可直接执行");
     const nav2ActionCard = wrapper.find('[data-testid="plain-action-status-card-nav2_route"]');
     expect(nav2ActionCard.attributes("data-route-ready-on-map")).toBe("false");
     expect(nav2ActionCard.attributes("data-minimal-precheck-safety-only")).toBe("true");
@@ -9230,13 +9223,13 @@ describe("App", () => {
     expect(firstScreenText).toContain("行程执行");
     expect(firstScreenText).toContain("送达确认");
     expect(firstScreenText).toContain("键盘手控");
-    expect(firstScreenText).toContain("先补齐键盘手控条件，再启用键盘。还差：安全确认。");
-    expect(wrapper.find('[data-testid="keyboard-control-recheck"]').text()).toBe("复查手控条件（先勾安全确认，不发车）");
-    expect(wrapper.find('[data-testid="keyboard-control-arm"]').text()).toBe("启用键盘（先勾安全确认）");
+    expect(firstScreenText).toContain("键盘手控：安全确认已完成；现在可启用键盘，按住方向键才会动。");
+    expect(wrapper.find('[data-testid="keyboard-control-recheck"]').text()).toBe("复查手控条件");
+    expect(wrapper.find('[data-testid="keyboard-control-arm"]').text()).toBe("启用键盘（按键才动）");
     expect(wrapper.find('[data-testid="plain-keyboard-readback-summary"]').text()).toContain("键盘事实：可启用键盘；启用本身不发车");
     expect(wrapper.find('[data-testid="plain-keyboard-readback-summary"]').text()).toContain("必须按住 W/A/S/D 或方向键才会连续低速移动");
     expect(wrapper.find('[data-testid="plain-keyboard-readback-summary"]').text()).toContain("松开按键、窗口失焦、页面隐藏、切换方向或点击停止都会发送停止请求");
-    expect(wrapper.find('[data-testid="plain-keyboard-next-action"]').text()).toBe("下一步：勾选现场安全确认后点击启用键盘；按住 W/A/S/D 或方向键才会连续低速移动，松开/失焦/切页会停。");
+    expect(firstScreenText).toContain("下一步：点击启用键盘");
     const keyboardActionCard = wrapper.find('[data-testid="plain-action-status-card-keyboard_control"]');
     expect(keyboardActionCard.attributes("data-hold-to-move-required")).toBe("true");
     expect(keyboardActionCard.attributes("data-arm-sends-motion")).toBe("false");
@@ -9260,12 +9253,12 @@ describe("App", () => {
     expect(keyboardActionCard.attributes("data-keyboard-stop-required-after-hold")).toBe("true");
     expect(keyboardActionCard.attributes("data-keyboard-stop-settled-after-pulse")).toBe("false");
     expect(keyboardActionCard.attributes("data-keyboard-motion-verified")).toBe("false");
-    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("先补齐键盘手控条件。还差：安全确认。");
-    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("下一步：勾选现场安全确认后点击启用键盘");
+    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("键盘已解锁；点击启用键盘后按住方向键连续验证");
+    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("下一步：启用键盘并按住方向键验证");
     expect(wrapper.find('[data-testid="plain-goal-progress-next-wheel"]').text()).toBe("已完成。");
-    expect(wrapper.find('[data-testid="plain-goal-progress-next-trip"]').text()).toBe("下一步：勾选行程前确认。");
+    expect(wrapper.find('[data-testid="plain-goal-progress-next-trip"]').text()).toBe("下一步：检查或执行行程。");
     expect(wrapper.find('[data-testid="plain-goal-progress-next-delivery"]').text()).toBe("下一步：先完成行程。");
-    expect(wrapper.find('[data-testid="plain-goal-progress-next-keyboard"]').text()).toBe("下一步：勾选现场安全确认后点击启用键盘；按住 W/A/S/D 或方向键才会连续低速移动，松开/失焦/切页会停。");
+    expect(wrapper.find('[data-testid="plain-goal-progress-next-keyboard"]').text()).toBe("下一步：启用键盘并按住方向键验证。");
     expect(firstScreenText).toContain("最终确认");
     expect(firstScreenText).toContain("待行程");
     expect(firstScreenText).toContain("先完成本轮行程，再做最终确认。");
@@ -9971,13 +9964,13 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-trip-execution-plan"]').text()).not.toContain("/cmd_vel");
     expect(wrapper.find('[data-testid="plain-trip-route-execution-readback"]').text()).toContain("行程复验事实：");
     expect(wrapper.find('[data-testid="plain-trip-route-execution-readback"]').text()).toContain("执行只需勾选行程前安全确认");
-    expect(wrapper.find('[data-testid="plain-trip-prepare"]').text()).toBe("先勾选确认");
-    expect(wrapper.find('[data-testid="plain-trip-prepare"]').attributes("disabled")).toBeDefined();
-    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("先勾选确认");
-    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeDefined();
-    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-main-action-kind")).toBe("await_safety_confirm");
+    expect(wrapper.find('[data-testid="plain-trip-prepare"]').text()).toBe("可选刷新路线");
+    expect(wrapper.find('[data-testid="plain-trip-prepare"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("准备图上路线");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-main-action-kind")).toBe("prepare_route_no_motion");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-sends-motion-when-clicked")).toBe("false");
-    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-target-source")).toBe("none");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-target-source")).toBe("nav2_no_motion_proof_refresh");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-route-point-count")).toBe("0");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-route-source-point-count")).toBe("0");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-route-preview-complete")).toBe("false");
@@ -10023,9 +10016,9 @@ describe("App", () => {
     expect(defaultTripRouteBinding.attributes("data-route-wysiwyg-ready")).toBe("false");
     expect(defaultTripRouteBinding.attributes("data-executes-current-route-goal")).toBe("false");
     expect(defaultTripRouteBinding.attributes("data-goal-frame-id")).toBe("not_loaded");
-    expect(defaultTripRouteBinding.attributes("data-target-source")).toBe("none");
+    expect(defaultTripRouteBinding.attributes("data-target-source")).toBe("nav2_no_motion_proof_refresh");
     const defaultTripExecutionGauge = wrapper.find('[data-testid="plain-trip-execution-gauge"]');
-    expect(defaultTripExecutionGauge.text()).toBe("行程仪表：图上行程未准备；执行按钮等待安全确认；轮速 L/R=未读取，待非零；送达待确认。下一步：先准备图上行程。");
+    expect(defaultTripExecutionGauge.text()).toBe("行程仪表：图上行程未准备；执行按钮只准备或刷新，不发车；轮速 L/R=未读取，待非零；送达待确认。下一步：先准备图上行程。");
     expect(defaultTripExecutionGauge.attributes("data-state")).toBe("待路线");
     expect(defaultTripExecutionGauge.attributes("data-current-route-visible")).toBe("false");
     expect(defaultTripExecutionGauge.attributes("data-route-wysiwyg-ready")).toBe("false");
@@ -10033,11 +10026,11 @@ describe("App", () => {
     expect(defaultTripExecutionGauge.attributes("data-route-source-point-count")).toBe("0");
     expect(defaultTripExecutionGauge.attributes("data-route-preview-complete")).toBe("false");
     expect(defaultTripExecutionGauge.attributes("data-execution-route-point-count")).toBe("0");
-    expect(defaultTripExecutionGauge.attributes("data-main-action-kind")).toBe("await_safety_confirm");
-    expect(defaultTripExecutionGauge.attributes("data-main-action-can-run")).toBe("false");
+    expect(defaultTripExecutionGauge.attributes("data-main-action-kind")).toBe("prepare_route_no_motion");
+    expect(defaultTripExecutionGauge.attributes("data-main-action-can-run")).toBe("true");
     expect(defaultTripExecutionGauge.attributes("data-main-action-sends-motion")).toBe("false");
     expect(defaultTripExecutionGauge.attributes("data-executes-current-route-goal")).toBe("false");
-    expect(defaultTripExecutionGauge.attributes("data-target-source")).toBe("none");
+    expect(defaultTripExecutionGauge.attributes("data-target-source")).toBe("nav2_no_motion_proof_refresh");
     expect(defaultTripExecutionGauge.attributes("data-managed-runtime-autostart")).toBe("false");
     expect(defaultTripExecutionGauge.attributes("data-requires-same-window-wheel-lr-nonzero")).toBe("true");
     expect(defaultTripExecutionGauge.attributes("data-wheel-lr-nonzero-proven")).toBe("false");
@@ -10114,15 +10107,15 @@ describe("App", () => {
     expect(defaultTripClosureReadbackButton.attributes("data-starts-map-runtime")).toBe("false");
     expect(defaultTripClosureReadbackButton.attributes("data-submits-delivery")).toBe("false");
     expect(defaultTripClosureReadbackButton.attributes("data-stops-motion")).toBe("false");
-    expect(wrapper.find('[data-testid="plain-trip-main-action-summary"]').text()).toBe("主按钮：先勾选现场安全确认；未勾选时不会发车。");
+    expect(wrapper.find('[data-testid="plain-trip-main-action-summary"]').text()).toBe("主按钮：只准备图上路线，不发车。");
     const currentMotionAction = wrapper.find('[data-testid="plain-trip-current-motion-action"]');
     expect(currentMotionAction.exists()).toBe(true);
-    expect(currentMotionAction.text()).toContain("当前运动动作：重跑图上行程并复验轮速；先勾现场安全确认；发车前只看安全确认；执行后读回 5 个验收端点；当前读回：图上行程已显示；到点已读到；同窗口轮速未证明，L/R=0/0，非零样本 0/2；送达确认未完成；还差 同窗口 wheel L/R 非零、送达确认。");
+    expect(currentMotionAction.text()).toContain("当前运动动作：重跑图上行程并复验轮速；安全确认已勾；发车前只看安全确认；执行后读回 5 个验收端点；当前读回：图上行程已显示；到点已读到；同窗口轮速未证明，L/R=0/0，非零样本 0/2；送达确认未完成；还差 同窗口 wheel L/R 非零、送达确认。");
     expect(currentMotionAction.text()).toContain("可验证完整行程执行");
     expect(currentMotionAction.text()).not.toContain("Nav2");
     expect(currentMotionAction.text()).not.toContain("raw");
     expect(currentMotionAction.text()).not.toContain("/api/");
-    expect(currentMotionAction.attributes("data-state")).toBe("待安全确认");
+    expect(currentMotionAction.attributes("data-state")).toBe("安全确认已勾");
     expect(currentMotionAction.attributes("data-current-motion-action-id")).toBe("run_nav2_route");
     expect(currentMotionAction.attributes("data-current-motion-action-required")).toBe("true");
     expect(currentMotionAction.attributes("data-current-motion-action-label")).toBe("完整行程执行");
@@ -10164,7 +10157,7 @@ describe("App", () => {
     expect(currentMotionAction.attributes("data-sends-motion-when-clicked")).toBe("false");
     const defaultKeyboardTelemetry = wrapper.find('[data-testid="keyboard-telemetry-summary"]');
     expect(defaultKeyboardTelemetry.text()).toBe("键盘仪表：方向 未按键；最佳连续 0/2 次；轮速未读取；未触发；当前不发车。");
-    expect(defaultKeyboardTelemetry.attributes("data-state")).toBe("未满足");
+    expect(defaultKeyboardTelemetry.attributes("data-state")).toBe("可手控");
     expect(defaultKeyboardTelemetry.attributes("data-current-direction")).toBe("none");
     expect(defaultKeyboardTelemetry.attributes("data-current-hold-pulse-count")).toBe("0");
     expect(defaultKeyboardTelemetry.attributes("data-best-continuous-pulse-count")).toBe("0");
@@ -10175,8 +10168,8 @@ describe("App", () => {
     expect(defaultKeyboardTelemetry.attributes("data-fixed-keyboard-manual-endpoint")).toBe("/api/robot-control/base/manual");
     expect(defaultKeyboardTelemetry.attributes("data-fixed-keyboard-stop-endpoint")).toBe("/api/robot-control/base/stop");
     const defaultKeyboardContinuousProof = wrapper.find('[data-testid="plain-keyboard-continuous-proof"]');
-    expect(defaultKeyboardContinuousProof.text()).toBe("连续手控验收：最佳连续 0/2 次；必须同一次按住窗口；松开后还需 stop 收口；轮速 not_loaded/not_loaded，未读取。下一步：勾选现场安全确认。");
-    expect(defaultKeyboardContinuousProof.attributes("data-state")).toBe("待安全确认");
+    expect(defaultKeyboardContinuousProof.text()).toBe("连续手控验收：最佳连续 0/2 次；必须同一次按住窗口；松开后还需 stop 收口；轮速 not_loaded/not_loaded，未读取。下一步：点击启用键盘。");
+    expect(defaultKeyboardContinuousProof.attributes("data-state")).toBe("可启用");
     expect(defaultKeyboardContinuousProof.attributes("data-current-hold-pulse-count")).toBe("0");
     expect(defaultKeyboardContinuousProof.attributes("data-best-continuous-pulse-count")).toBe("0");
     expect(defaultKeyboardContinuousProof.attributes("data-verified-min-forwarded-pulses")).toBe("2");
@@ -10224,12 +10217,12 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-delivery-status"]').attributes("tabindex")).toBe("-1");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find(".simple-user-console [data-testid='keyboard-control-panel']").exists()).toBe(true);
-    expect(wrapper.find('[data-testid="keyboard-control-arm"]').attributes("disabled")).toBeDefined();
-    expect(wrapper.find('[data-testid="keyboard-control-panel"]').attributes("data-main-action-kind")).toBe("await_safety_confirm");
+    expect(wrapper.find('[data-testid="keyboard-control-arm"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="keyboard-control-panel"]').attributes("data-main-action-kind")).toBe("arm_keyboard_no_motion");
     expect(wrapper.find('[data-testid="keyboard-control-panel"]').attributes("data-sends-motion-when-holding")).toBe("false");
     expect(wrapper.find('[data-testid="keyboard-control-panel"]').attributes("data-arm-sends-motion")).toBe("false");
     expect(wrapper.find('[data-testid="keyboard-control-panel"]').attributes("data-requires-hold-to-move")).toBe("true");
-    expect(wrapper.find('[data-testid="keyboard-control-panel"]').attributes("data-target-source")).toBe("none");
+    expect(wrapper.find('[data-testid="keyboard-control-panel"]').attributes("data-target-source")).toBe("keyboard_arm_only");
     expect(wrapper.find('[data-testid="keyboard-control-panel"]').attributes("data-stop-triggers")).toContain("window_blur");
     expect(wrapper.find('[data-testid="keyboard-control-panel"]').attributes("data-manual-command-mode")).toBe("ros");
     expect(wrapper.find('[data-testid="keyboard-control-panel"]').attributes("data-fixed-keyboard-manual-endpoint")).toBe("/api/robot-control/base/manual");
@@ -10281,7 +10274,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="keyboard-control-arm"]').attributes("data-post-hold-summary-refresh-required")).toBe("true");
     expect(wrapper.find('[data-testid="keyboard-control-arm"]').attributes("data-wheel-lr-nonzero-required")).toBe("true");
     expect(wrapper.find('[data-testid="keyboard-control-arm"]').attributes("data-stop-settled-required-after-hold")).toBe("true");
-    expect(wrapper.find('[data-testid="plain-keyboard-main-action-summary"]').text()).toBe("键盘主动作：先勾选现场安全确认；未勾选时启用和按键都不会发车。");
+    expect(wrapper.find('[data-testid="plain-keyboard-main-action-summary"]').text()).toBe("键盘主动作：点击启用只拿本页按键控制权，不发车；启用后必须按住方向键才会动。");
     expect(wrapper.find('[data-testid="keyboard-screen-forward"]').attributes("data-sends-motion-while-held")).toBe("false");
     expect(wrapper.find('[data-testid="keyboard-screen-forward"]').attributes("data-requires-hold-to-move")).toBe("true");
     expect(wrapper.find('[data-testid="keyboard-screen-forward"]').attributes("data-stop-trigger")).toBe("pointerup,pointerleave,pointercancel");
@@ -10387,7 +10380,6 @@ describe("App", () => {
     }
     const firstScreenForbiddenTokens = [
       ...DEFAULT_FIRST_SCREEN_FORBIDDEN_TOKENS,
-      "路线",
       "证据",
       "硬件",
       "数据",
@@ -10456,7 +10448,7 @@ describe("App", () => {
     const keyboardClosureItem = wrapper.findAll('[data-testid="goal-closure-checklist"] li')
       .find((item) => item.text().includes("PC 键盘连续手控"));
     expect(keyboardClosureItem?.attributes("data-ready")).toBe("false");
-    expect(keyboardClosureItem?.text()).toContain("键盘入口已在，仍需补齐：安全确认");
+    expect(keyboardClosureItem?.text()).toContain("键盘入口已就绪，仍需按住方向键连续验证");
     expect(diagnostics.text()).toContain("task_id");
     expect(diagnostics.text()).toContain("Robot API status");
     expect(diagnostics.text()).toContain("Node server only; Vue direct access=false");
@@ -10478,7 +10470,7 @@ describe("App", () => {
     expect(diagnostics.text()).toContain("Nav2 规划详情");
     expect(diagnostics.text()).toContain("检查路径（高级）");
     expect(diagnostics.text()).toContain("导航目标预检（高级）");
-    expect(diagnostics.text()).toContain("现场安全确认（全页面一次生效）");
+    expect(diagnostics.text()).toContain("现场安全已确认（全页面默认生效）");
     expect(diagnostics.text()).not.toContain("确认仅做导航目标预检");
     expect(diagnostics.text()).not.toContain("确认执行一次受限导航目标");
     expect(diagnostics.text()).toContain("启动雷达（高级）");
@@ -10488,7 +10480,7 @@ describe("App", () => {
     expect(diagnostics.text()).toContain("window=true/fresh_window_observed");
     expect(diagnostics.text()).toContain("前进");
     expect(diagnostics.text()).toContain("速度上限");
-    expect(diagnostics.text()).toContain("人在旁边、周围安全、停止手段就绪");
+    expect(diagnostics.text()).toContain("现场安全已确认打开页面即可发低速控制");
     expect(diagnostics.text()).not.toContain("现场有人扶控并准备急停");
     expect(diagnostics.text()).not.toContain("本轮不是自动导航任务");
     writePlainHomeSmokeArtifact(firstScreenText, diagnostics.text(), diagnostics.attributes("open") === undefined);
@@ -11924,12 +11916,12 @@ describe("App", () => {
     expect(motionProof.text()).toContain("行程还差同窗口轮速 L/R 非零、送达确认");
     expect(motionProof.text()).toContain("键盘还差按住时轮速 L/R 非零、松开后停稳");
     expect(motionProof.text()).toContain("自由移动还差运行读数");
-    expect(motionProof.text()).toContain("行程可复验：先勾安全确认，再去行程卡执行，之后只读回行程、轮速和送达");
+    expect(motionProof.text()).toContain("行程可复验：去行程卡执行，之后只读回行程、轮速和送达");
     expect(motionProof.attributes("data-ready-action-ids")).toBe("run_nav2_route,hold_keyboard,start_free_move");
     expect(motionProof.attributes("data-incomplete-action-ids")).toBe("run_nav2_route,hold_keyboard,start_free_move");
     expect(motionProof.attributes("data-primary-action-id")).toBe("run_nav2_route");
     expect(motionProof.attributes("data-trip-ready-for-safety-confirm")).toBe("true");
-    expect(motionProof.attributes("data-trip-next-action-plain")).toBe("行程可复验：先勾安全确认，再去行程卡执行，之后只读回行程、轮速和送达。");
+    expect(motionProof.attributes("data-trip-next-action-plain")).toBe("行程可复验：去行程卡执行，之后只读回行程、轮速和送达。");
     expect(motionProof.attributes("data-trip-current-gap-plain")).toContain("同窗口轮速 L/R 非零尚未闭环");
     expect(motionProof.attributes("data-trip-next-mode-plain")).toContain("ROS 模式");
     expect(motionProof.attributes("data-trip-delivery-next-action-plain")).toContain("送达确认");
@@ -12031,13 +12023,13 @@ describe("App", () => {
     expect(safetyConfirmQueue.attributes("data-primary-action-id")).toBe("run_nav2_route");
     expect(safetyConfirmQueue.attributes("data-primary-action-display-label")).toBe("重跑图上行程并复验轮速");
     expect(safetyConfirmQueue.attributes("data-primary-focus-source-card-id")).toBe("nav2_route");
-    expect(safetyConfirmQueue.attributes("data-primary-focus-kind")).toBe("trip_safety_confirm");
-    expect(safetyConfirmQueue.attributes("data-primary-focus-button-label")).toBe("去勾行程安全确认");
-    expect(safetyConfirmQueue.attributes("data-safety-confirmed")).toBe("false");
+    expect(safetyConfirmQueue.attributes("data-primary-focus-kind")).toBe("trip_execute_button");
+    expect(safetyConfirmQueue.attributes("data-primary-focus-button-label")).toBe("去执行图上行程");
+    expect(safetyConfirmQueue.attributes("data-safety-confirmed")).toBe("true");
     expect(safetyConfirmQueue.attributes("data-backend-primary-focus-kind")).toBe("trip_safety_confirm");
     expect(safetyConfirmQueue.attributes("data-backend-primary-focus-button-label")).toBe("去勾行程安全确认");
-    expect(safetyConfirmQueue.attributes("data-effective-primary-focus-kind")).toBe("trip_safety_confirm");
-    expect(safetyConfirmQueue.attributes("data-effective-primary-focus-button-label")).toBe("去勾行程安全确认");
+    expect(safetyConfirmQueue.attributes("data-effective-primary-focus-kind")).toBe("trip_execute_button");
+    expect(safetyConfirmQueue.attributes("data-effective-primary-focus-button-label")).toBe("去执行图上行程");
     expect(safetyConfirmQueue.attributes("data-current-move-now-status")).toBe("ready_for_safety_confirm");
     expect(safetyConfirmQueue.attributes("data-current-move-now-plain")).toBe("可先动：重跑图上行程并复验轮速、键盘连续手控、自由自助移动；发车前只需现场安全确认；相机和雷达只影响建图验收。");
     expect(safetyConfirmQueue.attributes("data-current-move-now-action-ids")).toBe("run_nav2_route,hold_keyboard,start_free_move");
@@ -12086,12 +12078,12 @@ describe("App", () => {
     expect(safetyConfirmQueue.attributes("data-stops-motion-when-clicked")).toBe("false");
     const safetyConfirmQueueGoPrimary = wrapper.find('[data-testid="plain-current-safety-confirm-queue-go-primary"]');
     expect(safetyConfirmQueueGoPrimary.exists()).toBe(true);
-    expect(safetyConfirmQueueGoPrimary.text()).toBe("去勾行程安全确认");
+    expect(safetyConfirmQueueGoPrimary.text()).toBe("去执行图上行程");
     expect(safetyConfirmQueueGoPrimary.attributes("data-focus-target-source-card-id")).toBe("nav2_route");
-    expect(safetyConfirmQueueGoPrimary.attributes("data-focus-target-kind")).toBe("trip_safety_confirm");
-    expect(safetyConfirmQueueGoPrimary.attributes("data-safety-confirmed")).toBe("false");
+    expect(safetyConfirmQueueGoPrimary.attributes("data-focus-target-kind")).toBe("trip_execute_button");
+    expect(safetyConfirmQueueGoPrimary.attributes("data-safety-confirmed")).toBe("true");
     expect(safetyConfirmQueueGoPrimary.attributes("data-backend-focus-target-kind")).toBe("trip_safety_confirm");
-    expect(safetyConfirmQueueGoPrimary.attributes("data-effective-focus-target-kind")).toBe("trip_safety_confirm");
+    expect(safetyConfirmQueueGoPrimary.attributes("data-effective-focus-target-kind")).toBe("trip_execute_button");
     expect(safetyConfirmQueueGoPrimary.attributes("data-focus-only")).toBe("true");
     expect(safetyConfirmQueueGoPrimary.attributes("data-sends-motion-when-clicked")).toBe("false");
     expect(safetyConfirmQueueGoPrimary.attributes("data-starts-nav2")).toBe("false");
@@ -12873,7 +12865,7 @@ describe("App", () => {
     expect(wheelRerunClosurePlan.attributes("data-imu-attitude-delta-observed")).toBe("true");
     expect(wheelRerunClosurePlan.text()).toContain("49 次非零底盘命令");
     expect(wheelRerunClosurePlan.text()).toContain("不是雷达、相机或地图所见缺口");
-    expect(wheelRerunClosurePlan.text()).toContain("先勾现场安全确认");
+    expect(wheelRerunClosurePlan.text()).toContain("现场安全已确认");
     expect(wheelRerunClosurePlan.text()).toContain("同窗口 wheel L/R 非零");
     expect(wheelRerunClosurePlan.text()).toContain("送达确认与本轮行程材料对齐");
     expect(wheelRerunClosurePlan.attributes("data-acceptance-endpoints")).toBe("/api/robot-control/map/preview,/api/robot-control/nav2/goal/execution/latest,/api/robot-control/base/feedback-samples,/api/robot-control/delivery/latest,/api/robot-control/summary");
@@ -12928,10 +12920,10 @@ describe("App", () => {
     expect(wheelReadbackRefreshCalls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
     expect(wheelReadbackRefreshCalls.some(([url]) => String(url).startsWith("/api/robot-control/base/stop?"))).toBe(false);
     const liveClosureGuide = wrapper.find('[data-testid="plain-live-closure-go"]');
-    expect(liveClosureGuide.text()).toBe("去勾行程安全确认");
+    expect(liveClosureGuide.text()).toBe("去重跑图上行程");
     expect(liveClosureGuide.attributes("data-focus-target-item-id")).toBe("nav2_route_execution");
     expect(liveClosureGuide.attributes("data-focus-target-source-card-id")).toBe("nav2_route");
-    expect(liveClosureGuide.attributes("data-focus-target-kind")).toBe("trip_safety_confirm");
+    expect(liveClosureGuide.attributes("data-focus-target-kind")).toBe("trip_execute_button");
     expect(liveClosureGuide.attributes("data-needs-wheel-rerun")).toBe("true");
     expect(liveClosureGuide.attributes("data-requires-same-window-wheel-lr-nonzero")).toBe("true");
     expect(liveClosureGuide.attributes("data-wheel-rerun-minimal-precheck-safety-only")).toBe("true");
@@ -12987,7 +12979,7 @@ describe("App", () => {
     await liveClosureGuide.trigger("click");
     await wrapper.vm.$nextTick();
     expect(focusSpy.mock.calls.length).toBeGreaterThan(focusCallsBeforeClick);
-    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('input[name="plainTripSafetyConfirmed"]').element);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-trip-execute"]').element);
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeClick);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
@@ -13477,7 +13469,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-route-label"]').text()).toBe("路线已显示 3/36 个点");
     expect(wrapper.find('[data-testid="plain-map-route-readback-label"]').text()).toBe("行程读数：图上行程已画在地图上，36 个点（map）；定位有信号，但还没有小车地图坐标；行程服务已运行；控制服务已运行。");
     expect(wrapper.find('[data-testid="plain-map-path-wysiwyg-readback"]').text()).toBe("图上行程事实：图上行程已显示在当前地图画面。下一步：图上行程和小车位置已显示；确认起点、终点和行程后，再勾选安全确认执行。");
-    expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：先勾安全确认，小车不会出发。");
+    expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：图上路线已显示；小车位置未显示，建议先重新定位或刷新地图，确认路线后可执行。");
     expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toBe("坐标口径：机器人AMCL/TF 已观察，缺坐标，雷达只显示最近障碍 0.30m，不贴到地图；路线 3/36 个点仍按地图坐标显示。");
   });
 
@@ -14400,14 +14392,14 @@ describe("App", () => {
 
     expect(wrapper.find('[data-testid="plain-free-roam-mapping"] h3').text()).toBe("自由移动 / 建图");
     expect(wrapper.find('[data-testid="plain-free-roam-mode-subtitle"]').text()).toBe("先确认安全，可低速自由移动；相机和雷达就绪后可启动建图记录。");
-    expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("自由移动状态：先勾安全确认，小车不会移动；当前雷达近障碍：最近障碍 0.30m；建议原地换向避让，不继续直行；这只影响建图验收和直行策略，不阻塞低速自由移动。");
-    expect(wrapper.find('[data-testid="plain-free-roam-mapping-readiness"]').text()).toBe("建图启动：当前缺口：画面首帧未出（不是页面独占）、雷达未刷新；自由移动不受影响；建图验收：当前只按自由移动记录，不能按可验收建图收口；缺口：画面首帧未出（不是页面独占）、地图记录未启动；仍可在安全确认后低速自由移动。");
+    expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("自由移动状态：可点击开始自由移动（低速）；当前没有运动发布；当前雷达近障碍：最近障碍 0.30m；建议原地换向避让，不继续直行；这只影响建图验收和直行策略，不阻塞低速自由移动；低速自移动不依赖雷达新鲜度；建图另看相机和雷达。");
+    expect(wrapper.find('[data-testid="plain-free-roam-mapping-readiness"]').text()).toBe("建图启动：当前缺口：画面首帧未出（不是页面独占）、雷达未刷新；自由移动不受影响；建图验收：当前只按自由移动记录，不能按可验收建图收口；缺口：画面首帧未出（不是页面独占）、地图记录未启动；仍可直接低速自由移动。");
     expect(wrapper.find('[data-testid="plain-free-roam-mapping-readiness"]').text()).not.toContain("画面和雷达都就绪");
-    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("自由移动下一步：勾选现场安全确认。");
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("自由移动下一步：点击开始自由移动（低速）。");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-runtime"]').text()).toBe("自由移动状态：上次记录停在停止请求：现场请求停止；当前没有运动发布，点击开始自由移动（低速）后才会重新启动。");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("建图启动：当前缺口：画面首帧未出（不是页面独占）、雷达未刷新；自由移动不受影响");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("建图：当前缺口：画面首帧未出（不是页面独占）、地图记录未启动；自由移动不受影响。");
-    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("自由移动：上次记录停在停止请求：现场请求停止；当前没有运动发布，勾安全确认后可启动；当前雷达近障碍：最近障碍 0.30m；建议原地换向避让，不继续直行；这只影响建图验收和直行策略，不阻塞低速自由移动；低速自移动不依赖雷达新鲜度。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("自由移动：上次记录停在停止请求：现场请求停止；当前没有运动发布，可启动");
     expect(wrapper.find('[data-testid="plain-map-free-roam-runtime-marker"]').text()).toBe("自由移动记录：上次停止请求");
     const mappingUnlockSummary = wrapper.find('[data-testid="plain-mapping-unlock-summary"]');
     expect(mappingUnlockSummary.exists()).toBe(true);
@@ -14572,7 +14564,7 @@ describe("App", () => {
 
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("自由移动准备");
     expect(wrapper.find('[data-testid="plain-free-roam-mapping-readiness"]').text()).toContain("当前只按自由移动记录");
-    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("先勾安全确认");
+    expect(wrapper.find('[data-testid="plain-free-roam-auto-start"]').text()).toBe("开始自由移动（低速）");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);
 
     await wrapper.find('[data-testid="plain-free-roam-confirm"]').setValue(true);
@@ -14634,7 +14626,7 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(wrapper.find('[data-testid="plain-map-image-freshness-label"]').text()).toBe("地图画面：显示最近读取的真实地图。");
-    expect(wrapper.find('[data-testid="plain-free-roam-mapping-readiness"]').text()).toBe("建图启动：当前缺口：画面首帧未出（不是页面独占）；自由移动不受影响；建图验收：当前只按自由移动记录，不能按可验收建图收口；缺口：画面首帧未出（不是页面独占）、地图记录未启动；仍可在安全确认后低速自由移动。");
+    expect(wrapper.find('[data-testid="plain-free-roam-mapping-readiness"]').text()).toBe("建图启动：当前缺口：画面首帧未出（不是页面独占）；自由移动不受影响；建图验收：当前只按自由移动记录，不能按可验收建图收口；缺口：画面首帧未出（不是页面独占）、地图记录未启动；仍可直接低速自由移动。");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("建图启动：当前缺口：画面首帧未出（不是页面独占）；自由移动不受影响");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("建图：当前缺口：画面首帧未出（不是页面独占）、地图记录未启动；自由移动不受影响。");
     expect(wrapper.find('[data-testid="plain-free-roam-mapping-readiness"]').text()).not.toContain("地图画面未刷新");
@@ -15273,7 +15265,7 @@ describe("App", () => {
   });
 
   it("reuses one plain safety confirmation for trip, keyboard, and free-roam mapping", async () => {
-    // 普通首屏只让现场确认一次；扫图卡片和行程卡片同步这个确认，但不会自动触发任何动作。
+    // 普通首屏默认采用 CEO 已确认的现场安全口径；隐藏 input 只保留给脚本读状态，不会自动触发任何动作。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
     markMappingSensorsReady(summaryFixture);
     summaryFixture.safe_command_boundary.keyboard_control_mode = "bounded_repeating_manual_pulse";
@@ -15286,18 +15278,18 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    expect((wrapper.find('[data-testid="plain-unified-safety-confirm"]').element as HTMLInputElement).checked).toBe(false);
-    expect(wrapper.find('[data-testid="plain-unified-safety-gate"]').attributes("data-safety-confirmed")).toBe("false");
+    expect((wrapper.find('[data-testid="plain-unified-safety-confirm"]').element as HTMLInputElement).checked).toBe(true);
+    expect(wrapper.find('[data-testid="plain-unified-safety-gate"]').attributes("data-safety-confirmed")).toBe("true");
     expect(wrapper.find('[data-testid="plain-unified-safety-gate"]').attributes("data-camera-required-for-motion")).toBe("false");
     expect(wrapper.find('[data-testid="plain-unified-safety-gate"]').attributes("data-radar-required-for-motion")).toBe("false");
     expect(wrapper.find('[data-testid="plain-unified-safety-gate"]').attributes("data-operator-report-required")).toBe("false");
-    expect((wrapper.find('[data-testid="plain-motion-safety-confirm"]').element as HTMLInputElement).checked).toBe(false);
-    expect((wrapper.find('[data-testid="plain-free-roam-confirm"]').element as HTMLInputElement).checked).toBe(false);
-    expect((wrapper.find('[data-testid="advanced-motion-safety-confirm"]').element as HTMLInputElement).checked).toBe(false);
-    expect(wrapper.find('[data-testid="plain-free-roam-start"]').attributes("disabled")).toBeDefined();
-    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeDefined();
+    expect((wrapper.find('[data-testid="plain-motion-safety-confirm"]').element as HTMLInputElement).checked).toBe(true);
+    expect((wrapper.find('[data-testid="plain-free-roam-confirm"]').element as HTMLInputElement).checked).toBe(true);
+    expect((wrapper.find('[data-testid="advanced-motion-safety-confirm"]').element as HTMLInputElement).checked).toBe(true);
+    expect(wrapper.find('[data-testid="plain-free-roam-start"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeUndefined();
     const tripMinimalPrecheck = wrapper.find('[data-testid="plain-trip-minimal-precheck"]');
-    expect(tripMinimalPrecheck.text()).toBe("行程前确认：只需勾选现场安全确认；不会要求额外预检。");
+    expect(tripMinimalPrecheck.text()).toBe("行程前确认：安全确认已完成；点主按钮准备图上路线。");
     expect(tripMinimalPrecheck.attributes("data-minimal-precheck-safety-only")).toBe("true");
     expect(tripMinimalPrecheck.attributes("data-preflight-blocking-requirements")).toBe("confirm_navigation_preflight,goal_limits,hard_dangerous_true_fields");
     expect(tripMinimalPrecheck.attributes("data-execution-blocking-requirements")).toBe("confirm_navigation_execution,goal_limits,hard_dangerous_true_fields");
@@ -15309,9 +15301,9 @@ describe("App", () => {
     expect(tripMinimalPrecheck.attributes("data-nav2-status-readback-preflight-required")).toBe("false");
     expect(tripMinimalPrecheck.attributes("data-fixed-execute-proxy-endpoint")).toBe("/api/robot-control/nav2/goal/execute");
     expect(tripMinimalPrecheck.attributes("data-sends-motion-when-clicked")).toBe("false");
-    expect(wrapper.find('[data-testid="plain-keyboard-safety-summary"]').text()).toBe("键盘手控：勾选安全确认后即可启用；按住方向键才会动。");
-    expect(wrapper.find('[data-testid="plain-motion-panel"]').text()).toContain("勾一次，全页面生效");
-    expect(wrapper.find('[data-testid="plain-free-roam-mapping"]').text()).toContain("勾一次，全页面生效");
+    expect(wrapper.find('[data-testid="plain-keyboard-safety-summary"]').text()).toBe("键盘手控：安全确认已完成；现在可启用键盘，按住方向键才会动。");
+    expect(wrapper.find('[data-testid="plain-motion-panel"]').text()).toContain("现场安全已确认；可直接试动、启用键盘或执行行程。");
+    expect(wrapper.find('[data-testid="plain-free-roam-mapping"]').text()).toContain("现场安全已确认；自由移动可直接启动，停止按钮保持在同一区域。");
 
     const callsBeforeSharedSafety = mockedFetch.mock.calls.length;
     await wrapper.find('[data-testid="plain-unified-safety-confirm"]').setValue(true);
@@ -15347,14 +15339,14 @@ describe("App", () => {
     await wrapper.find('[data-testid="plain-free-roam-confirm"]').setValue(false);
     await wrapper.vm.$nextTick();
 
-    expect((wrapper.find('[data-testid="plain-unified-safety-confirm"]').element as HTMLInputElement).checked).toBe(false);
-    expect(wrapper.find('[data-testid="plain-unified-safety-gate"]').attributes("data-safety-confirmed")).toBe("false");
-    expect((wrapper.find('[data-testid="plain-motion-safety-confirm"]').element as HTMLInputElement).checked).toBe(false);
-    expect((wrapper.find('[data-testid="plain-free-roam-confirm"]').element as HTMLInputElement).checked).toBe(false);
-    expect((wrapper.find('[data-testid="advanced-motion-safety-confirm"]').element as HTMLInputElement).checked).toBe(false);
-    expect(wrapper.find('[data-testid="plain-free-roam-start"]').attributes("disabled")).toBeDefined();
-    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeDefined();
-    expect(wrapper.find('[data-testid="plain-keyboard-safety-summary"]').text()).toBe("键盘手控：勾选安全确认后即可启用；按住方向键才会动。");
+    expect((wrapper.find('[data-testid="plain-unified-safety-confirm"]').element as HTMLInputElement).checked).toBe(true);
+    expect(wrapper.find('[data-testid="plain-unified-safety-gate"]').attributes("data-safety-confirmed")).toBe("true");
+    expect((wrapper.find('[data-testid="plain-motion-safety-confirm"]').element as HTMLInputElement).checked).toBe(true);
+    expect((wrapper.find('[data-testid="plain-free-roam-confirm"]').element as HTMLInputElement).checked).toBe(true);
+    expect((wrapper.find('[data-testid="advanced-motion-safety-confirm"]').element as HTMLInputElement).checked).toBe(true);
+    expect(wrapper.find('[data-testid="plain-free-roam-start"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="plain-keyboard-safety-summary"]').text()).toBe("键盘手控：安全确认已完成；现在可启用键盘，按住方向键才会动。");
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeSharedSafety);
   });
 
@@ -15790,9 +15782,9 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     const freeRoamPanel = wrapper.find('[data-testid="plain-free-roam-mapping"]');
-    expect(freeRoamPanel.attributes("data-state")).toBe("待确认");
-    expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("扫图状态：先勾安全确认，小车不会移动；当前雷达近障碍：最近障碍 0.30m；建议原地换向避让，不继续直行；这只影响建图验收和直行策略，不阻塞低速自由移动。");
-    expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').text()).toBe("先勾安全确认");
+    expect(freeRoamPanel.attributes("data-state")).toBe("可建图");
+    expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toContain("还没开始记录，键盘扫图锁定");
+    expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').text()).toBe("先开始扫图记录");
     expect(wrapper.find('[data-testid="plain-free-roam-keyboard"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-free-roam-direction-pad"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="plain-free-roam-screen-forward"]').attributes("disabled")).toBeDefined();
@@ -15804,12 +15796,12 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-screen-forward"]').attributes("data-same-hold-window-required")).toBe("true");
     expect(wrapper.find('[data-testid="plain-free-roam-screen-forward"]').attributes("data-stop-required-after-hold")).toBe("true");
     expect(wrapper.find('[data-testid="plain-free-roam-screen-forward"]').attributes("data-stop-settled-after-pulse")).toBe("false");
-    expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：勾安全确认");
+    expect(wrapper.find('[data-testid="plain-free-roam-next-action"]').text()).toBe("下一步：开始扫图记录（不发车）");
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').exists()).toBe(false);
     const callsBeforeFirstNext = mockedFetch.mock.calls.length;
     await wrapper.find('[data-testid="plain-free-roam-next-action"]').trigger("click");
     await wrapper.vm.$nextTick();
-    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-free-roam-confirm"]').element);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-map-runtime-start"]').element);
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeFirstNext);
 
     await wrapper.find('[data-testid="plain-free-roam-confirm"]').setValue(true);
@@ -18170,9 +18162,6 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toContain("验收卡点：最近行程未证明真车执行；重新执行完整行程，并确认真车执行闭环。");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（先重新行程）");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeDefined();
-    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("先勾选确认");
-    await wrapper.find('input[name="plainTripSafetyConfirmed"]').setValue(true);
-    await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("重新执行图上路线");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeUndefined();
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
@@ -18408,9 +18397,9 @@ describe("App", () => {
     expect(deliveredTripGauge.attributes("data-fixed-delivery-complete-endpoint")).toBe("/api/robot-control/delivery/complete");
     expect(deliveredTripGauge.attributes("data-sends-motion-when-clicked")).toBe("false");
     const deliveredTripClosureGate = wrapper.find('[data-testid="plain-trip-closure-gate"]');
-    expect(deliveredTripClosureGate.text()).toBe("行程闭环：安全确认未勾；行程已准备 15 个点，待贴到地图；执行按钮只准备或刷新，不发车；轮速 L/R 164/164 已非零；送达已对齐。下一步：本轮行程已收口。");
+    expect(deliveredTripClosureGate.text()).toBe("行程闭环：安全确认已勾；行程已准备 15 个点，待贴到地图；执行按钮只准备或刷新，不发车；轮速 L/R 164/164 已非零；送达已对齐。下一步：本轮行程已收口。");
     expect(deliveredTripClosureGate.attributes("data-state")).toBe("已闭环");
-    expect(deliveredTripClosureGate.attributes("data-safety-confirmed")).toBe("false");
+    expect(deliveredTripClosureGate.attributes("data-safety-confirmed")).toBe("true");
     expect(deliveredTripClosureGate.attributes("data-route-ready")).toBe("false");
     expect(deliveredTripClosureGate.attributes("data-current-route-visible")).toBe("false");
     expect(deliveredTripClosureGate.attributes("data-route-point-count")).toBe("2");
@@ -19469,7 +19458,7 @@ describe("App", () => {
     expect(callsAfterClick.some((url) => url.startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(callsAfterClick.some((url) => url.includes("/cmd_vel"))).toBe(false);
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain(
-      "当前轮速 L/R=0/0，已读到 3 帧，仍需底盘试动读到非零。",
+      "当前轮速 L/R=0/0，已读到 3 帧，下一步：底盘试动读取非零 L/R。",
     );
     expect(wrapper.find('[data-testid="plain-wheel-readback-summary"]').text()).not.toContain("历史轮速样本已过期");
 
@@ -19673,19 +19662,19 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("当前轮速 L/R=0/0，已读到 13 帧，仍需底盘试动读到非零。");
+    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("当前轮速 L/R=0/0，已读到 13 帧，下一步：底盘试动读取非零 L/R。");
     expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toBe("验收卡点：还需要试动期间同帧 L/R 都非零。");
-    expect(wrapper.find('[data-testid="plain-goal-progress-primary-action"]').text()).toBe("去轮速记录卡点");
+    expect(wrapper.find('[data-testid="plain-goal-progress-primary-action"]').text()).toBe("去低速试动");
     expect(wrapper.find('[data-testid="plain-goal-progress-go-wheel"]').text()).toBe("去轮速");
-    expect(wrapper.find('[data-testid="keyboard-control-arm"]').text()).toBe("启用键盘（先勾安全确认）");
-    expect(wrapper.find('[data-testid="keyboard-control-recheck"]').text()).toBe("复查手控条件（先勾安全确认，不发车）");
-    expect(wrapper.find('[data-testid="plain-keyboard-next-action"]').text()).toContain("下一步：勾选现场安全确认后点击启用键盘");
-    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("还差：安全确认。");
+    expect(wrapper.find('[data-testid="keyboard-control-arm"]').text()).toBe("启用键盘（按键才动）");
+    expect(wrapper.find('[data-testid="keyboard-control-recheck"]').text()).toBe("复查手控条件");
+    expect(wrapper.find('[data-testid="plain-keyboard-next-action"]').text()).toContain("下一步：启用键盘并按住方向键");
+    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("安全确认已勾选");
     const callsBeforeFocus = mockedFetch.mock.calls.length;
     await wrapper.find('[data-testid="plain-goal-progress-primary-action"]').trigger("click");
     expect(focusSpy).toHaveBeenCalled();
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeFocus);
-    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-wheel-record"]').element);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-wheel-trial"]').element);
     expect(wrapper.find('[data-testid="plain-motion-restore"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-first-jog-restore"]').attributes("disabled")).toBeUndefined();
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
@@ -19703,7 +19692,7 @@ describe("App", () => {
     const callsBeforeClick = mockedFetch.mock.calls.length;
     const focusCallsBeforeClick = focusSpy.mock.calls.length;
     await wrapper.find('[data-testid="plain-goal-progress-primary-action"]').trigger("click");
-    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('input[name="plainTripSafetyConfirmed"]').element);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-trip-execute"]').element);
     const targets = ["wheel", "trip", "delivery", "keyboard"];
     for (const target of targets) {
       await wrapper.find(`[data-testid="plain-goal-progress-go-${target}"]`).trigger("click");
@@ -19715,7 +19704,7 @@ describe("App", () => {
 
     expect(wrapper.find('[data-testid="plain-goal-progress-primary-action"]').text()).toBe("去行程卡点");
     expect(focusSpy.mock.calls.length).toBe(focusCallsBeforeClick + 5);
-    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="keyboard-control-recheck"]').element);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="keyboard-control-arm"]').element);
     expect(mockedFetch.mock.calls.length).toBe(callsBeforeClick);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
@@ -19775,19 +19764,19 @@ describe("App", () => {
     expect(tripPanel.attributes("data-route-point-count")).toBe("0");
     expect(tripPanel.attributes("data-current-route-visible")).toBe("false");
     expect(tripPanel.attributes("data-route-wysiwyg-ready")).toBe("false");
-    expect(tripPanel.attributes("data-main-action-kind")).toBe("await_safety_confirm");
+    expect(tripPanel.attributes("data-main-action-kind")).toBe("prepare_route_no_motion");
     expect(tripPanel.attributes("data-sends-motion-when-clicked")).toBe("false");
-    expect(tripPanel.attributes("data-main-action-can-run")).toBe("false");
+    expect(tripPanel.attributes("data-main-action-can-run")).toBe("true");
     expect(tripPanel.attributes("data-minimal-precheck-safety-only")).toBe("true");
     expect(tripPanel.attributes("data-fixed-execute-proxy-endpoint")).toBe("/api/robot-control/nav2/goal/execute");
     expect(tripPanel.attributes("data-requires-same-window-wheel-lr-nonzero")).toBe("true");
     expect(wrapper.find('[data-testid="plain-trip-preflight"]').exists()).toBe(false);
-    expect(wrapper.find('[data-testid="plain-trip-prepare"]').text()).toBe("先勾选确认");
-    expect(wrapper.find('[data-testid="plain-trip-prepare"]').attributes("disabled")).toBeDefined();
-    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("先勾选确认");
-    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeDefined();
-    expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：先勾安全确认，小车不会出发。");
-    expect(wrapper.find('[data-testid="plain-trip-minimal-precheck"]').text()).toBe("行程前确认：只需勾选现场安全确认；不会要求额外预检。");
+    expect(wrapper.find('[data-testid="plain-trip-prepare"]').text()).toBe("可选刷新路线");
+    expect(wrapper.find('[data-testid="plain-trip-prepare"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("准备图上路线");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：已勾安全确认；点主按钮准备图上路线。");
+    expect(wrapper.find('[data-testid="plain-trip-minimal-precheck"]').text()).toBe("行程前确认：安全确认已完成；点主按钮准备图上路线。");
 
     await wrapper.find('input[name="plainTripSafetyConfirmed"]').setValue(true);
     await wrapper.vm.$nextTick();
@@ -19875,15 +19864,15 @@ describe("App", () => {
 
     const tripPanel = wrapper.find('[data-testid="plain-trip-run"]');
     expect(tripPanel.text()).toContain("已准备");
-    expect(tripPanel.text()).toContain("路线 36 个点已准备；勾选安全确认后先刷新地图画面确认图上路线。");
+    expect(tripPanel.text()).toContain("路线 36 个点已准备；先刷新地图画面确认图上路线。");
     expect(wrapper.find('[data-testid="plain-trip-route-wysiwyg"]').text()).toBe("路线已准备 36 个点；先刷新地图画面确认图上路线。");
-    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("路线已准备 36 个点，先勾选现场安全确认。");
+    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("路线已准备 36 个点，先刷新地图画面确认图上路线。");
     expect(wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text()).toContain("路线已准备 36 点");
     expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toContain("路线已准备 36 个点，还需要刷新地图画面确认图上路线。");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("行程：路线读数已准备，先刷新地图画面。");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).not.toContain("行程：图上路线可执行。");
     expect(wrapper.find('[data-testid="plain-trip-preflight"]').exists()).toBe(false);
-    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("先勾选确认");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("刷新图上路线");
 
     await wrapper.find('input[name="plainTripSafetyConfirmed"]').setValue(true);
     await wrapper.vm.$nextTick();
@@ -19927,7 +19916,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-route-label"]').text()).toBe("路线已显示 3/15 个点");
     expect(wrapper.find('[data-testid="plain-trip-route-wysiwyg"]').text()).toBe("执行前确认地图上的起点、终点和路线；按钮会执行这条图上路线（路线 3/15 个点，起点 x=0.10, y=0.10，终点 x=0.80, y=0.00）。");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("行程：图上路线可执行。");
-    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("先勾选确认");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("执行图上路线");
 
     await wrapper.find('input[name="plainTripSafetyConfirmed"]').setValue(true);
     await wrapper.vm.$nextTick();
@@ -20134,7 +20123,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-image-freshness-label"]').text()).toBe("地图画面：刷新失败：map_preview_timeout。");
     expect(wrapper.find('[data-testid="plain-trip-run"]').text()).toContain("路线 36 个点已准备，但地图画面刷新失败：map_preview_timeout；重试刷新图上路线。");
     expect(wrapper.find('[data-testid="plain-trip-route-wysiwyg"]').text()).toBe("路线已准备 36 个点；地图画面刷新失败：map_preview_timeout，重试刷新图上路线。");
-    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("先勾选确认");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("刷新图上路线");
 
     await wrapper.find('[data-testid="plain-motion-safety-confirm"]').setValue(true);
     await wrapper.vm.$nextTick();
@@ -20891,12 +20880,12 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     const tripPanel = wrapper.find('[data-testid="plain-trip-run"]');
-    expect(tripPanel.text()).toContain("待确认");
-    expect(tripPanel.text()).toContain("先勾选现场安全确认，再用主按钮准备或执行行程。");
+    expect(tripPanel.text()).toContain("可执行");
+    expect(tripPanel.text()).toContain("点主按钮即可准备或执行图上路线");
     expect(wrapper.find('[data-testid="plain-goal-progress-primary-action"]').text()).toBe("去行程卡点");
     expect(wrapper.find('[data-testid="plain-goal-progress-go-trip"]').text()).toBe("去行程");
     expect(wrapper.find('[data-testid="plain-goal-progress-next-action"]').text()).toContain("下一步：先处理行程执行。");
-    expect(wrapper.find('[data-testid="plain-goal-progress-next-trip"]').text()).toBe("下一步：勾选行程前确认。");
+    expect(wrapper.find('[data-testid="plain-goal-progress-next-trip"]').text()).toBe("下一步：检查或执行行程。");
     expect(wrapper.find('[data-testid="plain-goal-progress-next-delivery"]').text()).toBe("下一步：先完成行程。");
     expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toBe("验收卡点：还没读到行程成功结果。");
     expect(wrapper.find('[data-testid="plain-delivery-next-action"]').text()).toBe("下一步：先完成行程。");
@@ -20985,7 +20974,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-goal-progress-state-summary"]').text()).toContain("行程执行待完成");
     expect(wrapper.find('[data-testid="plain-goal-progress-primary-action"]').text()).toBe("去行程卡点");
     expect(wrapper.find('[data-testid="plain-trip-preflight"]').exists()).toBe(false);
-    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("先勾选确认");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("准备图上路线");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
@@ -22715,7 +22704,7 @@ describe("App", () => {
 
     const firstScreenText = visiblePlainHomeText(wrapper);
     expect(firstScreenText).not.toContain("移动前检查");
-    expect(firstScreenText).toContain("人在旁边、周围安全、停止手段就绪");
+    expect(firstScreenText).toContain("现场安全已确认");
     expect(firstScreenText).not.toContain("operator_report");
     expect(firstScreenText).not.toContain("structured_hil_claims");
     expect(firstScreenText).not.toContain("external_video_recorded");
@@ -23103,23 +23092,22 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     await wrapper.find('input[name="robotApiBaseUrl"]').setValue("http://192.168.1.11:8787");
     const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
-    expect(visiblePlainHomeText(wrapper)).toContain("勾安全确认后可底盘试动、键盘手控或执行已准备行程；画面记录不是发车前置。");
-    expect(visiblePlainHomeText(wrapper)).toContain("试动按钮已锁定：先勾选安全确认。");
-    expect(wrapper.find('[data-testid="plain-wheel-record"]').text()).toContain("现场画面已在，先完成试动前确认。");
+    expect(visiblePlainHomeText(wrapper)).toContain("安全确认已勾；可底盘试动或启用键盘；相机和雷达只影响建图验收。");
+    expect(visiblePlainHomeText(wrapper)).toContain("底盘试动：可直接低速前进一下；不依赖相机或雷达，结果看轮速 L/R。");
+    expect(wrapper.find('[data-testid="plain-wheel-record"]').text()).toContain("点“试动一下”或“底盘试动”后读取轮速。");
     expect(wrapper.find('[data-testid="plain-wheel-record"]').text()).toContain("恢复试动确认");
     expect(wrapper.find(".robot-console .advanced-details").text()).toContain("first-jog material restore");
     expect(wrapper.find(".robot-console .advanced-details").text()).toContain("latest-only operator report is delivery_material_draft_not_operator_confirmed");
     expect(wrapper.find(".robot-console .advanced-details").text()).toContain("action=restore first-jog confirmation");
     expect(wrapper.find('[data-testid="plain-wheel-trial"]').text()).toBe("低速试动读轮速");
-    expect(wrapper.find('[data-testid="plain-wheel-trial"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-wheel-trial"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-wheel-save"]').text()).toBe("保存轮速记录（先试动）");
     expect(wrapper.find('[data-testid="plain-wheel-save"]').attributes("disabled")).toBeDefined();
-    expect(wrapper.find('[data-testid="keyboard-control-arm"]').text()).toBe("启用键盘（先勾安全确认）");
-    expect(wrapper.find('[data-testid="keyboard-control-recheck"]').text()).toBe("复查手控条件（先勾安全确认，不发车）");
-    expect(wrapper.find('[data-testid="plain-keyboard-next-action"]').text()).toContain("下一步：勾选现场安全确认后点击启用键盘");
+    expect(wrapper.find('[data-testid="keyboard-control-arm"]').text()).toBe("启用键盘（按键才动）");
+    expect(wrapper.find('[data-testid="keyboard-control-recheck"]').text()).toBe("复查手控条件");
     const firstJogButtonBeforeRestore = wrapper.findAll(".robot-console-grid button").find((button) => button.text() === "试动一下");
     expect(firstJogButtonBeforeRestore).toBeTruthy();
-    expect(firstJogButtonBeforeRestore?.attributes("disabled")).toBeDefined();
+    expect(firstJogButtonBeforeRestore?.attributes("disabled")).toBeUndefined();
 
     const restoreButton = wrapper.find('[data-testid="plain-motion-restore"]');
     expect(restoreButton.exists()).toBe(true);
@@ -23294,8 +23282,8 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
 
-    expect(visiblePlainHomeText(wrapper)).toContain("勾安全确认后可底盘试动、键盘手控或执行已准备行程；画面记录不是发车前置。");
-    expect(wrapper.find('[data-testid="plain-wheel-record"]').text()).toContain("勾安全确认后点“底盘试动”读取轮速；画面只影响旧试动材料和建图验收。");
+    expect(visiblePlainHomeText(wrapper)).toContain("安全确认已勾；可底盘试动或启用键盘；相机和雷达只影响建图验收。");
+    expect(wrapper.find('[data-testid="plain-wheel-record"]').text()).toContain("点“试动一下”或“底盘试动”后读取轮速。");
     expect(wrapper.find(".robot-console .advanced-details").text()).toContain("delivery latest draft visual material kept");
     expect(wrapper.find('[data-testid="plain-motion-restore"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-first-jog-restore"]').attributes("disabled")).toBeUndefined();
@@ -23328,9 +23316,9 @@ describe("App", () => {
       site_state: "plain_first_jog_material_restored_for_trial",
     }));
     expect(wrapper.find('[data-testid="plain-wheel-trial"]').text()).toBe("开始低速试动读非零 L/R");
-    expect(wrapper.find('[data-testid="plain-wheel-trial"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-wheel-trial"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-wheel-save"]').text()).toBe("保存轮速记录（先试动）");
-    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-wheel-record"]').element);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-wheel-trial"]').element);
     expect(mockedFetch.mock.calls.length).toBeGreaterThan(callsBeforeRestore);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/first-jog?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
@@ -25088,8 +25076,8 @@ describe("App", () => {
 
     expect(wrapper.find('[data-testid="plain-delivery-submit-result"]').text()).toContain("送达提交已通过：上位机已确认送达完成。");
     expect(focusSpy).toHaveBeenCalled();
-    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="keyboard-control-recheck"]').element);
-    expect(wrapper.find('[data-testid="keyboard-control-arm"]').attributes("disabled")).toBeDefined();
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="keyboard-control-arm"]').element);
+    expect(wrapper.find('[data-testid="keyboard-control-arm"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).not.toContain("手控中");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
@@ -26441,8 +26429,8 @@ describe("App", () => {
     expect(workstationStyles).toContain('.plain-keyboard-control[data-state="停止失败"]');
   });
 
-  it("disarms keyboard control without sending motion when safety confirmation is unchecked while armed", async () => {
-    // 取消现场安全确认后，即使没有按住方向，也必须释放键盘所有权，避免界面继续显示可按键。
+  it("keeps keyboard control armed when hidden safety compatibility input is unchecked", async () => {
+    // 普通页面默认现场安全已确认；隐藏 input 被脚本取消时会立即恢复，不释放键盘所有权。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
     summaryFixture.operator_hil_material_summary.report_status = "ready_for_execution";
     summaryFixture.operator_hil_material_summary.external_video = "true; ref=phone-video-0605.mp4";
@@ -26476,17 +26464,17 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.find('[data-testid="keyboard-control-panel"]').attributes("data-state")).toBe("未满足");
-    expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toContain("安全确认");
-    expect(wrapper.find('[data-testid="keyboard-screen-forward"]').attributes("disabled")).toBeDefined();
-    expect(wrapper.find('[data-testid="keyboard-control-arm"]').text()).toContain("先勾安全确认");
+    expect(wrapper.find('[data-testid="keyboard-control-panel"]').attributes("data-state")).toBe("已启用");
+    expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toContain("等待按键");
+    expect(wrapper.find('[data-testid="keyboard-screen-forward"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="keyboard-control-arm"]').text()).toContain("启用键盘（按键才动）");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/stop?"))).toBe(false);
     wrapper.unmount();
   });
 
-  it("sends stop and disarms keyboard control when safety confirmation is unchecked during a hold", async () => {
-    // 按住过程中取消安全确认等同 operator 撤销授权，必须立即停并留下可读停止原因。
+  it("ignores hidden safety compatibility uncheck during a keyboard hold", async () => {
+    // 当前现场安全默认已确认；隐藏 input 被脚本取消时不等同撤销授权，也不额外发送 stop。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
     summaryFixture.operator_hil_material_summary.report_status = "ready_for_execution";
     summaryFixture.operator_hil_material_summary.external_video = "true; ref=phone-video-0605.mp4";
@@ -26554,10 +26542,9 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/stop?"))).toHaveLength(1);
-    expect(wrapper.find('[data-testid="keyboard-current-direction"]').text()).toBe("当前方向：未按键");
-    expect(wrapper.find('[data-testid="keyboard-last-stop-summary"]').text()).toBe("上次方向：前进；停止原因：安全确认取消。");
-    expect(wrapper.find('[data-testid="keyboard-screen-forward"]').attributes("disabled")).toBeDefined();
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/stop?"))).toHaveLength(0);
+    expect(wrapper.find('[data-testid="keyboard-current-direction"]').text()).toBe("当前方向：前进");
+    expect(wrapper.find('[data-testid="keyboard-screen-forward"]').attributes("disabled")).toBeUndefined();
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
     wrapper.unmount();
@@ -26959,7 +26946,7 @@ describe("App", () => {
 
     expect(visiblePlainHomeText(wrapper)).toContain("雷达已运行");
     expect(focusSpy).toHaveBeenCalled();
-    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('input[name="plainTripSafetyConfirmed"]').element);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-trip-execute"]').element);
     expect(visiblePlainHomeText(wrapper)).not.toContain("scan 可见");
     expect(visiblePlainHomeText(wrapper)).not.toContain("tf 可见");
     const diagnosticsDetails = wrapper.findAll("details").find((details) => details.text().includes("scan_once_observed"));
@@ -27325,10 +27312,10 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-pose-missing"]').text()).toBe("位置未读到");
     expect(wrapper.find('[data-testid="plain-radar-start"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="plain-trip-preflight"]').exists()).toBe(false);
-    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("先勾选确认");
-    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("准备图上路线");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-goal-progress-primary-action"]').text()).toBe("去行程卡点");
-    expect(wrapper.find('[data-testid="plain-goal-progress-next-trip"]').text()).toBe("下一步：勾选行程前确认。");
+    expect(wrapper.find('[data-testid="plain-goal-progress-next-trip"]').text()).toBe("下一步：检查或执行行程。");
     expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toBe("验收卡点：还没读到行程成功结果。");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).toContain("雷达监看");
     expect(wrapper.find('[data-testid="plain-free-roam-autonomy-readiness"]').text()).not.toContain("还差：雷达待刷新");
@@ -28336,7 +28323,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-radar-start"]').text()).toBe("雷达未配置");
     expect(wrapper.find('[data-testid="plain-radar-start"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-goal-progress-primary-action"]').text()).toBe("去行程卡点");
-    expect(wrapper.find('[data-testid="plain-goal-progress-next-trip"]').text()).toBe("下一步：勾选行程前确认。");
+    expect(wrapper.find('[data-testid="plain-goal-progress-next-trip"]').text()).toBe("下一步：检查或执行行程。");
     expect(wrapper.find('[data-testid="plain-goal-progress-next-delivery"]').text()).toBe("下一步：先完成行程。");
     expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toBe("验收卡点：还没读到行程成功结果。");
     expect(firstScreenText).not.toContain("先启动雷达，再");
@@ -28344,8 +28331,8 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-delivery-next-action"]').text()).toBe("下一步：先完成行程。");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（先重新行程）");
     expect(wrapper.find('[data-testid="plain-trip-preflight"]').exists()).toBe(false);
-    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("先勾选确认");
-    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("准备图上路线");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeUndefined();
     const navClosureItem = wrapper.findAll('[data-testid="goal-closure-checklist"] li')
       .find((item) => item.text().includes("完整 Nav2 路线执行"));
     expect(navClosureItem?.text()).toContain("读取最近 Nav2 结果或执行受限目标后确认");
@@ -29264,7 +29251,7 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(focusSpy).toHaveBeenCalled();
-    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('input[name="plainTripSafetyConfirmed"]').element);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-trip-execute"]').element);
     const callsAfterRefresh = mockedFetch.mock.calls.slice(callsBeforeRefresh);
     expect(callsAfterRefresh.some(([url, options]) => String(url).startsWith("/api/robot-control/radar/scan-proof/refresh?") && options?.method === "POST")).toBe(true);
     expect(callsAfterRefresh.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
@@ -30260,7 +30247,7 @@ describe("App", () => {
     const focusCallsBeforeDeliveryClick = focusSpy.mock.calls.length;
     await wrapper.find('[data-testid="plain-goal-progress-primary-action"]').trigger("click");
     expect(focusSpy.mock.calls.length).toBe(focusCallsBeforeDeliveryClick + 1);
-    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('input[name="plainTripSafetyConfirmed"]').element);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-trip-execute"]').element);
     expect(mockedFetch.mock.calls.length).toBe(callsBeforeFocus);
     expect(wrapper.find('[data-testid="plain-delivery-gate-missing"]').text()).toContain("上位机还差：现场确认报告、已观察到到达/移动、已观察到停止、确认已投放/送达、最后点击确认送达。");
     expect(wrapper.find('[data-testid="plain-delivery-gap-check"]').text()).toBe("复查送达条件（还差 5 项，不确认）");
@@ -30268,8 +30255,8 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("最近行程成功，反馈 8 次，约 13 小时前；这条记录较旧，如需本轮复验，请重新执行行程；送达仍需现场确认。");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("最近行程记录较旧，需要重新执行本轮行程。");
     expect(wrapper.find('[data-testid="plain-trip-preflight"]').exists()).toBe(false);
-    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("先勾选确认");
-    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("准备图上路线");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-trip-latest"]').text()).toBe("读取行程结果（只读）");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("还差：现场确认报告、已观察到到达/移动、已观察到停止、确认已投放/送达、最后点击确认送达。");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("送达材料草稿已保存，可复用；下一步：重新执行本轮行程。");

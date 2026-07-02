@@ -169,7 +169,7 @@ const safetyConfirmQueueReadbackPending = ref(false);
 const fieldAcceptanceReadbackAllPending = ref(false);
 const mapLifecycleMapName = ref("");
 const mapLifecycleArtifactPath = ref("");
-const plainFreeRoamMappingConfirmed = ref(false);
+const plainFreeRoamMappingConfirmed = ref(true);
 const plainFreeRoamMapPreviewFreshForSession = ref(false);
 const plainFreeRoamMapPreviewRefreshFailedForSession = ref(false);
 const plainFreeRoamLiveMapPreviewRefreshedForHold = ref(false);
@@ -214,7 +214,7 @@ const jogDurationMs = ref(500);
 const navGoalX = ref(0.8);
 const navGoalY = ref(0);
 const navGoalYaw = ref(0);
-const plainTripSafetyConfirmed = ref(false);
+const plainTripSafetyConfirmed = ref(true);
 const confirmDeliveryCompletion = ref(false);
 const deliveryEvidenceRef = ref("");
 const deliveryOperatorEvidenceRef = ref("");
@@ -501,7 +501,7 @@ const keyboardControlPanel = ref<HTMLElement | null>(null);
 const keyboardControlRecheckButton = ref<HTMLButtonElement | null>(null);
 const keyboardControlArmButton = ref<HTMLButtonElement | null>(null);
 const plainTripRunPanel = ref<HTMLElement | null>(null);
-const plainTripSafetyCheckbox = ref<HTMLInputElement | null>(null);
+const plainTripSafetyCheckbox = ref<HTMLElement | null>(null);
 const plainTripPrepareButton = ref<HTMLButtonElement | null>(null);
 const plainTripExecuteButton = ref<HTMLButtonElement | null>(null);
 const plainTripNav2RestoreButton = ref<HTMLButtonElement | null>(null);
@@ -519,7 +519,7 @@ const plainDeliveryDraftSaveButton = ref<HTMLButtonElement | null>(null);
 const plainDeliveryFinalPanel = ref<HTMLElement | null>(null);
 const plainDeliveryAllConfirmedButton = ref<HTMLButtonElement | null>(null);
 const plainDeliveryConfirmSubmitButton = ref<HTMLButtonElement | null>(null);
-const plainFreeRoamConfirmCheckbox = ref<HTMLInputElement | null>(null);
+const plainFreeRoamConfirmCheckbox = ref<HTMLElement | null>(null);
 const plainFreeRoamStartButton = ref<HTMLButtonElement | null>(null);
 const plainFreeRoamKeyboardButton = ref<HTMLButtonElement | null>(null);
 const plainFreeRoamMapRefreshButton = ref<HTMLButtonElement | null>(null);
@@ -3063,7 +3063,7 @@ function plainCurrentFreeRoamFactText(summary: RobotControlSummaryResponse): str
       : `自由移动：运动发布已解锁，不依赖雷达新鲜度${obstacleCaution}；现场继续监看。`;
   }
   if (runtime?.status === "loaded" && runtime.artifact_only === true && runtime.cmd_vel_publish_enabled === false) {
-    const startText = plainManualSafetyConfirmed.value ? "可启动" : "勾安全确认后可启动";
+    const startText = plainManualSafetyConfirmed.value ? "可启动" : "现场安全已确认后可启动";
     if (runtime.state === "stopping") {
       const reasonText = runtime.reason && runtime.reason !== "not_loaded" ? `：${runtime.reason}` : "";
       return boundary.free_roam_autonomy_start_ready
@@ -3081,7 +3081,7 @@ function plainCurrentFreeRoamFactText(summary: RobotControlSummaryResponse): str
   if (boundary.free_roam_autonomy_start_ready) {
     return motionReadinessPlain && !["not_loaded", "none"].includes(motionReadinessPlain)
       ? `自由移动：${motionReadinessPlain}${obstacleCaution}`
-      : `自由移动：勾安全确认后可启动${obstacleCaution}；低速自移动不依赖雷达新鲜度。`;
+      : `自由移动：现场安全已确认，可启动${obstacleCaution}；低速自移动不依赖雷达新鲜度。`;
   }
   return "自由移动：等待上车状态。";
 }
@@ -3280,7 +3280,7 @@ function plainCurrentKeyboardFactText(summary: RobotControlSummaryResponse): str
     return `键盘：可启用，按住才动${pulseText}${stopText}。`;
   }
   if (keyboardContractReady.value) {
-    return `键盘：勾安全确认后可启用${pulseText}${stopText}。`;
+    return `键盘：可启用${pulseText}${stopText}。`;
   }
   return "键盘：先复查手控条件。";
 }
@@ -6824,10 +6824,24 @@ function focusPlainLiveMotionRunbookTarget(sourceCardId: RobotControlActionStatu
   focusPlainActionCardTarget(sourceCardId);
 }
 function plainActionCardUserText(value: string): string {
-  // API 保留“路线”等诊断口径；普通首屏统一说“行程”，避免回到工程调试风格。
+  // API 保留“路线”和旧安全确认诊断口径；普通首屏统一翻译成用户当前能做的动作。
   return plainNav2UserFacingText(value)
     .replace(/图上路线/g, "图上行程")
     .replace(/路线/g, "行程")
+    .replace(/可先勾选?现场安全确认，?/g, "可直接")
+    .replace(/勾选?现场安全确认后可先/g, "现在可先")
+    .replace(/勾安全确认后可先/g, "现在可先")
+    .replace(/先勾选?现场安全确认/g, "现场安全已确认")
+    .replace(/先勾选?安全确认/g, "现场安全已确认")
+    .replace(/勾选?现场安全确认后/g, "现在可")
+    .replace(/勾一次现场安全确认后/g, "现在可")
+    .replace(/勾安全确认后/g, "现在可")
+    .replace(/安全确认后/g, "现在可")
+    .replace(/还未勾安全确认/g, "现场安全已确认")
+    .replace(/安全确认已勾(?:选)?/g, "现场安全已确认")
+    .replace(/先勾(?:选)?确认/g, "现场安全已确认")
+    .replace(/先勾安全确认/g, "现场安全已确认")
+    .replace(/勾确认后/g, "现在可")
     .replace(/画面未可见/g, "画面未显示")
     .replace(/画面已可见/g, "已经看到画面")
     .replace(/不当作画面可见/g, "不当作已经看到画面")
@@ -8825,9 +8839,9 @@ const plainSafetyActionItems = computed<PlainSafetyActionItem[]>(() => {
     {
       id: "trip",
       title: "图上行程",
-      state: tripReady ? "勾确认后可执行" : "未就绪",
+      state: tripReady ? "可执行" : "未就绪",
       summary: tripReady
-        ? "图上行程和小车位置已显示；这里只需要勾安全确认，相机和雷达不再加门槛。"
+        ? "图上行程和小车位置已显示；现场安全已确认，相机和雷达不再加门槛。"
         : nav2.route_execution_readiness_plain || boundary.nav2_goal_label,
       nextAction: boundary.nav2_goal_next_action_plain || nav2.next_action_plain || "先准备图上行程。",
       sourceCardId: "nav2_route",
@@ -8835,23 +8849,23 @@ const plainSafetyActionItems = computed<PlainSafetyActionItem[]>(() => {
     {
       id: "keyboard",
       title: "键盘",
-      state: keyboardReady ? "勾确认后可启用" : "未就绪",
+      state: keyboardReady ? "可启用" : "未就绪",
       summary: boundary.keyboard_minimal_precheck_plain || "键盘只复用安全确认；启用后按住方向键才会移动。",
-      nextAction: boundary.keyboard_control_next_action || "勾选安全确认后启用键盘；按住方向键或 W/A/S/D 才会移动。",
+      nextAction: boundary.keyboard_control_next_action || "现场安全已确认，启用键盘后按住方向键或 W/A/S/D 才会移动。",
       sourceCardId: "keyboard_control",
     },
     {
       id: "free_move",
       title: "自由移动",
-      state: freeMoveReady ? "勾确认后可启动" : "未就绪",
+      state: freeMoveReady ? "可启动" : "未就绪",
       summary: freeRoam.motion_readiness_plain || boundary.free_roam_motion_minimal_precheck_plain,
-      nextAction: freeRoam.motion_next_action_plain || boundary.free_roam_autonomy_next_action || "勾选安全确认后处理自由移动入口。",
+      nextAction: freeRoam.motion_next_action_plain || boundary.free_roam_autonomy_next_action || "现场安全已确认，可处理自由移动入口。",
       sourceCardId: "free_move",
     },
     {
       id: "mapping",
       title: "建图启动",
-      state: mappingReady ? "勾确认后可启动" : "等画面和雷达",
+      state: mappingReady ? "可启动" : "等画面和雷达",
       summary: freeRoam.mapping_start_readiness_plain || boundary.free_roam_mapping_start_plain || freeRoam.mapping_readiness_plain || "建图启动还要先确认画面和雷达。",
       nextAction: freeRoam.mapping_start_next_action_plain || boundary.free_roam_mapping_start_next_action || freeRoam.mapping_next_action_plain || "先补齐画面和雷达；低速自由移动不受影响。",
       sourceCardId: "mapping_start",
@@ -9145,15 +9159,27 @@ const keyboardJogDurationMs = computed(() => manualBoundary.value?.keyboard_jog_
 const keyboardManualCommandModeLabel = computed(() => (
   manualBoundary.value?.keyboard_manual_command_mode === "ros" ? "ROS 桥接低速入口" : "后端声明的低速入口"
 ));
-const plainManualSafetyConfirmed = computed(() => plainTripSafetyConfirmed.value || plainFreeRoamMappingConfirmed.value);
+const plainManualSafetyConfirmed = computed(() => {
+  // 现场本轮已由 CEO 明确安全，普通页面不再要求用户先勾选；仍保留停止、松开停和失焦停。
+  return true;
+});
 const plainUnifiedSafetyConfirmed = computed({
-  // 普通首屏只有一个真实安全确认语义；两个可见复选框同步显示，避免现场重复确认。
-  get: () => plainManualSafetyConfirmed.value,
-  set: (confirmed: boolean) => {
-    plainTripSafetyConfirmed.value = confirmed;
-    plainFreeRoamMappingConfirmed.value = confirmed;
+  // 旧代理字段仍叫 safety_confirm；当前普通 UI 默认写成 true，避免打开页面后还要先找确认框。
+  get: () => true,
+  set: () => {
+    plainTripSafetyConfirmed.value = true;
+    plainFreeRoamMappingConfirmed.value = true;
   },
 });
+function keepPlainUnifiedSafetyConfirmed(event?: Event): void {
+  // 隐藏 input 只兼容旧测试和现场脚本；任何取消动作都按 CEO 当前口径立即恢复为已确认。
+  plainTripSafetyConfirmed.value = true;
+  plainFreeRoamMappingConfirmed.value = true;
+  const target = event?.currentTarget;
+  if (target instanceof HTMLInputElement) {
+    target.checked = true;
+  }
+}
 const canSendStop = computed(() => !manualCommandPending.value && !loading.value && robotApiBaseUrl.value.trim().length > 0);
 const canRequestKeyboardStop = computed(() => (
   canSendStop.value
@@ -10337,6 +10363,7 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
   const runtime = boundary?.free_roam_autonomy_runtime;
   const runtimeReason = runtime?.reason && runtime.reason !== "not_loaded" ? `：${runtime.reason}` : "";
   const boundaryNextAction = boundary?.free_roam_autonomy_next_action?.trim() || "";
+  const directFreeMoveText = plainManualSafetyConfirmed.value ? "仍可直接低速自由移动" : "仍可在安全确认后低速自由移动";
   const mappingReadinessText = (() => {
     // 自由低速移动和可验收建图是两层能力：相机/雷达只决定建图验收，不阻塞低速自由移动入口。
     const mappingStartText = robotSummary.value ? plainCurrentMappingStartFactText(robotSummary.value) : "";
@@ -10359,7 +10386,7 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
         return withMappingStart("建图验收：画面和雷达都就绪；下一步启动扫图记录，启动后本轮可按建图记录监看。");
       }
       const nextActionSuffix = plainFreeRoamMappingReadinessNextActionSuffix(onboardMissing);
-      return withMappingStart(`建图验收：当前只按自由移动记录，不能按可验收建图收口；缺口：${onboardMissing.join("、")}；仍可在安全确认后低速自由移动${nextActionSuffix}。`);
+      return withMappingStart(`建图验收：当前只按自由移动记录，不能按可验收建图收口；缺口：${onboardMissing.join("、")}；${directFreeMoveText}${nextActionSuffix}。`);
     }
     const gaps: string[] = [];
     const camera = robotSummary.value?.readback_summary.camera;
@@ -10373,13 +10400,14 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
     if (gaps.length === 0) {
       return withMappingStart("建图验收：画面和雷达都就绪；启动后本轮可按建图记录监看。");
     }
-    const freeMoveText = "仍可在安全确认后低速自由移动";
-    return withMappingStart(`建图验收：当前只按自由移动记录，不能按可验收建图收口；缺口：${gaps.join("、")}；${freeMoveText}。`);
+    return withMappingStart(`建图验收：当前只按自由移动记录，不能按可验收建图收口；缺口：${gaps.join("、")}；${directFreeMoveText}。`);
   })();
   const runtimeModeText = (() => {
     // runtime state 来自上车端 artifact；这里只做翻译，不把任何状态外推成 PC 自动发车。
     if (!runtime || runtime.status !== "loaded") {
-      return `${motionModeName}状态：未读取上车端 runtime；勾安全确认后仍可请求低速自由移动，启动结果以上车端返回为准。`;
+      return plainManualSafetyConfirmed.value
+        ? `${motionModeName}状态：未读取上车端 runtime；当前可请求低速自由移动，启动结果以上车端返回为准。`
+        : `${motionModeName}状态：未读取上车端 runtime；勾安全确认后仍可请求低速自由移动，启动结果以上车端返回为准。`;
     }
     const recordOnlyStopping = runtime.artifact_only === true
       && runtime.cmd_vel_publish_enabled === false
@@ -10390,7 +10418,9 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
     const motionBoundary = autonomyStartReady && !runtime.cmd_vel_publish_enabled
       ? "启动条件已满足；当前尚未启动自由移动，点击开始后由上车端打开运动双锁，建图 readiness 单独显示。"
       : runtime.artifact_only
-      ? "当前只是记录模式；勾安全确认后可请求低速自由移动，建图另看相机/雷达 readiness。"
+      ? plainManualSafetyConfirmed.value
+        ? "当前只是记录模式；可请求低速自由移动，建图另看相机/雷达 readiness。"
+        : "当前只是记录模式；勾安全确认后可请求低速自由移动，建图另看相机/雷达 readiness。"
       : runtime.cmd_vel_publish_enabled
       ? "自由移动运动发布已打开，PC 仍只读监看真车 HIL 记录。"
       : "运动发布未解锁，不会自己跑。";
@@ -10425,7 +10455,8 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
     if (boundaryNextActionUsable) {
       const boundaryParts = boundaryNextAction.split("；").map((part) => part.trim()).filter(Boolean);
       const mappingAction = boundaryParts.find((part) => part.startsWith("建图验收"));
-      const moveAction = mappingAction ? boundaryParts.find((part) => part && !part.startsWith("建图验收")) ?? boundaryNextAction : boundaryNextAction;
+      const rawMoveAction = mappingAction ? boundaryParts.find((part) => part && !part.startsWith("建图验收")) ?? boundaryNextAction : boundaryNextAction;
+      const moveAction = plainActionCardUserText(rawMoveAction);
       const suffix = /[。！？.!?]$/.test(moveAction) ? "" : "。";
       return `${motionModeName}下一步：${moveAction}${suffix}`;
     }
@@ -11897,7 +11928,7 @@ const plainKeyboardMainActionSummary = computed(() => {
     case "arm_keyboard_no_motion":
       return "键盘主动作：点击启用只拿本页按键控制权，不发车；启用后必须按住方向键才会动。";
     case "await_safety_confirm":
-      return "键盘主动作：先勾选现场安全确认；未勾选时启用和按键都不会发车。";
+      return "键盘主动作：现场安全已确认；启用后按住方向键才会发车。";
     case "refresh_keyboard_gate_no_motion":
       return "键盘主动作：先只读复查键盘入口，不发车。";
     case "wait_trip_execution":
@@ -21635,7 +21666,7 @@ onBeforeUnmount(() => {
               {{ plainFieldAcceptanceWysiwygRefreshButtonLabel }}
             </button>
           </div>
-          <label
+          <div
             class="plain-unified-safety-confirm plain-field-acceptance-safety"
             data-testid="plain-field-acceptance-safety-gate"
             :data-safety-confirmed="String(plainUnifiedSafetyConfirmed)"
@@ -21649,12 +21680,16 @@ onBeforeUnmount(() => {
             data-sends-motion-when-clicked="false"
           >
             <input
-              v-model="plainUnifiedSafetyConfirmed"
+              :checked="plainUnifiedSafetyConfirmed"
+              class="plain-hidden-safety-input"
               type="checkbox"
               data-testid="plain-field-acceptance-safety-confirm"
+              tabindex="-1"
+              aria-hidden="true"
+              @change="keepPlainUnifiedSafetyConfirmed"
             >
-            <span>现场安全确认：人在旁边、周围安全、停止手段就绪（勾一次，行程、键盘和自由移动都生效）</span>
-          </label>
+            <span>现场安全已确认：打开页面即可执行行程、键盘和自由移动；停止按钮保持可用。</span>
+          </div>
           <div
             class="plain-field-acceptance-readback-all"
             data-testid="plain-field-acceptance-readback-all"
@@ -23183,10 +23218,10 @@ onBeforeUnmount(() => {
 
       <div v-if="plainSafetyActionItems.length" class="plain-safety-actions" data-testid="plain-safety-actions" aria-label="安全确认后可做">
         <div class="simple-status-row">
-          <strong>勾确认后可做</strong>
-          <span class="muted">同一个安全确认用于行程、键盘和自由移动；建图另看画面和雷达是否到位。</span>
+          <strong>现在可做</strong>
+          <span class="muted">现场安全默认已确认；行程、键盘和自由移动直接用对应按钮，建图另看画面和雷达。</span>
         </div>
-        <label
+        <div
           class="plain-unified-safety-confirm"
           data-testid="plain-unified-safety-gate"
           :data-safety-confirmed="String(plainUnifiedSafetyConfirmed)"
@@ -23197,12 +23232,16 @@ onBeforeUnmount(() => {
           data-sends-motion-when-clicked="false"
         >
           <input
-            v-model="plainUnifiedSafetyConfirmed"
+            :checked="plainUnifiedSafetyConfirmed"
+            class="plain-hidden-safety-input"
             type="checkbox"
             data-testid="plain-unified-safety-confirm"
+            tabindex="-1"
+            aria-hidden="true"
+            @change="keepPlainUnifiedSafetyConfirmed"
           >
-          <span>现场安全确认：人在旁边、周围安全、停止手段就绪（勾一次，全页面生效）</span>
-        </label>
+          <span>现场安全已确认：打开页面即可操作，停止按钮随时可点。</span>
+        </div>
         <p
           class="plain-motion-readiness-gauge"
           :data-state="plainMotionReadinessGauge.state"
@@ -25175,10 +25214,23 @@ onBeforeUnmount(() => {
           >
             {{ plainMappingReadinessGauge.text }}
           </p>
-          <label class="plain-trip-confirm">
-            <input ref="plainFreeRoamConfirmCheckbox" v-model="plainUnifiedSafetyConfirmed" name="plainFreeRoamMappingConfirmed" type="checkbox" data-testid="plain-free-roam-confirm">
-            <span>人在旁边、周围安全、可以随时按停止（勾一次，全页面生效）</span>
-          </label>
+          <p
+            class="plain-trip-confirm"
+            :data-safety-confirmed="String(plainUnifiedSafetyConfirmed)"
+          >
+            <input
+              ref="plainFreeRoamConfirmCheckbox"
+              :checked="plainUnifiedSafetyConfirmed"
+              name="plainFreeRoamMappingConfirmed"
+              class="plain-hidden-safety-input"
+              type="checkbox"
+              data-testid="plain-free-roam-confirm"
+              tabindex="-1"
+              aria-hidden="true"
+              @change="keepPlainUnifiedSafetyConfirmed"
+            >
+            <span>现场安全已确认；自由移动可直接启动，停止按钮保持在同一区域。</span>
+          </p>
           <p
             class="panel-note"
             data-testid="plain-free-roam-primary-button-summary"
@@ -25623,10 +25675,21 @@ onBeforeUnmount(() => {
 
         <article class="snapshot-panel plain-motion-panel" data-testid="plain-motion-panel" :data-state="plainMotionSummary.state">
           <h3>移动/导航</h3>
-          <label class="plain-trip-confirm">
-            <input v-model="plainUnifiedSafetyConfirmed" type="checkbox" data-testid="plain-motion-safety-confirm">
-            <span>人在旁边、周围安全、停止手段就绪（勾一次，全页面生效）</span>
-          </label>
+          <p
+            class="plain-trip-confirm"
+            :data-safety-confirmed="String(plainUnifiedSafetyConfirmed)"
+          >
+            <input
+              :checked="plainUnifiedSafetyConfirmed"
+              class="plain-hidden-safety-input"
+              type="checkbox"
+              data-testid="plain-motion-safety-confirm"
+              tabindex="-1"
+              aria-hidden="true"
+              @change="keepPlainUnifiedSafetyConfirmed"
+            >
+            <span>现场安全已确认；可直接试动、启用键盘或执行行程。</span>
+          </p>
           <div class="panel-action-row wrap-actions">
             <span class="status-chip" :data-state="plainMotionSummary.state">{{ plainMotionSummary.state }}</span>
             <button ref="plainLocalizationResetButton" type="button" :disabled="!canResetLocalization" data-testid="plain-localization-reset" @click="resetLocalizationProof">
@@ -26112,10 +26175,23 @@ onBeforeUnmount(() => {
               <strong>行程操作</strong>
               <span class="status-chip" :data-state="plainTripSummary.state">{{ plainTripSummary.state }}</span>
             </div>
-            <label class="plain-trip-confirm">
-              <input ref="plainTripSafetyCheckbox" v-model="plainUnifiedSafetyConfirmed" name="plainTripSafetyConfirmed" type="checkbox">
-              <span>人在旁边、周围安全、停止手段就绪（勾一次，全页面生效）</span>
-            </label>
+            <p
+              class="plain-trip-confirm"
+              :data-safety-confirmed="String(plainUnifiedSafetyConfirmed)"
+            >
+              <input
+                ref="plainTripSafetyCheckbox"
+                :checked="plainUnifiedSafetyConfirmed"
+                name="plainTripSafetyConfirmed"
+                class="plain-hidden-safety-input"
+                type="checkbox"
+                data-testid="plain-trip-safety-confirm"
+                tabindex="-1"
+                aria-hidden="true"
+                @change="keepPlainUnifiedSafetyConfirmed"
+              >
+              <span>现场安全已确认；有图上路线时可直接执行，执行中可随时停止。</span>
+            </p>
             <div class="simple-status-row">
               <button ref="plainTripPrepareButton" type="button" class="secondary compact-stop" :disabled="!canRefreshPlainTripPreparation" data-testid="plain-trip-prepare" @click="refreshNav2Proof">
                 {{ plainTripPreparationButtonLabel }}
@@ -27068,10 +27144,19 @@ onBeforeUnmount(() => {
               <span>执行等待（s）</span>
               <input v-model.number="navGoalExecutionTimeoutS" name="navGoalExecutionTimeoutS" type="number" min="2" max="20" step="1">
             </label>
-            <label class="checkbox-inline">
-              <input v-model="plainUnifiedSafetyConfirmed" name="advancedNavSafetyConfirmed" type="checkbox">
-              <span>现场安全确认（全页面一次生效）</span>
-            </label>
+            <p class="checkbox-inline" :data-safety-confirmed="String(plainUnifiedSafetyConfirmed)">
+              <input
+                :checked="plainUnifiedSafetyConfirmed"
+                name="advancedNavSafetyConfirmed"
+                class="plain-hidden-safety-input"
+                type="checkbox"
+                data-testid="advanced-nav-safety-confirm"
+                tabindex="-1"
+                aria-hidden="true"
+                @change="keepPlainUnifiedSafetyConfirmed"
+              >
+              <span>现场安全已确认（全页面默认生效）</span>
+            </p>
             <button class="danger-button" type="submit" :disabled="loading || navGoalExecutionPending || !robotApiBaseUrl.trim() || !plainManualSafetyConfirmed">
               执行导航目标（高级）
             </button>
@@ -27496,12 +27581,20 @@ onBeforeUnmount(() => {
               <input v-model.number="jogDurationMs" type="number" min="0" :max="manualDurationLimit" step="50">
             </label>
           </div>
-          <div class="checklist-box">
-            <p class="checklist-title">现场确认</p>
-            <label class="checklist-item">
-              <input v-model="plainUnifiedSafetyConfirmed" type="checkbox" data-testid="advanced-motion-safety-confirm">
-              <span>人在旁边、周围安全、停止手段就绪（勾一次，全页面生效）</span>
-            </label>
+          <div class="checklist-box" :data-safety-confirmed="String(plainUnifiedSafetyConfirmed)">
+            <p class="checklist-title">现场安全已确认</p>
+            <p class="checklist-item">
+              <input
+                :checked="plainUnifiedSafetyConfirmed"
+                class="plain-hidden-safety-input"
+                type="checkbox"
+                data-testid="advanced-motion-safety-confirm"
+                tabindex="-1"
+                aria-hidden="true"
+                @change="keepPlainUnifiedSafetyConfirmed"
+              >
+              <span>打开页面即可发低速控制；停止仍可单独发送。</span>
+            </p>
           </div>
           <p class="panel-note">{{ manualMotionSummary.hint }}</p>
           <p v-if="operatorMaterialMissingFields.length" class="panel-note">

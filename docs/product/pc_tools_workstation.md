@@ -5273,6 +5273,12 @@ Nav2、manual、keyboard、free-roam、建图 runtime、delivery、stop 或 `/cm
 full-speed/硬件动作同时成立时，PC 端明确显示软件降级已耗尽，需要先换高速 USB 口/线或带供电
 Hub 后复测；该结论仍只读，不阻塞自由移动，不会启动任何运动链路。
 
+2026-07-02 20:35 CST 起，普通 PC 控制页按现场口径默认“现场安全已确认”：打开页面即可使用行程准备/执行、
+键盘启用、自由移动和低速试动入口，不再要求普通用户先看见或点击安全确认 checkbox。旧测试和现场脚本依赖的
+`plain-free-roam-confirm`、`plain-trip-safety-confirm`、`plain-unified-safety-confirm` 等 input 仍保留为隐藏兼容字段，
+始终回读为已确认；任何取消动作会立即恢复为已确认。停止按钮、键盘松开停、失焦停、切页停和后端固定 confirm 字段仍保留，
+相机/雷达只影响建图启动和验收，不作为底盘试动、键盘连续手控或自由移动的发车前置。
+
 2026-07-02 15:20 CST 起，共享 MJPEG 首屏首帧 fallback 改成短单次尝试、多格式覆盖：单次格式尝试
 `1.2s`，总窗口仍为 `9s`，确保现场 DV20 枚举里的 `YUYV@320x240@25`、`YUYV@640x480@22`
 和 `default@current` 会进入真实尝试，而不是被前两个 MJPG 模式耗尽预算。上车验证后
