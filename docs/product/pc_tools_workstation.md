@@ -5197,6 +5197,14 @@ summary 显示 `current_radar_map_wysiwyg_pack_status=loaded`、`current_radar_m
 该刷新结果继续保持 `robot_control_executed=false`、`safe_to_control=false`，不启动 Nav2、manual、keyboard、
 free-roam、建图 runtime 或 `/cmd_vel`。当前 WYSIWYG 和建图剩余阻塞集中在 `camera_first_frame`。
 
+2026-07-02 17:05 CST 起，上车 `POST /api/robot-control/camera/first-frame/probe` 的自动格式 fallback 增加
+`160x120` 低带宽候选：`MJPG@160x120@30`、`YUYV@160x120@15`、`YUYV@160x120@10`。
+这是给 USB `12M` full-speed 场景的只读首帧兜底；若常规 `640x480/320x240` 均无帧，会继续尝试更低带宽模式。
+probe 回包同步新增 `low_bandwidth_fallback_attempted` 和 `low_bandwidth_fallback_min_size`，现场脚本可以确认是否真的跑到
+`160x120` 兜底；PC 代理的 `probe_key_values` 同步透传这两个字段，并保留最多 12 个 fallback 摘要，确保
+`YUYV@160x120` 不会被前 6 个常规模式截断。该 probe 仍只读摄像头并释放失败 capture，不启动 Nav2、manual、
+keyboard、free-roam、建图 runtime、delivery、stop 或 `/cmd_vel`。硬件事实入口仍采用 `docs/vendor/VENDOR_INDEX.md`。
+
 2026-07-02 15:20 CST 起，共享 MJPEG 首屏首帧 fallback 改成短单次尝试、多格式覆盖：单次格式尝试
 `1.2s`，总窗口仍为 `9s`，确保现场 DV20 枚举里的 `YUYV@320x240@25`、`YUYV@640x480@22`
 和 `default@current` 会进入真实尝试，而不是被前两个 MJPG 模式耗尽预算。上车验证后

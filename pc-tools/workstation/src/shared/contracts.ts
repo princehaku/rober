@@ -6088,6 +6088,8 @@ export interface RobotControlCameraFirstFrameProbeProxyResponse extends ProofFla
     latest_streamon_io_error: string;
     fallback_attempt_count: string;
     fallback_attempts_summary: string;
+    low_bandwidth_fallback_attempted: string;
+    low_bandwidth_fallback_min_size: string;
   };
   failure_reason: string;
   blocked_reasons: string[];

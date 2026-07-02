@@ -437,7 +437,7 @@ function cameraProbeKeyValues(payload: Record<string, unknown> | null): RobotCon
   const fallbackAttemptSummary = fallbackAttempts
     .map((item) => asRecord(item))
     .filter((item): item is Record<string, unknown> => item !== null)
-    .slice(0, 6)
+    .slice(0, 12)
     .map((item) => {
       const fourcc = shortValue(item.fourcc, "default");
       const width = shortValue(item.width, "w");
@@ -472,6 +472,8 @@ function cameraProbeKeyValues(payload: Record<string, unknown> | null): RobotCon
     latest_streamon_io_error: shortValue(backendSmoke?.latest_streamon_io_error, "none"),
     fallback_attempt_count: shortValue(fallbackAttempts.length),
     fallback_attempts_summary: fallbackAttemptSummary || "none",
+    low_bandwidth_fallback_attempted: shortValue(payload?.low_bandwidth_fallback_attempted, "false"),
+    low_bandwidth_fallback_min_size: shortValue(payload?.low_bandwidth_fallback_min_size, "none"),
   };
 }
 

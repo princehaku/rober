@@ -16345,7 +16345,18 @@ describe("workstation fail-closed API contracts", () => {
               read_ok: false,
               failure_reason: "opencv_capture_not_opened",
             },
+            {
+              status: "first_frame_timeout",
+              fourcc: "YUYV",
+              width: 160,
+              height: 120,
+              open_ok: true,
+              read_ok: false,
+              failure_reason: "deadline_expired",
+            },
           ],
+          low_bandwidth_fallback_attempted: true,
+          low_bandwidth_fallback_min_size: "160x120",
           safe_to_control: false,
           robot_control_executed: false,
           delivery_success: false,
@@ -16368,6 +16379,8 @@ describe("workstation fail-closed API contracts", () => {
           visible_content_proven: string;
           fallback_attempt_count: string;
           fallback_attempts_summary: string;
+          low_bandwidth_fallback_attempted: string;
+          low_bandwidth_fallback_min_size: string;
         };
         safe_to_control: boolean;
         readback_only: boolean;
@@ -16391,8 +16404,11 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.status).toBe("open_failed");
       expect(body.probe_key_values.open_ok).toBe("false");
       expect(body.probe_key_values.visible_content_proven).toBe("false");
-      expect(body.probe_key_values.fallback_attempt_count).toBe("1");
+      expect(body.probe_key_values.fallback_attempt_count).toBe("2");
       expect(body.probe_key_values.fallback_attempts_summary).toContain("MJPG@640x480:open_failed/opencv_capture_not_opened");
+      expect(body.probe_key_values.fallback_attempts_summary).toContain("YUYV@160x120:first_frame_timeout/deadline_expired");
+      expect(body.probe_key_values.low_bandwidth_fallback_attempted).toBe("true");
+      expect(body.probe_key_values.low_bandwidth_fallback_min_size).toBe("160x120");
       expect(body.safe_to_control).toBe(false);
       expect(body.readback_only).toBe(true);
       expect(body.camera_probe_readback_only).toBe(true);

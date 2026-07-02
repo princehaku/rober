@@ -1351,11 +1351,28 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertEqual(480, payload["fallback_attempts"][3]["width"])
         self.assertEqual("YUYV", payload["fallback_attempts"][4]["fourcc"])
         self.assertEqual(22.0, payload["fallback_attempts"][4]["fps"])
+        self.assertFalse(payload["low_bandwidth_fallback_attempted"])
+        self.assertEqual("none", payload["low_bandwidth_fallback_min_size"])
         self.assertEqual(5, process_mock.call_count)
         self.assertIn("30.0", process_mock.call_args_list[1].args)
         self.assertIn("22.0", process_mock.call_args_list[4].args)
         self.assertFalse(payload["safe_to_control"])
         self.assertFalse(payload["robot_control_executed"])
+
+    def test_camera_probe_auto_format_fallback_includes_low_bandwidth_modes(self) -> None:
+        """full-speed USB 场景要试 160x120 低带宽模式，避免常规分辨率耗尽首帧机会。"""
+        request = upper_robot_api.safe_camera_probe_request({"auto_format_fallback": True})
+        fallback_requests = upper_robot_api.camera_probe_fallback_requests(request)
+        low_bandwidth_requests = [
+            item for item in fallback_requests
+            if item["width"] == 160 and item["height"] == 120
+        ]
+
+        self.assertTrue(low_bandwidth_requests)
+        self.assertIn("MJPG", {item["fourcc"] for item in low_bandwidth_requests})
+        self.assertIn("YUYV", {item["fourcc"] for item in low_bandwidth_requests})
+        self.assertTrue(all(item["timeout_s"] <= 1.5 for item in low_bandwidth_requests))
+        self.assertTrue(all(item["read_call_timeout_s"] <= 1.5 for item in low_bandwidth_requests))
 
     def test_map_proof_latest_promotes_clean_runtime_material(self) -> None:
         """map proof 观测齐全时，readback 顶层应直接暴露可消费状态。"""

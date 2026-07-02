@@ -6709,6 +6709,10 @@ def camera_probe_fallback_requests(request: dict[str, Any]) -> list[dict[str, An
         {"fourcc": "YUYV", "width": 640, "height": 480, "fps": 22.0},
         {"fourcc": "YUYV", "width": 320, "height": 240, "fps": 25.0},
         {"fourcc": "YUYV", "width": 320, "height": 240, "fps": 20.0},
+        # USB 12M full-speed 场景下，低带宽首帧比常规预览更可能先证明“摄像头可见”。
+        {"fourcc": "MJPG", "width": 160, "height": 120, "fps": 30.0},
+        {"fourcc": "YUYV", "width": 160, "height": 120, "fps": 15.0},
+        {"fourcc": "YUYV", "width": 160, "height": 120, "fps": 10.0},
         {"fourcc": None, "width": 640, "height": 480, "fps": request["fps"]},
     ]
     seen: set[tuple[Any, Any, Any, Any]] = set()
@@ -6847,6 +6851,23 @@ async def run_camera_first_frame_probe(body: dict[str, Any] | None = None) -> tu
     probe_payload = selected.get("probe_payload") if isinstance(selected.get("probe_payload"), dict) else {}
     status = str(selected.get("status") or probe_payload.get("status") or "unknown")
     http_status = 200 if selected.get("probe_returncode") == 0 and status == "frame_read" else 503
+    fallback_summaries = [camera_probe_attempt_summary(attempt) for attempt in attempts]
+    low_bandwidth_attempts = [
+        item for item in fallback_summaries
+        if int(item.get("width") or 9999) <= 160 and int(item.get("height") or 9999) <= 120
+    ]
+    low_bandwidth_min_area = min(
+        (int(item.get("width") or 0) * int(item.get("height") or 0) for item in low_bandwidth_attempts),
+        default=0,
+    )
+    low_bandwidth_min_size = next(
+        (
+            f"{item.get('width')}x{item.get('height')}"
+            for item in low_bandwidth_attempts
+            if int(item.get("width") or 0) * int(item.get("height") or 0) == low_bandwidth_min_area
+        ),
+        "none",
+    )
     return http_status, {
         "schema": f"{SCHEMA}.camera_first_frame_probe_proxy",
         "status": status,
@@ -6856,7 +6877,9 @@ async def run_camera_first_frame_probe(body: dict[str, Any] | None = None) -> tu
         "probe_returncode": selected.get("probe_returncode"),
         "stderr_preview": str(selected.get("stderr_preview") or "")[:400],
         "auto_format_fallback": bool(request.get("auto_format_fallback")),
-        "fallback_attempts": [camera_probe_attempt_summary(attempt) for attempt in attempts],
+        "fallback_attempts": fallback_summaries,
+        "low_bandwidth_fallback_attempted": bool(low_bandwidth_attempts),
+        "low_bandwidth_fallback_min_size": low_bandwidth_min_size,
         "elapsed_ms": now_ms() - started_ms,
         "upper_api_proxy": True,
         **proof_flags(),
