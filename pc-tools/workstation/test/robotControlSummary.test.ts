@@ -141,6 +141,22 @@ describe("robotControlSummary", () => {
       "/api/robot-control/delivery/latest",
       "/api/robot-control/summary",
     ]);
+    expect(summary.nav2_post_execute_readback_endpoints).toEqual(summary.trip_execution_readback_endpoints);
+    expect(summary.nav2_post_execute_readback_sequence_labels).toEqual([
+      "刷新地图画面",
+      "读取最近行程",
+      "复验轮速采样",
+      "读取送达确认",
+      "刷新总览",
+    ]);
+    expect(summary.nav2_post_execute_readback_refreshes_map_preview).toBe(true);
+    expect(summary.nav2_post_execute_readback_refreshes_nav2_latest).toBe(true);
+    expect(summary.nav2_post_execute_readback_refreshes_wheel_feedback).toBe(true);
+    expect(summary.nav2_post_execute_readback_refreshes_delivery_latest).toBe(true);
+    expect(summary.nav2_post_execute_readback_refreshes_summary).toBe(true);
+    expect(summary.nav2_post_execute_readback_sends_motion).toBe(false);
+    expect(summary.nav2_post_execute_readback_starts_nav2).toBe(false);
+    expect(summary.nav2_post_execute_readback_submits_delivery).toBe(false);
     expect(summary.route_complete).toBe(false);
     expect(summary.trip_complete).toBe(false);
     expect(summary.wheel_lr_nonzero).toBe(false);

@@ -5011,6 +5011,19 @@ const plainTripClosureReadbackSummary = computed(() => {
     ]),
   ]));
   const readbackEndpoints = Array.from(new Set(packet?.readback_endpoints ?? acceptanceEndpoints));
+  const postExecuteReadbackEndpoints = robotSummary.value?.nav2_post_execute_readback_endpoints?.length
+    ? robotSummary.value.nav2_post_execute_readback_endpoints
+    : readbackEndpoints;
+  const postExecuteReadbackSequenceLabels = robotSummary.value?.nav2_post_execute_readback_sequence_labels?.length
+    ? robotSummary.value.nav2_post_execute_readback_sequence_labels
+    : postExecuteReadbackEndpoints.map((endpoint) => {
+      if (endpoint.includes("/map/preview")) return "刷新地图画面";
+      if (endpoint.includes("/nav2/goal/execution/latest")) return "读取最近行程";
+      if (endpoint.includes("/base/feedback-samples")) return "复验轮速采样";
+      if (endpoint.includes("/delivery/latest")) return "读取送达确认";
+      if (endpoint.includes("/summary")) return "刷新总览";
+      return "只读复验";
+    });
   return {
     source: packet ? "nav2_route_acceptance_packet" : "live_motion_runbook",
     actionId: packet?.action_id ?? "run_nav2_route",
@@ -5036,6 +5049,16 @@ const plainTripClosureReadbackSummary = computed(() => {
     deliveryNextActionPlain: packet?.delivery_next_action_plain ?? "",
     acceptanceEndpoints,
     readbackEndpoints,
+    postExecuteReadbackEndpoints,
+    postExecuteReadbackSequenceLabels,
+    postExecuteReadbackRefreshesMapPreview: robotSummary.value?.nav2_post_execute_readback_refreshes_map_preview ?? postExecuteReadbackEndpoints.includes("/api/robot-control/map/preview"),
+    postExecuteReadbackRefreshesNav2Latest: robotSummary.value?.nav2_post_execute_readback_refreshes_nav2_latest ?? postExecuteReadbackEndpoints.includes("/api/robot-control/nav2/goal/execution/latest"),
+    postExecuteReadbackRefreshesWheelFeedback: robotSummary.value?.nav2_post_execute_readback_refreshes_wheel_feedback ?? postExecuteReadbackEndpoints.includes("/api/robot-control/base/feedback-samples"),
+    postExecuteReadbackRefreshesDeliveryLatest: robotSummary.value?.nav2_post_execute_readback_refreshes_delivery_latest ?? postExecuteReadbackEndpoints.includes("/api/robot-control/delivery/latest"),
+    postExecuteReadbackRefreshesSummary: robotSummary.value?.nav2_post_execute_readback_refreshes_summary ?? postExecuteReadbackEndpoints.includes("/api/robot-control/summary"),
+    postExecuteReadbackSendsMotion: robotSummary.value?.nav2_post_execute_readback_sends_motion ?? false,
+    postExecuteReadbackStartsNav2: robotSummary.value?.nav2_post_execute_readback_starts_nav2 ?? false,
+    postExecuteReadbackSubmitsDelivery: robotSummary.value?.nav2_post_execute_readback_submits_delivery ?? false,
     requiredSuccessMarkers: packet?.required_success_markers ?? [],
     startEndpoint: packet?.start_endpoint ?? "/api/robot-control/nav2/goal/execute",
     stopEndpoint: packet?.stop_endpoint ?? "/api/robot-control/base/stop",
@@ -23803,6 +23826,11 @@ onBeforeUnmount(() => {
             :data-route-wysiwyg-preflight-required="String(plainTripDomEvidence.routeWysiwygPreflightRequired)"
             :data-post-execute-latest-refresh-required="String(plainTripDomEvidence.postExecuteLatestRefreshRequired)"
             :data-post-execute-summary-refresh-required="String(plainTripDomEvidence.postExecuteSummaryRefreshRequired)"
+            :data-nav2-post-execute-readback-endpoints="plainTripClosureReadbackSummary.postExecuteReadbackEndpoints.join(',')"
+            :data-nav2-post-execute-readback-sequence-labels="plainTripClosureReadbackSummary.postExecuteReadbackSequenceLabels.join(',')"
+            :data-nav2-post-execute-readback-sends-motion="String(plainTripClosureReadbackSummary.postExecuteReadbackSendsMotion)"
+            :data-nav2-post-execute-readback-starts-nav2="String(plainTripClosureReadbackSummary.postExecuteReadbackStartsNav2)"
+            :data-nav2-post-execute-readback-submits-delivery="String(plainTripClosureReadbackSummary.postExecuteReadbackSubmitsDelivery)"
             :data-fixed-execute-proxy-endpoint="plainTripDomEvidence.fixedExecuteProxyEndpoint"
             :data-fixed-execution-latest-endpoint="plainTripDomEvidence.fixedExecutionLatestEndpoint"
             :data-fixed-wheel-feedback-readback-endpoint="plainTripDomEvidence.fixedWheelFeedbackReadbackEndpoint"
@@ -23881,6 +23909,16 @@ onBeforeUnmount(() => {
                 :data-current-motion-action-delivery-next-action-plain="plainCurrentMotionActionGauge.deliveryNextActionPlain"
                 :data-post-execute-latest-refresh-required="String(plainTripDomEvidence.postExecuteLatestRefreshRequired)"
                 :data-post-execute-summary-refresh-required="String(plainTripDomEvidence.postExecuteSummaryRefreshRequired)"
+                :data-nav2-post-execute-readback-endpoints="plainTripClosureReadbackSummary.postExecuteReadbackEndpoints.join(',')"
+                :data-nav2-post-execute-readback-sequence-labels="plainTripClosureReadbackSummary.postExecuteReadbackSequenceLabels.join(',')"
+                :data-nav2-post-execute-readback-refreshes-map-preview="String(plainTripClosureReadbackSummary.postExecuteReadbackRefreshesMapPreview)"
+                :data-nav2-post-execute-readback-refreshes-nav2-latest="String(plainTripClosureReadbackSummary.postExecuteReadbackRefreshesNav2Latest)"
+                :data-nav2-post-execute-readback-refreshes-wheel-feedback="String(plainTripClosureReadbackSummary.postExecuteReadbackRefreshesWheelFeedback)"
+                :data-nav2-post-execute-readback-refreshes-delivery-latest="String(plainTripClosureReadbackSummary.postExecuteReadbackRefreshesDeliveryLatest)"
+                :data-nav2-post-execute-readback-refreshes-summary="String(plainTripClosureReadbackSummary.postExecuteReadbackRefreshesSummary)"
+                :data-nav2-post-execute-readback-sends-motion="String(plainTripClosureReadbackSummary.postExecuteReadbackSendsMotion)"
+                :data-nav2-post-execute-readback-starts-nav2="String(plainTripClosureReadbackSummary.postExecuteReadbackStartsNav2)"
+                :data-nav2-post-execute-readback-submits-delivery="String(plainTripClosureReadbackSummary.postExecuteReadbackSubmitsDelivery)"
                 :data-fixed-execute-proxy-endpoint="plainTripDomEvidence.fixedExecuteProxyEndpoint"
                 :data-fixed-execution-latest-endpoint="plainTripDomEvidence.fixedExecutionLatestEndpoint"
                 :data-fixed-wheel-feedback-readback-endpoint="plainTripDomEvidence.fixedWheelFeedbackReadbackEndpoint"
@@ -24037,6 +24075,16 @@ onBeforeUnmount(() => {
               :data-acceptance-endpoints="plainTripClosureReadbackSummary.acceptanceEndpoints.join(',')"
               :data-readback-endpoints="plainTripClosureReadbackSummary.readbackEndpoints.join(',')"
               :data-readback-refresh-endpoints="plainTripClosureReadbackSummary.readbackEndpoints.join(',')"
+              :data-nav2-post-execute-readback-endpoints="plainTripClosureReadbackSummary.postExecuteReadbackEndpoints.join(',')"
+              :data-nav2-post-execute-readback-sequence-labels="plainTripClosureReadbackSummary.postExecuteReadbackSequenceLabels.join(',')"
+              :data-nav2-post-execute-readback-refreshes-map-preview="String(plainTripClosureReadbackSummary.postExecuteReadbackRefreshesMapPreview)"
+              :data-nav2-post-execute-readback-refreshes-nav2-latest="String(plainTripClosureReadbackSummary.postExecuteReadbackRefreshesNav2Latest)"
+              :data-nav2-post-execute-readback-refreshes-wheel-feedback="String(plainTripClosureReadbackSummary.postExecuteReadbackRefreshesWheelFeedback)"
+              :data-nav2-post-execute-readback-refreshes-delivery-latest="String(plainTripClosureReadbackSummary.postExecuteReadbackRefreshesDeliveryLatest)"
+              :data-nav2-post-execute-readback-refreshes-summary="String(plainTripClosureReadbackSummary.postExecuteReadbackRefreshesSummary)"
+              :data-nav2-post-execute-readback-sends-motion="String(plainTripClosureReadbackSummary.postExecuteReadbackSendsMotion)"
+              :data-nav2-post-execute-readback-starts-nav2="String(plainTripClosureReadbackSummary.postExecuteReadbackStartsNav2)"
+              :data-nav2-post-execute-readback-submits-delivery="String(plainTripClosureReadbackSummary.postExecuteReadbackSubmitsDelivery)"
               :data-fixed-latest-endpoint="plainTripClosureReadbackSummary.fixedLatestEndpoint"
               :data-fixed-wheel-readback-endpoint="plainTripClosureReadbackSummary.fixedWheelReadbackEndpoint"
               :data-fixed-delivery-latest-endpoint="plainTripClosureReadbackSummary.fixedDeliveryLatestEndpoint"
@@ -24074,6 +24122,8 @@ onBeforeUnmount(() => {
                 :disabled="plainTripClosureReadbackSummary.readbackDisabled"
                 :data-readback-refresh-endpoints="plainTripClosureReadbackSummary.readbackEndpoints.join(',')"
                 :data-readback-endpoints="plainTripClosureReadbackSummary.readbackEndpoints.join(',')"
+                :data-nav2-post-execute-readback-endpoints="plainTripClosureReadbackSummary.postExecuteReadbackEndpoints.join(',')"
+                :data-nav2-post-execute-readback-sequence-labels="plainTripClosureReadbackSummary.postExecuteReadbackSequenceLabels.join(',')"
                 :data-fixed-latest-endpoint="plainTripClosureReadbackSummary.fixedLatestEndpoint"
                 :data-fixed-wheel-readback-endpoint="plainTripClosureReadbackSummary.fixedWheelReadbackEndpoint"
                 :data-fixed-delivery-latest-endpoint="plainTripClosureReadbackSummary.fixedDeliveryLatestEndpoint"

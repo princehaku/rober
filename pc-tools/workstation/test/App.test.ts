@@ -10017,6 +10017,16 @@ describe("App", () => {
       sends_motion_when_clicked: false,
     };
     summaryFixture.trip_execution_readback_endpoints = summaryFixture.nav2_route_acceptance_packet.readback_endpoints;
+    summaryFixture.nav2_post_execute_readback_endpoints = summaryFixture.nav2_route_acceptance_packet.readback_endpoints;
+    summaryFixture.nav2_post_execute_readback_sequence_labels = ["刷新地图画面", "读取最近行程", "复验轮速采样", "读取送达确认", "刷新总览"];
+    summaryFixture.nav2_post_execute_readback_refreshes_map_preview = true;
+    summaryFixture.nav2_post_execute_readback_refreshes_nav2_latest = true;
+    summaryFixture.nav2_post_execute_readback_refreshes_wheel_feedback = true;
+    summaryFixture.nav2_post_execute_readback_refreshes_delivery_latest = true;
+    summaryFixture.nav2_post_execute_readback_refreshes_summary = true;
+    summaryFixture.nav2_post_execute_readback_sends_motion = false;
+    summaryFixture.nav2_post_execute_readback_starts_nav2 = false;
+    summaryFixture.nav2_post_execute_readback_submits_delivery = false;
     summaryFixture.wheel_rerun_readback_endpoint = "/api/robot-control/base/feedback-samples";
     summaryFixture.wheel_rerun_readback_endpoints = summaryFixture.nav2_route_acceptance_packet.readback_endpoints;
     const mockedFetch = stubWorkstationFetch({
@@ -10053,6 +10063,16 @@ describe("App", () => {
     expect(tripClosure.attributes("data-delivery-success-required")).toBe("true");
     expect(tripClosure.attributes("data-required-success-markers")).toBe("map_route_visible,nav2_goal_succeeded,same_window_wheel_lr_nonzero,delivery_success");
     expect(tripClosure.attributes("data-readback-endpoints")).toBe("/api/robot-control/map/preview,/api/robot-control/nav2/goal/execution/latest,/api/robot-control/base/feedback-samples,/api/robot-control/delivery/latest,/api/robot-control/summary");
+    expect(tripClosure.attributes("data-nav2-post-execute-readback-endpoints")).toBe(tripClosure.attributes("data-readback-endpoints"));
+    expect(tripClosure.attributes("data-nav2-post-execute-readback-sequence-labels")).toBe("刷新地图画面,读取最近行程,复验轮速采样,读取送达确认,刷新总览");
+    expect(tripClosure.attributes("data-nav2-post-execute-readback-refreshes-map-preview")).toBe("true");
+    expect(tripClosure.attributes("data-nav2-post-execute-readback-refreshes-nav2-latest")).toBe("true");
+    expect(tripClosure.attributes("data-nav2-post-execute-readback-refreshes-wheel-feedback")).toBe("true");
+    expect(tripClosure.attributes("data-nav2-post-execute-readback-refreshes-delivery-latest")).toBe("true");
+    expect(tripClosure.attributes("data-nav2-post-execute-readback-refreshes-summary")).toBe("true");
+    expect(tripClosure.attributes("data-nav2-post-execute-readback-sends-motion")).toBe("false");
+    expect(tripClosure.attributes("data-nav2-post-execute-readback-starts-nav2")).toBe("false");
+    expect(tripClosure.attributes("data-nav2-post-execute-readback-submits-delivery")).toBe("false");
     expect(tripClosure.attributes("data-fixed-latest-endpoint")).toBe("/api/robot-control/nav2/goal/execution/latest");
     expect(tripClosure.attributes("data-fixed-wheel-readback-endpoint")).toBe("/api/robot-control/base/feedback-samples");
     expect(tripClosure.attributes("data-fixed-delivery-latest-endpoint")).toBe("/api/robot-control/delivery/latest");
@@ -10081,6 +10101,8 @@ describe("App", () => {
 
     const readbackButton = wrapper.find('[data-testid="plain-trip-closure-readback-refresh"]');
     expect(readbackButton.attributes("data-readback-endpoints")).toBe(tripClosure.attributes("data-readback-endpoints"));
+    expect(readbackButton.attributes("data-nav2-post-execute-readback-endpoints")).toBe(tripClosure.attributes("data-readback-endpoints"));
+    expect(readbackButton.attributes("data-nav2-post-execute-readback-sequence-labels")).toBe("刷新地图画面,读取最近行程,复验轮速采样,读取送达确认,刷新总览");
     expect(readbackButton.attributes("data-fixed-wheel-readback-endpoint")).toBe("/api/robot-control/base/feedback-samples");
     expect(readbackButton.attributes("data-fixed-delivery-latest-endpoint")).toBe("/api/robot-control/delivery/latest");
     expect(readbackButton.attributes("data-sends-motion-when-clicked")).toBe("false");

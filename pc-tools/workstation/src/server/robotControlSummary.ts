@@ -10861,6 +10861,14 @@ export async function buildRobotControlSummary(
     delivery_next_action_plain: liveClosureSummary.wheel_rerun_delivery_next_action_plain,
     sends_motion_when_clicked: false,
   };
+  const nav2PostExecuteReadbackSequenceLabels = nav2RouteAcceptancePacket.readback_endpoints.map((endpoint) => {
+    if (endpoint.includes("/map/preview")) return "刷新地图画面";
+    if (endpoint.includes("/nav2/goal/execution/latest")) return "读取最近行程";
+    if (endpoint.includes("/base/feedback-samples")) return "复验轮速采样";
+    if (endpoint.includes("/delivery/latest")) return "读取送达确认";
+    if (endpoint.includes("/summary")) return "刷新总览";
+    return "只读复验";
+  });
   const fieldAcceptancePrimarySafetyAction = fieldAcceptancePacket.safety_confirm_ready_actions.find(
     (action) => action.id === fieldAcceptancePacket.primary_safety_confirm_ready_action_id,
   );
@@ -11064,6 +11072,21 @@ export async function buildRobotControlSummary(
     trip_execution_missing_evidence: nav2RouteAcceptancePacket.missing_evidence,
     trip_execution_required_success_markers: nav2RouteAcceptancePacket.required_success_markers,
     trip_execution_readback_endpoints: nav2RouteAcceptancePacket.readback_endpoints,
+    nav2_post_execute_readback_endpoints: nav2RouteAcceptancePacket.readback_endpoints,
+    nav2_post_execute_readback_sequence_labels: nav2PostExecuteReadbackSequenceLabels,
+    nav2_post_execute_readback_refreshes_map_preview: nav2RouteAcceptancePacket.readback_endpoints.includes("/api/robot-control/map/preview"),
+    nav2_post_execute_readback_refreshes_nav2_latest: nav2RouteAcceptancePacket.readback_endpoints.includes("/api/robot-control/nav2/goal/execution/latest"),
+    nav2_post_execute_readback_refreshes_wheel_feedback: nav2RouteAcceptancePacket.readback_endpoints.includes("/api/robot-control/base/feedback-samples"),
+    nav2_post_execute_readback_refreshes_delivery_latest: nav2RouteAcceptancePacket.readback_endpoints.includes("/api/robot-control/delivery/latest"),
+    nav2_post_execute_readback_refreshes_summary: nav2RouteAcceptancePacket.readback_endpoints.includes("/api/robot-control/summary"),
+    nav2_post_execute_readback_sends_motion: false,
+    nav2_post_execute_readback_starts_nav2: false,
+    nav2_post_execute_readback_starts_manual: false,
+    nav2_post_execute_readback_starts_keyboard: false,
+    nav2_post_execute_readback_starts_free_roam: false,
+    nav2_post_execute_readback_starts_map_runtime: false,
+    nav2_post_execute_readback_submits_delivery: false,
+    nav2_post_execute_readback_stops_motion: false,
     route_complete: routeComplete,
     trip_complete: routeComplete,
     wheel_lr_nonzero: liveClosureSummary.wheel_lr_nonzero_proven,
