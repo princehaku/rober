@@ -3170,6 +3170,11 @@ function plainCurrentWheelFactText(summary: RobotControlSummaryResponse): string
     const count = base.base_command_chain_nonzero_count && base.base_command_chain_nonzero_count !== "not_loaded"
       ? `，非零命令 ${base.base_command_chain_nonzero_count} 帧`
       : "";
+    const sentCount = base.base_command_chain_nonzero_sent_count && !["0", "not_loaded"].includes(base.base_command_chain_nonzero_sent_count)
+      ? `，串口 write 返回 ${base.base_command_chain_nonzero_sent_count} 帧`
+      : base.base_command_chain_serial_write_success_observed === "true"
+        ? "，串口 write 已返回成功"
+        : "";
     const modeCounts = base.base_command_chain_mode_counts && !["", "{}", "not_loaded"].includes(base.base_command_chain_mode_counts)
       ? `，模式 ${base.base_command_chain_mode_counts}`
       : "";
@@ -3178,7 +3183,7 @@ function plainCurrentWheelFactText(summary: RobotControlSummaryResponse): string
       : "";
     const latestLeft = base.wheel_feedback_latest_left_speed || base.wheel_feedback_latest_raw_left || "not_loaded";
     const latestRight = base.wheel_feedback_latest_right_speed || base.wheel_feedback_latest_raw_right || "not_loaded";
-    return `底盘命令：已到 bridge/UART${count}${modeCounts}${mainType}；但 T=1001 wheel L/R 仍为 ${latestLeft}/${latestRight}，下一步查电机使能、底盘模式、电机电源或下位机固件。`;
+    return `底盘命令：已到 bridge/UART${count}${sentCount}${modeCounts}${mainType}；但 T=1001 wheel L/R 仍为 ${latestLeft}/${latestRight}，下一步查上位机 TX 到 ESP32 RX 接线、固件 UART 接收、电机使能、底盘模式和电机电源。`;
   }
   return "";
 }

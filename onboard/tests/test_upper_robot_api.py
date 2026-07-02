@@ -562,6 +562,56 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertFalse(summary["sends_motion_commands"])
         self.assertFalse(summary["safe_to_control"])
 
+    def test_bridge_command_debug_log_tracks_serial_write_return(self) -> None:
+        """命令链路必须区分生成 vendor 命令和串口 write 返回成功。"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            log_path = Path(temp_dir) / "wave_rover_command_debug.jsonl"
+            log_path.write_text(
+                "\n".join(
+                    [
+                        json.dumps(
+                            {
+                                "schema": "trashbot.wave_rover.command_debug.v1",
+                                "source": "esp32_bridge_startup_config",
+                                "observed_at_unix_s": time.time(),
+                                "vendor_command": {"T": 900, "main": 2, "module": 0},
+                                "sent": True,
+                                "sends_motion": False,
+                            }
+                        ),
+                        json.dumps(
+                            {
+                                "schema": "trashbot.wave_rover.command_debug.v1",
+                                "source": "esp32_bridge_cmd_vel_callback",
+                                "observed_at_unix_s": time.time(),
+                                "command_mode": "pwm",
+                                "linear_x": 0.12,
+                                "angular_z": 0,
+                                "vendor_command": {"T": 11, "L": 255, "R": 255},
+                                "sent": True,
+                                "serial_write_returned": True,
+                                "sends_motion": True,
+                            }
+                        ),
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            summary = upper_robot_api.summarize_bridge_command_debug_log(str(log_path))
+
+        self.assertTrue(summary["startup_main_type_config_sent"])
+        self.assertEqual(2, summary["startup_main_type"])
+        self.assertTrue(summary["nonzero_command_observed"])
+        self.assertEqual(1, summary["nonzero_command_count"])
+        self.assertTrue(summary["nonzero_command_sent_observed"])
+        self.assertEqual(1, summary["nonzero_command_sent_count"])
+        self.assertTrue(summary["serial_write_success_observed"])
+        self.assertEqual(1, summary["serial_write_success_count"])
+        self.assertEqual(0, summary["command_write_failed_count"])
+        self.assertEqual({"T": 11, "L": 255, "R": 255}, summary["latest_sent_nonzero_command"]["vendor_command"])
+        self.assertFalse(summary["safe_to_control"])
+
     def test_feedback_latest_readback_lifts_wheel_summary_without_commands(self) -> None:
         """latest GET 必须把 wheel material 提到顶层，且保持只读回放边界。"""
         latest = {

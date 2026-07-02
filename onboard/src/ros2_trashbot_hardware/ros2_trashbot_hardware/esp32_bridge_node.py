@@ -341,19 +341,24 @@ class ESP32Bridge(Node):
             self.get_logger().error(str(exc))
             return
 
-        self._append_command_debug_line(msg, command)
-        if self._send_json(command):
+        sent = self._send_json(command)
+        self._append_command_debug_line(msg, command, sent)
+        if sent:
             self._last_cmd_linear = float(msg.linear.x)
             self._last_cmd_angular = float(msg.angular.z)
         else:
             self.get_logger().warn("Failed to forward /cmd_vel to WAVE ROVER ESP32")
 
-    def _append_command_debug_line(self, msg: Twist, command: dict[str, Any]) -> None:
-        """按需记录 /cmd_vel 到 vendor JSON 的映射，用于区分 Nav2 零速度和串口反馈问题。"""
+    def _append_command_debug_line(self, msg: Twist, command: dict[str, Any], sent: bool) -> None:
+        """按需记录 /cmd_vel 到 vendor JSON 的映射和串口写入结果。"""
         log_path = getattr(self, "command_debug_log_path", "")
         if not log_path:
             return
 
+        sends_motion = any(
+            abs(float(command.get(key, 0))) > 1e-9
+            for key in ("L", "R", "X", "Z")
+        )
         record = {
             "schema": "trashbot.wave_rover.command_debug.v1",
             "observed_at_unix_s": time.time(),
@@ -362,6 +367,9 @@ class ESP32Bridge(Node):
             "angular_z": float(msg.angular.z),
             "command_mode": self.command_mode,
             "vendor_command": command,
+            "sent": bool(sent),
+            "serial_write_returned": bool(sent),
+            "sends_motion": sends_motion,
         }
         try:
             # 命令日志只在 proof 显式打开时使用，失败不能阻断停车或速度转发。

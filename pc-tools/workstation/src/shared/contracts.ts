@@ -5403,7 +5403,13 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       motion_signal_source: string;
       base_command_chain_observed: string;
       base_command_chain_nonzero_count: string;
+      base_command_chain_nonzero_sent_count: string;
+      base_command_chain_serial_write_success_observed: string;
+      base_command_chain_serial_write_success_count: string;
+      base_command_chain_write_failed_count: string;
       base_command_chain_latest_nonzero_command: string;
+      base_command_chain_latest_sent_nonzero_command: string;
+      base_command_chain_latest_write_failed_command: string;
       base_command_chain_latest_command: string;
       base_command_chain_mode_counts: string;
       base_command_chain_startup_main_type_config_sent: string;

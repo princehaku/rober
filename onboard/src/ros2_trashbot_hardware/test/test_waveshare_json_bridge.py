@@ -645,6 +645,9 @@ class WaveshareJsonBridgeTest(unittest.TestCase):
             self.assertEqual(record["command_mode"], "pwm")
             self.assertEqual(record["linear_x"], 0.2)
             self.assertEqual(record["vendor_command"], {"L": 164, "R": 164, "T": 11})
+            self.assertTrue(record["sent"])
+            self.assertTrue(record["serial_write_returned"])
+            self.assertTrue(record["sends_motion"])
             self.assertEqual(node._last_cmd_linear, 0.2)
 
     def test_runtime_pwm_parameter_update_changes_next_cmd_vel_mapping(self):

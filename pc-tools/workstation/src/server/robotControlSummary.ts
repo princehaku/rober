@@ -792,7 +792,13 @@ const STATUS_KEYS = [
   "nav2_base_command_mode",
   "base_command_chain_observed",
   "base_command_chain_nonzero_count",
+  "base_command_chain_nonzero_sent_count",
+  "base_command_chain_serial_write_success_observed",
+  "base_command_chain_serial_write_success_count",
+  "base_command_chain_write_failed_count",
   "base_command_chain_latest_nonzero_command",
+  "base_command_chain_latest_sent_nonzero_command",
+  "base_command_chain_latest_write_failed_command",
   "base_command_chain_latest_command",
   "base_command_chain_mode_counts",
   "base_command_chain_startup_main_type_config_sent",
@@ -6980,7 +6986,13 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         motion_signal_source: "not_loaded",
         base_command_chain_observed: "not_loaded",
         base_command_chain_nonzero_count: "not_loaded",
+        base_command_chain_nonzero_sent_count: "not_loaded",
+        base_command_chain_serial_write_success_observed: "not_loaded",
+        base_command_chain_serial_write_success_count: "not_loaded",
+        base_command_chain_write_failed_count: "not_loaded",
         base_command_chain_latest_nonzero_command: "not_loaded",
+        base_command_chain_latest_sent_nonzero_command: "not_loaded",
+        base_command_chain_latest_write_failed_command: "not_loaded",
         base_command_chain_latest_command: "not_loaded",
         base_command_chain_mode_counts: "{}",
         base_command_chain_startup_main_type_config_sent: "not_loaded",
@@ -8108,7 +8120,13 @@ function baseSummaryFromReadbacks(readbacks: InternalRobotApiEndpointReadback[])
     ?? "not_loaded";
   const commandChainObserved = baseStatus?.key_values.base_command_chain_observed ?? "not_loaded";
   const commandChainNonzeroCount = baseStatus?.key_values.base_command_chain_nonzero_count ?? "not_loaded";
+  const commandChainNonzeroSentCount = baseStatus?.key_values.base_command_chain_nonzero_sent_count ?? "not_loaded";
+  const commandChainSerialWriteSuccessObserved = baseStatus?.key_values.base_command_chain_serial_write_success_observed ?? "not_loaded";
+  const commandChainSerialWriteSuccessCount = baseStatus?.key_values.base_command_chain_serial_write_success_count ?? "not_loaded";
+  const commandChainWriteFailedCount = baseStatus?.key_values.base_command_chain_write_failed_count ?? "not_loaded";
   const commandChainLatestNonzeroCommand = baseStatus?.key_values.base_command_chain_latest_nonzero_command ?? "not_loaded";
+  const commandChainLatestSentNonzeroCommand = baseStatus?.key_values.base_command_chain_latest_sent_nonzero_command ?? "not_loaded";
+  const commandChainLatestWriteFailedCommand = baseStatus?.key_values.base_command_chain_latest_write_failed_command ?? "not_loaded";
   const commandChainLatestCommand = baseStatus?.key_values.base_command_chain_latest_command ?? "not_loaded";
   const commandChainModeCounts = baseStatus?.key_values.base_command_chain_mode_counts ?? "{}";
   const startupMainTypeConfigSent = baseStatus?.key_values.base_command_chain_startup_main_type_config_sent ?? "not_loaded";
@@ -8138,7 +8156,13 @@ function baseSummaryFromReadbacks(readbacks: InternalRobotApiEndpointReadback[])
     motion_signal_source: motionSignalSource,
     base_command_chain_observed: commandChainObserved,
     base_command_chain_nonzero_count: commandChainNonzeroCount,
+    base_command_chain_nonzero_sent_count: commandChainNonzeroSentCount,
+    base_command_chain_serial_write_success_observed: commandChainSerialWriteSuccessObserved,
+    base_command_chain_serial_write_success_count: commandChainSerialWriteSuccessCount,
+    base_command_chain_write_failed_count: commandChainWriteFailedCount,
     base_command_chain_latest_nonzero_command: commandChainLatestNonzeroCommand,
+    base_command_chain_latest_sent_nonzero_command: commandChainLatestSentNonzeroCommand,
+    base_command_chain_latest_write_failed_command: commandChainLatestWriteFailedCommand,
     base_command_chain_latest_command: commandChainLatestCommand,
     base_command_chain_mode_counts: commandChainModeCounts,
     base_command_chain_startup_main_type_config_sent: startupMainTypeConfigSent,

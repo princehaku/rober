@@ -5214,7 +5214,14 @@ def summarize_bridge_command_debug_log(
         "startup_config_sent_count": 0,
         "nonzero_command_observed": False,
         "nonzero_command_count": 0,
+        "nonzero_command_sent_observed": False,
+        "nonzero_command_sent_count": 0,
+        "serial_write_success_observed": False,
+        "serial_write_success_count": 0,
+        "command_write_failed_count": 0,
         "latest_nonzero_command": None,
+        "latest_sent_nonzero_command": None,
+        "latest_write_failed_command": None,
         "latest_command": None,
         "command_mode_counts": {},
         "bad_line_count": 0,
@@ -5250,7 +5257,12 @@ def summarize_bridge_command_debug_log(
 
     latest_command: dict[str, Any] | None = None
     latest_nonzero: dict[str, Any] | None = None
+    latest_sent_nonzero: dict[str, Any] | None = None
+    latest_write_failed: dict[str, Any] | None = None
     nonzero_count = 0
+    nonzero_sent_count = 0
+    serial_write_success_count = 0
+    command_write_failed_count = 0
     startup_count = 0
     mode_counts: dict[str, int] = {}
     bad_line_count = 0
@@ -5282,12 +5294,25 @@ def summarize_bridge_command_debug_log(
             "linear_x": record.get("linear_x"),
             "angular_z": record.get("angular_z"),
             "vendor_command": command,
+            "sent": record.get("sent"),
+            "serial_write_returned": record.get("serial_write_returned", record.get("sent")),
         }
         command_mode = str(record.get("command_mode") or "unknown")
         mode_counts[command_mode] = mode_counts.get(command_mode, 0) + 1
+        sent_value = record.get("serial_write_returned", record.get("sent"))
+        sent_true = sent_value is True
+        sent_false = sent_value is False
+        if sent_true:
+            serial_write_success_count += 1
+        elif sent_false:
+            command_write_failed_count += 1
+            latest_write_failed = latest_command
         if vendor_motion_command_nonzero(command):
             nonzero_count += 1
             latest_nonzero = latest_command
+            if sent_true:
+                nonzero_sent_count += 1
+                latest_sent_nonzero = latest_command
 
     artifact.update({"ok": True, "status": "loaded", "bytes_read": stat_result.st_size, "bytes_scanned": bytes_scanned, "tail_line_count": len(lines)})
     summary["freshness"]["status"] = freshness_from_age(age_ms, stale_after_ms)
@@ -5300,7 +5325,14 @@ def summarize_bridge_command_debug_log(
             "startup_config_sent_count": startup_count,
             "nonzero_command_observed": nonzero_count > 0,
             "nonzero_command_count": nonzero_count,
+            "nonzero_command_sent_observed": nonzero_sent_count > 0,
+            "nonzero_command_sent_count": nonzero_sent_count,
+            "serial_write_success_observed": serial_write_success_count > 0,
+            "serial_write_success_count": serial_write_success_count,
+            "command_write_failed_count": command_write_failed_count,
             "latest_nonzero_command": latest_nonzero,
+            "latest_sent_nonzero_command": latest_sent_nonzero,
+            "latest_write_failed_command": latest_write_failed,
             "latest_command": latest_command,
             "command_mode_counts": mode_counts,
             "robot_control_executed": nonzero_count > 0,
@@ -7572,7 +7604,15 @@ class UpperRobotApi:
             "bridge_command_debug": bridge_command_debug,
             "base_command_chain_observed": bool(bridge_command_debug.get("nonzero_command_observed")),
             "base_command_chain_nonzero_count": bridge_command_debug.get("nonzero_command_count"),
+            "base_command_chain_nonzero_sent_count": bridge_command_debug.get("nonzero_command_sent_count"),
+            "base_command_chain_serial_write_success_observed": bool(
+                bridge_command_debug.get("serial_write_success_observed")
+            ),
+            "base_command_chain_serial_write_success_count": bridge_command_debug.get("serial_write_success_count"),
+            "base_command_chain_write_failed_count": bridge_command_debug.get("command_write_failed_count"),
             "base_command_chain_latest_nonzero_command": bridge_command_debug.get("latest_nonzero_command"),
+            "base_command_chain_latest_sent_nonzero_command": bridge_command_debug.get("latest_sent_nonzero_command"),
+            "base_command_chain_latest_write_failed_command": bridge_command_debug.get("latest_write_failed_command"),
             "base_command_chain_latest_command": bridge_command_debug.get("latest_command"),
             "base_command_chain_mode_counts": bridge_command_debug.get("command_mode_counts"),
             "base_command_chain_startup_main_type_config_sent": bool(
