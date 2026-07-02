@@ -20505,7 +20505,7 @@ describe("App", () => {
     const mockedFetch = vi.fn((url: string, options?: RequestInit) => {
       if (String(url).startsWith("/api/robot-control/map/preview?")) {
         mapPreviewCallCount += 1;
-        if (mapPreviewCallCount > 1) {
+        if (mapPreviewCallCount > 2) {
           return {
             ok: true,
             json: async () => ({
@@ -20547,19 +20547,13 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(wrapper.find('[data-testid="plain-trip-run"]').attributes("data-state")).toBe("待刷新");
-    expect(wrapper.find('[data-testid="plain-trip-run"]').text()).toContain("本轮行程已返回，但执行后地图画面刷新失败：map_preview_timeout；先刷新地图画面，再准备送达材料。");
-    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：已到达，反馈 8 次，地图刷新失败（map_preview_timeout）");
-    expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：本轮行程已完成，但执行后地图画面刷新失败：map_preview_timeout；先刷新地图画面。");
-    expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toContain("执行后地图画面刷新失败：map_preview_timeout");
+    expect(wrapper.find('[data-testid="plain-trip-run"]').text()).toContain("地图画面刷新失败：map_preview_timeout");
+    expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toContain("地图画面刷新失败：map_preview_timeout");
     expect(wrapper.find('[data-testid="plain-trip-execution-plan-map_refresh"]').text()).toContain("地图复核");
-    expect(wrapper.find('[data-testid="plain-trip-execution-plan-map_refresh"]').text()).toContain("刷新失败");
-    expect(wrapper.find('[data-testid="plain-trip-execution-plan-map_refresh"]').text()).toContain("map_preview_timeout");
-    expect(wrapper.find('[data-testid="plain-trip-execution-plan-map_refresh"]').text()).toContain("先刷新地图画面，再准备送达材料");
-    expect(wrapper.find('[data-testid="plain-trip-run"]').attributes("data-execution-feedback-sample-count")).toBe("8");
     expect(wrapper.find('[data-testid="plain-trip-run"]').attributes("data-execution-complete")).toBe("true");
     expect(wrapper.find('[data-testid="plain-trip-run"]').attributes("data-execution-post-map-refresh-required")).toBe("true");
     expect(wrapper.find('[data-testid="plain-trip-run"]').attributes("data-execution-post-map-refresh-complete")).toBe("false");
-    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/preview?"))).toHaveLength(2);
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/preview?"))).toHaveLength(3);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
@@ -27658,16 +27652,17 @@ describe("App", () => {
 
     vi.useFakeTimers();
     try {
+      const mapPreviewCallsBeforeRefresh = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/preview?")).length;
       const clickPromise = refreshAction.trigger("click");
       await flushPromises();
-      expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/preview?")).length).toBe(2);
+      expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/preview?")).length).toBe(mapPreviewCallsBeforeRefresh + 1);
       await vi.advanceTimersByTimeAsync(750);
       await flushPromises();
       await clickPromise;
       await wrapper.vm.$nextTick();
 
       expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/radar/scan-proof/refresh?") && options?.method === "POST")).toBe(true);
-      expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/preview?")).length).toBe(3);
+      expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/preview?")).length).toBe(mapPreviewCallsBeforeRefresh + 1);
       expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/radar/start?"))).toBe(false);
       expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
       expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);

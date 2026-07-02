@@ -17340,6 +17340,17 @@ function startLiveSurfaceRefreshLoops(): void {
   }, LIVE_CAMERA_STATUS_REFRESH_INTERVAL_MS);
 }
 
+async function refreshInitialLiveSurfaces(): Promise<void> {
+  // 首屏不要等待完整 summary；地图和共享图传状态先并行读出来，WASD gate 随后由 summary 自动接管。
+  if (!shouldRefreshLiveSurfaces()) {
+    return;
+  }
+  await Promise.all([
+    refreshMapPreview({ radarStatusRefresh: false }),
+    refreshCameraMjpegStatus(),
+  ]);
+}
+
 function clearLiveSurfaceRefreshLoops(): void {
   // 所有循环集中释放，防止热更新或页面切换后重复轮询。
   if (liveMapRefreshTimer !== null) {
@@ -19892,6 +19903,7 @@ onMounted(() => {
   window.addEventListener("focus", handleWindowFocus);
   document.addEventListener("visibilitychange", handlePageVisibilityChange);
   document.addEventListener("fullscreenchange", syncPlainMapBrowserFullscreenState);
+  void refreshInitialLiveSurfaces();
   void refreshConsole().then(() => {
     void refreshPlainMapDirectViewOnEnter();
     void preloadGoalClosureReadbacks();

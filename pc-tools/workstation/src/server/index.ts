@@ -97,7 +97,6 @@ import type {
   RobotControlCameraMjpegRelayOverlay,
 } from "./robotControlSummary";
 
-const ROBOT_CONTROL_SUMMARY_CAMERA_STATUS_TIMEOUT_MS = ROBOT_CONTROL_SUMMARY_HTTP_READBACK_TIMEOUT_MS;
 const CAMERA_FIRST_FRAME_FAILURE_REASONS = new Set([
   "capture_read_returned_false",
   "capture_read_call_timeout",
@@ -118,6 +117,8 @@ const CAMERA_FIRST_FRAME_PROBE_TIMEOUT_MS = 12_000;
 const CAMERA_FIRST_FRAME_BACKEND_SMOKE_TIMEOUT_MS = 45_000;
 const PORT = Number(process.env.PORT ?? WORKSTATION_NODE_PORT);
 const HOST = process.env.HOST ?? WORKSTATION_PUBLIC_HOST;
+// summary 里 MJPEG overlay 只是首屏辅助诊断，不能比真正 summary 读回更慢。
+const ROBOT_CONTROL_SUMMARY_CAMERA_OVERLAY_TIMEOUT_MS = 600;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIST_ROOT = path.resolve(__dirname, "../../dist");
 
@@ -3233,7 +3234,7 @@ async function buildRobotControlSummaryForHttp(sourceBaseUrl: string): Promise<R
   const relay = normalized.ok ? cameraMjpegRelays.get(relayKey) ?? null : null;
   const lastFailure = normalized.ok ? cameraMjpegRelayLastFailures.get(relayKey) ?? null : null;
   const sourceFailure = normalized.ok
-    ? await cameraSourceFirstFrameFailureForStatus(normalized.normalized, ROBOT_CONTROL_SUMMARY_CAMERA_STATUS_TIMEOUT_MS)
+    ? await cameraSourceFirstFrameFailureForStatus(normalized.normalized, ROBOT_CONTROL_SUMMARY_CAMERA_OVERLAY_TIMEOUT_MS)
     : null;
   const lastFailureForOverlay = lastFailure ?? sourceFailure;
   const mjpegRelayOverlay: RobotControlCameraMjpegRelayOverlay | null = relay
