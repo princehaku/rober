@@ -330,9 +330,9 @@ const PLAIN_MAP_FOXGLOVE_BRIDGE_LAUNCH_COMMAND = "ros2 launch ros2_trashbot_brin
 const PLAIN_MAP_FOXGLOVE_WS_URL = "ws://192.168.1.11:8765";
 const PLAIN_MAP_FOXGLOVE_WEB_APP_URL = "https://studio.foxglove.dev";
 const PLAIN_MAP_ENGINEERING_TOOLS_ACTION_LABEL = "工程观察：RViz2 / Foxglove";
-const PLAIN_MAP_TOO_SMALL_NEXT_ACTION_PLAIN = "地图太小先点“进入地图大屏”打开 /map，PC 首页和 /map 都把地图画布作为主视图，只保留缩放、只读刷新和工程观察入口；建图、保存和其他卡片都会收起；不需要先开 RViz2。";
-const PLAIN_MAP_ROS2_COMPANION_ANSWER_PLAIN = "ROS2 配套：本地工程调试用 RViz2；远程浏览器观察用 Foxglove bridge + Foxglove Web；普通用户仍默认使用 PC 大地图和 /map。";
-const PLAIN_MAP_HEADER_SHORT_ANSWER = "普通看 /map；工程看 RViz2 / Foxglove";
+const PLAIN_MAP_TOO_SMALL_NEXT_ACTION_PLAIN = "PC 首页默认就是特大地图；仍觉得小就点“进入地图大屏”打开 /map，/map 只保留缩放、只读刷新和工程观察入口；建图、保存和其他卡片都会收起；不需要先开 RViz2。";
+const PLAIN_MAP_ROS2_COMPANION_ANSWER_PLAIN = "ROS2 配套：本地工程调试用 RViz2；远程浏览器观察用 Foxglove bridge + Foxglove Web；普通用户仍默认使用 PC 特大地图和 /map。";
+const PLAIN_MAP_HEADER_SHORT_ANSWER = "普通看 PC 特大图；工程看 RViz2 / Foxglove";
 const PLAIN_MAP_ROS2_OBSERVE_TOPICS = [
   "/map",
   "/scan",
@@ -354,13 +354,13 @@ const plainMapDirectViewRequested = computed(() => {
   const view = params.get("view") ?? params.get("mode");
   return view === "map" || view === "map-only" || window.location.hash === "#map";
 });
-const PLAIN_MAP_ZOOM_LEVELS = [1, 1.5, 2, 3, 4, 5, 6, 8, 10, 12, 16, 20, 24, 32, 40, 48, 64] as const;
-const PLAIN_MAP_DEFAULT_ZOOM_INDEX = 13;
+const PLAIN_MAP_ZOOM_LEVELS = [1, 1.5, 2, 3, 4, 5, 6, 8, 10, 12, 16, 20, 24, 32, 40, 48, 64, 80, 96] as const;
+const PLAIN_MAP_DEFAULT_ZOOM_INDEX = 15;
 const plainMapZoomIndex = ref(PLAIN_MAP_DEFAULT_ZOOM_INDEX);
 const plainMapZoomScale = computed(() => PLAIN_MAP_ZOOM_LEVELS[plainMapZoomIndex.value] ?? 1);
 const plainMapZoomPercent = computed(() => `${Math.round(plainMapZoomScale.value * 100)}%`);
-const PLAIN_MAP_DEFAULT_ZOOM_PERCENT = "3200%";
-const PLAIN_MAP_MAX_ZOOM_PERCENT = "6400%";
+const PLAIN_MAP_DEFAULT_ZOOM_PERCENT = "4800%";
+const PLAIN_MAP_MAX_ZOOM_PERCENT = "9600%";
 const plainMapZoomStyle = computed(() => ({
   "--plain-map-zoom": String(plainMapZoomScale.value),
 }));
@@ -386,7 +386,7 @@ function centerPlainMapViewport(): void {
 }
 const plainMapDisplayProofText = computed(() => {
   // 这行先回答现场“地图太小/ROS2 配套用什么”，工程命令仍收进折叠区，避免首屏重新变复杂。
-  const viewText = plainMapObserverView.value || plainMapDirectViewRequested.value ? "只看地图大屏" : "PC 默认大地图主视图";
+  const viewText = plainMapObserverView.value || plainMapDirectViewRequested.value ? "只看地图大屏" : "PC 默认特大地图主视图";
   return `地图显示：${viewText}，默认 ${PLAIN_MAP_DEFAULT_ZOOM_PERCENT} 现场大图，当前 ${plainMapZoomPercent.value}，地图画布按 viewport-dominant full-height 处理，点“适配”回到 100% 全图，点“细节放大”可查看局部，最高 ${PLAIN_MAP_MAX_ZOOM_PERCENT}；图上行程、小车位置和雷达标记共用同一张 WYSIWYG 画布；普通用户点“进入地图大屏”直接切到 /map，本页也保留 ${plainMapLegacyDirectViewHref} 兼容入口；${PLAIN_MAP_TOO_SMALL_NEXT_ACTION_PLAIN}${PLAIN_MAP_ROS2_COMPANION_ANSWER_PLAIN}入口在“${PLAIN_MAP_ENGINEERING_TOOLS_ACTION_LABEL}”，只看地图/雷达/TF/路径/定位，不发车。本条只读，不启动工程工具、行程执行或小车运动。`;
 });
 const canZoomPlainMapIn = computed(() => plainMapZoomIndex.value < PLAIN_MAP_ZOOM_LEVELS.length - 1);
@@ -23525,7 +23525,7 @@ onBeforeUnmount(() => {
                 data-starts-nav2="false"
                 data-starts-map-runtime="false"
               >
-                PC 大地图 {{ plainMapZoomPercent }} · /map 满屏 · {{ PLAIN_MAP_HEADER_SHORT_ANSWER }}
+                PC 特大地图 {{ plainMapZoomPercent }} · /map 满屏 · {{ PLAIN_MAP_HEADER_SHORT_ANSWER }}
               </span>
             </div>
             <div class="plain-map-heading-actions">
