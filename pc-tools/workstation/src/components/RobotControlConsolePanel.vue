@@ -22863,7 +22863,17 @@ onBeforeUnmount(() => {
         :data-current-goal-next-action-plain="robotSummary?.current_goal_next_action_plain ?? plainGoalChecklistSummary?.primary_ready_action_next_action_plain ?? plainGoalChecklistSummary?.next_action_plain ?? 'not_loaded'"
         :data-current-goal-next-action-item-ids="robotSummary?.current_goal_next_action_item_ids?.join(',') ?? plainGoalChecklistSummary?.next_action_item_ids.join(',') ?? 'none'"
         :data-current-goal-ready-action-ids="robotSummary?.current_goal_ready_action_ids?.join(',') ?? plainGoalChecklistSummary?.ready_action_ids.join(',') ?? 'none'"
+        :data-current-goal-ready-action-labels="robotSummary?.current_goal_ready_action_labels?.join(',') ?? plainGoalChecklistSummary?.ready_action_items.map((item) => item.title).join(',') ?? 'none'"
         :data-current-goal-blocked-action-ids="robotSummary?.current_goal_blocked_action_ids?.join(',') ?? plainGoalChecklistSummary?.blocked_action_ids.join(',') ?? 'none'"
+        :data-current-goal-missing-ids="robotSummary?.current_goal_missing_ids?.join(',') ?? plainGoalChecklistSummary?.next_action_item_ids.join(',') ?? 'none'"
+        :data-current-goal-missing-labels="robotSummary?.current_goal_missing_labels?.join(',') ?? 'none'"
+        :data-current-goal-blocked-ids="robotSummary?.current_goal_blocked_ids?.join(',') ?? plainGoalChecklistSummary?.blocked_action_ids.join(',') ?? 'none'"
+        :data-current-goal-blocked-labels="robotSummary?.current_goal_blocked_labels?.join(',') ?? 'none'"
+        :data-current-goal-move-now-status-plain="robotSummary?.current_goal_move_now_status_plain ?? plainGoalChecklistSummary?.move_now_status_plain ?? 'not_loaded'"
+        :data-current-goal-mapping-blockers-plain="robotSummary?.current_goal_mapping_blockers_plain ?? plainGoalChecklistSummary?.mapping_blockers_plain ?? 'not_loaded'"
+        :data-current-goal-mapping-blocked-only-by-camera="String(robotSummary?.current_goal_mapping_blocked_only_by_camera ?? false)"
+        :data-current-goal-free-move-allowed-while-mapping-blocked="String(robotSummary?.current_goal_free_move_allowed_while_mapping_blocked ?? false)"
+        :data-current-goal-camera-only-blocks-mapping-plain="robotSummary?.current_goal_camera_only_blocks_mapping_plain ?? 'not_loaded'"
         :data-current-goal-sends-motion-when-clicked="String(robotSummary?.current_goal_sends_motion_when_clicked ?? false)"
       >
         <div class="simple-status-row">

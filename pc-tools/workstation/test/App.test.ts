@@ -1221,6 +1221,32 @@ const fixtures: Record<string, unknown> = {
     current_motion_action_current_gap_plain: "当前缺口：同窗口 wheel L/R 非零、送达确认。",
     current_motion_action_no_extra_precheck_plain: "发车前预检只看现场安全确认。",
     current_motion_action_delivery_next_action_plain: "轮速复验通过后提交送达确认。",
+    current_goal_status: "in_progress",
+    current_goal_status_label: "进行中",
+    current_goal_total_count: 7,
+    current_goal_done_count: 1,
+    current_goal_remaining_count: 6,
+    current_goal_progress_plain: "1/7",
+    current_goal_missing_ids: ["camera_wysiwyg", "radar_map_points_wysiwyg", "nav2_route_execution", "keyboard_continuous_control", "free_move", "mapping_start"],
+    current_goal_missing_labels: ["画面所见即所得", "雷达点贴到地图", "完整图上行程", "键盘连续手控", "先自由移动", "传感器就绪后建图"],
+    current_goal_blocked_ids: ["camera_wysiwyg", "radar_map_points_wysiwyg", "nav2_route_execution", "mapping_start"],
+    current_goal_blocked_labels: ["画面所见即所得", "雷达点贴到地图", "完整图上行程", "传感器就绪后建图"],
+    current_goal_ready_action_ids: ["free_move", "keyboard_continuous_control"],
+    current_goal_ready_action_labels: ["先自由移动", "键盘连续手控"],
+    current_goal_blocked_action_ids: ["camera_wysiwyg", "radar_map_points_wysiwyg", "nav2_route_execution", "mapping_start"],
+    current_goal_next_action_id: "free_move",
+    current_goal_next_action_label: "先自由移动",
+    current_goal_next_action_plain: "上车自由移动状态机未加载；可先勾选现场安全确认，用键盘或低速手控移动；相机和雷达只影响建图",
+    current_goal_next_action_source_card_id: "free_move",
+    current_goal_next_action_requires_safety_confirm: true,
+    current_goal_next_action_requires_motion: true,
+    current_goal_next_action_item_ids: ["camera_wysiwyg", "radar_map_points_wysiwyg", "nav2_route_execution", "keyboard_continuous_control", "free_move", "mapping_start"],
+    current_goal_mapping_blocked_only_by_camera: false,
+    current_goal_free_move_allowed_while_mapping_blocked: true,
+    current_goal_camera_only_blocks_mapping_plain: "建图仍需相机和雷达；自由移动可先做。",
+    current_goal_mapping_blockers_plain: "建图缺口：画面所见即所得、雷达点贴到地图、传感器就绪后建图；这些缺口不阻止先低速自由移动。",
+    current_goal_move_now_status_plain: "可先动：先自由移动、键盘连续手控；发车前只需现场安全确认；相机和雷达只影响建图验收。",
+    current_goal_sends_motion_when_clicked: false,
     live_closure_summary: {
       status: "needs_wysiwyg",
       status_label: "待当前所见",
@@ -8281,7 +8307,19 @@ describe("App", () => {
     expect(objectiveOverview.attributes("data-current-goal-next-action-plain")).toContain("可先勾选现场安全确认");
     expect(objectiveOverview.attributes("data-current-goal-next-action-item-ids")).toBe("camera_wysiwyg,radar_map_points_wysiwyg,nav2_route_execution,keyboard_continuous_control,free_move,mapping_start");
     expect(objectiveOverview.attributes("data-current-goal-ready-action-ids")).toBe("free_move,keyboard_continuous_control");
+    expect(objectiveOverview.attributes("data-current-goal-ready-action-labels")).toBe("先自由移动,键盘连续手控");
     expect(objectiveOverview.attributes("data-current-goal-blocked-action-ids")).toBe("camera_wysiwyg,radar_map_points_wysiwyg,nav2_route_execution,mapping_start");
+    expect(objectiveOverview.attributes("data-current-goal-missing-ids")).toBe("camera_wysiwyg,radar_map_points_wysiwyg,nav2_route_execution,keyboard_continuous_control,free_move,mapping_start");
+    expect(objectiveOverview.attributes("data-current-goal-missing-labels")).toBe("画面所见即所得,雷达点贴到地图,完整图上行程,键盘连续手控,先自由移动,传感器就绪后建图");
+    expect(objectiveOverview.attributes("data-current-goal-blocked-ids")).toBe("camera_wysiwyg,radar_map_points_wysiwyg,nav2_route_execution,mapping_start");
+    expect(objectiveOverview.attributes("data-current-goal-blocked-labels")).toBe("画面所见即所得,雷达点贴到地图,完整图上行程,传感器就绪后建图");
+    expect(objectiveOverview.attributes("data-current-goal-move-now-status-plain")).toContain("可先动：先自由移动、键盘连续手控");
+    expect(objectiveOverview.attributes("data-current-goal-move-now-status-plain")).toContain("相机和雷达只影响建图验收");
+    expect(objectiveOverview.attributes("data-current-goal-mapping-blockers-plain")).toContain("建图缺口：画面所见即所得、雷达点贴到地图、传感器就绪后建图");
+    expect(objectiveOverview.attributes("data-current-goal-mapping-blockers-plain")).toContain("不阻止先低速自由移动");
+    expect(objectiveOverview.attributes("data-current-goal-mapping-blocked-only-by-camera")).toBe("false");
+    expect(objectiveOverview.attributes("data-current-goal-free-move-allowed-while-mapping-blocked")).toBe("true");
+    expect(objectiveOverview.attributes("data-current-goal-camera-only-blocks-mapping-plain")).toBe("建图仍需相机和雷达；自由移动可先做。");
     expect(objectiveOverview.attributes("data-current-goal-sends-motion-when-clicked")).toBe("false");
     const objectiveMotion = wrapper.find('[data-testid="plain-objective-overview-motion"]');
     expect(objectiveMotion.attributes("data-objective-id")).toBe("motion");
