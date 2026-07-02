@@ -3263,6 +3263,13 @@ export interface RobotControlLiveClosureSummary {
   fixed_radar_overlay_map_preview_endpoint: "/api/robot-control/map/preview";
   radar_overlay_refresh_sends_motion: false;
   radar_overlay_refresh_starts_radar_lifecycle: false;
+  radar_overlay_refresh_starts_nav2: false;
+  radar_overlay_refresh_starts_manual: false;
+  radar_overlay_refresh_starts_keyboard: false;
+  radar_overlay_refresh_starts_free_roam: false;
+  radar_overlay_refresh_starts_map_runtime: false;
+  radar_overlay_refresh_submits_delivery: false;
+  radar_overlay_refresh_stops_motion: false;
   fixed_radar_start_endpoint: "/api/robot-control/radar/start";
   fixed_radar_stop_endpoint: "/api/robot-control/radar/stop";
   radar_start_map_wysiwyg_required: true;
@@ -4337,6 +4344,13 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   fixed_radar_overlay_map_preview_endpoint?: RobotControlLiveClosureSummary["fixed_radar_overlay_map_preview_endpoint"];
   radar_overlay_refresh_sends_motion?: RobotControlLiveClosureSummary["radar_overlay_refresh_sends_motion"];
   radar_overlay_refresh_starts_radar_lifecycle?: RobotControlLiveClosureSummary["radar_overlay_refresh_starts_radar_lifecycle"];
+  radar_overlay_refresh_starts_nav2?: RobotControlLiveClosureSummary["radar_overlay_refresh_starts_nav2"];
+  radar_overlay_refresh_starts_manual?: RobotControlLiveClosureSummary["radar_overlay_refresh_starts_manual"];
+  radar_overlay_refresh_starts_keyboard?: RobotControlLiveClosureSummary["radar_overlay_refresh_starts_keyboard"];
+  radar_overlay_refresh_starts_free_roam?: RobotControlLiveClosureSummary["radar_overlay_refresh_starts_free_roam"];
+  radar_overlay_refresh_starts_map_runtime?: RobotControlLiveClosureSummary["radar_overlay_refresh_starts_map_runtime"];
+  radar_overlay_refresh_submits_delivery?: RobotControlLiveClosureSummary["radar_overlay_refresh_submits_delivery"];
+  radar_overlay_refresh_stops_motion?: RobotControlLiveClosureSummary["radar_overlay_refresh_stops_motion"];
   fixed_radar_start_endpoint?: RobotControlLiveClosureSummary["fixed_radar_start_endpoint"];
   fixed_radar_stop_endpoint?: RobotControlLiveClosureSummary["fixed_radar_stop_endpoint"];
   radar_start_map_wysiwyg_required?: RobotControlLiveClosureSummary["radar_start_map_wysiwyg_required"];

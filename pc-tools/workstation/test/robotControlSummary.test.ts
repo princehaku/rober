@@ -632,6 +632,20 @@ describe("robotControlSummary", () => {
     expect(summary.fixed_radar_overlay_map_preview_endpoint).toBe("/api/robot-control/map/preview");
     expect(summary.radar_overlay_refresh_sends_motion).toBe(false);
     expect(summary.radar_overlay_refresh_starts_radar_lifecycle).toBe(false);
+    expect(summary.radar_overlay_refresh_starts_nav2).toBe(false);
+    expect(summary.radar_overlay_refresh_starts_manual).toBe(false);
+    expect(summary.radar_overlay_refresh_starts_keyboard).toBe(false);
+    expect(summary.radar_overlay_refresh_starts_free_roam).toBe(false);
+    expect(summary.radar_overlay_refresh_starts_map_runtime).toBe(false);
+    expect(summary.radar_overlay_refresh_submits_delivery).toBe(false);
+    expect(summary.radar_overlay_refresh_stops_motion).toBe(false);
+    expect(summary.live_closure_summary?.radar_overlay_refresh_starts_nav2).toBe(false);
+    expect(summary.live_closure_summary?.radar_overlay_refresh_starts_manual).toBe(false);
+    expect(summary.live_closure_summary?.radar_overlay_refresh_starts_keyboard).toBe(false);
+    expect(summary.live_closure_summary?.radar_overlay_refresh_starts_free_roam).toBe(false);
+    expect(summary.live_closure_summary?.radar_overlay_refresh_starts_map_runtime).toBe(false);
+    expect(summary.live_closure_summary?.radar_overlay_refresh_submits_delivery).toBe(false);
+    expect(summary.live_closure_summary?.radar_overlay_refresh_stops_motion).toBe(false);
     expect(summary.live_closure_summary?.camera_recovery_sends_motion).toBe(false);
     expect(summary.live_closure_summary?.camera_recovery_starts_map_runtime).toBe(false);
     expect(summary.live_closure_summary?.live_wysiwyg_camera_recovery_sequence).toEqual([
