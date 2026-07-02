@@ -1,7 +1,7 @@
 :root {
-  --plain-map-large-min-height: 840px;
-  --plain-map-large-target-height: calc(100vh - 24px);
-  --plain-map-large-max-height: 1400px;
+  --plain-map-large-min-height: 960px;
+  --plain-map-large-target-height: calc(100vh - 8px);
+  --plain-map-large-max-height: 1800px;
   --plain-map-fullscreen-height: 100vh;
   color: #17202a;
   background: #f4f6f8;
@@ -34,7 +34,7 @@ button {
 
 .shell {
   /* 现场 PC 大屏优先服务地图观察，普通控制台应接近占满浏览器宽度。 */
-  width: min(2800px, 100%);
+  width: min(3200px, 100%);
   margin: 0 auto;
   padding: 0 0 10px;
 }
@@ -533,8 +533,8 @@ h3 {
 }
 
 .robot-console-grid[data-layout="visual-first"] {
-  /* 普通首页就是驾驶台：左边大地图，右边图传和 WASD，其他验收材料继续在下方保留。 */
-  grid-template-columns: minmax(0, 2.35fr) minmax(330px, 0.75fr);
+  /* 普通首页就是驾驶台：地图是主屏，图传和 WASD 保留在右侧窄栏，避免地图继续像小预览。 */
+  grid-template-columns: minmax(0, 4fr) minmax(300px, 0.75fr);
   grid-template-areas:
     "map camera"
     "map drive"
@@ -567,11 +567,11 @@ h3 {
 }
 
 .robot-console-grid[data-layout="visual-first"] .plain-map-panel {
-  /* 地图仍是主视图，但必须和实时画面、WASD 同屏出现。 */
+  /* 地图是 PC 端主视图，首页优先给它接近整屏的高度；/map 仍保留纯满屏观察。 */
   position: relative;
   order: 0;
   grid-area: map;
-  height: clamp(600px, calc(100vh - 72px), 900px);
+  height: clamp(760px, calc(100vh - 12px), 1400px);
   min-height: 0;
   overflow: auto;
 }
@@ -2287,9 +2287,9 @@ h3 {
 }
 
 .robot-console-grid[data-layout="visual-first"] .plain-map-panel:not([data-observer-mode="true"]) .plain-map-viewport[data-size="large"] .plain-map-layer {
-  /* 首页地图与图传/WASD 同屏；默认画布再放大，地图太小时优先把面积给主地图。 */
-  height: clamp(600px, calc(100vh - 104px), 900px);
-  min-height: 600px;
+  /* 首页地图与图传/WASD 同屏；先把可见画布做大，再用缩放看局部细节。 */
+  height: clamp(720px, calc(100vh - 84px), 1280px);
+  min-height: 720px;
 }
 
 .plain-map-viewport[data-size="fullscreen"] .plain-map-layer {

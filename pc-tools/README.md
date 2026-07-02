@@ -21,6 +21,15 @@ pc-tools/workstation/
 工作站，不会自动执行 Nav2、manual、delivery complete、keyboard pulse、stop 或
 `/cmd_vel`。
 
+2026-07-03 04:11 CST 起，PC 首页地图继续按普通用户主视图处理，但修正“看起来还是太小”的布局原因：
+工作站外壳扩到 `min(3200px, 100%)`，visual-first 布局把地图列提升为 `4fr`、右侧图传/WASD 窄栏为
+`0.75fr`，首页地图卡高度提升为 `clamp(760px, calc(100vh - 12px), 1400px)`，真实画布高度提升为
+`clamp(720px, calc(100vh - 84px), 1280px)`。缩放仍默认 `300%`、最高 `800%`，避免重新回到几千百分比导致
+滚动不可控；普通用户优先用 PC 首页和 `/map` 大屏。ROS2 配套结论保持分层：本地工程调试用 RViz2 /
+`nav2_rviz_plugins` 看 `/map`、`/scan`、TF、规划轨迹、定位和 costmap；远程浏览器观察用
+`foxglove_bridge` + Foxglove Web 连接 `ws://192.168.1.11:8765`；这些工具只观察，不替代 PC 简易界面，
+也不发送 `/cmd_vel`、manual、Nav2 goal、建图或 stop。
+
 2026-07-02 CST 起，远程浏览器地图观察不再只给裸 Foxglove 命令，而是使用项目包装入口
 `ros2 launch ros2_trashbot_bringup foxglove_bridge.launch.py`。该 launch 默认绑定
 `0.0.0.0:8765`，只开放地图、雷达、TF、路线、定位、相机图像和 costmap 观察 topic，并把
