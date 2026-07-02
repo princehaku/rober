@@ -1565,7 +1565,7 @@ function radarStatusPlainFields(
     ? "刷新地图画面，确认地图上实际显示的雷达点数。"
     : radarStopped
       ? "先启动雷达并等待新扫描，再刷新地图画面确认雷达点。"
-      : "先刷新雷达状态，就绪后再刷新地图画面确认雷达点。";
+      : "先刷新雷达扫描读数，再读取雷达状态；就绪后刷新地图画面确认雷达点。";
   return {
     continuous_scan_status: continuous,
     lifecycle_running: running,

@@ -2227,7 +2227,7 @@ function radarSummaryFromReadbacks(
       ? "先启动雷达并等待新扫描，再刷新地图画面确认雷达点。"
     : hasMissingObservations
         ? lidar.radar_map_overlay_next_action_plain || `先补齐雷达扫描材料：${missingObservationPlain}；有新扫描后再刷新地图画面。`
-        : "先刷新雷达状态，就绪后再刷新地图画面确认雷达点。";
+        : "先刷新雷达扫描读数，再读取雷达状态；就绪后刷新地图画面确认雷达点。";
   return {
     status,
     plain_hint: radarPlainHint(radarStatusPlain, radarNextActionPlain),
