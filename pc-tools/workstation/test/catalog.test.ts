@@ -16700,11 +16700,11 @@ describe("workstation fail-closed API contracts", () => {
       });
       const quickBody = await quickResponse.json() as RobotControlCameraFirstFrameProbeProxyResponse;
 
-      expect(timeoutSpy).toHaveBeenLastCalledWith(60_000);
+      expect(timeoutSpy).toHaveBeenLastCalledWith(12_000);
       expect(quickResponse.status).toBe(200);
       expect(quickBody.proxy_status).toBe("probe_failed");
-      expect(quickBody.failure_reason).toBe("fetch_timeout_60000ms");
-      expect(quickBody.blocked_reasons).toEqual(["fetch_timeout_60000ms"]);
+      expect(quickBody.failure_reason).toBe("fetch_timeout_12000ms");
+      expect(quickBody.blocked_reasons).toEqual(["fetch_timeout_12000ms"]);
       expect(quickBody.normalized_base_url).toBe(upstream.baseUrl);
       expect(quickBody.remote_http_status).toBeNull();
       expect(quickBody.readback_only).toBe(true);
@@ -16719,11 +16719,11 @@ describe("workstation fail-closed API contracts", () => {
       });
       const smokeBody = await smokeResponse.json() as RobotControlCameraFirstFrameProbeProxyResponse;
 
-      expect(timeoutSpy).toHaveBeenLastCalledWith(75_000);
+      expect(timeoutSpy).toHaveBeenLastCalledWith(45_000);
       expect(smokeResponse.status).toBe(200);
       expect(smokeBody.proxy_status).toBe("probe_failed");
-      expect(smokeBody.failure_reason).toBe("fetch_timeout_75000ms");
-      expect(smokeBody.blocked_reasons).toEqual(["fetch_timeout_75000ms"]);
+      expect(smokeBody.failure_reason).toBe("fetch_timeout_45000ms");
+      expect(smokeBody.blocked_reasons).toEqual(["fetch_timeout_45000ms"]);
       expect(smokeBody.normalized_base_url).toBe(upstream.baseUrl);
       expect(smokeBody.remote_http_status).toBeNull();
       expect(smokeBody.readback_only).toBe(true);

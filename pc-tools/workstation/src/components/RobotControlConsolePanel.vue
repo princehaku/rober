@@ -99,7 +99,7 @@ type PlainMapRadarReadback = {
   source: PlainMapRadarOverlaySource;
 };
 type PlainMapWysiwygLayerItem = {
-  id: "image" | "route" | "robot" | "radar";
+  id: "image" | "route" | "goal" | "robot" | "radar";
   label: string;
   state: string;
   currentVisible: boolean;
@@ -8517,6 +8517,9 @@ const plainMapVisualSummary = computed(() => {
     routePathState: routePath?.state ?? "",
     routePathAria: routePath?.label ?? "",
     routeEndpointMarkers: routePath?.endpoints.filter((point) => point.id === "start" || !routeGoal) ?? [],
+    routeTargetVisible: Boolean(routeGoal || routePath?.executionGoal),
+    routeTargetState: routeGoal?.state ?? (routePath ? (routePath.state === "最近路线" ? "最近路线终点" : "路线终点") : "未显示"),
+    routeTargetText: routeGoal?.aria ?? (routePath ? `目标点已显示，${routePath.endpointSummary}` : "目标点未画到当前地图"),
     showFreeRoamSweepPlan: Boolean(freeRoamSweepPlan),
     freeRoamSweepPlanPoints: freeRoamSweepPlan?.points ?? "",
     freeRoamSweepPlanState: freeRoamSweepPlan?.state ?? "",
@@ -8554,6 +8557,7 @@ const plainMapWysiwygLayerStrip = computed(() => {
   const map = plainMapVisualSummary.value;
   const imageVisible = Boolean(map.imageDataUrl);
   const routeVisible = Boolean(map.showRoutePath);
+  const goalVisible = Boolean(map.routeTargetVisible);
   const robotVisible = Boolean(map.showRobotPose);
   const radarVisible = Boolean(map.radarMapPointsVisible);
   const radarHasSuppressedOldPoints = !radarVisible && map.radarMapNotCurrentSourcePointCount > 0;
@@ -8589,6 +8593,13 @@ const plainMapWysiwygLayerStrip = computed(() => {
       state: routeVisible ? "已显示" : "未显示",
       currentVisible: routeVisible,
       text: routeVisible ? map.routePathLabel || "行程已画到当前地图" : "行程未画到当前地图",
+    },
+    {
+      id: "goal",
+      label: "目标点",
+      state: goalVisible ? map.routeTargetState || "已显示" : "未显示",
+      currentVisible: goalVisible,
+      text: goalVisible ? map.routeTargetText : "目标点未画到当前地图",
     },
     {
       id: "robot",
@@ -24747,6 +24758,9 @@ onBeforeUnmount(() => {
             :data-layer-summary="plainMapWysiwygLayerStrip.text"
             :data-map-image-visible="String(plainMapWysiwygLayerStrip.items.find((item) => item.id === 'image')?.currentVisible ?? false)"
             :data-route-layer-visible="String(plainMapWysiwygLayerStrip.items.find((item) => item.id === 'route')?.currentVisible ?? false)"
+            :data-goal-marker-visible="String(plainMapWysiwygLayerStrip.items.find((item) => item.id === 'goal')?.currentVisible ?? false)"
+            :data-route-target-marker-visible="String(plainMapVisualSummary.routeTargetVisible)"
+            :data-route-target-state="plainMapVisualSummary.routeTargetState"
             :data-robot-marker-visible="String(plainMapWysiwygLayerStrip.items.find((item) => item.id === 'robot')?.currentVisible ?? false)"
             :data-radar-map-points-visible="String(plainMapVisualSummary.radarMapPointsVisible)"
             :data-radar-map-point-count="String(plainMapVisualSummary.radarMapPointCount)"

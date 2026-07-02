@@ -115,8 +115,8 @@ const FREE_ROAM_MAPPING_START_REQUIRED_GATE_IDS = [
   "camera_first_frame",
   "lidar_fresh",
 ] as const;
-const CAMERA_FIRST_FRAME_PROBE_TIMEOUT_MS = 60_000;
-const CAMERA_FIRST_FRAME_BACKEND_SMOKE_TIMEOUT_MS = 75_000;
+const CAMERA_FIRST_FRAME_PROBE_TIMEOUT_MS = 12_000;
+const CAMERA_FIRST_FRAME_BACKEND_SMOKE_TIMEOUT_MS = 45_000;
 const PORT = Number(process.env.PORT ?? WORKSTATION_NODE_PORT);
 const HOST = process.env.HOST ?? WORKSTATION_PUBLIC_HOST;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));

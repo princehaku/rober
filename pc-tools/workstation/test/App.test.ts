@@ -9397,13 +9397,17 @@ describe("App", () => {
     expect(mapWysiwygLayerStrip.exists()).toBe(true);
     expect(mapWysiwygLayerStrip.attributes("data-state")).toBe("未完整");
     expect(mapWysiwygLayerStrip.attributes("data-current-layer-ids")).toBe("image");
-    expect(mapWysiwygLayerStrip.attributes("data-missing-layer-ids")).toBe("route,robot,radar");
+    expect(mapWysiwygLayerStrip.attributes("data-missing-layer-ids")).toBe("route,goal,robot,radar");
     expect(mapWysiwygLayerStrip.attributes("data-layer-summary")).toContain("地图图像已显示");
     expect(mapWysiwygLayerStrip.attributes("data-layer-summary")).toContain("图上行程未显示");
+    expect(mapWysiwygLayerStrip.attributes("data-layer-summary")).toContain("目标点未显示");
     expect(mapWysiwygLayerStrip.attributes("data-layer-summary")).toContain("小车位置未定位");
     expect(mapWysiwygLayerStrip.attributes("data-layer-summary")).toContain("雷达点未贴当前图");
     expect(mapWysiwygLayerStrip.attributes("data-map-image-visible")).toBe("true");
     expect(mapWysiwygLayerStrip.attributes("data-route-layer-visible")).toBe("false");
+    expect(mapWysiwygLayerStrip.attributes("data-goal-marker-visible")).toBe("false");
+    expect(mapWysiwygLayerStrip.attributes("data-route-target-marker-visible")).toBe("false");
+    expect(mapWysiwygLayerStrip.attributes("data-route-target-state")).toBe("未显示");
     expect(mapWysiwygLayerStrip.attributes("data-robot-marker-visible")).toBe("false");
     expect(mapWysiwygLayerStrip.attributes("data-radar-map-points-visible")).toBe("false");
     expect(mapWysiwygLayerStrip.attributes("data-radar-map-point-count")).toBe("0");
@@ -9420,6 +9424,8 @@ describe("App", () => {
     expect(mapWysiwygLayerStrip.attributes("data-starts-free-roam")).toBe("false");
     expect(wrapper.find('[data-testid="plain-map-wysiwyg-layer-image"]').attributes("data-current-visible")).toBe("true");
     expect(wrapper.find('[data-testid="plain-map-wysiwyg-layer-route"]').attributes("data-current-visible")).toBe("false");
+    expect(wrapper.find('[data-testid="plain-map-wysiwyg-layer-goal"]').attributes("data-current-visible")).toBe("false");
+    expect(wrapper.find('[data-testid="plain-map-wysiwyg-layer-goal"]').attributes("aria-label")).toContain("目标点未画到当前地图");
     expect(wrapper.find('[data-testid="plain-map-wysiwyg-layer-robot"]').attributes("data-current-visible")).toBe("false");
     expect(wrapper.find('[data-testid="plain-map-wysiwyg-layer-radar"]').attributes("data-state")).toBe("未贴当前图");
     expect(wrapper.find('[data-testid="plain-map-wysiwyg-layer-radar"]').attributes("data-current-visible")).toBe("false");
@@ -17483,6 +17489,8 @@ describe("App", () => {
     expect(marker.attributes("aria-label")).toContain("地图坐标 x=0.80, y=0.00");
     expect(marker.attributes("style")).toContain("left: 80%");
     expect(marker.attributes("style")).toContain("top: 98%");
+    expect(wrapper.find('[data-testid="plain-map-wysiwyg-layer-goal"]').attributes("data-current-visible")).toBe("true");
+    expect(wrapper.find('[data-testid="plain-map-wysiwyg-layer-goal"]').attributes("data-state")).toBe("到达未证明");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
@@ -18528,6 +18536,9 @@ describe("App", () => {
     expect(endMarker.attributes("aria-label")).toContain("地图坐标 x=0.80, y=0.00");
     expect(endMarker.attributes("style")).toContain("left: 80%");
     expect(endMarker.attributes("style")).toContain("top: 98%");
+    expect(wrapper.find('[data-testid="plain-map-wysiwyg-layer-goal"]').attributes("data-current-visible")).toBe("true");
+    expect(wrapper.find('[data-testid="plain-map-wysiwyg-layer-goal"]').attributes("data-state")).toBe("路线终点");
+    expect(wrapper.find('[data-testid="plain-map-wysiwyg-layer-goal"]').attributes("aria-label")).toContain("终点 x=0.80");
     expect(wrapper.find('[data-testid="plain-map-route-label"]').text()).toBe("路线已显示 3/15 个点");
     expect(wrapper.find('[data-testid="plain-map-coordinate-truth-label"]').text()).toBe("坐标口径：机器人位置未读到，雷达只显示最近障碍 0.30m，不贴到地图；路线 3/15 个点仍按地图坐标显示。");
     await wrapper.find('input[name="plainTripSafetyConfirmed"]').setValue(true);

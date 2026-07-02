@@ -1260,6 +1260,52 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertFalse(request["include_backend_smoke"])
         self.assertFalse(request["auto_format_fallback"])
 
+    def test_camera_probe_attempt_uses_short_non_backend_process_budget(self) -> None:
+        """普通首帧 fallback 不能给每个格式额外 6 秒，否则无帧 UVC 会把 HTTP 请求拖太久。"""
+
+        class FakeProcess:
+            returncode = 0
+
+            async def communicate(self):
+                payload = {
+                    "schema": "trashbot.camera_first_frame_probe.v1",
+                    "status": "first_frame_timeout",
+                    "open_ok": True,
+                    "read_ok": False,
+                    "visible_content_proven": False,
+                }
+                return json.dumps(payload).encode("utf-8"), b""
+
+            def kill(self) -> None:
+                self.killed = True
+
+        observed_timeouts: list[float] = []
+
+        async def fake_wait_for(awaitable, timeout):
+            observed_timeouts.append(timeout)
+            return await awaitable
+
+        request = upper_robot_api.safe_camera_probe_request({
+            "read_call_timeout_s": 1.5,
+            "include_backend_smoke": False,
+        })
+
+        with mock.patch.object(upper_robot_api.asyncio, "create_subprocess_exec", return_value=FakeProcess()):
+            with mock.patch.object(upper_robot_api.asyncio, "wait_for", side_effect=fake_wait_for):
+                result = asyncio.run(
+                    upper_robot_api.run_camera_probe_attempt(
+                        Path("/tmp/camera_first_frame_probe.py"),
+                        request,
+                        Path("/tmp/probe.jpg"),
+                        max_process_timeout_s=0.8,
+                    )
+                )
+
+        self.assertEqual("first_frame_timeout", result["status"])
+        self.assertEqual([0.8], observed_timeouts)
+        self.assertEqual(0.8, result["process_timeout_s"])
+        self.assertFalse(request["include_backend_smoke"])
+
     def test_camera_probe_missing_script_fails_closed_without_serial_or_motion(self) -> None:
         """首帧探针脚本不存在时也必须结构化失败，且不触碰底盘。"""
         with mock.patch.object(upper_robot_api.Path, "exists", return_value=False):

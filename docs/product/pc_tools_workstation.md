@@ -5299,3 +5299,13 @@ Nav2、manual、keyboard、free-roam、建图 runtime、delivery、stop 或 `/cm
 （`ros2 launch ros2_trashbot_bringup rviz.launch.py`）和远程浏览器 Foxglove
 （`ros2 launch ros2_trashbot_bringup foxglove_bridge.launch.py` 后连接 `ws://192.168.1.11:8765`），二者只用于观察
 `/map`、`/scan`、`/tf`、路径、定位和 costmap，不替代 PC 简易发车界面。
+
+2026-07-02 22:05 CST 起，PC 地图 WYSIWYG 图层条从地图图像、图上行程、小车位置、雷达点四层扩展为五层：
+新增“目标点”层。当前 Nav2 latest/执行中目标会以 `plain-map-route-goal-marker` 显示；只有路线预览但还没有执行结果时，
+目标点层直接绑定路线终点 `plain-map-route-end-marker`，避免普通用户误以为“路线有了但目标点没显示”。`plain-map-wysiwyg-layer-strip`
+新增 `data-goal-marker-visible`、`data-route-target-marker-visible` 和 `data-route-target-state`，仍是只读显示状态，
+不启动 Nav2、manual、keyboard、free-roam、建图 runtime、delivery、stop 或 `/cmd_vel`。同轮把 PC
+`/api/robot-control/camera/first-frame/probe` 普通代理超时从 `60000ms` 收紧为 `12000ms`，backend smoke 显式诊断从
+`75000ms` 收紧为 `45000ms`；上车 `upper_robot_api.py` 的普通相机格式 fallback 增加总预算和单次进程短预算，避免 UVC 无帧时
+把 PC 页面拖到一分钟。真实摄像头若仍无帧，PC 会快速返回结构化失败和 USB/首帧诊断，用户可继续用 `/map` 大屏、键盘 PWM
+手控和雷达/路线观察。

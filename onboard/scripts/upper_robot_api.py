@@ -6845,6 +6845,7 @@ async def run_camera_probe_attempt(
     script_path: Path,
     request: dict[str, Any],
     sample_path: Path,
+    max_process_timeout_s: float | None = None,
 ) -> dict[str, Any]:
     """执行一次固定首帧探针；失败也返回结构化 payload，供 fallback 汇总。"""
     command = camera_probe_command(script_path, request, sample_path)
@@ -6856,7 +6857,11 @@ async def run_camera_probe_attempt(
         stderr=asyncio.subprocess.PIPE,
     )
     try:
-        process_timeout_s = request["read_call_timeout_s"] + (44.0 if request["include_backend_smoke"] else 6.0)
+        base_process_timeout_s = request["read_call_timeout_s"] + (44.0 if request["include_backend_smoke"] else 1.5)
+        process_timeout_s = base_process_timeout_s if max_process_timeout_s is None else min(
+            base_process_timeout_s,
+            max(0.5, max_process_timeout_s),
+        )
         stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=process_timeout_s)
     except asyncio.TimeoutError:
         process.kill()
@@ -6866,6 +6871,7 @@ async def run_camera_probe_attempt(
             "probe_request": request,
             "probe_payload": {"status": "probe_process_timeout"},
             "probe_returncode": None,
+            "process_timeout_s": process_timeout_s,
             "stderr_preview": "process_timeout",
         }
 
@@ -6884,6 +6890,7 @@ async def run_camera_probe_attempt(
         "probe_request": request,
         "probe_payload": probe_payload,
         "probe_returncode": process.returncode,
+        "process_timeout_s": process_timeout_s,
         "stderr_preview": stderr_text[:400],
     }
 
@@ -6910,6 +6917,8 @@ async def run_camera_first_frame_probe(body: dict[str, Any] | None = None) -> tu
     request = safe_camera_probe_request(body)
     script_path = Path(__file__).with_name("camera_first_frame_probe.py")
     started_ms = now_ms()
+    started_monotonic = time.monotonic()
+    total_budget_s = 52.0 if request.get("include_backend_smoke") else 14.0
     sample_root = Path(__file__).resolve().parents[1] / "runtime" / "camera"
     if not script_path.exists():
         return 503, {
@@ -6924,8 +6933,27 @@ async def run_camera_first_frame_probe(body: dict[str, Any] | None = None) -> tu
 
     attempts: list[dict[str, Any]] = []
     for index, attempt_request in enumerate(camera_probe_fallback_requests(request)):
+        elapsed_s = time.monotonic() - started_monotonic
+        remaining_s = total_budget_s - elapsed_s
+        if remaining_s <= 0.4:
+            # UVC 无帧时不能让 fallback 矩阵把 HTTP 请求拖到一分钟；保留已尝试材料后快速返回。
+            attempts.append({
+                "status": "probe_total_timeout",
+                "probe_request": attempt_request,
+                "probe_payload": {"status": "probe_total_timeout", "failure_reason": "probe_total_timeout"},
+                "probe_returncode": None,
+                "process_timeout_s": 0.0,
+                "stderr_preview": "probe_total_timeout",
+            })
+            break
         sample_path = sample_root / f"first_frame_probe_{started_ms}_{index}.jpg"
-        attempt = await run_camera_probe_attempt(script_path, attempt_request, sample_path)
+        bounded_attempt_request = dict(attempt_request)
+        if not bounded_attempt_request.get("include_backend_smoke"):
+            # 每次尝试都按剩余总预算收缩读帧窗口，避免最后一个格式独占整个剩余时间。
+            bounded_window_s = max(0.5, min(float(bounded_attempt_request["read_call_timeout_s"]), remaining_s - 0.3))
+            bounded_attempt_request["timeout_s"] = min(float(bounded_attempt_request["timeout_s"]), bounded_window_s)
+            bounded_attempt_request["read_call_timeout_s"] = bounded_window_s
+        attempt = await run_camera_probe_attempt(script_path, bounded_attempt_request, sample_path, remaining_s)
         attempts.append(attempt)
         if attempt.get("status") == "frame_read":
             break

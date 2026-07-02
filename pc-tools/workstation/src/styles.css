@@ -854,7 +854,7 @@ h3 {
 }
 
 .plain-map-wysiwyg-layer-strip {
-  /* 大地图自己的所见即所得状态条，只描述当前画布四层，不替代任何控制按钮。 */
+  /* 大地图自己的所见即所得状态条，只描述当前画布五层，不替代任何控制按钮。 */
   display: flex;
   flex-wrap: wrap;
   align-items: center;
