@@ -5901,6 +5901,11 @@ export interface RobotControlCameraMjpegStatusResponse extends ProofFlags {
   camera_usb_full_speed_detected: boolean;
   camera_hardware_action_required: boolean;
   camera_hardware_action_label: string;
+  first_frame_probe_status: string;
+  first_frame_probe_failure_reason: string;
+  first_frame_failure_reason: string;
+  camera_first_frame_probe_status: string;
+  camera_first_frame_failure_reason: string;
   camera_blocks_mapping_start: boolean;
   camera_blocks_free_move: false;
   camera_reprobe_after_hardware_action_required: boolean;

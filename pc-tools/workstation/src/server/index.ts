@@ -2723,6 +2723,18 @@ function cameraMjpegStatusResponse(
   const cameraCurrentVisible = previewVisibility.visible_status === "visible_cached_frame";
   const cameraHardwareActionRequired = cameraUsbFullSpeedDetected && !cameraCurrentVisible;
   const cameraHardwareActionLabel = cameraHardwareActionRequired ? "换高速USB后复测" : "复测相机首帧";
+  const firstFrameProbeStatus = cameraCurrentVisible
+    ? "frame_read"
+    : sourceReadiness === "first_frame_failed" || previewStatus === "source_first_frame_failed"
+      ? "source_first_frame_failed"
+      : "not_loaded";
+  const firstFrameFailureReason = firstFrameProbeStatus === "frame_read"
+    ? "none"
+    : sourceFailureReason !== "not_loaded"
+      ? sourceFailureReason
+      : primarySourceFailureReason !== "not_loaded"
+        ? primarySourceFailureReason
+        : lastFailureReason || "not_loaded";
   const sharedPreviewGapPlain = cameraCurrentVisible
     ? `共享预览已读到画面帧；当前 ${clientCount} 个页面共用同一条上游流，不会因为新页面进入而独占摄像头。`
     : `${previewVisibility.visible_plain.replace(/[。；\s]+$/g, "")}；共享入口可加入，但当前相机源还没有可显示帧。`;
@@ -2807,6 +2819,11 @@ function cameraMjpegStatusResponse(
     camera_usb_full_speed_detected: cameraUsbFullSpeedDetected,
     camera_hardware_action_required: cameraHardwareActionRequired,
     camera_hardware_action_label: cameraHardwareActionLabel,
+    first_frame_probe_status: firstFrameProbeStatus,
+    first_frame_probe_failure_reason: firstFrameFailureReason,
+    first_frame_failure_reason: firstFrameFailureReason,
+    camera_first_frame_probe_status: firstFrameProbeStatus,
+    camera_first_frame_failure_reason: firstFrameFailureReason,
     camera_blocks_mapping_start: !cameraCurrentVisible,
     camera_blocks_free_move: false,
     camera_reprobe_after_hardware_action_required: cameraHardwareActionRequired,

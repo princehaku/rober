@@ -15545,6 +15545,11 @@ describe("workstation fail-closed API contracts", () => {
       expect(statusBody.camera_usb_full_speed_detected).toBe(true);
       expect(statusBody.camera_hardware_action_required).toBe(true);
       expect(statusBody.camera_hardware_action_label).toBe("换高速USB后复测");
+      expect(statusBody.first_frame_probe_status).toBe("source_first_frame_failed");
+      expect(statusBody.first_frame_probe_failure_reason).toBe("first_frame_total_timeout");
+      expect(statusBody.first_frame_failure_reason).toBe("first_frame_total_timeout");
+      expect(statusBody.camera_first_frame_probe_status).toBe("source_first_frame_failed");
+      expect(statusBody.camera_first_frame_failure_reason).toBe("first_frame_total_timeout");
       expect(statusBody.camera_blocks_mapping_start).toBe(true);
       expect(statusBody.camera_blocks_free_move).toBe(false);
       expect(statusBody.camera_reprobe_after_hardware_action_required).toBe(true);

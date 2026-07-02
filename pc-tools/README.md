@@ -77,6 +77,12 @@ free-roam latest、map preview 和 summary，并看到当前还差相机首帧�
 `radar_overlay_source_point_count`、`radar_overlay_wysiwyg_complete` 和
 `radar_overlay_current_vs_source_plain`。现场 `curl` 单看 radar status 即可确认雷达本体 ready 后，地图上的雷达点是否已经 loaded；这仍然不启动雷达 lifecycle、Nav2、manual、keyboard、free-roam、建图、delivery、stop 或 `/cmd_vel`。
 
+2026-07-02 CST 起，`GET /api/robot-control/camera/mjpeg/status` 与 summary 同步暴露首帧失败 alias：
+`first_frame_probe_status`、`first_frame_probe_failure_reason`、`first_frame_failure_reason`、
+`camera_first_frame_probe_status` 和 `camera_first_frame_failure_reason`。现场脚本单看 MJPEG status 即可读到
+`source_first_frame_failed / first_frame_total_timeout` 这类首帧结论，不需要绕到 summary；该端点仍只读共享预览和上车
+camera health，不新建独占采集、不启动 Nav2、manual、keyboard、free-roam、建图、delivery、stop 或 `/cmd_vel`。
+
 2026-07-02 CST 起，当前相机所见缺口的主复验动作
 `POST /api/robot-control/camera/first-frame/probe` 也在回包本体直接暴露只读边界：
 `readback_only=true`、`camera_probe_readback_only=true`、`sends_motion_when_clicked=false`、
