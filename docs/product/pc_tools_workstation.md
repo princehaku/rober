@@ -5352,6 +5352,12 @@ full-speed 链路，`lsusb -t` 显示 UVC video/audio interface 均为 `12M`；�
 `camera_hardware_action_required=true`、`camera_blocks_free_move=false`；普通首页相机卡首屏固定显示
 `plain-camera-usb-recovery-proof`，直接告诉用户这是 USB full-speed/物理链路问题，不是页面独占。
 
+2026-07-03 05:45 CST 起，普通 PC 首页地图默认从 400% 局部细节改为 45% 完整态势视角：首屏驾驶台保持左侧地图、
+右侧实时图传和 WASD/方向键连续手控，地图默认完整显示真实地图、Nav2 路线、小车位置、雷达点和目标点。
+`适配` 回到该完整视角，`细节放大` 仍可一键到 1200% 排障，`/map` 直达页同样使用完整态势默认值。
+ROS2 配套不替代 PC 简易界面：RViz2 只用于本地工程调试 `/map`、`/scan`、TF、路径、定位和 costmap，
+Foxglove bridge 只用于远程浏览器观察，二者都不发送底盘运动命令。
+
 2026-07-03 05:30 CST 起，普通 PC 首页地图继续放大：驾驶台布局从 `4fr/0.75fr` 调整为
 `5fr/0.62fr`，右列保留实时图传和 WASD，但最小宽度收紧到 `280px`；首页大地图卡改为
 `clamp(860px, 100vh, 1600px)`，卡内地图画布改为

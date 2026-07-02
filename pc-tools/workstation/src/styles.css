@@ -534,7 +534,7 @@ h3 {
 
 .robot-console-grid[data-layout="visual-first"] {
   /* 普通首页就是驾驶台：地图是主屏，图传和 WASD 保留在右侧窄栏，避免地图继续像小预览。 */
-  grid-template-columns: minmax(0, 5fr) minmax(280px, 0.62fr);
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 360px);
   grid-template-areas:
     "map camera"
     "map drive"
@@ -548,7 +548,7 @@ h3 {
   grid-area: camera;
   display: flex;
   flex-direction: column;
-  max-height: min(43vh, 390px);
+  max-height: min(40vh, 305px);
   overflow: auto;
 }
 
@@ -613,7 +613,7 @@ h3 {
   grid-area: drive;
   display: flex;
   flex-direction: column;
-  max-height: min(43vh, 390px);
+  max-height: min(42vh, 320px);
   overflow: auto;
 }
 
@@ -669,7 +669,7 @@ h3 {
 
 .robot-console-grid[data-layout="visual-first"] .camera-preview-frame {
   order: -1;
-  min-height: 220px;
+  min-height: 180px;
 }
 
 .robot-console-grid[data-layout="visual-first"] .plain-camera-panel .plain-camera-usb-recovery-proof {
@@ -1718,6 +1718,36 @@ h3 {
   border-left: 3px solid transparent;
 }
 
+.robot-console-grid[data-layout="visual-first"] .plain-map-panel {
+  /* 后面的通用 grid-column 会覆盖 grid-area；这里重新声明，确保首屏是地图+图传+WASD 三栏驾驶台。 */
+  grid-area: map;
+  grid-column: auto;
+  grid-row: 1 / span 2;
+  height: clamp(620px, calc(100vh - 96px), 860px);
+  min-height: 620px;
+  overflow: auto;
+}
+
+.robot-console-grid[data-layout="visual-first"] .plain-camera-panel {
+  grid-area: camera;
+  grid-column: auto;
+  grid-row: auto;
+}
+
+.robot-console-grid[data-layout="visual-first"] .plain-motion-panel {
+  grid-area: drive;
+  grid-column: auto;
+  grid-row: auto;
+}
+
+.robot-console-grid[data-layout="visual-first"] .plain-connection-panel,
+.robot-console-grid[data-layout="visual-first"] .plain-radar-panel,
+.robot-console-grid[data-layout="visual-first"] .plain-free-roam-map {
+  /* 连接、雷达详情和建图入口保留，但放到 cockpit 下方，不再挤占第一屏。 */
+  grid-area: auto;
+  grid-column: 1 / -1;
+}
+
 .plain-map-panel[data-size="large"] {
   /* 普通 PC 首屏默认把地图当主视图，给真实地图足够高度而不是小预览卡。 */
   min-height: min(100vh, 1380px);
@@ -2318,7 +2348,7 @@ h3 {
 }
 
 .plain-map-overlay-frame {
-  /* 缩放作用在同一个 overlay frame 上；默认 400% 看细节，适配按钮再回到 100% 全图。 */
+  /* 缩放作用在同一个 overlay frame 上；默认 45% 先保完整态势，细节放大再看局部。 */
   position: relative;
   flex: 0 0 auto;
   width: calc(100% * var(--plain-map-zoom, 1));
@@ -2328,11 +2358,11 @@ h3 {
 }
 
 .plain-map-layer.has-real-map .plain-map-overlay-frame {
-  /* 真实地图按画布高度优先撑满，宽地图允许横向滚动，避免显示成一条很小的横幅。 */
-  width: auto;
-  height: calc(100% * var(--plain-map-zoom, 1));
-  min-width: 100%;
-  min-height: 100%;
+  /* 真实地图把 45% 定义为完整宽度视角；继续放大才进入滚动画布，避免 /map 直达页又显得偏小。 */
+  width: calc(100% * var(--plain-map-zoom, 1) / var(--plain-map-fit-zoom, 1));
+  height: auto;
+  min-width: 0;
+  min-height: 0;
   max-width: none;
   aspect-ratio: var(--map-aspect, 1);
 }
