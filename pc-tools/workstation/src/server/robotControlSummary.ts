@@ -10852,6 +10852,15 @@ export async function buildRobotControlSummary(
     }
     return `自由自助移动暂未就绪：先恢复 free-roam 状态机、停止兜底或上车连接；当前缺口：${freeMoveActionMissingEvidence.join("、") || "自由移动入口未就绪"}。`;
   })();
+  const currentFreeMoveControlPackNextActionPlain = (() => {
+    if (currentFreeMoveControlPackStatus === "complete") {
+      return "继续监看地图画面和停止兜底；需要停下时点击停止。";
+    }
+    if (currentFreeMoveControlPackStatus === "ready_for_safety_confirm") {
+      return "勾现场安全确认后启动自由自助移动；启动后只读读取 free-roam latest、地图预览和 summary。";
+    }
+    return "先恢复 free-roam 状态机、停止兜底或上车连接，再回到安全确认启动。";
+  })();
   const mappingComplete = mappingRunbookItem?.completed === true;
   const currentMappingControlPackStatus: "complete" | "ready_for_safety_confirm" | "blocked" = mappingComplete
     ? "complete"
@@ -10866,6 +10875,26 @@ export async function buildRobotControlSummary(
       return "建图可启动：摄像头首帧和雷达新鲜读数都已满足；勾现场安全确认后启动建图记录，启动后只读读取 free-roam latest、地图预览和 summary。";
     }
     return `建图暂未就绪：摄像头 ready=${!liveClosureSummary.mapping_camera_blocks_start}，雷达 ready=${!liveClosureSummary.mapping_lidar_blocks_start}；当前缺口：${mappingActionMissingEvidence.join("、") || "建图入口未就绪"}。自由移动不受建图缺口影响。`;
+  })();
+  const currentMappingControlPackNextActionPlain = (() => {
+    if (currentMappingControlPackStatus === "complete") {
+      return "继续监看地图画面；需要停下时点击停止。";
+    }
+    if (currentMappingControlPackStatus === "ready_for_safety_confirm") {
+      return "勾现场安全确认后启动建图记录；启动后只读读取 free-roam latest、地图预览和 summary。";
+    }
+    if (mappingStartOnlyCameraMissing) {
+      return liveClosureSummary.camera_hardware_action_required
+        ? liveClosureSummary.camera_recovery_next_action_plain
+        : "先复测相机首帧并读取共享预览状态；自由移动不受影响。";
+    }
+    if (!liveClosureSummary.mapping_lidar_blocks_start && liveClosureSummary.mapping_camera_blocks_start) {
+      return "先复测相机首帧；雷达已满足，低速自由移动仍可先做。";
+    }
+    if (!liveClosureSummary.mapping_camera_blocks_start && liveClosureSummary.mapping_lidar_blocks_start) {
+      return "先刷新雷达扫描和地图画面；低速自由移动仍可先做。";
+    }
+    return "先补齐画面首帧和雷达新鲜读数；低速自由移动仍可先做。";
   })();
   const fieldAcceptanceWysiwygNextActions = [
     liveClosureSummary.live_wysiwyg_missing_surface_ids.includes("camera")
@@ -11683,6 +11712,7 @@ export async function buildRobotControlSummary(
     current_free_move_action_stops_motion: false,
     current_free_move_control_pack_status: currentFreeMoveControlPackStatus,
     current_free_move_control_pack_plain: currentFreeMoveControlPackPlain,
+    current_free_move_control_pack_next_action_plain: currentFreeMoveControlPackNextActionPlain,
     current_free_move_control_pack_action_id: freeMoveRunbookItem?.id ?? "start_free_move",
     current_free_move_control_pack_display_label: freeMoveRunbookItem?.display_label ?? "自由自助移动",
     current_free_move_control_pack_start_endpoint: freeMoveActionStartEndpoint,
@@ -11786,6 +11816,7 @@ export async function buildRobotControlSummary(
     current_mapping_action_stops_motion: false,
     current_mapping_control_pack_status: currentMappingControlPackStatus,
     current_mapping_control_pack_plain: currentMappingControlPackPlain,
+    current_mapping_control_pack_next_action_plain: currentMappingControlPackNextActionPlain,
     current_mapping_control_pack_action_id: mappingRunbookItem?.id ?? "start_mapping_when_sensors_ready",
     current_mapping_control_pack_display_label: mappingRunbookItem?.display_label ?? "传感器就绪后建图",
     current_mapping_control_pack_start_endpoint: mappingActionStartEndpoint,

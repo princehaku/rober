@@ -1464,6 +1464,7 @@ describe("robotControlSummary", () => {
     expect(summary.current_free_move_control_pack_status).toBe("ready_for_safety_confirm");
     expect(summary.current_free_move_control_pack_plain).toContain("自由自助移动可复验");
     expect(summary.current_free_move_control_pack_plain).toContain("相机和雷达不作为发车前置");
+    expect(summary.current_free_move_control_pack_next_action_plain).toBe("勾现场安全确认后启动自由自助移动；启动后只读读取 free-roam latest、地图预览和 summary。");
     expect(summary.current_free_move_control_pack_action_id).toBe("start_free_move");
     expect(summary.current_free_move_control_pack_display_label).toBe("自由自助移动");
     expect(summary.current_free_move_control_pack_start_endpoint).toBe("/api/robot-control/free-roam/autonomy/start");
@@ -1518,6 +1519,7 @@ describe("robotControlSummary", () => {
     expect(summary.current_free_move_control_pack_readback_starts_map_runtime).toBe(false);
     expect(summary.current_free_move_control_pack_readback_submits_delivery).toBe(false);
     expect(summary.current_free_move_control_pack_readback_stops_motion).toBe(false);
+    expect(summary.current_mapping_control_pack_next_action_plain).toContain("自由移动");
     expect(summary.field_acceptance_safety_confirm_ready_actions).toEqual([
       expect.objectContaining({
         id: "run_nav2_route",

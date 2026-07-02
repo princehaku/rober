@@ -952,6 +952,7 @@ const fixtures: Record<string, unknown> = {
     current_free_move_action_stops_motion: false,
     current_free_move_control_pack_status: "ready_for_safety_confirm",
     current_free_move_control_pack_plain: "自由自助移动可复验：先勾现场安全确认再启动；相机和雷达不作为发车前置，启动后只读读取 free-roam latest、地图预览和 summary。当前缺口：free_roam_latest_motion_ready。",
+    current_free_move_control_pack_next_action_plain: "勾现场安全确认后启动自由自助移动；启动后只读读取 free-roam latest、地图预览和 summary。",
     current_free_move_control_pack_action_id: "start_free_move",
     current_free_move_control_pack_display_label: "自由自助移动",
     current_free_move_control_pack_start_endpoint: "/api/robot-control/free-roam/autonomy/start",
@@ -1055,6 +1056,7 @@ const fixtures: Record<string, unknown> = {
     current_mapping_action_stops_motion: false,
     current_mapping_control_pack_status: "blocked",
     current_mapping_control_pack_plain: "建图暂未就绪：摄像头 ready=false，雷达 ready=false；当前缺口：camera_first_frame、lidar_fresh。自由移动不受建图缺口影响。",
+    current_mapping_control_pack_next_action_plain: "先补齐画面首帧和雷达新鲜读数；低速自由移动仍可先做。",
     current_mapping_control_pack_action_id: "start_mapping_when_sensors_ready",
     current_mapping_control_pack_display_label: "传感器就绪后建图",
     current_mapping_control_pack_start_endpoint: "/api/robot-control/map/start",
@@ -11615,6 +11617,7 @@ describe("App", () => {
     expect(freeMovePack.text()).toContain("自由自助移动可复验");
     expect(freeMovePack.text()).toContain("相机和雷达不作为发车前置");
     expect(freeMovePack.attributes("data-status")).toBe("ready_for_safety_confirm");
+    expect(freeMovePack.attributes("data-next-action-plain")).toBe("勾现场安全确认后启动自由自助移动；启动后只读读取 free-roam latest、地图预览和 summary。");
     expect(freeMovePack.attributes("data-action-id")).toBe("start_free_move");
     expect(freeMovePack.attributes("data-display-label")).toBe("自由自助移动");
     expect(freeMovePack.attributes("data-start-endpoint")).toBe("/api/robot-control/free-roam/autonomy/start");
@@ -11666,6 +11669,7 @@ describe("App", () => {
     expect(mappingPack.text()).toContain("建图暂未就绪");
     expect(mappingPack.text()).toContain("自由移动不受建图缺口影响");
     expect(mappingPack.attributes("data-status")).toBe("blocked");
+    expect(mappingPack.attributes("data-next-action-plain")).toBe("先补齐画面首帧和雷达新鲜读数；低速自由移动仍可先做。");
     expect(mappingPack.attributes("data-action-id")).toBe("start_mapping_when_sensors_ready");
     expect(mappingPack.attributes("data-display-label")).toBe("传感器就绪后建图");
     expect(mappingPack.attributes("data-start-endpoint")).toBe("/api/robot-control/map/start");

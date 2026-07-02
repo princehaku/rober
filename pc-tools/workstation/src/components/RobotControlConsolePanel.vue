@@ -4512,6 +4512,12 @@ const plainCurrentFreeMoveControlPack = computed(() => {
   return {
     status,
     plain: summary?.current_free_move_control_pack_plain ?? defaultPlain,
+    nextActionPlain: summary?.current_free_move_control_pack_next_action_plain
+      ?? (status === "complete"
+        ? "继续监看地图画面和停止兜底；需要停下时点击停止。"
+        : status === "ready_for_safety_confirm"
+          ? "勾现场安全确认后启动自由自助移动；启动后只读读取 free-roam latest、地图预览和 summary。"
+          : "先恢复 free-roam 状态机、停止兜底或上车连接，再回到安全确认启动。"),
     actionId: summary?.current_free_move_control_pack_action_id ?? summary?.current_free_move_action_id ?? "start_free_move",
     displayLabel: summary?.current_free_move_control_pack_display_label ?? summary?.current_free_move_action_display_label ?? "自由自助移动",
     startEndpoint: summary?.current_free_move_control_pack_start_endpoint ?? summary?.current_free_move_action_start_endpoint ?? "/api/robot-control/free-roam/autonomy/start",
@@ -4592,6 +4598,12 @@ const plainCurrentMappingControlPack = computed(() => {
   return {
     status,
     plain: summary?.current_mapping_control_pack_plain ?? defaultPlain,
+    nextActionPlain: summary?.current_mapping_control_pack_next_action_plain
+      ?? (status === "complete"
+        ? "继续监看地图画面；需要停下时点击停止。"
+        : status === "ready_for_safety_confirm"
+          ? "勾现场安全确认后启动建图记录；启动后只读读取 free-roam latest、地图预览和 summary。"
+          : "先补齐画面首帧和雷达新鲜读数；低速自由移动仍可先做。"),
     actionId: summary?.current_mapping_control_pack_action_id ?? summary?.current_mapping_action_id ?? "start_mapping_when_sensors_ready",
     displayLabel: summary?.current_mapping_control_pack_display_label ?? summary?.current_mapping_action_display_label ?? "传感器就绪后建图",
     startEndpoint: summary?.current_mapping_control_pack_start_endpoint ?? summary?.current_mapping_action_start_endpoint ?? "/api/robot-control/map/start",
@@ -19952,6 +19964,7 @@ onBeforeUnmount(() => {
             class="panel-note"
             data-testid="plain-current-free-move-control-pack"
             :data-status="plainCurrentFreeMoveControlPack.status"
+            :data-next-action-plain="plainCurrentFreeMoveControlPack.nextActionPlain"
             :data-action-id="plainCurrentFreeMoveControlPack.actionId"
             :data-display-label="plainCurrentFreeMoveControlPack.displayLabel"
             :data-start-endpoint="plainCurrentFreeMoveControlPack.startEndpoint"
@@ -20005,6 +20018,7 @@ onBeforeUnmount(() => {
             class="panel-note"
             data-testid="plain-current-mapping-control-pack"
             :data-status="plainCurrentMappingControlPack.status"
+            :data-next-action-plain="plainCurrentMappingControlPack.nextActionPlain"
             :data-action-id="plainCurrentMappingControlPack.actionId"
             :data-display-label="plainCurrentMappingControlPack.displayLabel"
             :data-start-endpoint="plainCurrentMappingControlPack.startEndpoint"

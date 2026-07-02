@@ -4103,6 +4103,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   current_free_move_action_stops_motion?: false;
   current_free_move_control_pack_status?: "complete" | "ready_for_safety_confirm" | "blocked";
   current_free_move_control_pack_plain?: string;
+  current_free_move_control_pack_next_action_plain?: string;
   current_free_move_control_pack_action_id?: RobotControlLiveMotionRunbookItem["id"] | "none";
   current_free_move_control_pack_display_label?: RobotControlLiveMotionRunbookItem["display_label"];
   current_free_move_control_pack_start_endpoint?: RobotControlLiveMotionRunbookItem["start_endpoint"];
@@ -4206,6 +4207,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   current_mapping_action_stops_motion?: false;
   current_mapping_control_pack_status?: "complete" | "ready_for_safety_confirm" | "blocked";
   current_mapping_control_pack_plain?: string;
+  current_mapping_control_pack_next_action_plain?: string;
   current_mapping_control_pack_action_id?: RobotControlLiveMotionRunbookItem["id"] | "none";
   current_mapping_control_pack_display_label?: RobotControlLiveMotionRunbookItem["display_label"];
   current_mapping_control_pack_start_endpoint?: RobotControlLiveMotionRunbookItem["start_endpoint"];
