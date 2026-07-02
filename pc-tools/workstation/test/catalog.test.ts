@@ -7191,7 +7191,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.current_motion_action_start_endpoint).toBe(summary.field_acceptance_primary_safety_confirm_ready_action_start_endpoint);
       expect(summary.current_motion_action_acceptance_endpoints).toEqual(summary.field_acceptance_primary_safety_confirm_ready_action_acceptance_endpoints);
       expect(summary.current_motion_action_readback_endpoints).toEqual(summary.field_acceptance_primary_safety_confirm_ready_action_acceptance_endpoints);
-      expect(summary.current_motion_action_required_success_markers).toEqual(summary.trip_missing_evidence);
+      expect(summary.current_motion_action_required_success_markers).toEqual(summary.trip_execution_required_success_markers);
       expect(summary.current_motion_action_proof_status).toBe(summary.trip_proof_status);
       expect(summary.current_motion_action_missing_evidence).toEqual(summary.trip_missing_evidence);
       expect(summary.current_motion_action_proof_plain).toBe(summary.trip_proof_plain);

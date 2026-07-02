@@ -10393,6 +10393,7 @@ export async function buildRobotControlSummary(
     liveClosureSummary.fixed_keyboard_feedback_readback_endpoint,
     liveClosureSummary.fixed_keyboard_summary_endpoint,
   ];
+  const keyboardActionRequiredSuccessMarkers = ["same_hold_window_wheel_lr_nonzero", "stop_after_release"];
   const routeComplete = runNav2RouteRunbookItem?.completed === true;
   const freeMoveComplete = freeMoveRunbookItem?.completed === true;
   const freeMoveActionAcceptanceEndpoints = freeMoveRunbookItem?.acceptance_endpoints ?? [
@@ -10400,6 +10401,7 @@ export async function buildRobotControlSummary(
     liveClosureSummary.fixed_mapping_preview_endpoint,
     "/api/robot-control/summary",
   ];
+  const freeMoveActionRequiredSuccessMarkers = ["free_roam_latest_motion_ready"];
   const freeMoveActionMissingEvidence = freeMoveRunbookItem?.missing_evidence ?? [];
   const freeMoveActionStartEndpoint = freeMoveRunbookItem?.start_endpoint ?? liveClosureSummary.fixed_free_roam_start_endpoint;
   const freeMoveActionStopEndpoint = freeMoveRunbookItem?.stop_endpoint ?? liveClosureSummary.fixed_free_roam_stop_endpoint;
@@ -10408,6 +10410,7 @@ export async function buildRobotControlSummary(
     liveClosureSummary.fixed_mapping_preview_endpoint,
     "/api/robot-control/summary",
   ];
+  const mappingActionRequiredSuccessMarkers = ["camera_first_frame", "lidar_fresh"];
   const mappingActionMissingEvidence = mappingRunbookItem?.missing_evidence ?? liveClosureSummary.mapping_start_missing_reasons;
   const mappingActionStartEndpoint = mappingRunbookItem?.start_endpoint ?? liveClosureSummary.fixed_mapping_start_endpoint;
   const mappingActionStopEndpoint = mappingRunbookItem?.stop_endpoint ?? liveClosureSummary.fixed_free_roam_stop_endpoint;
@@ -11167,7 +11170,7 @@ export async function buildRobotControlSummary(
     current_motion_action_stop_endpoint: fieldAcceptancePrimarySafetyAction?.stop_endpoint ?? "none",
     current_motion_action_acceptance_endpoints: fieldAcceptancePrimarySafetyAction?.acceptance_endpoints ?? [],
     current_motion_action_readback_endpoints: fieldAcceptancePrimarySafetyAction?.acceptance_endpoints ?? [],
-    current_motion_action_required_success_markers: fieldAcceptanceNextStep?.missing_evidence ?? [],
+    current_motion_action_required_success_markers: nav2RouteAcceptancePacket.required_success_markers,
     current_motion_action_proof_status: fieldAcceptanceNextStep?.proof_status ?? "blocked",
     current_motion_action_missing_evidence: fieldAcceptanceNextStep?.missing_evidence ?? [],
     current_motion_action_proof_plain: fieldAcceptanceNextStep?.proof_plain ?? "当前运动动作未加载。",
@@ -11199,7 +11202,7 @@ export async function buildRobotControlSummary(
     current_keyboard_action_stop_endpoint: keyboardActionStopEndpoint,
     current_keyboard_action_acceptance_endpoints: keyboardActionAcceptanceEndpoints,
     current_keyboard_action_readback_endpoints: keyboardActionAcceptanceEndpoints,
-    current_keyboard_action_required_success_markers: keyboardActionMissingEvidence,
+    current_keyboard_action_required_success_markers: keyboardActionRequiredSuccessMarkers,
     current_keyboard_action_proof_status: keyboardRunbookItem?.proof_status ?? "blocked",
     current_keyboard_action_missing_evidence: keyboardActionMissingEvidence,
     current_keyboard_action_proof_plain: keyboardRunbookItem?.proof_plain ?? "键盘连续手控未出现在当前 runbook。",
@@ -11227,7 +11230,7 @@ export async function buildRobotControlSummary(
     current_free_move_action_readback_endpoint: liveClosureSummary.fixed_free_roam_latest_endpoint,
     current_free_move_action_acceptance_endpoints: freeMoveActionAcceptanceEndpoints,
     current_free_move_action_readback_endpoints: freeMoveActionAcceptanceEndpoints,
-    current_free_move_action_required_success_markers: freeMoveActionMissingEvidence,
+    current_free_move_action_required_success_markers: freeMoveActionRequiredSuccessMarkers,
     current_free_move_action_proof_status: freeMoveRunbookItem?.proof_status ?? "blocked",
     current_free_move_action_missing_evidence: freeMoveActionMissingEvidence,
     current_free_move_action_proof_plain: freeMoveRunbookItem?.proof_plain ?? "自由自助移动未出现在当前 runbook。",
@@ -11250,7 +11253,7 @@ export async function buildRobotControlSummary(
     current_mapping_action_preview_endpoint: liveClosureSummary.fixed_mapping_preview_endpoint,
     current_mapping_action_acceptance_endpoints: mappingActionAcceptanceEndpoints,
     current_mapping_action_readback_endpoints: mappingActionAcceptanceEndpoints,
-    current_mapping_action_required_success_markers: mappingActionMissingEvidence,
+    current_mapping_action_required_success_markers: mappingActionRequiredSuccessMarkers,
     current_mapping_action_proof_status: mappingRunbookItem?.proof_status ?? "blocked",
     current_mapping_action_missing_evidence: mappingActionMissingEvidence,
     current_mapping_action_proof_plain: mappingRunbookItem?.proof_plain ?? "传感器就绪后建图未出现在当前 runbook。",
@@ -11441,7 +11444,7 @@ export async function buildRobotControlSummary(
     keyboard_start_endpoint: keyboardActionStartEndpoint,
     keyboard_acceptance_endpoints: keyboardActionAcceptanceEndpoints,
     keyboard_readback_endpoints: keyboardActionAcceptanceEndpoints,
-    keyboard_required_success_markers: keyboardActionMissingEvidence,
+    keyboard_required_success_markers: keyboardActionRequiredSuccessMarkers,
     keyboard_completed: keyboardRunbookItem?.completed ?? false,
     keyboard_proof_status: keyboardRunbookItem?.proof_status ?? "blocked",
     keyboard_missing_evidence: keyboardActionMissingEvidence,
@@ -11453,7 +11456,7 @@ export async function buildRobotControlSummary(
     free_move_latest_endpoint: liveClosureSummary.fixed_free_roam_latest_endpoint,
     free_move_readback_endpoints: freeMoveActionAcceptanceEndpoints,
     free_move_required_success_marker: freeMoveActionMissingEvidence[0] ?? "none",
-    free_move_required_success_markers: freeMoveActionMissingEvidence,
+    free_move_required_success_markers: freeMoveActionRequiredSuccessMarkers,
     free_move_proof_status: freeMoveRunbookItem?.proof_status ?? "blocked",
     free_move_missing_evidence: freeMoveActionMissingEvidence,
     free_move_proof_plain: freeMoveRunbookItem?.proof_plain ?? "自由自助移动未出现在当前 runbook。",
@@ -11462,13 +11465,13 @@ export async function buildRobotControlSummary(
     free_roam_latest_endpoint: liveClosureSummary.fixed_free_roam_latest_endpoint,
     free_roam_acceptance_endpoints: freeMoveActionAcceptanceEndpoints,
     free_roam_readback_endpoints: freeMoveActionAcceptanceEndpoints,
-    free_roam_required_success_markers: freeMoveActionMissingEvidence,
+    free_roam_required_success_markers: freeMoveActionRequiredSuccessMarkers,
     free_roam_missing_evidence: freeMoveActionMissingEvidence,
     mapping_start_endpoint: mappingActionStartEndpoint,
     mapping_preview_endpoint: liveClosureSummary.fixed_mapping_preview_endpoint,
     mapping_acceptance_endpoints: mappingActionAcceptanceEndpoints,
     mapping_readback_endpoints: mappingActionAcceptanceEndpoints,
-    mapping_required_success_markers: mappingActionMissingEvidence,
+    mapping_required_success_markers: mappingActionRequiredSuccessMarkers,
     mapping_proof_status: mappingRunbookItem?.proof_status ?? "blocked",
     mapping_missing_evidence: mappingActionMissingEvidence,
     mapping_proof_plain: mappingRunbookItem?.proof_plain ?? "传感器就绪后建图未出现在当前 runbook。",
