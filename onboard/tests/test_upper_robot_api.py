@@ -961,6 +961,57 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertTrue(payload["manual_feedback_samples_latest"]["wheel_feedback_lr_nonzero_proven"])
         self.assertTrue(payload["wheel_feedback_lr_nonzero_proven"])
 
+    def test_manual_control_realtime_uses_write_only_serial_without_feedback_overwrite(self) -> None:
+        """WASD 实时脉冲只写控制和停车，不抢 UART，也不覆盖 latest 轮速材料。"""
+        api = upper_robot_api.UpperRobotApi(
+            camera_base_url="http://127.0.0.1:8088",
+            base_port="/dev/ttyS5",
+            base_baudrate=115200,
+            max_speed=0.12,
+        )
+        transaction = {
+            "mode": "serial_write_only_realtime",
+            "command_result": {"ok": True, "bytes_written": 23, "command": {"T": 11, "L": 164, "R": 164}},
+            "stop_result": {"ok": True, "bytes_written": 20, "command": {"T": 11, "L": 0, "R": 0}},
+            "additional_stop_results": [{"ok": True, "command": {"T": 1, "L": 0, "R": 0}}],
+            "feedback_during_motion": upper_robot_api.skipped_manual_feedback_payload("/dev/ttyS5", 115200, "realtime_manual_feedback_skipped_until_release_readback"),
+            "feedback_after_stop": upper_robot_api.skipped_manual_feedback_payload("/dev/ttyS5", 115200, "realtime_manual_feedback_skipped_until_release_readback"),
+            "serial_session_error": None,
+            "feedback_source": "keyboard_release_readback",
+        }
+
+        with mock.patch.object(upper_robot_api, "manual_motion_ros_cmd_vel_transaction") as mocked_ros_transaction:
+            with mock.patch.object(upper_robot_api, "manual_motion_serial_transaction") as mocked_direct_transaction:
+                with mock.patch.object(upper_robot_api, "manual_motion_serial_write_only_transaction", return_value=transaction) as mocked_write_only:
+                    with mock.patch.object(upper_robot_api, "summarize_bridge_feedback_debug_log") as mocked_bridge_summary:
+                        with mock.patch.object(upper_robot_api, "persist_feedback_samples_artifact") as mocked_persist:
+                            payload = asyncio.run(
+                                api.manual_control(
+                                    {
+                                        "direction": "forward",
+                                        "speed": 0.08,
+                                        "duration_ms": 240,
+                                        "command_mode": "pwm",
+                                        "feedback_mode": "realtime",
+                                    }
+                                )
+                            )
+
+        mocked_ros_transaction.assert_not_called()
+        mocked_direct_transaction.assert_not_called()
+        mocked_bridge_summary.assert_not_called()
+        mocked_persist.assert_not_called()
+        mocked_write_only.assert_called_once()
+        self.assertEqual("serial_write_only_realtime", mocked_write_only.call_args.kwargs["mode"])
+        self.assertEqual("keyboard_release_readback", mocked_write_only.call_args.kwargs["feedback_source"])
+        self.assertEqual("realtime", payload["feedback_mode"])
+        self.assertEqual("pwm", payload["base_command_mode"])
+        self.assertEqual(transaction, payload["serial_motion_transaction"])
+        self.assertIsNone(payload["manual_feedback_samples_latest"])
+        self.assertTrue(payload["manual_command_executed"])
+        self.assertTrue(payload["auto_stop_executed"])
+        self.assertFalse(payload["wheel_feedback_lr_nonzero_proven"])
+
     def test_manual_control_keyboard_pulse_keeps_short_motion_window(self) -> None:
         """键盘连续手控 240ms pulse 走短 /cmd_vel 事务，避免串口读阻塞续发。"""
         api = upper_robot_api.UpperRobotApi(

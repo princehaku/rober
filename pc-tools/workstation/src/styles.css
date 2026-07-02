@@ -1,6 +1,6 @@
 :root {
-  --plain-map-large-min-height: 720px;
-  --plain-map-large-target-height: calc(100vh - 96px);
+  --plain-map-large-min-height: 840px;
+  --plain-map-large-target-height: calc(100vh - 24px);
   --plain-map-large-max-height: 1400px;
   --plain-map-fullscreen-height: 100vh;
   color: #17202a;
@@ -548,7 +548,7 @@ h3 {
   /* 地图是现场判断路线和雷达贴图的主视图，桌面端默认先占整行。 */
   order: -1;
   grid-column: 1 / -1;
-  min-height: min(100vh, 980px);
+  min-height: min(100vh, 1120px);
 }
 
 .robot-console-grid[data-layout="visual-first"] .plain-connection-panel,
@@ -1583,7 +1583,7 @@ h3 {
 
 .plain-map-panel[data-size="large"] {
   /* 普通 PC 首屏默认把地图当主视图，给真实地图足够高度而不是小预览卡。 */
-  min-height: min(100vh, 1260px);
+  min-height: min(100vh, 1380px);
 }
 
 .plain-map-heading {
@@ -2175,7 +2175,7 @@ h3 {
 }
 
 .plain-map-overlay-frame {
-  /* 缩放作用在同一个 overlay frame 上；默认 200% 看细节，适配按钮再回到 100% 全图。 */
+  /* 缩放作用在同一个 overlay frame 上；默认 300% 看细节，适配按钮再回到 100% 全图。 */
   position: relative;
   flex: 0 0 auto;
   width: calc(100% * var(--plain-map-zoom, 1));

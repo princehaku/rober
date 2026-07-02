@@ -6275,6 +6275,9 @@ def manual_motion_serial_write_only_transaction(
     command: dict[str, Any],
     stop_commands: list[dict[str, Any]],
     pulse_ms: int,
+    mode: str = "serial_write_only_bridge_debug",
+    feedback_reason: str = "serial_write_only_uses_bridge_feedback_debug_log",
+    feedback_source: str = "esp32_bridge_feedback_debug_log",
 ) -> dict[str, Any]:
     """只写低速点动和停车命令，不抢 esp32_bridge 正在读取的 UART 反馈。"""
     serial_module, import_error = load_serial_module()
@@ -6286,13 +6289,12 @@ def manual_motion_serial_write_only_transaction(
     additional_stop_writes: list[dict[str, Any]] = []
     serial_obj = None
     started_monotonic = time.monotonic()
-    feedback_reason = "serial_write_only_uses_bridge_feedback_debug_log"
 
     if serial_module is None:
         error = {"type": "pyserial_unavailable", "message": import_error or "missing"}
         command_write["error"] = error
         return {
-            "mode": "serial_write_only_bridge_debug",
+            "mode": mode,
             "serial_open": {**serial_open, "error": error},
             "input_reset": input_reset,
             "command_result": command_write,
@@ -6320,7 +6322,7 @@ def manual_motion_serial_write_only_transaction(
         if not stop_write.get("ok"):
             stop_write["error"] = error
         return {
-            "mode": "serial_write_only_bridge_debug",
+            "mode": mode,
             "serial_open": {**serial_open, "error": error},
             "input_reset": input_reset,
             "command_result": command_write,
@@ -6338,7 +6340,7 @@ def manual_motion_serial_write_only_transaction(
                 pass
 
     return {
-        "mode": "serial_write_only_bridge_debug",
+        "mode": mode,
         "serial_open": serial_open,
         "input_reset": input_reset,
         "command_result": command_write,
@@ -6347,7 +6349,7 @@ def manual_motion_serial_write_only_transaction(
         "feedback_during_motion": skipped_manual_feedback_payload(port, baudrate, feedback_reason),
         "feedback_after_stop": skipped_manual_feedback_payload(port, baudrate, feedback_reason),
         "serial_session_error": None,
-        "feedback_source": "esp32_bridge_feedback_debug_log",
+        "feedback_source": feedback_source,
     }
 
 
@@ -9222,6 +9224,7 @@ class UpperRobotApi:
         command_mode = request_command_mode if request_command_mode in ALLOWED_BASE_COMMAND_MODES else self.base_command_mode
         feedback_mode = str(body.get("feedback_mode", "")).strip().lower()
         use_bridge_debug_feedback = feedback_mode == "bridge_debug"
+        use_realtime_feedback = feedback_mode == "realtime"
         command = manual_command_for_direction(
             direction,
             speed,
@@ -9265,6 +9268,22 @@ class UpperRobotApi:
                     command=command,
                     stop_commands=stop_plan,
                     pulse_ms=pulse_ms,
+                )
+                first = serial_motion_transaction["command_result"]
+                stop = serial_motion_transaction["stop_result"]
+                feedback_during_motion = serial_motion_transaction["feedback_during_motion"]
+                feedback_evidence = serial_motion_transaction["feedback_after_stop"]
+                feedback_after_stop_attempted = False
+            elif use_realtime_feedback:
+                serial_motion_transaction = manual_motion_serial_write_only_transaction(
+                    port=self.base_port,
+                    baudrate=self.base_baudrate,
+                    command=command,
+                    stop_commands=stop_plan,
+                    pulse_ms=pulse_ms,
+                    mode="serial_write_only_realtime",
+                    feedback_reason="realtime_manual_feedback_skipped_until_release_readback",
+                    feedback_source="keyboard_release_readback",
                 )
                 first = serial_motion_transaction["command_result"]
                 stop = serial_motion_transaction["stop_result"]
@@ -9349,7 +9368,7 @@ class UpperRobotApi:
             bridge_is_fresh = isinstance(bridge_freshness, dict) and bridge_freshness.get("status") == "fresh"
             if bridge_is_fresh and int(bridge_feedback_debug.get("t1001_observed_count") or 0) > 0:
                 bridge_feedback_sample = bridge_debug_summary_as_feedback_sample(bridge_feedback_debug)
-        if feedback_during_motion_attempted and (wheel_feedback_frames or (command_mode != "ros" and not use_bridge_debug_feedback)):
+        if feedback_during_motion_attempted and (wheel_feedback_frames or (command_mode != "ros" and not use_bridge_debug_feedback and not use_realtime_feedback)):
             # first-jog/键盘手控的非零 T1001 必须落到 latest artifact，
             # 否则 PC 刷新 summary 会被停车后的 0/0 读回覆盖成“看似丢证据”。
             manual_feedback_samples_latest = persist_feedback_samples_artifact(

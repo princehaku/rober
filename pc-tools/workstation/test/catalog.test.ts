@@ -6926,7 +6926,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.map_display_primary_action_label).toBe("进入地图大屏");
       expect(summary.map_display_direct_map_viewport_priority).toBe("fullscreen_map_canvas");
       expect(summary.map_display_direct_map_canvas_height_mode).toBe("viewport_dominant_full_height");
-      expect(summary.map_display_default_zoom_percent).toBe("200%");
+      expect(summary.map_display_default_zoom_percent).toBe("300%");
       expect(summary.map_display_max_zoom_percent).toBe("800%");
       expect(summary.map_display_wysiwyg_overlays).toEqual(["image", "route", "robot", "radar"]);
       expect(summary.map_display_ros2_companion_tools).toEqual(["rviz2", "foxglove"]);
@@ -16843,7 +16843,7 @@ describe("workstation fail-closed API contracts", () => {
           speed: 0.12,
           duration_ms: 800,
           command_mode: "pwm",
-          feedback_mode: "bridge_debug",
+          feedback_mode: "realtime",
           confirm_hil_checklist: true,
         },
         {
@@ -16851,7 +16851,7 @@ describe("workstation fail-closed API contracts", () => {
           speed: 0.12,
           duration_ms: 800,
           command_mode: "pwm",
-          feedback_mode: "bridge_debug",
+          feedback_mode: "realtime",
           confirm_hil_checklist: true,
         },
       ]);
@@ -16925,7 +16925,7 @@ describe("workstation fail-closed API contracts", () => {
           speed: 0.08,
           duration_ms: 500,
           command_mode: "pwm",
-          feedback_mode: "bridge_debug",
+          feedback_mode: "realtime",
           confirm_hil_checklist: true,
         },
       ]);
@@ -17369,8 +17369,8 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
-  it("workstation base manual proxy captures fixed GET evidence around remote manual failure", async () => {
-    // 打开即用后不再本地拒绝 checklist；若上车 manual endpoint 缺失，仍要保留 before/after 证据快照。
+  it("workstation base manual proxy uses realtime evidence contract around remote manual failure", async () => {
+    // WASD 点动不能被 before/after 只读快照拖慢；转发失败时仍明确补 motion_command_not_forwarded。
     const upstream = await listenRobotBaseCommandApi(
       {},
       {
@@ -17427,21 +17427,20 @@ describe("workstation fail-closed API contracts", () => {
       };
       expect(response.status).toBe(502);
       expect(body.proxy_status).toBe("command_failed");
-      expect(body.evidence_capture_status).toBe("captured");
-      expect(body.evidence_capture_endpoints).toHaveLength(8);
-      expect(body.evidence_capture_endpoints.every((endpoint) => endpoint.method === "GET")).toBe(true);
-      expect(body.before_readback.base_status?.key_values.status).toBe("base_ready");
-      expect(body.after_readback.base_feedback_samples_latest?.key_values.latest_t1001_observed_count).toBe("2");
-      expect(body.after_readback.base_feedback_samples_latest?.key_values.wheel_feedback_lr_nonzero_proven).toBe("true");
-      expect(body.motion_evidence_summary).toContain("not HIL pass");
+      expect(body.evidence_capture_status).toBe("partial");
+      expect(body.evidence_capture_endpoints).toHaveLength(0);
+      expect(body.before_readback).toEqual({});
+      expect(body.after_readback).toEqual({});
+      expect(body.motion_evidence_summary).toContain("realtime path skipped");
       expect(body.motion_evidence_gaps).toEqual(expect.arrayContaining([
+        "motion_command_not_forwarded",
+        "before_after_evidence_snapshot_incomplete",
+        "wheel_feedback_lr_nonzero_not_proven",
         "physical_motion_lidar_delta_not_proven",
       ]));
-      expect(body.motion_evidence_gaps).not.toContain("motion_command_not_forwarded");
-      expect(body.motion_evidence_gaps).not.toContain("wheel_feedback_lr_nonzero_not_proven");
       expect(body.robot_control_executed).toBe(false);
       expect(upstream.receivedBodies["/api/base/manual"]).toBeUndefined();
-      expect(upstream.receivedGets.filter((endpoint) => endpoint === "/api/base/status")).toHaveLength(2);
+      expect(upstream.receivedGets.filter((endpoint) => endpoint === "/api/base/status")).toHaveLength(0);
     } finally {
       await workstation.close();
       await upstream.close();

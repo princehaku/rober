@@ -335,7 +335,7 @@ const PLAIN_MAP_FOXGLOVE_BRIDGE_LAUNCH_COMMAND = "ros2 launch ros2_trashbot_brin
 const PLAIN_MAP_FOXGLOVE_WS_URL = "ws://192.168.1.11:8765";
 const PLAIN_MAP_FOXGLOVE_WEB_APP_URL = "https://studio.foxglove.dev";
 const PLAIN_MAP_ENGINEERING_TOOLS_ACTION_LABEL = "工程观察：RViz2 / Foxglove";
-const PLAIN_MAP_TOO_SMALL_NEXT_ACTION_PLAIN = "PC 首页默认用 200% 细节大图显示真实地图；要看全局就点“适配”，仍觉得小就点“进入地图大屏”打开 /map；/map 只保留缩放、只读刷新和工程观察入口；建图、保存和其他卡片都会收起；不需要先开 RViz2。";
+const PLAIN_MAP_TOO_SMALL_NEXT_ACTION_PLAIN = "PC 首页默认用 300% 细节大图显示真实地图，地图画布先吃满首屏；要看全局就点“适配”，仍觉得小就点“进入地图大屏”打开 /map；/map 只保留缩放、只读刷新和工程观察入口；建图、保存和其他卡片都会收起；不需要先开 RViz2。";
 const PLAIN_MAP_ROS2_COMPANION_ANSWER_PLAIN = "ROS2 配套：本地工程调试用 RViz2；远程浏览器观察用 Foxglove bridge + Foxglove Web；普通用户仍默认使用 PC 大地图和 /map。";
 const PLAIN_MAP_HEADER_SHORT_ANSWER = "普通看 PC 大地图；工程看 RViz2 / Foxglove";
 const PLAIN_MAP_ROS2_OBSERVE_TOPICS = [
@@ -361,11 +361,11 @@ const plainMapDirectViewRequested = computed(() => {
 });
 const PLAIN_MAP_ZOOM_LEVELS = [1, 1.5, 2, 3, 4, 6, 8] as const;
 const PLAIN_MAP_FIT_ZOOM_INDEX = 0;
-const PLAIN_MAP_DEFAULT_ZOOM_INDEX = 2;
+const PLAIN_MAP_DEFAULT_ZOOM_INDEX = 3;
 const plainMapZoomIndex = ref(PLAIN_MAP_DEFAULT_ZOOM_INDEX);
 const plainMapZoomScale = computed(() => PLAIN_MAP_ZOOM_LEVELS[plainMapZoomIndex.value] ?? 1);
 const plainMapZoomPercent = computed(() => `${Math.round(plainMapZoomScale.value * 100)}%`);
-const PLAIN_MAP_DEFAULT_ZOOM_PERCENT = "200%";
+const PLAIN_MAP_DEFAULT_ZOOM_PERCENT = "300%";
 const PLAIN_MAP_MAX_ZOOM_PERCENT = "800%";
 const plainMapZoomStyle = computed(() => ({
   "--plain-map-zoom": String(plainMapZoomScale.value),
@@ -16203,19 +16203,19 @@ function requestBodyForDirection(direction: ManualDirection) {
     speed: Math.min(Math.max(jogSpeedMps.value, 0), manualSpeedLimit.value),
     duration_ms: Math.min(Math.max(jogDurationMs.value, 0), manualDurationLimit.value),
     command_mode: "pwm",
-    feedback_mode: "bridge_debug",
+    feedback_mode: "realtime",
     confirm_hil_checklist: plainManualSafetyConfirmed.value,
   } as const;
 }
 
 function requestBodyForKeyboardDirection(direction: ManualDirection) {
-  // 键盘连续手控采用短脉冲重复发送，降低“按键卡住”时单条命令持续过久的风险。
+  // 键盘连续手控采用快速短脉冲，避免每次 WASD 都等待串口/雷达证据快照。
   return {
     direction,
     speed: Math.min(Math.max(jogSpeedMps.value, 0), manualSpeedLimit.value),
     duration_ms: Math.min(Math.max(keyboardJogDurationMs.value, 0), manualDurationLimit.value),
     command_mode: "pwm",
-    feedback_mode: "bridge_debug",
+    feedback_mode: "realtime",
     confirm_hil_checklist: plainManualSafetyConfirmed.value,
   } as const;
 }

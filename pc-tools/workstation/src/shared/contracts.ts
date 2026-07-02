@@ -3178,7 +3178,7 @@ export interface RobotControlLiveClosureSummary {
   map_display_direct_map_refreshes_map_preview_on_enter: true;
   map_display_direct_map_refreshes_radar_status_on_enter: true;
   map_display_direct_map_starts_radar_lifecycle_on_enter: false;
-  map_display_default_zoom_percent: "200%";
+  map_display_default_zoom_percent: "300%";
   map_display_max_zoom_percent: "800%";
   map_display_too_small_next_action_plain: string;
   map_display_ros2_companion_answer_plain: string;
@@ -6553,7 +6553,7 @@ export interface RobotControlBaseCommandRequest {
   speed: number;
   duration_ms: number;
   command_mode?: "ros" | "speed" | "pwm";
-  feedback_mode?: "bridge_debug" | "direct_feedback";
+  feedback_mode?: "bridge_debug" | "direct_feedback" | "realtime";
   confirm_hil_checklist: boolean;
 }
 

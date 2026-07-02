@@ -1836,6 +1836,19 @@ function blockedEvidenceCapture(commandKind: "manual" | "stop", reason: string):
   return buildEvidenceCapture(commandKind, [], reason);
 }
 
+function realtimeManualEvidenceCapture(remoteMotionKeyValues: Record<string, string> = {}): BaseCommandEvidenceCapture {
+  // WASD/屏幕方向键需要低延迟；完整轮速和雷达复验在松手后走固定只读 readback。
+  return {
+    evidence_capture_status: "partial",
+    evidence_capture_endpoints: [],
+    evidence_capture_blocked_reasons: ["realtime_manual_skips_before_after_get_snapshot"],
+    before_readback: {},
+    after_readback: {},
+    motion_evidence_summary: "manual command realtime path skipped before/after fixed GET evidence snapshot; release readback must verify wheel/summary.",
+    motion_evidence_gaps: buildMotionEvidenceGaps("manual", "partial", {}, "", remoteMotionKeyValues),
+  };
+}
+
 async function fetchEvidenceEndpoint(
   baseUrl: URL,
   phase: RobotControlEvidenceCapturePhase,
@@ -3788,6 +3801,15 @@ export function createWorkstationApp(): express.Express {
       return;
     }
     const dangerous = scanDangerousTrueFields(remote.payload, "", BASE_COMMAND_FAIL_CLOSED_FIELDS);
+    const responseEvidenceCapture = remote.remote_http_status === 200
+      ? evidenceCapture
+      : {
+          ...evidenceCapture,
+          motion_evidence_gaps: [
+            "motion_command_not_forwarded",
+            ...evidenceCapture.motion_evidence_gaps.filter((gap) => gap !== "motion_command_not_forwarded"),
+          ],
+        };
     const responseBody: RobotControlBaseCommandProxyResponse = {
       schema: "trashbot.pc_tools_workstation.robot_control_base_command_proxy.v1",
       command_kind: "manual",
@@ -3823,7 +3845,7 @@ export function createWorkstationApp(): express.Express {
         allowed_directions: [...ROBOT_CONTROL_ALLOWED_MANUAL_DIRECTIONS],
       },
       remote_motion_key_values: remoteMotionKeyValues,
-      ...evidenceCapture,
+      ...responseEvidenceCapture,
       failure_reason:
         dangerous.length > 0
           ? `dangerous_true_field:${dangerous[0]}`
@@ -3840,7 +3862,7 @@ export function createWorkstationApp(): express.Express {
   });
 
   workstationApp.post("/api/robot-control/base/manual", async (req, res) => {
-    // 点动代理只允许固定 manual endpoint；现场默认安全，不再要求浏览器先提交安全勾选。
+    // 点动代理只允许固定 manual endpoint；WASD 要低延迟，松手后再补只读证据快照。
     const sourceBaseUrl = robotControlFixedProxyQueryBaseUrl(req.query.baseUrl);
     const normalized = normalizeRobotApiBaseUrl(sourceBaseUrl);
     const payload = asRecord(req.body);
@@ -3852,22 +3874,18 @@ export function createWorkstationApp(): express.Express {
       res.status(400).json(baseCommandFailure(sourceBaseUrl, "manual", "/api/base/manual", normalized.reason, "stop", speed, durationMs, confirmHilChecklist));
       return;
     }
-    const beforeEvidence = await captureEvidencePhase(normalized.normalized, "before");
     if (!direction) {
-      const afterEvidence = await captureEvidencePhase(normalized.normalized, "after");
-      const evidenceCapture = buildEvidenceCapture("manual", [...beforeEvidence, ...afterEvidence]);
+      const evidenceCapture = realtimeManualEvidenceCapture();
       res.status(400).json(baseCommandFailure(sourceBaseUrl, "manual", "/api/base/manual", "direction_invalid", "stop", speed, durationMs, confirmHilChecklist, evidenceCapture));
       return;
     }
     if (direction === "stop") {
-      const afterEvidence = await captureEvidencePhase(normalized.normalized, "after");
-      const evidenceCapture = buildEvidenceCapture("manual", [...beforeEvidence, ...afterEvidence]);
+      const evidenceCapture = realtimeManualEvidenceCapture();
       res.status(400).json(baseCommandFailure(sourceBaseUrl, "manual", "/api/base/manual", "direction_stop_use_stop_endpoint", direction, speed, durationMs, confirmHilChecklist, evidenceCapture));
       return;
     }
     if (speed === null || durationMs === null) {
-      const afterEvidence = await captureEvidencePhase(normalized.normalized, "after");
-      const evidenceCapture = buildEvidenceCapture("manual", [...beforeEvidence, ...afterEvidence]);
+      const evidenceCapture = realtimeManualEvidenceCapture();
       res.status(400).json(baseCommandFailure(sourceBaseUrl, "manual", "/api/base/manual", "manual_request_invalid_numbers", direction, speed, durationMs, confirmHilChecklist, evidenceCapture));
       return;
     }
@@ -3880,17 +3898,25 @@ export function createWorkstationApp(): express.Express {
       speed: clampedSpeed,
       duration_ms: clampedDurationMs,
       command_mode: "pwm",
-      feedback_mode: "bridge_debug",
+      feedback_mode: "realtime",
       confirm_hil_checklist: true,
     });
-    const afterEvidence = await captureEvidencePhase(normalized.normalized, "after");
     const remoteMotionKeyValues = baseManualMotionKeyValues(remote.payload);
-    const evidenceCapture = buildEvidenceCapture("manual", [...beforeEvidence, ...afterEvidence], "", remoteMotionKeyValues);
+    const evidenceCapture = realtimeManualEvidenceCapture(remoteMotionKeyValues);
     if (remote.error) {
       res.status(502).json(baseCommandFailure(sourceBaseUrl, "manual", "/api/base/manual", remote.error, direction, speed, durationMs, confirmHilChecklist, evidenceCapture));
       return;
     }
     const dangerous = scanDangerousTrueFields(remote.payload, "", BASE_COMMAND_FAIL_CLOSED_FIELDS);
+    const responseEvidenceCapture = remote.remote_http_status === 200
+      ? evidenceCapture
+      : {
+          ...evidenceCapture,
+          motion_evidence_gaps: [
+            "motion_command_not_forwarded",
+            ...evidenceCapture.motion_evidence_gaps.filter((gap) => gap !== "motion_command_not_forwarded"),
+          ],
+        };
     const responseBody: RobotControlBaseCommandProxyResponse = {
       schema: "trashbot.pc_tools_workstation.robot_control_base_command_proxy.v1",
       command_kind: "manual",
@@ -3926,7 +3952,7 @@ export function createWorkstationApp(): express.Express {
         allowed_directions: [...ROBOT_CONTROL_ALLOWED_MANUAL_DIRECTIONS],
       },
       remote_motion_key_values: remoteMotionKeyValues,
-      ...evidenceCapture,
+      ...responseEvidenceCapture,
       failure_reason:
         dangerous.length > 0
           ? `dangerous_true_field:${dangerous[0]}`
