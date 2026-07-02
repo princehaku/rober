@@ -10782,6 +10782,20 @@ export async function buildRobotControlSummary(
     }
     return `键盘连续手控暂未就绪：先恢复键盘入口或上车连接；当前缺口：${keyboardActionMissingEvidence.join("、") || "键盘入口未就绪"}。`;
   })();
+  const currentFreeMoveControlPackStatus: "complete" | "ready_for_safety_confirm" | "blocked" = freeMoveComplete
+    ? "complete"
+    : (freeMoveRunbookItem?.ready ?? liveClosureSummary.free_move_start_ready)
+      ? "ready_for_safety_confirm"
+      : "blocked";
+  const currentFreeMoveControlPackPlain = (() => {
+    if (currentFreeMoveControlPackStatus === "complete") {
+      return "自由自助移动已闭环：free-roam latest 已读到运行态；继续监看地图画面和停止兜底。";
+    }
+    if (currentFreeMoveControlPackStatus === "ready_for_safety_confirm") {
+      return `自由自助移动可复验：先勾现场安全确认再启动；相机和雷达不作为发车前置，启动后只读读取 free-roam latest、地图预览和 summary。当前缺口：${freeMoveActionMissingEvidence.join("、") || "无"}。`;
+    }
+    return `自由自助移动暂未就绪：先恢复 free-roam 状态机、停止兜底或上车连接；当前缺口：${freeMoveActionMissingEvidence.join("、") || "自由移动入口未就绪"}。`;
+  })();
   const fieldAcceptanceWysiwygNextActions = [
     liveClosureSummary.live_wysiwyg_missing_surface_ids.includes("camera")
       ? liveClosureSummary.live_wysiwyg_camera_recovery_next_action_plain
@@ -11566,6 +11580,53 @@ export async function buildRobotControlSummary(
     current_free_move_action_starts_map_runtime: false,
     current_free_move_action_submits_delivery: false,
     current_free_move_action_stops_motion: false,
+    current_free_move_control_pack_status: currentFreeMoveControlPackStatus,
+    current_free_move_control_pack_plain: currentFreeMoveControlPackPlain,
+    current_free_move_control_pack_action_id: freeMoveRunbookItem?.id ?? "start_free_move",
+    current_free_move_control_pack_display_label: freeMoveRunbookItem?.display_label ?? "自由自助移动",
+    current_free_move_control_pack_start_endpoint: freeMoveActionStartEndpoint,
+    current_free_move_control_pack_stop_endpoint: freeMoveActionStopEndpoint,
+    current_free_move_control_pack_latest_endpoint: liveClosureSummary.fixed_free_roam_latest_endpoint,
+    current_free_move_control_pack_readback_endpoints: freeMoveActionAcceptanceEndpoints,
+    current_free_move_control_pack_post_start_readback_endpoints: freeMoveActionAcceptanceEndpoints,
+    current_free_move_control_pack_post_start_readback_sequence_labels: freeMovePostStartReadbackSequenceLabels,
+    current_free_move_control_pack_required_success_markers: freeMoveActionRequiredSuccessMarkers,
+    current_free_move_control_pack_missing_evidence: freeMoveActionMissingEvidence,
+    current_free_move_control_pack_proof_status: freeMoveRunbookItem?.proof_status ?? "blocked",
+    current_free_move_control_pack_ready: freeMoveRunbookItem?.ready ?? liveClosureSummary.free_move_start_ready,
+    current_free_move_control_pack_running: liveClosureSummary.free_roam_motion_ready,
+    current_free_move_control_pack_complete: freeMoveComplete,
+    current_free_move_control_pack_requires_safety_confirm: freeMoveRunbookItem?.safety_confirm_required ?? true,
+    current_free_move_control_pack_minimal_precheck_safety_only: freeMoveRunbookItem?.minimal_precheck_safety_only ?? liveClosureSummary.free_move_minimal_precheck_safety_only,
+    current_free_move_control_pack_camera_preflight_required: liveClosureSummary.free_move_camera_preflight_required,
+    current_free_move_control_pack_radar_preflight_required: liveClosureSummary.free_move_radar_preflight_required,
+    current_free_move_control_pack_without_camera_allowed: liveClosureSummary.free_move_without_camera_allowed,
+    current_free_move_control_pack_without_radar_allowed: liveClosureSummary.free_roam_motion_without_radar_allowed,
+    current_free_move_control_pack_blocked_by_camera_wysiwyg: liveClosureSummary.free_move_blocked_by_camera_wysiwyg,
+    current_free_move_control_pack_blocked_by_radar_wysiwyg: liveClosureSummary.free_move_blocked_by_radar_wysiwyg,
+    current_free_move_control_pack_mapping_start_ready: liveClosureSummary.mapping_start_ready,
+    current_free_move_control_pack_mapping_start_missing_reasons: liveClosureSummary.mapping_start_missing_reasons,
+    current_free_move_control_pack_post_start_readback_refreshes_latest: freeMovePostStartReadbackRefreshesLatest,
+    current_free_move_control_pack_post_start_readback_refreshes_map_preview: freeMovePostStartReadbackRefreshesMapPreview,
+    current_free_move_control_pack_post_start_readback_refreshes_summary: freeMovePostStartReadbackRefreshesSummary,
+    current_free_move_control_pack_sends_motion_when_clicked: false,
+    current_free_move_control_pack_sends_motion_when_executed: true,
+    current_free_move_control_pack_starts_nav2_when_clicked: false,
+    current_free_move_control_pack_starts_manual_when_clicked: false,
+    current_free_move_control_pack_starts_keyboard_when_clicked: false,
+    current_free_move_control_pack_starts_free_roam_when_clicked: false,
+    current_free_move_control_pack_starts_free_roam_when_executed: true,
+    current_free_move_control_pack_starts_map_runtime_when_clicked: false,
+    current_free_move_control_pack_submits_delivery_when_clicked: false,
+    current_free_move_control_pack_stops_motion_when_clicked: false,
+    current_free_move_control_pack_readback_sends_motion: false,
+    current_free_move_control_pack_readback_starts_nav2: false,
+    current_free_move_control_pack_readback_starts_manual: false,
+    current_free_move_control_pack_readback_starts_keyboard: false,
+    current_free_move_control_pack_readback_starts_free_roam: false,
+    current_free_move_control_pack_readback_starts_map_runtime: false,
+    current_free_move_control_pack_readback_submits_delivery: false,
+    current_free_move_control_pack_readback_stops_motion: false,
     current_mapping_action_required: true,
     current_mapping_action_ready: mappingRunbookItem?.ready ?? liveClosureSummary.mapping_start_ready,
     current_mapping_action_id: mappingRunbookItem?.id ?? "start_mapping_when_sensors_ready",

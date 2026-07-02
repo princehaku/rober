@@ -5106,3 +5106,9 @@ manual start、stop、按住后读回端点、缺口、按住脉冲参数、松�
 summary/DOM 读取。页面明确点击启用键盘不会发车，只有按住 W/A/S/D 或方向键才持续低速移动；松开后只读复验
 `base/feedback-samples` 和 summary，不启动 Nav2、manual/free-roam、建图 runtime、delivery 或 stop。
 地图太小时仍优先用普通用户 `/map` 大屏；ROS2 配套工具口径保持本地工程调试用 RViz2，远程浏览器观察用 Foxglove bridge + Foxglove Web。
+
+2026-07-02 13:20 CST 起，summary 顶层新增 `current_free_move_control_pack_*`，普通 PC 同步新增
+`plain-current-free-move-control-pack`。该包把“自由自助移动”也提升为当前验收短行：显示固定 start/stop/latest、
+启动后只读读回端点、缺口、建图 readiness、相机/雷达是否阻塞自由移动，以及点击/读回不会启动 Nav2、键盘、建图 runtime、
+送达或 stop 的边界。字段明确：点击展示不发车，只有勾现场安全确认后执行自由移动动作才会启动 free-roam；
+启动后必须只读读取 free-roam latest、地图预览和 summary。相机和雷达不作为自由移动发车前置，只影响建图启动和 WYSIWYG 验收。

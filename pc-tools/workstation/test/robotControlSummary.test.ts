@@ -1430,6 +1430,62 @@ describe("robotControlSummary", () => {
     expect(summary.current_free_move_action_starts_map_runtime).toBe(false);
     expect(summary.current_free_move_action_submits_delivery).toBe(false);
     expect(summary.current_free_move_action_stops_motion).toBe(false);
+    expect(summary.current_free_move_control_pack_status).toBe("ready_for_safety_confirm");
+    expect(summary.current_free_move_control_pack_plain).toContain("自由自助移动可复验");
+    expect(summary.current_free_move_control_pack_plain).toContain("相机和雷达不作为发车前置");
+    expect(summary.current_free_move_control_pack_action_id).toBe("start_free_move");
+    expect(summary.current_free_move_control_pack_display_label).toBe("自由自助移动");
+    expect(summary.current_free_move_control_pack_start_endpoint).toBe("/api/robot-control/free-roam/autonomy/start");
+    expect(summary.current_free_move_control_pack_stop_endpoint).toBe("/api/robot-control/free-roam/autonomy/stop");
+    expect(summary.current_free_move_control_pack_latest_endpoint).toBe("/api/robot-control/free-roam/autonomy/latest");
+    expect(summary.current_free_move_control_pack_readback_endpoints).toEqual([
+      "/api/robot-control/free-roam/autonomy/latest",
+      "/api/robot-control/map/preview",
+      "/api/robot-control/summary",
+    ]);
+    expect(summary.current_free_move_control_pack_post_start_readback_endpoints).toEqual(summary.current_free_move_control_pack_readback_endpoints);
+    expect(summary.current_free_move_control_pack_post_start_readback_sequence_labels).toEqual([
+      "读取自由移动状态",
+      "刷新地图画面",
+      "刷新总览",
+    ]);
+    expect(summary.current_free_move_control_pack_required_success_markers).toEqual(["free_roam_latest_motion_ready"]);
+    expect(summary.current_free_move_control_pack_missing_evidence).toEqual(["free_roam_latest_motion_ready"]);
+    expect(summary.current_free_move_control_pack_proof_status).toBe("ready_to_verify");
+    expect(summary.current_free_move_control_pack_ready).toBe(true);
+    expect(summary.current_free_move_control_pack_running).toBe(false);
+    expect(summary.current_free_move_control_pack_complete).toBe(false);
+    expect(summary.current_free_move_control_pack_requires_safety_confirm).toBe(true);
+    expect(summary.current_free_move_control_pack_minimal_precheck_safety_only).toBe(true);
+    expect(summary.current_free_move_control_pack_camera_preflight_required).toBe(false);
+    expect(summary.current_free_move_control_pack_radar_preflight_required).toBe(false);
+    expect(summary.current_free_move_control_pack_without_camera_allowed).toBe(true);
+    expect(summary.current_free_move_control_pack_without_radar_allowed).toBe(true);
+    expect(summary.current_free_move_control_pack_blocked_by_camera_wysiwyg).toBe(false);
+    expect(summary.current_free_move_control_pack_blocked_by_radar_wysiwyg).toBe(false);
+    expect(summary.current_free_move_control_pack_mapping_start_ready).toBe(false);
+    expect(summary.current_free_move_control_pack_mapping_start_missing_reasons).toEqual(["camera_first_frame", "lidar_fresh"]);
+    expect(summary.current_free_move_control_pack_post_start_readback_refreshes_latest).toBe(true);
+    expect(summary.current_free_move_control_pack_post_start_readback_refreshes_map_preview).toBe(true);
+    expect(summary.current_free_move_control_pack_post_start_readback_refreshes_summary).toBe(true);
+    expect(summary.current_free_move_control_pack_sends_motion_when_clicked).toBe(false);
+    expect(summary.current_free_move_control_pack_sends_motion_when_executed).toBe(true);
+    expect(summary.current_free_move_control_pack_starts_nav2_when_clicked).toBe(false);
+    expect(summary.current_free_move_control_pack_starts_manual_when_clicked).toBe(false);
+    expect(summary.current_free_move_control_pack_starts_keyboard_when_clicked).toBe(false);
+    expect(summary.current_free_move_control_pack_starts_free_roam_when_clicked).toBe(false);
+    expect(summary.current_free_move_control_pack_starts_free_roam_when_executed).toBe(true);
+    expect(summary.current_free_move_control_pack_starts_map_runtime_when_clicked).toBe(false);
+    expect(summary.current_free_move_control_pack_submits_delivery_when_clicked).toBe(false);
+    expect(summary.current_free_move_control_pack_stops_motion_when_clicked).toBe(false);
+    expect(summary.current_free_move_control_pack_readback_sends_motion).toBe(false);
+    expect(summary.current_free_move_control_pack_readback_starts_nav2).toBe(false);
+    expect(summary.current_free_move_control_pack_readback_starts_manual).toBe(false);
+    expect(summary.current_free_move_control_pack_readback_starts_keyboard).toBe(false);
+    expect(summary.current_free_move_control_pack_readback_starts_free_roam).toBe(false);
+    expect(summary.current_free_move_control_pack_readback_starts_map_runtime).toBe(false);
+    expect(summary.current_free_move_control_pack_readback_submits_delivery).toBe(false);
+    expect(summary.current_free_move_control_pack_readback_stops_motion).toBe(false);
     expect(summary.field_acceptance_safety_confirm_ready_actions).toEqual([
       expect.objectContaining({
         id: "run_nav2_route",
