@@ -276,7 +276,12 @@ class LaunchContractStaticTest(unittest.TestCase):
     def test_foxglove_bridge_launch_is_remote_observation_only(self):
         # Foxglove 给远程浏览器看图和雷达，不能绕过 PC 安全确认变成另一条控制入口。
         source = read_launch("foxglove_bridge.launch.py")
+        package_source = (BRINGUP_ROOT / "package.xml").read_text(encoding="utf-8")
         ast.parse(source)
+
+        for dependency in ("rviz2", "nav2_rviz_plugins", "foxglove_bridge"):
+            # 工程观察入口必须声明运行依赖，否则现场命令会变成“源码有、机器人跑不起来”。
+            self.assertIn(f"<exec_depend>{dependency}</exec_depend>", package_source)
 
         for expected in (
             'default_value="0.0.0.0"',
