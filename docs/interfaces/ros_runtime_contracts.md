@@ -31,11 +31,12 @@ AMCL。随后再等待 planner/controller/BT/behavior lifecycle active 后才发
 日志中的 `lifecycle_manager_navigation: Managed nodes are active` 作为执行层 active 证据；不能只因为
 `/navigate_to_pose` action server 出现就发送 goal，因为 BT node 未 active 时目标可能被拒绝。
 
-2026-06-27 后，PC Nav2 执行代理默认把 `base_command_mode` 固定为 `ros`，即让上车端通过 ROS
-`/cmd_vel` 进入 bridge 的 `CMD_ROS_CTRL/T=13` 控制入口；浏览器未传模式时也不得回落到旧 PWM 诊断路径。
-该口径来自 `docs/vendor/VENDOR_INDEX.md` 指向的 WAVE ROVER 本地资料：`CMD_ROS_CTRL/T=13`
-是线速度/角速度控制入口，`CMD_SPEED_CTRL/T=1` 是左右速度控制入口，`CMD_PWM_INPUT/T=11`
-是 PWM 诊断入口。PC 和上车端仍允许 `speed`/`pwm` 作为白名单诊断 override，但普通首屏路线执行不暴露模式选择。
+2026-07-03 后，PC Nav2 和键盘手控仍默认走 ROS `/cmd_vel` 控制面，但底层 bridge 的当前默认
+`command_mode=pwm`，会把 Twist 映射为 vendor `CMD_PWM_INPUT/T=11`。该口径来自
+`docs/vendor/VENDOR_INDEX.md` 指向的 WAVE ROVER 本地资料：`CMD_ROS_CTRL/T=13` 是线速度/角速度
+控制入口，`CMD_SPEED_CTRL/T=1` 是左右速度控制入口，`CMD_PWM_INPUT/T=11` 是 PWM 输入入口。
+PC 和上车端仍允许 `speed`/`ros` 作为白名单诊断 override，但普通首屏路线执行不暴露模式选择，也不绕过
+bridge 抢 `/dev/ttyS5`。
 O11 会通过 `feedback_debug_log_path` 记录 bridge 解析出的 `T=1001`，并把 `base_feedback_summary` 写入 artifact。`base_feedback_summary`
 必须区分 `wheel_feedback_lr_nonzero_proven` 与 `imu_attitude_delta_observed`：前者只来自同帧
 `T1001 L/R` 非零，后者来自 `T1001 r/p` 姿态变化，只能作为运动迹象，不能冒充轮速闭环或交付成功。

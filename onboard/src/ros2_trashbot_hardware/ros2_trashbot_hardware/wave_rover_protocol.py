@@ -64,7 +64,7 @@ def build_cmd_vel_command(
     pwm_max_abs: int = DEFAULT_PWM_MAX_ABS,
 ) -> dict[str, Any]:
     """把 ROS cmd_vel 参数转换为 WAVE ROVER JSON 命令。"""
-    # T=13 是 vendor 固件的 ROS 控制命令；默认路径使用它，T=1/T=11 只保留作诊断回退。
+    # command_mode 决定 /cmd_vel 最终落成哪类 vendor 帧；当前上车默认由 launch 选择 T=11/PWM。
     mode = command_mode.lower()
     linear_x = float(linear_x)
     angular_z = float(angular_z)

@@ -499,7 +499,7 @@ def pwm_command_for_direction(
 
 
 def ros_command_for_direction(direction: str, speed: float) -> dict[str, float | int]:
-    """把 PC 方向键转换为 vendor T=13 ROS 控制；与 Nav2/ROS 控制链路保持同一入口。"""
+    """把 PC 方向键转换为 ROS Twist 语义；bridge 再按当前参数落成 T=11/T=13/T=1。"""
     if direction == "forward":
         linear_x, angular_z = speed, 0.0
     elif direction == "back":
