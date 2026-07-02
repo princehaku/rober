@@ -5144,6 +5144,7 @@ const plainCurrentMotionActionGauge = computed(() => {
   const minimalPrecheckSafetyOnly = summary?.current_motion_action_minimal_precheck_safety_only ?? fallback.minimalPrecheckSafetyOnly;
   const cameraPreflightRequired = summary?.current_motion_action_camera_preflight_required ?? fallback.cameraPreflightRequired;
   const radarPreflightRequired = summary?.current_motion_action_radar_preflight_required ?? fallback.radarPreflightRequired;
+  const operatorReportPreflightRequired = summary?.current_motion_action_operator_report_preflight_required ?? false;
   const routeWysiwygPreflightRequired = summary?.current_motion_action_route_wysiwyg_preflight_required ?? fallback.routeWysiwygPreflightRequired;
   const sendsMotion = summary?.current_motion_action_sends_motion ?? fallback.startSendsMotion;
   const routeReadyOnMap = summary?.current_motion_action_route_ready_on_map ?? fallback.routeReadyOnMap;
@@ -5164,7 +5165,7 @@ const plainCurrentMotionActionGauge = computed(() => {
   const safetyText = requiresSafetyConfirm
     ? plainManualSafetyConfirmed.value ? "安全确认已勾" : "先勾现场安全确认"
     : "无需额外安全确认";
-  const precheckText = minimalPrecheckSafetyOnly && !cameraPreflightRequired && !radarPreflightRequired && !routeWysiwygPreflightRequired
+  const precheckText = minimalPrecheckSafetyOnly && !cameraPreflightRequired && !radarPreflightRequired && !operatorReportPreflightRequired && !routeWysiwygPreflightRequired
     ? "发车前只看安全确认"
     : "发车前仍按动作卡要求处理";
   const readbackText = acceptanceEndpoints.length
@@ -5210,6 +5211,7 @@ const plainCurrentMotionActionGauge = computed(() => {
     minimalPrecheckSafetyOnly,
     cameraPreflightRequired,
     radarPreflightRequired,
+    operatorReportPreflightRequired,
     routeWysiwygPreflightRequired,
     sendsMotion,
     routeReadyOnMap,
@@ -18967,6 +18969,7 @@ onBeforeUnmount(() => {
           :data-safety-confirm-ready-action-minimal-precheck-safety-only="robotSummary?.field_acceptance_safety_confirm_ready_action_minimal_precheck_safety_only?.map(String).join(',') ?? plainFieldAcceptancePacket.safety_confirm_ready_actions.map((action) => String(action.minimal_precheck_safety_only)).join(',') ?? 'none'"
           :data-safety-confirm-ready-action-camera-preflight-required="robotSummary?.field_acceptance_safety_confirm_ready_action_camera_preflight_required?.map(String).join(',') ?? plainFieldAcceptancePacket.safety_confirm_ready_actions.map((action) => String(action.camera_preflight_required)).join(',') ?? 'none'"
           :data-safety-confirm-ready-action-radar-preflight-required="robotSummary?.field_acceptance_safety_confirm_ready_action_radar_preflight_required?.map(String).join(',') ?? plainFieldAcceptancePacket.safety_confirm_ready_actions.map((action) => String(action.radar_preflight_required)).join(',') ?? 'none'"
+          :data-safety-confirm-ready-action-operator-report-preflight-required="robotSummary?.field_acceptance_safety_confirm_ready_action_operator_report_preflight_required?.map(String).join(',') ?? plainFieldAcceptancePacket.safety_confirm_ready_actions.map((action) => String(action.operator_report_preflight_required)).join(',') ?? 'none'"
           :data-safety-confirm-ready-action-route-wysiwyg-preflight-required="robotSummary?.field_acceptance_safety_confirm_ready_action_route_wysiwyg_preflight_required?.map(String).join(',') ?? plainFieldAcceptancePacket.safety_confirm_ready_actions.map((action) => String(action.route_wysiwyg_preflight_required)).join(',') ?? 'none'"
           :data-primary-safety-confirm-ready-action-id="plainFieldAcceptancePacket.primary_safety_confirm_ready_action_id"
           :data-primary-safety-confirm-ready-action-label="plainFieldAcceptancePacket.primary_safety_confirm_ready_action_label"
@@ -18977,6 +18980,7 @@ onBeforeUnmount(() => {
           :data-primary-safety-confirm-ready-action-minimal-precheck-safety-only="String(robotSummary?.field_acceptance_primary_safety_confirm_ready_action_minimal_precheck_safety_only ?? plainFieldAcceptancePacket.safety_confirm_ready_actions.find((action) => action.id === plainFieldAcceptancePacket.primary_safety_confirm_ready_action_id)?.minimal_precheck_safety_only ?? false)"
           :data-primary-safety-confirm-ready-action-camera-preflight-required="String(robotSummary?.field_acceptance_primary_safety_confirm_ready_action_camera_preflight_required ?? plainFieldAcceptancePacket.safety_confirm_ready_actions.find((action) => action.id === plainFieldAcceptancePacket.primary_safety_confirm_ready_action_id)?.camera_preflight_required ?? false)"
           :data-primary-safety-confirm-ready-action-radar-preflight-required="String(robotSummary?.field_acceptance_primary_safety_confirm_ready_action_radar_preflight_required ?? plainFieldAcceptancePacket.safety_confirm_ready_actions.find((action) => action.id === plainFieldAcceptancePacket.primary_safety_confirm_ready_action_id)?.radar_preflight_required ?? false)"
+          :data-primary-safety-confirm-ready-action-operator-report-preflight-required="String(robotSummary?.field_acceptance_primary_safety_confirm_ready_action_operator_report_preflight_required ?? plainFieldAcceptancePacket.safety_confirm_ready_actions.find((action) => action.id === plainFieldAcceptancePacket.primary_safety_confirm_ready_action_id)?.operator_report_preflight_required ?? false)"
           :data-primary-safety-confirm-ready-action-route-wysiwyg-preflight-required="String(robotSummary?.field_acceptance_primary_safety_confirm_ready_action_route_wysiwyg_preflight_required ?? plainFieldAcceptancePacket.safety_confirm_ready_actions.find((action) => action.id === plainFieldAcceptancePacket.primary_safety_confirm_ready_action_id)?.route_wysiwyg_preflight_required ?? false)"
           :data-primary-safety-confirm-ready-action-requires-safety-confirm="String(plainFieldAcceptancePacket.primary_safety_confirm_ready_action_requires_safety_confirm)"
           :data-primary-safety-confirm-ready-action-sends-motion="String(plainFieldAcceptancePacket.primary_safety_confirm_ready_action_sends_motion)"
@@ -24120,6 +24124,7 @@ onBeforeUnmount(() => {
               :data-current-motion-action-minimal-precheck-safety-only="String(plainCurrentMotionActionGauge.minimalPrecheckSafetyOnly)"
               :data-current-motion-action-camera-preflight-required="String(plainCurrentMotionActionGauge.cameraPreflightRequired)"
               :data-current-motion-action-radar-preflight-required="String(plainCurrentMotionActionGauge.radarPreflightRequired)"
+              :data-current-motion-action-operator-report-preflight-required="String(plainCurrentMotionActionGauge.operatorReportPreflightRequired)"
               :data-current-motion-action-route-wysiwyg-preflight-required="String(plainCurrentMotionActionGauge.routeWysiwygPreflightRequired)"
               :data-current-motion-action-sends-motion="String(plainCurrentMotionActionGauge.sendsMotion)"
               :data-current-motion-action-route-ready-on-map="String(plainCurrentMotionActionGauge.routeReadyOnMap)"

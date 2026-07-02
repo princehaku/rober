@@ -6017,6 +6017,7 @@ describe("App", () => {
     expect(fieldAcceptancePacket.attributes("data-safety-confirm-ready-action-minimal-precheck-safety-only")).toBe("true,true");
     expect(fieldAcceptancePacket.attributes("data-safety-confirm-ready-action-camera-preflight-required")).toBe("false,false");
     expect(fieldAcceptancePacket.attributes("data-safety-confirm-ready-action-radar-preflight-required")).toBe("false,false");
+    expect(fieldAcceptancePacket.attributes("data-safety-confirm-ready-action-operator-report-preflight-required")).toBe("false,false");
     expect(fieldAcceptancePacket.attributes("data-safety-confirm-ready-action-route-wysiwyg-preflight-required")).toBe("false,false");
     expect(fieldAcceptancePacket.attributes("data-primary-safety-confirm-ready-action-id")).toBe("hold_keyboard");
     expect(fieldAcceptancePacket.attributes("data-primary-safety-confirm-ready-action-label")).toBe("键盘连续手控");
@@ -6026,6 +6027,7 @@ describe("App", () => {
     expect(fieldAcceptancePacket.attributes("data-primary-safety-confirm-ready-action-minimal-precheck-safety-only")).toBe("true");
     expect(fieldAcceptancePacket.attributes("data-primary-safety-confirm-ready-action-camera-preflight-required")).toBe("false");
     expect(fieldAcceptancePacket.attributes("data-primary-safety-confirm-ready-action-radar-preflight-required")).toBe("false");
+    expect(fieldAcceptancePacket.attributes("data-primary-safety-confirm-ready-action-operator-report-preflight-required")).toBe("false");
     expect(fieldAcceptancePacket.attributes("data-primary-safety-confirm-ready-action-route-wysiwyg-preflight-required")).toBe("false");
     expect(fieldAcceptancePacket.attributes("data-primary-safety-confirm-ready-action-requires-safety-confirm")).toBe("true");
     expect(fieldAcceptancePacket.attributes("data-primary-safety-confirm-ready-action-sends-motion")).toBe("true");
@@ -9667,6 +9669,7 @@ describe("App", () => {
     expect(currentMotionAction.attributes("data-current-motion-action-minimal-precheck-safety-only")).toBe("true");
     expect(currentMotionAction.attributes("data-current-motion-action-camera-preflight-required")).toBe("false");
     expect(currentMotionAction.attributes("data-current-motion-action-radar-preflight-required")).toBe("false");
+    expect(currentMotionAction.attributes("data-current-motion-action-operator-report-preflight-required")).toBe("false");
     expect(currentMotionAction.attributes("data-current-motion-action-route-wysiwyg-preflight-required")).toBe("false");
     expect(currentMotionAction.attributes("data-current-motion-action-sends-motion")).toBe("true");
     expect(currentMotionAction.attributes("data-current-motion-action-route-ready-on-map")).toBe("true");

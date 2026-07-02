@@ -1036,6 +1036,7 @@ describe("robotControlSummary", () => {
     expect(summary.field_acceptance_safety_confirm_ready_action_minimal_precheck_safety_only).toEqual([true, true, true]);
     expect(summary.field_acceptance_safety_confirm_ready_action_camera_preflight_required).toEqual([false, false, false]);
     expect(summary.field_acceptance_safety_confirm_ready_action_radar_preflight_required).toEqual([false, false, false]);
+    expect(summary.field_acceptance_safety_confirm_ready_action_operator_report_preflight_required).toEqual([false, false, false]);
     expect(summary.field_acceptance_safety_confirm_ready_action_route_wysiwyg_preflight_required).toEqual([false, false, false]);
     expect(summary.field_acceptance_primary_safety_confirm_ready_action_id).toBe("run_nav2_route");
     expect(summary.field_acceptance_primary_safety_confirm_ready_action_label).toBe("完整行程执行");
@@ -1052,6 +1053,7 @@ describe("robotControlSummary", () => {
     expect(summary.field_acceptance_primary_safety_confirm_ready_action_minimal_precheck_safety_only).toBe(true);
     expect(summary.field_acceptance_primary_safety_confirm_ready_action_camera_preflight_required).toBe(false);
     expect(summary.field_acceptance_primary_safety_confirm_ready_action_radar_preflight_required).toBe(false);
+    expect(summary.field_acceptance_primary_safety_confirm_ready_action_operator_report_preflight_required).toBe(false);
     expect(summary.field_acceptance_primary_safety_confirm_ready_action_route_wysiwyg_preflight_required).toBe(false);
     expect(summary.field_acceptance_primary_safety_confirm_ready_action_requires_safety_confirm).toBe(true);
     expect(summary.field_acceptance_primary_safety_confirm_ready_action_sends_motion).toBe(true);
@@ -1063,6 +1065,7 @@ describe("robotControlSummary", () => {
     expect(summary.field_acceptance_primary_safety_action_acceptance_endpoints).toEqual(summary.field_acceptance_primary_safety_confirm_ready_action_acceptance_endpoints);
     expect(summary.field_acceptance_primary_safety_action_ready_for_safety_confirm).toBe(true);
     expect(summary.field_acceptance_primary_safety_action_minimal_precheck_safety_only).toBe(true);
+    expect(summary.field_acceptance_primary_safety_action_operator_report_preflight_required).toBe(false);
     expect(summary.field_acceptance_primary_safety_action_requires_safety_confirm).toBe(true);
     expect(summary.field_acceptance_primary_safety_action_sends_motion).toBe(true);
     expect(summary.current_motion_action_required).toBe(true);
@@ -1087,6 +1090,7 @@ describe("robotControlSummary", () => {
     expect(summary.current_motion_action_minimal_precheck_safety_only).toBe(true);
     expect(summary.current_motion_action_camera_preflight_required).toBe(false);
     expect(summary.current_motion_action_radar_preflight_required).toBe(false);
+    expect(summary.current_motion_action_operator_report_preflight_required).toBe(false);
     expect(summary.current_motion_action_route_wysiwyg_preflight_required).toBe(false);
     expect(summary.current_motion_action_sends_motion).toBe(true);
     expect(summary.current_motion_action_route_ready_on_map).toBe(summary.nav2_route_acceptance_packet?.route_ready_on_map);

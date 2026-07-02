@@ -3803,6 +3803,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   field_acceptance_safety_confirm_ready_action_minimal_precheck_safety_only?: boolean[];
   field_acceptance_safety_confirm_ready_action_camera_preflight_required?: boolean[];
   field_acceptance_safety_confirm_ready_action_radar_preflight_required?: boolean[];
+  field_acceptance_safety_confirm_ready_action_operator_report_preflight_required?: boolean[];
   field_acceptance_safety_confirm_ready_action_route_wysiwyg_preflight_required?: boolean[];
   field_acceptance_safety_confirm_ready_actions?: RobotControlFieldAcceptancePacket["safety_confirm_ready_actions"];
   field_acceptance_primary_safety_confirm_ready_action_id?: RobotControlFieldAcceptancePacket["primary_safety_confirm_ready_action_id"];
@@ -3814,6 +3815,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   field_acceptance_primary_safety_confirm_ready_action_minimal_precheck_safety_only?: boolean;
   field_acceptance_primary_safety_confirm_ready_action_camera_preflight_required?: boolean;
   field_acceptance_primary_safety_confirm_ready_action_radar_preflight_required?: boolean;
+  field_acceptance_primary_safety_confirm_ready_action_operator_report_preflight_required?: boolean;
   field_acceptance_primary_safety_confirm_ready_action_route_wysiwyg_preflight_required?: boolean;
   field_acceptance_primary_safety_confirm_ready_action_requires_safety_confirm?: RobotControlFieldAcceptancePacket["primary_safety_confirm_ready_action_requires_safety_confirm"];
   field_acceptance_primary_safety_confirm_ready_action_sends_motion?: RobotControlFieldAcceptancePacket["primary_safety_confirm_ready_action_sends_motion"];
@@ -3825,6 +3827,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   field_acceptance_primary_safety_action_acceptance_endpoints?: string[];
   field_acceptance_primary_safety_action_ready_for_safety_confirm?: boolean;
   field_acceptance_primary_safety_action_minimal_precheck_safety_only?: boolean;
+  field_acceptance_primary_safety_action_operator_report_preflight_required?: boolean;
   field_acceptance_primary_safety_action_requires_safety_confirm?: RobotControlFieldAcceptancePacket["primary_safety_confirm_ready_action_requires_safety_confirm"];
   field_acceptance_primary_safety_action_sends_motion?: RobotControlFieldAcceptancePacket["primary_safety_confirm_ready_action_sends_motion"];
   current_motion_action_required?: boolean;
@@ -3844,6 +3847,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   current_motion_action_minimal_precheck_safety_only?: boolean;
   current_motion_action_camera_preflight_required?: boolean;
   current_motion_action_radar_preflight_required?: boolean;
+  current_motion_action_operator_report_preflight_required?: boolean;
   current_motion_action_route_wysiwyg_preflight_required?: boolean;
   current_motion_action_sends_motion?: RobotControlFieldAcceptancePacket["primary_safety_confirm_ready_action_sends_motion"];
   current_motion_action_route_ready_on_map?: RobotControlNav2RouteAcceptancePacket["route_ready_on_map"];
