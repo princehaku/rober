@@ -1520,6 +1520,36 @@ describe("robotControlSummary", () => {
       "/api/robot-control/summary",
     ]);
     expect(summary.mapping_readback_endpoints).toEqual(summary.mapping_acceptance_endpoints);
+    expect(summary.mapping_post_start_readback_endpoints).toEqual(summary.mapping_acceptance_endpoints);
+    expect(summary.mapping_post_start_readback_sequence_labels).toEqual([
+      "读取自由移动状态",
+      "刷新地图画面",
+      "刷新总览",
+    ]);
+    expect(summary.mapping_post_start_readback_refreshes_free_roam_latest).toBe(true);
+    expect(summary.mapping_post_start_readback_refreshes_map_preview).toBe(true);
+    expect(summary.mapping_post_start_readback_refreshes_summary).toBe(true);
+    expect(summary.mapping_post_start_readback_sends_motion).toBe(false);
+    expect(summary.mapping_post_start_readback_starts_nav2).toBe(false);
+    expect(summary.mapping_post_start_readback_starts_manual).toBe(false);
+    expect(summary.mapping_post_start_readback_starts_keyboard).toBe(false);
+    expect(summary.mapping_post_start_readback_starts_free_roam).toBe(false);
+    expect(summary.mapping_post_start_readback_starts_map_runtime).toBe(false);
+    expect(summary.mapping_post_start_readback_submits_delivery).toBe(false);
+    expect(summary.mapping_post_start_readback_stops_motion).toBe(false);
+    expect(summary.current_mapping_action_post_start_readback_endpoints).toEqual(summary.mapping_post_start_readback_endpoints);
+    expect(summary.current_mapping_action_post_start_readback_sequence_labels).toEqual(summary.mapping_post_start_readback_sequence_labels);
+    expect(summary.current_mapping_action_post_start_readback_refreshes_free_roam_latest).toBe(true);
+    expect(summary.current_mapping_action_post_start_readback_refreshes_map_preview).toBe(true);
+    expect(summary.current_mapping_action_post_start_readback_refreshes_summary).toBe(true);
+    expect(summary.current_mapping_action_post_start_readback_sends_motion).toBe(false);
+    expect(summary.current_mapping_action_post_start_readback_starts_nav2).toBe(false);
+    expect(summary.current_mapping_action_post_start_readback_starts_manual).toBe(false);
+    expect(summary.current_mapping_action_post_start_readback_starts_keyboard).toBe(false);
+    expect(summary.current_mapping_action_post_start_readback_starts_free_roam).toBe(false);
+    expect(summary.current_mapping_action_post_start_readback_starts_map_runtime).toBe(false);
+    expect(summary.current_mapping_action_post_start_readback_submits_delivery).toBe(false);
+    expect(summary.current_mapping_action_post_start_readback_stops_motion).toBe(false);
     expect(summary.mapping_required_success_markers).toEqual(["camera_first_frame", "lidar_fresh"]);
     expect(summary.mapping_proof_status).toBe("blocked");
     expect(summary.mapping_missing_evidence).toEqual(["camera_first_frame", "lidar_fresh"]);

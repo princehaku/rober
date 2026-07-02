@@ -9340,6 +9340,19 @@ type PlainCurrentMappingAction = {
   previewEndpoint: string;
   acceptanceEndpoints: string[];
   readbackEndpoints: string[];
+  postStartReadbackEndpoints: string[];
+  postStartReadbackSequenceLabels: string[];
+  postStartReadbackRefreshesFreeRoamLatest: boolean;
+  postStartReadbackRefreshesMapPreview: boolean;
+  postStartReadbackRefreshesSummary: boolean;
+  postStartReadbackSendsMotion: boolean;
+  postStartReadbackStartsNav2: boolean;
+  postStartReadbackStartsManual: boolean;
+  postStartReadbackStartsKeyboard: boolean;
+  postStartReadbackStartsFreeRoam: boolean;
+  postStartReadbackStartsMapRuntime: boolean;
+  postStartReadbackSubmitsDelivery: boolean;
+  postStartReadbackStopsMotion: boolean;
   requiredSuccessMarkers: string[];
   missingEvidence: string[];
   cameraReady: boolean;
@@ -9614,6 +9627,19 @@ const plainCurrentMappingAction = computed<PlainCurrentMappingAction>(() => {
   const cameraSourceDiagnosisStatus = summary?.current_mapping_action_camera_source_diagnosis_status ?? summary?.camera_source_diagnosis_status ?? "not_loaded";
   const cameraSourceDiagnosisNotExclusive = summary?.current_mapping_action_camera_source_diagnosis_not_exclusive ?? summary?.camera_source_diagnosis_not_exclusive ?? "not_loaded";
   const cameraRecoveryNextActionPlain = summary?.current_mapping_action_camera_recovery_next_action_plain ?? summary?.camera_recovery_next_action_plain ?? "";
+  const acceptanceEndpoints = summary?.current_mapping_action_acceptance_endpoints ?? summary?.mapping_acceptance_endpoints ?? [];
+  const readbackEndpoints = summary?.current_mapping_action_readback_endpoints ?? summary?.mapping_readback_endpoints ?? [];
+  const postStartReadbackEndpoints = summary?.current_mapping_action_post_start_readback_endpoints
+    ?? summary?.mapping_post_start_readback_endpoints
+    ?? readbackEndpoints;
+  const postStartReadbackSequenceLabels = summary?.current_mapping_action_post_start_readback_sequence_labels
+    ?? summary?.mapping_post_start_readback_sequence_labels
+    ?? postStartReadbackEndpoints.map((endpoint) => {
+      if (endpoint.includes("/free-roam/autonomy/latest")) return "读取自由移动状态";
+      if (endpoint.includes("/map/preview")) return "刷新地图画面";
+      if (endpoint.includes("/summary")) return "刷新总览";
+      return "只读复验";
+    });
   const cameraHardwareText = !cameraReady && cameraHardwareActionRequired
     ? `；相机处理=${cameraHardwareActionLabel}${cameraUsbFullSpeedDetected ? `（USB ${cameraUsbSpeed}，不是页面独占）` : ""}`
     : "";
@@ -9633,8 +9659,21 @@ const plainCurrentMappingAction = computed<PlainCurrentMappingAction>(() => {
     startEndpoint: summary?.current_mapping_action_start_endpoint ?? "/api/robot-control/map/start",
     stopEndpoint: summary?.current_mapping_action_stop_endpoint ?? "/api/robot-control/free-roam/autonomy/stop",
     previewEndpoint: summary?.current_mapping_action_preview_endpoint ?? "/api/robot-control/map/preview",
-    acceptanceEndpoints: summary?.current_mapping_action_acceptance_endpoints ?? summary?.mapping_acceptance_endpoints ?? [],
-    readbackEndpoints: summary?.current_mapping_action_readback_endpoints ?? summary?.mapping_readback_endpoints ?? [],
+    acceptanceEndpoints,
+    readbackEndpoints,
+    postStartReadbackEndpoints,
+    postStartReadbackSequenceLabels,
+    postStartReadbackRefreshesFreeRoamLatest: Boolean(summary?.current_mapping_action_post_start_readback_refreshes_free_roam_latest ?? summary?.mapping_post_start_readback_refreshes_free_roam_latest ?? postStartReadbackEndpoints.includes("/api/robot-control/free-roam/autonomy/latest")),
+    postStartReadbackRefreshesMapPreview: Boolean(summary?.current_mapping_action_post_start_readback_refreshes_map_preview ?? summary?.mapping_post_start_readback_refreshes_map_preview ?? postStartReadbackEndpoints.includes("/api/robot-control/map/preview")),
+    postStartReadbackRefreshesSummary: Boolean(summary?.current_mapping_action_post_start_readback_refreshes_summary ?? summary?.mapping_post_start_readback_refreshes_summary ?? postStartReadbackEndpoints.includes("/api/robot-control/summary")),
+    postStartReadbackSendsMotion: Boolean(summary?.current_mapping_action_post_start_readback_sends_motion ?? summary?.mapping_post_start_readback_sends_motion ?? false),
+    postStartReadbackStartsNav2: Boolean(summary?.current_mapping_action_post_start_readback_starts_nav2 ?? summary?.mapping_post_start_readback_starts_nav2 ?? false),
+    postStartReadbackStartsManual: Boolean(summary?.current_mapping_action_post_start_readback_starts_manual ?? summary?.mapping_post_start_readback_starts_manual ?? false),
+    postStartReadbackStartsKeyboard: Boolean(summary?.current_mapping_action_post_start_readback_starts_keyboard ?? summary?.mapping_post_start_readback_starts_keyboard ?? false),
+    postStartReadbackStartsFreeRoam: Boolean(summary?.current_mapping_action_post_start_readback_starts_free_roam ?? summary?.mapping_post_start_readback_starts_free_roam ?? false),
+    postStartReadbackStartsMapRuntime: Boolean(summary?.current_mapping_action_post_start_readback_starts_map_runtime ?? summary?.mapping_post_start_readback_starts_map_runtime ?? false),
+    postStartReadbackSubmitsDelivery: Boolean(summary?.current_mapping_action_post_start_readback_submits_delivery ?? summary?.mapping_post_start_readback_submits_delivery ?? false),
+    postStartReadbackStopsMotion: Boolean(summary?.current_mapping_action_post_start_readback_stops_motion ?? summary?.mapping_post_start_readback_stops_motion ?? false),
     requiredSuccessMarkers: summary?.current_mapping_action_required_success_markers ?? summary?.mapping_required_success_markers ?? [],
     missingEvidence,
     cameraReady,
@@ -23277,6 +23316,19 @@ onBeforeUnmount(() => {
                 :data-current-mapping-action-preview-endpoint="plainCurrentMappingAction.previewEndpoint"
                 :data-current-mapping-action-acceptance-endpoints="plainCurrentMappingAction.acceptanceEndpoints.join(',')"
                 :data-current-mapping-action-readback-endpoints="plainCurrentMappingAction.readbackEndpoints.join(',')"
+                :data-current-mapping-action-post-start-readback-endpoints="plainCurrentMappingAction.postStartReadbackEndpoints.join(',')"
+                :data-current-mapping-action-post-start-readback-sequence-labels="plainCurrentMappingAction.postStartReadbackSequenceLabels.join(',')"
+                :data-current-mapping-action-post-start-readback-refreshes-free-roam-latest="String(plainCurrentMappingAction.postStartReadbackRefreshesFreeRoamLatest)"
+                :data-current-mapping-action-post-start-readback-refreshes-map-preview="String(plainCurrentMappingAction.postStartReadbackRefreshesMapPreview)"
+                :data-current-mapping-action-post-start-readback-refreshes-summary="String(plainCurrentMappingAction.postStartReadbackRefreshesSummary)"
+                :data-current-mapping-action-post-start-readback-sends-motion="String(plainCurrentMappingAction.postStartReadbackSendsMotion)"
+                :data-current-mapping-action-post-start-readback-starts-nav2="String(plainCurrentMappingAction.postStartReadbackStartsNav2)"
+                :data-current-mapping-action-post-start-readback-starts-manual="String(plainCurrentMappingAction.postStartReadbackStartsManual)"
+                :data-current-mapping-action-post-start-readback-starts-keyboard="String(plainCurrentMappingAction.postStartReadbackStartsKeyboard)"
+                :data-current-mapping-action-post-start-readback-starts-free-roam="String(plainCurrentMappingAction.postStartReadbackStartsFreeRoam)"
+                :data-current-mapping-action-post-start-readback-starts-map-runtime="String(plainCurrentMappingAction.postStartReadbackStartsMapRuntime)"
+                :data-current-mapping-action-post-start-readback-submits-delivery="String(plainCurrentMappingAction.postStartReadbackSubmitsDelivery)"
+                :data-current-mapping-action-post-start-readback-stops-motion="String(plainCurrentMappingAction.postStartReadbackStopsMotion)"
                 :data-current-mapping-action-required-success-markers="plainCurrentMappingAction.requiredSuccessMarkers.join(',')"
                 :data-current-mapping-action-missing-evidence="plainCurrentMappingAction.missingEvidence.join(',')"
                 :data-current-mapping-action-camera-ready="String(plainCurrentMappingAction.cameraReady)"

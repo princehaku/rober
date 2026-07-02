@@ -10419,6 +10419,15 @@ export async function buildRobotControlSummary(
     liveClosureSummary.fixed_mapping_preview_endpoint,
     "/api/robot-control/summary",
   ];
+  const mappingPostStartReadbackSequenceLabels = mappingActionAcceptanceEndpoints.map((endpoint) => {
+    if (endpoint.includes("/free-roam/autonomy/latest")) return "读取自由移动状态";
+    if (endpoint.includes("/map/preview")) return "刷新地图画面";
+    if (endpoint.includes("/summary")) return "刷新总览";
+    return "只读复验";
+  });
+  const mappingPostStartReadbackRefreshesFreeRoamLatest = mappingActionAcceptanceEndpoints.includes(liveClosureSummary.fixed_free_roam_latest_endpoint);
+  const mappingPostStartReadbackRefreshesMapPreview = mappingActionAcceptanceEndpoints.includes(liveClosureSummary.fixed_mapping_preview_endpoint);
+  const mappingPostStartReadbackRefreshesSummary = mappingActionAcceptanceEndpoints.includes("/api/robot-control/summary");
   const mappingActionRequiredSuccessMarkers = ["camera_first_frame", "lidar_fresh"];
   const mappingActionMissingEvidence = mappingRunbookItem?.missing_evidence ?? liveClosureSummary.mapping_start_missing_reasons;
   const mappingActionStartEndpoint = mappingRunbookItem?.start_endpoint ?? liveClosureSummary.fixed_mapping_start_endpoint;
@@ -11311,6 +11320,19 @@ export async function buildRobotControlSummary(
     current_mapping_action_preview_endpoint: liveClosureSummary.fixed_mapping_preview_endpoint,
     current_mapping_action_acceptance_endpoints: mappingActionAcceptanceEndpoints,
     current_mapping_action_readback_endpoints: mappingActionAcceptanceEndpoints,
+    current_mapping_action_post_start_readback_endpoints: mappingActionAcceptanceEndpoints,
+    current_mapping_action_post_start_readback_sequence_labels: mappingPostStartReadbackSequenceLabels,
+    current_mapping_action_post_start_readback_refreshes_free_roam_latest: mappingPostStartReadbackRefreshesFreeRoamLatest,
+    current_mapping_action_post_start_readback_refreshes_map_preview: mappingPostStartReadbackRefreshesMapPreview,
+    current_mapping_action_post_start_readback_refreshes_summary: mappingPostStartReadbackRefreshesSummary,
+    current_mapping_action_post_start_readback_sends_motion: false,
+    current_mapping_action_post_start_readback_starts_nav2: false,
+    current_mapping_action_post_start_readback_starts_manual: false,
+    current_mapping_action_post_start_readback_starts_keyboard: false,
+    current_mapping_action_post_start_readback_starts_free_roam: false,
+    current_mapping_action_post_start_readback_starts_map_runtime: false,
+    current_mapping_action_post_start_readback_submits_delivery: false,
+    current_mapping_action_post_start_readback_stops_motion: false,
     current_mapping_action_required_success_markers: mappingActionRequiredSuccessMarkers,
     current_mapping_action_proof_status: mappingRunbookItem?.proof_status ?? "blocked",
     current_mapping_action_missing_evidence: mappingActionMissingEvidence,
@@ -11542,6 +11564,19 @@ export async function buildRobotControlSummary(
     mapping_preview_endpoint: liveClosureSummary.fixed_mapping_preview_endpoint,
     mapping_acceptance_endpoints: mappingActionAcceptanceEndpoints,
     mapping_readback_endpoints: mappingActionAcceptanceEndpoints,
+    mapping_post_start_readback_endpoints: mappingActionAcceptanceEndpoints,
+    mapping_post_start_readback_sequence_labels: mappingPostStartReadbackSequenceLabels,
+    mapping_post_start_readback_refreshes_free_roam_latest: mappingPostStartReadbackRefreshesFreeRoamLatest,
+    mapping_post_start_readback_refreshes_map_preview: mappingPostStartReadbackRefreshesMapPreview,
+    mapping_post_start_readback_refreshes_summary: mappingPostStartReadbackRefreshesSummary,
+    mapping_post_start_readback_sends_motion: false,
+    mapping_post_start_readback_starts_nav2: false,
+    mapping_post_start_readback_starts_manual: false,
+    mapping_post_start_readback_starts_keyboard: false,
+    mapping_post_start_readback_starts_free_roam: false,
+    mapping_post_start_readback_starts_map_runtime: false,
+    mapping_post_start_readback_submits_delivery: false,
+    mapping_post_start_readback_stops_motion: false,
     mapping_required_success_markers: mappingActionRequiredSuccessMarkers,
     mapping_proof_status: mappingRunbookItem?.proof_status ?? "blocked",
     mapping_missing_evidence: mappingActionMissingEvidence,

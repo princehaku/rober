@@ -870,6 +870,19 @@ const fixtures: Record<string, unknown> = {
     current_mapping_action_preview_endpoint: "/api/robot-control/map/preview",
     current_mapping_action_acceptance_endpoints: ["/api/robot-control/free-roam/autonomy/latest", "/api/robot-control/map/preview", "/api/robot-control/summary"],
     current_mapping_action_readback_endpoints: ["/api/robot-control/free-roam/autonomy/latest", "/api/robot-control/map/preview", "/api/robot-control/summary"],
+    current_mapping_action_post_start_readback_endpoints: ["/api/robot-control/free-roam/autonomy/latest", "/api/robot-control/map/preview", "/api/robot-control/summary"],
+    current_mapping_action_post_start_readback_sequence_labels: ["读取自由移动状态", "刷新地图画面", "刷新总览"],
+    current_mapping_action_post_start_readback_refreshes_free_roam_latest: true,
+    current_mapping_action_post_start_readback_refreshes_map_preview: true,
+    current_mapping_action_post_start_readback_refreshes_summary: true,
+    current_mapping_action_post_start_readback_sends_motion: false,
+    current_mapping_action_post_start_readback_starts_nav2: false,
+    current_mapping_action_post_start_readback_starts_manual: false,
+    current_mapping_action_post_start_readback_starts_keyboard: false,
+    current_mapping_action_post_start_readback_starts_free_roam: false,
+    current_mapping_action_post_start_readback_starts_map_runtime: false,
+    current_mapping_action_post_start_readback_submits_delivery: false,
+    current_mapping_action_post_start_readback_stops_motion: false,
     current_mapping_action_required_success_markers: ["camera_first_frame", "lidar_fresh"],
     current_mapping_action_proof_status: "blocked",
     current_mapping_action_missing_evidence: ["camera_first_frame", "lidar_fresh"],
@@ -919,6 +932,23 @@ const fixtures: Record<string, unknown> = {
       "/api/robot-control/map/preview",
       "/api/robot-control/summary",
     ],
+    mapping_post_start_readback_endpoints: [
+      "/api/robot-control/free-roam/autonomy/latest",
+      "/api/robot-control/map/preview",
+      "/api/robot-control/summary",
+    ],
+    mapping_post_start_readback_sequence_labels: ["读取自由移动状态", "刷新地图画面", "刷新总览"],
+    mapping_post_start_readback_refreshes_free_roam_latest: true,
+    mapping_post_start_readback_refreshes_map_preview: true,
+    mapping_post_start_readback_refreshes_summary: true,
+    mapping_post_start_readback_sends_motion: false,
+    mapping_post_start_readback_starts_nav2: false,
+    mapping_post_start_readback_starts_manual: false,
+    mapping_post_start_readback_starts_keyboard: false,
+    mapping_post_start_readback_starts_free_roam: false,
+    mapping_post_start_readback_starts_map_runtime: false,
+    mapping_post_start_readback_submits_delivery: false,
+    mapping_post_start_readback_stops_motion: false,
     mapping_required_success_markers: ["camera_first_frame", "lidar_fresh"],
     mapping_missing_evidence: ["camera_first_frame", "lidar_fresh"],
     field_acceptance_primary_missing_id: "route_ready_on_map",
@@ -8085,6 +8115,19 @@ describe("App", () => {
     expect(currentMappingAction.attributes("data-current-mapping-action-preview-endpoint")).toBe("/api/robot-control/map/preview");
     expect(currentMappingAction.attributes("data-current-mapping-action-acceptance-endpoints")).toBe("/api/robot-control/free-roam/autonomy/latest,/api/robot-control/map/preview,/api/robot-control/summary");
     expect(currentMappingAction.attributes("data-current-mapping-action-readback-endpoints")).toBe("/api/robot-control/free-roam/autonomy/latest,/api/robot-control/map/preview,/api/robot-control/summary");
+    expect(currentMappingAction.attributes("data-current-mapping-action-post-start-readback-endpoints")).toBe("/api/robot-control/free-roam/autonomy/latest,/api/robot-control/map/preview,/api/robot-control/summary");
+    expect(currentMappingAction.attributes("data-current-mapping-action-post-start-readback-sequence-labels")).toBe("读取自由移动状态,刷新地图画面,刷新总览");
+    expect(currentMappingAction.attributes("data-current-mapping-action-post-start-readback-refreshes-free-roam-latest")).toBe("true");
+    expect(currentMappingAction.attributes("data-current-mapping-action-post-start-readback-refreshes-map-preview")).toBe("true");
+    expect(currentMappingAction.attributes("data-current-mapping-action-post-start-readback-refreshes-summary")).toBe("true");
+    expect(currentMappingAction.attributes("data-current-mapping-action-post-start-readback-sends-motion")).toBe("false");
+    expect(currentMappingAction.attributes("data-current-mapping-action-post-start-readback-starts-nav2")).toBe("false");
+    expect(currentMappingAction.attributes("data-current-mapping-action-post-start-readback-starts-manual")).toBe("false");
+    expect(currentMappingAction.attributes("data-current-mapping-action-post-start-readback-starts-keyboard")).toBe("false");
+    expect(currentMappingAction.attributes("data-current-mapping-action-post-start-readback-starts-free-roam")).toBe("false");
+    expect(currentMappingAction.attributes("data-current-mapping-action-post-start-readback-starts-map-runtime")).toBe("false");
+    expect(currentMappingAction.attributes("data-current-mapping-action-post-start-readback-submits-delivery")).toBe("false");
+    expect(currentMappingAction.attributes("data-current-mapping-action-post-start-readback-stops-motion")).toBe("false");
     expect(currentMappingAction.attributes("data-current-mapping-action-required-success-markers")).toBe("camera_first_frame,lidar_fresh");
     expect(currentMappingAction.attributes("data-current-mapping-action-missing-evidence")).toBe("camera_first_frame,lidar_fresh");
     expect(currentMappingAction.attributes("data-current-mapping-action-camera-ready")).toBe("false");
