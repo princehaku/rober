@@ -1,7 +1,7 @@
 :root {
-  --plain-map-large-min-height: 960px;
-  --plain-map-large-target-height: calc(100vh - 8px);
-  --plain-map-large-max-height: 1800px;
+  --plain-map-large-min-height: 1040px;
+  --plain-map-large-target-height: calc(100vh - 4px);
+  --plain-map-large-max-height: 2200px;
   --plain-map-fullscreen-height: 100vh;
   color: #17202a;
   background: #f4f6f8;
@@ -534,7 +534,7 @@ h3 {
 
 .robot-console-grid[data-layout="visual-first"] {
   /* 普通首页就是驾驶台：地图是主屏，图传和 WASD 保留在右侧窄栏，避免地图继续像小预览。 */
-  grid-template-columns: minmax(0, 4fr) minmax(300px, 0.75fr);
+  grid-template-columns: minmax(0, 5fr) minmax(280px, 0.62fr);
   grid-template-areas:
     "map camera"
     "map drive"
@@ -548,7 +548,7 @@ h3 {
   grid-area: camera;
   display: flex;
   flex-direction: column;
-  max-height: min(46vh, 420px);
+  max-height: min(43vh, 390px);
   overflow: auto;
 }
 
@@ -571,7 +571,7 @@ h3 {
   position: relative;
   order: 0;
   grid-area: map;
-  height: clamp(760px, calc(100vh - 12px), 1400px);
+  height: clamp(860px, 100vh, 1600px);
   min-height: 0;
   overflow: auto;
 }
@@ -613,7 +613,7 @@ h3 {
   grid-area: drive;
   display: flex;
   flex-direction: column;
-  max-height: min(46vh, 420px);
+  max-height: min(43vh, 390px);
   overflow: auto;
 }
 
@@ -2288,8 +2288,8 @@ h3 {
 
 .robot-console-grid[data-layout="visual-first"] .plain-map-panel:not([data-observer-mode="true"]) .plain-map-viewport[data-size="large"] .plain-map-layer {
   /* 首页地图与图传/WASD 同屏；先把可见画布做大，再用缩放看局部细节。 */
-  height: clamp(720px, calc(100vh - 84px), 1280px);
-  min-height: 720px;
+  height: clamp(820px, calc(100vh - 60px), 1500px);
+  min-height: 820px;
 }
 
 .plain-map-viewport[data-size="fullscreen"] .plain-map-layer {
@@ -2318,7 +2318,7 @@ h3 {
 }
 
 .plain-map-overlay-frame {
-  /* 缩放作用在同一个 overlay frame 上；默认 300% 看细节，适配按钮再回到 100% 全图。 */
+  /* 缩放作用在同一个 overlay frame 上；默认 400% 看细节，适配按钮再回到 100% 全图。 */
   position: relative;
   flex: 0 0 auto;
   width: calc(100% * var(--plain-map-zoom, 1));
