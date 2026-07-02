@@ -582,6 +582,7 @@ describe("robotControlSummary", () => {
     expect(summary.radar_overlay_source_point_count).toBe(summary.live_closure_summary?.radar_overlay_source_point_count);
     expect(summary.radar_overlay_primary_blocked_reason).toBe(summary.live_closure_summary?.radar_overlay_primary_blocked_reason);
     expect(summary.radar_overlay_current_vs_source_plain).toBe(summary.live_closure_summary?.radar_overlay_current_vs_source_plain);
+    expect(summary.radar_overlay_next_action_plain).toBe(summary.live_closure_summary?.radar_overlay_refresh_next_action_plain);
     expect(summary.radar_overlay_refresh_next_action_plain).toBe(summary.live_closure_summary?.radar_overlay_refresh_next_action_plain);
     expect(summary.radar_overlay_needs_refresh).toBe(true);
     expect(summary.radar_overlay_blocks_wysiwyg).toBe(true);
@@ -592,6 +593,8 @@ describe("robotControlSummary", () => {
     expect(summary.radar_overlay_status_endpoint).toBe("/api/robot-control/radar/status");
     expect(summary.radar_overlay_preview_endpoint).toBe("/api/robot-control/map/preview");
     expect(summary.radar_overlay_summary_endpoint).toBe("/api/robot-control/summary");
+    expect(summary.radar_overlay_refresh_sequence).toEqual(summary.radar_overlay_recovery_sequence);
+    expect(summary.radar_overlay_refresh_sequence_labels).toEqual(summary.live_closure_summary?.live_wysiwyg_radar_map_refresh_sequence_labels);
     expect(summary.radar_overlay_recovery_sequence).toEqual([
       "/api/robot-control/radar/scan-proof/refresh",
       "/api/robot-control/radar/status",
