@@ -1038,6 +1038,54 @@ const fixtures: Record<string, unknown> = {
     current_free_move_control_pack_readback_starts_map_runtime: false,
     current_free_move_control_pack_readback_submits_delivery: false,
     current_free_move_control_pack_readback_stops_motion: false,
+    free_move_start_status: "ready_for_safety_confirm",
+    free_move_start_plain: "勾现场安全确认后启动自由自助移动；启动后只读读取 free-roam latest、地图预览和 summary。",
+    free_move_start_action_id: "start_free_move",
+    free_move_start_display_label: "自由自助移动",
+    free_move_start_start_endpoint: "/api/robot-control/free-roam/autonomy/start",
+    free_move_start_stop_endpoint: "/api/robot-control/free-roam/autonomy/stop",
+    free_move_start_latest_endpoint: "/api/robot-control/free-roam/autonomy/latest",
+    free_move_start_readback_endpoints: ["/api/robot-control/free-roam/autonomy/latest", "/api/robot-control/map/preview", "/api/robot-control/summary"],
+    free_move_start_post_start_readback_endpoints: ["/api/robot-control/free-roam/autonomy/latest", "/api/robot-control/map/preview", "/api/robot-control/summary"],
+    free_move_start_post_start_readback_sequence_labels: ["读取自由移动状态", "刷新地图画面", "刷新总览"],
+    free_move_start_required_success_markers: ["free_roam_latest_motion_ready"],
+    free_move_start_missing_evidence: ["free_roam_latest_motion_ready"],
+    free_move_start_missing_evidence_labels: ["自由移动启动读回"],
+    free_move_start_proof_status: "ready_to_verify",
+    free_move_start_is_ready: true,
+    free_move_start_is_running: false,
+    free_move_start_is_complete: false,
+    free_move_start_requires_safety_confirm: true,
+    free_move_start_minimal_precheck_safety_only: true,
+    free_move_start_camera_preflight_required: false,
+    free_move_start_radar_preflight_required: false,
+    free_move_start_without_camera_allowed: true,
+    free_move_start_without_radar_allowed: true,
+    free_move_start_blocked_by_camera_wysiwyg: false,
+    free_move_start_blocked_by_radar_wysiwyg: false,
+    free_move_start_mapping_start_ready: false,
+    free_move_start_mapping_start_missing_reasons: ["camera_first_frame", "lidar_fresh"],
+    free_move_start_post_start_readback_refreshes_latest: true,
+    free_move_start_post_start_readback_refreshes_map_preview: true,
+    free_move_start_post_start_readback_refreshes_summary: true,
+    free_move_start_sends_motion_when_clicked: false,
+    free_move_start_sends_motion_when_executed: true,
+    free_move_start_starts_nav2_when_clicked: false,
+    free_move_start_starts_manual_when_clicked: false,
+    free_move_start_starts_keyboard_when_clicked: false,
+    free_move_start_starts_free_roam_when_clicked: false,
+    free_move_start_starts_free_roam_when_executed: true,
+    free_move_start_starts_map_runtime_when_clicked: false,
+    free_move_start_submits_delivery_when_clicked: false,
+    free_move_start_stops_motion_when_clicked: false,
+    free_move_start_readback_sends_motion: false,
+    free_move_start_readback_starts_nav2: false,
+    free_move_start_readback_starts_manual: false,
+    free_move_start_readback_starts_keyboard: false,
+    free_move_start_readback_starts_free_roam: false,
+    free_move_start_readback_starts_map_runtime: false,
+    free_move_start_readback_submits_delivery: false,
+    free_move_start_readback_stops_motion: false,
     current_mapping_action_required: true,
     current_mapping_action_ready: false,
     current_mapping_action_id: "start_mapping_when_sensors_ready",
@@ -12180,6 +12228,54 @@ describe("App", () => {
     expect(freeMovePack.attributes("data-readback-starts-map-runtime")).toBe("false");
     expect(freeMovePack.attributes("data-readback-submits-delivery")).toBe("false");
     expect(freeMovePack.attributes("data-readback-stops-motion")).toBe("false");
+    expect(freeMovePack.attributes("data-free-move-start-status")).toBe("ready_for_safety_confirm");
+    expect(freeMovePack.attributes("data-free-move-start-plain")).toBe("勾现场安全确认后启动自由自助移动；启动后只读读取 free-roam latest、地图预览和 summary。");
+    expect(freeMovePack.attributes("data-free-move-start-action-id")).toBe("start_free_move");
+    expect(freeMovePack.attributes("data-free-move-start-display-label")).toBe("自由自助移动");
+    expect(freeMovePack.attributes("data-free-move-start-start-endpoint")).toBe("/api/robot-control/free-roam/autonomy/start");
+    expect(freeMovePack.attributes("data-free-move-start-stop-endpoint")).toBe("/api/robot-control/free-roam/autonomy/stop");
+    expect(freeMovePack.attributes("data-free-move-start-latest-endpoint")).toBe("/api/robot-control/free-roam/autonomy/latest");
+    expect(freeMovePack.attributes("data-free-move-start-readback-endpoints")).toBe("/api/robot-control/free-roam/autonomy/latest,/api/robot-control/map/preview,/api/robot-control/summary");
+    expect(freeMovePack.attributes("data-free-move-start-post-start-readback-endpoints")).toBe("/api/robot-control/free-roam/autonomy/latest,/api/robot-control/map/preview,/api/robot-control/summary");
+    expect(freeMovePack.attributes("data-free-move-start-post-start-readback-sequence-labels")).toBe("读取自由移动状态,刷新地图画面,刷新总览");
+    expect(freeMovePack.attributes("data-free-move-start-required-success-markers")).toBe("free_roam_latest_motion_ready");
+    expect(freeMovePack.attributes("data-free-move-start-missing-evidence")).toBe("free_roam_latest_motion_ready");
+    expect(freeMovePack.attributes("data-free-move-start-missing-evidence-labels")).toBe("自由移动启动读回");
+    expect(freeMovePack.attributes("data-free-move-start-proof-status")).toBe("ready_to_verify");
+    expect(freeMovePack.attributes("data-free-move-start-ready")).toBe("true");
+    expect(freeMovePack.attributes("data-free-move-start-running")).toBe("false");
+    expect(freeMovePack.attributes("data-free-move-start-complete")).toBe("false");
+    expect(freeMovePack.attributes("data-free-move-start-requires-safety-confirm")).toBe("true");
+    expect(freeMovePack.attributes("data-free-move-start-minimal-precheck-safety-only")).toBe("true");
+    expect(freeMovePack.attributes("data-free-move-start-camera-preflight-required")).toBe("false");
+    expect(freeMovePack.attributes("data-free-move-start-radar-preflight-required")).toBe("false");
+    expect(freeMovePack.attributes("data-free-move-start-without-camera-allowed")).toBe("true");
+    expect(freeMovePack.attributes("data-free-move-start-without-radar-allowed")).toBe("true");
+    expect(freeMovePack.attributes("data-free-move-start-blocked-by-camera-wysiwyg")).toBe("false");
+    expect(freeMovePack.attributes("data-free-move-start-blocked-by-radar-wysiwyg")).toBe("false");
+    expect(freeMovePack.attributes("data-free-move-start-mapping-start-ready")).toBe("false");
+    expect(freeMovePack.attributes("data-free-move-start-mapping-start-missing-reasons")).toBe("camera_first_frame,lidar_fresh");
+    expect(freeMovePack.attributes("data-free-move-start-post-start-readback-refreshes-latest")).toBe("true");
+    expect(freeMovePack.attributes("data-free-move-start-post-start-readback-refreshes-map-preview")).toBe("true");
+    expect(freeMovePack.attributes("data-free-move-start-post-start-readback-refreshes-summary")).toBe("true");
+    expect(freeMovePack.attributes("data-free-move-start-sends-motion-when-clicked")).toBe("false");
+    expect(freeMovePack.attributes("data-free-move-start-sends-motion-when-executed")).toBe("true");
+    expect(freeMovePack.attributes("data-free-move-start-starts-nav2-when-clicked")).toBe("false");
+    expect(freeMovePack.attributes("data-free-move-start-starts-manual-when-clicked")).toBe("false");
+    expect(freeMovePack.attributes("data-free-move-start-starts-keyboard-when-clicked")).toBe("false");
+    expect(freeMovePack.attributes("data-free-move-start-starts-free-roam-when-clicked")).toBe("false");
+    expect(freeMovePack.attributes("data-free-move-start-starts-free-roam-when-executed")).toBe("true");
+    expect(freeMovePack.attributes("data-free-move-start-starts-map-runtime-when-clicked")).toBe("false");
+    expect(freeMovePack.attributes("data-free-move-start-submits-delivery-when-clicked")).toBe("false");
+    expect(freeMovePack.attributes("data-free-move-start-stops-motion-when-clicked")).toBe("false");
+    expect(freeMovePack.attributes("data-free-move-start-readback-sends-motion")).toBe("false");
+    expect(freeMovePack.attributes("data-free-move-start-readback-starts-nav2")).toBe("false");
+    expect(freeMovePack.attributes("data-free-move-start-readback-starts-manual")).toBe("false");
+    expect(freeMovePack.attributes("data-free-move-start-readback-starts-keyboard")).toBe("false");
+    expect(freeMovePack.attributes("data-free-move-start-readback-starts-free-roam")).toBe("false");
+    expect(freeMovePack.attributes("data-free-move-start-readback-starts-map-runtime")).toBe("false");
+    expect(freeMovePack.attributes("data-free-move-start-readback-submits-delivery")).toBe("false");
+    expect(freeMovePack.attributes("data-free-move-start-readback-stops-motion")).toBe("false");
     const mappingPack = wrapper.find('[data-testid="plain-current-mapping-control-pack"]');
     expect(mappingPack.exists()).toBe(true);
     expect(mappingPack.text()).toContain("建图暂未就绪");

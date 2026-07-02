@@ -5227,6 +5227,12 @@ delivery、stop 或 `/cmd_vel`。
 `current_trip_execution_pack_*` / `nav2_route_acceptance_packet` 同源；点击行程说明卡不发车，
 只有现场安全确认后执行才启动 Nav2，执行后按地图、最近行程、轮速、送达和 summary 顺序只读复验。
 
+2026-07-02 19:25 CST 起，summary 顶层新增 `free_move_start_*` 短字段，直接回答自由自助移动是否可启动、
+是否只需现场安全确认、相机/雷达是否作为发车前置、启动端点、停止端点、latest 读回端点、启动后复验顺序和建图仍缺什么。
+普通 PC 的 `plain-current-free-move-control-pack` 同步暴露 `data-free-move-start-*`。这些字段与
+`current_free_move_control_pack_*` 同源；点击自由移动说明卡不发车，只有现场安全确认后执行才启动 free-roam，
+启动后只读读取 free-roam latest、地图预览和 summary。相机/雷达不作为自由移动发车前置，只影响建图启动/验收。
+
 2026-07-02 17:05 CST 起，上车 `POST /api/robot-control/camera/first-frame/probe` 的自动格式 fallback 增加
 `160x120` 低带宽候选：`MJPG@160x120@30`、`YUYV@160x120@15`、`YUYV@160x120@10`。
 这是给 USB `12M` full-speed 场景的只读首帧兜底；若常规 `640x480/320x240` 均无帧，会继续尝试更低带宽模式。

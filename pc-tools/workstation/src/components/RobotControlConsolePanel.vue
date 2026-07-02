@@ -4810,6 +4810,54 @@ const plainCurrentFreeMoveControlPack = computed(() => {
     readbackStartsMapRuntime: summary?.current_free_move_control_pack_readback_starts_map_runtime ?? false,
     readbackSubmitsDelivery: summary?.current_free_move_control_pack_readback_submits_delivery ?? false,
     readbackStopsMotion: summary?.current_free_move_control_pack_readback_stops_motion ?? false,
+    freeMoveStartStatus: summary?.free_move_start_status ?? status,
+    freeMoveStartPlain: summary?.free_move_start_plain ?? "",
+    freeMoveStartActionId: summary?.free_move_start_action_id ?? summary?.current_free_move_control_pack_action_id ?? summary?.current_free_move_action_id ?? "start_free_move",
+    freeMoveStartDisplayLabel: summary?.free_move_start_display_label ?? summary?.current_free_move_control_pack_display_label ?? summary?.current_free_move_action_display_label ?? "自由自助移动",
+    freeMoveStartStartEndpoint: summary?.free_move_start_start_endpoint ?? summary?.current_free_move_control_pack_start_endpoint ?? summary?.current_free_move_action_start_endpoint ?? "/api/robot-control/free-roam/autonomy/start",
+    freeMoveStartStopEndpoint: summary?.free_move_start_stop_endpoint ?? summary?.current_free_move_control_pack_stop_endpoint ?? summary?.current_free_move_action_stop_endpoint ?? "/api/robot-control/free-roam/autonomy/stop",
+    freeMoveStartLatestEndpoint: summary?.free_move_start_latest_endpoint ?? summary?.current_free_move_control_pack_latest_endpoint ?? summary?.current_free_move_action_latest_endpoint ?? "/api/robot-control/free-roam/autonomy/latest",
+    freeMoveStartReadbackEndpointsText: summary?.free_move_start_readback_endpoints?.join(",") || readbackEndpoints.join(",") || "none",
+    freeMoveStartPostStartReadbackEndpointsText: summary?.free_move_start_post_start_readback_endpoints?.join(",") || postStartReadbackEndpoints.join(",") || "none",
+    freeMoveStartPostStartReadbackSequenceLabelsText: summary?.free_move_start_post_start_readback_sequence_labels?.join(",") || postStartReadbackSequenceLabels.join(",") || "none",
+    freeMoveStartRequiredSuccessMarkersText: summary?.free_move_start_required_success_markers?.join(",") || requiredSuccessMarkers.join(",") || "none",
+    freeMoveStartMissingEvidenceText: summary?.free_move_start_missing_evidence?.join(",") || missingEvidence.join(",") || "none",
+    freeMoveStartMissingEvidenceLabelsText: summary?.free_move_start_missing_evidence_labels?.join(",") || missingEvidenceLabels.join(",") || "none",
+    freeMoveStartProofStatus: summary?.free_move_start_proof_status ?? summary?.current_free_move_control_pack_proof_status ?? summary?.current_free_move_action_proof_status ?? "blocked",
+    freeMoveStartReady: summary?.free_move_start_is_ready ?? summary?.current_free_move_control_pack_ready ?? summary?.current_free_move_action_ready ?? false,
+    freeMoveStartRunning: summary?.free_move_start_is_running ?? summary?.current_free_move_control_pack_running ?? summary?.free_move_running ?? false,
+    freeMoveStartComplete: summary?.free_move_start_is_complete ?? summary?.current_free_move_control_pack_complete ?? summary?.free_move_complete ?? false,
+    freeMoveStartRequiresSafetyConfirm: summary?.free_move_start_requires_safety_confirm ?? summary?.current_free_move_control_pack_safety_confirm_required ?? true,
+    freeMoveStartMinimalPrecheckSafetyOnly: summary?.free_move_start_minimal_precheck_safety_only ?? summary?.current_free_move_control_pack_minimal_precheck_safety_only ?? true,
+    freeMoveStartCameraPreflightRequired: summary?.free_move_start_camera_preflight_required ?? summary?.current_free_move_control_pack_camera_preflight_required ?? false,
+    freeMoveStartRadarPreflightRequired: summary?.free_move_start_radar_preflight_required ?? summary?.current_free_move_control_pack_radar_preflight_required ?? false,
+    freeMoveStartWithoutCameraAllowed: summary?.free_move_start_without_camera_allowed ?? summary?.current_free_move_control_pack_without_camera_allowed ?? true,
+    freeMoveStartWithoutRadarAllowed: summary?.free_move_start_without_radar_allowed ?? summary?.current_free_move_control_pack_without_radar_allowed ?? true,
+    freeMoveStartBlockedByCameraWysiwyg: summary?.free_move_start_blocked_by_camera_wysiwyg ?? summary?.current_free_move_control_pack_blocked_by_camera_wysiwyg ?? false,
+    freeMoveStartBlockedByRadarWysiwyg: summary?.free_move_start_blocked_by_radar_wysiwyg ?? summary?.current_free_move_control_pack_blocked_by_radar_wysiwyg ?? false,
+    freeMoveStartMappingStartReady: summary?.free_move_start_mapping_start_ready ?? summary?.current_free_move_control_pack_mapping_start_ready ?? false,
+    freeMoveStartMappingStartMissingReasonsText: summary?.free_move_start_mapping_start_missing_reasons?.join(",") || mappingStartMissingReasons.join(",") || "none",
+    freeMoveStartPostStartReadbackRefreshesLatest: summary?.free_move_start_post_start_readback_refreshes_latest ?? summary?.current_free_move_control_pack_post_start_readback_refreshes_latest ?? false,
+    freeMoveStartPostStartReadbackRefreshesMapPreview: summary?.free_move_start_post_start_readback_refreshes_map_preview ?? summary?.current_free_move_control_pack_post_start_readback_refreshes_map_preview ?? false,
+    freeMoveStartPostStartReadbackRefreshesSummary: summary?.free_move_start_post_start_readback_refreshes_summary ?? summary?.current_free_move_control_pack_post_start_readback_refreshes_summary ?? false,
+    freeMoveStartSendsMotionWhenClicked: summary?.free_move_start_sends_motion_when_clicked ?? false,
+    freeMoveStartSendsMotionWhenExecuted: summary?.free_move_start_sends_motion_when_executed ?? true,
+    freeMoveStartStartsNav2WhenClicked: summary?.free_move_start_starts_nav2_when_clicked ?? false,
+    freeMoveStartStartsManualWhenClicked: summary?.free_move_start_starts_manual_when_clicked ?? false,
+    freeMoveStartStartsKeyboardWhenClicked: summary?.free_move_start_starts_keyboard_when_clicked ?? false,
+    freeMoveStartStartsFreeRoamWhenClicked: summary?.free_move_start_starts_free_roam_when_clicked ?? false,
+    freeMoveStartStartsFreeRoamWhenExecuted: summary?.free_move_start_starts_free_roam_when_executed ?? true,
+    freeMoveStartStartsMapRuntimeWhenClicked: summary?.free_move_start_starts_map_runtime_when_clicked ?? false,
+    freeMoveStartSubmitsDeliveryWhenClicked: summary?.free_move_start_submits_delivery_when_clicked ?? false,
+    freeMoveStartStopsMotionWhenClicked: summary?.free_move_start_stops_motion_when_clicked ?? false,
+    freeMoveStartReadbackSendsMotion: summary?.free_move_start_readback_sends_motion ?? false,
+    freeMoveStartReadbackStartsNav2: summary?.free_move_start_readback_starts_nav2 ?? false,
+    freeMoveStartReadbackStartsManual: summary?.free_move_start_readback_starts_manual ?? false,
+    freeMoveStartReadbackStartsKeyboard: summary?.free_move_start_readback_starts_keyboard ?? false,
+    freeMoveStartReadbackStartsFreeRoam: summary?.free_move_start_readback_starts_free_roam ?? false,
+    freeMoveStartReadbackStartsMapRuntime: summary?.free_move_start_readback_starts_map_runtime ?? false,
+    freeMoveStartReadbackSubmitsDelivery: summary?.free_move_start_readback_submits_delivery ?? false,
+    freeMoveStartReadbackStopsMotion: summary?.free_move_start_readback_stops_motion ?? false,
   };
 });
 const plainCurrentMappingControlPack = computed(() => {
@@ -20655,6 +20703,54 @@ onBeforeUnmount(() => {
             :data-readback-starts-map-runtime="String(plainCurrentFreeMoveControlPack.readbackStartsMapRuntime)"
             :data-readback-submits-delivery="String(plainCurrentFreeMoveControlPack.readbackSubmitsDelivery)"
             :data-readback-stops-motion="String(plainCurrentFreeMoveControlPack.readbackStopsMotion)"
+            :data-free-move-start-status="plainCurrentFreeMoveControlPack.freeMoveStartStatus"
+            :data-free-move-start-plain="plainCurrentFreeMoveControlPack.freeMoveStartPlain"
+            :data-free-move-start-action-id="plainCurrentFreeMoveControlPack.freeMoveStartActionId"
+            :data-free-move-start-display-label="plainCurrentFreeMoveControlPack.freeMoveStartDisplayLabel"
+            :data-free-move-start-start-endpoint="plainCurrentFreeMoveControlPack.freeMoveStartStartEndpoint"
+            :data-free-move-start-stop-endpoint="plainCurrentFreeMoveControlPack.freeMoveStartStopEndpoint"
+            :data-free-move-start-latest-endpoint="plainCurrentFreeMoveControlPack.freeMoveStartLatestEndpoint"
+            :data-free-move-start-readback-endpoints="plainCurrentFreeMoveControlPack.freeMoveStartReadbackEndpointsText"
+            :data-free-move-start-post-start-readback-endpoints="plainCurrentFreeMoveControlPack.freeMoveStartPostStartReadbackEndpointsText"
+            :data-free-move-start-post-start-readback-sequence-labels="plainCurrentFreeMoveControlPack.freeMoveStartPostStartReadbackSequenceLabelsText"
+            :data-free-move-start-required-success-markers="plainCurrentFreeMoveControlPack.freeMoveStartRequiredSuccessMarkersText"
+            :data-free-move-start-missing-evidence="plainCurrentFreeMoveControlPack.freeMoveStartMissingEvidenceText"
+            :data-free-move-start-missing-evidence-labels="plainCurrentFreeMoveControlPack.freeMoveStartMissingEvidenceLabelsText"
+            :data-free-move-start-proof-status="plainCurrentFreeMoveControlPack.freeMoveStartProofStatus"
+            :data-free-move-start-ready="String(plainCurrentFreeMoveControlPack.freeMoveStartReady)"
+            :data-free-move-start-running="String(plainCurrentFreeMoveControlPack.freeMoveStartRunning)"
+            :data-free-move-start-complete="String(plainCurrentFreeMoveControlPack.freeMoveStartComplete)"
+            :data-free-move-start-requires-safety-confirm="String(plainCurrentFreeMoveControlPack.freeMoveStartRequiresSafetyConfirm)"
+            :data-free-move-start-minimal-precheck-safety-only="String(plainCurrentFreeMoveControlPack.freeMoveStartMinimalPrecheckSafetyOnly)"
+            :data-free-move-start-camera-preflight-required="String(plainCurrentFreeMoveControlPack.freeMoveStartCameraPreflightRequired)"
+            :data-free-move-start-radar-preflight-required="String(plainCurrentFreeMoveControlPack.freeMoveStartRadarPreflightRequired)"
+            :data-free-move-start-without-camera-allowed="String(plainCurrentFreeMoveControlPack.freeMoveStartWithoutCameraAllowed)"
+            :data-free-move-start-without-radar-allowed="String(plainCurrentFreeMoveControlPack.freeMoveStartWithoutRadarAllowed)"
+            :data-free-move-start-blocked-by-camera-wysiwyg="String(plainCurrentFreeMoveControlPack.freeMoveStartBlockedByCameraWysiwyg)"
+            :data-free-move-start-blocked-by-radar-wysiwyg="String(plainCurrentFreeMoveControlPack.freeMoveStartBlockedByRadarWysiwyg)"
+            :data-free-move-start-mapping-start-ready="String(plainCurrentFreeMoveControlPack.freeMoveStartMappingStartReady)"
+            :data-free-move-start-mapping-start-missing-reasons="plainCurrentFreeMoveControlPack.freeMoveStartMappingStartMissingReasonsText"
+            :data-free-move-start-post-start-readback-refreshes-latest="String(plainCurrentFreeMoveControlPack.freeMoveStartPostStartReadbackRefreshesLatest)"
+            :data-free-move-start-post-start-readback-refreshes-map-preview="String(plainCurrentFreeMoveControlPack.freeMoveStartPostStartReadbackRefreshesMapPreview)"
+            :data-free-move-start-post-start-readback-refreshes-summary="String(plainCurrentFreeMoveControlPack.freeMoveStartPostStartReadbackRefreshesSummary)"
+            :data-free-move-start-sends-motion-when-clicked="String(plainCurrentFreeMoveControlPack.freeMoveStartSendsMotionWhenClicked)"
+            :data-free-move-start-sends-motion-when-executed="String(plainCurrentFreeMoveControlPack.freeMoveStartSendsMotionWhenExecuted)"
+            :data-free-move-start-starts-nav2-when-clicked="String(plainCurrentFreeMoveControlPack.freeMoveStartStartsNav2WhenClicked)"
+            :data-free-move-start-starts-manual-when-clicked="String(plainCurrentFreeMoveControlPack.freeMoveStartStartsManualWhenClicked)"
+            :data-free-move-start-starts-keyboard-when-clicked="String(plainCurrentFreeMoveControlPack.freeMoveStartStartsKeyboardWhenClicked)"
+            :data-free-move-start-starts-free-roam-when-clicked="String(plainCurrentFreeMoveControlPack.freeMoveStartStartsFreeRoamWhenClicked)"
+            :data-free-move-start-starts-free-roam-when-executed="String(plainCurrentFreeMoveControlPack.freeMoveStartStartsFreeRoamWhenExecuted)"
+            :data-free-move-start-starts-map-runtime-when-clicked="String(plainCurrentFreeMoveControlPack.freeMoveStartStartsMapRuntimeWhenClicked)"
+            :data-free-move-start-submits-delivery-when-clicked="String(plainCurrentFreeMoveControlPack.freeMoveStartSubmitsDeliveryWhenClicked)"
+            :data-free-move-start-stops-motion-when-clicked="String(plainCurrentFreeMoveControlPack.freeMoveStartStopsMotionWhenClicked)"
+            :data-free-move-start-readback-sends-motion="String(plainCurrentFreeMoveControlPack.freeMoveStartReadbackSendsMotion)"
+            :data-free-move-start-readback-starts-nav2="String(plainCurrentFreeMoveControlPack.freeMoveStartReadbackStartsNav2)"
+            :data-free-move-start-readback-starts-manual="String(plainCurrentFreeMoveControlPack.freeMoveStartReadbackStartsManual)"
+            :data-free-move-start-readback-starts-keyboard="String(plainCurrentFreeMoveControlPack.freeMoveStartReadbackStartsKeyboard)"
+            :data-free-move-start-readback-starts-free-roam="String(plainCurrentFreeMoveControlPack.freeMoveStartReadbackStartsFreeRoam)"
+            :data-free-move-start-readback-starts-map-runtime="String(plainCurrentFreeMoveControlPack.freeMoveStartReadbackStartsMapRuntime)"
+            :data-free-move-start-readback-submits-delivery="String(plainCurrentFreeMoveControlPack.freeMoveStartReadbackSubmitsDelivery)"
+            :data-free-move-start-readback-stops-motion="String(plainCurrentFreeMoveControlPack.freeMoveStartReadbackStopsMotion)"
           >
             {{ plainCurrentFreeMoveControlPack.plain }}
           </p>
