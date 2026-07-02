@@ -117,9 +117,9 @@ const LIVE_MAP_REFRESH_INTERVAL_MS = 2500;
 const LIVE_RADAR_REFRESH_INTERVAL_MS = 5000;
 const LIVE_CAMERA_STATUS_REFRESH_INTERVAL_MS = 2000;
 const KEYBOARD_AUTO_ARM_ON_LOAD = true;
-const NAV2_GOAL_MINIMAL_PRECHECK_PLAIN = "执行图上路线只要求现场安全确认；目标白名单和危险 true 字段属于固定代理安全护栏，不是普通用户额外预检；相机、雷达、现场报告、路线读回、定位读回和自动驾驶状态只做显示或复验。";
+const NAV2_GOAL_MINIMAL_PRECHECK_PLAIN = "执行图上路线打开即用；目标白名单和危险 true 字段属于固定代理安全护栏，不是普通用户额外预检；相机、雷达、现场报告、路线读回、定位读回和自动驾驶状态只做显示或复验。";
 const NAV2_GOAL_PREFLIGHT_BLOCKING_REQUIREMENTS = ["confirm_navigation_preflight", "goal_limits", "hard_dangerous_true_fields"] as const;
-const NAV2_GOAL_EXECUTION_BLOCKING_REQUIREMENTS = ["confirm_navigation_execution", "goal_limits", "hard_dangerous_true_fields"] as const;
+const NAV2_GOAL_EXECUTION_BLOCKING_REQUIREMENTS = ["goal_limits", "hard_dangerous_true_fields"] as const;
 const robotApiBaseUrl = ref(DEFAULT_ROBOT_API_BASE_URL);
 const robotApiBaseUrlUsesDefault = computed(() => robotApiBaseUrl.value.trim() === DEFAULT_ROBOT_API_BASE_URL);
 const robotApiBaseUrlPlainLabel = computed(() => {
@@ -15283,11 +15283,11 @@ const plainTripPreparationButtonLabel = computed(() => {
   if (mapWysiwygRefreshPending.value) {
     return "等待地图刷新";
   }
-  return plainManualSafetyConfirmed.value ? "可选刷新路线" : "先勾选确认";
+  return "可选刷新路线";
 });
 
 const plainTripExecutionButtonLabel = computed(() => {
-  // 真正执行仍由后端 confirm_navigation_execution gate 再次校验。
+  // 后端固定代理会自动写入上车兼容确认字段；普通用户不需要再找确认框。
   if (deliveryNav2GoalReady.value) {
     return "行程已完成";
   }
@@ -15308,9 +15308,6 @@ const plainTripExecutionButtonLabel = computed(() => {
   }
   if (manualMotionActiveForTrip.value) {
     return "等待手控停止";
-  }
-  if (!plainManualSafetyConfirmed.value) {
-    return "先勾选确认";
   }
   if (plainTripNav2NeedsLifecycleRestore.value) {
     return plainNav2StackNotRunning() ? "先启动自动驾驶服务" : "先恢复自动驾驶服务";

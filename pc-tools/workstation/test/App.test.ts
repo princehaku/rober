@@ -15317,7 +15317,7 @@ describe("App", () => {
     expect(tripMinimalPrecheck.text()).toBe("行程前确认：安全确认已完成；点主按钮准备图上路线。");
     expect(tripMinimalPrecheck.attributes("data-minimal-precheck-safety-only")).toBe("true");
     expect(tripMinimalPrecheck.attributes("data-preflight-blocking-requirements")).toBe("confirm_navigation_preflight,goal_limits,hard_dangerous_true_fields");
-    expect(tripMinimalPrecheck.attributes("data-execution-blocking-requirements")).toBe("confirm_navigation_execution,goal_limits,hard_dangerous_true_fields");
+    expect(tripMinimalPrecheck.attributes("data-execution-blocking-requirements")).toBe("goal_limits,hard_dangerous_true_fields");
     expect(tripMinimalPrecheck.attributes("data-camera-preflight-required")).toBe("false");
     expect(tripMinimalPrecheck.attributes("data-radar-preflight-required")).toBe("false");
     expect(tripMinimalPrecheck.attributes("data-operator-report-preflight-required")).toBe("false");

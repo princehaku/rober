@@ -13641,7 +13641,6 @@ describe("workstation fail-closed API contracts", () => {
           route_start_y: 0.1,
           route_goal_x: 0.8,
           route_goal_y: 0,
-          confirm_navigation_execution: true,
         }),
       });
       const body = (await response.json()) as {
@@ -13682,11 +13681,10 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.localization_readback_preflight_required).toBe(false);
       expect(body.nav2_status_readback_preflight_required).toBe(false);
       expect(body.execution_blocking_requirements).toEqual([
-        "confirm_navigation_execution",
         "goal_limits",
         "hard_dangerous_true_fields",
       ]);
-      expect(body.operator_precheck_requirements).toEqual(["confirm_navigation_execution"]);
+      expect(body.operator_precheck_requirements).toEqual([]);
       expect(body.proxy_guard_requirements).toEqual(["goal_limits", "hard_dangerous_true_fields"]);
       expect(body.minimal_precheck_plain).toContain("路线读回、定位读回和自动驾驶状态只做显示或复验");
       expect(body.goal_request.route_preview_point_count).toBe(3);

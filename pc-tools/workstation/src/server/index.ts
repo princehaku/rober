@@ -4243,7 +4243,8 @@ export function createWorkstationApp(): express.Express {
     const sourceBaseUrl = robotControlFixedProxyQueryBaseUrl(req.query.baseUrl);
     const normalized = normalizeRobotApiBaseUrl(sourceBaseUrl);
     const payload = asRecord(req.body);
-    const confirmNavigationExecution = payload?.confirm_navigation_execution === true;
+    // 现场普通页打开即用；PC 固定代理自动写入上车兼容确认字段，不再要求用户额外勾选。
+    const confirmNavigationExecution = true;
     const goalX = clamp(Number(payload?.goal_x ?? 0.8), -3, 3);
     const goalY = clamp(Number(payload?.goal_y ?? 0), -3, 3);
     const goalYaw = clamp(Number(payload?.goal_yaw ?? 0), -Math.PI, Math.PI);
@@ -4334,14 +4335,6 @@ export function createWorkstationApp(): express.Express {
     };
     if (!normalized.ok) {
       res.status(400).json(fallbackBase);
-      return;
-    }
-    if (!confirmNavigationExecution) {
-      res.status(400).json({
-        ...fallbackBase,
-        failure_reason: "confirm_navigation_execution_required",
-        blocked_reasons: ["confirm_navigation_execution_required"],
-      });
       return;
     }
     // 真正发车前复用 PC 本机最小确认门禁，防止用户绕过前端按钮直接打执行接口。

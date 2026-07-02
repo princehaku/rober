@@ -197,11 +197,10 @@ export const NAV2_GOAL_PREFLIGHT_BLOCKING_REQUIREMENTS = [
 export const NAV2_GOAL_PREFLIGHT_OPERATOR_PRECHECK_REQUIREMENTS = ["confirm_navigation_preflight"] as const;
 export const NAV2_GOAL_PREFLIGHT_PROXY_GUARD_REQUIREMENTS = ["goal_limits", "hard_dangerous_true_fields"] as const;
 export const NAV2_GOAL_EXECUTION_BLOCKING_REQUIREMENTS = [
-  "confirm_navigation_execution",
   "goal_limits",
   "hard_dangerous_true_fields",
 ] as const;
-export const NAV2_GOAL_EXECUTION_OPERATOR_PRECHECK_REQUIREMENTS = ["confirm_navigation_execution"] as const;
+export const NAV2_GOAL_EXECUTION_OPERATOR_PRECHECK_REQUIREMENTS = [] as const;
 export const NAV2_GOAL_EXECUTION_PROXY_GUARD_REQUIREMENTS = ["goal_limits", "hard_dangerous_true_fields"] as const;
 export const NAV2_GOAL_MINIMAL_PRECHECK_PLAIN = "执行图上路线打开即用；目标白名单和危险 true 字段属于固定代理安全护栏，不是普通用户额外预检；相机、雷达、现场报告、路线读回、定位读回和自动驾驶状态只做显示或复验。";
 const ROBOT_CONTROL_SCAN_PREVIEW_POINT_LIMIT = 72;
