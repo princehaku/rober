@@ -20079,6 +20079,22 @@ describe("App", () => {
 
     expect(wrapper.find('[data-testid="plain-free-roam-mapping"]').attributes("data-state")).toBe("可移动");
     expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("画面未就绪");
+    const freeMovePrimarySummary = wrapper.find('[data-testid="plain-free-roam-primary-button-summary"]');
+    expect(freeMovePrimarySummary.text()).toBe("主按钮判定：安全确认已勾；画面未就绪，雷达已就绪；点击只启动低速自由移动，不启动建图记录；传感器补齐后再建图。返回后只读刷新自由移动状态、地图画面和总览。");
+    expect(freeMovePrimarySummary.attributes("data-state")).toBe("只自由移动");
+    expect(freeMovePrimarySummary.attributes("data-primary-action-kind")).toBe("start_free_move_only");
+    expect(freeMovePrimarySummary.attributes("data-starts-free-roam-when-clicked")).toBe("true");
+    expect(freeMovePrimarySummary.attributes("data-starts-map-runtime-before-free-roam")).toBe("false");
+    expect(freeMovePrimarySummary.attributes("data-requests-mapping-when-clicked")).toBe("false");
+    expect(freeMovePrimarySummary.attributes("data-minimal-precheck-safety-only")).toBe("true");
+    expect(freeMovePrimarySummary.attributes("data-camera-blocks-free-motion")).toBe("false");
+    expect(freeMovePrimarySummary.attributes("data-radar-blocks-free-motion")).toBe("false");
+    expect(freeMovePrimarySummary.attributes("data-camera-ready-for-mapping")).toBe("false");
+    expect(freeMovePrimarySummary.attributes("data-radar-ready-for-mapping")).toBe("true");
+    expect(freeMovePrimarySummary.attributes("data-fixed-free-roam-start-endpoint")).toBe("/api/robot-control/free-roam/autonomy/start");
+    expect(freeMovePrimarySummary.attributes("data-fixed-mapping-start-endpoint")).toBe("/api/robot-control/map/start");
+    expect(freeMovePrimarySummary.attributes("data-post-start-readback-endpoints")).toBe("/api/robot-control/free-roam/autonomy/latest,/api/robot-control/map/preview,/api/robot-control/summary");
+    expect(freeMovePrimarySummary.attributes("data-sends-motion-when-clicked")).toBe("false");
     const freeMoveOnlyButton = wrapper.find('[data-testid="plain-free-roam-start"]');
     expect(freeMoveOnlyButton.text()).toBe("开始自由移动（低速）");
     expect(freeMoveOnlyButton.attributes("disabled")).toBeUndefined();

@@ -8562,6 +8562,44 @@ const plainFreeRoamMappingStartLabel = computed(() => (
             : "解除停止并开始自由移动（低速）"
         : plainFreeRoamMotionStartButtonText.value
 ));
+const plainFreeRoamPrimaryButtonSummary = computed(() => {
+  // 主按钮是自由移动/建图链路里最容易误读的入口；这里把点击语义拆成只读事实，避免用户猜它会不会先建图。
+  const evidence = plainFreeRoamDomEvidence.value;
+  const safetyText = plainManualSafetyConfirmed.value ? "安全确认已勾" : "安全确认未勾";
+  const sensorText = `画面${evidence.cameraSourceFirstFrameReady ? "已就绪" : "未就绪"}，雷达${evidence.radarFreshForMapping ? "已就绪" : "未就绪"}`;
+  const state = evidence.primaryActionRequestsMapping
+    ? "先建图再移动"
+    : evidence.primaryActionCanStartMotion
+      ? "只自由移动"
+      : plainManualSafetyConfirmed.value
+        ? "待连接"
+        : "待安全确认";
+  const text = evidence.primaryActionRequestsMapping
+    ? `主按钮判定：${safetyText}；${sensorText}；点击会先启动建图记录，再启动低速自由移动；返回后只读刷新自由移动状态、地图画面和总览。`
+    : evidence.primaryActionCanStartMotion
+      ? `主按钮判定：${safetyText}；${sensorText}；点击只启动低速自由移动，不启动建图记录；传感器补齐后再建图。返回后只读刷新自由移动状态、地图画面和总览。`
+      : `主按钮判定：${safetyText}；${sensorText}；当前不会发车，先按下一步补齐连接或安全确认。`;
+  return {
+    state,
+    text,
+    primaryActionKind: evidence.primaryActionKind,
+    startsFreeRoamWhenClicked: evidence.primaryActionCanStartMotion,
+    startsMapRuntimeBeforeFreeRoam: evidence.primaryActionRequestsMapping,
+    requestsMappingWhenClicked: evidence.primaryActionRequestsMapping,
+    minimalPrecheckSafetyOnly: evidence.freeMoveSafetyOnly,
+    cameraBlocksFreeMotion: evidence.cameraBlocksFreeMotion,
+    radarBlocksFreeMotion: evidence.radarBlocksFreeMotion,
+    cameraReadyForMapping: evidence.cameraSourceFirstFrameReady,
+    radarReadyForMapping: evidence.radarFreshForMapping,
+    fixedFreeRoamStartEndpoint: evidence.fixedFreeRoamStartEndpoint,
+    fixedMappingStartEndpoint: evidence.fixedMappingStartEndpoint,
+    postStartReadbackEndpoints: [
+      evidence.fixedFreeRoamLatestEndpoint,
+      evidence.fixedMappingPreviewEndpoint,
+      "/api/robot-control/summary",
+    ],
+  };
+});
 const plainFreeRoamMappingSaveLabel = computed(() => (
   mapLifecyclePending.value && mapLifecyclePendingAction.value === "save"
     ? "保存中"
@@ -23173,6 +23211,26 @@ onBeforeUnmount(() => {
             <input ref="plainFreeRoamConfirmCheckbox" v-model="plainUnifiedSafetyConfirmed" name="plainFreeRoamMappingConfirmed" type="checkbox" data-testid="plain-free-roam-confirm">
             <span>人在旁边、周围安全、可以随时按停止（勾一次，全页面生效）</span>
           </label>
+          <p
+            class="panel-note"
+            data-testid="plain-free-roam-primary-button-summary"
+            :data-state="plainFreeRoamPrimaryButtonSummary.state"
+            :data-primary-action-kind="plainFreeRoamPrimaryButtonSummary.primaryActionKind"
+            :data-starts-free-roam-when-clicked="String(plainFreeRoamPrimaryButtonSummary.startsFreeRoamWhenClicked)"
+            :data-starts-map-runtime-before-free-roam="String(plainFreeRoamPrimaryButtonSummary.startsMapRuntimeBeforeFreeRoam)"
+            :data-requests-mapping-when-clicked="String(plainFreeRoamPrimaryButtonSummary.requestsMappingWhenClicked)"
+            :data-minimal-precheck-safety-only="String(plainFreeRoamPrimaryButtonSummary.minimalPrecheckSafetyOnly)"
+            :data-camera-blocks-free-motion="String(plainFreeRoamPrimaryButtonSummary.cameraBlocksFreeMotion)"
+            :data-radar-blocks-free-motion="String(plainFreeRoamPrimaryButtonSummary.radarBlocksFreeMotion)"
+            :data-camera-ready-for-mapping="String(plainFreeRoamPrimaryButtonSummary.cameraReadyForMapping)"
+            :data-radar-ready-for-mapping="String(plainFreeRoamPrimaryButtonSummary.radarReadyForMapping)"
+            :data-fixed-free-roam-start-endpoint="plainFreeRoamPrimaryButtonSummary.fixedFreeRoamStartEndpoint"
+            :data-fixed-mapping-start-endpoint="plainFreeRoamPrimaryButtonSummary.fixedMappingStartEndpoint"
+            :data-post-start-readback-endpoints="plainFreeRoamPrimaryButtonSummary.postStartReadbackEndpoints.join(',')"
+            data-sends-motion-when-clicked="false"
+          >
+            {{ plainFreeRoamPrimaryButtonSummary.text }}
+          </p>
           <div class="panel-action-row wrap-actions">
             <button
               ref="plainFreeRoamStartButton"
