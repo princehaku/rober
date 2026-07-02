@@ -43,6 +43,13 @@ summary 顶层和 `plain-live-map-companion-summary` DOM 同步暴露短 alias
 `map_display_ros2_companion_answer_plain` 同源；现场脚本按直觉查 ROS2 配套白话答案时不会读到
 null，该字段也只作观察说明，不启动 ROS2、RViz2、Foxglove、Nav2、建图 runtime 或任何运动控制。
 
+2026-07-02 CST 起，`GET /api/robot-control/free-roam/autonomy/latest` 直连回包也显式声明只读边界：
+`readback_only=true`、`free_roam_latest_readback_only=true`、`sends_motion_when_clicked=false`、
+`starts_camera_exclusive_capture=false`、`starts_radar_lifecycle=false`、`starts_nav2=false`、
+`starts_manual=false`、`starts_keyboard=false`、`starts_free_roam=false`、`starts_map_runtime=false`、
+`submits_delivery=false` 和 `stops_motion=false`。现场脚本单看自由移动 latest 就能确认它只是读取
+runtime 状态；真正启动自由移动仍必须走单独的安全确认 start 动作。
+
 2026-07-02 CST 起，完整 Nav2 行程、PC 键盘连续手控和自由自助移动三个当前控制包都同步暴露
 `*_safety_confirm_required` alias，分别对应 `current_trip_execution_pack_safety_confirm_required`、
 `current_keyboard_control_pack_safety_confirm_required` 和
