@@ -4407,14 +4407,21 @@ const plainCurrentSafetyConfirmQueue = computed(() => {
     : summary?.current_safety_confirm_queue_primary_focus_source_card_id
       ?? focusSourceByAction[primaryActionId]
       ?? "";
-  const primaryFocusKind = summary?.current_safety_confirm_queue_primary_focus_kind
-    ?? (primaryActionId === "run_nav2_route"
-      ? plainManualSafetyConfirmed.value ? "trip_execute_button" : "trip_safety_confirm"
-      : primaryActionId === "hold_keyboard"
-        ? "keyboard_arm"
-        : primaryActionId === "start_free_move"
-          ? "free_move_safety_confirm"
-          : "none");
+  const backendPrimaryFocusKind = summary?.current_safety_confirm_queue_primary_focus_kind;
+  const backendPrimaryFocusButtonLabel = summary?.current_safety_confirm_queue_primary_focus_button_label;
+  const localPrimaryFocusKind = primaryActionId === "run_nav2_route"
+    ? plainManualSafetyConfirmed.value ? "trip_execute_button" : "trip_safety_confirm"
+    : primaryActionId === "hold_keyboard"
+      ? "keyboard_arm"
+      : primaryActionId === "start_free_move"
+        ? "free_move_safety_confirm"
+        : "none";
+  const primaryFocusKind = primaryActionId === "run_nav2_route"
+    ? localPrimaryFocusKind
+    : backendPrimaryFocusKind ?? localPrimaryFocusKind;
+  const primaryFocusButtonLabel = primaryActionId === "run_nav2_route"
+    ? plainManualSafetyConfirmed.value ? "去执行图上行程" : "去勾行程安全确认"
+    : backendPrimaryFocusButtonLabel ?? "去执行第一项";
   return {
     status: summary?.current_safety_confirm_queue_status ?? motionPack.status,
     plain: summary?.current_safety_confirm_queue_plain
@@ -4450,10 +4457,12 @@ const plainCurrentSafetyConfirmQueue = computed(() => {
       ?? motionPack.primaryActionDisplayLabel,
     primaryFocusSourceCardId,
     primaryFocusKind,
-    primaryFocusButtonLabel: summary?.current_safety_confirm_queue_primary_focus_button_label
-      ?? (primaryActionId === "run_nav2_route" && !plainManualSafetyConfirmed.value
-        ? "去勾行程安全确认"
-        : "去执行第一项"),
+    primaryFocusButtonLabel,
+    safetyConfirmed: plainManualSafetyConfirmed.value,
+    backendPrimaryFocusKind: backendPrimaryFocusKind ?? "none",
+    backendPrimaryFocusButtonLabel: backendPrimaryFocusButtonLabel ?? "none",
+    effectivePrimaryFocusKind: primaryFocusKind,
+    effectivePrimaryFocusButtonLabel: primaryFocusButtonLabel,
     actionCount: summary?.current_safety_confirm_queue_action_count ?? actionIds.length,
     requiresSafetyConfirm: summary?.current_safety_confirm_queue_requires_safety_confirm ?? motionPack.requiresSafetyConfirm,
     minimalPrecheckSafetyOnly: summary?.current_safety_confirm_queue_minimal_precheck_safety_only ?? motionPack.minimalPrecheckSafetyOnly,
@@ -20170,6 +20179,11 @@ onBeforeUnmount(() => {
             :data-primary-focus-source-card-id="plainCurrentSafetyConfirmQueue.primaryFocusSourceCardId || 'none'"
             :data-primary-focus-kind="plainCurrentSafetyConfirmQueue.primaryFocusKind"
             :data-primary-focus-button-label="plainCurrentSafetyConfirmQueue.primaryFocusButtonLabel"
+            :data-safety-confirmed="String(plainCurrentSafetyConfirmQueue.safetyConfirmed)"
+            :data-backend-primary-focus-kind="plainCurrentSafetyConfirmQueue.backendPrimaryFocusKind"
+            :data-backend-primary-focus-button-label="plainCurrentSafetyConfirmQueue.backendPrimaryFocusButtonLabel"
+            :data-effective-primary-focus-kind="plainCurrentSafetyConfirmQueue.effectivePrimaryFocusKind"
+            :data-effective-primary-focus-button-label="plainCurrentSafetyConfirmQueue.effectivePrimaryFocusButtonLabel"
             :data-action-count="String(plainCurrentSafetyConfirmQueue.actionCount)"
             :data-requires-safety-confirm="String(plainCurrentSafetyConfirmQueue.requiresSafetyConfirm)"
             :data-minimal-precheck-safety-only="String(plainCurrentSafetyConfirmQueue.minimalPrecheckSafetyOnly)"
@@ -20198,6 +20212,9 @@ onBeforeUnmount(() => {
               :disabled="!plainCurrentSafetyConfirmQueue.primaryFocusSourceCardId"
               :data-focus-target-source-card-id="plainCurrentSafetyConfirmQueue.primaryFocusSourceCardId || 'none'"
               :data-focus-target-kind="plainCurrentSafetyConfirmQueue.primaryFocusKind"
+              :data-safety-confirmed="String(plainCurrentSafetyConfirmQueue.safetyConfirmed)"
+              :data-backend-focus-target-kind="plainCurrentSafetyConfirmQueue.backendPrimaryFocusKind"
+              :data-effective-focus-target-kind="plainCurrentSafetyConfirmQueue.effectivePrimaryFocusKind"
               data-focus-only="true"
               data-sends-motion-when-clicked="false"
               data-starts-nav2="false"
