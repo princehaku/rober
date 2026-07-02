@@ -5112,3 +5112,9 @@ summary/DOM 读取。页面明确点击启用键盘不会发车，只有按住 W
 启动后只读读回端点、缺口、建图 readiness、相机/雷达是否阻塞自由移动，以及点击/读回不会启动 Nav2、键盘、建图 runtime、
 送达或 stop 的边界。字段明确：点击展示不发车，只有勾现场安全确认后执行自由移动动作才会启动 free-roam；
 启动后必须只读读取 free-roam latest、地图预览和 summary。相机和雷达不作为自由移动发车前置，只影响建图启动和 WYSIWYG 验收。
+
+2026-07-02 13:35 CST 起，summary 顶层新增 `current_mapping_control_pack_*`，普通 PC 现场验收区同步新增
+`plain-current-mapping-control-pack`。该包把“摄像头首帧 + 雷达新鲜后即可建图”收成当前验收短行，直接暴露建图 start/stop/preview、
+启动后只读读回端点、摄像头/雷达 required/ready/blocks、雷达贴图 WYSIWYG、相机硬件处理动作，以及自由移动是否受影响。
+字段明确：显示或点击验收短行不发车、不启动建图；只有传感器 ready 且现场安全确认后执行建图动作才启动 map runtime；
+启动后只读读取 free-roam latest、地图预览和 summary，不启动 Nav2、键盘、自由移动、送达或 stop。

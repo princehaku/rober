@@ -4510,6 +4510,87 @@ const plainCurrentFreeMoveControlPack = computed(() => {
     readbackStopsMotion: summary?.current_free_move_control_pack_readback_stops_motion ?? false,
   };
 });
+const plainCurrentMappingControlPack = computed(() => {
+  // 建图包单独说明“摄像头+雷达 ready 才启动建图”，并强调自由移动不被建图缺口挡住。
+  const summary = robotSummary.value;
+  const missingEvidence = summary?.current_mapping_control_pack_missing_evidence
+    ?? summary?.current_mapping_action_missing_evidence
+    ?? [];
+  const readbackEndpoints = summary?.current_mapping_control_pack_readback_endpoints
+    ?? summary?.current_mapping_action_readback_endpoints
+    ?? [];
+  const postStartReadbackEndpoints = summary?.current_mapping_control_pack_post_start_readback_endpoints
+    ?? summary?.current_mapping_action_post_start_readback_endpoints
+    ?? readbackEndpoints;
+  const postStartReadbackSequenceLabels = summary?.current_mapping_control_pack_post_start_readback_sequence_labels
+    ?? summary?.current_mapping_action_post_start_readback_sequence_labels
+    ?? [];
+  const requiredSuccessMarkers = summary?.current_mapping_control_pack_required_success_markers
+    ?? summary?.current_mapping_action_required_success_markers
+    ?? [];
+  const status = summary?.current_mapping_control_pack_status
+    ?? (summary?.current_mapping_action_ready ? "ready_for_safety_confirm" : "blocked");
+  const cameraReady = summary?.current_mapping_control_pack_camera_ready ?? summary?.current_mapping_action_camera_ready ?? false;
+  const radarReady = summary?.current_mapping_control_pack_radar_ready ?? summary?.current_mapping_action_radar_ready ?? false;
+  const defaultPlain = status === "complete"
+    ? "建图启动已闭环：地图 runtime 已启动并完成启动后 latest、地图预览和 summary 读回；继续监看地图画面。"
+    : status === "ready_for_safety_confirm"
+      ? "建图可启动：摄像头首帧和雷达新鲜读数都已满足；勾现场安全确认后启动建图记录，启动后只读读取 free-roam latest、地图预览和 summary。"
+      : `建图暂未就绪：摄像头 ready=${cameraReady}，雷达 ready=${radarReady}；当前缺口：${missingEvidence.join("、") || "建图入口未就绪"}。自由移动不受建图缺口影响。`;
+  return {
+    status,
+    plain: summary?.current_mapping_control_pack_plain ?? defaultPlain,
+    actionId: summary?.current_mapping_control_pack_action_id ?? summary?.current_mapping_action_id ?? "start_mapping_when_sensors_ready",
+    displayLabel: summary?.current_mapping_control_pack_display_label ?? summary?.current_mapping_action_display_label ?? "传感器就绪后建图",
+    startEndpoint: summary?.current_mapping_control_pack_start_endpoint ?? summary?.current_mapping_action_start_endpoint ?? "/api/robot-control/map/start",
+    stopEndpoint: summary?.current_mapping_control_pack_stop_endpoint ?? summary?.current_mapping_action_stop_endpoint ?? "/api/robot-control/free-roam/autonomy/stop",
+    previewEndpoint: summary?.current_mapping_control_pack_preview_endpoint ?? summary?.current_mapping_action_preview_endpoint ?? "/api/robot-control/map/preview",
+    readbackEndpointsText: readbackEndpoints.join(",") || "none",
+    postStartReadbackEndpointsText: postStartReadbackEndpoints.join(",") || "none",
+    postStartReadbackSequenceLabelsText: postStartReadbackSequenceLabels.join(",") || "none",
+    requiredSuccessMarkersText: requiredSuccessMarkers.join(",") || "none",
+    missingEvidenceText: missingEvidence.join(",") || "none",
+    proofStatus: summary?.current_mapping_control_pack_proof_status ?? summary?.current_mapping_action_proof_status ?? "blocked",
+    ready: summary?.current_mapping_control_pack_ready ?? summary?.current_mapping_action_ready ?? false,
+    requiresSafetyConfirm: summary?.current_mapping_control_pack_requires_safety_confirm ?? summary?.current_mapping_action_requires_safety_confirm ?? false,
+    safetyConfirmRequiredWhenExecuted: summary?.current_mapping_control_pack_safety_confirm_required_when_executed ?? summary?.current_mapping_action_safety_confirm_required_when_executed ?? true,
+    minimalPrecheckSafetyOnly: summary?.current_mapping_control_pack_minimal_precheck_safety_only ?? summary?.current_mapping_action_minimal_precheck_safety_only ?? true,
+    cameraRequired: summary?.current_mapping_control_pack_camera_required ?? summary?.current_mapping_action_camera_required ?? true,
+    radarRequired: summary?.current_mapping_control_pack_radar_required ?? summary?.current_mapping_action_radar_required ?? true,
+    cameraReady,
+    radarReady,
+    cameraBlocksStart: summary?.current_mapping_control_pack_camera_blocks_start ?? summary?.current_mapping_action_camera_blocks_start ?? true,
+    radarBlocksStart: summary?.current_mapping_control_pack_radar_blocks_start ?? summary?.current_mapping_action_radar_blocks_start ?? true,
+    onlyCameraMissing: summary?.current_mapping_control_pack_only_camera_missing ?? summary?.current_mapping_action_only_camera_missing ?? false,
+    radarOverlayWysiwygComplete: summary?.current_mapping_control_pack_radar_overlay_wysiwyg_complete ?? summary?.current_mapping_action_radar_overlay_wysiwyg_complete ?? false,
+    cameraHardwareActionRequired: summary?.current_mapping_control_pack_camera_hardware_action_required ?? summary?.current_mapping_action_camera_hardware_action_required ?? false,
+    cameraHardwareActionLabel: summary?.current_mapping_control_pack_camera_hardware_action_label ?? summary?.current_mapping_action_camera_hardware_action_label ?? "复测相机首帧",
+    cameraRecoveryNextActionPlain: summary?.current_mapping_control_pack_camera_recovery_next_action_plain ?? summary?.current_mapping_action_camera_recovery_next_action_plain ?? "",
+    blocksFreeMove: summary?.current_mapping_control_pack_blocks_free_move ?? summary?.current_mapping_action_blocks_free_move ?? false,
+    freeMoveAllowedWhileBlocked: summary?.current_mapping_control_pack_free_move_allowed_while_blocked ?? summary?.current_mapping_action_free_move_allowed_while_blocked ?? false,
+    postStartReadbackRefreshesFreeRoamLatest: summary?.current_mapping_control_pack_post_start_readback_refreshes_free_roam_latest ?? summary?.current_mapping_action_post_start_readback_refreshes_free_roam_latest ?? false,
+    postStartReadbackRefreshesMapPreview: summary?.current_mapping_control_pack_post_start_readback_refreshes_map_preview ?? summary?.current_mapping_action_post_start_readback_refreshes_map_preview ?? false,
+    postStartReadbackRefreshesSummary: summary?.current_mapping_control_pack_post_start_readback_refreshes_summary ?? summary?.current_mapping_action_post_start_readback_refreshes_summary ?? false,
+    sendsMotionWhenClicked: summary?.current_mapping_control_pack_sends_motion_when_clicked ?? false,
+    sendsMotionWhenExecuted: summary?.current_mapping_control_pack_sends_motion_when_executed ?? true,
+    startsMapRuntimeWhenClicked: summary?.current_mapping_control_pack_starts_map_runtime_when_clicked ?? false,
+    startsMapRuntimeWhenExecuted: summary?.current_mapping_control_pack_starts_map_runtime_when_executed ?? true,
+    startsNav2WhenClicked: summary?.current_mapping_control_pack_starts_nav2_when_clicked ?? false,
+    startsManualWhenClicked: summary?.current_mapping_control_pack_starts_manual_when_clicked ?? false,
+    startsKeyboardWhenClicked: summary?.current_mapping_control_pack_starts_keyboard_when_clicked ?? false,
+    startsFreeRoamWhenClicked: summary?.current_mapping_control_pack_starts_free_roam_when_clicked ?? false,
+    submitsDeliveryWhenClicked: summary?.current_mapping_control_pack_submits_delivery_when_clicked ?? false,
+    stopsMotionWhenClicked: summary?.current_mapping_control_pack_stops_motion_when_clicked ?? false,
+    readbackSendsMotion: summary?.current_mapping_control_pack_readback_sends_motion ?? false,
+    readbackStartsNav2: summary?.current_mapping_control_pack_readback_starts_nav2 ?? false,
+    readbackStartsManual: summary?.current_mapping_control_pack_readback_starts_manual ?? false,
+    readbackStartsKeyboard: summary?.current_mapping_control_pack_readback_starts_keyboard ?? false,
+    readbackStartsFreeRoam: summary?.current_mapping_control_pack_readback_starts_free_roam ?? false,
+    readbackStartsMapRuntime: summary?.current_mapping_control_pack_readback_starts_map_runtime ?? false,
+    readbackSubmitsDelivery: summary?.current_mapping_control_pack_readback_submits_delivery ?? false,
+    readbackStopsMotion: summary?.current_mapping_control_pack_readback_stops_motion ?? false,
+  };
+});
 const plainCurrentTripExecutionPack = computed(() => {
   // 完整行程包把 Nav2 执行和执行后的只读验收压到同一行，现场不用在多个卡片里找证据。
   const summary = robotSummary.value;
@@ -19702,6 +19783,62 @@ onBeforeUnmount(() => {
             :data-readback-stops-motion="String(plainCurrentFreeMoveControlPack.readbackStopsMotion)"
           >
             {{ plainCurrentFreeMoveControlPack.plain }}
+          </p>
+          <p
+            class="panel-note"
+            data-testid="plain-current-mapping-control-pack"
+            :data-status="plainCurrentMappingControlPack.status"
+            :data-action-id="plainCurrentMappingControlPack.actionId"
+            :data-display-label="plainCurrentMappingControlPack.displayLabel"
+            :data-start-endpoint="plainCurrentMappingControlPack.startEndpoint"
+            :data-stop-endpoint="plainCurrentMappingControlPack.stopEndpoint"
+            :data-preview-endpoint="plainCurrentMappingControlPack.previewEndpoint"
+            :data-readback-endpoints="plainCurrentMappingControlPack.readbackEndpointsText"
+            :data-post-start-readback-endpoints="plainCurrentMappingControlPack.postStartReadbackEndpointsText"
+            :data-post-start-readback-sequence-labels="plainCurrentMappingControlPack.postStartReadbackSequenceLabelsText"
+            :data-required-success-markers="plainCurrentMappingControlPack.requiredSuccessMarkersText"
+            :data-missing-evidence="plainCurrentMappingControlPack.missingEvidenceText"
+            :data-proof-status="plainCurrentMappingControlPack.proofStatus"
+            :data-ready="String(plainCurrentMappingControlPack.ready)"
+            :data-requires-safety-confirm="String(plainCurrentMappingControlPack.requiresSafetyConfirm)"
+            :data-safety-confirm-required-when-executed="String(plainCurrentMappingControlPack.safetyConfirmRequiredWhenExecuted)"
+            :data-minimal-precheck-safety-only="String(plainCurrentMappingControlPack.minimalPrecheckSafetyOnly)"
+            :data-camera-required="String(plainCurrentMappingControlPack.cameraRequired)"
+            :data-radar-required="String(plainCurrentMappingControlPack.radarRequired)"
+            :data-camera-ready="String(plainCurrentMappingControlPack.cameraReady)"
+            :data-radar-ready="String(plainCurrentMappingControlPack.radarReady)"
+            :data-camera-blocks-start="String(plainCurrentMappingControlPack.cameraBlocksStart)"
+            :data-radar-blocks-start="String(plainCurrentMappingControlPack.radarBlocksStart)"
+            :data-only-camera-missing="String(plainCurrentMappingControlPack.onlyCameraMissing)"
+            :data-radar-overlay-wysiwyg-complete="String(plainCurrentMappingControlPack.radarOverlayWysiwygComplete)"
+            :data-camera-hardware-action-required="String(plainCurrentMappingControlPack.cameraHardwareActionRequired)"
+            :data-camera-hardware-action-label="plainCurrentMappingControlPack.cameraHardwareActionLabel"
+            :data-camera-recovery-next-action-plain="plainCurrentMappingControlPack.cameraRecoveryNextActionPlain"
+            :data-blocks-free-move="String(plainCurrentMappingControlPack.blocksFreeMove)"
+            :data-free-move-allowed-while-blocked="String(plainCurrentMappingControlPack.freeMoveAllowedWhileBlocked)"
+            :data-post-start-readback-refreshes-free-roam-latest="String(plainCurrentMappingControlPack.postStartReadbackRefreshesFreeRoamLatest)"
+            :data-post-start-readback-refreshes-map-preview="String(plainCurrentMappingControlPack.postStartReadbackRefreshesMapPreview)"
+            :data-post-start-readback-refreshes-summary="String(plainCurrentMappingControlPack.postStartReadbackRefreshesSummary)"
+            :data-sends-motion-when-clicked="String(plainCurrentMappingControlPack.sendsMotionWhenClicked)"
+            :data-sends-motion-when-executed="String(plainCurrentMappingControlPack.sendsMotionWhenExecuted)"
+            :data-starts-map-runtime-when-clicked="String(plainCurrentMappingControlPack.startsMapRuntimeWhenClicked)"
+            :data-starts-map-runtime-when-executed="String(plainCurrentMappingControlPack.startsMapRuntimeWhenExecuted)"
+            :data-starts-nav2-when-clicked="String(plainCurrentMappingControlPack.startsNav2WhenClicked)"
+            :data-starts-manual-when-clicked="String(plainCurrentMappingControlPack.startsManualWhenClicked)"
+            :data-starts-keyboard-when-clicked="String(plainCurrentMappingControlPack.startsKeyboardWhenClicked)"
+            :data-starts-free-roam-when-clicked="String(plainCurrentMappingControlPack.startsFreeRoamWhenClicked)"
+            :data-submits-delivery-when-clicked="String(plainCurrentMappingControlPack.submitsDeliveryWhenClicked)"
+            :data-stops-motion-when-clicked="String(plainCurrentMappingControlPack.stopsMotionWhenClicked)"
+            :data-readback-sends-motion="String(plainCurrentMappingControlPack.readbackSendsMotion)"
+            :data-readback-starts-nav2="String(plainCurrentMappingControlPack.readbackStartsNav2)"
+            :data-readback-starts-manual="String(plainCurrentMappingControlPack.readbackStartsManual)"
+            :data-readback-starts-keyboard="String(plainCurrentMappingControlPack.readbackStartsKeyboard)"
+            :data-readback-starts-free-roam="String(plainCurrentMappingControlPack.readbackStartsFreeRoam)"
+            :data-readback-starts-map-runtime="String(plainCurrentMappingControlPack.readbackStartsMapRuntime)"
+            :data-readback-submits-delivery="String(plainCurrentMappingControlPack.readbackSubmitsDelivery)"
+            :data-readback-stops-motion="String(plainCurrentMappingControlPack.readbackStopsMotion)"
+          >
+            {{ plainCurrentMappingControlPack.plain }}
           </p>
           <p
             class="panel-note"

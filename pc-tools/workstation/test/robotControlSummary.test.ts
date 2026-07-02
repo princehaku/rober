@@ -1872,6 +1872,66 @@ describe("robotControlSummary", () => {
     expect(summary.current_mapping_action_starts_free_roam).toBe(false);
     expect(summary.current_mapping_action_submits_delivery).toBe(false);
     expect(summary.current_mapping_action_stops_motion).toBe(false);
+    expect(summary.current_mapping_control_pack_status).toBe("blocked");
+    expect(summary.current_mapping_control_pack_plain).toContain("建图暂未就绪");
+    expect(summary.current_mapping_control_pack_plain).toContain("自由移动不受建图缺口影响");
+    expect(summary.current_mapping_control_pack_action_id).toBe("start_mapping_when_sensors_ready");
+    expect(summary.current_mapping_control_pack_display_label).toBe("传感器就绪后建图");
+    expect(summary.current_mapping_control_pack_start_endpoint).toBe("/api/robot-control/map/start");
+    expect(summary.current_mapping_control_pack_stop_endpoint).toBe("/api/robot-control/free-roam/autonomy/stop");
+    expect(summary.current_mapping_control_pack_preview_endpoint).toBe("/api/robot-control/map/preview");
+    expect(summary.current_mapping_control_pack_readback_endpoints).toEqual([
+      "/api/robot-control/free-roam/autonomy/latest",
+      "/api/robot-control/map/preview",
+      "/api/robot-control/summary",
+    ]);
+    expect(summary.current_mapping_control_pack_post_start_readback_endpoints).toEqual(summary.current_mapping_control_pack_readback_endpoints);
+    expect(summary.current_mapping_control_pack_post_start_readback_sequence_labels).toEqual([
+      "读取自由移动状态",
+      "刷新地图画面",
+      "刷新总览",
+    ]);
+    expect(summary.current_mapping_control_pack_required_success_markers).toEqual(["camera_first_frame", "lidar_fresh"]);
+    expect(summary.current_mapping_control_pack_missing_evidence).toEqual(["camera_first_frame", "lidar_fresh"]);
+    expect(summary.current_mapping_control_pack_proof_status).toBe("blocked");
+    expect(summary.current_mapping_control_pack_ready).toBe(false);
+    expect(summary.current_mapping_control_pack_requires_safety_confirm).toBe(false);
+    expect(summary.current_mapping_control_pack_safety_confirm_required_when_executed).toBe(true);
+    expect(summary.current_mapping_control_pack_minimal_precheck_safety_only).toBe(true);
+    expect(summary.current_mapping_control_pack_camera_required).toBe(true);
+    expect(summary.current_mapping_control_pack_radar_required).toBe(true);
+    expect(summary.current_mapping_control_pack_camera_ready).toBe(false);
+    expect(summary.current_mapping_control_pack_radar_ready).toBe(false);
+    expect(summary.current_mapping_control_pack_camera_blocks_start).toBe(true);
+    expect(summary.current_mapping_control_pack_radar_blocks_start).toBe(true);
+    expect(summary.current_mapping_control_pack_only_camera_missing).toBe(false);
+    expect(summary.current_mapping_control_pack_radar_overlay_wysiwyg_complete).toBe(false);
+    expect(summary.current_mapping_control_pack_camera_hardware_action_required).toBe(false);
+    expect(summary.current_mapping_control_pack_camera_hardware_action_label).toBe("复测相机首帧");
+    expect(summary.current_mapping_control_pack_camera_recovery_next_action_plain).toContain("复测相机首帧");
+    expect(summary.current_mapping_control_pack_blocks_free_move).toBe(false);
+    expect(summary.current_mapping_control_pack_free_move_allowed_while_blocked).toBe(true);
+    expect(summary.current_mapping_control_pack_post_start_readback_refreshes_free_roam_latest).toBe(true);
+    expect(summary.current_mapping_control_pack_post_start_readback_refreshes_map_preview).toBe(true);
+    expect(summary.current_mapping_control_pack_post_start_readback_refreshes_summary).toBe(true);
+    expect(summary.current_mapping_control_pack_sends_motion_when_clicked).toBe(false);
+    expect(summary.current_mapping_control_pack_sends_motion_when_executed).toBe(true);
+    expect(summary.current_mapping_control_pack_starts_map_runtime_when_clicked).toBe(false);
+    expect(summary.current_mapping_control_pack_starts_map_runtime_when_executed).toBe(true);
+    expect(summary.current_mapping_control_pack_starts_nav2_when_clicked).toBe(false);
+    expect(summary.current_mapping_control_pack_starts_manual_when_clicked).toBe(false);
+    expect(summary.current_mapping_control_pack_starts_keyboard_when_clicked).toBe(false);
+    expect(summary.current_mapping_control_pack_starts_free_roam_when_clicked).toBe(false);
+    expect(summary.current_mapping_control_pack_submits_delivery_when_clicked).toBe(false);
+    expect(summary.current_mapping_control_pack_stops_motion_when_clicked).toBe(false);
+    expect(summary.current_mapping_control_pack_readback_sends_motion).toBe(false);
+    expect(summary.current_mapping_control_pack_readback_starts_nav2).toBe(false);
+    expect(summary.current_mapping_control_pack_readback_starts_manual).toBe(false);
+    expect(summary.current_mapping_control_pack_readback_starts_keyboard).toBe(false);
+    expect(summary.current_mapping_control_pack_readback_starts_free_roam).toBe(false);
+    expect(summary.current_mapping_control_pack_readback_starts_map_runtime).toBe(false);
+    expect(summary.current_mapping_control_pack_readback_submits_delivery).toBe(false);
+    expect(summary.current_mapping_control_pack_readback_stops_motion).toBe(false);
     expect(summary.mapping_required_success_markers).toEqual(["camera_first_frame", "lidar_fresh"]);
     expect(summary.mapping_proof_status).toBe("blocked");
     expect(summary.mapping_missing_evidence).toEqual(["camera_first_frame", "lidar_fresh"]);

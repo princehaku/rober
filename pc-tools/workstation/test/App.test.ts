@@ -1051,6 +1051,57 @@ const fixtures: Record<string, unknown> = {
     current_mapping_action_starts_free_roam: false,
     current_mapping_action_submits_delivery: false,
     current_mapping_action_stops_motion: false,
+    current_mapping_control_pack_status: "blocked",
+    current_mapping_control_pack_plain: "建图暂未就绪：摄像头 ready=false，雷达 ready=false；当前缺口：camera_first_frame、lidar_fresh。自由移动不受建图缺口影响。",
+    current_mapping_control_pack_action_id: "start_mapping_when_sensors_ready",
+    current_mapping_control_pack_display_label: "传感器就绪后建图",
+    current_mapping_control_pack_start_endpoint: "/api/robot-control/map/start",
+    current_mapping_control_pack_stop_endpoint: "/api/robot-control/free-roam/autonomy/stop",
+    current_mapping_control_pack_preview_endpoint: "/api/robot-control/map/preview",
+    current_mapping_control_pack_readback_endpoints: ["/api/robot-control/free-roam/autonomy/latest", "/api/robot-control/map/preview", "/api/robot-control/summary"],
+    current_mapping_control_pack_post_start_readback_endpoints: ["/api/robot-control/free-roam/autonomy/latest", "/api/robot-control/map/preview", "/api/robot-control/summary"],
+    current_mapping_control_pack_post_start_readback_sequence_labels: ["读取自由移动状态", "刷新地图画面", "刷新总览"],
+    current_mapping_control_pack_required_success_markers: ["camera_first_frame", "lidar_fresh"],
+    current_mapping_control_pack_missing_evidence: ["camera_first_frame", "lidar_fresh"],
+    current_mapping_control_pack_proof_status: "blocked",
+    current_mapping_control_pack_ready: false,
+    current_mapping_control_pack_requires_safety_confirm: false,
+    current_mapping_control_pack_safety_confirm_required_when_executed: true,
+    current_mapping_control_pack_minimal_precheck_safety_only: true,
+    current_mapping_control_pack_camera_required: true,
+    current_mapping_control_pack_radar_required: true,
+    current_mapping_control_pack_camera_ready: false,
+    current_mapping_control_pack_radar_ready: false,
+    current_mapping_control_pack_camera_blocks_start: true,
+    current_mapping_control_pack_radar_blocks_start: true,
+    current_mapping_control_pack_only_camera_missing: false,
+    current_mapping_control_pack_radar_overlay_wysiwyg_complete: false,
+    current_mapping_control_pack_camera_hardware_action_required: false,
+    current_mapping_control_pack_camera_hardware_action_label: "复测相机首帧",
+    current_mapping_control_pack_camera_recovery_next_action_plain: "相机不是页面独占；先复测相机首帧并读取共享预览状态。若仍无画面，检查 USB 线、接口、摄像头供电或换 known-good UVC 后再复测。",
+    current_mapping_control_pack_blocks_free_move: false,
+    current_mapping_control_pack_free_move_allowed_while_blocked: true,
+    current_mapping_control_pack_post_start_readback_refreshes_free_roam_latest: true,
+    current_mapping_control_pack_post_start_readback_refreshes_map_preview: true,
+    current_mapping_control_pack_post_start_readback_refreshes_summary: true,
+    current_mapping_control_pack_sends_motion_when_clicked: false,
+    current_mapping_control_pack_sends_motion_when_executed: true,
+    current_mapping_control_pack_starts_map_runtime_when_clicked: false,
+    current_mapping_control_pack_starts_map_runtime_when_executed: true,
+    current_mapping_control_pack_starts_nav2_when_clicked: false,
+    current_mapping_control_pack_starts_manual_when_clicked: false,
+    current_mapping_control_pack_starts_keyboard_when_clicked: false,
+    current_mapping_control_pack_starts_free_roam_when_clicked: false,
+    current_mapping_control_pack_submits_delivery_when_clicked: false,
+    current_mapping_control_pack_stops_motion_when_clicked: false,
+    current_mapping_control_pack_readback_sends_motion: false,
+    current_mapping_control_pack_readback_starts_nav2: false,
+    current_mapping_control_pack_readback_starts_manual: false,
+    current_mapping_control_pack_readback_starts_keyboard: false,
+    current_mapping_control_pack_readback_starts_free_roam: false,
+    current_mapping_control_pack_readback_starts_map_runtime: false,
+    current_mapping_control_pack_readback_submits_delivery: false,
+    current_mapping_control_pack_readback_stops_motion: false,
     free_move_minimal_precheck_safety_only: true,
     free_move_safety_confirm_required: true,
     free_move_camera_preflight_required: false,
@@ -11475,6 +11526,60 @@ describe("App", () => {
     expect(freeMovePack.attributes("data-readback-starts-map-runtime")).toBe("false");
     expect(freeMovePack.attributes("data-readback-submits-delivery")).toBe("false");
     expect(freeMovePack.attributes("data-readback-stops-motion")).toBe("false");
+    const mappingPack = wrapper.find('[data-testid="plain-current-mapping-control-pack"]');
+    expect(mappingPack.exists()).toBe(true);
+    expect(mappingPack.text()).toContain("建图暂未就绪");
+    expect(mappingPack.text()).toContain("自由移动不受建图缺口影响");
+    expect(mappingPack.attributes("data-status")).toBe("blocked");
+    expect(mappingPack.attributes("data-action-id")).toBe("start_mapping_when_sensors_ready");
+    expect(mappingPack.attributes("data-display-label")).toBe("传感器就绪后建图");
+    expect(mappingPack.attributes("data-start-endpoint")).toBe("/api/robot-control/map/start");
+    expect(mappingPack.attributes("data-stop-endpoint")).toBe("/api/robot-control/free-roam/autonomy/stop");
+    expect(mappingPack.attributes("data-preview-endpoint")).toBe("/api/robot-control/map/preview");
+    expect(mappingPack.attributes("data-readback-endpoints")).toBe("/api/robot-control/free-roam/autonomy/latest,/api/robot-control/map/preview,/api/robot-control/summary");
+    expect(mappingPack.attributes("data-post-start-readback-endpoints")).toBe("/api/robot-control/free-roam/autonomy/latest,/api/robot-control/map/preview,/api/robot-control/summary");
+    expect(mappingPack.attributes("data-post-start-readback-sequence-labels")).toBe("读取自由移动状态,刷新地图画面,刷新总览");
+    expect(mappingPack.attributes("data-required-success-markers")).toBe("camera_first_frame,lidar_fresh");
+    expect(mappingPack.attributes("data-missing-evidence")).toBe("camera_first_frame,lidar_fresh");
+    expect(mappingPack.attributes("data-proof-status")).toBe("blocked");
+    expect(mappingPack.attributes("data-ready")).toBe("false");
+    expect(mappingPack.attributes("data-requires-safety-confirm")).toBe("false");
+    expect(mappingPack.attributes("data-safety-confirm-required-when-executed")).toBe("true");
+    expect(mappingPack.attributes("data-minimal-precheck-safety-only")).toBe("true");
+    expect(mappingPack.attributes("data-camera-required")).toBe("true");
+    expect(mappingPack.attributes("data-radar-required")).toBe("true");
+    expect(mappingPack.attributes("data-camera-ready")).toBe("false");
+    expect(mappingPack.attributes("data-radar-ready")).toBe("false");
+    expect(mappingPack.attributes("data-camera-blocks-start")).toBe("true");
+    expect(mappingPack.attributes("data-radar-blocks-start")).toBe("true");
+    expect(mappingPack.attributes("data-only-camera-missing")).toBe("false");
+    expect(mappingPack.attributes("data-radar-overlay-wysiwyg-complete")).toBe("false");
+    expect(mappingPack.attributes("data-camera-hardware-action-required")).toBe("false");
+    expect(mappingPack.attributes("data-camera-hardware-action-label")).toBe("复测相机首帧");
+    expect(mappingPack.attributes("data-camera-recovery-next-action-plain")).toContain("相机不是页面独占");
+    expect(mappingPack.attributes("data-blocks-free-move")).toBe("false");
+    expect(mappingPack.attributes("data-free-move-allowed-while-blocked")).toBe("true");
+    expect(mappingPack.attributes("data-post-start-readback-refreshes-free-roam-latest")).toBe("true");
+    expect(mappingPack.attributes("data-post-start-readback-refreshes-map-preview")).toBe("true");
+    expect(mappingPack.attributes("data-post-start-readback-refreshes-summary")).toBe("true");
+    expect(mappingPack.attributes("data-sends-motion-when-clicked")).toBe("false");
+    expect(mappingPack.attributes("data-sends-motion-when-executed")).toBe("true");
+    expect(mappingPack.attributes("data-starts-map-runtime-when-clicked")).toBe("false");
+    expect(mappingPack.attributes("data-starts-map-runtime-when-executed")).toBe("true");
+    expect(mappingPack.attributes("data-starts-nav2-when-clicked")).toBe("false");
+    expect(mappingPack.attributes("data-starts-manual-when-clicked")).toBe("false");
+    expect(mappingPack.attributes("data-starts-keyboard-when-clicked")).toBe("false");
+    expect(mappingPack.attributes("data-starts-free-roam-when-clicked")).toBe("false");
+    expect(mappingPack.attributes("data-submits-delivery-when-clicked")).toBe("false");
+    expect(mappingPack.attributes("data-stops-motion-when-clicked")).toBe("false");
+    expect(mappingPack.attributes("data-readback-sends-motion")).toBe("false");
+    expect(mappingPack.attributes("data-readback-starts-nav2")).toBe("false");
+    expect(mappingPack.attributes("data-readback-starts-manual")).toBe("false");
+    expect(mappingPack.attributes("data-readback-starts-keyboard")).toBe("false");
+    expect(mappingPack.attributes("data-readback-starts-free-roam")).toBe("false");
+    expect(mappingPack.attributes("data-readback-starts-map-runtime")).toBe("false");
+    expect(mappingPack.attributes("data-readback-submits-delivery")).toBe("false");
+    expect(mappingPack.attributes("data-readback-stops-motion")).toBe("false");
 
     const primaryStep = wrapper.find('[data-testid="plain-field-acceptance-primary"]');
     expect(primaryStep.attributes("data-label")).toBe("完整行程执行");

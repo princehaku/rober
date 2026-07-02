@@ -10796,6 +10796,21 @@ export async function buildRobotControlSummary(
     }
     return `自由自助移动暂未就绪：先恢复 free-roam 状态机、停止兜底或上车连接；当前缺口：${freeMoveActionMissingEvidence.join("、") || "自由移动入口未就绪"}。`;
   })();
+  const mappingComplete = mappingRunbookItem?.completed === true;
+  const currentMappingControlPackStatus: "complete" | "ready_for_safety_confirm" | "blocked" = mappingComplete
+    ? "complete"
+    : (mappingRunbookItem?.ready ?? liveClosureSummary.mapping_start_ready)
+      ? "ready_for_safety_confirm"
+      : "blocked";
+  const currentMappingControlPackPlain = (() => {
+    if (currentMappingControlPackStatus === "complete") {
+      return "建图启动已闭环：地图 runtime 已启动并完成启动后 latest、地图预览和 summary 读回；继续监看地图画面。";
+    }
+    if (currentMappingControlPackStatus === "ready_for_safety_confirm") {
+      return "建图可启动：摄像头首帧和雷达新鲜读数都已满足；勾现场安全确认后启动建图记录，启动后只读读取 free-roam latest、地图预览和 summary。";
+    }
+    return `建图暂未就绪：摄像头 ready=${!liveClosureSummary.mapping_camera_blocks_start}，雷达 ready=${!liveClosureSummary.mapping_lidar_blocks_start}；当前缺口：${mappingActionMissingEvidence.join("、") || "建图入口未就绪"}。自由移动不受建图缺口影响。`;
+  })();
   const fieldAcceptanceWysiwygNextActions = [
     liveClosureSummary.live_wysiwyg_missing_surface_ids.includes("camera")
       ? liveClosureSummary.live_wysiwyg_camera_recovery_next_action_plain
@@ -11682,6 +11697,57 @@ export async function buildRobotControlSummary(
     current_mapping_action_starts_free_roam: false,
     current_mapping_action_submits_delivery: false,
     current_mapping_action_stops_motion: false,
+    current_mapping_control_pack_status: currentMappingControlPackStatus,
+    current_mapping_control_pack_plain: currentMappingControlPackPlain,
+    current_mapping_control_pack_action_id: mappingRunbookItem?.id ?? "start_mapping_when_sensors_ready",
+    current_mapping_control_pack_display_label: mappingRunbookItem?.display_label ?? "传感器就绪后建图",
+    current_mapping_control_pack_start_endpoint: mappingActionStartEndpoint,
+    current_mapping_control_pack_stop_endpoint: mappingActionStopEndpoint,
+    current_mapping_control_pack_preview_endpoint: liveClosureSummary.fixed_mapping_preview_endpoint,
+    current_mapping_control_pack_readback_endpoints: mappingActionAcceptanceEndpoints,
+    current_mapping_control_pack_post_start_readback_endpoints: mappingActionAcceptanceEndpoints,
+    current_mapping_control_pack_post_start_readback_sequence_labels: mappingPostStartReadbackSequenceLabels,
+    current_mapping_control_pack_required_success_markers: mappingActionRequiredSuccessMarkers,
+    current_mapping_control_pack_missing_evidence: mappingActionMissingEvidence,
+    current_mapping_control_pack_proof_status: mappingRunbookItem?.proof_status ?? "blocked",
+    current_mapping_control_pack_ready: mappingRunbookItem?.ready ?? liveClosureSummary.mapping_start_ready,
+    current_mapping_control_pack_requires_safety_confirm: mappingRunbookItem?.safety_confirm_required ?? liveClosureSummary.mapping_start_ready,
+    current_mapping_control_pack_safety_confirm_required_when_executed: true,
+    current_mapping_control_pack_minimal_precheck_safety_only: mappingRunbookItem?.minimal_precheck_safety_only ?? true,
+    current_mapping_control_pack_camera_required: liveClosureSummary.mapping_start_requires_camera_first_frame,
+    current_mapping_control_pack_radar_required: liveClosureSummary.mapping_start_requires_lidar_fresh,
+    current_mapping_control_pack_camera_ready: !liveClosureSummary.mapping_camera_blocks_start,
+    current_mapping_control_pack_radar_ready: !liveClosureSummary.mapping_lidar_blocks_start,
+    current_mapping_control_pack_camera_blocks_start: liveClosureSummary.mapping_camera_blocks_start,
+    current_mapping_control_pack_radar_blocks_start: liveClosureSummary.mapping_lidar_blocks_start,
+    current_mapping_control_pack_only_camera_missing: mappingStartOnlyCameraMissing,
+    current_mapping_control_pack_radar_overlay_wysiwyg_complete: radarOverlayWysiwygComplete,
+    current_mapping_control_pack_camera_hardware_action_required: liveClosureSummary.camera_hardware_action_required,
+    current_mapping_control_pack_camera_hardware_action_label: liveClosureSummary.camera_hardware_action_label,
+    current_mapping_control_pack_camera_recovery_next_action_plain: liveClosureSummary.camera_recovery_next_action_plain,
+    current_mapping_control_pack_blocks_free_move: false,
+    current_mapping_control_pack_free_move_allowed_while_blocked: liveClosureSummary.free_move_start_ready && !liveClosureSummary.mapping_start_ready,
+    current_mapping_control_pack_post_start_readback_refreshes_free_roam_latest: mappingPostStartReadbackRefreshesFreeRoamLatest,
+    current_mapping_control_pack_post_start_readback_refreshes_map_preview: mappingPostStartReadbackRefreshesMapPreview,
+    current_mapping_control_pack_post_start_readback_refreshes_summary: mappingPostStartReadbackRefreshesSummary,
+    current_mapping_control_pack_sends_motion_when_clicked: false,
+    current_mapping_control_pack_sends_motion_when_executed: true,
+    current_mapping_control_pack_starts_map_runtime_when_clicked: false,
+    current_mapping_control_pack_starts_map_runtime_when_executed: true,
+    current_mapping_control_pack_starts_nav2_when_clicked: false,
+    current_mapping_control_pack_starts_manual_when_clicked: false,
+    current_mapping_control_pack_starts_keyboard_when_clicked: false,
+    current_mapping_control_pack_starts_free_roam_when_clicked: false,
+    current_mapping_control_pack_submits_delivery_when_clicked: false,
+    current_mapping_control_pack_stops_motion_when_clicked: false,
+    current_mapping_control_pack_readback_sends_motion: false,
+    current_mapping_control_pack_readback_starts_nav2: false,
+    current_mapping_control_pack_readback_starts_manual: false,
+    current_mapping_control_pack_readback_starts_keyboard: false,
+    current_mapping_control_pack_readback_starts_free_roam: false,
+    current_mapping_control_pack_readback_starts_map_runtime: false,
+    current_mapping_control_pack_readback_submits_delivery: false,
+    current_mapping_control_pack_readback_stops_motion: false,
     field_acceptance_hardware_action_ids: fieldAcceptancePacket.hardware_action_ids,
     field_acceptance_hardware_action_labels: fieldAcceptancePacket.hardware_action_labels,
     field_acceptance_hardware_action_after_readback_endpoints: fieldAcceptancePacket.hardware_action_after_readback_endpoints,
