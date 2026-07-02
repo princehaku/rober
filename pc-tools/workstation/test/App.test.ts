@@ -810,6 +810,30 @@ const fixtures: Record<string, unknown> = {
     free_move_proof_status: "ready_to_verify",
     free_move_missing_evidence: ["free_roam_latest_motion_ready"],
     free_move_proof_plain: "可验证自由自助移动：勾现场安全确认后启动，再读 free-roam latest、地图预览和 summary；还差：自由移动运行读数。",
+    current_free_move_action_required: true,
+    current_free_move_action_ready: true,
+    current_free_move_action_id: "start_free_move",
+    current_free_move_action_label: "自由自助移动",
+    current_free_move_action_display_label: "自由自助移动",
+    current_free_move_action_start_endpoint: "/api/robot-control/free-roam/autonomy/start",
+    current_free_move_action_stop_endpoint: "/api/robot-control/free-roam/autonomy/stop",
+    current_free_move_action_latest_endpoint: "/api/robot-control/free-roam/autonomy/latest",
+    current_free_move_action_readback_endpoint: "/api/robot-control/free-roam/autonomy/latest",
+    current_free_move_action_acceptance_endpoints: ["/api/robot-control/free-roam/autonomy/latest", "/api/robot-control/map/preview", "/api/robot-control/summary"],
+    current_free_move_action_readback_endpoints: ["/api/robot-control/free-roam/autonomy/latest", "/api/robot-control/map/preview", "/api/robot-control/summary"],
+    current_free_move_action_required_success_markers: ["free_roam_latest_motion_ready"],
+    current_free_move_action_proof_status: "ready_to_verify",
+    current_free_move_action_missing_evidence: ["free_roam_latest_motion_ready"],
+    current_free_move_action_proof_plain: "可验证自由自助移动：勾现场安全确认后启动，再读 free-roam latest、地图预览和 summary；还差：自由移动运行读数。",
+    current_free_move_action_requires_safety_confirm: true,
+    current_free_move_action_minimal_precheck_safety_only: true,
+    current_free_move_action_camera_preflight_required: false,
+    current_free_move_action_radar_preflight_required: false,
+    current_free_move_action_without_camera_allowed: true,
+    current_free_move_action_without_radar_allowed: true,
+    current_free_move_action_blocked_by_camera_wysiwyg: false,
+    current_free_move_action_blocked_by_radar_wysiwyg: false,
+    current_free_move_action_sends_motion: true,
     free_move_minimal_precheck_safety_only: true,
     free_move_safety_confirm_required: true,
     free_move_camera_preflight_required: false,
@@ -19567,10 +19591,18 @@ describe("App", () => {
     expect(freeMoveOnlyGauge.attributes("data-sends-motion-when-clicked")).toBe("false");
     const freeMoveAcceptanceProof = wrapper.find('[data-testid="plain-free-move-acceptance-proof"]');
     expect(freeMoveAcceptanceProof.text()).toBe("自由移动验收：可启动；还差：自由移动运行读数；发车前只需安全确认，画面和雷达不作为移动前置；建图缺口=画面首帧。下一步：勾现场安全确认后启动自由移动；启动后只读读取 free-roam latest、地图预览和 summary。");
+    expect(freeMoveAcceptanceProof.attributes("data-current-action-id")).toBe("start_free_move");
+    expect(freeMoveAcceptanceProof.attributes("data-current-action-ready")).toBe("true");
+    expect(freeMoveAcceptanceProof.attributes("data-current-action-label")).toBe("自由自助移动");
+    expect(freeMoveAcceptanceProof.attributes("data-current-action-display-label")).toBe("自由自助移动");
     expect(freeMoveAcceptanceProof.attributes("data-state")).toBe("可现场验证");
     expect(freeMoveAcceptanceProof.attributes("data-proof-status")).toBe("ready_to_verify");
     expect(freeMoveAcceptanceProof.attributes("data-missing-evidence")).toBe("free_roam_latest_motion_ready");
+    expect(freeMoveAcceptanceProof.attributes("data-latest-endpoint")).toBe("/api/robot-control/free-roam/autonomy/latest");
+    expect(freeMoveAcceptanceProof.attributes("data-readback-endpoint")).toBe("/api/robot-control/free-roam/autonomy/latest");
     expect(freeMoveAcceptanceProof.attributes("data-acceptance-endpoints")).toBe("/api/robot-control/free-roam/autonomy/latest,/api/robot-control/map/preview,/api/robot-control/summary");
+    expect(freeMoveAcceptanceProof.attributes("data-readback-endpoints")).toBe("/api/robot-control/free-roam/autonomy/latest,/api/robot-control/map/preview,/api/robot-control/summary");
+    expect(freeMoveAcceptanceProof.attributes("data-required-success-markers")).toBe("free_roam_latest_motion_ready");
     expect(freeMoveAcceptanceProof.attributes("data-start-endpoint")).toBe("/api/robot-control/free-roam/autonomy/start");
     expect(freeMoveAcceptanceProof.attributes("data-stop-endpoint")).toBe("/api/robot-control/free-roam/autonomy/stop");
     expect(freeMoveAcceptanceProof.attributes("data-start-ready")).toBe("true");
@@ -19583,6 +19615,9 @@ describe("App", () => {
     expect(freeMoveAcceptanceProof.attributes("data-radar-preflight-required")).toBe("false");
     expect(freeMoveAcceptanceProof.attributes("data-blocked-by-camera-wysiwyg")).toBe("false");
     expect(freeMoveAcceptanceProof.attributes("data-blocked-by-radar-wysiwyg")).toBe("false");
+    expect(freeMoveAcceptanceProof.attributes("data-without-camera-allowed")).toBe("true");
+    expect(freeMoveAcceptanceProof.attributes("data-without-radar-allowed")).toBe("true");
+    expect(freeMoveAcceptanceProof.attributes("data-current-action-sends-motion")).toBe("true");
     expect(freeMoveAcceptanceProof.attributes("data-mapping-start-ready")).toBe("false");
     expect(freeMoveAcceptanceProof.attributes("data-mapping-start-missing-reasons")).toBe("camera_first_frame");
     expect(freeMoveAcceptanceProof.attributes("data-readback-only")).toBe("true");

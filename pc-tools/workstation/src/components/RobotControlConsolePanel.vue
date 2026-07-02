@@ -9118,14 +9118,24 @@ type PlainFreeRoamHandoffGauge = {
   fixedRadarMapPreviewEndpoint: string;
 };
 type PlainFreeMoveAcceptanceProof = {
+  actionId: string;
+  actionReady: boolean;
+  actionLabel: string;
+  actionDisplayLabel: string;
   state: string;
   text: string;
   proofStatus: string;
   proofPlain: string;
   missingEvidence: string[];
   missingEvidenceText: string;
+  latestEndpoint: string;
+  readbackEndpoint: string;
   acceptanceEndpoints: string[];
   acceptanceEndpointsText: string;
+  readbackEndpoints: string[];
+  readbackEndpointsText: string;
+  requiredSuccessMarkers: string[];
+  requiredSuccessMarkersText: string;
   startEndpoint: string;
   stopEndpoint: string;
   startReady: boolean;
@@ -9140,6 +9150,9 @@ type PlainFreeMoveAcceptanceProof = {
   radarPreflightRequired: boolean;
   blockedByCameraWysiwyg: boolean;
   blockedByRadarWysiwyg: boolean;
+  withoutCameraAllowed: boolean;
+  withoutRadarAllowed: boolean;
+  sendsMotion: boolean;
   mappingStartReady: boolean;
   mappingStartMissingReasons: string[];
   mappingStartMissingText: string;
@@ -9385,20 +9398,27 @@ const plainFreeMoveAcceptanceProof = computed<PlainFreeMoveAcceptanceProof>(() =
   const summary = robotSummary.value;
   const evidence = plainFreeRoamDomEvidence.value;
   const item = plainLiveClosureSummary.value?.live_motion_runbook_items.find((row) => row.id === "start_free_move");
-  const missingEvidence = summary?.free_move_missing_evidence ?? item?.missing_evidence ?? [];
-  const acceptanceEndpoints = summary?.free_move_acceptance_endpoints ?? item?.acceptance_endpoints ?? [
+  const actionId = summary?.current_free_move_action_id ?? item?.id ?? "start_free_move";
+  const actionLabel = summary?.current_free_move_action_label ?? item?.label ?? "自由自助移动";
+  const actionDisplayLabel = summary?.current_free_move_action_display_label ?? item?.display_label ?? actionLabel;
+  const missingEvidence = summary?.current_free_move_action_missing_evidence ?? summary?.free_move_missing_evidence ?? item?.missing_evidence ?? [];
+  const acceptanceEndpoints = summary?.current_free_move_action_acceptance_endpoints ?? summary?.free_move_acceptance_endpoints ?? item?.acceptance_endpoints ?? [
     "/api/robot-control/free-roam/autonomy/latest",
     "/api/robot-control/map/preview",
     "/api/robot-control/summary",
   ];
-  const startReady = Boolean(summary?.free_move_start_ready ?? evidence.freeMoveStartReady);
+  const readbackEndpoints = summary?.current_free_move_action_readback_endpoints ?? summary?.free_move_readback_endpoints ?? acceptanceEndpoints;
+  const requiredSuccessMarkers = summary?.current_free_move_action_required_success_markers ?? summary?.free_move_required_success_markers ?? missingEvidence;
+  const latestEndpoint = summary?.current_free_move_action_latest_endpoint ?? summary?.free_move_latest_endpoint ?? evidence.fixedFreeRoamLatestEndpoint;
+  const readbackEndpoint = summary?.current_free_move_action_readback_endpoint ?? summary?.free_move_readback_endpoint ?? latestEndpoint;
+  const startReady = Boolean(summary?.current_free_move_action_ready ?? summary?.free_move_start_ready ?? evidence.freeMoveStartReady);
   const freeMoveReady = Boolean(summary?.free_move_ready ?? startReady);
   const motionStartReady = Boolean(summary?.free_roam_motion_start_ready ?? evidence.freeMoveStartReady);
   const motionReady = Boolean(summary?.free_roam_motion_ready ?? false);
   const running = Boolean(summary?.free_move_running ?? motionReady);
   const complete = Boolean(summary?.free_move_complete ?? false);
-  const proofStatus = summary?.free_move_proof_status ?? item?.proof_status ?? (complete ? "completed" : freeMoveReady ? "ready_to_verify" : "blocked");
-  const proofPlain = plainActionCardUserText(summary?.free_move_proof_plain ?? item?.proof_plain ?? "");
+  const proofStatus = summary?.current_free_move_action_proof_status ?? summary?.free_move_proof_status ?? item?.proof_status ?? (complete ? "completed" : freeMoveReady ? "ready_to_verify" : "blocked");
+  const proofPlain = plainActionCardUserText(summary?.current_free_move_action_proof_plain ?? summary?.free_move_proof_plain ?? item?.proof_plain ?? "");
   const missingEvidenceText = missingEvidence.length
     ? missingEvidence.map((id) => plainFieldAcceptanceEvidenceLabel(id)).join("、")
     : "无";
@@ -9418,17 +9438,27 @@ const plainFreeMoveAcceptanceProof = computed<PlainFreeMoveAcceptanceProof>(() =
     : freeMoveReady
       ? "勾现场安全确认后启动自由移动；启动后只读读取 free-roam latest、地图预览和 summary。"
       : "先连接上车自由移动状态机和停止兜底。";
-  const startEndpoint = summary?.free_move_start_endpoint ?? item?.start_endpoint ?? evidence.fixedFreeRoamStartEndpoint;
-  const stopEndpoint = summary?.free_move_stop_endpoint ?? item?.stop_endpoint ?? evidence.fixedFreeRoamStopEndpoint;
+  const startEndpoint = summary?.current_free_move_action_start_endpoint ?? summary?.free_move_start_endpoint ?? item?.start_endpoint ?? evidence.fixedFreeRoamStartEndpoint;
+  const stopEndpoint = summary?.current_free_move_action_stop_endpoint ?? summary?.free_move_stop_endpoint ?? item?.stop_endpoint ?? evidence.fixedFreeRoamStopEndpoint;
   return {
+    actionId,
+    actionReady: startReady,
+    actionLabel,
+    actionDisplayLabel,
     state,
     text: `自由移动验收：${freeMoveReady ? "可启动" : "未就绪"}；${motionReady ? "已读到运行态" : `还差：${missingEvidenceText}`}；发车前只需安全确认，画面和雷达不作为移动前置；建图缺口=${mappingStartMissingText}。下一步：${nextAction}`,
     proofStatus,
     proofPlain,
     missingEvidence,
     missingEvidenceText: missingEvidence.join(",") || "none",
+    latestEndpoint,
+    readbackEndpoint,
     acceptanceEndpoints,
     acceptanceEndpointsText: acceptanceEndpoints.join(",") || "none",
+    readbackEndpoints,
+    readbackEndpointsText: readbackEndpoints.join(",") || "none",
+    requiredSuccessMarkers,
+    requiredSuccessMarkersText: requiredSuccessMarkers.join(",") || "none",
     startEndpoint,
     stopEndpoint,
     startReady,
@@ -9437,12 +9467,15 @@ const plainFreeMoveAcceptanceProof = computed<PlainFreeMoveAcceptanceProof>(() =
     motionReady,
     running,
     complete,
-    minimalPrecheckSafetyOnly: Boolean(summary?.free_move_minimal_precheck_safety_only ?? true),
-    safetyConfirmRequired: Boolean(summary?.free_move_safety_confirm_required ?? true),
-    cameraPreflightRequired: Boolean(summary?.free_move_camera_preflight_required ?? evidence.cameraPreflightRequiredForMotion),
-    radarPreflightRequired: Boolean(summary?.free_move_radar_preflight_required ?? evidence.radarPreflightRequiredForMotion),
-    blockedByCameraWysiwyg: Boolean(summary?.free_move_blocked_by_camera_wysiwyg ?? evidence.cameraBlocksFreeMotion),
-    blockedByRadarWysiwyg: Boolean(summary?.free_move_blocked_by_radar_wysiwyg ?? evidence.radarBlocksFreeMotion),
+    minimalPrecheckSafetyOnly: Boolean(summary?.current_free_move_action_minimal_precheck_safety_only ?? summary?.free_move_minimal_precheck_safety_only ?? true),
+    safetyConfirmRequired: Boolean(summary?.current_free_move_action_requires_safety_confirm ?? summary?.free_move_safety_confirm_required ?? true),
+    cameraPreflightRequired: Boolean(summary?.current_free_move_action_camera_preflight_required ?? summary?.free_move_camera_preflight_required ?? evidence.cameraPreflightRequiredForMotion),
+    radarPreflightRequired: Boolean(summary?.current_free_move_action_radar_preflight_required ?? summary?.free_move_radar_preflight_required ?? evidence.radarPreflightRequiredForMotion),
+    blockedByCameraWysiwyg: Boolean(summary?.current_free_move_action_blocked_by_camera_wysiwyg ?? summary?.free_move_blocked_by_camera_wysiwyg ?? evidence.cameraBlocksFreeMotion),
+    blockedByRadarWysiwyg: Boolean(summary?.current_free_move_action_blocked_by_radar_wysiwyg ?? summary?.free_move_blocked_by_radar_wysiwyg ?? evidence.radarBlocksFreeMotion),
+    withoutCameraAllowed: Boolean(summary?.current_free_move_action_without_camera_allowed ?? summary?.free_move_without_camera_allowed ?? true),
+    withoutRadarAllowed: Boolean(summary?.current_free_move_action_without_radar_allowed ?? summary?.free_roam_motion_without_radar_allowed ?? true),
+    sendsMotion: Boolean(summary?.current_free_move_action_sends_motion ?? true),
     mappingStartReady: Boolean(summary?.mapping_start_ready ?? evidence.mappingStartReady),
     mappingStartMissingReasons,
     mappingStartMissingText,
@@ -22384,11 +22417,19 @@ onBeforeUnmount(() => {
           <p
             class="panel-note plain-free-move-acceptance-proof"
             data-testid="plain-free-move-acceptance-proof"
+            :data-current-action-id="plainFreeMoveAcceptanceProof.actionId"
+            :data-current-action-ready="String(plainFreeMoveAcceptanceProof.actionReady)"
+            :data-current-action-label="plainFreeMoveAcceptanceProof.actionLabel"
+            :data-current-action-display-label="plainFreeMoveAcceptanceProof.actionDisplayLabel"
             :data-state="plainFreeMoveAcceptanceProof.state"
             :data-proof-status="plainFreeMoveAcceptanceProof.proofStatus"
             :data-proof-plain="plainFreeMoveAcceptanceProof.proofPlain"
             :data-missing-evidence="plainFreeMoveAcceptanceProof.missingEvidenceText"
+            :data-latest-endpoint="plainFreeMoveAcceptanceProof.latestEndpoint"
+            :data-readback-endpoint="plainFreeMoveAcceptanceProof.readbackEndpoint"
             :data-acceptance-endpoints="plainFreeMoveAcceptanceProof.acceptanceEndpointsText"
+            :data-readback-endpoints="plainFreeMoveAcceptanceProof.readbackEndpointsText"
+            :data-required-success-markers="plainFreeMoveAcceptanceProof.requiredSuccessMarkersText"
             :data-start-endpoint="plainFreeMoveAcceptanceProof.startEndpoint"
             :data-stop-endpoint="plainFreeMoveAcceptanceProof.stopEndpoint"
             :data-start-ready="String(plainFreeMoveAcceptanceProof.startReady)"
@@ -22403,6 +22444,9 @@ onBeforeUnmount(() => {
             :data-radar-preflight-required="String(plainFreeMoveAcceptanceProof.radarPreflightRequired)"
             :data-blocked-by-camera-wysiwyg="String(plainFreeMoveAcceptanceProof.blockedByCameraWysiwyg)"
             :data-blocked-by-radar-wysiwyg="String(plainFreeMoveAcceptanceProof.blockedByRadarWysiwyg)"
+            :data-without-camera-allowed="String(plainFreeMoveAcceptanceProof.withoutCameraAllowed)"
+            :data-without-radar-allowed="String(plainFreeMoveAcceptanceProof.withoutRadarAllowed)"
+            :data-current-action-sends-motion="String(plainFreeMoveAcceptanceProof.sendsMotion)"
             :data-mapping-start-ready="String(plainFreeMoveAcceptanceProof.mappingStartReady)"
             :data-mapping-start-missing-reasons="plainFreeMoveAcceptanceProof.mappingStartMissingReasons.join(',') || 'none'"
             data-readback-only="true"

@@ -5029,3 +5029,10 @@ full-speed 或 UVC 传输问题时，现场硬件动作仍提示“换高速USB�
 `current_free_move_action_without_camera_allowed=true`、`current_free_move_action_without_radar_allowed=true`、
 `current_free_move_action_blocked_by_camera_wysiwyg=false`、`current_free_move_action_blocked_by_radar_wysiwyg=false`。
 这些字段只描述勾安全确认后的自由移动动作和执行后读回口径，不自动发车、不启动建图 runtime、不执行 Nav2、不发送 `/cmd_vel`。
+
+2026-07-02 08:00 CST 起，普通 PC 页面的 `plain-free-move-acceptance-proof` 验收卡优先消费
+`current_free_move_action_*`，并在 DOM 上暴露 `data-current-action-id`、`data-current-action-ready`、
+`data-latest-endpoint`、`data-readback-endpoints`、`data-required-success-markers`、
+`data-without-camera-allowed`、`data-without-radar-allowed` 和 `data-current-action-sends-motion`。
+页面文案仍显示“发车前只需安全确认，画面和雷达不作为移动前置”；验收卡本身保持 `data-readback-only=true`
+和 `data-sends-motion-when-clicked=false`，只读查看不发车，真正自由移动仍必须走固定 start 按钮和现场安全确认。
