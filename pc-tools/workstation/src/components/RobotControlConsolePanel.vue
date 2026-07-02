@@ -9455,6 +9455,21 @@ type PlainFreeMoveAcceptanceProof = {
   acceptanceEndpointsText: string;
   readbackEndpoints: string[];
   readbackEndpointsText: string;
+  postStartReadbackEndpoints: string[];
+  postStartReadbackEndpointsText: string;
+  postStartReadbackSequenceLabels: string[];
+  postStartReadbackSequenceLabelsText: string;
+  postStartReadbackRefreshesLatest: boolean;
+  postStartReadbackRefreshesMapPreview: boolean;
+  postStartReadbackRefreshesSummary: boolean;
+  postStartReadbackSendsMotion: boolean;
+  postStartReadbackStartsNav2: boolean;
+  postStartReadbackStartsManual: boolean;
+  postStartReadbackStartsKeyboard: boolean;
+  postStartReadbackStartsFreeRoam: boolean;
+  postStartReadbackStartsMapRuntime: boolean;
+  postStartReadbackSubmitsDelivery: boolean;
+  postStartReadbackStopsMotion: boolean;
   requiredSuccessMarkers: string[];
   requiredSuccessMarkersText: string;
   startEndpoint: string;
@@ -9886,6 +9901,7 @@ const plainFreeMoveAcceptanceProof = computed<PlainFreeMoveAcceptanceProof>(() =
     postStartReadbackStartsNav2: Boolean(summary?.current_free_move_action_post_start_readback_starts_nav2 ?? summary?.free_move_post_start_readback_starts_nav2 ?? false),
     postStartReadbackStartsManual: Boolean(summary?.current_free_move_action_post_start_readback_starts_manual ?? summary?.free_move_post_start_readback_starts_manual ?? false),
     postStartReadbackStartsKeyboard: Boolean(summary?.current_free_move_action_post_start_readback_starts_keyboard ?? summary?.free_move_post_start_readback_starts_keyboard ?? false),
+    postStartReadbackStartsFreeRoam: Boolean(summary?.current_free_move_action_post_start_readback_starts_free_roam ?? summary?.free_move_post_start_readback_starts_free_roam ?? false),
     postStartReadbackStartsMapRuntime: Boolean(summary?.current_free_move_action_post_start_readback_starts_map_runtime ?? summary?.free_move_post_start_readback_starts_map_runtime ?? false),
     postStartReadbackSubmitsDelivery: Boolean(summary?.current_free_move_action_post_start_readback_submits_delivery ?? summary?.free_move_post_start_readback_submits_delivery ?? false),
     postStartReadbackStopsMotion: Boolean(summary?.current_free_move_action_post_start_readback_stops_motion ?? summary?.free_move_post_start_readback_stops_motion ?? false),
@@ -22955,6 +22971,7 @@ onBeforeUnmount(() => {
             :data-post-start-readback-starts-nav2="String(plainFreeMoveAcceptanceProof.postStartReadbackStartsNav2)"
             :data-post-start-readback-starts-manual="String(plainFreeMoveAcceptanceProof.postStartReadbackStartsManual)"
             :data-post-start-readback-starts-keyboard="String(plainFreeMoveAcceptanceProof.postStartReadbackStartsKeyboard)"
+            :data-post-start-readback-starts-free-roam="String(plainFreeMoveAcceptanceProof.postStartReadbackStartsFreeRoam)"
             :data-post-start-readback-starts-map-runtime="String(plainFreeMoveAcceptanceProof.postStartReadbackStartsMapRuntime)"
             :data-post-start-readback-submits-delivery="String(plainFreeMoveAcceptanceProof.postStartReadbackSubmitsDelivery)"
             :data-post-start-readback-stops-motion="String(plainFreeMoveAcceptanceProof.postStartReadbackStopsMotion)"

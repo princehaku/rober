@@ -3909,6 +3909,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   current_free_move_action_post_start_readback_starts_nav2?: false;
   current_free_move_action_post_start_readback_starts_manual?: false;
   current_free_move_action_post_start_readback_starts_keyboard?: false;
+  current_free_move_action_post_start_readback_starts_free_roam?: false;
   current_free_move_action_post_start_readback_starts_map_runtime?: false;
   current_free_move_action_post_start_readback_submits_delivery?: false;
   current_free_move_action_post_start_readback_stops_motion?: false;
@@ -4161,6 +4162,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   free_move_post_start_readback_starts_nav2?: false;
   free_move_post_start_readback_starts_manual?: false;
   free_move_post_start_readback_starts_keyboard?: false;
+  free_move_post_start_readback_starts_free_roam?: false;
   free_move_post_start_readback_starts_map_runtime?: false;
   free_move_post_start_readback_submits_delivery?: false;
   free_move_post_start_readback_stops_motion?: false;

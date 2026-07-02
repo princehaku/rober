@@ -1170,6 +1170,7 @@ describe("robotControlSummary", () => {
     expect(summary.current_free_move_action_post_start_readback_starts_nav2).toBe(false);
     expect(summary.current_free_move_action_post_start_readback_starts_manual).toBe(false);
     expect(summary.current_free_move_action_post_start_readback_starts_keyboard).toBe(false);
+    expect(summary.current_free_move_action_post_start_readback_starts_free_roam).toBe(false);
     expect(summary.current_free_move_action_post_start_readback_starts_map_runtime).toBe(false);
     expect(summary.current_free_move_action_post_start_readback_submits_delivery).toBe(false);
     expect(summary.current_free_move_action_post_start_readback_stops_motion).toBe(false);
@@ -1511,6 +1512,7 @@ describe("robotControlSummary", () => {
     expect(summary.free_move_post_start_readback_starts_nav2).toBe(false);
     expect(summary.free_move_post_start_readback_starts_manual).toBe(false);
     expect(summary.free_move_post_start_readback_starts_keyboard).toBe(false);
+    expect(summary.free_move_post_start_readback_starts_free_roam).toBe(false);
     expect(summary.free_move_post_start_readback_starts_map_runtime).toBe(false);
     expect(summary.free_move_post_start_readback_submits_delivery).toBe(false);
     expect(summary.free_move_post_start_readback_stops_motion).toBe(false);

@@ -805,6 +805,19 @@ const fixtures: Record<string, unknown> = {
     free_move_readback_endpoint: "/api/robot-control/free-roam/autonomy/latest",
     free_move_latest_endpoint: "/api/robot-control/free-roam/autonomy/latest",
     free_move_readback_endpoints: ["/api/robot-control/free-roam/autonomy/latest", "/api/robot-control/map/preview", "/api/robot-control/summary"],
+    free_move_post_start_readback_endpoints: ["/api/robot-control/free-roam/autonomy/latest", "/api/robot-control/map/preview", "/api/robot-control/summary"],
+    free_move_post_start_readback_sequence_labels: ["读取自由移动状态", "刷新地图画面", "刷新总览"],
+    free_move_post_start_readback_refreshes_latest: true,
+    free_move_post_start_readback_refreshes_map_preview: true,
+    free_move_post_start_readback_refreshes_summary: true,
+    free_move_post_start_readback_sends_motion: false,
+    free_move_post_start_readback_starts_nav2: false,
+    free_move_post_start_readback_starts_manual: false,
+    free_move_post_start_readback_starts_keyboard: false,
+    free_move_post_start_readback_starts_free_roam: false,
+    free_move_post_start_readback_starts_map_runtime: false,
+    free_move_post_start_readback_submits_delivery: false,
+    free_move_post_start_readback_stops_motion: false,
     free_move_required_success_marker: "free_roam_latest_motion_ready",
     free_move_required_success_markers: ["free_roam_latest_motion_ready"],
     free_move_proof_status: "ready_to_verify",
@@ -855,6 +868,19 @@ const fixtures: Record<string, unknown> = {
     current_free_move_action_readback_endpoint: "/api/robot-control/free-roam/autonomy/latest",
     current_free_move_action_acceptance_endpoints: ["/api/robot-control/free-roam/autonomy/latest", "/api/robot-control/map/preview", "/api/robot-control/summary"],
     current_free_move_action_readback_endpoints: ["/api/robot-control/free-roam/autonomy/latest", "/api/robot-control/map/preview", "/api/robot-control/summary"],
+    current_free_move_action_post_start_readback_endpoints: ["/api/robot-control/free-roam/autonomy/latest", "/api/robot-control/map/preview", "/api/robot-control/summary"],
+    current_free_move_action_post_start_readback_sequence_labels: ["读取自由移动状态", "刷新地图画面", "刷新总览"],
+    current_free_move_action_post_start_readback_refreshes_latest: true,
+    current_free_move_action_post_start_readback_refreshes_map_preview: true,
+    current_free_move_action_post_start_readback_refreshes_summary: true,
+    current_free_move_action_post_start_readback_sends_motion: false,
+    current_free_move_action_post_start_readback_starts_nav2: false,
+    current_free_move_action_post_start_readback_starts_manual: false,
+    current_free_move_action_post_start_readback_starts_keyboard: false,
+    current_free_move_action_post_start_readback_starts_free_roam: false,
+    current_free_move_action_post_start_readback_starts_map_runtime: false,
+    current_free_move_action_post_start_readback_submits_delivery: false,
+    current_free_move_action_post_start_readback_stops_motion: false,
     current_free_move_action_required_success_markers: ["free_roam_latest_motion_ready"],
     current_free_move_action_proof_status: "ready_to_verify",
     current_free_move_action_missing_evidence: ["free_roam_latest_motion_ready"],
@@ -20006,6 +20032,7 @@ describe("App", () => {
     expect(freeMoveAcceptanceProof.attributes("data-post-start-readback-starts-nav2")).toBe("false");
     expect(freeMoveAcceptanceProof.attributes("data-post-start-readback-starts-manual")).toBe("false");
     expect(freeMoveAcceptanceProof.attributes("data-post-start-readback-starts-keyboard")).toBe("false");
+    expect(freeMoveAcceptanceProof.attributes("data-post-start-readback-starts-free-roam")).toBe("false");
     expect(freeMoveAcceptanceProof.attributes("data-post-start-readback-starts-map-runtime")).toBe("false");
     expect(freeMoveAcceptanceProof.attributes("data-post-start-readback-submits-delivery")).toBe("false");
     expect(freeMoveAcceptanceProof.attributes("data-post-start-readback-stops-motion")).toBe("false");
