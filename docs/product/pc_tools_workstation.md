@@ -5239,6 +5239,13 @@ delivery、stop 或 `/cmd_vel`。
 `current_mapping_control_pack_*` 同源；点击建图说明卡不启动建图 runtime，只有相机首帧和雷达新鲜读数都满足后，
 现场安全确认下的执行动作才允许启动建图，启动后只读读取 free-roam latest、地图预览和 summary。
 
+2026-07-02 20:05 CST 起，summary 顶层新增 `camera_first_frame_fix_*` 短字段，直接回答画面首帧恢复是否需要
+硬件动作、是否检测到 USB full-speed、是否已经耗尽软件低带宽兜底、复测端点/状态端点/summary 端点、复测顺序和 no-motion 边界。
+普通 PC 的 `plain-current-camera-wysiwyg-pack` 同步暴露 `data-camera-first-frame-fix-*`。这些字段与
+`current_camera_wysiwyg_pack_*` 和 `camera_wysiwyg_recovery_*` 同源；点击相机恢复说明卡不打开独占采集、
+不启动 Nav2/manual/keyboard/free-roam/建图 runtime、不提交 delivery、不 stop。画面首帧缺口阻塞建图启动，
+但不阻塞自由移动。
+
 2026-07-02 17:05 CST 起，上车 `POST /api/robot-control/camera/first-frame/probe` 的自动格式 fallback 增加
 `160x120` 低带宽候选：`MJPG@160x120@30`、`YUYV@160x120@15`、`YUYV@160x120@10`。
 这是给 USB `12M` full-speed 场景的只读首帧兜底；若常规 `640x480/320x240` 均无帧，会继续尝试更低带宽模式。

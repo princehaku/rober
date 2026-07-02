@@ -5488,6 +5488,57 @@ const plainCurrentCameraWysiwygPack = computed(() => {
     startsMapRuntime: summary?.current_camera_wysiwyg_pack_starts_map_runtime ?? false,
     submitsDelivery: summary?.current_camera_wysiwyg_pack_submits_delivery ?? false,
     stopsMotion: summary?.current_camera_wysiwyg_pack_stops_motion ?? false,
+    cameraFirstFrameFixStatus: summary?.camera_first_frame_fix_status ?? status,
+    cameraFirstFrameFixPlain: summary?.camera_first_frame_fix_plain ?? nextActionPlain,
+    cameraFirstFrameFixMissingEvidenceText: summary?.camera_first_frame_fix_missing_evidence?.join(",") || missingEvidence.join(",") || "none",
+    cameraFirstFrameFixMissingEvidenceLabelsText: summary?.camera_first_frame_fix_missing_evidence_labels?.join(",") || missingEvidenceLabels.join(",") || "none",
+    cameraFirstFrameFixVisible: summary?.camera_first_frame_fix_visible ?? visible,
+    cameraFirstFrameFixFirstFrameReady: summary?.camera_first_frame_fix_first_frame_ready ?? firstFrameReady,
+    cameraFirstFrameFixSharedPreviewCurrentFrameVisible: summary?.camera_first_frame_fix_shared_preview_current_frame_visible ?? sharedPreviewCurrentFrameVisible,
+    cameraFirstFrameFixSharedPreviewEveryoneCanJoin: summary?.camera_first_frame_fix_shared_preview_everyone_can_join ?? true,
+    cameraFirstFrameFixSourceDiagnosisStatus: summary?.camera_first_frame_fix_source_diagnosis_status
+      ?? summary?.current_camera_wysiwyg_pack_source_diagnosis_status
+      ?? "not_loaded",
+    cameraFirstFrameFixSourceDiagnosisNotExclusive: summary?.camera_first_frame_fix_source_diagnosis_not_exclusive
+      ?? summary?.current_camera_wysiwyg_pack_source_diagnosis_not_exclusive
+      ?? "true",
+    cameraFirstFrameFixProbeStatus: summary?.camera_first_frame_fix_probe_status
+      ?? summary?.current_camera_wysiwyg_pack_first_frame_probe_status
+      ?? "not_loaded",
+    cameraFirstFrameFixFailureReason: summary?.camera_first_frame_fix_failure_reason
+      ?? summary?.current_camera_wysiwyg_pack_first_frame_failure_reason
+      ?? "not_loaded",
+    cameraFirstFrameFixLowBandwidthFallbackAttempted: summary?.camera_first_frame_fix_low_bandwidth_fallback_attempted ?? lowBandwidthFallbackAttempted,
+    cameraFirstFrameFixLowBandwidthFallbackMinSize: summary?.camera_first_frame_fix_low_bandwidth_fallback_min_size ?? lowBandwidthFallbackMinSize,
+    cameraFirstFrameFixSoftwareFallbackExhausted: summary?.camera_first_frame_fix_software_fallback_exhausted ?? softwareFallbackExhausted,
+    cameraFirstFrameFixRequiresPhysicalUsbFix: summary?.camera_first_frame_fix_requires_physical_usb_fix ?? requiresPhysicalUsbFix,
+    cameraFirstFrameFixPhysicalFixLabel: summary?.camera_first_frame_fix_physical_fix_label ?? (requiresPhysicalUsbFix ? hardwareActionLabel : "无需硬件处理"),
+    cameraFirstFrameFixHardwareActionRequired: summary?.camera_first_frame_fix_hardware_action_required ?? hardwareActionRequired,
+    cameraFirstFrameFixHardwareActionLabel: summary?.camera_first_frame_fix_hardware_action_label ?? hardwareActionLabel,
+    cameraFirstFrameFixUsbFullSpeedDetected: summary?.camera_first_frame_fix_usb_full_speed_detected ?? usbFullSpeedDetected,
+    cameraFirstFrameFixUsbSpeed: summary?.camera_first_frame_fix_usb_speed ?? summary?.current_camera_wysiwyg_pack_usb_speed ?? "not_loaded",
+    cameraFirstFrameFixSequenceText: summary?.camera_first_frame_fix_sequence?.join(",") || sequence.join(",") || "none",
+    cameraFirstFrameFixSequenceLabelsText: summary?.camera_first_frame_fix_sequence_labels?.join(",") || sequenceLabels.join(",") || "none",
+    cameraFirstFrameFixProbeEndpoint: summary?.camera_first_frame_fix_probe_endpoint ?? "/api/robot-control/camera/first-frame/probe",
+    cameraFirstFrameFixMjpegStatusEndpoint: summary?.camera_first_frame_fix_mjpeg_status_endpoint ?? "/api/robot-control/camera/mjpeg/status",
+    cameraFirstFrameFixSummaryEndpoint: summary?.camera_first_frame_fix_summary_endpoint ?? "/api/robot-control/summary",
+    cameraFirstFrameFixBlocksWysiwyg: summary?.camera_first_frame_fix_blocks_wysiwyg ?? status !== "visible",
+    cameraFirstFrameFixBlocksMappingStart: summary?.camera_first_frame_fix_blocks_mapping_start
+      ?? summary?.current_camera_wysiwyg_pack_blocks_mapping_start
+      ?? live?.camera_blocks_mapping_start
+      ?? status !== "visible",
+    cameraFirstFrameFixBlocksFreeMove: summary?.camera_first_frame_fix_blocks_free_move ?? false,
+    cameraFirstFrameFixReadbackOnly: summary?.camera_first_frame_fix_readback_only ?? true,
+    cameraFirstFrameFixNoMotionRefresh: summary?.camera_first_frame_fix_no_motion_refresh ?? true,
+    cameraFirstFrameFixSendsMotionWhenClicked: summary?.camera_first_frame_fix_sends_motion_when_clicked ?? false,
+    cameraFirstFrameFixStartsCameraExclusiveCapture: summary?.camera_first_frame_fix_starts_camera_exclusive_capture ?? false,
+    cameraFirstFrameFixStartsNav2: summary?.camera_first_frame_fix_starts_nav2 ?? false,
+    cameraFirstFrameFixStartsManual: summary?.camera_first_frame_fix_starts_manual ?? false,
+    cameraFirstFrameFixStartsKeyboard: summary?.camera_first_frame_fix_starts_keyboard ?? false,
+    cameraFirstFrameFixStartsFreeRoam: summary?.camera_first_frame_fix_starts_free_roam ?? false,
+    cameraFirstFrameFixStartsMapRuntime: summary?.camera_first_frame_fix_starts_map_runtime ?? false,
+    cameraFirstFrameFixSubmitsDelivery: summary?.camera_first_frame_fix_submits_delivery ?? false,
+    cameraFirstFrameFixStopsMotion: summary?.camera_first_frame_fix_stops_motion ?? false,
   };
 });
 const plainCurrentRadarMapWysiwygPack = computed(() => {
@@ -21020,6 +21071,46 @@ onBeforeUnmount(() => {
             :data-starts-map-runtime="String(plainCurrentCameraWysiwygPack.startsMapRuntime)"
             :data-submits-delivery="String(plainCurrentCameraWysiwygPack.submitsDelivery)"
             :data-stops-motion="String(plainCurrentCameraWysiwygPack.stopsMotion)"
+            :data-camera-first-frame-fix-status="plainCurrentCameraWysiwygPack.cameraFirstFrameFixStatus"
+            :data-camera-first-frame-fix-plain="plainCurrentCameraWysiwygPack.cameraFirstFrameFixPlain"
+            :data-camera-first-frame-fix-missing-evidence="plainCurrentCameraWysiwygPack.cameraFirstFrameFixMissingEvidenceText"
+            :data-camera-first-frame-fix-missing-evidence-labels="plainCurrentCameraWysiwygPack.cameraFirstFrameFixMissingEvidenceLabelsText"
+            :data-camera-first-frame-fix-visible="String(plainCurrentCameraWysiwygPack.cameraFirstFrameFixVisible)"
+            :data-camera-first-frame-fix-first-frame-ready="String(plainCurrentCameraWysiwygPack.cameraFirstFrameFixFirstFrameReady)"
+            :data-camera-first-frame-fix-shared-preview-current-frame-visible="String(plainCurrentCameraWysiwygPack.cameraFirstFrameFixSharedPreviewCurrentFrameVisible)"
+            :data-camera-first-frame-fix-shared-preview-everyone-can-join="String(plainCurrentCameraWysiwygPack.cameraFirstFrameFixSharedPreviewEveryoneCanJoin)"
+            :data-camera-first-frame-fix-source-diagnosis-status="plainCurrentCameraWysiwygPack.cameraFirstFrameFixSourceDiagnosisStatus"
+            :data-camera-first-frame-fix-source-diagnosis-not-exclusive="plainCurrentCameraWysiwygPack.cameraFirstFrameFixSourceDiagnosisNotExclusive"
+            :data-camera-first-frame-fix-probe-status="plainCurrentCameraWysiwygPack.cameraFirstFrameFixProbeStatus"
+            :data-camera-first-frame-fix-failure-reason="plainCurrentCameraWysiwygPack.cameraFirstFrameFixFailureReason"
+            :data-camera-first-frame-fix-low-bandwidth-fallback-attempted="plainCurrentCameraWysiwygPack.cameraFirstFrameFixLowBandwidthFallbackAttempted"
+            :data-camera-first-frame-fix-low-bandwidth-fallback-min-size="plainCurrentCameraWysiwygPack.cameraFirstFrameFixLowBandwidthFallbackMinSize"
+            :data-camera-first-frame-fix-software-fallback-exhausted="String(plainCurrentCameraWysiwygPack.cameraFirstFrameFixSoftwareFallbackExhausted)"
+            :data-camera-first-frame-fix-requires-physical-usb-fix="String(plainCurrentCameraWysiwygPack.cameraFirstFrameFixRequiresPhysicalUsbFix)"
+            :data-camera-first-frame-fix-physical-fix-label="plainCurrentCameraWysiwygPack.cameraFirstFrameFixPhysicalFixLabel"
+            :data-camera-first-frame-fix-hardware-action-required="String(plainCurrentCameraWysiwygPack.cameraFirstFrameFixHardwareActionRequired)"
+            :data-camera-first-frame-fix-hardware-action-label="plainCurrentCameraWysiwygPack.cameraFirstFrameFixHardwareActionLabel"
+            :data-camera-first-frame-fix-usb-full-speed-detected="String(plainCurrentCameraWysiwygPack.cameraFirstFrameFixUsbFullSpeedDetected)"
+            :data-camera-first-frame-fix-usb-speed="plainCurrentCameraWysiwygPack.cameraFirstFrameFixUsbSpeed"
+            :data-camera-first-frame-fix-sequence="plainCurrentCameraWysiwygPack.cameraFirstFrameFixSequenceText"
+            :data-camera-first-frame-fix-sequence-labels="plainCurrentCameraWysiwygPack.cameraFirstFrameFixSequenceLabelsText"
+            :data-camera-first-frame-fix-probe-endpoint="plainCurrentCameraWysiwygPack.cameraFirstFrameFixProbeEndpoint"
+            :data-camera-first-frame-fix-mjpeg-status-endpoint="plainCurrentCameraWysiwygPack.cameraFirstFrameFixMjpegStatusEndpoint"
+            :data-camera-first-frame-fix-summary-endpoint="plainCurrentCameraWysiwygPack.cameraFirstFrameFixSummaryEndpoint"
+            :data-camera-first-frame-fix-blocks-wysiwyg="String(plainCurrentCameraWysiwygPack.cameraFirstFrameFixBlocksWysiwyg)"
+            :data-camera-first-frame-fix-blocks-mapping-start="String(plainCurrentCameraWysiwygPack.cameraFirstFrameFixBlocksMappingStart)"
+            :data-camera-first-frame-fix-blocks-free-move="String(plainCurrentCameraWysiwygPack.cameraFirstFrameFixBlocksFreeMove)"
+            :data-camera-first-frame-fix-readback-only="String(plainCurrentCameraWysiwygPack.cameraFirstFrameFixReadbackOnly)"
+            :data-camera-first-frame-fix-no-motion-refresh="String(plainCurrentCameraWysiwygPack.cameraFirstFrameFixNoMotionRefresh)"
+            :data-camera-first-frame-fix-sends-motion-when-clicked="String(plainCurrentCameraWysiwygPack.cameraFirstFrameFixSendsMotionWhenClicked)"
+            :data-camera-first-frame-fix-starts-camera-exclusive-capture="String(plainCurrentCameraWysiwygPack.cameraFirstFrameFixStartsCameraExclusiveCapture)"
+            :data-camera-first-frame-fix-starts-nav2="String(plainCurrentCameraWysiwygPack.cameraFirstFrameFixStartsNav2)"
+            :data-camera-first-frame-fix-starts-manual="String(plainCurrentCameraWysiwygPack.cameraFirstFrameFixStartsManual)"
+            :data-camera-first-frame-fix-starts-keyboard="String(plainCurrentCameraWysiwygPack.cameraFirstFrameFixStartsKeyboard)"
+            :data-camera-first-frame-fix-starts-free-roam="String(plainCurrentCameraWysiwygPack.cameraFirstFrameFixStartsFreeRoam)"
+            :data-camera-first-frame-fix-starts-map-runtime="String(plainCurrentCameraWysiwygPack.cameraFirstFrameFixStartsMapRuntime)"
+            :data-camera-first-frame-fix-submits-delivery="String(plainCurrentCameraWysiwygPack.cameraFirstFrameFixSubmitsDelivery)"
+            :data-camera-first-frame-fix-stops-motion="String(plainCurrentCameraWysiwygPack.cameraFirstFrameFixStopsMotion)"
           >
             {{ plainCurrentCameraWysiwygPack.plain }}
           </p>
