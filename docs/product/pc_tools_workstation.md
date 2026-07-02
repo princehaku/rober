@@ -5053,3 +5053,12 @@ full-speed 或 UVC 传输问题时，现场硬件动作仍提示“换高速USB�
 `data-current-motion-action-id/start-endpoint/stop-endpoint/acceptance-endpoints/requires-safety-confirm/minimal-precheck-safety-only/*-preflight-required/sends-motion`。
 这些 DOM 字段必须与 summary 顶层短字段同源，只用于普通首屏和现场脚本识别当前 Nav2 行程动作；显示或读取这些字段不自动勾选安全确认，
 不执行 Nav2/manual/keyboard/free-roam/建图/delivery/stop，也不发送 `/cmd_vel`。
+
+2026-07-02 08:24 CST 起，summary 顶层新增 `current_wysiwyg_action_*` 短字段，直接表达“当前所见”该走哪条只读刷新链。
+当画面和雷达贴图同时缺口时，字段会显示 `current_wysiwyg_action_id=refresh_current_wysiwyg`、
+`current_wysiwyg_action_label=刷新当前所见`、`current_wysiwyg_action_endpoint=/api/robot-control/radar/scan-proof/refresh`、
+`current_wysiwyg_action_method=POST`、`current_wysiwyg_action_sequence=[radar scan-proof, radar status, map preview, camera first-frame probe, camera MJPEG status, summary]`、
+`current_wysiwyg_action_missing_surface_ids=[camera,radar_map_points]` 和 `current_wysiwyg_action_refresh_mode=all_wysiwyg`。
+普通 PC 的 `plain-current-wysiwyg-action` 会用普通话显示“当前所见动作：刷新当前所见；还差 画面、雷达点；只读链路：...”，
+并同步 DOM `data-current-wysiwyg-action-*`。这些字段和按钮只做证据刷新，不启动雷达 lifecycle、建图 runtime、Nav2/manual/keyboard/free-roam/delivery/stop，
+也不发送 `/cmd_vel`。

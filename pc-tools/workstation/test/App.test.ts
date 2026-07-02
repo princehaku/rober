@@ -1804,6 +1804,7 @@ const fixtures: Record<string, unknown> = {
           "/api/robot-control/summary",
         ],
         wysiwyg_refresh_sequence_labels: ["刷新雷达扫描读数", "读取雷达状态", "刷新地图画面", "复测相机首帧", "读取相机 MJPEG 状态", "刷新总览"],
+        wysiwyg_refresh_mode: "all_wysiwyg",
         fixed_wysiwyg_radar_refresh_endpoint: "/api/robot-control/radar/scan-proof/refresh",
         fixed_wysiwyg_camera_probe_endpoint: "/api/robot-control/camera/first-frame/probe",
         fixed_wysiwyg_map_preview_endpoint: "/api/robot-control/map/preview",
@@ -1934,6 +1935,37 @@ const fixtures: Record<string, unknown> = {
       field_acceptance_wysiwyg_refresh_starts_map_runtime: false,
       field_acceptance_wysiwyg_refresh_submits_delivery: false,
       field_acceptance_wysiwyg_refresh_stops_motion: false,
+      current_wysiwyg_action_required: true,
+      current_wysiwyg_action_id: "refresh_current_wysiwyg",
+      current_wysiwyg_action_label: "刷新当前所见",
+      current_wysiwyg_action_endpoint: "/api/robot-control/radar/scan-proof/refresh",
+      current_wysiwyg_action_method: "POST",
+      current_wysiwyg_action_sequence: [
+        "/api/robot-control/radar/scan-proof/refresh",
+        "/api/robot-control/radar/status",
+        "/api/robot-control/map/preview",
+        "/api/robot-control/camera/first-frame/probe",
+        "/api/robot-control/camera/mjpeg/status",
+        "/api/robot-control/summary",
+      ],
+      current_wysiwyg_action_sequence_labels: ["刷新雷达扫描读数", "读取雷达状态", "刷新地图画面", "复测相机首帧", "读取相机 MJPEG 状态", "刷新总览"],
+      current_wysiwyg_action_refreshes_summary: true,
+      current_wysiwyg_action_refreshes_radar_scan_proof: true,
+      current_wysiwyg_action_refreshes_camera_first_frame_probe: true,
+      current_wysiwyg_action_refreshes_map_preview: true,
+      current_wysiwyg_action_refreshes_radar_status: true,
+      current_wysiwyg_action_refreshes_camera_mjpeg_status: true,
+      current_wysiwyg_action_sends_motion: false,
+      current_wysiwyg_action_starts_radar_lifecycle: false,
+      current_wysiwyg_action_starts_map_runtime: false,
+      current_wysiwyg_action_starts_nav2: false,
+      current_wysiwyg_action_starts_manual: false,
+      current_wysiwyg_action_starts_keyboard: false,
+      current_wysiwyg_action_starts_free_roam: false,
+      current_wysiwyg_action_submits_delivery: false,
+      current_wysiwyg_action_stops_motion: false,
+      current_wysiwyg_action_missing_surface_ids: ["camera", "radar_map_points"],
+      current_wysiwyg_action_refresh_mode: "all_wysiwyg",
       minimal_precheck_safety_only: true,
       safety_confirm_required_for_motion: true,
       wheel_rerun_minimal_precheck_safety_only: false,
@@ -5913,6 +5945,36 @@ describe("App", () => {
     expect(fieldAcceptancePacket.attributes("data-primary-no-motion-readback-action-refreshes-radar-status")).toBe("true");
     expect(fieldAcceptancePacket.attributes("data-primary-no-motion-readback-action-refreshes-camera-mjpeg-status")).toBe("true");
     expect(fieldAcceptancePacket.attributes("data-primary-no-motion-readback-action-sends-motion")).toBe("false");
+    const currentWysiwygAction = wrapper.find('[data-testid="plain-current-wysiwyg-action"]');
+    expect(currentWysiwygAction.exists()).toBe(true);
+    expect(currentWysiwygAction.text()).toBe("当前所见动作：刷新当前所见；还差 画面、雷达点；只读链路：刷新雷达扫描读数、读取雷达状态、刷新地图画面、复测相机首帧、读取相机 MJPEG 状态、刷新总览。");
+    expect(currentWysiwygAction.text()).not.toContain("/api/");
+    expect(currentWysiwygAction.attributes("data-state")).toBe("可只读刷新");
+    expect(currentWysiwygAction.attributes("data-current-wysiwyg-action-required")).toBe("true");
+    expect(currentWysiwygAction.attributes("data-current-wysiwyg-action-id")).toBe("refresh_current_wysiwyg");
+    expect(currentWysiwygAction.attributes("data-current-wysiwyg-action-label")).toBe("刷新当前所见");
+    expect(currentWysiwygAction.attributes("data-current-wysiwyg-action-endpoint")).toBe("/api/robot-control/radar/scan-proof/refresh");
+    expect(currentWysiwygAction.attributes("data-current-wysiwyg-action-method")).toBe("POST");
+    expect(currentWysiwygAction.attributes("data-current-wysiwyg-action-sequence")).toBe("/api/robot-control/radar/scan-proof/refresh,/api/robot-control/radar/status,/api/robot-control/map/preview,/api/robot-control/camera/first-frame/probe,/api/robot-control/camera/mjpeg/status,/api/robot-control/summary");
+    expect(currentWysiwygAction.attributes("data-current-wysiwyg-action-sequence-labels")).toBe("刷新雷达扫描读数,读取雷达状态,刷新地图画面,复测相机首帧,读取相机 MJPEG 状态,刷新总览");
+    expect(currentWysiwygAction.attributes("data-current-wysiwyg-action-refresh-mode")).toBe("all_wysiwyg");
+    expect(currentWysiwygAction.attributes("data-current-wysiwyg-action-missing-surface-ids")).toBe("camera,radar_map_points");
+    expect(currentWysiwygAction.attributes("data-current-wysiwyg-action-refreshes-summary")).toBe("true");
+    expect(currentWysiwygAction.attributes("data-current-wysiwyg-action-refreshes-radar-scan-proof")).toBe("true");
+    expect(currentWysiwygAction.attributes("data-current-wysiwyg-action-refreshes-camera-first-frame-probe")).toBe("true");
+    expect(currentWysiwygAction.attributes("data-current-wysiwyg-action-refreshes-map-preview")).toBe("true");
+    expect(currentWysiwygAction.attributes("data-current-wysiwyg-action-refreshes-radar-status")).toBe("true");
+    expect(currentWysiwygAction.attributes("data-current-wysiwyg-action-refreshes-camera-mjpeg-status")).toBe("true");
+    expect(currentWysiwygAction.attributes("data-current-wysiwyg-action-sends-motion")).toBe("false");
+    expect(currentWysiwygAction.attributes("data-current-wysiwyg-action-starts-radar-lifecycle")).toBe("false");
+    expect(currentWysiwygAction.attributes("data-current-wysiwyg-action-starts-map-runtime")).toBe("false");
+    expect(currentWysiwygAction.attributes("data-current-wysiwyg-action-starts-nav2")).toBe("false");
+    expect(currentWysiwygAction.attributes("data-current-wysiwyg-action-starts-manual")).toBe("false");
+    expect(currentWysiwygAction.attributes("data-current-wysiwyg-action-starts-keyboard")).toBe("false");
+    expect(currentWysiwygAction.attributes("data-current-wysiwyg-action-starts-free-roam")).toBe("false");
+    expect(currentWysiwygAction.attributes("data-current-wysiwyg-action-submits-delivery")).toBe("false");
+    expect(currentWysiwygAction.attributes("data-current-wysiwyg-action-stops-motion")).toBe("false");
+    expect(currentWysiwygAction.attributes("data-sends-motion-when-clicked")).toBe("false");
     expect(fieldAcceptancePacket.attributes("data-remaining-operator-action-summary-plain")).toContain("键盘连续手控、自由自助移动");
     expect(fieldAcceptancePacket.attributes("data-remaining-hardware-action-summary-plain")).toContain("当前没有必须先处理的设备动作");
     expect(fieldAcceptancePacket.attributes("data-remaining-no-motion-action-summary-plain")).toContain("不启动车辆");

@@ -4446,6 +4446,64 @@ const plainFieldAcceptancePrimaryNoMotionReadbackSequenceText = computed(() => (
 const plainFieldAcceptancePrimaryNoMotionReadbackSequenceLabelsText = computed(() => (
   plainFieldAcceptancePacket.value?.primary_no_motion_readback_action_sequence_labels.join(",") || "none"
 ));
+const plainCurrentWysiwygActionGauge = computed(() => {
+  // 当前所见动作以 summary 短字段为准；旧现场验收包只做兜底，避免普通首屏和 curl 读数不一致。
+  const summary = robotSummary.value;
+  const packet = plainFieldAcceptancePacket.value;
+  const sequence = summary?.current_wysiwyg_action_sequence?.length
+    ? summary.current_wysiwyg_action_sequence
+    : packet?.primary_no_motion_readback_action_sequence ?? [];
+  const sequenceLabels = summary?.current_wysiwyg_action_sequence_labels?.length
+    ? summary.current_wysiwyg_action_sequence_labels
+    : packet?.primary_no_motion_readback_action_sequence_labels ?? [];
+  const missingSurfaceIds = summary?.current_wysiwyg_action_missing_surface_ids?.length
+    ? summary.current_wysiwyg_action_missing_surface_ids
+    : packet?.wysiwyg_missing_surface_ids ?? [];
+  const refreshMode = summary?.current_wysiwyg_action_refresh_mode ?? packet?.wysiwyg_refresh_mode ?? "map_only";
+  const label = summary?.current_wysiwyg_action_label ?? packet?.primary_no_motion_readback_action_label ?? "刷新当前所见";
+  const endpoint = summary?.current_wysiwyg_action_endpoint ?? packet?.primary_no_motion_readback_action_endpoint ?? "none";
+  const method = summary?.current_wysiwyg_action_method ?? packet?.primary_no_motion_readback_action_method ?? "none";
+  const actionRequired = summary?.current_wysiwyg_action_required ?? (packet?.primary_no_motion_readback_action_id !== "none");
+  const sendsMotion = summary?.current_wysiwyg_action_sends_motion ?? packet?.primary_no_motion_readback_action_sends_motion ?? false;
+  const state = packet?.wysiwyg_ready ? "已满足" : actionRequired ? "可只读刷新" : "无动作";
+  const missingText = missingSurfaceIds.length
+    ? missingSurfaceIds.map((id) => plainFieldAcceptanceWysiwygSurfaceLabel(id)).join("、")
+    : "无";
+  const sequenceText = sequenceLabels.length
+    ? sequenceLabels.join("、")
+    : "刷新总览";
+  return {
+    actionRequired,
+    actionId: summary?.current_wysiwyg_action_id ?? packet?.primary_no_motion_readback_action_id ?? "none",
+    label,
+    endpoint,
+    method,
+    sequence,
+    sequenceText: sequence.join(",") || "none",
+    sequenceLabels,
+    sequenceLabelsText: sequenceLabels.join(",") || "none",
+    refreshMode,
+    missingSurfaceIds,
+    missingSurfaceText: missingSurfaceIds.join(",") || "none",
+    state,
+    text: `当前所见动作：${plainActionCardUserText(label)}；还差 ${missingText}；只读链路：${sequenceText}。`,
+    refreshesSummary: summary?.current_wysiwyg_action_refreshes_summary ?? packet?.primary_no_motion_readback_action_refreshes_summary ?? false,
+    refreshesRadarScanProof: summary?.current_wysiwyg_action_refreshes_radar_scan_proof ?? packet?.primary_no_motion_readback_action_refreshes_radar_scan_proof ?? false,
+    refreshesCameraFirstFrameProbe: summary?.current_wysiwyg_action_refreshes_camera_first_frame_probe ?? packet?.primary_no_motion_readback_action_refreshes_camera_first_frame_probe ?? false,
+    refreshesMapPreview: summary?.current_wysiwyg_action_refreshes_map_preview ?? packet?.primary_no_motion_readback_action_refreshes_map_preview ?? false,
+    refreshesRadarStatus: summary?.current_wysiwyg_action_refreshes_radar_status ?? packet?.primary_no_motion_readback_action_refreshes_radar_status ?? false,
+    refreshesCameraMjpegStatus: summary?.current_wysiwyg_action_refreshes_camera_mjpeg_status ?? packet?.primary_no_motion_readback_action_refreshes_camera_mjpeg_status ?? false,
+    sendsMotion,
+    startsRadarLifecycle: summary?.current_wysiwyg_action_starts_radar_lifecycle ?? packet?.wysiwyg_refresh_starts_radar_lifecycle ?? false,
+    startsMapRuntime: summary?.current_wysiwyg_action_starts_map_runtime ?? packet?.wysiwyg_refresh_starts_map_runtime ?? false,
+    startsNav2: summary?.current_wysiwyg_action_starts_nav2 ?? packet?.wysiwyg_refresh_starts_nav2 ?? false,
+    startsManual: summary?.current_wysiwyg_action_starts_manual ?? packet?.wysiwyg_refresh_starts_manual ?? false,
+    startsKeyboard: summary?.current_wysiwyg_action_starts_keyboard ?? packet?.wysiwyg_refresh_starts_keyboard ?? false,
+    startsFreeRoam: summary?.current_wysiwyg_action_starts_free_roam ?? packet?.wysiwyg_refresh_starts_free_roam ?? false,
+    submitsDelivery: summary?.current_wysiwyg_action_submits_delivery ?? packet?.wysiwyg_refresh_submits_delivery ?? false,
+    stopsMotion: summary?.current_wysiwyg_action_stops_motion ?? packet?.wysiwyg_refresh_stops_motion ?? false,
+  };
+});
 const plainFieldAcceptanceEndpointText = computed(() => (
   plainFieldAcceptancePacket.value?.acceptance_endpoints.join(",") || "none"
 ));
@@ -18727,6 +18785,38 @@ onBeforeUnmount(() => {
           <p data-testid="plain-field-acceptance-next">{{ plainFieldAcceptanceNextText }}</p>
           <p class="panel-note" data-testid="plain-field-acceptance-summary">
             {{ plainActionCardUserText(plainFieldAcceptancePacket.summary_plain) }}
+          </p>
+          <p
+            class="panel-note"
+            data-testid="plain-current-wysiwyg-action"
+            :data-state="plainCurrentWysiwygActionGauge.state"
+            :data-current-wysiwyg-action-required="String(plainCurrentWysiwygActionGauge.actionRequired)"
+            :data-current-wysiwyg-action-id="plainCurrentWysiwygActionGauge.actionId"
+            :data-current-wysiwyg-action-label="plainCurrentWysiwygActionGauge.label"
+            :data-current-wysiwyg-action-endpoint="plainCurrentWysiwygActionGauge.endpoint"
+            :data-current-wysiwyg-action-method="plainCurrentWysiwygActionGauge.method"
+            :data-current-wysiwyg-action-sequence="plainCurrentWysiwygActionGauge.sequenceText"
+            :data-current-wysiwyg-action-sequence-labels="plainCurrentWysiwygActionGauge.sequenceLabelsText"
+            :data-current-wysiwyg-action-refresh-mode="plainCurrentWysiwygActionGauge.refreshMode"
+            :data-current-wysiwyg-action-missing-surface-ids="plainCurrentWysiwygActionGauge.missingSurfaceText"
+            :data-current-wysiwyg-action-refreshes-summary="String(plainCurrentWysiwygActionGauge.refreshesSummary)"
+            :data-current-wysiwyg-action-refreshes-radar-scan-proof="String(plainCurrentWysiwygActionGauge.refreshesRadarScanProof)"
+            :data-current-wysiwyg-action-refreshes-camera-first-frame-probe="String(plainCurrentWysiwygActionGauge.refreshesCameraFirstFrameProbe)"
+            :data-current-wysiwyg-action-refreshes-map-preview="String(plainCurrentWysiwygActionGauge.refreshesMapPreview)"
+            :data-current-wysiwyg-action-refreshes-radar-status="String(plainCurrentWysiwygActionGauge.refreshesRadarStatus)"
+            :data-current-wysiwyg-action-refreshes-camera-mjpeg-status="String(plainCurrentWysiwygActionGauge.refreshesCameraMjpegStatus)"
+            :data-current-wysiwyg-action-sends-motion="String(plainCurrentWysiwygActionGauge.sendsMotion)"
+            :data-current-wysiwyg-action-starts-radar-lifecycle="String(plainCurrentWysiwygActionGauge.startsRadarLifecycle)"
+            :data-current-wysiwyg-action-starts-map-runtime="String(plainCurrentWysiwygActionGauge.startsMapRuntime)"
+            :data-current-wysiwyg-action-starts-nav2="String(plainCurrentWysiwygActionGauge.startsNav2)"
+            :data-current-wysiwyg-action-starts-manual="String(plainCurrentWysiwygActionGauge.startsManual)"
+            :data-current-wysiwyg-action-starts-keyboard="String(plainCurrentWysiwygActionGauge.startsKeyboard)"
+            :data-current-wysiwyg-action-starts-free-roam="String(plainCurrentWysiwygActionGauge.startsFreeRoam)"
+            :data-current-wysiwyg-action-submits-delivery="String(plainCurrentWysiwygActionGauge.submitsDelivery)"
+            :data-current-wysiwyg-action-stops-motion="String(plainCurrentWysiwygActionGauge.stopsMotion)"
+            data-sends-motion-when-clicked="false"
+          >
+            {{ plainCurrentWysiwygActionGauge.text }}
           </p>
           <p
             class="panel-note"
