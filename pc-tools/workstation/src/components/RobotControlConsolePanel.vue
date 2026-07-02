@@ -4966,6 +4966,47 @@ const plainCurrentTripExecutionPack = computed(() => {
     startsMapRuntimeWhenClicked: summary?.current_trip_execution_pack_starts_map_runtime_when_clicked ?? false,
     submitsDeliveryWhenClicked: summary?.current_trip_execution_pack_submits_delivery_when_clicked ?? false,
     stopsMotionWhenClicked: summary?.current_trip_execution_pack_stops_motion_when_clicked ?? false,
+    nav2RouteRunStatus: summary?.nav2_route_run_status ?? status,
+    nav2RouteRunPlain: summary?.nav2_route_run_plain ?? "",
+    nav2RouteRunActionId: summary?.nav2_route_run_action_id ?? summary?.current_trip_execution_pack_action_id ?? packet?.action_id ?? "run_nav2_route",
+    nav2RouteRunDisplayLabel: summary?.nav2_route_run_display_label ?? summary?.current_trip_execution_pack_display_label ?? packet?.display_label ?? "重跑图上行程并复验轮速",
+    nav2RouteRunStartEndpoint: summary?.nav2_route_run_start_endpoint ?? summary?.current_trip_execution_pack_start_endpoint ?? packet?.start_endpoint ?? "/api/robot-control/nav2/goal/execute",
+    nav2RouteRunStopEndpoint: summary?.nav2_route_run_stop_endpoint ?? summary?.current_trip_execution_pack_stop_endpoint ?? packet?.stop_endpoint ?? "/api/robot-control/base/stop",
+    nav2RouteRunReadbackEndpointsText: summary?.nav2_route_run_readback_endpoints?.join(",") || readbackEndpoints.join(",") || "none",
+    nav2RouteRunRequiredSuccessMarkersText: summary?.nav2_route_run_required_success_markers?.join(",") || requiredSuccessMarkers.join(",") || "none",
+    nav2RouteRunMissingEvidenceText: summary?.nav2_route_run_missing_evidence?.join(",") || missingEvidence.join(",") || "none",
+    nav2RouteRunMissingEvidenceLabelsText: summary?.nav2_route_run_missing_evidence_labels?.join(",") || missingEvidenceLabels.join(",") || "none",
+    nav2RouteRunRouteReadyOnMap: summary?.nav2_route_run_route_ready_on_map ?? false,
+    nav2RouteRunGoalSucceeded: summary?.nav2_route_run_goal_succeeded ?? false,
+    nav2RouteRunSameWindowWheelLrNonzero: summary?.nav2_route_run_same_window_wheel_lr_nonzero ?? false,
+    nav2RouteRunDeliverySuccess: summary?.nav2_route_run_delivery_success ?? false,
+    nav2RouteRunNeedsSameWindowWheelRerun: summary?.nav2_route_run_needs_same_window_wheel_rerun ?? false,
+    nav2RouteRunDeliverySuccessRequired: summary?.nav2_route_run_delivery_success_required ?? false,
+    nav2RouteRunCurrentGapPlain: summary?.nav2_route_run_current_gap_plain ?? "",
+    nav2RouteRunDeliveryNextActionPlain: summary?.nav2_route_run_delivery_next_action_plain ?? "",
+    nav2RouteRunRequiresSafetyConfirm: summary?.nav2_route_run_requires_safety_confirm ?? true,
+    nav2RouteRunMinimalPrecheckSafetyOnly: summary?.nav2_route_run_minimal_precheck_safety_only ?? true,
+    nav2RouteRunCameraPreflightRequired: summary?.nav2_route_run_camera_preflight_required ?? false,
+    nav2RouteRunRadarPreflightRequired: summary?.nav2_route_run_radar_preflight_required ?? false,
+    nav2RouteRunRouteWysiwygPreflightRequired: summary?.nav2_route_run_route_wysiwyg_preflight_required ?? false,
+    nav2RouteRunSendsMotionWhenClicked: summary?.nav2_route_run_sends_motion_when_clicked ?? false,
+    nav2RouteRunSendsMotionWhenExecuted: summary?.nav2_route_run_sends_motion_when_executed ?? true,
+    nav2RouteRunStartsNav2WhenClicked: summary?.nav2_route_run_starts_nav2_when_clicked ?? false,
+    nav2RouteRunStartsNav2WhenExecuted: summary?.nav2_route_run_starts_nav2_when_executed ?? true,
+    nav2RouteRunStartsManualWhenClicked: summary?.nav2_route_run_starts_manual_when_clicked ?? false,
+    nav2RouteRunStartsKeyboardWhenClicked: summary?.nav2_route_run_starts_keyboard_when_clicked ?? false,
+    nav2RouteRunStartsFreeRoamWhenClicked: summary?.nav2_route_run_starts_free_roam_when_clicked ?? false,
+    nav2RouteRunStartsMapRuntimeWhenClicked: summary?.nav2_route_run_starts_map_runtime_when_clicked ?? false,
+    nav2RouteRunSubmitsDeliveryWhenClicked: summary?.nav2_route_run_submits_delivery_when_clicked ?? false,
+    nav2RouteRunStopsMotionWhenClicked: summary?.nav2_route_run_stops_motion_when_clicked ?? false,
+    nav2RouteRunReadbackSendsMotion: summary?.nav2_route_run_readback_sends_motion ?? false,
+    nav2RouteRunReadbackStartsNav2: summary?.nav2_route_run_readback_starts_nav2 ?? false,
+    nav2RouteRunReadbackStartsManual: summary?.nav2_route_run_readback_starts_manual ?? false,
+    nav2RouteRunReadbackStartsKeyboard: summary?.nav2_route_run_readback_starts_keyboard ?? false,
+    nav2RouteRunReadbackStartsFreeRoam: summary?.nav2_route_run_readback_starts_free_roam ?? false,
+    nav2RouteRunReadbackStartsMapRuntime: summary?.nav2_route_run_readback_starts_map_runtime ?? false,
+    nav2RouteRunReadbackSubmitsDelivery: summary?.nav2_route_run_readback_submits_delivery ?? false,
+    nav2RouteRunReadbackStopsMotion: summary?.nav2_route_run_readback_stops_motion ?? false,
   };
 });
 const plainFieldAcceptanceReadyStepIdsText = computed(() => (
@@ -20518,6 +20559,47 @@ onBeforeUnmount(() => {
             :data-starts-map-runtime-when-clicked="String(plainCurrentTripExecutionPack.startsMapRuntimeWhenClicked)"
             :data-submits-delivery-when-clicked="String(plainCurrentTripExecutionPack.submitsDeliveryWhenClicked)"
             :data-stops-motion-when-clicked="String(plainCurrentTripExecutionPack.stopsMotionWhenClicked)"
+            :data-nav2-route-run-status="plainCurrentTripExecutionPack.nav2RouteRunStatus"
+            :data-nav2-route-run-plain="plainCurrentTripExecutionPack.nav2RouteRunPlain"
+            :data-nav2-route-run-action-id="plainCurrentTripExecutionPack.nav2RouteRunActionId"
+            :data-nav2-route-run-display-label="plainCurrentTripExecutionPack.nav2RouteRunDisplayLabel"
+            :data-nav2-route-run-start-endpoint="plainCurrentTripExecutionPack.nav2RouteRunStartEndpoint"
+            :data-nav2-route-run-stop-endpoint="plainCurrentTripExecutionPack.nav2RouteRunStopEndpoint"
+            :data-nav2-route-run-readback-endpoints="plainCurrentTripExecutionPack.nav2RouteRunReadbackEndpointsText"
+            :data-nav2-route-run-required-success-markers="plainCurrentTripExecutionPack.nav2RouteRunRequiredSuccessMarkersText"
+            :data-nav2-route-run-missing-evidence="plainCurrentTripExecutionPack.nav2RouteRunMissingEvidenceText"
+            :data-nav2-route-run-missing-evidence-labels="plainCurrentTripExecutionPack.nav2RouteRunMissingEvidenceLabelsText"
+            :data-nav2-route-run-route-ready-on-map="String(plainCurrentTripExecutionPack.nav2RouteRunRouteReadyOnMap)"
+            :data-nav2-route-run-goal-succeeded="String(plainCurrentTripExecutionPack.nav2RouteRunGoalSucceeded)"
+            :data-nav2-route-run-same-window-wheel-lr-nonzero="String(plainCurrentTripExecutionPack.nav2RouteRunSameWindowWheelLrNonzero)"
+            :data-nav2-route-run-delivery-success="String(plainCurrentTripExecutionPack.nav2RouteRunDeliverySuccess)"
+            :data-nav2-route-run-needs-same-window-wheel-rerun="String(plainCurrentTripExecutionPack.nav2RouteRunNeedsSameWindowWheelRerun)"
+            :data-nav2-route-run-delivery-success-required="String(plainCurrentTripExecutionPack.nav2RouteRunDeliverySuccessRequired)"
+            :data-nav2-route-run-current-gap-plain="plainCurrentTripExecutionPack.nav2RouteRunCurrentGapPlain"
+            :data-nav2-route-run-delivery-next-action-plain="plainCurrentTripExecutionPack.nav2RouteRunDeliveryNextActionPlain"
+            :data-nav2-route-run-requires-safety-confirm="String(plainCurrentTripExecutionPack.nav2RouteRunRequiresSafetyConfirm)"
+            :data-nav2-route-run-minimal-precheck-safety-only="String(plainCurrentTripExecutionPack.nav2RouteRunMinimalPrecheckSafetyOnly)"
+            :data-nav2-route-run-camera-preflight-required="String(plainCurrentTripExecutionPack.nav2RouteRunCameraPreflightRequired)"
+            :data-nav2-route-run-radar-preflight-required="String(plainCurrentTripExecutionPack.nav2RouteRunRadarPreflightRequired)"
+            :data-nav2-route-run-route-wysiwyg-preflight-required="String(plainCurrentTripExecutionPack.nav2RouteRunRouteWysiwygPreflightRequired)"
+            :data-nav2-route-run-sends-motion-when-clicked="String(plainCurrentTripExecutionPack.nav2RouteRunSendsMotionWhenClicked)"
+            :data-nav2-route-run-sends-motion-when-executed="String(plainCurrentTripExecutionPack.nav2RouteRunSendsMotionWhenExecuted)"
+            :data-nav2-route-run-starts-nav2-when-clicked="String(plainCurrentTripExecutionPack.nav2RouteRunStartsNav2WhenClicked)"
+            :data-nav2-route-run-starts-nav2-when-executed="String(plainCurrentTripExecutionPack.nav2RouteRunStartsNav2WhenExecuted)"
+            :data-nav2-route-run-starts-manual-when-clicked="String(plainCurrentTripExecutionPack.nav2RouteRunStartsManualWhenClicked)"
+            :data-nav2-route-run-starts-keyboard-when-clicked="String(plainCurrentTripExecutionPack.nav2RouteRunStartsKeyboardWhenClicked)"
+            :data-nav2-route-run-starts-free-roam-when-clicked="String(plainCurrentTripExecutionPack.nav2RouteRunStartsFreeRoamWhenClicked)"
+            :data-nav2-route-run-starts-map-runtime-when-clicked="String(plainCurrentTripExecutionPack.nav2RouteRunStartsMapRuntimeWhenClicked)"
+            :data-nav2-route-run-submits-delivery-when-clicked="String(plainCurrentTripExecutionPack.nav2RouteRunSubmitsDeliveryWhenClicked)"
+            :data-nav2-route-run-stops-motion-when-clicked="String(plainCurrentTripExecutionPack.nav2RouteRunStopsMotionWhenClicked)"
+            :data-nav2-route-run-readback-sends-motion="String(plainCurrentTripExecutionPack.nav2RouteRunReadbackSendsMotion)"
+            :data-nav2-route-run-readback-starts-nav2="String(plainCurrentTripExecutionPack.nav2RouteRunReadbackStartsNav2)"
+            :data-nav2-route-run-readback-starts-manual="String(plainCurrentTripExecutionPack.nav2RouteRunReadbackStartsManual)"
+            :data-nav2-route-run-readback-starts-keyboard="String(plainCurrentTripExecutionPack.nav2RouteRunReadbackStartsKeyboard)"
+            :data-nav2-route-run-readback-starts-free-roam="String(plainCurrentTripExecutionPack.nav2RouteRunReadbackStartsFreeRoam)"
+            :data-nav2-route-run-readback-starts-map-runtime="String(plainCurrentTripExecutionPack.nav2RouteRunReadbackStartsMapRuntime)"
+            :data-nav2-route-run-readback-submits-delivery="String(plainCurrentTripExecutionPack.nav2RouteRunReadbackSubmitsDelivery)"
+            :data-nav2-route-run-readback-stops-motion="String(plainCurrentTripExecutionPack.nav2RouteRunReadbackStopsMotion)"
           >
             {{ plainCurrentTripExecutionPack.plain }}
           </p>
