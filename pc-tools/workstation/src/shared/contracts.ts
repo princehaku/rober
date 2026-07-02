@@ -3889,6 +3889,13 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   current_keyboard_action_enable_sends_motion?: RobotControlLiveClosureSummary["keyboard_continuous_enable_sends_motion"];
   current_keyboard_action_hold_to_move_required?: RobotControlLiveClosureSummary["keyboard_continuous_hold_to_move_required"];
   current_keyboard_action_hold_sends_motion?: true;
+  current_keyboard_action_starts_nav2?: false;
+  current_keyboard_action_starts_manual?: false;
+  current_keyboard_action_starts_keyboard?: true;
+  current_keyboard_action_starts_free_roam?: false;
+  current_keyboard_action_starts_map_runtime?: false;
+  current_keyboard_action_submits_delivery?: false;
+  current_keyboard_action_stops_motion?: false;
   current_keyboard_action_pulse_interval_ms?: RobotControlLiveClosureSummary["keyboard_continuous_pulse_interval_ms"];
   current_keyboard_action_pulse_duration_ms?: RobotControlLiveClosureSummary["keyboard_continuous_pulse_duration_ms"];
   current_keyboard_action_stop_triggers?: RobotControlLiveClosureSummary["keyboard_continuous_stop_triggers"];
@@ -3946,6 +3953,13 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   current_free_move_action_blocked_by_camera_wysiwyg?: RobotControlLiveClosureSummary["free_move_blocked_by_camera_wysiwyg"];
   current_free_move_action_blocked_by_radar_wysiwyg?: RobotControlLiveClosureSummary["free_move_blocked_by_radar_wysiwyg"];
   current_free_move_action_sends_motion?: RobotControlLiveMotionRunbookItem["sends_motion_when_executed"];
+  current_free_move_action_starts_nav2?: false;
+  current_free_move_action_starts_manual?: false;
+  current_free_move_action_starts_keyboard?: false;
+  current_free_move_action_starts_free_roam?: true;
+  current_free_move_action_starts_map_runtime?: false;
+  current_free_move_action_submits_delivery?: false;
+  current_free_move_action_stops_motion?: false;
   current_mapping_action_required?: boolean;
   current_mapping_action_ready?: RobotControlLiveMotionRunbookItem["ready"];
   current_mapping_action_id?: RobotControlLiveMotionRunbookItem["id"] | "none";

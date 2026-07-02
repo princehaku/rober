@@ -8230,6 +8230,13 @@ const plainKeyboardHoldGateGauge = computed<PlainKeyboardHoldGateGauge>(() => {
     actionProofStatus: summary?.current_keyboard_action_proof_status ?? summary?.keyboard_proof_status ?? "blocked",
     actionEnableSendsMotion: Boolean(summary?.current_keyboard_action_enable_sends_motion ?? false),
     actionHoldSendsMotion: Boolean(summary?.current_keyboard_action_hold_sends_motion ?? true),
+    actionStartsNav2: Boolean(summary?.current_keyboard_action_starts_nav2 ?? false),
+    actionStartsManual: Boolean(summary?.current_keyboard_action_starts_manual ?? false),
+    actionStartsKeyboard: Boolean(summary?.current_keyboard_action_starts_keyboard ?? true),
+    actionStartsFreeRoam: Boolean(summary?.current_keyboard_action_starts_free_roam ?? false),
+    actionStartsMapRuntime: Boolean(summary?.current_keyboard_action_starts_map_runtime ?? false),
+    actionSubmitsDelivery: Boolean(summary?.current_keyboard_action_submits_delivery ?? false),
+    actionStopsMotion: Boolean(summary?.current_keyboard_action_stops_motion ?? false),
     actionHoldToMoveRequired: Boolean(summary?.current_keyboard_action_hold_to_move_required ?? evidence.requiresHoldToMove),
     state,
     text: `键盘入口：${safetyText}；${armText}；${holdText}；${pulseText}；${stopText}。下一步：${nextAction}。`,
@@ -9951,6 +9958,13 @@ const plainFreeMoveAcceptanceProof = computed<PlainFreeMoveAcceptanceProof>(() =
     withoutCameraAllowed: Boolean(summary?.current_free_move_action_without_camera_allowed ?? summary?.free_move_without_camera_allowed ?? true),
     withoutRadarAllowed: Boolean(summary?.current_free_move_action_without_radar_allowed ?? summary?.free_roam_motion_without_radar_allowed ?? true),
     sendsMotion: Boolean(summary?.current_free_move_action_sends_motion ?? true),
+    startsNav2: Boolean(summary?.current_free_move_action_starts_nav2 ?? false),
+    startsManual: Boolean(summary?.current_free_move_action_starts_manual ?? false),
+    startsKeyboard: Boolean(summary?.current_free_move_action_starts_keyboard ?? false),
+    startsFreeRoam: Boolean(summary?.current_free_move_action_starts_free_roam ?? true),
+    startsMapRuntime: Boolean(summary?.current_free_move_action_starts_map_runtime ?? false),
+    submitsDelivery: Boolean(summary?.current_free_move_action_submits_delivery ?? false),
+    stopsMotion: Boolean(summary?.current_free_move_action_stops_motion ?? false),
     mappingStartReady: Boolean(summary?.mapping_start_ready ?? evidence.mappingStartReady),
     mappingStartMissingReasons,
     mappingStartMissingText,
@@ -21298,6 +21312,13 @@ onBeforeUnmount(() => {
           :data-current-action-proof-status="plainKeyboardHoldGateGauge.actionProofStatus"
           :data-current-action-enable-sends-motion="String(plainKeyboardHoldGateGauge.actionEnableSendsMotion)"
           :data-current-action-hold-sends-motion="String(plainKeyboardHoldGateGauge.actionHoldSendsMotion)"
+          :data-current-action-starts-nav2="String(plainKeyboardHoldGateGauge.actionStartsNav2)"
+          :data-current-action-starts-manual="String(plainKeyboardHoldGateGauge.actionStartsManual)"
+          :data-current-action-starts-keyboard="String(plainKeyboardHoldGateGauge.actionStartsKeyboard)"
+          :data-current-action-starts-free-roam="String(plainKeyboardHoldGateGauge.actionStartsFreeRoam)"
+          :data-current-action-starts-map-runtime="String(plainKeyboardHoldGateGauge.actionStartsMapRuntime)"
+          :data-current-action-submits-delivery="String(plainKeyboardHoldGateGauge.actionSubmitsDelivery)"
+          :data-current-action-stops-motion="String(plainKeyboardHoldGateGauge.actionStopsMotion)"
           :data-current-action-hold-to-move-required="String(plainKeyboardHoldGateGauge.actionHoldToMoveRequired)"
           :data-state="plainKeyboardHoldGateGauge.state"
           :data-safety-confirmed="String(plainKeyboardHoldGateGauge.safetyConfirmed)"
@@ -23051,6 +23072,13 @@ onBeforeUnmount(() => {
             :data-without-camera-allowed="String(plainFreeMoveAcceptanceProof.withoutCameraAllowed)"
             :data-without-radar-allowed="String(plainFreeMoveAcceptanceProof.withoutRadarAllowed)"
             :data-current-action-sends-motion="String(plainFreeMoveAcceptanceProof.sendsMotion)"
+            :data-current-action-starts-nav2="String(plainFreeMoveAcceptanceProof.startsNav2)"
+            :data-current-action-starts-manual="String(plainFreeMoveAcceptanceProof.startsManual)"
+            :data-current-action-starts-keyboard="String(plainFreeMoveAcceptanceProof.startsKeyboard)"
+            :data-current-action-starts-free-roam="String(plainFreeMoveAcceptanceProof.startsFreeRoam)"
+            :data-current-action-starts-map-runtime="String(plainFreeMoveAcceptanceProof.startsMapRuntime)"
+            :data-current-action-submits-delivery="String(plainFreeMoveAcceptanceProof.submitsDelivery)"
+            :data-current-action-stops-motion="String(plainFreeMoveAcceptanceProof.stopsMotion)"
             :data-mapping-start-ready="String(plainFreeMoveAcceptanceProof.mappingStartReady)"
             :data-mapping-start-missing-reasons="plainFreeMoveAcceptanceProof.mappingStartMissingReasons.join(',') || 'none'"
             data-readback-only="true"

@@ -5046,12 +5046,17 @@ full-speed 或 UVC 传输问题时，现场硬件动作仍提示“换高速USB�
 并明确 `current_free_move_action_camera_preflight_required=false`、`current_free_move_action_radar_preflight_required=false`、
 `current_free_move_action_without_camera_allowed=true`、`current_free_move_action_without_radar_allowed=true`、
 `current_free_move_action_blocked_by_camera_wysiwyg=false`、`current_free_move_action_blocked_by_radar_wysiwyg=false`。
-这些字段只描述勾安全确认后的自由移动动作和执行后读回口径，不自动发车、不启动建图 runtime、不执行 Nav2、不发送 `/cmd_vel`。
+动作边界必须同时暴露 `current_free_move_action_sends_motion=true`、`current_free_move_action_starts_free_roam=true`、
+`current_free_move_action_starts_nav2=false`、`current_free_move_action_starts_manual=false`、`current_free_move_action_starts_keyboard=false`、
+`current_free_move_action_starts_map_runtime=false`、`current_free_move_action_submits_delivery=false` 和
+`current_free_move_action_stops_motion=false`。这些字段只描述勾安全确认后的自由移动动作和执行后读回口径，不自动发车、
+不启动建图 runtime、不执行 Nav2、不发送 `/cmd_vel`。
 
 2026-07-02 08:00 CST 起，普通 PC 页面的 `plain-free-move-acceptance-proof` 验收卡优先消费
 `current_free_move_action_*`，并在 DOM 上暴露 `data-current-action-id`、`data-current-action-ready`、
 `data-latest-endpoint`、`data-readback-endpoints`、`data-required-success-markers`、
-`data-without-camera-allowed`、`data-without-radar-allowed` 和 `data-current-action-sends-motion`。
+`data-without-camera-allowed`、`data-without-radar-allowed`、`data-current-action-sends-motion`、`data-current-action-starts-free-roam`
+以及 `data-current-action-starts-nav2/manual/keyboard/map-runtime/submits-delivery/stops-motion`。
 页面文案仍显示“发车前只需安全确认，画面和雷达不作为移动前置”；验收卡本身保持 `data-readback-only=true`
 和 `data-sends-motion-when-clicked=false`，只读查看不发车，真正自由移动仍必须走固定 start 按钮和现场安全确认。
 
@@ -5061,7 +5066,11 @@ full-speed 或 UVC 传输问题时，现场硬件动作仍提示“换高速USB�
 `current_keyboard_action_stop_endpoint=/api/robot-control/base/stop`、
 `current_keyboard_action_acceptance_endpoints=[base feedback samples, summary]`、
 `current_keyboard_action_enable_sends_motion=false`、`current_keyboard_action_hold_to_move_required=true`、
-`current_keyboard_action_hold_sends_motion=true`、`current_keyboard_action_stop_triggers=[key_release, window_blur, page_hidden, direction_change, stop_button]`。
+`current_keyboard_action_hold_sends_motion=true`、`current_keyboard_action_starts_keyboard=true`、
+`current_keyboard_action_starts_nav2=false`、`current_keyboard_action_starts_manual=false`、
+`current_keyboard_action_starts_free_roam=false`、`current_keyboard_action_starts_map_runtime=false`、
+`current_keyboard_action_submits_delivery=false`、`current_keyboard_action_stops_motion=false` 和
+`current_keyboard_action_stop_triggers=[key_release, window_blur, page_hidden, direction_change, stop_button]`。
 普通 PC 页面的 `plain-keyboard-hold-gate` 同步暴露这些字段和 post-hold 读回序列；点击启用键盘仍不发车，
 只有按住 W/A/S/D 或方向键才发送低速脉冲，松开/失焦/切页后必须只读复验轮速采样和 summary。
 

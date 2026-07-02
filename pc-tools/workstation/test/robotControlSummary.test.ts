@@ -1159,6 +1159,13 @@ describe("robotControlSummary", () => {
     expect(summary.current_keyboard_action_enable_sends_motion).toBe(false);
     expect(summary.current_keyboard_action_hold_to_move_required).toBe(true);
     expect(summary.current_keyboard_action_hold_sends_motion).toBe(true);
+    expect(summary.current_keyboard_action_starts_nav2).toBe(false);
+    expect(summary.current_keyboard_action_starts_manual).toBe(false);
+    expect(summary.current_keyboard_action_starts_keyboard).toBe(true);
+    expect(summary.current_keyboard_action_starts_free_roam).toBe(false);
+    expect(summary.current_keyboard_action_starts_map_runtime).toBe(false);
+    expect(summary.current_keyboard_action_submits_delivery).toBe(false);
+    expect(summary.current_keyboard_action_stops_motion).toBe(false);
     expect(summary.current_keyboard_action_pulse_interval_ms).toBe(260);
     expect(summary.current_keyboard_action_pulse_duration_ms).toBe(240);
     expect(summary.current_keyboard_action_stop_triggers).toEqual(["key_release", "window_blur", "page_hidden", "direction_change", "stop_button"]);
@@ -1225,6 +1232,13 @@ describe("robotControlSummary", () => {
     expect(summary.current_free_move_action_blocked_by_camera_wysiwyg).toBe(false);
     expect(summary.current_free_move_action_blocked_by_radar_wysiwyg).toBe(false);
     expect(summary.current_free_move_action_sends_motion).toBe(true);
+    expect(summary.current_free_move_action_starts_nav2).toBe(false);
+    expect(summary.current_free_move_action_starts_manual).toBe(false);
+    expect(summary.current_free_move_action_starts_keyboard).toBe(false);
+    expect(summary.current_free_move_action_starts_free_roam).toBe(true);
+    expect(summary.current_free_move_action_starts_map_runtime).toBe(false);
+    expect(summary.current_free_move_action_submits_delivery).toBe(false);
+    expect(summary.current_free_move_action_stops_motion).toBe(false);
     expect(summary.field_acceptance_safety_confirm_ready_actions).toEqual([
       expect.objectContaining({
         id: "run_nav2_route",

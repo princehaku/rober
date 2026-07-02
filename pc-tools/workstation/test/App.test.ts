@@ -841,6 +841,13 @@ const fixtures: Record<string, unknown> = {
     current_keyboard_action_enable_sends_motion: false,
     current_keyboard_action_hold_to_move_required: true,
     current_keyboard_action_hold_sends_motion: true,
+    current_keyboard_action_starts_nav2: false,
+    current_keyboard_action_starts_manual: false,
+    current_keyboard_action_starts_keyboard: true,
+    current_keyboard_action_starts_free_roam: false,
+    current_keyboard_action_starts_map_runtime: false,
+    current_keyboard_action_submits_delivery: false,
+    current_keyboard_action_stops_motion: false,
     current_keyboard_action_pulse_interval_ms: 260,
     current_keyboard_action_pulse_duration_ms: 240,
     current_keyboard_action_stop_triggers: ["key_release", "window_blur", "page_hidden", "direction_change", "stop_button"],
@@ -894,6 +901,13 @@ const fixtures: Record<string, unknown> = {
     current_free_move_action_blocked_by_camera_wysiwyg: false,
     current_free_move_action_blocked_by_radar_wysiwyg: false,
     current_free_move_action_sends_motion: true,
+    current_free_move_action_starts_nav2: false,
+    current_free_move_action_starts_manual: false,
+    current_free_move_action_starts_keyboard: false,
+    current_free_move_action_starts_free_roam: true,
+    current_free_move_action_starts_map_runtime: false,
+    current_free_move_action_submits_delivery: false,
+    current_free_move_action_stops_motion: false,
     current_mapping_action_required: true,
     current_mapping_action_ready: false,
     current_mapping_action_id: "start_mapping_when_sensors_ready",
@@ -20137,6 +20151,13 @@ describe("App", () => {
     expect(freeMoveAcceptanceProof.attributes("data-without-camera-allowed")).toBe("true");
     expect(freeMoveAcceptanceProof.attributes("data-without-radar-allowed")).toBe("true");
     expect(freeMoveAcceptanceProof.attributes("data-current-action-sends-motion")).toBe("true");
+    expect(freeMoveAcceptanceProof.attributes("data-current-action-starts-nav2")).toBe("false");
+    expect(freeMoveAcceptanceProof.attributes("data-current-action-starts-manual")).toBe("false");
+    expect(freeMoveAcceptanceProof.attributes("data-current-action-starts-keyboard")).toBe("false");
+    expect(freeMoveAcceptanceProof.attributes("data-current-action-starts-free-roam")).toBe("true");
+    expect(freeMoveAcceptanceProof.attributes("data-current-action-starts-map-runtime")).toBe("false");
+    expect(freeMoveAcceptanceProof.attributes("data-current-action-submits-delivery")).toBe("false");
+    expect(freeMoveAcceptanceProof.attributes("data-current-action-stops-motion")).toBe("false");
     expect(freeMoveAcceptanceProof.attributes("data-mapping-start-ready")).toBe("false");
     expect(freeMoveAcceptanceProof.attributes("data-mapping-start-missing-reasons")).toBe("camera_first_frame");
     expect(freeMoveAcceptanceProof.attributes("data-readback-only")).toBe("true");
@@ -24256,6 +24277,13 @@ describe("App", () => {
     expect(armedKeyboardGate.attributes("data-current-action-proof-status")).toBe("ready_to_verify");
     expect(armedKeyboardGate.attributes("data-current-action-enable-sends-motion")).toBe("false");
     expect(armedKeyboardGate.attributes("data-current-action-hold-sends-motion")).toBe("true");
+    expect(armedKeyboardGate.attributes("data-current-action-starts-nav2")).toBe("false");
+    expect(armedKeyboardGate.attributes("data-current-action-starts-manual")).toBe("false");
+    expect(armedKeyboardGate.attributes("data-current-action-starts-keyboard")).toBe("true");
+    expect(armedKeyboardGate.attributes("data-current-action-starts-free-roam")).toBe("false");
+    expect(armedKeyboardGate.attributes("data-current-action-starts-map-runtime")).toBe("false");
+    expect(armedKeyboardGate.attributes("data-current-action-submits-delivery")).toBe("false");
+    expect(armedKeyboardGate.attributes("data-current-action-stops-motion")).toBe("false");
     expect(armedKeyboardGate.attributes("data-current-action-hold-to-move-required")).toBe("true");
     expect(armedKeyboardGate.attributes("data-state")).toBe("可启用");
     expect(armedKeyboardGate.attributes("data-main-action-kind")).toBe("armed_waiting_for_keydown");
