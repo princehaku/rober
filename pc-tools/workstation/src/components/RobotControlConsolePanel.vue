@@ -3166,6 +3166,20 @@ function plainCurrentWheelFactText(summary: RobotControlSummaryResponse): string
   if (base.current_feedback_read_status === "t1001_not_observed") {
     return "轮速：当前 T=130 请求未读到 T=1001 反馈；旧 samples 不能当当前轮速结论，先刷新当前轮速或检查底盘反馈链路。";
   }
+  if (base.base_command_chain_observed === "true" && base.wheel_feedback_lr_nonzero_proven !== "true") {
+    const count = base.base_command_chain_nonzero_count && base.base_command_chain_nonzero_count !== "not_loaded"
+      ? `，非零命令 ${base.base_command_chain_nonzero_count} 帧`
+      : "";
+    const modeCounts = base.base_command_chain_mode_counts && !["", "{}", "not_loaded"].includes(base.base_command_chain_mode_counts)
+      ? `，模式 ${base.base_command_chain_mode_counts}`
+      : "";
+    const mainType = base.base_command_chain_startup_main_type_config_sent === "true"
+      ? `，WAVE ROVER 机型已写 main=${base.base_command_chain_startup_main_type}/module=${base.base_command_chain_startup_module_type}`
+      : "";
+    const latestLeft = base.wheel_feedback_latest_left_speed || base.wheel_feedback_latest_raw_left || "not_loaded";
+    const latestRight = base.wheel_feedback_latest_right_speed || base.wheel_feedback_latest_raw_right || "not_loaded";
+    return `底盘命令：已到 bridge/UART${count}${modeCounts}${mainType}；但 T=1001 wheel L/R 仍为 ${latestLeft}/${latestRight}，下一步查电机使能、底盘模式、电机电源或下位机固件。`;
+  }
   return "";
 }
 

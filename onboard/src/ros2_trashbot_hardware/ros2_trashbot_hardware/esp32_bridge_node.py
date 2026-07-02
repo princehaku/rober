@@ -63,6 +63,8 @@ class ESP32Bridge(Node):
         self.max_wheel_speed_mps = config.max_wheel_speed_mps
         self.pwm_min_abs = config.pwm_min_abs
         self.pwm_max_abs = config.pwm_max_abs
+        self.main_type = config.main_type
+        self.module_type = config.module_type
         self.feedback_interval_ms = config.feedback_interval_ms
         self.publish_odom_tf = config.publish_odom_tf
         self.feedback_debug_log_path = config.feedback_debug_log_path
@@ -114,6 +116,8 @@ class ESP32Bridge(Node):
             "ESP32Bridge ready: vendor WAVE ROVER UART protocol is one UTF-8 JSON "
             "object per newline; "
             f"command_mode={self.command_mode}; "
+            f"main_type={self.main_type}; "
+            f"module_type={self.module_type}; "
             f"publish_odom_tf={self.publish_odom_tf}; "
             f"feedback_debug_log_enabled={bool(self.feedback_debug_log_path)}; "
             f"command_debug_log_enabled={bool(self.command_debug_log_path)}; "
@@ -153,6 +157,8 @@ class ESP32Bridge(Node):
                 max_wheel_speed_mps=candidate["max_wheel_speed_mps"],
                 pwm_min_abs=candidate["pwm_min_abs"],
                 pwm_max_abs=candidate["pwm_max_abs"],
+                main_type=self.main_type,
+                module_type=self.module_type,
                 feedback_interval_ms=self.feedback_interval_ms,
                 odom_publish_hz=1.0,
             )
@@ -203,9 +209,33 @@ class ESP32Bridge(Node):
             self.get_logger().warn(f"Failed to append WAVE ROVER runtime config debug log: {exc}")
 
     def _configure_vendor_feedback(self) -> None:
-        # 厂商 json_cmd.h 定义 T=143/142/131；启动时统一配置，避免节点运行后才临时补帧。
-        for command in build_startup_config_commands(self.feedback_interval_ms):
-            self._send_json(command)
+        # 厂商 json_cmd.h 定义 T=900/143/142/131；启动时统一配置，避免机型模式或反馈流被旧状态污染。
+        for command in build_startup_config_commands(
+            self.feedback_interval_ms,
+            main_type=self.main_type,
+            module_type=self.module_type,
+        ):
+            sent = self._send_json(command)
+            self._append_startup_config_debug_line(command, sent)
+
+    def _append_startup_config_debug_line(self, command: dict[str, Any], sent: bool) -> None:
+        """记录启动配置帧，证明 T=900/T=131 等不是运动命令且已尝试写入 UART。"""
+        log_path = getattr(self, "command_debug_log_path", "")
+        if not log_path:
+            return
+        record = {
+            "schema": "trashbot.wave_rover.command_debug.v1",
+            "observed_at_unix_s": time.time(),
+            "source": "esp32_bridge_startup_config",
+            "vendor_command": command,
+            "sent": bool(sent),
+            "sends_motion": False,
+        }
+        try:
+            with open(log_path, "a", encoding="utf-8") as log_file:
+                log_file.write(json.dumps(record, sort_keys=True, separators=(",", ":")) + "\n")
+        except OSError as exc:
+            self.get_logger().warn(f"Failed to append WAVE ROVER startup config debug log: {exc}")
 
     def _send_json(self, command: dict[str, Any]) -> bool:
         try:

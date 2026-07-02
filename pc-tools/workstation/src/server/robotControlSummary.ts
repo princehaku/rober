@@ -790,6 +790,14 @@ const STATUS_KEYS = [
   "feedback_ack_status",
   "base_command_mode",
   "nav2_base_command_mode",
+  "base_command_chain_observed",
+  "base_command_chain_nonzero_count",
+  "base_command_chain_latest_nonzero_command",
+  "base_command_chain_latest_command",
+  "base_command_chain_mode_counts",
+  "base_command_chain_startup_main_type_config_sent",
+  "base_command_chain_startup_main_type",
+  "base_command_chain_startup_module_type",
   "latest_t1001_observed_count",
   "t1001_observed_count",
   "wheel_feedback_lr_nonzero_proven",
@@ -6970,6 +6978,14 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         imu_attitude_delta_observed: "not_loaded",
         motion_signal_observed: "not_loaded",
         motion_signal_source: "not_loaded",
+        base_command_chain_observed: "not_loaded",
+        base_command_chain_nonzero_count: "not_loaded",
+        base_command_chain_latest_nonzero_command: "not_loaded",
+        base_command_chain_latest_command: "not_loaded",
+        base_command_chain_mode_counts: "{}",
+        base_command_chain_startup_main_type_config_sent: "not_loaded",
+        base_command_chain_startup_main_type: "not_loaded",
+        base_command_chain_startup_module_type: "not_loaded",
         feedback_voltage_v: "not_loaded",
         feedback_link_status: "not_observed",
       },
@@ -8090,6 +8106,14 @@ function baseSummaryFromReadbacks(readbacks: InternalRobotApiEndpointReadback[])
   const feedbackVoltage = baseStatus?.key_values.feedback_voltage_v
     ?? feedbackLatest?.key_values.feedback_voltage_v
     ?? "not_loaded";
+  const commandChainObserved = baseStatus?.key_values.base_command_chain_observed ?? "not_loaded";
+  const commandChainNonzeroCount = baseStatus?.key_values.base_command_chain_nonzero_count ?? "not_loaded";
+  const commandChainLatestNonzeroCommand = baseStatus?.key_values.base_command_chain_latest_nonzero_command ?? "not_loaded";
+  const commandChainLatestCommand = baseStatus?.key_values.base_command_chain_latest_command ?? "not_loaded";
+  const commandChainModeCounts = baseStatus?.key_values.base_command_chain_mode_counts ?? "{}";
+  const startupMainTypeConfigSent = baseStatus?.key_values.base_command_chain_startup_main_type_config_sent ?? "not_loaded";
+  const startupMainType = baseStatus?.key_values.base_command_chain_startup_main_type ?? "not_loaded";
+  const startupModuleType = baseStatus?.key_values.base_command_chain_startup_module_type ?? "not_loaded";
   return {
     status: baseStatus?.status ?? "not_loaded",
     latest_feedback_status: latestFeedbackStatus,
@@ -8112,6 +8136,14 @@ function baseSummaryFromReadbacks(readbacks: InternalRobotApiEndpointReadback[])
     imu_attitude_delta_observed: imuAttitudeDeltaObserved,
     motion_signal_observed: motionSignalObserved,
     motion_signal_source: motionSignalSource,
+    base_command_chain_observed: commandChainObserved,
+    base_command_chain_nonzero_count: commandChainNonzeroCount,
+    base_command_chain_latest_nonzero_command: commandChainLatestNonzeroCommand,
+    base_command_chain_latest_command: commandChainLatestCommand,
+    base_command_chain_mode_counts: commandChainModeCounts,
+    base_command_chain_startup_main_type_config_sent: startupMainTypeConfigSent,
+    base_command_chain_startup_main_type: startupMainType,
+    base_command_chain_startup_module_type: startupModuleType,
     feedback_voltage_v: feedbackVoltage,
     feedback_link_status: currentFeedbackReadStatus === "read_error"
       ? "current_t130_read_error"

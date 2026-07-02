@@ -52,6 +52,8 @@ DEFAULT_CONFIG = {
     "max_wheel_speed_mps": 1.3,
     "pwm_min_abs": 164,
     "pwm_max_abs": 164,
+    "main_type": 1,
+    "module_type": 0,
     "feedback_interval_ms": 100,
     "odom_publish_hz": 20.0,
 }
@@ -111,6 +113,8 @@ def _validate_config(config: dict[str, Any]) -> dict[str, Any]:
         config["max_wheel_speed_mps"] = _coerce_float_config(config, "max_wheel_speed_mps")
         config["pwm_min_abs"] = _coerce_int_config(config, "pwm_min_abs")
         config["pwm_max_abs"] = _coerce_int_config(config, "pwm_max_abs")
+        config["main_type"] = _coerce_int_config(config, "main_type")
+        config["module_type"] = _coerce_int_config(config, "module_type")
         config["feedback_interval_ms"] = _coerce_int_config(config, "feedback_interval_ms")
         config["odom_publish_hz"] = _coerce_float_config(config, "odom_publish_hz")
         if config["serial_baudrate"] <= 0:
@@ -121,6 +125,8 @@ def _validate_config(config: dict[str, Any]) -> dict[str, Any]:
             max_wheel_speed_mps=config["max_wheel_speed_mps"],
             pwm_min_abs=config["pwm_min_abs"],
             pwm_max_abs=config["pwm_max_abs"],
+            main_type=config["main_type"],
+            module_type=config["module_type"],
             feedback_interval_ms=config["feedback_interval_ms"],
             odom_publish_hz=config["odom_publish_hz"],
         )
@@ -289,7 +295,11 @@ def build_hardware_diagnostics_proof(
     if config_validation["status"] == "invalid_config":
         status = "invalid_config"
     else:
-        commands = build_startup_config_commands(proof_config["feedback_interval_ms"])
+        commands = build_startup_config_commands(
+            proof_config["feedback_interval_ms"],
+            main_type=proof_config["main_type"],
+            module_type=proof_config["module_type"],
+        )
         startup_commands = [
             {"command": command, "uart_frame": _json_frame(command)} for command in commands
         ]
@@ -341,6 +351,8 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--pwm-min-abs", type=int, default=DEFAULT_CONFIG["pwm_min_abs"])
     parser.add_argument("--pwm-max-abs", type=int, default=DEFAULT_CONFIG["pwm_max_abs"])
+    parser.add_argument("--main-type", type=int, default=DEFAULT_CONFIG["main_type"])
+    parser.add_argument("--module-type", type=int, default=DEFAULT_CONFIG["module_type"])
     parser.add_argument(
         "--feedback-interval-ms", type=int, default=DEFAULT_CONFIG["feedback_interval_ms"]
     )
@@ -356,6 +368,8 @@ def main(argv: list[str] | None = None) -> int:
         "max_wheel_speed_mps": args.max_wheel_speed_mps,
         "pwm_min_abs": args.pwm_min_abs,
         "pwm_max_abs": args.pwm_max_abs,
+        "main_type": args.main_type,
+        "module_type": args.module_type,
         "feedback_interval_ms": args.feedback_interval_ms,
     }
     proof = build_hardware_diagnostics_proof(

@@ -5360,6 +5360,16 @@ full-speed 链路，`lsusb -t` 显示 UVC video/audio interface 均为 `12M`；�
 ROS2 配套不替代 PC 简易界面：RViz2 只用于本地工程调试 `/map`、`/scan`、TF、路径、定位和 costmap，
 Foxglove bridge 只用于远程浏览器观察，二者都不发送底盘运动命令。
 
+2026-07-03 06:55 CST 起，WAVE ROVER 启动配置按 `docs/vendor/VENDOR_INDEX.md` 指向的
+`WAVE_ROVER_V0.9/json_cmd.h` 和固件处理路径显式发送 `T=900,main=1,module=0`，再配置 `T=143/T=142/T=131`。
+`esp32_bridge` 会把这些启动配置和后续 `T=11/T=1/T=13` 运动命令写入
+`wave_rover_command_debug.jsonl`；上位机 `/api/base/status` 和 PC summary 会把
+`base_command_chain_observed`、`base_command_chain_nonzero_count`、`base_command_chain_startup_main_type_config_sent`
+等字段暴露给普通界面。现场读回确认 PC 手控前后命令链路已到 bridge/UART，`base_command_chain_observed=true`、
+`base_command_chain_nonzero_count=358`、`main=1/module=0` 已发送；但 `T=1001` wheel raw 仍为 `L/R=0/0`，
+所以 PC 只能提示“命令已到桥接层/串口，底盘反馈未证明”，不能升级为 wheel raw 非零、物理移动、Nav2 自动驾驶成功或
+delivery success。
+
 2026-07-03 05:30 CST 起，普通 PC 首页地图继续放大：驾驶台布局从 `4fr/0.75fr` 调整为
 `5fr/0.62fr`，右列保留实时图传和 WASD，但最小宽度收紧到 `280px`；首页大地图卡改为
 `clamp(860px, 100vh, 1600px)`，卡内地图画布改为

@@ -52,6 +52,8 @@ DEFAULT_FEEDBACK_SAMPLE_INTERVAL_S = 0.2
 DEFAULT_FEEDBACK_SAMPLES_ARTIFACT_PATH = "runtime/base_feedback_samples_latest.json"
 DEFAULT_BRIDGE_FEEDBACK_DEBUG_LOG_PATH = "/root/rober/onboard/runtime/wave_rover_feedback_debug.jsonl"
 DEFAULT_BRIDGE_FEEDBACK_DEBUG_STALE_AFTER_MS = 15 * 1000
+DEFAULT_BRIDGE_COMMAND_DEBUG_LOG_PATH = "/root/rober/onboard/runtime/wave_rover_command_debug.jsonl"
+DEFAULT_BRIDGE_COMMAND_DEBUG_STALE_AFTER_MS = 15 * 60 * 1000
 DEFAULT_LIDAR_SCAN_PROOF_ARTIFACT_PATH = "runtime/lidar_scan_proof_latest.json"
 DEFAULT_LIDAR_SCAN_PROOF_REFRESH_TIMEOUT_S = 12.0
 DEFAULT_LIDAR_SCAN_PROOF_RUNTIME_WARMUP_S = 6.0
@@ -5171,6 +5173,142 @@ def summarize_bridge_feedback_debug_log(
     return summary
 
 
+def vendor_motion_command_nonzero(command: dict[str, Any]) -> bool:
+    """判断 vendor 底盘命令是否为非零运动命令；只用于命令链路诊断，不代表车已移动。"""
+    try:
+        command_id = int(command.get("T"))
+    except (TypeError, ValueError):
+        return False
+    if command_id in (1, 11):
+        return any(abs(float(command.get(key, 0))) > 1e-9 for key in ("L", "R"))
+    if command_id == 13:
+        return any(abs(float(command.get(key, 0))) > 1e-9 for key in ("X", "Z"))
+    return False
+
+
+def summarize_bridge_command_debug_log(
+    path: str,
+    stale_after_ms: int = DEFAULT_BRIDGE_COMMAND_DEBUG_STALE_AFTER_MS,
+    max_lines: int = 600,
+) -> dict[str, Any]:
+    """读取 esp32_bridge 命令 JSONL，区分“命令已到 UART”和“轮速/运动未证明”。"""
+    generated_at_ms = now_ms()
+    artifact = {
+        **artifact_path_info(path),
+        "ok": False,
+        "status": "unknown",
+    }
+    summary: dict[str, Any] = {
+        "schema": f"{SCHEMA}.bridge_command_debug_summary",
+        "generated_at_ms": generated_at_ms,
+        "source": "esp32_bridge_command_debug_log",
+        "artifact": artifact,
+        "freshness": {
+            "status": "unknown",
+            "stale_after_ms": stale_after_ms,
+            "basis": "artifact_mtime_only_bridge_command_not_hil_or_motion_proof",
+        },
+        "startup_main_type_config_sent": False,
+        "startup_main_type": None,
+        "startup_module_type": None,
+        "startup_config_sent_count": 0,
+        "nonzero_command_observed": False,
+        "nonzero_command_count": 0,
+        "latest_nonzero_command": None,
+        "latest_command": None,
+        "command_mode_counts": {},
+        "bad_line_count": 0,
+        "readback_sends_commands": False,
+        "sends_commands": False,
+        "sends_motion_commands": False,
+        "robot_control_executed": False,
+        "delivery_success": False,
+        "hil_pass": False,
+        "safe_to_control": False,
+        "primary_actions_enabled": False,
+    }
+    try:
+        stat_result = Path(path).stat()
+    except FileNotFoundError:
+        artifact.update({"ok": False, "status": "missing"})
+        summary["freshness"]["status"] = "missing"
+        return summary
+    except OSError as exc:
+        artifact.update({"ok": False, "status": "read_failed", "error": compact_error(exc)})
+        summary["freshness"]["status"] = "read_failed"
+        return summary
+
+    mtime_ms = int(stat_result.st_mtime_ns / 1_000_000)
+    age_ms = max(0, generated_at_ms - mtime_ms)
+    artifact.update({"mtime_ms": mtime_ms, "age_ms": age_ms})
+    try:
+        lines, bytes_scanned = read_recent_text_lines(path, max_lines=max_lines)
+    except OSError as exc:
+        artifact.update({"ok": False, "status": "read_failed", "error": compact_error(exc)})
+        summary["freshness"]["status"] = "read_failed"
+        return summary
+
+    latest_command: dict[str, Any] | None = None
+    latest_nonzero: dict[str, Any] | None = None
+    nonzero_count = 0
+    startup_count = 0
+    mode_counts: dict[str, int] = {}
+    bad_line_count = 0
+    startup_main_type: Any = None
+    startup_module_type: Any = None
+    startup_main_type_sent = False
+    for line in lines:
+        try:
+            record = json.loads(line)
+        except json.JSONDecodeError:
+            bad_line_count += 1
+            continue
+        if not isinstance(record, dict):
+            continue
+        source = record.get("source")
+        command = record.get("vendor_command") if isinstance(record.get("vendor_command"), dict) else {}
+        if source == "esp32_bridge_startup_config":
+            startup_count += 1
+            if command.get("T") == 900:
+                startup_main_type_sent = bool(record.get("sent") is not False)
+                startup_main_type = command.get("main")
+                startup_module_type = command.get("module")
+            continue
+        if source != "esp32_bridge_cmd_vel_callback" or not command:
+            continue
+        latest_command = {
+            "observed_at_unix_s": record.get("observed_at_unix_s"),
+            "command_mode": record.get("command_mode"),
+            "linear_x": record.get("linear_x"),
+            "angular_z": record.get("angular_z"),
+            "vendor_command": command,
+        }
+        command_mode = str(record.get("command_mode") or "unknown")
+        mode_counts[command_mode] = mode_counts.get(command_mode, 0) + 1
+        if vendor_motion_command_nonzero(command):
+            nonzero_count += 1
+            latest_nonzero = latest_command
+
+    artifact.update({"ok": True, "status": "loaded", "bytes_read": stat_result.st_size, "bytes_scanned": bytes_scanned, "tail_line_count": len(lines)})
+    summary["freshness"]["status"] = freshness_from_age(age_ms, stale_after_ms)
+    summary.update(
+        {
+            "bad_line_count": bad_line_count,
+            "startup_main_type_config_sent": startup_main_type_sent,
+            "startup_main_type": startup_main_type,
+            "startup_module_type": startup_module_type,
+            "startup_config_sent_count": startup_count,
+            "nonzero_command_observed": nonzero_count > 0,
+            "nonzero_command_count": nonzero_count,
+            "latest_nonzero_command": latest_nonzero,
+            "latest_command": latest_command,
+            "command_mode_counts": mode_counts,
+            "robot_control_executed": nonzero_count > 0,
+        }
+    )
+    return summary
+
+
 def atomic_write_json_artifact(path: str, payload: dict[str, Any]) -> dict[str, Any]:
     """用同目录临时文件 + replace，避免运营侧读到半截 JSON。"""
     destination = Path(path)
@@ -7361,6 +7499,7 @@ class UpperRobotApi:
             DEFAULT_FEEDBACK_SAMPLES_STALE_AFTER_MS,
         )
         bridge_feedback_debug = summarize_bridge_feedback_debug_log(DEFAULT_BRIDGE_FEEDBACK_DEBUG_LOG_PATH)
+        bridge_command_debug = summarize_bridge_command_debug_log(DEFAULT_BRIDGE_COMMAND_DEBUG_LOG_PATH)
         feedback_samples_freshness = feedback_samples_latest.get("freshness")
         feedback_samples_is_fresh = isinstance(feedback_samples_freshness, dict) and feedback_samples_freshness.get("status") == "fresh"
         bridge_feedback_freshness = bridge_feedback_debug.get("freshness")
@@ -7430,6 +7569,17 @@ class UpperRobotApi:
             "explicit_feedback_samples_endpoint": ROUTE_PATHS["base_feedback_samples"],
             "feedback_samples_latest": feedback_samples_latest,
             "bridge_feedback_debug": bridge_feedback_debug,
+            "bridge_command_debug": bridge_command_debug,
+            "base_command_chain_observed": bool(bridge_command_debug.get("nonzero_command_observed")),
+            "base_command_chain_nonzero_count": bridge_command_debug.get("nonzero_command_count"),
+            "base_command_chain_latest_nonzero_command": bridge_command_debug.get("latest_nonzero_command"),
+            "base_command_chain_latest_command": bridge_command_debug.get("latest_command"),
+            "base_command_chain_mode_counts": bridge_command_debug.get("command_mode_counts"),
+            "base_command_chain_startup_main_type_config_sent": bool(
+                bridge_command_debug.get("startup_main_type_config_sent")
+            ),
+            "base_command_chain_startup_main_type": bridge_command_debug.get("startup_main_type"),
+            "base_command_chain_startup_module_type": bridge_command_debug.get("startup_module_type"),
             "wheel_feedback_summary": best_wheel_summary,
             "wheel_feedback_nonzero_observed": wheel_feedback_nonzero,
             "wheel_feedback_lr_nonzero_proven": wheel_feedback_nonzero,

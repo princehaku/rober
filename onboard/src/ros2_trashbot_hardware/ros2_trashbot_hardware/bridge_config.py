@@ -14,7 +14,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from ros2_trashbot_hardware.wave_rover_protocol import VALID_COMMAND_MODES
+from ros2_trashbot_hardware.wave_rover_protocol import (
+    DEFAULT_MAIN_TYPE,
+    DEFAULT_MODULE_TYPE,
+    VALID_COMMAND_MODES,
+    VALID_MAIN_TYPES,
+    VALID_MODULE_TYPES,
+)
 
 
 DEFAULT_FEEDBACK_DEBUG_LOG_PATH = "/root/rober/onboard/runtime/wave_rover_feedback_debug.jsonl"
@@ -31,6 +37,8 @@ class BridgeConfig:
     max_wheel_speed_mps: float
     pwm_min_abs: int
     pwm_max_abs: int
+    main_type: int
+    module_type: int
     feedback_interval_ms: int
     odom_publish_hz: float
     publish_odom_tf: bool
@@ -46,6 +54,8 @@ def validate_startup_config(
     max_wheel_speed_mps: float,
     pwm_min_abs: int,
     pwm_max_abs: int,
+    main_type: int,
+    module_type: int,
     feedback_interval_ms: int,
     odom_publish_hz: float,
 ) -> None:
@@ -58,6 +68,10 @@ def validate_startup_config(
         raise ValueError("max_wheel_speed_mps must be > 0")
     if pwm_min_abs < 0 or pwm_max_abs <= 0 or pwm_min_abs > pwm_max_abs or pwm_max_abs > 255:
         raise ValueError("pwm_min_abs/pwm_max_abs must satisfy 0 <= min <= max <= 255")
+    if int(main_type) not in VALID_MAIN_TYPES:
+        raise ValueError(f"main_type must be one of {VALID_MAIN_TYPES}")
+    if int(module_type) not in VALID_MODULE_TYPES:
+        raise ValueError(f"module_type must be one of {VALID_MODULE_TYPES}")
     if feedback_interval_ms < 0:
         raise ValueError("feedback_interval_ms must be >= 0")
     if odom_publish_hz <= 0:
@@ -79,6 +93,9 @@ def declare_bridge_parameters(node: Any) -> None:
     node.declare_parameter("max_wheel_speed_mps", 1.3)
     node.declare_parameter("pwm_min_abs", 164)
     node.declare_parameter("pwm_max_abs", 164)
+    # vendor json_cmd.h 定义 T=900 main/module；WAVE ROVER 底盘应显式保持 main_type=1,module_type=0。
+    node.declare_parameter("main_type", DEFAULT_MAIN_TYPE)
+    node.declare_parameter("module_type", DEFAULT_MODULE_TYPE)
     node.declare_parameter("feedback_interval_ms", 100)
     node.declare_parameter("odom_publish_hz", 20.0)
     # 动态 odom TF 默认开启，便于下一轮 smoke 直接复用；但它仍只代表命令积分，不是实测编码器。
@@ -105,6 +122,8 @@ def load_bridge_config(node: Any) -> BridgeConfig:
         max_wheel_speed_mps=float(node.get_parameter("max_wheel_speed_mps").value),
         pwm_min_abs=int(node.get_parameter("pwm_min_abs").value),
         pwm_max_abs=int(node.get_parameter("pwm_max_abs").value),
+        main_type=int(node.get_parameter("main_type").value),
+        module_type=int(node.get_parameter("module_type").value),
         feedback_interval_ms=int(node.get_parameter("feedback_interval_ms").value),
         odom_publish_hz=float(node.get_parameter("odom_publish_hz").value),
         publish_odom_tf=bool(node.get_parameter("publish_odom_tf").value),
@@ -119,6 +138,8 @@ def load_bridge_config(node: Any) -> BridgeConfig:
         config.max_wheel_speed_mps,
         config.pwm_min_abs,
         config.pwm_max_abs,
+        config.main_type,
+        config.module_type,
         config.feedback_interval_ms,
         config.odom_publish_hz,
     )

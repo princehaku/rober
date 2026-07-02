@@ -23,6 +23,7 @@ from ros2_trashbot_hardware.wave_rover_feedback import (
 from ros2_trashbot_hardware.wave_rover_protocol import (
     CMD_BASE_FEEDBACK_FLOW,
     CMD_FEEDBACK_FLOW_INTERVAL,
+    CMD_MM_TYPE_SET,
     CMD_PWM_INPUT,
     CMD_ROS_CTRL,
     CMD_SPEED_CTRL,
@@ -58,6 +59,7 @@ def main(args=None):
 __all__ = [
     "CMD_BASE_FEEDBACK_FLOW",
     "CMD_FEEDBACK_FLOW_INTERVAL",
+    "CMD_MM_TYPE_SET",
     "CMD_PWM_INPUT",
     "CMD_ROS_CTRL",
     "CMD_SPEED_CTRL",

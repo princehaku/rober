@@ -23,10 +23,15 @@ CMD_ROS_CTRL = 13
 CMD_BASE_FEEDBACK_FLOW = 131
 CMD_FEEDBACK_FLOW_INTERVAL = 142
 CMD_UART_ECHO_MODE = 143
+CMD_MM_TYPE_SET = 900
 FEEDBACK_BASE_INFO = 1001
 DEFAULT_PWM_MIN_ABS = 164
 DEFAULT_PWM_MAX_ABS = 164
+DEFAULT_MAIN_TYPE = 1
+DEFAULT_MODULE_TYPE = 0
 VALID_COMMAND_MODES = ("speed", "ros", "pwm")
+VALID_MAIN_TYPES = (1, 2, 3)
+VALID_MODULE_TYPES = (0, 1, 2)
 
 
 def _clamp(value: float, low: float, high: float) -> float:
@@ -99,10 +104,20 @@ def build_cmd_vel_command(
     return {"T": CMD_SPEED_CTRL, "L": _round_float(left), "R": _round_float(right)}
 
 
-def build_startup_config_commands(feedback_interval_ms: int) -> list[dict[str, int]]:
+def build_startup_config_commands(
+    feedback_interval_ms: int,
+    main_type: int = DEFAULT_MAIN_TYPE,
+    module_type: int = DEFAULT_MODULE_TYPE,
+) -> list[dict[str, int]]:
     """生成厂商 UART 启动配置命令。"""
-    # 启动顺序先关 echo，再设置 interval，最后打开反馈流，便于日志只保留真实反馈帧。
+    if main_type not in VALID_MAIN_TYPES:
+        raise ValueError(f"main_type must be one of {VALID_MAIN_TYPES}")
+    if module_type not in VALID_MODULE_TYPES:
+        raise ValueError(f"module_type must be one of {VALID_MODULE_TYPES}")
+    # WAVE ROVER vendor 固件把 mainType=1 作为本底盘型号；先显式写机型，避免遗留 UGV01 编码器模式让 T1001 L/R 一直只看编码器。
+    # 随后再关 echo、设置 interval、打开反馈流，便于日志只保留真实反馈帧。
     return [
+        {"T": CMD_MM_TYPE_SET, "main": int(main_type), "module": int(module_type)},
         {"T": CMD_UART_ECHO_MODE, "cmd": 0},
         {"T": CMD_FEEDBACK_FLOW_INTERVAL, "cmd": int(feedback_interval_ms)},
         {"T": CMD_BASE_FEEDBACK_FLOW, "cmd": 1},

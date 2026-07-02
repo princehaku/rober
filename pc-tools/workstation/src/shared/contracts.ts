@@ -5401,6 +5401,14 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       imu_attitude_delta_observed: string;
       motion_signal_observed: string;
       motion_signal_source: string;
+      base_command_chain_observed: string;
+      base_command_chain_nonzero_count: string;
+      base_command_chain_latest_nonzero_command: string;
+      base_command_chain_latest_command: string;
+      base_command_chain_mode_counts: string;
+      base_command_chain_startup_main_type_config_sent: string;
+      base_command_chain_startup_main_type: string;
+      base_command_chain_startup_module_type: string;
       feedback_voltage_v: string;
       feedback_link_status: string;
     };

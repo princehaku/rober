@@ -402,6 +402,8 @@ class WaveshareJsonBridgeTest(unittest.TestCase):
                 max_wheel_speed_mps=-0.1,
                 pwm_min_abs=90,
                 pwm_max_abs=90,
+                main_type=1,
+                module_type=0,
                 feedback_interval_ms=100,
                 odom_publish_hz=20.0,
             )
@@ -410,11 +412,13 @@ class WaveshareJsonBridgeTest(unittest.TestCase):
         bridge = _bridge_module()
 
         with self.assertRaisesRegex(ValueError, "command_mode must be one of"):
-            bridge.validate_startup_config("bad_mode", 0.172, 1.3, 90, 90, 100, 20.0)
+            bridge.validate_startup_config("bad_mode", 0.172, 1.3, 90, 90, 1, 0, 100, 20.0)
         with self.assertRaisesRegex(ValueError, "track_width_m must be > 0"):
-            bridge.validate_startup_config("speed", 0.0, 1.3, 90, 90, 100, 20.0)
+            bridge.validate_startup_config("speed", 0.0, 1.3, 90, 90, 1, 0, 100, 20.0)
+        with self.assertRaisesRegex(ValueError, "main_type must be one of"):
+            bridge.validate_startup_config("speed", 0.172, 1.3, 90, 90, 4, 0, 100, 20.0)
         with self.assertRaisesRegex(ValueError, "feedback_interval_ms must be >= 0"):
-            bridge.validate_startup_config("speed", 0.172, 1.3, 90, 90, -1, 20.0)
+            bridge.validate_startup_config("speed", 0.172, 1.3, 90, 90, 1, 0, -1, 20.0)
 
     def test_base_feedback_line_parses_imu_and_battery_fields(self):
         bridge = _bridge_module()
@@ -656,6 +660,8 @@ class WaveshareJsonBridgeTest(unittest.TestCase):
             node.max_wheel_speed_mps = 1.3
             node.pwm_min_abs = 164
             node.pwm_max_abs = 164
+            node.main_type = 1
+            node.module_type = 0
             node.feedback_interval_ms = 100
             node.feedback_debug_log_path = ""
             node.command_debug_log_path = str(log_path)
@@ -697,6 +703,8 @@ class WaveshareJsonBridgeTest(unittest.TestCase):
         node.max_wheel_speed_mps = 1.3
         node.pwm_min_abs = 164
         node.pwm_max_abs = 164
+        node.main_type = 1
+        node.module_type = 0
         node.feedback_interval_ms = 100
         node.feedback_debug_log_path = ""
         node.command_debug_log_path = ""
@@ -713,6 +721,29 @@ class WaveshareJsonBridgeTest(unittest.TestCase):
         self.assertIn("pwm_min_abs/pwm_max_abs", result.reason)
         self.assertEqual(node.pwm_min_abs, 164)
         self.assertEqual(node.pwm_max_abs, 164)
+
+    def test_startup_config_debug_log_records_main_type_without_motion(self):
+        bridge = _bridge_module()
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            log_path = Path(temp_dir) / "startup.jsonl"
+            sent_commands = []
+            node = bridge.ESP32Bridge.__new__(bridge.ESP32Bridge)
+            node.feedback_interval_ms = 75
+            node.main_type = 1
+            node.module_type = 0
+            node.command_debug_log_path = str(log_path)
+            node._send_json = lambda command: sent_commands.append(command) or True
+            node.get_logger = lambda: _FakeLogger()
+
+            node._configure_vendor_feedback()
+
+            records = [json.loads(line) for line in log_path.read_text(encoding="utf-8").splitlines()]
+            self.assertEqual(sent_commands[0], {"T": 900, "main": 1, "module": 0})
+            self.assertEqual(records[0]["source"], "esp32_bridge_startup_config")
+            self.assertEqual(records[0]["vendor_command"], {"T": 900, "main": 1, "module": 0})
+            self.assertFalse(records[0]["sends_motion"])
+            self.assertTrue(records[0]["sent"])
 
     def test_declare_and_load_bridge_config_defaults_to_pwm_command_mode(self):
         bridge_config = importlib.import_module("ros2_trashbot_hardware.bridge_config")
@@ -734,6 +765,8 @@ class WaveshareJsonBridgeTest(unittest.TestCase):
         self.assertEqual(config.command_mode, "pwm")
         self.assertEqual(config.pwm_min_abs, 164)
         self.assertEqual(config.pwm_max_abs, 164)
+        self.assertEqual(config.main_type, 1)
+        self.assertEqual(config.module_type, 0)
         self.assertTrue(config.publish_odom_tf)
         self.assertEqual(config.feedback_debug_log_path, "/root/rober/onboard/runtime/wave_rover_feedback_debug.jsonl")
         self.assertEqual(config.command_debug_log_path, "")
@@ -794,6 +827,7 @@ class WaveshareJsonBridgeTest(unittest.TestCase):
         self.assertEqual(
             commands,
             [
+                {"T": 900, "main": 1, "module": 0},
                 {"T": 143, "cmd": 0},
                 {"T": 142, "cmd": 75},
                 {"T": 131, "cmd": 1},
