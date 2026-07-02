@@ -11,6 +11,7 @@ micro
   - 画面可见时说明当前页面或共享预览已有首帧。
   - 画面不可见时说明共享预览缺口、下一步复测、阻塞建图首帧但不阻塞自由移动。
 - 在 PC 普通首屏增加 `plain-current-camera-wysiwyg-pack` DOM，只读展示相机当前包，并暴露完整 no-motion data 属性。
+- 上位机普通相机首帧 probe 在不开 backend smoke 时总预算从 `14s` 收紧为 `10s`，让 PC 代理能在 12s 请求超时前拿到格式 fallback/总超时摘要；backend smoke 仍保留长预算。
 - 更新 `docs/product/pc_tools_workstation.md`，明确摄像头 WYSIWYG 包和 RViz2/Foxglove/PC 页面之间的边界。
 
 ## 验证结果
@@ -24,6 +25,10 @@ micro
   - 结果：通过。
 - `git diff --check`
   - 结果：通过，无空白错误。
+- `python -m py_compile onboard/scripts/upper_robot_api.py`
+  - 结果：通过。
+- `python -m unittest onboard.tests.test_upper_robot_api`
+  - 结果：通过，`95 tests`，`1 skipped`。
 - 现场只读 live summary：
   - 7001 已重启并监听 `0.0.0.0:7001`。
   - `current_camera_wysiwyg_pack_status=needs_first_frame`

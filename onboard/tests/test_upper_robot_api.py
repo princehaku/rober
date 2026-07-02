@@ -1466,6 +1466,47 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertFalse(payload["safe_to_control"])
         self.assertFalse(payload["robot_control_executed"])
 
+    def test_camera_probe_auto_format_fallback_stops_on_total_budget(self) -> None:
+        """普通相机 probe 要先于 PC 12s 代理超时返回，让页面拿到格式 fallback 摘要。"""
+        request = upper_robot_api.safe_camera_probe_request({"auto_format_fallback": True, "read_call_timeout_s": 1.5})
+        requests = [dict(request, fourcc="MJPG", width=640, height=480), dict(request, fourcc="YUYV", width=320, height=240)]
+        attempts: list[dict[str, object]] = []
+
+        async def fake_attempt(script_path, attempt_request, sample_path, max_process_timeout_s=None):
+            attempts.append({
+                "request": attempt_request,
+                "max_process_timeout_s": max_process_timeout_s,
+                "sample_path": str(sample_path),
+            })
+            return {
+                "status": "first_frame_timeout",
+                "probe_request": attempt_request,
+                "probe_payload": {"status": "first_frame_timeout", "failure_reason": "deadline_expired"},
+                "probe_returncode": 1,
+                "stderr_preview": "",
+            }
+
+        fake_time = mock.Mock()
+        fake_time.time.return_value = 123456.0
+        fake_time.monotonic.side_effect = [100.0, 100.1, 110.2]
+        with mock.patch.object(upper_robot_api.Path, "exists", return_value=True):
+            with mock.patch.object(upper_robot_api, "camera_probe_fallback_requests", return_value=requests):
+                with mock.patch.object(upper_robot_api, "run_camera_probe_attempt", side_effect=fake_attempt):
+                    with mock.patch.object(upper_robot_api, "time", fake_time):
+                        http_status, payload = asyncio.run(
+                            upper_robot_api.run_camera_first_frame_probe({"auto_format_fallback": True})
+                        )
+
+        self.assertEqual(503, http_status)
+        self.assertEqual("probe_total_timeout", payload["status"])
+        self.assertEqual(1, len(attempts))
+        self.assertLess(attempts[0]["max_process_timeout_s"], 10.0)
+        self.assertEqual(2, len(payload["fallback_attempts"]))
+        self.assertEqual("first_frame_timeout", payload["fallback_attempts"][0]["status"])
+        self.assertEqual("probe_total_timeout", payload["fallback_attempts"][1]["status"])
+        self.assertFalse(payload["safe_to_control"])
+        self.assertFalse(payload["robot_control_executed"])
+
     def test_camera_probe_auto_format_fallback_includes_low_bandwidth_modes(self) -> None:
         """full-speed USB 场景要试 160x120 低带宽模式，避免常规分辨率耗尽首帧机会。"""
         request = upper_robot_api.safe_camera_probe_request({"auto_format_fallback": True})

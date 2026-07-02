@@ -6918,7 +6918,7 @@ async def run_camera_first_frame_probe(body: dict[str, Any] | None = None) -> tu
     script_path = Path(__file__).with_name("camera_first_frame_probe.py")
     started_ms = now_ms()
     started_monotonic = time.monotonic()
-    total_budget_s = 52.0 if request.get("include_backend_smoke") else 14.0
+    total_budget_s = 52.0 if request.get("include_backend_smoke") else 10.0
     sample_root = Path(__file__).resolve().parents[1] / "runtime" / "camera"
     if not script_path.exists():
         return 503, {

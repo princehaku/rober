@@ -1,7 +1,7 @@
 :root {
-  --plain-map-large-min-height: 1680px;
-  --plain-map-large-target-height: calc(100vh + 720px);
-  --plain-map-large-max-height: 5200px;
+  --plain-map-large-min-height: 560px;
+  --plain-map-large-target-height: calc(100vh - 150px);
+  --plain-map-large-max-height: 960px;
   --plain-map-fullscreen-height: 100vh;
   color: #17202a;
   background: #f4f6f8;
@@ -548,7 +548,7 @@ h3 {
   /* 地图是现场判断路线和雷达贴图的主视图，桌面端默认先占整行。 */
   order: -1;
   grid-column: 1 / -1;
-  min-height: calc(100vh - 4px);
+  min-height: min(100vh, 980px);
 }
 
 .robot-console-grid[data-layout="visual-first"] .plain-connection-panel,
@@ -1582,8 +1582,8 @@ h3 {
 }
 
 .plain-map-panel[data-size="large"] {
-  /* 普通 PC 首屏默认把地图当主视图，不再退化成一张小卡片。 */
-  min-height: calc(100vh + 420px);
+  /* 普通 PC 首屏默认把地图当主视图，但不制造超长滚动框。 */
+  min-height: min(100vh, 980px);
 }
 
 .plain-map-heading {
@@ -1599,7 +1599,7 @@ h3 {
 }
 
 .plain-map-heading-title {
-  /* 地图太小时先把“当前就是 PC 特大地图、可进 /map 满屏”的事实放到标题旁。 */
+  /* 地图太小时先把“当前就是 PC 大地图、可进 /map 满屏”的事实放到标题旁。 */
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -2126,8 +2126,8 @@ h3 {
   display: flex;
   align-items: flex-start;
   justify-content: flex-start;
-  height: clamp(680px, calc(100vh + 120px), 1280px);
-  min-height: 640px;
+  height: clamp(520px, calc(100vh - 180px), 920px);
+  min-height: 480px;
   overflow: auto;
   overscroll-behavior: contain;
   border: 1px solid #c8d2dc;
@@ -2140,8 +2140,8 @@ h3 {
 }
 
 .plain-map-viewport[data-size="normal"] .plain-map-layer {
-  height: clamp(480px, 68vh, 820px);
-  min-height: 420px;
+  height: clamp(420px, 58vh, 720px);
+  min-height: 380px;
 }
 
 .plain-map-viewport[data-size="large"] .plain-map-layer {
@@ -2151,7 +2151,7 @@ h3 {
 
 .plain-map-viewport[data-size="fullscreen"] .plain-map-layer {
   height: var(--plain-map-fullscreen-height);
-  min-height: calc(var(--plain-map-large-min-height) - 240px);
+  min-height: calc(var(--plain-map-large-min-height) - 120px);
 }
 
 .plain-map-viewport[data-state="地图可见"] .plain-map-layer {
@@ -2175,7 +2175,7 @@ h3 {
 }
 
 .plain-map-overlay-frame {
-  /* 缩放作用在同一个 overlay frame 上；默认 8000% 现场大图，适配 100% 仍能看全图。 */
+  /* 缩放作用在同一个 overlay frame 上；默认 100% 看全图，细节模式再放大局部。 */
   position: relative;
   flex: 0 0 auto;
   width: calc(100% * var(--plain-map-zoom, 1));
@@ -3890,7 +3890,7 @@ th {
   .plain-map-viewport[data-size="normal"] .plain-map-layer,
   .plain-map-layer {
     /* 窄 PC 窗口也要保持地图主视图，不能因为媒体查询退回小卡片。 */
-    height: clamp(820px, calc(100vh + 160px), 1480px);
-    min-height: 820px;
+    height: clamp(560px, calc(100vh - 80px), 920px);
+    min-height: 560px;
   }
 }
