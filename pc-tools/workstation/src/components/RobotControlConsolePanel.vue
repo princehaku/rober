@@ -5014,6 +5014,64 @@ const plainTripClosureReadbackSummary = computed(() => {
     readbackDisabled: liveMotionRunbookReadbackPendingAction.value !== null || !robotApiBaseUrl.value.trim(),
   };
 });
+const plainCurrentMotionActionGauge = computed(() => {
+  // 当前运动动作以 summary 顶层短字段为准；旧包只做兜底，避免首屏不同区域显示不同的发车口径。
+  const summary = robotSummary.value;
+  const fallback = plainTripClosureReadbackSummary.value;
+  const acceptanceEndpoints = summary?.current_motion_action_acceptance_endpoints?.length
+    ? summary.current_motion_action_acceptance_endpoints
+    : fallback.acceptanceEndpoints;
+  const actionId = summary?.current_motion_action_id ?? fallback.actionId;
+  const actionRequired = summary?.current_motion_action_required ?? actionId !== "none";
+  const displayLabel = plainActionCardUserText(
+    summary?.current_motion_action_display_label
+      ?? summary?.current_motion_action_label
+      ?? fallback.displayLabel
+      ?? "完整行程执行",
+  );
+  const requiresSafetyConfirm = summary?.current_motion_action_requires_safety_confirm ?? fallback.requiresSafetyConfirm;
+  const minimalPrecheckSafetyOnly = summary?.current_motion_action_minimal_precheck_safety_only ?? fallback.minimalPrecheckSafetyOnly;
+  const cameraPreflightRequired = summary?.current_motion_action_camera_preflight_required ?? fallback.cameraPreflightRequired;
+  const radarPreflightRequired = summary?.current_motion_action_radar_preflight_required ?? fallback.radarPreflightRequired;
+  const routeWysiwygPreflightRequired = summary?.current_motion_action_route_wysiwyg_preflight_required ?? fallback.routeWysiwygPreflightRequired;
+  const sendsMotion = summary?.current_motion_action_sends_motion ?? fallback.startSendsMotion;
+  const startEndpoint = summary?.current_motion_action_start_endpoint ?? fallback.startEndpoint;
+  const stopEndpoint = summary?.current_motion_action_stop_endpoint ?? fallback.stopEndpoint;
+  const safetyText = requiresSafetyConfirm
+    ? plainManualSafetyConfirmed.value ? "安全确认已勾" : "先勾现场安全确认"
+    : "无需额外安全确认";
+  const precheckText = minimalPrecheckSafetyOnly && !cameraPreflightRequired && !radarPreflightRequired && !routeWysiwygPreflightRequired
+    ? "发车前只看安全确认"
+    : "发车前仍按动作卡要求处理";
+  const readbackText = acceptanceEndpoints.length
+    ? `执行后读回 ${acceptanceEndpoints.length} 个验收端点`
+    : "执行后读回验收端点未加载";
+  const state = !actionRequired
+    ? "无动作"
+    : sendsMotion && plainManualSafetyConfirmed.value
+      ? "安全确认已勾"
+      : sendsMotion
+        ? "待安全确认"
+        : "只读";
+  return {
+    actionRequired,
+    actionId,
+    label: summary?.current_motion_action_label ?? fallback.label,
+    displayLabel,
+    state,
+    text: `当前运动动作：${displayLabel}；${safetyText}；${precheckText}；${readbackText}。`,
+    startEndpoint,
+    stopEndpoint,
+    acceptanceEndpoints,
+    acceptanceEndpointsText: acceptanceEndpoints.join(","),
+    requiresSafetyConfirm,
+    minimalPrecheckSafetyOnly,
+    cameraPreflightRequired,
+    radarPreflightRequired,
+    routeWysiwygPreflightRequired,
+    sendsMotion,
+  };
+});
 const plainLiveWheelFeedbackReadback = computed(() => {
   // Nav2 闭环和键盘连续手控都卡在同窗口 wheel L/R；这里把共享证据前置，避免现场分别翻两张卡。
   const rows = plainLiveMotionRunbookRows.value;
@@ -20762,6 +20820,18 @@ onBeforeUnmount(() => {
           :data-delivery-success-evidence-stale="String(plainTripClosureGateGauge.deliverySuccessEvidenceStale)"
           :data-managed-runtime-autostart="String(plainTripClosureGateGauge.managedRuntimeAutostart)"
           :data-requires-same-window-wheel-lr-nonzero="String(plainTripClosureGateGauge.requiresSameWindowWheelLrNonzero)"
+          :data-current-motion-action-id="plainCurrentMotionActionGauge.actionId"
+          :data-current-motion-action-required="String(plainCurrentMotionActionGauge.actionRequired)"
+          :data-current-motion-action-display-label="plainCurrentMotionActionGauge.displayLabel"
+          :data-current-motion-action-start-endpoint="plainCurrentMotionActionGauge.startEndpoint"
+          :data-current-motion-action-stop-endpoint="plainCurrentMotionActionGauge.stopEndpoint"
+          :data-current-motion-action-acceptance-endpoints="plainCurrentMotionActionGauge.acceptanceEndpointsText"
+          :data-current-motion-action-requires-safety-confirm="String(plainCurrentMotionActionGauge.requiresSafetyConfirm)"
+          :data-current-motion-action-minimal-precheck-safety-only="String(plainCurrentMotionActionGauge.minimalPrecheckSafetyOnly)"
+          :data-current-motion-action-camera-preflight-required="String(plainCurrentMotionActionGauge.cameraPreflightRequired)"
+          :data-current-motion-action-radar-preflight-required="String(plainCurrentMotionActionGauge.radarPreflightRequired)"
+          :data-current-motion-action-route-wysiwyg-preflight-required="String(plainCurrentMotionActionGauge.routeWysiwygPreflightRequired)"
+          :data-current-motion-action-sends-motion="String(plainCurrentMotionActionGauge.sendsMotion)"
           :data-next-action="plainTripClosureGateGauge.nextAction"
           :data-fixed-nav2-execute-endpoint="plainTripClosureGateGauge.fixedNav2ExecuteEndpoint"
           :data-fixed-delivery-complete-endpoint="plainTripClosureGateGauge.fixedDeliveryCompleteEndpoint"
@@ -23474,6 +23544,18 @@ onBeforeUnmount(() => {
                 :data-camera-preflight-required="String(plainTripDomEvidence.cameraPreflightRequired)"
                 :data-radar-preflight-required="String(plainTripDomEvidence.radarPreflightRequired)"
                 :data-route-wysiwyg-preflight-required="String(plainTripDomEvidence.routeWysiwygPreflightRequired)"
+                :data-current-motion-action-id="plainCurrentMotionActionGauge.actionId"
+                :data-current-motion-action-required="String(plainCurrentMotionActionGauge.actionRequired)"
+                :data-current-motion-action-display-label="plainCurrentMotionActionGauge.displayLabel"
+                :data-current-motion-action-start-endpoint="plainCurrentMotionActionGauge.startEndpoint"
+                :data-current-motion-action-stop-endpoint="plainCurrentMotionActionGauge.stopEndpoint"
+                :data-current-motion-action-acceptance-endpoints="plainCurrentMotionActionGauge.acceptanceEndpointsText"
+                :data-current-motion-action-requires-safety-confirm="String(plainCurrentMotionActionGauge.requiresSafetyConfirm)"
+                :data-current-motion-action-minimal-precheck-safety-only="String(plainCurrentMotionActionGauge.minimalPrecheckSafetyOnly)"
+                :data-current-motion-action-camera-preflight-required="String(plainCurrentMotionActionGauge.cameraPreflightRequired)"
+                :data-current-motion-action-radar-preflight-required="String(plainCurrentMotionActionGauge.radarPreflightRequired)"
+                :data-current-motion-action-route-wysiwyg-preflight-required="String(plainCurrentMotionActionGauge.routeWysiwygPreflightRequired)"
+                :data-current-motion-action-sends-motion="String(plainCurrentMotionActionGauge.sendsMotion)"
                 :data-post-execute-latest-refresh-required="String(plainTripDomEvidence.postExecuteLatestRefreshRequired)"
                 :data-post-execute-summary-refresh-required="String(plainTripDomEvidence.postExecuteSummaryRefreshRequired)"
                 :data-fixed-execute-proxy-endpoint="plainTripDomEvidence.fixedExecuteProxyEndpoint"
@@ -23495,6 +23577,27 @@ onBeforeUnmount(() => {
             </div>
             <p class="panel-note">{{ plainTripSummary.hint }}</p>
             <p class="panel-note" data-testid="plain-trip-main-action-summary">{{ plainTripMainActionSummary }}</p>
+            <p
+              class="panel-note"
+              data-testid="plain-trip-current-motion-action"
+              :data-state="plainCurrentMotionActionGauge.state"
+              :data-current-motion-action-id="plainCurrentMotionActionGauge.actionId"
+              :data-current-motion-action-required="String(plainCurrentMotionActionGauge.actionRequired)"
+              :data-current-motion-action-label="plainCurrentMotionActionGauge.label"
+              :data-current-motion-action-display-label="plainCurrentMotionActionGauge.displayLabel"
+              :data-current-motion-action-start-endpoint="plainCurrentMotionActionGauge.startEndpoint"
+              :data-current-motion-action-stop-endpoint="plainCurrentMotionActionGauge.stopEndpoint"
+              :data-current-motion-action-acceptance-endpoints="plainCurrentMotionActionGauge.acceptanceEndpointsText"
+              :data-current-motion-action-requires-safety-confirm="String(plainCurrentMotionActionGauge.requiresSafetyConfirm)"
+              :data-current-motion-action-minimal-precheck-safety-only="String(plainCurrentMotionActionGauge.minimalPrecheckSafetyOnly)"
+              :data-current-motion-action-camera-preflight-required="String(plainCurrentMotionActionGauge.cameraPreflightRequired)"
+              :data-current-motion-action-radar-preflight-required="String(plainCurrentMotionActionGauge.radarPreflightRequired)"
+              :data-current-motion-action-route-wysiwyg-preflight-required="String(plainCurrentMotionActionGauge.routeWysiwygPreflightRequired)"
+              :data-current-motion-action-sends-motion="String(plainCurrentMotionActionGauge.sendsMotion)"
+              data-sends-motion-when-clicked="false"
+            >
+              {{ plainCurrentMotionActionGauge.text }}
+            </p>
             <p v-if="plainTripNav2LifecycleStatus" class="panel-note" data-testid="plain-trip-nav2-restore-status">{{ plainTripNav2LifecycleStatus }}</p>
             <p class="panel-note" data-testid="plain-trip-run-status">{{ plainTripRunStatus }}</p>
             <p v-if="plainTripAutonomousDiagnosis" class="panel-note" data-testid="plain-trip-autonomous-diagnosis">{{ plainTripAutonomousDiagnosis }}</p>
@@ -23538,6 +23641,18 @@ onBeforeUnmount(() => {
               :data-wheel-right="plainTripExecutionGauge.wheelRight"
               :data-delivery-success-matches-current-nav2="String(plainTripExecutionGauge.deliverySuccessMatchesCurrentNav2)"
               :data-delivery-success-evidence-stale="String(plainTripExecutionGauge.deliverySuccessEvidenceStale)"
+              :data-current-motion-action-id="plainCurrentMotionActionGauge.actionId"
+              :data-current-motion-action-required="String(plainCurrentMotionActionGauge.actionRequired)"
+              :data-current-motion-action-display-label="plainCurrentMotionActionGauge.displayLabel"
+              :data-current-motion-action-start-endpoint="plainCurrentMotionActionGauge.startEndpoint"
+              :data-current-motion-action-stop-endpoint="plainCurrentMotionActionGauge.stopEndpoint"
+              :data-current-motion-action-acceptance-endpoints="plainCurrentMotionActionGauge.acceptanceEndpointsText"
+              :data-current-motion-action-requires-safety-confirm="String(plainCurrentMotionActionGauge.requiresSafetyConfirm)"
+              :data-current-motion-action-minimal-precheck-safety-only="String(plainCurrentMotionActionGauge.minimalPrecheckSafetyOnly)"
+              :data-current-motion-action-camera-preflight-required="String(plainCurrentMotionActionGauge.cameraPreflightRequired)"
+              :data-current-motion-action-radar-preflight-required="String(plainCurrentMotionActionGauge.radarPreflightRequired)"
+              :data-current-motion-action-route-wysiwyg-preflight-required="String(plainCurrentMotionActionGauge.routeWysiwygPreflightRequired)"
+              :data-current-motion-action-sends-motion="String(plainCurrentMotionActionGauge.sendsMotion)"
               :data-next-action="plainTripExecutionGauge.nextAction"
               data-fixed-nav2-execute-endpoint="/api/robot-control/nav2/goal/execute"
               data-fixed-delivery-complete-endpoint="/api/robot-control/delivery/complete"

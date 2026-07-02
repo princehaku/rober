@@ -5046,3 +5046,10 @@ full-speed 或 UVC 传输问题时，现场硬件动作仍提示“换高速USB�
 `current_keyboard_action_hold_sends_motion=true`、`current_keyboard_action_stop_triggers=[key_release, window_blur, page_hidden, direction_change, stop_button]`。
 普通 PC 页面的 `plain-keyboard-hold-gate` 同步暴露这些字段和 post-hold 读回序列；点击启用键盘仍不发车，
 只有按住 W/A/S/D 或方向键才发送低速脉冲，松开/失焦/切页后必须只读复验轮速采样和 summary。
+
+2026-07-02 08:16 CST 起，普通 PC 行程区也直接消费 `current_motion_action_*`。`plain-trip-current-motion-action`
+可见短行会显示“当前运动动作：重跑图上行程并复验轮速；先勾现场安全确认；发车前只看安全确认；执行后读回 5 个验收端点”，
+同时 `plain-trip-closure-gate`、`plain-trip-execute` 和 `plain-trip-execution-gauge` 暴露
+`data-current-motion-action-id/start-endpoint/stop-endpoint/acceptance-endpoints/requires-safety-confirm/minimal-precheck-safety-only/*-preflight-required/sends-motion`。
+这些 DOM 字段必须与 summary 顶层短字段同源，只用于普通首屏和现场脚本识别当前 Nav2 行程动作；显示或读取这些字段不自动勾选安全确认，
+不执行 Nav2/manual/keyboard/free-roam/建图/delivery/stop，也不发送 `/cmd_vel`。

@@ -902,6 +902,25 @@ const fixtures: Record<string, unknown> = {
     field_acceptance_primary_missing_action_radar_preflight_required: false,
     field_acceptance_primary_missing_action_operator_report_preflight_required: false,
     field_acceptance_primary_missing_action_route_wysiwyg_preflight_required: false,
+    current_motion_action_required: true,
+    current_motion_action_id: "run_nav2_route",
+    current_motion_action_label: "完整行程执行",
+    current_motion_action_display_label: "重跑图上行程并复验轮速",
+    current_motion_action_start_endpoint: "/api/robot-control/nav2/goal/execute",
+    current_motion_action_stop_endpoint: "/api/robot-control/base/stop",
+    current_motion_action_acceptance_endpoints: [
+      "/api/robot-control/map/preview",
+      "/api/robot-control/nav2/goal/execution/latest",
+      "/api/robot-control/base/feedback-samples",
+      "/api/robot-control/delivery/latest",
+      "/api/robot-control/summary",
+    ],
+    current_motion_action_requires_safety_confirm: true,
+    current_motion_action_minimal_precheck_safety_only: true,
+    current_motion_action_camera_preflight_required: false,
+    current_motion_action_radar_preflight_required: false,
+    current_motion_action_route_wysiwyg_preflight_required: false,
+    current_motion_action_sends_motion: true,
     live_closure_summary: {
       status: "needs_wysiwyg",
       status_label: "待当前所见",
@@ -7702,6 +7721,18 @@ describe("App", () => {
     expect(tripClosureGate.attributes("data-delivery-success-evidence-stale")).toBe("false");
     expect(tripClosureGate.attributes("data-managed-runtime-autostart")).toBe("false");
     expect(tripClosureGate.attributes("data-requires-same-window-wheel-lr-nonzero")).toBe("true");
+    expect(tripClosureGate.attributes("data-current-motion-action-id")).toBe("run_nav2_route");
+    expect(tripClosureGate.attributes("data-current-motion-action-required")).toBe("true");
+    expect(tripClosureGate.attributes("data-current-motion-action-display-label")).toBe("重跑图上行程并复验轮速");
+    expect(tripClosureGate.attributes("data-current-motion-action-start-endpoint")).toBe("/api/robot-control/nav2/goal/execute");
+    expect(tripClosureGate.attributes("data-current-motion-action-stop-endpoint")).toBe("/api/robot-control/base/stop");
+    expect(tripClosureGate.attributes("data-current-motion-action-acceptance-endpoints")).toBe("/api/robot-control/map/preview,/api/robot-control/nav2/goal/execution/latest,/api/robot-control/base/feedback-samples,/api/robot-control/delivery/latest,/api/robot-control/summary");
+    expect(tripClosureGate.attributes("data-current-motion-action-requires-safety-confirm")).toBe("true");
+    expect(tripClosureGate.attributes("data-current-motion-action-minimal-precheck-safety-only")).toBe("true");
+    expect(tripClosureGate.attributes("data-current-motion-action-camera-preflight-required")).toBe("false");
+    expect(tripClosureGate.attributes("data-current-motion-action-radar-preflight-required")).toBe("false");
+    expect(tripClosureGate.attributes("data-current-motion-action-route-wysiwyg-preflight-required")).toBe("false");
+    expect(tripClosureGate.attributes("data-current-motion-action-sends-motion")).toBe("true");
     expect(tripClosureGate.attributes("data-next-action")).toBe("勾选现场安全确认");
     expect(tripClosureGate.attributes("data-fixed-nav2-execute-endpoint")).toBe("/api/robot-control/nav2/goal/execute");
     expect(tripClosureGate.attributes("data-fixed-delivery-complete-endpoint")).toBe("/api/robot-control/delivery/complete");
@@ -9221,6 +9252,18 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-camera-preflight-required")).toBe("false");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-radar-preflight-required")).toBe("false");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-route-wysiwyg-preflight-required")).toBe("false");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-current-motion-action-id")).toBe("run_nav2_route");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-current-motion-action-required")).toBe("true");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-current-motion-action-display-label")).toBe("重跑图上行程并复验轮速");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-current-motion-action-start-endpoint")).toBe("/api/robot-control/nav2/goal/execute");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-current-motion-action-stop-endpoint")).toBe("/api/robot-control/base/stop");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-current-motion-action-acceptance-endpoints")).toBe("/api/robot-control/map/preview,/api/robot-control/nav2/goal/execution/latest,/api/robot-control/base/feedback-samples,/api/robot-control/delivery/latest,/api/robot-control/summary");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-current-motion-action-requires-safety-confirm")).toBe("true");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-current-motion-action-minimal-precheck-safety-only")).toBe("true");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-current-motion-action-camera-preflight-required")).toBe("false");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-current-motion-action-radar-preflight-required")).toBe("false");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-current-motion-action-route-wysiwyg-preflight-required")).toBe("false");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-current-motion-action-sends-motion")).toBe("true");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-post-execute-latest-refresh-required")).toBe("true");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-post-execute-summary-refresh-required")).toBe("true");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-fixed-execute-proxy-endpoint")).toBe("/api/robot-control/nav2/goal/execute");
@@ -9255,6 +9298,18 @@ describe("App", () => {
     expect(defaultTripExecutionGauge.attributes("data-wheel-right")).toBe("not_loaded");
     expect(defaultTripExecutionGauge.attributes("data-delivery-success-matches-current-nav2")).toBe("false");
     expect(defaultTripExecutionGauge.attributes("data-delivery-success-evidence-stale")).toBe("false");
+    expect(defaultTripExecutionGauge.attributes("data-current-motion-action-id")).toBe("run_nav2_route");
+    expect(defaultTripExecutionGauge.attributes("data-current-motion-action-required")).toBe("true");
+    expect(defaultTripExecutionGauge.attributes("data-current-motion-action-display-label")).toBe("重跑图上行程并复验轮速");
+    expect(defaultTripExecutionGauge.attributes("data-current-motion-action-start-endpoint")).toBe("/api/robot-control/nav2/goal/execute");
+    expect(defaultTripExecutionGauge.attributes("data-current-motion-action-stop-endpoint")).toBe("/api/robot-control/base/stop");
+    expect(defaultTripExecutionGauge.attributes("data-current-motion-action-acceptance-endpoints")).toBe("/api/robot-control/map/preview,/api/robot-control/nav2/goal/execution/latest,/api/robot-control/base/feedback-samples,/api/robot-control/delivery/latest,/api/robot-control/summary");
+    expect(defaultTripExecutionGauge.attributes("data-current-motion-action-requires-safety-confirm")).toBe("true");
+    expect(defaultTripExecutionGauge.attributes("data-current-motion-action-minimal-precheck-safety-only")).toBe("true");
+    expect(defaultTripExecutionGauge.attributes("data-current-motion-action-camera-preflight-required")).toBe("false");
+    expect(defaultTripExecutionGauge.attributes("data-current-motion-action-radar-preflight-required")).toBe("false");
+    expect(defaultTripExecutionGauge.attributes("data-current-motion-action-route-wysiwyg-preflight-required")).toBe("false");
+    expect(defaultTripExecutionGauge.attributes("data-current-motion-action-sends-motion")).toBe("true");
     expect(defaultTripExecutionGauge.attributes("data-next-action")).toBe("先准备图上行程");
     expect(defaultTripExecutionGauge.attributes("data-fixed-nav2-execute-endpoint")).toBe("/api/robot-control/nav2/goal/execute");
     expect(defaultTripExecutionGauge.attributes("data-fixed-delivery-complete-endpoint")).toBe("/api/robot-control/delivery/complete");
@@ -9306,6 +9361,27 @@ describe("App", () => {
     expect(defaultTripClosureReadbackButton.attributes("data-submits-delivery")).toBe("false");
     expect(defaultTripClosureReadbackButton.attributes("data-stops-motion")).toBe("false");
     expect(wrapper.find('[data-testid="plain-trip-main-action-summary"]').text()).toBe("主按钮：先勾选现场安全确认；未勾选时不会发车。");
+    const currentMotionAction = wrapper.find('[data-testid="plain-trip-current-motion-action"]');
+    expect(currentMotionAction.exists()).toBe(true);
+    expect(currentMotionAction.text()).toBe("当前运动动作：重跑图上行程并复验轮速；先勾现场安全确认；发车前只看安全确认；执行后读回 5 个验收端点。");
+    expect(currentMotionAction.text()).not.toContain("Nav2");
+    expect(currentMotionAction.text()).not.toContain("raw");
+    expect(currentMotionAction.text()).not.toContain("/api/");
+    expect(currentMotionAction.attributes("data-state")).toBe("待安全确认");
+    expect(currentMotionAction.attributes("data-current-motion-action-id")).toBe("run_nav2_route");
+    expect(currentMotionAction.attributes("data-current-motion-action-required")).toBe("true");
+    expect(currentMotionAction.attributes("data-current-motion-action-label")).toBe("完整行程执行");
+    expect(currentMotionAction.attributes("data-current-motion-action-display-label")).toBe("重跑图上行程并复验轮速");
+    expect(currentMotionAction.attributes("data-current-motion-action-start-endpoint")).toBe("/api/robot-control/nav2/goal/execute");
+    expect(currentMotionAction.attributes("data-current-motion-action-stop-endpoint")).toBe("/api/robot-control/base/stop");
+    expect(currentMotionAction.attributes("data-current-motion-action-acceptance-endpoints")).toBe("/api/robot-control/map/preview,/api/robot-control/nav2/goal/execution/latest,/api/robot-control/base/feedback-samples,/api/robot-control/delivery/latest,/api/robot-control/summary");
+    expect(currentMotionAction.attributes("data-current-motion-action-requires-safety-confirm")).toBe("true");
+    expect(currentMotionAction.attributes("data-current-motion-action-minimal-precheck-safety-only")).toBe("true");
+    expect(currentMotionAction.attributes("data-current-motion-action-camera-preflight-required")).toBe("false");
+    expect(currentMotionAction.attributes("data-current-motion-action-radar-preflight-required")).toBe("false");
+    expect(currentMotionAction.attributes("data-current-motion-action-route-wysiwyg-preflight-required")).toBe("false");
+    expect(currentMotionAction.attributes("data-current-motion-action-sends-motion")).toBe("true");
+    expect(currentMotionAction.attributes("data-sends-motion-when-clicked")).toBe("false");
     const defaultKeyboardTelemetry = wrapper.find('[data-testid="keyboard-telemetry-summary"]');
     expect(defaultKeyboardTelemetry.text()).toBe("键盘仪表：方向 未按键；最佳连续 0/2 次；轮速未读取；未触发；当前不发车。");
     expect(defaultKeyboardTelemetry.attributes("data-state")).toBe("未满足");
