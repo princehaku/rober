@@ -7228,6 +7228,17 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.current_motion_action_proof_status).toBe(summary.trip_proof_status);
       expect(summary.current_motion_action_missing_evidence).toEqual(summary.trip_missing_evidence);
       expect(summary.current_motion_action_proof_plain).toBe(summary.trip_proof_plain);
+      expect(summary.current_motion_verification_pack_missing_evidence_labels).toEqual([
+        "同窗口轮速 L/R 非零",
+        "送达确认",
+        "按住窗口轮速 L/R 非零",
+        "松开后停稳",
+        "自由移动启动读回",
+      ]);
+      expect(summary.current_trip_execution_pack_missing_evidence_labels).toEqual([
+        "同窗口轮速 L/R 非零",
+        "送达确认",
+      ]);
       expect(summary.current_motion_action_minimal_precheck_safety_only).toBe(true);
       expect(summary.current_motion_action_camera_preflight_required).toBe(false);
       expect(summary.current_motion_action_radar_preflight_required).toBe(false);
@@ -7250,6 +7261,10 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.keyboard_proof_status).toBe("ready_to_verify");
       expect(summary.keyboard_missing_evidence).toEqual(["same_hold_window_wheel_lr_nonzero", "stop_after_release"]);
       expect(summary.keyboard_proof_plain).toContain("可验证键盘连续手控");
+      expect(summary.current_keyboard_control_pack_missing_evidence_labels).toEqual([
+        "按住窗口轮速 L/R 非零",
+        "松开后停稳",
+      ]);
       expect(summary.current_keyboard_action_required).toBe(true);
       expect(summary.current_keyboard_action_ready).toBe(true);
       expect(summary.current_keyboard_action_id).toBe("hold_keyboard");
@@ -7278,6 +7293,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.free_move_proof_status).toBe("ready_to_verify");
       expect(summary.free_move_missing_evidence).toEqual(["free_roam_latest_motion_ready"]);
       expect(summary.free_move_proof_plain).toContain("可验证自由自助移动");
+      expect(summary.current_free_move_control_pack_missing_evidence_labels).toEqual(["自由移动启动读回"]);
       expect(summary.current_free_move_action_required).toBe(true);
       expect(summary.current_free_move_action_ready).toBe(true);
       expect(summary.current_free_move_action_id).toBe("start_free_move");
@@ -7306,6 +7322,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.current_mapping_action_readback_endpoints).toEqual(summary.mapping_readback_endpoints);
       expect(summary.current_mapping_action_required_success_markers).toEqual(summary.mapping_required_success_markers);
       expect(summary.current_mapping_action_missing_evidence).toEqual(summary.mapping_missing_evidence);
+      expect(summary.current_mapping_control_pack_missing_evidence_labels).toEqual(["画面首帧", "雷达新鲜"]);
       expect(summary.current_mapping_action_requires_safety_confirm).toBe(summary.mapping_start_ready);
       expect(summary.current_mapping_action_safety_confirm_required_when_executed).toBe(true);
       expect(summary.current_mapping_action_minimal_precheck_safety_only).toBe(true);

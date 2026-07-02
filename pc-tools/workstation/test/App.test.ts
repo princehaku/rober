@@ -11550,6 +11550,7 @@ describe("App", () => {
     expect(currentMotionPack.attributes("data-primary-action-readback-endpoints")).toBe("/api/robot-control/map/preview,/api/robot-control/nav2/goal/execution/latest,/api/robot-control/base/feedback-samples,/api/robot-control/delivery/latest,/api/robot-control/summary");
     expect(currentMotionPack.attributes("data-ready-action-count")).toBe("3");
     expect(currentMotionPack.attributes("data-missing-evidence")).toBe("same_window_wheel_lr_nonzero,delivery_success,same_hold_window_wheel_lr_nonzero,stop_after_release,free_roam_latest_motion_ready");
+    expect(currentMotionPack.attributes("data-missing-evidence-labels")).toBe("同窗口轮速 L/R 非零,送达确认,按住窗口轮速 L/R 非零,松开后停稳,自由移动启动读回");
     expect(currentMotionPack.attributes("data-required-success-markers")).toBe("map_route_visible,nav2_goal_succeeded,same_window_wheel_lr_nonzero,delivery_success,same_hold_window_wheel_lr_nonzero,stop_after_release,free_roam_latest_motion_ready");
     expect(currentMotionPack.attributes("data-requires-safety-confirm")).toBe("true");
     expect(currentMotionPack.attributes("data-minimal-precheck-safety-only")).toBe("true");
@@ -11581,6 +11582,7 @@ describe("App", () => {
     expect(keyboardPack.attributes("data-post-hold-readback-endpoints")).toBe("/api/robot-control/base/feedback-samples,/api/robot-control/summary");
     expect(keyboardPack.attributes("data-required-success-markers")).toBe("same_hold_window_wheel_lr_nonzero,stop_after_release");
     expect(keyboardPack.attributes("data-missing-evidence")).toBe("same_hold_window_wheel_lr_nonzero,stop_after_release");
+    expect(keyboardPack.attributes("data-missing-evidence-labels")).toBe("按住窗口轮速 L/R 非零,松开后停稳");
     expect(keyboardPack.attributes("data-proof-status")).toBe("ready_to_verify");
     expect(keyboardPack.attributes("data-ready")).toBe("true");
     expect(keyboardPack.attributes("data-requires-safety-confirm")).toBe("true");
@@ -11626,6 +11628,7 @@ describe("App", () => {
     expect(tripPack.attributes("data-readback-endpoints")).toBe("/api/robot-control/map/preview,/api/robot-control/nav2/goal/execution/latest,/api/robot-control/base/feedback-samples,/api/robot-control/delivery/latest,/api/robot-control/summary");
     expect(tripPack.attributes("data-required-success-markers")).toBe("map_route_visible,nav2_goal_succeeded,same_window_wheel_lr_nonzero,delivery_success");
     expect(tripPack.attributes("data-missing-evidence")).toBe("same_window_wheel_lr_nonzero,delivery_success");
+    expect(tripPack.attributes("data-missing-evidence-labels")).toBe("同窗口轮速 L/R 非零,送达确认");
     expect(tripPack.attributes("data-route-ready-on-map")).toBe("true");
     expect(tripPack.attributes("data-nav2-goal-succeeded")).toBe("true");
     expect(tripPack.attributes("data-same-window-wheel-lr-nonzero")).toBe("false");
@@ -11671,6 +11674,7 @@ describe("App", () => {
     expect(freeMovePack.attributes("data-post-start-readback-sequence-labels")).toBe("读取自由移动状态,刷新地图画面,刷新总览");
     expect(freeMovePack.attributes("data-required-success-markers")).toBe("free_roam_latest_motion_ready");
     expect(freeMovePack.attributes("data-missing-evidence")).toBe("free_roam_latest_motion_ready");
+    expect(freeMovePack.attributes("data-missing-evidence-labels")).toBe("自由移动启动读回");
     expect(freeMovePack.attributes("data-proof-status")).toBe("ready_to_verify");
     expect(freeMovePack.attributes("data-ready")).toBe("true");
     expect(freeMovePack.attributes("data-running")).toBe("false");
@@ -11723,6 +11727,7 @@ describe("App", () => {
     expect(mappingPack.attributes("data-post-start-readback-sequence-labels")).toBe("读取自由移动状态,刷新地图画面,刷新总览");
     expect(mappingPack.attributes("data-required-success-markers")).toBe("camera_first_frame,lidar_fresh");
     expect(mappingPack.attributes("data-missing-evidence")).toBe("camera_first_frame,lidar_fresh");
+    expect(mappingPack.attributes("data-missing-evidence-labels")).toBe("画面首帧,雷达新鲜");
     expect(mappingPack.attributes("data-proof-status")).toBe("blocked");
     expect(mappingPack.attributes("data-ready")).toBe("false");
     expect(mappingPack.attributes("data-requires-safety-confirm")).toBe("false");

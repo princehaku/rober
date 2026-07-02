@@ -5168,6 +5168,20 @@ keyboard、free-roam、建图 runtime 或 `/cmd_vel`。当前 WYSIWYG 缺口因�
 相机/雷达/现场报告/路线 WYSIWYG 发车前置均为 `false`，展示该包本身不发车、不启动 Nav2、keyboard、
 free-roam、建图 runtime 或 `/cmd_vel`。
 
+2026-07-02 16:34 CST 起，当前运动验收包和四个控制包都暴露中文缺失证据标签：
+`current_motion_verification_pack_missing_evidence_labels`、
+`current_trip_execution_pack_missing_evidence_labels`、
+`current_keyboard_control_pack_missing_evidence_labels`、
+`current_free_move_control_pack_missing_evidence_labels` 和
+`current_mapping_control_pack_missing_evidence_labels`。普通 PC DOM 同步在
+`plain-current-motion-verification-pack`、`plain-current-trip-execution-pack`、
+`plain-current-keyboard-control-pack`、`plain-current-free-move-control-pack`、
+`plain-current-mapping-control-pack` 暴露 `data-missing-evidence-labels`。这些标签只把
+`same_window_wheel_lr_nonzero`、`delivery_success`、`same_hold_window_wheel_lr_nonzero`、
+`stop_after_release`、`free_roam_latest_motion_ready`、`camera_first_frame`、`lidar_fresh`
+翻译成普通用户可读中文；读取和展示标签不执行 Nav2、manual、keyboard、free-roam、建图 runtime、
+delivery、stop 或 `/cmd_vel`。
+
 2026-07-02 15:20 CST 起，共享 MJPEG 首屏首帧 fallback 改成短单次尝试、多格式覆盖：单次格式尝试
 `1.2s`，总窗口仍为 `9s`，确保现场 DV20 枚举里的 `YUYV@320x240@25`、`YUYV@640x480@22`
 和 `default@current` 会进入真实尝试，而不是被前两个 MJPG 模式耗尽预算。上车验证后

@@ -3911,6 +3911,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   current_trip_execution_pack_readback_endpoints?: RobotControlNav2RouteAcceptancePacket["readback_endpoints"];
   current_trip_execution_pack_required_success_markers?: RobotControlNav2RouteAcceptancePacket["required_success_markers"];
   current_trip_execution_pack_missing_evidence?: RobotControlNav2RouteAcceptancePacket["missing_evidence"];
+  current_trip_execution_pack_missing_evidence_labels?: string[];
   current_trip_execution_pack_route_ready_on_map?: RobotControlNav2RouteAcceptancePacket["route_ready_on_map"];
   current_trip_execution_pack_nav2_goal_succeeded?: RobotControlNav2RouteAcceptancePacket["nav2_goal_succeeded"];
   current_trip_execution_pack_same_window_wheel_lr_nonzero?: RobotControlNav2RouteAcceptancePacket["same_window_wheel_lr_nonzero"];
@@ -3954,6 +3955,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   current_motion_verification_pack_primary_action_readback_endpoints?: string[];
   current_motion_verification_pack_ready_action_count?: number;
   current_motion_verification_pack_missing_evidence?: string[];
+  current_motion_verification_pack_missing_evidence_labels?: string[];
   current_motion_verification_pack_required_success_markers?: string[];
   current_motion_verification_pack_requires_safety_confirm?: boolean;
   current_motion_verification_pack_minimal_precheck_safety_only?: boolean;
@@ -4055,6 +4057,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   >;
   current_keyboard_control_pack_required_success_markers?: RobotControlLiveMotionRunbookItem["missing_evidence"];
   current_keyboard_control_pack_missing_evidence?: RobotControlLiveMotionRunbookItem["missing_evidence"];
+  current_keyboard_control_pack_missing_evidence_labels?: string[];
   current_keyboard_control_pack_proof_status?: RobotControlLiveMotionRunbookItem["proof_status"];
   current_keyboard_control_pack_ready?: RobotControlLiveMotionRunbookItem["ready"];
   current_keyboard_control_pack_requires_safety_confirm?: RobotControlLiveMotionRunbookItem["safety_confirm_required"];
@@ -4146,6 +4149,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   current_free_move_control_pack_post_start_readback_sequence_labels?: string[];
   current_free_move_control_pack_required_success_markers?: RobotControlLiveMotionRunbookItem["missing_evidence"];
   current_free_move_control_pack_missing_evidence?: RobotControlLiveMotionRunbookItem["missing_evidence"];
+  current_free_move_control_pack_missing_evidence_labels?: string[];
   current_free_move_control_pack_proof_status?: RobotControlLiveMotionRunbookItem["proof_status"];
   current_free_move_control_pack_ready?: RobotControlLiveMotionRunbookItem["ready"];
   current_free_move_control_pack_running?: boolean;
@@ -4250,6 +4254,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   current_mapping_control_pack_post_start_readback_sequence_labels?: string[];
   current_mapping_control_pack_required_success_markers?: RobotControlLiveMotionRunbookItem["missing_evidence"];
   current_mapping_control_pack_missing_evidence?: RobotControlLiveMotionRunbookItem["missing_evidence"];
+  current_mapping_control_pack_missing_evidence_labels?: string[];
   current_mapping_control_pack_proof_status?: RobotControlLiveMotionRunbookItem["proof_status"];
   current_mapping_control_pack_ready?: RobotControlLiveMotionRunbookItem["ready"];
   current_mapping_control_pack_requires_safety_confirm?: RobotControlLiveMotionRunbookItem["safety_confirm_required"];

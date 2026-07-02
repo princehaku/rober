@@ -4318,6 +4318,8 @@ const plainCurrentMotionVerificationPack = computed(() => {
       ?.filter((item) => actionIdSet.has(item.action_id))
       .map((item) => item.id)
     ?? [];
+  const missingEvidenceLabels = summary?.current_motion_verification_pack_missing_evidence_labels
+    ?? missingEvidence.map(plainCurrentControlPackEvidenceLabel);
   const primaryAction = packet?.safety_confirm_ready_actions
     ?.find((action) => action.id === packet.primary_safety_confirm_ready_action_id);
   const plain = summary?.current_motion_verification_pack_plain
@@ -4346,6 +4348,7 @@ const plainCurrentMotionVerificationPack = computed(() => {
     primaryActionReadbackEndpointsText: (summary?.current_motion_verification_pack_primary_action_readback_endpoints ?? primaryAction?.acceptance_endpoints ?? []).join(",") || "none",
     readyActionCount: summary?.current_motion_verification_pack_ready_action_count ?? actionIds.length,
     missingEvidenceText: missingEvidence.join(",") || "none",
+    missingEvidenceLabelsText: missingEvidenceLabels.join(",") || "none",
     requiredSuccessMarkersText: summary?.current_motion_verification_pack_required_success_markers?.join(",") || "none",
     requiresSafetyConfirm: summary?.current_motion_verification_pack_requires_safety_confirm ?? actionIds.length > 0,
     minimalPrecheckSafetyOnly: summary?.current_motion_verification_pack_minimal_precheck_safety_only ?? packet?.minimal_precheck_safety_only ?? false,
@@ -4432,6 +4435,19 @@ const plainCurrentMinimalPrecheckPack = computed(() => {
     stopsMotionWhenClicked: summary?.current_minimal_precheck_pack_stops_motion_when_clicked ?? false,
   };
 });
+function plainCurrentControlPackEvidenceLabel(id: string): string {
+  return {
+    same_window_wheel_lr_nonzero: "同窗口轮速 L/R 非零",
+    delivery_success: "送达确认",
+    same_hold_window_wheel_lr_nonzero: "按住窗口轮速 L/R 非零",
+    stop_after_release: "松开后停稳",
+    free_roam_latest_motion_ready: "自由移动启动读回",
+    camera_first_frame: "画面首帧",
+    lidar_fresh: "雷达新鲜",
+    mapping_started: "建图启动",
+    mapping_runtime_active: "建图 runtime 运行",
+  }[id] ?? id;
+}
 const plainCurrentKeyboardControlPack = computed(() => {
   // 键盘包只说明“启用不发车、按住才动、松开后只读复验”，不替用户自动启用或发送按键。
   const summary = robotSummary.value;
@@ -4448,6 +4464,8 @@ const plainCurrentKeyboardControlPack = computed(() => {
   const requiredSuccessMarkers = summary?.current_keyboard_control_pack_required_success_markers
     ?? summary?.current_keyboard_action_required_success_markers
     ?? [];
+  const missingEvidenceLabels = summary?.current_keyboard_control_pack_missing_evidence_labels
+    ?? missingEvidence.map(plainCurrentControlPackEvidenceLabel);
   const status = summary?.current_keyboard_control_pack_status
     ?? (missingEvidence.length ? "ready_for_safety_confirm" : "complete");
   const defaultPlain = status === "complete"
@@ -4472,6 +4490,7 @@ const plainCurrentKeyboardControlPack = computed(() => {
     postHoldReadbackEndpointsText: postHoldReadbackEndpoints.join(",") || "none",
     requiredSuccessMarkersText: requiredSuccessMarkers.join(",") || "none",
     missingEvidenceText: missingEvidence.join(",") || "none",
+    missingEvidenceLabelsText: missingEvidenceLabels.join(",") || "none",
     proofStatus: summary?.current_keyboard_control_pack_proof_status ?? fallback.actionProofStatus,
     ready: summary?.current_keyboard_control_pack_ready ?? fallback.actionReady,
     requiresSafetyConfirm: summary?.current_keyboard_control_pack_safety_confirm_required
@@ -4525,6 +4544,8 @@ const plainCurrentFreeMoveControlPack = computed(() => {
   const requiredSuccessMarkers = summary?.current_free_move_control_pack_required_success_markers
     ?? summary?.current_free_move_action_required_success_markers
     ?? [];
+  const missingEvidenceLabels = summary?.current_free_move_control_pack_missing_evidence_labels
+    ?? missingEvidence.map(plainCurrentControlPackEvidenceLabel);
   const mappingStartMissingReasons = summary?.current_free_move_control_pack_mapping_start_missing_reasons
     ?? summary?.mapping_start_missing_reasons
     ?? [];
@@ -4554,6 +4575,7 @@ const plainCurrentFreeMoveControlPack = computed(() => {
     postStartReadbackSequenceLabelsText: postStartReadbackSequenceLabels.join(",") || "none",
     requiredSuccessMarkersText: requiredSuccessMarkers.join(",") || "none",
     missingEvidenceText: missingEvidence.join(",") || "none",
+    missingEvidenceLabelsText: missingEvidenceLabels.join(",") || "none",
     proofStatus: summary?.current_free_move_control_pack_proof_status ?? summary?.current_free_move_action_proof_status ?? "blocked",
     ready: summary?.current_free_move_control_pack_ready ?? summary?.current_free_move_action_ready ?? false,
     running: summary?.current_free_move_control_pack_running ?? summary?.free_move_running ?? false,
@@ -4612,6 +4634,8 @@ const plainCurrentMappingControlPack = computed(() => {
   const requiredSuccessMarkers = summary?.current_mapping_control_pack_required_success_markers
     ?? summary?.current_mapping_action_required_success_markers
     ?? [];
+  const missingEvidenceLabels = summary?.current_mapping_control_pack_missing_evidence_labels
+    ?? missingEvidence.map(plainCurrentControlPackEvidenceLabel);
   const status = summary?.current_mapping_control_pack_status
     ?? (summary?.current_mapping_action_ready ? "ready_for_safety_confirm" : "blocked");
   const cameraReady = summary?.current_mapping_control_pack_camera_ready ?? summary?.current_mapping_action_camera_ready ?? false;
@@ -4640,6 +4664,7 @@ const plainCurrentMappingControlPack = computed(() => {
     postStartReadbackSequenceLabelsText: postStartReadbackSequenceLabels.join(",") || "none",
     requiredSuccessMarkersText: requiredSuccessMarkers.join(",") || "none",
     missingEvidenceText: missingEvidence.join(",") || "none",
+    missingEvidenceLabelsText: missingEvidenceLabels.join(",") || "none",
     proofStatus: summary?.current_mapping_control_pack_proof_status ?? summary?.current_mapping_action_proof_status ?? "blocked",
     ready: summary?.current_mapping_control_pack_ready ?? summary?.current_mapping_action_ready ?? false,
     requiresSafetyConfirm: summary?.current_mapping_control_pack_requires_safety_confirm ?? summary?.current_mapping_action_requires_safety_confirm ?? false,
@@ -4686,6 +4711,8 @@ const plainCurrentTripExecutionPack = computed(() => {
   const summary = robotSummary.value;
   const packet = summary?.nav2_route_acceptance_packet;
   const missingEvidence = summary?.current_trip_execution_pack_missing_evidence ?? packet?.missing_evidence ?? [];
+  const missingEvidenceLabels = summary?.current_trip_execution_pack_missing_evidence_labels
+    ?? missingEvidence.map(plainCurrentControlPackEvidenceLabel);
   const readbackEndpoints = summary?.current_trip_execution_pack_readback_endpoints ?? packet?.readback_endpoints ?? [];
   const requiredSuccessMarkers = summary?.current_trip_execution_pack_required_success_markers ?? packet?.required_success_markers ?? [];
   const status = summary?.current_trip_execution_pack_status
@@ -4711,6 +4738,7 @@ const plainCurrentTripExecutionPack = computed(() => {
     readbackEndpointsText: readbackEndpoints.join(",") || "none",
     requiredSuccessMarkersText: requiredSuccessMarkers.join(",") || "none",
     missingEvidenceText: missingEvidence.join(",") || "none",
+    missingEvidenceLabelsText: missingEvidenceLabels.join(",") || "none",
     routeReadyOnMap: summary?.current_trip_execution_pack_route_ready_on_map ?? packet?.route_ready_on_map ?? false,
     nav2GoalSucceeded: summary?.current_trip_execution_pack_nav2_goal_succeeded ?? packet?.nav2_goal_succeeded ?? false,
     sameWindowWheelLrNonzero: summary?.current_trip_execution_pack_same_window_wheel_lr_nonzero ?? packet?.same_window_wheel_lr_nonzero ?? false,
@@ -19937,6 +19965,7 @@ onBeforeUnmount(() => {
             :data-primary-action-readback-endpoints="plainCurrentMotionVerificationPack.primaryActionReadbackEndpointsText"
             :data-ready-action-count="String(plainCurrentMotionVerificationPack.readyActionCount)"
             :data-missing-evidence="plainCurrentMotionVerificationPack.missingEvidenceText"
+            :data-missing-evidence-labels="plainCurrentMotionVerificationPack.missingEvidenceLabelsText"
             :data-required-success-markers="plainCurrentMotionVerificationPack.requiredSuccessMarkersText"
             :data-requires-safety-confirm="String(plainCurrentMotionVerificationPack.requiresSafetyConfirm)"
             :data-minimal-precheck-safety-only="String(plainCurrentMotionVerificationPack.minimalPrecheckSafetyOnly)"
@@ -19970,6 +19999,7 @@ onBeforeUnmount(() => {
             :data-post-hold-readback-endpoints="plainCurrentKeyboardControlPack.postHoldReadbackEndpointsText"
             :data-required-success-markers="plainCurrentKeyboardControlPack.requiredSuccessMarkersText"
             :data-missing-evidence="plainCurrentKeyboardControlPack.missingEvidenceText"
+            :data-missing-evidence-labels="plainCurrentKeyboardControlPack.missingEvidenceLabelsText"
             :data-proof-status="plainCurrentKeyboardControlPack.proofStatus"
             :data-ready="String(plainCurrentKeyboardControlPack.ready)"
             :data-requires-safety-confirm="String(plainCurrentKeyboardControlPack.requiresSafetyConfirm)"
@@ -20017,6 +20047,7 @@ onBeforeUnmount(() => {
             :data-readback-endpoints="plainCurrentTripExecutionPack.readbackEndpointsText"
             :data-required-success-markers="plainCurrentTripExecutionPack.requiredSuccessMarkersText"
             :data-missing-evidence="plainCurrentTripExecutionPack.missingEvidenceText"
+            :data-missing-evidence-labels="plainCurrentTripExecutionPack.missingEvidenceLabelsText"
             :data-route-ready-on-map="String(plainCurrentTripExecutionPack.routeReadyOnMap)"
             :data-nav2-goal-succeeded="String(plainCurrentTripExecutionPack.nav2GoalSucceeded)"
             :data-same-window-wheel-lr-nonzero="String(plainCurrentTripExecutionPack.sameWindowWheelLrNonzero)"
@@ -20064,6 +20095,7 @@ onBeforeUnmount(() => {
             :data-post-start-readback-sequence-labels="plainCurrentFreeMoveControlPack.postStartReadbackSequenceLabelsText"
             :data-required-success-markers="plainCurrentFreeMoveControlPack.requiredSuccessMarkersText"
             :data-missing-evidence="plainCurrentFreeMoveControlPack.missingEvidenceText"
+            :data-missing-evidence-labels="plainCurrentFreeMoveControlPack.missingEvidenceLabelsText"
             :data-proof-status="plainCurrentFreeMoveControlPack.proofStatus"
             :data-ready="String(plainCurrentFreeMoveControlPack.ready)"
             :data-running="String(plainCurrentFreeMoveControlPack.running)"
@@ -20118,6 +20150,7 @@ onBeforeUnmount(() => {
             :data-post-start-readback-sequence-labels="plainCurrentMappingControlPack.postStartReadbackSequenceLabelsText"
             :data-required-success-markers="plainCurrentMappingControlPack.requiredSuccessMarkersText"
             :data-missing-evidence="plainCurrentMappingControlPack.missingEvidenceText"
+            :data-missing-evidence-labels="plainCurrentMappingControlPack.missingEvidenceLabelsText"
             :data-proof-status="plainCurrentMappingControlPack.proofStatus"
             :data-ready="String(plainCurrentMappingControlPack.ready)"
             :data-requires-safety-confirm="String(plainCurrentMappingControlPack.requiresSafetyConfirm)"

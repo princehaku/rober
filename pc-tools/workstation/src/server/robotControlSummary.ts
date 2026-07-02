@@ -10894,6 +10894,17 @@ export async function buildRobotControlSummary(
   const currentMotionVerificationPackMissingEvidence = Array.from(new Set(
     currentMotionVerificationPackReadySteps.flatMap((item) => item.missing_evidence),
   ));
+  const currentControlPackEvidenceLabel = (id: string): string => ({
+    same_window_wheel_lr_nonzero: "同窗口轮速 L/R 非零",
+    delivery_success: "送达确认",
+    same_hold_window_wheel_lr_nonzero: "按住窗口轮速 L/R 非零",
+    stop_after_release: "松开后停稳",
+    free_roam_latest_motion_ready: "自由移动启动读回",
+    camera_first_frame: "画面首帧",
+    lidar_fresh: "雷达新鲜",
+    mapping_started: "建图启动",
+    mapping_runtime_active: "建图 runtime 运行",
+  }[id] ?? id);
   const currentMotionVerificationPackRequiredSuccessMarkers = Array.from(new Set([
     ...liveClosureSummary.wheel_rerun_required_success_markers,
     ...keyboardActionRequiredSuccessMarkers,
@@ -11647,6 +11658,7 @@ export async function buildRobotControlSummary(
     current_trip_execution_pack_readback_endpoints: nav2RouteAcceptancePacket.readback_endpoints,
     current_trip_execution_pack_required_success_markers: nav2RouteAcceptancePacket.required_success_markers,
     current_trip_execution_pack_missing_evidence: nav2RouteAcceptancePacket.missing_evidence,
+    current_trip_execution_pack_missing_evidence_labels: nav2RouteAcceptancePacket.missing_evidence.map(currentControlPackEvidenceLabel),
     current_trip_execution_pack_route_ready_on_map: nav2RouteAcceptancePacket.route_ready_on_map,
     current_trip_execution_pack_nav2_goal_succeeded: nav2RouteAcceptancePacket.nav2_goal_succeeded,
     current_trip_execution_pack_same_window_wheel_lr_nonzero: nav2RouteAcceptancePacket.same_window_wheel_lr_nonzero,
@@ -11692,6 +11704,7 @@ export async function buildRobotControlSummary(
     current_motion_verification_pack_primary_action_readback_endpoints: currentMotionVerificationPackPrimaryReadbackEndpoints,
     current_motion_verification_pack_ready_action_count: currentMotionVerificationPackActionIds.length,
     current_motion_verification_pack_missing_evidence: currentMotionVerificationPackMissingEvidence,
+    current_motion_verification_pack_missing_evidence_labels: currentMotionVerificationPackMissingEvidence.map(currentControlPackEvidenceLabel),
     current_motion_verification_pack_required_success_markers: currentMotionVerificationPackRequiredSuccessMarkers,
     current_motion_verification_pack_requires_safety_confirm: currentMotionVerificationPackActionIds.length > 0,
     current_motion_verification_pack_minimal_precheck_safety_only: currentMotionVerificationPackMinimalPrecheckSafetyOnly,
@@ -11792,6 +11805,7 @@ export async function buildRobotControlSummary(
     current_keyboard_control_pack_post_hold_readback_endpoints: keyboardPostHoldReadbackEndpoints,
     current_keyboard_control_pack_required_success_markers: keyboardActionRequiredSuccessMarkers,
     current_keyboard_control_pack_missing_evidence: keyboardActionMissingEvidence,
+    current_keyboard_control_pack_missing_evidence_labels: keyboardActionMissingEvidence.map(currentControlPackEvidenceLabel),
     current_keyboard_control_pack_proof_status: keyboardRunbookItem?.proof_status ?? "blocked",
     current_keyboard_control_pack_ready: keyboardRunbookItem?.ready ?? liveClosureSummary.keyboard_continuous_ready,
     current_keyboard_control_pack_requires_safety_confirm: keyboardRunbookItem?.safety_confirm_required ?? liveClosureSummary.keyboard_continuous_safety_confirm_required,
@@ -11883,6 +11897,7 @@ export async function buildRobotControlSummary(
     current_free_move_control_pack_post_start_readback_sequence_labels: freeMovePostStartReadbackSequenceLabels,
     current_free_move_control_pack_required_success_markers: freeMoveActionRequiredSuccessMarkers,
     current_free_move_control_pack_missing_evidence: freeMoveActionMissingEvidence,
+    current_free_move_control_pack_missing_evidence_labels: freeMoveActionMissingEvidence.map(currentControlPackEvidenceLabel),
     current_free_move_control_pack_proof_status: freeMoveRunbookItem?.proof_status ?? "blocked",
     current_free_move_control_pack_ready: freeMoveRunbookItem?.ready ?? liveClosureSummary.free_move_start_ready,
     current_free_move_control_pack_running: liveClosureSummary.free_roam_motion_ready,
@@ -11987,6 +12002,7 @@ export async function buildRobotControlSummary(
     current_mapping_control_pack_post_start_readback_sequence_labels: mappingPostStartReadbackSequenceLabels,
     current_mapping_control_pack_required_success_markers: mappingActionRequiredSuccessMarkers,
     current_mapping_control_pack_missing_evidence: mappingActionMissingEvidence,
+    current_mapping_control_pack_missing_evidence_labels: mappingActionMissingEvidence.map(currentControlPackEvidenceLabel),
     current_mapping_control_pack_proof_status: mappingRunbookItem?.proof_status ?? "blocked",
     current_mapping_control_pack_ready: mappingRunbookItem?.ready ?? liveClosureSummary.mapping_start_ready,
     current_mapping_control_pack_requires_safety_confirm: mappingRunbookItem?.safety_confirm_required ?? liveClosureSummary.mapping_start_ready,
