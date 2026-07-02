@@ -3989,8 +3989,11 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   current_mapping_action_sends_motion?: RobotControlLiveMotionRunbookItem["sends_motion_when_executed"];
   current_mapping_action_starts_map_runtime_when_executed?: true;
   current_mapping_action_starts_nav2?: false;
+  current_mapping_action_starts_manual?: false;
   current_mapping_action_starts_keyboard?: false;
+  current_mapping_action_starts_free_roam?: false;
   current_mapping_action_submits_delivery?: false;
+  current_mapping_action_stops_motion?: false;
   field_acceptance_hardware_action_ids?: RobotControlFieldAcceptancePacket["hardware_action_ids"];
   field_acceptance_hardware_action_labels?: RobotControlFieldAcceptancePacket["hardware_action_labels"];
   field_acceptance_hardware_action_after_readback_endpoints?: RobotControlFieldAcceptancePacket["hardware_action_after_readback_endpoints"];

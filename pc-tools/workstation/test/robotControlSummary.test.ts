@@ -1597,6 +1597,13 @@ describe("robotControlSummary", () => {
     expect(summary.current_mapping_action_post_start_readback_starts_map_runtime).toBe(false);
     expect(summary.current_mapping_action_post_start_readback_submits_delivery).toBe(false);
     expect(summary.current_mapping_action_post_start_readback_stops_motion).toBe(false);
+    expect(summary.current_mapping_action_starts_map_runtime_when_executed).toBe(true);
+    expect(summary.current_mapping_action_starts_nav2).toBe(false);
+    expect(summary.current_mapping_action_starts_manual).toBe(false);
+    expect(summary.current_mapping_action_starts_keyboard).toBe(false);
+    expect(summary.current_mapping_action_starts_free_roam).toBe(false);
+    expect(summary.current_mapping_action_submits_delivery).toBe(false);
+    expect(summary.current_mapping_action_stops_motion).toBe(false);
     expect(summary.mapping_required_success_markers).toEqual(["camera_first_frame", "lidar_fresh"]);
     expect(summary.mapping_proof_status).toBe("blocked");
     expect(summary.mapping_missing_evidence).toEqual(["camera_first_frame", "lidar_fresh"]);

@@ -9732,6 +9732,12 @@ const plainCurrentMappingAction = computed<PlainCurrentMappingAction>(() => {
     safetyConfirmRequiredWhenExecuted: Boolean(summary?.current_mapping_action_safety_confirm_required_when_executed ?? true),
     minimalPrecheckSafetyOnly: Boolean(summary?.current_mapping_action_minimal_precheck_safety_only ?? true),
     startsMapRuntimeWhenExecuted: Boolean(summary?.current_mapping_action_starts_map_runtime_when_executed ?? true),
+    startsNav2: Boolean(summary?.current_mapping_action_starts_nav2 ?? false),
+    startsManual: Boolean(summary?.current_mapping_action_starts_manual ?? false),
+    startsKeyboard: Boolean(summary?.current_mapping_action_starts_keyboard ?? false),
+    startsFreeRoam: Boolean(summary?.current_mapping_action_starts_free_roam ?? false),
+    submitsDelivery: Boolean(summary?.current_mapping_action_submits_delivery ?? false),
+    stopsMotion: Boolean(summary?.current_mapping_action_stops_motion ?? false),
   };
 });
 const plainFreeRoamDomEvidence = computed<PlainFreeRoamDomEvidence>(() => {
@@ -23421,6 +23427,12 @@ onBeforeUnmount(() => {
                 :data-current-mapping-action-safety-confirm-required-when-executed="String(plainCurrentMappingAction.safetyConfirmRequiredWhenExecuted)"
                 :data-current-mapping-action-minimal-precheck-safety-only="String(plainCurrentMappingAction.minimalPrecheckSafetyOnly)"
                 :data-current-mapping-action-starts-map-runtime-when-executed="String(plainCurrentMappingAction.startsMapRuntimeWhenExecuted)"
+                :data-current-mapping-action-starts-nav2="String(plainCurrentMappingAction.startsNav2)"
+                :data-current-mapping-action-starts-manual="String(plainCurrentMappingAction.startsManual)"
+                :data-current-mapping-action-starts-keyboard="String(plainCurrentMappingAction.startsKeyboard)"
+                :data-current-mapping-action-starts-free-roam="String(plainCurrentMappingAction.startsFreeRoam)"
+                :data-current-mapping-action-submits-delivery="String(plainCurrentMappingAction.submitsDelivery)"
+                :data-current-mapping-action-stops-motion="String(plainCurrentMappingAction.stopsMotion)"
               >
                 {{ plainCurrentMappingAction.text }}
               </p>

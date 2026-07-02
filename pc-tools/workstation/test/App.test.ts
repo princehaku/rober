@@ -944,8 +944,11 @@ const fixtures: Record<string, unknown> = {
     current_mapping_action_sends_motion: true,
     current_mapping_action_starts_map_runtime_when_executed: true,
     current_mapping_action_starts_nav2: false,
+    current_mapping_action_starts_manual: false,
     current_mapping_action_starts_keyboard: false,
+    current_mapping_action_starts_free_roam: false,
     current_mapping_action_submits_delivery: false,
+    current_mapping_action_stops_motion: false,
     free_move_minimal_precheck_safety_only: true,
     free_move_safety_confirm_required: true,
     free_move_camera_preflight_required: false,
@@ -8217,6 +8220,12 @@ describe("App", () => {
     expect(currentMappingAction.attributes("data-current-mapping-action-safety-confirm-required-when-executed")).toBe("true");
     expect(currentMappingAction.attributes("data-current-mapping-action-minimal-precheck-safety-only")).toBe("true");
     expect(currentMappingAction.attributes("data-current-mapping-action-starts-map-runtime-when-executed")).toBe("true");
+    expect(currentMappingAction.attributes("data-current-mapping-action-starts-nav2")).toBe("false");
+    expect(currentMappingAction.attributes("data-current-mapping-action-starts-manual")).toBe("false");
+    expect(currentMappingAction.attributes("data-current-mapping-action-starts-keyboard")).toBe("false");
+    expect(currentMappingAction.attributes("data-current-mapping-action-starts-free-roam")).toBe("false");
+    expect(currentMappingAction.attributes("data-current-mapping-action-submits-delivery")).toBe("false");
+    expect(currentMappingAction.attributes("data-current-mapping-action-stops-motion")).toBe("false");
     const mappingUnlockRefresh = wrapper.find('[data-testid="plain-mapping-unlock-refresh"]');
     expect(mappingUnlockRefresh.text()).toBe("刷新建图条件（只读）");
     expect(mappingUnlockRefresh.attributes("data-fixed-radar-refresh-endpoint")).toBe("/api/robot-control/radar/scan-proof/refresh");
