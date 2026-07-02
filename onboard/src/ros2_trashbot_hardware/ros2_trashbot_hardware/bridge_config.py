@@ -32,6 +32,9 @@ class BridgeConfig:
 
     port: str
     baudrate: int
+    command_transport: str
+    wave_rover_http_base_url: str
+    http_timeout_s: float
     command_mode: str
     track_width_m: float
     max_wheel_speed_mps: float
@@ -58,8 +61,17 @@ def validate_startup_config(
     module_type: int,
     feedback_interval_ms: int,
     odom_publish_hz: float,
+    command_transport: str = "serial",
+    wave_rover_http_base_url: str = "",
+    http_timeout_s: float = 0.6,
 ) -> None:
     """打开 UART 或移动底盘前校验 driver 参数。"""
+    if command_transport not in {"serial", "http"}:
+        raise ValueError("command_transport must be serial or http")
+    if command_transport == "http" and not wave_rover_http_base_url.startswith(("http://", "https://")):
+        raise ValueError("wave_rover_http_base_url must start with http:// or https:// when command_transport=http")
+    if http_timeout_s <= 0:
+        raise ValueError("http_timeout_s must be > 0")
     if command_mode.lower() not in VALID_COMMAND_MODES:
         raise ValueError(f"command_mode must be one of {VALID_COMMAND_MODES}")
     if track_width_m <= 0:
@@ -85,6 +97,10 @@ def declare_bridge_parameters(node: Any) -> None:
     node.declare_parameter("serial_baudrate", 115200)
     node.declare_parameter("port", "")
     node.declare_parameter("baudrate", 0)
+    # 默认仍用串口写命令；现场 UART TX 不通时可切到 ESP32 原厂 HTTP /js 控制面。
+    node.declare_parameter("command_transport", "serial")
+    node.declare_parameter("wave_rover_http_base_url", "")
+    node.declare_parameter("http_timeout_s", 0.6)
     # 仍然订阅 ROS /cmd_vel，但默认落到底盘时使用 vendor T=11 PWM。
     # 现场 2026-07-03 复测证明 T=13 在当前 WAVE ROVER 上轮速回填一直为 0，
     # 而 T=11/PWM164 可产生同窗口 IMU 运动信号；因此默认优先能动。
@@ -93,7 +109,7 @@ def declare_bridge_parameters(node: Any) -> None:
     node.declare_parameter("max_wheel_speed_mps", 1.3)
     node.declare_parameter("pwm_min_abs", 164)
     node.declare_parameter("pwm_max_abs", 164)
-    # vendor json_cmd.h 定义 T=900 main/module；WAVE ROVER 底盘应显式保持 main_type=1,module_type=0。
+    # vendor json_cmd.h 定义 T=900 main/module；现场可用 config.yaml 的 WAVE ROVER/UGV02 口径覆盖为 main_type=2,module_type=0。
     node.declare_parameter("main_type", DEFAULT_MAIN_TYPE)
     node.declare_parameter("module_type", DEFAULT_MODULE_TYPE)
     node.declare_parameter("feedback_interval_ms", 100)
@@ -117,6 +133,9 @@ def load_bridge_config(node: Any) -> BridgeConfig:
     config = BridgeConfig(
         port=alias_port or canonical_port,
         baudrate=alias_baudrate or canonical_baudrate,
+        command_transport=str(node.get_parameter("command_transport").value).lower(),
+        wave_rover_http_base_url=str(node.get_parameter("wave_rover_http_base_url").value).rstrip("/"),
+        http_timeout_s=float(node.get_parameter("http_timeout_s").value),
         command_mode=str(node.get_parameter("command_mode").value).lower(),
         track_width_m=float(node.get_parameter("track_width_m").value),
         max_wheel_speed_mps=float(node.get_parameter("max_wheel_speed_mps").value),
@@ -142,5 +161,8 @@ def load_bridge_config(node: Any) -> BridgeConfig:
         config.module_type,
         config.feedback_interval_ms,
         config.odom_publish_hz,
+        command_transport=config.command_transport,
+        wave_rover_http_base_url=config.wave_rover_http_base_url,
+        http_timeout_s=config.http_timeout_s,
     )
     return config

@@ -795,6 +795,10 @@ const STATUS_KEYS = [
   "base_command_chain_nonzero_sent_count",
   "base_command_chain_serial_write_success_observed",
   "base_command_chain_serial_write_success_count",
+  "base_command_chain_http_write_success_observed",
+  "base_command_chain_http_write_success_count",
+  "base_command_chain_transport_write_success_observed",
+  "base_command_chain_transport_write_success_count",
   "base_command_chain_write_failed_count",
   "base_command_chain_latest_nonzero_command",
   "base_command_chain_latest_sent_nonzero_command",
@@ -6989,6 +6993,10 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         base_command_chain_nonzero_sent_count: "not_loaded",
         base_command_chain_serial_write_success_observed: "not_loaded",
         base_command_chain_serial_write_success_count: "not_loaded",
+        base_command_chain_http_write_success_observed: "not_loaded",
+        base_command_chain_http_write_success_count: "not_loaded",
+        base_command_chain_transport_write_success_observed: "not_loaded",
+        base_command_chain_transport_write_success_count: "not_loaded",
         base_command_chain_write_failed_count: "not_loaded",
         base_command_chain_latest_nonzero_command: "not_loaded",
         base_command_chain_latest_sent_nonzero_command: "not_loaded",
@@ -8123,6 +8131,10 @@ function baseSummaryFromReadbacks(readbacks: InternalRobotApiEndpointReadback[])
   const commandChainNonzeroSentCount = baseStatus?.key_values.base_command_chain_nonzero_sent_count ?? "not_loaded";
   const commandChainSerialWriteSuccessObserved = baseStatus?.key_values.base_command_chain_serial_write_success_observed ?? "not_loaded";
   const commandChainSerialWriteSuccessCount = baseStatus?.key_values.base_command_chain_serial_write_success_count ?? "not_loaded";
+  const commandChainHttpWriteSuccessObserved = baseStatus?.key_values.base_command_chain_http_write_success_observed ?? "not_loaded";
+  const commandChainHttpWriteSuccessCount = baseStatus?.key_values.base_command_chain_http_write_success_count ?? "not_loaded";
+  const commandChainTransportWriteSuccessObserved = baseStatus?.key_values.base_command_chain_transport_write_success_observed ?? "not_loaded";
+  const commandChainTransportWriteSuccessCount = baseStatus?.key_values.base_command_chain_transport_write_success_count ?? "not_loaded";
   const commandChainWriteFailedCount = baseStatus?.key_values.base_command_chain_write_failed_count ?? "not_loaded";
   const commandChainLatestNonzeroCommand = baseStatus?.key_values.base_command_chain_latest_nonzero_command ?? "not_loaded";
   const commandChainLatestSentNonzeroCommand = baseStatus?.key_values.base_command_chain_latest_sent_nonzero_command ?? "not_loaded";
@@ -8159,6 +8171,10 @@ function baseSummaryFromReadbacks(readbacks: InternalRobotApiEndpointReadback[])
     base_command_chain_nonzero_sent_count: commandChainNonzeroSentCount,
     base_command_chain_serial_write_success_observed: commandChainSerialWriteSuccessObserved,
     base_command_chain_serial_write_success_count: commandChainSerialWriteSuccessCount,
+    base_command_chain_http_write_success_observed: commandChainHttpWriteSuccessObserved,
+    base_command_chain_http_write_success_count: commandChainHttpWriteSuccessCount,
+    base_command_chain_transport_write_success_observed: commandChainTransportWriteSuccessObserved,
+    base_command_chain_transport_write_success_count: commandChainTransportWriteSuccessCount,
     base_command_chain_write_failed_count: commandChainWriteFailedCount,
     base_command_chain_latest_nonzero_command: commandChainLatestNonzeroCommand,
     base_command_chain_latest_sent_nonzero_command: commandChainLatestSentNonzeroCommand,

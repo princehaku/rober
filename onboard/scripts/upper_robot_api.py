@@ -5218,6 +5218,10 @@ def summarize_bridge_command_debug_log(
         "nonzero_command_sent_count": 0,
         "serial_write_success_observed": False,
         "serial_write_success_count": 0,
+        "http_write_success_observed": False,
+        "http_write_success_count": 0,
+        "transport_write_success_observed": False,
+        "transport_write_success_count": 0,
         "command_write_failed_count": 0,
         "latest_nonzero_command": None,
         "latest_sent_nonzero_command": None,
@@ -5262,6 +5266,8 @@ def summarize_bridge_command_debug_log(
     nonzero_count = 0
     nonzero_sent_count = 0
     serial_write_success_count = 0
+    http_write_success_count = 0
+    transport_write_success_count = 0
     command_write_failed_count = 0
     startup_count = 0
     mode_counts: dict[str, int] = {}
@@ -5296,14 +5302,24 @@ def summarize_bridge_command_debug_log(
             "vendor_command": command,
             "sent": record.get("sent"),
             "serial_write_returned": record.get("serial_write_returned", record.get("sent")),
+            "http_write_returned": record.get("http_write_returned"),
+            "transport_write_returned": record.get("transport_write_returned", record.get("sent")),
+            "command_transport": record.get("command_transport"),
         }
         command_mode = str(record.get("command_mode") or "unknown")
         mode_counts[command_mode] = mode_counts.get(command_mode, 0) + 1
-        sent_value = record.get("serial_write_returned", record.get("sent"))
+        transport_value = record.get("transport_write_returned", record.get("serial_write_returned", record.get("sent")))
+        serial_value = record.get("serial_write_returned")
+        http_value = record.get("http_write_returned")
+        sent_value = transport_value
         sent_true = sent_value is True
         sent_false = sent_value is False
-        if sent_true:
+        if serial_value is True:
             serial_write_success_count += 1
+        if http_value is True:
+            http_write_success_count += 1
+        if sent_true:
+            transport_write_success_count += 1
         elif sent_false:
             command_write_failed_count += 1
             latest_write_failed = latest_command
@@ -5329,6 +5345,10 @@ def summarize_bridge_command_debug_log(
             "nonzero_command_sent_count": nonzero_sent_count,
             "serial_write_success_observed": serial_write_success_count > 0,
             "serial_write_success_count": serial_write_success_count,
+            "http_write_success_observed": http_write_success_count > 0,
+            "http_write_success_count": http_write_success_count,
+            "transport_write_success_observed": transport_write_success_count > 0,
+            "transport_write_success_count": transport_write_success_count,
             "command_write_failed_count": command_write_failed_count,
             "latest_nonzero_command": latest_nonzero,
             "latest_sent_nonzero_command": latest_sent_nonzero,
@@ -7609,6 +7629,14 @@ class UpperRobotApi:
                 bridge_command_debug.get("serial_write_success_observed")
             ),
             "base_command_chain_serial_write_success_count": bridge_command_debug.get("serial_write_success_count"),
+            "base_command_chain_http_write_success_observed": bool(
+                bridge_command_debug.get("http_write_success_observed")
+            ),
+            "base_command_chain_http_write_success_count": bridge_command_debug.get("http_write_success_count"),
+            "base_command_chain_transport_write_success_observed": bool(
+                bridge_command_debug.get("transport_write_success_observed")
+            ),
+            "base_command_chain_transport_write_success_count": bridge_command_debug.get("transport_write_success_count"),
             "base_command_chain_write_failed_count": bridge_command_debug.get("command_write_failed_count"),
             "base_command_chain_latest_nonzero_command": bridge_command_debug.get("latest_nonzero_command"),
             "base_command_chain_latest_sent_nonzero_command": bridge_command_debug.get("latest_sent_nonzero_command"),

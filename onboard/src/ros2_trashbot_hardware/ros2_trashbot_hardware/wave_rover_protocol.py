@@ -20,6 +20,7 @@ from typing import Any
 CMD_SPEED_CTRL = 1
 CMD_PWM_INPUT = 11
 CMD_ROS_CTRL = 13
+CMD_SET_SPD_RATE = 138
 CMD_BASE_FEEDBACK_FLOW = 131
 CMD_FEEDBACK_FLOW_INTERVAL = 142
 CMD_UART_ECHO_MODE = 143
@@ -114,10 +115,11 @@ def build_startup_config_commands(
         raise ValueError(f"main_type must be one of {VALID_MAIN_TYPES}")
     if module_type not in VALID_MODULE_TYPES:
         raise ValueError(f"module_type must be one of {VALID_MODULE_TYPES}")
-    # WAVE ROVER vendor 固件把 mainType=1 作为本底盘型号；先显式写机型，避免遗留 UGV01 编码器模式让 T1001 L/R 一直只看编码器。
+    # 先显式写机型，再恢复左右速度倍率；现场曾读到 T=139 为 0/0，速度倍率为 0 会让底盘运动口径被压死。
     # 随后再关 echo、设置 interval、打开反馈流，便于日志只保留真实反馈帧。
     return [
         {"T": CMD_MM_TYPE_SET, "main": int(main_type), "module": int(module_type)},
+        {"T": CMD_SET_SPD_RATE, "L": 1, "R": 1},
         {"T": CMD_UART_ECHO_MODE, "cmd": 0},
         {"T": CMD_FEEDBACK_FLOW_INTERVAL, "cmd": int(feedback_interval_ms)},
         {"T": CMD_BASE_FEEDBACK_FLOW, "cmd": 1},

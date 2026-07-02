@@ -90,9 +90,10 @@ class HardwareDiagnosticsProofTest(unittest.TestCase):
         )
 
         command_ids = [entry["command"]["T"] for entry in proof["startup_commands"]]
-        self.assertEqual(command_ids, [900, 143, 142, 131])
+        self.assertEqual(command_ids, [900, 138, 143, 142, 131])
         self.assertEqual(proof["startup_commands"][0]["command"], {"T": 900, "main": 1, "module": 0})
-        self.assertEqual(proof["startup_commands"][2]["command"], {"T": 142, "cmd": 75})
+        self.assertEqual(proof["startup_commands"][1]["command"], {"T": 138, "L": 1, "R": 1})
+        self.assertEqual(proof["startup_commands"][3]["command"], {"T": 142, "cmd": 75})
         self.assertTrue(proof["startup_commands"][0]["uart_frame"].endswith("\n"))
 
     def test_cmd_vel_examples_reuse_speed_and_ros_protocol_builders(self):
@@ -192,7 +193,7 @@ class HardwareDiagnosticsProofTest(unittest.TestCase):
 
         self.assertEqual(result, 0)
         self.assertEqual(payload["status"], "software_proof_ready")
-        self.assertEqual(payload["startup_commands"][2]["command"], {"T": 142, "cmd": 50})
+        self.assertEqual(payload["startup_commands"][3]["command"], {"T": 142, "cmd": 50})
 
     def test_cli_locks_exit_codes_for_invalid_config_and_bad_feedback(self):
         proof_module = _proof_module()

@@ -3170,10 +3170,13 @@ function plainCurrentWheelFactText(summary: RobotControlSummaryResponse): string
     const count = base.base_command_chain_nonzero_count && base.base_command_chain_nonzero_count !== "not_loaded"
       ? `，非零命令 ${base.base_command_chain_nonzero_count} 帧`
       : "";
+    const transportLabel = base.base_command_chain_http_write_success_observed === "true"
+      ? "HTTP 下发"
+      : "串口 write";
     const sentCount = base.base_command_chain_nonzero_sent_count && !["0", "not_loaded"].includes(base.base_command_chain_nonzero_sent_count)
-      ? `，串口 write 返回 ${base.base_command_chain_nonzero_sent_count} 帧`
-      : base.base_command_chain_serial_write_success_observed === "true"
-        ? "，串口 write 已返回成功"
+      ? `，${transportLabel}返回 ${base.base_command_chain_nonzero_sent_count} 帧`
+      : base.base_command_chain_transport_write_success_observed === "true" || base.base_command_chain_serial_write_success_observed === "true"
+        ? `，${transportLabel}已返回成功`
         : "";
     const modeCounts = base.base_command_chain_mode_counts && !["", "{}", "not_loaded"].includes(base.base_command_chain_mode_counts)
       ? `，模式 ${base.base_command_chain_mode_counts}`

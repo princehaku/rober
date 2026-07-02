@@ -18,6 +18,9 @@ from pathlib import Path
 import threading
 import time
 from typing import Any
+import urllib.error
+import urllib.parse
+import urllib.request
 
 from geometry_msgs.msg import TransformStamped, Twist
 from nav_msgs.msg import Odometry
@@ -58,6 +61,9 @@ class ESP32Bridge(Node):
 
         self.port = config.port
         self.baudrate = config.baudrate
+        self.command_transport = config.command_transport
+        self.wave_rover_http_base_url = config.wave_rover_http_base_url
+        self.http_timeout_s = config.http_timeout_s
         self.command_mode = config.command_mode
         self.track_width_m = config.track_width_m
         self.max_wheel_speed_mps = config.max_wheel_speed_mps
@@ -128,6 +134,9 @@ class ESP32Bridge(Node):
         """允许运行中调整安全边界内的底盘映射参数，避免为试 PWM 重启串口 owner。"""
         tunable_names = {
             "command_mode",
+            "command_transport",
+            "wave_rover_http_base_url",
+            "http_timeout_s",
             "track_width_m",
             "max_wheel_speed_mps",
             "pwm_min_abs",
@@ -143,7 +152,15 @@ class ESP32Bridge(Node):
         if not changed:
             return SetParametersResult(successful=True)
 
+        current_transport = getattr(self, "command_transport", "serial")
+        current_http_base_url = getattr(self, "wave_rover_http_base_url", "")
+        current_http_timeout_s = getattr(self, "http_timeout_s", 0.6)
         candidate = {
+            "command_transport": str(changed.get("command_transport", current_transport)).lower(),
+            "wave_rover_http_base_url": str(
+                changed.get("wave_rover_http_base_url", current_http_base_url)
+            ).rstrip("/"),
+            "http_timeout_s": float(changed.get("http_timeout_s", current_http_timeout_s)),
             "command_mode": str(changed.get("command_mode", self.command_mode)).lower(),
             "track_width_m": float(changed.get("track_width_m", self.track_width_m)),
             "max_wheel_speed_mps": float(changed.get("max_wheel_speed_mps", self.max_wheel_speed_mps)),
@@ -152,6 +169,9 @@ class ESP32Bridge(Node):
         }
         try:
             validate_startup_config(
+                command_transport=candidate["command_transport"],
+                wave_rover_http_base_url=candidate["wave_rover_http_base_url"],
+                http_timeout_s=candidate["http_timeout_s"],
                 command_mode=candidate["command_mode"],
                 track_width_m=candidate["track_width_m"],
                 max_wheel_speed_mps=candidate["max_wheel_speed_mps"],
@@ -166,6 +186,9 @@ class ESP32Bridge(Node):
             return SetParametersResult(successful=False, reason=str(exc))
 
         # 所有参数先校验再一次性生效，避免 pwm_min/pwm_max 只更新一半导致下一帧映射异常。
+        self.command_transport = candidate["command_transport"]
+        self.wave_rover_http_base_url = candidate["wave_rover_http_base_url"]
+        self.http_timeout_s = candidate["http_timeout_s"]
         self.command_mode = candidate["command_mode"]
         self.track_width_m = candidate["track_width_m"]
         self.max_wheel_speed_mps = candidate["max_wheel_speed_mps"]
@@ -178,6 +201,7 @@ class ESP32Bridge(Node):
         self._append_runtime_config_debug_line(sorted(changed))
         self.get_logger().info(
             "Runtime WAVE ROVER bridge tuning applied: "
+            f"command_transport={self.command_transport}; "
             f"command_mode={self.command_mode}; "
             f"pwm_min_abs={self.pwm_min_abs}; "
             f"pwm_max_abs={self.pwm_max_abs}; "
@@ -196,6 +220,8 @@ class ESP32Bridge(Node):
             "source": "esp32_bridge_runtime_parameter_callback",
             "changed_parameter_names": changed_names,
             "command_mode": self.command_mode,
+            "command_transport": self.command_transport,
+            "wave_rover_http_base_url": self.wave_rover_http_base_url,
             "track_width_m": self.track_width_m,
             "max_wheel_speed_mps": self.max_wheel_speed_mps,
             "pwm_min_abs": self.pwm_min_abs,
@@ -223,12 +249,17 @@ class ESP32Bridge(Node):
         log_path = getattr(self, "command_debug_log_path", "")
         if not log_path:
             return
+        command_transport = getattr(self, "command_transport", "serial")
         record = {
             "schema": "trashbot.wave_rover.command_debug.v1",
             "observed_at_unix_s": time.time(),
             "source": "esp32_bridge_startup_config",
             "vendor_command": command,
             "sent": bool(sent),
+            "command_transport": command_transport,
+            "serial_write_returned": bool(sent) if command_transport == "serial" else None,
+            "http_write_returned": bool(sent) if command_transport == "http" else None,
+            "transport_write_returned": bool(sent),
             "sends_motion": False,
         }
         try:
@@ -238,6 +269,8 @@ class ESP32Bridge(Node):
             self.get_logger().warn(f"Failed to append WAVE ROVER startup config debug log: {exc}")
 
     def _send_json(self, command: dict[str, Any]) -> bool:
+        if getattr(self, "command_transport", "serial") == "http":
+            return self._send_json_http(command)
         try:
             frame = encode_json_command(command)
             with self._serial_lock:
@@ -248,6 +281,22 @@ class ESP32Bridge(Node):
             return True
         except (serial.SerialException, OSError) as exc:
             self.get_logger().error(f"Serial write error: {exc}")
+            return False
+
+    def _send_json_http(self, command: dict[str, Any]) -> bool:
+        """通过 ESP32 原厂 HTTP `/js` 控制面下发 JSON，绕过现场 UART TX 断点。"""
+        try:
+            payload = json.dumps(command, separators=(",", ":"))
+            query = urllib.parse.urlencode({"json": payload})
+            url = f"{self.wave_rover_http_base_url.rstrip('/')}/js?{query}"
+            with urllib.request.urlopen(url, timeout=self.http_timeout_s) as response:
+                response.read(512)
+                ok = 200 <= int(response.status) < 300
+            if ok:
+                self._last_send_time = time.time()
+            return ok
+        except (OSError, urllib.error.URLError, TimeoutError) as exc:
+            self.get_logger().error(f"WAVE ROVER HTTP command error: {exc}")
             return False
 
     def _serial_reader(self) -> None:
@@ -355,6 +404,7 @@ class ESP32Bridge(Node):
         if not log_path:
             return
 
+        command_transport = getattr(self, "command_transport", "serial")
         sends_motion = any(
             abs(float(command.get(key, 0))) > 1e-9
             for key in ("L", "R", "X", "Z")
@@ -366,9 +416,12 @@ class ESP32Bridge(Node):
             "linear_x": float(msg.linear.x),
             "angular_z": float(msg.angular.z),
             "command_mode": self.command_mode,
+            "command_transport": command_transport,
             "vendor_command": command,
             "sent": bool(sent),
-            "serial_write_returned": bool(sent),
+            "serial_write_returned": bool(sent) if command_transport == "serial" else None,
+            "http_write_returned": bool(sent) if command_transport == "http" else None,
+            "transport_write_returned": bool(sent),
             "sends_motion": sends_motion,
         }
         try:

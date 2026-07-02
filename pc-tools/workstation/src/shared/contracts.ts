@@ -5406,6 +5406,10 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       base_command_chain_nonzero_sent_count: string;
       base_command_chain_serial_write_success_observed: string;
       base_command_chain_serial_write_success_count: string;
+      base_command_chain_http_write_success_observed: string;
+      base_command_chain_http_write_success_count: string;
+      base_command_chain_transport_write_success_observed: string;
+      base_command_chain_transport_write_success_count: string;
       base_command_chain_write_failed_count: string;
       base_command_chain_latest_nonzero_command: string;
       base_command_chain_latest_sent_nonzero_command: string;

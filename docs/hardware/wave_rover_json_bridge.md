@@ -138,6 +138,26 @@ stop 链路可用；不能证明 wheel raw 非零或真实物理移动。后续�
 电机使能、底盘模式、下位机固件状态、驱动供电和反馈字段语义，而不是继续把 PC 键盘或
 ROS 发布链路当成首要 blocker。
 
+### 2026-07-03 HTTP command transport and speed-rate reset
+
+按 `docs/vendor/VENDOR_INDEX.md`、`ugv_rpi/config.yaml`、`json_cmd.h`、`uart_ctrl.h`
+和 `movtion_module.h` 复核，厂商固件提供 `T=138` 设置左右速度倍率、`T=139` 读取速度倍率、
+`T=140` 保存速度倍率；`T=1` 和部分电机控制路径会受该倍率影响。现场 ESP32 HTTP
+`/js?json=...` 已可访问，`T=139` 一度返回 `{"T":139,"L":0,"R":0}`，说明速度倍率被置为
+0。执行 `{"T":138,"L":1,"R":1}` 后，`T=139` 返回 `L=1,R=1`。
+
+因此 `esp32_bridge` startup config 现在在 `T=900 main/module` 后追加非运动
+`{"T":138,"L":1,"R":1}`，再执行 `T=143/T=142/T=131`。这条配置只恢复厂商速度倍率，不发车，
+也不能替代电机/轮速验收。
+
+同轮现场把 `esp32_bridge` 切到 `command_transport=http`、`wave_rover_http_base_url=http://192.168.1.3`
+后，PC 手控经 `/cmd_vel` 产生多帧 `T=11 L/R=255`，command debug 记录
+`command_transport=http`、`http_write_returned=true`、`transport_write_returned=true`。direct HTTP
+`T=1 L/R=0.39` 和 bridge HTTP PWM pulse 均能观察到 IMU roll/pitch 明显变化，但
+`T=1001.L/R` 仍保持 `0/0`。当前证据只能说明 ESP32 HTTP 命令链路和运动扰动存在，不能升级为
+wheel raw 非零、编码器 HIL pass、Nav2 路线成功或 delivery success；后续仍需复核电机使能、
+底盘模式、固件版本、驱动供电和 `T=1001` 反馈语义。
+
 ### HIL 运行参数留存模板（与 run 级证据绑定）
 
 - 每次 `source=hil_pass` 运行前需记录参数快照：

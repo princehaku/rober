@@ -643,12 +643,54 @@ class WaveshareJsonBridgeTest(unittest.TestCase):
             self.assertEqual(record["schema"], "trashbot.wave_rover.command_debug.v1")
             self.assertEqual(record["source"], "esp32_bridge_cmd_vel_callback")
             self.assertEqual(record["command_mode"], "pwm")
+            self.assertEqual(record["command_transport"], "serial")
             self.assertEqual(record["linear_x"], 0.2)
             self.assertEqual(record["vendor_command"], {"L": 164, "R": 164, "T": 11})
             self.assertTrue(record["sent"])
             self.assertTrue(record["serial_write_returned"])
+            self.assertTrue(record["transport_write_returned"])
             self.assertTrue(record["sends_motion"])
             self.assertEqual(node._last_cmd_linear, 0.2)
+
+    def test_send_json_http_uses_vendor_js_endpoint(self):
+        bridge = _bridge_module()
+
+        opened_urls = []
+
+        class _FakeResponse:
+            status = 200
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+            def read(self, _size):
+                return b'{"T":139,"L":0,"R":0}'
+
+        def fake_urlopen(url, timeout):
+            opened_urls.append((url, timeout))
+            return _FakeResponse()
+
+        node = bridge.ESP32Bridge.__new__(bridge.ESP32Bridge)
+        node.wave_rover_http_base_url = "http://192.168.1.3"
+        node.http_timeout_s = 0.25
+        node._last_send_time = 0.0
+        node.get_logger = lambda: _FakeLogger()
+
+        urllib_module = bridge.ESP32Bridge._send_json_http.__globals__["urllib"]
+        original = urllib_module.request.urlopen
+        urllib_module.request.urlopen = fake_urlopen
+        try:
+            self.assertTrue(node._send_json_http({"T": 11, "L": 180, "R": 180}))
+        finally:
+            urllib_module.request.urlopen = original
+
+        self.assertEqual(opened_urls[0][1], 0.25)
+        self.assertTrue(opened_urls[0][0].startswith("http://192.168.1.3/js?"))
+        self.assertIn("%7B%22T%22%3A11%2C%22L%22%3A180%2C%22R%22%3A180%7D", opened_urls[0][0])
+        self.assertGreater(node._last_send_time, 0.0)
 
     def test_runtime_pwm_parameter_update_changes_next_cmd_vel_mapping(self):
         bridge = _bridge_module()
@@ -743,10 +785,13 @@ class WaveshareJsonBridgeTest(unittest.TestCase):
 
             records = [json.loads(line) for line in log_path.read_text(encoding="utf-8").splitlines()]
             self.assertEqual(sent_commands[0], {"T": 900, "main": 1, "module": 0})
+            self.assertEqual(sent_commands[1], {"T": 138, "L": 1, "R": 1})
             self.assertEqual(records[0]["source"], "esp32_bridge_startup_config")
             self.assertEqual(records[0]["vendor_command"], {"T": 900, "main": 1, "module": 0})
             self.assertFalse(records[0]["sends_motion"])
             self.assertTrue(records[0]["sent"])
+            self.assertEqual(records[1]["vendor_command"], {"T": 138, "L": 1, "R": 1})
+            self.assertFalse(records[1]["sends_motion"])
 
     def test_declare_and_load_bridge_config_defaults_to_pwm_command_mode(self):
         bridge_config = importlib.import_module("ros2_trashbot_hardware.bridge_config")
@@ -766,6 +811,9 @@ class WaveshareJsonBridgeTest(unittest.TestCase):
         config = bridge_config.load_bridge_config(node)
 
         self.assertEqual(config.command_mode, "pwm")
+        self.assertEqual(config.command_transport, "serial")
+        self.assertEqual(config.wave_rover_http_base_url, "")
+        self.assertEqual(config.http_timeout_s, 0.6)
         self.assertEqual(config.pwm_min_abs, 164)
         self.assertEqual(config.pwm_max_abs, 164)
         self.assertEqual(config.main_type, 1)
@@ -831,6 +879,7 @@ class WaveshareJsonBridgeTest(unittest.TestCase):
             commands,
             [
                 {"T": 900, "main": 1, "module": 0},
+                {"T": 138, "L": 1, "R": 1},
                 {"T": 143, "cmd": 0},
                 {"T": 142, "cmd": 75},
                 {"T": 131, "cmd": 1},
