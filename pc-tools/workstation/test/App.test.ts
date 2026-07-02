@@ -1193,6 +1193,58 @@ const fixtures: Record<string, unknown> = {
     current_mapping_control_pack_readback_starts_map_runtime: false,
     current_mapping_control_pack_readback_submits_delivery: false,
     current_mapping_control_pack_readback_stops_motion: false,
+    mapping_start_gate_status: "blocked",
+    mapping_start_gate_plain: "先补齐画面首帧和雷达新鲜读数；低速自由移动仍可先做。",
+    mapping_start_gate_action_id: "start_mapping_when_sensors_ready",
+    mapping_start_gate_display_label: "传感器就绪后建图",
+    mapping_start_gate_start_endpoint: "/api/robot-control/map/start",
+    mapping_start_gate_stop_endpoint: "/api/robot-control/free-roam/autonomy/stop",
+    mapping_start_gate_preview_endpoint: "/api/robot-control/map/preview",
+    mapping_start_gate_readback_endpoints: ["/api/robot-control/free-roam/autonomy/latest", "/api/robot-control/map/preview", "/api/robot-control/summary"],
+    mapping_start_gate_post_start_readback_endpoints: ["/api/robot-control/free-roam/autonomy/latest", "/api/robot-control/map/preview", "/api/robot-control/summary"],
+    mapping_start_gate_post_start_readback_sequence_labels: ["读取自由移动状态", "刷新地图画面", "刷新总览"],
+    mapping_start_gate_required_success_markers: ["camera_first_frame", "lidar_fresh"],
+    mapping_start_gate_missing_evidence: ["camera_first_frame", "lidar_fresh"],
+    mapping_start_gate_missing_evidence_labels: ["画面首帧", "雷达新鲜"],
+    mapping_start_gate_proof_status: "blocked",
+    mapping_start_gate_is_ready: false,
+    mapping_start_gate_requires_safety_confirm: false,
+    mapping_start_gate_safety_confirm_required_when_executed: true,
+    mapping_start_gate_minimal_precheck_safety_only: true,
+    mapping_start_gate_camera_required: true,
+    mapping_start_gate_radar_required: true,
+    mapping_start_gate_camera_ready: false,
+    mapping_start_gate_radar_ready: false,
+    mapping_start_gate_camera_blocks_start: true,
+    mapping_start_gate_radar_blocks_start: true,
+    mapping_start_gate_only_camera_missing: false,
+    mapping_start_gate_radar_overlay_wysiwyg_complete: false,
+    mapping_start_gate_camera_hardware_action_required: false,
+    mapping_start_gate_camera_hardware_action_label: "复测相机首帧",
+    mapping_start_gate_camera_recovery_next_action_plain: "相机不是页面独占；先复测相机首帧并读取共享预览状态。若仍无画面，检查 USB 线、接口、摄像头供电或换 known-good UVC 后再复测。",
+    mapping_start_gate_blocks_free_move: false,
+    mapping_start_gate_free_move_allowed_while_blocked: true,
+    mapping_start_gate_post_start_readback_refreshes_free_roam_latest: true,
+    mapping_start_gate_post_start_readback_refreshes_map_preview: true,
+    mapping_start_gate_post_start_readback_refreshes_summary: true,
+    mapping_start_gate_sends_motion_when_clicked: false,
+    mapping_start_gate_sends_motion_when_executed: true,
+    mapping_start_gate_starts_map_runtime_when_clicked: false,
+    mapping_start_gate_starts_map_runtime_when_executed: true,
+    mapping_start_gate_starts_nav2_when_clicked: false,
+    mapping_start_gate_starts_manual_when_clicked: false,
+    mapping_start_gate_starts_keyboard_when_clicked: false,
+    mapping_start_gate_starts_free_roam_when_clicked: false,
+    mapping_start_gate_submits_delivery_when_clicked: false,
+    mapping_start_gate_stops_motion_when_clicked: false,
+    mapping_start_gate_readback_sends_motion: false,
+    mapping_start_gate_readback_starts_nav2: false,
+    mapping_start_gate_readback_starts_manual: false,
+    mapping_start_gate_readback_starts_keyboard: false,
+    mapping_start_gate_readback_starts_free_roam: false,
+    mapping_start_gate_readback_starts_map_runtime: false,
+    mapping_start_gate_readback_submits_delivery: false,
+    mapping_start_gate_readback_stops_motion: false,
     free_move_minimal_precheck_safety_only: true,
     free_move_safety_confirm_required: true,
     free_move_camera_preflight_required: false,
@@ -12332,6 +12384,58 @@ describe("App", () => {
     expect(mappingPack.attributes("data-readback-starts-map-runtime")).toBe("false");
     expect(mappingPack.attributes("data-readback-submits-delivery")).toBe("false");
     expect(mappingPack.attributes("data-readback-stops-motion")).toBe("false");
+    expect(mappingPack.attributes("data-mapping-start-gate-status")).toBe("blocked");
+    expect(mappingPack.attributes("data-mapping-start-gate-plain")).toBe("先补齐画面首帧和雷达新鲜读数；低速自由移动仍可先做。");
+    expect(mappingPack.attributes("data-mapping-start-gate-action-id")).toBe("start_mapping_when_sensors_ready");
+    expect(mappingPack.attributes("data-mapping-start-gate-display-label")).toBe("传感器就绪后建图");
+    expect(mappingPack.attributes("data-mapping-start-gate-start-endpoint")).toBe("/api/robot-control/map/start");
+    expect(mappingPack.attributes("data-mapping-start-gate-stop-endpoint")).toBe("/api/robot-control/free-roam/autonomy/stop");
+    expect(mappingPack.attributes("data-mapping-start-gate-preview-endpoint")).toBe("/api/robot-control/map/preview");
+    expect(mappingPack.attributes("data-mapping-start-gate-readback-endpoints")).toBe("/api/robot-control/free-roam/autonomy/latest,/api/robot-control/map/preview,/api/robot-control/summary");
+    expect(mappingPack.attributes("data-mapping-start-gate-post-start-readback-endpoints")).toBe("/api/robot-control/free-roam/autonomy/latest,/api/robot-control/map/preview,/api/robot-control/summary");
+    expect(mappingPack.attributes("data-mapping-start-gate-post-start-readback-sequence-labels")).toBe("读取自由移动状态,刷新地图画面,刷新总览");
+    expect(mappingPack.attributes("data-mapping-start-gate-required-success-markers")).toBe("camera_first_frame,lidar_fresh");
+    expect(mappingPack.attributes("data-mapping-start-gate-missing-evidence")).toBe("camera_first_frame,lidar_fresh");
+    expect(mappingPack.attributes("data-mapping-start-gate-missing-evidence-labels")).toBe("画面首帧,雷达新鲜");
+    expect(mappingPack.attributes("data-mapping-start-gate-proof-status")).toBe("blocked");
+    expect(mappingPack.attributes("data-mapping-start-gate-ready")).toBe("false");
+    expect(mappingPack.attributes("data-mapping-start-gate-requires-safety-confirm")).toBe("false");
+    expect(mappingPack.attributes("data-mapping-start-gate-safety-confirm-required-when-executed")).toBe("true");
+    expect(mappingPack.attributes("data-mapping-start-gate-minimal-precheck-safety-only")).toBe("true");
+    expect(mappingPack.attributes("data-mapping-start-gate-camera-required")).toBe("true");
+    expect(mappingPack.attributes("data-mapping-start-gate-radar-required")).toBe("true");
+    expect(mappingPack.attributes("data-mapping-start-gate-camera-ready")).toBe("false");
+    expect(mappingPack.attributes("data-mapping-start-gate-radar-ready")).toBe("false");
+    expect(mappingPack.attributes("data-mapping-start-gate-camera-blocks-start")).toBe("true");
+    expect(mappingPack.attributes("data-mapping-start-gate-radar-blocks-start")).toBe("true");
+    expect(mappingPack.attributes("data-mapping-start-gate-only-camera-missing")).toBe("false");
+    expect(mappingPack.attributes("data-mapping-start-gate-radar-overlay-wysiwyg-complete")).toBe("false");
+    expect(mappingPack.attributes("data-mapping-start-gate-camera-hardware-action-required")).toBe("false");
+    expect(mappingPack.attributes("data-mapping-start-gate-camera-hardware-action-label")).toBe("复测相机首帧");
+    expect(mappingPack.attributes("data-mapping-start-gate-camera-recovery-next-action-plain")).toContain("相机不是页面独占");
+    expect(mappingPack.attributes("data-mapping-start-gate-blocks-free-move")).toBe("false");
+    expect(mappingPack.attributes("data-mapping-start-gate-free-move-allowed-while-blocked")).toBe("true");
+    expect(mappingPack.attributes("data-mapping-start-gate-post-start-readback-refreshes-free-roam-latest")).toBe("true");
+    expect(mappingPack.attributes("data-mapping-start-gate-post-start-readback-refreshes-map-preview")).toBe("true");
+    expect(mappingPack.attributes("data-mapping-start-gate-post-start-readback-refreshes-summary")).toBe("true");
+    expect(mappingPack.attributes("data-mapping-start-gate-sends-motion-when-clicked")).toBe("false");
+    expect(mappingPack.attributes("data-mapping-start-gate-sends-motion-when-executed")).toBe("true");
+    expect(mappingPack.attributes("data-mapping-start-gate-starts-map-runtime-when-clicked")).toBe("false");
+    expect(mappingPack.attributes("data-mapping-start-gate-starts-map-runtime-when-executed")).toBe("true");
+    expect(mappingPack.attributes("data-mapping-start-gate-starts-nav2-when-clicked")).toBe("false");
+    expect(mappingPack.attributes("data-mapping-start-gate-starts-manual-when-clicked")).toBe("false");
+    expect(mappingPack.attributes("data-mapping-start-gate-starts-keyboard-when-clicked")).toBe("false");
+    expect(mappingPack.attributes("data-mapping-start-gate-starts-free-roam-when-clicked")).toBe("false");
+    expect(mappingPack.attributes("data-mapping-start-gate-submits-delivery-when-clicked")).toBe("false");
+    expect(mappingPack.attributes("data-mapping-start-gate-stops-motion-when-clicked")).toBe("false");
+    expect(mappingPack.attributes("data-mapping-start-gate-readback-sends-motion")).toBe("false");
+    expect(mappingPack.attributes("data-mapping-start-gate-readback-starts-nav2")).toBe("false");
+    expect(mappingPack.attributes("data-mapping-start-gate-readback-starts-manual")).toBe("false");
+    expect(mappingPack.attributes("data-mapping-start-gate-readback-starts-keyboard")).toBe("false");
+    expect(mappingPack.attributes("data-mapping-start-gate-readback-starts-free-roam")).toBe("false");
+    expect(mappingPack.attributes("data-mapping-start-gate-readback-starts-map-runtime")).toBe("false");
+    expect(mappingPack.attributes("data-mapping-start-gate-readback-submits-delivery")).toBe("false");
+    expect(mappingPack.attributes("data-mapping-start-gate-readback-stops-motion")).toBe("false");
 
     const primaryStep = wrapper.find('[data-testid="plain-field-acceptance-primary"]');
     expect(primaryStep.attributes("data-label")).toBe("完整行程执行");

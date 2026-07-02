@@ -5233,6 +5233,12 @@ delivery、stop 或 `/cmd_vel`。
 `current_free_move_control_pack_*` 同源；点击自由移动说明卡不发车，只有现场安全确认后执行才启动 free-roam，
 启动后只读读取 free-roam latest、地图预览和 summary。相机/雷达不作为自由移动发车前置，只影响建图启动/验收。
 
+2026-07-02 19:45 CST 起，summary 顶层新增 `mapping_start_gate_*` 短字段，直接回答“相机和雷达是否都 ready，
+是否可启动建图、谁在阻塞建图、建图启动端点/停止端点/预览端点、启动后只读复验顺序，以及建图缺口是否阻塞自由移动”。
+普通 PC 的 `plain-current-mapping-control-pack` 同步暴露 `data-mapping-start-gate-*`。这些字段与
+`current_mapping_control_pack_*` 同源；点击建图说明卡不启动建图 runtime，只有相机首帧和雷达新鲜读数都满足后，
+现场安全确认下的执行动作才允许启动建图，启动后只读读取 free-roam latest、地图预览和 summary。
+
 2026-07-02 17:05 CST 起，上车 `POST /api/robot-control/camera/first-frame/probe` 的自动格式 fallback 增加
 `160x120` 低带宽候选：`MJPG@160x120@30`、`YUYV@160x120@15`、`YUYV@160x120@10`。
 这是给 USB `12M` full-speed 场景的只读首帧兜底；若常规 `640x480/320x240` 均无帧，会继续尝试更低带宽模式。

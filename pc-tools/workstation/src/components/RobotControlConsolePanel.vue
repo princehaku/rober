@@ -4948,6 +4948,58 @@ const plainCurrentMappingControlPack = computed(() => {
     readbackStartsMapRuntime: summary?.current_mapping_control_pack_readback_starts_map_runtime ?? false,
     readbackSubmitsDelivery: summary?.current_mapping_control_pack_readback_submits_delivery ?? false,
     readbackStopsMotion: summary?.current_mapping_control_pack_readback_stops_motion ?? false,
+    mappingStartGateStatus: summary?.mapping_start_gate_status ?? status,
+    mappingStartGatePlain: summary?.mapping_start_gate_plain ?? "",
+    mappingStartGateActionId: summary?.mapping_start_gate_action_id ?? summary?.current_mapping_control_pack_action_id ?? summary?.current_mapping_action_id ?? "start_mapping_when_sensors_ready",
+    mappingStartGateDisplayLabel: summary?.mapping_start_gate_display_label ?? summary?.current_mapping_control_pack_display_label ?? summary?.current_mapping_action_display_label ?? "传感器就绪后建图",
+    mappingStartGateStartEndpoint: summary?.mapping_start_gate_start_endpoint ?? summary?.current_mapping_control_pack_start_endpoint ?? summary?.current_mapping_action_start_endpoint ?? "/api/robot-control/map/start",
+    mappingStartGateStopEndpoint: summary?.mapping_start_gate_stop_endpoint ?? summary?.current_mapping_control_pack_stop_endpoint ?? summary?.current_mapping_action_stop_endpoint ?? "/api/robot-control/free-roam/autonomy/stop",
+    mappingStartGatePreviewEndpoint: summary?.mapping_start_gate_preview_endpoint ?? summary?.current_mapping_control_pack_preview_endpoint ?? summary?.current_mapping_action_preview_endpoint ?? "/api/robot-control/map/preview",
+    mappingStartGateReadbackEndpointsText: summary?.mapping_start_gate_readback_endpoints?.join(",") || readbackEndpoints.join(",") || "none",
+    mappingStartGatePostStartReadbackEndpointsText: summary?.mapping_start_gate_post_start_readback_endpoints?.join(",") || postStartReadbackEndpoints.join(",") || "none",
+    mappingStartGatePostStartReadbackSequenceLabelsText: summary?.mapping_start_gate_post_start_readback_sequence_labels?.join(",") || postStartReadbackSequenceLabels.join(",") || "none",
+    mappingStartGateRequiredSuccessMarkersText: summary?.mapping_start_gate_required_success_markers?.join(",") || requiredSuccessMarkers.join(",") || "none",
+    mappingStartGateMissingEvidenceText: summary?.mapping_start_gate_missing_evidence?.join(",") || missingEvidence.join(",") || "none",
+    mappingStartGateMissingEvidenceLabelsText: summary?.mapping_start_gate_missing_evidence_labels?.join(",") || missingEvidenceLabels.join(",") || "none",
+    mappingStartGateProofStatus: summary?.mapping_start_gate_proof_status ?? summary?.current_mapping_control_pack_proof_status ?? summary?.current_mapping_action_proof_status ?? "blocked",
+    mappingStartGateReady: summary?.mapping_start_gate_is_ready ?? summary?.current_mapping_control_pack_ready ?? summary?.current_mapping_action_ready ?? false,
+    mappingStartGateRequiresSafetyConfirm: summary?.mapping_start_gate_requires_safety_confirm ?? summary?.current_mapping_control_pack_requires_safety_confirm ?? false,
+    mappingStartGateSafetyConfirmRequiredWhenExecuted: summary?.mapping_start_gate_safety_confirm_required_when_executed ?? summary?.current_mapping_control_pack_safety_confirm_required_when_executed ?? true,
+    mappingStartGateMinimalPrecheckSafetyOnly: summary?.mapping_start_gate_minimal_precheck_safety_only ?? summary?.current_mapping_control_pack_minimal_precheck_safety_only ?? true,
+    mappingStartGateCameraRequired: summary?.mapping_start_gate_camera_required ?? summary?.current_mapping_control_pack_camera_required ?? true,
+    mappingStartGateRadarRequired: summary?.mapping_start_gate_radar_required ?? summary?.current_mapping_control_pack_radar_required ?? true,
+    mappingStartGateCameraReady: summary?.mapping_start_gate_camera_ready ?? cameraReady,
+    mappingStartGateRadarReady: summary?.mapping_start_gate_radar_ready ?? radarReady,
+    mappingStartGateCameraBlocksStart: summary?.mapping_start_gate_camera_blocks_start ?? summary?.current_mapping_control_pack_camera_blocks_start ?? true,
+    mappingStartGateRadarBlocksStart: summary?.mapping_start_gate_radar_blocks_start ?? summary?.current_mapping_control_pack_radar_blocks_start ?? true,
+    mappingStartGateOnlyCameraMissing: summary?.mapping_start_gate_only_camera_missing ?? summary?.current_mapping_control_pack_only_camera_missing ?? false,
+    mappingStartGateRadarOverlayWysiwygComplete: summary?.mapping_start_gate_radar_overlay_wysiwyg_complete ?? summary?.current_mapping_control_pack_radar_overlay_wysiwyg_complete ?? false,
+    mappingStartGateCameraHardwareActionRequired: summary?.mapping_start_gate_camera_hardware_action_required ?? summary?.current_mapping_control_pack_camera_hardware_action_required ?? false,
+    mappingStartGateCameraHardwareActionLabel: summary?.mapping_start_gate_camera_hardware_action_label ?? summary?.current_mapping_control_pack_camera_hardware_action_label ?? "复测相机首帧",
+    mappingStartGateCameraRecoveryNextActionPlain: summary?.mapping_start_gate_camera_recovery_next_action_plain ?? summary?.current_mapping_control_pack_camera_recovery_next_action_plain ?? "",
+    mappingStartGateBlocksFreeMove: summary?.mapping_start_gate_blocks_free_move ?? false,
+    mappingStartGateFreeMoveAllowedWhileBlocked: summary?.mapping_start_gate_free_move_allowed_while_blocked ?? summary?.current_mapping_control_pack_free_move_allowed_while_blocked ?? false,
+    mappingStartGatePostStartReadbackRefreshesFreeRoamLatest: summary?.mapping_start_gate_post_start_readback_refreshes_free_roam_latest ?? summary?.current_mapping_control_pack_post_start_readback_refreshes_free_roam_latest ?? false,
+    mappingStartGatePostStartReadbackRefreshesMapPreview: summary?.mapping_start_gate_post_start_readback_refreshes_map_preview ?? summary?.current_mapping_control_pack_post_start_readback_refreshes_map_preview ?? false,
+    mappingStartGatePostStartReadbackRefreshesSummary: summary?.mapping_start_gate_post_start_readback_refreshes_summary ?? summary?.current_mapping_control_pack_post_start_readback_refreshes_summary ?? false,
+    mappingStartGateSendsMotionWhenClicked: summary?.mapping_start_gate_sends_motion_when_clicked ?? false,
+    mappingStartGateSendsMotionWhenExecuted: summary?.mapping_start_gate_sends_motion_when_executed ?? true,
+    mappingStartGateStartsMapRuntimeWhenClicked: summary?.mapping_start_gate_starts_map_runtime_when_clicked ?? false,
+    mappingStartGateStartsMapRuntimeWhenExecuted: summary?.mapping_start_gate_starts_map_runtime_when_executed ?? true,
+    mappingStartGateStartsNav2WhenClicked: summary?.mapping_start_gate_starts_nav2_when_clicked ?? false,
+    mappingStartGateStartsManualWhenClicked: summary?.mapping_start_gate_starts_manual_when_clicked ?? false,
+    mappingStartGateStartsKeyboardWhenClicked: summary?.mapping_start_gate_starts_keyboard_when_clicked ?? false,
+    mappingStartGateStartsFreeRoamWhenClicked: summary?.mapping_start_gate_starts_free_roam_when_clicked ?? false,
+    mappingStartGateSubmitsDeliveryWhenClicked: summary?.mapping_start_gate_submits_delivery_when_clicked ?? false,
+    mappingStartGateStopsMotionWhenClicked: summary?.mapping_start_gate_stops_motion_when_clicked ?? false,
+    mappingStartGateReadbackSendsMotion: summary?.mapping_start_gate_readback_sends_motion ?? false,
+    mappingStartGateReadbackStartsNav2: summary?.mapping_start_gate_readback_starts_nav2 ?? false,
+    mappingStartGateReadbackStartsManual: summary?.mapping_start_gate_readback_starts_manual ?? false,
+    mappingStartGateReadbackStartsKeyboard: summary?.mapping_start_gate_readback_starts_keyboard ?? false,
+    mappingStartGateReadbackStartsFreeRoam: summary?.mapping_start_gate_readback_starts_free_roam ?? false,
+    mappingStartGateReadbackStartsMapRuntime: summary?.mapping_start_gate_readback_starts_map_runtime ?? false,
+    mappingStartGateReadbackSubmitsDelivery: summary?.mapping_start_gate_readback_submits_delivery ?? false,
+    mappingStartGateReadbackStopsMotion: summary?.mapping_start_gate_readback_stops_motion ?? false,
   };
 });
 const plainCurrentTripExecutionPack = computed(() => {
@@ -20809,6 +20861,58 @@ onBeforeUnmount(() => {
             :data-readback-starts-map-runtime="String(plainCurrentMappingControlPack.readbackStartsMapRuntime)"
             :data-readback-submits-delivery="String(plainCurrentMappingControlPack.readbackSubmitsDelivery)"
             :data-readback-stops-motion="String(plainCurrentMappingControlPack.readbackStopsMotion)"
+            :data-mapping-start-gate-status="plainCurrentMappingControlPack.mappingStartGateStatus"
+            :data-mapping-start-gate-plain="plainCurrentMappingControlPack.mappingStartGatePlain"
+            :data-mapping-start-gate-action-id="plainCurrentMappingControlPack.mappingStartGateActionId"
+            :data-mapping-start-gate-display-label="plainCurrentMappingControlPack.mappingStartGateDisplayLabel"
+            :data-mapping-start-gate-start-endpoint="plainCurrentMappingControlPack.mappingStartGateStartEndpoint"
+            :data-mapping-start-gate-stop-endpoint="plainCurrentMappingControlPack.mappingStartGateStopEndpoint"
+            :data-mapping-start-gate-preview-endpoint="plainCurrentMappingControlPack.mappingStartGatePreviewEndpoint"
+            :data-mapping-start-gate-readback-endpoints="plainCurrentMappingControlPack.mappingStartGateReadbackEndpointsText"
+            :data-mapping-start-gate-post-start-readback-endpoints="plainCurrentMappingControlPack.mappingStartGatePostStartReadbackEndpointsText"
+            :data-mapping-start-gate-post-start-readback-sequence-labels="plainCurrentMappingControlPack.mappingStartGatePostStartReadbackSequenceLabelsText"
+            :data-mapping-start-gate-required-success-markers="plainCurrentMappingControlPack.mappingStartGateRequiredSuccessMarkersText"
+            :data-mapping-start-gate-missing-evidence="plainCurrentMappingControlPack.mappingStartGateMissingEvidenceText"
+            :data-mapping-start-gate-missing-evidence-labels="plainCurrentMappingControlPack.mappingStartGateMissingEvidenceLabelsText"
+            :data-mapping-start-gate-proof-status="plainCurrentMappingControlPack.mappingStartGateProofStatus"
+            :data-mapping-start-gate-ready="String(plainCurrentMappingControlPack.mappingStartGateReady)"
+            :data-mapping-start-gate-requires-safety-confirm="String(plainCurrentMappingControlPack.mappingStartGateRequiresSafetyConfirm)"
+            :data-mapping-start-gate-safety-confirm-required-when-executed="String(plainCurrentMappingControlPack.mappingStartGateSafetyConfirmRequiredWhenExecuted)"
+            :data-mapping-start-gate-minimal-precheck-safety-only="String(plainCurrentMappingControlPack.mappingStartGateMinimalPrecheckSafetyOnly)"
+            :data-mapping-start-gate-camera-required="String(plainCurrentMappingControlPack.mappingStartGateCameraRequired)"
+            :data-mapping-start-gate-radar-required="String(plainCurrentMappingControlPack.mappingStartGateRadarRequired)"
+            :data-mapping-start-gate-camera-ready="String(plainCurrentMappingControlPack.mappingStartGateCameraReady)"
+            :data-mapping-start-gate-radar-ready="String(plainCurrentMappingControlPack.mappingStartGateRadarReady)"
+            :data-mapping-start-gate-camera-blocks-start="String(plainCurrentMappingControlPack.mappingStartGateCameraBlocksStart)"
+            :data-mapping-start-gate-radar-blocks-start="String(plainCurrentMappingControlPack.mappingStartGateRadarBlocksStart)"
+            :data-mapping-start-gate-only-camera-missing="String(plainCurrentMappingControlPack.mappingStartGateOnlyCameraMissing)"
+            :data-mapping-start-gate-radar-overlay-wysiwyg-complete="String(plainCurrentMappingControlPack.mappingStartGateRadarOverlayWysiwygComplete)"
+            :data-mapping-start-gate-camera-hardware-action-required="String(plainCurrentMappingControlPack.mappingStartGateCameraHardwareActionRequired)"
+            :data-mapping-start-gate-camera-hardware-action-label="plainCurrentMappingControlPack.mappingStartGateCameraHardwareActionLabel"
+            :data-mapping-start-gate-camera-recovery-next-action-plain="plainCurrentMappingControlPack.mappingStartGateCameraRecoveryNextActionPlain"
+            :data-mapping-start-gate-blocks-free-move="String(plainCurrentMappingControlPack.mappingStartGateBlocksFreeMove)"
+            :data-mapping-start-gate-free-move-allowed-while-blocked="String(plainCurrentMappingControlPack.mappingStartGateFreeMoveAllowedWhileBlocked)"
+            :data-mapping-start-gate-post-start-readback-refreshes-free-roam-latest="String(plainCurrentMappingControlPack.mappingStartGatePostStartReadbackRefreshesFreeRoamLatest)"
+            :data-mapping-start-gate-post-start-readback-refreshes-map-preview="String(plainCurrentMappingControlPack.mappingStartGatePostStartReadbackRefreshesMapPreview)"
+            :data-mapping-start-gate-post-start-readback-refreshes-summary="String(plainCurrentMappingControlPack.mappingStartGatePostStartReadbackRefreshesSummary)"
+            :data-mapping-start-gate-sends-motion-when-clicked="String(plainCurrentMappingControlPack.mappingStartGateSendsMotionWhenClicked)"
+            :data-mapping-start-gate-sends-motion-when-executed="String(plainCurrentMappingControlPack.mappingStartGateSendsMotionWhenExecuted)"
+            :data-mapping-start-gate-starts-map-runtime-when-clicked="String(plainCurrentMappingControlPack.mappingStartGateStartsMapRuntimeWhenClicked)"
+            :data-mapping-start-gate-starts-map-runtime-when-executed="String(plainCurrentMappingControlPack.mappingStartGateStartsMapRuntimeWhenExecuted)"
+            :data-mapping-start-gate-starts-nav2-when-clicked="String(plainCurrentMappingControlPack.mappingStartGateStartsNav2WhenClicked)"
+            :data-mapping-start-gate-starts-manual-when-clicked="String(plainCurrentMappingControlPack.mappingStartGateStartsManualWhenClicked)"
+            :data-mapping-start-gate-starts-keyboard-when-clicked="String(plainCurrentMappingControlPack.mappingStartGateStartsKeyboardWhenClicked)"
+            :data-mapping-start-gate-starts-free-roam-when-clicked="String(plainCurrentMappingControlPack.mappingStartGateStartsFreeRoamWhenClicked)"
+            :data-mapping-start-gate-submits-delivery-when-clicked="String(plainCurrentMappingControlPack.mappingStartGateSubmitsDeliveryWhenClicked)"
+            :data-mapping-start-gate-stops-motion-when-clicked="String(plainCurrentMappingControlPack.mappingStartGateStopsMotionWhenClicked)"
+            :data-mapping-start-gate-readback-sends-motion="String(plainCurrentMappingControlPack.mappingStartGateReadbackSendsMotion)"
+            :data-mapping-start-gate-readback-starts-nav2="String(plainCurrentMappingControlPack.mappingStartGateReadbackStartsNav2)"
+            :data-mapping-start-gate-readback-starts-manual="String(plainCurrentMappingControlPack.mappingStartGateReadbackStartsManual)"
+            :data-mapping-start-gate-readback-starts-keyboard="String(plainCurrentMappingControlPack.mappingStartGateReadbackStartsKeyboard)"
+            :data-mapping-start-gate-readback-starts-free-roam="String(plainCurrentMappingControlPack.mappingStartGateReadbackStartsFreeRoam)"
+            :data-mapping-start-gate-readback-starts-map-runtime="String(plainCurrentMappingControlPack.mappingStartGateReadbackStartsMapRuntime)"
+            :data-mapping-start-gate-readback-submits-delivery="String(plainCurrentMappingControlPack.mappingStartGateReadbackSubmitsDelivery)"
+            :data-mapping-start-gate-readback-stops-motion="String(plainCurrentMappingControlPack.mappingStartGateReadbackStopsMotion)"
           >
             {{ plainCurrentMappingControlPack.plain }}
           </p>
