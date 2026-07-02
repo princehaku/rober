@@ -6870,6 +6870,15 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.objective_audit_next_objective_id).toBe(summary.live_closure_summary?.objective_audit_next_objective_id);
       expect(summary.fixed_objective_audit_summary_endpoint).toBe("/api/robot-control/summary");
       expect(summary.objective_audit_sends_motion_when_clicked).toBe(false);
+      const motionObjective = summary.objective_audit_items?.find((item) => item.id === "motion");
+      expect(motionObjective?.missing_evidence_ids).toContain("same_window_wheel_lr_nonzero");
+      expect(motionObjective?.missing_evidence_labels).toContain("同窗口轮速 L/R 非零");
+      expect(motionObjective?.readback_endpoints).toContain("/api/robot-control/nav2/goal/execution/latest");
+      expect(motionObjective?.next_action_requires_safety_confirm).toBe(true);
+      const wysiwygObjective = summary.objective_audit_items?.find((item) => item.id === "wysiwyg");
+      expect(wysiwygObjective?.missing_evidence_ids).toContain("camera_first_frame");
+      expect(wysiwygObjective?.readback_endpoints).toContain("/api/robot-control/camera/first-frame/probe");
+      expect(wysiwygObjective?.next_action_requires_safety_confirm).toBe(false);
       expect(summary.map_display_primary_tool).toBe("pc_big_map");
       expect(summary.map_display_primary_url).toBe("/map");
       expect(summary.map_display_primary_action_label).toBe("进入地图大屏");

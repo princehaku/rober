@@ -9866,6 +9866,30 @@ function buildLiveClosureSummary(
   const wysiwygObjectiveCompleted = wysiwygObjectiveDoneCount === 3;
   const mappingObjectiveCompleted = freeMoveStartReady && mappingStartReady;
   const mappingObjectiveMissingCount = [!freeMoveStartReady, !mappingStartReady].filter(Boolean).length;
+  const motionObjectiveMissingEvidence = [
+    ...(!routeReadyOnMap ? [{ id: "route_ready_on_map", label: "图上路线" }] : []),
+    ...(!nav2GoalSucceeded ? [{ id: "nav2_goal_succeeded", label: "路线到点成功" }] : []),
+    ...(!wheelLrNonzeroProven ? [{ id: "same_window_wheel_lr_nonzero", label: "同窗口轮速 L/R 非零" }] : []),
+    ...(!deliveryClaimReady ? [{ id: "delivery_success", label: "送达确认" }] : []),
+    ...(!keyboardMotionVerified ? [{ id: "keyboard_wheel_lr_nonzero", label: "键盘按住轮速 L/R 非零" }] : []),
+    ...(!keyboardStopSettledAfterPulse ? [{ id: "keyboard_stop_after_release", label: "键盘松开后停稳" }] : []),
+    ...(!freeMoveObjectiveDone ? [{ id: "free_roam_motion_ready", label: "自由移动启动读回" }] : []),
+  ];
+  const wysiwygObjectiveMissingEvidence = [
+    ...(!cameraCurrentVisible ? [{ id: "camera_first_frame", label: "画面首帧" }] : []),
+    ...(!mapCurrentVisible ? [{ id: "map_current_visible", label: "当前地图画面" }] : []),
+    ...(!radarMapPointsVisible ? [{ id: "radar_map_points", label: "雷达地图标记" }] : []),
+  ];
+  const precheckObjectiveMissingEvidence = minimalPrecheckSafetyOnly
+    ? []
+    : [{ id: "safety_confirm_only_precheck", label: "最小安全确认预检" }];
+  const mappingObjectiveMissingEvidence = [
+    ...(!freeMoveStartReady ? [{ id: "free_roam_start_ready", label: "自由移动入口" }] : []),
+    ...(!mappingStartReady ? mappingStartMissingReasons.map((id) => ({
+      id,
+      label: freeRoamMissingPlainLabels([id])[0] ?? id,
+    })) : []),
+  ];
   const objectiveAuditItems: RobotControlLiveObjectiveAuditItem[] = [
     {
       id: "motion",
@@ -9874,6 +9898,17 @@ function buildLiveClosureSummary(
       summary_plain: `图上行程：${nav2ObjectiveDone ? "已闭环" : routeReadyOnMap ? "待轮速复验" : "未就绪"}；键盘：${keyboardObjectiveDone ? "已验证" : keyboardContinuousControlReady ? "可验证" : "未就绪"}；自由移动：${freeMoveObjectiveDone ? "运行中" : freeMoveStartReady ? "可启动" : "未就绪"}。`,
       next_action_plain: motionObjectiveNextActionPlain,
       item_ids: ["nav2_route_execution", "keyboard_continuous_control", "free_move"],
+      missing_evidence_ids: motionObjectiveMissingEvidence.map((item) => item.id),
+      missing_evidence_labels: motionObjectiveMissingEvidence.map((item) => item.label),
+      readback_endpoints: [
+        "/api/robot-control/map/preview",
+        "/api/robot-control/nav2/goal/execution/latest",
+        "/api/robot-control/base/feedback-samples",
+        "/api/robot-control/delivery/latest",
+        "/api/robot-control/free-roam/autonomy/latest",
+        "/api/robot-control/summary",
+      ],
+      next_action_requires_safety_confirm: motionObjectiveActionable,
       completed: motionObjectiveCompleted,
       actionable: motionObjectiveActionable,
       missing_count: 3 - motionObjectiveDoneCount,
@@ -9889,6 +9924,17 @@ function buildLiveClosureSummary(
         ? "当前画面、地图和雷达点已按同轮读数显示。"
         : `下一步：${liveWysiwygPrimaryRefreshLabel}。`,
       item_ids: ["camera_wysiwyg", "map_wysiwyg", "radar_map_points_wysiwyg"],
+      missing_evidence_ids: wysiwygObjectiveMissingEvidence.map((item) => item.id),
+      missing_evidence_labels: wysiwygObjectiveMissingEvidence.map((item) => item.label),
+      readback_endpoints: [
+        "/api/robot-control/camera/first-frame/probe",
+        "/api/robot-control/camera/mjpeg/status",
+        "/api/robot-control/radar/scan-proof/refresh",
+        "/api/robot-control/radar/status",
+        "/api/robot-control/map/preview",
+        "/api/robot-control/summary",
+      ],
+      next_action_requires_safety_confirm: false,
       completed: wysiwygObjectiveCompleted,
       actionable: !wysiwygObjectiveCompleted,
       missing_count: 3 - wysiwygObjectiveDoneCount,
@@ -9908,6 +9954,10 @@ function buildLiveClosureSummary(
         : "发车前预检还未收敛到最小安全确认。",
       next_action_plain: goalSummary.safety_precheck_next_action_plain || "当前没有待安全确认的入口。",
       item_ids: ["safety_confirmation"],
+      missing_evidence_ids: precheckObjectiveMissingEvidence.map((item) => item.id),
+      missing_evidence_labels: precheckObjectiveMissingEvidence.map((item) => item.label),
+      readback_endpoints: ["/api/robot-control/summary"],
+      next_action_requires_safety_confirm: false,
       completed: minimalPrecheckSafetyOnly,
       actionable: goalSummary.safety_confirm_needed_count > 0,
       missing_count: minimalPrecheckSafetyOnly ? 0 : 1,
@@ -9921,6 +9971,15 @@ function buildLiveClosureSummary(
       summary_plain: `自由移动：${freeMoveStartReady ? "可启动" : "未就绪"}；建图启动：${mappingStartReady ? "可启动" : `未就绪，还差 ${mappingStartMissingPlain}`}。`,
       next_action_plain: mappingStartUnblockPlain,
       item_ids: ["free_move", "mapping_start"],
+      missing_evidence_ids: mappingObjectiveMissingEvidence.map((item) => item.id),
+      missing_evidence_labels: mappingObjectiveMissingEvidence.map((item) => item.label),
+      readback_endpoints: [
+        "/api/robot-control/free-roam/autonomy/latest",
+        "/api/robot-control/map/preview",
+        "/api/robot-control/camera/mjpeg/status",
+        "/api/robot-control/summary",
+      ],
+      next_action_requires_safety_confirm: freeMoveStartReady || mappingStartReady,
       completed: mappingObjectiveCompleted,
       actionable: freeMoveStartReady || mappingStartReady,
       missing_count: mappingObjectiveMissingCount,

@@ -3083,6 +3083,10 @@ export interface RobotControlLiveObjectiveAuditItem {
   summary_plain: string;
   next_action_plain: string;
   item_ids: string[];
+  missing_evidence_ids?: string[];
+  missing_evidence_labels?: string[];
+  readback_endpoints?: string[];
+  next_action_requires_safety_confirm?: boolean;
   completed: boolean;
   actionable: boolean;
   missing_count: number;

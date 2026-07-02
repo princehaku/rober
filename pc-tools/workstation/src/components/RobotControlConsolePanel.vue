@@ -8416,6 +8416,10 @@ type PlainObjectiveOverviewItem = {
   summary: string;
   nextAction: string;
   itemIds: string[];
+  missingEvidenceIds: string[];
+  missingEvidenceLabels: string[];
+  readbackEndpoints: string[];
+  nextActionRequiresSafetyConfirm: boolean;
   completed: boolean;
   actionable: boolean;
   missingCount: number;
@@ -8481,6 +8485,10 @@ const plainObjectiveOverviewItems = computed<PlainObjectiveOverviewItem[]>(() =>
       summary: item.summary_plain,
       nextAction: item.next_action_plain,
       itemIds: item.item_ids,
+      missingEvidenceIds: item.missing_evidence_ids ?? [],
+      missingEvidenceLabels: item.missing_evidence_labels ?? [],
+      readbackEndpoints: item.readback_endpoints ?? [],
+      nextActionRequiresSafetyConfirm: item.next_action_requires_safety_confirm ?? false,
       completed: item.completed,
       actionable: item.actionable,
       missingCount: item.missing_count,
@@ -8505,6 +8513,8 @@ const plainObjectiveOverviewItems = computed<PlainObjectiveOverviewItem[]>(() =>
   const mappingReady = mapping?.status === "needs_safety_confirm" || mapping?.status === "ready";
   const itemIds = (items: Array<NonNullable<typeof nav2>>): string[] => items.map((item) => item.id);
   const missingCount = (items: Array<NonNullable<typeof nav2>>): number => items.filter((item) => item.status !== "done").length;
+  const missingIds = (items: Array<NonNullable<typeof nav2>>): string[] => items.filter((item) => item.status !== "done").map((item) => item.id);
+  const missingLabels = (items: Array<NonNullable<typeof nav2>>): string[] => items.filter((item) => item.status !== "done").map((item) => item.label);
   return [
     {
       id: "motion",
@@ -8513,6 +8523,15 @@ const plainObjectiveOverviewItems = computed<PlainObjectiveOverviewItem[]>(() =>
       summary: `图上行程：${nav2?.status_label ?? "未读到"}；键盘：${keyboard?.status_label ?? "未读到"}；自由移动：${freeMove?.status_label ?? "未读到"}。`,
       nextAction: summary.primary_ready_action_next_action_plain || summary.motion_next_action_plain || "先刷新小车状态。",
       itemIds: itemIds(motionItems),
+      missingEvidenceIds: missingIds(motionItems),
+      missingEvidenceLabels: missingLabels(motionItems),
+      readbackEndpoints: [
+        "/api/robot-control/nav2/goal/execution/latest",
+        "/api/robot-control/base/feedback-samples",
+        "/api/robot-control/free-roam/autonomy/latest",
+        "/api/robot-control/summary",
+      ],
+      nextActionRequiresSafetyConfirm: motionReady,
       completed: motionItems.length > 0 && motionItems.every((item) => item.status === "done"),
       actionable: motionReady,
       missingCount: missingCount(motionItems),
@@ -8531,6 +8550,16 @@ const plainObjectiveOverviewItems = computed<PlainObjectiveOverviewItem[]>(() =>
             ? map?.next_action_plain ?? "处理地图所见即所得。"
             : "当前画面、地图和雷达点已按同轮读数显示。",
       itemIds: itemIds(wysiwygItems),
+      missingEvidenceIds: missingIds(wysiwygItems),
+      missingEvidenceLabels: missingLabels(wysiwygItems),
+      readbackEndpoints: [
+        "/api/robot-control/camera/first-frame/probe",
+        "/api/robot-control/camera/mjpeg/status",
+        "/api/robot-control/radar/scan-proof/refresh",
+        "/api/robot-control/map/preview",
+        "/api/robot-control/summary",
+      ],
+      nextActionRequiresSafetyConfirm: false,
       completed: wysiwygDone,
       actionable: !wysiwygDone,
       missingCount: missingCount(wysiwygItems),
@@ -8543,6 +8572,10 @@ const plainObjectiveOverviewItems = computed<PlainObjectiveOverviewItem[]>(() =>
       summary: summary.safety_precheck_summary_plain || "当前没有待安全确认的入口。",
       nextAction: summary.safety_precheck_next_action_plain || "当前没有待安全确认的入口。",
       itemIds: summary.safety_precheck_source_card_id ? [summary.first_incomplete_item_id || "safety_confirmation"] : [],
+      missingEvidenceIds: [],
+      missingEvidenceLabels: [],
+      readbackEndpoints: ["/api/robot-control/summary"],
+      nextActionRequiresSafetyConfirm: false,
       completed: true,
       actionable: Boolean(summary.safety_precheck_source_card_id),
       missingCount: 0,
@@ -8555,6 +8588,14 @@ const plainObjectiveOverviewItems = computed<PlainObjectiveOverviewItem[]>(() =>
       summary: `自由移动：${freeMove?.status_label ?? "未读到"}；建图启动：${mapping?.status_label ?? "未读到"}。`,
       nextAction: summary.mapping_next_action_plain || mapping?.next_action_plain || "先刷新建图条件。",
       itemIds: [freeMove?.id, mapping?.id].filter((id): id is string => Boolean(id)),
+      missingEvidenceIds: [freeMove, mapping].filter((item) => item && item.status !== "done").map((item) => item?.id ?? "mapping_start"),
+      missingEvidenceLabels: [freeMove, mapping].filter((item) => item && item.status !== "done").map((item) => item?.label ?? "建图启动"),
+      readbackEndpoints: [
+        "/api/robot-control/free-roam/autonomy/latest",
+        "/api/robot-control/map/preview",
+        "/api/robot-control/summary",
+      ],
+      nextActionRequiresSafetyConfirm: Boolean(mappingReady || freeMove?.status === "needs_safety_confirm" || freeMove?.status === "ready"),
       completed: Boolean(mappingReady),
       actionable: Boolean(mappingReady || freeMove?.status === "needs_safety_confirm" || freeMove?.status === "ready"),
       missingCount: [freeMove, mapping].filter((item) => item && item.status !== "done" && item.status !== "ready" && item.status !== "needs_safety_confirm").length,
@@ -22494,6 +22535,10 @@ onBeforeUnmount(() => {
           :data-actionable="String(item.actionable)"
           :data-missing-count="String(item.missingCount)"
           :data-item-ids="item.itemIds.join(',') || 'none'"
+          :data-missing-evidence-ids="item.missingEvidenceIds.join(',') || 'none'"
+          :data-missing-evidence-labels="item.missingEvidenceLabels.join(',') || 'none'"
+          :data-readback-endpoints="item.readbackEndpoints.join(',') || 'none'"
+          :data-next-action-requires-safety-confirm="String(item.nextActionRequiresSafetyConfirm)"
           :data-source-card-id="item.sourceCardId"
           :data-next-action="item.nextAction"
           data-sends-motion-when-clicked="false"

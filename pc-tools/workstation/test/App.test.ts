@@ -1291,6 +1291,10 @@ const fixtures: Record<string, unknown> = {
           summary_plain: "图上行程：未就绪；键盘：可验证；自由移动：可启动。",
           next_action_plain: "上车自由移动状态机未加载；可先勾选现场安全确认，用键盘或低速手控移动；相机和雷达只影响建图",
           item_ids: ["nav2_route_execution", "keyboard_continuous_control", "free_move"],
+          missing_evidence_ids: ["route_ready_on_map", "nav2_goal_succeeded", "same_window_wheel_lr_nonzero", "delivery_success", "keyboard_wheel_lr_nonzero", "keyboard_stop_after_release", "free_roam_motion_ready"],
+          missing_evidence_labels: ["图上路线", "路线到点成功", "同窗口轮速 L/R 非零", "送达确认", "键盘按住轮速 L/R 非零", "键盘松开后停稳", "自由移动启动读回"],
+          readback_endpoints: ["/api/robot-control/map/preview", "/api/robot-control/nav2/goal/execution/latest", "/api/robot-control/base/feedback-samples", "/api/robot-control/delivery/latest", "/api/robot-control/free-roam/autonomy/latest", "/api/robot-control/summary"],
+          next_action_requires_safety_confirm: true,
           completed: false,
           actionable: true,
           missing_count: 3,
@@ -1304,6 +1308,10 @@ const fixtures: Record<string, unknown> = {
           summary_plain: "画面：未显示；地图：已显示；雷达点：未贴图。",
           next_action_plain: "刷新地图画面，确认地图上实际显示的雷达点数。",
           item_ids: ["camera_wysiwyg", "map_wysiwyg", "radar_map_points_wysiwyg"],
+          missing_evidence_ids: ["camera_first_frame", "radar_map_points"],
+          missing_evidence_labels: ["画面首帧", "雷达地图标记"],
+          readback_endpoints: ["/api/robot-control/camera/first-frame/probe", "/api/robot-control/camera/mjpeg/status", "/api/robot-control/radar/scan-proof/refresh", "/api/robot-control/radar/status", "/api/robot-control/map/preview", "/api/robot-control/summary"],
+          next_action_requires_safety_confirm: false,
           completed: false,
           actionable: true,
           missing_count: 2,
@@ -1317,6 +1325,10 @@ const fixtures: Record<string, unknown> = {
           summary_plain: "发车前预检已精简：执行运动只需勾现场安全确认；相机、雷达和现场报告不作为额外发车前置。",
           next_action_plain: "上车自由移动状态机未加载；可先勾选现场安全确认，用键盘或低速手控移动；相机和雷达只影响建图",
           item_ids: ["safety_confirmation"],
+          missing_evidence_ids: [],
+          missing_evidence_labels: [],
+          readback_endpoints: ["/api/robot-control/summary"],
+          next_action_requires_safety_confirm: false,
           completed: true,
           actionable: true,
           missing_count: 0,
@@ -1330,6 +1342,10 @@ const fixtures: Record<string, unknown> = {
           summary_plain: "自由移动：可启动；建图启动：未就绪，还差 画面首帧、雷达新鲜。",
           next_action_plain: "建图启动还差：画面首帧、雷达新鲜；自由移动仍可先做，不被相机/雷达画面缺口阻塞。当前相机提示：不是页面独占：USB 摄像头当前没人占用，但 UVC 设备没有输出视频帧；检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测；只读复测相机首帧和 MJPEG 状态，首帧 ready 后再启动建图。",
           item_ids: ["free_move", "mapping_start"],
+          missing_evidence_ids: ["camera_first_frame", "lidar_fresh"],
+          missing_evidence_labels: ["画面首帧", "雷达新鲜"],
+          readback_endpoints: ["/api/robot-control/free-roam/autonomy/latest", "/api/robot-control/map/preview", "/api/robot-control/camera/mjpeg/status", "/api/robot-control/summary"],
+          next_action_requires_safety_confirm: true,
           completed: false,
           actionable: true,
           missing_count: 1,
@@ -8259,6 +8275,10 @@ describe("App", () => {
     expect(objectiveMotion.attributes("data-actionable")).toBe("true");
     expect(objectiveMotion.attributes("data-missing-count")).toBe("3");
     expect(objectiveMotion.attributes("data-item-ids")).toBe("nav2_route_execution,keyboard_continuous_control,free_move");
+    expect(objectiveMotion.attributes("data-missing-evidence-ids")).toContain("same_window_wheel_lr_nonzero");
+    expect(objectiveMotion.attributes("data-missing-evidence-labels")).toContain("同窗口轮速 L/R 非零");
+    expect(objectiveMotion.attributes("data-readback-endpoints")).toContain("/api/robot-control/nav2/goal/execution/latest");
+    expect(objectiveMotion.attributes("data-next-action-requires-safety-confirm")).toBe("true");
     expect(objectiveMotion.attributes("data-source-card-id")).toBe("free_move");
     expect(objectiveMotion.attributes("data-sends-motion-when-clicked")).toBe("false");
     const objectiveWysiwyg = wrapper.find('[data-testid="plain-objective-overview-wysiwyg"]');
@@ -8268,6 +8288,10 @@ describe("App", () => {
     expect(objectiveWysiwyg.attributes("data-actionable")).toBe("true");
     expect(objectiveWysiwyg.attributes("data-missing-count")).toBe("2");
     expect(objectiveWysiwyg.attributes("data-item-ids")).toBe("camera_wysiwyg,map_wysiwyg,radar_map_points_wysiwyg");
+    expect(objectiveWysiwyg.attributes("data-missing-evidence-ids")).toBe("camera_first_frame,radar_map_points");
+    expect(objectiveWysiwyg.attributes("data-missing-evidence-labels")).toBe("画面首帧,雷达地图标记");
+    expect(objectiveWysiwyg.attributes("data-readback-endpoints")).toContain("/api/robot-control/camera/first-frame/probe");
+    expect(objectiveWysiwyg.attributes("data-next-action-requires-safety-confirm")).toBe("false");
     expect(objectiveWysiwyg.attributes("data-source-card-id")).toBe("camera_preview");
     expect(objectiveWysiwyg.attributes("data-next-action")).toContain("刷新地图画面");
     const objectivePrecheck = wrapper.find('[data-testid="plain-objective-overview-precheck"]');
@@ -8276,6 +8300,9 @@ describe("App", () => {
     expect(objectivePrecheck.attributes("data-completed")).toBe("true");
     expect(objectivePrecheck.attributes("data-actionable")).toBe("true");
     expect(objectivePrecheck.attributes("data-missing-count")).toBe("0");
+    expect(objectivePrecheck.attributes("data-missing-evidence-ids")).toBe("none");
+    expect(objectivePrecheck.attributes("data-readback-endpoints")).toBe("/api/robot-control/summary");
+    expect(objectivePrecheck.attributes("data-next-action-requires-safety-confirm")).toBe("false");
     expect(objectivePrecheck.attributes("data-sends-motion-when-clicked")).toBe("false");
     const objectiveMapping = wrapper.find('[data-testid="plain-objective-overview-mapping"]');
     expect(objectiveMapping.attributes("data-objective-id")).toBe("mapping");
@@ -8284,6 +8311,10 @@ describe("App", () => {
     expect(objectiveMapping.attributes("data-actionable")).toBe("true");
     expect(objectiveMapping.attributes("data-missing-count")).toBe("1");
     expect(objectiveMapping.attributes("data-item-ids")).toBe("free_move,mapping_start");
+    expect(objectiveMapping.attributes("data-missing-evidence-ids")).toBe("camera_first_frame,lidar_fresh");
+    expect(objectiveMapping.attributes("data-missing-evidence-labels")).toBe("画面首帧,雷达新鲜");
+    expect(objectiveMapping.attributes("data-readback-endpoints")).toContain("/api/robot-control/free-roam/autonomy/latest");
+    expect(objectiveMapping.attributes("data-next-action-requires-safety-confirm")).toBe("true");
     expect(objectiveMapping.attributes("data-source-card-id")).toBe("free_move");
     expect(objectiveMapping.text()).toContain("画面首帧");
     expect(objectiveMapping.text()).not.toContain("camera_first_frame");
