@@ -7256,6 +7256,13 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.current_mapping_action_camera_ready).toBe(!summary.mapping_camera_blocks_start);
       expect(summary.current_mapping_action_radar_ready).toBe(!summary.mapping_lidar_blocks_start);
       expect(summary.current_mapping_action_only_camera_missing).toBe(summary.mapping_start_only_camera_missing);
+      expect(summary.current_mapping_action_camera_hardware_action_required).toBe(summary.camera_hardware_action_required);
+      expect(summary.current_mapping_action_camera_hardware_action_label).toBe(summary.camera_hardware_action_label);
+      expect(summary.current_mapping_action_camera_usb_full_speed_detected).toBe(summary.camera_usb_full_speed_detected);
+      expect(summary.current_mapping_action_camera_usb_speed).toBe(summary.camera_usb_speed);
+      expect(summary.current_mapping_action_camera_source_diagnosis_status).toBe(summary.camera_source_diagnosis_status);
+      expect(summary.current_mapping_action_camera_source_diagnosis_not_exclusive).toBe(summary.camera_source_diagnosis_not_exclusive);
+      expect(summary.current_mapping_action_camera_recovery_next_action_plain).toBe(summary.camera_recovery_next_action_plain);
       expect(summary.current_mapping_action_blocks_free_move).toBe(false);
       expect(summary.current_mapping_action_free_move_allowed_while_blocked).toBe(summary.free_move_start_ready && !summary.mapping_start_ready);
       expect(summary.current_mapping_action_sends_motion).toBe(true);

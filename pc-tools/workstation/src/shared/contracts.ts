@@ -3879,6 +3879,13 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   current_mapping_action_radar_blocks_start?: RobotControlLiveClosureSummary["mapping_lidar_blocks_start"];
   current_mapping_action_only_camera_missing?: boolean;
   current_mapping_action_radar_overlay_wysiwyg_complete?: boolean;
+  current_mapping_action_camera_hardware_action_required?: RobotControlLiveClosureSummary["camera_hardware_action_required"];
+  current_mapping_action_camera_hardware_action_label?: RobotControlLiveClosureSummary["camera_hardware_action_label"];
+  current_mapping_action_camera_usb_full_speed_detected?: RobotControlLiveClosureSummary["camera_usb_full_speed_detected"];
+  current_mapping_action_camera_usb_speed?: RobotControlLiveClosureSummary["camera_usb_speed"];
+  current_mapping_action_camera_source_diagnosis_status?: RobotControlLiveClosureSummary["camera_source_diagnosis_status"];
+  current_mapping_action_camera_source_diagnosis_not_exclusive?: RobotControlLiveClosureSummary["camera_source_diagnosis_not_exclusive"];
+  current_mapping_action_camera_recovery_next_action_plain?: RobotControlLiveClosureSummary["camera_recovery_next_action_plain"];
   current_mapping_action_blocks_free_move?: false;
   current_mapping_action_free_move_allowed_while_blocked?: boolean;
   current_mapping_action_sends_motion?: RobotControlLiveMotionRunbookItem["sends_motion_when_executed"];

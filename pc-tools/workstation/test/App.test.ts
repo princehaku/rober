@@ -885,6 +885,13 @@ const fixtures: Record<string, unknown> = {
     current_mapping_action_radar_blocks_start: true,
     current_mapping_action_only_camera_missing: false,
     current_mapping_action_radar_overlay_wysiwyg_complete: false,
+    current_mapping_action_camera_hardware_action_required: false,
+    current_mapping_action_camera_hardware_action_label: "复测相机首帧",
+    current_mapping_action_camera_usb_full_speed_detected: false,
+    current_mapping_action_camera_usb_speed: "not_loaded",
+    current_mapping_action_camera_source_diagnosis_status: "uvc_no_frame_not_exclusive",
+    current_mapping_action_camera_source_diagnosis_not_exclusive: "true",
+    current_mapping_action_camera_recovery_next_action_plain: "相机不是页面独占；先复测相机首帧并读取共享预览状态。若仍无画面，检查 USB 线、接口、摄像头供电或换 known-good UVC 后再复测。",
     current_mapping_action_blocks_free_move: false,
     current_mapping_action_free_move_allowed_while_blocked: true,
     current_mapping_action_sends_motion: true,
@@ -8047,6 +8054,12 @@ describe("App", () => {
     expect(currentMappingAction.attributes("data-current-mapping-action-radar-ready")).toBe("false");
     expect(currentMappingAction.attributes("data-current-mapping-action-only-camera-missing")).toBe("false");
     expect(currentMappingAction.attributes("data-current-mapping-action-radar-overlay-wysiwyg-complete")).toBe("false");
+    expect(currentMappingAction.attributes("data-current-mapping-action-camera-hardware-action-required")).toBe("false");
+    expect(currentMappingAction.attributes("data-current-mapping-action-camera-hardware-action-label")).toBe("复测相机首帧");
+    expect(currentMappingAction.attributes("data-current-mapping-action-camera-usb-full-speed-detected")).toBe("false");
+    expect(currentMappingAction.attributes("data-current-mapping-action-camera-usb-speed")).toBe("not_loaded");
+    expect(currentMappingAction.attributes("data-current-mapping-action-camera-source-diagnosis-status")).toBe("uvc_no_frame_not_exclusive");
+    expect(currentMappingAction.attributes("data-current-mapping-action-camera-source-diagnosis-not-exclusive")).toBe("true");
     expect(currentMappingAction.attributes("data-current-mapping-action-blocks-free-move")).toBe("false");
     expect(currentMappingAction.attributes("data-current-mapping-action-free-move-allowed-while-blocked")).toBe("true");
     expect(currentMappingAction.attributes("data-current-mapping-action-sends-motion")).toBe("true");
@@ -10155,6 +10168,13 @@ describe("App", () => {
     summaryFixture.readback_summary.camera.source_diagnosis_next_action_plain = "摄像头现在挂在 USB 12M full-speed，换高速 USB 口/线或带供电 USB Hub，减少转接并确认供电后复测；共享预览不是页面独占。";
     summaryFixture.readback_summary.camera.uvc_usb_topology_status = "uvc_video_on_full_speed_usb";
     summaryFixture.readback_summary.camera.uvc_usb_topology_video_usb_speed = "12M";
+    summaryFixture.current_mapping_action_camera_hardware_action_required = true;
+    summaryFixture.current_mapping_action_camera_hardware_action_label = "换高速USB后复测";
+    summaryFixture.current_mapping_action_camera_usb_full_speed_detected = true;
+    summaryFixture.current_mapping_action_camera_usb_speed = "12M";
+    summaryFixture.current_mapping_action_camera_source_diagnosis_status = "uvc_full_speed_usb_not_exclusive";
+    summaryFixture.current_mapping_action_camera_source_diagnosis_not_exclusive = "true";
+    summaryFixture.current_mapping_action_camera_recovery_next_action_plain = "相机不是页面独占；诊断显示 USB full-speed；先换高速USB后复测，再读取共享预览状态。当前硬件提示：摄像头现在挂在 USB 12M full-speed，换高速 USB 口/线或带供电 USB Hub，减少转接并确认供电后复测。";
     const mockedFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
       "/api/robot-control/camera/first-frame/probe": {
@@ -10187,6 +10207,7 @@ describe("App", () => {
     const liveCameraRecoveryReadback = wrapper.find('[data-testid="plain-live-camera-recovery-readback"]');
     const liveCameraRecoveryRefresh = wrapper.find('[data-testid="plain-live-camera-recovery-refresh"]');
     const mappingUnlockSummary = wrapper.find('[data-testid="plain-mapping-unlock-summary"]');
+    const currentMappingAction = wrapper.find('[data-testid="plain-current-mapping-action"]');
     const cameraUsbRecoveryProof = wrapper.find('[data-testid="plain-camera-usb-recovery-proof"]');
     const fieldAcceptanceCameraProof = wrapper.find('[data-testid="plain-field-acceptance-camera-proof"]');
     expect(liveClosureSummary.attributes("data-camera-hardware-action-required")).toBe("true");
@@ -10260,6 +10281,16 @@ describe("App", () => {
     expect(mappingUnlockSummary.attributes("data-starts-free-roam")).toBe("false");
     expect(mappingUnlockSummary.attributes("data-sends-motion-when-clicked")).toBe("false");
     expect(mappingUnlockSummary.text()).toContain("建图解锁");
+    expect(currentMappingAction.text()).toContain("相机处理=换高速USB后复测（USB 12M，不是页面独占）");
+    expect(currentMappingAction.text()).toContain("下一步：相机不是页面独占；诊断显示 USB full-speed；先换高速USB后复测");
+    expect(currentMappingAction.attributes("data-current-mapping-action-camera-hardware-action-required")).toBe("true");
+    expect(currentMappingAction.attributes("data-current-mapping-action-camera-hardware-action-label")).toBe("换高速USB后复测");
+    expect(currentMappingAction.attributes("data-current-mapping-action-camera-usb-full-speed-detected")).toBe("true");
+    expect(currentMappingAction.attributes("data-current-mapping-action-camera-usb-speed")).toBe("12M");
+    expect(currentMappingAction.attributes("data-current-mapping-action-camera-source-diagnosis-status")).toBe("uvc_full_speed_usb_not_exclusive");
+    expect(currentMappingAction.attributes("data-current-mapping-action-camera-source-diagnosis-not-exclusive")).toBe("true");
+    expect(currentMappingAction.attributes("data-current-mapping-action-blocks-free-move")).toBe("false");
+    expect(currentMappingAction.attributes("data-current-mapping-action-starts-map-runtime-when-executed")).toBe("true");
     expect(cameraUsbRecoveryProof.exists()).toBe(true);
     expect(cameraUsbRecoveryProof.attributes("data-state")).toBe("USB full-speed");
     expect(cameraUsbRecoveryProof.attributes("data-camera-usb-speed")).toBe("12M");

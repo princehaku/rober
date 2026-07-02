@@ -1764,6 +1764,14 @@ describe("robotControlSummary", () => {
     expect(summary.camera_hardware_action_required).toBe(true);
     expect(summary.camera_hardware_action_label).toBe("换高速USB后复测");
     expect(summary.camera_usb_full_speed_detected).toBe(true);
+    expect(summary.current_mapping_action_camera_hardware_action_required).toBe(true);
+    expect(summary.current_mapping_action_camera_hardware_action_label).toBe("换高速USB后复测");
+    expect(summary.current_mapping_action_camera_usb_full_speed_detected).toBe(true);
+    expect(summary.current_mapping_action_camera_usb_speed).toBe("12M");
+    expect(summary.current_mapping_action_camera_source_diagnosis_status).toBe("uvc_full_speed_usb_not_exclusive");
+    expect(summary.current_mapping_action_camera_source_diagnosis_not_exclusive).toBe("true");
+    expect(summary.current_mapping_action_camera_recovery_next_action_plain).toContain("换高速 USB 口/线或带供电 USB Hub");
+    expect(summary.current_mapping_action_blocks_free_move).toBe(false);
     expect(summary.camera_source_diagnosis_status).toBe("uvc_full_speed_usb_not_exclusive");
     expect(summary.camera_source_diagnosis_not_exclusive).toBe("true");
     expect(summary.camera_source_diagnosis_plain_hint).toContain("USB 12M full-speed");

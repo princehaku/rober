@@ -9254,6 +9254,13 @@ type PlainCurrentMappingAction = {
   radarReady: boolean;
   onlyCameraMissing: boolean;
   radarOverlayWysiwygComplete: boolean;
+  cameraHardwareActionRequired: boolean;
+  cameraHardwareActionLabel: string;
+  cameraUsbFullSpeedDetected: boolean;
+  cameraUsbSpeed: string;
+  cameraSourceDiagnosisStatus: string;
+  cameraSourceDiagnosisNotExclusive: string;
+  cameraRecoveryNextActionPlain: string;
   blocksFreeMove: boolean;
   freeMoveAllowedWhileBlocked: boolean;
   sendsMotion: boolean;
@@ -9508,8 +9515,20 @@ const plainCurrentMappingAction = computed<PlainCurrentMappingAction>(() => {
   const missingText = missingEvidence.length > 0 ? freeRoamMappingMissingPlainLabels(missingEvidence).join("、") : "无";
   const state = ready ? "可启动建图" : onlyCameraMissing ? "只差画面" : "待补条件";
   const sensorText = `${cameraReady ? "画面首帧已就绪" : "还差画面首帧"}；${radarReady ? "雷达已满足" : "还差雷达新鲜读数"}；${radarOverlayWysiwygComplete ? "雷达点已贴到地图" : "雷达贴图待确认"}`;
+  const cameraHardwareActionRequired = Boolean(summary?.current_mapping_action_camera_hardware_action_required ?? summary?.camera_hardware_action_required ?? false);
+  const cameraHardwareActionLabel = summary?.current_mapping_action_camera_hardware_action_label ?? summary?.camera_hardware_action_label ?? "复测相机首帧";
+  const cameraUsbFullSpeedDetected = Boolean(summary?.current_mapping_action_camera_usb_full_speed_detected ?? summary?.camera_usb_full_speed_detected ?? false);
+  const cameraUsbSpeed = summary?.current_mapping_action_camera_usb_speed ?? summary?.camera_usb_speed ?? "not_loaded";
+  const cameraSourceDiagnosisStatus = summary?.current_mapping_action_camera_source_diagnosis_status ?? summary?.camera_source_diagnosis_status ?? "not_loaded";
+  const cameraSourceDiagnosisNotExclusive = summary?.current_mapping_action_camera_source_diagnosis_not_exclusive ?? summary?.camera_source_diagnosis_not_exclusive ?? "not_loaded";
+  const cameraRecoveryNextActionPlain = summary?.current_mapping_action_camera_recovery_next_action_plain ?? summary?.camera_recovery_next_action_plain ?? "";
+  const cameraHardwareText = !cameraReady && cameraHardwareActionRequired
+    ? `；相机处理=${cameraHardwareActionLabel}${cameraUsbFullSpeedDetected ? `（USB ${cameraUsbSpeed}，不是页面独占）` : ""}`
+    : "";
   const nextText = ready
     ? "勾现场安全确认后可启动建图记录"
+    : cameraHardwareActionRequired
+      ? cameraRecoveryNextActionPlain.replace(/[。.!?]+$/, "") || `${cameraHardwareActionLabel}后复测相机首帧；自由移动不受影响`
     : onlyCameraMissing
       ? "先复测相机首帧；自由移动不受影响"
       : "先补齐画面首帧和雷达新鲜读数；自由移动不受影响";
@@ -9518,7 +9537,7 @@ const plainCurrentMappingAction = computed<PlainCurrentMappingAction>(() => {
     ready,
     label: summary?.current_mapping_action_display_label ?? summary?.current_mapping_action_label ?? "传感器就绪后建图",
     state,
-    text: `建图动作：${sensorText}；缺口=${missingText}；下一步：${nextText}。`,
+    text: `建图动作：${sensorText}${cameraHardwareText}；缺口=${missingText}；下一步：${nextText}。`,
     startEndpoint: summary?.current_mapping_action_start_endpoint ?? "/api/robot-control/map/start",
     stopEndpoint: summary?.current_mapping_action_stop_endpoint ?? "/api/robot-control/free-roam/autonomy/stop",
     previewEndpoint: summary?.current_mapping_action_preview_endpoint ?? "/api/robot-control/map/preview",
@@ -9530,6 +9549,13 @@ const plainCurrentMappingAction = computed<PlainCurrentMappingAction>(() => {
     radarReady,
     onlyCameraMissing,
     radarOverlayWysiwygComplete,
+    cameraHardwareActionRequired,
+    cameraHardwareActionLabel,
+    cameraUsbFullSpeedDetected,
+    cameraUsbSpeed,
+    cameraSourceDiagnosisStatus,
+    cameraSourceDiagnosisNotExclusive,
+    cameraRecoveryNextActionPlain,
     blocksFreeMove,
     freeMoveAllowedWhileBlocked,
     sendsMotion: Boolean(summary?.current_mapping_action_sends_motion ?? true),
@@ -23116,6 +23142,13 @@ onBeforeUnmount(() => {
                 :data-current-mapping-action-radar-ready="String(plainCurrentMappingAction.radarReady)"
                 :data-current-mapping-action-only-camera-missing="String(plainCurrentMappingAction.onlyCameraMissing)"
                 :data-current-mapping-action-radar-overlay-wysiwyg-complete="String(plainCurrentMappingAction.radarOverlayWysiwygComplete)"
+                :data-current-mapping-action-camera-hardware-action-required="String(plainCurrentMappingAction.cameraHardwareActionRequired)"
+                :data-current-mapping-action-camera-hardware-action-label="plainCurrentMappingAction.cameraHardwareActionLabel"
+                :data-current-mapping-action-camera-usb-full-speed-detected="String(plainCurrentMappingAction.cameraUsbFullSpeedDetected)"
+                :data-current-mapping-action-camera-usb-speed="plainCurrentMappingAction.cameraUsbSpeed"
+                :data-current-mapping-action-camera-source-diagnosis-status="plainCurrentMappingAction.cameraSourceDiagnosisStatus"
+                :data-current-mapping-action-camera-source-diagnosis-not-exclusive="plainCurrentMappingAction.cameraSourceDiagnosisNotExclusive"
+                :data-current-mapping-action-camera-recovery-next-action-plain="plainCurrentMappingAction.cameraRecoveryNextActionPlain"
                 :data-current-mapping-action-blocks-free-move="String(plainCurrentMappingAction.blocksFreeMove)"
                 :data-current-mapping-action-free-move-allowed-while-blocked="String(plainCurrentMappingAction.freeMoveAllowedWhileBlocked)"
                 :data-current-mapping-action-sends-motion="String(plainCurrentMappingAction.sendsMotion)"
