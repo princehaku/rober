@@ -5036,3 +5036,13 @@ full-speed 或 UVC 传输问题时，现场硬件动作仍提示“换高速USB�
 `data-without-camera-allowed`、`data-without-radar-allowed` 和 `data-current-action-sends-motion`。
 页面文案仍显示“发车前只需安全确认，画面和雷达不作为移动前置”；验收卡本身保持 `data-readback-only=true`
 和 `data-sends-motion-when-clicked=false`，只读查看不发车，真正自由移动仍必须走固定 start 按钮和现场安全确认。
+
+2026-07-02 08:07 CST 起，summary 顶层新增 `current_keyboard_action_*` 短字段，直接表达“键盘连续手控”这条动作的
+入口、停止口、读回端点、缺口、安全边界和按住合同。当前会显示
+`current_keyboard_action_id=hold_keyboard`、`current_keyboard_action_start_endpoint=/api/robot-control/base/manual`、
+`current_keyboard_action_stop_endpoint=/api/robot-control/base/stop`、
+`current_keyboard_action_acceptance_endpoints=[base feedback samples, summary]`、
+`current_keyboard_action_enable_sends_motion=false`、`current_keyboard_action_hold_to_move_required=true`、
+`current_keyboard_action_hold_sends_motion=true`、`current_keyboard_action_stop_triggers=[key_release, window_blur, page_hidden, direction_change, stop_button]`。
+普通 PC 页面的 `plain-keyboard-hold-gate` 同步暴露这些字段和 post-hold 读回序列；点击启用键盘仍不发车，
+只有按住 W/A/S/D 或方向键才发送低速脉冲，松开/失焦/切页后必须只读复验轮速采样和 summary。

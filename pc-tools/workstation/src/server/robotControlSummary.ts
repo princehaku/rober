@@ -10336,6 +10336,17 @@ export async function buildRobotControlSummary(
   const mappingRunbookItem = liveClosureSummary.live_motion_runbook_items.find((item) => item.id === "start_mapping_when_sensors_ready");
   const primaryRunbookItem = liveClosureSummary.live_motion_runbook_items.find((item) => item.id === liveClosureSummary.live_motion_runbook_primary_action_id);
   const keyboardStopAfterRelease = keyboardRunbookItem ? !keyboardRunbookItem.missing_evidence.includes("stop_after_release") : false;
+  const keyboardActionAcceptanceEndpoints = keyboardRunbookItem?.acceptance_endpoints ?? [
+    liveClosureSummary.keyboard_feedback_readback_endpoint,
+    liveClosureSummary.keyboard_summary_endpoint,
+  ];
+  const keyboardActionMissingEvidence = keyboardRunbookItem?.missing_evidence ?? [];
+  const keyboardActionStartEndpoint = keyboardRunbookItem?.start_endpoint ?? liveClosureSummary.keyboard_manual_endpoint;
+  const keyboardActionStopEndpoint = keyboardRunbookItem?.stop_endpoint ?? liveClosureSummary.keyboard_stop_endpoint;
+  const keyboardPostHoldReadbackEndpoints = [
+    liveClosureSummary.fixed_keyboard_feedback_readback_endpoint,
+    liveClosureSummary.fixed_keyboard_summary_endpoint,
+  ];
   const routeComplete = runNav2RouteRunbookItem?.completed === true;
   const freeMoveComplete = freeMoveRunbookItem?.completed === true;
   const freeMoveActionAcceptanceEndpoints = freeMoveRunbookItem?.acceptance_endpoints ?? [
@@ -11107,6 +11118,32 @@ export async function buildRobotControlSummary(
     current_motion_action_radar_preflight_required: fieldAcceptancePrimarySafetyAction?.radar_preflight_required ?? false,
     current_motion_action_route_wysiwyg_preflight_required: fieldAcceptancePrimarySafetyAction?.route_wysiwyg_preflight_required ?? false,
     current_motion_action_sends_motion: fieldAcceptancePacket.primary_safety_confirm_ready_action_sends_motion,
+    current_keyboard_action_required: true,
+    current_keyboard_action_ready: keyboardRunbookItem?.ready ?? liveClosureSummary.keyboard_continuous_ready,
+    current_keyboard_action_id: keyboardRunbookItem?.id ?? "hold_keyboard",
+    current_keyboard_action_label: keyboardRunbookItem?.label ?? "键盘连续手控",
+    current_keyboard_action_display_label: keyboardRunbookItem?.display_label ?? "键盘连续手控",
+    current_keyboard_action_start_endpoint: keyboardActionStartEndpoint,
+    current_keyboard_action_stop_endpoint: keyboardActionStopEndpoint,
+    current_keyboard_action_acceptance_endpoints: keyboardActionAcceptanceEndpoints,
+    current_keyboard_action_readback_endpoints: keyboardActionAcceptanceEndpoints,
+    current_keyboard_action_required_success_markers: keyboardActionMissingEvidence,
+    current_keyboard_action_proof_status: keyboardRunbookItem?.proof_status ?? "blocked",
+    current_keyboard_action_missing_evidence: keyboardActionMissingEvidence,
+    current_keyboard_action_proof_plain: keyboardRunbookItem?.proof_plain ?? "键盘连续手控未出现在当前 runbook。",
+    current_keyboard_action_requires_safety_confirm: keyboardRunbookItem?.safety_confirm_required ?? liveClosureSummary.keyboard_continuous_safety_confirm_required,
+    current_keyboard_action_minimal_precheck_safety_only: keyboardRunbookItem?.minimal_precheck_safety_only ?? liveClosureSummary.keyboard_continuous_minimal_precheck_safety_only,
+    current_keyboard_action_enable_sends_motion: liveClosureSummary.keyboard_continuous_enable_sends_motion,
+    current_keyboard_action_hold_to_move_required: liveClosureSummary.keyboard_continuous_hold_to_move_required,
+    current_keyboard_action_hold_sends_motion: true,
+    current_keyboard_action_pulse_interval_ms: liveClosureSummary.keyboard_continuous_pulse_interval_ms,
+    current_keyboard_action_pulse_duration_ms: liveClosureSummary.keyboard_continuous_pulse_duration_ms,
+    current_keyboard_action_stop_triggers: liveClosureSummary.keyboard_continuous_stop_triggers,
+    current_keyboard_action_wheel_feedback_acceptance: liveClosureSummary.keyboard_continuous_wheel_feedback_acceptance,
+    current_keyboard_action_post_hold_readback_endpoints: keyboardPostHoldReadbackEndpoints,
+    current_keyboard_action_post_hold_readback_sequence_labels: ["复验键盘轮速采样", "刷新总览"],
+    current_keyboard_action_post_hold_feedback_readback_required: liveClosureSummary.keyboard_continuous_post_hold_feedback_readback_required,
+    current_keyboard_action_post_hold_summary_refresh_required: liveClosureSummary.keyboard_continuous_post_hold_summary_refresh_required,
     current_free_move_action_required: true,
     current_free_move_action_ready: freeMoveRunbookItem?.ready ?? liveClosureSummary.free_move_start_ready,
     current_free_move_action_id: freeMoveRunbookItem?.id ?? "start_free_move",
@@ -11266,19 +11303,13 @@ export async function buildRobotControlSummary(
     trip_proof_status: runNav2RouteRunbookItem?.proof_status ?? "blocked",
     trip_missing_evidence: runNav2RouteRunbookItem?.missing_evidence ?? [],
     trip_proof_plain: runNav2RouteRunbookItem?.proof_plain ?? "完整行程执行未出现在当前 runbook。",
-    keyboard_start_endpoint: keyboardRunbookItem?.start_endpoint ?? liveClosureSummary.keyboard_manual_endpoint,
-    keyboard_acceptance_endpoints: keyboardRunbookItem?.acceptance_endpoints ?? [
-      liveClosureSummary.keyboard_feedback_readback_endpoint,
-      liveClosureSummary.keyboard_summary_endpoint,
-    ],
-    keyboard_readback_endpoints: keyboardRunbookItem?.acceptance_endpoints ?? [
-      liveClosureSummary.keyboard_feedback_readback_endpoint,
-      liveClosureSummary.keyboard_summary_endpoint,
-    ],
-    keyboard_required_success_markers: keyboardRunbookItem?.missing_evidence ?? [],
+    keyboard_start_endpoint: keyboardActionStartEndpoint,
+    keyboard_acceptance_endpoints: keyboardActionAcceptanceEndpoints,
+    keyboard_readback_endpoints: keyboardActionAcceptanceEndpoints,
+    keyboard_required_success_markers: keyboardActionMissingEvidence,
     keyboard_completed: keyboardRunbookItem?.completed ?? false,
     keyboard_proof_status: keyboardRunbookItem?.proof_status ?? "blocked",
-    keyboard_missing_evidence: keyboardRunbookItem?.missing_evidence ?? [],
+    keyboard_missing_evidence: keyboardActionMissingEvidence,
     keyboard_proof_plain: keyboardRunbookItem?.proof_plain ?? "键盘连续手控未出现在当前 runbook。",
     free_move_start_endpoint: freeMoveActionStartEndpoint,
     free_move_stop_endpoint: freeMoveActionStopEndpoint,
@@ -11464,10 +11495,7 @@ export async function buildRobotControlSummary(
     fixed_keyboard_stop_endpoint: liveClosureSummary.fixed_keyboard_stop_endpoint,
     fixed_keyboard_feedback_readback_endpoint: liveClosureSummary.fixed_keyboard_feedback_readback_endpoint,
     fixed_keyboard_summary_endpoint: liveClosureSummary.fixed_keyboard_summary_endpoint,
-    keyboard_post_hold_readback_endpoints: [
-      liveClosureSummary.fixed_keyboard_feedback_readback_endpoint,
-      liveClosureSummary.fixed_keyboard_summary_endpoint,
-    ],
+    keyboard_post_hold_readback_endpoints: keyboardPostHoldReadbackEndpoints,
     keyboard_post_hold_readback_sequence_labels: ["复验键盘轮速采样", "刷新总览"],
     keyboard_post_hold_feedback_readback_required: liveClosureSummary.keyboard_continuous_post_hold_feedback_readback_required,
     keyboard_post_hold_summary_refresh_required: liveClosureSummary.keyboard_continuous_post_hold_summary_refresh_required,

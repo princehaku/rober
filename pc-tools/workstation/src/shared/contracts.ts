@@ -3802,6 +3802,34 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   current_motion_action_radar_preflight_required?: boolean;
   current_motion_action_route_wysiwyg_preflight_required?: boolean;
   current_motion_action_sends_motion?: RobotControlFieldAcceptancePacket["primary_safety_confirm_ready_action_sends_motion"];
+  current_keyboard_action_required?: boolean;
+  current_keyboard_action_ready?: RobotControlLiveMotionRunbookItem["ready"];
+  current_keyboard_action_id?: RobotControlLiveMotionRunbookItem["id"] | "none";
+  current_keyboard_action_label?: RobotControlLiveMotionRunbookItem["label"];
+  current_keyboard_action_display_label?: RobotControlLiveMotionRunbookItem["display_label"];
+  current_keyboard_action_start_endpoint?: RobotControlLiveMotionRunbookItem["start_endpoint"];
+  current_keyboard_action_stop_endpoint?: RobotControlLiveMotionRunbookItem["stop_endpoint"];
+  current_keyboard_action_acceptance_endpoints?: RobotControlLiveMotionRunbookItem["acceptance_endpoints"];
+  current_keyboard_action_readback_endpoints?: RobotControlLiveMotionRunbookItem["acceptance_endpoints"];
+  current_keyboard_action_required_success_markers?: RobotControlLiveMotionRunbookItem["missing_evidence"];
+  current_keyboard_action_proof_status?: RobotControlLiveMotionRunbookItem["proof_status"];
+  current_keyboard_action_missing_evidence?: RobotControlLiveMotionRunbookItem["missing_evidence"];
+  current_keyboard_action_proof_plain?: RobotControlLiveMotionRunbookItem["proof_plain"];
+  current_keyboard_action_requires_safety_confirm?: RobotControlLiveMotionRunbookItem["safety_confirm_required"];
+  current_keyboard_action_minimal_precheck_safety_only?: RobotControlLiveMotionRunbookItem["minimal_precheck_safety_only"];
+  current_keyboard_action_enable_sends_motion?: RobotControlLiveClosureSummary["keyboard_continuous_enable_sends_motion"];
+  current_keyboard_action_hold_to_move_required?: RobotControlLiveClosureSummary["keyboard_continuous_hold_to_move_required"];
+  current_keyboard_action_hold_sends_motion?: true;
+  current_keyboard_action_pulse_interval_ms?: RobotControlLiveClosureSummary["keyboard_continuous_pulse_interval_ms"];
+  current_keyboard_action_pulse_duration_ms?: RobotControlLiveClosureSummary["keyboard_continuous_pulse_duration_ms"];
+  current_keyboard_action_stop_triggers?: RobotControlLiveClosureSummary["keyboard_continuous_stop_triggers"];
+  current_keyboard_action_wheel_feedback_acceptance?: RobotControlLiveClosureSummary["keyboard_continuous_wheel_feedback_acceptance"];
+  current_keyboard_action_post_hold_readback_endpoints?: Array<
+    RobotControlLiveClosureSummary["fixed_keyboard_feedback_readback_endpoint"] | RobotControlLiveClosureSummary["fixed_keyboard_summary_endpoint"]
+  >;
+  current_keyboard_action_post_hold_readback_sequence_labels?: string[];
+  current_keyboard_action_post_hold_feedback_readback_required?: RobotControlLiveClosureSummary["keyboard_continuous_post_hold_feedback_readback_required"];
+  current_keyboard_action_post_hold_summary_refresh_required?: RobotControlLiveClosureSummary["keyboard_continuous_post_hold_summary_refresh_required"];
   current_free_move_action_required?: boolean;
   current_free_move_action_ready?: RobotControlLiveMotionRunbookItem["ready"];
   current_free_move_action_id?: RobotControlLiveMotionRunbookItem["id"] | "none";

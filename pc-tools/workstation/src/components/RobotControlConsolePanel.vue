@@ -7852,6 +7852,19 @@ type PlainKeyboardDirectionButtonEvidence = {
   stopSettledRequiredAfterHold: boolean;
 };
 type PlainKeyboardHoldGateGauge = {
+  actionId: string;
+  actionReady: boolean;
+  actionLabel: string;
+  actionDisplayLabel: string;
+  actionStartEndpoint: string;
+  actionStopEndpoint: string;
+  actionAcceptanceEndpointsText: string;
+  actionReadbackEndpointsText: string;
+  actionRequiredSuccessMarkersText: string;
+  actionProofStatus: string;
+  actionEnableSendsMotion: boolean;
+  actionHoldSendsMotion: boolean;
+  actionHoldToMoveRequired: boolean;
   state: string;
   text: string;
   nextAction: string;
@@ -7876,6 +7889,10 @@ type PlainKeyboardHoldGateGauge = {
   stopSettledAfterPulse: boolean;
   fixedManualEndpoint: string;
   fixedStopEndpoint: string;
+  postHoldReadbackEndpointsText: string;
+  postHoldReadbackSequenceLabelsText: string;
+  postHoldFeedbackReadbackRequired: boolean;
+  postHoldSummaryRefreshRequired: boolean;
 };
 const plainKeyboardDirectionButtonEvidence = computed<PlainKeyboardDirectionButtonEvidence>(() => ({
   // canPressKeyboardDirection 已包含启用状态、后端键盘合同和 stop 失败 fail-closed。
@@ -7901,8 +7918,26 @@ const plainKeyboardDirectionButtonEvidence = computed<PlainKeyboardDirectionButt
 }));
 const plainKeyboardHoldGateGauge = computed<PlainKeyboardHoldGateGauge>(() => {
   // 键盘入口仪表把“点击启用”和“按住才动”拆开，避免把启用键盘误读成发车。
+  const summary = robotSummary.value;
   const evidence = plainKeyboardDirectionButtonEvidence.value;
   const telemetry = plainKeyboardTelemetrySummary.value;
+  const actionAcceptanceEndpoints = summary?.current_keyboard_action_acceptance_endpoints ?? summary?.keyboard_acceptance_endpoints ?? [
+    evidence.fixedFeedbackSamplesEndpoint,
+    evidence.fixedSummaryEndpoint,
+  ];
+  const actionReadbackEndpoints = summary?.current_keyboard_action_readback_endpoints ?? summary?.keyboard_readback_endpoints ?? actionAcceptanceEndpoints;
+  const actionRequiredSuccessMarkers = summary?.current_keyboard_action_required_success_markers ?? summary?.keyboard_required_success_markers ?? [
+    "same_hold_window_wheel_lr_nonzero",
+    "stop_after_release",
+  ];
+  const postHoldReadbackEndpoints = summary?.current_keyboard_action_post_hold_readback_endpoints ?? summary?.keyboard_post_hold_readback_endpoints ?? [
+    evidence.fixedFeedbackSamplesEndpoint,
+    evidence.fixedSummaryEndpoint,
+  ];
+  const postHoldReadbackSequenceLabels = summary?.current_keyboard_action_post_hold_readback_sequence_labels ?? summary?.keyboard_post_hold_readback_sequence_labels ?? [
+    "复验键盘轮速采样",
+    "刷新总览",
+  ];
   let state = "待连接";
   if (robotApiBaseUrl.value.trim() && !plainManualSafetyConfirmed.value) {
     state = "待安全确认";
@@ -7946,14 +7981,27 @@ const plainKeyboardHoldGateGauge = computed<PlainKeyboardHoldGateGauge>(() => {
     return "刷新键盘入口";
   })();
   return {
+    actionId: summary?.current_keyboard_action_id ?? "hold_keyboard",
+    actionReady: Boolean(summary?.current_keyboard_action_ready ?? canUseKeyboardControl.value),
+    actionLabel: summary?.current_keyboard_action_label ?? "键盘连续手控",
+    actionDisplayLabel: summary?.current_keyboard_action_display_label ?? "键盘连续手控",
+    actionStartEndpoint: summary?.current_keyboard_action_start_endpoint ?? summary?.keyboard_start_endpoint ?? evidence.fixedManualEndpoint,
+    actionStopEndpoint: summary?.current_keyboard_action_stop_endpoint ?? summary?.keyboard_stop_endpoint ?? evidence.fixedStopEndpoint,
+    actionAcceptanceEndpointsText: actionAcceptanceEndpoints.join(",") || "none",
+    actionReadbackEndpointsText: actionReadbackEndpoints.join(",") || "none",
+    actionRequiredSuccessMarkersText: actionRequiredSuccessMarkers.join(",") || "none",
+    actionProofStatus: summary?.current_keyboard_action_proof_status ?? summary?.keyboard_proof_status ?? "blocked",
+    actionEnableSendsMotion: Boolean(summary?.current_keyboard_action_enable_sends_motion ?? false),
+    actionHoldSendsMotion: Boolean(summary?.current_keyboard_action_hold_sends_motion ?? true),
+    actionHoldToMoveRequired: Boolean(summary?.current_keyboard_action_hold_to_move_required ?? evidence.requiresHoldToMove),
     state,
     text: `键盘入口：${safetyText}；${armText}；${holdText}；${pulseText}；${stopText}。下一步：${nextAction}。`,
     nextAction,
     safetyConfirmed: plainManualSafetyConfirmed.value,
     mainActionKind: plainKeyboardMainActionKind.value,
-    armSendsMotion: false,
+    armSendsMotion: Boolean(summary?.current_keyboard_action_enable_sends_motion ?? false),
     sendsMotionWhileHeld: evidence.sendsMotionWhileHeld,
-    requiresHoldToMove: evidence.requiresHoldToMove,
+    requiresHoldToMove: Boolean(summary?.current_keyboard_action_hold_to_move_required ?? evidence.requiresHoldToMove),
     currentDirection: telemetry.direction,
     currentDirectionLabel: telemetry.directionLabel,
     currentHoldPulseCount: evidence.currentHoldPulseCount,
@@ -7963,13 +8011,17 @@ const plainKeyboardHoldGateGauge = computed<PlainKeyboardHoldGateGauge>(() => {
     wheelLeft: telemetry.wheelLeft,
     wheelRight: telemetry.wheelRight,
     stopState: telemetry.stopState,
-    pulseIntervalMs: evidence.pulseIntervalMs,
-    pulseDurationMs: evidence.pulseDurationMs,
+    pulseIntervalMs: summary?.current_keyboard_action_pulse_interval_ms ?? evidence.pulseIntervalMs,
+    pulseDurationMs: summary?.current_keyboard_action_pulse_duration_ms ?? evidence.pulseDurationMs,
     sameHoldWindowRequired: evidence.sameHoldWindowRequired,
     stopRequiredAfterHold: evidence.stopRequiredAfterHold,
     stopSettledAfterPulse: keyboardStopSettledAfterPulse.value,
-    fixedManualEndpoint: evidence.fixedManualEndpoint,
-    fixedStopEndpoint: evidence.fixedStopEndpoint,
+    fixedManualEndpoint: summary?.current_keyboard_action_start_endpoint ?? evidence.fixedManualEndpoint,
+    fixedStopEndpoint: summary?.current_keyboard_action_stop_endpoint ?? evidence.fixedStopEndpoint,
+    postHoldReadbackEndpointsText: postHoldReadbackEndpoints.join(",") || "none",
+    postHoldReadbackSequenceLabelsText: postHoldReadbackSequenceLabels.join(",") || "none",
+    postHoldFeedbackReadbackRequired: Boolean(summary?.current_keyboard_action_post_hold_feedback_readback_required ?? evidence.postHoldFeedbackReadbackRequired),
+    postHoldSummaryRefreshRequired: Boolean(summary?.current_keyboard_action_post_hold_summary_refresh_required ?? evidence.postHoldSummaryRefreshRequired),
   };
 });
 const mapSavedThisSession = computed(() => (
@@ -20720,6 +20772,19 @@ onBeforeUnmount(() => {
         <p
           class="plain-keyboard-hold-gate"
           data-testid="plain-keyboard-hold-gate"
+          :data-current-action-id="plainKeyboardHoldGateGauge.actionId"
+          :data-current-action-ready="String(plainKeyboardHoldGateGauge.actionReady)"
+          :data-current-action-label="plainKeyboardHoldGateGauge.actionLabel"
+          :data-current-action-display-label="plainKeyboardHoldGateGauge.actionDisplayLabel"
+          :data-current-action-start-endpoint="plainKeyboardHoldGateGauge.actionStartEndpoint"
+          :data-current-action-stop-endpoint="plainKeyboardHoldGateGauge.actionStopEndpoint"
+          :data-current-action-acceptance-endpoints="plainKeyboardHoldGateGauge.actionAcceptanceEndpointsText"
+          :data-current-action-readback-endpoints="plainKeyboardHoldGateGauge.actionReadbackEndpointsText"
+          :data-current-action-required-success-markers="plainKeyboardHoldGateGauge.actionRequiredSuccessMarkersText"
+          :data-current-action-proof-status="plainKeyboardHoldGateGauge.actionProofStatus"
+          :data-current-action-enable-sends-motion="String(plainKeyboardHoldGateGauge.actionEnableSendsMotion)"
+          :data-current-action-hold-sends-motion="String(plainKeyboardHoldGateGauge.actionHoldSendsMotion)"
+          :data-current-action-hold-to-move-required="String(plainKeyboardHoldGateGauge.actionHoldToMoveRequired)"
           :data-state="plainKeyboardHoldGateGauge.state"
           :data-safety-confirmed="String(plainKeyboardHoldGateGauge.safetyConfirmed)"
           :data-main-action-kind="plainKeyboardHoldGateGauge.mainActionKind"
@@ -20743,6 +20808,10 @@ onBeforeUnmount(() => {
           :data-next-action="plainKeyboardHoldGateGauge.nextAction"
           :data-fixed-keyboard-manual-endpoint="plainKeyboardHoldGateGauge.fixedManualEndpoint"
           :data-fixed-keyboard-stop-endpoint="plainKeyboardHoldGateGauge.fixedStopEndpoint"
+          :data-post-hold-readback-endpoints="plainKeyboardHoldGateGauge.postHoldReadbackEndpointsText"
+          :data-post-hold-readback-sequence-labels="plainKeyboardHoldGateGauge.postHoldReadbackSequenceLabelsText"
+          :data-post-hold-feedback-readback-required="String(plainKeyboardHoldGateGauge.postHoldFeedbackReadbackRequired)"
+          :data-post-hold-summary-refresh-required="String(plainKeyboardHoldGateGauge.postHoldSummaryRefreshRequired)"
           data-sends-motion-when-clicked="false"
         >
           {{ plainKeyboardHoldGateGauge.text }}

@@ -810,6 +810,32 @@ const fixtures: Record<string, unknown> = {
     free_move_proof_status: "ready_to_verify",
     free_move_missing_evidence: ["free_roam_latest_motion_ready"],
     free_move_proof_plain: "可验证自由自助移动：勾现场安全确认后启动，再读 free-roam latest、地图预览和 summary；还差：自由移动运行读数。",
+    current_keyboard_action_required: true,
+    current_keyboard_action_ready: true,
+    current_keyboard_action_id: "hold_keyboard",
+    current_keyboard_action_label: "键盘连续手控",
+    current_keyboard_action_display_label: "键盘连续手控",
+    current_keyboard_action_start_endpoint: "/api/robot-control/base/manual",
+    current_keyboard_action_stop_endpoint: "/api/robot-control/base/stop",
+    current_keyboard_action_acceptance_endpoints: ["/api/robot-control/base/feedback-samples", "/api/robot-control/summary"],
+    current_keyboard_action_readback_endpoints: ["/api/robot-control/base/feedback-samples", "/api/robot-control/summary"],
+    current_keyboard_action_required_success_markers: ["same_hold_window_wheel_lr_nonzero", "stop_after_release"],
+    current_keyboard_action_proof_status: "ready_to_verify",
+    current_keyboard_action_missing_evidence: ["same_hold_window_wheel_lr_nonzero", "stop_after_release"],
+    current_keyboard_action_proof_plain: "可验证键盘连续手控：勾现场安全确认后按住方向键或 WASD，再读轮速与 summary；还差：按住同窗口 wheel L/R 非零、松开后 stop 收口。",
+    current_keyboard_action_requires_safety_confirm: true,
+    current_keyboard_action_minimal_precheck_safety_only: true,
+    current_keyboard_action_enable_sends_motion: false,
+    current_keyboard_action_hold_to_move_required: true,
+    current_keyboard_action_hold_sends_motion: true,
+    current_keyboard_action_pulse_interval_ms: 260,
+    current_keyboard_action_pulse_duration_ms: 240,
+    current_keyboard_action_stop_triggers: ["key_release", "window_blur", "page_hidden", "direction_change", "stop_button"],
+    current_keyboard_action_wheel_feedback_acceptance: "same_hold_window_wheel_lr_nonzero",
+    current_keyboard_action_post_hold_readback_endpoints: ["/api/robot-control/base/feedback-samples", "/api/robot-control/summary"],
+    current_keyboard_action_post_hold_readback_sequence_labels: ["复验键盘轮速采样", "刷新总览"],
+    current_keyboard_action_post_hold_feedback_readback_required: true,
+    current_keyboard_action_post_hold_summary_refresh_required: true,
     current_free_move_action_required: true,
     current_free_move_action_ready: true,
     current_free_move_action_id: "start_free_move",
@@ -23725,6 +23751,19 @@ describe("App", () => {
     expect(armedKeyboardContinuousProof.attributes("data-sends-motion-while-held")).toBe("false");
     const armedKeyboardGate = wrapper.find('[data-testid="plain-keyboard-hold-gate"]');
     expect(armedKeyboardGate.text()).toBe("键盘入口：安全确认已勾；点击启用不发车；按住会连续低速脉冲；最佳连续 0/2 次；松开/失焦会停。下一步：按住方向键或 W/A/S/D 才会移动。");
+    expect(armedKeyboardGate.attributes("data-current-action-id")).toBe("hold_keyboard");
+    expect(armedKeyboardGate.attributes("data-current-action-ready")).toBe("true");
+    expect(armedKeyboardGate.attributes("data-current-action-label")).toBe("键盘连续手控");
+    expect(armedKeyboardGate.attributes("data-current-action-display-label")).toBe("键盘连续手控");
+    expect(armedKeyboardGate.attributes("data-current-action-start-endpoint")).toBe("/api/robot-control/base/manual");
+    expect(armedKeyboardGate.attributes("data-current-action-stop-endpoint")).toBe("/api/robot-control/base/stop");
+    expect(armedKeyboardGate.attributes("data-current-action-acceptance-endpoints")).toBe("/api/robot-control/base/feedback-samples,/api/robot-control/summary");
+    expect(armedKeyboardGate.attributes("data-current-action-readback-endpoints")).toBe("/api/robot-control/base/feedback-samples,/api/robot-control/summary");
+    expect(armedKeyboardGate.attributes("data-current-action-required-success-markers")).toBe("same_hold_window_wheel_lr_nonzero,stop_after_release");
+    expect(armedKeyboardGate.attributes("data-current-action-proof-status")).toBe("ready_to_verify");
+    expect(armedKeyboardGate.attributes("data-current-action-enable-sends-motion")).toBe("false");
+    expect(armedKeyboardGate.attributes("data-current-action-hold-sends-motion")).toBe("true");
+    expect(armedKeyboardGate.attributes("data-current-action-hold-to-move-required")).toBe("true");
     expect(armedKeyboardGate.attributes("data-state")).toBe("可启用");
     expect(armedKeyboardGate.attributes("data-main-action-kind")).toBe("armed_waiting_for_keydown");
     expect(armedKeyboardGate.attributes("data-arm-sends-motion")).toBe("false");
@@ -23735,6 +23774,10 @@ describe("App", () => {
     expect(armedKeyboardGate.attributes("data-wheel-left")).toBe("not_loaded");
     expect(armedKeyboardGate.attributes("data-wheel-right")).toBe("not_loaded");
     expect(armedKeyboardGate.attributes("data-stop-state")).toBe("未触发");
+    expect(armedKeyboardGate.attributes("data-post-hold-readback-endpoints")).toBe("/api/robot-control/base/feedback-samples,/api/robot-control/summary");
+    expect(armedKeyboardGate.attributes("data-post-hold-readback-sequence-labels")).toBe("复验键盘轮速采样,刷新总览");
+    expect(armedKeyboardGate.attributes("data-post-hold-feedback-readback-required")).toBe("true");
+    expect(armedKeyboardGate.attributes("data-post-hold-summary-refresh-required")).toBe("true");
     expect(armedKeyboardGate.attributes("data-sends-motion-when-clicked")).toBe("false");
     const keyboardDirections = ["forward", "left", "right", "back"];
     for (const direction of keyboardDirections) {

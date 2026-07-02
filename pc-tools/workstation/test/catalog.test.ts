@@ -7192,6 +7192,24 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.keyboard_proof_status).toBe("ready_to_verify");
       expect(summary.keyboard_missing_evidence).toEqual(["same_hold_window_wheel_lr_nonzero", "stop_after_release"]);
       expect(summary.keyboard_proof_plain).toContain("可验证键盘连续手控");
+      expect(summary.current_keyboard_action_required).toBe(true);
+      expect(summary.current_keyboard_action_ready).toBe(true);
+      expect(summary.current_keyboard_action_id).toBe("hold_keyboard");
+      expect(summary.current_keyboard_action_start_endpoint).toBe(summary.keyboard_start_endpoint);
+      expect(summary.current_keyboard_action_stop_endpoint).toBe("/api/robot-control/base/stop");
+      expect(summary.current_keyboard_action_acceptance_endpoints).toEqual(summary.keyboard_acceptance_endpoints);
+      expect(summary.current_keyboard_action_readback_endpoints).toEqual(summary.keyboard_readback_endpoints);
+      expect(summary.current_keyboard_action_required_success_markers).toEqual(["same_hold_window_wheel_lr_nonzero", "stop_after_release"]);
+      expect(summary.current_keyboard_action_enable_sends_motion).toBe(false);
+      expect(summary.current_keyboard_action_hold_to_move_required).toBe(true);
+      expect(summary.current_keyboard_action_hold_sends_motion).toBe(true);
+      expect(summary.current_keyboard_action_pulse_interval_ms).toBe(260);
+      expect(summary.current_keyboard_action_pulse_duration_ms).toBe(240);
+      expect(summary.current_keyboard_action_stop_triggers).toEqual(["key_release", "window_blur", "page_hidden", "direction_change", "stop_button"]);
+      expect(summary.current_keyboard_action_post_hold_readback_endpoints).toEqual([
+        "/api/robot-control/base/feedback-samples",
+        "/api/robot-control/summary",
+      ]);
       expect(summary.free_move_start_endpoint).toBe("/api/robot-control/free-roam/autonomy/start");
       expect(summary.free_move_stop_endpoint).toBe("/api/robot-control/free-roam/autonomy/stop");
       expect(summary.free_move_acceptance_endpoints).toEqual([

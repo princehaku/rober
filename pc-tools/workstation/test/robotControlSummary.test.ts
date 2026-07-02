@@ -1000,6 +1000,38 @@ describe("robotControlSummary", () => {
     expect(summary.current_motion_action_radar_preflight_required).toBe(false);
     expect(summary.current_motion_action_route_wysiwyg_preflight_required).toBe(false);
     expect(summary.current_motion_action_sends_motion).toBe(true);
+    expect(summary.current_keyboard_action_required).toBe(true);
+    expect(summary.current_keyboard_action_ready).toBe(true);
+    expect(summary.current_keyboard_action_id).toBe("hold_keyboard");
+    expect(summary.current_keyboard_action_label).toBe("键盘连续手控");
+    expect(summary.current_keyboard_action_display_label).toBe("键盘连续手控");
+    expect(summary.current_keyboard_action_start_endpoint).toBe("/api/robot-control/base/manual");
+    expect(summary.current_keyboard_action_stop_endpoint).toBe("/api/robot-control/base/stop");
+    expect(summary.current_keyboard_action_acceptance_endpoints).toEqual([
+      "/api/robot-control/base/feedback-samples",
+      "/api/robot-control/summary",
+    ]);
+    expect(summary.current_keyboard_action_readback_endpoints).toEqual(summary.current_keyboard_action_acceptance_endpoints);
+    expect(summary.current_keyboard_action_required_success_markers).toEqual(["same_hold_window_wheel_lr_nonzero", "stop_after_release"]);
+    expect(summary.current_keyboard_action_proof_status).toBe("ready_to_verify");
+    expect(summary.current_keyboard_action_missing_evidence).toEqual(["same_hold_window_wheel_lr_nonzero", "stop_after_release"]);
+    expect(summary.current_keyboard_action_proof_plain).toContain("可验证键盘连续手控");
+    expect(summary.current_keyboard_action_requires_safety_confirm).toBe(true);
+    expect(summary.current_keyboard_action_minimal_precheck_safety_only).toBe(true);
+    expect(summary.current_keyboard_action_enable_sends_motion).toBe(false);
+    expect(summary.current_keyboard_action_hold_to_move_required).toBe(true);
+    expect(summary.current_keyboard_action_hold_sends_motion).toBe(true);
+    expect(summary.current_keyboard_action_pulse_interval_ms).toBe(260);
+    expect(summary.current_keyboard_action_pulse_duration_ms).toBe(240);
+    expect(summary.current_keyboard_action_stop_triggers).toEqual(["key_release", "window_blur", "page_hidden", "direction_change", "stop_button"]);
+    expect(summary.current_keyboard_action_wheel_feedback_acceptance).toBe("same_hold_window_wheel_lr_nonzero");
+    expect(summary.current_keyboard_action_post_hold_readback_endpoints).toEqual([
+      "/api/robot-control/base/feedback-samples",
+      "/api/robot-control/summary",
+    ]);
+    expect(summary.current_keyboard_action_post_hold_readback_sequence_labels).toEqual(["复验键盘轮速采样", "刷新总览"]);
+    expect(summary.current_keyboard_action_post_hold_feedback_readback_required).toBe(true);
+    expect(summary.current_keyboard_action_post_hold_summary_refresh_required).toBe(true);
     expect(summary.current_free_move_action_required).toBe(true);
     expect(summary.current_free_move_action_ready).toBe(true);
     expect(summary.current_free_move_action_id).toBe("start_free_move");
