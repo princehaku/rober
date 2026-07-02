@@ -1574,3 +1574,9 @@ Nav2、建图 runtime、free-roam、manual、keyboard、delivery、stop 或 `/cm
 和 `primary_source_failure_reason`，并同步到 `current_camera_wysiwyg_pack_*` / `camera_*` 短字段。
 当前现场只读验证为兜底已尝试、失败原因 `first_frame_total_timeout`，硬件诊断仍是 USB `12M` full-speed。
 这些字段和页面展示只读，不会启动 Nav2、manual、keyboard、free-roam、建图 runtime、delivery、stop 或 `/cmd_vel`。
+
+2026-07-02 14:55 CST 现场只读刷新雷达贴图后，`/api/robot-control/map/preview` 已返回
+`radar_overlay_status=loaded`，当前画面贴出 `129` 个雷达点，summary 同步为
+`current_radar_map_wysiwyg_pack_status=loaded`、`current_radar_map_wysiwyg_pack_needs_refresh=false`。
+刷新入口仍是 no-motion readback：`robot_control_executed=false`、`safe_to_control=false`，不启动 Nav2、
+manual、keyboard、free-roam、建图 runtime 或 `/cmd_vel`。当前所见缺口只剩相机首帧。

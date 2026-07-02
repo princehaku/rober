@@ -5138,3 +5138,11 @@ summary/DOM 读取。页面明确点击启用键盘不会发车，只有按住 W
 `first_frame_total_timeout`，当前诊断仍指向 `uvc_full_speed_usb_not_exclusive` 和 USB `12M` full-speed。
 这些字段只读，不启动 Nav2、manual、keyboard、free-roam、建图 runtime、delivery、stop 或 `/cmd_vel`；
 修复相机可见性仍需要按硬件提示换高速 USB 口/线或带供电 USB Hub 后复测。
+
+2026-07-02 14:55 CST 现场只读执行 `POST /api/robot-control/radar/scan-proof/refresh`
+后，雷达地图贴图已从过期来源点恢复到当前画面：`/api/robot-control/map/preview` 返回
+`radar_overlay_status=loaded`、当前显示 `129` 个点、来源 `135` 个点，summary 的
+`current_radar_map_wysiwyg_pack_status=loaded` 且 `current_radar_map_wysiwyg_pack_needs_refresh=false`。
+该刷新结果继续保持 `robot_control_executed=false`、`safe_to_control=false`，并确认不启动 Nav2、manual、
+keyboard、free-roam、建图 runtime 或 `/cmd_vel`。当前 WYSIWYG 缺口因此只剩 `camera`，建图仍被
+`camera_first_frame` 阻塞。
