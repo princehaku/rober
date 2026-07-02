@@ -836,6 +836,14 @@ const fixtures: Record<string, unknown> = {
     current_keyboard_action_post_hold_readback_sequence_labels: ["复验键盘轮速采样", "刷新总览"],
     current_keyboard_action_post_hold_feedback_readback_required: true,
     current_keyboard_action_post_hold_summary_refresh_required: true,
+    current_keyboard_action_post_hold_readback_sends_motion: false,
+    current_keyboard_action_post_hold_readback_starts_nav2: false,
+    current_keyboard_action_post_hold_readback_starts_manual: false,
+    current_keyboard_action_post_hold_readback_starts_keyboard: false,
+    current_keyboard_action_post_hold_readback_starts_free_roam: false,
+    current_keyboard_action_post_hold_readback_starts_map_runtime: false,
+    current_keyboard_action_post_hold_readback_submits_delivery: false,
+    current_keyboard_action_post_hold_readback_stops_motion: false,
     current_free_move_action_required: true,
     current_free_move_action_ready: true,
     current_free_move_action_id: "start_free_move",
@@ -7933,6 +7941,18 @@ describe("App", () => {
     expect(keyboardHoldGate.attributes("data-next-action")).toBe("勾选现场安全确认");
     expect(keyboardHoldGate.attributes("data-fixed-keyboard-manual-endpoint")).toBe("/api/robot-control/base/manual");
     expect(keyboardHoldGate.attributes("data-fixed-keyboard-stop-endpoint")).toBe("/api/robot-control/base/stop");
+    expect(keyboardHoldGate.attributes("data-post-hold-readback-endpoints")).toBe("/api/robot-control/base/feedback-samples,/api/robot-control/summary");
+    expect(keyboardHoldGate.attributes("data-post-hold-readback-sequence-labels")).toBe("复验键盘轮速采样,刷新总览");
+    expect(keyboardHoldGate.attributes("data-post-hold-feedback-readback-required")).toBe("true");
+    expect(keyboardHoldGate.attributes("data-post-hold-summary-refresh-required")).toBe("true");
+    expect(keyboardHoldGate.attributes("data-post-hold-readback-sends-motion")).toBe("false");
+    expect(keyboardHoldGate.attributes("data-post-hold-readback-starts-nav2")).toBe("false");
+    expect(keyboardHoldGate.attributes("data-post-hold-readback-starts-manual")).toBe("false");
+    expect(keyboardHoldGate.attributes("data-post-hold-readback-starts-keyboard")).toBe("false");
+    expect(keyboardHoldGate.attributes("data-post-hold-readback-starts-free-roam")).toBe("false");
+    expect(keyboardHoldGate.attributes("data-post-hold-readback-starts-map-runtime")).toBe("false");
+    expect(keyboardHoldGate.attributes("data-post-hold-readback-submits-delivery")).toBe("false");
+    expect(keyboardHoldGate.attributes("data-post-hold-readback-stops-motion")).toBe("false");
     expect(keyboardHoldGate.attributes("data-sends-motion-when-clicked")).toBe("false");
     const mappingStartGate = wrapper.find('[data-testid="plain-mapping-start-gate"]');
     expect(mappingStartGate.exists()).toBe(true);

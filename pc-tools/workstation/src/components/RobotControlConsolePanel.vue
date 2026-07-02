@@ -8101,6 +8101,14 @@ type PlainKeyboardHoldGateGauge = {
   postHoldReadbackSequenceLabelsText: string;
   postHoldFeedbackReadbackRequired: boolean;
   postHoldSummaryRefreshRequired: boolean;
+  postHoldReadbackSendsMotion: boolean;
+  postHoldReadbackStartsNav2: boolean;
+  postHoldReadbackStartsManual: boolean;
+  postHoldReadbackStartsKeyboard: boolean;
+  postHoldReadbackStartsFreeRoam: boolean;
+  postHoldReadbackStartsMapRuntime: boolean;
+  postHoldReadbackSubmitsDelivery: boolean;
+  postHoldReadbackStopsMotion: boolean;
 };
 const plainKeyboardDirectionButtonEvidence = computed<PlainKeyboardDirectionButtonEvidence>(() => ({
   // canPressKeyboardDirection 已包含启用状态、后端键盘合同和 stop 失败 fail-closed。
@@ -8230,6 +8238,14 @@ const plainKeyboardHoldGateGauge = computed<PlainKeyboardHoldGateGauge>(() => {
     postHoldReadbackSequenceLabelsText: postHoldReadbackSequenceLabels.join(",") || "none",
     postHoldFeedbackReadbackRequired: Boolean(summary?.current_keyboard_action_post_hold_feedback_readback_required ?? evidence.postHoldFeedbackReadbackRequired),
     postHoldSummaryRefreshRequired: Boolean(summary?.current_keyboard_action_post_hold_summary_refresh_required ?? evidence.postHoldSummaryRefreshRequired),
+    postHoldReadbackSendsMotion: Boolean(summary?.current_keyboard_action_post_hold_readback_sends_motion ?? summary?.keyboard_post_hold_readback_sends_motion ?? false),
+    postHoldReadbackStartsNav2: Boolean(summary?.current_keyboard_action_post_hold_readback_starts_nav2 ?? summary?.keyboard_post_hold_readback_starts_nav2 ?? false),
+    postHoldReadbackStartsManual: Boolean(summary?.current_keyboard_action_post_hold_readback_starts_manual ?? summary?.keyboard_post_hold_readback_starts_manual ?? false),
+    postHoldReadbackStartsKeyboard: Boolean(summary?.current_keyboard_action_post_hold_readback_starts_keyboard ?? summary?.keyboard_post_hold_readback_starts_keyboard ?? false),
+    postHoldReadbackStartsFreeRoam: Boolean(summary?.current_keyboard_action_post_hold_readback_starts_free_roam ?? summary?.keyboard_post_hold_readback_starts_free_roam ?? false),
+    postHoldReadbackStartsMapRuntime: Boolean(summary?.current_keyboard_action_post_hold_readback_starts_map_runtime ?? summary?.keyboard_post_hold_readback_starts_map_runtime ?? false),
+    postHoldReadbackSubmitsDelivery: Boolean(summary?.current_keyboard_action_post_hold_readback_submits_delivery ?? summary?.keyboard_post_hold_readback_submits_delivery ?? false),
+    postHoldReadbackStopsMotion: Boolean(summary?.current_keyboard_action_post_hold_readback_stops_motion ?? summary?.keyboard_post_hold_readback_stops_motion ?? false),
   };
 });
 const mapSavedThisSession = computed(() => (
@@ -21236,6 +21252,14 @@ onBeforeUnmount(() => {
           :data-post-hold-readback-sequence-labels="plainKeyboardHoldGateGauge.postHoldReadbackSequenceLabelsText"
           :data-post-hold-feedback-readback-required="String(plainKeyboardHoldGateGauge.postHoldFeedbackReadbackRequired)"
           :data-post-hold-summary-refresh-required="String(plainKeyboardHoldGateGauge.postHoldSummaryRefreshRequired)"
+          :data-post-hold-readback-sends-motion="String(plainKeyboardHoldGateGauge.postHoldReadbackSendsMotion)"
+          :data-post-hold-readback-starts-nav2="String(plainKeyboardHoldGateGauge.postHoldReadbackStartsNav2)"
+          :data-post-hold-readback-starts-manual="String(plainKeyboardHoldGateGauge.postHoldReadbackStartsManual)"
+          :data-post-hold-readback-starts-keyboard="String(plainKeyboardHoldGateGauge.postHoldReadbackStartsKeyboard)"
+          :data-post-hold-readback-starts-free-roam="String(plainKeyboardHoldGateGauge.postHoldReadbackStartsFreeRoam)"
+          :data-post-hold-readback-starts-map-runtime="String(plainKeyboardHoldGateGauge.postHoldReadbackStartsMapRuntime)"
+          :data-post-hold-readback-submits-delivery="String(plainKeyboardHoldGateGauge.postHoldReadbackSubmitsDelivery)"
+          :data-post-hold-readback-stops-motion="String(plainKeyboardHoldGateGauge.postHoldReadbackStopsMotion)"
           data-sends-motion-when-clicked="false"
         >
           {{ plainKeyboardHoldGateGauge.text }}

@@ -836,6 +836,14 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.keyboard_continuous_post_hold_summary_refresh_required).toBe(true);
     expect(summary.keyboard_post_hold_feedback_readback_required).toBe(true);
     expect(summary.keyboard_post_hold_summary_refresh_required).toBe(true);
+    expect(summary.keyboard_post_hold_readback_sends_motion).toBe(false);
+    expect(summary.keyboard_post_hold_readback_starts_nav2).toBe(false);
+    expect(summary.keyboard_post_hold_readback_starts_manual).toBe(false);
+    expect(summary.keyboard_post_hold_readback_starts_keyboard).toBe(false);
+    expect(summary.keyboard_post_hold_readback_starts_free_roam).toBe(false);
+    expect(summary.keyboard_post_hold_readback_starts_map_runtime).toBe(false);
+    expect(summary.keyboard_post_hold_readback_submits_delivery).toBe(false);
+    expect(summary.keyboard_post_hold_readback_stops_motion).toBe(false);
     expect(summary.keyboard_continuous_post_hold_feedback_readback_required).toBe(true);
     expect(summary.keyboard_continuous_post_hold_summary_refresh_required).toBe(true);
     expect(summary.live_closure_summary?.live_motion_runbook_action_ids).toEqual([
@@ -1126,6 +1134,14 @@ describe("robotControlSummary", () => {
     expect(summary.current_keyboard_action_post_hold_readback_sequence_labels).toEqual(["复验键盘轮速采样", "刷新总览"]);
     expect(summary.current_keyboard_action_post_hold_feedback_readback_required).toBe(true);
     expect(summary.current_keyboard_action_post_hold_summary_refresh_required).toBe(true);
+    expect(summary.current_keyboard_action_post_hold_readback_sends_motion).toBe(false);
+    expect(summary.current_keyboard_action_post_hold_readback_starts_nav2).toBe(false);
+    expect(summary.current_keyboard_action_post_hold_readback_starts_manual).toBe(false);
+    expect(summary.current_keyboard_action_post_hold_readback_starts_keyboard).toBe(false);
+    expect(summary.current_keyboard_action_post_hold_readback_starts_free_roam).toBe(false);
+    expect(summary.current_keyboard_action_post_hold_readback_starts_map_runtime).toBe(false);
+    expect(summary.current_keyboard_action_post_hold_readback_submits_delivery).toBe(false);
+    expect(summary.current_keyboard_action_post_hold_readback_stops_motion).toBe(false);
     expect(summary.current_free_move_action_required).toBe(true);
     expect(summary.current_free_move_action_ready).toBe(true);
     expect(summary.current_free_move_action_id).toBe("start_free_move");
