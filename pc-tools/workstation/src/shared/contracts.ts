@@ -5364,6 +5364,7 @@ export interface RobotControlProofRefreshProxyResponse extends ProofFlags {
   path_point_count?: string;
   post_refresh_latest_readback_status?: string;
   post_refresh_latest_readback_attempt_count?: string;
+  next_action_plain: string;
   failure_reason: string;
   blocked_reasons: string[];
   hard_dangerous_true_fields: string[];
@@ -5794,6 +5795,7 @@ export interface RobotControlMapPreviewResponse extends ProofFlags {
   radar_overlay_refresh_required: boolean;
   radar_overlay_needs_refresh: boolean;
   radar_overlay_blocks_wysiwyg: boolean;
+  radar_overlay_wysiwyg_complete: boolean;
   radar_overlay_blocks_free_move: false;
   radar_overlay_recovery_sequence: string[];
   fixed_radar_overlay_refresh_endpoint: "/api/robot-control/radar/scan-proof/refresh";

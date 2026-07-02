@@ -10728,6 +10728,7 @@ describe("workstation fail-closed API contracts", () => {
         latest_scan_proof_fresh: string;
         hard_dangerous_true_fields: string[];
         non_motion_evidence_actions_observed: string[];
+        next_action_plain: string;
       };
       expect(radarResponse.status).toBe(200);
       expect(radarBody.proxy_status).toBe("refresh_forwarded");
@@ -10769,6 +10770,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(radarBody.continuous_window_observed).toBe("true");
       expect(radarBody.continuity_window_status).toBe("fresh_window_observed");
       expect(radarBody.latest_scan_proof_fresh).toBe("true");
+      expect(radarBody.next_action_plain).toBe("雷达扫描只读刷新完成；继续读取雷达状态和地图画面，确认雷达点已贴到当前地图。");
       expect(radarBody.latest_readback_key_values.blocked_reasons).toBeUndefined();
       expect(radarBody.latest_readback_key_values.continuity_blocked_reasons).toBeUndefined();
       expect(upstream.receivedBodies["/api/radar/scan-proof/refresh"]?.[0]).toEqual({
@@ -11699,6 +11701,7 @@ describe("workstation fail-closed API contracts", () => {
         radar_overlay_point_count: number;
         radar_overlay_current_point_count: number;
         radar_overlay_source_point_count: number | null;
+        radar_overlay_wysiwyg_complete: boolean;
         radar_overlay_refresh_required: boolean;
         radar_overlay_stale_source_points_suppressed: boolean;
         radar_overlay_primary_blocked_reason: string;
@@ -11776,6 +11779,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(previewBody.radar_overlay_point_count).toBe(1);
       expect(previewBody.radar_overlay_current_point_count).toBe(1);
       expect(previewBody.radar_overlay_source_point_count).toBe(65);
+      expect(previewBody.radar_overlay_wysiwyg_complete).toBe(true);
       expect(previewBody.radar_overlay_refresh_required).toBe(false);
       expect(previewBody.radar_overlay_stale_source_points_suppressed).toBe(false);
       expect(previewBody.radar_overlay_primary_blocked_reason).toBe("none");
@@ -11953,6 +11957,7 @@ describe("workstation fail-closed API contracts", () => {
         radar_overlay_source_count: number | null;
         radar_overlay_needs_refresh: boolean;
         radar_overlay_blocks_wysiwyg: boolean;
+        radar_overlay_wysiwyg_complete: boolean;
         radar_overlay_blocks_free_move: boolean;
         radar_overlay_recovery_sequence: string[];
         fixed_radar_overlay_refresh_endpoint: string;
@@ -12157,6 +12162,7 @@ describe("workstation fail-closed API contracts", () => {
         radar_overlay_source_count: number | null;
         radar_overlay_needs_refresh: boolean;
         radar_overlay_blocks_wysiwyg: boolean;
+        radar_overlay_wysiwyg_complete: boolean;
         radar_overlay_blocks_free_move: boolean;
         radar_overlay_recovery_sequence: string[];
         fixed_radar_overlay_refresh_endpoint: string;
@@ -12238,6 +12244,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.radar_overlay_source_count).toBe(65);
       expect(body.radar_overlay_needs_refresh).toBe(true);
       expect(body.radar_overlay_blocks_wysiwyg).toBe(true);
+      expect(body.radar_overlay_wysiwyg_complete).toBe(false);
       expect(body.radar_overlay_blocks_free_move).toBe(false);
       expect(body.radar_overlay_recovery_sequence).toEqual([
         "/api/robot-control/radar/scan-proof/refresh",

@@ -3850,6 +3850,7 @@ function mapPreviewRadarOverlayAliases(
   | "radar_overlay_current_vs_source_plain"
   | "radar_overlay_needs_refresh"
   | "radar_overlay_blocks_wysiwyg"
+  | "radar_overlay_wysiwyg_complete"
   | "radar_overlay_blocks_free_move"
   | "radar_overlay_recovery_sequence"
   | "fixed_radar_overlay_refresh_endpoint"
@@ -3863,6 +3864,7 @@ function mapPreviewRadarOverlayAliases(
 > {
   // 顶层 alias 与嵌套 overlay 同源，方便现场 curl/jq 一眼确认“地图上到底贴了几个当前雷达点”。
   const blocksWysiwyg = radarOverlay.overlay_status !== "loaded" || radarOverlay.count <= 0;
+  const wysiwygComplete = !blocksWysiwyg;
   return {
     radar_overlay_status: radarOverlay.overlay_status,
     radar_overlay_plain_hint: radarOverlay.plain_hint,
@@ -3882,6 +3884,7 @@ function mapPreviewRadarOverlayAliases(
     radar_overlay_current_vs_source_plain: radarOverlay.current_vs_source_plain,
     radar_overlay_needs_refresh: radarOverlay.refresh_required,
     radar_overlay_blocks_wysiwyg: blocksWysiwyg,
+    radar_overlay_wysiwyg_complete: wysiwygComplete,
     radar_overlay_blocks_free_move: false,
     radar_overlay_recovery_sequence: [
       "/api/robot-control/radar/scan-proof/refresh",
@@ -4918,6 +4921,7 @@ function blockedRefreshResponse(
     last_result_evidence_ref: "not_loaded",
     last_refreshed_at_ms: observedAt,
     latest_readback_key_values: {},
+    next_action_plain: proofRefreshNextActionPlain(config, {}, "blocked"),
     failure_reason: reason,
     blocked_reasons: [reason],
     hard_dangerous_true_fields: [],
@@ -4951,6 +4955,7 @@ function failedRefreshResponse(
     last_result_evidence_ref: "not_loaded",
     last_refreshed_at_ms: observedAt,
     latest_readback_key_values: {},
+    next_action_plain: proofRefreshNextActionPlain(config, {}, "blocked"),
     failure_reason: reason,
     blocked_reasons: [reason],
     hard_dangerous_true_fields: [],
@@ -4987,6 +4992,33 @@ function proofRefreshTopLevelAliases(readbackKeyValues: Record<string, string>):
     }
   }
   return aliases;
+}
+
+function proofRefreshNextActionPlain(
+  config: RobotProofRefreshConfig,
+  readbackKeyValues: Record<string, string>,
+  status: "blocked" | "loaded_fail_closed_summary",
+): string {
+  // refresh 只刷新材料；下一步必须指向固定读回链路，而不是暗示它会启动 runtime 或发车。
+  if (config.kind === "radar_scan_proof_refresh") {
+    if (status === "loaded_fail_closed_summary" && readbackKeyValues.latest_scan_proof_fresh === "true") {
+      return "雷达扫描只读刷新完成；继续读取雷达状态和地图画面，确认雷达点已贴到当前地图。";
+    }
+    return "雷达扫描只读刷新未形成 fresh 证据；继续读取雷达状态和地图画面，必要时现场启动雷达后重试。";
+  }
+  if (config.kind === "map_proof_refresh") {
+    return status === "loaded_fail_closed_summary"
+      ? "地图 proof 只读刷新完成；继续读取地图画面和雷达贴图。"
+      : "地图 proof 只读刷新未完成；先确认上位机地图接口，再读取地图画面。";
+  }
+  if (config.kind === "nav2_no_motion_proof_refresh") {
+    return status === "loaded_fail_closed_summary"
+      ? "Nav2 只读 proof 刷新完成；继续读取地图画面和最近路线。"
+      : "Nav2 只读 proof 刷新未完成；先读取 Nav2 状态和地图画面定位原因。";
+  }
+  return status === "loaded_fail_closed_summary"
+    ? "定位只读刷新完成；继续读取地图画面确认小车位置。"
+    : "定位只读刷新未完成；先读取地图画面和定位状态。";
 }
 
 async function nav2LatestReadbackAfterPostFailure(
@@ -5052,6 +5084,7 @@ async function nav2LatestReadbackAfterPostFailure(
     last_result_evidence_ref: asString(findFirstKey(latestPayload, ["evidence_ref", "latest_evidence_ref", "result_evidence_ref"]), "not_loaded"),
     latest_readback_key_values: latestReadbackKeyValues,
     ...proofRefreshTopLevelAliases(latestReadbackKeyValues),
+    next_action_plain: proofRefreshNextActionPlain(config, latestReadbackKeyValues, "blocked"),
     blocked_reasons: [postFailureReason, "post_timeout_latest_readback_loaded"],
   });
 }
@@ -5197,6 +5230,7 @@ async function buildProofRefreshProxy(
       last_result_evidence_ref: "not_loaded",
       last_refreshed_at_ms: observedAt,
       latest_readback_key_values: {},
+      next_action_plain: proofRefreshNextActionPlain(config, {}, "blocked"),
       failure_reason: "response_json_parse_failed",
       blocked_reasons: ["response_json_parse_failed", `refresh_http_status_${response.status}`],
       hard_dangerous_true_fields: [],
@@ -5223,6 +5257,7 @@ async function buildProofRefreshProxy(
       last_result_evidence_ref: "not_loaded",
       last_refreshed_at_ms: observedAt,
       latest_readback_key_values: {},
+      next_action_plain: proofRefreshNextActionPlain(config, {}, "blocked"),
       failure_reason: "response_json_not_object",
       blocked_reasons: ["response_json_not_object", `refresh_http_status_${response.status}`],
       hard_dangerous_true_fields: [],
@@ -5259,6 +5294,7 @@ async function buildProofRefreshProxy(
         postRefreshLatestReadbackAttemptCount: "",
       };
   const latestReadbackKeyValues = radarPostRefreshReadback.latestReadbackKeyValues;
+  const responseStatus = refreshSuccessful ? "loaded_fail_closed_summary" : "blocked";
 
   return {
     schema: "trashbot.pc_tools_workstation.robot_control_proof_refresh_proxy.v1",
@@ -5270,7 +5306,7 @@ async function buildProofRefreshProxy(
     normalized_base_url: normalized.normalized.toString().replace(/\/$/, ""),
     remote_endpoint: config.endpoint,
     remote_http_status: response.status,
-    status: refreshSuccessful ? "loaded_fail_closed_summary" : "blocked",
+    status: responseStatus,
     last_result_status: lastResultStatus,
     last_result_schema: lastResultSchema,
     last_result_evidence_ref: lastResultEvidenceRef,
@@ -5279,6 +5315,7 @@ async function buildProofRefreshProxy(
     ...proofRefreshTopLevelAliases(latestReadbackKeyValues),
     post_refresh_latest_readback_status: radarPostRefreshReadback.postRefreshLatestReadbackStatus || undefined,
     post_refresh_latest_readback_attempt_count: radarPostRefreshReadback.postRefreshLatestReadbackAttemptCount || undefined,
+    next_action_plain: proofRefreshNextActionPlain(config, latestReadbackKeyValues, responseStatus),
     failure_reason:
       hardDangerous.length > 0
         ? `hard_dangerous_true_field:${hardDangerous[0]}`
