@@ -5147,6 +5147,13 @@ const plainCurrentMotionActionGauge = computed(() => {
   const operatorReportPreflightRequired = summary?.current_motion_action_operator_report_preflight_required ?? false;
   const routeWysiwygPreflightRequired = summary?.current_motion_action_route_wysiwyg_preflight_required ?? fallback.routeWysiwygPreflightRequired;
   const sendsMotion = summary?.current_motion_action_sends_motion ?? fallback.startSendsMotion;
+  const startsNav2 = summary?.current_motion_action_starts_nav2 ?? actionId === "run_nav2_route";
+  const startsManual = summary?.current_motion_action_starts_manual ?? false;
+  const startsKeyboard = summary?.current_motion_action_starts_keyboard ?? false;
+  const startsFreeRoam = summary?.current_motion_action_starts_free_roam ?? false;
+  const startsMapRuntime = summary?.current_motion_action_starts_map_runtime ?? false;
+  const submitsDelivery = summary?.current_motion_action_submits_delivery ?? false;
+  const stopsMotion = summary?.current_motion_action_stops_motion ?? false;
   const routeReadyOnMap = summary?.current_motion_action_route_ready_on_map ?? fallback.routeReadyOnMap;
   const nav2GoalSucceeded = summary?.current_motion_action_nav2_goal_succeeded ?? fallback.nav2GoalSucceeded;
   const sameWindowWheelLrNonzero = summary?.current_motion_action_same_window_wheel_lr_nonzero ?? fallback.sameWindowWheelLrNonzero;
@@ -5214,6 +5221,13 @@ const plainCurrentMotionActionGauge = computed(() => {
     operatorReportPreflightRequired,
     routeWysiwygPreflightRequired,
     sendsMotion,
+    startsNav2,
+    startsManual,
+    startsKeyboard,
+    startsFreeRoam,
+    startsMapRuntime,
+    submitsDelivery,
+    stopsMotion,
     routeReadyOnMap,
     nav2GoalSucceeded,
     sameWindowWheelLrNonzero,
@@ -21255,6 +21269,13 @@ onBeforeUnmount(() => {
           :data-current-motion-action-radar-preflight-required="String(plainCurrentMotionActionGauge.radarPreflightRequired)"
           :data-current-motion-action-route-wysiwyg-preflight-required="String(plainCurrentMotionActionGauge.routeWysiwygPreflightRequired)"
           :data-current-motion-action-sends-motion="String(plainCurrentMotionActionGauge.sendsMotion)"
+          :data-current-motion-action-starts-nav2="String(plainCurrentMotionActionGauge.startsNav2)"
+          :data-current-motion-action-starts-manual="String(plainCurrentMotionActionGauge.startsManual)"
+          :data-current-motion-action-starts-keyboard="String(plainCurrentMotionActionGauge.startsKeyboard)"
+          :data-current-motion-action-starts-free-roam="String(plainCurrentMotionActionGauge.startsFreeRoam)"
+          :data-current-motion-action-starts-map-runtime="String(plainCurrentMotionActionGauge.startsMapRuntime)"
+          :data-current-motion-action-submits-delivery="String(plainCurrentMotionActionGauge.submitsDelivery)"
+          :data-current-motion-action-stops-motion="String(plainCurrentMotionActionGauge.stopsMotion)"
           :data-next-action="plainTripClosureGateGauge.nextAction"
           :data-fixed-nav2-execute-endpoint="plainTripClosureGateGauge.fixedNav2ExecuteEndpoint"
           :data-fixed-delivery-complete-endpoint="plainTripClosureGateGauge.fixedDeliveryCompleteEndpoint"
@@ -24068,6 +24089,13 @@ onBeforeUnmount(() => {
                 :data-current-motion-action-radar-preflight-required="String(plainCurrentMotionActionGauge.radarPreflightRequired)"
                 :data-current-motion-action-route-wysiwyg-preflight-required="String(plainCurrentMotionActionGauge.routeWysiwygPreflightRequired)"
                 :data-current-motion-action-sends-motion="String(plainCurrentMotionActionGauge.sendsMotion)"
+                :data-current-motion-action-starts-nav2="String(plainCurrentMotionActionGauge.startsNav2)"
+                :data-current-motion-action-starts-manual="String(plainCurrentMotionActionGauge.startsManual)"
+                :data-current-motion-action-starts-keyboard="String(plainCurrentMotionActionGauge.startsKeyboard)"
+                :data-current-motion-action-starts-free-roam="String(plainCurrentMotionActionGauge.startsFreeRoam)"
+                :data-current-motion-action-starts-map-runtime="String(plainCurrentMotionActionGauge.startsMapRuntime)"
+                :data-current-motion-action-submits-delivery="String(plainCurrentMotionActionGauge.submitsDelivery)"
+                :data-current-motion-action-stops-motion="String(plainCurrentMotionActionGauge.stopsMotion)"
                 :data-current-motion-action-route-ready-on-map="String(plainCurrentMotionActionGauge.routeReadyOnMap)"
                 :data-current-motion-action-nav2-goal-succeeded="String(plainCurrentMotionActionGauge.nav2GoalSucceeded)"
                 :data-current-motion-action-same-window-wheel-lr-nonzero="String(plainCurrentMotionActionGauge.sameWindowWheelLrNonzero)"
@@ -24139,6 +24167,13 @@ onBeforeUnmount(() => {
               :data-current-motion-action-operator-report-preflight-required="String(plainCurrentMotionActionGauge.operatorReportPreflightRequired)"
               :data-current-motion-action-route-wysiwyg-preflight-required="String(plainCurrentMotionActionGauge.routeWysiwygPreflightRequired)"
               :data-current-motion-action-sends-motion="String(plainCurrentMotionActionGauge.sendsMotion)"
+              :data-current-motion-action-starts-nav2="String(plainCurrentMotionActionGauge.startsNav2)"
+              :data-current-motion-action-starts-manual="String(plainCurrentMotionActionGauge.startsManual)"
+              :data-current-motion-action-starts-keyboard="String(plainCurrentMotionActionGauge.startsKeyboard)"
+              :data-current-motion-action-starts-free-roam="String(plainCurrentMotionActionGauge.startsFreeRoam)"
+              :data-current-motion-action-starts-map-runtime="String(plainCurrentMotionActionGauge.startsMapRuntime)"
+              :data-current-motion-action-submits-delivery="String(plainCurrentMotionActionGauge.submitsDelivery)"
+              :data-current-motion-action-stops-motion="String(plainCurrentMotionActionGauge.stopsMotion)"
               :data-current-motion-action-route-ready-on-map="String(plainCurrentMotionActionGauge.routeReadyOnMap)"
               :data-current-motion-action-nav2-goal-succeeded="String(plainCurrentMotionActionGauge.nav2GoalSucceeded)"
               :data-current-motion-action-same-window-wheel-lr-nonzero="String(plainCurrentMotionActionGauge.sameWindowWheelLrNonzero)"
@@ -24215,6 +24250,13 @@ onBeforeUnmount(() => {
               :data-current-motion-action-radar-preflight-required="String(plainCurrentMotionActionGauge.radarPreflightRequired)"
               :data-current-motion-action-route-wysiwyg-preflight-required="String(plainCurrentMotionActionGauge.routeWysiwygPreflightRequired)"
               :data-current-motion-action-sends-motion="String(plainCurrentMotionActionGauge.sendsMotion)"
+              :data-current-motion-action-starts-nav2="String(plainCurrentMotionActionGauge.startsNav2)"
+              :data-current-motion-action-starts-manual="String(plainCurrentMotionActionGauge.startsManual)"
+              :data-current-motion-action-starts-keyboard="String(plainCurrentMotionActionGauge.startsKeyboard)"
+              :data-current-motion-action-starts-free-roam="String(plainCurrentMotionActionGauge.startsFreeRoam)"
+              :data-current-motion-action-starts-map-runtime="String(plainCurrentMotionActionGauge.startsMapRuntime)"
+              :data-current-motion-action-submits-delivery="String(plainCurrentMotionActionGauge.submitsDelivery)"
+              :data-current-motion-action-stops-motion="String(plainCurrentMotionActionGauge.stopsMotion)"
               :data-next-action="plainTripExecutionGauge.nextAction"
               data-fixed-nav2-execute-endpoint="/api/robot-control/nav2/goal/execute"
               data-fixed-delivery-complete-endpoint="/api/robot-control/delivery/complete"

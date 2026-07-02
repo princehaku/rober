@@ -3850,6 +3850,13 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   current_motion_action_operator_report_preflight_required?: boolean;
   current_motion_action_route_wysiwyg_preflight_required?: boolean;
   current_motion_action_sends_motion?: RobotControlFieldAcceptancePacket["primary_safety_confirm_ready_action_sends_motion"];
+  current_motion_action_starts_nav2?: boolean;
+  current_motion_action_starts_manual?: false;
+  current_motion_action_starts_keyboard?: false;
+  current_motion_action_starts_free_roam?: false;
+  current_motion_action_starts_map_runtime?: false;
+  current_motion_action_submits_delivery?: false;
+  current_motion_action_stops_motion?: false;
   current_motion_action_route_ready_on_map?: RobotControlNav2RouteAcceptancePacket["route_ready_on_map"];
   current_motion_action_nav2_goal_succeeded?: RobotControlNav2RouteAcceptancePacket["nav2_goal_succeeded"];
   current_motion_action_same_window_wheel_lr_nonzero?: RobotControlNav2RouteAcceptancePacket["same_window_wheel_lr_nonzero"];

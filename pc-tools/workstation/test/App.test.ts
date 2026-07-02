@@ -1043,6 +1043,13 @@ const fixtures: Record<string, unknown> = {
     current_motion_action_radar_preflight_required: false,
     current_motion_action_route_wysiwyg_preflight_required: false,
     current_motion_action_sends_motion: true,
+    current_motion_action_starts_nav2: true,
+    current_motion_action_starts_manual: false,
+    current_motion_action_starts_keyboard: false,
+    current_motion_action_starts_free_roam: false,
+    current_motion_action_starts_map_runtime: false,
+    current_motion_action_submits_delivery: false,
+    current_motion_action_stops_motion: false,
     current_motion_action_route_ready_on_map: true,
     current_motion_action_nav2_goal_succeeded: true,
     current_motion_action_same_window_wheel_lr_nonzero: false,
@@ -7962,6 +7969,13 @@ describe("App", () => {
     expect(tripClosureGate.attributes("data-current-motion-action-radar-preflight-required")).toBe("false");
     expect(tripClosureGate.attributes("data-current-motion-action-route-wysiwyg-preflight-required")).toBe("false");
     expect(tripClosureGate.attributes("data-current-motion-action-sends-motion")).toBe("true");
+    expect(tripClosureGate.attributes("data-current-motion-action-starts-nav2")).toBe("true");
+    expect(tripClosureGate.attributes("data-current-motion-action-starts-manual")).toBe("false");
+    expect(tripClosureGate.attributes("data-current-motion-action-starts-keyboard")).toBe("false");
+    expect(tripClosureGate.attributes("data-current-motion-action-starts-free-roam")).toBe("false");
+    expect(tripClosureGate.attributes("data-current-motion-action-starts-map-runtime")).toBe("false");
+    expect(tripClosureGate.attributes("data-current-motion-action-submits-delivery")).toBe("false");
+    expect(tripClosureGate.attributes("data-current-motion-action-stops-motion")).toBe("false");
     expect(tripClosureGate.attributes("data-next-action")).toBe("勾选现场安全确认");
     expect(tripClosureGate.attributes("data-fixed-nav2-execute-endpoint")).toBe("/api/robot-control/nav2/goal/execute");
     expect(tripClosureGate.attributes("data-fixed-delivery-complete-endpoint")).toBe("/api/robot-control/delivery/complete");
@@ -9558,6 +9572,13 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-current-motion-action-radar-preflight-required")).toBe("false");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-current-motion-action-route-wysiwyg-preflight-required")).toBe("false");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-current-motion-action-sends-motion")).toBe("true");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-current-motion-action-starts-nav2")).toBe("true");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-current-motion-action-starts-manual")).toBe("false");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-current-motion-action-starts-keyboard")).toBe("false");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-current-motion-action-starts-free-roam")).toBe("false");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-current-motion-action-starts-map-runtime")).toBe("false");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-current-motion-action-submits-delivery")).toBe("false");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-current-motion-action-stops-motion")).toBe("false");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-post-execute-latest-refresh-required")).toBe("true");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-post-execute-summary-refresh-required")).toBe("true");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-fixed-execute-proxy-endpoint")).toBe("/api/robot-control/nav2/goal/execute");
@@ -9604,6 +9625,13 @@ describe("App", () => {
     expect(defaultTripExecutionGauge.attributes("data-current-motion-action-radar-preflight-required")).toBe("false");
     expect(defaultTripExecutionGauge.attributes("data-current-motion-action-route-wysiwyg-preflight-required")).toBe("false");
     expect(defaultTripExecutionGauge.attributes("data-current-motion-action-sends-motion")).toBe("true");
+    expect(defaultTripExecutionGauge.attributes("data-current-motion-action-starts-nav2")).toBe("true");
+    expect(defaultTripExecutionGauge.attributes("data-current-motion-action-starts-manual")).toBe("false");
+    expect(defaultTripExecutionGauge.attributes("data-current-motion-action-starts-keyboard")).toBe("false");
+    expect(defaultTripExecutionGauge.attributes("data-current-motion-action-starts-free-roam")).toBe("false");
+    expect(defaultTripExecutionGauge.attributes("data-current-motion-action-starts-map-runtime")).toBe("false");
+    expect(defaultTripExecutionGauge.attributes("data-current-motion-action-submits-delivery")).toBe("false");
+    expect(defaultTripExecutionGauge.attributes("data-current-motion-action-stops-motion")).toBe("false");
     expect(defaultTripExecutionGauge.attributes("data-next-action")).toBe("先准备图上行程");
     expect(defaultTripExecutionGauge.attributes("data-fixed-nav2-execute-endpoint")).toBe("/api/robot-control/nav2/goal/execute");
     expect(defaultTripExecutionGauge.attributes("data-fixed-delivery-complete-endpoint")).toBe("/api/robot-control/delivery/complete");
@@ -9681,6 +9709,13 @@ describe("App", () => {
     expect(currentMotionAction.attributes("data-current-motion-action-operator-report-preflight-required")).toBe("false");
     expect(currentMotionAction.attributes("data-current-motion-action-route-wysiwyg-preflight-required")).toBe("false");
     expect(currentMotionAction.attributes("data-current-motion-action-sends-motion")).toBe("true");
+    expect(currentMotionAction.attributes("data-current-motion-action-starts-nav2")).toBe("true");
+    expect(currentMotionAction.attributes("data-current-motion-action-starts-manual")).toBe("false");
+    expect(currentMotionAction.attributes("data-current-motion-action-starts-keyboard")).toBe("false");
+    expect(currentMotionAction.attributes("data-current-motion-action-starts-free-roam")).toBe("false");
+    expect(currentMotionAction.attributes("data-current-motion-action-starts-map-runtime")).toBe("false");
+    expect(currentMotionAction.attributes("data-current-motion-action-submits-delivery")).toBe("false");
+    expect(currentMotionAction.attributes("data-current-motion-action-stops-motion")).toBe("false");
     expect(currentMotionAction.attributes("data-current-motion-action-route-ready-on-map")).toBe("true");
     expect(currentMotionAction.attributes("data-current-motion-action-nav2-goal-succeeded")).toBe("true");
     expect(currentMotionAction.attributes("data-current-motion-action-same-window-wheel-lr-nonzero")).toBe("false");

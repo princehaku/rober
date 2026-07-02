@@ -1093,6 +1093,13 @@ describe("robotControlSummary", () => {
     expect(summary.current_motion_action_operator_report_preflight_required).toBe(false);
     expect(summary.current_motion_action_route_wysiwyg_preflight_required).toBe(false);
     expect(summary.current_motion_action_sends_motion).toBe(true);
+    expect(summary.current_motion_action_starts_nav2).toBe(true);
+    expect(summary.current_motion_action_starts_manual).toBe(false);
+    expect(summary.current_motion_action_starts_keyboard).toBe(false);
+    expect(summary.current_motion_action_starts_free_roam).toBe(false);
+    expect(summary.current_motion_action_starts_map_runtime).toBe(false);
+    expect(summary.current_motion_action_submits_delivery).toBe(false);
+    expect(summary.current_motion_action_stops_motion).toBe(false);
     expect(summary.current_motion_action_route_ready_on_map).toBe(summary.nav2_route_acceptance_packet?.route_ready_on_map);
     expect(summary.current_motion_action_nav2_goal_succeeded).toBe(summary.nav2_route_acceptance_packet?.nav2_goal_succeeded);
     expect(summary.current_motion_action_same_window_wheel_lr_nonzero).toBe(summary.nav2_route_acceptance_packet?.same_window_wheel_lr_nonzero);
