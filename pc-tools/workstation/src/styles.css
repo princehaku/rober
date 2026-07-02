@@ -130,7 +130,7 @@ button {
 .shell[data-direct-map-view-requested="true"] .plain-map-wysiwyg-layer-strip {
   /* 图层状态改为画布内浮层，避免“当前画布”条占掉直达大屏的垂直空间。 */
   position: absolute;
-  top: 50px;
+  top: 42px;
   left: 8px;
   z-index: 6;
   max-width: calc(100% - 16px);
@@ -153,8 +153,8 @@ button {
 
 .shell[data-direct-map-view-requested="true"] .plain-map-panel[data-observer-mode="true"] .plain-map-viewport[data-size="fullscreen"] .plain-map-layer {
   /* /map 直达页必须一打开就是地图观察屏，按紧凑工具条直接扣减高度，避免 grid 百分比把内部画布算小。 */
-  height: calc(100vh - 52px);
-  min-height: calc(100vh - 52px);
+  height: calc(100vh - 44px);
+  min-height: calc(100vh - 44px);
 }
 
 .topbar {
@@ -534,7 +534,7 @@ h3 {
 
 .robot-console-grid[data-layout="visual-first"] {
   /* 普通首页就是驾驶台：左边大地图，右边图传和 WASD，其他验收材料继续在下方保留。 */
-  grid-template-columns: minmax(0, 1.65fr) minmax(360px, 0.9fr);
+  grid-template-columns: minmax(0, 2.35fr) minmax(330px, 0.75fr);
   grid-template-areas:
     "map camera"
     "map drive"
@@ -543,12 +543,12 @@ h3 {
 }
 
 .robot-console-grid[data-layout="visual-first"] .plain-camera-panel {
-  /* 图传必须在第一屏右上角，不能被地图长画布挤到下一屏。 */
+  /* 图传必须在第一屏右上角，右列收窄后继续保持可滚动而不挤压主地图。 */
   order: 0;
   grid-area: camera;
   display: flex;
   flex-direction: column;
-  max-height: min(48vh, 430px);
+  max-height: min(46vh, 420px);
   overflow: auto;
 }
 
@@ -568,11 +568,37 @@ h3 {
 
 .robot-console-grid[data-layout="visual-first"] .plain-map-panel {
   /* 地图仍是主视图，但必须和实时画面、WASD 同屏出现。 */
+  position: relative;
   order: 0;
   grid-area: map;
-  height: clamp(560px, calc(100vh - 96px), 760px);
+  height: clamp(600px, calc(100vh - 72px), 900px);
   min-height: 0;
   overflow: auto;
+}
+
+.robot-console-grid[data-layout="visual-first"] .plain-map-wysiwyg-layer-strip {
+  /* 首页也把图层条浮到画布内，避免五层状态文字把真实地图继续往首屏下方挤。 */
+  position: absolute;
+  top: 58px;
+  left: 18px;
+  right: 18px;
+  z-index: 6;
+  flex-wrap: nowrap;
+  gap: 6px;
+  max-width: calc(100% - 36px);
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 4px 6px;
+  box-shadow: 0 4px 16px rgb(21 31 43 / 14%);
+}
+
+.robot-console-grid[data-layout="visual-first"] .plain-map-wysiwyg-layer-title {
+  flex: 0 0 auto;
+}
+
+.robot-console-grid[data-layout="visual-first"] .plain-map-wysiwyg-layer-chip {
+  min-height: 24px;
+  padding: 2px 7px;
 }
 
 .robot-console-grid[data-layout="visual-first"] .plain-connection-panel,
@@ -587,7 +613,7 @@ h3 {
   grid-area: drive;
   display: flex;
   flex-direction: column;
-  max-height: min(48vh, 430px);
+  max-height: min(46vh, 420px);
   overflow: auto;
 }
 
@@ -643,7 +669,7 @@ h3 {
 
 .robot-console-grid[data-layout="visual-first"] .camera-preview-frame {
   order: -1;
-  min-height: 240px;
+  min-height: 220px;
 }
 
 .robot-console-grid[data-layout="visual-first"] .plain-camera-panel .plain-camera-usb-recovery-proof {
@@ -2261,9 +2287,9 @@ h3 {
 }
 
 .robot-console-grid[data-layout="visual-first"] .plain-map-panel:not([data-observer-mode="true"]) .plain-map-viewport[data-size="large"] .plain-map-layer {
-  /* 首页地图与图传/WASD 同屏；/map 直达页仍使用整屏地图。 */
-  height: clamp(560px, calc(100vh - 156px), 760px);
-  min-height: 560px;
+  /* 首页地图与图传/WASD 同屏；默认画布再放大，地图太小时优先把面积给主地图。 */
+  height: clamp(600px, calc(100vh - 104px), 900px);
+  min-height: 600px;
 }
 
 .plain-map-viewport[data-size="fullscreen"] .plain-map-layer {

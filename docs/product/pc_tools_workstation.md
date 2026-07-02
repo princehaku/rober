@@ -5347,3 +5347,23 @@ full-speed 链路，`lsusb -t` 显示 UVC video/audio interface 均为 `12M`；�
 `source_diagnosis_status=uvc_full_speed_usb_not_exclusive`、`camera_usb_speed=12M`、
 `camera_hardware_action_required=true`、`camera_blocks_free_move=false`；普通首页相机卡首屏固定显示
 `plain-camera-usb-recovery-proof`，直接告诉用户这是 USB full-speed/物理链路问题，不是页面独占。
+
+2026-07-03 02:41 CST 起，普通 PC 首页地图再次放大：驾驶台布局从约 `1.65fr/0.9fr` 调整为
+`2.35fr/0.75fr`，右列保留实时图传和 WASD，但最小宽度收紧到 `330px`；首页大地图画布改为
+`clamp(600px, calc(100vh - 104px), 900px)`，并把“当前画布”图层条改成地图内横向浮层，避免五层状态文字
+把真实地图继续往首屏下方挤。直达 `/map` 页的纯地图画布改为 `calc(100vh - 44px)`，减少工具条占用。
+ROS2 配套工具继续按本地 `docs/vendor/VENDOR_INDEX.md` 和项目 ROS2 口径声明：
+普通用户首选 PC `/map` 大屏；工程观察可用 RViz2（`ros2 launch ros2_trashbot_bringup rviz.launch.py`）
+或 Foxglove bridge（`ros2 launch ros2_trashbot_bringup foxglove_bridge.launch.py` 后连接
+`ws://192.168.1.11:8765`），仅观察 `/map`、`/scan`、`/tf`、路径、定位和 costmap，不替代 PC 简易发车界面。
+
+同一时间现场复验 PC 手控链路：`/api/robot-control/base/manual` 用
+`direction=forward,speed=0.08,duration_ms=240` 返回 `command_forwarded`，随后 `/api/robot-control/base/stop`
+返回 `command_forwarded/stopped`；`/api/robot-control/base/first-jog` 用
+`speed=0.08,duration_ms=500` 与 `speed=0.12,duration_ms=800` 均返回上位机 200。上位机
+`wave_rover_command_debug.jsonl` 证明 `/cmd_vel` 已由 `esp32_bridge` 映射为 vendor
+`T=11 L=164/R=164`，stop 映射为 `T=11 L=0/R=0`；但 `wave_rover_feedback_debug.jsonl`
+持续返回 `T=1001 L/R=0/0`，IMU 姿态变化低于项目 1 度运动阈值。因此当前软件链路可证明
+PC->Robot API->ROS `/cmd_vel`->WAVE ROVER `T=11/PWM164` 和 stop 均已执行，但不能把 wheel raw 非零、
+物理移动、Nav2 自动驾驶完成或 delivery success 写成已完成；下一步需要人工在车旁检查电机供电、急停、
+底盘模式、轮子是否离地、固件反馈语义，或在明确安全条件下复验更高 PWM/更长窗口。
