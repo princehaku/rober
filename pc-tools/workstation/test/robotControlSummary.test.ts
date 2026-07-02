@@ -1253,6 +1253,7 @@ describe("robotControlSummary", () => {
     expect(summary.current_motion_action_delivery_next_action_plain).toBe(summary.nav2_route_acceptance_packet?.delivery_next_action_plain);
     expect(summary.current_trip_execution_pack_status).toBe("ready_for_safety_confirm");
     expect(summary.current_trip_execution_pack_plain).toContain("完整行程可复验");
+    expect(summary.current_trip_execution_pack_next_action_plain).toBe("勾现场安全确认后执行图上 Nav2 行程；执行后按地图、最近行程、轮速、送达和总览顺序只读复验。");
     expect(summary.current_trip_execution_pack_action_id).toBe("run_nav2_route");
     expect(summary.current_trip_execution_pack_display_label).toBe("重跑图上行程并复验轮速");
     expect(summary.current_trip_execution_pack_start_endpoint).toBe("/api/robot-control/nav2/goal/execute");
@@ -1361,6 +1362,7 @@ describe("robotControlSummary", () => {
     expect(summary.current_keyboard_action_post_hold_readback_stops_motion).toBe(false);
     expect(summary.current_keyboard_control_pack_status).toBe("ready_for_safety_confirm");
     expect(summary.current_keyboard_control_pack_plain).toContain("键盘连续手控可复验");
+    expect(summary.current_keyboard_control_pack_next_action_plain).toBe("勾现场安全确认后点击启用键盘；启用不发车，按住 W/A/S/D 或方向键才连续低速移动，松开后只读复验轮速和停止。");
     expect(summary.current_keyboard_control_pack_action_id).toBe("hold_keyboard");
     expect(summary.current_keyboard_control_pack_display_label).toBe("键盘连续手控");
     expect(summary.current_keyboard_control_pack_start_endpoint).toBe("/api/robot-control/base/manual");

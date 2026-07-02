@@ -3875,6 +3875,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   current_motion_action_delivery_next_action_plain?: RobotControlNav2RouteAcceptancePacket["delivery_next_action_plain"];
   current_trip_execution_pack_status?: "complete" | "ready_for_safety_confirm" | "blocked";
   current_trip_execution_pack_plain?: string;
+  current_trip_execution_pack_next_action_plain?: string;
   current_trip_execution_pack_action_id?: RobotControlNav2RouteAcceptancePacket["action_id"];
   current_trip_execution_pack_display_label?: RobotControlNav2RouteAcceptancePacket["display_label"];
   current_trip_execution_pack_start_endpoint?: RobotControlNav2RouteAcceptancePacket["start_endpoint"];
@@ -4013,6 +4014,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   current_keyboard_action_post_hold_readback_stops_motion?: false;
   current_keyboard_control_pack_status?: "complete" | "ready_for_safety_confirm" | "blocked";
   current_keyboard_control_pack_plain?: string;
+  current_keyboard_control_pack_next_action_plain?: string;
   current_keyboard_control_pack_action_id?: RobotControlLiveMotionRunbookItem["id"] | "none";
   current_keyboard_control_pack_display_label?: RobotControlLiveMotionRunbookItem["display_label"];
   current_keyboard_control_pack_start_endpoint?: RobotControlLiveMotionRunbookItem["start_endpoint"];

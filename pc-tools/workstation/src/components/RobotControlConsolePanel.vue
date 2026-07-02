@@ -4438,6 +4438,12 @@ const plainCurrentKeyboardControlPack = computed(() => {
   return {
     status,
     plain: summary?.current_keyboard_control_pack_plain ?? defaultPlain,
+    nextActionPlain: summary?.current_keyboard_control_pack_next_action_plain
+      ?? (status === "complete"
+        ? "继续保持现场可接管；需要停下时点击停止。"
+        : status === "ready_for_safety_confirm"
+          ? "勾现场安全确认后点击启用键盘；启用不发车，按住 W/A/S/D 或方向键才连续低速移动，松开后只读复验轮速和停止。"
+          : "先恢复键盘入口或上车连接，再回到安全确认启用。"),
     actionId: summary?.current_keyboard_control_pack_action_id ?? fallback.actionId,
     displayLabel: summary?.current_keyboard_control_pack_display_label ?? fallback.actionDisplayLabel,
     startEndpoint: summary?.current_keyboard_control_pack_start_endpoint ?? fallback.actionStartEndpoint,
@@ -4672,6 +4678,12 @@ const plainCurrentTripExecutionPack = computed(() => {
   return {
     status,
     plain: summary?.current_trip_execution_pack_plain ?? defaultPlain,
+    nextActionPlain: summary?.current_trip_execution_pack_next_action_plain
+      ?? (status === "complete"
+        ? "继续监看地图和停止兜底；需要停下时点击停止。"
+        : status === "ready_for_safety_confirm"
+          ? "勾现场安全确认后执行图上 Nav2 行程；执行后按地图、最近行程、轮速、送达和总览顺序只读复验。"
+          : "先补齐图上行程或自动驾驶读回，再回到安全确认执行。"),
     actionId: summary?.current_trip_execution_pack_action_id ?? packet?.action_id ?? "run_nav2_route",
     displayLabel: summary?.current_trip_execution_pack_display_label ?? packet?.display_label ?? "重跑图上行程并复验轮速",
     startEndpoint: summary?.current_trip_execution_pack_start_endpoint ?? packet?.start_endpoint ?? "/api/robot-control/nav2/goal/execute",
@@ -19874,6 +19886,7 @@ onBeforeUnmount(() => {
             class="panel-note"
             data-testid="plain-current-keyboard-control-pack"
             :data-status="plainCurrentKeyboardControlPack.status"
+            :data-next-action-plain="plainCurrentKeyboardControlPack.nextActionPlain"
             :data-action-id="plainCurrentKeyboardControlPack.actionId"
             :data-display-label="plainCurrentKeyboardControlPack.displayLabel"
             :data-start-endpoint="plainCurrentKeyboardControlPack.startEndpoint"
@@ -19921,6 +19934,7 @@ onBeforeUnmount(() => {
             class="panel-note"
             data-testid="plain-current-trip-execution-pack"
             :data-status="plainCurrentTripExecutionPack.status"
+            :data-next-action-plain="plainCurrentTripExecutionPack.nextActionPlain"
             :data-action-id="plainCurrentTripExecutionPack.actionId"
             :data-display-label="plainCurrentTripExecutionPack.displayLabel"
             :data-start-endpoint="plainCurrentTripExecutionPack.startEndpoint"

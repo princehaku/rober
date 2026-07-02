@@ -10838,6 +10838,15 @@ export async function buildRobotControlSummary(
     }
     return `键盘连续手控暂未就绪：先恢复键盘入口或上车连接；当前缺口：${keyboardActionMissingEvidence.join("、") || "键盘入口未就绪"}。`;
   })();
+  const currentKeyboardControlPackNextActionPlain = (() => {
+    if (currentKeyboardControlPackStatus === "complete") {
+      return "继续保持现场可接管；需要停下时点击停止。";
+    }
+    if (currentKeyboardControlPackStatus === "ready_for_safety_confirm") {
+      return "勾现场安全确认后点击启用键盘；启用不发车，按住 W/A/S/D 或方向键才连续低速移动，松开后只读复验轮速和停止。";
+    }
+    return "先恢复键盘入口或上车连接，再回到安全确认启用。";
+  })();
   const currentFreeMoveControlPackStatus: "complete" | "ready_for_safety_confirm" | "blocked" = freeMoveComplete
     ? "complete"
     : (freeMoveRunbookItem?.ready ?? liveClosureSummary.free_move_start_ready)
@@ -11103,6 +11112,15 @@ export async function buildRobotControlSummary(
       return `完整行程可复验：先勾现场安全确认，再执行图上行程；执行后按地图、最近行程、轮速、送达、总览顺序只读复验。当前缺口：${nav2RouteAcceptancePacket.missing_evidence.join("、") || "无"}。`;
     }
     return `完整行程暂不能执行：先补齐图上行程或自动驾驶读回；当前缺口：${nav2RouteAcceptancePacket.missing_evidence.join("、") || "行程未就绪"}。`;
+  })();
+  const currentTripExecutionPackNextActionPlain = (() => {
+    if (currentTripExecutionPackStatus === "complete") {
+      return "继续监看地图和停止兜底；需要停下时点击停止。";
+    }
+    if (currentTripExecutionPackStatus === "ready_for_safety_confirm") {
+      return "勾现场安全确认后执行图上 Nav2 行程；执行后按地图、最近行程、轮速、送达和总览顺序只读复验。";
+    }
+    return "先补齐图上行程或自动驾驶读回，再回到安全确认执行。";
   })();
   const nav2PostExecuteReadbackSequenceLabels = nav2RouteAcceptancePacket.readback_endpoints.map((endpoint) => {
     if (endpoint.includes("/map/preview")) return "刷新地图画面";
@@ -11483,6 +11501,7 @@ export async function buildRobotControlSummary(
     current_motion_action_delivery_next_action_plain: nav2RouteAcceptancePacket.delivery_next_action_plain,
     current_trip_execution_pack_status: currentTripExecutionPackStatus,
     current_trip_execution_pack_plain: currentTripExecutionPackPlain,
+    current_trip_execution_pack_next_action_plain: currentTripExecutionPackNextActionPlain,
     current_trip_execution_pack_action_id: nav2RouteAcceptancePacket.action_id,
     current_trip_execution_pack_display_label: nav2RouteAcceptancePacket.display_label,
     current_trip_execution_pack_start_endpoint: nav2RouteAcceptancePacket.start_endpoint,
@@ -11624,6 +11643,7 @@ export async function buildRobotControlSummary(
     current_keyboard_action_post_hold_readback_stops_motion: false,
     current_keyboard_control_pack_status: currentKeyboardControlPackStatus,
     current_keyboard_control_pack_plain: currentKeyboardControlPackPlain,
+    current_keyboard_control_pack_next_action_plain: currentKeyboardControlPackNextActionPlain,
     current_keyboard_control_pack_action_id: keyboardRunbookItem?.id ?? "hold_keyboard",
     current_keyboard_control_pack_display_label: keyboardRunbookItem?.display_label ?? "键盘连续手控",
     current_keyboard_control_pack_start_endpoint: keyboardActionStartEndpoint,

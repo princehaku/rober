@@ -866,6 +866,7 @@ const fixtures: Record<string, unknown> = {
     current_keyboard_action_post_hold_readback_stops_motion: false,
     current_keyboard_control_pack_status: "ready_for_safety_confirm",
     current_keyboard_control_pack_plain: "键盘连续手控可复验：先勾现场安全确认，点击启用不会发车，按住 W/A/S/D 或方向键才会连续低速移动；松开后按轮速采样和总览只读复验。当前缺口：same_hold_window_wheel_lr_nonzero、stop_after_release。",
+    current_keyboard_control_pack_next_action_plain: "勾现场安全确认后点击启用键盘；启用不发车，按住 W/A/S/D 或方向键才连续低速移动，松开后只读复验轮速和停止。",
     current_keyboard_control_pack_action_id: "hold_keyboard",
     current_keyboard_control_pack_display_label: "键盘连续手控",
     current_keyboard_control_pack_start_endpoint: "/api/robot-control/base/manual",
@@ -11395,6 +11396,7 @@ describe("App", () => {
     summaryFixture.current_minimal_precheck_pack_stops_motion_when_clicked = false;
     summaryFixture.current_trip_execution_pack_status = "ready_for_safety_confirm";
     summaryFixture.current_trip_execution_pack_plain = "完整行程可复验：先勾现场安全确认，再执行图上行程；执行后按地图、最近行程、轮速、送达、总览顺序只读复验。当前缺口：same_window_wheel_lr_nonzero、delivery_success。";
+    summaryFixture.current_trip_execution_pack_next_action_plain = "勾现场安全确认后执行图上 Nav2 行程；执行后按地图、最近行程、轮速、送达和总览顺序只读复验。";
     summaryFixture.current_trip_execution_pack_action_id = "run_nav2_route";
     summaryFixture.current_trip_execution_pack_display_label = "重跑图上行程并复验轮速";
     summaryFixture.current_trip_execution_pack_start_endpoint = "/api/robot-control/nav2/goal/execute";
@@ -11531,6 +11533,7 @@ describe("App", () => {
     expect(keyboardPack.text()).toContain("键盘连续手控可复验");
     expect(keyboardPack.text()).toContain("点击启用不会发车");
     expect(keyboardPack.attributes("data-status")).toBe("ready_for_safety_confirm");
+    expect(keyboardPack.attributes("data-next-action-plain")).toBe("勾现场安全确认后点击启用键盘；启用不发车，按住 W/A/S/D 或方向键才连续低速移动，松开后只读复验轮速和停止。");
     expect(keyboardPack.attributes("data-action-id")).toBe("hold_keyboard");
     expect(keyboardPack.attributes("data-display-label")).toBe("键盘连续手控");
     expect(keyboardPack.attributes("data-start-endpoint")).toBe("/api/robot-control/base/manual");
@@ -11576,6 +11579,7 @@ describe("App", () => {
     expect(tripPack.text()).toContain("完整行程可复验");
     expect(tripPack.text()).toContain("当前缺口：same_window_wheel_lr_nonzero、delivery_success");
     expect(tripPack.attributes("data-status")).toBe("ready_for_safety_confirm");
+    expect(tripPack.attributes("data-next-action-plain")).toBe("勾现场安全确认后执行图上 Nav2 行程；执行后按地图、最近行程、轮速、送达和总览顺序只读复验。");
     expect(tripPack.attributes("data-action-id")).toBe("run_nav2_route");
     expect(tripPack.attributes("data-display-label")).toBe("重跑图上行程并复验轮速");
     expect(tripPack.attributes("data-start-endpoint")).toBe("/api/robot-control/nav2/goal/execute");

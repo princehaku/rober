@@ -59,6 +59,10 @@ runtime 状态；真正启动自由移动仍必须走单独的安全确认 start
 `current_mapping_control_pack_next_action_plain` 也同步暴露到普通首屏
 `data-next-action-plain`。现场能直接读到“勾现场安全确认后启动自由移动”和“先处理相机/雷达后建图；
 自由移动不受影响”，不用再从长说明里推断下一步。
+2026-07-02 CST 起，同一下一步白话也覆盖完整 Nav2 行程和 PC 键盘连续手控：
+`current_trip_execution_pack_next_action_plain`、`current_keyboard_control_pack_next_action_plain`，普通首屏
+对应 DOM 同步暴露 `data-next-action-plain`。现场能直接读到“勾现场安全确认后执行图上 Nav2 行程”
+和“启用键盘不发车，按住 W/A/S/D 或方向键才连续低速移动”。
 
 2026-07-02 CST 起，`GET /api/robot-control/summary` 的自由移动顶层读回别名补齐为
 `free_move_readback_endpoints` 和 `free_move_required_success_markers`，分别复用既有
