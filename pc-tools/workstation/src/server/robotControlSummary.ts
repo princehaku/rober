@@ -9000,11 +9000,18 @@ function buildLiveClosureSummary(
   const nav2 = actionCardById(cards, "nav2_route");
   const keyboard = actionCardById(cards, "keyboard_control");
   const routeReadyOnMap = nav2.evidence?.route_ready_on_map === true || boundary.nav2_goal_ready;
-  const nav2GoalExecutionProven = nav2.evidence?.goal_execution_proven === true
-    || readback.nav2.goal_execution_status === "goal_succeeded";
+  const nav2GoalSucceeded = readback.nav2.status === "goal_succeeded"
+    || readback.nav2.goal_execution_status === "goal_succeeded"
+    || readback.nav2.goal_execution_result_status === "succeeded"
+    || nav2.status === "ready_needs_wheel_rerun"
+    || boundary.nav2_goal_wheel_feedback_status === "goal_succeeded_but_wheel_lr_zero";
   const wheelLrNonzeroProven = nav2.evidence?.base_feedback_lr_nonzero_proven === true;
+  const nav2GoalExecutionProven = (
+    nav2.evidence?.goal_execution_proven === true
+    || readback.nav2.goal_execution_proven === "true"
+  ) && wheelLrNonzeroProven;
   const needsSameWindowWheelRerun = routeReadyOnMap
-    && nav2GoalExecutionProven
+    && nav2GoalSucceeded
     && !wheelLrNonzeroProven;
   const deliveryClaimReady = operatorHilMaterialSummary.delivery_claim === "true";
   const cameraCurrentVisible = camera.evidence?.camera_current_frame_visible === true || camera.status === "visible";
@@ -9430,7 +9437,7 @@ function buildLiveClosureSummary(
   }[id] ?? id.replace(/_/g, " "));
   const evidencePlain = (items: string[]): string => items.map(evidenceLabelPlain).join("、") || "无";
   const runNav2RouteMissingEvidence = [
-    ...(!nav2GoalExecutionProven ? ["nav2_goal_succeeded"] : []),
+    ...(!nav2GoalSucceeded ? ["nav2_goal_succeeded"] : []),
     ...(!wheelLrNonzeroProven ? ["same_window_wheel_lr_nonzero"] : []),
     ...(!deliveryClaimReady ? ["delivery_success"] : []),
   ];
@@ -9595,7 +9602,6 @@ function buildLiveClosureSummary(
     : "暂无被阻塞的运动入口。";
   const liveMotionRunbookMinimalPrecheckPlain = "发车前预检已精简：执行运动只需勾现场安全确认；相机、雷达和现场报告不作为额外发车前置。";
   const liveMotionRunbookSummaryPlain = `${liveMotionRunbookReadyPlain}${liveMotionRunbookBlockedPlain}主推荐：${liveMotionRunbookPrimaryActionLabel}；${liveMotionRunbookMinimalPrecheckPlain}`;
-  const nav2GoalSucceeded = nav2GoalExecutionProven;
   const allWysiwygReady = cameraCurrentVisible && mapCurrentVisible && radarMapPointsVisible;
   const status = (() => {
     if (nav2GoalSucceeded && wheelLrNonzeroProven && deliveryClaimReady && allWysiwygReady) {

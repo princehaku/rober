@@ -122,9 +122,9 @@ describe("robotControlSummary", () => {
     expect(summary.route_ready_on_map).toBe(true);
     expect(summary.live_closure_summary?.nav2_route_ready).toBe(true);
     expect(summary.nav2_route_ready).toBe(true);
-    expect(summary.nav2_complete).toBe(true);
+    expect(summary.nav2_complete).toBe(false);
     expect(summary.nav2_goal_succeeded).toBe(true);
-    expect(summary.nav2_goal_execution_proven).toBe(true);
+    expect(summary.nav2_goal_execution_proven).toBe(false);
     expect(summary.trip_execution_ready).toBe(true);
     expect(summary.trip_execution_complete).toBe(false);
     expect(summary.trip_execution_missing_evidence).toEqual(["same_window_wheel_lr_nonzero", "delivery_success"]);

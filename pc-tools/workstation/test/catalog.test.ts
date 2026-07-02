@@ -6949,8 +6949,9 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.route_ready).toBe(true);
       expect(summary.nav2_route_ready).toBe(true);
       expect(live.nav2_goal_succeeded).toBe(true);
-      expect(summary.nav2_complete).toBe(true);
       expect(summary.nav2_goal_succeeded).toBe(true);
+      expect(summary.nav2_complete).toBe(false);
+      expect(summary.nav2_goal_execution_proven).toBe(false);
       expect(summary.route_complete).toBe(false);
       expect(summary.trip_complete).toBe(false);
       expect(summary.motion_ready).toBe(true);
