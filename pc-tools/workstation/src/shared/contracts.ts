@@ -3850,6 +3850,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   current_keyboard_action_proof_status?: RobotControlLiveMotionRunbookItem["proof_status"];
   current_keyboard_action_missing_evidence?: RobotControlLiveMotionRunbookItem["missing_evidence"];
   current_keyboard_action_proof_plain?: RobotControlLiveMotionRunbookItem["proof_plain"];
+  current_keyboard_action_ready_for_safety_confirm?: RobotControlLiveMotionRunbookItem["ready"];
   current_keyboard_action_requires_safety_confirm?: RobotControlLiveMotionRunbookItem["safety_confirm_required"];
   current_keyboard_action_minimal_precheck_safety_only?: RobotControlLiveMotionRunbookItem["minimal_precheck_safety_only"];
   current_keyboard_action_enable_sends_motion?: RobotControlLiveClosureSummary["keyboard_continuous_enable_sends_motion"];
@@ -3880,6 +3881,8 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   current_free_move_action_proof_status?: RobotControlLiveMotionRunbookItem["proof_status"];
   current_free_move_action_missing_evidence?: RobotControlLiveMotionRunbookItem["missing_evidence"];
   current_free_move_action_proof_plain?: RobotControlLiveMotionRunbookItem["proof_plain"];
+  current_free_move_action_acceptance_plain?: RobotControlLiveMotionRunbookItem["acceptance_plain"];
+  current_free_move_action_ready_for_safety_confirm?: RobotControlLiveMotionRunbookItem["ready"];
   current_free_move_action_requires_safety_confirm?: RobotControlLiveMotionRunbookItem["safety_confirm_required"];
   current_free_move_action_minimal_precheck_safety_only?: RobotControlLiveMotionRunbookItem["minimal_precheck_safety_only"];
   current_free_move_action_camera_preflight_required?: RobotControlLiveClosureSummary["free_move_camera_preflight_required"];
@@ -4106,6 +4109,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   free_move_proof_status?: RobotControlLiveMotionRunbookItem["proof_status"];
   free_move_missing_evidence?: RobotControlLiveMotionRunbookItem["missing_evidence"];
   free_move_proof_plain?: RobotControlLiveMotionRunbookItem["proof_plain"];
+  free_move_acceptance_plain?: RobotControlLiveMotionRunbookItem["acceptance_plain"];
   free_roam_start_endpoint?: RobotControlLiveMotionRunbookItem["start_endpoint"];
   free_roam_stop_endpoint?: RobotControlLiveMotionRunbookItem["stop_endpoint"];
   free_roam_latest_endpoint?: RobotControlLiveClosureSummary["fixed_free_roam_latest_endpoint"];

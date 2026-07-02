@@ -1090,6 +1090,7 @@ describe("robotControlSummary", () => {
     expect(summary.current_keyboard_action_proof_status).toBe("ready_to_verify");
     expect(summary.current_keyboard_action_missing_evidence).toEqual(["same_hold_window_wheel_lr_nonzero", "stop_after_release"]);
     expect(summary.current_keyboard_action_proof_plain).toContain("可验证键盘连续手控");
+    expect(summary.current_keyboard_action_ready_for_safety_confirm).toBe(true);
     expect(summary.current_keyboard_action_requires_safety_confirm).toBe(true);
     expect(summary.current_keyboard_action_minimal_precheck_safety_only).toBe(true);
     expect(summary.current_keyboard_action_enable_sends_motion).toBe(false);
@@ -1125,6 +1126,8 @@ describe("robotControlSummary", () => {
     expect(summary.current_free_move_action_proof_status).toBe("ready_to_verify");
     expect(summary.current_free_move_action_missing_evidence).toEqual(["free_roam_latest_motion_ready"]);
     expect(summary.current_free_move_action_proof_plain).toContain("可验证自由自助移动");
+    expect(summary.current_free_move_action_acceptance_plain).toBe("启动后读取 free-roam latest、地图预览和 summary；相机、雷达不作为自由移动发车前置。");
+    expect(summary.current_free_move_action_ready_for_safety_confirm).toBe(true);
     expect(summary.current_free_move_action_requires_safety_confirm).toBe(true);
     expect(summary.current_free_move_action_minimal_precheck_safety_only).toBe(true);
     expect(summary.current_free_move_action_camera_preflight_required).toBe(false);
@@ -1449,6 +1452,7 @@ describe("robotControlSummary", () => {
     expect(summary.free_move_proof_status).toBe("ready_to_verify");
     expect(summary.free_move_missing_evidence).toEqual(["free_roam_latest_motion_ready"]);
     expect(summary.free_move_proof_plain).toContain("可验证自由自助移动");
+    expect(summary.free_move_acceptance_plain).toBe(summary.current_free_move_action_acceptance_plain);
     expect(summary.current_free_move_action_start_endpoint).toBe(summary.free_move_start_endpoint);
     expect(summary.current_free_move_action_stop_endpoint).toBe(summary.free_move_stop_endpoint);
     expect(summary.current_free_move_action_acceptance_endpoints).toEqual(summary.free_move_acceptance_endpoints);
