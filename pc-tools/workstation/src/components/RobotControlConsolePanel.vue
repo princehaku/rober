@@ -5079,8 +5079,14 @@ const plainCurrentRadarMapWysiwygPack = computed(() => {
   const defaultPlain = loaded
     ? `雷达贴图已完成：当前地图雷达点 ${currentPointCount} 个，来源 ${sourcePointCount} 个；继续监看同轮地图画面。`
     : `雷达点未贴到当前地图；按只读顺序刷新雷达扫描、读取雷达状态、刷新地图画面、刷新总览。${currentVsSourcePlain ? `当前状态：${plainActionCardUserText(currentVsSourcePlain)}` : ""}`;
+  const missingEvidence = summary?.current_radar_map_wysiwyg_pack_missing_evidence
+    ?? (loaded ? [] : ["radar_map_points"]);
+  const missingEvidenceLabels = summary?.current_radar_map_wysiwyg_pack_missing_evidence_labels
+    ?? (loaded ? [] : ["雷达地图标记"]);
   return {
     status,
+    missingEvidenceText: missingEvidence.join(",") || "none",
+    missingEvidenceLabelsText: missingEvidenceLabels.join(",") || "none",
     plain: summary?.current_radar_map_wysiwyg_pack_plain ?? defaultPlain,
     overlayStatus: summary?.current_radar_map_wysiwyg_pack_overlay_status ?? live?.radar_overlay_status ?? "not_loaded",
     currentPointCount,
@@ -20182,6 +20188,8 @@ onBeforeUnmount(() => {
             class="panel-note"
             data-testid="plain-current-radar-map-wysiwyg-pack"
             :data-status="plainCurrentRadarMapWysiwygPack.status"
+            :data-missing-evidence="plainCurrentRadarMapWysiwygPack.missingEvidenceText"
+            :data-missing-evidence-labels="plainCurrentRadarMapWysiwygPack.missingEvidenceLabelsText"
             :data-overlay-status="plainCurrentRadarMapWysiwygPack.overlayStatus"
             :data-current-point-count="plainCurrentRadarMapWysiwygPack.currentPointCount"
             :data-source-point-count="plainCurrentRadarMapWysiwygPack.sourcePointCount"

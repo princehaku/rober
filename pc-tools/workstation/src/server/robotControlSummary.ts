@@ -10571,6 +10571,8 @@ export async function buildRobotControlSummary(
   const currentRadarMapWysiwygPackStatus: "loaded" | "needs_readback_refresh" = radarOverlayWysiwygComplete
     ? "loaded"
     : "needs_readback_refresh";
+  const currentRadarMapWysiwygPackMissingEvidence = radarOverlayWysiwygComplete ? [] : ["radar_map_points"];
+  const currentRadarMapWysiwygPackMissingEvidenceLabels = radarOverlayWysiwygComplete ? [] : ["雷达地图标记"];
   const currentRadarMapWysiwygPackPlain = radarOverlayWysiwygComplete
     ? `雷达贴图已完成：当前地图雷达点 ${liveClosureSummary.radar_overlay_current_point_count} 个，来源 ${liveClosureSummary.radar_overlay_source_point_count} 个；继续监看同轮地图画面。`
     : `雷达点未贴到当前地图；按只读顺序刷新雷达扫描、读取雷达状态、刷新地图画面、刷新总览。当前状态：${liveClosureSummary.radar_overlay_current_vs_source_plain}`;
@@ -12112,6 +12114,8 @@ export async function buildRobotControlSummary(
     current_camera_wysiwyg_pack_submits_delivery: false,
     current_camera_wysiwyg_pack_stops_motion: false,
     current_radar_map_wysiwyg_pack_status: currentRadarMapWysiwygPackStatus,
+    current_radar_map_wysiwyg_pack_missing_evidence: currentRadarMapWysiwygPackMissingEvidence,
+    current_radar_map_wysiwyg_pack_missing_evidence_labels: currentRadarMapWysiwygPackMissingEvidenceLabels,
     current_radar_map_wysiwyg_pack_plain: currentRadarMapWysiwygPackPlain,
     current_radar_map_wysiwyg_pack_overlay_status: liveClosureSummary.radar_overlay_status,
     current_radar_map_wysiwyg_pack_current_point_count: liveClosureSummary.radar_overlay_current_point_count,

@@ -4444,6 +4444,8 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   current_camera_wysiwyg_pack_submits_delivery?: false;
   current_camera_wysiwyg_pack_stops_motion?: false;
   current_radar_map_wysiwyg_pack_status?: "loaded" | "needs_readback_refresh";
+  current_radar_map_wysiwyg_pack_missing_evidence?: string[];
+  current_radar_map_wysiwyg_pack_missing_evidence_labels?: string[];
   current_radar_map_wysiwyg_pack_plain?: string;
   current_radar_map_wysiwyg_pack_overlay_status?: RobotControlLiveClosureSummary["radar_overlay_status"];
   current_radar_map_wysiwyg_pack_current_point_count?: RobotControlLiveClosureSummary["radar_overlay_current_point_count"];

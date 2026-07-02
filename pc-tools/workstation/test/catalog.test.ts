@@ -7088,6 +7088,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.radar_overlay_blocks_wysiwyg).toBe(summary.live_closure_summary?.radar_overlay_blocks_wysiwyg);
       expect(live.radar_overlay_blocks_free_move).toBe(false);
       expect(summary.radar_overlay_blocks_free_move).toBe(false);
+      expect(summary.current_radar_map_wysiwyg_pack_missing_evidence).toEqual(["radar_map_points"]);
+      expect(summary.current_radar_map_wysiwyg_pack_missing_evidence_labels).toEqual(["雷达地图标记"]);
       expect(live.radar_overlay_recovery_sequence).toEqual(summary.live_closure_summary?.radar_overlay_recovery_sequence);
       expect(summary.radar_overlay_recovery_sequence).toEqual(summary.live_closure_summary?.radar_overlay_recovery_sequence);
       expect(live.fixed_radar_overlay_refresh_endpoint).toBe("/api/robot-control/radar/scan-proof/refresh");

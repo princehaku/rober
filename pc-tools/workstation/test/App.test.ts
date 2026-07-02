@@ -11123,6 +11123,8 @@ describe("App", () => {
     expect(radarMapPack.exists()).toBe(true);
     expect(radarMapPack.text()).toBe("雷达贴图已完成：当前地图雷达点 5 个，来源 6 个；继续监看同轮地图画面。");
     expect(radarMapPack.attributes("data-status")).toBe("loaded");
+    expect(radarMapPack.attributes("data-missing-evidence")).toBe("none");
+    expect(radarMapPack.attributes("data-missing-evidence-labels")).toBe("none");
     expect(radarMapPack.attributes("data-overlay-status")).toBe("loaded");
     expect(radarMapPack.attributes("data-current-point-count")).toBe("5");
     expect(radarMapPack.attributes("data-source-point-count")).toBe("6");
