@@ -2176,6 +2176,25 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.live_wysiwyg_camera_diagnostic_plain).toContain("UVC 设备没有输出视频帧");
     expect(summary.live_closure_summary?.live_wysiwyg_camera_diagnostic_plain).toContain("下一步：检查 USB");
     expect(summary.live_closure_summary?.live_wysiwyg_missing_surface_ids).toContain("camera");
+    expect(summary.current_camera_wysiwyg_pack_status).toBe("needs_first_frame");
+    expect(summary.current_camera_wysiwyg_pack_plain).toContain("画面 WYSIWYG 未完成");
+    expect(summary.current_camera_wysiwyg_pack_plain).toContain("不是页面独占");
+    expect(summary.current_camera_wysiwyg_pack_shared_preview_everyone_can_join).toBe(true);
+    expect(summary.current_camera_wysiwyg_pack_source_diagnosis_status).toBe("uvc_no_frame_not_exclusive");
+    expect(summary.current_camera_wysiwyg_pack_source_diagnosis_not_exclusive).toBe("true");
+    expect(summary.current_camera_wysiwyg_pack_blocks_mapping_start).toBe(true);
+    expect(summary.current_camera_wysiwyg_pack_blocks_free_move).toBe(false);
+    expect(summary.current_camera_wysiwyg_pack_readback_only).toBe(true);
+    expect(summary.current_camera_wysiwyg_pack_sends_motion_when_clicked).toBe(false);
+    expect(summary.current_camera_wysiwyg_pack_starts_camera_exclusive_capture).toBe(false);
+    expect(summary.current_camera_wysiwyg_pack_starts_nav2).toBe(false);
+    expect(summary.current_camera_wysiwyg_pack_starts_free_roam).toBe(false);
+    expect(summary.current_camera_wysiwyg_pack_starts_map_runtime).toBe(false);
+    expect(summary.current_camera_wysiwyg_pack_sequence).toEqual([
+      "/api/robot-control/camera/first-frame/probe",
+      "/api/robot-control/camera/mjpeg/status",
+      "/api/robot-control/summary",
+    ]);
   });
 
   it("prioritizes full-speed USB camera diagnosis in camera summary", async () => {
@@ -2295,6 +2314,14 @@ describe("robotControlSummary", () => {
     expect(summary.camera_source_diagnosis_next_action_plain).toContain("换高速 USB 口/线或带供电 USB Hub");
     expect(summary.camera_recovery_next_action_plain).toContain("换高速 USB 口/线或带供电 USB Hub");
     expect(summary.camera_recovery_sends_motion).toBe(false);
+    expect(summary.current_camera_wysiwyg_pack_status).toBe("needs_first_frame");
+    expect(summary.current_camera_wysiwyg_pack_hardware_action_required).toBe(true);
+    expect(summary.current_camera_wysiwyg_pack_hardware_action_label).toBe("换高速USB后复测");
+    expect(summary.current_camera_wysiwyg_pack_usb_full_speed_detected).toBe(true);
+    expect(summary.current_camera_wysiwyg_pack_usb_speed).toBe("12M");
+    expect(summary.current_camera_wysiwyg_pack_blocks_mapping_start).toBe(true);
+    expect(summary.current_camera_wysiwyg_pack_blocks_free_move).toBe(false);
+    expect(summary.current_camera_wysiwyg_pack_sends_motion_when_clicked).toBe(false);
     expect(summary.live_wysiwyg_camera_source_diagnosis_status).toBe("uvc_full_speed_usb_not_exclusive");
     expect(summary.live_wysiwyg_camera_source_diagnosis_plain_hint).toContain("USB 12M full-speed");
     expect(summary.live_wysiwyg_camera_source_diagnosis_next_action_plain).toContain("换高速 USB 口/线或带供电 USB Hub");

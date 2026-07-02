@@ -10481,6 +10481,15 @@ export async function buildRobotControlSummary(
     }
     return "当前所见还有多个缺口；按只读复验链路刷新雷达、地图、相机和 summary，不发送运动命令。";
   })();
+  const currentCameraWysiwygVisible = liveClosureSummary.live_wysiwyg_camera_visible
+    || liveClosureSummary.camera_current_visible
+    || liveClosureSummary.camera_shared_preview_current_frame_visible;
+  const currentCameraWysiwygPackStatus: "visible" | "needs_first_frame" = currentCameraWysiwygVisible
+    ? "visible"
+    : "needs_first_frame";
+  const currentCameraWysiwygPackPlain = currentCameraWysiwygVisible
+    ? `画面 WYSIWYG 已完成：当前页面或共享预览已有首帧；共享预览允许多人加入，当前观看 ${liveClosureSummary.live_wysiwyg_camera_shared_preview_client_count} 个页面。`
+    : `画面 WYSIWYG 未完成：${liveClosureSummary.camera_shared_preview_gap_plain}；${liveClosureSummary.camera_recovery_next_action_plain}；画面首帧会阻塞建图启动，不阻塞自由移动，复测只读不发车。`;
   const currentRadarMapWysiwygPackStatus: "loaded" | "needs_readback_refresh" = radarOverlayWysiwygComplete
     ? "loaded"
     : "needs_readback_refresh";
@@ -11869,6 +11878,44 @@ export async function buildRobotControlSummary(
     current_wysiwyg_next_action_after_readback_sequence_labels: liveWysiwygOnlyCameraMissing
       ? liveClosureSummary.live_wysiwyg_camera_recovery_sequence_labels
       : fieldAcceptancePacket.primary_no_motion_readback_action_sequence_labels,
+    current_camera_wysiwyg_pack_status: currentCameraWysiwygPackStatus,
+    current_camera_wysiwyg_pack_plain: currentCameraWysiwygPackPlain,
+    current_camera_wysiwyg_pack_visible: liveClosureSummary.live_wysiwyg_camera_visible,
+    current_camera_wysiwyg_pack_current_visible: liveClosureSummary.camera_current_visible,
+    current_camera_wysiwyg_pack_first_frame_ready: liveClosureSummary.camera_current_visible,
+    current_camera_wysiwyg_pack_shared_preview_current_frame_visible: liveClosureSummary.camera_shared_preview_current_frame_visible,
+    current_camera_wysiwyg_pack_shared_preview_everyone_can_join: liveClosureSummary.camera_shared_preview_everyone_can_join,
+    current_camera_wysiwyg_pack_shared_preview_client_count: liveClosureSummary.live_wysiwyg_camera_shared_preview_client_count,
+    current_camera_wysiwyg_pack_shared_preview_upstream_active: liveClosureSummary.live_wysiwyg_camera_shared_preview_upstream_active,
+    current_camera_wysiwyg_pack_shared_preview_gap_plain: liveClosureSummary.camera_shared_preview_gap_plain,
+    current_camera_wysiwyg_pack_source_diagnosis_status: liveClosureSummary.camera_source_diagnosis_status,
+    current_camera_wysiwyg_pack_source_diagnosis_not_exclusive: liveClosureSummary.camera_source_diagnosis_not_exclusive,
+    current_camera_wysiwyg_pack_first_frame_probe_status: liveClosureSummary.camera_first_frame_probe_status,
+    current_camera_wysiwyg_pack_first_frame_failure_reason: liveClosureSummary.camera_first_frame_failure_reason,
+    current_camera_wysiwyg_pack_hardware_action_required: liveClosureSummary.camera_hardware_action_required,
+    current_camera_wysiwyg_pack_hardware_action_label: liveClosureSummary.camera_hardware_action_label,
+    current_camera_wysiwyg_pack_usb_full_speed_detected: liveClosureSummary.camera_usb_full_speed_detected,
+    current_camera_wysiwyg_pack_usb_speed: liveClosureSummary.camera_usb_speed,
+    current_camera_wysiwyg_pack_next_action_plain: liveClosureSummary.live_wysiwyg_camera_recovery_next_action_plain,
+    current_camera_wysiwyg_pack_sequence: liveClosureSummary.live_wysiwyg_camera_recovery_sequence,
+    current_camera_wysiwyg_pack_sequence_labels: liveClosureSummary.live_wysiwyg_camera_recovery_sequence_labels,
+    current_camera_wysiwyg_pack_probe_endpoint: liveClosureSummary.fixed_camera_probe_endpoint,
+    current_camera_wysiwyg_pack_mjpeg_status_endpoint: liveClosureSummary.fixed_camera_mjpeg_status_endpoint,
+    current_camera_wysiwyg_pack_summary_endpoint: liveClosureSummary.fixed_objective_audit_summary_endpoint,
+    current_camera_wysiwyg_pack_blocks_wysiwyg: !currentCameraWysiwygVisible,
+    current_camera_wysiwyg_pack_blocks_mapping_start: liveClosureSummary.camera_blocks_mapping_start,
+    current_camera_wysiwyg_pack_blocks_free_move: false,
+    current_camera_wysiwyg_pack_readback_only: true,
+    current_camera_wysiwyg_pack_no_motion_refresh: true,
+    current_camera_wysiwyg_pack_sends_motion_when_clicked: false,
+    current_camera_wysiwyg_pack_starts_camera_exclusive_capture: false,
+    current_camera_wysiwyg_pack_starts_nav2: false,
+    current_camera_wysiwyg_pack_starts_manual: false,
+    current_camera_wysiwyg_pack_starts_keyboard: false,
+    current_camera_wysiwyg_pack_starts_free_roam: false,
+    current_camera_wysiwyg_pack_starts_map_runtime: false,
+    current_camera_wysiwyg_pack_submits_delivery: false,
+    current_camera_wysiwyg_pack_stops_motion: false,
     current_radar_map_wysiwyg_pack_status: currentRadarMapWysiwygPackStatus,
     current_radar_map_wysiwyg_pack_plain: currentRadarMapWysiwygPackPlain,
     current_radar_map_wysiwyg_pack_overlay_status: liveClosureSummary.radar_overlay_status,

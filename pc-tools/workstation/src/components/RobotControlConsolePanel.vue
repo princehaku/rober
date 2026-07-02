@@ -4867,6 +4867,107 @@ const plainCurrentWysiwygActionGauge = computed(() => {
     stopsMotion: summary?.current_wysiwyg_action_stops_motion ?? packet?.wysiwyg_refresh_stops_motion ?? false,
   };
 });
+const plainCurrentCameraWysiwygPack = computed(() => {
+  // 画面包只聚合首帧、共享预览和硬件处理事实；它不能变成相机独占采集或任何运动入口。
+  const summary = robotSummary.value;
+  const live = plainLiveClosureSummary.value;
+  const visible = summary?.current_camera_wysiwyg_pack_visible
+    ?? live?.live_wysiwyg_camera_visible
+    ?? false;
+  const currentVisible = summary?.current_camera_wysiwyg_pack_current_visible
+    ?? live?.camera_current_visible
+    ?? false;
+  const firstFrameReady = summary?.current_camera_wysiwyg_pack_first_frame_ready
+    ?? currentVisible;
+  const sharedPreviewCurrentFrameVisible = summary?.current_camera_wysiwyg_pack_shared_preview_current_frame_visible
+    ?? live?.camera_shared_preview_current_frame_visible
+    ?? false;
+  const status = summary?.current_camera_wysiwyg_pack_status
+    ?? ((visible || currentVisible || sharedPreviewCurrentFrameVisible) ? "visible" : "needs_first_frame");
+  const sequence = summary?.current_camera_wysiwyg_pack_sequence
+    ?? live?.live_wysiwyg_camera_recovery_sequence
+    ?? ["/api/robot-control/camera/first-frame/probe", "/api/robot-control/camera/mjpeg/status", "/api/robot-control/summary"];
+  const sequenceLabels = summary?.current_camera_wysiwyg_pack_sequence_labels
+    ?? live?.live_wysiwyg_camera_recovery_sequence_labels
+    ?? ["复测相机首帧", "读取共享预览状态", "刷新当前卡点"];
+  const sharedPreviewGapPlain = summary?.current_camera_wysiwyg_pack_shared_preview_gap_plain
+    ?? live?.camera_shared_preview_gap_plain
+    ?? "";
+  const nextActionPlain = summary?.current_camera_wysiwyg_pack_next_action_plain
+    ?? live?.live_wysiwyg_camera_recovery_next_action_plain
+    ?? "";
+  const defaultPlain = status === "visible"
+    ? "画面 WYSIWYG 已完成：当前页面或共享预览已有首帧；谁打开页面都接入同一条共享预览。"
+    : `画面 WYSIWYG 未完成：${plainActionCardUserText(sharedPreviewGapPlain)}；${plainActionCardUserText(nextActionPlain)}；阻塞建图首帧，不阻塞自由移动。`;
+  return {
+    status,
+    plain: summary?.current_camera_wysiwyg_pack_plain ?? defaultPlain,
+    visible,
+    currentVisible,
+    firstFrameReady,
+    sharedPreviewCurrentFrameVisible,
+    sharedPreviewEveryoneCanJoin: summary?.current_camera_wysiwyg_pack_shared_preview_everyone_can_join
+      ?? live?.camera_shared_preview_everyone_can_join
+      ?? true,
+    sharedPreviewClientCount: summary?.current_camera_wysiwyg_pack_shared_preview_client_count
+      ?? live?.live_wysiwyg_camera_shared_preview_client_count
+      ?? "0",
+    sharedPreviewUpstreamActive: summary?.current_camera_wysiwyg_pack_shared_preview_upstream_active
+      ?? live?.live_wysiwyg_camera_shared_preview_upstream_active
+      ?? "false",
+    sharedPreviewGapPlain,
+    sourceDiagnosisStatus: summary?.current_camera_wysiwyg_pack_source_diagnosis_status
+      ?? live?.camera_source_diagnosis_status
+      ?? "not_loaded",
+    sourceDiagnosisNotExclusive: summary?.current_camera_wysiwyg_pack_source_diagnosis_not_exclusive
+      ?? live?.camera_source_diagnosis_not_exclusive
+      ?? "true",
+    firstFrameProbeStatus: summary?.current_camera_wysiwyg_pack_first_frame_probe_status
+      ?? live?.camera_first_frame_probe_status
+      ?? "not_loaded",
+    firstFrameFailureReason: summary?.current_camera_wysiwyg_pack_first_frame_failure_reason
+      ?? live?.camera_first_frame_failure_reason
+      ?? "not_loaded",
+    hardwareActionRequired: summary?.current_camera_wysiwyg_pack_hardware_action_required
+      ?? live?.camera_hardware_action_required
+      ?? false,
+    hardwareActionLabel: summary?.current_camera_wysiwyg_pack_hardware_action_label
+      ?? live?.camera_hardware_action_label
+      ?? "none",
+    usbFullSpeedDetected: summary?.current_camera_wysiwyg_pack_usb_full_speed_detected
+      ?? live?.camera_usb_full_speed_detected
+      ?? false,
+    usbSpeed: summary?.current_camera_wysiwyg_pack_usb_speed ?? live?.camera_usb_speed ?? "not_loaded",
+    nextActionPlain,
+    sequenceText: sequence.join(",") || "none",
+    sequenceLabelsText: sequenceLabels.join(",") || "none",
+    probeEndpoint: summary?.current_camera_wysiwyg_pack_probe_endpoint
+      ?? live?.fixed_camera_probe_endpoint
+      ?? "/api/robot-control/camera/first-frame/probe",
+    mjpegStatusEndpoint: summary?.current_camera_wysiwyg_pack_mjpeg_status_endpoint
+      ?? live?.fixed_camera_mjpeg_status_endpoint
+      ?? "/api/robot-control/camera/mjpeg/status",
+    summaryEndpoint: summary?.current_camera_wysiwyg_pack_summary_endpoint
+      ?? live?.fixed_objective_audit_summary_endpoint
+      ?? "/api/robot-control/summary",
+    blocksWysiwyg: summary?.current_camera_wysiwyg_pack_blocks_wysiwyg ?? status !== "visible",
+    blocksMappingStart: summary?.current_camera_wysiwyg_pack_blocks_mapping_start
+      ?? live?.camera_blocks_mapping_start
+      ?? status !== "visible",
+    blocksFreeMove: summary?.current_camera_wysiwyg_pack_blocks_free_move ?? false,
+    readbackOnly: summary?.current_camera_wysiwyg_pack_readback_only ?? true,
+    noMotionRefresh: summary?.current_camera_wysiwyg_pack_no_motion_refresh ?? true,
+    sendsMotionWhenClicked: summary?.current_camera_wysiwyg_pack_sends_motion_when_clicked ?? false,
+    startsCameraExclusiveCapture: summary?.current_camera_wysiwyg_pack_starts_camera_exclusive_capture ?? false,
+    startsNav2: summary?.current_camera_wysiwyg_pack_starts_nav2 ?? false,
+    startsManual: summary?.current_camera_wysiwyg_pack_starts_manual ?? false,
+    startsKeyboard: summary?.current_camera_wysiwyg_pack_starts_keyboard ?? false,
+    startsFreeRoam: summary?.current_camera_wysiwyg_pack_starts_free_roam ?? false,
+    startsMapRuntime: summary?.current_camera_wysiwyg_pack_starts_map_runtime ?? false,
+    submitsDelivery: summary?.current_camera_wysiwyg_pack_submits_delivery ?? false,
+    stopsMotion: summary?.current_camera_wysiwyg_pack_stops_motion ?? false,
+  };
+});
 const plainCurrentRadarMapWysiwygPack = computed(() => {
   // 雷达贴图包只描述当前地图画布的雷达点是否有效；按钮/读回链路都不能顺手发车或启动 runtime。
   const summary = robotSummary.value;
@@ -19881,6 +19982,49 @@ onBeforeUnmount(() => {
             data-sends-motion-when-clicked="false"
           >
             {{ plainCurrentWysiwygActionGauge.text }}
+          </p>
+          <p
+            class="panel-note"
+            data-testid="plain-current-camera-wysiwyg-pack"
+            :data-status="plainCurrentCameraWysiwygPack.status"
+            :data-visible="String(plainCurrentCameraWysiwygPack.visible)"
+            :data-current-visible="String(plainCurrentCameraWysiwygPack.currentVisible)"
+            :data-first-frame-ready="String(plainCurrentCameraWysiwygPack.firstFrameReady)"
+            :data-shared-preview-current-frame-visible="String(plainCurrentCameraWysiwygPack.sharedPreviewCurrentFrameVisible)"
+            :data-shared-preview-everyone-can-join="String(plainCurrentCameraWysiwygPack.sharedPreviewEveryoneCanJoin)"
+            :data-shared-preview-client-count="plainCurrentCameraWysiwygPack.sharedPreviewClientCount"
+            :data-shared-preview-upstream-active="plainCurrentCameraWysiwygPack.sharedPreviewUpstreamActive"
+            :data-shared-preview-gap-plain="plainCurrentCameraWysiwygPack.sharedPreviewGapPlain"
+            :data-source-diagnosis-status="plainCurrentCameraWysiwygPack.sourceDiagnosisStatus"
+            :data-source-diagnosis-not-exclusive="plainCurrentCameraWysiwygPack.sourceDiagnosisNotExclusive"
+            :data-first-frame-probe-status="plainCurrentCameraWysiwygPack.firstFrameProbeStatus"
+            :data-first-frame-failure-reason="plainCurrentCameraWysiwygPack.firstFrameFailureReason"
+            :data-hardware-action-required="String(plainCurrentCameraWysiwygPack.hardwareActionRequired)"
+            :data-hardware-action-label="plainCurrentCameraWysiwygPack.hardwareActionLabel"
+            :data-usb-full-speed-detected="String(plainCurrentCameraWysiwygPack.usbFullSpeedDetected)"
+            :data-usb-speed="plainCurrentCameraWysiwygPack.usbSpeed"
+            :data-next-action-plain="plainCurrentCameraWysiwygPack.nextActionPlain"
+            :data-sequence="plainCurrentCameraWysiwygPack.sequenceText"
+            :data-sequence-labels="plainCurrentCameraWysiwygPack.sequenceLabelsText"
+            :data-probe-endpoint="plainCurrentCameraWysiwygPack.probeEndpoint"
+            :data-mjpeg-status-endpoint="plainCurrentCameraWysiwygPack.mjpegStatusEndpoint"
+            :data-summary-endpoint="plainCurrentCameraWysiwygPack.summaryEndpoint"
+            :data-blocks-wysiwyg="String(plainCurrentCameraWysiwygPack.blocksWysiwyg)"
+            :data-blocks-mapping-start="String(plainCurrentCameraWysiwygPack.blocksMappingStart)"
+            :data-blocks-free-move="String(plainCurrentCameraWysiwygPack.blocksFreeMove)"
+            :data-readback-only="String(plainCurrentCameraWysiwygPack.readbackOnly)"
+            :data-no-motion-refresh="String(plainCurrentCameraWysiwygPack.noMotionRefresh)"
+            :data-sends-motion-when-clicked="String(plainCurrentCameraWysiwygPack.sendsMotionWhenClicked)"
+            :data-starts-camera-exclusive-capture="String(plainCurrentCameraWysiwygPack.startsCameraExclusiveCapture)"
+            :data-starts-nav2="String(plainCurrentCameraWysiwygPack.startsNav2)"
+            :data-starts-manual="String(plainCurrentCameraWysiwygPack.startsManual)"
+            :data-starts-keyboard="String(plainCurrentCameraWysiwygPack.startsKeyboard)"
+            :data-starts-free-roam="String(plainCurrentCameraWysiwygPack.startsFreeRoam)"
+            :data-starts-map-runtime="String(plainCurrentCameraWysiwygPack.startsMapRuntime)"
+            :data-submits-delivery="String(plainCurrentCameraWysiwygPack.submitsDelivery)"
+            :data-stops-motion="String(plainCurrentCameraWysiwygPack.stopsMotion)"
+          >
+            {{ plainCurrentCameraWysiwygPack.plain }}
           </p>
           <p
             class="panel-note"
