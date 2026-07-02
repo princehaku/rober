@@ -3789,7 +3789,7 @@ export function createWorkstationApp(): express.Express {
       direction,
       speed: clampedSpeed,
       duration_ms: clampedDurationMs,
-      command_mode: "pwm",
+      command_mode: "ros",
       feedback_mode: "bridge_debug",
       confirm_hil_checklist: true,
     });
@@ -3897,7 +3897,7 @@ export function createWorkstationApp(): express.Express {
       direction,
       speed: clampedSpeed,
       duration_ms: clampedDurationMs,
-      command_mode: "pwm",
+      command_mode: "ros",
       feedback_mode: "realtime",
       confirm_hil_checklist: true,
     });

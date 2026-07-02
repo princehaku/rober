@@ -75,6 +75,10 @@ FREE_ROAM_START_ARTIFACT_WAIT_TIMEOUT_S = 1.8
 FREE_ROAM_START_ARTIFACT_WAIT_INTERVAL_S = 0.2
 DEFAULT_ROS_SETUP_PATH = "/opt/ros/humble/setup.bash"
 DEFAULT_ONBOARD_SETUP_PATH = "/root/rober/onboard/install/setup.bash"
+ROS_CMD_VEL_TOPIC = "/cmd_vel"
+ROS_CMD_VEL_BURST_RATE_HZ = 20.0
+ROS_CMD_VEL_SUBSCRIPTION_WAIT_S = 1.2
+ROS_CMD_VEL_STOP_HOLD_S = 0.16
 DEFAULT_NAV2_RUNTIME_PROOF_REFRESH_TIMEOUT_S = 8.0
 NAV2_PROOF_PROCESS_BASE_MARGIN_S = 12.0
 NAV2_PROOF_PROCESS_PATH_MARGIN_S = 8.0
@@ -97,6 +101,7 @@ MAX_FEEDBACK_SAMPLE_COUNT = 8
 MAX_FEEDBACK_SAMPLE_INTERVAL_S = 2.0
 BASE_FEEDBACK_REQUEST_COMMAND = {"T": 130}
 BASE_FEEDBACK_ID = 1001
+_ROS_CMD_VEL_CONTEXT: dict[str, Any] = {}
 BLOCKED_BASE_FEEDBACK_COMMANDS = [
     "T=1",
     "T=13",
@@ -6037,17 +6042,154 @@ def build_feedback_payload_from_open_serial_read(
     return payload
 
 
-def publish_ros_cmd_vel_once(linear_x: float, angular_z: float, *, timeout_s: float = 10.0) -> dict[str, Any]:
-    """通过 ROS /cmd_vel 给 esp32_bridge 发一次 Twist，避免 API 与 bridge 抢占 UART。"""
-    linear_x = round(float(linear_x), 6)
-    angular_z = round(float(angular_z), 6)
-    message = (
+def _ros_cmd_vel_message(linear_x: float, angular_z: float) -> str:
+    """生成 ros2 CLI 可接受的 Twist YAML；数值已在调用侧限幅。"""
+    return (
         "{linear: {x: "
         f"{linear_x}, y: 0.0, z: 0.0"
         "}, angular: {x: 0.0, y: 0.0, z: "
         f"{angular_z}"
         "}}"
     )
+
+
+def _ros_python_import_paths() -> list[str]:
+    """裸 python 启动时补 ROS Python 路径；动态库仍依赖进程启动时的 ROS 环境。"""
+    return [
+        "/opt/ros/humble/lib/python3.10/site-packages",
+        "/opt/ros/humble/local/lib/python3.10/dist-packages",
+        "/root/rober/onboard/install/ros2_trashbot_interfaces/local/lib/python3.10/dist-packages",
+    ]
+
+
+def _ensure_ros_cmd_vel_context() -> dict[str, Any]:
+    """懒加载 rclpy publisher；成功后每次 WASD 复用同一个 node，避免 CLI 冷启动。"""
+    if _ROS_CMD_VEL_CONTEXT.get("status") == "ready":
+        return _ROS_CMD_VEL_CONTEXT
+    if _ROS_CMD_VEL_CONTEXT.get("status") == "unavailable":
+        return _ROS_CMD_VEL_CONTEXT
+    for path in _ros_python_import_paths():
+        if path not in sys.path:
+            sys.path.append(path)
+    try:
+        import rclpy  # type: ignore[import-not-found]
+        from geometry_msgs.msg import Twist  # type: ignore[import-not-found]
+    except Exception as exc:  # noqa: BLE001 - ROS 环境缺失时必须保留 CLI 回退。
+        _ROS_CMD_VEL_CONTEXT.clear()
+        _ROS_CMD_VEL_CONTEXT.update(
+            {
+                "status": "unavailable",
+                "error": compact_error(exc),
+                "next_action": "start upper_robot_api from sourced ROS environment",
+            }
+        )
+        return _ROS_CMD_VEL_CONTEXT
+    try:
+        if not rclpy.ok():
+            rclpy.init(args=None)
+        node = rclpy.create_node("upper_robot_api_cmd_vel_publisher")
+        publisher = node.create_publisher(Twist, ROS_CMD_VEL_TOPIC, 10)
+    except Exception as exc:  # noqa: BLE001 - ROS graph 初始化失败时继续走 CLI 兜底。
+        _ROS_CMD_VEL_CONTEXT.clear()
+        _ROS_CMD_VEL_CONTEXT.update({"status": "unavailable", "error": compact_error(exc)})
+        return _ROS_CMD_VEL_CONTEXT
+    _ROS_CMD_VEL_CONTEXT.clear()
+    _ROS_CMD_VEL_CONTEXT.update(
+        {
+            "status": "ready",
+            "rclpy": rclpy,
+            "twist_type": Twist,
+            "node": node,
+            "publisher": publisher,
+            "topic": ROS_CMD_VEL_TOPIC,
+        }
+    )
+    return _ROS_CMD_VEL_CONTEXT
+
+
+def publish_ros_cmd_vel_inprocess_burst(
+    linear_x: float,
+    angular_z: float,
+    *,
+    hold_s: float,
+    rate_hz: float = ROS_CMD_VEL_BURST_RATE_HZ,
+    wait_subscription_s: float = ROS_CMD_VEL_SUBSCRIPTION_WAIT_S,
+) -> dict[str, Any]:
+    """进程内连续发布 cmd_vel；这是 PC 键盘手控的低延迟主路径。"""
+    linear_x = round(float(linear_x), 6)
+    angular_z = round(float(angular_z), 6)
+    hold_s = max(float(hold_s), 0.0)
+    rate_hz = max(float(rate_hz), 1.0)
+    context = _ensure_ros_cmd_vel_context()
+    result: dict[str, Any] = {
+        "ok": False,
+        "mode": "ros_cmd_vel_once",
+        "publish_backend": "rclpy_inprocess_burst",
+        "topic": ROS_CMD_VEL_TOPIC,
+        "message_type": "geometry_msgs/msg/Twist",
+        "linear_x": linear_x,
+        "angular_z": angular_z,
+        "hold_s": round(hold_s, 6),
+        "rate_hz": rate_hz,
+    }
+    if context.get("status") != "ready":
+        result["error"] = context.get("error") or {"type": "rclpy_unavailable", "message": "rclpy context unavailable"}
+        result["fallback_required"] = True
+        return result
+
+    rclpy = context["rclpy"]
+    twist_type = context["twist_type"]
+    node = context["node"]
+    publisher = context["publisher"]
+    wait_started = time.monotonic()
+    subscription_count = int(publisher.get_subscription_count())
+    while subscription_count <= 0 and time.monotonic() - wait_started < wait_subscription_s:
+        # graph discovery 需要 spin；否则刚创建 publisher 时可能看不到 esp32_bridge 订阅。
+        rclpy.spin_once(node, timeout_sec=0.05)
+        subscription_count = int(publisher.get_subscription_count())
+
+    frame_interval_s = 1.0 / rate_hz
+    frame_count = max(1, int(math.ceil(max(hold_s, frame_interval_s) * rate_hz)))
+    message = twist_type()
+    message.linear.x = linear_x
+    message.linear.y = 0.0
+    message.linear.z = 0.0
+    message.angular.x = 0.0
+    message.angular.y = 0.0
+    message.angular.z = angular_z
+    publish_started = time.monotonic()
+    for index in range(frame_count):
+        publisher.publish(message)
+        # spin_once 让 DDS 事件及时推进，短脉冲不会等到函数结束才出队。
+        rclpy.spin_once(node, timeout_sec=0.0)
+        if index < frame_count - 1:
+            time.sleep(frame_interval_s)
+    return {
+        **result,
+        "ok": subscription_count > 0,
+        "subscription_count": subscription_count,
+        "frames_published": frame_count,
+        "elapsed_s": round(time.monotonic() - publish_started, 6),
+        "wait_subscription_s": round(time.monotonic() - wait_started, 6),
+        **({} if subscription_count > 0 else {"error": {"type": "cmd_vel_subscription_missing", "message": "no /cmd_vel subscription matched before publish"}}),
+    }
+
+
+def publish_ros_cmd_vel_cli_burst(
+    linear_x: float,
+    angular_z: float,
+    *,
+    hold_s: float,
+    rate_hz: float = ROS_CMD_VEL_BURST_RATE_HZ,
+    timeout_s: float = 10.0,
+) -> dict[str, Any]:
+    """CLI 回退路径；比单帧 --once 更可靠，但只作为 ROS 环境没进进程时的兜底。"""
+    linear_x = round(float(linear_x), 6)
+    angular_z = round(float(angular_z), 6)
+    hold_s = max(float(hold_s), 0.0)
+    rate_hz = max(float(rate_hz), 1.0)
+    times = max(1, int(math.ceil(max(hold_s, 1.0 / rate_hz) * rate_hz)))
+    message = _ros_cmd_vel_message(linear_x, angular_z)
     setup_script = (
         "set +u; "
         # 现场 Orange Pi 的 /dev/shm 里存在 FastDDS 历史锁文件；关闭 SHM 可避免 ros2 CLI 建 publisher 卡死。
@@ -6055,17 +6197,22 @@ def publish_ros_cmd_vel_once(linear_x: float, angular_z: float, *, timeout_s: fl
         f"source {shlex.quote(DEFAULT_ROS_SETUP_PATH)}; "
         f"if [ -f {shlex.quote(DEFAULT_ONBOARD_SETUP_PATH)} ]; then source {shlex.quote(DEFAULT_ONBOARD_SETUP_PATH)}; fi; "
         "set -u; "
-        "RMW_FASTRTPS_USE_SHM=0 ros2 topic pub --once --wait-matching-subscriptions 0 --keep-alive 0.1 "
-        "/cmd_vel geometry_msgs/msg/Twist "
+        "RMW_FASTRTPS_USE_SHM=0 ros2 topic pub "
+        f"--times {times} --rate {rate_hz:.3f} --wait-matching-subscriptions 1 "
+        f"{shlex.quote(ROS_CMD_VEL_TOPIC)} geometry_msgs/msg/Twist "
         f"{shlex.quote(message)}"
     )
     result: dict[str, Any] = {
         "ok": False,
         "mode": "ros_cmd_vel_once",
-        "topic": "/cmd_vel",
+        "publish_backend": "ros2_cli_burst",
+        "topic": ROS_CMD_VEL_TOPIC,
         "message_type": "geometry_msgs/msg/Twist",
         "linear_x": linear_x,
         "angular_z": angular_z,
+        "hold_s": round(hold_s, 6),
+        "rate_hz": rate_hz,
+        "frames_requested": times,
         "argv": ["bash", "-lc", setup_script],
     }
     try:
@@ -6095,6 +6242,21 @@ def publish_ros_cmd_vel_once(linear_x: float, angular_z: float, *, timeout_s: fl
     return result
 
 
+def publish_ros_cmd_vel_once(linear_x: float, angular_z: float, *, timeout_s: float = 10.0) -> dict[str, Any]:
+    """兼容旧调用：优先进程内发一帧，失败再走 CLI burst。"""
+    primary = publish_ros_cmd_vel_inprocess_burst(linear_x, angular_z, hold_s=1.0 / ROS_CMD_VEL_BURST_RATE_HZ)
+    if primary.get("ok"):
+        return primary
+    fallback = publish_ros_cmd_vel_cli_burst(
+        linear_x,
+        angular_z,
+        hold_s=1.0 / ROS_CMD_VEL_BURST_RATE_HZ,
+        timeout_s=timeout_s,
+    )
+    fallback["primary_error"] = primary.get("error")
+    return fallback
+
+
 def manual_motion_ros_cmd_vel_transaction(
     *,
     port: str,
@@ -6105,10 +6267,12 @@ def manual_motion_ros_cmd_vel_transaction(
     """ROS 模式手控走 /cmd_vel 到 esp32_bridge，不直接打开 /dev/ttyS5。"""
     linear_x = finite_feedback_number(command.get("X")) or 0.0
     angular_z = finite_feedback_number(command.get("Z")) or 0.0
-    command_result = publish_ros_cmd_vel_once(linear_x, angular_z)
-    if pulse_ms > 0:
-        time.sleep(pulse_ms / 1000.0)
-    stop_result = publish_ros_cmd_vel_once(0.0, 0.0)
+    command_result = publish_ros_cmd_vel_inprocess_burst(linear_x, angular_z, hold_s=max(pulse_ms / 1000.0, 0.0))
+    if not command_result.get("ok"):
+        command_result = publish_ros_cmd_vel_cli_burst(linear_x, angular_z, hold_s=max(pulse_ms / 1000.0, 0.0))
+    stop_result = publish_ros_cmd_vel_inprocess_burst(0.0, 0.0, hold_s=ROS_CMD_VEL_STOP_HOLD_S)
+    if not stop_result.get("ok"):
+        stop_result = publish_ros_cmd_vel_cli_burst(0.0, 0.0, hold_s=ROS_CMD_VEL_STOP_HOLD_S)
     return {
         "mode": "ros_cmd_vel_bridge",
         "command_result": command_result,

@@ -9365,7 +9365,7 @@ const plainKeyboardDirectionButtonEvidence = computed<PlainKeyboardDirectionButt
   fixedStopEndpoint: manualBoundary.value?.keyboard_stop_proxy_endpoint ?? "/api/robot-control/base/stop",
   fixedFeedbackSamplesEndpoint: "/api/robot-control/base/feedback-samples",
   fixedSummaryEndpoint: "/api/robot-control/summary",
-  manualCommandMode: manualBoundary.value?.keyboard_manual_command_mode ?? "pwm",
+  manualCommandMode: manualBoundary.value?.keyboard_manual_command_mode ?? "ros",
   pulseIntervalMs: keyboardJogIntervalMs.value,
   pulseDurationMs: keyboardJogDurationMs.value,
   verifiedMinForwardedPulses: KEYBOARD_VERIFIED_MIN_FORWARDED_PULSES,
@@ -16202,7 +16202,7 @@ function requestBodyForDirection(direction: ManualDirection) {
     direction,
     speed: Math.min(Math.max(jogSpeedMps.value, 0), manualSpeedLimit.value),
     duration_ms: Math.min(Math.max(jogDurationMs.value, 0), manualDurationLimit.value),
-    command_mode: "pwm",
+    command_mode: "ros",
     feedback_mode: "realtime",
     confirm_hil_checklist: plainManualSafetyConfirmed.value,
   } as const;
@@ -16214,7 +16214,7 @@ function requestBodyForKeyboardDirection(direction: ManualDirection) {
     direction,
     speed: Math.min(Math.max(jogSpeedMps.value, 0), manualSpeedLimit.value),
     duration_ms: Math.min(Math.max(keyboardJogDurationMs.value, 0), manualDurationLimit.value),
-    command_mode: "pwm",
+    command_mode: "ros",
     feedback_mode: "realtime",
     confirm_hil_checklist: plainManualSafetyConfirmed.value,
   } as const;
