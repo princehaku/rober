@@ -108,6 +108,13 @@ Visualization Manager:
       Topic:
         Value: /amcl_pose
       Value: true
+    - Class: rviz_default_plugins/Image
+      Enabled: true
+      Name: Camera Image
+      Normalize Range: true
+      Topic:
+        Value: /camera/image_raw
+      Value: true
     - Alpha: 0.55
       Class: rviz_default_plugins/Map
       Color Scheme: costmap

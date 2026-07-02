@@ -13,7 +13,7 @@ def generate_launch_description():
         default_value=PathJoinSubstitution(
             [FindPackageShare("ros2_trashbot_bringup"), "rviz", "trashbot_nav.rviz"]
         ),
-        description="RViz config that observes /map, /scan, TF, Nav2 path and AMCL pose",
+        description="RViz config that observes /map, /scan, /camera/image_raw, TF, Nav2 path and AMCL pose",
     )
 
     rviz_config = LaunchConfiguration("rviz_config")

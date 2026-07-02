@@ -223,7 +223,7 @@ class LaunchContractStaticTest(unittest.TestCase):
                 self.assertNotIn("save_detection_samples", source)
 
     def test_rviz_companion_observes_nav2_without_goal_tool(self):
-        # RViz2 是工程观察面，不是普通用户发车入口；这里锁住只读地图/雷达/Nav2 诊断层。
+        # RViz2 是工程观察面，不是普通用户发车入口；这里锁住只读地图/雷达/相机/Nav2 诊断层。
         launch_source = read_launch("rviz.launch.py")
         rviz_source = read_rviz("trashbot_nav.rviz")
         ast.parse(launch_source)
@@ -243,6 +243,8 @@ class LaunchContractStaticTest(unittest.TestCase):
             "Value: /local_plan",
             "Name: AMCL Pose",
             "Value: /amcl_pose",
+            "Name: Camera Image",
+            "Value: /camera/image_raw",
             "Name: Nav2 Global Costmap",
             "Value: /global_costmap/costmap",
             "Value: /global_costmap/costmap_updates",
@@ -256,7 +258,7 @@ class LaunchContractStaticTest(unittest.TestCase):
         self.assertNotIn("SetInitialPose", rviz_source)
 
     def test_rviz_launch_is_read_only_observation_view(self):
-        # RViz 入口只帮助现场看 /map、/scan、TF、路线和定位；目标下发仍必须走 PC 安全确认链路。
+        # RViz 入口只帮助现场看 /map、/scan、相机、TF、路线和定位；目标下发仍必须走 PC 安全确认链路。
         launch_source = read_launch("rviz.launch.py")
         ast.parse(launch_source)
         rviz_source = (RVIZ_ROOT / "trashbot_nav.rviz").read_text(encoding="utf-8")
@@ -265,7 +267,7 @@ class LaunchContractStaticTest(unittest.TestCase):
         self.assertIn("package=\"rviz2\"", launch_source)
         self.assertIn("trashbot_nav.rviz", launch_source)
         self.assertIn("install(DIRECTORY launch rviz", cmake_source)
-        for token in ("Fixed Frame: map", "Value: /map", "Value: /scan", "Value: /plan", "Value: /amcl_pose"):
+        for token in ("Fixed Frame: map", "Value: /map", "Value: /scan", "Value: /camera/image_raw", "Value: /plan", "Value: /amcl_pose"):
             self.assertIn(token, rviz_source)
         self.assertNotIn("SetInitialPose", rviz_source)
         self.assertNotIn("SetGoal", rviz_source)
