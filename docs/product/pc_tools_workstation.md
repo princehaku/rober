@@ -5309,3 +5309,18 @@ Nav2、manual、keyboard、free-roam、建图 runtime、delivery、stop 或 `/cm
 `75000ms` 收紧为 `45000ms`；上车 `upper_robot_api.py` 的普通相机格式 fallback 增加总预算和单次进程短预算，避免 UVC 无帧时
 把 PC 页面拖到一分钟。真实摄像头若仍无帧，PC 会快速返回结构化失败和 USB/首帧诊断，用户可继续用 `/map` 大屏、键盘 PWM
 手控和雷达/路线观察。
+
+2026-07-02 23:30 CST 起，PC 普通首屏真实地图改为高度优先撑满主画布：`.plain-map-layer.has-real-map`
+按地图画布高度设置 overlay frame，宽地图允许横向滚动，`data-real-map-fit-mode` 固定为
+`height-first-preserve-aspect-scroll-x`。普通用户入口仍是 PC 首屏和 `/map` 大屏；ROS2 配套工具只作为工程观察：
+本地可用 RViz2（`ros2 launch ros2_trashbot_bringup rviz.launch.py`），远程浏览器可用 Foxglove bridge
+（`ros2 launch ros2_trashbot_bringup foxglove_bridge.launch.py` 后连接 `ws://192.168.1.11:8765`）。
+RViz2/Foxglove 只观察 `/map`、`/scan`、`/tf`、路径、定位和 costmap，不提供 GoalTool，不发送底盘运动命令，不替代
+PC 简易发车界面。
+
+2026-07-02 23:30 CST 起，普通 PC 运动入口统一为打开即用：低速手控、键盘连续手控、自由移动和 Nav2 图上路线不再要求用户额外
+勾选安全确认。PC 代理会继续给上车固定 `confirm_hil_checklist=true` 兼容字段，但 `requires_safety_confirm`、
+`safety_confirm_required`、`current_*_status`、runbook 和验收包文案均改为 `ready_to_use/open_page_ready/现场默认安全`。
+键盘仍只在按住 W/A/S/D 或方向键时连续发送低速 pulse，松开、失焦、切页和 stop 按钮仍走固定停止链路；
+相机和雷达不作为手控、自由移动或 Nav2 路线发车前置，只影响建图启动/验收。PC Node 继续按现场访问口径绑定
+`0.0.0.0:7001`，默认小车 API 固定为 `http://192.168.1.11:8787`。

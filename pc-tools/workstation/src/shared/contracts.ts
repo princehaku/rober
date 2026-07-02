@@ -2838,7 +2838,7 @@ export interface RobotControlFieldAcceptanceSafetyConfirmReadyAction {
   start_endpoint: string;
   stop_endpoint: string;
   acceptance_endpoints: string[];
-  requires_safety_confirm: true;
+  requires_safety_confirm: boolean;
   minimal_precheck_safety_only: true;
   sends_motion_when_executed: true;
   camera_preflight_required: false;
@@ -3949,7 +3949,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   current_motion_action_current_gap_plain?: RobotControlNav2RouteAcceptancePacket["current_gap_plain"];
   current_motion_action_no_extra_precheck_plain?: RobotControlNav2RouteAcceptancePacket["no_extra_precheck_plain"];
   current_motion_action_delivery_next_action_plain?: RobotControlNav2RouteAcceptancePacket["delivery_next_action_plain"];
-  current_trip_execution_pack_status?: "complete" | "ready_for_safety_confirm" | "blocked";
+  current_trip_execution_pack_status?: "complete" | "ready_to_use" | "ready_for_safety_confirm" | "blocked";
   current_trip_execution_pack_plain?: string;
   current_trip_execution_pack_next_action_plain?: string;
   current_trip_execution_pack_action_id?: RobotControlNav2RouteAcceptancePacket["action_id"];
@@ -4030,7 +4030,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   nav2_route_run_readback_starts_map_runtime?: false;
   nav2_route_run_readback_submits_delivery?: false;
   nav2_route_run_readback_stops_motion?: false;
-  current_motion_verification_pack_status?: "complete" | "ready_for_safety_confirm" | "blocked";
+  current_motion_verification_pack_status?: "complete" | "ready_to_use" | "ready_for_safety_confirm" | "blocked";
   current_motion_verification_pack_plain?: string;
   current_motion_verification_pack_action_ids?: RobotControlFieldAcceptancePacket["safety_confirm_ready_step_ids"];
   current_motion_verification_pack_action_display_labels?: RobotControlFieldAcceptancePacket["safety_confirm_ready_action_display_labels"];
@@ -4103,7 +4103,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   current_safety_confirm_queue_starts_map_runtime_when_clicked?: false;
   current_safety_confirm_queue_submits_delivery_when_clicked?: false;
   current_safety_confirm_queue_stops_motion_when_clicked?: false;
-  current_move_now_status?: "ready_for_safety_confirm" | "no_ready_motion";
+  current_move_now_status?: "ready_to_use" | "ready_for_safety_confirm" | "no_ready_motion";
   current_move_now_plain?: string;
   current_move_now_action_ids?: RobotControlSummaryResponse["current_motion_verification_pack_action_ids"];
   current_move_now_action_display_labels?: RobotControlSummaryResponse["current_motion_verification_pack_action_display_labels"];
@@ -4130,7 +4130,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   current_move_now_starts_map_runtime_when_clicked?: false;
   current_move_now_submits_delivery_when_clicked?: false;
   current_move_now_stops_motion_when_clicked?: false;
-  current_minimal_precheck_pack_status?: "complete" | "safety_confirm_only" | "blocked";
+  current_minimal_precheck_pack_status?: "complete" | "open_page_ready" | "safety_confirm_only" | "blocked";
   current_minimal_precheck_pack_plain?: string;
   current_minimal_precheck_pack_action_ids?: RobotControlFieldAcceptancePacket["safety_confirm_ready_step_ids"];
   current_minimal_precheck_pack_action_display_labels?: RobotControlFieldAcceptancePacket["safety_confirm_ready_action_display_labels"];
@@ -4201,7 +4201,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   current_keyboard_action_post_hold_readback_starts_map_runtime?: false;
   current_keyboard_action_post_hold_readback_submits_delivery?: false;
   current_keyboard_action_post_hold_readback_stops_motion?: false;
-  current_keyboard_control_pack_status?: "complete" | "ready_for_safety_confirm" | "blocked";
+  current_keyboard_control_pack_status?: "complete" | "ready_to_use" | "ready_for_safety_confirm" | "blocked";
   current_keyboard_control_pack_plain?: string;
   current_keyboard_control_pack_next_action_plain?: string;
   current_keyboard_control_pack_action_id?: RobotControlLiveMotionRunbookItem["id"] | "none";
@@ -4330,7 +4330,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   current_free_move_action_starts_map_runtime?: false;
   current_free_move_action_submits_delivery?: false;
   current_free_move_action_stops_motion?: false;
-  current_free_move_control_pack_status?: "complete" | "ready_for_safety_confirm" | "blocked";
+  current_free_move_control_pack_status?: "complete" | "ready_to_use" | "ready_for_safety_confirm" | "blocked";
   current_free_move_control_pack_plain?: string;
   current_free_move_control_pack_next_action_plain?: string;
   current_free_move_control_pack_action_id?: RobotControlLiveMotionRunbookItem["id"] | "none";
@@ -4483,7 +4483,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   current_mapping_action_starts_free_roam?: false;
   current_mapping_action_submits_delivery?: false;
   current_mapping_action_stops_motion?: false;
-  current_mapping_control_pack_status?: "complete" | "ready_for_safety_confirm" | "blocked";
+  current_mapping_control_pack_status?: "complete" | "ready_to_use" | "ready_for_safety_confirm" | "blocked";
   current_mapping_control_pack_plain?: string;
   current_mapping_control_pack_next_action_plain?: string;
   current_mapping_control_pack_action_id?: RobotControlLiveMotionRunbookItem["id"] | "none";
@@ -5581,7 +5581,17 @@ export interface RobotControlSummaryResponse extends ProofFlags {
     cmd_vel_topic: "/cmd_vel";
     nav2_goal: "Nav2 NavigateToPose locked";
     nav2_goal_ready: boolean;
-    nav2_goal_label: "路线读数已准备，等待地图画面确认" | "图上路线已显示，等待安全确认" | "图上路线和小车位置已显示，等待安全确认" | "图上路线未就绪" | "自动驾驶服务未启动" | "规划服务未就绪" | "控制服务未就绪" | "规划/控制服务未就绪";
+    nav2_goal_label:
+      | "路线读数已准备，等待地图画面确认"
+      | "图上路线已显示，等待安全确认"
+      | "图上路线和小车位置已显示，等待安全确认"
+      | "图上路线已显示，可直接执行"
+      | "图上路线和小车位置已显示，可直接执行"
+      | "图上路线未就绪"
+      | "自动驾驶服务未启动"
+      | "规划服务未就绪"
+      | "控制服务未就绪"
+      | "规划/控制服务未就绪";
     nav2_goal_blockers: string[];
     nav2_goal_wheel_feedback_status: string;
     nav2_goal_next_action: string;
@@ -5606,7 +5616,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
     keyboard_reuses_manual_gate: true;
     keyboard_control_start_ready: boolean;
     keyboard_control_status: "start_ready" | "armed" | "active" | "blocked";
-    keyboard_control_label: "键盘手控（勾确认后可启用）";
+    keyboard_control_label: "键盘手控（勾确认后可启用）" | "键盘手控（打开即用）";
     keyboard_control_next_action: string;
     keyboard_minimal_precheck_plain: string;
     keyboard_teleop_start_ready: boolean;
@@ -5619,14 +5629,14 @@ export interface RobotControlSummaryResponse extends ProofFlags {
     free_roam_mapping_start_missing_reasons: string[];
     free_roam_mapping_ready: boolean;
     free_roam_mapping_missing_reasons: string[];
-    free_roam_autonomy_label: "自动扫图（未开放）" | "自由移动（勾确认后可启动）" | "自由移动（运行中）" | "自动扫图";
+    free_roam_autonomy_label: "自动扫图（未开放）" | "自由移动（勾确认后可启动）" | "自由移动（打开即用）" | "自由移动（运行中）" | "自动扫图";
     free_roam_autonomy_next_action: string;
     free_roam_motion_minimal_precheck_plain: string;
     free_roam_mapping_start_plain: string;
     free_roam_mapping_start_next_action: string;
     free_roam_mapping_acceptance_plain: string;
     free_roam_autonomy_policy: {
-      mode: "free_move_requires_safety_confirm_stop_fallback";
+      mode: "free_move_requires_safety_confirm_stop_fallback" | "free_move_open_page_ready_stop_fallback";
       mapping_mode: "mapping_acceptance_requires_camera_and_fresh_radar";
       max_speed_mps: number;
       max_runtime_s: number;
@@ -5654,10 +5664,10 @@ export interface RobotControlSummaryResponse extends ProofFlags {
     };
     map_click_goal: "map click goal locked";
     locked_reason: string;
-    manual_motion_entry_status: "controlled_jog_requires_safety_confirmation_only";
-    manual_motion_entry_label: "低速手控（勾安全确认即可）";
+    manual_motion_entry_status: "controlled_jog_requires_safety_confirmation_only" | "controlled_jog_open_page_ready";
+    manual_motion_entry_label: string;
     allowed_directions: Array<"forward" | "back" | "left" | "right" | "stop">;
-    non_stop_requires_confirm_hil_checklist: true;
+    non_stop_requires_confirm_hil_checklist: boolean;
     non_stop_requires_operator_report_preflight: boolean;
     operator_report_preflight_endpoint: "/api/operator/report";
     operator_report_preflight_required_fields: string[];
@@ -6557,7 +6567,7 @@ export interface RobotControlBaseCommandProxyResponse extends ProofFlags {
   operator_report_preflight_required: false;
   camera_or_radar_required_for_motion: false;
   minimal_precheck_plain: string;
-  non_stop_requires_confirm_hil_checklist: true;
+  non_stop_requires_confirm_hil_checklist: boolean;
   hil_checklist_gate_status: "stop_allowed_without_checklist" | "manual_allowed" | "manual_blocked_missing_checklist";
   checklist_missing: string[];
   operator_report_preflight: RobotControlOperatorReportPreflight;

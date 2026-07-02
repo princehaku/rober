@@ -1,7 +1,7 @@
 :root {
-  --plain-map-large-min-height: 560px;
-  --plain-map-large-target-height: calc(100vh - 150px);
-  --plain-map-large-max-height: 960px;
+  --plain-map-large-min-height: 720px;
+  --plain-map-large-target-height: calc(100vh - 96px);
+  --plain-map-large-max-height: 1400px;
   --plain-map-fullscreen-height: 100vh;
   color: #17202a;
   background: #f4f6f8;
@@ -1582,8 +1582,8 @@ h3 {
 }
 
 .plain-map-panel[data-size="large"] {
-  /* 普通 PC 首屏默认把地图当主视图，但不制造超长滚动框。 */
-  min-height: min(100vh, 980px);
+  /* 普通 PC 首屏默认把地图当主视图，给真实地图足够高度而不是小预览卡。 */
+  min-height: min(100vh, 1260px);
 }
 
 .plain-map-heading {
@@ -2185,11 +2185,11 @@ h3 {
 }
 
 .plain-map-layer.has-real-map .plain-map-overlay-frame {
-  /* 真实地图优先撑满宽屏 PC 的宽度，保持原始比例；高度超出时用滚动看细节。 */
-  width: calc(100% * var(--plain-map-zoom, 1));
-  height: auto;
+  /* 真实地图按画布高度优先撑满，宽地图允许横向滚动，避免显示成一条很小的横幅。 */
+  width: auto;
+  height: calc(100% * var(--plain-map-zoom, 1));
   min-width: 100%;
-  min-height: auto;
+  min-height: 100%;
   max-width: none;
   aspect-ratio: var(--map-aspect, 1);
 }

@@ -1485,8 +1485,8 @@ const fixtures: Record<string, unknown> = {
         {
           id: "precheck",
           title: "发车前确认",
-          state: "只需勾确认",
-          summary_plain: "发车前预检已精简：执行运动只需勾现场安全确认；相机、雷达和现场报告不作为额外发车前置。",
+          state: "打开即用",
+          summary_plain: "发车前预检已精简：执行运动打开即用；相机、雷达和现场报告不作为额外发车前置。",
           next_action_plain: "上车自由移动状态机未加载；可先勾选现场安全确认，用键盘或低速手控移动；相机和雷达只影响建图",
           item_ids: ["safety_confirmation"],
           missing_evidence_ids: [],
@@ -1828,7 +1828,7 @@ const fixtures: Record<string, unknown> = {
       keyboard_verified_min_forwarded_pulses: 2,
       keyboard_manual_command_mode: "pwm",
       keyboard_continuous_minimal_precheck_safety_only: true,
-      keyboard_continuous_safety_confirm_required: true,
+      keyboard_continuous_safety_confirm_required: false,
       keyboard_continuous_enable_sends_motion: false,
       keyboard_continuous_hold_to_move_required: true,
       keyboard_continuous_pulse_interval_ms: 260,
@@ -1866,9 +1866,9 @@ const fixtures: Record<string, unknown> = {
           completed: false,
           proof_status: "ready_to_verify",
           missing_evidence: ["same_hold_window_wheel_lr_nonzero", "stop_after_release"],
-          proof_plain: "可验证键盘连续手控：勾现场安全确认后按住方向键或 WASD，再读轮速与 summary；还差：按住同窗口 wheel L/R 非零、松开/失焦后 stop 已落稳。",
+          proof_plain: "可验证键盘连续手控：按住方向键或 WASD，再读轮速与 summary；还差：按住同窗口 wheel L/R 非零、松开/失焦后 stop 已落稳。",
           minimal_precheck_safety_only: true,
-          safety_confirm_required: true,
+          safety_confirm_required: false,
           sends_motion_when_executed: true,
           start_endpoint: "/api/robot-control/base/manual",
           stop_endpoint: "/api/robot-control/base/stop",
@@ -1883,9 +1883,9 @@ const fixtures: Record<string, unknown> = {
           completed: false,
           proof_status: "ready_to_verify",
           missing_evidence: ["free_roam_latest_motion_ready"],
-          proof_plain: "可验证自由自助移动：勾现场安全确认后启动，再读 free-roam latest、地图预览和 summary；还差：自由移动运行读数。",
+          proof_plain: "可验证自由自助移动：打开页面即可启动，再读 free-roam latest、地图预览和 summary；还差：自由移动运行读数。",
           minimal_precheck_safety_only: true,
-          safety_confirm_required: true,
+          safety_confirm_required: false,
           sends_motion_when_executed: true,
           start_endpoint: "/api/robot-control/free-roam/autonomy/start",
           stop_endpoint: "/api/robot-control/free-roam/autonomy/stop",
@@ -1918,12 +1918,12 @@ const fixtures: Record<string, unknown> = {
       live_motion_runbook_start_endpoints: ["/api/robot-control/base/manual", "/api/robot-control/free-roam/autonomy/start"],
       live_motion_runbook_acceptance_endpoints: ["/api/robot-control/map/preview", "/api/robot-control/nav2/goal/execution/latest", "/api/robot-control/base/feedback-samples", "/api/robot-control/delivery/latest", "/api/robot-control/summary", "/api/robot-control/free-roam/autonomy/latest"],
       live_motion_runbook_minimal_precheck_safety_only: true,
-      live_motion_runbook_safety_confirm_required: true,
-      live_motion_runbook_summary_plain: "可先执行：键盘连续手控、自由自助移动。暂不可执行：完整行程执行、传感器就绪后建图。主推荐：键盘连续手控；发车前预检已精简：执行运动只需勾现场安全确认；相机、雷达和现场报告不作为额外发车前置。",
+      live_motion_runbook_safety_confirm_required: false,
+      live_motion_runbook_summary_plain: "可先执行：键盘连续手控、自由自助移动。暂不可执行：完整行程执行、传感器就绪后建图。主推荐：键盘连续手控；发车前预检已精简：执行运动打开即用；相机、雷达和现场报告不作为额外发车前置。",
       live_motion_runbook_ready_plain: "可先执行：键盘连续手控、自由自助移动。",
       live_motion_runbook_blocked_plain: "暂不可执行：完整行程执行、传感器就绪后建图。",
       live_motion_runbook_primary_action_plain: "键盘连续手控",
-      live_motion_runbook_minimal_precheck_plain: "发车前预检已精简：执行运动只需勾现场安全确认；相机、雷达和现场报告不作为额外发车前置。",
+      live_motion_runbook_minimal_precheck_plain: "发车前预检已精简：执行运动打开即用；相机、雷达和现场报告不作为额外发车前置。",
       field_acceptance_packet: {
         status: "needs_wysiwyg",
         summary_plain: "现场验收：四项目标完成 1/4；下一步先做键盘连续手控；发车前预检只需现场安全确认。",
@@ -6677,7 +6677,7 @@ describe("App", () => {
     expect(fieldAcceptanceActionQueue.text()).toContain("行动队列");
     expect(fieldAcceptanceActionQueue.text()).toContain("可先验：键盘连续手控、自由自助移动");
     expect(fieldAcceptanceActionQueue.text()).toContain("暂不可做：完整行程执行、传感器就绪后建图");
-    expect(fieldAcceptanceActionQueue.text()).toContain("安全确认已勾即可执行运动项");
+    expect(fieldAcceptanceActionQueue.text()).toContain("现场默认安全即可执行运动项");
     expect(fieldAcceptanceActionQueue.text()).toContain("相机和雷达不作为发车前置");
     expect(fieldAcceptanceActionQueue.attributes("data-state")).toBe("有可先验动作");
     expect(fieldAcceptanceActionQueue.attributes("data-ready-count")).toBe("2");
@@ -6965,7 +6965,7 @@ describe("App", () => {
     expect(fieldAcceptancePrimary.exists()).toBe(true);
     expect(fieldAcceptancePrimary.text()).toContain("下一步");
     expect(fieldAcceptancePrimary.text()).toContain("键盘连续手控");
-    expect(fieldAcceptancePrimary.text()).toContain("安全确认已勾");
+    expect(fieldAcceptancePrimary.text()).toContain("现场默认安全");
     expect(fieldAcceptancePrimary.text()).toContain("目标动作会让车动");
     expect(fieldAcceptancePrimary.text()).toContain("只读读回只刷新验收材料");
     expect(fieldAcceptancePrimary.attributes("data-action-id")).toBe("hold_keyboard");
@@ -7007,7 +7007,7 @@ describe("App", () => {
     expect((wrapper.find('[data-testid="plain-unified-safety-confirm"]').element as HTMLInputElement).checked).toBe(true);
     expect(wrapper.find('[data-testid="plain-field-acceptance-packet"]').attributes("data-unified-safety-confirmed")).toBe("true");
     expect(wrapper.find('[data-testid="plain-field-acceptance-primary"]').attributes("data-safety-confirmed")).toBe("true");
-    expect(wrapper.find('[data-testid="plain-field-acceptance-primary"]').text()).toContain("安全确认已勾");
+    expect(wrapper.find('[data-testid="plain-field-acceptance-primary"]').text()).toContain("现场默认安全");
     await wrapper.find('[data-testid="plain-field-acceptance-safety-confirm"]').setValue(false);
     await wrapper.vm.$nextTick();
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeFieldSafetyConfirm);
@@ -7536,7 +7536,7 @@ describe("App", () => {
     expect(liveClosureSummary.attributes("data-keyboard-verified-min-forwarded-pulses")).toBe("2");
     expect(liveClosureSummary.attributes("data-keyboard-manual-command-mode")).toBe("pwm");
     expect(liveClosureSummary.attributes("data-keyboard-continuous-minimal-precheck-safety-only")).toBe("true");
-    expect(liveClosureSummary.attributes("data-keyboard-continuous-safety-confirm-required")).toBe("true");
+    expect(liveClosureSummary.attributes("data-keyboard-continuous-safety-confirm-required")).toBe("false");
     expect(liveClosureSummary.attributes("data-keyboard-continuous-enable-sends-motion")).toBe("false");
     expect(liveClosureSummary.attributes("data-keyboard-continuous-hold-to-move-required")).toBe("true");
     expect(liveClosureSummary.attributes("data-keyboard-continuous-pulse-interval-ms")).toBe("260");
@@ -7556,7 +7556,7 @@ describe("App", () => {
     expect(liveClosureSummary.attributes("data-live-motion-runbook-start-endpoints")).toBe("/api/robot-control/base/manual,/api/robot-control/free-roam/autonomy/start");
     expect(liveClosureSummary.attributes("data-live-motion-runbook-acceptance-endpoints")).toBe("/api/robot-control/map/preview,/api/robot-control/nav2/goal/execution/latest,/api/robot-control/base/feedback-samples,/api/robot-control/delivery/latest,/api/robot-control/summary,/api/robot-control/free-roam/autonomy/latest");
     expect(liveClosureSummary.attributes("data-live-motion-runbook-minimal-precheck-safety-only")).toBe("true");
-    expect(liveClosureSummary.attributes("data-live-motion-runbook-safety-confirm-required")).toBe("true");
+    expect(liveClosureSummary.attributes("data-live-motion-runbook-safety-confirm-required")).toBe("false");
     const liveMotionRunbook = wrapper.find('[data-testid="plain-live-motion-runbook"]');
     expect(liveMotionRunbook.exists()).toBe(true);
     expect(liveMotionRunbook.text()).toContain("动作清单");
@@ -7573,18 +7573,18 @@ describe("App", () => {
     expect(liveMotionRunbook.attributes("data-ready-plain")).toBe("可先执行：键盘连续手控、自由自助移动。");
     expect(liveMotionRunbook.attributes("data-blocked-plain")).toBe("暂不可执行：完整行程执行、传感器就绪后建图。");
     expect(liveMotionRunbook.attributes("data-primary-action-plain")).toBe("键盘连续手控");
-    expect(liveMotionRunbook.attributes("data-minimal-precheck-plain")).toBe("发车前预检已精简：执行运动只需勾现场安全确认；相机、雷达和现场报告不作为额外发车前置。");
+    expect(liveMotionRunbook.attributes("data-minimal-precheck-plain")).toBe("发车前预检已精简：执行运动打开即用；相机、雷达和现场报告不作为额外发车前置。");
     expect(liveMotionRunbook.attributes("data-sends-motion-when-clicked")).toBe("false");
     expect(liveMotionRunbook.attributes("data-safety-confirmed")).toBe("true");
     expect(liveMotionRunbook.attributes("data-camera-preflight-required-for-motion")).toBe("false");
     expect(liveMotionRunbook.attributes("data-radar-preflight-required-for-motion")).toBe("false");
-    expect(liveMotionRunbook.attributes("data-preflight-plain")).toBe("发车前预检已精简：执行运动只需勾现场安全确认；相机、雷达和现场报告不作为额外发车前置。（安全确认已勾）");
+    expect(liveMotionRunbook.attributes("data-preflight-plain")).toBe("发车前预检已精简：执行运动打开即用；相机、雷达和现场报告不作为额外发车前置。（现场默认安全）");
     const liveMotionRunbookSummary = wrapper.find('[data-testid="plain-live-motion-runbook-summary"]');
     expect(liveMotionRunbookSummary.text()).toContain("可先执行：键盘连续手控、自由自助移动。");
     expect(liveMotionRunbookSummary.text()).toContain("主推荐：键盘连续手控");
     expect(liveMotionRunbookSummary.attributes("data-sends-motion-when-clicked")).toBe("false");
     const liveMotionRunbookPreflight = wrapper.find('[data-testid="plain-live-motion-runbook-preflight"]');
-    expect(liveMotionRunbookPreflight.text()).toBe("发车前预检已精简：执行运动只需勾现场安全确认；相机、雷达和现场报告不作为额外发车前置。（安全确认已勾）");
+    expect(liveMotionRunbookPreflight.text()).toBe("发车前预检已精简：执行运动打开即用；相机、雷达和现场报告不作为额外发车前置。（现场默认安全）");
     expect(liveMotionRunbookPreflight.attributes("data-minimal-precheck-safety-only")).toBe("true");
     expect(liveMotionRunbookPreflight.attributes("data-safety-confirmed")).toBe("true");
     expect(liveMotionRunbookPreflight.attributes("data-camera-preflight-required-for-motion")).toBe("false");
@@ -7595,7 +7595,7 @@ describe("App", () => {
     expect(liveMotionExecutionStrip.text()).toContain("现场执行");
     expect(liveMotionExecutionStrip.text()).toContain("可现场验证");
     expect(liveMotionExecutionStrip.text()).toContain("键盘连续手控、自由自助移动 已可现场验证");
-    expect(liveMotionExecutionStrip.text()).toContain("只需勾现场安全确认");
+    expect(liveMotionExecutionStrip.text()).toContain("执行运动打开即用");
     expect(liveMotionExecutionStrip.attributes("data-state")).toBe("可现场验证");
     expect(liveMotionExecutionStrip.attributes("data-primary-action-id")).toBe("hold_keyboard");
     expect(liveMotionExecutionStrip.attributes("data-primary-source-card-id")).toBe("keyboard_control");
@@ -7649,7 +7649,7 @@ describe("App", () => {
     expect(readyKeyboardAction.exists()).toBe(true);
     expect(readyKeyboardAction.text()).toContain("键盘连续手控");
     expect(readyKeyboardAction.text()).toContain("按住才会移动");
-    expect(readyKeyboardAction.text()).toContain("只需现场安全确认");
+    expect(readyKeyboardAction.text()).toContain("打开即用");
     expect(readyKeyboardAction.attributes("data-action-id")).toBe("hold_keyboard");
     expect(readyKeyboardAction.attributes("data-state")).toBe("可验证");
     expect(readyKeyboardAction.attributes("data-focus-target-source-card-id")).toBe("keyboard_control");
@@ -7661,7 +7661,7 @@ describe("App", () => {
     expect(readyFreeMoveAction.exists()).toBe(true);
     expect(readyFreeMoveAction.text()).toContain("自由自助移动");
     expect(readyFreeMoveAction.text()).toContain("会启动自由移动");
-    expect(readyFreeMoveAction.text()).toContain("只需现场安全确认");
+    expect(readyFreeMoveAction.text()).toContain("打开即用");
     expect(readyFreeMoveAction.attributes("data-action-id")).toBe("start_free_move");
     expect(readyFreeMoveAction.attributes("data-focus-target-source-card-id")).toBe("free_move");
     expect(readyFreeMoveAction.attributes("data-focus-target-kind")).toBe("free_move_safety_confirm");
@@ -8517,7 +8517,7 @@ describe("App", () => {
     expect(objectiveWysiwyg.attributes("data-next-action")).toContain("刷新地图画面");
     const objectivePrecheck = wrapper.find('[data-testid="plain-objective-overview-precheck"]');
     expect(objectivePrecheck.attributes("data-objective-id")).toBe("precheck");
-    expect(objectivePrecheck.attributes("data-state")).toBe("只需勾确认");
+    expect(objectivePrecheck.attributes("data-state")).toBe("打开即用");
     expect(objectivePrecheck.attributes("data-completed")).toBe("true");
     expect(objectivePrecheck.attributes("data-actionable")).toBe("true");
     expect(objectivePrecheck.attributes("data-missing-count")).toBe("0");
@@ -9347,7 +9347,7 @@ describe("App", () => {
     expect(mapPanel.attributes("data-visual-priority")).toBe("pc-primary-map-first");
     expect(mapPanel.attributes("data-default-map-layout")).toBe("dominant-first-screen-map");
     expect(mapPanel.attributes("data-default-map-height-mode")).toBe("viewport-dominant");
-    expect(mapPanel.attributes("data-real-map-fit-mode")).toBe("width-first-preserve-aspect-scroll-y");
+    expect(mapPanel.attributes("data-real-map-fit-mode")).toBe("height-first-preserve-aspect-scroll-x");
     expect(mapPanel.attributes("data-size")).toBe("large");
     expect(mapPanel.attributes("data-default-size")).toBe("large");
     expect(mapPanel.attributes("data-default-map-zoom-percent")).toBe("100%");
@@ -9559,7 +9559,7 @@ describe("App", () => {
     expect(mapDisplayProof.attributes("data-wysiwyg-overlays")).toBe("image-route-robot-radar");
     expect(mapDisplayProof.attributes("data-default-map-layout")).toBe("dominant-first-screen-map");
     expect(mapDisplayProof.attributes("data-default-map-height-mode")).toBe("viewport-dominant");
-    expect(mapDisplayProof.attributes("data-real-map-fit-mode")).toBe("width-first-preserve-aspect-scroll-y");
+    expect(mapDisplayProof.attributes("data-real-map-fit-mode")).toBe("height-first-preserve-aspect-scroll-x");
     expect(mapDisplayProof.attributes("data-default-map-zoom-percent")).toBe("100%");
     expect(mapDisplayProof.attributes("data-max-map-zoom-percent")).toBe("800%");
     expect(mapDisplayProof.attributes("data-current-map-zoom-percent")).toBe("100%");
@@ -9608,7 +9608,7 @@ describe("App", () => {
     expect(mapDisplayProof.text()).toContain("点“细节放大”可查看局部");
     expect(mapDisplayProof.text()).toContain("800%");
     expect(mapDisplayProof.text()).toContain("点“进入地图大屏”直接切到 /map");
-    expect(mapDisplayProof.text()).toContain("PC 首页默认适配全图；仍觉得小就点“进入地图大屏”");
+    expect(mapDisplayProof.text()).toContain("PC 首页默认把真实地图按高度撑满主画布；仍觉得小就点“进入地图大屏”");
     expect(mapDisplayProof.text()).toContain("?view=map 兼容入口");
     expect(mapDisplayProof.text()).toContain("ROS2 配套：本地工程调试用 RViz2");
     expect(mapDisplayProof.text()).toContain("普通用户仍默认使用 PC 大地图");
@@ -9811,9 +9811,9 @@ describe("App", () => {
     expect(workstationStyles).toContain('.shell[data-direct-map-view-requested="true"] .plain-map-panel[data-observer-mode="true"] > .plain-map-ros2-tool-note');
     expect(workstationStyles).toContain("避免 ROS2/RViz2/Foxglove 配套答案被通用只看地图规则隐藏");
     expect(workstationStyles).toContain("display: block;");
-    expect(workstationStyles).toContain("--plain-map-large-min-height: 560px;");
-    expect(workstationStyles).toContain("--plain-map-large-target-height: calc(100vh - 150px);");
-    expect(workstationStyles).toContain("--plain-map-large-max-height: 960px;");
+    expect(workstationStyles).toContain("--plain-map-large-min-height: 720px;");
+    expect(workstationStyles).toContain("--plain-map-large-target-height: calc(100vh - 96px);");
+    expect(workstationStyles).toContain("--plain-map-large-max-height: 1400px;");
     expect(workstationStyles).toContain("--plain-map-fullscreen-height: 100vh;");
     expect(workstationStyles).toContain("避免 grid 百分比把内部画布算小");
     expect(workstationStyles).toContain("height: calc(100vh - 52px);");
@@ -9829,13 +9829,13 @@ describe("App", () => {
     expect(workstationStyles).toContain(".plain-map-zoom-controls");
     expect(workstationStyles).toContain("align-items: flex-start;");
     expect(workstationStyles).toContain("justify-content: flex-start;");
-    expect(workstationStyles).toContain("width: calc(100% * var(--plain-map-zoom, 1));");
+    expect(workstationStyles).toContain("width: auto;");
     expect(workstationStyles).toContain("height: calc(100% * var(--plain-map-zoom, 1));");
     expect(workstationStyles).toContain("默认 100% 看全图，细节模式再放大局部");
     expect(workstationStyles).toContain(".plain-map-layer.has-real-map .plain-map-overlay-frame");
-    expect(workstationStyles).toContain("min-height: auto;");
-    expect(workstationStyles).toContain("真实地图优先撑满宽屏 PC 的宽度");
-    expect(workstationStyles).toContain("height: auto;");
+    expect(workstationStyles).toContain("min-height: 100%;");
+    expect(workstationStyles).toContain("真实地图按画布高度优先撑满");
+    expect(workstationStyles).toContain("宽地图允许横向滚动");
     expect(workstationStyles).toContain("min-width: 100%;");
     expect(workstationStyles).toContain("overflow: auto;");
     expect(workstationStyles).toContain("min-height: 260px;");
@@ -10116,12 +10116,12 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-trip-main-action-summary"]').text()).toBe("主按钮：只准备图上路线，不发车。");
     const currentMotionAction = wrapper.find('[data-testid="plain-trip-current-motion-action"]');
     expect(currentMotionAction.exists()).toBe(true);
-    expect(currentMotionAction.text()).toContain("当前运动动作：重跑图上行程并复验轮速；安全确认已勾；发车前只看安全确认；执行后读回 5 个验收端点；当前读回：图上行程已显示；到点已读到；同窗口轮速未证明，L/R=0/0，非零样本 0/2；送达确认未完成；还差 同窗口 wheel L/R 非零、送达确认。");
+    expect(currentMotionAction.text()).toContain("当前运动动作：重跑图上行程并复验轮速；现场默认安全；发车前只看安全确认；执行后读回 5 个验收端点；当前读回：图上行程已显示；到点已读到；同窗口轮速未证明，L/R=0/0，非零样本 0/2；送达确认未完成；还差 同窗口 wheel L/R 非零、送达确认。");
     expect(currentMotionAction.text()).toContain("可验证完整行程执行");
     expect(currentMotionAction.text()).not.toContain("Nav2");
     expect(currentMotionAction.text()).not.toContain("raw");
     expect(currentMotionAction.text()).not.toContain("/api/");
-    expect(currentMotionAction.attributes("data-state")).toBe("安全确认已勾");
+    expect(currentMotionAction.attributes("data-state")).toBe("现场默认安全");
     expect(currentMotionAction.attributes("data-current-motion-action-id")).toBe("run_nav2_route");
     expect(currentMotionAction.attributes("data-current-motion-action-required")).toBe("true");
     expect(currentMotionAction.attributes("data-current-motion-action-label")).toBe("完整行程执行");
@@ -13123,7 +13123,7 @@ describe("App", () => {
       expect(directMapDisplayProof.text()).toContain("点“细节放大”可查看局部");
       expect(directMapDisplayProof.text()).toContain("800%");
       expect(directMapDisplayProof.text()).toContain("点“进入地图大屏”直接切到 /map");
-      expect(directMapDisplayProof.text()).toContain("PC 首页默认适配全图；仍觉得小就点“进入地图大屏”");
+      expect(directMapDisplayProof.text()).toContain("PC 首页默认把真实地图按高度撑满主画布；仍觉得小就点“进入地图大屏”");
       expect(directMapDisplayProof.text()).toContain("普通用户仍默认使用 PC 大地图");
       expect(directMapDisplayProof.text()).toContain("不启动工程工具、行程执行或小车运动");
       expect(directMapDisplayProof.text()).not.toContain("ros2 launch ros2_trashbot_bringup rviz.launch.py");
@@ -21632,7 +21632,7 @@ describe("App", () => {
     expect(freeMoveOnlyGauge.attributes("data-motion-start-blocked-by-stop-request")).toBe("false");
     expect(freeMoveOnlyGauge.attributes("data-sends-motion-when-clicked")).toBe("false");
     const freeMoveAcceptanceProof = wrapper.find('[data-testid="plain-free-move-acceptance-proof"]');
-    expect(freeMoveAcceptanceProof.text()).toBe("自由移动验收：可启动；还差：自由移动运行读数；发车前只需安全确认，画面和雷达不作为移动前置；建图缺口=画面首帧。下一步：勾现场安全确认后启动自由移动；启动后只读读取 free-roam latest、地图预览和 summary。");
+    expect(freeMoveAcceptanceProof.text()).toBe("自由移动验收：可启动；还差：自由移动运行读数；打开页面即可用，画面和雷达不作为移动前置；建图缺口=画面首帧。下一步：直接启动自由移动；启动后只读读取 free-roam latest、地图预览和 summary。");
     expect(freeMoveAcceptanceProof.attributes("data-current-action-id")).toBe("start_free_move");
     expect(freeMoveAcceptanceProof.attributes("data-current-action-ready")).toBe("true");
     expect(freeMoveAcceptanceProof.attributes("data-current-action-label")).toBe("自由自助移动");

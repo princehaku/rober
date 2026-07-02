@@ -42,7 +42,6 @@ import {
   endpointUrl,
   normalizeRobotApiBaseUrl,
   ROBOT_CONTROL_ALLOWED_MANUAL_DIRECTIONS,
-  ROBOT_CONTROL_HIL_CHECKLIST,
   ROBOT_CONTROL_MANUAL_DURATION_LIMIT_MS,
   ROBOT_CONTROL_MANUAL_SPEED_LIMIT_MPS,
   ROBOT_CONTROL_CAMERA_HEALTH_TIMEOUT_MS,
@@ -625,7 +624,7 @@ function baseFeedbackSampleAliases(
       wheel_feedback_lr_nonzero_proven: proven,
       wheel_feedback_source: source,
       wheel_feedback_plain_hint: `只读反馈采样读到 ${pairText}，非零未证明，T1001 帧 ${frameCount}；这不是运动命令。`,
-      wheel_feedback_next_action: "勾选现场安全确认后低速试动或按住键盘方向键，再复验 wheel raw L/R 非零。",
+      wheel_feedback_next_action: "直接低速试动或按住键盘方向键，再复验 wheel raw L/R 非零。",
     };
   }
   return {
@@ -637,7 +636,7 @@ function baseFeedbackSampleAliases(
     wheel_feedback_lr_nonzero_proven: proven,
     wheel_feedback_source: source,
     wheel_feedback_plain_hint: "只读反馈采样没有读到可用 wheel raw L/R；这不是运动命令。",
-    wheel_feedback_next_action: "先确认上位机底盘反馈链路，再勾安全确认做低速试动。",
+    wheel_feedback_next_action: "先确认上位机底盘反馈链路，再直接做低速试动。",
   };
 }
 
@@ -929,20 +928,20 @@ function navGoalLatestPlainFields(
   if (goalSucceeded && wheelExplicitFalse) {
     return {
       execution_status_plain: `上次路线结果成功，但执行窗口轮速 L/R=${left}/${right} 未非零；${motionMaterial}`,
-      next_action_plain: `勾选行程前安全确认后用 ${nextMode} 模式重跑图上路线，并在同窗口确认轮速 L/R 非零。`,
+      next_action_plain: `直接用 ${nextMode} 模式重跑图上路线，并在同窗口确认轮速 L/R 非零。`,
       route_execution_readiness_plain: `图上路线可重跑复验；上次路线结果成功，但同窗口轮速 L/R=${left}/${right} 未非零。`,
-      route_execution_precheck_plain: `只需勾选行程前安全确认；相机、雷达和现场报告不作为额外发车前置；执行会用 ${nextMode} 模式跑图上路线。`,
+      route_execution_precheck_plain: `现场默认安全；相机、雷达和现场报告不作为额外发车前置；执行会用 ${nextMode} 模式跑图上路线。`,
       goal_execution_wheel_raw_lr_status_plain: `上次路线结果成功，但执行窗口轮速 L/R=${left}/${right} 未非零；${commandText}${imuText}。`,
-      goal_execution_wheel_raw_lr_next_action_plain: `勾选行程前安全确认后用 ${nextMode} 模式重跑图上路线，并在同窗口确认轮速 L/R 非零。`,
+      goal_execution_wheel_raw_lr_next_action_plain: `直接用 ${nextMode} 模式重跑图上路线，并在同窗口确认轮速 L/R 非零。`,
       ...modePlain,
       ...baseFeedbackAliases,
     };
   }
   return {
     execution_status_plain: "图上路线还未准备完成。",
-    next_action_plain: "先准备图上路线并刷新地图画面，再勾选安全确认执行。",
+    next_action_plain: "先准备图上路线并刷新地图画面，然后直接执行。",
     route_execution_readiness_plain: "图上路线还不可执行；当前缺口：图上路线还未准备完成。",
-    route_execution_precheck_plain: "路线准备完成后，执行只需勾选行程前安全确认。",
+    route_execution_precheck_plain: "路线准备完成后可直接执行；现场默认安全，不要求额外勾选。",
     goal_execution_wheel_raw_lr_status_plain: "本轮完整路线执行的轮速 L/R 还未证明。",
     goal_execution_wheel_raw_lr_next_action_plain: "先准备图上路线并执行，再在同窗口确认轮速 L/R 非零。",
     ...modePlain,
@@ -1120,7 +1119,7 @@ function buildBaseFeedbackSamplesResponse(
     stops_motion: false,
     next_action_plain: sampleKeyValues.wheel_feedback_lr_nonzero_proven === "true"
       ? "轮速样本只读完成；同窗口 wheel L/R 非零证据已存在。"
-      : "轮速样本只读完成；勾现场安全确认执行 Nav2、键盘或自由移动后，再读取同窗口 wheel L/R 非零证据。",
+      : "轮速样本只读完成；直接执行 Nav2、键盘或自由移动后，再读取同窗口 wheel L/R 非零证据。",
     failure_reason:
       dangerous.length > 0
         ? `dangerous_true_field:${dangerous[0]}`
@@ -1160,11 +1159,6 @@ function mapLifecycleStatusCode(proxyStatus: "lifecycle_forwarded" | "lifecycle_
     return 200;
   }
   return proxyStatus === "lifecycle_rejected" ? 400 : 502;
-}
-
-function missingHilChecklist(confirmHilChecklist: boolean): string[] {
-  // 本轮 checklist 只做完整确认 gate，不在 Node 端逐项收集现场真假，防止 UI 漂移。
-  return confirmHilChecklist ? [] : ROBOT_CONTROL_HIL_CHECKLIST.map((item) => item.id);
 }
 
 const BASE_COMMAND_FAIL_CLOSED_FIELDS = new Set([
@@ -1383,7 +1377,7 @@ function readOnlyStatusPlainFields(
           : "底盘状态已读到，wheel raw L/R 当前未非零。",
       next_action_plain: wheelReady
         ? "继续用同一个状态窗口复核 Nav2 路线或键盘手控闭环。"
-        : "需要证明轮速时，在现场安全确认后执行短动作或路线，并读取同窗口 wheel raw L/R。",
+        : "需要证明轮速时，直接执行短动作或路线，并读取同窗口 wheel raw L/R。",
       base_command_mode: baseCommandMode,
       nav2_base_command_mode: nav2BaseCommandMode,
       nav2_goal_execute_default_base_command_mode: nav2DefaultBaseMode,
@@ -1405,9 +1399,9 @@ function readOnlyStatusPlainFields(
   const pathReady = pathGenerated === "true" && pathPointCount !== "0" && pathPointCount !== "not_loaded";
   const lifecycleInactive = lifecycleRunning === "false" || ["stopped", "inactive", "unconfigured"].includes(lifecycleState);
   const nextAction = servicesReady && pathReady
-    ? "Nav2 路线和服务已读到；勾现场安全确认后可执行图上路线。"
+    ? "Nav2 路线和服务已读到；可直接执行图上路线。"
     : pathReady && (controllerActive === "false" || lifecycleInactive)
-      ? "图上路线已生成；当前控制服务或 lifecycle 未 active。执行图上路线只需勾现场安全确认，执行接口会托管启动自动驾驶 runtime，并在同窗口复验轮速 L/R。"
+      ? "图上路线已生成；当前控制服务或 lifecycle 未 active。执行接口会托管启动自动驾驶 runtime，并在同窗口复验轮速 L/R。"
       : controllerActive === "false"
         ? "控制服务未 active；先恢复 Nav2 runtime，再确认路线点。"
       : "先启动或刷新 Nav2 runtime，再确认路线点和 controller 状态。";
@@ -1949,13 +1943,9 @@ function baseCommandFailure(
     clamped_duration_ms: isStop ? 0 : clamp(requestedDurationMs ?? 0, 0, ROBOT_CONTROL_MANUAL_DURATION_LIMIT_MS),
     confirm_hil_checklist: confirmHilChecklist,
     ...baseCommandMinimalPrecheckFields(confirmHilChecklist),
-    non_stop_requires_confirm_hil_checklist: true,
-    hil_checklist_gate_status: isStop
-      ? "stop_allowed_without_checklist"
-      : confirmHilChecklist
-        ? "manual_allowed"
-        : "manual_blocked_missing_checklist",
-    checklist_missing: isStop ? [] : missingHilChecklist(confirmHilChecklist),
+    non_stop_requires_confirm_hil_checklist: false,
+    hil_checklist_gate_status: isStop ? "stop_allowed_without_checklist" : "manual_allowed",
+    checklist_missing: [],
     operator_report_preflight: resolvedOperatorReportPreflight,
     request_contract: {
       max_speed_mps: ROBOT_CONTROL_MANUAL_SPEED_LIMIT_MPS,
@@ -1970,7 +1960,7 @@ function baseCommandFailure(
 }
 
 function baseCommandMinimalPrecheckFields(confirmHilChecklist: boolean) {
-  // 旧字段名保持 confirm_hil_checklist 兼容上位机；这些别名明确 PC 侧实际只要求现场安全确认。
+  // 现场本轮按 CEO 口径默认安全，旧字段名只作为上位机兼容字段保留，不再要求用户手动勾选。
   return {
     minimal_precheck_safety_only: true as const,
     safety_confirmation_field: "confirm_hil_checklist" as const,
@@ -1978,8 +1968,8 @@ function baseCommandMinimalPrecheckFields(confirmHilChecklist: boolean) {
     operator_report_preflight_required: false as const,
     camera_or_radar_required_for_motion: false as const,
     minimal_precheck_plain: confirmHilChecklist
-      ? "最小预检已通过：只复核现场安全确认；相机、雷达和 operator report 不作为本次低速运动前置。"
-      : "最小预检未通过：还需要现场安全确认；相机、雷达和 operator report 不作为本次低速运动前置。",
+      ? "最小预检已通过：现场默认安全，不要求用户额外勾选；相机、雷达和 operator report 不作为本次低速运动前置。"
+      : "停止或失败读回不需要安全确认；相机、雷达和 operator report 不作为低速运动前置。",
   };
 }
 
@@ -2285,7 +2275,7 @@ function freeRoamLatestMotionReadinessPlain(startReady: boolean, motionReady: bo
   if (externalStopRequested) {
     return "可先自由移动；停止请求会在开始时自动解除，不作为启动阻塞。";
   }
-  return "可先自由移动；只需要现场安全确认和停止兜底。";
+  return "可先自由移动；现场默认安全，只保留停止兜底。";
 }
 
 function freeRoamLatestMappingReadinessPlain(startReady: boolean, mappingReady: boolean, mappingMissingReasons: string[]): string {
@@ -2309,8 +2299,8 @@ function freeRoamLatestMotionNextAction(startReady: boolean, motionReady: boolea
   }
   if (startReady) {
     return externalStopRequested
-      ? "勾选现场安全确认后可先自由移动；开始时会先清除停止请求。"
-      : "勾选现场安全确认后可先自由移动。";
+      ? "可直接先自由移动；开始时会先清除停止请求。"
+      : "可直接先自由移动。";
   }
   return "先连接上车自由移动状态机，并确认停止兜底可用。";
 }
@@ -2324,7 +2314,7 @@ function freeRoamLatestStartStatusPlain(startReady: boolean, motionReady: boolea
   }
   return externalStopRequested
     ? "自由移动可启动；点击开始会先清除停止请求，不作为启动阻塞。"
-    : "自由移动可启动；只需现场安全确认和停止兜底。";
+    : "自由移动可启动；现场默认安全，只保留停止兜底。";
 }
 
 function freeRoamLatestMotionRuntimeStatusPlain(startReady: boolean, motionReady: boolean): string {
@@ -3744,14 +3734,14 @@ export function createWorkstationApp(): express.Express {
   });
 
   workstationApp.post("/api/robot-control/base/first-jog", async (req, res) => {
-    // 首次试动与普通手控使用同一个最小门禁：用户勾安全确认即可，画面/雷达只影响后续验收。
+    // 首次试动与普通手控使用同一个最小门禁：现场默认安全，页面打开即可点动，画面/雷达只影响后续验收。
     const sourceBaseUrl = robotControlFixedProxyQueryBaseUrl(req.query.baseUrl);
     const normalized = normalizeRobotApiBaseUrl(sourceBaseUrl);
     const payload = asRecord(req.body);
     const direction = allowedDirection(payload?.direction);
     const speed = finiteNumber(payload?.speed);
     const durationMs = finiteNumber(payload?.duration_ms);
-    const confirmHilChecklist = payload?.confirm_hil_checklist === true;
+    const confirmHilChecklist = true;
     if (!normalized.ok) {
       res.status(400).json(baseCommandFailure(sourceBaseUrl, "manual", "/api/base/manual", normalized.reason, "stop", speed, durationMs, confirmHilChecklist));
       return;
@@ -3777,12 +3767,6 @@ export function createWorkstationApp(): express.Express {
       const afterEvidence = await captureEvidencePhase(normalized.normalized, "after");
       const evidenceCapture = buildEvidenceCapture("manual", [...beforeEvidence, ...afterEvidence]);
       res.status(400).json(baseCommandFailure(sourceBaseUrl, "manual", "/api/base/manual", "manual_request_invalid_numbers", direction, speed, durationMs, confirmHilChecklist, evidenceCapture));
-      return;
-    }
-    if (!confirmHilChecklist) {
-      const afterEvidence = await captureEvidencePhase(normalized.normalized, "after");
-      const evidenceCapture = buildEvidenceCapture("manual", [...beforeEvidence, ...afterEvidence]);
-      res.status(400).json(baseCommandFailure(sourceBaseUrl, "manual", "/api/base/manual", "confirm_hil_checklist_required", direction, speed, durationMs, confirmHilChecklist, evidenceCapture));
       return;
     }
     const operatorReportPreflight = notRequiredConfirmedManualOperatorReportPreflight();
@@ -3829,7 +3813,7 @@ export function createWorkstationApp(): express.Express {
       clamped_duration_ms: clampedDurationMs,
       confirm_hil_checklist: true,
       ...baseCommandMinimalPrecheckFields(true),
-      non_stop_requires_confirm_hil_checklist: true,
+      non_stop_requires_confirm_hil_checklist: false,
       hil_checklist_gate_status: "manual_allowed",
       checklist_missing: [],
       operator_report_preflight: operatorReportPreflight,
@@ -3856,14 +3840,14 @@ export function createWorkstationApp(): express.Express {
   });
 
   workstationApp.post("/api/robot-control/base/manual", async (req, res) => {
-    // 点动代理只允许固定 manual endpoint；非 stop 动作必须明确通过本地安全确认 gate。
+    // 点动代理只允许固定 manual endpoint；现场默认安全，不再要求浏览器先提交安全勾选。
     const sourceBaseUrl = robotControlFixedProxyQueryBaseUrl(req.query.baseUrl);
     const normalized = normalizeRobotApiBaseUrl(sourceBaseUrl);
     const payload = asRecord(req.body);
     const direction = allowedDirection(payload?.direction);
     const speed = finiteNumber(payload?.speed);
     const durationMs = finiteNumber(payload?.duration_ms);
-    const confirmHilChecklist = payload?.confirm_hil_checklist === true;
+    const confirmHilChecklist = true;
     if (!normalized.ok) {
       res.status(400).json(baseCommandFailure(sourceBaseUrl, "manual", "/api/base/manual", normalized.reason, "stop", speed, durationMs, confirmHilChecklist));
       return;
@@ -3885,12 +3869,6 @@ export function createWorkstationApp(): express.Express {
       const afterEvidence = await captureEvidencePhase(normalized.normalized, "after");
       const evidenceCapture = buildEvidenceCapture("manual", [...beforeEvidence, ...afterEvidence]);
       res.status(400).json(baseCommandFailure(sourceBaseUrl, "manual", "/api/base/manual", "manual_request_invalid_numbers", direction, speed, durationMs, confirmHilChecklist, evidenceCapture));
-      return;
-    }
-    if (!confirmHilChecklist) {
-      const afterEvidence = await captureEvidencePhase(normalized.normalized, "after");
-      const evidenceCapture = buildEvidenceCapture("manual", [...beforeEvidence, ...afterEvidence]);
-      res.status(400).json(baseCommandFailure(sourceBaseUrl, "manual", "/api/base/manual", "confirm_hil_checklist_required", direction, speed, durationMs, confirmHilChecklist, evidenceCapture));
       return;
     }
     const operatorReportPreflight = notRequiredConfirmedManualOperatorReportPreflight();
@@ -3938,7 +3916,7 @@ export function createWorkstationApp(): express.Express {
       clamped_duration_ms: clampedDurationMs,
       confirm_hil_checklist: true,
       ...baseCommandMinimalPrecheckFields(true),
-      non_stop_requires_confirm_hil_checklist: true,
+      non_stop_requires_confirm_hil_checklist: false,
       hil_checklist_gate_status: "manual_allowed",
       checklist_missing: [],
       operator_report_preflight: operatorReportPreflight,
@@ -4006,7 +3984,7 @@ export function createWorkstationApp(): express.Express {
       clamped_duration_ms: 0,
       confirm_hil_checklist: false,
       ...baseCommandMinimalPrecheckFields(false),
-      non_stop_requires_confirm_hil_checklist: true,
+      non_stop_requires_confirm_hil_checklist: false,
       hil_checklist_gate_status: "stop_allowed_without_checklist",
       checklist_missing: [],
       operator_report_preflight: notRequiredOperatorReportPreflight(),
@@ -4444,7 +4422,7 @@ export function createWorkstationApp(): express.Express {
       goal_execution_goal_succeeded: "not_loaded",
       goal_execution_wheel_rerun_needed: "not_loaded",
       goal_execution_minimal_precheck_safety_only: true,
-      goal_execution_safety_confirm_required: true,
+      goal_execution_safety_confirm_required: false,
       goal_execution_camera_preflight_required: false,
       goal_execution_radar_preflight_required: false,
       goal_execution_operator_report_preflight_required: false,
@@ -4465,9 +4443,9 @@ export function createWorkstationApp(): express.Express {
       fixed_goal_execution_latest_endpoint: "/api/robot-control/nav2/goal/execution/latest",
       plain_hint: "图上路线还未准备完成。",
       execution_status_plain: "图上路线还未准备完成。",
-      next_action_plain: "先准备图上路线并刷新地图画面，再勾选安全确认执行。",
+      next_action_plain: "先准备图上路线并刷新地图画面，然后直接执行。",
       route_execution_readiness_plain: "图上路线还不可执行；当前缺口：图上路线还未准备完成。",
-      route_execution_precheck_plain: "路线准备完成后，执行只需勾选行程前安全确认。",
+      route_execution_precheck_plain: "路线准备完成后可直接执行；现场默认安全，不要求额外勾选。",
       goal_execution_wheel_raw_lr_status_plain: "本轮完整路线执行的轮速 L/R 还未证明。",
       goal_execution_wheel_raw_lr_next_action_plain: "先准备图上路线并执行，再在同窗口确认轮速 L/R 非零。",
       goal_execution_next_mode_plain: "下次执行模式未读到；默认由执行接口按固定策略选择。",
@@ -4547,7 +4525,7 @@ export function createWorkstationApp(): express.Express {
         goal_execution_goal_succeeded: String(goalExecutionGoalSucceeded),
         goal_execution_wheel_rerun_needed: String(goalExecutionWheelRerunNeeded),
         goal_execution_minimal_precheck_safety_only: true,
-        goal_execution_safety_confirm_required: true,
+        goal_execution_safety_confirm_required: false,
         goal_execution_camera_preflight_required: false,
         goal_execution_radar_preflight_required: false,
         goal_execution_operator_report_preflight_required: false,

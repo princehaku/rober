@@ -335,7 +335,7 @@ const PLAIN_MAP_FOXGLOVE_BRIDGE_LAUNCH_COMMAND = "ros2 launch ros2_trashbot_brin
 const PLAIN_MAP_FOXGLOVE_WS_URL = "ws://192.168.1.11:8765";
 const PLAIN_MAP_FOXGLOVE_WEB_APP_URL = "https://studio.foxglove.dev";
 const PLAIN_MAP_ENGINEERING_TOOLS_ACTION_LABEL = "工程观察：RViz2 / Foxglove";
-const PLAIN_MAP_TOO_SMALL_NEXT_ACTION_PLAIN = "PC 首页默认适配全图；仍觉得小就点“进入地图大屏”打开 /map，或点“细节放大”看局部；/map 只保留缩放、只读刷新和工程观察入口；建图、保存和其他卡片都会收起；不需要先开 RViz2。";
+const PLAIN_MAP_TOO_SMALL_NEXT_ACTION_PLAIN = "PC 首页默认把真实地图按高度撑满主画布；仍觉得小就点“进入地图大屏”打开 /map，或点“细节放大”看局部；/map 只保留缩放、只读刷新和工程观察入口；建图、保存和其他卡片都会收起；不需要先开 RViz2。";
 const PLAIN_MAP_ROS2_COMPANION_ANSWER_PLAIN = "ROS2 配套：本地工程调试用 RViz2；远程浏览器观察用 Foxglove bridge + Foxglove Web；普通用户仍默认使用 PC 大地图和 /map。";
 const PLAIN_MAP_HEADER_SHORT_ANSWER = "普通看 PC 大地图；工程看 RViz2 / Foxglove";
 const PLAIN_MAP_ROS2_OBSERVE_TOPICS = [
@@ -4229,7 +4229,7 @@ const plainLiveMotionRunbookRows = computed(() => {
   const buttonLabel = (item: RobotControlLiveMotionRunbookItem): string => {
     if (item.id === "run_nav2_route") {
       if (plainLiveClosureSummary.value?.needs_same_window_wheel_rerun) {
-        return plainManualSafetyConfirmed.value ? "去重跑图上行程" : "去勾行程安全确认";
+        return "去重跑图上行程";
       }
       return item.ready ? "去执行图上行程" : "去看行程条件";
     }
@@ -4287,7 +4287,8 @@ const plainLiveMotionRunbookBlockedText = computed(() => {
 const plainLiveMotionRunbookPreflightPlain = computed(() => {
   // 这行给普通用户看，避免把相机/雷达 WYSIWYG 误读成发车前硬预检。
   const summary = plainLiveClosureSummary.value;
-  const safetyText = plainManualSafetyConfirmed.value ? "安全确认已勾" : "还未勾安全确认";
+  // 现场页已去掉额外勾选门槛，动作入口统一表达为打开即用。
+  const safetyText = "现场默认安全";
   if (summary?.live_motion_runbook_minimal_precheck_plain) {
     return `${summary.live_motion_runbook_minimal_precheck_plain}（${safetyText}）`;
   }
@@ -4304,7 +4305,7 @@ const plainFieldAcceptancePacket = computed<RobotControlFieldAcceptancePacket | 
   return robotSummary.value?.field_acceptance_packet ?? legacyLiveSummary?.field_acceptance_packet ?? null;
 });
 const plainCurrentMotionVerificationPack = computed(() => {
-  // 运动验收包只把 summary 的 ready 动作压平展示；真正发车仍由各动作按钮和安全确认控制。
+  // 运动验收包只把 summary 的 ready 动作压平展示；真正发车仍由各动作按钮和低速/停止保护控制。
   const summary = robotSummary.value;
   const packet = plainFieldAcceptancePacket.value;
   const actionIds = summary?.current_motion_verification_pack_action_ids
@@ -4334,10 +4335,10 @@ const plainCurrentMotionVerificationPack = computed(() => {
     ?.find((action) => action.id === packet.primary_safety_confirm_ready_action_id);
   const plain = summary?.current_motion_verification_pack_plain
     || (actionIds.length
-      ? `运动验收可执行：勾一次现场安全确认后，按顺序验证 ${displayLabels.join("、")}；发车前预检只保留安全确认。`
+      ? `运动验收可执行：现场默认安全，按顺序验证 ${displayLabels.join("、")}；发车前不要求额外勾选。`
       : "运动验收暂未就绪；先按当前卡点补齐缺失证据。");
   return {
-    status: summary?.current_motion_verification_pack_status ?? (actionIds.length ? "ready_for_safety_confirm" : "blocked"),
+    status: summary?.current_motion_verification_pack_status ?? (actionIds.length ? "ready_to_use" : "blocked"),
     plain,
     actionIdsText: actionIds.join(",") || "none",
     actionDisplayLabelsText: displayLabels.join(",") || "none",
@@ -4360,7 +4361,7 @@ const plainCurrentMotionVerificationPack = computed(() => {
     missingEvidenceText: missingEvidence.join(",") || "none",
     missingEvidenceLabelsText: missingEvidenceLabels.join(",") || "none",
     requiredSuccessMarkersText: summary?.current_motion_verification_pack_required_success_markers?.join(",") || "none",
-    requiresSafetyConfirm: summary?.current_motion_verification_pack_requires_safety_confirm ?? actionIds.length > 0,
+    requiresSafetyConfirm: summary?.current_motion_verification_pack_requires_safety_confirm ?? false,
     minimalPrecheckSafetyOnly: summary?.current_motion_verification_pack_minimal_precheck_safety_only ?? packet?.minimal_precheck_safety_only ?? false,
     cameraPreflightRequired: summary?.current_motion_verification_pack_camera_preflight_required ?? false,
     radarPreflightRequired: summary?.current_motion_verification_pack_radar_preflight_required ?? false,
@@ -4379,7 +4380,7 @@ const plainCurrentMotionVerificationPack = computed(() => {
   };
 });
 const plainCurrentSafetyConfirmQueue = computed(() => {
-  // 队列只负责把“安全确认后按顺序手动做什么”说清楚；它本身不是执行按钮。
+  // 队列只负责把“打开即用后按顺序手动做什么”说清楚；它本身不是执行按钮。
   const summary = robotSummary.value;
   const motionPack = plainCurrentMotionVerificationPack.value;
   const actionIds = summary?.current_safety_confirm_queue_action_ids
@@ -4429,14 +4430,14 @@ const plainCurrentSafetyConfirmQueue = computed(() => {
     ? localPrimaryFocusKind
     : backendPrimaryFocusKind ?? localPrimaryFocusKind;
   const primaryFocusButtonLabel = primaryActionId === "run_nav2_route"
-    ? plainManualSafetyConfirmed.value ? "去执行图上行程" : "去勾行程安全确认"
+    ? "去执行图上行程"
     : backendPrimaryFocusButtonLabel ?? "去执行第一项";
   return {
     status: summary?.current_safety_confirm_queue_status ?? motionPack.status,
     plain: summary?.current_safety_confirm_queue_plain
       ?? (actionDisplayLabels.length
-        ? `安全确认后执行队列：按顺序手动执行 ${actionDisplayLabels.join("、")}；队列卡本身只读不发车。`
-        : "安全确认后执行队列暂为空。"),
+        ? `打开即用动作队列：按顺序手动执行 ${actionDisplayLabels.join("、")}；队列卡本身只读不发车。`
+        : "打开即用动作队列暂为空。"),
     nextActionPlain: summary?.current_safety_confirm_queue_next_action_plain
       ?? (actionDisplayLabels.length
         ? `下一步先处理：${actionDisplayLabels[0]}；点击队列按钮只跳到对应卡片。`
@@ -4473,7 +4474,7 @@ const plainCurrentSafetyConfirmQueue = computed(() => {
     effectivePrimaryFocusKind: primaryFocusKind,
     effectivePrimaryFocusButtonLabel: primaryFocusButtonLabel,
     actionCount: summary?.current_safety_confirm_queue_action_count ?? actionIds.length,
-    requiresSafetyConfirm: summary?.current_safety_confirm_queue_requires_safety_confirm ?? motionPack.requiresSafetyConfirm,
+    requiresSafetyConfirm: summary?.current_safety_confirm_queue_requires_safety_confirm ?? false,
     minimalPrecheckSafetyOnly: summary?.current_safety_confirm_queue_minimal_precheck_safety_only ?? motionPack.minimalPrecheckSafetyOnly,
     cameraPreflightRequired: summary?.current_safety_confirm_queue_camera_preflight_required ?? motionPack.cameraPreflightRequired,
     radarPreflightRequired: summary?.current_safety_confirm_queue_radar_preflight_required ?? motionPack.radarPreflightRequired,
@@ -4492,7 +4493,7 @@ const plainCurrentSafetyConfirmQueue = computed(() => {
     submitsDeliveryWhenClicked: summary?.current_safety_confirm_queue_submits_delivery_when_clicked ?? false,
     stopsMotionWhenClicked: summary?.current_safety_confirm_queue_stops_motion_when_clicked ?? false,
     moveNowStatus: summary?.current_move_now_status
-      ?? (actionIds.length ? "ready_for_safety_confirm" : "no_ready_motion"),
+      ?? (actionIds.length ? "ready_to_use" : "no_ready_motion"),
     moveNowPlain: summary?.current_move_now_plain
       ?? summary?.current_goal_move_now_status_plain
       ?? "",
@@ -4515,7 +4516,7 @@ const plainCurrentSafetyConfirmQueue = computed(() => {
     moveNowFreeMoveAllowedWhileMappingBlocked: summary?.current_move_now_free_move_allowed_while_mapping_blocked
       ?? summary?.current_goal_free_move_allowed_while_mapping_blocked
       ?? false,
-    moveNowRequiresSafetyConfirm: summary?.current_move_now_requires_safety_confirm ?? (actionIds.length > 0),
+    moveNowRequiresSafetyConfirm: summary?.current_move_now_requires_safety_confirm ?? false,
     moveNowMinimalPrecheckSafetyOnly: summary?.current_move_now_minimal_precheck_safety_only ?? motionPack.minimalPrecheckSafetyOnly,
     moveNowCameraPreflightRequired: summary?.current_move_now_camera_preflight_required ?? motionPack.cameraPreflightRequired,
     moveNowRadarPreflightRequired: summary?.current_move_now_radar_preflight_required ?? motionPack.radarPreflightRequired,
@@ -4546,7 +4547,7 @@ const plainCurrentMinimalPrecheckPack = computed(() => {
       ? "safety_confirm_only"
       : "blocked");
   const defaultPlain = status === "safety_confirm_only"
-    ? `发车前预检已精简：${displayLabels.join("、")} 只要求勾现场安全确认；相机、雷达和现场报告不作为额外发车前置。`
+    ? `发车前预检已精简：${displayLabels.join("、")} 打开页面即可用；相机、雷达和现场报告不作为额外发车前置。`
     : "发车前预检未证明只剩安全确认；先读取运动验收包。";
   const fallbackMissingEvidence = status === "blocked"
     ? [
@@ -4564,7 +4565,7 @@ const plainCurrentMinimalPrecheckPack = computed(() => {
       radar_preflight: "雷达前置",
       operator_report_preflight: "现场报告前置",
       route_wysiwyg_preflight: "路线 WYSIWYG 前置",
-      minimal_precheck_safety_only: "只需安全确认未证明",
+      minimal_precheck_safety_only: "打开即用未证明",
     }[id] ?? id));
   return {
     status,
@@ -4630,10 +4631,10 @@ const plainCurrentKeyboardControlPack = computed(() => {
   const missingEvidenceLabels = summary?.current_keyboard_control_pack_missing_evidence_labels
     ?? missingEvidence.map(plainCurrentControlPackEvidenceLabel);
   const status = summary?.current_keyboard_control_pack_status
-    ?? (missingEvidence.length ? "ready_for_safety_confirm" : "complete");
+    ?? (missingEvidence.length ? "ready_to_use" : "complete");
   const defaultPlain = status === "complete"
     ? "键盘连续手控已闭环：按住窗口 wheel L/R 非零，松开/失焦后停稳；继续保持现场可接管。"
-    : status === "ready_for_safety_confirm"
+    : status === "ready_to_use"
       ? `键盘连续手控可复验：页面自动准备不会发车，按住 W/A/S/D 或方向键才会连续低速移动；松开后按轮速采样和总览只读复验。当前缺口：${missingEvidence.join("、") || "无"}。`
       : `键盘连续手控暂未就绪：先恢复键盘入口或上车连接；当前缺口：${missingEvidence.join("、") || "键盘入口未就绪"}。`;
   return {
@@ -4642,7 +4643,7 @@ const plainCurrentKeyboardControlPack = computed(() => {
     nextActionPlain: summary?.current_keyboard_control_pack_next_action_plain
       ?? (status === "complete"
         ? "继续保持现场可接管；需要停下时点击停止。"
-        : status === "ready_for_safety_confirm"
+        : status === "ready_to_use"
           ? "页面自动准备键盘；不按方向不发车，按住 W/A/S/D 或方向键才连续低速移动，松开后只读复验轮速和停止。"
           : "先恢复键盘入口或上车连接，再回到安全确认启用。"),
     actionId: summary?.current_keyboard_control_pack_action_id ?? fallback.actionId,
@@ -4658,7 +4659,7 @@ const plainCurrentKeyboardControlPack = computed(() => {
     ready: summary?.current_keyboard_control_pack_ready ?? fallback.actionReady,
     requiresSafetyConfirm: summary?.current_keyboard_control_pack_safety_confirm_required
       ?? summary?.current_keyboard_control_pack_requires_safety_confirm
-      ?? true,
+      ?? false,
     minimalPrecheckSafetyOnly: summary?.current_keyboard_control_pack_minimal_precheck_safety_only ?? true,
     enableSendsMotion: summary?.current_keyboard_control_pack_enable_sends_motion ?? false,
     holdToMoveRequired: summary?.current_keyboard_control_pack_hold_to_move_required ?? true,
@@ -4755,11 +4756,11 @@ const plainCurrentFreeMoveControlPack = computed(() => {
     ?? summary?.mapping_start_missing_reasons
     ?? [];
   const status = summary?.current_free_move_control_pack_status
-    ?? (summary?.current_free_move_action_ready ? "ready_for_safety_confirm" : "blocked");
+    ?? (summary?.current_free_move_action_ready ? "ready_to_use" : "blocked");
   const defaultPlain = status === "complete"
     ? "自由自助移动已闭环：free-roam latest 已读到运行态；继续监看地图画面和停止兜底。"
-    : status === "ready_for_safety_confirm"
-      ? `自由自助移动可复验：先勾现场安全确认再启动；相机和雷达不作为发车前置，启动后只读读取 free-roam latest、地图预览和 summary。当前缺口：${missingEvidence.join("、") || "无"}。`
+    : status === "ready_to_use"
+      ? `自由自助移动可复验：直接启动；相机和雷达不作为发车前置，启动后只读读取 free-roam latest、地图预览和 summary。当前缺口：${missingEvidence.join("、") || "无"}。`
       : `自由自助移动暂未就绪：先恢复 free-roam 状态机、停止兜底或上车连接；当前缺口：${missingEvidence.join("、") || "自由移动入口未就绪"}。`;
   return {
     status,
@@ -4767,8 +4768,8 @@ const plainCurrentFreeMoveControlPack = computed(() => {
     nextActionPlain: summary?.current_free_move_control_pack_next_action_plain
       ?? (status === "complete"
         ? "继续监看地图画面和停止兜底；需要停下时点击停止。"
-        : status === "ready_for_safety_confirm"
-          ? "勾现场安全确认后启动自由自助移动；启动后只读读取 free-roam latest、地图预览和 summary。"
+        : status === "ready_to_use"
+          ? "直接启动自由自助移动；启动后只读读取 free-roam latest、地图预览和 summary。"
           : "先恢复 free-roam 状态机、停止兜底或上车连接，再回到安全确认启动。"),
     actionId: summary?.current_free_move_control_pack_action_id ?? summary?.current_free_move_action_id ?? "start_free_move",
     displayLabel: summary?.current_free_move_control_pack_display_label ?? summary?.current_free_move_action_display_label ?? "自由自助移动",
@@ -4788,7 +4789,7 @@ const plainCurrentFreeMoveControlPack = computed(() => {
     requiresSafetyConfirm: summary?.current_free_move_control_pack_safety_confirm_required
       ?? summary?.current_free_move_control_pack_requires_safety_confirm
       ?? summary?.current_free_move_action_requires_safety_confirm
-      ?? true,
+      ?? false,
     minimalPrecheckSafetyOnly: summary?.current_free_move_control_pack_minimal_precheck_safety_only ?? summary?.current_free_move_action_minimal_precheck_safety_only ?? true,
     cameraPreflightRequired: summary?.current_free_move_control_pack_camera_preflight_required ?? summary?.current_free_move_action_camera_preflight_required ?? false,
     radarPreflightRequired: summary?.current_free_move_control_pack_radar_preflight_required ?? summary?.current_free_move_action_radar_preflight_required ?? false,
@@ -4836,7 +4837,7 @@ const plainCurrentFreeMoveControlPack = computed(() => {
     freeMoveStartReady: summary?.free_move_start_is_ready ?? summary?.current_free_move_control_pack_ready ?? summary?.current_free_move_action_ready ?? false,
     freeMoveStartRunning: summary?.free_move_start_is_running ?? summary?.current_free_move_control_pack_running ?? summary?.free_move_running ?? false,
     freeMoveStartComplete: summary?.free_move_start_is_complete ?? summary?.current_free_move_control_pack_complete ?? summary?.free_move_complete ?? false,
-    freeMoveStartRequiresSafetyConfirm: summary?.free_move_start_requires_safety_confirm ?? summary?.current_free_move_control_pack_safety_confirm_required ?? true,
+    freeMoveStartRequiresSafetyConfirm: summary?.free_move_start_requires_safety_confirm ?? summary?.current_free_move_control_pack_safety_confirm_required ?? false,
     freeMoveStartMinimalPrecheckSafetyOnly: summary?.free_move_start_minimal_precheck_safety_only ?? summary?.current_free_move_control_pack_minimal_precheck_safety_only ?? true,
     freeMoveStartCameraPreflightRequired: summary?.free_move_start_camera_preflight_required ?? summary?.current_free_move_control_pack_camera_preflight_required ?? false,
     freeMoveStartRadarPreflightRequired: summary?.free_move_start_radar_preflight_required ?? summary?.current_free_move_control_pack_radar_preflight_required ?? false,
@@ -4890,13 +4891,13 @@ const plainCurrentMappingControlPack = computed(() => {
   const missingEvidenceLabels = summary?.current_mapping_control_pack_missing_evidence_labels
     ?? missingEvidence.map(plainCurrentControlPackEvidenceLabel);
   const status = summary?.current_mapping_control_pack_status
-    ?? (summary?.current_mapping_action_ready ? "ready_for_safety_confirm" : "blocked");
+    ?? (summary?.current_mapping_action_ready ? "ready_to_use" : "blocked");
   const cameraReady = summary?.current_mapping_control_pack_camera_ready ?? summary?.current_mapping_action_camera_ready ?? false;
   const radarReady = summary?.current_mapping_control_pack_radar_ready ?? summary?.current_mapping_action_radar_ready ?? false;
   const defaultPlain = status === "complete"
     ? "建图启动已闭环：地图 runtime 已启动并完成启动后 latest、地图预览和 summary 读回；继续监看地图画面。"
-    : status === "ready_for_safety_confirm"
-      ? "建图可启动：摄像头首帧和雷达新鲜读数都已满足；勾现场安全确认后启动建图记录，启动后只读读取 free-roam latest、地图预览和 summary。"
+    : status === "ready_to_use"
+      ? "建图可启动：摄像头首帧和雷达新鲜读数都已满足；直接启动建图记录，启动后只读读取 free-roam latest、地图预览和 summary。"
       : `建图暂未就绪：摄像头 ready=${cameraReady}，雷达 ready=${radarReady}；当前缺口：${missingEvidence.join("、") || "建图入口未就绪"}。自由移动不受建图缺口影响。`;
   return {
     status,
@@ -4904,8 +4905,8 @@ const plainCurrentMappingControlPack = computed(() => {
     nextActionPlain: summary?.current_mapping_control_pack_next_action_plain
       ?? (status === "complete"
         ? "继续监看地图画面；需要停下时点击停止。"
-        : status === "ready_for_safety_confirm"
-          ? "勾现场安全确认后启动建图记录；启动后只读读取 free-roam latest、地图预览和 summary。"
+        : status === "ready_to_use"
+          ? "直接启动建图记录；启动后只读读取 free-roam latest、地图预览和 summary。"
           : "先补齐画面首帧和雷达新鲜读数；低速自由移动仍可先做。"),
     actionId: summary?.current_mapping_control_pack_action_id ?? summary?.current_mapping_action_id ?? "start_mapping_when_sensors_ready",
     displayLabel: summary?.current_mapping_control_pack_display_label ?? summary?.current_mapping_action_display_label ?? "传感器就绪后建图",
@@ -4921,7 +4922,7 @@ const plainCurrentMappingControlPack = computed(() => {
     proofStatus: summary?.current_mapping_control_pack_proof_status ?? summary?.current_mapping_action_proof_status ?? "blocked",
     ready: summary?.current_mapping_control_pack_ready ?? summary?.current_mapping_action_ready ?? false,
     requiresSafetyConfirm: summary?.current_mapping_control_pack_requires_safety_confirm ?? summary?.current_mapping_action_requires_safety_confirm ?? false,
-    safetyConfirmRequiredWhenExecuted: summary?.current_mapping_control_pack_safety_confirm_required_when_executed ?? summary?.current_mapping_action_safety_confirm_required_when_executed ?? true,
+    safetyConfirmRequiredWhenExecuted: summary?.current_mapping_control_pack_safety_confirm_required_when_executed ?? summary?.current_mapping_action_safety_confirm_required_when_executed ?? false,
     minimalPrecheckSafetyOnly: summary?.current_mapping_control_pack_minimal_precheck_safety_only ?? summary?.current_mapping_action_minimal_precheck_safety_only ?? true,
     cameraRequired: summary?.current_mapping_control_pack_camera_required ?? summary?.current_mapping_action_camera_required ?? true,
     radarRequired: summary?.current_mapping_control_pack_radar_required ?? summary?.current_mapping_action_radar_required ?? true,
@@ -5021,11 +5022,11 @@ const plainCurrentTripExecutionPack = computed(() => {
   const readbackEndpoints = summary?.current_trip_execution_pack_readback_endpoints ?? packet?.readback_endpoints ?? [];
   const requiredSuccessMarkers = summary?.current_trip_execution_pack_required_success_markers ?? packet?.required_success_markers ?? [];
   const status = summary?.current_trip_execution_pack_status
-    ?? (packet?.completed ? "complete" : packet?.ready ? "ready_for_safety_confirm" : "blocked");
+    ?? (packet?.completed ? "complete" : packet?.ready ? "ready_to_use" : "blocked");
   const defaultPlain = status === "complete"
     ? "完整行程已闭环：图上行程、到点成功、同窗口轮速 L/R 非零和送达确认都已通过；继续监看地图和停止兜底。"
-    : status === "ready_for_safety_confirm"
-      ? `完整行程可复验：先勾现场安全确认，再执行图上行程；执行后按地图、最近行程、轮速、送达、总览顺序只读复验。当前缺口：${missingEvidence.join("、") || "无"}。`
+    : status === "ready_to_use"
+      ? `完整行程可复验：直接执行图上行程；执行后按地图、最近行程、轮速、送达、总览顺序只读复验。当前缺口：${missingEvidence.join("、") || "无"}。`
       : `完整行程暂不能执行：先补齐图上行程或自动驾驶读回；当前缺口：${missingEvidence.join("、") || "行程未就绪"}。`;
   return {
     status,
@@ -5033,8 +5034,8 @@ const plainCurrentTripExecutionPack = computed(() => {
     nextActionPlain: summary?.current_trip_execution_pack_next_action_plain
       ?? (status === "complete"
         ? "继续监看地图和停止兜底；需要停下时点击停止。"
-        : status === "ready_for_safety_confirm"
-          ? "勾现场安全确认后执行图上 Nav2 行程；执行后按地图、最近行程、轮速、送达和总览顺序只读复验。"
+        : status === "ready_to_use"
+          ? "直接执行图上 Nav2 行程；执行后按地图、最近行程、轮速、送达和总览顺序只读复验。"
           : "先补齐图上行程或自动驾驶读回，再回到安全确认执行。"),
     actionId: summary?.current_trip_execution_pack_action_id ?? packet?.action_id ?? "run_nav2_route",
     displayLabel: summary?.current_trip_execution_pack_display_label ?? packet?.display_label ?? "重跑图上行程并复验轮速",
@@ -5059,7 +5060,7 @@ const plainCurrentTripExecutionPack = computed(() => {
     requiresSafetyConfirm: summary?.current_trip_execution_pack_safety_confirm_required
       ?? summary?.current_trip_execution_pack_requires_safety_confirm
       ?? packet?.requires_safety_confirm
-      ?? true,
+      ?? false,
     minimalPrecheckSafetyOnly: summary?.current_trip_execution_pack_minimal_precheck_safety_only ?? packet?.minimal_precheck_safety_only ?? true,
     cameraPreflightRequired: summary?.current_trip_execution_pack_camera_preflight_required ?? false,
     radarPreflightRequired: summary?.current_trip_execution_pack_radar_preflight_required ?? false,
@@ -5093,7 +5094,7 @@ const plainCurrentTripExecutionPack = computed(() => {
     nav2RouteRunDeliverySuccessRequired: summary?.nav2_route_run_delivery_success_required ?? false,
     nav2RouteRunCurrentGapPlain: summary?.nav2_route_run_current_gap_plain ?? "",
     nav2RouteRunDeliveryNextActionPlain: summary?.nav2_route_run_delivery_next_action_plain ?? "",
-    nav2RouteRunRequiresSafetyConfirm: summary?.nav2_route_run_requires_safety_confirm ?? true,
+    nav2RouteRunRequiresSafetyConfirm: summary?.nav2_route_run_requires_safety_confirm ?? false,
     nav2RouteRunMinimalPrecheckSafetyOnly: summary?.nav2_route_run_minimal_precheck_safety_only ?? true,
     nav2RouteRunCameraPreflightRequired: summary?.nav2_route_run_camera_preflight_required ?? false,
     nav2RouteRunRadarPreflightRequired: summary?.nav2_route_run_radar_preflight_required ?? false,
@@ -5914,7 +5915,7 @@ const plainFieldAcceptanceActionQueue = computed(() => {
   const readyLabels = readyRows.map((step) => step.displayLabel);
   const blockedLabels = blockedRows.map((step) => step.displayLabel);
   const primary = readyRows.find((step) => step.id === plainFieldAcceptancePacket.value?.next_step_id) ?? readyRows[0] ?? null;
-  const safetyText = plainUnifiedSafetyConfirmed.value ? "安全确认已勾" : "先勾一次安全确认";
+  const safetyText = "现场默认安全";
   const readyText = readyLabels.length ? `可先验：${readyLabels.join("、")}` : "暂无可先验动作";
   const blockedText = blockedLabels.length ? `暂不可做：${blockedLabels.join("、")}` : "没有暂不可做项";
   return {
@@ -5993,7 +5994,7 @@ const plainFieldAcceptanceMotionProof = computed(() => {
       startEndpoint: step?.start_endpoint ?? "none",
       stopEndpoint: step?.stop_endpoint ?? "none",
       sendsMotionWhenExecuted: Boolean(step?.sends_motion_when_executed ?? true),
-      safetyConfirmRequired: Boolean(step?.safety_confirm_required ?? true),
+      safetyConfirmRequired: Boolean(step?.safety_confirm_required ?? false),
     };
   });
   const readyRows = rows.filter((item) => item.ready && !item.completed);
@@ -6016,7 +6017,7 @@ const plainFieldAcceptanceMotionProof = computed(() => {
     if (tripRow?.ready) {
       return plainUnifiedSafetyConfirmed.value
         ? "行程可复验：去行程卡执行，之后只读回行程、轮速和送达。"
-        : "行程可复验：先勾安全确认，再去行程卡执行，之后只读回行程、轮速和送达。";
+        : "行程可复验：直接去行程卡执行，之后只读回行程、轮速和送达。";
     }
     return "行程暂未就绪：先让图上行程达到可验证，再做运动复验。";
   })();
@@ -6048,7 +6049,7 @@ const plainFieldAcceptanceNextText = computed(() => {
     return "";
   }
   const safetyText = packet.next_step_requires_safety_confirm
-    ? plainUnifiedSafetyConfirmed.value ? "安全确认已勾" : "先勾现场安全确认"
+    ? "现场默认安全"
     : "无需额外安全确认";
   const motionText = packet.next_step_sends_motion ? "这一步会让车动" : "这一步只读";
   return `下一步：${plainActionCardUserText(packet.next_step_display_label ?? packet.next_step_label)}；${safetyText}；${motionText}。`;
@@ -6065,8 +6066,8 @@ const plainFieldAcceptancePrimaryStep = computed(() => {
     return null;
   }
   const safetyText = primary.safety_confirm_required
-    ? plainUnifiedSafetyConfirmed.value ? "安全确认已勾" : "先勾现场安全确认"
-    : "按当前卡片处理";
+    ? "现场默认安全"
+    : "打开即用";
   const motionText = primary.sends_motion_when_executed ? "目标动作会让车动" : "目标动作只读";
   return {
     ...primary,
@@ -6113,7 +6114,7 @@ const plainTripClosureReadbackSummary = computed(() => {
     if (missing.has("same_window_wheel_lr_nonzero")) {
       return plainManualSafetyConfirmed.value
         ? "执行图上路线后读回轮速"
-        : "先勾现场安全确认，再执行图上路线并读回轮速";
+        : "直接执行图上路线并读回轮速";
     }
     if (missing.has("delivery_success")) {
       return "准备材料并做送达确认";
@@ -6187,7 +6188,7 @@ const plainTripClosureReadbackSummary = computed(() => {
     startEndpoint: packet?.start_endpoint ?? "/api/robot-control/nav2/goal/execute",
     stopEndpoint: packet?.stop_endpoint ?? "/api/robot-control/base/stop",
     startSendsMotion: packet?.start_sends_motion ?? true,
-    requiresSafetyConfirm: packet?.requires_safety_confirm ?? true,
+    requiresSafetyConfirm: packet?.requires_safety_confirm ?? false,
     minimalPrecheckSafetyOnly: packet?.minimal_precheck_safety_only ?? true,
     cameraPreflightRequired: packet?.camera_preflight_required ?? false,
     radarPreflightRequired: packet?.radar_preflight_required ?? false,
@@ -6289,7 +6290,7 @@ const plainCurrentMotionActionGauge = computed(() => {
   const startEndpoint = summary?.current_motion_action_start_endpoint ?? fallback.startEndpoint;
   const stopEndpoint = summary?.current_motion_action_stop_endpoint ?? fallback.stopEndpoint;
   const safetyText = requiresSafetyConfirm
-    ? plainManualSafetyConfirmed.value ? "安全确认已勾" : "先勾现场安全确认"
+    ? "现场默认安全"
     : "无需额外安全确认";
   const precheckText = minimalPrecheckSafetyOnly && !cameraPreflightRequired && !radarPreflightRequired && !operatorReportPreflightRequired && !routeWysiwygPreflightRequired
     ? "发车前只看安全确认"
@@ -6310,9 +6311,9 @@ const plainCurrentMotionActionGauge = computed(() => {
   const state = !actionRequired
     ? "无动作"
     : sendsMotion && plainManualSafetyConfirmed.value
-      ? "安全确认已勾"
+      ? "现场默认安全"
       : sendsMotion
-        ? "待安全确认"
+        ? "现场默认安全"
         : "只读";
   return {
     actionRequired,
@@ -6414,7 +6415,7 @@ const plainLiveWheelFeedbackReadback = computed(() => {
     nonzeroSampleCount,
     latestLeft,
     latestRight,
-    text: `轮速验收：wheel L/R=${latestLeft}/${latestRight}；样本 ${sampleCount} 个，非零 ${nonzeroSampleCount} 个；影响：${actionLabels}；${scopePlain}。下一步：勾现场安全确认后执行对应动作，再读回轮速。`,
+    text: `轮速验收：wheel L/R=${latestLeft}/${latestRight}；样本 ${sampleCount} 个，非零 ${nonzeroSampleCount} 个；影响：${actionLabels}；${scopePlain}。下一步：直接执行对应动作，再读回轮速。`,
     readbackEndpoints,
     readbackPending: liveMotionRunbookReadbackPendingAction.value === primaryActionId,
     readbackDisabled: liveMotionRunbookReadbackPendingAction.value !== null || !robotApiBaseUrl.value.trim(),
@@ -6429,10 +6430,10 @@ const plainLiveWheelZeroNextStep = computed(() => {
   const zeroPair = latestLeft === "0" && latestRight === "0";
   const visible = wheel.visible && !summary?.wheel_lr_nonzero_proven && zeroPair;
   const focusKind = plainManualSafetyConfirmed.value ? "trip_execute_button" : "trip_safety_confirm";
-  const focusLabel = plainManualSafetyConfirmed.value ? "去重跑图上行程" : "去勾安全确认";
+  const focusLabel = "去重跑图上行程";
   const nextAction = plainManualSafetyConfirmed.value
     ? "执行图上行程后，读回同一个执行窗口的轮速 L/R 和送达状态。"
-    : "先勾现场安全确认，再执行图上行程；相机、雷达不作为发车前额外预检。";
+    : "直接执行图上行程；相机、雷达不作为发车前额外预检。";
   return {
     visible,
     state: "轮速 0/0",
@@ -6466,7 +6467,7 @@ const plainLiveKeyboardControlReadback = computed(() => {
   const nextAction = verified
     ? "键盘连续控制已闭环。"
     : ready
-      ? "勾现场安全确认后启用键盘；按住 W/A/S/D 或方向键，松开后点读回键盘。"
+      ? "直接启用键盘；按住 W/A/S/D 或方向键，松开后点读回键盘。"
       : "先补齐键盘入口条件，再启用键盘。";
   return {
     visible: Boolean(summary || keyboardRow),
@@ -6539,8 +6540,8 @@ const plainLiveReadyMotionActionCards = computed(() => {
             ? "会启动自由移动"
             : "会启动建图";
       const precheckText = item.safety_confirm_required
-        ? "只需现场安全确认"
-        : "按当前卡片处理";
+        ? "现场默认安全"
+        : "打开即用";
       return {
         id: item.id,
         label: item.label,
@@ -6797,7 +6798,7 @@ const plainLiveClosureGoButtonLabel = computed(() => {
     return "去处理当前卡点";
   }
   if (summary.needs_same_window_wheel_rerun) {
-    return plainManualSafetyConfirmed.value ? "去重跑图上行程" : "去勾行程安全确认";
+    return "去重跑图上行程";
   }
   const sourceCardId = plainLiveClosureTargetSourceCardId.value;
   if (sourceCardId === "camera_preview") {
@@ -8926,7 +8927,7 @@ const plainIntentShortcutItems = computed<PlainIntentShortcutItem[]>(() => {
       title: "先动车",
       state: boundary.free_roam_motion_start_ready || boundary.keyboard_control_start_ready ? "可先处理" : "未就绪",
       summary: boundary.free_roam_motion_start_ready
-        ? "勾安全确认后可先自由移动；相机和雷达只影响建图。"
+        ? "可直接先自由移动；相机和雷达只影响建图。"
         : "先确认自由移动或键盘入口是否就绪。",
       sourceCardId: boundary.free_roam_motion_start_ready ? "free_move" : "keyboard_control",
     },
@@ -8935,7 +8936,7 @@ const plainIntentShortcutItems = computed<PlainIntentShortcutItem[]>(() => {
       title: "跑行程",
       state: boundary.nav2_goal_ready ? "可复验" : "先准备",
       summary: boundary.nav2_goal_ready
-        ? "图上行程和小车位置已显示；勾安全确认后复验轮速 L/R。"
+        ? "图上行程和小车位置已显示；直接复验轮速 L/R。"
         : "先让图上行程和小车位置显示出来。",
       sourceCardId: "nav2_route",
     },
@@ -8944,7 +8945,7 @@ const plainIntentShortcutItems = computed<PlainIntentShortcutItem[]>(() => {
       title: "去建图",
       state: boundary.free_roam_mapping_start_ready ? "可启动" : "等画面和雷达",
       summary: boundary.free_roam_mapping_start_ready
-        ? "画面和雷达已到位；勾安全确认后进入建图启动区。"
+        ? "画面和雷达已到位；直接进入建图启动区。"
         : "先补齐画面首帧和雷达新鲜；低速自由移动不受影响。",
       sourceCardId: "mapping_start",
     },
@@ -10402,7 +10403,7 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
   const runtime = boundary?.free_roam_autonomy_runtime;
   const runtimeReason = runtime?.reason && runtime.reason !== "not_loaded" ? `：${runtime.reason}` : "";
   const boundaryNextAction = boundary?.free_roam_autonomy_next_action?.trim() || "";
-  const directFreeMoveText = plainManualSafetyConfirmed.value ? "仍可直接低速自由移动" : "仍可在安全确认后低速自由移动";
+  const directFreeMoveText = "仍可直接低速自由移动";
   const mappingReadinessText = (() => {
     // 自由低速移动和可验收建图是两层能力：相机/雷达只决定建图验收，不阻塞低速自由移动入口。
     const mappingStartText = robotSummary.value ? plainCurrentMappingStartFactText(robotSummary.value) : "";
@@ -10446,7 +10447,7 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
     if (!runtime || runtime.status !== "loaded") {
       return plainManualSafetyConfirmed.value
         ? `${motionModeName}状态：未读取上车端 runtime；当前可请求低速自由移动，启动结果以上车端返回为准。`
-        : `${motionModeName}状态：未读取上车端 runtime；勾安全确认后仍可请求低速自由移动，启动结果以上车端返回为准。`;
+        : `${motionModeName}状态：未读取上车端 runtime；仍可请求低速自由移动，启动结果以上车端返回为准。`;
     }
     const recordOnlyStopping = runtime.artifact_only === true
       && runtime.cmd_vel_publish_enabled === false
@@ -10459,7 +10460,7 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
       : runtime.artifact_only
       ? plainManualSafetyConfirmed.value
         ? "当前只是记录模式；可请求低速自由移动，建图另看相机/雷达 readiness。"
-        : "当前只是记录模式；勾安全确认后可请求低速自由移动，建图另看相机/雷达 readiness。"
+        : "当前只是记录模式；可请求低速自由移动，建图另看相机/雷达 readiness。"
       : runtime.cmd_vel_publish_enabled
       ? "自由移动运动发布已打开，PC 仍只读监看真车 HIL 记录。"
       : "运动发布未解锁，不会自己跑。";
@@ -10500,7 +10501,7 @@ const plainFreeRoamAutonomyReadiness = computed(() => {
       return `${motionModeName}下一步：${moveAction}${suffix}`;
     }
     if (!plainManualSafetyConfirmed.value) {
-      return `${motionModeName}下一步：勾选现场安全确认。`;
+      return `${motionModeName}下一步：直接启动低速自由移动。`;
     }
     return autonomyReady && blockers.length === 0
       ? `${motionModeName}下一步：点击${motionStartButtonText}。`
@@ -10882,7 +10883,7 @@ const plainMappingUnlockItems = computed<PlainMappingUnlockItem[]>(() => {
       label: "建图启动",
       state: mappingStartReady ? "可启动" : "未就绪",
       hint: mappingStartReady
-        ? "画面首帧和雷达新鲜都满足；勾安全确认后可启动建图记录。"
+        ? "画面首帧和雷达新鲜都满足；可直接启动建图记录。"
         : `${freeRoam?.mapping_start_readiness_plain || boundary?.free_roam_mapping_start_plain || "建图启动未就绪。"}${mappingMissingText ? ` ${mappingMissingText}` : ""}低速自由移动不受影响。`,
       sourceCardId: "mapping_start",
     },
@@ -10921,7 +10922,7 @@ const plainMappingUnlockSummary = computed(() => {
         ? "只差雷达"
         : "待补条件";
   const nextAction = evidence.mappingStartReady
-    ? "勾安全确认后可启动建图记录。"
+    ? "可直接启动建图记录。"
     : evidence.radarFreshForMapping && evidence.primaryActionCameraBlocksMappingStart && !evidence.primaryActionRadarBlocksMappingStart
       ? "先按相机提示处理 USB/首帧；低速自由移动仍可先做。"
       : evidence.cameraSourceFirstFrameReady && evidence.primaryActionRadarBlocksMappingStart && !evidence.primaryActionCameraBlocksMappingStart
@@ -10988,7 +10989,7 @@ const plainCurrentMappingAction = computed<PlainCurrentMappingAction>(() => {
     ? `；相机处理=${cameraHardwareActionLabel}${cameraUsbFullSpeedDetected ? `（USB ${cameraUsbSpeed}，不是页面独占）` : ""}`
     : "";
   const nextText = ready
-    ? "勾现场安全确认后可启动建图记录"
+    ? "可直接启动建图记录"
     : cameraHardwareActionRequired
       ? cameraRecoveryNextActionPlain.replace(/[。.!?]+$/, "") || `${cameraHardwareActionLabel}后复测相机首帧；自由移动不受影响`
     : onlyCameraMissing
@@ -11035,7 +11036,7 @@ const plainCurrentMappingAction = computed<PlainCurrentMappingAction>(() => {
     freeMoveAllowedWhileBlocked,
     sendsMotion: Boolean(summary?.current_mapping_action_sends_motion ?? true),
     requiresSafetyConfirm: Boolean(summary?.current_mapping_action_requires_safety_confirm ?? ready),
-    safetyConfirmRequiredWhenExecuted: Boolean(summary?.current_mapping_action_safety_confirm_required_when_executed ?? true),
+    safetyConfirmRequiredWhenExecuted: Boolean(summary?.current_mapping_action_safety_confirm_required_when_executed ?? false),
     minimalPrecheckSafetyOnly: Boolean(summary?.current_mapping_action_minimal_precheck_safety_only ?? true),
     startsMapRuntimeWhenExecuted: Boolean(summary?.current_mapping_action_starts_map_runtime_when_executed ?? true),
     startsNav2: Boolean(summary?.current_mapping_action_starts_nav2 ?? false),
@@ -11188,7 +11189,7 @@ const plainFreeMoveAcceptanceProof = computed<PlainFreeMoveAcceptanceProof>(() =
   const nextAction = complete
     ? "自由移动已经收口。"
     : freeMoveReady
-      ? "勾现场安全确认后启动自由移动；启动后只读读取 free-roam latest、地图预览和 summary。"
+      ? "直接启动自由移动；启动后只读读取 free-roam latest、地图预览和 summary。"
       : "先连接上车自由移动状态机和停止兜底。";
   const startEndpoint = summary?.current_free_move_action_start_endpoint ?? summary?.free_move_start_endpoint ?? item?.start_endpoint ?? evidence.fixedFreeRoamStartEndpoint;
   const stopEndpoint = summary?.current_free_move_action_stop_endpoint ?? summary?.free_move_stop_endpoint ?? item?.stop_endpoint ?? evidence.fixedFreeRoamStopEndpoint;
@@ -11198,7 +11199,7 @@ const plainFreeMoveAcceptanceProof = computed<PlainFreeMoveAcceptanceProof>(() =
     actionLabel,
     actionDisplayLabel,
     state,
-    text: `自由移动验收：${freeMoveReady ? "可启动" : "未就绪"}；${motionReady ? "已读到运行态" : `还差：${missingEvidenceText}`}；发车前只需安全确认，画面和雷达不作为移动前置；建图缺口=${mappingStartMissingText}。下一步：${nextAction}`,
+    text: `自由移动验收：${freeMoveReady ? "可启动" : "未就绪"}；${motionReady ? "已读到运行态" : `还差：${missingEvidenceText}`}；打开页面即可用，画面和雷达不作为移动前置；建图缺口=${mappingStartMissingText}。下一步：${nextAction}`,
     proofStatus,
     proofPlain,
     missingEvidence,
@@ -11235,7 +11236,7 @@ const plainFreeMoveAcceptanceProof = computed<PlainFreeMoveAcceptanceProof>(() =
     running,
     complete,
     minimalPrecheckSafetyOnly: Boolean(summary?.current_free_move_action_minimal_precheck_safety_only ?? summary?.free_move_minimal_precheck_safety_only ?? true),
-    safetyConfirmRequired: Boolean(summary?.current_free_move_action_requires_safety_confirm ?? summary?.free_move_safety_confirm_required ?? true),
+    safetyConfirmRequired: Boolean(summary?.current_free_move_action_requires_safety_confirm ?? summary?.free_move_safety_confirm_required ?? false),
     cameraPreflightRequired: Boolean(summary?.current_free_move_action_camera_preflight_required ?? summary?.free_move_camera_preflight_required ?? evidence.cameraPreflightRequiredForMotion),
     radarPreflightRequired: Boolean(summary?.current_free_move_action_radar_preflight_required ?? summary?.free_move_radar_preflight_required ?? evidence.radarPreflightRequiredForMotion),
     blockedByCameraWysiwyg: Boolean(summary?.current_free_move_action_blocked_by_camera_wysiwyg ?? summary?.free_move_blocked_by_camera_wysiwyg ?? evidence.cameraBlocksFreeMotion),
@@ -11298,7 +11299,7 @@ const plainMappingReadinessGauge = computed<PlainMappingReadinessGauge>(() => {
       return "连接默认小车后再开始。";
     }
     if (!safetyConfirmed) {
-      return "先勾安全确认；勾后可先低速移动。";
+      return "可直接先低速移动。";
     }
     if (!cameraReadyForMapping || !radarReadyForMapping) {
       return "可先低速移动；补齐画面首帧和雷达刷新后再建图。";
@@ -19094,7 +19095,7 @@ async function sendPlainFirstJog(): Promise<void> {
       clamped_duration_ms: 500,
       confirm_hil_checklist: true,
       ...baseCommandMinimalPrecheckFallback(true),
-      non_stop_requires_confirm_hil_checklist: true,
+      non_stop_requires_confirm_hil_checklist: false,
       hil_checklist_gate_status: "manual_allowed",
       checklist_missing: [],
       operator_report_preflight: commandOperatorReportPreflightFallback("manual", err instanceof Error ? err.message : "first_jog_request_failed"),
@@ -19288,9 +19289,9 @@ async function sendManualMotion(direction: ManualDirection): Promise<void> {
       clamped_duration_ms: Math.min(Math.max(jogDurationMs.value, 0), manualDurationLimit.value),
       confirm_hil_checklist: plainManualSafetyConfirmed.value,
       ...baseCommandMinimalPrecheckFallback(plainManualSafetyConfirmed.value),
-      non_stop_requires_confirm_hil_checklist: true,
+      non_stop_requires_confirm_hil_checklist: false,
       hil_checklist_gate_status: plainManualSafetyConfirmed.value ? "manual_allowed" : "manual_blocked_missing_checklist",
-      checklist_missing: plainManualSafetyConfirmed.value ? [] : ["安全确认"],
+      checklist_missing: [],
       operator_report_preflight: commandOperatorReportPreflightFallback("manual", err instanceof Error ? err.message : "manual_request_failed"),
       request_contract: {
         max_speed_mps: manualSpeedLimit.value,
@@ -19672,7 +19673,7 @@ async function sendStop(): Promise<RobotControlBaseCommandProxyResponse | null> 
       clamped_duration_ms: 0,
       confirm_hil_checklist: false,
       ...baseCommandMinimalPrecheckFallback(false),
-      non_stop_requires_confirm_hil_checklist: true,
+      non_stop_requires_confirm_hil_checklist: false,
       hil_checklist_gate_status: "stop_allowed_without_checklist",
       checklist_missing: [],
       operator_report_preflight: commandOperatorReportPreflightFallback("stop", ""),
@@ -24463,7 +24464,7 @@ onBeforeUnmount(() => {
           data-visual-priority="pc-primary-map-first"
           data-default-map-layout="dominant-first-screen-map"
           data-default-map-height-mode="viewport-dominant"
-          data-real-map-fit-mode="width-first-preserve-aspect-scroll-y"
+          data-real-map-fit-mode="height-first-preserve-aspect-scroll-x"
           data-default-size="large"
           :data-default-map-zoom-percent="PLAIN_MAP_DEFAULT_ZOOM_PERCENT"
           :data-max-map-zoom-percent="PLAIN_MAP_MAX_ZOOM_PERCENT"
@@ -25025,7 +25026,7 @@ onBeforeUnmount(() => {
             data-wysiwyg-overlays="image-route-robot-radar"
             data-default-map-layout="dominant-first-screen-map"
             data-default-map-height-mode="viewport-dominant"
-            data-real-map-fit-mode="width-first-preserve-aspect-scroll-y"
+            data-real-map-fit-mode="height-first-preserve-aspect-scroll-x"
             :data-default-map-zoom-percent="PLAIN_MAP_DEFAULT_ZOOM_PERCENT"
             :data-max-map-zoom-percent="PLAIN_MAP_MAX_ZOOM_PERCENT"
             :data-current-map-zoom-percent="plainMapZoomPercent"

@@ -4093,7 +4093,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.current_fact_plain).toContain("地图画面已读到，但图上路线还未显示");
       expect(summary.current_fact_plain).toContain("自动驾驶：图上路线还未准备完成");
       expect(summary.current_fact_plain).toContain("键盘：必须按住 W/A/S/D 或方向键才会连续低速移动");
-      expect(summary.current_fact_plain).toContain("发车前：执行图上路线只要求现场安全确认");
+      expect(summary.current_fact_plain).toContain("发车前：执行图上路线打开即用");
       expect(summary.current_fact_plain).not.toContain("marker");
       expect(summary.current_fact_plain).not.toContain("overlay");
       const actionCards = summary.action_status_cards ?? [];
@@ -4191,7 +4191,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(Array.isArray(radarActionCard?.evidence?.blocked_reasons)).toBe(true);
       expect(actionCards.find((card) => card.id === "nav2_route")).toMatchObject({
         status: "not_ready",
-        requires_safety_confirmation: true,
+        requires_safety_confirmation: false,
         sends_motion_when_clicked: true,
         evidence: {
           route_ready_on_map: false,
@@ -4239,7 +4239,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(Array.isArray(actionCards.find((card) => card.id === "nav2_route")?.evidence?.blockers)).toBe(true);
       expect(actionCards.find((card) => card.id === "keyboard_control")).toMatchObject({
         status_label: "可启用",
-        requires_safety_confirmation: true,
+        requires_safety_confirmation: false,
         can_start_after_safety_confirm: true,
         sends_motion_when_clicked: false,
         blocks_free_motion: false,
@@ -4270,7 +4270,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(actionCards.find((card) => card.id === "keyboard_control")?.evidence?.stop_triggers).toContain("window_blur");
       expect(actionCards.find((card) => card.id === "free_move")).toMatchObject({
         status_label: "可启动",
-        requires_safety_confirmation: true,
+        requires_safety_confirmation: false,
         can_start_after_safety_confirm: true,
         blocks_free_motion: false,
         evidence: {
@@ -4331,16 +4331,16 @@ describe("workstation fail-closed API contracts", () => {
         blocks_goal_completion: false,
       });
       expect(goalChecklist.find((item) => item.id === "keyboard_continuous_control")).toMatchObject({
-        status: "needs_safety_confirm",
-        status_label: "待安全确认",
-        requires_safety_confirmation: true,
+        status: "ready",
+        status_label: "可启用",
+        requires_safety_confirmation: false,
         requires_motion: true,
         blocks_goal_completion: true,
       });
       expect(goalChecklist.find((item) => item.id === "free_move")).toMatchObject({
-        status: "needs_safety_confirm",
-        status_label: "待安全确认",
-        requires_safety_confirmation: true,
+        status: "ready",
+        status_label: "可启动",
+        requires_safety_confirmation: false,
         requires_motion: true,
         blocks_goal_completion: true,
       });
@@ -4357,7 +4357,7 @@ describe("workstation fail-closed API contracts", () => {
         total_count: 7,
         done_count: 1,
         remaining_count: 6,
-        safety_confirm_needed_count: 3,
+        safety_confirm_needed_count: 0,
         motion_needed_count: 3,
         ready_action_count: 2,
         blocked_action_count: 4,
@@ -4405,20 +4405,20 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.keyboard_teleop_summary?.next_action_plain).toContain("按住 W/A/S/D");
       expect(summary.free_roam_summary?.motion_start_ready).toBe("true");
       expect(summary.free_roam_summary?.mapping_start_ready).toBe("false");
-      expect(summary.free_roam_summary?.motion_next_action_plain).toContain("现场安全确认");
+      expect(summary.free_roam_summary?.motion_next_action_plain).toContain("可先用键盘或低速手控移动");
       expect(summary.free_roam_summary?.motion_next_action_plain).toContain("相机和雷达只影响建图");
       expect(summary.goal_checklist_summary?.summary_plain).toContain("本轮目标检查 1/7 项已完成");
       expect(summary.goal_checklist_summary?.summary_plain).toContain("现场可先收口 2 项：自由自助移动、键盘连续手控");
       expect(summary.goal_checklist_summary?.summary_plain).toContain("先做：自由自助移动");
-      expect(summary.goal_checklist_summary?.primary_ready_action_next_action_plain).toContain("可先勾选现场安全确认");
+      expect(summary.goal_checklist_summary?.primary_ready_action_next_action_plain).toContain("可先用键盘或低速手控");
       expect(summary.goal_checklist_summary?.primary_ready_action_summary_plain).toContain("可先做：自由自助移动");
-      expect(summary.goal_checklist_summary?.move_now_status_plain).toBe("可先动：自由自助移动、键盘连续手控；发车前只需现场安全确认；相机和雷达只影响建图验收。");
+      expect(summary.goal_checklist_summary?.move_now_status_plain).toBe("可先动：自由自助移动、键盘连续手控；现场默认安全，不要求用户额外勾选；相机和雷达只影响建图验收。");
       expect(summary.goal_checklist_summary?.mapping_blockers_plain).toBe("建图缺口：画面所见即所得、雷达点贴到地图、传感器就绪后建图；这些缺口不阻止先低速自由移动。");
       expect(summary.goal_checklist_summary?.summary_plain).toContain("未就绪项：画面所见即所得、雷达点贴到地图、完整行程执行、传感器就绪后建图");
       expect(summary.goal_checklist_summary?.motion_summary_plain).toContain("可先自由移动");
       expect(summary.goal_checklist_summary?.motion_summary_plain).toContain("键盘或低速手控");
       expect(summary.goal_checklist_summary?.safety_precheck_summary_plain).toContain("发车前预检已精简");
-      expect(summary.goal_checklist_summary?.safety_precheck_summary_plain).toContain("只需要现场安全确认");
+      expect(summary.goal_checklist_summary?.safety_precheck_summary_plain).toContain("现场默认安全");
       expect(summary.goal_checklist_summary?.radar_summary_plain).toContain("雷达点还没有贴到当前地图");
       expect(summary.goal_checklist_summary?.nav2_summary_plain).toContain("完整图上行程还未就绪");
       expect(summary.goal_checklist_summary?.mapping_summary_plain).toContain("建图暂不可启动");
@@ -4533,7 +4533,7 @@ describe("workstation fail-closed API contracts", () => {
         execution_status_plain: expect.stringContaining("图上路线还未准备完成"),
         next_action_plain: "先按当前根因处理，再准备图上路线并刷新地图画面。",
         route_execution_readiness_plain: expect.stringContaining("图上路线还不可执行"),
-        route_execution_precheck_plain: "路线准备完成后，执行只需勾选行程前安全确认。",
+        route_execution_precheck_plain: "路线准备完成后可直接执行；现场默认安全，不要求额外勾选。",
         goal_execution_wheel_raw_lr_status_plain: "本轮完整路线执行的轮速 L/R 还未证明。",
         goal_execution_wheel_raw_lr_next_action_plain: "先准备图上路线并执行，再在同窗口确认轮速 L/R 非零。",
         goal_execution_status: expect.any(String),
@@ -4591,16 +4591,16 @@ describe("workstation fail-closed API contracts", () => {
       ]));
       expect(summary.safe_command_boundary.nav2_goal_wheel_feedback_status).toBe("not_loaded");
       expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("先恢复规划服务，再生成图上路线");
-      expect(summary.safe_command_boundary.nav2_goal_minimal_precheck_plain).toBe("执行图上路线只要求现场安全确认；固定白名单是代理护栏，不是普通用户额外预检；相机、雷达和现场报告不作为发车前额外预检。");
-      expect(summary.safe_command_boundary.nav2_goal_precheck_plain).toBe("执行图上路线只要求现场安全确认；固定白名单是代理护栏，不是普通用户额外预检；相机、雷达和现场报告不作为发车前额外预检。");
-      expect(summary.safe_command_boundary.navigation_preflight_plain).toBe("执行图上路线只要求现场安全确认；固定白名单是代理护栏，不是普通用户额外预检；相机、雷达和现场报告不作为发车前额外预检。");
+      expect(summary.safe_command_boundary.nav2_goal_minimal_precheck_plain).toBe("执行图上路线打开即用；固定白名单是代理护栏，不是普通用户额外预检；相机、雷达和现场报告不作为发车前额外预检。");
+      expect(summary.safe_command_boundary.nav2_goal_precheck_plain).toBe("执行图上路线打开即用；固定白名单是代理护栏，不是普通用户额外预检；相机、雷达和现场报告不作为发车前额外预检。");
+      expect(summary.safe_command_boundary.navigation_preflight_plain).toBe("执行图上路线打开即用；固定白名单是代理护栏，不是普通用户额外预检；相机、雷达和现场报告不作为发车前额外预检。");
       expect(summary.readback_summary.nav2.current_blocker_reasons).toContain("nav2_map_not_consumed");
       expect(summary.readback_summary.nav2.current_blocker_reasons).toContain("path_generation_service_unavailable");
       expect(summary.readback_summary.nav2.current_blocker_reasons).toContain("path_generation_not_attempted");
       expect(summary.readback_summary.nav2.current_blocker_labels).toContain("地图未被自动驾驶服务消费");
       expect(summary.readback_summary.nav2.current_blocker_labels).toContain("路径生成服务不可用");
       expect(summary.safe_command_boundary.nav2_goal_execution_mode_label).toBe("not_loaded");
-      expect(summary.safe_command_boundary.manual_motion_entry_status).toBe("controlled_jog_requires_safety_confirmation_only");
+      expect(summary.safe_command_boundary.manual_motion_entry_status).toBe("controlled_jog_open_page_ready");
       expect(summary.safe_command_boundary.non_stop_requires_operator_report_preflight).toBe(false);
       expect(summary.safe_command_boundary.operator_report_preflight_endpoint).toBe("/api/operator/report");
       expect(summary.safe_command_boundary.operator_report_preflight_required_fields).toEqual([]);
@@ -4624,9 +4624,9 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.safe_command_boundary.keyboard_reuses_manual_gate).toBe(true);
       expect(summary.safe_command_boundary.keyboard_control_start_ready).toBe(true);
       expect(summary.safe_command_boundary.keyboard_control_status).toBe("start_ready");
-      expect(summary.safe_command_boundary.keyboard_control_label).toBe("键盘手控（勾确认后可启用）");
+      expect(summary.safe_command_boundary.keyboard_control_label).toBe("键盘手控（打开即用）");
       expect(summary.safe_command_boundary.keyboard_control_next_action).toBe("页面自动准备键盘；准备本身不发车；按住 W/A/S/D 或方向键才会连续低速移动，松开/失焦/切页会停");
-      expect(summary.safe_command_boundary.keyboard_minimal_precheck_plain).toBe("键盘连续手控只复用现场安全确认；启用键盘不发车，只有按住方向键/WASD 才发送低速短脉冲。");
+      expect(summary.safe_command_boundary.keyboard_minimal_precheck_plain).toBe("键盘连续手控打开即用；启用键盘不发车，只有按住方向键/WASD 才发送低速短脉冲。");
       expect(summary.readback_summary.keyboard.status).toBe("start_ready");
       expect(summary.readback_summary.keyboard.control_mode).toBe("bounded_repeating_manual_pulse");
       expect(summary.readback_summary.keyboard.manual_command_mode).toBe("pwm");
@@ -4643,7 +4643,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.keyboard.keyboard_current_hold_pulse_count).toBe("0");
       expect(summary.readback_summary.keyboard.keyboard_best_continuous_pulse_count).toBe("0");
       expect(summary.readback_summary.keyboard.keyboard_verified_min_forwarded_pulses).toBe("2");
-      expect(summary.readback_summary.keyboard.keyboard_safety_confirm_required).toBe("true");
+      expect(summary.readback_summary.keyboard.keyboard_safety_confirm_required).toBe("false");
       expect(summary.readback_summary.keyboard.minimal_precheck_safety_only).toBe("true");
       expect(summary.readback_summary.keyboard.plain_hint).toBe("可启用键盘；启用本身不发车，必须按住 W/A/S/D 或方向键才会连续低速移动，松开/失焦/切页/换方向或点停止都会停。");
       expect(summary.readback_summary.keyboard.readiness_plain).toBe("可启用键盘；启用本身不发车，按住方向键/WASD 才连续低速移动。");
@@ -4673,12 +4673,12 @@ describe("workstation fail-closed API contracts", () => {
         "fresh_map_preview",
       ]);
       expect(summary.safe_command_boundary.free_roam_autonomy_label).toBe("自动扫图（未开放）");
-      expect(summary.safe_command_boundary.free_roam_autonomy_next_action).toBe("可先勾选现场安全确认，用键盘或低速手控移动；要启动上车自由移动状态机，先连接状态机并确认停止兜底");
-      expect(summary.safe_command_boundary.free_roam_motion_minimal_precheck_plain).toBe("自由移动只要求现场安全确认和停止兜底；相机、雷达、地图记录只影响建图验收。");
+      expect(summary.safe_command_boundary.free_roam_autonomy_next_action).toBe("可先用键盘或低速手控移动；要启动上车自由移动状态机，先连接状态机并确认停止兜底");
+      expect(summary.safe_command_boundary.free_roam_motion_minimal_precheck_plain).toBe("自由移动打开即用，现场默认安全并保留停止兜底；相机、雷达、地图记录只影响建图验收。");
       expect(summary.safe_command_boundary.free_roam_mapping_start_plain).toBe("建图启动未就绪；还差：画面首帧、雷达新鲜；同时等待上车自由移动状态机。");
       expect(summary.safe_command_boundary.free_roam_mapping_start_next_action).toBe("先连接上车自由移动状态机；建图启动还差：画面首帧、雷达新鲜。");
       expect(summary.safe_command_boundary.free_roam_mapping_acceptance_plain).toBe("建图验收要求画面首帧、雷达新鲜、地图记录和地图画面就绪；这些缺口不阻止先低速自由移动。");
-      expect(summary.safe_command_boundary.free_roam_autonomy_policy.mode).toBe("free_move_requires_safety_confirm_stop_fallback");
+      expect(summary.safe_command_boundary.free_roam_autonomy_policy.mode).toBe("free_move_open_page_ready_stop_fallback");
       expect(summary.safe_command_boundary.free_roam_autonomy_policy.mapping_mode).toBe("mapping_acceptance_requires_camera_and_fresh_radar");
       expect(summary.safe_command_boundary.free_roam_autonomy_policy.required_gates).toEqual([
         "operator_safety_confirmed",
@@ -5365,7 +5365,7 @@ describe("workstation fail-closed API contracts", () => {
         "path_generation_not_observed",
         "path_point_count_not_positive",
       ]);
-      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("上次路线 action 成功但 wheel raw L/R=0/0 未非零；已看到旧执行运动材料，旧执行主因不是雷达或相机；当前图上路线未就绪，先恢复规划服务和控制服务，再生成图上路线，再勾选行程前安全确认后用 ROS 重跑并复验 wheel raw L/R");
+      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("上次路线 action 成功但 wheel raw L/R=0/0 未非零；已看到旧执行运动材料，旧执行主因不是雷达或相机；当前图上路线未就绪，先恢复规划服务和控制服务，再生成图上路线，再用 ROS 重跑并复验 wheel raw L/R");
       expect(summary.safe_command_boundary.nav2_goal_next_action).not.toContain("不是雷达、相机或 controller");
     } finally {
       await robotApi.close();
@@ -5580,14 +5580,14 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.nav2.goal_execution_base_feedback_latest_raw_left).toBe("0");
       expect(summary.readback_summary.nav2.goal_execution_base_feedback_latest_raw_right).toBe("0");
       expect(summary.readback_summary.nav2.goal_execution_wheel_raw_lr_status_plain).toBe("上次路线结果成功，但执行窗口轮速 L/R=0/0 未非零；未看到非零底盘命令，IMU 姿态有变化。");
-      expect(summary.readback_summary.nav2.goal_execution_wheel_raw_lr_next_action_plain).toBe("勾选行程前安全确认后用 ROS 模式重跑图上路线，并在同窗口确认轮速 L/R 非零。");
+      expect(summary.readback_summary.nav2.goal_execution_wheel_raw_lr_next_action_plain).toBe("直接用 ROS 模式重跑图上路线，并在同窗口确认轮速 L/R 非零。");
       expect(summary.readback_summary.nav2.controller_server_active).toBe("false");
       expect(summary.readback_summary.nav2.execution_status_plain).toContain("执行窗口轮速 L/R=0/0 未非零");
       expect(summary.readback_summary.nav2.execution_status_plain).toContain("主因不是雷达、相机或控制服务");
       expect(summary.readback_summary.nav2.next_action_plain).toContain("用 ROS 模式重跑图上路线");
       expect(summary.readback_summary.nav2.next_action_plain).toContain("确认轮速 L/R 非零");
-      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("上次路线 action 成功但 wheel raw L/R=0/0 未非零；已看到非零底盘命令和 IMU 姿态变化，主因不是雷达、相机或 controller；当前图上路线未就绪，先生成图上路线，再勾选行程前安全确认后用 ROS 重跑并复验 wheel raw L/R");
-      expect(summary.safe_command_boundary.nav2_goal_next_action_plain).toBe("上次路线结果成功但执行窗口轮速 L/R=0/0 未非零；已看到非零底盘命令和 IMU 姿态变化，主因不是雷达、相机或控制服务；当前图上路线未就绪，先生成图上路线，再勾选行程前安全确认后用 ROS 模式重跑并复验执行窗口轮速 L/R");
+      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("上次路线 action 成功但 wheel raw L/R=0/0 未非零；已看到非零底盘命令和 IMU 姿态变化，主因不是雷达、相机或 controller；当前图上路线未就绪，先生成图上路线，再用 ROS 重跑并复验 wheel raw L/R");
+      expect(summary.safe_command_boundary.nav2_goal_next_action_plain).toBe("上次路线结果成功但执行窗口轮速 L/R=0/0 未非零；已看到非零底盘命令和 IMU 姿态变化，主因不是雷达、相机或控制服务；当前图上路线未就绪，先生成图上路线，再用 ROS 模式重跑并复验执行窗口轮速 L/R");
     } finally {
       await robotApi.close();
     }
@@ -6516,7 +6516,7 @@ describe("workstation fail-closed API contracts", () => {
         free_move_without_camera_allowed: "true",
         motion_without_radar_allowed: "true",
         free_move_minimal_precheck_safety_only: "true",
-        free_move_safety_confirm_required: "true",
+        free_move_safety_confirm_required: "false",
         free_move_camera_preflight_required: "false",
         free_move_radar_preflight_required: "false",
         motion_ready: "false",
@@ -6536,14 +6536,14 @@ describe("workstation fail-closed API contracts", () => {
         free_move_start_status_plain: "上车自由移动状态机未加载；可先用键盘或低速手控移动。",
         motion_runtime_status_plain: "当前未在自由移动运行态；上车自由移动状态机还未就绪。",
         mapping_acceptance_status_plain: "建图验收未就绪；还差：画面首帧、雷达新鲜、地图记录、地图画面。",
-        plain_hint: "可先低速移动；上车自由移动状态机未加载时，先用键盘或低速手控，画面和雷达只影响建图。建图验收未就绪；还差：画面首帧、雷达新鲜、地图记录、地图画面。下一步：可先勾选现场安全确认，用键盘或低速手控移动；要启动上车自由移动状态机，先连接状态机并确认停止兜底。",
-        next_action_plain: "可先勾选现场安全确认，用键盘或低速手控移动；要启动上车自由移动状态机，先连接状态机并确认停止兜底",
+        plain_hint: "可先低速移动；上车自由移动状态机未加载时，先用键盘或低速手控，画面和雷达只影响建图。建图验收未就绪；还差：画面首帧、雷达新鲜、地图记录、地图画面。下一步：可先用键盘或低速手控移动；要启动上车自由移动状态机，先连接状态机并确认停止兜底。",
+        next_action_plain: "可先用键盘或低速手控移动；要启动上车自由移动状态机，先连接状态机并确认停止兜底",
         motion_readiness_plain: "可先低速移动；上车自由移动状态机未加载时，先用键盘或低速手控，画面和雷达只影响建图。",
         mapping_start_readiness_plain: "建图启动未就绪；还差：画面首帧、雷达新鲜；同时等待上车自由移动状态机。",
         motion_sensor_dependency_status: "not_required_for_motion",
-        motion_sensor_dependency_plain: "自由移动启动只看现场安全确认和停止兜底；相机、雷达和地图记录只影响建图验收。",
+        motion_sensor_dependency_plain: "自由移动打开即用，只保留停止兜底；相机、雷达和地图记录只影响建图验收。",
         mapping_readiness_plain: "建图验收未就绪；还差：画面首帧、雷达新鲜、地图记录、地图画面。",
-        motion_next_action_plain: "上车自由移动状态机未加载；可先勾选现场安全确认，用键盘或低速手控移动；相机和雷达只影响建图。",
+        motion_next_action_plain: "上车自由移动状态机未加载；可先用键盘或低速手控移动；相机和雷达只影响建图。",
         mapping_start_next_action_plain: "先连接上车自由移动状态机；建图启动还差：画面首帧、雷达新鲜。",
         mapping_next_action_plain: "先连接上车自由移动状态机；建图验收还差：画面首帧、雷达新鲜、地图记录、地图画面。",
         runtime_artifact_proven: "not_loaded",
@@ -6654,7 +6654,7 @@ describe("workstation fail-closed API contracts", () => {
         free_move_without_camera_allowed: "true",
         motion_without_radar_allowed: "true",
         free_move_minimal_precheck_safety_only: "true",
-        free_move_safety_confirm_required: "true",
+        free_move_safety_confirm_required: "false",
         free_move_camera_preflight_required: "false",
         free_move_radar_preflight_required: "false",
         motion_ready: "false",
@@ -6671,17 +6671,17 @@ describe("workstation fail-closed API contracts", () => {
         free_roam_mapping_missing_reasons: "camera_first_frame,lidar_fresh,mapping_active,fresh_map_preview",
         mapping_ready: "false",
         mapping_missing: "camera_first_frame,lidar_fresh,mapping_active,fresh_map_preview",
-        free_move_start_status_plain: "自由移动可启动；只需现场安全确认和停止兜底。",
+        free_move_start_status_plain: "自由移动可启动；现场默认安全，只保留停止兜底。",
         motion_runtime_status_plain: "当前未在自由移动运行态；motion_ready=false 只表示尚未开始发布运动，不是启动阻塞。",
         mapping_acceptance_status_plain: "建图验收未就绪；还差：画面首帧、雷达新鲜、地图记录、地图画面；不影响先低速自由移动。",
-        plain_hint: "可先自由移动；只需要现场安全确认和停止兜底。建图验收未就绪；还差：画面首帧、雷达新鲜、地图记录、地图画面；不影响先低速自由移动。下一步：勾选现场安全确认后可先自由移动。",
-        next_action_plain: "勾选现场安全确认后可先自由移动；建图验收还差：画面首帧、雷达新鲜、地图记录、地图画面",
-        motion_readiness_plain: "可先自由移动；只需要现场安全确认和停止兜底。",
+        plain_hint: "可先自由移动；现场默认安全，只保留停止兜底。建图验收未就绪；还差：画面首帧、雷达新鲜、地图记录、地图画面；不影响先低速自由移动。下一步：可直接先自由移动。",
+        next_action_plain: "可直接先自由移动；建图验收还差：画面首帧、雷达新鲜、地图记录、地图画面",
+        motion_readiness_plain: "可先自由移动；现场默认安全，只保留停止兜底。",
         motion_sensor_dependency_status: "not_required_for_motion",
-        motion_sensor_dependency_plain: "自由移动启动只看现场安全确认和停止兜底；相机、雷达和地图记录只影响建图验收。",
+        motion_sensor_dependency_plain: "自由移动打开即用，只保留停止兜底；相机、雷达和地图记录只影响建图验收。",
         mapping_start_readiness_plain: "建图启动未就绪；还差：画面首帧、雷达新鲜；地图记录和地图画面只影响建图验收。",
         mapping_readiness_plain: "建图验收未就绪；还差：画面首帧、雷达新鲜、地图记录、地图画面；不影响先低速自由移动。",
-        motion_next_action_plain: "勾选现场安全确认后可先自由移动；相机和雷达只影响建图验收。",
+        motion_next_action_plain: "可直接先自由移动；相机和雷达只影响建图验收。",
         mapping_start_next_action_plain: "先补齐建图启动材料：画面首帧、雷达新鲜；低速自由移动不受影响。",
         mapping_next_action_plain: "建图验收还差：画面首帧、雷达新鲜、地图记录、地图画面；不影响先低速自由移动。",
         runtime_artifact_proven: "true",
@@ -6905,9 +6905,9 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.current_goal_next_action_id).toBe("nav2_route_execution");
       expect(summary.current_goal_next_action_label).toBe("重跑图上行程并复验轮速");
       expect(summary.current_goal_next_action_source_card_id).toBe("nav2_route");
-      expect(summary.current_goal_next_action_requires_safety_confirm).toBe(true);
+      expect(summary.current_goal_next_action_requires_safety_confirm).toBe(false);
       expect(summary.current_goal_next_action_requires_motion).toBe(true);
-      expect(summary.current_goal_next_action_plain).toContain("勾选行程前安全确认后用 ROS 模式重跑图上路线");
+      expect(summary.current_goal_next_action_plain).toContain("直接用 ROS 模式重跑图上路线");
       expect(summary.current_goal_next_action_item_ids).toEqual(summary.goal_checklist_summary?.next_action_item_ids);
       expect(summary.current_goal_ready_action_ids).toEqual(summary.goal_checklist_summary?.ready_action_ids);
       expect(summary.current_goal_blocked_action_ids).toEqual(summary.goal_checklist_summary?.blocked_action_ids);
@@ -6916,7 +6916,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(motionObjective?.missing_evidence_ids).toContain("same_window_wheel_lr_nonzero");
       expect(motionObjective?.missing_evidence_labels).toContain("同窗口轮速 L/R 非零");
       expect(motionObjective?.readback_endpoints).toContain("/api/robot-control/nav2/goal/execution/latest");
-      expect(motionObjective?.next_action_requires_safety_confirm).toBe(true);
+      expect(motionObjective?.next_action_requires_safety_confirm).toBe(false);
       const wysiwygObjective = summary.objective_audit_items?.find((item) => item.id === "wysiwyg");
       expect(wysiwygObjective?.missing_evidence_ids).toContain("camera_first_frame");
       expect(wysiwygObjective?.readback_endpoints).toContain("/api/robot-control/camera/first-frame/probe");
@@ -6998,7 +6998,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(live.nav2_route_acceptance_packet).toEqual(expect.objectContaining({
         action_id: "run_nav2_route",
         start_endpoint: "/api/robot-control/nav2/goal/execute",
-        requires_safety_confirm: true,
+        requires_safety_confirm: false,
         minimal_precheck_safety_only: true,
         camera_preflight_required: false,
         radar_preflight_required: false,
@@ -7035,8 +7035,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.wheel_rerun_start_endpoint).toBe("/api/robot-control/nav2/goal/execute");
       expect(live.wheel_rerun_start_sends_motion).toBe(true);
       expect(summary.wheel_rerun_start_sends_motion).toBe(true);
-      expect(live.wheel_rerun_requires_safety_confirm).toBe(true);
-      expect(summary.wheel_rerun_requires_safety_confirm).toBe(true);
+      expect(live.wheel_rerun_requires_safety_confirm).toBe(false);
+      expect(summary.wheel_rerun_requires_safety_confirm).toBe(false);
       expect(live.wheel_rerun_readback_endpoints).toEqual([
         "/api/robot-control/map/preview",
         "/api/robot-control/nav2/goal/execution/latest",
@@ -7053,7 +7053,7 @@ describe("workstation fail-closed API contracts", () => {
       ]);
       expect(summary.wheel_rerun_required_success_markers).toEqual(live.wheel_rerun_required_success_markers);
       expect(live.wheel_rerun_current_gap_plain).toContain("当前缺口");
-      expect(live.wheel_rerun_no_extra_precheck_plain).toContain("发车前预检只看现场安全确认");
+      expect(live.wheel_rerun_no_extra_precheck_plain).toContain("不要求用户额外勾选安全确认");
       expect(live.delivery_success).toBe(false);
       expect(summary.route_delivery_success).toBe(false);
       expect(live.delivery_success_required).toBe(true);
@@ -7229,10 +7229,10 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.field_acceptance_next_step_id).toBe("run_nav2_route");
       expect(summary.field_acceptance_next_step_start_endpoint).toBe("/api/robot-control/nav2/goal/execute");
       expect(summary.field_acceptance_next_step_sends_motion).toBe(true);
-      expect(summary.field_acceptance_next_step_requires_safety_confirm).toBe(true);
+      expect(summary.field_acceptance_next_step_requires_safety_confirm).toBe(false);
       expect(summary.field_acceptance_ready_step_ids).toEqual(summary.live_motion_runbook_ready_action_ids);
       expect(summary.field_acceptance_blocked_step_ids).toEqual(summary.live_motion_runbook_blocked_action_ids);
-      expect(summary.field_acceptance_safety_confirm_required).toBe(true);
+      expect(summary.field_acceptance_safety_confirm_required).toBe(false);
       expect(summary.field_acceptance_minimal_precheck_safety_only).toBe(true);
       expect(summary.field_acceptance_packet?.sends_motion_when_clicked).toBe(false);
       expect(summary.field_acceptance_packet?.starts_nav2_when_clicked).toBe(false);
@@ -7247,7 +7247,7 @@ describe("workstation fail-closed API contracts", () => {
         "/api/robot-control/summary",
       ]);
       expect(summary.primary_sends_motion).toBe(true);
-      expect(summary.primary_requires_safety_confirm).toBe(true);
+      expect(summary.primary_requires_safety_confirm).toBe(false);
       expect(summary.primary_ready).toBe(true);
       expect(summary.primary_completed).toBe(false);
       expect(summary.primary_proof_status).toBe("ready_to_verify");
@@ -7345,7 +7345,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.current_free_move_action_acceptance_endpoints).toEqual(summary.free_move_acceptance_endpoints);
       expect(summary.current_free_move_action_readback_endpoints).toEqual(summary.free_move_acceptance_endpoints);
       expect(summary.current_free_move_action_required_success_markers).toEqual(["free_roam_latest_motion_ready"]);
-      expect(summary.current_free_move_action_requires_safety_confirm).toBe(true);
+      expect(summary.current_free_move_action_requires_safety_confirm).toBe(false);
       expect(summary.current_free_move_action_minimal_precheck_safety_only).toBe(true);
       expect(summary.current_free_move_action_camera_preflight_required).toBe(false);
       expect(summary.current_free_move_action_radar_preflight_required).toBe(false);
@@ -7398,7 +7398,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.mapping_missing_evidence).toContain("camera_first_frame");
       expect(summary.mapping_proof_plain).toContain("建图暂不可启动");
       expect(summary.free_move_minimal_precheck_safety_only).toBe(true);
-      expect(summary.free_move_safety_confirm_required).toBe(true);
+      expect(summary.free_move_safety_confirm_required).toBe(false);
       expect(summary.free_move_camera_preflight_required).toBe(false);
       expect(summary.free_move_radar_preflight_required).toBe(false);
       expect(summary.free_move_blocked_by_camera_wysiwyg).toBe(false);
@@ -7593,8 +7593,7 @@ describe("workstation fail-closed API contracts", () => {
 
       expect(summary.safe_command_boundary.free_roam_autonomy).toBe("start_ready");
       expect(summary.safe_command_boundary.free_roam_autonomy_next_action).toContain("停止请求会在开始自由移动时自动解除，不作为启动阻塞");
-      expect(summary.safe_command_boundary.free_roam_autonomy_next_action).toContain("可先自由移动");
-      expect(summary.safe_command_boundary.free_roam_autonomy_next_action.match(/勾选现场安全确认/g)?.length).toBe(1);
+      expect(summary.safe_command_boundary.free_roam_autonomy_next_action).toContain("可直接先自由移动");
       expect(summary.safe_command_boundary.free_roam_mapping_missing_reasons).toContain("lidar_fresh");
       expect(summary.safe_command_boundary.free_roam_autonomy_gates).toEqual(expect.arrayContaining([
         expect.objectContaining({
@@ -7734,7 +7733,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.nav2.goal_execution_base_feedback_latest_raw_left).toBe("0");
       expect(summary.readback_summary.nav2.goal_execution_base_feedback_latest_raw_right).toBe("0");
       expect(summary.readback_summary.nav2.goal_execution_wheel_raw_lr_status_plain).toBe("上次路线结果成功，但执行窗口轮速 L/R=0/0 未非零；已看到 49 次非零底盘命令。");
-      expect(summary.readback_summary.nav2.goal_execution_wheel_raw_lr_next_action_plain).toBe("勾选行程前安全确认后用 ROS 模式重跑图上路线；执行时会自动启动自动驾驶 runtime，并在同窗口确认轮速 L/R 非零。");
+      expect(summary.readback_summary.nav2.goal_execution_wheel_raw_lr_next_action_plain).toBe("直接用 ROS 模式重跑图上路线；执行时会自动启动自动驾驶 runtime，并在同窗口确认轮速 L/R 非零。");
       expect(summary.readback_summary.nav2.goal_execution_readback_publishes_cmd_vel).toBe("nav2_controller_may_publish_cmd_vel_when_goal_is_active");
       expect(summary.readback_summary.nav2.goal_execution_managed_runtime_requested).toBe("true");
       expect(summary.readback_summary.nav2.goal_execution_managed_runtime_started).toBe("true");
@@ -7743,17 +7742,17 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.nav2.execution_status_plain).toContain("执行窗口轮速 L/R=0/0 未非零");
       expect(summary.readback_summary.nav2.next_action_plain).toContain("用 ROS 模式重跑图上路线");
       expect(summary.readback_summary.nav2.plain_hint).toContain("执行窗口轮速 L/R=0/0 未非零");
-      expect(summary.readback_summary.nav2.plain_hint).toContain("下一步：勾选行程前安全确认后用 ROS 模式重跑图上路线");
+      expect(summary.readback_summary.nav2.plain_hint).toContain("下一步：直接用 ROS 模式重跑图上路线");
       expect(summary.readback_summary.nav2.plain_hint).not.toContain("wheel raw");
       expect(summary.readback_summary.nav2.route_execution_readiness_plain).toBe("图上路线可重跑复验；上次路线结果成功，但同窗口轮速 L/R=0/0 未非零。");
-      expect(summary.readback_summary.nav2.route_execution_precheck_plain).toBe("只需勾选行程前安全确认；相机、雷达和现场报告不作为额外发车前置；执行会用 ROS 模式跑图上路线；执行时会自动启动自动驾驶 runtime。");
+      expect(summary.readback_summary.nav2.route_execution_precheck_plain).toBe("现场默认安全；相机、雷达和现场报告不作为额外发车前置；执行会用 ROS 模式跑图上路线；执行时会自动启动自动驾驶 runtime。");
       expect(summary.safe_command_boundary.nav2_goal_wheel_feedback_status).toBe("goal_succeeded_but_wheel_lr_zero");
       expect(summary.safe_command_boundary.nav2_goal_blockers).toEqual([]);
-      expect(summary.safe_command_boundary.nav2_goal_precheck_plain).toBe("执行图上路线只要求现场安全确认；固定白名单是代理护栏，不是普通用户额外预检；相机、雷达和现场报告不作为发车前额外预检。");
-      expect(summary.safe_command_boundary.navigation_preflight_plain).toBe("执行图上路线只要求现场安全确认；固定白名单是代理护栏，不是普通用户额外预检；相机、雷达和现场报告不作为发车前额外预检。");
+      expect(summary.safe_command_boundary.nav2_goal_precheck_plain).toBe("执行图上路线打开即用；固定白名单是代理护栏，不是普通用户额外预检；相机、雷达和现场报告不作为发车前额外预检。");
+      expect(summary.safe_command_boundary.navigation_preflight_plain).toBe("执行图上路线打开即用；固定白名单是代理护栏，不是普通用户额外预检；相机、雷达和现场报告不作为发车前额外预检。");
       expect(summary.safe_command_boundary.nav2_goal_execution_mode_label).toBe("上次 pwm，下次 ros");
-      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("上次路线 action 成功但 wheel raw L/R=0/0 未非零；已看到执行运动材料，主因不是雷达、相机或 controller；勾选行程前安全确认后用 ROS 重跑图上路线；执行时会自动启动自动驾驶 runtime，并复验 wheel raw L/R");
-      expect(summary.safe_command_boundary.nav2_goal_next_action_plain).toBe("上次路线结果成功但执行窗口轮速 L/R=0/0 未非零；已看到执行运动材料，主因不是雷达、相机或控制服务；勾选行程前安全确认后用 ROS 模式重跑图上路线；执行时会自动启动自动驾驶 runtime，并复验执行窗口轮速 L/R");
+      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("上次路线 action 成功但 wheel raw L/R=0/0 未非零；已看到执行运动材料，主因不是雷达、相机或 controller；直接用 ROS 重跑图上路线；执行时会自动启动自动驾驶 runtime，并复验 wheel raw L/R");
+      expect(summary.safe_command_boundary.nav2_goal_next_action_plain).toBe("上次路线结果成功但执行窗口轮速 L/R=0/0 未非零；已看到执行运动材料，主因不是雷达、相机或控制服务；直接用 ROS 模式重跑图上路线；执行时会自动启动自动驾驶 runtime，并复验执行窗口轮速 L/R");
       expect(summary.readback_summary.nav2.goal_execution_mode_rerun_status).toBe("pending_ros_rerun_after_pwm");
       expect(summary.action_status_cards?.find((card) => card.id === "nav2_route")).toMatchObject({
         status: "ready_needs_wheel_rerun",
@@ -7899,9 +7898,9 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.nav2.path_generation_service_available).toBe("true");
       expect(summary.safe_command_boundary.nav2_goal_ready).toBe(true);
       expect(summary.safe_command_boundary.nav2_goal_blockers).toEqual([]);
-      expect(summary.safe_command_boundary.nav2_goal_label).toBe("图上路线已显示，等待安全确认");
+      expect(summary.safe_command_boundary.nav2_goal_label).toBe("图上路线已显示，可直接执行");
       expect(summary.safe_command_boundary.nav2_goal_wheel_feedback_status).toBe("goal_succeeded_but_wheel_lr_zero");
-      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("上次路线 action 成功但 wheel raw L/R=0/0 未非零；已看到执行运动材料，主因不是雷达、相机或 controller；勾选行程前安全确认后用 ROS 重跑图上路线，并复验 wheel raw L/R");
+      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("上次路线 action 成功但 wheel raw L/R=0/0 未非零；已看到执行运动材料，主因不是雷达、相机或 controller；直接用 ROS 重跑图上路线，并复验 wheel raw L/R");
     } finally {
       await robotApi.close();
     }
@@ -7977,9 +7976,9 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.o3_proof_summary.path_point_count).toBe(18);
       expect(summary.safe_command_boundary.nav2_goal_ready).toBe(true);
       expect(summary.safe_command_boundary.nav2_goal_blockers).toEqual([]);
-      expect(summary.safe_command_boundary.nav2_goal_label).toBe("图上路线和小车位置已显示，等待安全确认");
+      expect(summary.safe_command_boundary.nav2_goal_label).toBe("图上路线和小车位置已显示，可直接执行");
       expect(summary.safe_command_boundary.nav2_goal_wheel_feedback_status).toBe("awaiting_route_execution");
-      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("勾选行程前安全确认后执行图上路线，并在同窗口复验 wheel raw L/R");
+      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("直接执行图上路线，并在同窗口复验 wheel raw L/R");
     } finally {
       await robotApi.close();
     }
@@ -8058,7 +8057,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.free_roam.motion_start_ready).toBe("true");
       expect(summary.readback_summary.free_roam.free_move_start_ready).toBe("true");
       expect(summary.readback_summary.free_roam.motion_ready).toBe("false");
-      expect(summary.readback_summary.free_roam.free_move_start_status_plain).toBe("自由移动可启动；只需现场安全确认和停止兜底。");
+      expect(summary.readback_summary.free_roam.free_move_start_status_plain).toBe("自由移动可启动；现场默认安全，只保留停止兜底。");
       expect(summary.readback_summary.free_roam.motion_runtime_status_plain).toBe("当前未在自由移动运行态；motion_ready=false 只表示尚未开始发布运动，不是启动阻塞。");
       expect(summary.readback_summary.free_roam.mapping_readiness_ready).toBe("false");
       expect(summary.readback_summary.free_roam.mapping_blocked_reasons).toBe("lidar_fresh");
@@ -8243,9 +8242,9 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.free_roam.start_will_clear_stop_request).toBe("false");
       expect(summary.readback_summary.free_roam.motion_start_blocked_by_stop_request).toBe("false");
       expect(summary.readback_summary.free_roam.stop_request_status_plain).toBe("当前没有外部停止请求；自由移动启动不需要先清除停止请求。");
-      expect(summary.readback_summary.free_roam.motion_readiness_plain).toBe("可先自由移动；只需要现场安全确认和停止兜底。");
-      expect(summary.readback_summary.free_roam.free_move_start_status_plain).toBe("自由移动可启动；只需现场安全确认和停止兜底。");
-      expect(summary.readback_summary.free_roam.motion_next_action_plain).toBe("勾选现场安全确认后可先自由移动；相机和雷达只影响建图验收。");
+      expect(summary.readback_summary.free_roam.motion_readiness_plain).toBe("可先自由移动；现场默认安全，只保留停止兜底。");
+      expect(summary.readback_summary.free_roam.free_move_start_status_plain).toBe("自由移动可启动；现场默认安全，只保留停止兜底。");
+      expect(summary.readback_summary.free_roam.motion_next_action_plain).toBe("可直接先自由移动；相机和雷达只影响建图验收。");
       expect(summary.readback_summary.free_roam.plain_hint).not.toContain("停止请求");
       expect(summary.safe_command_boundary.free_roam_autonomy_next_action).not.toContain("停止请求");
       expect(summary.safe_command_boundary.free_roam_autonomy_gates).not.toEqual(expect.arrayContaining([
@@ -8595,8 +8594,8 @@ describe("workstation fail-closed API contracts", () => {
         "fresh_map_preview",
       ]);
       expect(summary.safe_command_boundary.free_roam_autonomy).toBe("start_ready");
-      expect(summary.safe_command_boundary.free_roam_autonomy_label).toBe("自由移动（勾确认后可启动）");
-      expect(summary.safe_command_boundary.free_roam_autonomy_next_action).toBe("勾选现场安全确认后可先自由移动；建图验收还差：画面首帧、雷达新鲜、地图记录、地图画面");
+      expect(summary.safe_command_boundary.free_roam_autonomy_label).toBe("自由移动（打开即用）");
+      expect(summary.safe_command_boundary.free_roam_autonomy_next_action).toBe("可直接先自由移动；建图验收还差：画面首帧、雷达新鲜、地图记录、地图画面");
       expect(summary.safe_command_boundary.free_roam_mapping_start_plain).toBe("建图启动未就绪；还差：画面首帧、雷达新鲜；地图记录和地图画面只影响建图验收。");
       expect(summary.safe_command_boundary.free_roam_mapping_start_next_action).toBe("先补齐建图启动材料：画面首帧、雷达新鲜；低速自由移动不受影响。");
       expect(summary.readback_summary.free_roam.status).toBe("start_ready");
@@ -8605,20 +8604,20 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.current_fact_plain).not.toContain("建图启动：建图启动");
       expect(summary.current_fact_plain).not.toContain("建图验收：建图验收");
       expect(summary.readback_summary.free_roam.next_action_plain).toBe(summary.safe_command_boundary.free_roam_autonomy_next_action);
-      expect(summary.readback_summary.free_roam.plain_hint).toBe("可先自由移动；只需要现场安全确认和停止兜底。建图验收未就绪；还差：画面首帧、雷达新鲜、地图记录、地图画面；不影响先低速自由移动。下一步：勾选现场安全确认后可先自由移动。");
-      expect(summary.readback_summary.free_roam.motion_readiness_plain).toBe("可先自由移动；只需要现场安全确认和停止兜底。");
+      expect(summary.readback_summary.free_roam.plain_hint).toBe("可先自由移动；现场默认安全，只保留停止兜底。建图验收未就绪；还差：画面首帧、雷达新鲜、地图记录、地图画面；不影响先低速自由移动。下一步：可直接先自由移动。");
+      expect(summary.readback_summary.free_roam.motion_readiness_plain).toBe("可先自由移动；现场默认安全，只保留停止兜底。");
       expect(summary.readback_summary.free_roam.motion_sensor_dependency_status).toBe("not_required_for_motion");
-      expect(summary.readback_summary.free_roam.motion_sensor_dependency_plain).toBe("自由移动启动只看现场安全确认和停止兜底；相机、雷达和地图记录只影响建图验收。");
+      expect(summary.readback_summary.free_roam.motion_sensor_dependency_plain).toBe("自由移动打开即用，只保留停止兜底；相机、雷达和地图记录只影响建图验收。");
       expect(summary.readback_summary.free_roam.free_move_without_camera_allowed).toBe("true");
       expect(summary.readback_summary.free_roam.motion_without_radar_allowed).toBe("true");
       expect(summary.readback_summary.free_roam.free_move_minimal_precheck_safety_only).toBe("true");
-      expect(summary.readback_summary.free_roam.free_move_safety_confirm_required).toBe("true");
+      expect(summary.readback_summary.free_roam.free_move_safety_confirm_required).toBe("false");
       expect(summary.readback_summary.free_roam.free_move_camera_preflight_required).toBe("false");
       expect(summary.readback_summary.free_roam.free_move_radar_preflight_required).toBe("false");
       expect(summary.readback_summary.free_roam.mapping_start_requires_camera_first_frame).toBe("true");
       expect(summary.readback_summary.free_roam.mapping_start_requires_lidar_fresh).toBe("true");
       expect(summary.readback_summary.free_roam.mapping_readiness_plain).toBe("建图验收未就绪；还差：画面首帧、雷达新鲜、地图记录、地图画面；不影响先低速自由移动。");
-      expect(summary.readback_summary.free_roam.motion_next_action_plain).toBe("勾选现场安全确认后可先自由移动；相机和雷达只影响建图验收。");
+      expect(summary.readback_summary.free_roam.motion_next_action_plain).toBe("可直接先自由移动；相机和雷达只影响建图验收。");
       expect(summary.readback_summary.free_roam.mapping_next_action_plain).toBe("建图验收还差：画面首帧、雷达新鲜、地图记录、地图画面；不影响先低速自由移动。");
       expect(summary.safe_command_boundary.free_roam_autonomy_gates.map((gate) => gate.id)).toEqual([
         "stop_available",
@@ -8651,7 +8650,7 @@ describe("workstation fail-closed API contracts", () => {
           id: "motion_hil_unlock",
           state: "not_proven",
           evidence: "当前尚未启动自由移动，点击开始后由上车端打开运动双锁",
-          next_action: "勾选现场安全确认后点击开始自由移动（低速）",
+          next_action: "直接点击开始自由移动（低速）",
         }),
       ]));
       expect(summary.safe_to_control).toBe(false);
@@ -8798,7 +8797,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.safe_command_boundary.free_roam_autonomy_label).toBe("自动扫图");
       expect(summary.safe_command_boundary.free_roam_autonomy_next_action).toBe("已进入自动扫图条件；继续低速监看地图、雷达和画面");
       expect(summary.safe_command_boundary.free_roam_mapping_start_plain).toBe("建图启动已就绪：画面首帧和雷达新鲜都可用；地图记录和地图画面用于建图验收。");
-      expect(summary.safe_command_boundary.free_roam_mapping_start_next_action).toBe("相机和雷达已满足建图启动；勾选现场安全确认后可启动建图记录，再看地图画面完成验收。");
+      expect(summary.safe_command_boundary.free_roam_mapping_start_next_action).toBe("相机和雷达已满足建图启动；可直接启动建图记录，再看地图画面完成验收。");
       expect(summary.readback_summary.free_roam.status).toBe("mapping_ready");
       expect(summary.readback_summary.free_roam.next_action_plain).toBe(summary.safe_command_boundary.free_roam_autonomy_next_action);
       expect(summary.readback_summary.free_roam.plain_hint).toBe("自由移动正在运行；相机和雷达不作为继续移动的前置。建图验收已就绪：画面、雷达、地图记录和地图画面都可用。下一步：已进入自动扫图条件；继续低速监看地图、雷达和画面。");
@@ -8812,7 +8811,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.free_roam.mapping_next_action_plain).toBe("建图验收已就绪；继续低速监看地图、雷达和画面。");
       expect(summary.action_status_cards?.find((card) => card.id === "mapping_start")).toMatchObject({
         status_label: "可启动",
-        requires_safety_confirmation: true,
+        requires_safety_confirmation: false,
         can_start_after_safety_confirm: true,
         sends_motion_when_clicked: true,
         blocks_mapping_start: false,
@@ -9503,14 +9502,14 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.map.plain_hint).not.toContain("雷达 marker");
       expect(summary.readback_summary.map.plain_hint).not.toContain("overlay");
       expect(summary.readback_summary.map.map_wysiwyg_next_action_plain).toBe("先刷新地图画面。");
-      expect(summary.readback_summary.map.next_action_plain).toBe("图上路线和小车位置已显示；确认起点、终点和路线后，再勾选安全确认执行。");
+      expect(summary.readback_summary.map.next_action_plain).toBe("图上路线和小车位置已显示；确认起点、终点和路线后可直接执行。");
       expect(summary.readback_summary.map.map_next_action_plain).toBe("先刷新地图画面。");
       expect(summary.readback_summary.map.path_preview_status).toBe("path_preview_observed");
       expect(summary.readback_summary.map.path_preview_point_count).toBe("3");
       expect(summary.readback_summary.map.path_preview_frame_id).toBe("map");
-      expect(summary.readback_summary.map.path_preview_next_action_plain).toBe("图上路线和小车位置已显示；确认起点、终点和路线后，再勾选安全确认执行。");
+      expect(summary.readback_summary.map.path_preview_next_action_plain).toBe("图上路线和小车位置已显示；确认起点、终点和路线后可直接执行。");
       expect(summary.readback_summary.map.path_wysiwyg_status_plain).toBe("图上路线已显示在当前地图画面。");
-      expect(summary.readback_summary.map.path_wysiwyg_next_action_plain).toBe("图上路线和小车位置已显示；确认起点、终点和路线后，再勾选安全确认执行。");
+      expect(summary.readback_summary.map.path_wysiwyg_next_action_plain).toBe("图上路线和小车位置已显示；确认起点、终点和路线后可直接执行。");
       expect(summary.o3_proof_summary.path_preview_points).toEqual([
         { x: 0, y: 0, frame_id: "map", source_index: 0 },
         { x: 0.4, y: 0.1, frame_id: "map", source_index: 12 },
@@ -9664,7 +9663,7 @@ describe("workstation fail-closed API contracts", () => {
       }));
       expect(summary.readback_summary.free_roam.motion_start_ready).toBe("true");
       expect(summary.readback_summary.free_roam.free_move_start_ready).toBe("true");
-      expect(summary.readback_summary.free_roam.free_move_start_status_plain).toBe("自由移动可启动；只需现场安全确认和停止兜底。");
+      expect(summary.readback_summary.free_roam.free_move_start_status_plain).toBe("自由移动可启动；现场默认安全，只保留停止兜底。");
       expect(summary.readback_summary.free_roam.plain_hint).not.toContain("停止请求");
       expect(summary.readback_summary.free_roam.motion_runtime_status_plain).toBe("当前未在自由移动运行态；motion_ready=false 只表示尚未开始发布运动，不是启动阻塞。");
       expect(summary.safe_command_boundary.free_roam_motion_start_ready).toBe(true);
@@ -10183,7 +10182,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.map.plain_hint).not.toContain("雷达 marker");
       expect(summary.readback_summary.map.plain_hint).not.toContain("overlay");
       expect(summary.readback_summary.map.map_wysiwyg_next_action_plain).toBe("先启动雷达并等待新扫描，再刷新地图画面确认雷达点。");
-      expect(summary.readback_summary.map.next_action_plain).toBe("图上路线和小车位置已显示；确认起点、终点和路线后，再勾选安全确认执行。");
+      expect(summary.readback_summary.map.next_action_plain).toBe("图上路线和小车位置已显示；确认起点、终点和路线后可直接执行。");
       expect(summary.readback_summary.map.map_next_action_plain).toBe("先启动雷达并等待新扫描，再刷新地图画面确认雷达点。");
       expect(summary.action_status_cards?.find((card) => card.id === "map_preview")).toMatchObject({
         status_label: "已显示",
@@ -10197,9 +10196,9 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.map.path_preview_status).toBe("path_preview_observed");
       expect(summary.readback_summary.map.path_preview_point_count).toBe("2");
       expect(summary.readback_summary.map.path_preview_frame_id).toBe("map");
-      expect(summary.readback_summary.map.path_preview_next_action_plain).toBe("图上路线和小车位置已显示；确认起点、终点和路线后，再勾选安全确认执行。");
+      expect(summary.readback_summary.map.path_preview_next_action_plain).toBe("图上路线和小车位置已显示；确认起点、终点和路线后可直接执行。");
       expect(summary.readback_summary.map.path_wysiwyg_status_plain).toBe("图上路线已显示在当前地图画面。");
-      expect(summary.readback_summary.map.path_wysiwyg_next_action_plain).toBe("图上路线和小车位置已显示；确认起点、终点和路线后，再勾选安全确认执行。");
+      expect(summary.readback_summary.map.path_wysiwyg_next_action_plain).toBe("图上路线和小车位置已显示；确认起点、终点和路线后可直接执行。");
     } finally {
       await robotApi.close();
     }
@@ -10453,7 +10452,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.o3_proof_summary.path_generated).toBe(true);
       expect(summary.safe_command_boundary.nav2_goal).toBe("Nav2 NavigateToPose locked");
       expect(summary.safe_command_boundary.nav2_goal_ready).toBe(true);
-      expect(summary.safe_command_boundary.nav2_goal_label).toBe("图上路线和小车位置已显示，等待安全确认");
+      expect(summary.safe_command_boundary.nav2_goal_label).toBe("图上路线和小车位置已显示，可直接执行");
       expect(summary.safe_command_boundary.nav2_goal_blockers).toEqual([]);
       expect(summary.readback_summary.nav2.goal_execution_status).toBe("goal_succeeded");
       expect(summary.readback_summary.nav2.goal_execution_proven).toBe("true");
@@ -10534,9 +10533,9 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.o3_proof_summary.robot_pose).toBeNull();
       expect(summary.readback_summary.localization.robot_pose_status).toBe("not_observed");
       expect(summary.safe_command_boundary.nav2_goal_ready).toBe(true);
-      expect(summary.safe_command_boundary.nav2_goal_label).toBe("图上路线已显示，等待安全确认");
+      expect(summary.safe_command_boundary.nav2_goal_label).toBe("图上路线已显示，可直接执行");
       expect(summary.safe_command_boundary.nav2_goal_blockers).toEqual([]);
-      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("勾选行程前安全确认后执行图上路线，并在同窗口复验 wheel raw L/R；小车位置未显示时建议先重新定位或刷新地图");
+      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("直接执行图上路线，并在同窗口复验 wheel raw L/R；小车位置未显示时建议先重新定位或刷新地图");
       expect(summary.safe_command_boundary.nav2_goal_next_action).not.toContain("读到小车地图位置");
     } finally {
       await robotApi.close();
@@ -10610,7 +10609,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.safe_command_boundary.nav2_goal_label).toBe("控制服务未就绪");
       expect(summary.safe_command_boundary.nav2_goal_blockers).toEqual(["controller_server_inactive"]);
       expect(summary.safe_command_boundary.nav2_goal_wheel_feedback_status).toBe("awaiting_route_execution");
-      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("先恢复控制服务，再勾选行程前安全确认后执行图上路线，并在同窗口复验 wheel raw L/R");
+      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("先恢复控制服务，再直接执行图上路线，并在同窗口复验 wheel raw L/R");
       expect(summary.safe_command_boundary.robot_control_executed).toBe(false);
     } finally {
       await robotApi.close();
@@ -10679,13 +10678,13 @@ describe("workstation fail-closed API contracts", () => {
 
       expect(summary.readback_summary.nav2.current_blocker_reasons).toBe("nav2_lifecycle_not_running");
       expect(summary.readback_summary.nav2.current_blocker_labels).toBe("自动驾驶 lifecycle 未运行");
-      expect(summary.readback_summary.nav2.next_action_plain).toBe("勾选行程前安全确认后执行图上路线；执行时会自动启动自动驾驶 runtime，并在同窗口确认轮速 L/R 非零。");
-      expect(summary.readback_summary.nav2.route_execution_precheck_plain).toBe("只需勾选行程前安全确认；相机、雷达和现场报告不作为额外发车前置；执行会用当前模式跑图上路线；执行时会自动启动自动驾驶 runtime。");
-      expect(summary.current_fact_plain).toContain("自动驾驶：图上路线已准备，但本轮完整执行和轮速 L/R 还未证明。下一步：勾选行程前安全确认后执行图上路线；执行时会自动启动自动驾驶 runtime");
+      expect(summary.readback_summary.nav2.next_action_plain).toBe("直接执行图上路线；执行时会自动启动自动驾驶 runtime，并在同窗口确认轮速 L/R 非零。");
+      expect(summary.readback_summary.nav2.route_execution_precheck_plain).toBe("现场默认安全；相机、雷达和现场报告不作为额外发车前置；执行会用当前模式跑图上路线；执行时会自动启动自动驾驶 runtime。");
+      expect(summary.current_fact_plain).toContain("自动驾驶：图上路线已准备，但本轮完整执行和轮速 L/R 还未证明。下一步：直接执行图上路线；执行时会自动启动自动驾驶 runtime");
       expect(summary.safe_command_boundary.nav2_goal_ready).toBe(true);
-      expect(summary.safe_command_boundary.nav2_goal_label).toBe("图上路线已显示，等待安全确认");
+      expect(summary.safe_command_boundary.nav2_goal_label).toBe("图上路线已显示，可直接执行");
       expect(summary.safe_command_boundary.nav2_goal_blockers).toEqual([]);
-      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("勾选行程前安全确认后执行图上路线；执行时会自动启动自动驾驶 runtime，并在同窗口复验 wheel raw L/R；小车位置未显示时建议先重新定位或刷新地图");
+      expect(summary.safe_command_boundary.nav2_goal_next_action).toBe("直接执行图上路线；执行时会自动启动自动驾驶 runtime，并在同窗口复验 wheel raw L/R；小车位置未显示时建议先重新定位或刷新地图");
       expect(summary.safe_command_boundary.robot_control_executed).toBe(false);
     } finally {
       await robotApi.close();
@@ -11833,7 +11832,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(previewBody.map_wysiwyg_status_plain).toBe("地图画面、图上路线、小车位置和雷达标记都已按当前读数显示。");
       expect(previewBody.map_wysiwyg_next_action_plain).toBe("继续按当前地图画面确认路线和雷达层。");
       expect(previewBody.path_preview_status).toBe("path_preview_observed");
-      expect(previewBody.path_preview_next_action_plain).toBe("图上路线和小车位置已显示；确认起点、终点和路线后，再勾选安全确认执行。");
+      expect(previewBody.path_preview_next_action_plain).toBe("图上路线和小车位置已显示；确认起点、终点和路线后可直接执行。");
       expect(previewBody.next_action_plain).toBe(previewBody.path_preview_next_action_plain);
       expect(previewBody.path_wysiwyg_status_plain).toBe("图上路线已显示在当前地图画面。");
       expect(previewBody.path_wysiwyg_next_action_plain).toBe(previewBody.path_preview_next_action_plain);
@@ -14086,7 +14085,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.goal_execution_goal_succeeded).toBe("true");
       expect(body.goal_execution_wheel_rerun_needed).toBe("true");
       expect(body.goal_execution_minimal_precheck_safety_only).toBe(true);
-      expect(body.goal_execution_safety_confirm_required).toBe(true);
+      expect(body.goal_execution_safety_confirm_required).toBe(false);
       expect(body.goal_execution_camera_preflight_required).toBe(false);
       expect(body.goal_execution_radar_preflight_required).toBe(false);
       expect(body.goal_execution_operator_report_preflight_required).toBe(false);
@@ -14094,7 +14093,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.fixed_goal_execution_endpoint).toBe("/api/robot-control/nav2/goal/execute");
       expect(body.fixed_goal_execution_latest_endpoint).toBe("/api/robot-control/nav2/goal/execution/latest");
       expect(body.execution_status_plain).toBe("上次路线结果成功，但执行窗口轮速 L/R=not_observed/not_observed 未非零；已看到非零底盘命令和 IMU 姿态变化，主因不是雷达、相机或控制服务。");
-      expect(body.next_action_plain).toBe("勾选行程前安全确认后用 ROS 模式重跑图上路线，并在同窗口确认轮速 L/R 非零。");
+      expect(body.next_action_plain).toBe("直接用 ROS 模式重跑图上路线，并在同窗口确认轮速 L/R 非零。");
       expect(body.goal_execution_base_feedback_latest_raw_left).toBe("not_observed");
       expect(body.goal_execution_base_feedback_latest_raw_right).toBe("not_observed");
       expect(body.robot_control_executed).toBe(false);
@@ -14185,14 +14184,14 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.latest_key_values.next_execution_base_command_mode).toBe("ros");
       expect(body.latest_key_values.goal_execution_base_command_nonzero_count).toBe("49");
       expect(body.latest_key_values.goal_execution_base_feedback_lr_nonzero_proven).toBe("false");
-      expect(body.latest_key_values.goal_execution_wheel_raw_lr_next_action_plain).toBe("勾选行程前安全确认后用 ROS 模式重跑图上路线，并在同窗口确认轮速 L/R 非零。");
+      expect(body.latest_key_values.goal_execution_wheel_raw_lr_next_action_plain).toBe("直接用 ROS 模式重跑图上路线，并在同窗口确认轮速 L/R 非零。");
       expect(body.execution_status_plain).toBe("上次路线结果成功，但执行窗口轮速 L/R=0/0 未非零；已看到非零底盘命令，下一步重点复验执行窗口轮速 L/R。");
       expect(body.plain_hint).toBe(body.execution_status_plain);
-      expect(body.next_action_plain).toBe("勾选行程前安全确认后用 ROS 模式重跑图上路线，并在同窗口确认轮速 L/R 非零。");
+      expect(body.next_action_plain).toBe("直接用 ROS 模式重跑图上路线，并在同窗口确认轮速 L/R 非零。");
       expect(body.route_execution_readiness_plain).toBe("图上路线可重跑复验；上次路线结果成功，但同窗口轮速 L/R=0/0 未非零。");
-      expect(body.route_execution_precheck_plain).toBe("只需勾选行程前安全确认；相机、雷达和现场报告不作为额外发车前置；执行会用 ROS 模式跑图上路线。");
+      expect(body.route_execution_precheck_plain).toBe("现场默认安全；相机、雷达和现场报告不作为额外发车前置；执行会用 ROS 模式跑图上路线。");
       expect(body.goal_execution_wheel_raw_lr_status_plain).toBe("上次路线结果成功，但执行窗口轮速 L/R=0/0 未非零；已看到 49 次非零底盘命令。");
-      expect(body.goal_execution_wheel_raw_lr_next_action_plain).toBe("勾选行程前安全确认后用 ROS 模式重跑图上路线，并在同窗口确认轮速 L/R 非零。");
+      expect(body.goal_execution_wheel_raw_lr_next_action_plain).toBe("直接用 ROS 模式重跑图上路线，并在同窗口确认轮速 L/R 非零。");
       expect(body.base_command_mode).toBe("pwm");
       expect(body.goal_execution_base_command_mode).toBe("pwm");
       expect(body.next_execution_base_command_mode).toBe("ros");
@@ -14738,7 +14737,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(response.status).toBe(200);
       expect(body.proxy_status).toBe("latest_loaded");
       expect(body.plain_hint).toBe("自由移动可启动；点击开始会先清除停止请求，不作为启动阻塞。建图验收未就绪；还差：画面首帧、雷达新鲜、地图记录、地图画面；这不阻止先低速自由移动。");
-      expect(body.next_action_plain).toBe("勾选现场安全确认后可先自由移动；开始时会先清除停止请求。建图验收还差：画面首帧、雷达新鲜、地图记录、地图画面；不影响先低速自由移动。");
+      expect(body.next_action_plain).toBe("可直接先自由移动；开始时会先清除停止请求。建图验收还差：画面首帧、雷达新鲜、地图记录、地图画面；不影响先低速自由移动。");
       expect(body.free_move_ready).toBe(true);
       expect(body.free_move_start_ready).toBe(true);
       expect(body.free_roam_motion_start_ready).toBe(true);
@@ -14764,7 +14763,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.free_move_start_status_plain).toBe("自由移动可启动；点击开始会先清除停止请求，不作为启动阻塞。");
       expect(body.motion_runtime_status_plain).toBe("当前未在自由移动运行态；motion_ready=false 只表示尚未开始发布运动，不是启动阻塞。");
       expect(body.mapping_acceptance_status_plain).toContain("这不阻止先低速自由移动");
-      expect(body.motion_next_action_plain).toBe("勾选现场安全确认后可先自由移动；开始时会先清除停止请求。");
+      expect(body.motion_next_action_plain).toBe("可直接先自由移动；开始时会先清除停止请求。");
       expect(body.robot_control_executed).toBe(false);
       expect(upstream.receivedGets).toEqual(["/api/free-roam/autonomy/latest"]);
       expect(Object.keys(upstream.receivedBodies)).toEqual([]);
@@ -14833,9 +14832,9 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.start_will_clear_stop_request).toBe(false);
       expect(body.start_clears_stop_request_not_blocking).toBe(false);
       expect(body.stop_request_status_plain).toBe("当前没有停止请求。");
-      expect(body.motion_readiness_plain).toBe("可先自由移动；只需要现场安全确认和停止兜底。");
-      expect(body.free_move_start_status_plain).toBe("自由移动可启动；只需现场安全确认和停止兜底。");
-      expect(body.motion_next_action_plain).toBe("勾选现场安全确认后可先自由移动。");
+      expect(body.motion_readiness_plain).toBe("可先自由移动；现场默认安全，只保留停止兜底。");
+      expect(body.free_move_start_status_plain).toBe("自由移动可启动；现场默认安全，只保留停止兜底。");
+      expect(body.motion_next_action_plain).toBe("可直接先自由移动。");
       expect(body.plain_hint).not.toContain("停止请求");
       expect(body.next_action_plain).not.toContain("清除停止请求");
       expect(body.latest_key_values.stop_required).toBe("true");
@@ -16739,8 +16738,8 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
-  it("workstation base manual proxy clamps request and requires confirm_hil_checklist", async () => {
-    // 受控点动代理只允许固定 manual endpoint，并且必须经过安全确认 gate 与速度/时长 clamp。
+  it("workstation base manual proxy clamps request and auto-confirms the compatibility checklist", async () => {
+    // 受控点动代理只允许固定 manual endpoint；普通用户不再勾 checkbox，PC 仍给上车兼容字段。
     const upstream = await listenRobotBaseCommandApi({
       "/api/base/manual": {
         payload: {
@@ -16779,18 +16778,28 @@ describe("workstation fail-closed API contracts", () => {
     });
     const workstation = await listen(createWorkstationApp());
     try {
-      const rejected = await fetch(`${workstation.baseUrl}/api/robot-control/base/manual?baseUrl=${encodeURIComponent(upstream.baseUrl)}`, {
+      const openPage = await fetch(`${workstation.baseUrl}/api/robot-control/base/manual?baseUrl=${encodeURIComponent(upstream.baseUrl)}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ direction: "forward", speed: 9, duration_ms: 9999, confirm_hil_checklist: false }),
       });
-      const rejectedBody = (await rejected.json()) as { proxy_status: string; failure_reason: string; safe_to_control: boolean };
-      expect(rejected.status).toBe(400);
-      expect(rejectedBody.proxy_status).toBe("command_rejected");
-      expect(rejectedBody.failure_reason).toBe("confirm_hil_checklist_required");
-      expect(rejectedBody.safe_to_control).toBe(false);
+      const openPageBody = (await openPage.json()) as {
+        proxy_status: string;
+        applied_direction: string;
+        clamped_speed_mps: number;
+        clamped_duration_ms: number;
+        confirm_hil_checklist: boolean;
+        non_stop_requires_confirm_hil_checklist: boolean;
+      };
+      expect(openPage.status).toBe(200);
+      expect(openPageBody.proxy_status).toBe("command_forwarded");
+      expect(openPageBody.applied_direction).toBe("forward");
+      expect(openPageBody.clamped_speed_mps).toBe(0.12);
+      expect(openPageBody.clamped_duration_ms).toBe(800);
+      expect(openPageBody.confirm_hil_checklist).toBe(true);
+      expect(openPageBody.non_stop_requires_confirm_hil_checklist).toBe(false);
 
       const forwarded = await fetch(`${workstation.baseUrl}/api/robot-control/base/manual?baseUrl=${encodeURIComponent(upstream.baseUrl)}`, {
         method: "POST",
@@ -16815,6 +16824,14 @@ describe("workstation fail-closed API contracts", () => {
       expect(forwardedBody.operator_report_preflight.missing_fields).toEqual([]);
       expect(forwardedBody.operator_report_preflight.evidence_ref).toBe("not_required_for_confirmed_manual");
       expect(upstream.receivedBodies["/api/base/manual"]).toEqual([
+        {
+          direction: "forward",
+          speed: 0.12,
+          duration_ms: 800,
+          command_mode: "pwm",
+          feedback_mode: "bridge_debug",
+          confirm_hil_checklist: true,
+        },
         {
           direction: "forward",
           speed: 0.12,
@@ -17206,7 +17223,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.wheel_feedback_source).toBe("vendor_t1001_L_R");
       expect(body.wheel_feedback_plain_hint).toContain("wheel raw L/R=0/0");
       expect(body.wheel_feedback_plain_hint).toContain("这不是运动命令");
-      expect(body.wheel_feedback_next_action).toContain("勾选现场安全确认后低速试动");
+      expect(body.wheel_feedback_next_action).toContain("直接低速试动");
       expect(body.sends_motion_commands).toBe(false);
       expect(body.robot_control_executed).toBe(false);
       expect(upstream.receivedBodies["/api/base/feedback-samples"]).toEqual([{
@@ -17338,8 +17355,8 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
-  it("workstation base manual proxy captures fixed GET evidence around local checklist reject", async () => {
-    // 本地拒绝也要采集 before/after 证据快照；它只读固定 GET，不发送非零运动。
+  it("workstation base manual proxy captures fixed GET evidence around remote manual failure", async () => {
+    // 打开即用后不再本地拒绝 checklist；若上车 manual endpoint 缺失，仍要保留 before/after 证据快照。
     const upstream = await listenRobotBaseCommandApi(
       {},
       {
@@ -17394,8 +17411,8 @@ describe("workstation fail-closed API contracts", () => {
         motion_evidence_gaps: string[];
         robot_control_executed: boolean;
       };
-      expect(response.status).toBe(400);
-      expect(body.proxy_status).toBe("command_rejected");
+      expect(response.status).toBe(502);
+      expect(body.proxy_status).toBe("command_failed");
       expect(body.evidence_capture_status).toBe("captured");
       expect(body.evidence_capture_endpoints).toHaveLength(8);
       expect(body.evidence_capture_endpoints.every((endpoint) => endpoint.method === "GET")).toBe(true);
@@ -17404,9 +17421,9 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.after_readback.base_feedback_samples_latest?.key_values.wheel_feedback_lr_nonzero_proven).toBe("true");
       expect(body.motion_evidence_summary).toContain("not HIL pass");
       expect(body.motion_evidence_gaps).toEqual(expect.arrayContaining([
-        "motion_command_not_forwarded",
         "physical_motion_lidar_delta_not_proven",
       ]));
+      expect(body.motion_evidence_gaps).not.toContain("motion_command_not_forwarded");
       expect(body.motion_evidence_gaps).not.toContain("wheel_feedback_lr_nonzero_not_proven");
       expect(body.robot_control_executed).toBe(false);
       expect(upstream.receivedBodies["/api/base/manual"]).toBeUndefined();

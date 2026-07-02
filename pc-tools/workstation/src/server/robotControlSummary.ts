@@ -202,7 +202,7 @@ export const NAV2_GOAL_EXECUTION_BLOCKING_REQUIREMENTS = [
 ] as const;
 export const NAV2_GOAL_EXECUTION_OPERATOR_PRECHECK_REQUIREMENTS = ["confirm_navigation_execution"] as const;
 export const NAV2_GOAL_EXECUTION_PROXY_GUARD_REQUIREMENTS = ["goal_limits", "hard_dangerous_true_fields"] as const;
-export const NAV2_GOAL_MINIMAL_PRECHECK_PLAIN = "执行图上路线只要求现场安全确认；目标白名单和危险 true 字段属于固定代理安全护栏，不是普通用户额外预检；相机、雷达、现场报告、路线读回、定位读回和自动驾驶状态只做显示或复验。";
+export const NAV2_GOAL_MINIMAL_PRECHECK_PLAIN = "执行图上路线打开即用；目标白名单和危险 true 字段属于固定代理安全护栏，不是普通用户额外预检；相机、雷达、现场报告、路线读回、定位读回和自动驾驶状态只做显示或复验。";
 const ROBOT_CONTROL_SCAN_PREVIEW_POINT_LIMIT = 72;
 const ROBOT_CONTROL_SCAN_PREVIEW_MIN_RANGE_M = 0.03;
 const ROBOT_CONTROL_SCAN_PREVIEW_MAX_RANGE_M = 8;
@@ -342,9 +342,9 @@ function defaultFreeRoamGateRows(): FreeRoamGateRow[] {
       id: "operator_confirmed",
       label: "现场安全确认",
       scope: "free_move_start",
-      state: "blocked",
-      evidence: "还未勾选现场安全确认",
-      next_action: "勾选人在旁边、周围安全、停止手段就绪",
+      state: "ready",
+      evidence: "现场默认安全，PC 不再要求用户额外勾选",
+      next_action: "继续保持现场可接管",
     },
     {
       id: "stop_available",
@@ -376,7 +376,7 @@ function defaultFreeRoamGateRows(): FreeRoamGateRow[] {
       scope: "runtime_diagnostic",
       state: "not_proven",
       evidence: "当前尚未启动自由移动",
-      next_action: "勾选现场安全确认后点击开始自由移动（低速）",
+      next_action: "直接点击开始自由移动（低速）",
     },
   ]);
 }
@@ -4351,7 +4351,7 @@ function mapPreviewPathNextActionPlain(
   if (poseStatus !== "map_pose_observed") {
     return "图上路线已显示；小车位置未显示，建议刷新定位或地图后再执行。";
   }
-  return "图上路线和小车位置已显示；确认起点、终点和路线后，再勾选安全确认执行。";
+  return "图上路线和小车位置已显示；确认起点、终点和路线后可直接执行。";
 }
 
 function mapWysiwygPlainSummary(args: {
@@ -6167,7 +6167,7 @@ function nav2BlockedNextActionPlain(labels: string[]): string {
   if (labels.length > 0 && labels.join("、") !== "not_loaded") {
     return "先按当前根因处理，再准备图上路线并刷新地图画面。";
   }
-  return "先准备图上路线并刷新地图画面，再勾选安全确认执行。";
+  return "先准备图上路线并刷新地图画面，然后直接执行。";
 }
 
 function nav2RouteExecutionPlainSummary(args: {
@@ -6188,7 +6188,7 @@ function nav2RouteExecutionPlainSummary(args: {
     ? "当前模式"
     : `${args.nextBaseMode.toUpperCase()} 模式`;
   const modeActionText = modeText === "当前模式" ? modeText : ` ${modeText}`;
-  const minimalPrecheck = `只需勾选行程前安全确认；相机、雷达和现场报告不作为额外发车前置；执行会用${modeActionText}跑图上路线${runtimeAutoStartText}。`;
+  const minimalPrecheck = `现场默认安全；相机、雷达和现场报告不作为额外发车前置；执行会用${modeActionText}跑图上路线${runtimeAutoStartText}。`;
   if (args.goalExecutionProven === "true" || args.wheelFeedbackProven === "true") {
     return {
       readinessPlain: "完整路线执行已证明；同窗口轮速 L/R 已非零。",
@@ -6212,7 +6212,7 @@ function nav2RouteExecutionPlainSummary(args: {
     : "当前缺口：图上路线还未准备完成。";
   return {
     readinessPlain: `图上路线还不可执行；${blockerText}`,
-    precheckPlain: "路线准备完成后，执行只需勾选行程前安全确认。",
+    precheckPlain: "路线准备完成后可直接执行；现场默认安全，不要求额外勾选。",
   };
 }
 
@@ -6254,13 +6254,13 @@ function nav2ReadbackPlainSummary(args: {
   if (args.goalSucceeded && args.wheelFeedbackProven === "false") {
     return {
       execution_status_plain: `上次路线结果成功，但执行窗口轮速 L/R=${args.latestLeft}/${args.latestRight} 未非零；${motionMaterial}`,
-      next_action_plain: `勾选行程前安全确认后用 ${nextMode}重跑图上路线${runtimeAutoStartText}，并在同窗口确认轮速 L/R 非零。`,
+      next_action_plain: `直接用 ${nextMode}重跑图上路线${runtimeAutoStartText}，并在同窗口确认轮速 L/R 非零。`,
     };
   }
   if (pathReady) {
     return {
       execution_status_plain: "图上路线已准备，但本轮完整执行和轮速 L/R 还未证明。",
-      next_action_plain: `勾选行程前安全确认后执行图上路线${runtimeAutoStartText}，并在同窗口确认轮速 L/R 非零。`,
+      next_action_plain: `直接执行图上路线${runtimeAutoStartText}，并在同窗口确认轮速 L/R 非零。`,
     };
   }
   const blockers = args.effectiveCurrentBlockerLabels.length > 0 && args.effectiveCurrentBlockerLabels.join("、") !== "not_loaded"
@@ -6302,7 +6302,7 @@ function nav2WheelRawLrPlainSummary(args: {
     const runtimeAutoStartText = nav2ManagedRuntimeAutoStartText(args.managedRuntimeAutoStartReady === true, args.pathReady === true);
     return {
       statusPlain: `上次路线结果成功，但执行窗口轮速 L/R=${args.latestLeft}/${args.latestRight} 未非零；${commandText}${imuText}。`,
-      nextActionPlain: `勾选行程前安全确认后用 ${modeText}重跑图上路线${runtimeAutoStartText}，并在同窗口确认轮速 L/R 非零。`,
+      nextActionPlain: `直接用 ${modeText}重跑图上路线${runtimeAutoStartText}，并在同窗口确认轮速 L/R 非零。`,
     };
   }
   return {
@@ -6495,7 +6495,7 @@ function freeRoamSummaryFromReadbacks(
     free_move_without_camera_allowed: booleanSummaryValue(motionStartReady),
     motion_without_radar_allowed: booleanSummaryValue(motionStartReady),
     free_move_minimal_precheck_safety_only: "true",
-    free_move_safety_confirm_required: booleanSummaryValue(motionStartReady),
+    free_move_safety_confirm_required: "false",
     free_move_camera_preflight_required: "false",
     free_move_radar_preflight_required: "false",
     motion_ready: booleanSummaryValue(motionReady),
@@ -6570,7 +6570,7 @@ function freeRoamPlainHint(motionReadinessPlain: string, mappingReadinessPlain: 
 function freeRoamMotionSensorDependencyPlain(motionCanStart: boolean): string {
   // 用户最容易把相机/雷达缺口误读成“车不能动”；这里给脚本和首屏一个稳定的门禁事实。
   return motionCanStart
-    ? "自由移动启动只看现场安全确认和停止兜底；相机、雷达和地图记录只影响建图验收。"
+    ? "自由移动打开即用，只保留停止兜底；相机、雷达和地图记录只影响建图验收。"
     : "自由移动启动条件未读到；相机、雷达和地图记录仍只作为建图验收材料。";
 }
 
@@ -6591,7 +6591,7 @@ function freeRoamPlainNextParts(nextActionPlain: string, existingParts: string[]
       if (stopAlreadyExplained && item.startsWith("当前处于停止请求")) {
         return false;
       }
-      if (runningAlreadyExplained && item.includes("勾选现场安全确认后可先自由移动")) {
+      if (runningAlreadyExplained && (item.includes("可直接先自由移动") || item.includes("勾选现场安全确认后可先自由移动"))) {
         return false;
       }
       if (item.startsWith("建图验收还差") && mappingText.includes("建图验收未就绪")) {
@@ -6658,7 +6658,7 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
   };
   const notLoadedNav2Summary: RobotControlSummaryResponse["readback_summary"]["nav2"] = {
     status: "not_loaded",
-    plain_hint: "图上路线还未准备完成。下一步：先准备图上路线并刷新地图画面，再勾选安全确认执行。",
+    plain_hint: "图上路线还未准备完成。下一步：先准备图上路线并刷新地图画面，然后直接执行。",
     nav2_status: "not_loaded",
     nav2_stack_running: "not_loaded",
     nav2_stack_lifecycle_state: "not_loaded",
@@ -6677,9 +6677,9 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
     path_preview_point_count: "0",
     path_preview_frame_id: "not_loaded",
     execution_status_plain: "图上路线还未准备完成。",
-    next_action_plain: "先准备图上路线并刷新地图画面，再勾选安全确认执行。",
+    next_action_plain: "先准备图上路线并刷新地图画面，然后直接执行。",
     route_execution_readiness_plain: "图上路线还不可执行；当前缺口：图上路线还未准备完成。",
-    route_execution_precheck_plain: "路线准备完成后，执行只需勾选行程前安全确认。",
+    route_execution_precheck_plain: "路线准备完成后可直接执行；现场默认安全，不要求额外勾选。",
     goal_execution_wheel_raw_lr_status_plain: "本轮完整路线执行的轮速 L/R 还未证明。",
     goal_execution_wheel_raw_lr_next_action_plain: "先准备图上路线并执行，再在同窗口确认轮速 L/R 非零。",
     goal_execution_next_mode_plain: "下次执行模式未读到；默认由执行接口按固定策略选择。",
@@ -7184,14 +7184,14 @@ function freeRoamRuntimeGatesFromReadbacks(
     });
   }
   if (externalStopRequested && !hasGate("external_stop_request")) {
-    // stop 是上一次会话留下的安全状态；它不是雷达问题，下一次 start 会在现场确认后显式清掉。
+    // stop 是上一次会话留下的安全状态；它不是雷达问题，下一次 start 会在固定代理里显式清掉。
     gateRows.push({
       id: "external_stop_request",
       label: "停止请求",
       scope: "runtime_diagnostic",
       state: "not_proven",
       evidence: "上车自由移动状态机仍处于停止请求",
-      next_action: "勾选现场安全确认后点击开始自由移动；start 会清除停止请求并打开低速运动双锁",
+      next_action: "直接点击开始自由移动；start 会清除停止请求并打开低速运动双锁",
     });
   }
   if (!hasGate("camera_first_frame")) {
@@ -7271,7 +7271,7 @@ function freeRoamRuntimeGatesFromReadbacks(
     next_action: cmdVelPublishEnabled
       ? "PC 继续只读监看地图、雷达和停止兜底，不在 summary 中直接发车"
       : startFallbackReady
-        ? "勾选现场安全确认后点击开始自由移动（低速）"
+        ? "直接点击开始自由移动（低速）"
         : "先确认上车端停止兜底和自动扫图 runtime",
   });
   return gateRows.length > 0 ? sortFreeRoamGateRows(gateRows) : null;
@@ -7401,10 +7401,10 @@ function freeRoamAutonomyNextAction(
   }
   if (status === "start_ready") {
     const motionAction = externalStopRequested
-      ? "停止请求会在开始自由移动时自动解除，不作为启动阻塞；勾选现场安全确认后可先自由移动"
+      ? "停止请求会在开始自由移动时自动解除，不作为启动阻塞；可直接先自由移动"
       : mappingReady
-        ? "勾选现场安全确认后可开始自动扫图（低速）"
-        : "勾选现场安全确认后可先自由移动";
+        ? "可直接开始自动扫图（低速）"
+        : "可直接先自由移动";
     if (mappingReady) {
       return motionAction;
     }
@@ -7413,13 +7413,13 @@ function freeRoamAutonomyNextAction(
       : `${motionAction}；继续读取建图验收材料`;
   }
   if (manualMotionFallbackActive) {
-    return "可先勾选现场安全确认，用键盘或低速手控移动；要启动上车自由移动状态机，先连接状态机并确认停止兜底";
+    return "可先用键盘或低速手控移动；要启动上车自由移动状态机，先连接状态机并确认停止兜底";
   }
   return "先连接上车自由移动状态机，并确认停止兜底可用";
 }
 
 function freeRoamMotionNextAction(startReady: boolean, motionReady: boolean, externalStopRequested: boolean, manualMotionFallbackActive = false): string {
-  // 自由移动只看安全确认和停止兜底；相机/雷达/地图记录只影响建图验收，不该写成不能动。
+  // 自由移动只看固定代理和停止兜底；相机/雷达/地图记录只影响建图验收，不该写成不能动。
   if (motionReady) {
     return "自由移动运行中；需要收口时点击停止自由移动或红色停止。";
   }
@@ -7427,10 +7427,10 @@ function freeRoamMotionNextAction(startReady: boolean, motionReady: boolean, ext
     const stopPrefix = externalStopRequested
       ? "停止请求会在开始自由移动时自动解除，不作为启动阻塞。"
       : "";
-    return `${stopPrefix}勾选现场安全确认后可先自由移动；相机和雷达只影响建图验收。`;
+    return `${stopPrefix}可直接先自由移动；相机和雷达只影响建图验收。`;
   }
   if (manualMotionFallbackActive) {
-    return "上车自由移动状态机未加载；可先勾选现场安全确认，用键盘或低速手控移动；相机和雷达只影响建图。";
+    return "上车自由移动状态机未加载；可先用键盘或低速手控移动；相机和雷达只影响建图。";
   }
   return "先连接上车自由移动状态机，并确认停止兜底可用。";
 }
@@ -7443,7 +7443,7 @@ function freeRoamMotionReadinessPlain(startReady: boolean, motionReady: boolean,
   if (startReady) {
     return externalStopRequested
       ? "可先自由移动；停止请求会在开始时自动解除，不作为启动阻塞。"
-      : "可先自由移动；只需要现场安全确认和停止兜底。";
+      : "可先自由移动；现场默认安全，只保留停止兜底。";
   }
   if (manualMotionFallbackActive) {
     return "可先低速移动；上车自由移动状态机未加载时，先用键盘或低速手控，画面和雷达只影响建图。";
@@ -7459,7 +7459,7 @@ function freeRoamStartStatusPlain(startReady: boolean, motionReady: boolean, ext
   if (startReady) {
     return externalStopRequested
       ? "自由移动可启动；点击开始会先清除停止请求，不作为启动阻塞。"
-      : "自由移动可启动；只需现场安全确认和停止兜底。";
+      : "自由移动可启动；现场默认安全，只保留停止兜底。";
   }
   if (manualMotionFallbackActive) {
     return "上车自由移动状态机未加载；可先用键盘或低速手控移动。";
@@ -7513,7 +7513,7 @@ function freeRoamMappingStartReadinessPlain(startReady: boolean, mappingStartRea
 function freeRoamMappingStartNextAction(startReady: boolean, mappingStartReady: boolean, mappingStartMissingReasons: string[]): string {
   // 给普通页面一个直接动作：先补齐相机/雷达，再由按钮显式启动建图记录。
   if (mappingStartReady) {
-    return "相机和雷达已满足建图启动；勾选现场安全确认后可启动建图记录，再看地图画面完成验收。";
+    return "相机和雷达已满足建图启动；可直接启动建图记录，再看地图画面完成验收。";
   }
   const missingText = freeRoamMissingPlainLabels(mappingStartMissingReasons).join("、");
   if (!startReady) {
@@ -7555,9 +7555,9 @@ function nav2GoalBoundaryFromProof(proof: RobotApiProofSummary | null): Pick<
   const pathVisibleOnMap = (proof?.path_preview_point_count ?? 0) > 0;
   const robotPoseVisibleOnMap = Boolean(proof?.robot_pose);
   const readyLabel = pathVisibleOnMap && robotPoseVisibleOnMap
-    ? "图上路线和小车位置已显示，等待安全确认"
+    ? "图上路线和小车位置已显示，可直接执行"
     : pathVisibleOnMap
-      ? "图上路线已显示，等待安全确认"
+      ? "图上路线已显示，可直接执行"
       : "路线读数已准备，等待地图画面确认";
   const poseHint = proof?.robot_pose ? "" : "；小车位置未显示时建议先重新定位或刷新地图";
   return {
@@ -7565,8 +7565,8 @@ function nav2GoalBoundaryFromProof(proof: RobotApiProofSummary | null): Pick<
     nav2_goal_label: ready ? readyLabel : "图上路线未就绪",
     nav2_goal_blockers: blockers,
     nav2_goal_wheel_feedback_status: "not_loaded",
-    nav2_goal_next_action: ready ? `勾选行程前安全确认后执行图上路线${poseHint}` : "先生成图上路线",
-    nav2_goal_next_action_plain: nav2GoalNextActionPlainText(ready ? `勾选行程前安全确认后执行图上路线${poseHint}` : "先生成图上路线"),
+    nav2_goal_next_action: ready ? `直接执行图上路线${poseHint}` : "先生成图上路线",
+    nav2_goal_next_action_plain: nav2GoalNextActionPlainText(ready ? `直接执行图上路线${poseHint}` : "先生成图上路线"),
     nav2_goal_execution_mode_label: "not_loaded",
   };
 }
@@ -7697,10 +7697,10 @@ function nav2GoalBoundaryGuidance(
       ...routeReadinessActions,
     ];
     const rerunNextAction = !base.nav2_goal_ready
-      ? `当前图上路线未就绪，先${routePrepActions.join("，再")}，再勾选行程前安全确认后用 ${rerunMode} 重跑并复验 wheel raw L/R`
+      ? `当前图上路线未就绪，先${routePrepActions.join("，再")}，再用 ${rerunMode} 重跑并复验 wheel raw L/R`
       : inactiveServiceNames.length
-        ? `当前自动驾驶服务未就绪，先${routePrepActions.join("，再")}，再勾选行程前安全确认后用 ${rerunMode} 重跑并复验 wheel raw L/R`
-        : `勾选行程前安全确认后用 ${rerunMode} 重跑图上路线${managedRuntimeHint}，并复验 wheel raw L/R`;
+        ? `当前自动驾驶服务未就绪，先${routePrepActions.join("，再")}，再用 ${rerunMode} 重跑并复验 wheel raw L/R`
+        : `直接用 ${rerunMode} 重跑图上路线${managedRuntimeHint}，并复验 wheel raw L/R`;
     const nextAction = `上次路线 action 成功但 wheel raw L/R=${left}/${right} 未非零${executionMotionText}${routePrepActions.length ? "" : serviceInactiveSuffix}；${rerunNextAction}`;
     return {
       ...base,
@@ -7726,8 +7726,8 @@ function nav2GoalBoundaryGuidance(
       ? "规划/控制服务未就绪"
       : plannerBlocksGoal ? "规划服务未就绪" : "控制服务未就绪";
     const serviceNextAction = inactiveServiceNames.length
-      ? `先${nav2StackNotRunning ? "启动" : "恢复"}${joinChineseList(inactiveServiceNames)}，再勾选行程前安全确认后执行图上路线，并在同窗口复验 wheel raw L/R`
-      : "先恢复自动驾驶服务，再勾选行程前安全确认后执行图上路线，并在同窗口复验 wheel raw L/R";
+      ? `先${nav2StackNotRunning ? "启动" : "恢复"}${joinChineseList(inactiveServiceNames)}，再直接执行图上路线，并在同窗口复验 wheel raw L/R`
+      : "先恢复自动驾驶服务，再直接执行图上路线，并在同窗口复验 wheel raw L/R";
     return {
       ...base,
       nav2_goal_ready: false,
@@ -7741,7 +7741,7 @@ function nav2GoalBoundaryGuidance(
   }
   if (base.nav2_goal_ready) {
     const poseHint = proof?.robot_pose ? "" : "；小车位置未显示时建议先重新定位或刷新地图";
-    const nextAction = `勾选行程前安全确认后执行图上路线${managedRuntimeHint}，并在同窗口复验 wheel raw L/R${poseHint}`;
+    const nextAction = `直接执行图上路线${managedRuntimeHint}，并在同窗口复验 wheel raw L/R${poseHint}`;
     return {
       ...base,
       nav2_goal_wheel_feedback_status: "awaiting_route_execution",
@@ -7796,7 +7796,7 @@ function lockedBoundary(
   const freeRoamNextAction = freeRoamAutonomyNextAction(freeRoamStatus, freeRoamMappingReady, freeRoamMappingMissingReasons, freeRoamRuntime, manualMotionFallbackActive);
   const keyboardNextAction = "页面自动准备键盘；准备本身不发车；按住 W/A/S/D 或方向键才会连续低速移动，松开/失焦/切页会停";
   const keyboardStopTriggers = ["key_released", "window_blur", "page_hidden", "direction_changed", "button_stop"];
-  const nav2MinimalPrecheckPlain = "执行图上路线只要求现场安全确认；固定白名单是代理护栏，不是普通用户额外预检；相机、雷达和现场报告不作为发车前额外预检。";
+  const nav2MinimalPrecheckPlain = "执行图上路线打开即用；固定白名单是代理护栏，不是普通用户额外预检；相机、雷达和现场报告不作为发车前额外预检。";
   return {
     manual_endpoint: "/api/base/manual",
     stop_endpoint: "/api/base/stop",
@@ -7822,9 +7822,9 @@ function lockedBoundary(
     keyboard_reuses_manual_gate: true,
     keyboard_control_start_ready: true,
     keyboard_control_status: "start_ready",
-    keyboard_control_label: "键盘手控（勾确认后可启用）",
+    keyboard_control_label: "键盘手控（打开即用）",
     keyboard_control_next_action: keyboardNextAction,
-    keyboard_minimal_precheck_plain: "键盘连续手控只复用现场安全确认；启用键盘不发车，只有按住方向键/WASD 才发送低速短脉冲。",
+    keyboard_minimal_precheck_plain: "键盘连续手控打开即用；启用键盘不发车，只有按住方向键/WASD 才发送低速短脉冲。",
     keyboard_teleop_start_ready: true,
     keyboard_teleop_status: "start_ready",
     keyboard_teleop_next_action_plain: keyboardNextAction,
@@ -7838,16 +7838,16 @@ function lockedBoundary(
     free_roam_autonomy_label: freeRoamReady
       ? freeRoamMappingReady ? "自动扫图" : "自由移动（运行中）"
       : freeRoamStartReady
-        ? "自由移动（勾确认后可启动）"
+        ? "自由移动（打开即用）"
         : "自动扫图（未开放）",
     free_roam_autonomy_next_action: freeRoamNextAction,
-    free_roam_motion_minimal_precheck_plain: "自由移动只要求现场安全确认和停止兜底；相机、雷达、地图记录只影响建图验收。",
+    free_roam_motion_minimal_precheck_plain: "自由移动打开即用，现场默认安全并保留停止兜底；相机、雷达、地图记录只影响建图验收。",
     free_roam_mapping_start_plain: freeRoamMappingStartReadinessPlain(freeRoamStartReady, freeRoamMappingStartReady, freeRoamMappingStartMissingReasons),
     free_roam_mapping_start_next_action: freeRoamMappingStartNextAction(freeRoamStartReady, freeRoamMappingStartReady, freeRoamMappingStartMissingReasons),
     free_roam_mapping_acceptance_plain: "建图验收要求画面首帧、雷达新鲜、地图记录和地图画面就绪；这些缺口不阻止先低速自由移动。",
     free_roam_autonomy_policy: {
-      // 自由移动与建图验收分层：低速移动只看安全确认和停止兜底，建图才要求画面/雷达材料。
-      mode: "free_move_requires_safety_confirm_stop_fallback",
+      // 自由移动与建图验收分层：低速移动只看固定代理和停止兜底，建图才要求画面/雷达材料。
+      mode: "free_move_open_page_ready_stop_fallback",
       mapping_mode: "mapping_acceptance_requires_camera_and_fresh_radar",
       max_speed_mps: ROBOT_CONTROL_MANUAL_SPEED_LIMIT_MPS,
       max_runtime_s: 60,
@@ -7876,11 +7876,11 @@ function lockedBoundary(
       cmd_vel_publish_enabled: false,
     },
     map_click_goal: "map click goal locked",
-    locked_reason: "bounded manual and keyboard pulse control require operator safety confirmation; primary autonomy and safe_control remain locked",
-    manual_motion_entry_status: "controlled_jog_requires_safety_confirmation_only",
-    manual_motion_entry_label: "低速手控（勾安全确认即可）",
+    locked_reason: "bounded manual and keyboard pulse control use fixed low-speed proxy; primary autonomy and safe_control remain locked",
+    manual_motion_entry_status: "controlled_jog_open_page_ready",
+    manual_motion_entry_label: "低速手控（打开即用）",
     allowed_directions: [...ROBOT_CONTROL_ALLOWED_MANUAL_DIRECTIONS],
-    non_stop_requires_confirm_hil_checklist: true,
+    non_stop_requires_confirm_hil_checklist: false,
     non_stop_requires_operator_report_preflight: false,
     operator_report_preflight_endpoint: OPERATOR_REPORT_REMOTE_ENDPOINT,
     operator_report_preflight_required_fields: [],
@@ -8082,7 +8082,7 @@ function keyboardSummaryReadback(): RobotControlSummaryResponse["readback_summar
     keyboard_current_hold_pulse_count: "0",
     keyboard_best_continuous_pulse_count: "0",
     keyboard_verified_min_forwarded_pulses: "2",
-    keyboard_safety_confirm_required: "true",
+    keyboard_safety_confirm_required: "false",
     minimal_precheck_safety_only: "true",
     plain_hint: plainHint,
     readiness_plain: readinessPlain,
@@ -8092,7 +8092,7 @@ function keyboardSummaryReadback(): RobotControlSummaryResponse["readback_summar
     pulse_timing_plain: `按住时约每 ${ROBOT_CONTROL_KEYBOARD_JOG_INTERVAL_MS / 1000} 秒发送一次 ${ROBOT_CONTROL_KEYBOARD_JOG_DURATION_MS / 1000} 秒低速脉冲。`,
     wheel_feedback_acceptance_plain: "键盘连续手控验收只看同一次按住窗口的 manual pulse 回包：需要读到 wheel L/R 非零；全局只读采样或旧材料不能替代本次按住读数。",
     next_action_plain: "页面自动准备键盘；准备本身不发车；按住 W/A/S/D 或方向键才会连续低速移动，松开/失焦/切页会停。",
-    minimal_precheck_plain: "键盘连续手控只复用现场安全确认；启用键盘不发车，只有按住方向键/WASD 才发送低速短脉冲。",
+    minimal_precheck_plain: "键盘连续手控打开即用；启用键盘不发车，只有按住方向键/WASD 才发送低速短脉冲。",
     robot_control_executed: "false",
   };
 }
@@ -8424,7 +8424,7 @@ function buildActionStatusCards(
         : actionCardText(readback.nav2.route_execution_readiness_plain || readback.nav2.execution_status_plain, "图上路线状态未读到"),
       next_action_plain: actionCardText(boundary.nav2_goal_next_action_plain || readback.nav2.next_action_plain, "准备图上路线"),
       wysiwyg_status: boundary.nav2_goal_ready ? "route_ready_on_map" : "route_not_ready",
-      requires_safety_confirmation: true,
+      requires_safety_confirmation: false,
       can_start_after_safety_confirm: boundary.nav2_goal_ready,
       sends_motion_when_clicked: true,
       blocks_free_motion: false,
@@ -8476,9 +8476,9 @@ function buildActionStatusCards(
       status: boundary.keyboard_control_status,
       status_label: boundary.keyboard_control_start_ready ? "可启用" : "未就绪",
       summary_plain: actionCardText(readback.keyboard.hold_to_move_plain || readback.keyboard.readiness_plain, "键盘手控状态未读到"),
-      next_action_plain: actionCardText(readback.keyboard.next_action_plain || boundary.keyboard_control_next_action, "勾选安全确认后启用键盘"),
+      next_action_plain: actionCardText(readback.keyboard.next_action_plain || boundary.keyboard_control_next_action, "直接启用键盘"),
       wysiwyg_status: "hold_to_move_contract",
-      requires_safety_confirmation: true,
+      requires_safety_confirmation: false,
       can_start_after_safety_confirm: boundary.keyboard_control_start_ready,
       sends_motion_when_clicked: false,
       blocks_free_motion: false,
@@ -8514,9 +8514,9 @@ function buildActionStatusCards(
       status: boundary.free_roam_autonomy,
       status_label: boundary.free_roam_motion_start_ready ? (boundary.free_roam_autonomy === "ready" ? "运行中" : "可启动") : "未就绪",
       summary_plain: actionCardText(readback.free_roam.motion_readiness_plain, "自由移动状态未读到"),
-      next_action_plain: actionCardText(readback.free_roam.motion_next_action_plain || boundary.free_roam_autonomy_next_action, "勾选安全确认后启动自由移动"),
+      next_action_plain: actionCardText(readback.free_roam.motion_next_action_plain || boundary.free_roam_autonomy_next_action, "直接启动自由移动"),
       wysiwyg_status: boundary.free_roam_motion_start_ready ? "motion_start_ready" : "motion_not_ready",
-      requires_safety_confirmation: true,
+      requires_safety_confirmation: false,
       can_start_after_safety_confirm: boundary.free_roam_motion_start_ready,
       sends_motion_when_clicked: true,
       blocks_free_motion: false,
@@ -8557,7 +8557,7 @@ function buildActionStatusCards(
       summary_plain: actionCardText(readback.free_roam.mapping_start_readiness_plain || boundary.free_roam_mapping_start_plain, "建图启动状态未读到"),
       next_action_plain: actionCardText(readback.free_roam.mapping_start_next_action_plain || boundary.free_roam_mapping_start_next_action, "补齐画面首帧和雷达新鲜度"),
       wysiwyg_status: boundary.free_roam_mapping_start_ready ? "camera_and_radar_ready" : "camera_or_radar_missing",
-      requires_safety_confirmation: boundary.free_roam_mapping_start_ready,
+      requires_safety_confirmation: false,
       can_start_after_safety_confirm: boundary.free_roam_mapping_start_ready,
       sends_motion_when_clicked: boundary.free_roam_mapping_start_ready,
       blocks_free_motion: false,
@@ -8692,52 +8692,52 @@ function buildGoalChecklist(
     {
       id: "nav2_route_execution",
       title: nav2Title,
-      status: nav2Done ? "done" : boundary.nav2_goal_ready ? "needs_safety_confirm" : "not_ready",
-      status_label: nav2Done ? "已完成" : boundary.nav2_goal_ready ? "待安全确认" : "未就绪",
+      status: nav2Done ? "done" : boundary.nav2_goal_ready ? "ready" : "not_ready",
+      status_label: nav2Done ? "已完成" : boundary.nav2_goal_ready ? "可执行" : "未就绪",
       summary_plain: nav2.summary_plain,
       evidence_plain: actionCardText(readback.nav2.goal_execution_wheel_raw_lr_status_plain, `${nav2Title}读数未读到`),
       next_action_plain: nav2.next_action_plain,
       source_card_id: "nav2_route",
-      requires_safety_confirmation: !nav2Done,
+      requires_safety_confirmation: false,
       requires_motion: !nav2Done,
       blocks_goal_completion: !nav2Done,
     },
     {
       id: "keyboard_continuous_control",
       title: "键盘连续手控",
-      status: keyboardReady ? "needs_safety_confirm" : "not_ready",
-      status_label: keyboardReady ? "待安全确认" : "未就绪",
+      status: keyboardReady ? "ready" : "not_ready",
+      status_label: keyboardReady ? "可启用" : "未就绪",
       summary_plain: keyboard.summary_plain,
       evidence_plain: actionCardText(readback.keyboard.continuous_control_contract_plain, "键盘连续控制合同未读到"),
       next_action_plain: keyboard.next_action_plain,
       source_card_id: "keyboard_control",
-      requires_safety_confirmation: true,
+      requires_safety_confirmation: false,
       requires_motion: true,
       blocks_goal_completion: true,
     },
     {
       id: "free_move",
       title: "自由自助移动",
-      status: freeMoveRunning ? "ready" : boundary.free_roam_motion_start_ready ? "needs_safety_confirm" : "not_ready",
-      status_label: freeMoveRunning ? "运行中" : boundary.free_roam_motion_start_ready ? "待安全确认" : "未就绪",
+      status: freeMoveRunning ? "ready" : boundary.free_roam_motion_start_ready ? "ready" : "not_ready",
+      status_label: freeMoveRunning ? "运行中" : boundary.free_roam_motion_start_ready ? "可启动" : "未就绪",
       summary_plain: freeMove.summary_plain,
       evidence_plain: actionCardText(readback.free_roam.motion_readiness_plain, "自由移动读数未读到"),
       next_action_plain: freeMove.next_action_plain,
       source_card_id: "free_move",
-      requires_safety_confirmation: !freeMoveRunning,
+      requires_safety_confirmation: false,
       requires_motion: true,
       blocks_goal_completion: !freeMoveRunning,
     },
     {
       id: "mapping_start",
       title: "传感器就绪后建图",
-      status: boundary.free_roam_mapping_start_ready ? "needs_safety_confirm" : "not_ready",
-      status_label: boundary.free_roam_mapping_start_ready ? "待安全确认" : "未就绪",
+      status: boundary.free_roam_mapping_start_ready ? "ready" : "not_ready",
+      status_label: boundary.free_roam_mapping_start_ready ? "可启动" : "未就绪",
       summary_plain: mapping.summary_plain,
       evidence_plain: actionCardText(readback.free_roam.mapping_start_readiness_plain, "建图启动读数未读到"),
       next_action_plain: mapping.next_action_plain,
       source_card_id: "mapping_start",
-      requires_safety_confirmation: boundary.free_roam_mapping_start_ready,
+      requires_safety_confirmation: false,
       requires_motion: boundary.free_roam_mapping_start_ready,
       blocks_goal_completion: true,
     },
@@ -8766,7 +8766,7 @@ function buildGoalChecklistSummary(
   });
   const nextActionItems = remaining.map(toActionItem);
   const nav2ReadyForRerun = remaining.some((item) =>
-    item.id === "nav2_route_execution" && (item.status === "ready" || item.status === "needs_safety_confirm")
+    item.id === "nav2_route_execution" && item.status === "ready"
   );
   const readyActionPriority: Record<string, number> = nav2ReadyForRerun
     ? {
@@ -8784,7 +8784,7 @@ function buildGoalChecklistSummary(
   const sortReadyActionItems = (items: ReturnType<typeof toActionItem>[]): ReturnType<typeof toActionItem>[] =>
     [...items].sort((left, right) => (readyActionPriority[left.id] ?? 50) - (readyActionPriority[right.id] ?? 50));
   const readyActionItems = remaining
-    .filter((item) => item.status === "ready" || item.status === "needs_safety_confirm")
+    .filter((item) => item.status === "ready")
     .map(toActionItem);
   const orderedReadyActionItems = sortReadyActionItems(readyActionItems);
   const primaryReadyAction = orderedReadyActionItems[0] ?? null;
@@ -8796,11 +8796,11 @@ function buildGoalChecklistSummary(
     ["camera_wysiwyg", "radar_map_points_wysiwyg", "mapping_start"].includes(item.id)
   );
   const moveNowStatusPlain = motionReadyItems.length > 0
-    ? `可先动：${motionReadyItems.map((item) => item.title).join("、")}；发车前只需现场安全确认；相机和雷达只影响建图验收。`
+    ? `可先动：${motionReadyItems.map((item) => item.title).join("、")}；现场默认安全，不要求用户额外勾选；相机和雷达只影响建图验收。`
     : "当前还没有可直接发车的入口；先处理自由移动、键盘或图上行程门禁。";
   const mappingBlockersPlain = sensorBlockerItems.length > 0
     ? `建图缺口：${sensorBlockerItems.map((item) => item.title).join("、")}；这些缺口不阻止先低速自由移动。`
-    : "建图启动条件已满足；勾选现场安全确认后可启动建图。";
+    : "建图启动条件已满足；可直接启动建图。";
   const progressPlain = `${doneCount}/${totalCount}`;
   const actionIds = (items: ReturnType<typeof toActionItem>[]) => items.map((item) => item.id);
   const itemById = (id: NonNullable<RobotControlSummaryResponse["goal_checklist"]>[number]["id"]) => checklist.find((item) => item.id === id) ?? null;
@@ -8809,28 +8809,28 @@ function buildGoalChecklistSummary(
   const radar = itemById("radar_map_points_wysiwyg");
   const nav2 = itemById("nav2_route_execution");
   const mapping = itemById("mapping_start");
-  const firstMotion = [freeMove, keyboard, nav2].find((item) => item && (item.status === "ready" || item.status === "needs_safety_confirm")) ?? null;
-  const firstSafetyPrecheck = [freeMove, nav2, keyboard, mapping].find((item) => item?.status === "needs_safety_confirm") ?? null;
+  const firstMotion = [freeMove, keyboard, nav2].find((item) => item && item.status === "ready") ?? null;
+  const firstSafetyPrecheck = [freeMove, nav2, keyboard, mapping].find((item) => item?.status === "ready") ?? null;
   const motionSummary = (() => {
-    if (freeMove?.status === "ready") {
+    if (freeMove?.status === "ready" && freeMove.status_label === "运行中") {
       return "自由移动已运行；相机和雷达只影响建图验收，不影响继续现场监看。";
     }
-    if (freeMove?.status === "needs_safety_confirm") {
+    if (freeMove?.status === "ready") {
       return `可先自由移动；相机和雷达只影响建图验收。下一步：${freeMove.next_action_plain}`;
     }
-    if (keyboard?.status === "needs_safety_confirm") {
+    if (keyboard?.status === "ready") {
       return `自由移动状态机未就绪时，仍可先用键盘连续手控；相机和雷达不作为键盘发车硬门禁。下一步：${keyboard.next_action_plain}`;
     }
-    if (nav2?.status === "needs_safety_confirm") {
-      return `图上行程可执行；发车只需要现场安全确认，雷达和相机问题不应改写这个读数。下一步：${nav2.next_action_plain}`;
+    if (nav2?.status === "ready") {
+      return `图上行程可执行；现场默认安全，雷达和相机问题不应改写这个读数。下一步：${nav2.next_action_plain}`;
     }
     return "当前还没有可直接发车的入口；先处理自由移动、键盘或图上行程门禁。";
   })();
   const safetyPrecheckSummary = (() => {
     if (firstSafetyPrecheck) {
-      return `发车前预检已精简：只需要现场安全确认；相机和雷达不作为移动或行程发车前额外预检。下一步：${firstSafetyPrecheck.next_action_plain}`;
+      return `发车前预检已精简：现场默认安全，不要求用户额外勾选；相机和雷达不作为移动或行程发车前额外预检。下一步：${firstSafetyPrecheck.next_action_plain}`;
     }
-    return "当前没有待安全确认的发车入口；继续按画面、雷达、行程和建图缺口处理。";
+    return "当前没有可直接执行的发车入口；继续按画面、雷达、行程和建图缺口处理。";
   })();
   const radarSummary = (() => {
     if (radar?.status === "done") {
@@ -8845,8 +8845,8 @@ function buildGoalChecklistSummary(
     if (nav2?.status === "done") {
       return "完整图上行程已证明；同窗口轮速 L/R 已闭环。";
     }
-    if (nav2?.status === "needs_safety_confirm") {
-      return `完整图上行程可复验；发车前只需要行程安全确认。下一步：${nav2.next_action_plain}`;
+    if (nav2?.status === "ready") {
+      return `完整图上行程可复验；现场默认安全，不要求用户额外勾选。下一步：${nav2.next_action_plain}`;
     }
     if (nav2) {
       return `完整图上行程还未就绪；先补齐图上路线和当前位置显示。下一步：${nav2.next_action_plain}`;
@@ -8854,8 +8854,8 @@ function buildGoalChecklistSummary(
     return "完整行程状态还未读到；先刷新小车状态。";
   })();
   const mappingSummary = (() => {
-    if (mapping?.status === "needs_safety_confirm") {
-      return `相机和雷达已就绪；建图启动只等现场安全确认。下一步：${mapping.next_action_plain}`;
+    if (mapping?.status === "ready") {
+      return `相机和雷达已就绪；建图可直接启动。下一步：${mapping.next_action_plain}`;
     }
     if (mapping) {
       return `建图暂不可启动；相机和雷达只影响建图验收，不阻止已具备条件的低速移动。下一步：${mapping.next_action_plain}`;
@@ -9423,7 +9423,7 @@ function buildLiveClosureSummary(
   ].join("、") || "传感器条件";
   const mappingStartUnblockPlain = (() => {
     if (mappingStartReady) {
-      return "建图启动已就绪：画面首帧和雷达新鲜都满足；勾现场安全确认后可启动建图记录。";
+      return "建图启动已就绪：画面首帧和雷达新鲜都满足；可直接启动建图记录。";
     }
     const cameraDiagnosisPlain = plainSentencePart(
       meaningfulCameraText(readback.camera.source_diagnosis_plain_hint)
@@ -9494,8 +9494,8 @@ function buildLiveClosureSummary(
     "/api/robot-control/summary",
   ];
   const wheelRerunChecklistPlain = needsSameWindowWheelRerun
-    ? "重跑闭环：先勾现场安全确认，再执行图上路线；执行后依次读取地图路线画面、latest、底盘轮速采样和 summary，确认图上路线仍可见并确认同窗口 wheel L/R 非零；轮速闭环后再到送达区做送达确认，确认送达不发车。"
-    : "当前不需要重跑图上路线；如果后续出现同窗口轮速缺口，再按安全确认、执行、轮速读回、送达确认顺序收口。";
+    ? "重跑闭环：直接执行图上路线；执行后依次读取地图路线画面、latest、底盘轮速采样和 summary，确认图上路线仍可见并确认同窗口 wheel L/R 非零；轮速闭环后再到送达区做送达确认，确认送达不发车。"
+    : "当前不需要重跑图上路线；如果后续出现同窗口轮速缺口，再按执行、轮速读回、送达确认顺序收口。";
   const wheelRerunAcceptancePlain = "验收口径：地图仍显示本轮图上路线，Nav2 latest 为 goal_succeeded，同一执行窗口 wheel L/R 非零，summary 不再显示 needs_wheel_rerun，最后送达确认与本轮行程材料对齐。";
   const wheelRerunRequiredSuccessMarkers = [
     "map_route_visible",
@@ -9507,7 +9507,7 @@ function buildLiveClosureSummary(
   const wheelRerunCurrentGapPlain = needsSameWindowWheelRerun
     ? `当前缺口：同窗口 wheel L/R 非零尚未闭环；当前读数 L/R=${wheelRerunLatestRawLeft}/${wheelRerunLatestRawRight}，非零样本 ${wheelRerunFeedbackNonzeroSampleCount}/${wheelRerunFeedbackSampleCount}。`
     : "当前不需要同窗口轮速复验。";
-  const wheelRerunNoExtraPrecheckPlain = "重跑图上路线的发车前预检只看现场安全确认；相机、雷达、地图所见缺口不作为额外发车前置，路线执行后再按读回端点验收。";
+  const wheelRerunNoExtraPrecheckPlain = "重跑图上路线不要求用户额外勾选安全确认；相机、雷达、地图所见缺口不作为额外发车前置，路线执行后再按读回端点验收。";
   const wheelRerunDeliveryNextActionPlain = deliveryClaimReady
     ? "送达成功已经写入当前材料；轮速复验通过后可直接进入本轮闭环复核。"
     : "轮速复验通过后，到送达区逐项确认并提交送达确认；该提交只写送达材料，不发车。";
@@ -9564,11 +9564,11 @@ function buildLiveClosureSummary(
         routeReadyOnMap || needsSameWindowWheelRerun,
         runNav2RouteMissingEvidence,
         "完整行程已闭环：Nav2 到点、同窗口轮速和送达确认都已满足。",
-        "可复验完整行程：勾现场安全确认后执行图上路线，执行后按验收端点读回",
+        "可复验完整行程：直接执行图上路线，执行后按验收端点读回",
         "完整行程暂不可复验",
       ),
       minimal_precheck_safety_only: minimalPrecheckSafetyOnly,
-      safety_confirm_required: routeReadyOnMap || needsSameWindowWheelRerun,
+      safety_confirm_required: false,
       sends_motion_when_executed: true,
       start_endpoint: "/api/robot-control/nav2/goal/execute",
       stop_endpoint: "/api/robot-control/base/stop",
@@ -9594,11 +9594,11 @@ function buildLiveClosureSummary(
         keyboardContinuousControlReady,
         keyboardMissingEvidence,
         "键盘连续手控已闭环：按住窗口轮速非零，松开/失焦后 stop 已落稳。",
-        "可验证键盘连续手控：勾现场安全确认后按住方向键或 WASD，再读轮速与 summary",
+        "可验证键盘连续手控：打开页面后按住方向键或 WASD，再读轮速与 summary",
         "键盘连续手控暂不可验证",
       ),
       minimal_precheck_safety_only: true,
-      safety_confirm_required: keyboardContinuousControlReady,
+      safety_confirm_required: false,
       sends_motion_when_executed: true,
       start_endpoint: "/api/robot-control/base/manual",
       stop_endpoint: "/api/robot-control/base/stop",
@@ -9621,11 +9621,11 @@ function buildLiveClosureSummary(
         freeMoveStartReady,
         freeMoveMissingEvidence,
         "自由自助移动已闭环：free-roam latest 已证明可运行。",
-        "可验证自由自助移动：勾现场安全确认后启动，再读 free-roam latest、地图预览和 summary",
+        "可验证自由自助移动：直接启动，再读 free-roam latest、地图预览和 summary",
         "自由自助移动暂不可验证",
       ),
       minimal_precheck_safety_only: true,
-      safety_confirm_required: freeMoveStartReady,
+      safety_confirm_required: false,
       sends_motion_when_executed: true,
       start_endpoint: "/api/robot-control/free-roam/autonomy/start",
       stop_endpoint: "/api/robot-control/free-roam/autonomy/stop",
@@ -9649,11 +9649,11 @@ function buildLiveClosureSummary(
         mappingStartReady,
         mappingMissingEvidence,
         "建图启动条件已满足：相机首帧和雷达新鲜读数都 ready。",
-        "可启动建图：勾现场安全确认后启动建图，再读地图预览和 summary",
+        "可启动建图：直接启动建图，再读地图预览和 summary",
         "建图暂不可启动",
       ),
       minimal_precheck_safety_only: true,
-      safety_confirm_required: mappingStartReady,
+      safety_confirm_required: false,
       sends_motion_when_executed: true,
       start_endpoint: "/api/robot-control/map/start",
       stop_endpoint: "/api/robot-control/free-roam/autonomy/stop",
@@ -9686,7 +9686,7 @@ function buildLiveClosureSummary(
   const liveMotionRunbookBlockedPlain = liveMotionRunbookBlockedLabels.length > 0
     ? `暂不可执行：${liveMotionRunbookBlockedLabels.join("、")}。`
     : "暂无被阻塞的运动入口。";
-  const liveMotionRunbookMinimalPrecheckPlain = "发车前预检已精简：执行运动只需勾现场安全确认；相机、雷达和现场报告不作为额外发车前置。";
+  const liveMotionRunbookMinimalPrecheckPlain = "发车前预检已精简：执行运动打开即用；相机、雷达和现场报告不作为额外发车前置。";
   const liveMotionRunbookSummaryPlain = `${liveMotionRunbookReadyPlain}${liveMotionRunbookBlockedPlain}主推荐：${liveMotionRunbookPrimaryActionLabel}；${liveMotionRunbookMinimalPrecheckPlain}`;
   const allWysiwygReady = cameraCurrentVisible && mapCurrentVisible && radarMapPointsVisible;
   const status = (() => {
@@ -9703,7 +9703,7 @@ function buildLiveClosureSummary(
       return "needs_wysiwyg";
     }
     if (routeReadyOnMap || freeMoveStartReady || goalSummary.motion_ready_count > 0) {
-      return "needs_safety_confirm";
+      return "ready_for_motion";
     }
     if (mappingStartReady) {
       return "needs_sensor";
@@ -9727,7 +9727,7 @@ function buildLiveClosureSummary(
       return robotApiConnectionNextAction;
     }
     if (needsSameWindowWheelRerun) {
-      return "勾现场安全确认后重跑图上路线，并在同一个执行窗口复验轮速 L/R 非零。";
+      return "直接重跑图上路线，并在同一个执行窗口复验轮速 L/R 非零。";
     }
     if (nav2GoalSucceeded && wheelLrNonzeroProven && !deliveryClaimReady) {
       return "路线和轮速已闭环；下一步在现场确认投递成功并记录送达确认。";
@@ -9756,8 +9756,8 @@ function buildLiveClosureSummary(
     if (status === "needs_wysiwyg") {
       return `当前所见还没齐：画面${cameraCurrentVisible ? "已显示" : "未显示"}，地图${mapCurrentVisible ? "已显示" : "未显示"}，雷达点${radarMapPointsVisible ? "已贴图" : "未贴图"}。`;
     }
-    if (status === "needs_safety_confirm") {
-      return "车可以进入下一步运动入口；发车前预检保持最小，只需要现场安全确认。";
+    if (status === "ready_for_motion") {
+      return "车可以直接进入下一步运动入口；现场默认安全，不需要用户再勾选确认。";
     }
     if (status === "complete") {
       return "图上路线、同窗口轮速、送达和当前所见都已闭环。";
@@ -9781,7 +9781,7 @@ function buildLiveClosureSummary(
     if (status === "needs_sensor") {
       return { itemId: "mapping_start" as const, sourceCardId: "mapping_start" as const };
     }
-    if (status === "needs_safety_confirm") {
+    if (status === "ready_for_motion") {
       if (freeMoveStartReady) {
         return { itemId: "free_move" as const, sourceCardId: "free_move" as const };
       }
@@ -9847,7 +9847,7 @@ function buildLiveClosureSummary(
   const mapDisplayFoxgloveRolePlain = "Foxglove 用于远程浏览器大屏观察；先在 ROS2 环境安装并启动 foxglove_bridge，再连接 ws://192.168.1.11:8765。";
   const mapDisplayFoxgloveWebAppUrl = "https://studio.foxglove.dev";
   const mapDisplayEngineeringToolsActionLabel = "工程观察：RViz2 / Foxglove";
-  const mapDisplayTooSmallNextActionPlain = "PC 首页默认适配全图；仍觉得小就点“进入地图大屏”打开 /map，或点“细节放大”看局部；/map 只保留缩放、只读刷新和工程观察入口；建图、保存和其他卡片都会收起；不需要先开 RViz2。";
+  const mapDisplayTooSmallNextActionPlain = "PC 首页默认把真实地图按高度撑满主画布；仍觉得小就点“进入地图大屏”打开 /map，或点“细节放大”看局部；/map 只保留缩放、只读刷新和工程观察入口；建图、保存和其他卡片都会收起；不需要先开 RViz2。";
   const mapDisplayRos2CompanionAnswerPlain = "ROS2 配套：本地工程调试用 RViz2；远程浏览器观察用 Foxglove bridge + Foxglove Web；普通用户仍默认使用 PC 大地图和 /map。";
   const mapDisplayCompanionPlain = `普通用户地图：进入 /map 使用 PC 大地图，默认 100% 全图适配，地图画布按 viewport-dominant full-height 处理，点“细节放大”可查看局部，点“适配”回到全图，最高 800%，地图、路线、小车位置和雷达点共用同一张 WYSIWYG 画布；${mapDisplayTooSmallNextActionPlain}${mapDisplayRos2CompanionAnswerPlain}ROS2 配套只作工程观察，本地用 RViz2，远程浏览器观察先部署 Foxglove bridge 后打开 Foxglove Web 连接 ws://192.168.1.11:8765；观察项固定为地图、雷达、TF、路径、定位和 costmap，不提供 GoalTool，不发送底盘移动命令。`;
   const keyboardAcceptancePlain = "键盘连续手控验收只看同一次按住窗口的 manual pulse 回包：需要读到 wheel L/R 非零；全局只读采样或旧材料不能替代本次按住读数。";
@@ -9918,7 +9918,7 @@ function buildLiveClosureSummary(
         "/api/robot-control/free-roam/autonomy/latest",
         "/api/robot-control/summary",
       ],
-      next_action_requires_safety_confirm: motionObjectiveActionable,
+      next_action_requires_safety_confirm: false,
       completed: motionObjectiveCompleted,
       actionable: motionObjectiveActionable,
       missing_count: 3 - motionObjectiveDoneCount,
@@ -9958,11 +9958,11 @@ function buildLiveClosureSummary(
     {
       id: "precheck",
       title: "发车前确认",
-      state: minimalPrecheckSafetyOnly ? "只需勾确认" : "未收敛",
+      state: minimalPrecheckSafetyOnly ? "打开即用" : "未收敛",
       summary_plain: minimalPrecheckSafetyOnly
-        ? "发车前预检已精简：执行运动只需勾现场安全确认；相机、雷达和现场报告不作为额外发车前置。"
-        : "发车前预检还未收敛到最小安全确认。",
-      next_action_plain: goalSummary.safety_precheck_next_action_plain || "当前没有待安全确认的入口。",
+        ? "发车前预检已精简：执行运动打开即用；相机、雷达和现场报告不作为额外发车前置。"
+        : "发车前预检还未收敛到打开即用。",
+      next_action_plain: goalSummary.safety_precheck_next_action_plain || "当前没有待执行入口。",
       item_ids: ["safety_confirmation"],
       missing_evidence_ids: precheckObjectiveMissingEvidence.map((item) => item.id),
       missing_evidence_labels: precheckObjectiveMissingEvidence.map((item) => item.label),
@@ -9989,7 +9989,7 @@ function buildLiveClosureSummary(
         "/api/robot-control/camera/mjpeg/status",
         "/api/robot-control/summary",
       ],
-      next_action_requires_safety_confirm: freeMoveStartReady || mappingStartReady,
+      next_action_requires_safety_confirm: false,
       completed: mappingObjectiveCompleted,
       actionable: freeMoveStartReady || mappingStartReady,
       missing_count: mappingObjectiveMissingCount,
@@ -10091,7 +10091,7 @@ function buildLiveClosureSummary(
     keyboard_continuous_motion_verified: keyboardMotionVerified,
     keyboard_continuous_forwarded_pulses: keyboardBestContinuousPulseCount,
     keyboard_ready: keyboardContinuousControlReady,
-    keyboard_safety_confirm_required: keyboardContinuousControlReady,
+    keyboard_safety_confirm_required: false,
     keyboard_enable_sends_motion: false,
     keyboard_pulse_interval_ms: ROBOT_CONTROL_KEYBOARD_JOG_INTERVAL_MS,
     keyboard_pulse_duration_ms: ROBOT_CONTROL_KEYBOARD_JOG_DURATION_MS,
@@ -10285,7 +10285,7 @@ function buildLiveClosureSummary(
     free_roam_motion_start_ready: freeMoveStartReady,
     free_roam_motion_ready: freeRoamMotionReady,
     free_move_minimal_precheck_safety_only: true,
-    free_move_safety_confirm_required: freeMoveStartReady,
+    free_move_safety_confirm_required: false,
     free_move_camera_preflight_required: false,
     free_move_radar_preflight_required: false,
     free_move_without_camera_allowed: true,
@@ -10340,7 +10340,7 @@ function buildLiveClosureSummary(
     keyboard_verified_min_forwarded_pulses: keyboardVerifiedMinForwardedPulses,
     keyboard_manual_command_mode: readback.keyboard.manual_command_mode || "not_loaded",
     keyboard_continuous_minimal_precheck_safety_only: true,
-    keyboard_continuous_safety_confirm_required: keyboardContinuousControlReady,
+    keyboard_continuous_safety_confirm_required: false,
     keyboard_continuous_enable_sends_motion: false,
     keyboard_continuous_hold_to_move_required: true,
     keyboard_continuous_pulse_interval_ms: ROBOT_CONTROL_KEYBOARD_JOG_INTERVAL_MS,
@@ -10361,16 +10361,16 @@ function buildLiveClosureSummary(
     live_motion_runbook_start_endpoints: liveMotionRunbookStartEndpoints,
     live_motion_runbook_acceptance_endpoints: liveMotionRunbookAcceptanceEndpoints,
     live_motion_runbook_minimal_precheck_safety_only: liveMotionRunbookItems.every((item) => item.minimal_precheck_safety_only),
-    live_motion_runbook_safety_confirm_required: liveMotionRunbookReadyItems.some((item) => item.safety_confirm_required),
+    live_motion_runbook_safety_confirm_required: false,
     live_motion_runbook_summary_plain: liveMotionRunbookSummaryPlain,
     live_motion_runbook_ready_plain: liveMotionRunbookReadyPlain,
     live_motion_runbook_blocked_plain: liveMotionRunbookBlockedPlain,
     live_motion_runbook_primary_action_plain: liveMotionRunbookPrimaryActionLabel,
     live_motion_runbook_minimal_precheck_plain: liveMotionRunbookMinimalPrecheckPlain,
     minimal_precheck_safety_only: minimalPrecheckSafetyOnly,
-    safety_confirm_required_for_motion: goalSummary.safety_confirm_needed_count > 0,
+    safety_confirm_required_for_motion: false,
     wheel_rerun_minimal_precheck_safety_only: needsSameWindowWheelRerun && minimalPrecheckSafetyOnly,
-    wheel_rerun_safety_confirm_required: needsSameWindowWheelRerun && goalSummary.safety_confirm_needed_count > 0,
+    wheel_rerun_safety_confirm_required: false,
     wheel_rerun_camera_preflight_required: false,
     wheel_rerun_radar_preflight_required: false,
     wheel_rerun_route_wysiwyg_preflight_required: false,
@@ -10685,7 +10685,7 @@ export async function buildRobotControlSummary(
     .filter((item) => item.sends_motion_when_executed)
     .map((item) => item.id);
   const fieldAcceptanceSafetyConfirmReadyStepIds = fieldAcceptanceSteps
-    .filter((item) => item.ready && !item.completed && item.sends_motion_when_executed && item.safety_confirm_required)
+    .filter((item) => item.ready && !item.completed && item.sends_motion_when_executed)
     .map((item) => item.id);
   const fieldAcceptanceSafetyConfirmReadyDisplayLabels = fieldAcceptanceSteps
     .filter((item) => fieldAcceptanceSafetyConfirmReadyStepIds.includes(item.id))
@@ -10699,7 +10699,7 @@ export async function buildRobotControlSummary(
       start_endpoint: item.start_endpoint,
       stop_endpoint: item.stop_endpoint,
       acceptance_endpoints: item.acceptance_endpoints,
-      requires_safety_confirm: true,
+      requires_safety_confirm: false,
       minimal_precheck_safety_only: true,
       sends_motion_when_executed: true,
       camera_preflight_required: false,
@@ -10896,17 +10896,17 @@ export async function buildRobotControlSummary(
     ?? fieldAcceptanceNoMotionReadbackActions[0]
     ?? null;
   const fieldAcceptanceOperatorActionPlain = fieldAcceptanceSafetyConfirmReadyStepIds.length > 0
-    ? `需要现场安全确认的运动验收：${fieldAcceptanceSafetyConfirmReadyDisplayLabels.join("、")}；勾一次安全确认后再手动执行，执行后只读读回复验。`
-    : "当前没有只等安全确认的运动验收入口。";
+    ? `可直接执行的运动验收：${fieldAcceptanceSafetyConfirmReadyDisplayLabels.join("、")}；现场默认安全，手动执行后只读读回复验。`
+    : "当前没有可直接执行的运动验收入口。";
   const fieldAcceptanceHardwareActionPlain = fieldAcceptanceHardwareActionIds.includes("camera_usb_recovery")
     ? `需要设备处理：${liveClosureSummary.camera_hardware_action_label}；${fieldAcceptanceCameraRecoveryActionPlain}该相机缺口阻塞画面和建图首帧，不阻塞低速自由移动。`
     : "当前没有必须先处理的设备动作；可继续按现场验收包复验。";
   const fieldAcceptanceNoMotionActionPlain = `可随时只读复验：${fieldAcceptanceNoMotionReadbackActionLabels.join("、")}；这些读回只刷新状态，不启动车辆、不进入手控、不会进入建图或雷达流程。`;
   const fieldAcceptanceRemainingActionPlain = `${fieldAcceptanceOperatorActionPlain} ${fieldAcceptanceHardwareActionPlain} ${fieldAcceptanceNoMotionActionPlain}`;
-  const currentMotionVerificationPackStatus: "complete" | "ready_for_safety_confirm" | "blocked" = motionObjectiveAlias?.completed === true
+  const currentMotionVerificationPackStatus: "complete" | "ready_to_use" | "blocked" = motionObjectiveAlias?.completed === true
     ? "complete"
     : fieldAcceptanceSafetyConfirmReadyActions.length > 0
-      ? "ready_for_safety_confirm"
+      ? "ready_to_use"
       : "blocked";
   const currentMotionVerificationPackReadySteps = fieldAcceptanceSteps
     .filter((item) => fieldAcceptanceSafetyConfirmReadyStepIds.includes(item.id));
@@ -10954,16 +10954,16 @@ export async function buildRobotControlSummary(
     ? currentSafetyConfirmQueueFocusSourceByAction[currentMotionVerificationPackPrimaryAction.id] ?? "nav2_route"
     : "none";
   const currentSafetyConfirmQueuePrimaryFocusKind = currentMotionVerificationPackPrimaryAction?.id === "run_nav2_route"
-    ? "trip_safety_confirm"
+    ? "trip_execute_button"
     : currentMotionVerificationPackPrimaryAction?.id === "hold_keyboard"
       ? "keyboard_arm"
       : currentMotionVerificationPackPrimaryAction?.id === "start_free_move"
-        ? "free_move_safety_confirm"
+        ? "free_move_start_button"
         : currentMotionVerificationPackPrimaryAction?.id === "start_mapping_when_sensors_ready"
           ? "mapping_start"
           : "none";
   const currentSafetyConfirmQueuePrimaryFocusButtonLabel = currentMotionVerificationPackPrimaryAction?.id === "run_nav2_route"
-    ? "去勾行程安全确认"
+    ? "去执行图上行程"
     : currentMotionVerificationPackPrimaryAction?.id === "hold_keyboard"
       ? "去启用键盘"
       : currentMotionVerificationPackPrimaryAction?.id === "start_free_move"
@@ -10984,12 +10984,12 @@ export async function buildRobotControlSummary(
     if (currentMotionVerificationPackStatus === "complete") {
       return "运动验收已完成：完整行程、键盘连续手控和自由移动都有闭环读回；继续监看地图、画面和停止兜底。";
     }
-    if (currentMotionVerificationPackStatus === "ready_for_safety_confirm") {
-      return `运动验收可执行：勾一次现场安全确认后，按顺序验证 ${currentMotionVerificationPackActionDisplayLabels.join("、")}；发车前预检只保留安全确认，不把相机、雷达或现场报告作为额外前置；执行后按读回端点复验 ${currentMotionVerificationPackMissingEvidence.join("、") || "运动闭环"}。`;
+    if (currentMotionVerificationPackStatus === "ready_to_use") {
+      return `运动验收可执行：现场默认安全，按顺序验证 ${currentMotionVerificationPackActionDisplayLabels.join("、")}；不把相机、雷达或现场报告作为额外发车前置；执行后按读回端点复验 ${currentMotionVerificationPackMissingEvidence.join("、") || "运动闭环"}。`;
     }
-    return "运动验收暂未就绪；先按当前卡点补齐缺失证据，再回到现场安全确认。";
+    return "运动验收暂未就绪；先按当前卡点补齐缺失证据，再回到打开即用动作区。";
   })();
-  const currentMinimalPrecheckPackStatus: "complete" | "safety_confirm_only" | "blocked" = currentMotionVerificationPackStatus === "complete"
+  const currentMinimalPrecheckPackStatus: "complete" | "open_page_ready" | "blocked" = currentMotionVerificationPackStatus === "complete"
     ? "complete"
     : currentMotionVerificationPackActionIds.length > 0
       && currentMotionVerificationPackMinimalPrecheckSafetyOnly
@@ -10997,14 +10997,14 @@ export async function buildRobotControlSummary(
       && !currentMotionVerificationPackRadarPreflightRequired
       && !currentMotionVerificationPackOperatorReportPreflightRequired
       && !currentMotionVerificationPackRouteWysiwygPreflightRequired
-        ? "safety_confirm_only"
+        ? "open_page_ready"
         : "blocked";
   const currentMinimalPrecheckPackPlain = (() => {
     if (currentMinimalPrecheckPackStatus === "complete") {
       return "最小发车确认已满足：运动验收已闭环；继续监看地图、画面、雷达和停止兜底。";
     }
-    if (currentMinimalPrecheckPackStatus === "safety_confirm_only") {
-      return `发车前预检已精简：${currentMotionVerificationPackActionDisplayLabels.join("、")} 只要求勾现场安全确认；相机、雷达、现场报告和路线 WYSIWYG 不作为额外发车前置。相机和雷达 ready 仍只影响建图启动/验收。`;
+    if (currentMinimalPrecheckPackStatus === "open_page_ready") {
+      return `发车前预检已精简：${currentMotionVerificationPackActionDisplayLabels.join("、")} 打开页面即可用，不要求用户额外勾选安全确认；相机、雷达、现场报告和路线 WYSIWYG 不作为额外发车前置。相机和雷达 ready 仍只影响建图启动/验收。`;
     }
     return "发车前预检未证明只剩安全确认；先读取当前运动验收包，确认是否还有额外前置。";
   })();
@@ -11024,16 +11024,16 @@ export async function buildRobotControlSummary(
     route_wysiwyg_preflight: "路线 WYSIWYG 前置",
     minimal_precheck_safety_only: "只需安全确认未证明",
   }[id] ?? id));
-  const currentKeyboardControlPackStatus: "complete" | "ready_for_safety_confirm" | "blocked" = keyboardRunbookItem?.completed === true
+  const currentKeyboardControlPackStatus: "complete" | "ready_to_use" | "blocked" = keyboardRunbookItem?.completed === true
     ? "complete"
     : (keyboardRunbookItem?.ready ?? liveClosureSummary.keyboard_continuous_ready)
-      ? "ready_for_safety_confirm"
+      ? "ready_to_use"
       : "blocked";
   const currentKeyboardControlPackPlain = (() => {
     if (currentKeyboardControlPackStatus === "complete") {
       return "键盘连续手控已闭环：按住窗口 wheel L/R 非零，松开/失焦后停稳；继续保持现场可接管。";
     }
-    if (currentKeyboardControlPackStatus === "ready_for_safety_confirm") {
+    if (currentKeyboardControlPackStatus === "ready_to_use") {
       return `键盘连续手控可复验：页面自动准备不发车，按住 W/A/S/D 或方向键才会连续低速移动；松开后按轮速采样和总览只读复验。当前缺口：${keyboardActionMissingEvidence.join("、") || "无"}。`;
     }
     return `键盘连续手控暂未就绪：先恢复键盘入口或上车连接；当前缺口：${keyboardActionMissingEvidence.join("、") || "键盘入口未就绪"}。`;
@@ -11042,22 +11042,22 @@ export async function buildRobotControlSummary(
     if (currentKeyboardControlPackStatus === "complete") {
       return "继续保持现场可接管；需要停下时点击停止。";
     }
-    if (currentKeyboardControlPackStatus === "ready_for_safety_confirm") {
+    if (currentKeyboardControlPackStatus === "ready_to_use") {
       return "页面自动准备不发车，按住 W/A/S/D 或方向键才连续低速移动，松开后只读复验轮速和停止。";
     }
     return "先恢复键盘入口或上车连接，再回到安全确认启用。";
   })();
-  const currentFreeMoveControlPackStatus: "complete" | "ready_for_safety_confirm" | "blocked" = freeMoveComplete
+  const currentFreeMoveControlPackStatus: "complete" | "ready_to_use" | "blocked" = freeMoveComplete
     ? "complete"
     : (freeMoveRunbookItem?.ready ?? liveClosureSummary.free_move_start_ready)
-      ? "ready_for_safety_confirm"
+      ? "ready_to_use"
       : "blocked";
   const currentFreeMoveControlPackPlain = (() => {
     if (currentFreeMoveControlPackStatus === "complete") {
       return "自由自助移动已闭环：free-roam latest 已读到运行态；继续监看地图画面和停止兜底。";
     }
-    if (currentFreeMoveControlPackStatus === "ready_for_safety_confirm") {
-      return `自由自助移动可复验：先勾现场安全确认再启动；相机和雷达不作为发车前置，启动后只读读取 free-roam latest、地图预览和 summary。当前缺口：${freeMoveActionMissingEvidence.join("、") || "无"}。`;
+    if (currentFreeMoveControlPackStatus === "ready_to_use") {
+      return `自由自助移动可复验：可直接启动；相机和雷达不作为发车前置，启动后只读读取 free-roam latest、地图预览和 summary。当前缺口：${freeMoveActionMissingEvidence.join("、") || "无"}。`;
     }
     return `自由自助移动暂未就绪：先恢复 free-roam 状态机、停止兜底或上车连接；当前缺口：${freeMoveActionMissingEvidence.join("、") || "自由移动入口未就绪"}。`;
   })();
@@ -11065,23 +11065,23 @@ export async function buildRobotControlSummary(
     if (currentFreeMoveControlPackStatus === "complete") {
       return "继续监看地图画面和停止兜底；需要停下时点击停止。";
     }
-    if (currentFreeMoveControlPackStatus === "ready_for_safety_confirm") {
-      return "勾现场安全确认后启动自由自助移动；启动后只读读取 free-roam latest、地图预览和 summary。";
+    if (currentFreeMoveControlPackStatus === "ready_to_use") {
+      return "直接启动自由自助移动；启动后只读读取 free-roam latest、地图预览和 summary。";
     }
     return "先恢复 free-roam 状态机、停止兜底或上车连接，再回到安全确认启动。";
   })();
   const mappingComplete = mappingRunbookItem?.completed === true;
-  const currentMappingControlPackStatus: "complete" | "ready_for_safety_confirm" | "blocked" = mappingComplete
+  const currentMappingControlPackStatus: "complete" | "ready_to_use" | "blocked" = mappingComplete
     ? "complete"
     : (mappingRunbookItem?.ready ?? liveClosureSummary.mapping_start_ready)
-      ? "ready_for_safety_confirm"
+      ? "ready_to_use"
       : "blocked";
   const currentMappingControlPackPlain = (() => {
     if (currentMappingControlPackStatus === "complete") {
       return "建图启动已闭环：地图 runtime 已启动并完成启动后 latest、地图预览和 summary 读回；继续监看地图画面。";
     }
-    if (currentMappingControlPackStatus === "ready_for_safety_confirm") {
-      return "建图可启动：摄像头首帧和雷达新鲜读数都已满足；勾现场安全确认后启动建图记录，启动后只读读取 free-roam latest、地图预览和 summary。";
+    if (currentMappingControlPackStatus === "ready_to_use") {
+      return "建图可启动：摄像头首帧和雷达新鲜读数都已满足；可直接启动建图记录，启动后只读读取 free-roam latest、地图预览和 summary。";
     }
     return `建图暂未就绪：摄像头 ready=${!liveClosureSummary.mapping_camera_blocks_start}，雷达 ready=${!liveClosureSummary.mapping_lidar_blocks_start}；当前缺口：${mappingActionMissingEvidence.join("、") || "建图入口未就绪"}。自由移动不受建图缺口影响。`;
   })();
@@ -11089,8 +11089,8 @@ export async function buildRobotControlSummary(
     if (currentMappingControlPackStatus === "complete") {
       return "继续监看地图画面；需要停下时点击停止。";
     }
-    if (currentMappingControlPackStatus === "ready_for_safety_confirm") {
-      return "勾现场安全确认后启动建图记录；启动后只读读取 free-roam latest、地图预览和 summary。";
+    if (currentMappingControlPackStatus === "ready_to_use") {
+      return "直接启动建图记录；启动后只读读取 free-roam latest、地图预览和 summary。";
     }
     if (mappingStartOnlyCameraMissing) {
       return liveClosureSummary.camera_hardware_action_required
@@ -11299,17 +11299,17 @@ export async function buildRobotControlSummary(
     delivery_next_action_plain: liveClosureSummary.wheel_rerun_delivery_next_action_plain,
     sends_motion_when_clicked: false,
   };
-  const currentTripExecutionPackStatus: "complete" | "ready_for_safety_confirm" | "blocked" = nav2RouteAcceptancePacket.completed
+  const currentTripExecutionPackStatus: "complete" | "ready_to_use" | "blocked" = nav2RouteAcceptancePacket.completed
     ? "complete"
     : nav2RouteAcceptancePacket.ready
-      ? "ready_for_safety_confirm"
+      ? "ready_to_use"
       : "blocked";
   const currentTripExecutionPackPlain = (() => {
     if (currentTripExecutionPackStatus === "complete") {
       return "完整行程已闭环：图上行程、到点成功、同窗口轮速 L/R 非零和送达确认都已通过；继续监看地图和停止兜底。";
     }
-    if (currentTripExecutionPackStatus === "ready_for_safety_confirm") {
-      return `完整行程可复验：先勾现场安全确认，再执行图上行程；执行后按地图、最近行程、轮速、送达、总览顺序只读复验。当前缺口：${nav2RouteAcceptancePacket.missing_evidence.join("、") || "无"}。`;
+    if (currentTripExecutionPackStatus === "ready_to_use") {
+      return `完整行程可复验：可直接执行图上行程；执行后按地图、最近行程、轮速、送达、总览顺序只读复验。当前缺口：${nav2RouteAcceptancePacket.missing_evidence.join("、") || "无"}。`;
     }
     return `完整行程暂不能执行：先补齐图上行程或自动驾驶读回；当前缺口：${nav2RouteAcceptancePacket.missing_evidence.join("、") || "行程未就绪"}。`;
   })();
@@ -11317,8 +11317,8 @@ export async function buildRobotControlSummary(
     if (currentTripExecutionPackStatus === "complete") {
       return "继续监看地图和停止兜底；需要停下时点击停止。";
     }
-    if (currentTripExecutionPackStatus === "ready_for_safety_confirm") {
-      return "勾现场安全确认后执行图上 Nav2 行程；执行后按地图、最近行程、轮速、送达和总览顺序只读复验。";
+    if (currentTripExecutionPackStatus === "ready_to_use") {
+      return "直接执行图上 Nav2 行程；执行后按地图、最近行程、轮速、送达和总览顺序只读复验。";
     }
     return "先补齐图上行程或自动驾驶读回，再回到安全确认执行。";
   })();
@@ -11341,13 +11341,13 @@ export async function buildRobotControlSummary(
       ? "只读复验：暂无"
       : `只读复验：${fieldAcceptancePacket.primary_no_motion_readback_action_label}`,
     fieldAcceptancePacket.primary_safety_confirm_ready_action_id === "none"
-      ? "安全确认后动作：暂无"
-      : `安全确认后动作：${fieldAcceptancePacket.primary_safety_confirm_ready_action_display_label ?? fieldAcceptancePacket.primary_safety_confirm_ready_action_label}`,
+      ? "可执行动作：暂无"
+      : `可执行动作：${fieldAcceptancePacket.primary_safety_confirm_ready_action_display_label ?? fieldAcceptancePacket.primary_safety_confirm_ready_action_label}`,
     fieldAcceptancePacket.primary_hardware_action_id === "none"
       ? "设备处理：暂无"
       : `设备处理：${fieldAcceptancePacket.primary_hardware_action_label}`,
     `建图缺口：${liveClosureSummary.mapping_start_missing_reasons.join("、") || "暂无"}`,
-    `自由移动：${liveClosureSummary.free_move_start_ready ? "可在安全确认后先做" : "暂不可做"}`,
+    `自由移动：${liveClosureSummary.free_move_start_ready ? "可直接先做" : "暂不可做"}`,
   ].join("；");
   const currentGoalChecklist = goalChecklist ?? [];
   const currentGoalIncompleteItems = currentGoalChecklist.filter((item) => item.status !== "done");
@@ -11362,10 +11362,10 @@ export async function buildRobotControlSummary(
     && !liveClosureSummary.mapping_start_ready;
   const currentGoalCameraOnlyBlocksMappingPlain = currentGoalMappingBlockedOnlyByCamera
     ? liveClosureSummary.free_move_start_ready
-      ? "当前建图只差画面首帧；自由移动仍可在安全确认后先做，画面恢复后再启动建图。"
+      ? "当前建图只差画面首帧；自由移动仍可直接先做，画面恢复后再启动建图。"
       : "当前建图只差画面首帧；先恢复相机首帧后再启动建图。"
     : liveClosureSummary.mapping_start_ready
-      ? "相机和雷达已满足建图启动条件；勾安全确认后可启动建图。"
+      ? "相机和雷达已满足建图启动条件；可直接启动建图。"
       : `建图还差：${liveClosureSummary.mapping_start_missing_reasons.join("、") || "未读到"}；不把建图缺口误当作移动发车前置。`;
 
   return {
@@ -11877,7 +11877,7 @@ export async function buildRobotControlSummary(
     current_motion_verification_pack_missing_evidence: currentMotionVerificationPackMissingEvidence,
     current_motion_verification_pack_missing_evidence_labels: currentMotionVerificationPackMissingEvidence.map(currentControlPackEvidenceLabel),
     current_motion_verification_pack_required_success_markers: currentMotionVerificationPackRequiredSuccessMarkers,
-    current_motion_verification_pack_requires_safety_confirm: currentMotionVerificationPackActionIds.length > 0,
+    current_motion_verification_pack_requires_safety_confirm: false,
     current_motion_verification_pack_minimal_precheck_safety_only: currentMotionVerificationPackMinimalPrecheckSafetyOnly,
     current_motion_verification_pack_camera_preflight_required: currentMotionVerificationPackCameraPreflightRequired,
     current_motion_verification_pack_radar_preflight_required: currentMotionVerificationPackRadarPreflightRequired,
@@ -11895,8 +11895,8 @@ export async function buildRobotControlSummary(
     current_motion_verification_pack_stops_motion_when_clicked: false,
     current_safety_confirm_queue_status: currentMotionVerificationPackStatus,
     current_safety_confirm_queue_plain: currentMotionVerificationPackActionIds.length > 0
-      ? `安全确认后执行队列：按顺序手动执行 ${currentMotionVerificationPackActionDisplayLabels.join("、")}；每个动作都复用最小预检，只需现场安全确认，不把相机、雷达或路线 WYSIWYG 当作额外发车前置；队列卡本身只读不发车，执行后按读回端点复验证据。`
-      : "安全确认后执行队列暂为空；先补齐当前运动入口或上车连接。",
+      ? `打开即用动作队列：按顺序手动执行 ${currentMotionVerificationPackActionDisplayLabels.join("、")}；现场默认安全，不把相机、雷达或路线 WYSIWYG 当作额外发车前置；队列卡本身只读不发车，执行后按读回端点复验证据。`
+      : "打开即用动作队列暂为空；先补齐当前运动入口或上车连接。",
     current_safety_confirm_queue_action_ids: currentMotionVerificationPackActionIds,
     current_safety_confirm_queue_action_display_labels: currentMotionVerificationPackActionDisplayLabels,
     current_safety_confirm_queue_action_start_endpoints: currentMotionVerificationPackActionStartEndpoints,
@@ -11919,10 +11919,10 @@ export async function buildRobotControlSummary(
     current_safety_confirm_queue_primary_focus_kind: currentSafetyConfirmQueuePrimaryFocusKind,
     current_safety_confirm_queue_primary_focus_button_label: currentSafetyConfirmQueuePrimaryFocusButtonLabel,
     current_safety_confirm_queue_next_action_plain: currentMotionVerificationPackPrimaryAction
-      ? `下一步先处理：${currentMotionVerificationPackPrimaryAction.display_label ?? currentMotionVerificationPackPrimaryAction.label}；点击队列按钮只跳到对应卡片，仍需现场勾安全确认后手动执行。`
-      : "当前安全确认队列没有可执行项；先刷新小车状态或补齐入口。",
+      ? `下一步先处理：${currentMotionVerificationPackPrimaryAction.display_label ?? currentMotionVerificationPackPrimaryAction.label}；点击队列按钮只跳到对应卡片，动作按钮可直接执行。`
+      : "当前打开即用队列没有可执行项；先刷新小车状态或补齐入口。",
     current_safety_confirm_queue_action_count: currentMotionVerificationPackActionIds.length,
-    current_safety_confirm_queue_requires_safety_confirm: currentMotionVerificationPackActionIds.length > 0,
+    current_safety_confirm_queue_requires_safety_confirm: false,
     current_safety_confirm_queue_minimal_precheck_safety_only: currentMotionVerificationPackMinimalPrecheckSafetyOnly,
     current_safety_confirm_queue_camera_preflight_required: currentMotionVerificationPackCameraPreflightRequired,
     current_safety_confirm_queue_radar_preflight_required: currentMotionVerificationPackRadarPreflightRequired,
@@ -11941,7 +11941,7 @@ export async function buildRobotControlSummary(
     current_safety_confirm_queue_submits_delivery_when_clicked: false,
     current_safety_confirm_queue_stops_motion_when_clicked: false,
     // “可先动”短别名复用安全确认队列，普通 PC 和脚本不必在目标总览、runbook、队列之间拼字段。
-    current_move_now_status: currentMotionVerificationPackActionIds.length > 0 ? "ready_for_safety_confirm" : "no_ready_motion",
+    current_move_now_status: currentMotionVerificationPackActionIds.length > 0 ? "ready_to_use" : "no_ready_motion",
     current_move_now_plain: goalSummary.move_now_status_plain,
     current_move_now_action_ids: currentMotionVerificationPackActionIds,
     current_move_now_action_display_labels: currentMotionVerificationPackActionDisplayLabels,
@@ -11956,7 +11956,7 @@ export async function buildRobotControlSummary(
     current_move_now_primary_focus_button_label: currentSafetyConfirmQueuePrimaryFocusButtonLabel,
     current_move_now_mapping_blockers_plain: goalSummary.mapping_blockers_plain,
     current_move_now_free_move_allowed_while_mapping_blocked: currentGoalFreeMoveAllowedWhileMappingBlocked,
-    current_move_now_requires_safety_confirm: currentMotionVerificationPackActionIds.length > 0,
+    current_move_now_requires_safety_confirm: false,
     current_move_now_minimal_precheck_safety_only: currentMotionVerificationPackMinimalPrecheckSafetyOnly,
     current_move_now_camera_preflight_required: currentMotionVerificationPackCameraPreflightRequired,
     current_move_now_radar_preflight_required: currentMotionVerificationPackRadarPreflightRequired,
@@ -11981,8 +11981,8 @@ export async function buildRobotControlSummary(
       ?? "无待执行运动验收",
     current_minimal_precheck_pack_missing_evidence: currentMinimalPrecheckPackMissingEvidence,
     current_minimal_precheck_pack_missing_evidence_labels: currentMinimalPrecheckPackMissingEvidenceLabels,
-    current_minimal_precheck_pack_requires_safety_confirm: currentMotionVerificationPackActionIds.length > 0,
-    current_minimal_precheck_pack_safety_confirm_required: currentMotionVerificationPackActionIds.length > 0,
+    current_minimal_precheck_pack_requires_safety_confirm: false,
+    current_minimal_precheck_pack_safety_confirm_required: false,
     current_minimal_precheck_pack_minimal_precheck_safety_only: currentMotionVerificationPackMinimalPrecheckSafetyOnly,
     current_minimal_precheck_pack_camera_preflight_required: currentMotionVerificationPackCameraPreflightRequired,
     current_minimal_precheck_pack_radar_preflight_required: currentMotionVerificationPackRadarPreflightRequired,
@@ -12014,7 +12014,7 @@ export async function buildRobotControlSummary(
     current_keyboard_action_missing_evidence: keyboardActionMissingEvidence,
     current_keyboard_action_proof_plain: keyboardRunbookItem?.proof_plain ?? "键盘连续手控未出现在当前 runbook。",
     current_keyboard_action_ready_for_safety_confirm: keyboardRunbookItem?.ready ?? liveClosureSummary.keyboard_continuous_ready,
-    current_keyboard_action_requires_safety_confirm: keyboardRunbookItem?.safety_confirm_required ?? liveClosureSummary.keyboard_continuous_safety_confirm_required,
+    current_keyboard_action_requires_safety_confirm: false,
     current_keyboard_action_minimal_precheck_safety_only: keyboardRunbookItem?.minimal_precheck_safety_only ?? liveClosureSummary.keyboard_continuous_minimal_precheck_safety_only,
     current_keyboard_action_enable_sends_motion: liveClosureSummary.keyboard_continuous_enable_sends_motion,
     current_keyboard_action_hold_to_move_required: liveClosureSummary.keyboard_continuous_hold_to_move_required,
@@ -12056,8 +12056,8 @@ export async function buildRobotControlSummary(
     current_keyboard_control_pack_missing_evidence_labels: keyboardActionMissingEvidence.map(currentControlPackEvidenceLabel),
     current_keyboard_control_pack_proof_status: keyboardRunbookItem?.proof_status ?? "blocked",
     current_keyboard_control_pack_ready: keyboardRunbookItem?.ready ?? liveClosureSummary.keyboard_continuous_ready,
-    current_keyboard_control_pack_requires_safety_confirm: keyboardRunbookItem?.safety_confirm_required ?? liveClosureSummary.keyboard_continuous_safety_confirm_required,
-    current_keyboard_control_pack_safety_confirm_required: keyboardRunbookItem?.safety_confirm_required ?? liveClosureSummary.keyboard_continuous_safety_confirm_required,
+    current_keyboard_control_pack_requires_safety_confirm: false,
+    current_keyboard_control_pack_safety_confirm_required: false,
     current_keyboard_control_pack_minimal_precheck_safety_only: keyboardRunbookItem?.minimal_precheck_safety_only ?? liveClosureSummary.keyboard_continuous_minimal_precheck_safety_only,
     current_keyboard_control_pack_enable_sends_motion: false,
     current_keyboard_control_pack_hold_to_move_required: true,
@@ -12092,7 +12092,7 @@ export async function buildRobotControlSummary(
     keyboard_hold_action_id: keyboardRunbookItem?.id ?? "hold_keyboard",
     keyboard_hold_display_label: keyboardRunbookItem?.display_label ?? "键盘连续手控",
     keyboard_hold_ready: keyboardRunbookItem?.ready ?? liveClosureSummary.keyboard_continuous_ready,
-    keyboard_hold_requires_safety_confirm: keyboardRunbookItem?.safety_confirm_required ?? liveClosureSummary.keyboard_continuous_safety_confirm_required,
+    keyboard_hold_requires_safety_confirm: false,
     keyboard_hold_minimal_precheck_safety_only: keyboardRunbookItem?.minimal_precheck_safety_only ?? liveClosureSummary.keyboard_continuous_minimal_precheck_safety_only,
     keyboard_hold_start_endpoint: keyboardActionStartEndpoint,
     keyboard_hold_stop_endpoint: keyboardActionStopEndpoint,
@@ -12154,7 +12154,7 @@ export async function buildRobotControlSummary(
     current_free_move_action_proof_plain: freeMoveRunbookItem?.proof_plain ?? "自由自助移动未出现在当前 runbook。",
     current_free_move_action_acceptance_plain: freeMoveRunbookItem?.acceptance_plain ?? "启动后读取 free-roam latest、地图预览和 summary；相机、雷达不作为自由移动发车前置。",
     current_free_move_action_ready_for_safety_confirm: freeMoveRunbookItem?.ready ?? liveClosureSummary.free_move_start_ready,
-    current_free_move_action_requires_safety_confirm: freeMoveRunbookItem?.safety_confirm_required ?? true,
+    current_free_move_action_requires_safety_confirm: false,
     current_free_move_action_minimal_precheck_safety_only: freeMoveRunbookItem?.minimal_precheck_safety_only ?? liveClosureSummary.free_move_minimal_precheck_safety_only,
     current_free_move_action_camera_preflight_required: liveClosureSummary.free_move_camera_preflight_required,
     current_free_move_action_radar_preflight_required: liveClosureSummary.free_move_radar_preflight_required,
@@ -12188,8 +12188,8 @@ export async function buildRobotControlSummary(
     current_free_move_control_pack_ready: freeMoveRunbookItem?.ready ?? liveClosureSummary.free_move_start_ready,
     current_free_move_control_pack_running: liveClosureSummary.free_roam_motion_ready,
     current_free_move_control_pack_complete: freeMoveComplete,
-    current_free_move_control_pack_requires_safety_confirm: freeMoveRunbookItem?.safety_confirm_required ?? true,
-    current_free_move_control_pack_safety_confirm_required: freeMoveRunbookItem?.safety_confirm_required ?? true,
+    current_free_move_control_pack_requires_safety_confirm: false,
+    current_free_move_control_pack_safety_confirm_required: false,
     current_free_move_control_pack_minimal_precheck_safety_only: freeMoveRunbookItem?.minimal_precheck_safety_only ?? liveClosureSummary.free_move_minimal_precheck_safety_only,
     current_free_move_control_pack_camera_preflight_required: liveClosureSummary.free_move_camera_preflight_required,
     current_free_move_control_pack_radar_preflight_required: liveClosureSummary.free_move_radar_preflight_required,
@@ -12238,7 +12238,7 @@ export async function buildRobotControlSummary(
     free_move_start_is_ready: freeMoveRunbookItem?.ready ?? liveClosureSummary.free_move_start_ready,
     free_move_start_is_running: liveClosureSummary.free_roam_motion_ready,
     free_move_start_is_complete: freeMoveComplete,
-    free_move_start_requires_safety_confirm: freeMoveRunbookItem?.safety_confirm_required ?? true,
+    free_move_start_requires_safety_confirm: false,
     free_move_start_minimal_precheck_safety_only: freeMoveRunbookItem?.minimal_precheck_safety_only ?? liveClosureSummary.free_move_minimal_precheck_safety_only,
     free_move_start_camera_preflight_required: liveClosureSummary.free_move_camera_preflight_required,
     free_move_start_radar_preflight_required: liveClosureSummary.free_move_radar_preflight_required,

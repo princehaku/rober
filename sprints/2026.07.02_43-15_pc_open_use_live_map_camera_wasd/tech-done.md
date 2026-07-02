@@ -29,3 +29,32 @@ micro
 - 真实小车运动仍需现场安全空间；本轮键盘自动准备不自动发车，但 WASD 长按会继续走已有低速 PWM bridge 手控链路。
 - 自动驾驶完整 Nav2 路线、delivery success 与同窗口 wheel L/R 非零仍未在本轮重新做真实运动验收；summary 当前仍显示 `needs_wheel_rerun`，需要现场安全空间后单独执行。
 - 用户本轮提到 `ssh root@192.168.1.11 -p 7878`；当前现场实测 `7878` 拒绝连接，`37878` 可连接，后续现场 smoke 临时沿用 `37878`。
+
+## 2026-07-02 23:30 追加收口
+
+### 实际改动
+
+- PC 首页真实地图改为高度优先撑满主画布，宽地图允许横向滚动，`data-real-map-fit-mode` 改为 `height-first-preserve-aspect-scroll-x`。
+- PC summary、runbook、验收包和代理回包统一改成打开即用口径：手控、键盘、自由移动、Nav2 图上路线不再要求普通用户额外勾选安全确认；后端仍自动带固定 confirm 兼容字段并保留 stop/按住才动/失焦停。
+- 普通用户地图入口明确为 PC 首页和 `/map` 大屏；ROS2 配套只作为工程观察，RViz2/Foxglove 观察地图、雷达、TF、路线、定位和 costmap，不替代 PC 简易操作页。
+- 同步 `docs/product/pc_tools_workstation.md` 和 `docs/product/pc_free_roam_mapping_design.md`，记录 7001 绑定、默认小车地址、地图大屏、ROS2 工具分层和相机/雷达不阻塞运动的最新口径。
+
+### 验证结果
+
+- 通过：`npm test -- App.test.ts robotControlSummary.test.ts`，2 个测试文件、247 个测试全部通过。
+- 通过：`npm test`，3 个测试文件、431 个测试全部通过。
+- 通过：`npm run build`，客户端和 server TypeScript 构建通过；仅保留 Vite chunk size warning。
+- 通过：PC Node 用当前代码重启到 `0.0.0.0:7001`；`GET /api/health` 返回 `workstation_host=0.0.0.0`、`workstation_port=7001`、`default_robot_api_base_url=http://192.168.1.11:8787`。
+- 通过：`GET /map` 返回 HTTP 200。
+- 通过：`GET /api/robot-control/summary` 返回 `current_trip_execution_pack_status=ready_to_use`、`current_move_now_status=ready_to_use`、`current_keyboard_control_pack_status=ready_to_use`、`current_free_move_control_pack_status=ready_to_use`，且 `keyboard/free_move/trip/live_motion_runbook/field_acceptance` 的 safety required 均为 `false`。
+- 通过：`GET /api/robot-control/map/preview` 读到真实地图 `261x113`、雷达贴图 `loaded`、当前雷达点 `153`、source 点 `179`、robot pose `map_pose_observed`、路径 `path_preview_observed` 且路径点 `18`。
+- 通过：`POST /api/robot-control/base/manual` 发送 `forward/speed=0.05/duration_ms=250`，代理返回 `proxy_status=command_forwarded`、`remote_http_status=200`、`non_stop_requires_confirm_hil_checklist=false`，随后 `POST /api/robot-control/base/stop` 返回 `command_forwarded`。
+- 受限：`POST /api/robot-control/base/feedback-samples` 和 summary 仍显示 wheel raw 未非零，summary 为 `L/R=0/0`、非零样本 `0/239`，缺口仍是 `same_window_wheel_lr_nonzero` 与 `delivery_success`。
+- 受限：`GET /api/robot-control/camera/mjpeg/status` 返回 `status=idle_not_started`、`usb_speed=12M`、`usb_full_speed_detected=true`、`hardware_action_required=true`；`GET /api/robot-control/camera/mjpeg` 在 3 秒 smoke 内未拿到帧。
+
+### 剩余风险
+
+- PC 地图和路线/雷达/pose 显示已可用，但当前原始地图尺寸仍是 `261x113`；本轮通过 PC CSS 放大显示，不改变上车地图源分辨率。
+- 低速手控请求能成功转发并自动 stop，但 WAVE ROVER wheel raw 仍未给出非零证明，真实轮速反馈闭环未完成。
+- 相机仍需要处理 USB 12M/full-speed 或供电/线缆/端口问题；PC 共享预览不会把无帧冒充成可见画面。
+- Nav2 完整路线、同窗口 wheel L/R 非零和 delivery success 仍需现场安全空间下再跑一轮真实行程验收。

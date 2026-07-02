@@ -944,3 +944,9 @@ overlay 同轮读取 `/api/free-roam/autonomy/latest`、`/api/radar/status` 和 
 不再把策略切到原地避让。这样雷达停止或过期后，旧障碍值不会继续劫持低速自由移动；建图验收仍要求
 相机首帧和雷达 fresh，真实运动发布仍要求现场安全确认、停止兜底和 `motion_hil_unlocked + enable_cmd_vel_publish`
 双锁。
+
+2026-07-02 23:30 起，PC 普通首屏进一步去掉用户可见的安全确认前置：自由移动、键盘连续手控和图上 Nav2 路线都按
+“打开即用、现场默认安全、执行后读回验收”显示。该变更不解除上车端限速、停止兜底、键盘按住才动、松开/失焦/切页停
+和后端固定 confirm 兼容字段；它只是不再要求普通用户先勾 checkbox。相机首帧和雷达 fresh 继续只决定建图是否可启动和验收是否可收口，
+不阻塞低速自由移动或键盘手控。地图首屏同步按高度优先撑满画布，普通用户仍优先使用 PC 首屏或 `/map` 大屏；
+RViz2/Foxglove 仅作为工程观察，不发送 `/cmd_vel`、manual、Nav2 goal 或 free-roam start。
