@@ -12544,7 +12544,7 @@ describe("App", () => {
   });
 
   it("refreshes visible map, radar, and shared camera readback from the plain connection refresh", async () => {
-    // 普通用户点连接/刷新时，需要同步刷新真实地图、雷达和共享画面状态，避免 summary 新了但画面仍是旧事实。
+    // 普通用户点连接/刷新时，需要先刷新雷达 proof 再读地图，避免 summary 新了但雷达贴图仍是旧事实。
     const mockedFetch = stubWorkstationFetch();
 
     const wrapper = mount(App);
@@ -12552,16 +12552,31 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     const summaryCallsBefore = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/summary?")).length;
+    const radarProofCallsBefore = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/radar/scan-proof/refresh?")).length;
     const mapPreviewCallsBefore = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/preview?")).length;
     const radarStatusCallsBefore = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/radar/status?")).length;
     const cameraMjpegStatusCallsBefore = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/camera/mjpeg/status?")).length;
-    await wrapper.find('[data-testid="robot-api-refresh"]').trigger("click");
+    const refreshButton = wrapper.find('[data-testid="robot-api-refresh"]');
+    expect(refreshButton.attributes("data-refreshes-radar-scan-proof")).toBe("true");
+    expect(refreshButton.attributes("data-refreshes-map-preview")).toBe("true");
+    expect(refreshButton.attributes("data-refreshes-radar-status")).toBe("true");
+    expect(refreshButton.attributes("data-refreshes-camera-mjpeg-status")).toBe("true");
+    expect(refreshButton.attributes("data-sends-motion-when-clicked")).toBe("false");
+    expect(refreshButton.attributes("data-starts-nav2")).toBe("false");
+    expect(refreshButton.attributes("data-starts-manual")).toBe("false");
+    expect(refreshButton.attributes("data-starts-keyboard")).toBe("false");
+    expect(refreshButton.attributes("data-starts-free-roam")).toBe("false");
+    expect(refreshButton.attributes("data-starts-map-runtime")).toBe("false");
+    expect(refreshButton.attributes("data-submits-delivery")).toBe("false");
+    expect(refreshButton.attributes("data-stops-motion")).toBe("false");
+    await refreshButton.trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/summary?")).length).toBe(summaryCallsBefore + 1);
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/summary?")).length).toBe(summaryCallsBefore + 2);
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/radar/scan-proof/refresh?")).length).toBe(radarProofCallsBefore + 1);
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/preview?")).length).toBe(mapPreviewCallsBefore + 1);
-    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/radar/status?")).length).toBe(radarStatusCallsBefore + 1);
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/radar/status?")).length).toBe(radarStatusCallsBefore + 2);
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/camera/mjpeg/status?")).length).toBe(cameraMjpegStatusCallsBefore + 1);
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("地图：显示最近读取的真实地图画面");
     expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toContain("共享画面：");
@@ -18487,6 +18502,8 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).not.toContain("上一次读数");
 
+    const radarProofCallsBefore = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/radar/scan-proof/refresh?")).length;
+    const mapPreviewCallsBefore = mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/preview?")).length;
     rejectNextSummary = true;
     await wrapper.find('[data-testid="robot-api-refresh"]').trigger("click");
     await flushPromises();
@@ -18495,6 +18512,8 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("小车：这次连接/刷新失败，下面可能是上一次读数；先恢复网络或上位机服务后再刷新。");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).not.toContain("summary_timeout_fixture");
     expect(wrapper.find('[role="alert"]').text()).toContain("summary_timeout_fixture");
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/radar/scan-proof/refresh?")).length).toBe(radarProofCallsBefore);
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/preview?")).length).toBe(mapPreviewCallsBefore);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);

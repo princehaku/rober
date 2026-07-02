@@ -16759,10 +16759,11 @@ async function cleanupPreview(reason: RobotControlPreviewStatus, cleanupReason: 
   }
 }
 
-async function refreshConsole(): Promise<void> {
+async function refreshConsole(): Promise<boolean> {
   // 刷新永远先读 Node proxy；只有 task_id 存在才读 O6 detail。
   loading.value = true;
   error.value = "";
+  let refreshed = false;
   try {
     const [summary, detail] = await Promise.all([
       getRobotControlSummary(robotApiBaseUrl.value),
@@ -16772,20 +16773,27 @@ async function refreshConsole(): Promise<void> {
     ]);
     robotSummary.value = summary;
     taskDetail.value = detail;
+    refreshed = true;
   } catch (err) {
     // 前端异常仍保持所有主动作关闭，具体 Robot API 失败应优先看 summary.blocked_reasons。
     error.value = err instanceof Error ? err.message : "robot_control_console_refresh_failed";
   } finally {
     loading.value = false;
   }
-  void maybeAutoStartSharedCameraPreview();
+  if (refreshed) {
+    void maybeAutoStartSharedCameraPreview();
+  }
+  return refreshed;
 }
 
 async function refreshPlainConsole(): Promise<void> {
-  // 普通首屏的“连接/刷新”必须刷新用户正在看的真实画面；只读地图、雷达和共享画面状态，不触发运动。
-  await refreshConsole();
+  // 普通首屏的“连接/刷新”必须先刷新雷达 proof 再读地图，避免旧雷达层冒充当前 WYSIWYG 标记。
+  const summaryRefreshed = await refreshConsole();
+  if (!summaryRefreshed) {
+    return;
+  }
   await Promise.all([
-    refreshMapPreview({ radarStatusRefresh: true }),
+    refreshRadarProof({ focusAfterReady: false, mapPreviewAfter: true }),
     refreshCameraMjpegStatus(),
   ]);
 }
@@ -19141,7 +19149,27 @@ onBeforeUnmount(() => {
           <span class="muted" data-testid="robot-api-default-summary">{{ robotApiBaseUrlUsesDefault ? "已使用默认地址" : "已改为高级地址" }}</span>
         </div>
         <button class="secondary compact-stop" type="button" :disabled="loading || robotApiBaseUrlUsesDefault" data-testid="robot-api-default" @click="resetRobotApiBaseUrlToDefault">恢复默认</button>
-        <button class="secondary" type="button" :disabled="loading" data-testid="robot-api-refresh" @click="refreshPlainConsole">连接/刷新</button>
+        <button
+          class="secondary"
+          type="button"
+          :disabled="loading"
+          data-testid="robot-api-refresh"
+          data-refreshes-radar-scan-proof="true"
+          data-refreshes-map-preview="true"
+          data-refreshes-radar-status="true"
+          data-refreshes-camera-mjpeg-status="true"
+          data-sends-motion-when-clicked="false"
+          data-starts-nav2="false"
+          data-starts-manual="false"
+          data-starts-keyboard="false"
+          data-starts-free-roam="false"
+          data-starts-map-runtime="false"
+          data-submits-delivery="false"
+          data-stops-motion="false"
+          @click="refreshPlainConsole"
+        >
+          连接/刷新
+        </button>
         <span class="status-chip" :data-state="robotConnectionSummary.state">{{ robotConnectionSummary.state }}</span>
       </div>
 
