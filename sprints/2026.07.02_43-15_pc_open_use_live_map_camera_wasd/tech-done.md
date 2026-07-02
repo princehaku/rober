@@ -58,3 +58,25 @@ micro
 - 低速手控请求能成功转发并自动 stop，但 WAVE ROVER wheel raw 仍未给出非零证明，真实轮速反馈闭环未完成。
 - 相机仍需要处理 USB 12M/full-speed 或供电/线缆/端口问题；PC 共享预览不会把无帧冒充成可见画面。
 - Nav2 完整路线、同窗口 wheel L/R 非零和 delivery success 仍需现场安全空间下再跑一轮真实行程验收。
+
+## 2026-07-03 00:05 地图太小与 ROS2 配套收口
+
+### 实际改动
+
+- PC 首页和 `/map` 直达大屏默认缩放从 `100%` 全图适配改为 `200%` 细节大图；`适配` 按钮仍回到 `100%` 全图，最高细节放大保持 `800%`。
+- 前端 DOM、Node summary、共享合同类型和 Vitest 期望同步 `map_display_default_zoom_percent=200%`，避免页面与 `curl /summary` 口径不一致。
+- 文档同步：`docs/product/pc_tools_workstation.md` 和 `docs/navigation/fixed_route_workflow.md` 明确普通用户优先用 PC 大地图/`/map`，ROS2 配套只作为工程观察；本地用 RViz2，远程浏览器观察用 Foxglove bridge + Foxglove Web。
+
+### 验证结果
+
+- 通过：`npm test`，3 个测试文件、431 个测试全部通过。
+- 通过：`npm run build`，客户端和 server TypeScript 构建通过；仅保留 Vite chunk size warning。
+- 通过：PC Node 用当前代码重启到 `0.0.0.0:7001`；`GET /api/health` 返回 `workstation_host=0.0.0.0`、`workstation_port=7001`、`default_robot_api_base_url=http://192.168.1.11:8787`。
+- 通过：`GET /api/robot-control/summary` 返回 `map_display_default_zoom_percent=200%`、`live_closure_summary.map_display_default_zoom_percent=200%`、`map_display_primary_url=/map`。
+- 通过：`GET /api/robot-control/map/preview` 读到真实地图 `261x113`、`robot_pose_status=map_pose_observed`、`path_preview_status=path_preview_observed`、路径点 `18`、雷达贴图 `loaded`、当前雷达点 `145`。
+
+### 剩余风险
+
+- 这次只修 PC 地图显示和 ROS2 配套说明，不改变上车地图源分辨率 `261x113`。
+- RViz2/Foxglove 是工程观察入口，不自动启动 ROS2 runtime，也不替代普通 PC 简易操作页。
+- 摄像头无帧、wheel raw L/R 非零、完整 Nav2 路线和 delivery success 仍按上一节风险继续跟进。

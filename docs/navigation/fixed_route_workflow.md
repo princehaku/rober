@@ -106,7 +106,7 @@ bash onboard/scripts/board_live_route_preflight.sh
 
 ## 1.6 RViz2 Engineering Map View
 
-普通用户在 PC 上优先使用 `http://<PC>:7001/` 的大地图和 `?view=map` 地图大屏。ROS2 原生配套用于工程排障，不替代普通 PC 界面：
+普通用户在 PC 上优先使用 `http://<PC>:7001/` 的大地图和 `/map` 地图大屏；当前 PC 地图默认 `200%` 细节大图，点 `适配` 回到 `100%` 全图。ROS2 原生配套用于工程排障，不替代普通 PC 界面：
 
 ```bash
 ros2 launch ros2_trashbot_bringup rviz.launch.py

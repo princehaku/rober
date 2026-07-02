@@ -2175,7 +2175,7 @@ h3 {
 }
 
 .plain-map-overlay-frame {
-  /* 缩放作用在同一个 overlay frame 上；默认 100% 看全图，细节模式再放大局部。 */
+  /* 缩放作用在同一个 overlay frame 上；默认 200% 看细节，适配按钮再回到 100% 全图。 */
   position: relative;
   flex: 0 0 auto;
   width: calc(100% * var(--plain-map-zoom, 1));
