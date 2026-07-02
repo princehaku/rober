@@ -12455,8 +12455,18 @@ describe("workstation fail-closed API contracts", () => {
         radar_overlay_ready_for_map: string;
         radar_map_overlay_readiness_status: string;
         radar_map_overlay_next_action_plain: string;
+        radar_status_map_preview_endpoint: string;
+        radar_status_map_preview_radar_overlay_status: string;
+        radar_status_map_preview_radar_overlay_current_point_count: string;
+        radar_status_map_preview_radar_overlay_source_point_count: string;
+        radar_status_map_preview_radar_overlay_wysiwyg_complete: string;
+        radar_status_map_preview_failure_reason: string;
+        radar_overlay_status: string;
         radar_overlay_point_count: string;
+        radar_overlay_current_point_count: string;
         radar_overlay_source_point_count: string;
+        radar_overlay_wysiwyg_complete: string;
+        radar_overlay_primary_blocked_reason: string;
         radar_overlay_wysiwyg_status_plain: string;
         radar_overlay_wysiwyg_next_action_plain: string;
         readback_only: boolean;
@@ -12495,12 +12505,31 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.radar_overlay_ready_for_map).toBe("false");
       expect(body.radar_map_overlay_readiness_status).toBe("blocked_radar_lifecycle_not_running");
       expect(body.radar_map_overlay_next_action_plain).toBe("先启动雷达并等待新扫描，再刷新地图画面确认雷达点。");
-      expect(body.radar_overlay_point_count).toBe("not_loaded");
-      expect(body.radar_overlay_source_point_count).toBe("81");
+      expect(body.radar_status_map_preview_endpoint).toBe("/api/robot-control/map/preview");
+      expect(body.radar_status_map_preview_radar_overlay_status).toBe("not_loaded");
+      expect(body.radar_status_map_preview_radar_overlay_current_point_count).toBe("0");
+      expect(body.radar_status_map_preview_radar_overlay_source_point_count).toBe("not_loaded");
+      expect(body.radar_status_map_preview_radar_overlay_wysiwyg_complete).toBe("false");
+      expect(body.radar_status_map_preview_failure_reason).toBe("map_preview_http_status_404");
+      expect(body.radar_overlay_status).toBe("not_loaded");
+      expect(body.radar_overlay_point_count).toBe("0");
+      expect(body.radar_overlay_current_point_count).toBe("0");
+      expect(body.radar_overlay_source_point_count).toBe("not_loaded");
+      expect(body.radar_overlay_wysiwyg_complete).toBe("false");
+      expect(body.radar_overlay_primary_blocked_reason).toBe("radar_lifecycle_not_running_for_map_radar_overlay");
       expect(body.radar_overlay_wysiwyg_status_plain).toBe("雷达 status 不直接绘制地图雷达点；雷达未运行或扫描已停；旧雷达来源点不能当作当前地图雷达点。");
       expect(body.radar_overlay_wysiwyg_next_action_plain).toBe("先启动雷达并等待新扫描，再刷新地图画面确认雷达点。");
       expect(body.robot_control_executed).toBe(false);
-      expect(upstream.receivedGets).toEqual(["/api/radar/status"]);
+      expect(upstream.receivedGets).toEqual([
+        "/api/radar/status",
+        "/api/localize/proof/latest",
+        "/api/nav2/status",
+        "/api/nav2/proof/latest",
+        "/api/free-roam/autonomy/latest",
+        "/api/radar/status",
+        "/api/radar/scan-proof/latest",
+        "/api/map/preview",
+      ]);
       expect(Object.keys(upstream.receivedBodies)).toEqual([]);
     } finally {
       await workstation.close();
@@ -12581,7 +12610,16 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.submits_delivery).toBe(false);
       expect(body.stops_motion).toBe(false);
       expect(body.robot_control_executed).toBe(false);
-      expect(upstream.receivedGets).toEqual(["/api/radar/status"]);
+      expect(upstream.receivedGets).toEqual([
+        "/api/radar/status",
+        "/api/localize/proof/latest",
+        "/api/nav2/status",
+        "/api/nav2/proof/latest",
+        "/api/free-roam/autonomy/latest",
+        "/api/radar/status",
+        "/api/radar/scan-proof/latest",
+        "/api/map/preview",
+      ]);
       expect(Object.keys(upstream.receivedBodies)).toEqual([]);
     } finally {
       await workstation.close();
@@ -12645,7 +12683,147 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.sends_motion_when_clicked).toBe(false);
       expect(body.starts_radar_lifecycle).toBe(false);
       expect(body.robot_control_executed).toBe(false);
-      expect(upstream.receivedGets).toEqual(["/api/radar/status"]);
+      expect(upstream.receivedGets).toEqual([
+        "/api/radar/status",
+        "/api/localize/proof/latest",
+        "/api/nav2/status",
+        "/api/nav2/proof/latest",
+        "/api/free-roam/autonomy/latest",
+        "/api/radar/status",
+        "/api/radar/scan-proof/latest",
+        "/api/map/preview",
+      ]);
+      expect(Object.keys(upstream.receivedBodies)).toEqual([]);
+    } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+  });
+
+  it("radar status proxy folds map preview radar overlay into direct readback aliases", async () => {
+    // 现场 smoke 常直接 curl radar/status；PC 代理顺手读固定 map preview，只合并贴图计数，不启动任何 runtime。
+    const upstream = await listenRobotBaseCommandApi({}, {
+      "/api/radar/status": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.radar_status",
+          continuous_scan_status: "running",
+          lifecycle_running: true,
+          lifecycle_state: "running",
+          latest_scan_proof_fresh: true,
+          scan_once_observed: true,
+          scan_hz_observed: true,
+          raw_packet_once_observed: true,
+          scan_point_count: 156,
+          latest_scan_age_ms: 240,
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          robot_control_executed: false,
+        },
+      },
+      "/api/map/preview": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.map_preview",
+          status: "loaded_fail_closed_summary",
+          image_data_url: "data:image/png;base64,AAAA",
+          radar_overlay: {
+            overlay_status: "loaded",
+            count: 150,
+            source_count: 156,
+            points: [{ x_m: 0.1, y_m: 0.2, frame_id: "laser_frame" }],
+            source_frame_id: "laser_frame",
+            current_vs_source_plain: "地图雷达点：当前 150 个，来源 156 个；状态=loaded，已贴到当前地图。",
+          },
+          radar_overlay_status: "loaded",
+          radar_overlay_current_point_count: 150,
+          radar_overlay_source_point_count: 156,
+          radar_overlay_wysiwyg_complete: true,
+          radar_overlay_primary_blocked_reason: "none",
+          radar_overlay_current_vs_source_plain: "地图雷达点：当前 150 个，来源 156 个；状态=loaded，已贴到当前地图。",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          robot_control_executed: false,
+        },
+      },
+    });
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const response = await fetch(`${workstation.baseUrl}/api/robot-control/radar/status?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
+      const body = (await response.json()) as {
+        radar_scan_ready_for_map_overlay: string;
+        radar_overlay_ready_for_map: string;
+        radar_status_map_preview_endpoint: string;
+        radar_status_map_preview_remote_endpoint: string;
+        radar_status_map_preview_remote_http_status: number;
+        radar_status_map_preview_radar_overlay_status: string;
+        radar_status_map_preview_radar_overlay_current_point_count: string;
+        radar_status_map_preview_radar_overlay_source_point_count: string;
+        radar_status_map_preview_radar_overlay_wysiwyg_complete: string;
+        radar_status_map_preview_radar_overlay_primary_blocked_reason: string;
+        radar_status_map_preview_radar_overlay_current_vs_source_plain: string;
+        radar_status_map_preview_failure_reason: string;
+        radar_overlay_status: string;
+        radar_overlay_point_count: string;
+        radar_overlay_current_point_count: string;
+        radar_overlay_source_point_count: string;
+        radar_overlay_wysiwyg_complete: string;
+        radar_overlay_primary_blocked_reason: string;
+        radar_overlay_current_vs_source_plain: string;
+        readback_only: boolean;
+        sends_motion_when_clicked: boolean;
+        starts_radar_lifecycle: boolean;
+        starts_nav2: boolean;
+        starts_manual: boolean;
+        starts_keyboard: boolean;
+        starts_free_roam: boolean;
+        starts_map_runtime: boolean;
+        submits_delivery: boolean;
+        stops_motion: boolean;
+        robot_control_executed: boolean;
+      };
+
+      expect(response.status).toBe(200);
+      expect(body.radar_scan_ready_for_map_overlay).toBe("true");
+      expect(body.radar_overlay_ready_for_map).toBe("map_preview_required");
+      expect(body.radar_status_map_preview_endpoint).toBe("/api/robot-control/map/preview");
+      expect(body.radar_status_map_preview_remote_endpoint).toBe("/api/map/preview");
+      expect(body.radar_status_map_preview_remote_http_status).toBe(200);
+      expect(body.radar_status_map_preview_radar_overlay_status).toBe("loaded");
+      expect(body.radar_status_map_preview_radar_overlay_current_point_count).toBe("150");
+      expect(body.radar_status_map_preview_radar_overlay_source_point_count).toBe("156");
+      expect(body.radar_status_map_preview_radar_overlay_wysiwyg_complete).toBe("true");
+      expect(body.radar_status_map_preview_radar_overlay_primary_blocked_reason).toBe("none");
+      expect(body.radar_status_map_preview_radar_overlay_current_vs_source_plain).toBe("地图雷达点：当前 150 个，来源 156 个；下一步：继续观察地图雷达层。");
+      expect(body.radar_status_map_preview_failure_reason).toBe("");
+      expect(body.radar_overlay_status).toBe("loaded");
+      expect(body.radar_overlay_point_count).toBe("150");
+      expect(body.radar_overlay_current_point_count).toBe("150");
+      expect(body.radar_overlay_source_point_count).toBe("156");
+      expect(body.radar_overlay_wysiwyg_complete).toBe("true");
+      expect(body.radar_overlay_primary_blocked_reason).toBe("none");
+      expect(body.radar_overlay_current_vs_source_plain).toBe("地图雷达点：当前 150 个，来源 156 个；下一步：继续观察地图雷达层。");
+      expect(body.readback_only).toBe(true);
+      expect(body.sends_motion_when_clicked).toBe(false);
+      expect(body.starts_radar_lifecycle).toBe(false);
+      expect(body.starts_nav2).toBe(false);
+      expect(body.starts_manual).toBe(false);
+      expect(body.starts_keyboard).toBe(false);
+      expect(body.starts_free_roam).toBe(false);
+      expect(body.starts_map_runtime).toBe(false);
+      expect(body.submits_delivery).toBe(false);
+      expect(body.stops_motion).toBe(false);
+      expect(body.robot_control_executed).toBe(false);
+      expect(upstream.receivedGets).toEqual([
+        "/api/radar/status",
+        "/api/localize/proof/latest",
+        "/api/nav2/status",
+        "/api/nav2/proof/latest",
+        "/api/free-roam/autonomy/latest",
+        "/api/radar/status",
+        "/api/radar/scan-proof/latest",
+        "/api/map/preview",
+      ]);
       expect(Object.keys(upstream.receivedBodies)).toEqual([]);
     } finally {
       await workstation.close();

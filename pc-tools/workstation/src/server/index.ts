@@ -1508,8 +1508,24 @@ function radarStatusPlainFields(
   | "radar_overlay_ready_for_map"
   | "radar_map_overlay_readiness_status"
   | "radar_map_overlay_next_action_plain"
+  | "radar_status_map_preview_endpoint"
+  | "radar_status_map_preview_remote_endpoint"
+  | "radar_status_map_preview_remote_http_status"
+  | "radar_status_map_preview_status"
+  | "radar_status_map_preview_radar_overlay_status"
+  | "radar_status_map_preview_radar_overlay_current_point_count"
+  | "radar_status_map_preview_radar_overlay_source_point_count"
+  | "radar_status_map_preview_radar_overlay_wysiwyg_complete"
+  | "radar_status_map_preview_radar_overlay_primary_blocked_reason"
+  | "radar_status_map_preview_radar_overlay_current_vs_source_plain"
+  | "radar_status_map_preview_failure_reason"
+  | "radar_overlay_status"
   | "radar_overlay_point_count"
+  | "radar_overlay_current_point_count"
   | "radar_overlay_source_point_count"
+  | "radar_overlay_wysiwyg_complete"
+  | "radar_overlay_primary_blocked_reason"
+  | "radar_overlay_current_vs_source_plain"
   | "radar_overlay_wysiwyg_status_plain"
   | "radar_overlay_wysiwyg_next_action_plain"
 > {
@@ -1587,10 +1603,75 @@ function radarStatusPlainFields(
     radar_overlay_ready_for_map: overlayReadyForMap,
     radar_map_overlay_readiness_status: overlayReadinessStatus,
     radar_map_overlay_next_action_plain: overlayNextActionPlain,
+    ...radarStatusMapPreviewFields(null, null, ""),
     radar_overlay_point_count: "not_loaded",
+    radar_overlay_current_point_count: "not_loaded",
     radar_overlay_source_point_count: scanPointCount,
+    radar_overlay_wysiwyg_complete: "false",
+    radar_overlay_primary_blocked_reason: overlayReadinessStatus,
+    radar_overlay_current_vs_source_plain: `地图雷达点：当前 not_loaded，来源 ${scanPointCount}；下一步：${overlayNextActionPlain}`,
     radar_overlay_wysiwyg_status_plain: `雷达 status 不直接绘制地图雷达点；${radarStatusPlain}`,
     radar_overlay_wysiwyg_next_action_plain: overlayNextActionPlain,
+  };
+}
+
+function radarStatusMapPreviewFields(
+  payload: Record<string, unknown> | null,
+  remoteHttpStatus: number | null,
+  failureReason: string,
+): Pick<
+  RobotControlRadarStatusResponse,
+  | "radar_status_map_preview_endpoint"
+  | "radar_status_map_preview_remote_endpoint"
+  | "radar_status_map_preview_remote_http_status"
+  | "radar_status_map_preview_status"
+  | "radar_status_map_preview_radar_overlay_status"
+  | "radar_status_map_preview_radar_overlay_current_point_count"
+  | "radar_status_map_preview_radar_overlay_source_point_count"
+  | "radar_status_map_preview_radar_overlay_wysiwyg_complete"
+  | "radar_status_map_preview_radar_overlay_primary_blocked_reason"
+  | "radar_status_map_preview_radar_overlay_current_vs_source_plain"
+  | "radar_status_map_preview_failure_reason"
+  | "radar_overlay_status"
+  | "radar_overlay_point_count"
+  | "radar_overlay_current_point_count"
+  | "radar_overlay_source_point_count"
+  | "radar_overlay_wysiwyg_complete"
+  | "radar_overlay_primary_blocked_reason"
+  | "radar_overlay_current_vs_source_plain"
+> {
+  // radar/status 本体不绘制地图点；这里额外读固定 map preview，只把同轮贴图结果合并为只读 alias。
+  const payloadRoot = asRecord(payload?.payload) ?? payload;
+  const overlayStatus = statusStringValue(payloadRoot, "radar_overlay_status");
+  const currentPointCount = statusStringValue(payloadRoot, "radar_overlay_current_point_count",
+    statusStringValue(payloadRoot, "radar_overlay_point_count", statusStringValue(payloadRoot, "radar_overlay_count")));
+  const sourcePointCount = statusStringValue(payloadRoot, "radar_overlay_source_point_count",
+    statusStringValue(payloadRoot, "radar_overlay_source_count"));
+  const primaryBlockedReason = statusStringValue(payloadRoot, "radar_overlay_primary_blocked_reason", "")
+    || (overlayStatus === "loaded" && currentPointCount !== "0" && currentPointCount !== "not_loaded" ? "none" : "map_preview_not_loaded");
+  const currentVsSourcePlain = statusStringValue(payloadRoot, "radar_overlay_current_vs_source_plain", "")
+    || `地图雷达点：当前 ${currentPointCount}，来源 ${sourcePointCount}；状态=${overlayStatus}。`;
+  const complete = statusStringValue(payloadRoot, "radar_overlay_wysiwyg_complete", "")
+    || (overlayStatus === "loaded" && currentPointCount !== "0" && currentPointCount !== "not_loaded" ? "true" : "false");
+  return {
+    radar_status_map_preview_endpoint: "/api/robot-control/map/preview",
+    radar_status_map_preview_remote_endpoint: "/api/map/preview",
+    radar_status_map_preview_remote_http_status: remoteHttpStatus,
+    radar_status_map_preview_status: payloadRoot ? shortText(payloadRoot.status, remoteHttpStatus && remoteHttpStatus >= 400 ? "blocked" : "loaded") : "not_loaded",
+    radar_status_map_preview_radar_overlay_status: overlayStatus,
+    radar_status_map_preview_radar_overlay_current_point_count: currentPointCount,
+    radar_status_map_preview_radar_overlay_source_point_count: sourcePointCount,
+    radar_status_map_preview_radar_overlay_wysiwyg_complete: complete,
+    radar_status_map_preview_radar_overlay_primary_blocked_reason: primaryBlockedReason,
+    radar_status_map_preview_radar_overlay_current_vs_source_plain: currentVsSourcePlain,
+    radar_status_map_preview_failure_reason: failureReason,
+    radar_overlay_status: overlayStatus,
+    radar_overlay_point_count: currentPointCount,
+    radar_overlay_current_point_count: currentPointCount,
+    radar_overlay_source_point_count: sourcePointCount,
+    radar_overlay_wysiwyg_complete: complete,
+    radar_overlay_primary_blocked_reason: primaryBlockedReason,
+    radar_overlay_current_vs_source_plain: currentVsSourcePlain,
   };
 }
 
@@ -4005,6 +4086,21 @@ export function createWorkstationApp(): express.Express {
       const remotePayload = asRecord(await remote.json().catch(() => null));
       const dangerous = scanDangerousTrueFields(remotePayload);
       const radarKeyValues = compactKeyValues(remotePayload);
+      let mapPreviewPayload: Record<string, unknown> | null = null;
+      let mapPreviewHttpStatus: number | null = null;
+      let mapPreviewFailureReason = "";
+      try {
+        const mapPreviewProxy = await buildMapPreviewProxy(sourceBaseUrl);
+        mapPreviewHttpStatus = mapPreviewProxy.remote_http_status;
+        mapPreviewPayload = mapPreviewProxy as unknown as Record<string, unknown>;
+        if (mapPreviewProxy.proxy_status !== "preview_forwarded") {
+          mapPreviewFailureReason = mapPreviewProxy.failure_reason || "map_preview_not_loaded";
+        }
+      } catch (mapPreviewError) {
+        mapPreviewFailureReason = mapPreviewError instanceof Error
+          ? shortText(mapPreviewError.message, "map_preview_failed")
+          : "map_preview_failed";
+      }
       const responseBody: RobotControlRadarStatusResponse = {
         ...fallbackBase,
         proxy_status: remote.ok && remotePayload && dangerous.length === 0 ? "status_loaded" : "status_failed",
@@ -4012,6 +4108,7 @@ export function createWorkstationApp(): express.Express {
         status: remote.ok ? "loaded_fail_closed_summary" : "blocked",
         radar_key_values: radarKeyValues,
         ...radarStatusPlainFields(radarKeyValues),
+        ...radarStatusMapPreviewFields(mapPreviewPayload, mapPreviewHttpStatus, mapPreviewFailureReason),
         failure_reason: dangerous.length > 0 ? `dangerous_true_field:${dangerous[0]}` : remote.ok ? "" : `radar_status_http_status_${remote.status}`,
         blocked_reasons: [
           ...(remote.ok ? [] : [`radar_status_http_status_${remote.status}`]),
