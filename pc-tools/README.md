@@ -197,6 +197,11 @@ summary 顶层 `camera_source_diagnosis_next_action_plain` 也会在底层未给
 `camera_recovery_next_action_plain`，USB full-speed 场景不再返回 `null`，现场脚本可直接读到“换高速 USB
 口/线或带供电 USB Hub 后复测”。
 
+2026-07-02 CST 起，上位机共享 MJPEG 入口也补齐两段式首帧兜底：默认多人预览先按低带宽 DV20/UVC
+格式矩阵尝试 `/dev/video*` path；若 path 能 open 但没有首帧，再用剩余预算只尝试 OpenCV index 和
+CAP_V4L2 打开方式。该兜底只读摄像头并释放失败 capture，不会新开独占浏览器采集，不启动 Nav2、
+manual、keyboard、free-roam、建图 runtime、delivery、stop 或 `/cmd_vel`。
+
 2026-07-02 CST 起，`GET /api/robot-control/camera/mjpeg/status` 回包也直接声明
 `readback_only=true`、`camera_status_readback_only=true`，并固定
 `sends_motion_when_clicked=false`、`starts_camera_exclusive_capture=false`、`starts_radar_lifecycle=false`、

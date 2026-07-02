@@ -44,6 +44,9 @@ FIRST_FRAME_TIMEOUT_S = 3.0
 MJPEG_FIRST_FRAME_TIMEOUT_S = FIRST_FRAME_TIMEOUT_S
 # PC 首屏共享预览要及时失败可见；WebRTC offer 仍保留完整格式矩阵。
 MJPEG_FIRST_FRAME_TOTAL_TIMEOUT_S = 9.0
+# MJPEG 先横向试低带宽格式；失败后再用剩余预算试 index/V4L2 打开方式。
+MJPEG_PRIMARY_SOURCE_TOTAL_TIMEOUT_S = 6.0
+MJPEG_OPEN_SOURCE_FALLBACK_TOTAL_TIMEOUT_S = 3.0
 FIRST_FRAME_WARMUP_INTERVAL_S = 0.05
 CAMERA_CAPTURE_FOURCC_FALLBACKS: tuple[str | None, ...] = ("MJPG", "YUYV", None)
 COMMAND_TIMEOUT_S = 2.5
@@ -1461,6 +1464,7 @@ class CameraServiceState:
         total_timeout_s: float | None = None,
         specs: list[CameraCaptureAttemptSpec] | None = None,
         include_open_source_fallbacks: bool = False,
+        open_source_fallbacks_only: bool = False,
     ) -> tuple[SharedCameraCapture | None, Any, list[dict[str, Any]], dict[str, Any] | None]:
         """按多组 UVC 常见模式尝试首帧；每次失败都释放，不能长期占用坏格式。"""
         attempts: list[dict[str, Any]] = []
@@ -1473,6 +1477,16 @@ class CameraServiceState:
                 if include_open_source_fallbacks
                 else [{"source": source, "source_label": opencv_capture_source_label(source), "backend": None, "backend_label": "default"}]
             )
+            if open_source_fallbacks_only:
+                # 第二阶段只试真正不同的打开方式，避免把短预算浪费在刚失败的 path/default 上。
+                default_source_label = opencv_capture_source_label(source)
+                open_candidates = [
+                    item for item in open_candidates
+                    if not (
+                        str(item.get("source_label") or "") == default_source_label
+                        and str(item.get("backend_label") or "default") == "default"
+                    )
+                ]
             if not open_candidates:
                 open_candidates = [{"source": source, "source_label": opencv_capture_source_label(source), "backend": None, "backend_label": "default"}]
             for open_candidate in open_candidates:
@@ -1569,6 +1583,50 @@ class CameraServiceState:
             last_payload = error_payload("first_frame_unreadable", "no_capture_format_attempted", video_source=source)
         last_payload["first_frame_format_attempts"] = attempts
         return None, None, attempts, last_payload
+
+    def acquire_mjpeg_first_frame_capture(
+        self,
+        source: str,
+        cv2: Any,
+    ) -> tuple[SharedCameraCapture | None, Any, list[dict[str, Any]], dict[str, Any] | None]:
+        """MJPEG 默认预览先试低带宽格式，再试 index/V4L2 fallback，保持首屏预算可控。"""
+        specs = mjpeg_camera_capture_attempt_specs(self.width, self.height, self.fps)
+        shared_capture, first_frame, attempts, error = self.acquire_first_frame_capture(
+            source,
+            cv2,
+            timeout_s=MJPEG_FIRST_FRAME_TIMEOUT_S,
+            total_timeout_s=MJPEG_PRIMARY_SOURCE_TOTAL_TIMEOUT_S,
+            specs=specs,
+            include_open_source_fallbacks=False,
+        )
+        if shared_capture is not None and first_frame is not None:
+            return shared_capture, first_frame, attempts, None
+
+        fallback_shared, fallback_frame, fallback_attempts, fallback_error = self.acquire_first_frame_capture(
+            source,
+            cv2,
+            timeout_s=min(MJPEG_FIRST_FRAME_TIMEOUT_S, MJPEG_OPEN_SOURCE_FALLBACK_TOTAL_TIMEOUT_S),
+            total_timeout_s=MJPEG_OPEN_SOURCE_FALLBACK_TOTAL_TIMEOUT_S,
+            specs=specs,
+            include_open_source_fallbacks=True,
+            open_source_fallbacks_only=True,
+        )
+        combined_attempts = attempts + fallback_attempts
+        if fallback_shared is not None and fallback_frame is not None:
+            return fallback_shared, fallback_frame, combined_attempts, None
+
+        payload = fallback_error or error or error_payload(
+            "first_frame_unreadable",
+            "first_frame_format_attempts_failed",
+            video_source=source,
+        )
+        payload["first_frame_format_attempts"] = combined_attempts
+        if error:
+            payload["primary_source_failure_reason"] = error.get("failure_reason")
+        if fallback_error:
+            payload["open_source_fallback_failure_reason"] = fallback_error.get("failure_reason")
+        payload["mjpeg_open_source_fallback_attempted"] = True
+        return None, None, combined_attempts, payload
 
     def release_peer_capture(self, peer: PeerRecord) -> dict[str, Any]:
         """释放 peer 持有的 capture 引用；兼容测试里的 FakeCapture。"""
@@ -2016,14 +2074,9 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             payload["last_first_frame_error"] = recent_failure["last_error"]
             self._send_json(payload, status=HTTPStatus.SERVICE_UNAVAILABLE)
             return
-        shared_capture, first_frame, format_attempts, first_frame_error = self.state.acquire_first_frame_capture(
+        shared_capture, first_frame, format_attempts, first_frame_error = self.state.acquire_mjpeg_first_frame_capture(
             str(selected_path),
             cv2,
-            timeout_s=MJPEG_FIRST_FRAME_TIMEOUT_S,
-            total_timeout_s=MJPEG_FIRST_FRAME_TOTAL_TIMEOUT_S,
-            specs=mjpeg_camera_capture_attempt_specs(self.state.width, self.state.height, self.state.fps),
-            # 共享首屏预算有限：先跨 MJPG/YUYV/小分辨率格式找真实画面，再把 path/index/backend 差异留给 WebRTC/高级探针。
-            include_open_source_fallbacks=False,
         )
         if shared_capture is None or first_frame is None:
             payload = first_frame_error or error_payload(

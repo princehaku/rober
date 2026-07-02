@@ -819,6 +819,83 @@ class LocalWebrtcCameraSmokeTests(unittest.TestCase):
         self.assertEqual(["default", "default", "default"], [item["open_backend"] for item in attempts[:3]])
         self.assertTrue(all(capture.released for capture in fake_cv2.captures))
 
+    def test_mjpeg_default_preview_retries_open_source_fallback_after_priority_formats(self) -> None:
+        """默认 MJPEG 预览第一段先试低带宽格式，失败后再试 index/V4L2 打开兜底。"""
+
+        frame = object()
+
+        class FallbackCapture:
+            def __init__(self, source: str | int, backend: int | None) -> None:
+                self.source = source
+                self.backend = backend
+                self.released = False
+
+            def isOpened(self) -> bool:  # noqa: N802 - 模拟 OpenCV API。
+                return True
+
+            def set(self, _prop: int, _value: object) -> None:
+                return None
+
+            def read(self) -> tuple[bool, object | None]:
+                if self.source == 1 and self.backend is None:
+                    return True, frame
+                return False, None
+
+            def release(self) -> None:
+                self.released = True
+
+        class FakeCv2:
+            CAP_PROP_FOURCC = 6
+            CAP_PROP_FRAME_WIDTH = 3
+            CAP_PROP_FRAME_HEIGHT = 4
+            CAP_PROP_FPS = 5
+            CAP_V4L2 = 200
+
+            def __init__(self) -> None:
+                self.calls: list[tuple[str | int, int | None]] = []
+                self.captures: list[FallbackCapture] = []
+
+            def VideoWriter_fourcc(self, *_letters: str) -> int:  # noqa: N802 - 模拟 OpenCV API。
+                return 100
+
+            def VideoCapture(self, source: str | int, backend: int | None = None) -> FallbackCapture:  # noqa: N802 - 模拟 OpenCV API。
+                self.calls.append((source, backend))
+                capture = FallbackCapture(source, backend)
+                self.captures.append(capture)
+                return capture
+
+        state = camera.CameraServiceState(video_source="/dev/video1", width=640, height=480, fps=15)
+        fake_cv2 = FakeCv2()
+
+        def fake_first_frame_read(shared_capture: camera.SharedCameraCapture, _timeout_s: float) -> tuple[bool, object | None, int]:
+            if shared_capture.open_source == 1 and shared_capture.open_backend == "default":
+                return True, frame, 1
+            shared_capture.last_error = "capture_read_returned_false"
+            return False, None, 1
+
+        with mock.patch.object(camera.SharedCameraCapture, "read_frame_until_success", fake_first_frame_read):
+            shared, observed, attempts, error = state.acquire_mjpeg_first_frame_capture("/dev/video1", fake_cv2)
+
+        self.assertIsNone(error)
+        self.assertIs(frame, observed)
+        self.assertIsNotNone(shared)
+        assert shared is not None
+        first_fallback_index = next(index for index, item in enumerate(attempts) if item["open_backend"] == "CAP_V4L2")
+        self.assertEqual(
+            ["MJPG@640x480@30", "MJPG@480x320@30", "YUYV@320x240@25"],
+            [item["label"] for item in attempts[:3]],
+        )
+        self.assertTrue(all(item["open_source"] == "/dev/video1" for item in attempts[:first_fallback_index]))
+        self.assertTrue(all(item["open_backend"] == "default" for item in attempts[:first_fallback_index]))
+        self.assertEqual(["/dev/video1", "index:1"], [item["open_source"] for item in attempts[-2:]])
+        self.assertEqual(["CAP_V4L2", "default"], [item["open_backend"] for item in attempts[-2:]])
+        self.assertEqual("frame_read", attempts[-1]["status"])
+        self.assertIn(("/dev/video1", 200), fake_cv2.calls)
+        self.assertEqual((1, None), fake_cv2.calls[-1])
+        self.assertEqual("index:1", shared.summary()["open_source"])
+        self.assertTrue(all(capture.released for capture in fake_cv2.captures[:-1]))
+        self.assertFalse(fake_cv2.captures[-1].released)
+
     def test_stale_no_frame_peer_is_closed_before_new_offer(self) -> None:
         """卡在 new/0 帧的旧 peer 必须自动释放，避免长期占用 `/dev/video1`。"""
 

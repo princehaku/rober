@@ -627,23 +627,25 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
                 "sends_motion_commands": False,
             }
 
-            # mock readback 可以验证 status 汇总，不需要在单元测试中打开串口。
-            with mock.patch.object(upper_robot_api, "request_base_feedback_once", return_value=fake_readback):
-                with mock.patch.object(
-                    upper_robot_api,
-                    "summarize_bridge_feedback_debug_log",
-                    return_value={"freshness": {"status": "missing"}},
-                ):
-                    # 设备存在性和 pyserial 可用性也 mock，避免本地开发机依赖 `/dev/ttyS5`。
-                    with mock.patch.object(upper_robot_api, "describe_path", return_value={"exists": True}):
-                        with mock.patch.object(upper_robot_api, "load_serial_module", return_value=(object(), None)):
-                            status = api.base_status()
+            # mock readback 可以验证 status 汇总；T=130 兼容路径必须显式打开，默认 GET 不抢 UART。
+            with mock.patch.dict(upper_robot_api.os.environ, {upper_robot_api.BASE_STATUS_DIRECT_FEEDBACK_ENV: "1"}):
+                with mock.patch.object(upper_robot_api, "request_base_feedback_once", return_value=fake_readback):
+                    with mock.patch.object(
+                        upper_robot_api,
+                        "summarize_bridge_feedback_debug_log",
+                        return_value={"freshness": {"status": "missing"}},
+                    ):
+                        # 设备存在性和 pyserial 可用性也 mock，避免本地开发机依赖 `/dev/ttyS5`。
+                        with mock.patch.object(upper_robot_api, "describe_path", return_value={"exists": True}):
+                            with mock.patch.object(upper_robot_api, "load_serial_module", return_value=(object(), None)):
+                                status = api.base_status()
 
         # ACK 为 true 不能外溢成任何运动许可或任务完成结论。
         self.assertTrue(status["feedback_ack"]["t1001_observed"])
         self.assertEqual("fresh_readback", status["feedback_ack"]["source"])
         self.assertTrue(status["readback_sends_commands"])
         self.assertTrue(status["sends_commands"])
+        self.assertTrue(status["direct_feedback_on_get_enabled"])
         self.assertEqual("ros", status["base_command_mode"])
         self.assertEqual("ros", status["nav2_base_command_mode"])
         self.assertEqual("ros", status["control_policy"]["base_command_mode"])
