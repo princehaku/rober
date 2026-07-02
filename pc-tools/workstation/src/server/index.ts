@@ -2836,6 +2836,7 @@ function cameraMjpegStatusResponse(
     // MJPEG status 只读本机共享预览和上车 health，不创建独占采集，也不触发任何运动链路。
     readback_only: true,
     camera_status_readback_only: true,
+    camera_mjpeg_status_readback_only: true,
     sends_motion_when_clicked: false,
     starts_camera_exclusive_capture: false,
     starts_radar_lifecycle: false,

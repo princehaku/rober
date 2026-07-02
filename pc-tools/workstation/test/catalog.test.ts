@@ -15589,6 +15589,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(statusBody.camera_recovery_starts_map_runtime).toBe(false);
       expect(statusBody.readback_only).toBe(true);
       expect(statusBody.camera_status_readback_only).toBe(true);
+      expect(statusBody.camera_mjpeg_status_readback_only).toBe(true);
       expect(statusBody.sends_motion_when_clicked).toBe(false);
       expect(statusBody.starts_camera_exclusive_capture).toBe(false);
       expect(statusBody.shared_preview_readback_only).toBe(true);

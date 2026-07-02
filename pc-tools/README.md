@@ -232,7 +232,7 @@ CAP_V4L2 打开方式。该兜底只读摄像头并释放失败 capture，不会
 manual、keyboard、free-roam、建图 runtime、delivery、stop 或 `/cmd_vel`。
 
 2026-07-02 CST 起，`GET /api/robot-control/camera/mjpeg/status` 回包也直接声明
-`readback_only=true`、`camera_status_readback_only=true`，并固定
+`readback_only=true`、`camera_status_readback_only=true`、`camera_mjpeg_status_readback_only=true`，并固定
 `sends_motion_when_clicked=false`、`starts_camera_exclusive_capture=false`、`starts_radar_lifecycle=false`、
 `starts_nav2=false`、`starts_manual=false`、`starts_keyboard=false`、`starts_free_roam=false`、
 `starts_map_runtime=false`、`submits_delivery=false` 和 `stops_motion=false`。该接口只读取共享 MJPEG relay

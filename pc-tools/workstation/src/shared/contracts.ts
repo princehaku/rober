@@ -5931,6 +5931,7 @@ export interface RobotControlCameraMjpegStatusResponse extends ProofFlags {
   camera_recovery_starts_map_runtime: false;
   readback_only: true;
   camera_status_readback_only: true;
+  camera_mjpeg_status_readback_only: true;
   sends_motion_when_clicked: false;
   starts_camera_exclusive_capture: false;
   starts_radar_lifecycle: false;
