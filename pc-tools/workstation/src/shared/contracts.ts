@@ -3895,6 +3895,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   current_trip_execution_pack_current_gap_plain?: RobotControlNav2RouteAcceptancePacket["current_gap_plain"];
   current_trip_execution_pack_delivery_next_action_plain?: RobotControlNav2RouteAcceptancePacket["delivery_next_action_plain"];
   current_trip_execution_pack_requires_safety_confirm?: RobotControlNav2RouteAcceptancePacket["requires_safety_confirm"];
+  current_trip_execution_pack_safety_confirm_required?: RobotControlNav2RouteAcceptancePacket["requires_safety_confirm"];
   current_trip_execution_pack_minimal_precheck_safety_only?: RobotControlNav2RouteAcceptancePacket["minimal_precheck_safety_only"];
   current_trip_execution_pack_camera_preflight_required?: false;
   current_trip_execution_pack_radar_preflight_required?: false;
@@ -4025,6 +4026,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   current_keyboard_control_pack_proof_status?: RobotControlLiveMotionRunbookItem["proof_status"];
   current_keyboard_control_pack_ready?: RobotControlLiveMotionRunbookItem["ready"];
   current_keyboard_control_pack_requires_safety_confirm?: RobotControlLiveMotionRunbookItem["safety_confirm_required"];
+  current_keyboard_control_pack_safety_confirm_required?: RobotControlLiveMotionRunbookItem["safety_confirm_required"];
   current_keyboard_control_pack_minimal_precheck_safety_only?: RobotControlLiveMotionRunbookItem["minimal_precheck_safety_only"];
   current_keyboard_control_pack_enable_sends_motion?: false;
   current_keyboard_control_pack_hold_to_move_required?: true;
@@ -4116,6 +4118,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   current_free_move_control_pack_running?: boolean;
   current_free_move_control_pack_complete?: boolean;
   current_free_move_control_pack_requires_safety_confirm?: RobotControlLiveMotionRunbookItem["safety_confirm_required"];
+  current_free_move_control_pack_safety_confirm_required?: RobotControlLiveMotionRunbookItem["safety_confirm_required"];
   current_free_move_control_pack_minimal_precheck_safety_only?: RobotControlLiveMotionRunbookItem["minimal_precheck_safety_only"];
   current_free_move_control_pack_camera_preflight_required?: RobotControlLiveClosureSummary["free_move_camera_preflight_required"];
   current_free_move_control_pack_radar_preflight_required?: RobotControlLiveClosureSummary["free_move_radar_preflight_required"];

@@ -877,6 +877,7 @@ const fixtures: Record<string, unknown> = {
     current_keyboard_control_pack_proof_status: "ready_to_verify",
     current_keyboard_control_pack_ready: true,
     current_keyboard_control_pack_requires_safety_confirm: true,
+    current_keyboard_control_pack_safety_confirm_required: true,
     current_keyboard_control_pack_minimal_precheck_safety_only: true,
     current_keyboard_control_pack_enable_sends_motion: false,
     current_keyboard_control_pack_hold_to_move_required: true,
@@ -966,6 +967,7 @@ const fixtures: Record<string, unknown> = {
     current_free_move_control_pack_running: false,
     current_free_move_control_pack_complete: false,
     current_free_move_control_pack_requires_safety_confirm: true,
+    current_free_move_control_pack_safety_confirm_required: true,
     current_free_move_control_pack_minimal_precheck_safety_only: true,
     current_free_move_control_pack_camera_preflight_required: false,
     current_free_move_control_pack_radar_preflight_required: false,
@@ -11411,6 +11413,7 @@ describe("App", () => {
     summaryFixture.current_trip_execution_pack_current_gap_plain = "当前缺口：同窗口 wheel L/R 非零、送达确认。";
     summaryFixture.current_trip_execution_pack_delivery_next_action_plain = "轮速复验通过后提交送达确认。";
     summaryFixture.current_trip_execution_pack_requires_safety_confirm = true;
+    summaryFixture.current_trip_execution_pack_safety_confirm_required = true;
     summaryFixture.current_trip_execution_pack_minimal_precheck_safety_only = true;
     summaryFixture.current_trip_execution_pack_camera_preflight_required = false;
     summaryFixture.current_trip_execution_pack_radar_preflight_required = false;
@@ -11537,6 +11540,7 @@ describe("App", () => {
     expect(keyboardPack.attributes("data-proof-status")).toBe("ready_to_verify");
     expect(keyboardPack.attributes("data-ready")).toBe("true");
     expect(keyboardPack.attributes("data-requires-safety-confirm")).toBe("true");
+    expect(keyboardPack.attributes("data-safety-confirm-required")).toBe("true");
     expect(keyboardPack.attributes("data-minimal-precheck-safety-only")).toBe("true");
     expect(keyboardPack.attributes("data-enable-sends-motion")).toBe("false");
     expect(keyboardPack.attributes("data-hold-to-move-required")).toBe("true");
@@ -11590,6 +11594,7 @@ describe("App", () => {
     expect(tripPack.attributes("data-current-gap-plain")).toBe("当前缺口：同窗口 wheel L/R 非零、送达确认。");
     expect(tripPack.attributes("data-delivery-next-action-plain")).toBe("轮速复验通过后提交送达确认。");
     expect(tripPack.attributes("data-requires-safety-confirm")).toBe("true");
+    expect(tripPack.attributes("data-safety-confirm-required")).toBe("true");
     expect(tripPack.attributes("data-minimal-precheck-safety-only")).toBe("true");
     expect(tripPack.attributes("data-camera-preflight-required")).toBe("false");
     expect(tripPack.attributes("data-radar-preflight-required")).toBe("false");
@@ -11625,6 +11630,7 @@ describe("App", () => {
     expect(freeMovePack.attributes("data-running")).toBe("false");
     expect(freeMovePack.attributes("data-complete")).toBe("false");
     expect(freeMovePack.attributes("data-requires-safety-confirm")).toBe("true");
+    expect(freeMovePack.attributes("data-safety-confirm-required")).toBe("true");
     expect(freeMovePack.attributes("data-minimal-precheck-safety-only")).toBe("true");
     expect(freeMovePack.attributes("data-camera-preflight-required")).toBe("false");
     expect(freeMovePack.attributes("data-radar-preflight-required")).toBe("false");

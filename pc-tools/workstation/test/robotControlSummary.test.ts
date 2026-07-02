@@ -1271,6 +1271,7 @@ describe("robotControlSummary", () => {
     expect(summary.current_trip_execution_pack_current_gap_plain).toBe(summary.nav2_route_acceptance_packet?.current_gap_plain);
     expect(summary.current_trip_execution_pack_delivery_next_action_plain).toBe(summary.nav2_route_acceptance_packet?.delivery_next_action_plain);
     expect(summary.current_trip_execution_pack_requires_safety_confirm).toBe(true);
+    expect(summary.current_trip_execution_pack_safety_confirm_required).toBe(true);
     expect(summary.current_trip_execution_pack_minimal_precheck_safety_only).toBe(true);
     expect(summary.current_trip_execution_pack_camera_preflight_required).toBe(false);
     expect(summary.current_trip_execution_pack_radar_preflight_required).toBe(false);
@@ -1377,6 +1378,7 @@ describe("robotControlSummary", () => {
     expect(summary.current_keyboard_control_pack_proof_status).toBe("ready_to_verify");
     expect(summary.current_keyboard_control_pack_ready).toBe(true);
     expect(summary.current_keyboard_control_pack_requires_safety_confirm).toBe(true);
+    expect(summary.current_keyboard_control_pack_safety_confirm_required).toBe(true);
     expect(summary.current_keyboard_control_pack_minimal_precheck_safety_only).toBe(true);
     expect(summary.current_keyboard_control_pack_enable_sends_motion).toBe(false);
     expect(summary.current_keyboard_control_pack_hold_to_move_required).toBe(true);
@@ -1485,6 +1487,7 @@ describe("robotControlSummary", () => {
     expect(summary.current_free_move_control_pack_running).toBe(false);
     expect(summary.current_free_move_control_pack_complete).toBe(false);
     expect(summary.current_free_move_control_pack_requires_safety_confirm).toBe(true);
+    expect(summary.current_free_move_control_pack_safety_confirm_required).toBe(true);
     expect(summary.current_free_move_control_pack_minimal_precheck_safety_only).toBe(true);
     expect(summary.current_free_move_control_pack_camera_preflight_required).toBe(false);
     expect(summary.current_free_move_control_pack_radar_preflight_required).toBe(false);

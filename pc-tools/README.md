@@ -29,7 +29,7 @@ client publish、service 和 parameter 通道关到不匹配正则；安装仍�
 简易界面，不发送 `/cmd_vel`。
 
 2026-07-02 CST 起，PC 地图按“先解决太小”处理：普通用户点 `进入地图大屏` 打开 `/map`，
-默认 `1600%`，最高 `4800%`，summary/DOM 同步暴露
+默认 `3200%`，最高 `6400%`，summary/DOM 同步暴露
 `map_display_direct_map_viewport_priority=fullscreen_map_canvas` 和
 `map_display_direct_map_canvas_height_mode=viewport_dominant_full_height`。`/map` 直达页必须使用整屏
 flex 地图布局，只保留缩放、`刷新地图画面`、雷达贴图只读刷新和 `ROS2观察`，并收起建图、保存、
@@ -42,6 +42,12 @@ summary 顶层和 `plain-live-map-companion-summary` DOM 同步暴露短 alias
 `map_display_ros2_companion_plain` / `data-ros2-companion-plain`，与
 `map_display_ros2_companion_answer_plain` 同源；现场脚本按直觉查 ROS2 配套白话答案时不会读到
 null，该字段也只作观察说明，不启动 ROS2、RViz2、Foxglove、Nav2、建图 runtime 或任何运动控制。
+
+2026-07-02 CST 起，完整 Nav2 行程、PC 键盘连续手控和自由自助移动三个当前控制包都同步暴露
+`*_safety_confirm_required` alias，分别对应 `current_trip_execution_pack_safety_confirm_required`、
+`current_keyboard_control_pack_safety_confirm_required` 和
+`current_free_move_control_pack_safety_confirm_required`。这些字段与既有
+`*_requires_safety_confirm` 同源，普通首屏 DOM 也暴露 `data-safety-confirm-required=true`，用于现场脚本按统一命名确认“发车前只需安全确认”。该 alias 只读，不执行 Nav2、manual、keyboard、free-roam、建图、delivery、stop 或 `/cmd_vel`。
 
 2026-07-02 CST 起，`GET /api/robot-control/summary` 的自由移动顶层读回别名补齐为
 `free_move_readback_endpoints` 和 `free_move_required_success_markers`，分别复用既有

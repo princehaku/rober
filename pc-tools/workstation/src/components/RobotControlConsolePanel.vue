@@ -4448,7 +4448,9 @@ const plainCurrentKeyboardControlPack = computed(() => {
     missingEvidenceText: missingEvidence.join(",") || "none",
     proofStatus: summary?.current_keyboard_control_pack_proof_status ?? fallback.actionProofStatus,
     ready: summary?.current_keyboard_control_pack_ready ?? fallback.actionReady,
-    requiresSafetyConfirm: summary?.current_keyboard_control_pack_requires_safety_confirm ?? true,
+    requiresSafetyConfirm: summary?.current_keyboard_control_pack_safety_confirm_required
+      ?? summary?.current_keyboard_control_pack_requires_safety_confirm
+      ?? true,
     minimalPrecheckSafetyOnly: summary?.current_keyboard_control_pack_minimal_precheck_safety_only ?? true,
     enableSendsMotion: summary?.current_keyboard_control_pack_enable_sends_motion ?? false,
     holdToMoveRequired: summary?.current_keyboard_control_pack_hold_to_move_required ?? true,
@@ -4524,7 +4526,10 @@ const plainCurrentFreeMoveControlPack = computed(() => {
     ready: summary?.current_free_move_control_pack_ready ?? summary?.current_free_move_action_ready ?? false,
     running: summary?.current_free_move_control_pack_running ?? summary?.free_move_running ?? false,
     complete: summary?.current_free_move_control_pack_complete ?? summary?.free_move_complete ?? false,
-    requiresSafetyConfirm: summary?.current_free_move_control_pack_requires_safety_confirm ?? summary?.current_free_move_action_requires_safety_confirm ?? true,
+    requiresSafetyConfirm: summary?.current_free_move_control_pack_safety_confirm_required
+      ?? summary?.current_free_move_control_pack_requires_safety_confirm
+      ?? summary?.current_free_move_action_requires_safety_confirm
+      ?? true,
     minimalPrecheckSafetyOnly: summary?.current_free_move_control_pack_minimal_precheck_safety_only ?? summary?.current_free_move_action_minimal_precheck_safety_only ?? true,
     cameraPreflightRequired: summary?.current_free_move_control_pack_camera_preflight_required ?? summary?.current_free_move_action_camera_preflight_required ?? false,
     radarPreflightRequired: summary?.current_free_move_control_pack_radar_preflight_required ?? summary?.current_free_move_action_radar_preflight_required ?? false,
@@ -4674,7 +4679,10 @@ const plainCurrentTripExecutionPack = computed(() => {
     feedbackNonzeroSampleCount: summary?.current_trip_execution_pack_feedback_nonzero_sample_count ?? packet?.feedback_nonzero_sample_count ?? "0",
     currentGapPlain: summary?.current_trip_execution_pack_current_gap_plain ?? packet?.current_gap_plain ?? "",
     deliveryNextActionPlain: summary?.current_trip_execution_pack_delivery_next_action_plain ?? packet?.delivery_next_action_plain ?? "",
-    requiresSafetyConfirm: summary?.current_trip_execution_pack_requires_safety_confirm ?? packet?.requires_safety_confirm ?? true,
+    requiresSafetyConfirm: summary?.current_trip_execution_pack_safety_confirm_required
+      ?? summary?.current_trip_execution_pack_requires_safety_confirm
+      ?? packet?.requires_safety_confirm
+      ?? true,
     minimalPrecheckSafetyOnly: summary?.current_trip_execution_pack_minimal_precheck_safety_only ?? packet?.minimal_precheck_safety_only ?? true,
     cameraPreflightRequired: summary?.current_trip_execution_pack_camera_preflight_required ?? false,
     radarPreflightRequired: summary?.current_trip_execution_pack_radar_preflight_required ?? false,
@@ -19865,6 +19873,7 @@ onBeforeUnmount(() => {
             :data-proof-status="plainCurrentKeyboardControlPack.proofStatus"
             :data-ready="String(plainCurrentKeyboardControlPack.ready)"
             :data-requires-safety-confirm="String(plainCurrentKeyboardControlPack.requiresSafetyConfirm)"
+            :data-safety-confirm-required="String(plainCurrentKeyboardControlPack.requiresSafetyConfirm)"
             :data-minimal-precheck-safety-only="String(plainCurrentKeyboardControlPack.minimalPrecheckSafetyOnly)"
             :data-enable-sends-motion="String(plainCurrentKeyboardControlPack.enableSendsMotion)"
             :data-hold-to-move-required="String(plainCurrentKeyboardControlPack.holdToMoveRequired)"
@@ -19920,6 +19929,7 @@ onBeforeUnmount(() => {
             :data-current-gap-plain="plainCurrentTripExecutionPack.currentGapPlain"
             :data-delivery-next-action-plain="plainCurrentTripExecutionPack.deliveryNextActionPlain"
             :data-requires-safety-confirm="String(plainCurrentTripExecutionPack.requiresSafetyConfirm)"
+            :data-safety-confirm-required="String(plainCurrentTripExecutionPack.requiresSafetyConfirm)"
             :data-minimal-precheck-safety-only="String(plainCurrentTripExecutionPack.minimalPrecheckSafetyOnly)"
             :data-camera-preflight-required="String(plainCurrentTripExecutionPack.cameraPreflightRequired)"
             :data-radar-preflight-required="String(plainCurrentTripExecutionPack.radarPreflightRequired)"
@@ -19957,6 +19967,7 @@ onBeforeUnmount(() => {
             :data-running="String(plainCurrentFreeMoveControlPack.running)"
             :data-complete="String(plainCurrentFreeMoveControlPack.complete)"
             :data-requires-safety-confirm="String(plainCurrentFreeMoveControlPack.requiresSafetyConfirm)"
+            :data-safety-confirm-required="String(plainCurrentFreeMoveControlPack.requiresSafetyConfirm)"
             :data-minimal-precheck-safety-only="String(plainCurrentFreeMoveControlPack.minimalPrecheckSafetyOnly)"
             :data-camera-preflight-required="String(plainCurrentFreeMoveControlPack.cameraPreflightRequired)"
             :data-radar-preflight-required="String(plainCurrentFreeMoveControlPack.radarPreflightRequired)"
