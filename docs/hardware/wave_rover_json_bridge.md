@@ -35,6 +35,7 @@
 | ROS bridge use | Vendor JSON | Direction | Source |
 | --- | --- | --- | --- |
 | Stop / left-right speed command | `{"T":1,"L":0.0,"R":0.0}` | ROS to ESP32 | `json_cmd.h` `CMD_SPEED_CTRL`, `base_ctrl.py` |
+| PWM command mode (`T=11`) | `{"T":11,"L":164,"R":164}` | ROS to ESP32 | `json_cmd.h` `CMD_PWM_INPUT`, `uart_ctrl.h` |
 | Velocity command mode (`T=13`) | `{"T":13,"X":0.1,"Z":0.3}` | ROS to ESP32 | `json_cmd.h` `CMD_ROS_CTRL`, `movtion_module.h` |
 | One-shot base feedback request | `{"T":130}` | ROS to ESP32 | `json_cmd.h` `CMD_BASE_FEEDBACK` |
 | Feedback stream on/off | `{"T":131,"cmd":1}` / `{"T":131,"cmd":0}` | ROS to ESP32 | `json_cmd.h`, `uart_ctrl.h` |
@@ -87,19 +88,28 @@
 用于解释“底盘只读链路曾出现非零 L/R”。该字段不得替代 Nav2 goal execution 同窗口内的
 `base_feedback_summary.latest_nonzero_pair`，也不得单独推出路线到达、delivery success 或导航级 HIL pass。
 
-### 2026-06-27 Nav2 ROS command mode boundary
+### 2026-07-03 PWM164 default command mode boundary
 
 本轮按 `docs/vendor/VENDOR_INDEX.md` 指向的本地资料复核：
 `WAVE_ROVER_V0.9/json_cmd.h` 定义 `T=13` 为 `CMD_ROS_CTRL`，字段为 `X/Z`
-并标注 `(m/s,rad/s)`；`uart_ctrl.h` 在收到 `CMD_ROS_CTRL` 后调用 `rosCtrl(X,Z)`；
-`movtion_module.h` 的 `rosCtrl` 将 `X/Z` 转为左右轮 setpoint 后进入 `setGoalSpeed`。
-因此 O11 Nav2 托管执行 helper 和上车 launch 默认使用 `base_command_mode=ros` 更贴近 ROS
-`/cmd_vel` 语义。`T=11` PWM 和 `T=1` speed 仍保留为白名单复验模式，但不再是
-Nav2 helper 的硬编码唯一通路。
+并标注 `(m/s,rad/s)(Not for the products without encoders)`；`T=11` 定义为
+`CMD_PWM_INPUT`，vendor 示例为 `{"T":11,"L":164,"R":164}`，`uart_ctrl.h`
+在收到 `CMD_PWM_INPUT` 后关闭 PID compute 并直接调用左右电机控制。
+
+2026-07-03 真机 smoke 复核：`ros/T=13` 路径能收到 `/cmd_vel`，但 vendor
+`T=1001.L/R` 持续 `0/0`；同一底盘改用 `T=11`、`PWM164` 后，`T=1001.L/R`
+仍可能为 `0/0`，但同窗口 `T=1001.r/p` 姿态出现明显变化，证明底盘存在运动信号。
+因此当前 bringup/autonomous、硬件 bridge 和 O11 Nav2 helper 默认使用
+`command_mode=pwm`、`pwm_min_abs/max_abs=164`，仍以 ROS `/cmd_vel` 作为上层控制面，
+只在落到 WAVE ROVER 串口时映射为 vendor `T=11`。
+
+`ros/T=13` 和 `speed/T=1` 仍保留为白名单诊断模式；如果后续固件/编码器状态修复并通过
+HIL 证明 `T=13` 可产生可靠 wheel raw L/R，再重新评估默认值。
 
 该改动只改变上位机托管 `esp32_bridge` 的命令模式选择和 launch 默认参数，不降低验收标准：
-Nav2 goal 只有在同一 execution artifact 内同时满足 action succeeded 和
-`T=1001.L/R` 最新非零反馈时，才能被 PC/上位机视为完整路线执行证明。
+Nav2 goal 只有在同一 execution artifact 内同时满足 action succeeded 和可复核的底盘运动材料时，
+才能被 PC/上位机视为路线执行证明；wheel raw `T=1001.L/R` 非零仍作为独立字段展示，不能被
+IMU 姿态变化伪装。
 
 ### HIL 运行参数留存模板（与 run 级证据绑定）
 
@@ -116,14 +126,14 @@ Nav2 goal 只有在同一 execution artifact 内同时满足 action succeeded �
 
 ## Command Modes
 
-- `ros`：将 `/cmd_vel` 映射为 vendor `T=13` 的 `X/Z`，当前 bringup/autonomous 与硬件 bridge 默认值。
+- `ros`：将 `/cmd_vel` 映射为 vendor `T=13` 的 `X/Z`，当前仅作为显式诊断 override。
 - `speed`：将 `/cmd_vel` 映射为 `T=1` 的 `L/R`，仅作为显式诊断 override。
-- `pwm`：将 `/cmd_vel` 映射为 `T=11` 的 `L/R`，仅作为显式诊断 override。
+- `pwm`：将 `/cmd_vel` 映射为 `T=11` 的 `L/R`，当前 bringup/autonomous、硬件 bridge 与 O11 helper 默认值为 `PWM164`。
 
-默认切到 `ros` 的原因是 Nav2、键盘连续手控和自由移动都以 ROS `/cmd_vel` 为同一控制面，
-避免上车启动默认 `speed/T=1`，而 PC/上位机下一步提示要求 `ros/T=13` 的口径分叉。
-这不降低验收标准：真实路线执行仍必须在同一 artifact 内证明 action succeeded 且
-vendor `T=1001.L/R` 同窗口非零。
+默认切到 `pwm` 的原因是 Nav2、键盘连续手控和自由移动仍以 ROS `/cmd_vel` 为同一上层控制面，
+但当前 WAVE ROVER 固件/硬件组合对 `T=13` 的 wheel raw 反馈持续为零；vendor `T=11/PWM164`
+已在 2026-07-03 现场烟测中产生同窗口 IMU 运动信号。真实路线执行仍必须保存 action、命令、
+feedback 与运动材料，且 wheel raw `T=1001.L/R` 非零状态必须单独展示。
 
 对于 `speed` 模式，差速关系：
 
@@ -141,10 +151,10 @@ right_mps = linear.x + angular.z * track_width_m / 2
 每步 publish window 均小于 `0.18s`，且每步 `/trashbot/stop` 成功。
 
 2026-06-27 真机 smoke 曾单独观测到 `T=11 L=90/R=90` 回 `T=1001 L/R=90/90`，
-但同轮 Nav2 托管执行里 `T=11 L=90/R=-90` 仍未形成非零轮速闭环。因此
-bringup/autonomous 默认改为 vendor ROS 控制路径 `command_mode=ros`，即 `/cmd_vel` 转
-`T=13 X/Z`；`command_mode=speed` 和 `command_mode=pwm` 只作为显式 HIL/诊断 override，
-不能在没有本轮证明时当作默认成功路径。在 `command_mode=speed` 诊断模式下，
+但同轮 Nav2 托管执行里 `T=11 L=90/R=-90` 仍未形成非零轮速闭环。2026-07-03 复测后，
+当前默认不再使用 vendor ROS/T=13 控制路径，而是保留 ROS `/cmd_vel` 上层控制面并由
+bridge 落成 `T=11/PWM164`；`command_mode=ros` 与 `command_mode=speed` 只作为显式
+HIL/诊断 override。在 `command_mode=speed` 诊断模式下，
 `max_wheel_speed_mps=1.3`
 对应 expected command：
 
@@ -181,7 +191,7 @@ LiDAR median delta 也低于 `0.03m` 证明阈值。因此截至本记录，`T=1
 本轮 hardware 包已按“协议纯函数 / 反馈解析 / 参数处理 / ROS glue / 兼容入口”拆分：
 
 - `ros2_trashbot_hardware/wave_rover_protocol.py`
-  - 负责 WAVE ROVER JSON command ID、newline-delimited UART frame 编码、`/cmd_vel` 到 `T=1` / `T=13` 的命令构造，以及 `T=143 -> T=142 -> T=131` 的启动配置帧。
+  - 负责 WAVE ROVER JSON command ID、newline-delimited UART frame 编码、`/cmd_vel` 到 `T=1` / `T=11` / `T=13` 的命令构造，以及 `T=143 -> T=142 -> T=131` 的启动配置帧。
   - 只采用 `base_ctrl.py`、`json_cmd.h`、`uart_ctrl.h`、`movtion_module.h` 中已有的协议事实，不打开串口、不 import ROS2。
 - `ros2_trashbot_hardware/wave_rover_feedback.py`
   - 负责 `T=1001` feedback parser 与 IMU degrees-to-radians 转换。

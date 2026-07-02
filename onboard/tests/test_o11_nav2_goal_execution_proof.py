@@ -22,18 +22,18 @@ SPEC.loader.exec_module(HELPER)
 class O11Nav2GoalExecutionProofTests(unittest.TestCase):
     """锁定 O11 从 NavigateToPose 到真实底盘反馈的证明边界。"""
 
-    def test_managed_bridge_defaults_to_ros_motion_path(self) -> None:
-        """自动驾驶托管 bridge 默认走 vendor T=13 ROS 控制，不把雷达作为底盘发命令前置。"""
+    def test_managed_bridge_defaults_to_pwm_motion_path(self) -> None:
+        """自动驾驶托管 bridge 默认走 vendor T=11 PWM164，不把雷达作为底盘发命令前置。"""
         command = HELPER.managed_esp32_bridge_command("/tmp/o11_feedback.jsonl", "/tmp/o11_command.jsonl")
 
         self.assertIn("ros2_trashbot_hardware esp32_bridge", command)
         self.assertIn("-p serial_port:=/dev/ttyS5", command)
-        self.assertIn("-p command_mode:=ros", command)
+        self.assertIn("-p command_mode:=pwm", command)
         self.assertIn("-p pwm_min_abs:=164", command)
         self.assertIn("-p pwm_max_abs:=164", command)
         self.assertIn("-p feedback_debug_log_path:=/tmp/o11_feedback.jsonl", command)
         self.assertIn("-p command_debug_log_path:=/tmp/o11_command.jsonl", command)
-        self.assertNotIn("command_mode:=pwm", command)
+        self.assertNotIn("command_mode:=ros", command)
         self.assertNotIn("command_mode:=speed", command)
 
     def test_managed_bridge_can_override_to_pwm_motion_path(self) -> None:
@@ -47,7 +47,7 @@ class O11Nav2GoalExecutionProofTests(unittest.TestCase):
         self.assertIn("-p command_mode:=pwm", command)
 
     def test_wheel_zero_proof_status_tracks_actual_base_mode(self) -> None:
-        """Nav2 已切到 ROS 后，L/R=0 的缺口不能继续被误写成 PWM 路径。"""
+        """Nav2 已切到某个底盘模式后，L/R=0 的缺口必须跟随真实模式文案。"""
         self.assertEqual(
             "nav2_goal_succeeded_with_ros_commands_but_wheel_lr_zero",
             HELPER.wheel_zero_proof_status_for_mode("ros"),
@@ -57,7 +57,7 @@ class O11Nav2GoalExecutionProofTests(unittest.TestCase):
             HELPER.wheel_zero_proof_status_for_mode("pwm"),
         )
         self.assertEqual(
-            "nav2_goal_succeeded_with_ros_commands_but_wheel_lr_zero",
+            "nav2_goal_succeeded_with_pwm_commands_but_wheel_lr_zero",
             HELPER.wheel_zero_proof_status_for_mode("not-a-mode"),
         )
 

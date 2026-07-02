@@ -653,9 +653,9 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertTrue(status["sends_commands"])
         self.assertTrue(status["direct_feedback_on_get_enabled"])
         self.assertEqual("ros", status["base_command_mode"])
-        self.assertEqual("ros", status["nav2_base_command_mode"])
+        self.assertEqual("pwm", status["nav2_base_command_mode"])
         self.assertEqual("ros", status["control_policy"]["base_command_mode"])
-        self.assertEqual("ros", status["control_policy"]["nav2_base_command_mode"])
+        self.assertEqual("pwm", status["control_policy"]["nav2_base_command_mode"])
         # T=130 属于反馈请求；只要运动字段保持 false，就不会误导现场操作。
         self.assertFalse(status["sends_motion_commands"])
         self.assertFalse(status["safe_to_control"])
@@ -734,7 +734,7 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         request_feedback.assert_not_called()
         self.assertEqual("fresh_bridge_feedback_debug_log", status["feedback_ack"]["source"])
         self.assertEqual("ros", status["base_command_mode"])
-        self.assertEqual("ros", status["nav2_base_command_mode"])
+        self.assertEqual("pwm", status["nav2_base_command_mode"])
         self.assertFalse(status["readback_sends_commands"])
         self.assertFalse(status["sends_commands"])
         self.assertFalse(status["feedback_readback"]["request"]["attempted"])
@@ -857,6 +857,78 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertIn("RMW_FASTRTPS_USE_SHM=0 ros2 topic pub --times 1 --rate 20.000 --wait-matching-subscriptions 1 /cmd_vel", command)
         self.assertIn("geometry_msgs/msg/Twist", command)
         self.assertEqual(3.0, mocked_run.call_args.kwargs["timeout"])
+
+    def test_ros_cmd_vel_context_disables_fastrtps_shm_before_rclpy_import(self) -> None:
+        """systemd 不一定带 ROS 环境变量；进程内 publisher 也要关闭 FastDDS SHM。"""
+        previous_context = dict(upper_robot_api._ROS_CMD_VEL_CONTEXT)
+        upper_robot_api._ROS_CMD_VEL_CONTEXT.clear()
+        try:
+            with mock.patch.dict(upper_robot_api.os.environ, {}, clear=False):
+                upper_robot_api.os.environ.pop("RMW_FASTRTPS_USE_SHM", None)
+                result = upper_robot_api._ensure_ros_cmd_vel_context()
+                self.assertEqual("0", upper_robot_api.os.environ["RMW_FASTRTPS_USE_SHM"])
+                self.assertIn(result["status"], {"ready", "unavailable"})
+        finally:
+            upper_robot_api._ROS_CMD_VEL_CONTEXT.clear()
+            upper_robot_api._ROS_CMD_VEL_CONTEXT.update(previous_context)
+
+    def test_ros_cmd_vel_inprocess_publish_succeeds_when_subscription_count_unproven(self) -> None:
+        """现场 DDS graph count 可短暂为 0；已发布帧不能触发 CLI 兜底拖慢手控。"""
+
+        class FakeVector:
+            def __init__(self) -> None:
+                self.x = 0.0
+                self.y = 0.0
+                self.z = 0.0
+
+        class FakeTwist:
+            def __init__(self) -> None:
+                self.linear = FakeVector()
+                self.angular = FakeVector()
+
+        class FakePublisher:
+            def __init__(self) -> None:
+                self.messages: list[tuple[float, float]] = []
+
+            def get_subscription_count(self) -> int:
+                return 0
+
+            def publish(self, message: FakeTwist) -> None:
+                self.messages.append((message.linear.x, message.angular.z))
+
+        class FakeRclpy:
+            def __init__(self) -> None:
+                self.spin_timeouts: list[float] = []
+
+            def spin_once(self, node: object, timeout_sec: float = 0.0) -> None:
+                self.spin_timeouts.append(timeout_sec)
+
+        publisher = FakePublisher()
+        rclpy = FakeRclpy()
+        context = {
+            "status": "ready",
+            "rclpy": rclpy,
+            "twist_type": FakeTwist,
+            "node": object(),
+            "publisher": publisher,
+        }
+
+        with mock.patch.object(upper_robot_api, "_ensure_ros_cmd_vel_context", return_value=context):
+            result = upper_robot_api.publish_ros_cmd_vel_inprocess_burst(
+                0.08,
+                0.0,
+                hold_s=0.01,
+                rate_hz=20.0,
+                wait_subscription_s=0.0,
+            )
+
+        self.assertTrue(result["ok"])
+        self.assertFalse(result["subscription_match_proven"])
+        self.assertEqual(0, result["subscription_count"])
+        self.assertEqual(1, result["frames_published"])
+        self.assertEqual([(0.08, 0.0)], publisher.messages)
+        self.assertEqual("cmd_vel_subscription_count_unproven", result["warning"]["type"])
+        self.assertNotIn("error", result)
 
     def test_manual_control_ros_persists_fresh_bridge_feedback_without_opening_uart(self) -> None:
         """ROS 手控后只读 bridge debug log 回灌 L/R，不为了证明轮速再抢 UART。"""
@@ -2044,8 +2116,8 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertEqual("status", status_command["argv"][2])
         self.assertIn("lifecycle_manager", status)
         self.assertEqual("ros", status["base_command_mode"])
-        self.assertEqual("ros", status["nav2_base_command_mode"])
-        self.assertEqual("ros", status["nav2_goal_execute_default_base_command_mode"])
+        self.assertEqual("pwm", status["nav2_base_command_mode"])
+        self.assertEqual("pwm", status["nav2_goal_execute_default_base_command_mode"])
         self.assertFalse(status["lifecycle_manager"]["sends_motion_commands"])
         self.assertFalse(status["sends_motion_commands"])
         self.assertFalse(status["sends_base_motion_commands"])
@@ -2105,7 +2177,7 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertEqual("/compute_path_to_pose", status["path_generation_service_name"])
         self.assertEqual("map", status["amcl_pose"]["frame_id"])
         self.assertFalse(status["lifecycle_running"])
-        self.assertEqual("ros", status["nav2_base_command_mode"])
+        self.assertEqual("pwm", status["nav2_base_command_mode"])
         self.assertIn("nav2_lifecycle_not_running", status["blocked_reasons"])
         self.assertIn("启动或恢复 Nav2 lifecycle", status["next_action"])
         self.assertFalse(status["sends_motion_commands"])
@@ -3593,7 +3665,7 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
                     }))
 
         self.assertEqual("goal_succeeded", payload["status"])
-        self.assertEqual("ros", payload["goal_request"]["base_command_mode"])
+        self.assertEqual("pwm", payload["goal_request"]["base_command_mode"])
         self.assertEqual(3, payload["goal_request"]["route_preview_point_count"])
         self.assertEqual(15, payload["goal_request"]["route_preview_source_point_count"])
         self.assertEqual("map", payload["goal_request"]["route_preview_frame_id"])
@@ -3602,7 +3674,7 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertEqual(0.8, payload["goal_request"]["route_goal_x"])
         self.assertEqual(0.0, payload["goal_request"]["route_goal_y"])
         self.assertEqual(3, payload["goal_request"]["route_preview"]["point_count"])
-        self.assertEqual("ros", helper_mock.call_args.kwargs["base_command_mode"])
+        self.assertEqual("pwm", helper_mock.call_args.kwargs["base_command_mode"])
         self.assertTrue(payload["nav2_goal_execution_proven"])
         self.assertTrue(payload["hil_pass"])
         self.assertTrue(payload["sends_motion_commands"])
@@ -3675,10 +3747,10 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertEqual("pwm", helper_mock.call_args.kwargs["base_command_mode"])
         self.assertEqual("pwm", payload["goal_request"]["base_command_mode"])
         self.assertEqual("ros", api.base_command_mode)
-        self.assertEqual("ros", api.nav2_base_command_mode)
+        self.assertEqual("pwm", api.nav2_base_command_mode)
 
-    def test_nav2_goal_execute_defaults_to_speed_after_ros_wheel_zero_latest(self) -> None:
-        """未显式传模式时，ROS/T=13 零轮速后的下一次执行应自动切到 vendor T=1 speed。"""
+    def test_nav2_goal_execute_defaults_to_pwm_after_ros_wheel_zero_latest(self) -> None:
+        """未显式传模式时，ROS/T=13 零轮速后的下一次执行应自动回到 vendor T=11 PWM。"""
         api = upper_robot_api.UpperRobotApi(
             camera_base_url="http://127.0.0.1:8088",
             base_port="/dev/ttyS5",
@@ -3716,9 +3788,9 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
                 ):
                     payload = asyncio.run(api.nav2_goal_execute({"confirm_navigation_execution": True}))
 
-        self.assertEqual("speed", helper_mock.call_args.kwargs["base_command_mode"])
-        self.assertEqual("speed", payload["goal_request"]["base_command_mode"])
-        self.assertEqual("ros", api.nav2_base_command_mode)
+        self.assertEqual("pwm", helper_mock.call_args.kwargs["base_command_mode"])
+        self.assertEqual("pwm", payload["goal_request"]["base_command_mode"])
+        self.assertEqual("pwm", api.nav2_base_command_mode)
 
     def test_nav2_goal_execution_latest_derives_wheel_lr_gap_from_old_artifact(self) -> None:
         """旧 Nav2 artifact 被只读读取时，也必须补出 wheel raw L/R 未非零根因。"""
@@ -3756,7 +3828,7 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertFalse(payload["hil_pass"])
         self.assertEqual("goal_succeeded", payload["status"])
         self.assertEqual("pwm", payload["base_command_mode"])
-        self.assertEqual("ros", payload["next_base_command_mode"])
+        self.assertEqual("pwm", payload["next_base_command_mode"])
         self.assertFalse(payload["wheel_feedback_lr_nonzero_proven"])
         self.assertIn("wheel_feedback_lr_nonzero", payload["nav2_goal_execution_not_proven"])
         self.assertFalse(payload["latest_result"]["nav2_goal_execution_proven"])
@@ -3766,8 +3838,8 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertFalse(payload["robot_control_executed"])
         self.assertTrue(payload["readback_robot_control_executed"])
 
-    def test_nav2_goal_execution_latest_returns_enriched_payload_for_speed_retry(self) -> None:
-        """ROS 模式 action 成功但 wheel L/R 仍为零时，latest 要建议下一轮切 speed。"""
+    def test_nav2_goal_execution_latest_returns_enriched_payload_for_pwm_retry(self) -> None:
+        """ROS 模式 action 成功但 wheel L/R 仍为零时，latest 要建议下一轮回到 PWM。"""
         latest_result = {
             "schema": "trashbot.upper_robot_api.v1.nav2_goal_execution_proof",
             "status": "goal_succeeded",
@@ -3799,7 +3871,7 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertEqual(200, http_status)
         self.assertEqual("goal_succeeded", payload["status"])
         self.assertEqual("ros", payload["base_command_mode"])
-        self.assertEqual("speed", payload["next_base_command_mode"])
+        self.assertEqual("pwm", payload["next_base_command_mode"])
         self.assertFalse(payload["nav2_goal_execution_proven"])
         self.assertFalse(payload["hil_pass"])
         self.assertFalse(payload["wheel_feedback_lr_nonzero_proven"])

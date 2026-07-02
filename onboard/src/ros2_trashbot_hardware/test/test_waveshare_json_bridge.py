@@ -16,8 +16,8 @@ def _install_ros_stubs():
     rclpy = types.ModuleType("rclpy")
     rclpy.node = types.ModuleType("rclpy.node")
     rclpy.node.Node = object
-    sys.modules.setdefault("rclpy", rclpy)
-    sys.modules.setdefault("rclpy.node", rclpy.node)
+    sys.modules["rclpy"] = rclpy
+    sys.modules["rclpy.node"] = rclpy.node
 
     geometry_msgs = types.ModuleType("geometry_msgs")
     geometry_msgs.msg = types.ModuleType("geometry_msgs.msg")
@@ -56,8 +56,8 @@ def _install_ros_stubs():
 
     geometry_msgs.msg.TransformStamped = TransformStamped
     geometry_msgs.msg.Twist = Twist
-    sys.modules.setdefault("geometry_msgs", geometry_msgs)
-    sys.modules.setdefault("geometry_msgs.msg", geometry_msgs.msg)
+    sys.modules["geometry_msgs"] = geometry_msgs
+    sys.modules["geometry_msgs.msg"] = geometry_msgs.msg
 
     nav_msgs = types.ModuleType("nav_msgs")
     nav_msgs.msg = types.ModuleType("nav_msgs.msg")
@@ -94,8 +94,8 @@ def _install_ros_stubs():
             self.twist = _TwistWithCovariance()
 
     nav_msgs.msg.Odometry = Odometry
-    sys.modules.setdefault("nav_msgs", nav_msgs)
-    sys.modules.setdefault("nav_msgs.msg", nav_msgs.msg)
+    sys.modules["nav_msgs"] = nav_msgs
+    sys.modules["nav_msgs.msg"] = nav_msgs.msg
 
     sensor_msgs = types.ModuleType("sensor_msgs")
     sensor_msgs.msg = types.ModuleType("sensor_msgs.msg")
@@ -122,19 +122,19 @@ def _install_ros_stubs():
     sensor_msgs.msg.Imu = Imu
     sensor_msgs.msg.BatteryState = BatteryState
     sensor_msgs.msg.Range = type("Range", (), {})
-    sys.modules.setdefault("sensor_msgs", sensor_msgs)
-    sys.modules.setdefault("sensor_msgs.msg", sensor_msgs.msg)
+    sys.modules["sensor_msgs"] = sensor_msgs
+    sys.modules["sensor_msgs.msg"] = sensor_msgs.msg
 
     std_srvs = types.ModuleType("std_srvs")
     std_srvs.srv = types.ModuleType("std_srvs.srv")
     std_srvs.srv.Trigger = type("Trigger", (), {})
-    sys.modules.setdefault("std_srvs", std_srvs)
-    sys.modules.setdefault("std_srvs.srv", std_srvs.srv)
+    sys.modules["std_srvs"] = std_srvs
+    sys.modules["std_srvs.srv"] = std_srvs.srv
 
     serial = types.ModuleType("serial")
     serial.SerialException = Exception
     serial.Serial = object
-    sys.modules.setdefault("serial", serial)
+    sys.modules["serial"] = serial
 
     tf2_ros = types.ModuleType("tf2_ros")
 
@@ -147,7 +147,7 @@ def _install_ros_stubs():
             self.messages.append(message)
 
     tf2_ros.TransformBroadcaster = TransformBroadcaster
-    sys.modules.setdefault("tf2_ros", tf2_ros)
+    sys.modules["tf2_ros"] = tf2_ros
 
 
 def _bridge_module():
@@ -627,7 +627,7 @@ class WaveshareJsonBridgeTest(unittest.TestCase):
             self.assertEqual(record["vendor_command"], {"L": 164, "R": 164, "T": 11})
             self.assertEqual(node._last_cmd_linear, 0.2)
 
-    def test_declare_and_load_bridge_config_defaults_to_ros_command_mode(self):
+    def test_declare_and_load_bridge_config_defaults_to_pwm_command_mode(self):
         bridge_config = importlib.import_module("ros2_trashbot_hardware.bridge_config")
 
         class _ConfigNode:
@@ -644,7 +644,9 @@ class WaveshareJsonBridgeTest(unittest.TestCase):
         bridge_config.declare_bridge_parameters(node)
         config = bridge_config.load_bridge_config(node)
 
-        self.assertEqual(config.command_mode, "ros")
+        self.assertEqual(config.command_mode, "pwm")
+        self.assertEqual(config.pwm_min_abs, 164)
+        self.assertEqual(config.pwm_max_abs, 164)
         self.assertTrue(config.publish_odom_tf)
         self.assertEqual(config.feedback_debug_log_path, "/root/rober/onboard/runtime/wave_rover_feedback_debug.jsonl")
         self.assertEqual(config.command_debug_log_path, "")

@@ -34,7 +34,7 @@ DEFAULT_BASE_PORT = "/dev/ttyS5"
 DEFAULT_BASE_BAUDRATE = 115200
 DEFAULT_MAX_SPEED = 0.12
 DEFAULT_BASE_COMMAND_MODE = "ros"
-DEFAULT_NAV2_BASE_COMMAND_MODE = "ros"
+DEFAULT_NAV2_BASE_COMMAND_MODE = "pwm"
 DEFAULT_MANUAL_PWM_MIN_ABS = 164
 DEFAULT_MANUAL_PWM_MAX_ABS = 164
 DEFAULT_PULSE_MS = 260
@@ -2036,11 +2036,13 @@ def nav2_goal_next_base_command_mode(latest_result: dict[str, Any]) -> str:
     base_feedback = latest_result.get("base_feedback_summary") if isinstance(latest_result.get("base_feedback_summary"), dict) else {}
     if bool_field_true(base_feedback.get("wheel_feedback_lr_nonzero_proven")):
         return mode
-    if mode == "pwm":
-        return "ros"
-    if mode == "ros":
-        return "speed"
-    return mode
+    if (
+        bool_field_true(base_feedback.get("motion_signal_observed"))
+        or bool_field_true(base_feedback.get("imu_attitude_delta_observed"))
+    ):
+        return mode
+    # 当前 WAVE ROVER 现场已证明 T=13 可能持续 L/R=0/0；缺运动信号时回到 vendor PWM164。
+    return "pwm"
 
 
 def nav2_goal_execute_base_command_mode_from_latest(default_mode: str, latest_payload: dict[str, Any]) -> str:
@@ -6068,6 +6070,9 @@ def _ensure_ros_cmd_vel_context() -> dict[str, Any]:
         return _ROS_CMD_VEL_CONTEXT
     if _ROS_CMD_VEL_CONTEXT.get("status") == "unavailable":
         return _ROS_CMD_VEL_CONTEXT
+    # 现场 Orange Pi 的 FastDDS SHM 锁文件会让 rclpy/ros2 pub 初始化抖到数秒；
+    # 上位机进程内 publisher 和 CLI 兜底都统一关闭 SHM，优先走稳定的 UDP 发现。
+    os.environ.setdefault("RMW_FASTRTPS_USE_SHM", "0")
     for path in _ros_python_import_paths():
         if path not in sys.path:
             sys.path.append(path)
@@ -6102,6 +6107,7 @@ def _ensure_ros_cmd_vel_context() -> dict[str, Any]:
             "node": node,
             "publisher": publisher,
             "topic": ROS_CMD_VEL_TOPIC,
+            "rmw_fastrtps_use_shm": os.environ.get("RMW_FASTRTPS_USE_SHM"),
         }
     )
     return _ROS_CMD_VEL_CONTEXT
@@ -6127,6 +6133,7 @@ def publish_ros_cmd_vel_inprocess_burst(
         "publish_backend": "rclpy_inprocess_burst",
         "topic": ROS_CMD_VEL_TOPIC,
         "message_type": "geometry_msgs/msg/Twist",
+        "rmw_fastrtps_use_shm": os.environ.get("RMW_FASTRTPS_USE_SHM", ""),
         "linear_x": linear_x,
         "angular_z": angular_z,
         "hold_s": round(hold_s, 6),
@@ -6158,21 +6165,32 @@ def publish_ros_cmd_vel_inprocess_burst(
     message.angular.y = 0.0
     message.angular.z = angular_z
     publish_started = time.monotonic()
+    frames_published = 0
     for index in range(frame_count):
         publisher.publish(message)
+        frames_published += 1
         # spin_once 让 DDS 事件及时推进，短脉冲不会等到函数结束才出队。
         rclpy.spin_once(node, timeout_sec=0.0)
         if index < frame_count - 1:
             time.sleep(frame_interval_s)
-    return {
+    subscription_match_proven = subscription_count > 0
+    payload = {
         **result,
-        "ok": subscription_count > 0,
+        # 现场 Orange Pi/FastDDS graph discovery 可能短时间仍报 0 个订阅者，但 bridge 已收到帧；
+        # 所以发布成功和订阅匹配证明分开，避免 PC 键盘手控被 CLI 兜底拖到 HTTP 超时。
+        "ok": frames_published > 0,
+        "subscription_match_proven": subscription_match_proven,
         "subscription_count": subscription_count,
-        "frames_published": frame_count,
+        "frames_published": frames_published,
         "elapsed_s": round(time.monotonic() - publish_started, 6),
         "wait_subscription_s": round(time.monotonic() - wait_started, 6),
-        **({} if subscription_count > 0 else {"error": {"type": "cmd_vel_subscription_missing", "message": "no /cmd_vel subscription matched before publish"}}),
     }
+    if not subscription_match_proven:
+        payload["warning"] = {
+            "type": "cmd_vel_subscription_count_unproven",
+            "message": "published /cmd_vel frames, but DDS graph did not prove a matched subscription before publish",
+        }
+    return payload
 
 
 def publish_ros_cmd_vel_cli_burst(

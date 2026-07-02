@@ -26,8 +26,8 @@ def generate_launch_description():
         description='UART baud rate for the WAVE ROVER ESP32 controller')
 
     command_mode_arg = DeclareLaunchArgument(
-        'command_mode', default_value='ros',
-        description='WAVE ROVER command mode: ros uses vendor T=13 default for /cmd_vel; speed uses T=1 diagnostic override; pwm uses explicit T=11 diagnostic override')
+        'command_mode', default_value='pwm',
+        description='WAVE ROVER command mode: pwm keeps ROS /cmd_vel as the control surface and maps to vendor T=11 PWM; ros/T=13 and speed/T=1 remain explicit diagnostics')
 
     track_width_arg = DeclareLaunchArgument(
         'track_width_m', default_value='0.172',
@@ -38,11 +38,11 @@ def generate_launch_description():
         description='Wheel speed used to normalize T=1 speed or T=11 PWM commands')
 
     pwm_min_abs_arg = DeclareLaunchArgument(
-        'pwm_min_abs', default_value='90',
-        description='Minimum nonzero PWM for WAVE ROVER T=11 mode; 90 observed nonzero on 2026-06-27')
+        'pwm_min_abs', default_value='164',
+        description='Minimum nonzero PWM for WAVE ROVER T=11 mode; vendor sample and 2026-07-03 field smoke use 164')
 
     pwm_max_abs_arg = DeclareLaunchArgument(
-        'pwm_max_abs', default_value='90',
+        'pwm_max_abs', default_value='164',
         description='Maximum PWM for WAVE ROVER T=11 low-speed mode')
 
     lidar_enabled_arg = DeclareLaunchArgument(

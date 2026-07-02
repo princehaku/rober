@@ -47,7 +47,7 @@ ASSUMPTIONS = {
 DEFAULT_CONFIG = {
     "serial_port": "/dev/ttyUSB0",
     "serial_baudrate": 115200,
-    "command_mode": "ros",
+    "command_mode": "pwm",
     "track_width_m": 0.172,
     "max_wheel_speed_mps": 1.3,
     "pwm_min_abs": 164,

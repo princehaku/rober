@@ -2561,6 +2561,10 @@ export interface RobotControlActionStatusCard {
     keyboard_continuous_pulse_verified?: boolean;
     keyboard_stop_required_after_hold?: boolean;
     keyboard_stop_settled_after_pulse?: boolean;
+    motion_signal_observed?: boolean;
+    motion_signal_source?: string;
+    wheel_feedback_lr_nonzero_proven?: boolean;
+    imu_attitude_delta_observed?: boolean;
     keyboard_motion_verified?: boolean;
     route_ready_on_map?: boolean;
     minimal_precheck_safety_only?: boolean;
@@ -2577,7 +2581,6 @@ export interface RobotControlActionStatusCard {
     base_feedback_lr_nonzero_proven?: boolean;
     base_feedback_latest_raw_left?: string;
     base_feedback_latest_raw_right?: string;
-    imu_attitude_delta_observed?: boolean;
     imu_roll_delta?: string;
     imu_pitch_delta?: string;
     last_base_command_mode?: string;
@@ -5395,6 +5398,9 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       wheel_raw_right: string;
       wheel_feedback_latest_nonzero_left_speed: string;
       wheel_feedback_latest_nonzero_right_speed: string;
+      imu_attitude_delta_observed: string;
+      motion_signal_observed: string;
+      motion_signal_source: string;
       feedback_voltage_v: string;
       feedback_link_status: string;
     };

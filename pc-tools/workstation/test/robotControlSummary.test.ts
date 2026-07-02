@@ -2402,6 +2402,68 @@ describe("robotControlSummary", () => {
     ]);
   });
 
+  it("promotes base motion signal readback for keyboard verification", async () => {
+    // WAVE ROVER 现场 L/R 可能保持 0/0；PC 仍要显示 IMU 姿态变化这个运动信号，不能退成 not_loaded。
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {
+      const url = new URL(String(input));
+      const basePayload = {
+        schema: "trashbot.upper_robot_api.v1.readback",
+        status: "loaded",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        robot_control_executed: false,
+      };
+      const payloadByPath: Record<string, Record<string, unknown>> = {
+        "/api/base/status": {
+          ...basePayload,
+          schema: "trashbot.upper_robot_api.v1.base_status",
+          feedback_ack: { t1001_observed: true },
+          wheel_feedback_lr_nonzero_proven: false,
+          wheel_feedback_nonzero_observed: false,
+          imu_attitude_delta_observed: false,
+          motion_signal_observed: false,
+          motion_signal_source: "not_observed",
+          wheel_feedback_summary: {
+            latest_pair: { left_speed: 0, right_speed: 0, source: "vendor_t1001_L_R" },
+            lr_nonzero_observed: false,
+          },
+        },
+        "/api/base/feedback-samples/latest": {
+          ...basePayload,
+          schema: "trashbot.upper_robot_api.v1.base_feedback_samples_latest_result",
+          wheel_feedback_lr_nonzero_proven: false,
+          wheel_feedback_nonzero_observed: false,
+          imu_attitude_delta_observed: true,
+          motion_signal_observed: true,
+          motion_signal_source: "imu_attitude_delta",
+          wheel_feedback_summary: {
+            latest_pair: { left_speed: 0, right_speed: 0, source: "vendor_t1001_L_R" },
+            lr_nonzero_observed: false,
+          },
+        },
+      };
+      const payload = payloadByPath[url.pathname] ?? basePayload;
+      return new Response(JSON.stringify(payload), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }));
+
+    const summary = await buildRobotControlSummary("http://192.168.1.11:8787", null, null, {
+      readbackTimeoutMs: 100,
+    });
+
+    expect(summary.readback_summary.base.motion_signal_observed).toBe("true");
+    expect(summary.readback_summary.base.motion_signal_source).toBe("imu_attitude_delta");
+    expect(summary.readback_summary.base.imu_attitude_delta_observed).toBe("true");
+    expect(summary.readback_summary.base.wheel_feedback_lr_nonzero_proven).toBe("false");
+    const keyboardCard = (summary.action_status_cards ?? []).find((card) => card.id === "keyboard_control");
+    expect(keyboardCard?.evidence?.motion_signal_observed).toBe(true);
+    expect(keyboardCard?.evidence?.motion_signal_source).toBe("imu_attitude_delta");
+    expect(keyboardCard?.evidence?.keyboard_motion_verified).toBe(true);
+  });
+
   it("treats camera service self-owner as non-exclusive no-frame usage", async () => {
     // 8088 相机服务自己持有 UVC 是共享预览单上游模型；summary 不能把它说成外部独占。
     vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {

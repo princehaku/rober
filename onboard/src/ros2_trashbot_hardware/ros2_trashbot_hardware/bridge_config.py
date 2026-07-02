@@ -71,12 +71,14 @@ def declare_bridge_parameters(node: Any) -> None:
     node.declare_parameter("serial_baudrate", 115200)
     node.declare_parameter("port", "")
     node.declare_parameter("baudrate", 0)
-    # 默认走 vendor ROS 控制命令 T=13，让 Nav2、键盘和自由移动共享同一 /cmd_vel 控制面。
-    node.declare_parameter("command_mode", "ros")
+    # 仍然订阅 ROS /cmd_vel，但默认落到底盘时使用 vendor T=11 PWM。
+    # 现场 2026-07-03 复测证明 T=13 在当前 WAVE ROVER 上轮速回填一直为 0，
+    # 而 T=11/PWM164 可产生同窗口 IMU 运动信号；因此默认优先能动。
+    node.declare_parameter("command_mode", "pwm")
     node.declare_parameter("track_width_m", 0.172)
     node.declare_parameter("max_wheel_speed_mps", 1.3)
-    node.declare_parameter("pwm_min_abs", 90)
-    node.declare_parameter("pwm_max_abs", 90)
+    node.declare_parameter("pwm_min_abs", 164)
+    node.declare_parameter("pwm_max_abs", 164)
     node.declare_parameter("feedback_interval_ms", 100)
     node.declare_parameter("odom_publish_hz", 20.0)
     # 动态 odom TF 默认开启，便于下一轮 smoke 直接复用；但它仍只代表命令积分，不是实测编码器。

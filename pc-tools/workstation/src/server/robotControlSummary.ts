@@ -804,6 +804,9 @@ const STATUS_KEYS = [
   "wheel_feedback_nonzero_frame_count",
   "wheel_feedback_frame_count",
   "wheel_feedback_source",
+  "imu_attitude_delta_observed",
+  "motion_signal_observed",
+  "motion_signal_source",
   "feedback_voltage_v",
   "feedback_samples_freshness_status",
   "feedback_samples_age_ms",
@@ -6965,6 +6968,9 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         wheel_raw_right: "not_loaded",
         wheel_feedback_latest_nonzero_left_speed: "not_loaded",
         wheel_feedback_latest_nonzero_right_speed: "not_loaded",
+        imu_attitude_delta_observed: "not_loaded",
+        motion_signal_observed: "not_loaded",
+        motion_signal_source: "not_loaded",
         feedback_voltage_v: "not_loaded",
         feedback_link_status: "not_observed",
       },
@@ -8002,6 +8008,16 @@ function baseSummaryFromReadbacks(readbacks: InternalRobotApiEndpointReadback[])
   // T=1001 只说明 WAVE ROVER feedback 链路有回包，不代表轮速非零、真实运动或 HIL pass。
   const baseStatus = pickReadback(readbacks, "base_status");
   const feedbackLatest = pickReadback(readbacks, "base_feedback_samples_latest");
+  const mergedBooleanText = (...values: (string | undefined)[]): string => {
+    // 手控同窗口 artifact 可能在停车后仍保留 true；当前 idle=false 不能覆盖刚才那次运动证据。
+    if (values.some((value) => value === "true")) {
+      return "true";
+    }
+    if (values.some((value) => value === "false")) {
+      return "false";
+    }
+    return "not_loaded";
+  };
   const basePayload = readbackById(readbacks, "base_status")?.payload ?? null;
   const statusPayload = readbackById(readbacks, "status")?.payload ?? null;
   const currentFeedbackState = mergeCurrentBaseFeedbackReadStates([
@@ -8031,12 +8047,14 @@ function baseSummaryFromReadbacks(readbacks: InternalRobotApiEndpointReadback[])
       : currentFeedbackReadStatus === "read_error"
         ? "read_error"
         : baseStatus?.key_values.feedback_ack_status ?? (Number(observedCount) > 0 ? "t1001_observed" : "not_loaded");
-  const wheelFeedbackProven = baseStatus?.key_values.wheel_feedback_lr_nonzero_proven
-    ?? feedbackLatest?.key_values.wheel_feedback_lr_nonzero_proven
-    ?? "not_loaded";
-  const wheelFeedbackObserved = baseStatus?.key_values.wheel_feedback_nonzero_observed
-    ?? feedbackLatest?.key_values.wheel_feedback_nonzero_observed
-    ?? "not_loaded";
+  const wheelFeedbackProven = mergedBooleanText(
+    feedbackLatest?.key_values.wheel_feedback_lr_nonzero_proven,
+    baseStatus?.key_values.wheel_feedback_lr_nonzero_proven,
+  );
+  const wheelFeedbackObserved = mergedBooleanText(
+    feedbackLatest?.key_values.wheel_feedback_nonzero_observed,
+    baseStatus?.key_values.wheel_feedback_nonzero_observed,
+  );
   const latestLeft = baseStatus?.key_values.wheel_feedback_latest_left_speed
     ?? baseStatus?.key_values.wheel_feedback_latest_raw_left
     ?? feedbackLatest?.key_values.wheel_feedback_latest_left_speed
@@ -8055,6 +8073,21 @@ function baseSummaryFromReadbacks(readbacks: InternalRobotApiEndpointReadback[])
   const latestNonzeroRight = baseStatus?.key_values.wheel_feedback_latest_nonzero_right_speed
     ?? feedbackLatest?.key_values.wheel_feedback_latest_nonzero_right_speed
     ?? "not_loaded";
+  const imuAttitudeDeltaObserved = mergedBooleanText(
+    feedbackLatest?.key_values.imu_attitude_delta_observed,
+    baseStatus?.key_values.imu_attitude_delta_observed,
+  );
+  const motionSignalObserved = mergedBooleanText(
+    feedbackLatest?.key_values.motion_signal_observed,
+    baseStatus?.key_values.motion_signal_observed,
+  );
+  const motionSignalSource = motionSignalObserved === "true"
+    ? feedbackLatest?.key_values.motion_signal_source
+      ?? baseStatus?.key_values.motion_signal_source
+      ?? "not_loaded"
+    : baseStatus?.key_values.motion_signal_source
+      ?? feedbackLatest?.key_values.motion_signal_source
+      ?? "not_loaded";
   const feedbackVoltage = baseStatus?.key_values.feedback_voltage_v
     ?? feedbackLatest?.key_values.feedback_voltage_v
     ?? "not_loaded";
@@ -8077,6 +8110,9 @@ function baseSummaryFromReadbacks(readbacks: InternalRobotApiEndpointReadback[])
     wheel_raw_right: latestRight,
     wheel_feedback_latest_nonzero_left_speed: latestNonzeroLeft,
     wheel_feedback_latest_nonzero_right_speed: latestNonzeroRight,
+    imu_attitude_delta_observed: imuAttitudeDeltaObserved,
+    motion_signal_observed: motionSignalObserved,
+    motion_signal_source: motionSignalSource,
     feedback_voltage_v: feedbackVoltage,
     feedback_link_status: currentFeedbackReadStatus === "read_error"
       ? "current_t130_read_error"
@@ -8280,6 +8316,8 @@ function buildActionStatusCards(
   const mapVisible = mapWysiwygVisibleFromPlain(readback.map.map_wysiwyg_status_plain);
   const mapPathVisible = readback.map.path_preview_status === "path_preview_observed";
   const mapRobotPoseVisible = readback.map.robot_pose_status === "map_pose_observed";
+  const baseMotionSignalObserved = actionCardBoolean(readback.base.motion_signal_observed, false);
+  const baseMotionSignalSource = readback.base.motion_signal_source || "not_loaded";
   const mapNextActionPlain = mapVisible
     ? "地图画面已显示；继续确认图上路线和小车位置，雷达点另看“地图雷达点”。"
     : actionCardText(readback.map.map_wysiwyg_next_action_plain, "刷新地图画面");
@@ -8535,7 +8573,11 @@ function buildActionStatusCards(
         keyboard_continuous_pulse_verified: false,
         keyboard_stop_required_after_hold: true,
         keyboard_stop_settled_after_pulse: false,
-        keyboard_motion_verified: false,
+        motion_signal_observed: baseMotionSignalObserved,
+        motion_signal_source: baseMotionSignalSource,
+        wheel_feedback_lr_nonzero_proven: actionCardBoolean(readback.base.wheel_feedback_lr_nonzero_proven, false),
+        imu_attitude_delta_observed: actionCardBoolean(readback.base.imu_attitude_delta_observed, false),
+        keyboard_motion_verified: baseMotionSignalObserved,
       },
     },
     {
