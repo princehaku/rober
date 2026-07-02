@@ -4482,6 +4482,44 @@ const plainCurrentSafetyConfirmQueue = computed(() => {
     startsMapRuntimeWhenClicked: summary?.current_safety_confirm_queue_starts_map_runtime_when_clicked ?? false,
     submitsDeliveryWhenClicked: summary?.current_safety_confirm_queue_submits_delivery_when_clicked ?? false,
     stopsMotionWhenClicked: summary?.current_safety_confirm_queue_stops_motion_when_clicked ?? false,
+    moveNowStatus: summary?.current_move_now_status
+      ?? (actionIds.length ? "ready_for_safety_confirm" : "no_ready_motion"),
+    moveNowPlain: summary?.current_move_now_plain
+      ?? summary?.current_goal_move_now_status_plain
+      ?? "",
+    moveNowActionIdsText: summary?.current_move_now_action_ids?.join(",") || actionIds.join(",") || "none",
+    moveNowActionDisplayLabelsText: summary?.current_move_now_action_display_labels?.join(",") || actionDisplayLabels.join(",") || "none",
+    moveNowActionStartEndpointsText: summary?.current_move_now_action_start_endpoints?.join(",") || actionStartEndpoints.join(",") || "none",
+    moveNowActionStopEndpointsText: summary?.current_move_now_action_stop_endpoints?.join(",") || actionStopEndpoints.join(",") || "none",
+    moveNowPrimaryActionId: summary?.current_move_now_primary_action_id ?? primaryActionId,
+    moveNowPrimaryActionDisplayLabel: summary?.current_move_now_primary_action_display_label
+      ?? summary?.current_safety_confirm_queue_primary_action_display_label
+      ?? motionPack.primaryActionDisplayLabel,
+    moveNowPrimaryFocusSourceCardId: summary?.current_move_now_primary_focus_source_card_id === "none"
+      ? ""
+      : summary?.current_move_now_primary_focus_source_card_id ?? primaryFocusSourceCardId,
+    moveNowPrimaryFocusKind: summary?.current_move_now_primary_focus_kind ?? primaryFocusKind,
+    moveNowPrimaryFocusButtonLabel: summary?.current_move_now_primary_focus_button_label ?? primaryFocusButtonLabel,
+    moveNowMappingBlockersPlain: summary?.current_move_now_mapping_blockers_plain
+      ?? summary?.current_goal_mapping_blockers_plain
+      ?? "",
+    moveNowFreeMoveAllowedWhileMappingBlocked: summary?.current_move_now_free_move_allowed_while_mapping_blocked
+      ?? summary?.current_goal_free_move_allowed_while_mapping_blocked
+      ?? false,
+    moveNowRequiresSafetyConfirm: summary?.current_move_now_requires_safety_confirm ?? (actionIds.length > 0),
+    moveNowMinimalPrecheckSafetyOnly: summary?.current_move_now_minimal_precheck_safety_only ?? motionPack.minimalPrecheckSafetyOnly,
+    moveNowCameraPreflightRequired: summary?.current_move_now_camera_preflight_required ?? motionPack.cameraPreflightRequired,
+    moveNowRadarPreflightRequired: summary?.current_move_now_radar_preflight_required ?? motionPack.radarPreflightRequired,
+    moveNowRouteWysiwygPreflightRequired: summary?.current_move_now_route_wysiwyg_preflight_required ?? motionPack.routeWysiwygPreflightRequired,
+    moveNowSendsMotionWhenClicked: summary?.current_move_now_sends_motion_when_clicked ?? false,
+    moveNowSendsMotionWhenExecuted: summary?.current_move_now_sends_motion_when_executed ?? motionPack.sendsMotionWhenExecuted,
+    moveNowStartsNav2WhenClicked: summary?.current_move_now_starts_nav2_when_clicked ?? false,
+    moveNowStartsManualWhenClicked: summary?.current_move_now_starts_manual_when_clicked ?? false,
+    moveNowStartsKeyboardWhenClicked: summary?.current_move_now_starts_keyboard_when_clicked ?? false,
+    moveNowStartsFreeRoamWhenClicked: summary?.current_move_now_starts_free_roam_when_clicked ?? false,
+    moveNowStartsMapRuntimeWhenClicked: summary?.current_move_now_starts_map_runtime_when_clicked ?? false,
+    moveNowSubmitsDeliveryWhenClicked: summary?.current_move_now_submits_delivery_when_clicked ?? false,
+    moveNowStopsMotionWhenClicked: summary?.current_move_now_stops_motion_when_clicked ?? false,
   };
 });
 const plainCurrentMinimalPrecheckPack = computed(() => {
@@ -20210,6 +20248,33 @@ onBeforeUnmount(() => {
             :data-backend-primary-focus-button-label="plainCurrentSafetyConfirmQueue.backendPrimaryFocusButtonLabel"
             :data-effective-primary-focus-kind="plainCurrentSafetyConfirmQueue.effectivePrimaryFocusKind"
             :data-effective-primary-focus-button-label="plainCurrentSafetyConfirmQueue.effectivePrimaryFocusButtonLabel"
+            :data-current-move-now-status="plainCurrentSafetyConfirmQueue.moveNowStatus"
+            :data-current-move-now-plain="plainCurrentSafetyConfirmQueue.moveNowPlain"
+            :data-current-move-now-action-ids="plainCurrentSafetyConfirmQueue.moveNowActionIdsText"
+            :data-current-move-now-action-display-labels="plainCurrentSafetyConfirmQueue.moveNowActionDisplayLabelsText"
+            :data-current-move-now-action-start-endpoints="plainCurrentSafetyConfirmQueue.moveNowActionStartEndpointsText"
+            :data-current-move-now-action-stop-endpoints="plainCurrentSafetyConfirmQueue.moveNowActionStopEndpointsText"
+            :data-current-move-now-primary-action-id="plainCurrentSafetyConfirmQueue.moveNowPrimaryActionId"
+            :data-current-move-now-primary-action-display-label="plainCurrentSafetyConfirmQueue.moveNowPrimaryActionDisplayLabel"
+            :data-current-move-now-primary-focus-source-card-id="plainCurrentSafetyConfirmQueue.moveNowPrimaryFocusSourceCardId || 'none'"
+            :data-current-move-now-primary-focus-kind="plainCurrentSafetyConfirmQueue.moveNowPrimaryFocusKind"
+            :data-current-move-now-primary-focus-button-label="plainCurrentSafetyConfirmQueue.moveNowPrimaryFocusButtonLabel"
+            :data-current-move-now-mapping-blockers-plain="plainCurrentSafetyConfirmQueue.moveNowMappingBlockersPlain"
+            :data-current-move-now-free-move-allowed-while-mapping-blocked="String(plainCurrentSafetyConfirmQueue.moveNowFreeMoveAllowedWhileMappingBlocked)"
+            :data-current-move-now-requires-safety-confirm="String(plainCurrentSafetyConfirmQueue.moveNowRequiresSafetyConfirm)"
+            :data-current-move-now-minimal-precheck-safety-only="String(plainCurrentSafetyConfirmQueue.moveNowMinimalPrecheckSafetyOnly)"
+            :data-current-move-now-camera-preflight-required="String(plainCurrentSafetyConfirmQueue.moveNowCameraPreflightRequired)"
+            :data-current-move-now-radar-preflight-required="String(plainCurrentSafetyConfirmQueue.moveNowRadarPreflightRequired)"
+            :data-current-move-now-route-wysiwyg-preflight-required="String(plainCurrentSafetyConfirmQueue.moveNowRouteWysiwygPreflightRequired)"
+            :data-current-move-now-sends-motion-when-clicked="String(plainCurrentSafetyConfirmQueue.moveNowSendsMotionWhenClicked)"
+            :data-current-move-now-sends-motion-when-executed="String(plainCurrentSafetyConfirmQueue.moveNowSendsMotionWhenExecuted)"
+            :data-current-move-now-starts-nav2-when-clicked="String(plainCurrentSafetyConfirmQueue.moveNowStartsNav2WhenClicked)"
+            :data-current-move-now-starts-manual-when-clicked="String(plainCurrentSafetyConfirmQueue.moveNowStartsManualWhenClicked)"
+            :data-current-move-now-starts-keyboard-when-clicked="String(plainCurrentSafetyConfirmQueue.moveNowStartsKeyboardWhenClicked)"
+            :data-current-move-now-starts-free-roam-when-clicked="String(plainCurrentSafetyConfirmQueue.moveNowStartsFreeRoamWhenClicked)"
+            :data-current-move-now-starts-map-runtime-when-clicked="String(plainCurrentSafetyConfirmQueue.moveNowStartsMapRuntimeWhenClicked)"
+            :data-current-move-now-submits-delivery-when-clicked="String(plainCurrentSafetyConfirmQueue.moveNowSubmitsDeliveryWhenClicked)"
+            :data-current-move-now-stops-motion-when-clicked="String(plainCurrentSafetyConfirmQueue.moveNowStopsMotionWhenClicked)"
             :data-action-count="String(plainCurrentSafetyConfirmQueue.actionCount)"
             :data-requires-safety-confirm="String(plainCurrentSafetyConfirmQueue.requiresSafetyConfirm)"
             :data-minimal-precheck-safety-only="String(plainCurrentSafetyConfirmQueue.minimalPrecheckSafetyOnly)"

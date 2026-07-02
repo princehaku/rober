@@ -5209,6 +5209,12 @@ free-roam、建图 runtime 或 `/cmd_vel`。当前 WYSIWYG 和建图剩余阻塞
 `data-wysiwyg-status-*` 边界字段；这些字段只读，不启动 Nav2、manual、keyboard、free-roam、建图 runtime、
 delivery、stop 或 `/cmd_vel`。
 
+2026-07-02 18:25 CST 起，summary 顶层新增 `current_move_now_*` 短字段，直接回答“现在能先动什么”：
+`current_move_now_status/plain`、可执行动作 id/中文名/start/stop 端点、主动作聚焦卡片、建图阻塞说明、
+最小预检和点击边界。普通 PC 复用 `plain-current-safety-confirm-queue` 暴露
+`data-current-move-now-*`；这些字段与安全确认队列同源，卡片点击只聚焦对应动作，不自动勾安全确认，
+不启动 Nav2、manual、keyboard、free-roam、建图 runtime、delivery、stop 或 `/cmd_vel`。
+
 2026-07-02 17:05 CST 起，上车 `POST /api/robot-control/camera/first-frame/probe` 的自动格式 fallback 增加
 `160x120` 低带宽候选：`MJPG@160x120@30`、`YUYV@160x120@15`、`YUYV@160x120@10`。
 这是给 USB `12M` full-speed 场景的只读首帧兜底；若常规 `640x480/320x240` 均无帧，会继续尝试更低带宽模式。
