@@ -3795,6 +3795,16 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   field_acceptance_primary_safety_confirm_ready_action_route_wysiwyg_preflight_required?: boolean;
   field_acceptance_primary_safety_confirm_ready_action_requires_safety_confirm?: RobotControlFieldAcceptancePacket["primary_safety_confirm_ready_action_requires_safety_confirm"];
   field_acceptance_primary_safety_confirm_ready_action_sends_motion?: RobotControlFieldAcceptancePacket["primary_safety_confirm_ready_action_sends_motion"];
+  field_acceptance_primary_safety_action_id?: RobotControlFieldAcceptancePacket["primary_safety_confirm_ready_action_id"];
+  field_acceptance_primary_safety_action_label?: RobotControlFieldAcceptancePacket["primary_safety_confirm_ready_action_label"];
+  field_acceptance_primary_safety_action_display_label?: RobotControlFieldAcceptancePacket["primary_safety_confirm_ready_action_display_label"];
+  field_acceptance_primary_safety_action_start_endpoint?: RobotControlFieldAcceptancePacket["primary_safety_confirm_ready_action_start_endpoint"];
+  field_acceptance_primary_safety_action_stop_endpoint?: string;
+  field_acceptance_primary_safety_action_acceptance_endpoints?: string[];
+  field_acceptance_primary_safety_action_ready_for_safety_confirm?: boolean;
+  field_acceptance_primary_safety_action_minimal_precheck_safety_only?: boolean;
+  field_acceptance_primary_safety_action_requires_safety_confirm?: RobotControlFieldAcceptancePacket["primary_safety_confirm_ready_action_requires_safety_confirm"];
+  field_acceptance_primary_safety_action_sends_motion?: RobotControlFieldAcceptancePacket["primary_safety_confirm_ready_action_sends_motion"];
   current_motion_action_required?: boolean;
   current_motion_action_id?: RobotControlFieldAcceptancePacket["primary_safety_confirm_ready_action_id"];
   current_motion_action_label?: RobotControlFieldAcceptancePacket["primary_safety_confirm_ready_action_label"];
@@ -3807,6 +3817,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   current_motion_action_proof_status?: RobotControlFieldAcceptanceStep["proof_status"];
   current_motion_action_missing_evidence?: RobotControlFieldAcceptanceStep["missing_evidence"];
   current_motion_action_proof_plain?: RobotControlFieldAcceptanceStep["proof_plain"];
+  current_motion_action_ready_for_safety_confirm?: boolean;
   current_motion_action_requires_safety_confirm?: RobotControlFieldAcceptancePacket["primary_safety_confirm_ready_action_requires_safety_confirm"];
   current_motion_action_minimal_precheck_safety_only?: boolean;
   current_motion_action_camera_preflight_required?: boolean;

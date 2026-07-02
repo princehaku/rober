@@ -1003,6 +1003,16 @@ describe("robotControlSummary", () => {
     expect(summary.field_acceptance_primary_safety_confirm_ready_action_route_wysiwyg_preflight_required).toBe(false);
     expect(summary.field_acceptance_primary_safety_confirm_ready_action_requires_safety_confirm).toBe(true);
     expect(summary.field_acceptance_primary_safety_confirm_ready_action_sends_motion).toBe(true);
+    expect(summary.field_acceptance_primary_safety_action_id).toBe(summary.field_acceptance_primary_safety_confirm_ready_action_id);
+    expect(summary.field_acceptance_primary_safety_action_label).toBe(summary.field_acceptance_primary_safety_confirm_ready_action_label);
+    expect(summary.field_acceptance_primary_safety_action_display_label).toBe(summary.field_acceptance_primary_safety_confirm_ready_action_display_label);
+    expect(summary.field_acceptance_primary_safety_action_start_endpoint).toBe(summary.field_acceptance_primary_safety_confirm_ready_action_start_endpoint);
+    expect(summary.field_acceptance_primary_safety_action_stop_endpoint).toBe(summary.field_acceptance_primary_safety_confirm_ready_action_stop_endpoint);
+    expect(summary.field_acceptance_primary_safety_action_acceptance_endpoints).toEqual(summary.field_acceptance_primary_safety_confirm_ready_action_acceptance_endpoints);
+    expect(summary.field_acceptance_primary_safety_action_ready_for_safety_confirm).toBe(true);
+    expect(summary.field_acceptance_primary_safety_action_minimal_precheck_safety_only).toBe(true);
+    expect(summary.field_acceptance_primary_safety_action_requires_safety_confirm).toBe(true);
+    expect(summary.field_acceptance_primary_safety_action_sends_motion).toBe(true);
     expect(summary.current_motion_action_required).toBe(true);
     expect(summary.current_motion_action_id).toBe("run_nav2_route");
     expect(summary.current_motion_action_label).toBe("完整行程执行");
@@ -1020,6 +1030,7 @@ describe("robotControlSummary", () => {
     expect(summary.current_motion_action_proof_status).toBe("ready_to_verify");
     expect(summary.current_motion_action_missing_evidence).toEqual(["same_window_wheel_lr_nonzero", "delivery_success"]);
     expect(summary.current_motion_action_proof_plain).toContain("可复验完整行程");
+    expect(summary.current_motion_action_ready_for_safety_confirm).toBe(true);
     expect(summary.current_motion_action_requires_safety_confirm).toBe(true);
     expect(summary.current_motion_action_minimal_precheck_safety_only).toBe(true);
     expect(summary.current_motion_action_camera_preflight_required).toBe(false);
