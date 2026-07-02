@@ -5058,7 +5058,12 @@ const plainTripClosureReadbackSummary = computed(() => {
     postExecuteReadbackRefreshesSummary: robotSummary.value?.nav2_post_execute_readback_refreshes_summary ?? postExecuteReadbackEndpoints.includes("/api/robot-control/summary"),
     postExecuteReadbackSendsMotion: robotSummary.value?.nav2_post_execute_readback_sends_motion ?? false,
     postExecuteReadbackStartsNav2: robotSummary.value?.nav2_post_execute_readback_starts_nav2 ?? false,
+    postExecuteReadbackStartsManual: robotSummary.value?.nav2_post_execute_readback_starts_manual ?? false,
+    postExecuteReadbackStartsKeyboard: robotSummary.value?.nav2_post_execute_readback_starts_keyboard ?? false,
+    postExecuteReadbackStartsFreeRoam: robotSummary.value?.nav2_post_execute_readback_starts_free_roam ?? false,
+    postExecuteReadbackStartsMapRuntime: robotSummary.value?.nav2_post_execute_readback_starts_map_runtime ?? false,
     postExecuteReadbackSubmitsDelivery: robotSummary.value?.nav2_post_execute_readback_submits_delivery ?? false,
+    postExecuteReadbackStopsMotion: robotSummary.value?.nav2_post_execute_readback_stops_motion ?? false,
     requiredSuccessMarkers: packet?.required_success_markers ?? [],
     startEndpoint: packet?.start_endpoint ?? "/api/robot-control/nav2/goal/execute",
     stopEndpoint: packet?.stop_endpoint ?? "/api/robot-control/base/stop",
@@ -23956,7 +23961,12 @@ onBeforeUnmount(() => {
             :data-nav2-post-execute-readback-sequence-labels="plainTripClosureReadbackSummary.postExecuteReadbackSequenceLabels.join(',')"
             :data-nav2-post-execute-readback-sends-motion="String(plainTripClosureReadbackSummary.postExecuteReadbackSendsMotion)"
             :data-nav2-post-execute-readback-starts-nav2="String(plainTripClosureReadbackSummary.postExecuteReadbackStartsNav2)"
+            :data-nav2-post-execute-readback-starts-manual="String(plainTripClosureReadbackSummary.postExecuteReadbackStartsManual)"
+            :data-nav2-post-execute-readback-starts-keyboard="String(plainTripClosureReadbackSummary.postExecuteReadbackStartsKeyboard)"
+            :data-nav2-post-execute-readback-starts-free-roam="String(plainTripClosureReadbackSummary.postExecuteReadbackStartsFreeRoam)"
+            :data-nav2-post-execute-readback-starts-map-runtime="String(plainTripClosureReadbackSummary.postExecuteReadbackStartsMapRuntime)"
             :data-nav2-post-execute-readback-submits-delivery="String(plainTripClosureReadbackSummary.postExecuteReadbackSubmitsDelivery)"
+            :data-nav2-post-execute-readback-stops-motion="String(plainTripClosureReadbackSummary.postExecuteReadbackStopsMotion)"
             :data-fixed-execute-proxy-endpoint="plainTripDomEvidence.fixedExecuteProxyEndpoint"
             :data-fixed-execution-latest-endpoint="plainTripDomEvidence.fixedExecutionLatestEndpoint"
             :data-fixed-wheel-feedback-readback-endpoint="plainTripDomEvidence.fixedWheelFeedbackReadbackEndpoint"
@@ -24044,7 +24054,12 @@ onBeforeUnmount(() => {
                 :data-nav2-post-execute-readback-refreshes-summary="String(plainTripClosureReadbackSummary.postExecuteReadbackRefreshesSummary)"
                 :data-nav2-post-execute-readback-sends-motion="String(plainTripClosureReadbackSummary.postExecuteReadbackSendsMotion)"
                 :data-nav2-post-execute-readback-starts-nav2="String(plainTripClosureReadbackSummary.postExecuteReadbackStartsNav2)"
+                :data-nav2-post-execute-readback-starts-manual="String(plainTripClosureReadbackSummary.postExecuteReadbackStartsManual)"
+                :data-nav2-post-execute-readback-starts-keyboard="String(plainTripClosureReadbackSummary.postExecuteReadbackStartsKeyboard)"
+                :data-nav2-post-execute-readback-starts-free-roam="String(plainTripClosureReadbackSummary.postExecuteReadbackStartsFreeRoam)"
+                :data-nav2-post-execute-readback-starts-map-runtime="String(plainTripClosureReadbackSummary.postExecuteReadbackStartsMapRuntime)"
                 :data-nav2-post-execute-readback-submits-delivery="String(plainTripClosureReadbackSummary.postExecuteReadbackSubmitsDelivery)"
+                :data-nav2-post-execute-readback-stops-motion="String(plainTripClosureReadbackSummary.postExecuteReadbackStopsMotion)"
                 :data-fixed-execute-proxy-endpoint="plainTripDomEvidence.fixedExecuteProxyEndpoint"
                 :data-fixed-execution-latest-endpoint="plainTripDomEvidence.fixedExecutionLatestEndpoint"
                 :data-fixed-wheel-feedback-readback-endpoint="plainTripDomEvidence.fixedWheelFeedbackReadbackEndpoint"
@@ -24210,7 +24225,12 @@ onBeforeUnmount(() => {
               :data-nav2-post-execute-readback-refreshes-summary="String(plainTripClosureReadbackSummary.postExecuteReadbackRefreshesSummary)"
               :data-nav2-post-execute-readback-sends-motion="String(plainTripClosureReadbackSummary.postExecuteReadbackSendsMotion)"
               :data-nav2-post-execute-readback-starts-nav2="String(plainTripClosureReadbackSummary.postExecuteReadbackStartsNav2)"
+              :data-nav2-post-execute-readback-starts-manual="String(plainTripClosureReadbackSummary.postExecuteReadbackStartsManual)"
+              :data-nav2-post-execute-readback-starts-keyboard="String(plainTripClosureReadbackSummary.postExecuteReadbackStartsKeyboard)"
+              :data-nav2-post-execute-readback-starts-free-roam="String(plainTripClosureReadbackSummary.postExecuteReadbackStartsFreeRoam)"
+              :data-nav2-post-execute-readback-starts-map-runtime="String(plainTripClosureReadbackSummary.postExecuteReadbackStartsMapRuntime)"
               :data-nav2-post-execute-readback-submits-delivery="String(plainTripClosureReadbackSummary.postExecuteReadbackSubmitsDelivery)"
+              :data-nav2-post-execute-readback-stops-motion="String(plainTripClosureReadbackSummary.postExecuteReadbackStopsMotion)"
               :data-fixed-latest-endpoint="plainTripClosureReadbackSummary.fixedLatestEndpoint"
               :data-fixed-wheel-readback-endpoint="plainTripClosureReadbackSummary.fixedWheelReadbackEndpoint"
               :data-fixed-delivery-latest-endpoint="plainTripClosureReadbackSummary.fixedDeliveryLatestEndpoint"

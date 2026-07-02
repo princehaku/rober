@@ -156,7 +156,12 @@ describe("robotControlSummary", () => {
     expect(summary.nav2_post_execute_readback_refreshes_summary).toBe(true);
     expect(summary.nav2_post_execute_readback_sends_motion).toBe(false);
     expect(summary.nav2_post_execute_readback_starts_nav2).toBe(false);
+    expect(summary.nav2_post_execute_readback_starts_manual).toBe(false);
+    expect(summary.nav2_post_execute_readback_starts_keyboard).toBe(false);
+    expect(summary.nav2_post_execute_readback_starts_free_roam).toBe(false);
+    expect(summary.nav2_post_execute_readback_starts_map_runtime).toBe(false);
     expect(summary.nav2_post_execute_readback_submits_delivery).toBe(false);
+    expect(summary.nav2_post_execute_readback_stops_motion).toBe(false);
     expect(summary.route_complete).toBe(false);
     expect(summary.trip_complete).toBe(false);
     expect(summary.wheel_lr_nonzero).toBe(false);

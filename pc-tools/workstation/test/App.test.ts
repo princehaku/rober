@@ -10115,7 +10115,12 @@ describe("App", () => {
     summaryFixture.nav2_post_execute_readback_refreshes_summary = true;
     summaryFixture.nav2_post_execute_readback_sends_motion = false;
     summaryFixture.nav2_post_execute_readback_starts_nav2 = false;
+    summaryFixture.nav2_post_execute_readback_starts_manual = false;
+    summaryFixture.nav2_post_execute_readback_starts_keyboard = false;
+    summaryFixture.nav2_post_execute_readback_starts_free_roam = false;
+    summaryFixture.nav2_post_execute_readback_starts_map_runtime = false;
     summaryFixture.nav2_post_execute_readback_submits_delivery = false;
+    summaryFixture.nav2_post_execute_readback_stops_motion = false;
     summaryFixture.wheel_rerun_readback_endpoint = "/api/robot-control/base/feedback-samples";
     summaryFixture.wheel_rerun_readback_endpoints = summaryFixture.nav2_route_acceptance_packet.readback_endpoints;
     const mockedFetch = stubWorkstationFetch({
@@ -10161,7 +10166,12 @@ describe("App", () => {
     expect(tripClosure.attributes("data-nav2-post-execute-readback-refreshes-summary")).toBe("true");
     expect(tripClosure.attributes("data-nav2-post-execute-readback-sends-motion")).toBe("false");
     expect(tripClosure.attributes("data-nav2-post-execute-readback-starts-nav2")).toBe("false");
+    expect(tripClosure.attributes("data-nav2-post-execute-readback-starts-manual")).toBe("false");
+    expect(tripClosure.attributes("data-nav2-post-execute-readback-starts-keyboard")).toBe("false");
+    expect(tripClosure.attributes("data-nav2-post-execute-readback-starts-free-roam")).toBe("false");
+    expect(tripClosure.attributes("data-nav2-post-execute-readback-starts-map-runtime")).toBe("false");
     expect(tripClosure.attributes("data-nav2-post-execute-readback-submits-delivery")).toBe("false");
+    expect(tripClosure.attributes("data-nav2-post-execute-readback-stops-motion")).toBe("false");
     expect(tripClosure.attributes("data-fixed-latest-endpoint")).toBe("/api/robot-control/nav2/goal/execution/latest");
     expect(tripClosure.attributes("data-fixed-wheel-readback-endpoint")).toBe("/api/robot-control/base/feedback-samples");
     expect(tripClosure.attributes("data-fixed-delivery-latest-endpoint")).toBe("/api/robot-control/delivery/latest");
