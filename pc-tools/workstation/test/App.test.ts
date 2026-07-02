@@ -1430,7 +1430,7 @@ const fixtures: Record<string, unknown> = {
       keyboard_continuous_motion_verified: false,
       keyboard_continuous_forwarded_pulses: 0,
       keyboard_ready: true,
-      keyboard_safety_confirm_required: true,
+      keyboard_safety_confirm_required: false,
       keyboard_enable_sends_motion: false,
       keyboard_pulse_interval_ms: 260,
       keyboard_pulse_duration_ms: 240,
@@ -6304,7 +6304,7 @@ describe("App", () => {
     expect(liveClosureSummary.attributes("data-keyboard-continuous-motion-verified")).toBe("false");
     expect(liveClosureSummary.attributes("data-keyboard-continuous-forwarded-pulses")).toBe("0");
     expect(liveClosureSummary.attributes("data-keyboard-ready")).toBe("true");
-    expect(liveClosureSummary.attributes("data-keyboard-safety-confirm-required")).toBe("true");
+    expect(liveClosureSummary.attributes("data-keyboard-safety-confirm-required")).toBe("false");
     expect(liveClosureSummary.attributes("data-keyboard-enable-sends-motion")).toBe("false");
     expect(liveClosureSummary.attributes("data-keyboard-hold-to-move-required-short")).toBe("true");
     expect(liveClosureSummary.attributes("data-keyboard-pulse-interval-ms")).toBe("260");
@@ -8296,7 +8296,7 @@ describe("App", () => {
     expect((wrapper.find('[data-testid="plain-unified-safety-confirm"]').element as HTMLInputElement).checked).toBe(true);
     const motionReadinessGauge = wrapper.find('[data-testid="plain-motion-readiness-gauge"]');
     expect(motionReadinessGauge.exists()).toBe(true);
-    expect(motionReadinessGauge.text()).toBe("移动仪表：安全确认已勾；图上行程待准备；键盘按住会动，已验证 0 次连续脉冲；自由移动可启动；画面和雷达不阻止先动。下一步：可先自由移动；图上行程和键盘按需继续。");
+    expect(motionReadinessGauge.text()).toBe("移动仪表：现场默认安全；图上行程待准备；键盘按住会动，已验证 0 次连续脉冲；自由移动可启动；画面和雷达不阻止先动。下一步：可先自由移动；图上行程和键盘按需继续。");
     expect(motionReadinessGauge.attributes("data-state")).toBe("键盘移动中");
     expect(motionReadinessGauge.attributes("data-safety-confirmed")).toBe("true");
     expect(motionReadinessGauge.attributes("data-minimal-precheck-safety-only")).toBe("true");
@@ -8324,7 +8324,7 @@ describe("App", () => {
     expect(motionReadinessGauge.text()).not.toContain("/cmd_vel");
     const tripClosureGate = wrapper.find('[data-testid="plain-trip-closure-gate"]');
     expect(tripClosureGate.exists()).toBe(true);
-    expect(tripClosureGate.text()).toBe("行程闭环：安全确认已勾；图上行程未准备；执行按钮只准备或刷新，不发车；轮速 L/R 未读取；送达待确认。下一步：准备图上行程。");
+    expect(tripClosureGate.text()).toBe("行程闭环：现场默认安全；图上行程未准备；执行按钮只准备或刷新，不发车；轮速 L/R 未读取；送达待确认。下一步：准备图上行程。");
     expect(tripClosureGate.text()).not.toContain("Nav2");
     expect(tripClosureGate.text()).not.toContain("raw");
     expect(tripClosureGate.text()).not.toContain("/cmd_vel");
@@ -8370,7 +8370,7 @@ describe("App", () => {
     expect(tripClosureGate.attributes("data-sends-motion-when-clicked")).toBe("false");
     const keyboardHoldGate = wrapper.find('[data-testid="plain-keyboard-hold-gate"]');
     expect(keyboardHoldGate.exists()).toBe(true);
-    expect(keyboardHoldGate.text()).toBe("键盘入口：安全确认已勾；自动准备不发车；按住会连续低速脉冲；最佳连续 0/2 次；松开/失焦会停。下一步：按住方向键或 W/A/S/D 才会移动。");
+    expect(keyboardHoldGate.text()).toBe("键盘入口：现场默认安全；自动准备不发车；按住会连续低速脉冲；最佳连续 0/2 次；松开/失焦会停。下一步：按住方向键或 W/A/S/D 才会移动。");
     expect(keyboardHoldGate.text()).not.toContain("raw");
     expect(keyboardHoldGate.text()).not.toContain("/cmd_vel");
     expect(keyboardHoldGate.attributes("data-state")).toBe("可启用");
@@ -8411,7 +8411,7 @@ describe("App", () => {
     expect(keyboardHoldGate.attributes("data-sends-motion-when-clicked")).toBe("false");
     const mappingStartGate = wrapper.find('[data-testid="plain-mapping-start-gate"]');
     expect(mappingStartGate.exists()).toBe(true);
-    expect(mappingStartGate.text()).toBe("建图入口：安全确认已勾；画面未就绪；本页画面未显示；雷达已就绪；地图雷达点未显示；建图记录待传感器；主按钮只会自由移动。下一步：可先低速自由移动；补齐画面和雷达后再建图。");
+    expect(mappingStartGate.text()).toBe("建图入口：现场默认安全；画面未就绪；本页画面未显示；雷达已就绪；地图雷达点未显示；建图记录待传感器；主按钮只会自由移动。下一步：可先低速自由移动；补齐画面和雷达后再建图。");
     expect(mappingStartGate.text()).not.toContain("Nav2");
     expect(mappingStartGate.text()).not.toContain("raw");
     expect(mappingStartGate.text()).not.toContain("/cmd_vel");
@@ -9130,7 +9130,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-goal-progress-primary-action"]').text()).toBe("去行程卡点");
     expect(wrapper.find('[data-testid="plain-goal-progress-refresh"]').text()).toBe("刷新进度（只读）");
     expect(wrapper.find('[data-testid="plain-goal-progress-next-action"]').text()).toContain("下一步：先处理行程执行。");
-    expect(wrapper.find('[data-testid="plain-goal-progress-move-now"]').text()).toContain("可先动：安全确认已勾选，自由移动可启动、键盘可启用");
+    expect(wrapper.find('[data-testid="plain-goal-progress-move-now"]').text()).toContain("可先动：现场默认安全，自由移动可启动、键盘可启用");
     expect(wrapper.find('[data-testid="plain-goal-progress-move-now"]').text()).toContain("主动作：可先做：先自由移动");
     expect(wrapper.find('[data-testid="plain-goal-progress-move-now"]').text()).toContain("自由移动可启动");
     expect(wrapper.find('[data-testid="plain-goal-progress-move-now"]').text()).toContain("键盘可启用");
@@ -9825,9 +9825,18 @@ describe("App", () => {
     expect(workstationStyles).toContain('.robot-console-grid[data-layout="visual-first"] .plain-camera-panel');
     expect(workstationStyles).toContain('.robot-console-grid[data-layout="visual-first"] .plain-radar-panel');
     expect(workstationStyles).toContain('.robot-console-grid[data-layout="visual-first"] .plain-map-panel');
+    expect(workstationStyles).toContain("grid-template-columns: minmax(0, 1.65fr) minmax(360px, 0.9fr);");
+    expect(workstationStyles).toContain('"map camera"');
+    expect(workstationStyles).toContain('"map drive"');
+    expect(workstationStyles).toContain("图传必须在第一屏右上角");
+    expect(workstationStyles).toContain("max-height: min(48vh, 430px);");
+    expect(workstationStyles).toContain('.robot-console-grid[data-layout="visual-first"] .plain-motion-panel > .plain-keyboard-control');
+    expect(workstationStyles).toContain("键盘控制是真正的普通用户入口");
+    expect(workstationStyles).toContain('.robot-console-grid[data-layout="visual-first"] .plain-keyboard-control > .keyboard-direction-pad');
+    expect(workstationStyles).toContain("首页要先看到能按的方向键");
     expect(workstationStyles).toContain("grid-column: 1 / -1;");
-    expect(workstationStyles).toContain("order: -1;");
-    expect(workstationStyles).toContain("min-height: min(100vh, 1120px);");
+    expect(workstationStyles).toContain("height: clamp(560px, calc(100vh - 96px), 760px);");
+    expect(workstationStyles).toContain("height: clamp(560px, calc(100vh - 156px), 760px);");
     expect(workstationStyles).toContain("height: clamp(var(--plain-map-large-min-height), var(--plain-map-large-target-height), var(--plain-map-large-max-height));");
     expect(workstationStyles).toContain("height: var(--plain-map-fullscreen-height);");
     expect(workstationStyles).toContain(".plain-map-zoom-controls");
@@ -10194,7 +10203,7 @@ describe("App", () => {
     expect(defaultKeyboardContinuousProof.attributes("data-keyboard-ready")).toBe("true");
     expect(defaultKeyboardContinuousProof.attributes("data-keyboard-continuous-ready")).toBe("true");
     expect(defaultKeyboardContinuousProof.attributes("data-keyboard-motion-verified")).toBe("false");
-    expect(defaultKeyboardContinuousProof.attributes("data-keyboard-safety-confirm-required")).toBe("true");
+    expect(defaultKeyboardContinuousProof.attributes("data-keyboard-safety-confirm-required")).toBe("false");
     expect(defaultKeyboardContinuousProof.attributes("data-keyboard-hold-to-move-required")).toBe("true");
     expect(defaultKeyboardContinuousProof.attributes("data-keyboard-enable-sends-motion")).toBe("false");
     expect(defaultKeyboardContinuousProof.attributes("data-keyboard-pulse-interval-ms")).toBe("260");
@@ -10253,7 +10262,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="keyboard-control-panel"]').attributes("data-keyboard-ready")).toBe("true");
     expect(wrapper.find('[data-testid="keyboard-control-panel"]').attributes("data-keyboard-continuous-ready")).toBe("true");
     expect(wrapper.find('[data-testid="keyboard-control-panel"]').attributes("data-keyboard-motion-verified")).toBe("false");
-    expect(wrapper.find('[data-testid="keyboard-control-panel"]').attributes("data-keyboard-safety-confirm-required")).toBe("true");
+    expect(wrapper.find('[data-testid="keyboard-control-panel"]').attributes("data-keyboard-safety-confirm-required")).toBe("false");
     expect(wrapper.find('[data-testid="keyboard-control-panel"]').attributes("data-keyboard-hold-to-move-required")).toBe("true");
     expect(wrapper.find('[data-testid="keyboard-control-panel"]').attributes("data-keyboard-enable-sends-motion")).toBe("false");
     expect(wrapper.find('[data-testid="keyboard-control-panel"]').attributes("data-keyboard-pulse-interval-ms")).toBe("260");
@@ -14208,7 +14217,7 @@ describe("App", () => {
     expect(mappingReadyHandoff.attributes("data-fixed-mapping-start-endpoint")).toBe("/api/robot-control/map/start");
     expect(mappingReadyHandoff.attributes("data-sends-motion-when-clicked")).toBe("false");
     const mappingStartGate = wrapper.find('[data-testid="plain-mapping-start-gate"]');
-    expect(mappingStartGate.text()).toBe("建图入口：安全确认已勾；画面已就绪；本页画面未显示；雷达已就绪；地图雷达点未显示；建图记录可启动；主按钮会先建图再自由移动。下一步：可启动建图记录；刷新地图画面确认雷达点。");
+    expect(mappingStartGate.text()).toBe("建图入口：现场默认安全；画面已就绪；本页画面未显示；雷达已就绪；地图雷达点未显示；建图记录可启动；主按钮会先建图再自由移动。下一步：可启动建图记录；刷新地图画面确认雷达点。");
     expect(mappingStartGate.attributes("data-state")).toBe("可启动建图");
     expect(mappingStartGate.attributes("data-safety-confirmed")).toBe("true");
     expect(mappingStartGate.attributes("data-can-free-move-now")).toBe("true");
@@ -18409,7 +18418,7 @@ describe("App", () => {
     expect(deliveredTripGauge.attributes("data-fixed-delivery-complete-endpoint")).toBe("/api/robot-control/delivery/complete");
     expect(deliveredTripGauge.attributes("data-sends-motion-when-clicked")).toBe("false");
     const deliveredTripClosureGate = wrapper.find('[data-testid="plain-trip-closure-gate"]');
-    expect(deliveredTripClosureGate.text()).toBe("行程闭环：安全确认已勾；行程已准备 15 个点，待贴到地图；执行按钮只准备或刷新，不发车；轮速 L/R 164/164 已非零；送达已对齐。下一步：本轮行程已收口。");
+    expect(deliveredTripClosureGate.text()).toBe("行程闭环：现场默认安全；行程已准备 15 个点，待贴到地图；执行按钮只准备或刷新，不发车；轮速 L/R 164/164 已非零；送达已对齐。下一步：本轮行程已收口。");
     expect(deliveredTripClosureGate.attributes("data-state")).toBe("已闭环");
     expect(deliveredTripClosureGate.attributes("data-safety-confirmed")).toBe("true");
     expect(deliveredTripClosureGate.attributes("data-route-ready")).toBe("false");
@@ -19684,7 +19693,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="keyboard-control-arm"]').text()).toBe("键盘已准备（按住才动）");
     expect(wrapper.find('[data-testid="keyboard-control-recheck"]').text()).toBe("复查手控条件");
     expect(wrapper.find('[data-testid="plain-keyboard-next-action"]').text()).toContain("下一步：按住方向键");
-    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("安全确认已勾选");
+    expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("现场默认安全");
     const callsBeforeFocus = mockedFetch.mock.calls.length;
     await wrapper.find('[data-testid="plain-goal-progress-primary-action"]').trigger("click");
     expect(focusSpy).toHaveBeenCalled();
@@ -21577,7 +21586,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-mapping"]').attributes("data-state")).toBe("可移动");
     expect(wrapper.find('[data-testid="plain-free-roam-hint"]').text()).toContain("画面未就绪");
     const freeMovePrimarySummary = wrapper.find('[data-testid="plain-free-roam-primary-button-summary"]');
-    expect(freeMovePrimarySummary.text()).toBe("主按钮判定：安全确认已勾；画面未就绪，雷达已就绪；点击只启动低速自由移动，不启动建图记录；传感器补齐后再建图。返回后只读刷新自由移动状态、地图画面和总览。");
+    expect(freeMovePrimarySummary.text()).toBe("主按钮判定：现场默认安全；画面未就绪，雷达已就绪；点击只启动低速自由移动，不启动建图记录；传感器补齐后再建图。返回后只读刷新自由移动状态、地图画面和总览。");
     expect(freeMovePrimarySummary.attributes("data-state")).toBe("只自由移动");
     expect(freeMovePrimarySummary.attributes("data-primary-action-kind")).toBe("start_free_move_only");
     expect(freeMovePrimarySummary.attributes("data-starts-free-roam-when-clicked")).toBe("true");
@@ -21714,7 +21723,7 @@ describe("App", () => {
     expect(freeMoveOnlyHandoff.attributes("data-next-action")).toBe("先低速自由移动，同时补齐画面和雷达");
     expect(freeMoveOnlyHandoff.attributes("data-sends-motion-when-clicked")).toBe("false");
     const motionReadinessGauge = wrapper.find('[data-testid="plain-motion-readiness-gauge"]');
-    expect(motionReadinessGauge.text()).toBe("移动仪表：安全确认已勾；图上行程待准备；键盘按住会动，已验证 0 次连续脉冲；自由移动可启动；画面和雷达不阻止先动。下一步：可先自由移动；图上行程和键盘按需继续。");
+    expect(motionReadinessGauge.text()).toBe("移动仪表：现场默认安全；图上行程待准备；键盘按住会动，已验证 0 次连续脉冲；自由移动可启动；画面和雷达不阻止先动。下一步：可先自由移动；图上行程和键盘按需继续。");
     expect(motionReadinessGauge.attributes("data-state")).toBe("键盘移动中");
     expect(motionReadinessGauge.attributes("data-safety-confirmed")).toBe("true");
     expect(motionReadinessGauge.attributes("data-minimal-precheck-safety-only")).toBe("true");
@@ -22183,7 +22192,7 @@ describe("App", () => {
     expect(diagnostics.text()).toContain("physical_motion_lidar_delta_proven");
     const firstScreenText = visiblePlainHomeText(wrapper);
     expect(firstScreenText).toContain("待命");
-    expect(firstScreenText).toContain("安全确认已勾；可底盘试动或启用键盘；相机和雷达只影响建图验收。");
+    expect(firstScreenText).toContain("现场默认安全；可底盘试动或启用键盘；相机和雷达只影响建图验收。");
     expect(firstScreenText).not.toContain("现场材料");
     expect(firstScreenText).not.toContain("external_video_recorded");
     expect(firstScreenText).not.toContain("physical_motion_lidar_delta_proven");
@@ -23107,7 +23116,7 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     await wrapper.find('input[name="robotApiBaseUrl"]').setValue("http://192.168.1.11:8787");
     const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
-    expect(visiblePlainHomeText(wrapper)).toContain("安全确认已勾；可底盘试动或启用键盘；相机和雷达只影响建图验收。");
+    expect(visiblePlainHomeText(wrapper)).toContain("现场默认安全；可底盘试动或启用键盘；相机和雷达只影响建图验收。");
     expect(visiblePlainHomeText(wrapper)).toContain("底盘试动：可直接低速前进一下；不依赖相机或雷达，结果看轮速 L/R。");
     expect(wrapper.find('[data-testid="plain-wheel-record"]').text()).toContain("点“试动一下”或“底盘试动”后读取轮速。");
     expect(wrapper.find('[data-testid="plain-wheel-record"]').text()).toContain("恢复试动确认");
@@ -23297,7 +23306,7 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     const focusSpy = vi.spyOn(HTMLElement.prototype, "focus");
 
-    expect(visiblePlainHomeText(wrapper)).toContain("安全确认已勾；可底盘试动或启用键盘；相机和雷达只影响建图验收。");
+    expect(visiblePlainHomeText(wrapper)).toContain("现场默认安全；可底盘试动或启用键盘；相机和雷达只影响建图验收。");
     expect(wrapper.find('[data-testid="plain-wheel-record"]').text()).toContain("点“试动一下”或“底盘试动”后读取轮速。");
     expect(wrapper.find(".robot-console .advanced-details").text()).toContain("delivery latest draft visual material kept");
     expect(wrapper.find('[data-testid="plain-motion-restore"]').attributes("disabled")).toBeUndefined();
@@ -25699,7 +25708,7 @@ describe("App", () => {
 
     const firstScreenText = visiblePlainHomeText(wrapper);
     expect(firstScreenText).toContain("待命");
-    expect(firstScreenText).toContain("安全确认已勾；可底盘试动或启用键盘；相机和雷达只影响建图验收。");
+    expect(firstScreenText).toContain("现场默认安全；可底盘试动或启用键盘；相机和雷达只影响建图验收。");
     for (const token of DEFAULT_FIRST_SCREEN_FORBIDDEN_TOKENS) {
       expect(firstScreenText).not.toContain(token);
     }
@@ -25805,7 +25814,7 @@ describe("App", () => {
     expect(armedKeyboardContinuousProof.attributes("data-state")).toBe("按住中");
     expect(armedKeyboardContinuousProof.attributes("data-sends-motion-while-held")).toBe("true");
     const armedKeyboardGate = wrapper.find('[data-testid="plain-keyboard-hold-gate"]');
-    expect(armedKeyboardGate.text()).toBe("键盘入口：安全确认已勾；自动准备不发车；按住会连续低速脉冲；最佳连续 1/2 次；松开/失焦会停。下一步：继续按住直到连续脉冲达标。");
+    expect(armedKeyboardGate.text()).toBe("键盘入口：现场默认安全；自动准备不发车；按住会连续低速脉冲；最佳连续 1/2 次；松开/失焦会停。下一步：继续按住直到连续脉冲达标。");
     expect(armedKeyboardGate.attributes("data-current-action-id")).toBe("hold_keyboard");
     expect(armedKeyboardGate.attributes("data-current-action-ready")).toBe("true");
     expect(armedKeyboardGate.attributes("data-current-action-label")).toBe("键盘连续手控");
@@ -26008,7 +26017,7 @@ describe("App", () => {
     expect(stoppedKeyboardContinuousProof.attributes("data-stop-settled-after-pulse")).toBe("true");
     expect(stoppedKeyboardContinuousProof.attributes("data-sends-motion-while-held")).toBe("false");
     const verifiedKeyboardGate = wrapper.find('[data-testid="plain-keyboard-hold-gate"]');
-    expect(verifiedKeyboardGate.text()).toBe("键盘入口：安全确认已勾；自动准备不发车；按住会连续低速脉冲；已连续 2/2 次；停止已收口。下一步：键盘连续手控已验证，可继续按住方向键移动。");
+    expect(verifiedKeyboardGate.text()).toBe("键盘入口：现场默认安全；自动准备不发车；按住会连续低速脉冲；已连续 2/2 次；停止已收口。下一步：键盘连续手控已验证，可继续按住方向键移动。");
     expect(verifiedKeyboardGate.attributes("data-state")).toBe("已验证");
     expect(verifiedKeyboardGate.attributes("data-current-direction")).toBe("none");
     expect(verifiedKeyboardGate.attributes("data-current-direction-label")).toBe("未按键");

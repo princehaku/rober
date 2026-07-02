@@ -6849,7 +6849,7 @@ function plainActionCardUserText(value: string): string {
     .replace(/勾安全确认后/g, "现在可")
     .replace(/安全确认后/g, "现在可")
     .replace(/还未勾安全确认/g, "现场安全已确认")
-    .replace(/安全确认已勾(?:选)?/g, "现场安全已确认")
+    .replace(/安全确认已勾(?:选)?/g, "现场默认安全")
     .replace(/先勾(?:选)?确认/g, "现场安全已确认")
     .replace(/先勾安全确认/g, "现场安全已确认")
     .replace(/勾确认后/g, "现在可")
@@ -9414,7 +9414,7 @@ const plainKeyboardHoldGateGauge = computed<PlainKeyboardHoldGateGauge>(() => {
   } else if (robotApiBaseUrl.value.trim()) {
     state = "待入口";
   }
-  const safetyText = plainManualSafetyConfirmed.value ? "安全确认已勾" : "安全确认未勾";
+  const safetyText = plainManualSafetyConfirmed.value ? "现场默认安全" : "安全确认未勾";
   const armText = "自动准备不发车";
   const holdText = evidence.sendsMotionWhileHeld ? "按住会连续低速脉冲" : "按住前不发车";
   const pulseText = evidence.bestContinuousPulseCount >= evidence.verifiedMinForwardedPulses
@@ -9812,7 +9812,7 @@ const plainFreeRoamMappingStartLabel = computed(() => (
 const plainFreeRoamPrimaryButtonSummary = computed(() => {
   // 主按钮是自由移动/建图链路里最容易误读的入口；这里把点击语义拆成只读事实，避免用户猜它会不会先建图。
   const evidence = plainFreeRoamDomEvidence.value;
-  const safetyText = plainManualSafetyConfirmed.value ? "安全确认已勾" : "安全确认未勾";
+  const safetyText = plainManualSafetyConfirmed.value ? "现场默认安全" : "安全确认未勾";
   const sensorText = `画面${evidence.cameraSourceFirstFrameReady ? "已就绪" : "未就绪"}，雷达${evidence.radarFreshForMapping ? "已就绪" : "未就绪"}`;
   const state = evidence.primaryActionRequestsMapping
     ? "先建图再移动"
@@ -11518,7 +11518,7 @@ const plainMappingStartGateGauge = computed<PlainMappingStartGateGauge>(() => {
   } else if (evidence.freeMoveStartReady) {
     state = "待安全确认";
   }
-  const safetyText = safetyConfirmed ? "安全确认已勾" : "安全确认未勾";
+  const safetyText = safetyConfirmed ? "现场默认安全" : "安全确认未勾";
   const cameraText = mapping.cameraReadyForMapping ? "画面已就绪" : "画面未就绪";
   const cameraVisibleText = cameraView.currentFrameVisible ? "本页画面已显示" : "本页画面未显示";
   const radarText = mapping.radarReadyForMapping ? "雷达已就绪" : "雷达未就绪";
@@ -13867,7 +13867,7 @@ const plainGoalProgressMoveNowSummary = computed(() => {
   if (!readyModes.length) {
     return "";
   }
-  const safetyText = plainManualSafetyConfirmed.value ? "安全确认已勾选" : "勾选现场安全确认后";
+  const safetyText = plainManualSafetyConfirmed.value ? "现场默认安全" : "勾选现场安全确认后";
   const primarySuffix = primaryReady ? `主动作：${plainActionCardUserText(primaryReady)}。` : "";
   return `可先动：${safetyText}，${readyModes.join("、")}；${primarySuffix}画面和雷达只影响建图验收，不挡低速移动或行程重跑。`;
 });
@@ -15120,7 +15120,7 @@ const plainTripClosureGateGauge = computed<PlainTripClosureGateGauge>(() => {
   } else if (trip.routeSourcePointCount > 0) {
     state = "待贴图";
   }
-  const safetyText = safetyConfirmed ? "安全确认已勾" : "安全确认未勾";
+  const safetyText = safetyConfirmed ? "现场默认安全" : "安全确认未勾";
   const routeText = routeReady
     ? `图上行程 ${trip.routePointCount}/${trip.routeSourcePointCount} 个点`
     : trip.routeSourcePointCount > 0
@@ -15203,7 +15203,7 @@ const plainMotionReadinessGauge = computed<PlainMotionReadinessGauge>(() => {
   } else if (connected) {
     state = "待路线或入口";
   }
-  const safetyText = safetyConfirmed ? "安全确认已勾" : "安全确认未勾";
+  const safetyText = safetyConfirmed ? "现场默认安全" : "安全确认未勾";
   const tripText = trip.mainActionSendsMotion
     ? "图上行程可执行"
     : tripRouteReady
@@ -16118,7 +16118,7 @@ const plainMotionSummary = computed(() => {
     if (!plainManualSafetyConfirmed.value) {
       return { state: "待确认", hint: "勾安全确认后可底盘试动、键盘手控或执行已准备行程；画面记录不是发车前置。" };
     }
-    return { state: "待命", hint: "安全确认已勾；可底盘试动或启用键盘；相机和雷达只影响建图验收。" };
+    return { state: "待命", hint: "现场默认安全；可底盘试动或启用键盘；相机和雷达只影响建图验收。" };
   }
   if (manualCommandResult.value.command_kind === "stop" && manualCommandResult.value.proxy_status === "command_forwarded") {
     return { state: "已停止", hint: "停止请求已发送。" };
@@ -16127,7 +16127,7 @@ const plainMotionSummary = computed(() => {
     return { state: "停止失败", hint: manualCommandResult.value.failure_reason || "停止请求失败。" };
   }
   return plainManualSafetyConfirmed.value
-    ? { state: "待命", hint: "安全确认已勾；可底盘试动或启用键盘；相机和雷达只影响建图验收。" }
+    ? { state: "待命", hint: "现场默认安全；可底盘试动或启用键盘；相机和雷达只影响建图验收。" }
     : { state: "待确认", hint: "勾安全确认后可底盘试动、键盘手控或执行已准备行程；画面记录不是发车前置。" };
 });
 
@@ -23999,7 +23999,7 @@ onBeforeUnmount(() => {
             data-testid="plain-goal-checklist-safety-action"
             @click="focusPlainGoalChecklistSafetyTarget"
           >
-            去勾确认
+            去运动入口
           </button>
           <button
             type="button"
@@ -25929,7 +25929,7 @@ onBeforeUnmount(() => {
             :data-keyboard-ready="String(Boolean(plainLiveClosureSummary?.keyboard_ready ?? plainLiveKeyboardControlReadback.ready))"
             :data-keyboard-continuous-ready="String(Boolean(plainLiveClosureSummary?.keyboard_continuous_ready ?? plainLiveKeyboardControlReadback.ready))"
             :data-keyboard-motion-verified="String(Boolean(plainLiveClosureSummary?.keyboard_continuous_motion_verified ?? plainLiveKeyboardControlReadback.verified))"
-            :data-keyboard-safety-confirm-required="String(Boolean(plainLiveClosureSummary?.keyboard_safety_confirm_required ?? true))"
+            :data-keyboard-safety-confirm-required="String(Boolean(plainLiveClosureSummary?.keyboard_safety_confirm_required ?? false))"
             :data-keyboard-hold-to-move-required="String(Boolean(plainLiveClosureSummary?.keyboard_hold_to_move_required ?? true))"
             :data-keyboard-enable-sends-motion="String(Boolean(plainLiveClosureSummary?.keyboard_enable_sends_motion ?? plainLiveClosureSummary?.keyboard_continuous_enable_sends_motion ?? false))"
             :data-keyboard-pulse-interval-ms="String(plainLiveClosureSummary?.keyboard_pulse_interval_ms ?? plainKeyboardDirectionButtonEvidence.pulseIntervalMs)"
@@ -26061,7 +26061,7 @@ onBeforeUnmount(() => {
               :data-keyboard-ready="String(Boolean(plainLiveClosureSummary?.keyboard_ready ?? plainLiveKeyboardControlReadback.ready))"
               :data-keyboard-continuous-ready="String(Boolean(plainLiveClosureSummary?.keyboard_continuous_ready ?? plainLiveKeyboardControlReadback.ready))"
               :data-keyboard-motion-verified="String(Boolean(plainLiveClosureSummary?.keyboard_continuous_motion_verified ?? plainLiveKeyboardControlReadback.verified))"
-              :data-keyboard-safety-confirm-required="String(Boolean(plainLiveClosureSummary?.keyboard_safety_confirm_required ?? true))"
+              :data-keyboard-safety-confirm-required="String(Boolean(plainLiveClosureSummary?.keyboard_safety_confirm_required ?? false))"
               :data-keyboard-hold-to-move-required="String(Boolean(plainLiveClosureSummary?.keyboard_hold_to_move_required ?? true))"
               :data-keyboard-enable-sends-motion="String(Boolean(plainLiveClosureSummary?.keyboard_enable_sends_motion ?? plainLiveClosureSummary?.keyboard_continuous_enable_sends_motion ?? false))"
               :data-keyboard-pulse-interval-ms="String(plainLiveClosureSummary?.keyboard_pulse_interval_ms ?? plainKeyboardDirectionButtonEvidence.pulseIntervalMs)"

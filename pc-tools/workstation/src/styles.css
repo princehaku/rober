@@ -532,30 +532,108 @@ h3 {
   grid-column: span 4;
 }
 
+.robot-console-grid[data-layout="visual-first"] {
+  /* 普通首页就是驾驶台：左边大地图，右边图传和 WASD，其他验收材料继续在下方保留。 */
+  grid-template-columns: minmax(0, 1.65fr) minmax(360px, 0.9fr);
+  grid-template-areas:
+    "map camera"
+    "map drive"
+    "details details";
+  gap: 10px;
+}
+
 .robot-console-grid[data-layout="visual-first"] .plain-camera-panel {
-  /* 地图先给现场判断路线和雷达点，画面随后占据下一行左侧。 */
-  order: 1;
-  grid-column: span 7;
+  /* 图传必须在第一屏右上角，不能被地图长画布挤到下一屏。 */
+  order: 0;
+  grid-area: camera;
+  max-height: min(48vh, 430px);
+  overflow: auto;
 }
 
 .robot-console-grid[data-layout="visual-first"] .plain-radar-panel {
-  /* 雷达卡跟随画面显示，地图上的雷达 overlay 才是主观察面。 */
-  order: 2;
-  grid-column: span 5;
+  /* 雷达独立卡片降到详情区；首页主证据来自地图上的雷达点 overlay。 */
+  order: 4;
+  grid-column: 1 / -1;
 }
 
 .robot-console-grid[data-layout="visual-first"] .plain-map-panel {
-  /* 地图是现场判断路线和雷达贴图的主视图，桌面端默认先占整行。 */
-  order: -1;
-  grid-column: 1 / -1;
-  min-height: min(100vh, 1120px);
+  /* 地图仍是主视图，但必须和实时画面、WASD 同屏出现。 */
+  order: 0;
+  grid-area: map;
+  height: clamp(560px, calc(100vh - 96px), 760px);
+  min-height: 0;
+  overflow: auto;
 }
 
 .robot-console-grid[data-layout="visual-first"] .plain-connection-panel,
-.robot-console-grid[data-layout="visual-first"] .plain-free-roam-map,
-.robot-console-grid[data-layout="visual-first"] .plain-motion-panel {
-  order: 3;
+.robot-console-grid[data-layout="visual-first"] .plain-free-roam-map {
+  order: 5;
   grid-column: span 6;
+}
+
+.robot-console-grid[data-layout="visual-first"] .plain-motion-panel {
+  /* WASD 是第三个核心面板，放在图传下方并把键盘模块提到顶部。 */
+  order: 0;
+  grid-area: drive;
+  display: flex;
+  flex-direction: column;
+  max-height: min(48vh, 430px);
+  overflow: auto;
+}
+
+.robot-console-grid[data-layout="visual-first"] .plain-motion-panel > h3 {
+  order: -3;
+}
+
+.robot-console-grid[data-layout="visual-first"] .plain-motion-panel > .plain-trip-confirm {
+  order: -2;
+}
+
+.robot-console-grid[data-layout="visual-first"] .plain-motion-panel > .plain-keyboard-control {
+  /* 键盘控制是真正的普通用户入口；点动/行程/送达细节留在它后面。 */
+  order: -1;
+  margin-top: 0;
+}
+
+.robot-console-grid[data-layout="visual-first"] .plain-motion-panel > .panel-action-row {
+  order: 0;
+}
+
+.robot-console-grid[data-layout="visual-first"] .plain-camera-panel .plain-camera-current-frame-proof,
+.robot-console-grid[data-layout="visual-first"] .plain-camera-panel .plain-camera-shared-preview-proof,
+.robot-console-grid[data-layout="visual-first"] .plain-camera-panel .plain-camera-usb-recovery-proof,
+.robot-console-grid[data-layout="visual-first"] .plain-keyboard-control > [data-testid="plain-keyboard-main-action-summary"],
+.robot-console-grid[data-layout="visual-first"] .plain-keyboard-control > [data-testid="keyboard-focus-contract"],
+.robot-console-grid[data-layout="visual-first"] .plain-keyboard-control > [data-testid="plain-keyboard-safety-summary"],
+.robot-console-grid[data-layout="visual-first"] .plain-keyboard-control > [data-testid="plain-keyboard-readback-summary"],
+.robot-console-grid[data-layout="visual-first"] .plain-keyboard-control > [data-testid="keyboard-wheel-readback-goal"],
+.robot-console-grid[data-layout="visual-first"] .plain-keyboard-control > [data-testid="plain-keyboard-continuous-proof"],
+.robot-console-grid[data-layout="visual-first"] .plain-keyboard-control > [data-testid="plain-keyboard-next-action"],
+.robot-console-grid[data-layout="visual-first"] .plain-keyboard-control > [data-testid="keyboard-control-guide"] {
+  /* 这些验收说明仍保留在接口/详情里，首屏先把真实操作空间让给画面和方向键。 */
+  display: none;
+}
+
+.robot-console-grid[data-layout="visual-first"] .plain-keyboard-control {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: none;
+}
+
+.robot-console-grid[data-layout="visual-first"] .plain-keyboard-control > .keyboard-direction-pad {
+  /* 首页要先看到能按的方向键，说明和验收文本都不能挡在方向盘前面。 */
+  order: -4;
+  margin-top: 0;
+  max-width: none;
+}
+
+.robot-console-grid[data-layout="visual-first"] .plain-keyboard-control > .simple-status-row {
+  order: -3;
+}
+
+.robot-console-grid[data-layout="visual-first"] .camera-preview-frame {
+  min-height: 240px;
 }
 
 .simple-user-console {
@@ -2147,6 +2225,12 @@ h3 {
 .plain-map-viewport[data-size="large"] .plain-map-layer {
   height: clamp(var(--plain-map-large-min-height), var(--plain-map-large-target-height), var(--plain-map-large-max-height));
   min-height: var(--plain-map-large-min-height);
+}
+
+.robot-console-grid[data-layout="visual-first"] .plain-map-panel:not([data-observer-mode="true"]) .plain-map-viewport[data-size="large"] .plain-map-layer {
+  /* 首页地图与图传/WASD 同屏；/map 直达页仍使用整屏地图。 */
+  height: clamp(560px, calc(100vh - 156px), 760px);
+  min-height: 560px;
 }
 
 .plain-map-viewport[data-size="fullscreen"] .plain-map-layer {
@@ -3840,6 +3924,20 @@ th {
     .plain-move-now-snapshot-row,
     .plain-progress-row {
     grid-template-columns: 1fr;
+  }
+
+  .robot-console-grid[data-layout="visual-first"] {
+    /* 窄屏仍保持打开即用顺序：地图、图传、WASD，然后才是详情。 */
+    grid-template-areas:
+      "map"
+      "camera"
+      "drive"
+      "details";
+  }
+
+  .robot-console-grid[data-layout="visual-first"] .plain-camera-panel,
+  .robot-console-grid[data-layout="visual-first"] .plain-motion-panel {
+    max-height: none;
   }
 
   .kv {

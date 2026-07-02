@@ -5328,3 +5328,12 @@ PC 简易发车界面。
 键盘仍只在按住 W/A/S/D 或方向键时连续发送低速 pulse，松开、失焦、切页和 stop 按钮仍走固定停止链路；
 相机和雷达不作为手控、自由移动或 Nav2 路线发车前置，只影响建图启动/验收。PC Node 继续按现场访问口径绑定
 `0.0.0.0:7001`，默认小车 API 固定为 `http://192.168.1.11:8787`。
+
+2026-07-03 02:15 CST 起，普通 PC 首页改为驾驶台布局：左侧保留大地图，右侧首屏固定放实时图传和 WASD/方向键连续手控，
+雷达独立卡、连接状态、自由移动和长验收说明下沉到详情区。首页地图仍默认按 300% 细节观察，`/map` 直达页仍是整屏地图；
+首页不再让大地图独占第一屏而把图传和键盘挤到数屏之后。普通页可见文案统一为 `现场默认安全`，兼容 input 和后端
+`confirm_hil_checklist=true` 字段继续保留，键盘合同的 `keyboard_safety_confirm_required` 默认回读为 `false`。
+当前 WAVE ROVER 底盘路径仍按 `docs/vendor/VENDOR_INDEX.md` 指向的 `WAVE_ROVER_V0.9/json_cmd.h` 采用 ROS `/cmd_vel`
+到 `esp32_bridge`，再由 bridge 映射 vendor `T=11/PWM164`；vendor `T=13` 在无编码器产品上不作为当前 PC 手控路径。
+现场相机若仍报告 USB `12M` full-speed 和首帧失败，属于物理 USB 链路风险，不是 PC 多人预览独占问题，且不阻塞地图、
+雷达、键盘手控、自由移动或 Nav2 路线执行。
