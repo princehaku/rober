@@ -1141,6 +1141,22 @@ describe("robotControlSummary", () => {
       "/api/robot-control/summary",
     ]);
     expect(summary.current_free_move_action_readback_endpoints).toEqual(summary.current_free_move_action_acceptance_endpoints);
+    expect(summary.current_free_move_action_post_start_readback_endpoints).toEqual(summary.current_free_move_action_readback_endpoints);
+    expect(summary.current_free_move_action_post_start_readback_sequence_labels).toEqual([
+      "读取自由移动状态",
+      "刷新地图画面",
+      "刷新总览",
+    ]);
+    expect(summary.current_free_move_action_post_start_readback_refreshes_latest).toBe(true);
+    expect(summary.current_free_move_action_post_start_readback_refreshes_map_preview).toBe(true);
+    expect(summary.current_free_move_action_post_start_readback_refreshes_summary).toBe(true);
+    expect(summary.current_free_move_action_post_start_readback_sends_motion).toBe(false);
+    expect(summary.current_free_move_action_post_start_readback_starts_nav2).toBe(false);
+    expect(summary.current_free_move_action_post_start_readback_starts_manual).toBe(false);
+    expect(summary.current_free_move_action_post_start_readback_starts_keyboard).toBe(false);
+    expect(summary.current_free_move_action_post_start_readback_starts_map_runtime).toBe(false);
+    expect(summary.current_free_move_action_post_start_readback_submits_delivery).toBe(false);
+    expect(summary.current_free_move_action_post_start_readback_stops_motion).toBe(false);
     expect(summary.current_free_move_action_required_success_markers).toEqual(["free_roam_latest_motion_ready"]);
     expect(summary.current_free_move_action_proof_status).toBe("ready_to_verify");
     expect(summary.current_free_move_action_missing_evidence).toEqual(["free_roam_latest_motion_ready"]);
@@ -1466,6 +1482,22 @@ describe("robotControlSummary", () => {
     expect(summary.free_move_readback_endpoint).toBe("/api/robot-control/free-roam/autonomy/latest");
     expect(summary.free_move_latest_endpoint).toBe("/api/robot-control/free-roam/autonomy/latest");
     expect(summary.free_move_readback_endpoints).toEqual(summary.free_move_acceptance_endpoints);
+    expect(summary.free_move_post_start_readback_endpoints).toEqual(summary.free_move_readback_endpoints);
+    expect(summary.free_move_post_start_readback_sequence_labels).toEqual([
+      "读取自由移动状态",
+      "刷新地图画面",
+      "刷新总览",
+    ]);
+    expect(summary.free_move_post_start_readback_refreshes_latest).toBe(true);
+    expect(summary.free_move_post_start_readback_refreshes_map_preview).toBe(true);
+    expect(summary.free_move_post_start_readback_refreshes_summary).toBe(true);
+    expect(summary.free_move_post_start_readback_sends_motion).toBe(false);
+    expect(summary.free_move_post_start_readback_starts_nav2).toBe(false);
+    expect(summary.free_move_post_start_readback_starts_manual).toBe(false);
+    expect(summary.free_move_post_start_readback_starts_keyboard).toBe(false);
+    expect(summary.free_move_post_start_readback_starts_map_runtime).toBe(false);
+    expect(summary.free_move_post_start_readback_submits_delivery).toBe(false);
+    expect(summary.free_move_post_start_readback_stops_motion).toBe(false);
     expect(summary.free_move_required_success_marker).toBe("free_roam_latest_motion_ready");
     expect(summary.free_move_required_success_markers).toEqual(["free_roam_latest_motion_ready"]);
     expect(summary.free_move_proof_status).toBe("ready_to_verify");

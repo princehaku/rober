@@ -9764,6 +9764,13 @@ const plainFreeMoveAcceptanceProof = computed<PlainFreeMoveAcceptanceProof>(() =
     "/api/robot-control/summary",
   ];
   const readbackEndpoints = summary?.current_free_move_action_readback_endpoints ?? summary?.free_move_readback_endpoints ?? acceptanceEndpoints;
+  const postStartReadbackEndpoints = summary?.current_free_move_action_post_start_readback_endpoints ?? summary?.free_move_post_start_readback_endpoints ?? readbackEndpoints;
+  const postStartReadbackSequenceLabels = summary?.current_free_move_action_post_start_readback_sequence_labels ?? summary?.free_move_post_start_readback_sequence_labels ?? postStartReadbackEndpoints.map((endpoint) => {
+    if (endpoint.includes("/free-roam/autonomy/latest")) return "读取自由移动状态";
+    if (endpoint.includes("/map/preview")) return "刷新地图画面";
+    if (endpoint.includes("/summary")) return "刷新总览";
+    return "只读复验";
+  });
   const requiredSuccessMarkers = summary?.current_free_move_action_required_success_markers ?? summary?.free_move_required_success_markers ?? missingEvidence;
   const latestEndpoint = summary?.current_free_move_action_latest_endpoint ?? summary?.free_move_latest_endpoint ?? evidence.fixedFreeRoamLatestEndpoint;
   const readbackEndpoint = summary?.current_free_move_action_readback_endpoint ?? summary?.free_move_readback_endpoint ?? latestEndpoint;
@@ -9813,6 +9820,20 @@ const plainFreeMoveAcceptanceProof = computed<PlainFreeMoveAcceptanceProof>(() =
     acceptanceEndpointsText: acceptanceEndpoints.join(",") || "none",
     readbackEndpoints,
     readbackEndpointsText: readbackEndpoints.join(",") || "none",
+    postStartReadbackEndpoints,
+    postStartReadbackEndpointsText: postStartReadbackEndpoints.join(",") || "none",
+    postStartReadbackSequenceLabels,
+    postStartReadbackSequenceLabelsText: postStartReadbackSequenceLabels.join(",") || "none",
+    postStartReadbackRefreshesLatest: Boolean(summary?.current_free_move_action_post_start_readback_refreshes_latest ?? summary?.free_move_post_start_readback_refreshes_latest ?? postStartReadbackEndpoints.includes(latestEndpoint)),
+    postStartReadbackRefreshesMapPreview: Boolean(summary?.current_free_move_action_post_start_readback_refreshes_map_preview ?? summary?.free_move_post_start_readback_refreshes_map_preview ?? postStartReadbackEndpoints.includes("/api/robot-control/map/preview")),
+    postStartReadbackRefreshesSummary: Boolean(summary?.current_free_move_action_post_start_readback_refreshes_summary ?? summary?.free_move_post_start_readback_refreshes_summary ?? postStartReadbackEndpoints.includes("/api/robot-control/summary")),
+    postStartReadbackSendsMotion: Boolean(summary?.current_free_move_action_post_start_readback_sends_motion ?? summary?.free_move_post_start_readback_sends_motion ?? false),
+    postStartReadbackStartsNav2: Boolean(summary?.current_free_move_action_post_start_readback_starts_nav2 ?? summary?.free_move_post_start_readback_starts_nav2 ?? false),
+    postStartReadbackStartsManual: Boolean(summary?.current_free_move_action_post_start_readback_starts_manual ?? summary?.free_move_post_start_readback_starts_manual ?? false),
+    postStartReadbackStartsKeyboard: Boolean(summary?.current_free_move_action_post_start_readback_starts_keyboard ?? summary?.free_move_post_start_readback_starts_keyboard ?? false),
+    postStartReadbackStartsMapRuntime: Boolean(summary?.current_free_move_action_post_start_readback_starts_map_runtime ?? summary?.free_move_post_start_readback_starts_map_runtime ?? false),
+    postStartReadbackSubmitsDelivery: Boolean(summary?.current_free_move_action_post_start_readback_submits_delivery ?? summary?.free_move_post_start_readback_submits_delivery ?? false),
+    postStartReadbackStopsMotion: Boolean(summary?.current_free_move_action_post_start_readback_stops_motion ?? summary?.free_move_post_start_readback_stops_motion ?? false),
     requiredSuccessMarkers,
     requiredSuccessMarkersText: requiredSuccessMarkers.join(",") || "none",
     startEndpoint,
@@ -22862,6 +22883,18 @@ onBeforeUnmount(() => {
             :data-readback-endpoint="plainFreeMoveAcceptanceProof.readbackEndpoint"
             :data-acceptance-endpoints="plainFreeMoveAcceptanceProof.acceptanceEndpointsText"
             :data-readback-endpoints="plainFreeMoveAcceptanceProof.readbackEndpointsText"
+            :data-post-start-readback-endpoints="plainFreeMoveAcceptanceProof.postStartReadbackEndpointsText"
+            :data-post-start-readback-sequence-labels="plainFreeMoveAcceptanceProof.postStartReadbackSequenceLabelsText"
+            :data-post-start-readback-refreshes-latest="String(plainFreeMoveAcceptanceProof.postStartReadbackRefreshesLatest)"
+            :data-post-start-readback-refreshes-map-preview="String(plainFreeMoveAcceptanceProof.postStartReadbackRefreshesMapPreview)"
+            :data-post-start-readback-refreshes-summary="String(plainFreeMoveAcceptanceProof.postStartReadbackRefreshesSummary)"
+            :data-post-start-readback-sends-motion="String(plainFreeMoveAcceptanceProof.postStartReadbackSendsMotion)"
+            :data-post-start-readback-starts-nav2="String(plainFreeMoveAcceptanceProof.postStartReadbackStartsNav2)"
+            :data-post-start-readback-starts-manual="String(plainFreeMoveAcceptanceProof.postStartReadbackStartsManual)"
+            :data-post-start-readback-starts-keyboard="String(plainFreeMoveAcceptanceProof.postStartReadbackStartsKeyboard)"
+            :data-post-start-readback-starts-map-runtime="String(plainFreeMoveAcceptanceProof.postStartReadbackStartsMapRuntime)"
+            :data-post-start-readback-submits-delivery="String(plainFreeMoveAcceptanceProof.postStartReadbackSubmitsDelivery)"
+            :data-post-start-readback-stops-motion="String(plainFreeMoveAcceptanceProof.postStartReadbackStopsMotion)"
             :data-required-success-markers="plainFreeMoveAcceptanceProof.requiredSuccessMarkersText"
             :data-start-endpoint="plainFreeMoveAcceptanceProof.startEndpoint"
             :data-stop-endpoint="plainFreeMoveAcceptanceProof.stopEndpoint"

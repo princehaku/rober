@@ -10401,6 +10401,15 @@ export async function buildRobotControlSummary(
     liveClosureSummary.fixed_mapping_preview_endpoint,
     "/api/robot-control/summary",
   ];
+  const freeMovePostStartReadbackSequenceLabels = freeMoveActionAcceptanceEndpoints.map((endpoint) => {
+    if (endpoint.includes("/free-roam/autonomy/latest")) return "读取自由移动状态";
+    if (endpoint.includes("/map/preview")) return "刷新地图画面";
+    if (endpoint.includes("/summary")) return "刷新总览";
+    return "只读复验";
+  });
+  const freeMovePostStartReadbackRefreshesLatest = freeMoveActionAcceptanceEndpoints.includes(liveClosureSummary.fixed_free_roam_latest_endpoint);
+  const freeMovePostStartReadbackRefreshesMapPreview = freeMoveActionAcceptanceEndpoints.includes("/api/robot-control/map/preview");
+  const freeMovePostStartReadbackRefreshesSummary = freeMoveActionAcceptanceEndpoints.includes("/api/robot-control/summary");
   const freeMoveActionRequiredSuccessMarkers = ["free_roam_latest_motion_ready"];
   const freeMoveActionMissingEvidence = freeMoveRunbookItem?.missing_evidence ?? [];
   const freeMoveActionStartEndpoint = freeMoveRunbookItem?.start_endpoint ?? liveClosureSummary.fixed_free_roam_start_endpoint;
@@ -11265,6 +11274,18 @@ export async function buildRobotControlSummary(
     current_free_move_action_readback_endpoint: liveClosureSummary.fixed_free_roam_latest_endpoint,
     current_free_move_action_acceptance_endpoints: freeMoveActionAcceptanceEndpoints,
     current_free_move_action_readback_endpoints: freeMoveActionAcceptanceEndpoints,
+    current_free_move_action_post_start_readback_endpoints: freeMoveActionAcceptanceEndpoints,
+    current_free_move_action_post_start_readback_sequence_labels: freeMovePostStartReadbackSequenceLabels,
+    current_free_move_action_post_start_readback_refreshes_latest: freeMovePostStartReadbackRefreshesLatest,
+    current_free_move_action_post_start_readback_refreshes_map_preview: freeMovePostStartReadbackRefreshesMapPreview,
+    current_free_move_action_post_start_readback_refreshes_summary: freeMovePostStartReadbackRefreshesSummary,
+    current_free_move_action_post_start_readback_sends_motion: false,
+    current_free_move_action_post_start_readback_starts_nav2: false,
+    current_free_move_action_post_start_readback_starts_manual: false,
+    current_free_move_action_post_start_readback_starts_keyboard: false,
+    current_free_move_action_post_start_readback_starts_map_runtime: false,
+    current_free_move_action_post_start_readback_submits_delivery: false,
+    current_free_move_action_post_start_readback_stops_motion: false,
     current_free_move_action_required_success_markers: freeMoveActionRequiredSuccessMarkers,
     current_free_move_action_proof_status: freeMoveRunbookItem?.proof_status ?? "blocked",
     current_free_move_action_missing_evidence: freeMoveActionMissingEvidence,
@@ -11492,6 +11513,18 @@ export async function buildRobotControlSummary(
     free_move_readback_endpoint: liveClosureSummary.fixed_free_roam_latest_endpoint,
     free_move_latest_endpoint: liveClosureSummary.fixed_free_roam_latest_endpoint,
     free_move_readback_endpoints: freeMoveActionAcceptanceEndpoints,
+    free_move_post_start_readback_endpoints: freeMoveActionAcceptanceEndpoints,
+    free_move_post_start_readback_sequence_labels: freeMovePostStartReadbackSequenceLabels,
+    free_move_post_start_readback_refreshes_latest: freeMovePostStartReadbackRefreshesLatest,
+    free_move_post_start_readback_refreshes_map_preview: freeMovePostStartReadbackRefreshesMapPreview,
+    free_move_post_start_readback_refreshes_summary: freeMovePostStartReadbackRefreshesSummary,
+    free_move_post_start_readback_sends_motion: false,
+    free_move_post_start_readback_starts_nav2: false,
+    free_move_post_start_readback_starts_manual: false,
+    free_move_post_start_readback_starts_keyboard: false,
+    free_move_post_start_readback_starts_map_runtime: false,
+    free_move_post_start_readback_submits_delivery: false,
+    free_move_post_start_readback_stops_motion: false,
     free_move_required_success_marker: freeMoveActionMissingEvidence[0] ?? "none",
     free_move_required_success_markers: freeMoveActionRequiredSuccessMarkers,
     free_move_proof_status: freeMoveRunbookItem?.proof_status ?? "blocked",

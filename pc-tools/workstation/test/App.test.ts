@@ -19934,6 +19934,18 @@ describe("App", () => {
     expect(freeMoveAcceptanceProof.attributes("data-readback-endpoint")).toBe("/api/robot-control/free-roam/autonomy/latest");
     expect(freeMoveAcceptanceProof.attributes("data-acceptance-endpoints")).toBe("/api/robot-control/free-roam/autonomy/latest,/api/robot-control/map/preview,/api/robot-control/summary");
     expect(freeMoveAcceptanceProof.attributes("data-readback-endpoints")).toBe("/api/robot-control/free-roam/autonomy/latest,/api/robot-control/map/preview,/api/robot-control/summary");
+    expect(freeMoveAcceptanceProof.attributes("data-post-start-readback-endpoints")).toBe(freeMoveAcceptanceProof.attributes("data-readback-endpoints"));
+    expect(freeMoveAcceptanceProof.attributes("data-post-start-readback-sequence-labels")).toBe("读取自由移动状态,刷新地图画面,刷新总览");
+    expect(freeMoveAcceptanceProof.attributes("data-post-start-readback-refreshes-latest")).toBe("true");
+    expect(freeMoveAcceptanceProof.attributes("data-post-start-readback-refreshes-map-preview")).toBe("true");
+    expect(freeMoveAcceptanceProof.attributes("data-post-start-readback-refreshes-summary")).toBe("true");
+    expect(freeMoveAcceptanceProof.attributes("data-post-start-readback-sends-motion")).toBe("false");
+    expect(freeMoveAcceptanceProof.attributes("data-post-start-readback-starts-nav2")).toBe("false");
+    expect(freeMoveAcceptanceProof.attributes("data-post-start-readback-starts-manual")).toBe("false");
+    expect(freeMoveAcceptanceProof.attributes("data-post-start-readback-starts-keyboard")).toBe("false");
+    expect(freeMoveAcceptanceProof.attributes("data-post-start-readback-starts-map-runtime")).toBe("false");
+    expect(freeMoveAcceptanceProof.attributes("data-post-start-readback-submits-delivery")).toBe("false");
+    expect(freeMoveAcceptanceProof.attributes("data-post-start-readback-stops-motion")).toBe("false");
     expect(freeMoveAcceptanceProof.attributes("data-required-success-markers")).toBe("free_roam_latest_motion_ready");
     expect(freeMoveAcceptanceProof.attributes("data-start-endpoint")).toBe("/api/robot-control/free-roam/autonomy/start");
     expect(freeMoveAcceptanceProof.attributes("data-stop-endpoint")).toBe("/api/robot-control/free-roam/autonomy/stop");
