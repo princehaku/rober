@@ -11372,6 +11372,7 @@ describe("App", () => {
     summaryFixture.current_minimal_precheck_pack_primary_action_id = "run_nav2_route";
     summaryFixture.current_minimal_precheck_pack_primary_action_display_label = "重跑图上行程并复验轮速";
     summaryFixture.current_minimal_precheck_pack_requires_safety_confirm = true;
+    summaryFixture.current_minimal_precheck_pack_safety_confirm_required = true;
     summaryFixture.current_minimal_precheck_pack_minimal_precheck_safety_only = true;
     summaryFixture.current_minimal_precheck_pack_camera_preflight_required = false;
     summaryFixture.current_minimal_precheck_pack_radar_preflight_required = false;
@@ -11471,6 +11472,7 @@ describe("App", () => {
     expect(minimalPrecheckPack.attributes("data-action-display-labels")).toBe("重跑图上行程并复验轮速,键盘连续手控,自由自助移动");
     expect(minimalPrecheckPack.attributes("data-primary-action-id")).toBe("run_nav2_route");
     expect(minimalPrecheckPack.attributes("data-requires-safety-confirm")).toBe("true");
+    expect(minimalPrecheckPack.attributes("data-safety-confirm-required")).toBe("true");
     expect(minimalPrecheckPack.attributes("data-minimal-precheck-safety-only")).toBe("true");
     expect(minimalPrecheckPack.attributes("data-camera-preflight-required")).toBe("false");
     expect(minimalPrecheckPack.attributes("data-radar-preflight-required")).toBe("false");

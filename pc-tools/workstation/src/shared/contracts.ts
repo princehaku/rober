@@ -3949,6 +3949,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   current_minimal_precheck_pack_primary_action_id?: RobotControlFieldAcceptancePacket["primary_safety_confirm_ready_action_id"];
   current_minimal_precheck_pack_primary_action_display_label?: RobotControlFieldAcceptancePacket["primary_safety_confirm_ready_action_display_label"];
   current_minimal_precheck_pack_requires_safety_confirm?: boolean;
+  current_minimal_precheck_pack_safety_confirm_required?: boolean;
   current_minimal_precheck_pack_minimal_precheck_safety_only?: boolean;
   current_minimal_precheck_pack_camera_preflight_required?: boolean;
   current_minimal_precheck_pack_radar_preflight_required?: boolean;

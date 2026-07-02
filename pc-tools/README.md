@@ -1580,3 +1580,9 @@ Nav2、建图 runtime、free-roam、manual、keyboard、delivery、stop 或 `/cm
 `current_radar_map_wysiwyg_pack_status=loaded`、`current_radar_map_wysiwyg_pack_needs_refresh=false`。
 刷新入口仍是 no-motion readback：`robot_control_executed=false`、`safe_to_control=false`，不启动 Nav2、
 manual、keyboard、free-roam、建图 runtime 或 `/cmd_vel`。当前所见缺口只剩相机首帧。
+
+2026-07-02 15:05 CST 起，最小预检 summary/DOM 合同补齐安全确认别名：
+`current_minimal_precheck_pack_safety_confirm_required=true`，并在
+`plain-current-minimal-precheck-pack` 上暴露 `data-safety-confirm-required=true`。该字段与
+`current_minimal_precheck_pack_requires_safety_confirm` 同源，避免现场脚本读到 null；同时继续明确
+相机、雷达、现场报告和路线 WYSIWYG 都不是运动发车前置，展示/读取该包不会发车或启动任何控制流程。

@@ -5146,3 +5146,11 @@ summary/DOM 读取。页面明确点击启用键盘不会发车，只有按住 W
 该刷新结果继续保持 `robot_control_executed=false`、`safe_to_control=false`，并确认不启动 Nav2、manual、
 keyboard、free-roam、建图 runtime 或 `/cmd_vel`。当前 WYSIWYG 缺口因此只剩 `camera`，建图仍被
 `camera_first_frame` 阻塞。
+
+2026-07-02 15:05 CST 起，最小发车预检包新增稳定别名
+`current_minimal_precheck_pack_safety_confirm_required`，与既有
+`current_minimal_precheck_pack_requires_safety_confirm` 同源。普通 PC 的
+`plain-current-minimal-precheck-pack` 同步暴露 `data-safety-confirm-required`。现场读回现在明确为：
+`status=safety_confirm_only`、`safety_confirm_required=true`、`minimal_precheck_safety_only=true`，
+相机/雷达/现场报告/路线 WYSIWYG 发车前置均为 `false`，展示该包本身不发车、不启动 Nav2、keyboard、
+free-roam、建图 runtime 或 `/cmd_vel`。

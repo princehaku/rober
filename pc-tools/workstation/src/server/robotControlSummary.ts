@@ -11532,6 +11532,7 @@ export async function buildRobotControlSummary(
       ?? currentMotionVerificationPackPrimaryAction?.label
       ?? "无待执行运动验收",
     current_minimal_precheck_pack_requires_safety_confirm: currentMotionVerificationPackActionIds.length > 0,
+    current_minimal_precheck_pack_safety_confirm_required: currentMotionVerificationPackActionIds.length > 0,
     current_minimal_precheck_pack_minimal_precheck_safety_only: currentMotionVerificationPackMinimalPrecheckSafetyOnly,
     current_minimal_precheck_pack_camera_preflight_required: currentMotionVerificationPackCameraPreflightRequired,
     current_minimal_precheck_pack_radar_preflight_required: currentMotionVerificationPackRadarPreflightRequired,

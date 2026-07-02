@@ -1073,6 +1073,7 @@ describe("robotControlSummary", () => {
     ]);
     expect(summary.current_minimal_precheck_pack_ready_action_count).toBe(3);
     expect(summary.current_minimal_precheck_pack_requires_safety_confirm).toBe(true);
+    expect(summary.current_minimal_precheck_pack_safety_confirm_required).toBe(true);
     expect(summary.current_minimal_precheck_pack_minimal_precheck_safety_only).toBe(true);
     expect(summary.current_minimal_precheck_pack_camera_preflight_required).toBe(false);
     expect(summary.current_minimal_precheck_pack_radar_preflight_required).toBe(false);

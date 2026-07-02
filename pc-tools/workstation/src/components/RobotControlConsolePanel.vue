@@ -4390,7 +4390,9 @@ const plainCurrentMinimalPrecheckPack = computed(() => {
     actionStartEndpointsText: startEndpoints.join(",") || "none",
     primaryActionId: summary?.current_minimal_precheck_pack_primary_action_id ?? motionPack.primaryActionId,
     primaryActionDisplayLabel: summary?.current_minimal_precheck_pack_primary_action_display_label ?? motionPack.primaryActionDisplayLabel,
-    requiresSafetyConfirm: summary?.current_minimal_precheck_pack_requires_safety_confirm ?? motionPack.requiresSafetyConfirm,
+    requiresSafetyConfirm: summary?.current_minimal_precheck_pack_safety_confirm_required
+      ?? summary?.current_minimal_precheck_pack_requires_safety_confirm
+      ?? motionPack.requiresSafetyConfirm,
     minimalPrecheckSafetyOnly: summary?.current_minimal_precheck_pack_minimal_precheck_safety_only ?? motionPack.minimalPrecheckSafetyOnly,
     cameraPreflightRequired: summary?.current_minimal_precheck_pack_camera_preflight_required ?? motionPack.cameraPreflightRequired,
     radarPreflightRequired: summary?.current_minimal_precheck_pack_radar_preflight_required ?? motionPack.radarPreflightRequired,
@@ -19792,6 +19794,7 @@ onBeforeUnmount(() => {
             :data-primary-action-id="plainCurrentMinimalPrecheckPack.primaryActionId"
             :data-primary-action-display-label="plainCurrentMinimalPrecheckPack.primaryActionDisplayLabel"
             :data-requires-safety-confirm="String(plainCurrentMinimalPrecheckPack.requiresSafetyConfirm)"
+            :data-safety-confirm-required="String(plainCurrentMinimalPrecheckPack.requiresSafetyConfirm)"
             :data-minimal-precheck-safety-only="String(plainCurrentMinimalPrecheckPack.minimalPrecheckSafetyOnly)"
             :data-camera-preflight-required="String(plainCurrentMinimalPrecheckPack.cameraPreflightRequired)"
             :data-radar-preflight-required="String(plainCurrentMinimalPrecheckPack.radarPreflightRequired)"
