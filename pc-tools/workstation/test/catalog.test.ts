@@ -9902,6 +9902,11 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.camera.first_frame_probe_visible_content_proven).toBe("false");
       expect(summary.readback_summary.camera.first_frame_probe_fallback_attempts_summary).toBe("MJPG@640x480@30 无首帧；YUYV@640x480@22 无首帧；default@current 无首帧");
       expect(summary.readback_summary.camera.first_frame_probe_checked_at_ms).toBe("1782652235202");
+      expect(summary.current_camera_wysiwyg_pack_status).toBe("needs_first_frame");
+      expect(summary.current_camera_wysiwyg_pack_missing_evidence).toEqual(["camera_first_frame"]);
+      expect(summary.current_camera_wysiwyg_pack_missing_evidence_labels).toEqual(["画面首帧"]);
+      expect(summary.current_camera_wysiwyg_pack_blocks_mapping_start).toBe(true);
+      expect(summary.current_camera_wysiwyg_pack_blocks_free_move).toBe(false);
       expect(summary.safe_to_control).toBe(false);
     } finally {
       await robotApi.close();

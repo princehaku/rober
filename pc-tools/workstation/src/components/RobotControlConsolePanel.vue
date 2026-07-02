@@ -4978,8 +4978,14 @@ const plainCurrentCameraWysiwygPack = computed(() => {
   const defaultPlain = status === "visible"
     ? "画面 WYSIWYG 已完成：当前页面或共享预览已有首帧；谁打开页面都接入同一条共享预览。"
     : `画面 WYSIWYG 未完成：${plainActionCardUserText(sharedPreviewGapPlain)}；${plainActionCardUserText(nextActionPlain)}；阻塞建图首帧，不阻塞自由移动。`;
+  const missingEvidence = summary?.current_camera_wysiwyg_pack_missing_evidence
+    ?? (status === "visible" ? [] : ["camera_first_frame"]);
+  const missingEvidenceLabels = summary?.current_camera_wysiwyg_pack_missing_evidence_labels
+    ?? (status === "visible" ? [] : ["画面首帧"]);
   return {
     status,
+    missingEvidenceText: missingEvidence.join(",") || "none",
+    missingEvidenceLabelsText: missingEvidenceLabels.join(",") || "none",
     plain: summary?.current_camera_wysiwyg_pack_plain ?? defaultPlain,
     visible,
     currentVisible,
@@ -20131,6 +20137,8 @@ onBeforeUnmount(() => {
             class="panel-note"
             data-testid="plain-current-camera-wysiwyg-pack"
             :data-status="plainCurrentCameraWysiwygPack.status"
+            :data-missing-evidence="plainCurrentCameraWysiwygPack.missingEvidenceText"
+            :data-missing-evidence-labels="plainCurrentCameraWysiwygPack.missingEvidenceLabelsText"
             :data-visible="String(plainCurrentCameraWysiwygPack.visible)"
             :data-current-visible="String(plainCurrentCameraWysiwygPack.currentVisible)"
             :data-first-frame-ready="String(plainCurrentCameraWysiwygPack.firstFrameReady)"

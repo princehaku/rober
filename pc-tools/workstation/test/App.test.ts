@@ -11086,6 +11086,8 @@ describe("App", () => {
     expect(cameraWysiwygPack.exists()).toBe(true);
     expect(cameraWysiwygPack.text()).toBe("画面 WYSIWYG 未完成：共享预览暂时没有出画面；相机不是页面独占；先换高速USB后复测；画面首帧会阻塞建图启动，不阻塞自由移动，复测只读不发车。");
     expect(cameraWysiwygPack.attributes("data-status")).toBe("needs_first_frame");
+    expect(cameraWysiwygPack.attributes("data-missing-evidence")).toBe("camera_first_frame");
+    expect(cameraWysiwygPack.attributes("data-missing-evidence-labels")).toBe("画面首帧");
     expect(cameraWysiwygPack.attributes("data-visible")).toBe("false");
     expect(cameraWysiwygPack.attributes("data-current-visible")).toBe("false");
     expect(cameraWysiwygPack.attributes("data-first-frame-ready")).toBe("false");

@@ -10552,6 +10552,8 @@ export async function buildRobotControlSummary(
   const currentCameraWysiwygPackStatus: "visible" | "needs_first_frame" = currentCameraWysiwygVisible
     ? "visible"
     : "needs_first_frame";
+  const currentCameraWysiwygPackMissingEvidence = currentCameraWysiwygVisible ? [] : ["camera_first_frame"];
+  const currentCameraWysiwygPackMissingEvidenceLabels = currentCameraWysiwygVisible ? [] : ["画面首帧"];
   const currentCameraWysiwygPackPlain = currentCameraWysiwygVisible
     ? `画面 WYSIWYG 已完成：当前页面或共享预览已有首帧；共享预览允许多人加入，当前观看 ${liveClosureSummary.live_wysiwyg_camera_shared_preview_client_count} 个页面。`
     : `画面 WYSIWYG 未完成：${liveClosureSummary.camera_shared_preview_gap_plain}；${liveClosureSummary.camera_recovery_next_action_plain}；画面首帧会阻塞建图启动，不阻塞自由移动，复测只读不发车。`;
@@ -12045,6 +12047,8 @@ export async function buildRobotControlSummary(
       ? liveClosureSummary.live_wysiwyg_camera_recovery_sequence_labels
       : fieldAcceptancePacket.primary_no_motion_readback_action_sequence_labels,
     current_camera_wysiwyg_pack_status: currentCameraWysiwygPackStatus,
+    current_camera_wysiwyg_pack_missing_evidence: currentCameraWysiwygPackMissingEvidence,
+    current_camera_wysiwyg_pack_missing_evidence_labels: currentCameraWysiwygPackMissingEvidenceLabels,
     current_camera_wysiwyg_pack_plain: currentCameraWysiwygPackPlain,
     current_camera_wysiwyg_pack_visible: liveClosureSummary.live_wysiwyg_camera_visible,
     current_camera_wysiwyg_pack_current_visible: liveClosureSummary.camera_current_visible,

@@ -4389,6 +4389,8 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   current_wysiwyg_next_action_after_readback_sequence?: string[];
   current_wysiwyg_next_action_after_readback_sequence_labels?: string[];
   current_camera_wysiwyg_pack_status?: "visible" | "needs_first_frame";
+  current_camera_wysiwyg_pack_missing_evidence?: string[];
+  current_camera_wysiwyg_pack_missing_evidence_labels?: string[];
   current_camera_wysiwyg_pack_plain?: string;
   current_camera_wysiwyg_pack_visible?: RobotControlLiveClosureSummary["live_wysiwyg_camera_visible"];
   current_camera_wysiwyg_pack_current_visible?: RobotControlLiveClosureSummary["camera_current_visible"];
