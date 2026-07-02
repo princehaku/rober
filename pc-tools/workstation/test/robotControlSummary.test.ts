@@ -622,6 +622,26 @@ describe("robotControlSummary", () => {
     expect(summary.radar_overlay_blocks_wysiwyg).toBe(true);
     expect(summary.radar_overlay_blocks_free_move).toBe(false);
     expect(summary.radar_overlay_wysiwyg_complete).toBe(false);
+    expect(summary.current_radar_map_wysiwyg_pack_status).toBe("needs_readback_refresh");
+    expect(summary.current_radar_map_wysiwyg_pack_plain).toContain("雷达点未贴到当前地图");
+    expect(summary.current_radar_map_wysiwyg_pack_overlay_status).toBe(summary.live_closure_summary?.radar_overlay_status);
+    expect(summary.current_radar_map_wysiwyg_pack_current_point_count).toBe(summary.live_closure_summary?.radar_overlay_current_point_count);
+    expect(summary.current_radar_map_wysiwyg_pack_source_point_count).toBe(summary.live_closure_summary?.radar_overlay_source_point_count);
+    expect(summary.current_radar_map_wysiwyg_pack_loaded).toBe(false);
+    expect(summary.current_radar_map_wysiwyg_pack_needs_refresh).toBe(true);
+    expect(summary.current_radar_map_wysiwyg_pack_blocks_wysiwyg).toBe(true);
+    expect(summary.current_radar_map_wysiwyg_pack_blocks_free_move).toBe(false);
+    expect(summary.current_radar_map_wysiwyg_pack_readback_only).toBe(true);
+    expect(summary.current_radar_map_wysiwyg_pack_no_motion_refresh).toBe(true);
+    expect(summary.current_radar_map_wysiwyg_pack_sends_motion_when_clicked).toBe(false);
+    expect(summary.current_radar_map_wysiwyg_pack_starts_radar_lifecycle).toBe(false);
+    expect(summary.current_radar_map_wysiwyg_pack_starts_nav2).toBe(false);
+    expect(summary.current_radar_map_wysiwyg_pack_starts_manual).toBe(false);
+    expect(summary.current_radar_map_wysiwyg_pack_starts_keyboard).toBe(false);
+    expect(summary.current_radar_map_wysiwyg_pack_starts_free_roam).toBe(false);
+    expect(summary.current_radar_map_wysiwyg_pack_starts_map_runtime).toBe(false);
+    expect(summary.current_radar_map_wysiwyg_pack_submits_delivery).toBe(false);
+    expect(summary.current_radar_map_wysiwyg_pack_stops_motion).toBe(false);
     expect(summary.radar_overlay_readback_endpoint).toBe("/api/robot-control/radar/scan-proof/refresh");
     expect(summary.radar_overlay_refresh_endpoint).toBe("/api/robot-control/radar/scan-proof/refresh");
     expect(summary.radar_overlay_status_endpoint).toBe("/api/robot-control/radar/status");
@@ -635,6 +655,12 @@ describe("robotControlSummary", () => {
       "/api/robot-control/map/preview",
       "/api/robot-control/summary",
     ]);
+    expect(summary.current_radar_map_wysiwyg_pack_sequence).toEqual(summary.radar_overlay_recovery_sequence);
+    expect(summary.current_radar_map_wysiwyg_pack_sequence_labels).toEqual(summary.radar_overlay_refresh_sequence_labels);
+    expect(summary.current_radar_map_wysiwyg_pack_refresh_endpoint).toBe("/api/robot-control/radar/scan-proof/refresh");
+    expect(summary.current_radar_map_wysiwyg_pack_status_endpoint).toBe("/api/robot-control/radar/status");
+    expect(summary.current_radar_map_wysiwyg_pack_map_preview_endpoint).toBe("/api/robot-control/map/preview");
+    expect(summary.current_radar_map_wysiwyg_pack_summary_endpoint).toBe("/api/robot-control/summary");
     expect(summary.fixed_radar_overlay_refresh_endpoint).toBe("/api/robot-control/radar/scan-proof/refresh");
     expect(summary.fixed_radar_overlay_map_preview_endpoint).toBe("/api/robot-control/map/preview");
     expect(summary.radar_overlay_refresh_sends_motion).toBe(false);
@@ -2298,6 +2324,15 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.camera_hardware_action_label).toBe("换高速USB后复测");
     expect(summary.live_closure_summary?.live_wysiwyg_primary_refresh_endpoint).toBe("/api/robot-control/camera/first-frame/probe");
     expect(summary.live_closure_summary?.live_wysiwyg_primary_refresh_label).toBe("换高速USB后复测相机首帧");
+    expect(summary.current_radar_map_wysiwyg_pack_status).toBe("loaded");
+    expect(summary.current_radar_map_wysiwyg_pack_plain).toContain("雷达贴图已完成");
+    expect(summary.current_radar_map_wysiwyg_pack_loaded).toBe(true);
+    expect(summary.current_radar_map_wysiwyg_pack_needs_refresh).toBe(false);
+    expect(summary.current_radar_map_wysiwyg_pack_blocks_wysiwyg).toBe(false);
+    expect(summary.current_radar_map_wysiwyg_pack_blocks_free_move).toBe(false);
+    expect(summary.current_radar_map_wysiwyg_pack_readback_only).toBe(true);
+    expect(summary.current_radar_map_wysiwyg_pack_sends_motion_when_clicked).toBe(false);
+    expect(summary.current_radar_map_wysiwyg_pack_starts_radar_lifecycle).toBe(false);
     expect(summary.current_wysiwyg_next_action_status).toBe("only_camera_hardware_action");
     expect(summary.current_wysiwyg_next_action_plain).toBe("雷达贴图已完成；当前只剩相机硬件处理：换高速USB后复测。自由移动不受相机阻塞，建图仍等待相机首帧；处理后按相机首帧、共享预览、summary 顺序只读复测。");
     expect(summary.current_wysiwyg_next_action_radar_overlay_complete).toBe(true);

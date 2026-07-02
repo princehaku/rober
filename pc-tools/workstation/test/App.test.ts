@@ -10830,6 +10830,39 @@ describe("App", () => {
     summaryFixture.current_wysiwyg_next_action_hardware_action_label = "换高速USB后复测";
     summaryFixture.current_wysiwyg_next_action_after_readback_sequence = cameraOnlySequence;
     summaryFixture.current_wysiwyg_next_action_after_readback_sequence_labels = cameraHardwareReadbackLabels;
+    summaryFixture.current_radar_map_wysiwyg_pack_status = "loaded";
+    summaryFixture.current_radar_map_wysiwyg_pack_plain = "雷达贴图已完成：当前地图雷达点 5 个，来源 6 个；继续监看同轮地图画面。";
+    summaryFixture.current_radar_map_wysiwyg_pack_overlay_status = "loaded";
+    summaryFixture.current_radar_map_wysiwyg_pack_current_point_count = "5";
+    summaryFixture.current_radar_map_wysiwyg_pack_source_point_count = "6";
+    summaryFixture.current_radar_map_wysiwyg_pack_current_vs_source_plain = "地图雷达点：当前 5 个，来源 6 个；状态=loaded。";
+    summaryFixture.current_radar_map_wysiwyg_pack_next_action_plain = "当前地图已有雷达点；继续监看同轮地图画面。";
+    summaryFixture.current_radar_map_wysiwyg_pack_sequence = [
+      "/api/robot-control/radar/scan-proof/refresh",
+      "/api/robot-control/radar/status",
+      "/api/robot-control/map/preview",
+      "/api/robot-control/summary",
+    ];
+    summaryFixture.current_radar_map_wysiwyg_pack_sequence_labels = ["刷新雷达扫描读数", "读取雷达状态", "刷新地图画面", "刷新总览"];
+    summaryFixture.current_radar_map_wysiwyg_pack_refresh_endpoint = "/api/robot-control/radar/scan-proof/refresh";
+    summaryFixture.current_radar_map_wysiwyg_pack_status_endpoint = "/api/robot-control/radar/status";
+    summaryFixture.current_radar_map_wysiwyg_pack_map_preview_endpoint = "/api/robot-control/map/preview";
+    summaryFixture.current_radar_map_wysiwyg_pack_summary_endpoint = "/api/robot-control/summary";
+    summaryFixture.current_radar_map_wysiwyg_pack_loaded = true;
+    summaryFixture.current_radar_map_wysiwyg_pack_needs_refresh = false;
+    summaryFixture.current_radar_map_wysiwyg_pack_blocks_wysiwyg = false;
+    summaryFixture.current_radar_map_wysiwyg_pack_blocks_free_move = false;
+    summaryFixture.current_radar_map_wysiwyg_pack_readback_only = true;
+    summaryFixture.current_radar_map_wysiwyg_pack_no_motion_refresh = true;
+    summaryFixture.current_radar_map_wysiwyg_pack_sends_motion_when_clicked = false;
+    summaryFixture.current_radar_map_wysiwyg_pack_starts_radar_lifecycle = false;
+    summaryFixture.current_radar_map_wysiwyg_pack_starts_nav2 = false;
+    summaryFixture.current_radar_map_wysiwyg_pack_starts_manual = false;
+    summaryFixture.current_radar_map_wysiwyg_pack_starts_keyboard = false;
+    summaryFixture.current_radar_map_wysiwyg_pack_starts_free_roam = false;
+    summaryFixture.current_radar_map_wysiwyg_pack_starts_map_runtime = false;
+    summaryFixture.current_radar_map_wysiwyg_pack_submits_delivery = false;
+    summaryFixture.current_radar_map_wysiwyg_pack_stops_motion = false;
 
     const mockedFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
@@ -10858,6 +10891,33 @@ describe("App", () => {
     expect(currentWysiwygAction.attributes("data-current-wysiwyg-next-action-hardware-action-label")).toBe("换高速USB后复测");
     expect(currentWysiwygAction.attributes("data-current-wysiwyg-next-action-after-readback-sequence")).toBe("/api/robot-control/camera/first-frame/probe,/api/robot-control/camera/mjpeg/status,/api/robot-control/summary");
     expect(currentWysiwygAction.attributes("data-current-wysiwyg-next-action-after-readback-sequence-labels")).toBe("复测相机首帧,读取共享预览状态,刷新当前卡点");
+    const radarMapPack = wrapper.find('[data-testid="plain-current-radar-map-wysiwyg-pack"]');
+    expect(radarMapPack.exists()).toBe(true);
+    expect(radarMapPack.text()).toBe("雷达贴图已完成：当前地图雷达点 5 个，来源 6 个；继续监看同轮地图画面。");
+    expect(radarMapPack.attributes("data-status")).toBe("loaded");
+    expect(radarMapPack.attributes("data-overlay-status")).toBe("loaded");
+    expect(radarMapPack.attributes("data-current-point-count")).toBe("5");
+    expect(radarMapPack.attributes("data-source-point-count")).toBe("6");
+    expect(radarMapPack.attributes("data-sequence")).toBe("/api/robot-control/radar/scan-proof/refresh,/api/robot-control/radar/status,/api/robot-control/map/preview,/api/robot-control/summary");
+    expect(radarMapPack.attributes("data-refresh-endpoint")).toBe("/api/robot-control/radar/scan-proof/refresh");
+    expect(radarMapPack.attributes("data-status-endpoint")).toBe("/api/robot-control/radar/status");
+    expect(radarMapPack.attributes("data-map-preview-endpoint")).toBe("/api/robot-control/map/preview");
+    expect(radarMapPack.attributes("data-summary-endpoint")).toBe("/api/robot-control/summary");
+    expect(radarMapPack.attributes("data-loaded")).toBe("true");
+    expect(radarMapPack.attributes("data-needs-refresh")).toBe("false");
+    expect(radarMapPack.attributes("data-blocks-wysiwyg")).toBe("false");
+    expect(radarMapPack.attributes("data-blocks-free-move")).toBe("false");
+    expect(radarMapPack.attributes("data-readback-only")).toBe("true");
+    expect(radarMapPack.attributes("data-no-motion-refresh")).toBe("true");
+    expect(radarMapPack.attributes("data-sends-motion-when-clicked")).toBe("false");
+    expect(radarMapPack.attributes("data-starts-radar-lifecycle")).toBe("false");
+    expect(radarMapPack.attributes("data-starts-nav2")).toBe("false");
+    expect(radarMapPack.attributes("data-starts-manual")).toBe("false");
+    expect(radarMapPack.attributes("data-starts-keyboard")).toBe("false");
+    expect(radarMapPack.attributes("data-starts-free-roam")).toBe("false");
+    expect(radarMapPack.attributes("data-starts-map-runtime")).toBe("false");
+    expect(radarMapPack.attributes("data-submits-delivery")).toBe("false");
+    expect(radarMapPack.attributes("data-stops-motion")).toBe("false");
     const cameraProof = wrapper.find('[data-testid="plain-field-acceptance-camera-proof"]');
     expect(cameraProof.exists()).toBe(true);
     expect(cameraProof.text()).toContain("唯一所见缺口是画面");
@@ -11192,6 +11252,8 @@ describe("App", () => {
       radar_overlay_status: "not_current",
       radar_overlay_current_point_count: "0",
       radar_overlay_source_point_count: "174",
+      radar_overlay_current_vs_source_plain: "地图雷达点：当前 0 个，来源 174 个；状态=not_current，旧来源点已抑制，未贴到当前地图。",
+      radar_overlay_refresh_next_action_plain: "旧雷达来源点 174 个已抑制；先刷新雷达扫描读数，再刷新地图画面，确认同轮雷达点贴图。",
       radar_overlay_needs_refresh: true,
       radar_overlay_blocks_wysiwyg: true,
       radar_overlay_blocks_free_move: false,
@@ -11216,6 +11278,12 @@ describe("App", () => {
     summaryFixture.radar_overlay_source_point_count = "174";
     summaryFixture.radar_overlay_blocks_free_move = false;
     summaryFixture.radar_overlay_blocks_wysiwyg = true;
+    const summaryFixtureWithLegacyRadarPack = summaryFixture as Record<string, any>;
+    for (const key of Object.keys(summaryFixtureWithLegacyRadarPack)) {
+      if (key.startsWith("current_radar_map_wysiwyg_pack_")) {
+        delete summaryFixtureWithLegacyRadarPack[key];
+      }
+    }
 
     stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
@@ -11244,6 +11312,23 @@ describe("App", () => {
     expect(radarMapProof.attributes("data-starts-map-runtime")).toBe("false");
     expect(radarMapProof.attributes("data-starts-nav2")).toBe("false");
     expect(radarMapProof.attributes("data-starts-free-roam")).toBe("false");
+    const radarMapPack = wrapper.find('[data-testid="plain-current-radar-map-wysiwyg-pack"]');
+    expect(radarMapPack.exists()).toBe(true);
+    expect(radarMapPack.text()).toContain("雷达点未贴到当前地图");
+    expect(radarMapPack.text()).toContain("当前 0 个，来源 174 个");
+    expect(radarMapPack.attributes("data-status")).toBe("needs_readback_refresh");
+    expect(radarMapPack.attributes("data-overlay-status")).toBe("not_current");
+    expect(radarMapPack.attributes("data-current-point-count")).toBe("0");
+    expect(radarMapPack.attributes("data-source-point-count")).toBe("174");
+    expect(radarMapPack.attributes("data-sequence")).toBe("/api/robot-control/radar/scan-proof/refresh,/api/robot-control/radar/status,/api/robot-control/map/preview,/api/robot-control/summary");
+    expect(radarMapPack.attributes("data-loaded")).toBe("false");
+    expect(radarMapPack.attributes("data-needs-refresh")).toBe("true");
+    expect(radarMapPack.attributes("data-blocks-wysiwyg")).toBe("true");
+    expect(radarMapPack.attributes("data-blocks-free-move")).toBe("false");
+    expect(radarMapPack.attributes("data-readback-only")).toBe("true");
+    expect(radarMapPack.attributes("data-sends-motion-when-clicked")).toBe("false");
+    expect(radarMapPack.attributes("data-starts-radar-lifecycle")).toBe("false");
+    expect(radarMapPack.attributes("data-starts-map-runtime")).toBe("false");
   });
 
   it("exposes live WYSIWYG readback gaps when camera map and radar are unreadable", async () => {

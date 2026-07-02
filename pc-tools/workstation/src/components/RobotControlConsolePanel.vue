@@ -4587,6 +4587,73 @@ const plainCurrentWysiwygActionGauge = computed(() => {
     stopsMotion: summary?.current_wysiwyg_action_stops_motion ?? packet?.wysiwyg_refresh_stops_motion ?? false,
   };
 });
+const plainCurrentRadarMapWysiwygPack = computed(() => {
+  // 雷达贴图包只描述当前地图画布的雷达点是否有效；按钮/读回链路都不能顺手发车或启动 runtime。
+  const summary = robotSummary.value;
+  const live = plainLiveClosureSummary.value;
+  const sequence = summary?.current_radar_map_wysiwyg_pack_sequence
+    ?? live?.radar_overlay_recovery_sequence
+    ?? ["/api/robot-control/radar/scan-proof/refresh", "/api/robot-control/radar/status", "/api/robot-control/map/preview", "/api/robot-control/summary"];
+  const sequenceLabels = summary?.current_radar_map_wysiwyg_pack_sequence_labels
+    ?? live?.live_wysiwyg_radar_map_refresh_sequence_labels
+    ?? ["刷新雷达扫描读数", "读取雷达状态", "刷新地图画面", "刷新总览"];
+  const loaded = summary?.current_radar_map_wysiwyg_pack_loaded
+    ?? (live?.radar_overlay_status === "loaded" && live?.radar_map_points_visible === true && live?.radar_overlay_blocks_wysiwyg !== true);
+  const status = summary?.current_radar_map_wysiwyg_pack_status
+    ?? (loaded ? "loaded" : "needs_readback_refresh");
+  const currentPointCount = summary?.current_radar_map_wysiwyg_pack_current_point_count
+    ?? live?.radar_overlay_current_point_count
+    ?? "0";
+  const sourcePointCount = summary?.current_radar_map_wysiwyg_pack_source_point_count
+    ?? live?.radar_overlay_source_point_count
+    ?? "0";
+  const currentVsSourcePlain = summary?.current_radar_map_wysiwyg_pack_current_vs_source_plain
+    ?? live?.radar_overlay_current_vs_source_plain
+    ?? "";
+  const defaultPlain = loaded
+    ? `雷达贴图已完成：当前地图雷达点 ${currentPointCount} 个，来源 ${sourcePointCount} 个；继续监看同轮地图画面。`
+    : `雷达点未贴到当前地图；按只读顺序刷新雷达扫描、读取雷达状态、刷新地图画面、刷新总览。${currentVsSourcePlain ? `当前状态：${plainActionCardUserText(currentVsSourcePlain)}` : ""}`;
+  return {
+    status,
+    plain: summary?.current_radar_map_wysiwyg_pack_plain ?? defaultPlain,
+    overlayStatus: summary?.current_radar_map_wysiwyg_pack_overlay_status ?? live?.radar_overlay_status ?? "not_loaded",
+    currentPointCount,
+    sourcePointCount,
+    currentVsSourcePlain,
+    nextActionPlain: summary?.current_radar_map_wysiwyg_pack_next_action_plain
+      ?? live?.radar_overlay_refresh_next_action_plain
+      ?? "",
+    sequenceText: sequence.join(",") || "none",
+    sequenceLabelsText: sequenceLabels.join(",") || "none",
+    refreshEndpoint: summary?.current_radar_map_wysiwyg_pack_refresh_endpoint
+      ?? live?.fixed_radar_overlay_refresh_endpoint
+      ?? "/api/robot-control/radar/scan-proof/refresh",
+    statusEndpoint: summary?.current_radar_map_wysiwyg_pack_status_endpoint
+      ?? live?.fixed_live_wysiwyg_radar_status_endpoint
+      ?? "/api/robot-control/radar/status",
+    mapPreviewEndpoint: summary?.current_radar_map_wysiwyg_pack_map_preview_endpoint
+      ?? live?.fixed_radar_overlay_map_preview_endpoint
+      ?? "/api/robot-control/map/preview",
+    summaryEndpoint: summary?.current_radar_map_wysiwyg_pack_summary_endpoint
+      ?? live?.fixed_objective_audit_summary_endpoint
+      ?? "/api/robot-control/summary",
+    loaded,
+    needsRefresh: summary?.current_radar_map_wysiwyg_pack_needs_refresh ?? live?.radar_overlay_needs_refresh ?? !loaded,
+    blocksWysiwyg: summary?.current_radar_map_wysiwyg_pack_blocks_wysiwyg ?? live?.radar_overlay_blocks_wysiwyg ?? !loaded,
+    blocksFreeMove: summary?.current_radar_map_wysiwyg_pack_blocks_free_move ?? false,
+    readbackOnly: summary?.current_radar_map_wysiwyg_pack_readback_only ?? true,
+    noMotionRefresh: summary?.current_radar_map_wysiwyg_pack_no_motion_refresh ?? true,
+    sendsMotionWhenClicked: summary?.current_radar_map_wysiwyg_pack_sends_motion_when_clicked ?? false,
+    startsRadarLifecycle: summary?.current_radar_map_wysiwyg_pack_starts_radar_lifecycle ?? false,
+    startsNav2: summary?.current_radar_map_wysiwyg_pack_starts_nav2 ?? false,
+    startsManual: summary?.current_radar_map_wysiwyg_pack_starts_manual ?? false,
+    startsKeyboard: summary?.current_radar_map_wysiwyg_pack_starts_keyboard ?? false,
+    startsFreeRoam: summary?.current_radar_map_wysiwyg_pack_starts_free_roam ?? false,
+    startsMapRuntime: summary?.current_radar_map_wysiwyg_pack_starts_map_runtime ?? false,
+    submitsDelivery: summary?.current_radar_map_wysiwyg_pack_submits_delivery ?? false,
+    stopsMotion: summary?.current_radar_map_wysiwyg_pack_stops_motion ?? false,
+  };
+});
 const plainFieldAcceptanceEndpointText = computed(() => (
   plainFieldAcceptancePacket.value?.acceptance_endpoints.join(",") || "none"
 ));
@@ -19338,6 +19405,39 @@ onBeforeUnmount(() => {
             data-sends-motion-when-clicked="false"
           >
             {{ plainCurrentWysiwygActionGauge.text }}
+          </p>
+          <p
+            class="panel-note"
+            data-testid="plain-current-radar-map-wysiwyg-pack"
+            :data-status="plainCurrentRadarMapWysiwygPack.status"
+            :data-overlay-status="plainCurrentRadarMapWysiwygPack.overlayStatus"
+            :data-current-point-count="plainCurrentRadarMapWysiwygPack.currentPointCount"
+            :data-source-point-count="plainCurrentRadarMapWysiwygPack.sourcePointCount"
+            :data-current-vs-source-plain="plainCurrentRadarMapWysiwygPack.currentVsSourcePlain"
+            :data-next-action-plain="plainCurrentRadarMapWysiwygPack.nextActionPlain"
+            :data-sequence="plainCurrentRadarMapWysiwygPack.sequenceText"
+            :data-sequence-labels="plainCurrentRadarMapWysiwygPack.sequenceLabelsText"
+            :data-refresh-endpoint="plainCurrentRadarMapWysiwygPack.refreshEndpoint"
+            :data-status-endpoint="plainCurrentRadarMapWysiwygPack.statusEndpoint"
+            :data-map-preview-endpoint="plainCurrentRadarMapWysiwygPack.mapPreviewEndpoint"
+            :data-summary-endpoint="plainCurrentRadarMapWysiwygPack.summaryEndpoint"
+            :data-loaded="String(plainCurrentRadarMapWysiwygPack.loaded)"
+            :data-needs-refresh="String(plainCurrentRadarMapWysiwygPack.needsRefresh)"
+            :data-blocks-wysiwyg="String(plainCurrentRadarMapWysiwygPack.blocksWysiwyg)"
+            :data-blocks-free-move="String(plainCurrentRadarMapWysiwygPack.blocksFreeMove)"
+            :data-readback-only="String(plainCurrentRadarMapWysiwygPack.readbackOnly)"
+            :data-no-motion-refresh="String(plainCurrentRadarMapWysiwygPack.noMotionRefresh)"
+            :data-sends-motion-when-clicked="String(plainCurrentRadarMapWysiwygPack.sendsMotionWhenClicked)"
+            :data-starts-radar-lifecycle="String(plainCurrentRadarMapWysiwygPack.startsRadarLifecycle)"
+            :data-starts-nav2="String(plainCurrentRadarMapWysiwygPack.startsNav2)"
+            :data-starts-manual="String(plainCurrentRadarMapWysiwygPack.startsManual)"
+            :data-starts-keyboard="String(plainCurrentRadarMapWysiwygPack.startsKeyboard)"
+            :data-starts-free-roam="String(plainCurrentRadarMapWysiwygPack.startsFreeRoam)"
+            :data-starts-map-runtime="String(plainCurrentRadarMapWysiwygPack.startsMapRuntime)"
+            :data-submits-delivery="String(plainCurrentRadarMapWysiwygPack.submitsDelivery)"
+            :data-stops-motion="String(plainCurrentRadarMapWysiwygPack.stopsMotion)"
+          >
+            {{ plainCurrentRadarMapWysiwygPack.plain }}
           </p>
           <p
             class="panel-note"
