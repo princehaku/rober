@@ -9830,6 +9830,9 @@ describe("App", () => {
     expect(workstationStyles).toContain('"map drive"');
     expect(workstationStyles).toContain("图传必须在第一屏右上角");
     expect(workstationStyles).toContain("max-height: min(48vh, 430px);");
+    expect(workstationStyles).toContain('.robot-console-grid[data-layout="visual-first"] .plain-camera-panel .plain-camera-usb-recovery-proof');
+    expect(workstationStyles).toContain("不要把 USB 12M/非独占结论藏到详情区");
+    expect(workstationStyles).toContain('.plain-camera-usb-recovery-proof[data-state="USB full-speed"]');
     expect(workstationStyles).toContain('.robot-console-grid[data-layout="visual-first"] .plain-motion-panel > .plain-keyboard-control');
     expect(workstationStyles).toContain("键盘控制是真正的普通用户入口");
     expect(workstationStyles).toContain('.robot-console-grid[data-layout="visual-first"] .plain-keyboard-control > .keyboard-direction-pad');

@@ -546,8 +546,18 @@ h3 {
   /* 图传必须在第一屏右上角，不能被地图长画布挤到下一屏。 */
   order: 0;
   grid-area: camera;
+  display: flex;
+  flex-direction: column;
   max-height: min(48vh, 430px);
   overflow: auto;
+}
+
+.robot-console-grid[data-layout="visual-first"] .plain-camera-panel > h3 {
+  order: -4;
+}
+
+.robot-console-grid[data-layout="visual-first"] .plain-camera-panel > .panel-action-row {
+  order: -3;
 }
 
 .robot-console-grid[data-layout="visual-first"] .plain-radar-panel {
@@ -601,7 +611,6 @@ h3 {
 
 .robot-console-grid[data-layout="visual-first"] .plain-camera-panel .plain-camera-current-frame-proof,
 .robot-console-grid[data-layout="visual-first"] .plain-camera-panel .plain-camera-shared-preview-proof,
-.robot-console-grid[data-layout="visual-first"] .plain-camera-panel .plain-camera-usb-recovery-proof,
 .robot-console-grid[data-layout="visual-first"] .plain-keyboard-control > [data-testid="plain-keyboard-main-action-summary"],
 .robot-console-grid[data-layout="visual-first"] .plain-keyboard-control > [data-testid="keyboard-focus-contract"],
 .robot-console-grid[data-layout="visual-first"] .plain-keyboard-control > [data-testid="plain-keyboard-safety-summary"],
@@ -633,7 +642,14 @@ h3 {
 }
 
 .robot-console-grid[data-layout="visual-first"] .camera-preview-frame {
+  order: -1;
   min-height: 240px;
+}
+
+.robot-console-grid[data-layout="visual-first"] .plain-camera-panel .plain-camera-usb-recovery-proof {
+  /* 相机无画面时最关键的是硬件诊断；不要把 USB 12M/非独占结论藏到详情区。 */
+  order: -2;
+  margin-top: 6px;
 }
 
 .simple-user-console {
@@ -1599,6 +1615,23 @@ h3 {
 .plain-camera-shared-preview-proof[data-state="可能被占用"] {
   border-left-color: #cf222e;
   background: #fff5f5;
+}
+
+.plain-camera-usb-recovery-proof {
+  /* USB full-speed 是真实相机不可见时的主因，样式上必须比普通说明更醒目。 */
+  border: 1px solid #efcf9f;
+  border-left: 3px solid #d97706;
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: #fff8ed;
+  color: #3f2a12;
+}
+
+.plain-camera-usb-recovery-proof[data-state="USB full-speed"],
+.plain-camera-usb-recovery-proof[data-state="需硬件处理"] {
+  border-color: #efb36a;
+  border-left-color: #b45309;
+  background: #fff4e5;
 }
 
 .plain-radar-panel {

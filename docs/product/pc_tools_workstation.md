@@ -5337,3 +5337,13 @@ PC 简易发车界面。
 到 `esp32_bridge`，再由 bridge 映射 vendor `T=11/PWM164`；vendor `T=13` 在无编码器产品上不作为当前 PC 手控路径。
 现场相机若仍报告 USB `12M` full-speed 和首帧失败，属于物理 USB 链路风险，不是 PC 多人预览独占问题，且不阻塞地图、
 雷达、键盘手控、自由移动或 Nav2 路线执行。
+
+2026-07-03 02:32 CST 复查真实上位机后，DV20 摄像头仍枚举在 Orange Pi `usb-5310400.usb-1` / `6-1`
+full-speed 链路，`lsusb -t` 显示 UVC video/audio interface 均为 `12M`；停止 8088 服务后直接
+`v4l2-ctl -d /dev/video1 --stream-mmap` 测试 `MJPG@480x320@30`、`MJPG@640x480@30`、
+`YUYV@320x240@20` 均返回 `VIDIOC_STREAMON returned -1 (Input/output error)` 且输出 0 字节。
+执行 `/sys/bus/usb/devices/6-1/authorized` 重新枚举并重启 `trashbot-local-webrtc-camera.service` 后，
+设备仍停留在 `12M`，直接 V4L2 取帧仍失败。PC summary 现在明确显示
+`source_diagnosis_status=uvc_full_speed_usb_not_exclusive`、`camera_usb_speed=12M`、
+`camera_hardware_action_required=true`、`camera_blocks_free_move=false`；普通首页相机卡首屏固定显示
+`plain-camera-usb-recovery-proof`，直接告诉用户这是 USB full-speed/物理链路问题，不是页面独占。
