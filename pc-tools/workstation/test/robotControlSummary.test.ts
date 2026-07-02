@@ -3073,6 +3073,16 @@ describe("robotControlSummary", () => {
     expect(summary.mapping_lidar_fresh_next_action_plain).toBe(summary.live_closure_summary?.mapping_lidar_fresh_next_action_plain);
     expect(summary.live_closure_summary?.mapping_start_unblock_plain).toContain("建图启动还差：画面首帧");
     expect(summary.live_closure_summary?.mapping_start_unblock_plain).not.toContain("雷达新鲜");
+    expect(summary.current_goal_missing_ids).toContain("camera_wysiwyg");
+    expect(summary.current_goal_missing_ids).toContain("mapping_start");
+    expect(summary.current_goal_missing_labels).toContain("画面所见即所得");
+    expect(summary.current_goal_blocked_ids).toEqual(summary.current_goal_blocked_action_ids);
+    expect(summary.current_goal_blocked_labels).toContain("画面所见即所得");
+    expect(summary.current_goal_mapping_blocked_only_by_camera).toBe(true);
+    expect(summary.current_goal_free_move_allowed_while_mapping_blocked).toBe(true);
+    expect(summary.current_goal_camera_only_blocks_mapping_plain).toBe(
+      "当前建图只差画面首帧；自由移动仍可在安全确认后先做，画面恢复后再启动建图。",
+    );
     expect(summary.live_closure_summary?.objective_audit_summary_plain).toContain("建图启动还差画面首帧");
     expect(summary.live_closure_summary?.objective_audit_summary_plain).not.toContain("建图启动还差画面首帧、雷达新鲜");
   });

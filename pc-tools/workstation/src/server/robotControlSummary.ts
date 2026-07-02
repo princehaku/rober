@@ -11299,6 +11299,24 @@ export async function buildRobotControlSummary(
     `建图缺口：${liveClosureSummary.mapping_start_missing_reasons.join("、") || "暂无"}`,
     `自由移动：${liveClosureSummary.free_move_start_ready ? "可在安全确认后先做" : "暂不可做"}`,
   ].join("；");
+  const currentGoalChecklist = goalChecklist ?? [];
+  const currentGoalIncompleteItems = currentGoalChecklist.filter((item) => item.status !== "done");
+  const currentGoalIncompleteIds = currentGoalIncompleteItems.map((item) => item.id);
+  const currentGoalIncompleteLabels = currentGoalIncompleteItems.map((item) => item.title);
+  const currentGoalReadyActionLabels = goalSummary.ready_action_items.map((item) => item.title);
+  const currentGoalBlockedLabels = goalSummary.blocked_action_items.map((item) => item.title);
+  const currentGoalMappingBlockedOnlyByCamera = !liveClosureSummary.mapping_start_ready
+    && liveClosureSummary.mapping_start_missing_reasons.length === 1
+    && liveClosureSummary.mapping_start_missing_reasons[0] === "camera_first_frame";
+  const currentGoalFreeMoveAllowedWhileMappingBlocked = liveClosureSummary.free_move_start_ready
+    && !liveClosureSummary.mapping_start_ready;
+  const currentGoalCameraOnlyBlocksMappingPlain = currentGoalMappingBlockedOnlyByCamera
+    ? liveClosureSummary.free_move_start_ready
+      ? "当前建图只差画面首帧；自由移动仍可在安全确认后先做，画面恢复后再启动建图。"
+      : "当前建图只差画面首帧；先恢复相机首帧后再启动建图。"
+    : liveClosureSummary.mapping_start_ready
+      ? "相机和雷达已满足建图启动条件；勾安全确认后可启动建图。"
+      : `建图还差：${liveClosureSummary.mapping_start_missing_reasons.join("、") || "未读到"}；不把建图缺口误当作移动发车前置。`;
 
   return {
     schema: ROBOT_CONTROL_SCHEMA,
@@ -11364,9 +11382,19 @@ export async function buildRobotControlSummary(
     current_goal_summary_plain: goalSummary.summary_plain,
     current_goal_move_now_status_plain: goalSummary.move_now_status_plain,
     current_goal_mapping_blockers_plain: goalSummary.mapping_blockers_plain,
+    current_goal_incomplete_item_ids: currentGoalIncompleteIds,
+    current_goal_incomplete_labels: currentGoalIncompleteLabels,
+    current_goal_missing_ids: currentGoalIncompleteIds,
+    current_goal_missing_labels: currentGoalIncompleteLabels,
     current_goal_next_action_item_ids: goalSummary.next_action_item_ids,
     current_goal_ready_action_ids: goalSummary.ready_action_ids,
+    current_goal_ready_action_labels: currentGoalReadyActionLabels,
     current_goal_blocked_action_ids: goalSummary.blocked_action_ids,
+    current_goal_blocked_ids: goalSummary.blocked_action_ids,
+    current_goal_blocked_labels: currentGoalBlockedLabels,
+    current_goal_mapping_blocked_only_by_camera: currentGoalMappingBlockedOnlyByCamera,
+    current_goal_free_move_allowed_while_mapping_blocked: currentGoalFreeMoveAllowedWhileMappingBlocked,
+    current_goal_camera_only_blocks_mapping_plain: currentGoalCameraOnlyBlocksMappingPlain,
     current_goal_sends_motion_when_clicked: false,
     // 当前卡点和四项目标总览放到 summary 顶层，便于现场只用一条 curl 判断下一步。
     status: liveClosureSummary.status,
