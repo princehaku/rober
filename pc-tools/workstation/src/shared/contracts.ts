@@ -4467,6 +4467,9 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   current_camera_wysiwyg_pack_low_bandwidth_fallback_attempted?: RobotControlSummaryResponse["readback_summary"]["camera"]["first_frame_probe_low_bandwidth_fallback_attempted"];
   current_camera_wysiwyg_pack_low_bandwidth_fallback_min_size?: RobotControlSummaryResponse["readback_summary"]["camera"]["first_frame_probe_low_bandwidth_fallback_min_size"];
   current_camera_wysiwyg_pack_first_frame_probe_fallback_attempts_summary?: RobotControlSummaryResponse["readback_summary"]["camera"]["first_frame_probe_fallback_attempts_summary"];
+  current_camera_wysiwyg_pack_software_fallback_exhausted?: boolean;
+  current_camera_wysiwyg_pack_requires_physical_usb_fix?: boolean;
+  current_camera_wysiwyg_pack_physical_fix_label?: string;
   current_camera_wysiwyg_pack_hardware_action_required?: RobotControlLiveClosureSummary["camera_hardware_action_required"];
   current_camera_wysiwyg_pack_hardware_action_label?: RobotControlLiveClosureSummary["camera_hardware_action_label"];
   current_camera_wysiwyg_pack_usb_full_speed_detected?: RobotControlLiveClosureSummary["camera_usb_full_speed_detected"];

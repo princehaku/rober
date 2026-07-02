@@ -5030,6 +5030,29 @@ const plainCurrentCameraWysiwygPack = computed(() => {
     ?? (status === "visible" ? [] : ["camera_first_frame"]);
   const missingEvidenceLabels = summary?.current_camera_wysiwyg_pack_missing_evidence_labels
     ?? (status === "visible" ? [] : ["画面首帧"]);
+  const lowBandwidthFallbackAttempted = summary?.current_camera_wysiwyg_pack_low_bandwidth_fallback_attempted
+    ?? summary?.readback_summary?.camera?.first_frame_probe_low_bandwidth_fallback_attempted
+    ?? "false";
+  const lowBandwidthFallbackMinSize = summary?.current_camera_wysiwyg_pack_low_bandwidth_fallback_min_size
+    ?? summary?.readback_summary?.camera?.first_frame_probe_low_bandwidth_fallback_min_size
+    ?? "none";
+  const hardwareActionRequired = summary?.current_camera_wysiwyg_pack_hardware_action_required
+    ?? live?.camera_hardware_action_required
+    ?? false;
+  const hardwareActionLabel = summary?.current_camera_wysiwyg_pack_hardware_action_label
+    ?? live?.camera_hardware_action_label
+    ?? "none";
+  const usbFullSpeedDetected = summary?.current_camera_wysiwyg_pack_usb_full_speed_detected
+    ?? live?.camera_usb_full_speed_detected
+    ?? false;
+  const softwareFallbackExhausted = summary?.current_camera_wysiwyg_pack_software_fallback_exhausted
+    ?? (status !== "visible"
+      && lowBandwidthFallbackAttempted === "true"
+      && lowBandwidthFallbackMinSize !== "none"
+      && hardwareActionRequired
+      && usbFullSpeedDetected);
+  const requiresPhysicalUsbFix = summary?.current_camera_wysiwyg_pack_requires_physical_usb_fix
+    ?? (softwareFallbackExhausted || (status !== "visible" && hardwareActionRequired && usbFullSpeedDetected));
   return {
     status,
     missingEvidenceText: missingEvidence.join(",") || "none",
@@ -5061,24 +5084,18 @@ const plainCurrentCameraWysiwygPack = computed(() => {
     firstFrameFailureReason: summary?.current_camera_wysiwyg_pack_first_frame_failure_reason
       ?? live?.camera_first_frame_failure_reason
       ?? "not_loaded",
-    lowBandwidthFallbackAttempted: summary?.current_camera_wysiwyg_pack_low_bandwidth_fallback_attempted
-      ?? summary?.readback_summary?.camera?.first_frame_probe_low_bandwidth_fallback_attempted
-      ?? "false",
-    lowBandwidthFallbackMinSize: summary?.current_camera_wysiwyg_pack_low_bandwidth_fallback_min_size
-      ?? summary?.readback_summary?.camera?.first_frame_probe_low_bandwidth_fallback_min_size
-      ?? "none",
+    lowBandwidthFallbackAttempted,
+    lowBandwidthFallbackMinSize,
     firstFrameProbeFallbackAttemptsSummary: summary?.current_camera_wysiwyg_pack_first_frame_probe_fallback_attempts_summary
       ?? summary?.readback_summary?.camera?.first_frame_probe_fallback_attempts_summary
       ?? "none",
-    hardwareActionRequired: summary?.current_camera_wysiwyg_pack_hardware_action_required
-      ?? live?.camera_hardware_action_required
-      ?? false,
-    hardwareActionLabel: summary?.current_camera_wysiwyg_pack_hardware_action_label
-      ?? live?.camera_hardware_action_label
-      ?? "none",
-    usbFullSpeedDetected: summary?.current_camera_wysiwyg_pack_usb_full_speed_detected
-      ?? live?.camera_usb_full_speed_detected
-      ?? false,
+    softwareFallbackExhausted,
+    requiresPhysicalUsbFix,
+    physicalFixLabel: summary?.current_camera_wysiwyg_pack_physical_fix_label
+      ?? (requiresPhysicalUsbFix ? hardwareActionLabel : "无需硬件处理"),
+    hardwareActionRequired,
+    hardwareActionLabel,
+    usbFullSpeedDetected,
     usbSpeed: summary?.current_camera_wysiwyg_pack_usb_speed ?? live?.camera_usb_speed ?? "not_loaded",
     nextActionPlain,
     sequenceText: sequence.join(",") || "none",
@@ -20265,6 +20282,9 @@ onBeforeUnmount(() => {
             :data-low-bandwidth-fallback-attempted="plainCurrentCameraWysiwygPack.lowBandwidthFallbackAttempted"
             :data-low-bandwidth-fallback-min-size="plainCurrentCameraWysiwygPack.lowBandwidthFallbackMinSize"
             :data-first-frame-probe-fallback-attempts-summary="plainCurrentCameraWysiwygPack.firstFrameProbeFallbackAttemptsSummary"
+            :data-software-fallback-exhausted="String(plainCurrentCameraWysiwygPack.softwareFallbackExhausted)"
+            :data-requires-physical-usb-fix="String(plainCurrentCameraWysiwygPack.requiresPhysicalUsbFix)"
+            :data-physical-fix-label="plainCurrentCameraWysiwygPack.physicalFixLabel"
             :data-hardware-action-required="String(plainCurrentCameraWysiwygPack.hardwareActionRequired)"
             :data-hardware-action-label="plainCurrentCameraWysiwygPack.hardwareActionLabel"
             :data-usb-full-speed-detected="String(plainCurrentCameraWysiwygPack.usbFullSpeedDetected)"

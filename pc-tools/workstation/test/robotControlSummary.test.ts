@@ -2254,6 +2254,9 @@ describe("robotControlSummary", () => {
           mjpeg_open_source_fallback_attempted: true,
           open_source_fallback_failure_reason: "first_frame_total_timeout",
           primary_source_failure_reason: "first_frame_total_timeout",
+          first_frame_probe_low_bandwidth_fallback_attempted: true,
+          first_frame_probe_low_bandwidth_fallback_min_size: "160x120",
+          first_frame_probe_fallback_attempts_summary: "MJPG@160x120:first_frame_timeout/deadline_expired; YUYV@160x120:first_frame_timeout/deadline_expired",
           current_selection: {
             selected_name: "USB Composite Device: DV20 USB",
             selected_path: "/dev/video1",
@@ -2298,7 +2301,24 @@ describe("robotControlSummary", () => {
       });
     }));
 
-    const summary = await buildRobotControlSummary("http://192.168.1.11:8787", null, null, {
+    const summary = await buildRobotControlSummary("http://192.168.1.11:8787", {
+      checked_at_ms: 1_786_000_000_000,
+      proxy_status: "probe_failed",
+      status: "first_frame_timeout",
+      failure_reason: "deadline_expired",
+      open_ok: "false",
+      read_ok: "false",
+      visible_content_proven: "false",
+      backend_smoke_status: "backend_no_frame_observed",
+      backend_frame_observed: "false",
+      backend_attempts: "8",
+      streamon_io_error_observed: "false",
+      streamon_io_error_count: "0",
+      latest_streamon_io_error: "none",
+      fallback_attempts_summary: "MJPG@160x120:first_frame_timeout/deadline_expired; YUYV@160x120:first_frame_timeout/deadline_expired",
+      low_bandwidth_fallback_attempted: "true",
+      low_bandwidth_fallback_min_size: "160x120",
+    }, null, {
       readbackTimeoutMs: 100,
     });
 
@@ -2363,6 +2383,11 @@ describe("robotControlSummary", () => {
     expect(summary.current_camera_wysiwyg_pack_mjpeg_open_source_fallback_attempted).toBe("true");
     expect(summary.current_camera_wysiwyg_pack_open_source_fallback_failure_reason).toBe("first_frame_total_timeout");
     expect(summary.current_camera_wysiwyg_pack_primary_source_failure_reason).toBe("first_frame_total_timeout");
+    expect(summary.current_camera_wysiwyg_pack_low_bandwidth_fallback_attempted).toBe("true");
+    expect(summary.current_camera_wysiwyg_pack_low_bandwidth_fallback_min_size).toBe("160x120");
+    expect(summary.current_camera_wysiwyg_pack_software_fallback_exhausted).toBe(true);
+    expect(summary.current_camera_wysiwyg_pack_requires_physical_usb_fix).toBe(true);
+    expect(summary.current_camera_wysiwyg_pack_physical_fix_label).toBe("换高速USB后复测");
     expect(summary.current_camera_wysiwyg_pack_hardware_action_required).toBe(true);
     expect(summary.current_camera_wysiwyg_pack_hardware_action_label).toBe("换高速USB后复测");
     expect(summary.current_camera_wysiwyg_pack_usb_full_speed_detected).toBe(true);

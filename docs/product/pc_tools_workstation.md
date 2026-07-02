@@ -5216,6 +5216,14 @@ keyboard、free-roam、建图 runtime、delivery、stop 或 `/cmd_vel`。硬件�
 `data-first-frame-probe-fallback-attempts-summary`。刷新 summary 或页面时，现场脚本不用解析一次性 POST 回包，
 也能确认 `160x120` 低带宽 fallback 已尝试且仍无首帧；这些字段只读，不启动 camera exclusive capture、
 Nav2、manual、keyboard、free-roam、建图 runtime、delivery、stop 或 `/cmd_vel`。
+2026-07-02 CST 起，summary 与普通 PC DOM 还会暴露
+`current_camera_wysiwyg_pack_software_fallback_exhausted`、
+`current_camera_wysiwyg_pack_requires_physical_usb_fix` 和
+`current_camera_wysiwyg_pack_physical_fix_label`（DOM 为
+`data-software-fallback-exhausted`、`data-requires-physical-usb-fix`、
+`data-physical-fix-label`）。当首帧仍不可见、低带宽 fallback 已试到具体最小尺寸、且 USB
+full-speed/硬件动作同时成立时，PC 端明确显示软件降级已耗尽，需要先换高速 USB 口/线或带供电
+Hub 后复测；该结论仍只读，不阻塞自由移动，不会启动任何运动链路。
 
 2026-07-02 15:20 CST 起，共享 MJPEG 首屏首帧 fallback 改成短单次尝试、多格式覆盖：单次格式尝试
 `1.2s`，总窗口仍为 `9s`，确保现场 DV20 枚举里的 `YUYV@320x240@25`、`YUYV@640x480@22`

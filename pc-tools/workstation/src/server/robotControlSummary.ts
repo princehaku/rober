@@ -10636,6 +10636,18 @@ export async function buildRobotControlSummary(
     : "needs_first_frame";
   const currentCameraWysiwygPackMissingEvidence = currentCameraWysiwygVisible ? [] : ["camera_first_frame"];
   const currentCameraWysiwygPackMissingEvidenceLabels = currentCameraWysiwygVisible ? [] : ["画面首帧"];
+  const currentCameraWysiwygPackSoftwareFallbackExhausted = !currentCameraWysiwygVisible
+    && readbackSummary.camera.first_frame_probe_low_bandwidth_fallback_attempted === "true"
+    && readbackSummary.camera.first_frame_probe_low_bandwidth_fallback_min_size !== "none"
+    && liveClosureSummary.camera_hardware_action_required
+    && liveClosureSummary.camera_usb_full_speed_detected;
+  const currentCameraWysiwygPackRequiresPhysicalUsbFix = currentCameraWysiwygPackSoftwareFallbackExhausted
+    || (!currentCameraWysiwygVisible
+      && liveClosureSummary.camera_hardware_action_required
+      && liveClosureSummary.camera_usb_full_speed_detected);
+  const currentCameraWysiwygPackPhysicalFixLabel = currentCameraWysiwygPackRequiresPhysicalUsbFix
+    ? liveClosureSummary.camera_hardware_action_label
+    : "无需硬件处理";
   const currentCameraWysiwygPackPlain = currentCameraWysiwygVisible
     ? `画面 WYSIWYG 已完成：当前页面或共享预览已有首帧；共享预览允许多人加入，当前观看 ${liveClosureSummary.live_wysiwyg_camera_shared_preview_client_count} 个页面。`
     : `画面 WYSIWYG 未完成：${liveClosureSummary.camera_shared_preview_gap_plain}；${liveClosureSummary.camera_recovery_next_action_plain}；画面首帧会阻塞建图启动，不阻塞自由移动，复测只读不发车。`;
@@ -12249,6 +12261,9 @@ export async function buildRobotControlSummary(
     current_camera_wysiwyg_pack_low_bandwidth_fallback_attempted: readbackSummary.camera.first_frame_probe_low_bandwidth_fallback_attempted,
     current_camera_wysiwyg_pack_low_bandwidth_fallback_min_size: readbackSummary.camera.first_frame_probe_low_bandwidth_fallback_min_size,
     current_camera_wysiwyg_pack_first_frame_probe_fallback_attempts_summary: readbackSummary.camera.first_frame_probe_fallback_attempts_summary,
+    current_camera_wysiwyg_pack_software_fallback_exhausted: currentCameraWysiwygPackSoftwareFallbackExhausted,
+    current_camera_wysiwyg_pack_requires_physical_usb_fix: currentCameraWysiwygPackRequiresPhysicalUsbFix,
+    current_camera_wysiwyg_pack_physical_fix_label: currentCameraWysiwygPackPhysicalFixLabel,
     current_camera_wysiwyg_pack_hardware_action_required: liveClosureSummary.camera_hardware_action_required,
     current_camera_wysiwyg_pack_hardware_action_label: liveClosureSummary.camera_hardware_action_label,
     current_camera_wysiwyg_pack_usb_full_speed_detected: liveClosureSummary.camera_usb_full_speed_detected,
