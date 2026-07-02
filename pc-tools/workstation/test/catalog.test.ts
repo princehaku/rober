@@ -7171,6 +7171,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(live.keyboard_feedback_readback_endpoint).toBe("/api/robot-control/base/feedback-samples");
       expect(summary.keyboard_summary_endpoint).toBe("/api/robot-control/summary");
       expect(summary.minimal_precheck_safety_only).toBe(true);
+      expect(summary.current_minimal_precheck_pack_missing_evidence).toEqual([]);
+      expect(summary.current_minimal_precheck_pack_missing_evidence_labels).toEqual([]);
       expect(summary.safety_confirm_required_for_motion).toBe(summary.live_closure_summary?.safety_confirm_required_for_motion);
       expect(summary.live_motion_runbook_minimal_precheck_safety_only).toBe(true);
       expect(summary.live_motion_runbook_safety_confirm_required).toBe(summary.live_closure_summary?.live_motion_runbook_safety_confirm_required);

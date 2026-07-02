@@ -10935,6 +10935,22 @@ export async function buildRobotControlSummary(
     }
     return "发车前预检未证明只剩安全确认；先读取当前运动验收包，确认是否还有额外前置。";
   })();
+  const currentMinimalPrecheckPackMissingEvidence = currentMinimalPrecheckPackStatus === "blocked"
+    ? [
+      ...(currentMotionVerificationPackCameraPreflightRequired ? ["camera_preflight"] : []),
+      ...(currentMotionVerificationPackRadarPreflightRequired ? ["radar_preflight"] : []),
+      ...(currentMotionVerificationPackOperatorReportPreflightRequired ? ["operator_report_preflight"] : []),
+      ...(currentMotionVerificationPackRouteWysiwygPreflightRequired ? ["route_wysiwyg_preflight"] : []),
+      ...(!currentMotionVerificationPackMinimalPrecheckSafetyOnly ? ["minimal_precheck_safety_only"] : []),
+    ]
+    : [];
+  const currentMinimalPrecheckPackMissingEvidenceLabels = currentMinimalPrecheckPackMissingEvidence.map((id) => ({
+    camera_preflight: "相机前置",
+    radar_preflight: "雷达前置",
+    operator_report_preflight: "现场报告前置",
+    route_wysiwyg_preflight: "路线 WYSIWYG 前置",
+    minimal_precheck_safety_only: "只需安全确认未证明",
+  }[id] ?? id));
   const currentKeyboardControlPackStatus: "complete" | "ready_for_safety_confirm" | "blocked" = keyboardRunbookItem?.completed === true
     ? "complete"
     : (keyboardRunbookItem?.ready ?? liveClosureSummary.keyboard_continuous_ready)
@@ -11702,6 +11718,8 @@ export async function buildRobotControlSummary(
     current_minimal_precheck_pack_primary_action_display_label: currentMotionVerificationPackPrimaryAction?.display_label
       ?? currentMotionVerificationPackPrimaryAction?.label
       ?? "无待执行运动验收",
+    current_minimal_precheck_pack_missing_evidence: currentMinimalPrecheckPackMissingEvidence,
+    current_minimal_precheck_pack_missing_evidence_labels: currentMinimalPrecheckPackMissingEvidenceLabels,
     current_minimal_precheck_pack_requires_safety_confirm: currentMotionVerificationPackActionIds.length > 0,
     current_minimal_precheck_pack_safety_confirm_required: currentMotionVerificationPackActionIds.length > 0,
     current_minimal_precheck_pack_minimal_precheck_safety_only: currentMotionVerificationPackMinimalPrecheckSafetyOnly,

@@ -4382,6 +4382,24 @@ const plainCurrentMinimalPrecheckPack = computed(() => {
   const defaultPlain = status === "safety_confirm_only"
     ? `发车前预检已精简：${displayLabels.join("、")} 只要求勾现场安全确认；相机、雷达和现场报告不作为额外发车前置。`
     : "发车前预检未证明只剩安全确认；先读取运动验收包。";
+  const fallbackMissingEvidence = status === "blocked"
+    ? [
+      ...(motionPack.cameraPreflightRequired ? ["camera_preflight"] : []),
+      ...(motionPack.radarPreflightRequired ? ["radar_preflight"] : []),
+      ...(motionPack.operatorReportPreflightRequired ? ["operator_report_preflight"] : []),
+      ...(motionPack.routeWysiwygPreflightRequired ? ["route_wysiwyg_preflight"] : []),
+      ...(!motionPack.minimalPrecheckSafetyOnly ? ["minimal_precheck_safety_only"] : []),
+    ]
+    : [];
+  const missingEvidence = summary?.current_minimal_precheck_pack_missing_evidence ?? fallbackMissingEvidence;
+  const missingEvidenceLabels = summary?.current_minimal_precheck_pack_missing_evidence_labels
+    ?? missingEvidence.map((id) => ({
+      camera_preflight: "相机前置",
+      radar_preflight: "雷达前置",
+      operator_report_preflight: "现场报告前置",
+      route_wysiwyg_preflight: "路线 WYSIWYG 前置",
+      minimal_precheck_safety_only: "只需安全确认未证明",
+    }[id] ?? id));
   return {
     status,
     plain: summary?.current_minimal_precheck_pack_plain ?? defaultPlain,
@@ -4390,6 +4408,8 @@ const plainCurrentMinimalPrecheckPack = computed(() => {
     actionStartEndpointsText: startEndpoints.join(",") || "none",
     primaryActionId: summary?.current_minimal_precheck_pack_primary_action_id ?? motionPack.primaryActionId,
     primaryActionDisplayLabel: summary?.current_minimal_precheck_pack_primary_action_display_label ?? motionPack.primaryActionDisplayLabel,
+    missingEvidenceText: missingEvidence.join(",") || "none",
+    missingEvidenceLabelsText: missingEvidenceLabels.join(",") || "none",
     requiresSafetyConfirm: summary?.current_minimal_precheck_pack_safety_confirm_required
       ?? summary?.current_minimal_precheck_pack_requires_safety_confirm
       ?? motionPack.requiresSafetyConfirm,
@@ -19878,6 +19898,8 @@ onBeforeUnmount(() => {
             :data-action-start-endpoints="plainCurrentMinimalPrecheckPack.actionStartEndpointsText"
             :data-primary-action-id="plainCurrentMinimalPrecheckPack.primaryActionId"
             :data-primary-action-display-label="plainCurrentMinimalPrecheckPack.primaryActionDisplayLabel"
+            :data-missing-evidence="plainCurrentMinimalPrecheckPack.missingEvidenceText"
+            :data-missing-evidence-labels="plainCurrentMinimalPrecheckPack.missingEvidenceLabelsText"
             :data-requires-safety-confirm="String(plainCurrentMinimalPrecheckPack.requiresSafetyConfirm)"
             :data-safety-confirm-required="String(plainCurrentMinimalPrecheckPack.requiresSafetyConfirm)"
             :data-minimal-precheck-safety-only="String(plainCurrentMinimalPrecheckPack.minimalPrecheckSafetyOnly)"
