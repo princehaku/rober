@@ -4122,6 +4122,16 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   current_wysiwyg_action_stops_motion?: boolean;
   current_wysiwyg_action_missing_surface_ids?: RobotControlFieldAcceptancePacket["wysiwyg_missing_surface_ids"];
   current_wysiwyg_action_refresh_mode?: RobotControlFieldAcceptanceWysiwygRefreshMode;
+  current_wysiwyg_next_action_status?: "complete" | "only_camera_hardware_action" | "camera_readback_only" | "radar_map_refresh" | "refresh_current_wysiwyg";
+  current_wysiwyg_next_action_plain?: string;
+  current_wysiwyg_next_action_radar_overlay_complete?: boolean;
+  current_wysiwyg_next_action_only_camera_missing?: boolean;
+  current_wysiwyg_next_action_allows_free_move?: boolean;
+  current_wysiwyg_next_action_blocks_mapping_start?: boolean;
+  current_wysiwyg_next_action_hardware_action_required?: boolean;
+  current_wysiwyg_next_action_hardware_action_label?: string;
+  current_wysiwyg_next_action_after_readback_sequence?: string[];
+  current_wysiwyg_next_action_after_readback_sequence_labels?: string[];
   field_acceptance_remaining_operator_action_summary_plain?: RobotControlFieldAcceptancePacket["remaining_operator_action_summary_plain"];
   field_acceptance_remaining_hardware_action_summary_plain?: RobotControlFieldAcceptancePacket["remaining_hardware_action_summary_plain"];
   field_acceptance_remaining_no_motion_action_summary_plain?: RobotControlFieldAcceptancePacket["remaining_no_motion_action_summary_plain"];

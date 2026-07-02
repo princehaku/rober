@@ -4465,6 +4465,7 @@ const plainCurrentWysiwygActionGauge = computed(() => {
   const method = summary?.current_wysiwyg_action_method ?? packet?.primary_no_motion_readback_action_method ?? "none";
   const actionRequired = summary?.current_wysiwyg_action_required ?? (packet?.primary_no_motion_readback_action_id !== "none");
   const sendsMotion = summary?.current_wysiwyg_action_sends_motion ?? packet?.primary_no_motion_readback_action_sends_motion ?? false;
+  const nextActionPlain = summary?.current_wysiwyg_next_action_plain ?? "";
   const state = packet?.wysiwyg_ready ? "已满足" : actionRequired ? "可只读刷新" : "无动作";
   const missingText = missingSurfaceIds.length
     ? missingSurfaceIds.map((id) => plainFieldAcceptanceWysiwygSurfaceLabel(id)).join("、")
@@ -4486,7 +4487,17 @@ const plainCurrentWysiwygActionGauge = computed(() => {
     missingSurfaceIds,
     missingSurfaceText: missingSurfaceIds.join(",") || "none",
     state,
-    text: `当前所见动作：${plainActionCardUserText(label)}；还差 ${missingText}；只读链路：${sequenceText}。`,
+    text: nextActionPlain || `当前所见动作：${plainActionCardUserText(label)}；还差 ${missingText}；只读链路：${sequenceText}。`,
+    nextActionStatus: summary?.current_wysiwyg_next_action_status ?? "refresh_current_wysiwyg",
+    nextActionPlain,
+    nextActionRadarOverlayComplete: summary?.current_wysiwyg_next_action_radar_overlay_complete ?? false,
+    nextActionOnlyCameraMissing: summary?.current_wysiwyg_next_action_only_camera_missing ?? false,
+    nextActionAllowsFreeMove: summary?.current_wysiwyg_next_action_allows_free_move ?? false,
+    nextActionBlocksMappingStart: summary?.current_wysiwyg_next_action_blocks_mapping_start ?? false,
+    nextActionHardwareActionRequired: summary?.current_wysiwyg_next_action_hardware_action_required ?? false,
+    nextActionHardwareActionLabel: summary?.current_wysiwyg_next_action_hardware_action_label ?? "none",
+    nextActionAfterReadbackSequence: summary?.current_wysiwyg_next_action_after_readback_sequence?.join(",") || "none",
+    nextActionAfterReadbackSequenceLabels: summary?.current_wysiwyg_next_action_after_readback_sequence_labels?.join(",") || "none",
     refreshesSummary: summary?.current_wysiwyg_action_refreshes_summary ?? packet?.primary_no_motion_readback_action_refreshes_summary ?? false,
     refreshesRadarScanProof: summary?.current_wysiwyg_action_refreshes_radar_scan_proof ?? packet?.primary_no_motion_readback_action_refreshes_radar_scan_proof ?? false,
     refreshesCameraFirstFrameProbe: summary?.current_wysiwyg_action_refreshes_camera_first_frame_probe ?? packet?.primary_no_motion_readback_action_refreshes_camera_first_frame_probe ?? false,
@@ -19191,6 +19202,16 @@ onBeforeUnmount(() => {
             :data-current-wysiwyg-action-sequence-labels="plainCurrentWysiwygActionGauge.sequenceLabelsText"
             :data-current-wysiwyg-action-refresh-mode="plainCurrentWysiwygActionGauge.refreshMode"
             :data-current-wysiwyg-action-missing-surface-ids="plainCurrentWysiwygActionGauge.missingSurfaceText"
+            :data-current-wysiwyg-next-action-status="plainCurrentWysiwygActionGauge.nextActionStatus"
+            :data-current-wysiwyg-next-action-plain="plainCurrentWysiwygActionGauge.nextActionPlain"
+            :data-current-wysiwyg-next-action-radar-overlay-complete="String(plainCurrentWysiwygActionGauge.nextActionRadarOverlayComplete)"
+            :data-current-wysiwyg-next-action-only-camera-missing="String(plainCurrentWysiwygActionGauge.nextActionOnlyCameraMissing)"
+            :data-current-wysiwyg-next-action-allows-free-move="String(plainCurrentWysiwygActionGauge.nextActionAllowsFreeMove)"
+            :data-current-wysiwyg-next-action-blocks-mapping-start="String(plainCurrentWysiwygActionGauge.nextActionBlocksMappingStart)"
+            :data-current-wysiwyg-next-action-hardware-action-required="String(plainCurrentWysiwygActionGauge.nextActionHardwareActionRequired)"
+            :data-current-wysiwyg-next-action-hardware-action-label="plainCurrentWysiwygActionGauge.nextActionHardwareActionLabel"
+            :data-current-wysiwyg-next-action-after-readback-sequence="plainCurrentWysiwygActionGauge.nextActionAfterReadbackSequence"
+            :data-current-wysiwyg-next-action-after-readback-sequence-labels="plainCurrentWysiwygActionGauge.nextActionAfterReadbackSequenceLabels"
             :data-current-wysiwyg-action-refreshes-summary="String(plainCurrentWysiwygActionGauge.refreshesSummary)"
             :data-current-wysiwyg-action-refreshes-radar-scan-proof="String(plainCurrentWysiwygActionGauge.refreshesRadarScanProof)"
             :data-current-wysiwyg-action-refreshes-camera-first-frame-probe="String(plainCurrentWysiwygActionGauge.refreshesCameraFirstFrameProbe)"

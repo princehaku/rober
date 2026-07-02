@@ -10457,6 +10457,30 @@ export async function buildRobotControlSummary(
   const radarOverlayWysiwygComplete = liveClosureSummary.radar_overlay_status === "loaded"
     && liveClosureSummary.radar_map_points_visible
     && !liveClosureSummary.radar_overlay_blocks_wysiwyg;
+  const currentWysiwygNextActionStatus = liveClosureSummary.live_wysiwyg_missing_surface_ids.length === 0
+    ? "complete"
+    : liveWysiwygOnlyCameraMissing && liveClosureSummary.camera_hardware_action_required
+      ? "only_camera_hardware_action"
+      : liveWysiwygOnlyCameraMissing
+        ? "camera_readback_only"
+        : liveClosureSummary.live_wysiwyg_missing_surface_ids.includes("radar_map_points")
+          ? "radar_map_refresh"
+          : "refresh_current_wysiwyg";
+  const currentWysiwygNextActionPlain = (() => {
+    if (currentWysiwygNextActionStatus === "complete") {
+      return "当前所见已满足：画面、地图和雷达贴图都已对齐；继续监看，按完整行程读回验收。";
+    }
+    if (currentWysiwygNextActionStatus === "only_camera_hardware_action") {
+      return `雷达贴图已完成；当前只剩相机硬件处理：${liveClosureSummary.camera_hardware_action_label}。自由移动不受相机阻塞，建图仍等待相机首帧；处理后按相机首帧、共享预览、summary 顺序只读复测。`;
+    }
+    if (currentWysiwygNextActionStatus === "camera_readback_only") {
+      return "雷达贴图已完成；当前只剩相机首帧复测。自由移动不受相机阻塞，建图仍等待相机首帧；按相机首帧、共享预览、summary 顺序只读复测。";
+    }
+    if (currentWysiwygNextActionStatus === "radar_map_refresh") {
+      return "当前所见还差雷达地图贴图；先刷新雷达扫描读数，再读雷达状态和地图画面，确认同轮雷达点贴到地图。";
+    }
+    return "当前所见还有多个缺口；按只读复验链路刷新雷达、地图、相机和 summary，不发送运动命令。";
+  })();
   const fieldAcceptanceSteps = liveClosureSummary.live_motion_runbook_items.map((item) => ({
     id: item.id,
     label: item.label,
@@ -11520,6 +11544,20 @@ export async function buildRobotControlSummary(
     current_wysiwyg_action_stops_motion: fieldAcceptancePacket.wysiwyg_refresh_stops_motion,
     current_wysiwyg_action_missing_surface_ids: fieldAcceptancePacket.wysiwyg_missing_surface_ids,
     current_wysiwyg_action_refresh_mode: fieldAcceptancePacket.wysiwyg_refresh_mode,
+    current_wysiwyg_next_action_status: currentWysiwygNextActionStatus,
+    current_wysiwyg_next_action_plain: currentWysiwygNextActionPlain,
+    current_wysiwyg_next_action_radar_overlay_complete: radarOverlayWysiwygComplete,
+    current_wysiwyg_next_action_only_camera_missing: liveWysiwygOnlyCameraMissing,
+    current_wysiwyg_next_action_allows_free_move: liveClosureSummary.free_move_start_ready,
+    current_wysiwyg_next_action_blocks_mapping_start: liveWysiwygOnlyCameraMissing && liveClosureSummary.camera_blocks_mapping_start,
+    current_wysiwyg_next_action_hardware_action_required: liveClosureSummary.camera_hardware_action_required,
+    current_wysiwyg_next_action_hardware_action_label: liveClosureSummary.camera_hardware_action_label,
+    current_wysiwyg_next_action_after_readback_sequence: liveWysiwygOnlyCameraMissing
+      ? liveClosureSummary.live_wysiwyg_camera_recovery_sequence
+      : fieldAcceptancePacket.primary_no_motion_readback_action_sequence,
+    current_wysiwyg_next_action_after_readback_sequence_labels: liveWysiwygOnlyCameraMissing
+      ? liveClosureSummary.live_wysiwyg_camera_recovery_sequence_labels
+      : fieldAcceptancePacket.primary_no_motion_readback_action_sequence_labels,
     field_acceptance_remaining_operator_action_summary_plain: fieldAcceptancePacket.remaining_operator_action_summary_plain,
     field_acceptance_remaining_hardware_action_summary_plain: fieldAcceptancePacket.remaining_hardware_action_summary_plain,
     field_acceptance_remaining_no_motion_action_summary_plain: fieldAcceptancePacket.remaining_no_motion_action_summary_plain,

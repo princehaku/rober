@@ -10820,6 +10820,16 @@ describe("App", () => {
     summaryFixture.field_acceptance_remaining_hardware_action_summary_plain = liveClosureSummary.field_acceptance_packet.remaining_hardware_action_summary_plain;
     summaryFixture.field_acceptance_remaining_no_motion_action_summary_plain = liveClosureSummary.field_acceptance_packet.remaining_no_motion_action_summary_plain;
     summaryFixture.field_acceptance_remaining_action_summary_plain = liveClosureSummary.field_acceptance_packet.remaining_action_summary_plain;
+    summaryFixture.current_wysiwyg_next_action_status = "only_camera_hardware_action";
+    summaryFixture.current_wysiwyg_next_action_plain = "雷达贴图已完成；当前只剩相机硬件处理：换高速USB后复测。自由移动不受相机阻塞，建图仍等待相机首帧；处理后按相机首帧、共享预览、summary 顺序只读复测。";
+    summaryFixture.current_wysiwyg_next_action_radar_overlay_complete = true;
+    summaryFixture.current_wysiwyg_next_action_only_camera_missing = true;
+    summaryFixture.current_wysiwyg_next_action_allows_free_move = true;
+    summaryFixture.current_wysiwyg_next_action_blocks_mapping_start = true;
+    summaryFixture.current_wysiwyg_next_action_hardware_action_required = true;
+    summaryFixture.current_wysiwyg_next_action_hardware_action_label = "换高速USB后复测";
+    summaryFixture.current_wysiwyg_next_action_after_readback_sequence = cameraOnlySequence;
+    summaryFixture.current_wysiwyg_next_action_after_readback_sequence_labels = cameraHardwareReadbackLabels;
 
     const mockedFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
@@ -10835,6 +10845,19 @@ describe("App", () => {
     expect(fieldAcceptanceWysiwyg.text()).not.toContain("雷达点");
     expect(fieldAcceptanceWysiwyg.attributes("data-wysiwyg-missing-surface-ids")).toBe("camera");
     expect(fieldAcceptanceWysiwyg.attributes("data-wysiwyg-refresh-mode")).toBe("camera_only");
+    const currentWysiwygAction = wrapper.find('[data-testid="plain-current-wysiwyg-action"]');
+    expect(currentWysiwygAction.exists()).toBe(true);
+    expect(currentWysiwygAction.text()).toBe("雷达贴图已完成；当前只剩相机硬件处理：换高速USB后复测。自由移动不受相机阻塞，建图仍等待相机首帧；处理后按相机首帧、共享预览、summary 顺序只读复测。");
+    expect(currentWysiwygAction.attributes("data-current-wysiwyg-next-action-status")).toBe("only_camera_hardware_action");
+    expect(currentWysiwygAction.attributes("data-current-wysiwyg-next-action-plain")).toBe("雷达贴图已完成；当前只剩相机硬件处理：换高速USB后复测。自由移动不受相机阻塞，建图仍等待相机首帧；处理后按相机首帧、共享预览、summary 顺序只读复测。");
+    expect(currentWysiwygAction.attributes("data-current-wysiwyg-next-action-radar-overlay-complete")).toBe("true");
+    expect(currentWysiwygAction.attributes("data-current-wysiwyg-next-action-only-camera-missing")).toBe("true");
+    expect(currentWysiwygAction.attributes("data-current-wysiwyg-next-action-allows-free-move")).toBe("true");
+    expect(currentWysiwygAction.attributes("data-current-wysiwyg-next-action-blocks-mapping-start")).toBe("true");
+    expect(currentWysiwygAction.attributes("data-current-wysiwyg-next-action-hardware-action-required")).toBe("true");
+    expect(currentWysiwygAction.attributes("data-current-wysiwyg-next-action-hardware-action-label")).toBe("换高速USB后复测");
+    expect(currentWysiwygAction.attributes("data-current-wysiwyg-next-action-after-readback-sequence")).toBe("/api/robot-control/camera/first-frame/probe,/api/robot-control/camera/mjpeg/status,/api/robot-control/summary");
+    expect(currentWysiwygAction.attributes("data-current-wysiwyg-next-action-after-readback-sequence-labels")).toBe("复测相机首帧,读取共享预览状态,刷新当前卡点");
     const cameraProof = wrapper.find('[data-testid="plain-field-acceptance-camera-proof"]');
     expect(cameraProof.exists()).toBe(true);
     expect(cameraProof.text()).toContain("唯一所见缺口是画面");
