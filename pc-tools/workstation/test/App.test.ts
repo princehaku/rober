@@ -6727,6 +6727,16 @@ describe("App", () => {
     expect(liveClosureSummary.attributes("data-camera-shared-preview-multi-viewer-plain")).toContain("谁打开页面都接入");
     expect(liveClosureSummary.attributes("data-camera-shared-preview-access-plain")).toContain("不是页面独占");
     expect(liveClosureSummary.attributes("data-camera-shared-preview-realtime-plain")).toContain("共享 MJPEG");
+    expect(liveClosureSummary.attributes("data-camera-shared-preview-readback-only")).toBe("true");
+    expect(liveClosureSummary.attributes("data-camera-shared-preview-starts-camera-exclusive-capture")).toBe("false");
+    expect(liveClosureSummary.attributes("data-camera-shared-preview-sends-motion")).toBe("false");
+    expect(liveClosureSummary.attributes("data-camera-shared-preview-starts-nav2")).toBe("false");
+    expect(liveClosureSummary.attributes("data-camera-shared-preview-starts-manual")).toBe("false");
+    expect(liveClosureSummary.attributes("data-camera-shared-preview-starts-keyboard")).toBe("false");
+    expect(liveClosureSummary.attributes("data-camera-shared-preview-starts-free-roam")).toBe("false");
+    expect(liveClosureSummary.attributes("data-camera-shared-preview-starts-map-runtime")).toBe("false");
+    expect(liveClosureSummary.attributes("data-camera-shared-preview-submits-delivery")).toBe("false");
+    expect(liveClosureSummary.attributes("data-camera-shared-preview-stops-motion")).toBe("false");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-camera-recovery-status")).toBe("not_exclusive_needs_source_check");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-camera-recovery-next-action-plain")).toBe("相机不是页面独占；先复测相机首帧并读取共享预览状态。若仍无画面，检查 USB 线、接口、摄像头供电或换 known-good UVC 后再复测。");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-camera-recovery-sequence")).toBe("/api/robot-control/camera/first-frame/probe,/api/robot-control/camera/mjpeg/status,/api/robot-control/summary");

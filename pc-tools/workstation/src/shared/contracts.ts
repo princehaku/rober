@@ -4289,6 +4289,13 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   camera_shared_preview_readback_only?: true;
   camera_shared_preview_starts_camera_exclusive_capture?: false;
   camera_shared_preview_sends_motion?: false;
+  camera_shared_preview_starts_nav2?: false;
+  camera_shared_preview_starts_manual?: false;
+  camera_shared_preview_starts_keyboard?: false;
+  camera_shared_preview_starts_free_roam?: false;
+  camera_shared_preview_starts_map_runtime?: false;
+  camera_shared_preview_submits_delivery?: false;
+  camera_shared_preview_stops_motion?: false;
   camera_shared_preview_shared_capture?: RobotControlSummaryResponse["readback_summary"]["camera"]["shared_preview_shared_capture"];
   camera_shared_preview_exclusive_camera_claim?: RobotControlSummaryResponse["readback_summary"]["camera"]["shared_preview_exclusive_camera_claim"];
   camera_shared_preview_contract?: RobotControlSummaryResponse["readback_summary"]["camera"]["shared_preview_contract"];
@@ -5520,6 +5527,13 @@ export interface RobotControlCameraMjpegStatusResponse extends ProofFlags {
   shared_preview_readback_only: true;
   shared_preview_starts_camera_exclusive_capture: false;
   shared_preview_sends_motion: false;
+  shared_preview_starts_nav2: false;
+  shared_preview_starts_manual: false;
+  shared_preview_starts_keyboard: false;
+  shared_preview_starts_free_roam: false;
+  shared_preview_starts_map_runtime: false;
+  shared_preview_submits_delivery: false;
+  shared_preview_stops_motion: false;
   last_failure_reason: string;
   shared_preview_last_failure_reason: string;
   last_remote_http_status: number | null;

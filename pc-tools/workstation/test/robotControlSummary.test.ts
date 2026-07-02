@@ -556,6 +556,13 @@ describe("robotControlSummary", () => {
     expect(summary.camera_shared_preview_readback_only).toBe(true);
     expect(summary.camera_shared_preview_starts_camera_exclusive_capture).toBe(false);
     expect(summary.camera_shared_preview_sends_motion).toBe(false);
+    expect(summary.camera_shared_preview_starts_nav2).toBe(false);
+    expect(summary.camera_shared_preview_starts_manual).toBe(false);
+    expect(summary.camera_shared_preview_starts_keyboard).toBe(false);
+    expect(summary.camera_shared_preview_starts_free_roam).toBe(false);
+    expect(summary.camera_shared_preview_starts_map_runtime).toBe(false);
+    expect(summary.camera_shared_preview_submits_delivery).toBe(false);
+    expect(summary.camera_shared_preview_stops_motion).toBe(false);
     expect(summary.camera_shared_preview_shared_capture).toBe("true");
     expect(summary.camera_shared_preview_exclusive_camera_claim).toBe("false");
     expect(summary.camera_shared_preview_contract).toBe("single_shared_capture_for_multiple_clients");
@@ -2039,6 +2046,13 @@ describe("robotControlSummary", () => {
     expect(summary.camera_shared_preview_readback_only).toBe(true);
     expect(summary.camera_shared_preview_starts_camera_exclusive_capture).toBe(false);
     expect(summary.camera_shared_preview_sends_motion).toBe(false);
+    expect(summary.camera_shared_preview_starts_nav2).toBe(false);
+    expect(summary.camera_shared_preview_starts_manual).toBe(false);
+    expect(summary.camera_shared_preview_starts_keyboard).toBe(false);
+    expect(summary.camera_shared_preview_starts_free_roam).toBe(false);
+    expect(summary.camera_shared_preview_starts_map_runtime).toBe(false);
+    expect(summary.camera_shared_preview_submits_delivery).toBe(false);
+    expect(summary.camera_shared_preview_stops_motion).toBe(false);
     expect(summary.camera_shared_preview_shared_capture).toBe("true");
     expect(summary.camera_shared_preview_exclusive_camera_claim).toBe("false");
     expect(summary.camera_shared_preview_contract).toBe("single_shared_capture_for_multiple_clients");
