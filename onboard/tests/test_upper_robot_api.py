@@ -197,6 +197,9 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
                 },
             },
             "last_first_frame_error": {
+                "mjpeg_open_source_fallback_attempted": True,
+                "open_source_fallback_failure_reason": "first_frame_total_timeout",
+                "primary_source_failure_reason": "first_frame_total_timeout",
                 "first_frame_format_attempts": [
                     {
                         "label": "MJPG@640x480@30",
@@ -232,6 +235,9 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertFalse(payload["robot_control_executed"])
         self.assertFalse(payload["safe_to_control"])
         self.assertIn("MJPG@640x480@30", payload["last_first_frame_format_attempts_summary"])
+        self.assertTrue(payload["mjpeg_open_source_fallback_attempted"])
+        self.assertEqual("first_frame_total_timeout", payload["open_source_fallback_failure_reason"])
+        self.assertEqual("first_frame_total_timeout", payload["primary_source_failure_reason"])
         self.assertEqual("uvc_no_frame_not_exclusive", payload["source_diagnosis_status"])
 
     def test_map_preview_returns_not_current_radar_overlay_without_drawing_stale_points(self) -> None:

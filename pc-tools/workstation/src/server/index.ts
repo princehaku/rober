@@ -187,6 +187,9 @@ type CameraMjpegRelayLastFailure = {
   failed_at_ms: number | null;
   last_error_payload?: Record<string, unknown> | null;
   last_first_frame_format_attempts_summary?: string;
+  mjpeg_open_source_fallback_attempted?: boolean;
+  open_source_fallback_failure_reason?: string;
+  primary_source_failure_reason?: string;
   source_diagnosis_status?: string;
   source_diagnosis_plain_hint?: string;
   source_diagnosis_next_action?: string;
@@ -2613,6 +2616,23 @@ function cameraMjpegStatusResponse(
     ?? (previewStatus === "source_first_frame_failed" ? "first_frame_failed" : "not_loaded");
   const sourceFailureReason = diagnosisSource?.source_failure_reason
     ?? (previewStatus === "source_first_frame_failed" ? lastFailureReason || "first_frame_failed" : "not_loaded");
+  const lastErrorPayload = asRecord(lastFailure?.last_error_payload);
+  const mjpegOpenSourceFallbackAttempted = Boolean(
+    diagnosisSource?.mjpeg_open_source_fallback_attempted
+      ?? lastErrorPayload?.mjpeg_open_source_fallback_attempted
+      ?? false,
+  );
+  const openSourceFallbackFailureReason = shortText(
+    diagnosisSource?.open_source_fallback_failure_reason
+      ?? lastErrorPayload?.open_source_fallback_failure_reason,
+    "not_loaded",
+  );
+  const primarySourceFailureReason = shortText(
+    diagnosisSource?.primary_source_failure_reason
+      ?? lastErrorPayload?.primary_source_failure_reason
+      ?? sourceFailureReason,
+    "not_loaded",
+  );
   const sourceUsageScope = cameraSourceUsageScope(diagnosisSource?.source_usage_status, diagnosisSource?.source_usage_owner_count);
   const sourceUsageNotExclusive = cameraSourceUsageNotExclusive(sourceUsageScope);
   const cameraUsbSpeed = diagnosisSource?.uvc_usb_topology_video_usb_speed ?? "not_loaded";
@@ -2686,6 +2706,9 @@ function cameraMjpegStatusResponse(
     source_readiness: sourceReadiness,
     source_failure_reason: sourceFailureReason,
     last_first_frame_format_attempts_summary: diagnosisSource?.last_first_frame_format_attempts_summary ?? "none",
+    mjpeg_open_source_fallback_attempted: mjpegOpenSourceFallbackAttempted,
+    open_source_fallback_failure_reason: openSourceFallbackFailureReason,
+    primary_source_failure_reason: primarySourceFailureReason,
     selected_path: diagnosisSource?.selected_path ?? "not_loaded",
     selected_name: diagnosisSource?.selected_name ?? "not_loaded",
     selected_is_uvc_or_usb: diagnosisSource?.selected_is_uvc_or_usb ?? "not_loaded",
@@ -2951,6 +2974,24 @@ async function cameraSourceFirstFrameFailureForStatus(
     const rawDiagnosisNotExclusive = sourceDiagnosis?.not_exclusive === undefined
       ? "not_loaded"
       : String(sourceDiagnosis.not_exclusive);
+    const lastError = asRecord(payload?.last_first_frame_error) ?? lastOffer;
+    const mjpegOpenSourceFallbackAttempted = Boolean(
+      payload?.mjpeg_open_source_fallback_attempted
+        ?? lastError?.mjpeg_open_source_fallback_attempted
+        ?? false,
+    );
+    const openSourceFallbackFailureReason = shortText(
+      payload?.open_source_fallback_failure_reason
+        ?? lastError?.open_source_fallback_failure_reason,
+      "not_loaded",
+    );
+    const primarySourceFailureReason = shortText(
+      payload?.primary_source_failure_reason
+        ?? lastError?.primary_source_failure_reason
+        ?? reason
+        ?? lastOfferReason,
+      "not_loaded",
+    );
     const firstFrameFailed = status === "source_first_frame_failed"
       || readiness === "first_frame_failed"
       || CAMERA_FIRST_FRAME_FAILURE_REASONS.has(reason)
@@ -3007,6 +3048,9 @@ async function cameraSourceFirstFrameFailureForStatus(
         source_usage_not_exclusive: sourceUsageNotExclusive,
         ...usbTopologyFields,
         last_first_frame_format_attempts_summary: cameraMjpegFormatAttemptsSummary(payload),
+        mjpeg_open_source_fallback_attempted: mjpegOpenSourceFallbackAttempted,
+        open_source_fallback_failure_reason: openSourceFallbackFailureReason,
+        primary_source_failure_reason: primarySourceFailureReason,
       };
     }
     return {
@@ -3028,6 +3072,9 @@ async function cameraSourceFirstFrameFailureForStatus(
       source_usage_not_exclusive: sourceUsageNotExclusive,
       ...usbTopologyFields,
       last_first_frame_format_attempts_summary: cameraMjpegFormatAttemptsSummary(payload),
+      mjpeg_open_source_fallback_attempted: mjpegOpenSourceFallbackAttempted,
+      open_source_fallback_failure_reason: openSourceFallbackFailureReason,
+      primary_source_failure_reason: primarySourceFailureReason,
     };
   } catch {
     return null;

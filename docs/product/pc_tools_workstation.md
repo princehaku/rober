@@ -5129,3 +5129,12 @@ summary/DOM 读取。页面明确点击启用键盘不会发车，只有按住 W
 显式扣减视口高度，避免 grid/flex 百分比把内部画布算小。ROS2 配套口径不变：
 本地工程调试用 RViz2，远程浏览器多人观察用 Foxglove bridge + Foxglove Web；这些入口只观察地图、雷达、TF、
 路径、定位和 costmap，不替代 PC 简易地图，不启动 Nav2、建图 runtime 或任何运动控制。
+
+2026-07-02 14:35 CST 起，上车 MJPEG 状态和 PC 读回链路同步透传“开源兜底尝试”证据。
+`/api/camera/mjpeg/status`、`/api/robot-control/camera/mjpeg/status`、`/api/robot-control/summary`
+现在都会暴露 `mjpeg_open_source_fallback_attempted`、`open_source_fallback_failure_reason`
+和 `primary_source_failure_reason`，summary 还同步给出
+`current_camera_wysiwyg_pack_*` 与 `camera_*` 短字段。现场读回显示兜底已尝试，失败原因仍是
+`first_frame_total_timeout`，当前诊断仍指向 `uvc_full_speed_usb_not_exclusive` 和 USB `12M` full-speed。
+这些字段只读，不启动 Nav2、manual、keyboard、free-roam、建图 runtime、delivery、stop 或 `/cmd_vel`；
+修复相机可见性仍需要按硬件提示换高速 USB 口/线或带供电 USB Hub 后复测。

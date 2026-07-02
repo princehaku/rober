@@ -2243,6 +2243,9 @@ describe("robotControlSummary", () => {
           status: "source_first_frame_failed",
           source_readiness: "first_frame_failed",
           source_failure_reason: "first_frame_total_timeout",
+          mjpeg_open_source_fallback_attempted: true,
+          open_source_fallback_failure_reason: "first_frame_total_timeout",
+          primary_source_failure_reason: "first_frame_total_timeout",
           current_selection: {
             selected_name: "USB Composite Device: DV20 USB",
             selected_path: "/dev/video1",
@@ -2292,6 +2295,9 @@ describe("robotControlSummary", () => {
     });
 
     expect(summary.readback_summary.camera.status).toBe("source_first_frame_failed");
+    expect(summary.readback_summary.camera.mjpeg_open_source_fallback_attempted).toBe("true");
+    expect(summary.readback_summary.camera.open_source_fallback_failure_reason).toBe("first_frame_total_timeout");
+    expect(summary.readback_summary.camera.primary_source_failure_reason).toBe("first_frame_total_timeout");
     expect(summary.readback_summary.camera.source_diagnosis_status).toBe("uvc_full_speed_usb_not_exclusive");
     expect(summary.readback_summary.camera.source_diagnosis_plain_hint).toContain("USB 12M full-speed");
     expect(summary.readback_summary.camera.source_diagnosis_next_action_plain).toBe("摄像头现在挂在 USB 12M full-speed，换高速 USB 口/线或带供电 USB Hub，减少转接并确认供电后复测；共享预览不是页面独占。");
@@ -2337,12 +2343,18 @@ describe("robotControlSummary", () => {
     expect(summary.current_mapping_action_camera_recovery_next_action_plain).toContain("换高速 USB 口/线或带供电 USB Hub");
     expect(summary.current_mapping_action_blocks_free_move).toBe(false);
     expect(summary.camera_source_diagnosis_status).toBe("uvc_full_speed_usb_not_exclusive");
+    expect(summary.camera_mjpeg_open_source_fallback_attempted).toBe("true");
+    expect(summary.camera_open_source_fallback_failure_reason).toBe("first_frame_total_timeout");
+    expect(summary.camera_primary_source_failure_reason).toBe("first_frame_total_timeout");
     expect(summary.camera_source_diagnosis_not_exclusive).toBe("true");
     expect(summary.camera_source_diagnosis_plain_hint).toContain("USB 12M full-speed");
     expect(summary.camera_source_diagnosis_next_action_plain).toContain("换高速 USB 口/线或带供电 USB Hub");
     expect(summary.camera_recovery_next_action_plain).toContain("换高速 USB 口/线或带供电 USB Hub");
     expect(summary.camera_recovery_sends_motion).toBe(false);
     expect(summary.current_camera_wysiwyg_pack_status).toBe("needs_first_frame");
+    expect(summary.current_camera_wysiwyg_pack_mjpeg_open_source_fallback_attempted).toBe("true");
+    expect(summary.current_camera_wysiwyg_pack_open_source_fallback_failure_reason).toBe("first_frame_total_timeout");
+    expect(summary.current_camera_wysiwyg_pack_primary_source_failure_reason).toBe("first_frame_total_timeout");
     expect(summary.current_camera_wysiwyg_pack_hardware_action_required).toBe(true);
     expect(summary.current_camera_wysiwyg_pack_hardware_action_label).toBe("换高速USB后复测");
     expect(summary.current_camera_wysiwyg_pack_usb_full_speed_detected).toBe(true);

@@ -3520,6 +3520,38 @@ def camera_first_frame_attempts_summary(payload: dict[str, Any]) -> str:
     return "；".join(parts) if parts else "none"
 
 
+def camera_first_frame_fallback_aliases(payload: dict[str, Any]) -> dict[str, Any]:
+    """透传共享 MJPEG 首帧兜底结果，避免现场只能从长 attempts 文案里猜。"""
+    if not isinstance(payload, dict):
+        return {
+            "mjpeg_open_source_fallback_attempted": False,
+            "open_source_fallback_failure_reason": "not_loaded",
+            "primary_source_failure_reason": "not_loaded",
+        }
+    last_error = payload.get("last_first_frame_error") if isinstance(payload.get("last_first_frame_error"), dict) else {}
+    fallback_attempted = bool(
+        payload.get("mjpeg_open_source_fallback_attempted")
+        or last_error.get("mjpeg_open_source_fallback_attempted")
+    )
+    open_source_reason = (
+        payload.get("open_source_fallback_failure_reason")
+        or last_error.get("open_source_fallback_failure_reason")
+        or "not_loaded"
+    )
+    primary_reason = (
+        payload.get("primary_source_failure_reason")
+        or last_error.get("primary_source_failure_reason")
+        or payload.get("source_failure_reason")
+        or last_error.get("failure_reason")
+        or "not_loaded"
+    )
+    return {
+        "mjpeg_open_source_fallback_attempted": fallback_attempted,
+        "open_source_fallback_failure_reason": str(open_source_reason),
+        "primary_source_failure_reason": str(primary_reason),
+    }
+
+
 def camera_mjpeg_preview_status(health_payload: dict[str, Any], relay_snapshot: dict[str, Any]) -> str:
     """状态端点只表达当前可见性，不因为 health 已选源就假装页面已经看到画面。"""
     if relay_snapshot.get("last_error_payload") or relay_snapshot.get("last_failure_reason"):
@@ -3547,6 +3579,7 @@ def camera_mjpeg_status_payload(
     aliases = flatten_camera_health_aliases(health_payload)
     source_readiness = str(health_payload.get("source_readiness") or aliases.get("source_readiness") or "not_loaded")
     source_failure_reason = str(health_payload.get("source_failure_reason") or "not_loaded")
+    fallback_aliases = camera_first_frame_fallback_aliases(health_payload)
     preview_status = camera_mjpeg_preview_status(health_payload, relay_snapshot)
     selected_name = str(aliases.get("selected_name") or "not_loaded")
     if preview_status == "visible":
@@ -3612,6 +3645,7 @@ def camera_mjpeg_status_payload(
         "source_readiness": source_readiness,
         "source_failure_reason": source_failure_reason,
         "last_first_frame_format_attempts_summary": camera_first_frame_attempts_summary(health_payload),
+        **fallback_aliases,
         "selected_path": aliases.get("selected_path") or "not_loaded",
         "selected_name": selected_name,
         "selected_is_uvc_or_usb": aliases.get("selected_is_uvc_or_usb", "not_loaded"),

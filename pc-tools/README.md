@@ -1567,3 +1567,10 @@ delivery 或 stop。
 紧凑工具条显式扣减视口高度，避免 grid/flex 百分比把内部画布算小。直达页仍只保留缩放、`刷新地图画面`、雷达贴图只读刷新和 `ROS2观察`；
 ROS2 配套继续是 RViz2 做本地工程调试、Foxglove bridge + Foxglove Web 做远程浏览器观察，不启动 ROS2 工具、
 Nav2、建图 runtime、free-roam、manual、keyboard、delivery、stop 或 `/cmd_vel`。
+
+2026-07-02 14:35 CST 起，PC 读回也能直接看到上车共享 MJPEG 的开源兜底证据：
+`/api/robot-control/camera/mjpeg/status` 和 `/api/robot-control/summary` 会透传
+`mjpeg_open_source_fallback_attempted`、`open_source_fallback_failure_reason`
+和 `primary_source_failure_reason`，并同步到 `current_camera_wysiwyg_pack_*` / `camera_*` 短字段。
+当前现场只读验证为兜底已尝试、失败原因 `first_frame_total_timeout`，硬件诊断仍是 USB `12M` full-speed。
+这些字段和页面展示只读，不会启动 Nav2、manual、keyboard、free-roam、建图 runtime、delivery、stop 或 `/cmd_vel`。

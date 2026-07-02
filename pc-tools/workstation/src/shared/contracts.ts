@@ -2624,6 +2624,9 @@ export interface RobotControlActionStatusCard {
     shared_preview_last_remote_http_status?: string;
     last_offer_failure_reason?: string;
     last_offer_format_attempts_summary?: string;
+    mjpeg_open_source_fallback_attempted?: string;
+    open_source_fallback_failure_reason?: string;
+    primary_source_failure_reason?: string;
     first_frame_probe_read_ok?: boolean;
     visible_content_proven?: boolean;
     shared_preview_client_count?: number;
@@ -4379,6 +4382,9 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   current_camera_wysiwyg_pack_source_diagnosis_not_exclusive?: RobotControlLiveClosureSummary["camera_source_diagnosis_not_exclusive"];
   current_camera_wysiwyg_pack_first_frame_probe_status?: RobotControlLiveClosureSummary["camera_first_frame_probe_status"];
   current_camera_wysiwyg_pack_first_frame_failure_reason?: RobotControlLiveClosureSummary["camera_first_frame_failure_reason"];
+  current_camera_wysiwyg_pack_mjpeg_open_source_fallback_attempted?: RobotControlSummaryResponse["readback_summary"]["camera"]["mjpeg_open_source_fallback_attempted"];
+  current_camera_wysiwyg_pack_open_source_fallback_failure_reason?: RobotControlSummaryResponse["readback_summary"]["camera"]["open_source_fallback_failure_reason"];
+  current_camera_wysiwyg_pack_primary_source_failure_reason?: RobotControlSummaryResponse["readback_summary"]["camera"]["primary_source_failure_reason"];
   current_camera_wysiwyg_pack_hardware_action_required?: RobotControlLiveClosureSummary["camera_hardware_action_required"];
   current_camera_wysiwyg_pack_hardware_action_label?: RobotControlLiveClosureSummary["camera_hardware_action_label"];
   current_camera_wysiwyg_pack_usb_full_speed_detected?: RobotControlLiveClosureSummary["camera_usb_full_speed_detected"];
@@ -4571,6 +4577,9 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   camera_source_diagnosis_not_exclusive?: RobotControlLiveClosureSummary["camera_source_diagnosis_not_exclusive"];
   camera_first_frame_probe_status?: RobotControlLiveClosureSummary["camera_first_frame_probe_status"];
   camera_first_frame_failure_reason?: RobotControlLiveClosureSummary["camera_first_frame_failure_reason"];
+  camera_mjpeg_open_source_fallback_attempted?: RobotControlSummaryResponse["readback_summary"]["camera"]["mjpeg_open_source_fallback_attempted"];
+  camera_open_source_fallback_failure_reason?: RobotControlSummaryResponse["readback_summary"]["camera"]["open_source_fallback_failure_reason"];
+  camera_primary_source_failure_reason?: RobotControlSummaryResponse["readback_summary"]["camera"]["primary_source_failure_reason"];
   camera_source_diagnosis_plain_hint?: RobotControlLiveClosureSummary["live_wysiwyg_camera_source_diagnosis_plain_hint"];
   camera_source_diagnosis_next_action_plain?: RobotControlLiveClosureSummary["live_wysiwyg_camera_source_diagnosis_next_action_plain"];
   camera_recovery_next_action_plain?: RobotControlLiveClosureSummary["camera_recovery_next_action_plain"];
@@ -4881,6 +4890,9 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       last_offer_error: string;
       last_offer_failure_reason: string;
       last_offer_format_attempts_summary: string;
+      mjpeg_open_source_fallback_attempted: string;
+      open_source_fallback_failure_reason: string;
+      primary_source_failure_reason: string;
       first_frame_probe_status: string;
       first_frame_probe_failure_reason: string;
       first_frame_probe_open_ok: string;
@@ -5893,6 +5905,9 @@ export interface RobotControlCameraMjpegStatusResponse extends ProofFlags {
   source_readiness: string;
   source_failure_reason: string;
   last_first_frame_format_attempts_summary: string;
+  mjpeg_open_source_fallback_attempted: boolean;
+  open_source_fallback_failure_reason: string;
+  primary_source_failure_reason: string;
   selected_path: string;
   selected_name: string;
   selected_is_uvc_or_usb: string;

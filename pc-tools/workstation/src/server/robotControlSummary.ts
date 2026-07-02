@@ -2555,6 +2555,25 @@ function cameraSummaryFromReadbacks(
     derivedSourceDiagnosis.next_action,
   ) || previewGuidance.next_action_plain;
   const lastOfferFormatAttemptsSummary = cameraFormatAttemptsSummary(lastOfferError);
+  const mjpegOpenSourceFallbackAttempted = compactValueText(
+    findFirstKey(healthPayload, ["mjpeg_open_source_fallback_attempted"])
+      ?? lastOfferError?.mjpeg_open_source_fallback_attempted
+      ?? mjpegRelayOverlay?.mjpeg_open_source_fallback_attempted
+      ?? false,
+  );
+  const openSourceFallbackFailureReason = asString(
+    findFirstKey(healthPayload, ["open_source_fallback_failure_reason"])
+      ?? lastOfferError?.open_source_fallback_failure_reason
+      ?? mjpegRelayOverlay?.open_source_fallback_failure_reason,
+    "not_loaded",
+  );
+  const primarySourceFailureReason = asString(
+    findFirstKey(healthPayload, ["primary_source_failure_reason"])
+      ?? lastOfferError?.primary_source_failure_reason
+      ?? mjpegRelayOverlay?.primary_source_failure_reason
+      ?? resolvedSourceFailureReason,
+    "not_loaded",
+  );
   const inferredProbeFailureReason = ["", "none", "not_loaded"].includes(resolvedSourceFailureReason)
     ? relayFirstFrameFailureReason || lastOfferFailureReason || sharedPreviewLastFailureReason
     : resolvedSourceFailureReason;
@@ -2683,6 +2702,9 @@ function cameraSummaryFromReadbacks(
     last_offer_error: asString(lastOfferError?.error, "none"),
     last_offer_failure_reason: asString(lastOfferError?.failure_reason, "none"),
     last_offer_format_attempts_summary: lastOfferFormatAttemptsSummary,
+    mjpeg_open_source_fallback_attempted: mjpegOpenSourceFallbackAttempted,
+    open_source_fallback_failure_reason: openSourceFallbackFailureReason,
+    primary_source_failure_reason: primarySourceFailureReason,
     first_frame_probe_status: firstFrameProbeStatus,
     first_frame_probe_failure_reason: firstFrameProbeFailureReason,
     first_frame_probe_open_ok: firstFrameProbeOverlay?.open_ok ?? "not_loaded",
@@ -2760,6 +2782,9 @@ export type RobotControlCameraMjpegRelayOverlay = {
   source_diagnosis_not_exclusive?: string;
   source_readiness?: string;
   source_failure_reason?: string;
+  mjpeg_open_source_fallback_attempted?: boolean | string;
+  open_source_fallback_failure_reason?: string;
+  primary_source_failure_reason?: string;
   selected_path?: string;
   selected_name?: string;
   selected_is_uvc_or_usb?: boolean | string;
@@ -6768,6 +6793,9 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         last_offer_error: "none",
         last_offer_failure_reason: "none",
         last_offer_format_attempts_summary: "none",
+        mjpeg_open_source_fallback_attempted: "false",
+        open_source_fallback_failure_reason: "not_loaded",
+        primary_source_failure_reason: "not_loaded",
         first_frame_probe_status: "not_loaded",
         first_frame_probe_failure_reason: "none",
         first_frame_probe_open_ok: "not_loaded",
@@ -11938,6 +11966,9 @@ export async function buildRobotControlSummary(
     current_camera_wysiwyg_pack_source_diagnosis_not_exclusive: liveClosureSummary.camera_source_diagnosis_not_exclusive,
     current_camera_wysiwyg_pack_first_frame_probe_status: liveClosureSummary.camera_first_frame_probe_status,
     current_camera_wysiwyg_pack_first_frame_failure_reason: liveClosureSummary.camera_first_frame_failure_reason,
+    current_camera_wysiwyg_pack_mjpeg_open_source_fallback_attempted: readbackSummary.camera.mjpeg_open_source_fallback_attempted,
+    current_camera_wysiwyg_pack_open_source_fallback_failure_reason: readbackSummary.camera.open_source_fallback_failure_reason,
+    current_camera_wysiwyg_pack_primary_source_failure_reason: readbackSummary.camera.primary_source_failure_reason,
     current_camera_wysiwyg_pack_hardware_action_required: liveClosureSummary.camera_hardware_action_required,
     current_camera_wysiwyg_pack_hardware_action_label: liveClosureSummary.camera_hardware_action_label,
     current_camera_wysiwyg_pack_usb_full_speed_detected: liveClosureSummary.camera_usb_full_speed_detected,
@@ -12130,6 +12161,9 @@ export async function buildRobotControlSummary(
     camera_source_diagnosis_not_exclusive: liveClosureSummary.camera_source_diagnosis_not_exclusive,
     camera_first_frame_probe_status: liveClosureSummary.camera_first_frame_probe_status,
     camera_first_frame_failure_reason: liveClosureSummary.camera_first_frame_failure_reason,
+    camera_mjpeg_open_source_fallback_attempted: readbackSummary.camera.mjpeg_open_source_fallback_attempted,
+    camera_open_source_fallback_failure_reason: readbackSummary.camera.open_source_fallback_failure_reason,
+    camera_primary_source_failure_reason: readbackSummary.camera.primary_source_failure_reason,
     camera_source_diagnosis_plain_hint: liveClosureSummary.live_wysiwyg_camera_source_diagnosis_plain_hint,
     camera_source_diagnosis_next_action_plain:
       liveClosureSummary.live_wysiwyg_camera_source_diagnosis_next_action_plain === "not_loaded"
