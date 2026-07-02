@@ -5953,7 +5953,13 @@ describe("App", () => {
     expect(liveClosureSummary.attributes("data-camera-wysiwyg-recovery-blocks-mapping-start")).toBe("true");
     expect(liveClosureSummary.attributes("data-camera-wysiwyg-recovery-blocks-free-move")).toBe("false");
     expect(liveClosureSummary.attributes("data-camera-wysiwyg-recovery-sends-motion")).toBe("false");
+    expect(liveClosureSummary.attributes("data-camera-wysiwyg-recovery-starts-nav2")).toBe("false");
+    expect(liveClosureSummary.attributes("data-camera-wysiwyg-recovery-starts-manual")).toBe("false");
+    expect(liveClosureSummary.attributes("data-camera-wysiwyg-recovery-starts-keyboard")).toBe("false");
+    expect(liveClosureSummary.attributes("data-camera-wysiwyg-recovery-starts-free-roam")).toBe("false");
     expect(liveClosureSummary.attributes("data-camera-wysiwyg-recovery-starts-map-runtime")).toBe("false");
+    expect(liveClosureSummary.attributes("data-camera-wysiwyg-recovery-submits-delivery")).toBe("false");
+    expect(liveClosureSummary.attributes("data-camera-wysiwyg-recovery-stops-motion")).toBe("false");
     expect(liveClosureSummary.attributes("data-camera-wysiwyg-recovery-shared-preview-single-upstream")).toBe("true");
     const liveRobotConnection = wrapper.find('[data-testid="plain-live-robot-connection"]');
     expect(liveRobotConnection.exists()).toBe(true);
@@ -10401,7 +10407,13 @@ describe("App", () => {
     expect(liveClosureSummary.attributes("data-camera-wysiwyg-recovery-source-diagnosis-status")).toBe("uvc_full_speed_usb_not_exclusive");
     expect(liveClosureSummary.attributes("data-camera-wysiwyg-recovery-source-not-exclusive")).toBe("true");
     expect(liveClosureSummary.attributes("data-camera-wysiwyg-recovery-sends-motion")).toBe("false");
+    expect(liveClosureSummary.attributes("data-camera-wysiwyg-recovery-starts-nav2")).toBe("false");
+    expect(liveClosureSummary.attributes("data-camera-wysiwyg-recovery-starts-manual")).toBe("false");
+    expect(liveClosureSummary.attributes("data-camera-wysiwyg-recovery-starts-keyboard")).toBe("false");
+    expect(liveClosureSummary.attributes("data-camera-wysiwyg-recovery-starts-free-roam")).toBe("false");
     expect(liveClosureSummary.attributes("data-camera-wysiwyg-recovery-starts-map-runtime")).toBe("false");
+    expect(liveClosureSummary.attributes("data-camera-wysiwyg-recovery-submits-delivery")).toBe("false");
+    expect(liveClosureSummary.attributes("data-camera-wysiwyg-recovery-stops-motion")).toBe("false");
     expect(liveClosureSummary.attributes("data-camera-wysiwyg-recovery-readback-endpoint")).toBe("/api/robot-control/camera/first-frame/probe");
     expect(liveClosureSummary.attributes("data-camera-wysiwyg-recovery-probe-endpoint")).toBe("/api/robot-control/camera/first-frame/probe");
     expect(liveClosureSummary.attributes("data-camera-wysiwyg-recovery-status-endpoint")).toBe("/api/robot-control/camera/mjpeg/status");

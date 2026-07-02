@@ -588,7 +588,13 @@ describe("robotControlSummary", () => {
     expect(summary.camera_wysiwyg_recovery_blocks_mapping_start).toBe(true);
     expect(summary.camera_wysiwyg_recovery_blocks_free_move).toBe(false);
     expect(summary.camera_wysiwyg_recovery_sends_motion).toBe(false);
+    expect(summary.camera_wysiwyg_recovery_starts_nav2).toBe(false);
+    expect(summary.camera_wysiwyg_recovery_starts_manual).toBe(false);
+    expect(summary.camera_wysiwyg_recovery_starts_keyboard).toBe(false);
+    expect(summary.camera_wysiwyg_recovery_starts_free_roam).toBe(false);
     expect(summary.camera_wysiwyg_recovery_starts_map_runtime).toBe(false);
+    expect(summary.camera_wysiwyg_recovery_submits_delivery).toBe(false);
+    expect(summary.camera_wysiwyg_recovery_stops_motion).toBe(false);
     expect(summary.camera_wysiwyg_recovery_source_diagnosis_status).toBe("not_loaded");
     expect(summary.camera_wysiwyg_recovery_source_not_exclusive).toBe("not_loaded");
     expect(summary.camera_wysiwyg_recovery_shared_preview_single_upstream).toBe(true);
@@ -1967,7 +1973,13 @@ describe("robotControlSummary", () => {
     expect(summary.camera_wysiwyg_recovery_blocks_mapping_start).toBe(true);
     expect(summary.camera_wysiwyg_recovery_blocks_free_move).toBe(false);
     expect(summary.camera_wysiwyg_recovery_sends_motion).toBe(false);
+    expect(summary.camera_wysiwyg_recovery_starts_nav2).toBe(false);
+    expect(summary.camera_wysiwyg_recovery_starts_manual).toBe(false);
+    expect(summary.camera_wysiwyg_recovery_starts_keyboard).toBe(false);
+    expect(summary.camera_wysiwyg_recovery_starts_free_roam).toBe(false);
     expect(summary.camera_wysiwyg_recovery_starts_map_runtime).toBe(false);
+    expect(summary.camera_wysiwyg_recovery_submits_delivery).toBe(false);
+    expect(summary.camera_wysiwyg_recovery_stops_motion).toBe(false);
     expect(summary.camera_wysiwyg_recovery_source_diagnosis_status).toBe("uvc_full_speed_usb_not_exclusive");
     expect(summary.camera_wysiwyg_recovery_source_not_exclusive).toBe("true");
     expect(summary.camera_wysiwyg_recovery_shared_preview_single_upstream).toBe(true);

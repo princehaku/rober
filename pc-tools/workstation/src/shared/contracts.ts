@@ -4282,7 +4282,13 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   camera_wysiwyg_recovery_blocks_mapping_start?: RobotControlLiveClosureSummary["camera_blocks_mapping_start"];
   camera_wysiwyg_recovery_blocks_free_move?: RobotControlLiveClosureSummary["camera_blocks_free_move"];
   camera_wysiwyg_recovery_sends_motion?: RobotControlLiveClosureSummary["camera_recovery_sends_motion"];
+  camera_wysiwyg_recovery_starts_nav2?: false;
+  camera_wysiwyg_recovery_starts_manual?: false;
+  camera_wysiwyg_recovery_starts_keyboard?: false;
+  camera_wysiwyg_recovery_starts_free_roam?: false;
   camera_wysiwyg_recovery_starts_map_runtime?: RobotControlLiveClosureSummary["camera_recovery_starts_map_runtime"];
+  camera_wysiwyg_recovery_submits_delivery?: false;
+  camera_wysiwyg_recovery_stops_motion?: false;
   camera_wysiwyg_recovery_source_diagnosis_status?: RobotControlLiveClosureSummary["camera_source_diagnosis_status"];
   camera_wysiwyg_recovery_source_not_exclusive?: RobotControlLiveClosureSummary["camera_source_diagnosis_not_exclusive"];
   camera_wysiwyg_recovery_shared_preview_single_upstream?: true;
