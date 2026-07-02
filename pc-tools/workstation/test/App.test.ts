@@ -860,6 +860,38 @@ const fixtures: Record<string, unknown> = {
     current_free_move_action_blocked_by_camera_wysiwyg: false,
     current_free_move_action_blocked_by_radar_wysiwyg: false,
     current_free_move_action_sends_motion: true,
+    current_mapping_action_required: true,
+    current_mapping_action_ready: false,
+    current_mapping_action_id: "start_mapping_when_sensors_ready",
+    current_mapping_action_label: "传感器就绪后建图",
+    current_mapping_action_display_label: "传感器就绪后建图",
+    current_mapping_action_start_endpoint: "/api/robot-control/map/start",
+    current_mapping_action_stop_endpoint: "/api/robot-control/free-roam/autonomy/stop",
+    current_mapping_action_preview_endpoint: "/api/robot-control/map/preview",
+    current_mapping_action_acceptance_endpoints: ["/api/robot-control/free-roam/autonomy/latest", "/api/robot-control/map/preview", "/api/robot-control/summary"],
+    current_mapping_action_readback_endpoints: ["/api/robot-control/free-roam/autonomy/latest", "/api/robot-control/map/preview", "/api/robot-control/summary"],
+    current_mapping_action_required_success_markers: ["camera_first_frame", "lidar_fresh"],
+    current_mapping_action_proof_status: "blocked",
+    current_mapping_action_missing_evidence: ["camera_first_frame", "lidar_fresh"],
+    current_mapping_action_proof_plain: "建图暂不可启动；还差：画面首帧、雷达新鲜。",
+    current_mapping_action_requires_safety_confirm: false,
+    current_mapping_action_safety_confirm_required_when_executed: true,
+    current_mapping_action_minimal_precheck_safety_only: true,
+    current_mapping_action_camera_required: true,
+    current_mapping_action_radar_required: true,
+    current_mapping_action_camera_ready: false,
+    current_mapping_action_radar_ready: false,
+    current_mapping_action_camera_blocks_start: true,
+    current_mapping_action_radar_blocks_start: true,
+    current_mapping_action_only_camera_missing: false,
+    current_mapping_action_radar_overlay_wysiwyg_complete: false,
+    current_mapping_action_blocks_free_move: false,
+    current_mapping_action_free_move_allowed_while_blocked: true,
+    current_mapping_action_sends_motion: true,
+    current_mapping_action_starts_map_runtime_when_executed: true,
+    current_mapping_action_starts_nav2: false,
+    current_mapping_action_starts_keyboard: false,
+    current_mapping_action_submits_delivery: false,
     free_move_minimal_precheck_safety_only: true,
     free_move_safety_confirm_required: true,
     free_move_camera_preflight_required: false,
@@ -7994,6 +8026,34 @@ describe("App", () => {
     expect(mappingUnlockSummary.attributes("data-submits-delivery")).toBe("false");
     expect(mappingUnlockSummary.attributes("data-stops-motion")).toBe("false");
     expect(mappingUnlockSummary.attributes("data-sends-motion-when-clicked")).toBe("false");
+    const currentMappingAction = wrapper.find('[data-testid="plain-current-mapping-action"]');
+    expect(currentMappingAction.exists()).toBe(true);
+    expect(currentMappingAction.text()).toContain("建图动作");
+    expect(currentMappingAction.text()).toContain("还差画面首帧");
+    expect(currentMappingAction.text()).toContain("还差雷达新鲜读数");
+    expect(currentMappingAction.text()).toContain("自由移动不受影响");
+    expect(currentMappingAction.text()).not.toContain("raw");
+    expect(currentMappingAction.text()).not.toContain("/cmd_vel");
+    expect(currentMappingAction.attributes("data-current-mapping-action-id")).toBe("start_mapping_when_sensors_ready");
+    expect(currentMappingAction.attributes("data-current-mapping-action-ready")).toBe("false");
+    expect(currentMappingAction.attributes("data-current-mapping-action-start-endpoint")).toBe("/api/robot-control/map/start");
+    expect(currentMappingAction.attributes("data-current-mapping-action-stop-endpoint")).toBe("/api/robot-control/free-roam/autonomy/stop");
+    expect(currentMappingAction.attributes("data-current-mapping-action-preview-endpoint")).toBe("/api/robot-control/map/preview");
+    expect(currentMappingAction.attributes("data-current-mapping-action-acceptance-endpoints")).toBe("/api/robot-control/free-roam/autonomy/latest,/api/robot-control/map/preview,/api/robot-control/summary");
+    expect(currentMappingAction.attributes("data-current-mapping-action-readback-endpoints")).toBe("/api/robot-control/free-roam/autonomy/latest,/api/robot-control/map/preview,/api/robot-control/summary");
+    expect(currentMappingAction.attributes("data-current-mapping-action-required-success-markers")).toBe("camera_first_frame,lidar_fresh");
+    expect(currentMappingAction.attributes("data-current-mapping-action-missing-evidence")).toBe("camera_first_frame,lidar_fresh");
+    expect(currentMappingAction.attributes("data-current-mapping-action-camera-ready")).toBe("false");
+    expect(currentMappingAction.attributes("data-current-mapping-action-radar-ready")).toBe("false");
+    expect(currentMappingAction.attributes("data-current-mapping-action-only-camera-missing")).toBe("false");
+    expect(currentMappingAction.attributes("data-current-mapping-action-radar-overlay-wysiwyg-complete")).toBe("false");
+    expect(currentMappingAction.attributes("data-current-mapping-action-blocks-free-move")).toBe("false");
+    expect(currentMappingAction.attributes("data-current-mapping-action-free-move-allowed-while-blocked")).toBe("true");
+    expect(currentMappingAction.attributes("data-current-mapping-action-sends-motion")).toBe("true");
+    expect(currentMappingAction.attributes("data-current-mapping-action-requires-safety-confirm")).toBe("false");
+    expect(currentMappingAction.attributes("data-current-mapping-action-safety-confirm-required-when-executed")).toBe("true");
+    expect(currentMappingAction.attributes("data-current-mapping-action-minimal-precheck-safety-only")).toBe("true");
+    expect(currentMappingAction.attributes("data-current-mapping-action-starts-map-runtime-when-executed")).toBe("true");
     const mappingUnlockRefresh = wrapper.find('[data-testid="plain-mapping-unlock-refresh"]');
     expect(mappingUnlockRefresh.text()).toBe("刷新建图条件（只读）");
     expect(mappingUnlockRefresh.attributes("data-fixed-radar-refresh-endpoint")).toBe("/api/robot-control/radar/scan-proof/refresh");

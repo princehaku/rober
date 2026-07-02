@@ -9237,6 +9237,31 @@ type PlainMappingReadinessGauge = {
   mappingEvidenceReady: boolean;
   missingReasons: string;
 };
+type PlainCurrentMappingAction = {
+  actionId: string;
+  ready: boolean;
+  label: string;
+  state: string;
+  text: string;
+  startEndpoint: string;
+  stopEndpoint: string;
+  previewEndpoint: string;
+  acceptanceEndpoints: string[];
+  readbackEndpoints: string[];
+  requiredSuccessMarkers: string[];
+  missingEvidence: string[];
+  cameraReady: boolean;
+  radarReady: boolean;
+  onlyCameraMissing: boolean;
+  radarOverlayWysiwygComplete: boolean;
+  blocksFreeMove: boolean;
+  freeMoveAllowedWhileBlocked: boolean;
+  sendsMotion: boolean;
+  requiresSafetyConfirm: boolean;
+  safetyConfirmRequiredWhenExecuted: boolean;
+  minimalPrecheckSafetyOnly: boolean;
+  startsMapRuntimeWhenExecuted: boolean;
+};
 type PlainFreeRoamMotionGauge = {
   state: string;
   text: string;
@@ -9467,6 +9492,51 @@ const plainMappingUnlockSummary = computed(() => {
     cameraReprobeAfterHardwareActionRequired: summary?.camera_reprobe_after_hardware_action_required ?? liveSummary?.camera_reprobe_after_hardware_action_required ?? false,
     cameraReprobeSequence: cameraReprobeSequence.join(",") || "none",
     radarRefreshRequired: evidence.primaryActionRadarBlocksMappingStart,
+  };
+});
+const plainCurrentMappingAction = computed<PlainCurrentMappingAction>(() => {
+  // 当前建图动作只读展示 runbook 合同；启动仍受安全确认和传感器 ready 共同约束。
+  const summary = robotSummary.value;
+  const ready = Boolean(summary?.current_mapping_action_ready ?? summary?.mapping_start_ready ?? false);
+  const cameraReady = Boolean(summary?.current_mapping_action_camera_ready ?? (summary ? !summary.mapping_camera_blocks_start : false));
+  const radarReady = Boolean(summary?.current_mapping_action_radar_ready ?? (summary ? !summary.mapping_lidar_blocks_start : false));
+  const onlyCameraMissing = Boolean(summary?.current_mapping_action_only_camera_missing ?? summary?.mapping_start_only_camera_missing ?? false);
+  const radarOverlayWysiwygComplete = Boolean(summary?.current_mapping_action_radar_overlay_wysiwyg_complete ?? summary?.radar_overlay_wysiwyg_complete ?? false);
+  const blocksFreeMove = Boolean(summary?.current_mapping_action_blocks_free_move ?? false);
+  const freeMoveAllowedWhileBlocked = Boolean(summary?.current_mapping_action_free_move_allowed_while_blocked ?? (summary?.free_move_start_ready === true && !ready));
+  const missingEvidence = summary?.current_mapping_action_missing_evidence ?? summary?.mapping_missing_evidence ?? [];
+  const missingText = missingEvidence.length > 0 ? freeRoamMappingMissingPlainLabels(missingEvidence).join("、") : "无";
+  const state = ready ? "可启动建图" : onlyCameraMissing ? "只差画面" : "待补条件";
+  const sensorText = `${cameraReady ? "画面首帧已就绪" : "还差画面首帧"}；${radarReady ? "雷达已满足" : "还差雷达新鲜读数"}；${radarOverlayWysiwygComplete ? "雷达点已贴到地图" : "雷达贴图待确认"}`;
+  const nextText = ready
+    ? "勾现场安全确认后可启动建图记录"
+    : onlyCameraMissing
+      ? "先复测相机首帧；自由移动不受影响"
+      : "先补齐画面首帧和雷达新鲜读数；自由移动不受影响";
+  return {
+    actionId: summary?.current_mapping_action_id ?? "start_mapping_when_sensors_ready",
+    ready,
+    label: summary?.current_mapping_action_display_label ?? summary?.current_mapping_action_label ?? "传感器就绪后建图",
+    state,
+    text: `建图动作：${sensorText}；缺口=${missingText}；下一步：${nextText}。`,
+    startEndpoint: summary?.current_mapping_action_start_endpoint ?? "/api/robot-control/map/start",
+    stopEndpoint: summary?.current_mapping_action_stop_endpoint ?? "/api/robot-control/free-roam/autonomy/stop",
+    previewEndpoint: summary?.current_mapping_action_preview_endpoint ?? "/api/robot-control/map/preview",
+    acceptanceEndpoints: summary?.current_mapping_action_acceptance_endpoints ?? summary?.mapping_acceptance_endpoints ?? [],
+    readbackEndpoints: summary?.current_mapping_action_readback_endpoints ?? summary?.mapping_readback_endpoints ?? [],
+    requiredSuccessMarkers: summary?.current_mapping_action_required_success_markers ?? summary?.mapping_required_success_markers ?? [],
+    missingEvidence,
+    cameraReady,
+    radarReady,
+    onlyCameraMissing,
+    radarOverlayWysiwygComplete,
+    blocksFreeMove,
+    freeMoveAllowedWhileBlocked,
+    sendsMotion: Boolean(summary?.current_mapping_action_sends_motion ?? true),
+    requiresSafetyConfirm: Boolean(summary?.current_mapping_action_requires_safety_confirm ?? ready),
+    safetyConfirmRequiredWhenExecuted: Boolean(summary?.current_mapping_action_safety_confirm_required_when_executed ?? true),
+    minimalPrecheckSafetyOnly: Boolean(summary?.current_mapping_action_minimal_precheck_safety_only ?? true),
+    startsMapRuntimeWhenExecuted: Boolean(summary?.current_mapping_action_starts_map_runtime_when_executed ?? true),
   };
 });
 const plainFreeRoamDomEvidence = computed<PlainFreeRoamDomEvidence>(() => {
@@ -23028,6 +23098,34 @@ onBeforeUnmount(() => {
                   {{ plainMappingUnlockRefreshButtonLabel }}
                 </button>
               </div>
+              <p
+                class="panel-note"
+                data-testid="plain-current-mapping-action"
+                :data-current-mapping-action-id="plainCurrentMappingAction.actionId"
+                :data-current-mapping-action-ready="String(plainCurrentMappingAction.ready)"
+                :data-current-mapping-action-label="plainCurrentMappingAction.label"
+                :data-state="plainCurrentMappingAction.state"
+                :data-current-mapping-action-start-endpoint="plainCurrentMappingAction.startEndpoint"
+                :data-current-mapping-action-stop-endpoint="plainCurrentMappingAction.stopEndpoint"
+                :data-current-mapping-action-preview-endpoint="plainCurrentMappingAction.previewEndpoint"
+                :data-current-mapping-action-acceptance-endpoints="plainCurrentMappingAction.acceptanceEndpoints.join(',')"
+                :data-current-mapping-action-readback-endpoints="plainCurrentMappingAction.readbackEndpoints.join(',')"
+                :data-current-mapping-action-required-success-markers="plainCurrentMappingAction.requiredSuccessMarkers.join(',')"
+                :data-current-mapping-action-missing-evidence="plainCurrentMappingAction.missingEvidence.join(',')"
+                :data-current-mapping-action-camera-ready="String(plainCurrentMappingAction.cameraReady)"
+                :data-current-mapping-action-radar-ready="String(plainCurrentMappingAction.radarReady)"
+                :data-current-mapping-action-only-camera-missing="String(plainCurrentMappingAction.onlyCameraMissing)"
+                :data-current-mapping-action-radar-overlay-wysiwyg-complete="String(plainCurrentMappingAction.radarOverlayWysiwygComplete)"
+                :data-current-mapping-action-blocks-free-move="String(plainCurrentMappingAction.blocksFreeMove)"
+                :data-current-mapping-action-free-move-allowed-while-blocked="String(plainCurrentMappingAction.freeMoveAllowedWhileBlocked)"
+                :data-current-mapping-action-sends-motion="String(plainCurrentMappingAction.sendsMotion)"
+                :data-current-mapping-action-requires-safety-confirm="String(plainCurrentMappingAction.requiresSafetyConfirm)"
+                :data-current-mapping-action-safety-confirm-required-when-executed="String(plainCurrentMappingAction.safetyConfirmRequiredWhenExecuted)"
+                :data-current-mapping-action-minimal-precheck-safety-only="String(plainCurrentMappingAction.minimalPrecheckSafetyOnly)"
+                :data-current-mapping-action-starts-map-runtime-when-executed="String(plainCurrentMappingAction.startsMapRuntimeWhenExecuted)"
+              >
+                {{ plainCurrentMappingAction.text }}
+              </p>
               <p
                 class="panel-note"
                 data-testid="plain-mapping-unlock-summary"

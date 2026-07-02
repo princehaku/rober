@@ -10357,6 +10357,14 @@ export async function buildRobotControlSummary(
   const freeMoveActionMissingEvidence = freeMoveRunbookItem?.missing_evidence ?? [];
   const freeMoveActionStartEndpoint = freeMoveRunbookItem?.start_endpoint ?? liveClosureSummary.fixed_free_roam_start_endpoint;
   const freeMoveActionStopEndpoint = freeMoveRunbookItem?.stop_endpoint ?? liveClosureSummary.fixed_free_roam_stop_endpoint;
+  const mappingActionAcceptanceEndpoints = mappingRunbookItem?.acceptance_endpoints ?? [
+    liveClosureSummary.fixed_free_roam_latest_endpoint,
+    liveClosureSummary.fixed_mapping_preview_endpoint,
+    "/api/robot-control/summary",
+  ];
+  const mappingActionMissingEvidence = mappingRunbookItem?.missing_evidence ?? liveClosureSummary.mapping_start_missing_reasons;
+  const mappingActionStartEndpoint = mappingRunbookItem?.start_endpoint ?? liveClosureSummary.fixed_mapping_start_endpoint;
+  const mappingActionStopEndpoint = mappingRunbookItem?.stop_endpoint ?? liveClosureSummary.fixed_free_roam_stop_endpoint;
   const cameraUsbSpeed = String(liveClosureSummary.camera_usb_speed ?? "").trim().toLowerCase();
   const cameraUsbHighSpeed = !liveClosureSummary.camera_usb_full_speed_detected
     && cameraUsbSpeed !== ""
@@ -11168,6 +11176,38 @@ export async function buildRobotControlSummary(
     current_free_move_action_blocked_by_camera_wysiwyg: liveClosureSummary.free_move_blocked_by_camera_wysiwyg,
     current_free_move_action_blocked_by_radar_wysiwyg: liveClosureSummary.free_move_blocked_by_radar_wysiwyg,
     current_free_move_action_sends_motion: freeMoveRunbookItem?.sends_motion_when_executed ?? true,
+    current_mapping_action_required: true,
+    current_mapping_action_ready: mappingRunbookItem?.ready ?? liveClosureSummary.mapping_start_ready,
+    current_mapping_action_id: mappingRunbookItem?.id ?? "start_mapping_when_sensors_ready",
+    current_mapping_action_label: mappingRunbookItem?.label ?? "传感器就绪后建图",
+    current_mapping_action_display_label: mappingRunbookItem?.display_label ?? "传感器就绪后建图",
+    current_mapping_action_start_endpoint: mappingActionStartEndpoint,
+    current_mapping_action_stop_endpoint: mappingActionStopEndpoint,
+    current_mapping_action_preview_endpoint: liveClosureSummary.fixed_mapping_preview_endpoint,
+    current_mapping_action_acceptance_endpoints: mappingActionAcceptanceEndpoints,
+    current_mapping_action_readback_endpoints: mappingActionAcceptanceEndpoints,
+    current_mapping_action_required_success_markers: mappingActionMissingEvidence,
+    current_mapping_action_proof_status: mappingRunbookItem?.proof_status ?? "blocked",
+    current_mapping_action_missing_evidence: mappingActionMissingEvidence,
+    current_mapping_action_proof_plain: mappingRunbookItem?.proof_plain ?? "传感器就绪后建图未出现在当前 runbook。",
+    current_mapping_action_requires_safety_confirm: mappingRunbookItem?.safety_confirm_required ?? liveClosureSummary.mapping_start_ready,
+    current_mapping_action_safety_confirm_required_when_executed: true,
+    current_mapping_action_minimal_precheck_safety_only: mappingRunbookItem?.minimal_precheck_safety_only ?? true,
+    current_mapping_action_camera_required: liveClosureSummary.mapping_start_requires_camera_first_frame,
+    current_mapping_action_radar_required: liveClosureSummary.mapping_start_requires_lidar_fresh,
+    current_mapping_action_camera_ready: !liveClosureSummary.mapping_camera_blocks_start,
+    current_mapping_action_radar_ready: !liveClosureSummary.mapping_lidar_blocks_start,
+    current_mapping_action_camera_blocks_start: liveClosureSummary.mapping_camera_blocks_start,
+    current_mapping_action_radar_blocks_start: liveClosureSummary.mapping_lidar_blocks_start,
+    current_mapping_action_only_camera_missing: mappingStartOnlyCameraMissing,
+    current_mapping_action_radar_overlay_wysiwyg_complete: radarOverlayWysiwygComplete,
+    current_mapping_action_blocks_free_move: false,
+    current_mapping_action_free_move_allowed_while_blocked: liveClosureSummary.free_move_start_ready && !liveClosureSummary.mapping_start_ready,
+    current_mapping_action_sends_motion: mappingRunbookItem?.sends_motion_when_executed ?? true,
+    current_mapping_action_starts_map_runtime_when_executed: true,
+    current_mapping_action_starts_nav2: false,
+    current_mapping_action_starts_keyboard: false,
+    current_mapping_action_submits_delivery: false,
     field_acceptance_hardware_action_ids: fieldAcceptancePacket.hardware_action_ids,
     field_acceptance_hardware_action_labels: fieldAcceptancePacket.hardware_action_labels,
     field_acceptance_hardware_action_after_readback_endpoints: fieldAcceptancePacket.hardware_action_after_readback_endpoints,
@@ -11353,21 +11393,13 @@ export async function buildRobotControlSummary(
     free_roam_readback_endpoints: freeMoveActionAcceptanceEndpoints,
     free_roam_required_success_markers: freeMoveActionMissingEvidence,
     free_roam_missing_evidence: freeMoveActionMissingEvidence,
-    mapping_start_endpoint: mappingRunbookItem?.start_endpoint ?? liveClosureSummary.fixed_mapping_start_endpoint,
+    mapping_start_endpoint: mappingActionStartEndpoint,
     mapping_preview_endpoint: liveClosureSummary.fixed_mapping_preview_endpoint,
-    mapping_acceptance_endpoints: mappingRunbookItem?.acceptance_endpoints ?? [
-      liveClosureSummary.fixed_free_roam_latest_endpoint,
-      liveClosureSummary.fixed_mapping_preview_endpoint,
-      "/api/robot-control/summary",
-    ],
-    mapping_readback_endpoints: mappingRunbookItem?.acceptance_endpoints ?? [
-      liveClosureSummary.fixed_free_roam_latest_endpoint,
-      liveClosureSummary.fixed_mapping_preview_endpoint,
-      "/api/robot-control/summary",
-    ],
-    mapping_required_success_markers: mappingRunbookItem?.missing_evidence ?? [],
+    mapping_acceptance_endpoints: mappingActionAcceptanceEndpoints,
+    mapping_readback_endpoints: mappingActionAcceptanceEndpoints,
+    mapping_required_success_markers: mappingActionMissingEvidence,
     mapping_proof_status: mappingRunbookItem?.proof_status ?? "blocked",
-    mapping_missing_evidence: mappingRunbookItem?.missing_evidence ?? [],
+    mapping_missing_evidence: mappingActionMissingEvidence,
     mapping_proof_plain: mappingRunbookItem?.proof_plain ?? "传感器就绪后建图未出现在当前 runbook。",
     camera_ready: liveClosureSummary.camera_current_visible,
     camera_first_frame_ready: liveClosureSummary.camera_current_visible,
