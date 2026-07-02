@@ -416,6 +416,36 @@ const PROOF_REFRESH_NO_MOTION_FLAGS = {
   | "stops_motion"
 >;
 
+const MAP_PREVIEW_READBACK_ONLY_FLAGS = {
+  // 地图 preview 是 GET 读回；它可以刷新画面证据，但不能启动雷达、Nav2、建图或底盘运动。
+  readback_only: true,
+  map_preview_readback_only: true,
+  no_motion_refresh: true,
+  sends_motion_when_clicked: false,
+  starts_radar_lifecycle: false,
+  starts_nav2: false,
+  starts_manual: false,
+  starts_keyboard: false,
+  starts_free_roam: false,
+  starts_map_runtime: false,
+  submits_delivery: false,
+  stops_motion: false,
+} satisfies Pick<
+  RobotControlMapPreviewResponse,
+  | "readback_only"
+  | "map_preview_readback_only"
+  | "no_motion_refresh"
+  | "sends_motion_when_clicked"
+  | "starts_radar_lifecycle"
+  | "starts_nav2"
+  | "starts_manual"
+  | "starts_keyboard"
+  | "starts_free_roam"
+  | "starts_map_runtime"
+  | "submits_delivery"
+  | "stops_motion"
+>;
+
 const RADAR_SCAN_PROOF_REFRESH_CONFIG: RobotProofRefreshConfig = {
   kind: "radar_scan_proof_refresh",
   endpoint: "/api/radar/scan-proof/refresh",
@@ -4231,6 +4261,7 @@ function blockedMapPreviewResponse(
     remote_endpoint: "/api/map/preview",
     remote_http_status: null,
     status: "blocked",
+    ...MAP_PREVIEW_READBACK_ONLY_FLAGS,
     plain_hint: previewPlain.plainHint,
     map_plain_hint: previewPlain.mapPlainHint,
     map_next_action_plain: previewPlain.nextActionPlain,
@@ -4535,6 +4566,7 @@ export async function buildMapPreviewProxy(baseUrl: string): Promise<RobotContro
     remote_endpoint: "/api/map/preview",
     remote_http_status: response.status,
     status: forwarded ? "loaded_fail_closed_summary" : "blocked",
+    ...MAP_PREVIEW_READBACK_ONLY_FLAGS,
     plain_hint: previewPlain.plainHint,
     map_plain_hint: previewPlain.mapPlainHint,
     map_next_action_plain: previewPlain.nextActionPlain,

@@ -5218,6 +5218,18 @@ export interface RobotControlMapPreviewResponse extends ProofFlags {
   remote_endpoint: "/api/map/preview";
   remote_http_status: number | null;
   status: "blocked" | "loaded_fail_closed_summary";
+  readback_only: true;
+  map_preview_readback_only: true;
+  no_motion_refresh: true;
+  sends_motion_when_clicked: false;
+  starts_radar_lifecycle: false;
+  starts_nav2: false;
+  starts_manual: false;
+  starts_keyboard: false;
+  starts_free_roam: false;
+  starts_map_runtime: false;
+  submits_delivery: false;
+  stops_motion: false;
   plain_hint: string;
   map_plain_hint: string;
   map_next_action_plain: string;

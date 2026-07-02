@@ -2544,6 +2544,18 @@ describe("robotControlSummary", () => {
     const preview = await buildMapPreviewProxy("http://192.168.1.11:8787");
 
     expect(preview.proxy_status).toBe("preview_forwarded");
+    expect(preview.readback_only).toBe(true);
+    expect(preview.map_preview_readback_only).toBe(true);
+    expect(preview.no_motion_refresh).toBe(true);
+    expect(preview.sends_motion_when_clicked).toBe(false);
+    expect(preview.starts_radar_lifecycle).toBe(false);
+    expect(preview.starts_nav2).toBe(false);
+    expect(preview.starts_manual).toBe(false);
+    expect(preview.starts_keyboard).toBe(false);
+    expect(preview.starts_free_roam).toBe(false);
+    expect(preview.starts_map_runtime).toBe(false);
+    expect(preview.submits_delivery).toBe(false);
+    expect(preview.stops_motion).toBe(false);
     expect(preview.radar_overlay_status).toBe("not_current");
     expect(preview.radar_overlay_point_count).toBe(0);
     expect(preview.radar_overlay_source_point_count).toBe(3);
