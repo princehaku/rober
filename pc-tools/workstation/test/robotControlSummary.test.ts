@@ -343,8 +343,8 @@ describe("robotControlSummary", () => {
     expect(summary.map_display_direct_map_refreshes_radar_status_on_enter).toBe(true);
     expect(summary.live_closure_summary?.map_display_direct_map_starts_radar_lifecycle_on_enter).toBe(false);
     expect(summary.map_display_direct_map_starts_radar_lifecycle_on_enter).toBe(false);
-    expect(summary.live_closure_summary?.map_display_default_zoom_percent).toBe("1600%");
-    expect(summary.map_display_default_zoom_percent).toBe("1600%");
+    expect(summary.live_closure_summary?.map_display_default_zoom_percent).toBe("2400%");
+    expect(summary.map_display_default_zoom_percent).toBe("2400%");
     expect(summary.live_closure_summary?.map_display_max_zoom_percent).toBe("4800%");
     expect(summary.map_display_max_zoom_percent).toBe("4800%");
     expect(summary.live_closure_summary?.map_display_too_small_next_action_plain).toContain("进入地图大屏");
@@ -407,7 +407,7 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.map_display_engineering_tools_sends_motion).toBe(false);
     expect(summary.map_display_engineering_tools_sends_motion).toBe(false);
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("普通用户地图：进入 /map 使用 PC 大地图");
-    expect(summary.live_closure_summary?.map_display_companion_plain).toContain("默认 1600% 现场大图");
+    expect(summary.live_closure_summary?.map_display_companion_plain).toContain("默认 2400% 现场大图");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("适配");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("100% 全图");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("点“细节放大”可查看局部");

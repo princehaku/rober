@@ -355,11 +355,11 @@ const plainMapDirectViewRequested = computed(() => {
   return view === "map" || view === "map-only" || window.location.hash === "#map";
 });
 const PLAIN_MAP_ZOOM_LEVELS = [1, 1.5, 2, 3, 4, 5, 6, 8, 10, 12, 16, 20, 24, 32, 40, 48] as const;
-const PLAIN_MAP_DEFAULT_ZOOM_INDEX = 10;
+const PLAIN_MAP_DEFAULT_ZOOM_INDEX = 12;
 const plainMapZoomIndex = ref(PLAIN_MAP_DEFAULT_ZOOM_INDEX);
 const plainMapZoomScale = computed(() => PLAIN_MAP_ZOOM_LEVELS[plainMapZoomIndex.value] ?? 1);
 const plainMapZoomPercent = computed(() => `${Math.round(plainMapZoomScale.value * 100)}%`);
-const PLAIN_MAP_DEFAULT_ZOOM_PERCENT = "1600%";
+const PLAIN_MAP_DEFAULT_ZOOM_PERCENT = "2400%";
 const PLAIN_MAP_MAX_ZOOM_PERCENT = "4800%";
 const plainMapZoomStyle = computed(() => ({
   "--plain-map-zoom": String(plainMapZoomScale.value),
