@@ -16158,6 +16158,8 @@ function requestBodyForDirection(direction: ManualDirection) {
     direction,
     speed: Math.min(Math.max(jogSpeedMps.value, 0), manualSpeedLimit.value),
     duration_ms: Math.min(Math.max(jogDurationMs.value, 0), manualDurationLimit.value),
+    command_mode: "pwm",
+    feedback_mode: "bridge_debug",
     confirm_hil_checklist: plainManualSafetyConfirmed.value,
   } as const;
 }
@@ -16168,6 +16170,8 @@ function requestBodyForKeyboardDirection(direction: ManualDirection) {
     direction,
     speed: Math.min(Math.max(jogSpeedMps.value, 0), manualSpeedLimit.value),
     duration_ms: Math.min(Math.max(keyboardJogDurationMs.value, 0), manualDurationLimit.value),
+    command_mode: "pwm",
+    feedback_mode: "bridge_debug",
     confirm_hil_checklist: plainManualSafetyConfirmed.value,
   } as const;
 }

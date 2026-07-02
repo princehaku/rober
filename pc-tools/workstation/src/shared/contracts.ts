@@ -5594,7 +5594,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
     radar_start: "radar start locked";
     keyboard_control: "bounded repeating manual pulse gated";
     keyboard_control_mode: "bounded_repeating_manual_pulse";
-    keyboard_manual_command_mode: "ros";
+    keyboard_manual_command_mode: "pwm";
     keyboard_manual_proxy_endpoint: "/api/robot-control/base/manual";
     keyboard_stop_proxy_endpoint: "/api/robot-control/base/stop";
     keyboard_jog_interval_ms: number;
@@ -6530,6 +6530,8 @@ export interface RobotControlBaseCommandRequest {
   direction: RobotControlBaseDirection;
   speed: number;
   duration_ms: number;
+  command_mode?: "ros" | "speed" | "pwm";
+  feedback_mode?: "bridge_debug" | "direct_feedback";
   confirm_hil_checklist: boolean;
 }
 

@@ -880,6 +880,67 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertTrue(payload["manual_command_executed"])
         self.assertFalse(payload["safe_to_control"])
 
+    def test_manual_control_pwm_bridge_debug_uses_write_only_serial_and_persists_feedback(self) -> None:
+        """PC 手控走 PWM/T=11 时只写串口，反馈由 esp32_bridge debug log 回灌。"""
+        api = upper_robot_api.UpperRobotApi(
+            camera_base_url="http://127.0.0.1:8088",
+            base_port="/dev/ttyS5",
+            base_baudrate=115200,
+            max_speed=0.12,
+        )
+        transaction = {
+            "mode": "serial_write_only_bridge_debug",
+            "command_result": {"ok": True, "bytes_written": 23, "command": {"T": 11, "L": 164, "R": 164}},
+            "stop_result": {"ok": True, "bytes_written": 20, "command": {"T": 11, "L": 0, "R": 0}},
+            "additional_stop_results": [{"ok": True, "command": {"T": 1, "L": 0, "R": 0}}, {"ok": True, "command": {"T": 13, "X": 0, "Z": 0}}],
+            "feedback_during_motion": upper_robot_api.skipped_manual_feedback_payload("/dev/ttyS5", 115200, "serial_write_only_uses_bridge_feedback_debug_log"),
+            "feedback_after_stop": upper_robot_api.skipped_manual_feedback_payload("/dev/ttyS5", 115200, "serial_write_only_uses_bridge_feedback_debug_log"),
+            "serial_session_error": None,
+        }
+        bridge_summary = {
+            "freshness": {"status": "fresh"},
+            "t1001_observed_count": 2,
+            "bad_line_count": 0,
+            "t1001_feedback_frames": [
+                {"T": 1001, "L": 0, "R": 0, "r": 0, "p": 0, "y": "null", "v": 12.2},
+                {"T": 1001, "L": 0.08, "R": 0.08, "r": 1.1, "p": 0.2, "y": "null", "v": 12.1},
+            ],
+            "wheel_feedback_summary": {
+                "lr_nonzero_observed": True,
+                "latest_pair": {"source": "vendor_t1001_L_R", "left_speed": 0.08, "right_speed": 0.08},
+            },
+        }
+
+        with mock.patch.object(upper_robot_api, "manual_motion_ros_cmd_vel_transaction") as mocked_ros_transaction:
+            with mock.patch.object(upper_robot_api, "manual_motion_serial_transaction") as mocked_direct_transaction:
+                with mock.patch.object(upper_robot_api, "manual_motion_serial_write_only_transaction", return_value=transaction) as mocked_write_only:
+                    with mock.patch.object(upper_robot_api, "summarize_bridge_feedback_debug_log", return_value=bridge_summary):
+                        with mock.patch.object(upper_robot_api, "persist_feedback_samples_artifact", side_effect=lambda _path, payload: {**payload, "artifact": {"write": {"ok": True}}}):
+                            payload = asyncio.run(
+                                api.manual_control(
+                                    {
+                                        "direction": "forward",
+                                        "speed": 0.08,
+                                        "duration_ms": 240,
+                                        "command_mode": "pwm",
+                                        "feedback_mode": "bridge_debug",
+                                    }
+                                )
+                            )
+
+        mocked_ros_transaction.assert_not_called()
+        mocked_direct_transaction.assert_not_called()
+        mocked_write_only.assert_called_once()
+        self.assertEqual({"T": 11, "L": 164, "R": 164}, mocked_write_only.call_args.kwargs["command"])
+        self.assertEqual("pwm", payload["base_command_mode"])
+        self.assertEqual("bridge_debug", payload["feedback_mode"])
+        self.assertEqual(transaction, payload["serial_motion_transaction"])
+        self.assertIsNone(payload["ros_cmd_vel_transaction"])
+        self.assertTrue(payload["manual_command_executed"])
+        self.assertTrue(payload["auto_stop_executed"])
+        self.assertTrue(payload["manual_feedback_samples_latest"]["wheel_feedback_lr_nonzero_proven"])
+        self.assertTrue(payload["wheel_feedback_lr_nonzero_proven"])
+
     def test_manual_control_keyboard_pulse_keeps_short_motion_window(self) -> None:
         """键盘连续手控 240ms pulse 走短 /cmd_vel 事务，避免串口读阻塞续发。"""
         api = upper_robot_api.UpperRobotApi(

@@ -5288,3 +5288,13 @@ Hub 后复测；该结论仍只读，不阻塞自由移动，不会启动任何�
 `docs/vendor/VENDOR_INDEX.md` 指向的 Orange Pi/WAVE ROVER 本地资料入口，以及现场只读
 `lsusb -t` / `v4l2-ctl`：摄像头仍挂在 USB `12M` full-speed。该改动只打开相机读取首帧，不触发底盘、
 Nav2、manual、keyboard、free-roam、建图 runtime、delivery、stop 或 `/cmd_vel`。
+
+2026-07-02 20:55 CST 起，PC 低速试动、首动复验和键盘连续手控默认改走上位机 `command_mode=pwm` +
+`feedback_mode=bridge_debug`：前端和 PC 代理统一发送 vendor `T=11` PWM 短脉冲，由上位机只写 `/dev/ttyS5`
+并自动发送 `T=11/T=1/T=13` 多模式停车，不再依赖慢启动的 `ros2 topic pub --once /cmd_vel` 完成键盘续发。
+运动反馈仍优先读取 `esp32_bridge` 新鲜 debug log，避免和 bridge 抢 UART；当前现场事实是 `T=1001` 的 wheel raw
+`L/R` 仍可能保持 `0/0`，因此 PC 同步暴露 IMU 姿态变化作为“确有运动信号”的次级证据，wheel raw 非零仍保留为未完成硬件/固件风险。
+地图太小时，普通用户继续优先使用 `/map` 大屏；ROS2 配套观察工具为本机 `RViz2`
+（`ros2 launch ros2_trashbot_bringup rviz.launch.py`）和远程浏览器 Foxglove
+（`ros2 launch ros2_trashbot_bringup foxglove_bridge.launch.py` 后连接 `ws://192.168.1.11:8765`），二者只用于观察
+`/map`、`/scan`、`/tf`、路径、定位和 costmap，不替代 PC 简易发车界面。

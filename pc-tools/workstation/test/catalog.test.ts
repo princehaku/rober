@@ -1514,8 +1514,8 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
-  it("keeps advanced Nav2 confirmation collapsed into the unified safety checkbox", async () => {
-    // 发车前预检对普通和高级入口都只保留一个现场安全确认；底层兼容字段仍由请求体发送。
+  it("keeps Nav2 confirmations hidden while preserving compatibility fields", async () => {
+    // 普通页面不再显示安全勾选框；底层兼容 input 和请求体字段仍保留给旧脚本。
     const source = await readFile(path.join(process.cwd(), "src/components/RobotControlConsolePanel.vue"), "utf8");
 
     expect(source).not.toContain("confirmNavigationPreflight");
@@ -1523,7 +1523,8 @@ describe("workstation fail-closed API contracts", () => {
     expect(source).not.toContain("确认仅做导航目标预检");
     expect(source).not.toContain("确认执行一次受限导航目标");
     expect(source).toContain('name="advancedNavSafetyConfirmed"');
-    expect(source).toContain("现场安全确认（全页面一次生效）");
+    expect(source).toContain("plain-hidden-safety-input");
+    expect(source).not.toContain("现场安全确认（全页面一次生效）");
     expect(source).toContain("confirm_navigation_preflight: true");
     expect(source).toContain("confirm_navigation_execution: plainManualSafetyConfirmed.value");
   });
@@ -4222,7 +4223,7 @@ describe("workstation fail-closed API contracts", () => {
           requires_keydown_for_motion: true,
           pulse_interval_ms: 260,
           pulse_duration_ms: 240,
-          manual_command_mode: "ros",
+          manual_command_mode: "pwm",
           wheel_feedback_required_in_same_hold_window: true,
           fixed_keyboard_manual_endpoint: "/api/robot-control/base/manual",
           fixed_keyboard_stop_endpoint: "/api/robot-control/base/stop",
@@ -4585,7 +4586,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.safe_command_boundary.manual_control_enabled).toBe(false);
       expect(summary.safe_command_boundary.keyboard_control).toBe("bounded repeating manual pulse gated");
       expect(summary.safe_command_boundary.keyboard_control_mode).toBe("bounded_repeating_manual_pulse");
-      expect(summary.safe_command_boundary.keyboard_manual_command_mode).toBe("ros");
+      expect(summary.safe_command_boundary.keyboard_manual_command_mode).toBe("pwm");
       expect(summary.safe_command_boundary.keyboard_manual_proxy_endpoint).toBe("/api/robot-control/base/manual");
       expect(summary.safe_command_boundary.keyboard_stop_proxy_endpoint).toBe("/api/robot-control/base/stop");
       expect(summary.safe_command_boundary.keyboard_jog_interval_ms).toBe(260);
@@ -4602,7 +4603,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.safe_command_boundary.keyboard_minimal_precheck_plain).toBe("键盘连续手控只复用现场安全确认；启用键盘不发车，只有按住方向键/WASD 才发送低速短脉冲。");
       expect(summary.readback_summary.keyboard.status).toBe("start_ready");
       expect(summary.readback_summary.keyboard.control_mode).toBe("bounded_repeating_manual_pulse");
-      expect(summary.readback_summary.keyboard.manual_command_mode).toBe("ros");
+      expect(summary.readback_summary.keyboard.manual_command_mode).toBe("pwm");
       expect(summary.readback_summary.keyboard.start_ready).toBe("true");
       expect(summary.readback_summary.keyboard.continuous_control_ready).toBe("true");
       expect(summary.readback_summary.keyboard.keyboard_control_start_ready).toBe("true");
@@ -4620,7 +4621,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.keyboard.minimal_precheck_safety_only).toBe("true");
       expect(summary.readback_summary.keyboard.plain_hint).toBe("可启用键盘；启用本身不发车，必须按住 W/A/S/D 或方向键才会连续低速移动，松开/失焦/切页/换方向或点停止都会停。");
       expect(summary.readback_summary.keyboard.readiness_plain).toBe("可启用键盘；启用本身不发车，按住方向键/WASD 才连续低速移动。");
-      expect(summary.readback_summary.keyboard.continuous_control_contract_plain).toBe("按住时约每 0.26 秒发送一次 0.24 秒 ROS 低速脉冲；松开、失焦、切页、换方向或点击停止都会停。");
+      expect(summary.readback_summary.keyboard.continuous_control_contract_plain).toBe("按住时约每 0.26 秒发送一次 0.24 秒 PWM/T=11 低速脉冲；松开、失焦、切页、换方向或点击停止都会停。");
       expect(summary.readback_summary.keyboard.hold_to_move_plain).toBe(summary.safe_command_boundary.keyboard_hold_to_move_plain);
       expect(summary.readback_summary.keyboard.stop_triggers_plain).toBe(summary.safe_command_boundary.keyboard_stop_triggers_plain);
       expect(summary.readback_summary.keyboard.pulse_timing_plain).toBe(summary.safe_command_boundary.keyboard_pulse_timing_plain);
@@ -16792,7 +16793,8 @@ describe("workstation fail-closed API contracts", () => {
           direction: "forward",
           speed: 0.12,
           duration_ms: 800,
-          command_mode: "ros",
+          command_mode: "pwm",
+          feedback_mode: "bridge_debug",
           confirm_hil_checklist: true,
         },
       ]);
@@ -16865,7 +16867,8 @@ describe("workstation fail-closed API contracts", () => {
           direction: "forward",
           speed: 0.08,
           duration_ms: 500,
-          command_mode: "ros",
+          command_mode: "pwm",
+          feedback_mode: "bridge_debug",
           confirm_hil_checklist: true,
         },
       ]);
@@ -16950,7 +16953,8 @@ describe("workstation fail-closed API contracts", () => {
           direction: "forward",
           speed: 0.08,
           duration_ms: 500,
-          command_mode: "ros",
+          command_mode: "pwm",
+          feedback_mode: "bridge_debug",
           confirm_hil_checklist: true,
         },
       ]);
@@ -17033,7 +17037,8 @@ describe("workstation fail-closed API contracts", () => {
           direction: "left",
           speed: 0.12,
           duration_ms: 800,
-          command_mode: "ros",
+          command_mode: "pwm",
+          feedback_mode: "bridge_debug",
           confirm_hil_checklist: true,
         },
       ]);

@@ -648,9 +648,11 @@ function baseManualMotionKeyValues(payload: Record<string, unknown> | null): Rec
   const transaction = asRecord(payload?.serial_motion_transaction);
   const duringFeedback = asRecord(transaction?.feedback_during_motion);
   const afterStopFeedback = asRecord(transaction?.feedback_after_stop);
+  const manualFeedbackLatest = asRecord(payload?.manual_feedback_samples_latest);
   const duringFrames = Array.isArray(duringFeedback?.t1001_feedback_frames) ? duringFeedback.t1001_feedback_frames : [];
   const afterStopFrames = Array.isArray(afterStopFeedback?.t1001_feedback_frames) ? afterStopFeedback.t1001_feedback_frames : [];
-  const latestDuringFrame = asRecord(duringFrames[duringFrames.length - 1]);
+  const latestArtifactFrames = Array.isArray(manualFeedbackLatest?.t1001_feedback_frames) ? manualFeedbackLatest.t1001_feedback_frames : [];
+  const latestDuringFrame = asRecord(duringFrames[duringFrames.length - 1]) ?? asRecord(latestArtifactFrames[latestArtifactFrames.length - 1]);
   return {
     wheel_feedback_lr_nonzero_proven: shortValue(payload?.wheel_feedback_lr_nonzero_proven, "false"),
     wheel_feedback_nonzero_observed: shortValue(payload?.wheel_feedback_nonzero_observed, "false"),
@@ -3790,7 +3792,8 @@ export function createWorkstationApp(): express.Express {
       direction,
       speed: clampedSpeed,
       duration_ms: clampedDurationMs,
-      command_mode: "ros",
+      command_mode: "pwm",
+      feedback_mode: "bridge_debug",
       confirm_hil_checklist: true,
     });
     const afterEvidence = await captureEvidencePhase(normalized.normalized, "after");
@@ -3898,7 +3901,8 @@ export function createWorkstationApp(): express.Express {
       direction,
       speed: clampedSpeed,
       duration_ms: clampedDurationMs,
-      command_mode: "ros",
+      command_mode: "pwm",
+      feedback_mode: "bridge_debug",
       confirm_hil_checklist: true,
     });
     const afterEvidence = await captureEvidencePhase(normalized.normalized, "after");

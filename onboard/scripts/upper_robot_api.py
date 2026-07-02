@@ -519,7 +519,7 @@ def manual_command_for_direction(
     pwm_min_abs: int,
     pwm_max_abs: int,
 ) -> dict[str, float | int]:
-    """按现场验证结果选择底盘命令；默认 ROS/T=13，PWM 仅保留为显式诊断模式。"""
+    """按调用方指定的现场模式选择底盘命令；PC 低速试动可显式走 PWM。"""
     if command_mode == "ros":
         return ros_command_for_direction(direction, speed)
     if command_mode == "pwm":
@@ -6265,6 +6265,89 @@ def manual_motion_serial_transaction(
     }
 
 
+def manual_motion_serial_write_only_transaction(
+    *,
+    port: str,
+    baudrate: int,
+    command: dict[str, Any],
+    stop_commands: list[dict[str, Any]],
+    pulse_ms: int,
+) -> dict[str, Any]:
+    """只写低速点动和停车命令，不抢 esp32_bridge 正在读取的 UART 反馈。"""
+    serial_module, import_error = load_serial_module()
+    serial_open: dict[str, Any] = {"ok": False, "port": port, "baudrate": baudrate, "timeout_s": 0.05}
+    input_reset: dict[str, Any] = {"attempted": False, "ok": False, "skipped_reason": "preserve_bridge_reader_buffer"}
+    command_write: dict[str, Any] = {"ok": False, "command": command}
+    stop_plan = stop_commands or [{"T": 1, "L": 0, "R": 0}]
+    stop_write: dict[str, Any] = {"ok": False, "command": stop_plan[0]}
+    additional_stop_writes: list[dict[str, Any]] = []
+    serial_obj = None
+    started_monotonic = time.monotonic()
+    feedback_reason = "serial_write_only_uses_bridge_feedback_debug_log"
+
+    if serial_module is None:
+        error = {"type": "pyserial_unavailable", "message": import_error or "missing"}
+        command_write["error"] = error
+        return {
+            "mode": "serial_write_only_bridge_debug",
+            "serial_open": {**serial_open, "error": error},
+            "input_reset": input_reset,
+            "command_result": command_write,
+            "stop_result": stop_write,
+            "additional_stop_results": additional_stop_writes,
+            "feedback_during_motion": skipped_manual_feedback_payload(port, baudrate, "pyserial_unavailable"),
+            "feedback_after_stop": skipped_manual_feedback_payload(port, baudrate, "pyserial_unavailable"),
+            "serial_session_error": error,
+        }
+
+    try:
+        serial_obj = serial_module.Serial(port=port, baudrate=baudrate, timeout=0.05)
+        serial_open["ok"] = True
+        command_write = write_json_to_open_serial(serial_obj, command)
+        remaining_s = max(pulse_ms / 1000.0 - (time.monotonic() - started_monotonic), 0.0)
+        if remaining_s > 0:
+            time.sleep(remaining_s)
+        stop_write = write_json_to_open_serial(serial_obj, stop_plan[0])
+        for stop_command in stop_plan[1:]:
+            additional_stop_writes.append(write_json_to_open_serial(serial_obj, stop_command))
+    except Exception as exc:  # noqa: BLE001 - 现场串口错误必须结构化返回，stop 证据也要保留。
+        error = compact_error(exc)
+        if not command_write.get("ok"):
+            command_write["error"] = error
+        if not stop_write.get("ok"):
+            stop_write["error"] = error
+        return {
+            "mode": "serial_write_only_bridge_debug",
+            "serial_open": {**serial_open, "error": error},
+            "input_reset": input_reset,
+            "command_result": command_write,
+            "stop_result": stop_write,
+            "additional_stop_results": additional_stop_writes,
+            "feedback_during_motion": skipped_manual_feedback_payload(port, baudrate, "serial_write_only_error"),
+            "feedback_after_stop": skipped_manual_feedback_payload(port, baudrate, "serial_write_only_error"),
+            "serial_session_error": error,
+        }
+    finally:
+        if serial_obj is not None:
+            try:
+                serial_obj.close()
+            except Exception:
+                pass
+
+    return {
+        "mode": "serial_write_only_bridge_debug",
+        "serial_open": serial_open,
+        "input_reset": input_reset,
+        "command_result": command_write,
+        "stop_result": stop_write,
+        "additional_stop_results": additional_stop_writes,
+        "feedback_during_motion": skipped_manual_feedback_payload(port, baudrate, feedback_reason),
+        "feedback_after_stop": skipped_manual_feedback_payload(port, baudrate, feedback_reason),
+        "serial_session_error": None,
+        "feedback_source": "esp32_bridge_feedback_debug_log",
+    }
+
+
 def run_nav2_goal_execution_helper(
     *,
     artifact_path: str,
@@ -9106,6 +9189,8 @@ class UpperRobotApi:
         pulse_ms = min(max(requested_pulse_ms, 0), MAX_PULSE_MS)
         request_command_mode = str(body.get("command_mode", self.base_command_mode)).strip().lower()
         command_mode = request_command_mode if request_command_mode in ALLOWED_BASE_COMMAND_MODES else self.base_command_mode
+        feedback_mode = str(body.get("feedback_mode", "")).strip().lower()
+        use_bridge_debug_feedback = feedback_mode == "bridge_debug"
         command = manual_command_for_direction(
             direction,
             speed,
@@ -9141,6 +9226,19 @@ class UpperRobotApi:
                 stop = ros_cmd_vel_transaction["stop_result"]
                 feedback_during_motion = ros_cmd_vel_transaction["feedback_during_motion"]
                 feedback_evidence = ros_cmd_vel_transaction["feedback_after_stop"]
+                feedback_after_stop_attempted = False
+            elif use_bridge_debug_feedback:
+                serial_motion_transaction = manual_motion_serial_write_only_transaction(
+                    port=self.base_port,
+                    baudrate=self.base_baudrate,
+                    command=command,
+                    stop_commands=stop_plan,
+                    pulse_ms=pulse_ms,
+                )
+                first = serial_motion_transaction["command_result"]
+                stop = serial_motion_transaction["stop_result"]
+                feedback_during_motion = serial_motion_transaction["feedback_during_motion"]
+                feedback_evidence = serial_motion_transaction["feedback_after_stop"]
                 feedback_after_stop_attempted = False
             else:
                 serial_motion_transaction = manual_motion_serial_transaction(
@@ -9213,14 +9311,14 @@ class UpperRobotApi:
         )
         manual_feedback_samples_latest = None
         bridge_feedback_sample = None
-        if feedback_during_motion_attempted and command_mode == "ros" and bool(first.get("ok")):
-            # ROS 手控不抢 esp32_bridge 持有的 UART；短脉冲后只读 bridge 已写出的 fresh T1001 debug log。
+        if feedback_during_motion_attempted and (command_mode == "ros" or use_bridge_debug_feedback) and bool(first.get("ok")):
+            # ROS/PC 只写手控都不抢 esp32_bridge 持有的 UART；短脉冲后只读 bridge 已写出的 fresh T1001 debug log。
             bridge_feedback_debug = summarize_bridge_feedback_debug_log(DEFAULT_BRIDGE_FEEDBACK_DEBUG_LOG_PATH)
             bridge_freshness = bridge_feedback_debug.get("freshness")
             bridge_is_fresh = isinstance(bridge_freshness, dict) and bridge_freshness.get("status") == "fresh"
             if bridge_is_fresh and int(bridge_feedback_debug.get("t1001_observed_count") or 0) > 0:
                 bridge_feedback_sample = bridge_debug_summary_as_feedback_sample(bridge_feedback_debug)
-        if feedback_during_motion_attempted and (wheel_feedback_frames or command_mode != "ros"):
+        if feedback_during_motion_attempted and (wheel_feedback_frames or (command_mode != "ros" and not use_bridge_debug_feedback)):
             # first-jog/键盘手控的非零 T1001 必须落到 latest artifact，
             # 否则 PC 刷新 summary 会被停车后的 0/0 读回覆盖成“看似丢证据”。
             manual_feedback_samples_latest = persist_feedback_samples_artifact(
@@ -9249,6 +9347,24 @@ class UpperRobotApi:
                     samples=[bridge_feedback_sample],
                 ),
             )
+            bridge_frames = t1001_frames_from_feedback_payload(bridge_feedback_sample)
+            bridge_wheel_summary = wheel_feedback_summary_from_frames(bridge_frames)
+            bridge_imu_delta_summary = imu_attitude_delta_summary_from_frames(bridge_frames)
+            if bridge_wheel_summary["lr_nonzero_observed"] or not manual_wheel_feedback_summary["lr_nonzero_observed"]:
+                # bridge debug 是 esp32_bridge 唯一 UART owner 读到的同源 T1001，PC 要优先看到这份非抢占材料。
+                manual_wheel_feedback_summary = bridge_wheel_summary
+                manual_imu_delta_summary = bridge_imu_delta_summary
+                manual_motion_signal_observed = bool(
+                    manual_wheel_feedback_summary["lr_nonzero_observed"]
+                    or manual_imu_delta_summary["imu_attitude_delta_observed"]
+                )
+                manual_motion_signal_source = (
+                    "wheel_feedback_lr"
+                    if manual_wheel_feedback_summary["lr_nonzero_observed"]
+                    else "imu_attitude_delta"
+                    if manual_imu_delta_summary["imu_attitude_delta_observed"]
+                    else "not_observed"
+                )
         return {
             "schema": f"{SCHEMA}.base_manual_result",
             "generated_at_ms": now_ms(),
@@ -9256,6 +9372,7 @@ class UpperRobotApi:
             "direction": direction,
             "speed": speed,
             "base_command_mode": command_mode,
+            "feedback_mode": feedback_mode or "direct_feedback",
             "stop_commands": stop_plan,
             "duration_ms": pulse_ms,
             "requested_speed": requested_speed,
