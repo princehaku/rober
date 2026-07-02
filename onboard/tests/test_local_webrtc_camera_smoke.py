@@ -205,10 +205,10 @@ class LocalWebrtcCameraSmokeTests(unittest.TestCase):
         self.assertIn("YUYV@320x240@20", labels)
         self.assertEqual(len(labels), len(set(labels)))
 
-    def test_mjpeg_first_frame_budget_matches_webrtc_offer(self) -> None:
-        """共享 MJPEG 是多人默认预览，不能比 WebRTC 更早放弃 UVC 首帧 warmup。"""
-        self.assertEqual(camera.FIRST_FRAME_TIMEOUT_S, camera.MJPEG_FIRST_FRAME_TIMEOUT_S)
-        self.assertGreaterEqual(camera.MJPEG_FIRST_FRAME_TIMEOUT_S, 3.0)
+    def test_mjpeg_first_frame_budget_keeps_total_window_but_shortens_each_attempt(self) -> None:
+        """共享 MJPEG 总窗口保留首屏复测机会，但单次尝试要短到能覆盖多个格式。"""
+        self.assertLess(camera.MJPEG_FIRST_FRAME_TIMEOUT_S, camera.FIRST_FRAME_TIMEOUT_S)
+        self.assertGreaterEqual(camera.MJPEG_FIRST_FRAME_TIMEOUT_S, 1.0)
         self.assertGreaterEqual(camera.MJPEG_FIRST_FRAME_TOTAL_TIMEOUT_S, camera.MJPEG_FIRST_FRAME_TIMEOUT_S)
 
     def test_opencv_open_candidates_can_try_index_and_v4l2_backend(self) -> None:
@@ -761,6 +761,20 @@ class LocalWebrtcCameraSmokeTests(unittest.TestCase):
             [spec.label() for spec in specs[:5]],
         )
         self.assertEqual(len(specs), len({(spec.fourcc, spec.width, spec.height, spec.fps, spec.apply_settings) for spec in specs}))
+
+    def test_mjpeg_attempt_budget_reaches_yuyv_and_default_modes(self) -> None:
+        """MJPEG 每次尝试必须足够短，让现场 DV20 的小帧 YUYV/default 真正被执行到。"""
+        critical_attempt_count = 5
+
+        self.assertLess(camera.MJPEG_FIRST_FRAME_TIMEOUT_S, camera.FIRST_FRAME_TIMEOUT_S)
+        self.assertLessEqual(
+            camera.MJPEG_FIRST_FRAME_TIMEOUT_S * critical_attempt_count,
+            camera.MJPEG_PRIMARY_SOURCE_TOTAL_TIMEOUT_S,
+        )
+        self.assertLessEqual(
+            camera.MJPEG_PRIMARY_SOURCE_TOTAL_TIMEOUT_S + camera.MJPEG_OPEN_SOURCE_FALLBACK_TOTAL_TIMEOUT_S,
+            camera.MJPEG_FIRST_FRAME_TOTAL_TIMEOUT_S,
+        )
 
     def test_mjpeg_short_budget_tries_formats_before_open_source_fallbacks(self) -> None:
         """共享预览不能把 9 秒预算全花在同一格式的 path/index/backend fallback 上。"""

@@ -40,8 +40,8 @@ DEFAULT_WIDTH = 640
 DEFAULT_HEIGHT = 480
 DEFAULT_FPS = 15
 FIRST_FRAME_TIMEOUT_S = 3.0
-# 共享 MJPEG 是普通 PC 首屏的默认多人预览路径，首帧预算必须和 WebRTC 一致。
-MJPEG_FIRST_FRAME_TIMEOUT_S = FIRST_FRAME_TIMEOUT_S
+# 共享 MJPEG 是普通 PC 首屏默认多人预览路径；单次尝试要短，避免前两个 MJPG 模式吃完整个预算。
+MJPEG_FIRST_FRAME_TIMEOUT_S = 1.2
 # PC 首屏共享预览要及时失败可见；WebRTC offer 仍保留完整格式矩阵。
 MJPEG_FIRST_FRAME_TOTAL_TIMEOUT_S = 9.0
 # MJPEG 先横向试低带宽格式；失败后再用剩余预算试 index/V4L2 打开方式。

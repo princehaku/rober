@@ -1586,3 +1586,9 @@ manual、keyboard、free-roam、建图 runtime 或 `/cmd_vel`。当前所见缺�
 `plain-current-minimal-precheck-pack` 上暴露 `data-safety-confirm-required=true`。该字段与
 `current_minimal_precheck_pack_requires_safety_confirm` 同源，避免现场脚本读到 null；同时继续明确
 相机、雷达、现场报告和路线 WYSIWYG 都不是运动发车前置，展示/读取该包不会发车或启动任何控制流程。
+
+2026-07-02 15:20 CST 起，共享 MJPEG 首屏首帧尝试不再让两个 MJPG 模式吃完整个窗口：
+每个格式尝试缩短为 `1.2s`，总窗口仍是 `9s`，因此 PC 读回能看到 `YUYV@320x240@25`、
+`YUYV@640x480@22`、`default@current` 和 V4L2/index fallback 是否真的出帧。现场验证结果仍是
+`first_frame_total_timeout`，summary/状态端点完整显示这些尝试均无首帧，硬件诊断继续指向 USB `12M`
+full-speed。该路径只验证相机首帧，不发车、不启动 Nav2/manual/keyboard/free-roam/建图 runtime 或 `/cmd_vel`。

@@ -5154,3 +5154,13 @@ keyboard、free-roam、建图 runtime 或 `/cmd_vel`。当前 WYSIWYG 缺口因�
 `status=safety_confirm_only`、`safety_confirm_required=true`、`minimal_precheck_safety_only=true`，
 相机/雷达/现场报告/路线 WYSIWYG 发车前置均为 `false`，展示该包本身不发车、不启动 Nav2、keyboard、
 free-roam、建图 runtime 或 `/cmd_vel`。
+
+2026-07-02 15:20 CST 起，共享 MJPEG 首屏首帧 fallback 改成短单次尝试、多格式覆盖：单次格式尝试
+`1.2s`，总窗口仍为 `9s`，确保现场 DV20 枚举里的 `YUYV@320x240@25`、`YUYV@640x480@22`
+和 `default@current` 会进入真实尝试，而不是被前两个 MJPG 模式耗尽预算。上车验证后
+`/api/robot-control/camera/mjpeg/status` 和 summary 已显示完整尝试链：
+`MJPG@640x480@30`、`MJPG@480x320@30`、`YUYV@320x240@25`、`YUYV@640x480@22`、
+`default@current`、`CAP_V4L2/index` fallback 均无首帧。硬件事实来自
+`docs/vendor/VENDOR_INDEX.md` 指向的 Orange Pi/WAVE ROVER 本地资料入口，以及现场只读
+`lsusb -t` / `v4l2-ctl`：摄像头仍挂在 USB `12M` full-speed。该改动只打开相机读取首帧，不触发底盘、
+Nav2、manual、keyboard、free-roam、建图 runtime、delivery、stop 或 `/cmd_vel`。
