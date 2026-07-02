@@ -4454,6 +4454,9 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   current_camera_wysiwyg_pack_mjpeg_open_source_fallback_attempted?: RobotControlSummaryResponse["readback_summary"]["camera"]["mjpeg_open_source_fallback_attempted"];
   current_camera_wysiwyg_pack_open_source_fallback_failure_reason?: RobotControlSummaryResponse["readback_summary"]["camera"]["open_source_fallback_failure_reason"];
   current_camera_wysiwyg_pack_primary_source_failure_reason?: RobotControlSummaryResponse["readback_summary"]["camera"]["primary_source_failure_reason"];
+  current_camera_wysiwyg_pack_low_bandwidth_fallback_attempted?: RobotControlSummaryResponse["readback_summary"]["camera"]["first_frame_probe_low_bandwidth_fallback_attempted"];
+  current_camera_wysiwyg_pack_low_bandwidth_fallback_min_size?: RobotControlSummaryResponse["readback_summary"]["camera"]["first_frame_probe_low_bandwidth_fallback_min_size"];
+  current_camera_wysiwyg_pack_first_frame_probe_fallback_attempts_summary?: RobotControlSummaryResponse["readback_summary"]["camera"]["first_frame_probe_fallback_attempts_summary"];
   current_camera_wysiwyg_pack_hardware_action_required?: RobotControlLiveClosureSummary["camera_hardware_action_required"];
   current_camera_wysiwyg_pack_hardware_action_label?: RobotControlLiveClosureSummary["camera_hardware_action_label"];
   current_camera_wysiwyg_pack_usb_full_speed_detected?: RobotControlLiveClosureSummary["camera_usb_full_speed_detected"];
@@ -4976,6 +4979,8 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       first_frame_probe_streamon_io_error_count: string;
       first_frame_probe_latest_streamon_io_error: string;
       first_frame_probe_fallback_attempts_summary: string;
+      first_frame_probe_low_bandwidth_fallback_attempted: string;
+      first_frame_probe_low_bandwidth_fallback_min_size: string;
       first_frame_probe_checked_at_ms: string;
     };
     lidar: {

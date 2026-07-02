@@ -5205,6 +5205,17 @@ probe 回包同步新增 `low_bandwidth_fallback_attempted` 和 `low_bandwidth_f
 `YUYV@160x120` 不会被前 6 个常规模式截断。该 probe 仍只读摄像头并释放失败 capture，不启动 Nav2、manual、
 keyboard、free-roam、建图 runtime、delivery、stop 或 `/cmd_vel`。硬件事实入口仍采用 `docs/vendor/VENDOR_INDEX.md`。
 
+2026-07-02 17:01 CST 起，PC summary 也持久化最近一次首帧 probe 的低带宽兜底证据：
+`readback_summary.camera.first_frame_probe_low_bandwidth_fallback_attempted`、
+`readback_summary.camera.first_frame_probe_low_bandwidth_fallback_min_size`、
+`current_camera_wysiwyg_pack_low_bandwidth_fallback_attempted`、
+`current_camera_wysiwyg_pack_low_bandwidth_fallback_min_size` 和
+`current_camera_wysiwyg_pack_first_frame_probe_fallback_attempts_summary`。普通 PC 的
+`plain-current-camera-wysiwyg-pack` 同步暴露 `data-low-bandwidth-fallback-*` 和
+`data-first-frame-probe-fallback-attempts-summary`。刷新 summary 或页面时，现场脚本不用解析一次性 POST 回包，
+也能确认 `160x120` 低带宽 fallback 已尝试且仍无首帧；这些字段只读，不启动 camera exclusive capture、
+Nav2、manual、keyboard、free-roam、建图 runtime、delivery、stop 或 `/cmd_vel`。
+
 2026-07-02 15:20 CST 起，共享 MJPEG 首屏首帧 fallback 改成短单次尝试、多格式覆盖：单次格式尝试
 `1.2s`，总窗口仍为 `9s`，确保现场 DV20 枚举里的 `YUYV@320x240@25`、`YUYV@640x480@22`
 和 `default@current` 会进入真实尝试，而不是被前两个 MJPG 模式耗尽预算。上车验证后

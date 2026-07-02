@@ -10307,6 +10307,8 @@ describe("workstation fail-closed API contracts", () => {
         streamon_io_error_count: "0",
         latest_streamon_io_error: "none",
         fallback_attempts_summary: "none",
+        low_bandwidth_fallback_attempted: "false",
+        low_bandwidth_fallback_min_size: "none",
       });
 
       expect(summary.readback_summary.camera.status).toBe("ready");
@@ -16440,8 +16442,14 @@ describe("workstation fail-closed API contracts", () => {
             first_frame_probe_open_ok: string;
             first_frame_probe_read_ok: string;
             first_frame_probe_visible_content_proven: string;
+            first_frame_probe_low_bandwidth_fallback_attempted: string;
+            first_frame_probe_low_bandwidth_fallback_min_size: string;
+            first_frame_probe_fallback_attempts_summary: string;
           };
         };
+        current_camera_wysiwyg_pack_low_bandwidth_fallback_attempted: string;
+        current_camera_wysiwyg_pack_low_bandwidth_fallback_min_size: string;
+        current_camera_wysiwyg_pack_first_frame_probe_fallback_attempts_summary: string;
         safe_to_control: boolean;
       };
 
@@ -16451,6 +16459,12 @@ describe("workstation fail-closed API contracts", () => {
       expect(summaryBody.readback_summary.camera.first_frame_probe_open_ok).toBe("false");
       expect(summaryBody.readback_summary.camera.first_frame_probe_read_ok).toBe("false");
       expect(summaryBody.readback_summary.camera.first_frame_probe_visible_content_proven).toBe("false");
+      expect(summaryBody.readback_summary.camera.first_frame_probe_low_bandwidth_fallback_attempted).toBe("true");
+      expect(summaryBody.readback_summary.camera.first_frame_probe_low_bandwidth_fallback_min_size).toBe("160x120");
+      expect(summaryBody.readback_summary.camera.first_frame_probe_fallback_attempts_summary).toContain("YUYV@160x120:first_frame_timeout/deadline_expired");
+      expect(summaryBody.current_camera_wysiwyg_pack_low_bandwidth_fallback_attempted).toBe("true");
+      expect(summaryBody.current_camera_wysiwyg_pack_low_bandwidth_fallback_min_size).toBe("160x120");
+      expect(summaryBody.current_camera_wysiwyg_pack_first_frame_probe_fallback_attempts_summary).toContain("YUYV@160x120");
       expect(summaryBody.safe_to_control).toBe(false);
     } finally {
       await workstation.close();

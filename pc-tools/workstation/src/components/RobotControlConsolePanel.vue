@@ -5061,6 +5061,15 @@ const plainCurrentCameraWysiwygPack = computed(() => {
     firstFrameFailureReason: summary?.current_camera_wysiwyg_pack_first_frame_failure_reason
       ?? live?.camera_first_frame_failure_reason
       ?? "not_loaded",
+    lowBandwidthFallbackAttempted: summary?.current_camera_wysiwyg_pack_low_bandwidth_fallback_attempted
+      ?? summary?.readback_summary?.camera?.first_frame_probe_low_bandwidth_fallback_attempted
+      ?? "false",
+    lowBandwidthFallbackMinSize: summary?.current_camera_wysiwyg_pack_low_bandwidth_fallback_min_size
+      ?? summary?.readback_summary?.camera?.first_frame_probe_low_bandwidth_fallback_min_size
+      ?? "none",
+    firstFrameProbeFallbackAttemptsSummary: summary?.current_camera_wysiwyg_pack_first_frame_probe_fallback_attempts_summary
+      ?? summary?.readback_summary?.camera?.first_frame_probe_fallback_attempts_summary
+      ?? "none",
     hardwareActionRequired: summary?.current_camera_wysiwyg_pack_hardware_action_required
       ?? live?.camera_hardware_action_required
       ?? false,
@@ -20253,6 +20262,9 @@ onBeforeUnmount(() => {
             :data-source-diagnosis-not-exclusive="plainCurrentCameraWysiwygPack.sourceDiagnosisNotExclusive"
             :data-first-frame-probe-status="plainCurrentCameraWysiwygPack.firstFrameProbeStatus"
             :data-first-frame-failure-reason="plainCurrentCameraWysiwygPack.firstFrameFailureReason"
+            :data-low-bandwidth-fallback-attempted="plainCurrentCameraWysiwygPack.lowBandwidthFallbackAttempted"
+            :data-low-bandwidth-fallback-min-size="plainCurrentCameraWysiwygPack.lowBandwidthFallbackMinSize"
+            :data-first-frame-probe-fallback-attempts-summary="plainCurrentCameraWysiwygPack.firstFrameProbeFallbackAttemptsSummary"
             :data-hardware-action-required="String(plainCurrentCameraWysiwygPack.hardwareActionRequired)"
             :data-hardware-action-label="plainCurrentCameraWysiwygPack.hardwareActionLabel"
             :data-usb-full-speed-detected="String(plainCurrentCameraWysiwygPack.usbFullSpeedDetected)"

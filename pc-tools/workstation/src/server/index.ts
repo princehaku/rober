@@ -2674,6 +2674,8 @@ function cameraProbeOverlayFromResponse(
     streamon_io_error_count: response.probe_key_values.streamon_io_error_count,
     latest_streamon_io_error: response.probe_key_values.latest_streamon_io_error,
     fallback_attempts_summary: response.probe_key_values.fallback_attempts_summary,
+    low_bandwidth_fallback_attempted: response.probe_key_values.low_bandwidth_fallback_attempted,
+    low_bandwidth_fallback_min_size: response.probe_key_values.low_bandwidth_fallback_min_size,
   };
 }
 

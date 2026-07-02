@@ -2587,6 +2587,8 @@ function cameraSummaryFromReadbacks(
     ?? (sourceFirstFrameFailedForSharedPreview ? "false" : "not_loaded");
   const firstFrameProbeFallbackAttemptsSummary = firstFrameProbeOverlay?.fallback_attempts_summary
     ?? (sourceFirstFrameFailedForSharedPreview ? lastOfferFormatAttemptsSummary : "none");
+  const firstFrameProbeLowBandwidthFallbackAttempted = firstFrameProbeOverlay?.low_bandwidth_fallback_attempted ?? "false";
+  const firstFrameProbeLowBandwidthFallbackMinSize = firstFrameProbeOverlay?.low_bandwidth_fallback_min_size ?? "none";
   const firstFrameProbeStreamonIoErrorObserved = firstFrameProbeOverlay?.streamon_io_error_observed ?? "false";
   const firstFrameProbeStreamonIoErrorCount = firstFrameProbeOverlay?.streamon_io_error_count ?? "0";
   const firstFrameProbeLatestStreamonIoError = firstFrameProbeOverlay?.latest_streamon_io_error ?? "none";
@@ -2717,6 +2719,8 @@ function cameraSummaryFromReadbacks(
     first_frame_probe_streamon_io_error_count: firstFrameProbeStreamonIoErrorCount,
     first_frame_probe_latest_streamon_io_error: firstFrameProbeLatestStreamonIoError,
     first_frame_probe_fallback_attempts_summary: firstFrameProbeFallbackAttemptsSummary,
+    first_frame_probe_low_bandwidth_fallback_attempted: firstFrameProbeLowBandwidthFallbackAttempted,
+    first_frame_probe_low_bandwidth_fallback_min_size: firstFrameProbeLowBandwidthFallbackMinSize,
     first_frame_probe_checked_at_ms: firstFrameProbeCheckedAtMs,
   };
 }
@@ -2761,6 +2765,8 @@ export type RobotControlCameraFirstFrameProbeOverlay = {
   streamon_io_error_count: string;
   latest_streamon_io_error: string;
   fallback_attempts_summary: string;
+  low_bandwidth_fallback_attempted: string;
+  low_bandwidth_fallback_min_size: string;
 };
 
 export type RobotControlCameraMjpegRelayOverlay = {
@@ -6856,6 +6862,8 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         first_frame_probe_streamon_io_error_count: "0",
         first_frame_probe_latest_streamon_io_error: "none",
         first_frame_probe_fallback_attempts_summary: "none",
+        first_frame_probe_low_bandwidth_fallback_attempted: "false",
+        first_frame_probe_low_bandwidth_fallback_min_size: "none",
         first_frame_probe_checked_at_ms: "not_loaded",
       },
       lidar: {
@@ -12210,6 +12218,9 @@ export async function buildRobotControlSummary(
     current_camera_wysiwyg_pack_mjpeg_open_source_fallback_attempted: readbackSummary.camera.mjpeg_open_source_fallback_attempted,
     current_camera_wysiwyg_pack_open_source_fallback_failure_reason: readbackSummary.camera.open_source_fallback_failure_reason,
     current_camera_wysiwyg_pack_primary_source_failure_reason: readbackSummary.camera.primary_source_failure_reason,
+    current_camera_wysiwyg_pack_low_bandwidth_fallback_attempted: readbackSummary.camera.first_frame_probe_low_bandwidth_fallback_attempted,
+    current_camera_wysiwyg_pack_low_bandwidth_fallback_min_size: readbackSummary.camera.first_frame_probe_low_bandwidth_fallback_min_size,
+    current_camera_wysiwyg_pack_first_frame_probe_fallback_attempts_summary: readbackSummary.camera.first_frame_probe_fallback_attempts_summary,
     current_camera_wysiwyg_pack_hardware_action_required: liveClosureSummary.camera_hardware_action_required,
     current_camera_wysiwyg_pack_hardware_action_label: liveClosureSummary.camera_hardware_action_label,
     current_camera_wysiwyg_pack_usb_full_speed_detected: liveClosureSummary.camera_usb_full_speed_detected,

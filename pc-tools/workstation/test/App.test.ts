@@ -11043,6 +11043,9 @@ describe("App", () => {
     summaryFixture.current_camera_wysiwyg_pack_source_diagnosis_not_exclusive = "true";
     summaryFixture.current_camera_wysiwyg_pack_first_frame_probe_status = "source_first_frame_failed";
     summaryFixture.current_camera_wysiwyg_pack_first_frame_failure_reason = "first_frame_total_timeout";
+    summaryFixture.current_camera_wysiwyg_pack_low_bandwidth_fallback_attempted = "true";
+    summaryFixture.current_camera_wysiwyg_pack_low_bandwidth_fallback_min_size = "160x120";
+    summaryFixture.current_camera_wysiwyg_pack_first_frame_probe_fallback_attempts_summary = "MJPG@160x120:first_frame_timeout/deadline_expired; YUYV@160x120:first_frame_timeout/deadline_expired";
     summaryFixture.current_camera_wysiwyg_pack_hardware_action_required = true;
     summaryFixture.current_camera_wysiwyg_pack_hardware_action_label = "换高速USB后复测";
     summaryFixture.current_camera_wysiwyg_pack_usb_full_speed_detected = true;
@@ -11143,6 +11146,9 @@ describe("App", () => {
     expect(cameraWysiwygPack.attributes("data-source-diagnosis-status")).toBe("uvc_full_speed_usb_not_exclusive");
     expect(cameraWysiwygPack.attributes("data-source-diagnosis-not-exclusive")).toBe("true");
     expect(cameraWysiwygPack.attributes("data-first-frame-probe-status")).toBe("source_first_frame_failed");
+    expect(cameraWysiwygPack.attributes("data-low-bandwidth-fallback-attempted")).toBe("true");
+    expect(cameraWysiwygPack.attributes("data-low-bandwidth-fallback-min-size")).toBe("160x120");
+    expect(cameraWysiwygPack.attributes("data-first-frame-probe-fallback-attempts-summary")).toContain("MJPG@160x120");
     expect(cameraWysiwygPack.attributes("data-hardware-action-required")).toBe("true");
     expect(cameraWysiwygPack.attributes("data-hardware-action-label")).toBe("换高速USB后复测");
     expect(cameraWysiwygPack.attributes("data-usb-full-speed-detected")).toBe("true");
