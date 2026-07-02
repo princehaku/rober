@@ -5817,6 +5817,38 @@ def bridge_debug_summary_as_feedback_sample(bridge_summary: dict[str, Any]) -> d
     }
 
 
+def bridge_debug_summary_as_manual_feedback_payload(
+    bridge_summary: dict[str, Any],
+    *,
+    port: str,
+    baudrate: int,
+    reason: str,
+) -> dict[str, Any]:
+    """把 bridge-owned T1001 帧放回本次手控运动窗口，避免 API 抢 UART 后误报 0 帧。"""
+    sample = bridge_debug_summary_as_feedback_sample(bridge_summary)
+    frames = t1001_frames_from_feedback_payload(sample)
+    return {
+        **sample,
+        "schema": f"{SCHEMA}.base_manual_bridge_feedback",
+        "generated_at_ms": now_ms(),
+        "vendor_sources": VENDOR_SOURCES,
+        "port": port,
+        "baudrate": baudrate,
+        "request": {
+            "method": "POST",
+            "endpoint": "/api/base/manual",
+            "command": None,
+            "attempted": False,
+            "reason": reason,
+            "source": "esp32_bridge_feedback_debug_log",
+        },
+        "read_line_count": len(frames),
+        "parsed_json_count": len(frames),
+        "t1001_feedback_status": "observed_from_bridge_debug" if frames else "not_observed_from_bridge_debug",
+        "feedback_source": "esp32_bridge_feedback_debug_log",
+    }
+
+
 def request_base_feedback_once(
     port: str,
     baudrate: int,
@@ -9524,6 +9556,23 @@ class UpperRobotApi:
             for result in (first, stop, *((serial_motion_transaction or {}).get("additional_stop_results") or []))
             if isinstance(result, dict) and not result.get("ok") and "error" in result
         ]
+        manual_feedback_samples_latest = None
+        bridge_feedback_sample = None
+        if feedback_during_motion_attempted and (command_mode == "ros" or use_bridge_debug_feedback) and bool(first.get("ok")):
+            # ROS/PC 只写手控都不抢 esp32_bridge 持有的 UART；短脉冲后只读 bridge 已写出的 fresh T1001 debug log。
+            bridge_feedback_debug = summarize_bridge_feedback_debug_log(DEFAULT_BRIDGE_FEEDBACK_DEBUG_LOG_PATH)
+            bridge_freshness = bridge_feedback_debug.get("freshness")
+            bridge_is_fresh = isinstance(bridge_freshness, dict) and bridge_freshness.get("status") == "fresh"
+            if bridge_is_fresh and int(bridge_feedback_debug.get("t1001_observed_count") or 0) > 0:
+                bridge_feedback_sample = bridge_debug_summary_as_manual_feedback_payload(
+                    bridge_feedback_debug,
+                    port=self.base_port,
+                    baudrate=self.base_baudrate,
+                    reason="manual_motion_feedback_read_from_bridge_debug_log",
+                )
+        if bridge_feedback_sample is not None and not t1001_frames_from_feedback_payload(feedback_during_motion):
+            # 串口由 esp32_bridge 持有时，manual_control 自己的反馈对象会是 skipped；这里把同源 bridge 帧并入本次窗口。
+            feedback_during_motion = bridge_feedback_sample
         wheel_feedback_frames = [
             *t1001_frames_from_feedback_payload(feedback_during_motion),
             *t1001_frames_from_feedback_payload(feedback_evidence),
@@ -9541,15 +9590,6 @@ class UpperRobotApi:
             if manual_imu_delta_summary["imu_attitude_delta_observed"]
             else "not_observed"
         )
-        manual_feedback_samples_latest = None
-        bridge_feedback_sample = None
-        if feedback_during_motion_attempted and (command_mode == "ros" or use_bridge_debug_feedback) and bool(first.get("ok")):
-            # ROS/PC 只写手控都不抢 esp32_bridge 持有的 UART；短脉冲后只读 bridge 已写出的 fresh T1001 debug log。
-            bridge_feedback_debug = summarize_bridge_feedback_debug_log(DEFAULT_BRIDGE_FEEDBACK_DEBUG_LOG_PATH)
-            bridge_freshness = bridge_feedback_debug.get("freshness")
-            bridge_is_fresh = isinstance(bridge_freshness, dict) and bridge_freshness.get("status") == "fresh"
-            if bridge_is_fresh and int(bridge_feedback_debug.get("t1001_observed_count") or 0) > 0:
-                bridge_feedback_sample = bridge_debug_summary_as_feedback_sample(bridge_feedback_debug)
         if feedback_during_motion_attempted and (wheel_feedback_frames or (command_mode != "ros" and not use_bridge_debug_feedback and not use_realtime_feedback)):
             # first-jog/键盘手控的非零 T1001 必须落到 latest artifact，
             # 否则 PC 刷新 summary 会被停车后的 0/0 读回覆盖成“看似丢证据”。
@@ -9565,38 +9605,9 @@ class UpperRobotApi:
                     samples=[feedback_during_motion, feedback_evidence],
                 ),
             )
-        elif bridge_feedback_sample is not None:
-            # ROS 路径只复用 bridge JSONL 材料，不直接读串口；PC summary 由 latest artifact 回放 wheel L/R。
-            manual_feedback_samples_latest = persist_feedback_samples_artifact(
-                self.feedback_samples_artifact_path,
-                build_base_feedback_samples_payload(
-                    port=self.base_port,
-                    baudrate=self.base_baudrate,
-                    sample_count=1,
-                    sample_interval_s=0.0,
-                    read_timeout_s=0.0,
-                    read_window_s=0.0,
-                    samples=[bridge_feedback_sample],
-                ),
-            )
-            bridge_frames = t1001_frames_from_feedback_payload(bridge_feedback_sample)
-            bridge_wheel_summary = wheel_feedback_summary_from_frames(bridge_frames)
-            bridge_imu_delta_summary = imu_attitude_delta_summary_from_frames(bridge_frames)
-            if bridge_wheel_summary["lr_nonzero_observed"] or not manual_wheel_feedback_summary["lr_nonzero_observed"]:
-                # bridge debug 是 esp32_bridge 唯一 UART owner 读到的同源 T1001，PC 要优先看到这份非抢占材料。
-                manual_wheel_feedback_summary = bridge_wheel_summary
-                manual_imu_delta_summary = bridge_imu_delta_summary
-                manual_motion_signal_observed = bool(
-                    manual_wheel_feedback_summary["lr_nonzero_observed"]
-                    or manual_imu_delta_summary["imu_attitude_delta_observed"]
-                )
-                manual_motion_signal_source = (
-                    "wheel_feedback_lr"
-                    if manual_wheel_feedback_summary["lr_nonzero_observed"]
-                    else "imu_attitude_delta"
-                    if manual_imu_delta_summary["imu_attitude_delta_observed"]
-                    else "not_observed"
-                )
+        feedback_ack = feedback_during_motion.get("feedback_ack") if isinstance(feedback_during_motion.get("feedback_ack"), dict) else {}
+        if feedback_ack.get("t1001_observed") is not True:
+            feedback_ack = feedback_evidence.get("feedback_ack", t1001_boundary("manual feedback evidence unavailable"))
         return {
             "schema": f"{SCHEMA}.base_manual_result",
             "generated_at_ms": now_ms(),
@@ -9622,7 +9633,7 @@ class UpperRobotApi:
             "manual_feedback_samples_latest": manual_feedback_samples_latest,
             "serial_motion_transaction": serial_motion_transaction,
             "ros_cmd_vel_transaction": ros_cmd_vel_transaction,
-            "t1001_feedback_status": feedback_evidence.get("t1001_feedback_status"),
+            "t1001_feedback_status": feedback_during_motion.get("t1001_feedback_status") or feedback_evidence.get("t1001_feedback_status"),
             "manual_wheel_feedback_summary": manual_wheel_feedback_summary,
             "manual_imu_attitude_delta_summary": manual_imu_delta_summary,
             "wheel_feedback_nonzero_observed": manual_wheel_feedback_summary["lr_nonzero_observed"],
@@ -9630,7 +9641,7 @@ class UpperRobotApi:
             "imu_attitude_delta_observed": manual_imu_delta_summary["imu_attitude_delta_observed"],
             "motion_signal_observed": manual_motion_signal_observed,
             "motion_signal_source": manual_motion_signal_source,
-            "feedback_ack": feedback_evidence.get("feedback_ack", t1001_boundary("manual feedback evidence unavailable")),
+            "feedback_ack": feedback_ack,
             "safe_to_control": False,
             "sends_commands": True,
             "robot_control_executed": bool(first.get("ok")),

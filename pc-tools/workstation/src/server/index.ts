@@ -645,8 +645,8 @@ function baseManualMotionKeyValues(payload: Record<string, unknown> | null): Rec
   const wheelSummary = asRecord(payload?.manual_wheel_feedback_summary);
   const latestPair = asRecord(wheelSummary?.latest_nonzero_pair) ?? asRecord(wheelSummary?.latest_pair);
   const transaction = asRecord(payload?.serial_motion_transaction);
-  const duringFeedback = asRecord(transaction?.feedback_during_motion);
-  const afterStopFeedback = asRecord(transaction?.feedback_after_stop);
+  const duringFeedback = asRecord(payload?.feedback_during_motion) ?? asRecord(transaction?.feedback_during_motion);
+  const afterStopFeedback = asRecord(payload?.feedback_evidence) ?? asRecord(transaction?.feedback_after_stop);
   const manualFeedbackLatest = asRecord(payload?.manual_feedback_samples_latest);
   const duringFrames = Array.isArray(duringFeedback?.t1001_feedback_frames) ? duringFeedback.t1001_feedback_frames : [];
   const afterStopFrames = Array.isArray(afterStopFeedback?.t1001_feedback_frames) ? afterStopFeedback.t1001_feedback_frames : [];
@@ -662,6 +662,8 @@ function baseManualMotionKeyValues(payload: Record<string, unknown> | null): Rec
     wheel_feedback_latest_raw_right: shortValue(latestDuringFrame?.R, "not_loaded"),
     feedback_during_motion_t1001_frame_count: String(duringFrames.length),
     feedback_after_stop_t1001_frame_count: String(afterStopFrames.length),
+    feedback_during_motion_status: shortValue(duringFeedback?.t1001_feedback_status, "not_loaded"),
+    feedback_during_motion_source: shortValue(duringFeedback?.feedback_source, "not_loaded"),
     feedback_during_motion_attempted: shortValue(payload?.feedback_during_motion_attempted, "false"),
     feedback_after_stop_attempted: shortValue(payload?.feedback_after_stop_attempted, "false"),
     manual_command_executed: shortValue(payload?.manual_command_executed, "false"),

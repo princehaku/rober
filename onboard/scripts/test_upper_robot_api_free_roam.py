@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import importlib.util
 import json
 import tempfile
@@ -93,6 +94,94 @@ class UpperRobotApiFreeRoamTest(unittest.TestCase):
         self.assertTrue(summary["wheel_feedback_lr_nonzero_proven"])
         self.assertEqual(summary["latest_frame"]["L"], 12)
         self.assertFalse(summary["sends_commands"])
+
+    def test_ros_manual_control_reports_bridge_feedback_as_motion_window(self) -> None:
+        """ROS 手控由 bridge 持有 UART 时，PC 仍要看到本次窗口的 T1001 帧数。"""
+        module = load_upper_robot_api_module()
+        original_debug_log_path = module.DEFAULT_BRIDGE_FEEDBACK_DEBUG_LOG_PATH
+        original_ros_transaction = module.manual_motion_ros_cmd_vel_transaction
+
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            log_path = root / "wave_rover_feedback_debug.jsonl"
+            feedback_artifact_path = root / "base_feedback_samples_latest.json"
+            log_path.write_text(
+                "\n".join(
+                    [
+                        json.dumps(
+                            {
+                                "source": "wave_rover_uart_t1001",
+                                "vendor_frame": {"L": 0, "R": 0, "r": 0.0, "p": 0.0, "y": "null", "v": 12.3},
+                            }
+                        ),
+                        json.dumps(
+                            {
+                                "source": "wave_rover_uart_t1001",
+                                "vendor_frame": {"L": 0, "R": 0, "r": 1.25, "p": 0.1, "y": "null", "v": 12.3},
+                            }
+                        ),
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            def fake_ros_transaction(*, port, baudrate, command, pulse_ms):
+                """测试只验证反馈合并；ROS 发布本身用结构化成功桩替代。"""
+                return {
+                    "mode": "ros_cmd_vel_bridge",
+                    "command_result": {"ok": True, "command": command, "pulse_ms": pulse_ms},
+                    "stop_result": {"ok": True, "command": {"linear_x": 0.0, "angular_z": 0.0}},
+                    "feedback_during_motion": module.skipped_manual_feedback_payload(
+                        port,
+                        baudrate,
+                        "ros_cmd_vel_path_uses_bridge_feedback_not_direct_uart",
+                    ),
+                    "feedback_after_stop": module.skipped_manual_feedback_payload(
+                        port,
+                        baudrate,
+                        "ros_cmd_vel_path_uses_bridge_feedback_not_direct_uart",
+                    ),
+                    "serial_session_error": None,
+                    "blocked_base_uart": port,
+                }
+
+            module.DEFAULT_BRIDGE_FEEDBACK_DEBUG_LOG_PATH = str(log_path)
+            module.manual_motion_ros_cmd_vel_transaction = fake_ros_transaction
+            try:
+                api = module.UpperRobotApi(
+                    camera_base_url="http://127.0.0.1:8088",
+                    base_port="/dev/ttyS5",
+                    base_baudrate=115200,
+                    max_speed=0.12,
+                    feedback_samples_artifact_path=str(feedback_artifact_path),
+                )
+
+                result = asyncio.run(
+                    api.manual_control(
+                        {
+                            "direction": "forward",
+                            "command_mode": "ros",
+                            "speed": 0.08,
+                            "duration_ms": 120,
+                        }
+                    )
+                )
+            finally:
+                module.DEFAULT_BRIDGE_FEEDBACK_DEBUG_LOG_PATH = original_debug_log_path
+                module.manual_motion_ros_cmd_vel_transaction = original_ros_transaction
+
+        feedback = result["feedback_during_motion"]
+        self.assertEqual(feedback["schema"], "trashbot.upper_robot_api.v1.base_manual_bridge_feedback")
+        self.assertEqual(feedback["feedback_source"], "esp32_bridge_feedback_debug_log")
+        self.assertEqual(len(feedback["t1001_feedback_frames"]), 2)
+        self.assertTrue(result["feedback_ack"]["t1001_observed"])
+        self.assertEqual(result["manual_wheel_feedback_summary"]["matched_frame_count"], 2)
+        self.assertFalse(result["wheel_feedback_lr_nonzero_proven"])
+        self.assertTrue(result["imu_attitude_delta_observed"])
+        self.assertEqual(result["motion_signal_source"], "imu_attitude_delta")
+        self.assertEqual(result["manual_feedback_samples_latest"]["t1001_observed_count"], 1)
+        self.assertEqual(result["manual_feedback_samples_latest"]["samples"][0]["t1001_feedback_frame_count"], 2)
 
     def test_lidar_driver_diagnostics_artifact_flattens_status_for_pc(self) -> None:
         """driver 写出的诊断状态必须被 API 展平成 PC 可直接显示的字段。"""

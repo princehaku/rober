@@ -5706,16 +5706,16 @@ describe("workstation fail-closed API contracts", () => {
           manual_command_executed: true,
           auto_stop_executed: true,
           feedback_during_motion_attempted: true,
-          serial_motion_transaction: {
-            feedback_during_motion: {
-              t1001_feedback_frames: [
-                { T: 1001, L: 0, R: 0, y: "null" },
-                { T: 1001, L: 0.07, R: 0.08, y: "null" },
-              ],
-            },
-            feedback_after_stop: {
-              t1001_feedback_frames: [{ T: 1001, L: 0, R: 0, y: "null" }],
-            },
+          feedback_during_motion: {
+            t1001_feedback_status: "observed_from_bridge_debug",
+            feedback_source: "esp32_bridge_feedback_debug_log",
+            t1001_feedback_frames: [
+              { T: 1001, L: 0, R: 0, y: "null" },
+              { T: 1001, L: 0.07, R: 0.08, y: "null" },
+            ],
+          },
+          feedback_evidence: {
+            t1001_feedback_frames: [{ T: 1001, L: 0, R: 0, y: "null" }],
           },
           manual_wheel_feedback_summary: {
             lr_nonzero_observed: true,
@@ -5768,6 +5768,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(payload.proxy_status).toBe("command_forwarded");
       expect(payload.remote_motion_key_values.feedback_during_motion_t1001_frame_count).toBe("2");
       expect(payload.remote_motion_key_values.feedback_after_stop_t1001_frame_count).toBe("1");
+      expect(payload.remote_motion_key_values.feedback_during_motion_status).toBe("observed_from_bridge_debug");
+      expect(payload.remote_motion_key_values.feedback_during_motion_source).toBe("esp32_bridge_feedback_debug_log");
       expect(payload.remote_motion_key_values.wheel_feedback_latest_raw_left).toBe("0.07");
       expect(payload.remote_motion_key_values.wheel_feedback_latest_raw_right).toBe("0.08");
       expect(payload.remote_motion_key_values.wheel_feedback_lr_nonzero_proven).toBe("true");
