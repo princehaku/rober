@@ -4015,6 +4015,14 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   current_safety_confirm_queue_action_stop_endpoints?: RobotControlSummaryResponse["current_motion_verification_pack_action_stop_endpoints"];
   current_safety_confirm_queue_action_acceptance_endpoints?: string[];
   current_safety_confirm_queue_readback_endpoints?: RobotControlSummaryResponse["current_motion_verification_pack_action_readback_endpoints"];
+  current_safety_confirm_queue_readback_sequence_labels?: string[];
+  current_safety_confirm_queue_readback_button_label?: string;
+  current_safety_confirm_queue_readback_refreshes_map_preview?: boolean;
+  current_safety_confirm_queue_readback_refreshes_nav2_latest?: boolean;
+  current_safety_confirm_queue_readback_refreshes_wheel_feedback?: boolean;
+  current_safety_confirm_queue_readback_refreshes_delivery_latest?: boolean;
+  current_safety_confirm_queue_readback_refreshes_free_roam_latest?: boolean;
+  current_safety_confirm_queue_readback_refreshes_summary?: boolean;
   current_safety_confirm_queue_primary_action_id?: RobotControlSummaryResponse["current_motion_verification_pack_primary_action_id"];
   current_safety_confirm_queue_primary_action_display_label?: RobotControlSummaryResponse["current_motion_verification_pack_primary_action_display_label"];
   current_safety_confirm_queue_primary_focus_source_card_id?: RobotControlActionStatusCardId | "none";

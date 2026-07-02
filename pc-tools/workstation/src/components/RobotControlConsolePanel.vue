@@ -165,6 +165,7 @@ const freeRoamAutonomyPending = ref(false);
 const freeRoamAutonomyLatestPending = ref(false);
 const freeRoamAutonomyLatestResult = ref<RobotControlFreeRoamAutonomyLatestResponse | null>(null);
 const liveMotionRunbookReadbackPendingAction = ref<RobotControlLiveMotionRunbookItem["id"] | null>(null);
+const safetyConfirmQueueReadbackPending = ref(false);
 const fieldAcceptanceReadbackAllPending = ref(false);
 const mapLifecycleMapName = ref("");
 const mapLifecycleArtifactPath = ref("");
@@ -4384,6 +4385,16 @@ const plainCurrentSafetyConfirmQueue = computed(() => {
     ?? [];
   const readbackEndpoints = summary?.current_safety_confirm_queue_readback_endpoints
     ?? motionPack.actionReadbackEndpointsText.split(",").filter((item) => item && item !== "none");
+  const readbackSequenceLabels = summary?.current_safety_confirm_queue_readback_sequence_labels
+    ?? readbackEndpoints.map((endpoint) => {
+      if (endpoint.includes("/map/preview")) return "刷新地图画面";
+      if (endpoint.includes("/nav2/goal/execution/latest")) return "读取最近行程";
+      if (endpoint.includes("/base/feedback-samples")) return "复验轮速采样";
+      if (endpoint.includes("/delivery/latest")) return "读取送达确认";
+      if (endpoint.includes("/free-roam/autonomy/latest")) return "读取自由移动状态";
+      if (endpoint.includes("/summary")) return "刷新总览";
+      return "只读复验";
+    });
   const primaryActionId = summary?.current_safety_confirm_queue_primary_action_id ?? motionPack.primaryActionId;
   const focusSourceByAction: Record<string, RobotControlActionStatusCardId> = {
     run_nav2_route: "nav2_route",
@@ -4420,6 +4431,20 @@ const plainCurrentSafetyConfirmQueue = computed(() => {
     actionStopEndpointsText: actionStopEndpoints.join(",") || "none",
     actionAcceptanceEndpointsText: actionAcceptanceEndpoints.join(",") || "none",
     readbackEndpointsText: readbackEndpoints.join(",") || "none",
+    readbackSequenceLabelsText: readbackSequenceLabels.join(",") || "none",
+    readbackButtonLabel: safetyConfirmQueueReadbackPending.value
+      ? "复验中"
+      : summary?.current_safety_confirm_queue_readback_button_label ?? "只读复验队列",
+    readbackPending: safetyConfirmQueueReadbackPending.value,
+    readbackDisabled: safetyConfirmQueueReadbackPending.value
+      || liveMotionRunbookReadbackPendingAction.value !== null
+      || !robotApiBaseUrl.value.trim(),
+    readbackRefreshesMapPreview: summary?.current_safety_confirm_queue_readback_refreshes_map_preview ?? readbackEndpoints.includes("/api/robot-control/map/preview"),
+    readbackRefreshesNav2Latest: summary?.current_safety_confirm_queue_readback_refreshes_nav2_latest ?? readbackEndpoints.includes("/api/robot-control/nav2/goal/execution/latest"),
+    readbackRefreshesWheelFeedback: summary?.current_safety_confirm_queue_readback_refreshes_wheel_feedback ?? readbackEndpoints.includes("/api/robot-control/base/feedback-samples"),
+    readbackRefreshesDeliveryLatest: summary?.current_safety_confirm_queue_readback_refreshes_delivery_latest ?? readbackEndpoints.includes("/api/robot-control/delivery/latest"),
+    readbackRefreshesFreeRoamLatest: summary?.current_safety_confirm_queue_readback_refreshes_free_roam_latest ?? readbackEndpoints.includes("/api/robot-control/free-roam/autonomy/latest"),
+    readbackRefreshesSummary: summary?.current_safety_confirm_queue_readback_refreshes_summary ?? readbackEndpoints.includes("/api/robot-control/summary"),
     primaryActionId,
     primaryActionDisplayLabel: summary?.current_safety_confirm_queue_primary_action_display_label
       ?? motionPack.primaryActionDisplayLabel,
@@ -6281,6 +6306,32 @@ async function refreshLiveMotionRunbookReadback(actionId: RobotControlLiveMotion
     await refreshConsole();
   } finally {
     liveMotionRunbookReadbackPendingAction.value = null;
+  }
+}
+
+async function refreshCurrentSafetyConfirmQueueReadbacks(): Promise<void> {
+  // 队列复验按 ready 动作顺序只读刷新证据；不执行 start/stop，也不代替现场安全确认。
+  if (safetyConfirmQueueReadbackPending.value || !robotApiBaseUrl.value.trim()) {
+    return;
+  }
+  const actionIds = plainCurrentSafetyConfirmQueue.value.actionIdsText
+    .split(",")
+    .filter((item): item is RobotControlLiveMotionRunbookItem["id"] => (
+      item === "run_nav2_route"
+      || item === "hold_keyboard"
+      || item === "start_free_move"
+      || item === "start_mapping_when_sensors_ready"
+    ));
+  if (!actionIds.length) {
+    return;
+  }
+  safetyConfirmQueueReadbackPending.value = true;
+  try {
+    for (const actionId of actionIds) {
+      await refreshLiveMotionRunbookReadback(actionId);
+    }
+  } finally {
+    safetyConfirmQueueReadbackPending.value = false;
   }
 }
 
@@ -20105,6 +20156,15 @@ onBeforeUnmount(() => {
             :data-action-stop-endpoints="plainCurrentSafetyConfirmQueue.actionStopEndpointsText"
             :data-action-acceptance-endpoints="plainCurrentSafetyConfirmQueue.actionAcceptanceEndpointsText"
             :data-readback-endpoints="plainCurrentSafetyConfirmQueue.readbackEndpointsText"
+            :data-readback-sequence-labels="plainCurrentSafetyConfirmQueue.readbackSequenceLabelsText"
+            :data-readback-button-label="plainCurrentSafetyConfirmQueue.readbackButtonLabel"
+            :data-readback-pending="String(plainCurrentSafetyConfirmQueue.readbackPending)"
+            :data-readback-refreshes-map-preview="String(plainCurrentSafetyConfirmQueue.readbackRefreshesMapPreview)"
+            :data-readback-refreshes-nav2-latest="String(plainCurrentSafetyConfirmQueue.readbackRefreshesNav2Latest)"
+            :data-readback-refreshes-wheel-feedback="String(plainCurrentSafetyConfirmQueue.readbackRefreshesWheelFeedback)"
+            :data-readback-refreshes-delivery-latest="String(plainCurrentSafetyConfirmQueue.readbackRefreshesDeliveryLatest)"
+            :data-readback-refreshes-free-roam-latest="String(plainCurrentSafetyConfirmQueue.readbackRefreshesFreeRoamLatest)"
+            :data-readback-refreshes-summary="String(plainCurrentSafetyConfirmQueue.readbackRefreshesSummary)"
             :data-primary-action-id="plainCurrentSafetyConfirmQueue.primaryActionId"
             :data-primary-action-display-label="plainCurrentSafetyConfirmQueue.primaryActionDisplayLabel"
             :data-primary-focus-source-card-id="plainCurrentSafetyConfirmQueue.primaryFocusSourceCardId || 'none'"
@@ -20150,6 +20210,33 @@ onBeforeUnmount(() => {
               @click="plainCurrentSafetyConfirmQueue.primaryFocusSourceCardId && focusPlainActionCardTarget(plainCurrentSafetyConfirmQueue.primaryFocusSourceCardId)"
             >
               {{ plainCurrentSafetyConfirmQueue.primaryFocusButtonLabel }}
+            </button>
+            <button
+              type="button"
+              class="secondary compact-stop"
+              data-testid="plain-current-safety-confirm-queue-readback"
+              :disabled="plainCurrentSafetyConfirmQueue.readbackDisabled"
+              :data-readback-refresh-endpoints="plainCurrentSafetyConfirmQueue.readbackEndpointsText"
+              :data-readback-sequence-labels="plainCurrentSafetyConfirmQueue.readbackSequenceLabelsText"
+              :data-readback-pending="String(plainCurrentSafetyConfirmQueue.readbackPending)"
+              :data-readback-refreshes-map-preview="String(plainCurrentSafetyConfirmQueue.readbackRefreshesMapPreview)"
+              :data-readback-refreshes-nav2-latest="String(plainCurrentSafetyConfirmQueue.readbackRefreshesNav2Latest)"
+              :data-readback-refreshes-wheel-feedback="String(plainCurrentSafetyConfirmQueue.readbackRefreshesWheelFeedback)"
+              :data-readback-refreshes-delivery-latest="String(plainCurrentSafetyConfirmQueue.readbackRefreshesDeliveryLatest)"
+              :data-readback-refreshes-free-roam-latest="String(plainCurrentSafetyConfirmQueue.readbackRefreshesFreeRoamLatest)"
+              :data-readback-refreshes-summary="String(plainCurrentSafetyConfirmQueue.readbackRefreshesSummary)"
+              data-readback-only="true"
+              data-sends-motion-when-clicked="false"
+              data-starts-nav2="false"
+              data-starts-manual="false"
+              data-starts-keyboard="false"
+              data-starts-free-roam="false"
+              data-starts-map-runtime="false"
+              data-submits-delivery="false"
+              data-stops-motion="false"
+              @click="refreshCurrentSafetyConfirmQueueReadbacks"
+            >
+              {{ plainCurrentSafetyConfirmQueue.readbackButtonLabel }}
             </button>
           </p>
           <p

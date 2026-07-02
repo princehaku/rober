@@ -10971,6 +10971,15 @@ export async function buildRobotControlSummary(
         : currentMotionVerificationPackPrimaryAction
           ? "去处理第一项"
           : "暂无可执行项";
+  const currentSafetyConfirmQueueReadbackSequenceLabels = currentMotionVerificationPackActionReadbackEndpoints.map((endpoint) => {
+    if (endpoint.includes("/map/preview")) return "刷新地图画面";
+    if (endpoint.includes("/nav2/goal/execution/latest")) return "读取最近行程";
+    if (endpoint.includes("/base/feedback-samples")) return "复验轮速采样";
+    if (endpoint.includes("/delivery/latest")) return "读取送达确认";
+    if (endpoint.includes("/free-roam/autonomy/latest")) return "读取自由移动状态";
+    if (endpoint.includes("/summary")) return "刷新总览";
+    return "只读复验";
+  });
   const currentMotionVerificationPackPlain = (() => {
     if (currentMotionVerificationPackStatus === "complete") {
       return "运动验收已完成：完整行程、键盘连续手控和自由移动都有闭环读回；继续监看地图、画面和停止兜底。";
@@ -11837,6 +11846,14 @@ export async function buildRobotControlSummary(
     current_safety_confirm_queue_action_stop_endpoints: currentMotionVerificationPackActionStopEndpoints,
     current_safety_confirm_queue_action_acceptance_endpoints: fieldAcceptanceSafetyConfirmReadyActions.map((item) => item.acceptance_endpoints.join("|")),
     current_safety_confirm_queue_readback_endpoints: currentMotionVerificationPackActionReadbackEndpoints,
+    current_safety_confirm_queue_readback_sequence_labels: currentSafetyConfirmQueueReadbackSequenceLabels,
+    current_safety_confirm_queue_readback_button_label: "只读复验队列",
+    current_safety_confirm_queue_readback_refreshes_map_preview: currentMotionVerificationPackActionReadbackEndpoints.includes("/api/robot-control/map/preview"),
+    current_safety_confirm_queue_readback_refreshes_nav2_latest: currentMotionVerificationPackActionReadbackEndpoints.includes("/api/robot-control/nav2/goal/execution/latest"),
+    current_safety_confirm_queue_readback_refreshes_wheel_feedback: currentMotionVerificationPackActionReadbackEndpoints.includes("/api/robot-control/base/feedback-samples"),
+    current_safety_confirm_queue_readback_refreshes_delivery_latest: currentMotionVerificationPackActionReadbackEndpoints.includes("/api/robot-control/delivery/latest"),
+    current_safety_confirm_queue_readback_refreshes_free_roam_latest: currentMotionVerificationPackActionReadbackEndpoints.includes("/api/robot-control/free-roam/autonomy/latest"),
+    current_safety_confirm_queue_readback_refreshes_summary: currentMotionVerificationPackActionReadbackEndpoints.includes("/api/robot-control/summary"),
     current_safety_confirm_queue_primary_action_id: currentMotionVerificationPackPrimaryAction?.id ?? "none",
     current_safety_confirm_queue_primary_action_display_label: currentMotionVerificationPackPrimaryAction?.display_label
       ?? currentMotionVerificationPackPrimaryAction?.label

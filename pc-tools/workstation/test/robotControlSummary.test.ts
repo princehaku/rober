@@ -1189,6 +1189,21 @@ describe("robotControlSummary", () => {
       "/api/robot-control/free-roam/autonomy/latest|/api/robot-control/map/preview|/api/robot-control/summary",
     ]);
     expect(summary.current_safety_confirm_queue_readback_endpoints).toEqual(summary.current_motion_verification_pack_action_readback_endpoints);
+    expect(summary.current_safety_confirm_queue_readback_sequence_labels).toEqual([
+      "刷新地图画面",
+      "读取最近行程",
+      "复验轮速采样",
+      "读取送达确认",
+      "刷新总览",
+      "读取自由移动状态",
+    ]);
+    expect(summary.current_safety_confirm_queue_readback_button_label).toBe("只读复验队列");
+    expect(summary.current_safety_confirm_queue_readback_refreshes_map_preview).toBe(true);
+    expect(summary.current_safety_confirm_queue_readback_refreshes_nav2_latest).toBe(true);
+    expect(summary.current_safety_confirm_queue_readback_refreshes_wheel_feedback).toBe(true);
+    expect(summary.current_safety_confirm_queue_readback_refreshes_delivery_latest).toBe(true);
+    expect(summary.current_safety_confirm_queue_readback_refreshes_free_roam_latest).toBe(true);
+    expect(summary.current_safety_confirm_queue_readback_refreshes_summary).toBe(true);
     expect(summary.current_safety_confirm_queue_primary_action_id).toBe("run_nav2_route");
     expect(summary.current_safety_confirm_queue_primary_action_display_label).toBe("重跑图上行程并复验轮速");
     expect(summary.current_safety_confirm_queue_primary_focus_source_card_id).toBe("nav2_route");
