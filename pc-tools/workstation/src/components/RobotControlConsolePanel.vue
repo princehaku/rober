@@ -5061,6 +5061,18 @@ const plainCurrentWysiwygActionGauge = computed(() => {
   const actionRequired = summary?.current_wysiwyg_action_required ?? (packet?.primary_no_motion_readback_action_id !== "none");
   const sendsMotion = summary?.current_wysiwyg_action_sends_motion ?? packet?.primary_no_motion_readback_action_sends_motion ?? false;
   const nextActionPlain = summary?.current_wysiwyg_next_action_plain ?? "";
+  const liveStatus = summary?.live_wysiwyg_status ?? summary?.current_wysiwyg_next_action_status ?? "refresh_current_wysiwyg";
+  const liveStatusPlain = summary?.live_wysiwyg_status_plain ?? nextActionPlain;
+  const cameraWysiwygStatus = summary?.camera_wysiwyg_status ?? summary?.current_camera_wysiwyg_pack_status ?? "needs_first_frame";
+  const cameraWysiwygNextActionPlain = summary?.camera_wysiwyg_next_action_plain
+    ?? summary?.current_camera_wysiwyg_pack_next_action_plain
+    ?? "";
+  const radarMapWysiwygStatus = summary?.radar_map_wysiwyg_status
+    ?? summary?.current_radar_map_wysiwyg_pack_status
+    ?? "needs_readback_refresh";
+  const radarMapWysiwygNextActionPlain = summary?.radar_map_wysiwyg_next_action_plain
+    ?? summary?.current_radar_map_wysiwyg_pack_next_action_plain
+    ?? "";
   const state = packet?.wysiwyg_ready ? "已满足" : actionRequired ? "可只读刷新" : "无动作";
   const missingText = missingSurfaceIds.length
     ? missingSurfaceIds.map((id) => plainFieldAcceptanceWysiwygSurfaceLabel(id)).join("、")
@@ -5085,6 +5097,20 @@ const plainCurrentWysiwygActionGauge = computed(() => {
     text: nextActionPlain || `当前所见动作：${plainActionCardUserText(label)}；还差 ${missingText}；只读链路：${sequenceText}。`,
     nextActionStatus: summary?.current_wysiwyg_next_action_status ?? "refresh_current_wysiwyg",
     nextActionPlain,
+    liveStatus,
+    liveStatusPlain,
+    cameraWysiwygStatus,
+    cameraWysiwygNextActionPlain,
+    radarMapWysiwygStatus,
+    radarMapWysiwygNextActionPlain,
+    statusSendsMotionWhenClicked: summary?.wysiwyg_status_sends_motion_when_clicked ?? false,
+    statusStartsNav2: summary?.wysiwyg_status_starts_nav2 ?? false,
+    statusStartsManual: summary?.wysiwyg_status_starts_manual ?? false,
+    statusStartsKeyboard: summary?.wysiwyg_status_starts_keyboard ?? false,
+    statusStartsFreeRoam: summary?.wysiwyg_status_starts_free_roam ?? false,
+    statusStartsMapRuntime: summary?.wysiwyg_status_starts_map_runtime ?? false,
+    statusSubmitsDelivery: summary?.wysiwyg_status_submits_delivery ?? false,
+    statusStopsMotion: summary?.wysiwyg_status_stops_motion ?? false,
     nextActionRadarOverlayComplete: summary?.current_wysiwyg_next_action_radar_overlay_complete ?? false,
     nextActionOnlyCameraMissing: summary?.current_wysiwyg_next_action_only_camera_missing ?? false,
     nextActionAllowsFreeMove: summary?.current_wysiwyg_next_action_allows_free_move ?? false,
@@ -20486,6 +20512,20 @@ onBeforeUnmount(() => {
             :data-current-wysiwyg-next-action-hardware-action-label="plainCurrentWysiwygActionGauge.nextActionHardwareActionLabel"
             :data-current-wysiwyg-next-action-after-readback-sequence="plainCurrentWysiwygActionGauge.nextActionAfterReadbackSequence"
             :data-current-wysiwyg-next-action-after-readback-sequence-labels="plainCurrentWysiwygActionGauge.nextActionAfterReadbackSequenceLabels"
+            :data-live-wysiwyg-status="plainCurrentWysiwygActionGauge.liveStatus"
+            :data-live-wysiwyg-status-plain="plainCurrentWysiwygActionGauge.liveStatusPlain"
+            :data-camera-wysiwyg-status="plainCurrentWysiwygActionGauge.cameraWysiwygStatus"
+            :data-camera-wysiwyg-next-action-plain="plainCurrentWysiwygActionGauge.cameraWysiwygNextActionPlain"
+            :data-radar-map-wysiwyg-status="plainCurrentWysiwygActionGauge.radarMapWysiwygStatus"
+            :data-radar-map-wysiwyg-next-action-plain="plainCurrentWysiwygActionGauge.radarMapWysiwygNextActionPlain"
+            :data-wysiwyg-status-sends-motion-when-clicked="String(plainCurrentWysiwygActionGauge.statusSendsMotionWhenClicked)"
+            :data-wysiwyg-status-starts-nav2="String(plainCurrentWysiwygActionGauge.statusStartsNav2)"
+            :data-wysiwyg-status-starts-manual="String(plainCurrentWysiwygActionGauge.statusStartsManual)"
+            :data-wysiwyg-status-starts-keyboard="String(plainCurrentWysiwygActionGauge.statusStartsKeyboard)"
+            :data-wysiwyg-status-starts-free-roam="String(plainCurrentWysiwygActionGauge.statusStartsFreeRoam)"
+            :data-wysiwyg-status-starts-map-runtime="String(plainCurrentWysiwygActionGauge.statusStartsMapRuntime)"
+            :data-wysiwyg-status-submits-delivery="String(plainCurrentWysiwygActionGauge.statusSubmitsDelivery)"
+            :data-wysiwyg-status-stops-motion="String(plainCurrentWysiwygActionGauge.statusStopsMotion)"
             :data-current-wysiwyg-action-refreshes-summary="String(plainCurrentWysiwygActionGauge.refreshesSummary)"
             :data-current-wysiwyg-action-refreshes-radar-scan-proof="String(plainCurrentWysiwygActionGauge.refreshesRadarScanProof)"
             :data-current-wysiwyg-action-refreshes-camera-first-frame-probe="String(plainCurrentWysiwygActionGauge.refreshesCameraFirstFrameProbe)"

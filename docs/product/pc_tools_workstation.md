@@ -5201,6 +5201,14 @@ summary 显示 `current_radar_map_wysiwyg_pack_status=loaded`、`current_radar_m
 该刷新结果继续保持 `robot_control_executed=false`、`safe_to_control=false`，不启动 Nav2、manual、keyboard、
 free-roam、建图 runtime 或 `/cmd_vel`。当前 WYSIWYG 和建图剩余阻塞集中在 `camera_first_frame`。
 
+2026-07-02 17:40 CST 起，summary 顶层新增普通脚本更容易读取的 WYSIWYG 短别名：
+`live_wysiwyg_status`、`live_wysiwyg_status_plain`、`camera_wysiwyg_status`、
+`camera_wysiwyg_next_action_plain`、`radar_map_wysiwyg_status` 和
+`radar_map_wysiwyg_next_action_plain`。普通 PC 的 `plain-current-wysiwyg-action` 同步暴露
+`data-live-wysiwyg-*`、`data-camera-wysiwyg-*`、`data-radar-map-wysiwyg-*` 和
+`data-wysiwyg-status-*` 边界字段；这些字段只读，不启动 Nav2、manual、keyboard、free-roam、建图 runtime、
+delivery、stop 或 `/cmd_vel`。
+
 2026-07-02 17:05 CST 起，上车 `POST /api/robot-control/camera/first-frame/probe` 的自动格式 fallback 增加
 `160x120` 低带宽候选：`MJPG@160x120@30`、`YUYV@160x120@15`、`YUYV@160x120@10`。
 这是给 USB `12M` full-speed 场景的只读首帧兜底；若常规 `640x480/320x240` 均无帧，会继续尝试更低带宽模式。

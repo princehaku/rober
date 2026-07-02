@@ -2314,6 +2314,22 @@ const fixtures: Record<string, unknown> = {
       current_wysiwyg_action_stops_motion: false,
       current_wysiwyg_action_missing_surface_ids: ["camera", "radar_map_points"],
       current_wysiwyg_action_refresh_mode: "all_wysiwyg",
+      current_wysiwyg_next_action_status: "radar_map_refresh",
+      current_wysiwyg_next_action_plain: "当前所见还差雷达地图贴图；先刷新雷达扫描读数，再读雷达状态和地图画面，确认同轮雷达点贴到地图。",
+      live_wysiwyg_status: "radar_map_refresh",
+      live_wysiwyg_status_plain: "当前所见还差雷达地图贴图；先刷新雷达扫描读数，再读雷达状态和地图画面，确认同轮雷达点贴到地图。",
+      camera_wysiwyg_status: "needs_first_frame",
+      camera_wysiwyg_next_action_plain: "相机不是页面独占；先复测相机首帧并读取共享预览状态。",
+      radar_map_wysiwyg_status: "needs_readback_refresh",
+      radar_map_wysiwyg_next_action_plain: "旧雷达来源点 81 个已抑制；先刷新雷达扫描读数，再刷新地图画面，确认同轮雷达点贴图。",
+      wysiwyg_status_sends_motion_when_clicked: false,
+      wysiwyg_status_starts_nav2: false,
+      wysiwyg_status_starts_manual: false,
+      wysiwyg_status_starts_keyboard: false,
+      wysiwyg_status_starts_free_roam: false,
+      wysiwyg_status_starts_map_runtime: false,
+      wysiwyg_status_submits_delivery: false,
+      wysiwyg_status_stops_motion: false,
       minimal_precheck_safety_only: true,
       safety_confirm_required_for_motion: true,
       wheel_rerun_minimal_precheck_safety_only: false,
@@ -6321,6 +6337,20 @@ describe("App", () => {
     expect(currentWysiwygAction.attributes("data-current-wysiwyg-action-sequence-labels")).toBe("刷新雷达扫描读数,读取雷达状态,刷新地图画面,复测相机首帧,读取相机 MJPEG 状态,刷新总览");
     expect(currentWysiwygAction.attributes("data-current-wysiwyg-action-refresh-mode")).toBe("all_wysiwyg");
     expect(currentWysiwygAction.attributes("data-current-wysiwyg-action-missing-surface-ids")).toBe("camera,radar_map_points");
+    expect(currentWysiwygAction.attributes("data-live-wysiwyg-status")).toBe("refresh_current_wysiwyg");
+    expect(currentWysiwygAction.attributes("data-live-wysiwyg-status-plain")).toBe("");
+    expect(currentWysiwygAction.attributes("data-camera-wysiwyg-status")).toBe("needs_first_frame");
+    expect(currentWysiwygAction.attributes("data-camera-wysiwyg-next-action-plain")).toBe("");
+    expect(currentWysiwygAction.attributes("data-radar-map-wysiwyg-status")).toBe("needs_readback_refresh");
+    expect(currentWysiwygAction.attributes("data-radar-map-wysiwyg-next-action-plain")).toBe("");
+    expect(currentWysiwygAction.attributes("data-wysiwyg-status-sends-motion-when-clicked")).toBe("false");
+    expect(currentWysiwygAction.attributes("data-wysiwyg-status-starts-nav2")).toBe("false");
+    expect(currentWysiwygAction.attributes("data-wysiwyg-status-starts-manual")).toBe("false");
+    expect(currentWysiwygAction.attributes("data-wysiwyg-status-starts-keyboard")).toBe("false");
+    expect(currentWysiwygAction.attributes("data-wysiwyg-status-starts-free-roam")).toBe("false");
+    expect(currentWysiwygAction.attributes("data-wysiwyg-status-starts-map-runtime")).toBe("false");
+    expect(currentWysiwygAction.attributes("data-wysiwyg-status-submits-delivery")).toBe("false");
+    expect(currentWysiwygAction.attributes("data-wysiwyg-status-stops-motion")).toBe("false");
     expect(currentWysiwygAction.attributes("data-current-wysiwyg-action-refreshes-summary")).toBe("true");
     expect(currentWysiwygAction.attributes("data-current-wysiwyg-action-refreshes-radar-scan-proof")).toBe("true");
     expect(currentWysiwygAction.attributes("data-current-wysiwyg-action-refreshes-camera-first-frame-probe")).toBe("true");
@@ -11172,6 +11202,20 @@ describe("App", () => {
     expect(currentWysiwygAction.attributes("data-current-wysiwyg-next-action-hardware-action-label")).toBe("换高速USB后复测");
     expect(currentWysiwygAction.attributes("data-current-wysiwyg-next-action-after-readback-sequence")).toBe("/api/robot-control/camera/first-frame/probe,/api/robot-control/camera/mjpeg/status,/api/robot-control/summary");
     expect(currentWysiwygAction.attributes("data-current-wysiwyg-next-action-after-readback-sequence-labels")).toBe("复测相机首帧,读取共享预览状态,刷新当前卡点");
+    expect(currentWysiwygAction.attributes("data-live-wysiwyg-status")).toBe("only_camera_hardware_action");
+    expect(currentWysiwygAction.attributes("data-live-wysiwyg-status-plain")).toBe("雷达贴图已完成；当前只剩相机硬件处理：换高速USB后复测。自由移动不受相机阻塞，建图仍等待相机首帧；处理后按相机首帧、共享预览、summary 顺序只读复测。");
+    expect(currentWysiwygAction.attributes("data-camera-wysiwyg-status")).toBe("needs_first_frame");
+    expect(currentWysiwygAction.attributes("data-camera-wysiwyg-next-action-plain")).toBe("相机不是页面独占；诊断显示 USB full-speed；先换高速USB后复测，再读取共享预览状态。");
+    expect(currentWysiwygAction.attributes("data-radar-map-wysiwyg-status")).toBe("loaded");
+    expect(currentWysiwygAction.attributes("data-radar-map-wysiwyg-next-action-plain")).toBe("当前地图已有雷达点；继续监看同轮地图画面。");
+    expect(currentWysiwygAction.attributes("data-wysiwyg-status-sends-motion-when-clicked")).toBe("false");
+    expect(currentWysiwygAction.attributes("data-wysiwyg-status-starts-nav2")).toBe("false");
+    expect(currentWysiwygAction.attributes("data-wysiwyg-status-starts-manual")).toBe("false");
+    expect(currentWysiwygAction.attributes("data-wysiwyg-status-starts-keyboard")).toBe("false");
+    expect(currentWysiwygAction.attributes("data-wysiwyg-status-starts-free-roam")).toBe("false");
+    expect(currentWysiwygAction.attributes("data-wysiwyg-status-starts-map-runtime")).toBe("false");
+    expect(currentWysiwygAction.attributes("data-wysiwyg-status-submits-delivery")).toBe("false");
+    expect(currentWysiwygAction.attributes("data-wysiwyg-status-stops-motion")).toBe("false");
     const cameraWysiwygPack = wrapper.find('[data-testid="plain-current-camera-wysiwyg-pack"]');
     expect(cameraWysiwygPack.exists()).toBe(true);
     expect(cameraWysiwygPack.text()).toBe("画面 WYSIWYG 未完成：共享预览暂时没有出画面；相机不是页面独占；先换高速USB后复测；画面首帧会阻塞建图启动，不阻塞自由移动，复测只读不发车。");
