@@ -10723,6 +10723,45 @@ export async function buildRobotControlSummary(
     : "当前没有必须先处理的设备动作；可继续按现场验收包复验。";
   const fieldAcceptanceNoMotionActionPlain = `可随时只读复验：${fieldAcceptanceNoMotionReadbackActionLabels.join("、")}；这些读回只刷新状态，不启动车辆、不进入手控、不会进入建图或雷达流程。`;
   const fieldAcceptanceRemainingActionPlain = `${fieldAcceptanceOperatorActionPlain} ${fieldAcceptanceHardwareActionPlain} ${fieldAcceptanceNoMotionActionPlain}`;
+  const currentMotionVerificationPackStatus: "complete" | "ready_for_safety_confirm" | "blocked" = motionObjectiveAlias?.completed === true
+    ? "complete"
+    : fieldAcceptanceSafetyConfirmReadyActions.length > 0
+      ? "ready_for_safety_confirm"
+      : "blocked";
+  const currentMotionVerificationPackReadySteps = fieldAcceptanceSteps
+    .filter((item) => fieldAcceptanceSafetyConfirmReadyStepIds.includes(item.id));
+  const currentMotionVerificationPackActionIds = fieldAcceptanceSafetyConfirmReadyActions.map((item) => item.id);
+  const currentMotionVerificationPackActionDisplayLabels = fieldAcceptanceSafetyConfirmReadyActions.map((item) => item.display_label ?? item.label);
+  const currentMotionVerificationPackActionStartEndpoints = fieldAcceptanceSafetyConfirmReadyActions.map((item) => item.start_endpoint);
+  const currentMotionVerificationPackActionStopEndpoints = fieldAcceptanceSafetyConfirmReadyActions.map((item) => item.stop_endpoint);
+  const currentMotionVerificationPackActionReadbackEndpoints = Array.from(new Set(
+    fieldAcceptanceSafetyConfirmReadyActions.flatMap((item) => item.acceptance_endpoints),
+  ));
+  const currentMotionVerificationPackMissingEvidence = Array.from(new Set(
+    currentMotionVerificationPackReadySteps.flatMap((item) => item.missing_evidence),
+  ));
+  const currentMotionVerificationPackRequiredSuccessMarkers = Array.from(new Set([
+    ...liveClosureSummary.wheel_rerun_required_success_markers,
+    ...keyboardActionRequiredSuccessMarkers,
+    ...freeMoveActionRequiredSuccessMarkers,
+  ]));
+  const currentMotionVerificationPackMinimalPrecheckSafetyOnly = fieldAcceptanceSafetyConfirmReadyActions.length > 0
+    && fieldAcceptanceSafetyConfirmReadyActions.every((item) => item.minimal_precheck_safety_only);
+  const currentMotionVerificationPackCameraPreflightRequired = fieldAcceptanceSafetyConfirmReadyActions.some((item) => item.camera_preflight_required);
+  const currentMotionVerificationPackRadarPreflightRequired = fieldAcceptanceSafetyConfirmReadyActions.some((item) => item.radar_preflight_required);
+  const currentMotionVerificationPackOperatorReportPreflightRequired = fieldAcceptanceSafetyConfirmReadyActions.some((item) => item.operator_report_preflight_required);
+  const currentMotionVerificationPackRouteWysiwygPreflightRequired = fieldAcceptanceSafetyConfirmReadyActions.some((item) => item.route_wysiwyg_preflight_required);
+  const currentMotionVerificationPackPrimaryAction = fieldAcceptancePrimarySafetyConfirmReadyAction ?? null;
+  const currentMotionVerificationPackPrimaryReadbackEndpoints = currentMotionVerificationPackPrimaryAction?.acceptance_endpoints ?? [];
+  const currentMotionVerificationPackPlain = (() => {
+    if (currentMotionVerificationPackStatus === "complete") {
+      return "运动验收已完成：完整行程、键盘连续手控和自由移动都有闭环读回；继续监看地图、画面和停止兜底。";
+    }
+    if (currentMotionVerificationPackStatus === "ready_for_safety_confirm") {
+      return `运动验收可执行：勾一次现场安全确认后，按顺序验证 ${currentMotionVerificationPackActionDisplayLabels.join("、")}；发车前预检只保留安全确认，不把相机、雷达或现场报告作为额外前置；执行后按读回端点复验 ${currentMotionVerificationPackMissingEvidence.join("、") || "运动闭环"}。`;
+    }
+    return "运动验收暂未就绪；先按当前卡点补齐缺失证据，再回到现场安全确认。";
+  })();
   const fieldAcceptanceWysiwygNextActions = [
     liveClosureSummary.live_wysiwyg_missing_surface_ids.includes("camera")
       ? liveClosureSummary.live_wysiwyg_camera_recovery_next_action_plain
@@ -11294,6 +11333,39 @@ export async function buildRobotControlSummary(
     current_motion_action_current_gap_plain: nav2RouteAcceptancePacket.current_gap_plain,
     current_motion_action_no_extra_precheck_plain: nav2RouteAcceptancePacket.no_extra_precheck_plain,
     current_motion_action_delivery_next_action_plain: nav2RouteAcceptancePacket.delivery_next_action_plain,
+    current_motion_verification_pack_status: currentMotionVerificationPackStatus,
+    current_motion_verification_pack_plain: currentMotionVerificationPackPlain,
+    current_motion_verification_pack_action_ids: currentMotionVerificationPackActionIds,
+    current_motion_verification_pack_action_display_labels: currentMotionVerificationPackActionDisplayLabels,
+    current_motion_verification_pack_action_start_endpoints: currentMotionVerificationPackActionStartEndpoints,
+    current_motion_verification_pack_action_stop_endpoints: currentMotionVerificationPackActionStopEndpoints,
+    current_motion_verification_pack_action_readback_endpoints: currentMotionVerificationPackActionReadbackEndpoints,
+    current_motion_verification_pack_primary_action_id: currentMotionVerificationPackPrimaryAction?.id ?? "none",
+    current_motion_verification_pack_primary_action_display_label: currentMotionVerificationPackPrimaryAction?.display_label
+      ?? currentMotionVerificationPackPrimaryAction?.label
+      ?? "无待执行运动验收",
+    current_motion_verification_pack_primary_action_start_endpoint: currentMotionVerificationPackPrimaryAction?.start_endpoint ?? "none",
+    current_motion_verification_pack_primary_action_stop_endpoint: currentMotionVerificationPackPrimaryAction?.stop_endpoint ?? "none",
+    current_motion_verification_pack_primary_action_readback_endpoints: currentMotionVerificationPackPrimaryReadbackEndpoints,
+    current_motion_verification_pack_ready_action_count: currentMotionVerificationPackActionIds.length,
+    current_motion_verification_pack_missing_evidence: currentMotionVerificationPackMissingEvidence,
+    current_motion_verification_pack_required_success_markers: currentMotionVerificationPackRequiredSuccessMarkers,
+    current_motion_verification_pack_requires_safety_confirm: currentMotionVerificationPackActionIds.length > 0,
+    current_motion_verification_pack_minimal_precheck_safety_only: currentMotionVerificationPackMinimalPrecheckSafetyOnly,
+    current_motion_verification_pack_camera_preflight_required: currentMotionVerificationPackCameraPreflightRequired,
+    current_motion_verification_pack_radar_preflight_required: currentMotionVerificationPackRadarPreflightRequired,
+    current_motion_verification_pack_operator_report_preflight_required: currentMotionVerificationPackOperatorReportPreflightRequired,
+    current_motion_verification_pack_route_wysiwyg_preflight_required: currentMotionVerificationPackRouteWysiwygPreflightRequired,
+    current_motion_verification_pack_sends_motion_when_executed: currentMotionVerificationPackActionIds.length > 0,
+    current_motion_verification_pack_sends_motion_when_clicked: false,
+    current_motion_verification_pack_readback_sends_motion: false,
+    current_motion_verification_pack_starts_nav2_when_clicked: false,
+    current_motion_verification_pack_starts_manual_when_clicked: false,
+    current_motion_verification_pack_starts_keyboard_when_clicked: false,
+    current_motion_verification_pack_starts_free_roam_when_clicked: false,
+    current_motion_verification_pack_starts_map_runtime_when_clicked: false,
+    current_motion_verification_pack_submits_delivery_when_clicked: false,
+    current_motion_verification_pack_stops_motion_when_clicked: false,
     current_keyboard_action_required: true,
     current_keyboard_action_ready: keyboardRunbookItem?.ready ?? liveClosureSummary.keyboard_continuous_ready,
     current_keyboard_action_id: keyboardRunbookItem?.id ?? "hold_keyboard",

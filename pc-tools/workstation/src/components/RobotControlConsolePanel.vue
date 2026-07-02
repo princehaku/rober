@@ -4293,6 +4293,78 @@ const plainFieldAcceptancePacket = computed<RobotControlFieldAcceptancePacket | 
   }) | null;
   return robotSummary.value?.field_acceptance_packet ?? legacyLiveSummary?.field_acceptance_packet ?? null;
 });
+const plainCurrentMotionVerificationPack = computed(() => {
+  // 运动验收包只把 summary 的 ready 动作压平展示；真正发车仍由各动作按钮和安全确认控制。
+  const summary = robotSummary.value;
+  const packet = plainFieldAcceptancePacket.value;
+  const actionIds = summary?.current_motion_verification_pack_action_ids
+    ?? packet?.safety_confirm_ready_step_ids
+    ?? [];
+  const displayLabels = summary?.current_motion_verification_pack_action_display_labels
+    ?? packet?.safety_confirm_ready_action_display_labels
+    ?? [];
+  const startEndpoints = summary?.current_motion_verification_pack_action_start_endpoints
+    ?? packet?.safety_confirm_ready_action_start_endpoints
+    ?? [];
+  const stopEndpoints = summary?.current_motion_verification_pack_action_stop_endpoints
+    ?? packet?.safety_confirm_ready_actions?.map((action) => action.stop_endpoint)
+    ?? [];
+  const readbackEndpoints = summary?.current_motion_verification_pack_action_readback_endpoints
+    ?? packet?.safety_confirm_ready_actions?.flatMap((action) => action.acceptance_endpoints)
+    ?? [];
+  const actionIdSet = new Set<string>(actionIds);
+  const missingEvidence = summary?.current_motion_verification_pack_missing_evidence
+    ?? packet?.missing_evidence_items
+      ?.filter((item) => actionIdSet.has(item.action_id))
+      .map((item) => item.id)
+    ?? [];
+  const primaryAction = packet?.safety_confirm_ready_actions
+    ?.find((action) => action.id === packet.primary_safety_confirm_ready_action_id);
+  const plain = summary?.current_motion_verification_pack_plain
+    || (actionIds.length
+      ? `运动验收可执行：勾一次现场安全确认后，按顺序验证 ${displayLabels.join("、")}；发车前预检只保留安全确认。`
+      : "运动验收暂未就绪；先按当前卡点补齐缺失证据。");
+  return {
+    status: summary?.current_motion_verification_pack_status ?? (actionIds.length ? "ready_for_safety_confirm" : "blocked"),
+    plain,
+    actionIdsText: actionIds.join(",") || "none",
+    actionDisplayLabelsText: displayLabels.join(",") || "none",
+    actionStartEndpointsText: startEndpoints.join(",") || "none",
+    actionStopEndpointsText: stopEndpoints.join(",") || "none",
+    actionReadbackEndpointsText: Array.from(new Set(readbackEndpoints)).join(",") || "none",
+    primaryActionId: summary?.current_motion_verification_pack_primary_action_id ?? packet?.primary_safety_confirm_ready_action_id ?? "none",
+    primaryActionDisplayLabel: summary?.current_motion_verification_pack_primary_action_display_label
+      ?? packet?.primary_safety_confirm_ready_action_display_label
+      ?? packet?.primary_safety_confirm_ready_action_label
+      ?? "无待执行运动验收",
+    primaryActionStartEndpoint: summary?.current_motion_verification_pack_primary_action_start_endpoint
+      ?? packet?.primary_safety_confirm_ready_action_start_endpoint
+      ?? "none",
+    primaryActionStopEndpoint: summary?.current_motion_verification_pack_primary_action_stop_endpoint
+      ?? primaryAction?.stop_endpoint
+      ?? "none",
+    primaryActionReadbackEndpointsText: (summary?.current_motion_verification_pack_primary_action_readback_endpoints ?? primaryAction?.acceptance_endpoints ?? []).join(",") || "none",
+    readyActionCount: summary?.current_motion_verification_pack_ready_action_count ?? actionIds.length,
+    missingEvidenceText: missingEvidence.join(",") || "none",
+    requiredSuccessMarkersText: summary?.current_motion_verification_pack_required_success_markers?.join(",") || "none",
+    requiresSafetyConfirm: summary?.current_motion_verification_pack_requires_safety_confirm ?? actionIds.length > 0,
+    minimalPrecheckSafetyOnly: summary?.current_motion_verification_pack_minimal_precheck_safety_only ?? packet?.minimal_precheck_safety_only ?? false,
+    cameraPreflightRequired: summary?.current_motion_verification_pack_camera_preflight_required ?? false,
+    radarPreflightRequired: summary?.current_motion_verification_pack_radar_preflight_required ?? false,
+    operatorReportPreflightRequired: summary?.current_motion_verification_pack_operator_report_preflight_required ?? false,
+    routeWysiwygPreflightRequired: summary?.current_motion_verification_pack_route_wysiwyg_preflight_required ?? false,
+    sendsMotionWhenExecuted: summary?.current_motion_verification_pack_sends_motion_when_executed ?? actionIds.length > 0,
+    sendsMotionWhenClicked: summary?.current_motion_verification_pack_sends_motion_when_clicked ?? false,
+    readbackSendsMotion: summary?.current_motion_verification_pack_readback_sends_motion ?? false,
+    startsNav2WhenClicked: summary?.current_motion_verification_pack_starts_nav2_when_clicked ?? false,
+    startsManualWhenClicked: summary?.current_motion_verification_pack_starts_manual_when_clicked ?? false,
+    startsKeyboardWhenClicked: summary?.current_motion_verification_pack_starts_keyboard_when_clicked ?? false,
+    startsFreeRoamWhenClicked: summary?.current_motion_verification_pack_starts_free_roam_when_clicked ?? false,
+    startsMapRuntimeWhenClicked: summary?.current_motion_verification_pack_starts_map_runtime_when_clicked ?? false,
+    submitsDeliveryWhenClicked: summary?.current_motion_verification_pack_submits_delivery_when_clicked ?? false,
+    stopsMotionWhenClicked: summary?.current_motion_verification_pack_stops_motion_when_clicked ?? false,
+  };
+});
 const plainFieldAcceptanceReadyStepIdsText = computed(() => (
   plainFieldAcceptancePacket.value?.ready_step_ids.join(",") || "none"
 ));
@@ -19188,6 +19260,42 @@ onBeforeUnmount(() => {
           <p data-testid="plain-field-acceptance-next">{{ plainFieldAcceptanceNextText }}</p>
           <p class="panel-note" data-testid="plain-field-acceptance-summary">
             {{ plainActionCardUserText(plainFieldAcceptancePacket.summary_plain) }}
+          </p>
+          <p
+            class="panel-note"
+            data-testid="plain-current-motion-verification-pack"
+            :data-status="plainCurrentMotionVerificationPack.status"
+            :data-action-ids="plainCurrentMotionVerificationPack.actionIdsText"
+            :data-action-display-labels="plainCurrentMotionVerificationPack.actionDisplayLabelsText"
+            :data-action-start-endpoints="plainCurrentMotionVerificationPack.actionStartEndpointsText"
+            :data-action-stop-endpoints="plainCurrentMotionVerificationPack.actionStopEndpointsText"
+            :data-action-readback-endpoints="plainCurrentMotionVerificationPack.actionReadbackEndpointsText"
+            :data-primary-action-id="plainCurrentMotionVerificationPack.primaryActionId"
+            :data-primary-action-display-label="plainCurrentMotionVerificationPack.primaryActionDisplayLabel"
+            :data-primary-action-start-endpoint="plainCurrentMotionVerificationPack.primaryActionStartEndpoint"
+            :data-primary-action-stop-endpoint="plainCurrentMotionVerificationPack.primaryActionStopEndpoint"
+            :data-primary-action-readback-endpoints="plainCurrentMotionVerificationPack.primaryActionReadbackEndpointsText"
+            :data-ready-action-count="String(plainCurrentMotionVerificationPack.readyActionCount)"
+            :data-missing-evidence="plainCurrentMotionVerificationPack.missingEvidenceText"
+            :data-required-success-markers="plainCurrentMotionVerificationPack.requiredSuccessMarkersText"
+            :data-requires-safety-confirm="String(plainCurrentMotionVerificationPack.requiresSafetyConfirm)"
+            :data-minimal-precheck-safety-only="String(plainCurrentMotionVerificationPack.minimalPrecheckSafetyOnly)"
+            :data-camera-preflight-required="String(plainCurrentMotionVerificationPack.cameraPreflightRequired)"
+            :data-radar-preflight-required="String(plainCurrentMotionVerificationPack.radarPreflightRequired)"
+            :data-operator-report-preflight-required="String(plainCurrentMotionVerificationPack.operatorReportPreflightRequired)"
+            :data-route-wysiwyg-preflight-required="String(plainCurrentMotionVerificationPack.routeWysiwygPreflightRequired)"
+            :data-sends-motion-when-executed="String(plainCurrentMotionVerificationPack.sendsMotionWhenExecuted)"
+            :data-sends-motion-when-clicked="String(plainCurrentMotionVerificationPack.sendsMotionWhenClicked)"
+            :data-readback-sends-motion="String(plainCurrentMotionVerificationPack.readbackSendsMotion)"
+            :data-starts-nav2-when-clicked="String(plainCurrentMotionVerificationPack.startsNav2WhenClicked)"
+            :data-starts-manual-when-clicked="String(plainCurrentMotionVerificationPack.startsManualWhenClicked)"
+            :data-starts-keyboard-when-clicked="String(plainCurrentMotionVerificationPack.startsKeyboardWhenClicked)"
+            :data-starts-free-roam-when-clicked="String(plainCurrentMotionVerificationPack.startsFreeRoamWhenClicked)"
+            :data-starts-map-runtime-when-clicked="String(plainCurrentMotionVerificationPack.startsMapRuntimeWhenClicked)"
+            :data-submits-delivery-when-clicked="String(plainCurrentMotionVerificationPack.submitsDeliveryWhenClicked)"
+            :data-stops-motion-when-clicked="String(plainCurrentMotionVerificationPack.stopsMotionWhenClicked)"
+          >
+            {{ plainCurrentMotionVerificationPack.plain }}
           </p>
           <p
             class="panel-note"
