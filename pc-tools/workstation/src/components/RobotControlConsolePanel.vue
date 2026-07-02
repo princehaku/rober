@@ -4368,6 +4368,58 @@ const plainCurrentMotionVerificationPack = computed(() => {
     stopsMotionWhenClicked: summary?.current_motion_verification_pack_stops_motion_when_clicked ?? false,
   };
 });
+const plainCurrentSafetyConfirmQueue = computed(() => {
+  // 队列只负责把“安全确认后按顺序手动做什么”说清楚；它本身不是执行按钮。
+  const summary = robotSummary.value;
+  const motionPack = plainCurrentMotionVerificationPack.value;
+  const actionIds = summary?.current_safety_confirm_queue_action_ids
+    ?? motionPack.actionIdsText.split(",").filter((item) => item && item !== "none");
+  const actionDisplayLabels = summary?.current_safety_confirm_queue_action_display_labels
+    ?? motionPack.actionDisplayLabelsText.split(",").filter((item) => item && item !== "none");
+  const actionStartEndpoints = summary?.current_safety_confirm_queue_action_start_endpoints
+    ?? motionPack.actionStartEndpointsText.split(",").filter((item) => item && item !== "none");
+  const actionStopEndpoints = summary?.current_safety_confirm_queue_action_stop_endpoints
+    ?? motionPack.actionStopEndpointsText.split(",").filter((item) => item && item !== "none");
+  const actionAcceptanceEndpoints = summary?.current_safety_confirm_queue_action_acceptance_endpoints
+    ?? [];
+  const readbackEndpoints = summary?.current_safety_confirm_queue_readback_endpoints
+    ?? motionPack.actionReadbackEndpointsText.split(",").filter((item) => item && item !== "none");
+  return {
+    status: summary?.current_safety_confirm_queue_status ?? motionPack.status,
+    plain: summary?.current_safety_confirm_queue_plain
+      ?? (actionDisplayLabels.length
+        ? `安全确认后执行队列：按顺序手动执行 ${actionDisplayLabels.join("、")}；队列卡本身只读不发车。`
+        : "安全确认后执行队列暂为空。"),
+    actionIdsText: actionIds.join(",") || "none",
+    actionDisplayLabelsText: actionDisplayLabels.join(",") || "none",
+    actionStartEndpointsText: actionStartEndpoints.join(",") || "none",
+    actionStopEndpointsText: actionStopEndpoints.join(",") || "none",
+    actionAcceptanceEndpointsText: actionAcceptanceEndpoints.join(",") || "none",
+    readbackEndpointsText: readbackEndpoints.join(",") || "none",
+    primaryActionId: summary?.current_safety_confirm_queue_primary_action_id ?? motionPack.primaryActionId,
+    primaryActionDisplayLabel: summary?.current_safety_confirm_queue_primary_action_display_label
+      ?? motionPack.primaryActionDisplayLabel,
+    actionCount: summary?.current_safety_confirm_queue_action_count ?? actionIds.length,
+    requiresSafetyConfirm: summary?.current_safety_confirm_queue_requires_safety_confirm ?? motionPack.requiresSafetyConfirm,
+    minimalPrecheckSafetyOnly: summary?.current_safety_confirm_queue_minimal_precheck_safety_only ?? motionPack.minimalPrecheckSafetyOnly,
+    cameraPreflightRequired: summary?.current_safety_confirm_queue_camera_preflight_required ?? motionPack.cameraPreflightRequired,
+    radarPreflightRequired: summary?.current_safety_confirm_queue_radar_preflight_required ?? motionPack.radarPreflightRequired,
+    operatorReportPreflightRequired: summary?.current_safety_confirm_queue_operator_report_preflight_required ?? motionPack.operatorReportPreflightRequired,
+    routeWysiwygPreflightRequired: summary?.current_safety_confirm_queue_route_wysiwyg_preflight_required ?? motionPack.routeWysiwygPreflightRequired,
+    requiresManualActionPerStep: summary?.current_safety_confirm_queue_requires_manual_action_per_step ?? true,
+    autoRuns: summary?.current_safety_confirm_queue_auto_runs ?? false,
+    sendsMotionWhenClicked: summary?.current_safety_confirm_queue_sends_motion_when_clicked ?? false,
+    sendsMotionWhenExecuted: summary?.current_safety_confirm_queue_sends_motion_when_executed ?? motionPack.sendsMotionWhenExecuted,
+    readbackSendsMotion: summary?.current_safety_confirm_queue_readback_sends_motion ?? false,
+    startsNav2WhenClicked: summary?.current_safety_confirm_queue_starts_nav2_when_clicked ?? false,
+    startsManualWhenClicked: summary?.current_safety_confirm_queue_starts_manual_when_clicked ?? false,
+    startsKeyboardWhenClicked: summary?.current_safety_confirm_queue_starts_keyboard_when_clicked ?? false,
+    startsFreeRoamWhenClicked: summary?.current_safety_confirm_queue_starts_free_roam_when_clicked ?? false,
+    startsMapRuntimeWhenClicked: summary?.current_safety_confirm_queue_starts_map_runtime_when_clicked ?? false,
+    submitsDeliveryWhenClicked: summary?.current_safety_confirm_queue_submits_delivery_when_clicked ?? false,
+    stopsMotionWhenClicked: summary?.current_safety_confirm_queue_stops_motion_when_clicked ?? false,
+  };
+});
 const plainCurrentMinimalPrecheckPack = computed(() => {
   // 这个包只回答“发车前还要不要相机/雷达/现场报告”，不替任何按钮执行发车。
   const summary = robotSummary.value;
@@ -20011,6 +20063,40 @@ onBeforeUnmount(() => {
             :data-stops-motion-when-clicked="String(plainCurrentMotionVerificationPack.stopsMotionWhenClicked)"
           >
             {{ plainCurrentMotionVerificationPack.plain }}
+          </p>
+          <p
+            class="panel-note"
+            data-testid="plain-current-safety-confirm-queue"
+            :data-status="plainCurrentSafetyConfirmQueue.status"
+            :data-action-ids="plainCurrentSafetyConfirmQueue.actionIdsText"
+            :data-action-display-labels="plainCurrentSafetyConfirmQueue.actionDisplayLabelsText"
+            :data-action-start-endpoints="plainCurrentSafetyConfirmQueue.actionStartEndpointsText"
+            :data-action-stop-endpoints="plainCurrentSafetyConfirmQueue.actionStopEndpointsText"
+            :data-action-acceptance-endpoints="plainCurrentSafetyConfirmQueue.actionAcceptanceEndpointsText"
+            :data-readback-endpoints="plainCurrentSafetyConfirmQueue.readbackEndpointsText"
+            :data-primary-action-id="plainCurrentSafetyConfirmQueue.primaryActionId"
+            :data-primary-action-display-label="plainCurrentSafetyConfirmQueue.primaryActionDisplayLabel"
+            :data-action-count="String(plainCurrentSafetyConfirmQueue.actionCount)"
+            :data-requires-safety-confirm="String(plainCurrentSafetyConfirmQueue.requiresSafetyConfirm)"
+            :data-minimal-precheck-safety-only="String(plainCurrentSafetyConfirmQueue.minimalPrecheckSafetyOnly)"
+            :data-camera-preflight-required="String(plainCurrentSafetyConfirmQueue.cameraPreflightRequired)"
+            :data-radar-preflight-required="String(plainCurrentSafetyConfirmQueue.radarPreflightRequired)"
+            :data-operator-report-preflight-required="String(plainCurrentSafetyConfirmQueue.operatorReportPreflightRequired)"
+            :data-route-wysiwyg-preflight-required="String(plainCurrentSafetyConfirmQueue.routeWysiwygPreflightRequired)"
+            :data-requires-manual-action-per-step="String(plainCurrentSafetyConfirmQueue.requiresManualActionPerStep)"
+            :data-auto-runs="String(plainCurrentSafetyConfirmQueue.autoRuns)"
+            :data-sends-motion-when-clicked="String(plainCurrentSafetyConfirmQueue.sendsMotionWhenClicked)"
+            :data-sends-motion-when-executed="String(plainCurrentSafetyConfirmQueue.sendsMotionWhenExecuted)"
+            :data-readback-sends-motion="String(plainCurrentSafetyConfirmQueue.readbackSendsMotion)"
+            :data-starts-nav2-when-clicked="String(plainCurrentSafetyConfirmQueue.startsNav2WhenClicked)"
+            :data-starts-manual-when-clicked="String(plainCurrentSafetyConfirmQueue.startsManualWhenClicked)"
+            :data-starts-keyboard-when-clicked="String(plainCurrentSafetyConfirmQueue.startsKeyboardWhenClicked)"
+            :data-starts-free-roam-when-clicked="String(plainCurrentSafetyConfirmQueue.startsFreeRoamWhenClicked)"
+            :data-starts-map-runtime-when-clicked="String(plainCurrentSafetyConfirmQueue.startsMapRuntimeWhenClicked)"
+            :data-submits-delivery-when-clicked="String(plainCurrentSafetyConfirmQueue.submitsDeliveryWhenClicked)"
+            :data-stops-motion-when-clicked="String(plainCurrentSafetyConfirmQueue.stopsMotionWhenClicked)"
+          >
+            {{ plainCurrentSafetyConfirmQueue.plain }}
           </p>
           <p
             class="panel-note"

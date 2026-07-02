@@ -1176,6 +1176,39 @@ describe("robotControlSummary", () => {
     expect(summary.current_motion_verification_pack_starts_map_runtime_when_clicked).toBe(false);
     expect(summary.current_motion_verification_pack_submits_delivery_when_clicked).toBe(false);
     expect(summary.current_motion_verification_pack_stops_motion_when_clicked).toBe(false);
+    expect(summary.current_safety_confirm_queue_status).toBe("ready_for_safety_confirm");
+    expect(summary.current_safety_confirm_queue_plain).toContain("安全确认后执行队列");
+    expect(summary.current_safety_confirm_queue_plain).toContain("按顺序手动执行 重跑图上行程并复验轮速、键盘连续手控、自由自助移动");
+    expect(summary.current_safety_confirm_queue_action_ids).toEqual(summary.current_motion_verification_pack_action_ids);
+    expect(summary.current_safety_confirm_queue_action_display_labels).toEqual(summary.current_motion_verification_pack_action_display_labels);
+    expect(summary.current_safety_confirm_queue_action_start_endpoints).toEqual(summary.current_motion_verification_pack_action_start_endpoints);
+    expect(summary.current_safety_confirm_queue_action_stop_endpoints).toEqual(summary.current_motion_verification_pack_action_stop_endpoints);
+    expect(summary.current_safety_confirm_queue_action_acceptance_endpoints).toEqual([
+      "/api/robot-control/map/preview|/api/robot-control/nav2/goal/execution/latest|/api/robot-control/base/feedback-samples|/api/robot-control/delivery/latest|/api/robot-control/summary",
+      "/api/robot-control/base/feedback-samples|/api/robot-control/summary",
+      "/api/robot-control/free-roam/autonomy/latest|/api/robot-control/map/preview|/api/robot-control/summary",
+    ]);
+    expect(summary.current_safety_confirm_queue_readback_endpoints).toEqual(summary.current_motion_verification_pack_action_readback_endpoints);
+    expect(summary.current_safety_confirm_queue_primary_action_id).toBe("run_nav2_route");
+    expect(summary.current_safety_confirm_queue_primary_action_display_label).toBe("重跑图上行程并复验轮速");
+    expect(summary.current_safety_confirm_queue_action_count).toBe(3);
+    expect(summary.current_safety_confirm_queue_requires_safety_confirm).toBe(true);
+    expect(summary.current_safety_confirm_queue_minimal_precheck_safety_only).toBe(true);
+    expect(summary.current_safety_confirm_queue_camera_preflight_required).toBe(false);
+    expect(summary.current_safety_confirm_queue_radar_preflight_required).toBe(false);
+    expect(summary.current_safety_confirm_queue_operator_report_preflight_required).toBe(false);
+    expect(summary.current_safety_confirm_queue_route_wysiwyg_preflight_required).toBe(false);
+    expect(summary.current_safety_confirm_queue_requires_manual_action_per_step).toBe(true);
+    expect(summary.current_safety_confirm_queue_auto_runs).toBe(false);
+    expect(summary.current_safety_confirm_queue_sends_motion_when_clicked).toBe(false);
+    expect(summary.current_safety_confirm_queue_sends_motion_when_executed).toBe(true);
+    expect(summary.current_safety_confirm_queue_readback_sends_motion).toBe(false);
+    expect(summary.current_safety_confirm_queue_starts_nav2_when_clicked).toBe(false);
+    expect(summary.current_safety_confirm_queue_starts_keyboard_when_clicked).toBe(false);
+    expect(summary.current_safety_confirm_queue_starts_free_roam_when_clicked).toBe(false);
+    expect(summary.current_safety_confirm_queue_starts_map_runtime_when_clicked).toBe(false);
+    expect(summary.current_safety_confirm_queue_submits_delivery_when_clicked).toBe(false);
+    expect(summary.current_safety_confirm_queue_stops_motion_when_clicked).toBe(false);
     expect(summary.field_acceptance_primary_safety_confirm_ready_action_id).toBe("run_nav2_route");
     expect(summary.field_acceptance_primary_safety_confirm_ready_action_label).toBe("完整行程执行");
     expect(summary.field_acceptance_primary_safety_confirm_ready_action_display_label).toBe("重跑图上行程并复验轮速");
