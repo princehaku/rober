@@ -5118,6 +5118,19 @@ const plainCurrentMotionActionGauge = computed(() => {
   const radarPreflightRequired = summary?.current_motion_action_radar_preflight_required ?? fallback.radarPreflightRequired;
   const routeWysiwygPreflightRequired = summary?.current_motion_action_route_wysiwyg_preflight_required ?? fallback.routeWysiwygPreflightRequired;
   const sendsMotion = summary?.current_motion_action_sends_motion ?? fallback.startSendsMotion;
+  const routeReadyOnMap = summary?.current_motion_action_route_ready_on_map ?? fallback.routeReadyOnMap;
+  const nav2GoalSucceeded = summary?.current_motion_action_nav2_goal_succeeded ?? fallback.nav2GoalSucceeded;
+  const sameWindowWheelLrNonzero = summary?.current_motion_action_same_window_wheel_lr_nonzero ?? fallback.sameWindowWheelLrNonzero;
+  const deliverySuccess = summary?.current_motion_action_delivery_success ?? fallback.deliverySuccess;
+  const needsSameWindowWheelRerun = summary?.current_motion_action_needs_same_window_wheel_rerun ?? fallback.needsSameWindowWheelRerun;
+  const deliverySuccessRequired = summary?.current_motion_action_delivery_success_required ?? fallback.deliverySuccessRequired;
+  const latestRawLeft = summary?.current_motion_action_latest_raw_left ?? fallback.latestRawLeft;
+  const latestRawRight = summary?.current_motion_action_latest_raw_right ?? fallback.latestRawRight;
+  const feedbackSampleCount = summary?.current_motion_action_feedback_sample_count ?? fallback.feedbackSampleCount;
+  const feedbackNonzeroSampleCount = summary?.current_motion_action_feedback_nonzero_sample_count ?? fallback.feedbackNonzeroSampleCount;
+  const currentGapPlain = plainActionCardUserText(summary?.current_motion_action_current_gap_plain ?? fallback.currentGapPlain ?? "");
+  const noExtraPrecheckPlain = plainActionCardUserText(summary?.current_motion_action_no_extra_precheck_plain ?? fallback.noExtraPrecheckPlain ?? "");
+  const deliveryNextActionPlain = plainActionCardUserText(summary?.current_motion_action_delivery_next_action_plain ?? fallback.deliveryNextActionPlain ?? "");
   const startEndpoint = summary?.current_motion_action_start_endpoint ?? fallback.startEndpoint;
   const stopEndpoint = summary?.current_motion_action_stop_endpoint ?? fallback.stopEndpoint;
   const safetyText = requiresSafetyConfirm
@@ -5130,6 +5143,15 @@ const plainCurrentMotionActionGauge = computed(() => {
     ? `执行后读回 ${acceptanceEndpoints.length} 个验收端点`
     : "执行后读回验收端点未加载";
   const missingText = missingEvidence.length ? `还差 ${missingEvidence.map(motionEvidenceLabel).join("、")}` : "缺口已清空";
+  const routeText = routeReadyOnMap ? "图上行程已显示" : "图上行程未显示";
+  const nav2Text = nav2GoalSucceeded ? "到点已读到" : "到点未读到";
+  const wheelText = sameWindowWheelLrNonzero
+    ? `同窗口轮速已非零，L/R=${latestRawLeft}/${latestRawRight}`
+    : `同窗口轮速未证明，L/R=${latestRawLeft}/${latestRawRight}，非零样本 ${feedbackNonzeroSampleCount}/${feedbackSampleCount}`;
+  const deliveryText = deliverySuccess
+    ? "送达确认已完成"
+    : deliverySuccessRequired ? "送达确认未完成" : "本动作不要求送达确认";
+  const readbackFactText = `当前读回：${routeText}；${nav2Text}；${wheelText}；${deliveryText}`;
   const state = !actionRequired
     ? "无动作"
     : sendsMotion && plainManualSafetyConfirmed.value
@@ -5143,7 +5165,7 @@ const plainCurrentMotionActionGauge = computed(() => {
     label: summary?.current_motion_action_label ?? fallback.label,
     displayLabel,
     state,
-    text: `当前运动动作：${displayLabel}；${safetyText}；${precheckText}；${readbackText}；${missingText}。${proofPlain ? ` ${proofPlain}` : ""}`,
+    text: `当前运动动作：${displayLabel}；${safetyText}；${precheckText}；${readbackText}；${readbackFactText}；${missingText}。${proofPlain ? ` ${proofPlain}` : ""}`,
     startEndpoint,
     stopEndpoint,
     acceptanceEndpoints,
@@ -5162,6 +5184,19 @@ const plainCurrentMotionActionGauge = computed(() => {
     radarPreflightRequired,
     routeWysiwygPreflightRequired,
     sendsMotion,
+    routeReadyOnMap,
+    nav2GoalSucceeded,
+    sameWindowWheelLrNonzero,
+    deliverySuccess,
+    needsSameWindowWheelRerun,
+    deliverySuccessRequired,
+    latestRawLeft,
+    latestRawRight,
+    feedbackSampleCount,
+    feedbackNonzeroSampleCount,
+    currentGapPlain,
+    noExtraPrecheckPlain,
+    deliveryNextActionPlain,
   };
 });
 const plainLiveWheelFeedbackReadback = computed(() => {
@@ -23819,6 +23854,19 @@ onBeforeUnmount(() => {
                 :data-current-motion-action-radar-preflight-required="String(plainCurrentMotionActionGauge.radarPreflightRequired)"
                 :data-current-motion-action-route-wysiwyg-preflight-required="String(plainCurrentMotionActionGauge.routeWysiwygPreflightRequired)"
                 :data-current-motion-action-sends-motion="String(plainCurrentMotionActionGauge.sendsMotion)"
+                :data-current-motion-action-route-ready-on-map="String(plainCurrentMotionActionGauge.routeReadyOnMap)"
+                :data-current-motion-action-nav2-goal-succeeded="String(plainCurrentMotionActionGauge.nav2GoalSucceeded)"
+                :data-current-motion-action-same-window-wheel-lr-nonzero="String(plainCurrentMotionActionGauge.sameWindowWheelLrNonzero)"
+                :data-current-motion-action-delivery-success="String(plainCurrentMotionActionGauge.deliverySuccess)"
+                :data-current-motion-action-needs-same-window-wheel-rerun="String(plainCurrentMotionActionGauge.needsSameWindowWheelRerun)"
+                :data-current-motion-action-delivery-success-required="String(plainCurrentMotionActionGauge.deliverySuccessRequired)"
+                :data-current-motion-action-latest-raw-left="plainCurrentMotionActionGauge.latestRawLeft"
+                :data-current-motion-action-latest-raw-right="plainCurrentMotionActionGauge.latestRawRight"
+                :data-current-motion-action-feedback-sample-count="plainCurrentMotionActionGauge.feedbackSampleCount"
+                :data-current-motion-action-feedback-nonzero-sample-count="plainCurrentMotionActionGauge.feedbackNonzeroSampleCount"
+                :data-current-motion-action-current-gap-plain="plainCurrentMotionActionGauge.currentGapPlain"
+                :data-current-motion-action-no-extra-precheck-plain="plainCurrentMotionActionGauge.noExtraPrecheckPlain"
+                :data-current-motion-action-delivery-next-action-plain="plainCurrentMotionActionGauge.deliveryNextActionPlain"
                 :data-post-execute-latest-refresh-required="String(plainTripDomEvidence.postExecuteLatestRefreshRequired)"
                 :data-post-execute-summary-refresh-required="String(plainTripDomEvidence.postExecuteSummaryRefreshRequired)"
                 :data-fixed-execute-proxy-endpoint="plainTripDomEvidence.fixedExecuteProxyEndpoint"
@@ -23861,6 +23909,19 @@ onBeforeUnmount(() => {
               :data-current-motion-action-radar-preflight-required="String(plainCurrentMotionActionGauge.radarPreflightRequired)"
               :data-current-motion-action-route-wysiwyg-preflight-required="String(plainCurrentMotionActionGauge.routeWysiwygPreflightRequired)"
               :data-current-motion-action-sends-motion="String(plainCurrentMotionActionGauge.sendsMotion)"
+              :data-current-motion-action-route-ready-on-map="String(plainCurrentMotionActionGauge.routeReadyOnMap)"
+              :data-current-motion-action-nav2-goal-succeeded="String(plainCurrentMotionActionGauge.nav2GoalSucceeded)"
+              :data-current-motion-action-same-window-wheel-lr-nonzero="String(plainCurrentMotionActionGauge.sameWindowWheelLrNonzero)"
+              :data-current-motion-action-delivery-success="String(plainCurrentMotionActionGauge.deliverySuccess)"
+              :data-current-motion-action-needs-same-window-wheel-rerun="String(plainCurrentMotionActionGauge.needsSameWindowWheelRerun)"
+              :data-current-motion-action-delivery-success-required="String(plainCurrentMotionActionGauge.deliverySuccessRequired)"
+              :data-current-motion-action-latest-raw-left="plainCurrentMotionActionGauge.latestRawLeft"
+              :data-current-motion-action-latest-raw-right="plainCurrentMotionActionGauge.latestRawRight"
+              :data-current-motion-action-feedback-sample-count="plainCurrentMotionActionGauge.feedbackSampleCount"
+              :data-current-motion-action-feedback-nonzero-sample-count="plainCurrentMotionActionGauge.feedbackNonzeroSampleCount"
+              :data-current-motion-action-current-gap-plain="plainCurrentMotionActionGauge.currentGapPlain"
+              :data-current-motion-action-no-extra-precheck-plain="plainCurrentMotionActionGauge.noExtraPrecheckPlain"
+              :data-current-motion-action-delivery-next-action-plain="plainCurrentMotionActionGauge.deliveryNextActionPlain"
               data-sends-motion-when-clicked="false"
             >
               {{ plainCurrentMotionActionGauge.text }}

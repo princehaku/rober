@@ -976,6 +976,19 @@ const fixtures: Record<string, unknown> = {
     current_motion_action_radar_preflight_required: false,
     current_motion_action_route_wysiwyg_preflight_required: false,
     current_motion_action_sends_motion: true,
+    current_motion_action_route_ready_on_map: true,
+    current_motion_action_nav2_goal_succeeded: true,
+    current_motion_action_same_window_wheel_lr_nonzero: false,
+    current_motion_action_delivery_success: false,
+    current_motion_action_needs_same_window_wheel_rerun: true,
+    current_motion_action_delivery_success_required: true,
+    current_motion_action_latest_raw_left: "0",
+    current_motion_action_latest_raw_right: "0",
+    current_motion_action_feedback_sample_count: "2",
+    current_motion_action_feedback_nonzero_sample_count: "0",
+    current_motion_action_current_gap_plain: "当前缺口：同窗口 wheel L/R 非零、送达确认。",
+    current_motion_action_no_extra_precheck_plain: "发车前预检只看现场安全确认。",
+    current_motion_action_delivery_next_action_plain: "轮速复验通过后提交送达确认。",
     live_closure_summary: {
       status: "needs_wysiwyg",
       status_label: "待当前所见",
@@ -9514,7 +9527,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-trip-main-action-summary"]').text()).toBe("主按钮：先勾选现场安全确认；未勾选时不会发车。");
     const currentMotionAction = wrapper.find('[data-testid="plain-trip-current-motion-action"]');
     expect(currentMotionAction.exists()).toBe(true);
-    expect(currentMotionAction.text()).toContain("当前运动动作：重跑图上行程并复验轮速；先勾现场安全确认；发车前只看安全确认；执行后读回 5 个验收端点；还差 同窗口 wheel L/R 非零、送达确认。");
+    expect(currentMotionAction.text()).toContain("当前运动动作：重跑图上行程并复验轮速；先勾现场安全确认；发车前只看安全确认；执行后读回 5 个验收端点；当前读回：图上行程已显示；到点已读到；同窗口轮速未证明，L/R=0/0，非零样本 0/2；送达确认未完成；还差 同窗口 wheel L/R 非零、送达确认。");
     expect(currentMotionAction.text()).toContain("可验证完整行程执行");
     expect(currentMotionAction.text()).not.toContain("Nav2");
     expect(currentMotionAction.text()).not.toContain("raw");
@@ -9537,6 +9550,19 @@ describe("App", () => {
     expect(currentMotionAction.attributes("data-current-motion-action-radar-preflight-required")).toBe("false");
     expect(currentMotionAction.attributes("data-current-motion-action-route-wysiwyg-preflight-required")).toBe("false");
     expect(currentMotionAction.attributes("data-current-motion-action-sends-motion")).toBe("true");
+    expect(currentMotionAction.attributes("data-current-motion-action-route-ready-on-map")).toBe("true");
+    expect(currentMotionAction.attributes("data-current-motion-action-nav2-goal-succeeded")).toBe("true");
+    expect(currentMotionAction.attributes("data-current-motion-action-same-window-wheel-lr-nonzero")).toBe("false");
+    expect(currentMotionAction.attributes("data-current-motion-action-delivery-success")).toBe("false");
+    expect(currentMotionAction.attributes("data-current-motion-action-needs-same-window-wheel-rerun")).toBe("true");
+    expect(currentMotionAction.attributes("data-current-motion-action-delivery-success-required")).toBe("true");
+    expect(currentMotionAction.attributes("data-current-motion-action-latest-raw-left")).toBe("0");
+    expect(currentMotionAction.attributes("data-current-motion-action-latest-raw-right")).toBe("0");
+    expect(currentMotionAction.attributes("data-current-motion-action-feedback-sample-count")).toBe("2");
+    expect(currentMotionAction.attributes("data-current-motion-action-feedback-nonzero-sample-count")).toBe("0");
+    expect(currentMotionAction.attributes("data-current-motion-action-current-gap-plain")).toContain("同窗口 wheel L/R 非零");
+    expect(currentMotionAction.attributes("data-current-motion-action-no-extra-precheck-plain")).toBe("发车前预检只看现场安全确认。");
+    expect(currentMotionAction.attributes("data-current-motion-action-delivery-next-action-plain")).toContain("送达确认");
     expect(currentMotionAction.attributes("data-sends-motion-when-clicked")).toBe("false");
     const defaultKeyboardTelemetry = wrapper.find('[data-testid="keyboard-telemetry-summary"]');
     expect(defaultKeyboardTelemetry.text()).toBe("键盘仪表：方向 未按键；最佳连续 0/2 次；轮速未读取；未触发；当前不发车。");

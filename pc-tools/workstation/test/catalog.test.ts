@@ -7195,6 +7195,16 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.current_motion_action_minimal_precheck_safety_only).toBe(true);
       expect(summary.current_motion_action_camera_preflight_required).toBe(false);
       expect(summary.current_motion_action_radar_preflight_required).toBe(false);
+      expect(summary.current_motion_action_route_ready_on_map).toBe(summary.nav2_route_acceptance_packet?.route_ready_on_map);
+      expect(summary.current_motion_action_nav2_goal_succeeded).toBe(summary.nav2_route_acceptance_packet?.nav2_goal_succeeded);
+      expect(summary.current_motion_action_same_window_wheel_lr_nonzero).toBe(summary.nav2_route_acceptance_packet?.same_window_wheel_lr_nonzero);
+      expect(summary.current_motion_action_delivery_success).toBe(summary.nav2_route_acceptance_packet?.delivery_success);
+      expect(summary.current_motion_action_needs_same_window_wheel_rerun).toBe(summary.nav2_route_acceptance_packet?.needs_same_window_wheel_rerun);
+      expect(summary.current_motion_action_delivery_success_required).toBe(summary.nav2_route_acceptance_packet?.delivery_success_required);
+      expect(summary.current_motion_action_latest_raw_left).toBe(summary.nav2_route_acceptance_packet?.latest_raw_left);
+      expect(summary.current_motion_action_latest_raw_right).toBe(summary.nav2_route_acceptance_packet?.latest_raw_right);
+      expect(summary.current_motion_action_feedback_sample_count).toBe(summary.nav2_route_acceptance_packet?.feedback_sample_count);
+      expect(summary.current_motion_action_feedback_nonzero_sample_count).toBe(summary.nav2_route_acceptance_packet?.feedback_nonzero_sample_count);
       expect(summary.keyboard_start_endpoint).toBe("/api/robot-control/base/manual");
       expect(summary.keyboard_acceptance_endpoints).toEqual([
         "/api/robot-control/base/feedback-samples",
