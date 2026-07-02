@@ -6,6 +6,7 @@ import type {
   RobotApiPathPreviewPoint,
   RobotApiProofSummary,
   RobotApiReadEndpointId,
+  RobotApiRouteTarget,
   RobotApiScanPreviewPoint,
   RobotControlOperatorHilMaterialSummary,
   RobotControlOperatorReportPreflight,
@@ -4255,6 +4256,25 @@ function mapPreviewPlainSummary(
   };
 }
 
+function mapPreviewRouteTarget(pathPreview: MapPreviewPathPreview): RobotApiRouteTarget | null {
+  // 路线终点必须来自同一份 path preview，避免前端把历史目标点误画到当前地图上。
+  const mapPoints = pathPreview.path_preview_points.filter((point) => !point.frame_id || point.frame_id === "map");
+  if (mapPoints.length < 2) {
+    return null;
+  }
+  const lastPoint = mapPoints[mapPoints.length - 1];
+  if (!lastPoint) {
+    return null;
+  }
+  return {
+    x: lastPoint.x,
+    y: lastPoint.y,
+    frame_id: lastPoint.frame_id || "map",
+    source: "path_preview_points",
+    source_index: lastPoint.source_index,
+  };
+}
+
 function blockedMapPreviewResponse(
   sourceBaseUrl: string,
   reason: string,
@@ -4271,6 +4291,7 @@ function blockedMapPreviewResponse(
   const pathStatus = pathPreview.path_preview_point_count > 0 ? "path_preview_observed" : "not_observed";
   const poseStatus = radarOverlay.robot_pose ? "map_pose_observed" : "not_observed";
   const pathNextActionPlain = mapPreviewPathNextActionPlain(pathStatus, poseStatus);
+  const routeTarget = mapPreviewRouteTarget(pathPreview);
   const mapWysiwyg = mapWysiwygPlainSummary({
     mapObserved: "false",
     pathStatus,
@@ -4336,6 +4357,10 @@ function blockedMapPreviewResponse(
     path_preview_source_point_count: pathPreview.path_preview_source_point_count,
     path_preview_frame_id: pathPreview.path_preview_frame_id,
     path_preview_source_endpoint_ids: pathPreviewSourceEndpointIds,
+    target: routeTarget,
+    route_target_state: routeTarget ? "path_preview_goal_observed" : "not_observed",
+    route_target_visible: Boolean(routeTarget),
+    route_target_source: routeTarget ? "path_preview_points" : "not_loaded",
     robot_control_executed: false,
   };
 }
@@ -4576,6 +4601,7 @@ export async function buildMapPreviewProxy(baseUrl: string): Promise<RobotContro
   const pathStatus = overlayReadback.pathPreview.path_preview_point_count > 0 ? "path_preview_observed" : "not_observed";
   const poseStatus = radarOverlay.robot_pose ? "map_pose_observed" : "not_observed";
   const pathNextActionPlain = mapPreviewPathNextActionPlain(pathStatus, poseStatus);
+  const routeTarget = mapPreviewRouteTarget(overlayReadback.pathPreview);
   const mapWysiwyg = mapWysiwygPlainSummary({
     mapObserved: forwarded ? "true" : "false",
     pathStatus,
@@ -4644,6 +4670,10 @@ export async function buildMapPreviewProxy(baseUrl: string): Promise<RobotContro
     path_preview_source_point_count: overlayReadback.pathPreview.path_preview_source_point_count,
     path_preview_frame_id: overlayReadback.pathPreview.path_preview_frame_id,
     path_preview_source_endpoint_ids: overlayReadback.sourceEndpointIds,
+    target: routeTarget,
+    route_target_state: routeTarget ? "path_preview_goal_observed" : "not_observed",
+    route_target_visible: Boolean(routeTarget),
+    route_target_source: routeTarget ? "path_preview_points" : "not_loaded",
     robot_control_executed: false,
   };
 }

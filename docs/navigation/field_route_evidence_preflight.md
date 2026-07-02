@@ -425,3 +425,33 @@ WAVE ROVER `/dev/ttyS5@115200` 与 LiDAR `/dev/ttyACM0@150000`。
 
 剩余缺口：这解决“自动驾驶服务为什么准备不起来/没法生成路线”的软件链路问题，但不等于完整路线执行成功。
 下一轮真实发车必须在 PC 安全确认后执行路线，并用同窗口 wheel raw L/R 非零、goal result 和 delivery result 收口。
+
+## 2026-07-03 ROS /cmd_vel CLI 发布卡死修复
+
+现场复核自动驾驶/ROS 控制面时，直接在上位机通过 `ros2 topic pub --once /cmd_vel` 发布 Twist 曾卡在
+FastDDS shared-memory port 锁文件上，表现为 `RTPS_TRANSPORT_SHM open_and_lock_file failed` 后 API
+侧短超时。这会让 PC 或上车 API 看起来像“自动驾驶没法动”，即使底层 `/cmd_vel` topic 和 bridge 仍可用。
+
+本轮上车 `upper_robot_api.py` 修复：
+
+- `publish_ros_cmd_vel_once()` 默认超时从 `2s` 提高到 `10s`，匹配 Orange Pi 上 source ROS 环境和
+  `ros2 topic pub` 的实际启动耗时。
+- ROS CLI 发布前显式 `export RMW_FASTRTPS_USE_SHM=0`，并在同一命令前缀
+  `RMW_FASTRTPS_USE_SHM=0 ros2 topic pub --once --wait-matching-subscriptions 0 --keep-alive 0.1 /cmd_vel ...`，
+  避免等待订阅匹配或 FastDDS SHM 锁文件把一次性 publisher 卡死。
+- 硬件协议口径继续采用 `docs/vendor/VENDOR_INDEX.md`、
+  `docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py` 和
+  `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h`：WAVE ROVER newline JSON、
+  `/dev/ttyS5@115200` 由现场 bridge 持有，ROS `/cmd_vel` 对应 bridge 下发 `T=13 X/Z`，API 不再为 ROS
+  手控另开 UART。
+
+现场验证：
+
+- `POST http://192.168.1.11:8787/api/base/manual`，body
+  `{"direction":"forward","speed":0.08,"duration_ms":300,"command_mode":"ros","feedback_mode":"bridge_debug","confirm_hil_checklist":true}`
+  返回 `command_result.ok=true`、`stop_result.ok=true`、`manual_command_executed=true`、
+  `auto_stop_executed=true` 和 `ros_cmd_vel_transaction.mode=ros_cmd_vel_bridge`。
+- 前进 publisher stdout 只显示 `publishing #1`，未再因 SHM 卡死；stop publisher 仍可能打印 FastDDS
+  SHM 历史锁警告，但 returncode 为 `0`，不再阻塞 API。
+- 同窗口 bridge debug 仍显示 `wheel_feedback_lr_nonzero_proven=false`、`latest_pair L/R=0/0`；因此该修复只证明
+  ROS `/cmd_vel` 发布链路恢复，不证明完整 Nav2 路线、wheel raw L/R 非零或 delivery success 已完成。

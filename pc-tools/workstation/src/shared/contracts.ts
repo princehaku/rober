@@ -2002,6 +2002,14 @@ export interface RobotApiMapPose {
   source: string;
 }
 
+export interface RobotApiRouteTarget {
+  x: number;
+  y: number;
+  frame_id: string;
+  source: "path_preview_points";
+  source_index: number | null;
+}
+
 export interface RobotApiFrameTransform {
   parent_frame_id: string;
   child_frame_id: string;
@@ -6203,6 +6211,10 @@ export interface RobotControlMapPreviewResponse extends ProofFlags {
   path_preview_source_point_count: number | null;
   path_preview_frame_id: string;
   path_preview_source_endpoint_ids: RobotApiReadEndpointId[];
+  target: RobotApiRouteTarget | null;
+  route_target_state: "path_preview_goal_observed" | "not_observed";
+  route_target_visible: boolean;
+  route_target_source: "path_preview_points" | "not_loaded";
   robot_control_executed: false;
 }
 

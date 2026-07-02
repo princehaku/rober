@@ -836,6 +836,26 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertIsNone(payload["manual_feedback_samples_latest"])
         self.assertTrue(payload["manual_command_executed"])
 
+    def test_ros_cmd_vel_publish_disables_fastrtps_shm_and_zero_wait(self) -> None:
+        """现场 FastDDS SHM 锁文件会让 ros2 CLI 卡死，发布命令必须显式绕开。"""
+        completed = mock.Mock(returncode=0, stdout="published once", stderr="")
+
+        with mock.patch.object(upper_robot_api.subprocess, "run", return_value=completed) as mocked_run:
+            result = upper_robot_api.publish_ros_cmd_vel_once(0.08, 0.0, timeout_s=3.0)
+
+        self.assertTrue(result["ok"])
+        mocked_run.assert_called_once()
+        argv = mocked_run.call_args.args[0]
+        self.assertEqual(["bash", "-lc"], argv[:2])
+        command = argv[2]
+        self.assertIn("export RMW_FASTRTPS_USE_SHM=0", command)
+        self.assertIn(
+            "RMW_FASTRTPS_USE_SHM=0 ros2 topic pub --once --wait-matching-subscriptions 0 --keep-alive 0.1 /cmd_vel",
+            command,
+        )
+        self.assertIn("geometry_msgs/msg/Twist", command)
+        self.assertEqual(3.0, mocked_run.call_args.kwargs["timeout"])
+
     def test_manual_control_ros_persists_fresh_bridge_feedback_without_opening_uart(self) -> None:
         """ROS 手控后只读 bridge debug log 回灌 L/R，不为了证明轮速再抢 UART。"""
         api = upper_robot_api.UpperRobotApi(

@@ -29,7 +29,7 @@ client publish、service 和 parameter 通道关到不匹配正则；安装仍�
 简易界面，不发送 `/cmd_vel`。
 
 2026-07-02 CST 起，PC 地图按“先解决太小”处理：普通用户点 `进入地图大屏` 打开 `/map`，
-默认 `3200%`，最高 `6400%`，summary/DOM 同步暴露
+默认 `200%` 细节大图，最高 `800%`，需要看完整全图时点 `适配` 回到 `100%`，summary/DOM 同步暴露
 `map_display_direct_map_viewport_priority=fullscreen_map_canvas` 和
 `map_display_direct_map_canvas_height_mode=viewport_dominant_full_height`。`/map` 直达页必须使用整屏
 flex 地图布局，只保留缩放、`刷新地图画面`、雷达贴图只读刷新和 `ROS2观察`，并收起建图、保存、
@@ -42,6 +42,14 @@ summary 顶层和 `plain-live-map-companion-summary` DOM 同步暴露短 alias
 `map_display_ros2_companion_plain` / `data-ros2-companion-plain`，与
 `map_display_ros2_companion_answer_plain` 同源；现场脚本按直觉查 ROS2 配套白话答案时不会读到
 null，该字段也只作观察说明，不启动 ROS2、RViz2、Foxglove、Nav2、建图 runtime 或任何运动控制。
+
+2026-07-03 CST 起，`GET /api/robot-control/map/preview` 顶层直接暴露图上路线目标点：
+`target`、`route_target_state`、`route_target_visible` 和 `route_target_source`。目标点只从同一轮
+`path_preview_points` 中的 map frame 路线派生，至少两个点时取最后一个点；现场读回
+`target={x:0.8,y:0.05,frame_id=map,source=path_preview_points,source_index=17}`、
+`path_preview_point_count=18`、`radar_overlay_status=loaded`、`robot_pose_status=map_pose_observed`。
+这让 PC 大地图同时有地图、路线、小车位置、雷达点和终点读回；该字段只读，不准备路线、不执行 Nav2、
+不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 
 2026-07-02 CST 起，`GET /api/robot-control/free-roam/autonomy/latest` 直连回包也显式声明只读边界：
 `readback_only=true`、`free_roam_latest_readback_only=true`、`sends_motion_when_clicked=false`、

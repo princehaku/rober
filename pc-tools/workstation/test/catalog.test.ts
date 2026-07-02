@@ -11769,6 +11769,10 @@ describe("workstation fail-closed API contracts", () => {
         path_preview_source_point_count: number | null;
         path_preview_frame_id: string;
         path_preview_source_endpoint_ids: string[];
+        target: { x: number; y: number; frame_id: string; source: string; source_index: number | null } | null;
+        route_target_state: string;
+        route_target_visible: boolean;
+        route_target_source: string;
         radar_overlay: {
           overlay_status: string;
           status: string;
@@ -11854,6 +11858,16 @@ describe("workstation fail-closed API contracts", () => {
         "radar_status",
         "radar_scan_proof_latest",
       ]);
+      expect(previewBody.target).toEqual({
+        x: 0.4,
+        y: 0.2,
+        frame_id: "map",
+        source: "path_preview_points",
+        source_index: 7,
+      });
+      expect(previewBody.route_target_state).toBe("path_preview_goal_observed");
+      expect(previewBody.route_target_visible).toBe(true);
+      expect(previewBody.route_target_source).toBe("path_preview_points");
       expect(previewBody.radar_overlay.overlay_status).toBe("loaded");
       expect(previewBody.radar_overlay.status).toBe("loaded");
       expect(previewBody.radar_overlay.plain_hint).toBe("雷达点已按当前扫描和小车地图位置贴到地图。");

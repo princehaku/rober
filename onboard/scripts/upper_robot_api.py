@@ -6037,7 +6037,7 @@ def build_feedback_payload_from_open_serial_read(
     return payload
 
 
-def publish_ros_cmd_vel_once(linear_x: float, angular_z: float, *, timeout_s: float = 2.0) -> dict[str, Any]:
+def publish_ros_cmd_vel_once(linear_x: float, angular_z: float, *, timeout_s: float = 10.0) -> dict[str, Any]:
     """通过 ROS /cmd_vel 给 esp32_bridge 发一次 Twist，避免 API 与 bridge 抢占 UART。"""
     linear_x = round(float(linear_x), 6)
     angular_z = round(float(angular_z), 6)
@@ -6050,10 +6050,13 @@ def publish_ros_cmd_vel_once(linear_x: float, angular_z: float, *, timeout_s: fl
     )
     setup_script = (
         "set +u; "
+        # 现场 Orange Pi 的 /dev/shm 里存在 FastDDS 历史锁文件；关闭 SHM 可避免 ros2 CLI 建 publisher 卡死。
+        "export RMW_FASTRTPS_USE_SHM=0; "
         f"source {shlex.quote(DEFAULT_ROS_SETUP_PATH)}; "
         f"if [ -f {shlex.quote(DEFAULT_ONBOARD_SETUP_PATH)} ]; then source {shlex.quote(DEFAULT_ONBOARD_SETUP_PATH)}; fi; "
         "set -u; "
-        "ros2 topic pub --once /cmd_vel geometry_msgs/msg/Twist "
+        "RMW_FASTRTPS_USE_SHM=0 ros2 topic pub --once --wait-matching-subscriptions 0 --keep-alive 0.1 "
+        "/cmd_vel geometry_msgs/msg/Twist "
         f"{shlex.quote(message)}"
     )
     result: dict[str, Any] = {

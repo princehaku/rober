@@ -3526,6 +3526,16 @@ describe("robotControlSummary", () => {
     expect(preview.radar_overlay_wysiwyg_status_plain).toContain("当前不贴到地图");
     expect(preview.radar_overlay_next_action).toBe("refresh_radar_scan_for_map_overlay");
     expect(preview.radar_overlay?.scan_preview_points).toEqual([]);
+    expect(preview.target).toEqual({
+      x: 1.5,
+      y: 2.2,
+      frame_id: "map",
+      source: "path_preview_points",
+      source_index: 1,
+    });
+    expect(preview.route_target_state).toBe("path_preview_goal_observed");
+    expect(preview.route_target_visible).toBe(true);
+    expect(preview.route_target_source).toBe("path_preview_points");
 
     const summary = await buildRobotControlSummary("http://192.168.1.11:8787", null, null, {
       readbackTimeoutMs: 100,
@@ -3655,6 +3665,14 @@ describe("robotControlSummary", () => {
     expect(preview.radar_overlay?.source_endpoint_ids).toEqual(["map_preview"]);
     expect(preview.radar_overlay_wysiwyg_status_plain).toBe("雷达点已贴到当前地图：当前显示 2 个点，frame=laser_frame。");
     expect(preview.map_wysiwyg_status_plain).toContain("雷达标记都已按当前读数显示");
+    expect(preview.target).toEqual({
+      x: 1.5,
+      y: 2.2,
+      frame_id: "map",
+      source: "path_preview_points",
+      source_index: 1,
+    });
+    expect(preview.route_target_visible).toBe(true);
 
     const summary = await buildRobotControlSummary("http://192.168.1.11:8787", null, null, {
       readbackTimeoutMs: 100,
