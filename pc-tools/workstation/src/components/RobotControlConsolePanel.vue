@@ -22574,6 +22574,21 @@ onBeforeUnmount(() => {
         :data-objective-audit-summary-plain="plainLiveClosureSummary?.objective_audit_summary_plain ?? 'not_loaded'"
         :data-fixed-objective-audit-summary-endpoint="plainLiveClosureSummary?.fixed_objective_audit_summary_endpoint ?? 'not_loaded'"
         :data-objective-audit-sends-motion-when-clicked="String(plainLiveClosureSummary?.objective_audit_sends_motion_when_clicked ?? false)"
+        :data-current-goal-status="robotSummary?.current_goal_status ?? plainGoalChecklistSummary?.status ?? 'not_loaded'"
+        :data-current-goal-total-count="String(robotSummary?.current_goal_total_count ?? plainGoalChecklistSummary?.total_count ?? 0)"
+        :data-current-goal-done-count="String(robotSummary?.current_goal_done_count ?? plainGoalChecklistSummary?.done_count ?? 0)"
+        :data-current-goal-remaining-count="String(robotSummary?.current_goal_remaining_count ?? plainGoalChecklistSummary?.remaining_count ?? 0)"
+        :data-current-goal-progress-plain="robotSummary?.current_goal_progress_plain ?? plainGoalChecklistSummary?.progress_plain ?? 'not_loaded'"
+        :data-current-goal-next-action-id="robotSummary?.current_goal_next_action_id ?? plainGoalChecklistSummary?.primary_ready_action_item_id ?? 'none'"
+        :data-current-goal-next-action-label="robotSummary?.current_goal_next_action_label ?? plainGoalChecklistSummary?.ready_action_items.find((item) => item.id === plainGoalChecklistSummary?.primary_ready_action_item_id)?.title ?? '无'"
+        :data-current-goal-next-action-source-card-id="robotSummary?.current_goal_next_action_source_card_id ?? plainGoalChecklistSummary?.primary_ready_action_source_card_id ?? 'none'"
+        :data-current-goal-next-action-requires-safety-confirm="String(robotSummary?.current_goal_next_action_requires_safety_confirm ?? plainGoalChecklistSummary?.ready_action_items.find((item) => item.id === plainGoalChecklistSummary?.primary_ready_action_item_id)?.requires_safety_confirmation ?? false)"
+        :data-current-goal-next-action-requires-motion="String(robotSummary?.current_goal_next_action_requires_motion ?? plainGoalChecklistSummary?.ready_action_items.find((item) => item.id === plainGoalChecklistSummary?.primary_ready_action_item_id)?.requires_motion ?? false)"
+        :data-current-goal-next-action-plain="robotSummary?.current_goal_next_action_plain ?? plainGoalChecklistSummary?.primary_ready_action_next_action_plain ?? plainGoalChecklistSummary?.next_action_plain ?? 'not_loaded'"
+        :data-current-goal-next-action-item-ids="robotSummary?.current_goal_next_action_item_ids?.join(',') ?? plainGoalChecklistSummary?.next_action_item_ids.join(',') ?? 'none'"
+        :data-current-goal-ready-action-ids="robotSummary?.current_goal_ready_action_ids?.join(',') ?? plainGoalChecklistSummary?.ready_action_ids.join(',') ?? 'none'"
+        :data-current-goal-blocked-action-ids="robotSummary?.current_goal_blocked_action_ids?.join(',') ?? plainGoalChecklistSummary?.blocked_action_ids.join(',') ?? 'none'"
+        :data-current-goal-sends-motion-when-clicked="String(robotSummary?.current_goal_sends_motion_when_clicked ?? false)"
       >
         <div class="simple-status-row">
           <strong>目标总览</strong>

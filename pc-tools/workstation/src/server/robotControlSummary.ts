@@ -10497,6 +10497,10 @@ export async function buildRobotControlSummary(
   const actionStatusCards = buildActionStatusCards(readbackSummary, safeCommandBoundary);
   const goalChecklist = buildGoalChecklist(actionStatusCards ?? [], readbackSummary, safeCommandBoundary);
   const goalSummary = buildGoalChecklistSummary(goalChecklist ?? []) as NonNullable<RobotControlSummaryResponse["goal_checklist_summary"]>;
+  const currentGoalNextAction = goalSummary.ready_action_items
+    .find((item) => item.id === goalSummary.primary_ready_action_item_id)
+    ?? goalSummary.next_action_items[0]
+    ?? null;
   const liveClosureSummary = buildLiveClosureSummary(
     actionStatusCards ?? [],
     goalSummary,
@@ -11332,6 +11336,30 @@ export async function buildRobotControlSummary(
     goal_checklist_summary: goalSummary,
     live_closure_summary: liveClosureSummary,
     goal_summary: goalSummary,
+    current_goal_status: goalSummary.status,
+    current_goal_status_label: goalSummary.status_label,
+    current_goal_total_count: goalSummary.total_count,
+    current_goal_done_count: goalSummary.done_count,
+    current_goal_remaining_count: goalSummary.remaining_count,
+    current_goal_progress_plain: goalSummary.progress_plain,
+    current_goal_safety_confirm_needed_count: goalSummary.safety_confirm_needed_count,
+    current_goal_motion_needed_count: goalSummary.motion_needed_count,
+    current_goal_ready_action_count: goalSummary.ready_action_count,
+    current_goal_blocked_action_count: goalSummary.blocked_action_count,
+    current_goal_next_action_id: currentGoalNextAction?.id ?? "none",
+    current_goal_next_action_label: currentGoalNextAction?.title ?? "无",
+    current_goal_next_action_plain: currentGoalNextAction?.next_action_plain ?? goalSummary.next_action_plain,
+    current_goal_next_action_source_card_id: currentGoalNextAction?.source_card_id ?? "none",
+    current_goal_next_action_requires_safety_confirm: currentGoalNextAction?.requires_safety_confirmation ?? false,
+    current_goal_next_action_requires_motion: currentGoalNextAction?.requires_motion ?? false,
+    current_goal_next_action_blocks_goal_completion: currentGoalNextAction?.blocks_goal_completion ?? false,
+    current_goal_summary_plain: goalSummary.summary_plain,
+    current_goal_move_now_status_plain: goalSummary.move_now_status_plain,
+    current_goal_mapping_blockers_plain: goalSummary.mapping_blockers_plain,
+    current_goal_next_action_item_ids: goalSummary.next_action_item_ids,
+    current_goal_ready_action_ids: goalSummary.ready_action_ids,
+    current_goal_blocked_action_ids: goalSummary.blocked_action_ids,
+    current_goal_sends_motion_when_clicked: false,
     // 当前卡点和四项目标总览放到 summary 顶层，便于现场只用一条 curl 判断下一步。
     status: liveClosureSummary.status,
     live_status: liveClosureSummary.status,

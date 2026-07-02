@@ -5182,6 +5182,21 @@ free-roam、建图 runtime 或 `/cmd_vel`。
 翻译成普通用户可读中文；读取和展示标签不执行 Nav2、manual、keyboard、free-roam、建图 runtime、
 delivery、stop 或 `/cmd_vel`。
 
+2026-07-02 16:41 CST 起，summary 顶层新增 `current_goal_*` 短字段，直接给现场脚本和普通 PC 首屏读取本轮目标进度：
+`current_goal_status`、`current_goal_total_count`、`current_goal_done_count`、`current_goal_remaining_count`、
+`current_goal_progress_plain`、`current_goal_next_action_id/label/plain/source_card_id`、
+`current_goal_next_action_requires_safety_confirm`、`current_goal_next_action_requires_motion`、
+`current_goal_next_action_item_ids`、`current_goal_ready_action_ids` 和 `current_goal_blocked_action_ids`。
+这些字段与 `goal_checklist_summary` 同源；下一步优先指向当前可现场安全确认的主 ready 动作，若没有 ready 动作才退回首个未完成项。
+普通 PC 的 `plain-objective-overview` 同步暴露 `data-current-goal-*`。读取这些字段或点击总览行只做页面聚焦，
+不自动勾安全确认，不执行 Nav2、manual、keyboard、free-roam、建图 runtime、delivery、stop 或 `/cmd_vel`。
+
+2026-07-02 16:44 CST 现场只读执行 `POST /api/robot-control/radar/scan-proof/refresh` 后，雷达地图贴图再次恢复为当前画面：
+summary 显示 `current_radar_map_wysiwyg_pack_status=loaded`、`current_radar_map_wysiwyg_pack_missing_evidence=[]`、
+当前雷达地图点 `5` 个、来源点 `6` 个，`live_wysiwyg_missing_surface_ids=[camera]`。
+该刷新结果继续保持 `robot_control_executed=false`、`safe_to_control=false`，不启动 Nav2、manual、keyboard、
+free-roam、建图 runtime 或 `/cmd_vel`。当前 WYSIWYG 和建图剩余阻塞集中在 `camera_first_frame`。
+
 2026-07-02 15:20 CST 起，共享 MJPEG 首屏首帧 fallback 改成短单次尝试、多格式覆盖：单次格式尝试
 `1.2s`，总窗口仍为 `9s`，确保现场 DV20 枚举里的 `YUYV@320x240@25`、`YUYV@640x480@22`
 和 `default@current` 会进入真实尝试，而不是被前两个 MJPG 模式耗尽预算。上车验证后
