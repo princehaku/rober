@@ -1561,3 +1561,9 @@ PC 地图口径保持默认大地图主视图：普通用户优先用本页大�
 primary hardware action DOM 也暴露同一序列。这样“换高速USB后复测”不再只验证首帧，还会同步读取共享 MJPEG
 预览状态和当前卡点；该按钮仍只读，不启动 Nav2、manual、keyboard、free-roam、map runtime、radar lifecycle、
 delivery 或 stop。
+
+2026-07-02 14:25 CST 起，`/map` 直达地图大屏进一步让位给画布：页面已处于满屏地图时，隐藏
+“收起地图 / 退出全屏 / 退出只看”这类普通视图切换按钮，把 `当前画布` 图层条改成地图内浮层，地图层按
+紧凑工具条显式扣减视口高度，避免 grid/flex 百分比把内部画布算小。直达页仍只保留缩放、`刷新地图画面`、雷达贴图只读刷新和 `ROS2观察`；
+ROS2 配套继续是 RViz2 做本地工程调试、Foxglove bridge + Foxglove Web 做远程浏览器观察，不启动 ROS2 工具、
+Nav2、建图 runtime、free-roam、manual、keyboard、delivery、stop 或 `/cmd_vel`。

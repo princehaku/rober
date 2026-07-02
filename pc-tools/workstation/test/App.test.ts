@@ -9542,6 +9542,9 @@ describe("App", () => {
     expect(workstationStyles).toContain(".plain-map-direct-view-link-primary");
     expect(workstationStyles).toContain("border-color: #0f6b45;");
     expect(workstationStyles).toContain('/map 直达页必须一打开就是地图观察屏');
+    expect(workstationStyles).toContain("隐藏退出/收起类按钮，把工具条空间还给地图画布");
+    expect(workstationStyles).toContain('.shell[data-direct-map-view-requested="true"] .plain-map-size-toggle');
+    expect(workstationStyles).toContain("图层状态改为画布内浮层");
     expect(workstationStyles).toContain('.shell[data-direct-map-view-requested="true"] .plain-map-panel[data-observer-mode="true"] .plain-map-viewport[data-size="fullscreen"] .plain-map-layer');
     expect(workstationStyles).toContain('.shell[data-direct-map-view-requested="true"] .plain-map-panel[data-observer-mode="true"] > .plain-map-ros2-tool-note');
     expect(workstationStyles).toContain("避免 ROS2/RViz2/Foxglove 配套答案被通用只看地图规则隐藏");
@@ -9550,9 +9553,9 @@ describe("App", () => {
     expect(workstationStyles).toContain("--plain-map-large-target-height: calc(100vh + 720px);");
     expect(workstationStyles).toContain("--plain-map-large-max-height: 5200px;");
     expect(workstationStyles).toContain("--plain-map-fullscreen-height: 100vh;");
-    expect(workstationStyles).toContain("避免百分比高度退回小画布");
-    expect(workstationStyles).toContain("height: calc(100vh - 88px);");
-    expect(workstationStyles).toContain("min-height: calc(100vh - 88px);");
+    expect(workstationStyles).toContain("避免 grid 百分比把内部画布算小");
+    expect(workstationStyles).toContain("height: calc(100vh - 52px);");
+    expect(workstationStyles).toContain("min-height: calc(100vh - 52px);");
     expect(workstationStyles).toContain('.robot-console-grid[data-layout="visual-first"] .plain-camera-panel');
     expect(workstationStyles).toContain('.robot-console-grid[data-layout="visual-first"] .plain-radar-panel');
     expect(workstationStyles).toContain('.robot-console-grid[data-layout="visual-first"] .plain-map-panel');
