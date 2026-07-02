@@ -4678,6 +4678,48 @@ const plainCurrentKeyboardControlPack = computed(() => {
     readbackStartsMapRuntime: summary?.current_keyboard_control_pack_readback_starts_map_runtime ?? false,
     readbackSubmitsDelivery: summary?.current_keyboard_control_pack_readback_submits_delivery ?? false,
     readbackStopsMotion: summary?.current_keyboard_control_pack_readback_stops_motion ?? false,
+    keyboardHoldStatus: summary?.keyboard_hold_status ?? status,
+    keyboardHoldPlain: summary?.keyboard_hold_plain ?? "",
+    keyboardHoldActionId: summary?.keyboard_hold_action_id ?? summary?.current_keyboard_control_pack_action_id ?? fallback.actionId,
+    keyboardHoldDisplayLabel: summary?.keyboard_hold_display_label ?? summary?.current_keyboard_control_pack_display_label ?? fallback.actionDisplayLabel,
+    keyboardHoldReady: summary?.keyboard_hold_ready ?? summary?.current_keyboard_control_pack_ready ?? fallback.actionReady,
+    keyboardHoldRequiresSafetyConfirm: summary?.keyboard_hold_requires_safety_confirm
+      ?? summary?.current_keyboard_control_pack_safety_confirm_required
+      ?? true,
+    keyboardHoldMinimalPrecheckSafetyOnly: summary?.keyboard_hold_minimal_precheck_safety_only
+      ?? summary?.current_keyboard_control_pack_minimal_precheck_safety_only
+      ?? true,
+    keyboardHoldStartEndpoint: summary?.keyboard_hold_start_endpoint ?? summary?.current_keyboard_control_pack_start_endpoint ?? fallback.actionStartEndpoint,
+    keyboardHoldStopEndpoint: summary?.keyboard_hold_stop_endpoint ?? summary?.current_keyboard_control_pack_stop_endpoint ?? fallback.actionStopEndpoint,
+    keyboardHoldReadbackEndpointsText: summary?.keyboard_hold_readback_endpoints?.join(",") || readbackEndpoints.join(",") || "none",
+    keyboardHoldPostHoldReadbackEndpointsText: summary?.keyboard_hold_post_hold_readback_endpoints?.join(",") || postHoldReadbackEndpoints.join(",") || "none",
+    keyboardHoldPostHoldReadbackSequenceLabelsText: summary?.keyboard_hold_post_hold_readback_sequence_labels?.join(",") || "复验键盘轮速采样,刷新总览",
+    keyboardHoldMissingEvidenceText: summary?.keyboard_hold_missing_evidence?.join(",") || missingEvidence.join(",") || "none",
+    keyboardHoldMissingEvidenceLabelsText: summary?.keyboard_hold_missing_evidence_labels?.join(",") || missingEvidenceLabels.join(",") || "none",
+    keyboardHoldToMoveRequired: summary?.keyboard_hold_to_move_required ?? true,
+    keyboardHoldPulseIntervalMs: summary?.keyboard_hold_pulse_interval_ms ?? summary?.current_keyboard_control_pack_pulse_interval_ms ?? fallback.pulseIntervalMs,
+    keyboardHoldPulseDurationMs: summary?.keyboard_hold_pulse_duration_ms ?? summary?.current_keyboard_control_pack_pulse_duration_ms ?? fallback.pulseDurationMs,
+    keyboardHoldStopTriggersText: summary?.keyboard_hold_stop_triggers?.join(",") || "key_release,window_blur,page_hidden,direction_change,stop_button",
+    keyboardHoldWheelFeedbackAcceptance: summary?.keyboard_hold_wheel_feedback_acceptance ?? "same_hold_window_wheel_lr_nonzero",
+    keyboardHoldEnableSendsMotion: summary?.keyboard_hold_enable_sends_motion ?? false,
+    keyboardHoldSendsMotionWhenClicked: summary?.keyboard_hold_sends_motion_when_clicked ?? false,
+    keyboardHoldSendsMotionWhenHeld: summary?.keyboard_hold_sends_motion_when_held ?? true,
+    keyboardHoldStartsNav2WhenClicked: summary?.keyboard_hold_starts_nav2_when_clicked ?? false,
+    keyboardHoldStartsManualWhenClicked: summary?.keyboard_hold_starts_manual_when_clicked ?? false,
+    keyboardHoldStartsKeyboardWhenClicked: summary?.keyboard_hold_starts_keyboard_when_clicked ?? false,
+    keyboardHoldStartsKeyboardWhenExecuted: summary?.keyboard_hold_starts_keyboard_when_executed ?? true,
+    keyboardHoldStartsFreeRoamWhenClicked: summary?.keyboard_hold_starts_free_roam_when_clicked ?? false,
+    keyboardHoldStartsMapRuntimeWhenClicked: summary?.keyboard_hold_starts_map_runtime_when_clicked ?? false,
+    keyboardHoldSubmitsDeliveryWhenClicked: summary?.keyboard_hold_submits_delivery_when_clicked ?? false,
+    keyboardHoldStopsMotionWhenClicked: summary?.keyboard_hold_stops_motion_when_clicked ?? false,
+    keyboardHoldReadbackSendsMotion: summary?.keyboard_hold_readback_sends_motion ?? false,
+    keyboardHoldReadbackStartsNav2: summary?.keyboard_hold_readback_starts_nav2 ?? false,
+    keyboardHoldReadbackStartsManual: summary?.keyboard_hold_readback_starts_manual ?? false,
+    keyboardHoldReadbackStartsKeyboard: summary?.keyboard_hold_readback_starts_keyboard ?? false,
+    keyboardHoldReadbackStartsFreeRoam: summary?.keyboard_hold_readback_starts_free_roam ?? false,
+    keyboardHoldReadbackStartsMapRuntime: summary?.keyboard_hold_readback_starts_map_runtime ?? false,
+    keyboardHoldReadbackSubmitsDelivery: summary?.keyboard_hold_readback_submits_delivery ?? false,
+    keyboardHoldReadbackStopsMotion: summary?.keyboard_hold_readback_stops_motion ?? false,
   };
 });
 const plainCurrentFreeMoveControlPack = computed(() => {
@@ -20393,6 +20435,44 @@ onBeforeUnmount(() => {
             :data-readback-starts-map-runtime="String(plainCurrentKeyboardControlPack.readbackStartsMapRuntime)"
             :data-readback-submits-delivery="String(plainCurrentKeyboardControlPack.readbackSubmitsDelivery)"
             :data-readback-stops-motion="String(plainCurrentKeyboardControlPack.readbackStopsMotion)"
+            :data-keyboard-hold-status="plainCurrentKeyboardControlPack.keyboardHoldStatus"
+            :data-keyboard-hold-plain="plainCurrentKeyboardControlPack.keyboardHoldPlain"
+            :data-keyboard-hold-action-id="plainCurrentKeyboardControlPack.keyboardHoldActionId"
+            :data-keyboard-hold-display-label="plainCurrentKeyboardControlPack.keyboardHoldDisplayLabel"
+            :data-keyboard-hold-ready="String(plainCurrentKeyboardControlPack.keyboardHoldReady)"
+            :data-keyboard-hold-requires-safety-confirm="String(plainCurrentKeyboardControlPack.keyboardHoldRequiresSafetyConfirm)"
+            :data-keyboard-hold-minimal-precheck-safety-only="String(plainCurrentKeyboardControlPack.keyboardHoldMinimalPrecheckSafetyOnly)"
+            :data-keyboard-hold-start-endpoint="plainCurrentKeyboardControlPack.keyboardHoldStartEndpoint"
+            :data-keyboard-hold-stop-endpoint="plainCurrentKeyboardControlPack.keyboardHoldStopEndpoint"
+            :data-keyboard-hold-readback-endpoints="plainCurrentKeyboardControlPack.keyboardHoldReadbackEndpointsText"
+            :data-keyboard-hold-post-hold-readback-endpoints="plainCurrentKeyboardControlPack.keyboardHoldPostHoldReadbackEndpointsText"
+            :data-keyboard-hold-post-hold-readback-sequence-labels="plainCurrentKeyboardControlPack.keyboardHoldPostHoldReadbackSequenceLabelsText"
+            :data-keyboard-hold-missing-evidence="plainCurrentKeyboardControlPack.keyboardHoldMissingEvidenceText"
+            :data-keyboard-hold-missing-evidence-labels="plainCurrentKeyboardControlPack.keyboardHoldMissingEvidenceLabelsText"
+            :data-keyboard-hold-to-move-required="String(plainCurrentKeyboardControlPack.keyboardHoldToMoveRequired)"
+            :data-keyboard-hold-pulse-interval-ms="String(plainCurrentKeyboardControlPack.keyboardHoldPulseIntervalMs)"
+            :data-keyboard-hold-pulse-duration-ms="String(plainCurrentKeyboardControlPack.keyboardHoldPulseDurationMs)"
+            :data-keyboard-hold-stop-triggers="plainCurrentKeyboardControlPack.keyboardHoldStopTriggersText"
+            :data-keyboard-hold-wheel-feedback-acceptance="plainCurrentKeyboardControlPack.keyboardHoldWheelFeedbackAcceptance"
+            :data-keyboard-hold-enable-sends-motion="String(plainCurrentKeyboardControlPack.keyboardHoldEnableSendsMotion)"
+            :data-keyboard-hold-sends-motion-when-clicked="String(plainCurrentKeyboardControlPack.keyboardHoldSendsMotionWhenClicked)"
+            :data-keyboard-hold-sends-motion-when-held="String(plainCurrentKeyboardControlPack.keyboardHoldSendsMotionWhenHeld)"
+            :data-keyboard-hold-starts-nav2-when-clicked="String(plainCurrentKeyboardControlPack.keyboardHoldStartsNav2WhenClicked)"
+            :data-keyboard-hold-starts-manual-when-clicked="String(plainCurrentKeyboardControlPack.keyboardHoldStartsManualWhenClicked)"
+            :data-keyboard-hold-starts-keyboard-when-clicked="String(plainCurrentKeyboardControlPack.keyboardHoldStartsKeyboardWhenClicked)"
+            :data-keyboard-hold-starts-keyboard-when-executed="String(plainCurrentKeyboardControlPack.keyboardHoldStartsKeyboardWhenExecuted)"
+            :data-keyboard-hold-starts-free-roam-when-clicked="String(plainCurrentKeyboardControlPack.keyboardHoldStartsFreeRoamWhenClicked)"
+            :data-keyboard-hold-starts-map-runtime-when-clicked="String(plainCurrentKeyboardControlPack.keyboardHoldStartsMapRuntimeWhenClicked)"
+            :data-keyboard-hold-submits-delivery-when-clicked="String(plainCurrentKeyboardControlPack.keyboardHoldSubmitsDeliveryWhenClicked)"
+            :data-keyboard-hold-stops-motion-when-clicked="String(plainCurrentKeyboardControlPack.keyboardHoldStopsMotionWhenClicked)"
+            :data-keyboard-hold-readback-sends-motion="String(plainCurrentKeyboardControlPack.keyboardHoldReadbackSendsMotion)"
+            :data-keyboard-hold-readback-starts-nav2="String(plainCurrentKeyboardControlPack.keyboardHoldReadbackStartsNav2)"
+            :data-keyboard-hold-readback-starts-manual="String(plainCurrentKeyboardControlPack.keyboardHoldReadbackStartsManual)"
+            :data-keyboard-hold-readback-starts-keyboard="String(plainCurrentKeyboardControlPack.keyboardHoldReadbackStartsKeyboard)"
+            :data-keyboard-hold-readback-starts-free-roam="String(plainCurrentKeyboardControlPack.keyboardHoldReadbackStartsFreeRoam)"
+            :data-keyboard-hold-readback-starts-map-runtime="String(plainCurrentKeyboardControlPack.keyboardHoldReadbackStartsMapRuntime)"
+            :data-keyboard-hold-readback-submits-delivery="String(plainCurrentKeyboardControlPack.keyboardHoldReadbackSubmitsDelivery)"
+            :data-keyboard-hold-readback-stops-motion="String(plainCurrentKeyboardControlPack.keyboardHoldReadbackStopsMotion)"
           >
             {{ plainCurrentKeyboardControlPack.plain }}
           </p>

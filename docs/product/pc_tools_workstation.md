@@ -5215,6 +5215,12 @@ delivery、stop 或 `/cmd_vel`。
 `data-current-move-now-*`；这些字段与安全确认队列同源，卡片点击只聚焦对应动作，不自动勾安全确认，
 不启动 Nav2、manual、keyboard、free-roam、建图 runtime、delivery、stop 或 `/cmd_vel`。
 
+2026-07-02 18:40 CST 起，summary 顶层新增 `keyboard_hold_*` 短字段，直接回答键盘连续手控是否可复验、
+是否只需安全确认、是否“启用不发车、按住才动”、松开后读回哪些端点，以及点击/读回边界。普通 PC 的
+`plain-current-keyboard-control-pack` 同步暴露 `data-keyboard-hold-*`。这些字段与
+`current_keyboard_control_pack_*` 同源；点击键盘说明卡不发车，只有现场安全确认后按住 W/A/S/D 或方向键才发送连续低速脉冲，
+松开/失焦/切页/停止按钮后再按轮速采样和 summary 只读复验。
+
 2026-07-02 17:05 CST 起，上车 `POST /api/robot-control/camera/first-frame/probe` 的自动格式 fallback 增加
 `160x120` 低带宽候选：`MJPG@160x120@30`、`YUYV@160x120@15`、`YUYV@160x120@10`。
 这是给 USB `12M` full-speed 场景的只读首帧兜底；若常规 `640x480/320x240` 均无帧，会继续尝试更低带宽模式。

@@ -907,6 +907,44 @@ const fixtures: Record<string, unknown> = {
     current_keyboard_control_pack_readback_starts_map_runtime: false,
     current_keyboard_control_pack_readback_submits_delivery: false,
     current_keyboard_control_pack_readback_stops_motion: false,
+    keyboard_hold_status: "ready_for_safety_confirm",
+    keyboard_hold_plain: "勾现场安全确认后点击启用键盘；启用不发车，按住 W/A/S/D 或方向键才连续低速移动，松开后只读复验轮速和停止。",
+    keyboard_hold_action_id: "hold_keyboard",
+    keyboard_hold_display_label: "键盘连续手控",
+    keyboard_hold_ready: true,
+    keyboard_hold_requires_safety_confirm: true,
+    keyboard_hold_minimal_precheck_safety_only: true,
+    keyboard_hold_start_endpoint: "/api/robot-control/base/manual",
+    keyboard_hold_stop_endpoint: "/api/robot-control/base/stop",
+    keyboard_hold_readback_endpoints: ["/api/robot-control/base/feedback-samples", "/api/robot-control/summary"],
+    keyboard_hold_post_hold_readback_endpoints: ["/api/robot-control/base/feedback-samples", "/api/robot-control/summary"],
+    keyboard_hold_post_hold_readback_sequence_labels: ["复验键盘轮速采样", "刷新总览"],
+    keyboard_hold_missing_evidence: ["same_hold_window_wheel_lr_nonzero", "stop_after_release"],
+    keyboard_hold_missing_evidence_labels: ["按住窗口轮速 L/R 非零", "松开后停稳"],
+    keyboard_hold_to_move_required: true,
+    keyboard_hold_pulse_interval_ms: 260,
+    keyboard_hold_pulse_duration_ms: 240,
+    keyboard_hold_stop_triggers: ["key_release", "window_blur", "page_hidden", "direction_change", "stop_button"],
+    keyboard_hold_wheel_feedback_acceptance: "same_hold_window_wheel_lr_nonzero",
+    keyboard_hold_enable_sends_motion: false,
+    keyboard_hold_sends_motion_when_clicked: false,
+    keyboard_hold_sends_motion_when_held: true,
+    keyboard_hold_starts_nav2_when_clicked: false,
+    keyboard_hold_starts_manual_when_clicked: false,
+    keyboard_hold_starts_keyboard_when_clicked: false,
+    keyboard_hold_starts_keyboard_when_executed: true,
+    keyboard_hold_starts_free_roam_when_clicked: false,
+    keyboard_hold_starts_map_runtime_when_clicked: false,
+    keyboard_hold_submits_delivery_when_clicked: false,
+    keyboard_hold_stops_motion_when_clicked: false,
+    keyboard_hold_readback_sends_motion: false,
+    keyboard_hold_readback_starts_nav2: false,
+    keyboard_hold_readback_starts_manual: false,
+    keyboard_hold_readback_starts_keyboard: false,
+    keyboard_hold_readback_starts_free_roam: false,
+    keyboard_hold_readback_starts_map_runtime: false,
+    keyboard_hold_readback_submits_delivery: false,
+    keyboard_hold_readback_stops_motion: false,
     current_free_move_action_required: true,
     current_free_move_action_ready: true,
     current_free_move_action_id: "start_free_move",
@@ -11926,6 +11964,44 @@ describe("App", () => {
     expect(keyboardPack.attributes("data-readback-starts-map-runtime")).toBe("false");
     expect(keyboardPack.attributes("data-readback-submits-delivery")).toBe("false");
     expect(keyboardPack.attributes("data-readback-stops-motion")).toBe("false");
+    expect(keyboardPack.attributes("data-keyboard-hold-status")).toBe("ready_for_safety_confirm");
+    expect(keyboardPack.attributes("data-keyboard-hold-plain")).toBe("勾现场安全确认后点击启用键盘；启用不发车，按住 W/A/S/D 或方向键才连续低速移动，松开后只读复验轮速和停止。");
+    expect(keyboardPack.attributes("data-keyboard-hold-action-id")).toBe("hold_keyboard");
+    expect(keyboardPack.attributes("data-keyboard-hold-display-label")).toBe("键盘连续手控");
+    expect(keyboardPack.attributes("data-keyboard-hold-ready")).toBe("true");
+    expect(keyboardPack.attributes("data-keyboard-hold-requires-safety-confirm")).toBe("true");
+    expect(keyboardPack.attributes("data-keyboard-hold-minimal-precheck-safety-only")).toBe("true");
+    expect(keyboardPack.attributes("data-keyboard-hold-start-endpoint")).toBe("/api/robot-control/base/manual");
+    expect(keyboardPack.attributes("data-keyboard-hold-stop-endpoint")).toBe("/api/robot-control/base/stop");
+    expect(keyboardPack.attributes("data-keyboard-hold-readback-endpoints")).toBe("/api/robot-control/base/feedback-samples,/api/robot-control/summary");
+    expect(keyboardPack.attributes("data-keyboard-hold-post-hold-readback-endpoints")).toBe("/api/robot-control/base/feedback-samples,/api/robot-control/summary");
+    expect(keyboardPack.attributes("data-keyboard-hold-post-hold-readback-sequence-labels")).toBe("复验键盘轮速采样,刷新总览");
+    expect(keyboardPack.attributes("data-keyboard-hold-missing-evidence")).toBe("same_hold_window_wheel_lr_nonzero,stop_after_release");
+    expect(keyboardPack.attributes("data-keyboard-hold-missing-evidence-labels")).toBe("按住窗口轮速 L/R 非零,松开后停稳");
+    expect(keyboardPack.attributes("data-keyboard-hold-to-move-required")).toBe("true");
+    expect(keyboardPack.attributes("data-keyboard-hold-pulse-interval-ms")).toBe("260");
+    expect(keyboardPack.attributes("data-keyboard-hold-pulse-duration-ms")).toBe("240");
+    expect(keyboardPack.attributes("data-keyboard-hold-stop-triggers")).toBe("key_release,window_blur,page_hidden,direction_change,stop_button");
+    expect(keyboardPack.attributes("data-keyboard-hold-wheel-feedback-acceptance")).toBe("same_hold_window_wheel_lr_nonzero");
+    expect(keyboardPack.attributes("data-keyboard-hold-enable-sends-motion")).toBe("false");
+    expect(keyboardPack.attributes("data-keyboard-hold-sends-motion-when-clicked")).toBe("false");
+    expect(keyboardPack.attributes("data-keyboard-hold-sends-motion-when-held")).toBe("true");
+    expect(keyboardPack.attributes("data-keyboard-hold-starts-nav2-when-clicked")).toBe("false");
+    expect(keyboardPack.attributes("data-keyboard-hold-starts-manual-when-clicked")).toBe("false");
+    expect(keyboardPack.attributes("data-keyboard-hold-starts-keyboard-when-clicked")).toBe("false");
+    expect(keyboardPack.attributes("data-keyboard-hold-starts-keyboard-when-executed")).toBe("true");
+    expect(keyboardPack.attributes("data-keyboard-hold-starts-free-roam-when-clicked")).toBe("false");
+    expect(keyboardPack.attributes("data-keyboard-hold-starts-map-runtime-when-clicked")).toBe("false");
+    expect(keyboardPack.attributes("data-keyboard-hold-submits-delivery-when-clicked")).toBe("false");
+    expect(keyboardPack.attributes("data-keyboard-hold-stops-motion-when-clicked")).toBe("false");
+    expect(keyboardPack.attributes("data-keyboard-hold-readback-sends-motion")).toBe("false");
+    expect(keyboardPack.attributes("data-keyboard-hold-readback-starts-nav2")).toBe("false");
+    expect(keyboardPack.attributes("data-keyboard-hold-readback-starts-manual")).toBe("false");
+    expect(keyboardPack.attributes("data-keyboard-hold-readback-starts-keyboard")).toBe("false");
+    expect(keyboardPack.attributes("data-keyboard-hold-readback-starts-free-roam")).toBe("false");
+    expect(keyboardPack.attributes("data-keyboard-hold-readback-starts-map-runtime")).toBe("false");
+    expect(keyboardPack.attributes("data-keyboard-hold-readback-submits-delivery")).toBe("false");
+    expect(keyboardPack.attributes("data-keyboard-hold-readback-stops-motion")).toBe("false");
     const tripPack = wrapper.find('[data-testid="plain-current-trip-execution-pack"]');
     expect(tripPack.exists()).toBe(true);
     expect(tripPack.text()).toContain("完整行程可复验");
