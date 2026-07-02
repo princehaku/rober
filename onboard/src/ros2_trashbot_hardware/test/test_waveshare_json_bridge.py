@@ -19,6 +19,18 @@ def _install_ros_stubs():
     sys.modules["rclpy"] = rclpy
     sys.modules["rclpy.node"] = rclpy.node
 
+    rcl_interfaces = types.ModuleType("rcl_interfaces")
+    rcl_interfaces.msg = types.ModuleType("rcl_interfaces.msg")
+
+    class SetParametersResult:
+        def __init__(self, successful=False, reason=""):
+            self.successful = successful
+            self.reason = reason
+
+    rcl_interfaces.msg.SetParametersResult = SetParametersResult
+    sys.modules["rcl_interfaces"] = rcl_interfaces
+    sys.modules["rcl_interfaces.msg"] = rcl_interfaces.msg
+
     geometry_msgs = types.ModuleType("geometry_msgs")
     geometry_msgs.msg = types.ModuleType("geometry_msgs.msg")
 
@@ -200,9 +212,13 @@ class _FakeBroadcaster:
 class _FakeLogger:
     def __init__(self):
         self.warnings = []
+        self.infos = []
 
     def warn(self, message):
         self.warnings.append(message)
+
+    def info(self, message):
+        self.infos.append(message)
 
 
 class _FakeBridgeNode:
@@ -626,6 +642,77 @@ class WaveshareJsonBridgeTest(unittest.TestCase):
             self.assertEqual(record["linear_x"], 0.2)
             self.assertEqual(record["vendor_command"], {"L": 164, "R": 164, "T": 11})
             self.assertEqual(node._last_cmd_linear, 0.2)
+
+    def test_runtime_pwm_parameter_update_changes_next_cmd_vel_mapping(self):
+        bridge = _bridge_module()
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            log_path = Path(temp_dir) / "command.jsonl"
+            logger = _FakeLogger()
+            sent_commands = []
+            node = bridge.ESP32Bridge.__new__(bridge.ESP32Bridge)
+            node.command_mode = "pwm"
+            node.track_width_m = 0.172
+            node.max_wheel_speed_mps = 1.3
+            node.pwm_min_abs = 164
+            node.pwm_max_abs = 164
+            node.feedback_interval_ms = 100
+            node.feedback_debug_log_path = ""
+            node.command_debug_log_path = str(log_path)
+            node._last_cmd_linear = 0.0
+            node._last_cmd_angular = 0.0
+            node._send_json = lambda command: sent_commands.append(command) or True
+            node.get_logger = lambda: logger
+
+            result = node._runtime_parameter_callback(
+                [
+                    types.SimpleNamespace(name="pwm_min_abs", value=220),
+                    types.SimpleNamespace(name="pwm_max_abs", value=220),
+                ]
+            )
+            node._cmd_vel_callback(
+                types.SimpleNamespace(
+                    linear=types.SimpleNamespace(x=0.08),
+                    angular=types.SimpleNamespace(z=0.0),
+                )
+            )
+
+            self.assertTrue(result.successful)
+            self.assertEqual(node.pwm_min_abs, 220)
+            self.assertEqual(node.pwm_max_abs, 220)
+            self.assertEqual(sent_commands[-1], {"T": 11, "L": 220, "R": 220})
+            records = [json.loads(line) for line in log_path.read_text(encoding="utf-8").splitlines()]
+            self.assertEqual(records[0]["source"], "esp32_bridge_runtime_parameter_callback")
+            self.assertEqual(records[0]["changed_parameter_names"], ["pwm_max_abs", "pwm_min_abs"])
+            self.assertFalse(records[0]["sends_motion"])
+            self.assertEqual(records[-1]["vendor_command"], {"T": 11, "L": 220, "R": 220})
+            self.assertIn("Runtime WAVE ROVER bridge tuning applied", logger.infos[0])
+
+    def test_runtime_pwm_parameter_update_rejects_invalid_range_atomically(self):
+        bridge = _bridge_module()
+
+        node = bridge.ESP32Bridge.__new__(bridge.ESP32Bridge)
+        node.command_mode = "pwm"
+        node.track_width_m = 0.172
+        node.max_wheel_speed_mps = 1.3
+        node.pwm_min_abs = 164
+        node.pwm_max_abs = 164
+        node.feedback_interval_ms = 100
+        node.feedback_debug_log_path = ""
+        node.command_debug_log_path = ""
+        node.get_logger = lambda: _FakeLogger()
+
+        result = node._runtime_parameter_callback(
+            [
+                types.SimpleNamespace(name="pwm_min_abs", value=260),
+                types.SimpleNamespace(name="pwm_max_abs", value=260),
+            ]
+        )
+
+        self.assertFalse(result.successful)
+        self.assertIn("pwm_min_abs/pwm_max_abs", result.reason)
+        self.assertEqual(node.pwm_min_abs, 164)
+        self.assertEqual(node.pwm_max_abs, 164)
 
     def test_declare_and_load_bridge_config_defaults_to_pwm_command_mode(self):
         bridge_config = importlib.import_module("ros2_trashbot_hardware.bridge_config")

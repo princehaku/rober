@@ -111,6 +111,32 @@ Nav2 goal 只有在同一 execution artifact 内同时满足 action succeeded �
 才能被 PC/上位机视为路线执行证明；wheel raw `T=1001.L/R` 非零仍作为独立字段展示，不能被
 IMU 姿态变化伪装。
 
+### 2026-07-03 runtime tuning and zero-wheel boundary
+
+`esp32_bridge` 支持运行中用 ROS 参数调整 `command_mode`、`track_width_m`、
+`max_wheel_speed_mps`、`pwm_min_abs`、`pwm_max_abs`、`feedback_debug_log_path`
+和 `command_debug_log_path`。参数回调先复用启动参数校验，非法 `pwm_min_abs/pwm_max_abs`
+会拒绝并保持旧值；合法调参会写入 `wave_rover_command_debug.jsonl`，其中
+`source=esp32_bridge_runtime_parameter_callback` 且 `sends_motion=false`，用于把现场
+PWM 试跑和后续 wheel 反馈对齐。
+
+2026-07-03 04:05 CST 上位机实测：
+
+- `ros2 param set /esp32_bridge pwm_min_abs 260` 被拒绝，当前值保持 `164`。
+- `pwm_min_abs/max_abs=220` 后，PC first-jog 通过 `/cmd_vel` 发送多帧
+  `{"T":11,"L":220,"R":220}` 并自动 stop，`T=1001.L/R` 仍为 `0/0`。
+- `pwm_min_abs/max_abs=255` 后，PC first-jog 发送多帧 `{"T":11,"L":255,"R":255}`
+  并自动 stop，`T=1001.L/R` 仍为 `0/0`。
+- `command_mode=speed` 后，PC first-jog 发送 `{"T":1,"L":0.061538,"R":0.061538}`，
+  `T=1001.L/R` 仍为 `0/0`。
+- `command_mode=ros` 后，PC first-jog 发送 `{"T":13,"X":0.08,"Z":0.0}`，
+  `T=1001.L/R` 仍为 `0/0`。
+
+因此当前证据只证明 PC/Robot API/ROS `/cmd_vel`/bridge/UART JSON 命令链路和自动
+stop 链路可用；不能证明 wheel raw 非零或真实物理移动。后续排障应优先检查 WAVE ROVER
+电机使能、底盘模式、下位机固件状态、驱动供电和反馈字段语义，而不是继续把 PC 键盘或
+ROS 发布链路当成首要 blocker。
+
 ### HIL 运行参数留存模板（与 run 级证据绑定）
 
 - 每次 `source=hil_pass` 运行前需记录参数快照：

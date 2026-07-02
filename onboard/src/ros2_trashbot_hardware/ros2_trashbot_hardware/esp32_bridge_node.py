@@ -21,13 +21,18 @@ from typing import Any
 
 from geometry_msgs.msg import TransformStamped, Twist
 from nav_msgs.msg import Odometry
+from rcl_interfaces.msg import SetParametersResult
 from rclpy.node import Node
 from sensor_msgs.msg import BatteryState, Imu
 from std_srvs.srv import Trigger
 import serial
 from tf2_ros import TransformBroadcaster
 
-from ros2_trashbot_hardware.bridge_config import declare_bridge_parameters, load_bridge_config
+from ros2_trashbot_hardware.bridge_config import (
+    declare_bridge_parameters,
+    load_bridge_config,
+    validate_startup_config,
+)
 from ros2_trashbot_hardware.wave_rover_feedback import (
     parse_feedback_line,
     vendor_degrees_to_ros_radians,
@@ -86,6 +91,7 @@ class ESP32Bridge(Node):
         # TF 与 /odom 必须同源，避免后续集成时出现 topic 与 TF 两套不同的里程计事实。
         self.odom_tf_broadcaster = TransformBroadcaster(self) if self.publish_odom_tf else None
 
+        self.add_on_set_parameters_callback(self._runtime_parameter_callback)
         self.cmd_vel_sub = self.create_subscription(Twist, "/cmd_vel", self._cmd_vel_callback, 10)
 
         self.stop_srv = self.create_service(Trigger, "/trashbot/stop", self._stop_callback)
@@ -113,6 +119,88 @@ class ESP32Bridge(Node):
             f"command_debug_log_enabled={bool(self.command_debug_log_path)}; "
             "odom source=ROS-side command integration until measured wheel odometry is validated"
         )
+
+    def _runtime_parameter_callback(self, parameters: list[Any]) -> SetParametersResult:
+        """允许运行中调整安全边界内的底盘映射参数，避免为试 PWM 重启串口 owner。"""
+        tunable_names = {
+            "command_mode",
+            "track_width_m",
+            "max_wheel_speed_mps",
+            "pwm_min_abs",
+            "pwm_max_abs",
+            "feedback_debug_log_path",
+            "command_debug_log_path",
+        }
+        changed: dict[str, Any] = {}
+        for parameter in parameters:
+            name = getattr(parameter, "name", "")
+            if name in tunable_names:
+                changed[name] = getattr(parameter, "value", None)
+        if not changed:
+            return SetParametersResult(successful=True)
+
+        candidate = {
+            "command_mode": str(changed.get("command_mode", self.command_mode)).lower(),
+            "track_width_m": float(changed.get("track_width_m", self.track_width_m)),
+            "max_wheel_speed_mps": float(changed.get("max_wheel_speed_mps", self.max_wheel_speed_mps)),
+            "pwm_min_abs": int(changed.get("pwm_min_abs", self.pwm_min_abs)),
+            "pwm_max_abs": int(changed.get("pwm_max_abs", self.pwm_max_abs)),
+        }
+        try:
+            validate_startup_config(
+                command_mode=candidate["command_mode"],
+                track_width_m=candidate["track_width_m"],
+                max_wheel_speed_mps=candidate["max_wheel_speed_mps"],
+                pwm_min_abs=candidate["pwm_min_abs"],
+                pwm_max_abs=candidate["pwm_max_abs"],
+                feedback_interval_ms=self.feedback_interval_ms,
+                odom_publish_hz=1.0,
+            )
+        except (TypeError, ValueError) as exc:
+            return SetParametersResult(successful=False, reason=str(exc))
+
+        # 所有参数先校验再一次性生效，避免 pwm_min/pwm_max 只更新一半导致下一帧映射异常。
+        self.command_mode = candidate["command_mode"]
+        self.track_width_m = candidate["track_width_m"]
+        self.max_wheel_speed_mps = candidate["max_wheel_speed_mps"]
+        self.pwm_min_abs = candidate["pwm_min_abs"]
+        self.pwm_max_abs = candidate["pwm_max_abs"]
+        if "feedback_debug_log_path" in changed:
+            self.feedback_debug_log_path = str(changed["feedback_debug_log_path"] or "")
+        if "command_debug_log_path" in changed:
+            self.command_debug_log_path = str(changed["command_debug_log_path"] or "")
+        self._append_runtime_config_debug_line(sorted(changed))
+        self.get_logger().info(
+            "Runtime WAVE ROVER bridge tuning applied: "
+            f"command_mode={self.command_mode}; "
+            f"pwm_min_abs={self.pwm_min_abs}; "
+            f"pwm_max_abs={self.pwm_max_abs}; "
+            f"max_wheel_speed_mps={self.max_wheel_speed_mps}"
+        )
+        return SetParametersResult(successful=True)
+
+    def _append_runtime_config_debug_line(self, changed_names: list[str]) -> None:
+        """把运行中调参写入命令日志，方便把现场 PWM 试跑和后续 wheel 反馈对齐。"""
+        log_path = getattr(self, "command_debug_log_path", "")
+        if not log_path:
+            return
+        record = {
+            "schema": "trashbot.wave_rover.command_debug.v1",
+            "observed_at_unix_s": time.time(),
+            "source": "esp32_bridge_runtime_parameter_callback",
+            "changed_parameter_names": changed_names,
+            "command_mode": self.command_mode,
+            "track_width_m": self.track_width_m,
+            "max_wheel_speed_mps": self.max_wheel_speed_mps,
+            "pwm_min_abs": self.pwm_min_abs,
+            "pwm_max_abs": self.pwm_max_abs,
+            "sends_motion": False,
+        }
+        try:
+            with open(log_path, "a", encoding="utf-8") as log_file:
+                log_file.write(json.dumps(record, sort_keys=True, separators=(",", ":")) + "\n")
+        except OSError as exc:
+            self.get_logger().warn(f"Failed to append WAVE ROVER runtime config debug log: {exc}")
 
     def _configure_vendor_feedback(self) -> None:
         # 厂商 json_cmd.h 定义 T=143/142/131；启动时统一配置，避免节点运行后才临时补帧。
