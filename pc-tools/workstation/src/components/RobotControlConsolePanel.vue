@@ -23681,6 +23681,12 @@ onBeforeUnmount(() => {
             :data-keyboard-feedback-readback-endpoint="plainLiveClosureSummary?.keyboard_feedback_readback_endpoint ?? plainKeyboardDirectionButtonEvidence.fixedFeedbackSamplesEndpoint"
             :data-keyboard-summary-endpoint="plainLiveClosureSummary?.keyboard_summary_endpoint ?? plainKeyboardDirectionButtonEvidence.fixedSummaryEndpoint"
             :data-keyboard-readback-endpoints="plainLiveKeyboardControlReadback.readbackEndpoints.join(',')"
+            data-keyboard-event-scope="focused_panel_or_page_non_editable"
+            data-keyboard-auto-focus-after-arm="true"
+            data-keyboard-editable-fields-block-motion="true"
+            data-keyboard-global-listener-owner-required="true"
+            data-keyboard-input-fields-safe="true"
+            aria-label="键盘连续手控面板：启用后自动聚焦，非输入区按住 W/A/S/D 或方向键才移动"
             data-readback-only="true"
             data-readback-sends-motion="false"
             data-readback-starts-nav2="false"
@@ -23736,6 +23742,16 @@ onBeforeUnmount(() => {
             </div>
             <p class="panel-note">{{ plainKeyboardControlSummary.hint }}</p>
             <p class="panel-note" data-testid="plain-keyboard-main-action-summary">{{ plainKeyboardMainActionSummary }}</p>
+            <p
+              class="panel-note"
+              data-testid="keyboard-focus-contract"
+              data-keyboard-event-scope="focused_panel_or_page_non_editable"
+              data-keyboard-auto-focus-after-arm="true"
+              data-keyboard-editable-fields-block-motion="true"
+              data-sends-motion-when-clicked="false"
+            >
+              键盘生效区：启用后本面板自动聚焦；本页非输入区按住 W/A/S/D 或方向键才动；输入框里按键只输入文字，不发车。
+            </p>
             <p class="panel-note" data-testid="plain-keyboard-safety-summary">{{ plainKeyboardSafetySummary }}</p>
             <p v-if="plainKeyboardReadbackSummary" class="panel-note" data-testid="plain-keyboard-readback-summary">{{ plainKeyboardReadbackSummary }}</p>
             <p v-if="plainKeyboardWheelReadbackGoal" class="panel-note" data-testid="keyboard-wheel-readback-goal">{{ plainKeyboardWheelReadbackGoal }}</p>

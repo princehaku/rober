@@ -24228,6 +24228,18 @@ describe("App", () => {
     (keyboardPanel.element as HTMLElement).scrollIntoView = keyboardPanelScrollIntoView;
     expect(keyboardPanel.attributes("data-state")).toBe("可手控");
     expect(keyboardPanel.text()).toContain("本页非输入区");
+    expect(keyboardPanel.attributes("aria-label")).toBe("键盘连续手控面板：启用后自动聚焦，非输入区按住 W/A/S/D 或方向键才移动");
+    expect(keyboardPanel.attributes("data-keyboard-event-scope")).toBe("focused_panel_or_page_non_editable");
+    expect(keyboardPanel.attributes("data-keyboard-auto-focus-after-arm")).toBe("true");
+    expect(keyboardPanel.attributes("data-keyboard-editable-fields-block-motion")).toBe("true");
+    expect(keyboardPanel.attributes("data-keyboard-global-listener-owner-required")).toBe("true");
+    expect(keyboardPanel.attributes("data-keyboard-input-fields-safe")).toBe("true");
+    const keyboardFocusContract = wrapper.find('[data-testid="keyboard-focus-contract"]');
+    expect(keyboardFocusContract.text()).toBe("键盘生效区：启用后本面板自动聚焦；本页非输入区按住 W/A/S/D 或方向键才动；输入框里按键只输入文字，不发车。");
+    expect(keyboardFocusContract.attributes("data-keyboard-event-scope")).toBe("focused_panel_or_page_non_editable");
+    expect(keyboardFocusContract.attributes("data-keyboard-auto-focus-after-arm")).toBe("true");
+    expect(keyboardFocusContract.attributes("data-keyboard-editable-fields-block-motion")).toBe("true");
+    expect(keyboardFocusContract.attributes("data-sends-motion-when-clicked")).toBe("false");
     const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
     expect(workstationStyles).toContain('.plain-keyboard-control[data-state="可手控"]');
     expect(workstationStyles).toContain('.plain-keyboard-control[data-state="手控中"]');
