@@ -507,6 +507,10 @@ describe("robotControlSummary", () => {
     expect(summary.live_wysiwyg_map_visible).toBe(true);
     expect(summary.camera_source_diagnosis_status).toBe(summary.live_closure_summary?.camera_source_diagnosis_status);
     expect(summary.camera_source_diagnosis_not_exclusive).toBe(summary.live_closure_summary?.camera_source_diagnosis_not_exclusive);
+    expect(summary.camera_first_frame_probe_status).toBe(summary.live_closure_summary?.camera_first_frame_probe_status);
+    expect(summary.camera_first_frame_probe_status).toBe("not_loaded");
+    expect(summary.camera_first_frame_failure_reason).toBe(summary.live_closure_summary?.camera_first_frame_failure_reason);
+    expect(summary.camera_first_frame_failure_reason).toBe("none");
     expect(summary.camera_recovery_next_action_plain).toBe(summary.live_closure_summary?.camera_recovery_next_action_plain);
     expect(summary.camera_recovery_sends_motion).toBe(false);
     expect(summary.fixed_camera_probe_endpoint).toBe("/api/robot-control/camera/first-frame/probe");

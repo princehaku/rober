@@ -11500,6 +11500,8 @@ export async function buildRobotControlSummary(
     camera_hardware_action_next_action_plain: liveClosureSummary.live_wysiwyg_camera_recovery_next_action_plain,
     camera_source_diagnosis_status: liveClosureSummary.camera_source_diagnosis_status,
     camera_source_diagnosis_not_exclusive: liveClosureSummary.camera_source_diagnosis_not_exclusive,
+    camera_first_frame_probe_status: liveClosureSummary.camera_first_frame_probe_status,
+    camera_first_frame_failure_reason: liveClosureSummary.camera_first_frame_failure_reason,
     camera_source_diagnosis_plain_hint: liveClosureSummary.live_wysiwyg_camera_source_diagnosis_plain_hint,
     camera_source_diagnosis_next_action_plain:
       liveClosureSummary.live_wysiwyg_camera_source_diagnosis_next_action_plain === "not_loaded"
