@@ -1329,6 +1329,53 @@ describe("robotControlSummary", () => {
     expect(summary.current_keyboard_action_post_hold_readback_starts_map_runtime).toBe(false);
     expect(summary.current_keyboard_action_post_hold_readback_submits_delivery).toBe(false);
     expect(summary.current_keyboard_action_post_hold_readback_stops_motion).toBe(false);
+    expect(summary.current_keyboard_control_pack_status).toBe("ready_for_safety_confirm");
+    expect(summary.current_keyboard_control_pack_plain).toContain("键盘连续手控可复验");
+    expect(summary.current_keyboard_control_pack_action_id).toBe("hold_keyboard");
+    expect(summary.current_keyboard_control_pack_display_label).toBe("键盘连续手控");
+    expect(summary.current_keyboard_control_pack_start_endpoint).toBe("/api/robot-control/base/manual");
+    expect(summary.current_keyboard_control_pack_stop_endpoint).toBe("/api/robot-control/base/stop");
+    expect(summary.current_keyboard_control_pack_readback_endpoints).toEqual([
+      "/api/robot-control/base/feedback-samples",
+      "/api/robot-control/summary",
+    ]);
+    expect(summary.current_keyboard_control_pack_post_hold_readback_endpoints).toEqual([
+      "/api/robot-control/base/feedback-samples",
+      "/api/robot-control/summary",
+    ]);
+    expect(summary.current_keyboard_control_pack_required_success_markers).toEqual(["same_hold_window_wheel_lr_nonzero", "stop_after_release"]);
+    expect(summary.current_keyboard_control_pack_missing_evidence).toEqual(["same_hold_window_wheel_lr_nonzero", "stop_after_release"]);
+    expect(summary.current_keyboard_control_pack_proof_status).toBe("ready_to_verify");
+    expect(summary.current_keyboard_control_pack_ready).toBe(true);
+    expect(summary.current_keyboard_control_pack_requires_safety_confirm).toBe(true);
+    expect(summary.current_keyboard_control_pack_minimal_precheck_safety_only).toBe(true);
+    expect(summary.current_keyboard_control_pack_enable_sends_motion).toBe(false);
+    expect(summary.current_keyboard_control_pack_hold_to_move_required).toBe(true);
+    expect(summary.current_keyboard_control_pack_hold_sends_motion).toBe(true);
+    expect(summary.current_keyboard_control_pack_pulse_interval_ms).toBe(260);
+    expect(summary.current_keyboard_control_pack_pulse_duration_ms).toBe(240);
+    expect(summary.current_keyboard_control_pack_stop_triggers).toEqual(["key_release", "window_blur", "page_hidden", "direction_change", "stop_button"]);
+    expect(summary.current_keyboard_control_pack_wheel_feedback_acceptance).toBe("same_hold_window_wheel_lr_nonzero");
+    expect(summary.current_keyboard_control_pack_post_hold_feedback_readback_required).toBe(true);
+    expect(summary.current_keyboard_control_pack_post_hold_summary_refresh_required).toBe(true);
+    expect(summary.current_keyboard_control_pack_sends_motion_when_clicked).toBe(false);
+    expect(summary.current_keyboard_control_pack_sends_motion_when_held).toBe(true);
+    expect(summary.current_keyboard_control_pack_starts_nav2_when_clicked).toBe(false);
+    expect(summary.current_keyboard_control_pack_starts_manual_when_clicked).toBe(false);
+    expect(summary.current_keyboard_control_pack_starts_keyboard_when_clicked).toBe(false);
+    expect(summary.current_keyboard_control_pack_starts_keyboard_when_executed).toBe(true);
+    expect(summary.current_keyboard_control_pack_starts_free_roam_when_clicked).toBe(false);
+    expect(summary.current_keyboard_control_pack_starts_map_runtime_when_clicked).toBe(false);
+    expect(summary.current_keyboard_control_pack_submits_delivery_when_clicked).toBe(false);
+    expect(summary.current_keyboard_control_pack_stops_motion_when_clicked).toBe(false);
+    expect(summary.current_keyboard_control_pack_readback_sends_motion).toBe(false);
+    expect(summary.current_keyboard_control_pack_readback_starts_nav2).toBe(false);
+    expect(summary.current_keyboard_control_pack_readback_starts_manual).toBe(false);
+    expect(summary.current_keyboard_control_pack_readback_starts_keyboard).toBe(false);
+    expect(summary.current_keyboard_control_pack_readback_starts_free_roam).toBe(false);
+    expect(summary.current_keyboard_control_pack_readback_starts_map_runtime).toBe(false);
+    expect(summary.current_keyboard_control_pack_readback_submits_delivery).toBe(false);
+    expect(summary.current_keyboard_control_pack_readback_stops_motion).toBe(false);
     expect(summary.current_free_move_action_required).toBe(true);
     expect(summary.current_free_move_action_ready).toBe(true);
     expect(summary.current_free_move_action_id).toBe("start_free_move");

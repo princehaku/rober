@@ -5099,3 +5099,10 @@ full-speed 或 UVC 传输问题时，现场硬件动作仍提示“换高速USB�
 普通 PC 的 `plain-current-wysiwyg-action` 会用普通话显示“当前所见动作：刷新当前所见；还差 画面、雷达点；只读链路：...”，
 并同步 DOM `data-current-wysiwyg-action-*`。这些字段和按钮只做证据刷新，不启动雷达 lifecycle、建图 runtime、Nav2/manual/keyboard/free-roam/delivery/stop，
 也不发送 `/cmd_vel`。
+
+2026-07-02 13:02 CST 起，summary 顶层新增 `current_keyboard_control_pack_*`，普通 PC 同步新增
+`plain-current-keyboard-control-pack`。该包把“键盘连续手控”收成一条当前验收短行：`status`、动作 id、显示名、
+manual start、stop、按住后读回端点、缺口、按住脉冲参数、松开/失焦/切页 stop 触发和所有 no-click-motion 边界都可直接从
+summary/DOM 读取。页面明确点击启用键盘不会发车，只有按住 W/A/S/D 或方向键才持续低速移动；松开后只读复验
+`base/feedback-samples` 和 summary，不启动 Nav2、manual/free-roam、建图 runtime、delivery 或 stop。
+地图太小时仍优先用普通用户 `/map` 大屏；ROS2 配套工具口径保持本地工程调试用 RViz2，远程浏览器观察用 Foxglove bridge + Foxglove Web。

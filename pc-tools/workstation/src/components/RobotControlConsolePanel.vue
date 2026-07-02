@@ -4365,6 +4365,73 @@ const plainCurrentMotionVerificationPack = computed(() => {
     stopsMotionWhenClicked: summary?.current_motion_verification_pack_stops_motion_when_clicked ?? false,
   };
 });
+const plainCurrentKeyboardControlPack = computed(() => {
+  // 键盘包只说明“启用不发车、按住才动、松开后只读复验”，不替用户自动启用或发送按键。
+  const summary = robotSummary.value;
+  const fallback = plainKeyboardHoldGateGauge.value;
+  const missingEvidence = summary?.current_keyboard_control_pack_missing_evidence
+    ?? summary?.current_keyboard_action_missing_evidence
+    ?? [];
+  const readbackEndpoints = summary?.current_keyboard_control_pack_readback_endpoints
+    ?? summary?.current_keyboard_action_readback_endpoints
+    ?? [];
+  const postHoldReadbackEndpoints = summary?.current_keyboard_control_pack_post_hold_readback_endpoints
+    ?? summary?.current_keyboard_action_post_hold_readback_endpoints
+    ?? [];
+  const requiredSuccessMarkers = summary?.current_keyboard_control_pack_required_success_markers
+    ?? summary?.current_keyboard_action_required_success_markers
+    ?? [];
+  const status = summary?.current_keyboard_control_pack_status
+    ?? (missingEvidence.length ? "ready_for_safety_confirm" : "complete");
+  const defaultPlain = status === "complete"
+    ? "键盘连续手控已闭环：按住窗口 wheel L/R 非零，松开/失焦后停稳；继续保持现场可接管。"
+    : status === "ready_for_safety_confirm"
+      ? `键盘连续手控可复验：先勾现场安全确认，点击启用不会发车，按住 W/A/S/D 或方向键才会连续低速移动；松开后按轮速采样和总览只读复验。当前缺口：${missingEvidence.join("、") || "无"}。`
+      : `键盘连续手控暂未就绪：先恢复键盘入口或上车连接；当前缺口：${missingEvidence.join("、") || "键盘入口未就绪"}。`;
+  return {
+    status,
+    plain: summary?.current_keyboard_control_pack_plain ?? defaultPlain,
+    actionId: summary?.current_keyboard_control_pack_action_id ?? fallback.actionId,
+    displayLabel: summary?.current_keyboard_control_pack_display_label ?? fallback.actionDisplayLabel,
+    startEndpoint: summary?.current_keyboard_control_pack_start_endpoint ?? fallback.actionStartEndpoint,
+    stopEndpoint: summary?.current_keyboard_control_pack_stop_endpoint ?? fallback.actionStopEndpoint,
+    readbackEndpointsText: readbackEndpoints.join(",") || "none",
+    postHoldReadbackEndpointsText: postHoldReadbackEndpoints.join(",") || "none",
+    requiredSuccessMarkersText: requiredSuccessMarkers.join(",") || "none",
+    missingEvidenceText: missingEvidence.join(",") || "none",
+    proofStatus: summary?.current_keyboard_control_pack_proof_status ?? fallback.actionProofStatus,
+    ready: summary?.current_keyboard_control_pack_ready ?? fallback.actionReady,
+    requiresSafetyConfirm: summary?.current_keyboard_control_pack_requires_safety_confirm ?? true,
+    minimalPrecheckSafetyOnly: summary?.current_keyboard_control_pack_minimal_precheck_safety_only ?? true,
+    enableSendsMotion: summary?.current_keyboard_control_pack_enable_sends_motion ?? false,
+    holdToMoveRequired: summary?.current_keyboard_control_pack_hold_to_move_required ?? true,
+    holdSendsMotion: summary?.current_keyboard_control_pack_hold_sends_motion ?? true,
+    pulseIntervalMs: summary?.current_keyboard_control_pack_pulse_interval_ms ?? fallback.pulseIntervalMs,
+    pulseDurationMs: summary?.current_keyboard_control_pack_pulse_duration_ms ?? fallback.pulseDurationMs,
+    stopTriggersText: summary?.current_keyboard_control_pack_stop_triggers?.join(",") ?? "key_release,window_blur,page_hidden,direction_change,stop_button",
+    wheelFeedbackAcceptance: summary?.current_keyboard_control_pack_wheel_feedback_acceptance ?? "same_hold_window_wheel_lr_nonzero",
+    postHoldFeedbackReadbackRequired: summary?.current_keyboard_control_pack_post_hold_feedback_readback_required ?? true,
+    postHoldSummaryRefreshRequired: summary?.current_keyboard_control_pack_post_hold_summary_refresh_required ?? true,
+    sendsMotionWhenClicked: summary?.current_keyboard_control_pack_sends_motion_when_clicked ?? false,
+    sendsMotionWhenHeld: summary?.current_keyboard_control_pack_sends_motion_when_held ?? true,
+    startsNav2WhenClicked: summary?.current_keyboard_control_pack_starts_nav2_when_clicked ?? false,
+    startsManualWhenClicked: summary?.current_keyboard_control_pack_starts_manual_when_clicked ?? false,
+    startsKeyboardWhenClicked: summary?.current_keyboard_control_pack_starts_keyboard_when_clicked ?? false,
+    startsKeyboardWhenExecuted: summary?.current_keyboard_control_pack_starts_keyboard_when_executed ?? true,
+    startsFreeRoamWhenClicked: summary?.current_keyboard_control_pack_starts_free_roam_when_clicked ?? false,
+    startsMapRuntimeWhenClicked: summary?.current_keyboard_control_pack_starts_map_runtime_when_clicked ?? false,
+    submitsDeliveryWhenClicked: summary?.current_keyboard_control_pack_submits_delivery_when_clicked ?? false,
+    stopsMotionWhenClicked: summary?.current_keyboard_control_pack_stops_motion_when_clicked ?? false,
+    readbackSendsMotion: summary?.current_keyboard_control_pack_readback_sends_motion ?? false,
+    readbackStartsNav2: summary?.current_keyboard_control_pack_readback_starts_nav2 ?? false,
+    readbackStartsManual: summary?.current_keyboard_control_pack_readback_starts_manual ?? false,
+    readbackStartsKeyboard: summary?.current_keyboard_control_pack_readback_starts_keyboard ?? false,
+    readbackStartsFreeRoam: summary?.current_keyboard_control_pack_readback_starts_free_roam ?? false,
+    readbackStartsMapRuntime: summary?.current_keyboard_control_pack_readback_starts_map_runtime ?? false,
+    readbackSubmitsDelivery: summary?.current_keyboard_control_pack_readback_submits_delivery ?? false,
+    readbackStopsMotion: summary?.current_keyboard_control_pack_readback_stops_motion ?? false,
+  };
+});
 const plainCurrentTripExecutionPack = computed(() => {
   // 完整行程包把 Nav2 执行和执行后的只读验收压到同一行，现场不用在多个卡片里找证据。
   const summary = robotSummary.value;
@@ -19417,6 +19484,52 @@ onBeforeUnmount(() => {
             :data-stops-motion-when-clicked="String(plainCurrentMotionVerificationPack.stopsMotionWhenClicked)"
           >
             {{ plainCurrentMotionVerificationPack.plain }}
+          </p>
+          <p
+            class="panel-note"
+            data-testid="plain-current-keyboard-control-pack"
+            :data-status="plainCurrentKeyboardControlPack.status"
+            :data-action-id="plainCurrentKeyboardControlPack.actionId"
+            :data-display-label="plainCurrentKeyboardControlPack.displayLabel"
+            :data-start-endpoint="plainCurrentKeyboardControlPack.startEndpoint"
+            :data-stop-endpoint="plainCurrentKeyboardControlPack.stopEndpoint"
+            :data-readback-endpoints="plainCurrentKeyboardControlPack.readbackEndpointsText"
+            :data-post-hold-readback-endpoints="plainCurrentKeyboardControlPack.postHoldReadbackEndpointsText"
+            :data-required-success-markers="plainCurrentKeyboardControlPack.requiredSuccessMarkersText"
+            :data-missing-evidence="plainCurrentKeyboardControlPack.missingEvidenceText"
+            :data-proof-status="plainCurrentKeyboardControlPack.proofStatus"
+            :data-ready="String(plainCurrentKeyboardControlPack.ready)"
+            :data-requires-safety-confirm="String(plainCurrentKeyboardControlPack.requiresSafetyConfirm)"
+            :data-minimal-precheck-safety-only="String(plainCurrentKeyboardControlPack.minimalPrecheckSafetyOnly)"
+            :data-enable-sends-motion="String(plainCurrentKeyboardControlPack.enableSendsMotion)"
+            :data-hold-to-move-required="String(plainCurrentKeyboardControlPack.holdToMoveRequired)"
+            :data-hold-sends-motion="String(plainCurrentKeyboardControlPack.holdSendsMotion)"
+            :data-pulse-interval-ms="String(plainCurrentKeyboardControlPack.pulseIntervalMs)"
+            :data-pulse-duration-ms="String(plainCurrentKeyboardControlPack.pulseDurationMs)"
+            :data-stop-triggers="plainCurrentKeyboardControlPack.stopTriggersText"
+            :data-wheel-feedback-acceptance="plainCurrentKeyboardControlPack.wheelFeedbackAcceptance"
+            :data-post-hold-feedback-readback-required="String(plainCurrentKeyboardControlPack.postHoldFeedbackReadbackRequired)"
+            :data-post-hold-summary-refresh-required="String(plainCurrentKeyboardControlPack.postHoldSummaryRefreshRequired)"
+            :data-sends-motion-when-clicked="String(plainCurrentKeyboardControlPack.sendsMotionWhenClicked)"
+            :data-sends-motion-when-held="String(plainCurrentKeyboardControlPack.sendsMotionWhenHeld)"
+            :data-starts-nav2-when-clicked="String(plainCurrentKeyboardControlPack.startsNav2WhenClicked)"
+            :data-starts-manual-when-clicked="String(plainCurrentKeyboardControlPack.startsManualWhenClicked)"
+            :data-starts-keyboard-when-clicked="String(plainCurrentKeyboardControlPack.startsKeyboardWhenClicked)"
+            :data-starts-keyboard-when-executed="String(plainCurrentKeyboardControlPack.startsKeyboardWhenExecuted)"
+            :data-starts-free-roam-when-clicked="String(plainCurrentKeyboardControlPack.startsFreeRoamWhenClicked)"
+            :data-starts-map-runtime-when-clicked="String(plainCurrentKeyboardControlPack.startsMapRuntimeWhenClicked)"
+            :data-submits-delivery-when-clicked="String(plainCurrentKeyboardControlPack.submitsDeliveryWhenClicked)"
+            :data-stops-motion-when-clicked="String(plainCurrentKeyboardControlPack.stopsMotionWhenClicked)"
+            :data-readback-sends-motion="String(plainCurrentKeyboardControlPack.readbackSendsMotion)"
+            :data-readback-starts-nav2="String(plainCurrentKeyboardControlPack.readbackStartsNav2)"
+            :data-readback-starts-manual="String(plainCurrentKeyboardControlPack.readbackStartsManual)"
+            :data-readback-starts-keyboard="String(plainCurrentKeyboardControlPack.readbackStartsKeyboard)"
+            :data-readback-starts-free-roam="String(plainCurrentKeyboardControlPack.readbackStartsFreeRoam)"
+            :data-readback-starts-map-runtime="String(plainCurrentKeyboardControlPack.readbackStartsMapRuntime)"
+            :data-readback-submits-delivery="String(plainCurrentKeyboardControlPack.readbackSubmitsDelivery)"
+            :data-readback-stops-motion="String(plainCurrentKeyboardControlPack.readbackStopsMotion)"
+          >
+            {{ plainCurrentKeyboardControlPack.plain }}
           </p>
           <p
             class="panel-note"

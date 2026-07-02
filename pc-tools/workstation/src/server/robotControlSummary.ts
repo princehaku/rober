@@ -10768,6 +10768,20 @@ export async function buildRobotControlSummary(
     }
     return "运动验收暂未就绪；先按当前卡点补齐缺失证据，再回到现场安全确认。";
   })();
+  const currentKeyboardControlPackStatus: "complete" | "ready_for_safety_confirm" | "blocked" = keyboardRunbookItem?.completed === true
+    ? "complete"
+    : (keyboardRunbookItem?.ready ?? liveClosureSummary.keyboard_continuous_ready)
+      ? "ready_for_safety_confirm"
+      : "blocked";
+  const currentKeyboardControlPackPlain = (() => {
+    if (currentKeyboardControlPackStatus === "complete") {
+      return "键盘连续手控已闭环：按住窗口 wheel L/R 非零，松开/失焦后停稳；继续保持现场可接管。";
+    }
+    if (currentKeyboardControlPackStatus === "ready_for_safety_confirm") {
+      return `键盘连续手控可复验：先勾现场安全确认，点击启用不会发车，按住 W/A/S/D 或方向键才会连续低速移动；松开后按轮速采样和总览只读复验。当前缺口：${keyboardActionMissingEvidence.join("、") || "无"}。`;
+    }
+    return `键盘连续手控暂未就绪：先恢复键盘入口或上车连接；当前缺口：${keyboardActionMissingEvidence.join("、") || "键盘入口未就绪"}。`;
+  })();
   const fieldAcceptanceWysiwygNextActions = [
     liveClosureSummary.live_wysiwyg_missing_surface_ids.includes("camera")
       ? liveClosureSummary.live_wysiwyg_camera_recovery_next_action_plain
@@ -11465,6 +11479,47 @@ export async function buildRobotControlSummary(
     current_keyboard_action_post_hold_readback_starts_map_runtime: false,
     current_keyboard_action_post_hold_readback_submits_delivery: false,
     current_keyboard_action_post_hold_readback_stops_motion: false,
+    current_keyboard_control_pack_status: currentKeyboardControlPackStatus,
+    current_keyboard_control_pack_plain: currentKeyboardControlPackPlain,
+    current_keyboard_control_pack_action_id: keyboardRunbookItem?.id ?? "hold_keyboard",
+    current_keyboard_control_pack_display_label: keyboardRunbookItem?.display_label ?? "键盘连续手控",
+    current_keyboard_control_pack_start_endpoint: keyboardActionStartEndpoint,
+    current_keyboard_control_pack_stop_endpoint: keyboardActionStopEndpoint,
+    current_keyboard_control_pack_readback_endpoints: keyboardActionAcceptanceEndpoints,
+    current_keyboard_control_pack_post_hold_readback_endpoints: keyboardPostHoldReadbackEndpoints,
+    current_keyboard_control_pack_required_success_markers: keyboardActionRequiredSuccessMarkers,
+    current_keyboard_control_pack_missing_evidence: keyboardActionMissingEvidence,
+    current_keyboard_control_pack_proof_status: keyboardRunbookItem?.proof_status ?? "blocked",
+    current_keyboard_control_pack_ready: keyboardRunbookItem?.ready ?? liveClosureSummary.keyboard_continuous_ready,
+    current_keyboard_control_pack_requires_safety_confirm: keyboardRunbookItem?.safety_confirm_required ?? liveClosureSummary.keyboard_continuous_safety_confirm_required,
+    current_keyboard_control_pack_minimal_precheck_safety_only: keyboardRunbookItem?.minimal_precheck_safety_only ?? liveClosureSummary.keyboard_continuous_minimal_precheck_safety_only,
+    current_keyboard_control_pack_enable_sends_motion: false,
+    current_keyboard_control_pack_hold_to_move_required: true,
+    current_keyboard_control_pack_hold_sends_motion: true,
+    current_keyboard_control_pack_pulse_interval_ms: liveClosureSummary.keyboard_continuous_pulse_interval_ms,
+    current_keyboard_control_pack_pulse_duration_ms: liveClosureSummary.keyboard_continuous_pulse_duration_ms,
+    current_keyboard_control_pack_stop_triggers: liveClosureSummary.keyboard_continuous_stop_triggers,
+    current_keyboard_control_pack_wheel_feedback_acceptance: liveClosureSummary.keyboard_continuous_wheel_feedback_acceptance,
+    current_keyboard_control_pack_post_hold_feedback_readback_required: true,
+    current_keyboard_control_pack_post_hold_summary_refresh_required: true,
+    current_keyboard_control_pack_sends_motion_when_clicked: false,
+    current_keyboard_control_pack_sends_motion_when_held: true,
+    current_keyboard_control_pack_starts_nav2_when_clicked: false,
+    current_keyboard_control_pack_starts_manual_when_clicked: false,
+    current_keyboard_control_pack_starts_keyboard_when_clicked: false,
+    current_keyboard_control_pack_starts_keyboard_when_executed: true,
+    current_keyboard_control_pack_starts_free_roam_when_clicked: false,
+    current_keyboard_control_pack_starts_map_runtime_when_clicked: false,
+    current_keyboard_control_pack_submits_delivery_when_clicked: false,
+    current_keyboard_control_pack_stops_motion_when_clicked: false,
+    current_keyboard_control_pack_readback_sends_motion: false,
+    current_keyboard_control_pack_readback_starts_nav2: false,
+    current_keyboard_control_pack_readback_starts_manual: false,
+    current_keyboard_control_pack_readback_starts_keyboard: false,
+    current_keyboard_control_pack_readback_starts_free_roam: false,
+    current_keyboard_control_pack_readback_starts_map_runtime: false,
+    current_keyboard_control_pack_readback_submits_delivery: false,
+    current_keyboard_control_pack_readback_stops_motion: false,
     current_free_move_action_required: true,
     current_free_move_action_ready: freeMoveRunbookItem?.ready ?? liveClosureSummary.free_move_start_ready,
     current_free_move_action_id: freeMoveRunbookItem?.id ?? "start_free_move",
