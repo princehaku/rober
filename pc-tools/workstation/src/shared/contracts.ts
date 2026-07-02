@@ -4017,6 +4017,10 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   current_safety_confirm_queue_readback_endpoints?: RobotControlSummaryResponse["current_motion_verification_pack_action_readback_endpoints"];
   current_safety_confirm_queue_primary_action_id?: RobotControlSummaryResponse["current_motion_verification_pack_primary_action_id"];
   current_safety_confirm_queue_primary_action_display_label?: RobotControlSummaryResponse["current_motion_verification_pack_primary_action_display_label"];
+  current_safety_confirm_queue_primary_focus_source_card_id?: RobotControlActionStatusCardId | "none";
+  current_safety_confirm_queue_primary_focus_kind?: string;
+  current_safety_confirm_queue_primary_focus_button_label?: string;
+  current_safety_confirm_queue_next_action_plain?: string;
   current_safety_confirm_queue_action_count?: number;
   current_safety_confirm_queue_requires_safety_confirm?: boolean;
   current_safety_confirm_queue_minimal_precheck_safety_only?: boolean;

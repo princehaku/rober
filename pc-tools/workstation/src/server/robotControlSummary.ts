@@ -23,6 +23,7 @@ import type {
   RobotControlOperatorReportStructuredHilClaims,
   RobotControlProofRefreshProxyResponse,
   RobotControlProofRefreshKind,
+  RobotControlActionStatusCardId,
   RobotControlNav2LifecycleAction,
   RobotControlNav2LifecycleEndpoint,
   RobotControlNav2LifecycleResponse,
@@ -35,6 +36,7 @@ import type {
   RobotControlFieldAcceptanceMissingEvidenceItem,
   RobotControlFieldAcceptanceWysiwygRefreshMode,
   RobotControlLiveClosureSummary,
+  RobotControlLiveMotionRunbookActionId,
   RobotControlLiveObjectiveAuditItem,
   RobotControlNav2RouteAcceptancePacket,
   RobotControlLiveWysiwygSurfaceSummary,
@@ -10942,6 +10944,33 @@ export async function buildRobotControlSummary(
   const currentMotionVerificationPackRouteWysiwygPreflightRequired = fieldAcceptanceSafetyConfirmReadyActions.some((item) => item.route_wysiwyg_preflight_required);
   const currentMotionVerificationPackPrimaryAction = fieldAcceptancePrimarySafetyConfirmReadyAction ?? null;
   const currentMotionVerificationPackPrimaryReadbackEndpoints = currentMotionVerificationPackPrimaryAction?.acceptance_endpoints ?? [];
+  const currentSafetyConfirmQueueFocusSourceByAction: Partial<Record<RobotControlLiveMotionRunbookActionId, RobotControlActionStatusCardId>> = {
+    run_nav2_route: "nav2_route",
+    hold_keyboard: "keyboard_control",
+    start_free_move: "free_move",
+    start_mapping_when_sensors_ready: "mapping_start",
+  };
+  const currentSafetyConfirmQueuePrimaryFocusSourceCardId = currentMotionVerificationPackPrimaryAction
+    ? currentSafetyConfirmQueueFocusSourceByAction[currentMotionVerificationPackPrimaryAction.id] ?? "nav2_route"
+    : "none";
+  const currentSafetyConfirmQueuePrimaryFocusKind = currentMotionVerificationPackPrimaryAction?.id === "run_nav2_route"
+    ? "trip_safety_confirm"
+    : currentMotionVerificationPackPrimaryAction?.id === "hold_keyboard"
+      ? "keyboard_arm"
+      : currentMotionVerificationPackPrimaryAction?.id === "start_free_move"
+        ? "free_move_safety_confirm"
+        : currentMotionVerificationPackPrimaryAction?.id === "start_mapping_when_sensors_ready"
+          ? "mapping_start"
+          : "none";
+  const currentSafetyConfirmQueuePrimaryFocusButtonLabel = currentMotionVerificationPackPrimaryAction?.id === "run_nav2_route"
+    ? "去勾行程安全确认"
+    : currentMotionVerificationPackPrimaryAction?.id === "hold_keyboard"
+      ? "去启用键盘"
+      : currentMotionVerificationPackPrimaryAction?.id === "start_free_move"
+        ? "去自由移动"
+        : currentMotionVerificationPackPrimaryAction
+          ? "去处理第一项"
+          : "暂无可执行项";
   const currentMotionVerificationPackPlain = (() => {
     if (currentMotionVerificationPackStatus === "complete") {
       return "运动验收已完成：完整行程、键盘连续手控和自由移动都有闭环读回；继续监看地图、画面和停止兜底。";
@@ -11812,6 +11841,12 @@ export async function buildRobotControlSummary(
     current_safety_confirm_queue_primary_action_display_label: currentMotionVerificationPackPrimaryAction?.display_label
       ?? currentMotionVerificationPackPrimaryAction?.label
       ?? "无待执行动作",
+    current_safety_confirm_queue_primary_focus_source_card_id: currentSafetyConfirmQueuePrimaryFocusSourceCardId,
+    current_safety_confirm_queue_primary_focus_kind: currentSafetyConfirmQueuePrimaryFocusKind,
+    current_safety_confirm_queue_primary_focus_button_label: currentSafetyConfirmQueuePrimaryFocusButtonLabel,
+    current_safety_confirm_queue_next_action_plain: currentMotionVerificationPackPrimaryAction
+      ? `下一步先处理：${currentMotionVerificationPackPrimaryAction.display_label ?? currentMotionVerificationPackPrimaryAction.label}；点击队列按钮只跳到对应卡片，仍需现场勾安全确认后手动执行。`
+      : "当前安全确认队列没有可执行项；先刷新小车状态或补齐入口。",
     current_safety_confirm_queue_action_count: currentMotionVerificationPackActionIds.length,
     current_safety_confirm_queue_requires_safety_confirm: currentMotionVerificationPackActionIds.length > 0,
     current_safety_confirm_queue_minimal_precheck_safety_only: currentMotionVerificationPackMinimalPrecheckSafetyOnly,

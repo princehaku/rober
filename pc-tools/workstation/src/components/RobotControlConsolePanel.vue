@@ -4384,21 +4384,51 @@ const plainCurrentSafetyConfirmQueue = computed(() => {
     ?? [];
   const readbackEndpoints = summary?.current_safety_confirm_queue_readback_endpoints
     ?? motionPack.actionReadbackEndpointsText.split(",").filter((item) => item && item !== "none");
+  const primaryActionId = summary?.current_safety_confirm_queue_primary_action_id ?? motionPack.primaryActionId;
+  const focusSourceByAction: Record<string, RobotControlActionStatusCardId> = {
+    run_nav2_route: "nav2_route",
+    hold_keyboard: "keyboard_control",
+    start_free_move: "free_move",
+    start_mapping_when_sensors_ready: "mapping_start",
+  };
+  const primaryFocusSourceCardId = summary?.current_safety_confirm_queue_primary_focus_source_card_id === "none"
+    ? ""
+    : summary?.current_safety_confirm_queue_primary_focus_source_card_id
+      ?? focusSourceByAction[primaryActionId]
+      ?? "";
+  const primaryFocusKind = summary?.current_safety_confirm_queue_primary_focus_kind
+    ?? (primaryActionId === "run_nav2_route"
+      ? plainManualSafetyConfirmed.value ? "trip_execute_button" : "trip_safety_confirm"
+      : primaryActionId === "hold_keyboard"
+        ? "keyboard_arm"
+        : primaryActionId === "start_free_move"
+          ? "free_move_safety_confirm"
+          : "none");
   return {
     status: summary?.current_safety_confirm_queue_status ?? motionPack.status,
     plain: summary?.current_safety_confirm_queue_plain
       ?? (actionDisplayLabels.length
         ? `安全确认后执行队列：按顺序手动执行 ${actionDisplayLabels.join("、")}；队列卡本身只读不发车。`
         : "安全确认后执行队列暂为空。"),
+    nextActionPlain: summary?.current_safety_confirm_queue_next_action_plain
+      ?? (actionDisplayLabels.length
+        ? `下一步先处理：${actionDisplayLabels[0]}；点击队列按钮只跳到对应卡片。`
+        : "当前安全确认队列没有可执行项。"),
     actionIdsText: actionIds.join(",") || "none",
     actionDisplayLabelsText: actionDisplayLabels.join(",") || "none",
     actionStartEndpointsText: actionStartEndpoints.join(",") || "none",
     actionStopEndpointsText: actionStopEndpoints.join(",") || "none",
     actionAcceptanceEndpointsText: actionAcceptanceEndpoints.join(",") || "none",
     readbackEndpointsText: readbackEndpoints.join(",") || "none",
-    primaryActionId: summary?.current_safety_confirm_queue_primary_action_id ?? motionPack.primaryActionId,
+    primaryActionId,
     primaryActionDisplayLabel: summary?.current_safety_confirm_queue_primary_action_display_label
       ?? motionPack.primaryActionDisplayLabel,
+    primaryFocusSourceCardId,
+    primaryFocusKind,
+    primaryFocusButtonLabel: summary?.current_safety_confirm_queue_primary_focus_button_label
+      ?? (primaryActionId === "run_nav2_route" && !plainManualSafetyConfirmed.value
+        ? "去勾行程安全确认"
+        : "去执行第一项"),
     actionCount: summary?.current_safety_confirm_queue_action_count ?? actionIds.length,
     requiresSafetyConfirm: summary?.current_safety_confirm_queue_requires_safety_confirm ?? motionPack.requiresSafetyConfirm,
     minimalPrecheckSafetyOnly: summary?.current_safety_confirm_queue_minimal_precheck_safety_only ?? motionPack.minimalPrecheckSafetyOnly,
@@ -20068,6 +20098,7 @@ onBeforeUnmount(() => {
             class="panel-note"
             data-testid="plain-current-safety-confirm-queue"
             :data-status="plainCurrentSafetyConfirmQueue.status"
+            :data-next-action-plain="plainCurrentSafetyConfirmQueue.nextActionPlain"
             :data-action-ids="plainCurrentSafetyConfirmQueue.actionIdsText"
             :data-action-display-labels="plainCurrentSafetyConfirmQueue.actionDisplayLabelsText"
             :data-action-start-endpoints="plainCurrentSafetyConfirmQueue.actionStartEndpointsText"
@@ -20076,6 +20107,9 @@ onBeforeUnmount(() => {
             :data-readback-endpoints="plainCurrentSafetyConfirmQueue.readbackEndpointsText"
             :data-primary-action-id="plainCurrentSafetyConfirmQueue.primaryActionId"
             :data-primary-action-display-label="plainCurrentSafetyConfirmQueue.primaryActionDisplayLabel"
+            :data-primary-focus-source-card-id="plainCurrentSafetyConfirmQueue.primaryFocusSourceCardId || 'none'"
+            :data-primary-focus-kind="plainCurrentSafetyConfirmQueue.primaryFocusKind"
+            :data-primary-focus-button-label="plainCurrentSafetyConfirmQueue.primaryFocusButtonLabel"
             :data-action-count="String(plainCurrentSafetyConfirmQueue.actionCount)"
             :data-requires-safety-confirm="String(plainCurrentSafetyConfirmQueue.requiresSafetyConfirm)"
             :data-minimal-precheck-safety-only="String(plainCurrentSafetyConfirmQueue.minimalPrecheckSafetyOnly)"
@@ -20097,6 +20131,26 @@ onBeforeUnmount(() => {
             :data-stops-motion-when-clicked="String(plainCurrentSafetyConfirmQueue.stopsMotionWhenClicked)"
           >
             {{ plainCurrentSafetyConfirmQueue.plain }}
+            <button
+              type="button"
+              class="secondary compact-stop"
+              data-testid="plain-current-safety-confirm-queue-go-primary"
+              :disabled="!plainCurrentSafetyConfirmQueue.primaryFocusSourceCardId"
+              :data-focus-target-source-card-id="plainCurrentSafetyConfirmQueue.primaryFocusSourceCardId || 'none'"
+              :data-focus-target-kind="plainCurrentSafetyConfirmQueue.primaryFocusKind"
+              data-focus-only="true"
+              data-sends-motion-when-clicked="false"
+              data-starts-nav2="false"
+              data-starts-manual="false"
+              data-starts-keyboard="false"
+              data-starts-free-roam="false"
+              data-starts-map-runtime="false"
+              data-submits-delivery="false"
+              data-stops-motion="false"
+              @click="plainCurrentSafetyConfirmQueue.primaryFocusSourceCardId && focusPlainActionCardTarget(plainCurrentSafetyConfirmQueue.primaryFocusSourceCardId)"
+            >
+              {{ plainCurrentSafetyConfirmQueue.primaryFocusButtonLabel }}
+            </button>
           </p>
           <p
             class="panel-note"

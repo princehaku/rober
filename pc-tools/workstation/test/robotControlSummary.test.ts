@@ -1191,6 +1191,11 @@ describe("robotControlSummary", () => {
     expect(summary.current_safety_confirm_queue_readback_endpoints).toEqual(summary.current_motion_verification_pack_action_readback_endpoints);
     expect(summary.current_safety_confirm_queue_primary_action_id).toBe("run_nav2_route");
     expect(summary.current_safety_confirm_queue_primary_action_display_label).toBe("重跑图上行程并复验轮速");
+    expect(summary.current_safety_confirm_queue_primary_focus_source_card_id).toBe("nav2_route");
+    expect(summary.current_safety_confirm_queue_primary_focus_kind).toBe("trip_safety_confirm");
+    expect(summary.current_safety_confirm_queue_primary_focus_button_label).toBe("去勾行程安全确认");
+    expect(summary.current_safety_confirm_queue_next_action_plain).toContain("下一步先处理：重跑图上行程并复验轮速");
+    expect(summary.current_safety_confirm_queue_next_action_plain).toContain("只跳到对应卡片");
     expect(summary.current_safety_confirm_queue_action_count).toBe(3);
     expect(summary.current_safety_confirm_queue_requires_safety_confirm).toBe(true);
     expect(summary.current_safety_confirm_queue_minimal_precheck_safety_only).toBe(true);
