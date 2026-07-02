@@ -10777,6 +10777,25 @@ export async function buildRobotControlSummary(
     }
     return "运动验收暂未就绪；先按当前卡点补齐缺失证据，再回到现场安全确认。";
   })();
+  const currentMinimalPrecheckPackStatus: "complete" | "safety_confirm_only" | "blocked" = currentMotionVerificationPackStatus === "complete"
+    ? "complete"
+    : currentMotionVerificationPackActionIds.length > 0
+      && currentMotionVerificationPackMinimalPrecheckSafetyOnly
+      && !currentMotionVerificationPackCameraPreflightRequired
+      && !currentMotionVerificationPackRadarPreflightRequired
+      && !currentMotionVerificationPackOperatorReportPreflightRequired
+      && !currentMotionVerificationPackRouteWysiwygPreflightRequired
+        ? "safety_confirm_only"
+        : "blocked";
+  const currentMinimalPrecheckPackPlain = (() => {
+    if (currentMinimalPrecheckPackStatus === "complete") {
+      return "最小发车确认已满足：运动验收已闭环；继续监看地图、画面、雷达和停止兜底。";
+    }
+    if (currentMinimalPrecheckPackStatus === "safety_confirm_only") {
+      return `发车前预检已精简：${currentMotionVerificationPackActionDisplayLabels.join("、")} 只要求勾现场安全确认；相机、雷达、现场报告和路线 WYSIWYG 不作为额外发车前置。相机和雷达 ready 仍只影响建图启动/验收。`;
+    }
+    return "发车前预检未证明只剩安全确认；先读取当前运动验收包，确认是否还有额外前置。";
+  })();
   const currentKeyboardControlPackStatus: "complete" | "ready_for_safety_confirm" | "blocked" = keyboardRunbookItem?.completed === true
     ? "complete"
     : (keyboardRunbookItem?.ready ?? liveClosureSummary.keyboard_continuous_ready)
@@ -11475,6 +11494,33 @@ export async function buildRobotControlSummary(
     current_motion_verification_pack_starts_map_runtime_when_clicked: false,
     current_motion_verification_pack_submits_delivery_when_clicked: false,
     current_motion_verification_pack_stops_motion_when_clicked: false,
+    current_minimal_precheck_pack_status: currentMinimalPrecheckPackStatus,
+    current_minimal_precheck_pack_plain: currentMinimalPrecheckPackPlain,
+    current_minimal_precheck_pack_action_ids: currentMotionVerificationPackActionIds,
+    current_minimal_precheck_pack_action_display_labels: currentMotionVerificationPackActionDisplayLabels,
+    current_minimal_precheck_pack_action_start_endpoints: currentMotionVerificationPackActionStartEndpoints,
+    current_minimal_precheck_pack_primary_action_id: currentMotionVerificationPackPrimaryAction?.id ?? "none",
+    current_minimal_precheck_pack_primary_action_display_label: currentMotionVerificationPackPrimaryAction?.display_label
+      ?? currentMotionVerificationPackPrimaryAction?.label
+      ?? "无待执行运动验收",
+    current_minimal_precheck_pack_requires_safety_confirm: currentMotionVerificationPackActionIds.length > 0,
+    current_minimal_precheck_pack_minimal_precheck_safety_only: currentMotionVerificationPackMinimalPrecheckSafetyOnly,
+    current_minimal_precheck_pack_camera_preflight_required: currentMotionVerificationPackCameraPreflightRequired,
+    current_minimal_precheck_pack_radar_preflight_required: currentMotionVerificationPackRadarPreflightRequired,
+    current_minimal_precheck_pack_operator_report_preflight_required: currentMotionVerificationPackOperatorReportPreflightRequired,
+    current_minimal_precheck_pack_route_wysiwyg_preflight_required: currentMotionVerificationPackRouteWysiwygPreflightRequired,
+    current_minimal_precheck_pack_camera_and_radar_display_only_for_motion: !currentMotionVerificationPackCameraPreflightRequired
+      && !currentMotionVerificationPackRadarPreflightRequired,
+    current_minimal_precheck_pack_mapping_still_requires_camera_and_radar_ready: true,
+    current_minimal_precheck_pack_ready_action_count: currentMotionVerificationPackActionIds.length,
+    current_minimal_precheck_pack_sends_motion_when_clicked: false,
+    current_minimal_precheck_pack_starts_nav2_when_clicked: false,
+    current_minimal_precheck_pack_starts_manual_when_clicked: false,
+    current_minimal_precheck_pack_starts_keyboard_when_clicked: false,
+    current_minimal_precheck_pack_starts_free_roam_when_clicked: false,
+    current_minimal_precheck_pack_starts_map_runtime_when_clicked: false,
+    current_minimal_precheck_pack_submits_delivery_when_clicked: false,
+    current_minimal_precheck_pack_stops_motion_when_clicked: false,
     current_keyboard_action_required: true,
     current_keyboard_action_ready: keyboardRunbookItem?.ready ?? liveClosureSummary.keyboard_continuous_ready,
     current_keyboard_action_id: keyboardRunbookItem?.id ?? "hold_keyboard",

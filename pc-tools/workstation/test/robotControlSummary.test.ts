@@ -1056,6 +1056,34 @@ describe("robotControlSummary", () => {
       "/api/robot-control/base/manual",
       "/api/robot-control/free-roam/autonomy/start",
     ]);
+    expect(summary.current_minimal_precheck_pack_status).toBe("safety_confirm_only");
+    expect(summary.current_minimal_precheck_pack_plain).toContain("发车前预检已精简");
+    expect(summary.current_minimal_precheck_pack_plain).toContain("只要求勾现场安全确认");
+    expect(summary.current_minimal_precheck_pack_plain).toContain("相机、雷达、现场报告和路线 WYSIWYG 不作为额外发车前置");
+    expect(summary.current_minimal_precheck_pack_plain).toContain("相机和雷达 ready 仍只影响建图启动/验收");
+    expect(summary.current_minimal_precheck_pack_action_ids).toEqual([
+      "run_nav2_route",
+      "hold_keyboard",
+      "start_free_move",
+    ]);
+    expect(summary.current_minimal_precheck_pack_action_display_labels).toEqual([
+      "重跑图上行程并复验轮速",
+      "键盘连续手控",
+      "自由自助移动",
+    ]);
+    expect(summary.current_minimal_precheck_pack_ready_action_count).toBe(3);
+    expect(summary.current_minimal_precheck_pack_requires_safety_confirm).toBe(true);
+    expect(summary.current_minimal_precheck_pack_minimal_precheck_safety_only).toBe(true);
+    expect(summary.current_minimal_precheck_pack_camera_preflight_required).toBe(false);
+    expect(summary.current_minimal_precheck_pack_radar_preflight_required).toBe(false);
+    expect(summary.current_minimal_precheck_pack_operator_report_preflight_required).toBe(false);
+    expect(summary.current_minimal_precheck_pack_route_wysiwyg_preflight_required).toBe(false);
+    expect(summary.current_minimal_precheck_pack_camera_and_radar_display_only_for_motion).toBe(true);
+    expect(summary.current_minimal_precheck_pack_mapping_still_requires_camera_and_radar_ready).toBe(true);
+    expect(summary.current_minimal_precheck_pack_sends_motion_when_clicked).toBe(false);
+    expect(summary.current_minimal_precheck_pack_starts_nav2_when_clicked).toBe(false);
+    expect(summary.current_minimal_precheck_pack_starts_keyboard_when_clicked).toBe(false);
+    expect(summary.current_minimal_precheck_pack_starts_free_roam_when_clicked).toBe(false);
     expect(summary.field_acceptance_safety_confirm_ready_action_stop_endpoints).toEqual([
       "/api/robot-control/base/stop",
       "/api/robot-control/base/stop",
