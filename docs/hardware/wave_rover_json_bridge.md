@@ -347,3 +347,26 @@ PC 固定代理 `/api/robot-control/base/manual` 现在同时接受 `speed` 与 
 - 采集至少两帧 `T=1001` 并核对 `L/R/r/p/y/v`。
 - 只在停稳和 `T=1` 安全后再尝试 `T=13`。
 - 下发顺序与间隔复验通过后，才允许把 run 标记为 `hil_pass`。
+
+## 2026-07-03 UART TX receive probe tool
+
+本轮继续采用 `docs/vendor/VENDOR_INDEX.md` 指向的 WAVE ROVER
+`json_cmd.h`、`uart_ctrl.h` 与 `movtion_module.h`。Vendor 固件只在 `Serial`
+收到以 `\n` 结尾的 JSON 后才会进入 `jsonCmdReceiveHandler()`；其中 `T=143`
+可打开命令回显，`T=139` 会返回速度倍率，`T=131` 控制 `T=1001` 连续反馈。
+
+新增 `onboard/scripts/wave_rover_uart_tx_probe.py`，用于现场把“上位机 write 返回成功”和
+“ESP32 确实解析命令”分开验证：
+
+- 默认先用 `lsof` 检查 `/dev/ttyS5` 是否被常驻 `esp32_bridge` 占用；占用时返回
+  `status=port_held`，不抢串口。
+- 串口空闲时只发送非运动 `T=143/T=139/T=900/T=131`，并读取同窗口反馈；只有看到
+  `T=139` 查询响应才设置 `esp32_receive_confirmed=true`。
+- 只有显式传 `--motion-test` 才会发送短 `T=11` PWM 脉冲，`finally` 中固定发送
+  `T=11/T=1/T=13` 三类 stop。
+
+2026-07-03 07:30 CST 真机复测：停掉 `esp32_bridge` 后运行该 probe，可连续读到
+`T=1001`，但 `after_T_143`、`after_T_139`、`after_T_900`、`after_T_131` 窗口均没有
+查询响应，也没有 wheel L/R 非零，因此 `status=no_command_response`、
+`esp32_receive_confirmed=false`。这说明当前 blocker 不是 PC/ROS2 没发，而是
+上位机 TX 到 ESP32 RX 接线、pinmux 或固件 UART receive 路径尚未打通。

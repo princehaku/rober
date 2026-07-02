@@ -1258,3 +1258,23 @@ USB DM/DP/VCC_USB 等 USB 相关信号。结论仍以现场 Linux 读回为准�
 当前工程判断：这不是 PC 页面独占，也不是共享预览多人观看导致的独占；首帧阻塞更具体地收敛为
 DV20 UVC 当前挂在 12M full-speed USB 拓扑并出现 STREAMON I/O error。下一步应换高速 USB 口/线、
 减少转接、确认 5V 供电或使用 powered hub/known-good UVC 后再复测。
+
+## 2026-07-03 camera USB recovery smoke tool
+
+新增 `onboard/scripts/camera_usb_recovery_smoke.py`，用于换 USB 口/线、带供电 Hub 或
+known-good UVC 后快速复测真实首帧。脚本只触碰相机 USB 和相机服务，不打开 WAVE ROVER
+`/dev/ttyS5`，不发布 `/cmd_vel`，不执行 Nav2/manual/keyboard/free-roam/delivery。
+
+脚本动作：
+
+- 停止 `trashbot-local-webrtc-camera.service`，避免共享预览占用设备。
+- 将目标 USB 设备与 root hub 的 `power/control` 置为 `on`，排除 autosuspend 干扰。
+- 可选 reauthorize 目标 USB 设备，模拟重新插拔。
+- 解绑同一复合设备的 `snd-usb-audio` 接口，排除 full-speed 总线上音频接口干扰。
+- 用 `v4l2-ctl` 对 `YUYV@320x240@20` 和 `MJPG@480x320@30` 做直接 STREAMON，并以输出文件
+  大于 0 作为真实出帧证据。
+- 最后重启相机服务，并输出 `trashbot.camera_usb_recovery_smoke.v1` JSON。
+
+2026-07-03 07:30 CST 真机复测：脚本输出 `status=streamon_failed`、
+`frame_observed=false`，两项 stream 均 `bytes=0` 且 `streamon_error=true`。因此当前画面缺口
+仍是 DV20 UVC/USB 高速链路或设备本体问题，不是 PC 多页面预览独占，也不是 ROS2 地图或雷达问题。
