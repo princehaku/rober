@@ -1015,3 +1015,16 @@ PC WASD `pwm + realtime` 快路径现在会把直接串口写出的 vendor comma
 `T=11 L=164/R=164` 后 `T=1001 L/R` 仍为 `0/0`，`T=139` speed rate 为 `1/1`，随后已恢复
 `main=2/module=0`。因此当前自动驾驶“路线 action 可成功但真车未证明”的剩余缺口仍是底盘执行/反馈闭环，
 不是雷达 gate。
+
+2026-07-03 15:50 继续复验：PC summary 顶层现在直接暴露
+`base_motion_signal_observed=true`、`base_motion_signal_source=imu_attitude_delta`、
+`base_wheel_feedback_lr_nonzero_proven=false` 和 `base_wheel_feedback_latest_raw_left/right=0/0`。
+这只是把已存在的底盘 readback 事实给普通页和脚本短路径读取，不改变自由移动、键盘手控或 Nav2 的发车放行。
+真实上位机临时把 `/esp32_bridge command_mode` 切到 `ros` 后，PC 手控可写出 vendor
+`T=13 X=0.08 Z=0.0` 与 stop `T=13 X=0 Z=0`，随后已恢复默认 `pwm`；两种模式下
+`T=1001 L/R` 仍为 `0/0`。结论保持：小车低速动不依赖雷达或相机画面，但完整“自动驾驶可交付”
+必须补齐同窗口 wheel raw L/R 非零、Nav2 路线执行读回和 delivery success。
+
+同轮相机恢复脚本确认当前 DV20 为 USB `480M` high-speed，但所有 STREAMON 仍 0 字节。
+这不影响“无雷达/无相机也可做低速手控或自由移动”的策略，只影响建图启动和视觉 WYSIWYG 验收；
+下一步现场动作是检查 USB 线、接口、摄像头供电或换 known-good UVC 复测。

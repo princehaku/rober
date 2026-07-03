@@ -5225,6 +5225,21 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   keyboard_summary?: RobotControlSummaryResponse["readback_summary"]["keyboard"];
   keyboard_control_summary?: RobotControlSummaryResponse["readback_summary"]["keyboard_control"];
   keyboard_teleop_summary?: RobotControlSummaryResponse["readback_summary"]["keyboard_teleop"];
+  base_summary?: RobotControlSummaryResponse["readback_summary"]["base"];
+  base_motion_signal_observed?: RobotControlSummaryResponse["readback_summary"]["base"]["motion_signal_observed"];
+  base_motion_signal_source?: RobotControlSummaryResponse["readback_summary"]["base"]["motion_signal_source"];
+  base_imu_attitude_delta_observed?: RobotControlSummaryResponse["readback_summary"]["base"]["imu_attitude_delta_observed"];
+  base_wheel_feedback_lr_nonzero_proven?: RobotControlSummaryResponse["readback_summary"]["base"]["wheel_feedback_lr_nonzero_proven"];
+  base_wheel_feedback_nonzero_observed?: RobotControlSummaryResponse["readback_summary"]["base"]["wheel_feedback_nonzero_observed"];
+  base_wheel_feedback_latest_raw_left?: RobotControlSummaryResponse["readback_summary"]["base"]["wheel_feedback_latest_raw_left"];
+  base_wheel_feedback_latest_raw_right?: RobotControlSummaryResponse["readback_summary"]["base"]["wheel_feedback_latest_raw_right"];
+  motion_signal_observed?: RobotControlSummaryResponse["readback_summary"]["base"]["motion_signal_observed"];
+  motion_signal_source?: RobotControlSummaryResponse["readback_summary"]["base"]["motion_signal_source"];
+  imu_attitude_delta_observed?: RobotControlSummaryResponse["readback_summary"]["base"]["imu_attitude_delta_observed"];
+  wheel_feedback_lr_nonzero_proven?: RobotControlSummaryResponse["readback_summary"]["base"]["wheel_feedback_lr_nonzero_proven"];
+  wheel_feedback_nonzero_observed?: RobotControlSummaryResponse["readback_summary"]["base"]["wheel_feedback_nonzero_observed"];
+  wheel_feedback_latest_raw_left?: RobotControlSummaryResponse["readback_summary"]["base"]["wheel_feedback_latest_raw_left"];
+  wheel_feedback_latest_raw_right?: RobotControlSummaryResponse["readback_summary"]["base"]["wheel_feedback_latest_raw_right"];
   free_roam_summary?: RobotControlSummaryResponse["readback_summary"]["free_roam"];
   readback_summary: {
     camera: {

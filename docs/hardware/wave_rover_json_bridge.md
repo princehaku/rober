@@ -421,3 +421,26 @@ PC 固定代理 `/api/robot-control/base/manual` 现在同时接受 `speed` 与 
 也证明相机和雷达不是“车能不能自己动”的前置 gate；但 `T=1001 L/R` 仍未在同窗口非零，
 不能把 Nav2 自动驾驶、wheel raw L/R、真实物理移动或 delivery success 标记为完成。下一步必须在车旁继续查
 电机使能、供电、底盘模式、ESP32 到电机驱动链路，以及 `T=1001 L/R` 在当前 main_type 下的反馈语义。
+
+## 2026-07-03 T=13 bridge A/B and summary alias boundary
+
+本轮继续依据 `docs/vendor/VENDOR_INDEX.md` 指向的 Waveshare 本地资料复核：
+`WAVE_ROVER_V0.9/json_cmd.h` 定义 `T=11 CMD_BASE_CONTROL` 为 PWM 输入、
+`T=130/CMD_BASE_FEEDBACK` 触发 `T=1001` 底盘反馈，`T=13 CMD_ROS_CTRL`
+标注为不适用于无编码器产品；`movtion_module.h` 显示 `mainType` 会影响底盘参数和反馈计算。
+
+真实上位机常驻 `/esp32_bridge` 仍默认 `command_transport=http`、
+`wave_rover_http_base_url=http://192.168.1.3`、`command_mode=pwm`、
+`main_type=2,module_type=0`。现场临时运行：
+
+- `ros2 param set /esp32_bridge command_mode ros`
+- PC `POST /api/robot-control/base/manual`，`direction=forward,speed=0.08,duration_ms=800,command_mode=ros`
+- 命令日志记录 `vendor_command={"T":13,"X":0.08,"Z":0.0}` 和 stop
+  `{"T":13,"X":0.0,"Z":0.0}`，`http_write_returned=true`
+- 随后 `ros2 param set /esp32_bridge command_mode pwm` 恢复默认
+
+同窗口和后续 `T=1001` 反馈仍为 `L/R=0/0`，但 PC summary 读到
+`motion_signal_observed=true`、`motion_signal_source=imu_attitude_delta`。因此硬件边界保持：
+PC/API/ROS bridge 到 ESP32 HTTP/WAVE ROVER JSON 命令链路可达，`T=11/PWM` 与 `T=13/ROS`
+都已被真实写出；`T=1001 L/R` 非零仍未证明，不能把 IMU 姿态变化替代为 wheel raw、
+物理移动、Nav2 HIL 或 delivery success。

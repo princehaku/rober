@@ -2463,6 +2463,17 @@ describe("robotControlSummary", () => {
     expect(summary.readback_summary.base.motion_signal_source).toBe("imu_attitude_delta");
     expect(summary.readback_summary.base.imu_attitude_delta_observed).toBe("true");
     expect(summary.readback_summary.base.wheel_feedback_lr_nonzero_proven).toBe("false");
+    expect(summary.base_motion_signal_observed).toBe("true");
+    expect(summary.base_motion_signal_source).toBe("imu_attitude_delta");
+    expect(summary.base_imu_attitude_delta_observed).toBe("true");
+    expect(summary.base_wheel_feedback_lr_nonzero_proven).toBe("false");
+    expect(summary.base_wheel_feedback_latest_raw_left).toBe("0");
+    expect(summary.base_wheel_feedback_latest_raw_right).toBe("0");
+    expect(summary.motion_signal_observed).toBe("true");
+    expect(summary.motion_signal_source).toBe("imu_attitude_delta");
+    expect(summary.wheel_feedback_lr_nonzero_proven).toBe("false");
+    expect(summary.wheel_feedback_latest_raw_left).toBe("0");
+    expect(summary.wheel_feedback_latest_raw_right).toBe("0");
     const keyboardCard = (summary.action_status_cards ?? []).find((card) => card.id === "keyboard_control");
     expect(keyboardCard?.evidence?.motion_signal_observed).toBe(true);
     expect(keyboardCard?.evidence?.motion_signal_source).toBe("imu_attitude_delta");

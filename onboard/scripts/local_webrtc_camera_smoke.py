@@ -380,9 +380,41 @@ def parse_v4l2_bus_info(candidate: dict[str, Any] | None) -> str:
     return match.group(1) if match else ""
 
 
+def sysfs_usb_device_for_video(video_device: str | None) -> str | None:
+    """从当前 video 节点反查 USB kernel 地址，避免旧端口 UVC 日志误归因。"""
+    if not video_device:
+        return None
+    device_link = Path("/sys/class/video4linux") / Path(video_device).name / "device"
+    try:
+        resolved = device_link.resolve(strict=True)
+    except OSError:
+        return None
+    for part in reversed(resolved.parts):
+        # `3-1:1.0` 是接口目录，真正用于 dmesg/lsusb 对齐的是父 USB 设备 `3-1`。
+        interface_match = re.fullmatch(r"(\d+-[\d.]+):\d+\.\d+", part)
+        if interface_match:
+            return interface_match.group(1)
+        if re.fullmatch(r"\d+-[\d.]+", part):
+            return part
+    return None
+
+
+def line_matches_usb_device(line: str, usb_device: str | None) -> bool:
+    """判断 dmesg 行是否属于当前 USB 设备；接口后缀也算同一设备。"""
+    if not usb_device:
+        return False
+    lower = line.lower()
+    return (
+        f"usb {usb_device}" in lower
+        or f"uvcvideo {usb_device}" in lower
+        or any(match.group(1) == usb_device for match in re.finditer(r"(?:uvcvideo|usb)\s+([0-9]+-[0-9][0-9.\-]*)", lower))
+    )
+
+
 def collect_uvc_kernel_diagnostics(selected_path: str | None, selected_candidate: dict[str, Any] | None) -> dict[str, Any]:
     """只读 dmesg 中的 UVC/USB 错误；它解释无首帧根因，不会打开摄像头。"""
     bus_info = parse_v4l2_bus_info(selected_candidate)
+    current_usb_device = sysfs_usb_device_for_video(selected_path)
     selected_name = str((selected_candidate or {}).get("v4l2_name") or (selected_candidate or {}).get("sysfs_name") or selected_path or "camera")
     if shutil.which("dmesg") is None:
         return {
@@ -391,6 +423,7 @@ def collect_uvc_kernel_diagnostics(selected_path: str | None, selected_candidate
             "selected_path": selected_path or "",
             "selected_name": selected_name,
             "bus_info": bus_info,
+            "current_usb_device": current_usb_device or "",
             "opens_camera": False,
             **proof_flags(),
         }
@@ -406,43 +439,51 @@ def collect_uvc_kernel_diagnostics(selected_path: str | None, selected_candidate
             "selected_path": selected_path or "",
             "selected_name": selected_name,
             "bus_info": bus_info,
+            "current_usb_device": current_usb_device or "",
             "opens_camera": False,
             **proof_flags(),
         }
 
     lines = dmesg_text.splitlines()
     bus_tokens = [token for token in [bus_info, bus_info.replace("usb-", ""), "uvcvideo"] if token]
-    kernel_usb_addresses: set[str] = set()
-    for line in lines:
-        # v4l2 的 bus_info 可能是 `usb-5310400.usb-1`，dmesg 却写 `usb 3-1`；
-        # 先从 UVC 行提取内核地址，再把同地址 USB 错误归到当前摄像头。
-        lower = line.lower()
-        if "uvc" not in lower:
-            continue
-        for match in re.finditer(r"(?:uvcvideo|usb)\s+([0-9]+-[0-9][0-9.\-]*)", lower):
-            kernel_usb_addresses.add(match.group(1))
+    fallback_kernel_usb_addresses: set[str] = set()
+    if not current_usb_device:
+        for line in lines:
+            # 没有 sysfs 当前地址时保留旧兼容：先从 UVC 行学习 kernel 地址，再吸收同地址 USB 错误。
+            lower = line.lower()
+            if "uvc" not in lower:
+                continue
+            for match in re.finditer(r"(?:uvcvideo|usb)\s+([0-9]+-[0-9][0-9.\-]*)", lower):
+                fallback_kernel_usb_addresses.add(match.group(1))
 
     matched_lines: list[str] = []
     error_lines: list[str] = []
+    stale_error_lines: list[str] = []
     for line in lines:
-        # UVC 错误可能被服务轮询日志挤出短 tail；全量扫描 dmesg，返回时再截断 tail。
         lower = line.lower()
-        related = (
+        # 有当前 sysfs 地址时只把同一 USB 设备的日志算作当前根因；旧端口错误只作为残留证据。
+        related = line_matches_usb_device(lower, current_usb_device) if current_usb_device else (
             any(token.lower() in lower for token in bus_tokens)
             or "uvc" in lower
-            or any(f"usb {address}" in lower or f"uvcvideo {address}" in lower for address in kernel_usb_addresses)
+            or any(f"usb {address}" in lower or f"uvcvideo {address}" in lower for address in fallback_kernel_usb_addresses)
         )
-        if not related:
-            continue
         compact_line = line[-360:]
-        matched_lines.append(compact_line)
-        if any(pattern in lower for pattern in UVC_KERNEL_ERROR_PATTERNS):
-            error_lines.append(compact_line)
+        is_transport_error = any(pattern in lower for pattern in UVC_KERNEL_ERROR_PATTERNS)
+        if related:
+            matched_lines.append(compact_line)
+            if is_transport_error:
+                error_lines.append(compact_line)
+        elif current_usb_device and is_transport_error and ("uvc" in lower or re.search(r"\b(?:usb|uvcvideo)\s+[0-9]+-[0-9]", lower)):
+            stale_error_lines.append(compact_line)
 
     if error_lines:
         status = "uvc_usb_transport_errors_observed"
         plain_hint = f"{selected_name} 的内核日志出现 UVC/USB 传输错误；优先检查 USB 线、接口、供电或换 known-good UVC。"
         next_action = "check_usb_cable_port_power_or_known_good_uvc"
+    elif current_usb_device and stale_error_lines:
+        status = "uvc_kernel_seen_without_current_transport_errors"
+        plain_hint = f"{selected_name} 当前 USB 设备 {current_usb_device} 未匹配到新的 UVC 传输错误；旧端口残留错误不再当作当前独占或传输根因。"
+        next_action = "continue_first_frame_format_diagnostics"
     elif matched_lines:
         status = "uvc_kernel_seen_without_recent_transport_errors"
         plain_hint = f"{selected_name} 已在内核日志中出现，但最近未匹配到明确 UVC 传输错误；继续按无首帧和格式尝试排查。"
@@ -459,9 +500,12 @@ def collect_uvc_kernel_diagnostics(selected_path: str | None, selected_candidate
         "selected_path": selected_path or "",
         "selected_name": selected_name,
         "bus_info": bus_info,
+        "current_usb_device": current_usb_device or "",
         "matched_line_count": len(matched_lines),
         "transport_error_count": len(error_lines),
         "latest_transport_error": error_lines[-1] if error_lines else "",
+        "stale_transport_error_count": len(stale_error_lines),
+        "latest_stale_transport_error": stale_error_lines[-1] if stale_error_lines else "",
         "tail": error_lines[-8:] if error_lines else matched_lines[-8:],
         "opens_camera": False,
         **proof_flags(),
@@ -471,6 +515,7 @@ def collect_uvc_kernel_diagnostics(selected_path: str | None, selected_candidate
 def collect_uvc_usb_topology_diagnostics(selected_path: str | None, selected_candidate: dict[str, Any] | None) -> dict[str, Any]:
     """只读 USB 拓扑，识别 UVC 是否掉到 12M full-speed；这会直接导致视频流无法稳定出帧。"""
     bus_info = parse_v4l2_bus_info(selected_candidate)
+    current_usb_device = sysfs_usb_device_for_video(selected_path)
     selected_name = str((selected_candidate or {}).get("v4l2_name") or (selected_candidate or {}).get("sysfs_name") or selected_path or "camera")
     if shutil.which("lsusb") is None:
         return {
@@ -479,6 +524,7 @@ def collect_uvc_usb_topology_diagnostics(selected_path: str | None, selected_can
             "selected_path": selected_path or "",
             "selected_name": selected_name,
             "bus_info": bus_info,
+            "current_usb_device": current_usb_device or "",
             "opens_camera": False,
             **proof_flags(),
         }
@@ -494,6 +540,7 @@ def collect_uvc_usb_topology_diagnostics(selected_path: str | None, selected_can
             "selected_path": selected_path or "",
             "selected_name": selected_name,
             "bus_info": bus_info,
+            "current_usb_device": current_usb_device or "",
             "opens_camera": False,
             **proof_flags(),
         }
@@ -521,10 +568,12 @@ def collect_uvc_usb_topology_diagnostics(selected_path: str | None, selected_can
         )
 
     full_speed_entries = [entry for entry in video_entries if entry.get("speed") in {"1.5M", "12M"}]
-    selected_entry = full_speed_entries[0] if full_speed_entries else (video_entries[0] if video_entries else {})
+    sysfs_matched_entries = [entry for entry in video_entries if current_usb_device and entry.get("kernel_usb_address") == current_usb_device]
+    selected_entry = sysfs_matched_entries[0] if sysfs_matched_entries else (full_speed_entries[0] if full_speed_entries else (video_entries[0] if video_entries else {}))
     speed = selected_entry.get("speed") or "not_loaded"
     kernel_usb_address = selected_entry.get("kernel_usb_address") or "not_loaded"
-    if full_speed_entries:
+    selected_full_speed = speed in {"1.5M", "12M"}
+    if selected_full_speed:
         status = "uvc_video_on_full_speed_usb"
         plain_hint = f"{selected_name} 当前在 USB {speed} full-speed 拓扑上，视频流容易 STREAMON I/O error；换高速 USB 口/线、减少转接并确认供电后复测。"
         next_action = "move_camera_to_high_speed_usb_port_or_powered_hub"
@@ -544,8 +593,11 @@ def collect_uvc_usb_topology_diagnostics(selected_path: str | None, selected_can
         "selected_path": selected_path or "",
         "selected_name": selected_name,
         "bus_info": bus_info,
+        "current_usb_device": current_usb_device or "",
         "video_usb_speed": speed,
         "kernel_usb_address": kernel_usb_address,
+        "selected_by_sysfs_usb_device": bool(sysfs_matched_entries),
+        "high_speed_observed": speed not in {"1.5M", "12M", "not_loaded", "unknown"},
         "video_interface_count": len(video_entries),
         "video_interfaces": video_entries[:6],
         "topology_tail": topology_text[-1600:],

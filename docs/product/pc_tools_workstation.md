@@ -5430,3 +5430,20 @@ PC->Robot API->ROS `/cmd_vel`->WAVE ROVER `T=11/PWM164` 和 stop 均已执行，
 `map_current_visible=true`、`path_current_visible=true`、`radar_map_points_visible=true`。
 因此普通 PC 页的下一步是处理相机设备链路；自由移动、键盘手控和 Nav2 路线执行不以相机/雷达画面为额外发车前置，
 但完整验收仍要求同窗口 wheel raw L/R 非零和 delivery success。
+
+2026-07-03 15:50 CST 起，上车相机 health 和恢复脚本按当前 `/dev/video1` 的 sysfs USB 地址归因：
+真实设备为 `3-1`、`lsusb -t` 当前 Video interface 为 `480M`，旧端口或其他 Video interface 的 `12M`
+不再污染当前诊断。`camera_usb_recovery_smoke.py` 在 `480M` 但仍 0 帧时返回
+`stream_failure_class=high_speed_zero_byte_no_frame`、
+`next_action=check_usb_cable_port_power_or_known_good_uvc`，普通 PC 页继续显示
+`exclusive_camera_claim=false` 和共享预览单上游多 viewer；当前不可见是 DV20 UVC 源头没有吐首帧，
+不是浏览器页面独占。
+
+同轮 PC summary 把底盘运动证据提升到顶层只读别名：
+`base_motion_signal_observed=true`、`base_motion_signal_source=imu_attitude_delta`、
+`base_wheel_feedback_latest_raw_left=0`、`base_wheel_feedback_latest_raw_right=0`、
+`base_wheel_feedback_lr_nonzero_proven=false`。这让普通界面和现场脚本可以直接显示：
+PC/上位机/ESP32 HTTP 命令链路有证据，IMU 有姿态变化信号，但 vendor `T=1001 L/R` wheel raw
+仍未证明非零。现场临时 A/B `command_mode=ros` 已写出 `T=13 X=0.08 Z=0.0` 和 stop，
+随后恢复 `command_mode=pwm`；`T=11/PWM` 和 `T=13/ROS` 都没有让 `T=1001 L/R` 变非零，
+所以不能把 wheel raw 非零、完整 Nav2 路线执行或 delivery success 写成已完成。

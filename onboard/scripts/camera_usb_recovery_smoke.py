@@ -239,6 +239,56 @@ def stream_once(device: str, width: int, height: int, pixelformat: str, fps: int
     }
 
 
+def usb_video_speed_from_topology(topology_text: str, usb_device: str) -> str:
+    """从 `lsusb -t` 里读取目标 UVC Video 接口速率，避免 480M 时仍提示换高速口。"""
+    current_bus = ""
+    for raw_line in topology_text.splitlines():
+        bus_match = re.search(r"Bus\s+(\d+)", raw_line)
+        if raw_line.startswith("/:") and bus_match:
+            current_bus = bus_match.group(1).lstrip("0") or "0"
+        if "Class=Video" not in raw_line:
+            continue
+        port_match = re.search(r"Port\s+(\d+):", raw_line)
+        speed_match = re.search(r",\s*([0-9]+[MGK])\s*$", raw_line.strip())
+        kernel_address = f"{current_bus}-{port_match.group(1)}" if current_bus and port_match else ""
+        if kernel_address == usb_device:
+            return speed_match.group(1) if speed_match else "unknown"
+    return "not_loaded"
+
+
+def camera_recovery_next_action(frame_observed: bool, usb_video_speed: str) -> dict[str, Any]:
+    """把恢复脚本结论压成现场动作；高速口仍无帧时要转向线缆/供电/摄像头本体。"""
+    high_speed = usb_video_speed not in {"", "not_loaded", "unknown", "1.5M", "12M"}
+    full_speed = usb_video_speed in {"1.5M", "12M"}
+    if frame_observed:
+        return {
+            "next_action": "camera_preview_ready_to_restart",
+            "next_action_plain": "相机已读到首帧，重启共享预览后从 PC 打开实时画面。",
+            "stream_failure_class": "none",
+            "usb_high_speed_observed": high_speed,
+        }
+    if full_speed:
+        return {
+            "next_action": "move_camera_to_high_speed_usb_port_or_powered_hub",
+            "next_action_plain": "摄像头仍在 USB 12M/full-speed，先换高速 USB 口/线或带供电 Hub 后复测。",
+            "stream_failure_class": "full_speed_no_frame",
+            "usb_high_speed_observed": False,
+        }
+    if high_speed:
+        return {
+            "next_action": "check_usb_cable_port_power_or_known_good_uvc",
+            "next_action_plain": "摄像头已在高速 USB 上但所有 STREAMON 仍 0 字节；优先检查 USB 线/供电/接口或换 known-good UVC 复测。",
+            "stream_failure_class": "high_speed_zero_byte_no_frame",
+            "usb_high_speed_observed": True,
+        }
+    return {
+        "next_action": "check_camera_usb_enumeration",
+        "next_action_plain": "未能确认目标 UVC 的 USB 速率；先检查摄像头枚举、线缆和接口后复测。",
+        "stream_failure_class": "speed_unknown_no_frame",
+        "usb_high_speed_observed": False,
+    }
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Recover and smoke-test a USB UVC camera on the upper computer.")
     parser.add_argument("--device", default="/dev/video1", help="Video capture device, default /dev/video1.")
@@ -280,6 +330,7 @@ def main() -> int:
         summary["audio_unbind_actions"] = unbind_audio_interfaces(usb_device)
 
     summary["topology"] = run_command(["lsusb", "-t"], timeout_s=5)
+    summary["usb_video_speed"] = usb_video_speed_from_topology(str(summary["topology"].get("stdout") or ""), usb_device)
     summary["formats"] = run_command(["v4l2-ctl", "-d", args.device, "--list-formats-ext"], timeout_s=5)
     summary["streams"] = [
         stream_once(args.device, 320, 240, "YUYV", 20, Path("/tmp/rober_camera_usb_recovery_yuyv.raw")),
@@ -287,11 +338,7 @@ def main() -> int:
     ]
     summary["frame_observed"] = any(item["ok"] for item in summary["streams"])
     summary["status"] = "frame_observed" if summary["frame_observed"] else "streamon_failed"
-    summary["next_action"] = (
-        "camera_preview_ready_to_restart"
-        if summary["frame_observed"]
-        else "move_camera_to_high_speed_usb_port_or_powered_hub"
-    )
+    summary.update(camera_recovery_next_action(bool(summary["frame_observed"]), str(summary["usb_video_speed"])))
 
     if not args.skip_service:
         summary["service_start"] = run_command(["systemctl", "start", args.service], timeout_s=8)
