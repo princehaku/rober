@@ -9918,6 +9918,9 @@ describe("App", () => {
     expect(workstationStyles).toContain('.plain-trip-closure-gate[data-state="已闭环"]');
     expect(workstationStyles).toContain('.plain-trip-closure-gate[data-state="可执行"]');
     expect(workstationStyles).toContain('.plain-trip-closure-gate[data-state="待安全确认"]');
+    expect(workstationStyles).toContain(".plain-hidden-safety-input");
+    expect(workstationStyles).toContain("普通用户界面不能再渲染勾选框");
+    expect(workstationStyles).toContain("display: none !important;");
     expect(workstationStyles).toContain(".plain-unified-safety-confirm");
     expect(workstationStyles).toContain('.plain-unified-safety-confirm[data-safety-confirmed="true"]');
     expect(workstationStyles).toContain(".plain-keyboard-hold-gate");

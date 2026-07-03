@@ -21,15 +21,8 @@ button {
 }
 
 .plain-hidden-safety-input {
-  /* 旧测试和现场脚本仍会读取这些 input；普通用户界面不再显示勾选框。 */
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  clip-path: inset(50%);
-  white-space: nowrap;
+  /* 旧测试和现场脚本仍会读取这些 input；现场安全默认固定为 true，普通用户界面不能再渲染勾选框。 */
+  display: none !important;
 }
 
 .shell {
