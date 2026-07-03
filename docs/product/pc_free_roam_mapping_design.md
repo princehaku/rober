@@ -17,6 +17,14 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   `docs/vendor/waveshare_wave_rover/WAVE_ROVER/WAVE_ROVER_V0.9/json_cmd.h` 和
   `docs/vendor/waveshare_wave_rover/ugv_rpi/tutorial_cn/08 下位机 JSON 指令集.ipynb`：
   `T=11` 为左右轮 PWM 输入，`L/R` 范围为 `-255..255`。这只改变手控底盘写入模式，不改变 Nav2 自动路线的 ROS/Nav2 gate。
+- 2026-07-03 09:07 现场相机复查确认：PC 共享 MJPEG 入口可以多人复用，`/api/robot-control/camera/mjpeg`
+  会快速返回上游真实失败，不存在页面独占；上位机 `/dev/video1` 是 `USB Composite Device: DV20 USB`
+  UVC 视频节点，`/dev/video2` 是 metadata，`/dev/video0` 是 cedrus 解码器不是摄像头。`lsusb -t`
+  显示该 UVC 设备仍挂在 `Bus 06` 的 `12M` full-speed OHCI 口，直接 `v4l2-ctl` 和 `ffmpeg`
+  取 `MJPG 480x320`、`MJPG 640x480`、`YUYV 320x240` 均返回 `VIDIOC_STREAMON/Input/output error`。
+  已远程尝试 USB authorized reset、重启 `trashbot-local-webrtc-camera.service`、临时解绑 USB audio 复合接口后复测，结果仍是
+  `12M` 与 `STREAMON` I/O error。下一步必须把摄像头换到 480M 高速 USB 口/线或带供电 Hub 后再用
+  `/api/robot-control/camera/first-frame/probe`、`/api/robot-control/camera/mjpeg/status` 复测。
 - 2026-06-25 16:06 起，扫图卡片自己的安全确认可直接作为键盘扫图的最小预检；不再要求先补 operator report、轮速非零或 LiDAR delta 材料才允许低速键盘扫图。
 - 2026-06-27 03:16 起，普通首屏、行程操作、键盘手控、自动扫图和高级点动区全部复用同一个
   “人在旁边、周围安全、停止手段就绪”安全确认；旧的四项 HIL checklist 不再出现在点动区，避免 operator
