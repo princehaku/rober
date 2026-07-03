@@ -79,9 +79,9 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
 - 2026-07-03 17:20 起，PC 顶部普通入口直接显示 `地图大屏 /map`，地图卡里的 ROS2 配套入口改为 `工程观察`。
   产品口径不变：嫌地图小先用 PC 首页大画布或 `/map`，RViz2 和 Foxglove 只是工程侧观察 `/map`、`/scan`、TF、路径、定位和 costmap，
   不启动 ROS2/RViz2/Foxglove/Nav2/建图 runtime，不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
-- 2026-07-03 18:03 起，`/map` 直达页的内部地图层跟随可见地图 viewport，不再继承通用 fullscreen 的
+- 2026-07-04 00:16 起，`/map` 直达页的内部地图层跟随可见地图 viewport，不再继承通用 fullscreen 的
   `1040px` 最小高度，并且隐藏普通首页才需要的 caption/雷达证明行。这样第二屏打开 `/map` 时可见区域就是完整大地图工作区；
-  需要局部细节仍使用现有 100% 细节视角、45% 适配和 1200% 最大放大控件，不启动 RViz2/Foxglove/ROS2 runtime，也不发送任何运动指令。
+  当前默认用 100% 完整态势显示真实地图、路线、小车、雷达和目标点；需要局部细节再点“细节放大”到 1200%，点“完整态势”回到 100% 全局视角，不启动 RViz2/Foxglove/ROS2 runtime，也不发送任何运动指令。
 - 2026-06-25 起，PC 卡片新增“自动扫图准备”只读区：它读取 `safe_command_boundary.free_roam_autonomy`、policy 和逐项 gates，展示上车端 watchdog、LiDAR 避障、停止兜底、地图刷新和真车验证记录缺口；按钮固定显示“自动扫图（未开放）”且禁用，不绑定任何发车动作。
 - 2026-06-25 21:07 起，`ros2_trashbot_nav.free_roam_autonomy` 提供上车端自动扫图策略内核：默认 fail-closed，只在现场安全确认、地图记录和停止兜底满足时允许进入低速自移动；相机首帧和雷达新鲜度进入 `mapping_readiness`，用于判断本轮是否可建图，不再阻止低速自由移动。遇障碍原地换向，覆盖停滞时原地扫描，超时或未知区域达标时输出停止。
 - 2026-06-25 21:18 起，`free_roam_autonomy_node` 已接 `/scan`、`/map`、runtime artifact 和 `/trashbot/stop` 兜底；默认 `enable_cmd_vel_publish=false` 且 `motion_hil_unlocked=false`，不会自动发 `/cmd_vel`，PC 自动扫图按钮仍锁定。
@@ -1101,8 +1101,8 @@ PC WASD `pwm + realtime` 快路径现在会把直接串口写出的 vendor comma
 并返回 `motion_signal_observed=true`、`wheel_feedback_lr_nonzero_proven=false`。
 这让 PC WASD/手控的“命令到了”和“wheel raw 仍未证明”可以同时直读，不再需要解析嵌套材料。
 
-2026-07-03 18:48 现场地图显示口径更新：PC 首页和 `/map` 默认从 `100%` 放大到 `200%`
-现场细节视角，`适配` 仍回到 `45%` 完整图，最高 `1200%`。扫图向导继续把 PC 大地图作为普通入口，
+2026-07-04 00:16 现场地图显示口径更新：PC 首页和 `/map` 默认使用 `100%`
+完整态势视角，最高 `1200%` 只作为局部排障放大；点“完整态势”回到 `100%` 全局视角。扫图向导继续把 PC 大地图作为普通入口，
 RViz2/Foxglove 只作为工程观察，不替代普通用户的建图、手控和行程按钮。
 
 同轮相机首帧缺口继续保持不阻塞低速移动：上位机对 DV20 `/dev/video1` 的 `uvcvideo`

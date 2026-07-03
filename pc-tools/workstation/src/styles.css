@@ -2427,7 +2427,7 @@ h3 {
 }
 
 .plain-map-overlay-frame {
-  /* 缩放作用在同一个 overlay frame 上；首页默认 800% 看现场细节，适配按钮回 45% 保完整态势。 */
+  /* 缩放作用在同一个 overlay frame 上；首页默认 100% 看完整态势，细节放大只用于局部排障。 */
   position: relative;
   flex: 0 0 auto;
   width: calc(100% * var(--plain-map-zoom, 1));
@@ -2437,7 +2437,7 @@ h3 {
 }
 
 .plain-map-layer.has-real-map .plain-map-overlay-frame {
-  /* 真实地图仍把 45% 定义为完整宽度视角；首页和 /map 默认放大到 800%，避免第一眼偏小。 */
+  /* 真实地图把 100% 定义为完整宽度视角；首页和 /map 默认先完整显示态势。 */
   width: calc(100% * var(--plain-map-zoom, 1) / var(--plain-map-fit-zoom, 1));
   height: auto;
   min-width: 0;

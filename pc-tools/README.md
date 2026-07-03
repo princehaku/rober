@@ -27,10 +27,10 @@ pc-tools/workstation/
 `http://192.168.1.55:7001/` 后不需要再找或勾任何 safety checkbox；兼容旧脚本的隐藏 input 仍保持 checked，
 可见文案改成“打开即用”。底层固定代理继续保留速度、时长、目标范围和 dangerous true 字段护栏，停止按钮保持可用。
 
-2026-07-03 22:17 CST 起，PC 首页地图继续按普通用户主视图处理，默认放大到 `800%` 现场细节视角；
+2026-07-04 00:16 CST 起，PC 首页地图继续按普通用户主视图处理，默认使用 `100%` 完整态势；
 visual-first 首屏让地图独占首行，图传和 WASD/方向键连续手控放在地图下方；首页地图卡高度按近整屏主画布处理，
-`/map` 直达页继续填满当前 viewport，最高 `1200%`。需要完整态势时点 `适配` 回到 `45%`，需要更局部时点
-`细节放大` 到 `1200%`；地图、Nav2 路线、小车位置、雷达点和目标点仍在同一张 WYSIWYG 画布。ROS2 配套结论保持分层：本地工程调试用 RViz2 /
+`/map` 直达页继续填满当前 viewport，默认同样是 `100%` 完整态势，最高 `1200%`。需要局部排障时点
+`细节放大` 到 `1200%`，点 `完整态势` 回到 `100%`；地图、Nav2 路线、小车位置、雷达点和目标点仍在同一张 WYSIWYG 画布。ROS2 配套结论保持分层：本地工程调试用 RViz2 /
 `nav2_rviz_plugins` 看 `/map`、`/scan`、TF、规划轨迹、定位和 costmap；远程浏览器观察用
 `foxglove_bridge` + Foxglove Web 连接 `ws://192.168.1.11:8765`；这些工具只观察，不替代 PC 简易界面，
 也不发送 `/cmd_vel`、manual、Nav2 goal、建图或 stop。
@@ -49,8 +49,8 @@ keyboard query 时，`GET /api/robot-control/summary` 仍能读到同轮连续�
 `motion_signal_observed=true` 或 IMU 姿态变化冒充为 wheel raw；当前实车读回仍是
 `keyboard_wheel_lr_nonzero=false`、manual 回包 `wheel_feedback_latest_raw_left/right=0/0`。同轮只读刷新雷达后，
 summary 恢复 `radar_overlay_status=loaded`、当前雷达点 40 个，地图 `loaded`、路线 18 点、目标点可见、小车
-`map_pose_observed`。地图太小/ROS2 配套的当前答案仍是：普通用户用 PC 首页大地图和 `/map`，默认 `800%`，
-最高 `1200%`，`适配` 回 `45%`；工程调试才用 RViz2，远程浏览器观察用 Foxglove bridge + Foxglove Web。
+`map_pose_observed`。地图太小/ROS2 配套的当前答案仍是：普通用户用 PC 首页大地图和 `/map`，默认 `100%` 完整态势，
+最高 `1200%`，点 `细节放大` 看局部，点 `完整态势` 回全局；工程调试才用 RViz2，远程浏览器观察用 Foxglove bridge + Foxglove Web。
 
 2026-07-03 23:12 CST 起，PC 固定相机恢复代理会透传上位机
 `camera_usb_recovery_smoke.py` 的 UVC quirk 复位证据：恢复脚本默认记录
@@ -83,12 +83,12 @@ client publish、service 和 parameter 通道关到不匹配正则；安装仍�
 `sudo apt install ros-humble-foxglove-bridge`。它只服务 Foxglove Web 远程观察，不替代 PC
 简易界面，不发送 `/cmd_vel`。
 
-2026-07-02 CST 起，PC 地图按“先解决太小”处理：普通用户点 `进入地图大屏` 打开 `/map`，
-默认 `200%` 细节大图，最高 `800%`，需要看完整全图时点 `适配` 回到 `100%`，summary/DOM 同步暴露
+2026-07-04 CST 起，PC 地图按“先完整可读、再局部排障”处理：普通用户点 `进入地图大屏` 打开 `/map`，
+默认 `100%` 完整态势，最高 `1200%` 只用于局部排障，点 `完整态势` 回到 `100%`，summary/DOM 同步暴露
 `map_display_direct_map_viewport_priority=fullscreen_map_canvas` 和
 `map_display_direct_map_canvas_height_mode=viewport_dominant_full_height`。`/map` 直达页必须使用整屏
-flex 地图布局，只保留缩放、`刷新地图画面`、雷达贴图只读刷新和 `ROS2观察`，并收起建图、保存、
-地图列表、普通说明和非地图卡片。地图工具行的 `ROS2观察` 只展开 RViz2/Foxglove 说明：本地工程调试用
+flex 地图布局，只保留缩放、`刷新地图画面`、雷达贴图只读刷新和 `工程观察`，并收起建图、保存、
+地图列表、普通说明和非地图卡片。地图工具行的 `工程观察` 只展开 RViz2/Foxglove 说明：本地工程调试用
 `ros2 launch ros2_trashbot_bringup rviz.launch.py`，远程浏览器观察用
 `ros2 launch ros2_trashbot_bringup foxglove_bridge.launch.py` 后在 Foxglove Web 连接
 `ws://192.168.1.11:8765`；该按钮不启动 ROS2/RViz2/Foxglove/Nav2/建图 runtime，不发送
