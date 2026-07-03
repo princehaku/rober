@@ -21,6 +21,7 @@ import type {
   RobotControlProofRefreshProxyResponse,
   RobotControlCameraCloseProxyResponse,
   RobotControlCameraFirstFrameProbeProxyResponse,
+  RobotControlCameraUsbRecoveryProxyResponse,
   RobotControlCameraMjpegStatusResponse,
   RobotControlCameraOfferProxyResponse,
   RobotControlBaseCommandProxyResponse,
@@ -140,6 +141,7 @@ const API_ENDPOINTS = {
   robotControlFreeRoamAutonomyLatest: "/api/robot-control/free-roam/autonomy/latest",
   robotControlCameraOffer: "/api/robot-control/camera/offer",
   robotControlCameraFirstFrameProbe: "/api/robot-control/camera/first-frame/probe",
+  robotControlCameraUsbRecovery: "/api/robot-control/camera/usb-recovery",
   robotControlCameraMjpeg: "/api/robot-control/camera/mjpeg",
   robotControlCameraMjpegStatus: "/api/robot-control/camera/mjpeg/status",
   robotControlCameraPeersPrefix: "/api/robot-control/camera/peers/",
@@ -329,6 +331,16 @@ function robotControlCameraMjpegStatusUrl(baseUrl: string): string {
     params.set("baseUrl", trimmed);
   }
   return `${API_ENDPOINTS.robotControlCameraMjpegStatus}?${params.toString()}`;
+}
+
+function robotControlCameraUsbRecoveryUrl(baseUrl: string): string {
+  // USB recovery 固定走 Node 白名单代理；前端不传任意 shell 参数或上车路径。
+  const params = new URLSearchParams();
+  const trimmed = baseUrl.trim();
+  if (trimmed) {
+    params.set("baseUrl", trimmed);
+  }
+  return `${API_ENDPOINTS.robotControlCameraUsbRecovery}?${params.toString()}`;
 }
 
 function robotControlBaseProxyUrl(endpoint: string, baseUrl: string): string {
@@ -803,6 +815,13 @@ export async function postRobotControlCameraFirstFrameProbe(
 ): Promise<RobotControlCameraFirstFrameProbeProxyResponse> {
   // 相机首帧探针是高级诊断固定入口；前端 body 为空，不能传任意设备或 shell 参数。
   return postJson<RobotControlCameraFirstFrameProbeProxyResponse>(robotControlCameraFirstFrameProbeUrl(baseUrl, includeBackendSmoke), {});
+}
+
+export async function postRobotControlCameraUsbRecovery(
+  baseUrl: string,
+): Promise<RobotControlCameraUsbRecoveryProxyResponse> {
+  // 自动/手动恢复都只调用固定 USB recovery 代理；body 为空，由后端选择安全默认 /dev/video1。
+  return postJson<RobotControlCameraUsbRecoveryProxyResponse>(robotControlCameraUsbRecoveryUrl(baseUrl), {});
 }
 
 export async function getRobotControlCameraMjpegStatus(baseUrl: string): Promise<RobotControlCameraMjpegStatusResponse> {

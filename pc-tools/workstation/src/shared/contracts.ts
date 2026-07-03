@@ -6439,6 +6439,44 @@ export interface RobotControlCameraMjpegStatusResponse extends ProofFlags {
   robot_control_executed: false;
 }
 
+export interface RobotControlCameraUsbRecoveryProxyResponse extends ProofFlags {
+  schema: "trashbot.pc_tools_workstation.robot_control_camera_usb_recovery_proxy.v1";
+  proxy_status: "recovery_forwarded" | "recovery_rejected" | "recovery_failed";
+  source_base_url: string;
+  normalized_base_url: string;
+  workstation_endpoint: "/api/robot-control/camera/usb-recovery";
+  remote_endpoint: "/api/camera/usb-recovery";
+  remote_http_status: number | null;
+  request_body?: Record<string, unknown>;
+  status: string;
+  frame_observed: boolean;
+  usb_video_speed?: string;
+  stream_failure_class?: string;
+  next_action?: string;
+  next_action_plain?: string;
+  usb_high_speed_observed?: boolean;
+  opens_camera_for_recovery?: true;
+  recovery_payload?: Record<string, unknown>;
+  failure_reason?: string;
+  blocked_reasons: string[];
+  hard_dangerous_true_fields: string[];
+  readback_only: true;
+  sends_motion_when_clicked: false;
+  starts_camera_exclusive_capture: false;
+  starts_radar_lifecycle: false;
+  starts_nav2: false;
+  starts_manual: false;
+  starts_keyboard: false;
+  starts_free_roam: false;
+  starts_map_runtime: false;
+  submits_delivery: false;
+  stops_motion: false;
+  publishes_cmd_vel: false;
+  opens_base_uart: false;
+  sends_motion_commands: false;
+  robot_control_executed: false;
+}
+
 export interface RobotControlCameraFirstFrameProbeProxyResponse extends ProofFlags {
   schema: "trashbot.pc_tools_workstation.robot_control_camera_first_frame_probe_proxy.v1";
   proxy_status: "probe_forwarded" | "probe_rejected" | "probe_failed";

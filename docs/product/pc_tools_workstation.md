@@ -5520,3 +5520,19 @@ PC summary 已能显示 `goal_execution_status=goal_timeout_cancel_requested`、
 但 `goal_execution_base_feedback_lr_nonzero_proven=false`，`T=1001 L/R` 仍为 `0/0`，所以完整 Nav2 路线和
 delivery success 仍未宣称完成。该硬件/协议口径采用 `docs/vendor/VENDOR_INDEX.md` 指向的 Waveshare WAVE ROVER
 本地资料：UART 换行 JSON、`T=13` ROS 速度、`T=11` PWM、`T=1001` 底盘反馈。
+
+2026-07-03 21:10 CST 起，PC 页面在打开后会根据只读
+`/api/robot-control/camera/mjpeg/status` 自动判断一次相机 USB 恢复：若 status 明确为
+`uvc_transport_error_not_exclusive`、`uvc_no_frame_not_exclusive` 或 `uvc_full_speed_usb_not_exclusive`，且
+`camera_hardware_action_required=true`，前端会自动调用一次固定
+`POST /api/robot-control/camera/usb-recovery`，随后刷新 MJPEG URL 和 status。该动作只重启/reauthorize
+相机链路，不发送 manual、keyboard、free-roam、Nav2、delivery、stop、建图 runtime 或 `/cmd_vel`；自动恢复状态只在切换小车地址时重置，
+避免 MJPEG retry token 触发循环恢复。现场复测 recovery 仍返回
+`status=streamon_failed`、`frame_observed=false`、`usb_video_speed=480M`、
+`stream_failure_class=high_speed_zero_byte_no_frame`，说明 PC 已把能自动做的软件恢复做完，剩余仍是摄像头输入、线/接口/供电或
+known-good UVC 复测。
+
+同轮再次明确地图太小的使用口径：普通用户不用先开 ROS2 工程工具，继续优先使用 PC 首页全宽大地图和 `/map` 直达页；
+ROS2 配套只作为工程观察。本地工程调试用 RViz2 观察 `/map`、`/scan`、TF、路径、定位和 costmap；远程浏览器观察用
+Foxglove bridge + Foxglove Web，连接 `ws://192.168.1.11:8765`。RViz2/Foxglove 不替代 PC 简易控制台，
+不作为普通用户发车前置，也不发送底盘运动命令。

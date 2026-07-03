@@ -3773,6 +3773,42 @@ const fixtures: Record<string, unknown> = {
     blocked_reasons: [],
     ...PROOF_FLAGS,
   },
+  "/api/robot-control/camera/usb-recovery": {
+    schema: "trashbot.pc_tools_workstation.robot_control_camera_usb_recovery_proxy.v1",
+    proxy_status: "recovery_forwarded",
+    source_base_url: "http://192.168.1.11:8787",
+    normalized_base_url: "http://192.168.1.11:8787",
+    workstation_endpoint: "/api/robot-control/camera/usb-recovery",
+    remote_endpoint: "/api/camera/usb-recovery",
+    remote_http_status: 200,
+    request_body: {},
+    status: "frame_observed",
+    frame_observed: true,
+    usb_video_speed: "480M",
+    usb_high_speed_observed: true,
+    stream_failure_class: "none",
+    next_action: "continue_monitoring_shared_preview",
+    next_action_plain: "继续监看共享实时画面。",
+    opens_camera_for_recovery: true,
+    blocked_reasons: [],
+    hard_dangerous_true_fields: [],
+    readback_only: true,
+    sends_motion_when_clicked: false,
+    starts_camera_exclusive_capture: false,
+    starts_radar_lifecycle: false,
+    starts_nav2: false,
+    starts_manual: false,
+    starts_keyboard: false,
+    starts_free_roam: false,
+    starts_map_runtime: false,
+    submits_delivery: false,
+    stops_motion: false,
+    publishes_cmd_vel: false,
+    opens_base_uart: false,
+    sends_motion_commands: false,
+    robot_control_executed: false,
+    ...PROOF_FLAGS,
+  },
   "/api/robot-control/camera/peers/peer-preview-001/close": {
     schema: "trashbot.pc_tools_workstation.robot_control_camera_close_proxy.v1",
     proxy_status: "peer_closed",
@@ -5990,6 +6026,8 @@ function stubWorkstationFetch(fixtureOverrides: Record<string, unknown> = {}) {
       fixtureKey = "/api/robot-control/operator/report";
     } else if (url.startsWith("/api/robot-control/camera/first-frame/probe")) {
       fixtureKey = "/api/robot-control/camera/first-frame/probe";
+    } else if (url.startsWith("/api/robot-control/camera/usb-recovery")) {
+      fixtureKey = "/api/robot-control/camera/usb-recovery";
     } else if (url.startsWith("/api/robot-control/camera/mjpeg/status")) {
       fixtureKey = "/api/robot-control/camera/mjpeg/status";
     } else if (url.startsWith("/api/robot-control/camera/offer")) {
@@ -31262,6 +31300,92 @@ describe("App", () => {
     expect(wrapper.find(".simple-user-console").text()).not.toContain("check_usb_camera_input_power_or_known_good_uvc");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);
+  });
+
+  it("auto runs fixed USB recovery once when shared MJPEG status reports UVC no-frame hardware action", async () => {
+    // 打开即用的相机恢复只碰固定 USB recovery 代理，不能顺手启动底盘、Nav2 或建图 runtime。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as RobotControlSummaryResponse;
+    summaryFixture.readback_summary.camera.status = "source_first_frame_failed";
+    summaryFixture.readback_summary.camera.preview_status = "idle_not_started";
+    summaryFixture.readback_summary.camera.source_readiness = "first_frame_failed";
+    summaryFixture.readback_summary.camera.source_failure_reason = "first_frame_total_timeout";
+    summaryFixture.readback_summary.camera.source_usage_status = "not_in_use";
+    summaryFixture.readback_summary.camera.source_usage_owner_count = "0";
+    summaryFixture.readback_summary.camera.source_diagnosis_status = "uvc_no_frame_not_exclusive";
+    summaryFixture.readback_summary.camera.source_diagnosis_not_exclusive = "true";
+    summaryFixture.readback_summary.camera.shared_preview_exclusive_camera_claim = "false";
+
+    const mjpegStatusFixture = cloneFixture(fixtures["/api/robot-control/camera/mjpeg/status"]) as Record<string, any>;
+    Object.assign(mjpegStatusFixture, {
+      status: "source_first_frame_failed",
+      preview_status: "source_first_frame_failed",
+      client_count: 0,
+      shared_preview_client_count: 0,
+      viewer_count: 0,
+      upstream_active: false,
+      shared_preview_upstream_active: false,
+      upstream_connected: false,
+      content_type_loaded: false,
+      shared_preview_content_type_loaded: false,
+      cached_frame_loaded: false,
+      shared_preview_cached_frame_loaded: false,
+      has_recent_frame: false,
+      exclusive_camera_claim: false,
+      shared_preview_exclusive_camera_claim: false,
+      last_failure_reason: "camera_source_first_frame_failed",
+      source_diagnosis_status: "uvc_transport_error_not_exclusive",
+      source_diagnosis_plain_hint: "不是页面独占：USB Composite Device 当前没人占用，但 UVC 传输没有输出首帧。",
+      source_diagnosis_next_action: "check_usb_cable_port_power_or_known_good_uvc",
+      source_diagnosis_next_action_plain: "检查 USB 线、接口、摄像头供电或换 known-good UVC 后复测。",
+      source_diagnosis_not_exclusive: "true",
+      source_readiness: "first_frame_failed",
+      source_failure_reason: "first_frame_total_timeout",
+      preview_visible_status: "not_visible_source_first_frame_failed",
+      camera_wysiwyg_status_plain: "画面未可见：相机源无首帧，不是页面独占。",
+      camera_hardware_action_required: true,
+      camera_hardware_action_label: "检查USB/供电后复测",
+      camera_blocks_mapping_start: true,
+      camera_blocks_free_move: false,
+    });
+    const usbRecoveryFixture = {
+      ...(fixtures["/api/robot-control/camera/usb-recovery"] as Record<string, unknown>),
+      status: "streamon_failed",
+      frame_observed: false,
+      stream_failure_class: "high_speed_zero_byte_no_frame",
+      next_action: "check_usb_cable_port_power_or_known_good_uvc",
+      next_action_plain: "检查 USB 线、接口、摄像头供电或换 known-good UVC 后复测。",
+      blocked_reasons: ["high_speed_zero_byte_no_frame"],
+    };
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/camera/mjpeg/status": [mjpegStatusFixture, mjpegStatusFixture],
+      "/api/robot-control/camera/usb-recovery": usbRecoveryFixture,
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const usbRecoveryCalls = mockedFetch.mock.calls.filter(
+      ([url, options]) => String(url).startsWith("/api/robot-control/camera/usb-recovery?") && options?.method === "POST",
+    );
+    expect(usbRecoveryCalls).toHaveLength(1);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/map/start?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/stop?"))).toBe(false);
+
+    const proof = wrapper.find('[data-testid="plain-camera-usb-recovery-proof"]');
+    expect(proof.exists()).toBe(true);
+    expect(proof.attributes("data-auto-usb-recovery-attempted")).toBe("true");
+    expect(proof.attributes("data-auto-usb-recovery-status")).toBe("streamon_failed");
+    expect(proof.attributes("data-auto-usb-recovery-frame-observed")).toBe("false");
+    expect(proof.attributes("data-auto-usb-recovery-stream-failure-class")).toBe("high_speed_zero_byte_no_frame");
+    expect(proof.attributes("data-auto-usb-recovery-endpoint")).toBe("/api/robot-control/camera/usb-recovery");
+    expect(wrapper.find('[data-testid="robot-camera-mjpeg-preview"]').attributes("src")).toContain("retry=1");
   });
 
   it("translates shared camera MJPEG upstream timeout without exposing internal tokens", async () => {

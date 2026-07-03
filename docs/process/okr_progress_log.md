@@ -8,6 +8,20 @@
 
 ## 2026-07-03 系列
 
+### 2026-07-03 21-10｜pc_camera_auto_usb_recovery｜PC 打开后自动执行一次相机 USB 恢复
+
+本轮 `sprints/2026.07.03_21-10_pc_camera_auto_usb_recovery/` 继续推进 PC 打开即用目标：
+普通 PC 页面读取 MJPEG status 后，若明确为 UVC 传输/无首帧/USB 问题且不是页面独占，会自动调用一次固定
+`POST /api/robot-control/camera/usb-recovery`，随后刷新 MJPEG URL 和 status。前端自动恢复状态只在切换小车地址时重置，
+避免 retry token 导致循环重启相机链路。该动作不发送 manual、keyboard、free-roam、Nav2、delivery、stop、建图 runtime
+或 `/cmd_vel`。
+
+验证范围：`npm test -- test/App.test.ts -t "auto runs fixed USB recovery" --run` 1 test OK / 239 skipped。
+现场独占 V4L2/ffmpeg/gstreamer 对 `/dev/video1` 仍 0 字节无首帧；PC recovery 返回
+`status=streamon_failed`、`frame_observed=false`、`usb_video_speed=480M`、
+`stream_failure_class=high_speed_zero_byte_no_frame`，因此当前图传剩余风险仍是摄像头输入、USB 线/接口/供电或设备本体。
+地图太小的普通使用口径保持：优先 PC 首页全宽大地图和 `/map` 直达页；RViz2/Foxglove 只是工程观察，不替代简易控制台。
+
 ### 2026-07-03 20-57｜camera_selected_device_alias｜相机状态源节点别名
 
 本轮 `sprints/2026.07.03_20-57_camera_selected_device_alias/` 继续推进 PC 打开即用目标：

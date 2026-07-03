@@ -32,6 +32,7 @@ import {
   postRobotControlCameraOffer,
   postRobotControlCameraPeerClose,
   postRobotControlCameraFirstFrameProbe,
+  postRobotControlCameraUsbRecovery,
   getRobotControlCameraMjpegStatus,
   robotControlCameraMjpegUrl,
 } from "../client/workstationApi";
@@ -43,6 +44,7 @@ import type {
   RobotControlBaseFeedbackSamplesProxyResponse,
   RobotControlCameraFirstFrameProbeProxyResponse,
   RobotControlCameraMjpegStatusResponse,
+  RobotControlCameraUsbRecoveryProxyResponse,
   RobotControlDeliveryCompleteResponse,
   RobotControlDeliveryLatestResponse,
   RobotControlDeliveryGapCheckResponse,
@@ -288,6 +290,11 @@ const mjpegPreviewRetryToken = ref(0);
 const cameraMjpegStatusResult = ref<RobotControlCameraMjpegStatusResponse | null>(null);
 const cameraMjpegStatusPending = ref(false);
 const cameraMjpegStatusFailure = ref("");
+const cameraAutoUsbRecoveryAttempted = ref(false);
+const cameraAutoUsbRecoveryPending = ref(false);
+const cameraAutoUsbRecoveryStatus = ref("not_started");
+const cameraAutoUsbRecoveryFailure = ref("");
+const cameraAutoUsbRecoveryResult = ref<RobotControlCameraUsbRecoveryProxyResponse | null>(null);
 const videoElementHasSrcObject = ref(false);
 const videoElementReadyState = ref(0);
 const videoElementWidth = ref(0);
@@ -17518,11 +17525,73 @@ async function refreshCameraMjpegStatus(): Promise<void> {
   cameraMjpegStatusFailure.value = "";
   try {
     cameraMjpegStatusResult.value = await getRobotControlCameraMjpegStatus(robotApiBaseUrl.value);
+    void maybeAutoRecoverCameraUsb(cameraMjpegStatusResult.value);
   } catch (err) {
     cameraMjpegStatusFailure.value = err instanceof Error ? err.message : "camera_mjpeg_status_failed";
   } finally {
     cameraMjpegStatusPending.value = false;
   }
+}
+
+function cameraStatusNeedsAutoUsbRecovery(status: RobotControlCameraMjpegStatusResponse | null): boolean {
+  // 打开页面后遇到明确 UVC/USB 无帧时自动做一次固定恢复；只做一次，避免循环重启 8088。
+  if (!status || cameraMjpegFrameObserved.value || status.status === "streaming") {
+    return false;
+  }
+  if (status.camera_hardware_action_required !== true) {
+    return false;
+  }
+  const diagnosis = status.source_diagnosis_status || "";
+  const nextAction = status.source_diagnosis_next_action || "";
+  return [
+    "uvc_transport_error_not_exclusive",
+    "uvc_no_frame_not_exclusive",
+    "uvc_full_speed_usb_not_exclusive",
+  ].includes(diagnosis)
+    || nextAction === "check_usb_camera_input_power_or_known_good_uvc"
+    || nextAction === "check_usb_cable_port_power_or_known_good_uvc";
+}
+
+async function maybeAutoRecoverCameraUsb(status: RobotControlCameraMjpegStatusResponse | null): Promise<void> {
+  // USB recovery 只重启/reauthorize 相机链路，不发送任何底盘、Nav2、建图或 stop 命令。
+  if (
+    !shouldRefreshLiveSurfaces()
+    || cameraAutoUsbRecoveryAttempted.value
+    || cameraAutoUsbRecoveryPending.value
+    || !cameraStatusNeedsAutoUsbRecovery(status)
+  ) {
+    return;
+  }
+  cameraAutoUsbRecoveryAttempted.value = true;
+  cameraAutoUsbRecoveryPending.value = true;
+  cameraAutoUsbRecoveryStatus.value = "running";
+  cameraAutoUsbRecoveryFailure.value = "";
+  try {
+    const result = await postRobotControlCameraUsbRecovery(robotApiBaseUrl.value);
+    cameraAutoUsbRecoveryResult.value = result;
+    cameraAutoUsbRecoveryStatus.value = result.frame_observed
+      ? "frame_observed"
+      : result.status || result.proxy_status;
+  } catch (err) {
+    cameraAutoUsbRecoveryStatus.value = "failed";
+    cameraAutoUsbRecoveryFailure.value = err instanceof Error ? err.message : "camera_usb_recovery_failed";
+  } finally {
+    cameraAutoUsbRecoveryPending.value = false;
+    // recovery 会重启 8088，必须让 img 换 URL 并重读 status，给恢复后的真帧一次接入机会。
+    mjpegPreviewLoaded.value = false;
+    mjpegPreviewFailed.value = false;
+    mjpegPreviewRetryToken.value += 1;
+    await refreshCameraMjpegStatus();
+  }
+}
+
+function resetCameraAutoUsbRecoveryState(): void {
+  // 只在切换小车地址时重置自动恢复；MJPEG retry 会改 URL，不能因此再次重启相机链路。
+  cameraAutoUsbRecoveryAttempted.value = false;
+  cameraAutoUsbRecoveryPending.value = false;
+  cameraAutoUsbRecoveryStatus.value = "not_started";
+  cameraAutoUsbRecoveryFailure.value = "";
+  cameraAutoUsbRecoveryResult.value = null;
 }
 
 function shouldRefreshLiveSurfaces(): boolean {
@@ -20075,7 +20144,7 @@ watch(previewVideo, (videoElement) => {
 });
 
 watch(cameraMjpegPreviewUrl, () => {
-  // baseUrl 或相机 ready 状态变化时清掉上一条 MJPEG 证据，防止旧流误标新目标。
+  // MJPEG URL 可能只是 retry token 变化；这里只清帧证据，避免 recovery 期间反复重置自动恢复状态。
   clearMjpegPreviewRetryTimer();
   mjpegPreviewLoaded.value = false;
   mjpegPreviewFailed.value = false;
@@ -20090,6 +20159,7 @@ watch(robotApiBaseUrl, async (nextValue, previousValue) => {
     return;
   }
   previewAutoConnectSuppressed.value = false;
+  resetCameraAutoUsbRecoveryState();
   clearMjpegPreviewRetryTimer();
   mjpegPreviewRetryToken.value = 0;
   mapPreviewResult.value = null;
@@ -24528,6 +24598,13 @@ onBeforeUnmount(() => {
             :data-camera-blocks-free-move="String(plainCameraUsbRecoveryProofSummary.blocksFreeMove)"
             :data-camera-reprobe-after-hardware-action-required="String(plainCameraUsbRecoveryProofSummary.reprobeAfterHardwareActionRequired)"
             :data-camera-reprobe-sequence="plainCameraUsbRecoveryProofSummary.reprobeSequence"
+            :data-auto-usb-recovery-attempted="String(cameraAutoUsbRecoveryAttempted)"
+            :data-auto-usb-recovery-pending="String(cameraAutoUsbRecoveryPending)"
+            :data-auto-usb-recovery-status="cameraAutoUsbRecoveryStatus"
+            :data-auto-usb-recovery-frame-observed="String(cameraAutoUsbRecoveryResult?.frame_observed ?? false)"
+            :data-auto-usb-recovery-stream-failure-class="cameraAutoUsbRecoveryResult?.stream_failure_class ?? 'not_loaded'"
+            :data-auto-usb-recovery-failure="cameraAutoUsbRecoveryFailure || 'none'"
+            data-auto-usb-recovery-endpoint="/api/robot-control/camera/usb-recovery"
             :data-fixed-camera-probe-endpoint="plainCameraUsbRecoveryProofSummary.fixedCameraProbeEndpoint"
             :data-fixed-camera-mjpeg-status-endpoint="plainCameraUsbRecoveryProofSummary.fixedCameraMjpegStatusEndpoint"
             :data-fixed-summary-endpoint="plainCameraUsbRecoveryProofSummary.fixedSummaryEndpoint"
