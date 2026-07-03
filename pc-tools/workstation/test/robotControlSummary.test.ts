@@ -366,6 +366,10 @@ describe("robotControlSummary", () => {
     expect(summary.map_display_direct_map_starts_radar_lifecycle_on_enter).toBe(false);
     expect(summary.live_closure_summary?.map_display_default_zoom_percent).toBe("45%");
     expect(summary.map_display_default_zoom_percent).toBe("45%");
+    expect(summary.live_closure_summary?.map_display_direct_map_default_zoom_percent).toBe("100%");
+    expect(summary.map_display_direct_map_default_zoom_percent).toBe("100%");
+    expect(summary.live_closure_summary?.map_display_fit_zoom_percent).toBe("45%");
+    expect(summary.map_display_fit_zoom_percent).toBe("45%");
     expect(summary.live_closure_summary?.map_display_max_zoom_percent).toBe("1200%");
     expect(summary.map_display_max_zoom_percent).toBe("1200%");
     expect(summary.live_closure_summary?.map_display_too_small_next_action_plain).toContain("进入地图大屏");
@@ -427,13 +431,14 @@ describe("robotControlSummary", () => {
     expect(summary.map_display_ros2_observe_control_tools).toBe(false);
     expect(summary.live_closure_summary?.map_display_engineering_tools_sends_motion).toBe(false);
     expect(summary.map_display_engineering_tools_sends_motion).toBe(false);
-    expect(summary.live_closure_summary?.map_display_companion_plain).toContain("普通用户地图：进入 /map 使用 PC 大地图");
-    expect(summary.live_closure_summary?.map_display_companion_plain).toContain("默认 45% 完整视角");
+    expect(summary.live_closure_summary?.map_display_companion_plain).toContain("首页 PC 大地图默认 45% 完整视角");
+    expect(summary.live_closure_summary?.map_display_companion_plain).toContain("进入 /map 使用 100% 细节大屏");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("适配");
-    expect(summary.live_closure_summary?.map_display_companion_plain).toContain("点“适配”回到完整视角");
+    expect(summary.live_closure_summary?.map_display_companion_plain).toContain("点“适配”回到 45% 完整视角");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("点“细节放大”可继续查看局部");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("最高 1200%");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("PC 首页默认用 45% 完整视角显示真实地图、路线、小车、雷达和目标；需要看细节点“细节放大”，仍觉得小就点“进入地图大屏”");
+    expect(summary.live_closure_summary?.map_display_companion_plain).toContain("/map 默认 100% 细节大屏");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("不需要先开 RViz2");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("普通用户仍默认使用 PC 大地图");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("ROS2 配套只作工程观察");

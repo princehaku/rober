@@ -151,8 +151,8 @@ button {
   margin-bottom: 0;
 }
 
-.shell[data-direct-map-view-requested="true"] .plain-map-panel[data-observer-mode="true"] .plain-map-viewport[data-size="fullscreen"] .plain-map-layer {
-  /* /map 直达页必须一打开就是地图观察屏，按紧凑工具条直接扣减高度，避免 grid 百分比把内部画布算小。 */
+.shell[data-direct-map-view-requested="true"] .plain-map-viewport[data-size="fullscreen"] .plain-map-layer {
+  /* /map 直达页由 URL 强制进入地图大屏，不能等 observer 状态同步后才放大画布。 */
   height: calc(100vh - 44px);
   min-height: calc(100vh - 44px);
 }

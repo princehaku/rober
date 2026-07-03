@@ -106,7 +106,7 @@ bash onboard/scripts/board_live_route_preflight.sh
 
 ## 1.6 RViz2 Engineering Map View
 
-普通用户在 PC 上优先使用 `http://<PC>:7001/` 的大地图和 `/map` 地图大屏；当前 PC 地图默认 `300%` 细节大图，点 `适配` 回到 `100%` 全图。ROS2 原生配套用于工程排障，不替代普通 PC 界面：
+普通用户在 PC 上优先使用 `http://<PC>:7001/` 的大地图和 `/map` 地图大屏；首页默认 `45%` 完整视角看全局态势，`/map` 直达页默认 `100%` 细节大屏，点 `适配` 回到 `45%` 完整图。ROS2 原生配套用于工程排障，不替代普通 PC 界面：
 
 ```bash
 ros2 launch ros2_trashbot_bringup rviz.launch.py
@@ -122,6 +122,8 @@ ros2 launch ros2_trashbot_bringup rviz.launch.py
 - `/global_costmap/costmap`、`/local_costmap/costmap`：确认 Nav2 costmap 是否有数据。
 
 这个 RViz2 配置不包含 GoalTool，也不用于普通用户发车。现场要执行路线仍回到 PC `7001` 普通界面，按图上路线和安全确认按钮走固定 gate。
+
+远程浏览器观察可用 Foxglove：先在 ROS2 环境启动 `foxglove_bridge`，再用浏览器连接 `ws://192.168.1.11:8765`。Foxglove 与 RViz2 一样只用于观察地图、雷达、TF、路径、定位和 costmap，不作为普通用户发车入口。
 
 失败边界约束：
 
