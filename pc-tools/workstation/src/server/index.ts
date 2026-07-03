@@ -3038,6 +3038,8 @@ function cameraMjpegStatusResponse(
     primary_source_failure_reason: primarySourceFailureReason,
     selected_path: diagnosisSource?.selected_path ?? "not_loaded",
     selected_name: diagnosisSource?.selected_name ?? "not_loaded",
+    selected_device: diagnosisSource?.selected_path ?? "not_loaded",
+    selected_device_label: diagnosisSource?.selected_name ?? "not_loaded",
     selected_is_uvc_or_usb: diagnosisSource?.selected_is_uvc_or_usb ?? "not_loaded",
     source_usage_status: diagnosisSource?.source_usage_status ?? "not_loaded",
     source_usage_owner_count: diagnosisSource?.source_usage_owner_count ?? "not_loaded",

@@ -15587,6 +15587,11 @@ describe("workstation fail-closed API contracts", () => {
           status: "source_first_frame_failed",
           source_readiness: "first_frame_failed",
           source_failure_reason: "capture_read_returned_false",
+          current_selection: {
+            selected_path: "/dev/video1",
+            selected_name: "USB Composite Device: DV20 USB",
+            selected_is_uvc_or_usb: true,
+          },
           source_diagnosis: {
             status: "uvc_no_frame_not_exclusive",
             plain_hint: "不是页面独占：not_loaded 当前没人占用，但 UVC 设备没有输出视频帧。",
@@ -15645,21 +15650,25 @@ describe("workstation fail-closed API contracts", () => {
       expect(typeof statusBody.last_failure_at_ms).toBe("number");
       expect(typeof statusBody.shared_preview_last_failure_at_ms).toBe("number");
       expect(statusBody.source_diagnosis_status).toBe("uvc_no_frame_not_exclusive");
-      expect(statusBody.source_diagnosis_plain_hint).toBe("不是页面独占：USB 摄像头当前没人占用，但 UVC 设备没有输出视频帧。");
+      expect(statusBody.source_diagnosis_plain_hint).toBe("不是页面独占：USB Composite Device: DV20 USB 当前没人占用，但 UVC 设备没有输出视频帧。");
       expect(statusBody.source_diagnosis_plain_hint).not.toContain("not_loaded");
       expect(statusBody.source_diagnosis_next_action).toBe("check_usb_camera_input_power_or_known_good_uvc");
       expect(statusBody.source_diagnosis_next_action_plain).toBe("检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测；共享预览不是页面独占。");
       expect(statusBody.source_diagnosis_not_exclusive).toBe("true");
       expect(statusBody.source_readiness).toBe("first_frame_failed");
       expect(statusBody.source_failure_reason).toBe("capture_read_returned_false");
+      expect(statusBody.selected_path).toBe("/dev/video1");
+      expect(statusBody.selected_device).toBe("/dev/video1");
+      expect(statusBody.selected_name).toBe("USB Composite Device: DV20 USB");
+      expect(statusBody.selected_device_label).toBe("USB Composite Device: DV20 USB");
       expect(statusBody.preview_status).toBe("source_first_frame_failed");
-      expect(statusBody.preview_plain_hint).toBe("不是页面独占：USB 摄像头当前没人占用，但 UVC 设备没有输出视频帧。");
+      expect(statusBody.preview_plain_hint).toBe("不是页面独占：USB Composite Device: DV20 USB 当前没人占用，但 UVC 设备没有输出视频帧。");
       expect(statusBody.preview_next_action).toBe("check_usb_camera_input_power_or_known_good_uvc");
       expect(statusBody.next_action_plain).toBe("检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测；共享预览不是页面独占。");
       expect(statusBody.preview_next_action_plain).toBe("检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测；共享预览不是页面独占。");
       expect(statusBody.preview_visible_status).toBe("not_visible_source_first_frame_failed");
-      expect(statusBody.preview_visible_plain).toBe("当前没有实时画面；不是页面独占：USB 摄像头当前没人占用，但 UVC 设备没有输出视频帧。");
-      expect(statusBody.camera_wysiwyg_status_plain).toBe("画面未可见：不是页面独占：USB 摄像头当前没人占用，但 UVC 设备没有输出视频帧。");
+      expect(statusBody.preview_visible_plain).toBe("当前没有实时画面；不是页面独占：USB Composite Device: DV20 USB 当前没人占用，但 UVC 设备没有输出视频帧。");
+      expect(statusBody.camera_wysiwyg_status_plain).toBe("画面未可见：不是页面独占：USB Composite Device: DV20 USB 当前没人占用，但 UVC 设备没有输出视频帧。");
       expect(statusBody.camera_wysiwyg_next_action_plain).toBe("检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测；共享预览不是页面独占。");
       expect(statusBody.robot_control_executed).toBe(false);
       const summaryResponse = await fetch(`${workstation.baseUrl}/api/robot-control/summary?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
@@ -16228,6 +16237,11 @@ describe("workstation fail-closed API contracts", () => {
           status: "source_not_probed",
           source_readiness: "source_selected_not_probed",
           source_failure_reason: "",
+          current_selection: {
+            selected_path: "/dev/video1",
+            selected_name: "USB Composite Device: DV20 USB",
+            selected_is_uvc_or_usb: true,
+          },
           source_usage: { status: "not_in_use", owner_count: 0, owners: [] },
           source_diagnosis: {
             status: "source_selected_not_probed",
@@ -16279,6 +16293,10 @@ describe("workstation fail-closed API contracts", () => {
       expect(statusBody.source_diagnosis_not_exclusive).toBe("true");
       expect(statusBody.source_readiness).toBe("source_selected_not_probed");
       expect(statusBody.source_failure_reason).toBe("none");
+      expect(statusBody.selected_path).toBe("/dev/video1");
+      expect(statusBody.selected_device).toBe("/dev/video1");
+      expect(statusBody.selected_name).toBe("USB Composite Device: DV20 USB");
+      expect(statusBody.selected_device_label).toBe("USB Composite Device: DV20 USB");
       expect(statusBody.robot_control_executed).toBe(false);
       expect(healthRequestCount).toBe(1);
       expect(mjpegRequestCount).toBe(0);

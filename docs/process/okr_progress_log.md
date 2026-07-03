@@ -8,6 +8,23 @@
 
 ## 2026-07-03 系列
 
+### 2026-07-03 20-57｜camera_selected_device_alias｜相机状态源节点别名
+
+本轮 `sprints/2026.07.03_20-57_camera_selected_device_alias/` 继续推进 PC 打开即用目标：
+`/api/robot-control/camera/mjpeg/status` 新增 `selected_device` / `selected_device_label` 顶层 alias，
+与既有 `selected_path` / `selected_name` 同源，避免普通页和现场脚本看到摄像头源为 `null`。
+现场当前读回为 `/dev/video1`、`USB Composite Device: DV20 USB (usb-5310000.usb-1)`；
+相机仍为 `source_first_frame_failed`、`uvc_transport_error_not_exclusive`、`first_frame_total_timeout`，
+不是页面独占，剩余动作仍是检查摄像头输入/供电/线口或换 known-good UVC。地图侧只读刷新后已恢复
+路线 18 点、小车位置、目标点和 36 个当前雷达点同屏；PC manual `forward` 和 `back` 短脉冲均返回
+`command_forwarded`、`command_result_ok=true`、`stop_result_ok=true`、`motion_signal_observed=true`，并已发送 stop 收口。
+
+验证范围：`npm test -- test/catalog.test.ts -t "camera MJPEG status" --run` 9 tests OK / 179 skipped；
+`npm test -- test/App.test.ts -t "camera|map display|direct map|keyboard|WASD" --run` 68 tests OK / 171 skipped；
+`npm run build` 通过（仅 Vite chunk warning）；7001 已重启到 `0.0.0.0:7001` 并 live 读回 alias。
+本轮代码改动只补只读状态 alias 和文档，不启动独占相机、不执行 free-roam、Nav2、delivery 或建图；现场
+manual forward/back 是按目标执行的短脉冲验证，最后已 stop。
+
 ### 2026-07-03 20-46｜pc_nav2_o11_tail_wasd_back_alias｜Nav2 证据防 OOM 与后退别名
 
 本轮 `sprints/2026.07.03_20-46_pc_nav2_o11_tail_wasd_back_alias/` 继续推进 PC 打开即用目标：
