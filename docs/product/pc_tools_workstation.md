@@ -5674,3 +5674,23 @@ DV20 `/dev/video1` 是 UVC capture 设备，USB 当前为 `480M`，无人独占�
 直接 `v4l2-ctl` 都 `select timeout` 且输出 0 字节，USB recovery 返回
 `stream_failure_class=high_speed_zero_byte_no_frame`。因此当前图传失败不是 PC 页面太小、多人预览独占或 Node relay
 问题，而是摄像头输入、USB 线/接口/供电或设备本体仍需现场处理；这个缺口只阻塞实时图传和建图视觉验收，不重新阻塞 WASD 或图上路线发车前置。
+
+2026-07-04 03:53 CST 继续修正 PC/Nav2 现场证据口径：上位机
+`o11_nav2_goal_execution_proof.py` 在复用已有 ROS/Nav2/`esp32_bridge` runtime 时，会写出
+`requested_base_command_mode`、`base_command_mode_matches_request` 与
+`base_command_mode_mismatch_reused`。本轮真实复测中，PC 请求 `base_command_mode=ros` 执行图上目标
+`{x:0.8,y:0.05,frame_id:map}`，Nav2 返回 `goal_succeeded`，但因为现场已有 PWM `esp32_bridge`
+持有链路，artifact 明确记录 `requested_base_command_mode=ros`、实际 `base_command_mode=pwm`、
+`base_command_mode_mismatch_reused=true`。PC `nav2/goal/execution/latest`、summary 和 live-summary
+现在优先采用上位机 `next_base_command_mode=pwm`，不再把“PWM 路线成功但 `T=1001 L/R=0/0`”误推成
+下一轮必然切 ROS。当前事实是：PC/Nav2 已发送并执行非零底盘命令，IMU 姿态变化可见，目标到点成功；
+但 vendor `T=1001 L/R` 仍未非零，因此 wheel raw 闭环和完整自动驾驶交付仍不能宣称完成。
+
+同轮 7001 复测：地图、路线、目标点和雷达点仍在同一张大地图画布可见，
+`radar_overlay_current_point_count=92`；PC 前进/后退短脉冲继续返回
+`command_raw_lr_nonzero_proven=true`、`motion_signal_observed=true`、`stop_result_ok=true`，live-summary
+读回 `keyboard_motion_verified=true`、`keyboard_command_raw_lr_nonzero_proven=true`、
+`keyboard_stop_settled_after_pulse=true`。PC Node 对本机代理刚产生的键盘手控/stop 证据保留 10 分钟验收窗口，
+不跨 Node 重启，也不替代长期 HIL。相机首帧探针仍 `probe_total_timeout`，USB 为 `480M` 且
+`camera_source_diagnosis_status=uvc_no_frame_not_exclusive`；图传缺口继续指向 DV20 输入/线缆/供电/设备本体，
+不是 PC 页面独占或共享 MJPEG relay。

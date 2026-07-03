@@ -230,6 +230,30 @@ def should_reuse_existing_runtime(action_probe: dict[str, Any], process_probe: d
     return bool(action_probe.get("available") or process_probe.get("reuse_recommended"))
 
 
+def existing_runtime_mode_reuse_summary(process_probe: dict[str, Any], requested_mode: str) -> dict[str, Any]:
+    """复用现场 runtime 时记录模式是否真的符合本次请求，避免把 PWM 误当成 ROS 复验。"""
+    requested = normalize_base_command_mode(requested_mode)
+    actual = str(process_probe.get("base_command_mode") or "").strip().lower()
+    if actual not in ALLOWED_BASE_COMMAND_MODES:
+        return {
+            "requested_base_command_mode": requested,
+            "base_command_mode_matches_request": "unknown",
+            "base_command_mode_mismatch_reused": False,
+            "base_command_mode_reuse_plain": "复用已有 ROS runtime，但未从进程参数读到 esp32_bridge 实际模式；本轮按运行时日志继续判定。",
+        }
+    matches = actual == requested
+    return {
+        "requested_base_command_mode": requested,
+        "base_command_mode_matches_request": matches,
+        "base_command_mode_mismatch_reused": not matches,
+        "base_command_mode_reuse_plain": (
+            f"复用已有 esp32_bridge，实际模式 {actual} 与请求模式一致。"
+            if matches
+            else f"复用已有 esp32_bridge，实际模式 {actual}，本次请求 {requested} 未切换；为避免重复 bridge 抢占串口，按实际模式记录证据。"
+        ),
+    }
+
+
 def existing_runtime_reuse_reason(action_probe: dict[str, Any], process_probe: dict[str, Any]) -> str:
     """把复用原因写进 artifact，现场复盘能区分 action 证据和保守进程保护。"""
     if action_probe.get("available"):
@@ -374,6 +398,10 @@ def start_managed_autonomous_runtime(args: argparse.Namespace) -> dict[str, Any]
     return {
         "requested": True,
         "started": True,
+        "requested_base_command_mode": base_command_mode,
+        "base_command_mode_matches_request": True,
+        "base_command_mode_mismatch_reused": False,
+        "base_command_mode_reuse_plain": "本轮由 helper 启动新 esp32_bridge，实际模式与请求模式一致。",
         "process_group": process.pid,
         "pid": process.pid,
         "map_yaml": args.managed_map_yaml,
@@ -742,6 +770,8 @@ def build_payload(args: argparse.Namespace) -> dict[str, Any]:
         )
         if args.managed_runtime_opt_in and should_reuse_existing_runtime(existing_action_probe, existing_process_probe):
             # 现场已有 action server 或相关进程时优先复用当前 ROS graph；否则第二个 esp32_bridge 会抢占 /dev/ttyS5。
+            requested_base_command_mode = normalize_base_command_mode(args.base_command_mode)
+            mode_reuse_summary = existing_runtime_mode_reuse_summary(existing_process_probe, requested_base_command_mode)
             managed_runtime = {
                 "requested": True,
                 "started": False,
@@ -751,7 +781,8 @@ def build_payload(args: argparse.Namespace) -> dict[str, Any]:
                 "existing_runtime_process_probe": existing_process_probe,
                 "base_feedback_log_path": str(existing_process_probe.get("base_feedback_log_path") or ""),
                 "base_command_log_path": str(existing_process_probe.get("base_command_log_path") or ""),
-                "base_command_mode": str(existing_process_probe.get("base_command_mode") or normalize_base_command_mode(args.base_command_mode)),
+                "base_command_mode": str(existing_process_probe.get("base_command_mode") or requested_base_command_mode),
+                **mode_reuse_summary,
                 "cleanup": {"ok": True, "boundary": "reused_existing_runtime"},
             }
         else:
@@ -882,6 +913,9 @@ def build_payload(args: argparse.Namespace) -> dict[str, Any]:
         result["base_feedback_summary"] = base_feedback_summary
         result["base_command_summary"] = base_command_summary
         result["base_command_mode"] = managed_runtime.get("base_command_mode") or normalize_base_command_mode(args.base_command_mode)
+        result["requested_base_command_mode"] = managed_runtime.get("requested_base_command_mode") or normalize_base_command_mode(args.base_command_mode)
+        result["base_command_mode_matches_request"] = managed_runtime.get("base_command_mode_matches_request", "unknown")
+        result["base_command_mode_mismatch_reused"] = bool(managed_runtime.get("base_command_mode_mismatch_reused"))
         result_base_command_mode = str(result["base_command_mode"])
         base_feedback_nonzero = bool(base_feedback_summary.get("wheel_feedback_lr_nonzero_proven"))
         base_command_nonzero = bool(base_command_summary.get("nonzero_command_observed"))

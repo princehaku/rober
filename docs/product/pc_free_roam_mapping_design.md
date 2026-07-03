@@ -1159,3 +1159,19 @@ live-summary 读回 `keyboard_motion_verified=true`、`keyboard_stop_settled_aft
 相机同轮直连确认不是 PC 页面独占：`/dev/video1` 无 owner、USB `480M`，但 `v4l2-ctl` 对
 `MJPG@640x480` 和 `YUYV@320x240` 均 `select timeout` 且 0 字节；`8088/mjpeg` 多格式尝试返回
 `opencv_capture_not_opened`。该缺口仍只阻塞实时图传和建图视觉验收，不应重新成为自由移动、WASD 或图上路线发车前置。
+
+2026-07-04 03:53 CST 修正 Nav2 路线复验的模式证据：上位机 O11 helper 现在把复用已有 runtime 时的
+`requested_base_command_mode`、实际 `base_command_mode` 和 `base_command_mode_mismatch_reused`
+写入 artifact。现场 PC 以 ROS 模式请求图上目标 `{x:0.8,y:0.05,frame_id:map}`，但实际复用已有
+PWM `esp32_bridge`，因此 latest 明确为 `requested_base_command_mode=ros`、
+`base_command_mode=pwm`、`base_command_mode_mismatch_reused=true`。PC summary/live-summary 已改为优先信任
+上位机 `next_base_command_mode=pwm`，避免把“请求 ROS”误当成“实际 ROS 复验已发生”。本轮仍读到
+`goal_succeeded`、`base_command_nonzero_observed=true`、`base_command_nonzero_count=1076` 和
+`imu_delta=true`，但 `T=1001 L/R=0/0`，所以自动驾驶路线只能证明“Nav2 到点 + 底盘命令 + IMU 动作信号”，
+还不能证明 wheel raw L/R 非零闭环。
+
+同轮自由移动边界保持不变：PC 大地图仍显示地图、路线、目标点和当前雷达点，雷达贴图当前点数为 92；
+WASD 前进/后退短脉冲继续证明 raw 命令非零、运动信号存在、松开停止有效。相机首帧仍
+`probe_total_timeout`，live 归类为 `uvc_no_frame_not_exclusive`，仅阻塞实时图传和建图视觉验收，
+不重新阻塞低速移动、键盘手控或图上路线发车前置。PC Node 的键盘手控/stop 本地证据缓存保留 10 分钟验收窗口，
+避免同轮测试和收口期间自然过期；该缓存不跨 Node 重启，不替代长期硬件闭环。

@@ -123,7 +123,7 @@ const PORT = Number(process.env.PORT ?? WORKSTATION_NODE_PORT);
 const HOST = process.env.HOST ?? WORKSTATION_PUBLIC_HOST;
 // summary 里 MJPEG overlay 只是首屏辅助诊断，不能比真正 summary 读回更慢。
 const ROBOT_CONTROL_SUMMARY_CAMERA_OVERLAY_TIMEOUT_MS = 600;
-const ROBOT_CONTROL_KEYBOARD_EVIDENCE_CACHE_TTL_MS = 120_000;
+const ROBOT_CONTROL_KEYBOARD_EVIDENCE_CACHE_TTL_MS = 600_000;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIST_ROOT = path.resolve(__dirname, "../../dist");
 
@@ -241,7 +241,7 @@ function mergeKeyboardEvidence(
 }
 
 function cachedKeyboardEvidence(key: string): RobotControlKeyboardLocalEvidence | undefined {
-  // 这只是 PC Node 最近一次手控代理证据，过期后必须丢弃，避免历史 stop 伪装成当前键盘窗口完成。
+  // 这只是 PC Node 最近一次手控代理证据；保留一个现场验收窗口，但仍会过期，避免历史 stop 长期伪装成当前键盘完成。
   const cached = robotControlKeyboardEvidenceCache.get(key);
   if (!cached) {
     return undefined;
@@ -1110,6 +1110,10 @@ function navGoalExecutionKeyValues(payload: Record<string, unknown> | null): Rec
     cancel_accepted: shortValue(cancelResponse?.accepted, "false"),
     feedback_sample_count: shortValue(payload?.feedback_sample_count ?? latestResult?.feedback_sample_count, "0"),
     base_command_mode: baseCommandMode,
+    next_base_command_mode: shortValue(payload?.next_base_command_mode ?? latestResult?.next_base_command_mode, "not_loaded"),
+    requested_base_command_mode: shortValue(latestResult?.requested_base_command_mode ?? payload?.requested_base_command_mode, "not_loaded"),
+    base_command_mode_matches_request: shortValue(latestResult?.base_command_mode_matches_request ?? payload?.base_command_mode_matches_request, "not_loaded"),
+    base_command_mode_mismatch_reused: shortValue(latestResult?.base_command_mode_mismatch_reused ?? payload?.base_command_mode_mismatch_reused, "not_loaded"),
     base_feedback_sample_count: shortValue(baseFeedbackSummary?.sample_count, "0"),
     base_feedback_nonzero_sample_count: shortValue(baseFeedbackSummary?.nonzero_sample_count, "0"),
     base_feedback_lr_nonzero_proven: shortValue(baseFeedbackSummary?.wheel_feedback_lr_nonzero_proven, "false"),
@@ -1138,6 +1142,11 @@ function navGoalExecutionKeyValues(payload: Record<string, unknown> | null): Rec
 }
 
 function navGoalLatestNextMode(keyValues: Record<string, string>): string {
+  // 上位机知道当前 runtime 是否复用了既有 bridge；有明确建议时 PC 不再自行假设切换模式。
+  const upstreamNextMode = keyValues.next_base_command_mode;
+  if (upstreamNextMode && ["ros", "speed", "pwm"].includes(upstreamNextMode)) {
+    return upstreamNextMode;
+  }
   // action 成功但 wheel L/R 未非零时，下一轮切换控制面做 A/B 复验，避免一直重复同一条无效链路。
   if (
     (keyValues.status === "goal_succeeded" || keyValues.result_status === "succeeded")

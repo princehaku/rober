@@ -6160,7 +6160,9 @@ function nav2SummaryFromReadbacks(
     ? JSON.stringify({ [lastBaseMode]: parsedBaseCommandNonzeroCount })
     : baseCommandModeCounts;
   const goalSucceeded = goalExecutionStatus === "goal_succeeded" || goalExecutionResultStatus === "succeeded";
+  const upstreamNextBaseMode = summaryValueText(goalPayload, ["next_base_command_mode"], summaryValueText(goalResultPayload, ["next_base_command_mode"]));
   const nextBaseMode = nav2NextExecutionBaseCommandMode({
+    upstreamNextBaseMode,
     configuredNextBaseMode,
     lastBaseMode,
     goalSucceeded,
@@ -6520,6 +6522,7 @@ function nav2WheelRawLrPlainSummary(args: {
 }
 
 function nav2NextExecutionBaseCommandMode(args: {
+  upstreamNextBaseMode: string;
   configuredNextBaseMode: string;
   lastBaseMode: string;
   goalSucceeded: boolean;
@@ -6527,6 +6530,10 @@ function nav2NextExecutionBaseCommandMode(args: {
   baseCommandNonzeroObserved: string;
   parsedBaseCommandNonzeroCount: number;
 }): string {
+  const upstream = args.upstreamNextBaseMode || "not_loaded";
+  if (["ros", "speed", "pwm"].includes(upstream)) {
+    return upstream;
+  }
   // Vendor index 要求 T=13 未经硬件闭环时可回退 T=1；避免 ROS/T=13 零轮速后无限继续 ROS 重跑。
   const configured = args.configuredNextBaseMode || "not_loaded";
   const last = args.lastBaseMode || "not_loaded";
@@ -9907,7 +9914,7 @@ function buildLiveClosureSummary(
   const keyboardVerifiedMinForwardedPulses = keyboard.evidence?.keyboard_verified_min_forwarded_pulses ?? 2;
   const minimalPrecheckSafetyOnly = nav2.evidence?.minimal_precheck_safety_only === true
     || boundary.nav2_goal_minimal_precheck_plain.includes("只需要现场安全确认");
-  const wheelRerunCommandMode = nav2.evidence?.next_base_command_mode || readback.nav2.next_execution_base_command_mode || "not_loaded";
+  const wheelRerunCommandMode = readback.nav2.next_execution_base_command_mode || nav2.evidence?.next_base_command_mode || "not_loaded";
   const wheelRerunLastBaseCommandMode = readback.nav2.goal_execution_base_command_mode || readback.nav2.goal_execution_base_command_latest_nonzero_mode || "not_loaded";
   const wheelRerunNextBaseCommandMode = wheelRerunCommandMode;
   const wheelRerunFeedbackSampleCount = readback.nav2.goal_execution_base_feedback_sample_count || "not_loaded";

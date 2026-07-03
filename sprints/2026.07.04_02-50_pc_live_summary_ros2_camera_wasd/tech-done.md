@@ -17,6 +17,14 @@ micro
 - 2026-07-04 03:20 CST 追加 PC 地图易用性修正：普通首页和 `/map` 默认缩放从 `150%` 提升到
   `200%`，地图面板和内层 WYSIWYG 画布增高，顶栏入口改为 `地图大屏 /map`；ROS2 配套继续只作为
   `工程观察：RViz2 / Foxglove`，不替代普通用户简易控制台。
+- 2026-07-04 03:53 CST 追加 Nav2 执行模式读回修正：`o11_nav2_goal_execution_proof.py`
+  在复用现场已有 ROS/Nav2/`esp32_bridge` runtime 时写出 `requested_base_command_mode`、
+  `base_command_mode_matches_request` 和 `base_command_mode_mismatch_reused`，避免 PC 请求 ROS 复验但实际复用
+  PWM bridge 时被误读成“ROS 已切换”；PC `nav2/goal/execution/latest` 与 summary/live-summary 均优先采用
+  上位机 `next_base_command_mode`，不再自行把 PWM wheel-zero 推断成下一轮 ROS。
+- PC Node 键盘本地证据缓存从 2 分钟延长到 10 分钟；它仍只保存本机代理刚发出的手控/stop 材料，不跨 Node 重启，
+  但能覆盖一次现场测试、构建和文档更新的验收窗口，避免 WASD stop 证据在同轮收口前自然过期。
+- 新增 `onboard/scripts/test_o11_nav2_goal_execution_proof.py`，锁定“请求 ROS、实际 PWM 复用必须标记 mismatch”的轻量合同。
 
 ## 验证结果
 
@@ -62,10 +70,46 @@ micro
   `T=1001.L/R` 来自固件 `speedGetA/B`；现场发 `{"T":900,"main":1,"module":0}` 后，PC 低速 PWM 手控仍未读到非零 L/R。
 - 相机补充复验：`/dev/video1` 无 owner、USB 为 `480M`，但直连 `v4l2-ctl` 的 MJPG/YUYV 仍 `select timeout` 且 0 字节；
   `8088/mjpeg` 多格式返回 `opencv_capture_not_opened`。
+- 2026-07-04 03:53 CST 本轮验证：
+  - 已通过：`python3 -m py_compile onboard/scripts/o11_nav2_goal_execution_proof.py onboard/scripts/test_o11_nav2_goal_execution_proof.py`。
+  - 已通过：`python3 onboard/scripts/test_o11_nav2_goal_execution_proof.py`，`2 passed`。
+  - 已通过：`npm test -- --run test/robotControlSummary.test.ts`，`16 passed`。
+  - 已通过：`npm test -- --run test/catalog.test.ts`，`191 passed`。
+  - 已通过：`npm run build`；仍只有既有 Vite chunk size warning。
+- 部署验证：已将 `o11_nav2_goal_execution_proof.py` 部署到上位机 `/root/rober/onboard/scripts/`，`python3 -m py_compile`
+  通过；`trashbot-upper-robot-api.service` 重启时旧进程卡在 `stop-sigterm`，已用 systemd SIGKILL 恢复后重新启动，
+  8787 health 返回 `status=ready`。
+- 现场 Nav2 复测：PC 以 `base_command_mode=ros` 执行当前图上目标 `{x:0.8,y:0.05,frame_id:map}`，
+  返回 `proxy_status=execution_forwarded`、`goal_status=goal_succeeded`、`result_status=succeeded`、
+  `requested_base_command_mode=ros`、实际 `base_command_mode=pwm`、
+  `base_command_mode_matches_request=false`、`base_command_mode_mismatch_reused=true`、
+  `base_command_nonzero_observed=true`、`base_command_nonzero_count=1076`、
+  `base_feedback_lr_nonzero_proven=false`、`L/R=0/0`、`imu_delta=true`。
+- PC 7001 已重启，PID `88289` 监听 `0.0.0.0:7001`；`/api/robot-control/nav2/goal/execution/latest`
+  与 summary/live-summary 已读回 `next_execution_base_command_mode=pwm`、`wheel_rerun_next_base_command_mode=pwm`、
+  `goal_execution_next_mode_plain=下次继续用 PWM 模式重跑图上路线。`
+- 同轮现场状态复验：`map_current_visible=true`、`path_current_visible=true`、
+  `route_target_current_visible=true`、`radar_map_points_current_visible=true`、`radar_overlay_current_point_count=92`；
+  PC 前进/后退短脉冲均 `proxy_status=command_forwarded`、`command_raw_lr_nonzero_proven=true`、
+  `motion_signal_observed=true`、`stop_result_ok=true`，live-summary 读回
+  `keyboard_motion_verified=true`、`keyboard_command_raw_lr_nonzero_proven=true`、`keyboard_stop_settled_after_pulse=true`。
+- 相机同轮只读复测：`POST /api/robot-control/camera/first-frame/probe` 返回
+  `proxy_status=probe_failed`、`status=probe_total_timeout`、HTTP 503、`camera_first_frame=false`、
+  `usb=480M`；live-summary 归类 `camera_source_diagnosis_status=uvc_no_frame_not_exclusive`、
+  `camera_source_diagnosis_not_exclusive=true`，继续说明“已排除页面独占和低速 USB；设备没有输出视频帧”。
+- TTL 调整后最终复验：PC Node PID `91447` 监听 `0.0.0.0:7001`；再次执行前进/停止/后退/停止后，
+  live-summary 稳定读回 `map_current_visible=true`、`path_current_visible=true`、
+  `route_target_current_visible=true`、`radar_map_points_current_visible=true`、
+  `keyboard_motion_verified=true`、`keyboard_command_raw_lr_nonzero_proven=true`、
+  `keyboard_stop_settled_after_pulse=true`、`camera_current_visible=false`、
+  `camera_source_diagnosis_status=uvc_no_frame_not_exclusive`、`wheel_lr_nonzero_proven=false`、
+  `wheel_rerun_next_base_command_mode=pwm`、`delivery_success=true`。
 
 ## 剩余风险
 
 - 实时图传仍未出首帧。当前证据排除了 PC 页面、多人预览独占和 Node relay，剩余指向 DV20 摄像头输入、USB 线/接口/供电或设备本体；需要现场硬件动作后复测。
 - Vendor `T=1001 L/R` 仍为 `0/0`，wheel raw L/R 非零闭环未完成。当前只能证明 PC 键盘命令已发出、stop 已落稳、命令 raw 非零和 IMU/运动信号存在，不能宣称完整 wheel raw 或完整自动驾驶闭环完成。
+- Nav2 现在能清楚区分“请求模式”和“实际 runtime 模式”：本轮请求 ROS 但因复用现场 PWM `esp32_bridge`，实际仍按 PWM/T=11
+  路径完成 goal。后续若必须做 ROS/T=13 复验，需要先处理现有 runtime/串口 owner 的切换策略，不能在已有 bridge 持有链路时假装模式已切。
 - 裸串口并发读 `/dev/ttyS5` 会撞到 `device disconnected or multiple access on port?`；后续复验应继续走
   bridge/API 的固定读回链路，不绕开现有串口 owner 抢读。
