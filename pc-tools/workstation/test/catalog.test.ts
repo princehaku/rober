@@ -16237,6 +16237,9 @@ describe("workstation fail-closed API contracts", () => {
       expect(statusBody.first_frame_failure_reason).toBe("opencv_capture_not_opened");
       expect(statusBody.camera_hardware_action_required).toBe(true);
       expect(statusBody.camera_hardware_action_label).toBe("检查摄像头输入/供电后复测");
+      expect(statusBody.camera_input_signal_check_required).toBe(true);
+      expect(statusBody.camera_input_signal_check_label).toBe("检查摄像头输入信号/供电后复测");
+      expect(statusBody.camera_input_signal_check_plain).toContain("输入信号");
       expect(statusBody.camera_blocks_free_move).toBe(false);
       expect(statusBody.camera_usb_speed).toBe("480M");
       expect(statusBody.exclusive_camera_claim).toBe(false);

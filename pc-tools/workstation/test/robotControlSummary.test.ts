@@ -3238,6 +3238,9 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.camera_blocks_free_move).toBe(false);
     expect(summary.camera_hardware_action_required).toBe(true);
     expect(summary.camera_hardware_action_label).toBe("检查摄像头输入/供电后复测");
+    expect(summary.readback_summary.camera.camera_input_signal_check_required).toBe(true);
+    expect(summary.readback_summary.camera.camera_input_signal_check_label).toBe("检查摄像头输入信号/供电后复测");
+    expect(summary.readback_summary.camera.camera_input_signal_check_plain).toContain("输入信号");
     expect(summary.camera_blocks_free_move).toBe(false);
   });
 

@@ -2591,6 +2591,15 @@ function cameraSummaryFromReadbacks(
   const cameraTransportHardwareActionRequired = derivedSourceDiagnosis.status === "uvc_transport_error_not_exclusive";
   const cameraNoFrameHardwareActionRequired = compactValueText(derivedSourceDiagnosis.not_exclusive) === "true"
     && ["uvc_no_frame_not_exclusive", "source_first_frame_failed", "first_frame_failed"].includes(derivedSourceDiagnosis.status || "");
+  const cameraInputSignalCheckRequired = cameraNoFrameHardwareActionRequired
+    && !cameraUsbFullSpeedDetected
+    && !cameraTransportHardwareActionRequired;
+  const cameraInputSignalCheckLabel = cameraInputSignalCheckRequired
+    ? "检查摄像头输入信号/供电后复测"
+    : "无需输入信号处理";
+  const cameraInputSignalCheckPlain = cameraInputSignalCheckRequired
+    ? "已排除页面独占和低速 USB；设备没有输出视频帧，优先检查摄像头输入信号、视频线、接口和供电，必要时换 known-good UVC 后复测。"
+    : "当前相机诊断未指向输入信号处理。";
   const cameraHardwareActionRequired = (
     cameraUsbFullSpeedDetected
     || cameraTransportHardwareActionRequired
@@ -2743,6 +2752,9 @@ function cameraSummaryFromReadbacks(
     source_diagnosis_not_exclusive: compactValueText(derivedSourceDiagnosis.not_exclusive),
     camera_hardware_action_required: cameraHardwareActionRequired,
     camera_hardware_action_label: cameraHardwareActionLabel,
+    camera_input_signal_check_required: cameraInputSignalCheckRequired,
+    camera_input_signal_check_label: cameraInputSignalCheckLabel,
+    camera_input_signal_check_plain: cameraInputSignalCheckPlain,
     camera_reprobe_after_hardware_action_required: cameraHardwareActionRequired,
     uvc_kernel_diagnostics_status: asString(uvcKernelDiagnostics?.status, "not_loaded"),
     uvc_kernel_diagnostics_plain_hint: asString(uvcKernelDiagnostics?.plain_hint, "not_loaded"),

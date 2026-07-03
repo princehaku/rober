@@ -5300,6 +5300,9 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       source_diagnosis_not_exclusive: string;
       camera_hardware_action_required: boolean;
       camera_hardware_action_label: string;
+      camera_input_signal_check_required?: boolean;
+      camera_input_signal_check_label?: string;
+      camera_input_signal_check_plain?: string;
       camera_reprobe_after_hardware_action_required: boolean;
       uvc_kernel_diagnostics_status?: string;
       uvc_kernel_diagnostics_plain_hint?: string;
@@ -6385,6 +6388,9 @@ export interface RobotControlCameraMjpegStatusResponse extends ProofFlags {
   camera_usb_full_speed_detected: boolean;
   camera_hardware_action_required: boolean;
   camera_hardware_action_label: string;
+  camera_input_signal_check_required?: boolean;
+  camera_input_signal_check_label?: string;
+  camera_input_signal_check_plain?: string;
   usb_speed?: string;
   usb_full_speed_detected?: boolean;
   hardware_action_required?: boolean;

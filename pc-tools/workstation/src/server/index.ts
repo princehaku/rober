@@ -3042,6 +3042,15 @@ function cameraMjpegStatusResponse(
   const cameraTransportHardwareActionRequired = diagnosisSource?.source_diagnosis_status === "uvc_transport_error_not_exclusive";
   const cameraNoFrameHardwareActionRequired = diagnosisSource?.source_diagnosis_status === "uvc_no_frame_not_exclusive"
     && sourceUsageNotExclusive === "true";
+  const cameraInputSignalCheckRequired = cameraNoFrameHardwareActionRequired
+    && !cameraUsbFullSpeedDetected
+    && !cameraTransportHardwareActionRequired;
+  const cameraInputSignalCheckLabel = cameraInputSignalCheckRequired
+    ? "检查摄像头输入信号/供电后复测"
+    : "无需输入信号处理";
+  const cameraInputSignalCheckPlain = cameraInputSignalCheckRequired
+    ? "已排除页面独占和低速 USB；设备没有输出视频帧，优先检查摄像头输入信号、视频线、接口和供电，必要时换 known-good UVC 后复测。"
+    : "当前相机诊断未指向输入信号处理。";
   const cameraHardwareActionRequired = (
     cameraUsbFullSpeedDetected
     || cameraTransportHardwareActionRequired
@@ -3152,6 +3161,9 @@ function cameraMjpegStatusResponse(
     camera_usb_full_speed_detected: cameraUsbFullSpeedDetected,
     camera_hardware_action_required: cameraHardwareActionRequired,
     camera_hardware_action_label: cameraHardwareActionLabel,
+    camera_input_signal_check_required: cameraInputSignalCheckRequired,
+    camera_input_signal_check_label: cameraInputSignalCheckLabel,
+    camera_input_signal_check_plain: cameraInputSignalCheckPlain,
     usb_speed: cameraUsbSpeed,
     usb_full_speed_detected: cameraUsbFullSpeedDetected,
     hardware_action_required: cameraHardwareActionRequired,

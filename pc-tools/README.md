@@ -29,6 +29,13 @@ visual-first 首屏让地图独占首行，图传和 WASD/方向键连续手控�
 `foxglove_bridge` + Foxglove Web 连接 `ws://192.168.1.11:8765`；这些工具只观察，不替代 PC 简易界面，
 也不发送 `/cmd_vel`、manual、Nav2 goal、建图或 stop。
 
+2026-07-03 22:41 CST 起，相机无帧状态还会在 PC status/summary 暴露
+`camera_input_signal_check_required`、`camera_input_signal_check_label` 和
+`camera_input_signal_check_plain`。当 USB 已是 `480M`、没有其它进程独占、但 V4L2/ffmpeg/共享 MJPEG 都没有任何
+首帧 buffer 时，字段会指向 `检查摄像头输入信号/供电后复测`；现场当前 DV20 就是该状态。这个字段只帮助普通用户和
+现场脚本把“没图”从页面问题收窄到输入信号、视频线、接口、供电或 known-good UVC 复测，不会阻塞地图、WASD、
+自由移动或 Nav2 控制入口。
+
 2026-07-03 22:33 CST 起，上车共享相机 `/api/camera/health` 与 PC
 `/api/robot-control/camera/mjpeg/status` 都把 `opencv_capture_not_opened` 归入首帧失败；health
 即使还处于 `ready/source_selected_not_probed`，只要 last offer 已记录 OpenCV 打不开设备，PC status/summary
