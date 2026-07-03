@@ -39,6 +39,19 @@ micro
   读回 `map_display_default_zoom_percent=200%`、`map_display_direct_map_default_zoom_percent=200%`，
   且 `map_display_starts_ros2=false`、`map_display_starts_nav2=false`、`map_display_sends_motion_when_clicked=false`。
   当前 live 仍显示地图、路线、目标点和雷达点可见，相机首帧仍不可见。
+- 2026-07-04 03:34 CST 追加现场验证：雷达只读刷新后 `map/preview` 返回
+  `robot_pose_status=map_pose_observed`、`path_preview_point_count=18`、`route_target_visible=true`、
+  `radar_overlay_status=loaded`、`radar_overlay_current_point_count=70`。PC `command_mode=ros`
+  前进/后退短脉冲均 `proxy_status=command_forwarded`、`command_raw_lr_nonzero_proven=true`、
+  `motion_signal_observed=true`、`stop_result_ok=true`；live-summary 随后读到
+  `keyboard_motion_verified=true`、`keyboard_stop_settled_after_pulse=true`。上车 `esp32_bridge`
+  参数为 `command_mode=pwm`、`command_transport=http`、`wave_rover_http_base_url=http://192.168.1.3`、
+  `main_type=2`、`module_type=0`、`pwm_min_abs=255`、`pwm_max_abs=255`，command debug 记录
+  vendor `T=11 L/R=±255` 与 stop `T=11 L/R=0`。speed 模式本轮未观察到运动信号。
+- 相机追加验证：`/dev/video1` 是 DV20 UVC video capture，`/dev/video2` 是 metadata，USB 为 `480M` 且无人占用；
+  PC MJPEG 仍返回 `first_frame_total_timeout`，USB recovery 后 `stream_failure_class=high_speed_zero_byte_no_frame`；
+  停止相机服务后独占直采 `YUYV@320x240` 和 `MJPG@640x480` 各 30 秒均 0 字节，服务已恢复到 8088。
+  当前相机缺口不在 PC 页面、共享预览、浏览器独占或短超时。
 - live 修复复验：PC Node PID `42460` 监听 `0.0.0.0:7001`；`GET /api/robot-control/base/status`
   返回 HTTP 200、`proxy_status=status_loaded`、`blocked_reasons=[]`、`hard_dangerous_true_fields=[]`、
   `wheel_feedback_lr_nonzero_proven=false`，且当前采样窗口已读到 `T=1001`。

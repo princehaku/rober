@@ -93,6 +93,12 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   `200%`；`完整态势` 仍回到 `100%`，`细节放大` 仍到 `1200%`。PC 首页地图卡和内层画布也同步增高，
   让地图、Nav2 路线、小车位置、雷达点和目标点优先占据普通用户第一视图。RViz2 / Foxglove 继续只是
   ROS2 工程观察配套，不替代 PC 简易控制台，也不作为自由移动、建图或发车前置。
+- 2026-07-04 03:34 现场扫图/移动入口复核：雷达刷新后 PC map preview 已能把当前雷达点贴到地图，
+  `radar_overlay_status=loaded` 且当前 70 点；地图、路线、小车 map pose 和目标点同轮可见。低速移动不依赖相机或雷达：
+  PC `command_mode=ros` 的前进/后退短脉冲经上车 bridge 转成 HTTP PWM `T=11 L/R=±255`，并读到
+  `motion_signal_observed=true` 和 stop OK；speed 模式虽能发命令，但本轮未观察到运动信号。摄像头仍不影响低速自由移动，
+  但建图验收所需首帧仍未满足：停止相机服务后独占直采 DV20 `/dev/video1` 的 `YUYV@320x240`
+  与 `MJPG@640x480` 30 秒均 0 字节，恢复服务后 PC 继续显示 `uvc_no_frame_not_exclusive`。
 - 2026-07-04 02:18 起，PC summary 的危险 true 字段扫描继续 fail-closed，但允许 `/api/status`
   内嵌的 `operator_report.structured_hil_claims.delivery_success=true` 作为人工送达材料回显；顶层
   `status.delivery_success=true`、`status.structured_hil_claims.delivery_success=true` 或任意非

@@ -82,6 +82,21 @@ pc-tools/workstation/
   普通用户用 PC 大地图和 `/map`；本地工程调试用 RViz2；远程浏览器多人观察用 Foxglove bridge + Foxglove Web。
   这些入口只观察 `/map`、`/scan`、TF、路径、定位和 costmap，不启动 ROS2/RViz2/Foxglove/Nav2/建图 runtime，
   不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+- 2026-07-04 03:34 CST 现场复核当前 PC 三主功能：地图链路已读到
+  `map_current_visible=true`、`path_current_visible=true`、`route_target_current_visible=true`、
+  `radar_map_points_current_visible=true`，map preview 同轮显示路线 18 点、AMCL map pose、目标点和
+  `radar_overlay_status=loaded / radar_overlay_current_point_count=70`。WASD/方向键当前可运行链路为 PC 固定
+  `/api/robot-control/base/manual` 的 `command_mode=ros`，上车 `/cmd_vel` 由 `esp32_bridge` 映射到
+  `command_transport=http`、`command_mode=pwm`、ESP32 `http://192.168.1.3`、vendor `T=11 L/R=±255`；
+  PC 前进/后退短脉冲均返回 `command_forwarded`、`command_result_ok=true`、`stop_result_ok=true`、
+  `command_raw_lr_nonzero_proven=true`、`motion_signal_observed=true`，live-summary 同轮为
+  `keyboard_motion_verified=true`、`keyboard_stop_settled_after_pulse=true`。但 `T=1001 L/R` 仍为 `0/0`，
+  `keyboard_wheel_feedback_lr_nonzero_proven=false`，不能把 IMU/姿态扰动升级成 wheel raw 非零。
+  相机链路经 PC MJPEG、首帧探针、USB recovery、停止服务后的独占 `v4l2-ctl` 30 秒直采复核仍无帧：
+  DV20 位于 480M USB、`/dev/video1` 是 UVC Video Capture、`/dev/video2` 是 metadata、无人占用；
+  `YUYV@320x240` 与 `MJPG@640x480` 独占 30 秒均 0 字节，PC status 为
+  `source_first_frame_failed / uvc_no_frame_not_exclusive`。结论是 PC 页面、多人共享预览、短超时和浏览器独占已排除，
+  剩余动作是检查 DV20 输入信号/摄像头/线材/供电或换 known-good UVC 后复测。
 - 2026-07-03 22:45 CST 起，`GET /api/robot-control/summary` 顶层也直接暴露 `camera_input_signal_check_required`、`camera_input_signal_check_label` 和 `camera_input_signal_check_plain`，与 `readback_summary.camera` 同源，现场脚本不需要再钻 nested camera 才能确认“没图”已经收窄到输入信号/线/接口/供电。当前 live summary 顶层读回 `camera_input_signal_check_required=true`，地图仍为 `loaded`、路线 18 点、目标点可见、位姿可见、雷达贴图 93 点；同轮 PC manual 前进和后退短脉冲均 `command_forwarded`、`base_command_mode=ros`、`command_result_ok=true`、`stop_result_ok=true`、`motion_signal_observed=true`，但 `wheel_feedback_lr_nonzero_proven=false`，不得把 IMU 运动信号升级成 wheel raw L/R 非零。
 - 2026-07-04 00:16 CST 起，PC Node 在固定 manual/stop 代理成功后，把最近 120 秒同一小车地址的键盘连续手控证据缓存在内存里，并合并到 `GET /api/robot-control/summary` / `live-summary`。缓存只来自 `/api/robot-control/base/manual` 与 `/api/robot-control/base/stop` 白名单代理，不从任意浏览器字段或旧只读材料放宽验收。现场 forward/back/stop 后，不带 keyboard query 的 summary 已读到 `keyboard_continuous_motion_verified=true`、`keyboard_stop_after_release=true`；同时 `keyboard_wheel_lr_nonzero=false`，因为 manual 回包的 `wheel_feedback_latest_raw_left/right=0/0` 且 `wheel_feedback_lr_nonzero_proven=false`。该拆分是产品边界：IMU/运动信号可以证明“有动过的迹象”，但不能替代 WAVE ROVER wheel raw L/R 非零。地图太小/ROS2 配套继续按普通用户与工程观察分层：PC 首页和 `/map` 当前默认 `150%` 可读大图、最高 `1200%` 局部排障放大、点“完整态势”回 `100%` 全局；RViz2/Nav2 RViz 插件用于本地工程调试，Foxglove bridge + Foxglove Web 用于远程浏览器观察，不替代普通简易控制台。
 - 2026-07-03 23:12 CST 起，相机 USB 恢复链路把 UVC quirk 复位纳入白名单恢复动作。`onboard/scripts/camera_usb_recovery_smoke.py` 默认记录 `uvc_module_parameters_before`，将 `/sys/module/uvcvideo/parameters/quirks` 写回 `0`，再 reauthorize 目标 USB 设备并输出 `uvc_quirks_before`、`uvc_quirks_after_reset` 和 `uvc_quirks_after`；上位机 8787 与 PC 7001 只新增 `skip_uvc_quirks_reset` 布尔跳过开关。普通相机复验 DOM 暴露 `data-auto-usb-recovery-uvc-quirks-*` 便于现场脚本读证据，但可见文案仍保持“检查摄像头输入/供电后复测”。真实上位机验证为：`quirks=4294967295` 与复位到 `0` 后，DV20 `/dev/video1` 的 `MJPG@640x480`、`MJPG@1280x720`、`YUYV@320x240` 均 0 字节，服务恢复后 PC status 继续是 `source_first_frame_failed/uvc_no_frame_not_exclusive`。该动作只处理 UVC 相机链路，不打开 WAVE ROVER UART、不发布 `/cmd_vel`，协议和硬件边界依据 `docs/vendor/VENDOR_INDEX.md`。
