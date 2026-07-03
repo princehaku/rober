@@ -450,6 +450,88 @@ function cameraMjpegFormatAttemptsSummary(payload: Record<string, unknown> | nul
   return parts.length > 0 ? parts.join("；") : "none";
 }
 
+function cameraMjpegFailurePrimaryReason(failure: CameraMjpegRelayLastFailure | null): string {
+  // relay 失败原因有时在顶层，有时在上车 JSON payload 中；统一提取后才能准确判断“无首帧”。
+  const payload = asRecord(failure?.last_error_payload);
+  return shortText(
+    failure?.source_failure_reason
+      ?? failure?.primary_source_failure_reason
+      ?? failure?.open_source_fallback_failure_reason
+      ?? payload?.source_failure_reason
+      ?? payload?.primary_source_failure_reason
+      ?? payload?.open_source_fallback_failure_reason
+      ?? payload?.failure_reason
+      ?? payload?.error
+      ?? failure?.failure_reason,
+    "",
+  );
+}
+
+function cameraMjpegFailureIsFirstFrameFailure(failure: CameraMjpegRelayLastFailure | null): boolean {
+  // 只有明确的首帧/打开失败才提升为硬件/输入信号诊断，避免把网络或地址问题误报成摄像头无帧。
+  const primaryReason = cameraMjpegFailurePrimaryReason(failure);
+  return CAMERA_FIRST_FRAME_FAILURE_REASONS.has(primaryReason);
+}
+
+function cameraMjpegResolvedDiagnosisSource(
+  sourceFailure: CameraMjpegRelayLastFailure | null,
+  relayFailure: CameraMjpegRelayLastFailure | null,
+): CameraMjpegRelayLastFailure | null {
+  // 现场常见形态：health 仍说 source_selected_not_probed，但刚刚打开共享 MJPEG 已经返回 first_frame_total_timeout。
+  // 这种情况下必须让最近 MJPEG 失败参与 status/summary，否则普通用户会看到“复测首帧”而不是明确的无帧处理动作。
+  if (!cameraMjpegFailureIsFirstFrameFailure(relayFailure)) {
+    return sourceFailure ?? relayFailure;
+  }
+  const payload = asRecord(relayFailure?.last_error_payload);
+  const noFrameReason = cameraMjpegFailurePrimaryReason(relayFailure) || "first_frame_failed";
+  const selectedName = cameraSourceDisplayName(sourceFailure?.selected_name ?? payload?.selected_name, "USB 摄像头");
+  const sourceUsageScope = sourceFailure?.source_usage_scope ?? "camera_service_self";
+  const sourceUsageNotExclusive = sourceFailure?.source_usage_not_exclusive
+    ?? cameraSourceUsageNotExclusive(sourceUsageScope);
+  const sourceDiagnosisPlainHint = sourceUsageScope === "camera_service_self"
+    ? `不是页面独占：相机服务正在用单上游共享预览读取 ${selectedName}，但 UVC 设备没有输出视频帧。`
+    : `不是页面独占：${cameraOwnerFreeText(selectedName)}，但 UVC 设备没有输出视频帧。`;
+  const relayAttemptsSummary = cameraMjpegFormatAttemptsSummary(payload);
+  return {
+    ...(sourceFailure ?? {}),
+    failure_reason: relayFailure?.failure_reason ?? "camera_source_first_frame_failed",
+    remote_http_status: relayFailure?.remote_http_status ?? sourceFailure?.remote_http_status ?? null,
+    failed_at_ms: relayFailure?.failed_at_ms ?? sourceFailure?.failed_at_ms ?? Date.now(),
+    last_error_payload: relayFailure?.last_error_payload ?? sourceFailure?.last_error_payload,
+    source_diagnosis_status: "uvc_no_frame_not_exclusive",
+    source_diagnosis_plain_hint: sourceFailure?.source_diagnosis_status === "uvc_no_frame_not_exclusive"
+      ? sourceFailure.source_diagnosis_plain_hint
+      : sourceDiagnosisPlainHint,
+    source_diagnosis_next_action: "check_usb_camera_input_power_or_known_good_uvc",
+    source_diagnosis_not_exclusive: "true",
+    source_readiness: "first_frame_failed",
+    source_failure_reason: noFrameReason,
+    selected_path: sourceFailure?.selected_path ?? shortText(payload?.selected_path, "not_loaded"),
+    selected_name: selectedName,
+    selected_is_uvc_or_usb: sourceFailure?.selected_is_uvc_or_usb ?? shortText(payload?.selected_is_uvc_or_usb, "not_loaded"),
+    source_usage_status: sourceFailure?.source_usage_status ?? "in_use_by_camera_service",
+    source_usage_owner_count: sourceFailure?.source_usage_owner_count ?? "1",
+    source_usage_scope: sourceUsageScope,
+    source_usage_not_exclusive: sourceUsageNotExclusive,
+    uvc_usb_topology_status: sourceFailure?.uvc_usb_topology_status ?? "not_loaded",
+    uvc_usb_topology_plain_hint: sourceFailure?.uvc_usb_topology_plain_hint ?? "not_loaded",
+    uvc_usb_topology_next_action: sourceFailure?.uvc_usb_topology_next_action ?? "not_loaded",
+    uvc_usb_topology_video_usb_speed: sourceFailure?.uvc_usb_topology_video_usb_speed ?? "not_loaded",
+    uvc_usb_topology_kernel_usb_address: sourceFailure?.uvc_usb_topology_kernel_usb_address ?? "not_loaded",
+    uvc_usb_topology_video_interface_count: sourceFailure?.uvc_usb_topology_video_interface_count ?? "not_loaded",
+    last_first_frame_format_attempts_summary: sourceFailure?.last_first_frame_format_attempts_summary
+      && sourceFailure.last_first_frame_format_attempts_summary !== "none"
+      ? sourceFailure.last_first_frame_format_attempts_summary
+      : relayAttemptsSummary,
+    mjpeg_open_source_fallback_attempted: sourceFailure?.mjpeg_open_source_fallback_attempted
+      ?? Boolean(payload?.mjpeg_open_source_fallback_attempted),
+    open_source_fallback_failure_reason: sourceFailure?.open_source_fallback_failure_reason
+      ?? shortText(payload?.open_source_fallback_failure_reason, "not_loaded"),
+    primary_source_failure_reason: sourceFailure?.primary_source_failure_reason
+      ?? shortText(payload?.primary_source_failure_reason ?? noFrameReason, "not_loaded"),
+  };
+}
+
 let nextCameraMjpegRelayClientId = 1;
 const cameraMjpegRelays = new Map<string, CameraMjpegRelay>();
 const cameraMjpegRelayLastFailures = new Map<string, CameraMjpegRelayLastFailure>();
@@ -3245,9 +3327,9 @@ function cameraMjpegStatusResponse(
   // 这个端点只读本机 relay 状态，帮助现场判断多个 PC 页面是否共享同一个上游视频流。
   const relayKey = normalizedBaseUrl ? cameraMjpegRelayKey(normalizedBaseUrl) : "not_loaded";
   const relayFailure = normalizedBaseUrl ? cameraMjpegRelayLastFailures.get(relayKey) ?? null : null;
-  const lastFailure = relayFailure ?? sourceFailure;
+  const diagnosisSource = cameraMjpegResolvedDiagnosisSource(sourceFailure, relayFailure);
+  const lastFailure = relayFailure ?? diagnosisSource;
   // relay failure 说明共享 MJPEG 最近为什么失败；health 里的 source diagnosis 说明相机源为什么无帧，两者不能互相覆盖。
-  const diagnosisSource = sourceFailure ?? relayFailure;
   const previewStatus = cameraMjpegPreviewStatus(relay, failureReason, lastFailure, diagnosisSource);
   const previewGuidance = cameraMjpegPreviewGuidance(previewStatus, diagnosisSource);
   const previewVisibility = cameraMjpegPreviewVisibility(previewStatus, previewGuidance);
@@ -3796,9 +3878,10 @@ async function buildRobotControlSummaryForHttp(
     : null;
   const relay = normalized.ok ? cameraMjpegRelays.get(relayKey) ?? null : null;
   const lastFailure = normalized.ok ? cameraMjpegRelayLastFailures.get(relayKey) ?? null : null;
-  const sourceFailure = normalized.ok
+  const rawSourceFailure = normalized.ok
     ? await cameraSourceFirstFrameFailureForStatus(normalized.normalized, ROBOT_CONTROL_SUMMARY_CAMERA_OVERLAY_TIMEOUT_MS)
     : null;
+  const sourceFailure = cameraMjpegResolvedDiagnosisSource(rawSourceFailure, lastFailure);
   const lastFailureForOverlay = lastFailure ?? sourceFailure;
   const mjpegRelayOverlay: RobotControlCameraMjpegRelayOverlay | null = relay
     ? {

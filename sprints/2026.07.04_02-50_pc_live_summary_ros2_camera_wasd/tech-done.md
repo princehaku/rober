@@ -188,3 +188,36 @@ micro
   `route_target_current_visible=true`、`radar_map_points_current_visible=true`、
   `live_wysiwyg_radar_map_current_point_count=167`。该刷新确认 `starts_radar_lifecycle=false`、
   `starts_nav2=false`、`robot_control_executed=false`。
+
+## 2026-07-04 04:58 CST 相机共享预览诊断跟进
+
+- 修复 PC `GET /api/robot-control/camera/mjpeg/status` 与 summary/live-summary 的相机诊断合成：最近一次共享 MJPEG
+  失败如果已经明确是 `first_frame_total_timeout` / `opencv_capture_not_opened`，即使上车 `camera/health` 仍停在
+  `source_selected_not_probed`，PC 也直接提升为 `source_first_frame_failed / uvc_no_frame_not_exclusive`，并显示
+  `camera_hardware_action_required=true`、`camera_hardware_action_label=检查摄像头输入/供电后复测`、
+  `camera_input_signal_check_required=true`。
+- 新增回归测试覆盖“最近共享预览超时覆盖旧 health 未探测状态”，避免普通用户页面重新显示弱提示“复测相机首帧”。
+- 验证通过：
+  - `npm test -- --run test/catalog.test.ts -t "recent shared preview timeout|MJPEG status reports selected source diagnosis|MJPEG status and summary remember the latest upstream failure|camera first-frame probe|camera mjpeg|uvc_no_frame|source_first_frame"`，
+    `7 passed`。
+  - `npm test -- --run test/robotControlSummary.test.ts -t "camera|first frame|mjpeg|uvc_no_frame"`，`4 passed`。
+  - `npm test`，`3 passed`、`449 passed`。
+  - `npm run build` 通过；仍只有既有 Vite chunk size warning。
+- 真实现场恢复与复测：`POST /api/robot-control/camera/usb-recovery` 返回 `recovery_forwarded`、
+  `status=streamon_failed`、`stream_failure_class=high_speed_zero_byte_no_frame`、USB `480M`，且
+  `sends_motion_when_clicked=false`、`publishes_cmd_vel=false`、`opens_base_uart=false`、`starts_nav2=false`、
+  `robot_control_executed=false`。随后 `GET /api/robot-control/camera/mjpeg` 返回 502 /
+  `error=first_frame_total_timeout`；`/camera/mjpeg/status` 已读回 `preview_status=source_first_frame_failed`、
+  `source_diagnosis_status=uvc_no_frame_not_exclusive`、`camera_hardware_action_required=true`、
+  `camera_hardware_action_label=检查摄像头输入/供电后复测`、`selected_device=/dev/video1`、USB `480M`、
+  `exclusive_camera_claim=false`。
+- PC Node 已重启并监听 `0.0.0.0:7001`，最终监听进程 PID `52439`。重启后再次触发共享 MJPEG 失败并读取 status：
+  `preview_status=source_first_frame_failed`、`last_failure_reason=first_frame_total_timeout`、
+  `source_diagnosis_status=uvc_no_frame_not_exclusive`、`camera_hardware_action_required=true`、
+  `camera_hardware_action_label=检查摄像头输入/供电后复测`、`camera_input_signal_check_required=true`、
+  `selected_device=/dev/video1`、`exclusive_camera_claim=false`、`robot_control_executed=false`。随后执行前进/停止/后退/停止短脉冲，
+  均返回 `proxy_status=command_forwarded`；live-summary 读回 `map_current_visible=true`、`path_current_visible=true`、
+  `route_target_current_visible=true`、`radar_map_points_current_visible=true`、`camera_current_visible=false`、
+  `camera_source_diagnosis_status=uvc_no_frame_not_exclusive`、`keyboard_motion_verified=true`、
+  `keyboard_continuous_motion_verified=true`、`keyboard_command_raw_lr_nonzero_proven=true`、
+  `keyboard_stop_settled_after_pulse=true`、`wheel_lr_nonzero_proven=false`、`delivery_success=true`。

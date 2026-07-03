@@ -16480,6 +16480,120 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("workstation camera MJPEG status promotes recent shared preview timeout over stale not-probed health", async () => {
+    // 现场打开页面会先触发共享 MJPEG；如果它已经返回无首帧，health 还停在未探测也不能把普通提示降回“复测首帧”。
+    let healthRequestCount = 0;
+    let mjpegRequestCount = 0;
+    const upstreamServer = http.createServer((req, res) => {
+      if (req.method === "GET" && req.url === "/api/camera/health") {
+        healthRequestCount += 1;
+        res.statusCode = 200;
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify({
+          schema: "trashbot.local_webrtc_camera_smoke.v1",
+          status: "source_not_probed",
+          source_readiness: "source_selected_not_probed",
+          source_failure_reason: "",
+          current_selection: {
+            selected_path: "/dev/video1",
+            selected_name: "USB Composite Device: DV20 USB",
+            selected_is_uvc_or_usb: true,
+          },
+          source_usage: { status: "in_use_by_camera_service", owner_count: 1, owners: [] },
+          source_diagnosis: {
+            status: "source_selected_not_probed",
+            plain_hint: "USB Composite Device: DV20 USB 已选中但还没读过首帧；打开共享预览或运行首帧检查。",
+            next_action: "open_shared_preview_or_run_first_frame_probe",
+            not_exclusive: true,
+          },
+          uvc_usb_topology: {
+            status: "uvc_video_usb_speed_loaded",
+            video_usb_speed: "480M",
+          },
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          robot_control_executed: false,
+        }));
+        return;
+      }
+      if (req.method === "GET" && req.url === "/api/camera/mjpeg") {
+        mjpegRequestCount += 1;
+        res.statusCode = 503;
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify({
+          failure_reason: "first_frame_total_timeout",
+          first_frame_format_attempts: [
+            { label: "MJPG@640x480@15", status: "first_frame_unreadable" },
+            { label: "YUYV@320x240@20", status: "first_frame_unreadable" },
+          ],
+          safe_to_control: false,
+          robot_control_executed: false,
+        }));
+        return;
+      }
+      res.statusCode = 404;
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({ error: "not_found" }));
+    });
+    const upstream = await new Promise<{ baseUrl: string; close: () => Promise<void> }>((resolve) => {
+      upstreamServer.listen(0, "127.0.0.1", () => {
+        const address = upstreamServer.address();
+        const port = typeof address === "object" && address ? address.port : 0;
+        resolve({
+          baseUrl: `http://127.0.0.1:${port}`,
+          close: () => new Promise((closeResolve, closeReject) => {
+            upstreamServer.close((error) => (error ? closeReject(error) : closeResolve()));
+          }),
+        });
+      });
+    });
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const mjpegResponse = await fetch(`${workstation.baseUrl}/api/robot-control/camera/mjpeg?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
+      const mjpegBody = await mjpegResponse.json() as { error: string; remote_http_status: number };
+      expect(mjpegResponse.status).toBe(502);
+      expect(mjpegBody.error).toBe("first_frame_total_timeout");
+      expect(mjpegBody.remote_http_status).toBe(503);
+
+      const statusResponse = await fetch(`${workstation.baseUrl}/api/robot-control/camera/mjpeg/status?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
+      const statusBody = await statusResponse.json() as RobotControlCameraMjpegStatusResponse;
+
+      expect(statusResponse.status).toBe(200);
+      expect(statusBody.proxy_status).toBe("status_loaded");
+      expect(statusBody.last_failure_reason).toBe("first_frame_total_timeout");
+      expect(statusBody.last_remote_http_status).toBe(503);
+      expect(statusBody.source_diagnosis_status).toBe("uvc_no_frame_not_exclusive");
+      expect(statusBody.source_diagnosis_plain_hint).toBe("不是页面独占：相机服务正在用单上游共享预览读取 USB Composite Device: DV20 USB，但 UVC 设备没有输出视频帧。");
+      expect(statusBody.source_diagnosis_next_action).toBe("check_usb_camera_input_power_or_known_good_uvc");
+      expect(statusBody.source_diagnosis_not_exclusive).toBe("true");
+      expect(statusBody.source_readiness).toBe("first_frame_failed");
+      expect(statusBody.source_failure_reason).toBe("first_frame_total_timeout");
+      expect(statusBody.preview_status).toBe("source_first_frame_failed");
+      expect(statusBody.camera_hardware_action_required).toBe(true);
+      expect(statusBody.camera_hardware_action_label).toBe("检查摄像头输入/供电后复测");
+      expect(statusBody.camera_input_signal_check_required).toBe(true);
+      expect(statusBody.last_first_frame_format_attempts_summary).toBe("MJPG@640x480@15 无首帧；YUYV@320x240@20 无首帧");
+      expect(statusBody.robot_control_executed).toBe(false);
+
+      const summaryResponse = await fetch(`${workstation.baseUrl}/api/robot-control/summary?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
+      const summaryBody = await summaryResponse.json() as RobotControlSummaryResponse;
+
+      expect(summaryResponse.status).toBe(200);
+      expect(summaryBody.readback_summary.camera.source_diagnosis_status).toBe("uvc_no_frame_not_exclusive");
+      expect(summaryBody.readback_summary.camera.source_failure_reason).toBe("first_frame_total_timeout");
+      expect(summaryBody.readback_summary.camera.shared_preview_last_failure_reason).toBe("first_frame_total_timeout");
+      expect(summaryBody.readback_summary.camera.camera_hardware_action_required).toBe(true);
+      expect(summaryBody.readback_summary.camera.camera_hardware_action_label).toBe("检查摄像头输入/供电后复测");
+      expect(summaryBody.safe_command_boundary.robot_control_executed).toBe(false);
+      expect(healthRequestCount).toBeGreaterThanOrEqual(2);
+      expect(mjpegRequestCount).toBe(1);
+    } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+  });
+
   it("workstation camera MJPEG status translates open shared preview action after source first-frame is observed", async () => {
     // 源首帧 ready 但页面尚未打开预览时，status 只读接口也要给中文下一步，且不能主动打开 MJPEG 上游。
     let healthRequestCount = 0;
