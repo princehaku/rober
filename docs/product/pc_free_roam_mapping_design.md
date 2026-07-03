@@ -38,9 +38,10 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   误以为发车前还要完成额外预检。底层请求字段仍沿用 `confirm_hil_checklist` 兼容上位机合同，但 UI 只展示一个安全勾选。
 - 停止按钮始终可见，继续走固定 PC 代理 `/api/robot-control/base/stop`。
 - 浏览器不允许传入串口、ROS 参数、任意 Robot API endpoint、`/cmd_vel` 或 Nav2 自动目标。
-- 地图太小的当前 UI 答案是 PC 首页大画布和 `/map` 直达页：普通首页地图卡高度为
-  `clamp(760px, calc(100vh - 24px), 1280px)`，地图画布最小高度为
-  `clamp(620px, calc(100vh - 176px), 980px)`；ROS2 配套仍只作为工程观察，RViz2 看
+- 地图太小的当前 UI 答案是 PC 首页大画布和 `/map` 直达页：普通首页在 `1600px`
+  及以下 viewport 先让地图整行全宽，`900px-1600px` 时图传和 WASD 放到第二行并排；
+  首页地图卡高度为 `clamp(780px, calc(100vh - 12px), 1380px)`，地图画布最小高度仍按
+  `clamp(620px, calc(100vh - 176px), 980px)` 保底；ROS2 配套仍只作为工程观察，RViz2 看
   `/map`、`/scan`、TF、Nav2 path、定位和 costmap，Foxglove bridge 用于浏览器远程观察。
   普通用户不需要先开 RViz2/Foxglove 才能操作地图。
 - 2026-06-25 起，PC 卡片新增“自动扫图准备”只读区：它读取 `safe_command_boundary.free_roam_autonomy`、policy 和逐项 gates，展示上车端 watchdog、LiDAR 避障、停止兜底、地图刷新和真车验证记录缺口；按钮固定显示“自动扫图（未开放）”且禁用，不绑定任何发车动作。

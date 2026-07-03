@@ -1771,6 +1771,55 @@ h3 {
   grid-column: 1 / -1;
 }
 
+@media (max-width: 1600px) {
+  .shell:not([data-direct-map-view-requested="true"]) .robot-console-grid[data-layout="visual-first"] {
+    /* 常见 13-15 寸 PC 宽度下，右侧栏会把地图压成左侧预览；这里改成地图先全宽。 */
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "map"
+      "camera"
+      "drive"
+      "details";
+  }
+
+  .shell:not([data-direct-map-view-requested="true"]) .robot-console-grid[data-layout="visual-first"] .plain-map-panel {
+    /* 地图仍是首页第一屏主画布；相机和 WASD 下移但不消失，保持普通用户简易入口。 */
+    grid-area: map;
+    grid-column: 1 / -1;
+    grid-row: auto;
+    height: clamp(780px, calc(100vh - 12px), 1380px);
+    min-height: 780px;
+  }
+
+  .shell:not([data-direct-map-view-requested="true"]) .robot-console-grid[data-layout="visual-first"] .plain-camera-panel,
+  .shell:not([data-direct-map-view-requested="true"]) .robot-console-grid[data-layout="visual-first"] .plain-motion-panel {
+    /* 窄屏下取消右栏高度限制，避免图传诊断和方向键在地图下方被裁掉。 */
+    grid-column: auto;
+    max-height: none;
+  }
+
+  .shell:not([data-direct-map-view-requested="true"]) .robot-console-grid[data-layout="visual-first"] .plain-camera-panel {
+    /* 断点内显式保留 grid-area，防止通用 grid-column 规则把图传挤到地图前面。 */
+    grid-area: camera;
+  }
+
+  .shell:not([data-direct-map-view-requested="true"]) .robot-console-grid[data-layout="visual-first"] .plain-motion-panel {
+    /* WASD 面板跟随 grid-template-areas 放在地图之后，不改变键盘发车门禁。 */
+    grid-area: drive;
+  }
+}
+
+@media (min-width: 900px) and (max-width: 1600px) {
+  .shell:not([data-direct-map-view-requested="true"]) .robot-console-grid[data-layout="visual-first"] {
+    /* 地图独占第一行；图传和 WASD 在第二行并排，兼顾观察和手控可达性。 */
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas:
+      "map map"
+      "camera drive"
+      "details details";
+  }
+}
+
 .plain-map-panel[data-size="large"] {
   /* 普通 PC 首屏默认把地图当主视图，给真实地图足够高度而不是小预览卡。 */
   min-height: min(100vh, 1380px);
