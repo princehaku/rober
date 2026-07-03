@@ -24,6 +24,7 @@ DEFAULT_BASE_COMMAND_MODE = "pwm"
 ALLOWED_BASE_COMMAND_MODES = frozenset({"ros", "speed", "pwm"})
 DEFAULT_PWM_MIN_ABS = 164
 DEFAULT_PWM_MAX_ABS = 164
+DEBUG_LOG_TAIL_BYTES = 2 * 1024 * 1024
 
 
 def now_ms() -> int:
@@ -128,6 +129,27 @@ def existing_navigate_action_probe(timeout_s: float = 2.0) -> dict[str, Any]:
     }
 
 
+def extract_ros_param_value(args_text: str, param_name: str) -> str:
+    """从 ps 命令行里提取 ROS 参数；复用现场 bridge 时用它找回 debug log 路径。"""
+    marker = f"{param_name}:="
+    if marker not in args_text:
+        return ""
+    after_marker = args_text.split(marker, 1)[1]
+    raw_value = after_marker.split(" ", 1)[0].split(";", 1)[0].strip()
+    return raw_value.strip("'\"")
+
+
+def bridge_debug_runtime_from_args(args_text: str) -> dict[str, str]:
+    """解析已有 esp32_bridge 的关键诊断参数，避免复用 runtime 时丢掉底盘证据。"""
+    command_mode = extract_ros_param_value(args_text, "command_mode")
+    normalized_command_mode = normalize_base_command_mode(command_mode) if command_mode else ""
+    return {
+        "base_feedback_log_path": extract_ros_param_value(args_text, "feedback_debug_log_path"),
+        "base_command_log_path": extract_ros_param_value(args_text, "command_debug_log_path"),
+        "base_command_mode": normalized_command_mode,
+    }
+
+
 def existing_runtime_process_probe(timeout_s: float = 1.5) -> dict[str, Any]:
     """ROS graph 卡顿时退回进程探针；看到现有 bridge/Nav2 就不再抢串口。"""
     started = now_ms()
@@ -161,21 +183,31 @@ def existing_runtime_process_probe(timeout_s: float = 1.5) -> dict[str, Any]:
         if pid == os.getpid():
             continue
         process_tags: list[str] = []
+        bridge_debug_runtime: dict[str, str] = {}
         if "esp32_bridge" in args_text and "ros2_trashbot_hardware" in args_text:
             process_tags.append("base_bridge")
+            bridge_debug_runtime = bridge_debug_runtime_from_args(args_text)
         if "autonomous.launch.py" in args_text:
             process_tags.append("autonomous_launch")
         if "nav2_container" in args_text:
             process_tags.append("nav2_container")
         if not process_tags:
             continue
-        observed.append({"pid": pid, "tags": process_tags, "cmd_preview": args_text[:500]})
+        observed_item = {"pid": pid, "tags": process_tags, "cmd_preview": args_text[:1000]}
+        for key, value in bridge_debug_runtime.items():
+            if value:
+                observed_item[key] = value
+        observed.append(observed_item)
 
     base_bridge_observed = any("base_bridge" in item["tags"] for item in observed)
     nav2_observed = any(
         "autonomous_launch" in item["tags"] or "nav2_container" in item["tags"]
         for item in observed
     )
+    base_bridge_runtimes = [item for item in observed if "base_bridge" in item["tags"]]
+    feedback_log_candidates = [str(item.get("base_feedback_log_path") or "") for item in base_bridge_runtimes]
+    command_log_candidates = [str(item.get("base_command_log_path") or "") for item in base_bridge_runtimes]
+    command_mode_candidates = [str(item.get("base_command_mode") or "") for item in base_bridge_runtimes]
     return {
         "checked": True,
         "elapsed_ms": now_ms() - started,
@@ -185,6 +217,10 @@ def existing_runtime_process_probe(timeout_s: float = 1.5) -> dict[str, Any]:
         "base_bridge_observed": base_bridge_observed,
         "nav2_observed": nav2_observed,
         "reuse_recommended": base_bridge_observed or nav2_observed,
+        "base_feedback_log_path": next((value for value in reversed(feedback_log_candidates) if value), ""),
+        "base_command_log_path": next((value for value in reversed(command_log_candidates) if value), ""),
+        "base_command_mode": next((value for value in reversed(command_mode_candidates) if value), ""),
+        "base_bridge_debug_log_paths_observed": any(feedback_log_candidates) or any(command_log_candidates),
         "reason": "existing_runtime_process_observed" if observed else "existing_runtime_process_not_observed",
     }
 
@@ -436,6 +472,26 @@ def preview_text_file(path: str, *, max_chars: int) -> str:
         return ""
 
 
+def read_recent_debug_log_text(path: str, *, max_bytes: int | None = None) -> tuple[str, bool, int]:
+    """只读 debug 日志尾部窗口；现场反馈日志可能数百万行，全量 read_text 会触发 OOM。"""
+    target = Path(path)
+    file_size = target.stat().st_size
+    requested_max_bytes = DEBUG_LOG_TAIL_BYTES if max_bytes is None else max_bytes
+    read_size = min(max(int(requested_max_bytes), 1), file_size)
+    with target.open("rb") as handle:
+        if file_size > read_size:
+            handle.seek(file_size - read_size)
+            raw = handle.read(read_size)
+            # seek 到文件中间时第一行可能是半截 JSON，丢弃到下一个换行，避免误计 malformed。
+            _, separator, raw_tail = raw.partition(b"\n")
+            raw = raw_tail if separator else raw
+            truncated = True
+        else:
+            raw = handle.read()
+            truncated = False
+    return raw.decode("utf-8", errors="replace"), truncated, file_size
+
+
 def summarize_feedback_debug_log(path: str) -> dict[str, Any]:
     """汇总 bridge 写出的 T=1001 反馈，作为 Nav2 是否真正触底盘的材料。"""
     attitude_pairs: list[dict[str, float]] = []
@@ -457,18 +513,23 @@ def summarize_feedback_debug_log(path: str) -> dict[str, Any]:
         "latest_nonzero_pair": None,
         "malformed_line_count": 0,
         "source": "wave_rover_uart_t1001_feedback_debug_log",
+        "tail_window_bytes": DEBUG_LOG_TAIL_BYTES,
+        "tail_truncated": False,
+        "file_bytes": 0,
     }
     if not path:
         summary["reason"] = "feedback_debug_log_path_empty"
         return summary
     try:
-        text = Path(path).read_text(encoding="utf-8", errors="replace")
+        text, tail_truncated, file_bytes = read_recent_debug_log_text(path)
     except OSError as exc:
         summary["reason"] = "feedback_debug_log_unreadable"
         summary["error"] = compact_error(exc)
         return summary
 
     summary["exists"] = True
+    summary["tail_truncated"] = tail_truncated
+    summary["file_bytes"] = file_bytes
     for line in text.splitlines():
         if not line.strip():
             continue
@@ -533,18 +594,23 @@ def summarize_command_debug_log(path: str) -> dict[str, Any]:
         "latest_nonzero_command": None,
         "malformed_line_count": 0,
         "source": "esp32_bridge_cmd_vel_command_debug_log",
+        "tail_window_bytes": DEBUG_LOG_TAIL_BYTES,
+        "tail_truncated": False,
+        "file_bytes": 0,
     }
     if not path:
         summary["reason"] = "command_debug_log_path_empty"
         return summary
     try:
-        text = Path(path).read_text(encoding="utf-8", errors="replace")
+        text, tail_truncated, file_bytes = read_recent_debug_log_text(path)
     except OSError as exc:
         summary["reason"] = "command_debug_log_unreadable"
         summary["error"] = compact_error(exc)
         return summary
 
     summary["exists"] = True
+    summary["tail_truncated"] = tail_truncated
+    summary["file_bytes"] = file_bytes
     for line in text.splitlines():
         if not line.strip():
             continue
@@ -683,6 +749,9 @@ def build_payload(args: argparse.Namespace) -> dict[str, Any]:
                 "reuse_reason": existing_runtime_reuse_reason(existing_action_probe, existing_process_probe),
                 "existing_action_probe": existing_action_probe,
                 "existing_runtime_process_probe": existing_process_probe,
+                "base_feedback_log_path": str(existing_process_probe.get("base_feedback_log_path") or ""),
+                "base_command_log_path": str(existing_process_probe.get("base_command_log_path") or ""),
+                "base_command_mode": str(existing_process_probe.get("base_command_mode") or normalize_base_command_mode(args.base_command_mode)),
                 "cleanup": {"ok": True, "boundary": "reused_existing_runtime"},
             }
         else:

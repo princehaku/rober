@@ -17066,6 +17066,21 @@ describe("workstation fail-closed API contracts", () => {
       expect(forwardedBody.operator_report_preflight.status).toBe("not_required_for_confirmed_manual");
       expect(forwardedBody.operator_report_preflight.missing_fields).toEqual([]);
       expect(forwardedBody.operator_report_preflight.evidence_ref).toBe("not_required_for_confirmed_manual");
+
+      const backwardAlias = await fetch(`${workstation.baseUrl}/api/robot-control/base/manual?baseUrl=${encodeURIComponent(upstream.baseUrl)}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ direction: "backward", speed: 0.08, duration_ms: 240 }),
+      });
+      const backwardAliasBody = (await backwardAlias.json()) as {
+        proxy_status: string;
+        applied_direction: string;
+      };
+      expect(backwardAlias.status).toBe(200);
+      expect(backwardAliasBody.proxy_status).toBe("command_forwarded");
+      expect(backwardAliasBody.applied_direction).toBe("back");
       expect(upstream.receivedBodies["/api/base/manual"]).toEqual([
         {
           direction: "forward",
@@ -17079,6 +17094,14 @@ describe("workstation fail-closed API contracts", () => {
           direction: "forward",
           speed: 0.12,
           duration_ms: 800,
+          command_mode: "ros",
+          feedback_mode: "realtime",
+          confirm_hil_checklist: true,
+        },
+        {
+          direction: "back",
+          speed: 0.08,
+          duration_ms: 240,
           command_mode: "ros",
           feedback_mode: "realtime",
           confirm_hil_checklist: true,

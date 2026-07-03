@@ -1251,9 +1251,14 @@ function clamp(value: number, min: number, max: number): number {
 }
 
 function allowedDirection(value: unknown): RobotControlBaseCommandRequest["direction"] | null {
-  // 方向只接受固定白名单，避免前端把 manual proxy 变成任意运动字符串通道。
-  return typeof value === "string" && ROBOT_CONTROL_ALLOWED_MANUAL_DIRECTIONS.includes(value as never)
-    ? (value as RobotControlBaseCommandRequest["direction"])
+  // 方向只接受固定白名单；常见脚本别名先归一，最终仍只向上位机转发标准方向。
+  if (typeof value !== "string") {
+    return null;
+  }
+  const normalized = value.trim().toLowerCase();
+  const alias = normalized === "backward" || normalized === "reverse" ? "back" : normalized;
+  return ROBOT_CONTROL_ALLOWED_MANUAL_DIRECTIONS.includes(alias as never)
+    ? (alias as RobotControlBaseCommandRequest["direction"])
     : null;
 }
 

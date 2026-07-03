@@ -117,6 +117,31 @@ class O11Nav2GoalExecutionProofTests(unittest.TestCase):
         self.assertFalse(summary["wheel_feedback_lr_nonzero_proven"])
         self.assertEqual(summary["reason"], "feedback_debug_log_unreadable")
 
+    def test_feedback_debug_log_summary_uses_tail_window_for_large_logs(self) -> None:
+        """现场反馈日志会到数百万行；O11 只能看最近窗口，不能全量读取导致上位机 OOM。"""
+        original_tail_bytes = HELPER.DEBUG_LOG_TAIL_BYTES
+        HELPER.DEBUG_LOG_TAIL_BYTES = 260
+        try:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                log_path = Path(temp_dir) / "feedback.jsonl"
+                old_nonzero = json.dumps({"vendor_frame": {"T": 1001, "L": 8, "R": 8}, "observed_at_unix_s": 1.0})
+                recent_zero_lines = [
+                    json.dumps({"vendor_frame": {"T": 1001, "L": 0, "R": 0}, "observed_at_unix_s": float(index)})
+                    for index in range(100, 110)
+                ]
+                log_path.write_text("\n".join([old_nonzero, *recent_zero_lines]), encoding="utf-8")
+
+                summary = HELPER.summarize_feedback_debug_log(str(log_path))
+        finally:
+            HELPER.DEBUG_LOG_TAIL_BYTES = original_tail_bytes
+
+        self.assertTrue(summary["exists"])
+        self.assertTrue(summary["tail_truncated"])
+        self.assertGreater(summary["file_bytes"], summary["tail_window_bytes"])
+        self.assertFalse(summary["wheel_feedback_lr_nonzero_proven"])
+        self.assertEqual(summary["latest_pair"]["left_speed"], 0.0)
+        self.assertIsNone(summary["latest_nonzero_pair"])
+
     def test_command_debug_log_summary_tracks_nonzero_vendor_commands(self) -> None:
         """命令日志用于区分 Nav2 没发非零速度，还是底盘反馈没有跟上。"""
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -166,11 +191,29 @@ class O11Nav2GoalExecutionProofTests(unittest.TestCase):
         self.assertEqual(summary["latest_nonzero_command_mode"], "ros")
         self.assertEqual(summary["latest_nonzero_command"]["vendor_command"], {"T": 13, "X": 0.08, "Z": 0.0})
 
+    def test_extracts_bridge_debug_runtime_from_existing_process_args(self) -> None:
+        """复用现场 bridge 时必须从进程参数找回 debug log，否则 Nav2 执行后看不见底盘证据。"""
+        args_text = (
+            "/opt/ros/humble/bin/ros2 run ros2_trashbot_hardware esp32_bridge --ros-args "
+            "-p serial_port:=/dev/ttyS5 -p command_mode:=speed "
+            "-p feedback_debug_log_path:=/tmp/o11_feedback.jsonl "
+            "-p command_debug_log_path:=/tmp/o11_command.jsonl"
+        )
+
+        runtime = HELPER.bridge_debug_runtime_from_args(args_text)
+
+        self.assertEqual("/tmp/o11_feedback.jsonl", runtime["base_feedback_log_path"])
+        self.assertEqual("/tmp/o11_command.jsonl", runtime["base_command_log_path"])
+        self.assertEqual("speed", runtime["base_command_mode"])
+
     def test_existing_runtime_process_probe_recommends_reuse_when_bridge_exists(self) -> None:
         """action list 在坏 graph 上可能超时；已有 bridge 进程时必须保守复用现场 runtime。"""
         fake_ps = "\n".join(
             [
-                "101 /usr/bin/python3 /opt/ros/humble/bin/ros2 run ros2_trashbot_hardware esp32_bridge --ros-args -p serial_port:=/dev/ttyS5",
+                "101 /usr/bin/python3 /opt/ros/humble/bin/ros2 run ros2_trashbot_hardware esp32_bridge --ros-args "
+                "-p serial_port:=/dev/ttyS5 -p command_mode:=ros "
+                "-p feedback_debug_log_path:=/tmp/o11_feedback.jsonl "
+                "-p command_debug_log_path:=/tmp/o11_command.jsonl",
                 "202 /opt/ros/humble/lib/rclcpp_components/component_container_isolated --ros-args -r __node:=nav2_container",
             ]
         )
@@ -184,6 +227,10 @@ class O11Nav2GoalExecutionProofTests(unittest.TestCase):
         self.assertTrue(probe["nav2_observed"])
         self.assertTrue(probe["reuse_recommended"])
         self.assertEqual(probe["reason"], "existing_runtime_process_observed")
+        self.assertTrue(probe["base_bridge_debug_log_paths_observed"])
+        self.assertEqual("/tmp/o11_feedback.jsonl", probe["base_feedback_log_path"])
+        self.assertEqual("/tmp/o11_command.jsonl", probe["base_command_log_path"])
+        self.assertEqual("ros", probe["base_command_mode"])
 
     def test_reuse_existing_runtime_when_action_probe_times_out_but_process_exists(self) -> None:
         """NavigateToPose 探针失败也不能直接启动第二套 runtime；进程证据足够触发复用。"""

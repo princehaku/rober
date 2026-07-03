@@ -5504,3 +5504,18 @@ ROS2 配套工具口径不变：本地工程调试用 RViz2（`ros2 launch ros2_
 但不会让普通页面因过去的底盘命令日志永久进入 `console_status=blocked`。根级 `robot_control_executed=true`、
 `safe_to_control=true`、`delivery_success=true`、`primary_actions_enabled=true` 和
 `cmd_vel_publish_enabled=true` 仍保持 fail-closed，用来拦截真正会触发动作或错误宣称动作已完成的响应。
+
+2026-07-03 20:46 CST 起，PC 后退手控更宽容：`/api/robot-control/base/manual` 接受
+`direction=backward` 或 `direction=reverse`，并统一转成上位机标准 `back`，最终仍只转发
+`forward/back/left/right/stop` 固定白名单。真实 7001 验证 `backward` 已返回
+`command_forwarded`、`command_result_ok=true`、`stop_result_ok=true`、`motion_signal_observed=true`，
+普通 WASD/方向键连续手控继续不要求用户勾选安全框。
+
+同轮 O11 Nav2 执行证明修复两个实机阻塞：复用现场已有 Nav2/`esp32_bridge` runtime 时，能从进程参数提取
+`feedback_debug_log_path`、`command_debug_log_path` 和 `command_mode`；同时只读 debug 日志尾部 2MiB 窗口，
+避免 1.19GB `wave_rover_feedback_debug.jsonl` 被全量 `read_text()` 导致上位机 OOM。真实 execute 后，
+PC summary 已能显示 `goal_execution_status=goal_timeout_cancel_requested`、`goal_execution_base_command_nonzero_count=733`、
+`goal_execution_uses_base_uart=true`、`goal_execution_base_feedback_imu_attitude_delta_observed=true`；
+但 `goal_execution_base_feedback_lr_nonzero_proven=false`，`T=1001 L/R` 仍为 `0/0`，所以完整 Nav2 路线和
+delivery success 仍未宣称完成。该硬件/协议口径采用 `docs/vendor/VENDOR_INDEX.md` 指向的 Waveshare WAVE ROVER
+本地资料：UART 换行 JSON、`T=13` ROS 速度、`T=11` PWM、`T=1001` 底盘反馈。

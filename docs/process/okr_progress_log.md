@@ -8,6 +8,21 @@
 
 ## 2026-07-03 系列
 
+### 2026-07-03 20-46｜pc_nav2_o11_tail_wasd_back_alias｜Nav2 证据防 OOM 与后退别名
+
+本轮 `sprints/2026.07.03_20-46_pc_nav2_o11_tail_wasd_back_alias/` 继续推进 PC 打开即用目标：
+PC manual 代理接受 `backward`/`reverse` 并归一为标准 `back`，真实 7001 后退 pulse 返回
+`command_forwarded`、`command_result_ok=true`、`stop_result_ok=true`、`motion_signal_observed=true`。
+O11 Nav2 执行证明修复复用现场 runtime 时丢底盘 debug log 路径的问题，并把 1.19GB
+`wave_rover_feedback_debug.jsonl` 摘要改为尾部窗口读取，避免完整 Nav2 execute 后上位机 OOM。
+
+验证范围：`python3 -m unittest onboard.tests.test_o11_nav2_goal_execution_proof -v` 13 tests OK；
+`npm test -- test/catalog.test.ts -t "base manual proxy" --run` 4 tests OK / 184 skipped；
+`npm test -- test/App.test.ts -t "keyboard|WASD|map display|camera|Nav2|manual" --run` 93 tests OK / 146 skipped；
+`npm test -- test/robotControlSummary.test.ts --run` 15 tests OK；`npm run build` 通过（仅 Vite chunk warning）。
+真实 Nav2 execute 已能返回 `goal_accepted=true`、`base_command_nonzero_count=733`、`uses_base_uart=true`、
+`base_feedback_imu_attitude_delta_observed=true`，但 `T=1001 L/R` 仍为 0/0，路线结果窗口超时取消，delivery success 未完成。
+
 ### 2026-07-03 20-25｜pc_summary_base_debug_unblock｜历史底盘命令读回不再误阻塞
 
 本轮 `sprints/2026.07.03_20-25_pc_summary_base_debug_unblock/` 修正 PC summary 的只读安全归因：
