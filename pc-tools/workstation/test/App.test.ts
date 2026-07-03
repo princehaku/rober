@@ -9334,7 +9334,7 @@ describe("App", () => {
     expect(wrapper.find(".shell").attributes("data-direct-map-view-behavior")).toBe("page_shell_map_only");
     const topbarMapDirectLink = wrapper.find('[data-testid="topbar-map-direct-link"]');
     expect(topbarMapDirectLink.exists()).toBe(true);
-    expect(topbarMapDirectLink.text()).toBe("地图大屏");
+    expect(topbarMapDirectLink.text()).toBe("地图大屏 /map");
     expect(topbarMapDirectLink.attributes("href")).toBe("/map");
     expect(topbarMapDirectLink.attributes("data-map-view-action")).toBe("open_direct_map_view");
     expect(topbarMapDirectLink.attributes("data-user-facing-primary-map-action")).toBe("true");
@@ -9635,7 +9635,7 @@ describe("App", () => {
     expect(mapDisplayProof.text()).toContain("点“适配”回到 45% 完整视角");
     const mapRos2ToolsToggle = wrapper.find('[data-testid="plain-map-ros2-tools-toggle"]');
     expect(mapRos2ToolsToggle.exists()).toBe(true);
-    expect(mapRos2ToolsToggle.text()).toBe("ROS2观察");
+    expect(mapRos2ToolsToggle.text()).toBe("工程观察");
     expect(mapRos2ToolsToggle.attributes("data-map-view-action")).toBe("show_ros2_companion_tools");
     expect(mapRos2ToolsToggle.attributes("data-ros2-companion-tools")).toBe("rviz2,foxglove");
     expect(mapRos2ToolsToggle.attributes("data-ros2-companion-required")).toBe("false");

@@ -118,7 +118,7 @@ onMounted(() => {
           data-starts-nav2="false"
           data-starts-map-runtime="false"
         >
-          地图大屏
+          地图大屏 /map
         </a>
         <button class="secondary" type="button" @click="refresh">刷新页面</button>
       </div>

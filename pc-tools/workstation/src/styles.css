@@ -1734,12 +1734,12 @@ h3 {
 .robot-console-grid[data-layout="visual-first"] .plain-map-panel:not([data-observer-mode="true"]) .plain-map-viewport > .plain-map-radar-wysiwyg-proof,
 .robot-console-grid[data-layout="visual-first"] .plain-map-panel:not([data-observer-mode="true"]) > .panel-note:not(.plain-map-ros2-tool-note),
 .robot-console-grid[data-layout="visual-first"] .plain-map-panel:not([data-observer-mode="true"]) > .panel-action-row {
-  /* 首页只留真实地图、缩放、雷达刷新和 ROS2观察开关；长说明仍保留在 DOM 和 /map，不能再压扁主地图。 */
+  /* 首页只留真实地图、缩放、雷达刷新和工程观察开关；长说明仍保留在 DOM 和 /map，不能再压扁主地图。 */
   display: none;
 }
 
 .robot-console-grid[data-layout="visual-first"] .plain-map-panel:not([data-observer-mode="true"]) > .plain-map-ros2-tool-note[data-open="false"] {
-  /* 普通用户默认先看地图；点击标题行 ROS2观察 后再展示工程只读入口。 */
+  /* 普通用户默认先看地图；点击标题行工程观察后再展示 RViz2/Foxglove 只读入口。 */
   display: none;
 }
 

@@ -24848,7 +24848,7 @@ onBeforeUnmount(() => {
                 :aria-expanded="String(plainMapEngineeringToolsOpen)"
                 @click="plainMapEngineeringToolsOpen = !plainMapEngineeringToolsOpen"
               >
-                ROS2观察
+                工程观察
               </button>
               <button
                 v-if="plainMapVisualSummary.radarRefreshActionVisible"
