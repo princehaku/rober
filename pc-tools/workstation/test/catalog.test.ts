@@ -15460,6 +15460,110 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("workstation camera USB recovery proxy only forwards the fixed recovery endpoint", async () => {
+    // USB recovery 允许重启相机链路做 STREAMON smoke，但不能借 body 触发任意 endpoint 或底盘运动。
+    const receivedBodies: Record<string, unknown[]> = {};
+    let mjpegRequestCount = 0;
+    const upstreamServer = http.createServer((req, res) => {
+      res.setHeader("Content-Type", "application/json");
+      if (req.method === "POST" && req.url === "/api/camera/usb-recovery") {
+        let raw = "";
+        req.on("data", (chunk) => {
+          raw += chunk.toString();
+        });
+        req.on("end", () => {
+          receivedBodies["/api/camera/usb-recovery"] = [
+            ...(receivedBodies["/api/camera/usb-recovery"] ?? []),
+            raw ? JSON.parse(raw) : {},
+          ];
+          res.end(JSON.stringify({
+            schema: "trashbot.camera_usb_recovery_smoke.v1",
+            status: "streamon_failed",
+            frame_observed: false,
+            usb_video_speed: "480M",
+            usb_high_speed_observed: true,
+            stream_failure_class: "high_speed_zero_byte_no_frame",
+            next_action: "check_usb_cable_port_power_or_known_good_uvc",
+            next_action_plain: "摄像头已在高速 USB 上但所有 STREAMON 仍 0 字节；优先检查 USB 线/供电/接口或换 known-good UVC 复测。",
+            robot_control_executed: false,
+            publishes_cmd_vel: false,
+            opens_base_uart: false,
+            sends_motion_commands: false,
+            safe_to_control: false,
+            delivery_success: false,
+            primary_actions_enabled: false,
+          }));
+        });
+        return;
+      }
+      if (req.method === "GET" && req.url === "/api/camera/mjpeg") {
+        mjpegRequestCount += 1;
+      }
+      res.statusCode = 404;
+      res.end(JSON.stringify({ error: "not_found", url: req.url, method: req.method }));
+    });
+    const upstream = await new Promise<{ baseUrl: string; close: () => Promise<void> }>((resolve) => {
+      upstreamServer.listen(0, "127.0.0.1", () => {
+        const address = upstreamServer.address();
+        const port = typeof address === "object" && address ? address.port : 0;
+        resolve({
+          baseUrl: `http://127.0.0.1:${port}`,
+          close: () => new Promise((closeResolve, closeReject) => {
+            upstreamServer.close((error) => (error ? closeReject(error) : closeResolve()));
+          }),
+        });
+      });
+    });
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const response = await fetch(`${workstation.baseUrl}/api/robot-control/camera/usb-recovery?baseUrl=${encodeURIComponent(upstream.baseUrl)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          device: "/tmp/not-video",
+          skip_reauthorize: true,
+          skip_audio_unbind: "true",
+          endpoint: "/api/base/manual",
+        }),
+      });
+      const body = await response.json() as Record<string, any>;
+
+      expect(response.status).toBe(200);
+      expect(body.proxy_status).toBe("recovery_forwarded");
+      expect(body.remote_endpoint).toBe("/api/camera/usb-recovery");
+      expect(body.status).toBe("streamon_failed");
+      expect(body.frame_observed).toBe(false);
+      expect(body.usb_video_speed).toBe("480M");
+      expect(body.stream_failure_class).toBe("high_speed_zero_byte_no_frame");
+      expect(body.opens_camera_for_recovery).toBe(true);
+      expect(body.robot_control_executed).toBe(false);
+      expect(body.sends_motion_when_clicked).toBe(false);
+      expect(body.publishes_cmd_vel).toBe(false);
+      expect(body.opens_base_uart).toBe(false);
+      expect(body.starts_nav2).toBe(false);
+      expect(body.starts_manual).toBe(false);
+      expect(body.starts_keyboard).toBe(false);
+      expect(body.starts_free_roam).toBe(false);
+      expect(body.starts_map_runtime).toBe(false);
+      expect(body.submits_delivery).toBe(false);
+      expect(body.stops_motion).toBe(false);
+      expect(body.hard_dangerous_true_fields).toEqual([]);
+      expect(receivedBodies["/api/camera/usb-recovery"]).toEqual([
+        {
+          device: "/dev/video1",
+          skip_service: false,
+          skip_reauthorize: true,
+          skip_audio_unbind: false,
+        },
+      ]);
+      expect(receivedBodies["/api/base/manual"]).toBeUndefined();
+      expect(mjpegRequestCount).toBe(0);
+    } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+  });
+
   it("workstation camera MJPEG status reports source first-frame failure without opening the stream", async () => {
     // live 7001 形态是 health 已知 source_first_frame_failed，但 relay 刚重启还没有 MJPEG last_failure。
     let healthRequestCount = 0;

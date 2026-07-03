@@ -116,6 +116,7 @@ const FREE_ROAM_MAPPING_START_REQUIRED_GATE_IDS = [
 ] as const;
 const CAMERA_FIRST_FRAME_PROBE_TIMEOUT_MS = 12_000;
 const CAMERA_FIRST_FRAME_BACKEND_SMOKE_TIMEOUT_MS = 45_000;
+const CAMERA_USB_RECOVERY_TIMEOUT_MS = 60_000;
 const PORT = Number(process.env.PORT ?? WORKSTATION_NODE_PORT);
 const HOST = process.env.HOST ?? WORKSTATION_PUBLIC_HOST;
 // summary 里 MJPEG overlay 只是首屏辅助诊断，不能比真正 summary 读回更慢。
@@ -2623,6 +2624,61 @@ const CAMERA_FIRST_FRAME_PROBE_NO_MOTION_FLAGS = {
   | "submits_delivery"
   | "stops_motion"
 >;
+
+const CAMERA_USB_RECOVERY_NO_MOTION_FLAGS = {
+  // USB recovery 会短暂重启相机链路并做 STREAMON smoke；它仍绝不能触发任何底盘或 Nav2 行为。
+  sends_motion_when_clicked: false,
+  starts_radar_lifecycle: false,
+  starts_nav2: false,
+  starts_manual: false,
+  starts_keyboard: false,
+  starts_free_roam: false,
+  starts_map_runtime: false,
+  submits_delivery: false,
+  stops_motion: false,
+  publishes_cmd_vel: false,
+  opens_base_uart: false,
+  sends_motion_commands: false,
+};
+
+function safeCameraUsbRecoveryBody(value: unknown): Record<string, unknown> {
+  // PC 只允许选择 videoN 和少量 skip 开关，避免浏览器 body 影响上车 root 命令。
+  const body = asRecord(value);
+  const rawDevice = typeof body?.device === "string" ? body.device : "/dev/video1";
+  const device = /^\/dev\/video[0-9]{1,2}$/.test(rawDevice) ? rawDevice : "/dev/video1";
+  return {
+    device,
+    skip_service: body?.skip_service === true,
+    skip_reauthorize: body?.skip_reauthorize === true,
+    skip_audio_unbind: body?.skip_audio_unbind === true,
+  };
+}
+
+function cameraUsbRecoveryFailure(sourceBaseUrl: string, reason: string): Record<string, unknown> {
+  // 本机拒绝时也返回完整 no-motion 边界，现场脚本不用猜这个 endpoint 是否会发车。
+  return {
+    schema: "trashbot.pc_tools_workstation.robot_control_camera_usb_recovery_proxy.v1",
+    source: "software_proof",
+    proof_status: "not_proven",
+    safe_to_control: false,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    pc_only: true,
+    ...CAMERA_USB_RECOVERY_NO_MOTION_FLAGS,
+    proxy_status: "recovery_rejected",
+    source_base_url: sourceBaseUrl,
+    normalized_base_url: "not_loaded",
+    workstation_endpoint: "/api/robot-control/camera/usb-recovery",
+    remote_endpoint: "/api/camera/usb-recovery",
+    remote_http_status: null,
+    status: "blocked",
+    frame_observed: false,
+    failure_reason: reason,
+    blocked_reasons: [reason],
+    hard_dangerous_true_fields: [],
+    robot_control_executed: false,
+  };
+}
 
 function cameraProbeFailure(sourceBaseUrl: string, reason: string): RobotControlCameraFirstFrameProbeProxyResponse {
   // 本机拒绝或 fetch 失败也返回完整合同，避免高级诊断分叉成异常栈展示。
@@ -5308,6 +5364,74 @@ export function createWorkstationApp(): express.Express {
     cameraFirstFrameProbeOverlays.set(cameraMjpegRelayKey(normalized.normalized), cameraProbeOverlayFromResponse(responseBody));
     // 上车返回 503/timeout 时仍把完整 fail-closed JSON 交给普通脚本读取，真实失败状态保留在 body 字段。
     res.status(200).json(responseBody);
+  });
+
+  workstationApp.post("/api/robot-control/camera/usb-recovery", async (req, res) => {
+    // USB recovery 是相机链路恢复动作：允许重启相机服务和 reauthorize USB，但固定不发车。
+    const sourceBaseUrl = robotControlFixedProxyQueryBaseUrl(req.query.baseUrl);
+    const normalized = normalizeRobotApiBaseUrl(sourceBaseUrl);
+    if (!normalized.ok) {
+      res.status(400).json(cameraUsbRecoveryFailure(sourceBaseUrl, normalized.reason));
+      return;
+    }
+    const requestBody = safeCameraUsbRecoveryBody(req.body);
+    const remote = await fetchCameraProxySummary(
+      sourceBaseUrl,
+      "/api/camera/usb-recovery",
+      requestBody,
+      CAMERA_USB_RECOVERY_TIMEOUT_MS,
+    );
+    if (remote.error) {
+      res.status(200).json({
+        ...cameraUsbRecoveryFailure(sourceBaseUrl, remote.error),
+        proxy_status: "recovery_failed",
+        normalized_base_url: normalized.normalized.toString().replace(/\/$/, ""),
+        request_body: requestBody,
+      });
+      return;
+    }
+    const dangerous = scanDangerousTrueFields(remote.payload);
+    const frameObserved = remote.payload?.frame_observed === true;
+    const status = shortText(remote.payload?.status, remote.remote_http_status === 200 ? "loaded" : "blocked");
+    const failureReason = dangerous.length > 0
+      ? `dangerous_true_field:${dangerous[0]}`
+      : frameObserved
+        ? ""
+        : shortText(remote.payload?.stream_failure_class ?? remote.payload?.next_action ?? `recovery_http_status_${remote.remote_http_status}`, "recovery_failed");
+    res.status(200).json({
+      schema: "trashbot.pc_tools_workstation.robot_control_camera_usb_recovery_proxy.v1",
+      source: "software_proof",
+      proof_status: "not_proven",
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+      pc_only: true,
+      ...CAMERA_USB_RECOVERY_NO_MOTION_FLAGS,
+      proxy_status: remote.remote_http_status === 200 && dangerous.length === 0 ? "recovery_forwarded" : "recovery_failed",
+      source_base_url: sourceBaseUrl,
+      normalized_base_url: normalized.normalized.toString().replace(/\/$/, ""),
+      workstation_endpoint: "/api/robot-control/camera/usb-recovery",
+      remote_endpoint: "/api/camera/usb-recovery",
+      remote_http_status: remote.remote_http_status,
+      request_body: requestBody,
+      status,
+      frame_observed: frameObserved,
+      usb_video_speed: shortText(remote.payload?.usb_video_speed, "not_loaded"),
+      stream_failure_class: shortText(remote.payload?.stream_failure_class, "not_loaded"),
+      next_action: shortText(remote.payload?.next_action, "not_loaded"),
+      next_action_plain: shortText(remote.payload?.next_action_plain, "not_loaded"),
+      usb_high_speed_observed: remote.payload?.usb_high_speed_observed === true,
+      opens_camera_for_recovery: true,
+      recovery_payload: remote.payload ?? {},
+      blocked_reasons: [
+        ...(remote.remote_http_status === 200 ? [] : [`recovery_http_status_${remote.remote_http_status}`]),
+        ...dangerous.map((field) => `dangerous_true_field:${field}`),
+        ...(failureReason ? [failureReason] : []),
+      ],
+      failure_reason: failureReason,
+      hard_dangerous_true_fields: dangerous,
+      robot_control_executed: false,
+    });
   });
 
   workstationApp.get("/api/proof-boundary", (_req, res) => {

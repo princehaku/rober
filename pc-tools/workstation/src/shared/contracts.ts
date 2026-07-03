@@ -6910,6 +6910,7 @@ export const API_ROUTES = [
   "/api/robot-control/localize/reset?baseUrl=<robot-api-base-url>",
   "/api/robot-control/camera/offer?baseUrl=<robot-api-base-url>",
   "/api/robot-control/camera/first-frame/probe?baseUrl=<robot-api-base-url>",
+  "/api/robot-control/camera/usb-recovery?baseUrl=<robot-api-base-url>",
   "/api/robot-control/camera/peers/<peer-id>/close?baseUrl=<robot-api-base-url>",
   "/api/robot-control/operator/report?baseUrl=<robot-api-base-url>",
   "/api/proof-boundary",

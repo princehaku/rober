@@ -39,6 +39,12 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   `camera_hardware_action_required=true`、`camera_hardware_action_label=检查摄像头输入/供电后复测`。
   该缺口继续只阻塞相机首帧、实时图传和建图视觉验收，不阻塞低速自由移动、键盘手控或图上路线执行；
   `camera_blocks_free_move=false` 与 `free_move_without_camera_allowed=true` 必须保持可读。
+- 2026-07-03 17:45 现场恢复动作已接入 PC 固定代理：`POST /api/robot-control/camera/usb-recovery`
+  只转发到上位机 `POST /api/camera/usb-recovery`，由 `camera_usb_recovery_smoke.py` 执行相机服务重启、
+  USB reauthorize、USB audio 复合接口解绑和两组 V4L2 STREAMON smoke。该动作会打开相机做恢复诊断，
+  但不会发布 `/cmd_vel`、不会打开底盘 UART、不会启动 Nav2/键盘/自由移动/建图 runtime。live 结果继续为
+  `480M` high-speed 且 `high_speed_zero_byte_no_frame`，两组格式都 0 字节无帧；建图启动仍卡
+  `camera_first_frame`，低速自由移动和 PC WASD 仍不依赖相机或雷达前置。
 - 2026-06-25 16:06 起，扫图卡片自己的安全确认可直接作为键盘扫图的最小预检；不再要求先补 operator report、轮速非零或 LiDAR delta 材料才允许低速键盘扫图。
 - 2026-06-27 03:16 起，普通首屏、行程操作、键盘手控、自动扫图和高级点动区全部复用同一个
   “人在旁边、周围安全、停止手段就绪”安全确认；旧的四项 HIL checklist 不再出现在点动区，避免 operator

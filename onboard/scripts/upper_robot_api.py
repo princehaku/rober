@@ -194,6 +194,7 @@ ROUTE_PATHS = {
     "camera_offer": "/api/camera/offer",
     "camera_peer_close": "/api/camera/peers/{peer_id}/close",
     "camera_first_frame_probe": "/api/camera/first-frame/probe",
+    "camera_usb_recovery": "/api/camera/usb-recovery",
     "camera_mjpeg": "/api/camera/mjpeg",
     "camera_mjpeg_status": "/api/camera/mjpeg/status",
     "radar_status": "/api/radar/status",
@@ -7389,7 +7390,12 @@ async def run_camera_probe_attempt(
         )
         stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=process_timeout_s)
     except asyncio.TimeoutError:
-        process.kill()
+        try:
+            if process.returncode is None:
+                # 子进程可能刚好在超时边界退出；这里吞掉竞争态，保证 API 返回诊断 JSON。
+                process.kill()
+        except ProcessLookupError:
+            pass
         await process.communicate()
         return {
             "status": "probe_process_timeout",
@@ -7523,6 +7529,114 @@ async def run_camera_first_frame_probe(body: dict[str, Any] | None = None) -> tu
         "sends_motion_commands": False,
         "robot_control_executed": False,
     }
+
+
+def safe_camera_usb_recovery_request(body: dict[str, Any] | None = None) -> dict[str, Any]:
+    """USB 恢复只能接受少量白名单参数，不能让 PC body 变成任意 root 命令。"""
+    payload = body if isinstance(body, dict) else {}
+    device = payload.get("device", "/dev/video1")
+    if not isinstance(device, str) or not re.fullmatch(r"/dev/video[0-9]{1,2}", device):
+        device = "/dev/video1"
+    return {
+        "device": device,
+        "skip_service": bool(payload.get("skip_service") is True),
+        "skip_reauthorize": bool(payload.get("skip_reauthorize") is True),
+        "skip_audio_unbind": bool(payload.get("skip_audio_unbind") is True),
+    }
+
+
+def camera_usb_recovery_command(script_path: Path, request: dict[str, Any]) -> list[str]:
+    """固定恢复脚本 argv；恢复动作只作用于相机 USB，不触碰底盘或 ROS graph。"""
+    command = [
+        sys.executable,
+        str(script_path),
+        "--device",
+        str(request["device"]),
+    ]
+    if request.get("skip_service"):
+        command.append("--skip-service")
+    if request.get("skip_reauthorize"):
+        command.append("--skip-reauthorize")
+    if request.get("skip_audio_unbind"):
+        command.append("--skip-audio-unbind")
+    return command
+
+
+async def run_camera_usb_recovery(body: dict[str, Any] | None = None) -> tuple[int, dict[str, Any]]:
+    """运行相机 USB 恢复 smoke；它会短暂重启相机服务，但绝不发送运动命令。"""
+    request = safe_camera_usb_recovery_request(body)
+    script_path = Path(__file__).with_name("camera_usb_recovery_smoke.py")
+    started_ms = now_ms()
+    if not script_path.exists():
+        return 503, {
+            "schema": f"{SCHEMA}.camera_usb_recovery_proxy",
+            "status": "recovery_script_missing",
+            "recovery_request": request,
+            "script_path": str(script_path),
+            **proof_flags(),
+            "publishes_cmd_vel": False,
+            "opens_base_uart": False,
+            "sends_motion_commands": False,
+        }
+
+    command = camera_usb_recovery_command(script_path, request)
+    process = await asyncio.create_subprocess_exec(
+        *command,
+        cwd=str(Path(__file__).resolve().parents[1]),
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    process_timeout_s = 48.0
+    try:
+        stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=process_timeout_s)
+    except asyncio.TimeoutError:
+        try:
+            if process.returncode is None:
+                # 恢复脚本可能已完成但 aio wait_for 已超时；避免 kill 已退出进程抛异常。
+                process.kill()
+        except ProcessLookupError:
+            pass
+        await process.communicate()
+        return 504, {
+            "schema": f"{SCHEMA}.camera_usb_recovery_proxy",
+            "status": "recovery_process_timeout",
+            "recovery_request": request,
+            "argv": command,
+            "elapsed_ms": now_ms() - started_ms,
+            "process_timeout_s": process_timeout_s,
+            **proof_flags(),
+            "publishes_cmd_vel": False,
+            "opens_base_uart": False,
+            "sends_motion_commands": False,
+        }
+
+    stdout_text = stdout.decode("utf-8", errors="replace").strip()
+    stderr_text = stderr.decode("utf-8", errors="replace").strip()
+    try:
+        recovery_payload = json.loads(stdout_text[stdout_text.find("{"):]) if "{" in stdout_text else {}
+    except json.JSONDecodeError:
+        recovery_payload = {"status": "bad_recovery_json", "stdout_preview": stdout_text[-800:]}
+    if not isinstance(recovery_payload, dict):
+        recovery_payload = {"status": "recovery_json_not_object"}
+
+    # 脚本 returncode=2 表示恢复执行完成但仍未读到帧；HTTP 仍返回 200，让 PC 能显示诊断材料。
+    http_status = 200 if process.returncode in (0, 2) else 502
+    recovery_payload.update({
+        "schema": recovery_payload.get("schema") or f"{SCHEMA}.camera_usb_recovery_proxy",
+        "upper_api_proxy": True,
+        "upper_api_recovery_endpoint": ROUTE_PATHS["camera_usb_recovery"],
+        "recovery_request": request,
+        "argv": command,
+        "returncode": process.returncode,
+        "elapsed_ms": now_ms() - started_ms,
+        "stderr_preview": stderr_text[-800:],
+        **proof_flags(),
+        "publishes_cmd_vel": False,
+        "opens_base_uart": False,
+        "sends_motion_commands": False,
+        "robot_control_executed": False,
+    })
+    return http_status, recovery_payload
 
 
 def default_map_preview_radar_overlay(reason: str = "not_loaded") -> dict[str, Any]:
@@ -9588,6 +9702,10 @@ class UpperRobotApi:
         """PC 高级诊断触发的相机首帧探针；不经过 WebRTC，也不触碰底盘。"""
         return await run_camera_first_frame_probe(body)
 
+    async def camera_usb_recovery(self, body: dict[str, Any] | None = None) -> tuple[int, dict[str, Any]]:
+        """PC 触发的相机 USB 恢复；只重启相机链路，不触碰底盘控制链路。"""
+        return await run_camera_usb_recovery(body)
+
     async def unified_status(self) -> dict[str, Any]:
         """PC 首屏只拉一个状态接口即可获得 camera/radar/base 总览。"""
         (
@@ -10183,6 +10301,11 @@ def create_app(api: UpperRobotApi) -> Any:
         http_status, payload = await api.camera_first_frame_probe(body if isinstance(body, dict) else {})
         return json_response(payload, status=http_status)
 
+    async def camera_usb_recovery(request: web.Request) -> Any:
+        body = await request.json() if request.can_read_body else {}
+        http_status, payload = await api.camera_usb_recovery(body if isinstance(body, dict) else {})
+        return json_response(payload, status=http_status)
+
     async def camera_mjpeg(request: web.Request) -> Any:
         """只读 MJPEG 预览代理；用于 WebRTC ICE 未连通时仍能显示真实连续画面。"""
         queue = camera_mjpeg_relay.register()
@@ -10410,6 +10533,7 @@ def create_app(api: UpperRobotApi) -> Any:
     app.router.add_post(ROUTE_PATHS["camera_offer"], camera_offer)
     app.router.add_post(ROUTE_PATHS["camera_peer_close"], camera_peer_close)
     app.router.add_post(ROUTE_PATHS["camera_first_frame_probe"], camera_first_frame_probe)
+    app.router.add_post(ROUTE_PATHS["camera_usb_recovery"], camera_usb_recovery)
     app.router.add_get(ROUTE_PATHS["camera_mjpeg"], camera_mjpeg)
     app.router.add_get(ROUTE_PATHS["camera_mjpeg_status"], camera_mjpeg_status)
     app.router.add_get(ROUTE_PATHS["radar_status"], radar_status)
