@@ -5703,8 +5703,12 @@ describe("workstation fail-closed API contracts", () => {
       if (req.method === "POST" && req.url === "/api/base/manual") {
         res.end(JSON.stringify({
           status: "manual_command_completed",
+          base_command_mode: "ros",
+          feedback_mode: "bridge_debug",
           manual_command_executed: true,
           auto_stop_executed: true,
+          command_result: { ok: true },
+          stop_result: { ok: true },
           feedback_during_motion_attempted: true,
           feedback_during_motion: {
             t1001_feedback_status: "observed_from_bridge_debug",
@@ -5766,6 +5770,10 @@ describe("workstation fail-closed API contracts", () => {
       const payload = await response.json();
       expect(response.status).toBe(200);
       expect(payload.proxy_status).toBe("command_forwarded");
+      expect(payload.remote_motion_key_values.base_command_mode).toBe("ros");
+      expect(payload.remote_motion_key_values.feedback_mode).toBe("bridge_debug");
+      expect(payload.remote_motion_key_values.command_result_ok).toBe("true");
+      expect(payload.remote_motion_key_values.stop_result_ok).toBe("true");
       expect(payload.remote_motion_key_values.feedback_during_motion_t1001_frame_count).toBe("2");
       expect(payload.remote_motion_key_values.feedback_after_stop_t1001_frame_count).toBe("1");
       expect(payload.remote_motion_key_values.feedback_during_motion_status).toBe("observed_from_bridge_debug");
@@ -17563,8 +17571,12 @@ describe("workstation fail-closed API contracts", () => {
           payload: {
             schema: "trashbot.upper_robot_api.v1.base_manual",
             status: "manual_command_completed",
+            base_command_mode: "ros",
+            feedback_mode: "realtime",
             manual_command_executed: true,
             auto_stop_executed: true,
+            command_result: { ok: true },
+            stop_result: { ok: true },
             feedback_during_motion_attempted: true,
             feedback_after_stop_attempted: true,
             feedback_during_motion: {
@@ -17621,6 +17633,10 @@ describe("workstation fail-closed API contracts", () => {
 
       expect(response.status).toBe(200);
       expect(body.proxy_status).toBe("command_forwarded");
+      expect(body.remote_motion_key_values.base_command_mode).toBe("ros");
+      expect(body.remote_motion_key_values.feedback_mode).toBe("realtime");
+      expect(body.remote_motion_key_values.command_result_ok).toBe("true");
+      expect(body.remote_motion_key_values.stop_result_ok).toBe("true");
       expect(body.remote_motion_key_values.wheel_feedback_lr_nonzero_proven).toBe("false");
       expect(body.remote_motion_key_values.wheel_feedback_latest_raw_left).toBe("0");
       expect(body.remote_motion_key_values.wheel_feedback_latest_raw_right).toBe("0");
