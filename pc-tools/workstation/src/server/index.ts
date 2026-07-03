@@ -123,6 +123,7 @@ const PORT = Number(process.env.PORT ?? WORKSTATION_NODE_PORT);
 const HOST = process.env.HOST ?? WORKSTATION_PUBLIC_HOST;
 // summary 里 MJPEG overlay 只是首屏辅助诊断，不能比真正 summary 读回更慢。
 const ROBOT_CONTROL_SUMMARY_CAMERA_OVERLAY_TIMEOUT_MS = 600;
+const ROBOT_CONTROL_KEYBOARD_EVIDENCE_CACHE_TTL_MS = 120_000;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIST_ROOT = path.resolve(__dirname, "../../dist");
 
@@ -188,9 +189,133 @@ function robotControlKeyboardEvidenceQuery(query: Record<string, unknown>): Robo
   return hasEvidence ? evidence : undefined;
 }
 
+type CachedKeyboardEvidence = RobotControlKeyboardLocalEvidence & {
+  updated_at_ms: number;
+};
+
+const robotControlKeyboardEvidenceCache = new Map<string, CachedKeyboardEvidence>();
+
+function mergeKeyboardEvidence(
+  queryEvidence: RobotControlKeyboardLocalEvidence | undefined,
+  cachedEvidence: RobotControlKeyboardLocalEvidence | undefined,
+): RobotControlKeyboardLocalEvidence | undefined {
+  // 浏览器 query 是最贴近当前 hold 窗口的证据；PC Node 缓存只补充刚刚通过本机代理发出的 pulse/stop 结果。
+  if (!queryEvidence) {
+    return cachedEvidence;
+  }
+  if (!cachedEvidence) {
+    return queryEvidence;
+  }
+  return {
+    keyboard_enabled: queryEvidence.keyboard_enabled ?? cachedEvidence.keyboard_enabled,
+    keyboard_armed: queryEvidence.keyboard_armed ?? cachedEvidence.keyboard_armed,
+    keyboard_current_direction: queryEvidence.keyboard_current_direction ?? cachedEvidence.keyboard_current_direction,
+    keyboard_current_hold_pulse_count: Math.max(
+      queryEvidence.keyboard_current_hold_pulse_count ?? 0,
+      cachedEvidence.keyboard_current_hold_pulse_count ?? 0,
+    ),
+    keyboard_best_continuous_pulse_count: Math.max(
+      queryEvidence.keyboard_best_continuous_pulse_count ?? 0,
+      cachedEvidence.keyboard_best_continuous_pulse_count ?? 0,
+    ),
+    keyboard_verified_min_forwarded_pulses: Math.max(
+      queryEvidence.keyboard_verified_min_forwarded_pulses ?? 0,
+      cachedEvidence.keyboard_verified_min_forwarded_pulses ?? 0,
+      2,
+    ),
+    keyboard_continuous_pulse_verified: queryEvidence.keyboard_continuous_pulse_verified === true
+      || cachedEvidence.keyboard_continuous_pulse_verified === true,
+    keyboard_stop_settled_after_pulse: queryEvidence.keyboard_stop_settled_after_pulse === true
+      || cachedEvidence.keyboard_stop_settled_after_pulse === true,
+    wheel_feedback_lr_nonzero_proven: queryEvidence.wheel_feedback_lr_nonzero_proven === true
+      || cachedEvidence.wheel_feedback_lr_nonzero_proven === true,
+    keyboard_motion_verified: queryEvidence.keyboard_motion_verified === true
+      || cachedEvidence.keyboard_motion_verified === true,
+  };
+}
+
+function cachedKeyboardEvidence(key: string): RobotControlKeyboardLocalEvidence | undefined {
+  // 这只是 PC Node 最近一次手控代理证据，过期后必须丢弃，避免历史 stop 伪装成当前键盘窗口完成。
+  const cached = robotControlKeyboardEvidenceCache.get(key);
+  if (!cached) {
+    return undefined;
+  }
+  if (Date.now() - cached.updated_at_ms > ROBOT_CONTROL_KEYBOARD_EVIDENCE_CACHE_TTL_MS) {
+    robotControlKeyboardEvidenceCache.delete(key);
+    return undefined;
+  }
+  const { updated_at_ms: _updatedAtMs, ...evidence } = cached;
+  return evidence;
+}
+
+function updateKeyboardEvidenceAfterManual(
+  key: string,
+  direction: RobotControlBaseCommandRequest["direction"],
+  response: RobotControlBaseCommandProxyResponse,
+): void {
+  // manual 成功说明 PC 固定代理已把一次按住 pulse 发到上车端；motion_signal 仍只算运动信号，不替代 wheel raw。
+  if (response.proxy_status !== "command_forwarded" || direction === "stop") {
+    return;
+  }
+  const previous = cachedKeyboardEvidence(key);
+  const previousBest = previous?.keyboard_best_continuous_pulse_count ?? 0;
+  const bestPulseCount = Math.max(previousBest + 1, 1);
+  const motionVerified = response.motion_signal_observed === "true"
+    || response.imu_attitude_delta_observed === "true"
+    || previous?.keyboard_motion_verified === true;
+  const wheelFeedbackVerified = response.wheel_feedback_lr_nonzero_proven === "true"
+    || response.wheel_feedback_nonzero_observed === "true"
+    || previous?.wheel_feedback_lr_nonzero_proven === true;
+  robotControlKeyboardEvidenceCache.set(key, {
+    keyboard_enabled: true,
+    keyboard_armed: true,
+    keyboard_current_direction: "none",
+    keyboard_current_hold_pulse_count: 0,
+    keyboard_best_continuous_pulse_count: bestPulseCount,
+    keyboard_verified_min_forwarded_pulses: 2,
+    keyboard_continuous_pulse_verified: bestPulseCount >= 2,
+    keyboard_stop_settled_after_pulse: previous?.keyboard_stop_settled_after_pulse === true,
+    wheel_feedback_lr_nonzero_proven: wheelFeedbackVerified,
+    keyboard_motion_verified: motionVerified,
+    updated_at_ms: Date.now(),
+  });
+}
+
+function updateKeyboardEvidenceAfterStop(key: string, response: RobotControlBaseCommandProxyResponse): void {
+  // stop 成功只证明松手/失焦兜底已经转发；连续 pulse 和运动信号仍来自之前的 manual 证据。
+  if (response.proxy_status !== "command_forwarded") {
+    return;
+  }
+  const previous = cachedKeyboardEvidence(key);
+  const bestPulseCount = Math.max(previous?.keyboard_best_continuous_pulse_count ?? 0, 0);
+  robotControlKeyboardEvidenceCache.set(key, {
+    keyboard_enabled: true,
+    keyboard_armed: true,
+    keyboard_current_direction: "none",
+    keyboard_current_hold_pulse_count: 0,
+    keyboard_best_continuous_pulse_count: bestPulseCount,
+    keyboard_verified_min_forwarded_pulses: 2,
+    keyboard_continuous_pulse_verified: bestPulseCount >= 2,
+    keyboard_stop_settled_after_pulse: bestPulseCount >= 2,
+    wheel_feedback_lr_nonzero_proven: previous?.wheel_feedback_lr_nonzero_proven === true,
+    keyboard_motion_verified: previous?.keyboard_motion_verified === true,
+    updated_at_ms: Date.now(),
+  });
+}
+
 export function robotControlSummaryQueryBaseUrl(value: unknown): string {
   // summary 是普通首屏的只读入口；没有 query 时默认连固定小车，避免现场手填地址。
   return robotControlReadOnlyQueryBaseUrl(value);
+}
+
+function robotControlKeyboardEvidenceForSummary(
+  sourceBaseUrl: string,
+  query: Record<string, unknown>,
+): RobotControlKeyboardLocalEvidence | undefined {
+  const queryEvidence = robotControlKeyboardEvidenceQuery(query);
+  const normalized = normalizeRobotApiBaseUrl(sourceBaseUrl);
+  const cachedEvidence = normalized.ok ? cachedKeyboardEvidence(cameraMjpegRelayKey(normalized.normalized)) : undefined;
+  return mergeKeyboardEvidence(queryEvidence, cachedEvidence);
 }
 
 export function robotControlReadOnlyQueryBaseUrl(value: unknown): string {
@@ -4059,7 +4184,7 @@ export function createWorkstationApp(): express.Express {
     // Robot Control V1 只读代理默认连固定上位机；危险 URL 仍由 summary builder fail-closed。
     const sourceBaseUrl = robotControlSummaryQueryBaseUrl(req.query.baseUrl);
     res.json(await buildRobotControlSummaryForHttp(sourceBaseUrl, {
-      keyboardEvidence: robotControlKeyboardEvidenceQuery(req.query as Record<string, unknown>),
+      keyboardEvidence: robotControlKeyboardEvidenceForSummary(sourceBaseUrl, req.query as Record<string, unknown>),
     }));
   });
 
@@ -4067,7 +4192,7 @@ export function createWorkstationApp(): express.Express {
     // 给现场脚本一个扁平只读入口，避免每次都记 live_closure_summary 嵌套路径。
     const sourceBaseUrl = robotControlSummaryQueryBaseUrl(req.query.baseUrl);
     const summary = await buildRobotControlSummaryForHttp(sourceBaseUrl, {
-      keyboardEvidence: robotControlKeyboardEvidenceQuery(req.query as Record<string, unknown>),
+      keyboardEvidence: robotControlKeyboardEvidenceForSummary(sourceBaseUrl, req.query as Record<string, unknown>),
     });
     res.json(buildRobotControlLiveSummaryResponse(summary));
   });
@@ -4295,6 +4420,7 @@ export function createWorkstationApp(): express.Express {
       ],
       hard_dangerous_true_fields: dangerous,
     };
+    updateKeyboardEvidenceAfterManual(cameraMjpegRelayKey(normalized.normalized), direction, responseBody);
     res.status(responseBody.proxy_status === "command_forwarded" ? 200 : 502).json(responseBody);
   });
 
@@ -4362,6 +4488,7 @@ export function createWorkstationApp(): express.Express {
       ],
       hard_dangerous_true_fields: dangerous,
     };
+    updateKeyboardEvidenceAfterStop(cameraMjpegRelayKey(normalized.normalized), responseBody);
     res.status(responseBody.proxy_status === "command_forwarded" ? 200 : 502).json(responseBody);
   });
 

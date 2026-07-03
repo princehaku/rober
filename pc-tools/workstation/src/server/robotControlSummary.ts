@@ -61,6 +61,7 @@ export type RobotControlKeyboardLocalEvidence = {
   keyboard_verified_min_forwarded_pulses?: number;
   keyboard_continuous_pulse_verified?: boolean;
   keyboard_stop_settled_after_pulse?: boolean;
+  wheel_feedback_lr_nonzero_proven?: boolean;
   keyboard_motion_verified?: boolean;
 };
 type RobotControlSummaryBuildOptions = {
@@ -8940,6 +8941,8 @@ function applyKeyboardLocalEvidence(
         keyboard_verified_min_forwarded_pulses: minPulseCount,
         keyboard_continuous_pulse_verified: pulseVerified,
         keyboard_stop_settled_after_pulse: stopSettledAfterPulse,
+        wheel_feedback_lr_nonzero_proven: evidence.wheel_feedback_lr_nonzero_proven === true
+          || card.evidence?.wheel_feedback_lr_nonzero_proven === true,
         motion_signal_observed: card.evidence?.motion_signal_observed === true || motionVerified,
         keyboard_motion_verified: motionVerified,
       },
@@ -10868,6 +10871,8 @@ export async function buildRobotControlSummary(
     buildActionStatusCards(readbackSummary, safeCommandBoundary) ?? [],
     options.keyboardEvidence,
   );
+  const keyboardStatusCard = actionStatusCards.find((card) => card.id === "keyboard_control");
+  const keyboardWheelLrNonzero = keyboardStatusCard?.evidence?.wheel_feedback_lr_nonzero_proven === true;
   const goalChecklist = buildGoalChecklist(actionStatusCards ?? [], readbackSummary, safeCommandBoundary);
   const goalSummary = buildGoalChecklistSummary(goalChecklist ?? []) as NonNullable<RobotControlSummaryResponse["goal_checklist_summary"]>;
   const currentGoalNextAction = goalSummary.ready_action_items
@@ -13318,7 +13323,7 @@ export async function buildRobotControlSummary(
     radar_overlay_refresh_stops_motion: liveClosureSummary.radar_overlay_refresh_stops_motion,
     keyboard_ready: liveClosureSummary.keyboard_ready,
     keyboard_continuous_ready: liveClosureSummary.keyboard_continuous_ready,
-    keyboard_wheel_lr_nonzero: liveClosureSummary.keyboard_continuous_motion_verified,
+    keyboard_wheel_lr_nonzero: keyboardWheelLrNonzero,
     keyboard_stop_after_release: keyboardStopAfterRelease,
     keyboard_continuous_motion_verified: liveClosureSummary.keyboard_continuous_motion_verified,
     keyboard_continuous_minimal_precheck_safety_only: liveClosureSummary.keyboard_continuous_minimal_precheck_safety_only,

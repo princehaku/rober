@@ -35,6 +35,17 @@ visual-first 首屏让地图独占首行，图传和 WASD/方向键连续手控�
 `loaded`、路线 18 点、目标点和位姿可见、雷达贴图 93 点；PC manual 前进/后退短脉冲均成功转发到
 `base_command_mode=ros` 并自动 stop，`motion_signal_observed=true`，但 wheel raw L/R 仍为 0，不能宣称轮速非零。
 
+2026-07-03 23:00 CST 起，PC Node 对固定 `/api/robot-control/base/manual` 和
+`/api/robot-control/base/stop` 代理成功回包保留 120 秒内存证据，按规范化小车地址隔离。这样页面刷新或现场脚本不再带
+keyboard query 时，`GET /api/robot-control/summary` 仍能读到同轮连续手控 pulse 与松手 stop：
+现场 forward/back/stop 后 summary 为 `keyboard_continuous_motion_verified=true`、
+`keyboard_stop_after_release=true`。该缓存单独保留 `wheel_feedback_lr_nonzero_proven`，不会把
+`motion_signal_observed=true` 或 IMU 姿态变化冒充为 wheel raw；当前实车读回仍是
+`keyboard_wheel_lr_nonzero=false`、manual 回包 `wheel_feedback_latest_raw_left/right=0/0`。同轮只读刷新雷达后，
+summary 恢复 `radar_overlay_status=loaded`、当前雷达点 40 个，地图 `loaded`、路线 18 点、目标点可见、小车
+`map_pose_observed`。地图太小/ROS2 配套的当前答案仍是：普通用户用 PC 首页大地图和 `/map`，默认 `800%`，
+最高 `1200%`，`适配` 回 `45%`；工程调试才用 RViz2，远程浏览器观察用 Foxglove bridge + Foxglove Web。
+
 2026-07-03 22:41 CST 起，相机无帧状态还会在 PC status/summary 暴露
 `camera_input_signal_check_required`、`camera_input_signal_check_label` 和
 `camera_input_signal_check_plain`。当 USB 已是 `480M`、没有其它进程独占、但 V4L2/ffmpeg/共享 MJPEG 都没有任何

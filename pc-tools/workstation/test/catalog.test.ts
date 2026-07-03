@@ -17979,6 +17979,99 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("workstation summary reuses recent manual and stop evidence without keyboard query", async () => {
+    // 页面 query 可能因为刷新丢失；PC Node 只缓存最近固定代理证据，避免连续手控验收被误判成没松手。
+    const upstream = await listenRobotBaseCommandApi(
+      {
+        "/api/base/manual": {
+          payload: {
+            schema: "trashbot.upper_robot_api.v1.base_manual",
+            status: "manual_command_completed",
+            base_command_mode: "ros",
+            feedback_mode: "realtime",
+            command_result: { ok: true },
+            stop_result: { ok: true },
+            manual_imu_attitude_delta_summary: {
+              imu_attitude_delta_observed: true,
+            },
+            wheel_feedback_lr_nonzero_proven: false,
+            wheel_feedback_nonzero_observed: false,
+            imu_attitude_delta_observed: true,
+            motion_signal_observed: true,
+            motion_signal_source: "imu_attitude_delta",
+            safe_to_control: false,
+            delivery_success: false,
+            primary_actions_enabled: false,
+          },
+        },
+        "/api/base/stop": {
+          payload: {
+            schema: "trashbot.upper_robot_api.v1.base_stop",
+            status: "stopped",
+            stop_result: { ok: true },
+            safe_to_control: false,
+            delivery_success: false,
+            primary_actions_enabled: false,
+          },
+        },
+      },
+      {},
+    );
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const summaryBeforeResponse = await requestJson(`${workstation.baseUrl}/api/robot-control/summary?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
+      const summaryBefore = summaryBeforeResponse.body as {
+        keyboard_continuous_motion_verified: boolean;
+        keyboard_stop_after_release: boolean;
+      };
+      expect(summaryBeforeResponse.status).toBe(200);
+      expect(summaryBefore.keyboard_continuous_motion_verified).toBe(false);
+      expect(summaryBefore.keyboard_stop_after_release).toBe(false);
+
+      const forward = await postJson(`${workstation.baseUrl}/api/robot-control/base/manual?baseUrl=${encodeURIComponent(upstream.baseUrl)}`, {
+        direction: "forward",
+        speed_mps: 0.08,
+        duration_ms: 260,
+        command_mode: "ros",
+      });
+      const back = await postJson(`${workstation.baseUrl}/api/robot-control/base/manual?baseUrl=${encodeURIComponent(upstream.baseUrl)}`, {
+        direction: "back",
+        speed_mps: 0.08,
+        duration_ms: 260,
+        command_mode: "ros",
+      });
+      const stop = await postJson(`${workstation.baseUrl}/api/robot-control/base/stop?baseUrl=${encodeURIComponent(upstream.baseUrl)}`, {});
+
+      expect(forward.status).toBe(200);
+      expect(back.status).toBe(200);
+      expect(stop.status).toBe(200);
+
+      const summaryAfterResponse = await requestJson(`${workstation.baseUrl}/api/robot-control/summary?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
+      const summaryAfter = summaryAfterResponse.body as {
+        keyboard_continuous_motion_verified: boolean;
+        keyboard_stop_after_release: boolean;
+        keyboard_wheel_lr_nonzero: boolean;
+        live_closure_summary?: {
+          keyboard_continuous_forwarded_pulses?: number;
+          keyboard_continuous_motion_verified?: boolean;
+          keyboard_stop_after_release?: boolean;
+        };
+        robot_control_executed: boolean;
+      };
+
+      expect(summaryAfterResponse.status).toBe(200);
+      expect(summaryAfter.keyboard_continuous_motion_verified).toBe(true);
+      expect(summaryAfter.keyboard_stop_after_release).toBe(true);
+      expect(summaryAfter.live_closure_summary?.keyboard_continuous_forwarded_pulses).toBe(2);
+      expect(summaryAfter.live_closure_summary?.keyboard_continuous_motion_verified).toBe(true);
+      expect(summaryAfter.keyboard_wheel_lr_nonzero).toBe(false);
+      expect(summaryAfter.robot_control_executed).toBe(false);
+    } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+  });
+
   it("workstation base stop proxy stays fail-closed and allows stop without checklist", async () => {
     // stop 是唯一允许在未勾 checklist 时执行的动作，但仍然只能走固定 stop endpoint。
     const upstream = await listenRobotProofRefreshApi({
