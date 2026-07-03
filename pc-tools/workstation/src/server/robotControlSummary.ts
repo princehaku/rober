@@ -10299,9 +10299,9 @@ function buildLiveClosureSummary(
   const mapDisplayFoxgloveRolePlain = "Foxglove 用于远程浏览器大屏观察；先在 ROS2 环境安装并启动 foxglove_bridge，再连接 ws://192.168.1.11:8765。";
   const mapDisplayFoxgloveWebAppUrl = "https://studio.foxglove.dev";
   const mapDisplayEngineeringToolsActionLabel = "工程观察：RViz2 / Foxglove";
-  const mapDisplayTooSmallNextActionPlain = "PC 首页现在让地图独占首行，真实地图按画布高度优先放大，宽图横向滚动，默认用 100% 完整态势显示地图、路线、小车、雷达和目标；图传和 WASD 放到地图下方；需要局部排障再点“细节放大”到 1200%，或点“进入地图大屏”打开 /map；/map 默认也是 100% 完整态势，只保留缩放、只读刷新和工程观察入口；建图、保存和其他卡片都会收起；不需要先开 RViz2。";
+  const mapDisplayTooSmallNextActionPlain = "PC 首页现在让地图独占首行，真实地图按画布高度优先放大，宽图横向滚动，默认用 150% 可读大图显示地图、路线、小车、雷达和目标；图传和 WASD 放到地图下方；需要全局总览点“完整态势”回到 100%，需要局部排障再点“细节放大”到 1200%，或点“进入地图大屏”打开 /map；/map 默认也是 150% 可读大图，只保留缩放、只读刷新和工程观察入口；建图、保存和其他卡片都会收起；不需要先开 RViz2。";
   const mapDisplayRos2CompanionAnswerPlain = "ROS2 配套：本地工程调试用 RViz2；远程浏览器观察用 Foxglove bridge + Foxglove Web；普通用户仍默认使用 PC 大地图和 /map，工程工具不替代简易控制台。";
-  const mapDisplayCompanionPlain = `普通用户地图：首页 PC 大地图默认 100% 完整态势；进入 /map 也是 100% 完整态势，地图画布按 viewport-dominant full-height 处理，真实地图按高度优先铺满画布，宽图横向滚动，点“细节放大”可继续查看局部，点“完整态势”回到 100% 全局视角，最高 1200%，地图、路线、目标点、小车位置和雷达点共用同一张 WYSIWYG 画布；${mapDisplayTooSmallNextActionPlain}${mapDisplayRos2CompanionAnswerPlain}ROS2 配套只作工程观察，本地用 RViz2，远程浏览器观察先部署 Foxglove bridge 后打开 Foxglove Web 连接 ws://192.168.1.11:8765；观察项固定为地图、雷达、TF、路径、定位和 costmap，不提供 GoalTool，不发送底盘移动命令。`;
+  const mapDisplayCompanionPlain = `普通用户地图：首页 PC 大地图默认 150% 可读大图；进入 /map 也是 150% 可读大图，地图画布按 viewport-dominant full-height 处理，真实地图按高度优先铺满画布，宽图横向滚动，点“完整态势”回到 100% 全局视角，点“细节放大”可继续查看局部，最高 1200%，地图、路线、目标点、小车位置和雷达点共用同一张 WYSIWYG 画布；${mapDisplayTooSmallNextActionPlain}${mapDisplayRos2CompanionAnswerPlain}ROS2 配套只作工程观察，本地用 RViz2，远程浏览器观察先部署 Foxglove bridge 后打开 Foxglove Web 连接 ws://192.168.1.11:8765；观察项固定为地图、雷达、TF、路径、定位和 costmap，不提供 GoalTool，不发送底盘移动命令。`;
   const keyboardAcceptancePlain = "键盘连续手控验收只看同一次按住窗口的 manual pulse 回包：命令读数非零并有 IMU/车体运动信号即可证明本次手控动作；vendor T1001 L/R 非零仍作为独立反馈闭环显示。";
   const nav2ObjectiveDone = routeReadyOnMap && nav2GoalSucceeded && wheelLrNonzeroProven && !needsSameWindowWheelRerun;
   const keyboardObjectiveDone = keyboardMotionVerified && keyboardStopSettledAfterPulse;
@@ -10579,8 +10579,8 @@ function buildLiveClosureSummary(
     map_display_direct_map_refreshes_map_preview_on_enter: true,
     map_display_direct_map_refreshes_radar_status_on_enter: true,
     map_display_direct_map_starts_radar_lifecycle_on_enter: false,
-    map_display_default_zoom_percent: "100%",
-    map_display_direct_map_default_zoom_percent: "100%",
+    map_display_default_zoom_percent: "150%",
+    map_display_direct_map_default_zoom_percent: "150%",
     map_display_fit_zoom_percent: "100%",
     map_display_max_zoom_percent: "1200%",
     map_display_too_small_next_action_plain: mapDisplayTooSmallNextActionPlain,

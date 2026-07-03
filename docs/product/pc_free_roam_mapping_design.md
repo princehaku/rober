@@ -81,10 +81,14 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   不启动 ROS2/RViz2/Foxglove/Nav2/建图 runtime，不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 - 2026-07-04 00:16 起，`/map` 直达页的内部地图层跟随可见地图 viewport，不再继承通用 fullscreen 的
   `1040px` 最小高度，并且隐藏普通首页才需要的 caption/雷达证明行。这样第二屏打开 `/map` 时可见区域就是完整大地图工作区；
-  当前默认用 100% 完整态势显示真实地图、路线、小车、雷达和目标点；需要局部细节再点“细节放大”到 1200%，点“完整态势”回到 100% 全局视角，不启动 RViz2/Foxglove/ROS2 runtime，也不发送任何运动指令。
+  当时默认用 100% 完整态势显示真实地图、路线、小车、雷达和目标点；2026-07-04 02:35 起当前默认改为 150% 可读大图，点“完整态势”仍回到 100% 全局视角，不启动 RViz2/Foxglove/ROS2 runtime，也不发送任何运动指令。
 - 2026-07-04 01:10 起，真实地图 PNG 的 PC 渲染改为高度优先：`.plain-map-layer.has-real-map`
   按画布高度设置 overlay frame，宽图横向滚动，避免宽地图在大画布里只贴住上半屏。该变化只放大普通用户可见地图，
   不改变上车地图源、Nav2 路线、目标点、雷达贴图或底盘控制。
+- 2026-07-04 02:35 起，普通 PC 首页和 `/map` 直达页默认从 `100%` 完整态势改为
+  `150%` 可读大图；点“完整态势”仍回到 `100%` 全局视角，点“细节放大”仍到 `1200%` 局部排障。
+  这只改变同一张 WYSIWYG 地图画布的默认缩放，不启动 RViz2/Foxglove/ROS2 runtime、Nav2、建图 runtime、
+  manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 - 2026-07-04 02:18 起，PC summary 的危险 true 字段扫描继续 fail-closed，但允许 `/api/status`
   内嵌的 `operator_report.structured_hil_claims.delivery_success=true` 作为人工送达材料回显；顶层
   `status.delivery_success=true`、`status.structured_hil_claims.delivery_success=true` 或任意非
@@ -1110,8 +1114,8 @@ PC WASD `pwm + realtime` 快路径现在会把直接串口写出的 vendor comma
 并返回 `motion_signal_observed=true`、`wheel_feedback_lr_nonzero_proven=false`。
 这让 PC WASD/手控的“命令到了”和“wheel raw 仍未证明”可以同时直读，不再需要解析嵌套材料。
 
-2026-07-04 00:16 现场地图显示口径更新：PC 首页和 `/map` 默认使用 `100%`
-完整态势视角，最高 `1200%` 只作为局部排障放大；点“完整态势”回到 `100%` 全局视角。扫图向导继续把 PC 大地图作为普通入口，
+2026-07-04 02:35 现场地图显示口径更新：PC 首页和 `/map` 默认使用 `150%`
+可读大图，最高 `1200%` 只作为局部排障放大；点“完整态势”回到 `100%` 全局视角。扫图向导继续把 PC 大地图作为普通入口，
 RViz2/Foxglove 只作为工程观察，不替代普通用户的建图、手控和行程按钮。
 
 同轮相机首帧缺口继续保持不阻塞低速移动：上位机对 DV20 `/dev/video1` 的 `uvcvideo`
