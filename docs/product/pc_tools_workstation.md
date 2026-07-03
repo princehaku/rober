@@ -5408,3 +5408,23 @@ PC->Robot API->ROS `/cmd_vel`->WAVE ROVER `T=11/PWM164` 和 stop 均已执行，
 `camera_usb_speed=12M` 或 `camera_usb_full_speed_detected=true`，首屏事实条、相机状态和
 `plain-camera-usb-recovery-proof` 都显示“不是页面独占、USB=12M full-speed、换高速 USB 口/线或带供电 Hub
 后复测”。该兜底不发送运动命令、不启动建图、不重新独占打开摄像头，只把共享预览只读诊断翻成普通用户能执行的硬件动作。
+
+2026-07-03 15:15 CST 起，PC 相机诊断区分“USB 速度问题”和“480M 但 UVC 传输错误”：
+`camera_usb_full_speed_detected` 只在 `12M/full-speed` 时为 true；如果真实上位机已经读到
+`camera_usb_speed=480M`，但首帧探针失败且 health 暴露
+`uvc_kernel_diagnostics_status=uvc_usb_transport_errors_observed`，summary 会推导
+`camera_source_diagnosis_status=uvc_transport_error_not_exclusive`、
+`camera_hardware_action_required=true`、`camera_hardware_action_label=检查USB/供电后复测`。
+普通首屏不再提示“换高速 USB 口”，而是提示检查 USB 线、接口、摄像头供电或换 known-good UVC。
+共享预览仍是 `single_shared_capture_for_multiple_clients`，`exclusive_camera_claim=false`，所以“谁进来都能看”这条软件链路成立；
+当前不可见是 DV20 UVC 源头没有吐可显示首帧，不是浏览器页面独占。
+
+同轮 live 复验：`POST /api/robot-control/camera/first-frame/probe` 返回
+`probe_total_timeout` 后，`GET /api/robot-control/summary` 返回
+`camera_usb_speed=480M`、`camera_usb_high_speed=true`、
+`camera_usb_full_speed_detected=false`、`camera_hardware_action_required=true`、
+`camera_hardware_action_label=检查USB/供电后复测`、
+`current_camera_wysiwyg_pack_requires_physical_usb_fix=true`。地图、路线和雷达仍为当前可见：
+`map_current_visible=true`、`path_current_visible=true`、`radar_map_points_visible=true`。
+因此普通 PC 页的下一步是处理相机设备链路；自由移动、键盘手控和 Nav2 路线执行不以相机/雷达画面为额外发车前置，
+但完整验收仍要求同窗口 wheel raw L/R 非零和 delivery success。

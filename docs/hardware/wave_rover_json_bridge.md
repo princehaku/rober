@@ -390,3 +390,28 @@ PC 固定代理 `/api/robot-control/base/manual` 现在同时接受 `speed` 与 
 查询响应，也没有 wheel L/R 非零，因此 `status=no_command_response`、
 `esp32_receive_confirmed=false`。这说明当前 blocker 不是 PC/ROS2 没发，而是
 上位机 TX 到 ESP32 RX 接线、pinmux 或固件 UART receive 路径尚未打通。
+
+## 2026-07-03 main_type A/B and live feedback boundary
+
+本轮再次按 `docs/vendor/VENDOR_INDEX.md` 查阅本地 Waveshare 资料后做真机复核：
+`docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h` 定义 `T=11` 为 PWM 输入、
+`T=130/T=1001` 为底盘反馈、`T=138/T=139` 为 speed rate 设置/读取、`T=900` 为
+`main_type/module_type` 设置；同文件把 `T=13 CMD_ROS_CTRL` 标注为不适用于无编码器产品。
+`docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/movtion_module.h` 显示 `mainType==1`
+和 `mainType==2` 会使用不同轮距、脉冲数和方向参数，且非 `mainType==3` 路径不使用 PID。
+
+当前真实上位机常驻 `/esp32_bridge` 进程启动参数为：
+`command_mode:=pwm`、`pwm_min_abs:=255`、`pwm_max_abs:=255`、`main_type:=2`、
+`module_type:=0`、`command_transport:=http`、`wave_rover_http_base_url:=http://192.168.1.3`。
+现场直接从上位机调用 ESP32 HTTP `/js?json=...` 做低风险 A/B：
+
+- `T=139` 读回 speed rate 为 `L=1,R=1`。
+- 临时 `T=900 main=1,module=0` 后发送 `T=11 L=164,R=164`，随后 `T=130/T=1001`
+  仍返回 `L=0,R=0`；观察到 IMU roll/pitch 有变化，但不能替代 wheel raw 非零证明。
+- 已发送 stop：`T=11 L=0,R=0`、`T=1 L=0,R=0`、`T=13 X=0,Z=0`。
+- 已恢复 `T=900 main=2,module=0` 并重新设置 `T=138 L=1,R=1`，避免把临时 A/B 配置留在现场车上。
+
+结论边界：这轮证明 PC/上位机可以到 ESP32 HTTP/WAVE ROVER JSON 层发送 `T=11` 和配置指令，
+也证明相机和雷达不是“车能不能自己动”的前置 gate；但 `T=1001 L/R` 仍未在同窗口非零，
+不能把 Nav2 自动驾驶、wheel raw L/R、真实物理移动或 delivery success 标记为完成。下一步必须在车旁继续查
+电机使能、供电、底盘模式、ESP32 到电机驱动链路，以及 `T=1001 L/R` 在当前 main_type 下的反馈语义。

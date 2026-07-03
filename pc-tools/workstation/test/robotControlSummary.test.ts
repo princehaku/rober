@@ -3029,6 +3029,117 @@ describe("robotControlSummary", () => {
     expect(wysiwygObjective?.source_card_id).toBe("camera_preview");
   });
 
+  it("keeps 480M UVC transport errors as hardware action without marking USB full-speed", async () => {
+    // 现场已经读到 480M 时，不能继续提示“换高速 USB”，但 UVC/USB transport error 仍然需要处理线、口、供电或摄像头本体。
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {
+      const url = new URL(String(input));
+      const basePayload = {
+        schema: "trashbot.upper_robot_api.v1.readback",
+        status: "loaded",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        robot_control_executed: false,
+      };
+      if (url.pathname === "/api/camera/health") {
+        return new Response(JSON.stringify({
+          ...basePayload,
+          status: "source_first_frame_failed",
+          source_readiness: "first_frame_failed",
+          source_failure_reason: "first_frame_total_timeout",
+          current_selection: {
+            selected_name: "USB Composite Device: DV20 USB",
+            selected_path: "/dev/video1",
+            selected_is_uvc_or_usb: true,
+          },
+          source_usage: {
+            status: "not_in_use",
+            owner_count: 0,
+            owners: [],
+          },
+          source_diagnosis: {
+            status: "uvc_transport_error_not_exclusive",
+            plain_hint: "不是页面独占：USB Composite Device: DV20 USB 当前无人占用，但内核日志已有 UVC/USB 传输错误；检查 USB 线、接口、摄像头供电或换 known-good UVC 复测。",
+            next_action: "check_usb_cable_port_power_or_known_good_uvc",
+            not_exclusive: true,
+          },
+          uvc_kernel_diagnostics: {
+            status: "uvc_usb_transport_errors_observed",
+            plain_hint: "USB Composite Device: DV20 USB 的内核日志出现 UVC/USB 传输错误；优先检查 USB 线、接口、供电或换 known-good UVC。",
+            next_action: "check_usb_cable_port_power_or_known_good_uvc",
+            transport_error_count: 50,
+            latest_transport_error: "uvcvideo 4-1:1.1: Failed to resubmit video URB (-19).",
+          },
+          uvc_usb_topology: {
+            status: "uvc_video_usb_speed_loaded",
+            plain_hint: "USB Composite Device: DV20 USB 当前在 USB 480M high-speed 拓扑上。",
+            next_action: "continue_first_frame_format_diagnostics",
+            video_usb_speed: "480M",
+            kernel_usb_address: "3-1",
+            video_interface_count: 2,
+          },
+        }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      if (url.pathname === "/api/map/preview") {
+        return new Response(JSON.stringify({
+          ...basePayload,
+          map_current_visible: true,
+          map_once_observed: true,
+          path_preview_points: [
+            { x: 0, y: 0, frame_id: "map", source_index: 0 },
+            { x: 0.8, y: 0.05, frame_id: "map", source_index: 1 },
+          ],
+          path_preview_point_count: 2,
+          robot_pose: { x: 0, y: 0, yaw: 0, frame_id: "map" },
+          radar_overlay_status: "loaded",
+          radar_overlay_point_count: 8,
+          radar_overlay_current_point_count: 8,
+          radar_overlay_source_point_count: 8,
+          radar_overlay_frame_id: "laser_frame",
+          radar_overlay_source_frame_id: "laser_frame",
+          radar_overlay_refresh_required: false,
+          radar_overlay_blocks_wysiwyg: false,
+        }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify(basePayload), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }));
+
+    const summary = await buildRobotControlSummary("http://192.168.1.11:8787", null, null, {
+      readbackTimeoutMs: 100,
+    });
+
+    expect(summary.readback_summary.camera.source_diagnosis_status).toBe("uvc_transport_error_not_exclusive");
+    expect(summary.readback_summary.camera.uvc_usb_topology_video_usb_speed).toBe("480M");
+    expect(summary.live_closure_summary?.camera_usb_speed).toBe("480M");
+    expect(summary.live_closure_summary?.camera_usb_full_speed_detected).toBe(false);
+    expect(summary.live_closure_summary?.camera_hardware_action_required).toBe(true);
+    expect(summary.live_closure_summary?.camera_hardware_action_label).toBe("检查USB/供电后复测");
+    expect(summary.live_closure_summary?.camera_recovery_next_action_plain).toContain("检查 USB 线、接口和摄像头供电");
+    expect(summary.live_closure_summary?.camera_recovery_next_action_plain).not.toContain("USB 12M full-speed");
+    expect(summary.camera_usb_high_speed).toBe(true);
+    expect(summary.camera_usb_full_speed_detected).toBe(false);
+    expect(summary.camera_hardware_action_required).toBe(true);
+    expect(summary.camera_hardware_action_label).toBe("检查USB/供电后复测");
+    expect(summary.current_camera_wysiwyg_pack_requires_physical_usb_fix).toBe(true);
+    expect(summary.current_camera_wysiwyg_pack_physical_fix_label).toBe("检查USB/供电后复测");
+    expect(summary.camera_first_frame_fix_requires_physical_usb_fix).toBe(true);
+    expect(summary.camera_first_frame_fix_physical_fix_label).toBe("检查USB/供电后复测");
+    expect(summary.current_wysiwyg_next_action_status).toBe("only_camera_hardware_action");
+    expect(summary.current_wysiwyg_next_action_plain).toContain("当前只剩相机硬件处理：检查USB/供电后复测");
+    const wysiwygObjective = summary.live_closure_summary?.objective_audit_items.find((item) => item.id === "wysiwyg");
+    expect(wysiwygObjective?.next_action_plain).toBe("下一步：检查USB/供电后复测相机首帧。");
+    expect(wysiwygObjective?.source_card_id).toBe("camera_preview");
+  });
+
   it("separates free movement from mapping sensor readiness in live closure", async () => {
     // 自由移动只要安全确认和停止兜底；相机/雷达缺口只能阻塞建图启动，不能冒充移动前置。
     vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {

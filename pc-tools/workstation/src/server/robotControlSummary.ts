@@ -9445,8 +9445,11 @@ function buildLiveClosureSummary(
       : `地图雷达点：当前 ${radarMapCurrentPointCount} 个，来源 ${radarMapSourcePointCount} 个；状态=${radarMapOverlayStatus}。下一步：${radarMapRefreshNextActionPlain}`;
   const cameraUsbSpeed = readback.camera.uvc_usb_topology_video_usb_speed || "not_loaded";
   const cameraUsbFullSpeedDetected = cameraUsbSpeed === "12M" || readback.camera.source_diagnosis_status === "uvc_full_speed_usb_not_exclusive";
-  const cameraHardwareActionRequired = cameraUsbFullSpeedDetected && !cameraCurrentVisible;
-  const cameraHardwareActionLabel = cameraHardwareActionRequired ? "换高速USB后复测" : "复测相机首帧";
+  const cameraTransportHardwareActionRequired = readback.camera.source_diagnosis_status === "uvc_transport_error_not_exclusive";
+  const cameraHardwareActionRequired = (cameraUsbFullSpeedDetected || cameraTransportHardwareActionRequired) && !cameraCurrentVisible;
+  const cameraHardwareActionLabel = cameraHardwareActionRequired
+    ? cameraUsbFullSpeedDetected ? "换高速USB后复测" : "检查USB/供电后复测"
+    : "复测相机首帧";
   const cameraRecoveryStatus = cameraCurrentVisible
     ? "visible"
     : cameraSourceDiagnosisNotExclusive
@@ -9580,7 +9583,7 @@ function buildLiveClosureSummary(
     },
   ];
   const liveWysiwygSurfaceLabel = (id: string): string => ({
-    camera: cameraHardwareActionRequired ? "换高速USB后复测相机首帧" : "复测相机首帧",
+    camera: cameraHardwareActionRequired ? `${cameraHardwareActionLabel}相机首帧` : "复测相机首帧",
     map: "刷新地图画面",
     radar_map_points: "刷新雷达扫描读数",
   }[id] ?? id);
@@ -10868,12 +10871,10 @@ export async function buildRobotControlSummary(
   const currentCameraWysiwygPackSoftwareFallbackExhausted = !currentCameraWysiwygVisible
     && readbackSummary.camera.first_frame_probe_low_bandwidth_fallback_attempted === "true"
     && readbackSummary.camera.first_frame_probe_low_bandwidth_fallback_min_size !== "none"
-    && liveClosureSummary.camera_hardware_action_required
-    && liveClosureSummary.camera_usb_full_speed_detected;
+    && liveClosureSummary.camera_hardware_action_required;
   const currentCameraWysiwygPackRequiresPhysicalUsbFix = currentCameraWysiwygPackSoftwareFallbackExhausted
     || (!currentCameraWysiwygVisible
-      && liveClosureSummary.camera_hardware_action_required
-      && liveClosureSummary.camera_usb_full_speed_detected);
+      && liveClosureSummary.camera_hardware_action_required);
   const currentCameraWysiwygPackPhysicalFixLabel = currentCameraWysiwygPackRequiresPhysicalUsbFix
     ? liveClosureSummary.camera_hardware_action_label
     : "无需硬件处理";

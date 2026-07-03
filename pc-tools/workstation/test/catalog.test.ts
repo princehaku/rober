@@ -15646,6 +15646,14 @@ describe("workstation fail-closed API contracts", () => {
             transport_error_count: 44,
             latest_transport_error: "[777992.581028] usb 3-1: device descriptor read/all, error -71",
           },
+          uvc_usb_topology: {
+            status: "uvc_video_usb_speed_loaded",
+            plain_hint: "USB Composite Device: DV20 USB 当前在 USB 480M high-speed 拓扑上。",
+            next_action: "continue_first_frame_format_diagnostics",
+            video_usb_speed: "480M",
+            kernel_usb_address: "3-1",
+            video_interface_count: 2,
+          },
           safe_to_control: false,
           delivery_success: false,
           primary_actions_enabled: false,
@@ -15681,6 +15689,16 @@ describe("workstation fail-closed API contracts", () => {
       expect(statusBody.source_diagnosis_next_action_plain).toBe("检查 USB 线、接口和摄像头供电，必要时换 known-good UVC 复测；共享预览不是页面独占。");
       expect(statusBody.preview_next_action_plain).toBe("检查 USB 线、接口和摄像头供电，必要时换 known-good UVC 复测；共享预览不是页面独占。");
       expect(statusBody.camera_wysiwyg_next_action_plain).toBe("检查 USB 线、接口和摄像头供电，必要时换 known-good UVC 复测；共享预览不是页面独占。");
+      expect(statusBody.uvc_usb_topology_status).toBe("uvc_video_usb_speed_loaded");
+      expect(statusBody.uvc_usb_topology_video_usb_speed).toBe("480M");
+      expect(statusBody.camera_usb_speed).toBe("480M");
+      expect(statusBody.camera_usb_full_speed_detected).toBe(false);
+      expect(statusBody.camera_hardware_action_required).toBe(true);
+      expect(statusBody.camera_hardware_action_label).toBe("检查USB/供电后复测");
+      expect(statusBody.usb_speed).toBe("480M");
+      expect(statusBody.usb_full_speed_detected).toBe(false);
+      expect(statusBody.hardware_action_required).toBe(true);
+      expect(statusBody.hardware_action_label).toBe("检查USB/供电后复测");
       expect(statusBody.robot_control_executed).toBe(false);
       expect(healthRequestCount).toBe(1);
     } finally {

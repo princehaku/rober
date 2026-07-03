@@ -863,7 +863,7 @@ function cameraMjpegStatusLoaded(): RobotControlCameraMjpegStatusResponse | null
 }
 
 function cameraMjpegUsbRecoveryReadback() {
-  // USB 12M/full-speed 诊断来自上位机相机服务，PC 端只合并显示，不重新独占打开摄像头。
+  // 相机设备链路诊断来自上位机相机服务，PC 端只合并显示，不重新独占打开摄像头。
   const status = cameraMjpegStatusLoaded();
   const sourceDiagnosisStatus = loadedAliasText(status?.source_diagnosis_status)
     || loadedAliasText(status?.uvc_usb_topology_status);
@@ -875,12 +875,14 @@ function cameraMjpegUsbRecoveryReadback() {
     || sourceDiagnosisStatus === "uvc_full_speed_usb_not_exclusive"
     || sourceDiagnosisStatus === "uvc_video_on_full_speed_usb"
     || usbSpeed === "12M";
+  const transportErrorHardwareActionRequired = sourceDiagnosisStatus === "uvc_transport_error_not_exclusive";
   const hardwareActionRequired = Boolean(status?.camera_hardware_action_required)
     || Boolean(status?.hardware_action_required)
-    || usbFullSpeedDetected;
+    || usbFullSpeedDetected
+    || transportErrorHardwareActionRequired;
   const hardwareActionLabel = loadedAliasText(status?.camera_hardware_action_label)
     || loadedAliasText(status?.hardware_action_label)
-    || (usbFullSpeedDetected ? "换高速USB后复测" : "复测相机首帧");
+    || (usbFullSpeedDetected ? "换高速USB后复测" : transportErrorHardwareActionRequired ? "检查USB/供电后复测" : "复测相机首帧");
   const notExclusive = status?.source_diagnosis_not_exclusive === "true"
     || status?.exclusive_camera_claim === false
     || status?.shared_preview_exclusive_camera_claim === false;
@@ -2292,16 +2294,21 @@ const plainCameraUsbRecoveryProofSummary = computed(() => {
     summary?.camera_hardware_action_required
     || liveSummary?.camera_hardware_action_required
     || mjpegUsbRecovery.hardwareActionRequired
+    || diagnosisStatuses.includes("uvc_transport_error_not_exclusive")
     || usbFullSpeedDetected,
   );
-  const summaryHardwareActionLabel = loadedAliasText(summary?.camera_hardware_action_label);
-  const liveHardwareActionLabel = loadedAliasText(liveSummary?.camera_hardware_action_label);
+  const summaryHardwareActionLabel = summary?.camera_hardware_action_required
+    ? loadedAliasText(summary.camera_hardware_action_label)
+    : "";
+  const liveHardwareActionLabel = liveSummary?.camera_hardware_action_required
+    ? loadedAliasText(liveSummary.camera_hardware_action_label)
+    : "";
   const hardwareActionLabel = mjpegUsbRecovery.usbFullSpeedDetected
     ? mjpegUsbRecovery.hardwareActionLabel
     : summaryHardwareActionLabel
       || liveHardwareActionLabel
       || mjpegUsbRecovery.hardwareActionLabel
-      || (usbFullSpeedDetected ? "换高速USB后复测" : "复测相机首帧");
+      || (usbFullSpeedDetected ? "换高速USB后复测" : sourceDiagnosisStatus === "uvc_transport_error_not_exclusive" ? "检查USB/供电后复测" : "复测相机首帧");
   const reprobeSequence = summary?.camera_reprobe_sequence?.length
     ? summary.camera_reprobe_sequence
     : liveSummary?.camera_reprobe_sequence?.length
@@ -2321,16 +2328,21 @@ const plainCameraUsbRecoveryProofSummary = computed(() => {
     || camera?.shared_preview_exclusive_camera_claim === "false"
     || plainCameraSharedPreviewDomEvidence.value.exclusiveCameraClaim === false
     || mjpegUsbRecovery.notExclusive;
-  const visible = hardwareActionRequired || usbFullSpeedDetected || sourceDiagnosisStatus === "uvc_full_speed_usb_not_exclusive";
+  const visible = hardwareActionRequired
+    || usbFullSpeedDetected
+    || ["uvc_full_speed_usb_not_exclusive", "uvc_transport_error_not_exclusive"].includes(sourceDiagnosisStatus);
   const state = usbFullSpeedDetected ? "USB full-speed" : hardwareActionRequired ? "需硬件处理" : "无需硬件处理";
   const usbText = usbSpeed && !["", "not_loaded", "none"].includes(usbSpeed) ? `当前 USB=${usbSpeed}` : "USB 速度未读到";
   const exclusiveText = notExclusive ? "不是页面独占" : "占用状态待确认";
   const mappingText = blocksMappingStart ? "阻塞建图首帧" : "不阻塞建图首帧";
   const freeMoveText = blocksFreeMove ? "会阻塞自由移动" : "不阻塞自由移动";
+  const nextActionText = usbFullSpeedDetected
+    ? "换高速 USB 口/线或带供电 Hub 后，按只读复测链路重新检查首帧。"
+    : "检查 USB 线、接口、摄像头供电或换 known-good UVC 后，按只读复测链路重新检查首帧。";
   return {
     visible,
     state,
-    text: `相机硬件复验：${exclusiveText}；${usbText}；${hardwareActionLabel}；${mappingText}，${freeMoveText}。下一步：换高速 USB 口/线或带供电 Hub 后，按只读复测链路重新检查首帧。`,
+    text: `相机硬件复验：${exclusiveText}；${usbText}；${hardwareActionLabel}；${mappingText}，${freeMoveText}。下一步：${nextActionText}`,
     sourceDiagnosisStatus,
     usbSpeed,
     usbFullSpeedDetected,

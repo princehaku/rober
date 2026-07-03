@@ -989,3 +989,18 @@ PC WASD `pwm + realtime` 快路径现在会把直接串口写出的 vendor comma
 `wave_rover_command_debug.jsonl`，并被 `/api/base/status` 汇总；现场 `right` 短脉冲已读到
 `source=upper_robot_api_manual_control`、`T=11,L=164,R=-164`、`serial_write_returned=true`。
 这证明 PC 手控命令链路非零，但不替代 `T=1001` wheel raw L/R 非零反馈证明。
+
+2026-07-03 15:15 现场相机状态更新：DV20 已从此前 `12M` full-speed 变为 USB `480M` high-speed，
+但首帧探针仍 `probe_total_timeout`，上车 health 的 `uvc_kernel_diagnostics_status` 仍为
+`uvc_usb_transport_errors_observed`。PC summary 因此显示
+`camera_source_diagnosis_status=uvc_transport_error_not_exclusive`、
+`camera_hardware_action_label=检查USB/供电后复测`，不再把问题归因成 full-speed 口。建图启动仍等待
+`camera_first_frame`；低速自由移动、键盘手控和图上路线执行继续不以相机首帧或雷达贴图为发车前置。
+
+同轮 WAVE ROVER 复核仍按 `docs/vendor/VENDOR_INDEX.md` 指向的本地资料执行：
+`json_cmd.h` 中 `T=11` 是 PWM 输入、`T=130/T=1001` 是反馈读回，`T=13 CMD_ROS_CTRL`
+标注不适用于无编码器产品；`movtion_module.h` 中 `mainType` 会影响轮距、方向和反馈计算。
+现场直接对 ESP32 HTTP `/js?json=...` 做 `T=900 main=1/module=0` 与 `main=2/module=0` A/B：
+`T=11 L=164/R=164` 后 `T=1001 L/R` 仍为 `0/0`，`T=139` speed rate 为 `1/1`，随后已恢复
+`main=2/module=0`。因此当前自动驾驶“路线 action 可成功但真车未证明”的剩余缺口仍是底盘执行/反馈闭环，
+不是雷达 gate。
