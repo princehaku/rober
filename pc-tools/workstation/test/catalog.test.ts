@@ -17515,6 +17515,97 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("workstation base manual proxy exposes IMU motion signal without pretending wheel raw passed", async () => {
+    // 现场 WAVE ROVER T1001 L/R 可能保持 0/0；IMU 姿态变化只能证明车身运动迹象，不能替代 wheel raw。
+    const upstream = await listenRobotBaseCommandApi(
+      {
+        "/api/base/manual": {
+          payload: {
+            schema: "trashbot.upper_robot_api.v1.base_manual",
+            status: "manual_command_completed",
+            manual_command_executed: true,
+            auto_stop_executed: true,
+            feedback_during_motion_attempted: true,
+            feedback_after_stop_attempted: true,
+            feedback_during_motion: {
+              t1001_feedback_status: "observed_from_bridge_debug",
+              feedback_source: "esp32_bridge_feedback_debug_log",
+              t1001_feedback_frames: [
+                { T: 1001, L: 0, R: 0, r: -0.2, p: 0.1 },
+                { T: 1001, L: 0, R: 0, r: -2.4, p: 1.2 },
+              ],
+            },
+            feedback_evidence: {
+              t1001_feedback_frames: [{ T: 1001, L: 0, R: 0, r: -2.2, p: 1.1 }],
+            },
+            manual_wheel_feedback_summary: {
+              lr_nonzero_observed: false,
+              nonzero_frame_count: 0,
+              latest_pair: { left_speed: 0, right_speed: 0 },
+            },
+            manual_imu_attitude_delta_summary: {
+              imu_attitude_delta_observed: true,
+              max_abs_roll_delta: 2.2,
+              max_abs_pitch_delta: 1.1,
+            },
+            wheel_feedback_lr_nonzero_proven: false,
+            wheel_feedback_nonzero_observed: false,
+            imu_attitude_delta_observed: true,
+            motion_signal_observed: true,
+            motion_signal_source: "imu_attitude_delta",
+            safe_to_control: false,
+            delivery_success: false,
+            primary_actions_enabled: false,
+          },
+        },
+      },
+      {},
+    );
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const response = await fetch(`${workstation.baseUrl}/api/robot-control/base/manual?baseUrl=${encodeURIComponent(upstream.baseUrl)}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ direction: "forward", speed: 0.08, duration_ms: 500, confirm_hil_checklist: false }),
+      });
+      const body = (await response.json()) as {
+        proxy_status: string;
+        remote_motion_key_values: Record<string, string>;
+        motion_evidence_gaps: string[];
+        robot_control_executed: boolean;
+        safe_to_control: boolean;
+        delivery_success: boolean;
+      };
+
+      expect(response.status).toBe(200);
+      expect(body.proxy_status).toBe("command_forwarded");
+      expect(body.remote_motion_key_values.wheel_feedback_lr_nonzero_proven).toBe("false");
+      expect(body.remote_motion_key_values.wheel_feedback_latest_raw_left).toBe("0");
+      expect(body.remote_motion_key_values.wheel_feedback_latest_raw_right).toBe("0");
+      expect(body.remote_motion_key_values.imu_attitude_delta_observed).toBe("true");
+      expect(body.remote_motion_key_values.manual_imu_attitude_delta_observed).toBe("true");
+      expect(body.remote_motion_key_values.imu_roll_delta).toBe("2.2");
+      expect(body.remote_motion_key_values.imu_pitch_delta).toBe("1.1");
+      expect(body.remote_motion_key_values.motion_signal_observed).toBe("true");
+      expect(body.remote_motion_key_values.motion_signal_source).toBe("imu_attitude_delta");
+      expect(body.motion_evidence_gaps).toEqual(expect.arrayContaining([
+        "before_after_evidence_snapshot_incomplete",
+        "wheel_feedback_lr_nonzero_not_proven",
+      ]));
+      expect(body.motion_evidence_gaps).not.toContain("physical_motion_lidar_delta_not_proven");
+      expect(body.robot_control_executed).toBe(false);
+      expect(body.safe_to_control).toBe(false);
+      expect(body.delivery_success).toBe(false);
+      expect(upstream.receivedBodies["/api/base/manual"]).toHaveLength(1);
+      expect(upstream.receivedGets).toEqual([]);
+    } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+  });
+
   it("workstation base stop proxy stays fail-closed and allows stop without checklist", async () => {
     // stop 是唯一允许在未勾 checklist 时执行的动作，但仍然只能走固定 stop endpoint。
     const upstream = await listenRobotProofRefreshApi({

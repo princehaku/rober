@@ -59,6 +59,12 @@
 - 2026-06-29 16:55 CST 起，debug 行同时保留 `vendor_frame={"T":1001,"L":...,"R":...,"r":...,"p":...,"y":...,"v":...}`。这是 `docs/vendor/VENDOR_INDEX.md` 指向的 WAVE ROVER `FEEDBACK_BASE_INFO` 原始字段快照，用于 Nav2/O11 复验时判断 `L/R=0` 是厂商帧真实返回还是项目别名解析问题；它不能替代同窗口 `left_speed/right_speed` 非零验收。
 - 2026-06-29 17:05 CST 起，ROS 手控和 PC 键盘短 pulse 不再为了证明轮速另开 UART；若 `wave_rover_feedback_debug.jsonl` 仍 fresh 且包含 `T=1001`，上位机只把这些 bridge-owned 帧包装为 `base_feedback_samples_latest`。这样多人 PC 页面和 summary 能看到同一组 wheel raw `L/R`，但 `safe_to_control=false`、`delivery_success=false`、`hil_pass=false` 必须保持不变；`L/R=0/0` 也必须原样显示为“未证明非零”。
 - 2026-07-03 CST 起，`/api/base/manual` 的 ROS/bridge_debug 手控路径会把 fresh bridge-owned `T=1001` 帧同时挂回本次 `feedback_during_motion`。这是为了让 PC first-jog/WASD 结果显示“运动窗口内读到了多少 T1001 帧”和最新 wheel raw `L/R`，避免串口由 `esp32_bridge` 持有时误报 0 帧；它仍不发送额外 `T=130`，也不把 `L/R=0/0`、IMU 姿态变化或命令到达升级成 wheel 非零、HIL pass、Nav2 成功或 delivery success。
+- 2026-07-03 15:23 CST 起，PC 代理会同步展示上位机 manual 回包中的 `motion_signal_observed`、
+  `motion_signal_source` 和 `manual_imu_attitude_delta_summary`。该信号只说明同窗口 `T=1001.r/p`
+  姿态发生变化，用来证明车身存在运动迹象；它不能替代 vendor `T=1001.L/R` 非零，也不能推出
+  编码器 HIL pass、完整 Nav2 路线执行或 delivery success。当前协议依据仍采用
+  `docs/vendor/VENDOR_INDEX.md` 指向的 WAVE ROVER `json_cmd.h`、`uart_ctrl.h`、
+  `movtion_module.h` 和 `ugv_rpi/config.yaml`。
 - 该日志复用 bridge 已拥有的串口 owner 和解析结果，避免 direct raw UART 抢读造成 corrupted/incomplete JSON。
 - 写入失败只记录 runtime warning；不得阻塞 `/imu/data`、`/battery` 或 `/trashbot/stop`。路径目录、权限和磁盘空间需在上车 run 前由 operator 确认。
 - `left_speed/right_speed` 采用 vendor `T=1001.L/R` 原始反馈口径，只能作为 evidence/debug 材料；在缺少 HIL 对齐前，不代表导航级实测轮速里程计。

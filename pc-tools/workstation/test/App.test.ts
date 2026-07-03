@@ -9848,9 +9848,10 @@ describe("App", () => {
     expect(workstationStyles).toContain('.robot-console-grid[data-layout="visual-first"] .plain-keyboard-control > .keyboard-direction-pad');
     expect(workstationStyles).toContain("首页要先看到能按的方向键");
     expect(workstationStyles).toContain("grid-column: 1 / -1;");
-    expect(workstationStyles).toContain("height: clamp(620px, calc(100vh - 96px), 860px);");
+    expect(workstationStyles).toContain("height: clamp(760px, calc(100vh - 24px), 1280px);");
     expect(workstationStyles).toContain("首页地图只保留地图内部一层滚动");
-    expect(workstationStyles).toContain("卡片本身不再裁掉小车和目标点");
+    expect(workstationStyles).toContain("给画布接近一屏高度");
+    expect(workstationStyles).toContain("min-height: clamp(620px, calc(100vh - 176px), 980px);");
     expect(workstationStyles).toContain("height: clamp(var(--plain-map-large-min-height), var(--plain-map-large-target-height), var(--plain-map-large-max-height));");
     expect(workstationStyles).toContain("height: var(--plain-map-fullscreen-height);");
     expect(workstationStyles).toContain(".plain-map-zoom-controls");

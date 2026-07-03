@@ -649,6 +649,8 @@ function baseFeedbackSampleAliases(
 function baseManualMotionKeyValues(payload: Record<string, unknown> | null): Record<string, string> {
   // 上位机 manual 响应里的 during-motion 反馈是最贴近真实点动窗口的 wheel material。
   const wheelSummary = asRecord(payload?.manual_wheel_feedback_summary);
+  // IMU 只证明车身姿态在动，不能替代 WAVE ROVER T1001 的 wheel raw L/R 非零证据。
+  const imuSummary = asRecord(payload?.manual_imu_attitude_delta_summary);
   const latestPair = asRecord(wheelSummary?.latest_nonzero_pair) ?? asRecord(wheelSummary?.latest_pair);
   const transaction = asRecord(payload?.serial_motion_transaction);
   const duringFeedback = asRecord(payload?.feedback_during_motion) ?? asRecord(transaction?.feedback_during_motion);
@@ -666,6 +668,14 @@ function baseManualMotionKeyValues(payload: Record<string, unknown> | null): Rec
     wheel_feedback_latest_right_speed: shortValue(latestPair?.right_speed, "not_loaded"),
     wheel_feedback_latest_raw_left: shortValue(latestDuringFrame?.L, "not_loaded"),
     wheel_feedback_latest_raw_right: shortValue(latestDuringFrame?.R, "not_loaded"),
+    imu_attitude_delta_observed: shortValue(payload?.imu_attitude_delta_observed ?? imuSummary?.imu_attitude_delta_observed, "false"),
+    manual_imu_attitude_delta_observed: shortValue(imuSummary?.imu_attitude_delta_observed ?? payload?.imu_attitude_delta_observed, "false"),
+    imu_roll_delta: shortValue(imuSummary?.max_abs_roll_delta, "not_loaded"),
+    imu_pitch_delta: shortValue(imuSummary?.max_abs_pitch_delta, "not_loaded"),
+    manual_imu_roll_delta: shortValue(imuSummary?.max_abs_roll_delta, "not_loaded"),
+    manual_imu_pitch_delta: shortValue(imuSummary?.max_abs_pitch_delta, "not_loaded"),
+    motion_signal_observed: shortValue(payload?.motion_signal_observed, "false"),
+    motion_signal_source: shortValue(payload?.motion_signal_source, "not_loaded"),
     feedback_during_motion_t1001_frame_count: String(duringFrames.length),
     feedback_after_stop_t1001_frame_count: String(afterStopFrames.length),
     feedback_during_motion_status: shortValue(duringFeedback?.t1001_feedback_status, "not_loaded"),
@@ -1798,6 +1808,11 @@ function buildMotionEvidenceGaps(
     remoteMotionKeyValues.physical_motion_lidar_delta_proven === "true"
     || remoteMotionKeyValues.lidar_motion_delta_proven === "true"
     || remoteMotionKeyValues.scan_delta_observed === "true";
+  const remoteBodyMotionObserved =
+    // 上位机同窗口 IMU 姿态变化只能清掉“有无运动迹象”gap，wheel raw L/R 仍独立验收。
+    remoteMotionKeyValues.motion_signal_observed === "true"
+    || remoteMotionKeyValues.imu_attitude_delta_observed === "true"
+    || remoteMotionKeyValues.manual_imu_attitude_delta_observed === "true";
   const gaps = [
     preflightReason ? "motion_command_not_forwarded" : "",
     status === "captured" ? "" : "before_after_evidence_snapshot_incomplete",
@@ -1807,6 +1822,7 @@ function buildMotionEvidenceGaps(
       ? ""
       : "wheel_feedback_lr_nonzero_not_proven",
     remoteLidarDeltaObserved
+      || remoteBodyMotionObserved
       || evidenceKeyTrue(afterReadback, "radar_status", ["physical_motion_lidar_delta_proven", "lidar_motion_delta_proven", "scan_delta_observed"])
       || evidenceKeyTrue(afterReadback, "radar_scan_proof_latest", ["physical_motion_lidar_delta_proven", "lidar_motion_delta_proven", "scan_delta_observed"])
       ? ""

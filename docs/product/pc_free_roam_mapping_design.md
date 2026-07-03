@@ -18,6 +18,12 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   `docs/vendor/waveshare_wave_rover/WAVE_ROVER/WAVE_ROVER_V0.9/json_cmd.h` 和
   `docs/vendor/waveshare_wave_rover/ugv_rpi/tutorial_cn/08 下位机 JSON 指令集.ipynb`：
   `T=11` 为左右轮 PWM 输入，`L/R` 范围为 `-255..255`。这只改变手控默认入口，不改变 Nav2 自动路线的 ROS/Nav2 gate。
+- 2026-07-03 15:23 起，PC 手控代理会把上位机同窗口 IMU 姿态变化抬到
+  `remote_motion_key_values.motion_signal_observed`、`motion_signal_source`、
+  `imu_attitude_delta_observed`、`imu_roll_delta` 和 `imu_pitch_delta`。当该运动信号已观察到时，
+  PC 不再要求 LiDAR delta 才能说明“有运动迹象”；但 `wheel_feedback_lr_nonzero_proven`
+  仍必须由同窗口 vendor `T=1001 L/R` 非零证明，送达成功和完整 Nav2 路线执行也不会因此自动完成。
+  这条边界用于保持“小车可先自己动，不依赖雷达”的产品口径，同时避免把 IMU 变化包装成编码器轮速。
 - 2026-07-03 09:07 现场相机复查确认：PC 共享 MJPEG 入口可以多人复用，`/api/robot-control/camera/mjpeg`
   会快速返回上游真实失败，不存在页面独占；上位机 `/dev/video1` 是 `USB Composite Device: DV20 USB`
   UVC 视频节点，`/dev/video2` 是 metadata，`/dev/video0` 是 cedrus 解码器不是摄像头。`lsusb -t`
@@ -32,6 +38,11 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   误以为发车前还要完成额外预检。底层请求字段仍沿用 `confirm_hil_checklist` 兼容上位机合同，但 UI 只展示一个安全勾选。
 - 停止按钮始终可见，继续走固定 PC 代理 `/api/robot-control/base/stop`。
 - 浏览器不允许传入串口、ROS 参数、任意 Robot API endpoint、`/cmd_vel` 或 Nav2 自动目标。
+- 地图太小的当前 UI 答案是 PC 首页大画布和 `/map` 直达页：普通首页地图卡高度为
+  `clamp(760px, calc(100vh - 24px), 1280px)`，地图画布最小高度为
+  `clamp(620px, calc(100vh - 176px), 980px)`；ROS2 配套仍只作为工程观察，RViz2 看
+  `/map`、`/scan`、TF、Nav2 path、定位和 costmap，Foxglove bridge 用于浏览器远程观察。
+  普通用户不需要先开 RViz2/Foxglove 才能操作地图。
 - 2026-06-25 起，PC 卡片新增“自动扫图准备”只读区：它读取 `safe_command_boundary.free_roam_autonomy`、policy 和逐项 gates，展示上车端 watchdog、LiDAR 避障、停止兜底、地图刷新和真车验证记录缺口；按钮固定显示“自动扫图（未开放）”且禁用，不绑定任何发车动作。
 - 2026-06-25 21:07 起，`ros2_trashbot_nav.free_roam_autonomy` 提供上车端自动扫图策略内核：默认 fail-closed，只在现场安全确认、地图记录和停止兜底满足时允许进入低速自移动；相机首帧和雷达新鲜度进入 `mapping_readiness`，用于判断本轮是否可建图，不再阻止低速自由移动。遇障碍原地换向，覆盖停滞时原地扫描，超时或未知区域达标时输出停止。
 - 2026-06-25 21:18 起，`free_roam_autonomy_node` 已接 `/scan`、`/map`、runtime artifact 和 `/trashbot/stop` 兜底；默认 `enable_cmd_vel_publish=false` 且 `motion_hil_unlocked=false`，不会自动发 `/cmd_vel`，PC 自动扫图按钮仍锁定。
