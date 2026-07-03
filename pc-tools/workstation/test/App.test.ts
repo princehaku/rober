@@ -11026,6 +11026,105 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
   });
 
+  it("uses MJPEG status USB diagnosis when summary camera readback is stale", async () => {
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as RobotControlSummaryResponse;
+    Object.assign(summaryFixture, {
+      camera_source_diagnosis_status: "not_loaded",
+      camera_source_diagnosis_not_exclusive: "not_loaded",
+      camera_usb_speed: "not_loaded",
+      camera_usb_full_speed_detected: false,
+      camera_hardware_action_required: false,
+      camera_hardware_action_label: "复测相机首帧",
+    });
+    Object.assign(summaryFixture.live_closure_summary as Record<string, any>, {
+      live_wysiwyg_camera_source_diagnosis_status: "not_loaded",
+      camera_source_diagnosis_status: "not_loaded",
+      camera_source_diagnosis_not_exclusive: "not_loaded",
+      camera_usb_speed: "not_loaded",
+      camera_usb_full_speed_detected: false,
+      camera_hardware_action_required: false,
+      camera_hardware_action_label: "复测相机首帧",
+      camera_reprobe_after_hardware_action_required: false,
+    });
+    Object.assign(summaryFixture.readback_summary.camera, {
+      status: "fetch_failed",
+      devices_status: "loaded",
+      preview_status: "idle_not_started",
+      shared_preview_upstream_active: "true",
+      shared_preview_content_type_loaded: "false",
+      shared_preview_cached_frame_loaded: "false",
+      source_diagnosis_status: "not_loaded",
+      source_diagnosis_plain_hint: "not_loaded",
+      source_diagnosis_next_action_plain: "not_loaded",
+      source_diagnosis_not_exclusive: "not_loaded",
+      uvc_usb_topology_status: "not_loaded",
+      uvc_usb_topology_video_usb_speed: "not_loaded",
+    });
+    const mjpegStatus = cloneFixture(fixtures["/api/robot-control/camera/mjpeg/status"] as Record<string, any>);
+    Object.assign(mjpegStatus, {
+      content_type_loaded: false,
+      shared_preview_content_type_loaded: false,
+      cached_frame_loaded: false,
+      shared_preview_cached_frame_loaded: false,
+      has_recent_frame: false,
+      preview_visible_status: "not_visible_source_first_frame_failed",
+      preview_visible_plain: "底层没有首帧，不能把黑框当成实时画面。",
+      camera_wysiwyg_status_plain: "画面未可见：不是页面独占，DV20 UVC 挂在 USB 12M full-speed，底层 STREAMON 失败。",
+      camera_wysiwyg_next_action_plain: "换高速 USB 口/线或带供电 Hub 后复测。",
+      source_diagnosis_status: "uvc_full_speed_usb_not_exclusive",
+      source_diagnosis_plain_hint: "不是页面独占：DV20 UVC 挂在 USB 12M full-speed，底层 STREAMON 失败。",
+      source_diagnosis_next_action_plain: "摄像头现在挂在 USB 12M full-speed，换高速 USB 口/线或带供电 USB Hub 后复测；共享预览不是页面独占。",
+      source_diagnosis_not_exclusive: "true",
+      uvc_usb_topology_status: "uvc_video_on_full_speed_usb",
+      uvc_usb_topology_video_usb_speed: "12M",
+      camera_usb_speed: "12M",
+      camera_usb_full_speed_detected: true,
+      camera_hardware_action_required: true,
+      camera_hardware_action_label: "换高速USB后复测",
+      camera_blocks_mapping_start: true,
+      camera_blocks_free_move: false,
+      camera_reprobe_after_hardware_action_required: true,
+      camera_reprobe_sequence: [
+        "/api/robot-control/camera/first-frame/probe",
+        "/api/robot-control/camera/mjpeg/status",
+        "/api/robot-control/summary",
+      ],
+      exclusive_camera_claim: false,
+      shared_preview_exclusive_camera_claim: false,
+    });
+    stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/camera/mjpeg/status": mjpegStatus,
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const cameraUsbRecoveryProof = wrapper.find('[data-testid="plain-camera-usb-recovery-proof"]');
+    expect(cameraUsbRecoveryProof.exists()).toBe(true);
+    expect(cameraUsbRecoveryProof.attributes("data-state")).toBe("USB full-speed");
+    expect(cameraUsbRecoveryProof.attributes("data-camera-source-diagnosis-status")).toBe("uvc_full_speed_usb_not_exclusive");
+    expect(cameraUsbRecoveryProof.attributes("data-camera-usb-speed")).toBe("12M");
+    expect(cameraUsbRecoveryProof.attributes("data-camera-usb-full-speed-detected")).toBe("true");
+    expect(cameraUsbRecoveryProof.attributes("data-camera-hardware-action-required")).toBe("true");
+    expect(cameraUsbRecoveryProof.attributes("data-camera-hardware-action-label")).toBe("换高速USB后复测");
+    expect(cameraUsbRecoveryProof.attributes("data-camera-source-diagnosis-not-exclusive")).toBe("true");
+    expect(cameraUsbRecoveryProof.attributes("data-camera-reprobe-after-hardware-action-required")).toBe("true");
+    expect(cameraUsbRecoveryProof.text()).toContain("不是页面独占");
+    expect(cameraUsbRecoveryProof.text()).toContain("当前 USB=12M");
+
+    const currentFacts = wrapper.find('[data-testid="plain-current-facts"]').text();
+    expect(currentFacts).toContain("画面：不是页面独占，当前 USB=12M full-speed");
+    expect(currentFacts).toContain("STREAMON/首帧失败");
+    expect(currentFacts).toContain("换高速 USB 口/线或带供电 Hub 后复测");
+
+    const cameraPanel = wrapper.find('[data-testid="plain-camera-panel"]');
+    expect(cameraPanel.attributes("data-state")).toBe("失败");
+    expect(cameraPanel.text()).toContain("USB=12M full-speed");
+    expect(cameraPanel.text()).toContain("换高速 USB 口/线或带供电 Hub 后复测");
+  });
+
   it("focuses field acceptance WYSIWYG refresh on camera only when radar and map are already visible", async () => {
     // 现场只剩画面缺口时，按钮应只复测相机，不能顺手刷新雷达/地图，更不能触发任何运动入口。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as RobotControlSummaryResponse;

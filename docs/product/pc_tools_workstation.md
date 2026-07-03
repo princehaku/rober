@@ -5399,3 +5399,10 @@ ROS2 配套工具继续按本地 `docs/vendor/VENDOR_INDEX.md` 和项目 ROS2 �
 PC->Robot API->ROS `/cmd_vel`->WAVE ROVER `T=11/PWM164` 和 stop 均已执行，但不能把 wheel raw 非零、
 物理移动、Nav2 自动驾驶完成或 delivery success 写成已完成；下一步需要人工在车旁检查电机供电、急停、
 底盘模式、轮子是否离地、固件反馈语义，或在明确安全条件下复验更高 PWM/更长窗口。
+
+2026-07-03 08:10 CST 起，普通 PC 相机卡把 `/api/robot-control/camera/mjpeg/status` 作为 USB full-speed
+诊断兜底来源：即使 `/api/robot-control/summary` 的 camera 字段因为上位机读回慢或 fetch 失败暂时是
+`not_loaded/fetch_failed`，只要 MJPEG status 返回 `source_diagnosis_status=uvc_full_speed_usb_not_exclusive`、
+`camera_usb_speed=12M` 或 `camera_usb_full_speed_detected=true`，首屏事实条、相机状态和
+`plain-camera-usb-recovery-proof` 都显示“不是页面独占、USB=12M full-speed、换高速 USB 口/线或带供电 Hub
+后复测”。该兜底不发送运动命令、不启动建图、不重新独占打开摄像头，只把共享预览只读诊断翻成普通用户能执行的硬件动作。

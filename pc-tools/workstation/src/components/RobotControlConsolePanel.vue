@@ -819,6 +819,56 @@ function sharedPreviewCurrentFactSuffix(camera: RobotControlSummaryResponse["rea
     : `；${countText}同一条上游流，不是浏览器独占`;
 }
 
+function cameraMjpegStatusLoaded(): RobotControlCameraMjpegStatusResponse | null {
+  // MJPEG status 是共享预览的独立只读读回；summary 失败时也要允许它给首屏兜底。
+  const status = cameraMjpegStatusResult.value;
+  return status?.proxy_status === "status_loaded" ? status : null;
+}
+
+function cameraMjpegUsbRecoveryReadback() {
+  // USB 12M/full-speed 诊断来自上位机相机服务，PC 端只合并显示，不重新独占打开摄像头。
+  const status = cameraMjpegStatusLoaded();
+  const sourceDiagnosisStatus = loadedAliasText(status?.source_diagnosis_status)
+    || loadedAliasText(status?.uvc_usb_topology_status);
+  const usbSpeed = loadedAliasText(status?.camera_usb_speed)
+    || loadedAliasText(status?.uvc_usb_topology_video_usb_speed)
+    || loadedAliasText(status?.usb_speed);
+  const usbFullSpeedDetected = Boolean(status?.camera_usb_full_speed_detected)
+    || Boolean(status?.usb_full_speed_detected)
+    || sourceDiagnosisStatus === "uvc_full_speed_usb_not_exclusive"
+    || sourceDiagnosisStatus === "uvc_video_on_full_speed_usb"
+    || usbSpeed === "12M";
+  const hardwareActionRequired = Boolean(status?.camera_hardware_action_required)
+    || Boolean(status?.hardware_action_required)
+    || usbFullSpeedDetected;
+  const hardwareActionLabel = loadedAliasText(status?.camera_hardware_action_label)
+    || loadedAliasText(status?.hardware_action_label)
+    || (usbFullSpeedDetected ? "换高速USB后复测" : "复测相机首帧");
+  const notExclusive = status?.source_diagnosis_not_exclusive === "true"
+    || status?.exclusive_camera_claim === false
+    || status?.shared_preview_exclusive_camera_claim === false;
+  return {
+    status,
+    sourceDiagnosisStatus,
+    usbSpeed,
+    usbFullSpeedDetected,
+    hardwareActionRequired,
+    hardwareActionLabel,
+    notExclusive,
+    blocksMappingStart: Boolean(status?.camera_blocks_mapping_start ?? false),
+    blocksFreeMove: Boolean(status?.camera_blocks_free_move ?? false),
+    reprobeAfterHardwareActionRequired: Boolean(status?.camera_reprobe_after_hardware_action_required ?? hardwareActionRequired),
+    reprobeSequence: status?.camera_reprobe_sequence ?? [],
+    plainHint: loadedAliasText(status?.source_diagnosis_plain_hint)
+      || loadedAliasText(status?.uvc_usb_topology_plain_hint)
+      || loadedAliasText(status?.camera_wysiwyg_status_plain),
+    nextActionPlain: loadedAliasText(status?.source_diagnosis_next_action_plain)
+      || loadedAliasText(status?.uvc_usb_topology_next_action)
+      || loadedAliasText(status?.camera_wysiwyg_next_action_plain),
+    selectedName: loadedAliasText(status?.selected_name),
+  };
+}
+
 function plainCurrentCameraFactText(camera: RobotControlSummaryResponse["readback_summary"]["camera"]): string {
   // 当前事实条要短而准：把共享预览事实放在前面，避免用户误判成浏览器独占。
   const visualSaveFailureHint = plainVisualMaterialSaveFailureHint();
@@ -836,6 +886,11 @@ function plainCurrentCameraFactText(camera: RobotControlSummaryResponse["readbac
   }
   if (cameraMjpegFrameObserved.value) {
     return `画面：已看到 MJPEG 实时画面${sharedPreviewCurrentFactSuffix(camera)}。`;
+  }
+  const mjpegUsbRecovery = cameraMjpegUsbRecoveryReadback();
+  if (mjpegUsbRecovery.usbFullSpeedDetected && !browserVideoFrameDrawn()) {
+    const usbText = mjpegUsbRecovery.usbSpeed ? `USB=${mjpegUsbRecovery.usbSpeed} full-speed` : "USB full-speed";
+    return `画面：不是页面独占，当前 ${usbText}，底层 STREAMON/首帧失败；换高速 USB 口/线或带供电 Hub 后复测。`;
   }
   if (cameraMjpegRetryPending.value) {
     const sourceHint = cameraSourceFirstFrameFailed(camera) ? cameraSourcePlainFailureHint() : "";
@@ -1067,6 +1122,11 @@ function summarizeCameraState(): { state: "未打开" | "连接中" | "关闭中
   }
   if (cameraMjpegFrameObserved.value) {
     return { state: "画面可见", hint: "实时画面已显示；当前使用 MJPEG 备用通道。" };
+  }
+  const mjpegUsbRecovery = cameraMjpegUsbRecoveryReadback();
+  if (mjpegUsbRecovery.usbFullSpeedDetected && !browserVideoFrameDrawn()) {
+    const usbText = mjpegUsbRecovery.usbSpeed ? `USB=${mjpegUsbRecovery.usbSpeed} full-speed` : "USB full-speed";
+    return { state: "失败", hint: `不是页面独占；当前 ${usbText}，底层 STREAMON/首帧失败；换高速 USB 口/线或带供电 Hub 后复测。` };
   }
   switch (previewStatus.value) {
     case "starting_local_peer":
@@ -2163,7 +2223,11 @@ const plainCameraUsbRecoveryProofSummary = computed(() => {
   const summary = robotSummary.value;
   const liveSummary = plainLiveClosureSummary.value;
   const camera = summary?.readback_summary.camera;
+  const mjpegUsbRecovery = cameraMjpegUsbRecoveryReadback();
   const diagnosisStatuses = [
+    mjpegUsbRecovery.sourceDiagnosisStatus,
+    mjpegUsbRecovery.status?.source_diagnosis_status,
+    mjpegUsbRecovery.status?.uvc_usb_topology_status,
     summary?.camera_source_diagnosis_status,
     liveSummary?.camera_source_diagnosis_status,
     liveSummary?.live_wysiwyg_camera_source_diagnosis_status,
@@ -2171,40 +2235,55 @@ const plainCameraUsbRecoveryProofSummary = computed(() => {
     camera?.uvc_usb_topology_status,
   ].filter((item): item is string => Boolean(item && item !== "not_loaded" && item !== "none"));
   const usbSpeeds = [
+    mjpegUsbRecovery.usbSpeed,
+    mjpegUsbRecovery.status?.camera_usb_speed,
+    mjpegUsbRecovery.status?.uvc_usb_topology_video_usb_speed,
+    mjpegUsbRecovery.status?.usb_speed,
     summary?.camera_usb_speed,
     liveSummary?.camera_usb_speed,
     camera?.uvc_usb_topology_video_usb_speed,
   ].filter((item): item is string => Boolean(item && item !== "not_loaded" && item !== "none"));
   const sourceDiagnosisStatus = diagnosisStatuses[0] ?? "not_loaded";
   const usbSpeed = usbSpeeds[0] ?? "not_loaded";
-  const usbFullSpeedDetected = Boolean(summary?.camera_usb_full_speed_detected ?? liveSummary?.camera_usb_full_speed_detected)
+  const usbFullSpeedDetected = Boolean(summary?.camera_usb_full_speed_detected)
+    || Boolean(liveSummary?.camera_usb_full_speed_detected)
+    || mjpegUsbRecovery.usbFullSpeedDetected
     || diagnosisStatuses.includes("uvc_full_speed_usb_not_exclusive")
     || diagnosisStatuses.includes("uvc_video_on_full_speed_usb")
     || usbSpeeds.includes("12M");
   const hardwareActionRequired = Boolean(
     summary?.camera_hardware_action_required
-    ?? liveSummary?.camera_hardware_action_required
-    ?? usbFullSpeedDetected,
+    || liveSummary?.camera_hardware_action_required
+    || mjpegUsbRecovery.hardwareActionRequired
+    || usbFullSpeedDetected,
   );
-  const hardwareActionLabel = summary?.camera_hardware_action_label
-    ?? liveSummary?.camera_hardware_action_label
-    ?? (usbFullSpeedDetected ? "换高速USB后复测" : "复测相机首帧");
+  const summaryHardwareActionLabel = loadedAliasText(summary?.camera_hardware_action_label);
+  const liveHardwareActionLabel = loadedAliasText(liveSummary?.camera_hardware_action_label);
+  const hardwareActionLabel = mjpegUsbRecovery.usbFullSpeedDetected
+    ? mjpegUsbRecovery.hardwareActionLabel
+    : summaryHardwareActionLabel
+      || liveHardwareActionLabel
+      || mjpegUsbRecovery.hardwareActionLabel
+      || (usbFullSpeedDetected ? "换高速USB后复测" : "复测相机首帧");
   const reprobeSequence = summary?.camera_reprobe_sequence?.length
     ? summary.camera_reprobe_sequence
     : liveSummary?.camera_reprobe_sequence?.length
       ? liveSummary.camera_reprobe_sequence
+      : mjpegUsbRecovery.reprobeSequence.length
+        ? mjpegUsbRecovery.reprobeSequence
       : [
         summary?.fixed_camera_probe_endpoint ?? liveSummary?.fixed_camera_probe_endpoint ?? "/api/robot-control/camera/first-frame/probe",
         summary?.fixed_camera_mjpeg_status_endpoint ?? liveSummary?.fixed_camera_mjpeg_status_endpoint ?? "/api/robot-control/camera/mjpeg/status",
         "/api/robot-control/summary",
       ];
-  const blocksMappingStart = Boolean(summary?.camera_blocks_mapping_start ?? liveSummary?.camera_blocks_mapping_start ?? !plainCameraReadyForFreeRoamAutonomy.value);
-  const blocksFreeMove = Boolean(summary?.camera_blocks_free_move ?? liveSummary?.camera_blocks_free_move ?? false);
+  const blocksMappingStart = Boolean(summary?.camera_blocks_mapping_start ?? liveSummary?.camera_blocks_mapping_start ?? (mjpegUsbRecovery.blocksMappingStart || !plainCameraReadyForFreeRoamAutonomy.value));
+  const blocksFreeMove = Boolean(summary?.camera_blocks_free_move ?? liveSummary?.camera_blocks_free_move ?? mjpegUsbRecovery.blocksFreeMove);
   const notExclusive = summary?.camera_source_diagnosis_not_exclusive === "true"
     || liveSummary?.camera_source_diagnosis_not_exclusive === "true"
     || camera?.source_diagnosis_not_exclusive === "true"
     || camera?.shared_preview_exclusive_camera_claim === "false"
-    || plainCameraSharedPreviewDomEvidence.value.exclusiveCameraClaim === false;
+    || plainCameraSharedPreviewDomEvidence.value.exclusiveCameraClaim === false
+    || mjpegUsbRecovery.notExclusive;
   const visible = hardwareActionRequired || usbFullSpeedDetected || sourceDiagnosisStatus === "uvc_full_speed_usb_not_exclusive";
   const state = usbFullSpeedDetected ? "USB full-speed" : hardwareActionRequired ? "需硬件处理" : "无需硬件处理";
   const usbText = usbSpeed && !["", "not_loaded", "none"].includes(usbSpeed) ? `当前 USB=${usbSpeed}` : "USB 速度未读到";
@@ -2223,7 +2302,12 @@ const plainCameraUsbRecoveryProofSummary = computed(() => {
     notExclusive,
     blocksMappingStart,
     blocksFreeMove,
-    reprobeAfterHardwareActionRequired: Boolean(summary?.camera_reprobe_after_hardware_action_required ?? liveSummary?.camera_reprobe_after_hardware_action_required ?? hardwareActionRequired),
+    reprobeAfterHardwareActionRequired: Boolean(
+      summary?.camera_reprobe_after_hardware_action_required
+      || liveSummary?.camera_reprobe_after_hardware_action_required
+      || mjpegUsbRecovery.reprobeAfterHardwareActionRequired
+      || hardwareActionRequired,
+    ),
     reprobeSequence: reprobeSequence.join(",") || "none",
     fixedCameraProbeEndpoint: summary?.fixed_camera_probe_endpoint ?? liveSummary?.fixed_camera_probe_endpoint ?? "/api/robot-control/camera/first-frame/probe",
     fixedCameraMjpegStatusEndpoint: summary?.fixed_camera_mjpeg_status_endpoint ?? liveSummary?.fixed_camera_mjpeg_status_endpoint ?? "/api/robot-control/camera/mjpeg/status",
