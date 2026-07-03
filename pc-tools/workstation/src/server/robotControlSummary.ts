@@ -195,6 +195,7 @@ const CAMERA_FIRST_FRAME_FAILURE_REASONS = [
   "capture_read_call_timeout",
   "first_frame_timeout",
   "first_frame_total_timeout",
+  "opencv_capture_not_opened",
 ] as const;
 export const ROBOT_CONTROL_MANUAL_SPEED_LIMIT_MPS = 0.12;
 export const ROBOT_CONTROL_MANUAL_DURATION_LIMIT_MS = 800;
@@ -2449,6 +2450,8 @@ function cameraSummaryFromReadbacks(
       ? "source_first_frame_failed"
     : sourceReadiness === "first_frame_failed"
     ? "source_first_frame_failed"
+    : relayHasCameraFirstFrameFact
+      ? "source_first_frame_failed"
     : rawHealthStatus === "ready" && sourceReadiness === "source_selected_not_probed" && sharedPreviewStatus !== "streaming"
       ? "source_not_probed"
       : rawHealthStatus;

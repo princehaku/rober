@@ -16155,6 +16155,100 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("workstation camera MJPEG status treats OpenCV open failure as non-exclusive no-frame material", async () => {
+    // 实板 `/api/camera/mjpeg` 可能只留下 OpenCV 打不开设备的 last_offer_error；status 仍要给普通用户明确的源头无帧动作。
+    let healthRequestCount = 0;
+    let mjpegRequestCount = 0;
+    const upstreamServer = http.createServer((req, res) => {
+      if (req.method === "GET" && req.url === "/api/camera/health") {
+        healthRequestCount += 1;
+        res.statusCode = 200;
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify({
+          schema: "trashbot.local_webrtc_camera_smoke.v1",
+          status: "ready",
+          video_source: "/dev/video1",
+          selected_name: "USB Composite Device: DV20 USB",
+          source_readiness: "source_selected_not_probed",
+          source_failure_reason: "none",
+          current_selection: {
+            selected_path: "/dev/video1",
+            selected_name: "USB Composite Device: DV20 USB  (usb-5310000.usb-1)",
+            selected_is_uvc_or_usb: true,
+          },
+          source_usage: {
+            status: "not_in_use",
+            owner_count: 0,
+            owners: [],
+          },
+          uvc_usb_topology: {
+            status: "loaded",
+            video_usb_speed: "480M",
+          },
+          media_diagnostics: {
+            last_offer_error: {
+              failure_reason: "opencv_capture_not_opened",
+              video_source: "/dev/video1",
+            },
+          },
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          robot_control_executed: false,
+        }));
+        return;
+      }
+      if (req.method === "GET" && req.url === "/api/camera/mjpeg") {
+        mjpegRequestCount += 1;
+      }
+      res.statusCode = 404;
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({ error: "not_found" }));
+    });
+    const upstream = await new Promise<{ baseUrl: string; close: () => Promise<void> }>((resolve) => {
+      upstreamServer.listen(0, "127.0.0.1", () => {
+        const address = upstreamServer.address();
+        const port = typeof address === "object" && address ? address.port : 0;
+        resolve({
+          baseUrl: `http://127.0.0.1:${port}`,
+          close: () => new Promise((closeResolve, closeReject) => {
+            upstreamServer.close((error) => (error ? closeReject(error) : closeResolve()));
+          }),
+        });
+      });
+    });
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const statusResponse = await fetch(`${workstation.baseUrl}/api/robot-control/camera/mjpeg/status?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
+      const statusBody = await statusResponse.json() as RobotControlCameraMjpegStatusResponse;
+
+      expect(statusResponse.status).toBe(200);
+      expect(statusBody.proxy_status).toBe("status_loaded");
+      expect(statusBody.last_failure_reason).toBe("camera_source_first_frame_failed");
+      expect(statusBody.last_remote_http_status).toBe(200);
+      expect(statusBody.source_diagnosis_status).toBe("uvc_no_frame_not_exclusive");
+      expect(statusBody.source_diagnosis_plain_hint).toBe("不是页面独占：USB Composite Device: DV20 USB 当前没人占用，但 UVC 设备没有输出视频帧。");
+      expect(statusBody.source_diagnosis_next_action).toBe("check_usb_camera_input_power_or_known_good_uvc");
+      expect(statusBody.source_diagnosis_not_exclusive).toBe("true");
+      expect(statusBody.source_readiness).toBe("first_frame_failed");
+      expect(statusBody.source_failure_reason).toBe("opencv_capture_not_opened");
+      expect(statusBody.preview_status).toBe("source_first_frame_failed");
+      expect(statusBody.first_frame_probe_status).toBe("source_first_frame_failed");
+      expect(statusBody.first_frame_failure_reason).toBe("opencv_capture_not_opened");
+      expect(statusBody.camera_hardware_action_required).toBe(true);
+      expect(statusBody.camera_hardware_action_label).toBe("检查摄像头输入/供电后复测");
+      expect(statusBody.camera_blocks_free_move).toBe(false);
+      expect(statusBody.camera_usb_speed).toBe("480M");
+      expect(statusBody.exclusive_camera_claim).toBe(false);
+      expect(statusBody.robot_control_executed).toBe(false);
+      expect(healthRequestCount).toBe(1);
+      expect(mjpegRequestCount).toBe(0);
+    } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+  });
+
   it("waits for slower camera health before returning MJPEG source diagnosis", async () => {
     // 真实上位机 camera health 偶发超过 2.5s；status 要和 summary 共用宽读取窗口，否则普通首屏会丢掉“不是独占”的诊断。
     let healthRequestCount = 0;

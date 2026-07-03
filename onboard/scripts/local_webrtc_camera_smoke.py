@@ -58,7 +58,15 @@ MJPEG_FIRST_FRAME_FAILURE_RETRY_COOLDOWN_MS = 30_000
 PEER_ID_PATTERN = re.compile(r"^[A-Za-z0-9]{1,32}$")
 API_CAMERA_PREFIX = "/api/camera"
 IMPORTS = ("aiortc", "cv2", "av")
-FIRST_FRAME_FAILURE_REASONS = {"first_frame_timeout", "first_frame_total_timeout", "capture_read_call_timeout", "capture_read_returned_false", "capture_read_no_result"}
+# OpenCV 打不开设备也是首帧失败；否则 /health 会把刚失败的共享预览误报成“未探测”。
+FIRST_FRAME_FAILURE_REASONS = {
+    "first_frame_timeout",
+    "first_frame_total_timeout",
+    "capture_read_call_timeout",
+    "capture_read_returned_false",
+    "capture_read_no_result",
+    "opencv_capture_not_opened",
+}
 UVC_KERNEL_ERROR_PATTERNS = (
     "error -71",
     "failed to resubmit video urb",

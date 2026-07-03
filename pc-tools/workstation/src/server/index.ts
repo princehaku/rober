@@ -104,6 +104,7 @@ const CAMERA_FIRST_FRAME_FAILURE_REASONS = new Set([
   "capture_read_call_timeout",
   "first_frame_timeout",
   "first_frame_total_timeout",
+  "opencv_capture_not_opened",
 ]);
 const FREE_ROAM_MAPPING_REQUIRED_GATE_IDS = [
   "camera_first_frame",
@@ -3378,6 +3379,9 @@ async function cameraSourceFirstFrameFailureForStatus(
     const reason = shortText(payload?.source_failure_reason, "");
     const lastOffer = asRecord(asRecord(payload?.media_diagnostics)?.last_offer_error);
     const lastOfferReason = shortText(lastOffer?.failure_reason, "");
+    // 上车 health 可能把当前 source_failure_reason 填成 "none"，但 last_offer_error 已经记录真实首帧失败。
+    const effectiveReason = reason === "none" || reason === "not_loaded" ? "" : reason;
+    const effectiveLastOfferReason = lastOfferReason === "none" || lastOfferReason === "not_loaded" ? "" : lastOfferReason;
     const sourceDiagnosis = asRecord(payload?.source_diagnosis)
       ?? asRecord(asRecord(payload?.media_diagnostics)?.source_diagnosis);
     const sourceUsage = asRecord(payload?.source_usage)
@@ -3426,14 +3430,13 @@ async function cameraSourceFirstFrameFailureForStatus(
     const primarySourceFailureReason = shortText(
       payload?.primary_source_failure_reason
         ?? lastError?.primary_source_failure_reason
-        ?? reason
-        ?? lastOfferReason,
+        ?? (effectiveReason || effectiveLastOfferReason),
       "not_loaded",
     );
     const firstFrameFailed = status === "source_first_frame_failed"
       || readiness === "first_frame_failed"
-      || CAMERA_FIRST_FRAME_FAILURE_REASONS.has(reason)
-      || CAMERA_FIRST_FRAME_FAILURE_REASONS.has(lastOfferReason);
+      || CAMERA_FIRST_FRAME_FAILURE_REASONS.has(effectiveReason)
+      || CAMERA_FIRST_FRAME_FAILURE_REASONS.has(effectiveLastOfferReason);
     const sourceUsageStatus = shortText(sourceUsage?.status, "");
     const sourceUsageOwnerCount = sourceUsage?.owner_count === undefined ? "not_loaded" : String(sourceUsage.owner_count);
     const sourceUsageScope = cameraSourceUsageScope(sourceUsageStatus, sourceUsageOwnerCount);
@@ -3500,7 +3503,7 @@ async function cameraSourceFirstFrameFailureForStatus(
       source_diagnosis_next_action: resolvedDiagnosisNextAction || "not_loaded",
       source_diagnosis_not_exclusive: resolvedDiagnosisNotExclusive,
       source_readiness: "first_frame_failed",
-      source_failure_reason: reason || lastOfferReason || "first_frame_failed",
+      source_failure_reason: effectiveReason || effectiveLastOfferReason || "first_frame_failed",
       selected_path: selectedPath,
       selected_name: selectedName,
       selected_is_uvc_or_usb: selectedIsUvcOrUsb,

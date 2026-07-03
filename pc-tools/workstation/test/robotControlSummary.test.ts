@@ -3156,6 +3156,91 @@ describe("robotControlSummary", () => {
     expect(wysiwygObjective?.source_card_id).toBe("camera_preview");
   });
 
+  it("promotes OpenCV camera open failure from health last_offer into summary no-frame diagnosis", async () => {
+    // 8088 共享预览失败后 health 可能仍显示 ready/not-probed；summary 必须消费 last_offer_error，别把真实无帧误报成还没探测。
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {
+      const url = new URL(String(input));
+      const basePayload = {
+        schema: "trashbot.upper_robot_api.v1.readback",
+        status: "loaded",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        robot_control_executed: false,
+      };
+      if (url.pathname === "/api/camera/health") {
+        return new Response(JSON.stringify({
+          ...basePayload,
+          status: "ready",
+          source_readiness: "source_selected_not_probed",
+          source_failure_reason: "none",
+          video_source: "/dev/video1",
+          current_selection: {
+            selected_name: "USB Composite Device: DV20 USB",
+            selected_path: "/dev/video1",
+            selected_is_uvc_or_usb: true,
+          },
+          source_usage: {
+            status: "not_in_use",
+            owner_count: 0,
+            owners: [],
+          },
+          uvc_usb_topology: {
+            status: "loaded",
+            video_usb_speed: "480M",
+          },
+          media_diagnostics: {
+            last_offer_error: {
+              failure_reason: "opencv_capture_not_opened",
+              video_source: "/dev/video1",
+            },
+          },
+        }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      if (url.pathname === "/api/map/preview") {
+        return new Response(JSON.stringify({
+          ...basePayload,
+          map_current_visible: true,
+          map_once_observed: true,
+          radar_overlay_status: "loaded",
+          radar_overlay_point_count: 5,
+          radar_overlay_current_point_count: 5,
+          radar_overlay_source_point_count: 5,
+          radar_overlay_refresh_required: false,
+          radar_overlay_blocks_wysiwyg: false,
+        }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify(basePayload), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }));
+
+    const summary = await buildRobotControlSummary("http://192.168.1.11:8787", null, null, {
+      readbackTimeoutMs: 100,
+    });
+
+    expect(summary.readback_summary.camera.status).toBe("source_first_frame_failed");
+    expect(summary.readback_summary.camera.source_readiness).toBe("first_frame_failed");
+    expect(summary.readback_summary.camera.source_failure_reason).toBe("opencv_capture_not_opened");
+    expect(summary.readback_summary.camera.last_offer_failure_reason).toBe("opencv_capture_not_opened");
+    expect(summary.readback_summary.camera.source_diagnosis_status).toBe("uvc_no_frame_not_exclusive");
+    expect(summary.readback_summary.camera.source_diagnosis_not_exclusive).toBe("true");
+    expect(summary.live_closure_summary?.camera_hardware_action_required).toBe(true);
+    expect(summary.live_closure_summary?.camera_hardware_action_label).toBe("检查摄像头输入/供电后复测");
+    expect(summary.live_closure_summary?.camera_usb_speed).toBe("480M");
+    expect(summary.live_closure_summary?.camera_blocks_free_move).toBe(false);
+    expect(summary.camera_hardware_action_required).toBe(true);
+    expect(summary.camera_hardware_action_label).toBe("检查摄像头输入/供电后复测");
+    expect(summary.camera_blocks_free_move).toBe(false);
+  });
+
   it("keeps 480M UVC transport errors as hardware action without marking USB full-speed", async () => {
     // 现场已经读到 480M 时，不能继续提示“换高速 USB”，但 UVC/USB transport error 仍然需要处理线、口、供电或摄像头本体。
     vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {

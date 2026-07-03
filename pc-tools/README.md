@@ -29,6 +29,13 @@ visual-first 首屏让地图独占首行，图传和 WASD/方向键连续手控�
 `foxglove_bridge` + Foxglove Web 连接 `ws://192.168.1.11:8765`；这些工具只观察，不替代 PC 简易界面，
 也不发送 `/cmd_vel`、manual、Nav2 goal、建图或 stop。
 
+2026-07-03 22:33 CST 起，上车共享相机 `/api/camera/health` 与 PC
+`/api/robot-control/camera/mjpeg/status` 都把 `opencv_capture_not_opened` 归入首帧失败；health
+即使还处于 `ready/source_selected_not_probed`，只要 last offer 已记录 OpenCV 打不开设备，PC status/summary
+也会直接显示 `source_first_frame_failed`、`uvc_no_frame_not_exclusive`、`exclusive_camera_claim=false`、
+`camera_hardware_action_required=true` 和 `camera_hardware_action_label=检查摄像头输入/供电后复测`。现场当前读回仍是
+DV20 UVC 在 `480M`、无人占用但无真实首帧；这不是多人预览独占，也不阻塞地图、WASD、自由移动或 Nav2 控制入口。
+
 2026-07-02 CST 起，远程浏览器地图观察不再只给裸 Foxglove 命令，而是使用项目包装入口
 `ros2 launch ros2_trashbot_bringup foxglove_bridge.launch.py`。该 launch 默认绑定
 `0.0.0.0:8765`，只开放地图、雷达、TF、路线、定位、相机图像和 costmap 观察 topic，并把
