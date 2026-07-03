@@ -5560,3 +5560,11 @@ vendor `T=1001 L/R` 非零或完整 Nav2/delivery success。这样普通 PC 页�
 `route_target_visible=true` 和目标 `{x:0.8,y:0.05,frame_id:map}`，但 `status=loaded_fail_closed_summary`、
 `has_png=false`；这说明本轮剩余问题是上车 map preview 没吐出 PNG 图像，而不是 PC UI 画布尺寸未放大。
 雷达 overlay 当前 `not_current`，旧来源点因 scan stale 被抑制，需先刷新雷达扫描再刷新地图画面。
+
+2026-07-03 21:40 CST 起，PC `GET /api/robot-control/map/preview` 新增
+`map_png_data_url` 顶层别名，与既有 `image_data_url` 完全同值。前端继续使用 `image_data_url` 渲染地图；
+现场脚本若按更直观的 `map_png_data_url` 检查，也能直接确认 PNG data URL 已存在。live 复核返回
+`image_data_url_present=true`、`map_png_data_url_present=true`、`aliases_equal=true`、地图 `261x113`、
+`robot_pose_status=map_pose_observed`、`path_preview_point_count=18`、`route_target_visible=true`。
+当前剩余缺口不是地图 PNG，而是雷达 overlay 仍因 runtime scan stale 显示 `not_current`、当前点数 `0`；
+需要刷新雷达扫描后再刷新地图画面。

@@ -4456,6 +4456,7 @@ function blockedMapPreviewResponse(
     navigation_quality: "not_loaded",
     image_mime_type: "not_loaded",
     image_data_url: "",
+    map_png_data_url: "",
     source_image_format: "not_loaded",
     failure_reason: reason,
     blocked_reasons: [reason],
@@ -4769,6 +4770,7 @@ export async function buildMapPreviewProxy(baseUrl: string): Promise<RobotContro
     navigation_quality: asString(findFirstKey(payload, ["navigation_quality"]), "not_loaded"),
     image_mime_type: imageLooksSafe ? "image/png" : "not_loaded",
     image_data_url: imageLooksSafe ? imageDataUrl : "",
+    map_png_data_url: imageLooksSafe ? imageDataUrl : "",
     source_image_format: asString(findFirstKey(payload, ["source_image_format"]), "not_loaded"),
     failure_reason:
       blockedReasons.length > 0

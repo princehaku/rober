@@ -11844,6 +11844,7 @@ describe("workstation fail-closed API contracts", () => {
         remote_endpoint: string;
         image_mime_type: string;
         image_data_url: string;
+        map_png_data_url: string;
         robot_control_executed: boolean;
         safe_to_control: boolean;
         readback_only: boolean;
@@ -11920,6 +11921,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(previewBody.remote_endpoint).toBe("/api/map/preview");
       expect(previewBody.image_mime_type).toBe("image/png");
       expect(previewBody.image_data_url).toContain("data:image/png;base64,");
+      expect(previewBody.map_png_data_url).toBe(previewBody.image_data_url);
       expect(previewBody.robot_control_executed).toBe(false);
       expect(previewBody.safe_to_control).toBe(false);
       expect(previewBody.readback_only).toBe(true);

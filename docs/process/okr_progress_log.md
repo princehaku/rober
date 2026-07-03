@@ -8,6 +8,19 @@
 
 ## 2026-07-03 系列
 
+### 2026-07-03 21-40｜pc_map_png_alias_live_fix｜PC 地图 PNG 字段别名补齐
+
+本轮 `sprints/2026.07.03_21-40_pc_map_png_alias_live_fix/` 修正 map preview 现场脚本误判风险：
+上车 `/api/map/preview` 和 PC `/api/robot-control/map/preview` 实际一直返回 `image_data_url`，
+但现场检查 `map_png_data_url` 会得到空值。本轮在 PC map preview 合同中新增 `map_png_data_url`，
+作为 `image_data_url` 的同值别名，保持前端渲染字段不变，同时让“地图 PNG 是否存在”可直接读。
+
+验证范围：`npm test -- test/catalog.test.ts -t "map preview|map lifecycle" --run` 7 tests OK / 181 skipped；
+`npm run build` 通过（仅 Vite chunk warning）。7001 已重启到 `0.0.0.0:7001`，live 读回
+`image_data_url_present=true`、`map_png_data_url_present=true`、`aliases_equal=true`、地图 `261x113`、
+`robot_pose_status=map_pose_observed`、`path_preview_point_count=18`、`route_target_visible=true`。
+雷达 overlay 仍为 `not_current` 且 current 点数为 `0`，下一步需要刷新雷达扫描再刷新地图画面。
+
 ### 2026-07-03 21-36｜pc_map_ros2_companion_live_check｜PC 大地图与 ROS2 配套 live 复核
 
 本轮 `sprints/2026.07.03_21-36_pc_map_ros2_companion_live_check/` 回应现场“PC 地图太小 / ROS2 有什么配套”的问题：

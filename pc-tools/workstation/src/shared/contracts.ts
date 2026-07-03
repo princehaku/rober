@@ -6215,6 +6215,7 @@ export interface RobotControlMapPreviewResponse extends ProofFlags {
   navigation_quality: string;
   image_mime_type: "image/png" | "not_loaded";
   image_data_url: string;
+  map_png_data_url: string;
   source_image_format: string;
   failure_reason: string;
   blocked_reasons: string[];
