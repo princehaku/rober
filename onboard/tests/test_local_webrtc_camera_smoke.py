@@ -200,9 +200,21 @@ class LocalWebrtcCameraSmokeTests(unittest.TestCase):
         self.assertIn("MJPG@640x480@30", labels)
         self.assertIn("MJPG@1280x720@30", labels)
         self.assertIn("MJPG@480x320@30", labels)
+        self.assertIn("MJPG@160x120@30", labels)
         self.assertIn("YUYV@640x480@22", labels)
         self.assertIn("YUYV@320x240@25", labels)
         self.assertIn("YUYV@320x240@20", labels)
+        self.assertIn("YUYV@160x120@20", labels)
+        self.assertEqual(len(labels), len(set(labels)))
+
+    def test_mjpeg_attempt_specs_include_low_bandwidth_before_default(self) -> None:
+        """共享预览要先试极低带宽真帧，不能等默认模式失败后才知道软件兜底没做。"""
+        labels = [spec.label() for spec in camera.mjpeg_camera_capture_attempt_specs(640, 480, 15)]
+
+        self.assertLess(labels.index("MJPG@160x120@30"), labels.index("default@current"))
+        self.assertLess(labels.index("YUYV@160x120@20"), labels.index("default@current"))
+        self.assertLess(labels.index("MJPG@480x320@30"), labels.index("MJPG@160x120@30"))
+        self.assertLess(labels.index("YUYV@320x240@25"), labels.index("YUYV@160x120@20"))
         self.assertEqual(len(labels), len(set(labels)))
 
     def test_mjpeg_first_frame_budget_keeps_total_window_but_shortens_each_attempt(self) -> None:
@@ -758,9 +770,10 @@ class LocalWebrtcCameraSmokeTests(unittest.TestCase):
         specs = camera.mjpeg_camera_capture_attempt_specs(640, 480, 15)
 
         self.assertEqual(
-            ["MJPG@640x480@30", "MJPG@480x320@30", "YUYV@320x240@25", "YUYV@640x480@22", "default@current"],
+            ["MJPG@640x480@30", "MJPG@480x320@30", "YUYV@320x240@25", "MJPG@160x120@30", "YUYV@160x120@20"],
             [spec.label() for spec in specs[:5]],
         )
+        self.assertIn("default@current", [spec.label() for spec in specs])
         self.assertEqual(len(specs), len({(spec.fourcc, spec.width, spec.height, spec.fps, spec.apply_settings) for spec in specs}))
 
     def test_mjpeg_attempt_budget_reaches_yuyv_and_default_modes(self) -> None:
@@ -830,6 +843,8 @@ class LocalWebrtcCameraSmokeTests(unittest.TestCase):
         self.assertIsNotNone(error)
         self.assertGreaterEqual(len(attempts), 3)
         self.assertEqual(["MJPG@640x480@30", "MJPG@480x320@30", "YUYV@320x240@25"], [item["label"] for item in attempts[:3]])
+        self.assertIn("MJPG@160x120@30", [item["label"] for item in attempts])
+        self.assertIn("YUYV@160x120@20", [item["label"] for item in attempts])
         self.assertEqual(["/dev/video1", "/dev/video1", "/dev/video1"], [item["open_source"] for item in attempts[:3]])
         self.assertEqual(["default", "default", "default"], [item["open_backend"] for item in attempts[:3]])
         self.assertTrue(all(capture.released for capture in fake_cv2.captures))
@@ -900,6 +915,8 @@ class LocalWebrtcCameraSmokeTests(unittest.TestCase):
             ["MJPG@640x480@30", "MJPG@480x320@30", "YUYV@320x240@25"],
             [item["label"] for item in attempts[:3]],
         )
+        self.assertIn("MJPG@160x120@30", [item["label"] for item in attempts[:first_fallback_index]])
+        self.assertIn("YUYV@160x120@20", [item["label"] for item in attempts[:first_fallback_index]])
         self.assertTrue(all(item["open_source"] == "/dev/video1" for item in attempts[:first_fallback_index]))
         self.assertTrue(all(item["open_backend"] == "default" for item in attempts[:first_fallback_index]))
         self.assertEqual(["/dev/video1", "index:1"], [item["open_source"] for item in attempts[-2:]])

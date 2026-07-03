@@ -1123,6 +1123,10 @@ def camera_capture_attempt_specs(width: int, height: int, fps: int) -> list[Came
         CameraCaptureAttemptSpec("YUYV", width, height, 22),
         CameraCaptureAttemptSpec("YUYV", 320, 240, 25),
         CameraCaptureAttemptSpec("YUYV", 320, 240, 20),
+        # 有些 UVC 在嵌入式 USB 链路上只愿意先吐极小帧；把 160x120 留作软件兜底。
+        CameraCaptureAttemptSpec("MJPG", 160, 120, 30),
+        # 低带宽 YUYV 对劣质 USB 线/供电更宽容；失败时会明确进入 attempts 供 PC 展示。
+        CameraCaptureAttemptSpec("YUYV", 160, 120, 20),
         CameraCaptureAttemptSpec(None, None, None, None, apply_settings=False),
     ]
     specs: list[CameraCaptureAttemptSpec] = []
@@ -1145,6 +1149,10 @@ def mjpeg_camera_capture_attempt_specs(width: int, height: int, fps: int) -> lis
         CameraCaptureAttemptSpec("MJPG", 480, 320, 30),
         # 真实 DV20 枚举里 320x240 YUYV 是 25/20fps；早试小帧 YUYV 可以验证“不是只卡 MJPG”。
         CameraCaptureAttemptSpec("YUYV", 320, 240, 25),
+        # 现场最需要“先出画面”，160x120 比完整清晰度更适合短预算探活。
+        CameraCaptureAttemptSpec("MJPG", 160, 120, 30),
+        # 继续降到 160x120，给 Jieli/DV20 这类挑 USB 链路的设备最后一个软件机会。
+        CameraCaptureAttemptSpec("YUYV", 160, 120, 20),
         # 640x480 YUYV 仍保留在 default 前，方便现场判断是不是只有低分辨率可读。
         CameraCaptureAttemptSpec("YUYV", width, height, 22),
         # 不写 V4L2 属性的原生模式可绕过部分驱动对 set(fourcc/fps) 的异常协商。

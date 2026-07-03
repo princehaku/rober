@@ -1061,3 +1061,11 @@ PC WASD `pwm + realtime` 快路径现在会把直接串口写出的 vendor comma
 相机方面，当前 USB 重新枚举后不再有新的内核传输错误；health 会把旧同地址错误归为 stale。
 后端 smoke 覆盖 v4l2 mmap、ffmpeg、MJPG/YUYV/current 均 0 字节 timeout。该缺口仍只影响
 实时图传和建图视觉验收，不应重新变成低速运动或自动驾驶发车 gate。
+
+2026-07-03 18:16 继续压缩图传软件变量：上位机共享 MJPEG 首帧尝试新增
+`MJPG@160x120@30` 与 `YUYV@160x120@20`，并放在 `default@current`、index 和 CAP_V4L2
+兜底之前。实机部署到 `trashbot-local-webrtc-camera.service` 后，PC 7001
+`/api/robot-control/camera/mjpeg/status` 已读到这两个低带宽尝试，但 `/api/robot-control/camera/mjpeg`
+仍返回 `first_frame_total_timeout`，直接 V4L2 STREAMON 仍 0 字节。结论保持：
+共享预览不是页面独占，软件已覆盖低带宽真帧尝试；剩余是摄像头输入、USB 线/接口/供电或设备本体复测。
+低速自由移动、PC WASD 和图上路线执行继续不以相机首帧或雷达贴图为发车前置，建图视觉验收仍必须等真实首帧。
