@@ -8,6 +8,26 @@
 
 ## 2026-07-04 系列
 
+### 2026-07-04 06-50｜pc_camera_cma_radar_live_wysiwyg｜PC 相机 CMA 诊断与雷达贴图复核
+
+本轮 `sprints/2026.07.04_06-50_pc_camera_cma_radar_live_wysiwyg/` 继续推进 O7 PC 打开即用。相机侧，
+上车 8088/8787 与 PC 7001 已同步识别 `uvc_cma_alloc_failed_not_exclusive`：DV20 UVC 当前不是页面独占，
+USB 为 `480M` high-speed，但停服务低 buffer `v4l2-ctl`/`ffmpeg` 多格式直采仍 0 字节或超时，内核近期出现
+`cma_alloc` 连续内存分配失败。PC `/api/robot-control/camera/mjpeg/status` 和 live-summary 现在直接暴露
+`cma_memory_diagnostics_*`、`hardware_action_label=释放内存/重启后复测`、`camera_blocks_mapping_start=true`
+和 `camera_blocks_free_move=false`，避免继续误导成浏览器独占或泛化输入信号问题。
+
+雷达/地图侧现场复核发现 `/scan` 一度没有 publisher；按既有 LiDAR lifecycle 启动后，`ros2 topic echo --once /scan`
+读到真实 LaserScan，随后只读刷新 `radar/scan-proof/refresh -> radar/status -> map/preview`，PC map preview 返回
+`radar_overlay_status=loaded`、`radar_overlay_current_point_count=117`、`radar_overlay_wysiwyg_complete=true`，
+live-summary 返回 `map_current_visible=true`、`path_current_visible=true`、`radar_map_points_visible=true`。
+LiDAR lifecycle 明确 `uses_base_uart=false`、`publishes_cmd_vel=false`，不发送底盘运动命令。
+
+验证范围：`npm test -- test/robotControlSummary.test.ts --run` 18 tests OK；`python3 -m py_compile`
+上车相机 smoke/API 脚本 OK；`npm run build` OK（仅 Vite chunk warning）。7001 已重启到 `0.0.0.0:7001`，
+`/` 与 `/map` HTTP 200。剩余风险：相机仍没有真实首帧，需要释放内存或重启上位机后复测，仍无画面再换
+known-good UVC；wheel raw `T=1001 L/R=0/0`、delivery success 与完整路线 HIL 仍未完成。
+
 ### 2026-07-04 06-14｜pc_motion_ready_map_ros2_camera_zero_frame｜PC 可移动状态与大地图配套复核
 
 本轮 `sprints/2026.07.04_06-14_pc_motion_ready_map_ros2_camera_zero_frame/` 修正 PC 普通用户 live-summary

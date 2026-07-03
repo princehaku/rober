@@ -77,6 +77,10 @@ UVC_KERNEL_ERROR_PATTERNS = (
     "failed to initialize the device",
     "device firmware changed",
 )
+CMA_ALLOC_FAILURE_PATTERNS = (
+    "cma_alloc",
+    "alloc failed",
+)
 TEMPERATURE_GLOBS = (
     "/sys/class/thermal/thermal_zone*/temp",
     "/sys/class/hwmon/hwmon*/temp*_input",
@@ -354,6 +358,21 @@ def collect_system_diagnostics() -> dict[str, Any]:
     return payload
 
 
+def read_meminfo_kb() -> dict[str, int]:
+    """只读 `/proc/meminfo`，用于解释 UVC STREAMON 是否可能被连续内存拖住。"""
+    values: dict[str, int] = {}
+    try:
+        lines = Path("/proc/meminfo").read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return values
+    for line in lines:
+        match = re.match(r"^([A-Za-z_()]+):\s+([0-9]+)\s+kB", line)
+        if not match:
+            continue
+        values[match.group(1)] = int(match.group(2))
+    return values
+
+
 def run_readonly_command(args: list[str], timeout_s: float = COMMAND_TIMEOUT_S) -> dict[str, Any]:
     """只运行枚举类命令；调用点负责保证不写 V4L2 controls。"""
     if not args or shutil.which(args[0]) is None:
@@ -407,6 +426,17 @@ def sysfs_usb_device_for_video(video_device: str | None) -> str | None:
     return None
 
 
+def dmesg_text_snapshot(timeout_s: float = 1.5) -> str:
+    """统一读取 dmesg，失败时返回空串；调用方只做诊断，不影响媒体服务存活。"""
+    if shutil.which("dmesg") is None:
+        return ""
+    try:
+        completed = subprocess.run(["dmesg"], check=False, capture_output=True, text=True, timeout=timeout_s)
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+    return completed.stdout
+
+
 def line_matches_usb_device(line: str, usb_device: str | None) -> bool:
     """判断 dmesg 行是否属于当前 USB 设备；接口后缀也算同一设备。"""
     if not usb_device:
@@ -417,6 +447,65 @@ def line_matches_usb_device(line: str, usb_device: str | None) -> bool:
         or f"uvcvideo {usb_device}" in lower
         or any(match.group(1) == usb_device for match in re.finditer(r"(?:uvcvideo|usb)\s+([0-9]+-[0-9][0-9.\-]*)", lower))
     )
+
+
+def collect_cma_memory_diagnostics(dmesg_text: str | None = None) -> dict[str, Any]:
+    """CMA 连续内存失败会让 UVC 无法分配采集缓冲；这里只读暴露，不自动杀进程。"""
+    meminfo = read_meminfo_kb()
+    cma_total_kb = meminfo.get("CmaTotal")
+    cma_free_kb = meminfo.get("CmaFree")
+    mem_available_kb = meminfo.get("MemAvailable")
+    swap_free_kb = meminfo.get("SwapFree")
+    text = dmesg_text if dmesg_text is not None else dmesg_text_snapshot()
+    lines = text.splitlines() if text else []
+    failure_lines: list[str] = []
+    latest_failure_s: float | None = None
+    for line in lines:
+        lower = line.lower()
+        if all(pattern in lower for pattern in CMA_ALLOC_FAILURE_PATTERNS):
+            failure_lines.append(line[-360:])
+            line_s = dmesg_line_seconds(line)
+            if line_s is not None and (latest_failure_s is None or line_s > latest_failure_s):
+                latest_failure_s = line_s
+
+    recent_failure = False
+    if latest_failure_s is not None:
+        # dmesg 和 Python monotonic 都是开机后的单调秒数；一小时窗口覆盖现场排障会话，仍避免跨天旧故障误导。
+        recent_failure = max(0.0, time.monotonic() - latest_failure_s) <= 3600.0
+
+    if recent_failure:
+        status = "cma_alloc_failed_recent"
+        plain_hint = "内核最近出现 CMA 连续内存分配失败；UVC STREAMON/读帧可能拿不到采集缓冲。"
+        next_action = "free_memory_or_reboot_then_probe_known_good_uvc"
+    elif failure_lines:
+        status = "cma_alloc_failed_observed"
+        plain_hint = "内核历史日志出现 CMA 连续内存分配失败；如果无首帧持续，先释放内存或重启后复测。"
+        next_action = "free_memory_or_reboot_if_no_frame_persists"
+    elif cma_total_kb is not None:
+        status = "cma_available_no_recent_failure"
+        plain_hint = "CMA 内存已读到，最近未看到 CMA 分配失败；继续按 UVC 无首帧排查。"
+        next_action = "continue_first_frame_format_diagnostics"
+    else:
+        status = "cma_not_reported"
+        plain_hint = "系统未报告 CMA 内存字段；继续按 UVC 无首帧排查。"
+        next_action = "continue_first_frame_format_diagnostics"
+
+    return {
+        "status": status,
+        "plain_hint": plain_hint,
+        "next_action": next_action,
+        "cma_total_kb": cma_total_kb if cma_total_kb is not None else "not_loaded",
+        "cma_free_kb": cma_free_kb if cma_free_kb is not None else "not_loaded",
+        "mem_available_kb": mem_available_kb if mem_available_kb is not None else "not_loaded",
+        "swap_free_kb": swap_free_kb if swap_free_kb is not None else "not_loaded",
+        "failure_count": len(failure_lines),
+        "latest_failure_s": latest_failure_s if latest_failure_s is not None else "not_loaded",
+        "latest_failure_age_s": round(max(0.0, time.monotonic() - latest_failure_s), 3) if latest_failure_s is not None else "not_loaded",
+        "latest_failure": failure_lines[-1] if failure_lines else "",
+        "tail": failure_lines[-8:],
+        "opens_camera": False,
+        **proof_flags(),
+    }
 
 
 def dmesg_line_seconds(line: str) -> float | None:
@@ -461,11 +550,7 @@ def collect_uvc_kernel_diagnostics(selected_path: str | None, selected_candidate
             "opens_camera": False,
             **proof_flags(),
         }
-    try:
-        completed = subprocess.run(["dmesg"], check=False, capture_output=True, text=True, timeout=1.5)
-        dmesg_text = completed.stdout
-    except (OSError, subprocess.TimeoutExpired):
-        dmesg_text = ""
+    dmesg_text = dmesg_text_snapshot()
     if not dmesg_text:
         return {
             "status": "kernel_log_unavailable",
@@ -1025,6 +1110,7 @@ def build_source_diagnosis(
     last_offer_reason: str,
     uvc_kernel_diagnostics: dict[str, Any] | None = None,
     uvc_usb_topology: dict[str, Any] | None = None,
+    cma_memory_diagnostics: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """把 health 的工程事实压成稳定归因，PC 普通界面不用猜是不是浏览器独占。"""
     usage_status = str(source_usage.get("status") or "not_loaded")
@@ -1037,6 +1123,8 @@ def build_source_diagnosis(
     usb_topology_status = str((uvc_usb_topology or {}).get("status") or "")
     usb_full_speed = usb_topology_status == "uvc_video_on_full_speed_usb"
     usb_speed = str((uvc_usb_topology or {}).get("video_usb_speed") or "12M")
+    cma_status = str((cma_memory_diagnostics or {}).get("status") or "")
+    cma_alloc_failed = cma_status == "cma_alloc_failed_recent"
     not_exclusive = usage_status in {"not_in_use", "in_use_by_camera_service"} or other_owner_count <= 0
     if not selected_path:
         status = "no_video_source"
@@ -1058,6 +1146,10 @@ def build_source_diagnosis(
         status = "uvc_transport_error_not_exclusive"
         plain_hint = f"不是页面独占：{selected_name} 当前无人占用，但内核日志已有 UVC/USB 传输错误；检查 USB 线、接口、摄像头供电或换 known-good UVC 复测。"
         next_action = "check_usb_cable_port_power_or_known_good_uvc"
+    elif source_failed and not_exclusive and selected_is_uvc and cma_alloc_failed:
+        status = "uvc_cma_alloc_failed_not_exclusive"
+        plain_hint = f"不是页面独占：{selected_name} 当前没人占用，但内核最近出现 CMA 连续内存分配失败，UVC 采集缓冲可能无法分配；释放内存或重启后再复测相机首帧，必要时换 known-good UVC。"
+        next_action = "free_memory_or_reboot_then_probe_known_good_uvc"
     elif source_failed and not_exclusive and selected_is_uvc:
         status = "uvc_no_frame_not_exclusive"
         plain_hint = f"不是页面独占：{selected_name} 当前没人占用，但 UVC 设备没有输出视频帧；检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测。"
@@ -1087,6 +1179,7 @@ def build_source_diagnosis(
         "uvc_kernel_diagnostics_status": kernel_status or "not_loaded",
         "uvc_usb_topology_status": usb_topology_status or "not_loaded",
         "uvc_usb_topology_video_usb_speed": usb_speed if usb_topology_status else "not_loaded",
+        "cma_memory_diagnostics_status": cma_status or "not_loaded",
         "shared_preview_contract": "single_shared_capture_for_multiple_clients",
         "opens_camera": False,
         **proof_flags(),
@@ -1818,6 +1911,7 @@ class CameraServiceState:
             str(selected_path) if selected_path else None,
             selected_candidate,
         )
+        cma_memory_diagnostics = collect_cma_memory_diagnostics()
         source_diagnosis = build_source_diagnosis(
             str(selected_path) if selected_path else None,
             source_failed,
@@ -1827,6 +1921,7 @@ class CameraServiceState:
             last_offer_reason,
             uvc_kernel_diagnostics,
             uvc_usb_topology,
+            cma_memory_diagnostics,
         )
         source_summary = source_candidates_summary(snapshot, selection)
         source_summary_selection = source_summary.get("current_selection", {})
@@ -1855,6 +1950,7 @@ class CameraServiceState:
             "source_usage": source_usage,
             "uvc_kernel_diagnostics": uvc_kernel_diagnostics,
             "uvc_usb_topology": uvc_usb_topology,
+            "cma_memory_diagnostics": cma_memory_diagnostics,
             "source_diagnosis": source_diagnosis,
             "shared_preview_contract": "single_shared_capture_for_multiple_clients",
             "width": self.width,
@@ -1876,6 +1972,7 @@ class CameraServiceState:
                 "source_usage": source_usage,
                 "uvc_kernel_diagnostics": uvc_kernel_diagnostics,
                 "uvc_usb_topology": uvc_usb_topology,
+                "cma_memory_diagnostics": cma_memory_diagnostics,
                 "source_diagnosis": source_diagnosis,
                 "shared_preview_contract": "single_shared_capture_for_multiple_clients",
             },

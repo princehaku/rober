@@ -3179,6 +3179,111 @@ describe("robotControlSummary", () => {
     expect(wysiwygObjective?.source_card_id).toBe("radar_map_points");
   });
 
+  it("prioritizes recent CMA allocation failure camera diagnosis before generic no-frame guidance", async () => {
+    // DV20 已在 480M USB 上但 v4l2/ffmpeg 仍 0 字节时，CMA 失败要比泛化无首帧更有现场行动价值。
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {
+      const url = new URL(String(input));
+      const basePayload = {
+        schema: "trashbot.upper_robot_api.v1.readback",
+        status: "loaded",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        robot_control_executed: false,
+      };
+      if (url.pathname === "/api/camera/health") {
+        return new Response(JSON.stringify({
+          ...basePayload,
+          status: "source_first_frame_failed",
+          source_readiness: "first_frame_failed",
+          source_failure_reason: "first_frame_total_timeout",
+          current_selection: {
+            selected_name: "USB Composite Device: DV20 USB",
+            selected_path: "/dev/video1",
+            selected_is_uvc_or_usb: true,
+          },
+          source_usage: {
+            status: "not_in_use",
+            owner_count: 0,
+            other_owner_count: 0,
+            owners: [],
+          },
+          uvc_kernel_diagnostics: {
+            status: "uvc_kernel_seen_without_current_transport_errors",
+            plain_hint: "USB Composite Device: DV20 USB 当前 USB 设备 3-1 未匹配到新的 UVC 传输错误。",
+            next_action: "continue_first_frame_format_diagnostics",
+            transport_error_count: 0,
+          },
+          uvc_usb_topology: {
+            status: "uvc_video_usb_speed_loaded",
+            plain_hint: "USB Composite Device: DV20 USB USB 视频拓扑已读到，当前速率 480M。",
+            next_action: "continue_first_frame_format_diagnostics",
+            video_usb_speed: "480M",
+            kernel_usb_address: "3-1",
+            video_interface_count: 2,
+          },
+          cma_memory_diagnostics: {
+            status: "cma_alloc_failed_recent",
+            plain_hint: "内核最近出现 CMA 连续内存分配失败；UVC STREAMON/读帧可能拿不到采集缓冲。",
+            next_action: "free_memory_or_reboot_then_probe_known_good_uvc",
+            cma_total_kb: 131072,
+            cma_free_kb: 43352,
+            failure_count: 5,
+            latest_failure: "cma: cma_alloc: reserved: alloc failed, req-size: 24 pages, ret: -4",
+          },
+          source_diagnosis: {
+            status: "uvc_cma_alloc_failed_not_exclusive",
+            plain_hint: "不是页面独占：USB Composite Device: DV20 USB 当前没人占用，但内核最近出现 CMA 连续内存分配失败，UVC 采集缓冲可能无法分配。",
+            next_action: "free_memory_or_reboot_then_probe_known_good_uvc",
+            not_exclusive: true,
+            cma_memory_diagnostics_status: "cma_alloc_failed_recent",
+          },
+        }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify(basePayload), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }));
+
+    const summary = await buildRobotControlSummary("http://192.168.1.11:8787", null, null, {
+      readbackTimeoutMs: 100,
+    });
+
+    expect(summary.readback_summary.camera.status).toBe("source_first_frame_failed");
+    expect(summary.readback_summary.camera.source_diagnosis_status).toBe("uvc_cma_alloc_failed_not_exclusive");
+    expect(summary.readback_summary.camera.source_diagnosis_not_exclusive).toBe("true");
+    expect(summary.readback_summary.camera.source_diagnosis_plain_hint).toContain("CMA 连续内存分配失败");
+    expect(summary.readback_summary.camera.source_diagnosis_next_action_plain).toContain("释放上位机内存或重启上位机");
+    expect(summary.readback_summary.camera.cma_memory_diagnostics_status).toBe("cma_alloc_failed_recent");
+    expect(summary.readback_summary.camera.cma_memory_diagnostics_cma_total_kb).toBe("131072");
+    expect(summary.readback_summary.camera.cma_memory_diagnostics_cma_free_kb).toBe("43352");
+    expect(summary.readback_summary.camera.cma_memory_diagnostics_failure_count).toBe("5");
+    expect(summary.readback_summary.camera.cma_memory_diagnostics_latest_failure).toContain("cma_alloc");
+    expect(summary.live_closure_summary?.live_wysiwyg_camera_diagnostic_plain).toContain("诊断=CMA 分配失败");
+    expect(summary.live_closure_summary?.live_wysiwyg_camera_diagnostic_plain).toContain("已排除页面独占");
+    expect(summary.live_closure_summary?.live_wysiwyg_camera_diagnostic_plain).toContain("释放上位机内存或重启上位机");
+    expect(summary.live_closure_summary?.camera_hardware_action_required).toBe(true);
+    expect(summary.live_closure_summary?.camera_hardware_action_label).toBe("释放内存/重启后复测");
+    expect(summary.camera_hardware_action_required).toBe(true);
+    expect(summary.camera_hardware_action_label).toBe("释放内存/重启后复测");
+    expect(summary.camera_usb_full_speed_detected).toBe(false);
+    expect(summary.camera_blocks_free_move).toBe(false);
+    expect(summary.current_camera_wysiwyg_pack_hardware_action_required).toBe(true);
+    expect(summary.current_camera_wysiwyg_pack_hardware_action_label).toBe("释放内存/重启后复测");
+    expect(summary.current_camera_wysiwyg_pack_blocks_mapping_start).toBe(true);
+    expect(summary.current_camera_wysiwyg_pack_blocks_free_move).toBe(false);
+    expect(summary.camera_first_frame_fix_source_diagnosis_status).toBe("uvc_cma_alloc_failed_not_exclusive");
+    expect(summary.camera_first_frame_fix_hardware_action_label).toBe("释放内存/重启后复测");
+    expect(summary.current_mapping_action_camera_hardware_action_required).toBe(true);
+    expect(summary.current_mapping_action_camera_hardware_action_label).toBe("释放内存/重启后复测");
+    expect(summary.current_mapping_action_camera_source_diagnosis_status).toBe("uvc_cma_alloc_failed_not_exclusive");
+    expect(summary.current_mapping_action_camera_recovery_next_action_plain).toContain("释放上位机内存或重启上位机");
+  });
+
   it("names the camera WYSIWYG action as USB hardware recovery when radar is already current", async () => {
     // 雷达和地图已经 WYSIWYG 时，剩余相机缺口必须直接告诉现场先换高速 USB，再复测首帧。
     vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {

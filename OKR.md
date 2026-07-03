@@ -159,7 +159,7 @@
 | O1：硬件协议可信底盘 | ~85% | 已有真实上位机 first-jog 转发、T1001 L/R 反馈采样字段和 LiDAR delta 过阈值；当前真实 L/R 仍为 0，仍缺轮速非零原始反馈、轮速方向、HIL 准入、PR #5 2D LiDAR/ToF 硬件材料 |
 | O5：云中转控制面 | ~80% | 真实公网 HTTPS/TLS、4G/SIM、production DB/queue、OSS/CDN live traffic、真实手机/browser 验收 |
 | O6：云端核心后端 | ~30% | archive、tunnel online、event/evidence、labeling、model inference、consumer read API 已有 local/mock software proof；仍缺真实隧道、生产 DB/queue、OSS、TLS/4G、真实机器人数据 |
-| O7：PC 端运营调试平台 | ~24% | PC 普通首屏已能连接真实上位机并开放 `0.0.0.0:7001`；PC 首页和 `/map` 当前默认 `800%` 大地图，已能显示地图 PNG、Nav2 路线、目标点、小车位置和当前雷达贴图；WASD/自由移动可读到 command raw 与 IMU 动作信号，wheel raw `T=1001 L/R=0/0` 仍是反馈风险；仍缺真实 RTC/视频、真实 ASR/TTS、云端回放/标注数据流、wheel raw 非零和完整路线/delivery success 验收 |
+| O7：PC 端运营调试平台 | ~25% | PC 普通首屏已能连接真实上位机并开放 `0.0.0.0:7001`；PC 首页和 `/map` 当前默认 `800%` 大地图，已能显示地图 PNG、Nav2 路线、目标点、小车位置和当前雷达贴图；相机不是页面独占，当前 root cause 收敛为 DV20 UVC CMA 连续内存分配失败，PC 已暴露 `uvc_cma_alloc_failed_not_exclusive` 与释放内存/重启复测动作；WASD/自由移动可读到 command raw 与 IMU 动作信号，wheel raw `T=1001 L/R=0/0` 仍是反馈风险；仍缺真实 RTC/视频、真实 ASR/TTS、云端回放/标注数据流、wheel raw 非零和完整路线/delivery success 验收 |
 
 **已归档 Objective（软件侧完成，等待真实现场验证）：**
 
@@ -179,7 +179,7 @@
 
 1. **现场 O3 验证 lane（归档 Objective 临时激活）**：CEO 已提供真实上位机 SSH，当前优先级是把 managed localization 继续推进到 no-motion planner readiness / path generation proof；随后再消费 `map.yaml`、`route.csv`、keyframe、rosbag 或 replay JSONL，避免继续停留在只读 handoff/review/surface。
 2. **O6（~30%）**：把 local/mock archive/tunnel/event/evidence/labeling/inference/consumer read proof 接到真实隧道、生产 DB/queue、OSS 与真实机器人数据。
-3. **O7（~24%）**：基于真实上位机继续推进 PC 实时图传、历史回放、标注、ASR/TTS、手控/寻路和完整路线验收；当前大地图/WASD/自由移动已有现场证据，但不能把 wheel raw 0/0 或相机无帧包装成闭环。
+3. **O7（~25%）**：基于真实上位机继续推进 PC 实时图传、历史回放、标注、ASR/TTS、手控/寻路和完整路线验收；当前大地图/WASD/自由移动/雷达贴图已有现场证据，相机 root cause 已收敛到 UVC CMA 分配失败，但不能把 wheel raw 0/0 或相机无帧包装成闭环。
 4. **O5（~80%）**：把已有命令/状态/ACK 控制面接到真实部署链路：公网 HTTPS、production DB/queue、OSS/CDN live traffic、真实手机/browser 验收。
 5. **O1（~85%）**：真实 WAVE ROVER 上车，补轮速非零原始反馈、轮速方向和 HIL 证据，PR #5 硬件材料到位后继续提升。
 

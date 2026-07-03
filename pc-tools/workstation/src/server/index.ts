@@ -395,6 +395,13 @@ type CameraMjpegRelayLastFailure = {
   uvc_usb_topology_video_usb_speed?: string;
   uvc_usb_topology_kernel_usb_address?: string;
   uvc_usb_topology_video_interface_count?: string;
+  cma_memory_diagnostics_status?: string;
+  cma_memory_diagnostics_plain_hint?: string;
+  cma_memory_diagnostics_next_action?: string;
+  cma_memory_diagnostics_cma_total_kb?: string;
+  cma_memory_diagnostics_cma_free_kb?: string;
+  cma_memory_diagnostics_failure_count?: string;
+  cma_memory_diagnostics_latest_failure?: string;
 };
 
 function cameraSourceUsageScope(
@@ -491,6 +498,32 @@ function cameraMjpegResolvedDiagnosisSource(
   const sourceDiagnosisPlainHint = sourceUsageScope === "camera_service_self"
     ? `不是页面独占：相机服务正在用单上游共享预览读取 ${selectedName}，但 UVC 设备没有输出视频帧。`
     : `不是页面独占：${cameraOwnerFreeText(selectedName)}，但 UVC 设备没有输出视频帧。`;
+  const sourceDiagnosisStatus = sourceFailure?.source_diagnosis_status ?? "";
+  const sourceDiagnosisIsSpecific = [
+    "uvc_no_frame_not_exclusive",
+    "uvc_transport_error_not_exclusive",
+    "uvc_full_speed_usb_not_exclusive",
+    "uvc_cma_alloc_failed_not_exclusive",
+  ].includes(sourceDiagnosisStatus);
+  const sourceDiagnosisFallbackNextAction = sourceDiagnosisStatus === "uvc_cma_alloc_failed_not_exclusive"
+    ? "free_memory_or_reboot_then_probe_known_good_uvc"
+    : sourceDiagnosisStatus === "uvc_full_speed_usb_not_exclusive"
+      ? "move_camera_to_high_speed_usb_port_or_powered_hub"
+      : sourceDiagnosisStatus === "uvc_transport_error_not_exclusive"
+        ? "check_usb_cable_port_power_or_known_good_uvc"
+        : "check_usb_camera_input_power_or_known_good_uvc";
+  const resolvedSourceDiagnosisStatus = sourceDiagnosisIsSpecific
+    ? sourceDiagnosisStatus
+    : "uvc_no_frame_not_exclusive";
+  const resolvedSourceDiagnosisPlainHint = sourceDiagnosisIsSpecific && sourceFailure?.source_diagnosis_plain_hint
+    ? sourceFailure.source_diagnosis_plain_hint
+    : sourceDiagnosisPlainHint;
+  const resolvedSourceDiagnosisNextAction = sourceDiagnosisIsSpecific
+    ? sourceFailure?.source_diagnosis_next_action || sourceDiagnosisFallbackNextAction
+    : "check_usb_camera_input_power_or_known_good_uvc";
+  const resolvedSourceDiagnosisNotExclusive = sourceDiagnosisIsSpecific
+    ? sourceFailure?.source_diagnosis_not_exclusive || "true"
+    : "true";
   const relayAttemptsSummary = cameraMjpegFormatAttemptsSummary(payload);
   return {
     ...(sourceFailure ?? {}),
@@ -498,12 +531,10 @@ function cameraMjpegResolvedDiagnosisSource(
     remote_http_status: relayFailure?.remote_http_status ?? sourceFailure?.remote_http_status ?? null,
     failed_at_ms: relayFailure?.failed_at_ms ?? sourceFailure?.failed_at_ms ?? Date.now(),
     last_error_payload: relayFailure?.last_error_payload ?? sourceFailure?.last_error_payload,
-    source_diagnosis_status: "uvc_no_frame_not_exclusive",
-    source_diagnosis_plain_hint: sourceFailure?.source_diagnosis_status === "uvc_no_frame_not_exclusive"
-      ? sourceFailure.source_diagnosis_plain_hint
-      : sourceDiagnosisPlainHint,
-    source_diagnosis_next_action: "check_usb_camera_input_power_or_known_good_uvc",
-    source_diagnosis_not_exclusive: "true",
+    source_diagnosis_status: resolvedSourceDiagnosisStatus,
+    source_diagnosis_plain_hint: resolvedSourceDiagnosisPlainHint,
+    source_diagnosis_next_action: resolvedSourceDiagnosisNextAction,
+    source_diagnosis_not_exclusive: resolvedSourceDiagnosisNotExclusive,
     source_readiness: "first_frame_failed",
     source_failure_reason: noFrameReason,
     selected_path: sourceFailure?.selected_path ?? shortText(payload?.selected_path, "not_loaded"),
@@ -519,6 +550,13 @@ function cameraMjpegResolvedDiagnosisSource(
     uvc_usb_topology_video_usb_speed: sourceFailure?.uvc_usb_topology_video_usb_speed ?? "not_loaded",
     uvc_usb_topology_kernel_usb_address: sourceFailure?.uvc_usb_topology_kernel_usb_address ?? "not_loaded",
     uvc_usb_topology_video_interface_count: sourceFailure?.uvc_usb_topology_video_interface_count ?? "not_loaded",
+    cma_memory_diagnostics_status: sourceFailure?.cma_memory_diagnostics_status ?? "not_loaded",
+    cma_memory_diagnostics_plain_hint: sourceFailure?.cma_memory_diagnostics_plain_hint ?? "not_loaded",
+    cma_memory_diagnostics_next_action: sourceFailure?.cma_memory_diagnostics_next_action ?? "not_loaded",
+    cma_memory_diagnostics_cma_total_kb: sourceFailure?.cma_memory_diagnostics_cma_total_kb ?? "not_loaded",
+    cma_memory_diagnostics_cma_free_kb: sourceFailure?.cma_memory_diagnostics_cma_free_kb ?? "not_loaded",
+    cma_memory_diagnostics_failure_count: sourceFailure?.cma_memory_diagnostics_failure_count ?? "not_loaded",
+    cma_memory_diagnostics_latest_failure: sourceFailure?.cma_memory_diagnostics_latest_failure ?? "",
     last_first_frame_format_attempts_summary: sourceFailure?.last_first_frame_format_attempts_summary
       && sourceFailure.last_first_frame_format_attempts_summary !== "none"
       ? sourceFailure.last_first_frame_format_attempts_summary
@@ -896,13 +934,17 @@ function cameraProbeDiagnosticAliases(
   const probeNoFrameNotExclusive = probeNoFrameFailure && !externalHolderProven;
   const sourceNoFrameNotExclusive = sourceFailure?.source_diagnosis_status === "uvc_no_frame_not_exclusive"
     && sourceFailure?.source_diagnosis_not_exclusive === "true";
+  const cameraCmaHardwareActionRequired = sourceFailure?.source_diagnosis_status === "uvc_cma_alloc_failed_not_exclusive"
+    || sourceFailure?.cma_memory_diagnostics_status === "cma_alloc_failed_recent";
   const cameraNoFrameHardwareActionRequired = sourceNoFrameNotExclusive || probeNoFrameNotExclusive;
   const noFrameDiagnosisStatus = probeNoFrameNotExclusive
     ? cameraUsbFullSpeedDetected
       ? "uvc_full_speed_usb_not_exclusive"
-      : cameraTransportHardwareActionRequired
-        ? "uvc_transport_error_not_exclusive"
-        : "uvc_no_frame_not_exclusive"
+      : cameraCmaHardwareActionRequired
+        ? "uvc_cma_alloc_failed_not_exclusive"
+        : cameraTransportHardwareActionRequired
+          ? "uvc_transport_error_not_exclusive"
+          : "uvc_no_frame_not_exclusive"
     : sourceFailure?.source_diagnosis_status ?? "not_loaded";
   const probeNoFrameDiagnosisHint = sourceFailure?.source_usage_scope === "camera_service_self"
     ? `不是页面独占：相机服务正在用单上游共享预览读取 ${cameraSourceDisplayName(sourceFailure?.selected_name, "UVC 设备")}，但首帧探针尝试多个格式后仍没有视频帧。`
@@ -912,6 +954,8 @@ function cameraProbeDiagnosticAliases(
     : sourceFailure?.source_diagnosis_plain_hint ?? "not_loaded";
   const sourceDiagnosisNextActionPlain = cameraUsbFullSpeedDetected
     ? "摄像头当前挂在 USB 12M full-speed，换高速 USB 口/线或带供电 USB Hub 后复测首帧。"
+    : cameraCmaHardwareActionRequired
+      ? cameraMjpegActionPlainText("free_memory_or_reboot_then_probe_known_good_uvc")
     : probeNoFrameNotExclusive
       ? "已排除页面独占和低速 USB；检查摄像头输入信号、视频线、接口和供电，必要时换 known-good UVC 后复测。"
       : cameraMjpegActionPlainText(sourceFailure?.source_diagnosis_next_action ?? "not_loaded")
@@ -919,6 +963,7 @@ function cameraProbeDiagnosticAliases(
   const cameraHardwareActionRequired = (
     cameraUsbFullSpeedDetected
     || cameraTransportHardwareActionRequired
+    || cameraCmaHardwareActionRequired
     || cameraNoFrameHardwareActionRequired
   ) && !firstFrameReady;
   const cameraHardwareActionLabel = cameraHardwareActionRequired
@@ -926,6 +971,8 @@ function cameraProbeDiagnosticAliases(
       ? "换高速USB后复测"
       : cameraTransportHardwareActionRequired
         ? "检查USB/供电后复测"
+        : cameraCmaHardwareActionRequired
+          ? "释放内存/重启后复测"
         : "检查摄像头输入/供电后复测"
     : "复测相机首帧";
   const cameraReprobeSequence = [
@@ -3372,6 +3419,8 @@ function cameraMjpegStatusResponse(
     || diagnosisSource?.uvc_usb_topology_status === "uvc_video_on_full_speed_usb";
   const cameraCurrentVisible = previewVisibility.visible_status === "visible_cached_frame";
   const cameraTransportHardwareActionRequired = diagnosisSource?.source_diagnosis_status === "uvc_transport_error_not_exclusive";
+  const cameraCmaHardwareActionRequired = diagnosisSource?.source_diagnosis_status === "uvc_cma_alloc_failed_not_exclusive"
+    || diagnosisSource?.cma_memory_diagnostics_status === "cma_alloc_failed_recent";
   const cameraNoFrameHardwareActionRequired = diagnosisSource?.source_diagnosis_status === "uvc_no_frame_not_exclusive"
     && sourceUsageNotExclusive === "true";
   const cameraInputSignalCheckRequired = cameraNoFrameHardwareActionRequired
@@ -3386,6 +3435,7 @@ function cameraMjpegStatusResponse(
   const cameraHardwareActionRequired = (
     cameraUsbFullSpeedDetected
     || cameraTransportHardwareActionRequired
+    || cameraCmaHardwareActionRequired
     || cameraNoFrameHardwareActionRequired
   ) && !cameraCurrentVisible;
   const cameraHardwareActionLabel = cameraHardwareActionRequired
@@ -3393,6 +3443,8 @@ function cameraMjpegStatusResponse(
       ? "换高速USB后复测"
       : cameraTransportHardwareActionRequired
         ? "检查USB/供电后复测"
+        : cameraCmaHardwareActionRequired
+          ? "释放内存/重启后复测"
         : "检查摄像头输入/供电后复测"
     : "复测相机首帧";
   const firstFrameProbeStatus = cameraCurrentVisible
@@ -3489,6 +3541,13 @@ function cameraMjpegStatusResponse(
     uvc_usb_topology_video_usb_speed: cameraUsbSpeed,
     uvc_usb_topology_kernel_usb_address: diagnosisSource?.uvc_usb_topology_kernel_usb_address ?? "not_loaded",
     uvc_usb_topology_video_interface_count: diagnosisSource?.uvc_usb_topology_video_interface_count ?? "not_loaded",
+    cma_memory_diagnostics_status: diagnosisSource?.cma_memory_diagnostics_status ?? "not_loaded",
+    cma_memory_diagnostics_plain_hint: diagnosisSource?.cma_memory_diagnostics_plain_hint ?? "not_loaded",
+    cma_memory_diagnostics_next_action: diagnosisSource?.cma_memory_diagnostics_next_action ?? "not_loaded",
+    cma_memory_diagnostics_cma_total_kb: diagnosisSource?.cma_memory_diagnostics_cma_total_kb ?? "not_loaded",
+    cma_memory_diagnostics_cma_free_kb: diagnosisSource?.cma_memory_diagnostics_cma_free_kb ?? "not_loaded",
+    cma_memory_diagnostics_failure_count: diagnosisSource?.cma_memory_diagnostics_failure_count ?? "not_loaded",
+    cma_memory_diagnostics_latest_failure: diagnosisSource?.cma_memory_diagnostics_latest_failure ?? "",
     camera_usb_speed: cameraUsbSpeed,
     camera_usb_full_speed_detected: cameraUsbFullSpeedDetected,
     camera_hardware_action_required: cameraHardwareActionRequired,
@@ -3617,7 +3676,8 @@ function cameraMjpegPreviewStatus(
     || CAMERA_FIRST_FRAME_FAILURE_REASONS.has(diagnosisSource?.source_failure_reason ?? "")
     || diagnosisSource?.source_diagnosis_status === "uvc_no_frame_not_exclusive"
     || diagnosisSource?.source_diagnosis_status === "uvc_transport_error_not_exclusive"
-    || diagnosisSource?.source_diagnosis_status === "uvc_full_speed_usb_not_exclusive";
+    || diagnosisSource?.source_diagnosis_status === "uvc_full_speed_usb_not_exclusive"
+    || diagnosisSource?.source_diagnosis_status === "uvc_cma_alloc_failed_not_exclusive";
   if (sourceFirstFrameFailed) {
     return "source_first_frame_failed";
   }
@@ -3681,6 +3741,12 @@ function cameraMjpegActionPlainText(action: string): string {
   if (normalized === "check_usb_cable_port_power_or_known_good_uvc") {
     return "检查 USB 线、接口和摄像头供电，必要时换 known-good UVC 复测；共享预览不是页面独占。";
   }
+  if (normalized === "free_memory_or_reboot_then_probe_known_good_uvc") {
+    return "先释放上位机内存或重启上位机，再复测相机首帧；若仍无画面，换 known-good UVC 复测；共享预览不是页面独占。";
+  }
+  if (normalized === "free_memory_or_reboot_if_no_frame_persists") {
+    return "若无首帧持续，先释放上位机内存或重启后复测；共享预览不是页面独占。";
+  }
   if (normalized === "move_camera_to_high_speed_usb_port_or_powered_hub") {
     return "摄像头现在挂在 USB 12M full-speed，换高速 USB 口/线或带供电 USB Hub，减少转接并确认供电后复测；共享预览不是页面独占。";
   }
@@ -3718,10 +3784,11 @@ async function cameraSourceFirstFrameFailureForStatus(
       return null;
     }
     const payload = asRecord(await response.json().catch(() => null));
+    const mediaDiagnostics = asRecord(payload?.media_diagnostics);
     const status = shortText(payload?.status, "");
     const readiness = shortText(payload?.source_readiness, "");
     const reason = shortText(payload?.source_failure_reason, "");
-    const lastOffer = asRecord(asRecord(payload?.media_diagnostics)?.last_offer_error);
+    const lastOffer = asRecord(mediaDiagnostics?.last_offer_error);
     const lastOfferReason = shortText(lastOffer?.failure_reason, "");
     // 上车 health 可能把当前 source_failure_reason 填成 "none"，但 last_offer_error 已经记录真实首帧失败。
     const effectiveReason = reason === "none" || reason === "not_loaded" ? "" : reason;
@@ -3731,8 +3798,11 @@ async function cameraSourceFirstFrameFailureForStatus(
     const sourceUsage = asRecord(payload?.source_usage)
       ?? asRecord(asRecord(payload?.media_diagnostics)?.source_usage);
     const uvcUsbTopology = asRecord(payload?.uvc_usb_topology)
-      ?? asRecord(asRecord(payload?.media_diagnostics)?.uvc_usb_topology)
+      ?? asRecord(mediaDiagnostics?.uvc_usb_topology)
       ?? asRecord(sourceDiagnosis?.uvc_usb_topology);
+    const cmaMemoryDiagnostics = asRecord(payload?.cma_memory_diagnostics)
+      ?? asRecord(mediaDiagnostics?.cma_memory_diagnostics)
+      ?? asRecord(sourceDiagnosis?.cma_memory_diagnostics);
     const currentSelection = asRecord(payload?.current_selection);
     const selectedName = cameraSourceDisplayName(
       payload?.selected_name
@@ -3754,9 +3824,54 @@ async function cameraSourceFirstFrameFailureForStatus(
         ?? sourceDiagnosis?.selected_is_uvc_or_usb
         ?? "not_loaded",
     );
-    const diagnosisStatus = shortText(sourceDiagnosis?.status, "");
-    const diagnosisPlainHint = cameraDiagnosisPlainHint(sourceDiagnosis?.plain_hint, selectedName);
-    const diagnosisNextAction = shortText(sourceDiagnosis?.next_action, "");
+    const cmaMemoryDiagnosticFields = {
+      cma_memory_diagnostics_status: shortText(
+        cmaMemoryDiagnostics?.status
+          ?? sourceDiagnosis?.cma_memory_diagnostics_status
+          ?? payload?.cma_memory_diagnostics_status,
+        "not_loaded",
+      ),
+      cma_memory_diagnostics_plain_hint: shortText(
+        cmaMemoryDiagnostics?.plain_hint
+          ?? payload?.cma_memory_diagnostics_plain_hint,
+        "not_loaded",
+      ),
+      cma_memory_diagnostics_next_action: shortText(
+        cmaMemoryDiagnostics?.next_action
+          ?? payload?.cma_memory_diagnostics_next_action,
+        "not_loaded",
+      ),
+      cma_memory_diagnostics_cma_total_kb: shortValue(
+        cmaMemoryDiagnostics?.cma_total_kb
+          ?? payload?.cma_memory_diagnostics_cma_total_kb,
+      ),
+      cma_memory_diagnostics_cma_free_kb: shortValue(
+        cmaMemoryDiagnostics?.cma_free_kb
+          ?? payload?.cma_memory_diagnostics_cma_free_kb,
+      ),
+      cma_memory_diagnostics_failure_count: shortValue(
+        cmaMemoryDiagnostics?.failure_count
+          ?? payload?.cma_memory_diagnostics_failure_count,
+      ),
+      cma_memory_diagnostics_latest_failure: shortText(
+        cmaMemoryDiagnostics?.latest_failure
+          ?? payload?.cma_memory_diagnostics_latest_failure,
+        "",
+      ),
+    };
+    const cmaAllocFailedObserved = cmaMemoryDiagnosticFields.cma_memory_diagnostics_status === "cma_alloc_failed_recent";
+    const rawDiagnosisStatus = shortText(sourceDiagnosis?.status, "");
+    const diagnosisStatus = cmaAllocFailedObserved && ["", "not_loaded", "none", "uvc_no_frame_not_exclusive"].includes(rawDiagnosisStatus)
+      ? "uvc_cma_alloc_failed_not_exclusive"
+      : rawDiagnosisStatus;
+    const diagnosisPlainHint = cameraDiagnosisPlainHint(
+      sourceDiagnosis?.plain_hint ?? (cmaAllocFailedObserved ? cmaMemoryDiagnostics?.plain_hint : undefined),
+      selectedName,
+    );
+    const rawDiagnosisNextAction = shortText(sourceDiagnosis?.next_action, "");
+    const diagnosisNextAction = cmaAllocFailedObserved && ["", "not_loaded", "none", "check_usb_camera_input_power_or_known_good_uvc"].includes(rawDiagnosisNextAction)
+      ? "free_memory_or_reboot_then_probe_known_good_uvc"
+      : rawDiagnosisNextAction;
     const rawDiagnosisNotExclusive = sourceDiagnosis?.not_exclusive === undefined
       ? "not_loaded"
       : String(sourceDiagnosis.not_exclusive);
@@ -3785,7 +3900,16 @@ async function cameraSourceFirstFrameFailureForStatus(
     const sourceUsageOwnerCount = sourceUsage?.owner_count === undefined ? "not_loaded" : String(sourceUsage.owner_count);
     const sourceUsageScope = cameraSourceUsageScope(sourceUsageStatus, sourceUsageOwnerCount);
     const sourceUsageNotExclusive = cameraSourceUsageNotExclusive(sourceUsageScope);
-    const canExplainNoFrameAsNotExclusive = firstFrameFailed && sourceUsageNotExclusive === "true" && rawDiagnosisNotExclusive !== "true";
+    const diagnosisAlreadyExplainsNoFrame = [
+      "uvc_no_frame_not_exclusive",
+      "uvc_transport_error_not_exclusive",
+      "uvc_full_speed_usb_not_exclusive",
+      "uvc_cma_alloc_failed_not_exclusive",
+    ].includes(diagnosisStatus);
+    const canExplainNoFrameAsNotExclusive = firstFrameFailed
+      && sourceUsageNotExclusive === "true"
+      && rawDiagnosisNotExclusive !== "true"
+      && !diagnosisAlreadyExplainsNoFrame;
     const resolvedDiagnosisStatus = canExplainNoFrameAsNotExclusive && diagnosisStatus !== "uvc_no_frame_not_exclusive"
       ? "uvc_no_frame_not_exclusive"
       : diagnosisStatus;
@@ -3797,7 +3921,11 @@ async function cameraSourceFirstFrameFailureForStatus(
     const resolvedDiagnosisNextAction = canExplainNoFrameAsNotExclusive
       ? "check_usb_camera_input_power_or_known_good_uvc"
       : diagnosisNextAction;
-    const resolvedDiagnosisNotExclusive = canExplainNoFrameAsNotExclusive ? "true" : rawDiagnosisNotExclusive;
+    const resolvedDiagnosisNotExclusive = canExplainNoFrameAsNotExclusive
+      ? "true"
+      : rawDiagnosisNotExclusive === "not_loaded" && diagnosisAlreadyExplainsNoFrame
+        ? sourceUsageNotExclusive
+        : rawDiagnosisNotExclusive;
     const usbTopologyFields = {
       uvc_usb_topology_status: shortText(uvcUsbTopology?.status ?? sourceDiagnosis?.uvc_usb_topology_status, "not_loaded"),
       uvc_usb_topology_plain_hint: shortText(uvcUsbTopology?.plain_hint ?? sourceDiagnosis?.uvc_usb_topology_plain_hint, "not_loaded"),
@@ -3832,6 +3960,7 @@ async function cameraSourceFirstFrameFailureForStatus(
         source_usage_scope: sourceUsageScope,
         source_usage_not_exclusive: sourceUsageNotExclusive,
         ...usbTopologyFields,
+        ...cmaMemoryDiagnosticFields,
         last_first_frame_format_attempts_summary: cameraMjpegFormatAttemptsSummary(payload),
         mjpeg_open_source_fallback_attempted: mjpegOpenSourceFallbackAttempted,
         open_source_fallback_failure_reason: openSourceFallbackFailureReason,
@@ -3856,6 +3985,7 @@ async function cameraSourceFirstFrameFailureForStatus(
       source_usage_scope: sourceUsageScope,
       source_usage_not_exclusive: sourceUsageNotExclusive,
       ...usbTopologyFields,
+      ...cmaMemoryDiagnosticFields,
       last_first_frame_format_attempts_summary: cameraMjpegFormatAttemptsSummary(payload),
       mjpeg_open_source_fallback_attempted: mjpegOpenSourceFallbackAttempted,
       open_source_fallback_failure_reason: openSourceFallbackFailureReason,
@@ -3907,6 +4037,13 @@ async function buildRobotControlSummaryForHttp(
       selected_is_uvc_or_usb: lastFailureForOverlay?.selected_is_uvc_or_usb,
       source_usage_status: lastFailureForOverlay?.source_usage_status,
       source_usage_owner_count: lastFailureForOverlay?.source_usage_owner_count,
+      cma_memory_diagnostics_status: lastFailureForOverlay?.cma_memory_diagnostics_status,
+      cma_memory_diagnostics_plain_hint: lastFailureForOverlay?.cma_memory_diagnostics_plain_hint,
+      cma_memory_diagnostics_next_action: lastFailureForOverlay?.cma_memory_diagnostics_next_action,
+      cma_memory_diagnostics_cma_total_kb: lastFailureForOverlay?.cma_memory_diagnostics_cma_total_kb,
+      cma_memory_diagnostics_cma_free_kb: lastFailureForOverlay?.cma_memory_diagnostics_cma_free_kb,
+      cma_memory_diagnostics_failure_count: lastFailureForOverlay?.cma_memory_diagnostics_failure_count,
+      cma_memory_diagnostics_latest_failure: lastFailureForOverlay?.cma_memory_diagnostics_latest_failure,
       last_error_payload: lastFailureForOverlay?.last_error_payload ?? null,
     }
     : lastFailureForOverlay
@@ -3933,6 +4070,13 @@ async function buildRobotControlSummaryForHttp(
         selected_is_uvc_or_usb: lastFailureForOverlay.selected_is_uvc_or_usb,
         source_usage_status: lastFailureForOverlay.source_usage_status,
         source_usage_owner_count: lastFailureForOverlay.source_usage_owner_count,
+        cma_memory_diagnostics_status: lastFailureForOverlay.cma_memory_diagnostics_status,
+        cma_memory_diagnostics_plain_hint: lastFailureForOverlay.cma_memory_diagnostics_plain_hint,
+        cma_memory_diagnostics_next_action: lastFailureForOverlay.cma_memory_diagnostics_next_action,
+        cma_memory_diagnostics_cma_total_kb: lastFailureForOverlay.cma_memory_diagnostics_cma_total_kb,
+        cma_memory_diagnostics_cma_free_kb: lastFailureForOverlay.cma_memory_diagnostics_cma_free_kb,
+        cma_memory_diagnostics_failure_count: lastFailureForOverlay.cma_memory_diagnostics_failure_count,
+        cma_memory_diagnostics_latest_failure: lastFailureForOverlay.cma_memory_diagnostics_latest_failure,
         last_error_payload: lastFailureForOverlay.last_error_payload ?? null,
       }
       : null;

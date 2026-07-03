@@ -3444,6 +3444,42 @@ def camera_source_usage_summary(source_usage: dict[str, Any]) -> str:
     return "；".join(summary_items) if summary_items else "none"
 
 
+def camera_action_plain_text(action: Any) -> str:
+    """把 8088 的短 token 翻译成现场可执行中文；这里只解释状态，不执行动作。"""
+    value = str(action or "").strip()
+    if not value or value in {"not_loaded", "none"}:
+        return ""
+    normalized = re.sub(r"\s+", "_", value).lower()
+    if normalized == "check_usb_camera_input_power_or_known_good_uvc":
+        return "检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测；共享预览不是页面独占。"
+    if normalized == "check_usb_cable_port_power_or_known_good_uvc":
+        return "检查 USB 线、接口和摄像头供电，必要时换 known-good UVC 复测；共享预览不是页面独占。"
+    if normalized == "move_camera_to_high_speed_usb_port_or_powered_hub":
+        return "摄像头现在挂在 USB 12M full-speed，换高速 USB 口/线或带供电 USB Hub，减少转接并确认供电后复测；共享预览不是页面独占。"
+    if normalized == "free_memory_or_reboot_then_probe_known_good_uvc":
+        return "先释放上位机内存或重启上位机，再复测相机首帧；若仍无画面，换 known-good UVC 复测；共享预览不是页面独占。"
+    if normalized == "free_memory_or_reboot_if_no_frame_persists":
+        return "若无首帧持续，先释放上位机内存或重启后复测；共享预览不是页面独占。"
+    if normalized in {"open_shared_preview", "open_shared_preview_or_run_first_frame_probe"}:
+        return "需要看画面时打开共享预览，或点只读检查复测首帧。"
+    return f"{value.replace('_', ' ')}。"
+
+
+def camera_hardware_action_label(source_diagnosis_status: Any, usb_speed: Any) -> str:
+    """硬件动作标签给 PC/curl 短读；它不是按钮动作，也不改变控制门禁。"""
+    status = str(source_diagnosis_status or "")
+    speed = str(usb_speed or "")
+    if status == "uvc_full_speed_usb_not_exclusive" or speed == "12M":
+        return "换高速USB后复测"
+    if status == "uvc_transport_error_not_exclusive":
+        return "检查USB/供电后复测"
+    if status == "uvc_cma_alloc_failed_not_exclusive":
+        return "释放内存/重启后复测"
+    if status in {"uvc_no_frame_not_exclusive", "source_first_frame_failed", "first_frame_failed"}:
+        return "检查摄像头输入/供电后复测"
+    return "复测相机首帧"
+
+
 def flatten_camera_health_aliases(payload: dict[str, Any]) -> dict[str, Any]:
     """把 8088 health 的嵌套诊断平铺到 8787 顶层，方便 PC/ curl 直接判断是不是独占。"""
     if not isinstance(payload, dict):
@@ -3458,6 +3494,7 @@ def flatten_camera_health_aliases(payload: dict[str, Any]) -> dict[str, Any]:
     )
     source_diagnosis = payload.get("source_diagnosis") if isinstance(payload.get("source_diagnosis"), dict) else {}
     uvc_usb_topology = payload.get("uvc_usb_topology") if isinstance(payload.get("uvc_usb_topology"), dict) else {}
+    cma_memory_diagnostics = payload.get("cma_memory_diagnostics") if isinstance(payload.get("cma_memory_diagnostics"), dict) else {}
     media_source_diagnosis = (
         media_diagnostics.get("source_diagnosis")
         if isinstance(media_diagnostics.get("source_diagnosis"), dict)
@@ -3468,8 +3505,14 @@ def flatten_camera_health_aliases(payload: dict[str, Any]) -> dict[str, Any]:
         if isinstance(media_diagnostics.get("uvc_usb_topology"), dict)
         else {}
     )
+    media_cma_memory_diagnostics = (
+        media_diagnostics.get("cma_memory_diagnostics")
+        if isinstance(media_diagnostics.get("cma_memory_diagnostics"), dict)
+        else {}
+    )
     diagnosis = source_diagnosis or media_source_diagnosis
     usb_topology = uvc_usb_topology or media_uvc_usb_topology
+    cma_diagnostics = cma_memory_diagnostics or media_cma_memory_diagnostics
     usage = source_usage or media_source_usage
     selected_path = payload.get("selected_path") or current_selection.get("selected_path") or payload.get("video_source")
     selected_name = payload.get("selected_name") or current_selection.get("selected_name") or diagnosis.get("selected_name")
@@ -3493,6 +3536,13 @@ def flatten_camera_health_aliases(payload: dict[str, Any]) -> dict[str, Any]:
         "uvc_usb_topology_video_usb_speed": usb_topology.get("video_usb_speed") or diagnosis.get("uvc_usb_topology_video_usb_speed") or "not_loaded",
         "uvc_usb_topology_kernel_usb_address": usb_topology.get("kernel_usb_address") or "not_loaded",
         "uvc_usb_topology_video_interface_count": usb_topology.get("video_interface_count", "not_loaded"),
+        "cma_memory_diagnostics_status": cma_diagnostics.get("status") or diagnosis.get("cma_memory_diagnostics_status") or "not_loaded",
+        "cma_memory_diagnostics_plain_hint": cma_diagnostics.get("plain_hint") or "not_loaded",
+        "cma_memory_diagnostics_next_action": cma_diagnostics.get("next_action") or "not_loaded",
+        "cma_memory_diagnostics_cma_total_kb": cma_diagnostics.get("cma_total_kb", "not_loaded"),
+        "cma_memory_diagnostics_cma_free_kb": cma_diagnostics.get("cma_free_kb", "not_loaded"),
+        "cma_memory_diagnostics_failure_count": cma_diagnostics.get("failure_count", "not_loaded"),
+        "cma_memory_diagnostics_latest_failure": cma_diagnostics.get("latest_failure") or "",
         "shared_preview_contract": payload.get("shared_preview_contract")
         or media_diagnostics.get("shared_preview_contract")
         or diagnosis.get("shared_preview_contract")
@@ -3592,14 +3642,27 @@ def camera_mjpeg_status_payload(
     fallback_aliases = camera_first_frame_fallback_aliases(health_payload)
     preview_status = camera_mjpeg_preview_status(health_payload, relay_snapshot)
     selected_name = str(aliases.get("selected_name") or "not_loaded")
+    source_diagnosis_status = str(aliases.get("source_diagnosis_status") or "not_loaded")
+    source_diagnosis_next_action = aliases.get("source_diagnosis_next_action") or "not_loaded"
+    source_diagnosis_next_action_plain = camera_action_plain_text(source_diagnosis_next_action)
+    source_diagnosis_plain_hint = str(aliases.get("source_diagnosis_plain_hint") or "")
+    hardware_action_label = camera_hardware_action_label(source_diagnosis_status, aliases.get("uvc_usb_topology_video_usb_speed"))
+    hardware_action_required = source_diagnosis_status in {
+        "uvc_full_speed_usb_not_exclusive",
+        "uvc_transport_error_not_exclusive",
+        "uvc_cma_alloc_failed_not_exclusive",
+        "uvc_no_frame_not_exclusive",
+        "source_first_frame_failed",
+        "first_frame_failed",
+    } or str(aliases.get("uvc_usb_topology_video_usb_speed") or "") == "12M"
     if preview_status == "visible":
         visible_plain = "共享 MJPEG 预览已有当前画面或最近帧。"
         next_action_plain = "继续使用同一条共享预览；多人页面会复用同一个上游流。"
         visible_status = "visible"
         wysiwyg_status_plain = "画面已可见：共享 MJPEG 预览已有当前画面。"
     elif preview_status == "source_first_frame_failed":
-        visible_plain = f"画面未可见：不是页面独占：{selected_name} 当前没有证明被其他页面独占，但 UVC 设备没有输出视频帧。"
-        next_action_plain = "检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测；共享预览不是页面独占。"
+        visible_plain = f"画面未可见：{source_diagnosis_plain_hint}" if source_diagnosis_plain_hint and source_diagnosis_plain_hint != "not_loaded" else f"画面未可见：不是页面独占：{selected_name} 当前没有证明被其他页面独占，但 UVC 设备没有输出视频帧。"
+        next_action_plain = source_diagnosis_next_action_plain or "检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测；共享预览不是页面独占。"
         visible_status = "not_visible_source_first_frame_failed"
         wysiwyg_status_plain = visible_plain
     elif preview_status == "source_ready_not_viewing":
@@ -3642,9 +3705,10 @@ def camera_mjpeg_status_payload(
         "shared_preview_last_remote_http_status": relay_snapshot.get("last_remote_http_status"),
         "last_failure_at_ms": relay_snapshot.get("last_failure_at_ms"),
         "shared_preview_last_failure_at_ms": relay_snapshot.get("last_failure_at_ms"),
-        "source_diagnosis_status": aliases.get("source_diagnosis_status") or "not_loaded",
+        "source_diagnosis_status": source_diagnosis_status,
         "source_diagnosis_plain_hint": aliases.get("source_diagnosis_plain_hint") or "not_loaded",
-        "source_diagnosis_next_action": aliases.get("source_diagnosis_next_action") or "not_loaded",
+        "source_diagnosis_next_action": source_diagnosis_next_action,
+        "source_diagnosis_next_action_plain": source_diagnosis_next_action_plain,
         "source_diagnosis_not_exclusive": aliases.get("source_diagnosis_not_exclusive", "not_loaded"),
         "uvc_usb_topology_status": aliases.get("uvc_usb_topology_status") or "not_loaded",
         "uvc_usb_topology_plain_hint": aliases.get("uvc_usb_topology_plain_hint") or "not_loaded",
@@ -3652,6 +3716,13 @@ def camera_mjpeg_status_payload(
         "uvc_usb_topology_video_usb_speed": aliases.get("uvc_usb_topology_video_usb_speed") or "not_loaded",
         "uvc_usb_topology_kernel_usb_address": aliases.get("uvc_usb_topology_kernel_usb_address") or "not_loaded",
         "uvc_usb_topology_video_interface_count": aliases.get("uvc_usb_topology_video_interface_count", "not_loaded"),
+        "cma_memory_diagnostics_status": aliases.get("cma_memory_diagnostics_status") or "not_loaded",
+        "cma_memory_diagnostics_plain_hint": aliases.get("cma_memory_diagnostics_plain_hint") or "not_loaded",
+        "cma_memory_diagnostics_next_action": aliases.get("cma_memory_diagnostics_next_action") or "not_loaded",
+        "cma_memory_diagnostics_cma_total_kb": aliases.get("cma_memory_diagnostics_cma_total_kb", "not_loaded"),
+        "cma_memory_diagnostics_cma_free_kb": aliases.get("cma_memory_diagnostics_cma_free_kb", "not_loaded"),
+        "cma_memory_diagnostics_failure_count": aliases.get("cma_memory_diagnostics_failure_count", "not_loaded"),
+        "cma_memory_diagnostics_latest_failure": aliases.get("cma_memory_diagnostics_latest_failure") or "",
         "source_readiness": source_readiness,
         "source_failure_reason": source_failure_reason,
         "last_first_frame_format_attempts_summary": camera_first_frame_attempts_summary(health_payload),
@@ -3672,6 +3743,11 @@ def camera_mjpeg_status_payload(
         "preview_visible_plain": visible_plain,
         "camera_wysiwyg_status_plain": wysiwyg_status_plain,
         "camera_wysiwyg_next_action_plain": next_action_plain,
+        "hardware_action_required": hardware_action_required,
+        "hardware_action_label": hardware_action_label if hardware_action_required else "复测相机首帧",
+        "camera_hardware_action_required": hardware_action_required,
+        "camera_hardware_action_label": hardware_action_label if hardware_action_required else "复测相机首帧",
+        "camera_reprobe_after_hardware_action_required": hardware_action_required,
         "opens_camera_device": False,
         "starts_camera_webrtc": False,
         "starts_camera_mjpeg_stream": False,

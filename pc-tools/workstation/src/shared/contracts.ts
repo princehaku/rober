@@ -5339,6 +5339,13 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       uvc_usb_topology_video_usb_speed?: string;
       uvc_usb_topology_kernel_usb_address?: string;
       uvc_usb_topology_video_interface_count?: string;
+      cma_memory_diagnostics_status?: string;
+      cma_memory_diagnostics_plain_hint?: string;
+      cma_memory_diagnostics_next_action?: string;
+      cma_memory_diagnostics_cma_total_kb?: string;
+      cma_memory_diagnostics_cma_free_kb?: string;
+      cma_memory_diagnostics_failure_count?: string;
+      cma_memory_diagnostics_latest_failure?: string;
       source_usage_status: string;
       source_usage_owner_count: string;
       source_usage_scope?: "free" | "camera_service_self" | "external_holder" | "unknown";
@@ -6417,6 +6424,13 @@ export interface RobotControlCameraMjpegStatusResponse extends ProofFlags {
   uvc_usb_topology_video_usb_speed?: string;
   uvc_usb_topology_kernel_usb_address?: string;
   uvc_usb_topology_video_interface_count?: string;
+  cma_memory_diagnostics_status?: string;
+  cma_memory_diagnostics_plain_hint?: string;
+  cma_memory_diagnostics_next_action?: string;
+  cma_memory_diagnostics_cma_total_kb?: string;
+  cma_memory_diagnostics_cma_free_kb?: string;
+  cma_memory_diagnostics_failure_count?: string;
+  cma_memory_diagnostics_latest_failure?: string;
   camera_usb_speed: string;
   camera_usb_full_speed_detected: boolean;
   camera_hardware_action_required: boolean;
