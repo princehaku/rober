@@ -125,7 +125,11 @@ PC 大地图的主数据源是上位机 `GET /api/map/preview`。该接口只读
 - `/amcl_pose`：确认定位是否可见。
 - `/global_costmap/costmap`、`/local_costmap/costmap`：确认 Nav2 costmap 是否有数据。
 
-这个 RViz2 配置不包含 GoalTool，也不用于普通用户发车。现场要执行路线仍回到 PC `7001` 普通界面，按图上路线和安全确认按钮走固定 gate。
+这个 RViz2 配置不包含 GoalTool，也不用于普通用户发车。现场要执行路线仍回到 PC `7001` 普通界面，按图上路线按钮走固定 gate。
+当前普通路线执行默认走 PWM/HTTP 底盘链路：PC 请求带 `base_command_mode=pwm`、`managed_runtime_opt_in=true`
+和 `confirm_navigation_execution=true`。如果返回 `goal_succeeded`、同窗口非零底盘命令和 IMU 姿态变化，PC 会把 wheel raw
+L/R=0/0 保留为底盘反馈诊断，但允许进入送达收口；送达材料使用 PC 大地图路线叠加 ref
+`pc-map-route-overlay:<nav2 evidence_ref>`，最终仍由 delivery gate 判断 `delivery_success`。
 
 远程浏览器观察可用 Foxglove：先在 ROS2 环境启动 `foxglove_bridge`，再用浏览器连接 `ws://192.168.1.11:8765`。Foxglove 与 RViz2 一样只用于观察地图、雷达、TF、路径、定位和 costmap，不作为普通用户发车入口。
 

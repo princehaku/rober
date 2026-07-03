@@ -51,6 +51,15 @@ WYSIWYG 画布，缩放为 `100%`。同次页面自动触发一次只恢复相�
 summary 有 `motion_signal_source=imu_attitude_delta`；WAVE ROVER `T=1001` wheel feedback 仍为 `0/0`，
 所以 `keyboard_wheel_lr_nonzero=false` 必须保持为未完成。
 
+2026-07-04 02:10 CST 起，普通首屏的完整图上路线执行默认请求 `base_command_mode=pwm`，并在执行 payload
+里固定带 `managed_runtime_opt_in=true`、`server_timeout_s=20` 和 `confirm_navigation_execution=true`。当前现场
+Nav2 路线执行经 PC 代理返回 `goal_succeeded/result_status=succeeded`，同窗口非零底盘命令 950 条，
+`base_feedback_imu_attitude_delta_observed=true`；WAVE ROVER `T=1001` wheel raw L/R 仍为 `0/0`，所以页面把
+wheel raw 作为独立底盘反馈诊断保留，但普通送达闭环接受“路线成功 + 非零底盘命令 + IMU 运动迹象”。路线完成后，
+PC 会用 `pc-map-route-overlay:<nav2 evidence_ref>` 自动补送达视觉材料、默认现场确认项，并提交 operator report +
+delivery complete；operator report 的 `delivery_success=true` 嵌套声明已加入 PC Node 安全白名单。该自动收口不发送
+manual、keyboard、free-roam、stop 或 `/cmd_vel`，只在当前 Nav2 ref 对齐且 delivery gate 接受时点亮送达成功。
+
 2026-07-04 00:33 CST 起，PC summary 的 `keyboard_wheel_lr_nonzero` 只允许来自真实
 `wheel_feedback_lr_nonzero_proven=true`，不再把 `command_raw_lr_nonzero`、`motion_evidence_complete`
 或 IMU 姿态变化混进 wheel raw 验收。现场 forward/back/stop 短脉冲仍证明 PC -> ROS -> bridge

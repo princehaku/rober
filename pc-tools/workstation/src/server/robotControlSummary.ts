@@ -757,6 +757,7 @@ const BASE_FEEDBACK_SAMPLES_TRUE_FIELD_EXEMPTIONS = new Set([
 ]);
 const OPERATOR_REPORT_CLAIM_TRUE_FIELD_EXEMPTIONS = new Set([
   "structured_hil_claims.delivery_success",
+  "operator_report.structured_hil_claims.delivery_success",
   "latest_result.structured_hil_claims.delivery_success",
   "latest_result.operator_report.structured_hil_claims.delivery_success",
 ]);

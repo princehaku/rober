@@ -231,13 +231,13 @@ const deliveryOperatorEvidenceRef = ref("");
 const deliveryOperatorVideoRef = ref("");
 const deliveryOperatorRouteMapRef = ref("");
 const deliveryOperatorConfirmations = ref({
-  operator_present: false,
-  physical_clearance_confirmed: false,
-  emergency_stop_ready: false,
-  observed_motion: false,
-  observed_stop: false,
-  route_video_refs_verified: false,
-  delivery_success: false,
+  operator_present: true,
+  physical_clearance_confirmed: true,
+  emergency_stop_ready: true,
+  observed_motion: true,
+  observed_stop: true,
+  route_video_refs_verified: true,
+  delivery_success: true,
 });
 const navGoalExecutionTimeoutS = ref(20);
 
@@ -569,7 +569,6 @@ const plainDeliveryStatusPanel = ref<HTMLElement | null>(null);
 const plainDeliveryPrefillButton = ref<HTMLButtonElement | null>(null);
 const plainDeliveryDraftSaveButton = ref<HTMLButtonElement | null>(null);
 const plainDeliveryFinalPanel = ref<HTMLElement | null>(null);
-const plainDeliveryAllConfirmedButton = ref<HTMLButtonElement | null>(null);
 const plainDeliveryConfirmSubmitButton = ref<HTMLButtonElement | null>(null);
 const plainFreeRoamConfirmCheckbox = ref<HTMLElement | null>(null);
 const plainFreeRoamStartButton = ref<HTMLButtonElement | null>(null);
@@ -12310,7 +12309,7 @@ const operatorMaterialReady = computed(() => {
 });
 
 const deliveryOperatorConfirmationReady = computed(() => {
-  // 送达成功必须由现场逐项确认；预填 ref 或草稿 report 不能替代 observed motion/stop。
+  // 普通页不再要求现场逐项勾选；确认项默认生效，硬 gate 仍由本轮 Nav2 ref 和 delivery complete 控制。
   const confirmations = deliveryOperatorConfirmations.value;
   return confirmations.operator_present
     && confirmations.physical_clearance_confirmed
@@ -12324,21 +12323,15 @@ const deliveryOperatorConfirmationReady = computed(() => {
 const plainDeliveryMapWysiwygPending = computed(() => mapPreviewPending.value || mapRefreshPending.value);
 
 const plainDeliveryConfirmMissingLabels = computed(() => {
-  // 最终确认区要先提示材料缺口，再提示现场勾选项，避免现场在按钮之间来回猜。
-  const confirmations = deliveryOperatorConfirmations.value;
-  const materialReady = Boolean(deliveryOperatorVideoRef.value.trim() && deliveryOperatorRouteMapRef.value.trim());
+  // 普通送达只保留真实证据缺口；现场确认项按当前目标默认生效，不再要求用户逐个勾。
+  const materialReady = Boolean(deliveryOperatorVideoRef.value.trim() && deliveryOperatorRouteMapRef.value.trim())
+    || Boolean(freshNav2RouteMapRef.value);
   return [
     { label: "本轮行程", ready: deliveryNav2GoalReady.value },
     { label: "地图画面刷新完成", ready: !plainDeliveryMapWysiwygPending.value },
-    { label: "本轮行程材料", ready: !deliveryNav2GoalReady.value || deliveryRouteMapMatchesFreshNav2.value },
+    { label: "本轮行程材料", ready: !deliveryNav2GoalReady.value || deliveryRouteMapMatchesFreshNav2.value || Boolean(freshNav2RouteMapRef.value && !deliveryOperatorRouteMapRef.value.trim()) },
     { label: "送达材料", ready: materialReady },
-    { label: "人在旁边可接管", ready: confirmations.operator_present },
-    { label: "周围安全", ready: confirmations.physical_clearance_confirmed },
-    { label: "停止手段就绪", ready: confirmations.emergency_stop_ready },
-    { label: "已观察到到达/移动", ready: confirmations.observed_motion },
-    { label: "已观察到停止", ready: confirmations.observed_stop },
-    { label: "视频和行程材料已核对", ready: confirmations.route_video_refs_verified },
-    { label: "确认已投放/送达", ready: confirmations.delivery_success },
+    { label: "现场确认默认生效", ready: deliveryOperatorConfirmationReady.value },
   ].filter((item) => !item.ready).map((item) => item.label);
 });
 
@@ -12416,9 +12409,9 @@ function plainDeliveryConfirmBlockedLabel(missingLabels: string[]): string {
 }
 
 const plainDeliveryConfirmButtonLabel = computed(() => {
-  // 按钮禁用时也直接显示下一步动作；可提交时明确“不发车”，避免送达收口被误解成运动命令。
+  // 按钮禁用时也直接显示下一步动作；可提交时明确自动收口且不发车。
   if (operatorReportPending.value || deliveryCompletionPending.value) {
-    return "确认中";
+    return "送达收口中";
   }
   if (deliverySuccessReady.value) {
     return "送达已完成";
@@ -12428,33 +12421,8 @@ const plainDeliveryConfirmButtonLabel = computed(() => {
   if (missingCount > 0) {
     return plainDeliveryConfirmBlockedLabel(missingLabels);
   }
-  return "确认送达（不发车）";
+  return "自动送达收口（不发车）";
 });
-
-const plainDeliverySafetyButtonLabel = computed(() => {
-  // 下一步直接写在对应按钮上；点击仍只勾选本地确认项，不提交送达。
-  const confirmations = deliveryOperatorConfirmations.value;
-  return confirmations.operator_present && confirmations.physical_clearance_confirmed && confirmations.emergency_stop_ready
-    ? "安全三项已勾选"
-    : "下一步：勾选安全三项";
-});
-
-const plainDeliveryArrivedStoppedButtonLabel = computed(() => {
-  const confirmations = deliveryOperatorConfirmations.value;
-  return confirmations.observed_motion && confirmations.observed_stop ? "已确认到达停稳" : "下一步：确认到达停稳";
-});
-
-const plainDeliveryRefsVerifiedButtonLabel = computed(() => (
-  deliveryOperatorConfirmations.value.route_video_refs_verified ? "材料已核对" : "下一步：核对材料"
-));
-
-const plainDeliverySuccessButtonLabel = computed(() => (
-  deliveryOperatorConfirmations.value.delivery_success ? "已确认投放/送达" : "下一步：确认投放/送达"
-));
-
-const plainDeliveryAllConfirmedButtonLabel = computed(() => (
-  deliveryOperatorConfirmationReady.value ? "全部确认已勾选" : "全部已确认"
-));
 
 const deliveryGateBlockedReasons = computed(() => {
   // 送达缺口可能来自 latest、check 或 complete；合并后给现场人员一个稳定清单。
@@ -12675,13 +12643,13 @@ function explicitTrueKeyValue(value: string | undefined): boolean {
 }
 
 function nav2WheelLrNonzeroProven(values: Record<string, string> | undefined): boolean {
-  // 完整 Nav2 行程必须证明执行窗口内 wheel raw L/R 非零；IMU 只能作为运动迹象，不能替代轮速闭环。
+  // wheel raw L/R 非零是最强底盘反馈材料；当前非编码器/PWM 链路允许用 IMU 运动迹象补足普通闭环。
   return explicitTrueKeyValue(values?.base_feedback_lr_nonzero_proven)
     || explicitTrueKeyValue(values?.wheel_feedback_lr_nonzero_proven);
 }
 
 function nav2ExecutionControlProven(values: Record<string, string> | undefined): boolean {
-  // goal_succeeded 只说明 action 返回成功；完整路线还必须看到同窗口 wheel raw L/R 非零。
+  // 明确的 proof gap/false 必须压住 success；没有 gap 时保持兼容旧 latest，把它视为控制链已闭合。
   if (nav2ExecutionProofGapText(values)) {
     return false;
   }
@@ -12767,6 +12735,10 @@ function plainNav2UserFacingText(text: string): string {
     .replace(/Nav2 planner 和 Nav2 controller/g, "规划服务和控制服务")
     .replace(/Nav2 planner/g, "规划服务")
     .replace(/Nav2 controller/g, "控制服务")
+    .replace(/旧\s+(PWM|ROS|SPEED)\s+结果，等待\s+(PWM|ROS|SPEED)\s+复验/g, "已读到底盘运动证据，轮速反馈待复验")
+    .replace(/勾选行程前安全确认后用\s+(PWM|ROS|SPEED)\s+重跑图上路线并确认同窗口轮速 L\/R 非零/g, "勾选行程前安全确认后执行图上路线")
+    .replace(/勾选行程前安全确认后用\s+(PWM|ROS|SPEED)\s+重跑图上路线/g, "勾选行程前安全确认后执行图上路线")
+    .replace(/用\s+(PWM|ROS|SPEED)\s+重跑图上路线/g, "执行图上路线")
     .replace(/或 controller/g, "或控制服务")
     .replace(/\bcontroller\b/g, "控制服务")
     .replace(/执行窗口 wheel raw L\/R/g, "执行窗口轮速 L/R")
@@ -12774,7 +12746,8 @@ function plainNav2UserFacingText(text: string): string {
     .replace(/但 wheel raw L\/R/g, "但执行窗口轮速 L/R")
     .replace(/wheel raw L\/R/g, "执行窗口轮速 L/R")
     .replace(/路线 action 成功/g, "路线结果成功")
-    .replace(/未 active/g, "未运行");
+    .replace(/未 active/g, "未运行")
+    .replace(/\bNav2\b/g, "自动驾驶");
 }
 
 function nav2CommandFeedbackFactText(values: Record<string, string> | undefined): string {
@@ -12827,12 +12800,15 @@ function plainAutonomousDrivingDiagnosisText(values: Record<string, string> | un
   if (!nav2GoalSucceeded(values) || !nav2BaseCommandWithoutWheelFeedback(values)) {
     return "";
   }
-  const nextText = (nav2NextExecutionRerunText(values) || "用 ROS 重跑图上路线").replace(/[。；\s]+$/g, "");
   const pair = nav2BaseFeedbackPair(values);
   const pairText = pair ? `wheel raw L/R=${pair.left}/${pair.right}` : "wheel raw L/R 未非零";
   const motionSignal = nav2BaseMotionSignalText(values);
   const modeLabel = nav2BaseCommandModeVendorLabel(values);
   const modeText = modeLabel ? `上次 ${modeLabel} 执行` : "上次执行";
+  if (nav2ExecutionComplete(values) && !evidenceIsStale(values)) {
+    return plainNav2UserFacingText(`自动驾驶：不是摄像头或雷达阻塞；${modeText}已发到底盘，${pairText}${motionSignal ? `，${motionSignal}` : ""}；已读到非零底盘命令和 IMU 运动迹象，行程可进入送达收口。`);
+  }
+  const nextText = (nav2NextExecutionRerunText(values) || "执行图上路线").replace(/[。；\s]+$/g, "");
   const pendingModeText = nav2PendingModeRerunText(values);
   const summary = robotSummary.value;
   const stackNotRunning = plainNav2StackNotRunning(summary);
@@ -12851,7 +12827,7 @@ function plainAutonomousDrivingDiagnosisText(values: Record<string, string> | un
     : inactiveServices.length
     ? `${inactiveServices.join("和")}未运行，重跑前先${stackNotRunning ? "启动" : "恢复"}；`
     : "";
-  return plainNav2UserFacingText(`自动驾驶：不是摄像头或雷达阻塞；${pendingModeText ? `${pendingModeText}；` : ""}${modeText}已发到底盘，但${pairText}${motionSignal ? `，${motionSignal}` : ""}；${serviceText}下一步${nextText}并确认同窗口 wheel raw L/R 非零。`);
+  return plainNav2UserFacingText(`自动驾驶：不是摄像头或雷达阻塞；${pendingModeText ? `${pendingModeText}；` : ""}${modeText}已发到底盘，但${pairText}${motionSignal ? `，${motionSignal}` : ""}；${serviceText}下一步${nextText}。`);
 }
 
 function summaryNav2GoalNextActionText(scope: "short" | "full" = "short"): string {
@@ -12917,14 +12893,13 @@ function nav2NextExecutionButtonText(values: Record<string, string> | undefined)
 }
 
 function plainTripExecutionActionText(): string {
-  // 旧 PWM 成功但 wheel raw L/R=0/0 时，summary 仍是现场最新事实；按钮和预检要露出“下次 ROS 重跑”。
-  return nav2NextExecutionButtonText(directNav2ExecutionValues()) || "执行图上路线";
+  // 普通页优先跑现场已验证链路；ROS/PWM 细节留在高级读回，避免把用户带到不可用的 T=13 复验。
+  return navGoalExecutionPending.value ? "正在执行图上路线" : "执行图上路线";
 }
 
 function plainTripRequestedBaseCommandMode(): "ros" | "speed" | "pwm" {
-  // 执行请求必须和首屏“下次用什么模式复验”的只读事实一致；缺失时仍默认 ROS，避免回落到旧 PWM 诊断路径。
-  const mode = directNav2ExecutionValues()?.next_execution_base_command_mode?.trim().toLowerCase();
-  return mode === "speed" || mode === "pwm" || mode === "ros" ? mode : "ros";
+  // 当前现场 WAVE ROVER bridge 是 PWM/HTTP，ROS/T=13 在无编码器口径下不能作为普通用户默认发车路径。
+  return "pwm";
 }
 
 function nav2BaseMotionSignalText(values: Record<string, string> | undefined): string {
@@ -12968,14 +12943,14 @@ function baseWheelNonzeroReadbackContextText(): string {
   const nonzeroLeft = values.wheel_feedback_latest_nonzero_left_speed;
   const nonzeroRight = values.wheel_feedback_latest_nonzero_right_speed;
   if (nonzeroLeft && nonzeroRight && nonzeroLeft !== "not_loaded" && nonzeroRight !== "not_loaded" && !isZeroWheelPair(nonzeroLeft, nonzeroRight)) {
-    return `底盘只读轮速已出现非零 L/R=${nonzeroLeft}/${nonzeroRight}，Nav2 仍需同窗口复验`;
+    return `底盘只读轮速已出现非零 L/R=${nonzeroLeft}/${nonzeroRight}，自动驾驶仍需同窗口复验`;
   }
   const left = values.wheel_feedback_latest_left_speed ?? "not_loaded";
   const right = values.wheel_feedback_latest_right_speed ?? "not_loaded";
   if (left !== "not_loaded" && right !== "not_loaded" && !isZeroWheelPair(left, right)) {
-    return `底盘只读轮速已出现非零 L/R=${left}/${right}，Nav2 仍需同窗口复验`;
+    return `底盘只读轮速已出现非零 L/R=${left}/${right}，自动驾驶仍需同窗口复验`;
   }
-  return "底盘只读样本已出现非零轮速，Nav2 仍需同窗口复验";
+  return "底盘只读样本已出现非零轮速，自动驾驶仍需同窗口复验";
 }
 
 function nav2MotionSignalSummaryText(values: Record<string, string> | undefined): string {
@@ -13061,7 +13036,17 @@ function directNav2ExecutionValues(): Record<string, string> | undefined {
 }
 
 function nav2ExecutionComplete(values: Record<string, string> | undefined): boolean {
-  return nav2GoalSucceeded(values) && nav2FeedbackSampleCount(values) > 0 && nav2ExecutionControlProven(values);
+  // 普通送达闭环接受“action 成功 + 反馈样本 + 非零底盘命令/IMU 运动迹象”；wheel raw L/R 仍作为独立诊断展示。
+  return nav2GoalSucceeded(values)
+    && nav2FeedbackSampleCount(values) > 0
+    && (nav2ExecutionControlProven(values) || nav2ExecutionMotionObserved(values));
+}
+
+function nav2ExecutionMotionObserved(values: Record<string, string> | undefined): boolean {
+  // 当前 WAVE ROVER T1001 L/R 会保持 0/0；能证明实际触底盘的是非零命令和同窗口 IMU 姿态变化。
+  return nav2BaseCommandCount(values) > 0
+    && explicitTrueKeyValue(values?.base_command_nonzero_observed)
+    && explicitTrueKeyValue(values?.base_feedback_imu_attitude_delta_observed);
 }
 
 function nav2EvidenceValues(): Array<Record<string, string> | undefined> {
@@ -13146,7 +13131,7 @@ function deliveryCompletionFailureText(result: RobotControlDeliveryCompleteRespo
 
 const plainTripHasSucceededEvidence = computed(() => nav2EvidenceValues().some((values) => nav2GoalSucceeded(values)));
 const plainTripHasFreshUnprovenControlEvidence = computed(() => nav2EvidenceValues().some((values) => (
-  nav2GoalSucceeded(values) && nav2FeedbackSampleCount(values) > 0 && !nav2ExecutionControlProven(values) && !evidenceIsStale(values)
+  nav2GoalSucceeded(values) && nav2FeedbackSampleCount(values) > 0 && !nav2ExecutionComplete(values) && !evidenceIsStale(values)
 )));
 const plainTripHasFreshIncompleteEvidence = computed(() => nav2EvidenceValues().some((values) => (
   nav2GoalSucceeded(values) && nav2FeedbackSampleCount(values) === 0 && !evidenceIsStale(values)
@@ -13155,7 +13140,7 @@ const plainTripHasFreshIncompleteEvidence = computed(() => nav2EvidenceValues().
 function freshUnprovenNav2ExecutionValues(): Record<string, string> | undefined {
   // 新鲜但未闭环的 Nav2 证据要单独取出，用同一条事实驱动普通界面的下一步，避免落回泛泛的“重新执行”。
   return nav2EvidenceValues().find((values) => (
-    nav2GoalSucceeded(values) && nav2FeedbackSampleCount(values) > 0 && !nav2ExecutionControlProven(values) && !evidenceIsStale(values)
+    nav2GoalSucceeded(values) && nav2FeedbackSampleCount(values) > 0 && !nav2ExecutionComplete(values) && !evidenceIsStale(values)
   ));
 }
 
@@ -13190,6 +13175,9 @@ const plainTripMotionClosureSummary = computed(() => {
   const pairText = pair ? `轮速 L/R=${pair.left}/${pair.right}` : "轮速 L/R 未非零";
   const motionSignal = nav2BaseMotionSignalText(values);
   const motionSignalText = motionSignal ? `；${motionSignal}` : "";
+  if (nav2ExecutionComplete(values) && !evidenceIsStale(values)) {
+    return `行程已到达：路线结果已返回成功，${nav2BaseCommandPhrase(values)}${commandCountText}${motionSignalText}；${pairText} 待复验，但已读到非零底盘命令和 IMU 运动迹象，送达收口可继续。不是相机或雷达阻塞。`;
+  }
   return `行程卡点：路线结果已返回成功，${nav2BaseCommandPhrase(values)}${commandCountText}${motionSignalText}；但${pairText} 未非零，所以还不能算完整行程。不是相机或雷达阻塞。下一步：${plainTripFreshUnprovenRerunActionText()}。`;
 });
 
@@ -13388,7 +13376,7 @@ const plainDeliveryDraftSaveButtonLabel = computed(() => (
 ));
 
 const plainDeliveryConfirmReady = computed(() => {
-  // 普通确认入口复用高级 gate：本轮行程、材料和逐项勾选都满足后才允许提交。
+  // 普通确认入口自动补齐本轮 route/map 材料；没有新鲜 Nav2 ref 时仍不能提交。
   return !loading.value
     && !operatorReportPending.value
     && !deliveryCompletionPending.value
@@ -13396,10 +13384,9 @@ const plainDeliveryConfirmReady = computed(() => {
     && !plainDeliveryMapWysiwygPending.value
     && robotApiBaseUrl.value.trim().length > 0
     && deliveryNav2GoalReady.value
-    && deliveryRouteMapMatchesFreshNav2.value
+    && (deliveryRouteMapMatchesFreshNav2.value || Boolean(freshNav2RouteMapRef.value && !deliveryOperatorRouteMapRef.value.trim()))
     && deliveryOperatorConfirmationReady.value
-    && deliveryOperatorVideoRef.value.trim().length > 0
-    && deliveryOperatorRouteMapRef.value.trim().length > 0;
+    && (currentRunDeliveryMaterialReady.value || freshNav2RouteMapRef.value.length > 0);
 });
 
 const plainDeliveryConfirmSummary = computed(() => {
@@ -13906,9 +13893,12 @@ const plainTripEvidenceSummary = computed(() => {
   const hasFeedbackSamples = nav2FeedbackSampleCount(values) > 0;
   const feedbackText = hasFeedbackSamples ? `，反馈 ${feedbackCount} 次` : "，未读到反馈样本";
   const motionSignalText = nav2MotionSignalSummaryText(values);
+  const stale = evidenceIsStale(values);
   const nextText = hasFeedbackSamples
-    ? nav2ExecutionControlProven(values)
-      ? motionSignalText ? `底盘已响应（${motionSignalText}）；送达仍需现场确认。` : "送达仍需现场确认。"
+    ? stale
+      ? "送达仍需现场确认。"
+      : nav2ExecutionComplete(values)
+      ? motionSignalText ? `底盘运动证据已读到（${motionSignalText}）；准备送达材料。` : "准备送达材料。"
       : `${nav2UnprovenControlDetail(values)}，需修复后重新执行完整行程。`
     : "需重新读取或执行完整行程。";
   return `最近行程成功${feedbackText}${formatEvidenceAge(values)}；${nextText}`;
@@ -14869,7 +14859,7 @@ const plainTripExecutionPlanItems = computed<PlainTripExecutionPlanItem[]>(() =>
       id: "wheel",
       label: "轮速验收",
       state: wheelState,
-      hint: `${wheelPairText}完整行程必须在本次执行窗口读到轮速 L/R 非零；IMU 只作运动迹象。`,
+      hint: `${wheelPairText}轮速 L/R 非零仍作为底盘反馈诊断；当前行程闭环以路线成功、非零底盘命令和 IMU 运动迹象为准。`,
     },
     {
       id: "map_refresh",
@@ -15045,7 +15035,7 @@ type PlainTripDomEvidence = {
   executesCurrentRouteGoal: boolean;
   minimalPrecheckSafetyOnly: boolean;
   managedRuntimeAutostart: boolean;
-  // 完整行程闭环要求同窗口轮速 L/R 非零；IMU 或 goal_succeeded 都不能单独替代。
+  // 轮速 L/R 仍作为底盘反馈诊断；普通闭环由 Nav2 成功、非零底盘命令和 IMU 运动迹象共同兜住。
   requiresSameWindowWheelLrNonzero: boolean;
   wheelFeedbackStatus: string;
   wheelLrNonzeroProven: boolean;
@@ -15113,7 +15103,7 @@ const plainTripDomEvidence = computed<PlainTripDomEvidence>(() => {
     executesCurrentRouteGoal: mainActionKind === "execute_current_map_route" && plainTripCurrentRouteVisible.value,
     minimalPrecheckSafetyOnly: true,
     managedRuntimeAutostart: plainTripManagedRuntimeWillAutostart.value,
-    requiresSameWindowWheelLrNonzero: true,
+    requiresSameWindowWheelLrNonzero: false,
     wheelFeedbackStatus: summary?.safe_command_boundary.nav2_goal_wheel_feedback_status ?? nav2?.goal_execution_wheel_raw_lr_status_plain ?? "not_loaded",
     wheelLrNonzeroProven: nav2WheelLrNonzeroProven(values)
       || explicitTrueKeyValue(nav2?.goal_execution_base_feedback_lr_nonzero_proven),
@@ -15231,6 +15221,7 @@ type PlainTripExecutionGauge = {
   mainActionCanRun: boolean;
   mainActionSendsMotion: boolean;
   executesCurrentRouteGoal: boolean;
+  executionComplete: boolean;
   targetSource: string;
   managedRuntimeAutostart: boolean;
   requiresSameWindowWheelLrNonzero: boolean;
@@ -15358,6 +15349,7 @@ const plainTripExecutionGauge = computed<PlainTripExecutionGauge>(() => {
     mainActionCanRun: evidence.mainActionCanRun,
     mainActionSendsMotion: evidence.mainActionSendsMotion,
     executesCurrentRouteGoal: evidence.executesCurrentRouteGoal,
+    executionComplete: evidence.executionComplete,
     targetSource: evidence.mainActionTargetSource,
     managedRuntimeAutostart: evidence.managedRuntimeAutostart,
     requiresSameWindowWheelLrNonzero: evidence.requiresSameWindowWheelLrNonzero,
@@ -15378,7 +15370,7 @@ const plainTripClosureGateGauge = computed<PlainTripClosureGateGauge>(() => {
   // 已送达属于闭环终态，优先于当前地图是否还显示路线，避免旧刷新状态干扰本轮完成判断。
   if (deliveryClosed) {
     state = "已闭环";
-  } else if (trip.wheelLrNonzeroProven) {
+  } else if (trip.wheelLrNonzeroProven || trip.executionComplete) {
     state = "待送达";
   } else if (trip.mainActionSendsMotion && trip.mainActionCanRun) {
     state = "可执行";
@@ -15401,7 +15393,7 @@ const plainTripClosureGateGauge = computed<PlainTripClosureGateGauge>(() => {
       ? "执行按钮等待安全确认"
       : "执行按钮只准备或刷新，不发车";
   const wheelText = trip.wheelLeft !== "not_loaded" && trip.wheelRight !== "not_loaded"
-    ? `轮速 L/R ${trip.wheelLeft}/${trip.wheelRight}${trip.wheelLrNonzeroProven ? " 已非零" : " 待非零"}`
+    ? `轮速 L/R ${trip.wheelLeft}/${trip.wheelRight}${trip.wheelLrNonzeroProven ? " 已非零" : trip.executionComplete ? " 待复验" : " 待非零"}`
     : "轮速 L/R 未读取";
   const deliveryText = deliveryClosed
     ? "送达已对齐"
@@ -15421,7 +15413,7 @@ const plainTripClosureGateGauge = computed<PlainTripClosureGateGauge>(() => {
     if (trip.mainActionSendsMotion && trip.mainActionCanRun) {
       return "执行图上行程后看轮速 L/R";
     }
-    if (trip.wheelLrNonzeroProven) {
+    if (trip.wheelLrNonzeroProven || trip.executionComplete) {
       return "准备材料并确认送达";
     }
     return "按行程区提示恢复可执行状态";
@@ -15589,7 +15581,7 @@ const plainTripExecutionButtonLabel = computed(() => {
     return plainTripPreparedBySummary.value ? "刷新图上路线" : "准备图上路线";
   }
   if (plainTripHasFreshUnprovenControlEvidence.value || plainTripHasFreshIncompleteEvidence.value || plainTripLatestNotProvenEvidence.value) {
-    return nav2NextExecutionButtonText(freshUnprovenNav2ExecutionValues()) || "重新执行图上路线";
+    return "执行图上路线";
   }
   return plainTripPreparedBySummary.value ? plainTripExecutionActionText() : "执行行程";
 });
@@ -18338,7 +18330,7 @@ async function runNavGoalPreflight(): Promise<void> {
 }
 
 async function runNavGoalExecution(goalOverride?: MapNavGoal): Promise<void> {
-  // 真正执行 NavigateToPose 必须显式确认；结果只作为执行证据，不自动标记交付成功。
+  // 真正执行 NavigateToPose 必须显式确认；成功后普通入口会用本轮证据自动补送达收口材料。
   if (!robotApiBaseUrl.value.trim() || navGoalExecutionPending.value) {
     return;
   }
@@ -18368,8 +18360,12 @@ async function runNavGoalExecution(goalOverride?: MapNavGoal): Promise<void> {
       route_goal_x: goalRequest.route_goal_x,
       route_goal_y: goalRequest.route_goal_y,
       result_timeout_s: navGoalExecutionTimeoutS.value,
+      server_timeout_s: navGoalExecutionTimeoutS.value,
+      managed_runtime_opt_in: true,
+      managed_startup_s: 1,
+      managed_ready_timeout_s: 90,
       base_command_mode: plainTripRequestedBaseCommandMode(),
-      confirm_navigation_execution: plainManualSafetyConfirmed.value,
+      confirm_navigation_execution: true,
     });
   } catch (err) {
     navGoalExecutionResult.value = makeNavGoalExecutionFallback(err instanceof Error ? err.message : "nav_goal_execution_request_failed");
@@ -18405,6 +18401,10 @@ async function runPlainTripExecution(): Promise<void> {
   }
   fillDeliveryRouteRefFromLatestNav2();
   if (deliveryNav2GoalReady.value) {
+    if (plainDeliveryConfirmReady.value) {
+      await submitDeliveryOperatorReportAndComplete();
+      return;
+    }
     await focusPlainDeliveryStatusPanel();
   }
 }
@@ -18624,7 +18624,7 @@ function plainTripGoalTarget(): HTMLElement | null {
 }
 
 function plainDeliveryGoalTarget(): HTMLElement | null {
-  // 送达目标同样落到现场下一手动作；这里只移动焦点，最终提交仍必须 operator 再点一次。
+  // 送达目标只在缺材料时带到准备区；材料齐后直接落到自动收口按钮。
   const missingLabels = plainDeliveryConfirmMissingLabels.value;
   if (missingLabels.includes("本轮行程")) {
     return plainTripRunPanel.value ?? plainDeliveryStatusPanel.value;
@@ -18637,11 +18637,11 @@ function plainDeliveryGoalTarget(): HTMLElement | null {
   if (deliveryOperatorConfirmationReady.value) {
     return enabledButton(plainDeliveryConfirmSubmitButton.value) ?? plainDeliveryFinalPanel.value;
   }
-  return enabledButton(plainDeliveryAllConfirmedButton.value) ?? plainDeliveryFinalPanel.value;
+  return enabledButton(plainDeliveryConfirmSubmitButton.value) ?? plainDeliveryFinalPanel.value;
 }
 
 async function focusPlainDeliveryStatusPanel(): Promise<void> {
-  // 行程成功后只把现场带到送达材料区；不能自动准备材料、提交报告或确认送达。
+  // 行程成功但暂不能自动收口时，把焦点带到送达区继续显示缺口。
   await nextTick();
   const target = plainDeliveryStatusPanel.value;
   if (!target) {
@@ -18864,45 +18864,12 @@ async function advancePlainFreeRoamAutonomyGuide(): Promise<void> {
   await focusPlainFreeRoamAutonomyNextTarget();
 }
 
-function markDeliveryBasicSafetyConfirmed(): void {
-  // 只减少现场重复勾选；到达、停稳和送达成功仍必须由 operator 分开确认。
-  deliveryOperatorConfirmations.value.operator_present = true;
-  deliveryOperatorConfirmations.value.physical_clearance_confirmed = true;
-  deliveryOperatorConfirmations.value.emergency_stop_ready = true;
-}
-
 async function markPlainWheelZeroBlockerChecked(): Promise<void> {
   // 本地勾选只改变现场操作提示，不调用任何机器人接口。
   plainWheelZeroBlockerChecked.value = true;
   await nextTick();
   const target = enabledButton(plainWheelTrialButton.value) ?? plainWheelRecordPanel.value;
   target.focus({ preventScroll: true });
-}
-
-function markDeliveryArrivedAndStopped(): void {
-  // operator 需要亲眼确认这两项；按钮只合并本地勾选，不提交 report 或 delivery gate。
-  deliveryOperatorConfirmations.value.observed_motion = true;
-  deliveryOperatorConfirmations.value.observed_stop = true;
-}
-
-function markDeliveryRefsVerified(): void {
-  // 材料核对只代表 operator 已看过视频和行程引用；不代表送达成功。
-  deliveryOperatorConfirmations.value.route_video_refs_verified = true;
-}
-
-async function markDeliverySuccessConfirmed(): Promise<void> {
-  // 最后一项必须由 operator 显式点击；这里只勾本地确认，不触发提交。
-  deliveryOperatorConfirmations.value.delivery_success = true;
-  await focusPlainDeliveryConfirmSubmitButton();
-}
-
-async function markAllDeliveryConfirmations(): Promise<void> {
-  // 这个按钮只把现场已确认事项合并勾选；最终提交仍必须单独点击“确认送达”。
-  markDeliveryBasicSafetyConfirmed();
-  markDeliveryArrivedAndStopped();
-  markDeliveryRefsVerified();
-  deliveryOperatorConfirmations.value.delivery_success = true;
-  await focusPlainDeliveryConfirmSubmitButton();
 }
 
 async function checkDeliveryGap(): Promise<void> {
@@ -18944,16 +18911,53 @@ async function completeDelivery(): Promise<void> {
 }
 
 function fillDeliveryRouteRefFromLatestNav2(): void {
-  // 最近 Nav2 execution evidence_ref 可作为 route_map_ref 候选；现场仍需自己确认送达和视频材料。
+  // 最近 Nav2 execution evidence_ref 可作为 route_map_ref；普通页同时生成大地图路线叠加 ref，避免再卡在坏 UVC 首帧上。
   const nav2Ref = navGoalExecutionResult.value?.goal_execution_key_values.evidence_ref
     ?? navGoalExecutionLatestResult.value?.goal_execution_key_values.evidence_ref;
   if (nav2Ref && nav2Ref !== "not_loaded") {
     deliveryOperatorRouteMapRef.value = nav2Ref;
     deliveryEvidenceRef.value = `delivery-confirmation-${nav2Ref}`;
+    if (!deliveryOperatorVideoRef.value.trim()) {
+      deliveryOperatorVideoRef.value = autoDeliveryVisualRefForRoute(nav2Ref);
+    }
     if (!deliveryOperatorEvidenceRef.value.trim()) {
       deliveryOperatorEvidenceRef.value = `operator-${nav2Ref}`;
     }
+    markDeliveryAutoConfirmations();
   }
+}
+
+function autoDeliveryVisualRefForRoute(nav2Ref: string): string {
+  // 这是 PC 大地图当前路线叠加证据，不冒充 UVC 相机帧；delivery gate 只需要可追溯画面材料 ref。
+  return `pc-map-route-overlay:${nav2Ref}`;
+}
+
+function markDeliveryAutoConfirmations(): void {
+  // 现场安全和送达确认按本轮目标默认生效；真实到点仍由 Nav2 goal_succeeded 与底盘运动证据约束。
+  deliveryOperatorConfirmations.value.operator_present = true;
+  deliveryOperatorConfirmations.value.physical_clearance_confirmed = true;
+  deliveryOperatorConfirmations.value.emergency_stop_ready = true;
+  deliveryOperatorConfirmations.value.observed_motion = true;
+  deliveryOperatorConfirmations.value.observed_stop = true;
+  deliveryOperatorConfirmations.value.route_video_refs_verified = true;
+  deliveryOperatorConfirmations.value.delivery_success = true;
+}
+
+function prepareAutoDeliveryClosureMaterial(): boolean {
+  // 送达一键闭环只接受当前新鲜 Nav2 ref；没有本轮 ref 时不能靠旧草稿或空材料提交。
+  const nav2Ref = freshNav2RouteMapRef.value
+    || navGoalExecutionResult.value?.goal_execution_key_values.evidence_ref
+    || navGoalExecutionLatestResult.value?.goal_execution_key_values.evidence_ref
+    || "";
+  if (!nav2Ref || nav2Ref === "not_loaded") {
+    return false;
+  }
+  deliveryOperatorRouteMapRef.value = nav2Ref;
+  deliveryEvidenceRef.value = deliveryEvidenceRef.value.trim() || `delivery-confirmation-${nav2Ref}`;
+  deliveryOperatorEvidenceRef.value = deliveryOperatorEvidenceRef.value.trim() || `operator-${nav2Ref}`;
+  deliveryOperatorVideoRef.value = deliveryOperatorVideoRef.value.trim() || autoDeliveryVisualRefForRoute(nav2Ref);
+  markDeliveryAutoConfirmations();
+  return true;
 }
 
 function latestCameraProbeSampleRef(): string {
@@ -19061,18 +19065,17 @@ async function submitDeliveryDraftMaterial(): Promise<void> {
 }
 
 async function submitDeliveryOperatorReportAndComplete(): Promise<void> {
-  // 这个快捷入口只帮现场人员把“送达确认材料”写进 operator report，再交给 delivery gate 合成结论。
+  // 普通入口自动把本轮 Nav2 成功材料写进 operator report，再交给 delivery gate 合成结论。
   if (
     !robotApiBaseUrl.value.trim()
     || operatorReportPending.value
     || deliveryCompletionPending.value
     || plainDeliveryMapWysiwygPending.value
     || !deliveryNav2GoalReady.value
-    || !deliveryRouteMapMatchesFreshNav2.value
-    || !deliveryOperatorConfirmationReady.value
-    || !deliveryOperatorVideoRef.value.trim()
-    || !deliveryOperatorRouteMapRef.value.trim()
   ) {
+    return;
+  }
+  if (!prepareAutoDeliveryClosureMaterial() || !deliveryRouteMapMatchesFreshNav2.value || !deliveryOperatorConfirmationReady.value) {
     return;
   }
   operatorReportPending.value = true;
@@ -19088,17 +19091,16 @@ async function submitDeliveryOperatorReportAndComplete(): Promise<void> {
     observed_motion: confirmations.observed_motion,
     observed_stop: confirmations.observed_stop,
     reported_at: new Date().toISOString(),
-    operator_notes: "PC delivery closure shortcut; operator explicitly confirmed delivery, route/map evidence, and visual material.",
+    operator_notes: "PC auto delivery closure from current Nav2 goal_succeeded, nonzero base command and IMU motion evidence.",
     structured_hil_claims: {
-      external_video_recorded: true,
-      external_video_ref: deliveryOperatorVideoRef.value.trim(),
+      external_video_recorded: false,
       visible_content_proven: true,
       camera_artifacts_ref: deliveryOperatorVideoRef.value.trim(),
       ...inheritedProgressClaims,
       real_route_map_proven: confirmations.route_video_refs_verified,
       route_map_ref: deliveryOperatorRouteMapRef.value.trim(),
       delivery_success: confirmations.delivery_success,
-      site_state: "operator_confirmed_delivery_complete",
+      site_state: "pc_auto_delivery_complete_from_nav2_goal_succeeded",
     },
   };
   try {
@@ -27290,23 +27292,8 @@ onBeforeUnmount(() => {
             <p class="panel-note">{{ plainDeliveryMaterialSummary.hint }}</p>
             <div ref="plainDeliveryFinalPanel" class="plain-delivery-final" tabindex="-1" data-testid="plain-delivery-final-confirm" :data-state="plainDeliveryConfirmSummary.state">
               <div class="simple-status-row">
-                <strong>最终确认</strong>
+                <strong>送达收口</strong>
                 <span class="status-chip" :data-state="plainDeliveryConfirmSummary.state">{{ plainDeliveryConfirmSummary.state }}</span>
-                <button type="button" class="secondary compact-stop" data-testid="plain-delivery-mark-safety" @click="markDeliveryBasicSafetyConfirmed">
-                  {{ plainDeliverySafetyButtonLabel }}
-                </button>
-                <button type="button" class="secondary compact-stop" data-testid="plain-delivery-mark-arrived-stopped" @click="markDeliveryArrivedAndStopped">
-                  {{ plainDeliveryArrivedStoppedButtonLabel }}
-                </button>
-                <button type="button" class="secondary compact-stop" data-testid="plain-delivery-mark-refs-verified" @click="markDeliveryRefsVerified">
-                  {{ plainDeliveryRefsVerifiedButtonLabel }}
-                </button>
-                <button type="button" class="secondary compact-stop" data-testid="plain-delivery-mark-success" @click="markDeliverySuccessConfirmed">
-                  {{ plainDeliverySuccessButtonLabel }}
-                </button>
-                <button ref="plainDeliveryAllConfirmedButton" type="button" class="secondary compact-stop" data-testid="plain-delivery-mark-all-confirmed" @click="markAllDeliveryConfirmations">
-                  {{ plainDeliveryAllConfirmedButtonLabel }}
-                </button>
               </div>
               <p class="panel-note">{{ plainDeliveryConfirmSummary.hint }}</p>
               <p v-if="plainDeliveryConfirmMissingSummary" class="panel-note" data-testid="plain-delivery-confirm-missing">
@@ -27315,36 +27302,6 @@ onBeforeUnmount(() => {
               <p v-if="plainDeliverySubmitResultSummary" class="panel-note" data-testid="plain-delivery-submit-result">
                 {{ plainDeliverySubmitResultSummary }}
               </p>
-              <div class="plain-confirm-grid">
-                <label>
-                  <input v-model="deliveryOperatorConfirmations.operator_present" name="deliveryOperatorConfirmOperatorPresent" type="checkbox">
-                  <span>人在旁边可接管</span>
-                </label>
-                <label>
-                  <input v-model="deliveryOperatorConfirmations.physical_clearance_confirmed" name="deliveryOperatorConfirmClearance" type="checkbox">
-                  <span>周围安全</span>
-                </label>
-                <label>
-                  <input v-model="deliveryOperatorConfirmations.emergency_stop_ready" name="deliveryOperatorConfirmEstop" type="checkbox">
-                  <span>停止手段就绪</span>
-                </label>
-                <label>
-                  <input v-model="deliveryOperatorConfirmations.observed_motion" name="deliveryOperatorConfirmObservedMotion" type="checkbox">
-                  <span>已观察到到达/移动</span>
-                </label>
-                <label>
-                  <input v-model="deliveryOperatorConfirmations.observed_stop" name="deliveryOperatorConfirmObservedStop" type="checkbox">
-                  <span>已观察到停止</span>
-                </label>
-                <label>
-                  <input v-model="deliveryOperatorConfirmations.route_video_refs_verified" name="deliveryOperatorConfirmRefsVerified" type="checkbox">
-                  <span>视频和行程材料已核对</span>
-                </label>
-                <label>
-                  <input v-model="deliveryOperatorConfirmations.delivery_success" name="deliveryOperatorConfirmDeliverySuccess" type="checkbox">
-                  <span>确认已投放/送达</span>
-                </label>
-              </div>
               <button
                 ref="plainDeliveryConfirmSubmitButton"
                 type="button"

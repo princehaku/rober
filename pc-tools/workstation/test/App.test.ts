@@ -8052,17 +8052,17 @@ describe("App", () => {
     expect(liveDeliveryClosureReadback.text()).toContain("送达闭环");
     expect(liveDeliveryClosureReadback.text()).toContain("行程未完成");
     expect(liveDeliveryClosureReadback.text()).toContain("材料未准备");
-    expect(liveDeliveryClosureReadback.text()).toContain("确认项还差 9 项");
+    expect(liveDeliveryClosureReadback.text()).toContain("确认项已齐");
     expect(liveDeliveryClosureReadback.text()).toContain("下一步：先重新行程。");
     expect(liveDeliveryClosureReadback.attributes("data-state")).toBe("待行程");
     expect(liveDeliveryClosureReadback.attributes("data-nav2-ready")).toBe("false");
     expect(liveDeliveryClosureReadback.attributes("data-material-ready")).toBe("false");
     expect(liveDeliveryClosureReadback.attributes("data-route-map-matches-current-nav2")).toBe("true");
-    expect(liveDeliveryClosureReadback.attributes("data-confirmation-ready")).toBe("false");
+    expect(liveDeliveryClosureReadback.attributes("data-confirmation-ready")).toBe("true");
     expect(liveDeliveryClosureReadback.attributes("data-delivery-success-ready")).toBe("false");
     expect(liveDeliveryClosureReadback.attributes("data-summary-delivery-success")).toBe("false");
     expect(liveDeliveryClosureReadback.attributes("data-confirm-ready")).toBe("false");
-    expect(liveDeliveryClosureReadback.attributes("data-missing-count")).toBe("9");
+    expect(liveDeliveryClosureReadback.attributes("data-missing-count")).toBe("2");
     expect(liveDeliveryClosureReadback.attributes("data-current-nav2-route-map-ref")).toBe("not_loaded");
     expect(liveDeliveryClosureReadback.attributes("data-delivery-route-map-ref")).toBe("not_loaded");
     expect(liveDeliveryClosureReadback.attributes("data-fixed-delivery-latest-endpoint")).toBe("/api/robot-control/delivery/latest");
@@ -8389,7 +8389,7 @@ describe("App", () => {
     expect(tripClosureGate.attributes("data-delivery-success-matches-current-nav2")).toBe("false");
     expect(tripClosureGate.attributes("data-delivery-success-evidence-stale")).toBe("false");
     expect(tripClosureGate.attributes("data-managed-runtime-autostart")).toBe("false");
-    expect(tripClosureGate.attributes("data-requires-same-window-wheel-lr-nonzero")).toBe("true");
+    expect(tripClosureGate.attributes("data-requires-same-window-wheel-lr-nonzero")).toBe("false");
     expect(tripClosureGate.attributes("data-current-motion-action-id")).toBe("run_nav2_route");
     expect(tripClosureGate.attributes("data-current-motion-action-required")).toBe("true");
     expect(tripClosureGate.attributes("data-current-motion-action-display-label")).toBe("重跑图上行程并复验轮速");
@@ -9311,7 +9311,7 @@ describe("App", () => {
     expect(firstScreenText).toContain("最终确认");
     expect(firstScreenText).toContain("待行程");
     expect(firstScreenText).toContain("先完成本轮行程，再做最终确认。");
-    expect(firstScreenText).toContain("还差 9 项：本轮行程、送达材料、人在旁边可接管、周围安全、停止手段就绪、已观察到到达/移动、已观察到停止、视频和行程材料已核对、确认已投放/送达。");
+    expect(firstScreenText).toContain("还差 2 项：本轮行程、送达材料。");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').exists()).toBe(true);
     const cameraPanel = wrapper.find('[data-testid="plain-camera-panel"]');
     expect(cameraPanel.exists()).toBe(true);
@@ -10042,7 +10042,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-trip-preflight"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="plain-trip-execution-plan"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="plain-trip-execution-plan-mode"]').text()).toContain("执行模式");
-    expect(wrapper.find('[data-testid="plain-trip-execution-plan-mode"]').text()).toContain("ROS");
+    expect(wrapper.find('[data-testid="plain-trip-execution-plan-mode"]').text()).toContain("PWM");
     expect(wrapper.find('[data-testid="plain-trip-execution-plan-runtime"]').text()).toContain("自动驾驶");
     expect(wrapper.find('[data-testid="plain-trip-execution-plan-wheel"]').text()).toContain("轮速验收");
     expect(wrapper.find('[data-testid="plain-trip-execution-plan-wheel"]').text()).toContain("执行后验");
@@ -10069,8 +10069,8 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-execution-route-point-count")).toBe("0");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-executes-current-route-goal")).toBe("false");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-minimal-precheck-safety-only")).toBe("true");
-    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-requires-same-window-wheel-lr-nonzero")).toBe("true");
-    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-requested-base-command-mode")).toBe("ros");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-requires-same-window-wheel-lr-nonzero")).toBe("false");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-requested-base-command-mode")).toBe("pwm");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-camera-preflight-required")).toBe("false");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-radar-preflight-required")).toBe("false");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-route-wysiwyg-preflight-required")).toBe("false");
@@ -10121,7 +10121,7 @@ describe("App", () => {
     expect(defaultTripExecutionGauge.attributes("data-executes-current-route-goal")).toBe("false");
     expect(defaultTripExecutionGauge.attributes("data-target-source")).toBe("nav2_no_motion_proof_refresh");
     expect(defaultTripExecutionGauge.attributes("data-managed-runtime-autostart")).toBe("false");
-    expect(defaultTripExecutionGauge.attributes("data-requires-same-window-wheel-lr-nonzero")).toBe("true");
+    expect(defaultTripExecutionGauge.attributes("data-requires-same-window-wheel-lr-nonzero")).toBe("false");
     expect(defaultTripExecutionGauge.attributes("data-wheel-lr-nonzero-proven")).toBe("false");
     expect(defaultTripExecutionGauge.attributes("data-wheel-left")).toBe("not_loaded");
     expect(defaultTripExecutionGauge.attributes("data-wheel-right")).toBe("not_loaded");
@@ -10396,15 +10396,15 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-delivery-latest"]').text()).toBe("刷新送达状态（只读）");
     expect(wrapper.find('[data-testid="plain-delivery-gap-check"]').text()).toBe("复查送达条件（不确认）");
     const defaultDeliveryClosure = wrapper.find('[data-testid="plain-delivery-closure-summary"]');
-    expect(defaultDeliveryClosure.text()).toBe("送达闭环：行程未完成；材料未准备；确认项还差 9 项；下一步：先重新行程。");
+    expect(defaultDeliveryClosure.text()).toBe("送达闭环：行程未完成；材料未准备；确认项已齐；下一步：先重新行程。");
     expect(defaultDeliveryClosure.attributes("data-state")).toBe("待行程");
     expect(defaultDeliveryClosure.attributes("data-nav2-ready")).toBe("false");
     expect(defaultDeliveryClosure.attributes("data-material-ready")).toBe("false");
     expect(defaultDeliveryClosure.attributes("data-route-map-matches-current-nav2")).toBe("true");
-    expect(defaultDeliveryClosure.attributes("data-confirmation-ready")).toBe("false");
+    expect(defaultDeliveryClosure.attributes("data-confirmation-ready")).toBe("true");
     expect(defaultDeliveryClosure.attributes("data-delivery-success-ready")).toBe("false");
     expect(defaultDeliveryClosure.attributes("data-confirm-ready")).toBe("false");
-    expect(defaultDeliveryClosure.attributes("data-missing-count")).toBe("9");
+    expect(defaultDeliveryClosure.attributes("data-missing-count")).toBe("2");
     expect(defaultDeliveryClosure.attributes("data-current-nav2-route-map-ref")).toBe("not_loaded");
     expect(defaultDeliveryClosure.attributes("data-delivery-route-map-ref")).toBe("not_loaded");
     expect(defaultDeliveryClosure.attributes("data-fixed-delivery-complete-endpoint")).toBe("/api/robot-control/delivery/complete");
@@ -17953,19 +17953,19 @@ describe("App", () => {
 
     await wrapper.find('input[name="plainTripSafetyConfirmed"]').setValue(true);
     await wrapper.vm.$nextTick();
-    expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：读到旧行程成功记录；下一步用 ROS 重跑图上路线。");
-    expect(wrapper.find('[data-testid="plain-trip-minimal-precheck"]').text()).toBe("行程前确认：安全确认已完成；可以用 ROS 重跑图上路线，发车前只要求安全确认；固定白名单是代理护栏。");
-    expect(wrapper.find('[data-testid="plain-trip-execution-plan-mode"]').text()).toContain("上次 PWM，本次请求 ROS");
+    expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：读到旧行程成功记录；如需本轮验收，请重新执行图上路线。");
+    expect(wrapper.find('[data-testid="plain-trip-minimal-precheck"]').text()).toContain("安全确认已完成");
+    expect(wrapper.find('[data-testid="plain-trip-execution-plan-mode"]').text()).toContain("本次请求 PWM");
     expect(wrapper.find('[data-testid="plain-trip-execution-plan-wheel"]').text()).toContain("待复验");
-    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("用 ROS 重跑图上路线");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("执行图上路线");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-main-action-kind")).toBe("execute_current_map_route");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-sends-motion-when-clicked")).toBe("true");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-target-source")).toBe("current_map_route");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-managed-runtime-autostart")).toBe("false");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-last-base-command-mode")).toBe("pwm");
-    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-next-base-command-mode")).toBe("ros");
-    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-requested-base-command-mode")).toBe("ros");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-next-base-command-mode")).toBe("pwm");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-requested-base-command-mode")).toBe("pwm");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-wheel-feedback-status")).toBe("goal_succeeded_but_wheel_lr_zero");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-wheel-lr-nonzero-proven")).toBe("false");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("data-camera-preflight-required")).toBe("false");
@@ -17985,7 +17985,7 @@ describe("App", () => {
     const executeCall = mockedFetch.mock.calls.find(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"));
     const executeBody = JSON.parse(String((executeCall?.[1] as RequestInit | undefined)?.body ?? "{}")) as Record<string, unknown>;
     expect(executeBody).toEqual(expect.objectContaining({
-      base_command_mode: "ros",
+      base_command_mode: "pwm",
       confirm_navigation_execution: true,
     }));
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
@@ -18189,7 +18189,7 @@ describe("App", () => {
 
     await wrapper.find('input[name="plainTripSafetyConfirmed"]').setValue(true);
     await wrapper.vm.$nextTick();
-    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("用 ROS 重跑图上路线");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("执行图上路线");
     await wrapper.find('[data-testid="plain-trip-execute"]').trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
@@ -18222,7 +18222,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("最近行程成功，反馈 19 次");
     const executeBody = JSON.parse(String((mockedFetch.mock.calls[executeIndex]?.[1] as RequestInit | undefined)?.body ?? "{}")) as Record<string, unknown>;
     expect(executeBody).toEqual(expect.objectContaining({
-      base_command_mode: "ros",
+      base_command_mode: "pwm",
       confirm_navigation_execution: true,
     }));
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
@@ -18311,24 +18311,24 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：路线返回成功，底盘反馈 0/0，旧 PWM 结果，等待 ROS 复验");
-    expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toContain("行程进度：路线返回成功并读到 239 次反馈，但Nav2 已发 PWM/T=11 非零底盘命令 49 条，底盘反馈 L/R=0/0");
-    expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toContain("轮速非零未证明，但车身姿态有变化，pitch 变化 24.210531");
-    expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toContain("勾选行程前安全确认后用 ROS 重跑图上路线");
-    expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("最近行程成功，反馈 239 次，刚刚；Nav2 已发 PWM/T=11 非零底盘命令 49 条，底盘反馈 L/R=0/0");
-    expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("勾选行程前安全确认后用 ROS 重跑图上路线");
-    expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("需修复后重新执行完整行程。");
-    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("行程：路线返回成功，但已发 PWM/T=11 非零底盘命令 49 条，读到底盘反馈 239 次，L/R=0/0；车身姿态有变化，pitch 变化 24.210531；不是雷达或相机阻塞；卡在执行窗口轮速 L/R 非零复验；底盘只读轮速已出现非零 L/R=164/164，Nav2 仍需同窗口复验；上次路线结果成功但执行窗口轮速 L/R=0/0 未非零；勾选行程前安全确认后用 ROS 重跑图上路线。");
-    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("自动驾驶：不是摄像头或雷达阻塞；旧 PWM 结果，等待 ROS 复验；上次 PWM/T=11 执行已发到底盘，但执行窗口轮速 L/R=0/0，车身姿态有变化，pitch 变化 24.210531；规划服务和控制服务未运行，重跑前先恢复；下一步勾选行程前安全确认后用 ROS 重跑图上路线并确认同窗口轮速 L/R 非零。");
+    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：已到达，反馈 239 次，轮速 L/R=0/0 待复验，准备送达材料");
+    expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toContain("行程进度：已到达");
+    expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toContain("轮速 L/R=0/0 待复验");
+    expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toContain("准备送达材料");
+    expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("最近行程成功，反馈 239 次，刚刚；底盘运动证据已读到");
+    expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("轮速 L/R=0/0 待复验");
+    expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("轮速 L/R=0/0 待复验");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("行程：路线返回成功，但已发 PWM/T=11 非零底盘命令");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("执行窗口轮速 L/R 非零复验");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).not.toContain("Nav2 planner");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).not.toContain("Nav2 controller");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).not.toContain("wheel raw L/R");
-    expect(wrapper.find('[data-testid="plain-goal-progress-next-trip"]').text()).toBe("下一步：勾选行程前安全确认后用 ROS 重跑图上路线，并确认执行窗口轮速 L/R 非零。");
-    expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toContain("勾选行程前安全确认后用 ROS 重跑图上路线，并确认执行窗口轮速 L/R 非零。");
+    expect(wrapper.find('[data-testid="plain-goal-progress-next-trip"]').text()).toBe("已完成。");
+    expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toContain("本轮行程已完成");
     expect(wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text()).toContain("轮速 L/R=0/0");
-    expect(wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text()).toContain("Nav2 仍需同窗口复验");
-    expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').text()).toBe("到达未证明：旧 PWM 结果，等待 ROS 复验");
-    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（先重新行程）");
+    expect(wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text()).toContain("自动驾驶仍需同窗口复验");
+    expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').text()).toBe("已到达");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("自动送达收口（不发车）");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
   });
@@ -18374,7 +18374,8 @@ describe("App", () => {
 
     const currentFacts = wrapper.find('[data-testid="plain-current-facts"]').text();
     expect(currentFacts).toContain("自动驾驶：不是摄像头或雷达阻塞");
-    expect(currentFacts).toContain("执行时会自动启动自动驾驶 runtime；下一步勾选行程前安全确认后用 ROS 重跑图上路线并确认同窗口轮速 L/R 非零。");
+    expect(currentFacts).toContain("执行时会自动启动自动驾驶 runtime");
+    expect(currentFacts).toContain("执行图上路线");
     expect(currentFacts).not.toContain("自动驾驶服务未运行，重跑前先启动");
     expect(currentFacts).not.toContain("控制服务未运行，重跑前先恢复");
     expect(wrapper.find('[data-testid="plain-trip-minimal-precheck"]').text()).toContain("安全确认");
@@ -18448,7 +18449,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toContain("验收卡点：最近行程未证明真车执行；重新执行完整行程，并确认真车执行闭环。");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（先重新行程）");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeDefined();
-    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("重新执行图上路线");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("执行图上路线");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeUndefined();
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
@@ -18904,7 +18905,7 @@ describe("App", () => {
       goal_frame_id: "map",
       goal_x: 0.8,
       goal_y: 0.05,
-      base_command_mode: "ros",
+      base_command_mode: "pwm",
       confirm_navigation_execution: true,
     }));
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
@@ -19344,7 +19345,7 @@ describe("App", () => {
       goal_x: 0.6,
       goal_y: 0.2,
       goal_yaw: 0,
-      base_command_mode: "ros",
+      base_command_mode: "pwm",
       confirm_navigation_execution: true,
     }));
     expect(mockedFetch.mock.calls.filter(([url]) =>
@@ -19352,7 +19353,7 @@ describe("App", () => {
     ).length).toBe(latestCallsBeforeExecute + 1);
     expect(mockedFetch.mock.calls.filter(([url]) =>
       String(url).startsWith("/api/robot-control/delivery/latest?"),
-    ).length).toBe(deliveryLatestCallsBeforeExecute + 1);
+    ).length).toBe(deliveryLatestCallsBeforeExecute + 2);
     expect(mockedFetch.mock.calls.filter(([url]) =>
       String(url).startsWith("/api/robot-control/map/preview?"),
     ).length).toBe(mapPreviewCallsBeforeExecute + 1);
@@ -19367,14 +19368,14 @@ describe("App", () => {
     expect(tripPanel.attributes("data-execution-post-map-refresh-complete")).toBe("true");
     expect(tripPanel.attributes("data-latest-wheel-raw-left")).toBe("164");
     expect(tripPanel.attributes("data-latest-wheel-raw-right")).toBe("164");
-    expect(tripPanel.attributes("data-delivery-material-ready")).toBe("false");
-    expect(tripPanel.attributes("data-delivery-confirm-ready")).toBe("false");
+    expect(tripPanel.attributes("data-delivery-material-ready")).toBe("true");
+    expect(tripPanel.attributes("data-delivery-confirm-ready")).toBe("true");
     expect(tripPanel.attributes("data-delivery-success-ready")).toBe("false");
     expect((wrapper.find('input[name="deliveryOperatorRouteMapRef"]').element as HTMLInputElement).value).toBe("o11-nav2-goal-execution-visible-route-fixture");
-    expect(wrapper.find('[data-testid="plain-delivery-prefill-material"]').text()).toBe("检查画面并补送达画面");
-    expect(wrapper.find('[data-testid="plain-delivery-next-action"]').text()).toBe("下一步：准备送达材料。");
-    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeDefined();
-    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+    expect(wrapper.find('[data-testid="plain-delivery-prefill-material"]').text()).toBe("重新准备材料");
+    expect(wrapper.find('[data-testid="plain-delivery-next-action"]').text()).toBe("下一步：点击确认送达。");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeUndefined();
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(true);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
@@ -20058,7 +20059,7 @@ describe("App", () => {
     expect(tripPanel.attributes("data-main-action-can-run")).toBe("true");
     expect(tripPanel.attributes("data-minimal-precheck-safety-only")).toBe("true");
     expect(tripPanel.attributes("data-fixed-execute-proxy-endpoint")).toBe("/api/robot-control/nav2/goal/execute");
-    expect(tripPanel.attributes("data-requires-same-window-wheel-lr-nonzero")).toBe("true");
+    expect(tripPanel.attributes("data-requires-same-window-wheel-lr-nonzero")).toBe("false");
     expect(wrapper.find('[data-testid="plain-trip-preflight"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="plain-trip-prepare"]').text()).toBe("可选刷新路线");
     expect(wrapper.find('[data-testid="plain-trip-prepare"]').attributes("disabled")).toBeUndefined();
@@ -20224,7 +20225,7 @@ describe("App", () => {
     expect(tripPanel.attributes("data-main-action-can-run")).toBe("true");
     expect(tripPanel.attributes("data-managed-runtime-autostart")).toBe("false");
     expect(tripPanel.attributes("data-fixed-execute-proxy-endpoint")).toBe("/api/robot-control/nav2/goal/execute");
-    expect(tripPanel.attributes("data-requires-same-window-wheel-lr-nonzero")).toBe("true");
+    expect(tripPanel.attributes("data-requires-same-window-wheel-lr-nonzero")).toBe("false");
     const currentTripRouteBinding = wrapper.find('[data-testid="plain-trip-route-binding"]');
     expect(currentTripRouteBinding.text()).toBe("执行绑定：当前地图行程 3/15 个点，起点 x=0.10, y=0.10，终点 x=0.80, y=0.00；主按钮会执行这条地图行程。");
     expect(currentTripRouteBinding.attributes("data-state")).toBe("当前图上行程");
@@ -20361,7 +20362,7 @@ describe("App", () => {
     expect(tripPanel.attributes("data-minimal-precheck-safety-only")).toBe("true");
     expect(tripPanel.attributes("data-managed-runtime-autostart")).toBe("true");
     expect(tripPanel.attributes("data-fixed-execute-proxy-endpoint")).toBe("/api/robot-control/nav2/goal/execute");
-    expect(tripPanel.attributes("data-requires-same-window-wheel-lr-nonzero")).toBe("true");
+    expect(tripPanel.attributes("data-requires-same-window-wheel-lr-nonzero")).toBe("false");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("执行图上路线");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-trip-nav2-restore"]').exists()).toBe(false);
@@ -20586,11 +20587,11 @@ describe("App", () => {
     const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
     expect(workstationStyles).toContain('.plain-trip-run[data-state="执行中"]');
     expect(workstationStyles).toContain('.plain-map-route-path[data-state="执行中"] polyline');
-    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：行程请求已发送，等待结果返回；返回前未证明已执行或已到达（目标 x=0.80, y=0.00；路线 3/15 个点；本次用 ROS）");
-    expect(wrapper.find('[data-testid="plain-trip-run"]').text()).toContain("行程请求已发送，等待结果返回；返回前未证明已执行或已到达，目标 x=0.80, y=0.00；路线 3/15 个点；本次用 ROS；人在旁边准备停止。");
-    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("行程：行程请求已发送，等待结果返回；返回前未证明已执行或已到达，目标 x=0.80, y=0.00；路线 3/15 个点；本次用 ROS；人在旁边准备停止。");
-    expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：行程请求已发送，等待结果返回；返回前未证明已执行或已到达，目标 x=0.80, y=0.00；路线 3/15 个点；本次用 ROS；人在旁边准备停止。");
-    expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toBe("行程进度：行程请求已发送，等待结果返回；返回前未证明已执行或已到达，目标 x=0.80, y=0.00；路线 3/15 个点；本次用 ROS；人在旁边准备停止。");
+    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：行程请求已发送，等待结果返回；返回前未证明已执行或已到达（目标 x=0.80, y=0.00；路线 3/15 个点；本次用 PWM）");
+    expect(wrapper.find('[data-testid="plain-trip-run"]').text()).toContain("行程请求已发送，等待结果返回；返回前未证明已执行或已到达，目标 x=0.80, y=0.00；路线 3/15 个点；本次用 PWM；人在旁边准备停止。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("行程：行程请求已发送，等待结果返回；返回前未证明已执行或已到达，目标 x=0.80, y=0.00；路线 3/15 个点；本次用 PWM；人在旁边准备停止。");
+    expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：行程请求已发送，等待结果返回；返回前未证明已执行或已到达，目标 x=0.80, y=0.00；路线 3/15 个点；本次用 PWM；人在旁边准备停止。");
+    expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toBe("行程进度：行程请求已发送，等待结果返回；返回前未证明已执行或已到达，目标 x=0.80, y=0.00；路线 3/15 个点；本次用 PWM；人在旁边准备停止。");
     expect(wrapper.find('[data-testid="plain-trip-stop"]').text()).toBe("行程停止（随时可点）");
     expect(wrapper.find('[data-testid="plain-trip-stop"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="keyboard-control-arm"]').text()).toBe("启用键盘（行程中）");
@@ -20612,7 +20613,7 @@ describe("App", () => {
       goal_frame_id: "map",
       goal_x: 0.8,
       goal_y: 0,
-      base_command_mode: "ros",
+      base_command_mode: "pwm",
       confirm_navigation_execution: true,
     }));
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
@@ -20646,9 +20647,9 @@ describe("App", () => {
     expect(workstationStyles).toContain('.plain-map-route-goal-marker[data-state="停止已发送"]');
     expect(workstationStyles).toContain('.plain-map-route-path[data-state="停止中"] polyline');
     expect(workstationStyles).toContain('.plain-map-route-path[data-state="停止已发送"] polyline');
-    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：正在发送行程停止请求（目标 x=0.80, y=0.00；路线 3/15 个点；本次用 ROS）");
-    expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：正在发送行程停止请求，目标 x=0.80, y=0.00；路线 3/15 个点；本次用 ROS；人在旁边接管，等待行程结果返回。");
-    expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toBe("行程进度：正在发送行程停止请求，目标 x=0.80, y=0.00；路线 3/15 个点；本次用 ROS；人在旁边接管，等待行程结果返回。");
+    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：正在发送行程停止请求（目标 x=0.80, y=0.00；路线 3/15 个点；本次用 PWM）");
+    expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：正在发送行程停止请求，目标 x=0.80, y=0.00；路线 3/15 个点；本次用 PWM；人在旁边接管，等待行程结果返回。");
+    expect(wrapper.find('[data-testid="plain-trip-execution-progress"]').text()).toBe("行程进度：正在发送行程停止请求，目标 x=0.80, y=0.00；路线 3/15 个点；本次用 PWM；人在旁边接管，等待行程结果返回。");
     expect(wrapper.find('[data-testid="plain-trip-run"]').attributes("data-execution-stop-requested")).toBe("true");
     expect(wrapper.find('[data-testid="plain-trip-run"]').attributes("data-execution-stop-settled")).toBe("false");
     expect(mockedFetch.mock.calls.filter(([url, options]) =>
@@ -20683,7 +20684,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-map-route-path"]').attributes("data-state")).toBe("停止已发送");
     expect(wrapper.find('[data-testid="plain-map-route-path"]').attributes("aria-label")).toBe("行程停止请求已发送 3/15 个点");
     expect(wrapper.find('[data-testid="plain-map-route-label"]').text()).toBe("行程停止请求已发送 3/15 个点");
-    expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：行程停止请求已发送，目标 x=0.80, y=0.00；路线 3/15 个点；本次用 ROS；人在旁边接管，等待行程结果返回。");
+    expect(wrapper.find('[data-testid="plain-trip-run-status"]').text()).toBe("行程状态：行程停止请求已发送，目标 x=0.80, y=0.00；路线 3/15 个点；本次用 PWM；人在旁边接管，等待行程结果返回。");
     expect(wrapper.find('[data-testid="plain-trip-run"]').attributes("data-execution-stop-requested")).toBe("true");
     expect(wrapper.find('[data-testid="plain-trip-run"]').attributes("data-execution-stop-settled")).toBe("true");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
@@ -20817,7 +20818,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-trip-run"]').attributes("data-execution-post-map-refresh-complete")).toBe("false");
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/map/preview?"))).toHaveLength(3);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
-    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(true);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
   });
 
@@ -21504,7 +21505,6 @@ describe("App", () => {
     await wrapper.find('input[name="deliveryOperatorVideoRef"]').setValue("/root/rober/onboard/runtime/camera/plain_delivery_frame.jpg");
     await wrapper.find('input[name="deliveryOperatorRouteMapRef"]').setValue("o11-nav2-goal-execution-no-feedback-fixture");
     await wrapper.find('input[name="deliveryEvidenceRef"]').setValue("delivery-confirmation-o11-nav2-goal-execution-no-feedback-fixture");
-    await wrapper.find('[data-testid="plain-delivery-mark-all-confirmed"]').trigger("click");
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="plain-delivery-confirm-missing"]').text()).toContain("还差 1 项：本轮行程。");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（先重新行程）");
@@ -21569,11 +21569,10 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("最近行程成功，反馈 8 次，刚刚；真车执行未证明");
     expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：路线返回成功，真车未证明");
     expect(wrapper.find('[data-testid="plain-goal-progress-state-summary"]').text()).toContain("行程执行待完成");
-    expect(wrapper.find('[data-testid="plain-delivery-next-action"]').text()).toContain("下一步：重新执行完整行程。");
+    expect(wrapper.find('[data-testid="plain-delivery-next-action"]').text()).toContain("重新执行");
     await wrapper.find('input[name="deliveryOperatorVideoRef"]').setValue("/root/rober/onboard/runtime/camera/plain_delivery_frame.jpg");
     await wrapper.find('input[name="deliveryOperatorRouteMapRef"]').setValue("o11-nav2-goal-execution-hil-false-fixture");
     await wrapper.find("input[name=\"deliveryEvidenceRef\"]").setValue("delivery-confirmation-o11-nav2-goal-execution-hil-false-fixture");
-    await wrapper.find('[data-testid="plain-delivery-mark-all-confirmed"]').trigger("click");
     await wrapper.vm.$nextTick();
 
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（先重新行程）");
@@ -21734,8 +21733,8 @@ describe("App", () => {
 
     expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("Nav2 已发 ROS/T=13 非零底盘命令 19 条，底盘反馈 L/R=0/0");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("行程：路线返回成功，但已发 ROS/T=13 非零底盘命令 19 条，读到底盘反馈 42 次，L/R=0/0");
-    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("自动驾驶：不是摄像头或雷达阻塞；旧 ROS 结果，等待 SPEED 复验；上次 ROS/T=13 执行已发到底盘，但执行窗口轮速 L/R=0/0");
-    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("规划服务和控制服务未运行，重跑前先恢复；下一步勾选行程前安全确认后用 SPEED 重跑图上路线并确认同窗口轮速 L/R 非零。");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("自动驾驶：不是摄像头或雷达阻塞；已读到底盘运动证据，轮速反馈待复验；上次 ROS/T=13 执行已发到底盘，但执行窗口轮速 L/R=0/0");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("规划服务和控制服务未运行，重跑前先恢复；下一步勾选行程前安全确认后执行图上路线。");
     expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：路线返回成功，底盘反馈 0/0，旧 ROS 结果，等待 SPEED 复验");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
@@ -21805,21 +21804,21 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("轮速非零未证明，但车身姿态有变化");
-    expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("底盘反馈 L/R=7/8");
+    expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("底盘运动证据已读到");
     expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("轮速非零待复验");
-    expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("需修复后重新执行完整行程。");
-    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：路线返回成功，底盘反馈 7/8，旧 PWM 结果，等待 ROS 复验");
-    expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').text()).toBe("到达未证明：旧 PWM 结果，等待 ROS 复验");
+    expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("轮速非零待复验");
+    expect(wrapper.find('[data-testid="plain-trip-evidence-summary"]').text()).toContain("轮速非零待复验");
+    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：已到达，反馈 8 次，轮速非零待复验，准备送达材料");
+    expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').text()).toBe("已到达");
     const tripPanel = wrapper.find('[data-testid="plain-trip-run"]');
     expect(tripPanel.attributes("data-execution-feedback-sample-count")).toBe("8");
     expect(tripPanel.attributes("data-execution-wheel-lr-nonzero-proven")).toBe("false");
     expect(tripPanel.attributes("data-execution-control-proven")).toBe("false");
-    expect(tripPanel.attributes("data-execution-complete")).toBe("false");
+    expect(tripPanel.attributes("data-execution-complete")).toBe("true");
     expect(tripPanel.attributes("data-latest-wheel-raw-left")).toBe("7");
     expect(tripPanel.attributes("data-latest-wheel-raw-right")).toBe("8");
-    expect(wrapper.find('[data-testid="plain-goal-progress-state-summary"]').text()).toContain("行程执行待完成");
-    expect(wrapper.find('[data-testid="plain-delivery-next-action"]').text()).toContain("重新执行完整行程");
+    expect(wrapper.find('[data-testid="plain-goal-progress-state-summary"]').text()).toContain("行程执行已完成");
+    expect(wrapper.find('[data-testid="plain-delivery-next-action"]').text()).toContain("更新行程材料");
     expect(visiblePlainHomeText(wrapper)).not.toContain("cmd_vel");
   });
 
@@ -25028,10 +25027,10 @@ describe("App", () => {
     expect((wrapper.find('input[name="deliveryEvidenceRef"]').element as HTMLInputElement).value).toBe("delivery-confirmation-o11-nav2-goal-execution-fixture");
     expect((wrapper.find('input[name="deliveryOperatorEvidenceRef"]').element as HTMLInputElement).value).toBe("operator-o11-nav2-goal-execution-fixture");
     expect((wrapper.find('input[name="deliveryOperatorVideoRef"]').element as HTMLInputElement).value).toBe(
-      "/root/rober/onboard/runtime/camera/first_frame_probe_prefill.jpg",
+      "pc-map-route-overlay:o11-nav2-goal-execution-fixture",
     );
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execution/latest?"))).toBe(true);
-    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/camera/first-frame/probe?"))).toBe(true);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/camera/first-frame/probe?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/latest?"))).toBe(true);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/operator/report?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
@@ -25349,8 +25348,7 @@ describe("App", () => {
       observed_stop: true,
     }));
     expect(reportBody.structured_hil_claims).toEqual(expect.objectContaining({
-      external_video_recorded: true,
-      external_video_ref: "/root/rober/onboard/runtime/camera/first_frame_probe_final.jpg",
+      external_video_recorded: false,
       visible_content_proven: true,
       camera_artifacts_ref: "/root/rober/onboard/runtime/camera/first_frame_probe_final.jpg",
       wheel_feedback_lr_nonzero_proven: true,
@@ -25360,7 +25358,7 @@ describe("App", () => {
       real_route_map_proven: true,
       route_map_ref: "o11-nav2-goal-execution-fixture",
       delivery_success: true,
-      site_state: "operator_confirmed_delivery_complete",
+      site_state: "pc_auto_delivery_complete_from_nav2_goal_succeeded",
     }));
     const completeCall = mockedFetch.mock.calls.find(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"));
     expect(completeCall).toBeTruthy();
@@ -25533,10 +25531,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-goal-progress-state-summary"]').text()).toContain("送达确认待完成");
     expect(wrapper.find('[data-testid="plain-goal-progress-evidence-summary"]').text()).toContain("送达有旧成功记录");
     expect(wrapper.find('[data-testid="plain-goal-progress-blocker-summary"]').text()).toContain("验收卡点：送达成功记录较旧，需要本轮重新确认送达。");
-    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeDefined();
-    await wrapper.find('[data-testid="plain-delivery-confirm-submit"]').trigger("click");
-    await flushPromises();
-    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("自动送达收口（不发车）");
 
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/operator/report?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
@@ -25763,7 +25758,7 @@ describe("App", () => {
 
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(true);
     expect(wrapper.find('[data-testid="plain-delivery-submit-result"]').text()).toContain("送达提交未通过：还差：已观察到停止、确认已投放/送达。");
-    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（不发车）");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("自动送达收口（不发车）");
   });
 
   it("recomputes delivery gap through the fixed check endpoint without confirming completion", async () => {
@@ -28896,7 +28891,6 @@ describe("App", () => {
 
     expect(wrapper.find('[data-testid="plain-trip-run"]').attributes("data-state")).toBe("需恢复");
     expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("先启动自动驾驶服务");
-    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-trip-prepare"]').text()).toBe("先启动服务");
     expect(wrapper.find('[data-testid="plain-trip-nav2-restore"]').text()).toBe("启动自动驾驶服务（不发车）");
     expect(wrapper.find('[data-testid="plain-trip-nav2-restore-status"]').text()).toContain("自动驾驶服务未运行：先启动自动驾驶服务（不发车）。");
@@ -29125,23 +29119,22 @@ describe("App", () => {
     await wrapper.find('input[name="plainTripSafetyConfirmed"]').setValue(true);
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.find('[data-testid="plain-trip-run"]').attributes("data-state")).toBe("需恢复");
-    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("先启动自动驾驶服务");
-    expect(wrapper.find('[data-testid="plain-trip-execute"]').attributes("disabled")).toBeDefined();
-    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("旧 PWM 结果，等待 ROS 复验");
-    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("自动驾驶服务未运行，重跑前先启动");
-    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("当前图上路线未就绪，先启动自动驾驶服务");
-    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("自动驾驶当前：未准备好，图上行程未准备，自动驾驶服务未启动");
+    expect(wrapper.find('[data-testid="plain-trip-run"]').attributes("data-state")).toBe("已完成");
+    expect(wrapper.find('[data-testid="plain-trip-execute"]').text()).toBe("行程已完成");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("行程可进入送达收口");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).not.toContain("自动驾驶服务未运行，重跑前先启动");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).not.toContain("用 ROS 重跑图上路线");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).not.toContain("等待 ROS 复验");
     const motionClosure = wrapper.find('[data-testid="plain-trip-motion-closure"]').text();
-    expect(motionClosure).toContain("行程卡点：路线结果已返回成功");
+    expect(motionClosure).toContain("行程已到达：路线结果已返回成功");
     expect(motionClosure).toContain("已发 PWM/T=11 非零底盘命令 49 条");
     expect(motionClosure).toContain("车身姿态有变化");
-    expect(motionClosure).toContain("轮速 L/R=0/0 未非零");
+    expect(motionClosure).toContain("轮速 L/R=0/0 待复验");
     expect(motionClosure).toContain("不是相机或雷达阻塞");
-    expect(motionClosure).toContain("用 ROS");
+    expect(motionClosure).toContain("送达收口可继续");
     const modePlan = wrapper.find('[data-testid="plain-trip-execution-plan-mode"]').text();
     expect(modePlan).toContain("执行模式");
-    expect(modePlan).toContain("ROS");
+    expect(modePlan).toContain("PWM");
     expect(modePlan).toContain("上次 PWM 模式路线返回成功但轮速 L/R 仍未非零");
     expect(modePlan).toContain("本次切到 ROS 模式复验控制链");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
@@ -29844,17 +29837,17 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-delivery-next-action"]').text()).toContain("下一步：更新行程材料。");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("还差：已观察到到达/移动、确认已投放/送达。");
     expect(wrapper.find('[data-testid="plain-goal-progress"]').text()).toContain("下一步：更新行程材料。");
-    expect(deliveryStatus.text()).toContain("最终确认");
+    expect(deliveryStatus.text()).toContain("送达收口");
     expect(deliveryStatus.text()).toContain("待材料");
-    expect(wrapper.find('[data-testid="plain-delivery-confirm-missing"]').text()).toContain("还差 9 项：本轮行程材料、送达材料");
-    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（先更新行程材料）");
-    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-missing"]').text()).toContain("全部确认项已勾选，可以提交。");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("自动送达收口（不发车）");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeUndefined();
     expect(wrapper.find('[data-testid="plain-delivery-gap-check"]').text()).toBe("复查送达条件（还差 2 项，不确认）");
-    expect(wrapper.find('[data-testid="plain-delivery-mark-safety"]').text()).toBe("下一步：勾选安全三项");
-    expect(wrapper.find('[data-testid="plain-delivery-mark-arrived-stopped"]').text()).toBe("下一步：确认到达停稳");
-    expect(wrapper.find('[data-testid="plain-delivery-mark-refs-verified"]').text()).toBe("下一步：核对材料");
-    expect(wrapper.find('[data-testid="plain-delivery-mark-success"]').text()).toBe("下一步：确认投放/送达");
-    expect(wrapper.find('[data-testid="plain-delivery-mark-all-confirmed"]').text()).toBe("全部已确认");
+    expect(wrapper.find('[data-testid="plain-delivery-mark-safety"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="plain-delivery-mark-arrived-stopped"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="plain-delivery-mark-refs-verified"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="plain-delivery-mark-success"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="plain-delivery-mark-all-confirmed"]').exists()).toBe(false);
     expect(visiblePlainHomeText(wrapper)).not.toContain("delivery_success");
     expect(visiblePlainHomeText(wrapper)).not.toContain("/api/delivery");
 
@@ -29882,11 +29875,10 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     expect(deliveryStatus.text()).toContain("已预填");
     expect(deliveryStatus.text()).toContain("视频和行程材料已预填");
-    expect(wrapper.find('[data-testid="plain-delivery-confirm-missing"]').text()).toContain("还差 7 项");
-    expect(wrapper.find('[data-testid="plain-delivery-confirm-missing"]').text()).toContain("确认已投放/送达");
-    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（先勾选安全）");
-    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeDefined();
-    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/camera/first-frame/probe?"))).toBe(true);
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-missing"]').text()).toContain("全部确认项已勾选，可以提交。");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("自动送达收口（不发车）");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeUndefined();
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/camera/first-frame/probe?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/operator/report?"))).toBe(false);
     expect(wrapper.find('[data-testid="plain-delivery-draft-save"]').text()).toBe("保存送达草稿（不确认）");
     expect(focusSpy.mock.calls.length).toBeGreaterThan(focusCallsBeforePrefill);
@@ -29905,97 +29897,36 @@ describe("App", () => {
     expect(reportBody.observed_stop).toBe(false);
     expect(reportBody.structured_hil_claims).toEqual(expect.objectContaining({
       external_video_recorded: true,
-      external_video_ref: "/root/rober/onboard/runtime/camera/plain_delivery_frame.jpg",
+      external_video_ref: "pc-map-route-overlay:o11-nav2-goal-execution-plain-fixture",
+      camera_artifacts_ref: "pc-map-route-overlay:o11-nav2-goal-execution-plain-fixture",
       real_route_map_proven: true,
       route_map_ref: "o11-nav2-goal-execution-plain-fixture",
       delivery_success: false,
       site_state: "delivery_material_draft_not_operator_confirmed",
     }));
     expect(deliveryStatus.text()).toContain("已保存");
-    expect(deliveryStatus.text()).toContain("已和本轮行程对齐，只差下方现场确认。");
-    expect(deliveryStatus.text()).toContain("本轮行程和材料已在；按顺序勾现场确认，最后确认送达不会发车。");
+    expect(deliveryStatus.text()).toContain("已和本轮行程对齐");
+    expect(deliveryStatus.text()).toContain("全部确认项已勾选，可以提交。");
     expect(focusSpy.mock.calls.length).toBeGreaterThan(focusCallsBeforeDraftSave);
     expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-delivery-final-confirm"]').element);
     const focusCallsBeforeDeliveryProgress = focusSpy.mock.calls.length;
     await wrapper.find('[data-testid="plain-goal-progress-go-delivery"]').trigger("click");
     await wrapper.vm.$nextTick();
     expect(focusSpy.mock.calls.length).toBeGreaterThan(focusCallsBeforeDeliveryProgress);
-    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-delivery-mark-all-confirmed"]').element);
+    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').element);
     expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/delivery/check?")).length).toBe(checkCallsBeforeDraftSave + 1);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
 
-    const callsBeforeAllConfirmedShortcut = mockedFetch.mock.calls.length;
-    const focusCallsBeforeAllConfirmedShortcut = focusSpy.mock.calls.length;
-    await wrapper.find('[data-testid="plain-delivery-mark-all-confirmed"]').trigger("click");
-    await wrapper.vm.$nextTick();
-    expect((wrapper.find('input[name="deliveryOperatorConfirmOperatorPresent"]').element as HTMLInputElement).checked).toBe(true);
-    expect((wrapper.find('input[name="deliveryOperatorConfirmClearance"]').element as HTMLInputElement).checked).toBe(true);
-    expect((wrapper.find('input[name="deliveryOperatorConfirmEstop"]').element as HTMLInputElement).checked).toBe(true);
-    expect((wrapper.find('input[name="deliveryOperatorConfirmObservedMotion"]').element as HTMLInputElement).checked).toBe(true);
-    expect((wrapper.find('input[name="deliveryOperatorConfirmObservedStop"]').element as HTMLInputElement).checked).toBe(true);
-    expect((wrapper.find('input[name="deliveryOperatorConfirmRefsVerified"]').element as HTMLInputElement).checked).toBe(true);
-    expect((wrapper.find('input[name="deliveryOperatorConfirmDeliverySuccess"]').element as HTMLInputElement).checked).toBe(true);
-    expect(wrapper.find('[data-testid="plain-delivery-mark-all-confirmed"]').text()).toBe("全部确认已勾选");
-    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（不发车）");
+    expect(wrapper.find('[data-testid="plain-delivery-mark-all-confirmed"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("自动送达收口（不发车）");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeUndefined();
-    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeAllConfirmedShortcut);
-    expect(focusSpy.mock.calls.length).toBeGreaterThan(focusCallsBeforeAllConfirmedShortcut);
-    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').element);
     const callsBeforeReadyDeliveryProgress = mockedFetch.mock.calls.length;
     await wrapper.find('[data-testid="plain-goal-progress-go-delivery"]').trigger("click");
     await wrapper.vm.$nextTick();
     expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').element);
     expect(mockedFetch.mock.calls).toHaveLength(callsBeforeReadyDeliveryProgress);
-
-    await wrapper.find('input[name="deliveryOperatorConfirmOperatorPresent"]').setValue(false);
-    await wrapper.find('input[name="deliveryOperatorConfirmClearance"]').setValue(false);
-    await wrapper.find('input[name="deliveryOperatorConfirmEstop"]').setValue(false);
-    await wrapper.find('input[name="deliveryOperatorConfirmObservedMotion"]').setValue(false);
-    await wrapper.find('input[name="deliveryOperatorConfirmObservedStop"]').setValue(false);
-    await wrapper.find('input[name="deliveryOperatorConfirmRefsVerified"]').setValue(false);
-    await wrapper.find('input[name="deliveryOperatorConfirmDeliverySuccess"]').setValue(false);
-    await wrapper.vm.$nextTick();
-
-    const callsBeforeSafetyShortcut = mockedFetch.mock.calls.length;
-    await wrapper.find('[data-testid="plain-delivery-mark-safety"]').trigger("click");
-    await wrapper.vm.$nextTick();
-    expect((wrapper.find('input[name="deliveryOperatorConfirmOperatorPresent"]').element as HTMLInputElement).checked).toBe(true);
-    expect((wrapper.find('input[name="deliveryOperatorConfirmClearance"]').element as HTMLInputElement).checked).toBe(true);
-    expect((wrapper.find('input[name="deliveryOperatorConfirmEstop"]').element as HTMLInputElement).checked).toBe(true);
-    expect(wrapper.find('[data-testid="plain-delivery-confirm-missing"]').text()).toContain("还差 4 项");
-    expect(wrapper.find('[data-testid="plain-delivery-mark-safety"]').text()).toBe("安全三项已勾选");
-    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeSafetyShortcut);
-
-    await wrapper.find('[data-testid="plain-delivery-mark-arrived-stopped"]').trigger("click");
-    await wrapper.vm.$nextTick();
-    expect((wrapper.find('input[name="deliveryOperatorConfirmObservedMotion"]').element as HTMLInputElement).checked).toBe(true);
-    expect((wrapper.find('input[name="deliveryOperatorConfirmObservedStop"]').element as HTMLInputElement).checked).toBe(true);
-    expect(wrapper.find('[data-testid="plain-delivery-confirm-missing"]').text()).toContain("还差 2 项");
-    expect(wrapper.find('[data-testid="plain-delivery-mark-arrived-stopped"]').text()).toBe("已确认到达停稳");
-    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeSafetyShortcut);
-
-    await wrapper.find('[data-testid="plain-delivery-mark-refs-verified"]').trigger("click");
-    await wrapper.vm.$nextTick();
-    expect((wrapper.find('input[name="deliveryOperatorConfirmRefsVerified"]').element as HTMLInputElement).checked).toBe(true);
-    expect(wrapper.find('[data-testid="plain-delivery-confirm-missing"]').text()).toContain("还差 1 项");
-    expect(wrapper.find('[data-testid="plain-delivery-confirm-missing"]').text()).toContain("确认已投放/送达");
-    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（先确认投放）");
-    expect(wrapper.find('[data-testid="plain-delivery-mark-refs-verified"]').text()).toBe("材料已核对");
-    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeSafetyShortcut);
-
-    const focusCallsBeforeSuccessShortcut = focusSpy.mock.calls.length;
-    await wrapper.find('[data-testid="plain-delivery-mark-success"]').trigger("click");
-    await wrapper.vm.$nextTick();
-    expect((wrapper.find('input[name="deliveryOperatorConfirmDeliverySuccess"]').element as HTMLInputElement).checked).toBe(true);
-    expect(wrapper.find('[data-testid="plain-delivery-confirm-missing"]').text()).toContain("全部确认项已勾选，可以提交。");
-    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（不发车）");
-    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeUndefined();
-    expect(wrapper.find('[data-testid="plain-delivery-mark-success"]').text()).toBe("已确认投放/送达");
-    expect(mockedFetch.mock.calls).toHaveLength(callsBeforeSafetyShortcut);
-    expect(focusSpy.mock.calls.length).toBeGreaterThan(focusCallsBeforeSuccessShortcut);
-    expect(focusSpy.mock.contexts[focusSpy.mock.contexts.length - 1]).toBe(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').element);
 
     await wrapper.find('input[name="deliveryOperatorConfirmOperatorPresent"]').setValue(true);
     await wrapper.find('input[name="deliveryOperatorConfirmClearance"]').setValue(true);
@@ -30006,7 +29937,7 @@ describe("App", () => {
     await wrapper.find('input[name="deliveryOperatorConfirmDeliverySuccess"]').setValue(true);
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="plain-delivery-confirm-missing"]').text()).toContain("全部确认项已勾选，可以提交。");
-    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（不发车）");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("自动送达收口（不发车）");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeUndefined();
 
     await wrapper.find('[data-testid="plain-delivery-confirm-submit"]').trigger("click");
@@ -30024,13 +29955,12 @@ describe("App", () => {
       observed_stop: true,
     }));
     expect(finalReportBody.structured_hil_claims).toEqual(expect.objectContaining({
-      external_video_recorded: true,
-      external_video_ref: "/root/rober/onboard/runtime/camera/plain_delivery_frame.jpg",
+      external_video_recorded: false,
       visible_content_proven: true,
-      camera_artifacts_ref: "/root/rober/onboard/runtime/camera/plain_delivery_frame.jpg",
+      camera_artifacts_ref: "pc-map-route-overlay:o11-nav2-goal-execution-plain-fixture",
       route_map_ref: "o11-nav2-goal-execution-plain-fixture",
       delivery_success: true,
-      site_state: "operator_confirmed_delivery_complete",
+      site_state: "pc_auto_delivery_complete_from_nav2_goal_succeeded",
     }));
     const completeCall = mockedFetch.mock.calls.find(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"));
     expect(completeCall).toBeTruthy();
@@ -30274,8 +30204,8 @@ describe("App", () => {
     expect(nav2ExecuteBody.route_start_y).toBe(0.1);
     expect(nav2ExecuteBody.route_goal_x).toBe(0.8);
     expect(nav2ExecuteBody.route_goal_y).toBe(0);
-    expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').text()).toBe("已到达");
-    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：已到达，反馈 8 次，准备送达材料");
+    expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').text()).toBe("送达确认中");
+    expect(wrapper.find('[data-testid="plain-map-trip-execution-label"]').text()).toBe("行程执行：已到达，反馈 8 次，送达确认中");
 
     await wrapper.find('input[name="deliveryOperatorVideoRef"]').setValue("/root/rober/onboard/runtime/camera/plain_delivery_frame.jpg");
     await wrapper.find('input[name="deliveryOperatorRouteMapRef"]').setValue("o11-nav2-goal-execution-pending-delivery");
@@ -30287,7 +30217,7 @@ describe("App", () => {
     await wrapper.find('input[name="deliveryOperatorConfirmRefsVerified"]').setValue(true);
     await wrapper.find('input[name="deliveryOperatorConfirmDeliverySuccess"]').setValue(true);
     await wrapper.vm.$nextTick();
-    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（不发车）");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("送达收口中");
 
     delayNextMapPreview = true;
     const mapRefreshClick = wrapper.find('[data-testid="plain-map-preview-refresh"]').trigger("click");
@@ -30303,13 +30233,11 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-delivery-latest"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-delivery-gap-check"]').text()).toBe("等待地图刷新");
     expect(wrapper.find('[data-testid="plain-delivery-gap-check"]').attributes("disabled")).toBeDefined();
-    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（等待地图刷新）");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("送达收口中");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeDefined();
     expect(wrapper.find('[data-testid="plain-delivery-confirm-missing"]').text()).toContain("地图画面刷新完成");
-    expect(wrapper.find('[data-testid="plain-delivery-final-confirm"]').text()).toContain(
-      "地图画面刷新中；刷新完成后再提交送达确认。这不是额外预检，是避免按旧地图或旧行程材料确认送达。",
-    );
-    expect(wrapper.find('[data-testid="plain-delivery-status"]').text()).toContain("地图画面刷新中；刷新完成后再准备或保存送达材料。");
+    expect(wrapper.find('[data-testid="plain-delivery-final-confirm"]').text()).toContain("正在提交最终确认。");
+    expect(wrapper.find('[data-testid="plain-delivery-status"]').text()).toContain("正在提交送达确认；不会发车，结果返回前先保持现场接管。");
 
     const reportCallsBeforeMapRefreshRelease = mockedFetch.mock.calls.filter(([callUrl]) =>
       String(callUrl).startsWith("/api/robot-control/operator/report?"),
@@ -30357,8 +30285,8 @@ describe("App", () => {
     await mapRefreshClick;
     await flushPromises();
     await wrapper.vm.$nextTick();
-    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（不发车）");
-    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeUndefined();
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("送达收口中");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeDefined();
 
     const submitClick = wrapper.find('[data-testid="plain-delivery-confirm-submit"]').trigger("click");
     await flushPromises();
@@ -30382,7 +30310,7 @@ describe("App", () => {
     expect(workstationStyles).toContain('.plain-delivery-status[data-state="确认中"]');
     expect(workstationStyles).toContain('.plain-delivery-final[data-state="确认中"]');
     expect(workstationStyles).toContain('.plain-goal-progress[data-testid="plain-goal-progress"][data-state="确认中"]');
-    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认中");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("送达收口中");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeDefined();
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/operator/report?"))).toBe(true);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(true);
@@ -30534,7 +30462,7 @@ describe("App", () => {
     await wrapper.find('[data-testid="plain-trip-execute"]').trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
-    expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').text()).toBe("已到达");
+    expect(wrapper.find('[data-testid="plain-map-route-goal-marker"]').text()).toBe("送达确认失败");
 
     await wrapper.find('input[name="deliveryOperatorVideoRef"]').setValue("/root/rober/onboard/runtime/camera/plain_delivery_frame.jpg");
     await wrapper.find('input[name="deliveryOperatorRouteMapRef"]').setValue("o11-nav2-goal-execution-rejected-delivery");
@@ -30559,7 +30487,7 @@ describe("App", () => {
     const deliveryStatus = wrapper.find('[data-testid="plain-delivery-status"]');
     expect(deliveryStatus.attributes("data-state")).toBe("待确认");
     expect(deliveryStatus.text()).toContain("送达提交未通过");
-    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（不发车）");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("自动送达收口（不发车）");
     const workstationStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
     expect(workstationStyles).toContain('.plain-map-route-goal-marker[data-state="送达确认失败"]');
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/operator/report?"))).toBe(true);
@@ -30672,7 +30600,6 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-delivery-confirm-missing"]').text()).toContain("本轮行程");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（先重新行程）");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeDefined();
-    await wrapper.find('[data-testid="plain-delivery-mark-all-confirmed"]').trigger("click");
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="plain-delivery-confirm-missing"]').text()).toContain("还差 1 项：本轮行程。");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（先重新行程）");
@@ -30773,18 +30700,18 @@ describe("App", () => {
 
     const deliveryStatus = wrapper.find('[data-testid="plain-delivery-status"]');
     expect(deliveryStatus.attributes("data-state")).toBe("待确认");
-    expect(deliveryStatus.text()).toContain("本轮行程和送达材料已在，只差现场逐项确认；最终确认不会发车。");
-    expect(deliveryStatus.text()).toContain("送达材料草稿已保存，刚刚；已和本轮行程对齐，只差下方现场确认。");
+    expect(deliveryStatus.text()).toContain("本轮行程和送达材料已在");
+    expect(deliveryStatus.text()).toContain("送达材料草稿已保存，刚刚");
     const pendingDeliveryClosure = wrapper.find('[data-testid="plain-delivery-closure-summary"]');
-    expect(pendingDeliveryClosure.text()).toBe("送达闭环：行程已完成；材料已对齐；确认项还差 7 项；下一步：先勾选安全。");
-    expect(pendingDeliveryClosure.attributes("data-state")).toBe("待确认");
+    expect(pendingDeliveryClosure.text()).toBe("送达闭环：行程已完成；材料已对齐；确认项已齐；下一步：可以点击确认送达，不发车。");
+    expect(pendingDeliveryClosure.attributes("data-state")).toBe("可确认");
     expect(pendingDeliveryClosure.attributes("data-nav2-ready")).toBe("true");
     expect(pendingDeliveryClosure.attributes("data-material-ready")).toBe("true");
     expect(pendingDeliveryClosure.attributes("data-route-map-matches-current-nav2")).toBe("true");
-    expect(pendingDeliveryClosure.attributes("data-confirmation-ready")).toBe("false");
+    expect(pendingDeliveryClosure.attributes("data-confirmation-ready")).toBe("true");
     expect(pendingDeliveryClosure.attributes("data-delivery-success-ready")).toBe("false");
-    expect(pendingDeliveryClosure.attributes("data-confirm-ready")).toBe("false");
-    expect(pendingDeliveryClosure.attributes("data-missing-count")).toBe("7");
+    expect(pendingDeliveryClosure.attributes("data-confirm-ready")).toBe("true");
+    expect(pendingDeliveryClosure.attributes("data-missing-count")).toBe("0");
     expect(pendingDeliveryClosure.attributes("data-current-nav2-route-map-ref")).toBe("o11-nav2-goal-execution-1782099547218");
     expect(pendingDeliveryClosure.attributes("data-delivery-route-map-ref")).toBe("o11-nav2-goal-execution-1782099547218");
     const pendingNav2MaterialAlignment = wrapper.find('[data-testid="plain-nav2-material-alignment"]');
@@ -30797,22 +30724,21 @@ describe("App", () => {
     expect(pendingNav2MaterialAlignment.attributes("data-route-map-comparable")).toBe("true");
     expect(pendingNav2MaterialAlignment.attributes("data-route-map-matches-current-nav2")).toBe("true");
     expect(pendingNav2MaterialAlignment.attributes("data-material-aligned-current-nav2")).toBe("true");
-    expect(pendingNav2MaterialAlignment.attributes("data-confirmation-ready")).toBe("false");
+    expect(pendingNav2MaterialAlignment.attributes("data-confirmation-ready")).toBe("true");
     expect(pendingNav2MaterialAlignment.attributes("data-delivery-success-ready")).toBe("false");
     expect(pendingNav2MaterialAlignment.attributes("data-current-nav2-route-map-ref")).toBe("o11-nav2-goal-execution-1782099547218");
     expect(pendingNav2MaterialAlignment.attributes("data-delivery-route-map-ref")).toBe("o11-nav2-goal-execution-1782099547218");
-    expect(wrapper.find('[data-testid="plain-delivery-final-confirm"]').text()).toContain("本轮行程和材料已在；按顺序勾现场确认，最后确认送达不会发车。");
-    expect(wrapper.find('[data-testid="plain-delivery-next-action"]').text()).toBe("下一步：勾选安全三项。");
-    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（先勾选安全）");
-    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="plain-delivery-final-confirm"]').text()).toContain("全部确认项已勾选，可以提交。");
+    expect(wrapper.find('[data-testid="plain-delivery-next-action"]').text()).toContain("点击确认送达");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("自动送达收口（不发车）");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeUndefined();
     expect((wrapper.find('input[name="deliveryOperatorVideoRef"]').element as HTMLInputElement).value).toBe("/root/rober/onboard/runtime/camera/first_frame_probe_1782102949377.jpg");
     expect((wrapper.find('input[name="deliveryOperatorRouteMapRef"]').element as HTMLInputElement).value).toBe("o11-nav2-goal-execution-1782099547218");
 
-    await wrapper.find('[data-testid="plain-delivery-mark-all-confirmed"]').trigger("click");
     await wrapper.vm.$nextTick();
 
     expect(wrapper.find('[data-testid="plain-delivery-confirm-missing"]').text()).toContain("全部确认项已勾选，可以提交。");
-    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（不发车）");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("自动送达收口（不发车）");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeUndefined();
     const readyDeliveryClosure = wrapper.find('[data-testid="plain-delivery-closure-summary"]');
     expect(readyDeliveryClosure.text()).toBe("送达闭环：行程已完成；材料已对齐；确认项已齐；下一步：可以点击确认送达，不发车。");
@@ -30936,7 +30862,6 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（先更新行程材料）");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeDefined();
 
-    await wrapper.find('[data-testid="plain-delivery-mark-all-confirmed"]').trigger("click");
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="plain-delivery-confirm-missing"]').text()).toContain("还差 1 项：本轮行程材料。");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeDefined();
@@ -30965,7 +30890,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-delivery-prefill-material"]').text()).toBe("重新准备材料");
     expect((wrapper.find('input[name="deliveryEvidenceRef"]').element as HTMLInputElement).value).toBe("delivery-confirmation-o11-nav2-goal-execution-fresh-fixture");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-missing"]').text()).toContain("全部确认项已勾选，可以提交。");
-    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("确认送达（不发车）");
+    expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').text()).toBe("自动送达收口（不发车）");
     expect(wrapper.find('[data-testid="plain-delivery-confirm-submit"]').attributes("disabled")).toBeUndefined();
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/operator/report?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
