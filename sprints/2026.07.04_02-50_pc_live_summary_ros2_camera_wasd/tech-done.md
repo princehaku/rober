@@ -28,7 +28,7 @@ micro
 - 已通过：`npm test -- --run test/catalog.test.ts -t "base status proxy"`，`1 passed`。
 - live 修复复验：PC Node PID `42460` 监听 `0.0.0.0:7001`；`GET /api/robot-control/base/status`
   返回 HTTP 200、`proxy_status=status_loaded`、`blocked_reasons=[]`、`hard_dangerous_true_fields=[]`、
-  `wheel_feedback_lr_nonzero_proven=false`、`latest_t1001_observed_count=2`。
+  `wheel_feedback_lr_nonzero_proven=false`，且当前采样窗口已读到 `T=1001`。
 - 同轮手控复验：PC `POST /api/robot-control/base/manual` 前进/后退返回 HTTP 200、`proxy_status=command_forwarded`、
   `command_raw_lr_nonzero_proven=true`、`motion_signal_observed=true`、`motion_signal_source=imu_attitude_delta`，
   但 `wheel_feedback_lr_nonzero_proven=false`、`wheel_feedback_latest_raw_left/right=0/0`。

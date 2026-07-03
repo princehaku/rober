@@ -66,7 +66,7 @@ pc-tools/workstation/
 - 2026-07-04 03:05 CST 起，PC 独立 `GET /api/robot-control/base/status` 与 summary 的只读历史材料口径对齐：
   上车端 `bridge_command_debug.robot_control_executed=true` 只表示最近一次命令 debug，不代表当前 GET 发车；
   PC 只读代理不再因此返回 502。现场复验为 `proxy_status=status_loaded`、`blocked_reasons=[]`、
-  `hard_dangerous_true_fields=[]`、`wheel_feedback_lr_nonzero_proven=false`、`latest_t1001_observed_count=2`。
+  `hard_dangerous_true_fields=[]`、`wheel_feedback_lr_nonzero_proven=false`，且当前采样窗口已读到 `T=1001`。
   同轮 PC 前进/停止/后退/停止继续返回 `command_forwarded`，`command_raw_lr_nonzero_proven=true`，
   IMU 动作信号可见，但 vendor `T=1001 L/R` 仍为 `0/0`。依据
   `docs/vendor/VENDOR_INDEX.md`、`json_cmd.h`、`movtion_module.h` 与 `ugv_advance.h`，
