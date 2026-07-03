@@ -1069,3 +1069,10 @@ PC WASD `pwm + realtime` 快路径现在会把直接串口写出的 vendor comma
 仍返回 `first_frame_total_timeout`，直接 V4L2 STREAMON 仍 0 字节。结论保持：
 共享预览不是页面独占，软件已覆盖低带宽真帧尝试；剩余是摄像头输入、USB 线/接口/供电或设备本体复测。
 低速自由移动、PC WASD 和图上路线执行继续不以相机首帧或雷达贴图为发车前置，建图视觉验收仍必须等真实首帧。
+
+2026-07-03 18:29 继续收敛普通 PC 图传状态：`/api/robot-control/camera/mjpeg/status`
+现在把 `uvc_no_frame_not_exclusive` 且 USB `480M`、无人占用、无视频 buffer 的场景直接标成
+`camera_hardware_action_required=true`，动作是“检查摄像头输入/供电后复测”，而不是只提示“复测相机首帧”。
+实机已停服务验证 V4L2 mmap/userptr、ffmpeg、GStreamer 和 `uvcvideo quirks=0`，结果都是 STREAMON 成功但 0 字节。
+同轮低速手控仍可通过 PC 7001 写出 vendor `T=11,L/R=255` 与 stop `T=11,L/R=0`；
+相机首帧缺口继续只阻塞实时图传和建图视觉验收，不阻塞自由移动、WASD 或图上路线发车前置。

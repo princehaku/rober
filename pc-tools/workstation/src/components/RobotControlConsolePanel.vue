@@ -876,13 +876,22 @@ function cameraMjpegUsbRecoveryReadback() {
     || sourceDiagnosisStatus === "uvc_video_on_full_speed_usb"
     || usbSpeed === "12M";
   const transportErrorHardwareActionRequired = sourceDiagnosisStatus === "uvc_transport_error_not_exclusive";
+  const noFrameHardwareActionRequired = sourceDiagnosisStatus === "uvc_no_frame_not_exclusive"
+    && status?.source_diagnosis_not_exclusive === "true";
   const hardwareActionRequired = Boolean(status?.camera_hardware_action_required)
     || Boolean(status?.hardware_action_required)
     || usbFullSpeedDetected
-    || transportErrorHardwareActionRequired;
+    || transportErrorHardwareActionRequired
+    || noFrameHardwareActionRequired;
   const hardwareActionLabel = loadedAliasText(status?.camera_hardware_action_label)
     || loadedAliasText(status?.hardware_action_label)
-    || (usbFullSpeedDetected ? "换高速USB后复测" : transportErrorHardwareActionRequired ? "检查USB/供电后复测" : "复测相机首帧");
+    || (usbFullSpeedDetected
+      ? "换高速USB后复测"
+      : transportErrorHardwareActionRequired
+        ? "检查USB/供电后复测"
+        : noFrameHardwareActionRequired
+          ? "检查摄像头输入/供电后复测"
+          : "复测相机首帧");
   const notExclusive = status?.source_diagnosis_not_exclusive === "true"
     || status?.exclusive_camera_claim === false
     || status?.shared_preview_exclusive_camera_claim === false;
@@ -2295,6 +2304,7 @@ const plainCameraUsbRecoveryProofSummary = computed(() => {
     || liveSummary?.camera_hardware_action_required
     || mjpegUsbRecovery.hardwareActionRequired
     || diagnosisStatuses.includes("uvc_transport_error_not_exclusive")
+    || diagnosisStatuses.includes("uvc_no_frame_not_exclusive")
     || usbFullSpeedDetected,
   );
   const summaryHardwareActionLabel = summary?.camera_hardware_action_required
@@ -2308,7 +2318,13 @@ const plainCameraUsbRecoveryProofSummary = computed(() => {
     : summaryHardwareActionLabel
       || liveHardwareActionLabel
       || mjpegUsbRecovery.hardwareActionLabel
-      || (usbFullSpeedDetected ? "换高速USB后复测" : sourceDiagnosisStatus === "uvc_transport_error_not_exclusive" ? "检查USB/供电后复测" : "复测相机首帧");
+      || (usbFullSpeedDetected
+        ? "换高速USB后复测"
+        : sourceDiagnosisStatus === "uvc_transport_error_not_exclusive"
+          ? "检查USB/供电后复测"
+          : sourceDiagnosisStatus === "uvc_no_frame_not_exclusive"
+            ? "检查摄像头输入/供电后复测"
+            : "复测相机首帧");
   const reprobeSequence = summary?.camera_reprobe_sequence?.length
     ? summary.camera_reprobe_sequence
     : liveSummary?.camera_reprobe_sequence?.length

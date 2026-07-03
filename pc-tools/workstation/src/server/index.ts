@@ -519,13 +519,23 @@ function cameraProbeDiagnosticAliases(
     || sourceFailure?.source_diagnosis_status === "uvc_full_speed_usb_not_exclusive"
     || sourceFailure?.uvc_usb_topology_status === "uvc_video_on_full_speed_usb";
   const cameraTransportHardwareActionRequired = sourceFailure?.source_diagnosis_status === "uvc_transport_error_not_exclusive";
+  const cameraNoFrameHardwareActionRequired = sourceFailure?.source_diagnosis_status === "uvc_no_frame_not_exclusive"
+    && sourceFailure?.source_diagnosis_not_exclusive === "true";
   const sourceDiagnosisNextActionPlain = cameraMjpegActionPlainText(sourceFailure?.source_diagnosis_next_action ?? "not_loaded")
     || (cameraUsbFullSpeedDetected
       ? "摄像头当前挂在 USB 12M full-speed，换高速 USB 口/线或带供电 USB Hub 后复测首帧。"
       : "打开共享预览或点只读检查复测首帧。");
-  const cameraHardwareActionRequired = (cameraUsbFullSpeedDetected || cameraTransportHardwareActionRequired) && !firstFrameReady;
+  const cameraHardwareActionRequired = (
+    cameraUsbFullSpeedDetected
+    || cameraTransportHardwareActionRequired
+    || cameraNoFrameHardwareActionRequired
+  ) && !firstFrameReady;
   const cameraHardwareActionLabel = cameraHardwareActionRequired
-    ? cameraUsbFullSpeedDetected ? "换高速USB后复测" : "检查USB/供电后复测"
+    ? cameraUsbFullSpeedDetected
+      ? "换高速USB后复测"
+      : cameraTransportHardwareActionRequired
+        ? "检查USB/供电后复测"
+        : "检查摄像头输入/供电后复测"
     : "复测相机首帧";
   const cameraReprobeSequence = [
     "/api/robot-control/camera/first-frame/probe",
@@ -2859,9 +2869,19 @@ function cameraMjpegStatusResponse(
     || diagnosisSource?.uvc_usb_topology_status === "uvc_video_on_full_speed_usb";
   const cameraCurrentVisible = previewVisibility.visible_status === "visible_cached_frame";
   const cameraTransportHardwareActionRequired = diagnosisSource?.source_diagnosis_status === "uvc_transport_error_not_exclusive";
-  const cameraHardwareActionRequired = (cameraUsbFullSpeedDetected || cameraTransportHardwareActionRequired) && !cameraCurrentVisible;
+  const cameraNoFrameHardwareActionRequired = diagnosisSource?.source_diagnosis_status === "uvc_no_frame_not_exclusive"
+    && sourceUsageNotExclusive === "true";
+  const cameraHardwareActionRequired = (
+    cameraUsbFullSpeedDetected
+    || cameraTransportHardwareActionRequired
+    || cameraNoFrameHardwareActionRequired
+  ) && !cameraCurrentVisible;
   const cameraHardwareActionLabel = cameraHardwareActionRequired
-    ? cameraUsbFullSpeedDetected ? "换高速USB后复测" : "检查USB/供电后复测"
+    ? cameraUsbFullSpeedDetected
+      ? "换高速USB后复测"
+      : cameraTransportHardwareActionRequired
+        ? "检查USB/供电后复测"
+        : "检查摄像头输入/供电后复测"
     : "复测相机首帧";
   const firstFrameProbeStatus = cameraCurrentVisible
     ? "frame_read"
