@@ -742,6 +742,9 @@ const NO_TRUE_FIELD_EXEMPTIONS = new Set<string>();
 const STATUS_BASE_FEEDBACK_TRUE_FIELD_EXEMPTIONS = new Set([
   "base.sends_commands",
   "base.feedback_readback.sends_commands",
+  // /api/status 会内嵌 operator_report 作为人工材料回显；这里只放行材料 claim，不放行顶层 delivery_success。
+  "operator_report.structured_hil_claims.delivery_success",
+  "latest_result.operator_report.structured_hil_claims.delivery_success",
 ]);
 const BASE_STATUS_FEEDBACK_TRUE_FIELD_EXEMPTIONS = new Set([
   // base/status 会把历史 command debug 合并进只读诊断；这里的 robot_control_executed 只证明过去有命令落盘。

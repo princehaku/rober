@@ -6203,6 +6203,15 @@ describe("workstation fail-closed API contracts", () => {
           safe_to_control: false,
           delivery_success: false,
           primary_actions_enabled: false,
+          operator_report: {
+            operator_present: true,
+            physical_clearance_confirmed: true,
+            emergency_stop_ready: true,
+            evidence_ref: "field-hil-20260611-0605-op-status",
+            structured_hil_claims: {
+              delivery_success: true,
+            },
+          },
         },
       },
       "/api/operator/report": {
@@ -6268,6 +6277,7 @@ describe("workstation fail-closed API contracts", () => {
 
       expect(operatorReadback?.request_status).toBe("loaded");
       expect(operatorReadback?.dangerous_true_fields).toEqual([]);
+      expect(summary.robot_api_connection.dangerous_true_fields).not.toContain("status.operator_report.structured_hil_claims.delivery_success");
       expect(summary.robot_api_connection.dangerous_true_fields).not.toContain("operator_report_latest.structured_hil_claims.delivery_success");
       expect(summary.robot_api_connection.dangerous_true_fields).not.toContain("operator_report_latest.latest_result.operator_report.structured_hil_claims.delivery_success");
       expect(summary.operator_hil_material_summary.status).toBe("loaded");
