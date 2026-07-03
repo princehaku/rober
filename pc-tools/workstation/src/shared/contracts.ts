@@ -3256,6 +3256,9 @@ export interface RobotControlLiveClosureSummary {
   camera_recovery_next_action_plain: string;
   camera_hardware_action_required: boolean;
   camera_hardware_action_label: string;
+  camera_input_signal_check_required: boolean;
+  camera_input_signal_check_label: string;
+  camera_input_signal_check_plain: string;
   camera_usb_full_speed_detected: boolean;
   camera_blocks_mapping_start: boolean;
   camera_blocks_free_move: false;
@@ -4978,6 +4981,9 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   live_wysiwyg_camera_visible?: RobotControlLiveClosureSummary["live_wysiwyg_camera_visible"];
   camera_hardware_action_required?: RobotControlLiveClosureSummary["camera_hardware_action_required"];
   camera_hardware_action_label?: RobotControlLiveClosureSummary["camera_hardware_action_label"];
+  camera_input_signal_check_required?: RobotControlLiveClosureSummary["camera_input_signal_check_required"];
+  camera_input_signal_check_label?: RobotControlLiveClosureSummary["camera_input_signal_check_label"];
+  camera_input_signal_check_plain?: RobotControlLiveClosureSummary["camera_input_signal_check_plain"];
   camera_usb_full_speed_detected?: RobotControlLiveClosureSummary["camera_usb_full_speed_detected"];
   camera_blocks_mapping_start?: RobotControlLiveClosureSummary["camera_blocks_mapping_start"];
   camera_blocks_free_move?: RobotControlLiveClosureSummary["camera_blocks_free_move"];

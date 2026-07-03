@@ -29,6 +29,12 @@ visual-first 首屏让地图独占首行，图传和 WASD/方向键连续手控�
 `foxglove_bridge` + Foxglove Web 连接 `ws://192.168.1.11:8765`；这些工具只观察，不替代 PC 简易界面，
 也不发送 `/cmd_vel`、manual、Nav2 goal、建图或 stop。
 
+2026-07-03 22:45 CST 起，`GET /api/robot-control/summary` 顶层也有
+`camera_input_signal_check_required`、`camera_input_signal_check_label` 和
+`camera_input_signal_check_plain`，不用再钻 `readback_summary.camera`。当前 7001 live summary 读回地图
+`loaded`、路线 18 点、目标点和位姿可见、雷达贴图 93 点；PC manual 前进/后退短脉冲均成功转发到
+`base_command_mode=ros` 并自动 stop，`motion_signal_observed=true`，但 wheel raw L/R 仍为 0，不能宣称轮速非零。
+
 2026-07-03 22:41 CST 起，相机无帧状态还会在 PC status/summary 暴露
 `camera_input_signal_check_required`、`camera_input_signal_check_label` 和
 `camera_input_signal_check_plain`。当 USB 已是 `480M`、没有其它进程独占、但 V4L2/ffmpeg/共享 MJPEG 都没有任何
