@@ -8,6 +8,21 @@
 
 ## 2026-07-04 系列
 
+### 2026-07-04 06-14｜pc_motion_ready_map_ros2_camera_zero_frame｜PC 可移动状态与大地图配套复核
+
+本轮 `sprints/2026.07.04_06-14_pc_motion_ready_map_ros2_camera_zero_frame/` 修正 PC 普通用户 live-summary
+的主状态：wheel raw `T=1001 L/R=0/0` 继续作为反馈闭环风险，但当同轮 command raw L/R 非零与
+IMU/车体运动信号已经观察到时，summary 返回 `ready_for_motion`，并优先提示继续用 WASD、自由移动或图上路线。
+这避免普通页在“车已能先动”的情况下仍把主卡点显示成必须先重跑 wheel raw。
+
+验证范围：`npm test -- test/robotControlSummary.test.ts --run` 17 tests OK；
+`npm test -- test/App.test.ts -t "map display|direct map|ROS2|Foxglove|RViz2|plain map" --run`
+7 tests OK / 234 skipped；`npm run build` 通过（仅 Vite chunk warning）。7001 已重启到
+`0.0.0.0:7001`，`/` 与 `/map` HTTP 200。现场只读复核显示 PC 地图 PNG、Nav2 路线、目标点、小车 map pose 和当前雷达贴图均可见；
+地图太小的当前答案保持 PC 首页和 `/map` 默认 `800%` 大图，ROS2 配套为本地 RViz2/Nav2 RViz 配置、
+远程 Foxglove bridge + Foxglove Web，只观察 `/map`、`/scan`、TF、路径、定位和 costmap。相机仍为 DV20
+480M UVC、无人独占但多格式直接采帧 0 字节；该缺口只阻塞实时图传/建图视觉验收，不重新阻塞移动入口。
+
 ### 2026-07-04 05-58｜free_roam_session_timer_runtime_fix｜自由移动会话计时修复
 
 本轮 `sprints/2026.07.04_05-58_free_roam_session_timer_runtime_fix/` 修复真实上车自由移动 start 后立即

@@ -2586,6 +2586,126 @@ describe("robotControlSummary", () => {
     expect(keyboardCard?.evidence?.keyboard_motion_verified).toBe(true);
   });
 
+  it("keeps PC motion ready when wheel raw is zero but command raw and IMU motion are proven", async () => {
+    // 普通首屏以“能跑”为核心：命令非零 + IMU/车体运动信号证明可先动，wheel raw 仍保留为独立反馈风险。
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {
+      const url = new URL(String(input));
+      const basePayload = {
+        schema: "trashbot.upper_robot_api.v1.readback",
+        status: "loaded",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        robot_control_executed: false,
+      };
+      const pathPoints = [
+        { x: 0, y: 0, frame_id: "map", source_index: 0 },
+        { x: 0.8, y: 0, frame_id: "map", source_index: 1 },
+      ];
+      const baseMotionPayload = {
+        ...basePayload,
+        schema: "trashbot.upper_robot_api.v1.base_status",
+        wheel_feedback_lr_nonzero_proven: false,
+        wheel_feedback_nonzero_observed: false,
+        command_raw_nonzero_proven: true,
+        command_raw_lr_nonzero_proven: true,
+        motion_evidence_complete: true,
+        motion_signal_observed: true,
+        motion_signal_source: "imu_attitude_delta",
+        imu_attitude_delta_observed: true,
+        wheel_feedback_summary: {
+          latest_pair: { left_speed: 0, right_speed: 0, source: "vendor_t1001_L_R" },
+          lr_nonzero_observed: false,
+          sample_count: 12,
+          nonzero_sample_count: 0,
+        },
+      };
+      const payloadByPath: Record<string, Record<string, unknown>> = {
+        "/api/status": {
+          ...basePayload,
+          nav2_base_command_mode: "pwm",
+        },
+        "/api/map/proof/latest": {
+          ...basePayload,
+          map_once_observed: true,
+        },
+        "/api/nav2/status": {
+          ...basePayload,
+          lifecycle_running: false,
+          lifecycle_state: "stopped",
+          planner_server_active: false,
+          controller_server_active: false,
+          controller_server_requested: false,
+          path_generated: true,
+          path_generation_succeeded: true,
+          path_point_count: pathPoints.length,
+          path_preview_points: pathPoints,
+          path_preview_frame_id: "map",
+        },
+        "/api/nav2/proof/latest": {
+          ...basePayload,
+          path_generated: true,
+          path_generation_succeeded: true,
+          path_point_count: pathPoints.length,
+          path_preview_points: pathPoints,
+          path_preview_frame_id: "map",
+        },
+        "/api/nav2/goal/execution/latest": {
+          ...basePayload,
+          status: "goal_succeeded",
+          latest_result: {
+            status: "goal_succeeded",
+            result_status: "succeeded",
+            nav2_goal_execution_proven: true,
+            base_command_mode: "pwm",
+            base_command_summary: {
+              nonzero_command_observed: true,
+              nonzero_command_count: 3,
+            },
+            base_feedback_summary: {
+              wheel_feedback_lr_nonzero_proven: false,
+              sample_count: 12,
+              nonzero_sample_count: 0,
+              latest_pair: { left_speed: 0, right_speed: 0 },
+              imu_attitude_delta_observed: true,
+            },
+          },
+        },
+        "/api/base/status": baseMotionPayload,
+        "/api/base/feedback-samples/latest": {
+          ...baseMotionPayload,
+          schema: "trashbot.upper_robot_api.v1.base_feedback_samples_latest_result",
+        },
+      };
+      const payload = payloadByPath[url.pathname] ?? basePayload;
+      return new Response(JSON.stringify(payload), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }));
+
+    const summary = await buildRobotControlSummary("http://192.168.1.11:8787", null, null, {
+      readbackTimeoutMs: 100,
+    });
+
+    expect(summary.status).toBe("ready_for_motion");
+    expect(summary.live_status).toBe("ready_for_motion");
+    expect(summary.live_closure_summary?.status).toBe("ready_for_motion");
+    expect(summary.summary_plain).toContain("运动链路已可用");
+    expect(summary.next_action_plain).toContain("WASD");
+    expect(summary.keyboard_continuous_motion_verified).toBe(true);
+    expect(summary.keyboard_command_raw_lr_nonzero).toBe(true);
+    expect(summary.motion_signal_observed).toBe("true");
+    expect(summary.needs_same_window_wheel_rerun).toBe(true);
+    expect(summary.wheel_lr_nonzero_proven).toBe(false);
+    expect(summary.live_closure_summary?.needs_same_window_wheel_rerun).toBe(true);
+    expect(summary.live_closure_summary?.wheel_lr_nonzero_proven).toBe(false);
+    expect(summary.primary_action_id).toBe("start_free_move");
+    expect(summary.live_closure_summary?.primary_action_id).toBe("start_free_move");
+    expect(summary.live_closure_summary?.primary_status_item_id).toBe("free_move");
+    expect(summary.live_closure_summary?.wheel_rerun_current_gap_plain).toContain("L/R=0/0");
+  });
+
   it("treats camera service self-owner as non-exclusive no-frame usage", async () => {
     // 8088 相机服务自己持有 UVC 是共享预览单上游模型；summary 不能把它说成外部独占。
     vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {

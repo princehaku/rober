@@ -9992,6 +9992,13 @@ function buildLiveClosureSummary(
   ];
   const freeMoveMotionProven = readback.free_roam.motion_ready === "true"
     || readback.free_roam.free_roam_motion_ready === "true";
+  const baseCommandRawAndMotionObserved = readback.base.command_raw_lr_nonzero_proven === "true"
+    && readback.base.motion_signal_observed === "true";
+  const motionControlObserved = keyboardMotionVerified
+    || freeMoveMotionProven
+    || baseCommandRawAndMotionObserved
+    || readback.base.motion_evidence_complete === "true";
+  const wheelRerunPrimary = needsSameWindowWheelRerun && !motionControlObserved;
   const freeMoveMissingEvidence = freeMoveMotionProven ? [] : ["free_roam_latest_motion_ready"];
   const mappingMissingEvidence = mappingStartReady ? [] : mappingStartMissingReasons;
   const proofStatus = (ready: boolean, missing: string[]): "completed" | "ready_to_verify" | "blocked" => {
@@ -10128,8 +10135,14 @@ function buildLiveClosureSummary(
   const liveMotionRunbookReadyItems = liveMotionRunbookItems.filter((item) => item.ready);
   const liveMotionRunbookBlockedItems = liveMotionRunbookItems.filter((item) => !item.ready);
   const liveMotionRunbookPrimaryActionId = (() => {
-    if (needsSameWindowWheelRerun && liveMotionRunbookReadyItems.some((item) => item.id === "run_nav2_route")) {
+    if (wheelRerunPrimary && liveMotionRunbookReadyItems.some((item) => item.id === "run_nav2_route")) {
       return "run_nav2_route" as const;
+    }
+    if (freeMoveStartReady && liveMotionRunbookReadyItems.some((item) => item.id === "start_free_move")) {
+      return "start_free_move" as const;
+    }
+    if (keyboardContinuousControlReady && liveMotionRunbookReadyItems.some((item) => item.id === "hold_keyboard")) {
+      return "hold_keyboard" as const;
     }
     return liveMotionRunbookReadyItems[0]?.id ?? "none";
   })();
@@ -10152,7 +10165,10 @@ function buildLiveClosureSummary(
     if (nav2GoalSucceeded && wheelLrNonzeroProven && deliveryClaimReady && allWysiwygReady) {
       return "complete";
     }
-    if (needsSameWindowWheelRerun) {
+    if (motionControlObserved && (routeReadyOnMap || keyboardContinuousControlReady || freeMoveStartReady)) {
+      return "ready_for_motion";
+    }
+    if (wheelRerunPrimary) {
       return "needs_wheel_rerun";
     }
     if (nav2GoalSucceeded && wheelLrNonzeroProven && !deliveryClaimReady) {
@@ -10185,7 +10201,13 @@ function buildLiveClosureSummary(
     if (robotApiConnectionAllReadsFailed) {
       return robotApiConnectionNextAction;
     }
-    if (needsSameWindowWheelRerun) {
+    if (status === "ready_for_motion") {
+      if (needsSameWindowWheelRerun && motionControlObserved) {
+        return "可以直接用 WASD、自由移动或图上路线继续跑；wheel raw L/R 仍作为诊断风险保留，相机首帧只影响图传和建图验收。";
+      }
+      return goalSummary.safety_precheck_next_action_plain || goalSummary.motion_next_action_plain || "直接使用当前可用的运动入口。";
+    }
+    if (wheelRerunPrimary) {
       return "直接重跑图上路线，并在同一个执行窗口复验轮速 L/R 非零。";
     }
     if (nav2GoalSucceeded && wheelLrNonzeroProven && !deliveryClaimReady) {
@@ -10206,7 +10228,7 @@ function buildLiveClosureSummary(
     if (robotApiConnectionAllReadsFailed) {
       return "当前卡点：PC 已打开，但小车 Robot API 这轮没有任何只读端点返回；先恢复上车连接。";
     }
-    if (needsSameWindowWheelRerun) {
+    if (wheelRerunPrimary) {
       return "当前卡点：图上路线已经有执行成功读数，但同窗口轮速 L/R 还没有非零闭环。";
     }
     if (status === "needs_delivery") {
@@ -10216,6 +10238,9 @@ function buildLiveClosureSummary(
       return `当前所见还没齐：画面${cameraCurrentVisible ? "已显示" : "未显示"}，地图${mapCurrentVisible ? "已显示" : "未显示"}，雷达点${radarMapPointsVisible ? "已贴图" : "未贴图"}。`;
     }
     if (status === "ready_for_motion") {
+      if (needsSameWindowWheelRerun && motionControlObserved) {
+        return "运动链路已可用：PC 已读到命令非零和 IMU/车体运动信号；wheel raw L/R 仍保留为反馈诊断风险，不阻塞先用 WASD、自由移动或图上路线继续跑。";
+      }
       return "车可以直接进入下一步运动入口；现场默认安全，不需要用户再勾选确认。";
     }
     if (status === "complete") {
@@ -10225,7 +10250,7 @@ function buildLiveClosureSummary(
   })();
   const primaryStatusTarget = (() => {
     // “当前卡点”按钮必须跟状态文案一致；不能在轮速复验时跳去画面卡，避免现场找错入口。
-    if (needsSameWindowWheelRerun || status === "needs_delivery") {
+    if (wheelRerunPrimary || status === "needs_delivery") {
       return { itemId: "nav2_route_execution" as const, sourceCardId: "nav2_route" as const };
     }
     if (status === "needs_wysiwyg") {
@@ -10321,10 +10346,10 @@ function buildLiveClosureSummary(
   ].filter(Boolean).length;
   const motionObjectiveCompleted = motionObjectiveDoneCount === 3;
   const motionObjectiveActionable = routeReadyOnMap || keyboardContinuousControlReady || freeMoveStartReady;
-  const motionObjectiveSourceCardId: RobotControlLiveObjectiveAuditItem["source_card_id"] = needsSameWindowWheelRerun
+  const motionObjectiveSourceCardId: RobotControlLiveObjectiveAuditItem["source_card_id"] = wheelRerunPrimary
     ? "nav2_route"
     : (goalSummary.primary_ready_action_source_card_id || goalSummary.first_motion_source_card_id || "free_move") as RobotControlLiveObjectiveAuditItem["source_card_id"];
-  const motionObjectiveNextActionPlain = needsSameWindowWheelRerun
+  const motionObjectiveNextActionPlain = wheelRerunPrimary
     ? nextActionPlain
     : goalSummary.primary_ready_action_next_action_plain || nextActionPlain;
   const wysiwygObjectiveDoneCount = [
