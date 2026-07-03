@@ -5568,3 +5568,13 @@ vendor `T=1001 L/R` 非零或完整 Nav2/delivery success。这样普通 PC 页�
 `robot_pose_status=map_pose_observed`、`path_preview_point_count=18`、`route_target_visible=true`。
 当前剩余缺口不是地图 PNG，而是雷达 overlay 仍因 runtime scan stale 显示 `not_current`、当前点数 `0`；
 需要刷新雷达扫描后再刷新地图画面。
+
+2026-07-03 21:46 CST 起，普通 PC 首页打开后会在 `900ms` 短延迟自动补一次只读雷达贴图刷新：
+`radar_scan_proof -> radar_status -> map_preview`。该动作只刷新当前地图所见证据，不启动雷达 lifecycle、
+不执行 Nav2、不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。页面 DOM 暴露
+`data-initial-radar-map-refresh-delay-ms=900`、`data-initial-radar-map-refresh-sequence=radar_scan_proof,radar_status,map_preview`、
+`data-initial-radar-map-refresh-starts-radar-lifecycle=false` 和 `data-initial-radar-map-refresh-sends-motion=false`。
+同轮 live 复核 `/api/robot-control/map/preview` 返回 `map_png_data_url_present=true`、
+`robot_pose_status=map_pose_observed`、`path_preview_point_count=18`、`route_target_visible=true`、
+`radar_overlay_status=loaded`、`radar_overlay_current_point_count=43`、`radar_overlay_source_point_count=43`。
+这说明 PC 地图链路已能同屏证明地图 PNG、小车位置、Nav2 路线、目标点和当前雷达点。

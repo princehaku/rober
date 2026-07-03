@@ -8,6 +8,20 @@
 
 ## 2026-07-03 系列
 
+### 2026-07-03 21-46｜pc_home_auto_radar_map_refresh｜PC 首页自动雷达贴图刷新
+
+本轮 `sprints/2026.07.03_21-46_pc_home_auto_radar_map_refresh/` 把现场已验证的雷达刷新链路固化到普通首页：
+页面打开后短延迟 `900ms` 自动执行一次只读 `radar_scan_proof -> radar_status -> map_preview` 刷新，
+避免首页先拿到 stale 雷达 overlay 后长期显示 0 个当前雷达点。该链路不启动雷达 lifecycle、不执行 Nav2、
+不发送 manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
+
+验证范围：`npm test -- test/App.test.ts -t "direct map|map display|radar|initial live|plain map|camera" --run`
+81 tests OK / 159 skipped；`npm run build` 通过（仅 Vite chunk warning）。live 7001 已重启到
+`0.0.0.0:7001`；`/api/robot-control/map/preview` 返回 `map_png_data_url_present=true`、
+`robot_pose_status=map_pose_observed`、`path_preview_point_count=18`、`route_target_visible=true`、
+`radar_overlay_status=loaded`、`radar_overlay_current_point_count=43`、`radar_overlay_source_point_count=43`、
+`radar_overlay_primary_blocked_reason=none`。`/` 和 `/map` 均 HTTP 200。
+
 ### 2026-07-03 21-40｜pc_map_png_alias_live_fix｜PC 地图 PNG 字段别名补齐
 
 本轮 `sprints/2026.07.03_21-40_pc_map_png_alias_live_fix/` 修正 map preview 现场脚本误判风险：

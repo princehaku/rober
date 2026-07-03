@@ -119,6 +119,7 @@ const RADAR_MAP_PREVIEW_AFTER_PROOF_RETRY_DELAYS_MS = [750, 1500] as const;
 const WHEEL_ZERO_NEXT_ACTION_SUMMARY = "下一步：检查电机使能、供电、模式和现场空间后重试读取轮速。";
 const EVIDENCE_STALE_AFTER_MS = 15 * 60 * 1000;
 const LIVE_MAP_REFRESH_INTERVAL_MS = 2500;
+const INITIAL_RADAR_MAP_REFRESH_DELAY_MS = 900;
 const LIVE_RADAR_REFRESH_INTERVAL_MS = 5000;
 const LIVE_CAMERA_STATUS_REFRESH_INTERVAL_MS = 2000;
 const KEYBOARD_AUTO_ARM_ON_LOAD = true;
@@ -593,6 +594,7 @@ let keyboardJogInFlight = false;
 let keyboardStopAfterPulseReason: string | null = null;
 let liveMapRefreshTimer: number | null = null;
 let liveCameraStatusTimer: number | null = null;
+let initialRadarMapRefreshTimer: number | null = null;
 let liveMapRefreshInFlight = false;
 let liveCameraStatusRefreshInFlight = false;
 let lastLiveRadarRefreshAtMs = 0;
@@ -17643,7 +17645,7 @@ function startLiveSurfaceRefreshLoops(): void {
 }
 
 async function refreshInitialLiveSurfaces(): Promise<void> {
-  // 首屏不要等待完整 summary；地图和共享图传状态先并行读出来，WASD gate 随后由 summary 自动接管。
+  // 首屏先快速读地图和图传；雷达贴图补刷新用短延迟执行，避免阻塞首屏但能自动消掉 stale overlay。
   if (!shouldRefreshLiveSurfaces()) {
     return;
   }
@@ -17651,6 +17653,17 @@ async function refreshInitialLiveSurfaces(): Promise<void> {
     refreshMapPreview({ radarStatusRefresh: false }),
     refreshCameraMjpegStatus(),
   ]);
+}
+
+function scheduleInitialRadarMapRefresh(): void {
+  // 打开首页后自动补一次只读雷达 proof->地图刷新；这不启动雷达 lifecycle，也不发送任何底盘运动命令。
+  if (!shouldRefreshLiveSurfaces() || plainMapDirectViewRequested.value || initialRadarMapRefreshTimer !== null) {
+    return;
+  }
+  initialRadarMapRefreshTimer = window.setTimeout(() => {
+    initialRadarMapRefreshTimer = null;
+    void refreshLiveMapSnapshot();
+  }, INITIAL_RADAR_MAP_REFRESH_DELAY_MS);
 }
 
 function clearLiveSurfaceRefreshLoops(): void {
@@ -17662,6 +17675,10 @@ function clearLiveSurfaceRefreshLoops(): void {
   if (liveCameraStatusTimer !== null) {
     window.clearInterval(liveCameraStatusTimer);
     liveCameraStatusTimer = null;
+  }
+  if (initialRadarMapRefreshTimer !== null) {
+    window.clearTimeout(initialRadarMapRefreshTimer);
+    initialRadarMapRefreshTimer = null;
   }
   liveMapRefreshInFlight = false;
   liveCameraStatusRefreshInFlight = false;
@@ -20207,6 +20224,7 @@ onMounted(() => {
   document.addEventListener("visibilitychange", handlePageVisibilityChange);
   document.addEventListener("fullscreenchange", syncPlainMapBrowserFullscreenState);
   void refreshInitialLiveSurfaces();
+  scheduleInitialRadarMapRefresh();
   void refreshConsole().then(() => {
     void refreshPlainMapDirectViewOnEnter();
     void preloadGoalClosureReadbacks();
@@ -20246,6 +20264,10 @@ onBeforeUnmount(() => {
       data-open-page-live-camera-preview="true"
       data-open-page-keyboard-auto-ready="true"
       :data-live-map-refresh-interval-ms="String(LIVE_MAP_REFRESH_INTERVAL_MS)"
+      :data-initial-radar-map-refresh-delay-ms="String(INITIAL_RADAR_MAP_REFRESH_DELAY_MS)"
+      data-initial-radar-map-refresh-sequence="radar_scan_proof,radar_status,map_preview"
+      data-initial-radar-map-refresh-starts-radar-lifecycle="false"
+      data-initial-radar-map-refresh-sends-motion="false"
       :data-live-camera-status-refresh-interval-ms="String(LIVE_CAMERA_STATUS_REFRESH_INTERVAL_MS)"
       :data-keyboard-auto-arm-on-load="String(KEYBOARD_AUTO_ARM_ON_LOAD)"
     >
@@ -24860,6 +24882,7 @@ onBeforeUnmount(() => {
           :data-radar-refresh-action-label="plainMapVisualSummary.radarRefreshActionLabel"
           data-live-map-refresh="true"
           :data-live-map-refresh-interval-ms="String(LIVE_MAP_REFRESH_INTERVAL_MS)"
+          :data-initial-radar-map-refresh-delay-ms="String(INITIAL_RADAR_MAP_REFRESH_DELAY_MS)"
           :data-live-radar-refresh-interval-ms="String(LIVE_RADAR_REFRESH_INTERVAL_MS)"
           data-live-map-refreshes="map_preview,radar_status,radar_scan_proof"
           data-live-map-keeps-overlays="robot_pose,nav2_route,radar_points,goal"

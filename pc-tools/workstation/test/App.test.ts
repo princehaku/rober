@@ -9391,6 +9391,10 @@ describe("App", () => {
     expect(simpleUserConsole.attributes("data-first-screen-map-priority")).toBe("map_before_status_summaries");
     expect(simpleUserConsole.attributes("data-first-screen-map-order")).toBe("robot_console_grid_first");
     expect(simpleUserConsole.attributes("data-status-summaries-order")).toBe("after_primary_map");
+    expect(simpleUserConsole.attributes("data-initial-radar-map-refresh-delay-ms")).toBe("900");
+    expect(simpleUserConsole.attributes("data-initial-radar-map-refresh-sequence")).toBe("radar_scan_proof,radar_status,map_preview");
+    expect(simpleUserConsole.attributes("data-initial-radar-map-refresh-starts-radar-lifecycle")).toBe("false");
+    expect(simpleUserConsole.attributes("data-initial-radar-map-refresh-sends-motion")).toBe("false");
     expect(mapPanel.exists()).toBe(true);
     expect(mapPanel.attributes("data-state")).toBe("地图可见");
     expect(mapPanel.attributes("data-visual-priority")).toBe("pc-primary-map-first");
@@ -9404,6 +9408,7 @@ describe("App", () => {
     expect(mapPanel.attributes("data-map-zoom-scale")).toBe("4");
     expect(mapPanel.attributes("data-map-zoom-percent")).toBe("400%");
     expect(mapPanel.attributes("data-map-zoom-affects")).toBe("image-route-robot-radar-target");
+    expect(mapPanel.attributes("data-initial-radar-map-refresh-delay-ms")).toBe("900");
     expect(mapPanel.attributes("data-fullscreen")).toBe("false");
     expect(mapPanel.attributes("data-browser-fullscreen-active")).toBe("false");
     expect(mapPanel.attributes("data-observer-mode")).toBe("false");
