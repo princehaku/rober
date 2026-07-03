@@ -98,6 +98,15 @@ USB 低速口和未覆盖格式收窄到摄像头输入信号、视频线/接口
 `source_first_frame_failed`、`uvc_no_frame_not_exclusive`、`camera_input_signal_check_required=true`。
 结论保持不变：当前无实时图传不是页面独占，也不是共享预览服务未启动，而是 UVC/DV20 源头未吐视频帧。
 
+2026-07-04 01:18 CST 继续复测 PC 打开即用链路：真实 Chrome/CDP 打开 PC 首页后，
+页面自动触发一次只作用于相机链路的 `POST /api/robot-control/camera/usb-recovery`。恢复结果为
+`status=streamon_failed`、`frame_observed=false`、`usb_video_speed=480M`、
+`stream_failure_class=high_speed_zero_byte_no_frame`，`uvc_quirks_before/after=0`。
+恢复后 `trashbot-local-webrtc-camera.service` 与 `trashbot-upper-robot-api.service` 均为 active，
+8088/8787 均监听，`/api/camera/health` HTTP 200，状态回到 `source_not_probed`。
+因此 PC 已自动做完当前可安全执行的软件恢复，剩余仍是摄像头输入信号、USB/视频线、接口、供电或
+known-good UVC 复测；该缺口不阻止 PC 大地图、雷达贴图或低速 WASD 控制。
+
 ## 2026-06-09 实板设备结论
 
 在 `root@192.168.1.11:37878` 实板上执行 `v4l2-ctl --list-devices` 和 OpenCV probe 后，确认：

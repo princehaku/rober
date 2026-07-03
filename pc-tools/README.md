@@ -40,6 +40,17 @@ visual-first 首屏让地图独占首行，图传和 WASD/方向键连续手控�
 避免 `261x113` 这类宽图只占画布上半截。该变化只影响 PC 显示尺寸，不改变上车地图源分辨率、
 Nav2 路线、雷达贴图、目标点或任何运动控制。
 
+2026-07-04 01:18 CST 真实 Chrome/CDP 打开 PC 首页复验：页面首屏声明
+`data-open-page-live-map-refresh=true`、`data-open-page-live-camera-preview=true`、
+`data-open-page-keyboard-auto-ready=true`。地图 DOM 读回 `plain-map-wysiwyg-view data-state=地图可见`、
+`data-size=large`、盒子约 `1548x862`，地图图像、Nav2 路线、目标点、机器人位置和雷达 marker 均在同一张
+WYSIWYG 画布，缩放为 `100%`。同次页面自动触发一次只恢复相机链路的
+`/api/robot-control/camera/usb-recovery`，结果仍是 `streamon_failed`、`frame_observed=false`、
+`usb_video_speed=480M`、`stream_failure_class=high_speed_zero_byte_no_frame`，说明 PC 已自动做完软件恢复，
+但 DV20 源头仍没有首帧。短 `forward/back/stop` 复验继续证明 manual 命令 `command_raw_lr_nonzero_proven=true`、
+summary 有 `motion_signal_source=imu_attitude_delta`；WAVE ROVER `T=1001` wheel feedback 仍为 `0/0`，
+所以 `keyboard_wheel_lr_nonzero=false` 必须保持为未完成。
+
 2026-07-04 00:33 CST 起，PC summary 的 `keyboard_wheel_lr_nonzero` 只允许来自真实
 `wheel_feedback_lr_nonzero_proven=true`，不再把 `command_raw_lr_nonzero`、`motion_evidence_complete`
 或 IMU 姿态变化混进 wheel raw 验收。现场 forward/back/stop 短脉冲仍证明 PC -> ROS -> bridge

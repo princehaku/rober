@@ -5595,3 +5595,15 @@ vendor `T=1001 L/R` 非零或完整 Nav2/delivery success。这样普通 PC 页�
 这修正了“地图卡很高但 261x113 宽地图只贴在上半屏”的体验问题；PC 仍默认 `100%` 完整态势，`细节放大`
 到 `1200%` 用于局部排障。ROS2 配套仍只是工程观察：本地 RViz2、远程 Foxglove bridge + Foxglove Web
 只看 `/map`、`/scan`、TF、路线、定位和 costmap，不替代 PC 简易控制台，也不发送底盘运动命令。
+
+2026-07-04 01:18 CST 续跑真实 PC 首页验收：Chrome/CDP 打开 `http://127.0.0.1:7001/` 后，首屏 DOM
+声明 `data-open-page-live-map-refresh=true`、`data-open-page-live-camera-preview=true`、
+`data-open-page-keyboard-auto-ready=true`。地图 DOM 读回 `plain-map-wysiwyg-view data-state=地图可见`、
+`data-size=large`、盒子约 `1548x862`，地图图像、Nav2 路线、目标点、机器人位置和雷达 marker 均在同一张
+WYSIWYG 画布，缩放为 `100%`。同一页面自动触发一次 `POST /api/robot-control/camera/usb-recovery`，
+结果为 `streamon_failed`、`frame_observed=false`、`usb_video_speed=480M`、
+`stream_failure_class=high_speed_zero_byte_no_frame`；说明普通用户打开页面时 PC 已自动完成相机链路软件恢复，
+但 DV20 仍未输出首帧。短 `forward/back/stop` 复验显示 PC manual 命令继续 `command_forwarded`、
+`command_raw_lr_nonzero_proven=true`，summary 有 `motion_signal_source=imu_attitude_delta`；
+但 vendor `T=1001` wheel feedback 仍为 `0/0`，因此 `keyboard_wheel_lr_nonzero=false` 和完整
+Nav2/delivery success 不能宣称完成。
