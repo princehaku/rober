@@ -40,13 +40,13 @@ DEFAULT_WIDTH = 640
 DEFAULT_HEIGHT = 480
 DEFAULT_FPS = 15
 FIRST_FRAME_TIMEOUT_S = 3.0
-# 共享 MJPEG 是普通 PC 首屏默认多人预览路径；单次尝试要短，避免前两个 MJPG 模式吃完整个预算。
-MJPEG_FIRST_FRAME_TIMEOUT_S = 1.2
-# PC 首屏共享预览要及时失败可见；WebRTC offer 仍保留完整格式矩阵。
-MJPEG_FIRST_FRAME_TOTAL_TIMEOUT_S = 9.0
-# MJPEG 先横向试低带宽格式；失败后再用剩余预算试 index/V4L2 打开方式。
-MJPEG_PRIMARY_SOURCE_TOTAL_TIMEOUT_S = 6.0
-MJPEG_OPEN_SOURCE_FALLBACK_TOTAL_TIMEOUT_S = 3.0
+# 共享 MJPEG 是普通 PC 首屏默认多人预览路径；失败要快，不能让 <img> 长时间悬空。
+MJPEG_FIRST_FRAME_TIMEOUT_S = 0.75
+# 共享预览只做短路实时入口；完整格式矩阵交给 first-frame probe / USB recovery 诊断。
+MJPEG_FIRST_FRAME_TOTAL_TIMEOUT_S = 5.0
+# 先横向试关键格式；失败后仅短试 index/V4L2 打开方式，保证 PC 页面及时显示真实失败。
+MJPEG_PRIMARY_SOURCE_TOTAL_TIMEOUT_S = 3.8
+MJPEG_OPEN_SOURCE_FALLBACK_TOTAL_TIMEOUT_S = 1.2
 FIRST_FRAME_WARMUP_INTERVAL_S = 0.05
 CAMERA_CAPTURE_FOURCC_FALLBACKS: tuple[str | None, ...] = ("MJPG", "YUYV", None)
 COMMAND_TIMEOUT_S = 2.5

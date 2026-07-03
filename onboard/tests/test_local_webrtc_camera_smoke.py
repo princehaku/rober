@@ -206,9 +206,10 @@ class LocalWebrtcCameraSmokeTests(unittest.TestCase):
         self.assertEqual(len(labels), len(set(labels)))
 
     def test_mjpeg_first_frame_budget_keeps_total_window_but_shortens_each_attempt(self) -> None:
-        """共享 MJPEG 总窗口保留首屏复测机会，但单次尝试要短到能覆盖多个格式。"""
+        """共享 MJPEG 总窗口要短到首屏可感知失败，但单次尝试仍能覆盖多个格式。"""
         self.assertLess(camera.MJPEG_FIRST_FRAME_TIMEOUT_S, camera.FIRST_FRAME_TIMEOUT_S)
-        self.assertGreaterEqual(camera.MJPEG_FIRST_FRAME_TIMEOUT_S, 1.0)
+        self.assertGreaterEqual(camera.MJPEG_FIRST_FRAME_TIMEOUT_S, 0.5)
+        self.assertLessEqual(camera.MJPEG_FIRST_FRAME_TOTAL_TIMEOUT_S, 5.0)
         self.assertGreaterEqual(camera.MJPEG_FIRST_FRAME_TOTAL_TIMEOUT_S, camera.MJPEG_FIRST_FRAME_TIMEOUT_S)
 
     def test_opencv_open_candidates_can_try_index_and_v4l2_backend(self) -> None:
@@ -753,7 +754,7 @@ class LocalWebrtcCameraSmokeTests(unittest.TestCase):
         self.assertEqual(attempts, error["first_frame_format_attempts"])
 
     def test_mjpeg_attempt_specs_cover_yuyv_and_default_before_extra_mjpg_modes(self) -> None:
-        """共享预览 9 秒窗口内优先试低带宽离散模式，避免大帧模式吃完整个首屏预算。"""
+        """共享预览短窗口内优先试低带宽离散模式，避免大帧模式吃完整个首屏预算。"""
         specs = camera.mjpeg_camera_capture_attempt_specs(640, 480, 15)
 
         self.assertEqual(
@@ -777,7 +778,7 @@ class LocalWebrtcCameraSmokeTests(unittest.TestCase):
         )
 
     def test_mjpeg_short_budget_tries_formats_before_open_source_fallbacks(self) -> None:
-        """共享预览不能把 9 秒预算全花在同一格式的 path/index/backend fallback 上。"""
+        """共享预览不能把短预算全花在同一格式的 path/index/backend fallback 上。"""
 
         class NoFrameCapture:
             def __init__(self) -> None:
