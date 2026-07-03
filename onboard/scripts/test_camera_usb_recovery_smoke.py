@@ -68,6 +68,26 @@ class CameraUsbRecoverySmokeTest(unittest.TestCase):
 
         self.assertEqual(detected, "6-1")
 
+    def test_reset_uvc_quirks_records_before_after(self) -> None:
+        """恢复脚本要把异常 quirks 复位证据写进 JSON，便于现场复盘。"""
+        module = load_recovery_module()
+        with tempfile.TemporaryDirectory() as tmp:
+            parameters_root = Path(tmp) / "uvcvideo" / "parameters"
+            parameters_root.mkdir(parents=True)
+            (parameters_root / "quirks").write_text("4294967295", encoding="utf-8")
+            (parameters_root / "nodrop").write_text("0", encoding="utf-8")
+            (parameters_root / "timeout").write_text("5000", encoding="utf-8")
+
+            before = module.read_uvc_module_parameters(parameters_root)
+            reset = module.reset_uvc_quirks(parameters_root)
+            after = module.read_uvc_module_parameters(parameters_root)
+
+        self.assertEqual(before["quirks"], "4294967295")
+        self.assertTrue(reset["ok"])
+        self.assertEqual(reset["before"], "4294967295")
+        self.assertEqual(reset["after"], "0")
+        self.assertEqual(after["quirks"], "0")
+
 
 if __name__ == "__main__":
     unittest.main()

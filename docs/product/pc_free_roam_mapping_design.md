@@ -45,6 +45,12 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   但不会发布 `/cmd_vel`、不会打开底盘 UART、不会启动 Nav2/键盘/自由移动/建图 runtime。live 结果继续为
   `480M` high-speed 且 `high_speed_zero_byte_no_frame`，两组格式都 0 字节无帧；建图启动仍卡
   `camera_first_frame`，低速自由移动和 PC WASD 仍不依赖相机或雷达前置。
+- 2026-07-03 23:12 起，恢复动作默认记录并复位 `uvcvideo quirks`：PC/上位机代理新增
+  `skip_uvc_quirks_reset` 布尔白名单开关，默认把 `/sys/module/uvcvideo/parameters/quirks` 写回 `0`
+  后再 reauthorize 目标相机 USB。现场当前 `quirks=4294967295` 与复位 `0` 两组下，DV20
+  `MJPG@640x480`、`MJPG@1280x720`、`YUYV@320x240` 均 0 字节，说明相机首帧缺口仍是输入/线材/接口/供电或设备本体方向；
+  低速自由移动、PC WASD 和图上路线继续不以相机首帧为发车前置。硬件边界仍以 `docs/vendor/VENDOR_INDEX.md`
+  为入口，恢复脚本不打开 WAVE ROVER UART、不发送底盘 JSON 指令。
 - 2026-07-03 17:56 起，共享 MJPEG 自动预览失败必须快返回：上车 `/api/camera/mjpeg` 只用约 `5s`
   做短路格式尝试，失败即把 `first_frame_total_timeout` 和 `uvc_no_frame_not_exclusive` 写回 PC status。
   这保证普通首页不会一直卡在“打开画面”，但仍不发送黑帧或 placeholder；建图所需的相机首帧仍必须由真实帧证明。

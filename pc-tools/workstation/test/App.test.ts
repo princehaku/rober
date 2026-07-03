@@ -31359,6 +31359,9 @@ describe("App", () => {
       stream_failure_class: "high_speed_zero_byte_no_frame",
       next_action: "check_usb_cable_port_power_or_known_good_uvc",
       next_action_plain: "检查 USB 线、接口、摄像头供电或换 known-good UVC 后复测。",
+      uvc_quirks_before: "4294967295",
+      uvc_quirks_after_reset: "0",
+      uvc_quirks_after: "0",
       blocked_reasons: ["high_speed_zero_byte_no_frame"],
     };
     const mockedFetch = stubWorkstationFetch({
@@ -31389,6 +31392,9 @@ describe("App", () => {
     expect(proof.attributes("data-auto-usb-recovery-status")).toBe("streamon_failed");
     expect(proof.attributes("data-auto-usb-recovery-frame-observed")).toBe("false");
     expect(proof.attributes("data-auto-usb-recovery-stream-failure-class")).toBe("high_speed_zero_byte_no_frame");
+    expect(proof.attributes("data-auto-usb-recovery-uvc-quirks-before")).toBe("4294967295");
+    expect(proof.attributes("data-auto-usb-recovery-uvc-quirks-after-reset")).toBe("0");
+    expect(proof.attributes("data-auto-usb-recovery-uvc-quirks-after")).toBe("0");
     expect(proof.attributes("data-auto-usb-recovery-endpoint")).toBe("/api/robot-control/camera/usb-recovery");
     expect(wrapper.find('[data-testid="robot-camera-mjpeg-preview"]').attributes("src")).toContain("retry=1");
   });

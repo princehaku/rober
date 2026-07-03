@@ -2957,6 +2957,7 @@ function safeCameraUsbRecoveryBody(value: unknown): Record<string, unknown> {
     skip_service: body?.skip_service === true,
     skip_reauthorize: body?.skip_reauthorize === true,
     skip_audio_unbind: body?.skip_audio_unbind === true,
+    skip_uvc_quirks_reset: body?.skip_uvc_quirks_reset === true,
   };
 }
 
@@ -5771,6 +5772,9 @@ export function createWorkstationApp(): express.Express {
       next_action: shortText(remote.payload?.next_action, "not_loaded"),
       next_action_plain: shortText(remote.payload?.next_action_plain, "not_loaded"),
       usb_high_speed_observed: remote.payload?.usb_high_speed_observed === true,
+      uvc_quirks_before: shortText(remote.payload?.uvc_quirks_before, "not_loaded"),
+      uvc_quirks_after_reset: shortText(remote.payload?.uvc_quirks_after_reset, "not_loaded"),
+      uvc_quirks_after: shortText(remote.payload?.uvc_quirks_after, "not_loaded"),
       opens_camera_for_recovery: true,
       recovery_payload: remote.payload ?? {},
       blocked_reasons: [

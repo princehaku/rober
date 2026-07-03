@@ -7544,6 +7544,7 @@ def safe_camera_usb_recovery_request(body: dict[str, Any] | None = None) -> dict
         "skip_service": bool(payload.get("skip_service") is True),
         "skip_reauthorize": bool(payload.get("skip_reauthorize") is True),
         "skip_audio_unbind": bool(payload.get("skip_audio_unbind") is True),
+        "skip_uvc_quirks_reset": bool(payload.get("skip_uvc_quirks_reset") is True),
     }
 
 
@@ -7561,6 +7562,8 @@ def camera_usb_recovery_command(script_path: Path, request: dict[str, Any]) -> l
         command.append("--skip-reauthorize")
     if request.get("skip_audio_unbind"):
         command.append("--skip-audio-unbind")
+    if request.get("skip_uvc_quirks_reset"):
+        command.append("--skip-uvc-quirks-reset")
     return command
 
 

@@ -117,6 +117,31 @@ def read_sysfs(path: Path) -> str | None:
         return None
 
 
+def read_uvc_module_parameters(parameters_root: Path = Path("/sys/module/uvcvideo/parameters")) -> dict[str, str]:
+    """记录 UVC 模块参数；现场恢复结果必须能解释是否受 quirk 污染。"""
+    values: dict[str, str] = {}
+    for name in ("quirks", "nodrop", "timeout"):
+        value = read_sysfs(parameters_root / name)
+        values[name] = value if value not in {None, ""} else "not_loaded"
+    return values
+
+
+def reset_uvc_quirks(parameters_root: Path = Path("/sys/module/uvcvideo/parameters")) -> dict[str, Any]:
+    """把 uvcvideo quirks 复位到 0；配合 reauthorize 才能让新探测按干净参数绑定。"""
+    quirks_path = parameters_root / "quirks"
+    before = read_sysfs(quirks_path)
+    action = write_sysfs(quirks_path, "0")
+    after = read_sysfs(quirks_path)
+    return {
+        "parameter": str(quirks_path),
+        "before": before if before not in {None, ""} else "not_loaded",
+        "after": after if after not in {None, ""} else "not_loaded",
+        "reset_to": "0",
+        "ok": bool(action.get("ok")) and after == "0",
+        "write": action,
+    }
+
+
 def sysfs_usb_device_for_video(
     video_device: str,
     *,
@@ -297,6 +322,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--skip-service", action="store_true", help="Do not stop/start the camera service.")
     parser.add_argument("--skip-reauthorize", action="store_true", help="Do not toggle USB authorized.")
     parser.add_argument("--skip-audio-unbind", action="store_true", help="Do not unbind snd-usb-audio interfaces.")
+    parser.add_argument("--skip-uvc-quirks-reset", action="store_true", help="Do not reset uvcvideo quirks to 0 before reauthorize.")
     return parser
 
 
@@ -323,9 +349,18 @@ def main() -> int:
 
     summary["owners_before_stream"] = run_command(["lsof", args.device], timeout_s=4)
     summary["power_actions"] = set_usb_power_on(usb_device)
+    summary["uvc_module_parameters_before"] = read_uvc_module_parameters()
+    summary["uvc_quirks_before"] = summary["uvc_module_parameters_before"].get("quirks", "not_loaded")
+    if args.skip_uvc_quirks_reset:
+        summary["uvc_quirks_reset"] = {"skipped": True, "reason": "skip_uvc_quirks_reset"}
+    else:
+        summary["uvc_quirks_reset"] = reset_uvc_quirks()
+        summary["uvc_module_parameters_after_quirks_reset"] = read_uvc_module_parameters()
+    summary["uvc_quirks_after_reset"] = read_uvc_module_parameters().get("quirks", "not_loaded")
     if not args.skip_reauthorize:
         summary["reauthorize_actions"] = reauthorize_usb(usb_device)
         summary["power_actions_after_reauthorize"] = set_usb_power_on(usb_device)
+        summary["uvc_module_parameters_after_reauthorize"] = read_uvc_module_parameters()
     if not args.skip_audio_unbind:
         summary["audio_unbind_actions"] = unbind_audio_interfaces(usb_device)
 
@@ -336,6 +371,8 @@ def main() -> int:
         stream_once(args.device, 320, 240, "YUYV", 20, Path("/tmp/rober_camera_usb_recovery_yuyv.raw")),
         stream_once(args.device, 480, 320, "MJPG", 30, Path("/tmp/rober_camera_usb_recovery_mjpg.raw")),
     ]
+    summary["uvc_module_parameters_after_stream"] = read_uvc_module_parameters()
+    summary["uvc_quirks_after"] = summary["uvc_module_parameters_after_stream"].get("quirks", "not_loaded")
     summary["frame_observed"] = any(item["ok"] for item in summary["streams"])
     summary["status"] = "frame_observed" if summary["frame_observed"] else "streamon_failed"
     summary.update(camera_recovery_next_action(bool(summary["frame_observed"]), str(summary["usb_video_speed"])))

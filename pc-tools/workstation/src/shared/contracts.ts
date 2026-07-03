@@ -6476,6 +6476,9 @@ export interface RobotControlCameraUsbRecoveryProxyResponse extends ProofFlags {
   next_action?: string;
   next_action_plain?: string;
   usb_high_speed_observed?: boolean;
+  uvc_quirks_before?: string;
+  uvc_quirks_after_reset?: string;
+  uvc_quirks_after?: string;
   opens_camera_for_recovery?: true;
   recovery_payload?: Record<string, unknown>;
   failure_reason?: string;

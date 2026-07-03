@@ -15495,6 +15495,9 @@ describe("workstation fail-closed API contracts", () => {
             frame_observed: false,
             usb_video_speed: "480M",
             usb_high_speed_observed: true,
+            uvc_quirks_before: "4294967295",
+            uvc_quirks_after_reset: "0",
+            uvc_quirks_after: "0",
             stream_failure_class: "high_speed_zero_byte_no_frame",
             next_action: "check_usb_cable_port_power_or_known_good_uvc",
             next_action_plain: "摄像头已在高速 USB 上但所有 STREAMON 仍 0 字节；优先检查 USB 线/供电/接口或换 known-good UVC 复测。",
@@ -15536,6 +15539,7 @@ describe("workstation fail-closed API contracts", () => {
           device: "/tmp/not-video",
           skip_reauthorize: true,
           skip_audio_unbind: "true",
+          skip_uvc_quirks_reset: "true",
           endpoint: "/api/base/manual",
         }),
       });
@@ -15548,6 +15552,9 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.frame_observed).toBe(false);
       expect(body.usb_video_speed).toBe("480M");
       expect(body.stream_failure_class).toBe("high_speed_zero_byte_no_frame");
+      expect(body.uvc_quirks_before).toBe("4294967295");
+      expect(body.uvc_quirks_after_reset).toBe("0");
+      expect(body.uvc_quirks_after).toBe("0");
       expect(body.opens_camera_for_recovery).toBe(true);
       expect(body.robot_control_executed).toBe(false);
       expect(body.sends_motion_when_clicked).toBe(false);
@@ -15567,6 +15574,7 @@ describe("workstation fail-closed API contracts", () => {
           skip_service: false,
           skip_reauthorize: true,
           skip_audio_unbind: false,
+          skip_uvc_quirks_reset: false,
         },
       ]);
       expect(receivedBodies["/api/base/manual"]).toBeUndefined();

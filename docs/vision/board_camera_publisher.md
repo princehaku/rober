@@ -1286,6 +1286,8 @@ known-good UVC 后快速复测真实首帧。脚本只触碰相机 USB 和相机
 
 - 停止 `trashbot-local-webrtc-camera.service`，避免共享预览占用设备。
 - 将目标 USB 设备与 root hub 的 `power/control` 置为 `on`，排除 autosuspend 干扰。
+- 默认记录 `uvcvideo` 模块参数，并把 `/sys/module/uvcvideo/parameters/quirks` 复位到 `0`；
+  需要保守复测时可显式传 `--skip-uvc-quirks-reset`。
 - 可选 reauthorize 目标 USB 设备，模拟重新插拔。
 - 解绑同一复合设备的 `snd-usb-audio` 接口，排除 full-speed 总线上音频接口干扰。
 - 用 `v4l2-ctl` 对 `YUYV@320x240@20` 和 `MJPG@480x320@30` 做直接 STREAMON，并以输出文件
@@ -1295,3 +1297,10 @@ known-good UVC 后快速复测真实首帧。脚本只触碰相机 USB 和相机
 2026-07-03 07:30 CST 真机复测：脚本输出 `status=streamon_failed`、
 `frame_observed=false`，两项 stream 均 `bytes=0` 且 `streamon_error=true`。因此当前画面缺口
 仍是 DV20 UVC/USB 高速链路或设备本体问题，不是 PC 多页面预览独占，也不是 ROS2 地图或雷达问题。
+
+2026-07-03 23:12 CST 继续复核当前上位机：恢复前 `uvcvideo quirks=4294967295`，
+停止 `trashbot-local-webrtc-camera.service` 后确认 `/dev/video1` 无 owner；当前 quirks 下
+`MJPG@640x480`、`MJPG@1280x720`、`YUYV@320x240` 全部 0 字节。随后把 quirks 写回 `0`、
+只 reauthorize DV20 所在 USB 设备 `3-1` 后复测，同三组格式仍全部 0 字节，服务恢复为 active。
+结论保持：这不是浏览器独占，也不是当前已知 UVC quirk 参数能修好的问题；恢复脚本新增 quirk 复位只是为了
+让后续现场复测从干净 UVC 参数开始，并把 `uvc_quirks_before/after` 写入 JSON 证据。

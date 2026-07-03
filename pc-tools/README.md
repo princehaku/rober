@@ -46,6 +46,16 @@ summary 恢复 `radar_overlay_status=loaded`、当前雷达点 40 个，地图 `
 `map_pose_observed`。地图太小/ROS2 配套的当前答案仍是：普通用户用 PC 首页大地图和 `/map`，默认 `800%`，
 最高 `1200%`，`适配` 回 `45%`；工程调试才用 RViz2，远程浏览器观察用 Foxglove bridge + Foxglove Web。
 
+2026-07-03 23:12 CST 起，PC 固定相机恢复代理会透传上位机
+`camera_usb_recovery_smoke.py` 的 UVC quirk 复位证据：恢复脚本默认记录
+`uvc_quirks_before`，把 `/sys/module/uvcvideo/parameters/quirks` 复位到 `0`，再 reauthorize 目标
+USB 设备并输出 `uvc_quirks_after_reset/uvc_quirks_after`。PC 顶层回包和普通相机复验 DOM 只读暴露这些字段；
+浏览器 body 仍只允许 `/dev/videoN` 与固定 skip 开关，不能传任意命令，也不会发送 Nav2、manual、keyboard、
+free-roam、delivery、stop、底盘 UART 或 `/cmd_vel`。现场本轮在服务停掉、无人占用时验证：
+`quirks=4294967295` 与复位 `quirks=0` 后，DV20 的 `MJPG@640x480`、`MJPG@1280x720`、
+`YUYV@320x240` 仍全部 0 字节；共享 MJPEG 恢复为 `source_first_frame_failed/first_frame_total_timeout`。
+结论仍是检查摄像头输入、USB 线/接口/供电或换 known-good UVC，低速移动、PC WASD 和图上路线不依赖相机首帧。
+
 2026-07-03 22:41 CST 起，相机无帧状态还会在 PC status/summary 暴露
 `camera_input_signal_check_required`、`camera_input_signal_check_label` 和
 `camera_input_signal_check_plain`。当 USB 已是 `480M`、没有其它进程独占、但 V4L2/ffmpeg/共享 MJPEG 都没有任何
