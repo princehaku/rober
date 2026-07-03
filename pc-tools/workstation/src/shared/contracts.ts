@@ -2006,7 +2006,7 @@ export interface RobotApiRouteTarget {
   x: number;
   y: number;
   frame_id: string;
-  source: "path_preview_points";
+  source: "path_preview_points" | "latest_goal_request";
   source_index: number | null;
 }
 
@@ -3576,6 +3576,11 @@ export interface RobotControlLiveSummaryResponse extends RobotControlLiveClosure
   field_acceptance_wysiwyg_refresh_stops_motion?: RobotControlSummaryResponse["field_acceptance_wysiwyg_refresh_stops_motion"];
   field_acceptance_steps?: RobotControlSummaryResponse["field_acceptance_steps"];
   nav2_route_acceptance_packet?: RobotControlSummaryResponse["nav2_route_acceptance_packet"];
+  map_preview_status?: string;
+  path_preview_point_count?: string;
+  route_target_visible?: string;
+  route_target_source?: RobotControlSummaryResponse["readback_summary"]["map"]["route_target_source"];
+  route_target_state?: RobotControlSummaryResponse["readback_summary"]["map"]["route_target_state"];
 }
 
 export interface RobotControlSummaryResponse extends ProofFlags {
@@ -5446,6 +5451,9 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       path_preview_next_action_plain: string;
       path_wysiwyg_status_plain: string;
       path_wysiwyg_next_action_plain: string;
+      route_target_visible: string;
+      route_target_source: RobotApiRouteTarget["source"] | "not_loaded";
+      route_target_state: RobotControlMapPreviewResponse["route_target_state"];
       robot_pose_status: string;
       radar_overlay_status: string;
       radar_overlay_plain_hint: string;
@@ -5640,7 +5648,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
     radar_start: "radar start locked";
     keyboard_control: "bounded repeating manual pulse gated";
     keyboard_control_mode: "bounded_repeating_manual_pulse";
-    keyboard_manual_command_mode: "ros";
+    keyboard_manual_command_mode: "pwm";
     keyboard_manual_proxy_endpoint: "/api/robot-control/base/manual";
     keyboard_stop_proxy_endpoint: "/api/robot-control/base/stop";
     keyboard_jog_interval_ms: number;
@@ -6240,9 +6248,9 @@ export interface RobotControlMapPreviewResponse extends ProofFlags {
   path_preview_frame_id: string;
   path_preview_source_endpoint_ids: RobotApiReadEndpointId[];
   target: RobotApiRouteTarget | null;
-  route_target_state: "path_preview_goal_observed" | "not_observed";
+  route_target_state: "path_preview_goal_observed" | "latest_goal_request_observed" | "not_observed";
   route_target_visible: boolean;
-  route_target_source: "path_preview_points" | "not_loaded";
+  route_target_source: RobotApiRouteTarget["source"] | "not_loaded";
   robot_control_executed: false;
 }
 

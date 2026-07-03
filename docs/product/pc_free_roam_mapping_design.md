@@ -11,6 +11,12 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
 - 建图启动只走固定 PC 代理 `/api/robot-control/map/start`。
 - 保存地图只走固定 PC 代理 `/api/robot-control/map/save`。
 - 小车移动有两条入口：键盘连续手控仍是低速、短时、按住才走、松开即停；自动扫图 start 在现场安全确认后只通过上车状态机参数服务打开受限 free-roam 双锁。
+- 2026-07-03 起，PC 键盘连续手控和屏幕方向键的固定 `/api/robot-control/base/manual`
+  代理默认转发 `command_mode=pwm`，上位机按 WAVE ROVER `T=11` PWM 输入生成短脉冲，避免每次 WASD 走 ROS2 CLI
+  `/cmd_vel` 发布路径造成十几秒级等待。该协议依据 `docs/vendor/VENDOR_INDEX.md`、
+  `docs/vendor/waveshare_wave_rover/WAVE_ROVER/WAVE_ROVER_V0.9/json_cmd.h` 和
+  `docs/vendor/waveshare_wave_rover/ugv_rpi/tutorial_cn/08 下位机 JSON 指令集.ipynb`：
+  `T=11` 为左右轮 PWM 输入，`L/R` 范围为 `-255..255`。这只改变手控底盘写入模式，不改变 Nav2 自动路线的 ROS/Nav2 gate。
 - 2026-06-25 16:06 起，扫图卡片自己的安全确认可直接作为键盘扫图的最小预检；不再要求先补 operator report、轮速非零或 LiDAR delta 材料才允许低速键盘扫图。
 - 2026-06-27 03:16 起，普通首屏、行程操作、键盘手控、自动扫图和高级点动区全部复用同一个
   “人在旁边、周围安全、停止手段就绪”安全确认；旧的四项 HIL checklist 不再出现在点动区，避免 operator

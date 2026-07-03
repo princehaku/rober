@@ -4118,7 +4118,7 @@ function actionCardWithDerivedEvidence(
       requires_keydown_for_motion: card.evidence?.requires_keydown_for_motion ?? true,
       pulse_interval_ms: card.evidence?.pulse_interval_ms ?? boundary?.keyboard_jog_interval_ms ?? KEYBOARD_JOG_INTERVAL_MS,
       pulse_duration_ms: card.evidence?.pulse_duration_ms ?? boundary?.keyboard_jog_duration_ms ?? KEYBOARD_JOG_DURATION_MS,
-      manual_command_mode: card.evidence?.manual_command_mode ?? boundary?.keyboard_manual_command_mode ?? "ros",
+      manual_command_mode: card.evidence?.manual_command_mode ?? boundary?.keyboard_manual_command_mode ?? "pwm",
       stop_triggers: card.evidence?.stop_triggers ?? boundary?.keyboard_stop_triggers ?? ["key_released", "window_blur", "page_hidden"],
       wheel_feedback_required_in_same_hold_window: card.evidence?.wheel_feedback_required_in_same_hold_window ?? true,
       fixed_keyboard_manual_endpoint: card.evidence?.fixed_keyboard_manual_endpoint ?? boundary?.keyboard_manual_proxy_endpoint ?? "/api/robot-control/base/manual",
@@ -6597,7 +6597,7 @@ const plainLiveKeyboardControlReadback = computed(() => {
     wheelState,
     latestLeft,
     latestRight,
-    manualCommandMode: summary?.keyboard_manual_command_mode ?? "ros",
+    manualCommandMode: summary?.keyboard_manual_command_mode ?? "pwm",
     fixedManualEndpoint: summary?.fixed_keyboard_manual_endpoint ?? "/api/robot-control/base/manual",
     fixedStopEndpoint: summary?.fixed_keyboard_stop_endpoint ?? "/api/robot-control/base/stop",
     readbackEndpoints: ["/api/robot-control/base/feedback-samples", "/api/robot-control/summary"],
@@ -7486,6 +7486,20 @@ function latestNavGoalOverlay() {
   }
   const values = directNav2ExecutionValues();
   if (!values) {
+    const previewTarget = preview.target;
+    if (previewTarget && previewTarget.frame_id === "map") {
+      const style = mapCoordinateStyle(previewTarget.x, previewTarget.y, preview);
+      if (!style) {
+        return null;
+      }
+      const targetState = previewTarget.source === "path_preview_points" ? "路线终点" : "最近目标";
+      return {
+        label: targetState,
+        state: targetState,
+        style,
+        aria: `${targetState}已显示，地图坐标 x=${previewTarget.x.toFixed(2)}, y=${previewTarget.y.toFixed(2)}`,
+      };
+    }
     return null;
   }
   const attemptedGoal = navGoalExecutionResult.value ? navGoalExecutionAttemptGoal.value : null;
@@ -9291,7 +9305,7 @@ const manualDurationLimit = computed(() => manualBoundary.value?.duration_limit_
 const keyboardJogIntervalMs = computed(() => manualBoundary.value?.keyboard_jog_interval_ms ?? KEYBOARD_JOG_INTERVAL_MS);
 const keyboardJogDurationMs = computed(() => manualBoundary.value?.keyboard_jog_duration_ms ?? KEYBOARD_JOG_DURATION_MS);
 const keyboardManualCommandModeLabel = computed(() => (
-  manualBoundary.value?.keyboard_manual_command_mode === "ros" ? "ROS 桥接低速入口" : "后端声明的低速入口"
+  manualBoundary.value?.keyboard_manual_command_mode === "pwm" ? "PWM 快速短脉冲" : "后端声明的低速入口"
 ));
 const plainManualSafetyConfirmed = computed(() => {
   // 现场本轮已由 CEO 明确安全，普通页面不再要求用户先勾选；仍保留停止、松开停和失焦停。
@@ -9477,7 +9491,7 @@ const plainKeyboardDirectionButtonEvidence = computed<PlainKeyboardDirectionButt
   fixedStopEndpoint: manualBoundary.value?.keyboard_stop_proxy_endpoint ?? "/api/robot-control/base/stop",
   fixedFeedbackSamplesEndpoint: "/api/robot-control/base/feedback-samples",
   fixedSummaryEndpoint: "/api/robot-control/summary",
-  manualCommandMode: manualBoundary.value?.keyboard_manual_command_mode ?? "ros",
+  manualCommandMode: manualBoundary.value?.keyboard_manual_command_mode ?? "pwm",
   pulseIntervalMs: keyboardJogIntervalMs.value,
   pulseDurationMs: keyboardJogDurationMs.value,
   verifiedMinForwardedPulses: KEYBOARD_VERIFIED_MIN_FORWARDED_PULSES,
@@ -16311,7 +16325,7 @@ function requestBodyForDirection(direction: ManualDirection) {
     direction,
     speed: Math.min(Math.max(jogSpeedMps.value, 0), manualSpeedLimit.value),
     duration_ms: Math.min(Math.max(jogDurationMs.value, 0), manualDurationLimit.value),
-    command_mode: "ros",
+    command_mode: "pwm",
     feedback_mode: "realtime",
     confirm_hil_checklist: plainManualSafetyConfirmed.value,
   } as const;
@@ -16323,7 +16337,7 @@ function requestBodyForKeyboardDirection(direction: ManualDirection) {
     direction,
     speed: Math.min(Math.max(jogSpeedMps.value, 0), manualSpeedLimit.value),
     duration_ms: Math.min(Math.max(keyboardJogDurationMs.value, 0), manualDurationLimit.value),
-    command_mode: "ros",
+    command_mode: "pwm",
     feedback_mode: "realtime",
     confirm_hil_checklist: plainManualSafetyConfirmed.value,
   } as const;

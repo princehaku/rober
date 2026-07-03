@@ -2004,7 +2004,8 @@ async function fetchFixedRobotPostSummary(
   if (!normalized.ok) {
     return { remote_http_status: null, payload: null, error: normalized.reason };
   }
-  const timeoutMs = endpoint.startsWith("/api/free-roam/autonomy/") ? 60000 : 8000;
+  // 上位机 ROS2 CLI /cmd_vel 短 pulse 本身很短，但进程启动和 DDS 匹配现场实测可到约 15s；PC 只放宽等待响应，不放宽运动时长。
+  const timeoutMs = endpoint.startsWith("/api/free-roam/autonomy/") ? 60000 : 25000;
   try {
     const response = await fetch(endpointUrl(normalized.normalized, endpoint), {
       method: "POST",
@@ -3349,6 +3350,11 @@ function buildRobotControlLiveSummaryResponse(summary: RobotControlSummaryRespon
     field_acceptance_wysiwyg_refresh_stops_motion: summary.field_acceptance_wysiwyg_refresh_stops_motion,
     field_acceptance_steps: summary.field_acceptance_steps,
     nav2_route_acceptance_packet: summary.nav2_route_acceptance_packet,
+    map_preview_status: summary.readback_summary.map.status,
+    path_preview_point_count: summary.readback_summary.map.path_preview_point_count,
+    route_target_visible: summary.readback_summary.map.route_target_visible,
+    route_target_source: summary.readback_summary.map.route_target_source,
+    route_target_state: summary.readback_summary.map.route_target_state,
     readback_only: true,
     sends_motion_when_clicked: false,
     starts_nav2: false,
@@ -3797,7 +3803,7 @@ export function createWorkstationApp(): express.Express {
       direction,
       speed: clampedSpeed,
       duration_ms: clampedDurationMs,
-      command_mode: "ros",
+      command_mode: "pwm",
       feedback_mode: "bridge_debug",
       confirm_hil_checklist: true,
     });
@@ -3905,7 +3911,7 @@ export function createWorkstationApp(): express.Express {
       direction,
       speed: clampedSpeed,
       duration_ms: clampedDurationMs,
-      command_mode: "ros",
+      command_mode: "pwm",
       feedback_mode: "realtime",
       confirm_hil_checklist: true,
     });

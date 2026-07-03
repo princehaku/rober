@@ -4295,6 +4295,70 @@ function mapPreviewRouteTarget(pathPreview: MapPreviewPathPreview): RobotApiRout
   };
 }
 
+function mapPreviewPathPreviewFromPayload(payload: JsonRecord, fallback: MapPreviewPathPreview): MapPreviewPathPreview {
+  // 新版上车 map preview 会把 path 点和地图同包返回；PC 应优先消费这份同屏事实。
+  const rawPoints = findFirstKey(payload, ["path_preview_points"]);
+  const points: RobotApiPathPreviewPoint[] = [];
+  if (Array.isArray(rawPoints)) {
+    for (const rawPoint of rawPoints.slice(0, ROBOT_CONTROL_PATH_PREVIEW_POINT_LIMIT)) {
+      const record = asRecord(rawPoint);
+      const x = finitePathCoordinate(record?.x);
+      const y = finitePathCoordinate(record?.y);
+      if (!record || x === null || y === null) {
+        continue;
+      }
+      const sourceIndex = finitePathCoordinate(record.source_index);
+      points.push({
+        x,
+        y,
+        frame_id: asString(record.frame_id, asString(findFirstKey(payload, ["path_preview_frame_id"]), "map")),
+        source_index: sourceIndex === null ? null : Math.trunc(sourceIndex),
+      });
+    }
+  }
+  if (points.length === 0) {
+    return fallback;
+  }
+  const sourceCount = finitePathCoordinate(findFirstKey(payload, ["path_preview_source_point_count"]));
+  return {
+    path_preview_points: points,
+    path_preview_point_count: points.length,
+    path_preview_source_point_count: sourceCount === null ? points.length : Math.trunc(sourceCount),
+    path_preview_frame_id: asString(findFirstKey(payload, ["path_preview_frame_id"]), points[0]?.frame_id ?? "map"),
+  };
+}
+
+function mapPreviewRouteTargetFromPayload(payload: JsonRecord): RobotApiRouteTarget | null {
+  // 没有完整 path 时仍可显示最近目标点；source 标清楚，避免把目标点误说成完整路线。
+  const rawTarget = asRecord(findFirstKey(payload, ["target", "route_target"]));
+  if (!rawTarget) {
+    return null;
+  }
+  const x = finitePathCoordinate(rawTarget.x ?? rawTarget.x_m);
+  const y = finitePathCoordinate(rawTarget.y ?? rawTarget.y_m);
+  const frameId = asString(rawTarget.frame_id, "map");
+  if (x === null || y === null || frameId !== "map") {
+    return null;
+  }
+  const rawSource = asString(rawTarget.source ?? findFirstKey(payload, ["route_target_source"]), "latest_goal_request");
+  const source: RobotApiRouteTarget["source"] = rawSource === "path_preview_points" ? "path_preview_points" : "latest_goal_request";
+  const sourceIndex = finitePathCoordinate(rawTarget.source_index);
+  return {
+    x,
+    y,
+    frame_id: frameId,
+    source,
+    source_index: sourceIndex === null ? null : Math.trunc(sourceIndex),
+  };
+}
+
+function mapPreviewRouteTargetState(routeTarget: RobotApiRouteTarget | null): RobotControlMapPreviewResponse["route_target_state"] {
+  if (!routeTarget) {
+    return "not_observed";
+  }
+  return routeTarget.source === "path_preview_points" ? "path_preview_goal_observed" : "latest_goal_request_observed";
+}
+
 function blockedMapPreviewResponse(
   sourceBaseUrl: string,
   reason: string,
@@ -4618,10 +4682,12 @@ export async function buildMapPreviewProxy(baseUrl: string): Promise<RobotContro
   const forwarded = response.ok && blockedReasons.length === 0;
   const overlayReadback = await overlayReadbackPromise;
   const radarOverlay = mapPreviewRadarOverlayFromPayload(payload) ?? overlayReadback.radarOverlay;
-  const pathStatus = overlayReadback.pathPreview.path_preview_point_count > 0 ? "path_preview_observed" : "not_observed";
+  const pathPreview = mapPreviewPathPreviewFromPayload(payload, overlayReadback.pathPreview);
+  const pathStatus = pathPreview.path_preview_point_count > 0 ? "path_preview_observed" : "not_observed";
   const poseStatus = radarOverlay.robot_pose ? "map_pose_observed" : "not_observed";
   const pathNextActionPlain = mapPreviewPathNextActionPlain(pathStatus, poseStatus);
-  const routeTarget = mapPreviewRouteTarget(overlayReadback.pathPreview);
+  const routeTarget = mapPreviewRouteTarget(pathPreview) ?? mapPreviewRouteTargetFromPayload(payload);
+  const routeTargetState = mapPreviewRouteTargetState(routeTarget);
   const mapWysiwyg = mapWysiwygPlainSummary({
     mapObserved: forwarded ? "true" : "false",
     pathStatus,
@@ -4677,23 +4743,23 @@ export async function buildMapPreviewProxy(baseUrl: string): Promise<RobotContro
     ...mapPreviewRadarOverlayAliases(radarOverlay),
     robot_pose: radarOverlay.robot_pose,
     robot_pose_status: poseStatus,
-    path_preview_points: overlayReadback.pathPreview.path_preview_points,
+    path_preview_points: pathPreview.path_preview_points,
     path_preview_status: pathStatus,
     path_preview_next_action_plain: pathNextActionPlain,
     next_action_plain: pathNextActionPlain,
     path_wysiwyg_status_plain: pathWysiwygStatusPlain,
     path_wysiwyg_next_action_plain: pathNextActionPlain,
     nav2_route_overlay_status: pathStatus,
-    nav2_route_overlay_point_count: overlayReadback.pathPreview.path_preview_point_count,
+    nav2_route_overlay_point_count: pathPreview.path_preview_point_count,
     nav2_route_overlay_next_action_plain: pathNextActionPlain,
-    path_preview_point_count: overlayReadback.pathPreview.path_preview_point_count,
-    path_preview_source_point_count: overlayReadback.pathPreview.path_preview_source_point_count,
-    path_preview_frame_id: overlayReadback.pathPreview.path_preview_frame_id,
+    path_preview_point_count: pathPreview.path_preview_point_count,
+    path_preview_source_point_count: pathPreview.path_preview_source_point_count,
+    path_preview_frame_id: pathPreview.path_preview_frame_id,
     path_preview_source_endpoint_ids: overlayReadback.sourceEndpointIds,
     target: routeTarget,
-    route_target_state: routeTarget ? "path_preview_goal_observed" : "not_observed",
+    route_target_state: routeTargetState,
     route_target_visible: Boolean(routeTarget),
-    route_target_source: routeTarget ? "path_preview_points" : "not_loaded",
+    route_target_source: routeTarget?.source ?? "not_loaded",
     robot_control_executed: false,
   };
 }
@@ -5826,6 +5892,15 @@ function mapSummaryFromReadbacks(
   const mapCurrentVisible = booleanSummaryValue(proof.map_once_observed) === "true";
   const pathCurrentVisible = pathPreviewStatus === "path_preview_observed";
   const radarOverlayCurrentVisible = effectiveRadarOverlayStatus === "loaded" && Number(radarOverlayPointCount) > 0;
+  const proofPathPreview: MapPreviewPathPreview = {
+    path_preview_points: proof.path_preview_points,
+    path_preview_point_count: proof.path_preview_point_count,
+    path_preview_source_point_count: proof.path_preview_source_point_count,
+    path_preview_frame_id: proof.path_preview_frame_id,
+  };
+  const routeTarget = mapPreviewRouteTarget(proofPathPreview)
+    ?? (mapPreview?.payload ? mapPreviewRouteTargetFromPayload(mapPreview.payload) : null);
+  const routeTargetState = mapPreviewRouteTargetState(routeTarget);
   const pathWysiwygStatusPlain = pathPreviewStatus === "path_preview_observed"
     ? "图上路线已显示在当前地图画面。"
     : "图上路线未显示；不能把旧路线或空路线当作当前所见。";
@@ -5886,6 +5961,9 @@ function mapSummaryFromReadbacks(
     path_preview_next_action_plain: pathNextActionPlain,
     path_wysiwyg_status_plain: pathWysiwygStatusPlain,
     path_wysiwyg_next_action_plain: pathNextActionPlain,
+    route_target_visible: String(Boolean(routeTarget)),
+    route_target_source: routeTarget?.source ?? "not_loaded",
+    route_target_state: routeTargetState,
     robot_pose_status: robotPoseStatus,
     radar_overlay_status: effectiveRadarOverlayStatus,
     radar_overlay_plain_hint: effectiveRadarOverlayExplanation.plain_hint,
@@ -7029,6 +7107,9 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         path_preview_next_action_plain: "先准备图上路线，再刷新地图画面。",
         path_wysiwyg_status_plain: "图上路线未显示；不能把旧路线或空路线当作当前所见。",
         path_wysiwyg_next_action_plain: "先准备图上路线，再刷新地图画面。",
+        route_target_visible: "false",
+        route_target_source: "not_loaded",
+        route_target_state: "not_observed",
         robot_pose_status: "not_loaded",
         radar_overlay_status: "not_loaded",
         radar_overlay_plain_hint: "地图雷达层未加载。",
@@ -7881,7 +7962,7 @@ function lockedBoundary(
     radar_start: "radar start locked",
     keyboard_control: "bounded repeating manual pulse gated",
     keyboard_control_mode: "bounded_repeating_manual_pulse",
-    keyboard_manual_command_mode: "ros",
+    keyboard_manual_command_mode: "pwm",
     keyboard_manual_proxy_endpoint: "/api/robot-control/base/manual",
     keyboard_stop_proxy_endpoint: "/api/robot-control/base/stop",
     keyboard_jog_interval_ms: ROBOT_CONTROL_KEYBOARD_JOG_INTERVAL_MS,
@@ -8203,7 +8284,7 @@ function keyboardSummaryReadback(): RobotControlSummaryResponse["readback_summar
   return {
     status: "start_ready",
     control_mode: "bounded_repeating_manual_pulse",
-    manual_command_mode: "ros",
+    manual_command_mode: "pwm",
     manual_proxy_endpoint: "/api/robot-control/base/manual",
     stop_proxy_endpoint: "/api/robot-control/base/stop",
     start_ready: "true",
@@ -8223,7 +8304,7 @@ function keyboardSummaryReadback(): RobotControlSummaryResponse["readback_summar
     minimal_precheck_safety_only: "true",
     plain_hint: plainHint,
     readiness_plain: readinessPlain,
-    continuous_control_contract_plain: `按住时约每 ${ROBOT_CONTROL_KEYBOARD_JOG_INTERVAL_MS / 1000} 秒发送一次 ${ROBOT_CONTROL_KEYBOARD_JOG_DURATION_MS / 1000} 秒 ROS 桥接低速脉冲；松开、失焦、切页、换方向或点击停止都会停。`,
+    continuous_control_contract_plain: `按住时约每 ${ROBOT_CONTROL_KEYBOARD_JOG_INTERVAL_MS / 1000} 秒发送一次 ${ROBOT_CONTROL_KEYBOARD_JOG_DURATION_MS / 1000} 秒 PWM 快速短脉冲；松开、失焦、切页、换方向或点击停止都会停。`,
     hold_to_move_plain: holdToMovePlain,
     stop_triggers_plain: "松开按键、窗口失焦、页面隐藏、切换方向或点击停止都会发送停止请求。",
     pulse_timing_plain: `按住时约每 ${ROBOT_CONTROL_KEYBOARD_JOG_INTERVAL_MS / 1000} 秒发送一次 ${ROBOT_CONTROL_KEYBOARD_JOG_DURATION_MS / 1000} 秒低速脉冲。`,
@@ -8628,7 +8709,7 @@ function buildActionStatusCards(
         requires_keydown_for_motion: true,
         pulse_interval_ms: ROBOT_CONTROL_KEYBOARD_JOG_INTERVAL_MS,
         pulse_duration_ms: ROBOT_CONTROL_KEYBOARD_JOG_DURATION_MS,
-        manual_command_mode: readback.keyboard.manual_command_mode || "ros",
+        manual_command_mode: readback.keyboard.manual_command_mode || "pwm",
         stop_triggers: boundary.keyboard_stop_triggers,
         wheel_feedback_required_in_same_hold_window: true,
         fixed_keyboard_manual_endpoint: "/api/robot-control/base/manual",

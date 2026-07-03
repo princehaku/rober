@@ -4264,6 +4264,68 @@ def nav2_path_preview_overlay_from_artifact(path: str) -> dict[str, Any]:
     return nav2_path_preview_overlay_from_latest(latest if isinstance(latest, dict) else None)
 
 
+def route_target_overlay_from_path_preview(path_overlay: dict[str, Any]) -> dict[str, Any]:
+    """优先把已生成的 path 终点作为地图目标；这比最近 goal_request 更贴近当前图上路线。"""
+    points = path_overlay.get("path_preview_points") if isinstance(path_overlay.get("path_preview_points"), list) else []
+    map_points = [point for point in points if isinstance(point, dict) and str(point.get("frame_id") or "map") == "map"]
+    if len(map_points) < 2:
+        return {}
+    last_point = map_points[-1]
+    x = finite_nav2_path_coordinate(last_point.get("x"))
+    y = finite_nav2_path_coordinate(last_point.get("y"))
+    if x is None or y is None:
+        return {}
+    source_index = finite_nav2_path_coordinate(last_point.get("source_index"))
+    return {
+        "target": {
+            "x": x,
+            "y": y,
+            "frame_id": "map",
+            "source": "path_preview_points",
+            "source_index": int(source_index) if source_index is not None else None,
+        },
+        "route_target_state": "path_preview_goal_observed",
+        "route_target_visible": True,
+        "route_target_source": "path_preview_points",
+    }
+
+
+def nav2_goal_target_overlay_from_latest(latest: dict[str, Any] | None) -> dict[str, Any]:
+    """没有可画 path 时，仍把最近 NavigateToPose 目标点返回给 PC 大地图。"""
+    if not isinstance(latest, dict):
+        return {}
+    latest_result = latest.get("latest_result") if isinstance(latest.get("latest_result"), dict) else latest
+    goal_request = latest_result.get("goal_request") if isinstance(latest_result.get("goal_request"), dict) else {}
+    frame_id = str(goal_request.get("frame_id") or goal_request.get("goal_frame_id") or "map")[:40]
+    if frame_id != "map":
+        return {}
+    x = finite_nav2_path_coordinate(goal_request.get("x", goal_request.get("goal_x")))
+    y = finite_nav2_path_coordinate(goal_request.get("y", goal_request.get("goal_y")))
+    if x is None or y is None:
+        return {}
+    return {
+        "target": {
+            "x": x,
+            "y": y,
+            "frame_id": "map",
+            "source": "latest_goal_request",
+            "source_index": None,
+        },
+        "route_target_state": "latest_goal_request_observed",
+        "route_target_visible": True,
+        "route_target_source": "latest_goal_request",
+    }
+
+
+def nav2_goal_target_overlay_from_artifact(path: str) -> dict[str, Any]:
+    """地图预览读取最近一次目标执行 artifact，只用于显示目标点，不触发 Nav2。"""
+    try:
+        latest = json.loads(Path(path).read_text(encoding="utf-8"))
+    except Exception:
+        latest = None
+    return nav2_goal_target_overlay_from_latest(latest if isinstance(latest, dict) else None)
+
+
 def build_amcl_nav2_readiness_from_map_proof(map_proof_path: str, map_artifact_dir: str) -> dict[str, Any]:
     """把 canonical map proof 折成 Nav2 输入状态；这里只读文件，不探 ROS graph。"""
     http_status, readback = read_runtime_artifact_latest(
@@ -8099,6 +8161,10 @@ class UpperRobotApi:
         """读取真实 YAML/PGM 并返回浏览器可显示的 PNG data URL；不启动任何 ROS2 或底盘动作。"""
         root = Path(self.map_artifact_dir)
         path_overlay = nav2_path_preview_overlay_from_artifact(self.nav2_lifecycle_artifact_path)
+        target_overlay = (
+            route_target_overlay_from_path_preview(path_overlay)
+            or nav2_goal_target_overlay_from_artifact(self.nav2_goal_execution_artifact_path)
+        )
         try:
             requested_map_name = safe_preview_map_name(map_name)
         except ValueError as exc:
@@ -8116,6 +8182,7 @@ class UpperRobotApi:
                     "image_data_url": "",
                     "radar_overlay": radar_overlay,
                     **path_overlay,
+                    **target_overlay,
                     "command_result": {"mode": "read_only_local_files", "executed": False, "ok": False},
                 },
             )
@@ -8134,6 +8201,7 @@ class UpperRobotApi:
                     "image_data_url": "",
                     "radar_overlay": radar_overlay,
                     **path_overlay,
+                    **target_overlay,
                     "command_result": {"mode": "read_only_local_files", "executed": False, "ok": False},
                 },
             )
@@ -8174,6 +8242,7 @@ class UpperRobotApi:
                         "source_image_format": image_preview["source_image_format"],
                         "radar_overlay": radar_overlay,
                         **path_overlay,
+                        **target_overlay,
                         "failure_reason": None,
                         "blocked_reasons": [],
                         "command_result": {"mode": "read_only_local_files", "executed": False, "ok": True},
@@ -8200,6 +8269,7 @@ class UpperRobotApi:
                 "image_data_url": "",
                 "radar_overlay": radar_overlay,
                 **path_overlay,
+                **target_overlay,
                 "command_result": {"mode": "read_only_local_files", "executed": False, "ok": False},
             },
         )

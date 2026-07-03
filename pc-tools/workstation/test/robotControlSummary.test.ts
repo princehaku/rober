@@ -3758,4 +3758,79 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.side_gap_summary_plain).not.toContain("雷达点贴到地图");
     expect(summary.live_closure_summary?.side_gap_summary_plain).toContain("传感器就绪后建图");
   });
+
+  it("keeps the latest Nav2 goal visible on the map when full path points are not available", async () => {
+    // 现场 Nav2 goal artifact 可能有目标点但没有 path_preview 点数组；PC 大地图仍应显示目标点。
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {
+      const url = new URL(String(input));
+      const basePayload = {
+        schema: "trashbot.upper_robot_api.v1.readback",
+        status: "loaded",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        robot_control_executed: false,
+      };
+      const payloadByPath: Record<string, Record<string, unknown>> = {
+        "/api/map/preview": {
+          ...basePayload,
+          schema: "trashbot.upper_robot_api.v1.map_preview_result",
+          status: "loaded",
+          map_name: "trashbot_map",
+          width: 8,
+          height: 8,
+          resolution: 0.05,
+          origin: [0, 0, 0],
+          cell_counts: { free: 2, unknown: 62, occupied: 0 },
+          has_free_cells: true,
+          navigation_quality: "has_free_cells",
+          image_data_url: "data:image/png;base64,abc",
+          source_image_format: "pgm_p5",
+          path_preview_points: [],
+          path_preview_point_count: 0,
+          path_preview_frame_id: "map",
+          target: {
+            x: 0.8,
+            y: 0.05,
+            frame_id: "map",
+            source: "latest_goal_request",
+            source_index: null,
+          },
+          route_target_state: "latest_goal_request_observed",
+          route_target_visible: true,
+          route_target_source: "latest_goal_request",
+          radar_overlay: {
+            overlay_status: "partial",
+            scan_preview_points: [],
+            scan_preview_point_count: 0,
+            scan_preview_source_point_count: 0,
+            scan_preview_frame_id: "laser_frame",
+            robot_pose: { frame_id: "map", x: 0, y: 0, yaw: 0, source: "/amcl_pose" },
+            blocked_reasons: ["scan_preview_points_missing_for_map_radar_overlay"],
+          },
+        },
+      };
+      const payload = payloadByPath[url.pathname] ?? basePayload;
+      return new Response(JSON.stringify(payload), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }));
+
+    const preview = await buildMapPreviewProxy("http://192.168.1.11:8787");
+
+    expect(preview.proxy_status).toBe("preview_forwarded");
+    expect(preview.path_preview_status).toBe("not_observed");
+    expect(preview.path_preview_point_count).toBe(0);
+    expect(preview.target).toEqual({
+      x: 0.8,
+      y: 0.05,
+      frame_id: "map",
+      source: "latest_goal_request",
+      source_index: null,
+    });
+    expect(preview.route_target_state).toBe("latest_goal_request_observed");
+    expect(preview.route_target_visible).toBe(true);
+    expect(preview.route_target_source).toBe("latest_goal_request");
+  });
 });

@@ -112,6 +112,8 @@ bash onboard/scripts/board_live_route_preflight.sh
 ros2 launch ros2_trashbot_bringup rviz.launch.py
 ```
 
+PC 大地图的主数据源是上位机 `GET /api/map/preview`。该接口只读地图/路线/目标/小车位姿/雷达贴图，不启动 ROS2 lifecycle、不发 `/cmd_vel`、不打开底盘串口。2026-07-03 起，`/api/map/preview` 会把 Nav2 path preview 终点折成 `target`；如果 path 点数组暂缺但最近 NavigateToPose artifact 仍有 `goal_request`，则用 `source=latest_goal_request` 返回最近目标点。PC 端会把这两类目标都画到同一张地图上，但只有 `path_preview_points` 至少 2 个时才声明“图上路线已显示”。
+
 该 launch 加载 `ros2_trashbot_bringup/rviz/trashbot_nav.rviz`，只读观察以下 topic/frame：
 
 - `/map` 和 `/map_updates`：确认当前地图是否真的发布。
