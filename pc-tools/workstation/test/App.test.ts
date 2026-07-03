@@ -1534,7 +1534,7 @@ const fixtures: Record<string, unknown> = {
       map_display_direct_map_default_zoom_percent: "100%",
       map_display_fit_zoom_percent: "100%",
       map_display_max_zoom_percent: "1200%",
-      map_display_too_small_next_action_plain: "PC 首页现在让地图独占首行，默认用 100% 完整态势显示真实地图、路线、小车、雷达和目标，图传和 WASD 放到地图下方；需要局部排障再点“细节放大”到 1200%，或点“进入地图大屏”打开 /map；/map 默认也是 100% 完整态势，只保留缩放、只读刷新和工程观察入口；建图、保存和其他卡片都会收起；不需要先开 RViz2。",
+      map_display_too_small_next_action_plain: "PC 首页现在让地图独占首行，真实地图按画布高度优先放大，宽图横向滚动，默认用 100% 完整态势显示地图、路线、小车、雷达和目标；图传和 WASD 放到地图下方；需要局部排障再点“细节放大”到 1200%，或点“进入地图大屏”打开 /map；/map 默认也是 100% 完整态势，只保留缩放、只读刷新和工程观察入口；建图、保存和其他卡片都会收起；不需要先开 RViz2。",
       map_display_ros2_companion_answer_plain: "ROS2 配套：本地工程调试用 RViz2；远程浏览器观察用 Foxglove bridge + Foxglove Web；普通用户仍默认使用 PC 大地图和 /map，工程工具不替代简易控制台。",
       map_display_ros2_companion_plain: "ROS2 配套：本地工程调试用 RViz2；远程浏览器观察用 Foxglove bridge + Foxglove Web；普通用户仍默认使用 PC 大地图和 /map，工程工具不替代简易控制台。",
       map_display_operator_default_surface: "pc_big_map_direct_view",
@@ -1566,7 +1566,7 @@ const fixtures: Record<string, unknown> = {
       map_display_ros2_observe_motion_topics: false,
       map_display_ros2_observe_control_tools: false,
       map_display_engineering_tools_sends_motion: false,
-      map_display_companion_plain: "普通用户地图：首页 PC 大地图默认 100% 完整态势；进入 /map 也是 100% 完整态势，地图画布按 viewport-dominant full-height 处理，点“细节放大”可继续查看局部，点“完整态势”回到 100% 全局视角，最高 1200%，地图、路线、目标点、小车位置和雷达点共用同一张 WYSIWYG 画布；PC 首页现在让地图独占首行，默认用 100% 完整态势显示真实地图、路线、小车、雷达和目标，图传和 WASD 放到地图下方；需要局部排障再点“细节放大”到 1200%，或点“进入地图大屏”打开 /map；/map 默认也是 100% 完整态势，只保留缩放、只读刷新和工程观察入口；建图、保存和其他卡片都会收起；不需要先开 RViz2。ROS2 配套：本地工程调试用 RViz2；远程浏览器观察用 Foxglove bridge + Foxglove Web；普通用户仍默认使用 PC 大地图和 /map，工程工具不替代简易控制台。ROS2 配套只作工程观察，本地用 RViz2，远程浏览器观察先部署 Foxglove bridge 后打开 Foxglove Web 连接 ws://192.168.1.11:8765；观察项固定为地图、雷达、TF、路径、定位和 costmap，不提供 GoalTool，不发送底盘移动命令。",
+      map_display_companion_plain: "普通用户地图：首页 PC 大地图默认 100% 完整态势；进入 /map 也是 100% 完整态势，地图画布按 viewport-dominant full-height 处理，真实地图按高度优先铺满画布，宽图横向滚动，点“细节放大”可继续查看局部，点“完整态势”回到 100% 全局视角，最高 1200%，地图、路线、目标点、小车位置和雷达点共用同一张 WYSIWYG 画布；PC 首页现在让地图独占首行，真实地图按画布高度优先放大，宽图横向滚动，默认用 100% 完整态势显示地图、路线、小车、雷达和目标；图传和 WASD 放到地图下方；需要局部排障再点“细节放大”到 1200%，或点“进入地图大屏”打开 /map；/map 默认也是 100% 完整态势，只保留缩放、只读刷新和工程观察入口；建图、保存和其他卡片都会收起；不需要先开 RViz2。ROS2 配套：本地工程调试用 RViz2；远程浏览器观察用 Foxglove bridge + Foxglove Web；普通用户仍默认使用 PC 大地图和 /map，工程工具不替代简易控制台。ROS2 配套只作工程观察，本地用 RViz2，远程浏览器观察先部署 Foxglove bridge 后打开 Foxglove Web 连接 ws://192.168.1.11:8765；观察项固定为地图、雷达、TF、路径、定位和 costmap，不提供 GoalTool，不发送底盘移动命令。",
       map_display_sends_motion_when_clicked: false,
       map_display_starts_ros2: false,
       map_display_starts_rviz2: false,
@@ -9661,6 +9661,8 @@ describe("App", () => {
     expect(mapDisplayProof.attributes("data-starts-map-runtime")).toBe("false");
     expect(mapDisplayProof.text()).toContain("PC 默认大地图主视图");
     expect(mapDisplayProof.text()).toContain("默认 100% 完整态势");
+    expect(mapDisplayProof.text()).toContain("真实地图按高度优先铺满画布");
+    expect(mapDisplayProof.text()).toContain("宽图横向滚动");
     expect(mapDisplayProof.text()).toContain("点“细节放大”可继续查看局部");
     expect(mapDisplayProof.text()).toContain("1200%");
     expect(mapDisplayProof.text()).toContain("点“进入地图大屏”直接切到 /map");
@@ -9907,11 +9909,12 @@ describe("App", () => {
     expect(workstationStyles).toContain("首页默认 100% 看完整态势，细节放大只用于局部排障");
     expect(workstationStyles).toContain(".plain-map-layer.has-real-map .plain-map-overlay-frame");
     expect(workstationStyles).toContain("min-height: 100%;");
-    expect(workstationStyles).toContain("真实地图把 100% 定义为完整宽度视角");
-    expect(workstationStyles).toContain("首页和 /map 默认先完整显示态势");
+    expect(workstationStyles).toContain("真实地图按高度优先铺满画布");
+    expect(workstationStyles).toContain("宽图用横向滚动保留比例");
     expect(workstationStyles).toContain("var(--plain-map-fit-zoom, 1)");
     expect(workstationStyles).toContain("min-width: 0;");
-    expect(workstationStyles).toContain("min-height: 0;");
+    expect(workstationStyles).toContain("min-height: 100%;");
+    expect(workstationStyles).toContain("max-height: none;");
     expect(workstationStyles).toContain("min-width: 100%;");
     expect(workstationStyles).toContain("overflow: hidden;");
     expect(workstationStyles).toContain("overflow: auto;");

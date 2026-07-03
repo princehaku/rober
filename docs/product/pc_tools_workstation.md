@@ -5588,3 +5588,10 @@ vendor `T=1001 L/R` 非零或完整 Nav2/delivery success。这样普通 PC 页�
 `robot_pose_status=map_pose_observed`、`path_preview_point_count=18`、`route_target_visible=true`、
 `radar_overlay_status=loaded`、`radar_overlay_current_point_count=43`、`radar_overlay_source_point_count=43`。
 这说明 PC 地图链路已能同屏证明地图 PNG、小车位置、Nav2 路线、目标点和当前雷达点。
+
+2026-07-04 01:10 CST 起，PC 首页和 `/map` 的真实地图 PNG 渲染从历史上实际生效的宽度优先改为高度优先：
+`.plain-map-layer.has-real-map .plain-map-overlay-frame` 现在用画布高度计算 overlay frame，
+宽图通过横向滚动保持比例，`data-real-map-fit-mode=height-first-preserve-aspect-scroll-x` 与真实 CSS 行为一致。
+这修正了“地图卡很高但 261x113 宽地图只贴在上半屏”的体验问题；PC 仍默认 `100%` 完整态势，`细节放大`
+到 `1200%` 用于局部排障。ROS2 配套仍只是工程观察：本地 RViz2、远程 Foxglove bridge + Foxglove Web
+只看 `/map`、`/scan`、TF、路线、定位和 costmap，不替代 PC 简易控制台，也不发送底盘运动命令。

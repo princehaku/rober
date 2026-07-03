@@ -35,6 +35,11 @@ visual-first 首屏让地图独占首行，图传和 WASD/方向键连续手控�
 `foxglove_bridge` + Foxglove Web 连接 `ws://192.168.1.11:8765`；这些工具只观察，不替代 PC 简易界面，
 也不发送 `/cmd_vel`、manual、Nav2 goal、建图或 stop。
 
+2026-07-04 01:10 CST 起，真实地图 PNG 的 CSS 从“宽度优先”修正为“高度优先”：
+`.plain-map-layer.has-real-map .plain-map-overlay-frame` 按地图画布高度撑满，宽地图通过横向滚动查看全图，
+避免 `261x113` 这类宽图只占画布上半截。该变化只影响 PC 显示尺寸，不改变上车地图源分辨率、
+Nav2 路线、雷达贴图、目标点或任何运动控制。
+
 2026-07-04 00:33 CST 起，PC summary 的 `keyboard_wheel_lr_nonzero` 只允许来自真实
 `wheel_feedback_lr_nonzero_proven=true`，不再把 `command_raw_lr_nonzero`、`motion_evidence_complete`
 或 IMU 姿态变化混进 wheel raw 验收。现场 forward/back/stop 短脉冲仍证明 PC -> ROS -> bridge

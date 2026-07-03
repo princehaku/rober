@@ -2437,12 +2437,13 @@ h3 {
 }
 
 .plain-map-layer.has-real-map .plain-map-overlay-frame {
-  /* 真实地图把 100% 定义为完整宽度视角；首页和 /map 默认先完整显示态势。 */
-  width: calc(100% * var(--plain-map-zoom, 1) / var(--plain-map-fit-zoom, 1));
-  height: auto;
+  /* 真实地图按高度优先铺满画布，宽图用横向滚动保留比例，避免 occupancy grid 只贴在上半屏。 */
+  width: auto;
+  height: calc(100% * var(--plain-map-zoom, 1) / var(--plain-map-fit-zoom, 1));
   min-width: 0;
-  min-height: 0;
+  min-height: 100%;
   max-width: none;
+  max-height: none;
   aspect-ratio: var(--map-aspect, 1);
 }
 
