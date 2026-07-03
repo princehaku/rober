@@ -629,6 +629,9 @@ function baseFeedbackSampleKeyValues(payload: Record<string, unknown> | null): R
     wheel_feedback_latest_left_speed: shortValue(latestPair?.left_speed, "not_observed"),
     wheel_feedback_latest_right_speed: shortValue(latestPair?.right_speed, "not_observed"),
     wheel_feedback_source: shortValue(wheelSummary?.source, "not_observed"),
+    imu_attitude_delta_observed: shortValue(sampleRoot?.imu_attitude_delta_observed ?? payload?.imu_attitude_delta_observed, "not_loaded"),
+    motion_signal_observed: shortValue(sampleRoot?.motion_signal_observed ?? payload?.motion_signal_observed, "not_loaded"),
+    motion_signal_source: shortValue(sampleRoot?.motion_signal_source ?? payload?.motion_signal_source, "not_observed"),
     feedback_ack_t1001_observed: shortValue(feedbackAck?.t1001_observed),
     observed_feedback_types: shortValue(sampleRoot?.observed_feedback_types),
     sends_motion_commands: shortValue(sampleRoot?.sends_motion_commands ?? payload?.sends_motion_commands),
@@ -649,14 +652,33 @@ function baseFeedbackSampleAliases(
   | "wheel_feedback_source"
   | "wheel_feedback_plain_hint"
   | "wheel_feedback_next_action"
+  | "imu_attitude_delta_observed"
+  | "motion_signal_observed"
+  | "motion_signal_source"
+  | "motion_signal_plain_hint"
+  | "motion_signal_next_action"
 > {
-  // 顶层 wheel alias 与 sample_key_values 同源，方便现场一眼确认 L/R，同时避免把只读采样误当成运动证明。
+  // 顶层 wheel/motion alias 与 sample_key_values 同源，方便现场一眼确认 L/R 和 IMU 动作信号。
   const left = sampleKeyValues.wheel_feedback_latest_left_speed || "not_observed";
   const right = sampleKeyValues.wheel_feedback_latest_right_speed || "not_observed";
   const proven = sampleKeyValues.wheel_feedback_lr_nonzero_proven || "not_loaded";
   const frameCount = sampleKeyValues.t1001_observed_count || "0";
   const nonzeroFrames = sampleKeyValues.wheel_feedback_nonzero_frame_count || "0";
   const source = sampleKeyValues.wheel_feedback_source || "not_observed";
+  const imuObserved = sampleKeyValues.imu_attitude_delta_observed || "not_loaded";
+  const motionObserved = sampleKeyValues.motion_signal_observed || "not_loaded";
+  const motionSource = sampleKeyValues.motion_signal_source || "not_observed";
+  const motionAliases = {
+    imu_attitude_delta_observed: imuObserved,
+    motion_signal_observed: motionObserved,
+    motion_signal_source: motionSource,
+    motion_signal_plain_hint: motionObserved === "true"
+      ? `只读反馈采样读到运动信号：${motionSource}；这可作为 WASD/低速试动动作迹象，但不替代 wheel raw L/R 非零证据。`
+      : "只读反馈采样未读到 IMU/轮速动作信号；按住 WASD 或方向键后再复验。",
+    motion_signal_next_action: motionObserved === "true"
+      ? "继续用同窗口 wheel raw L/R 或 Nav2/delivery 材料收口完整验收。"
+      : "直接低速试动或按住键盘方向键，再复验动作信号和 wheel raw L/R。",
+  };
   const pairText = `wheel raw L/R=${left}/${right}`;
   if (proven === "true") {
     return {
@@ -669,6 +691,7 @@ function baseFeedbackSampleAliases(
       wheel_feedback_source: source,
       wheel_feedback_plain_hint: `只读反馈采样读到 ${pairText}，非零帧 ${nonzeroFrames}/${frameCount}；这不是运动命令，也不能单独替代试动或 Nav2 执行窗口材料。`,
       wheel_feedback_next_action: "继续用对应的试动、键盘或 Nav2 执行窗口材料收口 wheel raw L/R 非零。",
+      ...motionAliases,
     };
   }
   if (left !== "not_observed" || right !== "not_observed" || frameCount !== "0") {
@@ -682,6 +705,7 @@ function baseFeedbackSampleAliases(
       wheel_feedback_source: source,
       wheel_feedback_plain_hint: `只读反馈采样读到 ${pairText}，非零未证明，T1001 帧 ${frameCount}；这不是运动命令。`,
       wheel_feedback_next_action: "直接低速试动或按住键盘方向键，再复验 wheel raw L/R 非零。",
+      ...motionAliases,
     };
   }
   return {
@@ -694,6 +718,7 @@ function baseFeedbackSampleAliases(
     wheel_feedback_source: source,
     wheel_feedback_plain_hint: "只读反馈采样没有读到可用 wheel raw L/R；这不是运动命令。",
     wheel_feedback_next_action: "先确认上位机底盘反馈链路，再直接做低速试动。",
+    ...motionAliases,
   };
 }
 
@@ -1223,7 +1248,9 @@ function buildBaseFeedbackSamplesResponse(
     stops_motion: false,
     next_action_plain: sampleKeyValues.wheel_feedback_lr_nonzero_proven === "true"
       ? "轮速样本只读完成；同窗口 wheel L/R 非零证据已存在。"
-      : "轮速样本只读完成；直接执行 Nav2、键盘或自由移动后，再读取同窗口 wheel L/R 非零证据。",
+      : sampleKeyValues.motion_signal_observed === "true"
+        ? "轮速样本只读完成；已观察到 IMU 动作信号，但 wheel L/R 非零仍未证明。"
+        : "轮速样本只读完成；直接执行 Nav2、键盘或自由移动后，再读取同窗口动作信号和 wheel L/R 非零证据。",
     failure_reason:
       dangerous.length > 0
         ? `dangerous_true_field:${dangerous[0]}`

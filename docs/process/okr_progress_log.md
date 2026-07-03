@@ -8,6 +8,20 @@
 
 ## 2026-07-03 系列
 
+### 2026-07-03 21-30｜pc_base_feedback_motion_signal｜WASD 动作信号读回提升
+
+本轮 `sprints/2026.07.03_21-30_pc_base_feedback_motion_signal/` 继续推进 PC 打开即用和 WASD 控制验收：
+`GET/POST /api/robot-control/base/feedback-samples` 现在直接透出上车
+`base_feedback_samples_latest` 的 `imu_attitude_delta_observed`、`motion_signal_observed`、`motion_signal_source`
+和普通提示。现场 7001 读回 `motion_signal_observed=true`、`motion_signal_source=imu_attitude_delta`，
+同时仍显示 `wheel_raw_left=0`、`wheel_raw_right=0`、`wheel_feedback_lr_nonzero_proven=false`。
+这让普通页和脚本能直接看到“有车身动作迹象，但 wheel raw L/R 非零未证明”，不再必须绕到 summary 查询。
+
+验证范围：`npm test -- test/catalog.test.ts -t "base feedback samples" --run` 2 tests OK / 186 skipped；
+`npm test -- test/App.test.ts -t "keyboard|WASD|feedback|wheel|motion signal|map display|camera" --run`
+87 tests OK / 153 skipped；`npm run build` 通过（仅 Vite chunk warning）；7001 已重启并 live 验证 feedback-samples。
+本轮只增强只读反馈读回，不执行 Nav2、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
 ### 2026-07-03 21-24｜pc_map_route_target_alias｜地图目标点 route_target 读回补齐
 
 本轮 `sprints/2026.07.03_21-24_pc_map_route_target_alias/` 修正 PC 大地图目标点读回合同：

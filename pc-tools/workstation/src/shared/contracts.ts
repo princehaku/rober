@@ -6575,6 +6575,9 @@ export interface RobotControlBaseFeedbackSamplesProxyResponse extends ProofFlags
     wheel_feedback_latest_left_speed: string;
     wheel_feedback_latest_right_speed: string;
     wheel_feedback_source: string;
+    imu_attitude_delta_observed: string;
+    motion_signal_observed: string;
+    motion_signal_source: string;
     feedback_ack_t1001_observed: string;
     observed_feedback_types: string;
     sends_motion_commands: string;
@@ -6589,6 +6592,11 @@ export interface RobotControlBaseFeedbackSamplesProxyResponse extends ProofFlags
   wheel_feedback_source: string;
   wheel_feedback_plain_hint: string;
   wheel_feedback_next_action: string;
+  imu_attitude_delta_observed: string;
+  motion_signal_observed: string;
+  motion_signal_source: string;
+  motion_signal_plain_hint: string;
+  motion_signal_next_action: string;
   readback_only: boolean;
   base_feedback_samples_readback_only: boolean;
   sends_motion_when_clicked: false;

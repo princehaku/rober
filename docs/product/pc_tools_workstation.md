@@ -5542,3 +5542,11 @@ Foxglove bridge + Foxglove Web，连接 `ws://192.168.1.11:8765`。RViz2/Foxglov
 `source=path_preview_points` 与 `source_index`，避免现场脚本或普通页读到 `route_target_visible=true` 但
 `route_target=null`。这让“大地图完整显示机器人位置、Nav2 路线、雷达点、目标点”的接口证据更直接：
 `target` 兼容旧前端，`route_target` 给脚本和 summary 直接消费。
+
+2026-07-03 21:30 CST 起，PC `GET/POST /api/robot-control/base/feedback-samples` 直接暴露上车
+`base_feedback_samples_latest` 中的动作信号读回：`imu_attitude_delta_observed`、`motion_signal_observed`、
+`motion_signal_source` 以及对应普通提示。现场 7001 读回为
+`motion_signal_observed=true`、`motion_signal_source=imu_attitude_delta`，说明 WASD/低速试动窗口已有车身姿态变化信号；
+但同一响应仍保持 `wheel_raw_left=0`、`wheel_raw_right=0`、`wheel_feedback_lr_nonzero_proven=false`，不能把它升级成
+vendor `T=1001 L/R` 非零或完整 Nav2/delivery success。这样普通 PC 页和现场脚本能直接看到“车有动作迹象”和
+“wheel raw 仍未证明”两件事，不必再绕到 summary 里查。

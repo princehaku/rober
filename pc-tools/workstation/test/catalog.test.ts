@@ -17457,6 +17457,9 @@ describe("workstation fail-closed API contracts", () => {
             partial_samples_observed_t1001: true,
             wheel_feedback_lr_nonzero_proven: false,
             wheel_feedback_nonzero_observed: false,
+            imu_attitude_delta_observed: false,
+            motion_signal_observed: false,
+            motion_signal_source: "not_observed",
             observed_feedback_types: [1001],
             sends_motion_commands: false,
             feedback_ack: {
@@ -17492,6 +17495,11 @@ describe("workstation fail-closed API contracts", () => {
         wheel_feedback_source: string;
         wheel_feedback_plain_hint: string;
         wheel_feedback_next_action: string;
+        imu_attitude_delta_observed: string;
+        motion_signal_observed: string;
+        motion_signal_source: string;
+        motion_signal_plain_hint: string;
+        motion_signal_next_action: string;
         sends_motion_commands: boolean;
         robot_control_executed: boolean;
       };
@@ -17510,6 +17518,12 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.wheel_feedback_plain_hint).toContain("wheel raw L/R=0/0");
       expect(body.wheel_feedback_plain_hint).toContain("这不是运动命令");
       expect(body.wheel_feedback_next_action).toContain("直接低速试动");
+      expect(body.sample_key_values.motion_signal_observed).toBe("false");
+      expect(body.imu_attitude_delta_observed).toBe("false");
+      expect(body.motion_signal_observed).toBe("false");
+      expect(body.motion_signal_source).toBe("not_observed");
+      expect(body.motion_signal_plain_hint).toContain("未读到 IMU/轮速动作信号");
+      expect(body.motion_signal_next_action).toContain("直接低速试动");
       expect(body.sends_motion_commands).toBe(false);
       expect(body.robot_control_executed).toBe(false);
       expect(upstream.receivedBodies["/api/base/feedback-samples"]).toEqual([{
@@ -17547,6 +17561,9 @@ describe("workstation fail-closed API contracts", () => {
               partial_samples_observed_t1001: true,
               wheel_feedback_lr_nonzero_proven: true,
               wheel_feedback_nonzero_observed: true,
+              imu_attitude_delta_observed: true,
+              motion_signal_observed: true,
+              motion_signal_source: "imu_attitude_delta",
               observed_feedback_types: [1001],
               sends_motion_commands: false,
               feedback_ack: {
@@ -17584,6 +17601,11 @@ describe("workstation fail-closed API contracts", () => {
         latest_raw_right: string;
         base_feedback_lr_nonzero_proven: string;
         wheel_feedback_lr_nonzero_proven: string;
+        imu_attitude_delta_observed: string;
+        motion_signal_observed: string;
+        motion_signal_source: string;
+        motion_signal_plain_hint: string;
+        motion_signal_next_action: string;
         readback_only: boolean;
         base_feedback_samples_readback_only: boolean;
         sends_motion_when_clicked: boolean;
@@ -17616,6 +17638,14 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.latest_raw_right).toBe("13");
       expect(body.base_feedback_lr_nonzero_proven).toBe("true");
       expect(body.wheel_feedback_lr_nonzero_proven).toBe("true");
+      expect(body.sample_key_values.imu_attitude_delta_observed).toBe("true");
+      expect(body.sample_key_values.motion_signal_observed).toBe("true");
+      expect(body.sample_key_values.motion_signal_source).toBe("imu_attitude_delta");
+      expect(body.imu_attitude_delta_observed).toBe("true");
+      expect(body.motion_signal_observed).toBe("true");
+      expect(body.motion_signal_source).toBe("imu_attitude_delta");
+      expect(body.motion_signal_plain_hint).toContain("运动信号：imu_attitude_delta");
+      expect(body.motion_signal_next_action).toContain("完整验收");
       expect(body.readback_only).toBe(true);
       expect(body.base_feedback_samples_readback_only).toBe(true);
       expect(body.sends_motion_when_clicked).toBe(false);
