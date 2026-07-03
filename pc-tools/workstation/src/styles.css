@@ -76,7 +76,7 @@ button {
   overflow: hidden;
   border: 0;
   border-radius: 0;
-  padding: 4px;
+  padding: 0;
 }
 
 .shell[data-direct-map-view-requested="true"] .plain-map-panel[data-fullscreen="true"] {
@@ -88,16 +88,35 @@ button {
 }
 
 .shell[data-direct-map-view-requested="true"] .plain-map-panel[data-observer-mode="true"] {
-  padding: 4px;
+  padding: 0;
 }
 
 .shell[data-direct-map-view-requested="true"] .plain-map-heading {
-  flex: 0 0 auto;
-  margin-bottom: 4px;
+  /* /map 的标题和工具条悬浮在画布上，避免“地图大屏”还被顶部控制行压矮。 */
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  right: 8px;
+  z-index: 8;
+  margin: 0;
+  pointer-events: none;
+}
+
+.shell[data-direct-map-view-requested="true"] .plain-map-heading-title {
+  /* 直达页第一目标是看清地图；标题证明留在 DOM/data 属性和普通首页，不占用大屏像素。 */
+  display: none;
 }
 
 .shell[data-direct-map-view-requested="true"] .plain-map-heading-actions {
+  pointer-events: auto;
   gap: 6px;
+  max-width: calc(100vw - 16px);
+  margin-left: auto;
+  border: 1px solid rgb(190 204 218 / 82%);
+  border-radius: 6px;
+  padding: 4px;
+  background: rgb(248 250 252 / 94%);
+  box-shadow: 0 8px 24px rgb(21 31 43 / 18%);
 }
 
 .shell[data-direct-map-view-requested="true"] .plain-map-size-toggle,
@@ -127,15 +146,18 @@ button {
 }
 
 .shell[data-direct-map-view-requested="true"] .plain-map-wysiwyg-layer-strip {
-  /* 图层状态改为画布内浮层，避免“当前画布”条占掉直达大屏的垂直空间。 */
+  /* 图层状态改为画布内浮层，避免“当前画布”条占掉直达大屏的垂直空间，不再占画布高度。 */
   position: absolute;
-  top: 42px;
+  top: auto;
+  bottom: 8px;
   left: 8px;
+  right: 8px;
   z-index: 6;
   max-width: calc(100% - 16px);
   gap: 6px;
   margin-bottom: 4px;
   padding: 4px 6px;
+  background: rgb(248 250 252 / 92%);
   box-shadow: 0 4px 16px rgb(21 31 43 / 14%);
 }
 
@@ -147,6 +169,7 @@ button {
 .shell[data-direct-map-view-requested="true"] .plain-map-viewport {
   flex: 1 1 auto;
   min-height: 0;
+  height: 100vh;
   margin-bottom: 0;
 }
 
@@ -2404,6 +2427,8 @@ h3 {
   /* 直达地图的可见 viewport 才是大屏边界，避免通用 fullscreen 最小高度把 /map 撑出屏幕。 */
   height: 100%;
   min-height: 0;
+  border: 0;
+  border-radius: 0;
 }
 
 .plain-map-viewport[data-state="地图可见"] .plain-map-layer {
@@ -2427,7 +2452,7 @@ h3 {
 }
 
 .plain-map-overlay-frame {
-  /* 缩放作用在同一个 overlay frame 上；首页默认 300% 优先看清现场细节，完整态势回到 100% 全局。 */
+  /* 缩放作用在同一个 overlay frame 上；首页默认 400% 优先看清现场细节，完整态势回到 100% 全局。 */
   position: relative;
   flex: 0 0 auto;
   width: calc(100% * var(--plain-map-zoom, 1));

@@ -160,3 +160,31 @@ micro
   command debug 记录 manual `T=11 L/R=±164` 和历史 Nav2 bridge `T=11 L/R=±255` 均写出成功，
   feedback debug 连续 `T=1001` 仍回 `L=0,R=0`。依据 `docs/vendor/VENDOR_INDEX.md`，
   `T=1001.L/R` 是 WAVE ROVER 固件反馈字段；因此 wheel raw L/R 非零闭环仍未完成，不能把完整自动驾驶验收标为完成。
+
+## 2026-07-04 04:45 CST 地图太小跟进
+
+- PC 普通首页和 `/map` 直达页默认缩放继续从 `300%` 提升到 `400%`；`完整态势` 仍回 `100%`，
+  `细节放大` 提升到 `1600%`。Vue DOM、CSS、summary/live-summary 和共享类型合同同步更新。
+- `/map` 直达页去掉地图卡内边距，标题和工具条改成画布内顶部浮层，图层状态改成底部浮层；直达页标题文字隐藏，
+  只保留缩放、刷新地图、刷新雷达贴图和工程观察折叠入口，避免工具行继续占用地图高度。
+- ROS2 配套口径同步到产品文档：普通用户继续用 PC 大地图和 `/map`；本地工程调试用 RViz2/Nav2 RViz 配置；
+  远程浏览器观察用 `foxglove_bridge` + Foxglove Web。工程观察入口仍固定只读，不启动 ROS2/RViz2/Foxglove/Nav2/
+  建图 runtime，不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+- 验证通过：
+  - `npm test -- --run test/App.test.ts -t "renders Robot Control V1 by default with Robot API proxy and locked command boundary"`，
+    `1 passed`。
+  - `npm test -- --run test/App.test.ts -t "map"`，`70 passed`。
+  - `npm test -- --run test/robotControlSummary.test.ts`，`16 passed`。
+  - `npm test -- --run test/catalog.test.ts -t "map_display|live-summary|base status proxy"`，`2 passed`。
+  - `npm test`，`3 passed`、`448 passed`。
+  - `npm run build` 通过；仍只有既有 Vite chunk size warning。
+- PC Node 已重启并监听 `0.0.0.0:7001`，实际进程 PID `40622`；live-summary 读回
+  `map_display_default_zoom_percent=400%`、`map_display_direct_map_default_zoom_percent=400%`、
+  `map_display_fit_zoom_percent=100%`、`map_display_max_zoom_percent=1600%`，且
+  `map_display_starts_ros2=false`、`map_display_starts_nav2=false`、`map_display_sends_motion_when_clicked=false`。
+- 只读雷达 proof 刷新后，`/api/robot-control/map/preview` 返回 `path_preview_point_count=18`、
+  `route_target_visible=true`、`radar_overlay_status=loaded`、`radar_overlay_current_point_count=167`；
+  随后 live-summary 读回 `map_current_visible=true`、`path_current_visible=true`、
+  `route_target_current_visible=true`、`radar_map_points_current_visible=true`、
+  `live_wysiwyg_radar_map_current_point_count=167`。该刷新确认 `starts_radar_lifecycle=false`、
+  `starts_nav2=false`、`robot_control_executed=false`。
