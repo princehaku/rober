@@ -740,6 +740,10 @@ const STATUS_BASE_FEEDBACK_TRUE_FIELD_EXEMPTIONS = new Set([
   "base.feedback_readback.sends_commands",
 ]);
 const BASE_STATUS_FEEDBACK_TRUE_FIELD_EXEMPTIONS = new Set([
+  // base/status 会把历史 command debug 合并进只读诊断；这里的 robot_control_executed 只证明过去有命令落盘。
+  // 它不能反向说明当前 GET summary 会发车，否则普通 PC 页会被历史证据永久打成 blocked。
+  "bridge_command_debug.robot_control_executed",
+  "latest_result.bridge_command_debug.robot_control_executed",
   "sends_commands",
   "feedback_readback.sends_commands",
 ]);

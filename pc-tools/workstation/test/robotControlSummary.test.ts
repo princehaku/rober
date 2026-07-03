@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { buildMapPreviewProxy, buildRobotControlSummary } from "../src/server/robotControlSummary";
+import { buildMapPreviewProxy, buildRobotControlSummary, scanDangerousTrueFields } from "../src/server/robotControlSummary";
 
 describe("robotControlSummary", () => {
   afterEach(() => {
@@ -72,6 +72,52 @@ describe("robotControlSummary", () => {
     expect(summary.keyboard_stop_after_release).toBe(true);
     expect(keyboard?.proof_status).toBe("completed");
     expect(keyboard?.missing_evidence).toEqual([]);
+  });
+
+  it("does not block open-page summary on historical base command debug readback", async () => {
+    // `/api/base/status` 会带历史命令日志；它说明以前确实发过命令，不代表当前 summary GET 会发车。
+    expect(scanDangerousTrueFields({ robot_control_executed: true })).toEqual(["robot_control_executed"]);
+
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {
+      const url = new URL(String(input));
+      const payload = {
+        schema: "trashbot.upper_robot_api.v1.readback",
+        status: "loaded",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        robot_control_executed: false,
+        ...(url.pathname === "/api/base/status"
+          ? {
+              schema: "trashbot.upper_robot_api.v1.base_status",
+              bridge_command_debug: {
+                robot_control_executed: true,
+                nonzero_command_observed: true,
+              },
+              feedback_readback: {
+                sends_commands: true,
+              },
+            }
+          : {}),
+      };
+      return new Response(JSON.stringify(payload), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }));
+
+    const summary = await buildRobotControlSummary("http://192.168.1.11:8787", null, null, {
+      readbackTimeoutMs: 100,
+    });
+    const baseStatusReadback = summary.read_endpoints.find((item) => item.id === "base_status");
+
+    expect(baseStatusReadback?.dangerous_true_fields).toEqual([]);
+    expect(baseStatusReadback?.blocked_reasons).not.toContain("dangerous_true_field:bridge_command_debug.robot_control_executed");
+    expect(summary.robot_api_connection.dangerous_true_fields).not.toContain("base_status.bridge_command_debug.robot_control_executed");
+    expect(summary.blocked_reasons).not.toContain("dangerous_true_field:base_status.bridge_command_debug.robot_control_executed");
+    expect(summary.robot_control_executed).toBe(false);
+    expect(summary.starts_manual).toBe(false);
+    expect(summary.starts_keyboard).toBe(false);
   });
 
   it("exposes minimal precheck fields for same-window wheel rerun", async () => {

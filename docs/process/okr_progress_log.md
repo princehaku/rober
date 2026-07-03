@@ -8,6 +8,19 @@
 
 ## 2026-07-03 系列
 
+### 2026-07-03 20-25｜pc_summary_base_debug_unblock｜历史底盘命令读回不再误阻塞
+
+本轮 `sprints/2026.07.03_20-25_pc_summary_base_debug_unblock/` 修正 PC summary 的只读安全归因：
+`/api/base/status` 中的 `bridge_command_debug.robot_control_executed=true` 是历史底盘命令 debug 读回，只证明过去有命令落盘，
+不再让普通 PC 页打开时被误判为当前 GET summary 会发车。根级 `robot_control_executed=true`、
+`safe_to_control=true`、`delivery_success=true`、`primary_actions_enabled=true` 和
+`cmd_vel_publish_enabled=true` 仍保持 fail-closed，继续作为真正危险字段拦截。
+
+验证范围：`npm test -- test/robotControlSummary.test.ts --run` 15 tests OK；
+`npm test -- test/App.test.ts -t "current facts|keyboard|map display|direct map|camera|Nav2|dangerous" --run`
+99 tests OK / 140 skipped；`npm run build` 通过（仅 Vite chunk size warning）。本轮只改只读 summary 归因、
+测试和文档，未执行 Nav2、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
 ### 2026-07-03 20-20｜pc_map_full_width_ros2_companion｜PC 地图全宽首行与 ROS2 配套
 
 本轮 `sprints/2026.07.03_20-20_pc_map_full_width_ros2_companion/` 回应现场“PC 地图太小 / ROS2 有什么配套”的反馈：

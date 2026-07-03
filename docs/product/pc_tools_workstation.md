@@ -5498,3 +5498,9 @@ ROS2 配套工具口径不变：本地工程调试用 RViz2（`ros2 launch ros2_
 远程浏览器观察用 Foxglove bridge（`ros2 launch ros2_trashbot_bringup foxglove_bridge.launch.py` 后连接
 `ws://192.168.1.11:8765`）。RViz2/Foxglove 只观察地图、雷达、TF、路径、定位和 costmap，不替代 PC 简易控制台，
 不启动 Nav2、建图 runtime 或任何底盘运动控制。
+
+2026-07-03 20:25 CST 起，PC summary 不再把 `/api/base/status` 中的历史底盘命令 debug
+`bridge_command_debug.robot_control_executed=true` 当成当前 GET summary 的危险发车动作。该字段仍会作为诊断读回显示，
+但不会让普通页面因过去的底盘命令日志永久进入 `console_status=blocked`。根级 `robot_control_executed=true`、
+`safe_to_control=true`、`delivery_success=true`、`primary_actions_enabled=true` 和
+`cmd_vel_publish_enabled=true` 仍保持 fail-closed，用来拦截真正会触发动作或错误宣称动作已完成的响应。
