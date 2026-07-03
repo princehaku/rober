@@ -1124,13 +1124,13 @@ const fixtures: Record<string, unknown> = {
     current_mapping_action_radar_blocks_start: true,
     current_mapping_action_only_camera_missing: false,
     current_mapping_action_radar_overlay_wysiwyg_complete: false,
-    current_mapping_action_camera_hardware_action_required: false,
-    current_mapping_action_camera_hardware_action_label: "复测相机首帧",
+    current_mapping_action_camera_hardware_action_required: true,
+    current_mapping_action_camera_hardware_action_label: "检查摄像头输入/供电后复测",
     current_mapping_action_camera_usb_full_speed_detected: false,
     current_mapping_action_camera_usb_speed: "not_loaded",
     current_mapping_action_camera_source_diagnosis_status: "uvc_no_frame_not_exclusive",
     current_mapping_action_camera_source_diagnosis_not_exclusive: "true",
-    current_mapping_action_camera_recovery_next_action_plain: "相机不是页面独占；先复测相机首帧并读取共享预览状态。若仍无画面，检查 USB 线、接口、摄像头供电或换 known-good UVC 后再复测。",
+    current_mapping_action_camera_recovery_next_action_plain: "相机不是页面独占；诊断显示 UVC 无首帧；先检查摄像头输入/供电后复测，再读取共享预览状态。当前处理提示：检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测。",
     current_mapping_action_blocks_free_move: false,
     current_mapping_action_free_move_allowed_while_blocked: true,
     current_mapping_action_sends_motion: true,
@@ -1167,9 +1167,9 @@ const fixtures: Record<string, unknown> = {
     current_mapping_control_pack_radar_blocks_start: true,
     current_mapping_control_pack_only_camera_missing: false,
     current_mapping_control_pack_radar_overlay_wysiwyg_complete: false,
-    current_mapping_control_pack_camera_hardware_action_required: false,
-    current_mapping_control_pack_camera_hardware_action_label: "复测相机首帧",
-    current_mapping_control_pack_camera_recovery_next_action_plain: "相机不是页面独占；先复测相机首帧并读取共享预览状态。若仍无画面，检查 USB 线、接口、摄像头供电或换 known-good UVC 后再复测。",
+    current_mapping_control_pack_camera_hardware_action_required: true,
+    current_mapping_control_pack_camera_hardware_action_label: "检查摄像头输入/供电后复测",
+    current_mapping_control_pack_camera_recovery_next_action_plain: "相机不是页面独占；诊断显示 UVC 无首帧；先检查摄像头输入/供电后复测，再读取共享预览状态。当前处理提示：检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测。",
     current_mapping_control_pack_blocks_free_move: false,
     current_mapping_control_pack_free_move_allowed_while_blocked: true,
     current_mapping_control_pack_post_start_readback_refreshes_free_roam_latest: true,
@@ -1219,9 +1219,9 @@ const fixtures: Record<string, unknown> = {
     mapping_start_gate_radar_blocks_start: true,
     mapping_start_gate_only_camera_missing: false,
     mapping_start_gate_radar_overlay_wysiwyg_complete: false,
-    mapping_start_gate_camera_hardware_action_required: false,
-    mapping_start_gate_camera_hardware_action_label: "复测相机首帧",
-    mapping_start_gate_camera_recovery_next_action_plain: "相机不是页面独占；先复测相机首帧并读取共享预览状态。若仍无画面，检查 USB 线、接口、摄像头供电或换 known-good UVC 后再复测。",
+    mapping_start_gate_camera_hardware_action_required: true,
+    mapping_start_gate_camera_hardware_action_label: "检查摄像头输入/供电后复测",
+    mapping_start_gate_camera_recovery_next_action_plain: "相机不是页面独占；诊断显示 UVC 无首帧；先检查摄像头输入/供电后复测，再读取共享预览状态。当前处理提示：检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测。",
     mapping_start_gate_blocks_free_move: false,
     mapping_start_gate_free_move_allowed_while_blocked: true,
     mapping_start_gate_post_start_readback_refreshes_free_roam_latest: true,
@@ -1598,7 +1598,7 @@ const fixtures: Record<string, unknown> = {
       live_wysiwyg_camera_shared_preview_current_frame_visible: false,
       live_wysiwyg_camera_shared_preview_gap_plain: "共享入口可加入且不独占摄像头；当前还没有可显示画面帧，先按只读链路复测相机首帧和共享预览状态。",
       live_wysiwyg_camera_recovery_status: "not_exclusive_needs_source_check",
-      live_wysiwyg_camera_recovery_next_action_plain: "相机不是页面独占；先复测相机首帧并读取共享预览状态。若仍无画面，检查 USB 线、接口、摄像头供电或换 known-good UVC 后再复测。",
+      live_wysiwyg_camera_recovery_next_action_plain: "相机不是页面独占；诊断显示 UVC 无首帧；先检查摄像头输入/供电后复测，再读取共享预览状态。当前处理提示：检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测。",
       live_wysiwyg_camera_recovery_sequence: [
         "/api/robot-control/camera/first-frame/probe",
         "/api/robot-control/camera/mjpeg/status",
@@ -1619,13 +1619,13 @@ const fixtures: Record<string, unknown> = {
       camera_shared_preview_current_frame_visible: false,
       camera_shared_preview_gap_plain: "共享入口可加入且不独占摄像头；当前还没有可显示画面帧，先按只读链路复测相机首帧和共享预览状态。",
       camera_usb_speed: "not_loaded",
-      camera_recovery_next_action_plain: "相机不是页面独占；先复测相机首帧并读取共享预览状态。若仍无画面，检查 USB 线、接口、摄像头供电或换 known-good UVC 后再复测。",
-      camera_hardware_action_required: false,
-      camera_hardware_action_label: "复测相机首帧",
+      camera_recovery_next_action_plain: "相机不是页面独占；诊断显示 UVC 无首帧；先检查摄像头输入/供电后复测，再读取共享预览状态。当前处理提示：检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测。",
+      camera_hardware_action_required: true,
+      camera_hardware_action_label: "检查摄像头输入/供电后复测",
       camera_usb_full_speed_detected: false,
       camera_blocks_mapping_start: true,
       camera_blocks_free_move: false,
-      camera_reprobe_after_hardware_action_required: false,
+      camera_reprobe_after_hardware_action_required: true,
       camera_reprobe_sequence: [
         "/api/robot-control/camera/first-frame/probe",
         "/api/robot-control/camera/mjpeg/status",
@@ -1802,7 +1802,7 @@ const fixtures: Record<string, unknown> = {
       mapping_unblock_camera_diagnosis_status: "uvc_no_frame_not_exclusive",
       mapping_unblock_camera_not_exclusive: "true",
       mapping_unblock_camera_next_action_plain: "检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测；共享预览不是页面独占。",
-      mapping_unblock_camera_recovery_next_action_plain: "相机不是页面独占；先复测相机首帧并读取共享预览状态。若仍无画面，检查 USB 线、接口、摄像头供电或换 known-good UVC 后再复测。",
+      mapping_unblock_camera_recovery_next_action_plain: "相机不是页面独占；诊断显示 UVC 无首帧；先检查摄像头输入/供电后复测，再读取共享预览状态。当前处理提示：检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测。",
       mapping_unblock_camera_recovery_sequence: [
         "/api/robot-control/camera/first-frame/probe",
         "/api/robot-control/camera/mjpeg/status",
@@ -2280,8 +2280,8 @@ const fixtures: Record<string, unknown> = {
         wysiwyg_missing_surface_ids: ["camera", "radar_map_points"],
         wysiwyg_primary_refresh_endpoint: "/api/robot-control/camera/first-frame/probe",
         wysiwyg_primary_refresh_label: "复测相机首帧",
-        wysiwyg_next_action_plain: "相机不是页面独占；先复测相机首帧并读取共享预览状态。若仍无画面，检查 USB 线、接口、摄像头供电或换 known-good UVC 后再复测。；旧雷达来源点 81 个已抑制；先刷新雷达扫描读数，再刷新地图画面，确认同轮雷达点贴图。",
-        wysiwyg_camera_next_action_plain: "相机不是页面独占；先复测相机首帧并读取共享预览状态。若仍无画面，检查 USB 线、接口、摄像头供电或换 known-good UVC 后再复测。",
+        wysiwyg_next_action_plain: "相机不是页面独占；诊断显示 UVC 无首帧；先检查摄像头输入/供电后复测，再读取共享预览状态。当前处理提示：检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测。；旧雷达来源点 81 个已抑制；先刷新雷达扫描读数，再刷新地图画面，确认同轮雷达点贴图。",
+        wysiwyg_camera_next_action_plain: "相机不是页面独占；诊断显示 UVC 无首帧；先检查摄像头输入/供电后复测，再读取共享预览状态。当前处理提示：检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测。",
         wysiwyg_radar_map_next_action_plain: "旧雷达来源点 81 个已抑制；先刷新雷达扫描读数，再刷新地图画面，确认同轮雷达点贴图。",
         wysiwyg_refresh_sequence: [
           "/api/robot-control/radar/scan-proof/refresh",
@@ -2402,8 +2402,8 @@ const fixtures: Record<string, unknown> = {
       field_acceptance_wysiwyg_missing_surface_ids: ["camera", "radar_map_points"],
       field_acceptance_wysiwyg_primary_refresh_endpoint: "/api/robot-control/camera/first-frame/probe",
       field_acceptance_wysiwyg_primary_refresh_label: "复测相机首帧",
-      field_acceptance_wysiwyg_next_action_plain: "相机不是页面独占；先复测相机首帧并读取共享预览状态。若仍无画面，检查 USB 线、接口、摄像头供电或换 known-good UVC 后再复测。；旧雷达来源点 81 个已抑制；先刷新雷达扫描读数，再刷新地图画面，确认同轮雷达点贴图。",
-      field_acceptance_wysiwyg_camera_next_action_plain: "相机不是页面独占；先复测相机首帧并读取共享预览状态。若仍无画面，检查 USB 线、接口、摄像头供电或换 known-good UVC 后再复测。",
+      field_acceptance_wysiwyg_next_action_plain: "相机不是页面独占；诊断显示 UVC 无首帧；先检查摄像头输入/供电后复测，再读取共享预览状态。当前处理提示：检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测。；旧雷达来源点 81 个已抑制；先刷新雷达扫描读数，再刷新地图画面，确认同轮雷达点贴图。",
+      field_acceptance_wysiwyg_camera_next_action_plain: "相机不是页面独占；诊断显示 UVC 无首帧；先检查摄像头输入/供电后复测，再读取共享预览状态。当前处理提示：检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测。",
       field_acceptance_wysiwyg_radar_map_next_action_plain: "旧雷达来源点 81 个已抑制；先刷新雷达扫描读数，再刷新地图画面，确认同轮雷达点贴图。",
       field_acceptance_wysiwyg_refresh_sequence: [
         "/api/robot-control/radar/scan-proof/refresh",
@@ -6325,7 +6325,7 @@ describe("App", () => {
     expect(liveClosureSummary.attributes("data-keyboard-post-hold-summary-refresh-required")).toBe("true");
     expect(liveClosureSummary.attributes("data-camera-wysiwyg-recovery-readback-endpoints")).toBe("/api/robot-control/camera/first-frame/probe,/api/robot-control/camera/mjpeg/status,/api/robot-control/summary");
     expect(liveClosureSummary.attributes("data-camera-wysiwyg-recovery-readback-sequence-labels")).toBe("复测相机首帧,读取共享预览状态,刷新当前卡点");
-    expect(liveClosureSummary.attributes("data-camera-wysiwyg-recovery-requires-usb-fix")).toBe("false");
+    expect(liveClosureSummary.attributes("data-camera-wysiwyg-recovery-requires-usb-fix")).toBe("true");
     expect(liveClosureSummary.attributes("data-camera-wysiwyg-recovery-blocks-mapping-start")).toBe("true");
     expect(liveClosureSummary.attributes("data-camera-wysiwyg-recovery-blocks-free-move")).toBe("false");
     expect(liveClosureSummary.attributes("data-camera-wysiwyg-recovery-sends-motion")).toBe("false");
@@ -6525,7 +6525,7 @@ describe("App", () => {
     expect(fieldAcceptancePacket.attributes("data-radar-overlay-wysiwyg-complete")).toBe("false");
     expect(fieldAcceptancePacket.attributes("data-wysiwyg-primary-refresh-endpoint")).toBe("/api/robot-control/camera/first-frame/probe");
     expect(fieldAcceptancePacket.attributes("data-wysiwyg-primary-refresh-label")).toBe("复测相机首帧");
-    expect(fieldAcceptancePacket.attributes("data-wysiwyg-next-action-plain")).toContain("复测相机首帧");
+    expect(fieldAcceptancePacket.attributes("data-wysiwyg-next-action-plain")).toContain("检查摄像头输入/供电后复测");
     expect(fieldAcceptancePacket.attributes("data-wysiwyg-next-action-plain")).toContain("刷新雷达扫描读数");
     expect(fieldAcceptancePacket.attributes("data-wysiwyg-refresh-mode")).toBe("all_wysiwyg");
     expect(fieldAcceptancePacket.attributes("data-wysiwyg-refresh-sequence")).toBe("/api/robot-control/radar/scan-proof/refresh,/api/robot-control/radar/status,/api/robot-control/map/preview,/api/robot-control/camera/first-frame/probe,/api/robot-control/camera/mjpeg/status,/api/robot-control/summary");
@@ -6785,7 +6785,7 @@ describe("App", () => {
     expect(fieldAcceptanceWysiwyg.text()).toContain("当前所见");
     expect(fieldAcceptanceWysiwyg.text()).toContain("待刷新");
     expect(fieldAcceptanceWysiwyg.text()).toContain("当前所见还差：画面、雷达点");
-    expect(fieldAcceptanceWysiwyg.text()).toContain("复测相机首帧");
+    expect(fieldAcceptanceWysiwyg.text()).toContain("检查摄像头输入/供电后复测");
     expect(fieldAcceptanceWysiwyg.text()).toContain("刷新雷达扫描读数");
     expect(fieldAcceptanceWysiwyg.attributes("data-wysiwyg-ready")).toBe("false");
     expect(fieldAcceptanceWysiwyg.attributes("data-wysiwyg-missing-surface-ids")).toBe("camera,radar_map_points");
@@ -6820,15 +6820,15 @@ describe("App", () => {
     expect(fieldAcceptanceCameraProof.text()).toContain("当前所见缺口包含画面");
     expect(fieldAcceptanceCameraProof.text()).toContain("阻塞建图首帧，不挡自由移动");
     expect(fieldAcceptanceCameraProof.text()).toContain("相机不是页面独占");
-    expect(fieldAcceptanceCameraProof.text()).toContain("先复测相机首帧并读取共享预览状态");
+    expect(fieldAcceptanceCameraProof.text()).toContain("先检查摄像头输入/供电后复测");
     expect(fieldAcceptanceCameraProof.attributes("data-camera-current-visible")).toBe("false");
     expect(fieldAcceptanceCameraProof.attributes("data-camera-first-frame-ready")).toBe("false");
     expect(fieldAcceptanceCameraProof.attributes("data-camera-source-diagnosis-status")).toBe("uvc_no_frame_not_exclusive");
     expect(fieldAcceptanceCameraProof.attributes("data-camera-source-diagnosis-not-exclusive")).toBe("true");
     expect(fieldAcceptanceCameraProof.attributes("data-camera-usb-speed")).toBe("not_loaded");
     expect(fieldAcceptanceCameraProof.attributes("data-camera-usb-full-speed-detected")).toBe("false");
-    expect(fieldAcceptanceCameraProof.attributes("data-camera-hardware-action-required")).toBe("false");
-    expect(fieldAcceptanceCameraProof.attributes("data-camera-hardware-action-label")).toBe("复测相机首帧");
+    expect(fieldAcceptanceCameraProof.attributes("data-camera-hardware-action-required")).toBe("true");
+    expect(fieldAcceptanceCameraProof.attributes("data-camera-hardware-action-label")).toBe("检查摄像头输入/供电后复测");
     expect(fieldAcceptanceCameraProof.attributes("data-camera-only-wysiwyg-gap")).toBe("false");
     expect(fieldAcceptanceCameraProof.attributes("data-camera-blocks-mapping-start")).toBe("true");
     expect(fieldAcceptanceCameraProof.attributes("data-camera-blocks-free-move")).toBe("false");
@@ -7106,7 +7106,7 @@ describe("App", () => {
     expect(liveClosureSummary.attributes("data-camera-shared-preview-submits-delivery")).toBe("false");
     expect(liveClosureSummary.attributes("data-camera-shared-preview-stops-motion")).toBe("false");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-camera-recovery-status")).toBe("not_exclusive_needs_source_check");
-    expect(liveClosureSummary.attributes("data-live-wysiwyg-camera-recovery-next-action-plain")).toBe("相机不是页面独占；先复测相机首帧并读取共享预览状态。若仍无画面，检查 USB 线、接口、摄像头供电或换 known-good UVC 后再复测。");
+    expect(liveClosureSummary.attributes("data-live-wysiwyg-camera-recovery-next-action-plain")).toBe("相机不是页面独占；诊断显示 UVC 无首帧；先检查摄像头输入/供电后复测，再读取共享预览状态。当前处理提示：检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测。");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-camera-recovery-sequence")).toBe("/api/robot-control/camera/first-frame/probe,/api/robot-control/camera/mjpeg/status,/api/robot-control/summary");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-camera-recovery-sequence-labels")).toBe("复测相机首帧,读取共享预览状态,刷新当前卡点");
     expect(liveClosureSummary.attributes("data-live-wysiwyg-camera-recovery-sends-motion")).toBe("false");
@@ -7140,7 +7140,7 @@ describe("App", () => {
     expect(liveClosureWysiwygDiagnostics.text()).toContain("已排除页面独占");
     expect(liveClosureWysiwygDiagnostics.text()).toContain("UVC 设备没有输出视频帧");
     expect(liveClosureWysiwygDiagnostics.text()).toContain("下一步：检查 USB");
-    expect(liveClosureWysiwygDiagnostics.text()).toContain("相机不是页面独占；先复测相机首帧并读取共享预览状态");
+    expect(liveClosureWysiwygDiagnostics.text()).toContain("相机不是页面独占；诊断显示 UVC 无首帧；先检查摄像头输入/供电后复测");
     expect(liveClosureWysiwygDiagnostics.text()).toContain("还差=没有读到一帧雷达；雷达频率未确认；雷达原始包未确认");
     expect(liveClosureWysiwygDiagnostics.text()).toContain("还差=地图缺雷达点；雷达点不是当前新读数");
     expect(liveClosureWysiwygDiagnostics.text()).toContain("地图雷达点：当前 0 个，来源 81 个；状态=not_current");
@@ -7152,7 +7152,7 @@ describe("App", () => {
     expect(liveClosureWysiwygDiagnostics.attributes("data-camera-shared-preview-client-count")).toBe("0");
     expect(liveClosureWysiwygDiagnostics.attributes("data-camera-shared-preview-exclusive-camera-claim")).toBe("false");
     expect(liveClosureWysiwygDiagnostics.attributes("data-camera-recovery-status")).toBe("not_exclusive_needs_source_check");
-    expect(liveClosureWysiwygDiagnostics.attributes("data-camera-recovery-next-action-plain")).toBe("相机不是页面独占；先复测相机首帧并读取共享预览状态。若仍无画面，检查 USB 线、接口、摄像头供电或换 known-good UVC 后再复测。");
+    expect(liveClosureWysiwygDiagnostics.attributes("data-camera-recovery-next-action-plain")).toBe("相机不是页面独占；诊断显示 UVC 无首帧；先检查摄像头输入/供电后复测，再读取共享预览状态。当前处理提示：检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测。");
     expect(liveClosureWysiwygDiagnostics.attributes("data-camera-recovery-sequence")).toBe("/api/robot-control/camera/first-frame/probe,/api/robot-control/camera/mjpeg/status,/api/robot-control/summary");
     expect(liveClosureWysiwygDiagnostics.attributes("data-camera-recovery-sequence-labels")).toBe("复测相机首帧,读取共享预览状态,刷新当前卡点");
     expect(liveClosureWysiwygDiagnostics.attributes("data-camera-recovery-sends-motion")).toBe("false");
@@ -7162,13 +7162,13 @@ describe("App", () => {
     expect(liveClosureWysiwygDiagnostics.attributes("data-camera-short-source-diagnosis-not-exclusive")).toBe("true");
     expect(liveClosureWysiwygDiagnostics.attributes("data-camera-short-shared-preview-exclusive-camera-claim")).toBe("false");
     expect(liveClosureWysiwygDiagnostics.attributes("data-camera-usb-speed")).toBe("not_loaded");
-    expect(liveClosureWysiwygDiagnostics.attributes("data-camera-short-recovery-next-action-plain")).toBe("相机不是页面独占；先复测相机首帧并读取共享预览状态。若仍无画面，检查 USB 线、接口、摄像头供电或换 known-good UVC 后再复测。");
-    expect(liveClosureWysiwygDiagnostics.attributes("data-camera-hardware-action-required")).toBe("false");
-    expect(liveClosureWysiwygDiagnostics.attributes("data-camera-hardware-action-label")).toBe("复测相机首帧");
+    expect(liveClosureWysiwygDiagnostics.attributes("data-camera-short-recovery-next-action-plain")).toBe("相机不是页面独占；诊断显示 UVC 无首帧；先检查摄像头输入/供电后复测，再读取共享预览状态。当前处理提示：检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测。");
+    expect(liveClosureWysiwygDiagnostics.attributes("data-camera-hardware-action-required")).toBe("true");
+    expect(liveClosureWysiwygDiagnostics.attributes("data-camera-hardware-action-label")).toBe("检查摄像头输入/供电后复测");
     expect(liveClosureWysiwygDiagnostics.attributes("data-camera-usb-full-speed-detected")).toBe("false");
     expect(liveClosureWysiwygDiagnostics.attributes("data-camera-blocks-mapping-start")).toBe("true");
     expect(liveClosureWysiwygDiagnostics.attributes("data-camera-blocks-free-move")).toBe("false");
-    expect(liveClosureWysiwygDiagnostics.attributes("data-camera-reprobe-after-hardware-action-required")).toBe("false");
+    expect(liveClosureWysiwygDiagnostics.attributes("data-camera-reprobe-after-hardware-action-required")).toBe("true");
     expect(liveClosureWysiwygDiagnostics.attributes("data-camera-reprobe-sequence")).toBe("/api/robot-control/camera/first-frame/probe,/api/robot-control/camera/mjpeg/status,/api/robot-control/summary");
     expect(liveClosureWysiwygDiagnostics.attributes("data-fixed-camera-probe-endpoint")).toBe("/api/robot-control/camera/first-frame/probe");
     expect(liveClosureWysiwygDiagnostics.attributes("data-fixed-camera-mjpeg-status-endpoint")).toBe("/api/robot-control/camera/mjpeg/status");
@@ -7210,7 +7210,7 @@ describe("App", () => {
     expect(liveCameraRecoveryReadback.exists()).toBe(true);
     expect(liveCameraRecoveryReadback.text()).toContain("画面复测");
     expect(liveCameraRecoveryReadback.text()).toContain("相机不是页面独占");
-    expect(liveCameraRecoveryReadback.text()).toContain("先复测相机首帧并读取共享预览状态");
+    expect(liveCameraRecoveryReadback.text()).toContain("先检查摄像头输入/供电后复测");
     expect(liveCameraRecoveryReadback.text()).toContain("共享预览：共享入口可加入且不独占摄像头");
     expect(liveCameraRecoveryReadback.text()).toContain("当前还没有可显示画面帧");
     expect(liveCameraRecoveryReadback.attributes("data-camera-probe-failure-reason")).toBe("first_frame_total_timeout");
@@ -7427,7 +7427,7 @@ describe("App", () => {
     expect(liveClosureSummary.attributes("data-mapping-unblock-camera-diagnosis-status")).toBe("uvc_no_frame_not_exclusive");
     expect(liveClosureSummary.attributes("data-mapping-unblock-camera-not-exclusive")).toBe("true");
     expect(liveClosureSummary.attributes("data-mapping-unblock-camera-next-action-plain")).toContain("共享预览不是页面独占");
-    expect(liveClosureSummary.attributes("data-mapping-unblock-camera-recovery-next-action-plain")).toBe("相机不是页面独占；先复测相机首帧并读取共享预览状态。若仍无画面，检查 USB 线、接口、摄像头供电或换 known-good UVC 后再复测。");
+    expect(liveClosureSummary.attributes("data-mapping-unblock-camera-recovery-next-action-plain")).toBe("相机不是页面独占；诊断显示 UVC 无首帧；先检查摄像头输入/供电后复测，再读取共享预览状态。当前处理提示：检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测。");
     expect(liveClosureSummary.attributes("data-mapping-unblock-camera-recovery-sequence")).toBe("/api/robot-control/camera/first-frame/probe,/api/robot-control/camera/mjpeg/status,/api/robot-control/summary");
     expect(liveClosureSummary.attributes("data-mapping-unblock-camera-recovery-sequence-labels")).toBe("复测相机首帧,读取共享预览状态,刷新当前卡点");
     expect(liveClosureSummary.attributes("data-fixed-mapping-unblock-camera-probe-endpoint")).toBe("/api/robot-control/camera/first-frame/probe");
@@ -7440,7 +7440,7 @@ describe("App", () => {
     expect(mappingCameraUnblockPlan.text()).toContain("建图启动还差");
     expect(mappingCameraUnblockPlan.text()).toContain("自由移动仍可先做");
     expect(mappingCameraUnblockPlan.text()).toContain("只读复测相机首帧");
-    expect(mappingCameraUnblockPlan.text()).toContain("相机不是页面独占；先复测相机首帧并读取共享预览状态");
+    expect(mappingCameraUnblockPlan.text()).toContain("相机不是页面独占；诊断显示 UVC 无首帧；先检查摄像头输入/供电后复测");
     expect(mappingCameraUnblockPlan.attributes("data-mapping-start-ready")).toBe("false");
     expect(mappingCameraUnblockPlan.attributes("data-camera-blocks-start")).toBe("true");
     expect(mappingCameraUnblockPlan.attributes("data-lidar-blocks-start")).toBe("true");
@@ -7456,13 +7456,13 @@ describe("App", () => {
     expect(mappingCameraUnblockPlan.attributes("data-camera-diagnosis-status")).toBe("uvc_no_frame_not_exclusive");
     expect(mappingCameraUnblockPlan.attributes("data-camera-not-exclusive")).toBe("true");
     expect(mappingCameraUnblockPlan.attributes("data-camera-next-action-plain")).toContain("共享预览不是页面独占");
-    expect(mappingCameraUnblockPlan.attributes("data-camera-recovery-next-action-plain")).toBe("相机不是页面独占；先复测相机首帧并读取共享预览状态。若仍无画面，检查 USB 线、接口、摄像头供电或换 known-good UVC 后再复测。");
-    expect(mappingCameraUnblockPlan.attributes("data-camera-hardware-action-required")).toBe("false");
-    expect(mappingCameraUnblockPlan.attributes("data-camera-hardware-action-label")).toBe("复测相机首帧");
+    expect(mappingCameraUnblockPlan.attributes("data-camera-recovery-next-action-plain")).toBe("相机不是页面独占；诊断显示 UVC 无首帧；先检查摄像头输入/供电后复测，再读取共享预览状态。当前处理提示：检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测。");
+    expect(mappingCameraUnblockPlan.attributes("data-camera-hardware-action-required")).toBe("true");
+    expect(mappingCameraUnblockPlan.attributes("data-camera-hardware-action-label")).toBe("检查摄像头输入/供电后复测");
     expect(mappingCameraUnblockPlan.attributes("data-camera-usb-full-speed-detected")).toBe("false");
     expect(mappingCameraUnblockPlan.attributes("data-camera-blocks-mapping-start")).toBe("true");
     expect(mappingCameraUnblockPlan.attributes("data-camera-blocks-free-move")).toBe("false");
-    expect(mappingCameraUnblockPlan.attributes("data-camera-reprobe-after-hardware-action-required")).toBe("false");
+    expect(mappingCameraUnblockPlan.attributes("data-camera-reprobe-after-hardware-action-required")).toBe("true");
     expect(mappingCameraUnblockPlan.attributes("data-camera-reprobe-sequence")).toBe("/api/robot-control/camera/first-frame/probe,/api/robot-control/camera/mjpeg/status,/api/robot-control/summary");
     expect(mappingCameraUnblockPlan.attributes("data-camera-recovery-sequence")).toBe("/api/robot-control/camera/first-frame/probe,/api/robot-control/camera/mjpeg/status,/api/robot-control/summary");
     expect(mappingCameraUnblockPlan.attributes("data-camera-recovery-sequence-labels")).toBe("复测相机首帧,读取共享预览状态,刷新当前卡点");
@@ -8658,8 +8658,8 @@ describe("App", () => {
     expect(currentMappingAction.attributes("data-current-mapping-action-radar-ready")).toBe("false");
     expect(currentMappingAction.attributes("data-current-mapping-action-only-camera-missing")).toBe("false");
     expect(currentMappingAction.attributes("data-current-mapping-action-radar-overlay-wysiwyg-complete")).toBe("false");
-    expect(currentMappingAction.attributes("data-current-mapping-action-camera-hardware-action-required")).toBe("false");
-    expect(currentMappingAction.attributes("data-current-mapping-action-camera-hardware-action-label")).toBe("复测相机首帧");
+    expect(currentMappingAction.attributes("data-current-mapping-action-camera-hardware-action-required")).toBe("true");
+    expect(currentMappingAction.attributes("data-current-mapping-action-camera-hardware-action-label")).toBe("检查摄像头输入/供电后复测");
     expect(currentMappingAction.attributes("data-current-mapping-action-camera-usb-full-speed-detected")).toBe("false");
     expect(currentMappingAction.attributes("data-current-mapping-action-camera-usb-speed")).toBe("not_loaded");
     expect(currentMappingAction.attributes("data-current-mapping-action-camera-source-diagnosis-status")).toBe("uvc_no_frame_not_exclusive");
@@ -10517,7 +10517,7 @@ describe("App", () => {
     expect(diagnostics.text()).toContain("lifecycle=true/running");
     expect(diagnostics.text()).toContain("window=true/fresh_window_observed");
     expect(diagnostics.text()).toContain("前进");
-    expect(diagnostics.text()).toContain("速度上限");
+    expect(diagnostics.text()).toContain("速率上限");
     expect(diagnostics.text()).toContain("现场安全已确认打开页面即可发低速控制");
     expect(diagnostics.text()).not.toContain("现场有人扶控并准备急停");
     expect(diagnostics.text()).not.toContain("本轮不是自动导航任务");
@@ -10881,7 +10881,7 @@ describe("App", () => {
     summaryFixture.current_mapping_action_camera_usb_speed = "12M";
     summaryFixture.current_mapping_action_camera_source_diagnosis_status = "uvc_full_speed_usb_not_exclusive";
     summaryFixture.current_mapping_action_camera_source_diagnosis_not_exclusive = "true";
-    summaryFixture.current_mapping_action_camera_recovery_next_action_plain = "相机不是页面独占；诊断显示 USB full-speed；先换高速USB后复测，再读取共享预览状态。当前硬件提示：摄像头现在挂在 USB 12M full-speed，换高速 USB 口/线或带供电 USB Hub，减少转接并确认供电后复测。";
+    summaryFixture.current_mapping_action_camera_recovery_next_action_plain = "相机不是页面独占；诊断显示 USB full-speed；先换高速USB后复测，再读取共享预览状态。当前处理提示：摄像头现在挂在 USB 12M full-speed，换高速 USB 口/线或带供电 USB Hub，减少转接并确认供电后复测。";
     const mockedFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
       "/api/robot-control/camera/first-frame/probe": {
@@ -11215,7 +11215,7 @@ describe("App", () => {
 
     const cameraUsbRecoveryProof = wrapper.find('[data-testid="plain-camera-usb-recovery-proof"]');
     expect(cameraUsbRecoveryProof.exists()).toBe(true);
-    expect(cameraUsbRecoveryProof.attributes("data-state")).toBe("需硬件处理");
+    expect(cameraUsbRecoveryProof.attributes("data-state")).toBe("需设备处理");
     expect(cameraUsbRecoveryProof.attributes("data-camera-source-diagnosis-status")).toBe("uvc_transport_error_not_exclusive");
     expect(cameraUsbRecoveryProof.attributes("data-camera-usb-speed")).toBe("480M");
     expect(cameraUsbRecoveryProof.attributes("data-camera-usb-full-speed-detected")).toBe("false");
@@ -11443,7 +11443,7 @@ describe("App", () => {
     summaryFixture.field_acceptance_remaining_no_motion_action_summary_plain = liveClosureSummary.field_acceptance_packet.remaining_no_motion_action_summary_plain;
     summaryFixture.field_acceptance_remaining_action_summary_plain = liveClosureSummary.field_acceptance_packet.remaining_action_summary_plain;
     summaryFixture.current_wysiwyg_next_action_status = "only_camera_hardware_action";
-    summaryFixture.current_wysiwyg_next_action_plain = "雷达贴图已完成；当前只剩相机硬件处理：换高速USB后复测。自由移动不受相机阻塞，建图仍等待相机首帧；处理后按相机首帧、共享预览、summary 顺序只读复测。";
+    summaryFixture.current_wysiwyg_next_action_plain = "雷达贴图已完成；当前只剩相机处理：换高速USB后复测。自由移动不受相机阻塞，建图仍等待相机首帧；处理后按相机首帧、共享预览、summary 顺序只读复测。";
     summaryFixture.current_wysiwyg_next_action_radar_overlay_complete = true;
     summaryFixture.current_wysiwyg_next_action_only_camera_missing = true;
     summaryFixture.current_wysiwyg_next_action_allows_free_move = true;
@@ -11586,9 +11586,9 @@ describe("App", () => {
     expect(fieldAcceptanceWysiwyg.attributes("data-wysiwyg-refresh-mode")).toBe("camera_only");
     const currentWysiwygAction = wrapper.find('[data-testid="plain-current-wysiwyg-action"]');
     expect(currentWysiwygAction.exists()).toBe(true);
-    expect(currentWysiwygAction.text()).toBe("雷达贴图已完成；当前只剩相机硬件处理：换高速USB后复测。自由移动不受相机阻塞，建图仍等待相机首帧；处理后按相机首帧、共享预览、summary 顺序只读复测。");
+    expect(currentWysiwygAction.text()).toBe("雷达贴图已完成；当前只剩相机处理：换高速USB后复测。自由移动不受相机阻塞，建图仍等待相机首帧；处理后按相机首帧、共享预览、summary 顺序只读复测。");
     expect(currentWysiwygAction.attributes("data-current-wysiwyg-next-action-status")).toBe("only_camera_hardware_action");
-    expect(currentWysiwygAction.attributes("data-current-wysiwyg-next-action-plain")).toBe("雷达贴图已完成；当前只剩相机硬件处理：换高速USB后复测。自由移动不受相机阻塞，建图仍等待相机首帧；处理后按相机首帧、共享预览、summary 顺序只读复测。");
+    expect(currentWysiwygAction.attributes("data-current-wysiwyg-next-action-plain")).toBe("雷达贴图已完成；当前只剩相机处理：换高速USB后复测。自由移动不受相机阻塞，建图仍等待相机首帧；处理后按相机首帧、共享预览、summary 顺序只读复测。");
     expect(currentWysiwygAction.attributes("data-current-wysiwyg-next-action-radar-overlay-complete")).toBe("true");
     expect(currentWysiwygAction.attributes("data-current-wysiwyg-next-action-only-camera-missing")).toBe("true");
     expect(currentWysiwygAction.attributes("data-current-wysiwyg-next-action-allows-free-move")).toBe("true");
@@ -11598,7 +11598,7 @@ describe("App", () => {
     expect(currentWysiwygAction.attributes("data-current-wysiwyg-next-action-after-readback-sequence")).toBe("/api/robot-control/camera/first-frame/probe,/api/robot-control/camera/mjpeg/status,/api/robot-control/summary");
     expect(currentWysiwygAction.attributes("data-current-wysiwyg-next-action-after-readback-sequence-labels")).toBe("复测相机首帧,读取共享预览状态,刷新当前卡点");
     expect(currentWysiwygAction.attributes("data-live-wysiwyg-status")).toBe("only_camera_hardware_action");
-    expect(currentWysiwygAction.attributes("data-live-wysiwyg-status-plain")).toBe("雷达贴图已完成；当前只剩相机硬件处理：换高速USB后复测。自由移动不受相机阻塞，建图仍等待相机首帧；处理后按相机首帧、共享预览、summary 顺序只读复测。");
+    expect(currentWysiwygAction.attributes("data-live-wysiwyg-status-plain")).toBe("雷达贴图已完成；当前只剩相机处理：换高速USB后复测。自由移动不受相机阻塞，建图仍等待相机首帧；处理后按相机首帧、共享预览、summary 顺序只读复测。");
     expect(currentWysiwygAction.attributes("data-camera-wysiwyg-status")).toBe("needs_first_frame");
     expect(currentWysiwygAction.attributes("data-camera-wysiwyg-next-action-plain")).toBe("相机不是页面独占；诊断显示 USB full-speed；先换高速USB后复测，再读取共享预览状态。");
     expect(currentWysiwygAction.attributes("data-radar-map-wysiwyg-status")).toBe("loaded");
@@ -12655,8 +12655,8 @@ describe("App", () => {
     expect(mappingPack.attributes("data-radar-blocks-start")).toBe("true");
     expect(mappingPack.attributes("data-only-camera-missing")).toBe("false");
     expect(mappingPack.attributes("data-radar-overlay-wysiwyg-complete")).toBe("false");
-    expect(mappingPack.attributes("data-camera-hardware-action-required")).toBe("false");
-    expect(mappingPack.attributes("data-camera-hardware-action-label")).toBe("复测相机首帧");
+    expect(mappingPack.attributes("data-camera-hardware-action-required")).toBe("true");
+    expect(mappingPack.attributes("data-camera-hardware-action-label")).toBe("检查摄像头输入/供电后复测");
     expect(mappingPack.attributes("data-camera-recovery-next-action-plain")).toContain("相机不是页面独占");
     expect(mappingPack.attributes("data-blocks-free-move")).toBe("false");
     expect(mappingPack.attributes("data-free-move-allowed-while-blocked")).toBe("true");
@@ -12707,8 +12707,8 @@ describe("App", () => {
     expect(mappingPack.attributes("data-mapping-start-gate-radar-blocks-start")).toBe("true");
     expect(mappingPack.attributes("data-mapping-start-gate-only-camera-missing")).toBe("false");
     expect(mappingPack.attributes("data-mapping-start-gate-radar-overlay-wysiwyg-complete")).toBe("false");
-    expect(mappingPack.attributes("data-mapping-start-gate-camera-hardware-action-required")).toBe("false");
-    expect(mappingPack.attributes("data-mapping-start-gate-camera-hardware-action-label")).toBe("复测相机首帧");
+    expect(mappingPack.attributes("data-mapping-start-gate-camera-hardware-action-required")).toBe("true");
+    expect(mappingPack.attributes("data-mapping-start-gate-camera-hardware-action-label")).toBe("检查摄像头输入/供电后复测");
     expect(mappingPack.attributes("data-mapping-start-gate-camera-recovery-next-action-plain")).toContain("相机不是页面独占");
     expect(mappingPack.attributes("data-mapping-start-gate-blocks-free-move")).toBe("false");
     expect(mappingPack.attributes("data-mapping-start-gate-free-move-allowed-while-blocked")).toBe("true");
@@ -13944,7 +13944,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toContain("自动扫图状态机已启动");
     expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toContain("低速运行中");
     expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toContain("地图和雷达监看中");
-    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-param-write"]').text()).toBe("状态机写入：启动参数已一次写入 6 项，运动双锁已请求，本轮可按建图记录，未改速度话题。");
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-param-write"]').text()).toBe("状态机写入：启动参数已一次写入 6 项，运动双锁已请求，本轮可按建图记录，未改运动话题。");
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').text()).toBe("自动扫图低速运行中");
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').attributes("data-state")).toBe("auto_running");
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').attributes("aria-label")).toContain("低速运行中");
@@ -13991,7 +13991,7 @@ describe("App", () => {
       String(url).startsWith("/api/robot-control/map/preview?"),
     ).length).toBe(mapPreviewCallsBeforeClick + 2);
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').text()).toBe("自动扫图已停止，可保存");
-    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-param-write"]').text()).toBe("状态机写入：停止参数已一次写入 5 项，未改速度话题。");
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-param-write"]').text()).toBe("状态机写入：停止参数已一次写入 5 项，未改运动话题。");
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').attributes("data-state")).toBe("auto_stopped_fresh");
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').attributes("aria-label")).toBe("自动扫图停止请求已发送，地图画面已刷新，可以保存，机器人地图位置未读到，标记不代表坐标");
     expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("自动扫图：已停止，停止后的地图画面已刷新，可以保存地图。");
@@ -14176,7 +14176,7 @@ describe("App", () => {
       confirm_operator_safety: true,
       confirm_mapping_active: true,
     });
-    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-param-write"]').text()).toBe("状态机写入：启动参数已一次写入 6 项，运动双锁已请求，本轮可按建图记录，未改速度话题。");
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-param-write"]').text()).toBe("状态机写入：启动参数已一次写入 6 项，运动双锁已请求，本轮可按建图记录，未改运动话题。");
     expect(wrapper.find('[data-testid="plain-map-free-roam-action-marker"]').text()).toBe("自动扫图低速运行中");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
@@ -14246,7 +14246,7 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-motion-gauge"]').attributes("data-mapping-start-degraded-for-session")).toBe("true");
     expect(wrapper.find('[data-testid="plain-free-roam-handoff-proof"]').attributes("data-handoff-stage")).toBe("mapping_start_degraded_free_move");
     expect(wrapper.find('[data-testid="plain-free-roam-drive-status"]').text()).toBe("自由移动状态：地图记录启动失败：上位机等待超时，已降级为低速自由移动；当前不按建图验收，修复地图记录后再建图。");
-    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-param-write"]').text()).toBe("状态机写入：启动参数已一次写入 6 项，运动双锁已请求，本轮只按自由移动记录，未改速度话题。");
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-param-write"]').text()).toBe("状态机写入：启动参数已一次写入 6 项，运动双锁已请求，本轮只按自由移动记录，未改运动话题。");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
@@ -15033,7 +15033,7 @@ describe("App", () => {
       confirm_operator_safety: true,
       confirm_mapping_active: true,
     });
-    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-param-write"]').text()).toBe("状态机写入：启动参数已一次写入 6 项，运动双锁已请求，本轮只按自由移动记录，建图缺口：画面首帧未出、雷达未刷新，未改速度话题。");
+    expect(wrapper.find('[data-testid="plain-free-roam-autonomy-param-write"]').text()).toBe("状态机写入：启动参数已一次写入 6 项，运动双锁已请求，本轮只按自由移动记录，建图缺口：画面首帧未出、雷达未刷新，未改运动话题。");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);

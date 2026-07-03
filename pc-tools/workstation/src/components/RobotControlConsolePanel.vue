@@ -2331,8 +2331,8 @@ const plainCameraUsbRecoveryProofSummary = computed(() => {
   const visible = hardwareActionRequired
     || usbFullSpeedDetected
     || ["uvc_full_speed_usb_not_exclusive", "uvc_transport_error_not_exclusive"].includes(sourceDiagnosisStatus);
-  const state = usbFullSpeedDetected ? "USB full-speed" : hardwareActionRequired ? "需硬件处理" : "无需硬件处理";
-  const usbText = usbSpeed && !["", "not_loaded", "none"].includes(usbSpeed) ? `当前 USB=${usbSpeed}` : "USB 速度未读到";
+  const state = usbFullSpeedDetected ? "USB full-speed" : hardwareActionRequired ? "需设备处理" : "无需设备处理";
+  const usbText = usbSpeed && !["", "not_loaded", "none"].includes(usbSpeed) ? `当前 USB=${usbSpeed}` : "USB 状态未读到";
   const exclusiveText = notExclusive ? "不是页面独占" : "占用状态待确认";
   const mappingText = blocksMappingStart ? "阻塞建图首帧" : "不阻塞建图首帧";
   const freeMoveText = blocksFreeMove ? "会阻塞自由移动" : "不阻塞自由移动";
@@ -2342,7 +2342,7 @@ const plainCameraUsbRecoveryProofSummary = computed(() => {
   return {
     visible,
     state,
-    text: `相机硬件复验：${exclusiveText}；${usbText}；${hardwareActionLabel}；${mappingText}，${freeMoveText}。下一步：${nextActionText}`,
+    text: `相机画面复验：${exclusiveText}；${usbText}；${hardwareActionLabel}；${mappingText}，${freeMoveText}。下一步：${nextActionText}`,
     sourceDiagnosisStatus,
     usbSpeed,
     usbFullSpeedDetected,
@@ -3138,7 +3138,7 @@ const plainFreeRoamAutonomyParamWriteSummary = computed(() => {
     ? command.parameter_count
     : command.parameters?.length ?? 0;
   const countText = count > 0 ? `${count} 项` : "状态机";
-  const topicText = result.blocked_parameters_not_touched.includes("cmd_vel_topic") ? "，未改速度话题" : "";
+  const topicText = result.blocked_parameters_not_touched.includes("cmd_vel_topic") ? "，未改运动话题" : "";
   if (command.ok !== true) {
     return `状态机写入：${strategy} ${countText}失败，未证明参数已生效${topicText}。`;
   }
@@ -5623,7 +5623,7 @@ const plainCurrentCameraWysiwygPack = computed(() => {
     softwareFallbackExhausted,
     requiresPhysicalUsbFix,
     physicalFixLabel: summary?.current_camera_wysiwyg_pack_physical_fix_label
-      ?? (requiresPhysicalUsbFix ? hardwareActionLabel : "无需硬件处理"),
+      ?? (requiresPhysicalUsbFix ? hardwareActionLabel : "无需设备处理"),
     hardwareActionRequired,
     hardwareActionLabel,
     usbFullSpeedDetected,
@@ -5680,7 +5680,7 @@ const plainCurrentCameraWysiwygPack = computed(() => {
     cameraFirstFrameFixLowBandwidthFallbackMinSize: summary?.camera_first_frame_fix_low_bandwidth_fallback_min_size ?? lowBandwidthFallbackMinSize,
     cameraFirstFrameFixSoftwareFallbackExhausted: summary?.camera_first_frame_fix_software_fallback_exhausted ?? softwareFallbackExhausted,
     cameraFirstFrameFixRequiresPhysicalUsbFix: summary?.camera_first_frame_fix_requires_physical_usb_fix ?? requiresPhysicalUsbFix,
-    cameraFirstFrameFixPhysicalFixLabel: summary?.camera_first_frame_fix_physical_fix_label ?? (requiresPhysicalUsbFix ? hardwareActionLabel : "无需硬件处理"),
+    cameraFirstFrameFixPhysicalFixLabel: summary?.camera_first_frame_fix_physical_fix_label ?? (requiresPhysicalUsbFix ? hardwareActionLabel : "无需设备处理"),
     cameraFirstFrameFixHardwareActionRequired: summary?.camera_first_frame_fix_hardware_action_required ?? hardwareActionRequired,
     cameraFirstFrameFixHardwareActionLabel: summary?.camera_first_frame_fix_hardware_action_label ?? hardwareActionLabel,
     cameraFirstFrameFixUsbFullSpeedDetected: summary?.camera_first_frame_fix_usb_full_speed_detected ?? usbFullSpeedDetected,
@@ -11165,10 +11165,17 @@ const plainCurrentMappingAction = computed<PlainCurrentMappingAction>(() => {
   const cameraHardwareText = !cameraReady && cameraHardwareActionRequired
     ? `；相机处理=${cameraHardwareActionLabel}${cameraUsbFullSpeedDetected ? `（USB ${cameraUsbSpeed}，不是页面独占）` : ""}`
     : "";
+  const withFreeMoveUnaffected = (value: string): string => {
+    // 建图缺口和低速自由移动是两条门禁；相机硬件动作文案不能把“车仍可先动”的事实挤掉。
+    if (!freeMoveAllowedWhileBlocked || value.includes("自由移动不受影响")) {
+      return value;
+    }
+    return `${value}；自由移动不受影响`;
+  };
   const nextText = ready
     ? "可直接启动建图记录"
     : cameraHardwareActionRequired
-      ? cameraRecoveryNextActionPlain.replace(/[。.!?]+$/, "") || `${cameraHardwareActionLabel}后复测相机首帧；自由移动不受影响`
+      ? withFreeMoveUnaffected(cameraRecoveryNextActionPlain.replace(/[。.!?]+$/, "") || `${cameraHardwareActionLabel}后复测相机首帧`)
     : onlyCameraMissing
       ? "先复测相机首帧；自由移动不受影响"
       : "先补齐画面首帧和雷达新鲜读数；自由移动不受影响";
@@ -16200,7 +16207,7 @@ const manualMotionSummary = computed(() => {
   if (manualCommandResult.value.proxy_status === "command_forwarded") {
     return manualCommandResult.value.command_kind === "stop"
       ? { state: "已发送", hint: "已发送停止请求。" }
-      : { state: "已发送", hint: `已发送 ${manualCommandResult.value.applied_direction} 点动；速度和时长已按本机上限收口。` };
+      : { state: "已发送", hint: `已发送 ${manualCommandResult.value.applied_direction} 点动；快慢和持续时间已按本机上限收口。` };
   }
   return { state: "失败", hint: manualCommandResult.value.failure_reason || "请求被拒绝或上位机不可达。" };
 });
@@ -27943,11 +27950,11 @@ onBeforeUnmount(() => {
           </div>
           <div class="motion-limits">
             <label>
-              <span>速度上限（m/s）</span>
+              <span>速率上限（m/s）</span>
               <input v-model.number="jogSpeedMps" type="number" min="0" :max="manualSpeedLimit" step="0.01">
             </label>
             <label>
-              <span>时长上限（ms）</span>
+              <span>持续上限（ms）</span>
               <input v-model.number="jogDurationMs" type="number" min="0" :max="manualDurationLimit" step="50">
             </label>
           </div>

@@ -9446,10 +9446,25 @@ function buildLiveClosureSummary(
   const cameraUsbSpeed = readback.camera.uvc_usb_topology_video_usb_speed || "not_loaded";
   const cameraUsbFullSpeedDetected = cameraUsbSpeed === "12M" || readback.camera.source_diagnosis_status === "uvc_full_speed_usb_not_exclusive";
   const cameraTransportHardwareActionRequired = readback.camera.source_diagnosis_status === "uvc_transport_error_not_exclusive";
-  const cameraHardwareActionRequired = (cameraUsbFullSpeedDetected || cameraTransportHardwareActionRequired) && !cameraCurrentVisible;
+  const cameraNoFrameHardwareActionRequired = cameraSourceDiagnosisNotExclusive
+    && ["uvc_no_frame_not_exclusive", "source_first_frame_failed", "first_frame_failed"].includes(readback.camera.source_diagnosis_status || "");
+  const cameraHardwareActionRequired = (
+    cameraUsbFullSpeedDetected
+    || cameraTransportHardwareActionRequired
+    || cameraNoFrameHardwareActionRequired
+  ) && !cameraCurrentVisible;
   const cameraHardwareActionLabel = cameraHardwareActionRequired
-    ? cameraUsbFullSpeedDetected ? "换高速USB后复测" : "检查USB/供电后复测"
+    ? cameraUsbFullSpeedDetected
+      ? "换高速USB后复测"
+      : cameraTransportHardwareActionRequired
+        ? "检查USB/供电后复测"
+        : "检查摄像头输入/供电后复测"
     : "复测相机首帧";
+  const cameraHardwareFallbackHint = cameraUsbFullSpeedDetected
+    ? "摄像头现在挂在 USB 12M full-speed，换高速 USB 口/线或带供电 USB Hub 后复测"
+    : cameraTransportHardwareActionRequired
+      ? "UVC/USB 当前有传输错误，检查 USB 线、接口和供电后复测"
+      : "UVC 已排除页面独占但没有输出首帧，检查摄像头输入、供电、线缆或换 known-good UVC 后复测";
   const cameraRecoveryStatus = cameraCurrentVisible
     ? "visible"
     : cameraSourceDiagnosisNotExclusive
@@ -9467,7 +9482,7 @@ function buildLiveClosureSummary(
   const cameraRecoveryNextActionPlain = cameraCurrentVisible
     ? "相机画面已显示；继续监看共享实时预览。"
     : cameraHardwareActionRequired
-      ? `相机不是页面独占；诊断显示 ${cameraSourceDiagnosisLabel(cameraSourceDiagnosisStatus)}；先${cameraHardwareActionLabel}，再读取共享预览状态。当前硬件提示：${cameraRecoverySpecificSourceAction || "摄像头现在挂在 USB 12M full-speed，换高速 USB 口/线或带供电 USB Hub 后复测"}。`
+      ? `相机不是页面独占；诊断显示 ${cameraSourceDiagnosisLabel(cameraSourceDiagnosisStatus)}；先${cameraHardwareActionLabel}，再读取共享预览状态。当前处理提示：${cameraRecoverySpecificSourceAction || cameraHardwareFallbackHint}。`
       : cameraRecoveryHasSpecificSourceAction
       ? cameraSourceDiagnosisNotExclusive
         ? `相机不是页面独占；诊断显示 ${cameraSourceDiagnosisLabel(cameraSourceDiagnosisStatus)}；先复测相机首帧并读取共享预览状态。若仍无画面，${cameraRecoverySpecificSourceAction}。`
@@ -10850,7 +10865,7 @@ export async function buildRobotControlSummary(
       return "当前所见已满足：画面、地图和雷达贴图都已对齐；继续监看，按完整行程读回验收。";
     }
     if (currentWysiwygNextActionStatus === "only_camera_hardware_action") {
-      return `雷达贴图已完成；当前只剩相机硬件处理：${liveClosureSummary.camera_hardware_action_label}。自由移动不受相机阻塞，建图仍等待相机首帧；处理后按相机首帧、共享预览、summary 顺序只读复测。`;
+      return `雷达贴图已完成；当前只剩相机处理：${liveClosureSummary.camera_hardware_action_label}。自由移动不受相机阻塞，建图仍等待相机首帧；处理后按相机首帧、共享预览、summary 顺序只读复测。`;
     }
     if (currentWysiwygNextActionStatus === "camera_readback_only") {
       return "雷达贴图已完成；当前只剩相机首帧复测。自由移动不受相机阻塞，建图仍等待相机首帧；按相机首帧、共享预览、summary 顺序只读复测。";
@@ -10877,7 +10892,7 @@ export async function buildRobotControlSummary(
       && liveClosureSummary.camera_hardware_action_required);
   const currentCameraWysiwygPackPhysicalFixLabel = currentCameraWysiwygPackRequiresPhysicalUsbFix
     ? liveClosureSummary.camera_hardware_action_label
-    : "无需硬件处理";
+    : "无需设备处理";
   const currentCameraWysiwygPackPlain = currentCameraWysiwygVisible
     ? `画面 WYSIWYG 已完成：当前页面或共享预览已有首帧；共享预览允许多人加入，当前观看 ${liveClosureSummary.live_wysiwyg_camera_shared_preview_client_count} 个页面。`
     : `画面 WYSIWYG 未完成：${liveClosureSummary.camera_shared_preview_gap_plain}；${liveClosureSummary.camera_recovery_next_action_plain}；画面首帧会阻塞建图启动，不阻塞自由移动，复测只读不发车。`;
@@ -10946,7 +10961,7 @@ export async function buildRobotControlSummary(
     ?? fieldAcceptanceSafetyConfirmReadyActions[0]
     ?? null;
   const fieldAcceptanceCameraRecoveryActionPlain = liveClosureSummary.camera_recovery_next_action_plain
-    .replace(/当前硬件提示/g, "当前设备提示");
+    .replace(/当前处理提示/g, "当前设备提示");
   const fieldAcceptanceHardwareActionIds = [
     ...(liveClosureSummary.camera_hardware_action_required && !liveClosureSummary.camera_current_visible
       ? ["camera_usb_recovery"]

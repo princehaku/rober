@@ -32,6 +32,13 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   已远程尝试 USB authorized reset、重启 `trashbot-local-webrtc-camera.service`、临时解绑 USB audio 复合接口后复测，结果仍是
   `12M` 与 `STREAMON` I/O error。下一步必须把摄像头换到 480M 高速 USB 口/线或带供电 Hub 后再用
   `/api/robot-control/camera/first-frame/probe`、`/api/robot-control/camera/mjpeg/status` 复测。
+- 2026-07-03 16:57 现场相机复验更新：DV20 现在已枚举在 USB `480M` high-speed，`owner_count=0`、
+  `exclusive_camera_claim=false`，但短首帧探针仍返回 `probe_total_timeout`，直接 capture 仍没有 kernel
+  buffer 输出。因此当前问题不再按浏览器独占或 12M full-speed 处理，PC summary 将
+  `source_first_frame_failed + uvc_no_frame_not_exclusive` 提升为普通用户可执行的“相机画面处理”动作：
+  `camera_hardware_action_required=true`、`camera_hardware_action_label=检查摄像头输入/供电后复测`。
+  该缺口继续只阻塞相机首帧、实时图传和建图视觉验收，不阻塞低速自由移动、键盘手控或图上路线执行；
+  `camera_blocks_free_move=false` 与 `free_move_without_camera_allowed=true` 必须保持可读。
 - 2026-06-25 16:06 起，扫图卡片自己的安全确认可直接作为键盘扫图的最小预检；不再要求先补 operator report、轮速非零或 LiDAR delta 材料才允许低速键盘扫图。
 - 2026-06-27 03:16 起，普通首屏、行程操作、键盘手控、自动扫图和高级点动区全部复用同一个
   “人在旁边、周围安全、停止手段就绪”安全确认；旧的四项 HIL checklist 不再出现在点动区，避免 operator

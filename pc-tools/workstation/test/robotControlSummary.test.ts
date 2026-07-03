@@ -2567,6 +2567,13 @@ describe("robotControlSummary", () => {
     expect(summary.current_camera_wysiwyg_pack_source_diagnosis_not_exclusive).toBe("true");
     expect(summary.current_camera_wysiwyg_pack_blocks_mapping_start).toBe(true);
     expect(summary.current_camera_wysiwyg_pack_blocks_free_move).toBe(false);
+    expect(summary.live_closure_summary?.camera_hardware_action_required).toBe(true);
+    expect(summary.live_closure_summary?.camera_hardware_action_label).toBe("检查摄像头输入/供电后复测");
+    expect(summary.live_closure_summary?.camera_usb_full_speed_detected).toBe(false);
+    expect(summary.camera_hardware_action_required).toBe(true);
+    expect(summary.camera_hardware_action_label).toBe("检查摄像头输入/供电后复测");
+    expect(summary.camera_usb_full_speed_detected).toBe(false);
+    expect(summary.camera_blocks_free_move).toBe(false);
     expect(summary.current_camera_wysiwyg_pack_readback_only).toBe(true);
     expect(summary.current_camera_wysiwyg_pack_sends_motion_when_clicked).toBe(false);
     expect(summary.current_camera_wysiwyg_pack_starts_camera_exclusive_capture).toBe(false);
@@ -2692,10 +2699,10 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.live_wysiwyg_camera_diagnostic_plain).toContain("USB 12M full-speed");
     expect(summary.live_closure_summary?.live_wysiwyg_camera_diagnostic_plain).toContain("下一步：摄像头现在挂在 USB 12M full-speed");
     expect(summary.live_closure_summary?.live_wysiwyg_camera_recovery_next_action_plain).toBe(
-      "相机不是页面独占；诊断显示 USB full-speed；先换高速USB后复测，再读取共享预览状态。当前硬件提示：摄像头现在挂在 USB 12M full-speed，换高速 USB 口/线或带供电 USB Hub，减少转接并确认供电后复测。",
+      "相机不是页面独占；诊断显示 USB full-speed；先换高速USB后复测，再读取共享预览状态。当前处理提示：摄像头现在挂在 USB 12M full-speed，换高速 USB 口/线或带供电 USB Hub，减少转接并确认供电后复测。",
     );
     expect(summary.live_closure_summary?.mapping_unblock_camera_recovery_next_action_plain).toBe(
-      "相机不是页面独占；诊断显示 USB full-speed；先换高速USB后复测，再读取共享预览状态。当前硬件提示：摄像头现在挂在 USB 12M full-speed，换高速 USB 口/线或带供电 USB Hub，减少转接并确认供电后复测。",
+      "相机不是页面独占；诊断显示 USB full-speed；先换高速USB后复测，再读取共享预览状态。当前处理提示：摄像头现在挂在 USB 12M full-speed，换高速 USB 口/线或带供电 USB Hub，减少转接并确认供电后复测。",
     );
     expect(summary.live_closure_summary?.camera_usb_speed).toBe("12M");
     expect(summary.live_closure_summary?.camera_hardware_action_required).toBe(true);
@@ -2909,7 +2916,7 @@ describe("robotControlSummary", () => {
     ]);
     expect(summary.field_acceptance_remaining_hardware_action_summary_plain).toContain("需要设备处理：换高速USB后复测");
     expect(summary.field_acceptance_remaining_hardware_action_summary_plain).toContain("当前设备提示");
-    expect(summary.field_acceptance_remaining_hardware_action_summary_plain).not.toContain("当前硬件提示");
+    expect(summary.field_acceptance_remaining_hardware_action_summary_plain).not.toContain("当前处理提示");
     expect(summary.field_acceptance_remaining_hardware_action_summary_plain).toContain("USB 12M full-speed");
     expect(summary.field_acceptance_remaining_hardware_action_summary_plain).toContain("不阻塞低速自由移动");
     expect(summary.field_acceptance_remaining_action_summary_plain).toContain("相机缺口");
@@ -3019,7 +3026,7 @@ describe("robotControlSummary", () => {
     expect(summary.current_radar_map_wysiwyg_pack_sends_motion_when_clicked).toBe(false);
     expect(summary.current_radar_map_wysiwyg_pack_starts_radar_lifecycle).toBe(false);
     expect(summary.current_wysiwyg_next_action_status).toBe("only_camera_hardware_action");
-    expect(summary.current_wysiwyg_next_action_plain).toBe("雷达贴图已完成；当前只剩相机硬件处理：换高速USB后复测。自由移动不受相机阻塞，建图仍等待相机首帧；处理后按相机首帧、共享预览、summary 顺序只读复测。");
+    expect(summary.current_wysiwyg_next_action_plain).toBe("雷达贴图已完成；当前只剩相机处理：换高速USB后复测。自由移动不受相机阻塞，建图仍等待相机首帧；处理后按相机首帧、共享预览、summary 顺序只读复测。");
     expect(summary.current_wysiwyg_next_action_radar_overlay_complete).toBe(true);
     expect(summary.current_wysiwyg_next_action_only_camera_missing).toBe(true);
     expect(summary.current_wysiwyg_next_action_blocks_mapping_start).toBe(true);
@@ -3145,7 +3152,7 @@ describe("robotControlSummary", () => {
     expect(summary.camera_first_frame_fix_requires_physical_usb_fix).toBe(true);
     expect(summary.camera_first_frame_fix_physical_fix_label).toBe("检查USB/供电后复测");
     expect(summary.current_wysiwyg_next_action_status).toBe("only_camera_hardware_action");
-    expect(summary.current_wysiwyg_next_action_plain).toContain("当前只剩相机硬件处理：检查USB/供电后复测");
+    expect(summary.current_wysiwyg_next_action_plain).toContain("当前只剩相机处理：检查USB/供电后复测");
     const wysiwygObjective = summary.live_closure_summary?.objective_audit_items.find((item) => item.id === "wysiwyg");
     expect(wysiwygObjective?.next_action_plain).toBe("下一步：检查USB/供电后复测相机首帧。");
     expect(wysiwygObjective?.source_card_id).toBe("camera_preview");
