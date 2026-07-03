@@ -2452,7 +2452,7 @@ h3 {
 }
 
 .plain-map-overlay-frame {
-  /* 缩放作用在同一个 overlay frame 上；首页默认 800% 优先看清现场细节，完整态势回到 100% 全局。 */
+  /* 缩放作用在同一个 overlay frame 上；首页默认 1600% 优先看清现场细节，完整态势回到 100% 全局。 */
   position: relative;
   flex: 0 0 auto;
   width: calc(100% * var(--plain-map-zoom, 1));

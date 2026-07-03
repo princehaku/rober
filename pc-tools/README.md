@@ -27,6 +27,15 @@ pc-tools/workstation/
 `http://192.168.1.55:7001/` 后不需要再找或勾任何 safety checkbox；兼容旧脚本的隐藏 input 仍保持 checked，
 可见文案改成“打开即用”。底层固定代理继续保留速度、时长、目标范围和 dangerous true 字段护栏，停止按钮保持可用。
 
+2026-07-04 07:49 CST 起，用户反馈“PC 地图还是太小”后的当前有效口径为：PC 首页和 `/map`
+默认缩放提升到 `1600%`，`细节放大` 提升到 `4800%`，`完整态势` 仍一键回到 `100%` 全局。
+地图、Nav2 路线、小车位置、雷达点和目标点继续共用同一张 WYSIWYG 画布；地图工具行直接显示
+`工程观察：RViz2 / Foxglove`。ROS2 配套分层不变：本地工程调试用 RViz2/Nav2 RViz 配置看
+`/map`、`/scan`、TF、路径、定位和 costmap；远程浏览器观察用
+`ros2 launch ros2_trashbot_bringup foxglove_bridge.launch.py` 后在 Foxglove Web 连接
+`ws://192.168.1.11:8765`。这些工程工具只观察，不替代 PC 简易界面，也不发送 `/cmd_vel`、
+manual、Nav2 goal、free-roam、delivery、stop 或建图运行时动作。
+
 2026-07-04 00:16 CST 起，PC 首页地图继续按普通用户主视图处理，默认使用 `100%` 完整态势；
 visual-first 首屏让地图独占首行，图传和 WASD/方向键连续手控放在地图下方；首页地图卡高度按近整屏主画布处理，
 `/map` 直达页继续填满当前 viewport，默认同样是 `100%` 完整态势，最高 `1200%`。需要局部排障时点

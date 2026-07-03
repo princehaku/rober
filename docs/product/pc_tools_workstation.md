@@ -48,8 +48,8 @@ pc-tools/workstation/
 - `App.vue` 只保留全局状态、刷新流程、错误处理和页面组合。
 - `src/client/workstationApi.ts` 集中封装 `/api/*` 路径、fetch 和 route debug query 参数拼接。
 - `src/components/` 只做展示与本地交互，不直接拼 API URL，不发明机器人状态。`RobotControlConsolePanel.vue` 通过 client 层调用 Node `GET /api/robot-control/summary` 和 O6 consumer detail adapter；Vue 不直接跨域访问上位机 Robot API。它的默认首屏必须保持 `Rober 小车控制台` + `.simple-user-console` 五卡片的普通用户视图，短状态、少量按钮和可停止入口留在首屏，`task_id`、`O6`、`O7`、`HIL`、`proof`、`/cmd_vel`、`/api/base/manual`、`field manifest` 等工程字段都必须折叠到默认关闭的 `高级诊断`。`O7FixturePreviewPanel.vue` 通过 client 层调用 fixture preview、probe、archive fixture 和 O6 consumer read adapter；route replay 主路径消费 consumer detail，旧 archive fixture player 只作为次路径 / debug fallback；页面不自动读取本地路径。
-- 2026-07-04 05:19 CST 起，PC 地图“太小”的当前有效口径为：普通首页和 `/map` 默认 `800%` 大图，
-  `完整态势` 回到 `100%`，`细节放大` 到 `3200%`；`/map` 的标题/工具条和图层状态保持画布内悬浮层，
+- 2026-07-04 07:49 CST 起，PC 地图“太小”的当前有效口径为：普通首页和 `/map` 默认 `1600%` 大图，
+  `完整态势` 回到 `100%`，`细节放大` 到 `4800%`；`/map` 的标题/工具条和图层状态保持画布内悬浮层，
   不再占用地图高度。ROS2 配套仍分层：普通用户用 PC 大地图和 `/map`；本地工程调试用 RViz2/Nav2 RViz 配置；
   远程浏览器观察用 `foxglove_bridge` + Foxglove Web。工程观察只看 `/map`、`/scan`、TF、路径、定位和 costmap，
   不替代简易 PC 控制台，不启动 ROS2/RViz2/Foxglove/Nav2/建图 runtime，不发送 manual、keyboard、free-roam、

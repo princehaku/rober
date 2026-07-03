@@ -8,6 +8,17 @@
 
 ## 2026-07-04 系列
 
+### 2026-07-04 07-49｜pc_map_1600_ros2_companion｜PC 大地图默认 1600% 与 ROS2 配套入口
+
+本轮 `sprints/2026.07.04_07-49_pc_map_1600_ros2_companion/` 响应现场“PC 地图太小、ROS2 有什么配套”的反馈：
+普通首页和 `/map` 默认地图缩放从 `800%` 提升到 `1600%`，`细节放大` 上限从 `3200%` 提升到
+`4800%`，`完整态势` 保持 `100%` 全局。地图工具行直接显示 `工程观察：RViz2 / Foxglove`，
+summary/live-summary 合同同步返回 `map_display_default_zoom_percent=1600%`、
+`map_display_direct_map_default_zoom_percent=1600%`、`map_display_max_zoom_percent=4800%`。
+ROS2 配套口径保持分层：普通用户继续使用 PC 大地图和 `/map`，本地工程调试用 RViz2/Nav2 RViz 配置，
+远程浏览器观察用 Foxglove bridge + Foxglove Web；工程工具只观察 `/map`、`/scan`、TF、路径、定位和 costmap，
+不发送运动控制。
+
 ### 2026-07-04 07-38｜pc_live_validation_camera_zero_frame｜O7 三项现场复验与图传硬件边界
 
 本轮 `sprints/2026.07.04_07-38_pc_live_validation_camera_zero_frame/` 不改产品代码，继续用真实上位机复验

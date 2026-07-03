@@ -253,7 +253,9 @@ function cachedKeyboardEvidence(key: string): RobotControlKeyboardLocalEvidence 
     robotControlKeyboardEvidenceCache.delete(key);
     return undefined;
   }
-  const { updated_at_ms: _updatedAtMs, ...evidence } = cached;
+  const evidence: RobotControlKeyboardLocalEvidence = { ...cached };
+  // 缓存时间只用于 TTL 判断，返回给 summary 时必须剥离，避免把本地实现细节暴露给前端合同。
+  delete (evidence as Partial<CachedKeyboardEvidence>).updated_at_ms;
   return evidence;
 }
 
