@@ -21,10 +21,10 @@ pc-tools/workstation/
 工作站，不会自动执行 Nav2、manual、delivery complete、keyboard pulse、stop 或
 `/cmd_vel`。
 
-2026-07-03 05:45 CST 起，PC 首页地图继续按普通用户主视图处理，但默认从局部细节缩放收敛为完整态势缩放：
-visual-first 首屏固定左侧地图、右侧图传和 WASD/方向键连续手控；首页地图卡高度为
-`clamp(620px, calc(100vh - 96px), 860px)`，默认缩放 `45%`，最高 `1200%`。默认视角优先完整显示真实地图、
-Nav2 路线、小车位置、雷达点和目标点；需要查局部再点 `细节放大`，普通用户仍可点 `/map` 大屏。ROS2 配套结论保持分层：本地工程调试用 RViz2 /
+2026-07-03 22:17 CST 起，PC 首页地图继续按普通用户主视图处理，默认放大到 `800%` 现场细节视角；
+visual-first 首屏让地图独占首行，图传和 WASD/方向键连续手控放在地图下方；首页地图卡高度按近整屏主画布处理，
+`/map` 直达页继续填满当前 viewport，最高 `1200%`。需要完整态势时点 `适配` 回到 `45%`，需要更局部时点
+`细节放大` 到 `1200%`；地图、Nav2 路线、小车位置、雷达点和目标点仍在同一张 WYSIWYG 画布。ROS2 配套结论保持分层：本地工程调试用 RViz2 /
 `nav2_rviz_plugins` 看 `/map`、`/scan`、TF、规划轨迹、定位和 costmap；远程浏览器观察用
 `foxglove_bridge` + Foxglove Web 连接 `ws://192.168.1.11:8765`；这些工具只观察，不替代 PC 简易界面，
 也不发送 `/cmd_vel`、manual、Nav2 goal、建图或 stop。
