@@ -24,6 +24,16 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   PC 不再要求 LiDAR delta 才能说明“有运动迹象”；但 `wheel_feedback_lr_nonzero_proven`
   仍必须由同窗口 vendor `T=1001 L/R` 非零证明，送达成功和完整 Nav2 路线执行也不会因此自动完成。
   这条边界用于保持“小车可先自己动，不依赖雷达”的产品口径，同时避免把 IMU 变化包装成编码器轮速。
+- 2026-07-03 23:58 起，PC 和上位机把“命令 raw 非零 + IMU 已动”与“vendor feedback L/R 非零”
+  分层显示：上位机 `/api/base/manual` 返回 `command_raw_nonzero_proven`、
+  `command_raw_lr_nonzero_proven`、`command_raw_twist_nonzero_proven`、`motion_evidence_complete`
+  和 `motion_evidence_source`；PC summary 保留
+  `keyboard_command_raw_lr_nonzero`、`keyboard_motion_evidence_complete` 与
+  `keyboard_wheel_feedback_lr_nonzero` 三个口径。键盘连续手控的普通用户目标可用 command raw + IMU
+  证明“本次手控动作已发生”，但 `wheel_feedback_lr_nonzero_proven=false` 时仍明确显示
+  vendor `T=1001 L/R=0/0`，不冒充编码器或底盘反馈闭环。硬件协议依据仍为
+  `docs/vendor/VENDOR_INDEX.md` 指向的 WAVE ROVER `json_cmd.h`：`T=11` 为 `L/R` PWM，
+  `T=13` 为 ROS twist 控制，T1001 `L/R` 是反馈读数。
 - 2026-07-03 09:07 现场相机复查确认：PC 共享 MJPEG 入口可以多人复用，`/api/robot-control/camera/mjpeg`
   会快速返回上游真实失败，不存在页面独占；上位机 `/dev/video1` 是 `USB Composite Device: DV20 USB`
   UVC 视频节点，`/dev/video2` 是 metadata，`/dev/video0` 是 cedrus 解码器不是摄像头。`lsusb -t`

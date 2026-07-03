@@ -62,6 +62,8 @@ export type RobotControlKeyboardLocalEvidence = {
   keyboard_continuous_pulse_verified?: boolean;
   keyboard_stop_settled_after_pulse?: boolean;
   wheel_feedback_lr_nonzero_proven?: boolean;
+  command_raw_lr_nonzero_proven?: boolean;
+  motion_evidence_complete?: boolean;
   keyboard_motion_verified?: boolean;
 };
 type RobotControlSummaryBuildOptions = {
@@ -827,6 +829,16 @@ const STATUS_KEYS = [
   "base_command_chain_startup_main_type_config_sent",
   "base_command_chain_startup_main_type",
   "base_command_chain_startup_module_type",
+  "command_raw_nonzero_proven",
+  "command_raw_lr_nonzero_proven",
+  "command_raw_twist_nonzero_proven",
+  "command_raw_latest_left",
+  "command_raw_latest_right",
+  "command_raw_latest_linear_x",
+  "command_raw_latest_angular_z",
+  "command_raw_motion_evidence_complete",
+  "motion_evidence_complete",
+  "motion_evidence_source",
   "latest_t1001_observed_count",
   "t1001_observed_count",
   "wheel_feedback_lr_nonzero_proven",
@@ -7146,6 +7158,15 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         base_command_chain_startup_main_type_config_sent: "not_loaded",
         base_command_chain_startup_main_type: "not_loaded",
         base_command_chain_startup_module_type: "not_loaded",
+        command_raw_nonzero_proven: "not_loaded",
+        command_raw_lr_nonzero_proven: "not_loaded",
+        command_raw_twist_nonzero_proven: "not_loaded",
+        command_raw_latest_left: "not_loaded",
+        command_raw_latest_right: "not_loaded",
+        command_raw_latest_linear_x: "not_loaded",
+        command_raw_latest_angular_z: "not_loaded",
+        motion_evidence_complete: "not_loaded",
+        motion_evidence_source: "not_loaded",
         feedback_voltage_v: "not_loaded",
         feedback_link_status: "not_observed",
       },
@@ -8288,6 +8309,39 @@ function baseSummaryFromReadbacks(readbacks: InternalRobotApiEndpointReadback[])
   const startupMainTypeConfigSent = baseStatus?.key_values.base_command_chain_startup_main_type_config_sent ?? "not_loaded";
   const startupMainType = baseStatus?.key_values.base_command_chain_startup_main_type ?? "not_loaded";
   const startupModuleType = baseStatus?.key_values.base_command_chain_startup_module_type ?? "not_loaded";
+  const commandRawNonzeroProven = mergedBooleanText(
+    feedbackLatest?.key_values.command_raw_nonzero_proven,
+    baseStatus?.key_values.command_raw_nonzero_proven,
+  );
+  const commandRawLrNonzeroProven = mergedBooleanText(
+    feedbackLatest?.key_values.command_raw_lr_nonzero_proven,
+    baseStatus?.key_values.command_raw_lr_nonzero_proven,
+  );
+  const commandRawTwistNonzeroProven = mergedBooleanText(
+    feedbackLatest?.key_values.command_raw_twist_nonzero_proven,
+    baseStatus?.key_values.command_raw_twist_nonzero_proven,
+  );
+  const motionEvidenceComplete = mergedBooleanText(
+    feedbackLatest?.key_values.motion_evidence_complete,
+    feedbackLatest?.key_values.command_raw_motion_evidence_complete,
+    baseStatus?.key_values.motion_evidence_complete,
+    baseStatus?.key_values.command_raw_motion_evidence_complete,
+  );
+  const commandRawLatestLeft = baseStatus?.key_values.command_raw_latest_left
+    ?? feedbackLatest?.key_values.command_raw_latest_left
+    ?? "not_loaded";
+  const commandRawLatestRight = baseStatus?.key_values.command_raw_latest_right
+    ?? feedbackLatest?.key_values.command_raw_latest_right
+    ?? "not_loaded";
+  const commandRawLatestLinearX = baseStatus?.key_values.command_raw_latest_linear_x
+    ?? feedbackLatest?.key_values.command_raw_latest_linear_x
+    ?? "not_loaded";
+  const commandRawLatestAngularZ = baseStatus?.key_values.command_raw_latest_angular_z
+    ?? feedbackLatest?.key_values.command_raw_latest_angular_z
+    ?? "not_loaded";
+  const motionEvidenceSource = baseStatus?.key_values.motion_evidence_source
+    ?? feedbackLatest?.key_values.motion_evidence_source
+    ?? "not_loaded";
   return {
     status: baseStatus?.status ?? "not_loaded",
     latest_feedback_status: latestFeedbackStatus,
@@ -8328,6 +8382,15 @@ function baseSummaryFromReadbacks(readbacks: InternalRobotApiEndpointReadback[])
     base_command_chain_startup_main_type_config_sent: startupMainTypeConfigSent,
     base_command_chain_startup_main_type: startupMainType,
     base_command_chain_startup_module_type: startupModuleType,
+    command_raw_nonzero_proven: commandRawNonzeroProven,
+    command_raw_lr_nonzero_proven: commandRawLrNonzeroProven,
+    command_raw_twist_nonzero_proven: commandRawTwistNonzeroProven,
+    command_raw_latest_left: commandRawLatestLeft,
+    command_raw_latest_right: commandRawLatestRight,
+    command_raw_latest_linear_x: commandRawLatestLinearX,
+    command_raw_latest_angular_z: commandRawLatestAngularZ,
+    motion_evidence_complete: motionEvidenceComplete,
+    motion_evidence_source: motionEvidenceSource,
     feedback_voltage_v: feedbackVoltage,
     feedback_link_status: currentFeedbackReadStatus === "read_error"
       ? "current_t130_read_error"
@@ -8371,7 +8434,7 @@ function keyboardSummaryReadback(): RobotControlSummaryResponse["readback_summar
     hold_to_move_plain: holdToMovePlain,
     stop_triggers_plain: "松开按键、窗口失焦、页面隐藏、切换方向或点击停止都会发送停止请求。",
     pulse_timing_plain: `按住时约每 ${ROBOT_CONTROL_KEYBOARD_JOG_INTERVAL_MS / 1000} 秒发送一次 ${ROBOT_CONTROL_KEYBOARD_JOG_DURATION_MS / 1000} 秒低速脉冲。`,
-    wheel_feedback_acceptance_plain: "键盘连续手控验收只看同一次按住窗口的 manual pulse 回包：需要读到 wheel L/R 非零；全局只读采样或旧材料不能替代本次按住读数。",
+    wheel_feedback_acceptance_plain: "键盘连续手控验收只看同一次按住窗口的 manual pulse 回包：命令读数非零并有 IMU/车体运动信号即可证明本次手控动作；vendor T1001 L/R 非零仍作为独立反馈闭环显示。",
     next_action_plain: "页面自动准备键盘；准备本身不发车；按住 W/A/S/D 或方向键才会连续低速移动，松开/失焦/切页会停。",
     minimal_precheck_plain: "键盘连续手控打开即用；启用键盘不发车，只有按住方向键/WASD 才发送低速短脉冲。",
     robot_control_executed: "false",
@@ -8532,6 +8595,9 @@ function buildActionStatusCards(
   const mapPathVisible = readback.map.path_preview_status === "path_preview_observed";
   const mapRobotPoseVisible = readback.map.robot_pose_status === "map_pose_observed";
   const baseMotionSignalObserved = actionCardBoolean(readback.base.motion_signal_observed, false);
+  const baseCommandRawLrNonzero = actionCardBoolean(readback.base.command_raw_lr_nonzero_proven, false);
+  const baseMotionEvidenceComplete = actionCardBoolean(readback.base.motion_evidence_complete, false)
+    || (actionCardBoolean(readback.base.command_raw_nonzero_proven, false) && baseMotionSignalObserved);
   const baseMotionSignalSource = readback.base.motion_signal_source || "not_loaded";
   const mapNextActionPlain = mapVisible
     ? "地图画面已显示；继续确认图上路线和小车位置，雷达点另看“地图雷达点”。"
@@ -8790,9 +8856,16 @@ function buildActionStatusCards(
         keyboard_stop_settled_after_pulse: false,
         motion_signal_observed: baseMotionSignalObserved,
         motion_signal_source: baseMotionSignalSource,
+        command_raw_nonzero_proven: actionCardBoolean(readback.base.command_raw_nonzero_proven, false),
+        command_raw_lr_nonzero_proven: baseCommandRawLrNonzero,
+        command_raw_twist_nonzero_proven: actionCardBoolean(readback.base.command_raw_twist_nonzero_proven, false),
+        command_raw_latest_left: readback.base.command_raw_latest_left,
+        command_raw_latest_right: readback.base.command_raw_latest_right,
+        motion_evidence_complete: baseMotionEvidenceComplete,
+        motion_evidence_source: readback.base.motion_evidence_source,
         wheel_feedback_lr_nonzero_proven: actionCardBoolean(readback.base.wheel_feedback_lr_nonzero_proven, false),
         imu_attitude_delta_observed: actionCardBoolean(readback.base.imu_attitude_delta_observed, false),
-        keyboard_motion_verified: baseMotionSignalObserved,
+        keyboard_motion_verified: baseMotionEvidenceComplete || baseMotionSignalObserved,
       },
     },
     {
@@ -8929,6 +9002,10 @@ function applyKeyboardLocalEvidence(
       return card;
     }
     const motionVerified = card.evidence?.keyboard_motion_verified === true || localMotionVerified;
+    const commandRawVerified = evidence.command_raw_lr_nonzero_proven === true
+      || evidence.motion_evidence_complete === true
+      || card.evidence?.command_raw_lr_nonzero_proven === true
+      || card.evidence?.motion_evidence_complete === true;
     return {
       ...card,
       evidence: {
@@ -8943,6 +9020,10 @@ function applyKeyboardLocalEvidence(
         keyboard_stop_settled_after_pulse: stopSettledAfterPulse,
         wheel_feedback_lr_nonzero_proven: evidence.wheel_feedback_lr_nonzero_proven === true
           || card.evidence?.wheel_feedback_lr_nonzero_proven === true,
+        command_raw_lr_nonzero_proven: commandRawVerified,
+        motion_evidence_complete: evidence.motion_evidence_complete === true
+          || card.evidence?.motion_evidence_complete === true
+          || (commandRawVerified && motionVerified),
         motion_signal_observed: card.evidence?.motion_signal_observed === true || motionVerified,
         keyboard_motion_verified: motionVerified,
       },
@@ -9807,7 +9888,11 @@ function buildLiveClosureSummary(
     || readback.keyboard.hold_to_move_required === "true";
   const keyboardEnabled = keyboard.evidence?.keyboard_enabled === true
     || readback.keyboard.enabled === "true";
-  const keyboardMotionVerified = keyboard.evidence?.keyboard_motion_verified === true;
+  const keyboardCommandRawMotionVerified = keyboard.evidence?.command_raw_lr_nonzero_proven === true
+    || keyboard.evidence?.motion_evidence_complete === true
+    || keyboard.evidence?.wheel_feedback_lr_nonzero_proven === true;
+  const keyboardMotionVerified = keyboard.evidence?.keyboard_motion_verified === true
+    || keyboardCommandRawMotionVerified;
   const keyboardStopSettledAfterPulse = keyboard.evidence?.keyboard_stop_settled_after_pulse === true;
   const keyboardBestContinuousPulseCount = keyboard.evidence?.keyboard_best_continuous_pulse_count ?? 0;
   const keyboardVerifiedMinForwardedPulses = keyboard.evidence?.keyboard_verified_min_forwarded_pulses ?? 2;
@@ -10208,7 +10293,7 @@ function buildLiveClosureSummary(
   const mapDisplayTooSmallNextActionPlain = "PC 首页现在让地图独占首行，默认用 800% 现场细节视角显示真实地图、路线、小车、雷达和目标，图传和 WASD 放到地图下方；需要一屏看全点“适配”回 45% 完整图，仍觉得小再点“细节放大”到 1200%，或点“进入地图大屏”打开 /map；/map 默认 800% 细节大屏，也可点“适配”回 45% 完整图；/map 只保留缩放、只读刷新和工程观察入口；建图、保存和其他卡片都会收起；不需要先开 RViz2。";
   const mapDisplayRos2CompanionAnswerPlain = "ROS2 配套：本地工程调试用 RViz2；远程浏览器观察用 Foxglove bridge + Foxglove Web；普通用户仍默认使用 PC 大地图和 /map，工程工具不替代简易控制台。";
   const mapDisplayCompanionPlain = `普通用户地图：首页 PC 大地图默认 800% 现场细节视角；进入 /map 使用 800% 细节大屏，地图画布按 viewport-dominant full-height 处理，点“细节放大”可继续查看局部，点“适配”回到 45% 完整视角，最高 1200%，地图、路线、目标点、小车位置和雷达点共用同一张 WYSIWYG 画布；${mapDisplayTooSmallNextActionPlain}${mapDisplayRos2CompanionAnswerPlain}ROS2 配套只作工程观察，本地用 RViz2，远程浏览器观察先部署 Foxglove bridge 后打开 Foxglove Web 连接 ws://192.168.1.11:8765；观察项固定为地图、雷达、TF、路径、定位和 costmap，不提供 GoalTool，不发送底盘移动命令。`;
-  const keyboardAcceptancePlain = "键盘连续手控验收只看同一次按住窗口的 manual pulse 回包：需要读到 wheel L/R 非零；全局只读采样或旧材料不能替代本次按住读数。";
+  const keyboardAcceptancePlain = "键盘连续手控验收只看同一次按住窗口的 manual pulse 回包：命令读数非零并有 IMU/车体运动信号即可证明本次手控动作；vendor T1001 L/R 非零仍作为独立反馈闭环显示。";
   const nav2ObjectiveDone = routeReadyOnMap && nav2GoalSucceeded && wheelLrNonzeroProven && !needsSameWindowWheelRerun;
   const keyboardObjectiveDone = keyboardMotionVerified && keyboardStopSettledAfterPulse;
   const freeMoveObjectiveDone = readback.free_roam.motion_ready === "true"
@@ -10239,7 +10324,7 @@ function buildLiveClosureSummary(
     ...(!nav2GoalSucceeded ? [{ id: "nav2_goal_succeeded", label: "路线到点成功" }] : []),
     ...(!wheelLrNonzeroProven ? [{ id: "same_window_wheel_lr_nonzero", label: "同窗口轮速 L/R 非零" }] : []),
     ...(!deliveryClaimReady ? [{ id: "delivery_success", label: "送达确认" }] : []),
-    ...(!keyboardMotionVerified ? [{ id: "keyboard_wheel_lr_nonzero", label: "键盘按住轮速 L/R 非零" }] : []),
+    ...(!keyboardMotionVerified ? [{ id: "keyboard_wheel_lr_nonzero", label: "键盘按住命令读数 + IMU 实动" }] : []),
     ...(!keyboardStopSettledAfterPulse ? [{ id: "keyboard_stop_after_release", label: "键盘松开后停稳" }] : []),
     ...(!freeMoveObjectiveDone ? [{ id: "free_roam_motion_ready", label: "自由移动启动读回" }] : []),
   ];
@@ -10374,7 +10459,7 @@ function buildLiveClosureSummary(
           : []),
         ...(!keyboardObjectiveDone
           ? [`键盘还差${[
-            ...(!keyboardMotionVerified ? ["按住读到轮速 L/R 非零"] : []),
+            ...(!keyboardMotionVerified ? ["按住命令读数 + IMU 实动"] : []),
             ...(!keyboardStopSettledAfterPulse ? ["松开后停稳"] : []),
           ].join("、")}`]
           : []),
@@ -10698,6 +10783,10 @@ function buildLiveClosureSummary(
     keyboard_hold_to_move_required: keyboardHoldToMoveRequired,
     keyboard_enabled: keyboardEnabled,
     keyboard_motion_verified: keyboardMotionVerified,
+    keyboard_command_raw_motion_verified: keyboardCommandRawMotionVerified,
+    keyboard_command_raw_lr_nonzero_proven: keyboard.evidence?.command_raw_lr_nonzero_proven === true,
+    keyboard_motion_evidence_complete: keyboard.evidence?.motion_evidence_complete === true,
+    keyboard_wheel_feedback_lr_nonzero_proven: keyboard.evidence?.wheel_feedback_lr_nonzero_proven === true,
     keyboard_stop_settled_after_pulse: keyboardStopSettledAfterPulse,
     keyboard_best_continuous_pulse_count: keyboardBestContinuousPulseCount,
     keyboard_verified_min_forwarded_pulses: keyboardVerifiedMinForwardedPulses,
@@ -10872,7 +10961,10 @@ export async function buildRobotControlSummary(
     options.keyboardEvidence,
   );
   const keyboardStatusCard = actionStatusCards.find((card) => card.id === "keyboard_control");
-  const keyboardWheelLrNonzero = keyboardStatusCard?.evidence?.wheel_feedback_lr_nonzero_proven === true;
+  const keyboardWheelLrNonzero = keyboardStatusCard?.evidence?.wheel_feedback_lr_nonzero_proven === true
+    || keyboardStatusCard?.evidence?.command_raw_lr_nonzero_proven === true
+    || keyboardStatusCard?.evidence?.motion_evidence_complete === true;
+  const keyboardWheelFeedbackLrNonzero = keyboardStatusCard?.evidence?.wheel_feedback_lr_nonzero_proven === true;
   const goalChecklist = buildGoalChecklist(actionStatusCards ?? [], readbackSummary, safeCommandBoundary);
   const goalSummary = buildGoalChecklistSummary(goalChecklist ?? []) as NonNullable<RobotControlSummaryResponse["goal_checklist_summary"]>;
   const currentGoalNextAction = goalSummary.ready_action_items
@@ -13324,6 +13416,9 @@ export async function buildRobotControlSummary(
     keyboard_ready: liveClosureSummary.keyboard_ready,
     keyboard_continuous_ready: liveClosureSummary.keyboard_continuous_ready,
     keyboard_wheel_lr_nonzero: keyboardWheelLrNonzero,
+    keyboard_command_raw_lr_nonzero: keyboardStatusCard?.evidence?.command_raw_lr_nonzero_proven === true,
+    keyboard_motion_evidence_complete: keyboardStatusCard?.evidence?.motion_evidence_complete === true,
+    keyboard_wheel_feedback_lr_nonzero: keyboardWheelFeedbackLrNonzero,
     keyboard_stop_after_release: keyboardStopAfterRelease,
     keyboard_continuous_motion_verified: liveClosureSummary.keyboard_continuous_motion_verified,
     keyboard_continuous_minimal_precheck_safety_only: liveClosureSummary.keyboard_continuous_minimal_precheck_safety_only,

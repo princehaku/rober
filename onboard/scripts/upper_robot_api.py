@@ -6001,6 +6001,82 @@ def wheel_feedback_summary_from_frames(frames: list[dict[str, Any]]) -> dict[str
     }
 
 
+def command_raw_motion_summary(
+    command: dict[str, Any] | None,
+    write_result: dict[str, Any] | None = None,
+    *,
+    source: str,
+) -> dict[str, Any]:
+    """把本次下发命令的 raw 非零事实单独成证；它不能替代 T1001 feedback。"""
+    command = command if isinstance(command, dict) else {}
+    write_result = write_result if isinstance(write_result, dict) else {}
+    try:
+        command_id = int(command.get("T"))
+    except (TypeError, ValueError):
+        command_id = None
+    left = finite_feedback_number(command.get("L"))
+    right = finite_feedback_number(command.get("R"))
+    linear_x = finite_feedback_number(command.get("X"))
+    angular_z = finite_feedback_number(command.get("Z"))
+    lr_pair_available = left is not None and right is not None
+    lr_nonzero = bool(lr_pair_available and abs(left or 0.0) > 0.0 and abs(right or 0.0) > 0.0)
+    twist_nonzero = bool(
+        command_id == 13
+        and ((linear_x is not None and abs(linear_x) > 0.0) or (angular_z is not None and abs(angular_z) > 0.0))
+    )
+    transport_write_returned = (
+        write_result.get("transport_write_returned")
+        if "transport_write_returned" in write_result
+        else write_result.get("serial_write_returned")
+        if "serial_write_returned" in write_result
+        else write_result.get("http_write_returned")
+        if "http_write_returned" in write_result
+        else write_result.get("sent")
+        if "sent" in write_result
+        else write_result.get("ok")
+    )
+    sent = transport_write_returned is True
+    raw_nonzero = bool(lr_nonzero or twist_nonzero)
+    return {
+        "source": source,
+        "command_type": command_id,
+        "command_mode": command_mode_for_vendor_command(command) if command_id is not None else "unknown",
+        "sent": sent,
+        "transport_write_returned": transport_write_returned,
+        "raw_nonzero_observed": raw_nonzero,
+        "raw_nonzero_proven": bool(sent and raw_nonzero),
+        "lr_pair_available": lr_pair_available,
+        "lr_nonzero_observed": lr_nonzero,
+        "lr_nonzero_proven": bool(sent and lr_nonzero),
+        "left_raw": left,
+        "right_raw": right,
+        "twist_nonzero_observed": twist_nonzero,
+        "twist_nonzero_proven": bool(sent and twist_nonzero),
+        "linear_x": linear_x,
+        "angular_z": angular_z,
+        "vendor_command": command,
+        "reason": (
+            "sent command contains finite nonzero L/R raw values"
+            if sent and lr_nonzero
+            else "sent ROS/T=13 command contains nonzero X/Z raw values"
+            if sent and twist_nonzero
+            else "command was not sent or did not contain nonzero raw motion values"
+        ),
+    }
+
+
+def command_raw_motion_summary_from_debug_record(
+    record: dict[str, Any] | None,
+    *,
+    source: str,
+) -> dict[str, Any]:
+    """从 bridge command debug 的 latest record 中派生命令 raw 证据，供 PC 区分命令与反馈。"""
+    if not isinstance(record, dict):
+        return command_raw_motion_summary(None, None, source=source)
+    command = record.get("vendor_command") if isinstance(record.get("vendor_command"), dict) else {}
+    return command_raw_motion_summary(command, record, source=source)
+
+
 def imu_attitude_delta_summary_from_frames(frames: list[dict[str, Any]]) -> dict[str, Any]:
     """用 T1001 r/p 计算姿态变化迹象；它不能替代轮速闭环或交付成功。"""
     matched_frames: list[dict[str, float]] = []
@@ -7791,6 +7867,8 @@ class UpperRobotApi:
         feedback_samples_is_fresh = isinstance(feedback_samples_freshness, dict) and feedback_samples_freshness.get("status") == "fresh"
         bridge_feedback_freshness = bridge_feedback_debug.get("freshness")
         bridge_feedback_is_fresh = isinstance(bridge_feedback_freshness, dict) and bridge_feedback_freshness.get("status") == "fresh"
+        bridge_command_freshness = bridge_command_debug.get("freshness")
+        bridge_command_is_fresh = isinstance(bridge_command_freshness, dict) and bridge_command_freshness.get("status") == "fresh"
         if bridge_feedback_is_fresh:
             # bridge 已经独占 UART 并持续写 fresh T1001 日志时，status 不能再为了只读轮速抢串口。
             feedback_readback = skipped_base_status_feedback_payload(
@@ -7836,6 +7914,14 @@ class UpperRobotApi:
             feedback_readback.get("wheel_feedback_lr_nonzero_proven")
             or (bridge_feedback_is_fresh and bridge_feedback_debug.get("wheel_feedback_lr_nonzero_proven"))
             or (feedback_samples_is_fresh and feedback_samples_latest.get("wheel_feedback_lr_nonzero_proven"))
+        )
+        command_raw_summary = command_raw_motion_summary_from_debug_record(
+            bridge_command_debug.get("latest_sent_nonzero_command") if bridge_command_is_fresh else None,
+            source="fresh_bridge_command_debug_latest_sent_nonzero_command",
+        )
+        command_motion_evidence_complete = bool(
+            command_raw_summary.get("raw_nonzero_proven")
+            and (wheel_feedback_nonzero or best_motion_signal.get("motion_signal_observed"))
         )
         return {
             "schema": f"{SCHEMA}.base_status",
@@ -7883,6 +7969,23 @@ class UpperRobotApi:
             ),
             "base_command_chain_startup_main_type": bridge_command_debug.get("startup_main_type"),
             "base_command_chain_startup_module_type": bridge_command_debug.get("startup_module_type"),
+            "command_raw_summary": command_raw_summary,
+            "command_raw_nonzero_proven": bool(command_raw_summary.get("raw_nonzero_proven")),
+            "command_raw_lr_nonzero_proven": bool(command_raw_summary.get("lr_nonzero_proven")),
+            "command_raw_twist_nonzero_proven": bool(command_raw_summary.get("twist_nonzero_proven")),
+            "command_raw_latest_left": command_raw_summary.get("left_raw"),
+            "command_raw_latest_right": command_raw_summary.get("right_raw"),
+            "command_raw_latest_linear_x": command_raw_summary.get("linear_x"),
+            "command_raw_latest_angular_z": command_raw_summary.get("angular_z"),
+            "command_raw_motion_evidence_complete": command_motion_evidence_complete,
+            "motion_evidence_complete": command_motion_evidence_complete,
+            "motion_evidence_source": (
+                "command_raw_lr_plus_motion_signal"
+                if command_raw_summary.get("lr_nonzero_proven") and best_motion_signal.get("motion_signal_observed")
+                else "command_raw_twist_plus_motion_signal"
+                if command_raw_summary.get("twist_nonzero_proven") and best_motion_signal.get("motion_signal_observed")
+                else "not_complete"
+            ),
             "wheel_feedback_summary": best_wheel_summary,
             "wheel_feedback_nonzero_observed": wheel_feedback_nonzero,
             "wheel_feedback_lr_nonzero_proven": wheel_feedback_nonzero,
@@ -10044,6 +10147,33 @@ class UpperRobotApi:
         ]
         manual_wheel_feedback_summary = wheel_feedback_summary_from_frames(wheel_feedback_frames)
         manual_imu_delta_summary = imu_attitude_delta_summary_from_frames(wheel_feedback_frames)
+        manual_command_raw_summary = command_raw_motion_summary(
+            command,
+            first,
+            source="manual_command_result",
+        )
+        manual_bridge_command_debug = summarize_bridge_command_debug_log(DEFAULT_BRIDGE_COMMAND_DEBUG_LOG_PATH)
+        manual_bridge_command_freshness = manual_bridge_command_debug.get("freshness")
+        manual_bridge_command_is_fresh = (
+            isinstance(manual_bridge_command_freshness, dict)
+            and manual_bridge_command_freshness.get("status") == "fresh"
+        )
+        manual_bridge_command_raw_summary = command_raw_motion_summary_from_debug_record(
+            manual_bridge_command_debug.get("latest_sent_nonzero_command") if manual_bridge_command_is_fresh else None,
+            source="manual_bridge_command_debug_latest_sent_nonzero_command",
+        )
+        manual_command_raw_nonzero_proven = bool(
+            manual_command_raw_summary.get("raw_nonzero_proven")
+            or manual_bridge_command_raw_summary.get("raw_nonzero_proven")
+        )
+        manual_command_raw_lr_nonzero_proven = bool(
+            manual_command_raw_summary.get("lr_nonzero_proven")
+            or manual_bridge_command_raw_summary.get("lr_nonzero_proven")
+        )
+        manual_command_raw_twist_nonzero_proven = bool(
+            manual_command_raw_summary.get("twist_nonzero_proven")
+            or manual_bridge_command_raw_summary.get("twist_nonzero_proven")
+        )
         manual_motion_signal_observed = bool(
             manual_wheel_feedback_summary["lr_nonzero_observed"]
             or manual_imu_delta_summary["imu_attitude_delta_observed"]
@@ -10054,6 +10184,9 @@ class UpperRobotApi:
             else "imu_attitude_delta"
             if manual_imu_delta_summary["imu_attitude_delta_observed"]
             else "not_observed"
+        )
+        manual_motion_evidence_complete = bool(
+            manual_command_raw_nonzero_proven and manual_motion_signal_observed
         )
         if feedback_during_motion_attempted and (wheel_feedback_frames or (command_mode != "ros" and not use_bridge_debug_feedback and not use_realtime_feedback)):
             # first-jog/键盘手控的非零 T1001 必须落到 latest artifact，
@@ -10101,11 +10234,36 @@ class UpperRobotApi:
             "t1001_feedback_status": feedback_during_motion.get("t1001_feedback_status") or feedback_evidence.get("t1001_feedback_status"),
             "manual_wheel_feedback_summary": manual_wheel_feedback_summary,
             "manual_imu_attitude_delta_summary": manual_imu_delta_summary,
+            "manual_command_raw_summary": manual_command_raw_summary,
+            "manual_bridge_command_raw_summary": manual_bridge_command_raw_summary,
+            "command_raw_nonzero_proven": manual_command_raw_nonzero_proven,
+            "command_raw_lr_nonzero_proven": manual_command_raw_lr_nonzero_proven,
+            "command_raw_twist_nonzero_proven": manual_command_raw_twist_nonzero_proven,
+            "command_raw_latest_left": (
+                manual_bridge_command_raw_summary.get("left_raw")
+                if manual_bridge_command_raw_summary.get("lr_pair_available")
+                else manual_command_raw_summary.get("left_raw")
+            ),
+            "command_raw_latest_right": (
+                manual_bridge_command_raw_summary.get("right_raw")
+                if manual_bridge_command_raw_summary.get("lr_pair_available")
+                else manual_command_raw_summary.get("right_raw")
+            ),
+            "command_raw_latest_linear_x": manual_command_raw_summary.get("linear_x"),
+            "command_raw_latest_angular_z": manual_command_raw_summary.get("angular_z"),
             "wheel_feedback_nonzero_observed": manual_wheel_feedback_summary["lr_nonzero_observed"],
             "wheel_feedback_lr_nonzero_proven": manual_wheel_feedback_summary["lr_nonzero_observed"],
             "imu_attitude_delta_observed": manual_imu_delta_summary["imu_attitude_delta_observed"],
             "motion_signal_observed": manual_motion_signal_observed,
             "motion_signal_source": manual_motion_signal_source,
+            "motion_evidence_complete": manual_motion_evidence_complete,
+            "motion_evidence_source": (
+                "command_raw_lr_plus_motion_signal"
+                if manual_command_raw_lr_nonzero_proven and manual_motion_signal_observed
+                else "command_raw_twist_plus_motion_signal"
+                if manual_command_raw_twist_nonzero_proven and manual_motion_signal_observed
+                else "not_complete"
+            ),
             "feedback_ack": feedback_ack,
             "safe_to_control": False,
             "sends_commands": True,

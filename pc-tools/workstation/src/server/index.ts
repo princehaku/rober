@@ -183,6 +183,8 @@ function robotControlKeyboardEvidenceQuery(query: Record<string, unknown>): Robo
     keyboard_verified_min_forwarded_pulses: queryNonNegativeInteger(query.keyboard_verified_min_forwarded_pulses),
     keyboard_continuous_pulse_verified: queryBoolean(query.keyboard_continuous_pulse_verified),
     keyboard_stop_settled_after_pulse: queryBoolean(query.keyboard_stop_settled_after_pulse),
+    command_raw_lr_nonzero_proven: queryBoolean(query.command_raw_lr_nonzero_proven),
+    motion_evidence_complete: queryBoolean(query.motion_evidence_complete),
     keyboard_motion_verified: queryBoolean(query.keyboard_motion_verified),
   };
   const hasEvidence = Object.values(evidence).some((value) => value !== undefined);
@@ -229,6 +231,10 @@ function mergeKeyboardEvidence(
       || cachedEvidence.keyboard_stop_settled_after_pulse === true,
     wheel_feedback_lr_nonzero_proven: queryEvidence.wheel_feedback_lr_nonzero_proven === true
       || cachedEvidence.wheel_feedback_lr_nonzero_proven === true,
+    command_raw_lr_nonzero_proven: queryEvidence.command_raw_lr_nonzero_proven === true
+      || cachedEvidence.command_raw_lr_nonzero_proven === true,
+    motion_evidence_complete: queryEvidence.motion_evidence_complete === true
+      || cachedEvidence.motion_evidence_complete === true,
     keyboard_motion_verified: queryEvidence.keyboard_motion_verified === true
       || cachedEvidence.keyboard_motion_verified === true,
   };
@@ -262,10 +268,16 @@ function updateKeyboardEvidenceAfterManual(
   const bestPulseCount = Math.max(previousBest + 1, 1);
   const motionVerified = response.motion_signal_observed === "true"
     || response.imu_attitude_delta_observed === "true"
+    || response.motion_evidence_complete === "true"
     || previous?.keyboard_motion_verified === true;
   const wheelFeedbackVerified = response.wheel_feedback_lr_nonzero_proven === "true"
     || response.wheel_feedback_nonzero_observed === "true"
     || previous?.wheel_feedback_lr_nonzero_proven === true;
+  const commandRawVerified = response.command_raw_lr_nonzero_proven === "true"
+    || response.command_raw_nonzero_proven === "true"
+    || response.motion_evidence_complete === "true"
+    || previous?.command_raw_lr_nonzero_proven === true
+    || previous?.motion_evidence_complete === true;
   robotControlKeyboardEvidenceCache.set(key, {
     keyboard_enabled: true,
     keyboard_armed: true,
@@ -276,6 +288,10 @@ function updateKeyboardEvidenceAfterManual(
     keyboard_continuous_pulse_verified: bestPulseCount >= 2,
     keyboard_stop_settled_after_pulse: previous?.keyboard_stop_settled_after_pulse === true,
     wheel_feedback_lr_nonzero_proven: wheelFeedbackVerified,
+    command_raw_lr_nonzero_proven: commandRawVerified,
+    motion_evidence_complete: response.motion_evidence_complete === "true"
+      || (commandRawVerified && motionVerified)
+      || previous?.motion_evidence_complete === true,
     keyboard_motion_verified: motionVerified,
     updated_at_ms: Date.now(),
   });
@@ -298,6 +314,8 @@ function updateKeyboardEvidenceAfterStop(key: string, response: RobotControlBase
     keyboard_continuous_pulse_verified: bestPulseCount >= 2,
     keyboard_stop_settled_after_pulse: bestPulseCount >= 2,
     wheel_feedback_lr_nonzero_proven: previous?.wheel_feedback_lr_nonzero_proven === true,
+    command_raw_lr_nonzero_proven: previous?.command_raw_lr_nonzero_proven === true,
+    motion_evidence_complete: previous?.motion_evidence_complete === true,
     keyboard_motion_verified: previous?.keyboard_motion_verified === true,
     updated_at_ms: Date.now(),
   });
@@ -945,6 +963,13 @@ function baseManualMotionKeyValues(payload: Record<string, unknown> | null): Rec
     wheel_feedback_latest_right_speed: shortValue(latestPair?.right_speed, "not_loaded"),
     wheel_feedback_latest_raw_left: shortValue(latestDuringFrame?.L, "not_loaded"),
     wheel_feedback_latest_raw_right: shortValue(latestDuringFrame?.R, "not_loaded"),
+    command_raw_nonzero_proven: shortValue(payload?.command_raw_nonzero_proven, "false"),
+    command_raw_lr_nonzero_proven: shortValue(payload?.command_raw_lr_nonzero_proven, "false"),
+    command_raw_twist_nonzero_proven: shortValue(payload?.command_raw_twist_nonzero_proven, "false"),
+    command_raw_latest_left: shortValue(payload?.command_raw_latest_left, "not_loaded"),
+    command_raw_latest_right: shortValue(payload?.command_raw_latest_right, "not_loaded"),
+    command_raw_latest_linear_x: shortValue(payload?.command_raw_latest_linear_x, "not_loaded"),
+    command_raw_latest_angular_z: shortValue(payload?.command_raw_latest_angular_z, "not_loaded"),
     imu_attitude_delta_observed: shortValue(payload?.imu_attitude_delta_observed ?? imuSummary?.imu_attitude_delta_observed, "false"),
     manual_imu_attitude_delta_observed: shortValue(imuSummary?.imu_attitude_delta_observed ?? payload?.imu_attitude_delta_observed, "false"),
     imu_roll_delta: shortValue(imuSummary?.max_abs_roll_delta, "not_loaded"),
@@ -953,6 +978,8 @@ function baseManualMotionKeyValues(payload: Record<string, unknown> | null): Rec
     manual_imu_pitch_delta: shortValue(imuSummary?.max_abs_pitch_delta, "not_loaded"),
     motion_signal_observed: shortValue(payload?.motion_signal_observed, "false"),
     motion_signal_source: shortValue(payload?.motion_signal_source, "not_loaded"),
+    motion_evidence_complete: shortValue(payload?.motion_evidence_complete, "false"),
+    motion_evidence_source: shortValue(payload?.motion_evidence_source, "not_loaded"),
     feedback_during_motion_t1001_frame_count: String(duringFrames.length),
     feedback_after_stop_t1001_frame_count: String(afterStopFrames.length),
     feedback_during_motion_status: shortValue(duringFeedback?.t1001_feedback_status, "not_loaded"),
@@ -975,12 +1002,21 @@ function baseManualMotionTopLevelAliases(keyValues: Record<string, string>): Rec
     "wheel_feedback_nonzero_observed",
     "wheel_feedback_latest_raw_left",
     "wheel_feedback_latest_raw_right",
+    "command_raw_nonzero_proven",
+    "command_raw_lr_nonzero_proven",
+    "command_raw_twist_nonzero_proven",
+    "command_raw_latest_left",
+    "command_raw_latest_right",
+    "command_raw_latest_linear_x",
+    "command_raw_latest_angular_z",
     "imu_attitude_delta_observed",
     "manual_imu_attitude_delta_observed",
     "imu_roll_delta",
     "imu_pitch_delta",
     "motion_signal_observed",
     "motion_signal_source",
+    "motion_evidence_complete",
+    "motion_evidence_source",
     "feedback_during_motion_t1001_frame_count",
     "feedback_after_stop_t1001_frame_count",
     "manual_command_executed",
@@ -1539,6 +1575,13 @@ const BASE_COMMAND_EVIDENCE_KEYS = [
   "nav2_goal_execute_default_base_command_mode",
   "wheel_feedback_lr_nonzero_proven",
   "wheel_feedback_nonzero_observed",
+  "command_raw_nonzero_proven",
+  "command_raw_lr_nonzero_proven",
+  "command_raw_twist_nonzero_proven",
+  "command_raw_latest_left",
+  "command_raw_latest_right",
+  "motion_evidence_complete",
+  "motion_evidence_source",
   "motion_signal_observed",
   "motion_signal_source",
   "physical_motion_lidar_delta_proven",
@@ -1636,6 +1679,13 @@ function readOnlyStatusKeyValues(payload: Record<string, unknown> | null): Recor
     "nav2_goal_execute_default_base_command_mode",
     "wheel_feedback_lr_nonzero_proven",
     "wheel_feedback_nonzero_observed",
+    "command_raw_nonzero_proven",
+    "command_raw_lr_nonzero_proven",
+    "command_raw_twist_nonzero_proven",
+    "command_raw_latest_left",
+    "command_raw_latest_right",
+    "motion_evidence_complete",
+    "motion_evidence_source",
     "motion_signal_observed",
     "motion_signal_source",
     "latest_t1001_observed_count",
@@ -2125,7 +2175,8 @@ function buildMotionEvidenceGaps(
     // 上位机同窗口 IMU 姿态变化只能清掉“有无运动迹象”gap，wheel raw L/R 仍独立验收。
     remoteMotionKeyValues.motion_signal_observed === "true"
     || remoteMotionKeyValues.imu_attitude_delta_observed === "true"
-    || remoteMotionKeyValues.manual_imu_attitude_delta_observed === "true";
+    || remoteMotionKeyValues.manual_imu_attitude_delta_observed === "true"
+    || remoteMotionKeyValues.motion_evidence_complete === "true";
   const gaps = [
     preflightReason ? "motion_command_not_forwarded" : "",
     status === "captured" ? "" : "before_after_evidence_snapshot_incomplete",

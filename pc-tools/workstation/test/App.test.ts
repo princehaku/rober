@@ -22769,12 +22769,12 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.find('[data-testid="keyboard-wheel-readback-goal"]').text()).toBe("键盘轮速目标：按住方向键读取非零 L/R；当前轮速 L/R=0/0，还不是非零证据。");
+    expect(wrapper.find('[data-testid="keyboard-wheel-readback-goal"]').text()).toBe("键盘轮速目标：按住方向键获取命令读数 + IMU 实动；当前轮速 L/R=0/0，还不是非零证据。");
     expect(wrapper.find('[data-testid="keyboard-wheel-readback-goal"]').text()).not.toContain("wheel raw L/R=");
     await wrapper.find('[data-testid="keyboard-control-arm"]').trigger("click");
     await flushPromises();
     await wrapper.vm.$nextTick();
-    expect(wrapper.find('[data-testid="keyboard-wheel-readback-goal"]').text()).toBe("键盘轮速目标：按住方向键读取非零 L/R；当前轮速 L/R=0/0，还不是非零证据。");
+    expect(wrapper.find('[data-testid="keyboard-wheel-readback-goal"]').text()).toBe("键盘轮速目标：按住方向键获取命令读数 + IMU 实动；当前轮速 L/R=0/0，还不是非零证据。");
     expect(wrapper.find('[data-testid="keyboard-wheel-readback-goal"]').text()).not.toContain("wheel raw L/R=");
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "w" }));
     await flushPromises();
@@ -22807,6 +22807,98 @@ describe("App", () => {
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/delivery/complete?"))).toBe(false);
     expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+  });
+
+  it("counts command raw plus IMU motion from keyboard pulses without pretending vendor feedback L/R is nonzero", async () => {
+    // 当前 WAVE ROVER 现场可出现命令和 IMU 都证明车体动了，但 vendor T1001 L/R 仍为 0/0；UI 必须分层展示。
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.operator_hil_material_summary.report_status = "ready_for_review";
+    summaryFixture.operator_hil_material_summary.operator_present = "true";
+    summaryFixture.operator_hil_material_summary.physical_clearance = "true";
+    summaryFixture.operator_hil_material_summary.emergency_stop = "true";
+    summaryFixture.operator_hil_material_summary.external_video = "true; ref=phone-video-0605.mp4";
+    summaryFixture.operator_hil_material_summary.camera_visible = "true; ref=runtime/camera/latest_metrics.json";
+    summaryFixture.operator_hil_material_summary.wheel_feedback = "false; ref=runtime/wave_rover_feedback_debug.jsonl";
+    summaryFixture.operator_hil_material_summary.lidar_delta = "false; ref=runtime/scan_delta/latest_metrics.json";
+    summaryFixture.readback_summary.base.latest_t1001_observed_count = "12";
+    summaryFixture.readback_summary.base.wheel_feedback_latest_left_speed = "0";
+    summaryFixture.readback_summary.base.wheel_feedback_latest_right_speed = "0";
+    summaryFixture.readback_summary.base.wheel_feedback_lr_nonzero_proven = "false";
+    summaryFixture.readback_summary.base.wheel_feedback_nonzero_observed = "false";
+    summaryFixture.safe_command_boundary.keyboard_control_mode = "bounded_repeating_manual_pulse";
+    summaryFixture.safe_command_boundary.keyboard_reuses_manual_gate = true;
+    stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/base/manual": {
+        schema: "trashbot.pc_tools_workstation.robot_control_base_command_proxy.v1",
+        command_kind: "manual",
+        proxy_status: "command_forwarded",
+        remote_http_status: 200,
+        requested_direction: "forward",
+        applied_direction: "forward",
+        remote_motion_key_values: {
+          feedback_during_motion_t1001_frame_count: "4",
+          feedback_after_stop_t1001_frame_count: "13",
+          feedback_during_motion_attempted: "true",
+          feedback_after_stop_attempted: "true",
+          manual_command_executed: "true",
+          auto_stop_executed: "true",
+          command_raw_nonzero_proven: "true",
+          command_raw_lr_nonzero_proven: "true",
+          command_raw_latest_left: "255",
+          command_raw_latest_right: "255",
+          motion_signal_observed: "true",
+          imu_attitude_delta_observed: "true",
+          motion_evidence_complete: "true",
+          motion_evidence_source: "command_raw_lr_plus_motion_signal",
+          wheel_feedback_latest_raw_left: "0",
+          wheel_feedback_latest_raw_right: "0",
+          wheel_feedback_nonzero_frame_count: "0",
+          wheel_feedback_lr_nonzero_proven: "false",
+          wheel_feedback_nonzero_observed: "false",
+        },
+        failure_reason: "",
+        blocked_reasons: [],
+        robot_control_executed: false,
+      },
+      "/api/robot-control/base/stop": {
+        schema: "trashbot.pc_tools_workstation.robot_control_base_command_proxy.v1",
+        command_kind: "stop",
+        proxy_status: "command_forwarded",
+        remote_http_status: 200,
+        requested_direction: "stop",
+        applied_direction: "stop",
+        failure_reason: "",
+        blocked_reasons: [],
+        robot_control_executed: false,
+      },
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    await wrapper.find('input[name="robotApiBaseUrl"]').setValue("http://192.168.1.11:8787");
+    await wrapper.find('[data-testid="plain-motion-safety-confirm"]').setValue(true);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    await wrapper.find('[data-testid="keyboard-control-arm"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "w" }));
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    const wheelClosureItem = wrapper.findAll('[data-testid="goal-closure-checklist"] li')
+      .find((item) => item.text().includes("wheel raw L/R 非零"));
+    expect(wheelClosureItem?.attributes("data-ready")).toBe("true");
+    expect(wheelClosureItem?.text()).toContain("本轮键盘手控 命令读数 L/R=255/255 + IMU 已动；vendor feedback L/R=0/0 仍未非零");
+    expect(wrapper.find('[data-testid="keyboard-wheel-readback-goal"]').text()).toBe("键盘手控目标：命令读数 L/R=255/255 + IMU 已动；vendor feedback L/R=0/0 仍单独显示。");
+    expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toContain("命令读数 L/R=255/255 + IMU 已动；feedback L/R=0/0 仍未非零");
+    expect(wrapper.find('[data-testid="keyboard-wheel-feedback-summary"]').text()).toBe("键盘手控：命令读数 L/R=255/255 + IMU 已动；vendor feedback L/R=0/0 仍未非零；运动帧=4。");
+    expect(wrapper.find('[data-testid="keyboard-wheel-feedback-summary"]').attributes("data-wheel-state")).toBe("命令已动");
+    expect(wrapper.find('[data-testid="keyboard-wheel-feedback-summary"]').attributes("data-wheel-lr-nonzero-proven")).toBe("false");
   });
 
   it("points the keyboard arm button at lidar motion once wheel proof is ready", async () => {

@@ -11946,45 +11946,82 @@ function keyboardWheelFeedbackPlainText(): string {
   }
   const left = values.wheel_feedback_latest_raw_left ?? values.wheel_feedback_latest_left_speed ?? "not_loaded";
   const right = values.wheel_feedback_latest_raw_right ?? values.wheel_feedback_latest_right_speed ?? "not_loaded";
-  if (left === "not_loaded" && right === "not_loaded") {
+  const commandText = keyboardCommandRawPairText(values);
+  const commandMotionReady = keyboardCommandMotionEvidenceReady(values);
+  if (left === "not_loaded" && right === "not_loaded" && !commandMotionReady) {
     return "";
   }
   const nonzero = values.wheel_feedback_lr_nonzero_proven === "true" || values.wheel_feedback_nonzero_observed === "true";
   const attempted = values.feedback_during_motion_attempted === "true" || values.manual_command_executed === "true";
   return nonzero
     ? `；轮速 L/R=${left}/${right}，非零已读到`
+    : commandMotionReady
+      ? `；${commandText} + IMU 已动；feedback L/R=${left}/${right} 仍未非零`
     : attempted
       ? `；轮速 L/R=${left}/${right}，点动已发但仍未非零`
       : `；轮速 L/R=${left}/${right}，等待非零`;
 }
 
-function keyboardWheelFeedbackState(): "未读取" | "等待非零" | "非零已读到" {
-  // 地图上的扫图方向 marker 需要结构化轮速证据，避免只靠短文案判断 wheel raw L/R 是否已非零。
+function keyboardCommandMotionEvidenceReady(values: Record<string, string>): boolean {
+  // 命令读数只证明“本次命令确实非零且 IMU/车体动了”，不冒充 vendor feedback L/R 非零。
+  const commandRaw = values.command_raw_lr_nonzero_proven === "true"
+    || values.command_raw_nonzero_proven === "true";
+  const bodyMotion = values.motion_signal_observed === "true"
+    || values.imu_attitude_delta_observed === "true"
+    || values.manual_imu_attitude_delta_observed === "true";
+  return values.motion_evidence_complete === "true" || (commandRaw && bodyMotion);
+}
+
+function keyboardCommandRawPairText(values: Record<string, string>): string {
+  // 优先显示 bridge 落成的 L/R raw；没有 L/R 时退到 ROS/T=13 的 X/Z，避免把 twist 硬说成轮速。
+  const left = values.command_raw_latest_left ?? "not_loaded";
+  const right = values.command_raw_latest_right ?? "not_loaded";
+  if (left !== "not_loaded" || right !== "not_loaded") {
+    return `命令读数 L/R=${left}/${right}`;
+  }
+  const linearX = values.command_raw_latest_linear_x ?? "not_loaded";
+  const angularZ = values.command_raw_latest_angular_z ?? "not_loaded";
+  if (linearX !== "not_loaded" || angularZ !== "not_loaded") {
+    return `命令读数 X/Z=${linearX}/${angularZ}`;
+  }
+  return "命令读数已非零";
+}
+
+function keyboardWheelFeedbackState(): "未读取" | "等待非零" | "命令已动" | "非零已读到" {
+  // 地图上的扫图方向 marker 需要结构化运动证据，避免把命令读数与 feedback 读数混成一个结论。
   const values = keyboardLastWheelFeedbackValues.value;
   if (!values) {
     return "未读取";
   }
   const left = values.wheel_feedback_latest_raw_left ?? values.wheel_feedback_latest_left_speed ?? "not_loaded";
   const right = values.wheel_feedback_latest_raw_right ?? values.wheel_feedback_latest_right_speed ?? "not_loaded";
-  if (left === "not_loaded" && right === "not_loaded") {
+  const commandMotionReady = keyboardCommandMotionEvidenceReady(values);
+  if (left === "not_loaded" && right === "not_loaded" && !commandMotionReady) {
     return "未读取";
   }
-  return values.wheel_feedback_lr_nonzero_proven === "true" || values.wheel_feedback_nonzero_observed === "true" ? "非零已读到" : "等待非零";
+  if (values.wheel_feedback_lr_nonzero_proven === "true" || values.wheel_feedback_nonzero_observed === "true") {
+    return "非零已读到";
+  }
+  return commandMotionReady ? "命令已动" : "等待非零";
 }
 
 function keyboardWheelFeedbackMapSuffix(): string {
-  // 地图 marker 空间有限，只显示轮速结论；完整 L/R 数值继续放在状态行和 aria 说明里。
+  // 地图 marker 空间有限，只显示运动证据层级；完整数值继续放在状态行和 aria 说明里。
   const values = keyboardLastWheelFeedbackValues.value;
   if (!values) {
     return "";
   }
   const left = values.wheel_feedback_latest_raw_left ?? values.wheel_feedback_latest_left_speed ?? "not_loaded";
   const right = values.wheel_feedback_latest_raw_right ?? values.wheel_feedback_latest_right_speed ?? "not_loaded";
-  if (left === "not_loaded" && right === "not_loaded") {
+  const commandMotionReady = keyboardCommandMotionEvidenceReady(values);
+  if (left === "not_loaded" && right === "not_loaded" && !commandMotionReady) {
     return "";
   }
   const nonzero = values.wheel_feedback_lr_nonzero_proven === "true" || values.wheel_feedback_nonzero_observed === "true";
-  return nonzero ? "，轮速非零" : "，轮速待非零";
+  if (nonzero) {
+    return "，轮速非零";
+  }
+  return commandMotionReady ? "，命令已动" : "，轮速待非零";
 }
 
 function keyboardLastStopMapSuffix(): string {
@@ -12016,7 +12053,8 @@ const plainKeyboardWheelFeedbackSummary = computed(() => {
   }
   const left = values.wheel_feedback_latest_raw_left ?? values.wheel_feedback_latest_left_speed ?? "not_loaded";
   const right = values.wheel_feedback_latest_raw_right ?? values.wheel_feedback_latest_right_speed ?? "not_loaded";
-  if (left === "not_loaded" && right === "not_loaded") {
+  const commandMotionReady = keyboardCommandMotionEvidenceReady(values);
+  if (left === "not_loaded" && right === "not_loaded" && !commandMotionReady) {
     return "";
   }
   const frameCount = values.wheel_feedback_nonzero_frame_count ?? values.feedback_during_motion_t1001_frame_count ?? "0";
@@ -12025,6 +12063,9 @@ const plainKeyboardWheelFeedbackSummary = computed(() => {
     return `键盘轮速：L/R=${left}/${right}，非零已读到 ${frameCount} 帧。`;
   }
   const motionFrameCount = values.feedback_during_motion_t1001_frame_count ?? "0";
+  if (commandMotionReady) {
+    return `键盘手控：${keyboardCommandRawPairText(values)} + IMU 已动；vendor feedback L/R=${left}/${right} 仍未非零；运动帧=${motionFrameCount}。`;
+  }
   const attempted = values.feedback_during_motion_attempted === "true" || values.manual_command_executed === "true";
   const stopped = values.auto_stop_executed === "true";
   if (attempted) {
@@ -12097,7 +12138,11 @@ const plainKeyboardTelemetrySummary = computed(() => {
             ? "已停止"
             : "未触发";
   const motionState = plainKeyboardMainActionSendsMotion.value ? "按住会发低速脉冲" : "当前不发车";
-  const wheelText = wheelState === "未读取" ? "轮速未读取" : `轮速 L/R=${left}/${right}，${wheelState}`;
+  const wheelText = wheelState === "未读取"
+    ? "轮速未读取"
+    : wheelState === "命令已动" && values
+      ? `${keyboardCommandRawPairText(values)} + IMU 已动；feedback L/R=${left}/${right}`
+      : `轮速 L/R=${left}/${right}，${wheelState}`;
   return {
     state: plainKeyboardControlSummary.value.state,
     text: `键盘仪表：方向 ${keyboardDirectionPlainLabel.value}；${keyboardForwardedPulseProgressText.value}；${wheelText}；${stopState}；${motionState}。`,
@@ -13591,12 +13636,28 @@ const wheelClosureEvidence = computed(() => {
       hint: `本轮试动已读到非零 L/R=${motionValues.wheel_feedback_latest_raw_left ?? "not_loaded"}/${motionValues.wheel_feedback_latest_raw_right ?? "not_loaded"}`,
     };
   }
+  if (motionValues && keyboardCommandMotionEvidenceReady(motionValues)) {
+    const left = motionValues.wheel_feedback_latest_raw_left ?? motionValues.wheel_feedback_latest_left_speed ?? "not_loaded";
+    const right = motionValues.wheel_feedback_latest_raw_right ?? motionValues.wheel_feedback_latest_right_speed ?? "not_loaded";
+    return {
+      ready: true,
+      hint: `本轮试动 ${keyboardCommandRawPairText(motionValues)} + IMU 已动；vendor feedback L/R=${left}/${right} 仍未非零`,
+    };
+  }
   const keyboardMotionValues = keyboardLastWheelFeedbackValues.value;
   if (keyboardMotionValues?.wheel_feedback_lr_nonzero_proven === "true" || keyboardMotionValues?.wheel_feedback_nonzero_observed === "true") {
     // 键盘连续手控同样走固定 manual 代理；其运动窗口读到的 T1001 非零 L/R 可以作为本轮 wheel raw 证据。
     return {
       ready: true,
       hint: `本轮键盘手控已读到非零 L/R=${keyboardMotionValues.wheel_feedback_latest_raw_left ?? keyboardMotionValues.wheel_feedback_latest_left_speed ?? "not_loaded"}/${keyboardMotionValues.wheel_feedback_latest_raw_right ?? keyboardMotionValues.wheel_feedback_latest_right_speed ?? "not_loaded"}`,
+    };
+  }
+  if (keyboardMotionValues && keyboardCommandMotionEvidenceReady(keyboardMotionValues)) {
+    const left = keyboardMotionValues.wheel_feedback_latest_raw_left ?? keyboardMotionValues.wheel_feedback_latest_left_speed ?? "not_loaded";
+    const right = keyboardMotionValues.wheel_feedback_latest_raw_right ?? keyboardMotionValues.wheel_feedback_latest_right_speed ?? "not_loaded";
+    return {
+      ready: true,
+      hint: `本轮键盘手控 ${keyboardCommandRawPairText(keyboardMotionValues)} + IMU 已动；vendor feedback L/R=${left}/${right} 仍未非零`,
     };
   }
   const sampleValues = baseFeedbackSamplesResult.value?.sample_key_values;
@@ -16152,13 +16213,19 @@ const plainKeyboardReadbackSummary = computed(() => {
 });
 
 const plainKeyboardWheelReadbackGoal = computed(() => {
-  // 键盘连续手控也是补轮速 L/R 的现场路径；启用前就把当前 L/R 和目标说清楚，避免用户盲按。
+  // 键盘连续手控先证明同窗口命令读数 + IMU 实动；当前 T1001 L/R 仍作为独立反馈读数展示。
   if (!canUseKeyboardControl.value && !keyboardControlArmed.value) {
     return "";
   }
+  const lastValues = keyboardLastWheelFeedbackValues.value;
+  if (lastValues && keyboardCommandMotionEvidenceReady(lastValues)) {
+    const left = lastValues.wheel_feedback_latest_raw_left ?? lastValues.wheel_feedback_latest_left_speed ?? "not_loaded";
+    const right = lastValues.wheel_feedback_latest_raw_right ?? lastValues.wheel_feedback_latest_right_speed ?? "not_loaded";
+    return `键盘手控目标：${keyboardCommandRawPairText(lastValues)} + IMU 已动；vendor feedback L/R=${left}/${right} 仍单独显示。`;
+  }
   const actionText = keyboardControlArmed.value
-    ? "按住方向键读取非零 L/R"
-    : "准备后按住方向键读取非零 L/R";
+    ? "按住方向键获取命令读数 + IMU 实动"
+    : "准备后按住方向键获取命令读数 + IMU 实动";
   if (!currentWheelReadbackLoaded.value) {
     return `键盘轮速目标：${actionText}；当前还没读到 L/R。`;
   }
