@@ -40,8 +40,8 @@ DEFAULT_WIDTH = 640
 DEFAULT_HEIGHT = 480
 DEFAULT_FPS = 15
 FIRST_FRAME_TIMEOUT_S = 3.0
-# 共享 MJPEG 是普通 PC 首屏默认多人预览路径；失败要快，不能让 <img> 长时间悬空。
-MJPEG_FIRST_FRAME_TIMEOUT_S = 0.75
+# 共享 MJPEG 是普通 PC 首屏默认多人预览路径；每次尝试要短，才能在首屏预算内覆盖 native 和低带宽模式。
+MJPEG_FIRST_FRAME_TIMEOUT_S = 0.6
 # 共享预览只做短路实时入口；完整格式矩阵交给 first-frame probe / USB recovery 诊断。
 MJPEG_FIRST_FRAME_TOTAL_TIMEOUT_S = 5.0
 # 先横向试关键格式；失败后仅短试 index/V4L2 打开方式，保证 PC 页面及时显示真实失败。
@@ -1141,10 +1141,12 @@ def camera_capture_attempt_specs(width: int, height: int, fps: int) -> list[Came
 
 
 def mjpeg_camera_capture_attempt_specs(width: int, height: int, fps: int) -> list[CameraCaptureAttemptSpec]:
-    """共享 MJPEG 首屏预算短，必须先横跨 MJPG/YUYV/default，而不是被一串 MJPG 吃完。"""
+    """共享 MJPEG 首屏预算短，必须先横跨 native/MJPG/YUYV，而不是被单一路径吃完。"""
     priority_specs = [
         # 现场 DV20 枚举没有 15fps MJPG；共享首屏先试真实离散 30fps，避免把 3 秒预算花在不支持组合上。
         CameraCaptureAttemptSpec("MJPG", width, height, 30),
+        # 当前 DV20 内核协商常落在 1280x720；把 native 高清模式放进短预算，避免只试小帧误判无画面。
+        CameraCaptureAttemptSpec("MJPG", 1280, 720, 30),
         # 首屏预览宁可先降分辨率出画面；低带宽模式更容易绕开 USB/带宽/格式协商问题。
         CameraCaptureAttemptSpec("MJPG", 480, 320, 30),
         # 真实 DV20 枚举里 320x240 YUYV 是 25/20fps；早试小帧 YUYV 可以验证“不是只卡 MJPG”。

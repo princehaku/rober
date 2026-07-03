@@ -208,9 +208,11 @@ class LocalWebrtcCameraSmokeTests(unittest.TestCase):
         self.assertEqual(len(labels), len(set(labels)))
 
     def test_mjpeg_attempt_specs_include_low_bandwidth_before_default(self) -> None:
-        """共享预览要先试极低带宽真帧，不能等默认模式失败后才知道软件兜底没做。"""
+        """共享预览要先试 native 和极低带宽真帧，不能等默认模式失败后才知道软件兜底没做。"""
         labels = [spec.label() for spec in camera.mjpeg_camera_capture_attempt_specs(640, 480, 15)]
 
+        self.assertLess(labels.index("MJPG@1280x720@30"), labels.index("default@current"))
+        self.assertLess(labels.index("MJPG@1280x720@30"), labels.index("MJPG@160x120@30"))
         self.assertLess(labels.index("MJPG@160x120@30"), labels.index("default@current"))
         self.assertLess(labels.index("YUYV@160x120@20"), labels.index("default@current"))
         self.assertLess(labels.index("MJPG@480x320@30"), labels.index("MJPG@160x120@30"))
@@ -766,19 +768,19 @@ class LocalWebrtcCameraSmokeTests(unittest.TestCase):
         self.assertEqual(attempts, error["first_frame_format_attempts"])
 
     def test_mjpeg_attempt_specs_cover_yuyv_and_default_before_extra_mjpg_modes(self) -> None:
-        """共享预览短窗口内优先试低带宽离散模式，避免大帧模式吃完整个首屏预算。"""
+        """共享预览短窗口内优先试 native 和低带宽离散模式，避免漏掉当前协商模式。"""
         specs = camera.mjpeg_camera_capture_attempt_specs(640, 480, 15)
 
         self.assertEqual(
-            ["MJPG@640x480@30", "MJPG@480x320@30", "YUYV@320x240@25", "MJPG@160x120@30", "YUYV@160x120@20"],
-            [spec.label() for spec in specs[:5]],
+            ["MJPG@640x480@30", "MJPG@1280x720@30", "MJPG@480x320@30", "YUYV@320x240@25", "MJPG@160x120@30", "YUYV@160x120@20"],
+            [spec.label() for spec in specs[:6]],
         )
         self.assertIn("default@current", [spec.label() for spec in specs])
         self.assertEqual(len(specs), len({(spec.fourcc, spec.width, spec.height, spec.fps, spec.apply_settings) for spec in specs}))
 
     def test_mjpeg_attempt_budget_reaches_yuyv_and_default_modes(self) -> None:
         """MJPEG 每次尝试必须足够短，让现场 DV20 的小帧 YUYV/default 真正被执行到。"""
-        critical_attempt_count = 5
+        critical_attempt_count = 6
 
         self.assertLess(camera.MJPEG_FIRST_FRAME_TIMEOUT_S, camera.FIRST_FRAME_TIMEOUT_S)
         self.assertLessEqual(
@@ -842,7 +844,7 @@ class LocalWebrtcCameraSmokeTests(unittest.TestCase):
 
         self.assertIsNotNone(error)
         self.assertGreaterEqual(len(attempts), 3)
-        self.assertEqual(["MJPG@640x480@30", "MJPG@480x320@30", "YUYV@320x240@25"], [item["label"] for item in attempts[:3]])
+        self.assertEqual(["MJPG@640x480@30", "MJPG@1280x720@30", "MJPG@480x320@30"], [item["label"] for item in attempts[:3]])
         self.assertIn("MJPG@160x120@30", [item["label"] for item in attempts])
         self.assertIn("YUYV@160x120@20", [item["label"] for item in attempts])
         self.assertEqual(["/dev/video1", "/dev/video1", "/dev/video1"], [item["open_source"] for item in attempts[:3]])
@@ -912,7 +914,7 @@ class LocalWebrtcCameraSmokeTests(unittest.TestCase):
         assert shared is not None
         first_fallback_index = next(index for index, item in enumerate(attempts) if item["open_backend"] == "CAP_V4L2")
         self.assertEqual(
-            ["MJPG@640x480@30", "MJPG@480x320@30", "YUYV@320x240@25"],
+            ["MJPG@640x480@30", "MJPG@1280x720@30", "MJPG@480x320@30"],
             [item["label"] for item in attempts[:3]],
         )
         self.assertIn("MJPG@160x120@30", [item["label"] for item in attempts[:first_fallback_index]])
