@@ -1534,7 +1534,7 @@ const fixtures: Record<string, unknown> = {
       map_display_direct_map_default_zoom_percent: "400%",
       map_display_fit_zoom_percent: "45%",
       map_display_max_zoom_percent: "1200%",
-      map_display_too_small_next_action_plain: "PC 首页默认用 400% 现场细节视角显示真实地图、路线、小车、雷达和目标；需要一屏看全点“适配”回 45% 完整图，仍觉得小就点“进入地图大屏”打开 /map；/map 默认 400% 细节大屏，也可点“适配”回 45% 完整图；/map 只保留缩放、只读刷新和工程观察入口；建图、保存和其他卡片都会收起；不需要先开 RViz2。",
+      map_display_too_small_next_action_plain: "PC 首页现在让地图独占首行，默认用 400% 现场细节视角显示真实地图、路线、小车、雷达和目标，图传和 WASD 放到地图下方；需要一屏看全点“适配”回 45% 完整图，仍觉得小就点“进入地图大屏”打开 /map；/map 默认 400% 细节大屏，也可点“适配”回 45% 完整图；/map 只保留缩放、只读刷新和工程观察入口；建图、保存和其他卡片都会收起；不需要先开 RViz2。",
       map_display_ros2_companion_answer_plain: "ROS2 配套：本地工程调试用 RViz2；远程浏览器观察用 Foxglove bridge + Foxglove Web；普通用户仍默认使用 PC 大地图和 /map，工程工具不替代简易控制台。",
       map_display_ros2_companion_plain: "ROS2 配套：本地工程调试用 RViz2；远程浏览器观察用 Foxglove bridge + Foxglove Web；普通用户仍默认使用 PC 大地图和 /map，工程工具不替代简易控制台。",
       map_display_operator_default_surface: "pc_big_map_direct_view",
@@ -1566,7 +1566,7 @@ const fixtures: Record<string, unknown> = {
       map_display_ros2_observe_motion_topics: false,
       map_display_ros2_observe_control_tools: false,
       map_display_engineering_tools_sends_motion: false,
-      map_display_companion_plain: "普通用户地图：首页 PC 大地图默认 400% 现场细节视角；进入 /map 使用 400% 细节大屏，地图画布按 viewport-dominant full-height 处理，点“细节放大”可继续查看局部，点“适配”回到 45% 完整视角，最高 1200%，地图、路线、目标点、小车位置和雷达点共用同一张 WYSIWYG 画布；PC 首页默认用 400% 现场细节视角显示真实地图、路线、小车、雷达和目标；需要一屏看全点“适配”回 45% 完整图，仍觉得小就点“进入地图大屏”打开 /map；/map 默认 400% 细节大屏，也可点“适配”回 45% 完整图；/map 只保留缩放、只读刷新和工程观察入口；建图、保存和其他卡片都会收起；不需要先开 RViz2。ROS2 配套：本地工程调试用 RViz2；远程浏览器观察用 Foxglove bridge + Foxglove Web；普通用户仍默认使用 PC 大地图和 /map，工程工具不替代简易控制台。ROS2 配套只作工程观察，本地用 RViz2，远程浏览器观察先部署 Foxglove bridge 后打开 Foxglove Web 连接 ws://192.168.1.11:8765；观察项固定为地图、雷达、TF、路径、定位和 costmap，不提供 GoalTool，不发送底盘移动命令。",
+      map_display_companion_plain: "普通用户地图：首页 PC 大地图默认 400% 现场细节视角；进入 /map 使用 400% 细节大屏，地图画布按 viewport-dominant full-height 处理，点“细节放大”可继续查看局部，点“适配”回到 45% 完整视角，最高 1200%，地图、路线、目标点、小车位置和雷达点共用同一张 WYSIWYG 画布；PC 首页现在让地图独占首行，默认用 400% 现场细节视角显示真实地图、路线、小车、雷达和目标，图传和 WASD 放到地图下方；需要一屏看全点“适配”回 45% 完整图，仍觉得小就点“进入地图大屏”打开 /map；/map 默认 400% 细节大屏，也可点“适配”回 45% 完整图；/map 只保留缩放、只读刷新和工程观察入口；建图、保存和其他卡片都会收起；不需要先开 RViz2。ROS2 配套：本地工程调试用 RViz2；远程浏览器观察用 Foxglove bridge + Foxglove Web；普通用户仍默认使用 PC 大地图和 /map，工程工具不替代简易控制台。ROS2 配套只作工程观察，本地用 RViz2，远程浏览器观察先部署 Foxglove bridge 后打开 Foxglove Web 连接 ws://192.168.1.11:8765；观察项固定为地图、雷达、TF、路径、定位和 costmap，不提供 GoalTool，不发送底盘移动命令。",
       map_display_sends_motion_when_clicked: false,
       map_display_starts_ros2: false,
       map_display_starts_rviz2: false,
@@ -7340,7 +7340,7 @@ describe("App", () => {
     expect(liveMapCompanionSummary.text()).toContain("进入 /map 使用 400% 细节大屏");
     expect(liveMapCompanionSummary.text()).toContain("点“细节放大”可继续查看局部");
     expect(liveMapCompanionSummary.text()).toContain("最高 1200%");
-    expect(liveMapCompanionSummary.text()).toContain("PC 首页默认用 400% 现场细节视角显示真实地图、行程、小车、雷达和目标；需要一屏看全点“适配”回 45% 完整图，仍觉得小就点“进入地图大屏”");
+    expect(liveMapCompanionSummary.text()).toContain("PC 首页现在让地图独占首行");
     expect(liveMapCompanionSummary.text()).toContain("/map 默认 400% 细节大屏");
     expect(liveMapCompanionSummary.text()).toContain("普通用户仍默认使用 PC 大地图");
     expect(liveMapCompanionSummary.text()).toContain("ROS2 配套只作工程观察");
@@ -9334,7 +9334,7 @@ describe("App", () => {
     expect(wrapper.find(".shell").attributes("data-direct-map-view-behavior")).toBe("page_shell_map_only");
     const topbarMapDirectLink = wrapper.find('[data-testid="topbar-map-direct-link"]');
     expect(topbarMapDirectLink.exists()).toBe(true);
-    expect(topbarMapDirectLink.text()).toBe("地图大屏 /map");
+    expect(topbarMapDirectLink.text()).toBe("打开大地图");
     expect(topbarMapDirectLink.attributes("href")).toBe("/map");
     expect(topbarMapDirectLink.attributes("data-map-view-action")).toBe("open_direct_map_view");
     expect(topbarMapDirectLink.attributes("data-user-facing-primary-map-action")).toBe("true");
@@ -9540,7 +9540,7 @@ describe("App", () => {
     expect(wrapper.find(".plain-map-overlay-frame").attributes("data-map-zoom-affects")).toBe("image-route-robot-radar-target");
     const mapHeadingProof = wrapper.find('[data-testid="plain-map-heading-proof"]');
     expect(mapHeadingProof.exists()).toBe(true);
-    expect(mapHeadingProof.text()).toBe("PC 大地图 400% · /map 满屏 · 普通看 PC 大地图；工程看 RViz2 / Foxglove");
+    expect(mapHeadingProof.text()).toBe("PC 大地图 400% · /map 满屏 · 普通看大地图；工程看 RViz2 / Foxglove");
     expect(mapHeadingProof.attributes("data-map-surface")).toBe("pc_big_map");
     expect(mapHeadingProof.attributes("data-primary-map-action-label")).toBe("进入地图大屏");
     expect(mapHeadingProof.attributes("data-direct-map-view-url")).toBe("/map");
@@ -9621,7 +9621,7 @@ describe("App", () => {
     expect(mapDisplayProof.text()).toContain("点“细节放大”可继续查看局部");
     expect(mapDisplayProof.text()).toContain("1200%");
     expect(mapDisplayProof.text()).toContain("点“进入地图大屏”直接切到 /map");
-    expect(mapDisplayProof.text()).toContain("PC 首页默认用 400% 现场细节视角显示真实地图、路线、小车、雷达和目标；需要一屏看全点“适配”回 45% 完整图，仍觉得小就点“进入地图大屏”");
+    expect(mapDisplayProof.text()).toContain("PC 首页现在让地图独占首行");
     expect(mapDisplayProof.text()).toContain("/map 默认 400% 细节大屏");
     expect(mapDisplayProof.text()).toContain("?view=map 兼容入口");
     expect(mapDisplayProof.text()).toContain("ROS2 配套：本地工程调试用 RViz2");
@@ -9656,14 +9656,14 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="plain-map-panel"]').attributes("data-map-zoom-scale")).toBe("12");
     expect(wrapper.find('[data-testid="plain-map-zoom-readout"]').text()).toBe("1200%");
-    expect(wrapper.find('[data-testid="plain-map-heading-proof"]').text()).toBe("PC 大地图 1200% · /map 满屏 · 普通看 PC 大地图；工程看 RViz2 / Foxglove");
+    expect(wrapper.find('[data-testid="plain-map-heading-proof"]').text()).toBe("PC 大地图 1200% · /map 满屏 · 普通看大地图；工程看 RViz2 / Foxglove");
     expect(wrapper.find('[data-testid="plain-map-heading-proof"]').attributes("data-current-map-zoom-percent")).toBe("1200%");
     expect(wrapper.find('[data-testid="plain-map-display-proof"]').attributes("data-current-map-zoom-percent")).toBe("1200%");
     await wrapper.find('[data-testid="plain-map-zoom-reset"]').trigger("click");
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="plain-map-panel"]').attributes("data-map-zoom-scale")).toBe("0.45");
     expect(wrapper.find('[data-testid="plain-map-zoom-readout"]').text()).toBe("45%");
-    expect(wrapper.find('[data-testid="plain-map-heading-proof"]').text()).toBe("PC 大地图 45% · /map 满屏 · 普通看 PC 大地图；工程看 RViz2 / Foxglove");
+    expect(wrapper.find('[data-testid="plain-map-heading-proof"]').text()).toBe("PC 大地图 45% · /map 满屏 · 普通看大地图；工程看 RViz2 / Foxglove");
     expect(wrapper.find('[data-testid="plain-map-heading-proof"]').attributes("data-current-map-zoom-percent")).toBe("45%");
     expect(wrapper.find('[data-testid="plain-map-display-proof"]').attributes("data-current-map-zoom-percent")).toBe("45%");
     expect(wrapper.find('[data-testid="plain-map-zoom-out"]').attributes("disabled")).toBeDefined();
@@ -9837,11 +9837,11 @@ describe("App", () => {
     expect(workstationStyles).toContain('.robot-console-grid[data-layout="visual-first"] .plain-camera-panel');
     expect(workstationStyles).toContain('.robot-console-grid[data-layout="visual-first"] .plain-radar-panel');
     expect(workstationStyles).toContain('.robot-console-grid[data-layout="visual-first"] .plain-map-panel');
-    expect(workstationStyles).toContain("grid-template-columns: minmax(0, 1fr) minmax(320px, 360px);");
-    expect(workstationStyles).toContain('"map camera"');
-    expect(workstationStyles).toContain('"map drive"');
-    expect(workstationStyles).toContain("图传必须在第一屏右上角");
-    expect(workstationStyles).toContain("max-height: min(40vh, 305px);");
+    expect(workstationStyles).toContain("grid-template-columns: repeat(2, minmax(0, 1fr));");
+    expect(workstationStyles).toContain('"map map"');
+    expect(workstationStyles).toContain('"camera drive"');
+    expect(workstationStyles).toContain("地图独占首行，先解决“地图太小”");
+    expect(workstationStyles).toContain("max-height: min(42vh, 360px);");
     expect(workstationStyles).toContain('.robot-console-grid[data-layout="visual-first"] .plain-camera-panel .plain-camera-usb-recovery-proof');
     expect(workstationStyles).toContain("不要把 USB 12M/非独占结论藏到详情区");
     expect(workstationStyles).toContain('.plain-camera-usb-recovery-proof[data-state="USB full-speed"]');
@@ -13348,7 +13348,7 @@ describe("App", () => {
       expect(directMapDisplayProof.text()).toContain("点“细节放大”可继续查看局部");
       expect(directMapDisplayProof.text()).toContain("1200%");
       expect(directMapDisplayProof.text()).toContain("点“进入地图大屏”直接切到 /map");
-      expect(directMapDisplayProof.text()).toContain("PC 首页默认用 400% 现场细节视角显示真实地图、路线、小车、雷达和目标；需要一屏看全点“适配”回 45% 完整图，仍觉得小就点“进入地图大屏”");
+      expect(directMapDisplayProof.text()).toContain("PC 首页现在让地图独占首行");
       expect(directMapDisplayProof.text()).toContain("/map 默认 400% 细节大屏");
       expect(directMapDisplayProof.text()).toContain("普通用户仍默认使用 PC 大地图");
       expect(directMapDisplayProof.text()).toContain("不启动工程工具、行程执行或小车运动");

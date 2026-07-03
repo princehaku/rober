@@ -337,9 +337,9 @@ const PLAIN_MAP_FOXGLOVE_BRIDGE_LAUNCH_COMMAND = "ros2 launch ros2_trashbot_brin
 const PLAIN_MAP_FOXGLOVE_WS_URL = "ws://192.168.1.11:8765";
 const PLAIN_MAP_FOXGLOVE_WEB_APP_URL = "https://studio.foxglove.dev";
 const PLAIN_MAP_ENGINEERING_TOOLS_ACTION_LABEL = "工程观察：RViz2 / Foxglove";
-const PLAIN_MAP_TOO_SMALL_NEXT_ACTION_PLAIN = "PC 首页默认用 400% 现场细节视角显示真实地图、路线、小车、雷达和目标；需要一屏看全点“适配”回 45% 完整图，仍觉得小就点“进入地图大屏”打开 /map；/map 默认 400% 细节大屏，也可点“适配”回 45% 完整图；/map 只保留缩放、只读刷新和工程观察入口；建图、保存和其他卡片都会收起；不需要先开 RViz2。";
+const PLAIN_MAP_TOO_SMALL_NEXT_ACTION_PLAIN = "PC 首页现在让地图独占首行，默认用 400% 现场细节视角显示真实地图、路线、小车、雷达和目标，图传和 WASD 放到地图下方；需要一屏看全点“适配”回 45% 完整图，仍觉得小就点“进入地图大屏”打开 /map；/map 默认 400% 细节大屏，也可点“适配”回 45% 完整图；/map 只保留缩放、只读刷新和工程观察入口；建图、保存和其他卡片都会收起；不需要先开 RViz2。";
 const PLAIN_MAP_ROS2_COMPANION_ANSWER_PLAIN = "ROS2 配套：本地工程调试用 RViz2；远程浏览器观察用 Foxglove bridge + Foxglove Web；普通用户仍默认使用 PC 大地图和 /map，工程工具不替代简易控制台。";
-const PLAIN_MAP_HEADER_SHORT_ANSWER = "普通看 PC 大地图；工程看 RViz2 / Foxglove";
+const PLAIN_MAP_HEADER_SHORT_ANSWER = "普通看大地图；工程看 RViz2 / Foxglove";
 const PLAIN_MAP_ROS2_OBSERVE_TOPICS = [
   "/map",
   "/scan",

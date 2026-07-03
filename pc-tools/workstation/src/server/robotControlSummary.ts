@@ -10177,7 +10177,7 @@ function buildLiveClosureSummary(
   const mapDisplayFoxgloveRolePlain = "Foxglove 用于远程浏览器大屏观察；先在 ROS2 环境安装并启动 foxglove_bridge，再连接 ws://192.168.1.11:8765。";
   const mapDisplayFoxgloveWebAppUrl = "https://studio.foxglove.dev";
   const mapDisplayEngineeringToolsActionLabel = "工程观察：RViz2 / Foxglove";
-  const mapDisplayTooSmallNextActionPlain = "PC 首页默认用 400% 现场细节视角显示真实地图、路线、小车、雷达和目标；需要一屏看全点“适配”回 45% 完整图，仍觉得小就点“进入地图大屏”打开 /map；/map 默认 400% 细节大屏，也可点“适配”回 45% 完整图；/map 只保留缩放、只读刷新和工程观察入口；建图、保存和其他卡片都会收起；不需要先开 RViz2。";
+  const mapDisplayTooSmallNextActionPlain = "PC 首页现在让地图独占首行，默认用 400% 现场细节视角显示真实地图、路线、小车、雷达和目标，图传和 WASD 放到地图下方；需要一屏看全点“适配”回 45% 完整图，仍觉得小就点“进入地图大屏”打开 /map；/map 默认 400% 细节大屏，也可点“适配”回 45% 完整图；/map 只保留缩放、只读刷新和工程观察入口；建图、保存和其他卡片都会收起；不需要先开 RViz2。";
   const mapDisplayRos2CompanionAnswerPlain = "ROS2 配套：本地工程调试用 RViz2；远程浏览器观察用 Foxglove bridge + Foxglove Web；普通用户仍默认使用 PC 大地图和 /map，工程工具不替代简易控制台。";
   const mapDisplayCompanionPlain = `普通用户地图：首页 PC 大地图默认 400% 现场细节视角；进入 /map 使用 400% 细节大屏，地图画布按 viewport-dominant full-height 处理，点“细节放大”可继续查看局部，点“适配”回到 45% 完整视角，最高 1200%，地图、路线、目标点、小车位置和雷达点共用同一张 WYSIWYG 画布；${mapDisplayTooSmallNextActionPlain}${mapDisplayRos2CompanionAnswerPlain}ROS2 配套只作工程观察，本地用 RViz2，远程浏览器观察先部署 Foxglove bridge 后打开 Foxglove Web 连接 ws://192.168.1.11:8765；观察项固定为地图、雷达、TF、路径、定位和 costmap，不提供 GoalTool，不发送底盘移动命令。`;
   const keyboardAcceptancePlain = "键盘连续手控验收只看同一次按住窗口的 manual pulse 回包：需要读到 wheel L/R 非零；全局只读采样或旧材料不能替代本次按住读数。";

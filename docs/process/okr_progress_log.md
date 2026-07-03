@@ -6,6 +6,22 @@
 
 ---
 
+## 2026-07-03 系列
+
+### 2026-07-03 20-20｜pc_map_full_width_ros2_companion｜PC 地图全宽首行与 ROS2 配套
+
+本轮 `sprints/2026.07.03_20-20_pc_map_full_width_ros2_companion/` 回应现场“PC 地图太小 / ROS2 有什么配套”的反馈：
+普通 PC 首页 `visual-first` 布局从“地图左侧 + 图传/WASD 右侧”改为“地图独占首行，图传和 WASD 在第二行并排”，
+顶栏入口改成“打开大地图”，地图卡继续保留 `/map` 直达满屏、缩放、只读刷新和工程观察入口。
+ROS2 配套口径保持：本地工程调试用 RViz2，远程浏览器观察用 Foxglove bridge + Foxglove Web；
+它们只观察 `/map`、`/scan`、TF、路径、定位和 costmap，不替代 PC 简易控制台，不发送底盘运动命令。
+
+验证范围：`npm test -- test/App.test.ts -t "map display|direct map|ROS2|Foxglove|RViz2|plain map" --run`
+7 tests OK / 232 skipped；`npm test -- test/robotControlSummary.test.ts --run` 14 tests OK；`npm run build` 通过
+（仅 Vite chunk size warning）；7001 已重启到 `HOST=0.0.0.0 PORT=7001 npm run api`，`/api/health` 返回
+`workstation_host=0.0.0.0`、`workstation_port=7001`，`/map` 返回 HTTP 200。本轮界面/只读合同改动本身不执行
+Nav2、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
 ## 2026-07-01 系列
 
 ### 2026-07-01 02-29｜pc_live_motion_runbook_plain｜当前卡点动作清单普通用户汇总

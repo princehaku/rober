@@ -526,22 +526,22 @@ h3 {
 }
 
 .robot-console-grid[data-layout="visual-first"] {
-  /* 普通首页就是驾驶台：地图是主屏，图传和 WASD 保留在右侧窄栏，避免地图继续像小预览。 */
-  grid-template-columns: minmax(0, 1fr) minmax(320px, 360px);
+  /* 普通首页就是驾驶台：地图独占首行，先解决“地图太小”，图传和 WASD 仍紧跟在下一行。 */
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   grid-template-areas:
-    "map camera"
-    "map drive"
+    "map map"
+    "camera drive"
     "details details";
   gap: 10px;
 }
 
 .robot-console-grid[data-layout="visual-first"] .plain-camera-panel {
-  /* 图传必须在第一屏右上角，右列收窄后继续保持可滚动而不挤压主地图。 */
+  /* 图传不再占地图右侧宽度；放在大地图下方，继续保持可滚动诊断。 */
   order: 0;
   grid-area: camera;
   display: flex;
   flex-direction: column;
-  max-height: min(40vh, 305px);
+  max-height: min(42vh, 360px);
   overflow: auto;
 }
 
@@ -560,7 +560,7 @@ h3 {
 }
 
 .robot-console-grid[data-layout="visual-first"] .plain-map-panel {
-  /* 地图是 PC 端主视图，首页优先给它接近整屏的高度；/map 仍保留纯满屏观察。 */
+  /* 地图是 PC 端主视图，首页优先给全宽大画布；/map 仍保留纯满屏观察。 */
   position: relative;
   order: 0;
   grid-area: map;
@@ -601,12 +601,12 @@ h3 {
 }
 
 .robot-console-grid[data-layout="visual-first"] .plain-motion-panel {
-  /* WASD 是第三个核心面板，放在图传下方并把键盘模块提到顶部。 */
+  /* WASD 是第三个核心面板，放在大地图下方并把键盘模块提到顶部。 */
   order: 0;
   grid-area: drive;
   display: flex;
   flex-direction: column;
-  max-height: min(42vh, 320px);
+  max-height: min(42vh, 360px);
   overflow: auto;
 }
 
@@ -1712,10 +1712,10 @@ h3 {
 }
 
 .robot-console-grid[data-layout="visual-first"] .plain-map-panel {
-  /* 后面的通用 grid-column 会覆盖 grid-area；这里重新声明，确保首屏是地图+图传+WASD 三栏驾驶台。 */
+  /* 后面的通用 grid-column 会覆盖 grid-area；这里重新声明，确保首行是全宽大地图。 */
   grid-area: map;
-  grid-column: auto;
-  grid-row: 1 / span 2;
+  grid-column: 1 / -1;
+  grid-row: auto;
   display: flex;
   flex-direction: column;
   height: clamp(960px, calc(100vh - 8px), 1800px);
@@ -1766,7 +1766,7 @@ h3 {
 
 @media (max-width: 1600px) {
   .shell:not([data-direct-map-view-requested="true"]) .robot-console-grid[data-layout="visual-first"] {
-    /* 常见 13-15 寸 PC 宽度下，右侧栏会把地图压成左侧预览；这里改成地图先全宽。 */
+    /* 常见 13-15 寸 PC 宽度下继续保持地图先全宽，避免右侧栏重新压缩地图。 */
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
       "map"
@@ -1804,7 +1804,7 @@ h3 {
 
 @media (min-width: 900px) and (max-width: 1600px) {
   .shell:not([data-direct-map-view-requested="true"]) .robot-console-grid[data-layout="visual-first"] {
-    /* 地图独占第一行；图传和 WASD 在第二行并排，兼顾观察和手控可达性。 */
+    /* 中等屏幕也让地图独占第一行；图传和 WASD 在第二行并排。 */
     grid-template-columns: repeat(2, minmax(0, 1fr));
     grid-template-areas:
       "map map"

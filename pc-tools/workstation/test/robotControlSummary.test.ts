@@ -487,7 +487,8 @@ describe("robotControlSummary", () => {
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("点“适配”回到 45% 完整视角");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("点“细节放大”可继续查看局部");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("最高 1200%");
-    expect(summary.live_closure_summary?.map_display_companion_plain).toContain("PC 首页默认用 400% 现场细节视角显示真实地图、路线、小车、雷达和目标；需要一屏看全点“适配”回 45% 完整图，仍觉得小就点“进入地图大屏”");
+    expect(summary.live_closure_summary?.map_display_companion_plain).toContain("PC 首页现在让地图独占首行");
+    expect(summary.live_closure_summary?.map_display_companion_plain).toContain("图传和 WASD 放到地图下方");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("/map 默认 400% 细节大屏");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("不需要先开 RViz2");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("普通用户仍默认使用 PC 大地图");

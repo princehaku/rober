@@ -5490,3 +5490,11 @@ ROS2 配套口径同步收紧：普通用户继续默认用 PC 大地图和 `/ma
 `bytes=0`。测试结束后 `uvcvideo` 已恢复默认 `quirks=0,nodrop=0`，服务恢复 `active`。
 这进一步排除“PC 页面独占、单一格式、低带宽格式或常见
 uvcvideo quirk”作为首帧失败根因；剩余动作仍是检查摄像头输入、USB 线/接口/供电或换 known-good UVC。
+
+2026-07-03 20:20 CST 起，普通 PC 首页地图再次按现场反馈改成全宽首行：`visual-first`
+布局不再把图传和 WASD 放到地图右侧压缩地图宽度，而是让地图独占首行，图传和 WASD 在第二行并排。
+顶栏入口文案改为“打开大地图”，仍直接进入 `/map` 只读大屏；地图卡继续提供 `工程观察` 折叠入口。
+ROS2 配套工具口径不变：本地工程调试用 RViz2（`ros2 launch ros2_trashbot_bringup rviz.launch.py`），
+远程浏览器观察用 Foxglove bridge（`ros2 launch ros2_trashbot_bringup foxglove_bridge.launch.py` 后连接
+`ws://192.168.1.11:8765`）。RViz2/Foxglove 只观察地图、雷达、TF、路径、定位和 costmap，不替代 PC 简易控制台，
+不启动 Nav2、建图 runtime 或任何底盘运动控制。
