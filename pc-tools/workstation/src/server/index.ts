@@ -683,6 +683,42 @@ function cameraProbeRawFallbackAttempts(payload: Record<string, unknown> | null)
     }));
 }
 
+function cameraProbeNoFrameFailure(
+  probeValues: RobotControlCameraFirstFrameProbeProxyResponse["probe_key_values"],
+): boolean {
+  // health 还没更新时，probe 自己的 fallback 证据也足以说明“已尝试读帧但没有首帧”。
+  const frameObserved = probeValues.read_ok === "true"
+    || probeValues.backend_frame_observed === "true"
+    || probeValues.visible_content_proven === "true";
+  if (frameObserved) {
+    return false;
+  }
+  const failureReason = shortText(probeValues.failure_reason, "");
+  const attemptsSummary = shortText(probeValues.fallback_attempts_summary, "");
+  const fallbackAttemptCount = Number.parseInt(probeValues.fallback_attempt_count || "0", 10);
+  const noFrameTokens = [
+    "capture_read_returned_false",
+    "capture_read_call_timeout",
+    "first_frame_timeout",
+    "first_frame_total_timeout",
+    "opencv_capture_not_opened",
+    "probe_total_timeout",
+    "probe_process_timeout",
+    "deadline_expired",
+    "backend_no_frame_observed",
+    "high_speed_zero_byte_no_frame",
+  ];
+  const summaryShowsNoFrame = noFrameTokens.some((token) => attemptsSummary.includes(token));
+  return CAMERA_FIRST_FRAME_FAILURE_REASONS.has(failureReason)
+    || failureReason === "probe_total_timeout"
+    || failureReason === "probe_process_timeout"
+    || probeValues.first_frame_timeout === "true"
+    || (probeValues.backend_smoke_status === "backend_no_frame_observed" && probeValues.backend_frame_observed !== "true")
+    || probeValues.streamon_io_error_observed === "true"
+    || summaryShowsNoFrame
+    || (fallbackAttemptCount > 0 && probeValues.low_bandwidth_fallback_attempted === "true" && attemptsSummary !== "none");
+}
+
 function cameraProbeCompactPayload(payload: Record<string, unknown> | null): Record<string, unknown> | undefined {
   // probe_payload 可能带很长的 v4l2 dump；PC 只透出关键状态和后端尝试摘要。
   const probePayload = asRecord(payload?.probe_payload);
@@ -772,12 +808,32 @@ function cameraProbeDiagnosticAliases(
     || sourceFailure?.source_diagnosis_status === "uvc_full_speed_usb_not_exclusive"
     || sourceFailure?.uvc_usb_topology_status === "uvc_video_on_full_speed_usb";
   const cameraTransportHardwareActionRequired = sourceFailure?.source_diagnosis_status === "uvc_transport_error_not_exclusive";
-  const cameraNoFrameHardwareActionRequired = sourceFailure?.source_diagnosis_status === "uvc_no_frame_not_exclusive"
+  const probeNoFrameFailure = cameraProbeNoFrameFailure(probeValues);
+  const externalHolderProven = sourceFailure?.source_usage_scope === "external_holder"
+    && sourceFailure?.source_usage_not_exclusive !== "true";
+  const probeNoFrameNotExclusive = probeNoFrameFailure && !externalHolderProven;
+  const sourceNoFrameNotExclusive = sourceFailure?.source_diagnosis_status === "uvc_no_frame_not_exclusive"
     && sourceFailure?.source_diagnosis_not_exclusive === "true";
-  const sourceDiagnosisNextActionPlain = cameraMjpegActionPlainText(sourceFailure?.source_diagnosis_next_action ?? "not_loaded")
-    || (cameraUsbFullSpeedDetected
-      ? "摄像头当前挂在 USB 12M full-speed，换高速 USB 口/线或带供电 USB Hub 后复测首帧。"
-      : "打开共享预览或点只读检查复测首帧。");
+  const cameraNoFrameHardwareActionRequired = sourceNoFrameNotExclusive || probeNoFrameNotExclusive;
+  const noFrameDiagnosisStatus = probeNoFrameNotExclusive
+    ? cameraUsbFullSpeedDetected
+      ? "uvc_full_speed_usb_not_exclusive"
+      : cameraTransportHardwareActionRequired
+        ? "uvc_transport_error_not_exclusive"
+        : "uvc_no_frame_not_exclusive"
+    : sourceFailure?.source_diagnosis_status ?? "not_loaded";
+  const probeNoFrameDiagnosisHint = sourceFailure?.source_usage_scope === "camera_service_self"
+    ? `不是页面独占：相机服务正在用单上游共享预览读取 ${cameraSourceDisplayName(sourceFailure?.selected_name, "UVC 设备")}，但首帧探针尝试多个格式后仍没有视频帧。`
+    : `不是页面独占：${cameraOwnerFreeText(cameraSourceDisplayName(sourceFailure?.selected_name, "UVC 设备"))}，但首帧探针尝试多个格式后仍没有视频帧。`;
+  const noFrameDiagnosisHint = probeNoFrameNotExclusive && !sourceNoFrameNotExclusive
+    ? probeNoFrameDiagnosisHint
+    : sourceFailure?.source_diagnosis_plain_hint ?? "not_loaded";
+  const sourceDiagnosisNextActionPlain = cameraUsbFullSpeedDetected
+    ? "摄像头当前挂在 USB 12M full-speed，换高速 USB 口/线或带供电 USB Hub 后复测首帧。"
+    : probeNoFrameNotExclusive
+      ? "已排除页面独占和低速 USB；检查摄像头输入信号、视频线、接口和供电，必要时换 known-good UVC 后复测。"
+      : cameraMjpegActionPlainText(sourceFailure?.source_diagnosis_next_action ?? "not_loaded")
+        || "打开共享预览或点只读检查复测首帧。";
   const cameraHardwareActionRequired = (
     cameraUsbFullSpeedDetected
     || cameraTransportHardwareActionRequired
@@ -799,9 +855,9 @@ function cameraProbeDiagnosticAliases(
     camera_first_frame_ready: firstFrameReady,
     frame_observed: frameObserved,
     first_frame_observed: frameObserved,
-    source_diagnosis_status: sourceFailure?.source_diagnosis_status ?? "not_loaded",
-    source_diagnosis_not_exclusive: sourceFailure?.source_diagnosis_not_exclusive ?? "not_loaded",
-    source_diagnosis_plain_hint: sourceFailure?.source_diagnosis_plain_hint ?? "not_loaded",
+    source_diagnosis_status: noFrameDiagnosisStatus,
+    source_diagnosis_not_exclusive: probeNoFrameNotExclusive ? "true" : sourceFailure?.source_diagnosis_not_exclusive ?? "not_loaded",
+    source_diagnosis_plain_hint: noFrameDiagnosisHint,
     source_diagnosis_next_action_plain: sourceDiagnosisNextActionPlain,
     camera_usb_speed: cameraUsbSpeed,
     camera_usb_full_speed_detected: cameraUsbFullSpeedDetected,

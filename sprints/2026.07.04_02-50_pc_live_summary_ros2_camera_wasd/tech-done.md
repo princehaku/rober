@@ -131,3 +131,32 @@ micro
   路径完成 goal。后续若必须做 ROS/T=13 复验，需要先处理现有 runtime/串口 owner 的切换策略，不能在已有 bridge 持有链路时假装模式已切。
 - 裸串口并发读 `/dev/ttyS5` 会撞到 `device disconnected or multiple access on port?`；后续复验应继续走
   bridge/API 的固定读回链路，不绕开现有串口 owner 抢读。
+
+## 2026-07-04 04:30 CST 追加修复与验证
+
+- 修复 PC `POST /api/robot-control/camera/first-frame/probe` 的诊断聚合：当上车 health 仍是
+  `source_selected_not_probed`，但本次 probe 已返回 `probe_total_timeout`、多格式 fallback 和低带宽组合均无首帧时，
+  PC 代理现在直接返回 `source_diagnosis_status=uvc_no_frame_not_exclusive`、
+  `source_diagnosis_not_exclusive=true`、`camera_hardware_action_label=检查摄像头输入/供电后复测`，
+  不再把普通页面降级成“复测相机首帧”或误导为页面独占。
+- 新增/更新测试覆盖：
+  - `npm test -- --run test/catalog.test.ts -t "workstation camera first-frame probe uses quick source check"`：通过，`1 passed`。
+  - `npm test -- --run test/catalog.test.ts -t "camera first-frame probe|camera mjpeg|uvc_no_frame|source_first_frame"`：通过，`4 passed`。
+  - `npm test -- --run test/robotControlSummary.test.ts -t "camera|first frame|mjpeg|uvc_no_frame"`：通过，`4 passed`。
+  - `npm test`：通过，`448 passed`。
+  - `npm run build`：通过；仍只有既有 Vite chunk size warning。
+- PC Node 已重启到 `0.0.0.0:7001`，当前监听 PID 为 `15404`。真实上位机复测：
+  - `POST /api/robot-control/camera/first-frame/probe` 返回 `proxy_status=probe_failed`、
+    `status=probe_total_timeout`、HTTP 503、`frame_observed=false`、`usb=480M`、
+    `source_diagnosis_status=uvc_no_frame_not_exclusive`、`camera_hardware_action_required=true`。
+  - 顺序刷新后的 `GET /api/robot-control/live-summary` 返回 `map_current_visible=true`、
+    `path_current_visible=true`、`radar_map_points_visible=true`、`camera_current_visible=false`、
+    `camera_source_diagnosis_status=uvc_no_frame_not_exclusive`、`camera_input_signal_check_required=true`、
+    `delivery_success=true`、`keyboard_continuous_motion_verified=true`、`wheel_lr_nonzero_proven=false`。
+- 再次低速手控复验：PC 通过固定 `/api/robot-control/base/manual` 发 `pwm` 前进/后退 700ms，均返回
+  `proxy_status=command_forwarded`、`command_raw_lr_nonzero_proven=true`，stop 返回 `command_forwarded`。
+  后续 `/api/robot-control/base/feedback-samples` 仍为 `wheel_feedback_lr_nonzero_proven=false`、
+  vendor `T=1001 L/R=0/0`。SSH 上位机确认 `/dev/ttyS5` 的唯一持有者是 `esp32_bridge`；
+  command debug 记录 manual `T=11 L/R=±164` 和历史 Nav2 bridge `T=11 L/R=±255` 均写出成功，
+  feedback debug 连续 `T=1001` 仍回 `L=0,R=0`。依据 `docs/vendor/VENDOR_INDEX.md`，
+  `T=1001.L/R` 是 WAVE ROVER 固件反馈字段；因此 wheel raw L/R 非零闭环仍未完成，不能把完整自动驾驶验收标为完成。

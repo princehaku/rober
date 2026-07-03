@@ -5700,3 +5700,22 @@ DV20 `/dev/video1` 是 UVC capture 设备，USB 当前为 `480M`，无人独占�
 不跨 Node 重启，也不替代长期 HIL。相机首帧探针仍 `probe_total_timeout`，USB 为 `480M` 且
 `camera_source_diagnosis_status=uvc_no_frame_not_exclusive`；图传缺口继续指向 DV20 输入/线缆/供电/设备本体，
 不是 PC 页面独占或共享 MJPEG relay。
+
+2026-07-04 04:30 CST 起，PC 固定相机首帧 probe 代理会直接从本次 probe 的失败材料推导无首帧诊断：
+即使上车 `/api/camera/health` 还停在 `source_selected_not_probed`，只要
+`/api/robot-control/camera/first-frame/probe` 返回 `probe_total_timeout`、多格式 fallback 或低带宽组合均没有读到首帧，
+响应顶层也会返回 `source_diagnosis_status=uvc_no_frame_not_exclusive`、
+`source_diagnosis_not_exclusive=true`、`camera_hardware_action_required=true` 和
+`camera_hardware_action_label=检查摄像头输入/供电后复测`。这样普通 PC 页、summary 和 live-summary 不会在
+“已证明 DV20/UVC 无帧”和“还没探测/复测首帧”之间来回跳。现场复验中，DV20 `/dev/video1` USB 为 `480M`、
+无人占用，probe 仍 `probe_total_timeout`，live-summary 已稳定显示 `camera_input_signal_check_required=true`；
+该缺口继续指向摄像头输入、视频线、接口、供电或设备本体，不是 PC 页面独占或多人预览 relay。
+
+同轮底盘手控复验继续区分“命令发出”和“wheel raw 闭环”：PC 通过 `/api/robot-control/base/manual`
+发 `pwm` 前进/后退 700ms，均返回 `proxy_status=command_forwarded` 和
+`command_raw_lr_nonzero_proven=true`，stop 返回 `command_forwarded`；上位机
+`wave_rover_command_debug.jsonl` 记录 vendor `T=11 L/R=±164` 写出成功。但
+`/api/robot-control/base/feedback-samples` 与 `wave_rover_feedback_debug.jsonl` 仍只读到
+vendor `T=1001 L/R=0/0`。按 `docs/vendor/VENDOR_INDEX.md` 指向的 WAVE ROVER JSON 协议，
+`T=1001.L/R` 是底盘反馈字段；因此 PC WASD 当前可证明连续手控命令链路和 stop 链路，不可宣称 wheel raw L/R
+非零或完整自动驾驶闭环完成。

@@ -1179,3 +1179,13 @@ WASD 前进/后退短脉冲继续证明 raw 命令非零、运动信号存在、
 `probe_total_timeout`，live 归类为 `uvc_no_frame_not_exclusive`，仅阻塞实时图传和建图视觉验收，
 不重新阻塞低速移动、键盘手控或图上路线发车前置。PC Node 的键盘手控/stop 本地证据缓存保留 10 分钟验收窗口，
 避免同轮测试和收口期间自然过期；该缓存不跨 Node 重启，不替代长期硬件闭环。
+
+2026-07-04 04:30 CST 追加现场事实：PC first-frame probe 代理已把本次 `probe_total_timeout`
+和多格式 fallback 无帧直接归类为 `uvc_no_frame_not_exclusive`，live-summary 也同步显示
+`camera_input_signal_check_required=true` 和 `camera_hardware_action_label=检查摄像头输入/供电后复测`。
+因此自由移动/建图页面不再把 DV20 无首帧误说成“还没探测”或“页面独占”；实时图传缺口继续只阻塞视觉验收。
+
+同轮低速手控复验：PC `pwm` 前进/后退 700ms 均通过固定 `/api/robot-control/base/manual`
+写出 vendor `T=11 L/R=±164`，stop 写出成功；但 `T=1001 L/R` 反馈仍为 `0/0`。
+依据 `docs/vendor/VENDOR_INDEX.md`，`T=1001.L/R` 是 WAVE ROVER 底盘反馈字段；所以自由移动/键盘手控可继续按
+command raw + stop + IMU 动作信号推进“能动”，但 wheel raw L/R 非零和完整自动驾驶闭环仍是未完成风险。

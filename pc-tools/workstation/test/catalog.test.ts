@@ -16837,6 +16837,15 @@ describe("workstation fail-closed API contracts", () => {
         remote_http_status: number;
         status: string;
         failure_reason: string;
+        source_diagnosis_status: string;
+        source_diagnosis_not_exclusive: string;
+        source_diagnosis_plain_hint: string;
+        source_diagnosis_next_action_plain: string;
+        camera_usb_speed: string;
+        camera_usb_full_speed_detected: boolean;
+        camera_hardware_action_required: boolean;
+        camera_hardware_action_label: string;
+        camera_reprobe_after_hardware_action_required: boolean;
         probe_payload?: Record<string, unknown>;
         fallback_attempts?: Record<string, unknown>[];
         auto_format_fallback?: boolean;
@@ -16880,6 +16889,16 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.auto_format_fallback).toBe(true);
       expect(body.low_bandwidth_fallback_attempted).toBe(true);
       expect(body.low_bandwidth_fallback_min_size).toBe("160x120");
+      expect(body.source_diagnosis_status).toBe("uvc_no_frame_not_exclusive");
+      expect(body.source_diagnosis_not_exclusive).toBe("true");
+      expect(body.source_diagnosis_plain_hint).toContain("不是页面独占");
+      expect(body.source_diagnosis_plain_hint).toContain("首帧探针尝试多个格式后仍没有视频帧");
+      expect(body.source_diagnosis_next_action_plain).toContain("检查摄像头输入信号");
+      expect(body.camera_usb_speed).toBe("not_loaded");
+      expect(body.camera_usb_full_speed_detected).toBe(false);
+      expect(body.camera_hardware_action_required).toBe(true);
+      expect(body.camera_hardware_action_label).toBe("检查摄像头输入/供电后复测");
+      expect(body.camera_reprobe_after_hardware_action_required).toBe(true);
       expect(body.probe_payload?.status).toBe("open_failed");
       expect(body.fallback_attempts?.map((item) => `${item.fourcc}@${item.width}x${item.height}:${item.status}/${item.failure_reason}`)).toContain(
         "YUYV@160x120:first_frame_timeout/deadline_expired",
@@ -16911,6 +16930,9 @@ describe("workstation fail-closed API contracts", () => {
           camera: {
             source_readiness: string;
             source_failure_reason: string;
+            source_diagnosis_status: string;
+            source_diagnosis_not_exclusive: string;
+            camera_hardware_action_label: string;
             first_frame_probe_status: string;
             first_frame_probe_open_ok: string;
             first_frame_probe_read_ok: string;
@@ -16928,6 +16950,9 @@ describe("workstation fail-closed API contracts", () => {
 
       expect(summaryBody.readback_summary.camera.source_readiness).toBe("first_frame_failed");
       expect(summaryBody.readback_summary.camera.source_failure_reason).toBe("probe_http_status_503");
+      expect(summaryBody.readback_summary.camera.source_diagnosis_status).toBe("uvc_no_frame_not_exclusive");
+      expect(summaryBody.readback_summary.camera.source_diagnosis_not_exclusive).toBe("true");
+      expect(summaryBody.readback_summary.camera.camera_hardware_action_label).toBe("检查摄像头输入/供电后复测");
       expect(summaryBody.readback_summary.camera.first_frame_probe_status).toBe("open_failed");
       expect(summaryBody.readback_summary.camera.first_frame_probe_open_ok).toBe("false");
       expect(summaryBody.readback_summary.camera.first_frame_probe_read_ok).toBe("false");
@@ -17075,7 +17100,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.frame_observed).toBe(false);
       expect(body.source_diagnosis_status).toBe("uvc_full_speed_usb_not_exclusive");
       expect(body.source_diagnosis_not_exclusive).toBe("true");
-      expect(body.source_diagnosis_next_action_plain).toContain("known-good UVC");
+      expect(body.source_diagnosis_next_action_plain).toContain("USB 12M full-speed");
+      expect(body.source_diagnosis_next_action_plain).toContain("换高速 USB");
       expect(body.camera_usb_speed).toBe("12M");
       expect(body.camera_usb_full_speed_detected).toBe(true);
       expect(body.camera_hardware_action_required).toBe(true);
