@@ -4968,6 +4968,12 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   map_current_visible?: RobotControlLiveClosureSummary["map_current_visible"];
   path_visible?: RobotControlLiveClosureSummary["path_current_visible"];
   path_current_visible?: RobotControlLiveClosureSummary["path_current_visible"];
+  map_preview_status?: string;
+  path_preview_point_count?: RobotControlSummaryResponse["readback_summary"]["map"]["path_preview_point_count"];
+  route_target_visible?: RobotControlSummaryResponse["readback_summary"]["map"]["route_target_visible"];
+  route_target_source?: RobotControlSummaryResponse["readback_summary"]["map"]["route_target_source"];
+  route_target_state?: RobotControlSummaryResponse["readback_summary"]["map"]["route_target_state"];
+  robot_pose_status?: RobotControlSummaryResponse["readback_summary"]["map"]["robot_pose_status"];
   live_wysiwyg_map_visible?: RobotControlLiveClosureSummary["live_wysiwyg_map_visible"];
   live_wysiwyg_camera_visible?: RobotControlLiveClosureSummary["live_wysiwyg_camera_visible"];
   camera_hardware_action_required?: RobotControlLiveClosureSummary["camera_hardware_action_required"];

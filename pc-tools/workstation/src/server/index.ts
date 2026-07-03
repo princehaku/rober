@@ -3643,7 +3643,7 @@ function buildRobotControlLiveSummaryResponse(summary: RobotControlSummaryRespon
     field_acceptance_wysiwyg_refresh_stops_motion: summary.field_acceptance_wysiwyg_refresh_stops_motion,
     field_acceptance_steps: summary.field_acceptance_steps,
     nav2_route_acceptance_packet: summary.nav2_route_acceptance_packet,
-    map_preview_status: summary.readback_summary.map.status,
+    map_preview_status: summary.map_preview_status ?? summary.readback_summary.map.status,
     path_preview_point_count: summary.readback_summary.map.path_preview_point_count,
     route_target_visible: summary.readback_summary.map.route_target_visible,
     route_target_source: summary.readback_summary.map.route_target_source,

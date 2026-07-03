@@ -627,6 +627,12 @@ describe("robotControlSummary", () => {
     expect(summary.map_current_visible).toBe(true);
     expect(summary.path_visible).toBe(true);
     expect(summary.path_current_visible).toBe(true);
+    expect(summary.map_preview_status).toBe("loaded");
+    expect(summary.path_preview_point_count).toBe(summary.readback_summary.map.path_preview_point_count);
+    expect(summary.route_target_visible).toBe(summary.readback_summary.map.route_target_visible);
+    expect(summary.route_target_source).toBe(summary.readback_summary.map.route_target_source);
+    expect(summary.route_target_state).toBe(summary.readback_summary.map.route_target_state);
+    expect(summary.robot_pose_status).toBe(summary.readback_summary.map.robot_pose_status);
     expect(summary.live_wysiwyg_map_visible).toBe(true);
     expect(summary.camera_source_diagnosis_status).toBe(summary.live_closure_summary?.camera_source_diagnosis_status);
     expect(summary.camera_source_diagnosis_not_exclusive).toBe(summary.live_closure_summary?.camera_source_diagnosis_not_exclusive);
