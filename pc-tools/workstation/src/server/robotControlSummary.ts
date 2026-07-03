@@ -2566,6 +2566,24 @@ function cameraSummaryFromReadbacks(
   const sharedPreviewCachedFrameAgeMs = mjpegRelayOverlay?.cached_frame_age_ms === null || mjpegRelayOverlay?.cached_frame_age_ms === undefined
     ? "none"
     : compactValueText(mjpegRelayOverlay.cached_frame_age_ms);
+  const cameraCurrentVisibleForHardware = Boolean(sourceFirstFrameObserved || (sharedPreviewStatus === "streaming" && sharedPreviewCachedFrameLoaded));
+  const cameraUsbSpeedForHardware = asString(uvcUsbTopology?.video_usb_speed ?? sourceDiagnosis?.uvc_usb_topology_video_usb_speed ?? findFirstKey(healthPayload, ["uvc_usb_topology_video_usb_speed"]), "not_loaded");
+  const cameraUsbFullSpeedDetected = cameraUsbSpeedForHardware === "12M" || derivedSourceDiagnosis.status === "uvc_full_speed_usb_not_exclusive";
+  const cameraTransportHardwareActionRequired = derivedSourceDiagnosis.status === "uvc_transport_error_not_exclusive";
+  const cameraNoFrameHardwareActionRequired = compactValueText(derivedSourceDiagnosis.not_exclusive) === "true"
+    && ["uvc_no_frame_not_exclusive", "source_first_frame_failed", "first_frame_failed"].includes(derivedSourceDiagnosis.status || "");
+  const cameraHardwareActionRequired = (
+    cameraUsbFullSpeedDetected
+    || cameraTransportHardwareActionRequired
+    || cameraNoFrameHardwareActionRequired
+  ) && !cameraCurrentVisibleForHardware;
+  const cameraHardwareActionLabel = cameraHardwareActionRequired
+    ? cameraUsbFullSpeedDetected
+      ? "换高速USB后复测"
+      : cameraTransportHardwareActionRequired
+        ? "检查USB/供电后复测"
+        : "检查摄像头输入/供电后复测"
+    : "复测相机首帧";
   const sharedPreviewPlain = cameraSharedPreviewPlainSummary({
     previewStatus: sharedPreviewStatus,
     clientCount: sharedPreviewClientCount,
@@ -2704,6 +2722,9 @@ function cameraSummaryFromReadbacks(
     source_diagnosis_next_action: derivedSourceDiagnosis.next_action,
     source_diagnosis_next_action_plain: sourceDiagnosisNextActionPlain,
     source_diagnosis_not_exclusive: compactValueText(derivedSourceDiagnosis.not_exclusive),
+    camera_hardware_action_required: cameraHardwareActionRequired,
+    camera_hardware_action_label: cameraHardwareActionLabel,
+    camera_reprobe_after_hardware_action_required: cameraHardwareActionRequired,
     uvc_kernel_diagnostics_status: asString(uvcKernelDiagnostics?.status, "not_loaded"),
     uvc_kernel_diagnostics_plain_hint: asString(uvcKernelDiagnostics?.plain_hint, "not_loaded"),
     uvc_kernel_diagnostics_next_action: asString(uvcKernelDiagnostics?.next_action, "not_loaded"),
@@ -6971,6 +6992,9 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         source_diagnosis_next_action: "not_loaded",
         source_diagnosis_next_action_plain: "",
         source_diagnosis_not_exclusive: "not_loaded",
+        camera_hardware_action_required: false,
+        camera_hardware_action_label: "复测相机首帧",
+        camera_reprobe_after_hardware_action_required: false,
         source_usage_status: "not_loaded",
         source_usage_owner_count: "not_loaded",
         source_usage_summary: "not_loaded",

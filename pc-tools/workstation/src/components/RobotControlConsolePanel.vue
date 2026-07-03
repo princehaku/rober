@@ -27357,6 +27357,10 @@ onBeforeUnmount(() => {
             <dd>{{ robotSummary?.readback_summary.camera.source_diagnosis_next_action_plain ?? "not_loaded" }}</dd>
             <dt>camera_source_diagnosis_not_exclusive</dt>
             <dd>{{ robotSummary?.readback_summary.camera.source_diagnosis_not_exclusive ?? "not_loaded" }}</dd>
+            <dt>camera_hardware_action_required</dt>
+            <dd>{{ robotSummary?.readback_summary.camera.camera_hardware_action_required ?? false }}</dd>
+            <dt>camera_hardware_action_label</dt>
+            <dd>{{ robotSummary?.readback_summary.camera.camera_hardware_action_label ?? "复测相机首帧" }}</dd>
             <dt>camera_source_usage_status</dt>
             <dd>{{ robotSummary?.readback_summary.camera.source_usage_status ?? "not_loaded" }}</dd>
             <dt>camera_source_usage_owner_count</dt>

@@ -2549,6 +2549,9 @@ describe("robotControlSummary", () => {
     expect(summary.readback_summary.camera.source_usage_not_exclusive).toBe("true");
     expect(summary.readback_summary.camera.source_diagnosis_status).toBe("uvc_no_frame_not_exclusive");
     expect(summary.readback_summary.camera.source_diagnosis_not_exclusive).toBe("true");
+    expect(summary.readback_summary.camera.camera_hardware_action_required).toBe(true);
+    expect(summary.readback_summary.camera.camera_hardware_action_label).toBe("检查摄像头输入/供电后复测");
+    expect(summary.readback_summary.camera.camera_reprobe_after_hardware_action_required).toBe(true);
     expect(summary.readback_summary.camera.source_diagnosis_plain_hint).toContain("不是页面独占");
     expect(summary.readback_summary.camera.source_diagnosis_plain_hint).toContain("相机服务正在用单上游共享预览读取 USB Composite Device: DV20 USB");
     expect(summary.readback_summary.camera.source_diagnosis_plain_hint).toContain("UVC 设备没有输出视频帧");
@@ -2681,6 +2684,9 @@ describe("robotControlSummary", () => {
     expect(summary.readback_summary.camera.open_source_fallback_failure_reason).toBe("first_frame_total_timeout");
     expect(summary.readback_summary.camera.primary_source_failure_reason).toBe("first_frame_total_timeout");
     expect(summary.readback_summary.camera.source_diagnosis_status).toBe("uvc_full_speed_usb_not_exclusive");
+    expect(summary.readback_summary.camera.camera_hardware_action_required).toBe(true);
+    expect(summary.readback_summary.camera.camera_hardware_action_label).toBe("换高速USB后复测");
+    expect(summary.readback_summary.camera.camera_reprobe_after_hardware_action_required).toBe(true);
     expect(summary.readback_summary.camera.source_diagnosis_plain_hint).toContain("USB 12M full-speed");
     expect(summary.readback_summary.camera.source_diagnosis_next_action_plain).toBe("摄像头现在挂在 USB 12M full-speed，换高速 USB 口/线或带供电 USB Hub，减少转接并确认供电后复测；共享预览不是页面独占。");
     expect(summary.readback_summary.camera.source_diagnosis_next_action_plain).not.toContain("move camera");

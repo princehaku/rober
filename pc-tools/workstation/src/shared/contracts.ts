@@ -5292,6 +5292,9 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       source_diagnosis_next_action: string;
       source_diagnosis_next_action_plain: string;
       source_diagnosis_not_exclusive: string;
+      camera_hardware_action_required: boolean;
+      camera_hardware_action_label: string;
+      camera_reprobe_after_hardware_action_required: boolean;
       uvc_kernel_diagnostics_status?: string;
       uvc_kernel_diagnostics_plain_hint?: string;
       uvc_kernel_diagnostics_next_action?: string;
