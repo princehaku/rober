@@ -221,3 +221,32 @@ micro
   `camera_source_diagnosis_status=uvc_no_frame_not_exclusive`、`keyboard_motion_verified=true`、
   `keyboard_continuous_motion_verified=true`、`keyboard_command_raw_lr_nonzero_proven=true`、
   `keyboard_stop_settled_after_pulse=true`、`wheel_lr_nonzero_proven=false`、`delivery_success=true`。
+
+## 2026-07-04 05:25 CST 相机 direct capture 与地图当前态复核
+
+- 停止上位机 `trashbot-local-webrtc-camera.service` 后复核 `/dev/video1` / `/dev/video2` 没有 owner；
+  `media-ctl -d /dev/media1 -p` 显示 DV20 UVC `Input -> Processing -> Extension -> /dev/video1` 拓扑完整，
+  `v4l2-ctl --all` 显示 `Video input : 0 (Input 1: ok)`。
+- direct capture 逐格式验证仍无真实帧：`v4l2-ctl` 与 `ffmpeg` 尝试
+  `MJPG@640x480/1280x720/480x320/1920x1080@30`、`YUYV@320x240@20/25`、`YUYV@640x480@22`，
+  以及 GStreamer `MJPG@640x480@30`、`YUYV@320x240@20`，全部输出 `0` 字节或 `0` 帧。
+- 运行上位机 `/root/rober/onboard/scripts/camera_usb_recovery_smoke.py`：确认 USB `480M`、无人占用、
+  已 reauthorize、autosuspend 设为 `on`、同复合设备 audio 接口已解绑、`uvcvideo quirks=0`；但
+  `YUYV@320x240@20` 和 `MJPG@480x320@30` STREAMON 仍 10 秒超时 0 字节，
+  回包 `status=streamon_failed`、`stream_failure_class=high_speed_zero_byte_no_frame`、
+  `robot_control_executed=false`、`publishes_cmd_vel=false`、`opens_base_uart=false`。
+- PC 7001 保持 `0.0.0.0:7001` 监听，PID `52439`。只读雷达 proof 刷新后，
+  `/api/robot-control/map/preview` 返回 `path_preview_point_count=18`、`route_target_visible=true`、
+  `robot_pose_status=map_pose_observed`、`radar_overlay_status=loaded`、
+  `radar_overlay_current_point_count=173`、`radar_overlay_wysiwyg_complete=true`，
+  且 `starts_radar_lifecycle=false`、`starts_nav2=false`、`robot_control_executed=false`。
+- `GET /api/robot-control/live-summary` 同轮读回 `map_current_visible=true`、`path_current_visible=true`、
+  `route_target_current_visible=true`、`radar_map_points_current_visible=true`、
+  `map_display_default_zoom_percent=400%`、`map_display_direct_map_default_zoom_percent=400%`、
+  `map_display_max_zoom_percent=1600%`、`camera_current_visible=false`、
+  `camera_source_diagnosis_status=uvc_no_frame_not_exclusive`、`camera_hardware_action_required=true`、
+  `camera_input_signal_check_required=true`、`keyboard_continuous_motion_verified=true`、
+  `keyboard_command_raw_lr_nonzero_proven=true`、`wheel_lr_nonzero_proven=false`、`delivery_success=true`。
+- 剩余风险：相机实时预览仍未拿到真实首帧，当前证据已排除页面独占、多人共享、OpenCV 单点、MJPG/YUYV 格式、
+  低带宽模式和 USB 软恢复；下一步需要检查 DV20 上游视频输入、摄像头/采集卡、线材、接口或供电，
+  或换 known-good UVC 后复测。wheel raw L/R 仍未从 `T=1001` 读到非零，不能把它升级为已完成。
