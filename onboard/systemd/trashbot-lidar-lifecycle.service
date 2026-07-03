@@ -1,0 +1,24 @@
+[Unit]
+Description=Trashbot managed LiDAR lifecycle for PC map radar overlay
+Documentation=file:/root/rober/docs/product/pc_tools_workstation.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=forking
+WorkingDirectory=/root/rober
+Environment=HOME=/root
+Environment=USER=root
+Environment=LOGNAME=root
+Environment=ROS_HOME=/root/.ros
+Environment=ROS_LOG_DIR=/root/.ros/log
+# 当前真实上位机 systemd drop-in 已验证 /dev/ttyACM0 @ 150000 能稳定发布 /scan。
+PIDFile=/tmp/rober_lidar_lifecycle/lidar_lifecycle.pid
+ExecStart=/usr/bin/env bash /root/rober/onboard/scripts/o1_lidar_lifecycle.sh start --serial-port /dev/ttyACM0 --serial-baudrate 150000 --frame-id laser_frame
+ExecStop=/usr/bin/env bash /root/rober/onboard/scripts/o1_lidar_lifecycle.sh stop
+Restart=on-failure
+RestartSec=2
+KillMode=control-group
+
+[Install]
+WantedBy=multi-user.target

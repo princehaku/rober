@@ -8,6 +8,28 @@
 
 ## 2026-07-04 系列
 
+### 2026-07-04 07-05｜pc_boot_runtime_services｜PC 开机 runtime 服务与 ROS2 地图配套收口
+
+本轮 `sprints/2026.07.04_07-05_pc_boot_runtime_services/` 继续推进 O7 打开即用。上位机新增
+`trashbot-esp32-bridge.service` 与 `trashbot-lidar-lifecycle.service`：前者启动前清理脱管
+`esp32_bridge`，再按 `docs/vendor/VENDOR_INDEX.md` 指向的 WAVE ROVER `json_cmd.h`、`ugv_config.h`
+口径使用 `main_type=1,module_type=0` 和 `T=11` PWM164 的 HTTP 控制链路；后者固定恢复
+`/dev/ttyACM0 @ 150000` 的 LiDAR lifecycle。现场复验两个 service 均 `enabled/active`，
+ROS 图里 `/cmd_vel` 只有一个 `esp32_bridge` 订阅者，`/scan` 可读 LaserScan。
+
+PC live-summary 返回 `ready_for_motion`，地图、Nav2 路线、目标点、小车位置和雷达贴图均可见；前进/后退
+短脉冲均 `proxy_status=command_forwarded`、`command_raw_lr_nonzero_proven=true`、
+`motion_signal_observed=true`。wheel raw 仍为 `T=1001 L/R=0/0`，继续只作为反馈闭环风险。重启后相机
+CMA 已恢复为 `cma_available_no_recent_failure`，但共享 MJPEG 仍 `first_frame_total_timeout`、
+`uvc_no_frame_not_exclusive`，因此当前图传 blocker 从“释放内存/重启”下沉为检查 DV20 输入、供电、线材、
+接口、采集卡/摄像头或换 known-good UVC。
+
+用户关于“地图太小、ROS2 有什么配套”的口径同步为：普通用户仍用 PC 大地图和 `/map`，当前默认
+`800%`，需要工程观察时本地用 RViz2/Nav2 RViz 配置，远程浏览器用 Foxglove bridge + Foxglove Web；
+这些工程工具只观察 `/map`、`/scan`、TF、路径、定位和 costmap，不替代简易 PC 控制台，也不启动运动链路。
+O7 因开机 runtime 服务与现场复验从约 25% 小幅上调到约 26%，但不计入 wheel raw 非零、真实 RTC/视频、
+完整路线 HIL 或 delivery success。
+
 ### 2026-07-04 06-50｜pc_camera_cma_radar_live_wysiwyg｜PC 相机 CMA 诊断与雷达贴图复核
 
 本轮 `sprints/2026.07.04_06-50_pc_camera_cma_radar_live_wysiwyg/` 继续推进 O7 PC 打开即用。相机侧，

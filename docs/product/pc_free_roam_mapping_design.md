@@ -81,6 +81,15 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   `camera_hardware_action_label=释放内存/重启后复测`。该缺口仍只阻塞实时图传和建图相机首帧，
   不阻塞低速自由移动、WASD 或图上 Nav2 路线；下一步是释放内存或重启上位机后复测首帧，仍无画面再换
   known-good UVC。
+- 2026-07-04 07:05 重启上位机后复测：`CmaFree` 恢复到约 `125MB`，PC camera status 变为
+  `cma_available_no_recent_failure`，但共享 MJPEG 首帧仍 `first_frame_total_timeout`，
+  `source_diagnosis_status=uvc_no_frame_not_exclusive`。因此建图相机缺口不再优先按 CMA 处理，而是检查
+  DV20 上游输入、摄像头/采集卡、视频线、USB/供电或换 known-good UVC。同轮已把 `/cmd_vel`
+  bridge 和 LiDAR lifecycle 固化为 systemd 开机服务：`trashbot-esp32-bridge.service` 与
+  `trashbot-lidar-lifecycle.service` 均 `enabled/active`，`/scan` 可读 LaserScan，`/cmd_vel`
+  只有一个 `esp32_bridge` 订阅者。底盘参数来源仍以 `docs/vendor/VENDOR_INDEX.md` 指向的 WAVE ROVER
+  `json_cmd.h`、`ugv_config.h` 为准：`main_type=1,module_type=0`，PC WASD 经 `T=11` PWM164
+  HTTP 路径下发；自由移动和地图观察仍不依赖相机首帧。
 - 2026-06-25 16:06 起，扫图卡片自己的安全确认可直接作为键盘扫图的最小预检；不再要求先补 operator report、轮速非零或 LiDAR delta 材料才允许低速键盘扫图。
 - 2026-06-27 03:16 起，普通首屏、行程操作、键盘手控、自动扫图和高级点动区全部复用同一个
   “人在旁边、周围安全、停止手段就绪”安全确认；旧的四项 HIL checklist 不再出现在点动区，避免 operator

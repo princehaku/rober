@@ -1,0 +1,35 @@
+[Unit]
+Description=Trashbot ESP32 bridge for PC WASD and ROS cmd_vel
+Documentation=file:/root/rober/docs/product/pc_tools_workstation.md
+After=network-online.target
+Wants=network-online.target
+Before=trashbot-upper-robot-api.service
+
+[Service]
+Type=simple
+WorkingDirectory=/root/rober
+Environment=PYTHONUNBUFFERED=1
+Environment=HOME=/root
+Environment=USER=root
+Environment=LOGNAME=root
+Environment=ROS_HOME=/root/.ros
+Environment=ROS_LOG_DIR=/root/.ros/log
+# PC WASD 使用 ROS /cmd_vel 到 bridge；bridge 再经 WAVE ROVER HTTP 下发 PWM164。
+# main_type/module_type 与 T=11 PWM 口径来自 docs/vendor/VENDOR_INDEX.md 指向的 WAVE ROVER json_cmd.h、ugv_config.h。
+Environment=ROBER_BASE_SERIAL_PORT=/dev/ttyS5
+Environment=ROBER_BASE_BAUDRATE=115200
+Environment=ROBER_BRIDGE_COMMAND_MODE=pwm
+Environment=ROBER_BRIDGE_PWM_MIN_ABS=164
+Environment=ROBER_BRIDGE_PWM_MAX_ABS=164
+Environment=ROBER_BRIDGE_MAIN_TYPE=1
+Environment=ROBER_BRIDGE_MODULE_TYPE=0
+Environment=ROBER_BRIDGE_COMMAND_TRANSPORT=http
+Environment=ROBER_WAVE_ROVER_HTTP_BASE_URL=http://192.168.1.3
+Environment=ROBER_WAVE_ROVER_HTTP_TIMEOUT_S=0.6
+ExecStart=/usr/bin/env bash /root/rober/onboard/scripts/esp32_bridge_http.sh
+Restart=on-failure
+RestartSec=2
+KillMode=control-group
+
+[Install]
+WantedBy=multi-user.target
