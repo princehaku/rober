@@ -44,6 +44,13 @@ visual-first 首屏让地图独占首行，图传和 WASD/方向键连续手控�
 和 `YUYV@640x480/320x240@25/320x240@20` 经 v4l2/ffmpeg 均为 0 字节；PC 共享 MJPEG 返回
 `first_frame_total_timeout`。这证明当前实时图传缺口仍在摄像头输入/线/供电/采集设备出帧，不是页面独占或没试格式。
 
+2026-07-04 00:45 CST 起，PC summary 的 `readback_summary.map.status` 改为按当前 WYSIWYG
+显示证据合成：地图、路线、小车位姿和雷达贴图都可见时返回 `loaded`；缺少部分图层时返回 `partial`；
+完全未读到地图时才保留底层 proof 状态或 `not_loaded`。现场 7001 读回已经同时满足路线 18 点、目标点可见、
+`robot_pose_status=map_pose_observed` 和雷达贴图 `loaded`，因此普通脚本不应再把 `map.status=not_proven`
+误解成 PC 地图没加载。该变化只改只读状态合成，不启动 ROS2/RViz2/Foxglove/Nav2/建图 runtime，
+也不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
 2026-07-03 22:45 CST 起，`GET /api/robot-control/summary` 顶层也有
 `camera_input_signal_check_required`、`camera_input_signal_check_label` 和
 `camera_input_signal_check_plain`，不用再钻 `readback_summary.camera`。当前 7001 live summary 读回地图

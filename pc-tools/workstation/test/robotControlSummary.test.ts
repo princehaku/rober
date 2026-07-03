@@ -628,6 +628,7 @@ describe("robotControlSummary", () => {
     expect(summary.path_visible).toBe(true);
     expect(summary.path_current_visible).toBe(true);
     expect(summary.map_preview_status).toBe("loaded");
+    expect(summary.readback_summary.map.status).toBe("partial");
     expect(summary.path_preview_point_count).toBe(summary.readback_summary.map.path_preview_point_count);
     expect(summary.route_target_visible).toBe(summary.readback_summary.map.route_target_visible);
     expect(summary.route_target_source).toBe(summary.readback_summary.map.route_target_source);
@@ -4077,6 +4078,7 @@ describe("robotControlSummary", () => {
       readbackTimeoutMs: 100,
     });
     expect(summary.readback_summary.map.radar_overlay_status).toBe("loaded");
+    expect(summary.readback_summary.map.status).toBe("loaded");
     expect(summary.readback_summary.map.radar_overlay_point_count).toBe("2");
     expect(summary.readback_summary.map.radar_overlay_source_point_count).toBe("138");
     expect(summary.readback_summary.map.radar_overlay_refresh_required).toBe("false");

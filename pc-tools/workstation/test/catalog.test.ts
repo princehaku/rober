@@ -6473,7 +6473,7 @@ describe("workstation fail-closed API contracts", () => {
       const summary = await buildRobotControlSummary(robotApi.baseUrl);
 
       expect(summary.readback_summary.map).toMatchObject({
-        status: "map_once_artifact_metadata_observed",
+        status: "partial",
         map_once_observed: "true",
         map_quality_status: "has_usable_map",
         map_free_cell_count: "421",

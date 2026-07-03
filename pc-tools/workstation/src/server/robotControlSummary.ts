@@ -5962,6 +5962,11 @@ function mapSummaryFromReadbacks(
   const mapCurrentVisible = booleanSummaryValue(proof.map_once_observed) === "true";
   const pathCurrentVisible = pathPreviewStatus === "path_preview_observed";
   const radarOverlayCurrentVisible = effectiveRadarOverlayStatus === "loaded" && Number(radarOverlayPointCount) > 0;
+  const mapDisplayStatus = mapCurrentVisible
+    ? pathCurrentVisible && robotPoseStatus === "map_pose_observed" && radarOverlayCurrentVisible
+      ? "loaded"
+      : "partial"
+    : mapProof?.status ?? "not_loaded";
   const proofPathPreview: MapPreviewPathPreview = {
     path_preview_points: proof.path_preview_points,
     path_preview_point_count: proof.path_preview_point_count,
@@ -5992,7 +5997,7 @@ function mapSummaryFromReadbacks(
     radarNextAction: effectiveRadarOverlayExplanation.next_action_plain,
   });
   return {
-    status: mapProof?.status ?? "not_loaded",
+    status: mapDisplayStatus,
     map_once_observed: booleanSummaryValue(proof.map_once_observed),
     map_quality_status:
       proofText(readbacks, ["latest_map_quality_status", "map_quality_status"]) ??

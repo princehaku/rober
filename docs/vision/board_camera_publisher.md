@@ -91,6 +91,13 @@ ros2 launch ros2_trashbot_bringup bringup.launch.py \
 USB 低速口和未覆盖格式收窄到摄像头输入信号、视频线/接口/供电或 DV20/上游设备本身。
 这不改变地图、WASD 低速控制或自由移动入口；建图启动仍需要真实相机首帧。
 
+2026-07-04 00:44 CST 再次在上车端停掉 `trashbot-local-webrtc-camera.service` 后直连复测：
+`/dev/video1` 无 owner，`MJPG@640x480@30`、`YUYV@320x240@25` 经 `v4l2-ctl --stream-mmap`
+均 8 秒超时且输出 0 字节；`ffmpeg -f v4l2 -input_format mjpeg -video_size 640x480`
+同样未写出 JPEG。服务恢复后 `trashbot-local-webrtc-camera.service` 为 active，PC summary 显示
+`source_first_frame_failed`、`uvc_no_frame_not_exclusive`、`camera_input_signal_check_required=true`。
+结论保持不变：当前无实时图传不是页面独占，也不是共享预览服务未启动，而是 UVC/DV20 源头未吐视频帧。
+
 ## 2026-06-09 实板设备结论
 
 在 `root@192.168.1.11:37878` 实板上执行 `v4l2-ctl --list-devices` 和 OpenCV probe 后，确认：
