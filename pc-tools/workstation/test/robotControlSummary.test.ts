@@ -364,8 +364,8 @@ describe("robotControlSummary", () => {
     expect(summary.map_display_direct_map_refreshes_radar_status_on_enter).toBe(true);
     expect(summary.live_closure_summary?.map_display_direct_map_starts_radar_lifecycle_on_enter).toBe(false);
     expect(summary.map_display_direct_map_starts_radar_lifecycle_on_enter).toBe(false);
-    expect(summary.live_closure_summary?.map_display_default_zoom_percent).toBe("45%");
-    expect(summary.map_display_default_zoom_percent).toBe("45%");
+    expect(summary.live_closure_summary?.map_display_default_zoom_percent).toBe("100%");
+    expect(summary.map_display_default_zoom_percent).toBe("100%");
     expect(summary.live_closure_summary?.map_display_direct_map_default_zoom_percent).toBe("100%");
     expect(summary.map_display_direct_map_default_zoom_percent).toBe("100%");
     expect(summary.live_closure_summary?.map_display_fit_zoom_percent).toBe("45%");
@@ -386,8 +386,8 @@ describe("robotControlSummary", () => {
     expect(summary.map_display_operator_default_surface).toBe("pc_big_map_direct_view");
     expect(summary.live_closure_summary?.map_display_companion_replaces_pc_ui).toBe(false);
     expect(summary.map_display_companion_replaces_pc_ui).toBe(false);
-    expect(summary.live_closure_summary?.map_display_wysiwyg_overlays).toEqual(["image", "route", "robot", "radar"]);
-    expect(summary.map_display_wysiwyg_overlays).toEqual(["image", "route", "robot", "radar"]);
+    expect(summary.live_closure_summary?.map_display_wysiwyg_overlays).toEqual(["image", "route", "robot", "radar", "target"]);
+    expect(summary.map_display_wysiwyg_overlays).toEqual(["image", "route", "robot", "radar", "target"]);
     expect(summary.live_closure_summary?.map_display_ros2_companion_required).toBe(false);
     expect(summary.map_display_ros2_companion_required).toBe(false);
     expect(summary.live_closure_summary?.map_display_ros2_companion_tools).toEqual(["rviz2", "foxglove"]);
@@ -431,13 +431,13 @@ describe("robotControlSummary", () => {
     expect(summary.map_display_ros2_observe_control_tools).toBe(false);
     expect(summary.live_closure_summary?.map_display_engineering_tools_sends_motion).toBe(false);
     expect(summary.map_display_engineering_tools_sends_motion).toBe(false);
-    expect(summary.live_closure_summary?.map_display_companion_plain).toContain("首页 PC 大地图默认 45% 完整视角");
+    expect(summary.live_closure_summary?.map_display_companion_plain).toContain("首页 PC 大地图默认 100% 细节视角");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("进入 /map 使用 100% 细节大屏");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("适配");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("点“适配”回到 45% 完整视角");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("点“细节放大”可继续查看局部");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("最高 1200%");
-    expect(summary.live_closure_summary?.map_display_companion_plain).toContain("PC 首页默认用 45% 完整视角显示真实地图、路线、小车、雷达和目标；需要看细节点“细节放大”，仍觉得小就点“进入地图大屏”");
+    expect(summary.live_closure_summary?.map_display_companion_plain).toContain("PC 首页默认用 100% 细节视角显示真实地图、路线、小车、雷达和目标；需要一屏看全点“适配”回 45% 完整图，仍觉得小就点“进入地图大屏”");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("/map 默认 100% 细节大屏");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("不需要先开 RViz2");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("普通用户仍默认使用 PC 大地图");

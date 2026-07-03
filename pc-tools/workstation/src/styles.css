@@ -1723,8 +1723,31 @@ h3 {
   grid-area: map;
   grid-column: auto;
   grid-row: 1 / span 2;
+  display: flex;
+  flex-direction: column;
   height: clamp(620px, calc(100vh - 96px), 860px);
   min-height: 620px;
+  overflow: hidden;
+}
+
+.robot-console-grid[data-layout="visual-first"] .plain-map-panel:not([data-observer-mode="true"]) .plain-map-viewport > .plain-map-caption,
+.robot-console-grid[data-layout="visual-first"] .plain-map-panel:not([data-observer-mode="true"]) .plain-map-viewport > .plain-map-radar-wysiwyg-proof,
+.robot-console-grid[data-layout="visual-first"] .plain-map-panel:not([data-observer-mode="true"]) > .panel-note:not(.plain-map-ros2-tool-note),
+.robot-console-grid[data-layout="visual-first"] .plain-map-panel:not([data-observer-mode="true"]) > .panel-action-row {
+  /* 首页只留真实地图、缩放、雷达刷新和 ROS2观察开关；长说明仍保留在 DOM 和 /map，不能再压扁主地图。 */
+  display: none;
+}
+
+.robot-console-grid[data-layout="visual-first"] .plain-map-panel:not([data-observer-mode="true"]) > .plain-map-ros2-tool-note[data-open="false"] {
+  /* 普通用户默认先看地图；点击标题行 ROS2观察 后再展示工程只读入口。 */
+  display: none;
+}
+
+.robot-console-grid[data-layout="visual-first"] .plain-map-panel:not([data-observer-mode="true"]) > .plain-map-ros2-tool-note[data-open="true"] {
+  /* 展开工程入口时也限制高度，避免 RViz2/Foxglove 说明反过来吞掉地图。 */
+  flex: 0 0 auto;
+  max-height: 170px;
+  margin: 4px 0 0;
   overflow: auto;
 }
 
@@ -2317,9 +2340,17 @@ h3 {
 }
 
 .robot-console-grid[data-layout="visual-first"] .plain-map-panel:not([data-observer-mode="true"]) .plain-map-viewport[data-size="large"] .plain-map-layer {
-  /* 首页地图与图传/WASD 同屏；先把可见画布做大，再用缩放看局部细节。 */
-  height: clamp(820px, calc(100vh - 60px), 1500px);
-  min-height: 820px;
+  /* 首页地图只保留地图内部一层滚动；长说明收起后用固定下限防止画布被压成细条，卡片本身不再裁掉小车和目标点。 */
+  height: 100%;
+  min-height: clamp(360px, calc(100vh - 250px), 520px);
+}
+
+.robot-console-grid[data-layout="visual-first"] .plain-map-panel:not([data-observer-mode="true"]) .plain-map-viewport[data-size="large"] {
+  /* 地图卡片固定在首屏时，让 WYSIWYG 画布吃掉标题和工具条之后的剩余空间。 */
+  flex: 1 1 auto;
+  min-height: clamp(360px, calc(100vh - 250px), 520px);
+  margin-bottom: 0;
+  overflow: hidden;
 }
 
 .plain-map-viewport[data-size="fullscreen"] .plain-map-layer {
@@ -2348,7 +2379,7 @@ h3 {
 }
 
 .plain-map-overlay-frame {
-  /* 缩放作用在同一个 overlay frame 上；默认 45% 先保完整态势，细节放大再看局部。 */
+  /* 缩放作用在同一个 overlay frame 上；首页默认 100% 看细节，适配按钮回 45% 保完整态势。 */
   position: relative;
   flex: 0 0 auto;
   width: calc(100% * var(--plain-map-zoom, 1));
@@ -2358,7 +2389,7 @@ h3 {
 }
 
 .plain-map-layer.has-real-map .plain-map-overlay-frame {
-  /* 真实地图把 45% 定义为完整宽度视角；继续放大才进入滚动画布，避免 /map 直达页又显得偏小。 */
+  /* 真实地图仍把 45% 定义为完整宽度视角；首页和 /map 默认放大到 100%，避免第一眼偏小。 */
   width: calc(100% * var(--plain-map-zoom, 1) / var(--plain-map-fit-zoom, 1));
   height: auto;
   min-width: 0;

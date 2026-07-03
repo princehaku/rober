@@ -10071,9 +10071,9 @@ function buildLiveClosureSummary(
   const mapDisplayFoxgloveRolePlain = "Foxglove 用于远程浏览器大屏观察；先在 ROS2 环境安装并启动 foxglove_bridge，再连接 ws://192.168.1.11:8765。";
   const mapDisplayFoxgloveWebAppUrl = "https://studio.foxglove.dev";
   const mapDisplayEngineeringToolsActionLabel = "工程观察：RViz2 / Foxglove";
-  const mapDisplayTooSmallNextActionPlain = "PC 首页默认用 45% 完整视角显示真实地图、路线、小车、雷达和目标；需要看细节点“细节放大”，仍觉得小就点“进入地图大屏”打开 /map；/map 默认 100% 细节大屏，可点“适配”回 45% 完整图；/map 只保留缩放、只读刷新和工程观察入口；建图、保存和其他卡片都会收起；不需要先开 RViz2。";
+  const mapDisplayTooSmallNextActionPlain = "PC 首页默认用 100% 细节视角显示真实地图、路线、小车、雷达和目标；需要一屏看全点“适配”回 45% 完整图，仍觉得小就点“进入地图大屏”打开 /map；/map 默认 100% 细节大屏，也可点“适配”回 45% 完整图；/map 只保留缩放、只读刷新和工程观察入口；建图、保存和其他卡片都会收起；不需要先开 RViz2。";
   const mapDisplayRos2CompanionAnswerPlain = "ROS2 配套：本地工程调试用 RViz2；远程浏览器观察用 Foxglove bridge + Foxglove Web；普通用户仍默认使用 PC 大地图和 /map。";
-  const mapDisplayCompanionPlain = `普通用户地图：首页 PC 大地图默认 45% 完整视角；进入 /map 使用 100% 细节大屏，地图画布按 viewport-dominant full-height 处理，点“细节放大”可继续查看局部，点“适配”回到 45% 完整视角，最高 1200%，地图、路线、小车位置和雷达点共用同一张 WYSIWYG 画布；${mapDisplayTooSmallNextActionPlain}${mapDisplayRos2CompanionAnswerPlain}ROS2 配套只作工程观察，本地用 RViz2，远程浏览器观察先部署 Foxglove bridge 后打开 Foxglove Web 连接 ws://192.168.1.11:8765；观察项固定为地图、雷达、TF、路径、定位和 costmap，不提供 GoalTool，不发送底盘移动命令。`;
+  const mapDisplayCompanionPlain = `普通用户地图：首页 PC 大地图默认 100% 细节视角；进入 /map 使用 100% 细节大屏，地图画布按 viewport-dominant full-height 处理，点“细节放大”可继续查看局部，点“适配”回到 45% 完整视角，最高 1200%，地图、路线、目标点、小车位置和雷达点共用同一张 WYSIWYG 画布；${mapDisplayTooSmallNextActionPlain}${mapDisplayRos2CompanionAnswerPlain}ROS2 配套只作工程观察，本地用 RViz2，远程浏览器观察先部署 Foxglove bridge 后打开 Foxglove Web 连接 ws://192.168.1.11:8765；观察项固定为地图、雷达、TF、路径、定位和 costmap，不提供 GoalTool，不发送底盘移动命令。`;
   const keyboardAcceptancePlain = "键盘连续手控验收只看同一次按住窗口的 manual pulse 回包：需要读到 wheel L/R 非零；全局只读采样或旧材料不能替代本次按住读数。";
   const nav2ObjectiveDone = routeReadyOnMap && nav2GoalSucceeded && wheelLrNonzeroProven && !needsSameWindowWheelRerun;
   const keyboardObjectiveDone = keyboardMotionVerified && keyboardStopSettledAfterPulse;
@@ -10351,7 +10351,7 @@ function buildLiveClosureSummary(
     map_display_direct_map_refreshes_map_preview_on_enter: true,
     map_display_direct_map_refreshes_radar_status_on_enter: true,
     map_display_direct_map_starts_radar_lifecycle_on_enter: false,
-    map_display_default_zoom_percent: "45%",
+    map_display_default_zoom_percent: "100%",
     map_display_direct_map_default_zoom_percent: "100%",
     map_display_fit_zoom_percent: "45%",
     map_display_max_zoom_percent: "1200%",
@@ -10360,7 +10360,7 @@ function buildLiveClosureSummary(
     map_display_ros2_companion_plain: mapDisplayRos2CompanionAnswerPlain,
     map_display_operator_default_surface: "pc_big_map_direct_view",
     map_display_companion_replaces_pc_ui: false,
-    map_display_wysiwyg_overlays: ["image", "route", "robot", "radar"],
+    map_display_wysiwyg_overlays: ["image", "route", "robot", "radar", "target"],
     map_display_ros2_companion_required: false,
     map_display_ros2_companion_tools: ["rviz2", "foxglove"],
     map_display_engineering_tools_visible_by_default: false,

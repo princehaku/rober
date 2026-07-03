@@ -334,7 +334,7 @@ const PLAIN_MAP_FOXGLOVE_BRIDGE_LAUNCH_COMMAND = "ros2 launch ros2_trashbot_brin
 const PLAIN_MAP_FOXGLOVE_WS_URL = "ws://192.168.1.11:8765";
 const PLAIN_MAP_FOXGLOVE_WEB_APP_URL = "https://studio.foxglove.dev";
 const PLAIN_MAP_ENGINEERING_TOOLS_ACTION_LABEL = "工程观察：RViz2 / Foxglove";
-const PLAIN_MAP_TOO_SMALL_NEXT_ACTION_PLAIN = "PC 首页默认用 45% 完整视角显示真实地图、路线、小车、雷达和目标；需要看细节点“细节放大”，仍觉得小就点“进入地图大屏”打开 /map；/map 默认 100% 细节大屏，可点“适配”回 45% 完整图；/map 只保留缩放、只读刷新和工程观察入口；建图、保存和其他卡片都会收起；不需要先开 RViz2。";
+const PLAIN_MAP_TOO_SMALL_NEXT_ACTION_PLAIN = "PC 首页默认用 100% 细节视角显示真实地图、路线、小车、雷达和目标；需要一屏看全点“适配”回 45% 完整图，仍觉得小就点“进入地图大屏”打开 /map；/map 默认 100% 细节大屏，也可点“适配”回 45% 完整图；/map 只保留缩放、只读刷新和工程观察入口；建图、保存和其他卡片都会收起；不需要先开 RViz2。";
 const PLAIN_MAP_ROS2_COMPANION_ANSWER_PLAIN = "ROS2 配套：本地工程调试用 RViz2；远程浏览器观察用 Foxglove bridge + Foxglove Web；普通用户仍默认使用 PC 大地图和 /map。";
 const PLAIN_MAP_HEADER_SHORT_ANSWER = "普通看 PC 大地图；工程看 RViz2 / Foxglove";
 const PLAIN_MAP_ROS2_OBSERVE_TOPICS = [
@@ -362,21 +362,23 @@ const plainMapViewSize = computed(() => (plainMapDirectViewRequested.value || pl
 const PLAIN_MAP_ZOOM_LEVELS = [0.45, 0.5, 0.75, 1, 1.5, 2, 3, 4, 6, 8, 12] as const;
 const PLAIN_MAP_FIT_ZOOM_INDEX = 0;
 const PLAIN_MAP_DIRECT_DEFAULT_ZOOM_INDEX = Math.max(PLAIN_MAP_FIT_ZOOM_INDEX, PLAIN_MAP_ZOOM_LEVELS.findIndex((level) => level === 1));
-const PLAIN_MAP_DEFAULT_ZOOM_INDEX = plainMapDirectViewRequested.value ? PLAIN_MAP_DIRECT_DEFAULT_ZOOM_INDEX : PLAIN_MAP_FIT_ZOOM_INDEX;
+const PLAIN_MAP_HOME_DEFAULT_ZOOM_INDEX = PLAIN_MAP_DIRECT_DEFAULT_ZOOM_INDEX;
+const PLAIN_MAP_DEFAULT_ZOOM_INDEX = plainMapDirectViewRequested.value ? PLAIN_MAP_DIRECT_DEFAULT_ZOOM_INDEX : PLAIN_MAP_HOME_DEFAULT_ZOOM_INDEX;
 const plainMapZoomIndex = ref(PLAIN_MAP_DEFAULT_ZOOM_INDEX);
 const plainMapZoomScale = computed(() => PLAIN_MAP_ZOOM_LEVELS[plainMapZoomIndex.value] ?? 1);
 const plainMapZoomPercent = computed(() => `${Math.round(plainMapZoomScale.value * 100)}%`);
 const PLAIN_MAP_FIT_ZOOM_SCALE = PLAIN_MAP_ZOOM_LEVELS[PLAIN_MAP_FIT_ZOOM_INDEX];
 const PLAIN_MAP_FIT_ZOOM_PERCENT = "45%";
+const PLAIN_MAP_HOME_DEFAULT_ZOOM_PERCENT = "100%";
 const PLAIN_MAP_DIRECT_DEFAULT_ZOOM_PERCENT = "100%";
-const plainMapDefaultZoomPercent = computed(() => (plainMapDirectViewRequested.value ? PLAIN_MAP_DIRECT_DEFAULT_ZOOM_PERCENT : PLAIN_MAP_FIT_ZOOM_PERCENT));
+const plainMapDefaultZoomPercent = computed(() => (plainMapDirectViewRequested.value ? PLAIN_MAP_DIRECT_DEFAULT_ZOOM_PERCENT : PLAIN_MAP_HOME_DEFAULT_ZOOM_PERCENT));
 const PLAIN_MAP_MAX_ZOOM_PERCENT = "1200%";
 const plainMapZoomStyle = computed(() => ({
   "--plain-map-zoom": String(plainMapZoomScale.value),
   "--plain-map-fit-zoom": String(PLAIN_MAP_FIT_ZOOM_SCALE),
 }));
 function centerPlainMapViewport(): void {
-  // 放大地图后滚动原点必须覆盖完整画布；居中只是视角选择，不改变任何地图/路线/雷达坐标。
+  // 放大地图后优先把小车、目标点和雷达标记带进视口；这只改变滚动视角，不改变任何地图坐标。
   void nextTick().then(() => {
     const layer = plainMapLayer.value;
     if (!layer) {
@@ -385,8 +387,36 @@ function centerPlainMapViewport(): void {
     const center = (): void => {
       const maxScrollLeft = Math.max(0, layer.scrollWidth - layer.clientWidth);
       const maxScrollTop = Math.max(0, layer.scrollHeight - layer.clientHeight);
-      layer.scrollLeft = Math.round(maxScrollLeft / 2);
-      layer.scrollTop = Math.round(maxScrollTop / 2);
+      const focusNodes = Array.from(layer.querySelectorAll<HTMLElement>([
+        ".plain-map-robot-marker",
+        ".plain-map-route-goal-marker",
+        ".plain-map-route-endpoint-marker",
+        ".plain-map-radar-marker",
+        ".plain-map-free-roam-runtime-marker",
+        ".plain-map-free-roam-action-marker",
+        ".plain-map-free-roam-direction-marker",
+      ].join(","))).filter((node) => node.offsetWidth > 0 || node.offsetHeight > 0);
+      if (focusNodes.length === 0) {
+        layer.scrollLeft = Math.round(maxScrollLeft / 2);
+        layer.scrollTop = Math.round(maxScrollTop / 2);
+        return;
+      }
+      const layerRect = layer.getBoundingClientRect();
+      const centers = focusNodes.map((node) => {
+        const rect = node.getBoundingClientRect();
+        return {
+          x: layer.scrollLeft + rect.left - layerRect.left + rect.width / 2,
+          y: layer.scrollTop + rect.top - layerRect.top + rect.height / 2,
+        };
+      });
+      const left = Math.min(...centers.map((point) => point.x));
+      const right = Math.max(...centers.map((point) => point.x));
+      const top = Math.min(...centers.map((point) => point.y));
+      const bottom = Math.max(...centers.map((point) => point.y));
+      const targetLeft = (left + right) / 2 - layer.clientWidth / 2;
+      const targetTop = (top + bottom) / 2 - layer.clientHeight / 2;
+      layer.scrollLeft = Math.round(Math.min(maxScrollLeft, Math.max(0, targetLeft)));
+      layer.scrollTop = Math.round(Math.min(maxScrollTop, Math.max(0, targetTop)));
     };
     if (typeof window.requestAnimationFrame === "function") {
       window.requestAnimationFrame(center);
@@ -398,8 +428,8 @@ function centerPlainMapViewport(): void {
 const plainMapDisplayProofText = computed(() => {
   // 这行先回答现场“地图太小/ROS2 配套用什么”，工程命令仍收进折叠区，避免首屏重新变复杂。
   const viewText = plainMapObserverView.value || plainMapDirectViewRequested.value ? "只看地图大屏" : "PC 默认大地图主视图";
-  const defaultZoomText = plainMapDirectViewRequested.value ? `${PLAIN_MAP_DIRECT_DEFAULT_ZOOM_PERCENT} 细节大屏` : `${PLAIN_MAP_FIT_ZOOM_PERCENT} 完整视角`;
-  return `地图显示：${viewText}，默认 ${defaultZoomText}，当前 ${plainMapZoomPercent.value}，地图画布按 viewport-dominant full-height 处理，点“细节放大”可继续查看局部，点“适配”回到 ${PLAIN_MAP_FIT_ZOOM_PERCENT} 完整视角，最高 ${PLAIN_MAP_MAX_ZOOM_PERCENT}；图上行程、小车位置和雷达标记共用同一张 WYSIWYG 画布；普通用户点“进入地图大屏”直接切到 /map，本页也保留 ${plainMapLegacyDirectViewHref} 兼容入口；${PLAIN_MAP_TOO_SMALL_NEXT_ACTION_PLAIN}${PLAIN_MAP_ROS2_COMPANION_ANSWER_PLAIN}入口在“${PLAIN_MAP_ENGINEERING_TOOLS_ACTION_LABEL}”，只看地图/雷达/TF/路径/定位，不发车。本条只读，不启动工程工具、行程执行或小车运动。`;
+  const defaultZoomText = plainMapDirectViewRequested.value ? `${PLAIN_MAP_DIRECT_DEFAULT_ZOOM_PERCENT} 细节大屏` : `${PLAIN_MAP_HOME_DEFAULT_ZOOM_PERCENT} 细节视角`;
+  return `地图显示：${viewText}，默认 ${defaultZoomText}，当前 ${plainMapZoomPercent.value}，地图画布按 viewport-dominant full-height 处理，点“细节放大”可继续查看局部，点“适配”回到 ${PLAIN_MAP_FIT_ZOOM_PERCENT} 完整视角，最高 ${PLAIN_MAP_MAX_ZOOM_PERCENT}；图上行程、目标点、小车位置和雷达标记共用同一张 WYSIWYG 画布；普通用户点“进入地图大屏”直接切到 /map，本页也保留 ${plainMapLegacyDirectViewHref} 兼容入口；${PLAIN_MAP_TOO_SMALL_NEXT_ACTION_PLAIN}${PLAIN_MAP_ROS2_COMPANION_ANSWER_PLAIN}入口在“${PLAIN_MAP_ENGINEERING_TOOLS_ACTION_LABEL}”，只看地图/雷达/TF/路径/定位，不发车。本条只读，不启动工程工具、行程执行或小车运动。`;
 });
 const canZoomPlainMapIn = computed(() => plainMapZoomIndex.value < PLAIN_MAP_ZOOM_LEVELS.length - 1);
 const canZoomPlainMapOut = computed(() => plainMapZoomIndex.value > 0);
@@ -24610,7 +24640,7 @@ onBeforeUnmount(() => {
           :data-max-map-zoom-percent="PLAIN_MAP_MAX_ZOOM_PERCENT"
           :data-map-zoom-scale="String(plainMapZoomScale)"
           :data-map-zoom-percent="plainMapZoomPercent"
-          data-map-zoom-affects="image-route-robot-radar"
+          data-map-zoom-affects="image-route-robot-radar-target"
           :data-state="plainMapVisualSummary.state"
           :data-size="plainMapViewSize"
           :data-fullscreen="plainMapFullscreenView ? 'true' : 'false'"
@@ -24744,7 +24774,7 @@ onBeforeUnmount(() => {
                 data-refreshes-map-preview-on-enter="true"
                 data-refreshes-radar-status-on-enter="true"
                 data-starts-radar-lifecycle-on-enter="false"
-                data-keeps-wysiwyg-overlays="image-route-robot-radar"
+                data-keeps-wysiwyg-overlays="image-route-robot-radar-target"
                 data-ros2-companion-required="false"
                 data-ros2-companion-tool="rviz2"
                 data-ros2-remote-companion-tool="foxglove"
@@ -24760,7 +24790,7 @@ onBeforeUnmount(() => {
                 data-direct-map-view-control="map_refresh"
                 data-fixed-map-preview-endpoint="/api/robot-control/map/preview"
                 data-refreshes-radar-status="true"
-                data-refresh-affects="map-image-route-robot-radar"
+                data-refresh-affects="map-image-route-robot-radar-target"
                 data-sends-motion-when-clicked="false"
                 data-starts-map-runtime="false"
                 data-starts-nav2="false"
@@ -24820,7 +24850,7 @@ onBeforeUnmount(() => {
                 data-testid="plain-map-zoom-controls"
                 :data-map-zoom-scale="String(plainMapZoomScale)"
                 :data-map-zoom-percent="plainMapZoomPercent"
-                data-map-zoom-affects="image-route-robot-radar"
+                data-map-zoom-affects="image-route-robot-radar-target"
                 aria-label="地图缩放"
               >
                 <button type="button" class="secondary compact-stop" data-testid="plain-map-zoom-out" :disabled="!canZoomPlainMapOut" @click="zoomPlainMap(-1)">-</button>
@@ -24881,7 +24911,7 @@ onBeforeUnmount(() => {
                 data-refreshes-map-preview-on-enter="true"
                 data-refreshes-radar-status-on-enter="true"
                 data-hides-ordinary-actions-when-active="true"
-                data-keeps-wysiwyg-overlays="image-route-robot-radar"
+                data-keeps-wysiwyg-overlays="image-route-robot-radar-target"
                 data-user-facing-action="map_only_view"
                 data-ros2-companion-tool="rviz2"
                 :data-rviz-launch-command="PLAIN_MAP_RVIZ_LAUNCH_COMMAND"
@@ -24951,9 +24981,9 @@ onBeforeUnmount(() => {
                 :style="[plainMapVisualSummary.frameStyle, plainMapZoomStyle]"
                 :data-map-zoom-scale="String(plainMapZoomScale)"
                 :data-map-zoom-percent="plainMapZoomPercent"
-                data-map-zoom-affects="image-route-robot-radar"
+                data-map-zoom-affects="image-route-robot-radar-target"
               >
-                <img v-if="plainMapVisualSummary.imageDataUrl" class="plain-map-image" data-testid="plain-map-preview-image" :src="plainMapVisualSummary.imageDataUrl" :alt="plainMapVisualSummary.imageAlt">
+                <img v-if="plainMapVisualSummary.imageDataUrl" class="plain-map-image" data-testid="plain-map-preview-image" :src="plainMapVisualSummary.imageDataUrl" :alt="plainMapVisualSummary.imageAlt" @load="centerPlainMapViewport">
                 <template v-else>
                   <span class="plain-map-grid-line horizontal" />
                   <span class="plain-map-grid-line vertical" />
@@ -25093,7 +25123,7 @@ onBeforeUnmount(() => {
               data-fixed-map-proof-refresh-endpoint="/api/robot-control/map/proof/refresh"
               data-fixed-map-preview-endpoint="/api/robot-control/map/preview"
               data-refreshes-map-preview-after-proof="true"
-              data-refresh-affects="map-image-route-robot-radar"
+              data-refresh-affects="map-image-route-robot-radar-target"
               data-sends-motion-when-clicked="false"
               data-starts-map-runtime="false"
               data-starts-nav2="false"
@@ -25109,7 +25139,7 @@ onBeforeUnmount(() => {
               data-map-wysiwyg-action="refresh_preview"
               data-fixed-map-preview-endpoint="/api/robot-control/map/preview"
               data-refreshes-radar-status="true"
-              data-refresh-affects="map-image-route-robot-radar"
+              data-refresh-affects="map-image-route-robot-radar-target"
               data-sends-motion-when-clicked="false"
               data-starts-map-runtime="false"
               data-starts-nav2="false"
@@ -25165,7 +25195,7 @@ onBeforeUnmount(() => {
             data-primary-map-action-label="进入地图大屏"
             data-primary-map-action-opens-new-window="false"
             data-primary-map-action-opens-current-page="true"
-            data-wysiwyg-overlays="image-route-robot-radar"
+            data-wysiwyg-overlays="image-route-robot-radar-target"
             data-default-map-layout="dominant-first-screen-map"
             data-default-map-height-mode="viewport-dominant"
             data-real-map-fit-mode="height-first-preserve-aspect-scroll-x"
