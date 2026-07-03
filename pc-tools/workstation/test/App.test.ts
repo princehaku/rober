@@ -9807,6 +9807,9 @@ describe("App", () => {
     expect(workstationStyles).toContain('.shell[data-direct-map-view-requested="true"] .robot-console-grid > .snapshot-panel:not(.plain-map-panel)');
     expect(workstationStyles).toContain("只隐藏非地图卡片");
     expect(workstationStyles).toContain("直达地图只保留缩放、只读刷新和工程观察入口");
+    expect(workstationStyles).toContain("caption 和雷达证明留在普通首页");
+    expect(workstationStyles).toContain('.shell[data-direct-map-view-requested="true"] .plain-map-viewport > .plain-map-caption');
+    expect(workstationStyles).toContain('.shell[data-direct-map-view-requested="true"] .plain-map-viewport > .plain-map-radar-wysiwyg-proof');
     expect(workstationStyles).toContain(".plain-map-direct-refresh-action");
     expect(workstationStyles).toContain('.plain-map-viewport[data-state="地图可见"] .plain-map-layer');
     expect(workstationStyles).toContain('.plain-map-viewport[data-size="large"] .plain-map-layer');
@@ -9817,7 +9820,6 @@ describe("App", () => {
     expect(workstationStyles).toContain(".plain-map-direct-view-link");
     expect(workstationStyles).toContain(".plain-map-direct-view-link-primary");
     expect(workstationStyles).toContain("border-color: #0f6b45;");
-    expect(workstationStyles).toContain("/map 直达页由 URL 强制进入地图大屏");
     expect(workstationStyles).toContain("隐藏退出/收起类按钮，把工具条空间还给地图画布");
     expect(workstationStyles).toContain('.shell[data-direct-map-view-requested="true"] .plain-map-size-toggle');
     expect(workstationStyles).toContain("图层状态改为画布内浮层");
@@ -9829,9 +9831,9 @@ describe("App", () => {
     expect(workstationStyles).toContain("--plain-map-large-target-height: calc(100vh - 4px);");
     expect(workstationStyles).toContain("--plain-map-large-max-height: 2200px;");
     expect(workstationStyles).toContain("--plain-map-fullscreen-height: 100vh;");
-    expect(workstationStyles).toContain("不能等 observer 状态同步后才放大画布");
-    expect(workstationStyles).toContain("height: calc(100vh - 44px);");
-    expect(workstationStyles).toContain("min-height: calc(100vh - 44px);");
+    expect(workstationStyles).toContain("直达地图的可见 viewport 才是大屏边界");
+    expect(workstationStyles).toContain("height: 100%;");
+    expect(workstationStyles).toContain("min-height: 0;");
     expect(workstationStyles).toContain('.robot-console-grid[data-layout="visual-first"] .plain-camera-panel');
     expect(workstationStyles).toContain('.robot-console-grid[data-layout="visual-first"] .plain-radar-panel');
     expect(workstationStyles).toContain('.robot-console-grid[data-layout="visual-first"] .plain-map-panel');

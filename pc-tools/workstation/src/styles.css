@@ -120,6 +120,12 @@ button {
   display: none;
 }
 
+.shell[data-direct-map-view-requested="true"] .plain-map-viewport > .plain-map-caption,
+.shell[data-direct-map-view-requested="true"] .plain-map-viewport > .plain-map-radar-wysiwyg-proof {
+  /* `/map` 的首要任务是大地图观察；caption 和雷达证明留在普通首页，避免继续吃掉大屏高度。 */
+  display: none;
+}
+
 .shell[data-direct-map-view-requested="true"] .plain-map-panel[data-observer-mode="true"] > .plain-map-ros2-tool-note {
   /* `/map` 默认也是 observer 模式；这里单独恢复工程观察折叠区，避免 ROS2/RViz2/Foxglove 配套答案被通用只看地图规则隐藏。 */
   display: block;
@@ -149,12 +155,6 @@ button {
   flex: 1 1 auto;
   min-height: 0;
   margin-bottom: 0;
-}
-
-.shell[data-direct-map-view-requested="true"] .plain-map-viewport[data-size="fullscreen"] .plain-map-layer {
-  /* /map 直达页由 URL 强制进入地图大屏，不能等 observer 状态同步后才放大画布。 */
-  height: calc(100vh - 44px);
-  min-height: calc(100vh - 44px);
 }
 
 .topbar {
@@ -2405,6 +2405,12 @@ h3 {
 .plain-map-viewport[data-size="fullscreen"] .plain-map-layer {
   height: var(--plain-map-fullscreen-height);
   min-height: calc(var(--plain-map-large-min-height) - 120px);
+}
+
+.shell[data-direct-map-view-requested="true"] .plain-map-viewport[data-size="fullscreen"] .plain-map-layer {
+  /* 直达地图的可见 viewport 才是大屏边界，避免通用 fullscreen 最小高度把 /map 撑出屏幕。 */
+  height: 100%;
+  min-height: 0;
 }
 
 .plain-map-viewport[data-state="地图可见"] .plain-map-layer {
