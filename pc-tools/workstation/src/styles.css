@@ -1,7 +1,7 @@
 :root {
-  --plain-map-large-min-height: 1040px;
-  --plain-map-large-target-height: calc(100vh - 4px);
-  --plain-map-large-max-height: 2200px;
+  --plain-map-large-min-height: 1180px;
+  --plain-map-large-target-height: calc(100vh + 120px);
+  --plain-map-large-max-height: 2400px;
   --plain-map-fullscreen-height: 100vh;
   color: #17202a;
   background: #f4f6f8;
@@ -564,8 +564,8 @@ h3 {
   position: relative;
   order: 0;
   grid-area: map;
-  height: clamp(960px, calc(100vh - 8px), 1800px);
-  min-height: 880px;
+  height: clamp(1080px, calc(100vh + 96px), 2000px);
+  min-height: 980px;
   overflow: auto;
 }
 
@@ -1718,8 +1718,8 @@ h3 {
   grid-row: auto;
   display: flex;
   flex-direction: column;
-  height: clamp(960px, calc(100vh - 8px), 1800px);
-  min-height: 880px;
+  height: clamp(1080px, calc(100vh + 96px), 2000px);
+  min-height: 980px;
   overflow: hidden;
 }
 
@@ -1780,8 +1780,8 @@ h3 {
     grid-area: map;
     grid-column: 1 / -1;
     grid-row: auto;
-    height: clamp(940px, calc(100vh - 8px), 1680px);
-    min-height: 860px;
+    height: clamp(1040px, calc(100vh + 80px), 1880px);
+    min-height: 940px;
   }
 
   .shell:not([data-direct-map-view-requested="true"]) .robot-console-grid[data-layout="visual-first"] .plain-camera-panel,
@@ -1815,7 +1815,7 @@ h3 {
 
 .plain-map-panel[data-size="large"] {
   /* 普通 PC 首屏默认把地图当主视图，给真实地图足够高度而不是小预览卡。 */
-  min-height: min(100vh, 1380px);
+  min-height: min(calc(100vh + 120px), 1500px);
 }
 
 .plain-map-heading {
@@ -2384,13 +2384,13 @@ h3 {
 .robot-console-grid[data-layout="visual-first"] .plain-map-panel:not([data-observer-mode="true"]) .plain-map-viewport[data-size="large"] .plain-map-layer {
   /* 首页地图只保留地图内部一层滚动；给画布接近一屏高度，避免真实路线和雷达点继续像小预览。 */
   height: 100%;
-  min-height: clamp(780px, calc(100vh - 116px), 1500px);
+  min-height: clamp(900px, calc(100vh - 56px), 1700px);
 }
 
 .robot-console-grid[data-layout="visual-first"] .plain-map-panel:not([data-observer-mode="true"]) .plain-map-viewport[data-size="large"] {
   /* 地图卡片固定在首屏时，让 WYSIWYG 画布吃掉标题和工具条之后的剩余空间。 */
   flex: 1 1 auto;
-  min-height: clamp(780px, calc(100vh - 116px), 1500px);
+  min-height: clamp(900px, calc(100vh - 56px), 1700px);
   margin-bottom: 0;
   overflow: hidden;
 }
@@ -2427,7 +2427,7 @@ h3 {
 }
 
 .plain-map-overlay-frame {
-  /* 缩放作用在同一个 overlay frame 上；首页默认 150% 先保证可读，完整态势回到 100% 全局。 */
+  /* 缩放作用在同一个 overlay frame 上；首页默认 200% 先保证可读，完整态势回到 100% 全局。 */
   position: relative;
   flex: 0 0 auto;
   width: calc(100% * var(--plain-map-zoom, 1));

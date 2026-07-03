@@ -89,6 +89,10 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   `150%` 可读大图；点“完整态势”仍回到 `100%` 全局视角，点“细节放大”仍到 `1200%` 局部排障。
   这只改变同一张 WYSIWYG 地图画布的默认缩放，不启动 RViz2/Foxglove/ROS2 runtime、Nav2、建图 runtime、
   manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+- 2026-07-04 03:20 起，当前有效默认缩放再提升到 `200%` 大图，`/map` 同步使用
+  `200%`；`完整态势` 仍回到 `100%`，`细节放大` 仍到 `1200%`。PC 首页地图卡和内层画布也同步增高，
+  让地图、Nav2 路线、小车位置、雷达点和目标点优先占据普通用户第一视图。RViz2 / Foxglove 继续只是
+  ROS2 工程观察配套，不替代 PC 简易控制台，也不作为自由移动、建图或发车前置。
 - 2026-07-04 02:18 起，PC summary 的危险 true 字段扫描继续 fail-closed，但允许 `/api/status`
   内嵌的 `operator_report.structured_hil_claims.delivery_success=true` 作为人工送达材料回显；顶层
   `status.delivery_success=true`、`status.structured_hil_claims.delivery_success=true` 或任意非
