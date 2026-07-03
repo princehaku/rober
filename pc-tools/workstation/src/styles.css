@@ -571,8 +571,8 @@ h3 {
   position: relative;
   order: 0;
   grid-area: map;
-  height: clamp(860px, 100vh, 1600px);
-  min-height: 0;
+  height: clamp(960px, calc(100vh - 8px), 1800px);
+  min-height: 880px;
   overflow: auto;
 }
 
@@ -1725,8 +1725,8 @@ h3 {
   grid-row: 1 / span 2;
   display: flex;
   flex-direction: column;
-  height: clamp(760px, calc(100vh - 24px), 1280px);
-  min-height: 760px;
+  height: clamp(960px, calc(100vh - 8px), 1800px);
+  min-height: 880px;
   overflow: hidden;
 }
 
@@ -1787,8 +1787,8 @@ h3 {
     grid-area: map;
     grid-column: 1 / -1;
     grid-row: auto;
-    height: clamp(780px, calc(100vh - 12px), 1380px);
-    min-height: 780px;
+    height: clamp(940px, calc(100vh - 8px), 1680px);
+    min-height: 860px;
   }
 
   .shell:not([data-direct-map-view-requested="true"]) .robot-console-grid[data-layout="visual-first"] .plain-camera-panel,
@@ -2391,13 +2391,13 @@ h3 {
 .robot-console-grid[data-layout="visual-first"] .plain-map-panel:not([data-observer-mode="true"]) .plain-map-viewport[data-size="large"] .plain-map-layer {
   /* 首页地图只保留地图内部一层滚动；给画布接近一屏高度，避免真实路线和雷达点继续像小预览。 */
   height: 100%;
-  min-height: clamp(620px, calc(100vh - 176px), 980px);
+  min-height: clamp(780px, calc(100vh - 116px), 1500px);
 }
 
 .robot-console-grid[data-layout="visual-first"] .plain-map-panel:not([data-observer-mode="true"]) .plain-map-viewport[data-size="large"] {
   /* 地图卡片固定在首屏时，让 WYSIWYG 画布吃掉标题和工具条之后的剩余空间。 */
   flex: 1 1 auto;
-  min-height: clamp(620px, calc(100vh - 176px), 980px);
+  min-height: clamp(780px, calc(100vh - 116px), 1500px);
   margin-bottom: 0;
   overflow: hidden;
 }
@@ -2434,7 +2434,7 @@ h3 {
 }
 
 .plain-map-overlay-frame {
-  /* 缩放作用在同一个 overlay frame 上；首页默认 100% 看细节，适配按钮回 45% 保完整态势。 */
+  /* 缩放作用在同一个 overlay frame 上；首页默认 200% 看现场细节，适配按钮回 45% 保完整态势。 */
   position: relative;
   flex: 0 0 auto;
   width: calc(100% * var(--plain-map-zoom, 1));
@@ -2444,7 +2444,7 @@ h3 {
 }
 
 .plain-map-layer.has-real-map .plain-map-overlay-frame {
-  /* 真实地图仍把 45% 定义为完整宽度视角；首页和 /map 默认放大到 100%，避免第一眼偏小。 */
+  /* 真实地图仍把 45% 定义为完整宽度视角；首页和 /map 默认放大到 200%，避免第一眼偏小。 */
   width: calc(100% * var(--plain-map-zoom, 1) / var(--plain-map-fit-zoom, 1));
   height: auto;
   min-width: 0;

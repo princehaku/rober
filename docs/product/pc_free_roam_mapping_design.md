@@ -1084,3 +1084,11 @@ PC WASD `pwm + realtime` 快路径现在会把直接串口写出的 vendor comma
 等本次窗口 alias。真实后退脉冲读到 `T=11,L=-255,R=-255` 和 stop `T=11,L=0,R=0`，
 并返回 `motion_signal_observed=true`、`wheel_feedback_lr_nonzero_proven=false`。
 这让 PC WASD/手控的“命令到了”和“wheel raw 仍未证明”可以同时直读，不再需要解析嵌套材料。
+
+2026-07-03 18:48 现场地图显示口径更新：PC 首页和 `/map` 默认从 `100%` 放大到 `200%`
+现场细节视角，`适配` 仍回到 `45%` 完整图，最高 `1200%`。扫图向导继续把 PC 大地图作为普通入口，
+RViz2/Foxglove 只作为工程观察，不替代普通用户的建图、手控和行程按钮。
+
+同轮相机首帧缺口继续保持不阻塞低速移动：上位机对 DV20 `/dev/video1` 的 `uvcvideo`
+quirk/nodrop 矩阵和 MJPG/YUYV 两种低分辨率组合均为 `bytes=0`，服务恢复 active 后 PC 仍显示
+“检查摄像头输入/供电后复测”。这只阻塞实时图传和建图视觉验收；自由移动、WASD 和图上路线发车前置不依赖相机首帧。

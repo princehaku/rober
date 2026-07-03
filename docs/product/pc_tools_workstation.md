@@ -5470,3 +5470,17 @@ PC/上位机/ESP32 HTTP 命令链路有证据，IMU 有姿态变化信号，但 
 `transport_error_count=0`、`stale_transport_error_count=50`、`camera_usb_speed=480M`。
 无抢占首帧 probe 仍显示 OpenCV 可打开设备，但 v4l2 mmap、ffmpeg、MJPG/YUYV/current 九个后端均
 `no_frame_timeout` 且输出 0 字节；当前结论从“最新 USB 传输错误”收窄为“UVC 枚举正常但内核没有收到视频 buffer”。
+
+2026-07-03 18:48 CST 起，PC 地图按现场反馈继续放大：普通首页和 `/map` 直达页默认缩放从
+`100%` 改为 `200%`，`适配` 仍回到 `45%` 完整图，最高仍为 `1200%`。首页地图卡的覆盖规则收敛为
+`height: clamp(960px, calc(100vh - 8px), 1800px)`，常见中宽屏断点为
+`height: clamp(940px, calc(100vh - 8px), 1680px)`，避免历史后置 CSS 把前面的大地图规则压回小卡片。
+ROS2 配套口径同步收紧：普通用户继续默认用 PC 大地图和 `/map`，工程观察才用 RViz2 或 Foxglove bridge；
+这些工具只看 `/map`、`/scan`、`/tf`、路径、定位和 costmap，不替代简易控制台，也不发送底盘运动命令。
+
+同轮真实上位机摄像头 quirk 矩阵复验：停止 `trashbot-local-webrtc-camera.service` 后，对当前 DV20
+`/dev/video1` 组合测试 `uvcvideo quirks=0/2/4/16/128/256/384/640/32768/32896/33024`
+和 `nodrop=0/1`，分别尝试 `MJPG@640x480@30` 与 `YUYV@320x240@20`，所有组合仍为
+`bytes=0`。测试结束后 `uvcvideo` 已恢复默认 `quirks=0,nodrop=0`，服务恢复 `active`。
+这进一步排除“PC 页面独占、单一格式、低带宽格式或常见
+uvcvideo quirk”作为首帧失败根因；剩余动作仍是检查摄像头输入、USB 线/接口/供电或换 known-good UVC。

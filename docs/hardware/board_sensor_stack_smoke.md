@@ -2363,3 +2363,22 @@ free-roam start 或 `/cmd_vel`。
 结论：当前实时画面不可见已经不是 PC 独占或只试错格式导致；证据指向 `/dev/video1`
 设备可打开但没有输出视频帧。下一步应查摄像头输入、USB 线/供电、采集设备模式或更换
 known-good UVC 摄像头复测。
+
+## 2026-07-03 18:48 Camera UVC Quirk Matrix
+
+`sprints/2026.07.03_18-48_pc_map_200_ros2_companion_camera_quirks/` 在真实上位机
+`root@192.168.1.11:37878` 上继续压缩 DV20 摄像头软件变量。本轮先停止
+`trashbot-local-webrtc-camera.service`，再对当前 DV20 capture 节点 `/dev/video1`
+执行 uvcvideo 模块参数矩阵：
+
+- `quirks=0/2/4/16/128/256/384/640/32768/32896/33024`
+- `nodrop=0/1`
+- 每组都测试 `MJPG@640x480@30` 和 `YUYV@320x240@20`
+
+所有组合均为 `bytes=0`。测试结束后把 `uvcvideo` 恢复到默认
+`quirks=0,nodrop=0`，并确认 `trashbot-local-webrtc-camera.service` 恢复 `active`。
+
+结论：当前“摄像头无法看到效果”不是 PC 页面独占、单一 MJPG/YUYV 格式、低带宽分辨率或常见
+uvcvideo quirk 可以修复的问题。真实设备仍表现为 UVC 枚举和 STREAMON 可达，但内核/设备没有交付
+视频 buffer。下一步硬件动作是检查摄像头输入、线材、接口供电、采集设备模式，或换 known-good UVC
+摄像头复测；该缺口不阻塞低速手控、自由移动或 Nav2 发车前置，但阻塞实时图传和建图视觉验收。
