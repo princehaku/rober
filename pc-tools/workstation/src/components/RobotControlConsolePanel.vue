@@ -110,6 +110,9 @@ type PlainMapWysiwygLayerItem = {
 const KEYBOARD_JOG_INTERVAL_MS = 260;
 const KEYBOARD_JOG_DURATION_MS = 240;
 const KEYBOARD_VERIFIED_MIN_FORWARDED_PULSES = 2;
+const MANUAL_COMMAND_MODES = ["ros", "speed", "pwm"] as const;
+type ManualCommandMode = typeof MANUAL_COMMAND_MODES[number];
+const DEFAULT_KEYBOARD_MANUAL_COMMAND_MODE: ManualCommandMode = "ros";
 const RADAR_MAP_PREVIEW_AFTER_PROOF_RETRY_DELAYS_MS = [750, 1500] as const;
 const WHEEL_ZERO_NEXT_ACTION_SUMMARY = "下一步：检查电机使能、供电、模式和现场空间后重试读取轮速。";
 const EVIDENCE_STALE_AFTER_MS = 15 * 60 * 1000;
@@ -4148,7 +4151,7 @@ function actionCardWithDerivedEvidence(
       requires_keydown_for_motion: card.evidence?.requires_keydown_for_motion ?? true,
       pulse_interval_ms: card.evidence?.pulse_interval_ms ?? boundary?.keyboard_jog_interval_ms ?? KEYBOARD_JOG_INTERVAL_MS,
       pulse_duration_ms: card.evidence?.pulse_duration_ms ?? boundary?.keyboard_jog_duration_ms ?? KEYBOARD_JOG_DURATION_MS,
-      manual_command_mode: card.evidence?.manual_command_mode ?? boundary?.keyboard_manual_command_mode ?? "pwm",
+      manual_command_mode: card.evidence?.manual_command_mode ?? boundary?.keyboard_manual_command_mode ?? DEFAULT_KEYBOARD_MANUAL_COMMAND_MODE,
       stop_triggers: card.evidence?.stop_triggers ?? boundary?.keyboard_stop_triggers ?? ["key_released", "window_blur", "page_hidden"],
       wheel_feedback_required_in_same_hold_window: card.evidence?.wheel_feedback_required_in_same_hold_window ?? true,
       fixed_keyboard_manual_endpoint: card.evidence?.fixed_keyboard_manual_endpoint ?? boundary?.keyboard_manual_proxy_endpoint ?? "/api/robot-control/base/manual",
@@ -6627,7 +6630,7 @@ const plainLiveKeyboardControlReadback = computed(() => {
     wheelState,
     latestLeft,
     latestRight,
-    manualCommandMode: summary?.keyboard_manual_command_mode ?? "pwm",
+    manualCommandMode: summary?.keyboard_manual_command_mode ?? DEFAULT_KEYBOARD_MANUAL_COMMAND_MODE,
     fixedManualEndpoint: summary?.fixed_keyboard_manual_endpoint ?? "/api/robot-control/base/manual",
     fixedStopEndpoint: summary?.fixed_keyboard_stop_endpoint ?? "/api/robot-control/base/stop",
     readbackEndpoints: ["/api/robot-control/base/feedback-samples", "/api/robot-control/summary"],
@@ -9334,8 +9337,13 @@ const manualSpeedLimit = computed(() => manualBoundary.value?.speed_limit_mps ??
 const manualDurationLimit = computed(() => manualBoundary.value?.duration_limit_ms ?? 800);
 const keyboardJogIntervalMs = computed(() => manualBoundary.value?.keyboard_jog_interval_ms ?? KEYBOARD_JOG_INTERVAL_MS);
 const keyboardJogDurationMs = computed(() => manualBoundary.value?.keyboard_jog_duration_ms ?? KEYBOARD_JOG_DURATION_MS);
+function keyboardManualCommandMode(): ManualCommandMode {
+  // 现场串口由 esp32_bridge 持有，默认走 ROS /cmd_vel，避免 PC 手控再抢 /dev/ttyS5。
+  const mode = manualBoundary.value?.keyboard_manual_command_mode;
+  return MANUAL_COMMAND_MODES.includes(mode as ManualCommandMode) ? mode as ManualCommandMode : DEFAULT_KEYBOARD_MANUAL_COMMAND_MODE;
+}
 const keyboardManualCommandModeLabel = computed(() => (
-  manualBoundary.value?.keyboard_manual_command_mode === "pwm" ? "PWM 快速短脉冲" : "后端声明的低速入口"
+  keyboardManualCommandMode() === "pwm" ? "PWM 快速短脉冲" : "ROS /cmd_vel 低速脉冲"
 ));
 const plainManualSafetyConfirmed = computed(() => {
   // 现场本轮已由 CEO 明确安全，普通页面不再要求用户先勾选；仍保留停止、松开停和失焦停。
@@ -9521,7 +9529,7 @@ const plainKeyboardDirectionButtonEvidence = computed<PlainKeyboardDirectionButt
   fixedStopEndpoint: manualBoundary.value?.keyboard_stop_proxy_endpoint ?? "/api/robot-control/base/stop",
   fixedFeedbackSamplesEndpoint: "/api/robot-control/base/feedback-samples",
   fixedSummaryEndpoint: "/api/robot-control/summary",
-  manualCommandMode: manualBoundary.value?.keyboard_manual_command_mode ?? "pwm",
+  manualCommandMode: keyboardManualCommandMode(),
   pulseIntervalMs: keyboardJogIntervalMs.value,
   pulseDurationMs: keyboardJogDurationMs.value,
   verifiedMinForwardedPulses: KEYBOARD_VERIFIED_MIN_FORWARDED_PULSES,
@@ -16355,7 +16363,7 @@ function requestBodyForDirection(direction: ManualDirection) {
     direction,
     speed: Math.min(Math.max(jogSpeedMps.value, 0), manualSpeedLimit.value),
     duration_ms: Math.min(Math.max(jogDurationMs.value, 0), manualDurationLimit.value),
-    command_mode: "pwm",
+    command_mode: keyboardManualCommandMode(),
     feedback_mode: "realtime",
     confirm_hil_checklist: plainManualSafetyConfirmed.value,
   } as const;
@@ -16367,7 +16375,7 @@ function requestBodyForKeyboardDirection(direction: ManualDirection) {
     direction,
     speed: Math.min(Math.max(jogSpeedMps.value, 0), manualSpeedLimit.value),
     duration_ms: Math.min(Math.max(keyboardJogDurationMs.value, 0), manualDurationLimit.value),
-    command_mode: "pwm",
+    command_mode: keyboardManualCommandMode(),
     feedback_mode: "realtime",
     confirm_hil_checklist: plainManualSafetyConfirmed.value,
   } as const;

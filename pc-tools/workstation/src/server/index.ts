@@ -44,6 +44,7 @@ import {
   ROBOT_CONTROL_ALLOWED_MANUAL_DIRECTIONS,
   ROBOT_CONTROL_MANUAL_DURATION_LIMIT_MS,
   ROBOT_CONTROL_MANUAL_SPEED_LIMIT_MPS,
+  ROBOT_CONTROL_KEYBOARD_MANUAL_COMMAND_MODE,
   ROBOT_CONTROL_CAMERA_HEALTH_TIMEOUT_MS,
   ROBOT_CONTROL_SUMMARY_HTTP_READBACK_TIMEOUT_MS,
   NAV2_GOAL_EXECUTION_BLOCKING_REQUIREMENTS,
@@ -3806,7 +3807,7 @@ export function createWorkstationApp(): express.Express {
       direction,
       speed: clampedSpeed,
       duration_ms: clampedDurationMs,
-      command_mode: "pwm",
+      command_mode: ROBOT_CONTROL_KEYBOARD_MANUAL_COMMAND_MODE,
       feedback_mode: "bridge_debug",
       confirm_hil_checklist: true,
     });
@@ -3914,7 +3915,7 @@ export function createWorkstationApp(): express.Express {
       direction,
       speed: clampedSpeed,
       duration_ms: clampedDurationMs,
-      command_mode: "pwm",
+      command_mode: ROBOT_CONTROL_KEYBOARD_MANUAL_COMMAND_MODE,
       feedback_mode: "realtime",
       confirm_hil_checklist: true,
     });

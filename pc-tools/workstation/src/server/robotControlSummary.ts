@@ -188,6 +188,7 @@ export const ROBOT_CONTROL_MANUAL_SPEED_LIMIT_MPS = 0.12;
 export const ROBOT_CONTROL_MANUAL_DURATION_LIMIT_MS = 800;
 export const ROBOT_CONTROL_KEYBOARD_JOG_INTERVAL_MS = 260;
 export const ROBOT_CONTROL_KEYBOARD_JOG_DURATION_MS = 240;
+export const ROBOT_CONTROL_KEYBOARD_MANUAL_COMMAND_MODE = "ros";
 const ROBOT_CONTROL_PATH_PREVIEW_POINT_LIMIT = 64;
 export const NAV2_GOAL_PREFLIGHT_BLOCKING_REQUIREMENTS = [
   "confirm_navigation_preflight",
@@ -7962,7 +7963,7 @@ function lockedBoundary(
     radar_start: "radar start locked",
     keyboard_control: "bounded repeating manual pulse gated",
     keyboard_control_mode: "bounded_repeating_manual_pulse",
-    keyboard_manual_command_mode: "pwm",
+    keyboard_manual_command_mode: ROBOT_CONTROL_KEYBOARD_MANUAL_COMMAND_MODE,
     keyboard_manual_proxy_endpoint: "/api/robot-control/base/manual",
     keyboard_stop_proxy_endpoint: "/api/robot-control/base/stop",
     keyboard_jog_interval_ms: ROBOT_CONTROL_KEYBOARD_JOG_INTERVAL_MS,
@@ -8284,7 +8285,7 @@ function keyboardSummaryReadback(): RobotControlSummaryResponse["readback_summar
   return {
     status: "start_ready",
     control_mode: "bounded_repeating_manual_pulse",
-    manual_command_mode: "pwm",
+    manual_command_mode: ROBOT_CONTROL_KEYBOARD_MANUAL_COMMAND_MODE,
     manual_proxy_endpoint: "/api/robot-control/base/manual",
     stop_proxy_endpoint: "/api/robot-control/base/stop",
     start_ready: "true",
@@ -8304,7 +8305,7 @@ function keyboardSummaryReadback(): RobotControlSummaryResponse["readback_summar
     minimal_precheck_safety_only: "true",
     plain_hint: plainHint,
     readiness_plain: readinessPlain,
-    continuous_control_contract_plain: `按住时约每 ${ROBOT_CONTROL_KEYBOARD_JOG_INTERVAL_MS / 1000} 秒发送一次 ${ROBOT_CONTROL_KEYBOARD_JOG_DURATION_MS / 1000} 秒 PWM 快速短脉冲；松开、失焦、切页、换方向或点击停止都会停。`,
+    continuous_control_contract_plain: `按住时约每 ${ROBOT_CONTROL_KEYBOARD_JOG_INTERVAL_MS / 1000} 秒发送一次 ${ROBOT_CONTROL_KEYBOARD_JOG_DURATION_MS / 1000} 秒 ROS /cmd_vel 低速短脉冲；松开、失焦、切页、换方向或点击停止都会停。`,
     hold_to_move_plain: holdToMovePlain,
     stop_triggers_plain: "松开按键、窗口失焦、页面隐藏、切换方向或点击停止都会发送停止请求。",
     pulse_timing_plain: `按住时约每 ${ROBOT_CONTROL_KEYBOARD_JOG_INTERVAL_MS / 1000} 秒发送一次 ${ROBOT_CONTROL_KEYBOARD_JOG_DURATION_MS / 1000} 秒低速脉冲。`,
@@ -8709,7 +8710,7 @@ function buildActionStatusCards(
         requires_keydown_for_motion: true,
         pulse_interval_ms: ROBOT_CONTROL_KEYBOARD_JOG_INTERVAL_MS,
         pulse_duration_ms: ROBOT_CONTROL_KEYBOARD_JOG_DURATION_MS,
-        manual_command_mode: readback.keyboard.manual_command_mode || "pwm",
+        manual_command_mode: readback.keyboard.manual_command_mode || ROBOT_CONTROL_KEYBOARD_MANUAL_COMMAND_MODE,
         stop_triggers: boundary.keyboard_stop_triggers,
         wheel_feedback_required_in_same_hold_window: true,
         fixed_keyboard_manual_endpoint: "/api/robot-control/base/manual",
