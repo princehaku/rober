@@ -20263,6 +20263,10 @@ onBeforeUnmount(() => {
       data-open-page-live-map-refresh="true"
       data-open-page-live-camera-preview="true"
       data-open-page-keyboard-auto-ready="true"
+      data-open-page-motion-ready="true"
+      data-open-page-no-visible-safety-checkbox="true"
+      data-open-page-safety-mode="site_safe_by_default"
+      data-visible-safety-checkbox-count="0"
       :data-live-map-refresh-interval-ms="String(LIVE_MAP_REFRESH_INTERVAL_MS)"
       :data-initial-radar-map-refresh-delay-ms="String(INITIAL_RADAR_MAP_REFRESH_DELAY_MS)"
       data-initial-radar-map-refresh-sequence="radar_scan_proof,radar_status,map_preview"
@@ -22187,7 +22191,7 @@ onBeforeUnmount(() => {
               aria-hidden="true"
               @change="keepPlainUnifiedSafetyConfirmed"
             >
-            <span>现场安全已确认：打开页面即可执行行程、键盘和自由移动；停止按钮保持可用。</span>
+            <span>打开即用：可执行行程、键盘和自由移动；停止按钮保持可用。</span>
           </div>
           <div
             class="plain-field-acceptance-readback-all"
@@ -23741,7 +23745,7 @@ onBeforeUnmount(() => {
             aria-hidden="true"
             @change="keepPlainUnifiedSafetyConfirmed"
           >
-          <span>现场安全已确认：打开页面即可操作，停止按钮随时可点。</span>
+          <span>打开即用：页面已准备好，停止按钮随时可点。</span>
         </div>
         <p
           class="plain-motion-readiness-gauge"
@@ -25756,7 +25760,7 @@ onBeforeUnmount(() => {
               aria-hidden="true"
               @change="keepPlainUnifiedSafetyConfirmed"
             >
-            <span>现场安全已确认；自由移动可直接启动，停止按钮保持在同一区域。</span>
+            <span>打开即用；自由移动可直接启动，停止按钮保持在同一区域。</span>
           </p>
           <p
             class="panel-note"
@@ -26200,11 +26204,19 @@ onBeforeUnmount(() => {
           </div>
         </article>
 
-        <article class="snapshot-panel plain-motion-panel" data-testid="plain-motion-panel" :data-state="plainMotionSummary.state">
+        <article
+          class="snapshot-panel plain-motion-panel"
+          data-testid="plain-motion-panel"
+          :data-state="plainMotionSummary.state"
+          data-open-page-motion-ready="true"
+          data-open-page-no-visible-safety-checkbox="true"
+        >
           <h3>移动/导航</h3>
           <p
             class="plain-trip-confirm"
             :data-safety-confirmed="String(plainUnifiedSafetyConfirmed)"
+            data-open-page-motion-ready="true"
+            data-open-page-no-visible-safety-checkbox="true"
           >
             <input
               :checked="plainUnifiedSafetyConfirmed"
@@ -26215,7 +26227,7 @@ onBeforeUnmount(() => {
               aria-hidden="true"
               @change="keepPlainUnifiedSafetyConfirmed"
             >
-            <span>现场安全已确认；可直接试动、启用键盘或执行行程。</span>
+            <span>打开即用；可直接试动、启用键盘或执行行程。</span>
           </p>
           <div class="panel-action-row wrap-actions">
             <span class="status-chip" :data-state="plainMotionSummary.state">{{ plainMotionSummary.state }}</span>

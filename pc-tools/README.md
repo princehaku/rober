@@ -21,6 +21,12 @@ pc-tools/workstation/
 工作站，不会自动执行 Nav2、manual、delivery complete、keyboard pulse、stop 或
 `/cmd_vel`。
 
+2026-07-03 23:25 CST 起，普通首屏明确暴露打开即用合同：
+`data-open-page-motion-ready=true`、`data-open-page-no-visible-safety-checkbox=true`、
+`data-open-page-safety-mode=site_safe_by_default` 和 `data-visible-safety-checkbox-count=0`。用户打开
+`http://192.168.1.55:7001/` 后不需要再找或勾任何 safety checkbox；兼容旧脚本的隐藏 input 仍保持 checked，
+可见文案改成“打开即用”。底层固定代理继续保留速度、时长、目标范围和 dangerous true 字段护栏，停止按钮保持可用。
+
 2026-07-03 22:17 CST 起，PC 首页地图继续按普通用户主视图处理，默认放大到 `800%` 现场细节视角；
 visual-first 首屏让地图独占首行，图传和 WASD/方向键连续手控放在地图下方；首页地图卡高度按近整屏主画布处理，
 `/map` 直达页继续填满当前 viewport，最高 `1200%`。需要完整态势时点 `适配` 回到 `45%`，需要更局部时点

@@ -1537,6 +1537,9 @@ describe("workstation fail-closed API contracts", () => {
     expect(source).toContain("const LIVE_RADAR_REFRESH_INTERVAL_MS = 5000");
     expect(source).toContain("const LIVE_CAMERA_STATUS_REFRESH_INTERVAL_MS = 2000");
     expect(source).toContain("const KEYBOARD_AUTO_ARM_ON_LOAD = true");
+    expect(source).toContain('data-open-page-motion-ready="true"');
+    expect(source).toContain('data-open-page-no-visible-safety-checkbox="true"');
+    expect(source).toContain('data-open-page-safety-mode="site_safe_by_default"');
     expect(source).toContain("function refreshLiveMapSnapshot()");
     expect(source).toContain("function refreshLiveCameraStatus()");
     expect(source).toContain("function autoArmKeyboardControl(reason: string)");

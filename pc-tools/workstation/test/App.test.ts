@@ -6958,8 +6958,8 @@ describe("App", () => {
     const fieldAcceptanceSafetyGate = wrapper.find('[data-testid="plain-field-acceptance-safety-gate"]');
     const fieldAcceptanceSafetyConfirm = wrapper.find('[data-testid="plain-field-acceptance-safety-confirm"]');
     expect(fieldAcceptanceSafetyGate.exists()).toBe(true);
-    expect(fieldAcceptanceSafetyGate.text()).toContain("现场安全已确认");
-    expect(fieldAcceptanceSafetyGate.text()).toContain("打开页面即可执行行程、键盘和自由移动");
+    expect(fieldAcceptanceSafetyGate.text()).toContain("打开即用");
+    expect(fieldAcceptanceSafetyGate.text()).toContain("可执行行程、键盘和自由移动");
     expect(fieldAcceptanceSafetyGate.attributes("data-safety-confirmed")).toBe("true");
     expect(fieldAcceptanceSafetyGate.attributes("data-minimal-precheck-safety-only")).toBe("true");
     expect(fieldAcceptanceSafetyGate.attributes("data-camera-required-for-motion")).toBe("false");
@@ -8330,8 +8330,8 @@ describe("App", () => {
     expect(safetyActions.text()).not.toContain("/cmd_vel");
     const unifiedSafetyGate = wrapper.find('[data-testid="plain-unified-safety-gate"]');
     expect(unifiedSafetyGate.exists()).toBe(true);
-    expect(unifiedSafetyGate.text()).toContain("现场安全已确认");
-    expect(unifiedSafetyGate.text()).toContain("打开页面即可操作");
+    expect(unifiedSafetyGate.text()).toContain("打开即用");
+    expect(unifiedSafetyGate.text()).toContain("页面已准备好");
     expect(unifiedSafetyGate.attributes("data-safety-confirmed")).toBe("true");
     expect(unifiedSafetyGate.attributes("data-minimal-precheck-safety-only")).toBe("true");
     expect(unifiedSafetyGate.attributes("data-camera-required-for-motion")).toBe("false");
@@ -9127,11 +9127,11 @@ describe("App", () => {
     expect(wrapper.find('[data-testid="plain-free-roam-steps"]').text()).toContain("安全确认");
     expect(wrapper.find('[data-testid="plain-free-roam-steps"]').text()).toContain("已完成");
     expect(wrapper.find('[data-testid="plain-free-roam-steps"]').text()).toContain("保存地图");
-    expect(firstScreenText).toContain("现场安全已确认");
+    expect(firstScreenText).toContain("打开即用");
     const motionPanel = wrapper.find('[data-testid="plain-motion-panel"]');
     expect(motionPanel.exists()).toBe(true);
     expect(motionPanel.attributes("data-state")).toBe("待命");
-    expect(firstScreenText).toContain("现场安全已确认；可直接试动、启用键盘或执行行程。");
+    expect(firstScreenText).toContain("打开即用；可直接试动、启用键盘或执行行程。");
     expect(firstScreenText).toContain("重新定位");
     expect(firstScreenText).not.toContain("移动前检查");
     expect(firstScreenText).toContain("启用键盘");
@@ -15553,6 +15553,11 @@ describe("App", () => {
     await flushPromises();
     await wrapper.vm.$nextTick();
 
+    const firstScreen = wrapper.find('[data-testid="pc-simple-user-first-screen"]');
+    expect(firstScreen.attributes("data-open-page-motion-ready")).toBe("true");
+    expect(firstScreen.attributes("data-open-page-no-visible-safety-checkbox")).toBe("true");
+    expect(firstScreen.attributes("data-open-page-safety-mode")).toBe("site_safe_by_default");
+    expect(firstScreen.attributes("data-visible-safety-checkbox-count")).toBe("0");
     expect((wrapper.find('[data-testid="plain-unified-safety-confirm"]').element as HTMLInputElement).checked).toBe(true);
     expect(wrapper.find('[data-testid="plain-unified-safety-gate"]').attributes("data-safety-confirmed")).toBe("true");
     expect(wrapper.find('[data-testid="plain-unified-safety-gate"]').attributes("data-camera-required-for-motion")).toBe("false");
@@ -15577,8 +15582,9 @@ describe("App", () => {
     expect(tripMinimalPrecheck.attributes("data-fixed-execute-proxy-endpoint")).toBe("/api/robot-control/nav2/goal/execute");
     expect(tripMinimalPrecheck.attributes("data-sends-motion-when-clicked")).toBe("false");
     expect(wrapper.find('[data-testid="plain-keyboard-safety-summary"]').text()).toBe("键盘手控：页面已自动准备；现在按住方向键或 W/A/S/D 才会动。");
-    expect(wrapper.find('[data-testid="plain-motion-panel"]').text()).toContain("现场安全已确认；可直接试动、启用键盘或执行行程。");
-    expect(wrapper.find('[data-testid="plain-free-roam-mapping"]').text()).toContain("现场安全已确认；自由移动可直接启动，停止按钮保持在同一区域。");
+    expect(wrapper.find('[data-testid="plain-motion-panel"]').attributes("data-open-page-motion-ready")).toBe("true");
+    expect(wrapper.find('[data-testid="plain-motion-panel"]').text()).toContain("打开即用；可直接试动、启用键盘或执行行程。");
+    expect(wrapper.find('[data-testid="plain-free-roam-mapping"]').text()).toContain("打开即用；自由移动可直接启动，停止按钮保持在同一区域。");
 
     const callsBeforeSharedSafety = mockedFetch.mock.calls.length;
     await wrapper.find('[data-testid="plain-unified-safety-confirm"]').setValue(true);
