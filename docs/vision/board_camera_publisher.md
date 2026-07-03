@@ -218,6 +218,23 @@ service 已部署仓库版 `onboard/scripts/local_webrtc_camera_smoke.py` 并以
 下一步仍是硬件/驱动层排查：复位或更换 DV20、检查 USB 供电和视频输入源，或接入
 known-good UVC 摄像头验证 `/dev/video1` 出帧链路。
 
+## 2026-07-03 21:55 DV20 高速 USB 仍无帧与探针修正
+
+本轮按 `docs/vendor/VENDOR_INDEX.md` 的硬件资料入口复核 Orange Pi Zero 3 USB/UVC
+排查边界，只触碰相机诊断脚本，不修改底盘、UART、雷达或运动控制。真实上位机
+`root@192.168.1.11 -p 7878` 当前事实：
+
+- `/dev/video1` 仍是 `USB Composite Device: DV20 USB` 的 `Video Capture` 节点，`/dev/video2` 是 metadata。
+- `trashbot-local-webrtc-camera.service` 与 `trashbot-upper-robot-api.service` active，`/dev/video1` 无其它 owner。
+- `v4l2-ctl` 直接抓 `MJPG@640x480` 输出 0 字节；`ffmpeg` 能看到 MJPEG 流声明但等不到可解码帧。
+- `/api/camera/usb-recovery` 停服务、关闭 autosuspend、reauthorize USB 后，USB video speed 为 `480M`，但 `YUYV@320x240@20` 和 `MJPG@480x320@30` 仍 0 字节超时。
+
+因此当前图传缺口继续归因为 DV20/UVC 源头无视频 buffer，不是 PC 页面、多人共享预览或浏览器独占。
+软件侧修正为：上位机 `camera_probe_fallback_requests()` 先覆盖 320x240/160x120 低负载模式，
+再回到常规 640/720p；PC 代理会顶层暴露 `fallback_attempts`、`low_bandwidth_fallback_attempted`
+和压缩后的 `probe_payload`。这只增强诊断可见性，不能替代检查摄像头线缆、供电、输入源或
+换 known-good UVC 复测。
+
 ## 2026-06-26 20:00 首帧证明门禁
 
 本轮按 `docs/vendor/VENDOR_INDEX.md` 入口复核 vendor 资料边界：WAVE ROVER 参考

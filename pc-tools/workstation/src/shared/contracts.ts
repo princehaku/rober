@@ -6528,6 +6528,11 @@ export interface RobotControlCameraFirstFrameProbeProxyResponse extends ProofFla
     low_bandwidth_fallback_attempted: string;
     low_bandwidth_fallback_min_size: string;
   };
+  probe_payload?: Record<string, unknown>;
+  fallback_attempts?: Record<string, unknown>[];
+  auto_format_fallback?: boolean;
+  low_bandwidth_fallback_attempted?: boolean;
+  low_bandwidth_fallback_min_size?: string;
   failure_reason: string;
   blocked_reasons: string[];
   camera_first_frame_ready: boolean;

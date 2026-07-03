@@ -7306,22 +7306,23 @@ def camera_probe_fallback_requests(request: dict[str, Any]) -> list[dict[str, An
     base = dict(request)
     if not request.get("auto_format_fallback") or request.get("include_backend_smoke"):
         return [base]
-    quick_timeout = min(float(request["timeout_s"]), 1.5)
-    quick_read_timeout = min(float(request["read_call_timeout_s"]), 1.5)
+    # 现场 DV20 无帧时，640x480 阻塞 read 会吃掉全部预算；fallback 必须先覆盖低负载模式。
+    quick_timeout = min(float(request["timeout_s"]), 1.2)
+    quick_read_timeout = min(float(request["read_call_timeout_s"]), 1.2)
     candidates = [
         {"fourcc": request.get("fourcc"), "width": request["width"], "height": request["height"], "fps": request["fps"]},
-        # DV20/UVC 在实板枚举里 MJPG 只暴露 30fps；probe 不能一直拿默认 15fps 去试。
-        {"fourcc": "MJPG", "width": 640, "height": 480, "fps": 30.0},
-        {"fourcc": "MJPG", "width": 1280, "height": 720, "fps": 30.0},
-        {"fourcc": "MJPG", "width": 480, "height": 320, "fps": 30.0},
-        # YUYV 的离散 fps 与 MJPG 不同；按枚举值尝试，避免格式正确但帧率不兼容。
-        {"fourcc": "YUYV", "width": 640, "height": 480, "fps": 22.0},
-        {"fourcc": "YUYV", "width": 320, "height": 240, "fps": 25.0},
+        # 先跑低负载格式，确保 PC 12s 窗口里能证明“小分辨率也不出帧”。
         {"fourcc": "YUYV", "width": 320, "height": 240, "fps": 20.0},
-        # USB 12M full-speed 场景下，低带宽首帧比常规预览更可能先证明“摄像头可见”。
+        {"fourcc": "YUYV", "width": 320, "height": 240, "fps": 25.0},
         {"fourcc": "MJPG", "width": 160, "height": 120, "fps": 30.0},
         {"fourcc": "YUYV", "width": 160, "height": 120, "fps": 15.0},
         {"fourcc": "YUYV", "width": 160, "height": 120, "fps": 10.0},
+        {"fourcc": "MJPG", "width": 480, "height": 320, "fps": 30.0},
+        # DV20/UVC 在实板枚举里 MJPG 只暴露 30fps；probe 不能一直拿默认 15fps 去试。
+        {"fourcc": "MJPG", "width": 640, "height": 480, "fps": 30.0},
+        # YUYV 的离散 fps 与 MJPG 不同；按枚举值尝试，避免格式正确但帧率不兼容。
+        {"fourcc": "YUYV", "width": 640, "height": 480, "fps": 22.0},
+        {"fourcc": "MJPG", "width": 1280, "height": 720, "fps": 30.0},
         {"fourcc": None, "width": 640, "height": 480, "fps": request["fps"]},
     ]
     seen: set[tuple[Any, Any, Any, Any]] = set()
@@ -7449,7 +7450,8 @@ async def run_camera_first_frame_probe(body: dict[str, Any] | None = None) -> tu
     script_path = Path(__file__).with_name("camera_first_frame_probe.py")
     started_ms = now_ms()
     started_monotonic = time.monotonic()
-    total_budget_s = 52.0 if request.get("include_backend_smoke") else 10.0
+    # PC 代理 12s quick probe 需要拿到低带宽矩阵结论；上位机预算略短于 PC timeout。
+    total_budget_s = 52.0 if request.get("include_backend_smoke") else 11.0
     sample_root = Path(__file__).resolve().parents[1] / "runtime" / "camera"
     if not script_path.exists():
         return 503, {

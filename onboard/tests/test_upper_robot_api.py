@@ -240,6 +240,33 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertEqual("first_frame_total_timeout", payload["primary_source_failure_reason"])
         self.assertEqual("uvc_no_frame_not_exclusive", payload["source_diagnosis_status"])
 
+    def test_camera_probe_fallback_prioritizes_low_bandwidth_modes(self) -> None:
+        """首帧 fallback 要在 PC 快速窗口内先覆盖低负载模式，避免只卡在 640x480。"""
+        request = upper_robot_api.safe_camera_probe_request(
+            {
+                "device": "/dev/video1",
+                "fourcc": "MJPG",
+                "width": 640,
+                "height": 480,
+                "fps": 15.0,
+                "timeout_s": 3.0,
+                "read_call_timeout_s": 4.0,
+                "auto_format_fallback": True,
+            }
+        )
+
+        fallbacks = upper_robot_api.camera_probe_fallback_requests(request)
+        labels = [f"{item['fourcc'] or 'default'}@{item['width']}x{item['height']}@{item['fps']}" for item in fallbacks[:6]]
+
+        self.assertEqual("MJPG@640x480@15.0", labels[0])
+        self.assertIn("YUYV@320x240@20.0", labels[:4])
+        self.assertIn("MJPG@160x120@30.0", labels[:5])
+        self.assertIn("YUYV@160x120@15.0", labels[:6])
+        for item in fallbacks:
+            self.assertLessEqual(float(item["timeout_s"]), 1.2)
+            self.assertLessEqual(float(item["read_call_timeout_s"]), 1.2)
+            self.assertFalse(item["include_backend_smoke"])
+
     def test_map_preview_returns_not_current_radar_overlay_without_drawing_stale_points(self) -> None:
         """8787 直连地图预览也要保守返回雷达层，旧雷达点不能继续画在地图上。"""
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -1619,47 +1646,11 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
             },
             {
                 "schema": "trashbot.camera_first_frame_probe.v1",
-                "status": "first_frame_timeout",
-                "requested_fourcc": "MJPG",
-                "requested_width": 640,
-                "requested_height": 480,
-                "requested_fps": 30.0,
-                "open_ok": True,
-                "read_ok": False,
-                "failure_reason": "capture_read_returned_false",
-                "visible_content_proven": False,
-            },
-            {
-                "schema": "trashbot.camera_first_frame_probe.v1",
-                "status": "first_frame_timeout",
-                "requested_fourcc": "MJPG",
-                "requested_width": 1280,
-                "requested_height": 720,
-                "requested_fps": 30.0,
-                "open_ok": True,
-                "read_ok": False,
-                "failure_reason": "capture_read_returned_false",
-                "visible_content_proven": False,
-            },
-            {
-                "schema": "trashbot.camera_first_frame_probe.v1",
-                "status": "first_frame_timeout",
-                "requested_fourcc": "MJPG",
-                "requested_width": 480,
-                "requested_height": 320,
-                "requested_fps": 30.0,
-                "open_ok": True,
-                "read_ok": False,
-                "failure_reason": "capture_read_returned_false",
-                "visible_content_proven": False,
-            },
-            {
-                "schema": "trashbot.camera_first_frame_probe.v1",
                 "status": "frame_read",
                 "requested_fourcc": "YUYV",
-                "requested_width": 640,
-                "requested_height": 480,
-                "requested_fps": 22.0,
+                "requested_width": 320,
+                "requested_height": 240,
+                "requested_fps": 20.0,
                 "open_ok": True,
                 "read_ok": True,
                 "visible_content_proven": True,
@@ -1678,22 +1669,19 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertEqual(200, http_status)
         self.assertEqual("frame_read", payload["status"])
         self.assertTrue(payload["auto_format_fallback"])
-        self.assertEqual(5, len(payload["fallback_attempts"]))
+        self.assertEqual(2, len(payload["fallback_attempts"]))
         self.assertEqual("MJPG", payload["fallback_attempts"][0]["fourcc"])
         self.assertEqual(15.0, payload["fallback_attempts"][0]["fps"])
-        self.assertEqual("MJPG", payload["fallback_attempts"][1]["fourcc"])
-        self.assertEqual(30.0, payload["fallback_attempts"][1]["fps"])
-        self.assertEqual("MJPG", payload["fallback_attempts"][2]["fourcc"])
-        self.assertEqual(1280, payload["fallback_attempts"][2]["width"])
-        self.assertEqual("MJPG", payload["fallback_attempts"][3]["fourcc"])
-        self.assertEqual(480, payload["fallback_attempts"][3]["width"])
-        self.assertEqual("YUYV", payload["fallback_attempts"][4]["fourcc"])
-        self.assertEqual(22.0, payload["fallback_attempts"][4]["fps"])
+        self.assertEqual("YUYV", payload["fallback_attempts"][1]["fourcc"])
+        self.assertEqual(320, payload["fallback_attempts"][1]["width"])
+        self.assertEqual(240, payload["fallback_attempts"][1]["height"])
+        self.assertEqual(20.0, payload["fallback_attempts"][1]["fps"])
         self.assertFalse(payload["low_bandwidth_fallback_attempted"])
         self.assertEqual("none", payload["low_bandwidth_fallback_min_size"])
-        self.assertEqual(5, process_mock.call_count)
-        self.assertIn("30.0", process_mock.call_args_list[1].args)
-        self.assertIn("22.0", process_mock.call_args_list[4].args)
+        self.assertEqual(2, process_mock.call_count)
+        self.assertIn("320", process_mock.call_args_list[1].args)
+        self.assertIn("240", process_mock.call_args_list[1].args)
+        self.assertIn("20.0", process_mock.call_args_list[1].args)
         self.assertFalse(payload["safe_to_control"])
         self.assertFalse(payload["robot_control_executed"])
 
@@ -1719,7 +1707,7 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
 
         fake_time = mock.Mock()
         fake_time.time.return_value = 123456.0
-        fake_time.monotonic.side_effect = [100.0, 100.1, 110.2]
+        fake_time.monotonic.side_effect = [100.0, 100.1, 110.8]
         with mock.patch.object(upper_robot_api.Path, "exists", return_value=True):
             with mock.patch.object(upper_robot_api, "camera_probe_fallback_requests", return_value=requests):
                 with mock.patch.object(upper_robot_api, "run_camera_probe_attempt", side_effect=fake_attempt):
@@ -1731,7 +1719,7 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertEqual(503, http_status)
         self.assertEqual("probe_total_timeout", payload["status"])
         self.assertEqual(1, len(attempts))
-        self.assertLess(attempts[0]["max_process_timeout_s"], 10.0)
+        self.assertLess(attempts[0]["max_process_timeout_s"], 11.0)
         self.assertEqual(2, len(payload["fallback_attempts"]))
         self.assertEqual("first_frame_timeout", payload["fallback_attempts"][0]["status"])
         self.assertEqual("probe_total_timeout", payload["fallback_attempts"][1]["status"])

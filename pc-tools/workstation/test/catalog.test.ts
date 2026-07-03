@@ -16667,6 +16667,11 @@ describe("workstation fail-closed API contracts", () => {
         remote_http_status: number;
         status: string;
         failure_reason: string;
+        probe_payload?: Record<string, unknown>;
+        fallback_attempts?: Record<string, unknown>[];
+        auto_format_fallback?: boolean;
+        low_bandwidth_fallback_attempted?: boolean;
+        low_bandwidth_fallback_min_size?: string;
         probe_key_values: {
           open_ok: string;
           visible_content_proven: string;
@@ -16702,6 +16707,13 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.probe_key_values.fallback_attempts_summary).toContain("YUYV@160x120:first_frame_timeout/deadline_expired");
       expect(body.probe_key_values.low_bandwidth_fallback_attempted).toBe("true");
       expect(body.probe_key_values.low_bandwidth_fallback_min_size).toBe("160x120");
+      expect(body.auto_format_fallback).toBe(true);
+      expect(body.low_bandwidth_fallback_attempted).toBe(true);
+      expect(body.low_bandwidth_fallback_min_size).toBe("160x120");
+      expect(body.probe_payload?.status).toBe("open_failed");
+      expect(body.fallback_attempts?.map((item) => `${item.fourcc}@${item.width}x${item.height}:${item.status}/${item.failure_reason}`)).toContain(
+        "YUYV@160x120:first_frame_timeout/deadline_expired",
+      );
       expect(body.safe_to_control).toBe(false);
       expect(body.readback_only).toBe(true);
       expect(body.camera_probe_readback_only).toBe(true);

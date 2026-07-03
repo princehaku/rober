@@ -519,6 +519,75 @@ function cameraProbeKeyValues(payload: Record<string, unknown> | null): RobotCon
   };
 }
 
+function cameraProbeRawFallbackAttempts(payload: Record<string, unknown> | null): Record<string, unknown>[] {
+  // 顶层 raw fallback 只保留每轮尝试短事实，避免 PC curl 看不到低带宽是否真的跑过。
+  const fallbackAttempts = Array.isArray(payload?.fallback_attempts) ? payload.fallback_attempts : [];
+  return fallbackAttempts
+    .map((item) => asRecord(item))
+    .filter((item): item is Record<string, unknown> => item !== null)
+    .slice(0, 16)
+    .map((item) => ({
+      status: shortValue(item.status, "unknown"),
+      fourcc: shortValue(item.fourcc, "default"),
+      width: item.width,
+      height: item.height,
+      fps: item.fps,
+      open_ok: Boolean(item.open_ok),
+      read_ok: Boolean(item.read_ok),
+      failure_reason: shortValue(item.failure_reason, "none"),
+      elapsed_ms: item.elapsed_ms ?? null,
+    }));
+}
+
+function cameraProbeCompactPayload(payload: Record<string, unknown> | null): Record<string, unknown> | undefined {
+  // probe_payload 可能带很长的 v4l2 dump；PC 只透出关键状态和后端尝试摘要。
+  const probePayload = asRecord(payload?.probe_payload);
+  if (!probePayload) {
+    return undefined;
+  }
+  const backendSmoke = asRecord(probePayload.backend_smoke);
+  const backendAttempts = Array.isArray(backendSmoke?.attempts) ? backendSmoke.attempts : [];
+  const compact: Record<string, unknown> = {
+    schema: shortValue(probePayload.schema),
+    status: shortValue(probePayload.status, "unknown"),
+    device: shortValue(probePayload.device, "not_loaded"),
+    requested_fourcc: shortValue(probePayload.requested_fourcc, "default"),
+    requested_width: probePayload.requested_width,
+    requested_height: probePayload.requested_height,
+    requested_fps: probePayload.requested_fps,
+    open_ok: Boolean(probePayload.open_ok),
+    read_ok: Boolean(probePayload.read_ok),
+    first_frame_timeout: Boolean(probePayload.first_frame_timeout),
+    failure_reason: shortValue(probePayload.failure_reason, "none"),
+    visible_content_proven: Boolean(probePayload.visible_content_proven),
+    elapsed_ms: probePayload.elapsed_ms ?? payload?.elapsed_ms ?? null,
+  };
+  if (backendSmoke) {
+    compact.backend_smoke = {
+      status: shortValue(backendSmoke.status, "not_requested"),
+      frame_observed: Boolean(backendSmoke.frame_observed),
+      overall_status: shortValue(backendSmoke.overall_status, "not_loaded"),
+      failure_reason: shortValue(backendSmoke.failure_reason, "none"),
+      streamon_io_error_observed: Boolean(backendSmoke.streamon_io_error_observed),
+      streamon_io_error_count: backendSmoke.streamon_io_error_count ?? 0,
+      attempts: backendAttempts
+        .map((item) => asRecord(item))
+        .filter((item): item is Record<string, unknown> => item !== null)
+        .slice(0, 16)
+        .map((item) => ({
+          name: shortValue(item.name, "unknown"),
+          status: shortValue(item.status, "unknown"),
+          failure_reason: shortValue(item.failure_reason, "none"),
+          output_bytes: item.output_bytes ?? 0,
+          timed_out: Boolean(item.timed_out),
+          returncode: item.returncode ?? null,
+          jpeg_soi_observed: Boolean(item.jpeg_soi_observed),
+        })),
+    };
+  }
+  return compact;
+}
+
 function cameraProbeDiagnosticAliases(
   probeValues: RobotControlCameraFirstFrameProbeProxyResponse["probe_key_values"],
   sourceFailure: CameraMjpegRelayLastFailure | null,
@@ -5458,6 +5527,7 @@ export function createWorkstationApp(): express.Express {
     }
     const dangerous = scanDangerousTrueFields(remote.payload);
     const probeValues = cameraProbeKeyValues(remote.payload);
+    const rawFallbackAttempts = cameraProbeRawFallbackAttempts(remote.payload);
     const status = shortText(remote.payload?.status, remote.remote_http_status === 200 ? "loaded" : "blocked");
     const failureReason =
       dangerous.length > 0
@@ -5484,6 +5554,11 @@ export function createWorkstationApp(): express.Express {
       remote_http_status: remote.remote_http_status,
       status,
       probe_key_values: probeValues,
+      probe_payload: cameraProbeCompactPayload(remote.payload),
+      fallback_attempts: rawFallbackAttempts,
+      auto_format_fallback: remote.payload?.auto_format_fallback === true || rawFallbackAttempts.length > 0,
+      low_bandwidth_fallback_attempted: remote.payload?.low_bandwidth_fallback_attempted === true,
+      low_bandwidth_fallback_min_size: shortValue(remote.payload?.low_bandwidth_fallback_min_size, "none"),
       failure_reason: failureReason,
       blocked_reasons: [
         ...(remote.remote_http_status === 200 ? [] : [`probe_http_status_${remote.remote_http_status}`]),
