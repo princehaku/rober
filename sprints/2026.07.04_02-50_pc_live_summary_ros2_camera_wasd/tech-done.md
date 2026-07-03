@@ -1,0 +1,27 @@
+# PC live-summary 地图别名、ROS2 配套复核、相机/WASD 现场证据
+
+## sprint_type
+
+micro
+
+## 实际改动
+
+- `GET /api/robot-control/live-summary` 增加 `route_target_current_visible`、`radar_map_points_current_visible`，PC summary 顶层同步增加相同别名，便于现场脚本直接验收地图、Nav2 路线、目标点和雷达点是否都在当前画布。
+- 更新 `RobotControlSummaryResponse` / `RobotControlLiveSummaryResponse` 类型和 `robotControlSummary` 单元测试，锁定上述别名。
+- 更新 `docs/product/pc_tools_workstation.md` 与 `docs/product/pc_free_roam_mapping_design.md`：记录 2026-07-04 02:50 CST 的真实地图、ROS2 配套、相机和 WASD 证据。
+
+## 验证结果
+
+- 已通过：`npm test -- --run test/robotControlSummary.test.ts`，`16 passed`。
+- 已通过：`npm test -- --run test/App.test.ts -t "map"`，`70 passed`。
+- 已通过：`npm test`，`3 passed`、`447 passed`。
+- 已通过：`npm run build`；仅有既有 Vite chunk size warning。
+- 上位机 ROS2 配套复核已通过：`ros2 pkg prefix ros2_trashbot_bringup` 返回 `/root/rober/onboard/install/ros2_trashbot_bringup`；`foxglove_bridge.launch.py --show-args` 返回 `address=0.0.0.0`、`port=8765`、`use_sim_time=false`、`sysinfo=true`；`rviz.launch.py --show-args` 返回 `rviz/trashbot_nav.rviz`。
+- live 读回：`map_current_visible=true`、`path_current_visible=true`、`route_target_visible=true`、`route_target_current_visible=true`、`radar_map_points_current_visible=true`、`radar_overlay_current_point_count=190`、`map_display_default_zoom_percent=150%`、`map_display_direct_map_default_zoom_percent=150%`。
+- WASD/方向键链路复验：PC 发前进、停止、后退、停止后，`live-summary` 读回 `keyboard_motion_verified=true`、`keyboard_stop_settled_after_pulse=true`、`keyboard_command_raw_lr_nonzero_proven=true`、`keyboard_motion_evidence_complete=true`。
+- 相机复验：PC 共享 MJPEG 返回 502；首帧探针返回 `open_failed`/503；USB recovery 返回 `stream_failure_class=high_speed_zero_byte_no_frame`；上位机直接 `v4l2-ctl` 对 `/dev/video1` 的 MJPG/YUYV 采帧均 `select timeout` 且输出 0 字节。
+
+## 剩余风险
+
+- 实时图传仍未出首帧。当前证据排除了 PC 页面、多人预览独占和 Node relay，剩余指向 DV20 摄像头输入、USB 线/接口/供电或设备本体；需要现场硬件动作后复测。
+- Vendor `T=1001 L/R` 仍为 `0/0`，wheel raw L/R 非零闭环未完成。当前只能证明 PC 键盘命令已发出、stop 已落稳、命令 raw 非零和 IMU/运动信号存在，不能宣称完整 wheel raw 或完整自动驾驶闭环完成。

@@ -5620,3 +5620,23 @@ WYSIWYG 画布，缩放为 `100%`。同一页面自动触发一次 `POST /api/ro
 `command_raw_lr_nonzero_proven=true`，summary 有 `motion_signal_source=imu_attitude_delta`；
 但 vendor `T=1001` wheel feedback 仍为 `0/0`，因此 `keyboard_wheel_lr_nonzero=false` 和完整
 Nav2/delivery success 不能宣称完成。
+
+2026-07-04 02:50 CST 继续复核 PC 端真实能力：普通用户地图仍以 PC 首页和 `/map` 为主，默认 `150%`
+可读大图；summary/live-summary 当前读回 `map_current_visible=true`、`path_current_visible=true`、
+`route_target_visible=true`、`radar_overlay_current_point_count=190`，并保留 RViz2 和 Foxglove 只读工程观察入口。
+上位机 ROS2 环境实测 `ros2 launch ros2_trashbot_bringup foxglove_bridge.launch.py --show-args` 可读出
+`address=0.0.0.0`、`port=8765`、`use_sim_time=false`、`sysinfo=true`，RViz 入口可读出
+`rviz/trashbot_nav.rviz`；二者只观察 `/map`、`/scan`、TF、路线、定位和 costmap，不替代 PC 简易控制台。
+
+同轮 PC live-summary 增加 `route_target_current_visible` 与 `radar_map_points_current_visible` 别名，便于现场脚本直接验收
+“地图、Nav2 路线、目标点、雷达点都在当前画布”，不用再解析深层 readback。WASD/方向键短脉冲复测已证明
+`keyboard_motion_verified=true`、`keyboard_stop_settled_after_pulse=true`、
+`keyboard_command_raw_lr_nonzero_proven=true`、`keyboard_motion_evidence_complete=true`；桥接日志显示 ROS 手控经
+`/cmd_vel` 进入已经持有底盘链路的 `esp32_bridge`，实际落成 vendor `T=11` PWM 命令，不依赖雷达或相机首帧发车。
+但 `T=1001 L/R` 仍为 `0/0`，所以 wheel raw 非零和完整路线闭环仍不宣称完成。
+
+相机方面，PC 共享 MJPEG、首帧探针、USB recovery、上位机 V4L2 直接采帧均已复测：
+DV20 `/dev/video1` 是 UVC capture 设备，USB 当前为 `480M`，无人独占；但 `MJPG@640x480`、`YUYV@320x240`
+直接 `v4l2-ctl` 都 `select timeout` 且输出 0 字节，USB recovery 返回
+`stream_failure_class=high_speed_zero_byte_no_frame`。因此当前图传失败不是 PC 页面太小、多人预览独占或 Node relay
+问题，而是摄像头输入、USB 线/接口/供电或设备本体仍需现场处理；这个缺口只阻塞实时图传和建图视觉验收，不重新阻塞 WASD 或图上路线发车前置。

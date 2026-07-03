@@ -3593,8 +3593,10 @@ export interface RobotControlLiveSummaryResponse extends RobotControlLiveClosure
   map_preview_status?: string;
   path_preview_point_count?: string;
   route_target_visible?: string;
+  route_target_current_visible?: string;
   route_target_source?: RobotControlSummaryResponse["readback_summary"]["map"]["route_target_source"];
   route_target_state?: RobotControlSummaryResponse["readback_summary"]["map"]["route_target_state"];
+  radar_map_points_current_visible?: boolean;
 }
 
 export interface RobotControlSummaryResponse extends ProofFlags {
@@ -4985,6 +4987,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   map_preview_status?: string;
   path_preview_point_count?: RobotControlSummaryResponse["readback_summary"]["map"]["path_preview_point_count"];
   route_target_visible?: RobotControlSummaryResponse["readback_summary"]["map"]["route_target_visible"];
+  route_target_current_visible?: RobotControlSummaryResponse["readback_summary"]["map"]["route_target_visible"];
   route_target_source?: RobotControlSummaryResponse["readback_summary"]["map"]["route_target_source"];
   route_target_state?: RobotControlSummaryResponse["readback_summary"]["map"]["route_target_state"];
   robot_pose_status?: RobotControlSummaryResponse["readback_summary"]["map"]["robot_pose_status"];
@@ -5095,6 +5098,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   radar_fresh?: RobotControlLiveClosureSummary["mapping_lidar_fresh_readback_ready"];
   radar_map_ready?: RobotControlLiveClosureSummary["radar_map_points_visible"];
   radar_map_points_visible?: RobotControlLiveClosureSummary["radar_map_points_visible"];
+  radar_map_points_current_visible?: RobotControlLiveClosureSummary["radar_map_points_visible"];
   live_wysiwyg_radar_map_overlay_status?: RobotControlLiveClosureSummary["live_wysiwyg_radar_map_overlay_status"];
   live_wysiwyg_radar_map_current_point_count?: RobotControlLiveClosureSummary["live_wysiwyg_radar_map_current_point_count"];
   live_wysiwyg_radar_map_source_point_count?: RobotControlLiveClosureSummary["live_wysiwyg_radar_map_source_point_count"];

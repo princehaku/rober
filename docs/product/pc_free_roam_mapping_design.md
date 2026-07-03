@@ -1121,3 +1121,16 @@ RViz2/Foxglove 只作为工程观察，不替代普通用户的建图、手控�
 同轮相机首帧缺口继续保持不阻塞低速移动：上位机对 DV20 `/dev/video1` 的 `uvcvideo`
 quirk/nodrop 矩阵和 MJPG/YUYV 两种低分辨率组合均为 `bytes=0`，服务恢复 active 后 PC 仍显示
 “检查摄像头输入/供电后复测”。这只阻塞实时图传和建图视觉验收；自由移动、WASD 和图上路线发车前置不依赖相机首帧。
+
+2026-07-04 02:50 CST 复核当前建图/自由移动边界：PC 大地图链路已能从 summary/live-summary 直接读到
+`map_current_visible=true`、`path_current_visible=true`、`route_target_visible=true` 和当前雷达点计数；
+新增 `route_target_current_visible`、`radar_map_points_current_visible` 别名只改善现场脚本读数，不改变控制策略。
+ROS2 配套入口已在上位机验证：RViz2 用 `ros2 launch ros2_trashbot_bringup rviz.launch.py` 本地工程观察，
+Foxglove 用 `ros2 launch ros2_trashbot_bringup foxglove_bridge.launch.py` 后连接 `ws://192.168.1.11:8765`
+远程观察，二者不替代普通 PC 页面，也不发送运动命令。
+
+同轮手控复测确认低速移动链路不依赖雷达或相机首帧：PC 7001 发前进/停止/后退/停止后，
+live-summary 读回 `keyboard_motion_verified=true`、`keyboard_stop_settled_after_pulse=true`、
+`keyboard_command_raw_lr_nonzero_proven=true` 和 `keyboard_motion_evidence_complete=true`。相机仍为
+`high_speed_zero_byte_no_frame`，只阻塞实时图传和建图视觉验收；`T=1001 L/R=0/0` 仍是 wheel raw
+闭环遗留，不能据此宣称完整自动驾驶交付已完成。
