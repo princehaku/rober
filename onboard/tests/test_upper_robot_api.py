@@ -612,6 +612,42 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertEqual({"T": 11, "L": 255, "R": 255}, summary["latest_sent_nonzero_command"]["vendor_command"])
         self.assertFalse(summary["safe_to_control"])
 
+    def test_upper_manual_command_debug_log_counts_pc_wasd_serial_write(self) -> None:
+        """PC WASD 快路径绕过 esp32_bridge 时，也要留下同 schema 非零命令证据。"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            log_path = Path(temp_dir) / "wave_rover_command_debug.jsonl"
+
+            upper_robot_api.append_upper_manual_command_debug_line(
+                {"T": 11, "L": 255, "R": 255},
+                {"ok": True, "bytes_written": 22},
+                transaction_mode="serial_write_only_realtime",
+                log_path=str(log_path),
+            )
+            upper_robot_api.append_upper_manual_command_debug_line(
+                {"T": 11, "L": 0, "R": 0},
+                {"ok": True, "bytes_written": 18},
+                transaction_mode="serial_write_only_realtime",
+                log_path=str(log_path),
+            )
+
+            records = [json.loads(line) for line in log_path.read_text(encoding="utf-8").splitlines()]
+            summary = upper_robot_api.summarize_bridge_command_debug_log(str(log_path))
+
+        self.assertEqual("upper_robot_api_manual_control", records[0]["source"])
+        self.assertEqual("serial_write_only_realtime", records[0]["manual_transaction_mode"])
+        self.assertEqual("pwm", records[0]["command_mode"])
+        self.assertTrue(records[0]["serial_write_returned"])
+        self.assertTrue(records[0]["transport_write_returned"])
+        self.assertTrue(records[0]["sends_motion"])
+        self.assertTrue(summary["nonzero_command_observed"])
+        self.assertEqual(1, summary["nonzero_command_count"])
+        self.assertTrue(summary["nonzero_command_sent_observed"])
+        self.assertEqual(1, summary["nonzero_command_sent_count"])
+        self.assertTrue(summary["serial_write_success_observed"])
+        self.assertEqual(2, summary["serial_write_success_count"])
+        self.assertEqual({"pwm": 2}, summary["command_mode_counts"])
+        self.assertEqual({"T": 11, "L": 255, "R": 255}, summary["latest_sent_nonzero_command"]["vendor_command"])
+
     def test_feedback_latest_readback_lifts_wheel_summary_without_commands(self) -> None:
         """latest GET 必须把 wheel material 提到顶层，且保持只读回放边界。"""
         latest = {

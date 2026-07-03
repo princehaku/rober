@@ -977,3 +977,14 @@ RViz2 适合本机/上位机调试 `/map`、TF、LaserScan、Nav2 plan 和 robot
 真实相机仍卡在 DV20 摄像头 USB 12M full-speed 首帧失败。手控方面，PC WASD 快路径已能转发 `pwm` 短脉冲并自动 stop；
 上位机 ROS 路径也证明了 `T=11,L/R` 非零命令和 stop，但同窗口 `T=1001` wheel raw L/R 仍回 `0/0`，
 所以“轮速反馈非零”仍是底盘反馈/固件证据风险，不能作为完成项宣称。
+
+2026-07-03 09:32 继续修正现场恢复与手控证据链：
+`camera_usb_recovery_smoke.py` 现在会从 `/sys/class/video4linux/videoX/device` 反查真实 USB kernel 地址
+`6-1`，并等待 `trashbot-local-webrtc-camera.service` 真正 inactive 后再 STREAMON。真实上车复测已证明脚本会写
+`/sys/bus/usb/devices/6-1/authorized`，但 `YUYV@320x240@20` 与 `MJPG@480x320@30` 仍为
+`VIDIOC_STREAMON Input/output error`，因此图传剩余根因仍是摄像头所在 12M full-speed USB 链路或设备侧输出。
+`upper_robot_api.sh` 同步增加 8787 stale listener 清理，避免旧 `upper_robot_api.py` 孤儿进程挡住 systemd。
+PC WASD `pwm + realtime` 快路径现在会把直接串口写出的 vendor command 追加到
+`wave_rover_command_debug.jsonl`，并被 `/api/base/status` 汇总；现场 `right` 短脉冲已读到
+`source=upper_robot_api_manual_control`、`T=11,L=164,R=-164`、`serial_write_returned=true`。
+这证明 PC 手控命令链路非零，但不替代 `T=1001` wheel raw L/R 非零反馈证明。

@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import subprocess
 import time
 from pathlib import Path
@@ -46,6 +47,57 @@ def run_command(argv: list[str], timeout_s: float = 8.0) -> dict[str, Any]:
         }
 
 
+def wait_service_inactive(service: str, timeout_s: float = 4.0) -> dict[str, Any]:
+    """等待 systemd 服务真正停下；只看 stop 返回码会漏掉 `Job canceled`。"""
+    started = time.time()
+    samples: list[dict[str, Any]] = []
+    while time.time() - started < timeout_s:
+        state = run_command(["systemctl", "is-active", service], timeout_s=2)
+        active_state = str(state.get("stdout") or state.get("stderr") or "").strip()
+        samples.append({"elapsed_s": round(time.time() - started, 3), "state": active_state, "returncode": state.get("returncode")})
+        if active_state in {"inactive", "failed", "unknown"} or state.get("returncode") not in {0, None}:
+            return {"inactive": active_state != "active", "samples": samples}
+        time.sleep(0.2)
+    return {"inactive": False, "samples": samples, "timeout_s": timeout_s}
+
+
+def service_main_pid(service: str) -> int | None:
+    """读取 systemd MainPID；恢复脚本只允许处理目标相机服务自己的主进程。"""
+    result = run_command(["systemctl", "show", service, "-p", "MainPID", "--value"], timeout_s=3)
+    try:
+        pid = int(str(result.get("stdout") or "").strip())
+    except ValueError:
+        return None
+    return pid if pid > 1 else None
+
+
+def stop_camera_service(service: str) -> dict[str, Any]:
+    """停掉相机服务并处理 stop 被取消的现场漂移，确保后续 STREAMON 不被本服务占用。"""
+    summary: dict[str, Any] = {
+        "service": service,
+        "stop": run_command(["systemctl", "stop", service], timeout_s=8),
+    }
+    summary["wait_after_stop"] = wait_service_inactive(service)
+    if summary["wait_after_stop"].get("inactive"):
+        summary["stopped"] = True
+        return summary
+
+    pid = service_main_pid(service)
+    summary["main_pid_after_stop"] = pid
+    if pid is None:
+        summary["stopped"] = False
+        summary["reason"] = "service_still_active_without_main_pid"
+        return summary
+
+    # 只杀 systemd 报告的 MainPID；不会扫描或误杀其它 camera/ROS/底盘进程。
+    summary["kill_main_pid"] = run_command(["kill", str(pid)], timeout_s=3)
+    time.sleep(0.5)
+    summary["stop_after_kill"] = run_command(["systemctl", "stop", service], timeout_s=8)
+    summary["wait_after_kill"] = wait_service_inactive(service)
+    summary["stopped"] = bool(summary["wait_after_kill"].get("inactive"))
+    return summary
+
+
 def write_sysfs(path: Path, value: str) -> dict[str, Any]:
     """写 sysfs 前先记录路径存在性；权限不足时给出可读错误。"""
     if not path.exists():
@@ -65,13 +117,54 @@ def read_sysfs(path: Path) -> str | None:
         return None
 
 
-def detect_usb_device(video_device: str, fallback: str) -> str:
-    """从 v4l2 bus_info 里提取 usb-x-y；失败时使用现场默认值。"""
+def sysfs_usb_device_for_video(
+    video_device: str,
+    *,
+    sys_video_root: Path = Path("/sys/class/video4linux"),
+    sys_usb_root: Path = Path("/sys/bus/usb/devices"),
+) -> str | None:
+    """从 videoX 的 sysfs 真实路径反查 `6-1`，避免把平台地址误当 USB 设备。"""
+    video_name = Path(video_device).name
+    device_link = sys_video_root / video_name / "device"
+    try:
+        resolved = device_link.resolve(strict=True)
+    except OSError:
+        return None
+    for part in reversed(resolved.parts):
+        # video interface 常见形态是 `6-1:1.0`；authorized/power/control 在父设备 `6-1` 上。
+        interface_match = re.fullmatch(r"(\d+-[\d.]+):\d+\.\d+", part)
+        if interface_match and (sys_usb_root / interface_match.group(1)).exists():
+            return interface_match.group(1)
+        # 某些内核路径会直接包含 `6-1` 这层设备目录，也要接受。
+        if re.fullmatch(r"\d+-[\d.]+", part) and (sys_usb_root / part).exists():
+            return part
+    return None
+
+
+def detect_usb_device(
+    video_device: str,
+    fallback: str,
+    *,
+    sys_video_root: Path = Path("/sys/class/video4linux"),
+    sys_usb_root: Path = Path("/sys/bus/usb/devices"),
+) -> str:
+    """优先从 sysfs 找真实 USB kernel 地址；v4l2 bus_info 只作为兜底。"""
+    sysfs_device = sysfs_usb_device_for_video(
+        video_device,
+        sys_video_root=sys_video_root,
+        sys_usb_root=sys_usb_root,
+    )
+    if sysfs_device:
+        return sysfs_device
     result = run_command(["v4l2-ctl", "-d", video_device, "--all"], timeout_s=5)
     text = result.get("stdout", "") + result.get("stderr", "")
     for line in text.splitlines():
         if "Bus info" in line and "usb-" in line:
-            return line.split("usb-", 1)[1].strip()
+            candidate = line.split("usb-", 1)[1].strip()
+            # Orange Pi 的 v4l2 bus_info 会出现 `5310400.usb-1` 这种平台控制器地址；
+            # 它不是 `/sys/bus/usb/devices/*` 下可写 authorized 的 kernel 地址，不能直接用。
+            if re.fullmatch(r"\d+-[\d.]+", candidate) and (sys_usb_root / candidate).exists():
+                return candidate
     return fallback
 
 
@@ -176,7 +269,7 @@ def main() -> int:
 
     # 先停共享预览，确保 STREAMON 失败不是页面或服务独占导致。
     if not args.skip_service:
-        summary["service_stop"] = run_command(["systemctl", "stop", args.service], timeout_s=8)
+        summary["service_stop"] = stop_camera_service(args.service)
 
     summary["owners_before_stream"] = run_command(["lsof", args.device], timeout_s=4)
     summary["power_actions"] = set_usb_power_on(usb_device)

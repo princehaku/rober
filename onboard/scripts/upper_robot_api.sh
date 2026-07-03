@@ -30,6 +30,42 @@ ROBER_BASE_SERIAL_PORT="${ROBER_BASE_SERIAL_PORT:-/dev/ttyS5}"
 ROBER_BASE_BAUDRATE="${ROBER_BASE_BAUDRATE:-115200}"
 ROBER_BASE_MAX_SPEED="${ROBER_BASE_MAX_SPEED:-0.12}"
 
+cleanup_stale_upper_api_listener() {
+  # systemd 重启时可能遇到旧 upper_robot_api.py 脱离 unit 但继续占用 8787；只清同脚本旧实例。
+  command -v ss >/dev/null 2>&1 || return 0
+  local stale_pids=()
+  local pid
+  while IFS= read -r pid; do
+    [[ -n "${pid}" ]] && stale_pids+=("${pid}")
+  done < <(
+    ss -ltnp 2>/dev/null \
+      | awk -v port=":${PORT}" '$4 ~ port { print $0 }' \
+      | sed -n 's/.*pid=\([0-9][0-9]*\).*/\1/p' \
+      | sort -u
+  )
+  for pid in "${stale_pids[@]}"; do
+    [[ "${pid}" == "$$" ]] && continue
+    local cmdline=""
+    if [[ -r "/proc/${pid}/cmdline" ]]; then
+      cmdline="$(tr '\0' ' ' <"/proc/${pid}/cmdline" | head -c 400)"
+    fi
+    if [[ "${cmdline}" != *"upper_robot_api.py"* ]]; then
+      echo "upper api port ${PORT} is occupied by non-upper-api process pid=${pid}: ${cmdline}" >&2
+      continue
+    fi
+    # 先温和退出旧 API；还不退出时再 kill -9，避免 systemd 被端口占用反复重启。
+    echo "cleanup stale upper_robot_api.py listener pid=${pid} on port ${PORT}" >&2
+    kill "${pid}" 2>/dev/null || true
+    for _ in 1 2 3 4 5; do
+      kill -0 "${pid}" 2>/dev/null || break
+      sleep 0.2
+    done
+    kill -0 "${pid}" 2>/dev/null && kill -9 "${pid}" 2>/dev/null || true
+  done
+}
+
+cleanup_stale_upper_api_listener
+
 exec python3 "${SCRIPT_DIR}/upper_robot_api.py" \
   --host "${HOST}" \
   --port "${PORT}" \

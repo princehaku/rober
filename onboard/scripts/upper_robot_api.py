@@ -5248,6 +5248,56 @@ def vendor_motion_command_nonzero(command: dict[str, Any]) -> bool:
     return False
 
 
+def command_mode_for_vendor_command(command: dict[str, Any]) -> str:
+    """把 vendor T 指令归类为控制模式，方便 PC 手控和 ROS bridge 共用命令证据。"""
+    try:
+        command_id = int(command.get("T"))
+    except (TypeError, ValueError):
+        return "unknown"
+    if command_id == 11:
+        return "pwm"
+    if command_id == 13:
+        return "ros"
+    if command_id == 1:
+        return "speed"
+    return "vendor"
+
+
+def append_upper_manual_command_debug_line(
+    command: dict[str, Any],
+    write_result: dict[str, Any],
+    *,
+    transaction_mode: str,
+    log_path: str = DEFAULT_BRIDGE_COMMAND_DEBUG_LOG_PATH,
+) -> None:
+    """记录 PC/上位机手控直接写出的 vendor 命令；失败不能阻断停车兜底。"""
+    if not log_path:
+        return
+    sent = bool(write_result.get("ok"))
+    record = {
+        "schema": "trashbot.wave_rover.command_debug.v1",
+        "observed_at_unix_s": time.time(),
+        "source": "upper_robot_api_manual_control",
+        "manual_transaction_mode": transaction_mode,
+        "command_mode": command_mode_for_vendor_command(command),
+        "command_transport": "serial",
+        "vendor_command": command,
+        "sent": sent,
+        "serial_write_returned": sent,
+        "http_write_returned": None,
+        "transport_write_returned": sent,
+        "bytes_written": write_result.get("bytes_written"),
+        "sends_motion": vendor_motion_command_nonzero(command),
+    }
+    try:
+        Path(log_path).parent.mkdir(parents=True, exist_ok=True)
+        with open(log_path, "a", encoding="utf-8") as log_file:
+            log_file.write(json.dumps(record, sort_keys=True, separators=(",", ":")) + "\n")
+    except OSError:
+        # 命令日志只是验收材料，不能影响低速手控和 stop。
+        return
+
+
 def summarize_bridge_command_debug_log(
     path: str,
     stale_after_ms: int = DEFAULT_BRIDGE_COMMAND_DEBUG_STALE_AFTER_MS,
@@ -5354,7 +5404,7 @@ def summarize_bridge_command_debug_log(
                 startup_main_type = command.get("main")
                 startup_module_type = command.get("module")
             continue
-        if source != "esp32_bridge_cmd_vel_callback" or not command:
+        if source not in {"esp32_bridge_cmd_vel_callback", "upper_robot_api_manual_control"} or not command:
             continue
         latest_command = {
             "observed_at_unix_s": record.get("observed_at_unix_s"),
@@ -6775,12 +6825,16 @@ def manual_motion_serial_write_only_transaction(
         serial_obj = serial_module.Serial(port=port, baudrate=baudrate, timeout=0.05)
         serial_open["ok"] = True
         command_write = write_json_to_open_serial(serial_obj, command)
+        append_upper_manual_command_debug_line(command, command_write, transaction_mode=mode)
         remaining_s = max(pulse_ms / 1000.0 - (time.monotonic() - started_monotonic), 0.0)
         if remaining_s > 0:
             time.sleep(remaining_s)
         stop_write = write_json_to_open_serial(serial_obj, stop_plan[0])
+        append_upper_manual_command_debug_line(stop_plan[0], stop_write, transaction_mode=mode)
         for stop_command in stop_plan[1:]:
-            additional_stop_writes.append(write_json_to_open_serial(serial_obj, stop_command))
+            additional_stop_write = write_json_to_open_serial(serial_obj, stop_command)
+            append_upper_manual_command_debug_line(stop_command, additional_stop_write, transaction_mode=mode)
+            additional_stop_writes.append(additional_stop_write)
     except Exception as exc:  # noqa: BLE001 - 现场串口错误必须结构化返回，stop 证据也要保留。
         error = compact_error(exc)
         if not command_write.get("ok"):
