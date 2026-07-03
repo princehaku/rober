@@ -2982,8 +2982,11 @@ function cameraMjpegPreviewStatus(
     return "streaming";
   }
   const sourceFirstFrameFailed = lastFailure?.failure_reason === "camera_source_first_frame_failed"
+    || diagnosisSource?.source_readiness === "first_frame_failed"
+    || CAMERA_FIRST_FRAME_FAILURE_REASONS.has(diagnosisSource?.source_failure_reason ?? "")
     || diagnosisSource?.source_diagnosis_status === "uvc_no_frame_not_exclusive"
-    || diagnosisSource?.source_diagnosis_status === "uvc_transport_error_not_exclusive";
+    || diagnosisSource?.source_diagnosis_status === "uvc_transport_error_not_exclusive"
+    || diagnosisSource?.source_diagnosis_status === "uvc_full_speed_usb_not_exclusive";
   if (sourceFirstFrameFailed) {
     return "source_first_frame_failed";
   }

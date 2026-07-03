@@ -193,6 +193,11 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   如果 health 已确认 `source_first_frame_failed`，会直接看到 `source_readiness=first_frame_failed` 和具体失败原因，
   不再出现 status 已说无首帧但 readiness 为空的分裂口径。该入口仍只读 health/relay 内存，不创建 MJPEG client、
   不打开额外 camera stream、不发送 manual、keyboard、Nav2、free-roam、delivery、stop 或 `/cmd_vel`。
+- 2026-07-03 09:20 起，`/api/robot-control/camera/mjpeg/status` 也把
+  `uvc_full_speed_usb_not_exclusive`、`source_readiness=first_frame_failed` 和已知首帧失败 reason 统一归为
+  `preview_status=source_first_frame_failed`。现场真实读回为 `USB=12M full-speed`、`source_usage_scope=free`、
+  `shared_preview_everyone_can_join=true`，所以 PC 首屏不再误显示“idle_not_started”；它会直接提示“换高速 USB 口/线或带供电 Hub 后复测”。
+  该修正只改变只读状态口径，不创建额外相机上游、不发送任何运动命令。
 - 2026-06-28 12:25 起，上述对齐也覆盖 camera health 返回 `bad_json/not_object` 的情况：只要 PC 共享 MJPEG relay
   已明确 `camera_source_first_frame_failed` 并带出 `uvc_no_frame_not_exclusive` 诊断，summary 就显示
   `status=source_first_frame_failed`、`source_readiness=first_frame_failed`。单纯坏 JSON 仍保留读取异常；
@@ -964,3 +969,11 @@ overlay 同轮读取 `/api/free-roam/autonomy/latest`、`/api/radar/status` 和 
 和后端固定 confirm 兼容字段；它只是不再要求普通用户先勾 checkbox。相机首帧和雷达 fresh 继续只决定建图是否可启动和验收是否可收口，
 不阻塞低速自由移动或键盘手控。地图首屏同步按高度优先撑满画布，普通用户仍优先使用 PC 首屏或 `/map` 大屏；
 RViz2/Foxglove 仅作为工程观察，不发送 `/cmd_vel`、manual、Nav2 goal 或 free-roam start。
+
+2026-07-03 09:20 现场复核补充：PC 普通用户页继续承担“打开就能用”的大地图入口；ROS2 配套工具的定位是工程侧观察。
+RViz2 适合本机/上位机调试 `/map`、TF、LaserScan、Nav2 plan 和 robot pose；Foxglove 适合跨设备网页观察和分享，
+但普通用户不需要先学这些工具。当前 PC `/api/robot-control/map/preview` 已能返回
+`route_target_visible=true`、`path_preview_point_count=18`、`radar_overlay_status=loaded` 和实时雷达点；
+真实相机仍卡在 DV20 摄像头 USB 12M full-speed 首帧失败。手控方面，PC WASD 快路径已能转发 `pwm` 短脉冲并自动 stop；
+上位机 ROS 路径也证明了 `T=11,L/R` 非零命令和 stop，但同窗口 `T=1001` wheel raw L/R 仍回 `0/0`，
+所以“轮速反馈非零”仍是底盘反馈/固件证据风险，不能作为完成项宣称。
