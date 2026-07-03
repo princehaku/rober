@@ -5781,6 +5781,15 @@ describe("workstation fail-closed API contracts", () => {
       expect(payload.remote_motion_key_values.wheel_feedback_latest_raw_left).toBe("0.07");
       expect(payload.remote_motion_key_values.wheel_feedback_latest_raw_right).toBe("0.08");
       expect(payload.remote_motion_key_values.wheel_feedback_lr_nonzero_proven).toBe("true");
+      expect(payload.base_command_mode).toBe("ros");
+      expect(payload.feedback_mode).toBe("bridge_debug");
+      expect(payload.command_result_ok).toBe("true");
+      expect(payload.stop_result_ok).toBe("true");
+      expect(payload.feedback_during_motion_t1001_frame_count).toBe("2");
+      expect(payload.feedback_after_stop_t1001_frame_count).toBe("1");
+      expect(payload.wheel_feedback_latest_raw_left).toBe("0.07");
+      expect(payload.wheel_feedback_latest_raw_right).toBe("0.08");
+      expect(payload.wheel_feedback_lr_nonzero_proven).toBe("true");
       expect(payload.safe_to_control).toBe(false);
       expect(payload.delivery_success).toBe(false);
     } finally {
@@ -17729,6 +17738,16 @@ describe("workstation fail-closed API contracts", () => {
       const body = (await response.json()) as {
         proxy_status: string;
         remote_motion_key_values: Record<string, string>;
+        base_command_mode: string;
+        feedback_mode: string;
+        command_result_ok: string;
+        stop_result_ok: string;
+        wheel_feedback_lr_nonzero_proven: string;
+        wheel_feedback_latest_raw_left: string;
+        wheel_feedback_latest_raw_right: string;
+        imu_attitude_delta_observed: string;
+        motion_signal_observed: string;
+        motion_signal_source: string;
         motion_evidence_gaps: string[];
         robot_control_executed: boolean;
         safe_to_control: boolean;
@@ -17750,6 +17769,16 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.remote_motion_key_values.imu_pitch_delta).toBe("1.1");
       expect(body.remote_motion_key_values.motion_signal_observed).toBe("true");
       expect(body.remote_motion_key_values.motion_signal_source).toBe("imu_attitude_delta");
+      expect(body.base_command_mode).toBe("ros");
+      expect(body.feedback_mode).toBe("realtime");
+      expect(body.command_result_ok).toBe("true");
+      expect(body.stop_result_ok).toBe("true");
+      expect(body.wheel_feedback_lr_nonzero_proven).toBe("false");
+      expect(body.wheel_feedback_latest_raw_left).toBe("0");
+      expect(body.wheel_feedback_latest_raw_right).toBe("0");
+      expect(body.imu_attitude_delta_observed).toBe("true");
+      expect(body.motion_signal_observed).toBe("true");
+      expect(body.motion_signal_source).toBe("imu_attitude_delta");
       expect(body.motion_evidence_gaps).toEqual(expect.arrayContaining([
         "before_after_evidence_snapshot_incomplete",
         "wheel_feedback_lr_nonzero_not_proven",

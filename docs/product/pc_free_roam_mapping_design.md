@@ -1076,3 +1076,11 @@ PC WASD `pwm + realtime` 快路径现在会把直接串口写出的 vendor comma
 实机已停服务验证 V4L2 mmap/userptr、ffmpeg、GStreamer 和 `uvcvideo quirks=0`，结果都是 STREAMON 成功但 0 字节。
 同轮低速手控仍可通过 PC 7001 写出 vendor `T=11,L/R=255` 与 stop `T=11,L/R=0`；
 相机首帧缺口继续只阻塞实时图传和建图视觉验收，不阻塞自由移动、WASD 或图上路线发车前置。
+
+2026-07-03 18:36 手控读回进一步前置到 PC 代理顶层：
+`/api/robot-control/base/manual` 和 `/api/robot-control/base/first-jog` 现在直接返回
+`base_command_mode`、`feedback_mode`、`command_result_ok`、`stop_result_ok`、`motion_signal_observed`、
+`motion_signal_source`、`wheel_feedback_lr_nonzero_proven`、`wheel_feedback_latest_raw_left/right`
+等本次窗口 alias。真实后退脉冲读到 `T=11,L=-255,R=-255` 和 stop `T=11,L=0,R=0`，
+并返回 `motion_signal_observed=true`、`wheel_feedback_lr_nonzero_proven=false`。
+这让 PC WASD/手控的“命令到了”和“wheel raw 仍未证明”可以同时直读，不再需要解析嵌套材料。

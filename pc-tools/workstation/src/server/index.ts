@@ -704,6 +704,35 @@ function baseManualMotionKeyValues(payload: Record<string, unknown> | null): Rec
   };
 }
 
+function baseManualMotionTopLevelAliases(keyValues: Record<string, string>): Record<string, string> {
+  // WASD/点动回包要让现场脚本一眼看到“这次按键窗口”的命令和反馈事实；嵌套对象仍保留完整材料。
+  const aliasKeys = [
+    "base_command_mode",
+    "feedback_mode",
+    "command_result_ok",
+    "stop_result_ok",
+    "wheel_feedback_lr_nonzero_proven",
+    "wheel_feedback_nonzero_observed",
+    "wheel_feedback_latest_raw_left",
+    "wheel_feedback_latest_raw_right",
+    "imu_attitude_delta_observed",
+    "manual_imu_attitude_delta_observed",
+    "imu_roll_delta",
+    "imu_pitch_delta",
+    "motion_signal_observed",
+    "motion_signal_source",
+    "feedback_during_motion_t1001_frame_count",
+    "feedback_after_stop_t1001_frame_count",
+    "manual_command_executed",
+    "auto_stop_executed",
+  ];
+  const aliases: Record<string, string> = {};
+  for (const key of aliasKeys) {
+    aliases[key] = keyValues[key] ?? "not_loaded";
+  }
+  return aliases;
+}
+
 function navGoalExecutionKeyValues(payload: Record<string, unknown> | null): Record<string, string> {
   // 上位机执行响应里 latest_result 是真正的 action artifact；PC 只展示短摘要。
   const latestResult = asRecord(payload?.latest_result);
@@ -3977,6 +4006,7 @@ export function createWorkstationApp(): express.Express {
         allowed_directions: [...ROBOT_CONTROL_ALLOWED_MANUAL_DIRECTIONS],
       },
       remote_motion_key_values: remoteMotionKeyValues,
+      ...baseManualMotionTopLevelAliases(remoteMotionKeyValues),
       ...responseEvidenceCapture,
       failure_reason:
         dangerous.length > 0
@@ -4085,6 +4115,7 @@ export function createWorkstationApp(): express.Express {
         allowed_directions: [...ROBOT_CONTROL_ALLOWED_MANUAL_DIRECTIONS],
       },
       remote_motion_key_values: remoteMotionKeyValues,
+      ...baseManualMotionTopLevelAliases(remoteMotionKeyValues),
       ...responseEvidenceCapture,
       failure_reason:
         dangerous.length > 0
