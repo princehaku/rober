@@ -3832,6 +3832,7 @@ describe("robotControlSummary", () => {
       source: "path_preview_points",
       source_index: 1,
     });
+    expect(preview.route_target).toEqual(preview.target);
     expect(preview.route_target_state).toBe("path_preview_goal_observed");
     expect(preview.route_target_visible).toBe(true);
     expect(preview.route_target_source).toBe("path_preview_points");
@@ -3971,6 +3972,7 @@ describe("robotControlSummary", () => {
       source: "path_preview_points",
       source_index: 1,
     });
+    expect(preview.route_target).toEqual(preview.target);
     expect(preview.route_target_visible).toBe(true);
 
     const summary = await buildRobotControlSummary("http://192.168.1.11:8787", null, null, {
@@ -3980,6 +3982,7 @@ describe("robotControlSummary", () => {
     expect(summary.readback_summary.map.radar_overlay_point_count).toBe("2");
     expect(summary.readback_summary.map.radar_overlay_source_point_count).toBe("138");
     expect(summary.readback_summary.map.radar_overlay_refresh_required).toBe("false");
+    expect(summary.readback_summary.map.route_target).toEqual(preview.target);
     expect(summary.live_closure_summary?.radar_map_points_visible).toBe(true);
     expect(summary.live_closure_summary?.radar_overlay_needs_refresh).toBe(false);
     expect(summary.live_closure_summary?.radar_overlay_blocks_wysiwyg).toBe(false);

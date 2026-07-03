@@ -5536,3 +5536,9 @@ known-good UVC 复测。
 ROS2 配套只作为工程观察。本地工程调试用 RViz2 观察 `/map`、`/scan`、TF、路径、定位和 costmap；远程浏览器观察用
 Foxglove bridge + Foxglove Web，连接 `ws://192.168.1.11:8765`。RViz2/Foxglove 不替代 PC 简易控制台，
 不作为普通用户发车前置，也不发送底盘运动命令。
+
+2026-07-03 21:24 CST 起，PC map preview 和 summary 明确暴露 `route_target` 顶层别名，与既有
+`target` 保持同值。路线目标点仍优先从当前 `path_preview_points` 的最后一个 map-frame 点派生，并带
+`source=path_preview_points` 与 `source_index`，避免现场脚本或普通页读到 `route_target_visible=true` 但
+`route_target=null`。这让“大地图完整显示机器人位置、Nav2 路线、雷达点、目标点”的接口证据更直接：
+`target` 兼容旧前端，`route_target` 给脚本和 summary 直接消费。

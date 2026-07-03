@@ -8,6 +8,20 @@
 
 ## 2026-07-03 系列
 
+### 2026-07-03 21-24｜pc_map_route_target_alias｜地图目标点 route_target 读回补齐
+
+本轮 `sprints/2026.07.03_21-24_pc_map_route_target_alias/` 修正 PC 大地图目标点读回合同：
+`/api/robot-control/map/preview` 原本已能返回 `target`，且 `route_target_visible=true`，但现场脚本读
+`route_target` 时为 `null`。本轮把 `route_target` 作为 `target` 的同值别名加入 map preview，并同步加入
+`readback_summary.map.route_target`；目标点仍从当前 `path_preview_points` 最后一个 map-frame 点派生，
+带 `source=path_preview_points` 和 `source_index`，不混用旧目标。
+
+验证范围：`npm test -- test/catalog.test.ts -t "map preview" --run` 4 tests OK / 184 skipped；
+`npm test -- test/robotControlSummary.test.ts --run` 15 tests OK；
+`npm test -- test/App.test.ts -t "map display|direct map|route goal|target|radar|keyboard|WASD|camera" --run`
+102 tests OK / 138 skipped；`npm run build` 通过（仅 Vite chunk warning）。本轮只修只读地图/summary 合同，
+不执行 Nav2、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
 ### 2026-07-03 21-10｜pc_camera_auto_usb_recovery｜PC 打开后自动执行一次相机 USB 恢复
 
 本轮 `sprints/2026.07.03_21-10_pc_camera_auto_usb_recovery/` 继续推进 PC 打开即用目标：

@@ -5469,6 +5469,7 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       path_preview_next_action_plain: string;
       path_wysiwyg_status_plain: string;
       path_wysiwyg_next_action_plain: string;
+      route_target: RobotApiRouteTarget | null;
       route_target_visible: string;
       route_target_source: RobotApiRouteTarget["source"] | "not_loaded";
       route_target_state: RobotControlMapPreviewResponse["route_target_state"];
@@ -6266,6 +6267,7 @@ export interface RobotControlMapPreviewResponse extends ProofFlags {
   path_preview_frame_id: string;
   path_preview_source_endpoint_ids: RobotApiReadEndpointId[];
   target: RobotApiRouteTarget | null;
+  route_target: RobotApiRouteTarget | null;
   route_target_state: "path_preview_goal_observed" | "latest_goal_request_observed" | "not_observed";
   route_target_visible: boolean;
   route_target_source: RobotApiRouteTarget["source"] | "not_loaded";
