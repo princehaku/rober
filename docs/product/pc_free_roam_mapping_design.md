@@ -143,6 +143,10 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
 - 2026-07-04 07:27 复验当前地图入口：PC 7001 的 `/api/robot-control/map/preview` 仍显示地图、18 点路线、
   目标点、小车 map pose 和 149 个当前雷达贴图点，`live-summary` 继续声明 PC 首页和 `/map` 默认 `800%`。
   因此“地图太小”的现场动作是打开 `/map` 或用 PC 地图内缩放；ROS2 配套工具只作为工程观察补充。
+- 2026-07-04 07:38 继续复验：雷达 proof 刷新后 PC 大地图仍能显示当前雷达贴图点，WASD 前进/后退短脉冲仍能走
+  `/api/robot-control/base/manual` 到默认 `ros` 模式并读到 raw 命令非零、stop OK 和 IMU 动作信号。
+  相机侧则在服务停止后直接 `v4l2-ctl`/`ffmpeg` 多格式、多分辨率、长窗口采帧仍全部 0 字节；USB recovery
+  返回 `high_speed_zero_byte_no_frame`。因此建图视觉验收仍等真实首帧，但自由移动、WASD 和图上路线发车前置不依赖相机首帧。
 - 2026-07-04 06:14 起，PC 运动可用态和 wheel raw 诊断风险拆开显示：如果 command raw L/R 非零与
   IMU/车体运动信号已同轮观察到，普通 summary 允许进入 `ready_for_motion`，提示继续使用 WASD、自由移动或
   图上路线；vendor `T=1001 L/R=0/0` 仍作为反馈闭环风险，不冒充 wheel raw 非零。该拆分不改变扫图

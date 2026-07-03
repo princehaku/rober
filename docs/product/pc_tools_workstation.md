@@ -5806,3 +5806,17 @@ vendor `T=1001 L/R=0/0`。按 `docs/vendor/VENDOR_INDEX.md` 指向的 WAVE ROVER
 map pose 和 149 个当前雷达贴图点；`live-summary` 继续返回 `map_display_default_zoom_percent=800%`。
 现场嫌地图小的普通答案仍是先点 PC 顶部或地图卡的 `/map` 大屏；ROS2 配套是本地 RViz2 和远程 Foxglove
 只读工程观察，不替代 PC 简易控制台，也不发送底盘运动命令。
+
+2026-07-04 07:38 CST 继续按真实目标复验 PC 三项：7001 仍监听 `0.0.0.0:7001`，上位机 7878 可连，
+`trashbot-upper-robot-api`、`trashbot-local-webrtc-camera`、`trashbot-esp32-bridge`、`trashbot-lidar-lifecycle`
+均 active。地图刷新后仍有地图 PNG、18 个 Nav2 路线点、目标点、小车 map pose 和当前雷达贴图点，live-summary
+返回 `map_current_visible=true`、`path_current_visible=true`、`radar_map_points_visible=true`。PC 固定
+`/api/robot-control/base/manual` 以默认 `ros` 模式发前进/后退 0.08m/s、500ms，均返回
+`command_forwarded`、raw 命令非零、stop OK 和 `motion_signal_source=imu_attitude_delta`；补发 stop 后
+`keyboard_motion_evidence_complete=true`、`keyboard_stop_settled_after_pulse=true`。
+
+同轮相机做了更强的直接排查：停止 8088 相机服务后，DV20 `/dev/video1` 无 owner、USB `480M`、CMA 正常，
+但 `v4l2-ctl` 对 `MJPG 640x480/480x320/1280x720/1920x1080` 与 `YUYV 320x240/640x480` 均 0 字节；
+`ffmpeg` 对 MJPG/YUYV 也 0 帧；长窗口 `--stream-skip=5 --stream-count=3` 仍 0 字节。PC 共享 MJPEG 因此返回
+`first_frame_total_timeout`，USB recovery 返回 `streamon_failed`、`high_speed_zero_byte_no_frame`。
+当前图传缺口不是 PC 页面、Node relay、多人预览独占、USB full-speed 或 CMA，而是 DV20 上游输入/视频线/供电/接口/采集卡或摄像头本体。

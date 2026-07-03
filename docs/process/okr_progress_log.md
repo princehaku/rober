@@ -8,6 +8,19 @@
 
 ## 2026-07-04 系列
 
+### 2026-07-04 07-38｜pc_live_validation_camera_zero_frame｜O7 三项现场复验与图传硬件边界
+
+本轮 `sprints/2026.07.04_07-38_pc_live_validation_camera_zero_frame/` 不改产品代码，继续用真实上位机复验
+PC 端目标。地图链路仍满足当前运行态：PC 7001 读到地图 PNG、18 点 Nav2 路线、目标点、小车 map pose，
+雷达 proof 刷新后 `radar_map_points_visible=true`。WASD 同路短脉冲以默认 `ros` 模式发 forward/backward，
+返回 `command_forwarded`、raw 命令非零、stop OK 和 IMU 动作信号；补发 stop 后 live-summary 显示
+`keyboard_motion_evidence_complete=true`、`keyboard_stop_settled_after_pulse=true`。
+
+相机侧继续恢复但未出帧：DV20 `/dev/video1` 是 UVC capture，USB `480M`，CMA 正常，owner 为 0；停止 8088 服务后
+`v4l2-ctl` 对 MJPG/YUYV 多分辨率和长窗口采帧均 0 字节，ffmpeg 也 0 帧；PC 共享 MJPEG 返回
+`first_frame_total_timeout`，USB recovery 返回 `streamon_failed / high_speed_zero_byte_no_frame`。
+因此 O7 本轮不能宣称真实视频完成，剩余动作是现场检查 DV20 上游输入、视频线、供电、接口、采集卡/摄像头本体或换 known-good UVC。
+
 ### 2026-07-04 07-27｜pc_camera_probe_status_map_answer｜O7 相机状态一致性与地图配套口径
 
 本轮 `sprints/2026.07.04_07-27_pc_camera_probe_status_map_answer/` 修正 PC 相机状态一致性：
