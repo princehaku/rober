@@ -16416,6 +16416,43 @@ function requestBodyForKeyboardDirection(direction: ManualDirection) {
   } as const;
 }
 
+function keyboardLocalMotionSignalObserved(): boolean {
+  // pulse 转发只能证明命令链路；运动证据仍要来自同次回包里的轮速、IMU 或 motion_signal 字段。
+  const values = keyboardLastWheelFeedbackValues.value;
+  if (!values) {
+    return false;
+  }
+  const numberNonZero = (value: string | undefined) => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) && Math.abs(parsed) > 0;
+  };
+  return values.motion_signal_observed === "true"
+    || values.wheel_feedback_lr_nonzero_proven === "true"
+    || values.imu_attitude_delta_observed === "true"
+    || numberNonZero(values.wheel_feedback_latest_raw_left)
+    || numberNonZero(values.wheel_feedback_latest_raw_right)
+    || numberNonZero(values.feedback_left_speed)
+    || numberNonZero(values.feedback_right_speed);
+}
+
+function keyboardSummaryEvidenceForRequest() {
+  // summary 是后端权威聚合，但本次键盘 hold 的连续 pulse 和 release stop 只能由当前浏览器窗口提供。
+  const bestPulseCount = keyboardVerifiedPulseCount.value;
+  const stopSettled = keyboardStopSettledAfterPulse.value;
+  const motionObserved = keyboardLocalMotionSignalObserved();
+  return {
+    keyboard_enabled: keyboardControlArmed.value,
+    keyboard_armed: keyboardControlArmed.value,
+    keyboard_current_direction: keyboardHeldDirection.value ?? "none",
+    keyboard_current_hold_pulse_count: keyboardHoldPulseCount.value,
+    keyboard_best_continuous_pulse_count: bestPulseCount,
+    keyboard_verified_min_forwarded_pulses: KEYBOARD_VERIFIED_MIN_FORWARDED_PULSES,
+    keyboard_continuous_pulse_verified: bestPulseCount >= KEYBOARD_VERIFIED_MIN_FORWARDED_PULSES,
+    keyboard_stop_settled_after_pulse: stopSettled,
+    keyboard_motion_verified: bestPulseCount >= KEYBOARD_VERIFIED_MIN_FORWARDED_PULSES && stopSettled && motionObserved,
+  };
+}
+
 function commandEvidenceFallback(commandKind: "manual" | "stop", reason: string) {
   // 浏览器层异常也必须补齐证据字段，避免错误态合同缺字段。
   return {
@@ -17715,7 +17752,7 @@ async function refreshConsole(): Promise<boolean> {
   let refreshed = false;
   try {
     const [summary, detail] = await Promise.all([
-      getRobotControlSummary(robotApiBaseUrl.value),
+      getRobotControlSummary(robotApiBaseUrl.value, keyboardSummaryEvidenceForRequest()),
       taskId.value.trim()
         ? getO7ConsumerTaskDetail(o6ConsumerBaseUrl.value, taskId.value, fieldEvidenceManifestJson.value)
         : Promise.resolve(null),

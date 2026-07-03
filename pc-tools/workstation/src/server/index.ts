@@ -58,6 +58,7 @@ import {
 import { WORKSTATION_NODE_PORT, WORKSTATION_PUBLIC_HOST } from "../shared/workstationDefaults";
 import { PROOF_FLAGS } from "../shared/contracts";
 import type { Response } from "express";
+import type { RobotControlKeyboardLocalEvidence } from "./robotControlSummary";
 import type {
   RobotControlBaseCommandProxyResponse,
   RobotControlBaseCommandRequest,
@@ -145,6 +146,45 @@ function queryString(value: unknown): string {
   // Express query 可能是数组或对象；只接受单个字符串，其他形态 fail closed 为空。
   // 为空会让 catalog 返回 not_proven/blocked，而不是把异常 query 当路径读取。
   return typeof value === "string" ? value : "";
+}
+
+function queryBoolean(value: unknown): boolean | undefined {
+  // 布尔 query 只接受显式 true/false；其他拼写不参与证据覆盖，避免 URL 噪声改变验收状态。
+  const text = queryString(value).trim().toLowerCase();
+  if (["true", "1", "yes", "y"].includes(text)) {
+    return true;
+  }
+  if (["false", "0", "no", "n"].includes(text)) {
+    return false;
+  }
+  return undefined;
+}
+
+function queryNonNegativeInteger(value: unknown): number | undefined {
+  // pulse 计数必须是非负整数；非法数字直接丢弃，由 summary builder 使用保守默认。
+  const text = queryString(value).trim();
+  if (!/^\d+$/.test(text)) {
+    return undefined;
+  }
+  const parsed = Number(text);
+  return Number.isSafeInteger(parsed) ? parsed : undefined;
+}
+
+function robotControlKeyboardEvidenceQuery(query: Record<string, unknown>): RobotControlKeyboardLocalEvidence | undefined {
+  // 这份 evidence 只描述 PC 当前页面的键盘 hold 窗口，不代表上位机持久事实或 HIL 完成。
+  const evidence: RobotControlKeyboardLocalEvidence = {
+    keyboard_enabled: queryBoolean(query.keyboard_enabled),
+    keyboard_armed: queryBoolean(query.keyboard_armed),
+    keyboard_current_direction: queryString(query.keyboard_current_direction).trim() || undefined,
+    keyboard_current_hold_pulse_count: queryNonNegativeInteger(query.keyboard_current_hold_pulse_count),
+    keyboard_best_continuous_pulse_count: queryNonNegativeInteger(query.keyboard_best_continuous_pulse_count),
+    keyboard_verified_min_forwarded_pulses: queryNonNegativeInteger(query.keyboard_verified_min_forwarded_pulses),
+    keyboard_continuous_pulse_verified: queryBoolean(query.keyboard_continuous_pulse_verified),
+    keyboard_stop_settled_after_pulse: queryBoolean(query.keyboard_stop_settled_after_pulse),
+    keyboard_motion_verified: queryBoolean(query.keyboard_motion_verified),
+  };
+  const hasEvidence = Object.values(evidence).some((value) => value !== undefined);
+  return hasEvidence ? evidence : undefined;
 }
 
 export function robotControlSummaryQueryBaseUrl(value: unknown): string {
@@ -3376,7 +3416,10 @@ async function cameraSourceFirstFrameFailureForStatus(
   }
 }
 
-async function buildRobotControlSummaryForHttp(sourceBaseUrl: string): Promise<RobotControlSummaryResponse> {
+async function buildRobotControlSummaryForHttp(
+  sourceBaseUrl: string,
+  options: { keyboardEvidence?: RobotControlKeyboardLocalEvidence } = {},
+): Promise<RobotControlSummaryResponse> {
   // summary 与 live-summary 共用同一份只读 overlay，避免两个现场入口对相机/共享预览状态说法不一致。
   const normalized = normalizeRobotApiBaseUrl(sourceBaseUrl);
   const relayKey = normalized.ok ? cameraMjpegRelayKey(normalized.normalized) : "";
@@ -3445,6 +3488,7 @@ async function buildRobotControlSummaryForHttp(sourceBaseUrl: string): Promise<R
   // HTTP 首屏固定快预算；慢 wheel L/R 证据由内部 builder/独立刷新读取，不能拖慢普通用户首屏。
   return buildRobotControlSummary(sourceBaseUrl, firstFrameOverlay, mjpegRelayOverlay, {
     readbackTimeoutMs: ROBOT_CONTROL_SUMMARY_HTTP_READBACK_TIMEOUT_MS,
+    keyboardEvidence: options.keyboardEvidence,
   });
 }
 
@@ -3896,13 +3940,17 @@ export function createWorkstationApp(): express.Express {
   workstationApp.get("/api/robot-control/summary", async (req, res) => {
     // Robot Control V1 只读代理默认连固定上位机；危险 URL 仍由 summary builder fail-closed。
     const sourceBaseUrl = robotControlSummaryQueryBaseUrl(req.query.baseUrl);
-    res.json(await buildRobotControlSummaryForHttp(sourceBaseUrl));
+    res.json(await buildRobotControlSummaryForHttp(sourceBaseUrl, {
+      keyboardEvidence: robotControlKeyboardEvidenceQuery(req.query as Record<string, unknown>),
+    }));
   });
 
   workstationApp.get("/api/robot-control/live-summary", async (req, res) => {
     // 给现场脚本一个扁平只读入口，避免每次都记 live_closure_summary 嵌套路径。
     const sourceBaseUrl = robotControlSummaryQueryBaseUrl(req.query.baseUrl);
-    const summary = await buildRobotControlSummaryForHttp(sourceBaseUrl);
+    const summary = await buildRobotControlSummaryForHttp(sourceBaseUrl, {
+      keyboardEvidence: robotControlKeyboardEvidenceQuery(req.query as Record<string, unknown>),
+    });
     res.json(buildRobotControlLiveSummaryResponse(summary));
   });
 

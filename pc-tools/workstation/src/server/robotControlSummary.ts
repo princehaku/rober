@@ -52,8 +52,20 @@ type InternalRobotApiEndpointReadback = RobotApiEndpointReadback & {
   payload: JsonRecord | null;
 };
 type FreeRoamGateRow = RobotControlSummaryResponse["safe_command_boundary"]["free_roam_autonomy_gates"][number];
+export type RobotControlKeyboardLocalEvidence = {
+  keyboard_enabled?: boolean;
+  keyboard_armed?: boolean;
+  keyboard_current_direction?: string;
+  keyboard_current_hold_pulse_count?: number;
+  keyboard_best_continuous_pulse_count?: number;
+  keyboard_verified_min_forwarded_pulses?: number;
+  keyboard_continuous_pulse_verified?: boolean;
+  keyboard_stop_settled_after_pulse?: boolean;
+  keyboard_motion_verified?: boolean;
+};
 type RobotControlSummaryBuildOptions = {
   readbackTimeoutMs?: number;
+  keyboardEvidence?: RobotControlKeyboardLocalEvidence;
 };
 type MapPreviewPathPreview = Pick<
   RobotApiProofSummary,
@@ -8859,6 +8871,57 @@ function actionCardById(
   };
 }
 
+function keyboardEvidenceNonNegativeInt(value: number | undefined, fallback: number): number {
+  // 浏览器本地证据只能收紧键盘验收口径；异常数字一律回到后端默认值，不能放宽完成条件。
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 ? Math.floor(value) : fallback;
+}
+
+function applyKeyboardLocalEvidence(
+  cards: NonNullable<RobotControlSummaryResponse["action_status_cards"]>,
+  evidence: RobotControlKeyboardLocalEvidence | undefined,
+): NonNullable<RobotControlSummaryResponse["action_status_cards"]> {
+  // 键盘连续手控的 pulse/stop 证据只存在于当前浏览器 hold 窗口；summary 接入它，但不能把旧材料或单独 stop 误算完成。
+  if (!evidence) {
+    return cards;
+  }
+  const minPulseCount = Math.max(1, keyboardEvidenceNonNegativeInt(evidence.keyboard_verified_min_forwarded_pulses, 2));
+  const bestPulseCount = keyboardEvidenceNonNegativeInt(evidence.keyboard_best_continuous_pulse_count, 0);
+  const holdPulseCount = keyboardEvidenceNonNegativeInt(evidence.keyboard_current_hold_pulse_count, 0);
+  const pulseVerified = bestPulseCount >= minPulseCount;
+  const stopSettledAfterPulse = pulseVerified && evidence.keyboard_stop_settled_after_pulse === true;
+  const localMotionVerified = pulseVerified && stopSettledAfterPulse && evidence.keyboard_motion_verified === true;
+  const hasLocalKeyboardState = evidence.keyboard_enabled === true
+    || evidence.keyboard_armed === true
+    || bestPulseCount > 0
+    || holdPulseCount > 0
+    || Boolean(evidence.keyboard_current_direction);
+  if (!hasLocalKeyboardState) {
+    return cards;
+  }
+  return cards.map((card) => {
+    if (card.id !== "keyboard_control") {
+      return card;
+    }
+    const motionVerified = card.evidence?.keyboard_motion_verified === true || localMotionVerified;
+    return {
+      ...card,
+      evidence: {
+        ...card.evidence,
+        keyboard_enabled: evidence.keyboard_enabled ?? card.evidence?.keyboard_enabled,
+        keyboard_armed: evidence.keyboard_armed ?? card.evidence?.keyboard_armed,
+        keyboard_current_direction: evidence.keyboard_current_direction ?? card.evidence?.keyboard_current_direction,
+        keyboard_current_hold_pulse_count: holdPulseCount,
+        keyboard_best_continuous_pulse_count: bestPulseCount,
+        keyboard_verified_min_forwarded_pulses: minPulseCount,
+        keyboard_continuous_pulse_verified: pulseVerified,
+        keyboard_stop_settled_after_pulse: stopSettledAfterPulse,
+        motion_signal_observed: card.evidence?.motion_signal_observed === true || motionVerified,
+        keyboard_motion_verified: motionVerified,
+      },
+    };
+  });
+}
+
 function actionCardWysiwygPlain(value: string): string {
   // 普通目标检查不能泄露枚举 token；只保留现场能理解的短读数。
   const labels: Record<string, string> = {
@@ -10773,7 +10836,10 @@ export async function buildRobotControlSummary(
     free_roam: freeRoamSummaryFromReadbacks(readbacks, freeRoamRuntimeGates, freeRoamRuntime, true),
   };
   const safeCommandBoundary = lockedBoundary(freeRoamRuntimeGates, freeRoamRuntime, proofSummary, nav2Summary, true);
-  const actionStatusCards = buildActionStatusCards(readbackSummary, safeCommandBoundary);
+  const actionStatusCards = applyKeyboardLocalEvidence(
+    buildActionStatusCards(readbackSummary, safeCommandBoundary) ?? [],
+    options.keyboardEvidence,
+  );
   const goalChecklist = buildGoalChecklist(actionStatusCards ?? [], readbackSummary, safeCommandBoundary);
   const goalSummary = buildGoalChecklistSummary(goalChecklist ?? []) as NonNullable<RobotControlSummaryResponse["goal_checklist_summary"]>;
   const currentGoalNextAction = goalSummary.ready_action_items

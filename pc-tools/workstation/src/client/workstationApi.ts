@@ -147,6 +147,18 @@ const API_ENDPOINTS = {
   proofBoundary: "/api/proof-boundary",
 } as const;
 
+export interface RobotControlKeyboardSummaryEvidence {
+  keyboard_enabled?: boolean;
+  keyboard_armed?: boolean;
+  keyboard_current_direction?: string;
+  keyboard_current_hold_pulse_count?: number;
+  keyboard_best_continuous_pulse_count?: number;
+  keyboard_verified_min_forwarded_pulses?: number;
+  keyboard_continuous_pulse_verified?: boolean;
+  keyboard_stop_settled_after_pulse?: boolean;
+  keyboard_motion_verified?: boolean;
+}
+
 async function loadJson<T>(url: string, options: { timeoutMs?: number } = {}): Promise<T> {
   // fetch 失败只抛出 API 层错误；App 负责把错误保持在 fail-closed 展示。
   const timeoutMs = options.timeoutMs;
@@ -223,13 +235,44 @@ function cloudArchiveTasksUrl(archiveJson: string): string {
   return `${API_ENDPOINTS.o7CloudArchiveTasks}?${params.toString()}`;
 }
 
-function robotControlSummaryUrl(baseUrl: string): string {
+function appendKeyboardSummaryEvidence(params: URLSearchParams, evidence: RobotControlKeyboardSummaryEvidence | undefined): void {
+  // 键盘连续手控的按住窗口只在浏览器本地存在；随 summary 一起带给 Node，避免刷新后丢掉松开即停证据。
+  if (!evidence) {
+    return;
+  }
+  const setBool = (key: keyof RobotControlKeyboardSummaryEvidence, value: boolean | undefined) => {
+    if (typeof value === "boolean") {
+      params.set(key, value ? "true" : "false");
+    }
+  };
+  const setNumber = (key: keyof RobotControlKeyboardSummaryEvidence, value: number | undefined) => {
+    if (typeof value === "number" && Number.isFinite(value)) {
+      params.set(key, String(value));
+    }
+  };
+  const direction = evidence.keyboard_current_direction?.trim();
+  params.set("keyboard_evidence_source", "pc_local_hold");
+  setBool("keyboard_enabled", evidence.keyboard_enabled);
+  setBool("keyboard_armed", evidence.keyboard_armed);
+  if (direction) {
+    params.set("keyboard_current_direction", direction);
+  }
+  setNumber("keyboard_current_hold_pulse_count", evidence.keyboard_current_hold_pulse_count);
+  setNumber("keyboard_best_continuous_pulse_count", evidence.keyboard_best_continuous_pulse_count);
+  setNumber("keyboard_verified_min_forwarded_pulses", evidence.keyboard_verified_min_forwarded_pulses);
+  setBool("keyboard_continuous_pulse_verified", evidence.keyboard_continuous_pulse_verified);
+  setBool("keyboard_stop_settled_after_pulse", evidence.keyboard_stop_settled_after_pulse);
+  setBool("keyboard_motion_verified", evidence.keyboard_motion_verified);
+}
+
+function robotControlSummaryUrl(baseUrl: string, keyboardEvidence?: RobotControlKeyboardSummaryEvidence): string {
   // Robot API base URL 只进入本机 Node proxy，浏览器永远不直接跨域访问上位机。
   const params = new URLSearchParams();
   const trimmed = baseUrl.trim();
   if (trimmed) {
     params.set("baseUrl", trimmed);
   }
+  appendKeyboardSummaryEvidence(params, keyboardEvidence);
   const query = params.toString();
   return query ? `${API_ENDPOINTS.robotControlSummary}?${query}` : API_ENDPOINTS.robotControlSummary;
 }
@@ -502,11 +545,11 @@ export async function getO7CloudArchiveTasks(archiveJson: string): Promise<O7Clo
   return loadJson<O7CloudArchiveTasksResponse>(cloudArchiveTasksUrl(archiveJson));
 }
 
-export async function getRobotControlSummary(baseUrl: string): Promise<RobotControlSummaryResponse> {
+export async function getRobotControlSummary(baseUrl: string, keyboardEvidence?: RobotControlKeyboardSummaryEvidence): Promise<RobotControlSummaryResponse> {
   // Robot Control V1 只读取 Node 代理后的 fail-closed 摘要，不接收前端任意 endpoint。
   // 浏览器侧也要有短超时；否则 PC Node 本身卡住时，普通首屏会一直 loading，无法进入“旧读数”提示。
   return loadJson<RobotControlSummaryResponse>(
-    robotControlSummaryUrl(baseUrl),
+    robotControlSummaryUrl(baseUrl, keyboardEvidence),
     { timeoutMs: ROBOT_CONTROL_SUMMARY_CLIENT_TIMEOUT_MS },
   );
 }

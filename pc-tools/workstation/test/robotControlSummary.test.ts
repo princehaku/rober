@@ -24,6 +24,56 @@ describe("robotControlSummary", () => {
     expect(summary.current_fact_plain).toContain("192.168.1.11:8787");
   });
 
+  it("only clears keyboard stop-after-release evidence when local hold pulses, motion signal, and release stop are present", async () => {
+    // 键盘连续手控的按住窗口在浏览器本地，summary 只能接收这一轮本地证据，不能用默认只读材料冒充完成。
+    vi.stubGlobal("fetch", vi.fn(async () => {
+      const payload = {
+        schema: "trashbot.upper_robot_api.v1.readback",
+        status: "loaded",
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        robot_control_executed: false,
+      };
+      return new Response(JSON.stringify(payload), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }));
+
+    const defaultSummary = await buildRobotControlSummary("http://192.168.1.11:8787", null, null, {
+      readbackTimeoutMs: 100,
+    });
+    const defaultKeyboard = defaultSummary.live_closure_summary?.live_motion_runbook_items.find((item) => item.id === "hold_keyboard");
+    expect(defaultSummary.keyboard_continuous_motion_verified).toBe(false);
+    expect(defaultSummary.keyboard_stop_after_release).toBe(false);
+    expect(defaultKeyboard?.missing_evidence).toContain("stop_after_release");
+
+    const summary = await buildRobotControlSummary("http://192.168.1.11:8787", null, null, {
+      readbackTimeoutMs: 100,
+      keyboardEvidence: {
+        keyboard_enabled: true,
+        keyboard_armed: true,
+        keyboard_current_direction: "none",
+        keyboard_current_hold_pulse_count: 0,
+        keyboard_best_continuous_pulse_count: 3,
+        keyboard_verified_min_forwarded_pulses: 2,
+        keyboard_continuous_pulse_verified: true,
+        keyboard_stop_settled_after_pulse: true,
+        keyboard_motion_verified: true,
+      },
+    });
+    const keyboard = summary.live_closure_summary?.live_motion_runbook_items.find((item) => item.id === "hold_keyboard");
+    expect(summary.live_closure_summary?.keyboard_motion_verified).toBe(true);
+    expect(summary.live_closure_summary?.keyboard_stop_settled_after_pulse).toBe(true);
+    expect(summary.live_closure_summary?.keyboard_continuous_motion_verified).toBe(true);
+    expect(summary.live_closure_summary?.keyboard_continuous_forwarded_pulses).toBe(3);
+    expect(summary.keyboard_continuous_motion_verified).toBe(true);
+    expect(summary.keyboard_stop_after_release).toBe(true);
+    expect(keyboard?.proof_status).toBe("completed");
+    expect(keyboard?.missing_evidence).toEqual([]);
+  });
+
   it("exposes minimal precheck fields for same-window wheel rerun", async () => {
     // API 读数也要声明轮速复验只需要安全确认，不能让脚本误把相机/雷达 WYSIWYG 当成额外发车预检。
     vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {
