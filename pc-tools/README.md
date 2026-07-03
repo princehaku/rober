@@ -35,6 +35,15 @@ visual-first 首屏让地图独占首行，图传和 WASD/方向键连续手控�
 `foxglove_bridge` + Foxglove Web 连接 `ws://192.168.1.11:8765`；这些工具只观察，不替代 PC 简易界面，
 也不发送 `/cmd_vel`、manual、Nav2 goal、建图或 stop。
 
+2026-07-04 00:33 CST 起，PC summary 的 `keyboard_wheel_lr_nonzero` 只允许来自真实
+`wheel_feedback_lr_nonzero_proven=true`，不再把 `command_raw_lr_nonzero`、`motion_evidence_complete`
+或 IMU 姿态变化混进 wheel raw 验收。现场 forward/back/stop 短脉冲仍证明 PC -> ROS -> bridge
+低速手控可达，summary 读回 `keyboard_continuous_motion_verified=true`、`keyboard_stop_after_release=true`，
+但 `wheel_feedback_latest_raw_left/right=0/0` 时必须保持 `keyboard_wheel_lr_nonzero=false`。
+同轮停掉相机服务后直接矩阵复测 DV20：`MJPG@1920x1080/1280x720/640x480/480x320`
+和 `YUYV@640x480/320x240@25/320x240@20` 经 v4l2/ffmpeg 均为 0 字节；PC 共享 MJPEG 返回
+`first_frame_total_timeout`。这证明当前实时图传缺口仍在摄像头输入/线/供电/采集设备出帧，不是页面独占或没试格式。
+
 2026-07-03 22:45 CST 起，`GET /api/robot-control/summary` 顶层也有
 `camera_input_signal_check_required`、`camera_input_signal_check_label` 和
 `camera_input_signal_check_plain`，不用再钻 `readback_summary.camera`。当前 7001 live summary 读回地图

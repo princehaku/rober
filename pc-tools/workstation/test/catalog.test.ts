@@ -18078,6 +18078,17 @@ describe("workstation fail-closed API contracts", () => {
       expect(summaryAfter.live_closure_summary?.keyboard_continuous_motion_verified).toBe(true);
       expect(summaryAfter.keyboard_wheel_lr_nonzero).toBe(false);
       expect(summaryAfter.robot_control_executed).toBe(false);
+
+      const summaryWithCommandRawResponse = await requestJson(`${workstation.baseUrl}/api/robot-control/summary?baseUrl=${encodeURIComponent(upstream.baseUrl)}&keyboard_enabled=true&keyboard_armed=true&keyboard_best_continuous_pulse_count=2&keyboard_verified_min_forwarded_pulses=2&keyboard_stop_settled_after_pulse=true&keyboard_motion_verified=true&command_raw_lr_nonzero_proven=true&motion_evidence_complete=true`);
+      const summaryWithCommandRaw = summaryWithCommandRawResponse.body as {
+        keyboard_wheel_lr_nonzero: boolean;
+        keyboard_command_raw_lr_nonzero: boolean;
+        keyboard_motion_evidence_complete: boolean;
+      };
+      expect(summaryWithCommandRawResponse.status).toBe(200);
+      expect(summaryWithCommandRaw.keyboard_wheel_lr_nonzero).toBe(false);
+      expect(summaryWithCommandRaw.keyboard_command_raw_lr_nonzero).toBe(true);
+      expect(summaryWithCommandRaw.keyboard_motion_evidence_complete).toBe(true);
     } finally {
       await workstation.close();
       await upstream.close();

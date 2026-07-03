@@ -10961,9 +10961,7 @@ export async function buildRobotControlSummary(
     options.keyboardEvidence,
   );
   const keyboardStatusCard = actionStatusCards.find((card) => card.id === "keyboard_control");
-  const keyboardWheelLrNonzero = keyboardStatusCard?.evidence?.wheel_feedback_lr_nonzero_proven === true
-    || keyboardStatusCard?.evidence?.command_raw_lr_nonzero_proven === true
-    || keyboardStatusCard?.evidence?.motion_evidence_complete === true;
+  const keyboardWheelLrNonzero = keyboardStatusCard?.evidence?.wheel_feedback_lr_nonzero_proven === true;
   const keyboardWheelFeedbackLrNonzero = keyboardStatusCard?.evidence?.wheel_feedback_lr_nonzero_proven === true;
   const goalChecklist = buildGoalChecklist(actionStatusCards ?? [], readbackSummary, safeCommandBoundary);
   const goalSummary = buildGoalChecklistSummary(goalChecklist ?? []) as NonNullable<RobotControlSummaryResponse["goal_checklist_summary"]>;

@@ -69,6 +69,28 @@ ros2 launch ros2_trashbot_bringup bringup.launch.py \
 - `base_link -> laser_frame` 已完成机械标定；
 - 建图、导航或运动链路已经完成。
 
+## 2026-07-04 当前 DV20 图传状态
+
+在 `root@192.168.1.11 -p 7878` 实板上复测，`USB Composite Device: DV20 USB`
+仍枚举为 `/dev/video1` 和 `/dev/video2`，视频接口位于 `480M` 高速 USB，
+`/dev/video1` 的 V4L2 input 显示 `Input 1: ok`，且停掉
+`trashbot-local-webrtc-camera.service` 后没有其它进程占用 `/dev/video1`。
+
+直接取帧矩阵结果仍为 0 字节：
+
+- `MJPG@1920x1080@30`
+- `MJPG@1280x720@30`
+- `MJPG@640x480@30`
+- `MJPG@480x320@30`
+- `YUYV@640x480@22`
+- `YUYV@320x240@25`
+- `YUYV@320x240@20`
+
+同一轮 ffmpeg `v4l2` 后端也没有写出任何帧，PC 共享 MJPEG 返回
+`first_frame_total_timeout`。因此当前实时图传 blocker 已从 PC 页面、多人预览独占、
+USB 低速口和未覆盖格式收窄到摄像头输入信号、视频线/接口/供电或 DV20/上游设备本身。
+这不改变地图、WASD 低速控制或自由移动入口；建图启动仍需要真实相机首帧。
+
 ## 2026-06-09 实板设备结论
 
 在 `root@192.168.1.11:37878` 实板上执行 `v4l2-ctl --list-devices` 和 OpenCV probe 后，确认：
