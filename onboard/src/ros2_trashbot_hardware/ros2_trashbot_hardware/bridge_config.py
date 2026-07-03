@@ -109,7 +109,7 @@ def declare_bridge_parameters(node: Any) -> None:
     node.declare_parameter("max_wheel_speed_mps", 1.3)
     node.declare_parameter("pwm_min_abs", 164)
     node.declare_parameter("pwm_max_abs", 164)
-    # vendor json_cmd.h 定义 T=900 main/module；现场可用 config.yaml 的 WAVE ROVER/UGV02 口径覆盖为 main_type=2,module_type=0。
+    # vendor json_cmd.h 与 ugv_config.h 明确 WAVE ROVER 为 main_type=1,module_type=0；main_type=2 仅用于 UGV02/UGV Rover 覆盖。
     node.declare_parameter("main_type", DEFAULT_MAIN_TYPE)
     node.declare_parameter("module_type", DEFAULT_MODULE_TYPE)
     node.declare_parameter("feedback_interval_ms", 100)

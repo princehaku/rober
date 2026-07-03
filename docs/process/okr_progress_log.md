@@ -8,6 +8,22 @@
 
 ## 2026-07-04 系列
 
+### 2026-07-04 05-36｜wave_rover_main_type_live_alignment｜WAVE ROVER 主类型现场口径纠正
+
+本轮 `sprints/2026.07.04_05-36_wave_rover_main_type_live_alignment/` 按本地 vendor 资料纠正 WAVE ROVER
+主类型口径：`json_cmd.h` 明确 `1-WAVE ROVER, 2-UGV02, 3-UGV01`，`ugv_config.h` 默认 `mainType=1`，
+因此 repo 默认和现场推荐应为 `main_type=1,module_type=0`。修正文档和代码注释后，现场通过 ESP32 HTTP
+非运动写回 `T=900 main=1,module=0`，再写 `T=138 L=1,R=1`，`T=139` 读回 `L=1,R=1`。当前常驻
+`/esp32_bridge` 进程仍带历史手工覆盖 `main_type:=2,module_type:=0`，下一次重启/deploy 必须移除覆盖或显式改为 `1/0`。
+
+验证范围：硬件协议 `unittest` 40 tests OK；PC 7001 前进/后退短脉冲均 `proxy_status=command_forwarded`、
+`command_result_ok=true`、`stop_result_ok=true`、`command_raw_lr_nonzero_proven=true`、
+`motion_signal_observed=true`，但 `wheel_feedback_lr_nonzero_proven=false` 且 `T=1001 L/R=0/0`。
+live-summary 继续读到 `map_current_visible=true`、`path_current_visible=true`、`route_target_current_visible=true`、
+`radar_map_points_current_visible=true`、`keyboard_continuous_motion_verified=true`。相机 status 仍为
+`source_first_frame_failed / uvc_no_frame_not_exclusive`、`owner_count=0`、`exclusive_camera_claim=false`，
+剩余风险是 DV20/UVC 上游输入信号、摄像头/采集卡、线材、接口或供电。
+
 ### 2026-07-04 05-19｜pc_map_default_800_live_wysiwyg｜PC 大地图默认 800%
 
 本轮 `sprints/2026.07.04_05-19_pc_map_default_800_live_wysiwyg/` 继续处理现场“PC 地图太小”：

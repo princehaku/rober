@@ -406,7 +406,7 @@ PC 固定代理 `/api/robot-control/base/manual` 现在同时接受 `speed` 与 
 `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/movtion_module.h` 显示 `mainType==1`
 和 `mainType==2` 会使用不同轮距、脉冲数和方向参数，且非 `mainType==3` 路径不使用 PID。
 
-当前真实上位机常驻 `/esp32_bridge` 进程启动参数为：
+当时真实上位机常驻 `/esp32_bridge` 进程启动参数为：
 `command_mode:=pwm`、`pwm_min_abs:=255`、`pwm_max_abs:=255`、`main_type:=2`、
 `module_type:=0`、`command_transport:=http`、`wave_rover_http_base_url:=http://192.168.1.3`。
 现场直接从上位机调用 ESP32 HTTP `/js?json=...` 做低风险 A/B：
@@ -415,12 +415,23 @@ PC 固定代理 `/api/robot-control/base/manual` 现在同时接受 `speed` 与 
 - 临时 `T=900 main=1,module=0` 后发送 `T=11 L=164,R=164`，随后 `T=130/T=1001`
   仍返回 `L=0,R=0`；观察到 IMU roll/pitch 有变化，但不能替代 wheel raw 非零证明。
 - 已发送 stop：`T=11 L=0,R=0`、`T=1 L=0,R=0`、`T=13 X=0,Z=0`。
-- 已恢复 `T=900 main=2,module=0` 并重新设置 `T=138 L=1,R=1`，避免把临时 A/B 配置留在现场车上。
+- 当时曾恢复 `T=900 main=2,module=0` 并重新设置 `T=138 L=1,R=1`，但这只是旧运行参数下的历史 A/B 收口，
+  不是当前 WAVE ROVER 的推荐配置。
+
+2026-07-04 复核修正：`docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h` 明确
+`main_type: 1-WAVE ROVER, 2-UGV02, 3-UGV01`，`ugv_config.h` 默认 `mainType = 1`。
+本项目实物底盘是 WAVE ROVER，因此 repo 默认和现场推荐运行口径必须保持
+`main_type=1,module_type=0`。`docs/vendor/waveshare_wave_rover/ugv_rpi/config.yaml` 中的
+`main_type: 2` 属于 vendor Raspberry Pi app 对 UGV02/UGV Rover 的应用配置，不能覆盖本车 WAVE ROVER
+固件主类型。若现场进程仍带 `main_type:=2` 手工参数启动，下一次重启或部署应移除该覆盖，或显式改为
+`main_type:=1 -p module_type:=0`；启动后 bridge 会通过非运动 `T=900` 写回正确主类型，再发送
+`T=138 L=1,R=1` 恢复左右速度倍率。
 
 结论边界：这轮证明 PC/上位机可以到 ESP32 HTTP/WAVE ROVER JSON 层发送 `T=11` 和配置指令，
 也证明相机和雷达不是“车能不能自己动”的前置 gate；但 `T=1001 L/R` 仍未在同窗口非零，
-不能把 Nav2 自动驾驶、wheel raw L/R、真实物理移动或 delivery success 标记为完成。下一步必须在车旁继续查
-电机使能、供电、底盘模式、ESP32 到电机驱动链路，以及 `T=1001 L/R` 在当前 main_type 下的反馈语义。
+不能把 Nav2 自动驾驶、wheel raw L/R、真实物理移动或 delivery success 标记为完成。下一步必须先把现场
+`main_type=1,module_type=0` 固化，再继续查电机使能、供电、底盘模式、ESP32 到电机驱动链路，以及
+`T=1001 L/R` 在 WAVE ROVER 主类型下的反馈语义。
 
 ## 2026-07-03 T=13 bridge A/B and summary alias boundary
 
