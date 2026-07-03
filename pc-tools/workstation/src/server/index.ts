@@ -1811,6 +1811,10 @@ function readOnlyStatusDangerousFields(
   payload: Record<string, unknown> | null,
 ): string[] {
   // 直连 status 是只读窗口；base/status 允许上车回报 readback sends_commands，但仍禁止 motion/control 顶层放行。
+  const allowedBaseStatusPaths = new Set([
+    "bridge_command_debug.robot_control_executed",
+    "latest_result.bridge_command_debug.robot_control_executed",
+  ]);
   const allowedReadback = new Set([
     "sends_commands",
     "readback_sends_commands",
@@ -1818,6 +1822,10 @@ function readOnlyStatusDangerousFields(
   return scanDangerousTrueFields(payload).filter((field) => {
     if (workstationEndpoint !== "/api/robot-control/base/status") {
       return true;
+    }
+    // 上车端会把最近一次底盘命令 debug 放进只读 base/status；这是历史证据，不代表当前 GET 发车。
+    if (allowedBaseStatusPaths.has(field)) {
+      return false;
     }
     const last = field.split(".").pop() ?? field;
     return !allowedReadback.has(last);

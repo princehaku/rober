@@ -1134,3 +1134,18 @@ live-summary 读回 `keyboard_motion_verified=true`、`keyboard_stop_settled_aft
 `keyboard_command_raw_lr_nonzero_proven=true` 和 `keyboard_motion_evidence_complete=true`。相机仍为
 `high_speed_zero_byte_no_frame`，只阻塞实时图传和建图视觉验收；`T=1001 L/R=0/0` 仍是 wheel raw
 闭环遗留，不能据此宣称完整自动驾驶交付已完成。
+
+2026-07-04 03:05 CST 现场复测修复了 PC 只读底盘状态误阻断：`/api/robot-control/base/status`
+现在把 `bridge_command_debug.robot_control_executed=true` 识别为历史命令材料，返回
+`proxy_status=status_loaded`、`blocked_reasons=[]`，不再因为当前 GET 只读状态误报 502。该修复只影响状态读回，
+不放宽 manual、keyboard、free-roam、Nav2 或 delivery 的固定代理护栏。
+
+同轮继续验证 vendor 反馈语义：按 `docs/vendor/VENDOR_INDEX.md` 指向的 `json_cmd.h`、
+`movtion_module.h` 和 `ugv_advance.h`，`T=1001.L/R` 来自 ESP32 固件 `speedGetA/B`。
+现场发 `{"T":900,"main":1,"module":0}` 后，再跑 PC 低速前进/后退，命令 raw 仍非零，但 `T=1001 L/R`
+继续为 `0/0`；裸串口并发读还会撞到 `multiple access on port?`，后续不应绕过 bridge/API 抢 `/dev/ttyS5`。
+因此低速移动可继续用 command raw + stop + IMU 动作信号验收“能动”，但完整自动驾驶或 wheel raw 闭环仍未完成。
+
+相机同轮直连确认不是 PC 页面独占：`/dev/video1` 无 owner、USB `480M`，但 `v4l2-ctl` 对
+`MJPG@640x480` 和 `YUYV@320x240` 均 `select timeout` 且 0 字节；`8088/mjpeg` 多格式尝试返回
+`opencv_capture_not_opened`。该缺口仍只阻塞实时图传和建图视觉验收，不应重新成为自由移动、WASD 或图上路线发车前置。

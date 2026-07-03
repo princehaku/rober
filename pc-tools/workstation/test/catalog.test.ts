@@ -5880,6 +5880,57 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("base status proxy does not block on historical bridge command debug readback", async () => {
+    // 独立底盘状态按钮是只读入口；历史 command debug 只能证明之前发过命令，不能让当前 GET 被误判成发车。
+    const robotApi = await listenRobotApiReadbackByPath({
+      "/api/base/status": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.base_status",
+          status: "loaded",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          robot_control_executed: false,
+          sends_motion_commands: false,
+          sends_base_motion_commands: false,
+          bridge_command_debug: {
+            robot_control_executed: true,
+            nonzero_command_observed: true,
+          },
+          latest_result: {
+            bridge_command_debug: {
+              robot_control_executed: true,
+            },
+          },
+          feedback_readback: {
+            sends_commands: true,
+            sends_motion_commands: false,
+            observed_feedback_types: [1001],
+          },
+        },
+      },
+    });
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const response = await requestJson(
+        new URL(`/api/robot-control/base/status?baseUrl=${encodeURIComponent(robotApi.baseUrl)}`, workstation.baseUrl),
+      );
+      const body = response.body as Record<string, unknown>;
+
+      expect(response.status).toBe(200);
+      expect(body.proxy_status).toBe("status_loaded");
+      expect(body.failure_reason).toBe("");
+      expect(body.blocked_reasons).toEqual([]);
+      expect(body.hard_dangerous_true_fields).toEqual([]);
+      expect(body.safe_to_control).toBe(false);
+      expect(body.sends_motion_commands).toBe(false);
+      expect(body.robot_control_executed).toBe(false);
+    } finally {
+      await workstation.close();
+      await robotApi.close();
+    }
+  });
+
   it("Robot Control summary derives latest wheel L/R from nested feedback summary", async () => {
     // 真实上位机 latest 把 wheel raw L/R 放在 nested latest_pair；PC summary 必须提取出来给普通首屏显示。
     const robotApi = await listenRobotApiReadbackByPath({
