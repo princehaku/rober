@@ -1195,6 +1195,39 @@ class LocalWebrtcCameraSmokeTests(unittest.TestCase):
         self.assertIn("usb 4-1", diagnostics["latest_stale_transport_error"])
         self.assertEqual("continue_first_frame_format_diagnostics", diagnostics["next_action"])
 
+    def test_uvc_kernel_diagnostics_treats_same_usb_address_errors_before_reenumeration_as_stale(self) -> None:
+        """同一个 `3-1` 地址被重用后，最近枚举前的旧错误不能继续压成当前传输错误。"""
+        old_error = "[777992.581028] usb 3-1: device descriptor read/all, error -71"
+        reenumerated = "[1003404.281463] usb 3-1: Found UVC 1.00 device USB Composite Device (4c4a:4a55)"
+        current_seen = "[1003404.291463] usb 3-1: authorized to connect"
+        completed = camera.subprocess.CompletedProcess(
+            ["dmesg"],
+            0,
+            stdout=f"{old_error}\n{reenumerated}\n{current_seen}\n",
+            stderr="",
+        )
+        candidate = {
+            "path": "/dev/video1",
+            "v4l2_name": "USB Composite Device: DV20 USB",
+            "sysfs_name": "USB Composite Device: DV20 USB",
+            "readonly_probe": {
+                "v4l2_all": {
+                    "stdout": "Driver Info:\n\tBus info         : usb-5310400.usb-1\n",
+                },
+            },
+        }
+
+        with mock.patch.object(camera, "sysfs_usb_device_for_video", return_value="3-1"):
+            with mock.patch.object(camera.shutil, "which", return_value="/bin/dmesg"):
+                with mock.patch.object(camera.subprocess, "run", return_value=completed):
+                    diagnostics = camera.collect_uvc_kernel_diagnostics("/dev/video1", candidate)
+
+        self.assertEqual("uvc_kernel_seen_without_current_transport_errors", diagnostics["status"])
+        self.assertEqual(0, diagnostics["transport_error_count"])
+        self.assertEqual(1, diagnostics["stale_transport_error_count"])
+        self.assertEqual(1003404.291463, diagnostics["latest_current_enumeration_s"])
+        self.assertIn("usb 3-1", diagnostics["latest_stale_transport_error"])
+
     def test_uvc_usb_topology_prefers_current_sysfs_device_over_other_full_speed_video(self) -> None:
         """同机存在其它 12M Video 设备时，当前摄像头 480M 不能被误判 full-speed。"""
         topology = """/:  Bus 06.Port 1: Dev 1, Class=root_hub, Driver=ohci-platform/1p, 12M

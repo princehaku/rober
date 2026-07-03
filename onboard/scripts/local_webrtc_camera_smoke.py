@@ -411,6 +411,32 @@ def line_matches_usb_device(line: str, usb_device: str | None) -> bool:
     )
 
 
+def dmesg_line_seconds(line: str) -> float | None:
+    """提取 dmesg 单调时间；同一个 USB 地址重用时要靠时间切开旧错误。"""
+    match = re.match(r"\[\s*([0-9]+(?:\.[0-9]+)?)\]", line)
+    if not match:
+        return None
+    try:
+        return float(match.group(1))
+    except ValueError:
+        return None
+
+
+def is_usb_enumeration_line(line: str) -> bool:
+    """这些行代表设备重新枚举完成；它们之前的同地址错误不能再算当前根因。"""
+    lower = line.lower()
+    return any(
+        token in lower
+        for token in (
+            "new high-speed usb device",
+            "new full-speed usb device",
+            "new usb device found",
+            "found uvc",
+            "authorized to connect",
+        )
+    )
+
+
 def collect_uvc_kernel_diagnostics(selected_path: str | None, selected_candidate: dict[str, Any] | None) -> dict[str, Any]:
     """只读 dmesg 中的 UVC/USB 错误；它解释无首帧根因，不会打开摄像头。"""
     bus_info = parse_v4l2_bus_info(selected_candidate)
@@ -459,6 +485,13 @@ def collect_uvc_kernel_diagnostics(selected_path: str | None, selected_candidate
     matched_lines: list[str] = []
     error_lines: list[str] = []
     stale_error_lines: list[str] = []
+    latest_current_enumeration_s: float | None = None
+    if current_usb_device:
+        for line in lines:
+            if line_matches_usb_device(line, current_usb_device) and is_usb_enumeration_line(line):
+                line_s = dmesg_line_seconds(line)
+                if line_s is not None and (latest_current_enumeration_s is None or line_s > latest_current_enumeration_s):
+                    latest_current_enumeration_s = line_s
     for line in lines:
         lower = line.lower()
         # 有当前 sysfs 地址时只把同一 USB 设备的日志算作当前根因；旧端口错误只作为残留证据。
@@ -472,7 +505,16 @@ def collect_uvc_kernel_diagnostics(selected_path: str | None, selected_candidate
         if related:
             matched_lines.append(compact_line)
             if is_transport_error:
-                error_lines.append(compact_line)
+                line_s = dmesg_line_seconds(line)
+                if (
+                    current_usb_device
+                    and latest_current_enumeration_s is not None
+                    and line_s is not None
+                    and line_s < latest_current_enumeration_s
+                ):
+                    stale_error_lines.append(compact_line)
+                else:
+                    error_lines.append(compact_line)
         elif current_usb_device and is_transport_error and ("uvc" in lower or re.search(r"\b(?:usb|uvcvideo)\s+[0-9]+-[0-9]", lower)):
             stale_error_lines.append(compact_line)
 
@@ -501,6 +543,7 @@ def collect_uvc_kernel_diagnostics(selected_path: str | None, selected_candidate
         "selected_name": selected_name,
         "bus_info": bus_info,
         "current_usb_device": current_usb_device or "",
+        "latest_current_enumeration_s": latest_current_enumeration_s,
         "matched_line_count": len(matched_lines),
         "transport_error_count": len(error_lines),
         "latest_transport_error": error_lines[-1] if error_lines else "",

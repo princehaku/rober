@@ -5447,3 +5447,18 @@ PC/上位机/ESP32 HTTP 命令链路有证据，IMU 有姿态变化信号，但 
 仍未证明非零。现场临时 A/B `command_mode=ros` 已写出 `T=13 X=0.08 Z=0.0` 和 stop，
 随后恢复 `command_mode=pwm`；`T=11/PWM` 和 `T=13/ROS` 都没有让 `T=1001 L/R` 变非零，
 所以不能把 wheel raw 非零、完整 Nav2 路线执行或 delivery success 写成已完成。
+
+2026-07-03 16:05 CST 起，PC `/api/robot-control/base/manual` 和 `/api/robot-control/base/first-jog`
+允许现场脚本显式传 `command_mode=ros|speed|pwm`；未传时仍默认 `ros`，普通页面打开即用的 WASD 行为不变。
+真实验证从 PC 7001 发 `command_mode=speed` 后，上位机 command debug 记录
+`source=upper_robot_api_manual_control`、`command_transport=serial`、
+`vendor_command={"T":1,"L":0.04,"R":0.04}`，随后写出 `T=1/T=11/T=13` 三类 stop。
+这解决了 PC 代理挡住 `T=1` A/B 的问题；但反馈窗口仍为 `T=1001 L/R=0/0`，所以 wheel raw
+非零和完整自动驾驶验收仍未完成。
+
+同轮相机 health 增加当前枚举时间围栏：同一个 USB kernel 地址 `3-1` 被重新枚举后，早于最近
+`Found UVC/authorized to connect` 的旧 `-71` 和 URB 错误不再算当前传输错误。实机重启 8088 后
+`uvc_kernel_diagnostics_status=uvc_kernel_seen_without_current_transport_errors`、
+`transport_error_count=0`、`stale_transport_error_count=50`、`camera_usb_speed=480M`。
+无抢占首帧 probe 仍显示 OpenCV 可打开设备，但 v4l2 mmap、ffmpeg、MJPG/YUYV/current 九个后端均
+`no_frame_timeout` 且输出 0 字节；当前结论从“最新 USB 传输错误”收窄为“UVC 枚举正常但内核没有收到视频 buffer”。

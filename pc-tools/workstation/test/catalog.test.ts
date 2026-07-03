@@ -6320,6 +6320,46 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("Robot Control manual proxy forwards explicit command_mode for field A/B checks", async () => {
+    // 普通页面默认 ros；现场排障显式传 speed/pwm 时，PC 代理不能把它改回 ros。
+    const upstream = await listenRobotBaseCommandApi({
+      "/api/base/manual": {
+        payload: {
+          status: "manual_command_completed",
+          manual_command_executed: true,
+          auto_stop_executed: true,
+          wheel_feedback_lr_nonzero_proven: false,
+          wheel_feedback_nonzero_observed: false,
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+    }, {});
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const response = await fetch(`${workstation.baseUrl}/api/robot-control/base/manual?baseUrl=${encodeURIComponent(upstream.baseUrl)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ direction: "forward", speed: 0.04, duration_ms: 400, command_mode: "speed" }),
+      });
+      const payload = await response.json();
+      expect(response.status).toBe(200);
+      expect(payload.proxy_status).toBe("command_forwarded");
+      expect(upstream.receivedBodies["/api/base/manual"]).toContainEqual(expect.objectContaining({
+        direction: "forward",
+        speed: 0.04,
+        duration_ms: 400,
+        command_mode: "speed",
+        feedback_mode: "realtime",
+        confirm_hil_checklist: true,
+      }));
+    } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+  });
+
   it("summarizes first-jog as ready when only visual material is missing", async () => {
     // 最新普通首屏口径：低速试动只需要安全确认；外部视频/可见相机材料只影响后续验收。
     const robotApi = await listenRobotApiReadbackByPath({

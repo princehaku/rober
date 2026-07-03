@@ -1028,3 +1028,13 @@ PC WASD `pwm + realtime` 快路径现在会把直接串口写出的 vendor comma
 同轮相机恢复脚本确认当前 DV20 为 USB `480M` high-speed，但所有 STREAMON 仍 0 字节。
 这不影响“无雷达/无相机也可做低速手控或自由移动”的策略，只影响建图启动和视觉 WYSIWYG 验收；
 下一步现场动作是检查 USB 线、接口、摄像头供电或换 known-good UVC 复测。
+
+2026-07-03 16:05 继续推进 PC 手控和图传诊断：PC 手控代理现在支持显式
+`command_mode=ros|speed|pwm` 透传，默认仍为普通用户打开即用的 `ros`。真实 PC 7001 请求
+`command_mode=speed` 已让上位机写出 vendor `T=1 L=0.04/R=0.04`，随后三类 stop 均写出；
+但 `T=1001 L/R` 仍保持 `0/0`。因此自由移动/键盘手控“能发车命令”的软件路径更完整，
+但完整交付仍要求补齐 wheel raw 或替代的底盘反馈语义。
+
+相机方面，当前 USB 重新枚举后不再有新的内核传输错误；health 会把旧同地址错误归为 stale。
+后端 smoke 覆盖 v4l2 mmap、ffmpeg、MJPG/YUYV/current 均 0 字节 timeout。该缺口仍只影响
+实时图传和建图视觉验收，不应重新变成低速运动或自动驾驶发车 gate。

@@ -444,3 +444,23 @@ PC 固定代理 `/api/robot-control/base/manual` 现在同时接受 `speed` 与 
 PC/API/ROS bridge 到 ESP32 HTTP/WAVE ROVER JSON 命令链路可达，`T=11/PWM` 与 `T=13/ROS`
 都已被真实写出；`T=1001 L/R` 非零仍未证明，不能把 IMU 姿态变化替代为 wheel raw、
 物理移动、Nav2 HIL 或 delivery success。
+
+## 2026-07-03 PC proxy explicit mode and T=1 recheck
+
+PC 工作站 `/api/robot-control/base/manual` 现在允许显式透传
+`command_mode=ros|speed|pwm`；未传时仍保持普通页面默认 `ros`。这不改变 vendor 协议，
+只避免现场 A/B 时 PC 代理把 `speed` 或 `pwm` 请求改写成 `ros`。
+
+真实验证：
+
+- PC `0.0.0.0:7001` 请求 `direction=forward,speed=0.04,duration_ms=400,command_mode=speed`
+- 上位机 `/api/base/manual` 接收后写出 vendor `{"T":1,"L":0.04,"R":0.04}`
+- 自动停车写出 `{"T":1,"L":0,"R":0}`、`{"T":11,"L":0,"R":0}`、
+  `{"T":13,"X":0,"Z":0}`
+- `wave_rover_command_debug.jsonl` 记录 `command_transport=serial`、
+  `source=upper_robot_api_manual_control`、`serial_write_returned=true`
+- `wave_rover_feedback_debug.jsonl` 同窗口仍为 `T=1001 L/R=0/0`
+
+结论：PC 代理、上位机 direct serial 和 vendor `T=1` 速度命令均已可达；当前 `T=1001 L/R`
+非零缺口不是 PC 代理模式写死造成。下一步若继续追 wheel raw，需要查当前固件在 `main_type=2`
+下是否回填 `speedGetA/speedGetB`，以及电机驱动/编码器反馈语义，而不能把 IMU 姿态变化直接标成 wheel raw。
