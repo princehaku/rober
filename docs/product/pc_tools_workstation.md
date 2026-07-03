@@ -5550,3 +5550,13 @@ Foxglove bridge + Foxglove Web，连接 `ws://192.168.1.11:8765`。RViz2/Foxglov
 但同一响应仍保持 `wheel_raw_left=0`、`wheel_raw_right=0`、`wheel_feedback_lr_nonzero_proven=false`，不能把它升级成
 vendor `T=1001 L/R` 非零或完整 Nav2/delivery success。这样普通 PC 页和现场脚本能直接看到“车有动作迹象”和
 “wheel raw 仍未证明”两件事，不必再绕到 summary 里查。
+
+2026-07-03 21:36 CST live 复核当前地图入口：PC 端 `/map` 仍返回 HTTP 200，summary 读回
+`map_display_default_zoom_percent=400%`、`map_display_primary_url=/map`、`map_display_max_zoom_percent=1200%`，
+并继续暴露 RViz2 launch、Foxglove websocket `ws://192.168.1.11:8765`。普通用户优先使用 PC 大地图和
+`/map` 直达页；ROS2 配套工具只作为工程观察：本地 RViz2 看 `/map`、`/scan`、TF、路径、定位和 costmap，
+远程浏览器用 Foxglove bridge + Foxglove Web。它们不替代 PC 简易控制台，也不发送底盘运动命令。
+同次 live map preview 返回 `robot_pose_status=map_pose_observed`、`path_preview_point_count=18`、
+`route_target_visible=true` 和目标 `{x:0.8,y:0.05,frame_id:map}`，但 `status=loaded_fail_closed_summary`、
+`has_png=false`；这说明本轮剩余问题是上车 map preview 没吐出 PNG 图像，而不是 PC UI 画布尺寸未放大。
+雷达 overlay 当前 `not_current`，旧来源点因 scan stale 被抑制，需先刷新雷达扫描再刷新地图画面。

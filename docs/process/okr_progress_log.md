@@ -8,6 +8,23 @@
 
 ## 2026-07-03 系列
 
+### 2026-07-03 21-36｜pc_map_ros2_companion_live_check｜PC 大地图与 ROS2 配套 live 复核
+
+本轮 `sprints/2026.07.03_21-36_pc_map_ros2_companion_live_check/` 回应现场“PC 地图太小 / ROS2 有什么配套”的问题：
+当前代码已经提供普通用户 PC 大地图、`/map` 直达大屏、默认 `400%` 细节视角、`1200%` 细节放大和
+`45%` 适配完整视角。ROS2 配套工具按工程观察分层：本地调试用 RViz2，远程浏览器观察用
+Foxglove bridge + Foxglove Web；两者只观察 `/map`、`/scan`、TF、路径、定位和 costmap，不替代 PC 简易控制台，
+不发送底盘运动命令。
+
+验证范围：`npm test -- test/App.test.ts -t "map display|direct map|ROS2|Foxglove|RViz2|plain map" --run`
+7 tests OK / 233 skipped；`npm test -- test/robotControlSummary.test.ts --run` 15 tests OK；`npm run build`
+通过（仅 Vite chunk warning）。live 7001：`/map` HTTP 200；summary 返回
+`map_display_default_zoom_percent=400%`、`map_display_primary_url=/map`、`map_display_max_zoom_percent=1200%`，
+且 `map_current_visible=true`、`path_current_visible=true`、`route_target_visible=true`。
+当前剩余风险是 `/api/robot-control/map/preview` 本轮只返回 `loaded_fail_closed_summary`、`has_png=false`；
+路线目标仍可读，但真实 PNG 图像需要继续复查上车 map preview 生成/读取链路。雷达点当前也因 stale scan 被抑制，
+需要先刷新雷达扫描再刷新地图画面。
+
 ### 2026-07-03 21-30｜pc_base_feedback_motion_signal｜WASD 动作信号读回提升
 
 本轮 `sprints/2026.07.03_21-30_pc_base_feedback_motion_signal/` 继续推进 PC 打开即用和 WASD 控制验收：
