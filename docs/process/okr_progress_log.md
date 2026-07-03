@@ -6,6 +6,26 @@
 
 ---
 
+## 2026-07-04 系列
+
+### 2026-07-04 05-19｜pc_map_default_800_live_wysiwyg｜PC 大地图默认 800%
+
+本轮 `sprints/2026.07.04_05-19_pc_map_default_800_live_wysiwyg/` 继续处理现场“PC 地图太小”：
+普通首页和 `/map` 直达大屏默认缩放从 `400%` 提升到 `800%`，`细节放大` 上限从 `1600%` 提升到
+`3200%`；`完整态势` 仍回到 `100%` 全局。ROS2 配套继续保持分层：普通用户默认使用 PC 大地图和 `/map`，
+RViz2/Foxglove 只作为工程观察，不启动 ROS2/RViz2/Foxglove/Nav2/建图 runtime，不发送任何运动命令。
+
+验证范围：`npm test -- test/App.test.ts -t "map display|direct map|ROS2|Foxglove|RViz2|plain map" --run`
+7 tests OK / 234 skipped；`npm test -- test/catalog.test.ts -t "map display|map preview|direct map|ROS2|Foxglove|RViz2" --run`
+4 tests OK / 188 skipped；`npm test -- test/robotControlSummary.test.ts --run` 16 tests OK；`npm run build` 通过
+（仅 Vite chunk warning）。7001 已重启到 `0.0.0.0:7001`，`/map` HTTP 200；live-summary 读回
+`map_display_default_zoom_percent=800%`、`map_display_direct_map_default_zoom_percent=800%`、
+`map_display_max_zoom_percent=3200%`，且 `map_current_visible=true`、`path_current_visible=true`、
+`route_target_current_visible=true`、`radar_map_points_current_visible=true`、`keyboard_continuous_motion_verified=true`。
+实时图传仍未出帧：触发共享 MJPEG 后为 `502/0 bytes`，状态回到
+`source_first_frame_failed / uvc_no_frame_not_exclusive`，剩余风险仍是 DV20/UVC 输入信号、线材、接口、供电
+或 known-good UVC 复测。
+
 ## 2026-07-03 系列
 
 ### 2026-07-03 21-46｜pc_home_auto_radar_map_refresh｜PC 首页自动雷达贴图刷新
