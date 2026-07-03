@@ -82,6 +82,12 @@ pc-tools/workstation/
   普通用户用 PC 大地图和 `/map`；本地工程调试用 RViz2；远程浏览器多人观察用 Foxglove bridge + Foxglove Web。
   这些入口只观察 `/map`、`/scan`、TF、路径、定位和 costmap，不启动 ROS2/RViz2/Foxglove/Nav2/建图 runtime，
   不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+- 2026-07-04 04:05 CST 起，PC 地图“太小”的当前有效默认值继续提升为 `300%`：
+  `map_display_default_zoom_percent=300%`、`map_display_direct_map_default_zoom_percent=300%`，
+  `map_display_fit_zoom_percent=100%`、`map_display_max_zoom_percent=1200%`。普通用户第一眼优先看清地图、Nav2 路线、
+  小车位置、雷达点和目标点；需要完整全局时仍点 `完整态势` 回到 `100%`，需要局部排障时点 `细节放大` 到
+  `1200%`。ROS2 配套不变：RViz2/Nav2 RViz 插件和 Foxglove bridge 只作工程观察，不替代 PC 简易控制台，
+  也不启动 ROS2/RViz2/Foxglove/Nav2/建图 runtime 或任何运动入口。
 - 2026-07-04 03:34 CST 现场复核当前 PC 三主功能：地图链路已读到
   `map_current_visible=true`、`path_current_visible=true`、`route_target_current_visible=true`、
   `radar_map_points_current_visible=true`，map preview 同轮显示路线 18 点、AMCL map pose、目标点和

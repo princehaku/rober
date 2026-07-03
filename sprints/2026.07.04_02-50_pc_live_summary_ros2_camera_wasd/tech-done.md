@@ -17,6 +17,10 @@ micro
 - 2026-07-04 03:20 CST 追加 PC 地图易用性修正：普通首页和 `/map` 默认缩放从 `150%` 提升到
   `200%`，地图面板和内层 WYSIWYG 画布增高，顶栏入口改为 `地图大屏 /map`；ROS2 配套继续只作为
   `工程观察：RViz2 / Foxglove`，不替代普通用户简易控制台。
+- 2026-07-04 04:05 CST 继续响应“PC 地图太小 / ROS2 配套”反馈：普通首页和 `/map` 默认缩放从
+  `200%` 提升到 `300%`，`完整态势` 仍回 `100%`，`细节放大` 仍到 `1200%`；summary/live-summary、
+  Vue DOM 和类型合同同步更新。ROS2 配套口径保持：RViz2/Nav2 RViz 插件用于本地工程调试，Foxglove
+  bridge + Foxglove Web 用于远程浏览器观察，普通用户继续使用 PC 大地图和 `/map`。
 - 2026-07-04 03:53 CST 追加 Nav2 执行模式读回修正：`o11_nav2_goal_execution_proof.py`
   在复用现场已有 ROS/Nav2/`esp32_bridge` runtime 时写出 `requested_base_command_mode`、
   `base_command_mode_matches_request` 和 `base_command_mode_mismatch_reused`，避免 PC 请求 ROS 复验但实际复用
@@ -104,6 +108,20 @@ micro
   `keyboard_stop_settled_after_pulse=true`、`camera_current_visible=false`、
   `camera_source_diagnosis_status=uvc_no_frame_not_exclusive`、`wheel_lr_nonzero_proven=false`、
   `wheel_rerun_next_base_command_mode=pwm`、`delivery_success=true`。
+- 2026-07-04 04:05 CST 地图放大与 ROS2 配套复验：
+  - 已通过：`npm test -- --run test/App.test.ts -t "map"`，`70 passed`。
+  - 已通过：`npm test -- --run test/robotControlSummary.test.ts`，`16 passed`。
+  - 已通过：`npm test -- --run test/catalog.test.ts -t "map_display|live-summary|base status proxy"`，`2 passed`。
+  - 已通过：`npm test`，`448 passed`。
+  - 已通过：`npm run build`；仍只有既有 Vite chunk size warning。
+  - PC Node 已重启到 `0.0.0.0:7001`，PID `4404`；summary/live 读回
+    `map_display_default_zoom_percent=300%`、`map_display_direct_map_default_zoom_percent=300%`、
+    `map_display_fit_zoom_percent=100%`、`map_display_max_zoom_percent=1200%`。
+  - 只读刷新雷达 proof 和 map preview 后，当前 summary 读回 `map_current_visible=true`、
+    `map_preview_status=loaded`、`path_preview_point_count=18`、`route_target_visible=true`、
+    `radar_map_points_visible=true`、`live_wysiwyg_radar_map_current_point_count=126`，
+    且 `map_display_starts_ros2=false`、`map_display_starts_nav2=false`、
+    `map_display_sends_motion_when_clicked=false`。
 
 ## 剩余风险
 
