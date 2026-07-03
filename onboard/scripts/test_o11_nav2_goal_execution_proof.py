@@ -51,6 +51,23 @@ class O11Nav2GoalExecutionProofTest(unittest.TestCase):
         self.assertTrue(summary["base_command_mode_matches_request"])
         self.assertFalse(summary["base_command_mode_mismatch_reused"])
 
+    def test_managed_bridge_command_uses_field_http_wave_rover_defaults(self) -> None:
+        """helper 自启动 runtime 时必须沿用当前现场可跑的 HTTP + WAVE ROVER 机型口径。"""
+        module = load_module()
+
+        command = module.managed_esp32_bridge_command(
+            "/tmp/feedback.jsonl",
+            "/tmp/command.jsonl",
+            "pwm",
+        )
+
+        self.assertIn("-p command_transport:=http", command)
+        self.assertIn("-p wave_rover_http_base_url:=http://192.168.1.3", command)
+        self.assertIn("-p main_type:=1", command)
+        self.assertIn("-p module_type:=0", command)
+        self.assertIn("-p pwm_min_abs:=164", command)
+        self.assertIn("-p pwm_max_abs:=164", command)
+
 
 if __name__ == "__main__":
     unittest.main()

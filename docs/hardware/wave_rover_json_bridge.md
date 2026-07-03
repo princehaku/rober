@@ -433,6 +433,14 @@ PC 固定代理 `/api/robot-control/base/manual` 现在同时接受 `speed` 与 
 `main_type=1,module_type=0` 固化，再继续查电机使能、供电、底盘模式、ESP32 到电机驱动链路，以及
 `T=1001 L/R` 在 WAVE ROVER 主类型下的反馈语义。
 
+2026-07-04 05:44 CST 已完成固化与现场重启：`bringup.launch.py`、`autonomous.launch.py` 和
+`o11_nav2_goal_execution_proof.py` 默认启动 `esp32_bridge` 时显式携带
+`command_transport=http`、`wave_rover_http_base_url=http://192.168.1.3`、`main_type=1`、
+`module_type=0`、`pwm_min_abs=164`、`pwm_max_abs=164`。上位机当前 `/esp32_bridge` 已重启为这些参数，
+ROS 参数读回 `main_type=1,module_type=0,command_transport=http,pwm_min_abs=164,pwm_max_abs=164`。
+启动 debug 已写出非运动 `T=900 main=1,module=0` 与 `T=138 L=1,R=1`。PC 前进/后退短脉冲仍可转发并产生
+`command_raw_lr_nonzero_proven=true` 与 IMU 动作信号；`T=1001 L/R` 仍为 `0/0`，继续作为反馈闭环风险。
+
 ## 2026-07-03 T=13 bridge A/B and summary alias boundary
 
 本轮继续依据 `docs/vendor/VENDOR_INDEX.md` 指向的 Waveshare 本地资料复核：

@@ -8,6 +8,24 @@
 
 ## 2026-07-04 系列
 
+### 2026-07-04 05-44｜bridge_http_wave_rover_runtime_fix｜Bridge HTTP 与 WAVE ROVER 1/0 持久化
+
+本轮 `sprints/2026.07.04_05-44_bridge_http_wave_rover_runtime_fix/` 把现场可跑的底盘链路固化到 bringup、
+autonomous 和 O11 Nav2 helper：默认 bridge 参数为 `command_transport=http`、
+`wave_rover_http_base_url=http://192.168.1.3`、`main_type=1,module_type=0`、`pwm=164`。已把修改后的
+launch/helper 同步到上位机 `/root/rober/onboard`，并将脱管 `/esp32_bridge` 重启为新参数。ROS 参数读回
+`main_type=1`、`module_type=0`、`command_transport=http`、`pwm_min_abs=164`、`pwm_max_abs=164`；
+startup debug 写出非运动 `T=900 main=1,module=0` 和 `T=138 L=1,R=1`。
+
+验证范围：launch/O11 静态测试 26 tests OK；硬件协议 unittest 40 tests OK；PC 前进/后退短脉冲均
+`proxy_status=command_forwarded`、`command_result_ok=true`、`stop_result_ok=true`、
+`command_raw_lr_nonzero_proven=true`、`motion_signal_observed=true`。地图最终读回
+`map_current_visible=true`、`path_current_visible=true`、`route_target_current_visible=true`、
+`radar_map_points_current_visible=true`；`map/preview` 雷达贴图 `loaded` 且当前 162 点。相机仍为
+`camera_current_visible=false`、`uvc_no_frame_not_exclusive`；上位机 health 证明 DV20 `/dev/video1`
+为 480M UVC、无人占用、当前无新的 UVC transport error，但仍无首帧，剩余指向 DV20 上游输入信号、
+摄像头/采集卡、线材、接口或供电。
+
 ### 2026-07-04 05-36｜wave_rover_main_type_live_alignment｜WAVE ROVER 主类型现场口径纠正
 
 本轮 `sprints/2026.07.04_05-36_wave_rover_main_type_live_alignment/` 按本地 vendor 资料纠正 WAVE ROVER

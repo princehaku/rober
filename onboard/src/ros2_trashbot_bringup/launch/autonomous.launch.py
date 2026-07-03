@@ -238,6 +238,26 @@ def generate_launch_description():
         'pwm_max_abs', default_value='164',
         description='Maximum PWM for WAVE ROVER T=11 low-speed mode')
 
+    command_transport_arg = DeclareLaunchArgument(
+        'command_transport', default_value='http',
+        description='Current field default uses ESP32 HTTP /js control; override to serial only after UART TX is verified')
+
+    wave_rover_http_base_url_arg = DeclareLaunchArgument(
+        'wave_rover_http_base_url', default_value='http://192.168.1.3',
+        description='Fixed ESP32 HTTP base URL for the current WAVE ROVER control path')
+
+    http_timeout_s_arg = DeclareLaunchArgument(
+        'http_timeout_s', default_value='0.6',
+        description='HTTP command timeout for the ESP32 /js control path')
+
+    main_type_arg = DeclareLaunchArgument(
+        'main_type', default_value='1',
+        description='Vendor T=900 main type: 1 is WAVE ROVER; 2 is UGV02 and must not be the default for this robot')
+
+    module_type_arg = DeclareLaunchArgument(
+        'module_type', default_value='0',
+        description='Vendor T=900 module type for this WAVE ROVER chassis')
+
     delivery_mode_arg = DeclareLaunchArgument(
         'delivery_mode', default_value='dry_run',
         description='Delivery mode: dry_run, waypoint, or fixed_route')
@@ -319,6 +339,11 @@ def generate_launch_description():
     max_wheel_speed_mps = LaunchConfiguration('max_wheel_speed_mps')
     pwm_min_abs = LaunchConfiguration('pwm_min_abs')
     pwm_max_abs = LaunchConfiguration('pwm_max_abs')
+    command_transport = LaunchConfiguration('command_transport')
+    wave_rover_http_base_url = LaunchConfiguration('wave_rover_http_base_url')
+    http_timeout_s = LaunchConfiguration('http_timeout_s')
+    main_type = LaunchConfiguration('main_type')
+    module_type = LaunchConfiguration('module_type')
     delivery_mode = LaunchConfiguration('delivery_mode')
     delivery_target = LaunchConfiguration('delivery_target')
     return_target = LaunchConfiguration('return_target')
@@ -406,6 +431,11 @@ def generate_launch_description():
         max_wheel_speed_arg,
         pwm_min_abs_arg,
         pwm_max_abs_arg,
+        command_transport_arg,
+        wave_rover_http_base_url_arg,
+        http_timeout_s_arg,
+        main_type_arg,
+        module_type_arg,
         delivery_mode_arg,
         delivery_target_arg,
         return_target_arg,
@@ -429,6 +459,11 @@ def generate_launch_description():
                 'max_wheel_speed_mps': max_wheel_speed_mps,
                 'pwm_min_abs': pwm_min_abs,
                 'pwm_max_abs': pwm_max_abs,
+                'command_transport': command_transport,
+                'wave_rover_http_base_url': wave_rover_http_base_url,
+                'http_timeout_s': http_timeout_s,
+                'main_type': main_type,
+                'module_type': module_type,
             }],
         ),
 

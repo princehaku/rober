@@ -610,9 +610,18 @@ class LaunchContractStaticTest(unittest.TestCase):
                 self.assertIn("ros/T=13 and speed/T=1 remain explicit diagnostics", source)
                 self.assertIn("'pwm_min_abs', default_value='164'", source)
                 self.assertIn("'pwm_max_abs', default_value='164'", source)
+                self.assertIn("'command_transport', default_value='http'", source)
+                self.assertIn("'wave_rover_http_base_url', default_value='http://192.168.1.3'", source)
+                self.assertIn("'main_type', default_value='1'", source)
+                self.assertIn("1 is WAVE ROVER", source)
+                self.assertIn("'module_type', default_value='0'", source)
                 self.assertIn("'command_mode': command_mode", hardware_block)
                 self.assertIn("'pwm_min_abs': pwm_min_abs", hardware_block)
                 self.assertIn("'pwm_max_abs': pwm_max_abs", hardware_block)
+                self.assertIn("'command_transport': command_transport", hardware_block)
+                self.assertIn("'wave_rover_http_base_url': wave_rover_http_base_url", hardware_block)
+                self.assertIn("'main_type': main_type", hardware_block)
+                self.assertIn("'module_type': module_type", hardware_block)
 
 
 if __name__ == "__main__":

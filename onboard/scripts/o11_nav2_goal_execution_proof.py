@@ -24,6 +24,11 @@ DEFAULT_BASE_COMMAND_MODE = "pwm"
 ALLOWED_BASE_COMMAND_MODES = frozenset({"ros", "speed", "pwm"})
 DEFAULT_PWM_MIN_ABS = 164
 DEFAULT_PWM_MAX_ABS = 164
+DEFAULT_COMMAND_TRANSPORT = "http"
+DEFAULT_WAVE_ROVER_HTTP_BASE_URL = "http://192.168.1.3"
+DEFAULT_HTTP_TIMEOUT_S = 0.6
+DEFAULT_MAIN_TYPE = 1
+DEFAULT_MODULE_TYPE = 0
 DEBUG_LOG_TAIL_BYTES = 2 * 1024 * 1024
 
 
@@ -81,6 +86,10 @@ def managed_esp32_bridge_command(
         f"-p command_mode:={command_mode} "
         "-p track_width_m:=0.172 -p max_wheel_speed_mps:=1.3 "
         f"-p pwm_min_abs:={DEFAULT_PWM_MIN_ABS} -p pwm_max_abs:={DEFAULT_PWM_MAX_ABS} "
+        f"-p command_transport:={DEFAULT_COMMAND_TRANSPORT} "
+        f"-p wave_rover_http_base_url:={DEFAULT_WAVE_ROVER_HTTP_BASE_URL} "
+        f"-p http_timeout_s:={DEFAULT_HTTP_TIMEOUT_S} "
+        f"-p main_type:={DEFAULT_MAIN_TYPE} -p module_type:={DEFAULT_MODULE_TYPE} "
         f"-p feedback_debug_log_path:={shlex.quote(feedback_log_path)}"
         f"{command_debug_arg}"
     )
@@ -416,6 +425,11 @@ def start_managed_autonomous_runtime(args: argparse.Namespace) -> dict[str, Any]
         "base_command_mode": base_command_mode,
         "base_pwm_min_abs": DEFAULT_PWM_MIN_ABS,
         "base_pwm_max_abs": DEFAULT_PWM_MAX_ABS,
+        "base_command_transport": DEFAULT_COMMAND_TRANSPORT,
+        "base_wave_rover_http_base_url": DEFAULT_WAVE_ROVER_HTTP_BASE_URL,
+        "base_http_timeout_s": DEFAULT_HTTP_TIMEOUT_S,
+        "base_main_type": DEFAULT_MAIN_TYPE,
+        "base_module_type": DEFAULT_MODULE_TYPE,
         "base_feedback_log_path": base_feedback_log_path,
         "base_command_log_path": base_command_log_path,
         "log_path": log_path,

@@ -80,6 +80,15 @@ pc-tools/workstation/
   必须移除该覆盖或显式改为 `1/0`，并继续保留非运动 `T=138 L=1,R=1` 速度倍率恢复。该修正服务 WASD/Nav2
   “能跑”闭环，不改变 PC 端口 `0.0.0.0:7001`，不触碰 clash，也不把 wheel raw `T=1001 L/R=0/0`
   伪装成非零。
+- 2026-07-04 05:44 CST 起，PC/WASD/Nav2 底盘热路径的当前有效运行态已改为：
+  `bringup.launch.py`、`autonomous.launch.py` 和 O11 Nav2 helper 默认使用
+  `command_transport=http`、`wave_rover_http_base_url=http://192.168.1.3`、`main_type=1,module_type=0`、
+  `pwm_min_abs/max_abs=164`。上位机脱管 `/esp32_bridge` 已重启到同一组参数，startup debug 写出
+  `T=900 main=1,module=0` 与 `T=138 L=1,R=1`。PC 前进/后退短脉冲仍返回
+  `proxy_status=command_forwarded`、`command_raw_lr_nonzero_proven=true`、`motion_signal_observed=true`；
+  地图读回包含 map、Nav2 路线、目标点、机器人位姿和雷达贴图。实时图传仍为
+  `source_first_frame_failed / uvc_no_frame_not_exclusive`，DV20 `/dev/video1` 是 480M UVC 且无人占用，
+  当前无新的 UVC transport error，但仍无首帧，剩余指向视频输入源/线材/接口/供电或采集卡。
 - 2026-07-04 00:33 CST 起，`GET /api/robot-control/summary` 顶层 `keyboard_wheel_lr_nonzero` 必须只代表真实 wheel feedback：仅当 `wheel_feedback_lr_nonzero_proven=true` 时为 true，不得把 `command_raw_lr_nonzero_proven`、`motion_evidence_complete`、`motion_signal_observed=true` 或 IMU 姿态变化算进去。现场同轮 PC forward/back/stop 短脉冲均 `command_forwarded`、`base_command_mode=ros`、`command_result_ok=true`、`stop_result_ok=true`、`motion_signal_observed=true`，summary 保持 `keyboard_continuous_motion_verified=true`、`keyboard_stop_after_release=true`，但 `wheel_feedback_latest_raw_left/right=0/0` 时 `keyboard_wheel_lr_nonzero=false`。相机侧停掉 `trashbot-local-webrtc-camera.service` 后无人占用，DV20 在 `480M` 高速口，对 `MJPG@1920x1080/1280x720/640x480/480x320` 与 `YUYV@640x480/320x240@25/320x240@20` 的 v4l2/ffmpeg 直接取帧均为 0 字节；PC 共享 MJPEG 仍返回 `first_frame_total_timeout`。该结论只收窄实时图传 blocker，不阻塞 PC 大地图和 WASD 低速控制。
 - 2026-07-04 00:45 CST 起，`GET /api/robot-control/summary` 的 `readback_summary.map.status` 必须反映当前 PC 地图显示证据，而不是直接复用 `map_proof_latest.status`。当地图画面、Nav2 路线、小车地图位姿和雷达贴图都可见时，状态返回 `loaded`；图层不完整但已有地图时返回 `partial`；未读到地图时才保留底层 proof 状态或 `not_loaded`。现场当前地图读回包含路线 18 点、目标点 `(0.8,0.05,map)`、`robot_pose_status=map_pose_observed` 和雷达贴图 `loaded/191` 点，所以普通脚本不能再因为旧 `not_proven` 字段误判 PC 大地图未加载。该变化只修正只读 summary 合同，不启动 ROS2/RViz2/Foxglove/Nav2/建图 runtime，不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 - 2026-07-04 02:10 CST 起，普通用户“执行图上路线”不再跟随后端旧的 ROS/T=13 复验建议，固定使用当前已验证的 PWM/HTTP 底盘链路。PC 执行请求必须带 `base_command_mode=pwm`、`managed_runtime_opt_in=true`、`server_timeout_s=20` 和 `confirm_navigation_execution=true`；按钮文案保持“执行图上路线”，不在首屏暴露“用 ROS 重跑”。当前现场 Nav2 latest 可以证明 `goal_succeeded/result_status=succeeded`、同窗口非零底盘命令和 IMU 姿态变化；WAVE ROVER `T=1001` 的 wheel raw L/R 仍可能为 `0/0`，因此 wheel raw 只作为底盘反馈诊断，不再阻塞普通送达闭环。路线成功后，PC 自动用 `pc-map-route-overlay:<nav2 evidence_ref>` 补送达材料，默认现场确认项，提交 operator report 和 delivery complete；delivery success 必须仍由本轮 Nav2 ref 对齐且 delivery gate 返回成功后才点亮。PC Node 安全过滤只豁免 `operator_report.structured_hil_claims.delivery_success` 这个上车端嵌套回显字段，不放宽其它危险 true 字段。
