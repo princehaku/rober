@@ -8,6 +8,20 @@
 
 ## 2026-07-04 系列
 
+### 2026-07-04 07-27｜pc_camera_probe_status_map_answer｜O7 相机状态一致性与地图配套口径
+
+本轮 `sprints/2026.07.04_07-27_pc_camera_probe_status_map_answer/` 修正 PC 相机状态一致性：
+`/api/robot-control/camera/first-frame/probe` 返回 `probe_total_timeout` 后，PC 会把这次无帧结论保留到
+`/api/robot-control/camera/mjpeg/status`、summary 和 live-summary；相机服务重启后即使 health 暂时回到
+`source_selected_not_probed`，普通页也不会误报 `idle_not_started`，而是继续提示
+`uvc_no_frame_not_exclusive` 和“检查摄像头输入/供电后复测”。同轮复验 7001 地图链路仍读到地图、18 点路线、
+目标点、小车 map pose 和 149 个当前雷达贴图点；`live-summary` 继续声明 PC 首页和 `/map` 默认 `800%`，
+ROS2 配套为 RViz2/Foxglove 只读工程观察。
+
+本轮验证：focused catalog regression 通过；camera MJPEG status / first-frame probe / USB recovery 子集通过；
+`npm run build` 通过；PC 7001 已重启到 `0.0.0.0:7001` 并通过接口复验。剩余风险是 DV20 仍 0 帧、
+wheel raw `T=1001 L/R=0/0`，不可宣称真实 RTC/视频、wheel raw 非零或完整自动驾驶/delivery success 已完成。
+
 ### 2026-07-04 07-05｜pc_boot_runtime_services｜PC 开机 runtime 服务与 ROS2 地图配套收口
 
 本轮 `sprints/2026.07.04_07-05_pc_boot_runtime_services/` 继续推进 O7 打开即用。上位机新增

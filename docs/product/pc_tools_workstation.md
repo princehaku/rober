@@ -5796,3 +5796,13 @@ DV20 `/dev/video1` 是 UVC capture 设备，USB 当前为 `480M`，无人独占�
 vendor `T=1001 L/R=0/0`。按 `docs/vendor/VENDOR_INDEX.md` 指向的 WAVE ROVER JSON 协议，
 `T=1001.L/R` 是底盘反馈字段；因此 PC WASD 当前可证明连续手控命令链路和 stop 链路，不可宣称 wheel raw L/R
 非零或完整自动驾驶闭环完成。
+
+2026-07-04 07:27 CST 起，PC `/api/robot-control/camera/mjpeg/status` 会保留最近一次
+`/api/robot-control/camera/first-frame/probe` 的无帧结论：相机服务重启后即使 health 暂时回到
+`source_selected_not_probed`，status 也继续显示 `source_first_frame_failed`、
+`source_failure_reason=probe_total_timeout`、`source_diagnosis_status=uvc_no_frame_not_exclusive` 和
+`camera_hardware_action_label=检查摄像头输入/供电后复测`，直到共享 MJPEG 真正读到视频 chunk 后才清除。
+同轮 7001 复验地图链路仍正常：`/api/robot-control/map/preview` 读到地图 PNG、18 个路线点、目标点、小车
+map pose 和 149 个当前雷达贴图点；`live-summary` 继续返回 `map_display_default_zoom_percent=800%`。
+现场嫌地图小的普通答案仍是先点 PC 顶部或地图卡的 `/map` 大屏；ROS2 配套是本地 RViz2 和远程 Foxglove
+只读工程观察，不替代 PC 简易控制台，也不发送底盘运动命令。

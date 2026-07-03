@@ -199,6 +199,9 @@ const CAMERA_FIRST_FRAME_FAILURE_REASONS = [
   "first_frame_timeout",
   "first_frame_total_timeout",
   "opencv_capture_not_opened",
+  "probe_total_timeout",
+  "probe_process_timeout",
+  "deadline_expired",
 ] as const;
 export const ROBOT_CONTROL_MANUAL_SPEED_LIMIT_MPS = 0.12;
 export const ROBOT_CONTROL_MANUAL_DURATION_LIMIT_MS = 800;

@@ -105,6 +105,9 @@ const CAMERA_FIRST_FRAME_FAILURE_REASONS = new Set([
   "first_frame_timeout",
   "first_frame_total_timeout",
   "opencv_capture_not_opened",
+  "probe_total_timeout",
+  "probe_process_timeout",
+  "deadline_expired",
 ]);
 const FREE_ROAM_MAPPING_REQUIRED_GATE_IDS = [
   "camera_first_frame",
@@ -574,6 +577,7 @@ let nextCameraMjpegRelayClientId = 1;
 const cameraMjpegRelays = new Map<string, CameraMjpegRelay>();
 const cameraMjpegRelayLastFailures = new Map<string, CameraMjpegRelayLastFailure>();
 const cameraFirstFrameProbeOverlays = new Map<string, RobotControlCameraFirstFrameProbeOverlay>();
+const cameraFirstFrameProbeLastFailures = new Map<string, CameraMjpegRelayLastFailure>();
 
 function cameraMjpegUpstreamTimeoutMs(): number {
   // PC 等待窗口要略长于上位机 8787 的 8s relay 窗口，才能拿到真实 503/无帧 JSON，而不是抢先报 timeout。
@@ -3344,6 +3348,77 @@ function cameraProbeOverlayFromResponse(
   };
 }
 
+function cameraProbeLastFailureFromResponse(
+  response: RobotControlCameraFirstFrameProbeProxyResponse,
+  sourceFailure: CameraMjpegRelayLastFailure | null,
+): CameraMjpegRelayLastFailure | null {
+  // 首帧 probe 是用户主动复测。即使相机服务重启后 health 回到 not-probed，status 也要保留这次无帧事实。
+  const noFrameFailure = !response.camera_first_frame_ready
+    && !response.frame_observed
+    && (cameraProbeNoFrameFailure(response.probe_key_values)
+      || response.status === "probe_total_timeout"
+      || response.proxy_status === "probe_failed");
+  if (!noFrameFailure) {
+    return null;
+  }
+  const failureReason = response.failure_reason
+    || response.probe_key_values.failure_reason
+    || "first_frame_failed";
+  const sourceDiagnosisStatus = response.source_diagnosis_status
+    && response.source_diagnosis_status !== "not_loaded"
+    ? response.source_diagnosis_status
+    : sourceFailure?.source_diagnosis_status || "uvc_no_frame_not_exclusive";
+  return {
+    ...(sourceFailure ?? {}),
+    failure_reason: "camera_source_first_frame_failed",
+    remote_http_status: response.remote_http_status,
+    failed_at_ms: Date.now(),
+    last_error_payload: response.probe_payload ?? null,
+    source_diagnosis_status: sourceDiagnosisStatus,
+    source_diagnosis_plain_hint: response.source_diagnosis_plain_hint
+      || sourceFailure?.source_diagnosis_plain_hint
+      || "不是页面独占：首帧探针尝试多个格式后仍没有视频帧。",
+    source_diagnosis_next_action: sourceFailure?.source_diagnosis_next_action
+      || "check_usb_camera_input_power_or_known_good_uvc",
+    source_diagnosis_not_exclusive: response.source_diagnosis_not_exclusive
+      || sourceFailure?.source_diagnosis_not_exclusive
+      || "true",
+    source_readiness: "first_frame_failed",
+    source_failure_reason: failureReason,
+    selected_path: sourceFailure?.selected_path ?? response.probe_key_values.device ?? "not_loaded",
+    selected_name: sourceFailure?.selected_name ?? "USB 摄像头",
+    selected_is_uvc_or_usb: sourceFailure?.selected_is_uvc_or_usb ?? "true",
+    source_usage_status: sourceFailure?.source_usage_status ?? "not_loaded",
+    source_usage_owner_count: sourceFailure?.source_usage_owner_count ?? "not_loaded",
+    source_usage_scope: sourceFailure?.source_usage_scope ?? "unknown",
+    source_usage_not_exclusive: response.source_diagnosis_not_exclusive
+      || sourceFailure?.source_usage_not_exclusive
+      || "true",
+    last_first_frame_format_attempts_summary: response.probe_key_values.fallback_attempts_summary,
+    mjpeg_open_source_fallback_attempted: response.low_bandwidth_fallback_attempted
+      || response.probe_key_values.low_bandwidth_fallback_attempted === "true",
+    open_source_fallback_failure_reason: response.probe_key_values.failure_reason,
+    primary_source_failure_reason: failureReason,
+  };
+}
+
+function recordCameraFirstFrameProbeResult(
+  relayKey: string,
+  response: RobotControlCameraFirstFrameProbeProxyResponse,
+  sourceFailure: CameraMjpegRelayLastFailure | null,
+): void {
+  // overlay 给 summary 用；last failure 给 MJPEG status 用，保证三个端点复测后说同一件事。
+  cameraFirstFrameProbeOverlays.set(relayKey, cameraProbeOverlayFromResponse(response));
+  const probeFailure = cameraProbeLastFailureFromResponse(response, sourceFailure);
+  if (probeFailure) {
+    cameraFirstFrameProbeLastFailures.set(relayKey, probeFailure);
+    return;
+  }
+  if (response.camera_first_frame_ready || response.frame_observed) {
+    cameraFirstFrameProbeLastFailures.delete(relayKey);
+  }
+}
+
 function getCameraMjpegRelay(normalizedBaseUrl: URL): CameraMjpegRelay {
   const key = cameraMjpegRelayKey(normalizedBaseUrl);
   const existing = cameraMjpegRelays.get(key);
@@ -3374,7 +3449,11 @@ function cameraMjpegStatusResponse(
   // 这个端点只读本机 relay 状态，帮助现场判断多个 PC 页面是否共享同一个上游视频流。
   const relayKey = normalizedBaseUrl ? cameraMjpegRelayKey(normalizedBaseUrl) : "not_loaded";
   const relayFailure = normalizedBaseUrl ? cameraMjpegRelayLastFailures.get(relayKey) ?? null : null;
-  const diagnosisSource = cameraMjpegResolvedDiagnosisSource(sourceFailure, relayFailure);
+  const probeFailure = normalizedBaseUrl ? cameraFirstFrameProbeLastFailures.get(relayKey) ?? null : null;
+  const diagnosisSource = cameraMjpegResolvedDiagnosisSource(
+    cameraMjpegResolvedDiagnosisSource(sourceFailure, probeFailure),
+    relayFailure,
+  );
   const lastFailure = relayFailure ?? diagnosisSource;
   // relay failure 说明共享 MJPEG 最近为什么失败；health 里的 source diagnosis 说明相机源为什么无帧，两者不能互相覆盖。
   const previewStatus = cameraMjpegPreviewStatus(relay, failureReason, lastFailure, diagnosisSource);
@@ -4008,10 +4087,14 @@ async function buildRobotControlSummaryForHttp(
     : null;
   const relay = normalized.ok ? cameraMjpegRelays.get(relayKey) ?? null : null;
   const lastFailure = normalized.ok ? cameraMjpegRelayLastFailures.get(relayKey) ?? null : null;
+  const probeFailure = normalized.ok ? cameraFirstFrameProbeLastFailures.get(relayKey) ?? null : null;
   const rawSourceFailure = normalized.ok
     ? await cameraSourceFirstFrameFailureForStatus(normalized.normalized, ROBOT_CONTROL_SUMMARY_CAMERA_OVERLAY_TIMEOUT_MS)
     : null;
-  const sourceFailure = cameraMjpegResolvedDiagnosisSource(rawSourceFailure, lastFailure);
+  const sourceFailure = cameraMjpegResolvedDiagnosisSource(
+    cameraMjpegResolvedDiagnosisSource(rawSourceFailure, probeFailure),
+    lastFailure,
+  );
   const lastFailureForOverlay = lastFailure ?? sourceFailure;
   const mjpegRelayOverlay: RobotControlCameraMjpegRelayOverlay | null = relay
     ? {
@@ -4301,6 +4384,7 @@ async function ensureCameraMjpegRelayStarted(relay: CameraMjpegRelay): Promise<v
       const frameChunk = Buffer.from(value);
       relay.latestFrameChunk = frameChunk;
       relay.latestFrameUpdatedAtMs = Date.now();
+      cameraFirstFrameProbeLastFailures.delete(relay.key);
       for (const client of Array.from(relay.clients)) {
         try {
           startCameraMjpegClient(client, contentType);
@@ -6016,7 +6100,7 @@ export function createWorkstationApp(): express.Express {
         probe_key_values: probeValues,
         ...cameraProbeDiagnosticAliases(probeValues, sourceFailure),
       };
-      cameraFirstFrameProbeOverlays.set(cameraMjpegRelayKey(normalized.normalized), cameraProbeOverlayFromResponse(failureBody));
+      recordCameraFirstFrameProbeResult(cameraMjpegRelayKey(normalized.normalized), failureBody, sourceFailure);
       // 首帧失败是现场诊断材料，不是 PC 代理传输失败；保持 HTTP 200，避免 curl -fsS 隐藏换线/换口提示。
       res.status(200).json(failureBody);
       return;
@@ -6065,7 +6149,7 @@ export function createWorkstationApp(): express.Express {
       hard_dangerous_true_fields: dangerous,
       robot_control_executed: false,
     };
-    cameraFirstFrameProbeOverlays.set(cameraMjpegRelayKey(normalized.normalized), cameraProbeOverlayFromResponse(responseBody));
+    recordCameraFirstFrameProbeResult(cameraMjpegRelayKey(normalized.normalized), responseBody, sourceFailure);
     // 上车返回 503/timeout 时仍把完整 fail-closed JSON 交给普通脚本读取，真实失败状态保留在 body 字段。
     res.status(200).json(responseBody);
   });

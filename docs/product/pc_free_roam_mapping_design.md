@@ -90,6 +90,10 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   只有一个 `esp32_bridge` 订阅者。底盘参数来源仍以 `docs/vendor/VENDOR_INDEX.md` 指向的 WAVE ROVER
   `json_cmd.h`、`ugv_config.h` 为准：`main_type=1,module_type=0`，PC WASD 经 `T=11` PWM164
   HTTP 路径下发；自由移动和地图观察仍不依赖相机首帧。
+- 2026-07-04 07:27 起，PC 会把最近一次 first-frame probe 的无帧事实缓存到 MJPEG status：
+  如果 probe 已经返回 `probe_total_timeout`，即使相机服务重启后 health 暂时显示 `source_selected_not_probed`，
+  `/api/robot-control/camera/mjpeg/status` 仍显示 `source_first_frame_failed`、`uvc_no_frame_not_exclusive`
+  和“检查摄像头输入/供电后复测”。这样扫图/自由移动界面不会把已证明的 DV20 0 帧误说成“还没探测”，但自由移动仍不依赖相机首帧。
 - 2026-06-25 16:06 起，扫图卡片自己的安全确认可直接作为键盘扫图的最小预检；不再要求先补 operator report、轮速非零或 LiDAR delta 材料才允许低速键盘扫图。
 - 2026-06-27 03:16 起，普通首屏、行程操作、键盘手控、自动扫图和高级点动区全部复用同一个
   “人在旁边、周围安全、停止手段就绪”安全确认；旧的四项 HIL checklist 不再出现在点动区，避免 operator
@@ -136,6 +140,9 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   不启动 RViz2、Foxglove、ROS2 runtime、Nav2、建图 runtime 或任何运动指令。现场问“ROS2 有没有配套”时，
   口径固定为：本地工程看 RViz2/Nav2 RViz 配置，远程浏览器看 Foxglove bridge + Foxglove Web；
   普通用户仍先用 PC 大地图和 `/map`。
+- 2026-07-04 07:27 复验当前地图入口：PC 7001 的 `/api/robot-control/map/preview` 仍显示地图、18 点路线、
+  目标点、小车 map pose 和 149 个当前雷达贴图点，`live-summary` 继续声明 PC 首页和 `/map` 默认 `800%`。
+  因此“地图太小”的现场动作是打开 `/map` 或用 PC 地图内缩放；ROS2 配套工具只作为工程观察补充。
 - 2026-07-04 06:14 起，PC 运动可用态和 wheel raw 诊断风险拆开显示：如果 command raw L/R 非零与
   IMU/车体运动信号已同轮观察到，普通 summary 允许进入 `ready_for_motion`，提示继续使用 WASD、自由移动或
   图上路线；vendor `T=1001 L/R=0/0` 仍作为反馈闭环风险，不冒充 wheel raw 非零。该拆分不改变扫图

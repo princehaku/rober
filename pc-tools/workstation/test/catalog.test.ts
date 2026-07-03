@@ -15538,6 +15538,154 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("workstation camera MJPEG status keeps recent first-frame probe failure after camera service restart", async () => {
+    // 现场恢复相机服务后 health 会短暂回到 not-probed；刚刚的 probe 失败仍是当前画面事实。
+    let healthRequestCount = 0;
+    let probeRequestCount = 0;
+    let mjpegRequestCount = 0;
+    const upstreamServer = http.createServer((req, res) => {
+      res.setHeader("Content-Type", "application/json");
+      if (req.method === "GET" && req.url === "/api/camera/health") {
+        healthRequestCount += 1;
+        res.end(JSON.stringify({
+          schema: "trashbot.local_webrtc_camera_smoke.v1",
+          status: "source_not_probed",
+          source_readiness: "source_selected_not_probed",
+          source_failure_reason: "none",
+          current_selection: {
+            selected_path: "/dev/video1",
+            selected_name: "USB Composite Device: DV20 USB",
+            selected_is_uvc_or_usb: true,
+          },
+          source_usage: {
+            status: "not_in_use",
+            owner_count: 0,
+          },
+          source_diagnosis: {
+            status: "source_selected_not_probed",
+            plain_hint: "USB Composite Device: DV20 USB 已选中但还没读过首帧。",
+            next_action: "open_shared_preview_or_run_first_frame_probe",
+            not_exclusive: true,
+          },
+          uvc_usb_topology: {
+            status: "uvc_video_usb_speed_loaded",
+            video_usb_speed: "480M",
+            kernel_usb_address: "3-1",
+          },
+          cma_memory_diagnostics: {
+            status: "cma_available_no_recent_failure",
+            cma_total_kb: 131072,
+            cma_free_kb: 125184,
+          },
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          robot_control_executed: false,
+        }));
+        return;
+      }
+      if (req.method === "POST" && req.url === "/api/camera/first-frame/probe") {
+        probeRequestCount += 1;
+        res.statusCode = 503;
+        res.end(JSON.stringify({
+          schema: "trashbot.upper_robot_api.v1.camera_first_frame_probe",
+          status: "probe_total_timeout",
+          failure_reason: "probe_total_timeout",
+          probe_payload: {
+            schema: "trashbot.camera_first_frame_probe.v1",
+            status: "error",
+            device: "/dev/video1",
+            requested_fourcc: "MJPG",
+            open_ok: true,
+            read_ok: false,
+            first_frame_timeout: true,
+            failure_reason: "probe_total_timeout",
+            visible_content_proven: false,
+          },
+          fallback_attempts: [
+            {
+              status: "first_frame_unreadable",
+              fourcc: "MJPG",
+              width: 640,
+              height: 480,
+              open_ok: true,
+              read_ok: false,
+              failure_reason: "capture_read_returned_false",
+            },
+          ],
+          low_bandwidth_fallback_attempted: true,
+          low_bandwidth_fallback_min_size: "160x120",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          robot_control_executed: false,
+        }));
+        return;
+      }
+      if (req.method === "GET" && req.url === "/api/camera/mjpeg") {
+        mjpegRequestCount += 1;
+      }
+      res.statusCode = 404;
+      res.end(JSON.stringify({ error: "not_found", url: req.url, method: req.method }));
+    });
+    const upstream = await new Promise<{ baseUrl: string; close: () => Promise<void> }>((resolve) => {
+      upstreamServer.listen(0, "127.0.0.1", () => {
+        const address = upstreamServer.address();
+        const port = typeof address === "object" && address ? address.port : 0;
+        resolve({
+          baseUrl: `http://127.0.0.1:${port}`,
+          close: () => new Promise((closeResolve, closeReject) => {
+            upstreamServer.close((error) => (error ? closeReject(error) : closeResolve()));
+          }),
+        });
+      });
+    });
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const probeResponse = await fetch(`${workstation.baseUrl}/api/robot-control/camera/first-frame/probe?baseUrl=${encodeURIComponent(upstream.baseUrl)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const probeBody = await probeResponse.json() as RobotControlCameraFirstFrameProbeProxyResponse;
+
+      expect(probeResponse.status).toBe(200);
+      expect(probeBody.proxy_status).toBe("probe_failed");
+      expect(probeBody.status).toBe("probe_total_timeout");
+      expect(probeBody.source_diagnosis_status).toBe("uvc_no_frame_not_exclusive");
+      expect(probeBody.camera_hardware_action_label).toBe("检查摄像头输入/供电后复测");
+
+      const statusResponse = await fetch(`${workstation.baseUrl}/api/robot-control/camera/mjpeg/status?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
+      const statusBody = await statusResponse.json() as RobotControlCameraMjpegStatusResponse;
+
+      expect(statusResponse.status).toBe(200);
+      expect(statusBody.proxy_status).toBe("status_loaded");
+      expect(statusBody.status).toBe("source_first_frame_failed");
+      expect(statusBody.preview_status).toBe("source_first_frame_failed");
+      expect(statusBody.last_failure_reason).toBe("camera_source_first_frame_failed");
+      expect(statusBody.source_readiness).toBe("first_frame_failed");
+      expect(statusBody.source_failure_reason).toBe("probe_total_timeout");
+      expect(statusBody.source_diagnosis_status).toBe("uvc_no_frame_not_exclusive");
+      expect(statusBody.source_diagnosis_not_exclusive).toBe("true");
+      expect(statusBody.source_diagnosis_plain_hint).toContain("不是页面独占");
+      expect(statusBody.source_diagnosis_plain_hint).toContain("没有输出视频帧");
+      expect(statusBody.source_diagnosis_next_action_plain).toBe("检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测；共享预览不是页面独占。");
+      expect(statusBody.camera_hardware_action_required).toBe(true);
+      expect(statusBody.camera_hardware_action_label).toBe("检查摄像头输入/供电后复测");
+      expect(statusBody.camera_blocks_free_move).toBe(false);
+      expect(statusBody.camera_blocks_mapping_start).toBe(true);
+      expect(statusBody.camera_usb_speed).toBe("480M");
+      expect(statusBody.cma_memory_diagnostics_status).toBe("cma_available_no_recent_failure");
+      expect(statusBody.robot_control_executed).toBe(false);
+      expect(healthRequestCount).toBe(2);
+      expect(probeRequestCount).toBe(1);
+      expect(mjpegRequestCount).toBe(0);
+    } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+  });
+
   it("workstation camera USB recovery proxy only forwards the fixed recovery endpoint", async () => {
     // USB recovery 允许重启相机链路做 STREAMON smoke，但不能借 body 触发任意 endpoint 或底盘运动。
     const receivedBodies: Record<string, unknown[]> = {};

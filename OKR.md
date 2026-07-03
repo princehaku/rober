@@ -159,7 +159,7 @@
 | O1：硬件协议可信底盘 | ~85% | 已有真实上位机 first-jog 转发、T1001 L/R 反馈采样字段和 LiDAR delta 过阈值；当前真实 L/R 仍为 0，仍缺轮速非零原始反馈、轮速方向、HIL 准入、PR #5 2D LiDAR/ToF 硬件材料 |
 | O5：云中转控制面 | ~80% | 真实公网 HTTPS/TLS、4G/SIM、production DB/queue、OSS/CDN live traffic、真实手机/browser 验收 |
 | O6：云端核心后端 | ~30% | archive、tunnel online、event/evidence、labeling、model inference、consumer read API 已有 local/mock software proof；仍缺真实隧道、生产 DB/queue、OSS、TLS/4G、真实机器人数据 |
-| O7：PC 端运营调试平台 | ~26% | PC 普通首屏已能连接真实上位机并开放 `0.0.0.0:7001`；PC 首页和 `/map` 当前默认 `800%` 大地图，已能显示地图 PNG、Nav2 路线、目标点、小车位置和当前雷达贴图；`trashbot-esp32-bridge.service` 与 `trashbot-lidar-lifecycle.service` 已固化开机自恢复，复验 `/cmd_vel` 仅一个 bridge 订阅者且 `/scan` 可读 LaserScan；重启后相机 CMA 已恢复为 `cma_available_no_recent_failure`，但 DV20 仍 `first_frame_total_timeout / uvc_no_frame_not_exclusive`，剩余指向输入/供电/线材/采集卡；WASD/自由移动可读到 command raw 与 IMU 动作信号，wheel raw `T=1001 L/R=0/0` 仍是反馈风险；仍缺真实 RTC/视频、真实 ASR/TTS、云端回放/标注数据流、wheel raw 非零和完整路线/delivery success 验收 |
+| O7：PC 端运营调试平台 | ~26% | PC 普通首屏已能连接真实上位机并开放 `0.0.0.0:7001`；PC 首页和 `/map` 当前默认 `800%` 大地图，已能显示地图 PNG、Nav2 路线、目标点、小车位置和当前雷达贴图；`trashbot-esp32-bridge.service` 与 `trashbot-lidar-lifecycle.service` 已固化开机自恢复，复验 `/cmd_vel` 仅一个 bridge 订阅者且 `/scan` 可读 LaserScan；重启后相机 CMA 已恢复为 `cma_available_no_recent_failure`，PC status 会保留最近 first-frame probe 的 `probe_total_timeout / uvc_no_frame_not_exclusive` 结论，但 DV20 仍无首帧，剩余指向输入/供电/线材/采集卡；WASD/自由移动可读到 command raw 与 IMU 动作信号，wheel raw `T=1001 L/R=0/0` 仍是反馈风险；仍缺真实 RTC/视频、真实 ASR/TTS、云端回放/标注数据流、wheel raw 非零和完整路线/delivery success 验收 |
 
 **已归档 Objective（软件侧完成，等待真实现场验证）：**
 
