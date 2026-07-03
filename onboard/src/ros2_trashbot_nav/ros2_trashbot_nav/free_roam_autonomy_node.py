@@ -97,6 +97,8 @@ class FreeRoamAutonomyNode(Node):
         )
         self.controller = FreeRoamAutonomyController(config)
         self.started_at_s = time.monotonic()
+        # 运动会话必须按 PC 每次 start 重新计时；节点可能常驻运行数小时，不能把进程年龄当作本次自由移动时长。
+        self.session_active = False
         self.latest_scan_min_distance_m: float | None = None
         self.latest_scan_seen_at_s: float | None = None
         self.latest_map_metrics: dict[str, float | int | None] = occupancy_grid_metrics([])
@@ -169,19 +171,27 @@ class FreeRoamAutonomyNode(Node):
 
     def _build_snapshot(self, now_s: float) -> FreeRoamSnapshot:
         """把 ROS2 读数转换成策略输入；缺实时雷达只降级建图和避障证据。"""
+        operator_confirmed = bool(self.get_parameter("operator_confirmed").value)
+        mapping_active = bool(self.get_parameter("mapping_active").value)
+        external_stop_requested = bool(self.get_parameter("external_stop_requested").value)
+        session_requested = (operator_confirmed or mapping_active) and not external_stop_requested
+        if session_requested and not self.session_active:
+            # PC start 通过参数服务进入新会话时重置 elapsed_s，避免老节点立即触发 max_runtime completed。
+            self.started_at_s = now_s
+        self.session_active = session_requested
         lidar_age_s = None
         if self.latest_scan_seen_at_s is not None:
             lidar_age_s = max(0.0, now_s - self.latest_scan_seen_at_s)
         return FreeRoamSnapshot(
-            operator_confirmed=bool(self.get_parameter("operator_confirmed").value),
-            mapping_active=bool(self.get_parameter("mapping_active").value),
+            operator_confirmed=operator_confirmed,
+            mapping_active=mapping_active,
             stop_available=bool(self.get_parameter("stop_available").value),
             lidar_min_distance_m=self.latest_scan_min_distance_m,
             lidar_age_s=lidar_age_s,
             map_free_cells=self._metric_int("free_cells"),
             map_unknown_ratio=self._metric_float("unknown_ratio"),
-            elapsed_s=max(0.0, now_s - self.started_at_s),
-            external_stop_requested=bool(self.get_parameter("external_stop_requested").value),
+            elapsed_s=max(0.0, now_s - self.started_at_s) if session_requested else 0.0,
+            external_stop_requested=external_stop_requested,
             now_s=now_s,
         )
 

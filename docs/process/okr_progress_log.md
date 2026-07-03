@@ -8,6 +8,19 @@
 
 ## 2026-07-04 系列
 
+### 2026-07-04 05-58｜free_roam_session_timer_runtime_fix｜自由移动会话计时修复
+
+本轮 `sprints/2026.07.04_05-58_free_roam_session_timer_runtime_fix/` 修复真实上车自由移动 start 后立即
+`completed`/零速的问题：`free_roam_autonomy_node` 之前用节点进程 uptime 作为 `elapsed_s`，常驻几天后 PC
+start 会立刻超过 `max_runtime_s`。现在进入 active 会话时重置计时，stop/locked 时 elapsed 归零，并新增离线回归测试。
+
+验证范围：本地 free-roam unittest 18 tests OK；已同步到上位机 source/build 路径，清理两个历史同名
+`/free_roam_autonomy` 进程，只启动一个新节点。现场 `POST /api/robot-control/free-roam/autonomy/start` 返回
+`autonomy_forwarded`、`start_runtime_wait.ok=true`、`decision_state=avoiding`、`cmd_vel_publish_enabled=true`、
+`motion_ready=true`、`motion_without_radar_allowed=true`；命令 debug 看到非零 WAVE ROVER `T=11` PWM
+`L/R=164/-164` 与 `-164/164`。随后 stop 成功回到 `stopping`/`cmd_vel_publish_enabled=false`。当前 wheel raw
+反馈仍为 `T=1001 L/R=0/0`，但 IMU 动作信号已观察到；实时图传仍为 DV20 无首帧。
+
 ### 2026-07-04 05-44｜bridge_http_wave_rover_runtime_fix｜Bridge HTTP 与 WAVE ROVER 1/0 持久化
 
 本轮 `sprints/2026.07.04_05-44_bridge_http_wave_rover_runtime_fix/` 把现场可跑的底盘链路固化到 bringup、

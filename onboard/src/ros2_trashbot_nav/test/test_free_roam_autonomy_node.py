@@ -228,6 +228,33 @@ class FreeRoamAutonomyNodeTest(unittest.TestCase):
             self.assertEqual(node.publisher.messages[0].linear.x, 0.12)
             self.assertEqual(node.client.calls, 0)
 
+    def test_unlocked_start_resets_elapsed_for_long_running_node(self) -> None:
+        """PC 后来才点 start 时必须重置会话计时，不能因节点常驻过久直接 completed。"""
+        with tempfile.TemporaryDirectory() as td:
+            artifact_path = Path(td) / "free_roam.json"
+            node = self.module.FreeRoamAutonomyNode()
+            node._parameters.update(
+                {
+                    "artifact_path": str(artifact_path),
+                    "operator_confirmed": True,
+                    "mapping_active": False,
+                    "stop_available": True,
+                    "enable_cmd_vel_publish": True,
+                    "motion_hil_unlocked": True,
+                }
+            )
+            node.started_at_s = 0.0
+            node.session_active = False
+
+            node._tick()
+
+            payload = json.loads(artifact_path.read_text(encoding="utf-8"))
+            self.assertFalse(payload["artifact_only"])
+            self.assertEqual(payload["decision"]["state"], "running")
+            self.assertGreater(payload["decision"]["linear_x_mps"], 0.0)
+            self.assertLess(payload["snapshot"]["elapsed_s"], 1.0)
+            self.assertEqual(len(node.publisher.messages), 1)
+
 
 if __name__ == "__main__":
     unittest.main()

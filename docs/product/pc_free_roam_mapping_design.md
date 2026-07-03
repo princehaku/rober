@@ -34,6 +34,14 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   vendor `T=1001 L/R=0/0`，不冒充编码器或底盘反馈闭环。硬件协议依据仍为
   `docs/vendor/VENDOR_INDEX.md` 指向的 WAVE ROVER `json_cmd.h`：`T=11` 为 `L/R` PWM，
   `T=13` 为 ROS twist 控制，T1001 `L/R` 是反馈读数。
+- 2026-07-04 05:58 起，自由移动节点的 `elapsed_s` 改为每次 PC start 会话计时，而不是进程启动时长。
+  上车端 `/free_roam_autonomy` 可能常驻数小时；如果用进程 uptime 判断 `max_runtime_s`，PC 点击
+  `开始自由移动（低速）` 后会立刻进入 `completed` 并只发零速。现在只有 `operator_confirmed` 或
+  `mapping_active` 被 PC start 打开、且没有 `external_stop_requested` 时才开启会话并重置计时；stop/locked
+  时会话关闭，`elapsed_s` 回到 0。现场复验为 `start_runtime_wait.ok=true`、`decision_state=avoiding`、
+  `cmd_vel_publish_enabled=true`、`motion_ready=true`、`motion_without_radar_allowed=true`；近障碍约 `0.04m`
+  时按策略原地换向，WAVE ROVER command debug 出现非零 `T=11 L/R=164/-164` 与 `-164/164`。vendor
+  `T=1001 L/R` 仍为 `0/0`，所以这只修复自由移动发命令和会话计时，不把 wheel raw 反馈闭环标成已完成。
 - 2026-07-03 09:07 现场相机复查确认：PC 共享 MJPEG 入口可以多人复用，`/api/robot-control/camera/mjpeg`
   会快速返回上游真实失败，不存在页面独占；上位机 `/dev/video1` 是 `USB Composite Device: DV20 USB`
   UVC 视频节点，`/dev/video2` 是 metadata，`/dev/video0` 是 cedrus 解码器不是摄像头。`lsusb -t`
