@@ -36,6 +36,15 @@ pc-tools/workstation/
 `ws://192.168.1.11:8765`。这些工程工具只观察，不替代 PC 简易界面，也不发送 `/cmd_vel`、
 manual、Nav2 goal、free-roam、delivery、stop 或建图运行时动作。
 
+2026-07-04 08:08 CST 起，PC 相机状态缓存进一步收紧：`backendSmoke` 深度探针如果只是 PC 代理层
+`fetch_timeout_45000ms`，不会再覆盖前一次已经确认的 `probe_total_timeout / uvc_no_frame_not_exclusive`
+源头无帧结论；只有上车 probe/fallback 明确读不到首帧时，`/api/robot-control/camera/mjpeg/status`
+才缓存为 `source_first_frame_failed`。同轮真实复验显示地图、18 点 Nav2 路线、小车 pose、目标点和 152 个当前雷达点
+在 PC 大地图可见，WASD 前进/后退/stop 继续返回 `command_forwarded`、命令 raw L/R 非零和 IMU 动作信号；
+但 DV20 `/dev/video1` 在 USB `480M`、owner=0、CMA 正常时，经 OpenCV、v4l2-ctl、ffmpeg 和 UVC 参数矩阵仍全部
+0 字节/0 帧。实时图传仍未完成，剩余动作是检查 DV20 上游输入、线材、接口、供电、采集卡/摄像头本体或换
+known-good UVC；该缺口不重新阻塞地图、WASD 或低速自由移动。
+
 2026-07-04 00:16 CST 起，PC 首页地图继续按普通用户主视图处理，默认使用 `100%` 完整态势；
 visual-first 首屏让地图独占首行，图传和 WASD/方向键连续手控放在地图下方；首页地图卡高度按近整屏主画布处理，
 `/map` 直达页继续填满当前 viewport，默认同样是 `100%` 完整态势，最高 `1200%`。需要局部排障时点

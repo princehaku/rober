@@ -15677,7 +15677,38 @@ describe("workstation fail-closed API contracts", () => {
       expect(statusBody.camera_usb_speed).toBe("480M");
       expect(statusBody.cma_memory_diagnostics_status).toBe("cma_available_no_recent_failure");
       expect(statusBody.robot_control_executed).toBe(false);
-      expect(healthRequestCount).toBe(2);
+      // 深度 backendSmoke 如果只是 PC 代理层超时，不能覆盖前一次已经确认的源头无帧事实。
+      const timeoutSpy = vi.spyOn(AbortSignal, "timeout").mockImplementation(() => {
+        const controller = new AbortController();
+        controller.abort();
+        return controller.signal;
+      });
+      try {
+        const timeoutProbeResponse = await fetch(`${workstation.baseUrl}/api/robot-control/camera/first-frame/probe?baseUrl=${encodeURIComponent(upstream.baseUrl)}&backendSmoke=1`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        });
+        const timeoutProbeBody = await timeoutProbeResponse.json() as RobotControlCameraFirstFrameProbeProxyResponse;
+
+        expect(timeoutProbeResponse.status).toBe(200);
+        expect(timeoutSpy).toHaveBeenLastCalledWith(45_000);
+        expect(timeoutProbeBody.proxy_status).toBe("probe_failed");
+        expect(timeoutProbeBody.failure_reason).toBe("fetch_timeout_45000ms");
+      } finally {
+        timeoutSpy.mockRestore();
+      }
+
+      const statusAfterTimeoutResponse = await fetch(`${workstation.baseUrl}/api/robot-control/camera/mjpeg/status?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
+      const statusAfterTimeoutBody = await statusAfterTimeoutResponse.json() as RobotControlCameraMjpegStatusResponse;
+
+      expect(statusAfterTimeoutResponse.status).toBe(200);
+      expect(statusAfterTimeoutBody.status).toBe("source_first_frame_failed");
+      expect(statusAfterTimeoutBody.source_readiness).toBe("first_frame_failed");
+      expect(statusAfterTimeoutBody.source_failure_reason).toBe("probe_total_timeout");
+      expect(statusAfterTimeoutBody.source_diagnosis_status).toBe("uvc_no_frame_not_exclusive");
+      expect(statusAfterTimeoutBody.camera_hardware_action_label).toBe("检查摄像头输入/供电后复测");
+      expect(healthRequestCount).toBe(3);
       expect(probeRequestCount).toBe(1);
       expect(mjpegRequestCount).toBe(0);
     } finally {

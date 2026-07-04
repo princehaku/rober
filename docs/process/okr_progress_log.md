@@ -8,6 +8,18 @@
 
 ## 2026-07-04 系列
 
+### 2026-07-04 08-08｜pc_camera_timeout_cache_live_validation｜PC 相机代理超时不覆盖无帧事实
+
+本轮 `sprints/2026.07.04_08-08_pc_camera_timeout_cache_live_validation/` 修正 PC 相机状态边界：
+`backendSmoke` 深度探针如果只是 PC 代理层 `fetch_timeout_45000ms`，不再被当成新的相机源头无帧事实，也不会覆盖前一次
+`probe_total_timeout / uvc_no_frame_not_exclusive` 缓存。`/api/robot-control/camera/mjpeg/status`
+会继续显示 `source_first_frame_failed`、`source_failure_reason=probe_total_timeout` 和“检查摄像头输入/供电后复测”，直到真实共享 MJPEG 出帧。
+
+同轮真实复验：7001 live-summary 显示地图、Nav2 路线、目标点、小车位置和当前雷达点可见；PC WASD 前进/后退/stop
+仍返回 `command_forwarded`、命令 raw L/R 非零、stop OK 与 IMU 动作信号。相机侧 DV20 `/dev/video1` 为 USB `480M`、
+owner=0、CMA 正常，但 OpenCV/v4l2/ffmpeg 和 UVC `quirks/nodrop/timeout` 参数矩阵仍全部 0 字节/0 帧。
+因此 O7 仍不能宣称真实 RTC/视频完成；剩余动作是检查 DV20 上游视频输入、线材、接口、供电、采集卡/摄像头或换 known-good UVC。
+
 ### 2026-07-04 07-49｜pc_map_1600_ros2_companion｜PC 大地图默认 1600% 与 ROS2 配套入口
 
 本轮 `sprints/2026.07.04_07-49_pc_map_1600_ros2_companion/` 响应现场“PC 地图太小、ROS2 有什么配套”的反馈：

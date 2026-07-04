@@ -94,6 +94,10 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   如果 probe 已经返回 `probe_total_timeout`，即使相机服务重启后 health 暂时显示 `source_selected_not_probed`，
   `/api/robot-control/camera/mjpeg/status` 仍显示 `source_first_frame_failed`、`uvc_no_frame_not_exclusive`
   和“检查摄像头输入/供电后复测”。这样扫图/自由移动界面不会把已证明的 DV20 0 帧误说成“还没探测”，但自由移动仍不依赖相机首帧。
+- 2026-07-04 08:08 起，上述缓存不会被 PC 代理层深度探针超时误覆盖：`backendSmoke` 请求本身
+  `fetch_timeout_45000ms` 只表示代理没有拿到上车响应，不等同于新的相机源头无帧证据，也不会把已经确认的
+  `uvc_no_frame_not_exclusive` 降级成 `source_selected_not_probed`。当前真实复验仍是 DV20 `480M`、无占用、
+  CMA 正常但 v4l2/ffmpeg/OpenCV/UVC 参数矩阵均 0 帧；建图视觉验收继续等待真实首帧，低速自由移动、WASD 和图上路线不以相机首帧为前置。
 - 2026-06-25 16:06 起，扫图卡片自己的安全确认可直接作为键盘扫图的最小预检；不再要求先补 operator report、轮速非零或 LiDAR delta 材料才允许低速键盘扫图。
 - 2026-06-27 03:16 起，普通首屏、行程操作、键盘手控、自动扫图和高级点动区全部复用同一个
   “人在旁边、周围安全、停止手段就绪”安全确认；旧的四项 HIL checklist 不再出现在点动区，避免 operator

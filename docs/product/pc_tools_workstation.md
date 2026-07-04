@@ -54,6 +54,14 @@ pc-tools/workstation/
   远程浏览器观察用 `foxglove_bridge` + Foxglove Web。工程观察只看 `/map`、`/scan`、TF、路径、定位和 costmap，
   不替代简易 PC 控制台，不启动 ROS2/RViz2/Foxglove/Nav2/建图 runtime，不发送 manual、keyboard、free-roam、
   delivery、stop 或 `/cmd_vel`。
+- 2026-07-04 08:08 CST 起，PC `/api/robot-control/camera/first-frame/probe?backendSmoke=1` 的本机代理超时不再被当成相机无帧事实写入缓存。
+  只有上车返回的首帧/fallback 证据明确为 `probe_total_timeout`、`capture_read_call_timeout`、`first_frame_timeout`
+  等无帧原因时，MJPEG status 才缓存为 `source_first_frame_failed`；如果后续仅发生
+  `fetch_timeout_45000ms`，之前的 `uvc_no_frame_not_exclusive` 结论保持，不会降级回
+  `source_selected_not_probed` 或 `idle_not_started`。同轮 7001 live-summary 读回地图、Nav2 路线、目标点、
+  小车位置和当前雷达点可见，WASD 前进/后退/stop 继续有命令 raw 非零与 IMU 动作信号；DV20 仍在
+  USB `480M`、无 owner、CMA 正常的条件下被 OpenCV/v4l2/ffmpeg/UVC 参数矩阵证明 0 帧，因此 PC 必须继续把实时图传缺口指向
+  视频输入、线材、接口、供电、采集卡/摄像头或 known-good UVC 复测，不能宣称视频已恢复。
 - 2026-07-04 04:58 CST 起，PC 相机共享预览诊断以最近一次真实 MJPEG 失败为准：如果 `/api/robot-control/camera/mjpeg`
   已返回 `first_frame_total_timeout` 或 `opencv_capture_not_opened`，即使上车 `/api/camera/health` 仍停在
   `source_selected_not_probed`，`/api/robot-control/camera/mjpeg/status`、summary 和 live-summary 也必须直接提升为

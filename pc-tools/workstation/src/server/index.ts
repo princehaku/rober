@@ -3358,8 +3358,7 @@ function cameraProbeLastFailureFromResponse(
   const noFrameFailure = !response.camera_first_frame_ready
     && !response.frame_observed
     && (cameraProbeNoFrameFailure(response.probe_key_values)
-      || response.status === "probe_total_timeout"
-      || response.proxy_status === "probe_failed");
+      || response.status === "probe_total_timeout");
   if (!noFrameFailure) {
     return null;
   }
@@ -3367,7 +3366,7 @@ function cameraProbeLastFailureFromResponse(
     || response.probe_key_values.failure_reason
     || "first_frame_failed";
   const sourceDiagnosisStatus = response.source_diagnosis_status
-    && response.source_diagnosis_status !== "not_loaded"
+    && !["not_loaded", "source_selected_not_probed", "source_not_probed"].includes(response.source_diagnosis_status)
     ? response.source_diagnosis_status
     : sourceFailure?.source_diagnosis_status || "uvc_no_frame_not_exclusive";
   return {
