@@ -8,6 +8,19 @@
 
 ## 2026-07-04 系列
 
+### 2026-07-04 08-25｜pc_camera_descriptor_usbreset_probe｜DV20 描述符与总线 reset 复验
+
+本轮 `sprints/2026.07.04_08-25_pc_camera_descriptor_usbreset_probe/` 不改产品代码，继续收窄 PC 实时图传缺口。
+DV20 `lsusb -v` 显示 Jieli `4c4a:4a55`、UVC 1.00、bus powered `400mA`、EP4 IN isochronous
+`3x1023` 且只有一个 video streaming altsetting；processing unit 描述符存在 `Descriptor too short` 警告。
+`media-ctl` 拓扑完整，`v4l2-compliance` 的 format/buffer ioctl 基本通过，失败集中在 control 设置。尝试
+`usbreset` 未能按 ID/devpath 命中设备，随后直采仍 `STREAMON` 成功但 0 字节。
+
+PC 运行态继续满足地图/WASD：7001 `live-summary` 为 `ready_for_motion`，地图、Nav2 路线、雷达点可见；
+补跑 forward/back/stop 后命令 raw L/R 非零和 IMU 动作信号可见。相机仍 `camera_current_visible=false`、
+`uvc_no_frame_not_exclusive`。本轮进一步把实时图传剩余风险收敛到 DV20 上游视频输入、线材、接口、供电、
+采集卡/摄像头本体或换 known-good UVC。
+
 ### 2026-07-04 08-19｜pc_camera_uvc_reload_probe｜DV20 UVC 重载和 I/O 模式排除
 
 本轮 `sprints/2026.07.04_08-19_pc_camera_uvc_reload_probe/` 不改产品代码，继续尝试恢复 PC 实时图传：

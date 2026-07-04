@@ -52,6 +52,13 @@ known-good UVC；该缺口不重新阻塞地图、WASD 或低速自由移动。
 `0` 字节；当前工具不支持 `--stream-read`。这进一步排除页面独占、CMA、USB full-speed、单一 UVC 参数、
 audio 复合接口和 mmap 模式问题；实时图传 blocker 继续指向上游视频输入/线材/接口/供电/采集设备本体。
 
+2026-07-04 08:25 CST 对 DV20 做描述符和总线级复核：`lsusb -v` 显示设备为 Jieli `4c4a:4a55`、
+UVC 1.00、bus powered `400mA`，视频 EP4 IN isochronous `3x1023` 且只有一个 video streaming altsetting；
+processing unit 描述符有 `Descriptor too short` 警告。`media-ctl` graph 完整，`v4l2-compliance`
+主要失败在 control 设置而不是格式/buffer ioctl。`usbreset` 工具在当前系统未能按 ID/devpath 命中设备，
+随后直接抓帧仍为 0 字节。PC 运行态仍是地图/路线/雷达/WASD ready，图传 false；下一步不应继续归因到
+PC 页面或 Node relay，而应检查/更换真实视频输入链路或 known-good UVC。
+
 2026-07-04 00:16 CST 起，PC 首页地图继续按普通用户主视图处理，默认使用 `100%` 完整态势；
 visual-first 首屏让地图独占首行，图传和 WASD/方向键连续手控放在地图下方；首页地图卡高度按近整屏主画布处理，
 `/map` 直达页继续填满当前 viewport，默认同样是 `100%` 完整态势，最高 `1200%`。需要局部排障时点

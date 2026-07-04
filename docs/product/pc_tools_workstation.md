@@ -67,6 +67,11 @@ pc-tools/workstation/
   与 `YUYV 320x240@20`；两者在 mmap/userptr 模式下均 `STREAMON` 成功但文件 `0` 字节。恢复
   `quirks=0 nodrop=0 timeout=5000` 后相机服务 active，PC probe 仍 `probe_total_timeout`。
   因此当前软件/驱动侧已进一步排除 UVC 参数、audio 复合接口和单一 I/O 模式，实时图传仍等待上游视频信号或 known-good UVC。
+- 2026-07-04 08:25 CST 起，DV20 描述符层证据也已记录：`lsusb -v` 显示 Jieli `4c4a:4a55`、UVC 1.00、
+  bus powered `400mA`、EP4 IN isochronous `3x1023`、单 video streaming altsetting，processing unit
+  有 `Descriptor too short` 警告；`media-ctl` 拓扑完整，`v4l2-compliance` 主要失败在 control 设置，
+  格式和 buffer ioctl 基本通过。`usbreset` 工具未能命中设备，后续直采仍 0 字节。PC 端必须继续把这类状态展示为
+  硬件/输入链路无帧，而不是页面或共享 relay 故障。
 - 2026-07-04 04:58 CST 起，PC 相机共享预览诊断以最近一次真实 MJPEG 失败为准：如果 `/api/robot-control/camera/mjpeg`
   已返回 `first_frame_total_timeout` 或 `opencv_capture_not_opened`，即使上车 `/api/camera/health` 仍停在
   `source_selected_not_probed`，`/api/robot-control/camera/mjpeg/status`、summary 和 live-summary 也必须直接提升为

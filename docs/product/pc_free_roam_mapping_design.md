@@ -101,6 +101,8 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
 - 2026-07-04 08:19 起，UVC 重载和 I/O 模式也已复验：`uvcvideo` 以 `quirks=0 nodrop=1 timeout=15000`
   重新加载后，`MJPG 640x480@30` 与 `YUYV 320x240@20` 的 mmap/userptr 直采仍是 STREAMON 成功但
   0 字节；恢复默认参数后相机服务 active。扫图流程继续把该缺口当作视觉验收 blocker，而不是移动 blocker。
+- 2026-07-04 08:25 起，DV20 描述符/合规复验进一步确认：UVC/video streaming 描述符存在，media graph 完整，
+  v4l2 format/buffer ioctl 基本可用，但没有任何真实视频 payload。扫图界面应保持“画面未恢复，移动可继续”的分层状态。
 - 2026-06-25 16:06 起，扫图卡片自己的安全确认可直接作为键盘扫图的最小预检；不再要求先补 operator report、轮速非零或 LiDAR delta 材料才允许低速键盘扫图。
 - 2026-06-27 03:16 起，普通首屏、行程操作、键盘手控、自动扫图和高级点动区全部复用同一个
   “人在旁边、周围安全、停止手段就绪”安全确认；旧的四项 HIL checklist 不再出现在点动区，避免 operator
