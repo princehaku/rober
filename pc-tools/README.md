@@ -45,6 +45,13 @@ manual、Nav2 goal、free-roam、delivery、stop 或建图运行时动作。
 0 字节/0 帧。实时图传仍未完成，剩余动作是检查 DV20 上游输入、线材、接口、供电、采集卡/摄像头本体或换
 known-good UVC；该缺口不重新阻塞地图、WASD 或低速自由移动。
 
+2026-07-04 08:19 CST 继续尝试恢复真实图传：停掉相机服务后，解绑 DV20 audio 复合接口，USB `3-1`
+重新授权，重载 `uvcvideo` 并用 `quirks=0 nodrop=1 timeout=15000` 复测；随后恢复为
+`quirks=0 nodrop=0 timeout=5000` 并重启相机服务。`v4l2-ctl` 对 `MJPG 640x480@30`、
+`YUYV 320x240@20` 的 mmap 和 userptr 模式均显示 `VIDIOC_STREAMON returned 0`，但输出文件仍为
+`0` 字节；当前工具不支持 `--stream-read`。这进一步排除页面独占、CMA、USB full-speed、单一 UVC 参数、
+audio 复合接口和 mmap 模式问题；实时图传 blocker 继续指向上游视频输入/线材/接口/供电/采集设备本体。
+
 2026-07-04 00:16 CST 起，PC 首页地图继续按普通用户主视图处理，默认使用 `100%` 完整态势；
 visual-first 首屏让地图独占首行，图传和 WASD/方向键连续手控放在地图下方；首页地图卡高度按近整屏主画布处理，
 `/map` 直达页继续填满当前 viewport，默认同样是 `100%` 完整态势，最高 `1200%`。需要局部排障时点

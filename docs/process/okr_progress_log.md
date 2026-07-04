@@ -8,6 +8,18 @@
 
 ## 2026-07-04 系列
 
+### 2026-07-04 08-19｜pc_camera_uvc_reload_probe｜DV20 UVC 重载和 I/O 模式排除
+
+本轮 `sprints/2026.07.04_08-19_pc_camera_uvc_reload_probe/` 不改产品代码，继续尝试恢复 PC 实时图传：
+停止相机服务，解绑 DV20 audio 复合接口，USB `3-1` reauthorize，重载 `uvcvideo`，临时设置
+`quirks=0 nodrop=1 timeout=15000` 后直接抓帧。`MJPG 640x480@30` 与 `YUYV 320x240@20`
+在 mmap/userptr 模式下均 `VIDIOC_STREAMON returned 0`，但输出文件仍为 0 字节；当前 `v4l2-ctl`
+不支持 `--stream-read`。随后恢复 `quirks=0 nodrop=0 timeout=5000` 并重启相机服务，服务保持 active。
+
+PC 7001 继续 `ready_for_motion`，地图、Nav2 路线、雷达点、目标点、WASD 证据仍可见；相机 probe 仍
+`probe_total_timeout / uvc_no_frame_not_exclusive`。因此本轮进一步排除页面独占、CMA、USB full-speed、UVC 参数、
+audio 复合接口和单一 mmap 模式，实时图传剩余指向 DV20 上游视频输入、线材、接口、供电、采集卡/摄像头本体或换 known-good UVC。
+
 ### 2026-07-04 08-08｜pc_camera_timeout_cache_live_validation｜PC 相机代理超时不覆盖无帧事实
 
 本轮 `sprints/2026.07.04_08-08_pc_camera_timeout_cache_live_validation/` 修正 PC 相机状态边界：

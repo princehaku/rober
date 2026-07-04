@@ -62,6 +62,11 @@ pc-tools/workstation/
   小车位置和当前雷达点可见，WASD 前进/后退/stop 继续有命令 raw 非零与 IMU 动作信号；DV20 仍在
   USB `480M`、无 owner、CMA 正常的条件下被 OpenCV/v4l2/ffmpeg/UVC 参数矩阵证明 0 帧，因此 PC 必须继续把实时图传缺口指向
   视频输入、线材、接口、供电、采集卡/摄像头或 known-good UVC 复测，不能宣称视频已恢复。
+- 2026-07-04 08:19 CST 继续对 DV20 做 UVC 层恢复：停止相机服务、解绑 audio 复合接口、USB reauthorize、
+  重载 `uvcvideo`，临时使用 `quirks=0 nodrop=1 timeout=15000` 后直接采 `MJPG 640x480@30`
+  与 `YUYV 320x240@20`；两者在 mmap/userptr 模式下均 `STREAMON` 成功但文件 `0` 字节。恢复
+  `quirks=0 nodrop=0 timeout=5000` 后相机服务 active，PC probe 仍 `probe_total_timeout`。
+  因此当前软件/驱动侧已进一步排除 UVC 参数、audio 复合接口和单一 I/O 模式，实时图传仍等待上游视频信号或 known-good UVC。
 - 2026-07-04 04:58 CST 起，PC 相机共享预览诊断以最近一次真实 MJPEG 失败为准：如果 `/api/robot-control/camera/mjpeg`
   已返回 `first_frame_total_timeout` 或 `opencv_capture_not_opened`，即使上车 `/api/camera/health` 仍停在
   `source_selected_not_probed`，`/api/robot-control/camera/mjpeg/status`、summary 和 live-summary 也必须直接提升为
