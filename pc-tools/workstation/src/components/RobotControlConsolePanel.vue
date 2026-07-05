@@ -120,6 +120,8 @@ const WHEEL_ZERO_NEXT_ACTION_SUMMARY = "下一步：检查电机使能、供电�
 const EVIDENCE_STALE_AFTER_MS = 15 * 60 * 1000;
 const LIVE_MAP_REFRESH_INTERVAL_MS = 2500;
 const INITIAL_RADAR_MAP_REFRESH_DELAY_MS = 900;
+const INITIAL_RADAR_MAP_REFRESH_RETRY_DELAY_MS = 700;
+const INITIAL_RADAR_MAP_REFRESH_MAX_ATTEMPTS = 4;
 const LIVE_RADAR_REFRESH_INTERVAL_MS = 5000;
 const LIVE_CAMERA_STATUS_REFRESH_INTERVAL_MS = 2000;
 const KEYBOARD_AUTO_ARM_ON_LOAD = true;
@@ -594,6 +596,7 @@ let keyboardStopAfterPulseReason: string | null = null;
 let liveMapRefreshTimer: number | null = null;
 let liveCameraStatusTimer: number | null = null;
 let initialRadarMapRefreshTimer: number | null = null;
+let initialRadarMapRefreshAttemptCount = 0;
 let liveMapRefreshInFlight = false;
 let liveCameraStatusRefreshInFlight = false;
 let lastLiveRadarRefreshAtMs = 0;
@@ -17697,15 +17700,32 @@ async function refreshInitialLiveSurfaces(): Promise<void> {
   ]);
 }
 
-function scheduleInitialRadarMapRefresh(): void {
+function scheduleInitialRadarMapRefresh(delayMs = INITIAL_RADAR_MAP_REFRESH_DELAY_MS): void {
   // 打开首页后自动补一次只读雷达 proof->地图刷新；这不启动雷达 lifecycle，也不发送任何底盘运动命令。
   if (!shouldRefreshLiveSurfaces() || plainMapDirectViewRequested.value || initialRadarMapRefreshTimer !== null) {
     return;
   }
   initialRadarMapRefreshTimer = window.setTimeout(() => {
     initialRadarMapRefreshTimer = null;
-    void refreshLiveMapSnapshot();
-  }, INITIAL_RADAR_MAP_REFRESH_DELAY_MS);
+    void refreshInitialRadarMapOverlay();
+  }, delayMs);
+}
+
+async function refreshInitialRadarMapOverlay(): Promise<void> {
+  // 首屏 map preview/summary 可能还在飞行；直接放弃会让普通首页停在旧雷达点或无点状态。
+  if (!shouldRefreshLiveSurfaces() || plainMapDirectViewRequested.value) {
+    return;
+  }
+  if (loading.value || mapWysiwygRefreshPending.value || liveMapRefreshInFlight) {
+    if (initialRadarMapRefreshAttemptCount < INITIAL_RADAR_MAP_REFRESH_MAX_ATTEMPTS) {
+      initialRadarMapRefreshAttemptCount += 1;
+      scheduleInitialRadarMapRefresh(INITIAL_RADAR_MAP_REFRESH_RETRY_DELAY_MS);
+    }
+    return;
+  }
+  initialRadarMapRefreshAttemptCount = 0;
+  lastLiveRadarRefreshAtMs = Date.now();
+  await refreshRadarProof({ focusAfterReady: false, mapPreviewAfter: true });
 }
 
 function clearLiveSurfaceRefreshLoops(): void {
@@ -17722,6 +17742,7 @@ function clearLiveSurfaceRefreshLoops(): void {
     window.clearTimeout(initialRadarMapRefreshTimer);
     initialRadarMapRefreshTimer = null;
   }
+  initialRadarMapRefreshAttemptCount = 0;
   liveMapRefreshInFlight = false;
   liveCameraStatusRefreshInFlight = false;
 }
@@ -20310,6 +20331,8 @@ onBeforeUnmount(() => {
       data-visible-safety-checkbox-count="0"
       :data-live-map-refresh-interval-ms="String(LIVE_MAP_REFRESH_INTERVAL_MS)"
       :data-initial-radar-map-refresh-delay-ms="String(INITIAL_RADAR_MAP_REFRESH_DELAY_MS)"
+      :data-initial-radar-map-refresh-retry-delay-ms="String(INITIAL_RADAR_MAP_REFRESH_RETRY_DELAY_MS)"
+      :data-initial-radar-map-refresh-max-attempts="String(INITIAL_RADAR_MAP_REFRESH_MAX_ATTEMPTS)"
       data-initial-radar-map-refresh-sequence="radar_scan_proof,radar_status,map_preview"
       data-initial-radar-map-refresh-starts-radar-lifecycle="false"
       data-initial-radar-map-refresh-sends-motion="false"
@@ -24931,6 +24954,8 @@ onBeforeUnmount(() => {
           data-live-map-refresh="true"
           :data-live-map-refresh-interval-ms="String(LIVE_MAP_REFRESH_INTERVAL_MS)"
           :data-initial-radar-map-refresh-delay-ms="String(INITIAL_RADAR_MAP_REFRESH_DELAY_MS)"
+          :data-initial-radar-map-refresh-retry-delay-ms="String(INITIAL_RADAR_MAP_REFRESH_RETRY_DELAY_MS)"
+          :data-initial-radar-map-refresh-max-attempts="String(INITIAL_RADAR_MAP_REFRESH_MAX_ATTEMPTS)"
           :data-live-radar-refresh-interval-ms="String(LIVE_RADAR_REFRESH_INTERVAL_MS)"
           data-live-map-refreshes="map_preview,radar_status,radar_scan_proof"
           data-live-map-keeps-overlays="robot_pose,nav2_route,radar_points,goal"

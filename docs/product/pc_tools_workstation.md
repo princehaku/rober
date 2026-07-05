@@ -72,6 +72,12 @@ pc-tools/workstation/
   因此普通 PC 页面应继续提示检查 DV20 输入信号、线/接口/供电或换 known-good UVC；该恢复入口仍固定
   `robot_control_executed=false`、`publishes_cmd_vel=false`、`opens_base_uart=false`，不启动 Nav2、manual、
   keyboard、free-roam、建图 runtime 或 `/cmd_vel`。
+- 2026-07-06 03:47 CST 起，普通首页和 `/map` 的实时地图入口对齐：页面首次加载时会自动补一次
+  no-motion 雷达贴图刷新，并在首屏 `summary/map_preview` 正在读取时短重试最多 4 次，避免初始化 race
+  让 `radar_map_points_visible` 偶发停在 false。该刷新链路固定为雷达 scan proof、雷达 status、地图 preview；
+  不启动雷达 lifecycle，不启动 ROS2/RViz2/Foxglove/Nav2/建图 runtime，不发送 manual、keyboard、free-roam、
+  delivery、stop 或 `/cmd_vel`。真实运行态复验显示普通首页经 7001 读回地图、Nav2 路线、当前雷达点和 WASD
+  raw 命令均可用；实时图传仍按 DV20 UVC 无帧展示，不能用地图 ready 掩盖相机缺口。
 - 2026-07-06 02:13 CST 起，PC 地图“太小”的当时有效口径为：普通首页和 `/map` 默认 `200%` 可读大图，
   `完整态势` 回到 `100%`，`细节放大` 到 `1200%`；`/map` 的标题/工具条和图层状态保持画布内悬浮层，
   不再占用地图高度。ROS2 配套仍分层：普通用户用 PC 大地图和 `/map`；本地工程调试用 RViz2/Nav2 RViz 配置；

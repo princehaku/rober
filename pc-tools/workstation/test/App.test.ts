@@ -28028,6 +28028,59 @@ describe("App", () => {
     }
   });
 
+  it("auto refreshes stale radar overlay on the ordinary home map without starting radar lifecycle", async () => {
+    // 普通首页也必须打开即用：首屏 map preview 若撞上 stale 雷达，短延迟自动补 proof+preview，不让用户先找刷新按钮。
+    window.history.pushState({}, "", "/");
+    vi.useFakeTimers();
+    try {
+      const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+      summaryFixture.readback_summary.lidar.lifecycle_running = "true";
+      summaryFixture.readback_summary.lidar.lifecycle_state = "running";
+      summaryFixture.readback_summary.lidar.runtime_scan_status = "stale";
+      summaryFixture.readback_summary.lidar.latest_scan_proof_fresh = "false";
+      summaryFixture.readback_summary.map.radar_overlay_status = "not_current";
+      summaryFixture.readback_summary.map.radar_overlay_point_count = "0";
+      summaryFixture.readback_summary.map.radar_overlay_source_point_count = "72";
+      summaryFixture.readback_summary.map.radar_overlay_next_action = "refresh_radar_scan_for_map_overlay";
+      summaryFixture.readback_summary.map.radar_overlay_next_action_plain = "刷新雷达扫描，再刷新地图画面";
+      const stalePreviewFixture = structuredClone(fixtures["/api/robot-control/map/preview"] as RobotControlMapPreviewResponse);
+      stalePreviewFixture.radar_overlay_status = "not_current";
+      stalePreviewFixture.radar_overlay_point_count = 0;
+      stalePreviewFixture.radar_overlay_source_point_count = 72;
+      stalePreviewFixture.radar_overlay_refresh_required = true;
+      stalePreviewFixture.radar_overlay_primary_blocked_reason = "runtime_scan_stale_for_map_radar_overlay";
+      const mockedFetch = stubWorkstationFetch({
+        "/api/robot-control/summary": summaryFixture,
+        "/api/robot-control/map/preview": stalePreviewFixture,
+      });
+
+      const wrapper = mount(App);
+      await flushPromises();
+      await wrapper.vm.$nextTick();
+
+      const firstScreen = wrapper.find('[data-testid="pc-simple-user-first-screen"]');
+      expect(firstScreen.attributes("data-initial-radar-map-refresh-sequence")).toBe("radar_scan_proof,radar_status,map_preview");
+      expect(firstScreen.attributes("data-initial-radar-map-refresh-starts-radar-lifecycle")).toBe("false");
+      expect(firstScreen.attributes("data-initial-radar-map-refresh-sends-motion")).toBe("false");
+      expect(firstScreen.attributes("data-initial-radar-map-refresh-retry-delay-ms")).toBe("700");
+      expect(firstScreen.attributes("data-initial-radar-map-refresh-max-attempts")).toBe("4");
+
+      await vi.advanceTimersByTimeAsync(900);
+      await flushPromises();
+      await wrapper.vm.$nextTick();
+
+      expect(mockedFetch.mock.calls.some(([url, options]) => String(url).startsWith("/api/robot-control/radar/scan-proof/refresh?") && options?.method === "POST")).toBe(true);
+      expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/radar/start?"))).toBe(false);
+      expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/map/start?"))).toBe(false);
+      expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);
+      expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/nav2/goal/execute?"))).toBe(false);
+      expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/free-roam/autonomy/start?"))).toBe(false);
+      expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/cmd_vel"))).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("refreshes stale radar overlay proof on direct map entry without starting radar lifecycle", async () => {
     // /map 打开就是现场大屏，进入时应刷新 no-motion 雷达 proof，再保留手动刷新入口兜底。
     window.history.pushState({}, "", "/map");

@@ -77,6 +77,17 @@ WebRTC、不额外启动相机流、不发送 Nav2/manual/keyboard/free-roam/del
 0 字节，因此下一步不是继续归因 PC 页面或独占，而是查 DV20 输入信号、线/接口/供电，或换 known-good UVC 复测。
 该路径仍固定 `robot_control_executed=false`，不发布 `/cmd_vel`，不打开 WAVE ROVER UART。
 
+2026-07-06 03:47 CST 起，普通首页的初始雷达贴图补刷新不再复用 live-loop 的 5s 低频门限。
+首屏 `map_preview` 或 `summary` 正在飞行时，`scheduleInitialRadarMapRefresh()` 会按
+`700ms x 4` 短重试等待空闲，然后直接执行固定只读
+`/api/robot-control/radar/scan-proof/refresh -> /api/robot-control/radar/status -> /api/robot-control/map/preview`。
+这解决普通首页首次打开时地图和路线已可见、但雷达点偶发 stale/false 的问题；该自动补刷新固定不启动雷达
+lifecycle、不启动建图/Nav2/free-roam、不发送 manual/keyboard/stop 或 `/cmd_vel`。同轮真实 7001 复验为
+`map_current_visible=true`、`path_current_visible=true`、`radar_map_points_visible=true`、
+`keyboard_ready=true`、`keyboard_continuous_ready=true`、`command_raw_lr_nonzero_proven=true`。相机继续无首帧；
+将 DV20 audio 复合接口 bind 回 `snd-usb-audio` 后，停服务直采 `YUYV@320x240@20` 和
+`MJPG@640x480@30` 仍 `STREAMON` 成功但 `select timeout`、0 字节。
+
 2026-07-06 02:29 CST 起，`GET /api/robot-control/live-summary` 直接平铺 WASD/手控命令 raw 证据：
 `command_raw_lr_nonzero_proven`、`command_raw_latest_left/right`、`keyboard_command_raw_lr_nonzero` 和
 `keyboard_motion_evidence_complete`。现场用正确 PC 代理合同

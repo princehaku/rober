@@ -95,6 +95,22 @@ micro
     - 更新自动 USB recovery proof fixture，页面只读状态使用精确的零帧分类。
   - `pc-tools/README.md`、`docs/product/pc_tools_workstation.md`
     - 同步当前相机诊断口径和剩余现场动作。
+- 2026-07-06 03:47 CST 追加普通首页雷达贴图打开即用修正：
+  - `pc-tools/workstation/src/components/RobotControlConsolePanel.vue`
+    - `scheduleInitialRadarMapRefresh()` 不再把初始雷达贴图补刷新交给 live-loop 的 5s 节流。
+    - 首屏 `summary` / `map_preview` 仍在读取时，会按 `700ms x 4` 重试，空闲后直接执行
+      `refreshRadarProof({ focusAfterReady:false, mapPreviewAfter:true })`。
+    - 普通首页和 `/map` DOM 都暴露 retry 参数和 no-motion 边界：
+      `data-initial-radar-map-refresh-retry-delay-ms=700`、
+      `data-initial-radar-map-refresh-max-attempts=4`、
+      `data-initial-radar-map-refresh-starts-radar-lifecycle=false`、
+      `data-initial-radar-map-refresh-sends-motion=false`。
+  - `pc-tools/workstation/test/App.test.ts`
+    - 新增普通首页自动刷新 stale 雷达 overlay 的测试，确认只调用固定
+      `/api/robot-control/radar/scan-proof/refresh`，不调用 radar start、map start、manual、Nav2 execute、
+      free-roam start 或 `/cmd_vel`。
+  - `pc-tools/README.md`、`docs/product/pc_tools_workstation.md`
+    - 同步普通首页打开即用地图/雷达贴图修正，以及本轮相机 audio bind 复测仍 0 字节事实。
 
 ## 现场验证
 
@@ -362,6 +378,33 @@ git diff --check
     - `map_display_direct_map_default_zoom_percent=300%`
     - `map_display_ros2_companion_tools=["rviz2","foxglove"]`
     - `map_display_companion_replaces_pc_ui=false`
+- 2026-07-06 03:47 CST 普通首页雷达贴图与相机补充验证：
+  - `cd pc-tools/workstation && npm run test -- App.test.ts -t "ordinary home map"` 通过。
+  - `cd pc-tools/workstation && npm run test -- App.test.ts -t "direct map entry"` 通过。
+  - `cd pc-tools/workstation && npm run test -- App.test.ts -t "no-motion map radar refresh action"` 通过。
+  - `cd pc-tools/workstation && npm run lint` 通过。
+  - `cd pc-tools/workstation && npm run test` 通过：3 个 test file，455 个测试用例通过。
+  - `cd pc-tools/workstation && npm run build` 通过；Vite 仅输出已有的大 bundle 警告。
+  - 上位机排查补充：
+    - `trashbot-local-webrtc-camera.service` active。
+    - DV20 audio 接口已 bind 回 `snd-usb-audio`，`lsusb -t` 显示 Video/Audio 均在 USB `480M`。
+    - 停相机服务后独占直采 `YUYV@320x240@20` 与 `MJPG@640x480@30`：
+      `VIDIOC_STREAMON returned 0 (Success)` 后 `select timeout`，输出文件仍 0 字节。
+    - ROS2 当前没有可直接替代的 `/camera/image_raw` 等真实图像 topic。
+  - 重启本机 `0.0.0.0:7001` 后，先读 live-summary 再触发一次 MJPEG 只读拉流，最终 live-summary 返回：
+    - `status=ready_for_motion`
+    - `map_current_visible=true`
+    - `path_current_visible=true`
+    - `radar_map_points_visible=true`
+    - `camera_current_visible=false`
+    - `camera_source_diagnosis_status=uvc_no_frame_not_exclusive`
+    - `camera_shared_preview_single_upstream=true`
+    - `camera_shared_preview_last_failure_reason=first_frame_total_timeout`
+    - `keyboard_ready=true`
+    - `keyboard_continuous_ready=true`
+    - `command_raw_lr_nonzero_proven=true`
+    - `wheel_lr_nonzero_proven=false`
+    - `delivery_success=true`
 
 ## 剩余风险
 
