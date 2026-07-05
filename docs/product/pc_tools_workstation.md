@@ -84,6 +84,14 @@ pc-tools/workstation/
   USB 仍为 `480M`，但 `STREAMON` 成功后输出 0 字节、首帧 probe 仍 `probe_total_timeout`。
   当前结论仍是 DV20/采集输入、视频线、USB/供电或 known-good UVC 方向；不是 PC 页面独占，也不阻塞
   地图、WASD、自由移动或 Nav2 控制入口。
+- 2026-07-06 07:01 CST 现场复验 PC 手控：本机 `0.0.0.0:7001` 经固定代理向
+  `http://192.168.1.11:8787` 发送 forward/back 低速短脉冲和 stop，forward/back 均返回
+  `proxy_status=command_forwarded`、`base_command_mode=ros`、`command_result_ok=true`、
+  `stop_result_ok=true`；上车 bridge 命令 raw 读到 `T=11 L/R=164/164` 和 `T=11 L/R=-164/-164`，
+  `motion_signal_observed=true`、`motion_signal_source=imu_attitude_delta`。带页面本地按住证据的
+  `live-summary` 返回 `keyboard_continuous_motion_verified=true`、`keyboard_command_raw_lr_nonzero_proven=true`。
+  `T=1001` wheel raw 反馈仍为 `0/0`，因此 PC 只能声明 WASD/ROS/bridge/底盘命令链路和 IMU 运动信号可用，
+  不把它升级成 WAVE ROVER wheel raw L/R 非零闭环。
 - 2026-07-06 05:58 CST 起，PC/WASD 手控的当前有效运动信号阈值为 `0.35°` IMU roll/pitch delta：
   上车 `upper_robot_api.py` 只用它判断低速短脉冲是否有车体运动迹象，不把它包装成 WAVE ROVER
   wheel raw L/R 非零。资料来源为 `docs/vendor/VENDOR_INDEX.md` 指向的 WAVE ROVER `T=1001`
