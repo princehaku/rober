@@ -560,7 +560,7 @@ h3 {
 
 .robot-console-grid[data-layout="visual-first"] .plain-camera-panel {
   /* 图传不再占地图右侧宽度；放在大地图下方，继续保持可滚动诊断。 */
-  order: 0;
+  order: 10;
   grid-area: camera;
   display: flex;
   flex-direction: column;
@@ -578,14 +578,14 @@ h3 {
 
 .robot-console-grid[data-layout="visual-first"] .plain-radar-panel {
   /* 雷达独立卡片降到详情区；首页主证据来自地图上的雷达点 overlay。 */
-  order: 4;
+  order: 20;
   grid-column: 1 / -1;
 }
 
 .robot-console-grid[data-layout="visual-first"] .plain-map-panel {
   /* 地图是 PC 端主视图，首页优先给全宽大画布；/map 仍保留纯满屏观察。 */
   position: relative;
-  order: 0;
+  order: -20;
   grid-area: map;
   height: clamp(1080px, calc(100vh + 96px), 2000px);
   min-height: 980px;
@@ -619,13 +619,13 @@ h3 {
 
 .robot-console-grid[data-layout="visual-first"] .plain-connection-panel,
 .robot-console-grid[data-layout="visual-first"] .plain-free-roam-map {
-  order: 5;
+  order: 20;
   grid-column: span 6;
 }
 
 .robot-console-grid[data-layout="visual-first"] .plain-motion-panel {
   /* WASD 是第三个核心面板，放在大地图下方并把键盘模块提到顶部。 */
-  order: 0;
+  order: 11;
   grid-area: drive;
   display: flex;
   flex-direction: column;
@@ -2452,7 +2452,7 @@ h3 {
 }
 
 .plain-map-overlay-frame {
-  /* 缩放作用在同一个 overlay frame 上；首页默认 1600% 先保证现场可读，完整态势回到 100%。 */
+  /* 缩放作用在同一个 overlay frame 上；默认先完整态势，局部排障再手动放大。 */
   position: relative;
   flex: 0 0 auto;
   width: calc(100% * var(--plain-map-zoom, 1));
@@ -2462,11 +2462,11 @@ h3 {
 }
 
 .plain-map-layer.has-real-map .plain-map-overlay-frame {
-  /* 真实地图按高度优先铺满画布，宽图用横向滚动保留比例，避免 occupancy grid 只贴在上半屏。 */
-  width: auto;
-  height: calc(100% * var(--plain-map-zoom, 1) / var(--plain-map-fit-zoom, 1));
-  min-width: 0;
-  min-height: 100%;
+  /* 真实地图默认先完整铺开，局部排障再靠缩放；这样普通用户先看到全局路线、车位、雷达和目标。 */
+  width: calc(100% * var(--plain-map-zoom, 1) / var(--plain-map-fit-zoom, 1));
+  height: auto;
+  min-width: 100%;
+  min-height: 0;
   max-width: none;
   max-height: none;
   aspect-ratio: var(--map-aspect, 1);
