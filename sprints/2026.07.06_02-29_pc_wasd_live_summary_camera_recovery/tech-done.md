@@ -50,6 +50,20 @@ micro
     - 补充缺 runtime 时托管启动、托管启动后仍不可用时失败 reason 的离线合同测试。
   - `pc-tools/README.md`、`docs/product/pc_tools_workstation.md`、`OKR.md`
     - 同步自由移动不依赖相机首帧/雷达 proof 发车、真实 start/stop 复验结果和剩余边界。
+- 2026-07-06 03:16 CST 追加共享图传 live-summary 短字段：
+  - `pc-tools/workstation/src/server/index.ts`
+    - `GET /api/robot-control/live-summary` 平铺
+      `camera_shared_preview_single_upstream`、`camera_shared_preview_client_count`、
+      `camera_shared_preview_upstream_active`、`camera_shared_preview_content_type_loaded`、
+      `camera_shared_preview_cached_frame_loaded`、`camera_shared_preview_last_failure_reason`、
+      `camera_shared_preview_last_remote_http_status`。
+    - 字段只读来自同一次 summary 聚合，不新开 WebRTC、不额外启动相机流、不发送底盘/导航命令。
+  - `pc-tools/workstation/src/shared/contracts.ts`
+    - 同步 live-summary TypeScript 合同。
+  - `pc-tools/workstation/test/catalog.test.ts`
+    - 增加 live-summary 短字段与 `live_closure_summary` / `readback_summary.camera` 同源断言。
+  - `pc-tools/README.md`、`docs/product/pc_tools_workstation.md`
+    - 同步普通现场 `curl/jq` 可直接确认多人共享预览、非独占和最近失败原因的口径。
 
 ## 现场验证
 
@@ -212,6 +226,30 @@ git diff --check
   - `keyboard_motion_evidence_complete=true`
   - `wheel_lr_nonzero_proven=false`
   - `delivery_success=true`
+- 2026-07-06 03:16 CST 实车只读复验：
+  - `GET /api/robot-control/live-summary?baseUrl=http://192.168.1.11:8787` 返回：
+    - `map_display_primary_url=/map`
+    - `map_display_default_zoom_percent=300%`
+    - `map_display_ros2_companion_tools=["rviz2","foxglove"]`
+    - `map_display_companion_replaces_pc_ui=false`
+    - `map_display_starts_ros2=false`
+  - 重启 `0.0.0.0:7001` 后，同一 live-summary 返回新增共享图传短字段：
+    - `camera_shared_preview_single_upstream=true`
+    - `camera_shared_preview_client_count="0"`
+    - `camera_shared_preview_upstream_active="false"`
+    - `camera_shared_preview_content_type_loaded="false"`
+    - `camera_shared_preview_cached_frame_loaded="false"`
+    - `camera_shared_preview_last_failure_reason="camera_source_first_frame_failed"`
+    - `camera_shared_preview_last_remote_http_status="200"`
+  - `GET /api/robot-control/camera/mjpeg/status?baseUrl=http://192.168.1.11:8787` 返回：
+    - `status=source_first_frame_failed`
+    - `source_diagnosis_status=uvc_no_frame_not_exclusive`
+    - `source_failure_reason=probe_total_timeout`
+    - `shared_preview_everyone_can_join=true`
+    - `exclusive_camera_claim=false`
+    - `shared_capture=true`
+    - `camera_blocks_free_move=false`
+    - 最近 MJPEG/first-frame 尝试仍为多格式无首帧，实时图传未恢复。
 
 ## 剩余风险
 

@@ -54,6 +54,14 @@ runtime 缺失时托管启动 `ros2_trashbot_nav free_roam_autonomy_node`，节�
 而 health 只带有 UVC vendor extension 控制查询造成的 transport 日志，PC 顶层继续显示
 `uvc_no_frame_not_exclusive` 和“检查摄像头输入/供电后复测”，避免把 XU 查询短包误当成 USB 传输主因。
 
+2026-07-06 03:16 CST 起，`GET /api/robot-control/live-summary` 进一步平铺共享图传短字段：
+`camera_shared_preview_single_upstream`、`camera_shared_preview_client_count`、
+`camera_shared_preview_upstream_active`、`camera_shared_preview_content_type_loaded`、
+`camera_shared_preview_cached_frame_loaded`、`camera_shared_preview_last_failure_reason` 和
+`camera_shared_preview_last_remote_http_status`。这些字段只读来自同一次 summary 聚合，目的是让现场用
+`curl | jq` 就能确认“多人页面复用同一条共享 MJPEG 上游、当前不是页面独占、最近失败原因是什么”；它不新开
+WebRTC、不额外启动相机流、不发送 Nav2/manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
+
 2026-07-06 02:29 CST 起，`GET /api/robot-control/live-summary` 直接平铺 WASD/手控命令 raw 证据：
 `command_raw_lr_nonzero_proven`、`command_raw_latest_left/right`、`keyboard_command_raw_lr_nonzero` 和
 `keyboard_motion_evidence_complete`。现场用正确 PC 代理合同

@@ -3610,6 +3610,13 @@ export interface RobotControlLiveSummaryResponse extends RobotControlLiveClosure
   route_target_source?: RobotControlSummaryResponse["readback_summary"]["map"]["route_target_source"];
   route_target_state?: RobotControlSummaryResponse["readback_summary"]["map"]["route_target_state"];
   radar_map_points_current_visible?: boolean;
+  camera_shared_preview_single_upstream: true;
+  camera_shared_preview_client_count: RobotControlLiveClosureSummary["live_wysiwyg_camera_shared_preview_client_count"];
+  camera_shared_preview_upstream_active: RobotControlLiveClosureSummary["live_wysiwyg_camera_shared_preview_upstream_active"];
+  camera_shared_preview_content_type_loaded: RobotControlSummaryResponse["readback_summary"]["camera"]["shared_preview_content_type_loaded"];
+  camera_shared_preview_cached_frame_loaded: RobotControlSummaryResponse["readback_summary"]["camera"]["shared_preview_cached_frame_loaded"];
+  camera_shared_preview_last_failure_reason: RobotControlSummaryResponse["readback_summary"]["camera"]["shared_preview_last_failure_reason"];
+  camera_shared_preview_last_remote_http_status: RobotControlSummaryResponse["readback_summary"]["camera"]["shared_preview_last_remote_http_status"];
 }
 
 export interface RobotControlSummaryResponse extends ProofFlags {

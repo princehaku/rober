@@ -5919,3 +5919,13 @@ UVC 1.00 复合设备、bus powered `400mA`，VideoControl processing unit 有 `
 `radar_map_points_visible=true`、`camera_current_visible=false`、`keyboard_motion_verified=true`、
 `keyboard_command_raw_lr_nonzero_proven=true`、`keyboard_stop_settled_after_pulse=true`。这继续说明 PC 大地图和 WASD 可用，
 实时图传缺口更集中到 DV20 上游输入、线材、供电、采集卡/摄像头本体，或 vendor extension unit 里存在未公开输入切换控制。
+
+2026-07-06 03:16 CST 起，PC `live-summary` 必须把共享图传多人预览证据平铺成短字段：
+`camera_shared_preview_single_upstream=true`、`camera_shared_preview_client_count`、
+`camera_shared_preview_upstream_active`、`camera_shared_preview_content_type_loaded`、
+`camera_shared_preview_cached_frame_loaded`、`camera_shared_preview_last_failure_reason` 和
+`camera_shared_preview_last_remote_http_status`。这些字段与 `live_wysiwyg_camera_shared_preview_*` 和
+`readback_summary.camera.shared_preview_*` 同源，只服务现场 `curl/jq` 验收，不启动相机新链路、WebRTC、
+Nav2、manual、keyboard、free-roam、delivery、stop、建图 runtime 或 `/cmd_vel`。当前真实 7001 读回仍为
+`camera_current_visible=false`、`source_diagnosis_status=uvc_no_frame_not_exclusive`，即普通用户可确认共享入口非独占，
+但 DV20 源头还没有输出视频帧。

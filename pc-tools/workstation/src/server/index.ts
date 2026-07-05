@@ -4193,8 +4193,10 @@ async function buildRobotControlSummaryForHttp(
 function buildRobotControlLiveSummaryResponse(summary: RobotControlSummaryResponse): RobotControlLiveSummaryResponse {
   // 扁平 live-summary 是给现场 curl/jq 用的只读视图；权威数据仍来自同一次 summary 聚合。
   const baseReadback = summary.readback_summary.base;
+  const cameraReadback = summary.readback_summary.camera;
+  const liveClosure = summary.live_closure_summary as NonNullable<RobotControlSummaryResponse["live_closure_summary"]>;
   return {
-    ...(summary.live_closure_summary as NonNullable<RobotControlSummaryResponse["live_closure_summary"]>),
+    ...liveClosure,
     schema: "trashbot.pc_tools_workstation.robot_control_live_summary.v1",
     console_status: summary.console_status,
     source_base_url: summary.source_base_url,
@@ -4246,6 +4248,14 @@ function buildRobotControlLiveSummaryResponse(summary: RobotControlSummaryRespon
     route_target_source: summary.readback_summary.map.route_target_source,
     route_target_state: summary.readback_summary.map.route_target_state,
     radar_map_points_current_visible: summary.live_closure_summary?.radar_map_points_visible ?? false,
+    // 共享图传短字段直接给现场 curl 使用；这些都是同一次只读 summary 的别名，不会新开相机或 WebRTC。
+    camera_shared_preview_single_upstream: true,
+    camera_shared_preview_client_count: liveClosure.live_wysiwyg_camera_shared_preview_client_count,
+    camera_shared_preview_upstream_active: liveClosure.live_wysiwyg_camera_shared_preview_upstream_active,
+    camera_shared_preview_content_type_loaded: cameraReadback.shared_preview_content_type_loaded,
+    camera_shared_preview_cached_frame_loaded: cameraReadback.shared_preview_cached_frame_loaded,
+    camera_shared_preview_last_failure_reason: cameraReadback.shared_preview_last_failure_reason,
+    camera_shared_preview_last_remote_http_status: cameraReadback.shared_preview_last_remote_http_status,
     // 现场只看 live-summary 时也要能确认 WASD/手控是否真的发出了非零 raw L/R，避免钻 summary 深层字段。
     command_raw_nonzero_proven: baseReadback.command_raw_nonzero_proven === "true",
     command_raw_lr_nonzero_proven: baseReadback.command_raw_lr_nonzero_proven === "true",

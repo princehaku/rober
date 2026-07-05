@@ -7241,6 +7241,13 @@ describe("workstation fail-closed API contracts", () => {
       expect(live.camera_source_diagnosis_status).toBe(summary.live_closure_summary?.camera_source_diagnosis_status);
       expect(live.camera_source_diagnosis_not_exclusive).toBe(summary.live_closure_summary?.camera_source_diagnosis_not_exclusive);
       expect(live.camera_shared_preview_exclusive_camera_claim).toBe(summary.live_closure_summary?.camera_shared_preview_exclusive_camera_claim);
+      expect(live.camera_shared_preview_single_upstream).toBe(true);
+      expect(live.camera_shared_preview_client_count).toBe(summary.live_closure_summary?.live_wysiwyg_camera_shared_preview_client_count);
+      expect(live.camera_shared_preview_upstream_active).toBe(summary.live_closure_summary?.live_wysiwyg_camera_shared_preview_upstream_active);
+      expect(live.camera_shared_preview_content_type_loaded).toBe(summary.readback_summary.camera.shared_preview_content_type_loaded);
+      expect(live.camera_shared_preview_cached_frame_loaded).toBe(summary.readback_summary.camera.shared_preview_cached_frame_loaded);
+      expect(live.camera_shared_preview_last_failure_reason).toBe(summary.readback_summary.camera.shared_preview_last_failure_reason);
+      expect(live.camera_shared_preview_last_remote_http_status).toBe(summary.readback_summary.camera.shared_preview_last_remote_http_status);
       expect(live.camera_recovery_next_action_plain).toBe(summary.live_closure_summary?.camera_recovery_next_action_plain);
       expect(live.camera_hardware_action_required).toBe(summary.live_closure_summary?.camera_hardware_action_required);
       expect(live.camera_hardware_action_label).toBe(summary.live_closure_summary?.camera_hardware_action_label);
