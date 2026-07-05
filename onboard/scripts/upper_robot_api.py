@@ -6396,6 +6396,10 @@ def command_raw_motion_summary_from_debug_record(
     return command_raw_motion_summary(command, record, source=source)
 
 
+# PC 低速短脉冲不会总是带来 1 度以上姿态变化；0.35 度能覆盖现场 0.5 度级别的真实动静信号。
+IMU_ATTITUDE_DELTA_MOTION_THRESHOLD_DEGREES = 0.35
+
+
 def imu_attitude_delta_summary_from_frames(frames: list[dict[str, Any]]) -> dict[str, Any]:
     """用 T1001 r/p 计算姿态变化迹象；它不能替代轮速闭环或交付成功。"""
     matched_frames: list[dict[str, float]] = []
@@ -6406,7 +6410,7 @@ def imu_attitude_delta_summary_from_frames(frames: list[dict[str, Any]]) -> dict
             continue
         matched_frames.append({"roll": roll, "pitch": pitch})
 
-    threshold_degrees = 1.0
+    threshold_degrees = IMU_ATTITUDE_DELTA_MOTION_THRESHOLD_DEGREES
     max_roll_delta = 0.0
     max_pitch_delta = 0.0
     if matched_frames:

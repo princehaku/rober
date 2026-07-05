@@ -56,6 +56,18 @@ ROS2 配套仍按分层使用：本地工程调试首选 RViz2/Nav2 RViz 配置�
 同样默认 `100%` 完整态势。RViz2/Foxglove 继续只是工程观察入口，不替代 PC 简易控制台，也不发送任何
 运动或建图命令。
 
+2026-07-06 05:58 CST 起，上车 `/api/base/manual` 的 IMU 姿态运动信号阈值从 `1.0°` 调整为
+`0.35°`。依据 `docs/vendor/VENDOR_INDEX.md` 指向的 WAVE ROVER `T=1001` 反馈字段，`r/p` 来自
+底盘 IMU roll/pitch；该阈值只用于判断 PC 低速短脉冲是否有车体运动迹象，不替代 wheel raw L/R
+非零。真实 7001 复验中，PC 代理 `direction=forward`、`speed_mps=0.12`、`duration_ms=800`、
+`command_mode=ros` 返回 `command_raw_lr_nonzero_proven=true`、`T=11 L/R=164`、
+`feedback_during_motion_t1001_frame_count=80`、`motion_signal_observed=true`、
+`motion_signal_source=imu_attitude_delta`，随后 stop 成功；`live-summary` 进入 `ready_for_motion`，
+`keyboard_motion_verified=true`、`keyboard_stop_settled_after_pulse=true`。同轮相机 USB recovery、
+共享 MJPEG、OpenCV/ffmpeg 和停服务独占 `v4l2-ctl` 对 `/dev/video1` 的
+`MJPG@640x480/1280x720/1920x1080` 与 `YUYV@320x240/640x480` 仍全部 `select timeout`
+或 0 字节，结论保持 DV20 枚举正常但无视频帧，不是 PC 页面独占。
+
 2026-07-06 05:15 CST 起，上车 `/api/map/preview` 的雷达贴图不再只依赖可能过期的
 `lidar_scan_proof_latest.json`；当 LiDAR lifecycle 正在运行且 driver diagnostics 5 秒内更新、状态为
 `scan_published` 时，地图预览直接使用 diagnostics 里的 `scan_preview_points` 作为当前雷达点。真实 7001

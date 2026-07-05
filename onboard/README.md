@@ -43,6 +43,12 @@ Foxglove 只用于远程共享观察 `/map`、`/scan`、TF、路径和位姿；�
 Nav2 execution `goal_request` / latest readback，便于现场证明本次执行绑定的是当前图上完整路线读数；
 该回显不改变 Nav2 发车门禁，真实执行仍必须由 PC 安全确认后的固定入口触发。
 
+2026-07-06 起，`scripts/upper_robot_api.py` 用 WAVE ROVER `T=1001` feedback 里的 IMU
+`r/p` roll/pitch 判断低速短脉冲是否有车体运动迹象，当前阈值为 `0.35°`。该阈值用于 PC
+WASD/手控的 `motion_signal_observed=imu_attitude_delta`，不能替代同窗口 wheel raw `L/R` 非零、
+Nav2 完整路线或 delivery success。协议字段来源见 `docs/vendor/VENDOR_INDEX.md` 指向的 WAVE ROVER
+`IMU_ctrl.h` 和 `json_cmd.h`。
+
 2026-07-01 起，LiDAR driver 每秒 diagnostics 会携带最近一帧 `/scan` 派生的结构化
 `scan_preview_points`。上车 `/api/radar/scan-proof/refresh` 默认消费该 diagnostics 写入
 `runtime/lidar_scan_proof_latest.json`，不再默认启动 `ros2 topic echo/hz` CLI collector；

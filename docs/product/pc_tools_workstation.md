@@ -66,6 +66,18 @@ pc-tools/workstation/
   机器人位置、Nav2 路线、雷达点和目标点同屏可见；`细节放大` 仍可逐级到 `4800%`。`/map`
   直达页保持满屏只看地图，同样默认 `100%` 完整态势。RViz2/Foxglove 继续只是工程观察入口，
   不替代 PC 简易控制台，也不发送任何运动或建图命令。
+- 2026-07-06 05:58 CST 起，PC/WASD 手控的当前有效运动信号阈值为 `0.35°` IMU roll/pitch delta：
+  上车 `upper_robot_api.py` 只用它判断低速短脉冲是否有车体运动迹象，不把它包装成 WAVE ROVER
+  wheel raw L/R 非零。资料来源为 `docs/vendor/VENDOR_INDEX.md` 指向的 WAVE ROVER `T=1001`
+  feedback 与 `IMU_ctrl.h` 中 `jsonInfoHttp["r"]` / `jsonInfoHttp["p"]` 字段。真实 7001 复验中，
+  `direction=forward`、`speed_mps=0.12`、`duration_ms=800`、`command_mode=ros` 返回
+  `command_raw_lr_nonzero_proven=true`、`command_raw_latest_left/right=164/164`、
+  `feedback_during_motion_t1001_frame_count=80`、`motion_signal_observed=true`、
+  `motion_signal_source=imu_attitude_delta`，stop 代理返回 `command_forwarded`；`live-summary`
+  同步为 `status=ready_for_motion`、`keyboard_motion_verified=true`、
+  `keyboard_stop_settled_after_pulse=true`、`keyboard_wheel_feedback_lr_nonzero_proven=false`。
+  同轮相机仍未恢复：DV20 `/dev/video1` 枚举、USB `480M`、无页面独占，但共享 MJPEG、USB recovery、
+  OpenCV/ffmpeg 和停服务独占 `v4l2-ctl` 多分辨率直采仍全部无视频帧。
 - 2026-07-06 05:15 CST 起，PC 大地图雷达 overlay 的当前有效数据源为：上车
   `/api/map/preview` 优先使用正在运行的 LiDAR driver diagnostics 里的实时 `scan_preview_points`，只有
   diagnostics 不新鲜或无点时才回退到 scan-proof artifact。真实复验中 `/api/map/preview` 返回

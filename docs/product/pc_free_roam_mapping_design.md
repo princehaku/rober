@@ -24,6 +24,14 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   PC 不再要求 LiDAR delta 才能说明“有运动迹象”；但 `wheel_feedback_lr_nonzero_proven`
   仍必须由同窗口 vendor `T=1001 L/R` 非零证明，送达成功和完整 Nav2 路线执行也不会因此自动完成。
   这条边界用于保持“小车可先自己动，不依赖雷达”的产品口径，同时避免把 IMU 变化包装成编码器轮速。
+- 2026-07-06 05:58 起，上车 `upper_robot_api.py` 把 WAVE ROVER `T=1001` 的 IMU `r/p`
+  姿态变化阈值从 `1.0°` 收敛到 `0.35°`，用于 PC WASD/低速短脉冲判断“确有车体运动迹象”。
+  资料来源为 `docs/vendor/VENDOR_INDEX.md` 指向的 WAVE ROVER feedback 与 `IMU_ctrl.h` 的
+  `jsonInfoHttp["r"]` / `jsonInfoHttp["p"]`；该证据不能替代 wheel raw L/R 非零、Nav2 完整路线或
+  delivery success。真实 7001 复验中 forward `0.12m/s x 800ms` 返回 raw `T=11 L/R=164`、
+  `motion_signal_observed=true`、`motion_signal_source=imu_attitude_delta` 和 stop OK；
+  `live-summary` 已进入 `ready_for_motion`。相机仍为 DV20 UVC 无帧：USB `480M`、无页面独占、
+  MJPEG/OpenCV/ffmpeg/独占 `v4l2-ctl` 多格式直采均 0 字节。
 - 2026-07-03 23:58 起，PC 和上位机把“命令 raw 非零 + IMU 已动”与“vendor feedback L/R 非零”
   分层显示：上位机 `/api/base/manual` 返回 `command_raw_nonzero_proven`、
   `command_raw_lr_nonzero_proven`、`command_raw_twist_nonzero_proven`、`motion_evidence_complete`

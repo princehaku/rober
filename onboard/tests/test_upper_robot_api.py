@@ -807,6 +807,35 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertEqual("imu_attitude_delta", payload["motion_signal_source"])
         self.assertFalse(payload["safe_to_control"])
 
+    def test_feedback_samples_tracks_low_speed_short_pulse_imu_motion(self) -> None:
+        """低速短脉冲的 0.5 度级姿态变化也应算运动迹象，但不算轮速闭环。"""
+        payload = upper_robot_api.build_base_feedback_samples_payload(
+            port="/dev/ttyS5",
+            baudrate=115200,
+            sample_count=2,
+            sample_interval_s=0.0,
+            read_timeout_s=0.2,
+            read_window_s=0.5,
+            samples=[
+                {
+                    "observed_feedback_types": [1001],
+                    "t1001_feedback_frames": [{"T": 1001, "L": 0, "R": 0, "r": 0.1, "p": -0.2, "y": "null", "v": 12.4}],
+                    "feedback_ack": {"t1001_observed": True},
+                },
+                {
+                    "observed_feedback_types": [1001],
+                    "t1001_feedback_frames": [{"T": 1001, "L": 0, "R": 0, "r": 0.58, "p": 0.35, "y": "null", "v": 12.4}],
+                    "feedback_ack": {"t1001_observed": True},
+                },
+            ],
+        )
+
+        self.assertFalse(payload["wheel_feedback_lr_nonzero_proven"])
+        self.assertTrue(payload["imu_attitude_delta_observed"])
+        self.assertTrue(payload["motion_signal_observed"])
+        self.assertEqual("imu_attitude_delta", payload["motion_signal_source"])
+        self.assertEqual(0.35, payload["imu_attitude_delta_summary"]["threshold_degrees"])
+
     def test_base_status_reports_non_motion_readback_without_control_enable(self) -> None:
         """bridge feedback 不新鲜时，status fallback 可做 T=130 探测但不能开启控制。"""
         # 只有 bridge JSONL 不 fresh 时才允许旧 T=130 fallback，避免正常刷新抢 bridge UART。
