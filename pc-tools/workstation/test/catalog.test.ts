@@ -17035,6 +17035,84 @@ describe("workstation fail-closed API contracts", () => {
     }
   }, 5000);
 
+  it("workstation camera MJPEG cooldown failure remains a source first-frame failure", async () => {
+    // 8088 会在刚刚无首帧后短暂拒绝自动重试；PC 不能把这个窗口显示成普通等待首帧。
+    const upstreamServer = http.createServer((req, res) => {
+      res.setHeader("Content-Type", "application/json");
+      if (req.method === "GET" && req.url === "/api/camera/health") {
+        res.end(JSON.stringify({
+          schema: "trashbot.local_webrtc_camera_smoke.v1",
+          status: "source_not_probed",
+          source_readiness: "source_selected_not_probed",
+          source_failure_reason: "",
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          robot_control_executed: false,
+        }));
+        return;
+      }
+      if (req.method === "GET" && req.url === "/api/camera/mjpeg") {
+        res.statusCode = 502;
+        res.end(JSON.stringify({
+          error: "camera_mjpeg_proxy_failed",
+          relay: {
+            last_failure_reason: "mjpeg_auto_retry_cooldown_after_first_frame_failure",
+            last_error_payload: {
+              failure_reason: "mjpeg_auto_retry_cooldown_after_first_frame_failure",
+              last_first_frame_failure_reason: "first_frame_total_timeout",
+              last_first_frame_error: {
+                failure_reason: "first_frame_total_timeout",
+                first_frame_format_attempts: [
+                  { label: "MJPG@640x480@30", status: "first_frame_unreadable" },
+                  { label: "YUYV@320x240@25", status: "first_frame_unreadable" },
+                ],
+              },
+            },
+          },
+        }));
+        return;
+      }
+      res.statusCode = 404;
+      res.end(JSON.stringify({ error: "not_found" }));
+    });
+    const upstream = await new Promise<{ baseUrl: string; close: () => Promise<void> }>((resolve) => {
+      upstreamServer.listen(0, "127.0.0.1", () => {
+        const address = upstreamServer.address();
+        const port = typeof address === "object" && address ? address.port : 0;
+        resolve({
+          baseUrl: `http://127.0.0.1:${port}`,
+          close: () => new Promise((closeResolve, closeReject) => {
+            upstreamServer.close((error) => (error ? closeReject(error) : closeResolve()));
+          }),
+        });
+      });
+    });
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const mjpegResponse = await fetch(`${workstation.baseUrl}/api/robot-control/camera/mjpeg?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
+      const mjpegBody = await mjpegResponse.json() as { error: string; remote_http_status: number };
+      expect(mjpegResponse.status).toBe(502);
+      expect(mjpegBody.error).toBe("mjpeg_auto_retry_cooldown_after_first_frame_failure");
+      expect(mjpegBody.remote_http_status).toBe(502);
+
+      const statusResponse = await fetch(`${workstation.baseUrl}/api/robot-control/camera/mjpeg/status?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
+      const statusBody = await statusResponse.json() as RobotControlCameraMjpegStatusResponse;
+      expect(statusBody.status).toBe("source_first_frame_failed");
+      expect(statusBody.preview_status).toBe("source_first_frame_failed");
+      expect(statusBody.last_failure_reason).toBe("mjpeg_auto_retry_cooldown_after_first_frame_failure");
+      expect(statusBody.source_readiness).toBe("first_frame_failed");
+      expect(statusBody.source_failure_reason).toBe("first_frame_total_timeout");
+      expect(statusBody.source_diagnosis_status).toBe("uvc_no_frame_not_exclusive");
+      expect(statusBody.source_diagnosis_not_exclusive).toBe("true");
+      expect(statusBody.last_first_frame_format_attempts_summary).toBe("MJPG@640x480@30 无首帧；YUYV@320x240@25 无首帧");
+      expect(statusBody.camera_blocks_free_move).toBe(false);
+    } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+  });
+
   it("workstation camera MJPEG proxy normalizes upstream socket read timeout", async () => {
     // 8787 relay 可能把 8088 无帧表现成 aiohttp socket 文本；PC 首屏要继续显示“上游等不到画面”。
     const upstreamServer = http.createServer((req, res) => {

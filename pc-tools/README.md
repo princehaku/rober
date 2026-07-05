@@ -62,6 +62,12 @@ runtime 缺失时托管启动 `ros2_trashbot_nav free_roam_autonomy_node`，节�
 `curl | jq` 就能确认“多人页面复用同一条共享 MJPEG 上游、当前不是页面独占、最近失败原因是什么”；它不新开
 WebRTC、不额外启动相机流、不发送 Nav2/manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
 
+2026-07-06 03:26 CST 起，共享 MJPEG 自动重试冷却也被视为首帧失败证据：
+`mjpeg_auto_retry_cooldown_after_first_frame_failure` / `first_frame_recent_failure_cooldown` 会继续映射成
+`source_first_frame_failed`，并读取 payload 里的 `last_first_frame_failure_reason` 与
+`last_first_frame_error.first_frame_format_attempts`。这样相机服务重启或刚失败后的 30s 冷却窗口里，普通页面不会短暂显示成
+“等待首帧”，而是继续提示“不是页面独占，UVC 没有输出视频帧”。该变化仍只改 PC 诊断聚合，不启动额外相机流或运动命令。
+
 2026-07-06 02:29 CST 起，`GET /api/robot-control/live-summary` 直接平铺 WASD/手控命令 raw 证据：
 `command_raw_lr_nonzero_proven`、`command_raw_latest_left/right`、`keyboard_command_raw_lr_nonzero` 和
 `keyboard_motion_evidence_complete`。现场用正确 PC 代理合同

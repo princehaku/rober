@@ -5929,3 +5929,10 @@ UVC 1.00 复合设备、bus powered `400mA`，VideoControl processing unit 有 `
 Nav2、manual、keyboard、free-roam、delivery、stop、建图 runtime 或 `/cmd_vel`。当前真实 7001 读回仍为
 `camera_current_visible=false`、`source_diagnosis_status=uvc_no_frame_not_exclusive`，即普通用户可确认共享入口非独占，
 但 DV20 源头还没有输出视频帧。
+
+2026-07-06 03:26 CST 起，PC 共享图传状态必须把上车冷却窗口识别为“最近首帧失败”：
+当 `/api/camera/mjpeg` 返回 `mjpeg_auto_retry_cooldown_after_first_frame_failure` 或
+`first_frame_recent_failure_cooldown`，PC status/summary 要从 payload 的
+`last_first_frame_failure_reason` 与 `last_first_frame_error.first_frame_format_attempts` 继续生成
+`source_first_frame_failed`、`source_failure_reason=first_frame_total_timeout` 和多格式“无首帧”摘要。
+这解决相机服务重启后短时间内页面误显示“等待首帧”的问题；该合同不改变运动控制，不新增相机独占 reader。

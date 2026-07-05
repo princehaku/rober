@@ -64,6 +64,17 @@ micro
     - 增加 live-summary 短字段与 `live_closure_summary` / `readback_summary.camera` 同源断言。
   - `pc-tools/README.md`、`docs/product/pc_tools_workstation.md`
     - 同步普通现场 `curl/jq` 可直接确认多人共享预览、非独占和最近失败原因的口径。
+- 2026-07-06 03:26 CST 追加共享 MJPEG 冷却窗口诊断修正：
+  - `pc-tools/workstation/src/server/index.ts`
+    - 将 `mjpeg_auto_retry_cooldown_after_first_frame_failure` 与
+      `first_frame_recent_failure_cooldown` 纳入首帧失败 reason 集合。
+    - 从上车 payload 的 `last_first_frame_failure_reason` 和
+      `last_first_frame_error.first_frame_format_attempts` 继续生成
+      `source_first_frame_failed` 与多格式“无首帧”摘要。
+  - `pc-tools/workstation/test/catalog.test.ts`
+    - 增加共享 MJPEG 冷却失败场景，确认 PC status 不退回 `waiting_for_first_frame`。
+  - `pc-tools/README.md`、`docs/product/pc_tools_workstation.md`
+    - 同步相机服务重启/冷却窗口内的普通用户诊断口径。
 
 ## 现场验证
 
@@ -250,6 +261,34 @@ git diff --check
     - `shared_capture=true`
     - `camera_blocks_free_move=false`
     - 最近 MJPEG/first-frame 尝试仍为多格式无首帧，实时图传未恢复。
+- 2026-07-06 03:23 CST 继续相机底层恢复复验：
+  - DV20 仍在 USB `480M` high-speed，`/dev/video1` 是 capture，`/dev/video2` 是 metadata。
+  - `v4l2-ctl` 对 `MJPG@640x480`、`MJPG@480x320`、`YUYV@320x240` 均 `VIDIOC_STREAMON returned 0`
+    后 `select timeout`，输出文件 0 字节。
+  - 临时重载 `uvcvideo nodrop=1 timeout=1000 quirks=128` 并 USB reauthorize 后，MJPG/YUYV 仍 0 字节；
+    已恢复 `uvcvideo quirks=0 nodrop=0 timeout=5000` 并重启 `trashbot-local-webrtc-camera.service`。
+  - 手控 raw 通过 `POST /api/robot-control/base/manual` 补回：
+    `command_raw_lr_nonzero_proven=true`、`command_raw_twist_nonzero_proven=true`、raw `L=164/R=164`。
+- 2026-07-06 03:26 CST 本地新增测试：
+  - `npm run test -- catalog.test.ts -t "cooldown failure"` 通过。
+  - `npm run test -- catalog.test.ts -t "MJPEG"` 通过：17 个 MJPEG 相关测试通过。
+  - `npm run lint` 通过。
+  - `npm run test` 通过：3 个 test file，454 个测试用例通过。
+  - `npm run build` 通过；Vite 仅输出已有的大 bundle 警告。
+  - `git diff --check` 通过。
+  - 重启 `0.0.0.0:7001` 后复验：
+    - `camera/mjpeg/status.status=source_first_frame_failed`
+    - `source_diagnosis_status=uvc_no_frame_not_exclusive`
+    - `source_failure_reason=first_frame_total_timeout`
+    - `shared_preview_everyone_can_join=true`
+    - `exclusive_camera_claim=false`
+    - `camera_blocks_free_move=false`
+    - `live-summary.status=ready_for_motion`
+    - `map_current_visible=true`
+    - `path_current_visible=true`
+    - `radar_map_points_visible=true`
+    - `keyboard_ready=true`
+    - `command_raw_lr_nonzero_proven=true`
 
 ## 剩余风险
 

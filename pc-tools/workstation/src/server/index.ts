@@ -104,6 +104,8 @@ const CAMERA_FIRST_FRAME_FAILURE_REASONS = new Set([
   "capture_read_call_timeout",
   "first_frame_timeout",
   "first_frame_total_timeout",
+  "mjpeg_auto_retry_cooldown_after_first_frame_failure",
+  "first_frame_recent_failure_cooldown",
   "opencv_capture_not_opened",
   "probe_total_timeout",
   "probe_process_timeout",
@@ -435,11 +437,14 @@ function cameraSourceUsageNotExclusive(scope: "free" | "camera_service_self" | "
 
 function cameraMjpegFormatAttemptsSummary(payload: Record<string, unknown> | null | undefined): string {
   // health/status 里只放短摘要；raw 尝试矩阵仍留在上车端，避免普通页面被大 JSON 淹没。
+  const nestedLastError = asRecord(payload?.last_first_frame_error);
   const attempts = Array.isArray(payload?.first_frame_format_attempts)
     ? payload.first_frame_format_attempts
     : Array.isArray(payload?.last_first_frame_format_attempts)
       ? payload.last_first_frame_format_attempts
-      : [];
+      : Array.isArray(nestedLastError?.first_frame_format_attempts)
+        ? nestedLastError.first_frame_format_attempts
+        : [];
   const parts = attempts
     .map((item) => asRecord(item))
     .filter((item): item is Record<string, unknown> => item !== null)
@@ -465,6 +470,7 @@ function cameraMjpegFormatAttemptsSummary(payload: Record<string, unknown> | nul
 function cameraMjpegFailurePrimaryReason(failure: CameraMjpegRelayLastFailure | null): string {
   // relay 失败原因有时在顶层，有时在上车 JSON payload 中；统一提取后才能准确判断“无首帧”。
   const payload = asRecord(failure?.last_error_payload);
+  const nestedLastError = asRecord(payload?.last_first_frame_error);
   return shortText(
     failure?.source_failure_reason
       ?? failure?.primary_source_failure_reason
@@ -472,6 +478,8 @@ function cameraMjpegFailurePrimaryReason(failure: CameraMjpegRelayLastFailure | 
       ?? payload?.source_failure_reason
       ?? payload?.primary_source_failure_reason
       ?? payload?.open_source_fallback_failure_reason
+      ?? payload?.last_first_frame_failure_reason
+      ?? nestedLastError?.failure_reason
       ?? payload?.failure_reason
       ?? payload?.error
       ?? failure?.failure_reason,
