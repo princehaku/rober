@@ -75,6 +75,26 @@ micro
     - 增加共享 MJPEG 冷却失败场景，确认 PC status 不退回 `waiting_for_first_frame`。
   - `pc-tools/README.md`、`docs/product/pc_tools_workstation.md`
     - 同步相机服务重启/冷却窗口内的普通用户诊断口径。
+- 2026-07-06 03:36 CST 追加 USB recovery 零帧分类修正：
+  - `onboard/scripts/camera_usb_recovery_smoke.py`
+    - `v4l2-ctl` recovery 增加 `--stream-poll --verbose`，解析
+      `VIDIOC_STREAMON returned 0 (Success)`、`select timeout` 和输出字节数。
+    - 新增 `status=streamon_success_zero_byte_no_frame`，并输出
+      `streamon_success_observed`、`select_timeout_observed`、`zero_byte_no_frame_observed`、
+      `stream_status_summary`、`software_capture_exhausted`、`known_good_uvc_required`、
+      `camera_input_signal_check_required`。
+    - 高速 USB 且 STREAMON 成功但 0 字节时，下一步明确指向摄像头输入信号、线/接口/供电或
+      known-good UVC，而不是继续归因 PC 页面独占或 STREAMON 失败。
+  - `pc-tools/workstation/src/server/index.ts`
+    - `POST /api/robot-control/camera/usb-recovery` 透传上述只读诊断字段，运动/串口/Nav2 标志继续固定 false。
+  - `pc-tools/workstation/src/shared/contracts.ts`
+    - 同步 USB recovery TypeScript 合同。
+  - `pc-tools/workstation/test/catalog.test.ts`
+    - 增加 PC 代理透传新字段断言。
+  - `pc-tools/workstation/test/App.test.ts`
+    - 更新自动 USB recovery proof fixture，页面只读状态使用精确的零帧分类。
+  - `pc-tools/README.md`、`docs/product/pc_tools_workstation.md`
+    - 同步当前相机诊断口径和剩余现场动作。
 
 ## 现场验证
 
@@ -289,6 +309,59 @@ git diff --check
     - `radar_map_points_visible=true`
     - `keyboard_ready=true`
     - `command_raw_lr_nonzero_proven=true`
+- 2026-07-06 03:36 CST 本地与上车新增验证：
+  - `python3 -m unittest onboard/scripts/test_camera_usb_recovery_smoke.py` 通过：5 个测试用例通过。
+  - `cd pc-tools/workstation && npm run test -- catalog.test.ts -t "USB recovery"` 通过。
+  - `cd pc-tools/workstation && npm run test -- App.test.ts -t "USB recovery"` 通过。
+  - `cd pc-tools/workstation && npm run lint` 通过。
+  - `cd pc-tools/workstation && npm run test` 通过：3 个 test file，454 个测试用例通过。
+  - `cd pc-tools/workstation && npm run build` 通过；Vite 仅输出已有的大 bundle 警告。
+  - `python3 -m py_compile onboard/scripts/camera_usb_recovery_smoke.py` 通过。
+  - `git diff --check` 通过。
+  - 已把 `onboard/scripts/camera_usb_recovery_smoke.py` 同步到上位机
+    `/root/rober/onboard/scripts/camera_usb_recovery_smoke.py` 并 `py_compile` 通过。
+  - 上位机真实 `/dev/video1` recovery 返回：
+    - `status=streamon_success_zero_byte_no_frame`
+    - `frame_observed=false`
+    - `usb_video_speed=480M`
+    - `stream_failure_class=high_speed_zero_byte_no_frame`
+    - `streamon_success_observed=true`
+    - `select_timeout_observed=true`
+    - `zero_byte_no_frame_observed=true`
+    - `stream_status_summary=YUYV@320x240@20=streamon_success_zero_byte_no_frame;MJPG@480x320@30=streamon_success_zero_byte_no_frame`
+    - `software_capture_exhausted=true`
+    - `known_good_uvc_required=true`
+    - `camera_input_signal_check_required=true`
+    - `robot_control_executed=false`
+    - `publishes_cmd_vel=false`
+    - `opens_base_uart=false`
+  - recovery 结束后上位机 `trashbot-local-webrtc-camera.service` 为 `active`，`uvcvideo` 参数保持
+    `quirks=0`、`nodrop=0`、`timeout=5000`。
+  - 重启本机 `0.0.0.0:7001` 后，PC 代理
+    `POST /api/robot-control/camera/usb-recovery?baseUrl=http://192.168.1.11:8787` 返回同样的新字段，并确认
+    `robot_control_executed=false`、`publishes_cmd_vel=false`、`opens_base_uart=false`、
+    `starts_nav2=false`、`starts_manual=false`、`starts_keyboard=false`、`starts_free_roam=false`、
+    `starts_map_runtime=false`。
+  - 触发一次 PC MJPEG 代理短拉后，`/api/robot-control/camera/mjpeg/status` 回到
+    `source_first_frame_failed / uvc_no_frame_not_exclusive / first_frame_total_timeout`。
+  - 最新 live-summary 返回：
+    - `status=ready_for_motion`
+    - `map_current_visible=true`
+    - `path_current_visible=true`
+    - `radar_map_points_visible=true`
+    - `camera_current_visible=false`
+    - `camera_source_diagnosis_status=uvc_no_frame_not_exclusive`
+    - `camera_shared_preview_single_upstream=true`
+    - `camera_shared_preview_last_failure_reason=first_frame_total_timeout`
+    - `keyboard_ready=true`
+    - `command_raw_lr_nonzero_proven=true`
+    - `wheel_lr_nonzero_proven=false`
+    - `delivery_success=true`
+    - `map_display_primary_url=/map`
+    - `map_display_default_zoom_percent=300%`
+    - `map_display_direct_map_default_zoom_percent=300%`
+    - `map_display_ros2_companion_tools=["rviz2","foxglove"]`
+    - `map_display_companion_replaces_pc_ui=false`
 
 ## 剩余风险
 

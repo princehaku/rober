@@ -15766,16 +15766,23 @@ describe("workstation fail-closed API contracts", () => {
           ];
           res.end(JSON.stringify({
             schema: "trashbot.camera_usb_recovery_smoke.v1",
-            status: "streamon_failed",
+            status: "streamon_success_zero_byte_no_frame",
             frame_observed: false,
             usb_video_speed: "480M",
             usb_high_speed_observed: true,
+            streamon_success_observed: true,
+            select_timeout_observed: true,
+            zero_byte_no_frame_observed: true,
+            stream_status_summary: "YUYV@320x240@20=streamon_success_zero_byte_no_frame;MJPG@480x320@30=streamon_success_zero_byte_no_frame",
+            software_capture_exhausted: true,
+            known_good_uvc_required: true,
+            camera_input_signal_check_required: true,
             uvc_quirks_before: "4294967295",
             uvc_quirks_after_reset: "0",
             uvc_quirks_after: "0",
             stream_failure_class: "high_speed_zero_byte_no_frame",
             next_action: "check_usb_cable_port_power_or_known_good_uvc",
-            next_action_plain: "摄像头已在高速 USB 上但所有 STREAMON 仍 0 字节；优先检查 USB 线/供电/接口或换 known-good UVC 复测。",
+            next_action_plain: "摄像头已在高速 USB 上，STREAMON 成功但没有任何视频 buffer；优先检查摄像头输入信号、USB 线/供电/接口，或换 known-good UVC 复测。",
             robot_control_executed: false,
             publishes_cmd_vel: false,
             opens_base_uart: false,
@@ -15823,10 +15830,17 @@ describe("workstation fail-closed API contracts", () => {
       expect(response.status).toBe(200);
       expect(body.proxy_status).toBe("recovery_forwarded");
       expect(body.remote_endpoint).toBe("/api/camera/usb-recovery");
-      expect(body.status).toBe("streamon_failed");
+      expect(body.status).toBe("streamon_success_zero_byte_no_frame");
       expect(body.frame_observed).toBe(false);
       expect(body.usb_video_speed).toBe("480M");
       expect(body.stream_failure_class).toBe("high_speed_zero_byte_no_frame");
+      expect(body.streamon_success_observed).toBe(true);
+      expect(body.select_timeout_observed).toBe(true);
+      expect(body.zero_byte_no_frame_observed).toBe(true);
+      expect(body.stream_status_summary).toContain("streamon_success_zero_byte_no_frame");
+      expect(body.software_capture_exhausted).toBe(true);
+      expect(body.known_good_uvc_required).toBe(true);
+      expect(body.camera_input_signal_check_required).toBe(true);
       expect(body.uvc_quirks_before).toBe("4294967295");
       expect(body.uvc_quirks_after_reset).toBe("0");
       expect(body.uvc_quirks_after).toBe("0");

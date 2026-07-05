@@ -248,18 +248,46 @@ def stream_once(device: str, width: int, height: int, pixelformat: str, fps: int
             f"--set-parm={fps}",
             "--stream-mmap=3",
             "--stream-count=5",
+            "--stream-poll",
+            "--verbose",
             f"--stream-to={output}",
         ],
         timeout_s=10,
     )
     size = output.stat().st_size if output.exists() else 0
     combined = f"{result.get('stdout', '')}\n{result.get('stderr', '')}"
+    # STREAMON 成功但 select timeout 说明内核已进入采集态，只是设备没有交出视频 buffer。
+    # 这个状态和真正 STREAMON 失败的修复方向不同，必须单独上报给 PC 端。
+    lower_combined = combined.lower()
+    streamon_observed = "vidioc_streamon" in lower_combined
+    streamon_success = "vidioc_streamon returned 0" in lower_combined
+    streamon_error = (
+        ("vidioc_streamon" in lower_combined and not streamon_success)
+        or "input/output error" in lower_combined
+    )
+    select_timeout = "select timeout" in lower_combined
+    command_timeout = bool(result.get("timed_out"))
+    zero_byte_no_frame = size == 0 and not streamon_error and (streamon_success or select_timeout or command_timeout)
+    frame_observed = size > 0 and not streamon_error
+    status = (
+        "frame_observed"
+        if frame_observed
+        else "streamon_success_zero_byte_no_frame"
+        if zero_byte_no_frame
+        else "streamon_failed"
+    )
     return {
         "format": f"{pixelformat}@{width}x{height}@{fps}",
         "output": str(output),
         "bytes": size,
-        "streamon_error": "VIDIOC_STREAMON" in combined or "Input/output error" in combined,
-        "ok": size > 0 and "VIDIOC_STREAMON" not in combined,
+        "status": status,
+        "streamon_observed": streamon_observed,
+        "streamon_success": streamon_success,
+        "streamon_error": streamon_error,
+        "select_timeout": select_timeout,
+        "command_timeout": command_timeout,
+        "zero_byte_no_frame": zero_byte_no_frame,
+        "ok": frame_observed,
         "command": result,
     }
 
@@ -291,6 +319,9 @@ def camera_recovery_next_action(frame_observed: bool, usb_video_speed: str) -> d
             "next_action_plain": "相机已读到首帧，重启共享预览后从 PC 打开实时画面。",
             "stream_failure_class": "none",
             "usb_high_speed_observed": high_speed,
+            "software_capture_exhausted": False,
+            "known_good_uvc_required": False,
+            "camera_input_signal_check_required": False,
         }
     if full_speed:
         return {
@@ -298,19 +329,28 @@ def camera_recovery_next_action(frame_observed: bool, usb_video_speed: str) -> d
             "next_action_plain": "摄像头仍在 USB 12M/full-speed，先换高速 USB 口/线或带供电 Hub 后复测。",
             "stream_failure_class": "full_speed_no_frame",
             "usb_high_speed_observed": False,
+            "software_capture_exhausted": False,
+            "known_good_uvc_required": False,
+            "camera_input_signal_check_required": False,
         }
     if high_speed:
         return {
             "next_action": "check_usb_cable_port_power_or_known_good_uvc",
-            "next_action_plain": "摄像头已在高速 USB 上但所有 STREAMON 仍 0 字节；优先检查 USB 线/供电/接口或换 known-good UVC 复测。",
+            "next_action_plain": "摄像头已在高速 USB 上，STREAMON 成功但没有任何视频 buffer；优先检查摄像头输入信号、USB 线/供电/接口，或换 known-good UVC 复测。",
             "stream_failure_class": "high_speed_zero_byte_no_frame",
             "usb_high_speed_observed": True,
+            "software_capture_exhausted": True,
+            "known_good_uvc_required": True,
+            "camera_input_signal_check_required": True,
         }
     return {
         "next_action": "check_camera_usb_enumeration",
         "next_action_plain": "未能确认目标 UVC 的 USB 速率；先检查摄像头枚举、线缆和接口后复测。",
         "stream_failure_class": "speed_unknown_no_frame",
         "usb_high_speed_observed": False,
+        "software_capture_exhausted": False,
+        "known_good_uvc_required": False,
+        "camera_input_signal_check_required": False,
     }
 
 
@@ -374,7 +414,17 @@ def main() -> int:
     summary["uvc_module_parameters_after_stream"] = read_uvc_module_parameters()
     summary["uvc_quirks_after"] = summary["uvc_module_parameters_after_stream"].get("quirks", "not_loaded")
     summary["frame_observed"] = any(item["ok"] for item in summary["streams"])
-    summary["status"] = "frame_observed" if summary["frame_observed"] else "streamon_failed"
+    summary["streamon_success_observed"] = any(item.get("streamon_success") for item in summary["streams"])
+    summary["select_timeout_observed"] = any(item.get("select_timeout") for item in summary["streams"])
+    summary["zero_byte_no_frame_observed"] = any(item.get("zero_byte_no_frame") for item in summary["streams"])
+    summary["stream_status_summary"] = ";".join(f"{item['format']}={item.get('status')}" for item in summary["streams"])
+    summary["status"] = (
+        "frame_observed"
+        if summary["frame_observed"]
+        else "streamon_success_zero_byte_no_frame"
+        if summary["streamon_success_observed"] and summary["zero_byte_no_frame_observed"]
+        else "streamon_failed"
+    )
     summary.update(camera_recovery_next_action(bool(summary["frame_observed"]), str(summary["usb_video_speed"])))
 
     if not args.skip_service:

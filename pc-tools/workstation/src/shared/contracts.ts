@@ -6534,6 +6534,13 @@ export interface RobotControlCameraUsbRecoveryProxyResponse extends ProofFlags {
   frame_observed: boolean;
   usb_video_speed?: string;
   stream_failure_class?: string;
+  streamon_success_observed?: boolean;
+  select_timeout_observed?: boolean;
+  zero_byte_no_frame_observed?: boolean;
+  stream_status_summary?: string;
+  software_capture_exhausted?: boolean;
+  known_good_uvc_required?: boolean;
+  camera_input_signal_check_required?: boolean;
   next_action?: string;
   next_action_plain?: string;
   usb_high_speed_observed?: boolean;

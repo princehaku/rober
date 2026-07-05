@@ -68,6 +68,15 @@ WebRTC、不额外启动相机流、不发送 Nav2/manual/keyboard/free-roam/del
 `last_first_frame_error.first_frame_format_attempts`。这样相机服务重启或刚失败后的 30s 冷却窗口里，普通页面不会短暂显示成
 “等待首帧”，而是继续提示“不是页面独占，UVC 没有输出视频帧”。该变化仍只改 PC 诊断聚合，不启动额外相机流或运动命令。
 
+2026-07-06 03:36 CST 起，相机 USB recovery 结果进一步区分“STREAMON 失败”和“STREAMON 成功但零帧”。
+`onboard/scripts/camera_usb_recovery_smoke.py` 会在每个 `v4l2-ctl --stream-poll --verbose` 结果里解析
+`VIDIOC_STREAMON returned 0 (Success)`、`select timeout` 和输出文件字节数，并在上车与 PC 代理回包中暴露
+`status=streamon_success_zero_byte_no_frame`、`streamon_success_observed=true`、
+`zero_byte_no_frame_observed=true`、`software_capture_exhausted=true`、`known_good_uvc_required=true` 和
+`camera_input_signal_check_required=true`。本轮真实 `/dev/video1` 复验为 USB `480M`、YUYV/MJPG 都 STREAMON 成功但
+0 字节，因此下一步不是继续归因 PC 页面或独占，而是查 DV20 输入信号、线/接口/供电，或换 known-good UVC 复测。
+该路径仍固定 `robot_control_executed=false`，不发布 `/cmd_vel`，不打开 WAVE ROVER UART。
+
 2026-07-06 02:29 CST 起，`GET /api/robot-control/live-summary` 直接平铺 WASD/手控命令 raw 证据：
 `command_raw_lr_nonzero_proven`、`command_raw_latest_left/right`、`keyboard_command_raw_lr_nonzero` 和
 `keyboard_motion_evidence_complete`。现场用正确 PC 代理合同
@@ -77,7 +86,7 @@ WebRTC、不额外启动相机流、不发送 Nav2/manual/keyboard/free-roam/del
 同轮再次运行上车 `camera_usb_recovery_smoke.py --device /dev/video1`：脚本停/启相机服务、USB `3-1`
 reauthorize、关闭 autosuspend、解绑 DV20 audio 复合接口、复位 `uvcvideo quirks=0` 后，`YUYV@320x240@20`
 和 `MJPG@480x320@30` 仍 10s timeout 且 `0` 字节，状态为
-`streamon_failed/high_speed_zero_byte_no_frame`。因此 PC 地图、雷达和 WASD 已可用；实时图传仍是 DV20
+`streamon_success_zero_byte_no_frame/high_speed_zero_byte_no_frame`。因此 PC 地图、雷达和 WASD 已可用；实时图传仍是 DV20
 输入链路或采集设备无帧，不能宣称已恢复。
 
 2026-07-04 08:08 CST 起，PC 相机状态缓存进一步收紧：`backendSmoke` 深度探针如果只是 PC 代理层

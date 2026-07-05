@@ -31386,11 +31386,18 @@ describe("App", () => {
     });
     const usbRecoveryFixture = {
       ...(fixtures["/api/robot-control/camera/usb-recovery"] as Record<string, unknown>),
-      status: "streamon_failed",
+      status: "streamon_success_zero_byte_no_frame",
       frame_observed: false,
       stream_failure_class: "high_speed_zero_byte_no_frame",
+      streamon_success_observed: true,
+      select_timeout_observed: true,
+      zero_byte_no_frame_observed: true,
+      stream_status_summary: "YUYV@320x240@20=streamon_success_zero_byte_no_frame;MJPG@480x320@30=streamon_success_zero_byte_no_frame",
+      software_capture_exhausted: true,
+      known_good_uvc_required: true,
+      camera_input_signal_check_required: true,
       next_action: "check_usb_cable_port_power_or_known_good_uvc",
-      next_action_plain: "检查 USB 线、接口、摄像头供电或换 known-good UVC 后复测。",
+      next_action_plain: "STREAMON 成功但没有视频 buffer；检查摄像头输入信号、USB 线/供电/接口，或换 known-good UVC 后复测。",
       uvc_quirks_before: "4294967295",
       uvc_quirks_after_reset: "0",
       uvc_quirks_after: "0",
@@ -31421,7 +31428,7 @@ describe("App", () => {
     const proof = wrapper.find('[data-testid="plain-camera-usb-recovery-proof"]');
     expect(proof.exists()).toBe(true);
     expect(proof.attributes("data-auto-usb-recovery-attempted")).toBe("true");
-    expect(proof.attributes("data-auto-usb-recovery-status")).toBe("streamon_failed");
+    expect(proof.attributes("data-auto-usb-recovery-status")).toBe("streamon_success_zero_byte_no_frame");
     expect(proof.attributes("data-auto-usb-recovery-frame-observed")).toBe("false");
     expect(proof.attributes("data-auto-usb-recovery-stream-failure-class")).toBe("high_speed_zero_byte_no_frame");
     expect(proof.attributes("data-auto-usb-recovery-uvc-quirks-before")).toBe("4294967295");

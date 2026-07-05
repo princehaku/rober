@@ -88,6 +88,50 @@ class CameraUsbRecoverySmokeTest(unittest.TestCase):
         self.assertEqual(reset["after"], "0")
         self.assertEqual(after["quirks"], "0")
 
+    def test_stream_once_classifies_streamon_success_zero_byte_timeout(self) -> None:
+        """STREAMON 成功但 select timeout/0 字节时，要和真正 STREAMON 失败区分开。"""
+        module = load_recovery_module()
+        original_run_command = module.run_command
+        module.run_command = lambda *args, **kwargs: {
+            "stdout": "VIDIOC_STREAMON returned 0 (Success)\nselect timeout\n",
+            "stderr": "",
+            "returncode": 0,
+            "timed_out": False,
+        }
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                result = module.stream_once(
+                    "/dev/video1",
+                    640,
+                    480,
+                    "MJPG",
+                    30,
+                    Path(tmp) / "frame.raw",
+                )
+        finally:
+            module.run_command = original_run_command
+
+        self.assertEqual(result["status"], "streamon_success_zero_byte_no_frame")
+        self.assertTrue(result["streamon_observed"])
+        self.assertTrue(result["streamon_success"])
+        self.assertTrue(result["select_timeout"])
+        self.assertTrue(result["zero_byte_no_frame"])
+        self.assertFalse(result["streamon_error"])
+        self.assertFalse(result["ok"])
+
+    def test_high_speed_no_frame_requires_known_good_uvc_comparison(self) -> None:
+        """高速 USB 仍零帧时，下一步要转向输入信号/供电/known-good UVC，而不是继续调端口。"""
+        module = load_recovery_module()
+
+        action = module.camera_recovery_next_action(False, "480M")
+
+        self.assertEqual(action["stream_failure_class"], "high_speed_zero_byte_no_frame")
+        self.assertTrue(action["usb_high_speed_observed"])
+        self.assertTrue(action["software_capture_exhausted"])
+        self.assertTrue(action["known_good_uvc_required"])
+        self.assertTrue(action["camera_input_signal_check_required"])
+        self.assertIn("STREAMON 成功", action["next_action_plain"])
+
 
 if __name__ == "__main__":
     unittest.main()
