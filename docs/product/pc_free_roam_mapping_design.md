@@ -1252,3 +1252,15 @@ WASD 前进/后退短脉冲继续证明 raw 命令非零、运动信号存在、
 写出 vendor `T=11 L/R=±164`，stop 写出成功；但 `T=1001 L/R` 反馈仍为 `0/0`。
 依据 `docs/vendor/VENDOR_INDEX.md`，`T=1001.L/R` 是 WAVE ROVER 底盘反馈字段；所以自由移动/键盘手控可继续按
 command raw + stop + IMU 动作信号推进“能动”，但 wheel raw L/R 非零和完整自动驾驶闭环仍是未完成风险。
+
+2026-07-06 01:31 CST 起，自由移动/扫图页的相机诊断跟随 PC fixed first-frame probe 的 post-probe health refresh：
+如果上车相机服务自己持有 `/dev/video1`，这仍被视为共享 MJPEG 单上游多 viewer 的正常状态；远端 probe
+失败后 PC 会复读 `/api/camera/health`，优先展示最终 `uvc_no_frame_not_exclusive`，而不是把 service self-hold
+误说成页面独占或只提示“复测首帧”。同轮真实 7001 复验显示地图、Nav2 路线、目标点、map pose 和 155 个当前雷达点可见，
+WASD 前进/后退短脉冲能写出 command raw L/R 非零并 stop 成功，后退窗口读到 IMU 动作信号；相机仍无帧但
+`camera_blocks_free_move=false`。因此低速自由移动、PC WASD 和图上路线继续不以相机首帧为前置。
+
+地图太小的操作口径继续固定：普通用户先用 PC 首页全宽大地图或 `/map` 直达页，当前默认 `1600%`，
+`完整态势` 回 `100%`，`细节放大` 到 `4800%`。ROS2 配套只作为工程观察：RViz2/Nav2 RViz 配置用于本地看
+`/map`、`/scan`、TF、路径、定位和 costmap；Foxglove Bridge + Foxglove Web 用于远程浏览器观察。
+这些工具不替代 PC 简易控制台，也不作为扫图、自由移动或键盘手控前置。

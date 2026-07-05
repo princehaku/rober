@@ -1761,3 +1761,15 @@ manual、keyboard、free-roam、建图 runtime 或 `/cmd_vel`。当前所见缺�
 `YUYV@640x480@22`、`default@current` 和 V4L2/index fallback 是否真的出帧。现场验证结果仍是
 `first_frame_total_timeout`，summary/状态端点完整显示这些尝试均无首帧，硬件诊断继续指向 USB `12M`
 full-speed。该路径只验证相机首帧，不发车、不启动 Nav2/manual/keyboard/free-roam/建图 runtime 或 `/cmd_vel`。
+
+2026-07-06 01:31 CST 起，PC `/api/robot-control/camera/first-frame/probe` 在远端 probe 失败后会按需复读
+上车 `/api/camera/health`。现场如果相机服务自己持有 `/dev/video1`，这属于共享 MJPEG 单上游多 viewer 的正常状态；
+PC 不再把这种 service self-hold 误报成页面独占，而是优先展示 health/probe 共同确认的
+`uvc_no_frame_not_exclusive` 与“检查摄像头输入/供电后复测”。同轮真实 7001 复验：
+地图 PNG、Nav2 路线、目标点、小车 map pose 和 155 个当前雷达点可见；WASD 前进/后退固定代理能写出
+command raw L/R 非零并 stop 成功；相机仍无帧，但 `camera_blocks_free_move=false`。
+
+地图太小时，普通用户优先打开 PC 首页大地图或 `/map`，当前默认 `1600%`，局部最高 `4800%`。
+ROS2 配套用于工程观察：RViz2/Nav2 RViz 配置看 `/map`、`/scan`、TF、路径、定位和 costmap；
+Foxglove Bridge + Foxglove Web 用于远程浏览器观察，连接 `ws://192.168.1.11:8765`。
+这些工具不替代 PC 简易控制台，不发送底盘运动命令。

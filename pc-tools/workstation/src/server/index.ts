@@ -6091,7 +6091,7 @@ export function createWorkstationApp(): express.Express {
       },
       includeBackendSmoke ? CAMERA_FIRST_FRAME_BACKEND_SMOKE_TIMEOUT_MS : CAMERA_FIRST_FRAME_PROBE_TIMEOUT_MS,
     );
-    const sourceFailure = await sourceFailurePromise;
+    const sourceFailureBeforeProbe = await sourceFailurePromise;
     if (remote.error) {
       const probeValues = cameraProbeKeyValues(null);
       const failureBody = {
@@ -6099,9 +6099,9 @@ export function createWorkstationApp(): express.Express {
         proxy_status: "probe_failed" as const,
         normalized_base_url: normalized.normalized.toString().replace(/\/$/, ""),
         probe_key_values: probeValues,
-        ...cameraProbeDiagnosticAliases(probeValues, sourceFailure),
+        ...cameraProbeDiagnosticAliases(probeValues, sourceFailureBeforeProbe),
       };
-      recordCameraFirstFrameProbeResult(cameraMjpegRelayKey(normalized.normalized), failureBody, sourceFailure);
+      recordCameraFirstFrameProbeResult(cameraMjpegRelayKey(normalized.normalized), failureBody, sourceFailureBeforeProbe);
       // 首帧失败是现场诊断材料，不是 PC 代理传输失败；保持 HTTP 200，避免 curl -fsS 隐藏换线/换口提示。
       res.status(200).json(failureBody);
       return;
@@ -6118,6 +6118,16 @@ export function createWorkstationApp(): express.Express {
           : remote.remote_http_status === 200
             ? ""
             : `probe_http_status_${remote.remote_http_status}`;
+    const shouldRefreshSourceAfterProbe = remote.remote_http_status !== 200
+      || cameraProbeNoFrameFailure(probeValues)
+      || status === "source_busy"
+      || failureReason === "source_busy";
+    const sourceFailure = shouldRefreshSourceAfterProbe
+      ? cameraMjpegResolvedDiagnosisSource(
+        sourceFailureBeforeProbe,
+        await cameraSourceFirstFrameFailureForStatus(normalized.normalized),
+      )
+      : sourceFailureBeforeProbe;
     const responseBody: RobotControlCameraFirstFrameProbeProxyResponse = {
       schema: "trashbot.pc_tools_workstation.robot_control_camera_first_frame_probe_proxy.v1",
       source: "software_proof",

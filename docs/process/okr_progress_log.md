@@ -6,6 +6,22 @@
 
 ---
 
+## 2026-07-06 系列
+
+### 2026-07-06 01-31｜pc_camera_self_hold_health_refresh｜相机服务自持时的无帧诊断刷新
+
+本轮 `sprints/2026.07.06_01-31_pc_camera_self_hold_health_refresh/` 修正 PC first-frame probe 代理：
+当上车相机服务自己持有 `/dev/video1`、远端 probe 因 `source_busy` 或无首帧失败时，PC 会在 probe 后再读取一次
+`/api/camera/health`，把最终 `source_first_frame_failed / uvc_no_frame_not_exclusive` 诊断提升到响应顶层。
+这样普通 PC 页不会把共享预览服务自持误说成页面独占，也不会只提示“复测相机首帧”；会直接提示
+“检查摄像头输入/供电后复测”。该修复只改只读诊断和状态缓存，不启动相机独占采集、不发送底盘运动命令。
+
+同轮真实复验：7001 继续监听 `0.0.0.0:7001`，上位机四个服务均 active；PC probe 返回
+`source_diagnosis_status=uvc_no_frame_not_exclusive`、`camera_blocks_free_move=false`。live-summary 返回
+`ready_for_motion`，地图、Nav2 路线和雷达点可见，默认地图缩放 `1600%`；map preview 返回地图 PNG、18 个路线点、
+目标点、map pose 和 155 个雷达点。WASD 前进/后退短脉冲能读到 command raw L/R 非零，后退窗口读到 IMU 动作信号，
+stop 后 live-summary 显示键盘手控与停止证据完成。DV20 仍无视频帧，wheel raw `T=1001 L/R=0/0` 仍是未完成风险。
+
 ## 2026-07-04 系列
 
 ### 2026-07-04 08-25｜pc_camera_descriptor_usbreset_probe｜DV20 描述符与总线 reset 复验

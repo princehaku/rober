@@ -5838,3 +5838,29 @@ map pose 和 149 个当前雷达贴图点；`live-summary` 继续返回 `map_dis
 `ffmpeg` 对 MJPG/YUYV 也 0 帧；长窗口 `--stream-skip=5 --stream-count=3` 仍 0 字节。PC 共享 MJPEG 因此返回
 `first_frame_total_timeout`，USB recovery 返回 `streamon_failed`、`high_speed_zero_byte_no_frame`。
 当前图传缺口不是 PC 页面、Node relay、多人预览独占、USB full-speed 或 CMA，而是 DV20 上游输入/视频线/供电/接口/采集卡或摄像头本体。
+
+2026-07-06 01:31 CST 起，PC fixed first-frame probe 代理会在远端 probe 失败后按需复读一次上车
+`/api/camera/health`。这是为了覆盖现场真实形态：`trashbot-local-webrtc-camera.service` 自己持有
+`/dev/video1` 是共享预览的正常架构，不等于浏览器页面独占；如果远端 probe 因 `source_busy`、非 200 或无首帧失败，
+而后续 health 已经确认 `source_first_frame_failed / uvc_no_frame_not_exclusive`，PC 响应顶层会显示
+`source_diagnosis_status=uvc_no_frame_not_exclusive`、`source_diagnosis_not_exclusive=true`、
+`camera_hardware_action_label=检查摄像头输入/供电后复测` 和 `camera_blocks_free_move=false`。
+这样普通首页、summary、live-summary 和脚本看到的结论一致：共享预览可多人复用，当前不可见不是页面独占，
+而是 DV20/UVC 没有输出视频帧。
+
+同轮 7001 真实复验：Node 监听 `0.0.0.0:7001`；上位机 `trashbot-upper-robot-api`、
+`trashbot-local-webrtc-camera`、`trashbot-esp32-bridge`、`trashbot-lidar-lifecycle` 均 active。
+PC probe 返回 `probe_total_timeout / uvc_no_frame_not_exclusive`；live-summary 返回
+`status=ready_for_motion`、`map_current_visible=true`、`path_current_visible=true`、
+`radar_map_points_visible=true`、`camera_current_visible=false`、`map_display_default_zoom_percent=1600%`。
+map preview 返回地图 PNG、18 个 Nav2 路线点、目标点、map pose 和 155 个当前雷达点。
+PC manual forward/backward 固定代理均能写出 command raw L/R 非零并 stop 成功，backward 窗口读到
+`motion_signal_observed=true`；stop 后 live-summary 显示 `keyboard_motion_verified=true`、
+`keyboard_command_raw_lr_nonzero_proven=true`、`keyboard_stop_settled_after_pulse=true`。
+依据 `docs/vendor/VENDOR_INDEX.md` 中 WAVE ROVER 反馈字段说明，`T=1001 L/R=0/0` 仍不能宣称 wheel raw 闭环完成。
+
+关于“PC 地图太小，ROS2 有没有配套”的当前产品口径保持不变：普通用户先用 PC 首页大地图和 `/map`，
+默认 `1600%`、局部最高 `4800%`；ROS2 配套只作为工程观察。本地工程调试用 RViz2/Nav2 RViz 配置看
+`/map`、`/scan`、TF、Nav2 path、定位和 costmap；远程浏览器大屏用 Foxglove Bridge + Foxglove Web，
+连接 `ws://192.168.1.11:8765`。这些入口不替代 PC 简易控制台，不启动 Nav2/建图 runtime，不发送
+manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。

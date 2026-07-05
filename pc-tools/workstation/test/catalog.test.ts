@@ -15708,7 +15708,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(statusAfterTimeoutBody.source_failure_reason).toBe("probe_total_timeout");
       expect(statusAfterTimeoutBody.source_diagnosis_status).toBe("uvc_no_frame_not_exclusive");
       expect(statusAfterTimeoutBody.camera_hardware_action_label).toBe("检查摄像头输入/供电后复测");
-      expect(healthRequestCount).toBe(3);
+      // 普通 probe 失败后会额外复读一次 health，用于避免 service self-hold 被误当作页面独占。
+      expect(healthRequestCount).toBe(4);
       expect(probeRequestCount).toBe(1);
       expect(mjpegRequestCount).toBe(0);
     } finally {
@@ -17433,6 +17434,141 @@ describe("workstation fail-closed API contracts", () => {
       expect(summaryBody.readback_summary.camera.source_diagnosis_status).toBe("uvc_full_speed_usb_not_exclusive");
       expect(summaryBody.readback_summary.camera.source_diagnosis_plain_hint).toContain("USB full-speed");
       expect(summaryBody.readback_summary.camera.source_diagnosis_not_exclusive).toBe("true");
+    } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+  });
+
+  it("workstation camera first-frame probe refreshes health when service self hold masks no-frame diagnosis", async () => {
+    // 上车相机服务自持 /dev/video1 是共享预览的正常状态；远端 probe 返回 busy 后，PC 还要复读 health 拿到真实无首帧结论。
+    let healthRequestCount = 0;
+    let probeRequestCount = 0;
+    const upstreamServer = http.createServer((req, res) => {
+      if (req.method === "GET" && req.url === "/api/camera/health") {
+        healthRequestCount += 1;
+        const firstHealth = healthRequestCount === 1;
+        const payload = firstHealth
+          ? {
+            schema: "trashbot.local_webrtc_camera_smoke.v1",
+            status: "source_not_probed",
+            source_readiness: "source_selected_not_probed",
+            video_source: "/dev/video1",
+            current_selection: {
+              selected_name: "USB Composite Device: DV20 USB",
+              selected_path: "/dev/video1",
+              selected_is_uvc_or_usb: true,
+            },
+            source_usage: { status: "in_use_by_camera_service", owner_count: 1, owners: [{ pid: 38862, comm: "python3" }] },
+            source_diagnosis: {
+              status: "source_busy",
+              plain_hint: "相机服务正在读取设备。",
+              next_action: "wait_for_camera_service",
+              not_exclusive: true,
+            },
+            safe_to_control: false,
+            robot_control_executed: false,
+            delivery_success: false,
+            primary_actions_enabled: false,
+          }
+          : {
+            schema: "trashbot.local_webrtc_camera_smoke.v1",
+            status: "source_first_frame_failed",
+            source_readiness: "first_frame_failed",
+            source_failure_reason: "first_frame_total_timeout",
+            video_source: "/dev/video1",
+            current_selection: {
+              selected_name: "USB Composite Device: DV20 USB",
+              selected_path: "/dev/video1",
+              selected_is_uvc_or_usb: true,
+            },
+            source_usage: { status: "in_use_by_camera_service", owner_count: 1, owners: [{ pid: 38862, comm: "python3" }] },
+            source_diagnosis: {
+              status: "uvc_no_frame_not_exclusive",
+              plain_hint: "不是页面独占：相机服务正在用单上游共享预览读取 USB Composite Device: DV20 USB，但 UVC 设备没有输出视频帧。",
+              next_action: "check_usb_camera_input_power_or_known_good_uvc",
+              not_exclusive: true,
+            },
+            safe_to_control: false,
+            robot_control_executed: false,
+            delivery_success: false,
+            primary_actions_enabled: false,
+          };
+        res.statusCode = 200;
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify(payload));
+        return;
+      }
+      if (req.method === "POST" && req.url === "/api/camera/first-frame/probe") {
+        probeRequestCount += 1;
+        let body = "";
+        req.on("data", (chunk) => {
+          body += chunk.toString();
+        });
+        req.on("end", () => {
+          res.statusCode = 503;
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify({
+            schema: "trashbot.upper_robot_api.v1.camera_first_frame_probe",
+            status: "source_busy",
+            failure_reason: "source_busy",
+            probe_payload: {
+              schema: "trashbot.camera_first_frame_probe.v1",
+              status: "source_busy",
+              device: "/dev/video1",
+              open_ok: false,
+              read_ok: false,
+              first_frame_timeout: false,
+              failure_reason: "source_busy",
+              visible_content_proven: false,
+            },
+            safe_to_control: false,
+            robot_control_executed: false,
+            delivery_success: false,
+            primary_actions_enabled: false,
+            echoed_body: body ? JSON.parse(body) : {},
+          }));
+        });
+        return;
+      }
+      res.statusCode = 404;
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({ error: "not_found" }));
+    });
+    const upstream = await new Promise<{ baseUrl: string; close: () => Promise<void> }>((resolve) => {
+      upstreamServer.listen(0, "127.0.0.1", () => {
+        const address = upstreamServer.address();
+        const port = typeof address === "object" && address ? address.port : 0;
+        resolve({
+          baseUrl: `http://127.0.0.1:${port}`,
+          close: () => new Promise((closeResolve, closeReject) => {
+            upstreamServer.close((error) => (error ? closeReject(error) : closeResolve()));
+          }),
+        });
+      });
+    });
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const response = await fetch(`${workstation.baseUrl}/api/robot-control/camera/first-frame/probe?baseUrl=${encodeURIComponent(upstream.baseUrl)}`, {
+        method: "POST",
+      });
+      const body = await response.json() as RobotControlCameraFirstFrameProbeProxyResponse;
+
+      expect(response.status).toBe(200);
+      expect(body.proxy_status).toBe("probe_failed");
+      expect(body.status).toBe("source_busy");
+      expect(body.failure_reason).toBe("source_busy");
+      expect(body.source_diagnosis_status).toBe("uvc_no_frame_not_exclusive");
+      expect(body.source_diagnosis_not_exclusive).toBe("true");
+      expect(body.source_diagnosis_plain_hint).toContain("不是页面独占");
+      expect(body.source_diagnosis_plain_hint).toContain("UVC 设备没有输出视频帧");
+      expect(body.source_diagnosis_next_action_plain).toBe("检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测；共享预览不是页面独占。");
+      expect(body.camera_hardware_action_required).toBe(true);
+      expect(body.camera_hardware_action_label).toBe("检查摄像头输入/供电后复测");
+      expect(body.camera_blocks_free_move).toBe(false);
+      expect(body.robot_control_executed).toBe(false);
+      expect(healthRequestCount).toBe(2);
+      expect(probeRequestCount).toBe(1);
     } finally {
       await workstation.close();
       await upstream.close();
