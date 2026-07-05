@@ -360,6 +360,84 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertFalse(payload["sends_motion_commands"])
         self.assertFalse(payload["publishes_cmd_vel"])
 
+    def test_map_preview_uses_fresh_driver_diagnostics_for_current_radar_overlay(self) -> None:
+        """雷达 lifecycle 正在跑时，地图预览要用秒级 diagnostics 画当前雷达点。"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            map_dir = Path(temp_dir)
+            # 地图文件仍用最小 fixture；本测试只关心 radar overlay 选择实时来源。
+            (map_dir / "trashbot_map.pgm").write_bytes(b"P5\n2 2\n255\n" + bytes([254, 205, 0, 254]))
+            (map_dir / "trashbot_map.yaml").write_text(
+                "\n".join(
+                    [
+                        "image: trashbot_map.pgm",
+                        "resolution: 0.05",
+                        "origin: [0.0, 0.0, 0.0]",
+                        "negate: 0",
+                        "occupied_thresh: 0.65",
+                        "free_thresh: 0.196",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            api = upper_robot_api.UpperRobotApi(
+                camera_base_url="http://127.0.0.1:8088",
+                base_port="/dev/ttyS5",
+                base_baudrate=115200,
+                max_speed=0.12,
+                map_artifact_dir=str(map_dir),
+            )
+            stale_scan_proof = {
+                "scan_preview_points": [{"x_m": 9.0, "y_m": 9.0, "frame_id": "laser_frame", "source_index": 99}],
+                "scan_preview_point_count": 1,
+                "scan_preview_source_point_count": 1,
+                "scan_preview_frame_id": "laser_frame",
+                "freshness": {"status": "stale"},
+            }
+            driver_scan_points = [
+                {"x_m": 0.4, "y_m": 0.1, "frame_id": "laser_frame", "source_index": 0},
+                {"x_m": 0.5, "y_m": 0.2, "frame_id": "laser_frame", "source_index": 1},
+            ]
+            radar = {
+                "lifecycle_running": True,
+                "lifecycle_state": "running",
+                "scan_proof_latest": stale_scan_proof,
+                "driver_diagnostics_latest": {
+                    "status": "loaded",
+                    "artifact": {"mtime_ms": upper_robot_api.now_ms()},
+                    "diagnosis_status": "scan_published",
+                    "runtime": {"last_scan_range_count": 186},
+                    "scan_preview": {
+                        "scan_preview_points": driver_scan_points,
+                        "scan_preview_point_count": 2,
+                        "scan_preview_source_point_count": 186,
+                        "scan_preview_frame_id": "laser_frame",
+                        "scan_preview_source": "lidar_driver_diagnostics.last_scan_preview",
+                    },
+                },
+            }
+            nav2_latest = {
+                "amcl_pose": {"x": 0.1, "y": 0.2, "yaw": 0.0, "frame_id": "map", "source": "/amcl_pose"}
+            }
+
+            # 旧 proof 已 stale，但 driver diagnostics 是当前 runtime 材料，必须优先用于 PC 大地图贴图。
+            with mock.patch.object(api, "radar_status", return_value=radar):
+                with mock.patch.object(api, "nav2_proof_latest", return_value=(200, nav2_latest)):
+                    payload = api.map_preview()
+
+        overlay = payload["radar_overlay"]
+        self.assertEqual("loaded", overlay["overlay_status"])
+        self.assertEqual(driver_scan_points, overlay["scan_preview_points"])
+        self.assertEqual(2, overlay["scan_preview_point_count"])
+        self.assertEqual(186, overlay["scan_preview_source_point_count"])
+        self.assertEqual("laser_frame", overlay["scan_preview_frame_id"])
+        self.assertEqual("lidar_driver_diagnostics.last_scan_preview", overlay["scan_preview_source"])
+        self.assertEqual(0.1, overlay["robot_pose"]["x"])
+        self.assertNotIn("runtime_scan_stale_for_map_radar_overlay", overlay["blocked_reasons"])
+        self.assertNotIn({"x_m": 9.0, "y_m": 9.0, "frame_id": "laser_frame", "source_index": 99}, overlay["scan_preview_points"])
+        self.assertFalse(payload["command_result"]["executed"])
+        self.assertFalse(payload["sends_motion_commands"])
+        self.assertFalse(payload["publishes_cmd_vel"])
+
     def test_nav2_path_preview_overlay_keeps_metadata_only_off_map(self) -> None:
         """只有点数没有点数组时，API 要解释缺口，不能声称路线已贴到地图。"""
         overlay = upper_robot_api.nav2_path_preview_overlay_from_latest(
@@ -2514,10 +2592,12 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
             yaml_payloads.append(Path(argv[-1]).read_text(encoding="utf-8"))
             return {"mode": "fixed_argv", "executed": True, "ok": True, "argv": argv, "returncode": 0}
 
-        with mock.patch.object(upper_robot_api, "run_fixed_argv_command", side_effect=fake_run):
-            locked_result = upper_robot_api.run_free_roam_param_sequence("start")
-            unlocked_result = upper_robot_api.run_free_roam_param_sequence("start", enable_motion=True)
-            stop_result = upper_robot_api.run_free_roam_param_sequence("stop")
+        runtime_ready = {"mode": "free_roam_runtime_ensure", "status": "already_available", "available": True}
+        with mock.patch.object(upper_robot_api, "ensure_free_roam_runtime_for_param_load", return_value=runtime_ready):
+            with mock.patch.object(upper_robot_api, "run_fixed_argv_command", side_effect=fake_run):
+                locked_result = upper_robot_api.run_free_roam_param_sequence("start")
+                unlocked_result = upper_robot_api.run_free_roam_param_sequence("start", enable_motion=True)
+                stop_result = upper_robot_api.run_free_roam_param_sequence("stop")
 
         flattened = "\n".join(yaml_payloads)
         self.assertEqual(3, len(calls))
@@ -2558,8 +2638,10 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
                 "timeout_s": timeout_s,
             }
 
-        with mock.patch.object(upper_robot_api, "run_fixed_argv_command", side_effect=fake_run):
-            result = upper_robot_api.run_free_roam_param_sequence("start", enable_motion=True)
+        runtime_ready = {"mode": "free_roam_runtime_ensure", "status": "already_available", "available": True}
+        with mock.patch.object(upper_robot_api, "ensure_free_roam_runtime_for_param_load", return_value=runtime_ready):
+            with mock.patch.object(upper_robot_api, "run_fixed_argv_command", side_effect=fake_run):
+                result = upper_robot_api.run_free_roam_param_sequence("start", enable_motion=True)
 
         self.assertFalse(result["ok"])
         self.assertEqual([], result["touched_parameters"])
@@ -2637,7 +2719,12 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
                         {"confirm_operator_safety": True, "confirm_mapping_active": True},
                     )
 
-        run_mock.assert_called_once_with("start", enable_motion=True, mapping_active=False)
+        run_mock.assert_called_once_with(
+            "start",
+            enable_motion=True,
+            mapping_active=False,
+            artifact_path=upper_robot_api.DEFAULT_FREE_ROAM_AUTONOMY_ARTIFACT_PATH,
+        )
         self.assertEqual("requested", payload["status"])
         self.assertTrue(payload["sets_state_machine_parameters"])
         self.assertFalse(payload["does_not_set_motion_unlock"])
@@ -2692,7 +2779,12 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
                         {"confirm_operator_safety": True, "confirm_mapping_active": True},
                     )
 
-        run_mock.assert_called_once_with("start", enable_motion=True, mapping_active=False)
+        run_mock.assert_called_once_with(
+            "start",
+            enable_motion=True,
+            mapping_active=False,
+            artifact_path=upper_robot_api.DEFAULT_FREE_ROAM_AUTONOMY_ARTIFACT_PATH,
+        )
         self.assertEqual("requested", payload["status"])
         self.assertEqual([], payload["blocked_reasons"])
         self.assertEqual(readiness, payload["sensor_readiness"])
@@ -2914,7 +3006,12 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
                         },
                     )
 
-        run_mock.assert_called_once_with("start", enable_motion=True, mapping_active=False)
+        run_mock.assert_called_once_with(
+            "start",
+            enable_motion=True,
+            mapping_active=False,
+            artifact_path=upper_robot_api.DEFAULT_FREE_ROAM_AUTONOMY_ARTIFACT_PATH,
+        )
         self.assertEqual("requested", payload["status"])
         self.assertEqual([], payload["blocked_reasons"])
         self.assertTrue(payload["sets_state_machine_parameters"])
@@ -2966,7 +3063,12 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
                         },
                     )
 
-        run_mock.assert_called_once_with("start", enable_motion=True, mapping_active=True)
+        run_mock.assert_called_once_with(
+            "start",
+            enable_motion=True,
+            mapping_active=True,
+            artifact_path=upper_robot_api.DEFAULT_FREE_ROAM_AUTONOMY_ARTIFACT_PATH,
+        )
         self.assertEqual("requested", payload["status"])
         self.assertTrue(payload["motion_unlock_requested"])
         self.assertTrue(payload["mapping_active_requested"])
@@ -3013,7 +3115,12 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
                         },
                     )
 
-        run_mock.assert_called_once_with("start", enable_motion=True, mapping_active=False)
+        run_mock.assert_called_once_with(
+            "start",
+            enable_motion=True,
+            mapping_active=False,
+            artifact_path=upper_robot_api.DEFAULT_FREE_ROAM_AUTONOMY_ARTIFACT_PATH,
+        )
         self.assertEqual("requested", payload["status"])
         self.assertTrue(payload["motion_unlock_requested"])
         self.assertFalse(payload["mapping_active_requested"])
@@ -3043,7 +3150,11 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
             with mock.patch.object(api, "free_roam_autonomy_latest", return_value=(200, {"decision_state": "ready"})):
                 payload = api.free_roam_autonomy_control("stop", {})
 
-        run_mock.assert_called_once_with("stop", enable_motion=False)
+        run_mock.assert_called_once_with(
+            "stop",
+            enable_motion=False,
+            artifact_path=upper_robot_api.DEFAULT_FREE_ROAM_AUTONOMY_ARTIFACT_PATH,
+        )
         self.assertEqual("requested", payload["status"])
         self.assertTrue(payload["sets_state_machine_parameters"])
         self.assertTrue(payload["does_not_set_motion_unlock"])
@@ -3073,7 +3184,11 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
             with mock.patch.object(api, "free_roam_autonomy_latest", return_value=(200, {"decision_state": "stopping"})):
                 payload = api.free_roam_autonomy_control("stop", {})
 
-        run_mock.assert_called_once_with("stop", enable_motion=False)
+        run_mock.assert_called_once_with(
+            "stop",
+            enable_motion=False,
+            artifact_path=upper_robot_api.DEFAULT_FREE_ROAM_AUTONOMY_ARTIFACT_PATH,
+        )
         self.assertEqual("requested", payload["status"])
         self.assertTrue(payload["sets_state_machine_parameters"])
         self.assertFalse(payload["direct_cmd_vel_publish"])

@@ -50,6 +50,14 @@ ROS2 配套仍按分层使用：本地工程调试首选 RViz2/Nav2 RViz 配置�
 普通用户继续使用 PC 大地图和 `/map`，这些入口不启动 ROS2/RViz2/Foxglove/Nav2/建图 runtime，
 不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 
+2026-07-06 05:15 CST 起，上车 `/api/map/preview` 的雷达贴图不再只依赖可能过期的
+`lidar_scan_proof_latest.json`；当 LiDAR lifecycle 正在运行且 driver diagnostics 5 秒内更新、状态为
+`scan_published` 时，地图预览直接使用 diagnostics 里的 `scan_preview_points` 作为当前雷达点。真实 7001
+复验已读到 `map_current_visible=true`、`path_current_visible=true`、`radar_map_points_visible=true`，
+上车 preview 当前约 148 个雷达点；WASD 等价两次 forward pulse 均转发成功，第二次读到
+`motion_signal_observed=true`，stop 成功。DV20 相机仍枚举为 `/dev/video1`、USB 480M 且无 owner，但
+MJPEG/YUYV 多格式首帧仍读不到，当前不是页面独占问题。
+
 2026-07-06 03:05 CST 起，上车 `/api/free-roam/autonomy/start` 会在 `/free_roam_autonomy`
 runtime 缺失时托管启动 `ros2_trashbot_nav free_roam_autonomy_node`，节点初始仍保持
 `enable_cmd_vel_publish=false`、`motion_hil_unlocked=false`，随后只通过固定参数序列解锁本次低速自由移动。

@@ -160,6 +160,11 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   `/api/robot-control/base/manual` 到默认 `ros` 模式并读到 raw 命令非零、stop OK 和 IMU 动作信号。
   相机侧则在服务停止后直接 `v4l2-ctl`/`ffmpeg` 多格式、多分辨率、长窗口采帧仍全部 0 字节；USB recovery
   返回 `high_speed_zero_byte_no_frame`。因此建图视觉验收仍等真实首帧，但自由移动、WASD 和图上路线发车前置不依赖相机首帧。
+- 2026-07-06 05:15 复验并修正当前地图雷达贴图：LiDAR lifecycle 正在运行，driver diagnostics 持续发布
+  `scan_published` 和 100+ 个 `scan_preview_points`，但旧 scan-proof artifact stale 曾导致 `/api/map/preview`
+  返回 `radar_overlay=not_current`。当前实现改为 diagnostics 新鲜时优先贴实时雷达点；7001
+  `live-summary` 已返回地图、路线、雷达点均可见。WASD 等价 forward pulse/stop 已通过 PC 代理真实转发；
+  DV20 `/dev/video1` 仍不是独占但无首帧。
 - 2026-07-04 06:14 起，PC 运动可用态和 wheel raw 诊断风险拆开显示：如果 command raw L/R 非零与
   IMU/车体运动信号已同轮观察到，普通 summary 允许进入 `ready_for_motion`，提示继续使用 WASD、自由移动或
   图上路线；vendor `T=1001 L/R=0/0` 仍作为反馈闭环风险，不冒充 wheel raw 非零。该拆分不改变扫图

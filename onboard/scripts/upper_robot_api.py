@@ -57,6 +57,7 @@ DEFAULT_BRIDGE_COMMAND_DEBUG_STALE_AFTER_MS = 15 * 60 * 1000
 DEFAULT_LIDAR_SCAN_PROOF_ARTIFACT_PATH = "runtime/lidar_scan_proof_latest.json"
 DEFAULT_LIDAR_SCAN_PROOF_REFRESH_TIMEOUT_S = 12.0
 DEFAULT_LIDAR_SCAN_PROOF_RUNTIME_WARMUP_S = 6.0
+DEFAULT_LIDAR_DRIVER_DIAGNOSTICS_STALE_AFTER_MS = 5 * 1000
 DEFAULT_RADAR_LIFECYCLE_STATUS_TIMEOUT_S = 3.0
 DEFAULT_LIDAR_RAW_PACKET_PROOF_ARTIFACT_PATH = "runtime/lidar_raw_packet_proof_latest.json"
 DEFAULT_ROBER_ROOT = "/root/rober"
@@ -8052,6 +8053,44 @@ def default_map_preview_radar_overlay(reason: str = "not_loaded") -> dict[str, A
     }
 
 
+def map_preview_scan_preview_from_driver_diagnostics(
+    radar: dict[str, Any],
+    generated_at_ms: int | None = None,
+) -> dict[str, Any] | None:
+    """优先用正在运行的 driver diagnostics 画实时雷达点，避免 stale proof 遮住当前 `/scan`。"""
+    diagnostics = radar.get("driver_diagnostics_latest") if isinstance(radar.get("driver_diagnostics_latest"), dict) else {}
+    artifact = diagnostics.get("artifact") if isinstance(diagnostics.get("artifact"), dict) else {}
+    scan_preview = diagnostics.get("scan_preview") if isinstance(diagnostics.get("scan_preview"), dict) else {}
+    runtime = diagnostics.get("runtime") if isinstance(diagnostics.get("runtime"), dict) else {}
+    points = scan_preview.get("scan_preview_points") if isinstance(scan_preview.get("scan_preview_points"), list) else []
+    point_count = int(scan_preview.get("scan_preview_point_count") or len(points) or 0)
+    source_point_count = scan_preview.get("scan_preview_source_point_count") or runtime.get("last_scan_range_count")
+    frame_id = str(scan_preview.get("scan_preview_frame_id") or "")
+    mtime_ms = artifact.get("mtime_ms")
+    age_ms = None
+    if isinstance(mtime_ms, int):
+        age_ms = max(0, int(generated_at_ms or now_ms()) - mtime_ms)
+    diagnostics_fresh = diagnostics.get("status") == "loaded" and (
+        age_ms is None or age_ms <= DEFAULT_LIDAR_DRIVER_DIAGNOSTICS_STALE_AFTER_MS
+    )
+    # 旧 scan-proof 过期时仍不能画旧点；只有 driver 正在秒级写新 diagnostics 才能作为实时画布来源。
+    if not diagnostics_fresh or diagnostics.get("diagnosis_status") != "scan_published" or point_count <= 0:
+        return None
+    return {
+        "scan_preview_points": points,
+        "scan_preview_point_count": point_count,
+        "scan_preview_source_point_count": source_point_count,
+        "scan_preview_frame_id": frame_id,
+        "scan_preview_source": scan_preview.get("scan_preview_source") or "lidar_driver_diagnostics.scan_preview",
+        "freshness": {
+            "status": "fresh",
+            "age_ms": age_ms,
+            "stale_after_ms": DEFAULT_LIDAR_DRIVER_DIAGNOSTICS_STALE_AFTER_MS,
+            "basis": "lidar_driver_diagnostics_mtime_for_map_overlay",
+        },
+    }
+
+
 class UpperRobotApi:
     """把上位机各硬件入口收敛到一个 HTTP API，PC 不再分散猜端口。"""
 
@@ -8127,6 +8166,7 @@ class UpperRobotApi:
 
     def map_preview_radar_overlay(self) -> dict[str, Any]:
         """把当前雷达点和 map-frame 位姿合并给 map preview；stale/停止雷达只报 not_current，不贴旧点。"""
+        generated_at_ms = now_ms()
         try:
             radar = self.radar_status()
             _, nav2_latest = self.nav2_proof_latest()
@@ -8136,13 +8176,15 @@ class UpperRobotApi:
             return overlay
 
         scan_proof = radar.get("scan_proof_latest") if isinstance(radar.get("scan_proof_latest"), dict) else {}
-        points = scan_proof.get("scan_preview_points") if isinstance(scan_proof.get("scan_preview_points"), list) else []
-        point_count = int(scan_proof.get("scan_preview_point_count") or len(points) or 0)
-        source_point_count = scan_proof.get("scan_preview_source_point_count")
-        frame_id = str(scan_proof.get("scan_preview_frame_id") or "")
         freshness = scan_proof.get("freshness") if isinstance(scan_proof.get("freshness"), dict) else {}
-        radar_stale = freshness.get("status") == "stale"
         radar_stopped = radar.get("lifecycle_running") is False or radar.get("lifecycle_state") == "stopped"
+        driver_scan_preview = None if radar_stopped else map_preview_scan_preview_from_driver_diagnostics(radar, generated_at_ms)
+        scan_source = driver_scan_preview or scan_proof
+        points = scan_source.get("scan_preview_points") if isinstance(scan_source.get("scan_preview_points"), list) else []
+        point_count = int(scan_source.get("scan_preview_point_count") or len(points) or 0)
+        source_point_count = scan_source.get("scan_preview_source_point_count")
+        frame_id = str(scan_source.get("scan_preview_frame_id") or "")
+        radar_stale = freshness.get("status") == "stale" and driver_scan_preview is None
         robot_pose = nav2_latest.get("amcl_pose") if isinstance(nav2_latest.get("amcl_pose"), dict) else None
         has_pose = bool(robot_pose and robot_pose.get("frame_id") == "map")
         has_points = point_count > 0 or bool(points)
@@ -8166,6 +8208,7 @@ class UpperRobotApi:
             "scan_preview_point_count": point_count if current_points_allowed else 0,
             "scan_preview_source_point_count": source_point_count,
             "scan_preview_frame_id": frame_id,
+            "scan_preview_source": scan_source.get("scan_preview_source"),
             "robot_pose": robot_pose if has_pose else None,
             "source_endpoint_ids": ["radar_status", "nav2_proof_latest"],
             "blocked_reasons": blocked_reasons,

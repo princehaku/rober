@@ -61,6 +61,14 @@ pc-tools/workstation/
   `map_display_max_zoom_percent=4800%`。ROS2 配套仍只是工程观察：本地用 RViz2/Nav2 RViz 配置看
   `/map`、`/scan`、TF、路径、定位和 costmap，远程浏览器用 Foxglove bridge；普通用户默认仍使用
   PC 大地图和 `/map`，不要求先打开 RViz2/Foxglove。
+- 2026-07-06 05:15 CST 起，PC 大地图雷达 overlay 的当前有效数据源为：上车
+  `/api/map/preview` 优先使用正在运行的 LiDAR driver diagnostics 里的实时 `scan_preview_points`，只有
+  diagnostics 不新鲜或无点时才回退到 scan-proof artifact。真实复验中 `/api/map/preview` 返回
+  `radar_overlay.overlay_status=loaded`、当前约 148 个雷达点、18 个 Nav2 路线点和目标点；7001
+  `live-summary` 返回 `radar_map_points_visible=true`。WASD 等价 forward pulse 通过 PC 固定代理转发到
+  esp32_bridge，命令日志出现 vendor `T=11 L/R=164`，stop 出现 `T=11 L/R=0`，live-summary 进入
+  `keyboard_motion_evidence_complete=true`、`keyboard_stop_settled_after_pulse=true`。WAVE ROVER
+  `T=1001` wheel raw L/R 仍读到 `0/0`，只可声明命令链路和 IMU 运动信号，不可声明 wheel raw 闭环完成。
 - 2026-07-06 03:05 CST 起，上车 Robot API 修复自由移动 runtime 缺失时 start 失败的问题：
   `/api/free-roam/autonomy/start` 会用固定 argv 托管启动 `ros2_trashbot_nav free_roam_autonomy_node`，
   默认仍锁住 `enable_cmd_vel_publish` 和 `motion_hil_unlocked`，再通过参数序列解锁本次低速自由移动。
