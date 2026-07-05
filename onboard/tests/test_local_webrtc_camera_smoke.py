@@ -327,6 +327,51 @@ class LocalWebrtcCameraSmokeTests(unittest.TestCase):
         self.assertEqual(".jpg", fake_cv2.suffix)
         self.assertIs(frame, fake_cv2.frame)
 
+    def test_mjpeg_jpeg_part_encoder_wraps_only_complete_jpegs(self) -> None:
+        """ffmpeg fallback 已经产出 JPEG 时，也必须校验 SOI/EOI 后才进入 multipart。"""
+        part = camera.encode_mjpeg_jpeg_part(b"\xff\xd8ffmpeg-real-jpeg\xff\xd9")
+
+        self.assertIsNotNone(part)
+        assert part is not None
+        self.assertIn(b"--roberframe", part)
+        self.assertIn(b"Content-Type: image/jpeg", part)
+        self.assertIn(b"\xff\xd8ffmpeg-real-jpeg\xff\xd9", part)
+        self.assertIsNone(camera.encode_mjpeg_jpeg_part(b"not-a-jpeg"))
+        self.assertIsNone(camera.encode_mjpeg_jpeg_part(b"\xff\xd8half-frame"))
+
+    def test_extract_jpeg_from_buffer_returns_complete_frames(self) -> None:
+        """ffmpeg pipe 可能分块输出；解析器只能取完整帧，并保留下一帧半包。"""
+        buffer = bytearray(b"noise\xff\xd8frame-one\xff\xd9\xff\xd8half")
+
+        first = camera.extract_jpeg_from_buffer(buffer)
+        second = camera.extract_jpeg_from_buffer(buffer)
+        buffer.extend(b"-two\xff\xd9")
+        third = camera.extract_jpeg_from_buffer(buffer)
+
+        self.assertEqual(b"\xff\xd8frame-one\xff\xd9", first)
+        self.assertIsNone(second)
+        self.assertEqual(b"\xff\xd8half-two\xff\xd9", third)
+        self.assertEqual(bytearray(), buffer)
+
+    def test_ffmpeg_mjpeg_command_uses_v4l2_mjpeg_pipe(self) -> None:
+        """ffmpeg fallback 只打开 V4L2 摄像头并输出 MJPEG pipe，不携带运动或串口语义。"""
+        command = camera.ffmpeg_mjpeg_command("/dev/video1", "mjpeg", 640, 480, 30)
+
+        self.assertEqual("ffmpeg", command[0])
+        self.assertIn("-f", command)
+        self.assertIn("v4l2", command)
+        self.assertIn("-input_format", command)
+        self.assertIn("mjpeg", command)
+        self.assertIn("-video_size", command)
+        self.assertIn("640x480", command)
+        self.assertIn("-framerate", command)
+        self.assertIn("30", command)
+        self.assertIn("/dev/video1", command)
+        self.assertEqual(command[-2:], ["mjpeg", "pipe:1"])
+        flattened = " ".join(command)
+        for forbidden in ("cmd_vel", "/api/base/manual", "ttyS", "nav2", "ros2"):
+            self.assertNotIn(forbidden, flattened)
+
     def test_camera_attempt_specs_include_real_dv20_discrete_modes(self) -> None:
         """首帧尝试矩阵必须贴合实板 DV20 枚举，避免一直用不支持的 15fps。"""
         specs = camera.camera_capture_attempt_specs(640, 480, 15)

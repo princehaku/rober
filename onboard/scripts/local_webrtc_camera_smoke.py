@@ -11,7 +11,9 @@ import json
 import os
 import platform
 import re
+import select
 import shutil
+import signal
 import socket
 import subprocess
 import sys
@@ -62,6 +64,7 @@ IMPORTS = ("aiortc", "cv2", "av")
 FIRST_FRAME_FAILURE_REASONS = {
     "first_frame_timeout",
     "first_frame_total_timeout",
+    "ffmpeg_mjpeg_first_frame_unreadable",
     "capture_read_call_timeout",
     "capture_read_returned_false",
     "capture_read_no_result",
@@ -1261,6 +1264,218 @@ def encode_mjpeg_part(cv2: Any, frame: Any) -> bytes | None:
     ).encode("ascii") + jpeg + b"\r\n"
 
 
+def encode_mjpeg_jpeg_part(jpeg: bytes) -> bytes | None:
+    """ffmpeg 已经输出 JPEG 时只做 multipart 包装，不重新编码或生成占位画面。"""
+    if not jpeg.startswith(b"\xff\xd8") or not jpeg.endswith(b"\xff\xd9"):
+        return None
+    return (
+        f"--{MJPEG_BOUNDARY}\r\n"
+        "Content-Type: image/jpeg\r\n"
+        "Cache-Control: no-store\r\n"
+        f"Content-Length: {len(jpeg)}\r\n\r\n"
+    ).encode("ascii") + jpeg + b"\r\n"
+
+
+# ffmpeg 兜底只覆盖现场 UVC 常见组合，避免无限探测导致 PC 首屏长期等待。
+FFMPEG_MJPEG_FALLBACK_SPECS: tuple[tuple[str, int, int, int], ...] = (
+    ("mjpeg", 640, 480, 30),
+    ("yuyv422", 320, 240, 20),
+    ("mjpeg", 1280, 720, 30),
+    ("mjpeg", 480, 320, 30),
+    ("mjpeg", 160, 120, 30),
+    ("yuyv422", 160, 120, 20),
+)
+
+
+def extract_jpeg_from_buffer(buffer: bytearray) -> bytes | None:
+    """从 ffmpeg MJPEG pipe 中截取完整 JPEG；半帧留在 buffer 等下一次读取。"""
+    start = buffer.find(b"\xff\xd8")
+    if start < 0:
+        # 没看到 SOI 的字节都是 ffmpeg/container 噪声，保留太多会拖垮长期预览。
+        if len(buffer) > 2_000_000:
+            del buffer[:-2]
+        return None
+    if start > 0:
+        del buffer[:start]
+    end = buffer.find(b"\xff\xd9", 2)
+    if end < 0:
+        if len(buffer) > 2_000_000:
+            del buffer[:-2]
+        return None
+    frame = bytes(buffer[:end + 2])
+    del buffer[:end + 2]
+    return frame
+
+
+def ffmpeg_mjpeg_command(source: str, input_format: str, width: int, height: int, fps: int) -> list[str]:
+    """构造 V4L2 -> MJPEG pipe 命令；stdout 是唯一画面通道，stderr 只做诊断。"""
+    return [
+        "ffmpeg",
+        "-hide_banner",
+        "-loglevel",
+        "warning",
+        "-nostdin",
+        "-f",
+        "v4l2",
+        "-input_format",
+        input_format,
+        "-video_size",
+        f"{width}x{height}",
+        "-framerate",
+        str(fps),
+        "-i",
+        source,
+        "-an",
+        "-c:v",
+        "mjpeg",
+        "-f",
+        "mjpeg",
+        "pipe:1",
+    ]
+
+
+@dataclass
+class FfmpegMjpegStream:
+    """持有 ffmpeg 进程和首帧；调用方必须在请求结束时 close，避免长期占用 UVC。"""
+
+    source: str
+    process: subprocess.Popen[bytes]
+    input_format: str
+    width: int
+    height: int
+    fps: int
+    first_jpeg: bytes
+    attempts: list[dict[str, Any]]
+    buffer: bytearray = field(default_factory=bytearray)
+    frames_read: int = 1
+    last_error: str | None = None
+
+    def read_next_jpeg(self, timeout_s: float) -> bytes | None:
+        """按超时读取下一张 JPEG；无帧时返回 None，让 PC 尽快显示真实失败。"""
+        stdout = self.process.stdout
+        if stdout is None:
+            self.last_error = "ffmpeg_stdout_missing"
+            return None
+        deadline = time.monotonic() + max(0.1, timeout_s)
+        while time.monotonic() < deadline:
+            frame = extract_jpeg_from_buffer(self.buffer)
+            if frame is not None:
+                self.frames_read += 1
+                self.last_error = None
+                return frame
+            if self.process.poll() is not None:
+                self.last_error = f"ffmpeg_exited_{self.process.returncode}"
+                return None
+            remaining = max(0.0, deadline - time.monotonic())
+            try:
+                readable, _, _ = select.select([stdout], [], [], min(0.2, remaining))
+            except (OSError, ValueError) as exc:
+                self.last_error = f"ffmpeg_select_failed:{compact_error(exc)}"
+                return None
+            if not readable:
+                continue
+            chunk = stdout.read(4096)
+            if not chunk:
+                self.last_error = "ffmpeg_stdout_eof"
+                return None
+            self.buffer.extend(chunk)
+        self.last_error = "ffmpeg_first_frame_timeout" if self.frames_read <= 1 else "ffmpeg_next_frame_timeout"
+        return None
+
+    def close(self) -> None:
+        """关闭 ffmpeg 进程组；terminate 失败时再 kill，避免坏摄像头占住设备。"""
+        if self.process.poll() is not None:
+            return
+        try:
+            if hasattr(os, "killpg"):
+                os.killpg(os.getpgid(self.process.pid), signal.SIGTERM)
+            else:
+                self.process.terminate()
+            self.process.wait(timeout=0.8)
+        except Exception:
+            try:
+                if hasattr(os, "killpg"):
+                    os.killpg(os.getpgid(self.process.pid), signal.SIGKILL)
+                else:
+                    self.process.kill()
+            except Exception:
+                pass
+
+
+def start_ffmpeg_mjpeg_stream(source: str, total_timeout_s: float = 2.2, frame_timeout_s: float = 0.8) -> tuple[FfmpegMjpegStream | None, list[dict[str, Any]], dict[str, Any] | None]:
+    """OpenCV 无首帧时再试 ffmpeg V4L2；成功条件仍是读到真实 JPEG 首帧。"""
+    attempts: list[dict[str, Any]] = []
+    if not shutil.which("ffmpeg"):
+        return None, attempts, error_payload("ffmpeg_unavailable", "ffmpeg_not_installed", video_source=source)
+    started = time.monotonic()
+    for input_format, width, height, fps in FFMPEG_MJPEG_FALLBACK_SPECS:
+        remaining = total_timeout_s - (time.monotonic() - started)
+        if remaining <= 0:
+            break
+        command = ffmpeg_mjpeg_command(source, input_format, width, height, fps)
+        attempt: dict[str, Any] = {
+            "backend": "ffmpeg_v4l2_mjpeg_pipe",
+            "input_format": input_format,
+            "width": width,
+            "height": height,
+            "fps": fps,
+            "status": "started",
+        }
+        process: subprocess.Popen[bytes] | None = None
+        try:
+            process = subprocess.Popen(
+                command,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                preexec_fn=os.setsid if hasattr(os, "setsid") else None,
+            )
+            stream = FfmpegMjpegStream(
+                source=source,
+                process=process,
+                input_format=input_format,
+                width=width,
+                height=height,
+                fps=fps,
+                first_jpeg=b"",
+                attempts=attempts,
+            )
+            jpeg = stream.read_next_jpeg(min(frame_timeout_s, max(0.1, remaining)))
+            if jpeg is not None:
+                stream.first_jpeg = jpeg
+                attempt["status"] = "frame_read"
+                attempt["jpeg_size"] = len(jpeg)
+                attempts.append(attempt)
+                return stream, attempts, None
+            attempt["status"] = "first_frame_unreadable"
+            attempt["failure_reason"] = stream.last_error or "ffmpeg_first_frame_timeout"
+            stream.close()
+            stderr = ""
+            try:
+                _, stderr_bytes = process.communicate(timeout=0.2)
+                stderr = stderr_bytes.decode("utf-8", errors="replace")[-600:]
+            except Exception:
+                stderr = ""
+            if stderr:
+                attempt["stderr_tail"] = stderr
+        except Exception as exc:  # noqa: BLE001 - 失败要结构化返回给 PC，而不是让请求崩掉。
+            attempt["status"] = "start_failed"
+            attempt["failure_reason"] = compact_error(exc)
+            if process and process.poll() is None:
+                try:
+                    process.kill()
+                except Exception:
+                    pass
+        attempts.append(attempt)
+    payload = error_payload(
+        "first_frame_unreadable",
+        "ffmpeg_mjpeg_first_frame_unreadable",
+        video_source=source,
+        ffmpeg_mjpeg_fallback_attempts=attempts,
+        ffmpeg_mjpeg_fallback_attempted=True,
+    )
+    return None, attempts, payload
+
+
 def camera_capture_attempt_specs(width: int, height: int, fps: int) -> list[CameraCaptureAttemptSpec]:
     """优先试配置值，再试 DV20/UVC 常见离散模式，最后保留内核当前模式兜底。"""
     raw_specs = [
@@ -1555,6 +1770,16 @@ class CameraServiceState:
         shape = getattr(frame, "shape", None)
         height = int(shape[0]) if isinstance(shape, tuple) and len(shape) >= 2 else None
         width = int(shape[1]) if isinstance(shape, tuple) and len(shape) >= 2 else None
+        self.last_successful_frame = {
+            "source": source,
+            "channel": channel,
+            "observed_at_ms": now_ms(),
+            "width": width,
+            "height": height,
+        }
+
+    def mark_successful_mjpeg_bytes(self, source: str, width: int, height: int, channel: str) -> None:
+        """ffmpeg pipe 成功时没有 OpenCV frame shape，只记录真实输出规格和来源。"""
         self.last_successful_frame = {
             "source": source,
             "channel": channel,
@@ -2340,10 +2565,13 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
     def _send_mjpeg_stream(self) -> None:
         """MJPEG 兜底预览复用共享 capture，避免 WebRTC ICE 卡住时用户看不到实时画面。"""
         deps = import_state()
-        if not deps.get("cv2"):
-            self._send_json(error_payload("dependency_missing", "cv2_required_for_mjpeg"), status=HTTPStatus.SERVICE_UNAVAILABLE)
+        cv2 = None
+        if deps.get("cv2"):
+            import cv2 as cv2_module  # type: ignore[import-not-found]
+            cv2 = cv2_module
+        if cv2 is None and not shutil.which("ffmpeg"):
+            self._send_json(error_payload("dependency_missing", "cv2_or_ffmpeg_required_for_mjpeg"), status=HTTPStatus.SERVICE_UNAVAILABLE)
             return
-        import cv2  # type: ignore[import-not-found]
 
         snapshot = collect_video_candidates()
         selection = resolve_video_source(self.state.video_source, snapshot)
@@ -2358,9 +2586,11 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
         format_attempts: list[dict[str, Any]] = []
         first_frame_error: dict[str, Any] | None = None
         selected_frame_source = ""
+        ffmpeg_stream: FfmpegMjpegStream | None = None
+        ffmpeg_attempts: list[dict[str, Any]] = []
         for source_path in source_paths:
             recent_failure = self.state.recent_first_frame_failure(str(source_path))
-            if recent_failure:
+            if recent_failure and recent_failure["last_error"].get("ffmpeg_mjpeg_fallback_attempted"):
                 source_attempts.append({
                     "source": str(source_path),
                     "status": "recent_failure_cooldown",
@@ -2379,21 +2609,48 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
                 )
                 first_frame_error["last_first_frame_error"] = recent_failure["last_error"]
                 continue
-            shared_capture, first_frame, format_attempts, first_frame_error = self.state.acquire_mjpeg_first_frame_capture(
-                str(source_path),
-                cv2,
-            )
+            if cv2 is not None:
+                shared_capture, first_frame, format_attempts, first_frame_error = self.state.acquire_mjpeg_first_frame_capture(
+                    str(source_path),
+                    cv2,
+                )
+            else:
+                shared_capture = None
+                first_frame = None
+                format_attempts = []
+                first_frame_error = error_payload(
+                    "dependency_missing",
+                    "cv2_unavailable_trying_ffmpeg_mjpeg",
+                    video_source=str(source_path),
+                )
             if shared_capture is not None and first_frame is not None:
                 selected_frame_source = str(source_path)
                 source_attempts.append({"source": str(source_path), "status": "frame_observed"})
                 break
+            ffmpeg_stream, ffmpeg_attempts, ffmpeg_error = start_ffmpeg_mjpeg_stream(str(source_path))
+            if ffmpeg_stream is not None:
+                selected_frame_source = str(source_path)
+                source_attempts.append({
+                    "source": str(source_path),
+                    "status": "ffmpeg_frame_observed",
+                    "opencv_failure_reason": (first_frame_error or {}).get("failure_reason"),
+                    "opencv_attempt_count": len(format_attempts),
+                    "ffmpeg_attempt_count": len(ffmpeg_attempts),
+                })
+                break
+            if ffmpeg_error:
+                ffmpeg_error["first_frame_format_attempts"] = format_attempts
+                ffmpeg_error["opencv_failure_reason"] = (first_frame_error or {}).get("failure_reason")
+                first_frame_error = ffmpeg_error
             source_attempts.append({
                 "source": str(source_path),
                 "status": "first_frame_unreadable",
                 "failure_reason": (first_frame_error or {}).get("failure_reason"),
                 "attempt_count": len(format_attempts),
+                "ffmpeg_mjpeg_fallback_attempted": True,
+                "ffmpeg_mjpeg_fallback_attempt_count": len(ffmpeg_attempts),
             })
-        if shared_capture is None or first_frame is None:
+        if (shared_capture is None or first_frame is None) and ffmpeg_stream is None:
             payload = first_frame_error or error_payload(
                 "first_frame_unreadable",
                 "first_frame_format_attempts_failed",
@@ -2407,13 +2664,47 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
             payload["auto_source_primary_path"] = selected_path
             payload["auto_source_attempted_paths"] = source_paths
             payload["auto_source_attempts"] = source_attempts
+            payload["ffmpeg_mjpeg_fallback_attempted"] = True
+            payload["ffmpeg_mjpeg_fallback_attempts"] = ffmpeg_attempts
             self.state.last_offer_error = payload
             self._send_json(payload, status=HTTPStatus.SERVICE_UNAVAILABLE)
+            return
+        if ffmpeg_stream is not None:
+            self.state.mark_successful_mjpeg_bytes(selected_frame_source, ffmpeg_stream.width, ffmpeg_stream.height, "mjpeg_ffmpeg")
+            self.send_response(HTTPStatus.OK)
+            self.send_header("X-Robber-Camera-Source", selected_frame_source)
+            self.send_header("X-Robber-Camera-Auto-Source-Fallback", "true" if selected_frame_source != str(selected_path) else "false")
+            self.send_header("X-Robber-Camera-Frame-Backend", "ffmpeg_v4l2_mjpeg_pipe")
+            self.send_header("Content-Type", f"multipart/x-mixed-replace; boundary={MJPEG_BOUNDARY}")
+            self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+            self.send_header("Pragma", "no-cache")
+            self.end_headers()
+            try:
+                part = encode_mjpeg_jpeg_part(ffmpeg_stream.first_jpeg)
+                if part is None:
+                    return
+                self.wfile.write(part)
+                self.wfile.flush()
+                while True:
+                    jpeg = ffmpeg_stream.read_next_jpeg(FIRST_FRAME_TIMEOUT_S)
+                    if jpeg is None:
+                        break
+                    part = encode_mjpeg_jpeg_part(jpeg)
+                    if part is None:
+                        break
+                    self.wfile.write(part)
+                    self.wfile.flush()
+                    time.sleep(max(0.03, 1.0 / max(1, self.state.fps)))
+            except (BrokenPipeError, ConnectionResetError):
+                pass
+            finally:
+                ffmpeg_stream.close()
             return
         self.state.mark_successful_frame(selected_frame_source, first_frame, "mjpeg")
         self.send_response(HTTPStatus.OK)
         self.send_header("X-Robber-Camera-Source", selected_frame_source)
         self.send_header("X-Robber-Camera-Auto-Source-Fallback", "true" if selected_frame_source != str(selected_path) else "false")
+        self.send_header("X-Robber-Camera-Frame-Backend", "opencv")
         self.send_header("Content-Type", f"multipart/x-mixed-replace; boundary={MJPEG_BOUNDARY}")
         self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
         self.send_header("Pragma", "no-cache")

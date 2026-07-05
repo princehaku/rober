@@ -42,6 +42,14 @@ Foxglove bridge 仍只是工程观察配套，不替代 PC 简易控制台，也
 不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。ROS2 配套资料来源：ROS2 RViz User Guide
 （LaserScan/Map 可视化）、Nav2 官方文档 / `nav2_rviz_plugins`、Foxglove ROS2 Bridge 官方文档。
 
+2026-07-06 04:25 CST 起，当前有效默认值再次升级为：PC 首页和 `/map` 默认 `800%` 可读大图，
+`完整态势` 回到 `100%`，`细节放大` 到 `3200%`。`GET /api/robot-control/summary` 与
+`live-summary` 同步返回 `map_display_default_zoom_percent=800%`、
+`map_display_direct_map_default_zoom_percent=800%`、`map_display_max_zoom_percent=3200%`。
+ROS2 配套仍按分层使用：本地工程调试首选 RViz2/Nav2 RViz 配置，浏览器远程观察用 Foxglove bridge；
+普通用户继续使用 PC 大地图和 `/map`，这些入口不启动 ROS2/RViz2/Foxglove/Nav2/建图 runtime，
+不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
 2026-07-06 03:05 CST 起，上车 `/api/free-roam/autonomy/start` 会在 `/free_roam_autonomy`
 runtime 缺失时托管启动 `ros2_trashbot_nav free_roam_autonomy_node`，节点初始仍保持
 `enable_cmd_vel_publish=false`、`motion_hil_unlocked=false`，随后只通过固定参数序列解锁本次低速自由移动。
@@ -105,6 +113,13 @@ WebRTC offer 和共享 MJPEG 在首帧阶段会按正分 `Video Capture` 候选�
 真实首帧的源。显式 `ROBER_CAMERA_SOURCE=/dev/videoN` 仍保持排障优先，不自动跳转。当前真实上位机只有
 `/dev/video1` 一个正分 capture，因此复验仍为 `source_first_frame_failed / uvc_no_frame_not_exclusive`，
 但后续换/加健康 UVC 不再需要改 PC 页面。
+
+2026-07-06 04:25 CST 起，上位机 8088 共享 MJPEG 在 OpenCV 多格式/打开方式无首帧后，会再尝试
+`ffmpeg` V4L2 MJPEG pipe，当前顺序覆盖 `mjpeg 640x480@30`、`yuyv422 320x240@20` 和
+`mjpeg 1280x720@30` 等短预算组合。成功条件仍是读到完整 JPEG SOI/EOI 后再输出 multipart，不生成占位图。
+真实 DV20 复验仍返回 `503 / ffmpeg_mjpeg_first_frame_unreadable`，health 为
+`source_first_frame_failed / uvc_no_frame_not_exclusive`，说明问题仍在 DV20 输入/线材/供电/采集设备或
+known-good UVC 缺失；但换成 ffmpeg 能读帧的 UVC 后，PC 共享预览可沿同一入口直接显示。
 
 2026-07-06 02:29 CST 起，`GET /api/robot-control/live-summary` 直接平铺 WASD/手控命令 raw 证据：
 `command_raw_lr_nonzero_proven`、`command_raw_latest_left/right`、`keyboard_command_raw_lr_nonzero` 和

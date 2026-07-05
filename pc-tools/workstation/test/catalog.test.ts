@@ -7096,10 +7096,10 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.map_display_primary_action_label).toBe("进入地图大屏");
       expect(summary.map_display_direct_map_viewport_priority).toBe("fullscreen_map_canvas");
       expect(summary.map_display_direct_map_canvas_height_mode).toBe("viewport_dominant_full_height");
-      expect(summary.map_display_default_zoom_percent).toBe("300%");
-      expect(summary.map_display_direct_map_default_zoom_percent).toBe("300%");
+      expect(summary.map_display_default_zoom_percent).toBe("800%");
+      expect(summary.map_display_direct_map_default_zoom_percent).toBe("800%");
       expect(summary.map_display_fit_zoom_percent).toBe("100%");
-      expect(summary.map_display_max_zoom_percent).toBe("1200%");
+      expect(summary.map_display_max_zoom_percent).toBe("3200%");
       expect(summary.map_display_wysiwyg_overlays).toEqual(["image", "route", "robot", "radar", "target"]);
       expect(summary.map_display_ros2_companion_tools).toEqual(["rviz2", "foxglove"]);
       expect(summary.map_display_rviz_launch_command).toBe("ros2 launch ros2_trashbot_bringup rviz.launch.py");
@@ -7594,7 +7594,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(live.map_display_ordinary_user_tool).toBe("pc_big_map");
       expect(live.map_display_direct_map_keeps_page_fullscreen_without_browser_api).toBe(true);
       expect(live.map_display_direct_map_browser_fullscreen_required).toBe(false);
-      expect(live.map_display_direct_map_default_zoom_percent).toBe("300%");
+      expect(live.map_display_direct_map_default_zoom_percent).toBe("800%");
       expect(live.map_display_fit_zoom_percent).toBe("100%");
       expect(live.map_display_rviz_role_plain).toContain("本地工程调试");
       expect(live.map_display_foxglove_role_plain).toContain("远程浏览器大屏观察");

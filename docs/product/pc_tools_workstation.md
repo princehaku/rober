@@ -55,6 +55,12 @@ pc-tools/workstation/
   不替代简易 PC 控制台，不启动 ROS2/RViz2/Foxglove/Nav2/建图 runtime，不发送 manual、keyboard、free-roam、
   delivery、stop 或 `/cmd_vel`。ROS2 配套资料来源采用 ROS2 官方 RViz User Guide、Nav2 官方文档 /
   `nav2_rviz_plugins` 和 Foxglove ROS2 Bridge 官方文档；普通用户入口仍以本项目 PC 大地图为准。
+- 2026-07-06 04:25 CST 起，PC 地图“仍太小”的当前有效默认值升级为：普通首页和 `/map` 默认
+  `800%` 可读大图，`完整态势` 回到 `100%`，`细节放大` 到 `3200%`。summary/live-summary 合同同步为
+  `map_display_default_zoom_percent=800%`、`map_display_direct_map_default_zoom_percent=800%`、
+  `map_display_max_zoom_percent=3200%`。ROS2 配套仍只是工程观察：本地用 RViz2/Nav2 RViz 配置看
+  `/map`、`/scan`、TF、路径、定位和 costmap，远程浏览器用 Foxglove bridge；普通用户默认仍使用
+  PC 大地图和 `/map`，不要求先打开 RViz2/Foxglove。
 - 2026-07-06 03:05 CST 起，上车 Robot API 修复自由移动 runtime 缺失时 start 失败的问题：
   `/api/free-roam/autonomy/start` 会用固定 argv 托管启动 `ros2_trashbot_nav free_roam_autonomy_node`，
   默认仍锁住 `enable_cmd_vel_publish` 和 `motion_hil_unlocked`，再通过参数序列解锁本次低速自由移动。
@@ -78,6 +84,12 @@ pc-tools/workstation/
   不启动雷达 lifecycle，不启动 ROS2/RViz2/Foxglove/Nav2/建图 runtime，不发送 manual、keyboard、free-roam、
   delivery、stop 或 `/cmd_vel`。真实运行态复验显示普通首页经 7001 读回地图、Nav2 路线、当前雷达点和 WASD
   raw 命令均可用；实时图传仍按 DV20 UVC 无帧展示，不能用地图 ready 掩盖相机缺口。
+- 2026-07-06 04:25 CST 起，上位机 8088 共享 MJPEG 增加 `ffmpeg` V4L2 MJPEG pipe 兜底：OpenCV
+  多格式/打开方式没有首帧后，再短预算尝试 `mjpeg 640x480@30`、`yuyv422 320x240@20`、
+  `mjpeg 1280x720@30` 等组合；只有读到完整 JPEG SOI/EOI 才输出 multipart，不生成占位图。真实 DV20
+  复验仍为 `503 / ffmpeg_mjpeg_first_frame_unreadable`，health 仍是
+  `source_first_frame_failed / uvc_no_frame_not_exclusive`；因此产品状态仍提示检查 DV20 输入信号、
+  线/接口/供电或换 known-good UVC，不能宣称实时视频已恢复。
 - 2026-07-06 02:13 CST 起，PC 地图“太小”的当时有效口径为：普通首页和 `/map` 默认 `200%` 可读大图，
   `完整态势` 回到 `100%`，`细节放大` 到 `1200%`；`/map` 的标题/工具条和图层状态保持画布内悬浮层，
   不再占用地图高度。ROS2 配套仍分层：普通用户用 PC 大地图和 `/map`；本地工程调试用 RViz2/Nav2 RViz 配置；

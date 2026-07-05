@@ -36,6 +36,28 @@ micro
     `map_display_direct_map_default_zoom_percent` 同步为 `300%`。
   - ROS2 配套口径继续保持分层：普通用户用 PC 大地图；RViz2/Nav2 RViz 插件与 Foxglove Bridge
     只作工程观察，不替代简易控制台，也不发送运动命令。
+- 2026-07-06 04:25 CST 追加 PC 地图再次放大与图传 ffmpeg 兜底：
+  - `pc-tools/workstation/src/components/RobotControlConsolePanel.vue`
+    - PC 首页和 `/map` 默认缩放从 `300%` 提升到 `800%`。
+    - 缩放档位扩展到 `3200%`，`完整态势` 仍回 `100%`。
+  - `pc-tools/workstation/src/server/robotControlSummary.ts`
+  - `pc-tools/workstation/src/shared/contracts.ts`
+    - `summary/live-summary` 合同同步为
+      `map_display_default_zoom_percent=800%`、
+      `map_display_direct_map_default_zoom_percent=800%`、
+      `map_display_max_zoom_percent=3200%`。
+  - `onboard/scripts/local_webrtc_camera_smoke.py`
+    - 共享 MJPEG 在 OpenCV 多格式/打开方式无首帧后，再尝试 `ffmpeg` V4L2 MJPEG pipe。
+    - `ffmpeg` 兜底只在读到完整 JPEG SOI/EOI 后输出 multipart，不生成占位图。
+    - 兜底顺序覆盖 `mjpeg 640x480@30`、`yuyv422 320x240@20`、`mjpeg 1280x720@30` 等短预算组合。
+  - `onboard/tests/test_local_webrtc_camera_smoke.py`
+  - `pc-tools/workstation/test/App.test.ts`
+  - `pc-tools/workstation/test/catalog.test.ts`
+  - `pc-tools/workstation/test/robotControlSummary.test.ts`
+    - 补充 JPEG multipart、MJPEG pipe 命令和地图缩放合同测试。
+  - `pc-tools/README.md`、`docs/product/pc_tools_workstation.md`、
+    `docs/product/pc_free_roam_mapping_design.md`、`OKR.md`
+    - 同步 800%/3200% 当前口径、ROS2 配套分层和 ffmpeg 兜底真实边界。
 - 2026-07-06 03:05 CST 追加自由移动 start 修复：
   - `onboard/scripts/upper_robot_api.py`
     - 增加 `/free_roam_autonomy` runtime 自愈：`/api/free-roam/autonomy/start` 或 stop 写参数前，
@@ -519,11 +541,46 @@ git diff --check
     - `command_raw_lr_nonzero_proven=true`
     - `camera_current_visible=false`
     - `camera_source_diagnosis_status=uvc_no_frame_not_exclusive`
+- 2026-07-06 04:25 CST PC 地图 800% 与 ffmpeg 图传兜底验证：
+  - 本地 Python 验证：
+    - `python3 -m py_compile onboard/scripts/local_webrtc_camera_smoke.py onboard/tests/test_local_webrtc_camera_smoke.py` 通过。
+    - `python3 -m unittest onboard/tests/test_local_webrtc_camera_smoke.py` 通过：49 个测试用例通过。
+    - `python3 -m py_compile onboard/scripts/local_webrtc_camera_smoke.py onboard/tests/test_local_webrtc_camera_smoke.py onboard/scripts/test_local_webrtc_camera_smoke_health.py onboard/scripts/camera_usb_recovery_smoke.py onboard/scripts/test_camera_usb_recovery_smoke.py` 通过。
+    - `python3 -m unittest onboard/tests/test_local_webrtc_camera_smoke.py onboard/scripts/test_local_webrtc_camera_smoke_health.py onboard/scripts/test_camera_usb_recovery_smoke.py` 通过：60 个测试用例通过。
+  - 本地 PC 验证：
+    - `npm test -- --run test/robotControlSummary.test.ts test/catalog.test.ts test/App.test.ts --testNamePattern "map|地图|ROS2|RViz|Foxglove|zoom|summary"` 通过：3 个 test file，167 个相关用例通过。
+    - `npm run build` 通过；Vite 仅输出已有大 bundle 警告。
+  - 上位机部署与真实复验：
+    - 已同步 `onboard/scripts/local_webrtc_camera_smoke.py` 到
+      `/root/rober/onboard/scripts/local_webrtc_camera_smoke.py`，远端 `python3 -m py_compile` 通过。
+    - `trashbot-local-webrtc-camera.service` 重启后为 `active`。
+    - 直连 `GET http://127.0.0.1:8088/mjpeg` 返回 `503`、`failure_reason=ffmpeg_mjpeg_first_frame_unreadable`、
+      `ffmpeg_mjpeg_fallback_attempted=true`。
+    - 本轮 ffmpeg 尝试包含：
+      `mjpeg 640x480@30`、`yuyv422 320x240@20`、`mjpeg 1280x720@30`，
+      均为 `ffmpeg_first_frame_timeout`。
+    - 直连 8088 `/health` 返回
+      `status=source_first_frame_failed`、`source_readiness=first_frame_failed`、
+      `source_failure_reason=ffmpeg_mjpeg_first_frame_unreadable`、
+      `source_diagnosis.status=uvc_no_frame_not_exclusive`。
+  - 7001 PC Node 复验：
+    - 已只重启本机 `HOST=0.0.0.0 PORT=7001 npm run api:public`，当前 `node` 监听 `*:7001`。
+    - `GET http://127.0.0.1:7001/api/robot-control/summary` 返回：
+      - `map_display_default_zoom_percent=800%`
+      - `map_display_direct_map_default_zoom_percent=800%`
+      - `map_display_max_zoom_percent=3200%`
+      - `live_closure_summary.map_display_default_zoom_percent=800%`
+      - `live_closure_summary.map_display_direct_map_default_zoom_percent=800%`
+      - `live_closure_summary.map_display_max_zoom_percent=3200%`
+      - `status=ready_for_motion`
+      - `map_current_visible=true`
+      - `camera_current_visible=false`
 
 ## 剩余风险
 
 - 实时图传仍未出首帧；当前证据继续指向 DV20 上游输入、线材、接口、供电、采集卡/摄像头本体或 known-good UVC 复测。
-- 当前已支持 auto fallback 到后插入的健康 UVC，但现场此刻没有第二个正分 `Video Capture`，所以还不能用软件直接证明实时视频已恢复。
+- 当前已支持 auto fallback 到后插入的健康 UVC，并补了 OpenCV 失败后的 `ffmpeg` V4L2 MJPEG pipe 兜底；
+  但现场此刻没有第二个正分 `Video Capture`，DV20 在 OpenCV 与 ffmpeg 路径下仍无首帧，所以还不能宣称实时视频已恢复。
 - `T=1001 L/R` 反馈仍为 0/0；本轮证明的是手控命令 raw L/R 非零、上车执行和 auto stop，不等于 vendor feedback L/R 非零闭环。
 - 自由移动 start 已真实发起并进入 `avoiding`；当前近障碍读数使状态机原地换向，不代表已经完成大范围自动扫图或建图验收。
 - 本轮没有重新执行完整 Nav2 路线发车；地图/路线/雷达点状态通过现有 live-summary 读取保持可见。
