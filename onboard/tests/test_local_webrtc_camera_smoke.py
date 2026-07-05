@@ -112,6 +112,141 @@ class LocalWebrtcCameraSmokeTests(unittest.TestCase):
             0,
         )
 
+    def test_auto_first_frame_sources_try_positive_capture_candidates_only(self) -> None:
+        """首帧 fallback 只能尝试真实 capture，不能把 decoder/metadata 当备用画面。"""
+        candidates = [
+            {
+                "path": "/dev/video0",
+                "exists": True,
+                "is_video_capture": False,
+                "is_uvc_or_usb": False,
+                "is_decoder": True,
+                "is_metadata": False,
+            },
+            {
+                "path": "/dev/video1",
+                "exists": True,
+                "is_video_capture": True,
+                "is_uvc_or_usb": True,
+                "is_decoder": False,
+                "is_metadata": False,
+            },
+            {
+                "path": "/dev/video3",
+                "exists": True,
+                "is_video_capture": True,
+                "is_uvc_or_usb": True,
+                "is_decoder": False,
+                "is_metadata": False,
+            },
+            {
+                "path": "/dev/video2",
+                "exists": True,
+                "is_video_capture": False,
+                "is_uvc_or_usb": True,
+                "is_decoder": False,
+                "is_metadata": True,
+            },
+        ]
+
+        selection = camera.choose_auto_source(candidates)
+        paths = camera.auto_first_frame_source_paths(selection)
+
+        self.assertEqual(["/dev/video1", "/dev/video3"], paths)
+        self.assertNotIn("/dev/video0", paths)
+        self.assertNotIn("/dev/video2", paths)
+
+    def test_create_answer_auto_falls_back_to_second_frame_source(self) -> None:
+        """auto 首选源无首帧时，应继续尝试下一个健康 capture 源，而不是直接让 PC 无图。"""
+        state = camera.CameraServiceState(video_source="auto", width=640, height=480, fps=15)
+        snapshot = {
+            "candidates": [
+                {
+                    "path": "/dev/video1",
+                    "exists": True,
+                    "is_video_capture": True,
+                    "is_uvc_or_usb": True,
+                    "is_decoder": False,
+                    "is_metadata": False,
+                },
+                {
+                    "path": "/dev/video3",
+                    "exists": True,
+                    "is_video_capture": True,
+                    "is_uvc_or_usb": True,
+                    "is_decoder": False,
+                    "is_metadata": False,
+                },
+            ]
+        }
+        calls: list[str] = []
+
+        async def fake_create_answer(_offer: dict[str, object], source: str) -> tuple[int, dict[str, object]]:
+            calls.append(source)
+            if source == "/dev/video3":
+                return 200, {"status": "answer_created", "video_source": source}
+            return 503, camera.error_payload("first_frame_unreadable", "first_frame_total_timeout", video_source=source)
+
+        with mock.patch.object(camera, "collect_video_candidates", return_value=snapshot):
+            with mock.patch.object(camera, "import_state", return_value={"aiortc": True, "cv2": True, "av": True}):
+                with mock.patch.object(state, "_create_answer_with_dependencies", side_effect=fake_create_answer):
+                    status, payload = camera.asyncio.run(state.create_answer({"type": "offer", "sdp": "v=0\r\n"}))
+
+        self.assertEqual(200, status)
+        self.assertEqual(["/dev/video1", "/dev/video3"], calls)
+        self.assertEqual("/dev/video3", payload["video_source"])
+        self.assertTrue(payload["auto_source_fallback_attempted"])
+        self.assertEqual("/dev/video1", payload["auto_source_primary_path"])
+
+    def test_health_prefers_recent_frame_source_for_auto(self) -> None:
+        """备用摄像头已经读到真实帧时，health 应展示 frame-proven 源，避免页面继续盯坏源。"""
+        state = camera.CameraServiceState(video_source="auto", width=640, height=480, fps=15)
+        state.last_successful_frame = {
+            "source": "/dev/video3",
+            "channel": "mjpeg",
+            "observed_at_ms": camera.now_ms(),
+            "width": 640,
+            "height": 480,
+        }
+        snapshot = {
+            "candidates": [
+                {
+                    "path": "/dev/video1",
+                    "exists": True,
+                    "v4l2_name": "DV20 USB",
+                    "sysfs_name": "DV20 USB",
+                    "is_video_capture": True,
+                    "is_uvc_or_usb": True,
+                    "is_decoder": False,
+                    "is_metadata": False,
+                    "formats_summary": "MJPG@640x480@30",
+                },
+                {
+                    "path": "/dev/video3",
+                    "exists": True,
+                    "v4l2_name": "Known Good UVC",
+                    "sysfs_name": "Known Good UVC",
+                    "is_video_capture": True,
+                    "is_uvc_or_usb": True,
+                    "is_decoder": False,
+                    "is_metadata": False,
+                    "formats_summary": "MJPG@640x480@30",
+                },
+            ]
+        }
+
+        with mock.patch.object(camera, "collect_video_candidates", return_value=snapshot):
+            with mock.patch.object(camera, "collect_device_usage", return_value={"status": "not_in_use", "owner_count": 0, "other_owner_count": 0}):
+                with mock.patch.object(camera, "collect_uvc_kernel_diagnostics", return_value={"status": "uvc_kernel_seen_without_recent_transport_errors"}):
+                    with mock.patch.object(camera, "collect_uvc_usb_topology_diagnostics", return_value={"status": "uvc_video_usb_speed_loaded", "video_usb_speed": "480M"}):
+                        with mock.patch.object(camera, "collect_cma_memory_diagnostics", return_value={"status": "cma_available_no_recent_failure"}):
+                            health = state.health()
+
+        self.assertEqual("ready", health["status"])
+        self.assertEqual("first_frame_observed", health["source_readiness"])
+        self.assertEqual("/dev/video3", health["current_selection"]["selected_path"])
+        self.assertEqual("Known Good UVC", health["current_selection"]["selected_name"])
+
     def test_source_summary_exposes_uvc_sibling_metadata_node(self) -> None:
         """DV20 一类复合 UVC 要说明 video2 是兄弟 metadata 节点，不是备用画面源。"""
         snapshot = {

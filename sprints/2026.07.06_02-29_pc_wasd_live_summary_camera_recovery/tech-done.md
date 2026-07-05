@@ -129,6 +129,19 @@ micro
     - 增加 PC 代理透传与普通页 DOM 断言。
   - `pc-tools/README.md`、`docs/product/pc_tools_workstation.md`、`OKR.md`
     - 同步 DV20 audio 恢复闭环、UVC quirk 矩阵仍 0 字节、ROS2 配套仍为 RViz2/Foxglove 工程观察。
+- 2026-07-06 04:10 CST 追加 8088 图传 auto 源首帧 fallback：
+  - `onboard/scripts/local_webrtc_camera_smoke.py`
+    - 新增 `auto_first_frame_source_paths()`，auto 模式只把正分 `Video Capture` 候选纳入首帧尝试，跳过
+      Cedrus decoder 和 UVC metadata。
+    - WebRTC `/offer` 和共享 MJPEG `/mjpeg` 在首帧阶段按候选源逐个尝试；如果首选 DV20 无帧但后插入
+      known-good UVC 能读到真实帧，服务会自动使用能出帧的源，不要求改 PC 页面或改 7001。
+    - `health()` 在 auto 模式下优先展示最近真实出帧的源，避免页面继续指向已经被备用源绕过的坏首选源。
+    - 显式 `ROBER_CAMERA_SOURCE=/dev/videoN` 保持排障确定性，不做自动跳转。
+  - `onboard/tests/test_local_webrtc_camera_smoke.py`
+    - 增加候选源过滤、WebRTC auto fallback、health frame-proven 源展示的 no-hardware 单元测试。
+  - `pc-tools/README.md`、`docs/product/pc_tools_workstation.md`、`OKR.md`
+    - 同步当前图传能力边界：当前实板仍只有 `/dev/video1` 一个正分 capture，所以 DV20 无帧仍未恢复；
+      但后续加/换健康 UVC 会自动进入 PC 共享图传链路。
 
 ## 现场验证
 
@@ -474,10 +487,43 @@ git diff --check
     - `map_display_default_zoom_percent=300%`
     - `map_display_ros2_companion_tools=["rviz2","foxglove"]`
     - `map_display_companion_replaces_pc_ui=false`
+- 2026-07-06 04:10 CST 上位机 auto 源 fallback 部署与复验：
+  - 已同步 `onboard/scripts/local_webrtc_camera_smoke.py` 到上位机
+    `/root/rober/onboard/scripts/local_webrtc_camera_smoke.py`，远端 `python3 -m py_compile` 通过。
+  - `systemctl restart trashbot-local-webrtc-camera.service` 后服务为 `active`。
+  - 直连 `GET http://192.168.1.11:8088/health` 返回：
+    - `status=source_not_probed`
+    - `video_source=/dev/video1`
+    - `source_readiness=source_selected_not_probed`
+    - `current_selection.selected_path=/dev/video1`
+    - `source_summary.candidate_count=3`
+    - `shared_preview_contract=single_shared_capture_for_multiple_clients`
+  - 当前上位机枚举事实：
+    - `/dev/video0` 是 Cedrus decoder。
+    - `/dev/video1` 是 DV20 UVC Video Capture。
+    - `/dev/video2` 是 DV20 metadata。
+    - 当前只有 `/dev/video1` 一个正分 `Video Capture`，所以本轮无法用备用真实 UVC 恢复画面。
+  - 触发 PC 共享 MJPEG 后仍返回 `502`，随后 `camera/mjpeg/status` 为：
+    - `status=source_first_frame_failed`
+    - `source_diagnosis_status=uvc_no_frame_not_exclusive`
+    - `source_failure_reason=first_frame_total_timeout`
+    - `shared_preview_everyone_can_join=true`
+    - `exclusive_camera_claim=false`
+    - `camera_blocks_free_move=false`
+  - 最新 `live-summary` 仍保持：
+    - `map_current_visible=true`
+    - `path_current_visible=true`
+    - `radar_map_points_visible=true`
+    - `keyboard_ready=true`
+    - `keyboard_continuous_ready=true`
+    - `command_raw_lr_nonzero_proven=true`
+    - `camera_current_visible=false`
+    - `camera_source_diagnosis_status=uvc_no_frame_not_exclusive`
 
 ## 剩余风险
 
 - 实时图传仍未出首帧；当前证据继续指向 DV20 上游输入、线材、接口、供电、采集卡/摄像头本体或 known-good UVC 复测。
+- 当前已支持 auto fallback 到后插入的健康 UVC，但现场此刻没有第二个正分 `Video Capture`，所以还不能用软件直接证明实时视频已恢复。
 - `T=1001 L/R` 反馈仍为 0/0；本轮证明的是手控命令 raw L/R 非零、上车执行和 auto stop，不等于 vendor feedback L/R 非零闭环。
 - 自由移动 start 已真实发起并进入 `avoiding`；当前近障碍读数使状态机原地换向，不代表已经完成大范围自动扫图或建图验收。
 - 本轮没有重新执行完整 Nav2 路线发车；地图/路线/雷达点状态通过现有 live-summary 读取保持可见。

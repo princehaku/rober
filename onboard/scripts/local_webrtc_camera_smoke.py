@@ -1008,6 +1008,56 @@ def resolve_video_source(requested_source: str, device_snapshot: dict[str, Any] 
     return selection
 
 
+def auto_first_frame_source_paths(selection: dict[str, Any]) -> list[str]:
+    """auto 首帧阶段按正分采集候选逐个尝试，避免坏 UVC 挡住后插入的健康摄像头。"""
+    selected_path = str(selection.get("selected_path") or "")
+    if selection.get("mode") != "auto":
+        return [selected_path] if selected_path else []
+    paths: list[str] = []
+    for item in selection.get("ranked") or []:
+        path = str(item.get("path") or "")
+        try:
+            score = int(item.get("score") or 0)
+        except (TypeError, ValueError):
+            score = 0
+        if (
+            not path
+            or score <= 0
+            or not item.get("is_video_capture")
+            or item.get("is_decoder")
+            or item.get("is_metadata")
+        ):
+            continue
+        if path not in paths:
+            paths.append(path)
+    if selected_path and selected_path not in paths:
+        paths.insert(0, selected_path)
+    return paths
+
+
+def prefer_recent_frame_source_for_auto(
+    selection: dict[str, Any],
+    snapshot: dict[str, Any],
+    last_successful_frame: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """auto 已从备用源读到真实帧时，health 要展示这个 frame-proven 源，而不是继续指向坏首选源。"""
+    if selection.get("mode") != "auto" or not isinstance(last_successful_frame, dict):
+        return selection
+    source = str(last_successful_frame.get("source") or "")
+    if not source or source == selection.get("selected_path"):
+        return selection
+    candidate = next((item for item in snapshot.get("candidates") or [] if item.get("path") == source), None)
+    if not isinstance(candidate, dict) or score_candidate(candidate) <= 0:
+        return selection
+    return {
+        **selection,
+        "selected_path": source,
+        "selected": {**candidate, "selection_score": score_candidate(candidate)},
+        "primary_selected_path": selection.get("selected_path"),
+        "selected_by_recent_frame": True,
+    }
+
+
 def source_candidates_summary(snapshot: dict[str, Any], selection: dict[str, Any]) -> dict[str, Any]:
     """health 只输出短摘要，完整 v4l2 文本留在 /devices。"""
     candidates = []
@@ -1877,6 +1927,7 @@ class CameraServiceState:
         stale_shared_captures_released = self.cleanup_stale_shared_captures()
         snapshot = collect_video_candidates()
         selection = resolve_video_source(self.video_source, snapshot)
+        selection = prefer_recent_frame_source_for_auto(selection, snapshot, self.last_successful_frame)
         active_summaries = {peer_id: peer.summary() for peer_id, peer in self.peers.items()}
         active_frames = sum(int(item.get("frames_read") or 0) for item in active_summaries.values())
         active_failures = sum(int(item.get("camera_read_failures") or 0) for item in active_summaries.values())
@@ -2061,15 +2112,46 @@ class CameraServiceState:
             self.last_offer_error = payload
             return HTTPStatus.SERVICE_UNAVAILABLE, payload
 
+        source_paths = auto_first_frame_source_paths(selection)
+        attempt_payloads: list[dict[str, Any]] = []
         try:
-            status, payload = await self._create_answer_with_dependencies(offer, str(selected_path))
+            for source_path in source_paths:
+                status, payload = await self._create_answer_with_dependencies(offer, source_path)
+                if status == HTTPStatus.OK:
+                    if len(source_paths) > 1:
+                        payload["auto_source_fallback_attempted"] = source_path != selected_path
+                        payload["auto_source_primary_path"] = selected_path
+                        payload["auto_source_attempted_paths"] = source_paths
+                        payload["auto_source_attempts"] = attempt_payloads + [{"source": source_path, "status": "frame_observed"}]
+                    if stale_closed:
+                        payload["stale_peers_closed"] = stale_closed
+                    return status, payload
+                attempt_payloads.append({
+                    "source": source_path,
+                    "http_status": int(status),
+                    "failure_reason": payload.get("failure_reason"),
+                    "error": payload.get("error"),
+                })
+            payload = self.last_offer_error or error_payload(
+                "first_frame_unreadable",
+                "auto_source_first_frame_attempts_failed",
+                video_source=str(selected_path),
+            )
+            payload["video_source"] = str(selected_path)
+            payload["auto_source_fallback_attempted"] = len(source_paths) > 1
+            payload["auto_source_primary_path"] = selected_path
+            payload["auto_source_attempted_paths"] = source_paths
+            payload["auto_source_attempts"] = attempt_payloads
             if stale_closed:
                 payload["stale_peers_closed"] = stale_closed
-            return status, payload
+            self.last_offer_error = payload
+            return HTTPStatus.SERVICE_UNAVAILABLE, payload
         except Exception as exc:  # noqa: BLE001 - 建链失败必须结构化返回并释放中间资源。
             payload = error_payload("offer_failed", "webrtc_answer_creation_failed", detail=compact_error(exc))
             if stale_closed:
                 payload["stale_peers_closed"] = stale_closed
+            if attempt_payloads:
+                payload["auto_source_attempts"] = attempt_payloads
             self.last_offer_error = payload
             return HTTPStatus.INTERNAL_SERVER_ERROR, payload
 
@@ -2269,25 +2351,48 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
         if not selected_path:
             self._send_json(error_payload("video_source_unavailable", "auto_selection_found_no_capture_device"), status=HTTPStatus.SERVICE_UNAVAILABLE)
             return
-        recent_failure = self.state.recent_first_frame_failure(str(selected_path))
-        if recent_failure:
-            payload = error_payload(
-                "first_frame_recent_failure_cooldown",
-                "mjpeg_auto_retry_cooldown_after_first_frame_failure",
-                video_source=str(selected_path),
-                retry_after_ms=recent_failure["retry_after_ms"],
-                cooldown_ms=recent_failure["cooldown_ms"],
-                last_first_frame_failure_reason=recent_failure["failure_reason"],
-                opens_camera=False,
-                automatic_retry_suppressed=True,
+        source_paths = auto_first_frame_source_paths(selection)
+        source_attempts: list[dict[str, Any]] = []
+        shared_capture = None
+        first_frame = None
+        format_attempts: list[dict[str, Any]] = []
+        first_frame_error: dict[str, Any] | None = None
+        selected_frame_source = ""
+        for source_path in source_paths:
+            recent_failure = self.state.recent_first_frame_failure(str(source_path))
+            if recent_failure:
+                source_attempts.append({
+                    "source": str(source_path),
+                    "status": "recent_failure_cooldown",
+                    "failure_reason": recent_failure["failure_reason"],
+                    "retry_after_ms": recent_failure["retry_after_ms"],
+                })
+                first_frame_error = error_payload(
+                    "first_frame_recent_failure_cooldown",
+                    "mjpeg_auto_retry_cooldown_after_first_frame_failure",
+                    video_source=str(source_path),
+                    retry_after_ms=recent_failure["retry_after_ms"],
+                    cooldown_ms=recent_failure["cooldown_ms"],
+                    last_first_frame_failure_reason=recent_failure["failure_reason"],
+                    opens_camera=False,
+                    automatic_retry_suppressed=True,
+                )
+                first_frame_error["last_first_frame_error"] = recent_failure["last_error"]
+                continue
+            shared_capture, first_frame, format_attempts, first_frame_error = self.state.acquire_mjpeg_first_frame_capture(
+                str(source_path),
+                cv2,
             )
-            payload["last_first_frame_error"] = recent_failure["last_error"]
-            self._send_json(payload, status=HTTPStatus.SERVICE_UNAVAILABLE)
-            return
-        shared_capture, first_frame, format_attempts, first_frame_error = self.state.acquire_mjpeg_first_frame_capture(
-            str(selected_path),
-            cv2,
-        )
+            if shared_capture is not None and first_frame is not None:
+                selected_frame_source = str(source_path)
+                source_attempts.append({"source": str(source_path), "status": "frame_observed"})
+                break
+            source_attempts.append({
+                "source": str(source_path),
+                "status": "first_frame_unreadable",
+                "failure_reason": (first_frame_error or {}).get("failure_reason"),
+                "attempt_count": len(format_attempts),
+            })
         if shared_capture is None or first_frame is None:
             payload = first_frame_error or error_payload(
                 "first_frame_unreadable",
@@ -2297,11 +2402,18 @@ class CameraRequestHandler(BaseHTTPRequestHandler):
                 first_frame_total_timeout_s=MJPEG_FIRST_FRAME_TOTAL_TIMEOUT_S,
                 first_frame_format_attempts=format_attempts,
             )
+            payload["video_source"] = str(selected_path)
+            payload["auto_source_fallback_attempted"] = len(source_paths) > 1
+            payload["auto_source_primary_path"] = selected_path
+            payload["auto_source_attempted_paths"] = source_paths
+            payload["auto_source_attempts"] = source_attempts
             self.state.last_offer_error = payload
             self._send_json(payload, status=HTTPStatus.SERVICE_UNAVAILABLE)
             return
-        self.state.mark_successful_frame(str(selected_path), first_frame, "mjpeg")
+        self.state.mark_successful_frame(selected_frame_source, first_frame, "mjpeg")
         self.send_response(HTTPStatus.OK)
+        self.send_header("X-Robber-Camera-Source", selected_frame_source)
+        self.send_header("X-Robber-Camera-Auto-Source-Fallback", "true" if selected_frame_source != str(selected_path) else "false")
         self.send_header("Content-Type", f"multipart/x-mixed-replace; boundary={MJPEG_BOUNDARY}")
         self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
         self.send_header("Pragma", "no-cache")

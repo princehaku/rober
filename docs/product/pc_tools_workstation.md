@@ -5966,3 +5966,11 @@ Nav2、manual、keyboard、free-roam、delivery、stop、建图 runtime 或 `/cm
 后 `select timeout`、0 字节。复测后已恢复默认 UVC 参数并重启相机服务；当前不能再把常见
 uvcvideo quirk、audio 复合接口、页面独占或格式未尝试作为主要根因，剩余仍是 DV20 输入信号、线/接口/供电、
 采集卡/摄像头本体或 known-good UVC 复测。
+
+2026-07-06 04:10 CST 起，上位机 8088 `local_webrtc_camera_smoke.py` 的 auto 图传策略升级为“首帧证明优先”：
+只读枚举仍按分数选主源，但 WebRTC `/offer` 和 MJPEG `/mjpeg` 在真实首帧阶段会按正分
+`Video Capture` 候选依次尝试，跳过 Cedrus decoder 和 metadata 节点。若主源无帧而备用 UVC 能读到真实帧，
+服务会用备用源创建 answer/MJPEG，并在 health 中把最近成功出帧的源展示为当前源；显式指定
+`ROBER_CAMERA_SOURCE=/dev/videoN` 时不启用跳转，以保留现场排障确定性。当前实板枚举仍只有
+`/dev/video1` 一个正分 capture，`/dev/video0` 是 Cedrus decoder、`/dev/video2` 是 DV20 metadata，
+所以本轮复验仍无画面；但现场接入 known-good UVC 后不再需要改 PC UI 或重配 7001。

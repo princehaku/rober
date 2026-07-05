@@ -99,6 +99,13 @@ lifecycle、不启动建图/Nav2/free-roam、不发送 manual/keyboard/stop 或 
 `YUYV@320x240@20` 与 `MJPG@480x320@30`；所有组合仍为 `VIDIOC_STREAMON returned 0 (Success)`
 后 `select timeout`、0 字节。测试后已恢复默认 UVC 参数并重启相机服务。
 
+2026-07-06 04:10 CST 起，上位机 8088 相机服务的 `auto` 源选择不再只按 `/dev/video*` 排名锁死一个源：
+WebRTC offer 和共享 MJPEG 在首帧阶段会按正分 `Video Capture` 候选逐个尝试，自动跳过 Cedrus decoder
+和 UVC metadata 节点；若首选 DV20 无首帧但现场另插 known-good UVC，PC 首页仍走同一个共享预览入口并自动切到能读到
+真实首帧的源。显式 `ROBER_CAMERA_SOURCE=/dev/videoN` 仍保持排障优先，不自动跳转。当前真实上位机只有
+`/dev/video1` 一个正分 capture，因此复验仍为 `source_first_frame_failed / uvc_no_frame_not_exclusive`，
+但后续换/加健康 UVC 不再需要改 PC 页面。
+
 2026-07-06 02:29 CST 起，`GET /api/robot-control/live-summary` 直接平铺 WASD/手控命令 raw 证据：
 `command_raw_lr_nonzero_proven`、`command_raw_latest_left/right`、`keyboard_command_raw_lr_nonzero` 和
 `keyboard_motion_evidence_complete`。现场用正确 PC 代理合同
