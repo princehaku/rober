@@ -15899,10 +15899,39 @@ describe("workstation fail-closed API contracts", () => {
           status: "source_first_frame_failed",
           source_readiness: "first_frame_failed",
           source_failure_reason: "capture_read_returned_false",
+          last_first_frame_error: {
+            failure_reason: "ffmpeg_mjpeg_first_frame_unreadable",
+            ffmpeg_mjpeg_fallback_attempted: true,
+            ffmpeg_mjpeg_fallback_attempts: [
+              {
+                backend: "ffmpeg_v4l2_mjpeg_pipe",
+                input_format: "mjpeg",
+                width: 640,
+                height: 480,
+                fps: 30,
+                status: "first_frame_unreadable",
+                failure_reason: "ffmpeg_first_frame_timeout",
+              },
+              {
+                backend: "ffmpeg_v4l2_mjpeg_pipe",
+                input_format: "yuyv422",
+                width: 320,
+                height: 240,
+                fps: 20,
+                status: "first_frame_unreadable",
+                failure_reason: "ffmpeg_first_frame_timeout",
+              },
+            ],
+          },
           current_selection: {
             selected_path: "/dev/video1",
             selected_name: "USB Composite Device: DV20 USB",
             selected_is_uvc_or_usb: true,
+          },
+          source_usage: {
+            status: "not_in_use",
+            owner_count: 0,
+            owners: [],
           },
           source_diagnosis: {
             status: "uvc_no_frame_not_exclusive",
@@ -15969,6 +15998,12 @@ describe("workstation fail-closed API contracts", () => {
       expect(statusBody.source_diagnosis_not_exclusive).toBe("true");
       expect(statusBody.source_readiness).toBe("first_frame_failed");
       expect(statusBody.source_failure_reason).toBe("capture_read_returned_false");
+      expect(statusBody.ffmpeg_mjpeg_fallback_attempted).toBe(true);
+      expect(statusBody.ffmpeg_mjpeg_fallback_attempt_count).toBe(2);
+      expect(statusBody.ffmpeg_mjpeg_fallback_summary).toContain("mjpeg@640x480@30 first_frame_unreadable");
+      expect(statusBody.software_capture_exhausted).toBe(true);
+      expect(statusBody.known_good_uvc_required).toBe(true);
+      expect(statusBody.camera_input_signal_check_required).toBe(true);
       expect(statusBody.selected_path).toBe("/dev/video1");
       expect(statusBody.selected_device).toBe("/dev/video1");
       expect(statusBody.selected_name).toBe("USB Composite Device: DV20 USB");

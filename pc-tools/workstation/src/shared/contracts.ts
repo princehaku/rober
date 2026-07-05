@@ -5376,6 +5376,11 @@ export interface RobotControlSummaryResponse extends ProofFlags {
       last_offer_failure_reason: string;
       last_offer_format_attempts_summary: string;
       mjpeg_open_source_fallback_attempted: string;
+      ffmpeg_mjpeg_fallback_attempted: string;
+      ffmpeg_mjpeg_fallback_attempt_count: string;
+      ffmpeg_mjpeg_fallback_summary: string;
+      software_capture_exhausted: boolean;
+      known_good_uvc_required: boolean;
       open_source_fallback_failure_reason: string;
       primary_source_failure_reason: string;
       first_frame_probe_status: string;
@@ -6493,6 +6498,11 @@ export interface RobotControlCameraMjpegStatusResponse extends ProofFlags {
   source_failure_reason: string;
   last_first_frame_format_attempts_summary: string;
   mjpeg_open_source_fallback_attempted: boolean;
+  ffmpeg_mjpeg_fallback_attempted: boolean;
+  ffmpeg_mjpeg_fallback_attempt_count: number;
+  ffmpeg_mjpeg_fallback_summary: string;
+  software_capture_exhausted: boolean;
+  known_good_uvc_required: boolean;
   open_source_fallback_failure_reason: string;
   primary_source_failure_reason: string;
   selected_path: string;

@@ -107,6 +107,7 @@ const CAMERA_FIRST_FRAME_FAILURE_REASONS = new Set([
   "mjpeg_auto_retry_cooldown_after_first_frame_failure",
   "first_frame_recent_failure_cooldown",
   "opencv_capture_not_opened",
+  "ffmpeg_mjpeg_first_frame_unreadable",
   "probe_total_timeout",
   "probe_process_timeout",
   "deadline_expired",
@@ -381,6 +382,12 @@ type CameraMjpegRelayLastFailure = {
   last_error_payload?: Record<string, unknown> | null;
   last_first_frame_format_attempts_summary?: string;
   mjpeg_open_source_fallback_attempted?: boolean;
+  ffmpeg_mjpeg_fallback_attempted?: boolean;
+  ffmpeg_mjpeg_fallback_attempt_count?: number;
+  ffmpeg_mjpeg_fallback_summary?: string;
+  software_capture_exhausted?: boolean;
+  known_good_uvc_required?: boolean;
+  camera_input_signal_check_required?: boolean;
   open_source_fallback_failure_reason?: string;
   primary_source_failure_reason?: string;
   source_diagnosis_status?: string;
@@ -465,6 +472,65 @@ function cameraMjpegFormatAttemptsSummary(payload: Record<string, unknown> | nul
     .filter(Boolean)
     .slice(0, 6);
   return parts.length > 0 ? parts.join("；") : "none";
+}
+
+function cameraMjpegFfmpegFallbackAttempts(payload: Record<string, unknown> | null | undefined): Record<string, unknown>[] {
+  // ffmpeg fallback 只在 OpenCV/V4L2 无首帧后出现；统一读取顶层和 last_first_frame_error 两种上车形态。
+  const nestedLastError = asRecord(payload?.last_first_frame_error);
+  const rawAttempts = Array.isArray(payload?.ffmpeg_mjpeg_fallback_attempts)
+    ? payload.ffmpeg_mjpeg_fallback_attempts
+    : Array.isArray(nestedLastError?.ffmpeg_mjpeg_fallback_attempts)
+      ? nestedLastError.ffmpeg_mjpeg_fallback_attempts
+      : [];
+  return rawAttempts
+    .map((item) => asRecord(item))
+    .filter((item): item is Record<string, unknown> => item !== null);
+}
+
+function cameraMjpegFfmpegFallbackSummary(payload: Record<string, unknown> | null | undefined): string {
+  // 普通 PC 页面只需要知道 ffmpeg 也试过哪些格式，以及是否仍然没有 JPEG 首帧。
+  const parts = cameraMjpegFfmpegFallbackAttempts(payload)
+    .map((attempt) => {
+      const inputFormat = shortText(attempt.input_format ?? attempt.format ?? attempt.label, "unknown");
+      const width = shortValue(attempt.width) || "?";
+      const height = shortValue(attempt.height) || "?";
+      const fps = shortValue(attempt.fps) || "?";
+      const status = shortText(attempt.status ?? attempt.failure_reason, "unknown");
+      return `${inputFormat}@${width}x${height}@${fps} ${status}`;
+    })
+    .filter(Boolean)
+    .slice(0, 6);
+  return parts.length > 0 ? parts.join("；") : "none";
+}
+
+function cameraMjpegFfmpegFallbackAttempted(payload: Record<string, unknown> | null | undefined): boolean {
+  // 某些错误 payload 只有 attempts 数组，没有 attempted=true；有任一格式尝试就视为已走 ffmpeg 兜底。
+  const nestedLastError = asRecord(payload?.last_first_frame_error);
+  return Boolean(
+    payload?.ffmpeg_mjpeg_fallback_attempted
+      ?? nestedLastError?.ffmpeg_mjpeg_fallback_attempted
+      ?? (cameraMjpegFfmpegFallbackAttempts(payload).length > 0),
+  );
+}
+
+function cameraMjpegSoftwareCaptureExhausted(payload: Record<string, unknown> | null | undefined): boolean {
+  // 明确失败时才说“软件采集已穷尽”，避免把刚启动未探测误报成硬件坏。
+  const nestedLastError = asRecord(payload?.last_first_frame_error);
+  const sourceFailureReason = shortText(
+    payload?.source_failure_reason
+      ?? payload?.failure_reason
+      ?? nestedLastError?.source_failure_reason
+      ?? nestedLastError?.failure_reason,
+    "",
+  );
+  return Boolean(
+    payload?.software_capture_exhausted === true
+      || nestedLastError?.software_capture_exhausted === true
+      || (
+        cameraMjpegFfmpegFallbackAttempted(payload)
+        && CAMERA_FIRST_FRAME_FAILURE_REASONS.has(sourceFailureReason)
+      ),
+  );
 }
 
 function cameraMjpegFailurePrimaryReason(failure: CameraMjpegRelayLastFailure | null): string {
@@ -557,6 +623,18 @@ function cameraMjpegResolvedDiagnosisSource(
       ? sourceFailure?.source_diagnosis_not_exclusive || "true"
       : "true";
   const relayAttemptsSummary = cameraMjpegFormatAttemptsSummary(payload);
+  const ffmpegFallbackAttempted = sourceFailure?.ffmpeg_mjpeg_fallback_attempted
+    ?? cameraMjpegFfmpegFallbackAttempted(payload);
+  const ffmpegFallbackSummary = sourceFailure?.ffmpeg_mjpeg_fallback_summary
+    && sourceFailure.ffmpeg_mjpeg_fallback_summary !== "none"
+    ? sourceFailure.ffmpeg_mjpeg_fallback_summary
+    : cameraMjpegFfmpegFallbackSummary(payload);
+  const ffmpegFallbackAttemptCount = sourceFailure?.ffmpeg_mjpeg_fallback_attempt_count
+    ?? cameraMjpegFfmpegFallbackAttempts(payload).length;
+  const softwareCaptureExhausted = Boolean(
+    sourceFailure?.software_capture_exhausted
+      || cameraMjpegSoftwareCaptureExhausted(payload),
+  );
   return {
     ...(sourceFailure ?? {}),
     failure_reason: relayFailure?.failure_reason ?? "camera_source_first_frame_failed",
@@ -595,6 +673,12 @@ function cameraMjpegResolvedDiagnosisSource(
       : relayAttemptsSummary,
     mjpeg_open_source_fallback_attempted: sourceFailure?.mjpeg_open_source_fallback_attempted
       ?? Boolean(payload?.mjpeg_open_source_fallback_attempted),
+    ffmpeg_mjpeg_fallback_attempted: ffmpegFallbackAttempted,
+    ffmpeg_mjpeg_fallback_attempt_count: ffmpegFallbackAttemptCount,
+    ffmpeg_mjpeg_fallback_summary: ffmpegFallbackSummary,
+    software_capture_exhausted: softwareCaptureExhausted,
+    known_good_uvc_required: Boolean(sourceFailure?.known_good_uvc_required || softwareCaptureExhausted),
+    camera_input_signal_check_required: Boolean(sourceFailure?.camera_input_signal_check_required || softwareCaptureExhausted),
     open_source_fallback_failure_reason: sourceFailure?.open_source_fallback_failure_reason
       ?? shortText(payload?.open_source_fallback_failure_reason, "not_loaded"),
     primary_source_failure_reason: sourceFailure?.primary_source_failure_reason
@@ -3396,6 +3480,19 @@ function cameraProbeLastFailureFromResponse(
     && !["not_loaded", "source_selected_not_probed", "source_not_probed"].includes(response.source_diagnosis_status)
     ? response.source_diagnosis_status
     : sourceFailure?.source_diagnosis_status || "uvc_no_frame_not_exclusive";
+  const probePayload = asRecord(response.probe_payload);
+  const ffmpegFallbackAttempted = sourceFailure?.ffmpeg_mjpeg_fallback_attempted
+    ?? cameraMjpegFfmpegFallbackAttempted(probePayload);
+  const ffmpegFallbackAttemptCount = sourceFailure?.ffmpeg_mjpeg_fallback_attempt_count
+    ?? cameraMjpegFfmpegFallbackAttempts(probePayload).length;
+  const ffmpegFallbackSummary = sourceFailure?.ffmpeg_mjpeg_fallback_summary
+    && sourceFailure.ffmpeg_mjpeg_fallback_summary !== "none"
+    ? sourceFailure.ffmpeg_mjpeg_fallback_summary
+    : cameraMjpegFfmpegFallbackSummary(probePayload);
+  const softwareCaptureExhausted = Boolean(
+    sourceFailure?.software_capture_exhausted
+      || cameraMjpegSoftwareCaptureExhausted(probePayload),
+  );
   return {
     ...(sourceFailure ?? {}),
     failure_reason: "camera_source_first_frame_failed",
@@ -3425,6 +3522,12 @@ function cameraProbeLastFailureFromResponse(
     last_first_frame_format_attempts_summary: response.probe_key_values.fallback_attempts_summary,
     mjpeg_open_source_fallback_attempted: response.low_bandwidth_fallback_attempted
       || response.probe_key_values.low_bandwidth_fallback_attempted === "true",
+    ffmpeg_mjpeg_fallback_attempted: ffmpegFallbackAttempted,
+    ffmpeg_mjpeg_fallback_attempt_count: ffmpegFallbackAttemptCount,
+    ffmpeg_mjpeg_fallback_summary: ffmpegFallbackSummary,
+    software_capture_exhausted: softwareCaptureExhausted,
+    known_good_uvc_required: Boolean(sourceFailure?.known_good_uvc_required || softwareCaptureExhausted),
+    camera_input_signal_check_required: Boolean(sourceFailure?.camera_input_signal_check_required || softwareCaptureExhausted),
     open_source_fallback_failure_reason: response.probe_key_values.failure_reason,
     primary_source_failure_reason: failureReason,
   };
@@ -3518,6 +3621,21 @@ function cameraMjpegStatusResponse(
       ?? sourceFailureReason,
     "not_loaded",
   );
+  const ffmpegFallbackAttempted = Boolean(
+    diagnosisSource?.ffmpeg_mjpeg_fallback_attempted
+      ?? cameraMjpegFfmpegFallbackAttempted(lastErrorPayload),
+  );
+  const ffmpegFallbackAttemptCount = diagnosisSource?.ffmpeg_mjpeg_fallback_attempt_count
+    ?? cameraMjpegFfmpegFallbackAttempts(lastErrorPayload).length;
+  const ffmpegFallbackSummary = diagnosisSource?.ffmpeg_mjpeg_fallback_summary
+    && diagnosisSource.ffmpeg_mjpeg_fallback_summary !== "none"
+    ? diagnosisSource.ffmpeg_mjpeg_fallback_summary
+    : cameraMjpegFfmpegFallbackSummary(lastErrorPayload);
+  const softwareCaptureExhausted = Boolean(
+    diagnosisSource?.software_capture_exhausted
+      || cameraMjpegSoftwareCaptureExhausted(lastErrorPayload),
+  );
+  const knownGoodUvcRequired = Boolean(diagnosisSource?.known_good_uvc_required || softwareCaptureExhausted);
   const sourceUsageScope = cameraSourceUsageScope(diagnosisSource?.source_usage_status, diagnosisSource?.source_usage_owner_count);
   const sourceUsageNotExclusive = cameraSourceUsageNotExclusive(sourceUsageScope);
   const cameraUsbSpeed = diagnosisSource?.uvc_usb_topology_video_usb_speed ?? "not_loaded";
@@ -3530,9 +3648,12 @@ function cameraMjpegStatusResponse(
     || diagnosisSource?.cma_memory_diagnostics_status === "cma_alloc_failed_recent";
   const cameraNoFrameHardwareActionRequired = diagnosisSource?.source_diagnosis_status === "uvc_no_frame_not_exclusive"
     && sourceUsageNotExclusive === "true";
-  const cameraInputSignalCheckRequired = cameraNoFrameHardwareActionRequired
-    && !cameraUsbFullSpeedDetected
-    && !cameraTransportHardwareActionRequired;
+  const cameraInputSignalCheckRequired = Boolean(diagnosisSource?.camera_input_signal_check_required)
+    || (
+      cameraNoFrameHardwareActionRequired
+      && !cameraUsbFullSpeedDetected
+      && !cameraTransportHardwareActionRequired
+    );
   const cameraInputSignalCheckLabel = cameraInputSignalCheckRequired
     ? "检查摄像头输入信号/供电后复测"
     : "无需输入信号处理";
@@ -3631,6 +3752,11 @@ function cameraMjpegStatusResponse(
     source_failure_reason: sourceFailureReason,
     last_first_frame_format_attempts_summary: diagnosisSource?.last_first_frame_format_attempts_summary ?? "none",
     mjpeg_open_source_fallback_attempted: mjpegOpenSourceFallbackAttempted,
+    ffmpeg_mjpeg_fallback_attempted: ffmpegFallbackAttempted,
+    ffmpeg_mjpeg_fallback_attempt_count: ffmpegFallbackAttemptCount,
+    ffmpeg_mjpeg_fallback_summary: ffmpegFallbackSummary,
+    software_capture_exhausted: softwareCaptureExhausted,
+    known_good_uvc_required: knownGoodUvcRequired,
     open_source_fallback_failure_reason: openSourceFallbackFailureReason,
     primary_source_failure_reason: primarySourceFailureReason,
     selected_path: diagnosisSource?.selected_path ?? "not_loaded",
@@ -3999,6 +4125,10 @@ async function cameraSourceFirstFrameFailureForStatus(
         ?? (effectiveReason || effectiveLastOfferReason),
       "not_loaded",
     );
+    const ffmpegFallbackAttempted = cameraMjpegFfmpegFallbackAttempted(payload);
+    const ffmpegFallbackAttemptCount = cameraMjpegFfmpegFallbackAttempts(payload).length;
+    const ffmpegFallbackSummary = cameraMjpegFfmpegFallbackSummary(payload);
+    const softwareCaptureExhausted = cameraMjpegSoftwareCaptureExhausted(payload);
     const firstFrameFailed = status === "source_first_frame_failed"
       || readiness === "first_frame_failed"
       || CAMERA_FIRST_FRAME_FAILURE_REASONS.has(effectiveReason)
@@ -4070,6 +4200,12 @@ async function cameraSourceFirstFrameFailureForStatus(
         ...cmaMemoryDiagnosticFields,
         last_first_frame_format_attempts_summary: cameraMjpegFormatAttemptsSummary(payload),
         mjpeg_open_source_fallback_attempted: mjpegOpenSourceFallbackAttempted,
+        ffmpeg_mjpeg_fallback_attempted: ffmpegFallbackAttempted,
+        ffmpeg_mjpeg_fallback_attempt_count: ffmpegFallbackAttemptCount,
+        ffmpeg_mjpeg_fallback_summary: ffmpegFallbackSummary,
+        software_capture_exhausted: softwareCaptureExhausted,
+        known_good_uvc_required: softwareCaptureExhausted,
+        camera_input_signal_check_required: softwareCaptureExhausted,
         open_source_fallback_failure_reason: openSourceFallbackFailureReason,
         primary_source_failure_reason: primarySourceFailureReason,
       };
@@ -4095,6 +4231,12 @@ async function cameraSourceFirstFrameFailureForStatus(
       ...cmaMemoryDiagnosticFields,
       last_first_frame_format_attempts_summary: cameraMjpegFormatAttemptsSummary(payload),
       mjpeg_open_source_fallback_attempted: mjpegOpenSourceFallbackAttempted,
+      ffmpeg_mjpeg_fallback_attempted: ffmpegFallbackAttempted,
+      ffmpeg_mjpeg_fallback_attempt_count: ffmpegFallbackAttemptCount,
+      ffmpeg_mjpeg_fallback_summary: ffmpegFallbackSummary,
+      software_capture_exhausted: softwareCaptureExhausted,
+      known_good_uvc_required: softwareCaptureExhausted,
+      camera_input_signal_check_required: softwareCaptureExhausted,
       open_source_fallback_failure_reason: openSourceFallbackFailureReason,
       primary_source_failure_reason: primarySourceFailureReason,
     };
@@ -4143,6 +4285,12 @@ async function buildRobotControlSummaryForHttp(
       source_diagnosis_not_exclusive: lastFailureForOverlay?.source_diagnosis_not_exclusive,
       source_readiness: lastFailureForOverlay?.source_readiness,
       source_failure_reason: lastFailureForOverlay?.source_failure_reason,
+      ffmpeg_mjpeg_fallback_attempted: lastFailureForOverlay?.ffmpeg_mjpeg_fallback_attempted,
+      ffmpeg_mjpeg_fallback_attempt_count: lastFailureForOverlay?.ffmpeg_mjpeg_fallback_attempt_count,
+      ffmpeg_mjpeg_fallback_summary: lastFailureForOverlay?.ffmpeg_mjpeg_fallback_summary,
+      software_capture_exhausted: lastFailureForOverlay?.software_capture_exhausted,
+      known_good_uvc_required: lastFailureForOverlay?.known_good_uvc_required,
+      camera_input_signal_check_required: lastFailureForOverlay?.camera_input_signal_check_required,
       selected_path: lastFailureForOverlay?.selected_path,
       selected_name: lastFailureForOverlay?.selected_name,
       selected_is_uvc_or_usb: lastFailureForOverlay?.selected_is_uvc_or_usb,
@@ -4176,6 +4324,12 @@ async function buildRobotControlSummaryForHttp(
         source_diagnosis_not_exclusive: lastFailureForOverlay.source_diagnosis_not_exclusive,
         source_readiness: lastFailureForOverlay.source_readiness,
         source_failure_reason: lastFailureForOverlay.source_failure_reason,
+        ffmpeg_mjpeg_fallback_attempted: lastFailureForOverlay.ffmpeg_mjpeg_fallback_attempted,
+        ffmpeg_mjpeg_fallback_attempt_count: lastFailureForOverlay.ffmpeg_mjpeg_fallback_attempt_count,
+        ffmpeg_mjpeg_fallback_summary: lastFailureForOverlay.ffmpeg_mjpeg_fallback_summary,
+        software_capture_exhausted: lastFailureForOverlay.software_capture_exhausted,
+        known_good_uvc_required: lastFailureForOverlay.known_good_uvc_required,
+        camera_input_signal_check_required: lastFailureForOverlay.camera_input_signal_check_required,
         selected_path: lastFailureForOverlay.selected_path,
         selected_name: lastFailureForOverlay.selected_name,
         selected_is_uvc_or_usb: lastFailureForOverlay.selected_is_uvc_or_usb,

@@ -2644,11 +2644,18 @@ function cameraSummaryFromReadbacks(
   const cameraUsbFullSpeedDetected = cameraUsbSpeedForHardware === "12M" || derivedSourceDiagnosis.status === "uvc_full_speed_usb_not_exclusive";
   const cameraTransportHardwareActionRequired = derivedSourceDiagnosis.status === "uvc_transport_error_not_exclusive";
   const cameraCmaHardwareActionRequired = derivedSourceDiagnosis.status === "uvc_cma_alloc_failed_not_exclusive";
+  const cameraSoftwareCaptureExhausted = compactValueText(mjpegRelayOverlay?.software_capture_exhausted) === "true";
+  const cameraKnownGoodUvcRequired = compactValueText(mjpegRelayOverlay?.known_good_uvc_required) === "true"
+    || cameraSoftwareCaptureExhausted;
   const cameraNoFrameHardwareActionRequired = compactValueText(derivedSourceDiagnosis.not_exclusive) === "true"
     && ["uvc_no_frame_not_exclusive", "source_first_frame_failed", "first_frame_failed"].includes(derivedSourceDiagnosis.status || "");
-  const cameraInputSignalCheckRequired = cameraNoFrameHardwareActionRequired
-    && !cameraUsbFullSpeedDetected
-    && !cameraTransportHardwareActionRequired;
+  const cameraInputSignalCheckRequired = compactValueText(mjpegRelayOverlay?.camera_input_signal_check_required) === "true"
+    || cameraSoftwareCaptureExhausted
+    || (
+      cameraNoFrameHardwareActionRequired
+      && !cameraUsbFullSpeedDetected
+      && !cameraTransportHardwareActionRequired
+    );
   const cameraInputSignalCheckLabel = cameraInputSignalCheckRequired
     ? "检查摄像头输入信号/供电后复测"
     : "无需输入信号处理";
@@ -2689,6 +2696,9 @@ function cameraSummaryFromReadbacks(
       ?? mjpegRelayOverlay?.mjpeg_open_source_fallback_attempted
       ?? false,
   );
+  const ffmpegMjpegFallbackAttempted = compactValueText(mjpegRelayOverlay?.ffmpeg_mjpeg_fallback_attempted ?? false);
+  const ffmpegMjpegFallbackAttemptCount = compactValueText(mjpegRelayOverlay?.ffmpeg_mjpeg_fallback_attempt_count ?? 0);
+  const ffmpegMjpegFallbackSummary = asString(mjpegRelayOverlay?.ffmpeg_mjpeg_fallback_summary, "none");
   const openSourceFallbackFailureReason = asString(
     findFirstKey(healthPayload, ["open_source_fallback_failure_reason"])
       ?? lastOfferError?.open_source_fallback_failure_reason
@@ -2852,6 +2862,11 @@ function cameraSummaryFromReadbacks(
     last_offer_failure_reason: asString(lastOfferError?.failure_reason, "none"),
     last_offer_format_attempts_summary: lastOfferFormatAttemptsSummary,
     mjpeg_open_source_fallback_attempted: mjpegOpenSourceFallbackAttempted,
+    ffmpeg_mjpeg_fallback_attempted: ffmpegMjpegFallbackAttempted,
+    ffmpeg_mjpeg_fallback_attempt_count: ffmpegMjpegFallbackAttemptCount,
+    ffmpeg_mjpeg_fallback_summary: ffmpegMjpegFallbackSummary,
+    software_capture_exhausted: cameraSoftwareCaptureExhausted,
+    known_good_uvc_required: cameraKnownGoodUvcRequired,
     open_source_fallback_failure_reason: openSourceFallbackFailureReason,
     primary_source_failure_reason: primarySourceFailureReason,
     first_frame_probe_status: firstFrameProbeStatus,
@@ -2936,6 +2951,12 @@ export type RobotControlCameraMjpegRelayOverlay = {
   source_readiness?: string;
   source_failure_reason?: string;
   mjpeg_open_source_fallback_attempted?: boolean | string;
+  ffmpeg_mjpeg_fallback_attempted?: boolean | string;
+  ffmpeg_mjpeg_fallback_attempt_count?: number | string;
+  ffmpeg_mjpeg_fallback_summary?: string;
+  software_capture_exhausted?: boolean | string;
+  known_good_uvc_required?: boolean | string;
+  camera_input_signal_check_required?: boolean | string;
   open_source_fallback_failure_reason?: string;
   primary_source_failure_reason?: string;
   selected_path?: string;
@@ -7129,6 +7150,11 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         last_offer_failure_reason: "none",
         last_offer_format_attempts_summary: "none",
         mjpeg_open_source_fallback_attempted: "false",
+        ffmpeg_mjpeg_fallback_attempted: "false",
+        ffmpeg_mjpeg_fallback_attempt_count: "0",
+        ffmpeg_mjpeg_fallback_summary: "none",
+        software_capture_exhausted: false,
+        known_good_uvc_required: false,
         open_source_fallback_failure_reason: "not_loaded",
         primary_source_failure_reason: "not_loaded",
         first_frame_probe_status: "not_loaded",

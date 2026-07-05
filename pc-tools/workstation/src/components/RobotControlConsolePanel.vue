@@ -906,6 +906,10 @@ function cameraMjpegUsbRecoveryReadback() {
   const notExclusive = status?.source_diagnosis_not_exclusive === "true"
     || status?.exclusive_camera_claim === false
     || status?.shared_preview_exclusive_camera_claim === false;
+  const softwareCaptureExhausted = Boolean(status?.software_capture_exhausted);
+  const knownGoodUvcRequired = Boolean(status?.known_good_uvc_required);
+  const ffmpegFallbackAttempted = Boolean(status?.ffmpeg_mjpeg_fallback_attempted);
+  const ffmpegFallbackSummary = loadedAliasText(status?.ffmpeg_mjpeg_fallback_summary);
   return {
     status,
     sourceDiagnosisStatus,
@@ -914,6 +918,10 @@ function cameraMjpegUsbRecoveryReadback() {
     hardwareActionRequired,
     hardwareActionLabel,
     notExclusive,
+    softwareCaptureExhausted,
+    knownGoodUvcRequired,
+    ffmpegFallbackAttempted,
+    ffmpegFallbackSummary,
     blocksMappingStart: Boolean(status?.camera_blocks_mapping_start ?? false),
     blocksFreeMove: Boolean(status?.camera_blocks_free_move ?? false),
     reprobeAfterHardwareActionRequired: Boolean(status?.camera_reprobe_after_hardware_action_required ?? hardwareActionRequired),
@@ -950,6 +958,13 @@ function plainCurrentCameraFactText(camera: RobotControlSummaryResponse["readbac
   if (mjpegUsbRecovery.usbFullSpeedDetected && !browserVideoFrameDrawn()) {
     const usbText = mjpegUsbRecovery.usbSpeed ? `USB=${mjpegUsbRecovery.usbSpeed} full-speed` : "USB full-speed";
     return `画面：不是页面独占，当前 ${usbText}，底层 STREAMON/首帧失败；换高速 USB 口/线或带供电 Hub 后复测。`;
+  }
+  if (mjpegUsbRecovery.softwareCaptureExhausted && !browserVideoFrameDrawn()) {
+    const captureChainText = mjpegUsbRecovery.ffmpegFallbackAttempted
+      ? "OpenCV/V4L2 和 ffmpeg MJPEG 兜底"
+      : "OpenCV/V4L2";
+    const knownGoodText = mjpegUsbRecovery.knownGoodUvcRequired ? "，或换 known-good UVC" : "";
+    return `画面：不是页面独占，${captureChainText}都没有取到视频帧。检查摄像头输入、USB 线/接口和供电${knownGoodText}后复测。`;
   }
   if (cameraMjpegRetryPending.value) {
     const sourceHint = cameraSourceFirstFrameFailed(camera) ? cameraSourcePlainFailureHint() : "";
@@ -2078,6 +2093,12 @@ const plainCameraSharedPreviewGuidance = computed(() => {
   const plainActionSource = status?.proxy_status === "status_loaded" ? status.preview_next_action_plain : summaryCamera?.preview_next_action_plain;
   const hint = hintSource?.trim();
   const action = plainCameraPreviewActionText(actionSource, plainActionSource);
+  if (status?.proxy_status === "status_loaded" && status.software_capture_exhausted) {
+    const captureChainText = status.ffmpeg_mjpeg_fallback_attempted
+      ? "OpenCV/V4L2 和 ffmpeg MJPEG 兜底"
+      : "OpenCV/V4L2";
+    return `共享预览结论：不是页面独占，${captureChainText}都没有取到视频帧。下一步：检查摄像头输入、USB 线/接口和供电，必要时换 known-good UVC 复测。`;
+  }
   if (!hint || hint === "not_loaded" || hint === "none") {
     return action ? `共享预览结论：${action}` : "";
   }

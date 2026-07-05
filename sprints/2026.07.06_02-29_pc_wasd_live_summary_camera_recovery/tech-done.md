@@ -58,6 +58,26 @@ micro
   - `pc-tools/README.md`、`docs/product/pc_tools_workstation.md`、
     `docs/product/pc_free_roam_mapping_design.md`、`OKR.md`
     - 同步 800%/3200% 当前口径、ROS2 配套分层和 ffmpeg 兜底真实边界。
+- 2026-07-06 04:50 CST 追加 PC MJPEG status / live-summary 软件采集穷尽诊断：
+  - `pc-tools/workstation/src/server/index.ts`
+    - 将 `ffmpeg_mjpeg_first_frame_unreadable` 纳入首帧失败 reason 集合。
+    - 解析 8088 MJPEG 失败 payload 的 `ffmpeg_mjpeg_fallback_attempted/count/attempts`，在
+      `/api/robot-control/camera/mjpeg/status` 中返回
+      `ffmpeg_mjpeg_fallback_attempted`、`ffmpeg_mjpeg_fallback_attempt_count`、
+      `ffmpeg_mjpeg_fallback_summary`、`software_capture_exhausted` 和 `known_good_uvc_required`。
+    - probe 缓存与 relay 失败用 OR 合并，避免旧 probe false 覆盖最新 ffmpeg 无帧证据。
+  - `pc-tools/workstation/src/server/robotControlSummary.ts`
+    - summary/live-summary 消费 MJPEG overlay 的 `software_capture_exhausted`，
+      使 `camera_input_signal_check_required=true` 与 MJPEG status 保持一致。
+  - `pc-tools/workstation/src/components/RobotControlConsolePanel.vue`
+    - 普通首屏把该状态翻译为“不是页面独占，OpenCV/V4L2 和 ffmpeg MJPEG 兜底都没有取到视频帧；
+      检查摄像头输入、USB 线/接口和供电，必要时换 known-good UVC 复测”。
+  - `pc-tools/workstation/src/shared/contracts.ts`
+  - `pc-tools/workstation/test/catalog.test.ts`
+  - `pc-tools/workstation/test/App.test.ts`
+    - 同步 TypeScript 合同和 server/UI 断言。
+  - `pc-tools/README.md`、`docs/product/pc_tools_workstation.md`
+    - 同步 PC status/live-summary 当前口径。
 - 2026-07-06 03:05 CST 追加自由移动 start 修复：
   - `onboard/scripts/upper_robot_api.py`
     - 增加 `/free_roam_autonomy` runtime 自愈：`/api/free-roam/autonomy/start` 或 stop 写参数前，
@@ -575,6 +595,47 @@ git diff --check
       - `status=ready_for_motion`
       - `map_current_visible=true`
       - `camera_current_visible=false`
+- 2026-07-06 04:50 CST PC MJPEG status / live-summary 追加验证：
+  - 本地测试：
+    - `npm test -- --run test/catalog.test.ts --testNamePattern "MJPEG status|camera MJPEG status|live-summary"` 通过：
+      13 个相关用例通过。
+    - `npm test -- --run test/App.test.ts --testNamePattern "camera|MJPEG"` 通过：47 个相关用例通过。
+    - `npm run build` 通过；Vite 仅输出已有大 bundle 警告。
+    - `git diff --check` 通过。
+  - 7001 最新进程：
+    - 已重启为 `HOST=0.0.0.0 PORT=7001 npm run api:public`。
+    - `lsof` 显示 `node` 监听 `*:7001`。
+  - 触发一次 PC 共享 MJPEG 短拉：
+    - `GET /api/robot-control/camera/mjpeg?baseUrl=http://192.168.1.11:8787`
+    - 返回 `http_code=502`、`size=127`，未读到真实视频帧。
+  - 最新 `GET /api/robot-control/camera/mjpeg/status?baseUrl=http://192.168.1.11:8787` 返回：
+    - `status=source_first_frame_failed`
+    - `last_failure_reason=ffmpeg_mjpeg_first_frame_unreadable`
+    - `ffmpeg_mjpeg_fallback_attempted=true`
+    - `ffmpeg_mjpeg_fallback_attempt_count=3`
+    - `ffmpeg_mjpeg_fallback_summary=mjpeg@640x480@30 first_frame_unreadable；yuyv422@320x240@20 first_frame_unreadable；mjpeg@1280x720@30 first_frame_unreadable`
+    - `software_capture_exhausted=true`
+    - `known_good_uvc_required=true`
+    - `camera_input_signal_check_required=true`
+    - `shared_preview_everyone_can_join=true`
+    - `exclusive_camera_claim=false`
+    - `camera_blocks_free_move=false`
+  - 固定 no-motion 雷达刷新后，最新 `GET /api/robot-control/live-summary?baseUrl=http://192.168.1.11:8787` 返回：
+    - `status=ready_for_motion`
+    - `map_current_visible=true`
+    - `path_current_visible=true`
+    - `radar_map_points_visible=true`
+    - `radar_overlay_current_point_count=147`
+    - `camera_current_visible=false`
+    - `camera_input_signal_check_required=true`
+    - `camera_blocks_free_move=false`
+    - `keyboard_ready=true`
+    - `keyboard_continuous_ready=true`
+    - `command_raw_lr_nonzero_proven=true`
+    - `command_raw_latest_left=164`
+    - `command_raw_latest_right=164`
+    - `delivery_success=true`
+    - `map_display_default_zoom_percent=800%`
 
 ## 剩余风险
 

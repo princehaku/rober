@@ -3746,6 +3746,11 @@ const fixtures: Record<string, unknown> = {
     source_failure_reason: "none",
     last_first_frame_format_attempts_summary: "none",
     mjpeg_open_source_fallback_attempted: false,
+    ffmpeg_mjpeg_fallback_attempted: false,
+    ffmpeg_mjpeg_fallback_attempt_count: 0,
+    ffmpeg_mjpeg_fallback_summary: "none",
+    software_capture_exhausted: false,
+    known_good_uvc_required: false,
     open_source_fallback_failure_reason: "not_loaded",
     primary_source_failure_reason: "none",
     preview_status: "streaming",
@@ -31375,6 +31380,11 @@ describe("App", () => {
     mjpegStatusFixture.source_diagnosis_next_action_plain = "检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测；共享预览不是页面独占。";
     mjpegStatusFixture.preview_next_action_plain = "检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测；共享预览不是页面独占。";
     mjpegStatusFixture.source_diagnosis_not_exclusive = "true";
+    mjpegStatusFixture.ffmpeg_mjpeg_fallback_attempted = true;
+    mjpegStatusFixture.ffmpeg_mjpeg_fallback_attempt_count = 2;
+    mjpegStatusFixture.ffmpeg_mjpeg_fallback_summary = "mjpeg@640x480@30 first_frame_unreadable；yuyv422@320x240@20 first_frame_unreadable";
+    mjpegStatusFixture.software_capture_exhausted = true;
+    mjpegStatusFixture.known_good_uvc_required = true;
     const mockedFetch = stubWorkstationFetch({
       "/api/robot-control/summary": summaryFixture,
       "/api/robot-control/camera/mjpeg/status": mjpegStatusFixture,
@@ -31385,7 +31395,8 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
 
     expect(wrapper.find('[data-testid="robot-camera-shared-preview-status"]').text()).toBe("共享画面：0 个页面观看，上游未连接，等待视频边界；不是独占，每个页面共享同一条上游流。 不是页面独占：USB Composite Device 当前没人占用，但 UVC 设备没有输出视频帧。 页面会低频自动重试。");
-    expect(wrapper.find('[data-testid="robot-camera-shared-preview-guidance"]').text()).toContain("下一步：检查 USB、摄像头输入或供电，必要时换 known-good UVC 复测；共享预览不是页面独占。");
+    expect(wrapper.find('[data-testid="robot-camera-shared-preview-guidance"]').text()).toContain("OpenCV/V4L2 和 ffmpeg MJPEG 兜底都没有取到视频帧");
+    expect(wrapper.find('[data-testid="plain-current-facts"]').text()).toContain("OpenCV/V4L2 和 ffmpeg MJPEG 兜底都没有取到视频帧");
     expect(wrapper.find(".simple-user-console").text()).not.toContain("camera_source_first_frame_failed");
     expect(wrapper.find(".simple-user-console").text()).not.toContain("check_usb_camera_input_power_or_known_good_uvc");
     expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))).toBe(false);

@@ -121,6 +121,14 @@ WebRTC offer 和共享 MJPEG 在首帧阶段会按正分 `Video Capture` 候选�
 `source_first_frame_failed / uvc_no_frame_not_exclusive`，说明问题仍在 DV20 输入/线材/供电/采集设备或
 known-good UVC 缺失；但换成 ffmpeg 能读帧的 UVC 后，PC 共享预览可沿同一入口直接显示。
 
+2026-07-06 04:50 CST 起，PC `/api/robot-control/camera/mjpeg/status` 和 summary/live-summary 会消费
+8088 MJPEG 失败 payload 中的 `ffmpeg_mjpeg_fallback_attempted/count/summary`，并在 OpenCV/V4L2 与
+ffmpeg MJPEG pipe 都无首帧时返回 `software_capture_exhausted=true`、`known_good_uvc_required=true` 和
+`camera_input_signal_check_required=true`。普通首屏会把它翻译成“不是页面独占，OpenCV/V4L2 和 ffmpeg
+MJPEG 兜底都没有取到视频帧；检查摄像头输入、USB 线/接口和供电，必要时换 known-good UVC 复测”。该状态仍保持
+`shared_preview_everyone_can_join=true`、`exclusive_camera_claim=false`、`camera_blocks_free_move=false`，
+不发送 Nav2/manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
+
 2026-07-06 02:29 CST 起，`GET /api/robot-control/live-summary` 直接平铺 WASD/手控命令 raw 证据：
 `command_raw_lr_nonzero_proven`、`command_raw_latest_left/right`、`keyboard_command_raw_lr_nonzero` 和
 `keyboard_motion_evidence_complete`。现场用正确 PC 代理合同

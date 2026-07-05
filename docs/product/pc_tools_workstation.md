@@ -90,6 +90,12 @@ pc-tools/workstation/
   复验仍为 `503 / ffmpeg_mjpeg_first_frame_unreadable`，health 仍是
   `source_first_frame_failed / uvc_no_frame_not_exclusive`；因此产品状态仍提示检查 DV20 输入信号、
   线/接口/供电或换 known-good UVC，不能宣称实时视频已恢复。
+- 2026-07-06 04:50 CST 起，PC MJPEG status、summary 和 live-summary 会把 8088 MJPEG 失败 payload 里的
+  `ffmpeg_mjpeg_fallback_attempted/count/summary` 提升为普通用户诊断：OpenCV/V4L2 与 ffmpeg MJPEG pipe
+  都无首帧时返回 `software_capture_exhausted=true`、`known_good_uvc_required=true`、
+  `camera_input_signal_check_required=true`。普通首页显示为“不是页面独占，OpenCV/V4L2 和 ffmpeg MJPEG 兜底都没有取到视频帧；
+  检查摄像头输入、USB 线/接口和供电，必要时换 known-good UVC 复测”。该状态只读，不启动相机独占采集、Nav2、
+  manual、keyboard、free-roam、建图 runtime、delivery、stop 或 `/cmd_vel`，且 `camera_blocks_free_move=false`。
 - 2026-07-06 02:13 CST 起，PC 地图“太小”的当时有效口径为：普通首页和 `/map` 默认 `200%` 可读大图，
   `完整态势` 回到 `100%`，`细节放大` 到 `1200%`；`/map` 的标题/工具条和图层状态保持画布内悬浮层，
   不再占用地图高度。ROS2 配套仍分层：普通用户用 PC 大地图和 `/map`；本地工程调试用 RViz2/Nav2 RViz 配置；
