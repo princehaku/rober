@@ -61,11 +61,19 @@ pc-tools/workstation/
   `map_display_max_zoom_percent=4800%`。ROS2 配套仍只是工程观察：本地用 RViz2/Nav2 RViz 配置看
   `/map`、`/scan`、TF、路径、定位和 costmap，远程浏览器用 Foxglove bridge；普通用户默认仍使用
   PC 大地图和 `/map`，不要求先打开 RViz2/Foxglove。
-- 2026-07-06 05:36 CST 起，当前有效地图显示收敛为“首页先完整态势，细节再放大”：普通首页地图卡
+- 2026-07-06 05:36 CST 起，地图显示曾收敛为“首页先完整态势，细节再放大”：普通首页地图卡
   通过 `order=-20` 强制排在图传、WASD 和连接状态之前，默认 `100%` 时真实地图按画布宽度铺满，
   机器人位置、Nav2 路线、雷达点和目标点同屏可见；`细节放大` 仍可逐级到 `4800%`。`/map`
   直达页保持满屏只看地图，同样默认 `100%` 完整态势。RViz2/Foxglove 继续只是工程观察入口，
   不替代 PC 简易控制台，也不发送任何运动或建图命令。
+- 2026-07-06 06:40 CST 起，当前有效地图显示改为“默认可读大图 + 一键完整态势”：普通首页和 `/map`
+  默认 `300%`，让地图、Nav2 路线、小车位置、雷达点和目标点先变大可读；`完整态势` 按钮回到
+  `100%` 全局视角，`细节放大` 最高仍为 `4800%`。summary/live-summary 合同同步为
+  `map_display_default_zoom_percent=300%`、`map_display_direct_map_default_zoom_percent=300%`、
+  `map_display_fit_zoom_percent=100%`、`map_display_max_zoom_percent=4800%`。ROS2 配套继续只作为观察：
+  本地工程调试用 RViz2/Nav2 RViz 配置，远程浏览器大屏用 Foxglove bridge + Foxglove Web；
+  普通用户默认仍使用 PC 简易控制台和 `/map`，这些入口不启动 ROS2/RViz2/Foxglove/Nav2/建图 runtime，
+  不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 - 2026-07-06 05:58 CST 起，PC/WASD 手控的当前有效运动信号阈值为 `0.35°` IMU roll/pitch delta：
   上车 `upper_robot_api.py` 只用它判断低速短脉冲是否有车体运动迹象，不把它包装成 WAVE ROVER
   wheel raw L/R 非零。资料来源为 `docs/vendor/VENDOR_INDEX.md` 指向的 WAVE ROVER `T=1001`
@@ -401,7 +409,7 @@ pc-tools/workstation/
 - 2026-07-04 02:35 CST 起，普通首屏地图和 `/map` 直达大屏默认缩放历史值曾为 `150%` 可读大图；当前有效值为 `100%` 完整态势，地图大面板继续占据首屏主视图，`细节放大` 最高为 `4800%`。这是普通用户解决“地图太小”的默认路径；ROS2 配套仍只放在默认折叠的“工程观察”里，RViz2/Foxglove 不作为普通用户发车入口，也不得自动启动 ROS2、Nav2、建图 runtime、manual/keyboard/free-roam/delivery/stop 或 `/cmd_vel`。
 - 2026-07-02 CST 起，Foxglove 远程观察命令统一为项目包装入口 `ros2 launch ros2_trashbot_bringup foxglove_bridge.launch.py`。该入口基于官方 `foxglove_bridge` ROS2 包（安装命令仍为 `sudo apt install ros-humble-foxglove-bridge`），默认绑定 `0.0.0.0:8765`，topic 白名单只覆盖 `/map`、`/map_metadata`、`/scan`、`/tf`、`/tf_static`、`/odom`、`/plan`、`/local_plan`、`/amcl_pose`、`/pose`、相机图像、costmap 和 `/foxglove_bridge/sysinfo`；`client_topic_whitelist`、`service_whitelist` 和 `param_whitelist` 固定为 `(?!)`，不得暴露 `/cmd_vel` 或业务控制服务。PC summary 和 DOM 中的 Foxglove 命令必须同步使用该包装入口。
 - 2026-07-01 21:45 CST 起，地图卡的可见说明必须直接回答现场“地图太小/ROS2 配套用什么”：普通用户先点 `进入地图大屏` 打开 `/map`，ROS2 配套为本地 RViz2 和远程 Foxglove，入口保留在默认折叠的 `工程观察`，只观察地图、雷达、TF、路径和定位，不发车、不发送控制 topic。该说明仍不得展示长工程命令；具体 `ros2 launch ros2_trashbot_bringup rviz.launch.py`、`foxglove_bridge` 安装/启动命令和 `ws://192.168.1.11:8765` 只在工程观察展开后出现。
-- 2026-07-04 02:35 CST 起，`GET /api/robot-control/summary` 顶层地图易用性 alias 当前有效值必须为：`map_display_primary_tool=pc_big_map`、`map_display_primary_url=/map`、`map_display_primary_action_label=进入地图大屏`、`map_display_default_zoom_percent=100%`、`map_display_direct_map_default_zoom_percent=100%`、`map_display_fit_zoom_percent=100%`、`map_display_max_zoom_percent=4800%`、`map_display_wysiwyg_overlays=[image,route,robot,radar,target]`、`map_display_ros2_companion_tools=[rviz2,foxglove]`、`map_display_rviz_launch_command="ros2 launch ros2_trashbot_bringup rviz.launch.py"`、`map_display_foxglove_bridge_launch_command="ros2 launch ros2_trashbot_bringup foxglove_bridge.launch.py"`、`map_display_foxglove_websocket_url=ws://192.168.1.11:8765`、`map_display_ros2_observe_topics=[/map,/scan,/tf,/plan,/local_plan,/amcl_pose,/global_costmap/costmap,/local_costmap/costmap]`、`map_display_sends_motion_when_clicked=false`、`map_display_starts_ros2=false`、`map_display_starts_rviz2=false`、`map_display_starts_foxglove=false`、`map_display_starts_nav2=false` 和 `map_display_starts_map_runtime=false`。这样现场只 curl summary 也能知道普通用户该用 PC 大地图或进 `/map`，ROS2 工程观察可用 RViz2/Foxglove 只看不控；这些 alias 与 `live_closure_summary` 同源，不得触发 ROS2/RViz2/Foxglove/Nav2/建图 runtime 或任何运动入口。
+- 2026-07-04 02:35 CST 起，`GET /api/robot-control/summary` 顶层地图易用性 alias 当前有效值必须为：`map_display_primary_tool=pc_big_map`、`map_display_primary_url=/map`、`map_display_primary_action_label=进入地图大屏`、`map_display_default_zoom_percent=300%`、`map_display_direct_map_default_zoom_percent=300%`、`map_display_fit_zoom_percent=100%`、`map_display_max_zoom_percent=4800%`、`map_display_wysiwyg_overlays=[image,route,robot,radar,target]`、`map_display_ros2_companion_tools=[rviz2,foxglove]`、`map_display_rviz_launch_command="ros2 launch ros2_trashbot_bringup rviz.launch.py"`、`map_display_foxglove_bridge_launch_command="ros2 launch ros2_trashbot_bringup foxglove_bridge.launch.py"`、`map_display_foxglove_websocket_url=ws://192.168.1.11:8765`、`map_display_ros2_observe_topics=[/map,/scan,/tf,/plan,/local_plan,/amcl_pose,/global_costmap/costmap,/local_costmap/costmap]`、`map_display_sends_motion_when_clicked=false`、`map_display_starts_ros2=false`、`map_display_starts_rviz2=false`、`map_display_starts_foxglove=false`、`map_display_starts_nav2=false` 和 `map_display_starts_map_runtime=false`。这样现场只 curl summary 也能知道普通用户该用 PC 大地图或进 `/map`，ROS2 工程观察可用 RViz2/Foxglove 只看不控；这些 alias 与 `live_closure_summary` 同源，不得触发 ROS2/RViz2/Foxglove/Nav2/建图 runtime 或任何运动入口。
 - 2026-07-01 19:14 CST 起，普通首屏 `plain-live-closure-wysiwyg-refresh` 与 `plain-wysiwyg-evidence-refresh` 必须完整声明同一套只读 WYSIWYG 刷新合同：刷新相机首帧、相机 MJPEG 状态、雷达 scan proof、雷达状态和地图预览，且固定 `data-starts-radar-lifecycle=false`、`data-starts-map-runtime=false`、`data-starts-nav2=false`、`data-starts-manual=false`、`data-starts-keyboard=false`、`data-starts-free-roam=false`、`data-submits-delivery=false`、`data-stops-motion=false` 和 `data-sends-motion-when-clicked=false`。这保证“画面/地图/雷达点所见即所得”的刷新按钮只更新证据，不执行送达、不 stop、不启动车体或 ROS2 控制链路。
 - 2026-07-01 19:19 CST 起，`field_acceptance_packet` 和 summary 顶层 `field_acceptance_wysiwyg_*` alias 必须直接暴露现场验收包里的“当前所见”下一步：`field_acceptance_wysiwyg_ready`、`field_acceptance_wysiwyg_missing_surface_ids`、`field_acceptance_wysiwyg_primary_refresh_endpoint`、`field_acceptance_wysiwyg_primary_refresh_label`、`field_acceptance_wysiwyg_next_action_plain`、`field_acceptance_wysiwyg_refresh_sequence`、`field_acceptance_wysiwyg_refresh_sequence_labels`、`field_acceptance_wysiwyg_refresh_sends_motion=false`、`field_acceptance_wysiwyg_refresh_starts_radar_lifecycle=false`、`field_acceptance_wysiwyg_refresh_starts_map_runtime=false`、`field_acceptance_wysiwyg_refresh_starts_nav2=false`、`field_acceptance_wysiwyg_refresh_starts_manual=false`、`field_acceptance_wysiwyg_refresh_starts_keyboard=false`、`field_acceptance_wysiwyg_refresh_starts_free_roam=false`、`field_acceptance_wysiwyg_refresh_submits_delivery=false` 和 `field_acceptance_wysiwyg_refresh_stops_motion=false`。普通首屏 `plain-field-acceptance-wysiwyg` 必须在现场验收卡顶部显示“当前所见”缺口和只读刷新按钮；该按钮只复测相机首帧、相机 MJPEG 状态、雷达 scan proof、雷达状态和地图预览，不发车、不 stop、不启动雷达 lifecycle、Nav2、manual、keyboard、free-roam 或建图 runtime。
 - 2026-07-02 CST 起，当 `field_acceptance_wysiwyg_refresh_mode=all_wysiwyg` 时，只读刷新顺序固定为 `/api/robot-control/radar/scan-proof/refresh -> /api/robot-control/radar/status -> /api/robot-control/map/preview -> /api/robot-control/camera/first-frame/probe -> /api/robot-control/camera/mjpeg/status -> /api/robot-control/summary`，标签为 `刷新雷达扫描读数 -> 读取雷达状态 -> 刷新地图画面 -> 复测相机首帧 -> 读取相机 MJPEG 状态 -> 刷新总览`。这样雷达启动或刷新后的地图标记先拿同轮雷达状态再刷新地图画面，最后回到 summary；该链路仍只读，不启动雷达 lifecycle、建图 runtime、Nav2、manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
@@ -5953,7 +5961,7 @@ PC manual forward/backward 固定代理均能写出 command raw L/R 非零并 st
 依据 `docs/vendor/VENDOR_INDEX.md` 中 WAVE ROVER 反馈字段说明，`T=1001 L/R=0/0` 仍不能宣称 wheel raw 闭环完成。
 
 关于“PC 地图太小，ROS2 有没有配套”的当前产品口径为：普通用户先用 PC 首页大地图和 `/map`，
-默认 `100%` 完整态势，`完整态势` 回 `100%`，局部最高 `4800%`；ROS2 配套只作为工程观察。本地工程调试用 RViz2/Nav2 RViz 配置看
+默认 `300%` 可读大图，`完整态势` 回 `100%`，局部最高 `4800%`；ROS2 配套只作为工程观察。本地工程调试用 RViz2/Nav2 RViz 配置看
 `/map`、`/scan`、TF、Nav2 path、定位和 costmap；远程浏览器大屏用 Foxglove Bridge + Foxglove Web，
 连接 `ws://192.168.1.11:8765`。这些入口不替代 PC 简易控制台，不启动 Nav2/建图 runtime，不发送
 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
