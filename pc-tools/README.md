@@ -27,14 +27,18 @@ pc-tools/workstation/
 `http://192.168.1.55:7001/` 后不需要再找或勾任何 safety checkbox；兼容旧脚本的隐藏 input 仍保持 checked，
 可见文案改成“打开即用”。底层固定代理继续保留速度、时长、目标范围和 dangerous true 字段护栏，停止按钮保持可用。
 
-2026-07-04 07:49 CST 起，用户反馈“PC 地图还是太小”后的当前有效口径为：PC 首页和 `/map`
-默认缩放提升到 `1600%`，`细节放大` 提升到 `4800%`，`完整态势` 仍一键回到 `100%` 全局。
+2026-07-06 02:13 CST 起，用户反馈“PC 地图太小 / ROS2 有无配套”后的当前有效口径为：PC 首页和 `/map`
+默认缩放收敛为 `200%` 可读大图，`细节放大` 为 `1200%`，`完整态势` 仍一键回到 `100%` 全局。
 地图、Nav2 路线、小车位置、雷达点和目标点继续共用同一张 WYSIWYG 画布；地图工具行直接显示
 `工程观察：RViz2 / Foxglove`。ROS2 配套分层不变：本地工程调试用 RViz2/Nav2 RViz 配置看
 `/map`、`/scan`、TF、路径、定位和 costmap；远程浏览器观察用
 `ros2 launch ros2_trashbot_bringup foxglove_bridge.launch.py` 后在 Foxglove Web 连接
 `ws://192.168.1.11:8765`。这些工程工具只观察，不替代 PC 简易界面，也不发送 `/cmd_vel`、
 manual、Nav2 goal、free-roam、delivery、stop 或建图运行时动作。
+
+同轮 PC summary/live-summary 相机诊断聚合也收紧：如果最近 first-frame probe 已经证明 DV20/UVC 无首帧，
+而 health 只带有 UVC vendor extension 控制查询造成的 transport 日志，PC 顶层继续显示
+`uvc_no_frame_not_exclusive` 和“检查摄像头输入/供电后复测”，避免把 XU 查询短包误当成 USB 传输主因。
 
 2026-07-04 08:08 CST 起，PC 相机状态缓存进一步收紧：`backendSmoke` 深度探针如果只是 PC 代理层
 `fetch_timeout_45000ms`，不会再覆盖前一次已经确认的 `probe_total_timeout / uvc_no_frame_not_exclusive`
@@ -489,7 +493,7 @@ delivery、stop 或 `/cmd_vel`。
 
 2026-07-01 22:27 CST 起，`GET /api/robot-control/summary` 的 WYSIWYG 主刷新动作会避开已诊断为硬件/USB blocker 的相机：当画面缺口是 `camera_hardware_action_required=true` 且雷达点也未贴当前地图时，`live_wysiwyg_primary_refresh_endpoint` 优先返回 `/api/robot-control/radar/scan-proof/refresh`，`live_wysiwyg_primary_refresh_label` 返回“刷新雷达扫描读数”，`objective_audit_items[].source_card_id` 指向 `radar_map_points`。缺口列表仍保留 `camera` 和 `radar_map_points`，相机继续提示“换高速USB后复测”；这样普通用户可以先 no-motion 修复雷达地图贴图，不会被暂时需要硬件处理的相机卡住。该变化只改 summary 的只读优先级合同，不启动相机/雷达 lifecycle、不执行 Nav2，不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 
-2026-07-01 22:20 CST 起，地图卡的 ROS2 配套入口从泛化的“工程观察”改为“工程观察：RViz2 / Foxglove”，并同步到 `GET /api/robot-control/summary` 的 `map_display_engineering_tools_action_label`。当前普通用户解决“地图太小”仍优先点 `/map` 进入 PC 内置地图大屏，默认 `1600%` 现场大图、最高 `4800%`，底图、路线、小车位置和雷达点仍共用同一张 WYSIWYG 画布；RViz2 只用于本地工程调试 `/map`、`/scan`、TF、路径、定位和 costmap，Foxglove 只用于部署 `foxglove_bridge` 后的浏览器远程观察。该变化只改显示和只读 DOM/API 合同，不启动 RViz2/Foxglove/ROS2 runtime，不执行 Nav2，不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+2026-07-01 22:20 CST 起，地图卡的 ROS2 配套入口从泛化的“工程观察”改为“工程观察：RViz2 / Foxglove”，并同步到 `GET /api/robot-control/summary` 的 `map_display_engineering_tools_action_label`。当前普通用户解决“地图太小”仍优先点 `/map` 进入 PC 内置地图大屏；2026-07-06 02:13 CST 起默认 `200%` 可读大图、最高 `1200%` 细节放大，底图、路线、小车位置和雷达点仍共用同一张 WYSIWYG 画布；RViz2 只用于本地工程调试 `/map`、`/scan`、TF、路径、定位和 costmap，Foxglove 只用于部署 `foxglove_bridge` 后的浏览器远程观察。该变化只改显示和只读 DOM/API 合同，不启动 RViz2/Foxglove/ROS2 runtime，不执行 Nav2，不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 
 2026-07-01 19:07 CST 起，普通首屏地图继续按普通用户“大地图优先”处理；当前合同为默认 `600%` 现场大图、最高 `4800%`，`/map` 与 `?view=map` 直达地图大屏默认也使用 `600%`，需要看全图时点“适配”回到 `100%`。ROS2 配套口径保持分层：RViz2 / `nav2_rviz_plugins` 是本地工程调试地图、雷达、TF、规划轨迹和定位的标准工具；Foxglove / `foxglove_bridge` 是浏览器观察配套；普通用户默认仍留在 PC 简易工作站超大地图里看路线、小车位置和雷达贴图。该变化只改显示和只读 DOM 合同，不启动 RViz2/Foxglove/ROS2 runtime，不执行 Nav2，不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 
@@ -1769,7 +1773,7 @@ PC 不再把这种 service self-hold 误报成页面独占，而是优先展示 
 地图 PNG、Nav2 路线、目标点、小车 map pose 和 155 个当前雷达点可见；WASD 前进/后退固定代理能写出
 command raw L/R 非零并 stop 成功；相机仍无帧，但 `camera_blocks_free_move=false`。
 
-地图太小时，普通用户优先打开 PC 首页大地图或 `/map`，当前默认 `1600%`，局部最高 `4800%`。
+地图太小时，普通用户优先打开 PC 首页大地图或 `/map`，当前默认 `200%` 可读大图，局部最高 `1200%`。
 ROS2 配套用于工程观察：RViz2/Nav2 RViz 配置看 `/map`、`/scan`、TF、路径、定位和 costmap；
 Foxglove Bridge + Foxglove Web 用于远程浏览器观察，连接 `ws://192.168.1.11:8765`。
 这些工具不替代 PC 简易控制台，不发送底盘运动命令。

@@ -48,8 +48,8 @@ pc-tools/workstation/
 - `App.vue` 只保留全局状态、刷新流程、错误处理和页面组合。
 - `src/client/workstationApi.ts` 集中封装 `/api/*` 路径、fetch 和 route debug query 参数拼接。
 - `src/components/` 只做展示与本地交互，不直接拼 API URL，不发明机器人状态。`RobotControlConsolePanel.vue` 通过 client 层调用 Node `GET /api/robot-control/summary` 和 O6 consumer detail adapter；Vue 不直接跨域访问上位机 Robot API。它的默认首屏必须保持 `Rober 小车控制台` + `.simple-user-console` 五卡片的普通用户视图，短状态、少量按钮和可停止入口留在首屏，`task_id`、`O6`、`O7`、`HIL`、`proof`、`/cmd_vel`、`/api/base/manual`、`field manifest` 等工程字段都必须折叠到默认关闭的 `高级诊断`。`O7FixturePreviewPanel.vue` 通过 client 层调用 fixture preview、probe、archive fixture 和 O6 consumer read adapter；route replay 主路径消费 consumer detail，旧 archive fixture player 只作为次路径 / debug fallback；页面不自动读取本地路径。
-- 2026-07-04 07:49 CST 起，PC 地图“太小”的当前有效口径为：普通首页和 `/map` 默认 `1600%` 大图，
-  `完整态势` 回到 `100%`，`细节放大` 到 `4800%`；`/map` 的标题/工具条和图层状态保持画布内悬浮层，
+- 2026-07-06 02:13 CST 起，PC 地图“太小”的当前有效口径为：普通首页和 `/map` 默认 `200%` 可读大图，
+  `完整态势` 回到 `100%`，`细节放大` 到 `1200%`；`/map` 的标题/工具条和图层状态保持画布内悬浮层，
   不再占用地图高度。ROS2 配套仍分层：普通用户用 PC 大地图和 `/map`；本地工程调试用 RViz2/Nav2 RViz 配置；
   远程浏览器观察用 `foxglove_bridge` + Foxglove Web。工程观察只看 `/map`、`/scan`、TF、路径、定位和 costmap，
   不替代简易 PC 控制台，不启动 ROS2/RViz2/Foxglove/Nav2/建图 runtime，不发送 manual、keyboard、free-roam、
@@ -227,6 +227,7 @@ pc-tools/workstation/
 - 2026-07-03 07:45 CST 起，ESP32 原厂 HTTP `/js?json=...` 控制面已作为 UART TX 旁路接入 `esp32_bridge`：现场先连 `UGV` AP，把 ESP32 配成 STA 加入 `XM201` 后读到 `http://192.168.1.3`，`T=139` 与 startup `T=900/T=143/T=142/T=131` 均可 HTTP 返回；PC 手控经 `/cmd_vel -> esp32_bridge -> HTTP` 已记录多帧 `command_transport=http`、`http_write_returned=true`、`T=11 L/R=255`。同轮发现 `T=139` 一度返回速度倍率 `L=0,R=0`，因此 bridge startup 必须追加非运动 `{"T":138,"L":1,"R":1}` 恢复左右速度倍率。恢复倍率后，direct HTTP `T=1 L/R=0.39` 与 bridge HTTP PWM pulse 均观察到 IMU roll/pitch 明显变化，但 `T=1001 L/R` 仍为 `0/0`，所以 PC 只能显示“HTTP 下发和运动扰动已观察到”，不得升级成 wheel raw 非零、delivery success、Nav2 真实路线 HIL 或相机已修复。地图太小的 UI 处理仍是 PC 首页大地图和 `/map`，ROS2 配套仍是 RViz2/Foxglove 只读观察。
 - 2026-07-03 10:24 CST 现场复核：PC 7001 已加载新合同，`safe_command_boundary.keyboard_manual_command_mode=ros`，WASD/低速点动经 PC `/api/robot-control/base/manual` 转到上位机 `/api/base/manual` 后返回 `proxy_status=command_forwarded`。上位机进程内 `/cmd_vel` publisher 能让 `/esp32_bridge` 产生新鲜非零 vendor 命令；HTTP 模式记录 `command_transport=http`、`http_write_returned=true`、`T=11 L/R=255`，临时切到 serial A/B 也记录 `command_transport=serial`、`serial_write_returned=true`、`T=11 L/R=255`，随后已恢复 `command_transport=http`。两条路径同窗口 `T=1001 L/R` 仍为 `0/0`，`wheel_feedback_lr_nonzero_proven=false`，所以 PC 只把“PC/API/ROS/bridge/传输层命令已通”作为软件证据，不能升级成 wheel raw 非零、delivery success 或完整 Nav2 HIL。相机同轮 `/api/camera/mjpeg/status` 返回 `shared_capture=true`、`exclusive_camera_claim=false`、`source_diagnosis_status=uvc_full_speed_usb_not_exclusive`，`lsusb -t` 仍显示 DV20 UVC 在 `12M` full-speed OHCI，下一步仍是换到 480M USB 口/线或带供电 Hub 后复测。
 - 2026-07-03 02:00 CST 起，`trashbot-upper-robot-api.service` 必须通过 `onboard/scripts/upper_robot_api.sh` 启动；该 wrapper 在 `exec upper_robot_api.py` 前 source `/opt/ros/humble/setup.bash` 与 `/root/rober/onboard/install/setup.bash`，并固定 `RMW_FASTRTPS_USE_SHM=0`。否则 systemd 裸环境无法加载 `rclpy` 依赖，会退回两次 `ros2 topic pub` CLI burst，导致 PC 键盘/点动 HTTP 请求从热路径约 `0.35s` 退化到约 `8-12s`。
+- 2026-07-06 02:13 CST 起，当前地图太小/ROS2 配套口径再次收敛：PC 首页和 `/map` 默认缩放为 `200%` 可读大图，`完整态势` 回 `100%`，`细节放大` 到 `1200%`；过高默认倍率不再作为普通用户入口，避免打开后只看到局部滚动画布。ROS2 配套仍为工程观察：RViz2/Nav2 RViz 配置用于本地看 `/map`、`/scan`、TF、路径、定位和 costmap；Foxglove Bridge + Foxglove Web 用于远程浏览器观察。这些入口不替代 PC 简易控制台，不启动 ROS2/RViz2/Foxglove/Nav2/建图 runtime，不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。同轮 summary/live-summary 还会在最近 first-frame probe 已证明 `uvc_no_frame_not_exclusive` 时压过 health 中由 UVC XU 控制查询产生的 transport 日志，避免现场误判为 USB 传输主因。
 - 2026-07-04 CST 本轮补强：PC 首页不再把地图当普通卡片，而是普通用户主画布；large 模式固定为 `--plain-map-large-min-height=1040px`、目标高度 `calc(100vh - 4px)`、上限 `2200px`，桌面外壳为 `width: min(3200px, 100%)`，驾驶台布局为 `grid-template-columns: minmax(0, 5fr) minmax(280px, 0.62fr)`，首页地图卡为 `height: clamp(860px, 100vh, 1600px)`，地图画布为 `height: clamp(820px, calc(100vh - 60px), 1500px)`；`/map` 直达页默认填满当前 viewport。地图标题短句固定为 `普通看 PC 大地图；工程看 RViz2 / Foxglove`。summary 的 `map_display_too_small_next_action_plain` 必须说明 PC 首页默认 `150%` 可读大图、可点 `完整态势` 回到 `100%` 全局、可点 `细节放大` 到 `1200%` 看局部/进 `/map`；`map_display_ros2_companion_answer_plain` 必须说明普通用户仍用 PC 大地图和 `/map`；RViz2/Foxglove 仍只作为观察配套，不启动 ROS2/RViz2/Foxglove/Nav2/建图 runtime，不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 - 2026-07-03 CST 起，PC 地图 preview 的目标点不再只靠前端从路线末端临时猜测；Node 代理必须在 `GET /api/robot-control/map/preview` 顶层暴露 `target`、`route_target_state`、`route_target_visible` 和 `route_target_source`。`target` 只能从同一轮 `path_preview_points` 的 map frame 路线派生，至少两个点时取最后一个点，避免把历史目标点或单点误画成当前终点。现场读回已确认 PC 7001 返回 `target={x:0.8,y:0.05,frame_id=map,source=path_preview_points,source_index=17}`、`path_preview_point_count=18`、`radar_overlay_status=loaded`、`robot_pose_status=map_pose_observed`。这项合同只服务 PC 大地图同时显示底图、路线、小车位置、雷达点和终点，不启动 ROS2/RViz2/Foxglove/Nav2/建图 runtime，不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 - 2026-07-02 CST 现场复核历史证据：历史版本曾把 `/map` 缩放推进到 `3200%`、`8000%/9600%`，会让浏览器形成超宽滚动画布，不再作为当前有效口径。当前“PC 地图太小”的默认处理是使用 PC 大地图、访问 `http://<PC>:7001/map`，或在同一页面点 `细节放大` 到最高 `1200%`；ROS2 配套只推荐工程观察：本机 RViz2 看 `/map`、`/scan`、TF、路径、定位和 costmap，远程多人观察用 Foxglove bridge + Foxglove Web，不替代普通用户 PC 大地图，也不作为发车、自由移动或建图前置。
@@ -5852,15 +5853,15 @@ map pose 和 149 个当前雷达贴图点；`live-summary` 继续返回 `map_dis
 `trashbot-local-webrtc-camera`、`trashbot-esp32-bridge`、`trashbot-lidar-lifecycle` 均 active。
 PC probe 返回 `probe_total_timeout / uvc_no_frame_not_exclusive`；live-summary 返回
 `status=ready_for_motion`、`map_current_visible=true`、`path_current_visible=true`、
-`radar_map_points_visible=true`、`camera_current_visible=false`、`map_display_default_zoom_percent=1600%`。
+`radar_map_points_visible=true`、`camera_current_visible=false`、`map_display_default_zoom_percent=1600%`（该现场证据属于当时 1600% 版本；当前有效默认值已在 2026-07-06 调整为 `200%`）。
 map preview 返回地图 PNG、18 个 Nav2 路线点、目标点、map pose 和 155 个当前雷达点。
 PC manual forward/backward 固定代理均能写出 command raw L/R 非零并 stop 成功，backward 窗口读到
 `motion_signal_observed=true`；stop 后 live-summary 显示 `keyboard_motion_verified=true`、
 `keyboard_command_raw_lr_nonzero_proven=true`、`keyboard_stop_settled_after_pulse=true`。
 依据 `docs/vendor/VENDOR_INDEX.md` 中 WAVE ROVER 反馈字段说明，`T=1001 L/R=0/0` 仍不能宣称 wheel raw 闭环完成。
 
-关于“PC 地图太小，ROS2 有没有配套”的当前产品口径保持不变：普通用户先用 PC 首页大地图和 `/map`，
-默认 `1600%`、局部最高 `4800%`；ROS2 配套只作为工程观察。本地工程调试用 RViz2/Nav2 RViz 配置看
+关于“PC 地图太小，ROS2 有没有配套”的当前产品口径为：普通用户先用 PC 首页大地图和 `/map`，
+默认 `200%` 可读大图、局部最高 `1200%`；ROS2 配套只作为工程观察。本地工程调试用 RViz2/Nav2 RViz 配置看
 `/map`、`/scan`、TF、Nav2 path、定位和 costmap；远程浏览器大屏用 Foxglove Bridge + Foxglove Web，
 连接 `ws://192.168.1.11:8765`。这些入口不替代 PC 简易控制台，不启动 Nav2/建图 runtime，不发送
 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。

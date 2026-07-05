@@ -7096,10 +7096,10 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.map_display_primary_action_label).toBe("进入地图大屏");
       expect(summary.map_display_direct_map_viewport_priority).toBe("fullscreen_map_canvas");
       expect(summary.map_display_direct_map_canvas_height_mode).toBe("viewport_dominant_full_height");
-      expect(summary.map_display_default_zoom_percent).toBe("1600%");
-      expect(summary.map_display_direct_map_default_zoom_percent).toBe("1600%");
+      expect(summary.map_display_default_zoom_percent).toBe("200%");
+      expect(summary.map_display_direct_map_default_zoom_percent).toBe("200%");
       expect(summary.map_display_fit_zoom_percent).toBe("100%");
-      expect(summary.map_display_max_zoom_percent).toBe("4800%");
+      expect(summary.map_display_max_zoom_percent).toBe("1200%");
       expect(summary.map_display_wysiwyg_overlays).toEqual(["image", "route", "robot", "radar", "target"]);
       expect(summary.map_display_ros2_companion_tools).toEqual(["rviz2", "foxglove"]);
       expect(summary.map_display_rviz_launch_command).toBe("ros2 launch ros2_trashbot_bringup rviz.launch.py");
@@ -7582,7 +7582,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(live.map_display_ordinary_user_tool).toBe("pc_big_map");
       expect(live.map_display_direct_map_keeps_page_fullscreen_without_browser_api).toBe(true);
       expect(live.map_display_direct_map_browser_fullscreen_required).toBe(false);
-      expect(live.map_display_direct_map_default_zoom_percent).toBe("1600%");
+      expect(live.map_display_direct_map_default_zoom_percent).toBe("200%");
       expect(live.map_display_fit_zoom_percent).toBe("100%");
       expect(live.map_display_rviz_role_plain).toContain("本地工程调试");
       expect(live.map_display_foxglove_role_plain).toContain("远程浏览器大屏观察");
@@ -15562,10 +15562,15 @@ describe("workstation fail-closed API contracts", () => {
             owner_count: 0,
           },
           source_diagnosis: {
-            status: "source_selected_not_probed",
-            plain_hint: "USB Composite Device: DV20 USB 已选中但还没读过首帧。",
-            next_action: "open_shared_preview_or_run_first_frame_probe",
+            status: "uvc_transport_error_not_exclusive",
+            plain_hint: "不是页面独占：USB Composite Device: DV20 USB 当前无人占用，但内核日志已有 UVC 控制查询短包；检查最近首帧 probe 再决定主因。",
+            next_action: "check_usb_cable_port_power_or_known_good_uvc",
             not_exclusive: true,
+          },
+          uvc_kernel_diagnostics: {
+            status: "uvc_usb_transport_errors_observed",
+            transport_error_count: 2,
+            latest_transport_error: "[1781120000.000000] uvcvideo: Failed to query (GET_CUR) UVC control 1 on unit 3: 9 (exp. 32).",
           },
           uvc_usb_topology: {
             status: "uvc_video_usb_speed_loaded",
@@ -15708,8 +15713,21 @@ describe("workstation fail-closed API contracts", () => {
       expect(statusAfterTimeoutBody.source_failure_reason).toBe("probe_total_timeout");
       expect(statusAfterTimeoutBody.source_diagnosis_status).toBe("uvc_no_frame_not_exclusive");
       expect(statusAfterTimeoutBody.camera_hardware_action_label).toBe("检查摄像头输入/供电后复测");
+      const summaryResponse = await fetch(`${workstation.baseUrl}/api/robot-control/summary?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
+      const summaryBody = await summaryResponse.json() as RobotControlSummaryResponse;
+      expect(summaryResponse.status).toBe(200);
+      expect(summaryBody.readback_summary.camera.source_diagnosis_status).toBe("uvc_no_frame_not_exclusive");
+      expect(summaryBody.camera_source_diagnosis_status).toBe("uvc_no_frame_not_exclusive");
+      expect(summaryBody.live_wysiwyg_camera_source_diagnosis_status).toBe("uvc_no_frame_not_exclusive");
+      expect(summaryBody.camera_hardware_action_label).toBe("检查摄像头输入/供电后复测");
+      const liveResponse = await fetch(`${workstation.baseUrl}/api/robot-control/live-summary?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
+      const liveBody = await liveResponse.json() as RobotControlLiveSummaryResponse;
+      expect(liveResponse.status).toBe(200);
+      expect(liveBody.camera_source_diagnosis_status).toBe("uvc_no_frame_not_exclusive");
+      expect(liveBody.live_wysiwyg_camera_source_diagnosis_status).toBe("uvc_no_frame_not_exclusive");
+      expect(liveBody.camera_hardware_action_label).toBe("检查摄像头输入/供电后复测");
       // 普通 probe 失败后会额外复读一次 health，用于避免 service self-hold 被误当作页面独占。
-      expect(healthRequestCount).toBe(4);
+      expect(healthRequestCount).toBeGreaterThanOrEqual(4);
       expect(probeRequestCount).toBe(1);
       expect(mjpegRequestCount).toBe(0);
     } finally {

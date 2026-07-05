@@ -485,6 +485,16 @@ function cameraMjpegFailureIsFirstFrameFailure(failure: CameraMjpegRelayLastFail
   return CAMERA_FIRST_FRAME_FAILURE_REASONS.has(primaryReason);
 }
 
+function cameraSourceTransportHasOwnFirstFrameFailure(sourceFailure: CameraMjpegRelayLastFailure | null): boolean {
+  // XU 控制查询短包会写进 kernel log；只有 health 自己已证明首帧失败时，才把 transport 当主因。
+  const sourceReadiness = sourceFailure?.source_readiness ?? "";
+  const sourceFailureReason = sourceFailure?.source_failure_reason ?? "";
+  return sourceFailure?.source_diagnosis_status === "uvc_transport_error_not_exclusive"
+    && sourceReadiness === "first_frame_failed"
+    && Boolean(sourceFailureReason)
+    && !["none", "not_loaded", "source_selected_not_probed"].includes(sourceFailureReason);
+}
+
 function cameraMjpegResolvedDiagnosisSource(
   sourceFailure: CameraMjpegRelayLastFailure | null,
   relayFailure: CameraMjpegRelayLastFailure | null,
@@ -504,12 +514,15 @@ function cameraMjpegResolvedDiagnosisSource(
     ? `不是页面独占：相机服务正在用单上游共享预览读取 ${selectedName}，但 UVC 设备没有输出视频帧。`
     : `不是页面独占：${cameraOwnerFreeText(selectedName)}，但 UVC 设备没有输出视频帧。`;
   const sourceDiagnosisStatus = sourceFailure?.source_diagnosis_status ?? "";
+  const sourceDiagnosisIsTransportOnly = sourceDiagnosisStatus === "uvc_transport_error_not_exclusive";
+  const sourceTransportHasOwnFirstFrameFailure = cameraSourceTransportHasOwnFirstFrameFailure(sourceFailure);
+  const preferRelayNoFrameOverTransport = sourceDiagnosisIsTransportOnly && !sourceTransportHasOwnFirstFrameFailure;
   const sourceDiagnosisIsSpecific = [
     "uvc_no_frame_not_exclusive",
     "uvc_transport_error_not_exclusive",
     "uvc_full_speed_usb_not_exclusive",
     "uvc_cma_alloc_failed_not_exclusive",
-  ].includes(sourceDiagnosisStatus);
+  ].includes(sourceDiagnosisStatus) && !preferRelayNoFrameOverTransport;
   const sourceDiagnosisFallbackNextAction = sourceDiagnosisStatus === "uvc_cma_alloc_failed_not_exclusive"
     ? "free_memory_or_reboot_then_probe_known_good_uvc"
     : sourceDiagnosisStatus === "uvc_full_speed_usb_not_exclusive"
@@ -517,18 +530,24 @@ function cameraMjpegResolvedDiagnosisSource(
       : sourceDiagnosisStatus === "uvc_transport_error_not_exclusive"
         ? "check_usb_cable_port_power_or_known_good_uvc"
         : "check_usb_camera_input_power_or_known_good_uvc";
-  const resolvedSourceDiagnosisStatus = sourceDiagnosisIsSpecific
-    ? sourceDiagnosisStatus
-    : "uvc_no_frame_not_exclusive";
+  const resolvedSourceDiagnosisStatus = preferRelayNoFrameOverTransport
+    ? "uvc_no_frame_not_exclusive"
+    : sourceDiagnosisIsSpecific
+      ? sourceDiagnosisStatus
+      : "uvc_no_frame_not_exclusive";
   const resolvedSourceDiagnosisPlainHint = sourceDiagnosisIsSpecific && sourceFailure?.source_diagnosis_plain_hint
     ? sourceFailure.source_diagnosis_plain_hint
     : sourceDiagnosisPlainHint;
-  const resolvedSourceDiagnosisNextAction = sourceDiagnosisIsSpecific
-    ? sourceFailure?.source_diagnosis_next_action || sourceDiagnosisFallbackNextAction
-    : "check_usb_camera_input_power_or_known_good_uvc";
-  const resolvedSourceDiagnosisNotExclusive = sourceDiagnosisIsSpecific
-    ? sourceFailure?.source_diagnosis_not_exclusive || "true"
-    : "true";
+  const resolvedSourceDiagnosisNextAction = preferRelayNoFrameOverTransport
+    ? "check_usb_camera_input_power_or_known_good_uvc"
+    : sourceDiagnosisIsSpecific
+      ? sourceFailure?.source_diagnosis_next_action || sourceDiagnosisFallbackNextAction
+      : "check_usb_camera_input_power_or_known_good_uvc";
+  const resolvedSourceDiagnosisNotExclusive = preferRelayNoFrameOverTransport
+    ? "true"
+    : sourceDiagnosisIsSpecific
+      ? sourceFailure?.source_diagnosis_not_exclusive || "true"
+      : "true";
   const relayAttemptsSummary = cameraMjpegFormatAttemptsSummary(payload);
   return {
     ...(sourceFailure ?? {}),
@@ -933,7 +952,7 @@ function cameraProbeDiagnosticAliases(
   const cameraUsbFullSpeedDetected = cameraUsbSpeed === "12M"
     || sourceFailure?.source_diagnosis_status === "uvc_full_speed_usb_not_exclusive"
     || sourceFailure?.uvc_usb_topology_status === "uvc_video_on_full_speed_usb";
-  const cameraTransportHardwareActionRequired = sourceFailure?.source_diagnosis_status === "uvc_transport_error_not_exclusive";
+  const cameraTransportHardwareActionRequired = cameraSourceTransportHasOwnFirstFrameFailure(sourceFailure);
   const probeNoFrameFailure = cameraProbeNoFrameFailure(probeValues);
   const externalHolderProven = sourceFailure?.source_usage_scope === "external_holder"
     && sourceFailure?.source_usage_not_exclusive !== "true";
@@ -4096,7 +4115,7 @@ async function buildRobotControlSummaryForHttp(
     cameraMjpegResolvedDiagnosisSource(rawSourceFailure, probeFailure),
     lastFailure,
   );
-  const lastFailureForOverlay = lastFailure ?? sourceFailure;
+  const lastFailureForOverlay = sourceFailure ?? lastFailure;
   const mjpegRelayOverlay: RobotControlCameraMjpegRelayOverlay | null = relay
     ? {
       relay_key: relayKey,
