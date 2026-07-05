@@ -6282,6 +6282,9 @@ export function createWorkstationApp(): express.Express {
       uvc_quirks_before: shortText(remote.payload?.uvc_quirks_before, "not_loaded"),
       uvc_quirks_after_reset: shortText(remote.payload?.uvc_quirks_after_reset, "not_loaded"),
       uvc_quirks_after: shortText(remote.payload?.uvc_quirks_after, "not_loaded"),
+      audio_rebind_ok: remote.payload?.audio_rebind_ok === true,
+      audio_bind_status_after_rebind: asRecord(remote.payload?.audio_bind_status_after_rebind) ?? undefined,
+      topology_after_audio_rebind: asRecord(remote.payload?.topology_after_audio_rebind) ?? undefined,
       opens_camera_for_recovery: true,
       recovery_payload: remote.payload ?? {},
       blocked_reasons: [

@@ -132,6 +132,40 @@ class CameraUsbRecoverySmokeTest(unittest.TestCase):
         self.assertTrue(action["camera_input_signal_check_required"])
         self.assertIn("STREAMON 成功", action["next_action_plain"])
 
+    def test_audio_unbind_actions_are_rebound_after_stream_probe(self) -> None:
+        """临时解绑 USB audio 后必须按本次记录恢复，避免 recovery smoke 改变现场设备状态。"""
+        module = load_recovery_module()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            sys_usb_root = root / "sys" / "bus" / "usb" / "devices"
+            audio_driver = root / "sys" / "bus" / "usb" / "drivers" / "snd-usb-audio"
+            iface = sys_usb_root / "3-1:1.2"
+            iface.mkdir(parents=True)
+            audio_driver.mkdir(parents=True)
+            (audio_driver / "unbind").write_text("", encoding="utf-8")
+            (audio_driver / "bind").write_text("", encoding="utf-8")
+            (iface / "driver").symlink_to(audio_driver)
+
+            unbind_actions = module.unbind_audio_interfaces(
+                "3-1",
+                sys_usb_root=sys_usb_root,
+                driver_unbind=audio_driver / "unbind",
+            )
+            rebind_actions = module.rebind_audio_interfaces(
+                unbind_actions,
+                driver_bind=audio_driver / "bind",
+            )
+            driver_status = module.audio_interface_driver_status(
+                {"3-1:1.2"},
+                sys_usb_root=sys_usb_root,
+            )
+
+        self.assertEqual([action["value"] for action in unbind_actions], ["3-1:1.2"])
+        self.assertTrue(all(action["ok"] for action in unbind_actions))
+        self.assertEqual([action["value"] for action in rebind_actions], ["3-1:1.2"])
+        self.assertTrue(all(action["ok"] for action in rebind_actions))
+        self.assertTrue(driver_status["3-1:1.2"]["bound_to_snd_usb_audio"])
+
 
 if __name__ == "__main__":
     unittest.main()

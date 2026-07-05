@@ -111,6 +111,24 @@ micro
       free-roam start 或 `/cmd_vel`。
   - `pc-tools/README.md`、`docs/product/pc_tools_workstation.md`
     - 同步普通首页打开即用地图/雷达贴图修正，以及本轮相机 audio bind 复测仍 0 字节事实。
+- 2026-07-06 04:05 CST 追加 USB recovery audio 恢复闭环与代理透传：
+  - `onboard/scripts/camera_usb_recovery_smoke.py`
+    - 临时解绑同复合设备 `snd-usb-audio` 后，会按本次解绑记录尝试 bind 回去。
+    - 新增 `audio_rebind_ok`、`audio_bind_status_after_rebind`、`topology_after_audio_rebind`；
+      `audio_rebind_ok` 以最终 driver 链接为准，避免 sysfs bind 单次返回码比最终状态保守时误判失败。
+  - `onboard/scripts/test_camera_usb_recovery_smoke.py`
+    - 增加 USB audio unbind/rebind 离线测试，避免 recovery smoke 留下现场设备状态漂移。
+  - `pc-tools/workstation/src/server/index.ts`
+    - `POST /api/robot-control/camera/usb-recovery` 透传 audio 恢复证据，运动/串口/Nav2 标志继续固定 false。
+  - `pc-tools/workstation/src/shared/contracts.ts`
+    - 同步 USB recovery TypeScript 合同。
+  - `pc-tools/workstation/src/components/RobotControlConsolePanel.vue`
+    - 普通页 recovery proof DOM 暴露 `data-auto-usb-recovery-audio-rebind-ok`。
+  - `pc-tools/workstation/test/catalog.test.ts`
+  - `pc-tools/workstation/test/App.test.ts`
+    - 增加 PC 代理透传与普通页 DOM 断言。
+  - `pc-tools/README.md`、`docs/product/pc_tools_workstation.md`、`OKR.md`
+    - 同步 DV20 audio 恢复闭环、UVC quirk 矩阵仍 0 字节、ROS2 配套仍为 RViz2/Foxglove 工程观察。
 
 ## 现场验证
 
@@ -405,6 +423,57 @@ git diff --check
     - `command_raw_lr_nonzero_proven=true`
     - `wheel_lr_nonzero_proven=false`
     - `delivery_success=true`
+- 2026-07-06 04:05 CST 相机 UVC quirk 与 audio 恢复复验：
+  - 停止 `trashbot-local-webrtc-camera.service` 后，对 DV20 `/dev/video1` 临时测试
+    `uvcvideo quirks=16/128/256/4/2/144/400/20/272`，分别抓
+    `YUYV@320x240@20` 与 `MJPG@480x320@30`。
+  - 所有组合均为 `VIDIOC_STREAMON returned 0 (Success)` 后 `select timeout`，输出文件 0 字节。
+  - 测试结束后恢复 `uvcvideo quirks=0,nodrop=0,timeout=5000`，相机服务恢复 `active`。
+  - 新版 `camera_usb_recovery_smoke.py --device /dev/video1` 真实返回：
+    - `status=streamon_success_zero_byte_no_frame`
+    - `stream_failure_class=high_speed_zero_byte_no_frame`
+    - `streamon_success_observed=true`
+    - `zero_byte_no_frame_observed=true`
+    - `audio_rebind_ok=true`
+    - `audio_bind_status_after_rebind.3-1:1.2.bound_to_snd_usb_audio=true`
+    - `audio_bind_status_after_rebind.3-1:1.3.bound_to_snd_usb_audio=true`
+    - `robot_control_executed=false`
+    - `publishes_cmd_vel=false`
+    - `opens_base_uart=false`
+  - 上位机最终状态：
+    - `trashbot-local-webrtc-camera.service=active`
+    - `uvcvideo quirks=0,nodrop=0,timeout=5000`
+    - `lsusb -t` 显示 DV20 Video 接口为 `uvcvideo`、Audio 接口为 `snd-usb-audio`。
+  - 新版 7001 PC 代理
+    `POST /api/robot-control/camera/usb-recovery?baseUrl=http://192.168.1.11:8787`
+    已透传：
+    - `proxy_status=recovery_forwarded`
+    - `remote_http_status=200`
+    - `audio_rebind_ok=true`
+    - `topology_after_audio_rebind` 包含 `Driver=snd-usb-audio`
+    - `stream_failure_class=high_speed_zero_byte_no_frame`
+  - 触发一次 PC MJPEG 只读拉流后，`camera/mjpeg/status` 返回
+    `source_first_frame_failed / uvc_no_frame_not_exclusive / first_frame_total_timeout`，
+    且 `shared_preview_everyone_can_join=true`、`exclusive_camera_claim=false`、`camera_blocks_free_move=false`。
+  - 同轮补雷达刷新和短手控后，最新版 `live-summary` 返回：
+    - `status=ready_for_motion`
+    - `map_current_visible=true`
+    - `path_current_visible=true`
+    - `radar_map_points_visible=true`
+    - `camera_current_visible=false`
+    - `camera_source_diagnosis_status=uvc_no_frame_not_exclusive`
+    - `camera_shared_preview_single_upstream=true`
+    - `camera_shared_preview_last_failure_reason=first_frame_total_timeout`
+    - `keyboard_ready=true`
+    - `keyboard_continuous_ready=true`
+    - `command_raw_lr_nonzero_proven=true`
+    - `command_raw_latest_left=164`
+    - `command_raw_latest_right=164`
+    - `wheel_lr_nonzero_proven=false`
+    - `delivery_success=true`
+    - `map_display_default_zoom_percent=300%`
+    - `map_display_ros2_companion_tools=["rviz2","foxglove"]`
+    - `map_display_companion_replaces_pc_ui=false`
 
 ## 剩余风险
 

@@ -31454,6 +31454,7 @@ describe("App", () => {
       uvc_quirks_before: "4294967295",
       uvc_quirks_after_reset: "0",
       uvc_quirks_after: "0",
+      audio_rebind_ok: true,
       blocked_reasons: ["high_speed_zero_byte_no_frame"],
     };
     const mockedFetch = stubWorkstationFetch({
@@ -31487,6 +31488,7 @@ describe("App", () => {
     expect(proof.attributes("data-auto-usb-recovery-uvc-quirks-before")).toBe("4294967295");
     expect(proof.attributes("data-auto-usb-recovery-uvc-quirks-after-reset")).toBe("0");
     expect(proof.attributes("data-auto-usb-recovery-uvc-quirks-after")).toBe("0");
+    expect(proof.attributes("data-auto-usb-recovery-audio-rebind-ok")).toBe("true");
     expect(proof.attributes("data-auto-usb-recovery-endpoint")).toBe("/api/robot-control/camera/usb-recovery");
     expect(wrapper.find('[data-testid="robot-camera-mjpeg-preview"]').attributes("src")).toContain("retry=1");
   });

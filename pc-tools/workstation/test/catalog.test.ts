@@ -15780,6 +15780,14 @@ describe("workstation fail-closed API contracts", () => {
             uvc_quirks_before: "4294967295",
             uvc_quirks_after_reset: "0",
             uvc_quirks_after: "0",
+            audio_rebind_ok: true,
+            audio_bind_status_after_rebind: {
+              "3-1:1.2": { bound_to_snd_usb_audio: true },
+              "3-1:1.3": { bound_to_snd_usb_audio: true },
+            },
+            topology_after_audio_rebind: {
+              stdout: "Class=Audio, Driver=snd-usb-audio, 480M",
+            },
             stream_failure_class: "high_speed_zero_byte_no_frame",
             next_action: "check_usb_cable_port_power_or_known_good_uvc",
             next_action_plain: "摄像头已在高速 USB 上，STREAMON 成功但没有任何视频 buffer；优先检查摄像头输入信号、USB 线/供电/接口，或换 known-good UVC 复测。",
@@ -15844,6 +15852,9 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.uvc_quirks_before).toBe("4294967295");
       expect(body.uvc_quirks_after_reset).toBe("0");
       expect(body.uvc_quirks_after).toBe("0");
+      expect(body.audio_rebind_ok).toBe(true);
+      expect(body.audio_bind_status_after_rebind["3-1:1.2"].bound_to_snd_usb_audio).toBe(true);
+      expect(body.topology_after_audio_rebind.stdout).toContain("snd-usb-audio");
       expect(body.opens_camera_for_recovery).toBe(true);
       expect(body.robot_control_executed).toBe(false);
       expect(body.sends_motion_when_clicked).toBe(false);

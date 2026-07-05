@@ -6547,6 +6547,9 @@ export interface RobotControlCameraUsbRecoveryProxyResponse extends ProofFlags {
   uvc_quirks_before?: string;
   uvc_quirks_after_reset?: string;
   uvc_quirks_after?: string;
+  audio_rebind_ok?: boolean;
+  audio_bind_status_after_rebind?: Record<string, unknown>;
+  topology_after_audio_rebind?: Record<string, unknown>;
   opens_camera_for_recovery?: true;
   recovery_payload?: Record<string, unknown>;
   failure_reason?: string;

@@ -24696,6 +24696,7 @@ onBeforeUnmount(() => {
             :data-auto-usb-recovery-uvc-quirks-before="cameraAutoUsbRecoveryResult?.uvc_quirks_before ?? 'not_loaded'"
             :data-auto-usb-recovery-uvc-quirks-after-reset="cameraAutoUsbRecoveryResult?.uvc_quirks_after_reset ?? 'not_loaded'"
             :data-auto-usb-recovery-uvc-quirks-after="cameraAutoUsbRecoveryResult?.uvc_quirks_after ?? 'not_loaded'"
+            :data-auto-usb-recovery-audio-rebind-ok="String(cameraAutoUsbRecoveryResult?.audio_rebind_ok ?? false)"
             :data-auto-usb-recovery-failure="cameraAutoUsbRecoveryFailure || 'none'"
             data-auto-usb-recovery-endpoint="/api/robot-control/camera/usb-recovery"
             :data-fixed-camera-probe-endpoint="plainCameraUsbRecoveryProofSummary.fixedCameraProbeEndpoint"

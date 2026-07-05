@@ -217,11 +217,15 @@ def reauthorize_usb(usb_device: str) -> list[dict[str, Any]]:
     return actions
 
 
-def unbind_audio_interfaces(usb_device: str) -> list[dict[str, Any]]:
+def unbind_audio_interfaces(
+    usb_device: str,
+    *,
+    sys_usb_root: Path = Path("/sys/bus/usb/devices"),
+    driver_unbind: Path = Path("/sys/bus/usb/drivers/snd-usb-audio/unbind"),
+) -> list[dict[str, Any]]:
     """解绑同一复合设备上的 USB audio，避免 full-speed 总线再被音频接口干扰。"""
     actions: list[dict[str, Any]] = []
-    driver_unbind = Path("/sys/bus/usb/drivers/snd-usb-audio/unbind")
-    for iface in sorted(Path("/sys/bus/usb/devices").glob(f"{usb_device}:1.*")):
+    for iface in sorted(sys_usb_root.glob(f"{usb_device}:1.*")):
         driver_link = iface / "driver"
         try:
             driver = os.path.realpath(driver_link)
@@ -231,6 +235,46 @@ def unbind_audio_interfaces(usb_device: str) -> list[dict[str, Any]]:
             continue
         actions.append(write_sysfs(driver_unbind, iface.name))
     return actions
+
+
+def rebind_audio_interfaces(
+    unbind_actions: list[dict[str, Any]],
+    *,
+    driver_bind: Path = Path("/sys/bus/usb/drivers/snd-usb-audio/bind"),
+) -> list[dict[str, Any]]:
+    """把脚本本次解绑过的 USB audio 接口恢复绑定，避免诊断结束后留下状态漂移。"""
+    actions: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for unbind_action in unbind_actions:
+        iface = str(unbind_action.get("value") or "")
+        if not iface or iface in seen or not unbind_action.get("ok"):
+            continue
+        seen.add(iface)
+        action = write_sysfs(driver_bind, iface)
+        action["value"] = iface
+        action["restores_unbind_action"] = iface
+        actions.append(action)
+    return actions
+
+
+def audio_interface_driver_status(
+    interface_names: set[str],
+    *,
+    sys_usb_root: Path = Path("/sys/bus/usb/devices"),
+) -> dict[str, dict[str, Any]]:
+    """按最终 driver 链接判断 audio 是否恢复；sysfs bind 返回码有时比最终状态更保守。"""
+    status: dict[str, dict[str, Any]] = {}
+    for iface in sorted(interface_names):
+        driver_link = sys_usb_root / iface / "driver"
+        try:
+            driver = os.path.realpath(driver_link)
+        except OSError:
+            driver = ""
+        status[iface] = {
+            "driver": driver,
+            "bound_to_snd_usb_audio": driver.endswith("/snd-usb-audio"),
+        }
+    return status
 
 
 def stream_once(device: str, width: int, height: int, pixelformat: str, fps: int, output: Path) -> dict[str, Any]:
@@ -403,6 +447,8 @@ def main() -> int:
         summary["uvc_module_parameters_after_reauthorize"] = read_uvc_module_parameters()
     if not args.skip_audio_unbind:
         summary["audio_unbind_actions"] = unbind_audio_interfaces(usb_device)
+    else:
+        summary["audio_unbind_actions"] = []
 
     summary["topology"] = run_command(["lsusb", "-t"], timeout_s=5)
     summary["usb_video_speed"] = usb_video_speed_from_topology(str(summary["topology"].get("stdout") or ""), usb_device)
@@ -426,6 +472,34 @@ def main() -> int:
         else "streamon_failed"
     )
     summary.update(camera_recovery_next_action(bool(summary["frame_observed"]), str(summary["usb_video_speed"])))
+    if args.skip_audio_unbind:
+        summary["audio_rebind_actions"] = []
+        summary["audio_rebind_ok"] = True
+        summary["audio_rebind_skipped_reason"] = "skip_audio_unbind"
+    else:
+        summary["audio_rebind_actions"] = rebind_audio_interfaces(summary["audio_unbind_actions"])
+        audio_unbound_ok_ifaces = {
+            str(action.get("value") or "")
+            for action in summary["audio_unbind_actions"]
+            if action.get("ok") and action.get("value")
+        }
+        audio_rebound_ok_ifaces = {
+            str(action.get("value") or "")
+            for action in summary["audio_rebind_actions"]
+            if action.get("ok") and action.get("value")
+        }
+        time.sleep(0.2)
+        summary["audio_unbound_ok_ifaces"] = sorted(audio_unbound_ok_ifaces)
+        summary["audio_rebound_write_ok_ifaces"] = sorted(audio_rebound_ok_ifaces)
+        summary["audio_bind_status_after_rebind"] = audio_interface_driver_status(audio_unbound_ok_ifaces)
+        summary["audio_rebind_ok"] = all(
+            item.get("bound_to_snd_usb_audio")
+            for item in summary["audio_bind_status_after_rebind"].values()
+        )
+        if not audio_unbound_ok_ifaces:
+            summary["audio_rebind_ok"] = True
+            summary["audio_rebind_skipped_reason"] = "no_audio_interfaces_unbound"
+        summary["topology_after_audio_rebind"] = run_command(["lsusb", "-t"], timeout_s=5)
 
     if not args.skip_service:
         summary["service_start"] = run_command(["systemctl", "start", args.service], timeout_s=8)

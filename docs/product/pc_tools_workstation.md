@@ -5953,3 +5953,16 @@ Nav2、manual、keyboard、free-roam、delivery、stop、建图 runtime 或 `/cm
 `last_first_frame_failure_reason` 与 `last_first_frame_error.first_frame_format_attempts` 继续生成
 `source_first_frame_failed`、`source_failure_reason=first_frame_total_timeout` 和多格式“无首帧”摘要。
 这解决相机服务重启后短时间内页面误显示“等待首帧”的问题；该合同不改变运动控制，不新增相机独占 reader。
+
+2026-07-06 04:05 CST 起，PC 相机 USB recovery 代理必须透传上车脚本的 audio 恢复闭环：
+`audio_rebind_ok`、`audio_bind_status_after_rebind` 和 `topology_after_audio_rebind`。上车
+`camera_usb_recovery_smoke.py` 在临时解绑同复合设备 `snd-usb-audio` 后，会按本次解绑记录尝试 bind 回去，
+并以最终 driver 链接而不是单次 sysfs 写返回码判断是否恢复。真实上位机复验中，`3-1:1.2/3-1:1.3`
+最终均为 `snd-usb-audio`，`uvcvideo` 参数保持 `quirks=0,nodrop=0,timeout=5000`，相机服务恢复
+`active`；同轮 PC 代理回包 `audio_rebind_ok=true`。该变化只收口诊断副作用，不把无帧伪装成图传已恢复。
+
+同轮继续对 DV20 `/dev/video1` 做 UVC quirk 矩阵复测：`quirks=16/128/256/4/2/144/400/20/272`
+分别尝试 `YUYV@320x240@20` 与 `MJPG@480x320@30`，所有组合仍为 `VIDIOC_STREAMON returned 0 (Success)`
+后 `select timeout`、0 字节。复测后已恢复默认 UVC 参数并重启相机服务；当前不能再把常见
+uvcvideo quirk、audio 复合接口、页面独占或格式未尝试作为主要根因，剩余仍是 DV20 输入信号、线/接口/供电、
+采集卡/摄像头本体或 known-good UVC 复测。
