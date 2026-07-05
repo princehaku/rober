@@ -1773,3 +1773,10 @@ command raw L/R 非零并 stop 成功；相机仍无帧，但 `camera_blocks_fre
 ROS2 配套用于工程观察：RViz2/Nav2 RViz 配置看 `/map`、`/scan`、TF、路径、定位和 costmap；
 Foxglove Bridge + Foxglove Web 用于远程浏览器观察，连接 `ws://192.168.1.11:8765`。
 这些工具不替代 PC 简易控制台，不发送底盘运动命令。
+
+2026-07-06 01:44 CST 继续现场恢复图传：上位机停止相机服务后 `/dev/video1` 无 owner，
+确认它是 DV20 UVC capture，`/dev/video2` 只是 metadata，`/dev/video0` 是 cedrus decoder。
+复位 UVC 控制项并 USB `3-1` reauthorize 后，设备仍为 `480M`，但 `v4l2-ctl` mmap/userptr 和
+`ffmpeg` 对 MJPG/YUYV 多格式仍全部 0 帧。PC probe 继续显示 `probe_total_timeout /
+uvc_no_frame_not_exclusive`。恢复后已重新刷新雷达和地图，live-summary 回到 map/path/radar true；
+WASD forward/backward 仍能发出非零 command raw、读到运动信号并 stop 成功。

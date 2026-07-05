@@ -5864,3 +5864,19 @@ PC manual forward/backward 固定代理均能写出 command raw L/R 非零并 st
 `/map`、`/scan`、TF、Nav2 path、定位和 costmap；远程浏览器大屏用 Foxglove Bridge + Foxglove Web，
 连接 `ws://192.168.1.11:8765`。这些入口不替代 PC 简易控制台，不启动 Nav2/建图 runtime，不发送
 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+
+2026-07-06 01:44 CST 继续恢复实时图传：停止相机服务后，`/dev/video1` 无 owner，设备仍是
+`USB Composite Device: DV20 USB` UVC capture，`/dev/video2` 是 metadata，`/dev/video0` 是 cedrus decoder。
+已复位 UVC input 和 brightness/contrast/saturation/gamma/gain/power_line/white_balance/sharpness/backlight/
+auto_exposure 控制项，并对 USB `3-1` 执行 reauthorize；设备重新枚举后仍在 `480M` high-speed。
+直接采帧矩阵仍失败：`v4l2-ctl` mmap 与 userptr 对 `MJPG 640x480/1280x720/480x320`、
+`YUYV 320x240/640x480` 均 `0 bytes`；`ffmpeg` 对 MJPG 无 EOF 前像素帧，对 YUYV 能读到 rawvideo 参数但
+`frame=0`、输出为空。PC first-frame probe 仍返回 `probe_total_timeout`、`frame_observed=false`、
+`source_diagnosis_status=uvc_no_frame_not_exclusive`。
+
+同轮为了不让恢复动作影响可用性，按固定只读链路刷新 `radar_scan_proof -> radar_status -> map_preview` 后，
+PC live-summary 回到 `status=ready_for_motion`、`map_current_visible=true`、`path_current_visible=true`、
+`radar_map_points_visible=true`、当前雷达点 `101`。PC manual forward/backward 固定代理均返回
+`command_raw_lr_nonzero_proven=true`、`motion_signal_observed=true`、`stop_result_ok=true`；stop 后
+`keyboard_motion_verified=true`、`keyboard_command_raw_lr_nonzero_proven=true`、`keyboard_stop_settled_after_pulse=true`。
+因此 PC 端“地图大图 + WASD 能动”继续成立，实时图传仍等待 DV20 输入/线材/供电/采集卡/摄像头本体或 known-good UVC 处理。

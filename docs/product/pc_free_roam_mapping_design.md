@@ -1264,3 +1264,9 @@ WASD 前进/后退短脉冲能写出 command raw L/R 非零并 stop 成功，后
 `完整态势` 回 `100%`，`细节放大` 到 `4800%`。ROS2 配套只作为工程观察：RViz2/Nav2 RViz 配置用于本地看
 `/map`、`/scan`、TF、路径、定位和 costmap；Foxglove Bridge + Foxglove Web 用于远程浏览器观察。
 这些工具不替代 PC 简易控制台，也不作为扫图、自由移动或键盘手控前置。
+
+2026-07-06 01:44 CST 继续确认“相机不阻塞低速移动”的边界：已停止相机服务、复位 DV20 UVC 控制项、
+USB `3-1` reauthorize 并重启服务；mmap/userptr/ffmpeg 对 MJPG/YUYV 多格式仍全部 0 帧。恢复动作后雷达贴图短暂过期，
+随后通过固定只读刷新链路恢复到 `radar_status=loaded`、当前雷达点 `101`。PC WASD forward/backward
+均读到 command raw L/R 非零、IMU 动作信号和 stop OK。扫图/自由移动页面仍应保持当前策略：
+实时图传缺口只阻塞视觉验收，不阻塞低速移动、键盘手控或图上路线观察。

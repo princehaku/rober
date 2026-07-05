@@ -8,6 +8,19 @@
 
 ## 2026-07-06 系列
 
+### 2026-07-06 01-44｜pc_camera_reset_matrix_radar_wasd｜UVC 复位矩阵与地图/WASD复验
+
+本轮 `sprints/2026.07.06_01-44_pc_camera_reset_matrix_radar_wasd/` 不改产品代码，继续尝试恢复 PC 实时图传。
+上位机停止相机服务后确认 `/dev/video1` 无 owner，复位 UVC input 和 brightness/contrast/saturation/gamma/gain/
+power_line/white_balance/sharpness/backlight/auto_exposure 控制项，然后对 USB `3-1` 执行 reauthorize。
+DV20 重新枚举为 Jieli `4c4a:4a55`，仍在 USB `480M` high-speed，`trashbot-local-webrtc-camera.service` 恢复 active。
+
+采帧矩阵仍无真实帧：`v4l2-ctl` mmap 与 userptr 对 `MJPG 640x480/1280x720/480x320`、
+`YUYV 320x240/640x480` 均为 `0 bytes`；`ffmpeg` MJPG 报 EOF/无像素帧，YUYV 能枚举 rawvideo 参数但
+`frame=0`。PC first-frame probe 继续返回 `probe_total_timeout / uvc_no_frame_not_exclusive`。同轮固定只读链路刷新雷达后，
+live-summary 回到 `ready_for_motion`，地图、Nav2 路线和雷达点可见，当前雷达点 101；PC WASD 前进/后退均读到
+command raw L/R 非零、IMU 动作信号和 stop OK。实时图传剩余风险继续指向 DV20 输入、线材、供电、采集卡/摄像头本体或换 known-good UVC。
+
 ### 2026-07-06 01-31｜pc_camera_self_hold_health_refresh｜相机服务自持时的无帧诊断刷新
 
 本轮 `sprints/2026.07.06_01-31_pc_camera_self_hold_health_refresh/` 修正 PC first-frame probe 代理：
