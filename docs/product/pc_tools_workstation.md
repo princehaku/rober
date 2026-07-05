@@ -5880,3 +5880,18 @@ PC live-summary 回到 `status=ready_for_motion`、`map_current_visible=true`、
 `command_raw_lr_nonzero_proven=true`、`motion_signal_observed=true`、`stop_result_ok=true`；stop 后
 `keyboard_motion_verified=true`、`keyboard_command_raw_lr_nonzero_proven=true`、`keyboard_stop_settled_after_pulse=true`。
 因此 PC 端“地图大图 + WASD 能动”继续成立，实时图传仍等待 DV20 输入/线材/供电/采集卡/摄像头本体或 known-good UVC 处理。
+
+2026-07-06 01:53 CST 继续查 DV20 输入/驱动可能性：`lsusb -v -d 4c4a:4a55` 显示 DV20 为 Jieli
+UVC 1.00 复合设备、bus powered `400mA`，VideoControl processing unit 有 `Descriptor too short` 警告，
+并存在 vendor extension unit `{28f03370-6311-4a2e-ba2c-6890eb334016}`、`bNumControls=8`。标准
+`v4l2-ctl --list-ctrls-menus` 只暴露亮度、曝光、白平衡等普通控制项，没有可直接切 HDMI/CVBS/输入源的标准控制。
+`media-ctl -p -d /dev/media1` 确认 graph 为 `Input 1 -> Processing 2 -> Extension 3 -> /dev/video1`，
+链路 enabled/immutable。GStreamer 直采也失败：`image/jpeg 640x480@30`、`image/jpeg 1280x720@30`、
+`YUY2 320x240@25`、`YUY2 640x480@22` 均能协商 caps，但输出全为 `0 bytes`。
+
+同轮 PC 7001 复验：first-frame probe 仍为 `probe_total_timeout`、`frame_observed=false`、
+`source_diagnosis_status=uvc_no_frame_not_exclusive`；雷达只读刷新后 live-summary 为
+`status=ready_for_motion`、`map_current_visible=true`、`path_current_visible=true`、
+`radar_map_points_visible=true`、`camera_current_visible=false`、`keyboard_motion_verified=true`、
+`keyboard_command_raw_lr_nonzero_proven=true`、`keyboard_stop_settled_after_pulse=true`。这继续说明 PC 大地图和 WASD 可用，
+实时图传缺口更集中到 DV20 上游输入、线材、供电、采集卡/摄像头本体，或 vendor extension unit 里存在未公开输入切换控制。

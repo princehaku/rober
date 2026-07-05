@@ -1780,3 +1780,9 @@ Foxglove Bridge + Foxglove Web 用于远程浏览器观察，连接 `ws://192.16
 `ffmpeg` 对 MJPG/YUYV 多格式仍全部 0 帧。PC probe 继续显示 `probe_total_timeout /
 uvc_no_frame_not_exclusive`。恢复后已重新刷新雷达和地图，live-summary 回到 map/path/radar true；
 WASD forward/backward 仍能发出非零 command raw、读到运动信号并 stop 成功。
+
+2026-07-06 01:53 CST 起，DV20 描述符和 GStreamer 路径也已复验：`lsusb -v` 读到 UVC 1.00、
+bus powered `400mA`、processing unit `Descriptor too short`、vendor extension unit
+`{28f03370-6311-4a2e-ba2c-6890eb334016}` / `bNumControls=8`；但标准 V4L2 菜单没有输入源切换项。
+GStreamer 对 MJPG/YUY2 四组 caps 均能协商但输出 `0 bytes`。因此实时图传仍不是 PC 页面或采集栈差异问题，
+下一步应优先确认 DV20 上游输入源/线材/供电，或换 known-good UVC 复测。
