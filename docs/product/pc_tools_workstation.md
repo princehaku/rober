@@ -54,6 +54,15 @@ pc-tools/workstation/
   远程浏览器观察用 `foxglove_bridge` + Foxglove Web。工程观察只看 `/map`、`/scan`、TF、路径、定位和 costmap，
   不替代简易 PC 控制台，不启动 ROS2/RViz2/Foxglove/Nav2/建图 runtime，不发送 manual、keyboard、free-roam、
   delivery、stop 或 `/cmd_vel`。
+- 2026-07-06 02:29 CST 起，`live-summary` 直接平铺 WASD/手控 raw 命令证据：
+  `command_raw_lr_nonzero_proven`、`command_raw_latest_left/right`、`keyboard_command_raw_lr_nonzero` 和
+  `keyboard_motion_evidence_complete`。真实 7001 复验中，PC 手控代理用 `direction=forward`、`speed_mps=0.08`、
+  `duration_ms=240`、`command_mode=pwm` 转发到上车 `/api/base/manual`，返回 `command_forwarded`、
+  `manual_command_executed=true`、`auto_stop_executed=true`、`command_raw_lr_nonzero_proven=true`、`L=164/R=164`。
+  同轮上车 `camera_usb_recovery_smoke.py --device /dev/video1` 已完成服务重启、USB `3-1` reauthorize、
+  autosuspend 关闭、audio 复合接口解绑和 `uvcvideo quirks=0` 复位；DV20 仍
+  `streamon_failed/high_speed_zero_byte_no_frame`，`YUYV@320x240@20` 与 `MJPG@480x320@30` 均 0 字节。
+  因此地图/雷达/WASD 可继续作为 PC MVP 已可用面；实时图传仍必须标为上游输入或采集设备无帧，不能伪装成页面问题。
 - 2026-07-04 08:08 CST 起，PC `/api/robot-control/camera/first-frame/probe?backendSmoke=1` 的本机代理超时不再被当成相机无帧事实写入缓存。
   只有上车返回的首帧/fallback 证据明确为 `probe_total_timeout`、`capture_read_call_timeout`、`first_frame_timeout`
   等无帧原因时，MJPEG status 才缓存为 `source_first_frame_failed`；如果后续仅发生

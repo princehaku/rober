@@ -7369,6 +7369,11 @@ describe("workstation fail-closed API contracts", () => {
       expect(live.keyboard_ready).toBe(true);
       expect(summary.keyboard_ready).toBe(true);
       expect(summary.keyboard_continuous_ready).toBe(true);
+      expect(live.command_raw_lr_nonzero_proven).toBe(false);
+      expect(live.command_raw_latest_left).toBe("not_loaded");
+      expect(live.command_raw_latest_right).toBe("not_loaded");
+      expect(live.keyboard_command_raw_lr_nonzero).toBe(false);
+      expect(live.keyboard_motion_evidence_complete).toBe(false);
       expect(summary.keyboard_continuous_motion_verified).toBe(false);
       expect(summary.keyboard_wheel_lr_nonzero).toBe(false);
       expect(summary.keyboard_stop_after_release).toBe(false);
@@ -18623,6 +18628,16 @@ describe("workstation fail-closed API contracts", () => {
       expect(summaryWithCommandRaw.keyboard_wheel_lr_nonzero).toBe(false);
       expect(summaryWithCommandRaw.keyboard_command_raw_lr_nonzero).toBe(true);
       expect(summaryWithCommandRaw.keyboard_motion_evidence_complete).toBe(true);
+      const liveWithCommandRawResponse = await requestJson(`${workstation.baseUrl}/api/robot-control/live-summary?baseUrl=${encodeURIComponent(upstream.baseUrl)}&keyboard_enabled=true&keyboard_armed=true&keyboard_best_continuous_pulse_count=2&keyboard_verified_min_forwarded_pulses=2&keyboard_stop_settled_after_pulse=true&keyboard_motion_verified=true&command_raw_lr_nonzero_proven=true&motion_evidence_complete=true`);
+      const liveWithCommandRaw = liveWithCommandRawResponse.body as {
+        keyboard_command_raw_lr_nonzero: boolean;
+        keyboard_motion_evidence_complete: boolean;
+        command_raw_lr_nonzero_proven: boolean;
+      };
+      expect(liveWithCommandRawResponse.status).toBe(200);
+      expect(liveWithCommandRaw.keyboard_command_raw_lr_nonzero).toBe(true);
+      expect(liveWithCommandRaw.keyboard_motion_evidence_complete).toBe(true);
+      expect(liveWithCommandRaw.command_raw_lr_nonzero_proven).toBe(false);
     } finally {
       await workstation.close();
       await upstream.close();

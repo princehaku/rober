@@ -4192,6 +4192,7 @@ async function buildRobotControlSummaryForHttp(
 
 function buildRobotControlLiveSummaryResponse(summary: RobotControlSummaryResponse): RobotControlLiveSummaryResponse {
   // 扁平 live-summary 是给现场 curl/jq 用的只读视图；权威数据仍来自同一次 summary 聚合。
+  const baseReadback = summary.readback_summary.base;
   return {
     ...(summary.live_closure_summary as NonNullable<RobotControlSummaryResponse["live_closure_summary"]>),
     schema: "trashbot.pc_tools_workstation.robot_control_live_summary.v1",
@@ -4245,6 +4246,20 @@ function buildRobotControlLiveSummaryResponse(summary: RobotControlSummaryRespon
     route_target_source: summary.readback_summary.map.route_target_source,
     route_target_state: summary.readback_summary.map.route_target_state,
     radar_map_points_current_visible: summary.live_closure_summary?.radar_map_points_visible ?? false,
+    // 现场只看 live-summary 时也要能确认 WASD/手控是否真的发出了非零 raw L/R，避免钻 summary 深层字段。
+    command_raw_nonzero_proven: baseReadback.command_raw_nonzero_proven === "true",
+    command_raw_lr_nonzero_proven: baseReadback.command_raw_lr_nonzero_proven === "true",
+    command_raw_twist_nonzero_proven: baseReadback.command_raw_twist_nonzero_proven === "true",
+    command_raw_latest_left: baseReadback.command_raw_latest_left,
+    command_raw_latest_right: baseReadback.command_raw_latest_right,
+    command_raw_latest_linear_x: baseReadback.command_raw_latest_linear_x,
+    command_raw_latest_angular_z: baseReadback.command_raw_latest_angular_z,
+    motion_evidence_complete: baseReadback.motion_evidence_complete === "true",
+    motion_evidence_source: baseReadback.motion_evidence_source,
+    keyboard_command_raw_lr_nonzero: summary.keyboard_command_raw_lr_nonzero === true,
+    keyboard_command_raw_latest_left: baseReadback.command_raw_latest_left,
+    keyboard_command_raw_latest_right: baseReadback.command_raw_latest_right,
+    keyboard_motion_evidence_complete: summary.keyboard_motion_evidence_complete === true,
     readback_only: true,
     sends_motion_when_clicked: false,
     starts_nav2: false,

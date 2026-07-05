@@ -40,6 +40,18 @@ manual、Nav2 goal、free-roam、delivery、stop 或建图运行时动作。
 而 health 只带有 UVC vendor extension 控制查询造成的 transport 日志，PC 顶层继续显示
 `uvc_no_frame_not_exclusive` 和“检查摄像头输入/供电后复测”，避免把 XU 查询短包误当成 USB 传输主因。
 
+2026-07-06 02:29 CST 起，`GET /api/robot-control/live-summary` 直接平铺 WASD/手控命令 raw 证据：
+`command_raw_lr_nonzero_proven`、`command_raw_latest_left/right`、`keyboard_command_raw_lr_nonzero` 和
+`keyboard_motion_evidence_complete`。现场用正确 PC 代理合同
+`POST /api/robot-control/base/manual` body `direction=forward`、`speed_mps=0.08`、`duration_ms=240`、
+`command_mode=pwm` 复验，返回 `command_forwarded`、上车 `manual_command_executed=true`、
+`auto_stop_executed=true`、`command_raw_lr_nonzero_proven=true`、`L=164/R=164`；停止链路保持可用。
+同轮再次运行上车 `camera_usb_recovery_smoke.py --device /dev/video1`：脚本停/启相机服务、USB `3-1`
+reauthorize、关闭 autosuspend、解绑 DV20 audio 复合接口、复位 `uvcvideo quirks=0` 后，`YUYV@320x240@20`
+和 `MJPG@480x320@30` 仍 10s timeout 且 `0` 字节，状态为
+`streamon_failed/high_speed_zero_byte_no_frame`。因此 PC 地图、雷达和 WASD 已可用；实时图传仍是 DV20
+输入链路或采集设备无帧，不能宣称已恢复。
+
 2026-07-04 08:08 CST 起，PC 相机状态缓存进一步收紧：`backendSmoke` 深度探针如果只是 PC 代理层
 `fetch_timeout_45000ms`，不会再覆盖前一次已经确认的 `probe_total_timeout / uvc_no_frame_not_exclusive`
 源头无帧结论；只有上车 probe/fallback 明确读不到首帧时，`/api/robot-control/camera/mjpeg/status`
