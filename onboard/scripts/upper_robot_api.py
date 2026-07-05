@@ -30,6 +30,18 @@ DEFAULT_PORT = 8787
 DEFAULT_CAMERA_BASE_URL = "http://127.0.0.1:8088"
 CAMERA_MJPEG_RELAY_HEADER_TIMEOUT_S = 12.0
 CAMERA_MJPEG_RELAY_SOCK_READ_TIMEOUT_S = 12.0
+# 这些原因都表示已经真实打开过视频源但没有拿到首帧，不能在 status 中退回“未探测”。
+CAMERA_FIRST_FRAME_FAILURE_REASONS = frozenset({
+    "capture_read_call_timeout",
+    "capture_read_no_result",
+    "capture_read_returned_false",
+    "ffmpeg_mjpeg_first_frame_unreadable",
+    "first_frame_format_attempts_failed",
+    "first_frame_timeout",
+    "first_frame_total_timeout",
+    "mjpeg_auto_retry_cooldown_after_first_frame_failure",
+    "opencv_capture_not_opened",
+})
 DEFAULT_BASE_PORT = "/dev/ttyS5"
 DEFAULT_BASE_BAUDRATE = 115200
 DEFAULT_MAX_SPEED = 0.12
@@ -3855,6 +3867,30 @@ def camera_first_frame_fallback_aliases(payload: dict[str, Any]) -> dict[str, An
     }
 
 
+def camera_relay_first_frame_error_payload(relay_snapshot: dict[str, Any]) -> dict[str, Any]:
+    """从 relay 失败体里取真实首帧失败；cooldown 外壳不能遮住内层无帧事实。"""
+    if not isinstance(relay_snapshot, dict):
+        return {}
+    payload = relay_snapshot.get("last_error_payload")
+    if not isinstance(payload, dict):
+        return {}
+    nested = payload.get("last_first_frame_error")
+    if isinstance(nested, dict):
+        return nested
+    return payload
+
+
+def camera_failure_reason_from_payload(payload: dict[str, Any]) -> str:
+    """按优先级提取首帧失败原因，供 status 判断硬件动作和 PC 文案。"""
+    if not isinstance(payload, dict):
+        return ""
+    for key in ("source_failure_reason", "primary_source_failure_reason", "failure_reason", "error"):
+        value = str(payload.get(key) or "").strip()
+        if value and value not in {"none", "not_loaded", "error"}:
+            return value
+    return ""
+
+
 def camera_mjpeg_preview_status(health_payload: dict[str, Any], relay_snapshot: dict[str, Any]) -> str:
     """状态端点只表达当前可见性，不因为 health 已选源就假装页面已经看到画面。"""
     if relay_snapshot.get("last_error_payload") or relay_snapshot.get("last_failure_reason"):
@@ -3880,12 +3916,35 @@ def camera_mjpeg_status_payload(
 ) -> dict[str, Any]:
     """8787 直连状态只汇总 8088 health 与本进程 relay，不拉流、不打开相机。"""
     aliases = flatten_camera_health_aliases(health_payload)
+    relay_first_frame_error = camera_relay_first_frame_error_payload(relay_snapshot)
+    relay_first_frame_failure_reason = camera_failure_reason_from_payload(relay_first_frame_error)
     source_readiness = str(health_payload.get("source_readiness") or aliases.get("source_readiness") or "not_loaded")
     source_failure_reason = str(health_payload.get("source_failure_reason") or "not_loaded")
     fallback_aliases = camera_first_frame_fallback_aliases(health_payload)
+    relay_fallback_aliases = camera_first_frame_fallback_aliases(relay_first_frame_error)
     preview_status = camera_mjpeg_preview_status(health_payload, relay_snapshot)
     selected_name = str(aliases.get("selected_name") or "not_loaded")
     source_diagnosis_status = str(aliases.get("source_diagnosis_status") or "not_loaded")
+    relay_no_frame_failure = (
+        preview_status == "source_first_frame_failed"
+        and relay_first_frame_failure_reason in CAMERA_FIRST_FRAME_FAILURE_REASONS
+    )
+    weak_source_diagnosis = source_diagnosis_status in {
+        "",
+        "none",
+        "not_loaded",
+        "source_not_probed",
+        "source_selected_not_probed",
+    }
+    if relay_no_frame_failure and weak_source_diagnosis:
+        source_diagnosis_status = "uvc_no_frame_not_exclusive"
+        aliases["source_diagnosis_plain_hint"] = (
+            f"不是页面独占：{selected_name} 当前没人占用，但 UVC 设备没有输出视频帧。"
+        )
+        aliases["source_diagnosis_next_action"] = "check_usb_camera_input_power_or_known_good_uvc"
+        aliases["source_diagnosis_not_exclusive"] = True
+        source_readiness = "first_frame_failed"
+        source_failure_reason = relay_first_frame_failure_reason
     source_diagnosis_next_action = aliases.get("source_diagnosis_next_action") or "not_loaded"
     source_diagnosis_next_action_plain = camera_action_plain_text(source_diagnosis_next_action)
     source_diagnosis_plain_hint = str(aliases.get("source_diagnosis_plain_hint") or "")
@@ -3920,6 +3979,9 @@ def camera_mjpeg_status_payload(
         wysiwyg_status_plain = visible_plain
 
     client_count = int(relay_snapshot.get("client_count") or 0)
+    health_attempts_summary = camera_first_frame_attempts_summary(health_payload)
+    relay_attempts_summary = camera_first_frame_attempts_summary(relay_first_frame_error)
+    attempts_summary = health_attempts_summary if health_attempts_summary != "none" else relay_attempts_summary
     return {
         "schema": f"{SCHEMA}.camera_mjpeg_status",
         "proxy_status": "status_loaded" if health_http_status == 200 else "camera_health_unavailable",
@@ -3968,8 +4030,24 @@ def camera_mjpeg_status_payload(
         "cma_memory_diagnostics_latest_failure": aliases.get("cma_memory_diagnostics_latest_failure") or "",
         "source_readiness": source_readiness,
         "source_failure_reason": source_failure_reason,
-        "last_first_frame_format_attempts_summary": camera_first_frame_attempts_summary(health_payload),
-        **fallback_aliases,
+        "last_first_frame_format_attempts_summary": attempts_summary,
+        **{
+            **fallback_aliases,
+            "mjpeg_open_source_fallback_attempted": bool(
+                fallback_aliases["mjpeg_open_source_fallback_attempted"]
+                or relay_fallback_aliases["mjpeg_open_source_fallback_attempted"]
+            ),
+            "open_source_fallback_failure_reason": (
+                fallback_aliases["open_source_fallback_failure_reason"]
+                if fallback_aliases["open_source_fallback_failure_reason"] != "not_loaded"
+                else relay_fallback_aliases["open_source_fallback_failure_reason"]
+            ),
+            "primary_source_failure_reason": (
+                fallback_aliases["primary_source_failure_reason"]
+                if fallback_aliases["primary_source_failure_reason"] != "not_loaded"
+                else relay_fallback_aliases["primary_source_failure_reason"]
+            ),
+        },
         "selected_path": aliases.get("selected_path") or "not_loaded",
         "selected_name": selected_name,
         "selected_is_uvc_or_usb": aliases.get("selected_is_uvc_or_usb", "not_loaded"),

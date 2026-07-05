@@ -1156,6 +1156,33 @@ V4L2 设备和只读首帧探针，不发布 `/cmd_vel`，不访问 WAVE ROVER U
 fail-closed，把建图缺口保留为 `camera_first_frame`，不能因为服务 active 或设备枚举正常
 就宣称画面可用。
 
+## 2026-07-06 07:15 8787 relay cooldown 不再遮住真实无帧
+
+当前真实上位机入口为 `root@192.168.1.11 -p 7878`。本轮继续按
+`docs/vendor/VENDOR_INDEX.md` 的本地硬件资料边界处理相机链路，只操作 DV20 UVC、
+8088 相机服务和 8787 只读状态，不访问 WAVE ROVER UART，不发布 `/cmd_vel`。
+
+现场先停掉 `trashbot-local-webrtc-camera.service`，确认 `/dev/video1` 无 owner 后直连采帧：
+`v4l2-ctl` 对 `MJPG@640x480@30` 与 `YUYV@320x240@25` 均显示
+`VIDIOC_STREAMON returned 0 (Success)`，但 10 秒输出 0 字节；`ffmpeg -f v4l2`
+也没有写出 JPEG。随后对 USB 设备 `3-1` 执行 reauthorize，并解绑 DV20 的 USB audio
+接口 `3-1:1.2/3-1:1.3` 后复测，结果仍是 0 字节。
+
+上车 `upper_robot_api.py` 已修正 `/api/camera/mjpeg/status` 的汇总口径：当 8787 relay
+最近失败体是 `mjpeg_auto_retry_cooldown_after_first_frame_failure`，但内层
+`last_first_frame_error.failure_reason=ffmpeg_mjpeg_first_frame_unreadable` 时，status
+必须以真实首帧失败为准，而不是回退为 `source_selected_not_probed`。部署并重启
+`trashbot-upper-robot-api.service` 后，8787 status 返回 `source_readiness=first_frame_failed`、
+`source_failure_reason=ffmpeg_mjpeg_first_frame_unreadable`、
+`source_diagnosis_status=uvc_no_frame_not_exclusive`、`camera_hardware_action_label=检查摄像头输入/供电后复测`，
+并透传 `MJPG@640x480@30`、`MJPG@1280x720@30`、`MJPG@480x320@30`、
+`YUYV@320x240@25`、`MJPG@160x120@30`、`YUYV@160x120@20` 的无首帧摘要。
+
+PC 7001 `/api/robot-control/camera/mjpeg/status` 读回同样保持
+`source_first_frame_failed / uvc_no_frame_not_exclusive / not_exclusive=true`，并显示上述格式尝试摘要。
+因此本轮软件侧改进是“状态不再误降级，普通用户能看到真实下一步”；实时图传画面仍未恢复，
+剩余风险继续指向 DV20 输入信号、线材/接口/供电或 known-good UVC 复测。
+
 2026-06-27 14:52 起，PC 普通首屏共享预览文案进一步按失败事实收口：当 summary 或
 `/api/robot-control/camera/mjpeg/status` 已明确 `camera_source_first_frame_failed`、
 `camera_mjpeg_upstream_timeout`、HTTP 5xx 或 health 首帧失败时，状态行不再写

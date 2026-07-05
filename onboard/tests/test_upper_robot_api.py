@@ -240,6 +240,64 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertEqual("first_frame_total_timeout", payload["primary_source_failure_reason"])
         self.assertEqual("uvc_no_frame_not_exclusive", payload["source_diagnosis_status"])
 
+    def test_camera_mjpeg_status_uses_relay_nested_first_frame_failure_during_cooldown(self) -> None:
+        """relay cooldown 不能把刚发生的无首帧事实降级成“还没探测”。"""
+        health_payload = {
+            "status": "ready",
+            "source_readiness": "source_selected_not_probed",
+            "source_failure_reason": "none",
+            "video_source": "/dev/video1",
+            "current_selection": {
+                "selected_path": "/dev/video1",
+                "selected_name": "USB Composite Device: DV20 USB",
+                "selected_is_uvc_or_usb": True,
+            },
+            "media_diagnostics": {
+                "source_usage": {"status": "not_in_use", "owner_count": 0, "owners": []},
+                "source_diagnosis": {
+                    "status": "source_selected_not_probed",
+                    "plain_hint": "相机源已选中但还没读过首帧。",
+                    "next_action": "open_shared_preview_or_run_first_frame_probe",
+                    "not_exclusive": True,
+                },
+            },
+        }
+        payload = upper_robot_api.camera_mjpeg_status_payload(
+            camera_base_url="http://127.0.0.1:8088",
+            health_http_status=200,
+            health_payload=health_payload,
+            relay_snapshot={
+                "client_count": 0,
+                "upstream_active": False,
+                "content_type_loaded": True,
+                "last_failure_reason": "mjpeg_auto_retry_cooldown_after_first_frame_failure",
+                "last_remote_http_status": 503,
+                "last_failure_at_ms": 1783293005557,
+                "last_error_payload": {
+                    "failure_reason": "mjpeg_auto_retry_cooldown_after_first_frame_failure",
+                    "last_first_frame_error": {
+                        "failure_reason": "ffmpeg_mjpeg_first_frame_unreadable",
+                        "first_frame_format_attempts": [
+                            {
+                                "label": "MJPG@640x480@30",
+                                "open_source": "/dev/video1",
+                                "status": "first_frame_unreadable",
+                            }
+                        ],
+                    },
+                },
+            },
+        )
+
+        self.assertEqual("source_first_frame_failed", payload["status"])
+        self.assertEqual("first_frame_failed", payload["source_readiness"])
+        self.assertEqual("ffmpeg_mjpeg_first_frame_unreadable", payload["source_failure_reason"])
+        self.assertEqual("uvc_no_frame_not_exclusive", payload["source_diagnosis_status"])
+        self.assertEqual(True, payload["source_diagnosis_not_exclusive"])
+        self.assertEqual(True, payload["hardware_action_required"])
+        self.assertEqual("检查摄像头输入/供电后复测", payload["camera_hardware_action_label"])
+        self.assertIn("MJPG@640x480@30", payload["last_first_frame_format_attempts_summary"])
+
     def test_camera_probe_fallback_prioritizes_low_bandwidth_modes(self) -> None:
         """首帧 fallback 要在 PC 快速窗口内先覆盖低负载模式，避免只卡在 640x480。"""
         request = upper_robot_api.safe_camera_probe_request(

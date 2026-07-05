@@ -92,6 +92,14 @@ pc-tools/workstation/
   `live-summary` 返回 `keyboard_continuous_motion_verified=true`、`keyboard_command_raw_lr_nonzero_proven=true`。
   `T=1001` wheel raw 反馈仍为 `0/0`，因此 PC 只能声明 WASD/ROS/bridge/底盘命令链路和 IMU 运动信号可用，
   不把它升级成 WAVE ROVER wheel raw L/R 非零闭环。
+- 2026-07-06 07:15 CST 起，上位机 `/api/camera/mjpeg/status` 不再在共享 MJPEG 自动重试 cooldown
+  时降级成 `source_selected_not_probed`：如果 relay 最近失败体里带有
+  `last_first_frame_error.failure_reason=ffmpeg_mjpeg_first_frame_unreadable`，8787 status 会直接提升为
+  `source_first_frame_failed`、`source_diagnosis_status=uvc_no_frame_not_exclusive`、
+  `camera_hardware_action_label=检查摄像头输入/供电后复测`，并透传 `MJPG@640x480@30`、
+  `MJPG@1280x720@30`、`YUYV@320x240@25` 等无首帧摘要。现场停掉 8088 后直连
+  `/dev/video1`，`VIDIOC_STREAMON` 成功但 MJPG/YUYV 均 0 字节；USB reauthorize 和音频接口解绑后仍无帧。
+  7001 status 读回同样显示 `not_exclusive=true` 和多格式无首帧，因此 PC 页面不会把相机失败误导成页面独占或未检测。
 - 2026-07-06 05:58 CST 起，PC/WASD 手控的当前有效运动信号阈值为 `0.35°` IMU roll/pitch delta：
   上车 `upper_robot_api.py` 只用它判断低速短脉冲是否有车体运动迹象，不把它包装成 WAVE ROVER
   wheel raw L/R 非零。资料来源为 `docs/vendor/VENDOR_INDEX.md` 指向的 WAVE ROVER `T=1001`
