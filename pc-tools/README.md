@@ -42,10 +42,10 @@ Foxglove bridge 仍只是工程观察配套，不替代 PC 简易控制台，也
 不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。ROS2 配套资料来源：ROS2 RViz User Guide
 （LaserScan/Map 可视化）、Nav2 官方文档 / `nav2_rviz_plugins`、Foxglove ROS2 Bridge 官方文档。
 
-2026-07-06 04:25 CST 起，当前有效默认值再次升级为：PC 首页和 `/map` 默认 `800%` 可读大图，
-`完整态势` 回到 `100%`，`细节放大` 到 `3200%`。`GET /api/robot-control/summary` 与
-`live-summary` 同步返回 `map_display_default_zoom_percent=800%`、
-`map_display_direct_map_default_zoom_percent=800%`、`map_display_max_zoom_percent=3200%`。
+2026-07-06 05:07 CST 起，当前有效默认值再次升级为：PC 首页和 `/map` 默认 `1600%` 可读大图，
+`完整态势` 回到 `100%`，`细节放大` 到 `4800%`。`GET /api/robot-control/summary` 与
+`live-summary` 同步返回 `map_display_default_zoom_percent=1600%`、
+`map_display_direct_map_default_zoom_percent=1600%`、`map_display_max_zoom_percent=4800%`。
 ROS2 配套仍按分层使用：本地工程调试首选 RViz2/Nav2 RViz 配置，浏览器远程观察用 Foxglove bridge；
 普通用户继续使用 PC 大地图和 `/map`，这些入口不启动 ROS2/RViz2/Foxglove/Nav2/建图 runtime，
 不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。

@@ -149,8 +149,8 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   不启动 RViz2、Foxglove、ROS2 runtime、Nav2、建图 runtime 或任何运动指令。现场问“ROS2 有没有配套”时，
   口径固定为：本地工程看 RViz2/Nav2 RViz 配置，远程浏览器看 Foxglove bridge + Foxglove Web；
   普通用户仍先用 PC 大地图和 `/map`。
-- 2026-07-06 04:25 复核当前有效实现：代码、summary/live-summary 与 7001 运行态已统一为 PC 首页和
-  `/map` 默认 `800%`，`完整态势` 回 `100%`，`细节放大` 到 `3200%`。这只是普通用户地图显示合同；
+- 2026-07-06 05:07 复核当前有效实现：代码、summary/live-summary 与 7001 运行态已统一为 PC 首页和
+  `/map` 默认 `1600%`，`完整态势` 回 `100%`，`细节放大` 到 `4800%`。这只是普通用户地图显示合同；
   RViz2/Nav2 RViz 配置和 Foxglove bridge 仍只作为工程观察工具，不替代 PC 简易控制台，也不启动
   ROS2/RViz2/Foxglove/Nav2/建图 runtime 或任何运动指令。
 - 2026-07-04 07:27 复验当前地图入口：PC 7001 的 `/api/robot-control/map/preview` 仍显示地图、18 点路线、

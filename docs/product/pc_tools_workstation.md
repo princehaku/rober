@@ -55,10 +55,10 @@ pc-tools/workstation/
   不替代简易 PC 控制台，不启动 ROS2/RViz2/Foxglove/Nav2/建图 runtime，不发送 manual、keyboard、free-roam、
   delivery、stop 或 `/cmd_vel`。ROS2 配套资料来源采用 ROS2 官方 RViz User Guide、Nav2 官方文档 /
   `nav2_rviz_plugins` 和 Foxglove ROS2 Bridge 官方文档；普通用户入口仍以本项目 PC 大地图为准。
-- 2026-07-06 04:25 CST 起，PC 地图“仍太小”的当前有效默认值升级为：普通首页和 `/map` 默认
-  `800%` 可读大图，`完整态势` 回到 `100%`，`细节放大` 到 `3200%`。summary/live-summary 合同同步为
-  `map_display_default_zoom_percent=800%`、`map_display_direct_map_default_zoom_percent=800%`、
-  `map_display_max_zoom_percent=3200%`。ROS2 配套仍只是工程观察：本地用 RViz2/Nav2 RViz 配置看
+- 2026-07-06 05:07 CST 起，PC 地图“仍太小”的当前有效默认值升级为：普通首页和 `/map` 默认
+  `1600%` 可读大图，`完整态势` 回到 `100%`，`细节放大` 到 `4800%`。summary/live-summary 合同同步为
+  `map_display_default_zoom_percent=1600%`、`map_display_direct_map_default_zoom_percent=1600%`、
+  `map_display_max_zoom_percent=4800%`。ROS2 配套仍只是工程观察：本地用 RViz2/Nav2 RViz 配置看
   `/map`、`/scan`、TF、路径、定位和 costmap，远程浏览器用 Foxglove bridge；普通用户默认仍使用
   PC 大地图和 `/map`，不要求先打开 RViz2/Foxglove。
 - 2026-07-06 03:05 CST 起，上车 Robot API 修复自由移动 runtime 缺失时 start 失败的问题：
