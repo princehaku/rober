@@ -68,6 +68,7 @@ import type {
   RobotControlCameraFirstFrameProbeProxyResponse,
   RobotControlCameraMjpegStatusResponse,
   RobotControlCameraOfferProxyResponse,
+  RobotControlCameraUsbRecoveryProxyResponse,
   RobotControlEvidenceCaptureEndpointId,
   RobotControlEvidenceCapturePhase,
   RobotControlEvidenceCaptureStatus,
@@ -111,6 +112,10 @@ const CAMERA_FIRST_FRAME_FAILURE_REASONS = new Set([
   "probe_total_timeout",
   "probe_process_timeout",
   "deadline_expired",
+  "high_speed_zero_byte_no_frame",
+  "streamon_success_zero_byte_no_frame",
+  "zero_byte_no_frame",
+  "select_timeout",
 ]);
 const FREE_ROAM_MAPPING_REQUIRED_GATE_IDS = [
   "camera_first_frame",
@@ -580,7 +585,7 @@ function cameraMjpegResolvedDiagnosisSource(
   }
   const payload = asRecord(relayFailure?.last_error_payload);
   const noFrameReason = cameraMjpegFailurePrimaryReason(relayFailure) || "first_frame_failed";
-  const selectedName = cameraSourceDisplayName(sourceFailure?.selected_name ?? payload?.selected_name, "USB 摄像头");
+  const selectedName = cameraSourceDisplayName(sourceFailure?.selected_name ?? relayFailure?.selected_name ?? payload?.selected_name, "USB 摄像头");
   const sourceUsageScope = sourceFailure?.source_usage_scope ?? "camera_service_self";
   const sourceUsageNotExclusive = sourceFailure?.source_usage_not_exclusive
     ?? cameraSourceUsageNotExclusive(sourceUsageScope);
@@ -624,15 +629,21 @@ function cameraMjpegResolvedDiagnosisSource(
       : "true";
   const relayAttemptsSummary = cameraMjpegFormatAttemptsSummary(payload);
   const ffmpegFallbackAttempted = sourceFailure?.ffmpeg_mjpeg_fallback_attempted
+    ?? relayFailure?.ffmpeg_mjpeg_fallback_attempted
     ?? cameraMjpegFfmpegFallbackAttempted(payload);
   const ffmpegFallbackSummary = sourceFailure?.ffmpeg_mjpeg_fallback_summary
     && sourceFailure.ffmpeg_mjpeg_fallback_summary !== "none"
     ? sourceFailure.ffmpeg_mjpeg_fallback_summary
-    : cameraMjpegFfmpegFallbackSummary(payload);
+    : relayFailure?.ffmpeg_mjpeg_fallback_summary
+      && relayFailure.ffmpeg_mjpeg_fallback_summary !== "none"
+      ? relayFailure.ffmpeg_mjpeg_fallback_summary
+      : cameraMjpegFfmpegFallbackSummary(payload);
   const ffmpegFallbackAttemptCount = sourceFailure?.ffmpeg_mjpeg_fallback_attempt_count
+    ?? relayFailure?.ffmpeg_mjpeg_fallback_attempt_count
     ?? cameraMjpegFfmpegFallbackAttempts(payload).length;
   const softwareCaptureExhausted = Boolean(
     sourceFailure?.software_capture_exhausted
+      || relayFailure?.software_capture_exhausted
       || cameraMjpegSoftwareCaptureExhausted(payload),
   );
   return {
@@ -647,19 +658,19 @@ function cameraMjpegResolvedDiagnosisSource(
     source_diagnosis_not_exclusive: resolvedSourceDiagnosisNotExclusive,
     source_readiness: "first_frame_failed",
     source_failure_reason: noFrameReason,
-    selected_path: sourceFailure?.selected_path ?? shortText(payload?.selected_path, "not_loaded"),
+    selected_path: sourceFailure?.selected_path ?? relayFailure?.selected_path ?? shortText(payload?.selected_path, "not_loaded"),
     selected_name: selectedName,
-    selected_is_uvc_or_usb: sourceFailure?.selected_is_uvc_or_usb ?? shortText(payload?.selected_is_uvc_or_usb, "not_loaded"),
-    source_usage_status: sourceFailure?.source_usage_status ?? "in_use_by_camera_service",
-    source_usage_owner_count: sourceFailure?.source_usage_owner_count ?? "1",
+    selected_is_uvc_or_usb: sourceFailure?.selected_is_uvc_or_usb ?? relayFailure?.selected_is_uvc_or_usb ?? shortText(payload?.selected_is_uvc_or_usb, "not_loaded"),
+    source_usage_status: sourceFailure?.source_usage_status ?? relayFailure?.source_usage_status ?? "in_use_by_camera_service",
+    source_usage_owner_count: sourceFailure?.source_usage_owner_count ?? relayFailure?.source_usage_owner_count ?? "1",
     source_usage_scope: sourceUsageScope,
     source_usage_not_exclusive: sourceUsageNotExclusive,
-    uvc_usb_topology_status: sourceFailure?.uvc_usb_topology_status ?? "not_loaded",
-    uvc_usb_topology_plain_hint: sourceFailure?.uvc_usb_topology_plain_hint ?? "not_loaded",
-    uvc_usb_topology_next_action: sourceFailure?.uvc_usb_topology_next_action ?? "not_loaded",
-    uvc_usb_topology_video_usb_speed: sourceFailure?.uvc_usb_topology_video_usb_speed ?? "not_loaded",
-    uvc_usb_topology_kernel_usb_address: sourceFailure?.uvc_usb_topology_kernel_usb_address ?? "not_loaded",
-    uvc_usb_topology_video_interface_count: sourceFailure?.uvc_usb_topology_video_interface_count ?? "not_loaded",
+    uvc_usb_topology_status: sourceFailure?.uvc_usb_topology_status ?? relayFailure?.uvc_usb_topology_status ?? "not_loaded",
+    uvc_usb_topology_plain_hint: sourceFailure?.uvc_usb_topology_plain_hint ?? relayFailure?.uvc_usb_topology_plain_hint ?? "not_loaded",
+    uvc_usb_topology_next_action: sourceFailure?.uvc_usb_topology_next_action ?? relayFailure?.uvc_usb_topology_next_action ?? "not_loaded",
+    uvc_usb_topology_video_usb_speed: sourceFailure?.uvc_usb_topology_video_usb_speed ?? relayFailure?.uvc_usb_topology_video_usb_speed ?? "not_loaded",
+    uvc_usb_topology_kernel_usb_address: sourceFailure?.uvc_usb_topology_kernel_usb_address ?? relayFailure?.uvc_usb_topology_kernel_usb_address ?? "not_loaded",
+    uvc_usb_topology_video_interface_count: sourceFailure?.uvc_usb_topology_video_interface_count ?? relayFailure?.uvc_usb_topology_video_interface_count ?? "not_loaded",
     cma_memory_diagnostics_status: sourceFailure?.cma_memory_diagnostics_status ?? "not_loaded",
     cma_memory_diagnostics_plain_hint: sourceFailure?.cma_memory_diagnostics_plain_hint ?? "not_loaded",
     cma_memory_diagnostics_next_action: sourceFailure?.cma_memory_diagnostics_next_action ?? "not_loaded",
@@ -677,8 +688,8 @@ function cameraMjpegResolvedDiagnosisSource(
     ffmpeg_mjpeg_fallback_attempt_count: ffmpegFallbackAttemptCount,
     ffmpeg_mjpeg_fallback_summary: ffmpegFallbackSummary,
     software_capture_exhausted: softwareCaptureExhausted,
-    known_good_uvc_required: Boolean(sourceFailure?.known_good_uvc_required || softwareCaptureExhausted),
-    camera_input_signal_check_required: Boolean(sourceFailure?.camera_input_signal_check_required || softwareCaptureExhausted),
+    known_good_uvc_required: Boolean(sourceFailure?.known_good_uvc_required || relayFailure?.known_good_uvc_required || softwareCaptureExhausted),
+    camera_input_signal_check_required: Boolean(sourceFailure?.camera_input_signal_check_required || relayFailure?.camera_input_signal_check_required || softwareCaptureExhausted),
     open_source_fallback_failure_reason: sourceFailure?.open_source_fallback_failure_reason
       ?? shortText(payload?.open_source_fallback_failure_reason, "not_loaded"),
     primary_source_failure_reason: sourceFailure?.primary_source_failure_reason
@@ -691,6 +702,7 @@ const cameraMjpegRelays = new Map<string, CameraMjpegRelay>();
 const cameraMjpegRelayLastFailures = new Map<string, CameraMjpegRelayLastFailure>();
 const cameraFirstFrameProbeOverlays = new Map<string, RobotControlCameraFirstFrameProbeOverlay>();
 const cameraFirstFrameProbeLastFailures = new Map<string, CameraMjpegRelayLastFailure>();
+const cameraUsbRecoveryLastFailures = new Map<string, CameraMjpegRelayLastFailure>();
 
 function cameraMjpegUpstreamTimeoutMs(): number {
   // PC 等待窗口要略长于上位机 8787 的 8s relay 窗口，才能拿到真实 503/无帧 JSON，而不是抢先报 timeout。
@@ -3319,7 +3331,7 @@ const CAMERA_USB_RECOVERY_NO_MOTION_FLAGS = {
   publishes_cmd_vel: false,
   opens_base_uart: false,
   sends_motion_commands: false,
-};
+} as const;
 
 function safeCameraUsbRecoveryBody(value: unknown): Record<string, unknown> {
   // PC 只允许选择 videoN 和少量 skip 开关，避免浏览器 body 影响上车 root 命令。
@@ -3556,6 +3568,87 @@ function recordCameraFirstFrameProbeResult(
   }
 }
 
+function cameraUsbRecoveryLastFailureFromResponse(
+  response: RobotControlCameraUsbRecoveryProxyResponse,
+): CameraMjpegRelayLastFailure | null {
+  // USB recovery 的 STREAMON 直采结果比普通首帧 probe 更接近硬件事实，必须作为后续 status/summary 的诊断来源。
+  if (response.frame_observed) {
+    return null;
+  }
+  const recoveryPayload = asRecord(response.recovery_payload) ?? {};
+  const failureReason = shortText(
+    response.stream_failure_class
+      ?? response.status
+      ?? response.failure_reason
+      ?? recoveryPayload.stream_failure_class
+      ?? recoveryPayload.status,
+    "streamon_success_zero_byte_no_frame",
+  );
+  const selectedPath = shortText(response.request_body?.device, "/dev/video1");
+  const usbSpeed = shortText(response.usb_video_speed ?? recoveryPayload.usb_video_speed, "not_loaded");
+  const streamSummary = shortText(response.stream_status_summary ?? recoveryPayload.stream_status_summary, "not_loaded");
+  const softwareCaptureExhausted = response.software_capture_exhausted === true
+    || recoveryPayload.software_capture_exhausted === true
+    || response.zero_byte_no_frame_observed === true;
+  const knownGoodUvcRequired = response.known_good_uvc_required === true
+    || recoveryPayload.known_good_uvc_required === true
+    || softwareCaptureExhausted;
+  const inputSignalCheckRequired = response.camera_input_signal_check_required === true
+    || recoveryPayload.camera_input_signal_check_required === true
+    || softwareCaptureExhausted;
+  return {
+    failure_reason: "camera_source_first_frame_failed",
+    remote_http_status: response.remote_http_status,
+    failed_at_ms: Date.now(),
+    last_error_payload: {
+      ...recoveryPayload,
+      source_failure_reason: failureReason,
+      primary_source_failure_reason: failureReason,
+      software_capture_exhausted: softwareCaptureExhausted,
+      known_good_uvc_required: knownGoodUvcRequired,
+      camera_input_signal_check_required: inputSignalCheckRequired,
+      stream_status_summary: streamSummary,
+    },
+    source_diagnosis_status: "uvc_no_frame_not_exclusive",
+    source_diagnosis_plain_hint: "不是页面独占：USB recovery 已确认高速 USB 可以 STREAMON，但摄像头没有输出任何视频 buffer。",
+    source_diagnosis_next_action: response.next_action
+      || shortText(recoveryPayload.next_action, "check_usb_cable_port_power_or_known_good_uvc"),
+    source_diagnosis_not_exclusive: "true",
+    source_readiness: "first_frame_failed",
+    source_failure_reason: failureReason,
+    selected_path: selectedPath,
+    selected_name: "USB 摄像头",
+    selected_is_uvc_or_usb: "true",
+    source_usage_status: "not_in_use",
+    source_usage_owner_count: "0",
+    source_usage_scope: "free",
+    source_usage_not_exclusive: "true",
+    uvc_usb_topology_status: response.usb_high_speed_observed ? "uvc_video_usb_speed_loaded" : "not_loaded",
+    uvc_usb_topology_plain_hint: response.next_action_plain ?? "USB recovery 已完成，继续按相机输入/线缆/供电方向排查。",
+    uvc_usb_topology_next_action: response.next_action ?? "check_usb_cable_port_power_or_known_good_uvc",
+    uvc_usb_topology_video_usb_speed: usbSpeed,
+    last_first_frame_format_attempts_summary: streamSummary,
+    mjpeg_open_source_fallback_attempted: true,
+    software_capture_exhausted: softwareCaptureExhausted,
+    known_good_uvc_required: knownGoodUvcRequired,
+    camera_input_signal_check_required: inputSignalCheckRequired,
+    open_source_fallback_failure_reason: failureReason,
+    primary_source_failure_reason: failureReason,
+  };
+}
+
+function recordCameraUsbRecoveryResult(relayKey: string, response: RobotControlCameraUsbRecoveryProxyResponse): void {
+  // recovery 成功出帧时清理旧失败；否则把更强的硬件直采结论留给 status/summary。
+  const recoveryFailure = cameraUsbRecoveryLastFailureFromResponse(response);
+  if (recoveryFailure) {
+    cameraUsbRecoveryLastFailures.set(relayKey, recoveryFailure);
+    return;
+  }
+  cameraUsbRecoveryLastFailures.delete(relayKey);
+  cameraFirstFrameProbeLastFailures.delete(relayKey);
+  cameraMjpegRelayLastFailures.delete(relayKey);
+}
+
 function getCameraMjpegRelay(normalizedBaseUrl: URL): CameraMjpegRelay {
   const key = cameraMjpegRelayKey(normalizedBaseUrl);
   const existing = cameraMjpegRelays.get(key);
@@ -3587,8 +3680,12 @@ function cameraMjpegStatusResponse(
   const relayKey = normalizedBaseUrl ? cameraMjpegRelayKey(normalizedBaseUrl) : "not_loaded";
   const relayFailure = normalizedBaseUrl ? cameraMjpegRelayLastFailures.get(relayKey) ?? null : null;
   const probeFailure = normalizedBaseUrl ? cameraFirstFrameProbeLastFailures.get(relayKey) ?? null : null;
+  const usbRecoveryFailure = normalizedBaseUrl ? cameraUsbRecoveryLastFailures.get(relayKey) ?? null : null;
   const diagnosisSource = cameraMjpegResolvedDiagnosisSource(
-    cameraMjpegResolvedDiagnosisSource(sourceFailure, probeFailure),
+    cameraMjpegResolvedDiagnosisSource(
+      cameraMjpegResolvedDiagnosisSource(sourceFailure, usbRecoveryFailure),
+      probeFailure,
+    ),
     relayFailure,
   );
   const lastFailure = relayFailure ?? diagnosisSource;
@@ -4264,11 +4361,15 @@ async function buildRobotControlSummaryForHttp(
   const relay = normalized.ok ? cameraMjpegRelays.get(relayKey) ?? null : null;
   const lastFailure = normalized.ok ? cameraMjpegRelayLastFailures.get(relayKey) ?? null : null;
   const probeFailure = normalized.ok ? cameraFirstFrameProbeLastFailures.get(relayKey) ?? null : null;
+  const usbRecoveryFailure = normalized.ok ? cameraUsbRecoveryLastFailures.get(relayKey) ?? null : null;
   const rawSourceFailure = normalized.ok
     ? await cameraSourceFirstFrameFailureForStatus(normalized.normalized, ROBOT_CONTROL_SUMMARY_CAMERA_OVERLAY_TIMEOUT_MS)
     : null;
   const sourceFailure = cameraMjpegResolvedDiagnosisSource(
-    cameraMjpegResolvedDiagnosisSource(rawSourceFailure, probeFailure),
+    cameraMjpegResolvedDiagnosisSource(
+      cameraMjpegResolvedDiagnosisSource(rawSourceFailure, usbRecoveryFailure),
+      probeFailure,
+    ),
     lastFailure,
   );
   const lastFailureForOverlay = sourceFailure ?? lastFailure;
@@ -6413,7 +6514,7 @@ export function createWorkstationApp(): express.Express {
       : frameObserved
         ? ""
         : shortText(remote.payload?.stream_failure_class ?? remote.payload?.next_action ?? `recovery_http_status_${remote.remote_http_status}`, "recovery_failed");
-    res.status(200).json({
+    const responseBody: RobotControlCameraUsbRecoveryProxyResponse = {
       schema: "trashbot.pc_tools_workstation.robot_control_camera_usb_recovery_proxy.v1",
       source: "software_proof",
       proof_status: "not_proven",
@@ -6422,6 +6523,8 @@ export function createWorkstationApp(): express.Express {
       primary_actions_enabled: false,
       pc_only: true,
       ...CAMERA_USB_RECOVERY_NO_MOTION_FLAGS,
+      readback_only: true,
+      starts_camera_exclusive_capture: false,
       proxy_status: remote.remote_http_status === 200 && dangerous.length === 0 ? "recovery_forwarded" : "recovery_failed",
       source_base_url: sourceBaseUrl,
       normalized_base_url: normalized.normalized.toString().replace(/\/$/, ""),
@@ -6459,7 +6562,9 @@ export function createWorkstationApp(): express.Express {
       failure_reason: failureReason,
       hard_dangerous_true_fields: dangerous,
       robot_control_executed: false,
-    });
+    };
+    recordCameraUsbRecoveryResult(cameraMjpegRelayKey(normalized.normalized), responseBody);
+    res.status(200).json(responseBody);
   });
 
   workstationApp.get("/api/proof-boundary", (_req, res) => {

@@ -15880,6 +15880,42 @@ describe("workstation fail-closed API contracts", () => {
         },
       ]);
       expect(receivedBodies["/api/base/manual"]).toBeUndefined();
+
+      const statusResponse = await fetch(`${workstation.baseUrl}/api/robot-control/camera/mjpeg/status?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
+      const statusBody = await statusResponse.json() as RobotControlCameraMjpegStatusResponse;
+
+      expect(statusResponse.status).toBe(200);
+      expect(statusBody.status).toBe("source_first_frame_failed");
+      expect(statusBody.preview_status).toBe("source_first_frame_failed");
+      expect(statusBody.last_failure_reason).toBe("camera_source_first_frame_failed");
+      expect(statusBody.source_readiness).toBe("first_frame_failed");
+      expect(statusBody.source_failure_reason).toBe("high_speed_zero_byte_no_frame");
+      expect(statusBody.source_diagnosis_status).toBe("uvc_no_frame_not_exclusive");
+      expect(statusBody.source_diagnosis_not_exclusive).toBe("true");
+      expect(statusBody.camera_usb_speed).toBe("480M");
+      expect(statusBody.software_capture_exhausted).toBe(true);
+      expect(statusBody.known_good_uvc_required).toBe(true);
+      expect(statusBody.camera_input_signal_check_required).toBe(true);
+      expect(statusBody.camera_hardware_action_required).toBe(true);
+      expect(statusBody.camera_hardware_action_label).toBe("检查摄像头输入/供电后复测");
+      expect(statusBody.first_frame_failure_reason).toBe("high_speed_zero_byte_no_frame");
+      expect(statusBody.shared_preview_everyone_can_join).toBe(true);
+      expect(statusBody.shared_preview_current_frame_visible).toBe(false);
+
+      const summaryResponse = await fetch(`${workstation.baseUrl}/api/robot-control/summary?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
+      const summaryBody = await summaryResponse.json() as RobotControlSummaryResponse;
+      const liveResponse = await fetch(`${workstation.baseUrl}/api/robot-control/live-summary?baseUrl=${encodeURIComponent(upstream.baseUrl)}`);
+      const liveBody = await liveResponse.json() as RobotControlLiveSummaryResponse;
+
+      expect(summaryResponse.status).toBe(200);
+      expect(summaryBody.camera_source_diagnosis_status).toBe("uvc_no_frame_not_exclusive");
+      expect(summaryBody.camera_hardware_action_label).toBe("检查摄像头输入/供电后复测");
+      expect(summaryBody.camera_input_signal_check_required).toBe(true);
+      expect(summaryBody.readback_summary.camera.known_good_uvc_required).toBe(true);
+      expect(liveResponse.status).toBe(200);
+      expect(liveBody.camera_source_diagnosis_status).toBe("uvc_no_frame_not_exclusive");
+      expect(liveBody.camera_hardware_action_label).toBe("检查摄像头输入/供电后复测");
+      expect(liveBody.camera_input_signal_check_required).toBe(true);
       expect(mjpegRequestCount).toBe(0);
     } finally {
       await workstation.close();

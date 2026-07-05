@@ -74,6 +74,16 @@ pc-tools/workstation/
   本地工程调试用 RViz2/Nav2 RViz 配置，远程浏览器大屏用 Foxglove bridge + Foxglove Web；
   普通用户默认仍使用 PC 简易控制台和 `/map`，这些入口不启动 ROS2/RViz2/Foxglove/Nav2/建图 runtime，
   不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+- 2026-07-06 06:52 CST 起，PC 相机 status 会保留最近一次 USB recovery 的强诊断：当 recovery
+  返回 `stream_failure_class=high_speed_zero_byte_no_frame`、`software_capture_exhausted=true`、
+  `known_good_uvc_required=true` 或 `camera_input_signal_check_required=true` 时，
+  `/api/robot-control/camera/mjpeg/status` 和 summary 后续读回继续显示 `source_first_frame_failed`、
+  `source_failure_reason=high_speed_zero_byte_no_frame`、`camera_hardware_action_label=检查摄像头输入/供电后复测`。
+  现场 06:44-06:48 复测已执行相机服务重启、USB reauthorize、音频接口解绑/重绑、`uvcvideo quirks=0`
+  复位、YUYV/MJPG `v4l2-ctl` 直采、ffmpeg 长窗口直采和首帧 probe；`/dev/video1` 最终无人占用、
+  USB 仍为 `480M`，但 `STREAMON` 成功后输出 0 字节、首帧 probe 仍 `probe_total_timeout`。
+  当前结论仍是 DV20/采集输入、视频线、USB/供电或 known-good UVC 方向；不是 PC 页面独占，也不阻塞
+  地图、WASD、自由移动或 Nav2 控制入口。
 - 2026-07-06 05:58 CST 起，PC/WASD 手控的当前有效运动信号阈值为 `0.35°` IMU roll/pitch delta：
   上车 `upper_robot_api.py` 只用它判断低速短脉冲是否有车体运动迹象，不把它包装成 WAVE ROVER
   wheel raw L/R 非零。资料来源为 `docs/vendor/VENDOR_INDEX.md` 指向的 WAVE ROVER `T=1001`
