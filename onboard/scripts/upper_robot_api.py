@@ -72,7 +72,11 @@ DEFAULT_NAV2_LIFECYCLE_ARTIFACT_PATH = "/root/rober/onboard/runtime/nav2_lifecyc
 DEFAULT_NAV2_GOAL_EXECUTION_ARTIFACT_PATH = "/root/rober/onboard/runtime/nav2_goal_execution_latest.json"
 DEFAULT_DELIVERY_COMPLETION_ARTIFACT_PATH = "/root/rober/onboard/runtime/delivery_completion_latest.json"
 DEFAULT_FREE_ROAM_AUTONOMY_ARTIFACT_PATH = "/root/rober/onboard/runtime/free_roam_autonomy_latest.json"
-FREE_ROAM_PARAM_LOAD_TIMEOUT_S = 10.0
+FREE_ROAM_PARAM_LOAD_TIMEOUT_S = 30.0
+FREE_ROAM_MANAGED_START_WAIT_TIMEOUT_S = 5.0
+FREE_ROAM_MANAGED_START_WAIT_INTERVAL_S = 0.25
+FREE_ROAM_AUTONOMY_NODE_NAME = "/free_roam_autonomy"
+DEFAULT_FREE_ROAM_MANAGED_LOG_NAME = "free_roam_autonomy_managed.log"
 FREE_ROAM_START_ARTIFACT_WAIT_TIMEOUT_S = 1.8
 FREE_ROAM_START_ARTIFACT_WAIT_INTERVAL_S = 0.2
 DEFAULT_ROS_SETUP_PATH = "/opt/ros/humble/setup.bash"
@@ -2311,10 +2315,8 @@ def run_configured_command(command: str | None, timeout_s: float = 12.0) -> dict
     }
 
 
-def run_fixed_argv_command(argv: list[str], timeout_s: float = 8.0) -> dict[str, Any]:
-    """执行代码内固定 argv；不经过 shell，避免 HTTP body 变成任意命令入口。"""
-    if not argv:
-        return {"mode": "fixed_argv", "executed": False, "ok": False, "reason": "empty_argv"}
+def resolve_fixed_argv_with_ros2_setup(argv: list[str]) -> tuple[list[str], bool]:
+    """ROS2 命令统一补 source；argv 仍由代码固定生成，不吃 HTTP body 命令。"""
     resolved_argv = argv
     ros2_setup_used = False
     if argv[0] == "ros2":
@@ -2329,6 +2331,14 @@ def run_fixed_argv_command(argv: list[str], timeout_s: float = 8.0) -> dict[str,
         command = f"{setup_prefix}; exec {shlex.join(argv)}" if setup_prefix else f"exec {shlex.join(argv)}"
         resolved_argv = ["bash", "-lc", command]
         ros2_setup_used = bool(setup_prefix)
+    return resolved_argv, ros2_setup_used
+
+
+def run_fixed_argv_command(argv: list[str], timeout_s: float = 8.0) -> dict[str, Any]:
+    """执行代码内固定 argv；不经过 shell，避免 HTTP body 变成任意命令入口。"""
+    if not argv:
+        return {"mode": "fixed_argv", "executed": False, "ok": False, "reason": "empty_argv"}
+    resolved_argv, ros2_setup_used = resolve_fixed_argv_with_ros2_setup(argv)
     process: subprocess.Popen[str] | None = None
     try:
         # ROS2 CLI 偶尔会在 graph 抖动时卡住；单独进程组便于 timeout 时整组收口。
@@ -2384,7 +2394,224 @@ def run_fixed_argv_command(argv: list[str], timeout_s: float = 8.0) -> dict[str,
     }
 
 
-def run_free_roam_param_sequence(action: str, *, enable_motion: bool = False, mapping_active: bool = True) -> dict[str, Any]:
+def free_roam_managed_log_path(artifact_path: str) -> str:
+    """托管节点日志放在 artifact 同目录，方便现场只看 runtime 目录定位启动失败。"""
+    parent = os.path.dirname(os.path.abspath(os.path.expanduser(artifact_path))) if artifact_path else ""
+    return os.path.join(parent or "/tmp", DEFAULT_FREE_ROAM_MANAGED_LOG_NAME)
+
+
+def free_roam_param_probe() -> dict[str, Any]:
+    """检查自由移动节点参数服务；失败时保留 ROS2 CLI 证据给 PC 诊断。"""
+    result = run_fixed_argv_command(["ros2", "param", "list", FREE_ROAM_AUTONOMY_NODE_NAME], timeout_s=8.0)
+    stderr = str(result.get("stderr_preview") or "")
+    stdout = str(result.get("stdout_preview") or "")
+    combined = f"{stdout}\n{stderr}"
+    if result.get("ok"):
+        status = "available"
+    elif "Node not found" in combined or "not found" in combined.lower():
+        status = "node_not_found"
+    else:
+        status = "probe_failed"
+    return {
+        "mode": "free_roam_param_probe",
+        "available": bool(result.get("ok")),
+        "status": status,
+        "command_result": result,
+    }
+
+
+def free_roam_node_list_probe() -> dict[str, Any]:
+    """轻量确认 free-roam 节点是否已在 ROS graph；避免 param list 慢时重复启动。"""
+    result = run_fixed_argv_command(["ros2", "node", "list"], timeout_s=8.0)
+    stdout = str(result.get("stdout_preview") or "")
+    nodes = [line.strip() for line in stdout.splitlines() if line.strip()]
+    observed = FREE_ROAM_AUTONOMY_NODE_NAME in nodes
+    return {
+        "mode": "free_roam_node_list_probe",
+        "observed": observed,
+        "status": "observed" if observed else "not_observed" if result.get("ok") else "probe_failed",
+        "nodes": nodes[-20:],
+        "command_result": result,
+    }
+
+
+def start_managed_free_roam_runtime(artifact_path: str) -> dict[str, Any]:
+    """后台启动自由移动 runtime；argv 固定且默认锁住运动发布。"""
+    log_path = free_roam_managed_log_path(artifact_path)
+    argv = [
+        "ros2",
+        "run",
+        "ros2_trashbot_nav",
+        "free_roam_autonomy_node",
+        "--ros-args",
+        "-p",
+        "artifact_path:=" + os.path.expanduser(artifact_path),
+        "-p",
+        "scan_topic:=/scan",
+        "-p",
+        "map_topic:=/map",
+        "-p",
+        "cmd_vel_topic:=/cmd_vel",
+        "-p",
+        "enable_cmd_vel_publish:=false",
+        "-p",
+        "motion_hil_unlocked:=false",
+    ]
+    resolved_argv, ros2_setup_used = resolve_fixed_argv_with_ros2_setup(argv)
+    try:
+        os.makedirs(os.path.dirname(log_path) or ".", exist_ok=True)
+        with open(log_path, "a", encoding="utf-8") as log_stream:
+            # 记录启动边界；真正速度发布仍由后续 param load 双锁控制。
+            log_stream.write(json.dumps({"event": "managed_free_roam_runtime_start", "argv": argv, "at_ms": now_ms()}, ensure_ascii=False) + "\n")
+            log_stream.flush()
+            process = subprocess.Popen(
+                resolved_argv,
+                stdout=log_stream,
+                stderr=subprocess.STDOUT,
+                text=True,
+                start_new_session=True,
+            )
+    except Exception as exc:  # noqa: BLE001 - 启动失败必须结构化返回，不让 PC 只看到 400。
+        return {
+            "mode": "managed_free_roam_runtime_start",
+            "executed": False,
+            "ok": False,
+            "argv": argv,
+            "resolved_argv": resolved_argv if resolved_argv != argv else None,
+            "ros2_setup_used": ros2_setup_used,
+            "log_path": log_path,
+            "error": compact_error(exc),
+        }
+    return {
+        "mode": "managed_free_roam_runtime_start",
+        "executed": True,
+        "ok": True,
+        "argv": argv,
+        "resolved_argv": resolved_argv if resolved_argv != argv else None,
+        "ros2_setup_used": ros2_setup_used,
+        "pid": process.pid,
+        "log_path": log_path,
+        "starts_motion_unlocked": False,
+        "starts_cmd_vel_publish": False,
+    }
+
+
+def ensure_free_roam_runtime_for_param_load(artifact_path: str) -> dict[str, Any]:
+    """start/stop 入口自愈缺失 runtime；已有节点时不重复启动。"""
+    before = free_roam_param_probe()
+    if before["available"]:
+        return {
+            "mode": "free_roam_runtime_ensure",
+            "status": "already_available",
+            "available": True,
+            "started_by_api": False,
+            "before": before,
+        }
+    node_before = free_roam_node_list_probe()
+    if node_before["observed"]:
+        return {
+            "mode": "free_roam_runtime_ensure",
+            "status": "node_observed_param_probe_not_available",
+            "available": True,
+            "started_by_api": False,
+            "before": before,
+            "node_before": node_before,
+        }
+    start = start_managed_free_roam_runtime(artifact_path)
+    if not start.get("ok"):
+        return {
+            "mode": "free_roam_runtime_ensure",
+            "status": "managed_start_failed",
+            "available": False,
+            "started_by_api": False,
+            "before": before,
+            "node_before": node_before,
+            "start": start,
+        }
+    deadline = time.monotonic() + FREE_ROAM_MANAGED_START_WAIT_TIMEOUT_S
+    attempts = 0
+    after = before
+    node_after = node_before
+    while time.monotonic() < deadline:
+        attempts += 1
+        time.sleep(FREE_ROAM_MANAGED_START_WAIT_INTERVAL_S)
+        node_after = free_roam_node_list_probe()
+        if node_after["observed"]:
+            return {
+                "mode": "free_roam_runtime_ensure",
+                "status": "started_and_node_observed",
+                "available": True,
+                "started_by_api": True,
+                "attempts": attempts,
+                "before": before,
+                "node_before": node_before,
+                "start": start,
+                "after": after,
+                "node_after": node_after,
+            }
+        after = free_roam_param_probe()
+        if after["available"]:
+            return {
+                "mode": "free_roam_runtime_ensure",
+                "status": "started_and_param_available",
+                "available": True,
+                "started_by_api": True,
+                "attempts": attempts,
+                "before": before,
+                "node_before": node_before,
+                "start": start,
+                "after": after,
+                "node_after": node_after,
+            }
+    return {
+        "mode": "free_roam_runtime_ensure",
+        "status": "unavailable_after_managed_start",
+        "available": False,
+        "started_by_api": True,
+        "attempts": attempts,
+        "before": before,
+        "node_before": node_before,
+        "start": start,
+        "after": after,
+        "node_after": node_after,
+    }
+
+
+def free_roam_param_sequence_failure_reason(command_result: dict[str, Any]) -> str | None:
+    """把参数写入失败压成现场可行动的短 reason，避免只返回泛化失败。"""
+    if command_result.get("ok"):
+        return None
+    reason = command_result.get("reason")
+    if isinstance(reason, str) and reason:
+        return reason
+    runtime_ensure = command_result.get("runtime_ensure")
+    if isinstance(runtime_ensure, dict) and not runtime_ensure.get("available"):
+        status = str(runtime_ensure.get("status") or "runtime_unavailable")
+        return f"free_roam_runtime_{status}"
+    results = command_result.get("results")
+    if isinstance(results, list):
+        for item in results:
+            if not isinstance(item, dict) or item.get("ok"):
+                continue
+            item_reason = item.get("reason")
+            if isinstance(item_reason, str) and item_reason:
+                return item_reason
+            stderr = str(item.get("stderr_preview") or "").strip().splitlines()
+            stdout = str(item.get("stdout_preview") or "").strip().splitlines()
+            if stderr:
+                return stderr[-1][-160:]
+            if stdout:
+                return stdout[-1][-160:]
+    return "free_roam_param_sequence_failed"
+
+
+def run_free_roam_param_sequence(
+    action: str,
+    *,
+    enable_motion: bool = False,
+    mapping_active: bool = True,
+    artifact_path: str = DEFAULT_FREE_ROAM_AUTONOMY_ARTIFACT_PATH,
+) -> dict[str, Any]:
     """自由移动只由安全确认解锁；mapping_active 只表达本轮是否可作为建图会话。"""
     sequences = {
         "start": [
@@ -2415,6 +2642,19 @@ def run_free_roam_param_sequence(action: str, *, enable_motion: bool = False, ma
             ("enable_cmd_vel_publish", "true"),
         ])
     param_names = [name for name, _value in sequences[action]]
+    runtime_ensure = ensure_free_roam_runtime_for_param_load(artifact_path)
+    if not runtime_ensure.get("available"):
+        return {
+            "mode": "free_roam_param_sequence",
+            "action": action,
+            "motion_unlock_requested": bool(action == "start" and enable_motion),
+            "executed": bool(runtime_ensure.get("start", {}).get("executed")) if isinstance(runtime_ensure.get("start"), dict) else False,
+            "ok": False,
+            "reason": free_roam_param_sequence_failure_reason({"runtime_ensure": runtime_ensure}),
+            "runtime_ensure": runtime_ensure,
+            "touched_parameters": [],
+            "blocked_parameters_not_touched": ["motion_hil_unlocked", "enable_cmd_vel_publish", "cmd_vel_topic"],
+        }
     yaml_lines = ["/free_roam_autonomy:", "  ros__parameters:"]
     for name, value in sequences[action]:
         yaml_lines.append(f"    {name}: {value}")
@@ -2458,6 +2698,8 @@ def run_free_roam_param_sequence(action: str, *, enable_motion: bool = False, ma
         "motion_unlock_requested": bool(action == "start" and enable_motion),
         "executed": any(bool(item.get("executed")) for item in results),
         "ok": all(bool(item.get("ok")) for item in results),
+        "reason": None if all(bool(item.get("ok")) for item in results) else free_roam_param_sequence_failure_reason({"results": results}),
+        "runtime_ensure": runtime_ensure,
         "results": results,
         "touched_parameters": touched,
         "blocked_parameters_not_touched": blocked_not_touched,
@@ -9611,9 +9853,18 @@ class UpperRobotApi:
         # 自由移动只需要现场安全确认；建图会话必须由上位机再次确认相机和雷达质量，避免直接打 API 绕过 PC 门禁。
         mapping_active_applied = bool(mapping_active_requested and mapping_ready)
         if action == "start":
-            command_result = run_free_roam_param_sequence(action, enable_motion=True, mapping_active=mapping_active_applied)
+            command_result = run_free_roam_param_sequence(
+                action,
+                enable_motion=True,
+                mapping_active=mapping_active_applied,
+                artifact_path=self.free_roam_autonomy_artifact_path,
+            )
         else:
-            command_result = run_free_roam_param_sequence(action, enable_motion=False)
+            command_result = run_free_roam_param_sequence(
+                action,
+                enable_motion=False,
+                artifact_path=self.free_roam_autonomy_artifact_path,
+            )
         start_runtime_wait = self.wait_for_free_roam_start_runtime(command_result) if action == "start" else {
             "waited": False,
             "reason": "stop_does_not_wait_for_motion_runtime",
@@ -9621,6 +9872,7 @@ class UpperRobotApi:
         }
         http_status, latest = self.free_roam_autonomy_latest()
         motion_unlock_requested = bool(command_result.get("motion_unlock_requested"))
+        failure_reason = free_roam_param_sequence_failure_reason(command_result)
         return software_guard_payload(
             schema_suffix="free_roam_autonomy_control_result",
             action=f"free_roam_autonomy_{action}",
@@ -9629,8 +9881,8 @@ class UpperRobotApi:
             command_result=command_result,
             extra={
                 "status": "requested" if command_result.get("ok") else "blocked",
-                "failure_reason": None if command_result.get("ok") else "free_roam_param_sequence_failed",
-                "blocked_reasons": [] if command_result.get("ok") else ["free_roam_param_sequence_failed"],
+                "failure_reason": None if command_result.get("ok") else failure_reason,
+                "blocked_reasons": [] if command_result.get("ok") else [failure_reason or "free_roam_param_sequence_failed"],
                 "request_body": {
                     key: bool(request.get(key))
                     for key in ("confirm_operator_safety", "confirm_mapping_active")
@@ -9663,6 +9915,7 @@ class UpperRobotApi:
                 "motion_unlock_requested": motion_unlock_requested,
                 "does_not_set_motion_unlock": not motion_unlock_requested,
                 "sensor_readiness": sensor_readiness,
+                "managed_runtime": command_result.get("runtime_ensure", {}),
                 "publishes_cmd_vel": bool(motion_unlock_requested and command_result.get("ok")),
                 "sends_motion_commands": bool(motion_unlock_requested and command_result.get("ok")),
                 "robot_control_executed": False,

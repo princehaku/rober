@@ -55,6 +55,13 @@ pc-tools/workstation/
   不替代简易 PC 控制台，不启动 ROS2/RViz2/Foxglove/Nav2/建图 runtime，不发送 manual、keyboard、free-roam、
   delivery、stop 或 `/cmd_vel`。ROS2 配套资料来源采用 ROS2 官方 RViz User Guide、Nav2 官方文档 /
   `nav2_rviz_plugins` 和 Foxglove ROS2 Bridge 官方文档；普通用户入口仍以本项目 PC 大地图为准。
+- 2026-07-06 03:05 CST 起，上车 Robot API 修复自由移动 runtime 缺失时 start 失败的问题：
+  `/api/free-roam/autonomy/start` 会用固定 argv 托管启动 `ros2_trashbot_nav free_roam_autonomy_node`，
+  默认仍锁住 `enable_cmd_vel_publish` 和 `motion_hil_unlocked`，再通过参数序列解锁本次低速自由移动。
+  真实 PC 代理复验中，start 为 `autonomy_forwarded`，latest 读到 `decision_state=avoiding`、
+  `cmd_vel_publish_enabled=true`；stop 为 `autonomy_forwarded`，latest 回到 `decision_state=stopping`、
+  `cmd_vel_publish_enabled=false`。这说明自由移动不被相机首帧或雷达 proof 阻塞；近障碍时状态机会原地换向，
+  建图验收仍单独要求相机首帧、雷达/地图材料和地图画面。
 - 2026-07-06 02:13 CST 起，PC 地图“太小”的当时有效口径为：普通首页和 `/map` 默认 `200%` 可读大图，
   `完整态势` 回到 `100%`，`细节放大` 到 `1200%`；`/map` 的标题/工具条和图层状态保持画布内悬浮层，
   不再占用地图高度。ROS2 配套仍分层：普通用户用 PC 大地图和 `/map`；本地工程调试用 RViz2/Nav2 RViz 配置；

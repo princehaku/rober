@@ -135,7 +135,7 @@
 
 ### Objective 7：PC 端运营调试与数据训练平台
 
-**当前进度：约 13%** | 主要缺口：真实 RTC/视频、真实 ASR/TTS、真实手控/寻路、真实地图/电梯/回放/标注数据流、云端生产链路和上车验证。（允许使用 Mock 视频数据流、ASR/TTS 本地模拟和轨迹 Mock 优先进行 PC 端功能开发，最终再利用真实数据跑通）
+**当前进度：约 28%** | 主要缺口：真实 RTC/视频、真实 ASR/TTS、真实 wheel raw 非零反馈、真实电梯/回放/标注数据流、云端生产链路和完整路线长期上车验证。（允许使用 Mock 视频数据流、ASR/TTS 本地模拟和轨迹 Mock 优先进行 PC 端功能开发，最终再利用真实数据跑通）
 
 **目标说明**：PC 端面向开发者和运营人员，提供实时监控、历史回放、数据标注、手动控制和语音调试能力，与云端数据层对接，不绕过云端直连小车。
 
@@ -159,7 +159,7 @@
 | O1：硬件协议可信底盘 | ~85% | 已有真实上位机 first-jog 转发、T1001 L/R 反馈采样字段和 LiDAR delta 过阈值；当前真实 L/R 仍为 0，仍缺轮速非零原始反馈、轮速方向、HIL 准入、PR #5 2D LiDAR/ToF 硬件材料 |
 | O5：云中转控制面 | ~80% | 真实公网 HTTPS/TLS、4G/SIM、production DB/queue、OSS/CDN live traffic、真实手机/browser 验收 |
 | O6：云端核心后端 | ~30% | archive、tunnel online、event/evidence、labeling、model inference、consumer read API 已有 local/mock software proof；仍缺真实隧道、生产 DB/queue、OSS、TLS/4G、真实机器人数据 |
-| O7：PC 端运营调试平台 | ~26% | PC 普通首屏已能连接真实上位机并开放 `0.0.0.0:7001`；PC 首页和 `/map` 当前默认 `300%` 可读大图，`完整态势` 回 `100%`、`细节放大` 到 `1200%`，已能显示地图 PNG、Nav2 路线、目标点、小车位置和雷达贴图，ROS2 配套固定为 RViz2/Foxglove 工程观察且不替代 PC 简易控制台；`trashbot-esp32-bridge.service` 与 `trashbot-lidar-lifecycle.service` 已固化开机自恢复，复验 `/cmd_vel` 仅一个 bridge 订阅者且 `/scan` 可读 LaserScan；相机 CMA 已恢复为 `cma_available_no_recent_failure`，PC status 会保留最近 first-frame probe 的 `probe_total_timeout / uvc_no_frame_not_exclusive` 结论，且代理层 `fetch_timeout_45000ms` 不再覆盖该事实；2026-07-06 已修正相机服务自持 `/dev/video1` 时 PC probe 顶层误停留在 `source_busy` 的问题，失败后会复读 health 并显示 `uvc_no_frame_not_exclusive`；同日已执行 UVC 控制项复位、USB `3-1` reauthorize、mmap/userptr/ffmpeg/GStreamer 矩阵和 `camera_usb_recovery_smoke.py`，DV20 仍 `high_speed_zero_byte_no_frame`；PC summary/live-summary 会用最近无首帧 probe 结论压过 UVC XU 控制查询短包造成的 transport 日志；WASD/自由移动可读到 command raw，且 live-summary 已平铺 `command_raw_lr_nonzero_proven`、`command_raw_latest_left/right`、`keyboard_command_raw_lr_nonzero`，真实 7001 复验 forward PWM 短脉冲返回 `L=164/R=164`、manual executed 和 auto stop true；wheel raw `T=1001 L/R=0/0` 仍是反馈风险；仍缺真实 RTC/视频、真实 ASR/TTS、云端回放/标注数据流、wheel raw 非零和完整路线/delivery success 验收 |
+| O7：PC 端运营调试平台 | ~28% | PC 普通首屏已能连接真实上位机并开放 `0.0.0.0:7001`；PC 首页和 `/map` 当前默认 `300%` 可读大图，`完整态势` 回 `100%`、`细节放大` 到 `1200%`，已能显示地图 PNG、Nav2 路线、目标点、小车位置和雷达贴图，ROS2 配套固定为 RViz2/Foxglove 工程观察且不替代 PC 简易控制台；`trashbot-esp32-bridge.service` 与 `trashbot-lidar-lifecycle.service` 已固化开机自恢复，复验 `/cmd_vel` 仅一个 bridge 订阅者且 `/scan` 可读 LaserScan；2026-07-06 已修复 `/api/free-roam/autonomy/start` 在 `/free_roam_autonomy` runtime 缺失时失败的问题，上车 API 会托管启动 locked runtime 后再写参数，真实 7001 代理复验 start=`autonomy_forwarded`、latest=`decision_state=avoiding/cmd_vel_publish_enabled=true`，stop 后回到 `stopping/false`，证明自由移动不被相机首帧或雷达 proof 阻塞；相机 CMA 已恢复为 `cma_available_no_recent_failure`，PC status 会保留最近 first-frame probe 的 `probe_total_timeout / uvc_no_frame_not_exclusive` 结论，且代理层 `fetch_timeout_45000ms` 不再覆盖该事实；同日已执行 UVC 控制项复位、USB `3-1` reauthorize、mmap/userptr/ffmpeg/GStreamer 矩阵和 `camera_usb_recovery_smoke.py`，DV20 仍 `high_speed_zero_byte_no_frame`；WASD/自由移动可读到 command raw，且 live-summary 已平铺 `command_raw_lr_nonzero_proven`、`command_raw_latest_left/right`、`keyboard_command_raw_lr_nonzero`，真实 7001 复验 forward PWM/ROS 短脉冲返回 raw L/R 非零、manual executed 和 auto stop true；wheel raw `T=1001 L/R=0/0` 仍是反馈风险；仍缺真实 RTC/视频、真实 ASR/TTS、云端回放/标注数据流、wheel raw 非零和完整路线长期验收 |
 
 **已归档 Objective（软件侧完成，等待真实现场验证）：**
 

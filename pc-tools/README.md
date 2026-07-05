@@ -42,6 +42,14 @@ Foxglove bridge 仍只是工程观察配套，不替代 PC 简易控制台，也
 不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。ROS2 配套资料来源：ROS2 RViz User Guide
 （LaserScan/Map 可视化）、Nav2 官方文档 / `nav2_rviz_plugins`、Foxglove ROS2 Bridge 官方文档。
 
+2026-07-06 03:05 CST 起，上车 `/api/free-roam/autonomy/start` 会在 `/free_roam_autonomy`
+runtime 缺失时托管启动 `ros2_trashbot_nav free_roam_autonomy_node`，节点初始仍保持
+`enable_cmd_vel_publish=false`、`motion_hil_unlocked=false`，随后只通过固定参数序列解锁本次低速自由移动。
+真实 7001 复验中，PC 代理 start 返回 `autonomy_forwarded`，上车 latest 进入 `decision_state=avoiding`、
+`cmd_vel_publish_enabled=true`；PC 代理 stop 返回 `autonomy_forwarded`，latest 回到
+`decision_state=stopping`、`cmd_vel_publish_enabled=false`。相机首帧和雷达 proof 不作为自由移动发车前置；
+雷达近距离时状态机会原地换向，建图验收仍要求相机首帧和地图材料。
+
 同轮 PC summary/live-summary 相机诊断聚合也收紧：如果最近 first-frame probe 已经证明 DV20/UVC 无首帧，
 而 health 只带有 UVC vendor extension 控制查询造成的 transport 日志，PC 顶层继续显示
 `uvc_no_frame_not_exclusive` 和“检查摄像头输入/供电后复测”，避免把 XU 查询短包误当成 USB 传输主因。

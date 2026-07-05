@@ -36,6 +36,20 @@ micro
     `map_display_direct_map_default_zoom_percent` 同步为 `300%`。
   - ROS2 配套口径继续保持分层：普通用户用 PC 大地图；RViz2/Nav2 RViz 插件与 Foxglove Bridge
     只作工程观察，不替代简易控制台，也不发送运动命令。
+- 2026-07-06 03:05 CST 追加自由移动 start 修复：
+  - `onboard/scripts/upper_robot_api.py`
+    - 增加 `/free_roam_autonomy` runtime 自愈：`/api/free-roam/autonomy/start` 或 stop 写参数前，
+      先确认节点/参数服务；缺失时用固定 argv 托管启动
+      `ros2 run ros2_trashbot_nav free_roam_autonomy_node`。
+    - 托管启动默认仍锁住 `enable_cmd_vel_publish=false` 与 `motion_hil_unlocked=false`，
+      只在后续固定参数序列成功后解锁本次低速自由移动。
+    - `ros2 param load` 等待窗口从 10s 调整到 30s；参数服务查询慢时先用 node list 避免重复启动同名节点。
+    - 失败原因从笼统 `free_roam_param_sequence_failed` 收紧为可行动的
+      `free_roam_runtime_unavailable_after_managed_start` 等短 reason。
+  - `onboard/scripts/test_upper_robot_api_free_roam.py`
+    - 补充缺 runtime 时托管启动、托管启动后仍不可用时失败 reason 的离线合同测试。
+  - `pc-tools/README.md`、`docs/product/pc_tools_workstation.md`、`OKR.md`
+    - 同步自由移动不依赖相机首帧/雷达 proof 发车、真实 start/stop 复验结果和剩余边界。
 
 ## 现场验证
 
@@ -82,6 +96,66 @@ ssh -p 7878 root@192.168.1.11 \
 - `status=streamon_failed`
 - `stream_failure_class=high_speed_zero_byte_no_frame`
 
+真实自由移动 start/stop 复验：
+
+```bash
+curl -X POST 'http://127.0.0.1:7001/api/robot-control/free-roam/autonomy/start?baseUrl=http://192.168.1.11:8787' \
+  -H 'content-type: application/json' \
+  --data '{"confirm_operator_safety":true,"confirm_mapping_active":false}'
+
+curl -X POST 'http://127.0.0.1:7001/api/robot-control/free-roam/autonomy/stop?baseUrl=http://192.168.1.11:8787' \
+  -H 'content-type: application/json' \
+  --data '{}'
+```
+
+结果：
+
+- 上车脚本已同步到 `/root/rober/onboard/scripts/upper_robot_api.py`，远端 `python3 -m py_compile` 通过。
+- `trashbot-upper-robot-api.service` 重启后 `GET /api/health` 返回 `status=ready`。
+- 直连上车 start：
+  - `status=requested`
+  - `command_result.ok=true`
+  - `managed_runtime.status=started_and_param_available`
+  - `start_runtime_wait.ok=true`
+  - `latest_decision_state=avoiding`
+  - `latest_cmd_vel_publish_enabled=true`
+  - `publishes_cmd_vel=true`
+  - `sends_motion_commands=true`
+- PC 代理 start：
+  - `proxy_status=autonomy_forwarded`
+  - `remote_http_status=200`
+  - `status=requested`
+  - `latest_decision_state=avoiding`
+  - `latest_cmd_vel_publish_enabled=true`
+- PC 代理 stop：
+  - `proxy_status=autonomy_forwarded`
+  - `remote_http_status=200`
+  - `status=requested`
+  - `latest_decision_state=stopping`
+  - `latest_cmd_vel_publish_enabled=false`
+- stop 后 final latest：
+  - `decision_state=stopping`
+  - `cmd_vel_publish_enabled=false`
+  - `free_roam_motion_ready=false`
+
+API 重启后 PC 状态复验：
+
+- `POST /api/robot-control/base/manual` 使用 `command_mode=ros`、`direction=forward`、`speed_mps=0.08`、
+  `duration_ms=240`，返回 `command_forwarded`、`manual_command_executed=true`、`auto_stop_executed=true`、
+  `command_raw_lr_nonzero_proven=true`、`command_raw_twist_nonzero_proven=true`、raw `L=-164/R=164`。
+- 雷达贴图刷新 `POST /api/robot-control/radar/scan-proof/refresh` 返回 `refresh_forwarded`；
+  随后 live-summary 返回：
+  - `map_current_visible=true`
+  - `path_current_visible=true`
+  - `radar_map_points_visible=true`
+  - `camera_current_visible=false`
+  - `camera_source_diagnosis_status=uvc_no_frame_not_exclusive`
+  - `keyboard_ready=true`
+  - `keyboard_continuous_ready=true`
+  - `command_raw_lr_nonzero_proven=true`
+  - `free_roam_motion_without_radar_allowed=true`
+  - `delivery_success=true`
+
 ## 本地验证
 
 已通过：
@@ -95,6 +169,8 @@ npm run lint
 npm run test
 npm run build
 cd /Users/m1/apps/rober
+python3 -m unittest onboard/scripts/test_upper_robot_api_free_roam.py
+python3 -m py_compile onboard/scripts/upper_robot_api.py onboard/scripts/test_upper_robot_api_free_roam.py
 git diff --check
 ```
 
@@ -104,6 +180,8 @@ git diff --check
 - `npm run test -- catalog.test.ts -t "live-summary route exposes"` 通过。
 - `npm run test` 通过：3 个 test file，453 个测试用例通过。
 - `npm run build` 通过；Vite 仅输出已有的大 bundle 警告。
+- `python3 -m unittest onboard/scripts/test_upper_robot_api_free_roam.py` 通过：13 个测试用例通过。
+- `python3 -m py_compile onboard/scripts/upper_robot_api.py onboard/scripts/test_upper_robot_api_free_roam.py` 通过。
 - `git diff --check` 通过。
 - 重启 `0.0.0.0:7001` 后，`/api/robot-control/summary` 与 `/api/robot-control/live-summary` 均返回：
   - `map_display_default_zoom_percent=300%`
@@ -139,4 +217,5 @@ git diff --check
 
 - 实时图传仍未出首帧；当前证据继续指向 DV20 上游输入、线材、接口、供电、采集卡/摄像头本体或 known-good UVC 复测。
 - `T=1001 L/R` 反馈仍为 0/0；本轮证明的是手控命令 raw L/R 非零、上车执行和 auto stop，不等于 vendor feedback L/R 非零闭环。
-- 本轮没有执行 Nav2 路线发车；地图/路线/雷达点状态通过现有 live-summary 读取保持可见。
+- 自由移动 start 已真实发起并进入 `avoiding`；当前近障碍读数使状态机原地换向，不代表已经完成大范围自动扫图或建图验收。
+- 本轮没有重新执行完整 Nav2 路线发车；地图/路线/雷达点状态通过现有 live-summary 读取保持可见。

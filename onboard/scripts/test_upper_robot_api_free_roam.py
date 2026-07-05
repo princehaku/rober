@@ -282,7 +282,7 @@ class UpperRobotApiFreeRoamTest(unittest.TestCase):
         module = load_upper_robot_api_module()
         calls: list[dict[str, object]] = []
 
-        def fake_param_sequence(action: str, *, enable_motion: bool = False, mapping_active: bool = True):
+        def fake_param_sequence(action: str, *, enable_motion: bool = False, mapping_active: bool = True, artifact_path: str = ""):
             calls.append({
                 "action": action,
                 "enable_motion": enable_motion,
@@ -361,7 +361,7 @@ class UpperRobotApiFreeRoamTest(unittest.TestCase):
         module = load_upper_robot_api_module()
         calls: list[dict[str, object]] = []
 
-        def fake_param_sequence(action: str, *, enable_motion: bool = False, mapping_active: bool = True):
+        def fake_param_sequence(action: str, *, enable_motion: bool = False, mapping_active: bool = True, artifact_path: str = ""):
             calls.append({
                 "action": action,
                 "enable_motion": enable_motion,
@@ -426,7 +426,7 @@ class UpperRobotApiFreeRoamTest(unittest.TestCase):
         calls: list[dict[str, object]] = []
         latest_calls: list[str] = []
 
-        def fake_param_sequence(action: str, *, enable_motion: bool = False, mapping_active: bool = True):
+        def fake_param_sequence(action: str, *, enable_motion: bool = False, mapping_active: bool = True, artifact_path: str = ""):
             calls.append({
                 "action": action,
                 "enable_motion": enable_motion,
@@ -504,12 +504,76 @@ class UpperRobotApiFreeRoamTest(unittest.TestCase):
         finally:
             module.run_free_roam_param_sequence = original_param_sequence
 
+    def test_missing_free_roam_node_is_started_before_param_load(self) -> None:
+        """自由移动节点缺失时，上位机 API 要先托管启动 runtime，再写参数。"""
+        module = load_upper_robot_api_module()
+        probes = [
+            {"available": False, "status": "node_not_found"},
+            {"available": True, "status": "available"},
+        ]
+        starts: list[str] = []
+        original_probe = module.free_roam_param_probe
+        original_node_probe = module.free_roam_node_list_probe
+        original_start = module.start_managed_free_roam_runtime
+        original_sleep = module.time.sleep
+        module.free_roam_param_probe = lambda: probes.pop(0) if probes else {"available": True, "status": "available"}
+        module.free_roam_node_list_probe = lambda: {"observed": False, "status": "not_observed", "nodes": []}
+        module.start_managed_free_roam_runtime = lambda artifact_path: starts.append(artifact_path) or {
+            "mode": "managed_free_roam_runtime_start",
+            "executed": True,
+            "ok": True,
+            "pid": 123,
+        }
+        module.time.sleep = lambda _seconds: None
+        try:
+            result = module.ensure_free_roam_runtime_for_param_load("/tmp/free_roam.json")
+        finally:
+            module.free_roam_param_probe = original_probe
+            module.free_roam_node_list_probe = original_node_probe
+            module.start_managed_free_roam_runtime = original_start
+            module.time.sleep = original_sleep
+
+        self.assertEqual(starts, ["/tmp/free_roam.json"])
+        self.assertTrue(result["available"])
+        self.assertTrue(result["started_by_api"])
+        self.assertEqual(result["status"], "started_and_param_available")
+
+    def test_param_sequence_reports_runtime_unavailable_after_managed_start(self) -> None:
+        """托管启动后参数服务仍不可用时，失败原因必须直接指向 runtime。"""
+        module = load_upper_robot_api_module()
+        original_ensure = module.ensure_free_roam_runtime_for_param_load
+        module.ensure_free_roam_runtime_for_param_load = lambda _artifact_path: {
+            "mode": "free_roam_runtime_ensure",
+            "status": "unavailable_after_managed_start",
+            "available": False,
+            "started_by_api": True,
+            "start": {"executed": True, "ok": True},
+        }
+        try:
+            result = module.run_free_roam_param_sequence(
+                "start",
+                enable_motion=True,
+                mapping_active=False,
+                artifact_path="/tmp/free_roam.json",
+            )
+        finally:
+            module.ensure_free_roam_runtime_for_param_load = original_ensure
+
+        self.assertFalse(result["ok"])
+        self.assertTrue(result["executed"])
+        self.assertEqual(result["reason"], "free_roam_runtime_unavailable_after_managed_start")
+        self.assertEqual(result["blocked_parameters_not_touched"], [
+            "motion_hil_unlocked",
+            "enable_cmd_vel_publish",
+            "cmd_vel_topic",
+        ])
+
     def test_runtime_lidar_snapshot_allows_mapping_when_scan_proof_is_stale(self) -> None:
         """雷达 proof 旧时，free-roam runtime 的实时 /scan 快照仍可作为建图 readiness。"""
         module = load_upper_robot_api_module()
         calls: list[dict[str, object]] = []
 
-        def fake_param_sequence(action: str, *, enable_motion: bool = False, mapping_active: bool = True):
+        def fake_param_sequence(action: str, *, enable_motion: bool = False, mapping_active: bool = True, artifact_path: str = ""):
             calls.append({
                 "action": action,
                 "enable_motion": enable_motion,
