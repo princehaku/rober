@@ -10515,6 +10515,8 @@ describe("workstation fail-closed API contracts", () => {
         backend_smoke_status: "not_requested",
         backend_frame_observed: "not_loaded",
         backend_attempts: "0",
+        backend_userptr_attempt_count: "0",
+        backend_userptr_frame_observed: "false",
         streamon_io_error_observed: "false",
         streamon_io_error_count: "0",
         latest_streamon_io_error: "none",
@@ -15709,9 +15711,9 @@ describe("workstation fail-closed API contracts", () => {
         const timeoutProbeBody = await timeoutProbeResponse.json() as RobotControlCameraFirstFrameProbeProxyResponse;
 
         expect(timeoutProbeResponse.status).toBe(200);
-        expect(timeoutSpy).toHaveBeenLastCalledWith(45_000);
+        expect(timeoutSpy).toHaveBeenLastCalledWith(85_000);
         expect(timeoutProbeBody.proxy_status).toBe("probe_failed");
-        expect(timeoutProbeBody.failure_reason).toBe("fetch_timeout_45000ms");
+        expect(timeoutProbeBody.failure_reason).toBe("fetch_timeout_85000ms");
       } finally {
         timeoutSpy.mockRestore();
       }
@@ -17453,8 +17455,11 @@ describe("workstation fail-closed API contracts", () => {
               executed: true,
               frame_observed: false,
               status: "backend_no_frame_observed",
+              userptr_attempt_count: 1,
+              userptr_frame_observed: false,
               attempts: [
                 { name: "v4l2_mjpg_mmap", ok: false, output_bytes: 0 },
+                { name: "v4l2_mjpg_userptr", ok: false, output_bytes: 0 },
                 { name: "ffmpeg_mjpg", ok: false, output_bytes: 0 },
               ],
             },
@@ -17546,6 +17551,8 @@ describe("workstation fail-closed API contracts", () => {
           backend_smoke_status: string;
           backend_frame_observed: string;
           backend_attempts: string;
+          backend_userptr_attempt_count: string;
+          backend_userptr_frame_observed: string;
           failure_reason: string;
         };
         safe_to_control: boolean;
@@ -17557,7 +17564,9 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.probe_key_values.failure_reason).toBe("deadline_expired");
       expect(body.probe_key_values.backend_smoke_status).toBe("backend_no_frame_observed");
       expect(body.probe_key_values.backend_frame_observed).toBe("false");
-      expect(body.probe_key_values.backend_attempts).toBe("2");
+      expect(body.probe_key_values.backend_attempts).toBe("3");
+      expect(body.probe_key_values.backend_userptr_attempt_count).toBe("1");
+      expect(body.probe_key_values.backend_userptr_frame_observed).toBe("false");
       expect(body.camera_first_frame_ready).toBe(false);
       expect(body.frame_observed).toBe(false);
       expect(body.source_diagnosis_status).toBe("uvc_full_speed_usb_not_exclusive");
@@ -17598,7 +17607,9 @@ describe("workstation fail-closed API contracts", () => {
       expect(summaryBody.readback_summary.camera.first_frame_probe_status).toBe("first_frame_timeout");
       expect(summaryBody.readback_summary.camera.first_frame_probe_backend_smoke_status).toBe("backend_no_frame_observed");
       expect(summaryBody.readback_summary.camera.first_frame_probe_backend_frame_observed).toBe("false");
-      expect(summaryBody.readback_summary.camera.first_frame_probe_backend_attempts).toBe("2");
+      expect(summaryBody.readback_summary.camera.first_frame_probe_backend_attempts).toBe("3");
+      expect(summaryBody.readback_summary.camera.first_frame_probe_backend_userptr_attempt_count).toBe("1");
+      expect(summaryBody.readback_summary.camera.first_frame_probe_backend_userptr_frame_observed).toBe("false");
       expect(summaryBody.readback_summary.camera.source_diagnosis_status).toBe("uvc_full_speed_usb_not_exclusive");
       expect(summaryBody.readback_summary.camera.source_diagnosis_plain_hint).toContain("USB full-speed");
       expect(summaryBody.readback_summary.camera.source_diagnosis_not_exclusive).toBe("true");
@@ -17788,11 +17799,11 @@ describe("workstation fail-closed API contracts", () => {
       });
       const smokeBody = await smokeResponse.json() as RobotControlCameraFirstFrameProbeProxyResponse;
 
-      expect(timeoutSpy).toHaveBeenLastCalledWith(45_000);
+      expect(timeoutSpy).toHaveBeenLastCalledWith(85_000);
       expect(smokeResponse.status).toBe(200);
       expect(smokeBody.proxy_status).toBe("probe_failed");
-      expect(smokeBody.failure_reason).toBe("fetch_timeout_45000ms");
-      expect(smokeBody.blocked_reasons).toEqual(["fetch_timeout_45000ms"]);
+      expect(smokeBody.failure_reason).toBe("fetch_timeout_85000ms");
+      expect(smokeBody.blocked_reasons).toEqual(["fetch_timeout_85000ms"]);
       expect(smokeBody.normalized_base_url).toBe(upstream.baseUrl);
       expect(smokeBody.remote_http_status).toBeNull();
       expect(smokeBody.readback_only).toBe(true);

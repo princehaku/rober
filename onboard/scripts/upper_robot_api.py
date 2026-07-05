@@ -7783,7 +7783,8 @@ async def run_camera_probe_attempt(
         stderr=asyncio.subprocess.PIPE,
     )
     try:
-        base_process_timeout_s = request["read_call_timeout_s"] + (44.0 if request["include_backend_smoke"] else 1.5)
+        # backend smoke 现在覆盖 mmap、userptr、ffmpeg 和设备自报低负载模式；深度探针预算要能容纳完整矩阵。
+        base_process_timeout_s = request["read_call_timeout_s"] + (60.0 if request["include_backend_smoke"] else 1.5)
         process_timeout_s = base_process_timeout_s if max_process_timeout_s is None else min(
             base_process_timeout_s,
             max(0.5, max_process_timeout_s),
@@ -7850,7 +7851,8 @@ async def run_camera_first_frame_probe(body: dict[str, Any] | None = None) -> tu
     started_ms = now_ms()
     started_monotonic = time.monotonic()
     # PC 代理 12s quick probe 需要拿到低带宽矩阵结论；上位机预算略短于 PC timeout。
-    total_budget_s = 52.0 if request.get("include_backend_smoke") else 11.0
+    # 深度相机探针只由显式 include_backend_smoke 触发，给足预算换来可落地的“软件采集已穷尽”证据。
+    total_budget_s = 68.0 if request.get("include_backend_smoke") else 11.0
     sample_root = Path(__file__).resolve().parents[1] / "runtime" / "camera"
     if not script_path.exists():
         return 503, {

@@ -32,6 +32,13 @@ PC 普通用户首屏需要把“建图”和“移动”串成一个像扫地�
   `motion_signal_observed=true`、`motion_signal_source=imu_attitude_delta` 和 stop OK；
   `live-summary` 已进入 `ready_for_motion`。相机仍为 DV20 UVC 无帧：USB `480M`、无页面独占、
   MJPEG/OpenCV/ffmpeg/独占 `v4l2-ctl` 多格式直采均 0 字节。
+- 2026-07-06 06:23 起，PC/上车相机深度 probe 已覆盖完整软件采集路径：上车 backend smoke
+  追加设备自报低负载模式的 V4L2 userptr 尝试，PC 代理对显式 `backendSmoke=1` 或
+  `include_backend_smoke=true` 放宽到 `85000ms`，并把 `backend_userptr_attempt_count`、
+  `backend_userptr_frame_observed` 写入 probe key-values 与 summary overlay。真实 7001 复验中
+  `backend_attempts=11`、`backend_userptr_attempt_count=2`、`backend_userptr_frame_observed=false`，
+  仍没有任何 kernel frame。这个证据只收窄实时图传 blocker，不改变自由移动、WASD 或图上路线发车前置；
+  当前仍应把图传恢复动作指向 DV20 输入信号、线材/接口/供电、采集设备本体或 known-good UVC。
 - 2026-07-03 23:58 起，PC 和上位机把“命令 raw 非零 + IMU 已动”与“vendor feedback L/R 非零”
   分层显示：上位机 `/api/base/manual` 返回 `command_raw_nonzero_proven`、
   `command_raw_lr_nonzero_proven`、`command_raw_twist_nonzero_proven`、`motion_evidence_complete`

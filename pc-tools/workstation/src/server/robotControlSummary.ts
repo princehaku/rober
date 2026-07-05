@@ -2877,6 +2877,8 @@ function cameraSummaryFromReadbacks(
     first_frame_probe_backend_smoke_status: firstFrameProbeOverlay?.backend_smoke_status ?? "not_requested",
     first_frame_probe_backend_frame_observed: firstFrameProbeOverlay?.backend_frame_observed ?? "not_loaded",
     first_frame_probe_backend_attempts: firstFrameProbeOverlay?.backend_attempts ?? "0",
+    first_frame_probe_backend_userptr_attempt_count: firstFrameProbeOverlay?.backend_userptr_attempt_count ?? "0",
+    first_frame_probe_backend_userptr_frame_observed: firstFrameProbeOverlay?.backend_userptr_frame_observed ?? "false",
     first_frame_probe_streamon_io_error_observed: firstFrameProbeStreamonIoErrorObserved,
     first_frame_probe_streamon_io_error_count: firstFrameProbeStreamonIoErrorCount,
     first_frame_probe_latest_streamon_io_error: firstFrameProbeLatestStreamonIoError,
@@ -2923,6 +2925,8 @@ export type RobotControlCameraFirstFrameProbeOverlay = {
   backend_smoke_status: string;
   backend_frame_observed: string;
   backend_attempts: string;
+  backend_userptr_attempt_count: string;
+  backend_userptr_frame_observed: string;
   streamon_io_error_observed: string;
   streamon_io_error_count: string;
   latest_streamon_io_error: string;
@@ -7165,6 +7169,8 @@ function failClosed(reason: string, sourceBaseUrl: string): RobotControlSummaryR
         first_frame_probe_backend_smoke_status: "not_requested",
         first_frame_probe_backend_frame_observed: "not_loaded",
         first_frame_probe_backend_attempts: "0",
+        first_frame_probe_backend_userptr_attempt_count: "0",
+        first_frame_probe_backend_userptr_frame_observed: "false",
         first_frame_probe_streamon_io_error_observed: "false",
         first_frame_probe_streamon_io_error_count: "0",
         first_frame_probe_latest_streamon_io_error: "none",

@@ -2895,6 +2895,8 @@ describe("robotControlSummary", () => {
       backend_smoke_status: "backend_no_frame_observed",
       backend_frame_observed: "false",
       backend_attempts: "8",
+      backend_userptr_attempt_count: "2",
+      backend_userptr_frame_observed: "false",
       streamon_io_error_observed: "false",
       streamon_io_error_count: "0",
       latest_streamon_io_error: "none",

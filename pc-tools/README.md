@@ -68,6 +68,16 @@ ROS2 配套仍按分层使用：本地工程调试首选 RViz2/Nav2 RViz 配置�
 `MJPG@640x480/1280x720/1920x1080` 与 `YUYV@320x240/640x480` 仍全部 `select timeout`
 或 0 字节，结论保持 DV20 枚举正常但无视频帧，不是 PC 页面独占。
 
+2026-07-06 06:23 CST 起，相机深度首帧诊断覆盖 `mmap`、`userptr`、`ffmpeg` 和设备自报低负载模式。
+上车 `camera_first_frame_probe.py` 的 backend smoke 会把 userptr 尝试数和是否出帧写入结构化 JSON；
+PC `POST /api/robot-control/camera/first-frame/probe` 支持在 query `backendSmoke=1` 或 body
+`include_backend_smoke=true` 时等待完整深度矩阵，超时预算为 `85000ms`，普通首屏 quick probe 仍保持
+`12000ms`。真实 7001 复验中，DV20 `/dev/video1` 返回 `status=first_frame_timeout`、
+`backend_smoke_status=backend_no_frame_observed`、`backend_attempts=11`、
+`backend_userptr_attempt_count=2`、`backend_userptr_frame_observed=false`；这进一步证明实时图传缺口不在
+PC 代理、浏览器独占、OpenCV、mmap/userptr 或 ffmpeg，而在 DV20 上游输入、线材/接口/供电、采集设备本体或
+known-good UVC 复测。
+
 2026-07-06 05:15 CST 起，上车 `/api/map/preview` 的雷达贴图不再只依赖可能过期的
 `lidar_scan_proof_latest.json`；当 LiDAR lifecycle 正在运行且 driver diagnostics 5 秒内更新、状态为
 `scan_published` 时，地图预览直接使用 diagnostics 里的 `scan_preview_points` 作为当前雷达点。真实 7001

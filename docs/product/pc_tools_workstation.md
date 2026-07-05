@@ -78,6 +78,15 @@ pc-tools/workstation/
   `keyboard_stop_settled_after_pulse=true`、`keyboard_wheel_feedback_lr_nonzero_proven=false`。
   同轮相机仍未恢复：DV20 `/dev/video1` 枚举、USB `480M`、无页面独占，但共享 MJPEG、USB recovery、
   OpenCV/ffmpeg 和停服务独占 `v4l2-ctl` 多分辨率直采仍全部无视频帧。
+- 2026-07-06 06:23 CST 起，PC 深度相机首帧 probe 不再只等旧 `45s` backend smoke：显式
+  `backendSmoke=1` 或 body `include_backend_smoke=true` 时，PC 代理等待 `85000ms` 并透传
+  `backend_userptr_attempt_count` / `backend_userptr_frame_observed`；普通首屏 probe 仍是 `12000ms`。
+  上车 backend smoke 新增设备自报低负载模式的 `--stream-user=3` userptr 兜底。真实 7001 复验返回
+  `remote_http_status=503`、`status=first_frame_timeout`、`failure_reason=capture_read_call_timeout`、
+  `backend_smoke_status=backend_no_frame_observed`、`backend_attempts=11`、
+  `backend_userptr_attempt_count=2`、`backend_userptr_frame_observed=false`。因此当前实时图传缺口继续集中在
+  DV20 上游输入、线材/接口/供电、采集卡/摄像头本体或 known-good UVC，而不是 PC 超时过短、页面独占或未试
+  V4L2 userptr。
 - 2026-07-06 05:15 CST 起，PC 大地图雷达 overlay 的当前有效数据源为：上车
   `/api/map/preview` 优先使用正在运行的 LiDAR driver diagnostics 里的实时 `scan_preview_points`，只有
   diagnostics 不新鲜或无点时才回退到 scan-proof artifact。真实复验中 `/api/map/preview` 返回

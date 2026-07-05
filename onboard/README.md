@@ -49,6 +49,11 @@ WASD/手控的 `motion_signal_observed=imu_attitude_delta`，不能替代同窗�
 Nav2 完整路线或 delivery success。协议字段来源见 `docs/vendor/VENDOR_INDEX.md` 指向的 WAVE ROVER
 `IMU_ctrl.h` 和 `json_cmd.h`。
 
+2026-07-06 起，`scripts/camera_first_frame_probe.py` 的 backend smoke 除 mmap/ffmpeg 外，也会对设备
+自报低负载模式执行 V4L2 `--stream-user=3` userptr 取帧，并输出 `userptr_attempt_count` 与
+`userptr_frame_observed`。这只用于证明相机软件采集路径是否已穷尽，不发送运动命令，不打开底盘串口，
+也不能把无帧伪装成实时图传已恢复。
+
 2026-07-01 起，LiDAR driver 每秒 diagnostics 会携带最近一帧 `/scan` 派生的结构化
 `scan_preview_points`。上车 `/api/radar/scan-proof/refresh` 默认消费该 diagnostics 写入
 `runtime/lidar_scan_proof_latest.json`，不再默认启动 `ros2 topic echo/hz` CLI collector；

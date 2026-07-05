@@ -31,6 +31,7 @@ BACKEND_V4L2_STREAM_TIMEOUT_S = 4.0
 BACKEND_FFMPEG_STREAM_TIMEOUT_S = 5.0
 BACKEND_DEVICE_MODE_LIMIT = 2
 BACKEND_FFMPEG_INPUT_FORMATS = {"MJPG": "mjpeg", "YUYV": "yuyv422"}
+BACKEND_USERPTR_DEVICE_MODE_LIMIT = 2
 
 
 def now_ms() -> int:
@@ -302,6 +303,26 @@ def ffmpeg_command_for_mode(device: str, mode: dict[str, Any], output_path: Path
     return command
 
 
+def v4l2_stream_command_for_mode(device: str, mode: dict[str, Any], io_mode: str, output_path: Path) -> list[str]:
+    """生成 v4l2-ctl 单帧命令；userptr 兜底用于排除 mmap 和驱动缓冲路径问题。"""
+    stream_arg = "--stream-user=3" if io_mode == "userptr" else "--stream-mmap=3"
+    command = [
+        "v4l2-ctl",
+        "-d",
+        device,
+        f"--set-fmt-video=width={mode['width']},height={mode['height']},pixelformat={mode['fourcc']}",
+    ]
+    if mode.get("fps"):
+        command.append(f"--set-parm={mode['fps']}")
+    command.extend([
+        stream_arg,
+        "--stream-count=1",
+        "--stream-to",
+        str(output_path),
+    ])
+    return command
+
+
 def backend_smoke_probe(args: argparse.Namespace) -> dict[str, Any]:
     """用 v4l2-ctl/ffmpeg 各取一帧；只读 camera，不写 controls，不碰底盘。"""
     output_dir = Path("/tmp/rober_camera_backend_smoke")
@@ -408,24 +429,29 @@ def backend_smoke_probe(args: argparse.Namespace) -> dict[str, Any]:
             timeout_s=BACKEND_V4L2_STREAM_TIMEOUT_S,
         ),
     ]
-    for mode in select_backend_device_modes(formats_text, args.width, args.height):
+    device_modes = select_backend_device_modes(formats_text, args.width, args.height)
+    for mode_index, mode in enumerate(device_modes):
         slug = f"{mode['fourcc'].lower()}_{mode['width']}x{mode['height']}"
         attempts.append(
             run_backend_command(
                 f"v4l2_device_{slug}_mmap",
-                [
-                    "v4l2-ctl",
-                    "-d",
-                    device,
-                    f"--set-fmt-video=width={mode['width']},height={mode['height']},pixelformat={mode['fourcc']}",
-                    "--stream-mmap=3",
-                    "--stream-count=1",
-                    "--stream-to",
-                    str(output_dir / f"v4l2_device_{slug}.raw"),
-                ],
+                v4l2_stream_command_for_mode(device, mode, "mmap", output_dir / f"v4l2_device_{slug}.raw"),
                 timeout_s=BACKEND_V4L2_STREAM_TIMEOUT_S,
             )
         )
+        if mode_index < BACKEND_USERPTR_DEVICE_MODE_LIMIT:
+            attempts.append(
+                run_backend_command(
+                    f"v4l2_device_{slug}_userptr",
+                    v4l2_stream_command_for_mode(
+                        device,
+                        mode,
+                        "userptr",
+                        output_dir / f"v4l2_device_{slug}_userptr.raw",
+                    ),
+                    timeout_s=BACKEND_V4L2_STREAM_TIMEOUT_S,
+                )
+            )
         attempts.append(
             run_backend_command(
                 f"ffmpeg_device_{slug}",
@@ -442,6 +468,7 @@ def backend_smoke_probe(args: argparse.Namespace) -> dict[str, Any]:
         if "vidioc_streamon" in str(item.get("stderr_preview") or "").lower()
         and "input/output error" in str(item.get("stderr_preview") or "").lower()
     ]
+    userptr_attempts = [item for item in attempts if "userptr" in str(item.get("name") or "")]
     return {
         "executed": True,
         "frame_observed": frame_observed,
@@ -453,6 +480,9 @@ def backend_smoke_probe(args: argparse.Namespace) -> dict[str, Any]:
         "streamon_io_error_observed": bool(streamon_io_errors),
         "streamon_io_error_count": len(streamon_io_errors),
         "latest_streamon_io_error": str(streamon_io_errors[-1].get("stderr_preview") or "")[-400:] if streamon_io_errors else "",
+        # userptr 和 mmap 同时无帧时，PC 可明确显示已排除常见 V4L2 缓冲模式差异。
+        "userptr_attempt_count": len(userptr_attempts),
+        "userptr_frame_observed": any(item.get("status") == "frame_observed" for item in userptr_attempts),
         "v4l2_info": v4l2_info,
         "attempts": attempts,
         "output_dir": str(output_dir),

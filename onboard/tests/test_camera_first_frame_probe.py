@@ -325,10 +325,14 @@ class CameraFirstFrameProbeTests(unittest.TestCase):
 
         self.assertIn("v4l2_current_mmap", executed_names)
         self.assertIn("v4l2_device_mjpg_480x320_mmap", executed_names)
+        self.assertIn("v4l2_device_mjpg_480x320_userptr", executed_names)
         self.assertIn("ffmpeg_device_mjpg_480x320", executed_names)
         self.assertIn("v4l2_device_yuyv_320x240_mmap", executed_names)
+        self.assertIn("v4l2_device_yuyv_320x240_userptr", executed_names)
         self.assertIn("ffmpeg_device_yuyv_320x240", executed_names)
         self.assertEqual(len(executed_names), result["no_frame_timeout_count"])
+        self.assertEqual(2, result["userptr_attempt_count"])
+        self.assertFalse(result["userptr_frame_observed"])
         self.assertFalse(result["robot_control_executed"])
 
     def test_frame_read_with_visible_sample_proves_visual_material(self) -> None:

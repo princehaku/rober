@@ -123,7 +123,7 @@ const FREE_ROAM_MAPPING_START_REQUIRED_GATE_IDS = [
   "lidar_fresh",
 ] as const;
 const CAMERA_FIRST_FRAME_PROBE_TIMEOUT_MS = 12_000;
-const CAMERA_FIRST_FRAME_BACKEND_SMOKE_TIMEOUT_MS = 45_000;
+const CAMERA_FIRST_FRAME_BACKEND_SMOKE_TIMEOUT_MS = 85_000;
 const CAMERA_USB_RECOVERY_TIMEOUT_MS = 60_000;
 const PORT = Number(process.env.PORT ?? WORKSTATION_NODE_PORT);
 const HOST = process.env.HOST ?? WORKSTATION_PUBLIC_HOST;
@@ -890,6 +890,8 @@ function cameraProbeKeyValues(payload: Record<string, unknown> | null): RobotCon
     backend_smoke_status: shortValue(backendSmoke?.status, "not_requested"),
     backend_frame_observed: shortValue(backendSmoke?.frame_observed, "false"),
     backend_attempts: shortValue(backendAttempts.length),
+    backend_userptr_attempt_count: shortValue(backendSmoke?.userptr_attempt_count, "0"),
+    backend_userptr_frame_observed: shortValue(backendSmoke?.userptr_frame_observed, "false"),
     streamon_io_error_observed: shortValue(backendSmoke?.streamon_io_error_observed, "false"),
     streamon_io_error_count: shortValue(backendSmoke?.streamon_io_error_count, "0"),
     latest_streamon_io_error: shortValue(backendSmoke?.latest_streamon_io_error, "none"),
@@ -985,6 +987,8 @@ function cameraProbeCompactPayload(payload: Record<string, unknown> | null): Rec
       frame_observed: Boolean(backendSmoke.frame_observed),
       overall_status: shortValue(backendSmoke.overall_status, "not_loaded"),
       failure_reason: shortValue(backendSmoke.failure_reason, "none"),
+      userptr_attempt_count: backendSmoke.userptr_attempt_count ?? 0,
+      userptr_frame_observed: Boolean(backendSmoke.userptr_frame_observed),
       streamon_io_error_observed: Boolean(backendSmoke.streamon_io_error_observed),
       streamon_io_error_count: backendSmoke.streamon_io_error_count ?? 0,
       attempts: backendAttempts
@@ -3452,6 +3456,8 @@ function cameraProbeOverlayFromResponse(
     backend_smoke_status: response.probe_key_values.backend_smoke_status,
     backend_frame_observed: response.probe_key_values.backend_frame_observed,
     backend_attempts: response.probe_key_values.backend_attempts,
+    backend_userptr_attempt_count: response.probe_key_values.backend_userptr_attempt_count,
+    backend_userptr_frame_observed: response.probe_key_values.backend_userptr_frame_observed,
     streamon_io_error_observed: response.probe_key_values.streamon_io_error_observed,
     streamon_io_error_count: response.probe_key_values.streamon_io_error_count,
     latest_streamon_io_error: response.probe_key_values.latest_streamon_io_error,
@@ -6283,7 +6289,11 @@ export function createWorkstationApp(): express.Express {
       res.status(400).json(cameraProbeFailure(sourceBaseUrl, normalized.reason));
       return;
     }
-    const includeBackendSmoke = req.query.backendSmoke === "1" || req.query.backendSmoke === "true";
+    const body = asRecord(req.body);
+    const includeBackendSmoke = req.query.backendSmoke === "1"
+      || req.query.backendSmoke === "true"
+      || body?.include_backend_smoke === true
+      || body?.backendSmoke === true;
     const sourceFailurePromise = cameraSourceFirstFrameFailureForStatus(normalized.normalized);
     // 默认保持快速首帧探针；只有用户主动请求深度诊断时才启动 ffmpeg/v4l2-ctl 后端矩阵。
     const remote = await fetchCameraProxySummary(
