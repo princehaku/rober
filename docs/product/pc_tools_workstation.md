@@ -100,6 +100,12 @@ pc-tools/workstation/
   `MJPG@1280x720@30`、`YUYV@320x240@25` 等无首帧摘要。现场停掉 8088 后直连
   `/dev/video1`，`VIDIOC_STREAMON` 成功但 MJPG/YUYV 均 0 字节；USB reauthorize 和音频接口解绑后仍无帧。
   7001 status 读回同样显示 `not_exclusive=true` 和多格式无首帧，因此 PC 页面不会把相机失败误导成页面独占或未检测。
+- 2026-07-06 07:23 CST 起，相机 USB recovery 脚本的“关闭 autosuspend”动作从只写
+  `power/control=on` 补齐为同时写目标 USB 设备和 root hub 的 `power/autosuspend=-1`、
+  `power/autosuspend_delay_ms=-1`。真实上车 `--skip-service --skip-reauthorize --skip-audio-unbind`
+  复验显示 `usb_device=3-1`、`usb_video_speed=480M`、上述 power actions 均写入成功；
+  但 `YUYV@320x240@20` 与 `MJPG@480x320@30` 仍是 `streamon_success_zero_byte_no_frame`。
+  因此该修复只保证恢复流程完整，不改变当前实时图传硬件剩余风险。
 - 2026-07-06 05:58 CST 起，PC/WASD 手控的当前有效运动信号阈值为 `0.35°` IMU roll/pitch delta：
   上车 `upper_robot_api.py` 只用它判断低速短脉冲是否有车体运动迹象，不把它包装成 WAVE ROVER
   wheel raw L/R 非零。资料来源为 `docs/vendor/VENDOR_INDEX.md` 指向的 WAVE ROVER `T=1001`

@@ -1183,6 +1183,23 @@ PC 7001 `/api/robot-control/camera/mjpeg/status` 读回同样保持
 因此本轮软件侧改进是“状态不再误降级，普通用户能看到真实下一步”；实时图传画面仍未恢复，
 剩余风险继续指向 DV20 输入信号、线材/接口/供电或 known-good UVC 复测。
 
+## 2026-07-06 07:23 USB autosuspend 关闭证据补齐
+
+`camera_usb_recovery_smoke.py` 原先只把目标 USB 设备和 root hub 的 `power/control` 写成 `on`；
+本轮补齐为同时写 `power/autosuspend=-1` 与 `power/autosuspend_delay_ms=-1`，并把每个
+setting 的 before/after 写入 `power_actions`。这样 PC 的相机 USB recovery 证据不再只说
+“关闭 autosuspend”，而是真能看到目标设备和 root hub 的 autosuspend 关闭结果。
+
+已部署到 `root@192.168.1.11 -p 7878`，本地与上车
+`onboard/scripts/camera_usb_recovery_smoke.py` 的 SHA256 均为
+`ea7f8b9314c6a83f9e7bb45d188e7035852bbacd35b4e4b779b7543698ef1bb5`。上车执行
+`--skip-service --skip-reauthorize --skip-audio-unbind` 复验时，`usb_device=3-1`、
+`usb_video_speed=480M`，`3-1` 与 `usb3` 的 `power/control=on`、
+`power/autosuspend=-1`、`power/autosuspend_delay_ms=-1` 均写入成功。
+采帧结果仍为 `YUYV@320x240@20=streamon_success_zero_byte_no_frame` 与
+`MJPG@480x320@30=streamon_success_zero_byte_no_frame`，所以当前画面不可见仍不是
+autosuspend 未关闭造成的。
+
 2026-06-27 14:52 起，PC 普通首屏共享预览文案进一步按失败事实收口：当 summary 或
 `/api/robot-control/camera/mjpeg/status` 已明确 `camera_source_first_frame_failed`、
 `camera_mjpeg_upstream_timeout`、HTTP 5xx 或 health 首帧失败时，状态行不再写

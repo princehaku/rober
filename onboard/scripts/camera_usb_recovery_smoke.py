@@ -193,17 +193,30 @@ def detect_usb_device(
     return fallback
 
 
-def set_usb_power_on(usb_device: str) -> list[dict[str, Any]]:
+def set_usb_power_on(
+    usb_device: str,
+    *,
+    sys_usb_root: Path = Path("/sys/bus/usb/devices"),
+) -> list[dict[str, Any]]:
     """关闭目标设备和所在 root hub 的 autosuspend，排除省电导致的假失败。"""
     actions: list[dict[str, Any]] = []
-    device_path = Path("/sys/bus/usb/devices") / usb_device
+    device_path = sys_usb_root / usb_device
     root_bus = "usb" + usb_device.split("-", 1)[0]
-    for target in (device_path / "power/control", Path("/sys/bus/usb/devices") / root_bus / "power/control"):
-        before = read_sysfs(target)
-        action = write_sysfs(target, "on")
-        action["before"] = before
-        action["after"] = read_sysfs(target)
-        actions.append(action)
+    # control=on 只禁止 runtime suspend；delay 也写成 -1，避免内核后续自动恢复到短延迟。
+    for base_path in (device_path, sys_usb_root / root_bus):
+        for filename, value in (
+            ("power/control", "on"),
+            ("power/autosuspend", "-1"),
+            ("power/autosuspend_delay_ms", "-1"),
+        ):
+            target = base_path / filename
+            before = read_sysfs(target)
+            action = write_sysfs(target, value)
+            action["setting"] = filename
+            action["target"] = str(base_path)
+            action["before"] = before
+            action["after"] = read_sysfs(target)
+            actions.append(action)
     return actions
 
 

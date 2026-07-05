@@ -88,6 +88,27 @@ class CameraUsbRecoverySmokeTest(unittest.TestCase):
         self.assertEqual(reset["after"], "0")
         self.assertEqual(after["quirks"], "0")
 
+    def test_set_usb_power_on_disables_device_and_root_hub_autosuspend(self) -> None:
+        """恢复脚本必须真的写 autosuspend，不能只把 control 置为 on。"""
+        module = load_recovery_module()
+        with tempfile.TemporaryDirectory() as tmp:
+            sys_usb_root = Path(tmp) / "sys" / "bus" / "usb" / "devices"
+            for name in ("3-1", "usb3"):
+                power = sys_usb_root / name / "power"
+                power.mkdir(parents=True)
+                (power / "control").write_text("auto", encoding="utf-8")
+                (power / "autosuspend").write_text("2", encoding="utf-8")
+                (power / "autosuspend_delay_ms").write_text("2000", encoding="utf-8")
+
+            actions = module.set_usb_power_on("3-1", sys_usb_root=sys_usb_root)
+
+        written = {(Path(action["target"]).name, action["setting"]): action for action in actions}
+        for target_name in ("3-1", "usb3"):
+            self.assertEqual("on", written[(target_name, "power/control")]["after"])
+            self.assertEqual("-1", written[(target_name, "power/autosuspend")]["after"])
+            self.assertEqual("-1", written[(target_name, "power/autosuspend_delay_ms")]["after"])
+            self.assertTrue(written[(target_name, "power/control")]["ok"])
+
     def test_stream_once_classifies_streamon_success_zero_byte_timeout(self) -> None:
         """STREAMON 成功但 select timeout/0 字节时，要和真正 STREAMON 失败区分开。"""
         module = load_recovery_module()
