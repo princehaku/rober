@@ -27,14 +27,20 @@ pc-tools/workstation/
 `http://192.168.1.55:7001/` 后不需要再找或勾任何 safety checkbox；兼容旧脚本的隐藏 input 仍保持 checked，
 可见文案改成“打开即用”。底层固定代理继续保留速度、时长、目标范围和 dangerous true 字段护栏，停止按钮保持可用。
 
-2026-07-06 02:13 CST 起，用户反馈“PC 地图太小 / ROS2 有无配套”后的当前有效口径为：PC 首页和 `/map`
-默认缩放收敛为 `200%` 可读大图，`细节放大` 为 `1200%`，`完整态势` 仍一键回到 `100%` 全局。
+2026-07-06 02:13 CST 起，用户反馈“PC 地图太小 / ROS2 有无配套”后，PC 首页和 `/map`
+默认缩放先收敛为 `200%` 可读大图，`细节放大` 为 `1200%`，`完整态势` 仍一键回到 `100%` 全局。
 地图、Nav2 路线、小车位置、雷达点和目标点继续共用同一张 WYSIWYG 画布；地图工具行直接显示
 `工程观察：RViz2 / Foxglove`。ROS2 配套分层不变：本地工程调试用 RViz2/Nav2 RViz 配置看
 `/map`、`/scan`、TF、路径、定位和 costmap；远程浏览器观察用
 `ros2 launch ros2_trashbot_bringup foxglove_bridge.launch.py` 后在 Foxglove Web 连接
 `ws://192.168.1.11:8765`。这些工程工具只观察，不替代 PC 简易界面，也不发送 `/cmd_vel`、
 manual、Nav2 goal、free-roam、delivery、stop 或建图运行时动作。
+
+2026-07-06 02:40 CST 起，当前有效默认值升级为：PC 首页和 `/map` 默认 `300%` 可读大图，
+`完整态势` 回到 `100%`，`细节放大` 仍为 `1200%`。这是普通用户默认入口；RViz2、Nav2 RViz 插件和
+Foxglove bridge 仍只是工程观察配套，不替代 PC 简易控制台，也不启动 ROS2/RViz2/Foxglove/Nav2/建图 runtime，
+不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。ROS2 配套资料来源：ROS2 RViz User Guide
+（LaserScan/Map 可视化）、Nav2 官方文档 / `nav2_rviz_plugins`、Foxglove ROS2 Bridge 官方文档。
 
 同轮 PC summary/live-summary 相机诊断聚合也收紧：如果最近 first-frame probe 已经证明 DV20/UVC 无首帧，
 而 health 只带有 UVC vendor extension 控制查询造成的 transport 日志，PC 顶层继续显示
@@ -1785,7 +1791,7 @@ PC 不再把这种 service self-hold 误报成页面独占，而是优先展示 
 地图 PNG、Nav2 路线、目标点、小车 map pose 和 155 个当前雷达点可见；WASD 前进/后退固定代理能写出
 command raw L/R 非零并 stop 成功；相机仍无帧，但 `camera_blocks_free_move=false`。
 
-地图太小时，普通用户优先打开 PC 首页大地图或 `/map`，当前默认 `200%` 可读大图，局部最高 `1200%`。
+地图太小时，普通用户优先打开 PC 首页大地图或 `/map`，当前默认 `300%` 可读大图，`完整态势` 回 `100%`，局部最高 `1200%`。
 ROS2 配套用于工程观察：RViz2/Nav2 RViz 配置看 `/map`、`/scan`、TF、路径、定位和 costmap；
 Foxglove Bridge + Foxglove Web 用于远程浏览器观察，连接 `ws://192.168.1.11:8765`。
 这些工具不替代 PC 简易控制台，不发送底盘运动命令。

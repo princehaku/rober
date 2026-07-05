@@ -30,6 +30,12 @@ micro
 - `docs/product/pc_tools_workstation.md`
 - `OKR.md`
   - 同步真实 7001 WASD raw L/R 复验和 DV20 USB recovery smoke 结果。
+- 2026-07-06 02:40 CST 追加 PC 地图太小修正：
+  - PC 首页和 `/map` 默认缩放从 `200%` 提升到 `300%`。
+  - `GET /api/robot-control/summary` / `live-summary` 的 `map_display_default_zoom_percent` 与
+    `map_display_direct_map_default_zoom_percent` 同步为 `300%`。
+  - ROS2 配套口径继续保持分层：普通用户用 PC 大地图；RViz2/Nav2 RViz 插件与 Foxglove Bridge
+    只作工程观察，不替代简易控制台，也不发送运动命令。
 
 ## 现场验证
 
@@ -82,6 +88,7 @@ ssh -p 7878 root@192.168.1.11 \
 
 ```bash
 cd pc-tools/workstation
+npm run test -- catalog.test.ts -t "live-summary route exposes"
 npm run test -- catalog.test.ts -t "live-summary"
 npm run test -- catalog.test.ts -t "keeps the open PC page live and keyboard-ready"
 npm run lint
@@ -94,9 +101,21 @@ git diff --check
 结果：
 
 - `npm run lint` 通过。
+- `npm run test -- catalog.test.ts -t "live-summary route exposes"` 通过。
 - `npm run test` 通过：3 个 test file，453 个测试用例通过。
 - `npm run build` 通过；Vite 仅输出已有的大 bundle 警告。
 - `git diff --check` 通过。
+- 重启 `0.0.0.0:7001` 后，`/api/robot-control/summary` 与 `/api/robot-control/live-summary` 均返回：
+  - `map_display_default_zoom_percent=300%`
+  - `map_display_direct_map_default_zoom_percent=300%`
+  - `map_display_fit_zoom_percent=100%`
+  - `map_display_max_zoom_percent=1200%`
+  - `map_display_ros2_companion_tools=["rviz2","foxglove"]`
+  - `map_display_companion_replaces_pc_ui=false`
+  - `map_display_starts_ros2=false`
+  - `map_display_starts_rviz2=false`
+  - `map_display_starts_foxglove=false`
+  - `map_display_starts_nav2=false`
 - 重启 `0.0.0.0:7001` 后，`GET /api/robot-control/live-summary?baseUrl=http://192.168.1.11:8787` 返回：
   - `status=ready_for_motion`
   - `map_current_visible=true`
