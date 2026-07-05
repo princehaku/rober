@@ -8,6 +8,17 @@
 
 ## 2026-07-06 系列
 
+### 2026-07-06 07-26｜pc_map_800_ros2_companion｜PC 大地图默认 800% 与 ROS2 配套口径
+
+本轮 `sprints/2026.07.06_07-26_pc_map_800_ros2_companion/` 响应现场“PC 地图太小，ROS2 有什么配套”的反馈：
+普通首页和 `/map` 默认地图缩放改为 `800%` 大地图，`完整态势` 回 `100%`，`细节放大` 最高仍为 `4800%`。
+summary/live-summary 和 DOM 合同同步返回 `map_display_default_zoom_percent=800%`、
+`map_display_direct_map_default_zoom_percent=800%`、`map_display_fit_zoom_percent=100%`、
+`map_display_max_zoom_percent=4800%`。ROS2 配套继续分层：普通用户用 PC 大地图和 `/map`；
+本地工程调试用 RViz2/Nav2 RViz 配置，远程浏览器观察用 Foxglove bridge + Foxglove Web。
+这些工程入口只观察 `/map`、`/scan`、TF、路径、定位和 costmap，不替代 PC 简易控制台，不发送
+manual/keyboard/Nav2/free-roam/delivery/stop 或 `/cmd_vel`。
+
 ### 2026-07-06 01-53｜pc_camera_gstreamer_descriptor_probe｜DV20 描述符和 GStreamer 路径复验
 
 本轮 `sprints/2026.07.06_01-53_pc_camera_gstreamer_descriptor_probe/` 不改产品代码，继续确认 PC 实时图传缺口。
