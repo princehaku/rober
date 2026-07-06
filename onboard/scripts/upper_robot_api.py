@@ -535,6 +535,38 @@ def ros_command_for_direction(direction: str, speed: float) -> dict[str, float |
     return {"T": 13, "X": round(linear_x, 3), "Z": round(angular_z, 3)}
 
 
+def optional_float(value: Any) -> float | None:
+    """从可选 JSON 字段读取有限浮点数；缺失或非法时保持 None，避免 silently 放大控制输入。"""
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return None
+    return parsed if math.isfinite(parsed) else None
+
+
+def ros_command_for_optional_twist(body: dict[str, Any], fallback: dict[str, float | int], *, max_speed: float) -> tuple[dict[str, float | int], dict[str, Any]]:
+    """键盘组合键可直接给 ROS X/Z；仍按 max_speed 对线速度和角速度做同一低速限幅。"""
+    requested_linear = optional_float(body.get("linear_x_mps", body.get("linear_x", body.get("linear_mps"))))
+    requested_angular = optional_float(body.get("angular_z_radps", body.get("angular_z", body.get("angular_radps"))))
+    if requested_linear is None and requested_angular is None:
+        return fallback, {
+            "ros_twist_override_applied": False,
+            "requested_linear_x_mps": None,
+            "requested_angular_z_radps": None,
+            "clamped_linear_x_mps": fallback.get("X"),
+            "clamped_angular_z_radps": fallback.get("Z"),
+        }
+    clamped_linear = min(max(requested_linear if requested_linear is not None else 0.0, -max_speed), max_speed)
+    clamped_angular = min(max(requested_angular if requested_angular is not None else 0.0, -max_speed), max_speed)
+    return {"T": 13, "X": round(clamped_linear, 3), "Z": round(clamped_angular, 3)}, {
+        "ros_twist_override_applied": True,
+        "requested_linear_x_mps": requested_linear,
+        "requested_angular_z_radps": requested_angular,
+        "clamped_linear_x_mps": round(clamped_linear, 3),
+        "clamped_angular_z_radps": round(clamped_angular, 3),
+    }
+
+
 def manual_command_for_direction(
     direction: str,
     speed: float,
@@ -10480,6 +10512,15 @@ class UpperRobotApi:
             pwm_min_abs=self.manual_pwm_min_abs,
             pwm_max_abs=self.manual_pwm_max_abs,
         )
+        twist_override = {
+            "ros_twist_override_applied": False,
+            "requested_linear_x_mps": None,
+            "requested_angular_z_radps": None,
+            "clamped_linear_x_mps": command.get("X") if command_mode == "ros" else None,
+            "clamped_angular_z_radps": command.get("Z") if command_mode == "ros" else None,
+        }
+        if command_mode == "ros":
+            command, twist_override = ros_command_for_optional_twist(body, command, max_speed=self.max_speed)
         stop_plan = stop_commands_for_mode(command_mode)
         # WAVE ROVER 固件的 setpoint/feedback 节奏约 200ms；first-jog 500ms 若只读 220ms，
         # 容易在停车前错过非零 T1001。默认读窗覆盖大部分脉冲，但不超过脉冲本身。
@@ -10678,6 +10719,7 @@ class UpperRobotApi:
             "direction": direction,
             "speed": speed,
             "base_command_mode": command_mode,
+            **twist_override,
             "feedback_mode": feedback_mode or "direct_feedback",
             "stop_commands": stop_plan,
             "duration_ms": pulse_ms,

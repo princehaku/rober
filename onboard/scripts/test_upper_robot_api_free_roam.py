@@ -183,6 +183,63 @@ class UpperRobotApiFreeRoamTest(unittest.TestCase):
         self.assertEqual(result["manual_feedback_samples_latest"]["t1001_observed_count"], 1)
         self.assertEqual(result["manual_feedback_samples_latest"]["samples"][0]["t1001_feedback_frame_count"], 2)
 
+    def test_manual_ros_motion_accepts_bounded_keyboard_chord_twist(self) -> None:
+        """PC W+A 组合键可以传 ROS X/Z，但上车端仍按 max_speed 限幅角速度。"""
+        module = load_upper_robot_api_module()
+        original_ros_transaction = module.manual_motion_ros_cmd_vel_transaction
+        seen_commands: list[dict[str, float | int]] = []
+
+        def fake_ros_transaction(*, port, baudrate, command, pulse_ms):
+            """测试只关心 T=13 X/Z；ROS 发布与反馈读取用成功桩替代。"""
+            seen_commands.append(command)
+            return {
+                "mode": "ros_cmd_vel_bridge",
+                "command_result": {"ok": True, "command": command, "pulse_ms": pulse_ms},
+                "stop_result": {"ok": True, "command": {"linear_x": 0.0, "angular_z": 0.0}},
+                "feedback_during_motion": module.skipped_manual_feedback_payload(
+                    port,
+                    baudrate,
+                    "ros_cmd_vel_path_uses_bridge_feedback_not_direct_uart",
+                ),
+                "feedback_after_stop": module.skipped_manual_feedback_payload(
+                    port,
+                    baudrate,
+                    "ros_cmd_vel_path_uses_bridge_feedback_not_direct_uart",
+                ),
+                "serial_session_error": None,
+                "blocked_base_uart": port,
+            }
+
+        module.manual_motion_ros_cmd_vel_transaction = fake_ros_transaction
+        try:
+            api = module.UpperRobotApi(
+                camera_base_url="http://127.0.0.1:8088",
+                base_port="/dev/ttyS5",
+                base_baudrate=115200,
+                max_speed=0.12,
+            )
+            result = asyncio.run(
+                api.manual_control(
+                    {
+                        "direction": "forward",
+                        "command_mode": "ros",
+                        "speed": 0.12,
+                        "linear_x_mps": 0.12,
+                        "angular_z_radps": 2.0,
+                        "duration_ms": 120,
+                    }
+                )
+            )
+        finally:
+            module.manual_motion_ros_cmd_vel_transaction = original_ros_transaction
+
+        self.assertEqual(seen_commands, [{"T": 13, "X": 0.12, "Z": 0.12}])
+        self.assertTrue(result["ros_twist_override_applied"])
+        self.assertEqual(result["requested_angular_z_radps"], 2.0)
+        self.assertEqual(result["clamped_angular_z_radps"], 0.12)
+        self.assertEqual(result["command_raw_latest_linear_x"], 0.12)
+        self.assertEqual(result["command_raw_latest_angular_z"], 0.12)
+
     def test_lidar_driver_diagnostics_artifact_flattens_status_for_pc(self) -> None:
         """driver 写出的诊断状态必须被 API 展平成 PC 可直接显示的字段。"""
         module = load_upper_robot_api_module()

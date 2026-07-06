@@ -74,6 +74,14 @@ Foxglove bridge + Foxglove Web 连接 `ws://192.168.1.11:8765`。这些入口不
 `/api/robot-control/base/feedback-samples` + `/api/robot-control/summary` 的 post-hold 验收读回。
 DOM 合同新增 `data-keyboard-smooth-hold-refresh-paused`，用于现场脚本确认按住期间重刷新已让路。
 
+2026-07-07 04:09 CST 起，普通 PC 的“移动/导航”区域收敛为四个箭头方向按钮和停止按钮：按钮文本只显示
+`↑`、`←`、`→`、`↓`，按住任一方向会在同一 hold 窗口内持续发送低速短脉冲，松开所有方向键才发送停止。
+键盘仍支持组合转弯，例如 `W+A` / `A+W` 会保持前进并追加左转角速度，不再把加按方向键当成“换方向先停”。
+PC Node 固定代理只透传限幅后的 `linear_x_mps` 与 `angular_z_radps`，上车 `/api/base/manual`
+在 `command_mode=ros` 时把二者映射为 WAVE ROVER vendor `T=13` JSON 的 `X` / `Z` 字段。资料来源采用
+`docs/vendor/VENDOR_INDEX.md` 指向的 WAVE ROVER `CMD_ROS_CTRL` / `T=13`、`X` linear、`Z` angular 协议说明；
+该能力仍只走固定 `/api/robot-control/base/manual` 与 `/api/robot-control/base/stop`，不开放浏览器直连运动通道。
+
 2026-07-06 05:58 CST 起，上车 `/api/base/manual` 的 IMU 姿态运动信号阈值从 `1.0°` 调整为
 `0.35°`。依据 `docs/vendor/VENDOR_INDEX.md` 指向的 WAVE ROVER `T=1001` 反馈字段，`r/p` 来自
 底盘 IMU roll/pitch；该阈值只用于判断 PC 低速短脉冲是否有车体运动迹象，不替代 wheel raw L/R

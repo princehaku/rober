@@ -8141,8 +8141,8 @@ function lockedBoundary(
   const freeRoamMappingReady = freeRoamStartReady && freeRoamMappingMissingReasons.length === 0;
   const freeRoamStatus = freeRoamReady ? "ready" : freeRoamStartReady ? "start_ready" : "locked";
   const freeRoamNextAction = freeRoamAutonomyNextAction(freeRoamStatus, freeRoamMappingReady, freeRoamMappingMissingReasons, freeRoamRuntime, manualMotionFallbackActive);
-  const keyboardNextAction = "页面自动准备键盘；准备本身不发车；按住 W/A/S/D 或方向键才会连续低速移动，松开/失焦/切页会停";
-  const keyboardStopTriggers = ["key_released", "window_blur", "page_hidden", "direction_changed", "button_stop"];
+  const keyboardNextAction = "页面自动准备键盘；准备本身不发车；按住上下左右才会连续低速移动，W+A 可前进左转，松开所有方向键/失焦/切页会停";
+  const keyboardStopTriggers = ["key_released_all", "window_blur", "page_hidden", "button_stop"];
   const nav2MinimalPrecheckPlain = "执行图上路线打开即用；固定白名单是代理护栏，不是普通用户额外预检；相机、雷达和现场报告不作为发车前额外预检。";
   return {
     manual_endpoint: "/api/base/manual",
@@ -8163,15 +8163,15 @@ function lockedBoundary(
     keyboard_jog_interval_ms: ROBOT_CONTROL_KEYBOARD_JOG_INTERVAL_MS,
     keyboard_jog_duration_ms: ROBOT_CONTROL_KEYBOARD_JOG_DURATION_MS,
     keyboard_stop_triggers: keyboardStopTriggers,
-    keyboard_hold_to_move_plain: "必须按住 W/A/S/D 或方向键才会连续低速移动；只启用键盘但不按方向不会发车。",
-    keyboard_stop_triggers_plain: "松开按键、窗口失焦、页面隐藏、切换方向或点击停止都会发送停止请求。",
+    keyboard_hold_to_move_plain: "必须按住上下左右才会连续低速移动；W+A 可组合前进左转；只启用键盘但不按方向不会发车。",
+    keyboard_stop_triggers_plain: "松开所有方向键、窗口失焦、页面隐藏或点击停止都会发送停止请求。",
     keyboard_pulse_timing_plain: `按住时约每 ${ROBOT_CONTROL_KEYBOARD_JOG_INTERVAL_MS / 1000} 秒发送一次 ${ROBOT_CONTROL_KEYBOARD_JOG_DURATION_MS / 1000} 秒低速脉冲。`,
     keyboard_reuses_manual_gate: true,
     keyboard_control_start_ready: true,
     keyboard_control_status: "start_ready",
     keyboard_control_label: "键盘手控（打开即用）",
     keyboard_control_next_action: keyboardNextAction,
-    keyboard_minimal_precheck_plain: "键盘连续手控打开即用；启用键盘不发车，只有按住方向键/WASD 才发送低速短脉冲。",
+    keyboard_minimal_precheck_plain: "键盘连续手控打开即用；启用键盘不发车，只有按住上下左右才发送低速短脉冲，W+A 可组合转弯。",
     keyboard_teleop_start_ready: true,
     keyboard_teleop_status: "start_ready",
     keyboard_teleop_next_action_plain: keyboardNextAction,
@@ -8515,9 +8515,9 @@ function baseSummaryFromReadbacks(readbacks: InternalRobotApiEndpointReadback[])
 
 function keyboardSummaryReadback(): RobotControlSummaryResponse["readback_summary"]["keyboard"] {
   // 键盘连续手控对脚本也应是一块直接可读事实；这里不代表已启用，也不发送任何脉冲。
-  const readinessPlain = "可启用键盘；启用本身不发车，按住方向键/WASD 才连续低速移动。";
-  const holdToMovePlain = "必须按住 W/A/S/D 或方向键才会连续低速移动；只启用键盘但不按方向不会发车。";
-  const plainHint = "可启用键盘；启用本身不发车，必须按住 W/A/S/D 或方向键才会连续低速移动，松开/失焦/切页/换方向或点停止都会停。";
+  const readinessPlain = "可启用键盘；启用本身不发车，按住上下左右才连续低速移动，W+A 可前进左转。";
+  const holdToMovePlain = "必须按住上下左右才会连续低速移动；W+A 可组合前进左转；只启用键盘但不按方向不会发车。";
+  const plainHint = "可启用键盘；启用本身不发车，必须按住上下左右才会连续低速移动；W+A 可前进左转；松开所有方向键/失焦/切页/点停止都会停。";
   return {
     status: "start_ready",
     control_mode: "bounded_repeating_manual_pulse",
@@ -8541,13 +8541,13 @@ function keyboardSummaryReadback(): RobotControlSummaryResponse["readback_summar
     minimal_precheck_safety_only: "true",
     plain_hint: plainHint,
     readiness_plain: readinessPlain,
-    continuous_control_contract_plain: `按住时约每 ${ROBOT_CONTROL_KEYBOARD_JOG_INTERVAL_MS / 1000} 秒发送一次 ${ROBOT_CONTROL_KEYBOARD_JOG_DURATION_MS / 1000} 秒 ROS /cmd_vel 低速短脉冲；松开、失焦、切页、换方向或点击停止都会停。`,
+    continuous_control_contract_plain: `按住时约每 ${ROBOT_CONTROL_KEYBOARD_JOG_INTERVAL_MS / 1000} 秒发送一次 ${ROBOT_CONTROL_KEYBOARD_JOG_DURATION_MS / 1000} 秒 ROS 低速短脉冲；W+A 会在同一脉冲里带前进量和转向量；松开所有方向键、失焦、切页或点击停止都会停。`,
     hold_to_move_plain: holdToMovePlain,
-    stop_triggers_plain: "松开按键、窗口失焦、页面隐藏、切换方向或点击停止都会发送停止请求。",
+    stop_triggers_plain: "松开所有方向键、窗口失焦、页面隐藏或点击停止都会发送停止请求。",
     pulse_timing_plain: `按住时约每 ${ROBOT_CONTROL_KEYBOARD_JOG_INTERVAL_MS / 1000} 秒发送一次 ${ROBOT_CONTROL_KEYBOARD_JOG_DURATION_MS / 1000} 秒低速脉冲。`,
     wheel_feedback_acceptance_plain: "键盘连续手控验收只看同一次按住窗口的 manual pulse 回包：命令读数非零并有 IMU/车体运动信号即可证明本次手控动作；vendor T1001 L/R 非零仍作为独立反馈闭环显示。",
-    next_action_plain: "页面自动准备键盘；准备本身不发车；按住 W/A/S/D 或方向键才会连续低速移动，松开/失焦/切页会停。",
-    minimal_precheck_plain: "键盘连续手控打开即用；启用键盘不发车，只有按住方向键/WASD 才发送低速短脉冲。",
+    next_action_plain: "页面自动准备键盘；准备本身不发车；按住上下左右才会连续低速移动，W+A 可前进左转，松开/失焦/切页会停。",
+    minimal_precheck_plain: "键盘连续手控打开即用；启用键盘不发车，只有按住上下左右才发送低速短脉冲，W+A 可组合转弯。",
     robot_control_executed: "false",
   };
 }
@@ -10682,7 +10682,7 @@ function buildLiveClosureSummary(
     keyboard_enable_sends_motion: false,
     keyboard_pulse_interval_ms: ROBOT_CONTROL_KEYBOARD_JOG_INTERVAL_MS,
     keyboard_pulse_duration_ms: ROBOT_CONTROL_KEYBOARD_JOG_DURATION_MS,
-    keyboard_stop_triggers: ["key_release", "window_blur", "page_hidden", "direction_change", "stop_button"],
+    keyboard_stop_triggers: ["key_release_all", "window_blur", "page_hidden", "stop_button"],
     keyboard_acceptance_plain: keyboardAcceptancePlain,
     keyboard_manual_endpoint: "/api/robot-control/base/manual",
     keyboard_stop_endpoint: "/api/robot-control/base/stop",
@@ -10945,7 +10945,7 @@ function buildLiveClosureSummary(
     keyboard_continuous_hold_to_move_required: true,
     keyboard_continuous_pulse_interval_ms: ROBOT_CONTROL_KEYBOARD_JOG_INTERVAL_MS,
     keyboard_continuous_pulse_duration_ms: ROBOT_CONTROL_KEYBOARD_JOG_DURATION_MS,
-    keyboard_continuous_stop_triggers: ["key_release", "window_blur", "page_hidden", "direction_change", "stop_button"],
+    keyboard_continuous_stop_triggers: ["key_release_all", "window_blur", "page_hidden", "stop_button"],
     keyboard_continuous_wheel_feedback_acceptance: "same_hold_window_wheel_lr_nonzero",
     fixed_keyboard_manual_endpoint: "/api/robot-control/base/manual",
     fixed_keyboard_stop_endpoint: "/api/robot-control/base/stop",
@@ -11638,7 +11638,7 @@ export async function buildRobotControlSummary(
       return "键盘连续手控已闭环：按住窗口 wheel L/R 非零，松开/失焦后停稳；继续保持现场可接管。";
     }
     if (currentKeyboardControlPackStatus === "ready_to_use") {
-      return `键盘连续手控可复验：页面自动准备不发车，按住 W/A/S/D 或方向键才会连续低速移动；松开后按轮速采样和总览只读复验。当前缺口：${keyboardActionMissingEvidence.join("、") || "无"}。`;
+      return `键盘连续手控可复验：页面自动准备不发车，按住上下左右才会连续低速移动，W+A 可组合转弯；松开后按轮速采样和总览只读复验。当前缺口：${keyboardActionMissingEvidence.join("、") || "无"}。`;
     }
     return `键盘连续手控暂未就绪：先恢复键盘入口或上车连接；当前缺口：${keyboardActionMissingEvidence.join("、") || "键盘入口未就绪"}。`;
   })();
@@ -11647,7 +11647,7 @@ export async function buildRobotControlSummary(
       return "继续保持现场可接管；需要停下时点击停止。";
     }
     if (currentKeyboardControlPackStatus === "ready_to_use") {
-      return "页面自动准备不发车，按住 W/A/S/D 或方向键才连续低速移动，松开后只读复验轮速和停止。";
+      return "页面自动准备不发车，按住上下左右才连续低速移动，W+A 可组合转弯；松开后只读复验轮速和停止。";
     }
     return "先恢复键盘入口或上车连接，再回到安全确认启用。";
   })();

@@ -79,6 +79,13 @@ import type {
 } from "../shared/contracts";
 
 type ManualDirection = "forward" | "back" | "left" | "right";
+type KeyboardMotionDirection = ManualDirection | "forward_left" | "forward_right" | "back_left" | "back_right";
+type KeyboardMotionVector = {
+  requestDirection: ManualDirection;
+  label: string;
+  linearMultiplier: -1 | 0 | 1;
+  angularMultiplier: -1 | 0 | 1;
+};
 type MapNavGoal = {
   goal_frame_id: "map";
   goal_x: number;
@@ -585,7 +592,7 @@ const plainFreeRoamSaveButton = ref<HTMLButtonElement | null>(null);
 const plainFreeRoamAutoStartButton = ref<HTMLButtonElement | null>(null);
 const plainFreeRoamAutoStopButton = ref<HTMLButtonElement | null>(null);
 const keyboardControlArmed = ref(false);
-const keyboardHeldDirection = ref<ManualDirection | null>(null);
+const keyboardHeldDirection = ref<KeyboardMotionDirection | null>(null);
 const keyboardControlStatus = ref("idle_not_started");
 const keyboardLastDirection = ref("not_loaded");
 const keyboardVerifiedPulseCount = ref(0);
@@ -597,6 +604,7 @@ let mjpegPreviewRetryTimer: number | null = null;
 let keyboardJogTimer: number | null = null;
 let keyboardJogInFlight = false;
 let keyboardStopAfterPulseReason: string | null = null;
+const keyboardPressedDirections = new Set<ManualDirection>();
 let liveMapRefreshTimer: number | null = null;
 let liveCameraStatusTimer: number | null = null;
 let initialRadarMapRefreshTimer: number | null = null;
@@ -4845,7 +4853,7 @@ const plainCurrentKeyboardControlPack = computed(() => {
   const defaultPlain = status === "complete"
     ? "键盘连续手控已闭环：按住窗口 wheel L/R 非零，松开/失焦后停稳；继续保持现场可接管。"
     : status === "ready_to_use"
-      ? `键盘连续手控可复验：页面自动准备不会发车，按住 W/A/S/D 或方向键才会连续低速移动；松开后按轮速采样和总览只读复验。当前缺口：${missingEvidence.join("、") || "无"}。`
+      ? `键盘连续手控可复验：页面自动准备不会发车，按住上下左右才会连续低速移动，W+A 可组合转弯；松开后按轮速采样和总览只读复验。当前缺口：${missingEvidence.join("、") || "无"}。`
       : `键盘连续手控暂未就绪：先恢复键盘入口或上车连接；当前缺口：${missingEvidence.join("、") || "键盘入口未就绪"}。`;
   return {
     status,
@@ -4854,7 +4862,7 @@ const plainCurrentKeyboardControlPack = computed(() => {
       ?? (status === "complete"
         ? "继续保持现场可接管；需要停下时点击停止。"
         : status === "ready_to_use"
-          ? "页面自动准备键盘；不按方向不发车，按住 W/A/S/D 或方向键才连续低速移动，松开后只读复验轮速和停止。"
+          ? "页面自动准备键盘；不按方向不发车，按住上下左右才连续低速移动，W+A 可组合转弯；松开后只读复验轮速和停止。"
           : "先恢复键盘入口或上车连接，再回到安全确认启用。"),
     actionId: summary?.current_keyboard_control_pack_action_id ?? fallback.actionId,
     displayLabel: summary?.current_keyboard_control_pack_display_label ?? fallback.actionDisplayLabel,
@@ -4876,7 +4884,7 @@ const plainCurrentKeyboardControlPack = computed(() => {
     holdSendsMotion: summary?.current_keyboard_control_pack_hold_sends_motion ?? true,
     pulseIntervalMs: summary?.current_keyboard_control_pack_pulse_interval_ms ?? fallback.pulseIntervalMs,
     pulseDurationMs: summary?.current_keyboard_control_pack_pulse_duration_ms ?? fallback.pulseDurationMs,
-    stopTriggersText: summary?.current_keyboard_control_pack_stop_triggers?.join(",") ?? "key_release,window_blur,page_hidden,direction_change,stop_button",
+    stopTriggersText: summary?.current_keyboard_control_pack_stop_triggers?.join(",") ?? "key_release_all,window_blur,page_hidden,stop_button",
     wheelFeedbackAcceptance: summary?.current_keyboard_control_pack_wheel_feedback_acceptance ?? "same_hold_window_wheel_lr_nonzero",
     postHoldFeedbackReadbackRequired: summary?.current_keyboard_control_pack_post_hold_feedback_readback_required ?? true,
     postHoldSummaryRefreshRequired: summary?.current_keyboard_control_pack_post_hold_summary_refresh_required ?? true,
@@ -4919,7 +4927,7 @@ const plainCurrentKeyboardControlPack = computed(() => {
     keyboardHoldToMoveRequired: summary?.keyboard_hold_to_move_required ?? true,
     keyboardHoldPulseIntervalMs: summary?.keyboard_hold_pulse_interval_ms ?? summary?.current_keyboard_control_pack_pulse_interval_ms ?? fallback.pulseIntervalMs,
     keyboardHoldPulseDurationMs: summary?.keyboard_hold_pulse_duration_ms ?? summary?.current_keyboard_control_pack_pulse_duration_ms ?? fallback.pulseDurationMs,
-    keyboardHoldStopTriggersText: summary?.keyboard_hold_stop_triggers?.join(",") || "key_release,window_blur,page_hidden,direction_change,stop_button",
+    keyboardHoldStopTriggersText: summary?.keyboard_hold_stop_triggers?.join(",") || "key_release_all,window_blur,page_hidden,stop_button",
     keyboardHoldWheelFeedbackAcceptance: summary?.keyboard_hold_wheel_feedback_acceptance ?? "same_hold_window_wheel_lr_nonzero",
     keyboardHoldEnableSendsMotion: summary?.keyboard_hold_enable_sends_motion ?? false,
     keyboardHoldSendsMotionWhenClicked: summary?.keyboard_hold_sends_motion_when_clicked ?? false,
@@ -6677,7 +6685,7 @@ const plainLiveKeyboardControlReadback = computed(() => {
   const nextAction = verified
     ? "键盘连续控制已闭环。"
     : ready
-      ? "直接启用键盘；按住 W/A/S/D 或方向键，松开后点读回键盘。"
+      ? "直接启用键盘；按住上下左右，W+A 可组合转弯；松开后点读回键盘。"
       : "先补齐键盘入口条件，再启用键盘。";
   return {
     visible: Boolean(summary || keyboardRow),
@@ -8211,9 +8219,18 @@ function freeRoamManualDirectionMapMarker(robotPose: ReturnType<typeof latestRob
   };
 }
 
-function manualDirectionOrNull(direction: string | null): ManualDirection | null {
+function manualDirectionOrNull(direction: string | null): KeyboardMotionDirection | null {
   // 历史方向来自字符串 ref；画地图轨迹前先收窄类型，避免未知状态被画成假轨迹。
-  return direction === "forward" || direction === "back" || direction === "left" || direction === "right" ? direction : null;
+  return direction === "forward"
+    || direction === "back"
+    || direction === "left"
+    || direction === "right"
+    || direction === "forward_left"
+    || direction === "forward_right"
+    || direction === "back_left"
+    || direction === "back_right"
+    ? direction
+    : null;
 }
 
 function freeRoamManualTrailOverlay(robotPose: ReturnType<typeof latestRobotPoseOverlay>) {
@@ -8237,17 +8254,25 @@ function freeRoamManualTrailOverlay(robotPose: ReturnType<typeof latestRobotPose
     return null;
   }
   const yaw = robotPose ? finitePlainNumber(robotPose.pose.yaw) : null;
-  const fallbackVectors: Record<ManualDirection, { dx: number; dy: number }> = {
+  const fallbackVectors: Record<KeyboardMotionDirection, { dx: number; dy: number }> = {
     forward: { dx: 0, dy: -1 },
     back: { dx: 0, dy: 1 },
     left: { dx: -1, dy: 0 },
     right: { dx: 1, dy: 0 },
+    forward_left: { dx: -0.7, dy: -1 },
+    forward_right: { dx: 0.7, dy: -1 },
+    back_left: { dx: -0.7, dy: 1 },
+    back_right: { dx: 0.7, dy: 1 },
   };
-  const yawOffset: Record<ManualDirection, number> = {
+  const yawOffset: Record<KeyboardMotionDirection, number> = {
     forward: 0,
     back: Math.PI,
     left: Math.PI / 2,
     right: -Math.PI / 2,
+    forward_left: Math.PI / 4,
+    forward_right: -Math.PI / 4,
+    back_left: (Math.PI * 3) / 4,
+    back_right: (-Math.PI * 3) / 4,
   };
   const vector = yaw === null
     ? fallbackVectors[direction]
@@ -9096,7 +9121,7 @@ const plainSafetyActionItems = computed<PlainSafetyActionItem[]>(() => {
       title: "键盘",
       state: keyboardReady ? "可启用" : "未就绪",
       summary: boundary.keyboard_minimal_precheck_plain || "键盘只复用安全确认；页面准备后按住方向键才会移动。",
-      nextAction: boundary.keyboard_control_next_action || "现场安全已确认，页面准备后按住方向键或 W/A/S/D 才会移动。",
+      nextAction: boundary.keyboard_control_next_action || "现场安全已确认，页面准备后按住上下左右才会移动，W+A 可组合转弯。",
       sourceCardId: "keyboard_control",
     },
     {
@@ -9407,7 +9432,7 @@ function keyboardManualCommandMode(): ManualCommandMode {
   return MANUAL_COMMAND_MODES.includes(mode as ManualCommandMode) ? mode as ManualCommandMode : DEFAULT_KEYBOARD_MANUAL_COMMAND_MODE;
 }
 const keyboardManualCommandModeLabel = computed(() => (
-  keyboardManualCommandMode() === "pwm" ? "PWM 快速短脉冲" : "ROS /cmd_vel 低速脉冲"
+  keyboardManualCommandMode() === "pwm" ? "PWM 快速短脉冲" : "ROS 低速脉冲"
 ));
 const plainManualSafetyConfirmed = computed(() => {
   // 现场本轮已由 CEO 明确安全，普通页面不再要求用户先勾选；仍保留停止、松开停和失焦停。
@@ -9469,7 +9494,7 @@ const canPressKeyboardDirection = computed(() => (
   && !keyboardStopFailedAfterPulse.value
 ));
 const plainKeyboardMainActionKind = computed(() => {
-  // 键盘入口分两段：启用键盘只拿按键窗口，不发车；真正运动只发生在按住方向键/WASD 后。
+  // 键盘入口分两段：启用键盘只拿按键窗口，不发车；真正运动只发生在按住上下左右后。
   if (!robotApiBaseUrl.value.trim()) {
     return "connect_first";
   }
@@ -9670,7 +9695,7 @@ const plainKeyboardHoldGateGauge = computed<PlainKeyboardHoldGateGauge>(() => {
       return "键盘连续手控已验证，可继续按住方向键移动";
     }
     if (canUseKeyboardControl.value) {
-      return keyboardControlArmed.value ? "按住方向键或 W/A/S/D 才会移动" : "等待页面自动准备键盘；不按方向不发车";
+      return keyboardControlArmed.value ? "按住上下左右才会移动，W+A 可组合转弯" : "等待页面自动准备键盘；不按方向不发车";
     }
     return "刷新键盘入口";
   })();
@@ -10006,7 +10031,7 @@ const plainFreeRoamMappingSummary = computed(() => {
       return { state: "待刷新", hint: `地图记录已启动，但扫图画面刷新失败：${failureText}；重试刷新扫图画面后再继续保存。` };
     }
     return canUseKeyboardControl.value
-      ? { state: "扫图中", hint: "建图已启动。按住方向键/WASD 低速扫一圈，松开即停，随时点停止。" }
+      ? { state: "扫图中", hint: "建图已启动。按住上下左右低速扫一圈，W+A 可组合转弯；松开即停，随时点停止。" }
       : { state: "待手控", hint: `建图已启动，但键盘移动条件还没满足。${plainKeyboardNextActionSummary.value}` };
   }
   if (!plainCameraReadyForFreeRoamAutonomy.value || !plainRadarReadyForFreeRoamMapping.value) {
@@ -10386,7 +10411,7 @@ const plainFreeRoamDriveStatus = computed(() => {
   }
   if (mapRuntimeStarted.value) {
     if (plainFreeRoamKeyboardReadyForHold.value) {
-      return "扫图状态：地图记录中，按住方向键/WASD 低速扫图；松开即停。";
+      return "扫图状态：地图记录中，按住上下左右低速扫图，W+A 可组合转弯；松开即停。";
     }
     return canArmPlainFreeRoamKeyboard.value
       ? "扫图状态：地图记录中，先启用键盘扫图；启用本身不会移动。"
@@ -11853,8 +11878,8 @@ const plainFreeRoamMappingSteps = computed(() => {
           ? `${plainFreeRoamMotionModeName.value}运行中，PC 监看地图和雷达`
         : keyboardMoving
           ? `正在${keyboardDirectionPlainLabel.value}，松开即停`
-          : keyboardReady && mappingStarted
-            ? "启用键盘后按住方向键/WASD 扫一圈"
+        : keyboardReady && mappingStarted
+            ? "启用键盘后按住上下左右扫一圈，W+A 可组合转弯"
             : mappingStarted ? plainKeyboardNextActionSummary.value : "先启动地图记录",
     },
     {
@@ -11891,20 +11916,31 @@ const keyboardForwardedPulseProgressText = computed(() => {
   return `最佳连续 ${keyboardVerifiedPulseCount.value}/${KEYBOARD_VERIFIED_MIN_FORWARDED_PULSES} 次`;
 });
 
+function keyboardMotionVector(direction: KeyboardMotionDirection): KeyboardMotionVector {
+  // 组合键仍落到 ROS Twist 的 X/Z，不扩展后端 direction 白名单，安全边界继续由固定 manual 代理裁剪。
+  switch (direction) {
+    case "forward":
+      return { requestDirection: "forward", label: "前进", linearMultiplier: 1, angularMultiplier: 0 };
+    case "back":
+      return { requestDirection: "back", label: "后退", linearMultiplier: -1, angularMultiplier: 0 };
+    case "left":
+      return { requestDirection: "left", label: "左转", linearMultiplier: 0, angularMultiplier: 1 };
+    case "right":
+      return { requestDirection: "right", label: "右转", linearMultiplier: 0, angularMultiplier: -1 };
+    case "forward_left":
+      return { requestDirection: "forward", label: "前进左转", linearMultiplier: 1, angularMultiplier: 1 };
+    case "forward_right":
+      return { requestDirection: "forward", label: "前进右转", linearMultiplier: 1, angularMultiplier: -1 };
+    case "back_left":
+      return { requestDirection: "back", label: "后退左转", linearMultiplier: -1, angularMultiplier: 1 };
+    case "back_right":
+      return { requestDirection: "back", label: "后退右转", linearMultiplier: -1, angularMultiplier: -1 };
+  }
+}
+
 const keyboardDirectionPlainLabel = computed(() => {
   // 普通首屏只显示方向中文，避免把底层 direction enum 暴露给现场用户。
-  switch (keyboardHeldDirection.value) {
-    case "forward":
-      return "前进";
-    case "back":
-      return "后退";
-    case "left":
-      return "左转";
-    case "right":
-      return "右转";
-    default:
-      return "未按键";
-  }
+  return keyboardHeldDirection.value ? keyboardMotionVector(keyboardHeldDirection.value).label : "未按键";
 });
 
 function manualDirectionPlainLabel(direction: string): string {
@@ -11918,6 +11954,14 @@ function manualDirectionPlainLabel(direction: string): string {
       return "左转";
     case "right":
       return "右转";
+    case "forward_left":
+      return "前进左转";
+    case "forward_right":
+      return "前进右转";
+    case "back_left":
+      return "后退左转";
+    case "back_right":
+      return "后退右转";
     default:
       return "未记录";
   }
@@ -11950,7 +11994,7 @@ function keyboardStopReasonPlainLabel(reason: string): string {
     return "点击停止";
   }
   if (reason.includes("direction_changed")) {
-    return "切换方向";
+    return "方向键收口";
   }
   return "停止已触发";
 }
@@ -12146,7 +12190,7 @@ const plainKeyboardLiveStatus = computed(() => {
     return `等待按键，按住才会动；${keyboardPulseContractShortText()}。`;
   }
   if (canUseKeyboardControl.value) {
-    return `页面正在准备键盘；准备后直接按住 W/A/S/D 或方向键，${keyboardPulseContractShortText()}。`;
+    return `页面正在准备键盘；准备后直接按住上下左右，W+A 可组合转弯，${keyboardPulseContractShortText()}。`;
   }
   return plainKeyboardMissingSummary.value || "键盘手控暂未满足。";
 });
@@ -12221,7 +12265,7 @@ const plainKeyboardContinuousProofSummary = computed(() => {
     : keyboardHeldDirection.value
       ? (continuousReady ? "松开按键完成停止收口" : "保持同一次按住直到 2 次")
       : keyboardControlArmed.value && canUseKeyboardControl.value
-        ? "按住 W/A/S/D 或方向键"
+        ? "按住上下左右，W+A 可组合转弯"
         : plainManualSafetyConfirmed.value
           ? "等待自动准备键盘，或按住前点备用启用"
           : "勾选现场安全确认";
@@ -12249,7 +12293,7 @@ const plainKeyboardMainActionSummary = computed(() => {
     case "holding_direction_sends_pulses":
       return `键盘主动作：正在按住${keyboardDirectionPlainLabel.value}，会按固定节奏发送低速短脉冲；松开/失焦/切页会走停止。`;
     case "armed_waiting_for_keydown":
-      return `键盘主动作：已启用但不会发车；只有按住 W/A/S/D 或方向键才发送连续低速脉冲，${keyboardPulseContractShortText()}。`;
+      return `键盘主动作：已启用但不会发车；只有按住上下左右才发送连续低速脉冲，W+A 可组合转弯，${keyboardPulseContractShortText()}。`;
     case "arm_keyboard_no_motion":
       return "键盘主动作：页面会自动拿本页按键控制权，不发车；必须按住方向键才会动。";
     case "await_safety_confirm":
@@ -12269,7 +12313,7 @@ const plainKeyboardControlGuide = computed(() => {
   // 普通首屏需要说明所有自动停止触发和后端边界，避免把连续手控误解成无限时长发车。
   const intervalSeconds = (keyboardJogIntervalMs.value / 1000).toFixed(2).replace(/0$/, "");
   const pulseSeconds = (keyboardJogDurationMs.value / 1000).toFixed(2).replace(/0$/, "");
-  return `W/A/S/D 或方向键：前进、左转、后退、右转。按住会通过 ${keyboardManualCommandModeLabel.value}持续移动，约每 ${intervalSeconds} 秒发送 ${pulseSeconds} 秒低速脉冲，最高 ${manualSpeedLimit.value} m/s、单次上限 ${manualDurationLimit.value} ms；松开、拖出按钮、窗口失焦或切页面都会停。`;
+  return `上下左右：按住会通过 ${keyboardManualCommandModeLabel.value}持续移动；键盘可组合，例如 W+A 前进左转。约每 ${intervalSeconds} 秒发送 ${pulseSeconds} 秒低速脉冲，最高 ${manualSpeedLimit.value} m/s、单次上限 ${manualDurationLimit.value} ms；松开所有方向键、拖出按钮、窗口失焦或切页面都会停。`;
 });
 
 function claimWithRefReady(value: string | undefined): boolean {
@@ -16025,10 +16069,10 @@ const keyboardControlSummary = computed(() => {
     return { state: "手控中", hint: `${keyboardLastDirection.value} 按住点动中；松开按键、窗口失焦或页面隐藏会发送停止。` };
   }
   if (keyboardControlArmed.value && canUseKeyboardControl.value) {
-    return { state: "已启用", hint: "键盘手控已启用：在本页非输入区按住 W/A/S/D 或方向键连续点动，松开即停。" };
+    return { state: "已启用", hint: "键盘手控已启用：在本页非输入区按住上下左右连续点动，W+A 可组合转弯；松开即停。" };
   }
   if (canUseKeyboardControl.value) {
-    return { state: "可手控", hint: "页面会自动准备键盘；在本页非输入区按住 W/A/S/D 或方向键连续点动，松开即停。" };
+    return { state: "可手控", hint: "页面会自动准备键盘；在本页非输入区按住上下左右连续点动，W+A 可组合转弯；松开即停。" };
   }
   if (!keyboardContractReady.value) {
     return { state: "未满足", hint: "键盘合同未从 summary 读到；本机不会启用连续手控。" };
@@ -16192,7 +16236,7 @@ const plainKeyboardSafetySummary = computed(() => {
     return "键盘手控：勾选安全确认后即可启用；按住方向键才会动。";
   }
   return canUseKeyboardControl.value
-    ? "键盘手控：页面已自动准备；现在按住方向键或 W/A/S/D 才会动。"
+    ? "键盘手控：页面已自动准备；现在按住上下左右才会动，W+A 可组合转弯。"
     : "键盘手控：安全确认已完成，等待手控入口复查。";
 });
 
@@ -16261,10 +16305,10 @@ const plainKeyboardControlSummary = computed(() => {
     return { state: "待停止", hint: "已完成 2 次连续脉冲验证；松开按键后完成停止收口。" };
   }
   if (keyboardControlArmed.value && canUseKeyboardControl.value) {
-    return { state: "已启用", hint: "已启用；在本页非输入区按住 W/A/S/D 或方向键连续手控，松开即停。" };
+    return { state: "已启用", hint: "已启用；在本页非输入区按住上下左右连续手控，W+A 可组合转弯；松开即停。" };
   }
   if (canUseKeyboardControl.value) {
-    return { state: "可手控", hint: "页面会自动准备键盘；在本页非输入区按住 W/A/S/D 或方向键；输入框内按键不会发车。" };
+    return { state: "可手控", hint: "页面会自动准备键盘；在本页非输入区按住上下左右；输入框内按键不会发车，W+A 可组合转弯。" };
   }
   if (keyboardControlArmed.value || keyboardControlStatus.value.startsWith("blocked")) {
     return { state: "未满足", hint: `移动条件还没满足，暂不发送键盘手控。${plainKeyboardMissingSummary.value} ${plainKeyboardNextActionSummary.value}` };
@@ -16487,11 +16531,20 @@ function requestBodyForDirection(direction: ManualDirection) {
   } as const;
 }
 
-function requestBodyForKeyboardDirection(direction: ManualDirection) {
-  // 键盘连续手控采用快速短脉冲，避免每次 WASD 都等待串口/雷达证据快照。
+function roundedKeyboardTwistValue(value: number): number {
+  // 上车端只需要低速短脉冲，三位小数足够表达 0.12m/s 与同量级角速度，避免浮点尾巴污染日志。
+  return Math.round(value * 1000) / 1000;
+}
+
+function requestBodyForKeyboardDirection(direction: KeyboardMotionDirection) {
+  // 键盘连续手控采用快速短脉冲；组合键通过 ROS X/Z 透传实现，不扩展 direction 枚举。
+  const speed = Math.min(Math.max(jogSpeedMps.value, 0), manualSpeedLimit.value);
+  const vector = keyboardMotionVector(direction);
   return {
-    direction,
-    speed: Math.min(Math.max(jogSpeedMps.value, 0), manualSpeedLimit.value),
+    direction: vector.requestDirection,
+    speed,
+    linear_x_mps: roundedKeyboardTwistValue(speed * vector.linearMultiplier),
+    angular_z_radps: roundedKeyboardTwistValue(speed * vector.angularMultiplier),
     duration_ms: Math.min(Math.max(keyboardJogDurationMs.value, 0), manualDurationLimit.value),
     command_mode: keyboardManualCommandMode(),
     feedback_mode: "realtime",
@@ -19739,9 +19792,10 @@ async function sendManualMotion(direction: ManualDirection): Promise<void> {
   }
 }
 
-async function sendKeyboardManualPulse(direction: ManualDirection): Promise<void> {
+async function sendKeyboardManualPulse(): Promise<void> {
   // 连续键盘脉冲复用同一个后端 manual 代理；不新增浏览器直连或 /cmd_vel 通道。
-  if (!canSendManualMotion.value || keyboardJogInFlight || keyboardHeldDirection.value !== direction) {
+  const direction = keyboardHeldDirection.value;
+  if (!canSendManualMotion.value || keyboardJogInFlight || !direction) {
     return;
   }
   keyboardJogInFlight = true;
@@ -19768,7 +19822,7 @@ async function sendKeyboardManualPulse(direction: ManualDirection): Promise<void
         void refreshMapPreview({ freeRoamLiveRefresh: true });
       }
     }
-    if (keyboardHeldDirection.value === direction && pulseForwarded) {
+    if (keyboardHeldDirection.value && pulseForwarded) {
       keyboardControlStatus.value = "holding_keyboard_jog";
     } else if (keyboardHeldDirection.value === direction) {
       clearKeyboardJogTimer();
@@ -19786,7 +19840,7 @@ async function sendKeyboardManualPulse(direction: ManualDirection): Promise<void
   } finally {
     manualCommandPending.value = false;
     keyboardJogInFlight = false;
-    const keepHoldingAfterPulse = keyboardHeldDirection.value === direction
+    const keepHoldingAfterPulse = keyboardHeldDirection.value !== null
       && keyboardControlStatus.value === "holding_keyboard_jog";
     if (keyboardStopAfterPulseReason && !keyboardHeldDirection.value) {
       const reason = keyboardStopAfterPulseReason;
@@ -19815,6 +19869,20 @@ function keyboardDirectionFromKey(key: string): ManualDirection | null {
     return "right";
   }
   return null;
+}
+
+function keyboardMotionDirectionFromPressedKeys(): KeyboardMotionDirection | null {
+  // 只允许一个纵轴和一个横轴同时生效；对向键同时按住时该轴归零，避免互相打架。
+  const forward = keyboardPressedDirections.has("forward");
+  const back = keyboardPressedDirections.has("back");
+  const left = keyboardPressedDirections.has("left");
+  const right = keyboardPressedDirections.has("right");
+  const vertical: "forward" | "back" | null = forward === back ? null : forward ? "forward" : "back";
+  const horizontal: "left" | "right" | null = left === right ? null : left ? "left" : "right";
+  if (vertical && horizontal) {
+    return `${vertical}_${horizontal}` as KeyboardMotionDirection;
+  }
+  return vertical ?? horizontal;
 }
 
 function eventTargetIsEditable(target: EventTarget | null): boolean {
@@ -19860,7 +19928,7 @@ function ownsKeyboardControl(): boolean {
 }
 
 function autoArmKeyboardControl(reason: string): void {
-  // 自动准备键盘只拿页面按键所有权，不发送任何方向命令；真正运动仍必须按住方向键/WASD。
+  // 自动准备键盘只拿页面按键所有权，不发送任何方向命令；真正运动仍必须按住上下左右。
   if (
     !KEYBOARD_AUTO_ARM_ON_LOAD
     || document.hidden
@@ -19897,6 +19965,7 @@ function disarmKeyboardControl(reason: string): void {
     stopKeyboardControl(reason);
     return;
   }
+  clearKeyboardPressedDirections();
   clearKeyboardJogTimer();
   keyboardLastStopReason.value = reason;
   keyboardControlStatus.value = `disarmed:${reason}`;
@@ -19910,9 +19979,15 @@ function clearKeyboardJogTimer(): void {
   }
 }
 
+function clearKeyboardPressedDirections(): void {
+  // 程序化 stop、失焦或切页后要清掉本地 pressed set，避免后续 keyup 顺序把旧组合重新带回来。
+  keyboardPressedDirections.clear();
+}
+
 function stopKeyboardControl(reason: string): void {
   // 只有真实进入过按住态才发送 stop；普通误按 blocked 时不制造额外请求。
   const shouldSendStop = keyboardHeldDirection.value !== null || keyboardJogTimer !== null;
+  clearKeyboardPressedDirections();
   clearKeyboardJogTimer();
   keyboardHeldDirection.value = null;
   keyboardHoldPulseCount.value = 0;
@@ -19961,8 +20036,8 @@ async function sendKeyboardReleaseStop(reason: string): Promise<void> {
   }
 }
 
-function startKeyboardControl(direction: ManualDirection): void {
-  // 切换方向时先收掉旧循环，并让下一次短脉冲按新方向进入后端 preflight。
+function startKeyboardControl(direction: KeyboardMotionDirection): void {
+  // 组合键变化不重启 hold 窗口；下一次短脉冲直接读取当前方向，保证 W+A 能顺滑前进左转。
   if (!keyboardControlArmed.value) {
     keyboardControlStatus.value = "blocked_keyboard_not_armed";
     return;
@@ -19975,17 +20050,23 @@ function startKeyboardControl(direction: ManualDirection): void {
     keyboardControlStatus.value = "blocked_keyboard_stop_failed:recheck_before_next_move";
     return;
   }
-  clearKeyboardJogTimer();
+  const startNewHold = keyboardHeldDirection.value === null && keyboardJogTimer === null;
   keyboardHeldDirection.value = direction;
-  keyboardHoldPulseCount.value = 0;
-  keyboardLastWheelFeedbackValues.value = null;
-  plainFreeRoamLiveMapPreviewRefreshedForHold.value = false;
+  if (startNewHold) {
+    keyboardHoldPulseCount.value = 0;
+    keyboardLastWheelFeedbackValues.value = null;
+    plainFreeRoamLiveMapPreviewRefreshedForHold.value = false;
+  }
   keyboardLastDirection.value = direction;
   keyboardControlStatus.value = "holding_keyboard_jog";
-  void sendKeyboardManualPulse(direction);
-  keyboardJogTimer = window.setInterval(() => {
-    void sendKeyboardManualPulse(direction);
-  }, keyboardJogIntervalMs.value);
+  if (startNewHold) {
+    void sendKeyboardManualPulse();
+  }
+  if (keyboardJogTimer === null) {
+    keyboardJogTimer = window.setInterval(() => {
+      void sendKeyboardManualPulse();
+    }, keyboardJogIntervalMs.value);
+  }
 }
 
 function handleKeyboardDirectionPointerDown(direction: ManualDirection, event: PointerEvent): void {
@@ -20015,22 +20096,27 @@ function handleGlobalKeyDown(event: KeyboardEvent): void {
     return;
   }
   event.preventDefault();
-  if (keyboardHeldDirection.value === direction) {
+  keyboardPressedDirections.add(direction);
+  const nextDirection = keyboardMotionDirectionFromPressedKeys();
+  if (!nextDirection || keyboardHeldDirection.value === nextDirection) {
     return;
   }
-  if (keyboardHeldDirection.value) {
-    stopKeyboardControl("direction_changed");
-  }
-  startKeyboardControl(direction);
+  startKeyboardControl(nextDirection);
 }
 
 function handleGlobalKeyUp(event: KeyboardEvent): void {
-  // 松开当前方向键即停；松开非当前方向键不影响正在按住的方向。
+  // 松开一个组合键只重算方向；所有方向键都松开时才发送 stop。
   const direction = keyboardDirectionFromKey(event.key);
-  if (!direction || !keyboardControlArmed.value || !ownsKeyboardControl() || !eventTargetIsKeyboardControlScope(event.target) || keyboardHeldDirection.value !== direction) {
+  if (!direction || !keyboardControlArmed.value || !ownsKeyboardControl() || !eventTargetIsKeyboardControlScope(event.target)) {
     return;
   }
   event.preventDefault();
+  keyboardPressedDirections.delete(direction);
+  const nextDirection = keyboardMotionDirectionFromPressedKeys();
+  if (nextDirection) {
+    startKeyboardControl(nextDirection);
+    return;
+  }
   stopKeyboardControl("key_released");
 }
 
@@ -20345,6 +20431,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   // 卸载时先退出键盘循环，再释放视频资源；远端 cleanup 尽量执行但不能阻塞组件销毁。
   clearKeyboardControlOwner();
+  clearKeyboardPressedDirections();
   clearKeyboardJogTimer();
   clearMjpegPreviewRetryTimer();
   clearLiveSurfaceRefreshLoops();
@@ -26075,7 +26162,7 @@ onBeforeUnmount(() => {
           <p class="panel-note" data-testid="plain-free-roam-drive-status">{{ plainFreeRoamDriveStatus }}</p>
           <p v-if="plainFreeRoamReadbackSummary" class="panel-note" data-testid="plain-free-roam-readback-summary">{{ plainFreeRoamReadbackSummary }}</p>
           <p class="panel-note" data-testid="plain-free-roam-sweep-plan-summary">{{ plainFreeRoamSweepPlanSummary }}</p>
-          <p class="panel-note">按住方向键或 W/A/S/D 移动，松开、拖出按钮或取消都会停；保存后刷新地图画面检查效果。</p>
+          <p class="panel-note">按住上下左右移动，W+A 可组合转弯；松开、拖出按钮或取消都会停；保存后刷新地图画面检查效果。</p>
           <div class="keyboard-direction-pad" data-testid="plain-free-roam-direction-pad">
             <button
               type="button"
@@ -26476,7 +26563,7 @@ onBeforeUnmount(() => {
             :data-arm-sends-motion="String(plainKeyboardArmSendsMotion)"
             :data-requires-hold-to-move="String(plainKeyboardRequiresHold)"
             :data-target-source="plainKeyboardTargetSource"
-            :data-stop-triggers="manualBoundary?.keyboard_stop_triggers?.join(',') ?? 'key_released,window_blur,page_hidden,direction_changed,button_stop'"
+            :data-stop-triggers="manualBoundary?.keyboard_stop_triggers?.join(',') ?? 'key_released_all,window_blur,page_hidden,button_stop'"
             :data-manual-command-mode="plainKeyboardDirectionButtonEvidence.manualCommandMode"
             :data-fixed-keyboard-manual-endpoint="plainKeyboardDirectionButtonEvidence.fixedManualEndpoint"
             :data-fixed-keyboard-stop-endpoint="plainKeyboardDirectionButtonEvidence.fixedStopEndpoint"
@@ -26505,7 +26592,7 @@ onBeforeUnmount(() => {
             :data-keyboard-enable-sends-motion="String(Boolean(plainLiveClosureSummary?.keyboard_enable_sends_motion ?? plainLiveClosureSummary?.keyboard_continuous_enable_sends_motion ?? false))"
             :data-keyboard-pulse-interval-ms="String(plainLiveClosureSummary?.keyboard_pulse_interval_ms ?? plainKeyboardDirectionButtonEvidence.pulseIntervalMs)"
             :data-keyboard-pulse-duration-ms="String(plainLiveClosureSummary?.keyboard_pulse_duration_ms ?? plainKeyboardDirectionButtonEvidence.pulseDurationMs)"
-            :data-keyboard-stop-triggers="plainLiveClosureSummary?.keyboard_stop_triggers?.join(',') ?? plainLiveClosureSummary?.keyboard_continuous_stop_triggers?.join(',') ?? 'key_release,window_blur,page_hidden,direction_change,stop_button'"
+            :data-keyboard-stop-triggers="plainLiveClosureSummary?.keyboard_stop_triggers?.join(',') ?? plainLiveClosureSummary?.keyboard_continuous_stop_triggers?.join(',') ?? 'key_release_all,window_blur,page_hidden,stop_button'"
             :data-keyboard-acceptance-plain="plainLiveClosureSummary?.keyboard_acceptance_plain ?? ''"
             :data-keyboard-manual-endpoint="plainLiveClosureSummary?.keyboard_manual_endpoint ?? plainKeyboardDirectionButtonEvidence.fixedManualEndpoint"
             :data-keyboard-stop-endpoint="plainLiveClosureSummary?.keyboard_stop_endpoint ?? plainKeyboardDirectionButtonEvidence.fixedStopEndpoint"
@@ -26520,7 +26607,7 @@ onBeforeUnmount(() => {
             data-keyboard-editable-fields-block-motion="true"
             data-keyboard-global-listener-owner-required="true"
             data-keyboard-input-fields-safe="true"
-            aria-label="键盘连续手控面板：页面自动准备，非输入区按住 W/A/S/D 或方向键才移动"
+            aria-label="键盘连续手控面板：页面自动准备，非输入区按住上下左右才移动，W+A 可前进左转"
             data-readback-only="true"
             data-readback-sends-motion="false"
             data-readback-starts-nav2="false"
@@ -26588,7 +26675,7 @@ onBeforeUnmount(() => {
               data-keyboard-editable-fields-block-motion="true"
               data-sends-motion-when-clicked="false"
             >
-              键盘生效区：打开页面后自动准备；本页非输入区按住 W/A/S/D 或方向键才动；输入框里按键只输入文字，不发车。
+              键盘生效区：打开页面后自动准备；本页非输入区按住上下左右才动；W+A 可前进左转；输入框里按键只输入文字，不发车。
             </p>
             <p class="panel-note" data-testid="plain-keyboard-safety-summary">{{ plainKeyboardSafetySummary }}</p>
             <p v-if="plainKeyboardReadbackSummary" class="panel-note" data-testid="plain-keyboard-readback-summary">{{ plainKeyboardReadbackSummary }}</p>
@@ -26638,7 +26725,7 @@ onBeforeUnmount(() => {
               :data-keyboard-enable-sends-motion="String(Boolean(plainLiveClosureSummary?.keyboard_enable_sends_motion ?? plainLiveClosureSummary?.keyboard_continuous_enable_sends_motion ?? false))"
               :data-keyboard-pulse-interval-ms="String(plainLiveClosureSummary?.keyboard_pulse_interval_ms ?? plainKeyboardDirectionButtonEvidence.pulseIntervalMs)"
               :data-keyboard-pulse-duration-ms="String(plainLiveClosureSummary?.keyboard_pulse_duration_ms ?? plainKeyboardDirectionButtonEvidence.pulseDurationMs)"
-              :data-keyboard-stop-triggers="plainLiveClosureSummary?.keyboard_stop_triggers?.join(',') ?? plainLiveClosureSummary?.keyboard_continuous_stop_triggers?.join(',') ?? 'key_release,window_blur,page_hidden,direction_change,stop_button'"
+              :data-keyboard-stop-triggers="plainLiveClosureSummary?.keyboard_stop_triggers?.join(',') ?? plainLiveClosureSummary?.keyboard_continuous_stop_triggers?.join(',') ?? 'key_release_all,window_blur,page_hidden,stop_button'"
               :data-keyboard-acceptance-plain="plainLiveClosureSummary?.keyboard_acceptance_plain ?? ''"
               :data-keyboard-manual-endpoint="plainLiveClosureSummary?.keyboard_manual_endpoint ?? plainKeyboardContinuousProofSummary.fixedManualEndpoint"
               :data-keyboard-stop-endpoint="plainLiveClosureSummary?.keyboard_stop_endpoint ?? plainKeyboardContinuousProofSummary.fixedStopEndpoint"
@@ -26673,6 +26760,7 @@ onBeforeUnmount(() => {
             <div class="keyboard-direction-pad" data-testid="keyboard-direction-pad">
               <button
                 type="button"
+                aria-label="向上，按住前进"
                 :disabled="!canPressKeyboardDirection"
                 data-testid="keyboard-screen-forward"
                 data-direction="forward"
@@ -26700,12 +26788,13 @@ onBeforeUnmount(() => {
                 @pointerleave="handleKeyboardDirectionPointerEnd('forward', 'screen_button_left')"
                 @pointercancel="handleKeyboardDirectionPointerEnd('forward', 'screen_button_cancelled')"
               >
-                前进
+                ↑
               </button>
               <div class="motion-middle-row">
                 <button
-                  type="button"
-                  :disabled="!canPressKeyboardDirection"
+	                  type="button"
+	                  aria-label="向左，按住左转"
+	                  :disabled="!canPressKeyboardDirection"
                   data-testid="keyboard-screen-left"
                   data-direction="left"
                   :data-sends-motion-while-held="String(plainKeyboardDirectionButtonEvidence.sendsMotionWhileHeld)"
@@ -26732,7 +26821,7 @@ onBeforeUnmount(() => {
                   @pointerleave="handleKeyboardDirectionPointerEnd('left', 'screen_button_left')"
                   @pointercancel="handleKeyboardDirectionPointerEnd('left', 'screen_button_cancelled')"
                 >
-                  左转
+                  ←
                 </button>
                 <button
                   class="danger-button"
@@ -26751,8 +26840,9 @@ onBeforeUnmount(() => {
                   停止
                 </button>
                 <button
-                  type="button"
-                  :disabled="!canPressKeyboardDirection"
+	                  type="button"
+	                  aria-label="向右，按住右转"
+	                  :disabled="!canPressKeyboardDirection"
                   data-testid="keyboard-screen-right"
                   data-direction="right"
                   :data-sends-motion-while-held="String(plainKeyboardDirectionButtonEvidence.sendsMotionWhileHeld)"
@@ -26779,11 +26869,12 @@ onBeforeUnmount(() => {
                   @pointerleave="handleKeyboardDirectionPointerEnd('right', 'screen_button_left')"
                   @pointercancel="handleKeyboardDirectionPointerEnd('right', 'screen_button_cancelled')"
                 >
-                  右转
+                  →
                 </button>
               </div>
               <button
                 type="button"
+                aria-label="向下，按住后退"
                 :disabled="!canPressKeyboardDirection"
                 data-testid="keyboard-screen-back"
                 data-direction="back"
@@ -26811,7 +26902,7 @@ onBeforeUnmount(() => {
                 @pointerleave="handleKeyboardDirectionPointerEnd('back', 'screen_button_left')"
                 @pointercancel="handleKeyboardDirectionPointerEnd('back', 'screen_button_cancelled')"
               >
-                后退
+                ↓
               </button>
             </div>
             <p v-if="plainKeyboardNextActionSummary" class="panel-note" data-testid="plain-keyboard-next-action">

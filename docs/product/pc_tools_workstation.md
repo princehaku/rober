@@ -92,6 +92,13 @@ pc-tools/workstation/
   松开/失焦/切页/点停止后发送固定 `/api/robot-control/base/stop`，并只做一次
   `/api/robot-control/base/feedback-samples` + `/api/robot-control/summary` 的 post-hold 验收读回。
   DOM 暴露 `data-keyboard-smooth-hold-refresh-paused`，用于组件测试和现场脚本确认按住期间没有“页面一直刷新”。
+- 2026-07-07 04:09 CST 起，普通 PC 的“移动/导航”控制面板只保留四向箭头和停止：视觉按钮文本为
+  `↑`、`←`、`→`、`↓`，普通用户不再看到一排复杂移动词。按住方向会一直低速跑，释放所有方向键才 stop；
+  键盘组合如 `W+A` / `A+W` 在同一按住窗口内变成前进左转，`W+D` 前进右转，`S+A` 后退左转，
+  `S+D` 后退右转，方向组合不会触发“先 stop 再动”的抖动。固定 PC 代理在 ROS 手控模式下透传限幅
+  `linear_x_mps` / `angular_z_radps`，上车 Robot API 映射为 WAVE ROVER `T=13` 的 `X` / `Z`，
+  资料来源为 `docs/vendor/VENDOR_INDEX.md` 指向的 WAVE ROVER `CMD_ROS_CTRL` 协议；该交互不新增浏览器直连、
+  不开放任意运动 endpoint，仍受 `/api/robot-control/base/manual` 与 `/api/robot-control/base/stop` 护栏约束。
 - 2026-07-06 06:52 CST 起，PC 相机 status 会保留最近一次 USB recovery 的强诊断：当 recovery
   返回 `stream_failure_class=high_speed_zero_byte_no_frame`、`software_capture_exhausted=true`、
   `known_good_uvc_required=true` 或 `camera_input_signal_check_required=true` 时，

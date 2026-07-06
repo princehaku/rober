@@ -4098,7 +4098,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.current_fact_plain).not.toContain("画面未可见");
       expect(summary.current_fact_plain).toContain("地图画面已读到，但图上路线还未显示");
       expect(summary.current_fact_plain).toContain("自动驾驶：图上路线还未准备完成");
-      expect(summary.current_fact_plain).toContain("键盘：必须按住 W/A/S/D 或方向键才会连续低速移动");
+      expect(summary.current_fact_plain).toContain("键盘：必须按住上下左右才会连续低速移动");
+      expect(summary.current_fact_plain).toContain("W+A 可组合前进左转");
       expect(summary.current_fact_plain).toContain("发车前：执行图上路线打开即用");
       expect(summary.current_fact_plain).not.toContain("marker");
       expect(summary.current_fact_plain).not.toContain("overlay");
@@ -4404,12 +4405,13 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.keyboard_summary?.start_ready).toBe("true");
       expect(summary.keyboard_control_summary?.start_ready).toBe("true");
       expect(summary.keyboard_teleop_summary?.start_ready).toBe("true");
-      expect(summary.keyboard_summary?.next_action_plain).toContain("按住 W/A/S/D");
+      expect(summary.keyboard_summary?.next_action_plain).toContain("按住上下左右");
+      expect(summary.keyboard_summary?.next_action_plain).toContain("W+A 可前进左转");
       expect(summary.keyboard_summary?.wheel_feedback_acceptance_plain).toContain("同一次按住窗口");
       expect(summary.keyboard_summary?.wheel_feedback_acceptance_plain).toContain("命令读数非零");
       expect(summary.keyboard_summary?.wheel_feedback_acceptance_plain).toContain("vendor T1001 L/R 非零仍作为独立反馈闭环显示");
-      expect(summary.keyboard_control_summary?.next_action_plain).toContain("按住 W/A/S/D");
-      expect(summary.keyboard_teleop_summary?.next_action_plain).toContain("按住 W/A/S/D");
+      expect(summary.keyboard_control_summary?.next_action_plain).toContain("按住上下左右");
+      expect(summary.keyboard_teleop_summary?.next_action_plain).toContain("按住上下左右");
       expect(summary.free_roam_summary?.motion_start_ready).toBe("true");
       expect(summary.free_roam_summary?.mapping_start_ready).toBe("false");
       expect(summary.free_roam_summary?.motion_next_action_plain).toContain("可先用键盘或低速手控移动");
@@ -4625,15 +4627,15 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.safe_command_boundary.keyboard_jog_interval_ms).toBe(260);
       expect(summary.safe_command_boundary.keyboard_jog_duration_ms).toBe(240);
       expect(summary.safe_command_boundary.keyboard_stop_triggers).toContain("window_blur");
-      expect(summary.safe_command_boundary.keyboard_hold_to_move_plain).toBe("必须按住 W/A/S/D 或方向键才会连续低速移动；只启用键盘但不按方向不会发车。");
-      expect(summary.safe_command_boundary.keyboard_stop_triggers_plain).toBe("松开按键、窗口失焦、页面隐藏、切换方向或点击停止都会发送停止请求。");
+      expect(summary.safe_command_boundary.keyboard_hold_to_move_plain).toBe("必须按住上下左右才会连续低速移动；W+A 可组合前进左转；只启用键盘但不按方向不会发车。");
+      expect(summary.safe_command_boundary.keyboard_stop_triggers_plain).toBe("松开所有方向键、窗口失焦、页面隐藏或点击停止都会发送停止请求。");
       expect(summary.safe_command_boundary.keyboard_pulse_timing_plain).toBe("按住时约每 0.26 秒发送一次 0.24 秒低速脉冲。");
       expect(summary.safe_command_boundary.keyboard_reuses_manual_gate).toBe(true);
       expect(summary.safe_command_boundary.keyboard_control_start_ready).toBe(true);
       expect(summary.safe_command_boundary.keyboard_control_status).toBe("start_ready");
       expect(summary.safe_command_boundary.keyboard_control_label).toBe("键盘手控（打开即用）");
-      expect(summary.safe_command_boundary.keyboard_control_next_action).toBe("页面自动准备键盘；准备本身不发车；按住 W/A/S/D 或方向键才会连续低速移动，松开/失焦/切页会停");
-      expect(summary.safe_command_boundary.keyboard_minimal_precheck_plain).toBe("键盘连续手控打开即用；启用键盘不发车，只有按住方向键/WASD 才发送低速短脉冲。");
+      expect(summary.safe_command_boundary.keyboard_control_next_action).toBe("页面自动准备键盘；准备本身不发车；按住上下左右才会连续低速移动，W+A 可前进左转，松开所有方向键/失焦/切页会停");
+      expect(summary.safe_command_boundary.keyboard_minimal_precheck_plain).toBe("键盘连续手控打开即用；启用键盘不发车，只有按住上下左右才发送低速短脉冲，W+A 可组合转弯。");
       expect(summary.readback_summary.keyboard.status).toBe("start_ready");
       expect(summary.readback_summary.keyboard.control_mode).toBe("bounded_repeating_manual_pulse");
       expect(summary.readback_summary.keyboard.manual_command_mode).toBe("ros");
@@ -4652,9 +4654,9 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.readback_summary.keyboard.keyboard_verified_min_forwarded_pulses).toBe("2");
       expect(summary.readback_summary.keyboard.keyboard_safety_confirm_required).toBe("false");
       expect(summary.readback_summary.keyboard.minimal_precheck_safety_only).toBe("true");
-      expect(summary.readback_summary.keyboard.plain_hint).toBe("可启用键盘；启用本身不发车，必须按住 W/A/S/D 或方向键才会连续低速移动，松开/失焦/切页/换方向或点停止都会停。");
-      expect(summary.readback_summary.keyboard.readiness_plain).toBe("可启用键盘；启用本身不发车，按住方向键/WASD 才连续低速移动。");
-      expect(summary.readback_summary.keyboard.continuous_control_contract_plain).toBe("按住时约每 0.26 秒发送一次 0.24 秒 ROS /cmd_vel 低速短脉冲；松开、失焦、切页、换方向或点击停止都会停。");
+      expect(summary.readback_summary.keyboard.plain_hint).toBe("可启用键盘；启用本身不发车，必须按住上下左右才会连续低速移动；W+A 可前进左转；松开所有方向键/失焦/切页/点停止都会停。");
+      expect(summary.readback_summary.keyboard.readiness_plain).toBe("可启用键盘；启用本身不发车，按住上下左右才连续低速移动，W+A 可前进左转。");
+      expect(summary.readback_summary.keyboard.continuous_control_contract_plain).toBe("按住时约每 0.26 秒发送一次 0.24 秒 ROS 低速短脉冲；W+A 会在同一脉冲里带前进量和转向量；松开所有方向键、失焦、切页或点击停止都会停。");
       expect(summary.readback_summary.keyboard.hold_to_move_plain).toBe(summary.safe_command_boundary.keyboard_hold_to_move_plain);
       expect(summary.readback_summary.keyboard.stop_triggers_plain).toBe(summary.safe_command_boundary.keyboard_stop_triggers_plain);
       expect(summary.readback_summary.keyboard.pulse_timing_plain).toBe(summary.safe_command_boundary.keyboard_pulse_timing_plain);
@@ -6445,6 +6447,49 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("Robot Control manual proxy forwards bounded ROS twist for keyboard chord turns", async () => {
+    // W+A 组合键仍走固定 manual 代理；PC 只透传被限幅的 X/Z，不开放任意 cmd_vel endpoint。
+    const upstream = await listenRobotBaseCommandApi({
+      "/api/base/manual": {
+        payload: {
+          status: "manual_command_completed",
+          manual_command_executed: true,
+          auto_stop_executed: true,
+          command_raw_latest_linear_x: "0.12",
+          command_raw_latest_angular_z: "0.12",
+          command_raw_twist_nonzero_proven: true,
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+        },
+      },
+    }, {});
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const response = await fetch(`${workstation.baseUrl}/api/robot-control/base/manual?baseUrl=${encodeURIComponent(upstream.baseUrl)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ direction: "forward", speed: 0.12, linear_x_mps: 0.12, angular_z_radps: 2, duration_ms: 240, command_mode: "ros" }),
+      });
+      const payload = await response.json();
+      expect(response.status).toBe(200);
+      expect(payload.proxy_status).toBe("command_forwarded");
+      expect(upstream.receivedBodies["/api/base/manual"]).toContainEqual(expect.objectContaining({
+        direction: "forward",
+        speed: 0.12,
+        linear_x_mps: 0.12,
+        angular_z_radps: 0.12,
+        duration_ms: 240,
+        command_mode: "ros",
+        feedback_mode: "realtime",
+        confirm_hil_checklist: true,
+      }));
+    } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+  });
+
   it("summarizes first-jog as ready when only visual material is missing", async () => {
     // 最新普通首屏口径：低速试动只需要安全确认；外部视频/可见相机材料只影响后续验收。
     const robotApi = await listenRobotApiReadbackByPath({
@@ -7507,7 +7552,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(summary.current_keyboard_action_hold_sends_motion).toBe(true);
       expect(summary.current_keyboard_action_pulse_interval_ms).toBe(260);
       expect(summary.current_keyboard_action_pulse_duration_ms).toBe(240);
-      expect(summary.current_keyboard_action_stop_triggers).toEqual(["key_release", "window_blur", "page_hidden", "direction_change", "stop_button"]);
+      expect(summary.current_keyboard_action_stop_triggers).toEqual(["key_release_all", "window_blur", "page_hidden", "stop_button"]);
       expect(summary.current_keyboard_action_post_hold_readback_endpoints).toEqual([
         "/api/robot-control/base/feedback-samples",
         "/api/robot-control/summary",

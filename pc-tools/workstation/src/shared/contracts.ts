@@ -6797,6 +6797,8 @@ export type RobotControlEvidenceReadbackSummary = Partial<
 export interface RobotControlBaseCommandRequest {
   direction: RobotControlBaseDirection;
   speed: number;
+  linear_x_mps?: number;
+  angular_z_radps?: number;
   duration_ms: number;
   command_mode?: "ros" | "speed" | "pwm";
   feedback_mode?: "bridge_debug" | "direct_feedback" | "realtime";

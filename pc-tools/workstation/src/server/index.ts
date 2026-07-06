@@ -2729,6 +2729,19 @@ function finiteManualSpeedFromPayload(payload: Record<string, unknown> | null): 
   return finiteNumber(payload?.speed ?? payload?.speed_mps ?? payload?.linear_x_mps ?? payload?.linear_mps);
 }
 
+function manualTwistOverrideFromPayload(payload: Record<string, unknown> | null): { linear_x_mps: number; angular_z_radps: number } | null {
+  // 组合键只透传 ROS Twist 两个标量；缺字段时保持旧 direction->X/Z 逻辑，避免改变普通手控路径。
+  const linear = finiteNumber(payload?.linear_x_mps ?? payload?.linear_x ?? payload?.linear_mps);
+  const angular = finiteNumber(payload?.angular_z_radps ?? payload?.angular_z ?? payload?.angular_radps);
+  if (linear === null && angular === null) {
+    return null;
+  }
+  return {
+    linear_x_mps: clamp(linear ?? 0, -ROBOT_CONTROL_MANUAL_SPEED_LIMIT_MPS, ROBOT_CONTROL_MANUAL_SPEED_LIMIT_MPS),
+    angular_z_radps: clamp(angular ?? 0, -ROBOT_CONTROL_MANUAL_SPEED_LIMIT_MPS, ROBOT_CONTROL_MANUAL_SPEED_LIMIT_MPS),
+  };
+}
+
 function manualCommandModeFromPayload(payload: Record<string, unknown> | null): "ros" | "speed" | "pwm" {
   // 页面默认仍是 ROS bridge；显式传 mode 时给现场快速 A/B，不让 PC 代理把 speed/pwm 掉包成 ros。
   const value = String(payload?.command_mode ?? payload?.manual_command_mode ?? "").trim().toLowerCase();
@@ -5010,9 +5023,11 @@ export function createWorkstationApp(): express.Express {
     const clampedSpeed = clamp(speed, 0, ROBOT_CONTROL_MANUAL_SPEED_LIMIT_MPS);
     const clampedDurationMs = clamp(durationMs, 0, ROBOT_CONTROL_MANUAL_DURATION_LIMIT_MS);
     const manualCommandMode = manualCommandModeFromPayload(payload);
+    const twistOverride = manualCommandMode === "ros" ? manualTwistOverrideFromPayload(payload) : null;
     const remote = await fetchFixedRobotPostSummary(sourceBaseUrl, "/api/base/manual", {
       direction,
       speed: clampedSpeed,
+      ...(twistOverride ?? {}),
       duration_ms: clampedDurationMs,
       command_mode: manualCommandMode,
       feedback_mode: "bridge_debug",
@@ -5120,9 +5135,11 @@ export function createWorkstationApp(): express.Express {
     const clampedSpeed = clamp(speed, 0, ROBOT_CONTROL_MANUAL_SPEED_LIMIT_MPS);
     const clampedDurationMs = clamp(durationMs, 0, ROBOT_CONTROL_MANUAL_DURATION_LIMIT_MS);
     const manualCommandMode = manualCommandModeFromPayload(payload);
+    const twistOverride = manualCommandMode === "ros" ? manualTwistOverrideFromPayload(payload) : null;
     const remote = await fetchFixedRobotPostSummary(sourceBaseUrl, "/api/base/manual", {
       direction,
       speed: clampedSpeed,
+      ...(twistOverride ?? {}),
       duration_ms: clampedDurationMs,
       command_mode: manualCommandMode,
       feedback_mode: "realtime",
