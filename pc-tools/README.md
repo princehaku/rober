@@ -139,6 +139,16 @@ USB video speed `480M`，但 STREAMON 仍 `status=streamon_success_zero_byte_no_
 这排除了 uvcvideo 模块状态漂移；实时图传仍不能宣称完成，剩余动作是 DV20 输入信号、线材/接口/供电、
 采集设备本体或 known-good UVC 对照。该恢复动作不打开底盘 UART、不发布 `/cmd_vel`。
 
+2026-07-07 02:18 CST 起，PC 自动相机 USB recovery 会带 `usbreset_device=true` 做一次设备级 USB reset。
+该目标不来自浏览器 body，而是上位机从 `/sys/bus/usb/devices/<usb-device>/busnum` 和 `devnum` 反查当前
+`BBB/DDD` 后固定执行 `usbreset BBB/DDD`；回包新增 `usbreset_requested/attempted/ok` 和 `usbreset` 证据。
+真实 7001 复验：`POST /api/robot-control/camera/usb-recovery` body `{"device":"/dev/video1","usbreset_device":true}`
+返回 `frame_observed=true`、`stream_failure_class=none`、`usbreset_ok=true`、USB `480M`，随后
+`GET /api/robot-control/camera/mjpeg` 在 8 秒内收到 `4056284` 字节 multipart MJPEG，第一帧为 JPEG/JFIF；
+`GET /api/robot-control/camera/mjpeg/status` 返回 `status=streaming`、`source_readiness=first_frame_observed`、
+`shared_preview_current_frame_visible=true`。这说明 DV20 不是坏掉，而是会进入 USB 设备级卡死状态；普通 PC 页面打开后遇到
+UVC 无帧会自动做一次安全 usbreset 恢复，不发底盘 UART、不发布 `/cmd_vel`。
+
 2026-07-06 05:15 CST 起，上车 `/api/map/preview` 的雷达贴图不再只依赖可能过期的
 `lidar_scan_proof_latest.json`；当 LiDAR lifecycle 正在运行且 driver diagnostics 5 秒内更新、状态为
 `scan_published` 时，地图预览直接使用 diagnostics 里的 `scan_preview_points` 作为当前雷达点。真实 7001

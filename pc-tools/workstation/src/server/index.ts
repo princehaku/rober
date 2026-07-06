@@ -3361,6 +3361,7 @@ function safeCameraUsbRecoveryBody(value: unknown): Record<string, unknown> {
     skip_uvc_quirks_reset: body?.skip_uvc_quirks_reset === true,
     skip_control_reset: body?.skip_control_reset === true,
     reload_uvc_module: body?.reload_uvc_module === true || body?.reloadUvcModule === true,
+    usbreset_device: body?.usbreset_device === true || body?.usbresetDevice === true,
   };
 }
 
@@ -6580,6 +6581,10 @@ export function createWorkstationApp(): express.Express {
       uvc_module_reload_ok: remote.payload?.uvc_module_reload_ok === true,
       uvc_module_parameters_after_reload: asRecord(remote.payload?.uvc_module_parameters_after_reload) ?? undefined,
       uvc_module_reload: asRecord(remote.payload?.uvc_module_reload) ?? undefined,
+      usbreset_requested: remote.payload?.usbreset_requested === true,
+      usbreset_attempted: remote.payload?.usbreset_attempted === true,
+      usbreset_ok: remote.payload?.usbreset_ok === true,
+      usbreset: asRecord(remote.payload?.usbreset) ?? undefined,
       audio_rebind_ok: remote.payload?.audio_rebind_ok === true,
       audio_bind_status_after_rebind: asRecord(remote.payload?.audio_bind_status_after_rebind) ?? undefined,
       topology_after_audio_rebind: asRecord(remote.payload?.topology_after_audio_rebind) ?? undefined,

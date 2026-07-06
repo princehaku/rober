@@ -17639,7 +17639,7 @@ async function maybeAutoRecoverCameraUsb(status: RobotControlCameraMjpegStatusRe
   cameraAutoUsbRecoveryStatus.value = "running";
   cameraAutoUsbRecoveryFailure.value = "";
   try {
-    const result = await postRobotControlCameraUsbRecovery(robotApiBaseUrl.value);
+    const result = await postRobotControlCameraUsbRecovery(robotApiBaseUrl.value, { usbresetDevice: true });
     cameraAutoUsbRecoveryResult.value = result;
     cameraAutoUsbRecoveryStatus.value = result.frame_observed
       ? "frame_observed"
@@ -24721,6 +24721,8 @@ onBeforeUnmount(() => {
             :data-auto-usb-recovery-uvc-quirks-before="cameraAutoUsbRecoveryResult?.uvc_quirks_before ?? 'not_loaded'"
             :data-auto-usb-recovery-uvc-quirks-after-reset="cameraAutoUsbRecoveryResult?.uvc_quirks_after_reset ?? 'not_loaded'"
             :data-auto-usb-recovery-uvc-quirks-after="cameraAutoUsbRecoveryResult?.uvc_quirks_after ?? 'not_loaded'"
+            :data-auto-usb-recovery-usbreset-attempted="String(cameraAutoUsbRecoveryResult?.usbreset_attempted ?? false)"
+            :data-auto-usb-recovery-usbreset-ok="String(cameraAutoUsbRecoveryResult?.usbreset_ok ?? false)"
             :data-auto-usb-recovery-audio-rebind-ok="String(cameraAutoUsbRecoveryResult?.audio_rebind_ok ?? false)"
             :data-auto-usb-recovery-failure="cameraAutoUsbRecoveryFailure || 'none'"
             data-auto-usb-recovery-endpoint="/api/robot-control/camera/usb-recovery"

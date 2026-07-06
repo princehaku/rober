@@ -1460,3 +1460,29 @@ audio rebind 之后，对设备实际自报的 `brightness`、`contrast`、`satu
 结论更新：软件侧已排除页面独占、低速 USB、UVC quirk、V4L2 控制项、mmap/userptr/no-query
 以及 uvcvideo 模块状态漂移；DV20 仍没有交出任何真实视频 buffer。实时图传剩余风险仍是上游输入信号、
 线材/接口/供电、采集设备本体，或需要 known-good UVC 对照复测。
+
+## 2026-07-07 02:18 usbreset device recovery
+
+本轮继续依据 `docs/vendor/VENDOR_INDEX.md` 进入硬件资料索引；真实执行环境为
+`root@192.168.1.11 -p 7878`。恢复动作只作用于 DV20 UVC 相机链路，不打开 WAVE ROVER UART，
+不发布 `/cmd_vel`，不启动 Nav2/manual/keyboard/free-roam/delivery。
+
+`camera_usb_recovery_smoke.py` 新增 `--usbreset-device`。脚本从 `/sys/class/video4linux/videoX/device`
+反查目标 USB 设备，再读取 `/sys/bus/usb/devices/<usb-device>/busnum` 和 `devnum`，固定执行
+`usbreset BBB/DDD`；浏览器只能传 `usbreset_device=true` 布尔值，不能指定 bus/dev、VID/PID、产品名或
+shell 参数。普通 PC 页面的一次性自动 USB recovery 现在会携带该开关，用于处理“摄像头曾经能用但当前
+STREAMON 后 0 字节”的设备级卡死状态。
+
+真实 7001 通过 `POST /api/robot-control/camera/usb-recovery` 复验：
+
+- 请求 body：`{"device":"/dev/video1","usbreset_device":true}`。
+- 回包：`usbreset_requested=true`、`usbreset_attempted=true`、`usbreset_ok=true`。
+- STREAMON 恢复：`frame_observed=true`、`status=frame_observed`、`stream_failure_class=none`、
+  `software_capture_exhausted=false`、`known_good_uvc_required=false`。
+- PC MJPEG 入口随后 8 秒收到 `4056284` 字节 multipart MJPEG，第一帧为 JPEG/JFIF。
+- `GET /api/robot-control/camera/mjpeg/status` 返回 `status=streaming`、
+  `source_readiness=first_frame_observed`、`shared_preview_current_frame_visible=true`。
+
+结论更新：DV20 不是硬件完全损坏，而是会进入 USB 设备级卡死；sysfs reauthorize、UVC 参数复位和
+uvcvideo 模块重载不足以恢复时，`usbreset` 可让设备重新吐真实视频 buffer。PC 普通页面已接入一次性
+相机-only 自动恢复，仍不发任何底盘运动命令。

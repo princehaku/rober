@@ -15801,6 +15801,14 @@ describe("workstation fail-closed API contracts", () => {
               module: "uvcvideo",
               video_nodes_after_load: ["/dev/video1", "/dev/video2"],
             },
+            usbreset_requested: true,
+            usbreset_attempted: true,
+            usbreset_ok: true,
+            usbreset: {
+              ok: true,
+              target: { target: "003/004" },
+              video_device_present_after: true,
+            },
             audio_rebind_ok: true,
             audio_bind_status_after_rebind: {
               "3-1:1.2": { bound_to_snd_usb_audio: true },
@@ -15852,6 +15860,7 @@ describe("workstation fail-closed API contracts", () => {
           skip_audio_unbind: "true",
           skip_uvc_quirks_reset: "true",
           reload_uvc_module: true,
+          usbreset_device: true,
           endpoint: "/api/base/manual",
         }),
       });
@@ -15885,6 +15894,10 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.uvc_module_reload_ok).toBe(true);
       expect(body.uvc_module_parameters_after_reload.quirks).toBe("0");
       expect(body.uvc_module_reload.video_nodes_after_load).toContain("/dev/video1");
+      expect(body.usbreset_requested).toBe(true);
+      expect(body.usbreset_attempted).toBe(true);
+      expect(body.usbreset_ok).toBe(true);
+      expect(body.usbreset.target.target).toBe("003/004");
       expect(body.audio_rebind_ok).toBe(true);
       expect(body.audio_bind_status_after_rebind["3-1:1.2"].bound_to_snd_usb_audio).toBe(true);
       expect(body.topology_after_audio_rebind.stdout).toContain("snd-usb-audio");
@@ -15910,6 +15923,7 @@ describe("workstation fail-closed API contracts", () => {
           skip_uvc_quirks_reset: false,
           skip_control_reset: false,
           reload_uvc_module: true,
+          usbreset_device: true,
         },
       ]);
       expect(receivedBodies["/api/base/manual"]).toBeUndefined();

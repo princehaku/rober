@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib.util
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -71,6 +72,46 @@ class CameraUsbRecoverySmokeTests(unittest.TestCase):
         self.assertEqual(calls[0], ["lsof", "/dev/video1"])
         self.assertEqual(calls[1], ["modprobe", "-r", "uvcvideo"])
         self.assertEqual(calls[2], ["modprobe", "uvcvideo", "quirks=0", "nodrop=0", "timeout=5000"])
+
+    def test_usbreset_uses_sysfs_bus_device_target(self) -> None:
+        """USB 设备级重置只能 reset sysfs 反查到的当前相机设备。"""
+        original_run_command = recovery.run_command
+        original_sleep = recovery.time.sleep
+        calls: list[list[str]] = []
+
+        def fake_run_command(argv: list[str], **_kwargs: object) -> dict[str, object]:
+            calls.append(argv)
+            return {"stdout": "Resetting USB Composite Device ... ok\n", "stderr": "", "returncode": 0, "timed_out": False}
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            sys_usb_root = root / "sys" / "bus" / "usb" / "devices"
+            sys_video_root = root / "sys" / "class" / "video4linux"
+            dev_root = root / "dev"
+            usb_root = sys_usb_root / "3-1"
+            usb_root.mkdir(parents=True)
+            sys_video_root.joinpath("video1").mkdir(parents=True)
+            dev_root.mkdir(parents=True)
+            (usb_root / "busnum").write_text("3", encoding="utf-8")
+            (usb_root / "devnum").write_text("4", encoding="utf-8")
+            recovery.run_command = fake_run_command
+            recovery.time.sleep = lambda *_args, **_kwargs: None
+            try:
+                result = recovery.reset_usb_device_with_usbreset(
+                    "/dev/video1",
+                    "3-1",
+                    sys_usb_root=sys_usb_root,
+                    sys_video_root=sys_video_root,
+                    dev_root=dev_root,
+                )
+            finally:
+                recovery.run_command = original_run_command
+                recovery.time.sleep = original_sleep
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["target"]["target"], "003/004")
+        self.assertEqual(calls[0], ["lsof", "/dev/video1"])
+        self.assertEqual(calls[1], ["usbreset", "003/004"])
 
     def test_full_speed_failure_still_points_to_high_speed_port(self) -> None:
         """12M/full-speed 仍是带宽硬 blocker，应该先换高速口/线。"""

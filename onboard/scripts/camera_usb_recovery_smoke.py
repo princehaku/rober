@@ -131,6 +131,78 @@ def list_video_nodes(dev_root: Path = Path("/dev")) -> list[str]:
     return sorted(str(path) for path in dev_root.glob("video*"))
 
 
+def video_device_present(
+    video_device: str,
+    *,
+    sys_video_root: Path = Path("/sys/class/video4linux"),
+    dev_root: Path = Path("/dev"),
+) -> bool:
+    """同时检查 sysfs 和 /dev；USB reset 后 udev 可能比内核节点稍慢。"""
+    video_name = Path(video_device).name
+    return (sys_video_root / video_name).exists() or (dev_root / video_name).exists()
+
+
+def usbreset_bus_device(
+    usb_device: str,
+    *,
+    sys_usb_root: Path = Path("/sys/bus/usb/devices"),
+) -> dict[str, Any]:
+    """从 `3-1` 反查 usbreset 需要的 `BBB/DDD`，避免浏览器传任意 USB 目标。"""
+    usb_root = sys_usb_root / usb_device
+    busnum = read_sysfs(usb_root / "busnum")
+    devnum = read_sysfs(usb_root / "devnum")
+    if not busnum or not devnum:
+        return {"ok": False, "usb_device": usb_device, "reason": "busnum_or_devnum_missing"}
+    try:
+        bus = int(busnum)
+        dev = int(devnum)
+    except ValueError:
+        return {"ok": False, "usb_device": usb_device, "busnum": busnum, "devnum": devnum, "reason": "busnum_or_devnum_invalid"}
+    return {"ok": True, "usb_device": usb_device, "busnum": bus, "devnum": dev, "target": f"{bus:03d}/{dev:03d}"}
+
+
+def reset_usb_device_with_usbreset(
+    video_device: str,
+    usb_device: str,
+    *,
+    sys_usb_root: Path = Path("/sys/bus/usb/devices"),
+    sys_video_root: Path = Path("/sys/class/video4linux"),
+    dev_root: Path = Path("/dev"),
+) -> dict[str, Any]:
+    """用 usbreset 触发设备级复位；比 authorized 重新绑定更接近物理重插。"""
+    target = usbreset_bus_device(usb_device, sys_usb_root=sys_usb_root)
+    summary: dict[str, Any] = {
+        "requested": True,
+        "device": video_device,
+        "usb_device": usb_device,
+        "target": target,
+        "video_nodes_before": list_video_nodes(dev_root),
+        "owners_before_reset": run_command(["lsof", video_device], timeout_s=4),
+    }
+    if not target.get("ok"):
+        summary["ok"] = False
+        summary["reason"] = target.get("reason", "usbreset_target_unavailable")
+        return summary
+
+    # usbreset 目标只来自 sysfs busnum/devnum；PC body 不能指定 bus、dev、VID/PID 或产品名。
+    summary["command"] = run_command(["usbreset", str(target["target"])], timeout_s=14)
+    time.sleep(4.0)
+    summary["video_nodes_after"] = list_video_nodes(dev_root)
+    summary["target_after"] = usbreset_bus_device(usb_device, sys_usb_root=sys_usb_root)
+    summary["video_device_present_after"] = video_device_present(
+        video_device,
+        sys_video_root=sys_video_root,
+        dev_root=dev_root,
+    )
+    combined = f"{summary['command'].get('stdout', '')}\n{summary['command'].get('stderr', '')}"
+    reset_invoked = "resetting" in combined.lower()
+    summary["reset_invoked"] = reset_invoked
+    summary["ok"] = bool(summary["video_device_present_after"]) and (
+        summary["command"].get("returncode") == 0 or reset_invoked
+    )
+    return summary
+
+
 def reload_uvc_module(video_device: str, usb_device: str) -> dict[str, Any]:
     """显式卸载并重载 uvcvideo，用于排除内核模块状态漂移导致的零帧。"""
     summary: dict[str, Any] = {
@@ -522,6 +594,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--skip-uvc-quirks-reset", action="store_true", help="Do not reset uvcvideo quirks to 0 before reauthorize.")
     parser.add_argument("--skip-control-reset", action="store_true", help="Do not reset advertised V4L2 camera controls before streaming.")
     parser.add_argument("--reload-uvc-module", action="store_true", help="Unload and reload uvcvideo before reauthorizing the USB camera.")
+    parser.add_argument("--usbreset-device", action="store_true", help="Reset the USB camera device with usbreset before streaming.")
     return parser
 
 
@@ -551,6 +624,16 @@ def main() -> int:
     summary["uvc_module_parameters_before"] = read_uvc_module_parameters()
     summary["uvc_quirks_before"] = summary["uvc_module_parameters_before"].get("quirks", "not_loaded")
     summary["uvc_module_reload_requested"] = bool(args.reload_uvc_module)
+    summary["usbreset_requested"] = bool(args.usbreset_device)
+    if args.usbreset_device:
+        summary["usbreset"] = reset_usb_device_with_usbreset(args.device, usb_device)
+        summary["usbreset_attempted"] = True
+        summary["usbreset_ok"] = bool(summary["usbreset"].get("ok"))
+        summary["power_actions_after_usbreset"] = set_usb_power_on(usb_device)
+    else:
+        summary["usbreset"] = {"requested": False, "skipped": True, "reason": "usbreset_device_not_requested"}
+        summary["usbreset_attempted"] = False
+        summary["usbreset_ok"] = False
     if args.reload_uvc_module:
         summary["uvc_module_reload"] = reload_uvc_module(args.device, usb_device)
         summary["uvc_module_reload_attempted"] = True

@@ -124,6 +124,47 @@ class CameraUsbRecoverySmokeTest(unittest.TestCase):
         self.assertEqual(calls[2], ["modprobe", "uvcvideo", "quirks=0", "nodrop=0", "timeout=5000"])
         self.assertEqual(result["parameters_after_load"]["timeout"], "5000")
 
+    def test_usbreset_uses_sysfs_bus_device_target(self) -> None:
+        """usbreset 目标必须来自 sysfs busnum/devnum，避免 PC body 注入 USB 目标。"""
+        module = load_recovery_module()
+        original_run_command = module.run_command
+        original_sleep = module.time.sleep
+        calls: list[list[str]] = []
+
+        def fake_run_command(argv: list[str], **_kwargs: object) -> dict[str, object]:
+            calls.append(argv)
+            return {"stdout": "Resetting USB Composite Device ... ok\n", "stderr": "", "returncode": 0, "timed_out": False}
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            sys_usb_root = root / "sys" / "bus" / "usb" / "devices"
+            sys_video_root = root / "sys" / "class" / "video4linux"
+            dev_root = root / "dev"
+            usb_root = sys_usb_root / "3-1"
+            usb_root.mkdir(parents=True)
+            sys_video_root.joinpath("video1").mkdir(parents=True)
+            dev_root.mkdir(parents=True)
+            (usb_root / "busnum").write_text("3", encoding="utf-8")
+            (usb_root / "devnum").write_text("4", encoding="utf-8")
+            module.run_command = fake_run_command
+            module.time.sleep = lambda *_args, **_kwargs: None
+            try:
+                result = module.reset_usb_device_with_usbreset(
+                    "/dev/video1",
+                    "3-1",
+                    sys_usb_root=sys_usb_root,
+                    sys_video_root=sys_video_root,
+                    dev_root=dev_root,
+                )
+            finally:
+                module.run_command = original_run_command
+                module.time.sleep = original_sleep
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["target"]["target"], "003/004")
+        self.assertEqual(calls[0], ["lsof", "/dev/video1"])
+        self.assertEqual(calls[1], ["usbreset", "003/004"])
+
     def test_reset_v4l2_controls_only_writes_advertised_defaults(self) -> None:
         """恢复脚本应重置 DV20 常见控制项，但不能把未公开控制硬塞给设备。"""
         module = load_recovery_module()

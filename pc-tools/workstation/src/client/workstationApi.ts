@@ -819,9 +819,13 @@ export async function postRobotControlCameraFirstFrameProbe(
 
 export async function postRobotControlCameraUsbRecovery(
   baseUrl: string,
+  options: { usbresetDevice?: boolean; reloadUvcModule?: boolean } = {},
 ): Promise<RobotControlCameraUsbRecoveryProxyResponse> {
-  // 自动/手动恢复都只调用固定 USB recovery 代理；body 为空，由后端选择安全默认 /dev/video1。
-  return postJson<RobotControlCameraUsbRecoveryProxyResponse>(robotControlCameraUsbRecoveryUrl(baseUrl), {});
+  // 自动/手动恢复都只调用固定 USB recovery 代理；布尔选项只打开后端白名单动作。
+  return postJson<RobotControlCameraUsbRecoveryProxyResponse>(robotControlCameraUsbRecoveryUrl(baseUrl), {
+    usbreset_device: options.usbresetDevice === true,
+    reload_uvc_module: options.reloadUvcModule === true,
+  });
 }
 
 export async function getRobotControlCameraMjpegStatus(baseUrl: string): Promise<RobotControlCameraMjpegStatusResponse> {
