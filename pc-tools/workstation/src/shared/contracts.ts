@@ -6460,9 +6460,9 @@ export interface RobotControlCameraMjpegStatusResponse extends ProofFlags {
   cma_memory_diagnostics_latest_failure?: string;
   camera_usb_speed: string;
   camera_usb_full_speed_detected: boolean;
+  camera_input_signal_check_required: boolean;
   camera_hardware_action_required: boolean;
   camera_hardware_action_label: string;
-  camera_input_signal_check_required?: boolean;
   camera_input_signal_check_label?: string;
   camera_input_signal_check_plain?: string;
   usb_speed?: string;
@@ -6650,6 +6650,9 @@ export interface RobotControlCameraFirstFrameProbeProxyResponse extends ProofFla
   source_diagnosis_next_action_plain: string;
   camera_usb_speed: string;
   camera_usb_full_speed_detected: boolean;
+  software_capture_exhausted: boolean;
+  known_good_uvc_required: boolean;
+  camera_input_signal_check_required: boolean;
   camera_hardware_action_required: boolean;
   camera_hardware_action_label: string;
   camera_blocks_mapping_start: boolean;

@@ -17533,7 +17533,7 @@ describe("workstation fail-closed API contracts", () => {
             selected_is_uvc_or_usb: true,
           },
           source_diagnosis: {
-            status: "uvc_full_speed_usb_not_exclusive",
+            status: "uvc_no_frame_not_exclusive",
             plain_hint: "不是页面独占：DV20 USB 当前没人占用，但 UVC 设备没有输出视频帧。",
             next_action: "check_usb_camera_input_power_or_known_good_uvc",
             not_exclusive: true,
@@ -17543,10 +17543,10 @@ describe("workstation fail-closed API contracts", () => {
             owner_count: 0,
           },
           uvc_usb_topology: {
-            status: "uvc_video_on_full_speed_usb",
-            video_usb_speed: "12M",
-            plain_hint: "摄像头挂在 USB full-speed。",
-            next_action: "move_camera_to_high_speed_usb",
+            status: "uvc_video_usb_speed_loaded",
+            video_usb_speed: "480M",
+            plain_hint: "摄像头挂在 USB high-speed。",
+            next_action: "continue_first_frame_format_diagnostics",
           },
         },
       },
@@ -17566,6 +17566,9 @@ describe("workstation fail-closed API contracts", () => {
         source_diagnosis_next_action_plain: string;
         camera_usb_speed: string;
         camera_usb_full_speed_detected: boolean;
+        software_capture_exhausted: boolean;
+        known_good_uvc_required: boolean;
+        camera_input_signal_check_required: boolean;
         camera_hardware_action_required: boolean;
         camera_hardware_action_label: string;
         camera_blocks_mapping_start: boolean;
@@ -17605,14 +17608,17 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.probe_key_values.backend_userptr_frame_observed).toBe("false");
       expect(body.camera_first_frame_ready).toBe(false);
       expect(body.frame_observed).toBe(false);
-      expect(body.source_diagnosis_status).toBe("uvc_full_speed_usb_not_exclusive");
+      expect(body.source_diagnosis_status).toBe("uvc_no_frame_not_exclusive");
       expect(body.source_diagnosis_not_exclusive).toBe("true");
-      expect(body.source_diagnosis_next_action_plain).toContain("USB 12M full-speed");
-      expect(body.source_diagnosis_next_action_plain).toContain("换高速 USB");
-      expect(body.camera_usb_speed).toBe("12M");
-      expect(body.camera_usb_full_speed_detected).toBe(true);
+      expect(body.source_diagnosis_next_action_plain).toContain("已排除页面独占和低速 USB");
+      expect(body.source_diagnosis_next_action_plain).toContain("检查摄像头输入信号");
+      expect(body.camera_usb_speed).toBe("480M");
+      expect(body.camera_usb_full_speed_detected).toBe(false);
+      expect(body.software_capture_exhausted).toBe(true);
+      expect(body.known_good_uvc_required).toBe(true);
+      expect(body.camera_input_signal_check_required).toBe(true);
       expect(body.camera_hardware_action_required).toBe(true);
-      expect(body.camera_hardware_action_label).toBe("换高速USB后复测");
+      expect(body.camera_hardware_action_label).toBe("检查摄像头输入/供电后复测");
       expect(body.camera_blocks_mapping_start).toBe(true);
       expect(body.camera_blocks_free_move).toBe(false);
       expect(body.readback_only).toBe(true);
@@ -17646,9 +17652,11 @@ describe("workstation fail-closed API contracts", () => {
       expect(summaryBody.readback_summary.camera.first_frame_probe_backend_attempts).toBe("3");
       expect(summaryBody.readback_summary.camera.first_frame_probe_backend_userptr_attempt_count).toBe("1");
       expect(summaryBody.readback_summary.camera.first_frame_probe_backend_userptr_frame_observed).toBe("false");
-      expect(summaryBody.readback_summary.camera.source_diagnosis_status).toBe("uvc_full_speed_usb_not_exclusive");
-      expect(summaryBody.readback_summary.camera.source_diagnosis_plain_hint).toContain("USB full-speed");
+      expect(summaryBody.readback_summary.camera.source_diagnosis_status).toBe("uvc_no_frame_not_exclusive");
+      expect(summaryBody.readback_summary.camera.source_diagnosis_plain_hint).toContain("OpenCV/V4L2 后端也没有取到视频帧");
       expect(summaryBody.readback_summary.camera.source_diagnosis_not_exclusive).toBe("true");
+      expect(summaryBody.readback_summary.camera.known_good_uvc_required).toBe(true);
+      expect(summaryBody.readback_summary.camera.camera_input_signal_check_required).toBe(true);
     } finally {
       await workstation.close();
       await upstream.close();

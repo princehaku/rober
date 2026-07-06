@@ -6073,3 +6073,11 @@ uvcvideo quirk、audio 复合接口、页面独占或格式未尝试作为主要
 `ROBER_CAMERA_SOURCE=/dev/videoN` 时不启用跳转，以保留现场排障确定性。当前实板枚举仍只有
 `/dev/video1` 一个正分 capture，`/dev/video0` 是 Cedrus decoder、`/dev/video2` 是 DV20 metadata，
 所以本轮复验仍无画面；但现场接入 known-good UVC 后不再需要改 PC UI 或重配 7001。
+
+2026-07-06 08:01 CST 起，PC 代理对显式 `backendSmoke=1` 的相机首帧深度检查补齐顶层 alias：
+`software_capture_exhausted`、`known_good_uvc_required` 和 `camera_input_signal_check_required`。
+这些字段由上车 `backend_smoke.status=backend_no_frame_observed` 且无任何首帧证据推导，只表示 OpenCV/V4L2
+和 ffmpeg 采集矩阵已经穷尽，下一步应检查摄像头输入、供电、线材/接口或换 known-good UVC。真实 7001
+复验中，probe 返回 `backend_attempts=11`、`backend_userptr_attempt_count=2` 且三项 alias 均为 `true`；
+MJPEG status 同步显示三项为 `true`。该改动不生成占位图、不把相机无帧包装为实时图传 ready，也不触发
+manual、keyboard、free-roam、Nav2、delivery、stop 或 `/cmd_vel`。

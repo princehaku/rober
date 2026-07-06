@@ -1036,6 +1036,9 @@ function cameraProbeDiagnosticAliases(
   | "source_diagnosis_next_action_plain"
   | "camera_usb_speed"
   | "camera_usb_full_speed_detected"
+  | "software_capture_exhausted"
+  | "known_good_uvc_required"
+  | "camera_input_signal_check_required"
   | "camera_hardware_action_required"
   | "camera_hardware_action_label"
   | "camera_blocks_mapping_start"
@@ -1062,6 +1065,8 @@ function cameraProbeDiagnosticAliases(
     || sourceFailure?.uvc_usb_topology_status === "uvc_video_on_full_speed_usb";
   const cameraTransportHardwareActionRequired = cameraSourceTransportHasOwnFirstFrameFailure(sourceFailure);
   const probeNoFrameFailure = cameraProbeNoFrameFailure(probeValues);
+  const backendNoFrameObserved = probeValues.backend_smoke_status === "backend_no_frame_observed"
+    && probeValues.backend_frame_observed !== "true";
   const externalHolderProven = sourceFailure?.source_usage_scope === "external_holder"
     && sourceFailure?.source_usage_not_exclusive !== "true";
   const probeNoFrameNotExclusive = probeNoFrameFailure && !externalHolderProven;
@@ -1099,6 +1104,11 @@ function cameraProbeDiagnosticAliases(
     || cameraCmaHardwareActionRequired
     || cameraNoFrameHardwareActionRequired
   ) && !firstFrameReady;
+  const softwareCaptureExhausted = backendNoFrameObserved && !frameObserved;
+  const knownGoodUvcRequired = softwareCaptureExhausted
+    && !cameraUsbFullSpeedDetected
+    && !cameraCmaHardwareActionRequired;
+  const cameraInputSignalCheckRequired = knownGoodUvcRequired;
   const cameraHardwareActionLabel = cameraHardwareActionRequired
     ? cameraUsbFullSpeedDetected
       ? "换高速USB后复测"
@@ -1123,6 +1133,9 @@ function cameraProbeDiagnosticAliases(
     source_diagnosis_next_action_plain: sourceDiagnosisNextActionPlain,
     camera_usb_speed: cameraUsbSpeed,
     camera_usb_full_speed_detected: cameraUsbFullSpeedDetected,
+    software_capture_exhausted: softwareCaptureExhausted,
+    known_good_uvc_required: knownGoodUvcRequired,
+    camera_input_signal_check_required: cameraInputSignalCheckRequired,
     camera_hardware_action_required: cameraHardwareActionRequired,
     camera_hardware_action_label: cameraHardwareActionLabel,
     camera_blocks_mapping_start: !firstFrameReady,
@@ -3509,6 +3522,7 @@ function cameraProbeLastFailureFromResponse(
     : cameraMjpegFfmpegFallbackSummary(probePayload);
   const softwareCaptureExhausted = Boolean(
     sourceFailure?.software_capture_exhausted
+      || response.software_capture_exhausted
       || cameraMjpegSoftwareCaptureExhausted(probePayload),
   );
   return {
