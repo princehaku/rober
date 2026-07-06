@@ -129,6 +129,16 @@ DV20 `/dev/video1` 为唯一正分 `Video Capture` 候选、USB `480M`、当前�
 `(usb-...)` 设备名后接中文状态的空格；功能结论不变：PC 共享预览入口可多人加入且不独占，但当前 DV20
 源头没有输出任何 video buffer，下一步只能检查摄像头输入/视频线/接口/供电或换 known-good UVC 后复测。
 
+2026-07-06 09:21 CST 起，相机 USB recovery 增加显式 `reload_uvc_module=true` 深度恢复开关。
+PC `/api/robot-control/camera/usb-recovery` 只把该布尔值转发给上位机 `/api/camera/usb-recovery`，
+上位机固定执行 `modprobe -r uvcvideo` 与 `modprobe uvcvideo quirks=0 nodrop=0 timeout=5000`，
+并把 `uvc_module_reload_*` 与 `uvc_module_parameters_after_reload` 回显到 PC 顶层。真实 7001 复验为
+`uvc_module_reload_ok=true`、`uvc_module_parameters_after_reload={quirks:0,nodrop:0,timeout:5000}`、
+USB video speed `480M`，但 STREAMON 仍 `status=streamon_success_zero_byte_no_frame`、
+`frame_observed=false`、`software_capture_exhausted=true`、`known_good_uvc_required=true`。
+这排除了 uvcvideo 模块状态漂移；实时图传仍不能宣称完成，剩余动作是 DV20 输入信号、线材/接口/供电、
+采集设备本体或 known-good UVC 对照。该恢复动作不打开底盘 UART、不发布 `/cmd_vel`。
+
 2026-07-06 05:15 CST 起，上车 `/api/map/preview` 的雷达贴图不再只依赖可能过期的
 `lidar_scan_proof_latest.json`；当 LiDAR lifecycle 正在运行且 driver diagnostics 5 秒内更新、状态为
 `scan_published` 时，地图预览直接使用 diagnostics 里的 `scan_preview_points` 作为当前雷达点。真实 7001

@@ -1433,3 +1433,30 @@ audio rebind 之后，对设备实际自报的 `brightness`、`contrast`、`satu
 
 结论更新：当前无帧不再只是 OpenCV、ffmpeg、mmap 或控制项问题；UVC 驱动能成功 STREAMON，但设备没有交出
 任何视频 buffer。下一步优先做 DV20 上游输入、线材/接口/供电、采集设备本体和 known-good UVC 对照。
+
+## 2026-07-06 09:21 uvcvideo module reload recovery
+
+本轮继续依据 `docs/vendor/VENDOR_INDEX.md` 进入硬件资料索引；真实执行环境为
+`root@192.168.1.11 -p 7878`。恢复动作只作用于 DV20 UVC 相机链路，不打开 WAVE ROVER UART，
+不发布 `/cmd_vel`，不启动 Nav2/manual/keyboard/free-roam/delivery。
+
+`camera_usb_recovery_smoke.py` 新增 `--reload-uvc-module`：停掉共享相机服务后记录 `/dev/video*`
+节点和 `/sys/module/uvcvideo/parameters`，固定执行 `modprobe -r uvcvideo`，再用
+`modprobe uvcvideo quirks=0 nodrop=0 timeout=5000` 重新加载模块。PC 7001 对应新增
+`reload_uvc_module=true` 白名单布尔开关，上位机 8787 只把该开关映射成固定 argv，并把
+`uvc_module_reload_requested`、`uvc_module_reload_attempted`、`uvc_module_reload_ok` 与
+`uvc_module_parameters_after_reload` 回传给 PC 顶层。
+
+真实 7001 通过 `POST /api/robot-control/camera/usb-recovery` 复验：
+
+- `uvc_module_reload_requested=true`、`uvc_module_reload_attempted=true`、`uvc_module_reload_ok=true`。
+- `uvc_module_parameters_after_reload={quirks:0,nodrop:0,timeout:5000}`。
+- USB video speed 仍为 `480M`，STREAMON 仍为 `status=streamon_success_zero_byte_no_frame`、
+  `frame_observed=false`、`stream_failure_class=high_speed_zero_byte_no_frame`。
+- PC status 继续为 `source_first_frame_failed` / `uvc_no_frame_not_exclusive`，同时
+  `software_capture_exhausted=true`、`known_good_uvc_required=true`、
+  `camera_input_signal_check_required=true`。
+
+结论更新：软件侧已排除页面独占、低速 USB、UVC quirk、V4L2 控制项、mmap/userptr/no-query
+以及 uvcvideo 模块状态漂移；DV20 仍没有交出任何真实视频 buffer。实时图传剩余风险仍是上游输入信号、
+线材/接口/供电、采集设备本体，或需要 known-good UVC 对照复测。

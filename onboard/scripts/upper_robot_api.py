@@ -8025,6 +8025,7 @@ def safe_camera_usb_recovery_request(body: dict[str, Any] | None = None) -> dict
         "skip_audio_unbind": bool(payload.get("skip_audio_unbind") is True),
         "skip_uvc_quirks_reset": bool(payload.get("skip_uvc_quirks_reset") is True),
         "skip_control_reset": bool(payload.get("skip_control_reset") is True),
+        "reload_uvc_module": bool(payload.get("reload_uvc_module") is True),
     }
 
 
@@ -8046,6 +8047,8 @@ def camera_usb_recovery_command(script_path: Path, request: dict[str, Any]) -> l
         command.append("--skip-uvc-quirks-reset")
     if request.get("skip_control_reset"):
         command.append("--skip-control-reset")
+    if request.get("reload_uvc_module"):
+        command.append("--reload-uvc-module")
     return command
 
 
@@ -8073,7 +8076,7 @@ async def run_camera_usb_recovery(body: dict[str, Any] | None = None) -> tuple[i
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
-    process_timeout_s = 48.0
+    process_timeout_s = 96.0
     try:
         stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=process_timeout_s)
     except asyncio.TimeoutError:

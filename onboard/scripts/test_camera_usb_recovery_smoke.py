@@ -88,6 +88,42 @@ class CameraUsbRecoverySmokeTest(unittest.TestCase):
         self.assertEqual(reset["after"], "0")
         self.assertEqual(after["quirks"], "0")
 
+    def test_reload_uvc_module_uses_fixed_modprobe_arguments(self) -> None:
+        """模块重载必须固定 argv，不能把 PC 请求内容拼进 root 命令。"""
+        module = load_recovery_module()
+        original_run_command = module.run_command
+        original_read_uvc_module_parameters = module.read_uvc_module_parameters
+        original_list_video_nodes = module.list_video_nodes
+        original_sleep = module.time.sleep
+        calls: list[list[str]] = []
+
+        def fake_run_command(argv: list[str], **_kwargs: object) -> dict[str, object]:
+            calls.append(argv)
+            return {"stdout": "", "stderr": "", "returncode": 0, "timed_out": False}
+
+        module.run_command = fake_run_command
+        module.read_uvc_module_parameters = lambda *args, **kwargs: {
+            "quirks": "0",
+            "nodrop": "0",
+            "timeout": "5000",
+        }
+        module.list_video_nodes = lambda *args, **kwargs: ["/dev/video1", "/dev/video2"]
+        module.time.sleep = lambda *_args, **_kwargs: None
+        try:
+            result = module.reload_uvc_module("/dev/video1", "3-1")
+        finally:
+            module.run_command = original_run_command
+            module.read_uvc_module_parameters = original_read_uvc_module_parameters
+            module.list_video_nodes = original_list_video_nodes
+            module.time.sleep = original_sleep
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["module"], "uvcvideo")
+        self.assertEqual(calls[0], ["lsof", "/dev/video1"])
+        self.assertEqual(calls[1], ["modprobe", "-r", "uvcvideo"])
+        self.assertEqual(calls[2], ["modprobe", "uvcvideo", "quirks=0", "nodrop=0", "timeout=5000"])
+        self.assertEqual(result["parameters_after_load"]["timeout"], "5000")
+
     def test_reset_v4l2_controls_only_writes_advertised_defaults(self) -> None:
         """恢复脚本应重置 DV20 常见控制项，但不能把未公开控制硬塞给设备。"""
         module = load_recovery_module()

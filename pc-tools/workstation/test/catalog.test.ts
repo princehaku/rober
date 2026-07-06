@@ -15788,6 +15788,19 @@ describe("workstation fail-closed API contracts", () => {
             uvc_quirks_before: "4294967295",
             uvc_quirks_after_reset: "0",
             uvc_quirks_after: "0",
+            uvc_module_reload_requested: true,
+            uvc_module_reload_attempted: true,
+            uvc_module_reload_ok: true,
+            uvc_module_parameters_after_reload: {
+              quirks: "0",
+              nodrop: "0",
+              timeout: "5000",
+            },
+            uvc_module_reload: {
+              ok: true,
+              module: "uvcvideo",
+              video_nodes_after_load: ["/dev/video1", "/dev/video2"],
+            },
             audio_rebind_ok: true,
             audio_bind_status_after_rebind: {
               "3-1:1.2": { bound_to_snd_usb_audio: true },
@@ -15838,6 +15851,7 @@ describe("workstation fail-closed API contracts", () => {
           skip_reauthorize: true,
           skip_audio_unbind: "true",
           skip_uvc_quirks_reset: "true",
+          reload_uvc_module: true,
           endpoint: "/api/base/manual",
         }),
       });
@@ -15866,6 +15880,11 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.uvc_quirks_before).toBe("4294967295");
       expect(body.uvc_quirks_after_reset).toBe("0");
       expect(body.uvc_quirks_after).toBe("0");
+      expect(body.uvc_module_reload_requested).toBe(true);
+      expect(body.uvc_module_reload_attempted).toBe(true);
+      expect(body.uvc_module_reload_ok).toBe(true);
+      expect(body.uvc_module_parameters_after_reload.quirks).toBe("0");
+      expect(body.uvc_module_reload.video_nodes_after_load).toContain("/dev/video1");
       expect(body.audio_rebind_ok).toBe(true);
       expect(body.audio_bind_status_after_rebind["3-1:1.2"].bound_to_snd_usb_audio).toBe(true);
       expect(body.topology_after_audio_rebind.stdout).toContain("snd-usb-audio");
@@ -15890,6 +15909,7 @@ describe("workstation fail-closed API contracts", () => {
           skip_audio_unbind: false,
           skip_uvc_quirks_reset: false,
           skip_control_reset: false,
+          reload_uvc_module: true,
         },
       ]);
       expect(receivedBodies["/api/base/manual"]).toBeUndefined();

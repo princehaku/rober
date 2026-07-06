@@ -126,6 +126,40 @@ def read_uvc_module_parameters(parameters_root: Path = Path("/sys/module/uvcvide
     return values
 
 
+def list_video_nodes(dev_root: Path = Path("/dev")) -> list[str]:
+    """记录当前 video 节点；模块重载会短暂移除节点，需要把证据写入 JSON。"""
+    return sorted(str(path) for path in dev_root.glob("video*"))
+
+
+def reload_uvc_module(video_device: str, usb_device: str) -> dict[str, Any]:
+    """显式卸载并重载 uvcvideo，用于排除内核模块状态漂移导致的零帧。"""
+    summary: dict[str, Any] = {
+        "requested": True,
+        "module": "uvcvideo",
+        "device": video_device,
+        "usb_device": usb_device,
+        "parameters_before": read_uvc_module_parameters(),
+        "video_nodes_before": list_video_nodes(),
+        "owners_before_reload": run_command(["lsof", video_device], timeout_s=4),
+    }
+    # modprobe 参数固定在代码里，PC 端只能传布尔开关，不能把浏览器 body 变成 root argv。
+    summary["remove"] = run_command(["modprobe", "-r", "uvcvideo"], timeout_s=12)
+    time.sleep(0.5)
+    summary["parameters_after_remove"] = read_uvc_module_parameters()
+    summary["video_nodes_after_remove"] = list_video_nodes()
+    summary["load"] = run_command(["modprobe", "uvcvideo", "quirks=0", "nodrop=0", "timeout=5000"], timeout_s=12)
+    time.sleep(1.0)
+    summary["parameters_after_load"] = read_uvc_module_parameters()
+    summary["video_nodes_after_load"] = list_video_nodes()
+    summary["ok"] = (
+        summary["remove"].get("returncode") == 0
+        and summary["load"].get("returncode") == 0
+        and not summary["remove"].get("timed_out")
+        and not summary["load"].get("timed_out")
+    )
+    return summary
+
+
 def reset_uvc_quirks(parameters_root: Path = Path("/sys/module/uvcvideo/parameters")) -> dict[str, Any]:
     """把 uvcvideo quirks 复位到 0；配合 reauthorize 才能让新探测按干净参数绑定。"""
     quirks_path = parameters_root / "quirks"
@@ -487,6 +521,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--skip-audio-unbind", action="store_true", help="Do not unbind snd-usb-audio interfaces.")
     parser.add_argument("--skip-uvc-quirks-reset", action="store_true", help="Do not reset uvcvideo quirks to 0 before reauthorize.")
     parser.add_argument("--skip-control-reset", action="store_true", help="Do not reset advertised V4L2 camera controls before streaming.")
+    parser.add_argument("--reload-uvc-module", action="store_true", help="Unload and reload uvcvideo before reauthorizing the USB camera.")
     return parser
 
 
@@ -515,6 +550,16 @@ def main() -> int:
     summary["power_actions"] = set_usb_power_on(usb_device)
     summary["uvc_module_parameters_before"] = read_uvc_module_parameters()
     summary["uvc_quirks_before"] = summary["uvc_module_parameters_before"].get("quirks", "not_loaded")
+    summary["uvc_module_reload_requested"] = bool(args.reload_uvc_module)
+    if args.reload_uvc_module:
+        summary["uvc_module_reload"] = reload_uvc_module(args.device, usb_device)
+        summary["uvc_module_reload_attempted"] = True
+        summary["uvc_module_reload_ok"] = bool(summary["uvc_module_reload"].get("ok"))
+        summary["uvc_module_parameters_after_reload"] = read_uvc_module_parameters()
+    else:
+        summary["uvc_module_reload"] = {"requested": False, "skipped": True, "reason": "reload_uvc_module_not_requested"}
+        summary["uvc_module_reload_attempted"] = False
+        summary["uvc_module_reload_ok"] = False
     if args.skip_uvc_quirks_reset:
         summary["uvc_quirks_reset"] = {"skipped": True, "reason": "skip_uvc_quirks_reset"}
     else:

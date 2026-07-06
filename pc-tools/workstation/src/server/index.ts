@@ -3360,6 +3360,7 @@ function safeCameraUsbRecoveryBody(value: unknown): Record<string, unknown> {
     skip_audio_unbind: body?.skip_audio_unbind === true,
     skip_uvc_quirks_reset: body?.skip_uvc_quirks_reset === true,
     skip_control_reset: body?.skip_control_reset === true,
+    reload_uvc_module: body?.reload_uvc_module === true || body?.reloadUvcModule === true,
   };
 }
 
@@ -6574,6 +6575,11 @@ export function createWorkstationApp(): express.Express {
       uvc_quirks_before: shortText(remote.payload?.uvc_quirks_before, "not_loaded"),
       uvc_quirks_after_reset: shortText(remote.payload?.uvc_quirks_after_reset, "not_loaded"),
       uvc_quirks_after: shortText(remote.payload?.uvc_quirks_after, "not_loaded"),
+      uvc_module_reload_requested: remote.payload?.uvc_module_reload_requested === true,
+      uvc_module_reload_attempted: remote.payload?.uvc_module_reload_attempted === true,
+      uvc_module_reload_ok: remote.payload?.uvc_module_reload_ok === true,
+      uvc_module_parameters_after_reload: asRecord(remote.payload?.uvc_module_parameters_after_reload) ?? undefined,
+      uvc_module_reload: asRecord(remote.payload?.uvc_module_reload) ?? undefined,
       audio_rebind_ok: remote.payload?.audio_rebind_ok === true,
       audio_bind_status_after_rebind: asRecord(remote.payload?.audio_bind_status_after_rebind) ?? undefined,
       topology_after_audio_rebind: asRecord(remote.payload?.topology_after_audio_rebind) ?? undefined,
