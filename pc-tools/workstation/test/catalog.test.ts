@@ -15776,6 +15776,8 @@ describe("workstation fail-closed API contracts", () => {
             select_timeout_observed: true,
             zero_byte_no_frame_observed: true,
             stream_status_summary: "YUYV@320x240@20=streamon_success_zero_byte_no_frame;MJPG@480x320@30=streamon_success_zero_byte_no_frame",
+            v4l2_control_reset_ok: true,
+            v4l2_control_reset_applied_count: 10,
             software_capture_exhausted: true,
             known_good_uvc_required: true,
             camera_input_signal_check_required: true,
@@ -15848,6 +15850,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.select_timeout_observed).toBe(true);
       expect(body.zero_byte_no_frame_observed).toBe(true);
       expect(body.stream_status_summary).toContain("streamon_success_zero_byte_no_frame");
+      expect(body.v4l2_control_reset_ok).toBe(true);
+      expect(body.v4l2_control_reset_applied_count).toBe(10);
       expect(body.software_capture_exhausted).toBe(true);
       expect(body.known_good_uvc_required).toBe(true);
       expect(body.camera_input_signal_check_required).toBe(true);
@@ -15877,6 +15881,7 @@ describe("workstation fail-closed API contracts", () => {
           skip_reauthorize: true,
           skip_audio_unbind: false,
           skip_uvc_quirks_reset: false,
+          skip_control_reset: false,
         },
       ]);
       expect(receivedBodies["/api/base/manual"]).toBeUndefined();

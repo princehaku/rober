@@ -1386,3 +1386,28 @@ known-good UVC 后快速复测真实首帧。脚本只触碰相机 USB 和相机
 只 reauthorize DV20 所在 USB 设备 `3-1` 后复测，同三组格式仍全部 0 字节，服务恢复为 active。
 结论保持：这不是浏览器独占，也不是当前已知 UVC quirk 参数能修好的问题；恢复脚本新增 quirk 复位只是为了
 让后续现场复测从干净 UVC 参数开始，并把 `uvc_quirks_before/after` 写入 JSON 证据。
+
+## 2026-07-06 08:20 V4L2 control reset recovery
+
+本轮按 `docs/vendor/VENDOR_INDEX.md` 的硬件资料入口和现场 Linux 读回继续排查真实上位机
+`root@192.168.1.11 -p 7878`。WAVE ROVER UART/底盘协议未改动；本轮只触碰 DV20 UVC 相机链路，
+不发布 `/cmd_vel`，不调用底盘 UART。
+
+`camera_usb_recovery_smoke.py` 新增 V4L2 控制项默认值恢复：在 USB reauthorize、关闭 autosuspend、
+audio rebind 之后，对设备实际自报的 `brightness`、`contrast`、`saturation`、`gamma`、`gain`、
+`power_line_frequency`、`white_balance_temperature`、`sharpness`、`backlight_compensation` 和
+`auto_exposure` 写回默认值；未自报的控制项只记录 `control_not_advertised`，不会强行写入。
+
+真实 7001 通过 `POST /api/robot-control/camera/usb-recovery` 复验：
+
+- `v4l2_control_reset_ok=true`，`v4l2_control_reset_applied_count=10`。
+- `/dev/video1` 仍是 DV20 UVC capture，USB video speed 为 `480M`，`audio_rebind_ok=true`。
+- 两组低分辨率 STREAMON 均成功进入采集态，但输出仍为 0 字节：
+  `status=streamon_success_zero_byte_no_frame`、`frame_observed=false`、
+  `stream_failure_class=high_speed_zero_byte_no_frame`。
+- PC live-summary 仍显示 `camera_current_visible=false`、
+  `software_capture_exhausted=true`、`known_good_uvc_required=true`、
+  `camera_input_signal_check_required=true`。
+
+结论更新：软件侧又排除了 V4L2 亮度、曝光、增益等控制项漂移；当前实时图传缺口继续指向 DV20
+上游输入信号、USB 线/接口/供电、采集设备本体，或需要接入 known-good UVC 做对照。

@@ -88,6 +88,41 @@ class CameraUsbRecoverySmokeTest(unittest.TestCase):
         self.assertEqual(reset["after"], "0")
         self.assertEqual(after["quirks"], "0")
 
+    def test_reset_v4l2_controls_only_writes_advertised_defaults(self) -> None:
+        """恢复脚本应重置 DV20 常见控制项，但不能把未公开控制硬塞给设备。"""
+        module = load_recovery_module()
+        original_run_command = module.run_command
+        calls: list[list[str]] = []
+
+        def fake_run_command(argv: list[str], **_kwargs: object) -> dict[str, object]:
+            calls.append(argv)
+            if argv[-1] == "-L":
+                return {
+                    "stdout": "\n".join([
+                        "brightness 0x00980900 (int)",
+                        "contrast 0x00980901 (int)",
+                        "auto_exposure 0x009a0901 (menu)",
+                    ]),
+                    "stderr": "",
+                    "returncode": 0,
+                }
+            return {"stdout": "", "stderr": "", "returncode": 0}
+
+        module.run_command = fake_run_command
+        try:
+            result = module.reset_v4l2_controls("/dev/video1")
+        finally:
+            module.run_command = original_run_command
+
+        written_controls = [argv[-1].split("=", 1)[0] for argv in calls if "--set-ctrl" in argv]
+        skipped_controls = [action["control"] for action in result["actions"] if action.get("skipped")]
+
+        self.assertEqual(written_controls, ["brightness", "contrast", "auto_exposure"])
+        self.assertIn("saturation", skipped_controls)
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["attempted_count"], 3)
+        self.assertEqual(result["applied_count"], 3)
+
     def test_set_usb_power_on_disables_device_and_root_hub_autosuspend(self) -> None:
         """恢复脚本必须真的写 autosuspend，不能只把 control 置为 on。"""
         module = load_recovery_module()

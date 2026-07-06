@@ -290,6 +290,56 @@ def audio_interface_driver_status(
     return status
 
 
+V4L2_CONTROL_DEFAULTS: tuple[tuple[str, int], ...] = (
+    ("brightness", 0),
+    ("contrast", 256),
+    ("saturation", 256),
+    ("gamma", 20),
+    ("gain", 4),
+    ("power_line_frequency", 1),
+    ("white_balance_temperature", 4500),
+    ("sharpness", 128),
+    ("backlight_compensation", 0),
+    ("auto_exposure", 3),
+)
+
+
+def reset_v4l2_controls(device: str) -> dict[str, Any]:
+    """恢复 DV20 常见控制项默认值，排除曝光/增益漂移导致的无首帧假象。"""
+    list_before = run_command(["v4l2-ctl", "-d", device, "-L"], timeout_s=5)
+    controls_text = str(list_before.get("stdout") or "") + "\n" + str(list_before.get("stderr") or "")
+    actions: list[dict[str, Any]] = []
+    for name, value in V4L2_CONTROL_DEFAULTS:
+        if controls_text and name not in controls_text:
+            actions.append({
+                "control": name,
+                "value": value,
+                "skipped": True,
+                "reason": "control_not_advertised",
+            })
+            continue
+        result = run_command(["v4l2-ctl", "-d", device, "--set-ctrl", f"{name}={value}"], timeout_s=5)
+        actions.append({
+            "control": name,
+            "value": value,
+            "ok": result.get("returncode") == 0,
+            "command": result,
+        })
+    list_after = run_command(["v4l2-ctl", "-d", device, "-L"], timeout_s=5)
+    attempted = [action for action in actions if not action.get("skipped")]
+    failed = [action for action in attempted if not action.get("ok")]
+    return {
+        "device": device,
+        "list_before": list_before,
+        "actions": actions,
+        "attempted_count": len(attempted),
+        "applied_count": len(attempted) - len(failed),
+        "failed_count": len(failed),
+        "ok": bool(attempted) and not failed,
+        "list_after": list_after,
+    }
+
+
 def stream_once(device: str, width: int, height: int, pixelformat: str, fps: int, output: Path) -> dict[str, Any]:
     """使用 v4l2-ctl 直接 STREAMON；文件大于 0 才算真的出帧。"""
     try:
@@ -420,6 +470,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--skip-reauthorize", action="store_true", help="Do not toggle USB authorized.")
     parser.add_argument("--skip-audio-unbind", action="store_true", help="Do not unbind snd-usb-audio interfaces.")
     parser.add_argument("--skip-uvc-quirks-reset", action="store_true", help="Do not reset uvcvideo quirks to 0 before reauthorize.")
+    parser.add_argument("--skip-control-reset", action="store_true", help="Do not reset advertised V4L2 camera controls before streaming.")
     return parser
 
 
@@ -466,6 +517,14 @@ def main() -> int:
     summary["topology"] = run_command(["lsusb", "-t"], timeout_s=5)
     summary["usb_video_speed"] = usb_video_speed_from_topology(str(summary["topology"].get("stdout") or ""), usb_device)
     summary["formats"] = run_command(["v4l2-ctl", "-d", args.device, "--list-formats-ext"], timeout_s=5)
+    if args.skip_control_reset:
+        summary["v4l2_control_reset"] = {"skipped": True, "reason": "skip_control_reset"}
+        summary["v4l2_control_reset_ok"] = False
+        summary["v4l2_control_reset_applied_count"] = 0
+    else:
+        summary["v4l2_control_reset"] = reset_v4l2_controls(args.device)
+        summary["v4l2_control_reset_ok"] = bool(summary["v4l2_control_reset"].get("ok"))
+        summary["v4l2_control_reset_applied_count"] = int(summary["v4l2_control_reset"].get("applied_count") or 0)
     summary["streams"] = [
         stream_once(args.device, 320, 240, "YUYV", 20, Path("/tmp/rober_camera_usb_recovery_yuyv.raw")),
         stream_once(args.device, 480, 320, "MJPG", 30, Path("/tmp/rober_camera_usb_recovery_mjpg.raw")),

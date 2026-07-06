@@ -6084,3 +6084,9 @@ manual、keyboard、free-roam、Nav2、delivery、stop 或 `/cmd_vel`。
 同轮 `GET /api/robot-control/live-summary` 也补齐顶层 `software_capture_exhausted` 和
 `known_good_uvc_required`，与 summary nested camera 读回同源，方便现场脚本只读 live-summary 时直接判断
 软件采集路径已穷尽、下一步进入摄像头输入/供电/known-good UVC 复测。
+
+2026-07-06 08:20 CST 起，相机 USB recovery 默认增加 V4L2 控制项恢复：对 DV20 自报的
+`brightness/contrast/saturation/gamma/gain/power_line_frequency/white_balance_temperature/sharpness/backlight_compensation/auto_exposure`
+写回默认值后再执行低分辨率 STREAMON。PC recovery 回包顶层暴露 `v4l2_control_reset_ok` 和
+`v4l2_control_reset_applied_count`。真实 7001 复验显示 10 项控制恢复成功，但仍无任何视频 buffer；
+因此 PC 页面继续显示实时图传未完成，不能把控制项恢复成功误写成画面 ready。

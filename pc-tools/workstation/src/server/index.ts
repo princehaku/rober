@@ -3357,6 +3357,7 @@ function safeCameraUsbRecoveryBody(value: unknown): Record<string, unknown> {
     skip_reauthorize: body?.skip_reauthorize === true,
     skip_audio_unbind: body?.skip_audio_unbind === true,
     skip_uvc_quirks_reset: body?.skip_uvc_quirks_reset === true,
+    skip_control_reset: body?.skip_control_reset === true,
   };
 }
 
@@ -6556,6 +6557,8 @@ export function createWorkstationApp(): express.Express {
       select_timeout_observed: remote.payload?.select_timeout_observed === true,
       zero_byte_no_frame_observed: remote.payload?.zero_byte_no_frame_observed === true,
       stream_status_summary: shortText(remote.payload?.stream_status_summary, "not_loaded"),
+      v4l2_control_reset_ok: remote.payload?.v4l2_control_reset_ok === true,
+      v4l2_control_reset_applied_count: finiteNumber(remote.payload?.v4l2_control_reset_applied_count) ?? 0,
       software_capture_exhausted: remote.payload?.software_capture_exhausted === true,
       known_good_uvc_required: remote.payload?.known_good_uvc_required === true,
       camera_input_signal_check_required: remote.payload?.camera_input_signal_check_required === true,

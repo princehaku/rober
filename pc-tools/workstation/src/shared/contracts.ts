@@ -6554,6 +6554,8 @@ export interface RobotControlCameraUsbRecoveryProxyResponse extends ProofFlags {
   select_timeout_observed?: boolean;
   zero_byte_no_frame_observed?: boolean;
   stream_status_summary?: string;
+  v4l2_control_reset_ok?: boolean;
+  v4l2_control_reset_applied_count?: number;
   software_capture_exhausted?: boolean;
   known_good_uvc_required?: boolean;
   camera_input_signal_check_required?: boolean;

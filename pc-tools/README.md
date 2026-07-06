@@ -101,6 +101,14 @@ known-good UVC 后复测。
 也能判断“软件采集矩阵已穷尽，需要检查摄像头输入/供电或换 known-good UVC”，不需要再钻 nested camera
 字段。
 
+2026-07-06 08:20 CST 起，相机 USB recovery 会在 reauthorize/audio rebind 后把 DV20 自报的常见
+V4L2 控制项恢复到默认值，再跑 `YUYV@320x240@20` 与 `MJPG@480x320@30` STREAMON。PC
+`/api/robot-control/camera/usb-recovery` 顶层同步返回 `v4l2_control_reset_ok` 与
+`v4l2_control_reset_applied_count`。真实 7001 复验为 `v4l2_control_reset_ok=true`、
+`v4l2_control_reset_applied_count=10`，但仍 `status=streamon_success_zero_byte_no_frame`、
+`frame_observed=false`、`usb_video_speed=480M`；这进一步排除了亮度/曝光/增益控制漂移，图传缺口继续指向
+DV20 上游输入信号、线材/接口/供电、采集设备本体或 known-good UVC 对照。
+
 2026-07-06 05:15 CST 起，上车 `/api/map/preview` 的雷达贴图不再只依赖可能过期的
 `lidar_scan_proof_latest.json`；当 LiDAR lifecycle 正在运行且 driver diagnostics 5 秒内更新、状态为
 `scan_published` 时，地图预览直接使用 diagnostics 里的 `scan_preview_points` 作为当前雷达点。真实 7001
