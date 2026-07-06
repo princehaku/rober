@@ -6553,6 +6553,10 @@ export interface RobotControlCameraUsbRecoveryProxyResponse extends ProofFlags {
   streamon_success_observed?: boolean;
   select_timeout_observed?: boolean;
   zero_byte_no_frame_observed?: boolean;
+  userptr_zero_byte_no_frame_observed?: boolean;
+  no_query_zero_byte_no_frame_observed?: boolean;
+  userptr_attempt_count?: number;
+  no_query_attempt_count?: number;
   stream_status_summary?: string;
   v4l2_control_reset_ok?: boolean;
   v4l2_control_reset_applied_count?: number;

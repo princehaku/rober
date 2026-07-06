@@ -1411,3 +1411,25 @@ audio rebind 之后，对设备实际自报的 `brightness`、`contrast`、`satu
 
 结论更新：软件侧又排除了 V4L2 亮度、曝光、增益等控制项漂移；当前实时图传缺口继续指向 DV20
 上游输入信号、USB 线/接口/供电、采集设备本体，或需要接入 known-good UVC 做对照。
+
+## 2026-07-06 08:31 userptr/no-query STREAMON recovery
+
+本轮继续只触碰相机链路，不改 WAVE ROVER UART、底盘协议或 ROS2 运动控制；硬件资料入口仍采用
+`docs/vendor/VENDOR_INDEX.md`，真实判断以 `root@192.168.1.11 -p 7878` 的 Linux 读回为准。
+
+`camera_usb_recovery_smoke.py` 的 STREAMON 矩阵从两组 mmap 扩展为六组：
+
+- `YUYV@320x240@20` / `MJPG@480x320@30` 的默认 `mmap`。
+- 同两组格式的 `userptr`，用于排除 mmap 缓冲路径差异。
+- 同两组格式的 `mmap + --stream-no-query`，用于排除 streaming 前 DV timing/standard query 差异。
+
+真实 7001 recovery 返回：
+
+- `userptr_attempt_count=2`、`userptr_zero_byte_no_frame_observed=true`。
+- `no_query_attempt_count=2`、`no_query_zero_byte_no_frame_observed=true`。
+- `streamon_success_observed=true`、`zero_byte_no_frame_observed=true`、`frame_observed=false`。
+- PC live-summary 继续为 `camera_current_visible=false`，地图、路线、雷达点、目标点、WASD 和 delivery
+  读回保持可用。
+
+结论更新：当前无帧不再只是 OpenCV、ffmpeg、mmap 或控制项问题；UVC 驱动能成功 STREAMON，但设备没有交出
+任何视频 buffer。下一步优先做 DV20 上游输入、线材/接口/供电、采集设备本体和 known-good UVC 对照。

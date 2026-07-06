@@ -340,25 +340,39 @@ def reset_v4l2_controls(device: str) -> dict[str, Any]:
     }
 
 
-def stream_once(device: str, width: int, height: int, pixelformat: str, fps: int, output: Path) -> dict[str, Any]:
-    """使用 v4l2-ctl 直接 STREAMON；文件大于 0 才算真的出帧。"""
+def stream_once(
+    device: str,
+    width: int,
+    height: int,
+    pixelformat: str,
+    fps: int,
+    output: Path,
+    *,
+    io_mode: str = "mmap",
+    no_query: bool = False,
+) -> dict[str, Any]:
+    """使用 v4l2-ctl 直接 STREAMON；多 I/O 模式用于排除驱动缓冲路径差异。"""
     try:
         output.unlink()
     except FileNotFoundError:
         pass
+    stream_arg = "--stream-user=3" if io_mode == "userptr" else "--stream-mmap=3"
+    command = [
+        "v4l2-ctl",
+        "-d",
+        device,
+        f"--set-fmt-video=width={width},height={height},pixelformat={pixelformat}",
+        f"--set-parm={fps}",
+        stream_arg,
+        "--stream-count=5",
+        "--stream-poll",
+        "--verbose",
+    ]
+    if no_query:
+        command.append("--stream-no-query")
+    command.append(f"--stream-to={output}")
     result = run_command(
-        [
-            "v4l2-ctl",
-            "-d",
-            device,
-            f"--set-fmt-video=width={width},height={height},pixelformat={pixelformat}",
-            f"--set-parm={fps}",
-            "--stream-mmap=3",
-            "--stream-count=5",
-            "--stream-poll",
-            "--verbose",
-            f"--stream-to={output}",
-        ],
+        command,
         timeout_s=10,
     )
     size = output.stat().st_size if output.exists() else 0
@@ -385,6 +399,8 @@ def stream_once(device: str, width: int, height: int, pixelformat: str, fps: int
     )
     return {
         "format": f"{pixelformat}@{width}x{height}@{fps}",
+        "io_mode": io_mode,
+        "no_query": no_query,
         "output": str(output),
         "bytes": size,
         "status": status,
@@ -526,8 +542,12 @@ def main() -> int:
         summary["v4l2_control_reset_ok"] = bool(summary["v4l2_control_reset"].get("ok"))
         summary["v4l2_control_reset_applied_count"] = int(summary["v4l2_control_reset"].get("applied_count") or 0)
     summary["streams"] = [
-        stream_once(args.device, 320, 240, "YUYV", 20, Path("/tmp/rober_camera_usb_recovery_yuyv.raw")),
-        stream_once(args.device, 480, 320, "MJPG", 30, Path("/tmp/rober_camera_usb_recovery_mjpg.raw")),
+        stream_once(args.device, 320, 240, "YUYV", 20, Path("/tmp/rober_camera_usb_recovery_yuyv_mmap.raw")),
+        stream_once(args.device, 480, 320, "MJPG", 30, Path("/tmp/rober_camera_usb_recovery_mjpg_mmap.raw")),
+        stream_once(args.device, 320, 240, "YUYV", 20, Path("/tmp/rober_camera_usb_recovery_yuyv_userptr.raw"), io_mode="userptr"),
+        stream_once(args.device, 480, 320, "MJPG", 30, Path("/tmp/rober_camera_usb_recovery_mjpg_userptr.raw"), io_mode="userptr"),
+        stream_once(args.device, 320, 240, "YUYV", 20, Path("/tmp/rober_camera_usb_recovery_yuyv_no_query.raw"), no_query=True),
+        stream_once(args.device, 480, 320, "MJPG", 30, Path("/tmp/rober_camera_usb_recovery_mjpg_no_query.raw"), no_query=True),
     ]
     summary["uvc_module_parameters_after_stream"] = read_uvc_module_parameters()
     summary["uvc_quirks_after"] = summary["uvc_module_parameters_after_stream"].get("quirks", "not_loaded")
@@ -535,7 +555,20 @@ def main() -> int:
     summary["streamon_success_observed"] = any(item.get("streamon_success") for item in summary["streams"])
     summary["select_timeout_observed"] = any(item.get("select_timeout") for item in summary["streams"])
     summary["zero_byte_no_frame_observed"] = any(item.get("zero_byte_no_frame") for item in summary["streams"])
-    summary["stream_status_summary"] = ";".join(f"{item['format']}={item.get('status')}" for item in summary["streams"])
+    summary["userptr_attempt_count"] = sum(1 for item in summary["streams"] if item.get("io_mode") == "userptr")
+    summary["userptr_zero_byte_no_frame_observed"] = any(
+        item.get("io_mode") == "userptr" and item.get("zero_byte_no_frame")
+        for item in summary["streams"]
+    )
+    summary["no_query_attempt_count"] = sum(1 for item in summary["streams"] if item.get("no_query"))
+    summary["no_query_zero_byte_no_frame_observed"] = any(
+        item.get("no_query") and item.get("zero_byte_no_frame")
+        for item in summary["streams"]
+    )
+    summary["stream_status_summary"] = ";".join(
+        f"{item['format']}:{item.get('io_mode')}{':no_query' if item.get('no_query') else ''}={item.get('status')}"
+        for item in summary["streams"]
+    )
     summary["status"] = (
         "frame_observed"
         if summary["frame_observed"]

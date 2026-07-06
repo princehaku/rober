@@ -15775,7 +15775,11 @@ describe("workstation fail-closed API contracts", () => {
             streamon_success_observed: true,
             select_timeout_observed: true,
             zero_byte_no_frame_observed: true,
-            stream_status_summary: "YUYV@320x240@20=streamon_success_zero_byte_no_frame;MJPG@480x320@30=streamon_success_zero_byte_no_frame",
+            userptr_zero_byte_no_frame_observed: true,
+            no_query_zero_byte_no_frame_observed: true,
+            userptr_attempt_count: 2,
+            no_query_attempt_count: 2,
+            stream_status_summary: "YUYV@320x240@20:mmap=streamon_success_zero_byte_no_frame;MJPG@480x320@30:mmap:no_query=streamon_success_zero_byte_no_frame",
             v4l2_control_reset_ok: true,
             v4l2_control_reset_applied_count: 10,
             software_capture_exhausted: true,
@@ -15849,6 +15853,10 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.streamon_success_observed).toBe(true);
       expect(body.select_timeout_observed).toBe(true);
       expect(body.zero_byte_no_frame_observed).toBe(true);
+      expect(body.userptr_zero_byte_no_frame_observed).toBe(true);
+      expect(body.no_query_zero_byte_no_frame_observed).toBe(true);
+      expect(body.userptr_attempt_count).toBe(2);
+      expect(body.no_query_attempt_count).toBe(2);
       expect(body.stream_status_summary).toContain("streamon_success_zero_byte_no_frame");
       expect(body.v4l2_control_reset_ok).toBe(true);
       expect(body.v4l2_control_reset_applied_count).toBe(10);

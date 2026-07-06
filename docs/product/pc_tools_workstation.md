@@ -6090,3 +6090,6 @@ manual、keyboard、free-roam、Nav2、delivery、stop 或 `/cmd_vel`。
 写回默认值后再执行低分辨率 STREAMON。PC recovery 回包顶层暴露 `v4l2_control_reset_ok` 和
 `v4l2_control_reset_applied_count`。真实 7001 复验显示 10 项控制恢复成功，但仍无任何视频 buffer；
 因此 PC 页面继续显示实时图传未完成，不能把控制项恢复成功误写成画面 ready。
+同轮 recovery 继续覆盖 `userptr` 和 `mmap + --stream-no-query` 两类直接采集路径，并在 PC 回包顶层暴露
+`userptr_zero_byte_no_frame_observed`、`no_query_zero_byte_no_frame_observed` 与尝试次数。真实 7001
+复验显示这两类路径也都是 STREAMON 成功但 0 buffer，进一步排除 mmap 缓冲和 DV timing query 差异。

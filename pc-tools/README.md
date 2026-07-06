@@ -109,6 +109,12 @@ V4L2 控制项恢复到默认值，再跑 `YUYV@320x240@20` 与 `MJPG@480x320@30
 `frame_observed=false`、`usb_video_speed=480M`；这进一步排除了亮度/曝光/增益控制漂移，图传缺口继续指向
 DV20 上游输入信号、线材/接口/供电、采集设备本体或 known-good UVC 对照。
 
+同轮 recovery 再扩展 STREAMON 矩阵：除默认 `mmap` 外，新增 `userptr` 和 `mmap + --stream-no-query`
+两条直接采集路径。PC recovery 顶层返回 `userptr_zero_byte_no_frame_observed`、
+`no_query_zero_byte_no_frame_observed`、`userptr_attempt_count` 和 `no_query_attempt_count`。真实 7001
+复验中 userptr/no-query 各 2 次均为 `streamon_success_zero_byte_no_frame`，说明当前无帧也不是 mmap
+缓冲路径或 DV timing query 触发的假失败。
+
 2026-07-06 05:15 CST 起，上车 `/api/map/preview` 的雷达贴图不再只依赖可能过期的
 `lidar_scan_proof_latest.json`；当 LiDAR lifecycle 正在运行且 driver diagnostics 5 秒内更新、状态为
 `scan_published` 时，地图预览直接使用 diagnostics 里的 `scan_preview_points` 作为当前雷达点。真实 7001
