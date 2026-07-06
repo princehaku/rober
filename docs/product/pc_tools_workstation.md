@@ -97,6 +97,14 @@ pc-tools/workstation/
   USB 仍为 `480M`，但 `STREAMON` 成功后输出 0 字节、首帧 probe 仍 `probe_total_timeout`。
   当前结论仍是 DV20/采集输入、视频线、USB/供电或 known-good UVC 方向；不是 PC 页面独占，也不阻塞
   地图、WASD、自由移动或 Nav2 控制入口。
+- 2026-07-06 09:04 CST 复测后，PC 相机结论继续保持透明失败而不是伪成功：8088 选中 DV20
+  `/dev/video1`、USB 为 `480M`、无人占用；7001 共享 MJPEG 返回
+  `ffmpeg_mjpeg_first_frame_unreadable`；USB recovery 完成 reauthorize、audio rebind、autosuspend
+  关闭和 V4L2 控制复位后仍 `streamon_success_zero_byte_no_frame`；deep probe 11 个 backend 尝试和
+  2 个 userptr 尝试均无帧。live-summary 仍显示 `camera_shared_preview_everyone_can_join=true`、
+  `camera_current_visible=false`、`software_capture_exhausted=true`、`known_good_uvc_required=true`、
+  `camera_input_signal_check_required=true`。PC 页面/summary 文案修正带 `(usb-...)` 设备名后接中文状态的空格；
+  这只提升可读性，不改变采集或运动行为。
 - 2026-07-06 07:01 CST 现场复验 PC 手控：本机 `0.0.0.0:7001` 经固定代理向
   `http://192.168.1.11:8787` 发送 forward/back 低速短脉冲和 stop，forward/back 均返回
   `proxy_status=command_forwarded`、`base_command_mode=ros`、`command_result_ok=true`、

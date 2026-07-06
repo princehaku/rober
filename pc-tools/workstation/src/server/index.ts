@@ -733,12 +733,14 @@ function cameraDiagnosisPlainHint(value: unknown, selectedName: string): string 
     return "";
   }
   const deviceName = cameraSourceDisplayName(selectedName, "UVC 设备");
-  return hint.replace(/：(not_loaded|none|unknown|null|摄像头|USB 摄像头)\s*当前没人占用/g, `：${cameraOwnerFreeText(deviceName)}`);
+  return hint
+    .replace(/：(not_loaded|none|unknown|null|摄像头|USB 摄像头)\s*当前没人占用/g, `：${cameraOwnerFreeText(deviceName)}`)
+    .replace(/([)\]])\s*当前没人占用/g, "$1 当前没人占用");
 }
 
 function cameraOwnerFreeText(selectedName: string): string {
   // 英文设备型号后接中文时保留一个空格；中文泛称直接连接，避免“摄像头 当前”这种断裂文案。
-  return /[A-Za-z0-9]$/.test(selectedName) ? `${selectedName} 当前没人占用` : `${selectedName}当前没人占用`;
+  return /[A-Za-z0-9)\]]$/.test(selectedName) ? `${selectedName} 当前没人占用` : `${selectedName}当前没人占用`;
 }
 
 function normalizeAnswerSdp(value: string): string {

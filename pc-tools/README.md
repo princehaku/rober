@@ -117,6 +117,18 @@ DV20 上游输入信号、线材/接口/供电、采集设备本体或 known-goo
 复验中 userptr/no-query 各 2 次均为 `streamon_success_zero_byte_no_frame`，说明当前无帧也不是 mmap
 缓冲路径或 DV timing query 触发的假失败。
 
+2026-07-06 09:04 CST 复测相机链路：按 `docs/vendor/VENDOR_INDEX.md` 指向的 Waveshare 上位机参考，真实
+相机链路仍只消费 UVC/OpenCV/V4L2/ffmpeg 真实帧，不伪造占位图。上位机 8088 health/devices 显示
+DV20 `/dev/video1` 为唯一正分 `Video Capture` 候选、USB `480M`、当前无人占用；PC 7001 共享 MJPEG
+返回 `ffmpeg_mjpeg_first_frame_unreadable`，USB recovery 再次完成相机服务 stop/start、USB reauthorize、
+音频接口解绑/重绑、autosuspend 关闭和 10 个 V4L2 控制项复位，但仍
+`status=streamon_success_zero_byte_no_frame`、`frame_observed=false`。显式
+`backendSmoke=1` deep probe 返回 `backend_smoke_status=backend_no_frame_observed`、
+`backend_attempts=11`、`backend_userptr_attempt_count=2`、`software_capture_exhausted=true`、
+`known_good_uvc_required=true`、`camera_input_signal_check_required=true`。PC 文案同步修正带
+`(usb-...)` 设备名后接中文状态的空格；功能结论不变：PC 共享预览入口可多人加入且不独占，但当前 DV20
+源头没有输出任何 video buffer，下一步只能检查摄像头输入/视频线/接口/供电或换 known-good UVC 后复测。
+
 2026-07-06 05:15 CST 起，上车 `/api/map/preview` 的雷达贴图不再只依赖可能过期的
 `lidar_scan_proof_latest.json`；当 LiDAR lifecycle 正在运行且 driver diagnostics 5 秒内更新、状态为
 `scan_published` 时，地图预览直接使用 diagnostics 里的 `scan_preview_points` 作为当前雷达点。真实 7001

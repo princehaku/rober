@@ -3417,7 +3417,7 @@ describe("robotControlSummary", () => {
           source_failure_reason: "none",
           video_source: "/dev/video1",
           current_selection: {
-            selected_name: "USB Composite Device: DV20 USB",
+            selected_name: "USB Composite Device: DV20 USB  (usb-5310000.usb-1)",
             selected_path: "/dev/video1",
             selected_is_uvc_or_usb: true,
           },
@@ -3429,6 +3429,12 @@ describe("robotControlSummary", () => {
           uvc_usb_topology: {
             status: "loaded",
             video_usb_speed: "480M",
+          },
+          source_diagnosis: {
+            status: "uvc_no_frame_not_exclusive",
+            not_exclusive: true,
+            plain_hint: "不是页面独占：USB Composite Device: DV20 USB  (usb-5310000.usb-1)当前没人占用，但 UVC 设备没有输出视频帧。",
+            next_action: "check_usb_camera_input_power_or_known_good_uvc",
           },
           media_diagnostics: {
             last_offer_error: {
@@ -3473,6 +3479,7 @@ describe("robotControlSummary", () => {
     expect(summary.readback_summary.camera.last_offer_failure_reason).toBe("opencv_capture_not_opened");
     expect(summary.readback_summary.camera.source_diagnosis_status).toBe("uvc_no_frame_not_exclusive");
     expect(summary.readback_summary.camera.source_diagnosis_not_exclusive).toBe("true");
+    expect(summary.readback_summary.camera.source_diagnosis_plain_hint).toContain("USB Composite Device: DV20 USB  (usb-5310000.usb-1) 当前没人占用");
     expect(summary.live_closure_summary?.camera_hardware_action_required).toBe(true);
     expect(summary.live_closure_summary?.camera_hardware_action_label).toBe("检查摄像头输入/供电后复测");
     expect(summary.live_closure_summary?.camera_usb_speed).toBe("480M");
