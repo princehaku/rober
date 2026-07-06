@@ -7,11 +7,13 @@ sprint_type: micro
 - PC fixed first-frame probe 的诊断 alias 增加 `software_capture_exhausted`、`known_good_uvc_required` 和 `camera_input_signal_check_required`。
 - 当显式 `backendSmoke=1` 的上车 backend smoke 返回 `backend_no_frame_observed` 且没有任何首帧证据时，PC probe 回包顶层直接暴露“软件采集矩阵已穷尽，需要检查输入/供电或换 known-good UVC”。
 - `recordCameraFirstFrameProbeResult()` 同步保存这些 alias，后续 `camera/mjpeg/status` 和 summary 能继续继承本次深度检查事实。
+- `GET /api/robot-control/live-summary` 顶层同步平铺 `software_capture_exhausted` 和 `known_good_uvc_required`，现场脚本只读 live-summary 时也能看到相机软件采集已穷尽。
 - 更新 PC 合同类型、catalog 断言、`pc-tools/README.md` 和 `docs/product/pc_tools_workstation.md`。
 
 ## 验证结果
 
 - `cd pc-tools/workstation && npm test -- test/catalog.test.ts -t "workstation camera first-frame probe can request backend smoke" --run`：通过，1 test OK。
+- `cd pc-tools/workstation && npm test -- test/catalog.test.ts -t "workstation camera USB recovery proxy only forwards" --run`：通过，1 test OK。
 - `cd pc-tools/workstation && npm test -- test/catalog.test.ts --run`：通过，195 tests OK。
 - `cd pc-tools/workstation && npm test -- test/robotControlSummary.test.ts --run`：通过，18 tests OK。
 - `cd pc-tools/workstation && npm run build`：通过；Vite 仍提示单个 chunk 超过 500 kB，这是既有体积警告。
@@ -19,6 +21,7 @@ sprint_type: micro
 - 真实 7001 deep probe：`POST /api/robot-control/camera/first-frame/probe?backendSmoke=1` 返回 `proxy_status=probe_failed`、`remote_http_status=503`、`status=first_frame_timeout`、`frame_observed=false`、`source_diagnosis_status=uvc_no_frame_not_exclusive`、`backend_smoke_status=backend_no_frame_observed`、`backend_attempts=11`、`backend_userptr_attempt_count=2`、`software_capture_exhausted=true`、`known_good_uvc_required=true`、`camera_input_signal_check_required=true`。
 - 真实 7001 MJPEG status：`GET /api/robot-control/camera/mjpeg/status` 返回 `status=source_first_frame_failed`、`shared_preview_everyone_can_join=true`、`shared_preview_exclusive_camera_claim=false`、`software_capture_exhausted=true`、`known_good_uvc_required=true`、`camera_input_signal_check_required=true`。
 - 真实 7001 WASD 短脉冲复验：低速 `forward` 返回 `command_raw_lr_nonzero_proven=true`、`command_raw_latest_left/right=164/164`；低速 `backward` 返回 `-164/-164`；两次 stop 均 `command_forwarded`。随后 live-summary 返回 `status=ready_for_motion`、`map_current_visible=true`、`path_current_visible=true`、`radar_map_points_visible=true`、`keyboard_continuous_forwarded_pulses=2`、`keyboard_stop_settled_after_pulse=true`、`command_raw_lr_nonzero_proven=true`。
+- 本轮补充验证：PC Node 重启后继续监听 `0.0.0.0:7001`，默认小车地址为 `http://192.168.1.11:8787`；live-summary 顶层返回 `software_capture_exhausted=true`、`known_good_uvc_required=true`、`camera_input_signal_check_required=true`，与 `readback_summary.camera` 和 MJPEG status 一致。
 
 ## 剩余风险
 

@@ -15915,6 +15915,8 @@ describe("workstation fail-closed API contracts", () => {
       expect(liveResponse.status).toBe(200);
       expect(liveBody.camera_source_diagnosis_status).toBe("uvc_no_frame_not_exclusive");
       expect(liveBody.camera_hardware_action_label).toBe("检查摄像头输入/供电后复测");
+      expect(liveBody.software_capture_exhausted).toBe(true);
+      expect(liveBody.known_good_uvc_required).toBe(true);
       expect(liveBody.camera_input_signal_check_required).toBe(true);
       expect(mjpegRequestCount).toBe(0);
     } finally {

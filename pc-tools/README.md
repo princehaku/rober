@@ -95,6 +95,12 @@ probe 回包顶层：`software_capture_exhausted`、`known_good_uvc_required` �
 `true`。这不生成占位图、不伪造实时图传，只让现场脚本和普通页面明确下一步是检查摄像头输入/供电或换
 known-good UVC 后复测。
 
+同轮继续补齐 `GET /api/robot-control/live-summary` 现场短字段：顶层现在也直接返回
+`software_capture_exhausted` 和 `known_good_uvc_required`，与同一次 summary 的
+`readback_summary.camera` 同源。真实 7001 复验中这两项均为 `true`，因此现场只看 live-summary
+也能判断“软件采集矩阵已穷尽，需要检查摄像头输入/供电或换 known-good UVC”，不需要再钻 nested camera
+字段。
+
 2026-07-06 05:15 CST 起，上车 `/api/map/preview` 的雷达贴图不再只依赖可能过期的
 `lidar_scan_proof_latest.json`；当 LiDAR lifecycle 正在运行且 driver diagnostics 5 秒内更新、状态为
 `scan_published` 时，地图预览直接使用 diagnostics 里的 `scan_preview_points` 作为当前雷达点。真实 7001

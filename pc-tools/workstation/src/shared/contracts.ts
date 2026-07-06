@@ -3617,6 +3617,8 @@ export interface RobotControlLiveSummaryResponse extends RobotControlLiveClosure
   camera_shared_preview_cached_frame_loaded: RobotControlSummaryResponse["readback_summary"]["camera"]["shared_preview_cached_frame_loaded"];
   camera_shared_preview_last_failure_reason: RobotControlSummaryResponse["readback_summary"]["camera"]["shared_preview_last_failure_reason"];
   camera_shared_preview_last_remote_http_status: RobotControlSummaryResponse["readback_summary"]["camera"]["shared_preview_last_remote_http_status"];
+  software_capture_exhausted: RobotControlSummaryResponse["readback_summary"]["camera"]["software_capture_exhausted"];
+  known_good_uvc_required: RobotControlSummaryResponse["readback_summary"]["camera"]["known_good_uvc_required"];
 }
 
 export interface RobotControlSummaryResponse extends ProofFlags {
@@ -5015,6 +5017,8 @@ export interface RobotControlSummaryResponse extends ProofFlags {
   live_wysiwyg_camera_visible?: RobotControlLiveClosureSummary["live_wysiwyg_camera_visible"];
   camera_hardware_action_required?: RobotControlLiveClosureSummary["camera_hardware_action_required"];
   camera_hardware_action_label?: RobotControlLiveClosureSummary["camera_hardware_action_label"];
+  software_capture_exhausted?: RobotControlSummaryResponse["readback_summary"]["camera"]["software_capture_exhausted"];
+  known_good_uvc_required?: RobotControlSummaryResponse["readback_summary"]["camera"]["known_good_uvc_required"];
   camera_input_signal_check_required?: RobotControlLiveClosureSummary["camera_input_signal_check_required"];
   camera_input_signal_check_label?: RobotControlLiveClosureSummary["camera_input_signal_check_label"];
   camera_input_signal_check_plain?: RobotControlLiveClosureSummary["camera_input_signal_check_plain"];

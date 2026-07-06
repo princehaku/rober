@@ -6081,3 +6081,6 @@ uvcvideo quirk、audio 复合接口、页面独占或格式未尝试作为主要
 复验中，probe 返回 `backend_attempts=11`、`backend_userptr_attempt_count=2` 且三项 alias 均为 `true`；
 MJPEG status 同步显示三项为 `true`。该改动不生成占位图、不把相机无帧包装为实时图传 ready，也不触发
 manual、keyboard、free-roam、Nav2、delivery、stop 或 `/cmd_vel`。
+同轮 `GET /api/robot-control/live-summary` 也补齐顶层 `software_capture_exhausted` 和
+`known_good_uvc_required`，与 summary nested camera 读回同源，方便现场脚本只读 live-summary 时直接判断
+软件采集路径已穷尽、下一步进入摄像头输入/供电/known-good UVC 复测。

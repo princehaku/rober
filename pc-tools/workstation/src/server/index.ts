@@ -4539,6 +4539,8 @@ function buildRobotControlLiveSummaryResponse(summary: RobotControlSummaryRespon
     camera_shared_preview_cached_frame_loaded: cameraReadback.shared_preview_cached_frame_loaded,
     camera_shared_preview_last_failure_reason: cameraReadback.shared_preview_last_failure_reason,
     camera_shared_preview_last_remote_http_status: cameraReadback.shared_preview_last_remote_http_status,
+    software_capture_exhausted: cameraReadback.software_capture_exhausted,
+    known_good_uvc_required: cameraReadback.known_good_uvc_required,
     // 现场只看 live-summary 时也要能确认 WASD/手控是否真的发出了非零 raw L/R，避免钻 summary 深层字段。
     command_raw_nonzero_proven: baseReadback.command_raw_nonzero_proven === "true",
     command_raw_lr_nonzero_proven: baseReadback.command_raw_lr_nonzero_proven === "true",
