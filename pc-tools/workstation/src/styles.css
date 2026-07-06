@@ -2371,6 +2371,7 @@ h3 {
 }
 
 .plain-map-viewport {
+  position: relative;
   display: grid;
   gap: 8px;
   margin-bottom: 10px;
@@ -2429,6 +2430,158 @@ h3 {
   min-height: 0;
   border: 0;
   border-radius: 0;
+}
+
+.plain-map-overview-inset {
+  /* 主画布默认 800% 时仍要保留全局态势；小窗只复用当前只读图层，不触发任何刷新或运动。 */
+  position: absolute;
+  top: 56px;
+  right: 12px;
+  z-index: 7;
+  display: grid;
+  gap: 4px;
+  width: min(360px, 30vw);
+  min-width: 260px;
+  max-width: calc(100% - 24px);
+  border: 1px solid rgb(23 32 42 / 28%);
+  border-radius: 6px;
+  padding: 6px;
+  background: rgb(248 250 252 / 94%);
+  box-shadow: 0 10px 28px rgb(21 31 43 / 20%);
+  pointer-events: none;
+}
+
+.robot-console-grid[data-layout="visual-first"] .plain-map-overview-inset {
+  /* 首页图层条浮在画布顶部，小窗下移一点，避免两层状态互相遮挡。 */
+  top: 104px;
+}
+
+.shell[data-direct-map-view-requested="true"] .plain-map-overview-inset {
+  /* /map 工具条在右上角，小窗移到工具条下方，保持满屏地图仍可读。 */
+  top: 58px;
+  right: 10px;
+  width: min(380px, 34vw);
+}
+
+.plain-map-overview-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: #17202a;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.plain-map-overview-title span {
+  color: #57606a;
+  font-weight: 700;
+}
+
+.plain-map-overview-frame {
+  /* 小窗不用主图 zoom 变量，始终按真实地图比例显示完整 100% 态势。 */
+  position: relative;
+  width: 100%;
+  min-height: 150px;
+  overflow: hidden;
+  border: 1px solid #d0d7de;
+  border-radius: 4px;
+  aspect-ratio: var(--map-aspect, 1);
+  background:
+    linear-gradient(#d8dee6 1px, transparent 1px),
+    linear-gradient(90deg, #d8dee6 1px, transparent 1px),
+    #eef2f6;
+  background-size: 18px 18px;
+}
+
+.plain-map-overview-image,
+.plain-map-overview-route-path,
+.plain-map-overview-radar-points {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.plain-map-overview-image {
+  object-fit: fill;
+}
+
+.plain-map-overview-route-path {
+  z-index: 2;
+  pointer-events: none;
+}
+
+.plain-map-overview-route-path polyline {
+  fill: none;
+  stroke: #0969da;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.plain-map-overview-radar-points {
+  z-index: 3;
+  pointer-events: none;
+}
+
+.plain-map-overview-radar-points circle {
+  fill: #0f766e;
+  opacity: 0.82;
+}
+
+.plain-map-overview-robot-marker,
+.plain-map-overview-route-goal-marker,
+.plain-map-overview-route-endpoint-marker {
+  position: absolute;
+  z-index: 4;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.plain-map-overview-robot-marker {
+  width: 12px;
+  height: 12px;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  background: #cf222e;
+  box-shadow: 0 0 0 2px rgb(207 34 46 / 35%);
+}
+
+.plain-map-overview-route-goal-marker {
+  width: 13px;
+  height: 13px;
+  border: 2px solid #ffffff;
+  border-radius: 3px;
+  background: #8250df;
+  box-shadow: 0 0 0 2px rgb(130 80 223 / 32%);
+}
+
+.plain-map-overview-route-endpoint-marker {
+  width: 9px;
+  height: 9px;
+  border: 1px solid #ffffff;
+  border-radius: 50%;
+  background: #0969da;
+}
+
+.plain-map-overview-grid-line {
+  position: absolute;
+  background: rgb(87 96 106 / 42%);
+}
+
+.plain-map-overview-grid-line.horizontal {
+  top: 50%;
+  left: 0;
+  width: 100%;
+  height: 1px;
+}
+
+.plain-map-overview-grid-line.vertical {
+  top: 0;
+  left: 50%;
+  width: 1px;
+  height: 100%;
 }
 
 .plain-map-viewport[data-state="地图可见"] .plain-map-layer {
@@ -4176,6 +4329,20 @@ th {
   .plain-map-panel[data-observer-mode="true"] .plain-map-viewport[data-size="fullscreen"] .plain-map-layer {
     height: calc(100vh - 96px);
     min-height: 520px;
+  }
+
+  .plain-map-overview-inset,
+  .robot-console-grid[data-layout="visual-first"] .plain-map-overview-inset,
+  .shell[data-direct-map-view-requested="true"] .plain-map-overview-inset {
+    /* 窄屏继续保留完整态势，但缩成角标，不能挡住主地图操作视野。 */
+    top: 68px;
+    right: 8px;
+    width: min(260px, calc(100% - 16px));
+    min-width: 0;
+  }
+
+  .plain-map-overview-frame {
+    min-height: 112px;
   }
 
   .plain-map-viewport[data-size="large"] .plain-map-layer,

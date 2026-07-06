@@ -81,6 +81,12 @@ pc-tools/workstation/
   `/map`；ROS2 配套只作为工程观察：本地 RViz2/Nav2 RViz 配置看 `/map`、`/scan`、TF、路径、定位和
   costmap，远程浏览器大屏用 Foxglove bridge + Foxglove Web。工程入口不启动 ROS2/RViz2/Foxglove/Nav2/建图
   runtime，不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
+- 2026-07-06 09:05 CST 起，`800%` 大地图不再牺牲全局态势：地图画布右上角新增固定 `100%`
+  完整态势小窗，复用同一份真实地图、Nav2 路线、小车位置、雷达点和目标点 WYSIWYG 数据。summary/live-summary
+  同步暴露 `map_display_overview_inset_visible=true`、`map_display_overview_inset_zoom_percent=100%`、
+  `map_display_overview_inset_overlays=image/route/robot/radar/target` 和
+  `map_display_overview_inset_sends_motion=false`。该小窗只是只读显示层，不启动 ROS2/RViz2/Foxglove/Nav2、
+  建图 runtime 或任何底盘运动。
 - 2026-07-06 06:52 CST 起，PC 相机 status 会保留最近一次 USB recovery 的强诊断：当 recovery
   返回 `stream_failure_class=high_speed_zero_byte_no_frame`、`software_capture_exhausted=true`、
   `known_good_uvc_required=true` 或 `camera_input_signal_check_required=true` 时，

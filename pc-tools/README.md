@@ -56,11 +56,13 @@ ROS2 配套仍按分层使用：本地工程调试首选 RViz2/Nav2 RViz 配置�
 同样默认 `100%` 完整态势。RViz2/Foxglove 继续只是工程观察入口，不替代 PC 简易控制台，也不发送任何
 运动或建图命令。
 
-2026-07-06 07:26 CST 起，当前有效地图显示继续按现场“地图太小”反馈放大：PC 首页和 `/map`
-默认 `800%` 大地图，`完整态势` 回到 `100%`，`细节放大` 最高 `4800%`。`GET /api/robot-control/summary`
+2026-07-06 09:05 CST 起，当前有效地图显示继续按现场“地图太小”反馈放大：PC 首页和 `/map`
+默认 `800%` 大地图，同时在画布右上角固定显示 `100%` 完整态势小窗；主图看局部细节，小窗同步显示地图、Nav2 路线、小车位置、雷达点和目标点，避免放大后丢全局。`完整态势` 回到 `100%`，`细节放大` 最高 `4800%`。`GET /api/robot-control/summary`
 与 `live-summary` 同步返回 `map_display_default_zoom_percent=800%`、
 `map_display_direct_map_default_zoom_percent=800%`、`map_display_fit_zoom_percent=100%` 和
-`map_display_max_zoom_percent=4800%`。普通用户仍先用 PC 简易控制台和 `/map`；ROS2 配套仍是工程观察：
+`map_display_max_zoom_percent=4800%`，并返回 `map_display_overview_inset_visible=true`、
+`map_display_overview_inset_zoom_percent=100%`、`map_display_overview_inset_overlays=image/route/robot/radar/target`。
+普通用户仍先用 PC 简易控制台和 `/map`；ROS2 配套仍是工程观察：
 本地 RViz2/Nav2 RViz 配置看 `/map`、`/scan`、TF、路径、定位和 costmap，远程浏览器用
 Foxglove bridge + Foxglove Web 连接 `ws://192.168.1.11:8765`。这些入口不替代 PC 简易控制台，
 不启动 ROS2/RViz2/Foxglove/Nav2/建图 runtime，不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。

@@ -10431,9 +10431,10 @@ function buildLiveClosureSummary(
   const mapDisplayFoxgloveRolePlain = "Foxglove 用于远程浏览器大屏观察；先在 ROS2 环境安装并启动 foxglove_bridge，再连接 ws://192.168.1.11:8765。";
   const mapDisplayFoxgloveWebAppUrl = "https://studio.foxglove.dev";
   const mapDisplayEngineeringToolsActionLabel = "工程观察：RViz2 / Foxglove";
-  const mapDisplayTooSmallNextActionPlain = "PC 首页现在让地图独占首行，默认直接以 800% 大地图打开，让路线、小车、雷达和目标先足够大；图传和 WASD 放到地图下方；需要全局再点“完整态势”回到 100%，需要局部排障再点“细节放大”逐级查看，或点“进入地图大屏”打开 /map；/map 默认同样是 800% 大地图，工具条悬浮在地图上，不再占画布高度，只保留缩放、只读刷新和工程观察入口；建图、保存和其他卡片都会收起；不需要先开 RViz2。";
+  const mapDisplayOverviewInsetOverlays = ["image", "route", "robot", "radar", "target"];
+  const mapDisplayTooSmallNextActionPlain = "PC 首页现在让地图独占首行，默认直接以 800% 大地图打开，让路线、小车、雷达和目标先足够大；画布右上角固定保留 100% 完整态势小窗，同步显示地图、路线、小车、雷达和目标，避免放大后丢全局；图传和 WASD 放到地图下方；需要全局再点“完整态势”回到 100%，需要局部排障再点“细节放大”逐级查看，或点“进入地图大屏”打开 /map；/map 默认同样是 800% 大地图，工具条悬浮在地图上，不再占画布高度，只保留缩放、只读刷新和工程观察入口；建图、保存和其他卡片都会收起；不需要先开 RViz2。";
   const mapDisplayRos2CompanionAnswerPlain = "ROS2 配套：本地工程调试用 RViz2；远程浏览器观察用 Foxglove bridge + Foxglove Web；普通用户仍默认使用 PC 大地图和 /map，工程工具不替代简易控制台。";
-  const mapDisplayCompanionPlain = `普通用户地图：首页 PC 大地图默认 800%；进入 /map 也是 800% 大地图，完整态势按钮回到 100% 全局视角，地图画布按 viewport-dominant full-height 处理，真实地图、路线、目标点、小车位置和雷达点共用同一张 WYSIWYG 画布，/map 工具条悬浮在地图上不再占画布高度，点“细节放大”可继续查看局部，最高 4800%；${mapDisplayTooSmallNextActionPlain}${mapDisplayRos2CompanionAnswerPlain}ROS2 配套只作工程观察，本地用 RViz2，远程浏览器观察先部署 Foxglove bridge 后打开 Foxglove Web 连接 ws://192.168.1.11:8765；观察项固定为地图、雷达、TF、路径、定位和 costmap，不提供 GoalTool，不发送底盘移动命令。`;
+  const mapDisplayCompanionPlain = `普通用户地图：首页 PC 大地图默认 800%；进入 /map 也是 800% 大地图，完整态势按钮回到 100% 全局视角，真实地图、路线、目标点、小车位置和雷达点共用同一张 WYSIWYG 画布；画布右上角始终有 100% 完整态势小窗，和主图共用这五层只读数据；地图画布按 viewport-dominant full-height 处理，/map 工具条悬浮在地图上不再占画布高度，点“细节放大”可继续查看局部，最高 4800%；${mapDisplayTooSmallNextActionPlain}${mapDisplayRos2CompanionAnswerPlain}ROS2 配套只作工程观察，本地用 RViz2，远程浏览器观察先部署 Foxglove bridge 后打开 Foxglove Web 连接 ws://192.168.1.11:8765；观察项固定为地图、雷达、TF、路径、定位和 costmap，不提供 GoalTool，不发送底盘移动命令。`;
   const keyboardAcceptancePlain = "键盘连续手控验收只看同一次按住窗口的 manual pulse 回包：命令读数非零并有 IMU/车体运动信号即可证明本次手控动作；vendor T1001 L/R 非零仍作为独立反馈闭环显示。";
   const nav2ObjectiveDone = routeReadyOnMap && nav2GoalSucceeded && wheelLrNonzeroProven && !needsSameWindowWheelRerun;
   const keyboardObjectiveDone = keyboardMotionVerified && keyboardStopSettledAfterPulse;
@@ -10715,12 +10716,16 @@ function buildLiveClosureSummary(
     map_display_direct_map_default_zoom_percent: "800%",
     map_display_fit_zoom_percent: "100%",
     map_display_max_zoom_percent: "4800%",
+    map_display_overview_inset_visible: true,
+    map_display_overview_inset_zoom_percent: "100%",
+    map_display_overview_inset_overlays: mapDisplayOverviewInsetOverlays,
+    map_display_overview_inset_sends_motion: false,
     map_display_too_small_next_action_plain: mapDisplayTooSmallNextActionPlain,
     map_display_ros2_companion_answer_plain: mapDisplayRos2CompanionAnswerPlain,
     map_display_ros2_companion_plain: mapDisplayRos2CompanionAnswerPlain,
     map_display_operator_default_surface: "pc_big_map_direct_view",
     map_display_companion_replaces_pc_ui: false,
-    map_display_wysiwyg_overlays: ["image", "route", "robot", "radar", "target"],
+    map_display_wysiwyg_overlays: mapDisplayOverviewInsetOverlays,
     map_display_ros2_companion_required: false,
     map_display_ros2_companion_tools: ["rviz2", "foxglove"],
     map_display_engineering_tools_visible_by_default: false,
@@ -12093,6 +12098,10 @@ export async function buildRobotControlSummary(
     map_display_direct_map_default_zoom_percent: liveClosureSummary.map_display_direct_map_default_zoom_percent,
     map_display_fit_zoom_percent: liveClosureSummary.map_display_fit_zoom_percent,
     map_display_max_zoom_percent: liveClosureSummary.map_display_max_zoom_percent,
+    map_display_overview_inset_visible: liveClosureSummary.map_display_overview_inset_visible,
+    map_display_overview_inset_zoom_percent: liveClosureSummary.map_display_overview_inset_zoom_percent,
+    map_display_overview_inset_overlays: liveClosureSummary.map_display_overview_inset_overlays,
+    map_display_overview_inset_sends_motion: liveClosureSummary.map_display_overview_inset_sends_motion,
     map_display_too_small_next_action_plain: liveClosureSummary.map_display_too_small_next_action_plain,
     map_display_ros2_companion_answer_plain: liveClosureSummary.map_display_ros2_companion_answer_plain,
     map_display_ros2_companion_plain: liveClosureSummary.map_display_ros2_companion_plain,

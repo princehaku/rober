@@ -347,7 +347,7 @@ const PLAIN_MAP_FOXGLOVE_BRIDGE_LAUNCH_COMMAND = "ros2 launch ros2_trashbot_brin
 const PLAIN_MAP_FOXGLOVE_WS_URL = "ws://192.168.1.11:8765";
 const PLAIN_MAP_FOXGLOVE_WEB_APP_URL = "https://studio.foxglove.dev";
 const PLAIN_MAP_ENGINEERING_TOOLS_ACTION_LABEL = "工程观察：RViz2 / Foxglove";
-const PLAIN_MAP_TOO_SMALL_NEXT_ACTION_PLAIN = "PC 首页现在让地图独占首行，默认直接以 800% 大地图打开，让路线、小车、雷达和目标先足够大；图传和 WASD 放到地图下方；需要全局再点“完整态势”回到 100%，需要局部排障再点“细节放大”逐级查看，或点“进入地图大屏”打开 /map；/map 默认同样是 800% 大地图，工具条悬浮在地图上，不再占画布高度，只保留缩放、只读刷新和工程观察入口；建图、保存和其他卡片都会收起；不需要先开 RViz2。";
+const PLAIN_MAP_TOO_SMALL_NEXT_ACTION_PLAIN = "PC 首页现在让地图独占首行，默认直接以 800% 大地图打开，让路线、小车、雷达和目标先足够大；画布右上角固定保留 100% 完整态势小窗，同步显示地图、路线、小车、雷达和目标，避免放大后丢全局；图传和 WASD 放到地图下方；需要全局再点“完整态势”回到 100%，需要局部排障再点“细节放大”逐级查看，或点“进入地图大屏”打开 /map；/map 默认同样是 800% 大地图，工具条悬浮在地图上，不再占画布高度，只保留缩放、只读刷新和工程观察入口；建图、保存和其他卡片都会收起；不需要先开 RViz2。";
 const PLAIN_MAP_ROS2_COMPANION_ANSWER_PLAIN = "ROS2 配套：本地工程调试用 RViz2；远程浏览器观察用 Foxglove bridge + Foxglove Web；普通用户仍默认使用 PC 大地图和 /map，工程工具不替代简易控制台。";
 const PLAIN_MAP_HEADER_SHORT_ANSWER = "普通看 PC 大地图；工程看 RViz2 / Foxglove";
 const PLAIN_MAP_ROS2_OBSERVE_TOPICS = [
@@ -386,6 +386,8 @@ const PLAIN_MAP_FIT_ZOOM_PERCENT = "100%";
 const PLAIN_MAP_READABLE_DEFAULT_ZOOM_PERCENT = "800%";
 const PLAIN_MAP_HOME_DEFAULT_ZOOM_PERCENT = PLAIN_MAP_READABLE_DEFAULT_ZOOM_PERCENT;
 const PLAIN_MAP_DIRECT_DEFAULT_ZOOM_PERCENT = PLAIN_MAP_READABLE_DEFAULT_ZOOM_PERCENT;
+const PLAIN_MAP_OVERVIEW_INSET_ZOOM_PERCENT = PLAIN_MAP_FIT_ZOOM_PERCENT;
+const PLAIN_MAP_OVERVIEW_INSET_OVERLAYS = "image,route,robot,radar,target";
 const plainMapDefaultZoomPercent = computed(() => (plainMapDirectViewRequested.value ? PLAIN_MAP_DIRECT_DEFAULT_ZOOM_PERCENT : PLAIN_MAP_HOME_DEFAULT_ZOOM_PERCENT));
 const PLAIN_MAP_MAX_ZOOM_PERCENT = "4800%";
 const plainMapZoomStyle = computed(() => ({
@@ -25351,6 +25353,93 @@ onBeforeUnmount(() => {
                   :style="plainMapVisualSummary.radarOverlayStyle"
                   :aria-label="plainMapVisualSummary.radarOverlayAria"
                 >{{ plainMapVisualSummary.radarOverlayLabel }}</span>
+              </div>
+            </div>
+            <div
+              class="plain-map-overview-inset"
+              data-testid="plain-map-overview-inset"
+              data-map-overview-complete="true"
+              :data-state="plainMapVisualSummary.state"
+              :data-main-map-zoom-percent="plainMapZoomPercent"
+              :data-overview-map-zoom-percent="PLAIN_MAP_OVERVIEW_INSET_ZOOM_PERCENT"
+              :data-overview-overlays="PLAIN_MAP_OVERVIEW_INSET_OVERLAYS"
+              :data-map-image-visible="String(Boolean(plainMapVisualSummary.imageDataUrl))"
+              :data-route-layer-visible="String(plainMapVisualSummary.showRoutePath)"
+              :data-route-target-marker-visible="String(plainMapVisualSummary.routeTargetVisible)"
+              :data-robot-marker-visible="String(plainMapVisualSummary.showRobotPose)"
+              :data-radar-map-points-visible="String(plainMapVisualSummary.radarMapPointsVisible)"
+              :data-radar-map-point-count="String(plainMapVisualSummary.radarMapPointCount)"
+              data-sends-motion-when-clicked="false"
+              data-starts-ros2="false"
+              data-starts-rviz2="false"
+              data-starts-foxglove="false"
+              data-starts-nav2="false"
+              data-starts-map-runtime="false"
+              aria-label="完整态势小窗"
+            >
+              <div class="plain-map-overview-title">
+                <strong>完整态势</strong>
+                <span>{{ PLAIN_MAP_OVERVIEW_INSET_ZOOM_PERCENT }}</span>
+              </div>
+              <div class="plain-map-overview-frame" :style="plainMapVisualSummary.frameStyle">
+                <img
+                  v-if="plainMapVisualSummary.imageDataUrl"
+                  class="plain-map-overview-image"
+                  data-testid="plain-map-overview-image"
+                  :src="plainMapVisualSummary.imageDataUrl"
+                  :alt="plainMapVisualSummary.imageAlt"
+                >
+                <template v-else>
+                  <span class="plain-map-overview-grid-line horizontal" />
+                  <span class="plain-map-overview-grid-line vertical" />
+                </template>
+                <svg
+                  v-if="plainMapVisualSummary.showRoutePath"
+                  class="plain-map-overview-route-path"
+                  viewBox="0 0 100 100"
+                  preserveAspectRatio="none"
+                  data-testid="plain-map-overview-route-path"
+                  :data-state="plainMapVisualSummary.routePathState"
+                  :aria-label="plainMapVisualSummary.routePathAria"
+                >
+                  <polyline :points="plainMapVisualSummary.routePathPoints" />
+                </svg>
+                <svg
+                  v-if="plainMapVisualSummary.showRadarScanPoints"
+                  class="plain-map-overview-radar-points"
+                  viewBox="0 0 100 100"
+                  preserveAspectRatio="none"
+                  data-testid="plain-map-overview-radar-points"
+                  :data-radar-map-points-visible="String(plainMapVisualSummary.radarMapPointsVisible)"
+                  :data-radar-map-point-count="String(plainMapVisualSummary.radarMapPointCount)"
+                  :aria-label="plainMapVisualSummary.radarScanAria"
+                >
+                  <circle v-for="point in plainMapVisualSummary.radarScanDots" :key="point.key" :cx="point.left" :cy="point.top" r="1.2" />
+                </svg>
+                <span
+                  v-for="marker in plainMapVisualSummary.routeEndpointMarkers"
+                  :key="`overview-${marker.id}`"
+                  class="plain-map-overview-route-endpoint-marker"
+                  :data-testid="`plain-map-overview-route-${marker.id}-marker`"
+                  :data-state="marker.state"
+                  :style="marker.style"
+                  :aria-label="marker.aria"
+                />
+                <span
+                  v-if="plainMapVisualSummary.showRouteGoal"
+                  class="plain-map-overview-route-goal-marker"
+                  data-testid="plain-map-overview-route-goal-marker"
+                  :data-state="plainMapVisualSummary.routeGoalState"
+                  :style="plainMapVisualSummary.routeGoalStyle"
+                  :aria-label="plainMapVisualSummary.routeGoalAria"
+                />
+                <span
+                  v-if="plainMapVisualSummary.showRobotPose"
+                  class="plain-map-overview-robot-marker"
+                  data-testid="plain-map-overview-robot-marker"
+                  :style="plainMapVisualSummary.robotPoseStyle"
+                  :aria-label="plainMapVisualSummary.robotPoseAria"
+                />
               </div>
             </div>
             <div class="plain-map-caption">

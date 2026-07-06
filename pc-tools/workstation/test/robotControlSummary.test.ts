@@ -468,8 +468,17 @@ describe("robotControlSummary", () => {
     expect(summary.map_display_fit_zoom_percent).toBe("100%");
     expect(summary.live_closure_summary?.map_display_max_zoom_percent).toBe("4800%");
     expect(summary.map_display_max_zoom_percent).toBe("4800%");
+    expect(summary.live_closure_summary?.map_display_overview_inset_visible).toBe(true);
+    expect(summary.map_display_overview_inset_visible).toBe(true);
+    expect(summary.live_closure_summary?.map_display_overview_inset_zoom_percent).toBe("100%");
+    expect(summary.map_display_overview_inset_zoom_percent).toBe("100%");
+    expect(summary.live_closure_summary?.map_display_overview_inset_overlays).toEqual(["image", "route", "robot", "radar", "target"]);
+    expect(summary.map_display_overview_inset_overlays).toEqual(["image", "route", "robot", "radar", "target"]);
+    expect(summary.live_closure_summary?.map_display_overview_inset_sends_motion).toBe(false);
+    expect(summary.map_display_overview_inset_sends_motion).toBe(false);
     expect(summary.live_closure_summary?.map_display_too_small_next_action_plain).toContain("进入地图大屏");
     expect(summary.live_closure_summary?.map_display_too_small_next_action_plain).toContain("/map");
+    expect(summary.live_closure_summary?.map_display_too_small_next_action_plain).toContain("完整态势小窗");
     expect(summary.live_closure_summary?.map_display_too_small_next_action_plain).toContain("不需要先开 RViz2");
     expect(summary.map_display_too_small_next_action_plain).toBe(summary.live_closure_summary?.map_display_too_small_next_action_plain);
     expect(summary.live_closure_summary?.map_display_ros2_companion_answer_plain).toContain("RViz2");
@@ -529,6 +538,7 @@ describe("robotControlSummary", () => {
     expect(summary.map_display_engineering_tools_sends_motion).toBe(false);
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("首页 PC 大地图默认 800%");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("进入 /map 也是 800% 大地图");
+    expect(summary.live_closure_summary?.map_display_companion_plain).toContain("100% 完整态势小窗");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("完整态势");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("完整态势按钮回到 100% 全局视角");
     expect(summary.live_closure_summary?.map_display_companion_plain).toContain("真实地图、路线、目标点、小车位置和雷达点共用同一张 WYSIWYG 画布");

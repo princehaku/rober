@@ -28154,6 +28154,18 @@ describe("App", () => {
     expect(mapPanel.attributes("data-default-map-zoom-percent")).toBe("800%");
     expect(mapPanel.attributes("data-direct-map-view-default-zoom-percent")).toBe("800%");
     expect(mapPanel.attributes("data-fit-map-zoom-percent")).toBe("100%");
+    const overviewInset = wrapper.find('[data-testid="plain-map-overview-inset"]');
+    expect(overviewInset.exists()).toBe(true);
+    expect(overviewInset.attributes("data-map-overview-complete")).toBe("true");
+    expect(overviewInset.attributes("data-main-map-zoom-percent")).toBe("800%");
+    expect(overviewInset.attributes("data-overview-map-zoom-percent")).toBe("100%");
+    expect(overviewInset.attributes("data-overview-overlays")).toBe("image,route,robot,radar,target");
+    expect(overviewInset.attributes("data-sends-motion-when-clicked")).toBe("false");
+    expect(overviewInset.attributes("data-starts-ros2")).toBe("false");
+    expect(overviewInset.attributes("data-starts-rviz2")).toBe("false");
+    expect(overviewInset.attributes("data-starts-foxglove")).toBe("false");
+    expect(overviewInset.attributes("data-starts-nav2")).toBe("false");
+    expect(overviewInset.attributes("data-starts-map-runtime")).toBe("false");
     expect(mapPanel.attributes("data-radar-map-overlay-status")).toBe("not_current");
     expect(mapPanel.attributes("data-radar-map-points-visible")).toBe("false");
     expect(mapPanel.attributes("data-radar-map-point-count")).toBe("0");
