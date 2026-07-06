@@ -1553,6 +1553,9 @@ describe("workstation fail-closed API contracts", () => {
     expect(source).toContain('data-keyboard-auto-arm-on-load="true"');
     expect(source).toContain('data-keyboard-click-to-arm-required="false"');
     expect(source).toContain('data-keyboard-event-scope="page_non_editable"');
+    expect(source).toContain('data-keyboard-smooth-hold-refresh-paused');
+    expect(source).toContain("function shouldPauseLiveSurfaceRefreshForKeyboard()");
+    expect(source).toContain("sendStop({ refreshAfter: false })");
     expect(source).toContain('const DEFAULT_KEYBOARD_MANUAL_COMMAND_MODE: ManualCommandMode = "ros"');
     expect(source).toContain("command_mode: keyboardManualCommandMode()");
     expect(source).not.toContain('data-keyboard-event-scope="focused_panel_or_page_non_editable"');

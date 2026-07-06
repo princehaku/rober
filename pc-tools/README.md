@@ -67,6 +67,13 @@ ROS2 配套仍按分层使用：本地工程调试首选 RViz2/Nav2 RViz 配置�
 Foxglove bridge + Foxglove Web 连接 `ws://192.168.1.11:8765`。这些入口不替代 PC 简易控制台，
 不启动 ROS2/RViz2/Foxglove/Nav2/建图 runtime，不发送 manual、keyboard、free-roam、delivery、stop 或 `/cmd_vel`。
 
+2026-07-07 02:44 CST 起，PC 键盘连续手控进入顺滑模式：按住 W/A/S/D 或方向键期间，
+前端只持续发送固定 `/api/robot-control/base/manual` 低速短脉冲，后台地图预览和相机状态轮询会暂停，
+避免重面板读回把按住操作做成“页面一直刷新”的体感。松开、失焦、切页或点停止后仍走固定
+`/api/robot-control/base/stop`，但键盘 stop 路径不再触发通用双 summary 刷新；只保留一次
+`/api/robot-control/base/feedback-samples` + `/api/robot-control/summary` 的 post-hold 验收读回。
+DOM 合同新增 `data-keyboard-smooth-hold-refresh-paused`，用于现场脚本确认按住期间重刷新已让路。
+
 2026-07-06 05:58 CST 起，上车 `/api/base/manual` 的 IMU 姿态运动信号阈值从 `1.0°` 调整为
 `0.35°`。依据 `docs/vendor/VENDOR_INDEX.md` 指向的 WAVE ROVER `T=1001` 反馈字段，`r/p` 来自
 底盘 IMU roll/pitch；该阈值只用于判断 PC 低速短脉冲是否有车体运动迹象，不替代 wheel raw L/R

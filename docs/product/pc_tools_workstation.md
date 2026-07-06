@@ -87,6 +87,11 @@ pc-tools/workstation/
   `map_display_overview_inset_overlays=image/route/robot/radar/target` 和
   `map_display_overview_inset_sends_motion=false`。该小窗只是只读显示层，不启动 ROS2/RViz2/Foxglove/Nav2、
   建图 runtime 或任何底盘运动。
+- 2026-07-07 02:44 CST 起，PC 键盘连续手控按住期间暂停重刷新：W/A/S/D 或方向键保持按下时，
+  只保留固定 `/api/robot-control/base/manual` 低速短脉冲循环，地图预览和相机状态轮询不抢前端渲染；
+  松开/失焦/切页/点停止后发送固定 `/api/robot-control/base/stop`，并只做一次
+  `/api/robot-control/base/feedback-samples` + `/api/robot-control/summary` 的 post-hold 验收读回。
+  DOM 暴露 `data-keyboard-smooth-hold-refresh-paused`，用于组件测试和现场脚本确认按住期间没有“页面一直刷新”。
 - 2026-07-06 06:52 CST 起，PC 相机 status 会保留最近一次 USB recovery 的强诊断：当 recovery
   返回 `stream_failure_class=high_speed_zero_byte_no_frame`、`software_capture_exhausted=true`、
   `known_good_uvc_required=true` 或 `camera_input_signal_check_required=true` 时，

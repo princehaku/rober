@@ -9439,6 +9439,10 @@ const canRequestKeyboardStop = computed(() => (
     && robotApiBaseUrl.value.trim().length > 0
   )
 ));
+const keyboardSmoothHoldRefreshPaused = computed(() => (
+  // 这个 DOM 证据用于锁住“按住期间不刷重面板”的顺滑合同；非响应式 in-flight 由轮询函数内部再兜底。
+  keyboardHeldDirection.value !== null || manualCommandPending.value
+));
 const canRunEvidenceSweep = computed(() => !evidenceSweepPending.value && !loading.value && robotApiBaseUrl.value.trim().length > 0);
 const keyboardContractReady = computed(() => {
   // 键盘手控必须由后端 summary 明确声明 bounded pulse 合同，不能只靠前端默认值放开。
@@ -17666,9 +17670,16 @@ function resetCameraAutoUsbRecoveryState(): void {
   cameraAutoUsbRecoveryResult.value = null;
 }
 
+function shouldPauseLiveSurfaceRefreshForKeyboard(): boolean {
+  // 键盘按住和 stop/manual pending 时，后台地图/相机轮询必须让路，避免把连续点动做成“整页刷新”的体感。
+  return keyboardHeldDirection.value !== null || keyboardJogInFlight || manualCommandPending.value;
+}
+
 function shouldRefreshLiveSurfaces(): boolean {
-  // 页面隐藏时停止后台刷新，回到前台后再补读，避免无人观看时持续压上位机。
-  return !document.hidden && robotApiBaseUrl.value.trim().length > 0;
+  // 页面隐藏时停止后台刷新；键盘手控期间暂停重面板轮询，松开后再由 post-hold 读回补一次状态。
+  return !document.hidden
+    && robotApiBaseUrl.value.trim().length > 0
+    && !shouldPauseLiveSurfaceRefreshForKeyboard();
 }
 
 async function refreshLiveMapSnapshot(): Promise<void> {
@@ -19928,7 +19939,7 @@ async function sendKeyboardReleaseStop(reason: string): Promise<void> {
     keyboardControlStatus.value = "blocked_keyboard_stop_failed:stop_unavailable";
     return;
   }
-  await sendStop();
+  await sendStop({ refreshAfter: false });
   const result = manualCommandResult.value;
   const stopForwarded = result?.command_kind === "stop"
     && result.proxy_status === "command_forwarded"
@@ -20055,7 +20066,16 @@ function handleWindowFocus(): void {
   autoArmKeyboardControl("window_focus");
 }
 
-async function sendStop(): Promise<RobotControlBaseCommandProxyResponse | null> {
+type StopCommandOptions = {
+  refreshAfter?: boolean;
+};
+
+function shouldRefreshAfterStop(options?: StopCommandOptions | Event): boolean {
+  // 模板里的 @click="sendStop" 可能把 MouseEvent 作为第一个参数；只有显式传 refreshAfter=false 才跳过总览刷新。
+  return !(options && "refreshAfter" in options && options.refreshAfter === false);
+}
+
+async function sendStop(options?: StopCommandOptions | Event): Promise<RobotControlBaseCommandProxyResponse | null> {
   // stop 始终保留，是为了在 checklist 未完成时也有 fail-safe 退路。
   if (!robotApiBaseUrl.value.trim() || manualCommandPending.value) {
     return null;
@@ -20108,7 +20128,9 @@ async function sendStop(): Promise<RobotControlBaseCommandProxyResponse | null> 
     recordPlainTripStopResult(stopResult);
   } finally {
     manualCommandPending.value = false;
-    await refreshConsole();
+    if (shouldRefreshAfterStop(options)) {
+      await refreshConsole();
+    }
   }
   return stopResult;
 }
@@ -26490,6 +26512,7 @@ onBeforeUnmount(() => {
             :data-keyboard-feedback-readback-endpoint="plainLiveClosureSummary?.keyboard_feedback_readback_endpoint ?? plainKeyboardDirectionButtonEvidence.fixedFeedbackSamplesEndpoint"
             :data-keyboard-summary-endpoint="plainLiveClosureSummary?.keyboard_summary_endpoint ?? plainKeyboardDirectionButtonEvidence.fixedSummaryEndpoint"
             :data-keyboard-readback-endpoints="plainLiveKeyboardControlReadback.readbackEndpoints.join(',')"
+            :data-keyboard-smooth-hold-refresh-paused="String(keyboardSmoothHoldRefreshPaused)"
             data-keyboard-event-scope="page_non_editable"
             data-keyboard-auto-arm-on-load="true"
             data-keyboard-click-to-arm-required="false"

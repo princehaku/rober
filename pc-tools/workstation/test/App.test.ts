@@ -26936,6 +26936,98 @@ describe("App", () => {
     wrapper.unmount();
   });
 
+  it("pauses heavy live refresh while continuous keyboard control is held", async () => {
+    // 按住键盘时只允许轻量 manual pulse 继续；地图/相机状态轮询和双 summary 刷新都会造成现场“整页刷新”体感。
+    vi.useFakeTimers();
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.operator_hil_material_summary.report_status = "ready_for_execution";
+    summaryFixture.operator_hil_material_summary.external_video = "true; ref=phone-video-0605.mp4";
+    summaryFixture.operator_hil_material_summary.camera_visible = "true; ref=runtime/camera/latest_metrics.json";
+    summaryFixture.operator_hil_material_summary.wheel_feedback = "true; ref=runtime/wave_rover_feedback_debug.jsonl";
+    summaryFixture.operator_hil_material_summary.lidar_delta = "true; ref=runtime/scan_delta/latest_metrics.json";
+    summaryFixture.safe_command_boundary.keyboard_control_mode = "bounded_repeating_manual_pulse";
+    summaryFixture.safe_command_boundary.keyboard_reuses_manual_gate = true;
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/base/manual": {
+        command_kind: "manual",
+        proxy_status: "command_forwarded",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        failure_reason: "",
+        remote_motion_key_values: {
+          wheel_feedback_latest_raw_left: "0.06",
+          wheel_feedback_latest_raw_right: "0.05",
+          wheel_feedback_lr_nonzero_proven: "true",
+        },
+        operator_report_preflight: {
+          status: "loaded",
+          failure_reason: "",
+          missing_fields: [],
+        },
+      },
+      "/api/robot-control/base/stop": {
+        command_kind: "stop",
+        proxy_status: "command_forwarded",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        failure_reason: "",
+        operator_report_preflight: {
+          status: "not_required_for_stop",
+          failure_reason: "",
+          missing_fields: [],
+        },
+      },
+    });
+    const countCalls = (prefix: string) => mockedFetch.mock.calls
+      .filter(([url]) => String(url).startsWith(prefix))
+      .length;
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    await wrapper.find('input[name="robotApiBaseUrl"]').setValue("http://192.168.1.11:8787");
+    const checklistInputs = wrapper.findAll(".checklist-box input[type='checkbox']");
+    for (const checkbox of checklistInputs) {
+      await checkbox.setValue(true);
+    }
+    await wrapper.find('[data-testid="plain-motion-safety-confirm"]').setValue(true);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    await wrapper.find('[data-testid="keyboard-control-arm"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    const keyboardPanel = wrapper.find('[data-testid="keyboard-control-panel"]');
+    await keyboardPanel.trigger("keydown", { key: "w" });
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(keyboardPanel.attributes("data-keyboard-smooth-hold-refresh-paused")).toBe("true");
+    const mapPreviewCallsAfterHold = countCalls("/api/robot-control/map/preview");
+    const cameraStatusCallsAfterHold = countCalls("/api/robot-control/camera/mjpeg/status");
+
+    await vi.advanceTimersByTimeAsync(6000);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(countCalls("/api/robot-control/base/manual")).toBeGreaterThan(1);
+    expect(countCalls("/api/robot-control/map/preview")).toBe(mapPreviewCallsAfterHold);
+    expect(countCalls("/api/robot-control/camera/mjpeg/status")).toBe(cameraStatusCallsAfterHold);
+
+    const summaryCallsBeforeRelease = countCalls("/api/robot-control/summary");
+    await keyboardPanel.trigger("keyup", { key: "w" });
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(countCalls("/api/robot-control/base/stop")).toBe(1);
+    expect(countCalls("/api/robot-control/base/feedback-samples")).toBe(1);
+    expect(countCalls("/api/robot-control/summary")).toBe(summaryCallsBeforeRelease + 1);
+    expect(wrapper.find('[data-testid="keyboard-control-panel"]').attributes("data-keyboard-smooth-hold-refresh-paused")).toBe("false");
+    wrapper.unmount();
+  });
+
   it("queues release stop when the stop button is clicked during an in-flight keyboard pulse", async () => {
     // 点击停止时若 manual pulse 仍在请求中，stop 不能被 pending gate 吃掉；pulse 返回后必须补发一次 stop。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
