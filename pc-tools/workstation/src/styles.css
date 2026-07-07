@@ -1033,6 +1033,7 @@ h3 {
 
 .plain-map-wysiwyg-layer-chip[data-state="未显示"],
 .plain-map-wysiwyg-layer-chip[data-state="未定位"],
+.plain-map-wysiwyg-layer-chip[data-state="无高亮点"],
 .plain-map-wysiwyg-layer-chip[data-state="未贴当前图"] {
   border-style: dashed;
   color: #57606a;
@@ -2496,6 +2497,7 @@ h3 {
 
 .plain-map-overview-image,
 .plain-map-overview-route-path,
+.plain-map-overview-color-overlay,
 .plain-map-overview-radar-points {
   position: absolute;
   inset: 0;
@@ -2509,6 +2511,11 @@ h3 {
 
 .plain-map-overview-route-path {
   z-index: 2;
+  pointer-events: none;
+}
+
+.plain-map-overview-color-overlay {
+  z-index: 1;
   pointer-events: none;
 }
 
@@ -2528,6 +2535,22 @@ h3 {
 .plain-map-overview-radar-points circle {
   fill: #0f766e;
   opacity: 0.82;
+}
+
+.plain-map-overview-color-overlay .plain-map-color-boundary-dot {
+  fill: rgba(9, 105, 218, 0.7);
+}
+
+.plain-map-overview-color-overlay .plain-map-color-pillar-dot {
+  fill: rgba(191, 47, 110, 0.9);
+  stroke: rgba(255, 255, 255, 0.9);
+  stroke-width: 0.45;
+}
+
+.plain-map-overview-color-overlay .plain-map-color-costmap-dot {
+  fill: rgba(217, 119, 6, 0.78);
+  stroke: rgba(255, 255, 255, 0.82);
+  stroke-width: 0.35;
 }
 
 .plain-map-overview-robot-marker,
@@ -2633,6 +2656,41 @@ h3 {
   height: 100%;
   object-fit: fill;
   image-rendering: pixelated;
+}
+
+.plain-map-color-overlay {
+  /* 静态障碍彩色层直接贴在灰度 PGM 上；只是观察材料，不接管目标点或控制点击。 */
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.plain-map-color-overlay circle {
+  vector-effect: non-scaling-stroke;
+}
+
+.plain-map-color-boundary-dot {
+  fill: rgba(9, 105, 218, 0.64);
+  stroke: rgba(255, 255, 255, 0.58);
+  stroke-width: 0.2;
+}
+
+.plain-map-color-pillar-dot {
+  fill: rgba(191, 47, 110, 0.88);
+  stroke: rgba(255, 255, 255, 0.92);
+  stroke-width: 0.55;
+  filter: drop-shadow(0 1px 2px rgba(92, 14, 54, 0.26));
+}
+
+.plain-map-color-costmap-dot {
+  fill: rgba(217, 119, 6, 0.72);
+  stroke: rgba(255, 255, 255, 0.84);
+  stroke-width: 0.42;
+  filter: drop-shadow(0 1px 2px rgba(118, 66, 8, 0.2));
 }
 
 .plain-map-route-path {

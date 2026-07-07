@@ -11828,6 +11828,32 @@ describe("workstation fail-closed API contracts", () => {
           image_mime_type: "image/png",
           image_data_url: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAFgwJ/lJK3GQAAAABJRU5ErkJggg==",
           source_image_format: "pgm_p5",
+          color_overlay: {
+            status: "loaded",
+            source: "map_pgm_static_analysis",
+            map_width: 1,
+            map_height: 1,
+            occupied_boundary_points: [
+              { x_cell: 0, y_cell: 0, left: 50, top: 50, weight: 2 },
+            ],
+            occupied_boundary_count: 1,
+            occupied_boundary_source_count: 1,
+            occupied_cell_source_count: 1,
+            pillar_candidate_points: [
+              { x_cell: 0, y_cell: 0, left: 50, top: 50, area_cells: 9, bbox_width_cells: 3, bbox_height_cells: 3, confidence: 1 },
+            ],
+            pillar_candidate_count: 1,
+            pillar_candidate_source_count: 1,
+            nav2_costmap_points: [],
+            nav2_costmap_count: 0,
+            nav2_costmap_source_count: 0,
+            nav2_costmap_status: "not_loaded",
+            nav2_costmap_source: "not_loaded",
+            nav2_costmap_topics: ["/global_costmap/costmap", "/local_costmap/costmap"],
+            plain_hint: "静态地图彩色层已加载：边界 1 个点、疑似柱子 1 个；Nav2 costmap 尚未接入实时 topic。",
+            failure_reason: "",
+            blocked_reasons: ["nav2_costmap_runtime_topic_not_captured_by_map_preview"],
+          },
           command_result: { mode: "read_only_local_files", executed: false, ok: true },
         },
       },
@@ -11991,6 +12017,27 @@ describe("workstation fail-closed API contracts", () => {
         map_next_action_plain: string;
         map_wysiwyg_status_plain: string;
         map_wysiwyg_next_action_plain: string;
+        color_overlay: {
+          status: string;
+          source: string;
+          occupied_boundary_points: Array<{ left: number; top: number; weight?: number }>;
+          occupied_boundary_count: number;
+          occupied_boundary_source_count: number;
+          pillar_candidate_points: Array<{ left: number; top: number; area_cells?: number }>;
+          pillar_candidate_count: number;
+          pillar_candidate_source_count: number;
+          nav2_costmap_points: Array<{ left: number; top: number; cost?: number }>;
+          nav2_costmap_count: number;
+          nav2_costmap_source_count: number;
+          nav2_costmap_status: string;
+          nav2_costmap_topics: string[];
+        };
+        map_color_overlay_status: string;
+        map_color_overlay_plain_hint: string;
+        map_color_occupied_boundary_count: number;
+        map_color_pillar_candidate_count: number;
+        map_color_nav2_costmap_count: number;
+        map_color_nav2_costmap_status: string;
         robot_pose: { x: number; y: number; yaw: number | null; frame_id: string; source: string } | null;
         robot_pose_status: string;
         path_preview_points: Array<{ x: number; y: number; frame_id: string; source_index: number | null }>;
@@ -12074,6 +12121,20 @@ describe("workstation fail-closed API contracts", () => {
       expect(previewBody.map_next_action_plain).toBe(previewBody.map_wysiwyg_next_action_plain);
       expect(previewBody.map_wysiwyg_status_plain).toBe("地图画面、图上路线、小车位置和雷达标记都已按当前读数显示。");
       expect(previewBody.map_wysiwyg_next_action_plain).toBe("继续按当前地图画面确认路线和雷达层。");
+      expect(previewBody.color_overlay.status).toBe("loaded");
+      expect(previewBody.color_overlay.source).toBe("map_pgm_static_analysis");
+      expect(previewBody.color_overlay.occupied_boundary_count).toBe(1);
+      expect(previewBody.color_overlay.occupied_boundary_points[0]).toEqual(expect.objectContaining({ left: 50, top: 50, weight: 2 }));
+      expect(previewBody.color_overlay.pillar_candidate_count).toBe(1);
+      expect(previewBody.color_overlay.pillar_candidate_points[0]).toEqual(expect.objectContaining({ left: 50, top: 50, area_cells: 9 }));
+      expect(previewBody.color_overlay.nav2_costmap_count).toBe(0);
+      expect(previewBody.color_overlay.nav2_costmap_status).toBe("not_loaded");
+      expect(previewBody.color_overlay.nav2_costmap_topics).toEqual(["/global_costmap/costmap", "/local_costmap/costmap"]);
+      expect(previewBody.map_color_overlay_status).toBe("loaded");
+      expect(previewBody.map_color_occupied_boundary_count).toBe(1);
+      expect(previewBody.map_color_pillar_candidate_count).toBe(1);
+      expect(previewBody.map_color_nav2_costmap_count).toBe(0);
+      expect(previewBody.map_color_nav2_costmap_status).toBe("not_loaded");
       expect(previewBody.path_preview_status).toBe("path_preview_observed");
       expect(previewBody.path_preview_next_action_plain).toBe("图上路线和小车位置已显示；确认起点、终点和路线后可直接执行。");
       expect(previewBody.next_action_plain).toBe(previewBody.path_preview_next_action_plain);

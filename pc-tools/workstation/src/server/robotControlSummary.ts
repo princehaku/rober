@@ -15,6 +15,7 @@ import type {
   RobotControlMapQualitySummary,
   RobotControlMapLifecycleRequest,
   RobotControlMapLifecycleResponse,
+  RobotControlMapPreviewColorOverlay,
   RobotControlMapPreviewResponse,
   RobotControlMapPreviewRadarOverlay,
   RobotControlNavGoalPreflightRequest,
@@ -4015,6 +4016,157 @@ function defaultMapPreviewRadarOverlay(reason: string): RobotControlMapPreviewRa
   };
 }
 
+function defaultMapPreviewColorOverlay(reason: string): RobotControlMapPreviewColorOverlay {
+  // 旧上车或坏地图也返回同形彩色层，前端只需要看 status，不猜字段是否存在。
+  return {
+    status: "not_loaded",
+    source: "not_loaded",
+    map_width: 0,
+    map_height: 0,
+    occupied_boundary_points: [],
+    occupied_boundary_count: 0,
+    occupied_boundary_source_count: 0,
+    pillar_candidate_points: [],
+    pillar_candidate_count: 0,
+    pillar_candidate_source_count: 0,
+    nav2_costmap_points: [],
+    nav2_costmap_count: 0,
+    nav2_costmap_source_count: 0,
+    nav2_costmap_status: "not_loaded",
+    nav2_costmap_source: "not_loaded",
+    nav2_costmap_topics: ["/global_costmap/costmap", "/local_costmap/costmap"],
+    plain_hint: "地图彩色层未加载。",
+    failure_reason: reason,
+    blocked_reasons: reason ? [reason] : [],
+  };
+}
+
+function mapPreviewColorOverlayAliases(
+  colorOverlay: RobotControlMapPreviewColorOverlay,
+): Pick<
+  RobotControlMapPreviewResponse,
+  | "map_color_overlay_status"
+  | "map_color_overlay_plain_hint"
+  | "map_color_occupied_boundary_count"
+  | "map_color_pillar_candidate_count"
+  | "map_color_nav2_costmap_count"
+  | "map_color_nav2_costmap_status"
+> {
+  // 顶层短字段服务现场 curl/jq；完整点位仍放在 color_overlay 里给画布消费。
+  return {
+    map_color_overlay_status: colorOverlay.status,
+    map_color_overlay_plain_hint: colorOverlay.plain_hint,
+    map_color_occupied_boundary_count: colorOverlay.occupied_boundary_count,
+    map_color_pillar_candidate_count: colorOverlay.pillar_candidate_count,
+    map_color_nav2_costmap_count: colorOverlay.nav2_costmap_count,
+    map_color_nav2_costmap_status: colorOverlay.nav2_costmap_status,
+  };
+}
+
+function mapPreviewColorOverlayStatus(value: unknown): RobotControlMapPreviewColorOverlay["status"] | null {
+  const status = asString(value, "");
+  return status === "loaded" || status === "partial" || status === "blocked" || status === "not_loaded" ? status : null;
+}
+
+function mapPreviewCostmapOverlayStatus(value: unknown): RobotControlMapPreviewColorOverlay["nav2_costmap_status"] {
+  const status = asString(value, "");
+  return status === "loaded" || status === "partial" || status === "blocked" || status === "not_loaded" ? status : "not_loaded";
+}
+
+function mapPreviewColorOverlayPoint(value: unknown): RobotControlMapPreviewColorOverlay["occupied_boundary_points"][number] | null {
+  const record = asRecord(value);
+  const left = finitePathCoordinate(record?.left);
+  const top = finitePathCoordinate(record?.top);
+  if (!record || left === null || top === null) {
+    return null;
+  }
+  const xCell = finitePathCoordinate(record.x_cell);
+  const yCell = finitePathCoordinate(record.y_cell);
+  const point: RobotControlMapPreviewColorOverlay["occupied_boundary_points"][number] = {
+    x_cell: xCell ?? left,
+    y_cell: yCell ?? top,
+    left,
+    top,
+  };
+  const weight = finitePathCoordinate(record.weight);
+  const areaCells = finitePathCoordinate(record.area_cells);
+  const bboxWidthCells = finitePathCoordinate(record.bbox_width_cells);
+  const bboxHeightCells = finitePathCoordinate(record.bbox_height_cells);
+  const confidence = finitePathCoordinate(record.confidence);
+  const cost = finitePathCoordinate(record.cost);
+  if (weight !== null) point.weight = weight;
+  if (areaCells !== null) point.area_cells = areaCells;
+  if (bboxWidthCells !== null) point.bbox_width_cells = bboxWidthCells;
+  if (bboxHeightCells !== null) point.bbox_height_cells = bboxHeightCells;
+  if (confidence !== null) point.confidence = confidence;
+  if (cost !== null) point.cost = cost;
+  return point;
+}
+
+function mapPreviewColorOverlayPointList(value: unknown, limit: number): RobotControlMapPreviewColorOverlay["occupied_boundary_points"] {
+  // 点位只接受已经是百分比坐标的数组；代理不把 ROS/map 坐标临时猜成像素坐标。
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  const points: RobotControlMapPreviewColorOverlay["occupied_boundary_points"] = [];
+  for (const rawPoint of value.slice(0, limit)) {
+    const point = mapPreviewColorOverlayPoint(rawPoint);
+    if (point) {
+      points.push(point);
+    }
+  }
+  return points;
+}
+
+function mapPreviewColorOverlayFromPayload(payload: JsonRecord): RobotControlMapPreviewColorOverlay | null {
+  // 新版上车 map preview 返回静态彩色层；缺字段时保持旧合同兼容，不把灰度图误报为彩色图。
+  const rawOverlay = asRecord(payload.color_overlay);
+  if (!rawOverlay) {
+    return null;
+  }
+  const status = mapPreviewColorOverlayStatus(rawOverlay.status);
+  if (!status) {
+    return null;
+  }
+  const boundaryPoints = mapPreviewColorOverlayPointList(
+    rawOverlay.occupied_boundary_points ?? rawOverlay.boundary_points,
+    1_200,
+  );
+  const pillarPoints = mapPreviewColorOverlayPointList(
+    rawOverlay.pillar_candidate_points ?? rawOverlay.pillar_points,
+    160,
+  );
+  const costmapPoints = mapPreviewColorOverlayPointList(
+    rawOverlay.nav2_costmap_points ?? rawOverlay.costmap_points,
+    900,
+  );
+  const boundarySourceCount = finitePathCoordinate(rawOverlay.occupied_boundary_source_count) ?? boundaryPoints.length;
+  const pillarSourceCount = finitePathCoordinate(rawOverlay.pillar_candidate_source_count) ?? pillarPoints.length;
+  const costmapSourceCount = finitePathCoordinate(rawOverlay.nav2_costmap_source_count) ?? costmapPoints.length;
+  return {
+    status,
+    source: asString(rawOverlay.source, status === "loaded" ? "map_pgm_static_analysis" : "not_loaded"),
+    map_width: finiteNumberOrZero(rawOverlay.map_width ?? payload.width),
+    map_height: finiteNumberOrZero(rawOverlay.map_height ?? payload.height),
+    occupied_boundary_points: boundaryPoints,
+    occupied_boundary_count: finiteNumberOrZero(rawOverlay.occupied_boundary_count) || boundaryPoints.length,
+    occupied_boundary_source_count: boundarySourceCount,
+    occupied_cell_source_count: finitePathCoordinate(rawOverlay.occupied_cell_source_count) ?? undefined,
+    pillar_candidate_points: pillarPoints,
+    pillar_candidate_count: finiteNumberOrZero(rawOverlay.pillar_candidate_count) || pillarPoints.length,
+    pillar_candidate_source_count: pillarSourceCount,
+    nav2_costmap_points: costmapPoints,
+    nav2_costmap_count: finiteNumberOrZero(rawOverlay.nav2_costmap_count) || costmapPoints.length,
+    nav2_costmap_source_count: costmapSourceCount,
+    nav2_costmap_status: mapPreviewCostmapOverlayStatus(rawOverlay.nav2_costmap_status),
+    nav2_costmap_source: asString(rawOverlay.nav2_costmap_source, costmapPoints.length > 0 ? "map_preview" : "not_loaded"),
+    nav2_costmap_topics: stringList(rawOverlay.nav2_costmap_topics, 4),
+    plain_hint: asString(rawOverlay.plain_hint, status === "loaded" ? "地图彩色层已加载。" : "地图彩色层未加载。"),
+    failure_reason: asString(rawOverlay.failure_reason, ""),
+    blocked_reasons: stringList(rawOverlay.blocked_reasons, 8),
+  };
+}
+
 function mapPreviewRadarOverlayAliases(
   radarOverlay: RobotControlMapPreviewRadarOverlay,
 ): Pick<
@@ -4546,6 +4698,7 @@ function blockedMapPreviewResponse(
   const pathWysiwygStatusPlain = pathStatus === "path_preview_observed"
     ? "图上路线已显示在当前地图画面。"
     : "图上路线未显示；不能把旧路线或空路线当作当前所见。";
+  const colorOverlay = defaultMapPreviewColorOverlay(reason);
   const previewPlain = mapPreviewPlainSummary(
     mapWysiwyg.statusPlain,
     mapRadarUserFacingStatusPlainFromOverlay(radarOverlay),
@@ -4582,6 +4735,8 @@ function blockedMapPreviewResponse(
     blocked_reasons: [reason],
     hard_dangerous_true_fields: [],
     radar_overlay: radarOverlay,
+    color_overlay: colorOverlay,
+    ...mapPreviewColorOverlayAliases(colorOverlay),
     map_wysiwyg_status_plain: mapWysiwyg.statusPlain,
     map_wysiwyg_next_action_plain: mapWysiwyg.nextActionPlain,
     ...mapPreviewRadarOverlayAliases(radarOverlay),
@@ -4842,6 +4997,7 @@ export async function buildMapPreviewProxy(baseUrl: string): Promise<RobotContro
   const forwarded = response.ok && blockedReasons.length === 0;
   const overlayReadback = await overlayReadbackPromise;
   const radarOverlay = mapPreviewRadarOverlayFromPayload(payload) ?? overlayReadback.radarOverlay;
+  const colorOverlay = mapPreviewColorOverlayFromPayload(payload) ?? defaultMapPreviewColorOverlay("map_color_overlay_missing");
   const pathPreview = mapPreviewPathPreviewFromPayload(payload, overlayReadback.pathPreview);
   const pathStatus = pathPreview.path_preview_point_count > 0 ? "path_preview_observed" : "not_observed";
   const poseStatus = radarOverlay.robot_pose ? "map_pose_observed" : "not_observed";
@@ -4899,6 +5055,8 @@ export async function buildMapPreviewProxy(baseUrl: string): Promise<RobotContro
     blocked_reasons: blockedReasons,
     hard_dangerous_true_fields: hardDangerous,
     radar_overlay: radarOverlay,
+    color_overlay: colorOverlay,
+    ...mapPreviewColorOverlayAliases(colorOverlay),
     map_wysiwyg_status_plain: mapWysiwyg.statusPlain,
     map_wysiwyg_next_action_plain: mapWysiwyg.nextActionPlain,
     ...mapPreviewRadarOverlayAliases(radarOverlay),

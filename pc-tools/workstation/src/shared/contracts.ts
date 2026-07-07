@@ -6268,6 +6268,42 @@ export interface RobotControlFreeRoamAutonomyLatestResponse extends ProofFlags {
   robot_control_executed: false;
 }
 
+export interface RobotControlMapColorOverlayPoint {
+  x_cell: number;
+  y_cell: number;
+  left: number;
+  top: number;
+  weight?: number;
+  area_cells?: number;
+  bbox_width_cells?: number;
+  bbox_height_cells?: number;
+  confidence?: number;
+  cost?: number;
+}
+
+export interface RobotControlMapPreviewColorOverlay {
+  status: "loaded" | "partial" | "blocked" | "not_loaded";
+  source: string;
+  map_width: number;
+  map_height: number;
+  occupied_boundary_points: RobotControlMapColorOverlayPoint[];
+  occupied_boundary_count: number;
+  occupied_boundary_source_count: number;
+  occupied_cell_source_count?: number;
+  pillar_candidate_points: RobotControlMapColorOverlayPoint[];
+  pillar_candidate_count: number;
+  pillar_candidate_source_count: number;
+  nav2_costmap_points: RobotControlMapColorOverlayPoint[];
+  nav2_costmap_count: number;
+  nav2_costmap_source_count: number;
+  nav2_costmap_status: "loaded" | "partial" | "blocked" | "not_loaded";
+  nav2_costmap_source: string;
+  nav2_costmap_topics: string[];
+  plain_hint: string;
+  failure_reason: string;
+  blocked_reasons: string[];
+}
+
 export interface RobotControlMapPreviewResponse extends ProofFlags {
   schema: "trashbot.pc_tools_workstation.robot_control_map_preview_proxy.v1";
   proxy_status: "preview_forwarded" | "preview_rejected" | "preview_failed";
@@ -6309,6 +6345,13 @@ export interface RobotControlMapPreviewResponse extends ProofFlags {
   blocked_reasons: string[];
   hard_dangerous_true_fields: string[];
   radar_overlay?: RobotControlMapPreviewRadarOverlay;
+  color_overlay: RobotControlMapPreviewColorOverlay;
+  map_color_overlay_status: RobotControlMapPreviewColorOverlay["status"];
+  map_color_overlay_plain_hint: string;
+  map_color_occupied_boundary_count: number;
+  map_color_pillar_candidate_count: number;
+  map_color_nav2_costmap_count: number;
+  map_color_nav2_costmap_status: RobotControlMapPreviewColorOverlay["nav2_costmap_status"];
   map_wysiwyg_status_plain: string;
   map_wysiwyg_next_action_plain: string;
   radar_overlay_status: RobotControlMapPreviewRadarOverlay["overlay_status"];

@@ -69,6 +69,9 @@ DEFAULT_BRIDGE_COMMAND_DEBUG_STALE_AFTER_MS = 15 * 60 * 1000
 DEFAULT_LIDAR_SCAN_PROOF_ARTIFACT_PATH = "runtime/lidar_scan_proof_latest.json"
 DEFAULT_LIDAR_SCAN_PROOF_REFRESH_TIMEOUT_S = 12.0
 DEFAULT_LIDAR_SCAN_PROOF_RUNTIME_WARMUP_S = 6.0
+MAP_COLOR_OVERLAY_BOUNDARY_POINT_LIMIT = 900
+MAP_COLOR_OVERLAY_PILLAR_POINT_LIMIT = 120
+MAP_COLOR_OVERLAY_COSTMAP_POINT_LIMIT = 700
 DEFAULT_LIDAR_DRIVER_DIAGNOSTICS_STALE_AFTER_MS = 5 * 1000
 DEFAULT_RADAR_LIFECYCLE_STATUS_TIMEOUT_S = 3.0
 DEFAULT_LIDAR_RAW_PACKET_PROOF_ARTIFACT_PATH = "runtime/lidar_raw_packet_proof_latest.json"
@@ -1028,6 +1031,169 @@ def read_pgm_image(image_path: Path) -> dict[str, Any]:
         raise ValueError("PGM pixel data is shorter than width*height")
     # PGM 可能多带换行或尾部字节；预览只取声明尺寸，避免浏览器展示与 YAML 尺寸分叉。
     return {"width": width, "height": height, "pixels": data[:expected_size]}
+
+
+def default_map_color_overlay(reason: str = "not_loaded") -> dict[str, Any]:
+    """地图彩色层保持同形返回；缺地图时前端也能给出明确的未接入口径。"""
+    return {
+        "schema": "trashbot.upper_robot_api.v1.map_color_overlay",
+        "status": "not_loaded",
+        "source": "not_loaded",
+        "map_width": 0,
+        "map_height": 0,
+        "occupied_boundary_points": [],
+        "occupied_boundary_count": 0,
+        "occupied_boundary_source_count": 0,
+        "pillar_candidate_points": [],
+        "pillar_candidate_count": 0,
+        "pillar_candidate_source_count": 0,
+        "nav2_costmap_points": [],
+        "nav2_costmap_count": 0,
+        "nav2_costmap_source_count": 0,
+        "nav2_costmap_status": "not_loaded",
+        "nav2_costmap_source": "not_loaded",
+        "nav2_costmap_topics": ["/global_costmap/costmap", "/local_costmap/costmap"],
+        "failure_reason": reason,
+        "blocked_reasons": [reason] if reason else [],
+        "plain_hint": "地图彩色层未加载。",
+    }
+
+
+def map_overlay_percent_point(x_cell: float, y_cell: float, width: int, height: int, extra: dict[str, Any] | None = None) -> dict[str, Any]:
+    """把 PGM 像素坐标转成浏览器 SVG 百分比；直接贴在同一张地图图像上，不做 ROS 坐标猜测。"""
+    left = ((float(x_cell) + 0.5) / max(1, width)) * 100.0
+    top = ((float(y_cell) + 0.5) / max(1, height)) * 100.0
+    point: dict[str, Any] = {
+        "x_cell": round(float(x_cell), 3),
+        "y_cell": round(float(y_cell), 3),
+        "left": round(left, 3),
+        "top": round(top, 3),
+    }
+    if extra:
+        point.update(extra)
+    return point
+
+
+def evenly_sample_map_points(points: list[dict[str, Any]], limit: int) -> list[dict[str, Any]]:
+    """大地图点数可能上万；均匀抽样保留全局轮廓，避免 PC 首屏 JSON 过大。"""
+    if limit <= 0 or len(points) <= limit:
+        return points
+    step = len(points) / float(limit)
+    sampled: list[dict[str, Any]] = []
+    for index in range(limit):
+        sampled.append(points[min(len(points) - 1, int(index * step))])
+    return sampled
+
+
+def pgm_occupied_boundary_points(pixels: bytes, width: int, height: int) -> tuple[list[dict[str, Any]], int]:
+    """从静态地图中抽出占用边界；边界比整片墙体更像 RViz 里的彩色轮廓。"""
+    boundary: list[dict[str, Any]] = []
+    occupied_source_count = 0
+    for offset, value in enumerate(pixels):
+        if value != 0:
+            continue
+        occupied_source_count += 1
+        x_cell = offset % width
+        y_cell = offset // width
+        exposed_neighbor_count = 0
+        for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            nx = x_cell + dx
+            ny = y_cell + dy
+            if nx < 0 or ny < 0 or nx >= width or ny >= height:
+                exposed_neighbor_count += 1
+                continue
+            if pixels[ny * width + nx] != 0:
+                exposed_neighbor_count += 1
+        if exposed_neighbor_count > 0:
+            boundary.append(map_overlay_percent_point(x_cell, y_cell, width, height, {"weight": exposed_neighbor_count}))
+    return boundary, occupied_source_count
+
+
+def pgm_pillar_candidate_points(pixels: bytes, width: int, height: int) -> tuple[list[dict[str, Any]], int]:
+    """用小型连通占用块标记疑似柱子；这是静态地图提示，不替代人工确认或 Nav2 costmap。"""
+    occupied = {index for index, value in enumerate(pixels) if value == 0}
+    visited: set[int] = set()
+    candidates: list[dict[str, Any]] = []
+    for start in sorted(occupied):
+        if start in visited:
+            continue
+        stack = [start]
+        visited.add(start)
+        xs: list[int] = []
+        ys: list[int] = []
+        while stack:
+            current = stack.pop()
+            x_cell = current % width
+            y_cell = current // width
+            xs.append(x_cell)
+            ys.append(y_cell)
+            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                nx = x_cell + dx
+                ny = y_cell + dy
+                if nx < 0 or ny < 0 or nx >= width or ny >= height:
+                    continue
+                neighbor = ny * width + nx
+                if neighbor in occupied and neighbor not in visited:
+                    visited.add(neighbor)
+                    stack.append(neighbor)
+        area = len(xs)
+        if area < 4 or area > 220:
+            continue
+        bbox_width = max(xs) - min(xs) + 1
+        bbox_height = max(ys) - min(ys) + 1
+        long_side = max(bbox_width, bbox_height)
+        short_side = max(1, min(bbox_width, bbox_height))
+        aspect = long_side / short_side
+        if long_side > 26 or aspect > 2.8:
+            continue
+        cx = sum(xs) / area
+        cy = sum(ys) / area
+        candidates.append(map_overlay_percent_point(cx, cy, width, height, {
+            "area_cells": area,
+            "bbox_width_cells": bbox_width,
+            "bbox_height_cells": bbox_height,
+            "confidence": round(min(1.0, area / max(1, bbox_width * bbox_height)), 3),
+        }))
+    return candidates, len(candidates)
+
+
+def map_color_overlay_for_pgm(image_path: Path) -> dict[str, Any]:
+    """为 PC 地图生成彩色工程层；所有点都来自静态 PGM，Nav2 costmap 不伪造实时数据。"""
+    pgm = read_pgm_image(image_path)
+    width = int(pgm["width"])
+    height = int(pgm["height"])
+    pixels = bytes(pgm["pixels"])
+    boundary_points, occupied_source_count = pgm_occupied_boundary_points(pixels, width, height)
+    pillar_points, pillar_source_count = pgm_pillar_candidate_points(pixels, width, height)
+    boundary_sample = evenly_sample_map_points(boundary_points, MAP_COLOR_OVERLAY_BOUNDARY_POINT_LIMIT)
+    pillar_sample = evenly_sample_map_points(pillar_points, MAP_COLOR_OVERLAY_PILLAR_POINT_LIMIT)
+    nav2_blocked_reason = "nav2_costmap_runtime_topic_not_captured_by_map_preview"
+    return {
+        "schema": "trashbot.upper_robot_api.v1.map_color_overlay",
+        "status": "loaded",
+        "source": "map_pgm_static_analysis",
+        "map_width": width,
+        "map_height": height,
+        "occupied_boundary_points": boundary_sample,
+        "occupied_boundary_count": len(boundary_sample),
+        "occupied_boundary_source_count": len(boundary_points),
+        "occupied_cell_source_count": occupied_source_count,
+        "pillar_candidate_points": pillar_sample,
+        "pillar_candidate_count": len(pillar_sample),
+        "pillar_candidate_source_count": pillar_source_count,
+        "nav2_costmap_points": [],
+        "nav2_costmap_count": 0,
+        "nav2_costmap_source_count": 0,
+        "nav2_costmap_status": "not_loaded",
+        "nav2_costmap_source": "not_loaded",
+        "nav2_costmap_topics": ["/global_costmap/costmap", "/local_costmap/costmap"],
+        "failure_reason": "",
+        "blocked_reasons": [nav2_blocked_reason],
+        "plain_hint": (
+            f"静态地图彩色层已加载：边界 {len(boundary_sample)} 个点、"
+            f"疑似柱子 {len(pillar_sample)} 个；Nav2 costmap 尚未接入实时 topic。"
+        ),
+    }
 
 
 def png_chunk(chunk_type: bytes, payload: bytes) -> bytes:
@@ -8931,6 +9097,7 @@ class UpperRobotApi:
             requested_map_name = safe_preview_map_name(map_name)
         except ValueError as exc:
             radar_overlay = default_map_preview_radar_overlay(str(exc))
+            color_overlay = default_map_color_overlay(str(exc))
             return software_guard_payload(
                 schema_suffix="map_preview_result",
                 action="map_preview",
@@ -8943,6 +9110,7 @@ class UpperRobotApi:
                     "map_name": map_name,
                     "image_data_url": "",
                     "radar_overlay": radar_overlay,
+                    "color_overlay": color_overlay,
                     **path_overlay,
                     **target_overlay,
                     "command_result": {"mode": "read_only_local_files", "executed": False, "ok": False},
@@ -8950,6 +9118,7 @@ class UpperRobotApi:
             )
         if not root.exists() or not root.is_dir():
             radar_overlay = default_map_preview_radar_overlay("map_artifact_dir_missing")
+            color_overlay = default_map_color_overlay("map_artifact_dir_missing")
             return software_guard_payload(
                 schema_suffix="map_preview_result",
                 action="map_preview",
@@ -8962,6 +9131,7 @@ class UpperRobotApi:
                     "map_name": requested_map_name or "",
                     "image_data_url": "",
                     "radar_overlay": radar_overlay,
+                    "color_overlay": color_overlay,
                     **path_overlay,
                     **target_overlay,
                     "command_result": {"mode": "read_only_local_files", "executed": False, "ok": False},
@@ -8982,6 +9152,7 @@ class UpperRobotApi:
                 if not path_is_under(image_path, root):
                     raise ValueError("map_image_outside_artifact_dir")
                 image_preview = data_url_for_pgm(image_path)
+                color_overlay = map_color_overlay_for_pgm(image_path)
                 return software_guard_payload(
                     schema_suffix="map_preview_result",
                     action="map_preview",
@@ -9003,6 +9174,7 @@ class UpperRobotApi:
                         "image_data_url": image_preview["image_data_url"],
                         "source_image_format": image_preview["source_image_format"],
                         "radar_overlay": radar_overlay,
+                        "color_overlay": color_overlay,
                         **path_overlay,
                         **target_overlay,
                         "failure_reason": None,
@@ -9018,6 +9190,7 @@ class UpperRobotApi:
             except Exception as exc:  # noqa: BLE001 - 单张坏图不能阻断 fallback 候选。
                 failures.append(f"{yaml_path.name}:{compact_error(exc)}")
         reason = failures[0] if failures else "map_yaml_missing"
+        color_overlay = default_map_color_overlay(reason)
         return software_guard_payload(
             schema_suffix="map_preview_result",
             action="map_preview",
@@ -9030,6 +9203,7 @@ class UpperRobotApi:
                 "map_name": requested_map_name or "",
                 "image_data_url": "",
                 "radar_overlay": radar_overlay,
+                "color_overlay": color_overlay,
                 **path_overlay,
                 **target_overlay,
                 "command_result": {"mode": "read_only_local_files", "executed": False, "ok": False},

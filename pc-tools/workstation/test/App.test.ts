@@ -3393,6 +3393,39 @@ const fixtures: Record<string, unknown> = {
       primary_blocked_reason: "none",
       current_vs_source_plain: "地图雷达点：当前 0 个，来源 0 个；下一步：先启动雷达并等待新扫描，再刷新地图画面确认雷达点。",
     },
+    color_overlay: {
+      status: "loaded",
+      source: "map_pgm_static_analysis",
+      map_width: 100,
+      map_height: 100,
+      occupied_boundary_points: [
+        { x_cell: 12, y_cell: 16, left: 12.5, top: 16.5, weight: 2 },
+        { x_cell: 13, y_cell: 16, left: 13.5, top: 16.5, weight: 1 },
+      ],
+      occupied_boundary_count: 2,
+      occupied_boundary_source_count: 2,
+      occupied_cell_source_count: 6,
+      pillar_candidate_points: [
+        { x_cell: 60, y_cell: 44, left: 60.5, top: 44.5, area_cells: 9, bbox_width_cells: 3, bbox_height_cells: 3, confidence: 1 },
+      ],
+      pillar_candidate_count: 1,
+      pillar_candidate_source_count: 1,
+      nav2_costmap_points: [],
+      nav2_costmap_count: 0,
+      nav2_costmap_source_count: 0,
+      nav2_costmap_status: "not_loaded",
+      nav2_costmap_source: "not_loaded",
+      nav2_costmap_topics: ["/global_costmap/costmap", "/local_costmap/costmap"],
+      plain_hint: "静态地图彩色层已加载：边界 2 个点、疑似柱子 1 个；Nav2 costmap 尚未接入实时 topic。",
+      failure_reason: "",
+      blocked_reasons: ["nav2_costmap_runtime_topic_not_captured_by_map_preview"],
+    },
+    map_color_overlay_status: "loaded",
+    map_color_overlay_plain_hint: "静态地图彩色层已加载：边界 2 个点、疑似柱子 1 个；Nav2 costmap 尚未接入实时 topic。",
+    map_color_occupied_boundary_count: 2,
+    map_color_pillar_candidate_count: 1,
+    map_color_nav2_costmap_count: 0,
+    map_color_nav2_costmap_status: "not_loaded",
     radar_overlay_status: "not_loaded",
     radar_overlay_plain_hint: "雷达点还没有贴到地图。",
     radar_overlay_wysiwyg_status_plain: "雷达点未贴到当前地图：当前显示 0 个点；旧来源点 0 个只作诊断。",
@@ -9456,14 +9489,16 @@ describe("App", () => {
     const mapWysiwygLayerStrip = wrapper.find('[data-testid="plain-map-wysiwyg-layer-strip"]');
     expect(mapWysiwygLayerStrip.exists()).toBe(true);
     expect(mapWysiwygLayerStrip.attributes("data-state")).toBe("未完整");
-    expect(mapWysiwygLayerStrip.attributes("data-current-layer-ids")).toBe("image");
+    expect(mapWysiwygLayerStrip.attributes("data-current-layer-ids")).toBe("image,obstacle");
     expect(mapWysiwygLayerStrip.attributes("data-missing-layer-ids")).toBe("route,goal,robot,radar");
     expect(mapWysiwygLayerStrip.attributes("data-layer-summary")).toContain("地图图像已显示");
+    expect(mapWysiwygLayerStrip.attributes("data-layer-summary")).toContain("障碍层已显示");
     expect(mapWysiwygLayerStrip.attributes("data-layer-summary")).toContain("图上行程未显示");
     expect(mapWysiwygLayerStrip.attributes("data-layer-summary")).toContain("目标点未显示");
     expect(mapWysiwygLayerStrip.attributes("data-layer-summary")).toContain("小车位置未定位");
     expect(mapWysiwygLayerStrip.attributes("data-layer-summary")).toContain("雷达点未贴当前图");
     expect(mapWysiwygLayerStrip.attributes("data-map-image-visible")).toBe("true");
+    expect(mapWysiwygLayerStrip.attributes("data-obstacle-layer-visible")).toBe("true");
     expect(mapWysiwygLayerStrip.attributes("data-route-layer-visible")).toBe("false");
     expect(mapWysiwygLayerStrip.attributes("data-goal-marker-visible")).toBe("false");
     expect(mapWysiwygLayerStrip.attributes("data-route-target-marker-visible")).toBe("false");
@@ -9472,6 +9507,11 @@ describe("App", () => {
     expect(mapWysiwygLayerStrip.attributes("data-radar-map-points-visible")).toBe("false");
     expect(mapWysiwygLayerStrip.attributes("data-radar-map-point-count")).toBe("0");
     expect(mapWysiwygLayerStrip.attributes("data-radar-map-overlay-status")).toBe("not_loaded");
+    expect(mapWysiwygLayerStrip.attributes("data-map-color-overlay-visible")).toBe("true");
+    expect(mapWysiwygLayerStrip.attributes("data-map-color-overlay-status")).toBe("loaded");
+    expect(mapWysiwygLayerStrip.attributes("data-map-color-boundary-count")).toBe("2");
+    expect(mapWysiwygLayerStrip.attributes("data-map-color-pillar-count")).toBe("1");
+    expect(mapWysiwygLayerStrip.attributes("data-map-color-nav2-costmap-status")).toBe("not_loaded");
     expect(mapWysiwygLayerStrip.attributes("data-fixed-map-preview-endpoint")).toBe("/api/robot-control/map/preview");
     expect(mapWysiwygLayerStrip.attributes("data-fixed-radar-refresh-endpoint")).toBe("/api/robot-control/radar/scan-proof/refresh");
     expect(mapWysiwygLayerStrip.attributes("data-readback-only")).toBe("true");
@@ -9483,6 +9523,9 @@ describe("App", () => {
     expect(mapWysiwygLayerStrip.attributes("data-starts-keyboard")).toBe("false");
     expect(mapWysiwygLayerStrip.attributes("data-starts-free-roam")).toBe("false");
     expect(wrapper.find('[data-testid="plain-map-wysiwyg-layer-image"]').attributes("data-current-visible")).toBe("true");
+    expect(wrapper.find('[data-testid="plain-map-wysiwyg-layer-obstacle"]').attributes("data-current-visible")).toBe("true");
+    expect(wrapper.find('[data-testid="plain-map-wysiwyg-layer-obstacle"]').attributes("data-point-count")).toBe("3");
+    expect(wrapper.find('[data-testid="plain-map-wysiwyg-layer-obstacle"]').attributes("aria-label")).toContain("边界 2 个");
     expect(wrapper.find('[data-testid="plain-map-wysiwyg-layer-route"]').attributes("data-current-visible")).toBe("false");
     expect(wrapper.find('[data-testid="plain-map-wysiwyg-layer-goal"]').attributes("data-current-visible")).toBe("false");
     expect(wrapper.find('[data-testid="plain-map-wysiwyg-layer-goal"]').attributes("aria-label")).toContain("目标点未画到当前地图");
@@ -9991,6 +10034,10 @@ describe("App", () => {
     expect(workstationStyles).toContain(".plain-map-wysiwyg-layer-chip");
     expect(workstationStyles).toContain('.plain-map-wysiwyg-layer-chip[data-current-visible="true"]');
     expect(workstationStyles).toContain('.plain-map-wysiwyg-layer-chip[data-state="旧点未贴图"]');
+    expect(workstationStyles).toContain(".plain-map-color-overlay");
+    expect(workstationStyles).toContain(".plain-map-color-boundary-dot");
+    expect(workstationStyles).toContain(".plain-map-color-pillar-dot");
+    expect(workstationStyles).toContain(".plain-map-color-costmap-dot");
     expect(workstationStyles).toContain(".plain-live-ready-motion-actions");
     expect(workstationStyles).toContain(".plain-live-ready-motion-action");
     expect(workstationStyles).toContain('.plain-live-ready-motion-action[data-state="可验证"]');
@@ -10035,6 +10082,15 @@ describe("App", () => {
     expect(workstationStyles).toContain('.plain-map-radar-wysiwyg-proof[data-state="旧点已抑制"]');
     expect(wrapper.find('[data-testid="plain-map-preview-image"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="plain-map-preview-image"]').attributes("src")).toContain("data:image/png;base64,");
+    const colorOverlay = wrapper.find('[data-testid="plain-map-color-overlay"]');
+    expect(colorOverlay.exists()).toBe(true);
+    expect(colorOverlay.attributes("data-map-color-overlay-status")).toBe("loaded");
+    expect(colorOverlay.attributes("data-map-color-boundary-count")).toBe("2");
+    expect(colorOverlay.attributes("data-map-color-pillar-count")).toBe("1");
+    expect(colorOverlay.attributes("data-map-color-nav2-costmap-status")).toBe("not_loaded");
+    expect(wrapper.findAll(".plain-map-color-boundary-dot")).toHaveLength(4);
+    expect(wrapper.findAll(".plain-map-color-pillar-dot")).toHaveLength(2);
+    expect(wrapper.find('[data-testid="plain-map-color-overlay-label"]').text()).toContain("疑似柱子 1 个");
     expect(wrapper.find('[data-testid="plain-map-radar-marker"]').text()).toBe("雷达已运行，最近障碍 0.30m");
     expect(wrapper.find('[data-testid="plain-map-radar-marker"]').attributes("aria-label")).toBe("雷达已运行，地图位置未读到，最近障碍 0.30m，按雷达局部距离显示，未贴到地图");
     expect(wrapper.find('[data-testid="plain-map-radar-marker"]').classes()).toContain("mode-pose-missing");
@@ -28366,7 +28422,7 @@ describe("App", () => {
     expect(overviewInset.attributes("data-map-overview-complete")).toBe("true");
     expect(overviewInset.attributes("data-main-map-zoom-percent")).toBe("800%");
     expect(overviewInset.attributes("data-overview-map-zoom-percent")).toBe("100%");
-    expect(overviewInset.attributes("data-overview-overlays")).toBe("image,route,robot,radar,target");
+    expect(overviewInset.attributes("data-overview-overlays")).toBe("image,color,route,robot,radar,target");
     expect(overviewInset.attributes("data-sends-motion-when-clicked")).toBe("false");
     expect(overviewInset.attributes("data-starts-ros2")).toBe("false");
     expect(overviewInset.attributes("data-starts-rviz2")).toBe("false");

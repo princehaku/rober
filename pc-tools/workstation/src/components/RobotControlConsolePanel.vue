@@ -108,7 +108,7 @@ type PlainMapRadarReadback = {
   source: PlainMapRadarOverlaySource;
 };
 type PlainMapWysiwygLayerItem = {
-  id: "image" | "route" | "goal" | "robot" | "radar";
+  id: "image" | "obstacle" | "route" | "goal" | "robot" | "radar";
   label: string;
   state: string;
   currentVisible: boolean;
@@ -394,7 +394,7 @@ const PLAIN_MAP_READABLE_DEFAULT_ZOOM_PERCENT = "800%";
 const PLAIN_MAP_HOME_DEFAULT_ZOOM_PERCENT = PLAIN_MAP_READABLE_DEFAULT_ZOOM_PERCENT;
 const PLAIN_MAP_DIRECT_DEFAULT_ZOOM_PERCENT = PLAIN_MAP_READABLE_DEFAULT_ZOOM_PERCENT;
 const PLAIN_MAP_OVERVIEW_INSET_ZOOM_PERCENT = PLAIN_MAP_FIT_ZOOM_PERCENT;
-const PLAIN_MAP_OVERVIEW_INSET_OVERLAYS = "image,route,robot,radar,target";
+const PLAIN_MAP_OVERVIEW_INSET_OVERLAYS = "image,color,route,robot,radar,target";
 const plainMapDefaultZoomPercent = computed(() => (plainMapDirectViewRequested.value ? PLAIN_MAP_DIRECT_DEFAULT_ZOOM_PERCENT : PLAIN_MAP_HOME_DEFAULT_ZOOM_PERCENT));
 const PLAIN_MAP_MAX_ZOOM_PERCENT = "4800%";
 const plainMapZoomStyle = computed(() => ({
@@ -7210,6 +7210,46 @@ function percentText(value: number): string {
   return `${Math.max(0, Math.min(100, value)).toFixed(1)}%`;
 }
 
+type PlainMapColorOverlayDot = {
+  key: string;
+  left: number;
+  top: number;
+  weight?: number;
+  confidence?: number;
+  cost?: number;
+};
+
+function mapColorOverlayPercent(value: unknown): number | null {
+  // 上车已经按 PGM 像素生成百分比；前端只做范围校验，不重新推导地图坐标。
+  const numberValue = finitePlainNumber(value as string | number | null | undefined);
+  if (numberValue === null || numberValue < -0.5 || numberValue > 100.5) {
+    return null;
+  }
+  return Math.max(0, Math.min(100, numberValue));
+}
+
+function mapColorOverlayDots(
+  points: RobotControlMapPreviewResponse["color_overlay"]["occupied_boundary_points"],
+  keyPrefix: string,
+): PlainMapColorOverlayDot[] {
+  // SVG key 使用 cell/source 顺序双保险，避免抽样点重合时 Vue 复用错圆点。
+  return points.flatMap((point, index) => {
+    const left = mapColorOverlayPercent(point.left);
+    const top = mapColorOverlayPercent(point.top);
+    if (left === null || top === null) {
+      return [];
+    }
+    return [{
+      key: `${keyPrefix}-${point.x_cell}-${point.y_cell}-${index}`,
+      left,
+      top,
+      weight: point.weight,
+      confidence: point.confidence,
+      cost: point.cost,
+    }];
+  });
+}
+
 function mapCoordinatePercent(goalX: number, goalY: number, preview: RobotControlMapPreviewResponse): { left: number; top: number } | null {
   // ROS map origin 是地图左下角；浏览器图像坐标从左上角开始，因此 y 轴需要反转。
   const originX = finitePlainNumber(preview.origin?.[0]);
@@ -8517,6 +8557,18 @@ const plainMapVisualSummary = computed(() => {
   const proof = robotSummary.value?.o3_proof_summary;
   const mapReadback = mapRefreshResult.value?.latest_readback_key_values ?? {};
   const previewLoaded = mapPreviewResult.value?.proxy_status === "preview_forwarded" && Boolean(mapPreviewResult.value.image_data_url);
+  const colorOverlay = mapPreviewResult.value?.color_overlay ?? null;
+  const colorOverlayLoaded = previewLoaded && colorOverlay?.status === "loaded";
+  const colorBoundaryDots = colorOverlayLoaded ? mapColorOverlayDots(colorOverlay.occupied_boundary_points ?? [], "boundary") : [];
+  const colorPillarDots = colorOverlayLoaded ? mapColorOverlayDots(colorOverlay.pillar_candidate_points ?? [], "pillar") : [];
+  const colorCostmapDots = colorOverlayLoaded ? mapColorOverlayDots(colorOverlay.nav2_costmap_points ?? [], "costmap") : [];
+  const colorOverlayVisible = colorBoundaryDots.length > 0 || colorPillarDots.length > 0 || colorCostmapDots.length > 0;
+  const colorCostmapStatus = colorOverlay?.nav2_costmap_status ?? "not_loaded";
+  const colorLayerLabel = colorOverlayVisible
+    ? `边界 ${colorBoundaryDots.length} 个，疑似柱子 ${colorPillarDots.length} 个，costmap ${colorCostmapDots.length} 个`
+    : colorOverlayLoaded
+      ? "静态地图没有可单独高亮的障碍点，Nav2 costmap 未接入"
+      : "彩色障碍层未加载";
   const routeGoal = latestNavGoalOverlay();
   const routePath = latestNavPathOverlay();
   const robotPose = latestRobotPoseOverlay();
@@ -8747,6 +8799,22 @@ const plainMapVisualSummary = computed(() => {
     radarNextActionText: plainMapRadarNextActionText(),
     mapImageFreshnessLabel: plainMapImageFreshnessLabel(previewLoaded),
     mapRefLabel: previewLoaded ? `真实地图 ${mapPreviewResult.value?.width}x${mapPreviewResult.value?.height}` : mapRef ? "地图记录已读取" : "地图记录未读到",
+    showColorOverlay: colorOverlayVisible,
+    colorOverlayDots: colorBoundaryDots,
+    colorPillarDots,
+    colorCostmapDots,
+    colorOverlayStatus: colorOverlay?.status ?? "not_loaded",
+    colorOverlaySource: colorOverlay?.source ?? "not_loaded",
+    colorOverlayLayerLabel: colorLayerLabel,
+    colorOverlayPlainHint: colorOverlay?.plain_hint ?? "地图彩色层未加载。",
+    colorOverlayBoundaryCount: colorBoundaryDots.length,
+    colorOverlayBoundarySourceCount: colorOverlay?.occupied_boundary_source_count ?? colorBoundaryDots.length,
+    colorOverlayPillarCount: colorPillarDots.length,
+    colorOverlayPillarSourceCount: colorOverlay?.pillar_candidate_source_count ?? colorPillarDots.length,
+    colorOverlayCostmapCount: colorCostmapDots.length,
+    colorOverlayCostmapSourceCount: colorOverlay?.nav2_costmap_source_count ?? colorCostmapDots.length,
+    colorOverlayCostmapStatus: colorCostmapStatus,
+    colorOverlayCostmapSource: colorOverlay?.nav2_costmap_source ?? "not_loaded",
     routePathLabel: plainRouteMapCaption(routePath),
     routeReadbackLabel: plainMapRouteReadbackLabel(routePath),
     pathWysiwygReadbackLabel: plainMapPathWysiwygReadbackLabel(),
@@ -8806,10 +8874,16 @@ const plainMapWysiwygLayerStrip = computed(() => {
   // 地图大屏第一眼只回答“当前画布上哪些层是真的可见”；旧点和局部点不能冒充当前地图贴图。
   const map = plainMapVisualSummary.value;
   const imageVisible = Boolean(map.imageDataUrl);
+  const obstacleVisible = Boolean(map.showColorOverlay);
   const routeVisible = Boolean(map.showRoutePath);
   const goalVisible = Boolean(map.routeTargetVisible);
   const robotVisible = Boolean(map.showRobotPose);
   const radarVisible = Boolean(map.radarMapPointsVisible);
+  const obstacleState = obstacleVisible
+    ? "已显示"
+    : map.colorOverlayStatus === "loaded"
+      ? "无高亮点"
+      : "未显示";
   const radarHasSuppressedOldPoints = !radarVisible && map.radarMapNotCurrentSourcePointCount > 0;
   const radarState = radarVisible
     ? "已贴当前图"
@@ -8836,6 +8910,15 @@ const plainMapWysiwygLayerStrip = computed(() => {
       state: imageVisible ? "已显示" : "未显示",
       currentVisible: imageVisible,
       text: imageVisible ? map.mapRefLabel : "地图画面未显示",
+    },
+    {
+      id: "obstacle",
+      label: "障碍层",
+      state: obstacleState,
+      currentVisible: obstacleVisible,
+      text: map.colorOverlayLayerLabel,
+      pointCount: map.colorOverlayBoundaryCount + map.colorOverlayPillarCount + map.colorOverlayCostmapCount,
+      sourcePointCount: map.colorOverlayBoundarySourceCount + map.colorOverlayPillarSourceCount + map.colorOverlayCostmapSourceCount,
     },
     {
       id: "route",
@@ -25320,6 +25403,7 @@ onBeforeUnmount(() => {
             :data-missing-layer-ids="plainMapWysiwygLayerStrip.missingIds.join(',') || 'none'"
             :data-layer-summary="plainMapWysiwygLayerStrip.text"
             :data-map-image-visible="String(plainMapWysiwygLayerStrip.items.find((item) => item.id === 'image')?.currentVisible ?? false)"
+            :data-obstacle-layer-visible="String(plainMapWysiwygLayerStrip.items.find((item) => item.id === 'obstacle')?.currentVisible ?? false)"
             :data-route-layer-visible="String(plainMapWysiwygLayerStrip.items.find((item) => item.id === 'route')?.currentVisible ?? false)"
             :data-goal-marker-visible="String(plainMapWysiwygLayerStrip.items.find((item) => item.id === 'goal')?.currentVisible ?? false)"
             :data-route-target-marker-visible="String(plainMapVisualSummary.routeTargetVisible)"
@@ -25330,6 +25414,12 @@ onBeforeUnmount(() => {
             :data-radar-map-source-point-count="String(plainMapVisualSummary.radarMapSourcePointCount)"
             :data-radar-map-overlay-status="plainMapVisualSummary.radarMapOverlayStatus"
             :data-radar-not-current-source-point-count="String(plainMapVisualSummary.radarMapNotCurrentSourcePointCount)"
+            :data-map-color-overlay-visible="String(plainMapVisualSummary.showColorOverlay)"
+            :data-map-color-overlay-status="plainMapVisualSummary.colorOverlayStatus"
+            :data-map-color-boundary-count="String(plainMapVisualSummary.colorOverlayBoundaryCount)"
+            :data-map-color-pillar-count="String(plainMapVisualSummary.colorOverlayPillarCount)"
+            :data-map-color-nav2-costmap-count="String(plainMapVisualSummary.colorOverlayCostmapCount)"
+            :data-map-color-nav2-costmap-status="plainMapVisualSummary.colorOverlayCostmapStatus"
             data-fixed-map-preview-endpoint="/api/robot-control/map/preview"
             data-fixed-radar-refresh-endpoint="/api/robot-control/radar/scan-proof/refresh"
             data-readback-only="true"
@@ -25382,6 +25472,28 @@ onBeforeUnmount(() => {
                   <span class="plain-map-wall left" />
                   <span class="plain-map-wall right" />
                 </template>
+                <svg
+                  v-if="plainMapVisualSummary.showColorOverlay"
+                  class="plain-map-color-overlay"
+                  viewBox="0 0 100 100"
+                  preserveAspectRatio="none"
+                  data-testid="plain-map-color-overlay"
+                  :data-map-color-overlay-status="plainMapVisualSummary.colorOverlayStatus"
+                  :data-map-color-overlay-source="plainMapVisualSummary.colorOverlaySource"
+                  :data-map-color-boundary-count="String(plainMapVisualSummary.colorOverlayBoundaryCount)"
+                  :data-map-color-boundary-source-count="String(plainMapVisualSummary.colorOverlayBoundarySourceCount)"
+                  :data-map-color-pillar-count="String(plainMapVisualSummary.colorOverlayPillarCount)"
+                  :data-map-color-pillar-source-count="String(plainMapVisualSummary.colorOverlayPillarSourceCount)"
+                  :data-map-color-nav2-costmap-count="String(plainMapVisualSummary.colorOverlayCostmapCount)"
+                  :data-map-color-nav2-costmap-source-count="String(plainMapVisualSummary.colorOverlayCostmapSourceCount)"
+                  :data-map-color-nav2-costmap-status="plainMapVisualSummary.colorOverlayCostmapStatus"
+                  :data-map-color-nav2-costmap-source="plainMapVisualSummary.colorOverlayCostmapSource"
+                  :aria-label="plainMapVisualSummary.colorOverlayLayerLabel"
+                >
+                  <circle v-for="point in plainMapVisualSummary.colorOverlayDots" :key="point.key" class="plain-map-color-boundary-dot" :cx="point.left" :cy="point.top" r="0.62" />
+                  <circle v-for="point in plainMapVisualSummary.colorPillarDots" :key="point.key" class="plain-map-color-pillar-dot" :cx="point.left" :cy="point.top" r="1.55" />
+                  <circle v-for="point in plainMapVisualSummary.colorCostmapDots" :key="point.key" class="plain-map-color-costmap-dot" :cx="point.left" :cy="point.top" r="1.05" />
+                </svg>
                 <svg v-if="plainMapVisualSummary.showRoutePath" class="plain-map-route-path" viewBox="0 0 100 100" preserveAspectRatio="none" data-testid="plain-map-route-path" :data-state="plainMapVisualSummary.routePathState" :aria-label="plainMapVisualSummary.routePathAria">
                   <polyline :points="plainMapVisualSummary.routePathPoints" />
                 </svg>
@@ -25480,6 +25592,10 @@ onBeforeUnmount(() => {
               :data-robot-marker-visible="String(plainMapVisualSummary.showRobotPose)"
               :data-radar-map-points-visible="String(plainMapVisualSummary.radarMapPointsVisible)"
               :data-radar-map-point-count="String(plainMapVisualSummary.radarMapPointCount)"
+              :data-map-color-overlay-visible="String(plainMapVisualSummary.showColorOverlay)"
+              :data-map-color-boundary-count="String(plainMapVisualSummary.colorOverlayBoundaryCount)"
+              :data-map-color-pillar-count="String(plainMapVisualSummary.colorOverlayPillarCount)"
+              :data-map-color-nav2-costmap-status="plainMapVisualSummary.colorOverlayCostmapStatus"
               data-sends-motion-when-clicked="false"
               data-starts-ros2="false"
               data-starts-rviz2="false"
@@ -25504,6 +25620,21 @@ onBeforeUnmount(() => {
                   <span class="plain-map-overview-grid-line horizontal" />
                   <span class="plain-map-overview-grid-line vertical" />
                 </template>
+                <svg
+                  v-if="plainMapVisualSummary.showColorOverlay"
+                  class="plain-map-overview-color-overlay"
+                  viewBox="0 0 100 100"
+                  preserveAspectRatio="none"
+                  data-testid="plain-map-overview-color-overlay"
+                  :data-map-color-boundary-count="String(plainMapVisualSummary.colorOverlayBoundaryCount)"
+                  :data-map-color-pillar-count="String(plainMapVisualSummary.colorOverlayPillarCount)"
+                  :data-map-color-nav2-costmap-count="String(plainMapVisualSummary.colorOverlayCostmapCount)"
+                  :aria-label="plainMapVisualSummary.colorOverlayLayerLabel"
+                >
+                  <circle v-for="point in plainMapVisualSummary.colorOverlayDots" :key="`overview-${point.key}`" class="plain-map-color-boundary-dot" :cx="point.left" :cy="point.top" r="0.8" />
+                  <circle v-for="point in plainMapVisualSummary.colorPillarDots" :key="`overview-${point.key}`" class="plain-map-color-pillar-dot" :cx="point.left" :cy="point.top" r="1.7" />
+                  <circle v-for="point in plainMapVisualSummary.colorCostmapDots" :key="`overview-${point.key}`" class="plain-map-color-costmap-dot" :cx="point.left" :cy="point.top" r="1.2" />
+                </svg>
                 <svg
                   v-if="plainMapVisualSummary.showRoutePath"
                   class="plain-map-overview-route-path"
@@ -25560,6 +25691,7 @@ onBeforeUnmount(() => {
               <span v-if="plainMapVisualSummary.routeReadbackLabel" class="muted" data-testid="plain-map-route-readback-label">{{ plainMapVisualSummary.routeReadbackLabel }}</span>
               <span v-if="plainMapVisualSummary.pathWysiwygReadbackLabel" class="muted" data-testid="plain-map-path-wysiwyg-readback">{{ plainMapVisualSummary.pathWysiwygReadbackLabel }}</span>
               <span v-if="plainMapVisualSummary.freeRoamSweepPlanLabel" class="muted" data-testid="plain-map-free-roam-sweep-label">{{ plainMapVisualSummary.freeRoamSweepPlanLabel }}</span>
+              <span class="muted" data-testid="plain-map-color-overlay-label">{{ plainMapVisualSummary.colorOverlayLayerLabel }}</span>
               <span class="muted" data-testid="plain-map-radar-scan-label">{{ plainMapVisualSummary.radarScanLabel }}</span>
               <span class="muted" data-testid="plain-map-radar-freshness-label">{{ plainMapVisualSummary.radarFreshnessLabel }}</span>
               <span v-if="plainMapVisualSummary.radarNextActionText" class="muted" data-testid="plain-map-radar-next-action">{{ plainMapVisualSummary.radarNextActionText }}</span>

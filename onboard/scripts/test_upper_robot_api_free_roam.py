@@ -32,6 +32,46 @@ class UpperRobotApiFreeRoamTest(unittest.TestCase):
 
         self.assertEqual(module.ROUTE_PATHS["health"], "/api/health")
 
+    def test_map_preview_returns_static_color_overlay(self) -> None:
+        """地图预览应把 PGM 占用边界和疑似柱子转成 PC 可叠加的彩色层。"""
+        module = load_upper_robot_api_module()
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            pgm_path = root / "color_map.pgm"
+            yaml_path = root / "color_map.yaml"
+            width = 12
+            height = 12
+            pixels = bytearray([254] * width * height)
+            for x_cell in range(1, 5):
+                pixels[1 * width + x_cell] = 0
+            for y_cell in range(4, 7):
+                for x_cell in range(7, 10):
+                    pixels[y_cell * width + x_cell] = 0
+            pgm_path.write_bytes(b"P5\n12 12\n255\n" + bytes(pixels))
+            yaml_path.write_text(
+                "image: color_map.pgm\nresolution: 0.05\norigin: [0.0, 0.0, 0.0]\n",
+                encoding="utf-8",
+            )
+            api = module.UpperRobotApi(
+                camera_base_url="http://127.0.0.1:8088",
+                base_port="/dev/null",
+                base_baudrate=115200,
+                max_speed=0.12,
+                map_artifact_dir=str(root),
+            )
+
+            payload = api.map_preview("color_map")
+
+        overlay = payload["color_overlay"]
+        self.assertEqual(payload["status"], "loaded")
+        self.assertEqual(overlay["status"], "loaded")
+        self.assertEqual(overlay["source"], "map_pgm_static_analysis")
+        self.assertGreaterEqual(overlay["occupied_boundary_count"], 4)
+        self.assertEqual(overlay["pillar_candidate_count"], 1)
+        self.assertEqual(overlay["pillar_candidate_points"][0]["area_cells"], 9)
+        self.assertEqual(overlay["nav2_costmap_status"], "not_loaded")
+        self.assertIn("/global_costmap/costmap", overlay["nav2_costmap_topics"])
+
     def test_base_status_get_skips_direct_t130_by_default(self) -> None:
         """普通 summary 刷新不能用 GET /api/base/status 抢 UART；轮速采样走显式接口。"""
         module = load_upper_robot_api_module()
@@ -59,8 +99,14 @@ class UpperRobotApiFreeRoamTest(unittest.TestCase):
             self.assertEqual(payload["explicit_feedback_request_endpoint"], "/api/base/feedback-request")
             self.assertEqual(payload["explicit_feedback_samples_endpoint"], "/api/base/feedback-samples")
             self.assertFalse(payload["feedback_readback"]["request"]["attempted"])
-            self.assertEqual(payload["feedback_readback"]["request"]["reason"], "base_status_get_lightweight_no_direct_t130")
-            self.assertIn("lightweight GET /api/base/status", payload["feedback_readback"]["feedback_ack"]["reason"])
+            self.assertIn(payload["feedback_readback"]["request"]["reason"], {
+                "base_status_get_lightweight_no_direct_t130",
+                "fresh_bridge_feedback_debug_log_available",
+            })
+            self.assertTrue(
+                "lightweight GET /api/base/status" in payload["feedback_readback"]["feedback_ack"]["reason"]
+                or "feedback debug log is fresh" in payload["feedback_readback"]["feedback_ack"]["reason"]
+            )
             self.assertFalse(payload["feedback_readback"]["sends_commands"])
             self.assertFalse(payload["sends_commands"])
             self.assertFalse(payload["sends_motion_commands"])

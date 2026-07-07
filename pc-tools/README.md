@@ -82,6 +82,14 @@ PC Node 固定代理只透传限幅后的 `linear_x_mps` 与 `angular_z_radps`�
 `docs/vendor/VENDOR_INDEX.md` 指向的 WAVE ROVER `CMD_ROS_CTRL` / `T=13`、`X` linear、`Z` angular 协议说明；
 该能力仍只走固定 `/api/robot-control/base/manual` 与 `/api/robot-control/base/stop`，不开放浏览器直连运动通道。
 
+2026-07-07 20:23 CST 起，PC 地图在灰度 PGM 真实地图上新增只读彩色工程层：上车
+`/api/map/preview` 会从静态 PGM 解析占用边界点和疑似柱状障碍点，PC 代理原样转成
+`color_overlay`，Vue 画布和右上角完整态势小窗分别用蓝色边界、紫红柱子、绿色雷达点、蓝色路线展示。
+`当前画布` 状态条新增 `障碍层` chip，普通用户不用打开 RViz2 也能看到地图边界和柱状障碍的大致位置。
+Nav2 costmap 不伪造：当前上车 preview 尚未采集 `/global_costmap/costmap` 或
+`/local_costmap/costmap` 时，合同明确返回 `nav2_costmap_status=not_loaded`；后续接入真实 costmap
+topic/artifact 后，PC 画布会直接画 `nav2_costmap_points`。
+
 2026-07-06 05:58 CST 起，上车 `/api/base/manual` 的 IMU 姿态运动信号阈值从 `1.0°` 调整为
 `0.35°`。依据 `docs/vendor/VENDOR_INDEX.md` 指向的 WAVE ROVER `T=1001` 反馈字段，`r/p` 来自
 底盘 IMU roll/pitch；该阈值只用于判断 PC 低速短脉冲是否有车体运动迹象，不替代 wheel raw L/R

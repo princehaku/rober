@@ -99,6 +99,11 @@ pc-tools/workstation/
   `linear_x_mps` / `angular_z_radps`，上车 Robot API 映射为 WAVE ROVER `T=13` 的 `X` / `Z`，
   资料来源为 `docs/vendor/VENDOR_INDEX.md` 指向的 WAVE ROVER `CMD_ROS_CTRL` 协议；该交互不新增浏览器直连、
   不开放任意运动 endpoint，仍受 `/api/robot-control/base/manual` 与 `/api/robot-control/base/stop` 护栏约束。
+- 2026-07-07 20:23 CST 起，PC 地图补齐浏览器内彩色工程层：上车 `/api/map/preview` 从真实 PGM
+  静态地图解析占用边界和疑似柱状障碍，PC 代理返回 `color_overlay`，普通 Vue 地图和右上角完整态势小窗同步显示。
+  色彩口径为蓝色边界、紫红疑似柱子、绿色雷达点、蓝色路线；`当前画布` 新增 `障碍层` chip，回答“地图上是否能看到边界/柱子”。
+  Nav2 costmap 只消费真实运行时材料；当前没有 `/global_costmap/costmap` 或 `/local_costmap/costmap`
+  采样 artifact 时显示 `nav2_costmap_status=not_loaded`，不把静态墙面伪装成实时 costmap。
 - 2026-07-06 06:52 CST 起，PC 相机 status 会保留最近一次 USB recovery 的强诊断：当 recovery
   返回 `stream_failure_class=high_speed_zero_byte_no_frame`、`software_capture_exhausted=true`、
   `known_good_uvc_required=true` 或 `camera_input_signal_check_required=true` 时，
