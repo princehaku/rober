@@ -105,6 +105,13 @@ pc-tools/workstation/
   文案改为“按住方向键记录点位”，下一步焦点直接落到键盘面板；成功转发的手动脉冲会追加到 PC 本地点位缓存。
   有当前 map-frame 位姿时点位和折线叠加在 PGM 地图上；缺位姿时只显示记录计数和待定位状态，不冒充 SLAM/里程计轨迹。
   这只改善普通手控和后续建图复盘，真实建图验收仍以地图记录、地图预览、雷达/相机材料和上车端 SLAM 输出为准。
+- 2026-07-09 01:52 CST 起，键盘连续手控的顺滑边界改成 `realtime_hold`：PC 仍只打固定
+  `/api/robot-control/base/manual`，但每次按住刷新会携带 `hold_session_id`、`hold_sequence` 和
+  `hold_watchdog_ms`；上车 `/api/base/manual` 在该模式下只刷新当前低速命令和 watchdog，不再每拍末尾自动 stop。
+  前端也从固定 `setInterval` 改为回包后自调度：慢回包超过 260ms 时下一拍立即补发，不再错过一拍后空等。
+  松开、失焦、切页或停止按钮仍立即调用固定 `/api/robot-control/base/stop`；PC 断拍时上车 watchdog 自动发送零速兜底。
+  stop 覆盖 ROS `/cmd_vel` 零速和 WAVE ROVER `T=13`、`T=1`、`T=11` 三种 vendor 零命令；资料来源为
+  `docs/vendor/VENDOR_INDEX.md` 指向的 WAVE ROVER JSON 控制协议。
 - 2026-07-07 20:23 CST 起，PC 地图补齐浏览器内彩色工程层：上车 `/api/map/preview` 从真实 PGM
   静态地图解析占用边界和疑似柱状障碍，PC 代理返回 `color_overlay`，普通 Vue 地图和右上角完整态势小窗同步显示。
   色彩口径为蓝色边界、紫红疑似柱子、绿色雷达点、蓝色路线；`当前画布` 新增 `障碍层` chip，回答“地图上是否能看到边界/柱子”。

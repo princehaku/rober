@@ -89,6 +89,13 @@ PC Node 固定代理只透传限幅后的 `linear_x_mps` 与 `angular_z_radps`�
 没有位姿时只保留“待定位”事件，不伪造 SLAM 轨迹。松开、失焦、切页和停止按钮仍走固定
 `/api/robot-control/base/stop` 收口。
 
+2026-07-09 01:52 CST 起，键盘连续手控从“每拍运动后自动 stop”改为 `realtime_hold`：PC 仍只调用固定
+`/api/robot-control/base/manual`，但请求会带 `hold_session_id`、`hold_sequence` 和 `hold_watchdog_ms`；
+上车 `/api/base/manual` 在该模式下只刷新当前低速命令和 watchdog，不在每个 240ms 短窗口末尾主动停车，
+避免按住期间出现“跑一下停一下”。正常松开、失焦、切页或停止按钮仍立即调用固定 `/api/robot-control/base/stop`；
+如果 PC 断拍或断网，上车 watchdog 会在不超过 WAVE ROVER 手动窗口上限的时间内自动发送零速兜底。资料来源仍采用
+`docs/vendor/VENDOR_INDEX.md` 指向的 WAVE ROVER `T=13` / `T=1` / `T=11` 控制和 stop 命令边界。
+
 2026-07-07 20:23 CST 起，PC 地图在灰度 PGM 真实地图上新增只读彩色工程层：上车
 `/api/map/preview` 会从静态 PGM 解析占用边界点和疑似柱状障碍点，PC 代理原样转成
 `color_overlay`，Vue 画布和右上角完整态势小窗分别用蓝色边界、紫红柱子、绿色雷达点、蓝色路线展示。

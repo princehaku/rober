@@ -1364,6 +1364,57 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertTrue(payload["auto_stop_executed"])
         self.assertFalse(payload["wheel_feedback_lr_nonzero_proven"])
 
+    def test_manual_control_realtime_hold_defers_stop_to_watchdog(self) -> None:
+        """键盘按住模式只刷新 hold watchdog，不能每个 pulse 末尾主动停车。"""
+        api = upper_robot_api.UpperRobotApi(
+            camera_base_url="http://127.0.0.1:8088",
+            base_port="/dev/ttyS5",
+            base_baudrate=115200,
+            max_speed=0.12,
+        )
+        transaction = {
+            "mode": "ros_cmd_vel_realtime_hold",
+            "command_result": {"ok": True, "mode": "ros_cmd_vel_once", "linear_x": 0.08, "angular_z": 0.0},
+            "stop_result": {"ok": False, "skipped_reason": "realtime_hold_stop_deferred_to_release_or_watchdog"},
+            "feedback_during_motion": upper_robot_api.skipped_manual_feedback_payload("/dev/ttyS5", 115200, "realtime_hold_feedback_skipped_until_release_readback"),
+            "feedback_after_stop": upper_robot_api.skipped_manual_feedback_payload("/dev/ttyS5", 115200, "realtime_hold_feedback_skipped_until_release_readback"),
+            "serial_session_error": None,
+            "feedback_source": "keyboard_release_readback",
+        }
+
+        async def run_case():
+            with mock.patch.object(upper_robot_api, "manual_motion_ros_cmd_vel_transaction") as mocked_auto_stop:
+                with mock.patch.object(upper_robot_api, "manual_motion_ros_cmd_vel_hold_refresh_transaction", return_value=transaction) as mocked_hold:
+                    payload = await api.manual_control(
+                        {
+                            "direction": "forward",
+                            "speed": 0.08,
+                            "duration_ms": 240,
+                            "command_mode": "ros",
+                            "feedback_mode": "realtime_hold",
+                            "hold_session_id": "vitest-keyboard",
+                            "hold_sequence": 7,
+                            "hold_watchdog_ms": 780,
+                        }
+                    )
+                    mocked_auto_stop.assert_not_called()
+                    mocked_hold.assert_called_once()
+                    return payload
+
+        payload = asyncio.run(run_case())
+
+        self.assertEqual("realtime_hold", payload["feedback_mode"])
+        self.assertEqual("vitest-keyboard", payload["hold_session_id"])
+        self.assertEqual(7, payload["hold_sequence"])
+        self.assertEqual(780, payload["hold_watchdog_ms"])
+        self.assertFalse(payload["auto_stop_attempted"])
+        self.assertFalse(payload["auto_stop_executed"])
+        self.assertTrue(payload["auto_stop_deferred_to_watchdog"])
+        self.assertTrue(payload["manual_hold_watchdog"]["active"])
+        self.assertEqual("ros_cmd_vel_realtime_hold", payload["ros_cmd_vel_transaction"]["mode"])
+        if api._manual_hold_watchdog_task is not None:
+            api._manual_hold_watchdog_task.cancel()
+
     def test_manual_control_keyboard_pulse_keeps_short_motion_window(self) -> None:
         """键盘连续手控 240ms pulse 走短 /cmd_vel 事务，避免串口读阻塞续发。"""
         api = upper_robot_api.UpperRobotApi(

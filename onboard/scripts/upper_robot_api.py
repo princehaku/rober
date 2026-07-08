@@ -53,6 +53,7 @@ DEFAULT_PULSE_MS = 260
 STATUS_SECTION_TIMEOUT_S = 5.0
 STATUS_TOTAL_TIMEOUT_S = 7.0
 MAX_PULSE_MS = 800
+MIN_HOLD_WATCHDOG_MS = 240
 ALLOWED_DIRECTIONS = frozenset({"forward", "back", "left", "right", "stop"})
 ALLOWED_BASE_COMMAND_MODES = frozenset({"ros", "speed", "pwm"})
 ALLOWED_NAV2_BASE_COMMAND_MODES = frozenset({"ros", "speed", "pwm"})
@@ -7549,6 +7550,107 @@ def manual_motion_serial_write_only_transaction(
     }
 
 
+def manual_motion_ros_cmd_vel_hold_refresh_transaction(
+    *,
+    port: str,
+    baudrate: int,
+    command: dict[str, Any],
+) -> dict[str, Any]:
+    """键盘 hold 刷新只发布当前速度帧；停车交给 release stop 或 watchdog，避免每拍末尾主动刹车。"""
+    linear_x = finite_feedback_number(command.get("X")) or 0.0
+    angular_z = finite_feedback_number(command.get("Z")) or 0.0
+    command_result = publish_ros_cmd_vel_inprocess_burst(
+        linear_x,
+        angular_z,
+        hold_s=1.0 / ROS_CMD_VEL_BURST_RATE_HZ,
+        wait_subscription_s=0.15,
+    )
+    if not command_result.get("ok"):
+        command_result = publish_ros_cmd_vel_cli_burst(linear_x, angular_z, hold_s=1.0 / ROS_CMD_VEL_BURST_RATE_HZ, timeout_s=2.0)
+    stop_result = {
+        "ok": False,
+        "skipped_reason": "realtime_hold_stop_deferred_to_release_or_watchdog",
+        "command": {"T": 13, "X": 0, "Z": 0},
+    }
+    return {
+        "mode": "ros_cmd_vel_realtime_hold",
+        "command_result": command_result,
+        "stop_result": stop_result,
+        "feedback_during_motion": skipped_manual_feedback_payload(port, baudrate, "realtime_hold_feedback_skipped_until_release_readback"),
+        "feedback_after_stop": skipped_manual_feedback_payload(port, baudrate, "realtime_hold_feedback_skipped_until_release_readback"),
+        "serial_session_error": None,
+        "feedback_source": "keyboard_release_readback",
+    }
+
+
+def manual_motion_serial_hold_refresh_transaction(
+    *,
+    port: str,
+    baudrate: int,
+    command: dict[str, Any],
+    stop_commands: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """串口 hold 刷新只写运动命令，不 sleep、不写 stop；watchdog 到期再统一停车。"""
+    serial_module, import_error = load_serial_module()
+    serial_open: dict[str, Any] = {"ok": False, "port": port, "baudrate": baudrate, "timeout_s": 0.05}
+    command_write: dict[str, Any] = {"ok": False, "command": command}
+    if serial_module is None:
+        error = {"type": "pyserial_unavailable", "message": import_error or "missing"}
+        command_write["error"] = error
+        return {
+            "mode": "serial_write_only_realtime_hold",
+            "serial_open": {**serial_open, "error": error},
+            "input_reset": {"attempted": False, "ok": False, "skipped_reason": "preserve_bridge_reader_buffer"},
+            "command_result": command_write,
+            "stop_result": {"ok": False, "skipped_reason": "serial_not_opened", "command": (stop_commands or [{"T": 1, "L": 0, "R": 0}])[0]},
+            "additional_stop_results": [],
+            "feedback_during_motion": skipped_manual_feedback_payload(port, baudrate, "pyserial_unavailable"),
+            "feedback_after_stop": skipped_manual_feedback_payload(port, baudrate, "pyserial_unavailable"),
+            "serial_session_error": error,
+            "feedback_source": "keyboard_release_readback",
+        }
+    serial_obj = None
+    try:
+        serial_obj = serial_module.Serial(port=port, baudrate=baudrate, timeout=0.05)
+        serial_open["ok"] = True
+        command_write = write_json_to_open_serial(serial_obj, command)
+        append_upper_manual_command_debug_line(command, command_write, transaction_mode="serial_write_only_realtime_hold")
+    except Exception as exc:  # noqa: BLE001 - hold 刷新失败也要结构化返回，watchdog/release 仍可停车。
+        error = compact_error(exc)
+        if not command_write.get("ok"):
+            command_write["error"] = error
+        return {
+            "mode": "serial_write_only_realtime_hold",
+            "serial_open": {**serial_open, "error": error},
+            "input_reset": {"attempted": False, "ok": False, "skipped_reason": "preserve_bridge_reader_buffer"},
+            "command_result": command_write,
+            "stop_result": {"ok": False, "skipped_reason": "realtime_hold_stop_deferred_to_release_or_watchdog", "command": (stop_commands or [{"T": 1, "L": 0, "R": 0}])[0]},
+            "additional_stop_results": [],
+            "feedback_during_motion": skipped_manual_feedback_payload(port, baudrate, "serial_write_only_error"),
+            "feedback_after_stop": skipped_manual_feedback_payload(port, baudrate, "serial_write_only_error"),
+            "serial_session_error": error,
+            "feedback_source": "keyboard_release_readback",
+        }
+    finally:
+        if serial_obj is not None:
+            try:
+                serial_obj.close()
+            except Exception:
+                pass
+    return {
+        "mode": "serial_write_only_realtime_hold",
+        "serial_open": serial_open,
+        "input_reset": {"attempted": False, "ok": False, "skipped_reason": "preserve_bridge_reader_buffer"},
+        "command_result": command_write,
+        "stop_result": {"ok": False, "skipped_reason": "realtime_hold_stop_deferred_to_release_or_watchdog", "command": (stop_commands or [{"T": 1, "L": 0, "R": 0}])[0]},
+        "additional_stop_results": [],
+        "feedback_during_motion": skipped_manual_feedback_payload(port, baudrate, "realtime_hold_feedback_skipped_until_release_readback"),
+        "feedback_after_stop": skipped_manual_feedback_payload(port, baudrate, "realtime_hold_feedback_skipped_until_release_readback"),
+        "serial_session_error": None,
+        "feedback_source": "keyboard_release_readback",
+    }
+
+
 def run_nav2_goal_execution_helper(
     *,
     artifact_path: str,
@@ -7913,16 +8015,25 @@ def skipped_manual_feedback_payload(port: str, baudrate: int, reason: str) -> di
 
 def build_stop_payload(port: str, baudrate: int) -> dict[str, Any]:
     """停车接口必须以写入结果为准，不能把 HTTP 调用成功当成底盘已停车。"""
-    stop_result = write_serial_json(port, baudrate, {"T": 1, "L": 0, "R": 0})
+    stop_commands = stop_commands_for_mode("ros")
+    ros_stop_result = publish_ros_cmd_vel_inprocess_burst(0.0, 0.0, hold_s=ROS_CMD_VEL_STOP_HOLD_S, wait_subscription_s=0.15)
+    if not ros_stop_result.get("ok"):
+        ros_stop_result = publish_ros_cmd_vel_cli_burst(0.0, 0.0, hold_s=ROS_CMD_VEL_STOP_HOLD_S, timeout_s=2.0)
+    serial_stop_results = [write_serial_json(port, baudrate, command) for command in stop_commands]
+    stop_result = serial_stop_results[0] if serial_stop_results else {"ok": False, "error": {"type": "stop_plan_empty"}}
+    stop_ok = bool(ros_stop_result.get("ok")) or any(bool(result.get("ok")) for result in serial_stop_results)
     return {
         "schema": f"{SCHEMA}.base_stop_result",
         "generated_at_ms": now_ms(),
         "stop_result": stop_result,
-        "serial_write_failures": [] if stop_result.get("ok") else [stop_result.get("error")],
+        "ros_stop_result": ros_stop_result,
+        "serial_stop_results": serial_stop_results,
+        "serial_write_failures": [result.get("error") for result in serial_stop_results if not result.get("ok")],
+        "stop_covers_command_modes": ["ros", "speed", "pwm"],
         "feedback_ack": t1001_boundary("stop write does not prove T=1001 or ACK"),
         "safe_to_control": False,
         "sends_commands": True,
-        "robot_control_executed": bool(stop_result.get("ok")),
+        "robot_control_executed": stop_ok,
         "delivery_success": False,
         "primary_actions_enabled": False,
     }
@@ -8442,6 +8553,8 @@ class UpperRobotApi:
         self.free_roam_autonomy_artifact_path = resolve_onboard_runtime_path(free_roam_autonomy_artifact_path)
         self.elevator_status_artifact_path = elevator_status_artifact_path
         self.operator_report_artifact_path = operator_report_artifact_path
+        self._manual_hold_state: dict[str, Any] = {}
+        self._manual_hold_watchdog_task: asyncio.Task[Any] | None = None
         self.radar_start_command = radar_start_command
         self.radar_stop_command = radar_stop_command
         self.lidar_scan_proof_runtime_command = lidar_scan_proof_runtime_command
@@ -10635,6 +10748,58 @@ class UpperRobotApi:
         """LiDAR raw packet proof 回放只读取 artifact，不能打开串口或发送 A5 60。"""
         return read_lidar_raw_packet_proof_latest_artifact(self.lidar_raw_packet_proof_artifact_path)
 
+    def _manual_hold_stop_sync(self, command_mode: str) -> dict[str, Any]:
+        """watchdog/release 共用停车兜底；ROS 先发 /cmd_vel 零速度，串口再补三种 vendor 零命令。"""
+        stop_plan = stop_commands_for_mode(command_mode)
+        ros_stop = publish_ros_cmd_vel_inprocess_burst(0.0, 0.0, hold_s=ROS_CMD_VEL_STOP_HOLD_S, wait_subscription_s=0.15)
+        if not ros_stop.get("ok"):
+            ros_stop = publish_ros_cmd_vel_cli_burst(0.0, 0.0, hold_s=ROS_CMD_VEL_STOP_HOLD_S, timeout_s=2.0)
+        serial_results = [write_serial_json(self.base_port, self.base_baudrate, stop_command) for stop_command in stop_plan]
+        return {
+            "mode": "manual_hold_stop_all_surfaces",
+            "command_mode": command_mode,
+            "ros_stop_result": ros_stop,
+            "serial_stop_results": serial_results,
+            "ok": bool(ros_stop.get("ok")) or any(bool(item.get("ok")) for item in serial_results),
+        }
+
+    async def _manual_hold_watchdog(self, session_id: str, sequence: int) -> None:
+        """如果 PC 按住循环断拍，最后一次 hold 到期后自动停车。"""
+        try:
+            while True:
+                state = self._manual_hold_state
+                if state.get("session_id") != session_id or int(state.get("sequence") or -1) != sequence:
+                    return
+                delay_s = max(float(state.get("expires_at_monotonic") or 0.0) - time.monotonic(), 0.0)
+                if delay_s > 0:
+                    await asyncio.sleep(delay_s)
+                    continue
+                result = await asyncio.to_thread(self._manual_hold_stop_sync, str(state.get("command_mode") or self.base_command_mode))
+                state["watchdog_stop_result"] = result
+                state["watchdog_stopped_at_ms"] = now_ms()
+                state["active"] = False
+                return
+        except asyncio.CancelledError:
+            return
+
+    def _schedule_manual_hold_watchdog(self, session_id: str, sequence: int, command_mode: str, watchdog_ms: int) -> dict[str, Any]:
+        """每个 keyboard hold 请求只延长 watchdog，不在本次请求末尾立即 stop。"""
+        if self._manual_hold_watchdog_task is not None and not self._manual_hold_watchdog_task.done():
+            self._manual_hold_watchdog_task.cancel()
+        watchdog_ms = min(max(int(watchdog_ms), MIN_HOLD_WATCHDOG_MS), MAX_PULSE_MS)
+        expires_at = time.monotonic() + watchdog_ms / 1000.0
+        self._manual_hold_state = {
+            "active": True,
+            "session_id": session_id,
+            "sequence": sequence,
+            "command_mode": command_mode,
+            "watchdog_ms": watchdog_ms,
+            "expires_at_monotonic": expires_at,
+            "updated_at_ms": now_ms(),
+        }
+        self._manual_hold_watchdog_task = asyncio.create_task(self._manual_hold_watchdog(session_id, sequence))
+        return dict(self._manual_hold_state)
+
     async def manual_control(self, body: dict[str, Any]) -> dict[str, Any]:
         """低速点动控制：发送方向命令后等待短窗口，再无条件发送停车命令。"""
         direction = str(body.get("direction", "stop")).strip().lower()
@@ -10678,6 +10843,17 @@ class UpperRobotApi:
         feedback_mode = str(body.get("feedback_mode", "")).strip().lower()
         use_bridge_debug_feedback = feedback_mode == "bridge_debug"
         use_realtime_feedback = feedback_mode == "realtime"
+        use_realtime_hold = feedback_mode == "realtime_hold"
+        hold_session_id = str(body.get("hold_session_id") or "").strip()[:96]
+        try:
+            hold_sequence = int(body.get("hold_sequence", 0))
+        except (TypeError, ValueError):
+            hold_sequence = 0
+        try:
+            requested_hold_watchdog_ms = int(body.get("hold_watchdog_ms", pulse_ms))
+        except (TypeError, ValueError):
+            requested_hold_watchdog_ms = pulse_ms
+        hold_watchdog_ms = min(max(requested_hold_watchdog_ms, MIN_HOLD_WATCHDOG_MS), MAX_PULSE_MS)
         command = manual_command_for_direction(
             direction,
             speed,
@@ -10710,8 +10886,33 @@ class UpperRobotApi:
         feedback_during_motion_attempted = direction != "stop" and pulse_ms > 0
         serial_motion_transaction: dict[str, Any] | None = None
         ros_cmd_vel_transaction: dict[str, Any] | None = None
+        manual_hold_watchdog: dict[str, Any] | None = None
         if feedback_during_motion_attempted:
-            if command_mode == "ros":
+            if use_realtime_hold and hold_session_id:
+                if command_mode == "ros":
+                    ros_cmd_vel_transaction = manual_motion_ros_cmd_vel_hold_refresh_transaction(
+                        port=self.base_port,
+                        baudrate=self.base_baudrate,
+                        command=command,
+                    )
+                    first = ros_cmd_vel_transaction["command_result"]
+                    stop = ros_cmd_vel_transaction["stop_result"]
+                    feedback_during_motion = ros_cmd_vel_transaction["feedback_during_motion"]
+                    feedback_evidence = ros_cmd_vel_transaction["feedback_after_stop"]
+                else:
+                    serial_motion_transaction = manual_motion_serial_hold_refresh_transaction(
+                        port=self.base_port,
+                        baudrate=self.base_baudrate,
+                        command=command,
+                        stop_commands=stop_plan,
+                    )
+                    first = serial_motion_transaction["command_result"]
+                    stop = serial_motion_transaction["stop_result"]
+                    feedback_during_motion = serial_motion_transaction["feedback_during_motion"]
+                    feedback_evidence = serial_motion_transaction["feedback_after_stop"]
+                manual_hold_watchdog = self._schedule_manual_hold_watchdog(hold_session_id, hold_sequence, command_mode, hold_watchdog_ms)
+                feedback_after_stop_attempted = False
+            elif command_mode == "ros":
                 ros_cmd_vel_transaction = manual_motion_ros_cmd_vel_transaction(
                     port=self.base_port,
                     baudrate=self.base_baudrate,
@@ -10897,13 +11098,18 @@ class UpperRobotApi:
             "feedback_mode": feedback_mode or "direct_feedback",
             "stop_commands": stop_plan,
             "duration_ms": pulse_ms,
+            "hold_session_id": hold_session_id if use_realtime_hold else "",
+            "hold_sequence": hold_sequence if use_realtime_hold else 0,
+            "hold_watchdog_ms": hold_watchdog_ms if use_realtime_hold else 0,
+            "manual_hold_watchdog": manual_hold_watchdog,
             "requested_speed": requested_speed,
             "requested_duration_ms": requested_pulse_ms,
             "command_result": first,
             "stop_result": stop,
             "serial_write_failures": serial_write_failures,
-            "auto_stop_attempted": True,
-            "auto_stop_executed": bool(stop.get("ok")),
+            "auto_stop_attempted": not bool(manual_hold_watchdog),
+            "auto_stop_executed": False if manual_hold_watchdog else bool(stop.get("ok")),
+            "auto_stop_deferred_to_watchdog": bool(manual_hold_watchdog),
             "manual_command_executed": bool(first.get("ok")),
             "feedback_during_motion_attempted": feedback_during_motion_attempted,
             "feedback_during_motion": feedback_during_motion,
@@ -11347,6 +11553,9 @@ def create_app(api: UpperRobotApi) -> Any:
         return json_response(payload, status=http_status)
 
     async def base_stop(_: web.Request) -> Any:
+        if api._manual_hold_watchdog_task is not None and not api._manual_hold_watchdog_task.done():
+            api._manual_hold_watchdog_task.cancel()
+        api._manual_hold_state = {**api._manual_hold_state, "active": False, "release_stop_at_ms": now_ms()}
         return json_response(build_stop_payload(api.base_port, api.base_baudrate))
 
     async def base_feedback_request(request: web.Request) -> Any:

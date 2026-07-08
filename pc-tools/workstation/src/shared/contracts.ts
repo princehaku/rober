@@ -6844,7 +6844,10 @@ export interface RobotControlBaseCommandRequest {
   angular_z_radps?: number;
   duration_ms: number;
   command_mode?: "ros" | "speed" | "pwm";
-  feedback_mode?: "bridge_debug" | "direct_feedback" | "realtime";
+  feedback_mode?: "bridge_debug" | "direct_feedback" | "realtime" | "realtime_hold";
+  hold_session_id?: string;
+  hold_sequence?: number;
+  hold_watchdog_ms?: number;
   confirm_hil_checklist: boolean;
 }
 

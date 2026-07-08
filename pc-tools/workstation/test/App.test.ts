@@ -27174,6 +27174,99 @@ describe("App", () => {
     wrapper.unmount();
   });
 
+  it("keeps keyboard hold smooth when a pulse response spans the interval", async () => {
+    // 上车端单拍可能等待短窗口后才回包；前端必须回包后立刻补拍，不能错过 interval 后再空等一轮。
+    vi.useFakeTimers();
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.operator_hil_material_summary.report_status = "ready_for_execution";
+    summaryFixture.operator_hil_material_summary.external_video = "true; ref=phone-video-0605.mp4";
+    summaryFixture.operator_hil_material_summary.camera_visible = "true; ref=runtime/camera/latest_metrics.json";
+    summaryFixture.operator_hil_material_summary.wheel_feedback = "true; ref=runtime/wave_rover_feedback_debug.jsonl";
+    summaryFixture.operator_hil_material_summary.lidar_delta = "true; ref=runtime/scan_delta/latest_metrics.json";
+    summaryFixture.safe_command_boundary.keyboard_control_mode = "bounded_repeating_manual_pulse";
+    summaryFixture.safe_command_boundary.keyboard_reuses_manual_gate = true;
+    const fallbackFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/base/stop": {
+        command_kind: "stop",
+        proxy_status: "command_forwarded",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        failure_reason: "",
+      },
+    });
+    const resolveManuals: Array<() => void> = [];
+    const mockedFetch = vi.fn(async (url: string, options?: RequestInit) => {
+      if (url.startsWith("/api/robot-control/base/manual")) {
+        return new Promise<{ ok: boolean; json: () => Promise<unknown> }>((resolve) => {
+          resolveManuals.push(() => resolve({
+            ok: true,
+            json: async () => ({
+              command_kind: "manual",
+              proxy_status: "command_forwarded",
+              remote_http_status: 200,
+              status: "loaded_fail_closed_summary",
+              failure_reason: "",
+              remote_motion_key_values: {
+                command_raw_latest_linear_x: "0.08",
+                command_raw_nonzero_proven: "true",
+                motion_signal_observed: "true",
+              },
+            }),
+          }));
+        });
+      }
+      return fallbackFetch(url, options);
+    });
+    vi.stubGlobal("fetch", mockedFetch);
+    const countCalls = (prefix: string) => mockedFetch.mock.calls
+      .filter(([url]) => String(url).startsWith(prefix))
+      .length;
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    await wrapper.find('input[name="robotApiBaseUrl"]').setValue("http://192.168.1.11:8787");
+    await wrapper.find('[data-testid="plain-motion-safety-confirm"]').setValue(true);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    await wrapper.find('[data-testid="keyboard-control-arm"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    const keyboardPanel = wrapper.find('[data-testid="keyboard-control-panel"]');
+    await keyboardPanel.trigger("keydown", { key: "w" });
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(countCalls("/api/robot-control/base/manual")).toBe(1);
+    const firstBody = JSON.parse(String(mockedFetch.mock.calls.find(([url]) => String(url).startsWith("/api/robot-control/base/manual?"))?.[1]?.body ?? "{}")) as Record<string, unknown>;
+    expect(firstBody.feedback_mode).toBe("realtime_hold");
+    expect(firstBody.hold_session_id).toEqual(expect.any(String));
+    expect(Number(firstBody.hold_watchdog_ms)).toBeGreaterThan(600);
+    expect(wrapper.find('[data-testid="plain-keyboard-safety-summary"]').text()).toBe("键盘手控：页面已自动准备；现在按住上下左右才会动，W+A 可组合转弯。");
+
+    await vi.advanceTimersByTimeAsync(300);
+    await flushPromises();
+    expect(countCalls("/api/robot-control/base/manual")).toBe(1);
+
+    resolveManuals.shift()?.();
+    await flushPromises();
+    await vi.advanceTimersByTimeAsync(0);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(countCalls("/api/robot-control/base/manual")).toBe(2);
+
+    await keyboardPanel.trigger("keyup", { key: "w" });
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(countCalls("/api/robot-control/base/stop")).toBe(1);
+    resolveManuals.shift()?.();
+    await flushPromises();
+    wrapper.unmount();
+  });
+
   it("keeps moving and sends a curved twist when W and A are held together", async () => {
     // 组合键不能先 stop；W+A 应在同一按住窗口里改成 forward + angular_z 的 ROS 短脉冲。
     vi.useFakeTimers();
@@ -27287,8 +27380,8 @@ describe("App", () => {
     wrapper.unmount();
   });
 
-  it("queues release stop when the stop button is clicked during an in-flight keyboard pulse", async () => {
-    // 点击停止时若 manual pulse 仍在请求中，stop 不能被 pending gate 吃掉；pulse 返回后必须补发一次 stop。
+  it("sends release stop immediately when the stop button is clicked during an in-flight keyboard pulse", async () => {
+    // 键盘 pulse 不再占用全局 manual pending；点击停止必须立刻走 stop，不等慢 pulse 回包。
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
     summaryFixture.operator_hil_material_summary.report_status = "ready_for_execution";
     summaryFixture.operator_hil_material_summary.external_video = "true; ref=phone-video-0605.mp4";
@@ -27354,7 +27447,7 @@ describe("App", () => {
     await wrapper.vm.$nextTick();
     expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("已松开，停止请求已发送，等待返回；返回前未证明已停止。");
     expect(wrapper.find('[data-testid="keyboard-last-stop-summary"]').text()).toBe("上次方向：前进；停止原因：点击停止。");
-    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/stop?"))).toHaveLength(0);
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url).startsWith("/api/robot-control/base/stop?"))).toHaveLength(1);
 
     resolveManual({
       ok: true,

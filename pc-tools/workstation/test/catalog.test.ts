@@ -18888,6 +18888,81 @@ describe("workstation fail-closed API contracts", () => {
     }
   });
 
+  it("workstation base manual proxy preserves realtime hold metadata for keyboard smoothing", async () => {
+    // 键盘顺滑依赖上车 watchdog hold；PC Node 只能转发固定字段，不能把 feedback_mode 改回 realtime。
+    const upstream = await listenRobotBaseCommandApi(
+      {
+        "/api/base/manual": {
+          payload: {
+            schema: "trashbot.upper_robot_api.v1.base_manual",
+            status: "manual_hold_refreshed",
+            base_command_mode: "ros",
+            feedback_mode: "realtime_hold",
+            hold_session_id: "keyboard-session-1",
+            hold_sequence: 4,
+            hold_watchdog_ms: 780,
+            manual_command_executed: true,
+            auto_stop_attempted: false,
+            auto_stop_executed: false,
+            auto_stop_deferred_to_watchdog: true,
+            command_result: { ok: true },
+            stop_result: { ok: false, skipped_reason: "realtime_hold_stop_deferred_to_release_or_watchdog" },
+            safe_to_control: false,
+            delivery_success: false,
+            primary_actions_enabled: false,
+          },
+        },
+      },
+      {},
+    );
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const response = await fetch(`${workstation.baseUrl}/api/robot-control/base/manual?baseUrl=${encodeURIComponent(upstream.baseUrl)}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          direction: "forward",
+          speed: 0.08,
+          linear_x_mps: 0.08,
+          angular_z_radps: 0,
+          duration_ms: 240,
+          command_mode: "ros",
+          feedback_mode: "realtime_hold",
+          hold_session_id: "keyboard-session-1",
+          hold_sequence: 4,
+          hold_watchdog_ms: 780,
+          confirm_hil_checklist: true,
+        }),
+      });
+      const body = (await response.json()) as {
+        proxy_status: string;
+        feedback_mode: string;
+        remote_motion_key_values: Record<string, string>;
+      };
+
+      expect(response.status).toBe(200);
+      expect(body.proxy_status).toBe("command_forwarded");
+      expect(body.feedback_mode).toBe("realtime_hold");
+      expect(body.remote_motion_key_values.feedback_mode).toBe("realtime_hold");
+      expect(upstream.receivedBodies["/api/base/manual"]).toEqual([
+        expect.objectContaining({
+          feedback_mode: "realtime_hold",
+          hold_session_id: "keyboard-session-1",
+          hold_sequence: 4,
+          hold_watchdog_ms: 780,
+          command_mode: "ros",
+          duration_ms: 240,
+        }),
+      ]);
+      expect(upstream.receivedGets).toEqual([]);
+    } finally {
+      await workstation.close();
+      await upstream.close();
+    }
+  });
+
   it("workstation summary reuses recent manual and stop evidence without keyboard query", async () => {
     // 页面 query 可能因为刷新丢失；PC Node 只缓存最近固定代理证据，避免连续手控验收被误判成没松手。
     const upstream = await listenRobotBaseCommandApi(

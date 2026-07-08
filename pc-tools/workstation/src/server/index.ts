@@ -2750,6 +2750,14 @@ function manualCommandModeFromPayload(payload: Record<string, unknown> | null): 
     : ROBOT_CONTROL_KEYBOARD_MANUAL_COMMAND_MODE;
 }
 
+function manualFeedbackModeFromPayload(payload: Record<string, unknown> | null): "bridge_debug" | "direct_feedback" | "realtime" | "realtime_hold" {
+  // 键盘按住使用 realtime_hold，让上车端用 watchdog 收口；普通点动仍默认 realtime。
+  const value = String(payload?.feedback_mode ?? "").trim().toLowerCase();
+  return value === "bridge_debug" || value === "direct_feedback" || value === "realtime_hold"
+    ? value
+    : "realtime";
+}
+
 async function fetchFixedRobotPostSummary(
   baseUrl: string,
   endpoint: "/api/base/manual" | "/api/base/stop" | RobotControlFreeRoamAutonomyEndpoint,
@@ -5135,14 +5143,21 @@ export function createWorkstationApp(): express.Express {
     const clampedSpeed = clamp(speed, 0, ROBOT_CONTROL_MANUAL_SPEED_LIMIT_MPS);
     const clampedDurationMs = clamp(durationMs, 0, ROBOT_CONTROL_MANUAL_DURATION_LIMIT_MS);
     const manualCommandMode = manualCommandModeFromPayload(payload);
+    const feedbackMode = manualFeedbackModeFromPayload(payload);
     const twistOverride = manualCommandMode === "ros" ? manualTwistOverrideFromPayload(payload) : null;
+    const holdSequence = finiteNumber(payload?.hold_sequence);
+    const holdWatchdogMs = finiteNumber(payload?.hold_watchdog_ms);
+    const holdSessionId = String(payload?.hold_session_id ?? "").trim();
     const remote = await fetchFixedRobotPostSummary(sourceBaseUrl, "/api/base/manual", {
       direction,
       speed: clampedSpeed,
       ...(twistOverride ?? {}),
       duration_ms: clampedDurationMs,
       command_mode: manualCommandMode,
-      feedback_mode: "realtime",
+      feedback_mode: feedbackMode,
+      ...(feedbackMode === "realtime_hold" && holdSessionId ? { hold_session_id: holdSessionId.slice(0, 96) } : {}),
+      ...(feedbackMode === "realtime_hold" && holdSequence !== null ? { hold_sequence: Math.max(0, Math.floor(holdSequence)) } : {}),
+      ...(feedbackMode === "realtime_hold" && holdWatchdogMs !== null ? { hold_watchdog_ms: clamp(holdWatchdogMs, 0, ROBOT_CONTROL_MANUAL_DURATION_LIMIT_MS) } : {}),
       confirm_hil_checklist: true,
     });
     const remoteMotionKeyValues = baseManualMotionKeyValues(remote.payload);

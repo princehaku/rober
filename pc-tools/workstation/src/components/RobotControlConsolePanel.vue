@@ -118,6 +118,7 @@ type PlainMapWysiwygLayerItem = {
 };
 const KEYBOARD_JOG_INTERVAL_MS = 260;
 const KEYBOARD_JOG_DURATION_MS = 240;
+const KEYBOARD_HOLD_WATCHDOG_MIN_MS = 620;
 const KEYBOARD_VERIFIED_MIN_FORWARDED_PULSES = 2;
 const MANUAL_COMMAND_MODES = ["ros", "speed", "pwm"] as const;
 type ManualCommandMode = typeof MANUAL_COMMAND_MODES[number];
@@ -622,6 +623,8 @@ const keyboardLastWheelFeedbackValues = ref<Record<string, string> | null>(null)
 const keyboardLastStopReason = ref("not_loaded");
 const keyboardManualMapPointSequence = ref(0);
 const keyboardManualMapPoints = ref<KeyboardManualMapPoint[]>([]);
+const keyboardManualPulsePending = ref(false);
+const keyboardHoldSequence = ref(0);
 let previewFrameSampleTimers: number[] = [];
 let mjpegPreviewRetryTimer: number | null = null;
 let keyboardJogTimer: number | null = null;
@@ -9605,6 +9608,11 @@ const manualSpeedLimit = computed(() => manualBoundary.value?.speed_limit_mps ??
 const manualDurationLimit = computed(() => manualBoundary.value?.duration_limit_ms ?? 800);
 const keyboardJogIntervalMs = computed(() => manualBoundary.value?.keyboard_jog_interval_ms ?? KEYBOARD_JOG_INTERVAL_MS);
 const keyboardJogDurationMs = computed(() => manualBoundary.value?.keyboard_jog_duration_ms ?? KEYBOARD_JOG_DURATION_MS);
+const keyboardHoldWatchdogMs = computed(() => {
+  // 上车端 hold watchdog 只服务“PC 断拍后自动停”，正常按住期间不在每拍后 stop，避免体感卡顿。
+  const target = Math.max(KEYBOARD_HOLD_WATCHDOG_MIN_MS, keyboardJogIntervalMs.value * 3, keyboardJogDurationMs.value + keyboardJogIntervalMs.value + 120);
+  return Math.min(Math.max(Math.round(target), keyboardJogDurationMs.value), manualDurationLimit.value);
+});
 function keyboardManualCommandMode(): ManualCommandMode {
   // 现场串口由 esp32_bridge 持有，默认走 ROS /cmd_vel，避免 PC 手控再抢 /dev/ttyS5。
   const mode = manualBoundary.value?.keyboard_manual_command_mode;
@@ -9645,7 +9653,7 @@ const canRequestKeyboardStop = computed(() => (
 ));
 const keyboardSmoothHoldRefreshPaused = computed(() => (
   // 这个 DOM 证据用于锁住“按住期间不刷重面板”的顺滑合同；非响应式 in-flight 由轮询函数内部再兜底。
-  keyboardHeldDirection.value !== null || manualCommandPending.value
+  keyboardHeldDirection.value !== null || keyboardManualPulsePending.value || manualCommandPending.value
 ));
 const canRunEvidenceSweep = computed(() => !evidenceSweepPending.value && !loading.value && robotApiBaseUrl.value.trim().length > 0);
 const keyboardContractReady = computed(() => {
@@ -16705,6 +16713,7 @@ function requestBodyForKeyboardDirection(direction: KeyboardMotionDirection) {
   // 键盘连续手控采用快速短脉冲；组合键通过 ROS X/Z 透传实现，不扩展 direction 枚举。
   const speed = Math.min(Math.max(jogSpeedMps.value, 0), manualSpeedLimit.value);
   const vector = keyboardMotionVector(direction);
+  keyboardHoldSequence.value += 1;
   return {
     direction: vector.requestDirection,
     speed,
@@ -16712,7 +16721,10 @@ function requestBodyForKeyboardDirection(direction: KeyboardMotionDirection) {
     angular_z_radps: roundedKeyboardTwistValue(speed * vector.angularMultiplier),
     duration_ms: Math.min(Math.max(keyboardJogDurationMs.value, 0), manualDurationLimit.value),
     command_mode: keyboardManualCommandMode(),
-    feedback_mode: "realtime",
+    feedback_mode: "realtime_hold",
+    hold_session_id: keyboardControlOwnerId,
+    hold_sequence: keyboardHoldSequence.value,
+    hold_watchdog_ms: keyboardHoldWatchdogMs.value,
     confirm_hil_checklist: plainManualSafetyConfirmed.value,
   } as const;
 }
@@ -17890,7 +17902,7 @@ function resetCameraAutoUsbRecoveryState(): void {
 
 function shouldPauseLiveSurfaceRefreshForKeyboard(): boolean {
   // 键盘按住和 stop/manual pending 时，后台地图/相机轮询必须让路，避免把连续点动做成“整页刷新”的体感。
-  return keyboardHeldDirection.value !== null || keyboardJogInFlight || manualCommandPending.value;
+  return keyboardHeldDirection.value !== null || keyboardJogInFlight || keyboardManualPulsePending.value || manualCommandPending.value;
 }
 
 function shouldRefreshLiveSurfaces(): boolean {
@@ -19967,10 +19979,11 @@ async function sendKeyboardManualPulse(): Promise<void> {
   if (!keyboardMotionReady.value || keyboardJogInFlight || manualCommandPending.value || !direction) {
     return;
   }
+  const pulseStartedAt = performance.now();
   keyboardJogInFlight = true;
+  keyboardManualPulsePending.value = true;
   keyboardControlStatus.value = "sending_keyboard_pulse";
   try {
-    manualCommandPending.value = true;
     const result = await postRobotControlBaseManual(robotApiBaseUrl.value, requestBodyForKeyboardDirection(direction));
     manualCommandResult.value = result;
     if (result.remote_motion_key_values) {
@@ -20008,7 +20021,7 @@ async function sendKeyboardManualPulse(): Promise<void> {
     keyboardHoldPulseCount.value = 0;
     keyboardControlStatus.value = `blocked_keyboard_pulse_failed:${err instanceof Error ? err.message : "keyboard_manual_request_failed"}`;
   } finally {
-    manualCommandPending.value = false;
+    keyboardManualPulsePending.value = false;
     keyboardJogInFlight = false;
     const keepHoldingAfterPulse = keyboardHeldDirection.value !== null
       && keyboardControlStatus.value === "holding_keyboard_jog";
@@ -20016,6 +20029,9 @@ async function sendKeyboardManualPulse(): Promise<void> {
       const reason = keyboardStopAfterPulseReason;
       keyboardStopAfterPulseReason = null;
       await sendKeyboardReleaseStop(reason);
+    } else if (keepHoldingAfterPulse) {
+      // 不用 setInterval 固定跳拍；上一拍慢了就立刻补下一拍，上一拍快了才按剩余节奏等待。
+      scheduleKeyboardJogPulse(Math.max(0, keyboardJogIntervalMs.value - (performance.now() - pulseStartedAt)));
     } else if (!keepHoldingAfterPulse) {
       // 按住期间不能被慢 summary 打断；回包里的轮速已足够刷新手控状态，完整读数等松开或失败后再补。
       await refreshConsole();
@@ -20144,9 +20160,20 @@ function disarmKeyboardControl(reason: string): void {
 function clearKeyboardJogTimer(): void {
   // 全局 timer 必须集中清理，防止组件卸载或地址切换后仍重复发点动。
   if (keyboardJogTimer !== null) {
-    window.clearInterval(keyboardJogTimer);
+    window.clearTimeout(keyboardJogTimer);
     keyboardJogTimer = null;
   }
+}
+
+function scheduleKeyboardJogPulse(delayMs: number): void {
+  // 键盘点动采用“回包后自调度”，避免固定 interval 在请求慢时跳过一拍再空等一轮。
+  if (keyboardJogTimer !== null || keyboardHeldDirection.value === null) {
+    return;
+  }
+  keyboardJogTimer = window.setTimeout(() => {
+    keyboardJogTimer = null;
+    void sendKeyboardManualPulse();
+  }, Math.max(0, Math.round(delayMs)));
 }
 
 function clearKeyboardPressedDirections(): void {
@@ -20235,11 +20262,9 @@ function startKeyboardControl(direction: KeyboardMotionDirection): void {
   keyboardControlStatus.value = "holding_keyboard_jog";
   if (startNewHold) {
     void sendKeyboardManualPulse();
-  }
-  if (keyboardJogTimer === null) {
-    keyboardJogTimer = window.setInterval(() => {
-      void sendKeyboardManualPulse();
-    }, keyboardJogIntervalMs.value);
+  } else if (!keyboardJogInFlight) {
+    clearKeyboardJogTimer();
+    void sendKeyboardManualPulse();
   }
 }
 
