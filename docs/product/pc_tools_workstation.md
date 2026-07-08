@@ -99,6 +99,12 @@ pc-tools/workstation/
   `linear_x_mps` / `angular_z_radps`，上车 Robot API 映射为 WAVE ROVER `T=13` 的 `X` / `Z`，
   资料来源为 `docs/vendor/VENDOR_INDEX.md` 指向的 WAVE ROVER `CMD_ROS_CTRL` 协议；该交互不新增浏览器直连、
   不开放任意运动 endpoint，仍受 `/api/robot-control/base/manual` 与 `/api/robot-control/base/stop` 护栏约束。
+- 2026-07-09 00:53 CST 起，PC 键盘手控不再把只读 summary 合同、相机、雷达或扫图 runtime 当作发车前置：
+  `canUseKeyboardControl` 只看默认小车地址、现场安全默认确认和 Nav2 行程占用；按住方向键时仍由单一 in-flight
+  锁串行调用固定 `/api/robot-control/base/manual`，不会并发打运动 endpoint。自由移动/扫图卡片未启动地图记录时，
+  文案改为“按住方向键记录点位”，下一步焦点直接落到键盘面板；成功转发的手动脉冲会追加到 PC 本地点位缓存。
+  有当前 map-frame 位姿时点位和折线叠加在 PGM 地图上；缺位姿时只显示记录计数和待定位状态，不冒充 SLAM/里程计轨迹。
+  这只改善普通手控和后续建图复盘，真实建图验收仍以地图记录、地图预览、雷达/相机材料和上车端 SLAM 输出为准。
 - 2026-07-07 20:23 CST 起，PC 地图补齐浏览器内彩色工程层：上车 `/api/map/preview` 从真实 PGM
   静态地图解析占用边界和疑似柱状障碍，PC 代理返回 `color_overlay`，普通 Vue 地图和右上角完整态势小窗同步显示。
   色彩口径为蓝色边界、紫红疑似柱子、绿色雷达点、蓝色路线；`当前画布` 新增 `障碍层` chip，回答“地图上是否能看到边界/柱子”。

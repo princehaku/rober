@@ -2819,6 +2819,36 @@ h3 {
   stroke-dasharray: 3 3;
 }
 
+.plain-map-keyboard-manual-points {
+  /* PC 本地点位只辅助建图复盘，叠在短轨迹之上但不抢地图点击。 */
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.plain-map-keyboard-manual-points polyline {
+  fill: none;
+  stroke: rgba(31, 111, 235, 0.78);
+  stroke-width: 1.7;
+  stroke-dasharray: 3 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 1px 2px rgba(10, 35, 77, 0.24));
+}
+
+.plain-map-keyboard-manual-points circle {
+  fill: #0969da;
+  stroke: #ffffff;
+  stroke-width: 0.45;
+  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 1px 2px rgba(10, 35, 77, 0.32));
+}
+
 .plain-map-grid-line {
   position: absolute;
   background: #bdc7d3;

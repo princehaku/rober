@@ -82,6 +82,13 @@ PC Node 固定代理只透传限幅后的 `linear_x_mps` 与 `angular_z_radps`�
 `docs/vendor/VENDOR_INDEX.md` 指向的 WAVE ROVER `CMD_ROS_CTRL` / `T=13`、`X` linear、`Z` angular 协议说明；
 该能力仍只走固定 `/api/robot-control/base/manual` 与 `/api/robot-control/base/stop`，不开放浏览器直连运动通道。
 
+2026-07-09 00:53 CST 起，PC 键盘手控把“移动”和“条件读回”彻底拆开：只要默认小车地址可用、现场安全默认确认、
+没有正在执行的 Nav2 行程，按住方向键就能通过固定 `/api/robot-control/base/manual` 连续发送低速短脉冲；
+`summary` 键盘合同、雷达、相机、地图记录 runtime 只作为诊断和建图验收材料，不再阻塞手动移动。自由移动/扫图卡片在
+未启动地图记录时也允许按住方向键，并把成功转发的键盘脉冲记录为 PC 本地点位；有 map-frame 位姿时点位会叠到地图上，
+没有位姿时只保留“待定位”事件，不伪造 SLAM 轨迹。松开、失焦、切页和停止按钮仍走固定
+`/api/robot-control/base/stop` 收口。
+
 2026-07-07 20:23 CST 起，PC 地图在灰度 PGM 真实地图上新增只读彩色工程层：上车
 `/api/map/preview` 会从静态 PGM 解析占用边界点和疑似柱状障碍点，PC 代理原样转成
 `color_overlay`，Vue 画布和右上角完整态势小窗分别用蓝色边界、紫红柱子、绿色雷达点、蓝色路线展示。

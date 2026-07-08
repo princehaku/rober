@@ -976,8 +976,8 @@ describe("robotControlSummary", () => {
     expect(summary.keyboard_continuous_pulse_interval_ms).toBe(260);
     expect(summary.live_closure_summary?.keyboard_continuous_pulse_duration_ms).toBe(240);
     expect(summary.keyboard_continuous_pulse_duration_ms).toBe(240);
-    expect(summary.live_closure_summary?.keyboard_continuous_stop_triggers).toEqual(["key_release", "window_blur", "page_hidden", "direction_change", "stop_button"]);
-    expect(summary.keyboard_continuous_stop_triggers).toEqual(["key_release", "window_blur", "page_hidden", "direction_change", "stop_button"]);
+    expect(summary.live_closure_summary?.keyboard_continuous_stop_triggers).toEqual(["key_release_all", "window_blur", "page_hidden", "stop_button"]);
+    expect(summary.keyboard_continuous_stop_triggers).toEqual(["key_release_all", "window_blur", "page_hidden", "stop_button"]);
     expect(summary.live_closure_summary?.keyboard_continuous_wheel_feedback_acceptance).toBe("same_hold_window_wheel_lr_nonzero");
     expect(summary.keyboard_continuous_wheel_feedback_acceptance).toBe("same_hold_window_wheel_lr_nonzero");
     expect(summary.live_closure_summary?.keyboard_ready).toBe(true);
@@ -990,8 +990,8 @@ describe("robotControlSummary", () => {
     expect(summary.keyboard_pulse_interval_ms).toBe(260);
     expect(summary.live_closure_summary?.keyboard_pulse_duration_ms).toBe(240);
     expect(summary.keyboard_pulse_duration_ms).toBe(240);
-    expect(summary.live_closure_summary?.keyboard_stop_triggers).toEqual(["key_release", "window_blur", "page_hidden", "direction_change", "stop_button"]);
-    expect(summary.keyboard_stop_triggers).toEqual(["key_release", "window_blur", "page_hidden", "direction_change", "stop_button"]);
+    expect(summary.live_closure_summary?.keyboard_stop_triggers).toEqual(["key_release_all", "window_blur", "page_hidden", "stop_button"]);
+    expect(summary.keyboard_stop_triggers).toEqual(["key_release_all", "window_blur", "page_hidden", "stop_button"]);
     expect(summary.live_closure_summary?.keyboard_acceptance_plain).toContain("同一次按住窗口");
     expect(summary.keyboard_acceptance_plain).toContain("同一次按住窗口");
     expect(summary.live_closure_summary?.keyboard_manual_endpoint).toBe("/api/robot-control/base/manual");
@@ -1600,7 +1600,7 @@ describe("robotControlSummary", () => {
     expect(summary.current_keyboard_action_stops_motion).toBe(false);
     expect(summary.current_keyboard_action_pulse_interval_ms).toBe(260);
     expect(summary.current_keyboard_action_pulse_duration_ms).toBe(240);
-    expect(summary.current_keyboard_action_stop_triggers).toEqual(["key_release", "window_blur", "page_hidden", "direction_change", "stop_button"]);
+    expect(summary.current_keyboard_action_stop_triggers).toEqual(["key_release_all", "window_blur", "page_hidden", "stop_button"]);
     expect(summary.current_keyboard_action_wheel_feedback_acceptance).toBe("same_hold_window_wheel_lr_nonzero");
     expect(summary.current_keyboard_action_post_hold_readback_endpoints).toEqual([
       "/api/robot-control/base/feedback-samples",
@@ -1619,7 +1619,7 @@ describe("robotControlSummary", () => {
     expect(summary.current_keyboard_action_post_hold_readback_stops_motion).toBe(false);
     expect(summary.current_keyboard_control_pack_status).toBe("ready_to_use");
     expect(summary.current_keyboard_control_pack_plain).toContain("键盘连续手控可复验");
-    expect(summary.current_keyboard_control_pack_next_action_plain).toBe("页面自动准备不发车，按住 W/A/S/D 或方向键才连续低速移动，松开后只读复验轮速和停止。");
+    expect(summary.current_keyboard_control_pack_next_action_plain).toBe("页面自动准备不发车，按住上下左右才连续低速移动，W+A 可组合转弯；松开后只读复验轮速和停止。");
     expect(summary.current_keyboard_control_pack_action_id).toBe("hold_keyboard");
     expect(summary.current_keyboard_control_pack_display_label).toBe("键盘连续手控");
     expect(summary.current_keyboard_control_pack_start_endpoint).toBe("/api/robot-control/base/manual");
@@ -1644,7 +1644,7 @@ describe("robotControlSummary", () => {
     expect(summary.current_keyboard_control_pack_hold_sends_motion).toBe(true);
     expect(summary.current_keyboard_control_pack_pulse_interval_ms).toBe(260);
     expect(summary.current_keyboard_control_pack_pulse_duration_ms).toBe(240);
-    expect(summary.current_keyboard_control_pack_stop_triggers).toEqual(["key_release", "window_blur", "page_hidden", "direction_change", "stop_button"]);
+    expect(summary.current_keyboard_control_pack_stop_triggers).toEqual(["key_release_all", "window_blur", "page_hidden", "stop_button"]);
     expect(summary.current_keyboard_control_pack_wheel_feedback_acceptance).toBe("same_hold_window_wheel_lr_nonzero");
     expect(summary.current_keyboard_control_pack_post_hold_feedback_readback_required).toBe(true);
     expect(summary.current_keyboard_control_pack_post_hold_summary_refresh_required).toBe(true);
