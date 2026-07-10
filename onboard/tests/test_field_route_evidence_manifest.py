@@ -9,6 +9,10 @@ import sys
 
 
 SCRIPT_DIR = Path(__file__).resolve().parents[1] / "scripts"
+REPO_ROOT = Path(__file__).resolve().parents[2]
+LOCALIZATION_PATH_MATERIAL_ARTIFACT = (
+    REPO_ROOT / "sprints/2026.06.22_01-35_motion_map_runtime_probe/artifacts/38_pc_summary_after_map_fix.json"
+)
 sys.path.insert(0, str(SCRIPT_DIR))
 
 import field_route_evidence_manifest as manifest  # noqa: E402
@@ -484,6 +488,478 @@ def write_cloud_terminal_reconciliation_json(path: Path, **overrides) -> None:
     payload.update(overrides)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload), encoding="utf-8")
+
+
+def write_field_operator_confirmation_json(path: Path, **overrides) -> None:
+    # operator confirmation fixture 只表达人工报告安全摘要，不输出操作者身份原文或备注正文。
+    payload = {
+        "schema": "trashbot.upper_robot_api.v1.operator_report_latest",
+        "task_id": "field_operator_confirmation_ready",
+        "operator_report_id": "operator-material-001",
+        "operator_id": "operator-on-duty-a",
+        "operator_report_present": True,
+        "operator_report_status": "loaded",
+        "operator_confirmation_present": True,
+        "operator_confirmation_status": "confirmed",
+        "operator_present": True,
+        "physical_clearance_confirmed": True,
+        "emergency_stop_ready": True,
+        "observed_motion": True,
+        "observed_stop": True,
+        "reported_at": "2026-07-10T07:22:00Z",
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "robot_control_executed": False,
+        "route_execution_success": False,
+        "hil_pass": False,
+        "connects_cloud_production": False,
+    }
+    payload.update(overrides)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+
+def write_current_field_evidence_json(path: Path, **overrides) -> None:
+    # current evidence fixture 贴近 2026-06-11 上位机 summary 形状，只保留安全摘要字段。
+    payload = {
+        "schema": "trashbot.pc_tools_workstation.robot_control_summary.v1",
+        "console_status": "blocked",
+        "observed_at_ms": 1781113175864,
+        "read_endpoints": [
+            {
+                "id": "camera_health",
+                "endpoint": "/api/camera/health",
+                "http_status": 200,
+                "request_status": "loaded",
+                "schema": "trashbot.local_webrtc_camera_smoke.v1",
+                "status": "ready",
+                "evidence_ref": "camera-frame-visible",
+                "key_values": {"safe_to_control": False},
+                "blocked_reasons": [],
+                "dangerous_true_fields": [],
+            },
+            {
+                "id": "camera_devices",
+                "endpoint": "/api/camera/devices",
+                "http_status": 200,
+                "request_status": "loaded",
+                "schema": "trashbot.local_webrtc_camera_devices.v1",
+                "status": "loaded",
+                "evidence_ref": "camera-devices-loaded",
+                "key_values": {},
+                "blocked_reasons": [],
+                "dangerous_true_fields": [],
+            },
+            {
+                "id": "radar_status",
+                "endpoint": "/api/radar/status",
+                "http_status": 200,
+                "request_status": "loaded",
+                "schema": "trashbot.upper_robot_api.v1.radar_status",
+                "status": "scan_once_hz_raw_packet_tf_observed",
+                "evidence_ref": "radar-scan-observed",
+                "key_values": {"safe_to_control": False, "delivery_success": False, "primary_actions_enabled": False},
+                "blocked_reasons": [],
+                "dangerous_true_fields": [],
+            },
+            {
+                "id": "radar_scan_proof_latest",
+                "endpoint": "/api/radar/scan-proof/latest",
+                "http_status": 200,
+                "request_status": "loaded",
+                "schema": "trashbot.upper_robot_api.v1.lidar_scan_proof_latest_result",
+                "status": "loaded",
+                "evidence_ref": "radar-scan-proof",
+                "key_values": {"safe_to_control": False, "delivery_success": False, "primary_actions_enabled": False},
+                "blocked_reasons": [],
+                "dangerous_true_fields": [],
+            },
+            {
+                "id": "radar_raw_packet_proof_latest",
+                "endpoint": "/api/radar/raw-packet-proof/latest",
+                "http_status": 200,
+                "request_status": "loaded",
+                "schema": "trashbot.upper_robot_api.v1.lidar_raw_packet_proof_latest_result",
+                "status": "loaded",
+                "evidence_ref": "radar-raw-packet-proof",
+                "key_values": {"safe_to_control": False, "delivery_success": False, "primary_actions_enabled": False},
+                "blocked_reasons": [],
+                "dangerous_true_fields": [],
+            },
+            {
+                "id": "map_proof_latest",
+                "endpoint": "/api/map/proof/latest",
+                "http_status": 200,
+                "request_status": "loaded",
+                "schema": "trashbot.upper_robot_api.v1.map_lifecycle_proof_latest",
+                "status": "map_once_artifact_metadata_observed",
+                "evidence_ref": "map-proof-loaded",
+                "key_values": {"safe_to_control": False, "delivery_success": False, "primary_actions_enabled": False},
+                "blocked_reasons": [],
+                "dangerous_true_fields": [],
+            },
+            {
+                "id": "nav2_status",
+                "endpoint": "/api/nav2/status",
+                "http_status": 200,
+                "request_status": "loaded",
+                "schema": "trashbot.upper_robot_api.v1.nav2_lifecycle_status",
+                "status": "not_proven",
+                "evidence_ref": "nav2-no-motion-path",
+                "key_values": {"safe_to_control": False, "delivery_success": False, "primary_actions_enabled": False},
+                "blocked_reasons": [],
+                "dangerous_true_fields": [],
+            },
+            {
+                "id": "nav2_proof_latest",
+                "endpoint": "/api/nav2/proof/latest",
+                "http_status": 200,
+                "request_status": "loaded",
+                "schema": "trashbot.upper_robot_api.v1.nav2_runtime_proof_latest",
+                "status": "not_proven",
+                "evidence_ref": "nav2-probe-loaded",
+                "key_values": {
+                    "safe_to_control": False,
+                    "delivery_success": False,
+                    "primary_actions_enabled": False,
+                    "path_generated": True,
+                    "path_point_count": 31,
+                },
+                "blocked_reasons": [],
+                "dangerous_true_fields": [],
+            },
+            {
+                "id": "operator_report_latest",
+                "endpoint": "/api/operator/report",
+                "http_status": 200,
+                "request_status": "loaded",
+                "schema": "trashbot.upper_robot_api.v1.operator_report_latest_result",
+                "status": "ready_for_execution",
+                "evidence_ref": "manual-gate-material",
+                "key_values": {"safe_to_control": False, "delivery_success": False, "primary_actions_enabled": False},
+                "blocked_reasons": [],
+                "dangerous_true_fields": [],
+            },
+            {
+                "id": "base_status",
+                "endpoint": "/api/base/status",
+                "http_status": 200,
+                "request_status": "loaded",
+                "schema": "trashbot.upper_robot_api.v1.base_status",
+                "status": "loaded",
+                "evidence_ref": "base-status-loaded",
+                "key_values": {"safe_to_control": False, "delivery_success": False, "primary_actions_enabled": False},
+                "blocked_reasons": [],
+                "dangerous_true_fields": [],
+            },
+            {
+                "id": "base_feedback_samples_latest",
+                "endpoint": "/api/base/feedback-samples/latest",
+                "http_status": 200,
+                "request_status": "loaded",
+                "schema": "trashbot.upper_robot_api.v1.base_feedback_samples_latest_result",
+                "status": "loaded",
+                "evidence_ref": "base-feedback-loaded",
+                "key_values": {"safe_to_control": False, "delivery_success": False, "primary_actions_enabled": False},
+                "blocked_reasons": [],
+                "dangerous_true_fields": [],
+            },
+        ],
+        "o3_proof_summary": {
+            "managed_runtime_started": True,
+            "scan_once_observed": True,
+            "map_once_observed": True,
+            "amcl_pose_observed": True,
+            "localization_tf_observed": None,
+            "planner_server_active": True,
+            "path_generation_requested": True,
+            "path_generation_succeeded": True,
+            "path_generated": True,
+            "path_point_count": 31,
+            "root_causes": [],
+            "not_proven": ["Robot API proof fields not loaded", "delivery_success"],
+        },
+        "robot_api_connection": {
+            "status": "blocked",
+            "loaded_count": 8,
+            "blocked_count": 5,
+            "failed_count": 0,
+            "schema_mismatch_count": 2,
+            "dangerous_true_fields": [],
+            "blocked_reasons": [],
+            "last_refresh_ms": 1781113175864,
+        },
+        "readback_summary": {
+            "camera": {
+                "status": "ready",
+                "devices_status": "loaded",
+                "preview_status": "visible_frame_observed",
+            },
+            "lidar": {
+                "status": "scan_once_hz_raw_packet_tf_observed",
+                "latest_scan_proof_status": "loaded",
+                "latest_raw_packet_proof_status": "loaded",
+                "continuous_scan_status": "not_loaded",
+                "lifecycle_running": "not_loaded",
+                "lifecycle_state": "not_loaded",
+                "continuous_window_observed": "not_loaded",
+                "continuity_window_status": "not_loaded",
+                "latest_scan_proof_fresh": "not_loaded",
+            },
+            "base": {
+                "status": "loaded",
+                "latest_feedback_status": "loaded",
+                "feedback_ack_status": "not_loaded",
+            },
+        },
+        "operator_hil_material_summary": {
+            "status": "loaded",
+            "source_endpoint_id": "operator_report_latest",
+            "source_path": "operator_report_latest.structured_hil_claims",
+            "report_status": "ready_for_execution",
+            "evidence_ref": "current-field-evidence-20260611",
+            "operator_present": True,
+            "physical_clearance": True,
+            "emergency_stop": True,
+            "external_video": "true",
+            "camera_visible": "true",
+            "wheel_feedback": "false",
+            "lidar_delta": "false",
+            "route_map": "true",
+            "delivery_claim": False,
+            "site_state": "current_field_evidence_smoke",
+        },
+        "safe_command_boundary": {
+            "manual_endpoint": "/api/base/manual",
+            "stop_endpoint": "/api/base/stop",
+            "cmd_vel_topic": "/cmd_vel",
+            "nav2_goal": "Nav2 NavigateToPose locked",
+            "map_start": "map start locked",
+            "radar_start": "radar start locked",
+            "keyboard_control": "keyboard control locked",
+            "map_click_goal": "map click goal locked",
+            "locked_reason": "requires safety lock, checklist, operator report materials, robot ACK, timeout/cancel/stop/recovery evidence before enablement",
+            "manual_motion_entry_status": "controlled_jog_requires_hil_checklist_and_operator_report",
+            "manual_motion_entry_label": "受控点动（需现场确认）",
+            "allowed_directions": ["forward", "back", "left", "right", "stop"],
+            "non_stop_requires_confirm_hil_checklist": True,
+            "non_stop_requires_operator_report_preflight": True,
+            "operator_report_preflight_endpoint": "/api/operator/report",
+            "operator_report_preflight_required_fields": [
+                "operator_present",
+                "physical_clearance_confirmed",
+                "emergency_stop_ready",
+                "external_video_recorded",
+                "external_video_ref",
+                "visible_content_proven",
+                "camera_artifacts_ref",
+                "wheel_feedback_lr_nonzero_proven",
+                "wheel_feedback_ref",
+                "physical_motion_lidar_delta_proven",
+                "scan_delta_ref",
+            ],
+            "speed_limit_mps": 0.12,
+            "duration_limit_ms": 800,
+            "hil_checklist": [
+                {"id": "operator_ready", "label": "现场有人扶控并准备急停"},
+                {"id": "clearance_confirmed", "label": "已确认小车周围无人和障碍"},
+                {"id": "low_speed_only", "label": "本轮仅做低速短时点动"},
+                {"id": "not_autonomy_mode", "label": "本轮不是自动导航任务"},
+            ],
+            "command_dispatch_enabled": False,
+            "manual_control_enabled": False,
+            "navigate_goal_enabled": False,
+            "keyboard_control_enabled": False,
+            "robot_control_executed": False,
+        },
+        "blocked_reasons": [],
+        "not_proven": ["path_generated", "delivery_success"],
+        "source": "software_proof",
+        "proof_status": "not_proven",
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "robot_control_executed": False,
+        "hil_pass": False,
+        "connects_cloud_production": False,
+    }
+    payload.update(overrides)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+
+def write_localization_path_material_json(path: Path, **overrides) -> None:
+    # localization/path fixture 直接复用 O1 已收口的 38 号 summary，确保合同与当前历史材料一致。
+    payload = json.loads(LOCALIZATION_PATH_MATERIAL_ARTIFACT.read_text(encoding="utf-8"))
+    payload.update(overrides)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+
+def write_clean_baseline_nav2_path_material_files(root: Path, **overrides) -> dict[str, Path]:
+    # clean-baseline fixture 复用 2026-06-11 sprint 的 refresh/retry/latest/status/readback 形状，但只放安全白名单字段。
+    refresh_payload = {
+        "schema": manifest.CLEAN_BASELINE_NAV2_PATH_ALLOWED_SCHEMAS["refresh"],
+        "task_id": "clean_baseline_nav2_path_material_ready",
+        "status": "blocked_with_root_cause",
+        "proof_status": None,
+        "planner_server_active": False,
+        "path_generation_requested": True,
+        "path_generation_succeeded": False,
+        "path_generated": False,
+        "path_point_count": 0,
+        "root_causes": ["tf_chain_missing_before_initialpose"],
+        "blockers": [],
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "robot_control_executed": False,
+        "publishes_cmd_vel": False,
+        "calls_base_manual": False,
+        "uses_base_uart": False,
+        "sends_motion_commands": False,
+        "sends_base_motion_commands": False,
+    }
+    retry_payload = {
+        "schema": manifest.CLEAN_BASELINE_NAV2_PATH_ALLOWED_SCHEMAS["refresh"],
+        "task_id": "clean_baseline_nav2_path_material_ready",
+        "status": "refreshed",
+        "proof_state": "nav2_no_motion_path_generation_runtime_observed",
+        "managed_runtime_started": True,
+        "managed_runtime_cleanup_ok": True,
+        "initialpose_published": True,
+        "amcl_pose_observed": True,
+        "map_server_active": True,
+        "amcl_active": True,
+        "planner_server_active": True,
+        "path_generation_succeeded": True,
+        "path_generated": True,
+        "path_point_count": 31,
+        "root_causes": [],
+        "blockers": [],
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "robot_control_executed": False,
+        "publishes_cmd_vel": False,
+        "calls_base_manual": False,
+        "uses_base_uart": False,
+        "sends_motion_commands": False,
+        "sends_base_motion_commands": False,
+    }
+    latest_payload = {
+        "schema": manifest.CLEAN_BASELINE_NAV2_PATH_ALLOWED_SCHEMAS["latest"],
+        "task_id": "clean_baseline_nav2_path_material_ready",
+        "status": "not_proven",
+        "latest_proof_status": None,
+        "latest_managed_runtime_started": None,
+        "latest_managed_runtime_cleanup_ok": None,
+        "latest_initialpose_published": None,
+        "latest_amcl_pose_observed": None,
+        "latest_map_server_active": None,
+        "latest_amcl_active": None,
+        "latest_planner_server_active": None,
+        "latest_path_generation_succeeded": None,
+        "latest_path_generated": None,
+        "latest_path_point_count": None,
+        "latest_root_causes": None,
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "robot_control_executed": False,
+        "publishes_cmd_vel": False,
+        "calls_base_manual": False,
+        "uses_base_uart": False,
+        "sends_motion_commands": False,
+        "sends_base_motion_commands": False,
+    }
+    status_payload = {
+        "schema": manifest.CLEAN_BASELINE_NAV2_PATH_ALLOWED_SCHEMAS["status"],
+        "task_id": "clean_baseline_nav2_path_material_ready",
+        "status": "not_proven",
+        "proof_latest": {
+            "latest_proof_status": "nav2_no_motion_path_generation_runtime_observed",
+            "latest_managed_runtime_started": True,
+            "latest_managed_runtime_cleanup_ok": True,
+            "latest_initialpose_published": True,
+            "latest_amcl_pose_observed": True,
+            "latest_map_server_active": True,
+            "latest_amcl_active": True,
+            "latest_planner_server_active": True,
+            "latest_path_generation_succeeded": True,
+            "latest_path_generated": True,
+            "latest_path_point_count": 31,
+            "latest_root_causes": [],
+        },
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "robot_control_executed": False,
+        "publishes_cmd_vel": False,
+        "calls_base_manual": False,
+        "uses_base_uart": False,
+        "sends_motion_commands": False,
+        "sends_base_motion_commands": False,
+    }
+    refresh_payload.update(overrides.get("refresh", {}))
+    retry_payload.update(overrides.get("retry", {}))
+    latest_payload.update(overrides.get("latest", {}))
+    status_payload.update(overrides.get("status", {}))
+
+    paths = {
+        "refresh": root / "nav2_refresh_summary.json",
+        "retry": root / "nav2_retry_summary.json",
+        "latest": root / "nav2_latest_after_success.json",
+        "status": root / "nav2_status_after_success.json",
+        "txt": root / "nav2_success_readback_summary.txt",
+        "between_cleanup": root / "between_retry_cleanup_readback.log",
+        "post_cleanup": root / "post_success_cleanup_readback.log",
+    }
+    for key in ("refresh", "retry", "latest", "status"):
+        payload = {
+            "refresh": refresh_payload,
+            "retry": retry_payload,
+            "latest": latest_payload,
+            "status": status_payload,
+        }[key]
+        write_text(paths[key], json.dumps(payload))
+    write_text(
+        paths["txt"],
+        "\n".join(
+            [
+                "## retry response paths",
+                "[\"latest_result\", \"proof\"]",
+                "## latest success summary",
+                json.dumps(latest_payload, ensure_ascii=False),
+                "## status success summary",
+                json.dumps(status_payload, ensure_ascii=False),
+            ]
+        )
+        + "\n",
+    )
+    cleanup_text = "\n".join(
+        [
+            "remote_readback_phase=post_success_cleanup",
+            "## target ps",
+            "",
+            "## ros2 node list",
+            "",
+            "## devices lsof/fuser",
+            "-- /dev/ttyS5 lsof --",
+            "-- /dev/ttyS5 fuser --",
+            "-- /dev/ttyACM0 lsof --",
+            "-- /dev/ttyACM0 fuser --",
+            "",
+            "## exact target ps after cleanup",
+            "",
+            "## ros2 node list after cleanup",
+            "",
+        ]
+    )
+    write_text(paths["between_cleanup"], cleanup_text + "\n")
+    write_text(paths["post_cleanup"], cleanup_text + "\n")
+    return paths
 
 
 class FieldRouteEvidenceManifestTest(unittest.TestCase):
@@ -2065,6 +2541,487 @@ class FieldRouteEvidenceManifestTest(unittest.TestCase):
         self.assertFalse(evidence["robot_control_executed"])
         self.assertFalse(evidence["route_execution_success"])
 
+    def test_current_field_evidence_material_packet_ready_consumes_camera_radar_map_nav2_and_manual_gate_summary(self):
+        # current field evidence packet 只证明安全材料摘要被消费，不证明 route execution、delivery 或 control。
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir) / "complete"
+            output = Path(tmpdir) / "manifest.json"
+            current_summary = Path(tmpdir) / "current_field_evidence.json"
+            make_complete_fixture(root)
+            write_current_field_evidence_json(current_summary)
+
+            rc = manifest.main(
+                [
+                    "--mode",
+                    "local",
+                    "--artifact-root",
+                    str(root),
+                    "--current-field-evidence-json",
+                    str(current_summary),
+                    "--output",
+                    str(output),
+                    "--run-id",
+                    "current_field_evidence_ready",
+                ]
+            )
+            packet = json.loads(output.read_text(encoding="utf-8"))
+            evidence = packet["current_field_evidence_material"]
+            nested = packet["field_motion_evidence_packet"]["current_field_evidence_material"]
+            evidence_text = json.dumps(evidence, ensure_ascii=False)
+
+        self.assertEqual(rc, 0)
+        self.assertEqual(evidence, nested)
+        self.assertEqual(evidence["schema"], manifest.CURRENT_FIELD_EVIDENCE_MATERIAL_SCHEMA)
+        self.assertEqual(evidence["proof_scope"], manifest.CURRENT_FIELD_EVIDENCE_MATERIAL_PROOF_SCOPE)
+        self.assertEqual(evidence["evidence_boundary"], manifest.CURRENT_FIELD_EVIDENCE_MATERIAL_PROOF_SCOPE)
+        self.assertEqual(evidence["status"], "current_field_evidence_ready_not_route_execution_proof")
+        self.assertTrue(evidence["current_field_evidence_ready_not_route_execution_proof"])
+        self.assertTrue(evidence["live_or_field_material_consumed"])
+        self.assertEqual(
+            evidence["present_materials"],
+            [
+                "camera_frame_observed",
+                "radar_scan_observed",
+                "map_material_observed",
+                "nav2_no_motion_path_generated",
+                "manual_gate_blocked_expected",
+            ],
+        )
+        self.assertEqual(evidence["missing_materials"], [])
+        self.assertTrue(evidence["camera_frame_observed"])
+        self.assertTrue(evidence["radar_scan_observed"])
+        self.assertTrue(evidence["map_material_observed"])
+        self.assertTrue(evidence["nav2_no_motion_path_generated"])
+        self.assertTrue(evidence["manual_gate_blocked_expected"])
+        self.assertFalse(evidence["safe_to_control"])
+        self.assertFalse(evidence["delivery_success"])
+        self.assertFalse(evidence["primary_actions_enabled"])
+        self.assertFalse(evidence["robot_control_executed"])
+        self.assertFalse(evidence["hil_pass"])
+        self.assertFalse(evidence["connects_cloud_production"])
+        self.assertFalse(evidence["route_execution_success"])
+        self.assertEqual(evidence["blocked_reasons"], [])
+        self.assertEqual(evidence["next_required_evidence"], ["real_current_field_evidence_route_execution_acceptance"])
+        self.assertEqual(evidence["material_summaries"]["camera"]["camera_frame_observed"], True)
+        self.assertEqual(evidence["material_summaries"]["radar"]["radar_scan_observed"], True)
+        self.assertEqual(evidence["material_summaries"]["map"]["map_material_observed"], True)
+        self.assertEqual(evidence["material_summaries"]["nav2_no_motion_path"]["nav2_no_motion_path_generated"], True)
+        self.assertEqual(evidence["material_summaries"]["manual_gate"]["manual_gate_blocked_expected"], True)
+        self.assertNotIn("/Users/m1", evidence_text)
+        self.assertNotIn("traceback", evidence_text.lower())
+        self.assertNotIn("token", evidence_text.lower())
+
+    def test_current_field_evidence_material_packet_fail_closed_on_dangerous_true_and_unsafe_text(self):
+        # hostile summary 里一旦把控制类 boolean 置真或把安全摘要字段污染成绝对路径，packet 必须 blocked。
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir) / "complete"
+            output = Path(tmpdir) / "manifest.json"
+            current_summary = Path(tmpdir) / "current_field_evidence.json"
+            make_complete_fixture(root)
+            write_current_field_evidence_json(current_summary)
+            payload = json.loads(current_summary.read_text(encoding="utf-8"))
+            payload["safe_command_boundary"]["locked_reason"] = "/Users/m1/secret/camera_status.txt"
+            payload["safe_command_boundary"]["command_dispatch_enabled"] = True
+            payload["operator_hil_material_summary"]["delivery_claim"] = True
+            current_summary.write_text(json.dumps(payload), encoding="utf-8")
+
+            rc = manifest.main(
+                [
+                    "--mode",
+                    "local",
+                    "--artifact-root",
+                    str(root),
+                    "--current-field-evidence-json",
+                    str(current_summary),
+                    "--output",
+                    str(output),
+                    "--run-id",
+                    "current_field_evidence_hostile",
+                ]
+            )
+            packet = json.loads(output.read_text(encoding="utf-8"))
+            evidence = packet["current_field_evidence_material"]
+            evidence_text = json.dumps(evidence, ensure_ascii=False)
+
+        self.assertEqual(rc, 0)
+        self.assertEqual(evidence["status"], "blocked_not_proven")
+        self.assertFalse(evidence["current_field_evidence_ready_not_route_execution_proof"])
+        self.assertFalse(evidence["manual_gate_blocked_expected"])
+        self.assertIn("current_field_evidence_dangerous_true_claim", evidence["blocked_reasons"])
+        self.assertIn("current_field_evidence_unsafe_text", evidence["blocked_reasons"])
+        self.assertFalse(evidence["safe_to_control"])
+        self.assertFalse(evidence["delivery_success"])
+        self.assertFalse(evidence["primary_actions_enabled"])
+        self.assertFalse(evidence["robot_control_executed"])
+        self.assertFalse(evidence["hil_pass"])
+        self.assertFalse(evidence["connects_cloud_production"])
+        self.assertNotIn("/Users/m1/secret/camera_status.txt", evidence_text)
+        self.assertNotIn("traceback", evidence_text.lower())
+
+    def test_localization_path_material_readback_ready_consumes_default_artifact_38(self):
+        # 本轮 localization/path additive 必须直接兼容 O1 的 38 号 same-run readback，并保持 path=false 边界。
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir) / "complete"
+            output = Path(tmpdir) / "manifest.json"
+            make_complete_fixture(root)
+
+            rc = manifest.main(
+                [
+                    "--mode",
+                    "local",
+                    "--artifact-root",
+                    str(root),
+                    "--localization-path-material-json",
+                    str(LOCALIZATION_PATH_MATERIAL_ARTIFACT),
+                    "--output",
+                    str(output),
+                    "--run-id",
+                    "localization_path_material_readback_ready",
+                ]
+            )
+            payload = json.loads(output.read_text(encoding="utf-8"))
+            evidence = payload["localization_path_material_readback"]
+            nested = payload["field_motion_evidence_packet"]["localization_path_material_readback"]
+            evidence_text = json.dumps(evidence, ensure_ascii=False)
+
+        self.assertEqual(rc, 0)
+        self.assertEqual(evidence, nested)
+        self.assertEqual(evidence["schema"], manifest.LOCALIZATION_PATH_MATERIAL_READBACK_SCHEMA)
+        self.assertEqual(evidence["proof_scope"], manifest.LOCALIZATION_PATH_MATERIAL_READBACK_PROOF_SCOPE)
+        self.assertEqual(evidence["evidence_boundary"], manifest.LOCALIZATION_PATH_MATERIAL_READBACK_PROOF_SCOPE)
+        self.assertEqual(evidence["status"], manifest.LOCALIZATION_PATH_MATERIAL_READBACK_READY_STATUS)
+        self.assertTrue(evidence["same_run_localization_material_present"])
+        self.assertTrue(evidence["same_run_localization_material_consumed"])
+        self.assertTrue(evidence["same_run_map_once_observed"])
+        self.assertTrue(evidence["same_run_amcl_pose_observed"])
+        self.assertTrue(evidence["same_run_localization_tf_map_to_odom"])
+        self.assertTrue(evidence["same_run_localization_tf_map_to_base_link"])
+        self.assertTrue(evidence["same_run_planner_server_active"])
+        self.assertTrue(evidence["same_run_path_generation_requested"])
+        self.assertFalse(evidence["same_run_path_generation_succeeded"])
+        self.assertFalse(evidence["same_run_path_generated"])
+        self.assertEqual(evidence["same_run_path_point_count"], 0)
+        self.assertFalse(evidence["same_run_path_proven"])
+        self.assertFalse(evidence["cross_run_clean_baseline_path_comparator_present"])
+        self.assertFalse(evidence["same_run_override_allowed"])
+        self.assertEqual(evidence["blocked_reasons"], [])
+        self.assertEqual(
+            evidence["next_required_evidence"],
+            ["current_same_run_path_generation_success_or_live_route_execution_proof"],
+        )
+        self.assertEqual(evidence["source_schema"], "trashbot.pc_tools_workstation.robot_control_summary.v1")
+        self.assertFalse(evidence["safe_to_control"])
+        self.assertFalse(evidence["delivery_success"])
+        self.assertFalse(evidence["primary_actions_enabled"])
+        self.assertFalse(evidence["robot_control_executed"])
+        self.assertFalse(evidence["hil_pass"])
+        self.assertFalse(evidence["nav2_route_execution_success"])
+        self.assertFalse(evidence["route_execution_success"])
+        self.assertNotIn("/root/", evidence_text)
+        self.assertNotIn("http://", evidence_text)
+        self.assertNotIn("token", evidence_text.lower())
+
+    def test_localization_path_material_readback_fail_closed_on_task_mismatch_and_cross_run_confusion(self):
+        # task drift、危险 true、allowlisted 字段污染和 cross-run comparator 混入都只能 section-local blocked。
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir) / "complete"
+            output = Path(tmpdir) / "manifest.json"
+            localization_summary = Path(tmpdir) / "localization_path_material.json"
+            make_complete_fixture(root)
+            write_localization_path_material_json(
+                localization_summary,
+                task_id="other_task",
+                cross_run_clean_baseline_path_comparator_present=True,
+                cross_run_clean_baseline_path_summary={
+                    "path_point_count": 31,
+                    "same_run_override_allowed": True,
+                },
+            )
+            payload = json.loads(localization_summary.read_text(encoding="utf-8"))
+            for endpoint in payload["read_endpoints"]:
+                if endpoint.get("id") == "status":
+                    endpoint["status"] = "/Users/m1/token/localization_status.txt"
+                if endpoint.get("id") == "nav2_proof_latest":
+                    endpoint["key_values"]["safe_to_control"] = "true"
+            localization_summary.write_text(json.dumps(payload), encoding="utf-8")
+
+            rc = manifest.main(
+                [
+                    "--mode",
+                    "local",
+                    "--artifact-root",
+                    str(root),
+                    "--localization-path-material-json",
+                    str(localization_summary),
+                    "--output",
+                    str(output),
+                    "--run-id",
+                    "localization_path_material_readback_blocked",
+                ]
+            )
+            result = json.loads(output.read_text(encoding="utf-8"))
+            evidence = result["localization_path_material_readback"]
+            evidence_text = json.dumps(evidence, ensure_ascii=False)
+
+        self.assertEqual(rc, 0)
+        self.assertEqual(evidence["status"], "blocked_not_proven")
+        self.assertIn("localization_path_material_task_mismatch", evidence["blocked_reasons"])
+        self.assertIn("localization_path_cross_run_comparator_confusion", evidence["blocked_reasons"])
+        self.assertIn("localization_path_dangerous_true_claim", evidence["blocked_reasons"])
+        self.assertIn("localization_path_unsafe_text", evidence["blocked_reasons"])
+        self.assertIn("nav2_proof_latest.safe_to_control", evidence["dangerous_true_fields"])
+        self.assertFalse(evidence["same_run_path_proven"])
+        self.assertFalse(evidence["cross_run_clean_baseline_path_comparator_present"])
+        self.assertFalse(evidence["same_run_override_allowed"])
+        self.assertFalse(evidence["safe_to_control"])
+        self.assertFalse(evidence["delivery_success"])
+        self.assertFalse(evidence["primary_actions_enabled"])
+        self.assertFalse(evidence["robot_control_executed"])
+        self.assertFalse(evidence["hil_pass"])
+        self.assertFalse(evidence["nav2_route_execution_success"])
+        self.assertFalse(evidence["route_execution_success"])
+        self.assertNotIn("/Users/m1", evidence_text)
+        self.assertNotIn("localization_status.txt", evidence_text)
+        self.assertNotIn("\"path_point_count\": 31", evidence_text)
+
+    def test_field_operator_confirmation_material_ready_consumes_operator_report_without_delivery_proof(self):
+        # operator confirmation material 只能作为准现场人工确认摘要，不能打开控制或宣称送达成功。
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir) / "complete"
+            output = Path(tmpdir) / "manifest.json"
+            operator_report = Path(tmpdir) / "operator_report.json"
+            make_complete_fixture(root)
+            write_field_operator_confirmation_json(operator_report)
+
+            rc = manifest.main(
+                [
+                    "--mode",
+                    "local",
+                    "--artifact-root",
+                    str(root),
+                    "--field-operator-confirmation-json",
+                    str(operator_report),
+                    "--output",
+                    str(output),
+                    "--run-id",
+                    "field_operator_confirmation_ready",
+                ]
+            )
+            packet = json.loads(output.read_text(encoding="utf-8"))
+            evidence = packet["field_operator_confirmation_material"]
+            nested = packet["field_motion_evidence_packet"]["field_operator_confirmation_material"]
+            evidence_text = json.dumps(evidence, ensure_ascii=False)
+
+        self.assertEqual(rc, 0)
+        self.assertEqual(evidence, nested)
+        self.assertEqual(evidence["schema"], manifest.FIELD_OPERATOR_CONFIRMATION_MATERIAL_SCHEMA)
+        self.assertEqual(evidence["proof_scope"], manifest.FIELD_OPERATOR_CONFIRMATION_MATERIAL_PROOF_SCOPE)
+        self.assertEqual(evidence["evidence_boundary"], manifest.FIELD_OPERATOR_CONFIRMATION_MATERIAL_PROOF_SCOPE)
+        self.assertEqual(evidence["status"], manifest.FIELD_OPERATOR_CONFIRMATION_READY_STATUS)
+        self.assertTrue(evidence["same_task_id_consumed"])
+        self.assertTrue(evidence["linked_route_material_present"])
+        self.assertFalse(evidence["linked_delivery_material_present"])
+        self.assertTrue(evidence["operator_material_consumed"])
+        self.assertEqual(evidence["operator_report_status"], "loaded")
+        self.assertEqual(evidence["operator_confirmation_status"], "confirmed")
+        self.assertTrue(evidence["operator_present"])
+        self.assertTrue(evidence["physical_clearance_confirmed"])
+        self.assertTrue(evidence["emergency_stop_ready"])
+        self.assertTrue(evidence["observed_motion"])
+        self.assertTrue(evidence["observed_stop"])
+        self.assertEqual(evidence["reported_at"], "2026-07-10T07:22:00Z")
+        self.assertEqual(evidence["blocked_reasons"], [])
+        self.assertIn("same_task_delivery_result_material", evidence["next_required_evidence"])
+        self.assertTrue(evidence["material_summaries"]["operator_report"]["operator_identity_present"])
+        self.assertFalse(evidence["safe_to_control"])
+        self.assertFalse(evidence["delivery_success"])
+        self.assertFalse(evidence["primary_actions_enabled"])
+        self.assertFalse(evidence["robot_control_executed"])
+        self.assertFalse(evidence["route_execution_success"])
+        self.assertFalse(evidence["hil_pass"])
+        self.assertFalse(evidence["connects_cloud_production"])
+        self.assertNotIn("operator-on-duty-a", evidence_text)
+        self.assertNotIn("operator-material-001", evidence_text)
+        self.assertNotIn("/Users/m1", evidence_text)
+        self.assertNotIn("token", evidence_text.lower())
+
+    def test_field_operator_confirmation_material_fail_closed_on_unsafe_task_mismatch_and_missing_identity(self):
+        # task drift、危险 true 和 raw/body/path/token 类污染必须 section-local blocked，且不能回显原文。
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir) / "complete"
+            output = Path(tmpdir) / "manifest.json"
+            operator_report = Path(tmpdir) / "operator_report.json"
+            make_complete_fixture(root)
+            write_field_operator_confirmation_json(
+                operator_report,
+                task_id="other_task",
+                operator_id=None,
+                operator_report_id=None,
+                safe_to_control=True,
+                raw_body="/Users/m1/secret/operator-token-response-body.txt",
+                operator_confirmation={"status": "confirmed", "observed_motion": True, "observed_stop": True},
+            )
+
+            rc = manifest.main(
+                [
+                    "--mode",
+                    "local",
+                    "--artifact-root",
+                    str(root),
+                    "--field-operator-confirmation-json",
+                    str(operator_report),
+                    "--output",
+                    str(output),
+                    "--run-id",
+                    "field_operator_confirmation_ready",
+                ]
+            )
+            packet = json.loads(output.read_text(encoding="utf-8"))
+            evidence = packet["field_operator_confirmation_material"]
+            evidence_text = json.dumps(evidence, ensure_ascii=False)
+
+        self.assertEqual(rc, 0)
+        self.assertEqual(evidence["status"], "blocked_not_proven")
+        self.assertFalse(evidence["same_task_id_consumed"])
+        self.assertFalse(evidence["operator_material_consumed"])
+        self.assertFalse(evidence["operator_identity_present"])
+        self.assertIn("field_operator_confirmation_task_mismatch", evidence["blocked_reasons"])
+        self.assertIn("field_operator_confirmation_operator_identity_missing", evidence["blocked_reasons"])
+        self.assertIn("field_operator_confirmation_dangerous_true_claim", evidence["blocked_reasons"])
+        self.assertIn("field_operator_confirmation_unsafe_field", evidence["blocked_reasons"])
+        self.assertIn("field_operator_confirmation_unsafe_text", evidence["blocked_reasons"])
+        self.assertIn("safe_to_control", evidence["dangerous_true_fields"])
+        self.assertGreaterEqual(evidence["unsafe_field_count"], 1)
+        self.assertGreaterEqual(evidence["unsafe_text_field_count"], 1)
+        self.assertFalse(evidence["safe_to_control"])
+        self.assertFalse(evidence["delivery_success"])
+        self.assertFalse(evidence["primary_actions_enabled"])
+        self.assertFalse(evidence["robot_control_executed"])
+        self.assertFalse(evidence["route_execution_success"])
+        self.assertFalse(evidence["hil_pass"])
+        self.assertFalse(evidence["connects_cloud_production"])
+        self.assertNotIn("operator-token", evidence_text)
+        self.assertNotIn("response-body", evidence_text)
+        self.assertNotIn("/Users/m1", evidence_text)
+        self.assertNotIn("raw_body", evidence_text)
+
+    def test_clean_baseline_nav2_path_material_packet_ready_consumes_txt_and_same_dir_summaries(self):
+        # clean-baseline additive 应该能从 readback txt 入口归并同目录 refresh/retry/latest/status/cleanup 材料。
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir) / "complete"
+            nav2_artifacts = Path(tmpdir) / "clean_baseline_nav2"
+            output = Path(tmpdir) / "manifest.json"
+            make_complete_fixture(root)
+            paths = write_clean_baseline_nav2_path_material_files(nav2_artifacts)
+
+            rc = manifest.main(
+                [
+                    "--mode",
+                    "local",
+                    "--artifact-root",
+                    str(root),
+                    "--clean-baseline-nav2-path-json",
+                    str(paths["txt"]),
+                    "--output",
+                    str(output),
+                    "--run-id",
+                    "clean_baseline_nav2_path_material_ready",
+                ]
+            )
+            payload = json.loads(output.read_text(encoding="utf-8"))
+            evidence = payload["clean_baseline_nav2_path_material"]
+            nested = payload["field_motion_evidence_packet"]["clean_baseline_nav2_path_material"]
+            evidence_text = json.dumps(evidence, ensure_ascii=False)
+
+        self.assertEqual(rc, 0)
+        self.assertEqual(evidence, nested)
+        self.assertEqual(evidence["schema"], manifest.CLEAN_BASELINE_NAV2_PATH_MATERIAL_SCHEMA)
+        self.assertEqual(evidence["proof_scope"], manifest.CLEAN_BASELINE_NAV2_PATH_MATERIAL_PROOF_SCOPE)
+        self.assertEqual(evidence["evidence_boundary"], manifest.CLEAN_BASELINE_NAV2_PATH_MATERIAL_PROOF_SCOPE)
+        self.assertEqual(evidence["status"], "clean_baseline_nav2_path_material_ready_not_route_execution_proof")
+        self.assertTrue(evidence["clean_baseline_nav2_path_material_ready_not_route_execution_proof"])
+        self.assertEqual(evidence["first_attempt_status"], "blocked_with_root_cause")
+        self.assertEqual(evidence["retry_status"], "nav2_no_motion_path_generation_runtime_observed")
+        self.assertTrue(evidence["retry_success"])
+        self.assertTrue(evidence["path_generation_succeeded"])
+        self.assertTrue(evidence["path_generated"])
+        self.assertEqual(evidence["path_point_count"], 31)
+        self.assertTrue(evidence["planner_server_active"])
+        self.assertTrue(evidence["managed_runtime_started"])
+        self.assertTrue(evidence["initialpose_published"])
+        self.assertTrue(evidence["amcl_pose_observed"])
+        self.assertTrue(evidence["map_server_active"])
+        self.assertTrue(evidence["amcl_active"])
+        self.assertTrue(evidence["cleanup_readback_clean"])
+        self.assertEqual(evidence["first_failure"]["root_causes"], ["tf_chain_missing_before_initialpose"])
+        self.assertEqual(evidence["retry_success_summary"]["path_point_count"], 31)
+        self.assertEqual(evidence["blocked_reasons"], [])
+        self.assertEqual(evidence["next_required_evidence"], ["real_live_nav2_route_execution_after_clean_baseline_path_material"])
+        self.assertTrue(any(item["material"] == "clean_baseline_nav2_path_artifacts" for item in evidence["material_sample_refs"]))
+        self.assertFalse(evidence["safe_to_control"])
+        self.assertFalse(evidence["delivery_success"])
+        self.assertFalse(evidence["primary_actions_enabled"])
+        self.assertFalse(evidence["robot_control_executed"])
+        self.assertFalse(evidence["hil_pass"])
+        self.assertFalse(evidence["connects_cloud_production"])
+        self.assertFalse(evidence["route_execution_success"])
+        self.assertNotIn("/Users/m1", evidence_text)
+        self.assertNotIn("traceback", evidence_text.lower())
+        self.assertNotIn("token", evidence_text.lower())
+
+    def test_clean_baseline_nav2_path_material_packet_fail_closed_on_dangerous_true_and_task_mismatch(self):
+        # 任一 sibling summary 若出现危险 true、task drift 或敏感文本，clean-baseline additive 只能 blocked。
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir) / "complete"
+            nav2_artifacts = Path(tmpdir) / "clean_baseline_nav2"
+            output = Path(tmpdir) / "manifest.json"
+            make_complete_fixture(root)
+            paths = write_clean_baseline_nav2_path_material_files(
+                nav2_artifacts,
+                retry={
+                    "task_id": "other_task",
+                    "safe_to_control": True,
+                    "root_causes": ["/Users/m1/token/traceback.txt"],
+                },
+            )
+
+            rc = manifest.main(
+                [
+                    "--mode",
+                    "local",
+                    "--artifact-root",
+                    str(root),
+                    "--clean-baseline-nav2-path-json",
+                    str(paths["refresh"]),
+                    "--output",
+                    str(output),
+                    "--run-id",
+                    "clean_baseline_nav2_path_material_ready",
+                ]
+            )
+            payload = json.loads(output.read_text(encoding="utf-8"))
+            evidence = payload["clean_baseline_nav2_path_material"]
+            evidence_text = json.dumps(evidence, ensure_ascii=False)
+
+        self.assertEqual(rc, 0)
+        self.assertEqual(evidence["status"], "blocked_not_proven")
+        self.assertFalse(evidence["clean_baseline_nav2_path_material_ready_not_route_execution_proof"])
+        self.assertIn("clean_baseline_nav2_path_material_task_mismatch", evidence["blocked_reasons"])
+        self.assertIn("clean_baseline_nav2_path_material_dangerous_true_claim", evidence["blocked_reasons"])
+        self.assertIn("clean_baseline_nav2_path_material_unsafe_text", evidence["blocked_reasons"])
+        self.assertIn("retry.safe_to_control", evidence["dangerous_true_fields"])
+        self.assertGreaterEqual(evidence["unsafe_text_field_count"], 1)
+        self.assertFalse(evidence["safe_to_control"])
+        self.assertFalse(evidence["delivery_success"])
+        self.assertFalse(evidence["primary_actions_enabled"])
+        self.assertFalse(evidence["robot_control_executed"])
+        self.assertFalse(evidence["hil_pass"])
+        self.assertFalse(evidence["connects_cloud_production"])
+        self.assertFalse(evidence["route_execution_success"])
+        self.assertNotIn("/Users/m1", evidence_text)
+        self.assertNotIn("traceback.txt", evidence_text)
+        self.assertNotIn("token", evidence_text.lower())
+
     def test_same_task_field_material_packet_ready_even_when_map_yaml_missing(self):
         # map.yaml 缺口要被记录，但不能阻止 route/keyframe/route bag/replay 这些准现场材料被消费。
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -2179,6 +3136,353 @@ class FieldRouteEvidenceManifestTest(unittest.TestCase):
         self.assertFalse(evidence["delivery_success"])
         self.assertFalse(evidence["primary_actions_enabled"])
         self.assertFalse(evidence["robot_control_executed"])
+        self.assertFalse(evidence["route_execution_success"])
+
+    def test_same_task_route_execution_material_packet_ready_consumes_same_task_route_materials(self):
+        # 新 packet 汇总 field materials、Nav2、delivery、pose progress 和 replay，只证明材料消费不证明送达成功。
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir) / "complete"
+            output = Path(tmpdir) / "manifest.json"
+            proof = Path(tmpdir) / "o11_proof.json"
+            terminal_result = Path(tmpdir) / "cloud_terminal_result.json"
+            db3 = root / "route_bag" / "route_bag_0.db3"
+            metadata = root / "route_bag" / "metadata.yaml"
+            make_complete_fixture(root)
+            write_nav2_goal_proof(proof)
+            write_cloud_terminal_result_json(terminal_result)
+            write_route_bag_db3(
+                db3,
+                topics=[
+                    (1, "/tf", "tf2_msgs/msg/TFMessage"),
+                    (2, "/odom", "nav_msgs/msg/Odometry"),
+                ],
+                messages=[
+                    (1, 1, 1781020583610099932, build_tf_message_cdr_payload(
+                        frame_pairs=[("map", "base_link")],
+                        translations=[(0.0, 0.0, 0.0)],
+                    )),
+                    (2, 1, 1781020584610099932, build_tf_message_cdr_payload(
+                        frame_pairs=[("map", "base_link")],
+                        translations=[(0.3, 0.4, 0.0)],
+                    )),
+                    (3, 2, 1781020585610099932, build_odometry_cdr_payload(
+                        frame_id="map",
+                        child_frame_id="base_link",
+                        x=0.3,
+                        y=0.4,
+                    )),
+                ],
+            )
+
+            rc = manifest.main(
+                [
+                    "--mode",
+                    "local",
+                    "--artifact-root",
+                    str(root),
+                    "--nav2-goal-proof-json",
+                    str(proof),
+                    "--cloud-terminal-result-json",
+                    str(terminal_result),
+                    "--route-bag-db3",
+                    str(db3),
+                    "--route-bag-metadata-yaml",
+                    str(metadata),
+                    "--route-bag-source-label",
+                    "unit-same-task-route-execution-material",
+                    "--output",
+                    str(output),
+                    "--run-id",
+                    "same_task_route_execution_material_ready",
+                ]
+            )
+            payload = json.loads(output.read_text(encoding="utf-8"))
+            evidence = payload["same_task_route_execution_material_packet"]
+            nested = payload["field_motion_evidence_packet"]["same_task_route_execution_material_packet"]
+            evidence_text = json.dumps(evidence, ensure_ascii=False)
+
+        self.assertEqual(rc, 0)
+        self.assertEqual(evidence, nested)
+        self.assertEqual(evidence["schema"], manifest.SAME_TASK_ROUTE_EXECUTION_MATERIAL_PACKET_SCHEMA)
+        self.assertEqual(evidence["proof_scope"], manifest.SAME_TASK_ROUTE_EXECUTION_MATERIAL_PACKET_PROOF_SCOPE)
+        self.assertEqual(evidence["evidence_boundary"], manifest.SAME_TASK_ROUTE_EXECUTION_MATERIAL_PACKET_PROOF_SCOPE)
+        self.assertEqual(evidence["status"], "route_execution_material_ready_not_delivery_proof")
+        self.assertTrue(evidence["same_task_id_consumed"])
+        self.assertEqual(evidence["same_task_field_material_packet_status"], "ready_not_delivery_proof")
+        self.assertTrue(evidence["route_execution_material_consumed"])
+        self.assertFalse(evidence["live_or_field_command_evidence_present"])
+        self.assertTrue(evidence["delivery_or_operator_material_consumed"])
+        self.assertFalse(evidence["route_execution_credit_candidate"])
+        self.assertEqual(evidence["credit_support_only_reason"], "local_or_mock_same_task_artifacts_only")
+        self.assertIn("same_task_live_motion_log_or_field_nav2_command_evidence", evidence["credit_required_evidence"])
+        self.assertEqual(evidence["route_execution_result_status"], "route_execution_result_delivery_readiness_ready_not_delivery_proof")
+        self.assertEqual(evidence["route_delivery_closure_status"], "route_delivery_closure_ready_not_success_proof")
+        self.assertEqual(evidence["nav2_goal_execution_status"], "ready_not_delivery_proof")
+        self.assertEqual(evidence["delivery_result_status"], "ready_not_delivery_proof")
+        self.assertEqual(evidence["pose_progress_replay_status"], "ready_not_live_nav2_proof")
+        self.assertEqual(evidence["route_replay_jsonl_status"], "present_not_delivery_proof")
+        self.assertTrue(evidence["route_execution_material_flags"]["route_execution_result_delivery_readiness_consumed"])
+        self.assertTrue(evidence["route_execution_material_flags"]["route_bag_pose_progress_replay_consumed"])
+        self.assertTrue(evidence["route_execution_material_flags"]["route_replay_jsonl_consumed"])
+        self.assertEqual(evidence["material_summaries"]["route_csv"]["basename"], "route.csv")
+        self.assertEqual(evidence["material_summaries"]["replay_jsonl"]["count"], 2)
+        self.assertTrue(any(item["material"] == "replay_jsonl" for item in evidence["material_sample_refs"]))
+        self.assertIn("real_live_nav2_route_execution_result", evidence["next_required_evidence"])
+        self.assertNotIn(str(root), evidence_text)
+        self.assertFalse(evidence["safe_to_control"])
+        self.assertFalse(evidence["delivery_success"])
+        self.assertFalse(evidence["primary_actions_enabled"])
+        self.assertFalse(evidence["robot_control_executed"])
+        self.assertFalse(evidence["hil_pass"])
+        self.assertFalse(evidence["route_execution_success"])
+
+    def test_same_task_route_execution_material_packet_sets_credit_candidate_with_live_and_delivery_material(self):
+        # credit candidate 需要 same-task route execution ready，再叠加 live/field command 与 delivery/operator 材料。
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir) / "complete"
+            motion_logs = Path(tmpdir) / "remote_capture"
+            output = Path(tmpdir) / "manifest.json"
+            proof = Path(tmpdir) / "o11_proof.json"
+            terminal_result = Path(tmpdir) / "cloud_terminal_result.json"
+            db3 = root / "route_bag" / "route_bag_0.db3"
+            metadata = root / "route_bag" / "metadata.yaml"
+            make_complete_fixture(root)
+            make_motion_log_fixture(motion_logs, nonzero_cmd_vel=True, nonzero_waypoint=True)
+            write_nav2_goal_proof(proof)
+            write_cloud_terminal_result_json(terminal_result)
+            write_route_bag_db3(
+                db3,
+                topics=[(1, "/tf", "tf2_msgs/msg/TFMessage")],
+                messages=[
+                    (1, 1, 1781020583610099932, build_tf_message_cdr_payload(
+                        frame_pairs=[("map", "base_link")],
+                        translations=[(0.0, 0.0, 0.0)],
+                    )),
+                    (2, 1, 1781020584610099932, build_tf_message_cdr_payload(
+                        frame_pairs=[("map", "base_link")],
+                        translations=[(0.3, 0.4, 0.0)],
+                    )),
+                ],
+            )
+
+            rc = manifest.main(
+                [
+                    "--mode",
+                    "local",
+                    "--artifact-root",
+                    str(root),
+                    "--motion-log-root",
+                    str(motion_logs),
+                    "--nav2-goal-proof-json",
+                    str(proof),
+                    "--cloud-terminal-result-json",
+                    str(terminal_result),
+                    "--route-bag-db3",
+                    str(db3),
+                    "--route-bag-metadata-yaml",
+                    str(metadata),
+                    "--route-bag-source-label",
+                    "field-live-route-execution-material",
+                    "--output",
+                    str(output),
+                    "--run-id",
+                    "same_task_route_execution_credit_candidate",
+                ]
+            )
+            payload = json.loads(output.read_text(encoding="utf-8"))
+            evidence = payload["same_task_route_execution_material_packet"]
+
+        self.assertEqual(rc, 0)
+        self.assertEqual(evidence["status"], "route_execution_material_ready_not_delivery_proof")
+        self.assertTrue(evidence["route_execution_material_consumed"])
+        self.assertTrue(evidence["live_or_field_command_evidence_present"])
+        self.assertTrue(evidence["delivery_or_operator_material_consumed"])
+        self.assertTrue(evidence["route_execution_credit_candidate"])
+        self.assertIsNone(evidence["credit_support_only_reason"])
+        self.assertNotIn("same_task_live_motion_log_or_field_nav2_command_evidence", evidence["credit_required_evidence"])
+        self.assertFalse(evidence["delivery_success"])
+        self.assertFalse(evidence["safe_to_control"])
+        self.assertFalse(evidence["primary_actions_enabled"])
+        self.assertFalse(evidence["robot_control_executed"])
+
+    def test_same_task_route_execution_material_packet_marks_delivery_material_missing_for_credit(self):
+        # 即使 route execution 材料 ready，缺 delivery claim/operator confirmation 也只能停在 support-only。
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir) / "complete"
+            motion_logs = Path(tmpdir) / "remote_capture"
+            output = Path(tmpdir) / "manifest.json"
+            proof = Path(tmpdir) / "o11_proof.json"
+            terminal_result = Path(tmpdir) / "cloud_terminal_result.json"
+            db3 = root / "route_bag" / "route_bag_0.db3"
+            metadata = root / "route_bag" / "metadata.yaml"
+            make_complete_fixture(root)
+            make_motion_log_fixture(motion_logs, nonzero_cmd_vel=True, nonzero_waypoint=True)
+            write_nav2_goal_proof(proof)
+            write_cloud_terminal_result_json(terminal_result)
+            write_route_bag_db3(
+                db3,
+                topics=[(1, "/tf", "tf2_msgs/msg/TFMessage")],
+                messages=[
+                    (1, 1, 1781020583610099932, build_tf_message_cdr_payload(
+                        frame_pairs=[("map", "base_link")],
+                        translations=[(0.0, 0.0, 0.0)],
+                    )),
+                    (2, 1, 1781020584610099932, build_tf_message_cdr_payload(
+                        frame_pairs=[("map", "base_link")],
+                        translations=[(0.3, 0.4, 0.0)],
+                    )),
+                ],
+            )
+
+            rc = manifest.main(
+                [
+                    "--mode",
+                    "local",
+                    "--artifact-root",
+                    str(root),
+                    "--motion-log-root",
+                    str(motion_logs),
+                    "--nav2-goal-proof-json",
+                    str(proof),
+                    "--cloud-terminal-result-json",
+                    str(terminal_result),
+                    "--route-bag-db3",
+                    str(db3),
+                    "--route-bag-metadata-yaml",
+                    str(metadata),
+                    "--output",
+                    str(output),
+                    "--run-id",
+                    "same_task_route_execution_credit_delivery_missing",
+                ]
+            )
+            payload = json.loads(output.read_text(encoding="utf-8"))
+            packet = payload["field_motion_evidence_packet"]
+            packet["delivery_result_evidence"]["delivery_result_claimed"] = False
+            packet["delivery_result_evidence"]["operator_confirmation_present"] = False
+            evidence = manifest.build_same_task_route_execution_material_packet(packet)
+
+        self.assertEqual(rc, 0)
+        self.assertTrue(evidence["route_execution_material_consumed"])
+        self.assertTrue(evidence["live_or_field_command_evidence_present"])
+        self.assertFalse(evidence["delivery_or_operator_material_consumed"])
+        self.assertFalse(evidence["route_execution_credit_candidate"])
+        self.assertEqual(evidence["credit_support_only_reason"], "delivery_or_operator_material_missing")
+        self.assertIn("same_task_delivery_result_or_operator_confirmation", evidence["credit_required_evidence"])
+        self.assertFalse(evidence["delivery_success"])
+        self.assertFalse(evidence["safe_to_control"])
+
+    def test_same_task_route_execution_material_packet_blocks_without_route_execution_material(self):
+        # 只有 route.csv/keyframes/route_bag 目录不够，至少还要 replay 或 linked route execution 摘要。
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir) / "complete"
+            output = Path(tmpdir) / "manifest.json"
+            make_complete_fixture(root)
+            (root / "fixed_route_replay.jsonl").unlink()
+
+            rc = manifest.main(
+                [
+                    "--mode",
+                    "local",
+                    "--artifact-root",
+                    str(root),
+                    "--output",
+                    str(output),
+                    "--run-id",
+                    "same_task_route_execution_material_missing",
+                ]
+            )
+            payload = json.loads(output.read_text(encoding="utf-8"))
+            evidence = payload["same_task_route_execution_material_packet"]
+
+        self.assertEqual(rc, 2)
+        self.assertEqual(evidence["status"], "blocked_not_proven")
+        self.assertTrue(evidence["same_task_id_consumed"])
+        self.assertFalse(evidence["route_execution_material_consumed"])
+        self.assertEqual(evidence["route_replay_jsonl_status"], "missing")
+        self.assertIn("same_task_route_execution_material_missing", evidence["blocked_reasons"])
+        self.assertIn("same_task_route_replay_jsonl", evidence["next_required_evidence"])
+        self.assertFalse(evidence["safe_to_control"])
+        self.assertFalse(evidence["delivery_success"])
+        self.assertFalse(evidence["primary_actions_enabled"])
+        self.assertFalse(evidence["robot_control_executed"])
+
+    def test_same_task_route_execution_material_packet_fail_closed_on_unsafe_linked_summaries(self):
+        # task drift、危险 true 和敏感文本只能阻断新 packet，不能把路径、token、base64/raw 泄漏出去。
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir) / "complete"
+            output = Path(tmpdir) / "manifest.json"
+            proof = Path(tmpdir) / "o11_proof.json"
+            terminal_result = Path(tmpdir) / "cloud_terminal_result.json"
+            db3 = root / "route_bag" / "route_bag_0.db3"
+            metadata = root / "route_bag" / "metadata.yaml"
+            make_complete_fixture(root)
+            write_nav2_goal_proof(proof)
+            write_cloud_terminal_result_json(terminal_result)
+            write_route_bag_db3(
+                db3,
+                topics=[(1, "/tf", "tf2_msgs/msg/TFMessage")],
+                messages=[
+                    (1, 1, 1781020583610099932, build_tf_message_cdr_payload(
+                        frame_pairs=[("map", "base_link")],
+                        translations=[(0.0, 0.0, 0.0)],
+                    )),
+                    (2, 1, 1781020584610099932, build_tf_message_cdr_payload(
+                        frame_pairs=[("map", "base_link")],
+                        translations=[(0.3, 0.4, 0.0)],
+                    )),
+                ],
+            )
+
+            rc = manifest.main(
+                [
+                    "--mode",
+                    "local",
+                    "--artifact-root",
+                    str(root),
+                    "--nav2-goal-proof-json",
+                    str(proof),
+                    "--cloud-terminal-result-json",
+                    str(terminal_result),
+                    "--route-bag-db3",
+                    str(db3),
+                    "--route-bag-metadata-yaml",
+                    str(metadata),
+                    "--output",
+                    str(output),
+                    "--run-id",
+                    "same_task_route_execution_material_unsafe",
+                ]
+            )
+            payload = json.loads(output.read_text(encoding="utf-8"))
+            packet = payload["field_motion_evidence_packet"]
+            packet["same_task_field_material_packet"]["task_id"] = "other-task"
+            packet["route_execution_result_delivery_readiness"]["safe_to_control"] = True
+            packet["route_delivery_closure_packet"]["linked_route_execution_source"] = "/Users/m1/token/secret_nav2.log"
+            packet["route_bag_payload_replay"]["payload_sha256_prefix_samples"] = ["base64:SECRET_ROUTE_PAYLOAD"]
+            evidence = manifest.build_same_task_route_execution_material_packet(packet)
+            evidence_text = json.dumps(evidence, ensure_ascii=False)
+
+        self.assertEqual(rc, 0)
+        self.assertEqual(evidence["status"], "blocked_not_proven")
+        self.assertFalse(evidence["same_task_id_consumed"])
+        self.assertFalse(evidence["route_execution_material_consumed"])
+        self.assertFalse(evidence["route_execution_credit_candidate"])
+        self.assertEqual(evidence["credit_support_only_reason"], "same_task_id_mismatch_or_missing")
+        self.assertIn("same_task_live_motion_log_or_field_nav2_command_evidence", evidence["credit_required_evidence"])
+        self.assertIn("same_task_field_material_packet_not_ready_or_task_mismatch", evidence["blocked_reasons"])
+        self.assertIn("same_task_route_execution_material_dangerous_true_claim", evidence["blocked_reasons"])
+        self.assertIn("same_task_route_execution_material_unsafe_text", evidence["blocked_reasons"])
+        self.assertIn("route_execution_result_delivery_readiness.safe_to_control", evidence["dangerous_true_fields"])
+        self.assertGreaterEqual(evidence["unsafe_text_field_count"], 2)
+        self.assertNotIn("/Users/m1", evidence_text)
+        self.assertNotIn("secret_nav2", evidence_text)
+        self.assertNotIn("SECRET_ROUTE_PAYLOAD", evidence_text)
+        self.assertFalse(evidence["safe_to_control"])
+        self.assertFalse(evidence["delivery_success"])
+        self.assertFalse(evidence["primary_actions_enabled"])
+        self.assertFalse(evidence["robot_control_executed"])
+        self.assertFalse(evidence["hil_pass"])
         self.assertFalse(evidence["route_execution_success"])
 
     def test_same_task_mission_evidence_gate_allows_okr_credit_only_with_live_motion_delta(self):

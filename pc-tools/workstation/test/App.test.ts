@@ -309,6 +309,391 @@ function sampleSameTaskFieldMaterialPacketFixture(
   };
 }
 
+function sampleCurrentFieldEvidenceMaterialFixture(
+  taskId: string,
+  sourceOrigin = "remote_current_field_evidence_material",
+) {
+  // current field evidence fixture 只说明现场材料可读，不把 support-only 状态解释成路线执行成功。
+  return {
+    schema: "trashbot.o6.current_field_evidence_material.v1",
+    status: "current_field_evidence_ready_not_route_execution_proof",
+    source_contract: "trashbot.o6.current_field_evidence_material.v1",
+    source_origin: sourceOrigin,
+    source_path: "current_field_evidence_material",
+    task_id: taskId,
+    task_id_source: "field_evidence_manifest.task_id",
+    proof_scope: "software_proof_current_field_evidence_material_only",
+    source_proof_status: "not_proven",
+    material_status: "current_field_evidence_ready_not_route_execution_proof",
+    same_task_id_consumed: true,
+    live_or_field_material_consumed: true,
+    present_materials: ["camera_frame", "radar_scan", "map_material", "nav2_material"],
+    missing_materials: [],
+    camera_frame_observed: true,
+    radar_scan_observed: true,
+    map_material_observed: true,
+    nav2_no_motion_path_generated: true,
+    manual_gate_blocked_expected: true,
+    blocked_reasons: ["local_mock_only", "not_proven", "current_field_evidence_not_route_execution_proof"],
+    next_required_evidence: [
+      "current_field_evidence_material_for_selected_task",
+      "real_live_nav2_route_execution_result",
+      "delivery_record_or_operator_dropoff_confirmation",
+    ],
+    proof_boundary: {
+      local_mock: true,
+      not_proven: true,
+      reads_local_path: false,
+      current_field_materials_connected: false,
+      route_execution_success: false,
+      delivery_success_proven: false,
+      real_production_cloud_connected: false,
+      real_oss_connected: false,
+      real_cdn_connected: false,
+    },
+    hil_pass: false,
+    ...PROOF_FLAGS,
+  };
+}
+
+function sampleLocalizationPathMaterialReadbackFixture(
+  taskId: string,
+  sourceOrigin = "remote_localization_path_material_readback",
+) {
+  // localization/path fixture 固定 same-run path false，cross-run comparator 只做历史对照，不覆盖当前 run 结论。
+  return {
+    schema: "trashbot.pc_tools_workstation.o7_localization_path_material_readback.v1",
+    source_schema: "trashbot.o6.localization_path_material_readback.v1",
+    status: "localization_path_material_ready_not_route_execution_proof",
+    source_origin: sourceOrigin,
+    source_path: "localization_path_material_readback",
+    task_id: taskId,
+    task_id_source: "field_evidence_manifest.task_id",
+    proof_scope: "software_proof_localization_path_material_readback_only",
+    source_proof_status: "not_proven",
+    // UI 需要保留上游 material_status 原样，证明兼容回包不会被误渲染成 blocked。
+    material_status: "localization_path_material_readback_ready_not_route_execution_proof",
+    localization_path_material_bridge_present: true,
+    same_run_localization_material_present: true,
+    same_run_map_once_observed: true,
+    same_run_amcl_pose_observed: true,
+    same_run_localization_tf_map_to_odom: true,
+    same_run_localization_tf_map_to_base_link: true,
+    same_run_planner_server_active: true,
+    same_run_path_generation_requested: true,
+    same_run_path_generation_succeeded: false,
+    same_run_path_generated: false,
+    same_run_path_point_count: 0,
+    same_run_path_proven: false,
+    cross_run_clean_baseline_path_comparator_present: true,
+    cross_run_clean_baseline_path_summary: {
+      status: "cross_run_clean_baseline_path_comparator_ready",
+      path_generation_succeeded: true,
+      path_generated: true,
+      path_point_count: 31,
+      same_run_override_allowed: false,
+    },
+    blocked_reasons: ["local_mock_only", "not_proven", "nav2_route_execution_success_not_proven"],
+    next_required_evidence: [
+      "localization_path_material_readback_for_selected_task",
+      "current_same_run_nav2_path_generation_result",
+      "real_live_nav2_route_execution_result",
+    ],
+    proof_boundary: {
+      local_mock: true,
+      not_proven: true,
+      reads_local_path: false,
+      same_run_localization_connected: false,
+      route_execution_success: false,
+      delivery_success_proven: false,
+      real_production_cloud_connected: false,
+      real_oss_connected: false,
+      real_cdn_connected: false,
+    },
+    hil_pass: false,
+    nav2_route_execution_success: false,
+    ...PROOF_FLAGS,
+  };
+}
+
+function sampleCleanBaselineNav2PathMaterialFixture(
+  taskId: string,
+  sourceOrigin = "remote_clean_baseline_nav2_path_material",
+) {
+  // clean baseline fixture 只表达 no-motion Nav2 路径前置材料，不把重试成功升级成真实路线执行。
+  return {
+    schema: "trashbot.o6.clean_baseline_nav2_path_material.v1",
+    status: "clean_baseline_nav2_path_material_ready_not_route_execution_proof",
+    source_contract: "trashbot.o6.clean_baseline_nav2_path_material.v1",
+    source_origin: sourceOrigin,
+    source_path: "clean_baseline_nav2_path_material",
+    task_id: taskId,
+    task_id_source: "field_evidence_manifest.task_id",
+    proof_scope: "software_proof_clean_baseline_nav2_path_material_only",
+    source_proof_status: "not_proven",
+    material_status: "clean_baseline_nav2_path_material_ready_not_route_execution_proof",
+    first_attempt_status: "blocked_with_root_cause",
+    first_failure_reason: "configured_command_failed",
+    first_failure_root_cause: "odom_to_base_link_missing_in_partial_artifact",
+    retry_status: "refreshed",
+    path_generation_succeeded: true,
+    path_generated: true,
+    path_point_count: 31,
+    planner_server_active: true,
+    managed_runtime_started: true,
+    managed_runtime_cleanup_ok: true,
+    initialpose_published: true,
+    amcl_pose_observed: true,
+    map_server_active: true,
+    amcl_active: true,
+    cleanup_readback_clean: true,
+    blocked_reasons: ["local_mock_only", "not_proven", "delivery_success_not_proven"],
+    next_required_evidence: [
+      "clean_baseline_nav2_path_material_for_selected_task",
+      "real_live_nav2_route_execution_result",
+      "delivery_record_or_operator_dropoff_confirmation",
+    ],
+    proof_boundary: {
+      local_mock: true,
+      not_proven: true,
+      reads_local_path: false,
+      route_execution_success: false,
+      delivery_success_proven: false,
+      real_production_cloud_connected: false,
+      real_oss_connected: false,
+      real_cdn_connected: false,
+    },
+    hil_pass: false,
+    ...PROOF_FLAGS,
+  };
+}
+
+function sampleFieldOperatorConfirmationMaterialFixture(
+  taskId: string,
+  sourceOrigin = "remote_field_operator_confirmation_material",
+) {
+  // operator material fixture 只展示人工材料安全摘要，不把 report/confirmation 外推为送达或 HIL 成功。
+  return {
+    schema: "trashbot.pc_tools_workstation.o7_field_operator_confirmation_material.v1",
+    status: "field_operator_confirmation_material_ready_not_delivery_proof",
+    source_schema: "trashbot.o6.field_operator_confirmation_material.v1",
+    source_origin: sourceOrigin,
+    source_path: "field_operator_confirmation_material",
+    task_id: taskId,
+    proof_scope: "software_proof_field_operator_confirmation_material_only",
+    source_proof_status: "not_proven",
+    material_status: "field_operator_confirmation_material_ready_not_delivery_proof",
+    operator_report_present: true,
+    operator_report_status: "ready_for_review",
+    operator_confirmation_present: true,
+    operator_confirmation_status: "operator_confirmation_ready_not_delivery_proof",
+    operator_present: true,
+    physical_clearance_confirmed: true,
+    emergency_stop_ready: true,
+    observed_motion: true,
+    observed_stop: true,
+    reported_at: "2026-07-10T15:22:00Z",
+    same_task_id_consumed: true,
+    linked_route_material_present: true,
+    linked_delivery_material_present: true,
+    operator_material_consumed: true,
+    support_only_reason: "field_operator_confirmation_material_only_not_delivery_proof",
+    blocked_reasons: ["local_mock_only", "not_proven", "delivery_success_not_proven"],
+    next_required_evidence: [
+      "real_live_nav2_route_execution_result",
+      "delivery_record_or_operator_dropoff_confirmation",
+      "operator_confirmation_for_selected_task",
+    ],
+    material_summaries: {
+      operator_report: {
+        present: true,
+        status: "ready_for_review",
+        sample_refs: ["operator-report.json"],
+        count: 1,
+        reported_at: "2026-07-10T15:22:00Z",
+      },
+      operator_confirmation: {
+        present: true,
+        status: "operator_confirmation_ready_not_delivery_proof",
+        sample_refs: ["operator-confirmation.json"],
+        count: 1,
+        reported_at: "2026-07-10T15:22:00Z",
+      },
+      linked_route_material: {
+        present: true,
+        status: "route_execution_material_ready_not_delivery_proof",
+        sample_refs: ["route-execution-result.json"],
+        count: 1,
+        reported_at: "2026-07-10T15:22:00Z",
+      },
+      linked_delivery_material: {
+        present: true,
+        status: "delivery_result_evidence_ready_not_delivery_proof",
+        sample_refs: ["delivery-result.json"],
+        count: 1,
+        reported_at: "2026-07-10T15:22:00Z",
+      },
+    },
+    ...PROOF_FLAGS,
+    delivery_success: false,
+    safe_to_control: false,
+    primary_actions_enabled: false,
+    robot_control_executed: false,
+    route_execution_success: false,
+    hil_pass: false,
+    connects_cloud_production: false,
+  };
+}
+
+function sampleSameTaskRouteExecutionMaterialPacketFixture(
+  taskId: string,
+  sourceOrigin = "remote_same_task_route_execution_material_packet",
+) {
+  // route execution material packet fixture 只表达 O6 顶层材料包状态，不证明真实送达或控制安全。
+  return {
+    schema: "trashbot.o6.same_task_route_execution_material_packet.v1",
+    status: "route_execution_material_ready_not_delivery_proof",
+    source_contract: "trashbot.o6.same_task_route_execution_material_packet.v1",
+    source_origin: sourceOrigin,
+    source_path: "same_task_route_execution_material_packet",
+    task_id: taskId,
+    task_id_source: "field_evidence_manifest.task_id",
+    proof_scope: "software_proof_same_task_route_execution_material_packet_only",
+    source_proof_status: "not_proven",
+    packet_status: "route_execution_material_ready_not_delivery_proof",
+    same_task_id_consumed: true,
+    route_execution_material_consumed: true,
+    live_or_field_command_evidence_present: true,
+    delivery_or_operator_material_consumed: true,
+    route_execution_credit_candidate: true,
+    credit_support_only_reason: "",
+    credit_required_evidence: [
+      "real_live_nav2_route_execution_result",
+      "delivery_record_or_operator_dropoff_confirmation",
+      "operator_confirmation_for_selected_task",
+    ],
+    same_task_field_material_packet_status: "ready_not_delivery_proof",
+    present_materials: [
+      "same_task_field_material_packet",
+      "route_execution_result",
+      "nav2_goal_execution",
+      "pose_progress_replay",
+      "route_replay_jsonl",
+      "route_bag_or_rosbag",
+    ],
+    missing_materials: [],
+    source_sections: [
+      "same_task_field_material_packet",
+      "route_execution_result_delivery_readiness",
+      "route_bag_pose_progress_replay",
+    ],
+    sample_refs: [
+      "route-execution-result.json",
+      "nav2-goal-result.json",
+      "route-pose-progress.jsonl",
+      "fixed_route_replay.jsonl",
+      "route_bag_0.db3",
+    ],
+    material_summaries: {
+      same_task_field_material_packet: {
+        basename: "same-task-field-material-packet.json",
+        size_bytes: 2048,
+        sha256_prefix: "fafafafafafa",
+        sample_refs: ["same-task-field-material-packet.json"],
+        count: 1,
+        present: true,
+        status: "ready_not_delivery_proof",
+      },
+      route_execution_result: {
+        basename: "route-execution-result.json",
+        size_bytes: 1024,
+        sha256_prefix: "111111111111",
+        sample_refs: ["route-execution-result.json"],
+        count: 1,
+        present: true,
+        status: "route_execution_result_ready_not_delivery_proof",
+      },
+      nav2_goal_execution: {
+        basename: "nav2-goal-result.json",
+        size_bytes: 1024,
+        sha256_prefix: "222222222222",
+        sample_refs: ["nav2-goal-result.json"],
+        count: 1,
+        present: true,
+        status: "nav2_goal_execution_evidence_ready_not_delivery_proof",
+      },
+      pose_progress_replay: {
+        basename: "route-pose-progress.jsonl",
+        size_bytes: 4096,
+        sha256_prefix: "333333333333",
+        sample_refs: ["route-pose-progress.jsonl"],
+        count: 12,
+        present: true,
+        status: "ready_not_live_nav2_proof",
+      },
+      route_replay_jsonl: {
+        basename: "fixed_route_replay.jsonl",
+        size_bytes: 1024,
+        sha256_prefix: "eeeeeeeeeeee",
+        sample_refs: ["fixed_route_replay.jsonl"],
+        count: 17,
+        present: true,
+        status: "ready_not_delivery_proof",
+      },
+      route_bag_or_rosbag: {
+        basename: "route_bag_0.db3",
+        size_bytes: 16384,
+        sha256_prefix: "dddddddddddd",
+        sample_refs: ["route_bag_0.db3"],
+        count: 1,
+        present: true,
+        status: "ready_not_route_execution_proof",
+      },
+    },
+    route_execution_result_summary: {
+      status: "route_execution_result_ready_not_delivery_proof",
+      source: "nav2_goal_execution_evidence",
+      sample_refs: ["route-execution-result.json"],
+      result_count: 1,
+      nav2_goal_status: "nav2_goal_execution_evidence_ready_not_delivery_proof",
+      delivery_result_status: "delivery_result_evidence_ready_not_delivery_proof",
+    },
+    pose_progress_replay_timeline_summary: {
+      status: "ready_not_live_nav2_proof",
+      source: "route_bag_pose_progress_replay",
+      sample_refs: ["route-pose-progress.jsonl"],
+      pose_sample_count: 12,
+      replay_frame_count: 17,
+      nonzero_pose_progress_observed: true,
+      displacement_m: 2.4,
+      timeline_span_ms: 3200,
+    },
+    blocked_reasons: ["local_mock_only", "not_proven", "delivery_success_not_proven"],
+    next_required_evidence: [
+      "real_live_nav2_route_execution_result",
+      "route_pose_progress_replay_for_selected_task",
+      "delivery_record_or_operator_dropoff_confirmation",
+    ],
+    proof_boundary: {
+      local_mock: true,
+      not_proven: true,
+      reads_local_path: false,
+      route_execution_materials_connected: false,
+      live_nav2_route_execution_connected: false,
+      delivery_success_proven: false,
+      real_production_cloud_connected: false,
+      real_oss_connected: false,
+      real_cdn_connected: false,
+    },
+    connects_cloud_production: false,
+    media_access_proven: false,
+    real_oss_connected: false,
+    real_cdn_connected: false,
+    robot_control_executed: false,
+    ...PROOF_FLAGS,
+  };
+}
+
 function sampleSameTaskMissionEvidenceGateFixture(
   taskId: string,
   sourceOrigin = "remote_same_task_mission_evidence_gate",
@@ -394,6 +779,7 @@ function sampleSameTaskMissionMaterialChecklistFixture(taskId: string) {
       "terminal_cloud_result",
       "route_execution_material",
       "same_task_field_material_packet",
+      "same_task_route_execution_material_packet",
       "delivery_record",
       "operator_confirmation",
       "route_pose_progress",
@@ -406,8 +792,12 @@ function sampleSameTaskMissionMaterialChecklistFixture(taskId: string) {
       source_summary:
         id === "safety_invariants"
           ? "delivery_success=false · safe_to_control=false · primary_actions_enabled=false · robot_control_executed=false"
+          : id === "route_execution_material"
+            ? "same_task_route_execution_material_packet=route_execution_material_ready_not_delivery_proof · route_execution_material_consumed=true"
           : id === "same_task_field_material_packet"
             ? "packet_status=ready_not_delivery_proof · present_materials=map_yaml,route_csv,keyframes,route_bag_or_rosbag,replay_jsonl"
+          : id === "same_task_route_execution_material_packet"
+            ? "packet_status=route_execution_material_ready_not_delivery_proof · present_materials=same_task_field_material_packet,route_execution_result,nav2_goal_execution,pose_progress_replay,route_replay_jsonl,route_bag_or_rosbag"
             : id === "production_cloud_readback"
               ? "connects_cloud_production=false · production_cloud_readback_not_proven · support_only_reason=local_mock_only_credit_gate"
             : `${id}=same_task_material_ready_not_success_proof`,
@@ -415,6 +805,8 @@ function sampleSameTaskMissionMaterialChecklistFixture(taskId: string) {
       next_required_evidence:
         id === "production_cloud_readback"
           ? ["production_cloud_db_queue_endpoint_readback_for_same_task"]
+          : id === "route_execution_material" || id === "same_task_route_execution_material_packet"
+            ? ["same_task_route_execution_material_packet_for_selected_task"]
           : id === "same_task_field_material_packet"
             ? ["same_task_field_material_packet_for_selected_task"]
           : ["same_task_live_or_replay_route_execution_materials"],
@@ -6307,7 +6699,7 @@ const fixtures: Record<string, unknown> = {
         detail_status: "loaded_fail_closed_summary",
         source_base_url: "http://127.0.0.1:8088",
         remote_endpoint:
-          "/api/o6/consumer/tasks/task-consumer-001?view=default&include=trajectory,events,evidence,field_evidence,labeling,inference,tunnel,artifact_access_probe,offline_artifact_seed_smoke,route_root_seed_gate,route_bag_evidence,route_bag_payload_replay,nav2_goal_execution_evidence,delivery_result_evidence,route_execution_result_delivery_readiness,route_delivery_closure_packet,same_task_field_material_packet,same_task_mission_evidence_gate",
+          "/api/o6/consumer/tasks/task-consumer-001?view=default&include=trajectory,events,evidence,field_evidence,labeling,inference,tunnel,artifact_access_probe,offline_artifact_seed_smoke,route_root_seed_gate,route_bag_evidence,route_bag_payload_replay,nav2_goal_execution_evidence,delivery_result_evidence,route_execution_result_delivery_readiness,route_delivery_closure_packet,same_task_field_material_packet,current_field_evidence_material,clean_baseline_nav2_path_material,localization_path_material_readback,same_task_route_execution_material_packet,same_task_mission_evidence_gate,field_operator_confirmation_material",
         remote_schema: "trashbot.o6.consumer_read.v1",
         requested_task_id: "task-consumer-001",
         query_strategy: {
@@ -6330,7 +6722,12 @@ const fixtures: Record<string, unknown> = {
             "route_execution_result_delivery_readiness",
             "route_delivery_closure_packet",
             "same_task_field_material_packet",
+            "current_field_evidence_material",
+            "clean_baseline_nav2_path_material",
+            "localization_path_material_readback",
+            "same_task_route_execution_material_packet",
             "same_task_mission_evidence_gate",
+            "field_operator_confirmation_material",
           ],
           primary_path: true,
           fail_closed_visible: true,
@@ -6609,7 +7006,13 @@ const fixtures: Record<string, unknown> = {
     route_execution_result_delivery_readiness: sampleRouteExecutionResultDeliveryReadinessFixture("task-consumer-001"),
     route_delivery_closure_packet: sampleRouteDeliveryClosurePacketFixture("task-consumer-001"),
     same_task_field_material_packet: sampleSameTaskFieldMaterialPacketFixture("task-consumer-001"),
+    current_field_evidence_material: sampleCurrentFieldEvidenceMaterialFixture("task-consumer-001"),
+    clean_baseline_nav2_path_material: sampleCleanBaselineNav2PathMaterialFixture("task-consumer-001"),
+    localization_path_material_readback: sampleLocalizationPathMaterialReadbackFixture("task-consumer-001"),
+    same_task_route_execution_material_packet:
+      sampleSameTaskRouteExecutionMaterialPacketFixture("task-consumer-001"),
     same_task_mission_evidence_gate: sampleSameTaskMissionEvidenceGateFixture("task-consumer-001"),
+    field_operator_confirmation_material: sampleFieldOperatorConfirmationMaterialFixture("task-consumer-001"),
     same_task_mission_material_checklist: sampleSameTaskMissionMaterialChecklistFixture("task-consumer-001"),
     artifact_bundle_consumer_ingest: {
       schema: "trashbot.o6.artifact_bundle_consumer_ingest.v1",
@@ -6682,7 +7085,27 @@ const fixtures: Record<string, unknown> = {
         "task-consumer-001",
         "remote_artifact_bundle_readiness",
       ),
+      current_field_evidence_material: sampleCurrentFieldEvidenceMaterialFixture(
+        "task-consumer-001",
+        "remote_artifact_bundle_readiness",
+      ),
+      clean_baseline_nav2_path_material: sampleCleanBaselineNav2PathMaterialFixture(
+        "task-consumer-001",
+        "remote_artifact_bundle_readiness",
+      ),
+      localization_path_material_readback: sampleLocalizationPathMaterialReadbackFixture(
+        "task-consumer-001",
+        "remote_artifact_bundle_readiness",
+      ),
+      same_task_route_execution_material_packet: sampleSameTaskRouteExecutionMaterialPacketFixture(
+        "task-consumer-001",
+        "remote_artifact_bundle_readiness",
+      ),
       same_task_mission_evidence_gate: sampleSameTaskMissionEvidenceGateFixture(
+        "task-consumer-001",
+        "remote_artifact_bundle_readiness",
+      ),
+      field_operator_confirmation_material: sampleFieldOperatorConfirmationMaterialFixture(
         "task-consumer-001",
         "remote_artifact_bundle_readiness",
       ),
@@ -34717,9 +35140,12 @@ describe("App", () => {
     expect(wrapper.text()).toContain("readonly_consumer_detail_trajectory_ready");
     expect(wrapper.text()).toContain("Artifact bundle readiness");
     expect(wrapper.text()).toContain(
-      "artifact_bundle_readiness 主路径 · bundle / consumer_ingest / preflight 优先 · route_bag_evidence / route_bag_payload_replay / route_bag_semantic_replay / route_bag_full_semantic_decode_matrix / route_delivery_closure_packet / same_task_field_material_packet / same_task_mission_evidence_gate 只读汇总 · route replay / labeling 旧 fallback 只做兼容",
+      "artifact_bundle_readiness 主路径 · bundle / consumer_ingest / preflight 优先 · route_bag_evidence / route_bag_payload_replay / route_bag_semantic_replay / route_bag_full_semantic_decode_matrix / route_delivery_closure_packet / same_task_field_material_packet / same_task_route_execution_material_packet / same_task_mission_evidence_gate / field_operator_confirmation_material 只读汇总 · route replay / labeling 旧 fallback 只做兼容",
     );
     expect(wrapper.text()).toContain("consumer_detail_artifact_bundle_ready");
+    expect(wrapper.text()).toContain(
+      "same_task_route_execution_material_packet_status=route_execution_material_ready_not_delivery_proof",
+    );
     expect(wrapper.text()).toContain("route_ref_count");
     expect(wrapper.text()).toContain("review_item_count");
     expect(wrapper.text()).toContain("consumer-field-evidence-001");
@@ -34798,6 +35224,80 @@ describe("App", () => {
     expect(wrapper.text()).toContain("route_bag_or_rosbag_present=true");
     expect(wrapper.text()).toContain("material:route_bag_or_rosbag.basename=route_bag_0.db3");
     expect(wrapper.text()).toContain("optional_map_gap=false");
+    expect(wrapper.text()).toContain("Clean baseline Nav2 path material");
+    expect(wrapper.text()).toContain("trashbot.o6.clean_baseline_nav2_path_material.v1");
+    expect(wrapper.text()).toContain("clean_baseline_nav2_path_material_ready_not_route_execution_proof");
+    expect(wrapper.text()).toContain("software_proof_clean_baseline_nav2_path_material_only");
+    expect(wrapper.text()).toContain("first_attempt_status=blocked_with_root_cause");
+    expect(wrapper.text()).toContain("retry_status=refreshed");
+    expect(wrapper.text()).toContain("path_point_count=31");
+    expect(wrapper.text()).toContain("first_failure_root_cause=odom_to_base_link_missing_in_partial_artifact");
+    expect(wrapper.text()).toContain("managed_runtime_cleanup_ok=true");
+    expect(wrapper.text()).toContain("cleanup_readback_clean=true");
+    expect(wrapper.text()).toContain("clean_baseline_nav2_path_material_for_selected_task");
+    expect(wrapper.text()).toContain("Localization path material readback");
+    expect(wrapper.text()).toContain("trashbot.pc_tools_workstation.o7_localization_path_material_readback.v1");
+    expect(wrapper.text()).toContain("software_proof_localization_path_material_readback_only");
+    expect(wrapper.text()).toContain("material_status=localization_path_material_readback_ready_not_route_execution_proof");
+    expect(wrapper.text()).toContain("same_run_map_once_observed=true");
+    expect(wrapper.text()).toContain("same_run_amcl_pose_observed=true");
+    expect(wrapper.text()).toContain("same_run_localization_tf_map_to_odom=true");
+    expect(wrapper.text()).toContain("same_run_localization_tf_map_to_base_link=true");
+    expect(wrapper.text()).toContain("same_run_path_generation_requested=true");
+    expect(wrapper.text()).toContain("same_run_path_generation_succeeded=false");
+    expect(wrapper.text()).toContain("same_run_path_generated=false");
+    expect(wrapper.text()).toContain("same_run_path_point_count=0");
+    expect(wrapper.text()).toContain("same_run_path_proven=false");
+    expect(wrapper.text()).toContain("cross_run_clean_baseline_path_summary.path_point_count=31");
+    expect(wrapper.text()).toContain("cross_run_clean_baseline_path_summary.same_run_override_allowed=false");
+    expect(wrapper.text()).toContain("nav2_route_execution_success=false");
+    expect(wrapper.text()).toContain("localization_path_material_readback_for_selected_task");
+    expect(wrapper.text()).toContain("Field operator confirmation material");
+    expect(wrapper.text()).toContain("trashbot.pc_tools_workstation.o7_field_operator_confirmation_material.v1");
+    expect(wrapper.text()).toContain("field_operator_confirmation_material_ready_not_delivery_proof");
+    expect(wrapper.text()).toContain("software_proof_field_operator_confirmation_material_only");
+    expect(wrapper.text()).toContain("source_schema=trashbot.o6.field_operator_confirmation_material.v1");
+    expect(wrapper.text()).toContain("operator_report_present=true");
+    expect(wrapper.text()).toContain("operator_confirmation_present=true");
+    expect(wrapper.text()).toContain("operator_report_status=ready_for_review");
+    expect(wrapper.text()).toContain("operator_confirmation_status=operator_confirmation_ready_not_delivery_proof");
+    expect(wrapper.text()).toContain("operator_present=true");
+    expect(wrapper.text()).toContain("physical_clearance_confirmed=true");
+    expect(wrapper.text()).toContain("emergency_stop_ready=true");
+    expect(wrapper.text()).toContain("observed_motion=true");
+    expect(wrapper.text()).toContain("observed_stop=true");
+    expect(wrapper.text()).toContain("linked_route_material_present=true");
+    expect(wrapper.text()).toContain("linked_delivery_material_present=true");
+    expect(wrapper.text()).toContain("operator_material_consumed=true");
+    expect(wrapper.text()).toContain("support_only_reason=field_operator_confirmation_material_only_not_delivery_proof");
+    expect(wrapper.text()).toContain("material:operator_report.status=ready_for_review");
+    expect(wrapper.text()).toContain("material:operator_confirmation.sample_refs=operator-confirmation.json");
+    expect(wrapper.text()).toContain("route_execution_success=false");
+    expect(wrapper.text()).toContain("hil_pass=false");
+    expect(wrapper.text()).toContain("operator_confirmation_for_selected_task");
+    expect(wrapper.text()).toContain("Same task route execution material packet");
+    expect(wrapper.text()).toContain("trashbot.o6.same_task_route_execution_material_packet.v1");
+    expect(wrapper.text()).toContain("route_execution_material_ready_not_delivery_proof");
+    expect(wrapper.text()).toContain("software_proof_same_task_route_execution_material_packet_only");
+    expect(wrapper.text()).toContain(
+      "present_materials=same_task_field_material_packet,route_execution_result,nav2_goal_execution,pose_progress_replay,route_replay_jsonl,route_bag_or_rosbag",
+    );
+    expect(wrapper.text()).toContain("route_execution_material_consumed=true");
+    expect(wrapper.text()).toContain("live_or_field_command_evidence_present=true");
+    expect(wrapper.text()).toContain("delivery_or_operator_material_consumed=true");
+    expect(wrapper.text()).toContain("route_execution_credit_candidate=true");
+    expect(wrapper.text()).toContain("credit_support_only_reason=");
+    expect(wrapper.text()).not.toContain("credit_support_only_reason=blocked_not_proven");
+    expect(wrapper.text()).toContain(
+      "credit_required_evidence=real_live_nav2_route_execution_result,delivery_record_or_operator_dropoff_confirmation,operator_confirmation_for_selected_task",
+    );
+    expect(wrapper.text()).toContain("route_execution_result_status=route_execution_result_ready_not_delivery_proof");
+    expect(wrapper.text()).toContain("route_execution_result_source=nav2_goal_execution_evidence");
+    expect(wrapper.text()).toContain("pose_progress_replay_status=ready_not_live_nav2_proof");
+    expect(wrapper.text()).toContain("nonzero_pose_progress_observed=true");
+    expect(wrapper.text()).toContain("material:pose_progress_replay.basename=route-pose-progress.jsonl");
+    expect(wrapper.text()).toContain("same_task_route_execution_material_packet_for_selected_task");
+    expect(wrapper.text()).toContain("primary_actions_enabled=false");
     expect(wrapper.text()).toContain("Same task mission evidence gate");
     expect(wrapper.text()).toContain("trashbot.o6.same_task_mission_evidence_gate.v1");
     expect(wrapper.text()).toContain("same_task_mission_gate_ready_not_success_proof");
@@ -34818,6 +35318,10 @@ describe("App", () => {
     expect(wrapper.text()).toContain("id=terminal_cloud_result");
     expect(wrapper.text()).toContain("id=route_execution_material");
     expect(wrapper.text()).toContain("id=same_task_field_material_packet");
+    expect(wrapper.text()).toContain("id=same_task_route_execution_material_packet");
+    expect(wrapper.text()).toContain(
+      "same_task_route_execution_material_packet=route_execution_material_ready_not_delivery_proof",
+    );
     expect(wrapper.text()).toContain("id=delivery_record");
     expect(wrapper.text()).toContain("id=operator_confirmation");
     expect(wrapper.text()).toContain("id=route_pose_progress");
@@ -35346,7 +35850,7 @@ describe("App", () => {
         detail_status: "loaded_fail_closed_summary",
         source_base_url: "http://127.0.0.1:8088",
         remote_endpoint:
-          "/api/o6/consumer/tasks/task-consumer-summary-001?view=default&include=trajectory,events,evidence,field_evidence,labeling,inference,tunnel,artifact_access_probe,offline_artifact_seed_smoke,route_root_seed_gate,route_bag_evidence,route_bag_payload_replay,route_bag_semantic_replay,route_bag_full_semantic_decode_matrix,route_bag_pose_progress_replay,nav2_goal_execution_evidence,delivery_result_evidence,route_execution_result_delivery_readiness,route_delivery_closure_packet,same_task_field_material_packet,same_task_mission_evidence_gate",
+          "/api/o6/consumer/tasks/task-consumer-summary-001?view=default&include=trajectory,events,evidence,field_evidence,labeling,inference,tunnel,artifact_access_probe,offline_artifact_seed_smoke,route_root_seed_gate,route_bag_evidence,route_bag_payload_replay,route_bag_semantic_replay,route_bag_full_semantic_decode_matrix,route_bag_pose_progress_replay,nav2_goal_execution_evidence,delivery_result_evidence,route_execution_result_delivery_readiness,route_delivery_closure_packet,same_task_field_material_packet,current_field_evidence_material,clean_baseline_nav2_path_material,localization_path_material_readback,same_task_route_execution_material_packet,same_task_mission_evidence_gate,field_operator_confirmation_material",
         remote_schema: "trashbot.o6.consumer_read.v1",
         requested_task_id: "task-consumer-summary-001",
         query_strategy: {
@@ -35372,7 +35876,12 @@ describe("App", () => {
             "route_execution_result_delivery_readiness",
             "route_delivery_closure_packet",
             "same_task_field_material_packet",
+            "current_field_evidence_material",
+            "clean_baseline_nav2_path_material",
+            "localization_path_material_readback",
+            "same_task_route_execution_material_packet",
             "same_task_mission_evidence_gate",
+            "field_operator_confirmation_material",
           ],
           primary_path: true,
           fail_closed_visible: true,
@@ -35869,7 +36378,13 @@ describe("App", () => {
           ),
           route_delivery_closure_packet: sampleRouteDeliveryClosurePacketFixture("task-consumer-summary-001"),
           same_task_field_material_packet: sampleSameTaskFieldMaterialPacketFixture("task-consumer-summary-001"),
+          same_task_route_execution_material_packet: sampleSameTaskRouteExecutionMaterialPacketFixture(
+            "task-consumer-summary-001",
+          ),
           same_task_mission_evidence_gate: sampleSameTaskMissionEvidenceGateFixture("task-consumer-summary-001"),
+          field_operator_confirmation_material: sampleFieldOperatorConfirmationMaterialFixture(
+            "task-consumer-summary-001",
+          ),
           same_task_mission_material_checklist: sampleSameTaskMissionMaterialChecklistFixture(
             "task-consumer-summary-001",
           ),
@@ -35981,7 +36496,15 @@ describe("App", () => {
             "task-consumer-summary-001",
             "remote_artifact_bundle_readiness",
           ),
+          same_task_route_execution_material_packet: sampleSameTaskRouteExecutionMaterialPacketFixture(
+            "task-consumer-summary-001",
+            "remote_artifact_bundle_readiness",
+          ),
           same_task_mission_evidence_gate: sampleSameTaskMissionEvidenceGateFixture(
+            "task-consumer-summary-001",
+            "remote_artifact_bundle_readiness",
+          ),
+          field_operator_confirmation_material: sampleFieldOperatorConfirmationMaterialFixture(
             "task-consumer-summary-001",
             "remote_artifact_bundle_readiness",
           ),
@@ -36270,7 +36793,7 @@ describe("App", () => {
     expect(wrapper.text()).toContain("Artifact bundle readiness");
     expect(wrapper.text()).toContain("consumer_detail_artifact_bundle_ready");
     expect(wrapper.text()).toContain(
-      "artifact_bundle_readiness 主路径 · bundle / consumer_ingest / preflight 优先 · route_bag_evidence / route_bag_payload_replay / route_bag_semantic_replay / route_bag_full_semantic_decode_matrix / route_delivery_closure_packet / same_task_field_material_packet / same_task_mission_evidence_gate 只读汇总 · route replay / labeling 旧 fallback 只做兼容",
+      "artifact_bundle_readiness 主路径 · bundle / consumer_ingest / preflight 优先 · route_bag_evidence / route_bag_payload_replay / route_bag_semantic_replay / route_bag_full_semantic_decode_matrix / route_delivery_closure_packet / same_task_field_material_packet / same_task_route_execution_material_packet / same_task_mission_evidence_gate / field_operator_confirmation_material 只读汇总 · route replay / labeling 旧 fallback 只做兼容",
     );
     expect(wrapper.text()).toContain("Field motion evidence packet");
     expect(wrapper.text()).toContain("Nav2 goal execution evidence");
@@ -36309,6 +36832,13 @@ describe("App", () => {
     );
     expect(wrapper.text()).toContain("route_delivery_closure_packet_status=route_delivery_closure_ready_not_success_proof");
     expect(wrapper.text()).toContain("same_task_field_material_packet_status=ready_not_delivery_proof");
+    expect(wrapper.text()).toContain(
+      "same_task_route_execution_material_packet_status=route_execution_material_ready_not_delivery_proof",
+    );
+    expect(wrapper.text()).toContain("Same task route execution material packet");
+    expect(wrapper.text()).toContain("route_execution_material_consumed=true");
+    expect(wrapper.text()).toContain("material:pose_progress_replay.basename=route-pose-progress.jsonl");
+    expect(wrapper.text()).toContain("route_execution_result_status=route_execution_result_ready_not_delivery_proof");
     expect(wrapper.text()).toContain("present_materials=map_yaml,route_csv,keyframes,route_bag_or_rosbag,replay_jsonl");
     expect(wrapper.text()).toContain("operator_confirmation_present=true");
     expect(wrapper.text()).toContain("base_feedback_nonzero_not_proven");
@@ -36461,7 +36991,7 @@ describe("App", () => {
         detail_status: "loaded_fail_closed_summary",
         source_base_url: "http://127.0.0.1:8088",
           remote_endpoint:
-          "/api/o6/consumer/tasks/task-consumer-labeling-blocked?view=default&include=trajectory,events,evidence,field_evidence,labeling,inference,tunnel,artifact_access_probe,offline_artifact_seed_smoke,route_root_seed_gate,route_bag_evidence,route_bag_payload_replay,route_bag_semantic_replay,route_bag_full_semantic_decode_matrix,route_bag_pose_progress_replay,nav2_goal_execution_evidence,delivery_result_evidence,route_execution_result_delivery_readiness,route_delivery_closure_packet,same_task_field_material_packet,same_task_mission_evidence_gate",
+          "/api/o6/consumer/tasks/task-consumer-labeling-blocked?view=default&include=trajectory,events,evidence,field_evidence,labeling,inference,tunnel,artifact_access_probe,offline_artifact_seed_smoke,route_root_seed_gate,route_bag_evidence,route_bag_payload_replay,route_bag_semantic_replay,route_bag_full_semantic_decode_matrix,route_bag_pose_progress_replay,nav2_goal_execution_evidence,delivery_result_evidence,route_execution_result_delivery_readiness,route_delivery_closure_packet,same_task_field_material_packet,current_field_evidence_material,clean_baseline_nav2_path_material,localization_path_material_readback,same_task_route_execution_material_packet,same_task_mission_evidence_gate,field_operator_confirmation_material",
         remote_schema: "trashbot.o6.consumer_read.v1",
         requested_task_id: "task-consumer-labeling-blocked",
         query_strategy: {
@@ -36487,7 +37017,12 @@ describe("App", () => {
             "route_execution_result_delivery_readiness",
             "route_delivery_closure_packet",
             "same_task_field_material_packet",
+            "current_field_evidence_material",
+            "clean_baseline_nav2_path_material",
+            "localization_path_material_readback",
+            "same_task_route_execution_material_packet",
             "same_task_mission_evidence_gate",
+            "field_operator_confirmation_material",
           ],
           primary_path: true,
           fail_closed_visible: true,
@@ -36686,7 +37221,12 @@ describe("App", () => {
         ),
         route_delivery_closure_packet: sampleRouteDeliveryClosurePacketFixture("task-consumer-labeling-blocked"),
         same_task_field_material_packet: sampleSameTaskFieldMaterialPacketFixture("task-consumer-labeling-blocked"),
+        same_task_route_execution_material_packet:
+          sampleSameTaskRouteExecutionMaterialPacketFixture("task-consumer-labeling-blocked"),
         same_task_mission_evidence_gate: sampleSameTaskMissionEvidenceGateFixture("task-consumer-labeling-blocked"),
+        field_operator_confirmation_material: sampleFieldOperatorConfirmationMaterialFixture(
+          "task-consumer-labeling-blocked",
+        ),
         same_task_mission_material_checklist: sampleSameTaskMissionMaterialChecklistFixture(
           "task-consumer-labeling-blocked",
         ),
@@ -36757,7 +37297,15 @@ describe("App", () => {
             "task-consumer-labeling-blocked",
             "remote_artifact_bundle_readiness",
           ),
+          same_task_route_execution_material_packet: sampleSameTaskRouteExecutionMaterialPacketFixture(
+            "task-consumer-labeling-blocked",
+            "remote_artifact_bundle_readiness",
+          ),
           same_task_mission_evidence_gate: sampleSameTaskMissionEvidenceGateFixture(
+            "task-consumer-labeling-blocked",
+            "remote_artifact_bundle_readiness",
+          ),
+          field_operator_confirmation_material: sampleFieldOperatorConfirmationMaterialFixture(
             "task-consumer-labeling-blocked",
             "remote_artifact_bundle_readiness",
           ),

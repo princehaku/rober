@@ -28,8 +28,13 @@ import type {
   O7ConsumerNav2GoalExecutionEvidenceSummary,
   O7ConsumerOfflineArtifactSeedSmokeSummary,
   O7ConsumerRouteDeliveryClosurePacketSummary,
+  O7ConsumerCurrentFieldEvidenceMaterialSummary,
+  O7ConsumerLocalizationPathMaterialReadbackSummary,
+  O7ConsumerCleanBaselineNav2PathMaterialSummary,
+  O7ConsumerFieldOperatorConfirmationMaterialSummary,
   O7ConsumerRouteExecutionResultDeliveryReadinessSummary,
   O7ConsumerSameTaskFieldMaterialPacketSummary,
+  O7ConsumerSameTaskRouteExecutionMaterialPacketSummary,
   O7ConsumerSameTaskMissionEvidenceGateSummary,
   O7ConsumerSameTaskMissionMaterialChecklist,
   O7ConsumerRouteBagEvidenceSummary,
@@ -1075,10 +1080,36 @@ const consumerSameTaskFieldMaterialPacket = computed<O7ConsumerSameTaskFieldMate
     consumerArtifactBundleReadiness.value?.same_task_field_material_packet ??
     null,
 );
+const consumerCurrentFieldEvidenceMaterial = computed<O7ConsumerCurrentFieldEvidenceMaterialSummary | null>(
+  () => consumerTaskDetailResult.value?.current_field_evidence_material ?? null,
+);
+const consumerLocalizationPathMaterialReadback = computed<O7ConsumerLocalizationPathMaterialReadbackSummary | null>(
+  () =>
+    consumerTaskDetailResult.value?.localization_path_material_readback ??
+    consumerArtifactBundleReadiness.value?.localization_path_material_readback ??
+    null,
+);
+const consumerCleanBaselineNav2PathMaterial = computed<O7ConsumerCleanBaselineNav2PathMaterialSummary | null>(
+  () => consumerTaskDetailResult.value?.clean_baseline_nav2_path_material ?? null,
+);
+const consumerSameTaskRouteExecutionMaterialPacket = computed<
+  O7ConsumerSameTaskRouteExecutionMaterialPacketSummary | null
+>(
+  () =>
+    consumerTaskDetailResult.value?.same_task_route_execution_material_packet ??
+    consumerArtifactBundleReadiness.value?.same_task_route_execution_material_packet ??
+    null,
+);
 const consumerSameTaskMissionEvidenceGate = computed<O7ConsumerSameTaskMissionEvidenceGateSummary | null>(
   () =>
     consumerTaskDetailResult.value?.same_task_mission_evidence_gate ??
     consumerArtifactBundleReadiness.value?.same_task_mission_evidence_gate ??
+    null,
+);
+const consumerFieldOperatorConfirmationMaterial = computed<O7ConsumerFieldOperatorConfirmationMaterialSummary | null>(
+  () =>
+    consumerTaskDetailResult.value?.field_operator_confirmation_material ??
+    consumerArtifactBundleReadiness.value?.field_operator_confirmation_material ??
     null,
 );
 const consumerSameTaskMissionMaterialChecklist = computed<O7ConsumerSameTaskMissionMaterialChecklist | null>(
@@ -1388,6 +1419,7 @@ const consumerDetailLabelingQueueSummary = computed(() => {
       `route_execution_result_delivery_readiness_status=${consumerArtifactBundleReadiness.value.route_execution_result_delivery_readiness?.status ?? "blocked_not_proven"}`,
       `route_delivery_closure_packet_status=${consumerArtifactBundleReadiness.value.route_delivery_closure_packet?.status ?? "blocked_not_proven"}`,
       `same_task_field_material_packet_status=${consumerArtifactBundleReadiness.value.same_task_field_material_packet?.status ?? "blocked_not_proven"}`,
+      `same_task_route_execution_material_packet_status=${consumerArtifactBundleReadiness.value.same_task_route_execution_material_packet?.status ?? "blocked_not_proven"}`,
       `same_task_mission_gate_status=${consumerArtifactBundleReadiness.value.same_task_mission_evidence_gate?.status ?? "blocked_not_proven"}`,
       `same_task_mission_material_checklist_status=${consumerArtifactBundleReadiness.value.same_task_mission_material_checklist?.status ?? "blocked_not_proven"}`,
       `blocked_reasons=${consumerArtifactBundleReadiness.value.blocked_reasons.length}`,
@@ -1435,8 +1467,12 @@ function consumerArtifactBundleReadinessSummary(): string {
     readiness.route_delivery_closure_packet?.status ?? "blocked_not_proven";
   const sameTaskFieldMaterialPacketStatus =
     readiness.same_task_field_material_packet?.status ?? "blocked_not_proven";
+  const sameTaskRouteExecutionMaterialPacketStatus =
+    readiness.same_task_route_execution_material_packet?.status ?? "blocked_not_proven";
   const sameTaskMissionGateStatus =
     readiness.same_task_mission_evidence_gate?.status ?? "blocked_not_proven";
+  const fieldOperatorConfirmationMaterialStatus =
+    readiness.field_operator_confirmation_material?.status ?? "blocked_not_proven";
   const sameTaskMissionMaterialChecklistStatus =
     readiness.same_task_mission_material_checklist?.status ?? "blocked_not_proven";
   return [
@@ -1472,7 +1508,9 @@ function consumerArtifactBundleReadinessSummary(): string {
     `route_execution_result_delivery_readiness_status=${routeExecutionResultDeliveryReadinessStatus}`,
     `route_delivery_closure_packet_status=${routeDeliveryClosurePacketStatus}`,
     `same_task_field_material_packet_status=${sameTaskFieldMaterialPacketStatus}`,
+    `same_task_route_execution_material_packet_status=${sameTaskRouteExecutionMaterialPacketStatus}`,
     `same_task_mission_gate_status=${sameTaskMissionGateStatus}`,
+    `field_operator_confirmation_material_status=${fieldOperatorConfirmationMaterialStatus}`,
     `same_task_mission_material_checklist_status=${sameTaskMissionMaterialChecklistStatus}`,
     `same_task_terminal_source=${readiness.same_task_mission_evidence_gate?.terminal_result_source ?? "not_loaded"}`,
     `same_task_terminal_schema=${readiness.same_task_mission_evidence_gate?.terminal_source_schema ?? "not_loaded"}`,
@@ -2526,6 +2564,618 @@ function consumerSameTaskFieldMaterialPacketSamples(): string[] {
 
 function consumerSameTaskFieldMaterialPacketFalseFields(): string[] {
   const packet = consumerSameTaskFieldMaterialPacket.value;
+  if (!packet) {
+    return [
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "robot_control_executed=false",
+      "connects_cloud_production=false",
+      "media_access_proven=false",
+    ];
+  }
+  return [
+    `safe_to_control=${packet.safe_to_control}`,
+    `delivery_success=${packet.delivery_success}`,
+    `primary_actions_enabled=${packet.primary_actions_enabled}`,
+    `robot_control_executed=${packet.robot_control_executed}`,
+    `connects_cloud_production=${packet.connects_cloud_production}`,
+    `media_access_proven=${packet.media_access_proven}`,
+    `real_oss_connected=${packet.real_oss_connected}`,
+    `real_cdn_connected=${packet.real_cdn_connected}`,
+  ];
+}
+
+function consumerCurrentFieldEvidenceMaterialSummary(): string {
+  const current = consumerCurrentFieldEvidenceMaterial.value;
+  // current field evidence 只显示当前现场材料，不把 support-only/blocked 摘要误读成路线执行成功。
+  if (!current) {
+    return "current_field_evidence_material=blocked_not_proven";
+  }
+  return [
+    "current_field_evidence_material",
+    `status=${current.status}`,
+    `task_id=${current.task_id}`,
+    `material_status=${current.material_status}`,
+    `present_materials=${current.present_materials.join(",") || "none"}`,
+    `missing_materials=${current.missing_materials.join(",") || "none"}`,
+  ].join(" · ");
+}
+
+function consumerCurrentFieldEvidenceMaterialSources(): string[] {
+  const current = consumerCurrentFieldEvidenceMaterial.value;
+  if (!current) {
+    return ["blocked_not_proven"];
+  }
+  return [
+    `source_contract=${current.source_contract}`,
+    `source_origin=${current.source_origin}`,
+    `proof_scope=${current.proof_scope}`,
+    `source_proof_status=${current.source_proof_status}`,
+    `task_id_source=${current.task_id_source}`,
+  ];
+}
+
+function consumerCurrentFieldEvidenceMaterialBooleans(): string[] {
+  const current = consumerCurrentFieldEvidenceMaterial.value;
+  if (!current) {
+    return [
+      "camera_frame_observed=false",
+      "radar_scan_observed=false",
+      "map_material_observed=false",
+      "nav2_no_motion_path_generated=false",
+      "manual_gate_blocked_expected=false",
+      "same_task_id_consumed=false",
+      "live_or_field_material_consumed=false",
+    ];
+  }
+  return [
+    `camera_frame_observed=${current.camera_frame_observed}`,
+    `radar_scan_observed=${current.radar_scan_observed}`,
+    `map_material_observed=${current.map_material_observed}`,
+    `nav2_no_motion_path_generated=${current.nav2_no_motion_path_generated}`,
+    `manual_gate_blocked_expected=${current.manual_gate_blocked_expected}`,
+    `same_task_id_consumed=${current.same_task_id_consumed}`,
+    `live_or_field_material_consumed=${current.live_or_field_material_consumed}`,
+  ];
+}
+
+function consumerCurrentFieldEvidenceMaterialMaterials(): string[] {
+  const current = consumerCurrentFieldEvidenceMaterial.value;
+  if (!current) {
+    return ["present_materials=none", "missing_materials=none"];
+  }
+  return [
+    `present_materials=${current.present_materials.join(",") || "none"}`,
+    `missing_materials=${current.missing_materials.join(",") || "none"}`,
+  ];
+}
+
+function consumerCurrentFieldEvidenceMaterialBlockedReasons(): string[] {
+  const current = consumerCurrentFieldEvidenceMaterial.value;
+  if (!current) {
+    return ["blocked_not_proven"];
+  }
+  return current.blocked_reasons.length ? current.blocked_reasons : ["blocked_not_proven"];
+}
+
+function consumerCurrentFieldEvidenceMaterialNextEvidence(): string[] {
+  const current = consumerCurrentFieldEvidenceMaterial.value;
+  if (!current) {
+    return ["blocked_not_proven"];
+  }
+  return current.next_required_evidence.length ? current.next_required_evidence : ["blocked_not_proven"];
+}
+
+function consumerCurrentFieldEvidenceMaterialFalseFields(): string[] {
+  const current = consumerCurrentFieldEvidenceMaterial.value;
+  if (!current) {
+    return [
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "robot_control_executed=false",
+      "connects_cloud_production=false",
+      "hil_pass=false",
+    ];
+  }
+  return [
+    `safe_to_control=${current.safe_to_control}`,
+    `delivery_success=${current.delivery_success}`,
+    `primary_actions_enabled=${current.primary_actions_enabled}`,
+    `robot_control_executed=${current.robot_control_executed}`,
+    `connects_cloud_production=${current.connects_cloud_production}`,
+    `hil_pass=${current.hil_pass}`,
+    `real_oss_connected=${current.real_oss_connected}`,
+    `real_cdn_connected=${current.real_cdn_connected}`,
+  ];
+}
+
+function consumerLocalizationPathMaterialReadbackSummary(): string {
+  const material = consumerLocalizationPathMaterialReadback.value;
+  // localization/path readback 只说明 same-run 定位/路径材料状态，不能把 cross-run comparator 当成当前路径成功。
+  if (!material) {
+    return "localization_path_material_readback=blocked_not_proven";
+  }
+  return [
+    "localization_path_material_readback",
+    `status=${material.status}`,
+    `task_id=${material.task_id}`,
+    `material_status=${material.material_status}`,
+    `same_run_path_point_count=${material.same_run_path_point_count}`,
+    `cross_run_clean_baseline_path_comparator_present=${material.cross_run_clean_baseline_path_comparator_present}`,
+  ].join(" · ");
+}
+
+function consumerLocalizationPathMaterialReadbackSources(): string[] {
+  const material = consumerLocalizationPathMaterialReadback.value;
+  if (!material) {
+    return ["blocked_not_proven"];
+  }
+  return [
+    `source_schema=${material.source_schema}`,
+    `source_origin=${material.source_origin}`,
+    `source_path=${material.source_path}`,
+    `proof_scope=${material.proof_scope}`,
+    `source_proof_status=${material.source_proof_status}`,
+    `task_id_source=${material.task_id_source}`,
+  ];
+}
+
+function consumerLocalizationPathMaterialReadbackSameRunFlags(): string[] {
+  const material = consumerLocalizationPathMaterialReadback.value;
+  if (!material) {
+    return [
+      "localization_path_material_bridge_present=false",
+      "same_run_localization_material_present=false",
+      "same_run_map_once_observed=false",
+      "same_run_amcl_pose_observed=false",
+      "same_run_planner_server_active=false",
+      "same_run_path_generation_requested=false",
+    ];
+  }
+  return [
+    `localization_path_material_bridge_present=${material.localization_path_material_bridge_present}`,
+    `same_run_localization_material_present=${material.same_run_localization_material_present}`,
+    `same_run_map_once_observed=${material.same_run_map_once_observed}`,
+    `same_run_amcl_pose_observed=${material.same_run_amcl_pose_observed}`,
+    `same_run_planner_server_active=${material.same_run_planner_server_active}`,
+    `same_run_path_generation_requested=${material.same_run_path_generation_requested}`,
+  ];
+}
+
+function consumerLocalizationPathMaterialReadbackTfAndPathFlags(): string[] {
+  const material = consumerLocalizationPathMaterialReadback.value;
+  if (!material) {
+    return [
+      "same_run_localization_tf_map_to_odom=false",
+      "same_run_localization_tf_map_to_base_link=false",
+      "same_run_path_generation_succeeded=false",
+      "same_run_path_generated=false",
+      "same_run_path_point_count=0",
+      "same_run_path_proven=false",
+    ];
+  }
+  return [
+    `same_run_localization_tf_map_to_odom=${material.same_run_localization_tf_map_to_odom}`,
+    `same_run_localization_tf_map_to_base_link=${material.same_run_localization_tf_map_to_base_link}`,
+    `same_run_path_generation_succeeded=${material.same_run_path_generation_succeeded}`,
+    `same_run_path_generated=${material.same_run_path_generated}`,
+    `same_run_path_point_count=${material.same_run_path_point_count}`,
+    `same_run_path_proven=${material.same_run_path_proven}`,
+  ];
+}
+
+function consumerLocalizationPathMaterialReadbackCrossRunComparator(): string[] {
+  const material = consumerLocalizationPathMaterialReadback.value;
+  const comparator = material?.cross_run_clean_baseline_path_summary ?? null;
+  if (!material || !comparator) {
+    return [
+      `cross_run_clean_baseline_path_comparator_present=${material?.cross_run_clean_baseline_path_comparator_present ?? false}`,
+      "cross_run_clean_baseline_path_summary.status=not_loaded",
+      "cross_run_clean_baseline_path_summary.path_generation_succeeded=false",
+      "cross_run_clean_baseline_path_summary.path_generated=false",
+      "cross_run_clean_baseline_path_summary.path_point_count=0",
+      "cross_run_clean_baseline_path_summary.same_run_override_allowed=false",
+    ];
+  }
+  return [
+    `cross_run_clean_baseline_path_comparator_present=${material.cross_run_clean_baseline_path_comparator_present}`,
+    `cross_run_clean_baseline_path_summary.status=${comparator.status}`,
+    `cross_run_clean_baseline_path_summary.path_generation_succeeded=${comparator.path_generation_succeeded}`,
+    `cross_run_clean_baseline_path_summary.path_generated=${comparator.path_generated}`,
+    `cross_run_clean_baseline_path_summary.path_point_count=${comparator.path_point_count}`,
+    `cross_run_clean_baseline_path_summary.same_run_override_allowed=${comparator.same_run_override_allowed}`,
+  ];
+}
+
+function consumerLocalizationPathMaterialReadbackFalseFields(): string[] {
+  const material = consumerLocalizationPathMaterialReadback.value;
+  if (!material) {
+    return [
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "robot_control_executed=false",
+      "connects_cloud_production=false",
+      "hil_pass=false",
+      "nav2_route_execution_success=false",
+    ];
+  }
+  return [
+    `safe_to_control=${material.safe_to_control}`,
+    `delivery_success=${material.delivery_success}`,
+    `primary_actions_enabled=${material.primary_actions_enabled}`,
+    `robot_control_executed=${material.robot_control_executed}`,
+    `connects_cloud_production=${material.connects_cloud_production}`,
+    `hil_pass=${material.hil_pass}`,
+    `nav2_route_execution_success=${material.nav2_route_execution_success}`,
+  ];
+}
+
+function consumerCleanBaselineNav2PathMaterialSummary(): string {
+  const material = consumerCleanBaselineNav2PathMaterial.value;
+  // clean baseline 材料只说明 no-motion 路径前置证据，不把 retry success 解释成真实路线执行。
+  if (!material) {
+    return "clean_baseline_nav2_path_material=blocked_not_proven";
+  }
+  return [
+    "clean_baseline_nav2_path_material",
+    `status=${material.status}`,
+    `task_id=${material.task_id}`,
+    `material_status=${material.material_status}`,
+    `first_attempt_status=${material.first_attempt_status}`,
+    `retry_status=${material.retry_status}`,
+    `path_point_count=${material.path_point_count}`,
+  ].join(" · ");
+}
+
+function consumerCleanBaselineNav2PathMaterialSources(): string[] {
+  const material = consumerCleanBaselineNav2PathMaterial.value;
+  if (!material) {
+    return ["blocked_not_proven"];
+  }
+  return [
+    `source_contract=${material.source_contract}`,
+    `source_origin=${material.source_origin}`,
+    `proof_scope=${material.proof_scope}`,
+    `source_proof_status=${material.source_proof_status}`,
+    `task_id_source=${material.task_id_source}`,
+  ];
+}
+
+function consumerCleanBaselineNav2PathMaterialStatusFlags(): string[] {
+  const material = consumerCleanBaselineNav2PathMaterial.value;
+  if (!material) {
+    return [
+      "path_generation_succeeded=false",
+      "path_generated=false",
+      "planner_server_active=false",
+      "managed_runtime_started=false",
+      "managed_runtime_cleanup_ok=false",
+      "cleanup_readback_clean=false",
+    ];
+  }
+  return [
+    `path_generation_succeeded=${material.path_generation_succeeded}`,
+    `path_generated=${material.path_generated}`,
+    `planner_server_active=${material.planner_server_active}`,
+    `managed_runtime_started=${material.managed_runtime_started}`,
+    `managed_runtime_cleanup_ok=${material.managed_runtime_cleanup_ok}`,
+    `cleanup_readback_clean=${material.cleanup_readback_clean}`,
+  ];
+}
+
+function consumerCleanBaselineNav2PathMaterialAttemptSummary(): string[] {
+  const material = consumerCleanBaselineNav2PathMaterial.value;
+  if (!material) {
+    return [
+      "first_failure_reason=blocked_not_proven",
+      "first_failure_root_cause=blocked_not_proven",
+      "initialpose_published=false",
+      "amcl_pose_observed=false",
+      "map_server_active=false",
+      "amcl_active=false",
+    ];
+  }
+  return [
+    `first_failure_reason=${material.first_failure_reason}`,
+    `first_failure_root_cause=${material.first_failure_root_cause}`,
+    `initialpose_published=${material.initialpose_published}`,
+    `amcl_pose_observed=${material.amcl_pose_observed}`,
+    `map_server_active=${material.map_server_active}`,
+    `amcl_active=${material.amcl_active}`,
+  ];
+}
+
+function consumerCleanBaselineNav2PathMaterialBlockedReasons(): string[] {
+  const material = consumerCleanBaselineNav2PathMaterial.value;
+  if (!material) {
+    return ["blocked_not_proven"];
+  }
+  return material.blocked_reasons.length ? material.blocked_reasons : ["blocked_not_proven"];
+}
+
+function consumerCleanBaselineNav2PathMaterialNextEvidence(): string[] {
+  const material = consumerCleanBaselineNav2PathMaterial.value;
+  if (!material) {
+    return ["blocked_not_proven"];
+  }
+  return material.next_required_evidence.length ? material.next_required_evidence : ["blocked_not_proven"];
+}
+
+function consumerCleanBaselineNav2PathMaterialFalseFields(): string[] {
+  const material = consumerCleanBaselineNav2PathMaterial.value;
+  if (!material) {
+    return [
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "robot_control_executed=false",
+      "connects_cloud_production=false",
+      "hil_pass=false",
+    ];
+  }
+  return [
+    `safe_to_control=${material.safe_to_control}`,
+    `delivery_success=${material.delivery_success}`,
+    `primary_actions_enabled=${material.primary_actions_enabled}`,
+    `robot_control_executed=${material.robot_control_executed}`,
+    `connects_cloud_production=${material.connects_cloud_production}`,
+    `hil_pass=${material.hil_pass}`,
+  ];
+}
+
+function consumerFieldOperatorConfirmationMaterialSummary(): string {
+  const material = consumerFieldOperatorConfirmationMaterial.value;
+  // operator material 只读展示人工材料状态，不把 report/confirmation 推断为送达或控制成功。
+  if (!material) {
+    return "field_operator_confirmation_material=blocked_not_proven";
+  }
+  return [
+    "field_operator_confirmation_material",
+    `status=${material.status}`,
+    `task_id=${material.task_id}`,
+    `material_status=${material.material_status}`,
+    `operator_report_present=${material.operator_report_present}`,
+    `operator_confirmation_present=${material.operator_confirmation_present}`,
+  ].join(" · ");
+}
+
+function consumerFieldOperatorConfirmationMaterialSources(): string[] {
+  const material = consumerFieldOperatorConfirmationMaterial.value;
+  if (!material) {
+    return ["blocked_not_proven"];
+  }
+  return [
+    `source_schema=${material.source_schema}`,
+    `source_origin=${material.source_origin}`,
+    `source_path=${material.source_path}`,
+    `proof_scope=${material.proof_scope}`,
+    `source_proof_status=${material.source_proof_status}`,
+  ];
+}
+
+function consumerFieldOperatorConfirmationMaterialStatuses(): string[] {
+  const material = consumerFieldOperatorConfirmationMaterial.value;
+  if (!material) {
+    return [
+      "operator_report_status=blocked_not_proven",
+      "operator_confirmation_status=blocked_not_proven",
+      "reported_at=not_loaded",
+      "support_only_reason=field_operator_confirmation_material_missing_or_blocked",
+    ];
+  }
+  return [
+    `operator_report_status=${material.operator_report_status}`,
+    `operator_confirmation_status=${material.operator_confirmation_status}`,
+    `reported_at=${material.reported_at}`,
+    `support_only_reason=${material.support_only_reason}`,
+  ];
+}
+
+function consumerFieldOperatorConfirmationMaterialBooleans(): string[] {
+  const material = consumerFieldOperatorConfirmationMaterial.value;
+  if (!material) {
+    return [
+      "operator_present=false",
+      "physical_clearance_confirmed=false",
+      "emergency_stop_ready=false",
+      "observed_motion=false",
+      "observed_stop=false",
+      "same_task_id_consumed=false",
+      "operator_material_consumed=false",
+      "linked_route_material_present=false",
+      "linked_delivery_material_present=false",
+    ];
+  }
+  return [
+    `operator_present=${material.operator_present}`,
+    `physical_clearance_confirmed=${material.physical_clearance_confirmed}`,
+    `emergency_stop_ready=${material.emergency_stop_ready}`,
+    `observed_motion=${material.observed_motion}`,
+    `observed_stop=${material.observed_stop}`,
+    `same_task_id_consumed=${material.same_task_id_consumed}`,
+    `operator_material_consumed=${material.operator_material_consumed}`,
+    `linked_route_material_present=${material.linked_route_material_present}`,
+    `linked_delivery_material_present=${material.linked_delivery_material_present}`,
+  ];
+}
+
+function consumerFieldOperatorConfirmationMaterialSummaries(): string[] {
+  const material = consumerFieldOperatorConfirmationMaterial.value;
+  if (!material) {
+    return ["material_summaries=none"];
+  }
+  const rows = Object.entries(material.material_summaries ?? {}).flatMap(([key, summary]) => {
+    // material_summaries 已由 adapter 白名单化；这里只拼接短字段供 DOM smoke 覆盖。
+    if (!summary) {
+      return [];
+    }
+    return [
+      `material:${key}.present=${summary.present}`,
+      `material:${key}.status=${summary.status}`,
+      `material:${key}.reported_at=${summary.reported_at}`,
+      `material:${key}.count=${summary.count ?? "not_loaded"}`,
+      `material:${key}.sample_refs=${summary.sample_refs.join(",") || "none"}`,
+    ];
+  });
+  return rows.length ? rows : ["material_summaries=none"];
+}
+
+function consumerFieldOperatorConfirmationMaterialFalseFields(): string[] {
+  const material = consumerFieldOperatorConfirmationMaterial.value;
+  if (!material) {
+    return [
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "robot_control_executed=false",
+      "connects_cloud_production=false",
+      "route_execution_success=false",
+      "hil_pass=false",
+    ];
+  }
+  return [
+    `safe_to_control=${material.safe_to_control}`,
+    `delivery_success=${material.delivery_success}`,
+    `primary_actions_enabled=${material.primary_actions_enabled}`,
+    `robot_control_executed=${material.robot_control_executed}`,
+    `connects_cloud_production=${material.connects_cloud_production}`,
+    `route_execution_success=${material.route_execution_success}`,
+    `hil_pass=${material.hil_pass}`,
+  ];
+}
+
+function consumerSameTaskRouteExecutionMaterialPacketSummary(): string {
+  const packet = consumerSameTaskRouteExecutionMaterialPacket.value;
+  // route execution material packet 必须独立展示 O6 顶层 status，不能只靠 checklist 引用。
+  if (!packet) {
+    return "same_task_route_execution_material_packet=blocked_not_proven";
+  }
+  return [
+    "same_task_route_execution_material_packet",
+    `status=${packet.status}`,
+    `task_id=${packet.task_id}`,
+    `packet_status=${packet.packet_status}`,
+    `same_task_field_material_packet_status=${packet.same_task_field_material_packet_status}`,
+    `present_materials=${packet.present_materials.join(",") || "none"}`,
+  ].join(" · ");
+}
+
+function consumerSameTaskRouteExecutionMaterialPacketSources(): string[] {
+  const packet = consumerSameTaskRouteExecutionMaterialPacket.value;
+  if (!packet) {
+    return ["blocked_not_proven"];
+  }
+  return [
+    `source_contract=${packet.source_contract}`,
+    `source_origin=${packet.source_origin}`,
+    `proof_scope=${packet.proof_scope}`,
+    `source_proof_status=${packet.source_proof_status}`,
+    `task_id_source=${packet.task_id_source}`,
+    `source_sections=${packet.source_sections.join(",") || "none"}`,
+  ];
+}
+
+function consumerSameTaskRouteExecutionMaterialPacketFlags(): string[] {
+  const packet = consumerSameTaskRouteExecutionMaterialPacket.value;
+  if (!packet) {
+    return [
+      "same_task_id_consumed=false",
+      "route_execution_material_consumed=false",
+      "live_or_field_command_evidence_present=false",
+      "delivery_or_operator_material_consumed=false",
+      "route_execution_credit_candidate=false",
+      "route_execution_materials_connected=false",
+      "live_nav2_route_execution_connected=false",
+      "delivery_success_proven=false",
+    ];
+  }
+  return [
+    `same_task_id_consumed=${packet.same_task_id_consumed}`,
+    `route_execution_material_consumed=${packet.route_execution_material_consumed}`,
+    `live_or_field_command_evidence_present=${packet.live_or_field_command_evidence_present}`,
+    `delivery_or_operator_material_consumed=${packet.delivery_or_operator_material_consumed}`,
+    `route_execution_credit_candidate=${packet.route_execution_credit_candidate}`,
+    `route_execution_materials_connected=${packet.proof_boundary.route_execution_materials_connected}`,
+    `live_nav2_route_execution_connected=${packet.proof_boundary.live_nav2_route_execution_connected}`,
+    `delivery_success_proven=${packet.proof_boundary.delivery_success_proven}`,
+  ];
+}
+
+function consumerSameTaskRouteExecutionMaterialPacketCreditSummary(): string[] {
+  const packet = consumerSameTaskRouteExecutionMaterialPacket.value;
+  // credit 摘要只说明是否具备可计分材料，不把 candidate 解释成真实送达或可控。
+  if (!packet) {
+    return [
+      "credit_support_only_reason=blocked_not_proven",
+      "credit_required_evidence=same_task_route_execution_material_packet_for_selected_task",
+    ];
+  }
+  return [
+    `credit_support_only_reason=${packet.credit_support_only_reason}`,
+    `credit_required_evidence=${packet.credit_required_evidence.join(",") || "none"}`,
+  ];
+}
+
+function consumerSameTaskRouteExecutionMaterialPacketSamples(): string[] {
+  const packet = consumerSameTaskRouteExecutionMaterialPacket.value;
+  if (!packet) {
+    return ["sample_refs=none", "missing_materials=none", "material_summaries=none"];
+  }
+  const materialSummaryLines = Object.entries(packet.material_summaries ?? {}).flatMap(([key, summary]) => {
+    // 每个材料摘要只展示 basename/hash/count/sample refs，避免把 raw route/result payload 暴露到 UI。
+    if (!summary) {
+      return [];
+    }
+    return [
+      `material:${key}.present=${summary.present}`,
+      `material:${key}.status=${summary.status}`,
+      `material:${key}.basename=${summary.basename}`,
+      `material:${key}.size_bytes=${summary.size_bytes ?? "not_loaded"}`,
+      `material:${key}.sha256_prefix=${summary.sha256_prefix}`,
+      `material:${key}.count=${summary.count ?? "not_loaded"}`,
+      `material:${key}.sample_refs=${summary.sample_refs.join(",") || "none"}`,
+    ];
+  });
+  return [
+    `sample_refs=${packet.sample_refs.join(",") || "none"}`,
+    `missing_materials=${packet.missing_materials.join(",") || "none"}`,
+    ...materialSummaryLines,
+  ];
+}
+
+function consumerSameTaskRouteExecutionMaterialPacketRouteSummary(): string[] {
+  const packet = consumerSameTaskRouteExecutionMaterialPacket.value;
+  if (!packet) {
+    return [
+      "route_execution_result_status=blocked_not_proven",
+      "pose_progress_replay_status=blocked_not_proven",
+    ];
+  }
+  const routeSummary = packet.route_execution_result_summary;
+  const poseSummary = packet.pose_progress_replay_timeline_summary;
+  return [
+    `route_execution_result_status=${routeSummary.status}`,
+    `route_execution_result_source=${routeSummary.source}`,
+    `route_execution_result_count=${routeSummary.result_count ?? "not_loaded"}`,
+    `route_execution_result_sample_refs=${routeSummary.sample_refs.join(",") || "none"}`,
+    `nav2_goal_status=${routeSummary.nav2_goal_status}`,
+    `delivery_result_status=${routeSummary.delivery_result_status}`,
+    `pose_progress_replay_status=${poseSummary.status}`,
+    `pose_progress_source=${poseSummary.source}`,
+    `pose_sample_count=${poseSummary.pose_sample_count ?? "not_loaded"}`,
+    `replay_frame_count=${poseSummary.replay_frame_count ?? "not_loaded"}`,
+    `nonzero_pose_progress_observed=${poseSummary.nonzero_pose_progress_observed}`,
+    `displacement_m=${poseSummary.displacement_m ?? "not_loaded"}`,
+    `timeline_span_ms=${poseSummary.timeline_span_ms ?? "not_loaded"}`,
+    `pose_progress_sample_refs=${poseSummary.sample_refs.join(",") || "none"}`,
+  ];
+}
+
+function consumerSameTaskRouteExecutionMaterialPacketFalseFields(): string[] {
+  const packet = consumerSameTaskRouteExecutionMaterialPacket.value;
   if (!packet) {
     return [
       "safe_to_control=false",
@@ -4373,7 +5023,7 @@ async function loadPreview(kind: O7FixturePreviewKind): Promise<void> {
             <dt>view</dt>
             <dd>{{ consumerTaskDetailResult?.query_strategy.view ?? "default" }}</dd>
             <dt>include</dt>
-            <dd>{{ consumerTaskDetailResult?.query_strategy.include.join(",") ?? "trajectory,events,evidence,field_evidence,labeling,inference,tunnel,artifact_access_probe,offline_artifact_seed_smoke,route_root_seed_gate,route_bag_evidence,route_bag_payload_replay,route_bag_semantic_replay,route_bag_full_semantic_decode_matrix,route_bag_pose_progress_replay,nav2_goal_execution_evidence,delivery_result_evidence,route_execution_result_delivery_readiness,route_delivery_closure_packet,same_task_field_material_packet,same_task_mission_evidence_gate" }}</dd>
+            <dd>{{ consumerTaskDetailResult?.query_strategy.include.join(",") ?? "trajectory,events,evidence,field_evidence,labeling,inference,tunnel,artifact_access_probe,offline_artifact_seed_smoke,route_root_seed_gate,route_bag_evidence,route_bag_payload_replay,route_bag_semantic_replay,route_bag_full_semantic_decode_matrix,route_bag_pose_progress_replay,nav2_goal_execution_evidence,delivery_result_evidence,route_execution_result_delivery_readiness,route_delivery_closure_packet,same_task_field_material_packet,current_field_evidence_material,clean_baseline_nav2_path_material,localization_path_material_readback,same_task_route_execution_material_packet,same_task_mission_evidence_gate" }}</dd>
             <dt>fail-closed visible</dt>
             <dd>{{ consumerTaskDetailResult?.query_strategy.fail_closed_visible ?? true }}</dd>
             <dt>field evidence contract</dt>
@@ -4425,7 +5075,7 @@ async function loadPreview(kind: O7FixturePreviewKind): Promise<void> {
           </ul>
           <h3>Artifact bundle readiness</h3>
           <div class="notice" role="note">
-            artifact_bundle_readiness 主路径 · bundle / consumer_ingest / preflight 优先 · route_bag_evidence / route_bag_payload_replay / route_bag_semantic_replay / route_bag_full_semantic_decode_matrix / route_delivery_closure_packet / same_task_field_material_packet / same_task_mission_evidence_gate 只读汇总 · route replay / labeling 旧 fallback 只做兼容
+            artifact_bundle_readiness 主路径 · bundle / consumer_ingest / preflight 优先 · route_bag_evidence / route_bag_payload_replay / route_bag_semantic_replay / route_bag_full_semantic_decode_matrix / route_delivery_closure_packet / same_task_field_material_packet / same_task_route_execution_material_packet / same_task_mission_evidence_gate / field_operator_confirmation_material 只读汇总 · route replay / labeling 旧 fallback 只做兼容
           </div>
           <dl class="kv compact-kv">
             <dt>schema</dt>
@@ -4989,6 +5639,238 @@ async function loadPreview(kind: O7FixturePreviewKind): Promise<void> {
           <h5>Field material false fields</h5>
           <ul class="dense">
             <li v-for="line in consumerSameTaskFieldMaterialPacketFalseFields()" :key="line">{{ line }}</li>
+          </ul>
+          <h4>Current field evidence material</h4>
+          <div class="notice" role="note">
+            current_field_evidence_material 只读摘要 · current field status + present/missing materials + camera/radar/map/nav2/manual gate booleans ·
+            support-only/current evidence 不等于 route execution success · safe_to_control=false · delivery_success=false · primary_actions_enabled=false ·
+            robot_control_executed=false
+          </div>
+          <dl class="kv compact-kv">
+            <dt>schema</dt>
+            <dd>{{ consumerCurrentFieldEvidenceMaterial?.schema ?? "not_loaded" }}</dd>
+            <dt>status</dt>
+            <dd>{{ consumerCurrentFieldEvidenceMaterial?.status ?? "blocked_not_proven" }}</dd>
+            <dt>task_id</dt>
+            <dd>{{ consumerCurrentFieldEvidenceMaterial?.task_id ?? "not_loaded" }}</dd>
+            <dt>proof_scope</dt>
+            <dd>{{ consumerCurrentFieldEvidenceMaterial?.proof_scope ?? "not_loaded" }}</dd>
+            <dt>source_origin</dt>
+            <dd>{{ consumerCurrentFieldEvidenceMaterial?.source_origin ?? "not_loaded" }}</dd>
+          </dl>
+          <h5>Current field summary</h5>
+          <ul class="dense">
+            <li>{{ consumerCurrentFieldEvidenceMaterialSummary() }}</li>
+            <li v-for="line in consumerCurrentFieldEvidenceMaterialSources()" :key="line">{{ line }}</li>
+          </ul>
+          <h5>Current field booleans</h5>
+          <ul class="dense">
+            <li v-for="line in consumerCurrentFieldEvidenceMaterialBooleans()" :key="line">{{ line }}</li>
+          </ul>
+          <h5>Current field materials</h5>
+          <ul class="dense">
+            <li v-for="line in consumerCurrentFieldEvidenceMaterialMaterials()" :key="line">{{ line }}</li>
+          </ul>
+          <h5>Current field blockers</h5>
+          <ul class="dense">
+            <li v-for="reason in consumerCurrentFieldEvidenceMaterialBlockedReasons()" :key="reason">{{ reason }}</li>
+          </ul>
+          <h5>Current field next evidence</h5>
+          <ul class="dense">
+            <li v-for="item in consumerCurrentFieldEvidenceMaterialNextEvidence()" :key="item">{{ item }}</li>
+          </ul>
+          <h5>Current field false fields</h5>
+          <ul class="dense">
+            <li v-for="line in consumerCurrentFieldEvidenceMaterialFalseFields()" :key="line">{{ line }}</li>
+          </ul>
+          <h4>Localization path material readback</h4>
+          <div class="notice" role="note">
+            localization_path_material_readback 只读摘要 · same-run localization/path flags + cross-run clean-baseline comparator boundary ·
+            兼容 O6 旧 `_readback` ready status、旧 TF alias 和缺失 bridge alias，但页面统一按 O7 归一字段展示 ·
+            comparator 只做历史对照，不能覆盖当前 same_run_path=false 结论，不等于 route execution success、delivery success 或可控 ·
+            safe_to_control=false · delivery_success=false · primary_actions_enabled=false · robot_control_executed=false
+          </div>
+          <dl class="kv compact-kv">
+            <dt>schema</dt>
+            <dd>{{ consumerLocalizationPathMaterialReadback?.schema ?? "not_loaded" }}</dd>
+            <dt>status</dt>
+            <dd>{{ consumerLocalizationPathMaterialReadback?.status ?? "blocked_not_proven" }}</dd>
+            <dt>task_id</dt>
+            <dd>{{ consumerLocalizationPathMaterialReadback?.task_id ?? "not_loaded" }}</dd>
+            <dt>proof_scope</dt>
+            <dd>{{ consumerLocalizationPathMaterialReadback?.proof_scope ?? "not_loaded" }}</dd>
+            <dt>source_origin</dt>
+            <dd>{{ consumerLocalizationPathMaterialReadback?.source_origin ?? "not_loaded" }}</dd>
+          </dl>
+          <h5>Localization path summary</h5>
+          <ul class="dense">
+            <li>{{ consumerLocalizationPathMaterialReadbackSummary() }}</li>
+            <li v-for="line in consumerLocalizationPathMaterialReadbackSources()" :key="line">{{ line }}</li>
+          </ul>
+          <h5>Same-run localization flags</h5>
+          <ul class="dense">
+            <li v-for="line in consumerLocalizationPathMaterialReadbackSameRunFlags()" :key="line">{{ line }}</li>
+          </ul>
+          <h5>TF and same-run path false fields</h5>
+          <ul class="dense">
+            <li v-for="line in consumerLocalizationPathMaterialReadbackTfAndPathFlags()" :key="line">{{ line }}</li>
+          </ul>
+          <h5>Cross-run comparator boundary</h5>
+          <ul class="dense">
+            <li v-for="line in consumerLocalizationPathMaterialReadbackCrossRunComparator()" :key="line">{{ line }}</li>
+          </ul>
+          <h5>Localization path blockers</h5>
+          <ul class="dense">
+            <li v-for="reason in consumerLocalizationPathMaterialReadback?.blocked_reasons ?? ['blocked_not_proven']" :key="reason">{{ reason }}</li>
+          </ul>
+          <h5>Localization path next evidence</h5>
+          <ul class="dense">
+            <li v-for="item in consumerLocalizationPathMaterialReadback?.next_required_evidence ?? ['blocked_not_proven']" :key="item">{{ item }}</li>
+          </ul>
+          <h5>Localization path false fields</h5>
+          <ul class="dense">
+            <li v-for="line in consumerLocalizationPathMaterialReadbackFalseFields()" :key="line">{{ line }}</li>
+          </ul>
+          <h4>Clean baseline Nav2 path material</h4>
+          <div class="notice" role="note">
+            clean_baseline_nav2_path_material 只读摘要 · first failure + retry success + path_point_count + cleanup readback ·
+            只说明 no-motion Nav2 path preflight 材料可读，不等于 route execution success、delivery success 或可控 ·
+            safe_to_control=false · delivery_success=false · primary_actions_enabled=false · robot_control_executed=false
+          </div>
+          <dl class="kv compact-kv">
+            <dt>schema</dt>
+            <dd>{{ consumerCleanBaselineNav2PathMaterial?.schema ?? "not_loaded" }}</dd>
+            <dt>status</dt>
+            <dd>{{ consumerCleanBaselineNav2PathMaterial?.status ?? "blocked_not_proven" }}</dd>
+            <dt>task_id</dt>
+            <dd>{{ consumerCleanBaselineNav2PathMaterial?.task_id ?? "not_loaded" }}</dd>
+            <dt>proof_scope</dt>
+            <dd>{{ consumerCleanBaselineNav2PathMaterial?.proof_scope ?? "not_loaded" }}</dd>
+            <dt>source_origin</dt>
+            <dd>{{ consumerCleanBaselineNav2PathMaterial?.source_origin ?? "not_loaded" }}</dd>
+          </dl>
+          <h5>Clean baseline summary</h5>
+          <ul class="dense">
+            <li>{{ consumerCleanBaselineNav2PathMaterialSummary() }}</li>
+            <li v-for="line in consumerCleanBaselineNav2PathMaterialSources()" :key="line">{{ line }}</li>
+          </ul>
+          <h5>Retry and cleanup flags</h5>
+          <ul class="dense">
+            <li v-for="line in consumerCleanBaselineNav2PathMaterialStatusFlags()" :key="line">{{ line }}</li>
+          </ul>
+          <h5>First failure and Nav2 preflight</h5>
+          <ul class="dense">
+            <li v-for="line in consumerCleanBaselineNav2PathMaterialAttemptSummary()" :key="line">{{ line }}</li>
+          </ul>
+          <h5>Clean baseline blockers</h5>
+          <ul class="dense">
+            <li v-for="reason in consumerCleanBaselineNav2PathMaterialBlockedReasons()" :key="reason">{{ reason }}</li>
+          </ul>
+          <h5>Clean baseline next evidence</h5>
+          <ul class="dense">
+            <li v-for="item in consumerCleanBaselineNav2PathMaterialNextEvidence()" :key="item">{{ item }}</li>
+          </ul>
+          <h5>Clean baseline false fields</h5>
+          <ul class="dense">
+            <li v-for="line in consumerCleanBaselineNav2PathMaterialFalseFields()" :key="line">{{ line }}</li>
+          </ul>
+          <h4>Field operator confirmation material</h4>
+          <div class="notice" role="note">
+            field_operator_confirmation_material 只读摘要 · operator report / operator confirmation / safety preflight booleans only ·
+            ready_not_delivery_proof 不等于 delivery_success、route_execution_success、HIL pass 或控制准入 · safe_to_control=false ·
+            delivery_success=false · primary_actions_enabled=false · robot_control_executed=false
+          </div>
+          <dl class="kv compact-kv">
+            <dt>schema</dt>
+            <dd>{{ consumerFieldOperatorConfirmationMaterial?.schema ?? "not_loaded" }}</dd>
+            <dt>status</dt>
+            <dd>{{ consumerFieldOperatorConfirmationMaterial?.status ?? "blocked_not_proven" }}</dd>
+            <dt>task_id</dt>
+            <dd>{{ consumerFieldOperatorConfirmationMaterial?.task_id ?? "not_loaded" }}</dd>
+            <dt>proof_scope</dt>
+            <dd>{{ consumerFieldOperatorConfirmationMaterial?.proof_scope ?? "not_loaded" }}</dd>
+            <dt>source_origin</dt>
+            <dd>{{ consumerFieldOperatorConfirmationMaterial?.source_origin ?? "not_loaded" }}</dd>
+          </dl>
+          <h5>Operator material summary</h5>
+          <ul class="dense">
+            <li>{{ consumerFieldOperatorConfirmationMaterialSummary() }}</li>
+            <li v-for="line in consumerFieldOperatorConfirmationMaterialSources()" :key="line">{{ line }}</li>
+          </ul>
+          <h5>Operator report statuses</h5>
+          <ul class="dense">
+            <li v-for="line in consumerFieldOperatorConfirmationMaterialStatuses()" :key="line">{{ line }}</li>
+          </ul>
+          <h5>Operator safety and linked materials</h5>
+          <ul class="dense">
+            <li v-for="line in consumerFieldOperatorConfirmationMaterialBooleans()" :key="line">{{ line }}</li>
+          </ul>
+          <h5>Operator material summaries</h5>
+          <ul class="dense">
+            <li v-for="line in consumerFieldOperatorConfirmationMaterialSummaries()" :key="line">{{ line }}</li>
+          </ul>
+          <h5>Operator material blockers</h5>
+          <ul class="dense">
+            <li v-for="reason in consumerFieldOperatorConfirmationMaterial?.blocked_reasons ?? ['blocked_not_proven']" :key="reason">{{ reason }}</li>
+          </ul>
+          <h5>Operator material next evidence</h5>
+          <ul class="dense">
+            <li v-for="item in consumerFieldOperatorConfirmationMaterial?.next_required_evidence ?? ['blocked_not_proven']" :key="item">{{ item }}</li>
+          </ul>
+          <h5>Operator material false fields</h5>
+          <ul class="dense">
+            <li v-for="line in consumerFieldOperatorConfirmationMaterialFalseFields()" :key="line">{{ line }}</li>
+          </ul>
+          <h4>Same task route execution material packet</h4>
+          <div class="notice" role="note">
+            same_task_route_execution_material_packet 只读摘要 · O6 顶层 status + 同 task route execution result / pose progress / replay timeline material ·
+            checklist 只能引用该 packet，不能替代 packet 自身验收；即使 route_execution_credit_candidate=true，也不等于 delivery_success=true、safe_to_control=true
+            或启用任何 primary action · safe_to_control=false · delivery_success=false · primary_actions_enabled=false · robot_control_executed=false
+          </div>
+          <dl class="kv compact-kv">
+            <dt>schema</dt>
+            <dd>{{ consumerSameTaskRouteExecutionMaterialPacket?.schema ?? "not_loaded" }}</dd>
+            <dt>status</dt>
+            <dd>{{ consumerSameTaskRouteExecutionMaterialPacket?.status ?? "blocked_not_proven" }}</dd>
+            <dt>task_id</dt>
+            <dd>{{ consumerSameTaskRouteExecutionMaterialPacket?.task_id ?? "not_loaded" }}</dd>
+            <dt>proof_scope</dt>
+            <dd>{{ consumerSameTaskRouteExecutionMaterialPacket?.proof_scope ?? "not_loaded" }}</dd>
+            <dt>source_origin</dt>
+            <dd>{{ consumerSameTaskRouteExecutionMaterialPacket?.source_origin ?? "not_loaded" }}</dd>
+          </dl>
+          <h5>Route execution material summary</h5>
+          <ul class="dense">
+            <li>{{ consumerSameTaskRouteExecutionMaterialPacketSummary() }}</li>
+            <li v-for="line in consumerSameTaskRouteExecutionMaterialPacketSources()" :key="line">{{ line }}</li>
+          </ul>
+          <h5>Same-task and material flags</h5>
+          <ul class="dense">
+            <li v-for="line in consumerSameTaskRouteExecutionMaterialPacketFlags()" :key="line">{{ line }}</li>
+          </ul>
+          <h5>Credit material summary</h5>
+          <ul class="dense">
+            <li v-for="line in consumerSameTaskRouteExecutionMaterialPacketCreditSummary()" :key="line">{{ line }}</li>
+          </ul>
+          <h5>Route result and pose timeline</h5>
+          <ul class="dense">
+            <li v-for="line in consumerSameTaskRouteExecutionMaterialPacketRouteSummary()" :key="line">{{ line }}</li>
+          </ul>
+          <h5>Route execution material refs</h5>
+          <ul class="dense">
+            <li v-for="line in consumerSameTaskRouteExecutionMaterialPacketSamples()" :key="line">{{ line }}</li>
+          </ul>
+          <h5>Route execution material blockers</h5>
+          <ul class="dense">
+            <li v-for="reason in consumerSameTaskRouteExecutionMaterialPacket?.blocked_reasons ?? ['blocked_not_proven']" :key="reason">{{ reason }}</li>
+          </ul>
+          <h5>Route execution material next evidence</h5>
+          <ul class="dense">
+            <li v-for="item in consumerSameTaskRouteExecutionMaterialPacket?.next_required_evidence ?? ['blocked_not_proven']" :key="item">{{ item }}</li>
+          </ul>
+          <h5>Route execution material false fields</h5>
+          <ul class="dense">
+            <li v-for="line in consumerSameTaskRouteExecutionMaterialPacketFalseFields()" :key="line">{{ line }}</li>
           </ul>
           <h4>Same task mission evidence gate</h4>
           <div class="notice" role="note">

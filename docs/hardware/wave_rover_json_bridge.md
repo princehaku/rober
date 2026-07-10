@@ -95,6 +95,33 @@
 用于解释“底盘只读链路曾出现非零 L/R”。该字段不得替代 Nav2 goal execution 同窗口内的
 `base_feedback_summary.latest_nonzero_pair`，也不得单独推出路线到达、delivery success 或导航级 HIL pass。
 
+### 2026-07-10 O1 same-session wheel feedback material intake
+
+本轮新增 `trashbot.wave_rover_same_session_wheel_feedback_material.v1`，只读消费
+`sprints/2026.06.22_11-00_wheel_lr_samesession_first_jog/artifacts/01_upper_manual_samesession_012.json`
+中的历史真实上位机 same-session manual artifact。该 intake 只承认同一
+`serial_motion_transaction` 内的阶段链路：`T=1` 运动命令、运动窗口 `T=130`
+请求、运动窗口 `T=1001 L/R` 同帧非零、`T=1 L/R=0/0` stop、stop 后 `T=130`
+请求和 stop 后 `T=1001 L/R=0/0`。
+
+该合同输出的是脱敏安全摘要，不回显 raw artifact、compact frames、endpoint、串口设备名、
+baudrate、URL、token、base64、traceback 或完整绝对路径。缺字段、坏 JSON、schema/source
+不符、危险 safety 字段为 true、非零反馈不在 motion window、stop 后缺少 `0/0` 都必须
+fail-closed。
+
+固定边界：
+
+- `proof_scope=software_proof_o1_same_session_wheel_feedback_material_intake_only`
+- `hil_pass=false`
+- `safe_to_control=false`
+- `delivery_success=false`
+- `primary_actions_enabled=false`
+
+该 intake 证明历史 same-session wheel feedback material 已可被当前软件合同安全消费；
+不证明 current live HIL pass、硬件 safe-to-control、Nav2 route execution、delivery success
+或 production cloud。后续仍需新的同 run `feedback_T1001.log`、motion command record、
+operator material 和 HIL acceptance record。
+
 ### 2026-07-03 PWM164 default command mode boundary
 
 本轮按 `docs/vendor/VENDOR_INDEX.md` 指向的本地资料复核：

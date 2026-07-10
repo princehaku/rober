@@ -46,6 +46,18 @@ SAME_TASK_MISSION_EVIDENCE_GATE_SCHEMA = "trashbot.same_task_mission_evidence_ga
 SAME_TASK_MISSION_EVIDENCE_GATE_PROOF_SCOPE = "software_proof_same_task_mission_evidence_gate_only"
 SAME_TASK_FIELD_MATERIAL_PACKET_SCHEMA = "trashbot.same_task_field_material_packet.v1"
 SAME_TASK_FIELD_MATERIAL_PACKET_PROOF_SCOPE = "software_proof_same_task_field_material_packet_only"
+SAME_TASK_ROUTE_EXECUTION_MATERIAL_PACKET_SCHEMA = "trashbot.same_task_route_execution_material_packet.v1"
+SAME_TASK_ROUTE_EXECUTION_MATERIAL_PACKET_PROOF_SCOPE = "software_proof_same_task_route_execution_material_packet_only"
+LOCALIZATION_PATH_MATERIAL_READBACK_SCHEMA = "trashbot.localization_path_material_readback.v1"
+LOCALIZATION_PATH_MATERIAL_READBACK_PROOF_SCOPE = "software_proof_localization_path_material_readback_only"
+LOCALIZATION_PATH_MATERIAL_READBACK_READY_STATUS = "localization_path_material_readback_ready_not_route_execution_proof"
+CURRENT_FIELD_EVIDENCE_MATERIAL_SCHEMA = "trashbot.current_field_evidence_material.v1"
+CURRENT_FIELD_EVIDENCE_MATERIAL_PROOF_SCOPE = "software_proof_current_field_evidence_material_only"
+CLEAN_BASELINE_NAV2_PATH_MATERIAL_SCHEMA = "trashbot.clean_baseline_nav2_path_material.v1"
+CLEAN_BASELINE_NAV2_PATH_MATERIAL_PROOF_SCOPE = "software_proof_clean_baseline_nav2_path_material_only"
+FIELD_OPERATOR_CONFIRMATION_MATERIAL_SCHEMA = "trashbot.field_operator_confirmation_material.v1"
+FIELD_OPERATOR_CONFIRMATION_MATERIAL_PROOF_SCOPE = "software_proof_field_operator_confirmation_material_only"
+FIELD_OPERATOR_CONFIRMATION_READY_STATUS = "field_operator_confirmation_material_ready_not_delivery_proof"
 ROUTE_BAG_EVIDENCE_SCHEMA = "trashbot.route_bag_evidence.v1"
 ROUTE_BAG_EVIDENCE_PROOF_SCOPE = "software_proof_route_bag_evidence_intake_only"
 ROUTE_BAG_PAYLOAD_REPLAY_SCHEMA = "trashbot.route_bag_payload_replay.v1"
@@ -130,6 +142,196 @@ SAME_TASK_FIELD_MATERIAL_DANGEROUS_TRUE_FIELDS = {
     "route_execution_success",
 }
 SAME_TASK_FIELD_MATERIAL_UNSAFE_MARKERS = ("path", "root", "token", "raw", "base64", "credential", "secret")
+SAME_TASK_ROUTE_EXECUTION_MATERIAL_DANGEROUS_TRUE_FIELDS = {
+    "delivery_success",
+    "safe_to_control",
+    "primary_actions_enabled",
+    "robot_control_executed",
+    "route_execution_success",
+    "hil_pass",
+    "live_nav2_run_proven",
+    "real_world_delivery_proven",
+    "connects_cloud_production",
+}
+SAME_TASK_ROUTE_EXECUTION_MATERIAL_UNSAFE_KEY_MARKERS = (
+    "token",
+    "secret",
+    "credential",
+    "raw_payload",
+    "response_body",
+    "traceback",
+    "authorization",
+    "bearer",
+    "password",
+    "connection_string",
+)
+SAME_TASK_ROUTE_EXECUTION_MATERIAL_UNSAFE_TEXT_MARKERS = (
+    "token",
+    "secret",
+    "credential",
+    "raw_payload",
+    "base64:",
+    "traceback",
+    "response body",
+    "authorization",
+    "bearer ",
+    "password",
+    "connection string",
+)
+LOCALIZATION_PATH_MATERIAL_DANGEROUS_TRUE_FIELDS = {
+    "safe_to_control",
+    "delivery_success",
+    "primary_actions_enabled",
+    "robot_control_executed",
+    "hil_pass",
+    "route_execution_success",
+    "nav2_route_execution_success",
+    "same_run_path_proven",
+}
+LOCALIZATION_PATH_MATERIAL_UNSAFE_TEXT_MARKERS = (
+    "/root",
+    "/users/",
+    "/tmp",
+    "token",
+    "secret",
+    "credential",
+    "response body",
+    "traceback",
+    "base64",
+    "password",
+    "authorization",
+    "bearer ",
+)
+CURRENT_FIELD_EVIDENCE_DANGEROUS_TRUE_FIELDS = {
+    "safe_to_control",
+    "delivery_success",
+    "primary_actions_enabled",
+    "robot_control_executed",
+    "hil_pass",
+    "connects_cloud_production",
+    "command_dispatch_enabled",
+    "manual_control_enabled",
+    "navigate_goal_enabled",
+    "keyboard_control_enabled",
+    "sends_commands",
+    "sends_motion_commands",
+    "publishes_cmd_vel",
+    "calls_base_manual",
+    "delivery_claim",
+}
+CURRENT_FIELD_EVIDENCE_UNSAFE_TEXT_MARKERS = (
+    "/root",
+    "/users/",
+    "/tmp",
+    "token",
+    "secret",
+    "credential",
+    "raw_payload",
+    "response body",
+    "traceback",
+    "base64",
+    "password",
+    "authorization",
+    "bearer ",
+    "connection string",
+)
+CLEAN_BASELINE_NAV2_PATH_ALLOWED_SCHEMAS = {
+    "refresh": "trashbot.upper_robot_api.v1.nav2_runtime_proof_refresh_result",
+    "latest": "trashbot.upper_robot_api.v1.nav2_runtime_proof_latest",
+    "status": "trashbot.upper_robot_api.v1.nav2_lifecycle_status",
+}
+CLEAN_BASELINE_NAV2_PATH_DANGEROUS_TRUE_FIELDS = {
+    "safe_to_control",
+    "delivery_success",
+    "primary_actions_enabled",
+    "robot_control_executed",
+    "route_execution_success",
+    "hil_pass",
+    "connects_cloud_production",
+    "publishes_cmd_vel",
+    "calls_base_manual",
+    "uses_base_uart",
+    "sends_motion_commands",
+    "sends_base_motion_commands",
+    "real_world_delivery_proven",
+}
+CLEAN_BASELINE_NAV2_PATH_UNSAFE_KEY_MARKERS = (
+    "token",
+    "secret",
+    "credential",
+    "raw_payload",
+    "response_body",
+    "traceback",
+    "authorization",
+    "bearer",
+    "password",
+    "canonical_path",
+    "resolved_path",
+    "configured_path",
+)
+CLEAN_BASELINE_NAV2_PATH_UNSAFE_TEXT_MARKERS = (
+    "token",
+    "secret",
+    "credential",
+    "raw_payload",
+    "base64:",
+    "traceback",
+    "response body",
+    "authorization",
+    "bearer ",
+    "password",
+    "connection string",
+)
+FIELD_OPERATOR_CONFIRMATION_DANGEROUS_TRUE_FIELDS = {
+    "safe_to_control",
+    "delivery_success",
+    "primary_actions_enabled",
+    "robot_control_executed",
+    "route_execution_success",
+    "hil_pass",
+    "connects_cloud_production",
+    "real_world_delivery_proven",
+    "live_nav2_run_proven",
+    "command_dispatch_enabled",
+    "manual_control_enabled",
+    "navigate_goal_enabled",
+    "keyboard_control_enabled",
+    "sends_motion_commands",
+    "publishes_cmd_vel",
+    "calls_base_manual",
+    "uses_base_uart",
+}
+FIELD_OPERATOR_CONFIRMATION_UNSAFE_KEY_MARKERS = (
+    "raw",
+    "body",
+    "path",
+    "root",
+    "token",
+    "url",
+    "uri",
+    "base64",
+    "traceback",
+    "secret",
+    "credential",
+    "password",
+    "authorization",
+    "bearer",
+    "response_body",
+    "endpoint",
+)
+FIELD_OPERATOR_CONFIRMATION_UNSAFE_TEXT_MARKERS = (
+    "token",
+    "secret",
+    "credential",
+    "raw_payload",
+    "base64:",
+    "traceback",
+    "response body",
+    "authorization",
+    "bearer ",
+    "password",
+    "connection string",
+)
 
 
 def utc_now() -> str:
@@ -2108,6 +2310,600 @@ def build_same_task_mission_evidence_gate(packet: dict[str, Any]) -> dict[str, A
         "delivery_success": False,
         "primary_actions_enabled": False,
         "robot_control_executed": False,
+        "route_execution_success": False,
+    }
+
+
+def same_task_route_execution_text_unsafe(value: str) -> bool:
+    # ROS topic 常以 "/" 开头，不能把它和文件系统绝对路径混淆；这里只拦截敏感路径和凭证文本。
+    lowered = value.lower()
+    if SUMMARY_UNSAFE_CREDENTIAL_URL_RE.search(value):
+        return True
+    if lowered.startswith(("/users/", "/root/", "/tmp/", "/var/", "/home/", "/private/")):
+        return True
+    if re.search(r"\b[a-z]:\\", value, re.IGNORECASE):
+        return True
+    return any(marker in lowered for marker in SAME_TASK_ROUTE_EXECUTION_MATERIAL_UNSAFE_TEXT_MARKERS)
+
+
+def collect_same_task_route_execution_material_safety_issues(
+    value: Any,
+    parent: str = "",
+) -> tuple[list[str], list[str], list[str]]:
+    # 新 packet 会消费多个上游摘要；先全树找危险 true 和敏感字段，再决定是否 fail-closed。
+    dangerous_true_fields: list[str] = []
+    unsafe_fields: list[str] = []
+    unsafe_text_fields: list[str] = []
+    if isinstance(value, dict):
+        for key, child in value.items():
+            key_text = str(key)
+            child_path = f"{parent}.{key_text}" if parent else key_text
+            key_lower = key_text.lower()
+            if key_lower in SAME_TASK_ROUTE_EXECUTION_MATERIAL_DANGEROUS_TRUE_FIELDS and child is True:
+                dangerous_true_fields.append(child_path)
+            if any(marker in key_lower for marker in SAME_TASK_ROUTE_EXECUTION_MATERIAL_UNSAFE_KEY_MARKERS):
+                unsafe_fields.append(child_path)
+            child_dangerous, child_unsafe, child_unsafe_text = collect_same_task_route_execution_material_safety_issues(
+                child,
+                child_path,
+            )
+            dangerous_true_fields.extend(child_dangerous)
+            unsafe_fields.extend(child_unsafe)
+            unsafe_text_fields.extend(child_unsafe_text)
+    elif isinstance(value, list):
+        for index, child in enumerate(value):
+            child_path = f"{parent}[{index}]" if parent else f"[{index}]"
+            child_dangerous, child_unsafe, child_unsafe_text = collect_same_task_route_execution_material_safety_issues(
+                child,
+                child_path,
+            )
+            dangerous_true_fields.extend(child_dangerous)
+            unsafe_fields.extend(child_unsafe)
+            unsafe_text_fields.extend(child_unsafe_text)
+    elif isinstance(value, str) and same_task_route_execution_text_unsafe(value):
+        unsafe_text_fields.append(parent or "text")
+    return sorted(set(dangerous_true_fields)), sorted(set(unsafe_fields)), sorted(set(unsafe_text_fields))
+
+
+def safe_route_execution_status(value: Any, *, fallback: str = "blocked_not_proven") -> str:
+    # status 是 O6/O7 的主读字段；异常或敏感文本统一降级为 blocked。
+    if not isinstance(value, str) or same_task_route_execution_text_unsafe(value):
+        return fallback
+    return value[:96]
+
+
+def safe_route_execution_ref_list(value: Any, *, limit: int = 8) -> list[str]:
+    # sample refs 只能保留短安全文本；不合规项直接丢弃，避免一个坏 ref 污染整个 packet 输出。
+    refs: list[str] = []
+    if not isinstance(value, list):
+        return refs
+    for item in value:
+        if not isinstance(item, str):
+            continue
+        if same_task_route_execution_text_unsafe(item):
+            continue
+        refs.append(item[:120])
+        if len(refs) >= limit:
+            break
+    return refs
+
+
+def safe_route_execution_reason_list(value: Any, *, limit: int = 12) -> list[str]:
+    # blocked reason 只保留机器可读原因名，不把上游错误正文或 traceback 带入摘要。
+    reasons: list[str] = []
+    if not isinstance(value, list):
+        return reasons
+    for item in value:
+        if not isinstance(item, str):
+            continue
+        if same_task_route_execution_text_unsafe(item):
+            continue
+        reasons.append(item[:120])
+        if len(reasons) >= limit:
+            break
+    return sorted(set(reasons))
+
+
+def safe_route_execution_number(value: Any) -> int | float | None:
+    # 只允许有限数值进入 material summary，避免 NaN/inf 破坏 JSON consumer。
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    if isinstance(value, float) and not math.isfinite(value):
+        return None
+    return value
+
+
+def same_task_route_execution_material_task_matched(summary: dict[str, Any], task_id: str) -> bool:
+    # 有 task_id 的 linked additive 必须对齐；没有 task_id 的本地 artifact 摘要由 field packet 兜底。
+    summary_task_id = summary.get("task_id")
+    if summary_task_id in (None, ""):
+        return True
+    return str(summary_task_id) == task_id
+
+
+def safe_route_execution_linked_summary(
+    name: str,
+    summary: dict[str, Any],
+    *,
+    task_id: str,
+    expected_schema: str,
+    expected_proof_scope: str,
+    ready_statuses: set[str],
+) -> tuple[dict[str, Any], bool, list[str], list[str], list[str]]:
+    # 每个 linked additive 只输出小而稳定的白名单摘要，完整 payload 永远停留在上游文件中。
+    if not isinstance(summary, dict) or not summary:
+        return (
+            {
+                "present": False,
+                "schema": None,
+                "proof_scope": None,
+                "status": "missing",
+                "task_id_matched": False,
+                "ready": False,
+                "blocked_reasons": [f"{name}_missing"],
+            },
+            False,
+            [],
+            [],
+            [],
+        )
+    dangerous_true_fields, unsafe_fields, unsafe_text_fields = collect_same_task_route_execution_material_safety_issues(summary)
+    task_id_matched = same_task_route_execution_material_task_matched(summary, task_id)
+    status = safe_route_execution_status(summary.get("status"))
+    schema = safe_summary_text(summary.get("schema"))
+    proof_scope = safe_summary_text(summary.get("proof_scope"))
+    ready = (
+        schema == expected_schema
+        and proof_scope == expected_proof_scope
+        and status in ready_statuses
+        and task_id_matched
+        and not dangerous_true_fields
+        and not unsafe_fields
+        and not unsafe_text_fields
+        and int(summary.get("unsafe_field_count") or 0) == 0
+        and int(summary.get("unsafe_text_field_count") or 0) == 0
+        and not summary.get("dangerous_true_fields")
+    )
+    material = {
+        "present": True,
+        "schema": schema,
+        "proof_scope": proof_scope,
+        "status": status,
+        "task_id_matched": task_id_matched,
+        "ready": ready,
+        "source": safe_summary_text(summary.get("source")),
+        "source_schema": safe_summary_text(summary.get("source_schema")),
+        "source_label": safe_summary_text(summary.get("source_label")),
+        "blocked_reasons": safe_route_execution_reason_list(summary.get("blocked_reasons")),
+    }
+    for key in (
+        "route_execution_result_ready",
+        "delivery_result_readiness_ready",
+        "operator_confirmation_readiness_ready",
+        "closure_ready",
+        "linked_nav2_goal_execution_proven",
+        "linked_delivery_result_claimed",
+        "linked_operator_confirmation_present",
+        "linked_nonzero_pose_progress_observed",
+        "nav2_goal_execution_proven",
+        "base_motion_command_nonzero_proven",
+        "delivery_result_claimed",
+        "operator_confirmation_present",
+        "nonzero_pose_progress_observed",
+        "db3_present",
+        "db3_read_ok",
+        "sqlite_schema_ok",
+    ):
+        if key in summary:
+            material[key] = bool(summary.get(key))
+    for key in (
+        "route_execution_source",
+        "linked_route_execution_source",
+        "result_status",
+        "proof_status",
+        "record_status",
+        "completed_at_utc",
+        "db3_basename",
+        "metadata_basename",
+        "command_id_ref",
+        "task_record_ref",
+        "evidence_ref",
+    ):
+        if key in summary:
+            material[key] = safe_summary_text(summary.get(key))
+    for key in (
+        "topic_count",
+        "message_count",
+        "pose_sample_count",
+        "pose_decode_ok_count",
+        "pose_decode_failed_count",
+        "displacement_m",
+        "payload_sample_count",
+        "semantic_topic_count",
+        "decoded_topic_type_count",
+        "unsupported_topic_type_count",
+        "failed_topic_type_count",
+    ):
+        number = safe_route_execution_number(summary.get(key))
+        if number is not None:
+            material[key] = number
+    if isinstance(summary.get("sample_topic_names"), list):
+        material["sample_topic_names"] = safe_route_execution_ref_list(summary.get("sample_topic_names"), limit=5)
+    if isinstance(summary.get("payload_sha256_prefix_samples"), list):
+        material["payload_sha256_prefix_samples"] = safe_route_execution_ref_list(
+            summary.get("payload_sha256_prefix_samples"),
+            limit=5,
+        )
+    return material, ready, dangerous_true_fields, unsafe_fields, unsafe_text_fields
+
+
+def safe_route_execution_artifact_summary(item: dict[str, Any]) -> dict[str, Any]:
+    # artifact 摘要只使用 same_task_field_material_packet 里已脱敏过的 basename/hash/count。
+    if not isinstance(item, dict):
+        return {
+            "present": False,
+            "status": "missing",
+            "basename": None,
+            "count": 0,
+            "sample_refs": [],
+        }
+    present = bool(item.get("present"))
+    return {
+        "present": present,
+        "status": "present_not_delivery_proof" if present else "missing",
+        "basename": safe_summary_text(item.get("basename")),
+        "size_bytes": int(item.get("size_bytes") or 0),
+        "sha256_prefix": safe_sha256_prefix(item.get("sha256_prefix")),
+        "count": int(item.get("count") or 0),
+        "sample_refs": safe_route_execution_ref_list(item.get("sample_refs")),
+        "reason": safe_summary_text(item.get("reason")),
+    }
+
+
+def add_route_execution_material_sample_ref(material_sample_refs: list[dict[str, Any]], material: str, refs: list[str]) -> None:
+    # O6/O7 需要 per-material refs 做 UI 展示；空 refs 不写，避免制造假样本。
+    safe_refs = safe_route_execution_ref_list(refs)
+    if safe_refs:
+        material_sample_refs.append({"material": material, "refs": safe_refs})
+
+
+def same_task_route_execution_live_or_field_command_evidence_present(packet: dict[str, Any]) -> bool:
+    # credit-aware packet 只认 live motion / live Nav2 日志或 live_motion_log 来源，route bag/replay 不算 live 证据。
+    motion_logs = packet.get("motion_log_summary") if isinstance(packet.get("motion_log_summary"), dict) else {}
+    route_bag_live = packet.get("route_bag_or_live_nav2_log") if isinstance(packet.get("route_bag_or_live_nav2_log"), dict) else {}
+    if bool(motion_logs.get("live_motion_evidence_present")):
+        return True
+    if bool(motion_logs.get("live_nav2_log_present")):
+        return True
+    return str(route_bag_live.get("source") or "") == "live_motion_log"
+
+
+def same_task_route_execution_delivery_or_operator_material_consumed(linked_materials: dict[str, dict[str, Any]]) -> bool:
+    # 只有 delivery_result_evidence 自身 ready，且已消费 delivery claim / operator confirmation 时才算 credit 材料。
+    delivery_material = linked_materials.get("delivery_result_evidence", {})
+    if not bool(delivery_material.get("ready")):
+        return False
+    return bool(delivery_material.get("delivery_result_claimed")) or bool(delivery_material.get("operator_confirmation_present"))
+
+
+def same_task_route_execution_credit_support_only_reason(
+    packet: dict[str, Any],
+    *,
+    same_task_id_consumed: bool,
+    route_execution_material_consumed: bool,
+    live_or_field_command_evidence_present: bool,
+    delivery_or_operator_material_consumed: bool,
+) -> str | None:
+    # route execution credit 先解释 same-task / material gate，再解释缺少 live 或 delivery/operator 的原因。
+    if route_execution_material_consumed and live_or_field_command_evidence_present and delivery_or_operator_material_consumed:
+        return None
+    if not same_task_id_consumed:
+        return "same_task_id_mismatch_or_missing"
+    if not route_execution_material_consumed:
+        return "same_task_route_execution_material_not_ready"
+    if not live_or_field_command_evidence_present:
+        return same_task_mission_gate_support_only_reason(
+            packet,
+            {"same_task_id_matched": True},
+            ready=route_execution_material_consumed,
+            live_or_field_command_executed=False,
+        )
+    if not delivery_or_operator_material_consumed:
+        return "delivery_or_operator_material_missing"
+    return "route_execution_credit_candidate_blocked"
+
+
+def build_same_task_route_execution_material_packet(packet: dict[str, Any]) -> dict[str, Any]:
+    # 该 packet 是 route execution 材料消费摘要，不是 delivery success、HIL 或 safe-to-control 证明。
+    task_id = str(packet.get("task_id") or "")
+    task_id_source = str(packet.get("task_id_source") or "field_motion_evidence_packet")
+    field_packet = (
+        packet.get("same_task_field_material_packet")
+        if isinstance(packet.get("same_task_field_material_packet"), dict)
+        else {}
+    )
+    field_material_summaries = field_packet.get("material_summaries") if isinstance(field_packet.get("material_summaries"), dict) else {}
+    route_csv_summary = safe_route_execution_artifact_summary(field_material_summaries.get("route_csv", {}))
+    keyframe_summary = safe_route_execution_artifact_summary(field_material_summaries.get("keyframes", {}))
+    route_bag_material_summary = safe_route_execution_artifact_summary(field_material_summaries.get("route_bag_or_rosbag", {}))
+    replay_summary = safe_route_execution_artifact_summary(field_material_summaries.get("replay_jsonl", {}))
+    map_yaml_summary = safe_route_execution_artifact_summary(field_material_summaries.get("map_yaml", {}))
+    linked_specs = [
+        (
+            "route_execution_result_delivery_readiness",
+            packet.get("route_execution_result_delivery_readiness"),
+            ROUTE_EXECUTION_RESULT_DELIVERY_READINESS_SCHEMA,
+            ROUTE_EXECUTION_RESULT_DELIVERY_READINESS_PROOF_SCOPE,
+            {"route_execution_result_delivery_readiness_ready_not_delivery_proof"},
+        ),
+        (
+            "route_delivery_closure_packet",
+            packet.get("route_delivery_closure_packet"),
+            ROUTE_DELIVERY_CLOSURE_PACKET_SCHEMA,
+            ROUTE_DELIVERY_CLOSURE_PACKET_PROOF_SCOPE,
+            {"route_delivery_closure_ready_not_success_proof"},
+        ),
+        (
+            "route_bag_pose_progress_replay",
+            packet.get("route_bag_pose_progress_replay"),
+            ROUTE_BAG_POSE_PROGRESS_REPLAY_SCHEMA,
+            ROUTE_BAG_POSE_PROGRESS_REPLAY_PROOF_SCOPE,
+            {"ready_not_live_nav2_proof"},
+        ),
+        (
+            "nav2_goal_execution_evidence",
+            packet.get("nav2_goal_execution_evidence"),
+            NAV2_GOAL_EXECUTION_EVIDENCE_SCHEMA,
+            NAV2_GOAL_EXECUTION_EVIDENCE_PROOF_SCOPE,
+            {"ready_not_delivery_proof"},
+        ),
+        (
+            "delivery_result_evidence",
+            packet.get("delivery_result_evidence"),
+            DELIVERY_RESULT_EVIDENCE_SCHEMA,
+            DELIVERY_RESULT_EVIDENCE_PROOF_SCOPE,
+            {"ready_not_delivery_proof"},
+        ),
+        (
+            "route_bag_evidence",
+            packet.get("route_bag_evidence"),
+            ROUTE_BAG_EVIDENCE_SCHEMA,
+            ROUTE_BAG_EVIDENCE_PROOF_SCOPE,
+            {"ready_not_route_execution_proof"},
+        ),
+        (
+            "route_bag_payload_replay",
+            packet.get("route_bag_payload_replay"),
+            ROUTE_BAG_PAYLOAD_REPLAY_SCHEMA,
+            ROUTE_BAG_PAYLOAD_REPLAY_PROOF_SCOPE,
+            {"ready_not_route_execution_proof"},
+        ),
+        (
+            "route_bag_semantic_replay",
+            packet.get("route_bag_semantic_replay"),
+            ROUTE_BAG_SEMANTIC_REPLAY_SCHEMA,
+            ROUTE_BAG_SEMANTIC_REPLAY_PROOF_SCOPE,
+            {"ready_not_route_execution_proof"},
+        ),
+        (
+            "route_bag_full_semantic_decode_matrix",
+            packet.get("route_bag_full_semantic_decode_matrix"),
+            ROUTE_BAG_FULL_SEMANTIC_DECODE_MATRIX_SCHEMA,
+            ROUTE_BAG_FULL_SEMANTIC_DECODE_MATRIX_PROOF_SCOPE,
+            {"ready_not_route_execution_proof"},
+        ),
+    ]
+    linked_materials: dict[str, dict[str, Any]] = {}
+    route_execution_material_flags: dict[str, bool] = {}
+    dangerous_true_fields: list[str] = []
+    unsafe_fields: list[str] = []
+    unsafe_text_fields: list[str] = []
+    linked_task_mismatches: list[str] = []
+    for name, value, schema, proof_scope, ready_statuses in linked_specs:
+        material, ready, dangerous, unsafe, unsafe_text = safe_route_execution_linked_summary(
+            name,
+            value if isinstance(value, dict) else {},
+            task_id=task_id,
+            expected_schema=schema,
+            expected_proof_scope=proof_scope,
+            ready_statuses=ready_statuses,
+        )
+        linked_materials[name] = material
+        route_execution_material_flags[f"{name}_consumed"] = ready
+        dangerous_true_fields.extend(f"{name}.{field}" for field in dangerous)
+        unsafe_fields.extend(f"{name}.{field}" for field in unsafe)
+        unsafe_text_fields.extend(f"{name}.{field}" for field in unsafe_text)
+        if material.get("present") and not material.get("task_id_matched"):
+            linked_task_mismatches.append(name)
+    field_dangerous, field_unsafe, field_unsafe_text = collect_same_task_route_execution_material_safety_issues(field_packet)
+    dangerous_true_fields.extend(f"same_task_field_material_packet.{field}" for field in field_dangerous)
+    unsafe_fields.extend(f"same_task_field_material_packet.{field}" for field in field_unsafe)
+    unsafe_text_fields.extend(f"same_task_field_material_packet.{field}" for field in field_unsafe_text)
+    field_packet_ready = (
+        field_packet.get("schema") == SAME_TASK_FIELD_MATERIAL_PACKET_SCHEMA
+        and field_packet.get("proof_scope") == SAME_TASK_FIELD_MATERIAL_PACKET_PROOF_SCOPE
+        and field_packet.get("status") == "ready_not_delivery_proof"
+        and field_packet.get("task_id") == task_id
+        and not field_dangerous
+        and not field_unsafe
+        and not field_unsafe_text
+        and int(field_packet.get("unsafe_field_count") or 0) == 0
+        and int(field_packet.get("unsafe_text_field_count") or 0) == 0
+        and not field_packet.get("dangerous_true_fields")
+    )
+    route_replay_jsonl_consumed = bool(replay_summary["present"])
+    route_execution_material_flags["route_replay_jsonl_consumed"] = route_replay_jsonl_consumed
+    route_execution_material_flags["route_csv_consumed"] = bool(route_csv_summary["present"])
+    route_execution_material_flags["keyframe_material_consumed"] = bool(keyframe_summary["present"])
+    route_execution_material_flags["route_bag_or_rosbag_material_consumed"] = bool(route_bag_material_summary["present"])
+    route_execution_material_flags["same_task_field_material_packet_consumed"] = field_packet_ready
+    route_execution_candidate_consumed = any(
+        route_execution_material_flags[name]
+        for name in (
+            "route_execution_result_delivery_readiness_consumed",
+            "route_delivery_closure_packet_consumed",
+            "route_bag_pose_progress_replay_consumed",
+            "nav2_goal_execution_evidence_consumed",
+            "delivery_result_evidence_consumed",
+            "route_bag_evidence_consumed",
+            "route_bag_payload_replay_consumed",
+            "route_bag_semantic_replay_consumed",
+            "route_bag_full_semantic_decode_matrix_consumed",
+            "route_replay_jsonl_consumed",
+        )
+    )
+    same_task_id_consumed = bool(task_id) and field_packet_ready and not linked_task_mismatches
+    route_execution_material_consumed = (
+        same_task_id_consumed
+        and route_execution_candidate_consumed
+        and not dangerous_true_fields
+        and not unsafe_fields
+        and not unsafe_text_fields
+    )
+    live_or_field_command_evidence_present = same_task_route_execution_live_or_field_command_evidence_present(packet)
+    delivery_or_operator_material_consumed = same_task_route_execution_delivery_or_operator_material_consumed(linked_materials)
+    route_execution_credit_candidate = (
+        route_execution_material_consumed
+        and live_or_field_command_evidence_present
+        and delivery_or_operator_material_consumed
+    )
+    credit_support_only_reason = same_task_route_execution_credit_support_only_reason(
+        packet,
+        same_task_id_consumed=same_task_id_consumed,
+        route_execution_material_consumed=route_execution_material_consumed,
+        live_or_field_command_evidence_present=live_or_field_command_evidence_present,
+        delivery_or_operator_material_consumed=delivery_or_operator_material_consumed,
+    )
+    blocked_reasons: list[str] = []
+    next_required_evidence: list[str] = []
+    if not task_id:
+        blocked_reasons.append("same_task_route_execution_material_task_id_missing")
+        next_required_evidence.append("stable_same_task_id_for_route_execution_materials")
+    if not field_packet_ready:
+        blocked_reasons.append("same_task_field_material_packet_not_ready_or_task_mismatch")
+        next_required_evidence.append("same_task_field_material_packet_ready")
+    if linked_task_mismatches:
+        blocked_reasons.append("same_task_route_execution_material_task_id_mismatch")
+        next_required_evidence.append("align_route_execution_material_task_id")
+    if not route_execution_candidate_consumed:
+        blocked_reasons.append("same_task_route_execution_material_missing")
+        next_required_evidence.extend(
+            [
+                "route_execution_result_delivery_readiness",
+                "route_bag_pose_progress_replay_or_live_nav2_log",
+                "same_task_route_replay_jsonl",
+            ]
+        )
+    if dangerous_true_fields:
+        blocked_reasons.append("same_task_route_execution_material_dangerous_true_claim")
+    if unsafe_fields:
+        blocked_reasons.append("same_task_route_execution_material_unsafe_field")
+    if unsafe_text_fields:
+        blocked_reasons.append("same_task_route_execution_material_unsafe_text")
+    if not route_replay_jsonl_consumed:
+        next_required_evidence.append("attach_same_task_route_replay_jsonl")
+    if not route_execution_material_flags["route_bag_pose_progress_replay_consumed"]:
+        next_required_evidence.append("same_task_pose_progress_replay_or_live_nav2_log")
+    if not route_execution_material_flags["nav2_goal_execution_evidence_consumed"]:
+        next_required_evidence.append("same_task_nav2_goal_execution_evidence")
+    if not route_execution_material_flags["delivery_result_evidence_consumed"]:
+        next_required_evidence.append("same_task_delivery_result_or_operator_confirmation")
+    credit_required_evidence = list(next_required_evidence)
+    if not live_or_field_command_evidence_present:
+        credit_required_evidence.append("same_task_live_motion_log_or_field_nav2_command_evidence")
+    if not delivery_or_operator_material_consumed:
+        credit_required_evidence.append("same_task_delivery_result_or_operator_confirmation")
+    material_sample_refs: list[dict[str, Any]] = []
+    add_route_execution_material_sample_ref(material_sample_refs, "route_csv", route_csv_summary.get("sample_refs", []))
+    add_route_execution_material_sample_ref(material_sample_refs, "keyframes", keyframe_summary.get("sample_refs", []))
+    add_route_execution_material_sample_ref(material_sample_refs, "route_bag_or_rosbag", route_bag_material_summary.get("sample_refs", []))
+    add_route_execution_material_sample_ref(material_sample_refs, "replay_jsonl", replay_summary.get("sample_refs", []))
+    for name, material in linked_materials.items():
+        refs: list[str] = []
+        for key in ("db3_basename", "metadata_basename", "command_id_ref", "task_record_ref", "evidence_ref"):
+            value = material.get(key)
+            if isinstance(value, str):
+                refs.append(value)
+        refs.extend(material.get("payload_sha256_prefix_samples") or [])
+        add_route_execution_material_sample_ref(material_sample_refs, name, refs)
+    flat_sample_refs = []
+    for item in material_sample_refs:
+        flat_sample_refs.extend(item.get("refs") or [])
+    ready = route_execution_material_consumed
+    return {
+        "schema": SAME_TASK_ROUTE_EXECUTION_MATERIAL_PACKET_SCHEMA,
+        "proof_scope": SAME_TASK_ROUTE_EXECUTION_MATERIAL_PACKET_PROOF_SCOPE,
+        "evidence_boundary": SAME_TASK_ROUTE_EXECUTION_MATERIAL_PACKET_PROOF_SCOPE,
+        "status": "route_execution_material_ready_not_delivery_proof" if ready else "blocked_not_proven",
+        "source": "field_motion_evidence_packet.route_execution_material_summaries",
+        "task_id": task_id,
+        "task_id_source": task_id_source,
+        "same_task_id_consumed": same_task_id_consumed,
+        "same_task_field_material_packet_status": safe_route_execution_status(field_packet.get("status")),
+        "route_execution_material_consumed": route_execution_material_consumed,
+        "live_or_field_command_evidence_present": live_or_field_command_evidence_present,
+        "delivery_or_operator_material_consumed": delivery_or_operator_material_consumed,
+        "route_execution_credit_candidate": route_execution_credit_candidate,
+        "credit_support_only_reason": credit_support_only_reason,
+        "credit_required_evidence": sorted(set(item for item in credit_required_evidence if item)),
+        "route_execution_result_status": linked_materials["route_execution_result_delivery_readiness"].get(
+            "status",
+            "blocked_not_proven",
+        ),
+        "route_delivery_closure_status": linked_materials["route_delivery_closure_packet"].get("status", "blocked_not_proven"),
+        "nav2_goal_execution_status": linked_materials["nav2_goal_execution_evidence"].get("status", "blocked_not_proven"),
+        "delivery_result_status": linked_materials["delivery_result_evidence"].get("status", "blocked_not_proven"),
+        "pose_progress_replay_status": linked_materials["route_bag_pose_progress_replay"].get("status", "blocked_not_proven"),
+        "route_bag_evidence_status": linked_materials["route_bag_evidence"].get("status", "blocked_not_proven"),
+        "route_bag_payload_replay_status": linked_materials["route_bag_payload_replay"].get("status", "blocked_not_proven"),
+        "route_bag_semantic_replay_status": linked_materials["route_bag_semantic_replay"].get("status", "blocked_not_proven"),
+        "route_bag_full_semantic_decode_matrix_status": linked_materials["route_bag_full_semantic_decode_matrix"].get(
+            "status",
+            "blocked_not_proven",
+        ),
+        "route_replay_jsonl_status": replay_summary["status"],
+        "route_bag_or_rosbag_status": route_bag_material_summary["status"],
+        "map_yaml_status": map_yaml_summary["status"],
+        "route_csv_status": route_csv_summary["status"],
+        "keyframe_material_status": keyframe_summary["status"],
+        "route_execution_material_flags": route_execution_material_flags,
+        "material_summaries": {
+            "same_task_field_material_packet": {
+                "present": bool(field_packet),
+                "status": safe_route_execution_status(field_packet.get("status")),
+                "task_id_matched": field_packet.get("task_id") == task_id,
+                "ready": field_packet_ready,
+                "present_material_count": int(field_packet.get("present_material_count") or 0),
+                "missing_material_count": int(field_packet.get("missing_material_count") or 0),
+                "blocked_reasons": safe_route_execution_reason_list(field_packet.get("blocked_reasons")),
+            },
+            "map_yaml": map_yaml_summary,
+            "route_csv": route_csv_summary,
+            "keyframes": keyframe_summary,
+            "route_bag_or_rosbag": route_bag_material_summary,
+            "replay_jsonl": replay_summary,
+            **linked_materials,
+        },
+        "material_sample_refs": material_sample_refs,
+        "sample_refs": flat_sample_refs[:8],
+        "blocked_reasons": sorted(set(reason for reason in blocked_reasons if reason)),
+        "dangerous_true_fields": sorted(set(dangerous_true_fields)),
+        "unsafe_field_count": len(set(unsafe_fields)),
+        "unsafe_text_field_count": len(set(unsafe_text_fields)),
+        "next_required_evidence": (
+            [
+                "real_live_nav2_route_execution_result",
+                "same_task_delivery_record_or_operator_confirmation",
+                "production_cloud_readback_or_field_acceptance",
+            ]
+            if ready
+            else sorted(set(item for item in next_required_evidence if item))
+        ),
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "robot_control_executed": False,
+        "hil_pass": False,
         "route_execution_success": False,
     }
 
@@ -5292,6 +6088,1769 @@ def build_field_motion_evidence_packet(
     }
 
 
+def read_current_field_evidence_summary(path: Path | None) -> dict[str, Any]:
+    # current field evidence 只接收 JSON 摘要；缺失、坏 JSON 或非对象都只能降级为 blocked。
+    if path is None:
+        return {
+            "present": False,
+            "status": "missing_current_field_evidence_json",
+            "loaded": None,
+            "blocked_reason": "missing_current_field_evidence_json",
+            "read_ok": False,
+        }
+    try:
+        loaded = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return {
+            "present": True,
+            "status": "invalid_current_field_evidence_json",
+            "loaded": None,
+            "blocked_reason": f"invalid_current_field_evidence_json:{exc}",
+            "read_ok": False,
+        }
+    if not isinstance(loaded, dict):
+        return {
+            "present": True,
+            "status": "invalid_current_field_evidence_json",
+            "loaded": None,
+            "blocked_reason": "current_field_evidence_root_not_object",
+            "read_ok": False,
+        }
+    return {
+        "present": True,
+        "status": str(loaded.get("status") or "loaded"),
+        "loaded": loaded,
+        "blocked_reason": None,
+        "read_ok": True,
+    }
+
+
+def read_localization_path_material(path: Path | None) -> dict[str, Any]:
+    # localization/path readback 只消费 O1 已验证过的安全摘要形状；缺失或坏 JSON 只能 blocked。
+    if path is None:
+        return {
+            "present": False,
+            "status": "missing_localization_path_material_json",
+            "loaded": None,
+            "blocked_reason": "localization_path_material_json_missing",
+            "read_ok": False,
+        }
+    try:
+        loaded = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return {
+            "present": True,
+            "status": "invalid_localization_path_material_json",
+            "loaded": None,
+            "blocked_reason": f"invalid_localization_path_material_json:{exc}",
+            "read_ok": False,
+        }
+    if not isinstance(loaded, dict):
+        return {
+            "present": True,
+            "status": "invalid_localization_path_material_json",
+            "loaded": None,
+            "blocked_reason": "localization_path_material_root_not_object",
+            "read_ok": False,
+        }
+    return {
+        "present": True,
+        "status": str(loaded.get("status") or "loaded"),
+        "loaded": loaded,
+        "blocked_reason": None,
+        "read_ok": True,
+    }
+
+
+def localization_path_material_endpoint_summary(summary: dict[str, Any], endpoint_id: str) -> dict[str, Any]:
+    # 只消费 allowlisted endpoint id，不把原始 endpoint/body/path 带进 additive。
+    endpoints = summary.get("read_endpoints")
+    if not isinstance(endpoints, list):
+        return {}
+    for item in endpoints:
+        if isinstance(item, dict) and item.get("id") == endpoint_id:
+            return item
+    return {}
+
+
+def localization_path_material_bool(value: Any) -> bool:
+    # 该 summary 的 bool 常被序列化成字符串，因此只接受明确 true/false。
+    if value is True:
+        return True
+    if value is False:
+        return False
+    if isinstance(value, str):
+        lowered = value.strip().lower()
+        if lowered == "true":
+            return True
+        if lowered == "false":
+            return False
+    return False
+
+
+def localization_path_material_int(value: Any) -> int | None:
+    # point count 只接受有限整数，避免把路径、URL 或布尔误当成数值。
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float) and math.isfinite(value) and value.is_integer():
+        return int(value)
+    if isinstance(value, str):
+        text = value.strip()
+        if text.isdigit() or (text.startswith("-") and text[1:].isdigit()):
+            try:
+                return int(text)
+            except ValueError:
+                return None
+    return None
+
+
+def localization_path_material_text(value: Any) -> str | None:
+    # 只保留短状态词；命中敏感 marker 的原文不进入 additive。
+    if not isinstance(value, str):
+        return None
+    text = value.strip()
+    if not text or summary_contains_unsafe_text(text):
+        return None
+    lowered = text.lower()
+    if any(marker in lowered for marker in LOCALIZATION_PATH_MATERIAL_UNSAFE_TEXT_MARKERS):
+        return None
+    return text[:160]
+
+
+def localization_path_material_dangerous_true_fields(summary: dict[str, Any]) -> list[str]:
+    # 当前 packet 只消费 localization/path readback；任何控制或成功类 true 都是危险漂移。
+    dangerous_true_fields: list[str] = []
+    for field in LOCALIZATION_PATH_MATERIAL_DANGEROUS_TRUE_FIELDS:
+        if localization_path_material_bool(summary.get(field)):
+            dangerous_true_fields.append(field)
+    endpoints = summary.get("read_endpoints")
+    if not isinstance(endpoints, list):
+        return sorted(set(dangerous_true_fields))
+    for endpoint in endpoints:
+        if not isinstance(endpoint, dict):
+            continue
+        endpoint_id = str(endpoint.get("id") or "unknown_endpoint")
+        key_values = endpoint.get("key_values") if isinstance(endpoint.get("key_values"), dict) else {}
+        for field in LOCALIZATION_PATH_MATERIAL_DANGEROUS_TRUE_FIELDS:
+            if localization_path_material_bool(key_values.get(field)):
+                dangerous_true_fields.append(f"{endpoint_id}.{field}")
+    return sorted(set(dangerous_true_fields))
+
+
+def localization_path_material_tf_summary(value: Any) -> tuple[dict[str, bool], str | None]:
+    # localization_tf_observed 允许 dict 或 JSON string；解析失败时只给 blocked reason，不回显原文。
+    if isinstance(value, dict):
+        loaded = value
+    elif isinstance(value, str):
+        if localization_path_material_text(value) is None:
+            return {}, "localization_path_localization_tf_unsafe_text"
+        try:
+            loaded = json.loads(value)
+        except json.JSONDecodeError:
+            return {}, "localization_path_localization_tf_invalid"
+        if not isinstance(loaded, dict):
+            return {}, "localization_path_localization_tf_invalid"
+    else:
+        return {}, "localization_path_localization_tf_missing"
+    return {
+        "map_to_odom": localization_path_material_bool(loaded.get("map_to_odom")),
+        "map_to_base_link": localization_path_material_bool(loaded.get("map_to_base_link")),
+    }, None
+
+
+def localization_path_material_endpoint_ready(endpoint: dict[str, Any], expected_schema: str) -> tuple[bool, list[str]]:
+    # status/http/schema 三个 gate 都必须满足；否则说明这次 readback 还不够稳定。
+    blocked_reasons: list[str] = []
+    endpoint_id = str(endpoint.get("id") or "unknown_endpoint")
+    if not endpoint:
+        blocked_reasons.append(f"localization_path_required_endpoint_missing_{endpoint_id}")
+        return False, blocked_reasons
+    if endpoint.get("http_status") != 200:
+        blocked_reasons.append(f"localization_path_endpoint_http_status_not_200_{endpoint_id}")
+    if str(endpoint.get("request_status") or "") != "loaded":
+        blocked_reasons.append(f"localization_path_endpoint_request_not_loaded_{endpoint_id}")
+    if str(endpoint.get("schema") or "") != expected_schema:
+        blocked_reasons.append(f"localization_path_endpoint_schema_mismatch_{endpoint_id}")
+    return not blocked_reasons, blocked_reasons
+
+
+def build_localization_path_material_readback_packet(
+    packet: dict[str, Any],
+    localization_path_material: dict[str, Any] | None,
+) -> dict[str, Any]:
+    # 这个 additive 只证明 same-run localization/path readback 被消费，不证明 route execution 成功。
+    task_id = str(packet.get("task_id") or "")
+    task_id_source = str(packet.get("task_id_source") or "field_motion_evidence_packet")
+    summary = localization_path_material if isinstance(localization_path_material, dict) else {}
+    summary_task_id = localization_path_material_text(summary.get("task_id"))
+    summary_status = localization_path_material_text(summary.get("status"))
+    source_schema = localization_path_material_text(summary.get("schema"))
+    status_endpoint = localization_path_material_endpoint_summary(summary, "status")
+    map_endpoint = localization_path_material_endpoint_summary(summary, "map_proof_latest")
+    localize_endpoint = localization_path_material_endpoint_summary(summary, "localize_proof_latest")
+    nav2_status_endpoint = localization_path_material_endpoint_summary(summary, "nav2_status")
+    nav2_proof_endpoint = localization_path_material_endpoint_summary(summary, "nav2_proof_latest")
+
+    blocked_reasons: list[str] = []
+    next_required_evidence: list[str] = []
+
+    if not task_id:
+        blocked_reasons.append("localization_path_material_task_id_missing")
+        next_required_evidence.append("stable_same_task_id_for_localization_path_material_readback")
+    if summary_task_id and summary_task_id != task_id:
+        blocked_reasons.append("localization_path_material_task_mismatch")
+        next_required_evidence.append("same_task_localization_path_material_summary")
+
+    if any(key.startswith("cross_run_clean_baseline_") for key in summary):
+        blocked_reasons.append("localization_path_cross_run_comparator_confusion")
+        next_required_evidence.append("cross_run_clean_baseline_must_stay_in_separate_packet")
+
+    endpoints = (
+        ("status", status_endpoint, "trashbot.upper_robot_api.v1.status"),
+        ("map_proof_latest", map_endpoint, "trashbot.upper_robot_api.v1.map_lifecycle_proof_latest"),
+        ("localize_proof_latest", localize_endpoint, "trashbot.upper_robot_api.v1.localization_proof_latest"),
+        ("nav2_status", nav2_status_endpoint, "trashbot.upper_robot_api.v1.nav2_lifecycle_status"),
+        ("nav2_proof_latest", nav2_proof_endpoint, "trashbot.upper_robot_api.v1.nav2_runtime_proof_latest"),
+    )
+    required_endpoints_ready = True
+    for endpoint_id, endpoint, expected_schema in endpoints:
+        if not endpoint:
+            blocked_reasons.append(f"localization_path_required_endpoint_missing_{endpoint_id}")
+            required_endpoints_ready = False
+            continue
+        endpoint_ready, endpoint_blocked_reasons = localization_path_material_endpoint_ready(endpoint, expected_schema)
+        if not endpoint_ready:
+            required_endpoints_ready = False
+            blocked_reasons.extend(endpoint_blocked_reasons)
+
+    dangerous_true_fields = localization_path_material_dangerous_true_fields(summary)
+    if dangerous_true_fields:
+        blocked_reasons.append("localization_path_dangerous_true_claim")
+
+    unsafe_text_fields: list[str] = []
+    for field_name, value in (
+        ("summary.status", summary.get("status")),
+        ("status.status", status_endpoint.get("status")),
+        ("map_proof_latest.status", map_endpoint.get("status")),
+        ("localize_proof_latest.status", localize_endpoint.get("status")),
+        ("nav2_status.status", nav2_status_endpoint.get("status")),
+        ("nav2_proof_latest.status", nav2_proof_endpoint.get("status")),
+        ("summary.task_id", summary.get("task_id")),
+    ):
+        if value is None:
+            continue
+        if localization_path_material_text(value) is None:
+            unsafe_text_fields.append(field_name)
+
+    status_key_values = status_endpoint.get("key_values") if isinstance(status_endpoint.get("key_values"), dict) else {}
+    map_key_values = map_endpoint.get("key_values") if isinstance(map_endpoint.get("key_values"), dict) else {}
+    localize_key_values = localize_endpoint.get("key_values") if isinstance(localize_endpoint.get("key_values"), dict) else {}
+    nav2_status_key_values = nav2_status_endpoint.get("key_values") if isinstance(nav2_status_endpoint.get("key_values"), dict) else {}
+    nav2_key_values = nav2_proof_endpoint.get("key_values") if isinstance(nav2_proof_endpoint.get("key_values"), dict) else {}
+
+    o3_summary = summary.get("o3_proof_summary") if isinstance(summary.get("o3_proof_summary"), dict) else {}
+    map_once_observed = (
+        localization_path_material_bool(status_key_values.get("map_once_observed"))
+        or localization_path_material_bool(map_key_values.get("map_once_observed"))
+        or localization_path_material_bool(o3_summary.get("map_once_observed"))
+    )
+    amcl_pose_observed = (
+        localization_path_material_bool(localize_key_values.get("amcl_pose_observed"))
+        or localization_path_material_bool(nav2_key_values.get("amcl_pose_observed"))
+        or localization_path_material_bool(o3_summary.get("amcl_pose_observed"))
+    )
+    localization_tf_observed, tf_error = localization_path_material_tf_summary(
+        localize_key_values.get("localization_tf_observed") or nav2_key_values.get("localization_tf_observed")
+    )
+    if tf_error:
+        blocked_reasons.append(tf_error)
+    planner_server_active = (
+        localization_path_material_bool(nav2_key_values.get("planner_server_active"))
+        or localization_path_material_bool(o3_summary.get("planner_server_active"))
+    )
+    path_generation_requested = (
+        localization_path_material_bool(nav2_key_values.get("path_generation_requested"))
+        or localization_path_material_bool(localize_key_values.get("path_generation_requested"))
+        or localization_path_material_bool(o3_summary.get("path_generation_requested"))
+    )
+    path_generation_succeeded = (
+        localization_path_material_bool(nav2_key_values.get("path_generation_succeeded"))
+        or localization_path_material_bool(localize_key_values.get("path_generation_succeeded"))
+        or localization_path_material_bool(o3_summary.get("path_generation_succeeded"))
+    )
+    path_generated = (
+        localization_path_material_bool(nav2_key_values.get("path_generated"))
+        or localization_path_material_bool(localize_key_values.get("path_generated"))
+        or localization_path_material_bool(o3_summary.get("path_generated"))
+    )
+    latest_path_generated = (
+        localization_path_material_bool(status_key_values.get("latest_path_generated"))
+        or localization_path_material_bool(nav2_status_key_values.get("latest_path_generated"))
+    )
+    path_point_count = (
+        localization_path_material_int(nav2_key_values.get("path_point_count"))
+        if localization_path_material_int(nav2_key_values.get("path_point_count")) is not None
+        else localization_path_material_int(localize_key_values.get("path_point_count"))
+    )
+    if path_point_count is None:
+        path_point_count = localization_path_material_int(o3_summary.get("path_point_count")) or 0
+
+    if not map_once_observed:
+        blocked_reasons.append("localization_path_map_once_not_observed")
+        next_required_evidence.append("same_run_map_once_readback")
+    if not amcl_pose_observed:
+        blocked_reasons.append("localization_path_amcl_pose_not_observed")
+        next_required_evidence.append("same_run_amcl_pose_readback")
+    if not localization_tf_observed.get("map_to_odom"):
+        blocked_reasons.append("localization_path_tf_map_to_odom_not_observed")
+        next_required_evidence.append("same_run_map_to_odom_tf_readback")
+    if not localization_tf_observed.get("map_to_base_link"):
+        blocked_reasons.append("localization_path_tf_map_to_base_link_not_observed")
+        next_required_evidence.append("same_run_map_to_base_link_tf_readback")
+    if not planner_server_active:
+        blocked_reasons.append("localization_path_planner_server_not_active")
+        next_required_evidence.append("same_run_planner_server_active_readback")
+    if not path_generation_requested:
+        blocked_reasons.append("localization_path_path_generation_not_requested")
+        next_required_evidence.append("same_run_path_generation_request_readback")
+    if path_generation_succeeded:
+        blocked_reasons.append("localization_path_same_run_path_generation_succeeded_unexpected_true")
+    if path_generated:
+        blocked_reasons.append("localization_path_same_run_path_generated_unexpected_true")
+    if latest_path_generated:
+        blocked_reasons.append("localization_path_same_run_latest_path_generated_unexpected_true")
+    if path_point_count > 0:
+        blocked_reasons.append("localization_path_same_run_path_point_count_unexpected_positive")
+    if unsafe_text_fields:
+        blocked_reasons.append("localization_path_unsafe_text")
+
+    same_run_path_proven = bool(path_generation_succeeded and path_generated and path_point_count > 0)
+    ready = bool(task_id) and required_endpoints_ready and (not summary_task_id or summary_task_id == task_id)
+    ready = (
+        ready
+        and map_once_observed
+        and amcl_pose_observed
+        and localization_tf_observed.get("map_to_odom", False)
+        and localization_tf_observed.get("map_to_base_link", False)
+        and planner_server_active
+        and path_generation_requested
+        and not same_run_path_proven
+        and not path_generation_succeeded
+        and not path_generated
+        and path_point_count == 0
+        and not dangerous_true_fields
+        and not unsafe_text_fields
+        and "localization_path_cross_run_comparator_confusion" not in blocked_reasons
+    )
+    if ready:
+        next_required_evidence = ["current_same_run_path_generation_success_or_live_route_execution_proof"]
+
+    material_summaries = {
+        "same_run_localization": {
+            "required_endpoints_ready": required_endpoints_ready,
+            "source_status": summary_status,
+            "source_schema": source_schema,
+            "map_proof_status": localization_path_material_text(map_endpoint.get("status")),
+            "localize_proof_status": localization_path_material_text(localize_endpoint.get("status")),
+            "status_readback_status": localization_path_material_text(status_endpoint.get("status")),
+            "nav2_status_readback_status": localization_path_material_text(nav2_status_endpoint.get("status")),
+            "nav2_proof_status": localization_path_material_text(nav2_proof_endpoint.get("status")),
+            "map_once_observed": map_once_observed,
+            "amcl_pose_observed": amcl_pose_observed,
+            "localization_tf_observed": localization_tf_observed,
+        },
+        "same_run_path": {
+            "planner_server_active": planner_server_active,
+            "path_generation_requested": path_generation_requested,
+            "path_generation_succeeded": path_generation_succeeded,
+            "path_generated": path_generated,
+            "latest_path_generated": latest_path_generated,
+            "path_point_count": path_point_count,
+            "same_run_path_proven": False,
+        },
+    }
+
+    return {
+        "schema": LOCALIZATION_PATH_MATERIAL_READBACK_SCHEMA,
+        "proof_scope": LOCALIZATION_PATH_MATERIAL_READBACK_PROOF_SCOPE,
+        "evidence_boundary": LOCALIZATION_PATH_MATERIAL_READBACK_PROOF_SCOPE,
+        "status": LOCALIZATION_PATH_MATERIAL_READBACK_READY_STATUS if ready else "blocked_not_proven",
+        "source": "field_motion_evidence_packet.localization_path_material_readback",
+        "source_schema": source_schema,
+        "task_id": task_id,
+        "task_id_source": task_id_source,
+        "same_run_localization_material_present": required_endpoints_ready,
+        "same_run_localization_material_consumed": required_endpoints_ready,
+        "same_run_map_once_observed": map_once_observed,
+        "same_run_amcl_pose_observed": amcl_pose_observed,
+        "same_run_localization_tf_map_to_odom": localization_tf_observed.get("map_to_odom", False),
+        "same_run_localization_tf_map_to_base_link": localization_tf_observed.get("map_to_base_link", False),
+        "same_run_planner_server_active": planner_server_active,
+        "same_run_path_generation_requested": path_generation_requested,
+        "same_run_path_generation_succeeded": False,
+        "same_run_path_generated": False,
+        "same_run_path_point_count": 0 if not ready else path_point_count,
+        "same_run_path_proven": False,
+        "cross_run_clean_baseline_path_comparator_present": False,
+        "same_run_override_allowed": False,
+        LOCALIZATION_PATH_MATERIAL_READBACK_READY_STATUS: ready,
+        "support_only_reason": "same_run_localization_path_readback_not_route_execution_proof",
+        "material_summaries": material_summaries,
+        "blocked_reasons": sorted(set(reason for reason in blocked_reasons if reason)),
+        "dangerous_true_fields": dangerous_true_fields,
+        "unsafe_text_field_count": len(set(unsafe_text_fields)),
+        "next_required_evidence": sorted(set(item for item in next_required_evidence if item)),
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "robot_control_executed": False,
+        "hil_pass": False,
+        "nav2_route_execution_success": False,
+        "route_execution_success": False,
+    }
+
+
+def current_field_evidence_endpoint_summary(summary: dict[str, Any], endpoint_id: str) -> dict[str, Any]:
+    # 只消费当前 summary 的 read_endpoints 列表，不回显 URL、path 或 body 原文。
+    endpoints = summary.get("read_endpoints")
+    if not isinstance(endpoints, list):
+        return {}
+    for item in endpoints:
+        if isinstance(item, dict) and item.get("id") == endpoint_id:
+            return item
+    return {}
+
+
+def current_field_evidence_bool(value: Any) -> bool:
+    # current summary 里有些布尔被序列化成字符串，这里只接收明确的真值或假值。
+    if value is True:
+        return True
+    if value is False:
+        return False
+    if isinstance(value, str):
+        lowered = value.strip().lower()
+        if lowered == "true":
+            return True
+        if lowered == "false":
+            return False
+    return False
+
+
+def current_field_evidence_int(value: Any) -> int | None:
+    # 只把有限整数当作可读数值，避免把 bool、字符串或路径误当成路径进度。
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float) and math.isfinite(value) and value.is_integer():
+        return int(value)
+    if isinstance(value, str):
+        text = value.strip()
+        if text.isdigit() or (text.startswith("-") and text[1:].isdigit()):
+            try:
+                return int(text)
+            except ValueError:
+                return None
+    return None
+
+
+def current_field_evidence_text(value: Any) -> str | None:
+    # 文本只保留短状态词，路径、URL、token 和 traceback 不进入 packet。
+    if not isinstance(value, str):
+        return None
+    text = value.strip()
+    if not text:
+        return None
+    lowered = text.lower()
+    if summary_contains_unsafe_text(text):
+        return None
+    if any(marker in lowered for marker in CURRENT_FIELD_EVIDENCE_UNSAFE_TEXT_MARKERS):
+        return None
+    return text[:160]
+
+
+def current_field_evidence_dangerous_true_fields(summary: dict[str, Any]) -> list[str]:
+    # 只列出当前 packet 明确不允许变成 true 的安全边界字段。
+    dangerous_true_fields: list[str] = []
+    for field in CURRENT_FIELD_EVIDENCE_DANGEROUS_TRUE_FIELDS:
+        if current_field_evidence_bool(summary.get(field)):
+            dangerous_true_fields.append(field)
+    safe_command_boundary = summary.get("safe_command_boundary")
+    if isinstance(safe_command_boundary, dict):
+        for field in ("command_dispatch_enabled", "manual_control_enabled", "navigate_goal_enabled", "keyboard_control_enabled"):
+            if current_field_evidence_bool(safe_command_boundary.get(field)):
+                dangerous_true_fields.append(f"safe_command_boundary.{field}")
+        if current_field_evidence_bool(safe_command_boundary.get("robot_control_executed")):
+            dangerous_true_fields.append("safe_command_boundary.robot_control_executed")
+    operator_summary = summary.get("operator_hil_material_summary")
+    if isinstance(operator_summary, dict) and current_field_evidence_bool(operator_summary.get("delivery_claim")):
+        dangerous_true_fields.append("operator_hil_material_summary.delivery_claim")
+    return sorted(set(dangerous_true_fields))
+
+
+def build_current_field_evidence_material_packet(packet: dict[str, Any], current_field_evidence_summary: dict[str, Any] | None) -> dict[str, Any]:
+    # current field evidence packet 只消费 camera / radar / map / Nav2 no-motion path / manual gate 的安全摘要。
+    task_id = str(packet.get("task_id") or "")
+    task_id_source = str(packet.get("task_id_source") or "field_motion_evidence_packet")
+    summary = current_field_evidence_summary if isinstance(current_field_evidence_summary, dict) else {}
+    readback_summary = summary.get("readback_summary") if isinstance(summary.get("readback_summary"), dict) else {}
+    o3_summary = summary.get("o3_proof_summary") if isinstance(summary.get("o3_proof_summary"), dict) else {}
+    operator_summary = summary.get("operator_hil_material_summary") if isinstance(summary.get("operator_hil_material_summary"), dict) else {}
+    safe_command_boundary = summary.get("safe_command_boundary") if isinstance(summary.get("safe_command_boundary"), dict) else {}
+
+    camera_health = current_field_evidence_endpoint_summary(summary, "camera_health")
+    camera_devices = current_field_evidence_endpoint_summary(summary, "camera_devices")
+    radar_status = current_field_evidence_endpoint_summary(summary, "radar_status")
+    radar_scan_proof_latest = current_field_evidence_endpoint_summary(summary, "radar_scan_proof_latest")
+    radar_raw_packet_proof_latest = current_field_evidence_endpoint_summary(summary, "radar_raw_packet_proof_latest")
+    map_proof_latest = current_field_evidence_endpoint_summary(summary, "map_proof_latest")
+    nav2_status = current_field_evidence_endpoint_summary(summary, "nav2_status")
+    nav2_proof_latest = current_field_evidence_endpoint_summary(summary, "nav2_proof_latest")
+    operator_report_latest = current_field_evidence_endpoint_summary(summary, "operator_report_latest")
+    base_status = current_field_evidence_endpoint_summary(summary, "base_status")
+    base_feedback_samples_latest = current_field_evidence_endpoint_summary(summary, "base_feedback_samples_latest")
+
+    camera_frame_observed = (
+        current_field_evidence_bool(readback_summary.get("camera", {}).get("status") == "ready")
+        and current_field_evidence_bool(camera_health.get("request_status") == "loaded")
+        and current_field_evidence_bool(camera_devices.get("request_status") == "loaded")
+    )
+    radar_scan_observed = (
+        current_field_evidence_bool(readback_summary.get("lidar", {}).get("status") not in {"fetch_failed", "not_loaded"})
+        and current_field_evidence_bool(radar_status.get("request_status") == "loaded")
+        and current_field_evidence_bool(radar_scan_proof_latest.get("request_status") == "loaded")
+    )
+    map_material_observed = current_field_evidence_bool(o3_summary.get("map_once_observed")) and current_field_evidence_bool(
+        map_proof_latest.get("request_status") == "loaded"
+    )
+    nav2_no_motion_path_generated = (
+        current_field_evidence_bool(o3_summary.get("path_generated"))
+        and current_field_evidence_int(o3_summary.get("path_point_count") or 0) is not None
+        and int(current_field_evidence_int(o3_summary.get("path_point_count")) or 0) > 0
+        and current_field_evidence_bool(nav2_status.get("request_status") == "loaded")
+        and current_field_evidence_bool(nav2_proof_latest.get("request_status") == "loaded")
+    )
+    manual_gate_blocked_expected = (
+        current_field_evidence_bool(operator_summary.get("status") == "loaded")
+        and current_field_evidence_bool(operator_summary.get("operator_present"))
+        and current_field_evidence_bool(operator_summary.get("physical_clearance"))
+        and current_field_evidence_bool(operator_summary.get("emergency_stop"))
+        and not current_field_evidence_bool(safe_command_boundary.get("command_dispatch_enabled"))
+        and not current_field_evidence_bool(safe_command_boundary.get("manual_control_enabled"))
+        and not current_field_evidence_bool(safe_command_boundary.get("navigate_goal_enabled"))
+        and not current_field_evidence_bool(safe_command_boundary.get("keyboard_control_enabled"))
+        and not current_field_evidence_bool(safe_command_boundary.get("robot_control_executed"))
+        and not current_field_evidence_bool(operator_summary.get("delivery_claim"))
+    )
+
+    material_flags = {
+        "camera_frame_observed": camera_frame_observed,
+        "radar_scan_observed": radar_scan_observed,
+        "map_material_observed": map_material_observed,
+        "nav2_no_motion_path_generated": nav2_no_motion_path_generated,
+        "manual_gate_blocked_expected": manual_gate_blocked_expected,
+    }
+    present_materials = [name for name, observed in material_flags.items() if observed]
+    missing_materials = [name for name, observed in material_flags.items() if not observed]
+
+    dangerous_true_fields = current_field_evidence_dangerous_true_fields(summary)
+    unsafe_text_fields: list[str] = []
+    for field_name, value in (
+        ("readback_summary.camera.status", readback_summary.get("camera", {}).get("status")),
+        ("readback_summary.lidar.status", readback_summary.get("lidar", {}).get("status")),
+        ("o3_proof_summary.status", o3_summary.get("status")),
+        ("operator_hil_material_summary.status", operator_summary.get("status")),
+        ("safe_command_boundary.locked_reason", safe_command_boundary.get("locked_reason")),
+    ):
+        if current_field_evidence_text(value) is None and isinstance(value, str) and value.strip():
+            unsafe_text_fields.append(field_name)
+
+    blocked_reasons: list[str] = []
+    next_required_evidence: list[str] = []
+    if not task_id:
+        blocked_reasons.append("current_field_evidence_task_id_missing")
+        next_required_evidence.append("stable_same_task_id_for_current_field_evidence")
+    if not camera_frame_observed:
+        blocked_reasons.append("current_field_camera_frame_missing")
+        next_required_evidence.append("attach_camera_frame_or_visible_content_summary")
+    if not radar_scan_observed:
+        blocked_reasons.append("current_field_radar_scan_missing")
+        next_required_evidence.append("attach_radar_scan_or_raw_packet_summary")
+    if not map_material_observed:
+        blocked_reasons.append("current_field_map_material_missing")
+        next_required_evidence.append("attach_map_readback_or_map_once_summary")
+    if not nav2_no_motion_path_generated:
+        blocked_reasons.append("current_field_nav2_no_motion_path_missing")
+        next_required_evidence.append("attach_nav2_no_motion_path_proof_summary")
+    if not manual_gate_blocked_expected:
+        blocked_reasons.append("current_field_manual_gate_not_blocked_as_expected")
+        next_required_evidence.append("attach_manual_gate_readback_summary")
+    if dangerous_true_fields:
+        blocked_reasons.append("current_field_evidence_dangerous_true_claim")
+    if unsafe_text_fields:
+        blocked_reasons.append("current_field_evidence_unsafe_text")
+
+    ready = bool(task_id) and len(present_materials) == len(material_flags) and not dangerous_true_fields and not unsafe_text_fields
+    if ready:
+        status = "current_field_evidence_ready_not_route_execution_proof"
+        next_required_evidence = ["real_current_field_evidence_route_execution_acceptance"]
+    else:
+        status = "blocked_not_proven"
+
+    material_summaries = {
+        "camera": {
+            "present": camera_frame_observed,
+            "camera_health_status": current_field_evidence_text(camera_health.get("status")),
+            "camera_devices_status": current_field_evidence_text(camera_devices.get("status")),
+            "preview_status": current_field_evidence_text(readback_summary.get("camera", {}).get("preview_status")),
+            "camera_frame_observed": camera_frame_observed,
+        },
+        "radar": {
+            "present": radar_scan_observed,
+            "radar_status": current_field_evidence_text(radar_status.get("status")),
+            "radar_scan_proof_status": current_field_evidence_text(radar_scan_proof_latest.get("status")),
+            "radar_raw_packet_proof_status": current_field_evidence_text(radar_raw_packet_proof_latest.get("status")),
+            "latest_scan_hz_average_rate_hz": o3_summary.get("latest_scan_hz_average_rate_hz") if isinstance(o3_summary.get("latest_scan_hz_average_rate_hz"), (int, float)) else None,
+            "radar_scan_observed": radar_scan_observed,
+        },
+        "map": {
+            "present": map_material_observed,
+            "map_proof_status": current_field_evidence_text(map_proof_latest.get("status")),
+            "map_once_observed": current_field_evidence_bool(o3_summary.get("map_once_observed")),
+            "map_material_observed": map_material_observed,
+        },
+        "nav2_no_motion_path": {
+            "present": nav2_no_motion_path_generated,
+            "nav2_status": current_field_evidence_text(nav2_status.get("status")),
+            "nav2_proof_status": current_field_evidence_text(nav2_proof_latest.get("status")),
+            "managed_runtime_started": current_field_evidence_bool(o3_summary.get("managed_runtime_started")),
+            "planner_server_active": current_field_evidence_bool(o3_summary.get("planner_server_active")),
+            "path_generated": current_field_evidence_bool(o3_summary.get("path_generated")),
+            "path_point_count": current_field_evidence_int(o3_summary.get("path_point_count")) or 0,
+            "nav2_no_motion_path_generated": nav2_no_motion_path_generated,
+        },
+        "manual_gate": {
+            "present": manual_gate_blocked_expected,
+            "operator_report_status": current_field_evidence_text(operator_report_latest.get("status")),
+            "base_status": current_field_evidence_text(base_status.get("status")),
+            "base_feedback_samples_status": current_field_evidence_text(base_feedback_samples_latest.get("status")),
+            "operator_present": current_field_evidence_bool(operator_summary.get("operator_present")),
+            "physical_clearance": current_field_evidence_bool(operator_summary.get("physical_clearance")),
+            "emergency_stop": current_field_evidence_bool(operator_summary.get("emergency_stop")),
+            "command_dispatch_enabled": current_field_evidence_bool(safe_command_boundary.get("command_dispatch_enabled")),
+            "manual_control_enabled": current_field_evidence_bool(safe_command_boundary.get("manual_control_enabled")),
+            "navigate_goal_enabled": current_field_evidence_bool(safe_command_boundary.get("navigate_goal_enabled")),
+            "keyboard_control_enabled": current_field_evidence_bool(safe_command_boundary.get("keyboard_control_enabled")),
+            "robot_control_executed": current_field_evidence_bool(safe_command_boundary.get("robot_control_executed")),
+            "manual_gate_blocked_expected": manual_gate_blocked_expected,
+        },
+    }
+
+    return {
+        "schema": CURRENT_FIELD_EVIDENCE_MATERIAL_SCHEMA,
+        "proof_scope": CURRENT_FIELD_EVIDENCE_MATERIAL_PROOF_SCOPE,
+        "evidence_boundary": CURRENT_FIELD_EVIDENCE_MATERIAL_PROOF_SCOPE,
+        "status": status,
+        "source": "field_motion_evidence_packet.current_field_evidence_material",
+        "task_id": task_id,
+        "task_id_source": task_id_source,
+        "present_materials": present_materials,
+        "missing_materials": missing_materials,
+        "present_material_count": len(present_materials),
+        "missing_material_count": len(missing_materials),
+        "camera_frame_observed": camera_frame_observed,
+        "radar_scan_observed": radar_scan_observed,
+        "map_material_observed": map_material_observed,
+        "nav2_no_motion_path_generated": nav2_no_motion_path_generated,
+        "manual_gate_blocked_expected": manual_gate_blocked_expected,
+        "live_or_field_material_consumed": bool(present_materials),
+        "current_field_evidence_ready_not_route_execution_proof": ready,
+        "blocked_reasons": sorted(set(reason for reason in blocked_reasons if reason)),
+        "next_required_evidence": sorted(set(item for item in next_required_evidence if item)),
+        "material_summaries": material_summaries,
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "robot_control_executed": False,
+        "hil_pass": False,
+        "connects_cloud_production": False,
+        "route_execution_success": False,
+    }
+
+
+def read_field_operator_confirmation_material(path: Path | None) -> dict[str, Any]:
+    # operator report 是准现场人工材料；读取失败也要生成稳定 blocked section 供 O6/O7 回读。
+    if path is None:
+        return {
+            "present": False,
+            "status": "missing_field_operator_confirmation_json",
+            "loaded": None,
+            "blocked_reasons": ["field_operator_confirmation_json_missing"],
+            "read_ok": False,
+        }
+    try:
+        loaded = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {
+            "present": True,
+            "status": "invalid_field_operator_confirmation_json",
+            "loaded": None,
+            "blocked_reasons": ["field_operator_confirmation_json_unreadable"],
+            "read_ok": False,
+        }
+    if not isinstance(loaded, dict):
+        return {
+            "present": True,
+            "status": "invalid_field_operator_confirmation_json",
+            "loaded": None,
+            "blocked_reasons": ["field_operator_confirmation_json_root_not_object"],
+            "read_ok": False,
+        }
+    return {
+        "present": True,
+        "status": str(loaded.get("status") or "loaded"),
+        "loaded": loaded,
+        "blocked_reasons": [],
+        "read_ok": True,
+    }
+
+
+def field_operator_confirmation_text_unsafe(value: str) -> bool:
+    # 人工报告常含备注；这里把路径、URL、token、raw/body/base64/traceback 都挡在摘要外。
+    lowered = value.lower()
+    if CLOUD_TERMINAL_URL_RE.search(value) or SUMMARY_UNSAFE_CREDENTIAL_URL_RE.search(value):
+        return True
+    if lowered.startswith(("/", "~", "/users/", "/root/", "/tmp/", "/var/", "/home/", "/private/")):
+        return True
+    if re.search(r"\b[a-z]:\\", value, re.IGNORECASE):
+        return True
+    return any(marker in lowered for marker in FIELD_OPERATOR_CONFIRMATION_UNSAFE_TEXT_MARKERS)
+
+
+def collect_field_operator_confirmation_safety_issues(value: Any, parent: str = "") -> tuple[list[str], list[str], list[str]]:
+    # 全树先审计，再白名单抽字段；命中 unsafe 时只输出计数，不回显原字段名或原文。
+    dangerous_true_fields: list[str] = []
+    unsafe_fields: list[str] = []
+    unsafe_text_fields: list[str] = []
+    if isinstance(value, dict):
+        for key, child in value.items():
+            key_text = str(key)
+            child_path = f"{parent}.{key_text}" if parent else key_text
+            key_lower = key_text.lower()
+            if key_lower in FIELD_OPERATOR_CONFIRMATION_DANGEROUS_TRUE_FIELDS and child is True:
+                dangerous_true_fields.append(child_path)
+            if any(marker in key_lower for marker in FIELD_OPERATOR_CONFIRMATION_UNSAFE_KEY_MARKERS):
+                unsafe_fields.append(child_path)
+            child_dangerous, child_unsafe, child_unsafe_text = collect_field_operator_confirmation_safety_issues(child, child_path)
+            dangerous_true_fields.extend(child_dangerous)
+            unsafe_fields.extend(child_unsafe)
+            unsafe_text_fields.extend(child_unsafe_text)
+    elif isinstance(value, list):
+        for index, child in enumerate(value):
+            child_path = f"{parent}[{index}]" if parent else f"[{index}]"
+            child_dangerous, child_unsafe, child_unsafe_text = collect_field_operator_confirmation_safety_issues(child, child_path)
+            dangerous_true_fields.extend(child_dangerous)
+            unsafe_fields.extend(child_unsafe)
+            unsafe_text_fields.extend(child_unsafe_text)
+    elif isinstance(value, str) and (summary_contains_unsafe_text(value) or field_operator_confirmation_text_unsafe(value)):
+        unsafe_text_fields.append(parent or "text")
+    return sorted(set(dangerous_true_fields)), sorted(set(unsafe_fields)), sorted(set(unsafe_text_fields))
+
+
+def safe_field_operator_confirmation_text(value: Any) -> str | None:
+    # 只保留短状态词或短逻辑标识；真实姓名、备注正文、URL/path 都不进入输出。
+    if not isinstance(value, str):
+        return None
+    text = value.strip()
+    if not text or summary_contains_unsafe_text(text) or field_operator_confirmation_text_unsafe(text):
+        return None
+    return text[:160]
+
+
+def safe_field_operator_confirmation_bool(value: Any) -> bool:
+    # operator summary 可能来自 UI JSON，兼容少量明确状态词，但不把任意非空字符串当真值。
+    if value is True:
+        return True
+    if value is False:
+        return False
+    if isinstance(value, str):
+        lowered = value.strip().lower()
+        if lowered in {"true", "yes", "present", "confirmed", "ready", "observed", "loaded", "stopped"}:
+            return True
+        if lowered in {"false", "no", "missing", "blocked", "failed", "not_ready", "not_loaded"}:
+            return False
+    return False
+
+
+def safe_field_operator_reported_at(value: Any) -> str | None:
+    # 接收带时区 ISO8601，并归一到 UTC，避免 O6/O7 因本地时区误判材料顺序。
+    text = safe_field_operator_confirmation_text(value)
+    if not text:
+        return None
+    try:
+        parsed = _dt.datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return None
+    return parsed.astimezone(_dt.timezone.utc).replace(microsecond=0).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def field_operator_confirmation_first_value(*values: Any) -> Any:
+    # 多来源字段按显式根字段优先，再回退到 nested report/confirmation。
+    for value in values:
+        if value is not None and value != "":
+            return value
+    return None
+
+
+def field_operator_confirmation_first_dict(*values: Any) -> dict[str, Any]:
+    # 输入可能是 operator_report、operator_confirmation 或 current summary 的 operator_hil_material_summary。
+    for value in values:
+        if isinstance(value, dict):
+            return value
+    return {}
+
+
+def field_operator_status_ready(status: str | None) -> bool:
+    # ready 只表示“人工材料可被消费”，不能提升成 delivery_success 或 safe_to_control。
+    if not status:
+        return False
+    lowered = status.strip().lower()
+    if any(marker in lowered for marker in ("missing", "blocked", "failed", "error", "timeout", "unreadable", "invalid", "not_loaded")):
+        return False
+    return lowered in {
+        "loaded",
+        "ready",
+        "reported",
+        "operator_report_ready",
+        "operator_present",
+        "confirmed",
+        "operator_confirmed",
+        "operator_ack",
+        "acknowledged",
+        "motion_and_stop_observed",
+        "field_operator_confirmation_ready",
+    }
+
+
+def build_field_operator_confirmation_material_packet(
+    packet: dict[str, Any],
+    field_operator_confirmation_material: dict[str, Any] | None,
+) -> dict[str, Any]:
+    # 该 additive 只证明 operator report / confirmation 被安全消费，不证明真实送达、控制或 HIL。
+    task_id = str(packet.get("task_id") or "")
+    task_id_source = str(packet.get("task_id_source") or "field_motion_evidence_packet")
+    material = field_operator_confirmation_material if isinstance(field_operator_confirmation_material, dict) else {}
+    loaded = material.get("loaded") if isinstance(material.get("loaded"), dict) else {}
+    report = field_operator_confirmation_first_dict(
+        loaded.get("operator_report"),
+        loaded.get("report"),
+        loaded.get("operator_hil_material_summary"),
+        loaded.get("summary"),
+    )
+    confirmation = field_operator_confirmation_first_dict(
+        loaded.get("operator_confirmation"),
+        loaded.get("confirmation"),
+        loaded.get("operator_result"),
+        loaded.get("latest_result"),
+    )
+
+    source_schema = safe_field_operator_confirmation_text(loaded.get("schema"))
+    source_task_id = safe_field_operator_confirmation_text(
+        field_operator_confirmation_first_value(
+            loaded.get("task_id"),
+            report.get("task_id"),
+            confirmation.get("task_id"),
+        )
+    )
+    same_task_id_consumed = bool(task_id and source_task_id and source_task_id == task_id)
+    operator_report_status = safe_field_operator_confirmation_text(
+        field_operator_confirmation_first_value(
+            loaded.get("operator_report_status"),
+            report.get("status"),
+            loaded.get("report_status"),
+            loaded.get("status"),
+        )
+    )
+    operator_confirmation_status = safe_field_operator_confirmation_text(
+        field_operator_confirmation_first_value(
+            loaded.get("operator_confirmation_status"),
+            confirmation.get("status"),
+            loaded.get("confirmation_status"),
+        )
+    )
+    operator_report_present = safe_field_operator_confirmation_bool(
+        field_operator_confirmation_first_value(loaded.get("operator_report_present"), report.get("present"), bool(report))
+    )
+    operator_confirmation_present = safe_field_operator_confirmation_bool(
+        field_operator_confirmation_first_value(loaded.get("operator_confirmation_present"), confirmation.get("present"), bool(confirmation))
+    )
+    operator_present = safe_field_operator_confirmation_bool(
+        field_operator_confirmation_first_value(loaded.get("operator_present"), report.get("operator_present"), confirmation.get("operator_present"))
+    )
+    physical_clearance_confirmed = safe_field_operator_confirmation_bool(
+        field_operator_confirmation_first_value(
+            loaded.get("physical_clearance_confirmed"),
+            loaded.get("physical_clearance"),
+            loaded.get("clearance_confirmed"),
+            report.get("physical_clearance_confirmed"),
+            report.get("physical_clearance"),
+            confirmation.get("physical_clearance_confirmed"),
+        )
+    )
+    emergency_stop_ready = safe_field_operator_confirmation_bool(
+        field_operator_confirmation_first_value(
+            loaded.get("emergency_stop_ready"),
+            loaded.get("emergency_stop"),
+            report.get("emergency_stop_ready"),
+            report.get("emergency_stop"),
+            confirmation.get("emergency_stop_ready"),
+        )
+    )
+    observed_motion = safe_field_operator_confirmation_bool(
+        field_operator_confirmation_first_value(
+            loaded.get("observed_motion"),
+            loaded.get("motion_observed"),
+            report.get("observed_motion"),
+            confirmation.get("observed_motion"),
+            confirmation.get("motion_observed"),
+        )
+    )
+    observed_stop = safe_field_operator_confirmation_bool(
+        field_operator_confirmation_first_value(
+            loaded.get("observed_stop"),
+            loaded.get("stop_observed"),
+            report.get("observed_stop"),
+            confirmation.get("observed_stop"),
+            confirmation.get("stop_observed"),
+        )
+    )
+    reported_at = safe_field_operator_reported_at(
+        field_operator_confirmation_first_value(
+            loaded.get("reported_at"),
+            loaded.get("operator_confirmed_at"),
+            loaded.get("confirmed_at"),
+            report.get("reported_at"),
+            confirmation.get("reported_at"),
+            confirmation.get("confirmed_at"),
+        )
+    )
+    operator_identity_present = safe_field_operator_confirmation_bool(loaded.get("operator_identity_present")) or bool(
+        safe_field_operator_confirmation_text(
+            field_operator_confirmation_first_value(
+                loaded.get("operator_id"),
+                loaded.get("operator_ref"),
+                loaded.get("operator_identity"),
+                loaded.get("operator_report_id"),
+                loaded.get("operator_material_id"),
+                loaded.get("report_id"),
+                report.get("operator_id"),
+                report.get("operator_ref"),
+                report.get("operator_report_id"),
+                confirmation.get("operator_id"),
+                confirmation.get("operator_ref"),
+            )
+        )
+    )
+
+    same_task_route_execution_packet = (
+        packet.get("same_task_route_execution_material_packet")
+        if isinstance(packet.get("same_task_route_execution_material_packet"), dict)
+        else {}
+    )
+    same_task_field_packet = packet.get("same_task_field_material_packet") if isinstance(packet.get("same_task_field_material_packet"), dict) else {}
+    delivery_evidence = packet.get("delivery_result_evidence") if isinstance(packet.get("delivery_result_evidence"), dict) else {}
+    linked_route_material_present = (
+        same_task_route_execution_packet.get("status") == "route_execution_material_ready_not_delivery_proof"
+        or same_task_route_execution_packet.get("route_execution_material_consumed") is True
+        or same_task_field_packet.get("status") == "ready_not_delivery_proof"
+    )
+    linked_delivery_material_present = (
+        delivery_evidence.get("status") == "ready_not_delivery_proof"
+        or same_task_route_execution_packet.get("delivery_or_operator_material_consumed") is True
+    )
+
+    dangerous_true_fields, unsafe_fields, unsafe_text_fields = collect_field_operator_confirmation_safety_issues(loaded)
+    blocked_reasons: list[str] = list(material.get("blocked_reasons") or [])
+    next_required_evidence: list[str] = []
+    if not material.get("present"):
+        next_required_evidence.append("field_operator_report_or_confirmation_json")
+    if not material.get("read_ok"):
+        next_required_evidence.append("readable_field_operator_confirmation_json_object")
+    if not task_id:
+        blocked_reasons.append("field_operator_confirmation_task_id_missing")
+        next_required_evidence.append("stable_same_task_id_for_field_operator_confirmation")
+    if not source_task_id:
+        blocked_reasons.append("field_operator_confirmation_source_task_id_missing")
+        next_required_evidence.append("operator_report_task_id")
+    elif source_task_id != task_id:
+        blocked_reasons.append("field_operator_confirmation_task_mismatch")
+        next_required_evidence.append("same_task_operator_report")
+    if not linked_route_material_present:
+        blocked_reasons.append("linked_route_material_missing")
+        next_required_evidence.append("same_task_route_execution_material_packet_ready")
+    if not operator_identity_present:
+        blocked_reasons.append("field_operator_confirmation_operator_identity_missing")
+        next_required_evidence.append("operator_identity_or_material_id")
+    if not operator_report_present:
+        blocked_reasons.append("field_operator_confirmation_report_missing")
+        next_required_evidence.append("operator_report_present")
+    if not operator_report_status:
+        blocked_reasons.append("field_operator_confirmation_report_status_missing")
+        next_required_evidence.append("operator_report_status")
+    elif not field_operator_status_ready(operator_report_status):
+        blocked_reasons.append("field_operator_confirmation_report_not_ready")
+        next_required_evidence.append("ready_operator_report_status")
+    if not operator_confirmation_present:
+        blocked_reasons.append("field_operator_confirmation_missing")
+        next_required_evidence.append("operator_confirmation_present")
+    if not operator_confirmation_status:
+        blocked_reasons.append("field_operator_confirmation_status_missing")
+        next_required_evidence.append("operator_confirmation_status")
+    elif not field_operator_status_ready(operator_confirmation_status):
+        blocked_reasons.append("field_operator_confirmation_not_confirmed")
+        next_required_evidence.append("confirmed_operator_status")
+    if not operator_present:
+        blocked_reasons.append("field_operator_not_present")
+        next_required_evidence.append("operator_present_confirmation")
+    if not physical_clearance_confirmed:
+        blocked_reasons.append("physical_clearance_not_confirmed")
+        next_required_evidence.append("physical_clearance_confirmation")
+    if not emergency_stop_ready:
+        blocked_reasons.append("emergency_stop_not_ready")
+        next_required_evidence.append("emergency_stop_ready_confirmation")
+    if not observed_motion:
+        blocked_reasons.append("observed_motion_missing")
+        next_required_evidence.append("operator_observed_motion")
+    if not observed_stop:
+        blocked_reasons.append("observed_stop_missing")
+        next_required_evidence.append("operator_observed_stop")
+    if not reported_at:
+        blocked_reasons.append("reported_at_missing_or_invalid")
+        next_required_evidence.append("operator_reported_at_with_timezone")
+    if dangerous_true_fields:
+        blocked_reasons.append("field_operator_confirmation_dangerous_true_claim")
+    if unsafe_fields:
+        blocked_reasons.append("field_operator_confirmation_unsafe_field")
+    if unsafe_text_fields:
+        blocked_reasons.append("field_operator_confirmation_unsafe_text")
+
+    ready = (
+        bool(material.get("present"))
+        and bool(material.get("read_ok"))
+        and same_task_id_consumed
+        and linked_route_material_present
+        and operator_identity_present
+        and operator_report_present
+        and field_operator_status_ready(operator_report_status)
+        and operator_confirmation_present
+        and field_operator_status_ready(operator_confirmation_status)
+        and operator_present
+        and physical_clearance_confirmed
+        and emergency_stop_ready
+        and observed_motion
+        and observed_stop
+        and bool(reported_at)
+        and not dangerous_true_fields
+        and not unsafe_fields
+        and not unsafe_text_fields
+    )
+    if ready:
+        next_required_evidence.extend(
+            [
+                "real_delivery_record_or_cloud_terminal_result",
+                "hil_acceptance_record_before_delivery_success_claim",
+            ]
+        )
+        if not linked_delivery_material_present:
+            next_required_evidence.append("same_task_delivery_result_material")
+
+    material_summaries = {
+        "operator_report": {
+            "present": operator_report_present,
+            "status": operator_report_status,
+            "source_schema": source_schema,
+            "operator_identity_present": operator_identity_present,
+        },
+        "operator_confirmation": {
+            "present": operator_confirmation_present,
+            "status": operator_confirmation_status,
+            "reported_at": reported_at,
+            "observed_motion": observed_motion,
+            "observed_stop": observed_stop,
+        },
+        "field_safety_observation": {
+            "operator_present": operator_present,
+            "physical_clearance_confirmed": physical_clearance_confirmed,
+            "emergency_stop_ready": emergency_stop_ready,
+        },
+        "linked_route_material": {
+            "present": linked_route_material_present,
+            "status": same_task_route_execution_packet.get("status") or same_task_field_packet.get("status"),
+        },
+        "linked_delivery_material": {
+            "present": linked_delivery_material_present,
+            "status": delivery_evidence.get("status"),
+        },
+    }
+
+    return {
+        "schema": FIELD_OPERATOR_CONFIRMATION_MATERIAL_SCHEMA,
+        "proof_scope": FIELD_OPERATOR_CONFIRMATION_MATERIAL_PROOF_SCOPE,
+        "evidence_boundary": FIELD_OPERATOR_CONFIRMATION_MATERIAL_PROOF_SCOPE,
+        "status": FIELD_OPERATOR_CONFIRMATION_READY_STATUS if ready else "blocked_not_proven",
+        "task_id": task_id,
+        "task_id_source": task_id_source,
+        "source": "field_operator_confirmation_json",
+        "source_schema": source_schema,
+        "operator_report_present": operator_report_present,
+        "operator_report_status": operator_report_status,
+        "operator_confirmation_present": operator_confirmation_present,
+        "operator_confirmation_status": operator_confirmation_status,
+        "operator_present": operator_present,
+        "physical_clearance_confirmed": physical_clearance_confirmed,
+        "emergency_stop_ready": emergency_stop_ready,
+        "observed_motion": observed_motion,
+        "observed_stop": observed_stop,
+        "reported_at": reported_at,
+        "same_task_id_consumed": same_task_id_consumed,
+        "linked_route_material_present": linked_route_material_present,
+        "linked_delivery_material_present": linked_delivery_material_present,
+        "operator_material_consumed": ready,
+        "operator_identity_present": operator_identity_present,
+        "support_only_reason": "field_operator_confirmation_material_not_delivery_proof",
+        "blocked_reasons": sorted(set(reason for reason in blocked_reasons if reason)),
+        "dangerous_true_fields": sorted(set(dangerous_true_fields)),
+        "unsafe_field_count": len(set(unsafe_fields)),
+        "unsafe_text_field_count": len(set(unsafe_text_fields)),
+        "next_required_evidence": sorted(set(item for item in next_required_evidence if item)),
+        "material_summaries": material_summaries,
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "robot_control_executed": False,
+        "route_execution_success": False,
+        "hil_pass": False,
+        "connects_cloud_production": False,
+    }
+
+
+def clean_baseline_nav2_path_text_unsafe(value: str) -> bool:
+    # 这类材料常带 readback 文本；这里只拦截敏感路径、凭证和 traceback，不把普通状态词误杀。
+    lowered = value.lower()
+    if SUMMARY_UNSAFE_CREDENTIAL_URL_RE.search(value):
+        return True
+    if lowered.startswith(("/users/", "/root/", "/tmp/", "/var/", "/home/", "/private/")):
+        return True
+    if re.search(r"\b[a-z]:\\", value, re.IGNORECASE):
+        return True
+    return any(marker in lowered for marker in CLEAN_BASELINE_NAV2_PATH_UNSAFE_TEXT_MARKERS)
+
+
+def collect_clean_baseline_nav2_path_safety_issues(value: Any, parent: str = "") -> tuple[list[str], list[str], list[str]]:
+    # clean-baseline additive 会消费多份上游 summary；这里先全树扫描，再决定是否 fail-closed。
+    dangerous_true_fields: list[str] = []
+    unsafe_fields: list[str] = []
+    unsafe_text_fields: list[str] = []
+    if isinstance(value, dict):
+        for key, child in value.items():
+            key_text = str(key)
+            child_path = f"{parent}.{key_text}" if parent else key_text
+            key_lower = key_text.lower()
+            if key_lower in CLEAN_BASELINE_NAV2_PATH_DANGEROUS_TRUE_FIELDS and child is True:
+                dangerous_true_fields.append(child_path)
+            if any(marker in key_lower for marker in CLEAN_BASELINE_NAV2_PATH_UNSAFE_KEY_MARKERS):
+                unsafe_fields.append(child_path)
+            child_dangerous, child_unsafe, child_unsafe_text = collect_clean_baseline_nav2_path_safety_issues(child, child_path)
+            dangerous_true_fields.extend(child_dangerous)
+            unsafe_fields.extend(child_unsafe)
+            unsafe_text_fields.extend(child_unsafe_text)
+    elif isinstance(value, list):
+        for index, child in enumerate(value):
+            child_path = f"{parent}[{index}]" if parent else f"[{index}]"
+            child_dangerous, child_unsafe, child_unsafe_text = collect_clean_baseline_nav2_path_safety_issues(child, child_path)
+            dangerous_true_fields.extend(child_dangerous)
+            unsafe_fields.extend(child_unsafe)
+            unsafe_text_fields.extend(child_unsafe_text)
+    elif isinstance(value, str) and clean_baseline_nav2_path_text_unsafe(value):
+        unsafe_text_fields.append(parent or "text")
+    return sorted(set(dangerous_true_fields)), sorted(set(unsafe_fields)), sorted(set(unsafe_text_fields))
+
+
+def safe_clean_baseline_nav2_path_text(value: Any) -> str | None:
+    # 只保留短安全文本，避免把 readback 的原始日志正文带入 O6/O7。
+    if not isinstance(value, str):
+        return None
+    text = value.strip()
+    if not text or clean_baseline_nav2_path_text_unsafe(text) or summary_contains_unsafe_text(text):
+        return None
+    return text[:160]
+
+
+def safe_clean_baseline_nav2_path_bool(value: Any) -> bool:
+    # 某些历史 summary 会把 bool 序列化成字符串；这里只接受 true/false 同义文本。
+    if value is True:
+        return True
+    if value is False:
+        return False
+    if isinstance(value, str):
+        lowered = value.strip().lower()
+        if lowered == "true":
+            return True
+        if lowered == "false":
+            return False
+    return False
+
+
+def safe_clean_baseline_nav2_path_int(value: Any) -> int | None:
+    # path 点数和计数类字段只接受有限整数，避免把路径或 bool 误进摘要。
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float) and math.isfinite(value) and value.is_integer():
+        return int(value)
+    if isinstance(value, str):
+        text = value.strip()
+        if text.isdigit() or (text.startswith("-") and text[1:].isdigit()):
+            try:
+                return int(text)
+            except ValueError:
+                return None
+    return None
+
+
+def safe_clean_baseline_nav2_path_reason_list(value: Any, *, limit: int = 8) -> list[str]:
+    # root causes / blockers 只保留机器可读短原因，不回显长日志或路径。
+    reasons: list[str] = []
+    if not isinstance(value, list):
+        return reasons
+    for item in value:
+        text = safe_clean_baseline_nav2_path_text(item)
+        if text:
+            reasons.append(text)
+        if len(reasons) >= limit:
+            break
+    return sorted(set(reasons))
+
+
+def clean_baseline_nav2_path_section_from_json(
+    loaded: dict[str, Any],
+    *,
+    kind: str,
+    source_name: str,
+) -> dict[str, Any]:
+    # 每个 section 都降成稳定白名单字段，避免上游 shape 漂移直接污染 additive 输出。
+    dangerous_true_fields, unsafe_fields, unsafe_text_fields = collect_clean_baseline_nav2_path_safety_issues(loaded)
+    schema = safe_clean_baseline_nav2_path_text(loaded.get("schema"))
+    if kind == "status":
+        latest = loaded.get("proof_latest") if isinstance(loaded.get("proof_latest"), dict) else {}
+        return {
+            "kind": kind,
+            "source_name": source_name,
+            "present": True,
+            "schema": schema,
+            "status": safe_clean_baseline_nav2_path_text(loaded.get("status")),
+            "task_id": safe_clean_baseline_nav2_path_text(loaded.get("task_id")),
+            "latest_proof_status": safe_clean_baseline_nav2_path_text(latest.get("latest_proof_status")),
+            "managed_runtime_started": safe_clean_baseline_nav2_path_bool(latest.get("latest_managed_runtime_started")),
+            "managed_runtime_cleanup_ok": safe_clean_baseline_nav2_path_bool(latest.get("latest_managed_runtime_cleanup_ok")),
+            "initialpose_published": safe_clean_baseline_nav2_path_bool(latest.get("latest_initialpose_published")),
+            "amcl_pose_observed": safe_clean_baseline_nav2_path_bool(latest.get("latest_amcl_pose_observed")),
+            "map_server_active": safe_clean_baseline_nav2_path_bool(latest.get("latest_map_server_active")),
+            "amcl_active": safe_clean_baseline_nav2_path_bool(latest.get("latest_amcl_active")),
+            "planner_server_active": safe_clean_baseline_nav2_path_bool(latest.get("latest_planner_server_active") if "latest_planner_server_active" in latest else latest.get("latest_planner_active")),
+            "path_generation_succeeded": safe_clean_baseline_nav2_path_bool(latest.get("latest_path_generation_succeeded")),
+            "path_generated": safe_clean_baseline_nav2_path_bool(latest.get("latest_path_generated")),
+            "path_point_count": safe_clean_baseline_nav2_path_int(latest.get("latest_path_point_count")),
+            "root_causes": safe_clean_baseline_nav2_path_reason_list(latest.get("latest_root_causes")),
+            "dangerous_true_fields": dangerous_true_fields,
+            "unsafe_fields": unsafe_fields,
+            "unsafe_text_fields": unsafe_text_fields,
+        }
+    return {
+        "kind": kind,
+        "source_name": source_name,
+        "present": True,
+        "schema": schema,
+        "status": safe_clean_baseline_nav2_path_text(loaded.get("status")),
+        "proof_status": safe_clean_baseline_nav2_path_text(loaded.get("proof_status") or loaded.get("proof_state") or loaded.get("latest_result_status")),
+        "task_id": safe_clean_baseline_nav2_path_text(loaded.get("task_id")),
+        "managed_runtime_started": safe_clean_baseline_nav2_path_bool(loaded.get("managed_runtime_started")),
+        "managed_runtime_cleanup_ok": safe_clean_baseline_nav2_path_bool(loaded.get("managed_runtime_cleanup_ok")),
+        "initialpose_published": safe_clean_baseline_nav2_path_bool(loaded.get("initialpose_published")),
+        "amcl_pose_observed": safe_clean_baseline_nav2_path_bool(loaded.get("amcl_pose_observed")),
+        "map_server_active": safe_clean_baseline_nav2_path_bool(loaded.get("map_server_active")),
+        "amcl_active": safe_clean_baseline_nav2_path_bool(loaded.get("amcl_active")),
+        "planner_server_active": safe_clean_baseline_nav2_path_bool(loaded.get("planner_server_active")),
+        "path_generation_requested": safe_clean_baseline_nav2_path_bool(loaded.get("path_generation_requested")),
+        "path_generation_succeeded": safe_clean_baseline_nav2_path_bool(loaded.get("path_generation_succeeded")),
+        "path_generated": safe_clean_baseline_nav2_path_bool(loaded.get("path_generated")),
+        "path_point_count": safe_clean_baseline_nav2_path_int(loaded.get("path_point_count")),
+        "root_causes": safe_clean_baseline_nav2_path_reason_list(loaded.get("root_causes")),
+        "blockers": safe_clean_baseline_nav2_path_reason_list(loaded.get("blockers")),
+        "dangerous_true_fields": dangerous_true_fields,
+        "unsafe_fields": unsafe_fields,
+        "unsafe_text_fields": unsafe_text_fields,
+    }
+
+
+def read_clean_baseline_nav2_path_json(path: Path | None, *, kind: str) -> dict[str, Any]:
+    # JSON 输入只接受 refresh/latest/status 三类已知 schema；其余一律按坏 schema fail-closed。
+    if path is None:
+        return {"present": False, "status": f"missing_{kind}_json", "loaded": None, "blocked_reason": f"missing_{kind}_json", "read_ok": False}
+    try:
+        loaded = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return {"present": True, "status": f"invalid_{kind}_json", "loaded": None, "blocked_reason": f"invalid_{kind}_json:{exc}", "read_ok": False}
+    if not isinstance(loaded, dict):
+        return {"present": True, "status": f"invalid_{kind}_json", "loaded": None, "blocked_reason": f"{kind}_root_not_object", "read_ok": False}
+    section = clean_baseline_nav2_path_section_from_json(loaded, kind=kind, source_name=path.name)
+    expected_schema = CLEAN_BASELINE_NAV2_PATH_ALLOWED_SCHEMAS[kind]
+    if section.get("schema") != expected_schema:
+        return {"present": True, "status": f"{kind}_schema_mismatch", "loaded": section, "blocked_reason": f"{kind}_schema_mismatch", "read_ok": True}
+    return {"present": True, "status": str(section.get("status") or "loaded"), "loaded": section, "blocked_reason": None, "read_ok": True}
+
+
+def read_clean_baseline_nav2_path_summary_txt(path: Path | None) -> dict[str, Any]:
+    # summary txt 只解析顶部标注的 JSON 段落；后续长 readback/log 正文全部忽略，避免泄漏 traceback。
+    if path is None:
+        return {
+            "present": False,
+            "status": "missing_nav2_success_readback_summary_txt",
+            "loaded": None,
+            "blocked_reason": "missing_nav2_success_readback_summary_txt",
+            "read_ok": False,
+        }
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        return {
+            "present": True,
+            "status": "invalid_nav2_success_readback_summary_txt",
+            "loaded": None,
+            "blocked_reason": f"invalid_nav2_success_readback_summary_txt:{exc}",
+            "read_ok": False,
+        }
+
+    def extract_json_after_heading(heading: str) -> dict[str, Any] | None:
+        marker = f"## {heading}\n"
+        if marker not in text:
+            return None
+        tail = text.split(marker, 1)[1]
+        lines = tail.splitlines()
+        collected: list[str] = []
+        depth = 0
+        started = False
+        for line in lines:
+            stripped = line.strip()
+            if not started:
+                if stripped.startswith("{"):
+                    started = True
+                else:
+                    continue
+            if started:
+                collected.append(line)
+                depth += line.count("{") - line.count("}")
+                if depth <= 0 and stripped.endswith("}"):
+                    break
+        if not collected:
+            return None
+        try:
+            parsed = json.loads("\n".join(collected))
+        except json.JSONDecodeError:
+            return None
+        return parsed if isinstance(parsed, dict) else None
+
+    latest_loaded = extract_json_after_heading("latest success summary")
+    status_loaded = extract_json_after_heading("status success summary")
+    latest = clean_baseline_nav2_path_section_from_json(latest_loaded, kind="latest", source_name=path.name) if isinstance(latest_loaded, dict) else None
+    status = clean_baseline_nav2_path_section_from_json(status_loaded, kind="status", source_name=path.name) if isinstance(status_loaded, dict) else None
+    blocked_reasons: list[str] = []
+    if latest and latest.get("schema") != CLEAN_BASELINE_NAV2_PATH_ALLOWED_SCHEMAS["latest"]:
+        blocked_reasons.append("latest_schema_mismatch")
+    if status and status.get("schema") != CLEAN_BASELINE_NAV2_PATH_ALLOWED_SCHEMAS["status"]:
+        blocked_reasons.append("status_schema_mismatch")
+    return {
+        "present": True,
+        "status": "loaded" if latest or status else "missing_json_sections",
+        "loaded": {"latest": latest, "status": status},
+        "blocked_reason": ",".join(blocked_reasons) if blocked_reasons else ("missing_json_sections" if not (latest or status) else None),
+        "read_ok": bool(latest or status),
+    }
+
+
+def clean_baseline_nav2_path_cleanup_readback_clean(path: Path | None) -> tuple[bool, bool]:
+    # cleanup log 只看“是否还有残留进程/串口占用”这一个结论，不把设备名或绝对路径回传给上层。
+    if path is None or not path.is_file():
+        return False, False
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return False, False
+    lowered = text.lower()
+    if "traceback" in lowered or "response body" in lowered or "token" in lowered or "base64:" in lowered:
+        return True, False
+    clean_markers = [
+        "matched_before_cleanup: empty",
+        "## target ps\n",
+        "## exact target ps after cleanup\n",
+        "## ros2 node list after cleanup\n",
+        "-- /dev/ttys5 lsof --",
+        "-- /dev/ttyacm0 lsof --",
+    ]
+    return True, all(marker.lower() in lowered for marker in clean_markers)
+
+
+def read_clean_baseline_nav2_path_material(path: Path | None) -> dict[str, Any]:
+    # 单 CLI 参数会自动归并同目录 refresh/retry/latest/status/cleanup siblings，兼容 2026-06-11 的 artifact 形状。
+    if path is None:
+        return {
+            "present": False,
+            "status": "missing_clean_baseline_nav2_path_json",
+            "sections": {},
+            "sample_refs": [],
+            "blocked_reasons": ["clean_baseline_nav2_path_json_missing"],
+            "read_ok": False,
+        }
+    resolved = path.expanduser()
+    parent = resolved.parent
+    suffix = resolved.suffix.lower()
+    sections: dict[str, Any] = {}
+    blocked_reasons: list[str] = []
+    sample_refs: list[str] = []
+
+    refresh_path = parent / "nav2_refresh_summary.json"
+    retry_path = parent / "nav2_retry_summary.json"
+    latest_path = parent / "nav2_latest_after_success.json"
+    status_path = parent / "nav2_status_after_success.json"
+    txt_path = parent / "nav2_success_readback_summary.txt"
+    cleanup_paths = [
+        parent / "between_retry_cleanup_readback.log",
+        parent / "post_success_cleanup_readback.log",
+    ]
+
+    if suffix == ".txt":
+        txt_summary = read_clean_baseline_nav2_path_summary_txt(resolved)
+        if txt_summary.get("read_ok"):
+            loaded = txt_summary.get("loaded") or {}
+            if isinstance(loaded.get("latest"), dict):
+                sections["latest"] = loaded["latest"]
+            if isinstance(loaded.get("status"), dict):
+                sections["status"] = loaded["status"]
+        else:
+            blocked_reasons.append(str(txt_summary.get("blocked_reason") or "clean_baseline_nav2_path_summary_txt_unreadable"))
+        sample_refs.append(resolved.name)
+    else:
+        try:
+            raw_loaded = json.loads(resolved.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            return {
+                "present": True,
+                "status": "invalid_clean_baseline_nav2_path_json",
+                "sections": {},
+                "sample_refs": [],
+                "blocked_reasons": [f"invalid_clean_baseline_nav2_path_json:{exc}"],
+                "read_ok": False,
+            }
+        if not isinstance(raw_loaded, dict):
+            return {
+                "present": True,
+                "status": "invalid_clean_baseline_nav2_path_json",
+                "sections": {},
+                "sample_refs": [],
+                "blocked_reasons": ["clean_baseline_nav2_path_root_not_object"],
+                "read_ok": False,
+            }
+        schema = str(raw_loaded.get("schema") or "")
+        kind = next((name for name, expected in CLEAN_BASELINE_NAV2_PATH_ALLOWED_SCHEMAS.items() if schema == expected), None)
+        if kind is None:
+            return {
+                "present": True,
+                "status": "clean_baseline_nav2_path_schema_mismatch",
+                "sections": {},
+                "sample_refs": [resolved.name],
+                "blocked_reasons": ["clean_baseline_nav2_path_schema_mismatch"],
+                "read_ok": False,
+            }
+        result = read_clean_baseline_nav2_path_json(resolved, kind=kind)
+        if result.get("read_ok") and isinstance(result.get("loaded"), dict):
+            sections[kind] = result["loaded"]
+        else:
+            blocked_reasons.append(str(result.get("blocked_reason") or f"clean_baseline_nav2_path_{kind}_unreadable"))
+        sample_refs.append(resolved.name)
+
+    for kind, candidate in (("refresh", refresh_path), ("retry", retry_path), ("latest", latest_path), ("status", status_path)):
+        if candidate == resolved or kind in sections or not candidate.is_file():
+            continue
+        source_kind = "refresh" if kind == "retry" else kind
+        result = read_clean_baseline_nav2_path_json(candidate, kind=source_kind)
+        if result.get("read_ok") and isinstance(result.get("loaded"), dict):
+            sections[kind] = result["loaded"]
+            sample_refs.append(candidate.name)
+        elif candidate.name not in sample_refs:
+            sample_refs.append(candidate.name)
+
+    if txt_path.is_file() and txt_path != resolved:
+        txt_summary = read_clean_baseline_nav2_path_summary_txt(txt_path)
+        if txt_summary.get("read_ok"):
+            loaded = txt_summary.get("loaded") or {}
+            if "latest" not in sections and isinstance(loaded.get("latest"), dict):
+                sections["latest"] = loaded["latest"]
+            if "status" not in sections and isinstance(loaded.get("status"), dict):
+                sections["status"] = loaded["status"]
+        sample_refs.append(txt_path.name)
+
+    cleanup_readback_seen = False
+    cleanup_readback_clean = False
+    cleanup_seen_names: list[str] = []
+    for cleanup_path in cleanup_paths:
+        seen, clean = clean_baseline_nav2_path_cleanup_readback_clean(cleanup_path)
+        if seen:
+            cleanup_readback_seen = True
+            cleanup_readback_clean = cleanup_readback_clean or clean
+            cleanup_seen_names.append(cleanup_path.name)
+    sample_refs.extend(cleanup_seen_names)
+
+    return {
+        "present": True,
+        "status": "loaded" if sections else "blocked_not_proven",
+        "sections": sections,
+        "sample_refs": sorted(set(sample_refs)),
+        "cleanup_readback_seen": cleanup_readback_seen,
+        "cleanup_readback_clean": cleanup_readback_clean,
+        "blocked_reasons": sorted(set(reason for reason in blocked_reasons if reason)),
+        "read_ok": bool(sections),
+    }
+
+
+def build_clean_baseline_nav2_path_material_packet(packet: dict[str, Any], clean_baseline_nav2_path_material: dict[str, Any] | None) -> dict[str, Any]:
+    # clean-baseline Nav2 additive 只证明 no-motion path material 被安全消费，不证明 live route execution 或控制开启。
+    task_id = str(packet.get("task_id") or "")
+    task_id_source = str(packet.get("task_id_source") or "field_motion_evidence_packet")
+    material = clean_baseline_nav2_path_material if isinstance(clean_baseline_nav2_path_material, dict) else {}
+    sections = material.get("sections") if isinstance(material.get("sections"), dict) else {}
+    refresh = sections.get("refresh") if isinstance(sections.get("refresh"), dict) else {}
+    retry = sections.get("retry") if isinstance(sections.get("retry"), dict) else {}
+    latest = sections.get("latest") if isinstance(sections.get("latest"), dict) else {}
+    status_summary = sections.get("status") if isinstance(sections.get("status"), dict) else {}
+
+    dangerous_true_fields: list[str] = []
+    unsafe_field_count = 0
+    unsafe_text_field_count = 0
+    task_ids = {task_id}
+    for section_name, section in (("refresh", refresh), ("retry", retry), ("latest", latest), ("status", status_summary)):
+        if not section:
+            continue
+        dangerous_true_fields.extend(f"{section_name}.{field}" for field in section.get("dangerous_true_fields", []))
+        unsafe_field_count += len(section.get("unsafe_fields", []))
+        unsafe_text_field_count += len(section.get("unsafe_text_fields", []))
+        section_task_id = section.get("task_id")
+        if isinstance(section_task_id, str) and section_task_id.strip():
+            task_ids.add(section_task_id.strip())
+
+    task_match = len(task_ids) <= 1
+    first_failure_status = safe_clean_baseline_nav2_path_text(refresh.get("status"))
+    retry_status = safe_clean_baseline_nav2_path_text(retry.get("proof_status") or retry.get("status"))
+    path_generation_succeeded = (
+        safe_clean_baseline_nav2_path_bool(retry.get("path_generation_succeeded"))
+        or safe_clean_baseline_nav2_path_bool(status_summary.get("path_generation_succeeded"))
+        or safe_clean_baseline_nav2_path_bool(latest.get("path_generation_succeeded"))
+    )
+    path_generated = (
+        safe_clean_baseline_nav2_path_bool(retry.get("path_generated"))
+        or safe_clean_baseline_nav2_path_bool(status_summary.get("path_generated"))
+        or safe_clean_baseline_nav2_path_bool(latest.get("path_generated"))
+    )
+    path_point_count = (
+        safe_clean_baseline_nav2_path_int(retry.get("path_point_count"))
+        or safe_clean_baseline_nav2_path_int(status_summary.get("path_point_count"))
+        or safe_clean_baseline_nav2_path_int(latest.get("path_point_count"))
+        or 0
+    )
+    planner_server_active = (
+        safe_clean_baseline_nav2_path_bool(retry.get("planner_server_active"))
+        or safe_clean_baseline_nav2_path_bool(status_summary.get("planner_server_active"))
+        or safe_clean_baseline_nav2_path_bool(latest.get("planner_server_active"))
+    )
+    managed_runtime_started = (
+        safe_clean_baseline_nav2_path_bool(retry.get("managed_runtime_started"))
+        or safe_clean_baseline_nav2_path_bool(status_summary.get("managed_runtime_started"))
+        or safe_clean_baseline_nav2_path_bool(latest.get("managed_runtime_started"))
+    )
+    managed_runtime_cleanup_ok = (
+        safe_clean_baseline_nav2_path_bool(retry.get("managed_runtime_cleanup_ok"))
+        or safe_clean_baseline_nav2_path_bool(status_summary.get("managed_runtime_cleanup_ok"))
+        or safe_clean_baseline_nav2_path_bool(latest.get("managed_runtime_cleanup_ok"))
+    )
+    initialpose_published = (
+        safe_clean_baseline_nav2_path_bool(retry.get("initialpose_published"))
+        or safe_clean_baseline_nav2_path_bool(status_summary.get("initialpose_published"))
+        or safe_clean_baseline_nav2_path_bool(latest.get("initialpose_published"))
+    )
+    amcl_pose_observed = (
+        safe_clean_baseline_nav2_path_bool(retry.get("amcl_pose_observed"))
+        or safe_clean_baseline_nav2_path_bool(status_summary.get("amcl_pose_observed"))
+        or safe_clean_baseline_nav2_path_bool(latest.get("amcl_pose_observed"))
+    )
+    map_server_active = (
+        safe_clean_baseline_nav2_path_bool(retry.get("map_server_active"))
+        or safe_clean_baseline_nav2_path_bool(status_summary.get("map_server_active"))
+        or safe_clean_baseline_nav2_path_bool(latest.get("map_server_active"))
+    )
+    amcl_active = (
+        safe_clean_baseline_nav2_path_bool(retry.get("amcl_active"))
+        or safe_clean_baseline_nav2_path_bool(status_summary.get("amcl_active"))
+        or safe_clean_baseline_nav2_path_bool(latest.get("amcl_active"))
+    )
+    cleanup_readback_clean = bool(material.get("cleanup_readback_clean"))
+
+    blocked_reasons: list[str] = list(material.get("blocked_reasons") or [])
+    next_required_evidence: list[str] = []
+    if not task_id:
+        blocked_reasons.append("clean_baseline_nav2_path_material_task_id_missing")
+        next_required_evidence.append("stable_same_task_id_for_clean_baseline_nav2_path_material")
+    if not refresh:
+        blocked_reasons.append("clean_baseline_nav2_path_material_first_failure_missing")
+        next_required_evidence.append("attach_clean_baseline_nav2_first_failure_summary")
+    elif refresh.get("schema") != CLEAN_BASELINE_NAV2_PATH_ALLOWED_SCHEMAS["refresh"]:
+        blocked_reasons.append("clean_baseline_nav2_path_material_refresh_schema_mismatch")
+    if not retry:
+        blocked_reasons.append("clean_baseline_nav2_path_material_retry_summary_missing")
+        next_required_evidence.append("attach_clean_baseline_nav2_retry_summary")
+    elif retry.get("schema") != CLEAN_BASELINE_NAV2_PATH_ALLOWED_SCHEMAS["refresh"]:
+        blocked_reasons.append("clean_baseline_nav2_path_material_retry_schema_mismatch")
+    if not (latest or status_summary):
+        blocked_reasons.append("clean_baseline_nav2_path_material_readback_summary_missing")
+        next_required_evidence.append("attach_clean_baseline_nav2_latest_or_status_summary")
+    if not task_match:
+        blocked_reasons.append("clean_baseline_nav2_path_material_task_mismatch")
+    if not first_failure_status or first_failure_status == "refreshed":
+        blocked_reasons.append("clean_baseline_nav2_path_material_first_failure_not_observed")
+    if not path_generation_succeeded or not path_generated or path_point_count <= 0:
+        blocked_reasons.append("clean_baseline_nav2_path_material_retry_success_missing")
+        next_required_evidence.append("clean_baseline_nav2_retry_success_with_path_points")
+    if not planner_server_active:
+        blocked_reasons.append("clean_baseline_nav2_path_material_planner_not_ready")
+        next_required_evidence.append("clean_baseline_nav2_planner_server_active_summary")
+    if not initialpose_published:
+        blocked_reasons.append("clean_baseline_nav2_path_material_initialpose_missing")
+        next_required_evidence.append("clean_baseline_nav2_initialpose_summary")
+    if not amcl_pose_observed:
+        blocked_reasons.append("clean_baseline_nav2_path_material_amcl_pose_missing")
+        next_required_evidence.append("clean_baseline_nav2_amcl_pose_summary")
+    if not map_server_active:
+        blocked_reasons.append("clean_baseline_nav2_path_material_map_server_missing")
+        next_required_evidence.append("clean_baseline_nav2_map_server_summary")
+    if not amcl_active:
+        blocked_reasons.append("clean_baseline_nav2_path_material_amcl_inactive")
+        next_required_evidence.append("clean_baseline_nav2_amcl_active_summary")
+    if not managed_runtime_started:
+        blocked_reasons.append("clean_baseline_nav2_path_material_runtime_not_started")
+        next_required_evidence.append("clean_baseline_nav2_managed_runtime_started_summary")
+    if not cleanup_readback_clean and not managed_runtime_cleanup_ok:
+        blocked_reasons.append("clean_baseline_nav2_path_material_cleanup_not_clean")
+        next_required_evidence.append("clean_baseline_nav2_cleanup_readback_without_residual_process_or_device")
+    if dangerous_true_fields:
+        blocked_reasons.append("clean_baseline_nav2_path_material_dangerous_true_claim")
+    if unsafe_field_count:
+        blocked_reasons.append("clean_baseline_nav2_path_material_unsafe_field")
+    if unsafe_text_field_count:
+        blocked_reasons.append("clean_baseline_nav2_path_material_unsafe_text")
+
+    material_sample_refs: list[dict[str, Any]] = []
+    add_route_execution_material_sample_ref(material_sample_refs, "clean_baseline_nav2_path_artifacts", list(material.get("sample_refs") or []))
+
+    ready = (
+        bool(task_id)
+        and task_match
+        and bool(refresh)
+        and bool(retry)
+        and bool(latest or status_summary)
+        and bool(first_failure_status)
+        and first_failure_status != "refreshed"
+        and path_generation_succeeded
+        and path_generated
+        and path_point_count > 0
+        and planner_server_active
+        and initialpose_published
+        and amcl_pose_observed
+        and map_server_active
+        and amcl_active
+        and managed_runtime_started
+        and (cleanup_readback_clean or managed_runtime_cleanup_ok)
+        and not dangerous_true_fields
+        and unsafe_field_count == 0
+        and unsafe_text_field_count == 0
+    )
+
+    return {
+        "schema": CLEAN_BASELINE_NAV2_PATH_MATERIAL_SCHEMA,
+        "proof_scope": CLEAN_BASELINE_NAV2_PATH_MATERIAL_PROOF_SCOPE,
+        "evidence_boundary": CLEAN_BASELINE_NAV2_PATH_MATERIAL_PROOF_SCOPE,
+        "status": "clean_baseline_nav2_path_material_ready_not_route_execution_proof" if ready else "blocked_not_proven",
+        "source": "field_motion_evidence_packet.clean_baseline_nav2_path_material",
+        "task_id": task_id,
+        "task_id_source": task_id_source,
+        "clean_baseline_nav2_path_material_ready_not_route_execution_proof": ready,
+        "first_attempt_status": first_failure_status,
+        "retry_status": retry_status,
+        "retry_success": path_generation_succeeded and path_generated and path_point_count > 0,
+        "path_generation_succeeded": path_generation_succeeded,
+        "path_generated": path_generated,
+        "path_point_count": path_point_count,
+        "planner_server_active": planner_server_active,
+        "managed_runtime_started": managed_runtime_started,
+        "managed_runtime_cleanup_ok": managed_runtime_cleanup_ok,
+        "initialpose_published": initialpose_published,
+        "amcl_pose_observed": amcl_pose_observed,
+        "map_server_active": map_server_active,
+        "amcl_active": amcl_active,
+        "cleanup_readback_clean": cleanup_readback_clean or managed_runtime_cleanup_ok,
+        "first_failure": {
+            "status": first_failure_status,
+            "proof_status": safe_clean_baseline_nav2_path_text(refresh.get("proof_status")),
+            "planner_server_active": safe_clean_baseline_nav2_path_bool(refresh.get("planner_server_active")),
+            "path_generation_requested": safe_clean_baseline_nav2_path_bool(refresh.get("path_generation_requested")),
+            "path_generation_succeeded": safe_clean_baseline_nav2_path_bool(refresh.get("path_generation_succeeded")),
+            "path_generated": safe_clean_baseline_nav2_path_bool(refresh.get("path_generated")),
+            "path_point_count": safe_clean_baseline_nav2_path_int(refresh.get("path_point_count")) or 0,
+            "root_causes": list(refresh.get("root_causes") or []),
+            "blockers": list(refresh.get("blockers") or []),
+        },
+        "retry_success_summary": {
+            "status": safe_clean_baseline_nav2_path_text(retry.get("status")),
+            "proof_status": retry_status,
+            "planner_server_active": safe_clean_baseline_nav2_path_bool(retry.get("planner_server_active")),
+            "path_generation_succeeded": safe_clean_baseline_nav2_path_bool(retry.get("path_generation_succeeded")),
+            "path_generated": safe_clean_baseline_nav2_path_bool(retry.get("path_generated")),
+            "path_point_count": safe_clean_baseline_nav2_path_int(retry.get("path_point_count")) or 0,
+        },
+        "material_sample_refs": material_sample_refs,
+        "live_or_field_material_consumed": bool(material_sample_refs),
+        "blocked_reasons": sorted(set(reason for reason in blocked_reasons if reason)),
+        "dangerous_true_fields": sorted(set(dangerous_true_fields)),
+        "unsafe_field_count": unsafe_field_count,
+        "unsafe_text_field_count": unsafe_text_field_count,
+        "next_required_evidence": sorted(
+            set(
+                next_required_evidence
+                + (["real_live_nav2_route_execution_after_clean_baseline_path_material"] if ready else [])
+            )
+        ),
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "robot_control_executed": False,
+        "hil_pass": False,
+        "connects_cloud_production": False,
+        "route_execution_success": False,
+    }
+
+
 def read_preflight(path: Path | None) -> dict[str, Any]:
     # preflight 缺失也必须 fail closed；不能因为 artifact 完整就跳过现场 ready 条件。
     if path is None:
@@ -5429,6 +7988,10 @@ def build_manifest(
     input_manifest: dict[str, Any] | None = None,
     derived_replay: dict[str, Any] | None = None,
     source_manifest: dict[str, Any] | None = None,
+    localization_path_material: dict[str, Any] | None = None,
+    current_field_evidence_summary: dict[str, Any] | None = None,
+    clean_baseline_nav2_path_material: dict[str, Any] | None = None,
+    field_operator_confirmation_material: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     input_manifest = input_manifest or {
         "present": False,
@@ -5480,6 +8043,16 @@ def build_manifest(
     packet["route_delivery_closure_packet"] = route_delivery_closure_packet
     same_task_field_material_packet = build_same_task_field_material_packet(packet, artifacts, source_manifest)
     packet["same_task_field_material_packet"] = same_task_field_material_packet
+    same_task_route_execution_material_packet = build_same_task_route_execution_material_packet(packet)
+    packet["same_task_route_execution_material_packet"] = same_task_route_execution_material_packet
+    localization_path_material_readback = build_localization_path_material_readback_packet(packet, localization_path_material)
+    packet["localization_path_material_readback"] = localization_path_material_readback
+    current_field_evidence_material = build_current_field_evidence_material_packet(packet, current_field_evidence_summary)
+    packet["current_field_evidence_material"] = current_field_evidence_material
+    clean_baseline_nav2_path_packet = build_clean_baseline_nav2_path_material_packet(packet, clean_baseline_nav2_path_material)
+    packet["clean_baseline_nav2_path_material"] = clean_baseline_nav2_path_packet
+    field_operator_confirmation_packet = build_field_operator_confirmation_material_packet(packet, field_operator_confirmation_material)
+    packet["field_operator_confirmation_material"] = field_operator_confirmation_packet
     same_task_mission_evidence_gate = build_same_task_mission_evidence_gate(packet)
     packet["same_task_mission_evidence_gate"] = same_task_mission_evidence_gate
     return {
@@ -5509,6 +8082,11 @@ def build_manifest(
         "route_execution_result_delivery_readiness": route_execution_result_delivery_readiness,
         "route_delivery_closure_packet": route_delivery_closure_packet,
         "same_task_field_material_packet": same_task_field_material_packet,
+        "same_task_route_execution_material_packet": same_task_route_execution_material_packet,
+        "localization_path_material_readback": localization_path_material_readback,
+        "current_field_evidence_material": current_field_evidence_material,
+        "clean_baseline_nav2_path_material": clean_baseline_nav2_path_packet,
+        "field_operator_confirmation_material": field_operator_confirmation_packet,
         "same_task_mission_evidence_gate": same_task_mission_evidence_gate,
         "manifest_gate": manifest_gate,
         "status": status,
@@ -5603,6 +8181,10 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--map-yaml", help="Explicit map YAML path when route artifacts and map artifacts are stored in separate directories.")
     parser.add_argument("--map-pgm", help="Explicit map PGM path when route artifacts and map artifacts are stored in separate directories.")
     parser.add_argument("--preflight-json")
+    parser.add_argument("--localization-path-material-json", help="Optional same-run localization/path readback summary JSON; only allowlisted fields are consumed into localization_path_material_readback.")
+    parser.add_argument("--current-field-evidence-json", help="Optional current field evidence summary JSON; only safe summary fields are consumed into a current-field evidence packet.")
+    parser.add_argument("--clean-baseline-nav2-path-json", help="Optional clean-baseline Nav2 path summary/latest/status input; the tool safely consumes same-dir refresh/retry/readback siblings into clean_baseline_nav2_path_material.")
+    parser.add_argument("--field-operator-confirmation-json", help="Optional operator report/latest result or quasi-field summary JSON; only whitelisted operator confirmation fields are consumed.")
     parser.add_argument("--motion-log-root", help="Remote capture directory used to summarize live field motion evidence without claiming delivery success.")
     parser.add_argument("--derive-replay-jsonl", help="Derive a replay JSONL from route.csv without enabling control or delivery claims.")
     parser.add_argument("--nav2-goal-proof-json", help="Optional O11 Nav2 goal execution proof JSON; only safe whitelist fields are summarized.")
@@ -5632,6 +8214,18 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv if argv is not None else sys.argv[1:])
     preflight = read_preflight(Path(args.preflight_json).expanduser() if args.preflight_json else None)
+    localization_path_material = read_localization_path_material(
+        Path(args.localization_path_material_json).expanduser() if args.localization_path_material_json else None
+    )
+    current_field_evidence_summary = read_current_field_evidence_summary(
+        Path(args.current_field_evidence_json).expanduser() if args.current_field_evidence_json else None
+    )
+    clean_baseline_nav2_path_material = read_clean_baseline_nav2_path_material(
+        Path(args.clean_baseline_nav2_path_json).expanduser() if args.clean_baseline_nav2_path_json else None
+    )
+    field_operator_confirmation_material = read_field_operator_confirmation_material(
+        Path(args.field_operator_confirmation_json).expanduser() if args.field_operator_confirmation_json else None
+    )
     ssh_status = None
     ssh_result = None
     derived_replay = None
@@ -5661,7 +8255,19 @@ def main(argv: list[str] | None = None) -> int:
         input_manifest = existing_manifest_summary(artifact_root, Path(args.output).expanduser())
         source_manifest = source_manifest_summary(artifacts.get("source_manifest", {}))
     apply_route_root_seed_semantics(args, artifacts, derived_replay)
-    manifest = build_manifest(args, artifacts, preflight, ssh_status, input_manifest, derived_replay, source_manifest)
+    manifest = build_manifest(
+        args,
+        artifacts,
+        preflight,
+        ssh_status,
+        input_manifest,
+        derived_replay,
+        source_manifest,
+        localization_path_material.get("loaded") if isinstance(localization_path_material, dict) else None,
+        current_field_evidence_summary.get("loaded") if isinstance(current_field_evidence_summary, dict) else None,
+        clean_baseline_nav2_path_material if isinstance(clean_baseline_nav2_path_material, dict) else None,
+        field_operator_confirmation_material if isinstance(field_operator_confirmation_material, dict) else None,
+    )
     if ssh_result is not None:
         manifest["ssh_scan"] = ssh_result
     write_manifest(manifest, Path(args.output))

@@ -24,6 +24,8 @@
 - `--nav2-goal-proof-json <o11_nav2_goal_execution_proof.json>`：可选接入 O11 NavigateToPose 执行 proof JSON，生成 additive `nav2_goal_execution_evidence` 安全摘要，并同时写入 manifest 顶层和 `field_motion_evidence_packet.nav2_goal_execution_evidence`。
 - `--delivery-result-json <delivery_result.json>`：可选接入本地/mock `trashbot.delivery_result.v1`，生成 additive `delivery_result_evidence` 安全摘要，并同时写入 manifest 顶层和 `field_motion_evidence_packet.delivery_result_evidence`。
 - `--cloud-terminal-result-json <cloud_terminal_result.json>`：可选接入 O5 `trashbot.cloud_command_terminal_result.v1`，也兼容 `trashbot.cloud_command_result_reconciliation.v2` wrapper；在未提供 `--delivery-result-json` 时转换成同一个 additive `delivery_result_evidence`；如果两者同时提供，优先使用 `--delivery-result-json`。
+- `--localization-path-material-json <38_pc_summary_after_map_fix.json>`：可选接入 same-run localization/path readback summary，生成 additive `localization_path_material_readback`，并同时写入 manifest 顶层和 `field_motion_evidence_packet.localization_path_material_readback`。
+- `--field-operator-confirmation-json <operator_report_or_summary.json>`：可选接入真实上位机 operator report/latest result 或准现场 summary，生成 additive `field_operator_confirmation_material` 安全摘要，并同时写入 manifest 顶层和 `field_motion_evidence_packet.field_operator_confirmation_material`。
 - `--route-bag-db3 <route_bag_0.db3>`：可选接入 rosbag2 SQLite DB3，生成 additive `route_bag_evidence` 安全摘要，并同时写入 manifest 顶层和 `field_motion_evidence_packet.route_bag_evidence`；同一输入还会生成 `route_bag_payload_replay`（messages.data payload hash 摘要）、`route_bag_pose_progress_replay`（白名单位姿进度摘要）、`route_bag_semantic_replay`（白名单 ROS 语义统计）与 `route_bag_full_semantic_decode_matrix`（per topic/type 语义解码覆盖矩阵），它们都写入 manifest 顶层和 `field_motion_evidence_packet` 同名 section。
 - `--route-bag-metadata-yaml <metadata.yaml>`：可选接入同一 route bag 的 metadata，只输出 basename、size、hash prefix 和安全状态。
 - `--route-bag-source-label <safe-label>`：可选写入短 source label；绝对路径、credential URL、token/raw/base64 等文本会 fail closed，输出不会回显原值。
@@ -35,6 +37,67 @@
 脚本最后会只读消费当前 manifest 已生成的 linked additive，生成 `same_task_mission_evidence_gate`。该 additive schema 固定为 `trashbot.same_task_mission_evidence_gate.v1`，`proof_scope=software_proof_same_task_mission_evidence_gate_only`；`ready` 状态为 `same_task_mission_gate_ready_not_success_proof`，blocked 状态为 `blocked_not_proven`，并同时写入 manifest 顶层与 `field_motion_evidence_packet.same_task_mission_evidence_gate`。它不读取 raw cloud terminal result、route bag payload、route.csv、keyframe 或任何原始路线文件，只消费已经脱敏的 `delivery_result_evidence`、`route_execution_result_delivery_readiness`、`route_delivery_closure_packet` 和 `route_bag_pose_progress_replay` 摘要。
 
 脚本也会直接从同一 `artifact_root` 的路线材料生成 `same_task_field_material_packet`。该 additive schema 固定为 `trashbot.same_task_field_material_packet.v1`，`proof_scope=software_proof_same_task_field_material_packet_only`，并同时写入 manifest 顶层与 `field_motion_evidence_packet.same_task_field_material_packet`。它只输出 `task_id`、`present_materials`、`missing_materials`、各材料的 basename/size/hash 前缀/安全 sample refs、blocked reasons 和 false safety fields，用来证明 O6/O7 已经消费同 task 的准现场 route materials，而不是 delivery success proof。
+
+脚本还支持可选 `--localization-path-material-json <38_pc_summary_after_map_fix.json>`，生成 additive `trashbot.localization_path_material_readback.v1`。它的 `proof_scope` 与 `evidence_boundary` 都固定为 `software_proof_localization_path_material_readback_only`，并同时写入 manifest 顶层与 `field_motion_evidence_packet.localization_path_material_readback`。这个入口只消费 O1 已经验证过的 allowlisted same-run readback 形状：`status`、`map_proof_latest`、`localize_proof_latest`、`nav2_status`、`nav2_proof_latest` 和 `o3_proof_summary` 中的安全布尔/计数字段。
+
+`localization_path_material_readback.status=localization_path_material_readback_ready_not_route_execution_proof` 的前提是：同一 `task_id` 下 required endpoints 全部 `request_status=loaded` 且 `http_status=200`、schema 对齐、`map_once_observed=true`、`amcl_pose_observed=true`、`localization_tf_observed.map_to_odom=true`、`localization_tf_observed.map_to_base_link=true`、`planner_server_active=true`、`path_generation_requested=true`，同时 same-run path 仍保持 fail-closed：`path_generation_succeeded=false`、`path_generated=false`、`path_point_count=0`、`same_run_path_proven=false`。否则 status 固定为 `blocked_not_proven`。
+
+该 additive 只输出：
+
+- `same_run_localization_material_present | same_run_localization_material_consumed`
+- `same_run_map_once_observed | same_run_amcl_pose_observed`
+- `same_run_localization_tf_map_to_odom | same_run_localization_tf_map_to_base_link`
+- `same_run_planner_server_active | same_run_path_generation_requested`
+- `same_run_path_generation_succeeded=false | same_run_path_generated=false | same_run_path_point_count=0 | same_run_path_proven=false`
+- `cross_run_clean_baseline_path_comparator_present=false | same_run_override_allowed=false`
+- `material_summaries | blocked_reasons | next_required_evidence`
+
+该 packet 不消费 cross-run clean-baseline comparator，也不允许输入把 `cross_run_clean_baseline_*` 混进 same-run readback。若输入试图混入 cross-run comparator、危险 true、task mismatch、unsafe text、或把 same-run path 改成成功态，section 必须 fail-closed，而且不会回显 URL、路径、token、traceback、base64、endpoint 或 runtime 原文。
+
+脚本还会在 `same_task_field_material_packet` 与已有 route execution additive 生成后，新增 `same_task_route_execution_material_packet`。该 additive schema 固定为 `trashbot.same_task_route_execution_material_packet.v1`，`proof_scope` 与 `evidence_boundary` 都固定为 `software_proof_same_task_route_execution_material_packet_only`，并同时写入 manifest 顶层与 `field_motion_evidence_packet.same_task_route_execution_material_packet`。它只读消费同一 `task_id` 的 `same_task_field_material_packet`、`route_execution_result_delivery_readiness`、`route_delivery_closure_packet`、`route_bag_pose_progress_replay`、`nav2_goal_execution_evidence`、`delivery_result_evidence`、route bag replay / semantic / matrix 摘要和 replay JSONL artifact 摘要；不会重新读取 raw ROS payload、cloud terminal 原文或 route bag BLOB。
+
+`same_task_route_execution_material_packet.status=route_execution_material_ready_not_delivery_proof` 的前提是：`same_task_field_material_packet` 已 ready、task_id 对齐、至少一类 route execution 相关材料已被安全消费（例如 readiness/closure/pose progress/Nav2/delivery result/route bag 摘要或 replay JSONL），且 linked summary 没有危险 true、unsafe text、unsafe 字段或 task mismatch。否则 status 固定为 `blocked_not_proven`。该 packet 保留 `same_task_id_consumed`、`same_task_field_material_packet_status`、`route_execution_material_consumed`、各 linked/material status、`route_execution_material_flags`、`material_summaries`、`material_sample_refs`、`blocked_reasons` 和 `next_required_evidence`，但只输出 basename、count、短 hash 前缀、短安全 refs、状态和计数。
+
+脚本还会在 `same_task_route_execution_material_packet` 之后，额外接收可选 `--current-field-evidence-json <current_field_evidence_summary.json>`，只读消费 2026-06-11 真实上位机 current evidence summary 形状，生成 additive `trashbot.current_field_evidence_material.v1`。该 additive 的 `proof_scope` 固定为 `software_proof_current_field_evidence_material_only`，并同时写入 manifest 顶层与 `field_motion_evidence_packet.current_field_evidence_material`。它只消费 camera / radar / map / Nav2 no-motion path / manual gate 的安全布尔摘要，输出 `present_materials`、`missing_materials`、`blocked_reasons`、`next_required_evidence`、`live_or_field_material_consumed`、`current_field_evidence_ready_not_route_execution_proof`，并固定 `delivery_success=false`、`safe_to_control=false`、`primary_actions_enabled=false`、`robot_control_executed=false`、`hil_pass=false`、`connects_cloud_production=false`。该 packet 只证明当前 field evidence summary 被安全消费，不证明 route execution 或真实控制。
+
+脚本还支持可选 `--clean-baseline-nav2-path-json <summary|latest|status|txt>`，生成 additive `trashbot.clean_baseline_nav2_path_material.v1`。它的 `proof_scope` 与 `evidence_boundary` 都固定为 `software_proof_clean_baseline_nav2_path_material_only`，并同时写入 manifest 顶层与 `field_motion_evidence_packet.clean_baseline_nav2_path_material`。这个入口兼容 `nav2_refresh_summary.json`、`nav2_retry_summary.json`、`nav2_latest_after_success.json`、`nav2_status_after_success.json` 和 `nav2_success_readback_summary.txt`；传任一入口文件后，脚本会安全读取同目录的 refresh/retry/latest/status/cleanup siblings，只抽取 first failure、retry success、path point count、planner/amcl/map/runtime/cleanup 这些白名单字段。
+
+`clean_baseline_nav2_path_material.status=clean_baseline_nav2_path_material_ready_not_route_execution_proof` 的前提是：同一 `task_id` 下 first failure 已记录、retry 已成功生成 path、`path_point_count > 0`、planner / initialpose / AMCL pose / map_server / amcl / managed runtime 至少能从 retry 或 status summary 安全读到、cleanup readback 没有残留进程或串口占用，并且所有输入都没有 dangerous true、unsafe key、unsafe text 或 task mismatch。否则 status 固定为 `blocked_not_proven`。它会输出：
+
+- `first_attempt_status`、`retry_status`、`retry_success`
+- `path_generation_succeeded`、`path_generated`、`path_point_count`
+- `planner_server_active`、`managed_runtime_started`、`managed_runtime_cleanup_ok`
+- `initialpose_published`、`amcl_pose_observed`、`map_server_active`、`amcl_active`、`cleanup_readback_clean`
+- `first_failure`、`retry_success_summary`、`material_sample_refs`
+- `blocked_reasons`、`next_required_evidence`
+
+该 additive 固定 `delivery_success=false`、`safe_to_control=false`、`primary_actions_enabled=false`、`robot_control_executed=false`、`route_execution_success=false`、`hil_pass=false`、`connects_cloud_production=false`。任一输入 summary 命中 bad schema、task mismatch、`safe_to_control=true`、`delivery_success=true`、`primary_actions_enabled=true`、`robot_control_executed=true`、`hil_pass=true`、`connects_cloud_production=true`，或字段名/文本里出现 raw、base64、绝对路径、token、traceback、response body、credential URL 时，该 section 必须 fail-closed，而且只输出 blocked reason、危险字段名和 unsafe 计数，不回显原值。
+
+脚本还支持可选 `--field-operator-confirmation-json <operator_report_or_summary.json>`，生成 additive `trashbot.field_operator_confirmation_material.v1`。它的 `proof_scope` 与 `evidence_boundary` 都固定为 `software_proof_field_operator_confirmation_material_only`，并同时写入 manifest 顶层与 `field_motion_evidence_packet.field_operator_confirmation_material`。这个入口只消费白名单字段：同一 `task_id`、operator material identity 是否存在、operator report / confirmation 状态、operator 是否在场、现场 clearance、急停准备、人工观察到 motion/stop，以及带时区的 `reported_at`。
+
+`field_operator_confirmation_material.status=field_operator_confirmation_material_ready_not_delivery_proof` 的前提是：输入 JSON 可读且为 object、输入 `task_id` 与 manifest / field packet 对齐、同 task route material 已存在、operator identity 或 material id 存在、operator report 与 confirmation 均为 ready/confirmed 类状态、operator 在场、physical clearance 已确认、emergency stop ready、observed_motion 与 observed_stop 均为 true、`reported_at` 可归一为 UTC，并且输入没有 dangerous true、unsafe key、unsafe text。否则 status 固定为 `blocked_not_proven`。它会输出：
+
+- `schema`、`proof_scope`、`evidence_boundary`、`status`
+- `task_id`、`task_id_source`、`source`
+- `operator_report_present`、`operator_report_status`
+- `operator_confirmation_present`、`operator_confirmation_status`
+- `operator_present`、`physical_clearance_confirmed`、`emergency_stop_ready`
+- `observed_motion`、`observed_stop`、`reported_at`
+- `same_task_id_consumed`、`linked_route_material_present`、`linked_delivery_material_present`
+- `operator_material_consumed`、`support_only_reason`
+- `blocked_reasons`、`next_required_evidence`、`material_summaries`
+
+该 additive 固定 `delivery_success=false`、`safe_to_control=false`、`primary_actions_enabled=false`、`robot_control_executed=false`、`route_execution_success=false`、`hil_pass=false`、`connects_cloud_production=false`。缺输入、bad JSON、非 object、task mismatch、operator identity 缺失、危险 true、字段名或文本里出现 raw/body/path/token/URL/base64/traceback/credential，都会只让本 section fail-closed；输出不会回显 operator identity 原文、raw/body、路径、URL、token、base64、traceback 或长备注正文。
+
+在这个基础上，packet 还会输出 credit-aware 字段，专门给 O6/O7 / Product 判断“这次 same-task route execution material 只是 support-only，还是已经具备 credit candidate 形态”：
+
+- `live_or_field_command_evidence_present`：来自 `motion_log_summary.live_motion_evidence_present`、`motion_log_summary.live_nav2_log_present`，或 `route_bag_or_live_nav2_log.source=live_motion_log`。普通 route bag / replay / readback 不能把它抬成 true。
+- `delivery_or_operator_material_consumed`：只有 `delivery_result_evidence` 自身 ready，且 `delivery_result_claimed=true` 或 `operator_confirmation_present=true` 时才为 true。
+- `route_execution_credit_candidate`：只有 `route_execution_material_consumed=true`、`live_or_field_command_evidence_present=true` 和 `delivery_or_operator_material_consumed=true` 三者同时满足才为 true。即使为 true，也仍然不表示真实送达成功。
+- `credit_support_only_reason`：当 candidate=false 时，给出稳定分类，例如 `same_task_id_mismatch_or_missing`、`same_task_route_execution_material_not_ready`、`local_or_mock_same_task_artifacts_only`、`probe_only_same_task_artifacts`、`readback_only_same_task_artifacts` 或 `delivery_or_operator_material_missing`。
+- `credit_required_evidence`：列出让 candidate 变成 true 还缺什么，通常包括 `same_task_live_motion_log_or_field_nav2_command_evidence`、`same_task_delivery_result_or_operator_confirmation` 或 packet 原有的 route execution linked evidence 缺口。
+
+`same_task_route_execution_material_packet` 的安全边界更保守：`delivery_success=false`、`safe_to_control=false`、`primary_actions_enabled=false`、`robot_control_executed=false`、`hil_pass=false`、`route_execution_success=false` 始终固定。任一 linked summary 中出现 `safe_to_control=true`、`delivery_success=true`、`primary_actions_enabled=true`、`robot_control_executed=true`、`route_execution_success=true`、`hil_pass=true`、`live_nav2_run_proven=true`、`real_world_delivery_proven=true` 或 `connects_cloud_production=true`，都会把该 packet fail-closed。字段名或文本中出现 token、secret、credential、raw payload、base64、traceback、response body、带凭证 URL，或 `/Users`、`/root`、`/tmp` 等本机绝对路径时，也只输出 blocked reason、危险字段名和 unsafe 计数，不回显原值。
 
 没有 `--preflight-json` 时仍会生成 manifest，但 `preflight.status=missing_preflight_json`、`not_proven=true`，只证明离线 artifact intake 软件路径，不证明现场 ready 或 delivery。
 
@@ -289,6 +352,52 @@ manifest 顶层始终保留安全边界：
 - `same_task_field_material_packet.present_materials | missing_materials | material_flags`
 - `same_task_field_material_packet.material_summaries.<material>.basename | size_bytes | sha256_prefix | sample_refs | count`
 - `same_task_field_material_packet.blocked_reasons | next_required_evidence | safe_to_control=false | delivery_success=false | route_execution_success=false`
+- `localization_path_material_readback.schema=trashbot.localization_path_material_readback.v1`
+- `localization_path_material_readback.proof_scope=software_proof_localization_path_material_readback_only`
+- `localization_path_material_readback.evidence_boundary=software_proof_localization_path_material_readback_only`
+- `localization_path_material_readback.status=localization_path_material_readback_ready_not_route_execution_proof | blocked_not_proven`
+- `localization_path_material_readback.same_run_localization_material_present | same_run_localization_material_consumed`
+- `localization_path_material_readback.same_run_map_once_observed | same_run_amcl_pose_observed`
+- `localization_path_material_readback.same_run_localization_tf_map_to_odom | same_run_localization_tf_map_to_base_link`
+- `localization_path_material_readback.same_run_planner_server_active | same_run_path_generation_requested`
+- `localization_path_material_readback.same_run_path_generation_succeeded=false | same_run_path_generated=false | same_run_path_point_count=0 | same_run_path_proven=false`
+- `localization_path_material_readback.cross_run_clean_baseline_path_comparator_present=false | same_run_override_allowed=false`
+- `localization_path_material_readback.material_summaries | blocked_reasons | next_required_evidence | safe_to_control=false | delivery_success=false | primary_actions_enabled=false | robot_control_executed=false | hil_pass=false | nav2_route_execution_success=false | route_execution_success=false`
+- `same_task_route_execution_material_packet.schema=trashbot.same_task_route_execution_material_packet.v1`
+- `same_task_route_execution_material_packet.proof_scope=software_proof_same_task_route_execution_material_packet_only`
+- `same_task_route_execution_material_packet.evidence_boundary=software_proof_same_task_route_execution_material_packet_only`
+- `same_task_route_execution_material_packet.status=route_execution_material_ready_not_delivery_proof | blocked_not_proven`
+- `same_task_route_execution_material_packet.same_task_id_consumed | same_task_field_material_packet_status | route_execution_material_consumed`
+- `same_task_route_execution_material_packet.route_execution_result_status | route_delivery_closure_status | nav2_goal_execution_status | delivery_result_status | pose_progress_replay_status`
+- `same_task_route_execution_material_packet.route_replay_jsonl_status | route_bag_or_rosbag_status | route_csv_status | keyframe_material_status`
+- `same_task_route_execution_material_packet.route_execution_material_flags | material_summaries | material_sample_refs`
+- `same_task_route_execution_material_packet.blocked_reasons | next_required_evidence | safe_to_control=false | delivery_success=false | primary_actions_enabled=false | robot_control_executed=false | hil_pass=false | route_execution_success=false`
+- `current_field_evidence_material.schema=trashbot.current_field_evidence_material.v1`
+- `current_field_evidence_material.proof_scope=software_proof_current_field_evidence_material_only`
+- `current_field_evidence_material.status=current_field_evidence_ready_not_route_execution_proof | blocked_not_proven`
+- `current_field_evidence_material.present_materials | missing_materials | blocked_reasons | next_required_evidence`
+- `current_field_evidence_material.camera_frame_observed | radar_scan_observed | map_material_observed | nav2_no_motion_path_generated | manual_gate_blocked_expected`
+- `current_field_evidence_material.live_or_field_material_consumed | current_field_evidence_ready_not_route_execution_proof`
+- `current_field_evidence_material.blocked_reasons | next_required_evidence | safe_to_control=false | delivery_success=false | primary_actions_enabled=false | robot_control_executed=false | hil_pass=false | connects_cloud_production=false`
+- `clean_baseline_nav2_path_material.schema=trashbot.clean_baseline_nav2_path_material.v1`
+- `clean_baseline_nav2_path_material.proof_scope=software_proof_clean_baseline_nav2_path_material_only`
+- `clean_baseline_nav2_path_material.evidence_boundary=software_proof_clean_baseline_nav2_path_material_only`
+- `clean_baseline_nav2_path_material.status=clean_baseline_nav2_path_material_ready_not_route_execution_proof | blocked_not_proven`
+- `clean_baseline_nav2_path_material.first_attempt_status | retry_status | retry_success`
+- `clean_baseline_nav2_path_material.path_generation_succeeded | path_generated | path_point_count`
+- `clean_baseline_nav2_path_material.planner_server_active | managed_runtime_started | managed_runtime_cleanup_ok`
+- `clean_baseline_nav2_path_material.initialpose_published | amcl_pose_observed | map_server_active | amcl_active | cleanup_readback_clean`
+- `clean_baseline_nav2_path_material.first_failure | retry_success_summary | material_sample_refs`
+- `clean_baseline_nav2_path_material.blocked_reasons | next_required_evidence | safe_to_control=false | delivery_success=false | primary_actions_enabled=false | robot_control_executed=false | hil_pass=false | connects_cloud_production=false | route_execution_success=false`
+- `field_operator_confirmation_material.schema=trashbot.field_operator_confirmation_material.v1`
+- `field_operator_confirmation_material.proof_scope=software_proof_field_operator_confirmation_material_only`
+- `field_operator_confirmation_material.evidence_boundary=software_proof_field_operator_confirmation_material_only`
+- `field_operator_confirmation_material.status=field_operator_confirmation_material_ready_not_delivery_proof | blocked_not_proven`
+- `field_operator_confirmation_material.operator_report_present | operator_report_status | operator_confirmation_present | operator_confirmation_status`
+- `field_operator_confirmation_material.operator_present | physical_clearance_confirmed | emergency_stop_ready | observed_motion | observed_stop | reported_at`
+- `field_operator_confirmation_material.same_task_id_consumed | linked_route_material_present | linked_delivery_material_present | operator_material_consumed`
+- `field_operator_confirmation_material.support_only_reason | material_summaries | blocked_reasons | next_required_evidence`
+- `field_operator_confirmation_material.safe_to_control=false | delivery_success=false | primary_actions_enabled=false | robot_control_executed=false | route_execution_success=false | hil_pass=false | connects_cloud_production=false`
 - `same_task_mission_evidence_gate.schema=trashbot.same_task_mission_evidence_gate.v1`
 - `same_task_mission_evidence_gate.proof_scope=software_proof_same_task_mission_evidence_gate_only`
 - `same_task_mission_evidence_gate.status=same_task_mission_gate_ready_not_success_proof | blocked_not_proven`

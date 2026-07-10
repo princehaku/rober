@@ -9,6 +9,7 @@
 - `pc-tools/workstation/test/catalog.test.ts`
 - `docs/product/pc_tools_workstation.md`
 - `docs/interfaces/o7_realtime_operator_console.md`
+- `sprints/2026.07.10_09-15_o6_o7_same_task_field_material_packet/artifacts/o7_worker_report.md`
 
 ## 实现摘要
 
@@ -28,7 +29,7 @@
 cd pc-tools/workstation && npm run test
 ```
 
-结果：待本轮返工后复跑更新。
+结果：`Test Files 3 passed (3)`，`Tests 485 passed (485)`。
 
 ### 2. 构建
 
@@ -36,7 +37,7 @@ cd pc-tools/workstation && npm run test
 cd pc-tools/workstation && npm run build
 ```
 
-结果：待本轮返工后复跑更新。
+结果：通过。Vite 仍有既有 `chunk size` warning（`dist/assets/index-BBs43sg6.js` 约 1.50 MB），但不阻塞本轮验收。
 
 ### 3. 静态检查
 
@@ -44,7 +45,7 @@ cd pc-tools/workstation && npm run build
 cd pc-tools/workstation && npm run lint
 ```
 
-结果：待本轮返工后复跑更新。
+结果：通过。
 
 ### 4. diff 检查
 
@@ -52,7 +53,7 @@ cd pc-tools/workstation && npm run lint
 git diff --check -- pc-tools/workstation/src/shared/contracts.ts pc-tools/workstation/src/server/o7ConsumerReadAdapter.ts pc-tools/workstation/src/components/O7FixturePreviewPanel.vue pc-tools/workstation/test/App.test.ts pc-tools/workstation/test/catalog.test.ts docs/product/pc_tools_workstation.md docs/interfaces/o7_realtime_operator_console.md sprints/2026.07.10_09-15_o6_o7_same_task_field_material_packet
 ```
 
-结果：待本轮返工后复跑更新。
+结果：通过。
 
 ## Proof Boundary
 

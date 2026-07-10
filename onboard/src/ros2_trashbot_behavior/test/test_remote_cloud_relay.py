@@ -59,6 +59,8 @@ from ros2_trashbot_behavior.remote_cloud_relay import (  # noqa: E402
     CLOUD_WORKER_CUTOVER_DRAIN_EVIDENCE_BOUNDARY,
     CLOUD_WORKER_CUTOVER_DRAIN_SCHEMA,
     CLOUD_WORKER_CUTOVER_DRAIN_SUMMARY_SCHEMA,
+    CLOUD_PRODUCTION_CUTOVER_READINESS_PACKET_EVIDENCE_BOUNDARY,
+    CLOUD_PRODUCTION_CUTOVER_READINESS_PACKET_SCHEMA,
     CLOUD_PUBLIC_INGRESS_TLS_EVIDENCE_BOUNDARY,
     CLOUD_PUBLIC_INGRESS_TLS_SCHEMA,
     CREDENTIAL_ROTATION_EVIDENCE_BOUNDARY,
@@ -119,6 +121,7 @@ from ros2_trashbot_behavior.remote_cloud_relay import (  # noqa: E402
     build_external_evidence_intake_artifact_payload,
     build_cloud_worker_migration_rehearsal_artifact_payload,
     build_cloud_worker_cutover_drain_artifact_payload,
+    build_cloud_production_cutover_readiness_packet_payload,
     cloud_deployment_readiness_artifact_summary,
     cloud_db_queue_config_artifact_summary,
     cloud_db_queue_external_probe_bundle_summary,
@@ -149,9 +152,11 @@ from ros2_trashbot_behavior.remote_cloud_relay import (  # noqa: E402
     create_external_evidence_intake_artifact,
     create_cloud_worker_migration_rehearsal_artifact,
     create_cloud_worker_cutover_drain_artifact,
+    create_cloud_production_cutover_readiness_packet_artifact,
     external_evidence_intake_artifact_summary,
     cloud_worker_migration_rehearsal_artifact_summary,
     cloud_worker_cutover_drain_artifact_summary,
+    cloud_production_cutover_readiness_packet_summary,
     network_recovery_artifact_summary,
     network_recovery_drill_payload,
     oss_cdn_live_probe_summary,
@@ -1312,6 +1317,304 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
             "robot_control_executed": False,
         }
 
+    def _current_field_evidence_material_payload(self, task_id="field-evidence-field-run-001"):
+        # current field evidence material 只保留当前上位机材料的安全摘要，不回显 URL、路径或正文。
+        return {
+            "schema": relay_module.CURRENT_FIELD_EVIDENCE_MATERIAL_SCHEMA,
+            "source_schema": relay_module.CURRENT_FIELD_EVIDENCE_MATERIAL_SCHEMA,
+            "proof_scope": relay_module.O6_CURRENT_FIELD_EVIDENCE_MATERIAL_PROOF_SCOPE,
+            "status": "current_field_evidence_material_ready_not_route_execution_proof",
+            "source": "current_field_evidence_smoke_summary",
+            "task_id": task_id,
+            "task_id_source": "manifest_task_id",
+            "present_materials": [
+                "camera_frame",
+                "radar_scan",
+                "nav2_no_motion_path",
+                "manual_gate",
+            ],
+            "missing_materials": ["map_material"],
+            "camera_frame_observed": True,
+            "radar_scan_observed": True,
+            "map_material_observed": False,
+            "nav2_no_motion_path_generated": True,
+            "manual_gate_blocked_expected": True,
+            "live_or_field_material_consumed": True,
+            "current_field_evidence_ready_not_route_execution_proof": True,
+            "blocked_reasons": ["real_route_execution_trace_missing"],
+            "next_required_evidence": ["live_route_execution_trace", "operator_confirmation_trace"],
+            "safe_to_control": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "robot_control_executed": False,
+            "hil_pass": False,
+            "connects_cloud_production": False,
+            "real_cloud_db_connected": False,
+            "real_oss_connected": False,
+        }
+
+    def _field_operator_confirmation_material_payload(self, task_id="field-evidence-field-run-001"):
+        # operator material 只提供人工报告/确认的安全摘要，不把原始备注、路径或真实送达成功写入 O6。
+        return {
+            "schema": relay_module.FIELD_OPERATOR_CONFIRMATION_MATERIAL_SCHEMA,
+            "source_schema": relay_module.FIELD_OPERATOR_CONFIRMATION_MATERIAL_SCHEMA,
+            "proof_scope": relay_module.O6_FIELD_OPERATOR_CONFIRMATION_MATERIAL_PROOF_SCOPE,
+            "status": "field_operator_confirmation_material_ready_not_delivery_proof",
+            "source": "operator_confirmation_material_summary",
+            "task_id": task_id,
+            "task_id_source": "manifest_task_id",
+            "operator_report_present": True,
+            "operator_report_status": "operator_report_ready",
+            "operator_confirmation_present": True,
+            "operator_confirmation_status": "operator_confirmation_ready",
+            "operator_present": True,
+            "physical_clearance_confirmed": True,
+            "emergency_stop_ready": True,
+            "observed_motion": True,
+            "observed_stop": True,
+            "reported_at": "2026-07-10T07:22:00Z",
+            "same_task_id_consumed": True,
+            "linked_route_material_present": True,
+            "linked_delivery_material_present": True,
+            "operator_material_consumed": True,
+            "support_only_reason": "operator_material_not_delivery_success_proof",
+            "blocked_reasons": ["real_delivery_success_not_proven"],
+            "next_required_evidence": [
+                "real_live_nav2_route_execution_trace",
+                "real_delivery_result_trace",
+            ],
+            "material_summaries": {
+                "operator_report": {
+                    "present": True,
+                    "status": "operator_report_ready",
+                    "basename": "operator_report.json",
+                    "size_bytes": 320,
+                    "sha256_prefix": "aa11bb22cc33dd44",
+                    "count": 1,
+                    "sample_refs": ["captures/operator_report.json"],
+                },
+                "operator_confirmation": {
+                    "present": True,
+                    "status": "operator_confirmation_ready",
+                    "basename": "operator_confirmation.json",
+                    "size_bytes": 240,
+                    "sha256_prefix": "bb22cc33dd44ee55",
+                    "count": 1,
+                    "sample_refs": ["captures/operator_confirmation.json"],
+                },
+                "route_material": {
+                    "present": True,
+                    "status": "route_material_ready",
+                    "basename": "route_execution_readiness.json",
+                    "size_bytes": 384,
+                    "sha256_prefix": "cc33dd44ee55ff66",
+                    "count": 1,
+                    "sample_refs": ["captures/route_execution_readiness.json"],
+                },
+                "delivery_material": {
+                    "present": True,
+                    "status": "delivery_material_ready",
+                    "basename": "delivery_result_evidence.json",
+                    "size_bytes": 288,
+                    "sha256_prefix": "dd44ee55ff667788",
+                    "count": 1,
+                    "sample_refs": ["captures/delivery_result_evidence.json"],
+                },
+            },
+            "safe_to_control": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "robot_control_executed": False,
+            "route_execution_success": False,
+            "hil_pass": False,
+            "connects_cloud_production": False,
+            "real_cloud_db_connected": False,
+            "real_oss_connected": False,
+        }
+
+    def _clean_baseline_nav2_path_material_payload(self, task_id="field-evidence-field-run-001"):
+        # clean-baseline Nav2 path material 只表达 no-motion 规划材料，不证明真实 route execution 或控制成功。
+        return {
+            "schema": relay_module.CLEAN_BASELINE_NAV2_PATH_MATERIAL_SCHEMA,
+            "source_schema": relay_module.CLEAN_BASELINE_NAV2_PATH_MATERIAL_SCHEMA,
+            "proof_scope": relay_module.O6_CLEAN_BASELINE_NAV2_PATH_MATERIAL_PROOF_SCOPE,
+            "status": "clean_baseline_nav2_path_material_ready_not_route_execution_proof",
+            "source": "clean_baseline_nav2_refresh_summary",
+            "task_id": task_id,
+            "task_id_source": "manifest_task_id",
+            "first_attempt_status": "tf_root_cause_blocked",
+            "retry_status": "path_generated_after_retry",
+            "path_generation_succeeded": True,
+            "path_generated": True,
+            "path_point_count": 31,
+            "planner_server_active": True,
+            "managed_runtime_started": True,
+            "managed_runtime_cleanup_ok": True,
+            "initialpose_published": True,
+            "amcl_pose_observed": True,
+            "map_server_active": True,
+            "amcl_active": True,
+            "cleanup_readback_clean": True,
+            "material_sample_refs": {
+                "refresh_summary": {
+                    "present": True,
+                    "basename": "clean_baseline_nav2_refresh_summary.json",
+                    "size_bytes": 420,
+                    "sha256_prefix": "9988776655443322",
+                    "count": 1,
+                    "sample_refs": ["captures/clean_baseline_nav2_refresh_summary.json"],
+                },
+                "latest_readback": {
+                    "present": True,
+                    "basename": "clean_baseline_nav2_latest.json",
+                    "size_bytes": 256,
+                    "sha256_prefix": "1122aabb3344ccdd",
+                    "count": 1,
+                    "sample_refs": ["captures/clean_baseline_nav2_latest.json"],
+                },
+                "status_artifact": {
+                    "present": True,
+                    "basename": "clean_baseline_nav2_status.json",
+                    "size_bytes": 196,
+                    "sha256_prefix": "a1b2c3d4e5f60123",
+                    "count": 1,
+                    "sample_refs": ["captures/clean_baseline_nav2_status.json"],
+                },
+            },
+            "blocked_reasons": ["real_route_execution_trace_missing"],
+            "next_required_evidence": ["live_route_execution_trace", "operator_confirmation_trace"],
+            "safe_to_control": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "robot_control_executed": False,
+            "route_execution_success": False,
+            "hil_pass": False,
+            "connects_cloud_production": False,
+            "real_cloud_db_connected": False,
+            "real_oss_connected": False,
+        }
+
+    def _localization_path_material_readback_payload(self, task_id="field-evidence-field-run-001"):
+        # localization/path readback 只表达同 run localization 已观测、path 仍失败，cross-run comparator 不能覆盖 same-run false 结论。
+        return {
+            "schema": relay_module.LOCALIZATION_PATH_MATERIAL_READBACK_SCHEMA,
+            "source_schema": relay_module.LOCALIZATION_PATH_MATERIAL_READBACK_SCHEMA,
+            "proof_scope": relay_module.O6_LOCALIZATION_PATH_MATERIAL_READBACK_PROOF_SCOPE,
+            "status": "localization_path_material_readback_ready_not_route_execution_proof",
+            "source": "o1_localization_path_material_bridge_summary",
+            "task_id": task_id,
+            "task_id_source": "manifest_task_id",
+            "localization_path_material_bridge_present": True,
+            "same_run_localization_material_present": True,
+            "same_run_map_once_observed": True,
+            "same_run_amcl_pose_observed": True,
+            "same_run_localization_tf_map_to_odom": True,
+            "same_run_localization_tf_map_to_base_link": True,
+            "same_run_path_generation_requested": True,
+            "same_run_path_generation_succeeded": False,
+            "same_run_path_generated": False,
+            "same_run_path_point_count": 0,
+            "same_run_path_proven": False,
+            "cross_run_clean_baseline_path_comparator_present": False,
+            "cross_run_clean_baseline_path_summary": {},
+            "cross_run_clean_baseline_same_run_override_allowed": False,
+            "cross_run_clean_baseline_path_comparator_blocked_reasons": [],
+            "blocked_reasons": ["current_same_run_path_generation_failed"],
+            "next_required_evidence": [
+                "current_same_run_feedback_t1001_log",
+                "current_same_run_nav2_path_generation_trace",
+            ],
+            "safe_to_control": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "robot_control_executed": False,
+            "route_execution_success": False,
+            "nav2_route_execution_success": False,
+            "hil_pass": False,
+            "connects_cloud_production": False,
+        }
+
+    def _same_task_route_execution_material_packet_payload(self, task_id="field-evidence-field-run-001"):
+        # route execution material packet 只证明同一 task 的执行材料摘要已消费，不证明真实送达或控制安全。
+        return {
+            "schema": relay_module.SAME_TASK_ROUTE_EXECUTION_MATERIAL_PACKET_SCHEMA,
+            "source_schema": relay_module.SAME_TASK_ROUTE_EXECUTION_MATERIAL_PACKET_SCHEMA,
+            "proof_scope": relay_module.O6_SAME_TASK_ROUTE_EXECUTION_MATERIAL_PACKET_PROOF_SCOPE,
+            "evidence_boundary": relay_module.O6_SAME_TASK_ROUTE_EXECUTION_MATERIAL_PACKET_PROOF_SCOPE,
+            "status": "route_execution_material_ready_not_delivery_proof",
+            "source": "algorithm_same_task_route_execution_material_packet_summary",
+            "task_id": task_id,
+            "task_id_source": "manifest_task_id",
+            "same_task_id_consumed": True,
+            "route_execution_material_consumed": True,
+            "live_or_field_command_evidence_present": True,
+            "delivery_or_operator_material_consumed": True,
+            "route_execution_credit_candidate": True,
+            "credit_support_only_reason": None,
+            "credit_required_evidence": [
+                "real_live_nav2_route_execution_trace",
+                "real_delivery_result_trace",
+                "operator_confirmation_trace",
+            ],
+            "same_task_field_material_packet_status": "ready_not_delivery_proof",
+            "source_sections": [
+                "same_task_field_material_packet",
+                "route_execution_result_delivery_readiness",
+                "route_bag_pose_progress_replay",
+                "route_delivery_closure_packet",
+            ],
+            "material_summaries": {
+                "same_task_field_material_packet": {
+                    "status": "ready_not_delivery_proof",
+                    "present": True,
+                    "basename": "same_task_field_material_packet.json",
+                    "size_bytes": 256,
+                    "sha256_prefix": "1234567890abcdef",
+                    "count": 1,
+                    "sample_refs": ["captures/same_task_field_material_packet.json"],
+                },
+                "route_execution_result_delivery_readiness": {
+                    "status": "route_execution_result_delivery_readiness_ready_not_delivery_proof",
+                    "present": True,
+                    "basename": "route_execution_readiness.json",
+                    "size_bytes": 384,
+                    "sha256_prefix": "abcdef1234567890",
+                    "count": 1,
+                    "sample_refs": ["captures/route_execution_readiness.json"],
+                },
+                "route_bag_pose_progress_replay": {
+                    "status": "ready_not_live_nav2_proof",
+                    "present": True,
+                    "basename": "route_bag_pose_progress_replay.json",
+                    "size_bytes": 512,
+                    "sha256_prefix": "1122334455667788",
+                    "count": 1,
+                    "sample_refs": ["captures/route_bag_pose_progress_replay.json"],
+                },
+                "route_delivery_closure_packet": {
+                    "status": "route_delivery_closure_ready_not_success_proof",
+                    "present": True,
+                    "basename": "route_delivery_closure_packet.json",
+                    "size_bytes": 128,
+                    "sha256_prefix": "aabbccddeeff0011",
+                    "count": 1,
+                    "sample_refs": ["captures/route_delivery_closure_packet.json"],
+                },
+            },
+            "blocked_reasons": ["real_delivery_success_not_proven"],
+            "next_required_evidence": [
+                "real_live_nav2_route_execution_trace",
+                "real_delivery_result_trace",
+                "operator_confirmation_trace",
+            ],
+            "safe_to_control": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "robot_control_executed": False,
+            "route_execution_success": False,
+            "hil_pass": False,
+        }
+
     def _route_bag_evidence_payload(self):
         # route bag evidence 只证明 DB3 摘要已被 Algorithm 读取，不证明 live Nav2 run 或送达成功。
         return {
@@ -1655,6 +1958,21 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
             "same_task_field_material_packet": self._same_task_field_material_packet_payload(
                 "field-evidence-field-run-001"
             ),
+            "localization_path_material_readback": self._localization_path_material_readback_payload(
+                "field-evidence-field-run-001"
+            ),
+            "current_field_evidence_material": self._current_field_evidence_material_payload(
+                "field-evidence-field-run-001"
+            ),
+            "field_operator_confirmation_material": self._field_operator_confirmation_material_payload(
+                "field-evidence-field-run-001"
+            ),
+            "clean_baseline_nav2_path_material": self._clean_baseline_nav2_path_material_payload(
+                "field-evidence-field-run-001"
+            ),
+            "same_task_route_execution_material_packet": self._same_task_route_execution_material_packet_payload(
+                "field-evidence-field-run-001"
+            ),
             "cloud_external_probe": self._cloud_external_probe_payload("field-evidence-field-run-001"),
             "cloud_db_queue_external_probe": self._cloud_db_queue_external_probe_payload(
                 "field-evidence-field-run-001"
@@ -1694,6 +2012,21 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
                 "route_bag_full_semantic_decode_matrix": self._route_bag_full_semantic_decode_matrix_payload(),
                 "route_bag_pose_progress_replay": self._route_bag_pose_progress_replay_payload(),
                 "same_task_field_material_packet": self._same_task_field_material_packet_payload(
+                    "artifact-bundle-task-001"
+                ),
+                "localization_path_material_readback": self._localization_path_material_readback_payload(
+                    "artifact-bundle-task-001"
+                ),
+                "current_field_evidence_material": self._current_field_evidence_material_payload(
+                    "artifact-bundle-task-001"
+                ),
+                "field_operator_confirmation_material": self._field_operator_confirmation_material_payload(
+                    "artifact-bundle-task-001"
+                ),
+                "clean_baseline_nav2_path_material": self._clean_baseline_nav2_path_material_payload(
+                    "artifact-bundle-task-001"
+                ),
+                "same_task_route_execution_material_packet": self._same_task_route_execution_material_packet_payload(
                     "artifact-bundle-task-001"
                 ),
                 "route_refs": [
@@ -2172,6 +2505,69 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
         self.assertTrue(
             created["task"]["field_evidence"]["same_task_field_material_packet"]["same_task_id_consumed"]
         )
+        self.assertEqual(
+            created["task"]["field_evidence"]["same_task_route_execution_material_packet"]["schema"],
+            relay_module.O6_SAME_TASK_ROUTE_EXECUTION_MATERIAL_PACKET_SCHEMA,
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["same_task_route_execution_material_packet"]["proof_scope"],
+            relay_module.O6_SAME_TASK_ROUTE_EXECUTION_MATERIAL_PACKET_PROOF_SCOPE,
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["same_task_route_execution_material_packet"]["status"],
+            "route_execution_material_ready_not_delivery_proof",
+        )
+        self.assertTrue(
+            created["task"]["field_evidence"]["same_task_route_execution_material_packet"][
+                "route_execution_material_consumed"
+            ]
+        )
+        self.assertTrue(
+            created["task"]["field_evidence"]["same_task_route_execution_material_packet"][
+                "live_or_field_command_evidence_present"
+            ]
+        )
+        self.assertTrue(
+            created["task"]["field_evidence"]["same_task_route_execution_material_packet"][
+                "delivery_or_operator_material_consumed"
+            ]
+        )
+        self.assertTrue(
+            created["task"]["field_evidence"]["same_task_route_execution_material_packet"][
+                "route_execution_credit_candidate"
+            ]
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["same_task_route_execution_material_packet"][
+                "credit_required_evidence"
+            ],
+            [
+                "real_live_nav2_route_execution_trace",
+                "real_delivery_result_trace",
+                "operator_confirmation_trace",
+            ],
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["same_task_route_execution_material_packet"]["source_sections"],
+            [
+                "same_task_field_material_packet",
+                "route_execution_result_delivery_readiness",
+                "route_bag_pose_progress_replay",
+                "route_delivery_closure_packet",
+            ],
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["same_task_route_execution_material_packet"][
+                "material_sample_refs"
+            ]["route_bag_pose_progress_replay"]["basename"],
+            "route_bag_pose_progress_replay.json",
+        )
+        self.assertFalse(
+            created["task"]["field_evidence"]["same_task_route_execution_material_packet"]["delivery_success"]
+        )
+        self.assertFalse(
+            created["task"]["field_evidence"]["same_task_route_execution_material_packet"]["safe_to_control"]
+        )
         self.assertFalse(created["task"]["field_evidence"]["route_bag_evidence"]["delivery_success"])
         self.assertFalse(created["task"]["field_evidence"]["route_bag_evidence"]["safe_to_control"])
         self.assertFalse(created["task"]["field_evidence"]["route_root_seed_gate"]["route_bag_required"])
@@ -2320,6 +2716,22 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
             "route_001.db3",
         )
         self.assertEqual(
+            detail["task"]["same_task_route_execution_material_packet"]["schema"],
+            relay_module.O6_SAME_TASK_ROUTE_EXECUTION_MATERIAL_PACKET_SCHEMA,
+        )
+        self.assertEqual(
+            detail["task"]["field_evidence_consumer_ingest"]["same_task_route_execution_material_packet"][
+                "same_task_field_material_packet_status"
+            ],
+            "ready_not_delivery_proof",
+        )
+        self.assertEqual(
+            detail["task"]["same_task_route_execution_material_packet"]["material_summaries"][
+                "route_execution_result_delivery_readiness"
+            ]["status"],
+            "route_execution_result_delivery_readiness_ready_not_delivery_proof",
+        )
+        self.assertEqual(
             detail["task"]["same_task_mission_evidence_gate"]["source_schema"],
             relay_module.SAME_TASK_MISSION_EVIDENCE_GATE_SCHEMA,
         )
@@ -2436,6 +2848,18 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
             1,
         )
         self.assertTrue(consumer["same_task_field_material_packet"]["live_or_field_material_consumed"])
+        self.assertEqual(
+            consumer["same_task_route_execution_material_packet"]["status"],
+            "route_execution_material_ready_not_delivery_proof",
+        )
+        self.assertTrue(consumer["same_task_route_execution_material_packet"]["same_task_id_consumed"])
+        self.assertFalse(consumer["same_task_route_execution_material_packet"]["route_execution_success"])
+        self.assertEqual(
+            consumer["field_evidence_consumer_ingest"]["same_task_route_execution_material_packet"][
+                "material_sample_refs"
+            ]["route_delivery_closure_packet"]["basename"],
+            "route_delivery_closure_packet.json",
+        )
         self.assertTrue(
             consumer["route_delivery_closure_packet"][
                 "linked_route_execution_result_delivery_readiness_ready"
@@ -2650,6 +3074,21 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
         self.assertEqual(consumer["evidence"]["status"], "local_mock_archive_ready")
         self.assertEqual(consumer["events"]["events"][0]["event_type"], "operator.note")
         self.assertFalse(consumer["proof_boundary"]["safe_to_control"])
+
+        status, explicit_route_material = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/field-evidence-field-run-001?include=same_task_route_execution_material_packet",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(
+            explicit_route_material["same_task_route_execution_material_packet"]["schema"],
+            relay_module.O6_SAME_TASK_ROUTE_EXECUTION_MATERIAL_PACKET_SCHEMA,
+        )
+        self.assertEqual(
+            explicit_route_material["same_task_route_execution_material_packet"]["status"],
+            "route_execution_material_ready_not_delivery_proof",
+        )
         for forbidden_key in (
             "safe_to_control",
             "delivery_success",
@@ -3054,6 +3493,19 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
             created["task"]["artifact_bundle"]["same_task_field_material_packet"]["map_yaml_present"]
         )
         self.assertEqual(
+            created["task"]["artifact_bundle"]["same_task_route_execution_material_packet"]["schema"],
+            relay_module.O6_SAME_TASK_ROUTE_EXECUTION_MATERIAL_PACKET_SCHEMA,
+        )
+        self.assertEqual(
+            created["task"]["artifact_bundle"]["same_task_route_execution_material_packet"]["status"],
+            "route_execution_material_ready_not_delivery_proof",
+        )
+        self.assertTrue(
+            created["task"]["artifact_bundle"]["same_task_route_execution_material_packet"][
+                "route_execution_material_consumed"
+            ]
+        )
+        self.assertEqual(
             created["task"]["artifact_bundle"]["route_bag_pose_progress_replay"]["pose_topic_types"],
             ["tf2_msgs.msg.TFMessage", "nav_msgs.msg.Odometry"],
         )
@@ -3122,6 +3574,13 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
             detail["task"]["same_task_field_material_packet"]["material_sample_refs"]["route_bag_or_rosbag"]["basename"],
             "route_001.db3",
         )
+        self.assertEqual(
+            detail["task"]["artifact_bundle"]["same_task_route_execution_material_packet"][
+                "material_sample_refs"
+            ]["same_task_field_material_packet"]["basename"],
+            "same_task_field_material_packet.json",
+        )
+        self.assertFalse(detail["task"]["same_task_route_execution_material_packet"]["hil_pass"])
 
         status, consumer = self.client.request(
             "GET",
@@ -3204,6 +3663,14 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
             "fixed_route_replay.jsonl",
         )
         self.assertTrue(consumer["artifact_bundle"]["same_task_field_material_packet"]["same_task_id_consumed"])
+        self.assertEqual(
+            consumer["same_task_route_execution_material_packet"]["same_task_field_material_packet_status"],
+            "ready_not_delivery_proof",
+        )
+        self.assertEqual(
+            consumer["artifact_bundle"]["same_task_route_execution_material_packet"]["source_sections"][0],
+            "same_task_field_material_packet",
+        )
         self.assertEqual(
             consumer["artifact_bundle"]["route_bag_semantic_replay"]["image_summary"]["width"],
             640,
@@ -4180,6 +4647,1144 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
                 "basename"
             ],
             "route_001.db3",
+        )
+
+    def test_o6_current_field_evidence_material_in_field_and_bundle_readback(self):
+        field_payload = self._field_evidence_archive_request_payload()
+        status, field_created = self.client.request(
+            "POST",
+            "/api/o6/archive/field-evidence",
+            field_payload,
+        )
+
+        self.assertEqual(status, 201)
+        field_section = field_created["task"]["field_evidence"]["current_field_evidence_material"]
+        self.assertEqual(field_section["schema"], relay_module.O6_CURRENT_FIELD_EVIDENCE_MATERIAL_SCHEMA)
+        self.assertEqual(field_section["status"], "current_field_evidence_ready_not_route_execution_proof")
+        self.assertEqual(field_section["present_materials"], ["camera_frame", "radar_scan", "nav2_no_motion_path", "manual_gate"])
+        self.assertEqual(field_section["missing_materials"], ["map_material"])
+        self.assertTrue(field_section["camera_frame_observed"])
+        self.assertTrue(field_section["radar_scan_observed"])
+        self.assertFalse(field_section["map_material_observed"])
+        self.assertTrue(field_section["nav2_no_motion_path_generated"])
+        self.assertTrue(field_section["manual_gate_blocked_expected"])
+        self.assertTrue(field_section["live_or_field_material_consumed"])
+        self.assertTrue(field_section["current_field_evidence_ready_not_route_execution_proof"])
+        self.assertIn("real_route_execution_trace_missing", field_section["blocked_reasons"])
+
+        legacy_payload = self._field_evidence_archive_request_payload()
+        legacy_payload["task_id"] = "field-evidence-field-run-legacy-001"
+        legacy_payload["field_evidence_manifest"]["task_id"] = "field-evidence-field-run-legacy-001"
+        legacy_payload["current_field_evidence_material"]["task_id"] = "field-evidence-field-run-legacy-001"
+        legacy_payload["current_field_evidence_material"]["status"] = (
+            "current_field_evidence_material_ready_not_route_execution_proof"
+        )
+        status, legacy_created = self.client.request(
+            "POST",
+            "/api/o6/archive/field-evidence",
+            legacy_payload,
+        )
+        self.assertEqual(status, 201)
+        legacy_section = legacy_created["task"]["field_evidence"]["current_field_evidence_material"]
+        self.assertEqual(legacy_section["status"], "current_field_evidence_ready_not_route_execution_proof")
+        self.assertTrue(legacy_section["current_field_evidence_ready_not_route_execution_proof"])
+
+        status, field_consumer = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/field-evidence-field-run-001?include=field_evidence,current_field_evidence_material",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(
+            field_consumer["current_field_evidence_material"]["status"],
+            "current_field_evidence_ready_not_route_execution_proof",
+        )
+        self.assertEqual(
+            field_consumer["current_field_evidence_material"]["missing_materials"],
+            ["map_material"],
+        )
+        self.assertEqual(
+            field_consumer["field_evidence_consumer_ingest"]["current_field_evidence_material"]["status"],
+            "current_field_evidence_ready_not_route_execution_proof",
+        )
+
+        bundle_payload = self._artifact_bundle_payload()
+        bundle_status, bundle_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            bundle_payload,
+        )
+
+        self.assertEqual(bundle_status, 201)
+        bundle_section = bundle_created["task"]["artifact_bundle"]["current_field_evidence_material"]
+        self.assertEqual(bundle_section["schema"], relay_module.O6_CURRENT_FIELD_EVIDENCE_MATERIAL_SCHEMA)
+        self.assertEqual(bundle_section["status"], "current_field_evidence_ready_not_route_execution_proof")
+        self.assertTrue(bundle_section["manual_gate_blocked_expected"])
+
+        status, bundle_consumer = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/artifact-bundle-task-001?include=field_evidence,current_field_evidence_material",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(
+            bundle_consumer["current_field_evidence_material"]["status"],
+            "current_field_evidence_ready_not_route_execution_proof",
+        )
+        self.assertEqual(
+            bundle_consumer["current_field_evidence_material"]["present_materials"],
+            ["camera_frame", "radar_scan", "nav2_no_motion_path", "manual_gate"],
+        )
+        self.assertEqual(
+            bundle_consumer["artifact_bundle_consumer_ingest"]["current_field_evidence_material"]["status"],
+            "current_field_evidence_ready_not_route_execution_proof",
+        )
+
+    def test_o6_current_field_evidence_material_missing_or_unsafe_returns_blocked_summary(self):
+        missing_payload = self._artifact_bundle_payload()
+        missing_payload["artifact_bundle"].pop("current_field_evidence_material")
+
+        status, created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            missing_payload,
+        )
+
+        self.assertEqual(status, 201)
+        packet = created["task"]["artifact_bundle"]["current_field_evidence_material"]
+        self.assertEqual(packet["schema"], relay_module.O6_CURRENT_FIELD_EVIDENCE_MATERIAL_SCHEMA)
+        self.assertEqual(packet["status"], "blocked_not_proven")
+        self.assertIn("current_field_evidence_material_not_available", packet["blocked_reasons"])
+        self.assertEqual(packet["next_required_evidence"], ["current_field_evidence_material"])
+        self.assertFalse(packet["safe_to_control"])
+        self.assertFalse(packet["delivery_success"])
+        self.assertFalse(packet["primary_actions_enabled"])
+        self.assertFalse(packet["robot_control_executed"])
+
+        status, consumer = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/artifact-bundle-task-001?include=field_evidence,current_field_evidence_material",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(consumer["current_field_evidence_material"]["status"], "blocked_not_proven")
+        self.assertIn(
+            "current_field_evidence_material_not_available",
+            consumer["current_field_evidence_material"]["blocked_reasons"],
+        )
+
+        bad_schema_payload = self._artifact_bundle_payload()
+        bad_schema_payload["artifact_bundle"]["task_id"] = "artifact-bundle-current-material-bad-schema-001"
+        bad_schema_payload["artifact_bundle"]["current_field_evidence_material"]["task_id"] = (
+            "artifact-bundle-current-material-bad-schema-001"
+        )
+        bad_schema_payload["artifact_bundle"]["current_field_evidence_material"]["schema"] = (
+            "trashbot.bad_current_field_evidence_material.v1"
+        )
+        status, bad_schema_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            bad_schema_payload,
+        )
+        self.assertEqual(status, 201)
+        self.assertIn(
+            "current_field_evidence_material_schema_unsupported",
+            bad_schema_created["task"]["artifact_bundle"]["current_field_evidence_material"]["blocked_reasons"],
+        )
+
+        bad_scope_payload = self._artifact_bundle_payload()
+        bad_scope_payload["artifact_bundle"]["task_id"] = "artifact-bundle-current-material-bad-scope-001"
+        bad_scope_payload["artifact_bundle"]["current_field_evidence_material"]["task_id"] = (
+            "artifact-bundle-current-material-bad-scope-001"
+        )
+        bad_scope_payload["artifact_bundle"]["current_field_evidence_material"]["proof_scope"] = "wrong_scope"
+        status, bad_scope_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            bad_scope_payload,
+        )
+        self.assertEqual(status, 201)
+        self.assertIn(
+            "current_field_evidence_material_proof_scope_unsupported",
+            bad_scope_created["task"]["artifact_bundle"]["current_field_evidence_material"]["blocked_reasons"],
+        )
+
+        task_mismatch_payload = self._artifact_bundle_payload()
+        task_mismatch_payload["artifact_bundle"]["task_id"] = "artifact-bundle-current-material-task-mismatch-001"
+        task_mismatch_payload["artifact_bundle"]["current_field_evidence_material"]["task_id"] = "other-task"
+        status, task_mismatch_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            task_mismatch_payload,
+        )
+        self.assertEqual(status, 201)
+        self.assertEqual(
+            task_mismatch_created["task"]["artifact_bundle"]["current_field_evidence_material"]["status"],
+            "blocked_not_proven",
+        )
+        self.assertIn(
+            "current_field_evidence_material_task_mismatch",
+            task_mismatch_created["task"]["artifact_bundle"]["current_field_evidence_material"]["blocked_reasons"],
+        )
+
+        unsafe_text_payload = self._artifact_bundle_payload()
+        unsafe_text_payload["artifact_bundle"]["task_id"] = "artifact-bundle-current-material-unsafe-text-001"
+        unsafe_text_payload["artifact_bundle"]["current_field_evidence_material"]["task_id"] = (
+            "artifact-bundle-current-material-unsafe-text-001"
+        )
+        unsafe_text_payload["artifact_bundle"]["current_field_evidence_material"]["source"] = (
+            "/tmp/current_field_evidence_material.json"
+        )
+        unsafe_text_payload["artifact_bundle"]["current_field_evidence_material"]["response_body"] = (
+            "Traceback: Authorization Bearer secret"
+        )
+        status, unsafe_text_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            unsafe_text_payload,
+        )
+        encoded_unsafe_text = json.dumps(unsafe_text_created, ensure_ascii=False)
+        self.assertEqual(status, 201)
+        self.assertIn(
+            "current_field_evidence_material_unsafe",
+            unsafe_text_created["task"]["artifact_bundle"]["current_field_evidence_material"]["blocked_reasons"],
+        )
+        self.assertNotIn("/tmp/current_field_evidence_material.json", encoded_unsafe_text)
+        self.assertNotIn("Authorization Bearer secret", encoded_unsafe_text)
+
+        dangerous_payload = self._artifact_bundle_payload()
+        dangerous_payload["artifact_bundle"]["task_id"] = "artifact-bundle-current-material-dangerous-001"
+        dangerous_payload["artifact_bundle"]["current_field_evidence_material"]["task_id"] = (
+            "artifact-bundle-current-material-dangerous-001"
+        )
+        dangerous_payload["artifact_bundle"]["current_field_evidence_material"]["delivery_success"] = True
+        status, dangerous_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            dangerous_payload,
+        )
+        self.assertEqual(status, 201)
+        dangerous_packet = dangerous_created["task"]["artifact_bundle"]["current_field_evidence_material"]
+        self.assertEqual(dangerous_packet["status"], "blocked_not_proven")
+        self.assertIn("current_field_evidence_material_dangerous_true", dangerous_packet["blocked_reasons"])
+        self.assertFalse(dangerous_packet["delivery_success"])
+
+        status, explicit = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/artifact-bundle-current-material-dangerous-001?include=field_evidence,current_field_evidence_material",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(explicit["current_field_evidence_material"]["status"], "blocked_not_proven")
+        self.assertIn(
+            "current_field_evidence_material_dangerous_true",
+            explicit["current_field_evidence_material"]["blocked_reasons"],
+        )
+
+    def test_o6_field_operator_confirmation_material_in_field_and_bundle_readback(self):
+        field_payload = self._field_evidence_archive_request_payload()
+        status, field_created = self.client.request(
+            "POST",
+            "/api/o6/archive/field-evidence",
+            field_payload,
+        )
+
+        self.assertEqual(status, 201)
+        field_section = field_created["task"]["field_evidence"]["field_operator_confirmation_material"]
+        self.assertEqual(field_section["schema"], relay_module.O6_FIELD_OPERATOR_CONFIRMATION_MATERIAL_SCHEMA)
+        self.assertEqual(
+            field_section["status"],
+            "field_operator_confirmation_material_ready_not_delivery_proof",
+        )
+        self.assertEqual(
+            field_section["proof_scope"],
+            relay_module.O6_FIELD_OPERATOR_CONFIRMATION_MATERIAL_PROOF_SCOPE,
+        )
+        self.assertTrue(field_section["operator_report_present"])
+        self.assertEqual(field_section["operator_report_status"], "operator_report_ready")
+        self.assertTrue(field_section["operator_confirmation_present"])
+        self.assertEqual(field_section["operator_confirmation_status"], "operator_confirmation_ready")
+        self.assertTrue(field_section["operator_present"])
+        self.assertTrue(field_section["physical_clearance_confirmed"])
+        self.assertTrue(field_section["emergency_stop_ready"])
+        self.assertTrue(field_section["observed_motion"])
+        self.assertTrue(field_section["observed_stop"])
+        self.assertTrue(field_section["same_task_id_consumed"])
+        self.assertTrue(field_section["linked_route_material_present"])
+        self.assertTrue(field_section["linked_delivery_material_present"])
+        self.assertTrue(field_section["operator_material_consumed"])
+        self.assertEqual(field_section["material_summaries"]["operator_report"]["basename"], "operator_report.json")
+        self.assertFalse(field_section["delivery_success"])
+        self.assertFalse(field_section["safe_to_control"])
+        self.assertFalse(field_section["route_execution_success"])
+
+        status, detail = self.client.request(
+            "GET",
+            "/api/o6/archive/tasks/field-evidence-field-run-001",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(
+            detail["task"]["field_operator_confirmation_material"]["status"],
+            "field_operator_confirmation_material_ready_not_delivery_proof",
+        )
+        self.assertEqual(
+            detail["task"]["field_evidence_consumer_ingest"]["field_operator_confirmation_material"][
+                "reported_at"
+            ],
+            "2026-07-10T07:22:00Z",
+        )
+
+        status, field_consumer = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/field-evidence-field-run-001?include=field_evidence,field_operator_confirmation_material",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(
+            field_consumer["field_operator_confirmation_material"]["status"],
+            "field_operator_confirmation_material_ready_not_delivery_proof",
+        )
+        self.assertEqual(
+            field_consumer["field_operator_confirmation_material"]["material_summaries"][
+                "operator_confirmation"
+            ]["basename"],
+            "operator_confirmation.json",
+        )
+        self.assertEqual(
+            field_consumer["field_evidence_consumer_ingest"]["field_operator_confirmation_material"]["status"],
+            "field_operator_confirmation_material_ready_not_delivery_proof",
+        )
+
+        bundle_payload = self._artifact_bundle_payload()
+        bundle_status, bundle_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            bundle_payload,
+        )
+
+        self.assertEqual(bundle_status, 201)
+        bundle_section = bundle_created["task"]["artifact_bundle"]["field_operator_confirmation_material"]
+        self.assertEqual(bundle_section["schema"], relay_module.O6_FIELD_OPERATOR_CONFIRMATION_MATERIAL_SCHEMA)
+        self.assertTrue(bundle_section["linked_delivery_material_present"])
+
+        status, bundle_consumer = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/artifact-bundle-task-001?include=field_evidence,field_operator_confirmation_material",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(
+            bundle_consumer["field_operator_confirmation_material"]["status"],
+            "field_operator_confirmation_material_ready_not_delivery_proof",
+        )
+        self.assertEqual(
+            bundle_consumer["artifact_bundle_consumer_ingest"]["field_operator_confirmation_material"][
+                "material_summaries"
+            ]["delivery_material"]["basename"],
+            "delivery_result_evidence.json",
+        )
+
+    def test_o6_field_operator_confirmation_material_missing_or_unsafe_returns_blocked_summary(self):
+        missing_payload = self._artifact_bundle_payload()
+        missing_payload["artifact_bundle"].pop("field_operator_confirmation_material")
+
+        status, created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            missing_payload,
+        )
+
+        self.assertEqual(status, 201)
+        packet = created["task"]["artifact_bundle"]["field_operator_confirmation_material"]
+        self.assertEqual(packet["schema"], relay_module.O6_FIELD_OPERATOR_CONFIRMATION_MATERIAL_SCHEMA)
+        self.assertEqual(packet["status"], "blocked_not_proven")
+        self.assertIn("field_operator_confirmation_material_not_available", packet["blocked_reasons"])
+        self.assertEqual(packet["next_required_evidence"], ["field_operator_confirmation_material"])
+        self.assertFalse(packet["safe_to_control"])
+        self.assertFalse(packet["delivery_success"])
+
+        status, consumer = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/artifact-bundle-task-001?include=field_operator_confirmation_material",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(consumer["field_operator_confirmation_material"]["status"], "blocked_not_proven")
+        self.assertIn(
+            "field_operator_confirmation_material_not_available",
+            consumer["field_operator_confirmation_material"]["blocked_reasons"],
+        )
+
+        bad_schema_payload = self._artifact_bundle_payload()
+        bad_schema_payload["artifact_bundle"]["task_id"] = "artifact-bundle-operator-bad-schema-001"
+        bad_schema_payload["artifact_bundle"]["field_operator_confirmation_material"]["task_id"] = (
+            "artifact-bundle-operator-bad-schema-001"
+        )
+        bad_schema_payload["artifact_bundle"]["field_operator_confirmation_material"]["schema"] = (
+            "trashbot.bad_field_operator_confirmation_material.v1"
+        )
+        status, bad_schema_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            bad_schema_payload,
+        )
+        self.assertEqual(status, 201)
+        self.assertIn(
+            "field_operator_confirmation_material_schema_unsupported",
+            bad_schema_created["task"]["artifact_bundle"]["field_operator_confirmation_material"][
+                "blocked_reasons"
+            ],
+        )
+
+        bad_scope_payload = self._artifact_bundle_payload()
+        bad_scope_payload["artifact_bundle"]["task_id"] = "artifact-bundle-operator-bad-scope-001"
+        bad_scope_payload["artifact_bundle"]["field_operator_confirmation_material"]["task_id"] = (
+            "artifact-bundle-operator-bad-scope-001"
+        )
+        bad_scope_payload["artifact_bundle"]["field_operator_confirmation_material"]["proof_scope"] = "wrong_scope"
+        status, bad_scope_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            bad_scope_payload,
+        )
+        self.assertEqual(status, 201)
+        self.assertIn(
+            "field_operator_confirmation_material_proof_scope_unsupported",
+            bad_scope_created["task"]["artifact_bundle"]["field_operator_confirmation_material"][
+                "blocked_reasons"
+            ],
+        )
+
+        task_mismatch_payload = self._artifact_bundle_payload()
+        task_mismatch_payload["artifact_bundle"]["task_id"] = "artifact-bundle-operator-task-mismatch-001"
+        task_mismatch_payload["artifact_bundle"]["field_operator_confirmation_material"]["task_id"] = "other-task"
+        status, task_mismatch_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            task_mismatch_payload,
+        )
+        self.assertEqual(status, 201)
+        self.assertIn(
+            "field_operator_confirmation_material_task_mismatch",
+            task_mismatch_created["task"]["artifact_bundle"]["field_operator_confirmation_material"][
+                "blocked_reasons"
+            ],
+        )
+
+        missing_field_payload = self._artifact_bundle_payload()
+        missing_field_payload["artifact_bundle"]["task_id"] = "artifact-bundle-operator-missing-field-001"
+        missing_field_payload["artifact_bundle"]["field_operator_confirmation_material"]["task_id"] = (
+            "artifact-bundle-operator-missing-field-001"
+        )
+        missing_field_payload["artifact_bundle"]["field_operator_confirmation_material"].pop("reported_at")
+        status, missing_field_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            missing_field_payload,
+        )
+        self.assertEqual(status, 201)
+        self.assertIn(
+            "field_operator_confirmation_material_reported_at_missing",
+            missing_field_created["task"]["artifact_bundle"]["field_operator_confirmation_material"][
+                "blocked_reasons"
+            ],
+        )
+
+        unsafe_text_payload = self._artifact_bundle_payload()
+        unsafe_text_payload["artifact_bundle"]["task_id"] = "artifact-bundle-operator-unsafe-text-001"
+        unsafe_text_payload["artifact_bundle"]["field_operator_confirmation_material"]["task_id"] = (
+            "artifact-bundle-operator-unsafe-text-001"
+        )
+        unsafe_text_payload["artifact_bundle"]["field_operator_confirmation_material"]["source"] = (
+            "/tmp/operator_confirmation_material.json"
+        )
+        unsafe_text_payload["artifact_bundle"]["field_operator_confirmation_material"]["raw_report"] = (
+            "Traceback: Authorization Bearer secret"
+        )
+        status, unsafe_text_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            unsafe_text_payload,
+        )
+        encoded_unsafe_text = json.dumps(unsafe_text_created, ensure_ascii=False)
+        self.assertEqual(status, 201)
+        self.assertIn(
+            "field_operator_confirmation_material_unsafe",
+            unsafe_text_created["task"]["artifact_bundle"]["field_operator_confirmation_material"][
+                "blocked_reasons"
+            ],
+        )
+        self.assertNotIn("/tmp/operator_confirmation_material.json", encoded_unsafe_text)
+        self.assertNotIn("Authorization Bearer secret", encoded_unsafe_text)
+
+        dangerous_payload = self._artifact_bundle_payload()
+        dangerous_payload["artifact_bundle"]["task_id"] = "artifact-bundle-operator-dangerous-001"
+        dangerous_payload["artifact_bundle"]["field_operator_confirmation_material"]["task_id"] = (
+            "artifact-bundle-operator-dangerous-001"
+        )
+        dangerous_payload["artifact_bundle"]["field_operator_confirmation_material"]["delivery_success"] = True
+        status, dangerous_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            dangerous_payload,
+        )
+        self.assertEqual(status, 201)
+        dangerous_packet = dangerous_created["task"]["artifact_bundle"]["field_operator_confirmation_material"]
+        self.assertEqual(dangerous_packet["status"], "blocked_not_proven")
+        self.assertIn("field_operator_confirmation_material_dangerous_true", dangerous_packet["blocked_reasons"])
+        self.assertFalse(dangerous_packet["delivery_success"])
+
+        status, explicit = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/artifact-bundle-operator-dangerous-001?include=field_operator_confirmation_material",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(explicit["field_operator_confirmation_material"]["status"], "blocked_not_proven")
+        self.assertIn(
+            "field_operator_confirmation_material_dangerous_true",
+            explicit["field_operator_confirmation_material"]["blocked_reasons"],
+        )
+
+    def test_o6_clean_baseline_nav2_path_material_in_field_and_bundle_readback(self):
+        field_payload = self._field_evidence_archive_request_payload()
+        status, field_created = self.client.request(
+            "POST",
+            "/api/o6/archive/field-evidence",
+            field_payload,
+        )
+
+        self.assertEqual(status, 201)
+        field_section = field_created["task"]["field_evidence"]["clean_baseline_nav2_path_material"]
+        self.assertEqual(field_section["schema"], relay_module.O6_CLEAN_BASELINE_NAV2_PATH_MATERIAL_SCHEMA)
+        self.assertEqual(
+            field_section["status"],
+            "clean_baseline_nav2_path_material_ready_not_route_execution_proof",
+        )
+        self.assertEqual(field_section["first_attempt_status"], "tf_root_cause_blocked")
+        self.assertEqual(field_section["retry_status"], "path_generated_after_retry")
+        self.assertEqual(field_section["path_point_count"], 31)
+        self.assertTrue(field_section["cleanup_readback_clean"])
+        self.assertEqual(
+            field_section["material_sample_refs"]["refresh_summary"]["basename"],
+            "clean_baseline_nav2_refresh_summary.json",
+        )
+        self.assertIn("real_route_execution_trace_missing", field_section["blocked_reasons"])
+
+        status, detail = self.client.request(
+            "GET",
+            "/api/o6/archive/tasks/field-evidence-field-run-001",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(
+            detail["task"]["clean_baseline_nav2_path_material"]["status"],
+            "clean_baseline_nav2_path_material_ready_not_route_execution_proof",
+        )
+        self.assertEqual(
+            detail["task"]["field_evidence_consumer_ingest"]["clean_baseline_nav2_path_material"]["path_point_count"],
+            31,
+        )
+
+        status, field_consumer = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/field-evidence-field-run-001?include=field_evidence,clean_baseline_nav2_path_material",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(
+            field_consumer["clean_baseline_nav2_path_material"]["status"],
+            "clean_baseline_nav2_path_material_ready_not_route_execution_proof",
+        )
+        self.assertEqual(
+            field_consumer["field_evidence_consumer_ingest"]["clean_baseline_nav2_path_material"]["retry_status"],
+            "path_generated_after_retry",
+        )
+
+        bundle_payload = self._artifact_bundle_payload()
+        bundle_status, bundle_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            bundle_payload,
+        )
+
+        self.assertEqual(bundle_status, 201)
+        bundle_section = bundle_created["task"]["artifact_bundle"]["clean_baseline_nav2_path_material"]
+        self.assertEqual(bundle_section["schema"], relay_module.O6_CLEAN_BASELINE_NAV2_PATH_MATERIAL_SCHEMA)
+        self.assertTrue(bundle_section["path_generated"])
+        self.assertTrue(bundle_section["managed_runtime_cleanup_ok"])
+
+        status, bundle_consumer = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/artifact-bundle-task-001?include=field_evidence,clean_baseline_nav2_path_material",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(
+            bundle_consumer["clean_baseline_nav2_path_material"]["path_point_count"],
+            31,
+        )
+        self.assertEqual(
+            bundle_consumer["artifact_bundle_consumer_ingest"]["clean_baseline_nav2_path_material"]["material_sample_refs"]["status_artifact"]["basename"],
+            "clean_baseline_nav2_status.json",
+        )
+
+    def test_o6_clean_baseline_nav2_path_material_missing_or_unsafe_returns_blocked_summary(self):
+        missing_payload = self._artifact_bundle_payload()
+        missing_payload["artifact_bundle"].pop("clean_baseline_nav2_path_material")
+
+        status, created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            missing_payload,
+        )
+
+        self.assertEqual(status, 201)
+        packet = created["task"]["artifact_bundle"]["clean_baseline_nav2_path_material"]
+        self.assertEqual(packet["schema"], relay_module.O6_CLEAN_BASELINE_NAV2_PATH_MATERIAL_SCHEMA)
+        self.assertEqual(packet["status"], "blocked_not_proven")
+        self.assertIn("clean_baseline_nav2_path_material_not_available", packet["blocked_reasons"])
+        self.assertEqual(packet["next_required_evidence"], ["clean_baseline_nav2_path_material"])
+
+        status, consumer = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/artifact-bundle-task-001?include=clean_baseline_nav2_path_material",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(consumer["clean_baseline_nav2_path_material"]["status"], "blocked_not_proven")
+
+        bad_schema_payload = self._artifact_bundle_payload()
+        bad_schema_payload["artifact_bundle"]["task_id"] = "artifact-bundle-clean-baseline-bad-schema-001"
+        bad_schema_payload["artifact_bundle"]["clean_baseline_nav2_path_material"]["task_id"] = (
+            "artifact-bundle-clean-baseline-bad-schema-001"
+        )
+        bad_schema_payload["artifact_bundle"]["clean_baseline_nav2_path_material"]["schema"] = (
+            "trashbot.bad_clean_baseline_nav2_path_material.v1"
+        )
+        status, bad_schema_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            bad_schema_payload,
+        )
+        self.assertEqual(status, 201)
+        self.assertIn(
+            "clean_baseline_nav2_path_material_schema_unsupported",
+            bad_schema_created["task"]["artifact_bundle"]["clean_baseline_nav2_path_material"]["blocked_reasons"],
+        )
+
+        bad_scope_payload = self._artifact_bundle_payload()
+        bad_scope_payload["artifact_bundle"]["task_id"] = "artifact-bundle-clean-baseline-bad-scope-001"
+        bad_scope_payload["artifact_bundle"]["clean_baseline_nav2_path_material"]["task_id"] = (
+            "artifact-bundle-clean-baseline-bad-scope-001"
+        )
+        bad_scope_payload["artifact_bundle"]["clean_baseline_nav2_path_material"]["proof_scope"] = "wrong_scope"
+        status, bad_scope_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            bad_scope_payload,
+        )
+        self.assertEqual(status, 201)
+        self.assertIn(
+            "clean_baseline_nav2_path_material_proof_scope_unsupported",
+            bad_scope_created["task"]["artifact_bundle"]["clean_baseline_nav2_path_material"]["blocked_reasons"],
+        )
+
+        task_mismatch_payload = self._artifact_bundle_payload()
+        task_mismatch_payload["artifact_bundle"]["task_id"] = "artifact-bundle-clean-baseline-task-mismatch-001"
+        task_mismatch_payload["artifact_bundle"]["clean_baseline_nav2_path_material"]["task_id"] = "other-task"
+        status, task_mismatch_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            task_mismatch_payload,
+        )
+        self.assertEqual(status, 201)
+        self.assertIn(
+            "clean_baseline_nav2_path_material_task_mismatch",
+            task_mismatch_created["task"]["artifact_bundle"]["clean_baseline_nav2_path_material"]["blocked_reasons"],
+        )
+
+        unsafe_text_payload = self._artifact_bundle_payload()
+        unsafe_text_payload["artifact_bundle"]["task_id"] = "artifact-bundle-clean-baseline-unsafe-text-001"
+        unsafe_text_payload["artifact_bundle"]["clean_baseline_nav2_path_material"]["task_id"] = (
+            "artifact-bundle-clean-baseline-unsafe-text-001"
+        )
+        unsafe_text_payload["artifact_bundle"]["clean_baseline_nav2_path_material"]["source"] = (
+            "/tmp/clean_baseline_nav2_path_material.json"
+        )
+        unsafe_text_payload["artifact_bundle"]["clean_baseline_nav2_path_material"]["response_body"] = (
+            "Traceback: Authorization Bearer secret"
+        )
+        status, unsafe_text_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            unsafe_text_payload,
+        )
+        encoded_unsafe_text = json.dumps(unsafe_text_created, ensure_ascii=False)
+        self.assertEqual(status, 201)
+        self.assertIn(
+            "clean_baseline_nav2_path_material_unsafe",
+            unsafe_text_created["task"]["artifact_bundle"]["clean_baseline_nav2_path_material"]["blocked_reasons"],
+        )
+        self.assertNotIn("/tmp/clean_baseline_nav2_path_material.json", encoded_unsafe_text)
+        self.assertNotIn("Authorization Bearer secret", encoded_unsafe_text)
+
+        dangerous_payload = self._artifact_bundle_payload()
+        dangerous_payload["artifact_bundle"]["task_id"] = "artifact-bundle-clean-baseline-dangerous-001"
+        dangerous_payload["artifact_bundle"]["clean_baseline_nav2_path_material"]["task_id"] = (
+            "artifact-bundle-clean-baseline-dangerous-001"
+        )
+        dangerous_payload["artifact_bundle"]["clean_baseline_nav2_path_material"]["delivery_success"] = True
+        status, dangerous_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            dangerous_payload,
+        )
+        self.assertEqual(status, 201)
+        dangerous_packet = dangerous_created["task"]["artifact_bundle"]["clean_baseline_nav2_path_material"]
+        self.assertEqual(dangerous_packet["status"], "blocked_not_proven")
+        self.assertIn("clean_baseline_nav2_path_material_dangerous_true", dangerous_packet["blocked_reasons"])
+
+    def test_o6_localization_path_material_readback_in_field_and_bundle_readback(self):
+        field_payload = self._field_evidence_archive_request_payload()
+        status, field_created = self.client.request(
+            "POST",
+            "/api/o6/archive/field-evidence",
+            field_payload,
+        )
+
+        self.assertEqual(status, 201)
+        field_section = field_created["task"]["field_evidence"]["localization_path_material_readback"]
+        self.assertEqual(field_section["schema"], relay_module.O6_LOCALIZATION_PATH_MATERIAL_READBACK_SCHEMA)
+        self.assertEqual(
+            field_section["proof_scope"],
+            relay_module.O6_LOCALIZATION_PATH_MATERIAL_READBACK_PROOF_SCOPE,
+        )
+        self.assertEqual(
+            field_section["status"],
+            "localization_path_material_readback_ready_not_route_execution_proof",
+        )
+        self.assertTrue(field_section["localization_path_material_bridge_present"])
+        self.assertTrue(field_section["same_run_localization_material_present"])
+        self.assertTrue(field_section["same_run_map_once_observed"])
+        self.assertTrue(field_section["same_run_amcl_pose_observed"])
+        self.assertTrue(field_section["same_run_localization_tf_map_to_odom"])
+        self.assertTrue(field_section["same_run_localization_tf_map_to_base_link"])
+        self.assertTrue(field_section["same_run_tf_map_to_odom_observed"])
+        self.assertTrue(field_section["same_run_tf_map_to_base_link_observed"])
+        self.assertTrue(field_section["same_run_path_generation_requested"])
+        self.assertFalse(field_section["same_run_path_generation_succeeded"])
+        self.assertFalse(field_section["same_run_path_generated"])
+        self.assertEqual(field_section["same_run_path_point_count"], 0)
+        self.assertFalse(field_section["same_run_path_proven"])
+        self.assertFalse(field_section["cross_run_clean_baseline_path_comparator_present"])
+        self.assertEqual(field_section["cross_run_clean_baseline_path_summary"], {"present": False})
+        self.assertFalse(field_section["cross_run_clean_baseline_same_run_override_allowed"])
+        self.assertIn("current_same_run_path_generation_failed", field_section["blocked_reasons"])
+        self.assertFalse(field_section["delivery_success"])
+        self.assertFalse(field_section["safe_to_control"])
+        self.assertFalse(field_section["nav2_route_execution_success"])
+
+        status, detail = self.client.request(
+            "GET",
+            "/api/o6/archive/tasks/field-evidence-field-run-001",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(
+            detail["task"]["localization_path_material_readback"]["status"],
+            "localization_path_material_readback_ready_not_route_execution_proof",
+        )
+        self.assertEqual(
+            detail["task"]["field_evidence_consumer_ingest"]["localization_path_material_readback"][
+                "same_run_path_point_count"
+            ],
+            0,
+        )
+
+        status, field_consumer = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/field-evidence-field-run-001?include=field_evidence,localization_path_material_readback",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(
+            field_consumer["localization_path_material_readback"]["status"],
+            "localization_path_material_readback_ready_not_route_execution_proof",
+        )
+        self.assertEqual(
+            field_consumer["field_evidence_consumer_ingest"]["localization_path_material_readback"][
+                "same_run_path_point_count"
+            ],
+            0,
+        )
+
+        bundle_payload = self._artifact_bundle_payload()
+        bundle_payload["artifact_bundle"]["localization_path_material_readback"][
+            "cross_run_clean_baseline_path_comparator_present"
+        ] = True
+        bundle_payload["artifact_bundle"]["localization_path_material_readback"][
+            "cross_run_clean_baseline_path_summary"
+        ] = {
+            "map_once_observed": True,
+            "amcl_pose_observed": True,
+            "path_generation_requested": True,
+            "path_generation_succeeded": True,
+            "path_generated": True,
+            "path_point_count": 31,
+            "same_run_override_allowed": False,
+        }
+        bundle_status, bundle_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            bundle_payload,
+        )
+
+        self.assertEqual(bundle_status, 201)
+        bundle_section = bundle_created["task"]["artifact_bundle"]["localization_path_material_readback"]
+        self.assertEqual(
+            bundle_section["schema"],
+            relay_module.O6_LOCALIZATION_PATH_MATERIAL_READBACK_SCHEMA,
+        )
+        self.assertTrue(bundle_section["same_run_localization_material_present"])
+        self.assertTrue(bundle_section["same_run_localization_tf_map_to_odom"])
+        self.assertTrue(bundle_section["cross_run_clean_baseline_path_comparator_present"])
+        self.assertEqual(
+            bundle_section["cross_run_clean_baseline_path_summary"]["path_point_count"],
+            31,
+        )
+
+        status, bundle_consumer = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/artifact-bundle-task-001?include=field_evidence,localization_path_material_readback",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertFalse(bundle_consumer["localization_path_material_readback"]["same_run_path_generated"])
+        self.assertEqual(
+            bundle_consumer["artifact_bundle_consumer_ingest"]["localization_path_material_readback"][
+                "same_run_path_point_count"
+            ],
+            0,
+        )
+
+    def test_o6_localization_path_material_readback_missing_or_unsafe_returns_blocked_summary(self):
+        missing_payload = self._artifact_bundle_payload()
+        missing_payload["artifact_bundle"].pop("localization_path_material_readback")
+
+        status, created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            missing_payload,
+        )
+
+        self.assertEqual(status, 201)
+        packet = created["task"]["artifact_bundle"]["localization_path_material_readback"]
+        self.assertEqual(packet["schema"], relay_module.O6_LOCALIZATION_PATH_MATERIAL_READBACK_SCHEMA)
+        self.assertEqual(packet["status"], "blocked_not_proven")
+        self.assertIn("localization_path_material_readback_not_available", packet["blocked_reasons"])
+        self.assertEqual(packet["next_required_evidence"], ["localization_path_material_readback"])
+        self.assertFalse(packet["safe_to_control"])
+        self.assertFalse(packet["delivery_success"])
+        self.assertFalse(packet["nav2_route_execution_success"])
+
+        status, consumer = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/artifact-bundle-task-001?include=localization_path_material_readback",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(consumer["localization_path_material_readback"]["status"], "blocked_not_proven")
+
+        bad_schema_payload = self._artifact_bundle_payload()
+        bad_schema_payload["artifact_bundle"]["task_id"] = "artifact-bundle-localization-bad-schema-001"
+        bad_schema_payload["artifact_bundle"]["localization_path_material_readback"]["task_id"] = (
+            "artifact-bundle-localization-bad-schema-001"
+        )
+        bad_schema_payload["artifact_bundle"]["localization_path_material_readback"]["schema"] = (
+            "trashbot.bad_localization_path_material_readback.v1"
+        )
+        status, bad_schema_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            bad_schema_payload,
+        )
+        self.assertEqual(status, 201)
+        self.assertIn(
+            "localization_path_material_readback_schema_unsupported",
+            bad_schema_created["task"]["artifact_bundle"]["localization_path_material_readback"][
+                "blocked_reasons"
+            ],
+        )
+
+        bad_scope_payload = self._artifact_bundle_payload()
+        bad_scope_payload["artifact_bundle"]["task_id"] = "artifact-bundle-localization-bad-scope-001"
+        bad_scope_payload["artifact_bundle"]["localization_path_material_readback"]["task_id"] = (
+            "artifact-bundle-localization-bad-scope-001"
+        )
+        bad_scope_payload["artifact_bundle"]["localization_path_material_readback"]["proof_scope"] = "wrong_scope"
+        status, bad_scope_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            bad_scope_payload,
+        )
+        self.assertEqual(status, 201)
+        self.assertIn(
+            "localization_path_material_readback_proof_scope_unsupported",
+            bad_scope_created["task"]["artifact_bundle"]["localization_path_material_readback"][
+                "blocked_reasons"
+            ],
+        )
+
+        task_mismatch_payload = self._artifact_bundle_payload()
+        task_mismatch_payload["artifact_bundle"]["task_id"] = "artifact-bundle-localization-task-mismatch-001"
+        task_mismatch_payload["artifact_bundle"]["localization_path_material_readback"]["task_id"] = "other-task"
+        status, task_mismatch_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            task_mismatch_payload,
+        )
+        self.assertEqual(status, 201)
+        self.assertIn(
+            "localization_path_material_readback_task_mismatch",
+            task_mismatch_created["task"]["artifact_bundle"]["localization_path_material_readback"][
+                "blocked_reasons"
+            ],
+        )
+
+        unsafe_text_payload = self._artifact_bundle_payload()
+        unsafe_text_payload["artifact_bundle"]["task_id"] = "artifact-bundle-localization-unsafe-text-001"
+        unsafe_text_payload["artifact_bundle"]["localization_path_material_readback"]["task_id"] = (
+            "artifact-bundle-localization-unsafe-text-001"
+        )
+        unsafe_text_payload["artifact_bundle"]["localization_path_material_readback"]["source"] = (
+            "/tmp/localization_path_material_readback.json"
+        )
+        unsafe_text_payload["artifact_bundle"]["localization_path_material_readback"]["response_body"] = (
+            "Traceback: Authorization Bearer secret"
+        )
+        status, unsafe_text_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            unsafe_text_payload,
+        )
+        encoded_unsafe_text = json.dumps(unsafe_text_created, ensure_ascii=False)
+        self.assertEqual(status, 201)
+        self.assertIn(
+            "localization_path_material_readback_unsafe",
+            unsafe_text_created["task"]["artifact_bundle"]["localization_path_material_readback"][
+                "blocked_reasons"
+            ],
+        )
+        self.assertNotIn("/tmp/localization_path_material_readback.json", encoded_unsafe_text)
+        self.assertNotIn("Authorization Bearer secret", encoded_unsafe_text)
+
+        dangerous_payload = self._artifact_bundle_payload()
+        dangerous_payload["artifact_bundle"]["task_id"] = "artifact-bundle-localization-dangerous-001"
+        dangerous_payload["artifact_bundle"]["localization_path_material_readback"]["task_id"] = (
+            "artifact-bundle-localization-dangerous-001"
+        )
+        dangerous_payload["artifact_bundle"]["localization_path_material_readback"][
+            "same_run_path_generation_succeeded"
+        ] = True
+        status, dangerous_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            dangerous_payload,
+        )
+        self.assertEqual(status, 201)
+        dangerous_packet = dangerous_created["task"]["artifact_bundle"]["localization_path_material_readback"]
+        self.assertEqual(dangerous_packet["status"], "blocked_not_proven")
+        self.assertIn(
+            "localization_path_material_readback_same_run_path_success_claimed",
+            dangerous_packet["blocked_reasons"],
+        )
+        self.assertFalse(dangerous_packet["same_run_path_generation_succeeded"])
+
+    def test_o6_same_task_route_execution_material_packet_missing_or_unsafe_returns_blocked_summary(self):
+        missing_payload = self._artifact_bundle_payload()
+        missing_payload["artifact_bundle"].pop("same_task_route_execution_material_packet")
+
+        status, created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            missing_payload,
+        )
+
+        self.assertEqual(status, 201)
+        packet = created["task"]["artifact_bundle"]["same_task_route_execution_material_packet"]
+        self.assertEqual(packet["schema"], relay_module.O6_SAME_TASK_ROUTE_EXECUTION_MATERIAL_PACKET_SCHEMA)
+        self.assertEqual(packet["status"], "blocked_not_proven")
+        self.assertIn("same_task_route_execution_material_packet_not_available", packet["blocked_reasons"])
+        self.assertEqual(packet["next_required_evidence"], ["same_task_route_execution_material_packet"])
+        self.assertFalse(packet["safe_to_control"])
+        self.assertEqual(
+            created["task"]["artifact_bundle"]["route_execution_result_delivery_readiness"]["status"],
+            "route_execution_result_delivery_readiness_ready_not_delivery_proof",
+        )
+
+        status, consumer = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/artifact-bundle-task-001?include=same_task_route_execution_material_packet",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(consumer["same_task_route_execution_material_packet"]["status"], "blocked_not_proven")
+        self.assertIn(
+            "same_task_route_execution_material_packet_not_available",
+            consumer["same_task_route_execution_material_packet"]["blocked_reasons"],
+        )
+        self.assertFalse(consumer["same_task_route_execution_material_packet"]["route_execution_credit_candidate"])
+
+        bad_schema_payload = self._artifact_bundle_payload()
+        bad_schema_payload["artifact_bundle"]["task_id"] = "artifact-bundle-route-material-bad-schema-001"
+        bad_schema_payload["artifact_bundle"]["same_task_field_material_packet"]["task_id"] = (
+            "artifact-bundle-route-material-bad-schema-001"
+        )
+        bad_schema_payload["artifact_bundle"]["same_task_route_execution_material_packet"]["task_id"] = (
+            "artifact-bundle-route-material-bad-schema-001"
+        )
+        bad_schema_payload["artifact_bundle"]["same_task_route_execution_material_packet"]["schema"] = (
+            "trashbot.bad_same_task_route_execution_material_packet.v1"
+        )
+        status, bad_schema_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            bad_schema_payload,
+        )
+        self.assertEqual(status, 201)
+        self.assertIn(
+            "same_task_route_execution_material_packet_schema_unsupported",
+            bad_schema_created["task"]["artifact_bundle"]["same_task_route_execution_material_packet"][
+                "blocked_reasons"
+            ],
+        )
+
+        task_mismatch_payload = self._artifact_bundle_payload()
+        task_mismatch_payload["artifact_bundle"]["task_id"] = "artifact-bundle-route-material-task-mismatch-001"
+        task_mismatch_payload["artifact_bundle"]["same_task_field_material_packet"]["task_id"] = (
+            "artifact-bundle-route-material-task-mismatch-001"
+        )
+        task_mismatch_payload["artifact_bundle"]["same_task_route_execution_material_packet"]["task_id"] = (
+            "other-task"
+        )
+        status, task_mismatch_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            task_mismatch_payload,
+        )
+        self.assertEqual(status, 201)
+        self.assertIn(
+            "same_task_route_execution_material_packet_task_mismatch",
+            task_mismatch_created["task"]["artifact_bundle"]["same_task_route_execution_material_packet"][
+                "blocked_reasons"
+            ],
+        )
+
+        missing_credit_payload = self._artifact_bundle_payload()
+        missing_credit_payload["artifact_bundle"]["task_id"] = "artifact-bundle-route-material-missing-credit-001"
+        missing_credit_payload["artifact_bundle"]["same_task_field_material_packet"]["task_id"] = (
+            "artifact-bundle-route-material-missing-credit-001"
+        )
+        missing_credit_payload["artifact_bundle"]["same_task_route_execution_material_packet"]["task_id"] = (
+            "artifact-bundle-route-material-missing-credit-001"
+        )
+        missing_credit_payload["artifact_bundle"]["same_task_route_execution_material_packet"].pop(
+            "credit_required_evidence"
+        )
+        status, missing_credit_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            missing_credit_payload,
+        )
+        self.assertEqual(status, 201)
+        self.assertIn(
+            "same_task_route_execution_material_packet_credit_fields_missing",
+            missing_credit_created["task"]["artifact_bundle"]["same_task_route_execution_material_packet"][
+                "blocked_reasons"
+            ],
+        )
+        self.assertIn(
+            "same_task_route_execution_material_packet_credit_fields_invalid",
+            missing_credit_created["task"]["artifact_bundle"]["same_task_route_execution_material_packet"][
+                "blocked_reasons"
+            ],
+        )
+
+        unsafe_text_payload = self._artifact_bundle_payload()
+        unsafe_text_payload["artifact_bundle"]["task_id"] = "artifact-bundle-route-material-unsafe-text-001"
+        unsafe_text_payload["artifact_bundle"]["same_task_field_material_packet"]["task_id"] = (
+            "artifact-bundle-route-material-unsafe-text-001"
+        )
+        unsafe_text_payload["artifact_bundle"]["same_task_route_execution_material_packet"]["task_id"] = (
+            "artifact-bundle-route-material-unsafe-text-001"
+        )
+        unsafe_text_payload["artifact_bundle"]["same_task_route_execution_material_packet"]["source"] = (
+            "/tmp/route_execution_material_packet.json"
+        )
+        unsafe_text_payload["artifact_bundle"]["same_task_route_execution_material_packet"]["response_body"] = (
+            "Traceback: Authorization Bearer secret"
+        )
+        status, unsafe_text_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            unsafe_text_payload,
+        )
+        encoded_unsafe_text = json.dumps(unsafe_text_created, ensure_ascii=False)
+        self.assertEqual(status, 201)
+        self.assertIn(
+            "same_task_route_execution_material_packet_unsafe",
+            unsafe_text_created["task"]["artifact_bundle"]["same_task_route_execution_material_packet"][
+                "blocked_reasons"
+            ],
+        )
+        self.assertEqual(
+            unsafe_text_created["task"]["artifact_bundle"]["same_task_field_material_packet"]["status"],
+            "ready_not_delivery_proof",
+        )
+        self.assertNotIn("/tmp/route_execution_material_packet.json", encoded_unsafe_text)
+        self.assertNotIn("Authorization Bearer secret", encoded_unsafe_text)
+
+        unsafe_ref_payload = self._artifact_bundle_payload()
+        unsafe_ref_payload["artifact_bundle"]["task_id"] = "artifact-bundle-route-material-unsafe-ref-001"
+        unsafe_ref_payload["artifact_bundle"]["same_task_field_material_packet"]["task_id"] = (
+            "artifact-bundle-route-material-unsafe-ref-001"
+        )
+        unsafe_ref_payload["artifact_bundle"]["same_task_route_execution_material_packet"]["task_id"] = (
+            "artifact-bundle-route-material-unsafe-ref-001"
+        )
+        unsafe_ref_payload["artifact_bundle"]["same_task_route_execution_material_packet"][
+            "material_summaries"
+        ]["route_bag_pose_progress_replay"]["sample_refs"][0] = (
+            "https://example.test/pose-progress.json?token=secret"
+        )
+        unsafe_ref_payload["artifact_bundle"]["same_task_route_execution_material_packet"][
+            "safe_to_control"
+        ] = True
+        status, unsafe_ref_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            unsafe_ref_payload,
+        )
+        encoded = json.dumps(unsafe_ref_created, ensure_ascii=False)
+        self.assertEqual(status, 201)
+        unsafe_packet = unsafe_ref_created["task"]["artifact_bundle"]["same_task_route_execution_material_packet"]
+        self.assertEqual(unsafe_packet["status"], "blocked_not_proven")
+        self.assertIn("same_task_route_execution_material_packet_dangerous_true", unsafe_packet["blocked_reasons"])
+        self.assertNotIn("token=secret", encoded)
+        self.assertFalse(unsafe_packet["safe_to_control"])
+
+        status, explicit = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/artifact-bundle-route-material-unsafe-ref-001?include=same_task_route_execution_material_packet",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(explicit["same_task_route_execution_material_packet"]["status"], "blocked_not_proven")
+        self.assertIn(
+            "same_task_route_execution_material_packet_dangerous_true",
+            explicit["same_task_route_execution_material_packet"]["blocked_reasons"],
         )
 
     def test_o6_route_bag_evidence_missing_or_unsafe_returns_blocked_summary(self):
@@ -12596,6 +14201,191 @@ class RemoteCloudRelayPreflightTest(unittest.TestCase):
                 "/dev/ttyUSB0",
                 "ROS topic",
                 "/cmd_vel",
+            ):
+                self.assertNotIn(forbidden, encoded)
+
+    def test_cloud_production_cutover_readiness_packet_and_preflight_are_support_only(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            deployment_path = root / "cloud_deployment_readiness.json"
+            ingress_tls_path = root / "cloud_public_ingress_tls.json"
+            db_probe_path = root / "cloud_db_queue_external_probe.json"
+            migration_path = root / "cloud_worker_migration_rehearsal.json"
+            cutover_path = root / "cloud_worker_cutover_drain.json"
+            manifest_path = root / "oss_cdn_manifest.json"
+            oss_probe_path = root / "oss_cdn_live_probe.json"
+            intake_path = root / "external_evidence_intake.json"
+            packet_path = root / "cloud_production_cutover_readiness_packet.json"
+            base_env = {
+                "TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN": "replace-with-local-dev-token",
+                "TRASHBOT_REMOTE_CLOUD_PUBLIC_BASE_URL": "http://127.0.0.1:8088",
+                "TRASHBOT_REMOTE_CLOUD_TLS_MODE": "future_reverse_proxy",
+                "TRASHBOT_REMOTE_CLOUD_PUBLIC_INGRESS": "missing",
+                "TRASHBOT_REMOTE_CLOUD_STATE": str(root / "relay_state.sqlite"),
+                "TRASHBOT_REMOTE_CLOUD_STATE_BACKEND": "sqlite",
+            }
+
+            create_cloud_deployment_readiness_artifact(deployment_path, base_env)
+            create_cloud_public_ingress_tls_artifact(ingress_tls_path, base_env)
+            create_cloud_db_queue_external_probe_bundle_artifact(db_probe_path, base_env)
+            create_cloud_worker_migration_rehearsal_artifact(
+                migration_path,
+                root / "worker_migration.sqlite",
+            )
+            create_cloud_worker_cutover_drain_artifact(
+                cutover_path,
+                root / "worker_cutover.sqlite",
+                state_backend="sqlite",
+            )
+            create_external_evidence_intake_artifact(intake_path, base_env)
+            manifest = build_oss_cdn_manifest_payload("robot-local-proof", "task-local-proof")
+            manifest_path.write_text(json.dumps(manifest, ensure_ascii=False), encoding="utf-8")
+            oss_probe = build_oss_cdn_live_probe_payload(
+                manifest_path,
+                probe_fn=lambda _url, timeout_sec=2.0: {
+                    "status": "passed",
+                    "code": "http_head_observed",
+                    "http_status": 200,
+                    "reachable": True,
+                    "method": "HEAD",
+                    "latency_ms": 1,
+                },
+            )
+            oss_probe_path.write_text(json.dumps(oss_probe, ensure_ascii=False), encoding="utf-8")
+            packet_env = dict(base_env)
+            packet_env.update(
+                {
+                    "TRASHBOT_REMOTE_CLOUD_DEPLOYMENT_READINESS_ARTIFACT": str(deployment_path),
+                    "TRASHBOT_REMOTE_CLOUD_PUBLIC_INGRESS_TLS_ARTIFACT": str(ingress_tls_path),
+                    "TRASHBOT_REMOTE_CLOUD_DB_QUEUE_EXTERNAL_PROBE_ARTIFACT": str(db_probe_path),
+                    "TRASHBOT_REMOTE_CLOUD_WORKER_MIGRATION_REHEARSAL_ARTIFACT": str(migration_path),
+                    "TRASHBOT_REMOTE_CLOUD_WORKER_CUTOVER_DRAIN_ARTIFACT": str(cutover_path),
+                    "TRASHBOT_REMOTE_CLOUD_OSS_CDN_LIVE_PROBE_ARTIFACT": str(oss_probe_path),
+                    "TRASHBOT_REMOTE_CLOUD_EXTERNAL_EVIDENCE_INTAKE_ARTIFACT": str(intake_path),
+                }
+            )
+
+            result = create_cloud_production_cutover_readiness_packet_artifact(packet_path, packet_env)
+            artifact = json.loads(packet_path.read_text(encoding="utf-8"))
+            summary = cloud_production_cutover_readiness_packet_summary(packet_path)
+            preflight_env = {
+                "TRASHBOT_REMOTE_CLOUD_STATE": str(root / "preflight_state.sqlite"),
+                "TRASHBOT_REMOTE_CLOUD_STATE_BACKEND": "sqlite",
+                "TRASHBOT_REMOTE_CLOUD_PRODUCTION_CUTOVER_READINESS_PACKET_ARTIFACT": str(packet_path),
+            }
+            payload = production_preflight_payload(preflight_env)
+            checks = {check["name"]: check for check in payload["checks"]}
+            encoded = json.dumps(
+                {"result": result, "artifact": artifact, "summary": summary, "preflight": payload},
+                ensure_ascii=False,
+            )
+
+            self.assertTrue(result["ok"])
+            self.assertTrue(summary["ok"])
+            self.assertEqual(artifact["schema"], CLOUD_PRODUCTION_CUTOVER_READINESS_PACKET_SCHEMA)
+            self.assertEqual(
+                artifact["evidence_boundary"],
+                CLOUD_PRODUCTION_CUTOVER_READINESS_PACKET_EVIDENCE_BOUNDARY,
+            )
+            self.assertEqual(artifact["status"], "blocked_not_production_ready")
+            self.assertFalse(artifact["production_ready"])
+            self.assertFalse(artifact["okr_credit_allowed"])
+            self.assertEqual(artifact["proof_scope_class"], "software_proof_support_only")
+            self.assertFalse(artifact["connects_cloud_production"])
+            self.assertFalse(artifact["delivery_success"])
+            self.assertFalse(artifact["safe_to_control"])
+            self.assertFalse(artifact["primary_actions_enabled"])
+            self.assertFalse(artifact["robot_control_executed"])
+            self.assertEqual(artifact["artifact_counts"]["artifact_slots"], 8)
+            self.assertGreaterEqual(artifact["artifact_counts"]["artifact_ready"], 7)
+            self.assertEqual(
+                artifact["artifact_statuses"]["cloud_external_probe"]["status"],
+                "missing",
+            )
+            self.assertIn("real_public_https_tls_probe", artifact["next_required_evidence"])
+            self.assertIn("next_live_command", summary)
+            self.assertFalse(payload["production_ready"])
+            self.assertTrue(payload["software_proof_ready"])
+            self.assertEqual(payload["evidence_boundary"], CLOUD_PRODUCTION_CUTOVER_READINESS_PACKET_EVIDENCE_BOUNDARY)
+            self.assertEqual(checks["cloud_production_cutover_readiness_packet"]["status"], "pass")
+            self.assertFalse(
+                checks["cloud_production_cutover_readiness_packet"]["details"]["production_ready"]
+            )
+            self.assertFalse(
+                checks["cloud_production_cutover_readiness_packet"]["details"]["okr_credit_allowed"]
+            )
+            for basename in (
+                "cloud_deployment_readiness.json",
+                "cloud_worker_cutover_drain.json",
+                "oss_cdn_live_probe.json",
+            ):
+                self.assertIn(basename, encoded)
+            for forbidden in (
+                str(packet_path),
+                str(cutover_path),
+                str(root / "preflight_state.sqlite"),
+                "replace-with-local-dev-token",
+                "Authorization",
+                "Bearer",
+                "token",
+                "https://",
+                "http://127.0.0.1",
+                "postgres://",
+                "queue URL",
+                "raw payload",
+                "/tmp/",
+                "/dev/ttyUSB0",
+                "UART",
+                "WAVE ROVER",
+                "ROS topic",
+                "/cmd_vel",
+            ):
+                self.assertNotIn(forbidden, encoded)
+
+    def test_cloud_production_cutover_readiness_packet_fails_closed_for_hostile_artifact(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            hostile_path = root / "hostile_cloud_production_cutover_readiness_packet.json"
+            base_env = {"TRASHBOT_REMOTE_CLOUD_STATE": str(root / "relay_state.sqlite")}
+            hostile = build_cloud_production_cutover_readiness_packet_payload(
+                base_env,
+                generated_at="2026-07-10T09:22:00Z",
+            )
+            hostile["connects_cloud_production"] = True
+            hostile["artifact_statuses"]["cloud_external_probe"]["source_ref"]["basename"] = (
+                "https://relay.example.invalid/token.json"
+            )
+            hostile["next_live_command"] = "Authorization Bearer token /dev/ttyUSB0 /cmd_vel traceback"
+            hostile["checksum"] = _sha256_checksum({key: value for key, value in hostile.items() if key != "checksum"})
+            hostile_path.write_text(json.dumps(hostile, ensure_ascii=False), encoding="utf-8")
+
+            summary = cloud_production_cutover_readiness_packet_summary(hostile_path)
+            payload = production_preflight_payload(
+                {
+                    "TRASHBOT_REMOTE_CLOUD_STATE": str(root / "preflight_state.sqlite"),
+                    "TRASHBOT_REMOTE_CLOUD_STATE_BACKEND": "sqlite",
+                    "TRASHBOT_REMOTE_CLOUD_PRODUCTION_CUTOVER_READINESS_PACKET_ARTIFACT": str(hostile_path),
+                }
+            )
+            checks = {check["name"]: check for check in payload["checks"]}
+            encoded = json.dumps({"summary": summary, "preflight": payload}, ensure_ascii=False)
+
+            self.assertFalse(summary["ok"])
+            self.assertEqual(checks["cloud_production_cutover_readiness_packet"]["status"], "blocked")
+            self.assertEqual(
+                checks["cloud_production_cutover_readiness_packet"]["code"],
+                "cloud_production_cutover_readiness_packet_invalid",
+            )
+            for forbidden in (
+                str(hostile_path),
+                str(root / "preflight_state.sqlite"),
+                "Authorization",
+                "Bearer",
+                "token",
+                "https://relay.example.invalid",
+                "/dev/ttyUSB0",
+                "/cmd_vel",
+                "traceback",
             ):
                 self.assertNotIn(forbidden, encoded)
 

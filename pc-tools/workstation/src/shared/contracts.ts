@@ -1921,7 +1921,10 @@ export interface O7ConsumerArtifactBundleSummary extends ProofFlags {
   route_execution_result_delivery_readiness: O7ConsumerRouteExecutionResultDeliveryReadinessSummary;
   route_delivery_closure_packet: O7ConsumerRouteDeliveryClosurePacketSummary;
   same_task_field_material_packet: O7ConsumerSameTaskFieldMaterialPacketSummary;
+  localization_path_material_readback: O7ConsumerLocalizationPathMaterialReadbackSummary;
+  same_task_route_execution_material_packet: O7ConsumerSameTaskRouteExecutionMaterialPacketSummary;
   same_task_mission_evidence_gate: O7ConsumerSameTaskMissionEvidenceGateSummary;
+  field_operator_confirmation_material: O7ConsumerFieldOperatorConfirmationMaterialSummary;
   same_task_mission_material_checklist: O7ConsumerSameTaskMissionMaterialChecklist;
   artifact_media_preflight: O7ConsumerArtifactMediaPreflight;
   connects_cloud_production: false;
@@ -1966,7 +1969,10 @@ export interface O7ConsumerArtifactBundleConsumerIngestSummary extends ProofFlag
   route_execution_result_delivery_readiness: O7ConsumerRouteExecutionResultDeliveryReadinessSummary;
   route_delivery_closure_packet: O7ConsumerRouteDeliveryClosurePacketSummary;
   same_task_field_material_packet: O7ConsumerSameTaskFieldMaterialPacketSummary;
+  localization_path_material_readback: O7ConsumerLocalizationPathMaterialReadbackSummary;
+  same_task_route_execution_material_packet: O7ConsumerSameTaskRouteExecutionMaterialPacketSummary;
   same_task_mission_evidence_gate: O7ConsumerSameTaskMissionEvidenceGateSummary;
+  field_operator_confirmation_material: O7ConsumerFieldOperatorConfirmationMaterialSummary;
   same_task_mission_material_checklist: O7ConsumerSameTaskMissionMaterialChecklist;
   artifact_media_preflight: O7ConsumerArtifactMediaPreflight;
   connects_cloud_production: false;
@@ -2844,6 +2850,376 @@ export interface O7ConsumerSameTaskFieldMaterialSummary {
   count: number | null;
 }
 
+// current field evidence material 只读消费同 task 的当前现场材料状态，不把 support-only 摘要误读成路线执行成功。
+export interface O7ConsumerCurrentFieldEvidenceMaterialSummary extends ProofFlags {
+  schema:
+    | "trashbot.o6.current_field_evidence_material.v1"
+    | "trashbot.current_field_evidence_material.v1"
+    | "not_loaded";
+  status:
+    | "current_field_evidence_ready_not_route_execution_proof"
+    | "derived_blocked_not_proven"
+    | "blocked_not_proven";
+  source_contract:
+    | "trashbot.o6.current_field_evidence_material.v1"
+    | "trashbot.current_field_evidence_material.v1"
+    | "not_loaded";
+  source_origin:
+    | "remote_current_field_evidence_material"
+    | "remote_field_evidence"
+    | "remote_field_motion_evidence_packet"
+    | "remote_artifact_bundle"
+    | "remote_artifact_bundle_consumer_ingest"
+    | "remote_field_evidence_consumer_ingest"
+    | "remote_artifact_bundle_readiness"
+    | "not_loaded";
+  source_path: string;
+  task_id: string;
+  proof_scope: "software_proof_current_field_evidence_material_only" | "not_loaded";
+  source_proof_status: string;
+  material_status: string;
+  task_id_source: string;
+  same_task_id_consumed: boolean;
+  live_or_field_material_consumed: boolean;
+  present_materials: string[];
+  missing_materials: string[];
+  camera_frame_observed: boolean;
+  radar_scan_observed: boolean;
+  map_material_observed: boolean;
+  nav2_no_motion_path_generated: boolean;
+  manual_gate_blocked_expected: boolean;
+  blocked_reasons: string[];
+  next_required_evidence: string[];
+  proof_boundary: {
+    local_mock: true;
+    not_proven: true;
+    reads_local_path: false;
+    current_field_materials_connected: false;
+    route_execution_success: false;
+    delivery_success_proven: false;
+    real_production_cloud_connected: false;
+    real_oss_connected: false;
+    real_cdn_connected: false;
+  };
+  connects_cloud_production: false;
+  hil_pass: false;
+  delivery_success: false;
+  safe_to_control: false;
+  primary_actions_enabled: false;
+  robot_control_executed: false;
+}
+
+export interface O7ConsumerLocalizationPathCrossRunComparatorSummary {
+  status: string;
+  path_generation_succeeded: boolean;
+  path_generated: boolean;
+  path_point_count: number;
+  same_run_override_allowed: false;
+}
+
+// localization/path readback 只表达 same-run 定位与路径材料的只读结论，不把 cross-run comparator 误读成当前路线成功。
+export interface O7ConsumerLocalizationPathMaterialReadbackSummary extends ProofFlags {
+  schema: "trashbot.pc_tools_workstation.o7_localization_path_material_readback.v1";
+  status:
+    | "localization_path_material_ready_not_route_execution_proof"
+    | "derived_blocked_not_proven"
+    | "blocked_not_proven";
+  source_schema:
+    | "trashbot.o6.localization_path_material_readback.v1"
+    | "trashbot.localization_path_material_readback.v1"
+    | "not_loaded";
+  source_origin:
+    | "remote_localization_path_material_readback"
+    | "remote_field_evidence"
+    | "remote_field_motion_evidence_packet"
+    | "remote_artifact_bundle"
+    | "remote_artifact_bundle_consumer_ingest"
+    | "remote_field_evidence_consumer_ingest"
+    | "remote_artifact_bundle_readiness"
+    | "not_loaded";
+  source_path: string;
+  task_id: string;
+  proof_scope: "software_proof_localization_path_material_readback_only" | "not_loaded";
+  source_proof_status: string;
+  material_status: string;
+  task_id_source: string;
+  localization_path_material_bridge_present: boolean;
+  same_run_localization_material_present: boolean;
+  same_run_map_once_observed: boolean;
+  same_run_amcl_pose_observed: boolean;
+  same_run_localization_tf_map_to_odom: boolean;
+  same_run_localization_tf_map_to_base_link: boolean;
+  same_run_planner_server_active: boolean;
+  same_run_path_generation_requested: boolean;
+  same_run_path_generation_succeeded: false;
+  same_run_path_generated: false;
+  same_run_path_point_count: number;
+  same_run_path_proven: false;
+  cross_run_clean_baseline_path_comparator_present: boolean;
+  cross_run_clean_baseline_path_summary: O7ConsumerLocalizationPathCrossRunComparatorSummary | null;
+  blocked_reasons: string[];
+  next_required_evidence: string[];
+  proof_boundary: {
+    local_mock: true;
+    not_proven: true;
+    reads_local_path: false;
+    same_run_localization_connected: false;
+    route_execution_success: false;
+    delivery_success_proven: false;
+    real_production_cloud_connected: false;
+    real_oss_connected: false;
+    real_cdn_connected: false;
+  };
+  connects_cloud_production: false;
+  hil_pass: false;
+  nav2_route_execution_success: false;
+  delivery_success: false;
+  safe_to_control: false;
+  primary_actions_enabled: false;
+  robot_control_executed: false;
+}
+
+// clean baseline Nav2 path material 只消费 no-motion path 规划前置材料，不把首次失败/重试成功误读成真实路线执行。
+export interface O7ConsumerCleanBaselineNav2PathMaterialSummary extends ProofFlags {
+  schema:
+    | "trashbot.o6.clean_baseline_nav2_path_material.v1"
+    | "trashbot.clean_baseline_nav2_path_material.v1"
+    | "not_loaded";
+  status:
+    | "clean_baseline_nav2_path_material_ready_not_route_execution_proof"
+    | "derived_blocked_not_proven"
+    | "blocked_not_proven";
+  source_contract:
+    | "trashbot.o6.clean_baseline_nav2_path_material.v1"
+    | "trashbot.clean_baseline_nav2_path_material.v1"
+    | "not_loaded";
+  source_origin:
+    | "remote_clean_baseline_nav2_path_material"
+    | "remote_field_evidence"
+    | "remote_field_motion_evidence_packet"
+    | "remote_artifact_bundle"
+    | "remote_artifact_bundle_consumer_ingest"
+    | "remote_field_evidence_consumer_ingest"
+    | "remote_artifact_bundle_readiness"
+    | "not_loaded";
+  source_path: string;
+  task_id: string;
+  proof_scope: "software_proof_clean_baseline_nav2_path_material_only" | "not_loaded";
+  source_proof_status: string;
+  material_status: string;
+  task_id_source: string;
+  first_attempt_status: string;
+  first_failure_reason: string;
+  first_failure_root_cause: string;
+  retry_status: string;
+  path_generation_succeeded: boolean;
+  path_generated: boolean;
+  path_point_count: number;
+  planner_server_active: boolean;
+  managed_runtime_started: boolean;
+  managed_runtime_cleanup_ok: boolean;
+  initialpose_published: boolean;
+  amcl_pose_observed: boolean;
+  map_server_active: boolean;
+  amcl_active: boolean;
+  cleanup_readback_clean: boolean;
+  blocked_reasons: string[];
+  next_required_evidence: string[];
+  proof_boundary: {
+    local_mock: true;
+    not_proven: true;
+    reads_local_path: false;
+    route_execution_success: false;
+    delivery_success_proven: false;
+    real_production_cloud_connected: false;
+    real_oss_connected: false;
+    real_cdn_connected: false;
+  };
+  connects_cloud_production: false;
+  hil_pass: false;
+  delivery_success: false;
+  safe_to_control: false;
+  primary_actions_enabled: false;
+  robot_control_executed: false;
+}
+
+export interface O7ConsumerFieldOperatorMaterialSummary {
+  present: boolean;
+  status: string;
+  sample_refs: string[];
+  count: number | null;
+  reported_at: string;
+}
+
+// field operator confirmation material 只展示 operator report/confirmation 安全摘要，不把人工材料解释成送达成功或控制准入。
+export interface O7ConsumerFieldOperatorConfirmationMaterialSummary extends ProofFlags {
+  schema: "trashbot.pc_tools_workstation.o7_field_operator_confirmation_material.v1";
+  status:
+    | "field_operator_confirmation_material_ready_not_delivery_proof"
+    | "derived_blocked_not_proven"
+    | "blocked_not_proven";
+  source_schema:
+    | "trashbot.o6.field_operator_confirmation_material.v1"
+    | "trashbot.field_operator_confirmation_material.v1"
+    | "not_loaded";
+  source_origin:
+    | "remote_field_operator_confirmation_material"
+    | "remote_field_evidence"
+    | "remote_field_motion_evidence_packet"
+    | "remote_artifact_bundle"
+    | "remote_artifact_bundle_consumer_ingest"
+    | "remote_field_evidence_consumer_ingest"
+    | "remote_artifact_bundle_readiness"
+    | "not_loaded";
+  source_path: string;
+  task_id: string;
+  proof_scope: "software_proof_field_operator_confirmation_material_only" | "not_loaded";
+  source_proof_status: string;
+  material_status: string;
+  operator_report_present: boolean;
+  operator_report_status: string;
+  operator_confirmation_present: boolean;
+  operator_confirmation_status: string;
+  operator_present: boolean;
+  physical_clearance_confirmed: boolean;
+  emergency_stop_ready: boolean;
+  observed_motion: boolean;
+  observed_stop: boolean;
+  reported_at: string;
+  same_task_id_consumed: boolean;
+  linked_route_material_present: boolean;
+  linked_delivery_material_present: boolean;
+  operator_material_consumed: boolean;
+  support_only_reason: string;
+  blocked_reasons: string[];
+  next_required_evidence: string[];
+  material_summaries: {
+    operator_report?: O7ConsumerFieldOperatorMaterialSummary;
+    operator_confirmation?: O7ConsumerFieldOperatorMaterialSummary;
+    linked_route_material?: O7ConsumerFieldOperatorMaterialSummary;
+    linked_delivery_material?: O7ConsumerFieldOperatorMaterialSummary;
+  };
+  proof_boundary: {
+    local_mock: true;
+    not_proven: true;
+    reads_local_path: false;
+    operator_material_connected: false;
+    route_execution_success: false;
+    delivery_success_proven: false;
+    real_production_cloud_connected: false;
+    real_oss_connected: false;
+    real_cdn_connected: false;
+  };
+  connects_cloud_production: false;
+  hil_pass: false;
+  route_execution_success: false;
+  delivery_success: false;
+  safe_to_control: false;
+  primary_actions_enabled: false;
+  robot_control_executed: false;
+}
+
+export interface O7ConsumerSameTaskRouteExecutionMaterialSummary {
+  present: boolean;
+  status: string;
+  basename: string;
+  size_bytes: number | null;
+  sha256_prefix: string;
+  sample_refs: string[];
+  count: number | null;
+}
+
+export interface O7ConsumerSameTaskRouteExecutionResultSummary {
+  status: string;
+  source: string;
+  sample_refs: string[];
+  result_count: number | null;
+  nav2_goal_status: string;
+  delivery_result_status: string;
+}
+
+export interface O7ConsumerSameTaskPoseProgressTimelineSummary {
+  status: string;
+  source: string;
+  sample_refs: string[];
+  pose_sample_count: number | null;
+  replay_frame_count: number | null;
+  nonzero_pose_progress_observed: boolean;
+  displacement_m: number | null;
+  timeline_span_ms: number | null;
+}
+
+// same-task route execution material packet 只消费 O6 顶层 packet 摘要，ready 仍不是送达或控制准入证明。
+export interface O7ConsumerSameTaskRouteExecutionMaterialPacketSummary extends ProofFlags {
+  schema:
+    | "trashbot.o6.same_task_route_execution_material_packet.v1"
+    | "trashbot.same_task_route_execution_material_packet.v1"
+    | "not_loaded";
+  status:
+    | "route_execution_material_ready_not_delivery_proof"
+    | "derived_blocked_not_proven"
+    | "blocked_not_proven";
+  source_contract:
+    | "trashbot.o6.same_task_route_execution_material_packet.v1"
+    | "trashbot.same_task_route_execution_material_packet.v1"
+    | "not_loaded";
+  source_origin:
+    | "remote_same_task_route_execution_material_packet"
+    | "remote_field_evidence"
+    | "remote_field_motion_evidence_packet"
+    | "remote_artifact_bundle"
+    | "remote_artifact_bundle_consumer_ingest"
+    | "remote_field_evidence_consumer_ingest"
+    | "remote_artifact_bundle_readiness"
+    | "not_loaded";
+  source_path: string;
+  task_id: string;
+  proof_scope: "software_proof_same_task_route_execution_material_packet_only" | "not_loaded";
+  source_proof_status: string;
+  packet_status: string;
+  task_id_source: string;
+  same_task_id_consumed: boolean;
+  route_execution_material_consumed: boolean;
+  live_or_field_command_evidence_present: boolean;
+  delivery_or_operator_material_consumed: boolean;
+  route_execution_credit_candidate: boolean;
+  credit_support_only_reason: string;
+  credit_required_evidence: string[];
+  same_task_field_material_packet_status: string;
+  present_materials: string[];
+  missing_materials: string[];
+  source_sections: string[];
+  sample_refs: string[];
+  material_summaries: {
+    same_task_field_material_packet?: O7ConsumerSameTaskRouteExecutionMaterialSummary;
+    route_execution_result?: O7ConsumerSameTaskRouteExecutionMaterialSummary;
+    nav2_goal_execution?: O7ConsumerSameTaskRouteExecutionMaterialSummary;
+    pose_progress_replay?: O7ConsumerSameTaskRouteExecutionMaterialSummary;
+    route_replay_jsonl?: O7ConsumerSameTaskRouteExecutionMaterialSummary;
+    route_bag_or_rosbag?: O7ConsumerSameTaskRouteExecutionMaterialSummary;
+  };
+  route_execution_result_summary: O7ConsumerSameTaskRouteExecutionResultSummary;
+  pose_progress_replay_timeline_summary: O7ConsumerSameTaskPoseProgressTimelineSummary;
+  blocked_reasons: string[];
+  next_required_evidence: string[];
+  proof_boundary: {
+    local_mock: boolean;
+    not_proven: true;
+    reads_local_path: false;
+    route_execution_materials_connected: false;
+    live_nav2_route_execution_connected: false;
+    delivery_success_proven: false;
+    real_production_cloud_connected: false;
+    real_oss_connected: false;
+    real_cdn_connected: false;
+  };
+  connects_cloud_production: false;
+  media_access_proven: false;
+  real_oss_connected: false;
+  real_cdn_connected: false;
+  robot_control_executed: false;
+}
+
 export type O7SameTaskMissionMaterialStatus =
   | "ready_not_success_proof"
   | "present"
@@ -2944,7 +3320,10 @@ export interface O7ConsumerArtifactBundleReadiness extends ProofFlags {
   route_execution_result_delivery_readiness: O7ConsumerRouteExecutionResultDeliveryReadinessSummary;
   route_delivery_closure_packet: O7ConsumerRouteDeliveryClosurePacketSummary;
   same_task_field_material_packet: O7ConsumerSameTaskFieldMaterialPacketSummary;
+  localization_path_material_readback: O7ConsumerLocalizationPathMaterialReadbackSummary;
+  same_task_route_execution_material_packet: O7ConsumerSameTaskRouteExecutionMaterialPacketSummary;
   same_task_mission_evidence_gate: O7ConsumerSameTaskMissionEvidenceGateSummary;
+  field_operator_confirmation_material: O7ConsumerFieldOperatorConfirmationMaterialSummary;
   same_task_mission_material_checklist: O7ConsumerSameTaskMissionMaterialChecklist;
   artifact_access_probe: O7ConsumerArtifactAccessProbeSummary;
   offline_artifact_seed_smoke: O7ConsumerOfflineArtifactSeedSmokeSummary;
@@ -3302,7 +3681,12 @@ export interface O7ConsumerTaskDetailResponse extends ProofFlags {
   route_execution_result_delivery_readiness: O7ConsumerRouteExecutionResultDeliveryReadinessSummary;
   route_delivery_closure_packet: O7ConsumerRouteDeliveryClosurePacketSummary;
   same_task_field_material_packet: O7ConsumerSameTaskFieldMaterialPacketSummary;
+  current_field_evidence_material: O7ConsumerCurrentFieldEvidenceMaterialSummary;
+  localization_path_material_readback: O7ConsumerLocalizationPathMaterialReadbackSummary;
+  clean_baseline_nav2_path_material: O7ConsumerCleanBaselineNav2PathMaterialSummary;
+  same_task_route_execution_material_packet: O7ConsumerSameTaskRouteExecutionMaterialPacketSummary;
   same_task_mission_evidence_gate: O7ConsumerSameTaskMissionEvidenceGateSummary;
+  field_operator_confirmation_material: O7ConsumerFieldOperatorConfirmationMaterialSummary;
   same_task_mission_material_checklist: O7ConsumerSameTaskMissionMaterialChecklist;
   artifact_bundle: O7ConsumerArtifactBundleSummary;
   artifact_bundle_consumer_ingest: O7ConsumerArtifactBundleConsumerIngestSummary;
