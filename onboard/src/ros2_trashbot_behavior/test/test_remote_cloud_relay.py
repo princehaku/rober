@@ -1,4 +1,5 @@
 import json
+import hashlib
 import os
 import pathlib
 import sys
@@ -12,6 +13,7 @@ from unittest import mock
 
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
+WORKSPACE_ROOT = pathlib.Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(REPO_ROOT / "ros2_trashbot_behavior"))
 
 
@@ -814,6 +816,21 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
         self.assertEqual(body["error"]["code"], "bad_request")
         self.assertIn("unsafe", body["error"]["message"].lower())
 
+        real_claim_payload = {
+            "robot_id": "trashbot-001",
+            "task_id": "task-o6-real-claim",
+            "started_at_ms": 1000,
+            "finished_at_ms": 2000,
+            "trajectory_frames": [],
+            "events": [],
+            "evidence_refs": [],
+            "delivery_success": True,
+        }
+        status, body = self.client.request("POST", "/api/o6/archive/tasks", real_claim_payload)
+        self.assertEqual(status, 400)
+        self.assertEqual(body["error"]["code"], "bad_request")
+        self.assertIn("unsafe", body["error"]["message"].lower())
+
         too_large_payload = {
             "robot_id": "trashbot-001",
             "task_id": "task-o6-large",
@@ -885,6 +902,3990 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
         self.assertEqual(body["error"]["code"], "not_found")
         for forbidden in ("Authorization", "Bearer", "/cmd_vel", "ttyUSB", "traceback"):
             self.assertNotIn(forbidden, encoded)
+
+    def _field_evidence_manifest_payload(self):
+        # 这个 fixture 模拟 field_route_evidence_manifest.py 输出，只包含 artifact 摘要，不读真实文件。
+        return {
+            "schema": relay_module.FIELD_EVIDENCE_MANIFEST_SCHEMA,
+            "run_id": "field-run-001",
+            "generated_at": "2026-07-09T00:00:00+00:00",
+            "source": "local_fixture",
+            "mode": "local",
+            "artifact_root": "/tmp/field_evidence",
+            "preflight_json": "/tmp/field_preflight.json",
+            "preflight_status": "ready_for_live_route_capture_not_proven",
+            "preflight": {
+                "status": "ready_for_live_route_capture_not_proven",
+                "dry_run": False,
+                "blocked_reason": None,
+                "read_ok": True,
+            },
+            "gate_pass": True,
+            "artifact_status": "gated",
+            "artifact_health": {
+                "status": "gated",
+                "required_count": 4,
+                "present_count": 4,
+                "missing_count": 0,
+                "blocked_count": 0,
+                "summary": "all_required_artifacts_present",
+            },
+            "input_manifest": {
+                "present": False,
+                "status": "not_found",
+                "dangerous_true_fields": [],
+                "safe_for_reuse": True,
+            },
+            "source_manifest": {
+                "present": True,
+                "status": "source_manifest",
+                "schema": "trashbot.vision_samples.v1",
+                "sample_count": 2,
+                "blocked_reason": None,
+            },
+            "manifest_gate": {
+                "schema": relay_module.FIELD_EVIDENCE_MANIFEST_SCHEMA,
+                "status": "gated",
+                "gate_pass": True,
+                "blocked_reason": None,
+                "source": "local_fixture",
+            },
+            "route_root_seed_gate": {
+                "schema": "trashbot.algorithm.route_root_seed_gate.v1",
+                "status": "route_root_seed_ready_without_route_bag",
+                "gate_pass": True,
+                "route_bag_required": False,
+                "route_bag_present": False,
+                "blocked_reasons": ["route_bag_missing_optional"],
+                "next_required_evidence": ["route_bag_optional_evidence"],
+            },
+            "status": "field_evidence_manifest_ready_not_delivery_proof",
+            "blocked_reason": None,
+            "not_proven": True,
+            "safe_to_control": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "field_motion_evidence_packet": self._field_motion_evidence_packet_payload(),
+            "delivery_result_evidence": self._delivery_result_evidence_payload(),
+            "nav2_goal_execution_evidence": self._nav2_goal_execution_evidence_payload(),
+            "route_bag_evidence": self._route_bag_evidence_payload(),
+            "route_bag_payload_replay": self._route_bag_payload_replay_payload(),
+            "route_bag_semantic_replay": self._route_bag_semantic_replay_payload(),
+            "route_bag_full_semantic_decode_matrix": self._route_bag_full_semantic_decode_matrix_payload(),
+            "route_bag_pose_progress_replay": self._route_bag_pose_progress_replay_payload(),
+            "same_task_mission_evidence_gate": self._same_task_mission_evidence_gate_payload(
+                "field-evidence-field-run-001"
+            ),
+            "derived_replay": {
+                "generated": True,
+                "frame_count": 2,
+                "output": "/tmp/field_evidence/fixed_route_replay.jsonl",
+                "source_route_csv": "/tmp/field_evidence/route.csv",
+                "blocked_reason": None,
+            },
+            "artifacts": {
+                "route_csv": {
+                    "required": True,
+                    "present": True,
+                    "path": "/tmp/field_evidence/route.csv",
+                    "size_bytes": 128,
+                    "mtime_utc": "2026-07-09T00:00:01+00:00",
+                    "sha256": "a" * 64,
+                    "reason": None,
+                },
+                "replay_jsonl": {
+                    "required": True,
+                    "present": True,
+                    "path": "/tmp/field_evidence/fixed_route_replay.jsonl",
+                    "size_bytes": 256,
+                    "mtime_utc": "2026-07-09T00:00:02+00:00",
+                    "sha256": "b" * 64,
+                    "reason": None,
+                },
+                "keyframes": {
+                    "required": True,
+                    "present": True,
+                    "path": "/tmp/field_evidence/keyframes",
+                    "size_bytes": 512,
+                    "mtime_utc": "2026-07-09T00:00:03+00:00",
+                    "sha256": "c" * 64,
+                    "reason": None,
+                    "file_count": 2,
+                },
+                "source_manifest": {
+                    "required": True,
+                    "present": True,
+                    "path": "/tmp/field_evidence/manifest.json",
+                    "size_bytes": 64,
+                    "mtime_utc": "2026-07-09T00:00:04+00:00",
+                    "sha256": "d" * 64,
+                    "reason": None,
+                },
+            },
+        }
+
+    def _field_motion_evidence_packet_payload(self):
+        # motion packet 只提供 O6/O7 需要的保守摘要，不带任何真实控制或原始路径回显。
+        return {
+            "schema": relay_module.FIELD_MOTION_EVIDENCE_PACKET_SCHEMA,
+            "proof_scope": relay_module.O6_FIELD_MOTION_EVIDENCE_PACKET_PROOF_SCOPE,
+            "status": "field_motion_packet_ready_not_delivery_proof",
+            "route_summary": {
+                "frame_count": 17,
+                "nonzero_displacement_observed": True,
+                "displacement_m": 4.25,
+            },
+            "motion_log_summary": {
+                "live_motion_evidence_present": True,
+                "evidence_sources": [
+                    "remote_capture_motion_log",
+                    "/tmp/should-not-echo-motion.log",
+                ],
+            },
+            "route_bag_or_live_nav2_log": {
+                "present": True,
+                "source": "derived_replay_jsonl",
+                "route_bag_present": False,
+                "live_motion_log_present": True,
+                "path": "/tmp/should-not-echo-nav2.log",
+                "root": "/tmp/should-not-echo-root",
+            },
+            "route_bag_pose_progress_replay": self._route_bag_pose_progress_replay_payload(),
+            "blocked_reasons": ["route_bag_missing_optional"],
+            "next_required_evidence": ["route_bag_optional_evidence"],
+            "safe_to_control": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "robot_control_executed": False,
+        }
+
+    def _nav2_goal_execution_evidence_payload(self):
+        # Nav2 goal evidence 只模拟 O11 proof 的白名单摘要，不携带日志路径、root 或原始 action payload。
+        return {
+            "schema": relay_module.NAV2_GOAL_EXECUTION_EVIDENCE_SCHEMA,
+            "proof_scope": relay_module.O6_NAV2_GOAL_EXECUTION_EVIDENCE_PROOF_SCOPE,
+            "status": "nav2_goal_execution_ready_not_delivery_proof",
+            "proof_status": "software_proof",
+            "source": "o11_nav2_goal_execution_proof",
+            "goal_requested": True,
+            "goal_sent": True,
+            "goal_accepted": True,
+            "result_received": True,
+            "goal_result_status": "STATUS_SUCCEEDED",
+            "result_status_code": 4,
+            "nav2_goal_execution_proven": True,
+            "base_motion_command_nonzero_proven": True,
+            "base_command_mode": "T1",
+            "requested_base_command_mode": "T1",
+            "pose_progress_summary": {
+                "pose_sample_count": 6,
+                "distance_m": 0.42,
+                "progress_observed": True,
+            },
+            "base_feedback_summary": {
+                "feedback_sample_count": 5,
+                "nonzero_feedback_seen": True,
+            },
+            "base_command_summary": {
+                "command_sample_count": 4,
+                "nonzero_command_seen": True,
+            },
+            "blocked_reasons": ["delivery_record_missing"],
+            "next_required_evidence": ["real_delivery_result_trace"],
+            "safe_to_control": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "robot_control_executed": False,
+        }
+
+    def _delivery_result_evidence_payload(self):
+        # delivery result 只提供安全裁剪后的 operator/dropoff 摘要，不允许任何真实送达成功宣称外溢。
+        return {
+            "schema": relay_module.DELIVERY_RESULT_EVIDENCE_SCHEMA,
+            "proof_scope": relay_module.O6_DELIVERY_RESULT_EVIDENCE_PROOF_SCOPE,
+            "status": "delivery_result_evidence_ready_not_delivery_proof",
+            "source": "field_delivery_result_record",
+            "source_schema": "trashbot.delivery_result_record.v1",
+            "record_present": True,
+            "record_read_ok": True,
+            "record_status": "operator_confirmed_not_production_accepted",
+            "delivery_result_claimed": True,
+            "operator_confirmation_present": True,
+            "dropoff_confirmation_type": "operator_button_confirmed",
+            "completed_at_utc": "2026-07-09T08:15:00Z",
+            "linked_nav2_goal_execution_proven": True,
+            "blocked_reasons": ["real_delivery_success_not_proven"],
+            "next_required_evidence": ["real_delivery_record_or_operator_video"],
+            "safe_to_control": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "robot_control_executed": False,
+        }
+
+    def _route_execution_result_delivery_readiness_payload(self, task_id="field-evidence-field-run-001"):
+        # 结果链 readiness 只表达“同一 task 的结果摘要已可读回”，不表达真实 route execution 或 delivery success。
+        return {
+            "schema": relay_module.ROUTE_EXECUTION_RESULT_DELIVERY_READINESS_SCHEMA,
+            "source_schema": relay_module.ROUTE_EXECUTION_RESULT_DELIVERY_READINESS_SCHEMA,
+            "proof_scope": relay_module.O6_ROUTE_EXECUTION_RESULT_DELIVERY_READINESS_PROOF_SCOPE,
+            "status": "route_execution_result_delivery_readiness_ready_not_delivery_proof",
+            "source": "algorithm_route_execution_result_delivery_readiness_summary",
+            "task_id": task_id,
+            "task_id_source": "manifest_task_id",
+            "route_execution_result_status": "nav2_result_summary_ready",
+            "route_execution_result_source": "nav2_goal_execution_evidence",
+            "route_execution_result_ready": True,
+            "route_execution_success": False,
+            "delivery_result_readiness_status": "delivery_result_summary_ready",
+            "delivery_result_readiness_source": "delivery_result_evidence",
+            "delivery_result_readiness_ready": True,
+            "operator_confirmation_readiness_status": "operator_confirmation_summary_ready",
+            "operator_confirmation_readiness_source": "delivery_result_evidence",
+            "operator_confirmation_readiness_ready": True,
+            "linked_nav2_goal_execution_proven": True,
+            "linked_delivery_result_claimed": True,
+            "linked_operator_confirmation_present": True,
+            "blocked_reasons": ["real_delivery_success_not_proven"],
+            "next_required_evidence": ["real_delivery_result_trace"],
+            "safe_to_control": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "robot_control_executed": False,
+        }
+
+    def _route_delivery_closure_packet_payload(self, task_id="field-evidence-field-run-001"):
+        # closure packet 只表达软件证据闭合，不表达真实 delivery success 或已执行控制。
+        return {
+            "schema": relay_module.ROUTE_DELIVERY_CLOSURE_PACKET_SCHEMA,
+            "source_schema": relay_module.ROUTE_DELIVERY_CLOSURE_PACKET_SCHEMA,
+            "proof_scope": relay_module.O6_ROUTE_DELIVERY_CLOSURE_PACKET_PROOF_SCOPE,
+            "status": "route_delivery_closure_ready_not_success_proof",
+            "source": "algorithm_route_delivery_closure_packet_summary",
+            "task_id": task_id,
+            "linked_route_execution_result_delivery_readiness_ready": True,
+            "linked_nav2_goal_execution_ready": True,
+            "linked_delivery_result_ready": True,
+            "linked_operator_confirmation_ready": True,
+            "linked_pose_progress_ready": True,
+            "blocked_reasons": ["real_delivery_success_not_proven"],
+            "next_required_evidence": ["real_delivery_result_trace", "real_pose_progress_trace"],
+            "safe_to_control": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "robot_control_executed": False,
+        }
+
+    def _same_task_mission_evidence_gate_payload(self, task_id="field-evidence-field-run-001"):
+        # same-task gate 只证明同一 task 的多段摘要互相对齐，不证明真实送达成功。
+        return {
+            "schema": relay_module.SAME_TASK_MISSION_EVIDENCE_GATE_SCHEMA,
+            "source_schema": relay_module.SAME_TASK_MISSION_EVIDENCE_GATE_SCHEMA,
+            "proof_scope": relay_module.O6_SAME_TASK_MISSION_EVIDENCE_GATE_PROOF_SCOPE,
+            "status": "same_task_mission_gate_ready_not_success_proof",
+            "source": "algorithm_same_task_mission_evidence_gate_summary",
+            "task_id": task_id,
+            "terminal_refs": [
+                "captures/cloud_terminal_result.json",
+                "captures/route_execution_summary.json",
+            ],
+            "mission_artifact_delta": {
+                "same_task_id_consumed": True,
+                "cloud_terminal_result_source_consumed": True,
+                "route_execution_readiness_consumed": True,
+                "route_delivery_closure_consumed": True,
+                "nonzero_pose_progress_consumed": True,
+                "live_or_field_command_executed": False,
+                "support_only_reason": "support_only_same_task_readback_without_live_command",
+                "okr_credit_allowed": False,
+            },
+            "linked_readiness_flags": {
+                "delivery_result_evidence_ready": True,
+                "cloud_terminal_result_ready": True,
+                "route_execution_result_delivery_readiness_ready": True,
+                "route_delivery_closure_packet_ready": True,
+                "route_bag_pose_progress_replay_ready": True,
+                "same_task_id_match": True,
+            },
+            "linked_delivery_result_evidence_ready": True,
+            "linked_cloud_terminal_result_ready": True,
+            "linked_route_execution_result_delivery_readiness_ready": True,
+            "linked_route_delivery_closure_packet_ready": True,
+            "linked_route_bag_pose_progress_replay_ready": True,
+            "same_task_id_match": True,
+            "same_task_id_consumed": True,
+            "live_or_field_command_executed": False,
+            "support_only_reason": "support_only_same_task_readback_without_live_command",
+            "okr_credit_allowed": False,
+            "blocked_reasons": ["real_delivery_success_not_proven"],
+            "next_required_evidence": ["production_cloud_task_trace", "real_delivery_result_trace"],
+            "safe_to_control": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "robot_control_executed": False,
+        }
+
+    def _same_task_field_material_packet_payload(self, task_id="field-evidence-field-run-001"):
+        # same-task field material packet 这里按 Algorithm 实际 shape 提供：顶层 sample_refs=list，细节在 material_summaries。
+        return {
+            "schema": relay_module.SAME_TASK_FIELD_MATERIAL_PACKET_SCHEMA,
+            "source_schema": relay_module.SAME_TASK_FIELD_MATERIAL_PACKET_SCHEMA,
+            "proof_scope": relay_module.O6_SAME_TASK_FIELD_MATERIAL_PACKET_PROOF_SCOPE,
+            "status": "ready_not_delivery_proof",
+            "source": "algorithm_same_task_field_material_packet_summary",
+            "task_id": task_id,
+            "task_id_source": "manifest_task_id",
+            "present_materials": ["route_csv", "keyframes", "route_bag_or_rosbag", "replay_jsonl"],
+            "missing_materials": ["map_yaml"],
+            "map_yaml_present": False,
+            "route_csv_present": True,
+            "keyframes_present": True,
+            "route_bag_or_rosbag_present": True,
+            "replay_jsonl_present": True,
+            "counts": {
+                "present_material_count": 4,
+                "missing_material_count": 1,
+                "map_yaml_count": 0,
+                "route_csv_count": 1,
+                "keyframe_count": 17,
+                "route_bag_or_rosbag_count": 1,
+                "replay_jsonl_count": 1,
+            },
+            "sample_refs": [
+                "captures/route.csv",
+                "captures/keyframes/keyframe-0001.jpg",
+                "captures/route_001.db3",
+                "captures/fixed_route_replay.jsonl",
+            ],
+            "material_summaries": {
+                "map_yaml": {
+                    "present": False,
+                    "count": 0,
+                    "sample_refs": [],
+                },
+                "route_csv": {
+                    "present": True,
+                    "basename": "route.csv",
+                    "size_bytes": 128,
+                    "sha256_prefix": "1234567890abcdef",
+                    "count": 1,
+                    "sample_refs": ["captures/route.csv"],
+                },
+                "keyframes": {
+                    "present": True,
+                    "basename": "keyframe-0001.jpg",
+                    "size_bytes": 2048,
+                    "sha256_prefix": "abcdef1234567890",
+                    "count": 17,
+                    "sample_refs": ["captures/keyframes/keyframe-0001.jpg"],
+                },
+                "route_bag_or_rosbag": {
+                    "present": True,
+                    "basename": "route_001.db3",
+                    "size_bytes": 4096,
+                    "sha256_prefix": "1122334455667788",
+                    "count": 1,
+                    "sample_refs": ["captures/route_001.db3"],
+                },
+                "replay_jsonl": {
+                    "present": True,
+                    "basename": "fixed_route_replay.jsonl",
+                    "size_bytes": 512,
+                    "sha256_prefix": "aabbccddeeff0011",
+                    "count": 1,
+                    "sample_refs": ["captures/fixed_route_replay.jsonl"],
+                },
+            },
+            "same_task_id_consumed": True,
+            "live_or_field_material_consumed": True,
+            "blocked_reasons": [
+                "same_task_field_material_map_yaml_missing_optional",
+                "real_delivery_success_not_proven",
+            ],
+            "next_required_evidence": [
+                "map_yaml_material_optional",
+                "live_route_execution_trace",
+                "real_delivery_result_trace",
+            ],
+            "safe_to_control": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "robot_control_executed": False,
+        }
+
+    def _route_bag_evidence_payload(self):
+        # route bag evidence 只证明 DB3 摘要已被 Algorithm 读取，不证明 live Nav2 run 或送达成功。
+        return {
+            "schema": relay_module.ROUTE_BAG_EVIDENCE_SCHEMA,
+            "proof_scope": relay_module.O6_ROUTE_BAG_EVIDENCE_PROOF_SCOPE,
+            "status": "ready_not_route_execution_proof",
+            "source": "algorithm_route_bag_summary",
+            "source_label": "board_live_full_stack_route_bag",
+            "task_id": "route-bag-task-001",
+            "task_id_source": "manifest_task_id",
+            "metadata_present": True,
+            "db3_present": True,
+            "db3_read_ok": True,
+            "db3_size_bytes": 4096,
+            "db3_sha256_prefix": "0123456789abcdef",
+            "topic_count": 3,
+            "message_count": 42,
+            "timestamp_first_ns": 1710000000000000000,
+            "timestamp_last_ns": 1710000000123000000,
+            "sample_topic_names": ["/tf", "/odom", "/scan"],
+            "blocked_reasons": ["local_mock_only", "not_proven"],
+            "next_required_evidence": ["live_nav2_pose_progress", "real_delivery_result_trace"],
+            "safe_to_control": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "robot_control_executed": False,
+        }
+
+    def _route_bag_payload_replay_payload(self):
+        # payload replay 只证明 DB3 消息摘要可回读，不证明真实路线执行或任何控制成功。
+        return {
+            "schema": relay_module.ROUTE_BAG_PAYLOAD_REPLAY_SCHEMA,
+            "proof_scope": relay_module.O6_ROUTE_BAG_PAYLOAD_REPLAY_PROOF_SCOPE,
+            "status": "route_bag_payload_replay_ready_not_route_execution_proof",
+            "source": "algorithm_route_bag_payload_replay_summary",
+            "source_label": "board_live_full_stack_route_bag",
+            "task_id": "route-bag-task-001",
+            "task_id_source": "manifest_task_id",
+            "metadata_present": True,
+            "db3_present": True,
+            "db3_read_ok": True,
+            "db3_size_bytes": 4096,
+            "db3_sha256_prefix": "0123456789abcdef",
+            "topic_count": 3,
+            "message_count": 42,
+            "timestamp_first_ns": 1710000000000000000,
+            "timestamp_last_ns": 1710000000123000000,
+            "sample_topic_names": ["/tf", "/odom", "/scan"],
+            "payload_sample_count": 3,
+            "payload_size_min_bytes": 12,
+            "payload_size_max_bytes": 128,
+            "payload_size_avg_bytes": 64,
+            "payload_sha256_prefix_samples": [
+                "a1b2c3d4e5f6a7b8",
+                "b1c2d3e4f5a6b7c8",
+                "c1d2e3f4a5b6c7d8",
+            ],
+            "blocked_reasons": ["local_mock_only", "not_proven"],
+            "next_required_evidence": ["live_nav2_pose_progress", "real_route_execution_trace"],
+            "safe_to_control": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "robot_control_executed": False,
+        }
+
+    def _route_bag_semantic_replay_payload(self):
+        # semantic replay 只回显白名单语义摘要，不回显 raw payload/base64/path/token 或控制话题。
+        return {
+            "schema": relay_module.ROUTE_BAG_SEMANTIC_REPLAY_SCHEMA,
+            "proof_scope": relay_module.O6_ROUTE_BAG_SEMANTIC_REPLAY_PROOF_SCOPE,
+            "status": "route_bag_semantic_replay_ready_not_route_execution_proof",
+            "source": "algorithm_route_bag_semantic_replay_summary",
+            "source_label": "board_live_full_stack_route_bag",
+            "task_id": "route-bag-task-001",
+            "task_id_source": "manifest_task_id",
+            "metadata_present": True,
+            "db3_present": True,
+            "db3_read_ok": True,
+            "db3_size_bytes": 4096,
+            "db3_sha256_prefix": "0123456789abcdef",
+            "topic_count": 4,
+            "message_count": 48,
+            "timestamp_first_ns": 1710000000000000000,
+            "timestamp_last_ns": 1710000000187000000,
+            "sample_topic_names": ["/scan", "/camera/image_raw", "/tf_static", "/odom"],
+            "semantic_sample_count": 6,
+            "semantic_decode_ok_count": 5,
+            "semantic_decode_failed_count": 1,
+            "semantic_topic_types": [
+                "sensor_msgs.msg.LaserScan",
+                "sensor_msgs.msg.Image",
+                "tf2_msgs.msg.TFMessage",
+                "nav_msgs.msg.Odometry",
+            ],
+            "laser_scan_summary": {
+                "sample_count": 2,
+                "range_sample_count": 1440,
+                "finite_range_count": 1408,
+                "range_min": 0.12,
+                "range_max": 5.8,
+                "angle_min": -1.57,
+                "angle_max": 1.57,
+                "angle_increment": 0.00436,
+            },
+            "image_summary": {
+                "sample_count": 1,
+                "width": 640,
+                "height": 480,
+                "encoding": "rgb8",
+                "step": 1920,
+                "data_size_bytes": 921600,
+            },
+            "tf_summary": {
+                "sample_count": 2,
+                "transform_count": 4,
+                "frame_id_samples": ["map", "odom"],
+                "child_frame_id_samples": ["base_link", "laser"],
+            },
+            "blocked_reasons": ["local_mock_only", "not_proven"],
+            "next_required_evidence": ["live_nav2_pose_progress", "real_delivery_result_trace"],
+            "safe_to_control": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "robot_control_executed": False,
+        }
+
+    def _route_bag_full_semantic_decode_matrix_payload(self):
+        # full semantic decode matrix 只提供 per topic/type 覆盖摘要，不携带任何 ROS payload 原文。
+        return {
+            "schema": relay_module.ROUTE_BAG_FULL_SEMANTIC_DECODE_MATRIX_SCHEMA,
+            "source_schema": relay_module.ROUTE_BAG_FULL_SEMANTIC_DECODE_MATRIX_SCHEMA,
+            "proof_scope": relay_module.O6_ROUTE_BAG_FULL_SEMANTIC_DECODE_MATRIX_PROOF_SCOPE,
+            "status": "route_bag_full_semantic_decode_matrix_ready_not_route_execution_proof",
+            "source": "algorithm_route_bag_full_semantic_decode_matrix_summary",
+            "source_label": "board_live_full_stack_route_bag",
+            "task_id": "route-bag-task-001",
+            "task_id_source": "manifest_task_id",
+            "topic_type_count": 5,
+            "decoded_topic_type_count": 3,
+            "unsupported_topic_type_count": 1,
+            "failed_topic_type_count": 1,
+            "decoded_message_sample_count": 14,
+            "decode_failed_message_sample_count": 1,
+            "unsupported_message_sample_count": 2,
+            "coverage_ratio": 0.8,
+            "topic_type_matrix": [
+                {
+                    "topic": "/scan",
+                    "type": "sensor_msgs/msg/LaserScan",
+                    "status": "decoded",
+                    "decoder": "laser_scan_summary_decoder",
+                    "message_sample_count": 6,
+                    "decoded_message_sample_count": 6,
+                    "unsupported_message_sample_count": 0,
+                    "decode_failed_message_sample_count": 0,
+                },
+                {
+                    "topic": "/camera/image_raw",
+                    "type": "sensor_msgs/msg/Image",
+                    "status": "unsupported",
+                    "message_sample_count": 2,
+                    "decoded_message_sample_count": 0,
+                    "unsupported_message_sample_count": 2,
+                    "decode_failed_message_sample_count": 0,
+                    "blocked_reasons": ["decoder_missing_for_image_payload"],
+                },
+                {
+                    "topic": "/odom",
+                    "type": "nav_msgs/msg/Odometry",
+                    "status": "decoded",
+                    "decoder": "decode_odometry_payload",
+                    "message_sample_count": 5,
+                    "decoded_message_sample_count": 5,
+                    "unsupported_message_sample_count": 0,
+                    "decode_failed_message_sample_count": 0,
+                },
+                {
+                    "topic": "/diagnostics",
+                    "type": "diagnostic_msgs/msg/DiagnosticArray",
+                    "status": "decoded",
+                    "decoder_name": "decode_diagnostic_array_payload",
+                    "message_sample_count": 3,
+                    "decoded_message_sample_count": 3,
+                    "unsupported_message_sample_count": 0,
+                    "decode_failed_message_sample_count": 0,
+                },
+                {
+                    "topic": "/tf_static",
+                    "type": "tf2_msgs/msg/TFMessage",
+                    "status": "failed",
+                    "message_sample_count": 1,
+                    "decoded_message_sample_count": 0,
+                    "unsupported_message_sample_count": 0,
+                    "decode_failed_message_sample_count": 1,
+                    "blocked_reasons": ["sample_decode_failed"],
+                },
+            ],
+            "blocked_reasons": ["local_mock_only", "not_proven"],
+            "next_required_evidence": ["route_bag_decoder_coverage_for_unsupported_types"],
+            "safe_to_control": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "robot_control_executed": False,
+            "live_nav2_run_proven": False,
+            "route_execution_success": False,
+            "connects_cloud_production": False,
+        }
+
+    def _route_bag_pose_progress_replay_payload(self):
+        # pose progress replay 只回显白名单位姿摘要，不回显原始 ROS payload、路径或控制字段。
+        return {
+            "schema": relay_module.ROUTE_BAG_POSE_PROGRESS_REPLAY_SCHEMA,
+            "proof_scope": relay_module.O6_ROUTE_BAG_POSE_PROGRESS_REPLAY_PROOF_SCOPE,
+            "status": "ready_not_live_nav2_proof",
+            "source": "algorithm_route_bag_pose_progress_replay_summary",
+            "source_label": "board_live_full_stack_route_bag",
+            "task_id": "route-bag-task-001",
+            "task_id_source": "manifest_task_id",
+            "metadata_present": True,
+            "db3_present": True,
+            "db3_read_ok": True,
+            "db3_size_bytes": 4096,
+            "db3_sha256_prefix": "0123456789abcdef",
+            "topic_count": 4,
+            "message_count": 48,
+            "timestamp_first_ns": 1710000000000000000,
+            "timestamp_last_ns": 1710000000187000000,
+            "sample_topic_names": ["/tf", "/odom", "/scan"],
+            "pose_sample_count": 6,
+            "pose_decode_ok_count": 5,
+            "pose_decode_failed_count": 1,
+            "pose_topic_types": [
+                "tf2_msgs.msg.TFMessage",
+                "nav_msgs.msg.Odometry",
+            ],
+            "pose_frame_pairs": [
+                {"parent_frame": "map", "child_frame": "base_link"},
+                {"parent_frame": "odom", "child_frame": "base_link"},
+            ],
+            "pose_time_span_ns": {
+                "start_ns": 1710000000000000000,
+                "end_ns": 1710000000187000000,
+                "duration_ns": 187000000,
+            },
+            "start_pose": {
+                "frame": "map",
+                "x_m": 1.0,
+                "y_m": 2.0,
+                "yaw_rad": 0.2,
+            },
+            "end_pose": {
+                "frame": "map",
+                "x_m": 2.5,
+                "y_m": 3.0,
+                "yaw_rad": 0.22,
+            },
+            "displacement_m": 1.8,
+            "nonzero_pose_progress_observed": True,
+            "blocked_reasons": ["local_mock_only", "not_proven"],
+            "next_required_evidence": ["live_nav2_pose_progress", "real_delivery_result_trace"],
+            "safe_to_control": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "robot_control_executed": False,
+        }
+
+    def _cloud_external_probe_payload(self, task_id):
+        # live endpoint probe readback 只回显 endpoint 覆盖和 contract ready，不回显 base URL 或响应体。
+        return {
+            "schema": relay_module.O6_CLOUD_EXTERNAL_PROBE_READBACK_SCHEMA,
+            "source_schema": relay_module.CLOUD_EXTERNAL_PROBE_SCHEMA,
+            "proof_scope": relay_module.CLOUD_EXTERNAL_PROBE_EVIDENCE_BOUNDARY,
+            "task_id": task_id,
+            "status": "cloud_external_probe_ready_not_production_proof",
+            "source": "o5_same_task_mission_archive_smoke",
+            "endpoint_count": 3,
+            "endpoints_covered": ["/healthz", "/readyz", "/preflightz"],
+            "endpoint_contract_ready": True,
+            "base_url_scheme": "http",
+            "blocked_reasons": [],
+            "next_required_evidence": ["real_public_https_probe", "production_cloud_trace"],
+            "safe_to_control": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "robot_control_executed": False,
+            "connects_cloud_production": False,
+        }
+
+    def _cloud_db_queue_external_probe_payload(self, task_id):
+        # DB/queue probe 只保留枚举化状态矩阵，明确当前不是 production DB/queue 成功证明。
+        return {
+            "schema": relay_module.O6_CLOUD_DB_QUEUE_EXTERNAL_PROBE_READBACK_SCHEMA,
+            "source_schema": relay_module.CLOUD_DB_QUEUE_EXTERNAL_PROBE_SCHEMA,
+            "proof_scope": relay_module.CLOUD_DB_QUEUE_EXTERNAL_PROBE_EVIDENCE_BOUNDARY,
+            "task_id": task_id,
+            "status": "cloud_db_queue_external_probe_ready_not_production_proof",
+            "source": "o5_same_task_mission_archive_smoke",
+            "probe_count": 8,
+            "probe_names": [
+                "backup_recovery",
+                "db_connectivity",
+                "migration_check",
+                "multi_instance_consistency",
+                "ordering_check",
+                "queue_connectivity",
+                "transaction_isolation",
+                "worker_check",
+            ],
+            "probe_statuses": {
+                "db_connectivity_status": "not_externally_proven",
+                "queue_connectivity_status": "not_externally_proven",
+                "migration_check_status": "not_externally_proven",
+                "worker_check_status": "not_externally_proven",
+                "multi_instance_consistency_status": "not_externally_proven",
+                "ordering_check_status": "not_externally_proven",
+                "transaction_isolation_status": "not_externally_proven",
+                "backup_recovery_status": "not_externally_proven",
+            },
+            "external_probe_complete": False,
+            "blocked_reasons": [],
+            "next_required_evidence": ["real_db_queue_probe", "production_db_queue_trace"],
+            "safe_to_control": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "robot_control_executed": False,
+            "connects_cloud_production": False,
+        }
+
+    def _field_evidence_archive_request_payload(self):
+        # 这个请求体模拟 O6 archive ingest 的新合同：只给 manifest，让 relay 自己派生轨迹与摘要。
+        return {
+            "robot_id": "trashbot-001",
+            "task_id": "field-evidence-field-run-001",
+            "field_evidence_manifest": self._field_evidence_manifest_payload(),
+            "route_execution_result_delivery_readiness": self._route_execution_result_delivery_readiness_payload(
+                "field-evidence-field-run-001"
+            ),
+            "route_delivery_closure_packet": self._route_delivery_closure_packet_payload(
+                "field-evidence-field-run-001"
+            ),
+            "same_task_field_material_packet": self._same_task_field_material_packet_payload(
+                "field-evidence-field-run-001"
+            ),
+            "cloud_external_probe": self._cloud_external_probe_payload("field-evidence-field-run-001"),
+            "cloud_db_queue_external_probe": self._cloud_db_queue_external_probe_payload(
+                "field-evidence-field-run-001"
+            ),
+        }
+
+    def _artifact_bundle_payload(self):
+        # artifact bundle 只提供结构化 ref 和少量轨迹/事件摘要，不读取真实文件内容。
+        return {
+            "artifact_bundle": {
+                "schema": relay_module.O6_ARTIFACT_BUNDLE_SCHEMA,
+                "robot_id": "trashbot-001",
+                "task_id": "artifact-bundle-task-001",
+                "status": "bundle_ready_not_proven",
+                "safe_to_control": False,
+                "delivery_success": False,
+                "primary_actions_enabled": False,
+                "field_motion_evidence_packet": self._field_motion_evidence_packet_payload(),
+                "delivery_result_evidence": self._delivery_result_evidence_payload(),
+                "route_execution_result_delivery_readiness": self._route_execution_result_delivery_readiness_payload(
+                    "artifact-bundle-task-001"
+                ),
+                "route_delivery_closure_packet": self._route_delivery_closure_packet_payload(
+                    "artifact-bundle-task-001"
+                ),
+                "same_task_mission_evidence_gate": self._same_task_mission_evidence_gate_payload(
+                    "artifact-bundle-task-001"
+                ),
+                "cloud_external_probe": self._cloud_external_probe_payload("artifact-bundle-task-001"),
+                "cloud_db_queue_external_probe": self._cloud_db_queue_external_probe_payload(
+                    "artifact-bundle-task-001"
+                ),
+                "nav2_goal_execution_evidence": self._nav2_goal_execution_evidence_payload(),
+                "route_bag_evidence": self._route_bag_evidence_payload(),
+                "route_bag_payload_replay": self._route_bag_payload_replay_payload(),
+                "route_bag_semantic_replay": self._route_bag_semantic_replay_payload(),
+                "route_bag_full_semantic_decode_matrix": self._route_bag_full_semantic_decode_matrix_payload(),
+                "route_bag_pose_progress_replay": self._route_bag_pose_progress_replay_payload(),
+                "same_task_field_material_packet": self._same_task_field_material_packet_payload(
+                    "artifact-bundle-task-001"
+                ),
+                "route_refs": [
+                    "captures/route.csv",
+                ],
+                "replay_refs": [
+                    "captures/fixed_route_replay.jsonl",
+                ],
+                "keyframe_refs": [
+                    "captures/keyframe-0001.jpg",
+                ],
+                "evidence_refs": [
+                    "captures/evidence-0001.json",
+                ],
+                "trajectory_frames": [
+                    {
+                        "frame_index": 0,
+                        "timestamp_ms": 1720483200000,
+                        "x_m": 1.0,
+                        "y_m": 2.0,
+                        "yaw_rad": 0.2,
+                        "speed_mps": 0.0,
+                        "state": "bundle_ingested",
+                        "evidence_ref": "captures/keyframe-0001.jpg",
+                    }
+                ],
+                "events": [
+                    {
+                        "event_id": "artifact-bundle-note-001",
+                        "event_type": "operator.note",
+                        "occurred_at_ms": 1720483200500,
+                        "summary": "artifact bundle event summary",
+                        "severity": "info",
+                        "evidence_refs": ["captures/evidence-0001.json"],
+                    }
+                ],
+            }
+        }
+
+    def _offline_artifact_seed_smoke_payload(self):
+        # 这组 fixture 直接引用仓库里的真实离线材料，验证 probe 只读与脱敏摘要合同。
+        route_root = "sprints/2026.06.10_01-15_esp32-bridge-dynamic-odom-tf/artifacts/route"
+        replay_ref = "sprints/2026.06.10_02-05_field-run-bundle-replay-intake/artifacts/derived_replay.jsonl"
+        return {
+            "artifact_bundle": {
+                "schema": relay_module.O6_ARTIFACT_BUNDLE_SCHEMA,
+                "robot_id": "trashbot-001",
+                "task_id": "offline-artifact-seed-smoke-001",
+                "status": "offline_artifact_seed_smoke_ready",
+                "safe_to_control": False,
+                "delivery_success": False,
+                "primary_actions_enabled": False,
+                "route_refs": [f"{route_root}/route.csv"],
+                "replay_refs": [replay_ref],
+                "keyframe_refs": [f"{route_root}/keyframes/001.jpg"],
+                "evidence_refs": [f"{route_root}/manifest.json"],
+                "trajectory_frames": [
+                    {
+                        "frame_index": 0,
+                        "timestamp_ms": 1781025357570,
+                        "x_m": 0.0,
+                        "y_m": 0.0,
+                        "yaw_rad": 0.0,
+                        "speed_mps": 0.0,
+                        "state": "offline_artifact_seed_smoke",
+                        "evidence_ref": f"{route_root}/keyframes/001.jpg",
+                    }
+                ],
+                "events": [
+                    {
+                        "event_id": "offline-artifact-seed-smoke-note",
+                        "event_type": "operator.note",
+                        "occurred_at_ms": 1781025358570,
+                        "summary": "offline artifact seed smoke seeded from repo fixtures",
+                        "severity": "info",
+                        "evidence_refs": [f"{route_root}/manifest.json"],
+                    }
+                ],
+                "artifact_access_root": str(WORKSPACE_ROOT),
+            }
+        }
+
+    def test_o6_field_evidence_manifest_ingest_seeds_archive_and_consumer_read(self):
+        status, created = self.client.request(
+            "POST",
+            "/api/o6/archive/field-evidence",
+            self._field_evidence_archive_request_payload(),
+        )
+
+        self.assertEqual(status, 201)
+        self.assertEqual(created["schema"], relay_module.O6_FIELD_EVIDENCE_ARCHIVE_SCHEMA)
+        self.assertEqual(created["source"], "local_mock_field_evidence_archive")
+        self.assertTrue(created["field_evidence_written"])
+        self.assertFalse(created["safe_to_control"])
+        self.assertFalse(created["delivery_success"])
+        self.assertFalse(created["primary_actions_enabled"])
+        self.assertEqual(created["task"]["task_id"], "field-evidence-field-run-001")
+        self.assertEqual(created["task"]["task_origin"], "field_evidence_manifest")
+        self.assertEqual(created["task"]["field_evidence"]["run_id"], "field-run-001")
+        self.assertEqual(created["task"]["field_evidence"]["manifest_gate"]["gate_pass"], True)
+        self.assertEqual(created["task"]["field_evidence"]["derived_replay"]["frame_count"], 2)
+        self.assertEqual(created["task"]["field_evidence"]["request_summary"]["trajectory_frame_count"], 2)
+        self.assertEqual(created["task"]["field_evidence"]["request_summary"]["event_count"], 0)
+        self.assertEqual(created["task"]["field_evidence"]["request_summary"]["evidence_ref_count"], 0)
+        self.assertEqual(
+            created["task"]["field_evidence"]["artifact_media_preflight"]["schema"],
+            relay_module.O6_ARTIFACT_MEDIA_PREFLIGHT_SCHEMA,
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["artifact_access_probe"]["schema"],
+            relay_module.O6_ARTIFACT_ACCESS_PROBE_SCHEMA,
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["artifact_access_probe"]["proof_scope"],
+            relay_module.O6_ARTIFACT_ACCESS_PROBE_PROOF_SCOPE,
+        )
+        self.assertEqual(created["task"]["field_evidence"]["artifact_access_probe"]["status"], "blocked_not_proven")
+        self.assertEqual(
+            created["task"]["field_evidence"]["route_root_seed_gate"]["schema"],
+            relay_module.O6_ROUTE_ROOT_SEED_GATE_SCHEMA,
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["route_root_seed_gate"]["route_root_seed_status"],
+            "local_mock_route_root_seed_ready",
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["field_motion_evidence_packet"]["schema"],
+            relay_module.FIELD_MOTION_EVIDENCE_PACKET_SCHEMA,
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["field_motion_evidence_packet"]["proof_scope"],
+            relay_module.O6_FIELD_MOTION_EVIDENCE_PACKET_PROOF_SCOPE,
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["field_motion_evidence_packet"]["status"],
+            "field_motion_packet_ready_not_delivery_proof",
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["field_motion_evidence_packet"]["route_summary"]["frame_count"],
+            17,
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["field_motion_evidence_packet"]["motion_log_summary"][
+                "evidence_sources"
+            ],
+            ["remote_capture_motion_log"],
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["delivery_result_evidence"]["schema"],
+            relay_module.DELIVERY_RESULT_EVIDENCE_SCHEMA,
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["delivery_result_evidence"]["proof_scope"],
+            relay_module.O6_DELIVERY_RESULT_EVIDENCE_PROOF_SCOPE,
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["delivery_result_evidence"]["status"],
+            "delivery_result_evidence_ready_not_delivery_proof",
+        )
+        self.assertTrue(
+            created["task"]["field_evidence"]["delivery_result_evidence"]["operator_confirmation_present"]
+        )
+        self.assertFalse(created["task"]["field_evidence"]["delivery_result_evidence"]["delivery_success"])
+        self.assertEqual(
+            created["task"]["field_evidence"]["route_execution_result_delivery_readiness"]["schema"],
+            relay_module.O6_ROUTE_EXECUTION_RESULT_DELIVERY_READINESS_SCHEMA,
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["route_execution_result_delivery_readiness"]["proof_scope"],
+            relay_module.O6_ROUTE_EXECUTION_RESULT_DELIVERY_READINESS_PROOF_SCOPE,
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["route_execution_result_delivery_readiness"]["status"],
+            "route_execution_result_delivery_readiness_ready_not_delivery_proof",
+        )
+        self.assertTrue(
+            created["task"]["field_evidence"]["route_execution_result_delivery_readiness"][
+                "linked_nav2_goal_execution_proven"
+            ]
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["route_delivery_closure_packet"]["schema"],
+            relay_module.O6_ROUTE_DELIVERY_CLOSURE_PACKET_SCHEMA,
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["route_delivery_closure_packet"]["proof_scope"],
+            relay_module.O6_ROUTE_DELIVERY_CLOSURE_PACKET_PROOF_SCOPE,
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["route_delivery_closure_packet"]["status"],
+            "route_delivery_closure_ready_not_success_proof",
+        )
+        self.assertTrue(
+            created["task"]["field_evidence"]["route_delivery_closure_packet"]["linked_pose_progress_ready"]
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["same_task_mission_evidence_gate"]["schema"],
+            relay_module.O6_SAME_TASK_MISSION_EVIDENCE_GATE_SCHEMA,
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["same_task_mission_evidence_gate"]["proof_scope"],
+            relay_module.O6_SAME_TASK_MISSION_EVIDENCE_GATE_PROOF_SCOPE,
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["same_task_mission_evidence_gate"]["status"],
+            "same_task_mission_gate_ready_not_success_proof",
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["same_task_mission_evidence_gate"]["terminal_refs"],
+            ["cloud_terminal_result.json", "route_execution_summary.json"],
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["same_task_mission_evidence_gate"]["mission_artifact_delta"],
+            {
+                "same_task_id_consumed": True,
+                "cloud_terminal_result_source_consumed": True,
+                "route_execution_readiness_consumed": True,
+                "route_delivery_closure_consumed": True,
+                "nonzero_pose_progress_consumed": True,
+                "live_or_field_command_executed": False,
+            },
+        )
+        self.assertTrue(
+            created["task"]["field_evidence"]["same_task_mission_evidence_gate"][
+                "linked_cloud_terminal_result_ready"
+            ]
+        )
+        self.assertTrue(
+            created["task"]["field_evidence"]["same_task_mission_evidence_gate"]["same_task_id_consumed"]
+        )
+        self.assertFalse(
+            created["task"]["field_evidence"]["same_task_mission_evidence_gate"]["live_or_field_command_executed"]
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["same_task_mission_evidence_gate"]["support_only_reason"],
+            "support_only_same_task_readback_without_live_command",
+        )
+        self.assertFalse(
+            created["task"]["field_evidence"]["same_task_mission_evidence_gate"]["okr_credit_allowed"]
+        )
+        self.assertFalse(
+            created["task"]["field_evidence"]["same_task_mission_evidence_gate"]["delivery_success"]
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["cloud_external_probe"]["schema"],
+            relay_module.O6_CLOUD_EXTERNAL_PROBE_READBACK_SCHEMA,
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["cloud_external_probe"]["status"],
+            "cloud_external_probe_ready_not_production_proof",
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["cloud_db_queue_external_probe"]["schema"],
+            relay_module.O6_CLOUD_DB_QUEUE_EXTERNAL_PROBE_READBACK_SCHEMA,
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["cloud_db_queue_external_probe"]["probe_count"],
+            8,
+        )
+        self.assertFalse(
+            created["task"]["field_evidence"]["route_execution_result_delivery_readiness"][
+                "route_execution_success"
+            ]
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["nav2_goal_execution_evidence"]["schema"],
+            relay_module.NAV2_GOAL_EXECUTION_EVIDENCE_SCHEMA,
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["nav2_goal_execution_evidence"]["proof_scope"],
+            relay_module.O6_NAV2_GOAL_EXECUTION_EVIDENCE_PROOF_SCOPE,
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["nav2_goal_execution_evidence"]["status"],
+            "nav2_goal_execution_ready_not_delivery_proof",
+        )
+        self.assertTrue(
+            created["task"]["field_evidence"]["nav2_goal_execution_evidence"]["nav2_goal_execution_proven"]
+        )
+        self.assertFalse(created["task"]["field_evidence"]["nav2_goal_execution_evidence"]["delivery_success"])
+        self.assertEqual(
+            created["task"]["field_evidence"]["nav2_goal_execution_evidence"]["pose_progress_summary"][
+                "pose_sample_count"
+            ],
+            6,
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["route_bag_evidence"]["schema"],
+            relay_module.O6_ROUTE_BAG_EVIDENCE_SCHEMA,
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["route_bag_evidence"]["proof_scope"],
+            relay_module.O6_ROUTE_BAG_EVIDENCE_PROOF_SCOPE,
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["route_bag_evidence"]["status"],
+            "ready_not_route_execution_proof",
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["route_bag_evidence"]["source_schema"],
+            relay_module.ROUTE_BAG_EVIDENCE_SCHEMA,
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["route_bag_evidence"]["sample_topic_names"],
+            ["tf", "odom", "scan"],
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["route_bag_payload_replay"]["schema"],
+            relay_module.O6_ROUTE_BAG_PAYLOAD_REPLAY_SCHEMA,
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["route_bag_payload_replay"]["status"],
+            "route_bag_payload_replay_ready_not_route_execution_proof",
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["route_bag_payload_replay"]["payload_sample_count"],
+            3,
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["route_bag_payload_replay"]["sample_topic_names"],
+            ["tf", "odom", "scan"],
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["route_bag_payload_replay"]["payload_sha256_prefix_samples"],
+            ["a1b2c3d4e5f6a7b8", "b1c2d3e4f5a6b7c8", "c1d2e3f4a5b6c7d8"],
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["route_bag_semantic_replay"]["schema"],
+            relay_module.O6_ROUTE_BAG_SEMANTIC_REPLAY_SCHEMA,
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["route_bag_semantic_replay"]["proof_scope"],
+            relay_module.O6_ROUTE_BAG_SEMANTIC_REPLAY_PROOF_SCOPE,
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["route_bag_semantic_replay"]["status"],
+            "route_bag_semantic_replay_ready_not_route_execution_proof",
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["route_bag_semantic_replay"]["semantic_topic_types"],
+            [
+                "sensor_msgs.msg.LaserScan",
+                "sensor_msgs.msg.Image",
+                "tf2_msgs.msg.TFMessage",
+                "nav_msgs.msg.Odometry",
+            ],
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["route_bag_semantic_replay"]["image_summary"]["encoding"],
+            "rgb8",
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["route_bag_full_semantic_decode_matrix"]["schema"],
+            relay_module.O6_ROUTE_BAG_FULL_SEMANTIC_DECODE_MATRIX_SCHEMA,
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["route_bag_full_semantic_decode_matrix"]["proof_scope"],
+            relay_module.O6_ROUTE_BAG_FULL_SEMANTIC_DECODE_MATRIX_PROOF_SCOPE,
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["route_bag_full_semantic_decode_matrix"]["status"],
+            "route_bag_full_semantic_decode_matrix_ready_not_route_execution_proof",
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["route_bag_full_semantic_decode_matrix"]["counts"][
+                "decoded_topic_type_count"
+            ],
+            3,
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["route_bag_full_semantic_decode_matrix"]["topic_type_matrix"][0],
+            {
+                "topic": "scan",
+                "type": "sensor_msgs.msg.LaserScan",
+                "status": "decoded",
+                "message_sample_count": 6,
+                "decoded_message_sample_count": 6,
+                "unsupported_message_sample_count": 0,
+                "decode_failed_message_sample_count": 0,
+                "decoder_name": "laser_scan_summary_decoder",
+                "decoder": "laser_scan_summary_decoder",
+            },
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["route_bag_full_semantic_decode_matrix"]["topic_type_matrix"][2],
+            {
+                "topic": "odom",
+                "type": "nav_msgs.msg.Odometry",
+                "status": "decoded",
+                "message_sample_count": 5,
+                "decoded_message_sample_count": 5,
+                "unsupported_message_sample_count": 0,
+                "decode_failed_message_sample_count": 0,
+                "decoder_name": "decode_odometry_payload",
+                "decoder": "decode_odometry_payload",
+            },
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["route_bag_full_semantic_decode_matrix"]["topic_type_matrix"][3],
+            {
+                "topic": "diagnostics",
+                "type": "diagnostic_msgs.msg.DiagnosticArray",
+                "status": "decoded",
+                "message_sample_count": 3,
+                "decoded_message_sample_count": 3,
+                "unsupported_message_sample_count": 0,
+                "decode_failed_message_sample_count": 0,
+                "decoder_name": "decode_diagnostic_array_payload",
+                "decoder": "decode_diagnostic_array_payload",
+            },
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["route_bag_pose_progress_replay"]["schema"],
+            relay_module.O6_ROUTE_BAG_POSE_PROGRESS_REPLAY_SCHEMA,
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["route_bag_pose_progress_replay"]["proof_scope"],
+            relay_module.O6_ROUTE_BAG_POSE_PROGRESS_REPLAY_PROOF_SCOPE,
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["route_bag_pose_progress_replay"]["status"],
+            "ready_not_live_nav2_proof",
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["route_bag_pose_progress_replay"]["pose_sample_count"],
+            6,
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["route_bag_pose_progress_replay"]["pose_topic_types"],
+            ["tf2_msgs.msg.TFMessage", "nav_msgs.msg.Odometry"],
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["route_bag_pose_progress_replay"]["pose_frame_pairs"],
+            [
+                {"parent_frame": "map", "child_frame": "base_link"},
+                {"parent_frame": "odom", "child_frame": "base_link"},
+            ],
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["route_bag_pose_progress_replay"]["start_pose"]["frame"],
+            "map",
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["route_bag_pose_progress_replay"]["displacement_m"],
+            1.8,
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["same_task_field_material_packet"]["schema"],
+            relay_module.O6_SAME_TASK_FIELD_MATERIAL_PACKET_SCHEMA,
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["same_task_field_material_packet"]["status"],
+            "ready_not_delivery_proof",
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["same_task_field_material_packet"]["present_materials"],
+            ["route_csv", "keyframes", "route_bag_or_rosbag", "replay_jsonl"],
+        )
+        self.assertFalse(
+            created["task"]["field_evidence"]["same_task_field_material_packet"]["map_yaml_present"]
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["same_task_field_material_packet"]["sample_refs"][0],
+            "route.csv",
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["same_task_field_material_packet"]["material_sample_refs"][
+                "route_csv"
+            ]["basename"],
+            "route.csv",
+        )
+        self.assertIn(
+            "same_task_field_material_map_yaml_missing_optional",
+            created["task"]["field_evidence"]["same_task_field_material_packet"]["blocked_reasons"],
+        )
+        self.assertTrue(
+            created["task"]["field_evidence"]["same_task_field_material_packet"]["same_task_id_consumed"]
+        )
+        self.assertFalse(created["task"]["field_evidence"]["route_bag_evidence"]["delivery_success"])
+        self.assertFalse(created["task"]["field_evidence"]["route_bag_evidence"]["safe_to_control"])
+        self.assertFalse(created["task"]["field_evidence"]["route_root_seed_gate"]["route_bag_required"])
+        self.assertTrue(created["task"]["field_evidence"]["route_root_seed_gate"]["route_bag_present"])
+        self.assertFalse(created["task"]["field_evidence"]["route_root_seed_gate"]["safe_to_control"])
+        self.assertFalse(created["task"]["field_evidence"]["route_root_seed_gate"]["delivery_success"])
+        self.assertFalse(created["task"]["field_evidence"]["route_root_seed_gate"]["robot_control_executed"])
+        self.assertIn(
+            "allowlist_root_missing",
+            created["task"]["field_evidence"]["artifact_access_probe"]["blocked_reasons"],
+        )
+        self.assertFalse(
+            created["task"]["field_evidence"]["artifact_access_probe"]["proof_boundary"]["file_read_attempted"]
+        )
+        self.assertFalse(created["task"]["field_evidence"]["artifact_access_probe"]["allowlist_root_echoed"])
+        self.assertEqual(
+            created["task"]["field_evidence"]["artifact_media_preflight"]["counts"]["route_ref_count"],
+            1,
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["artifact_media_preflight"]["counts"]["replay_ref_count"],
+            1,
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["artifact_media_preflight"]["counts"]["keyframe_ref_count"],
+            1,
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["artifact_media_preflight"]["sample_refs"]["route_ref"],
+            "route.csv",
+        )
+        self.assertEqual(created["task"]["trajectory_frames"][0]["frame_index"], 0)
+        self.assertEqual(created["task"]["trajectory_frames"][0]["state"], "field_evidence_manifest_ingested")
+        self.assertEqual(created["task"]["trajectory_frames"][1]["frame_index"], 1)
+        self.assertEqual(created["task"]["events"][0]["event_type"], "operator.note")
+        self.assertGreaterEqual(len(created["task"]["evidence_refs"]), 4)
+        self.assertNotIn("/tmp/field_evidence", json.dumps(created, ensure_ascii=False))
+
+        status, detail = self.client.request(
+            "GET",
+            "/api/o6/archive/tasks/field-evidence-field-run-001",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(detail["task"]["task_origin"], "field_evidence_manifest")
+        self.assertEqual(detail["task"]["field_evidence"]["artifact_summary"]["present_count"], 4)
+        self.assertEqual(detail["task"]["field_evidence"]["source"], "local_mock_field_evidence_archive")
+        self.assertEqual(detail["task"]["field_evidence_manifest"]["source"], "local_mock_field_evidence_archive")
+        self.assertEqual(detail["task"]["field_evidence_consumer_ingest"]["source"], "local_mock_field_evidence_archive")
+        self.assertEqual(
+            detail["task"]["field_motion_evidence_packet"]["schema"],
+            relay_module.FIELD_MOTION_EVIDENCE_PACKET_SCHEMA,
+        )
+        self.assertEqual(
+            detail["task"]["field_motion_evidence_packet"]["status"],
+            "field_motion_packet_ready_not_delivery_proof",
+        )
+        self.assertEqual(
+            detail["task"]["delivery_result_evidence"]["source_schema"],
+            "trashbot.delivery_result_record.v1",
+        )
+        self.assertEqual(
+            detail["task"]["field_evidence_consumer_ingest"]["delivery_result_evidence"]["dropoff_confirmation_type"],
+            "operator_button_confirmed",
+        )
+        self.assertEqual(
+            detail["task"]["route_execution_result_delivery_readiness"]["source_schema"],
+            relay_module.ROUTE_EXECUTION_RESULT_DELIVERY_READINESS_SCHEMA,
+        )
+        self.assertEqual(
+            detail["task"]["field_evidence_consumer_ingest"]["route_execution_result_delivery_readiness"][
+                "route_execution_result_source"
+            ],
+            "nav2_goal_execution_evidence",
+        )
+        self.assertEqual(
+            detail["task"]["nav2_goal_execution_evidence"]["proof_scope"],
+            relay_module.O6_NAV2_GOAL_EXECUTION_EVIDENCE_PROOF_SCOPE,
+        )
+        self.assertEqual(
+            detail["task"]["field_evidence_consumer_ingest"]["nav2_goal_execution_evidence"]["source"],
+            "o11_nav2_goal_execution_proof",
+        )
+        self.assertEqual(
+            detail["task"]["route_bag_evidence"]["schema"],
+            relay_module.O6_ROUTE_BAG_EVIDENCE_SCHEMA,
+        )
+        self.assertEqual(
+            detail["task"]["field_evidence_consumer_ingest"]["route_bag_evidence"]["source_label"],
+            "board_live_full_stack_route_bag",
+        )
+        self.assertEqual(
+            detail["task"]["route_bag_payload_replay"]["schema"],
+            relay_module.O6_ROUTE_BAG_PAYLOAD_REPLAY_SCHEMA,
+        )
+        self.assertEqual(
+            detail["task"]["field_evidence_consumer_ingest"]["route_bag_payload_replay"]["proof_scope"],
+            relay_module.O6_ROUTE_BAG_PAYLOAD_REPLAY_PROOF_SCOPE,
+        )
+        self.assertEqual(
+            detail["task"]["route_bag_semantic_replay"]["schema"],
+            relay_module.O6_ROUTE_BAG_SEMANTIC_REPLAY_SCHEMA,
+        )
+        self.assertEqual(
+            detail["task"]["route_bag_pose_progress_replay"]["schema"],
+            relay_module.O6_ROUTE_BAG_POSE_PROGRESS_REPLAY_SCHEMA,
+        )
+        self.assertEqual(
+            detail["task"]["field_evidence_consumer_ingest"]["route_bag_semantic_replay"]["semantic_sample_count"],
+            6,
+        )
+        self.assertEqual(
+            detail["task"]["route_bag_full_semantic_decode_matrix"]["coverage_ratio"],
+            0.8,
+        )
+        self.assertEqual(
+            detail["task"]["field_evidence_consumer_ingest"]["route_bag_full_semantic_decode_matrix"]["counts"][
+                "unsupported_topic_type_count"
+            ],
+            1,
+        )
+        self.assertEqual(
+            detail["task"]["field_evidence_consumer_ingest"]["route_bag_full_semantic_decode_matrix"][
+                "topic_type_matrix"
+            ][3]["decoder_name"],
+            "decode_diagnostic_array_payload",
+        )
+        self.assertEqual(
+            detail["task"]["field_evidence_consumer_ingest"]["route_bag_pose_progress_replay"]["pose_sample_count"],
+            6,
+        )
+        self.assertEqual(
+            detail["task"]["same_task_field_material_packet"]["schema"],
+            relay_module.O6_SAME_TASK_FIELD_MATERIAL_PACKET_SCHEMA,
+        )
+        self.assertEqual(
+            detail["task"]["field_evidence_consumer_ingest"]["same_task_field_material_packet"]["counts"][
+                "keyframe_count"
+            ],
+            17,
+        )
+        self.assertEqual(
+            detail["task"]["same_task_field_material_packet"]["material_sample_refs"]["route_bag_or_rosbag"][
+                "basename"
+            ],
+            "route_001.db3",
+        )
+        self.assertEqual(
+            detail["task"]["same_task_mission_evidence_gate"]["source_schema"],
+            relay_module.SAME_TASK_MISSION_EVIDENCE_GATE_SCHEMA,
+        )
+        self.assertEqual(
+            detail["task"]["field_evidence_consumer_ingest"]["same_task_mission_evidence_gate"][
+                "terminal_ref_count"
+            ],
+            2,
+        )
+        self.assertFalse(detail["task"]["same_task_mission_evidence_gate"]["okr_credit_allowed"])
+        self.assertEqual(
+            detail["task"]["same_task_mission_evidence_gate"]["support_only_reason"],
+            "support_only_same_task_readback_without_live_command",
+        )
+        self.assertEqual(detail["task"]["artifact_access_probe"]["status"], "blocked_not_proven")
+        self.assertEqual(detail["task"]["route_root_seed_gate"]["schema"], relay_module.O6_ROUTE_ROOT_SEED_GATE_SCHEMA)
+        self.assertFalse(detail["task"]["route_root_seed_gate"]["route_bag_required"])
+        self.assertTrue(detail["task"]["route_root_seed_gate"]["route_bag_present"])
+
+        status, consumer = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/field-evidence-field-run-001?include=field_evidence,trajectory,evidence,events",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(consumer["field_evidence"]["status"], "local_mock_field_evidence_ready")
+        self.assertEqual(consumer["field_evidence"]["manifest"]["task_origin"], "field_evidence_manifest")
+        self.assertEqual(consumer["field_evidence_manifest"]["source"], "local_mock_field_evidence_archive")
+        self.assertEqual(
+            consumer["field_evidence_consumer_ingest"]["field_evidence_manifest"]["task_origin"],
+            "field_evidence_manifest",
+        )
+        self.assertEqual(
+            consumer["artifact_media_preflight"]["schema"],
+            relay_module.O6_ARTIFACT_MEDIA_PREFLIGHT_SCHEMA,
+        )
+        self.assertEqual(
+            consumer["artifact_media_preflight"]["consumer_section_names"],
+            ["artifact_media_preflight", "route_replay_mvp", "labeling_mvp"],
+        )
+        self.assertTrue(consumer["artifact_media_preflight"]["proof_boundary"]["local_mock"])
+        self.assertTrue(consumer["artifact_media_preflight"]["proof_boundary"]["not_proven"])
+        self.assertFalse(consumer["artifact_media_preflight"]["proof_boundary"]["real_media_read_executed"])
+        self.assertEqual(consumer["artifact_media_preflight"]["task_id"], "field-evidence-field-run-001")
+        self.assertIn("local_mock_only", consumer["artifact_media_preflight"]["blocked_reasons"])
+        self.assertIn("not_proven", consumer["artifact_media_preflight"]["blocked_reasons"])
+        self.assertEqual(
+            consumer["field_evidence"]["artifact_media_preflight"]["sample_refs"]["replay_ref"],
+            "fixed_route_replay.jsonl",
+        )
+        self.assertEqual(
+            consumer["field_evidence_consumer_ingest"]["artifact_media_preflight"]["sample_refs"]["keyframe_ref"],
+            "keyframes",
+        )
+        self.assertEqual(
+            consumer["field_motion_evidence_packet"]["schema"],
+            relay_module.FIELD_MOTION_EVIDENCE_PACKET_SCHEMA,
+        )
+        self.assertEqual(
+            consumer["field_motion_evidence_packet"]["status"],
+            "field_motion_packet_ready_not_delivery_proof",
+        )
+        self.assertEqual(
+            consumer["field_motion_evidence_packet"]["motion_log_summary"]["evidence_sources"],
+            ["remote_capture_motion_log"],
+        )
+        self.assertFalse(consumer["field_motion_evidence_packet"]["robot_control_executed"])
+        self.assertEqual(
+            consumer["delivery_result_evidence"]["schema"],
+            relay_module.DELIVERY_RESULT_EVIDENCE_SCHEMA,
+        )
+        self.assertEqual(
+            consumer["delivery_result_evidence"]["record_status"],
+            "operator_confirmed_not_production_accepted",
+        )
+        self.assertTrue(consumer["delivery_result_evidence"]["linked_nav2_goal_execution_proven"])
+        self.assertEqual(
+            consumer["field_evidence_consumer_ingest"]["delivery_result_evidence"]["source"],
+            "field_delivery_result_record",
+        )
+        self.assertEqual(
+            consumer["route_execution_result_delivery_readiness"]["schema"],
+            relay_module.O6_ROUTE_EXECUTION_RESULT_DELIVERY_READINESS_SCHEMA,
+        )
+        self.assertEqual(
+            consumer["route_execution_result_delivery_readiness"]["route_execution_result_status"],
+            "nav2_result_summary_ready",
+        )
+        self.assertTrue(
+            consumer["route_execution_result_delivery_readiness"][
+                "linked_operator_confirmation_present"
+            ]
+        )
+        self.assertEqual(
+            consumer["route_delivery_closure_packet"]["schema"],
+            relay_module.O6_ROUTE_DELIVERY_CLOSURE_PACKET_SCHEMA,
+        )
+        self.assertEqual(
+            consumer["route_delivery_closure_packet"]["status"],
+            "route_delivery_closure_ready_not_success_proof",
+        )
+        self.assertEqual(
+            consumer["same_task_field_material_packet"]["status"],
+            "ready_not_delivery_proof",
+        )
+        self.assertEqual(
+            consumer["same_task_field_material_packet"]["sample_refs"],
+            ["route.csv", "keyframe-0001.jpg", "route_001.db3", "fixed_route_replay.jsonl"],
+        )
+        self.assertEqual(
+            consumer["field_evidence_consumer_ingest"]["same_task_field_material_packet"]["counts"][
+                "route_bag_or_rosbag_count"
+            ],
+            1,
+        )
+        self.assertTrue(consumer["same_task_field_material_packet"]["live_or_field_material_consumed"])
+        self.assertTrue(
+            consumer["route_delivery_closure_packet"][
+                "linked_route_execution_result_delivery_readiness_ready"
+            ]
+        )
+        self.assertEqual(
+            consumer["field_evidence_consumer_ingest"]["route_execution_result_delivery_readiness"][
+                "delivery_result_readiness_source"
+            ],
+            "delivery_result_evidence",
+        )
+        self.assertEqual(
+            consumer["field_evidence_consumer_ingest"]["route_delivery_closure_packet"]["source"],
+            "algorithm_route_delivery_closure_packet_summary",
+        )
+        self.assertEqual(
+            consumer["same_task_mission_evidence_gate"]["schema"],
+            relay_module.O6_SAME_TASK_MISSION_EVIDENCE_GATE_SCHEMA,
+        )
+        self.assertEqual(
+            consumer["same_task_mission_evidence_gate"]["status"],
+            "same_task_mission_gate_ready_not_success_proof",
+        )
+        self.assertTrue(
+            consumer["same_task_mission_evidence_gate"]["linked_readiness_flags"][
+                "route_delivery_closure_packet_ready"
+            ]
+        )
+        self.assertEqual(
+            consumer["field_evidence_consumer_ingest"]["same_task_mission_evidence_gate"][
+                "mission_artifact_delta"
+            ],
+            {
+                "same_task_id_consumed": True,
+                "cloud_terminal_result_source_consumed": True,
+                "route_execution_readiness_consumed": True,
+                "route_delivery_closure_consumed": True,
+                "nonzero_pose_progress_consumed": True,
+                "live_or_field_command_executed": False,
+            },
+        )
+        self.assertFalse(consumer["same_task_mission_evidence_gate"]["okr_credit_allowed"])
+        self.assertEqual(
+            consumer["same_task_mission_evidence_gate"]["support_only_reason"],
+            "support_only_same_task_readback_without_live_command",
+        )
+        self.assertEqual(
+            consumer["cloud_external_probe"]["status"],
+            "cloud_external_probe_ready_not_production_proof",
+        )
+        self.assertEqual(consumer["cloud_external_probe"]["endpoint_count"], 3)
+        self.assertEqual(
+            consumer["cloud_db_queue_external_probe"]["status"],
+            "cloud_db_queue_external_probe_ready_not_production_proof",
+        )
+        self.assertEqual(consumer["cloud_db_queue_external_probe"]["probe_count"], 8)
+        self.assertEqual(
+            consumer["nav2_goal_execution_evidence"]["schema"],
+            relay_module.NAV2_GOAL_EXECUTION_EVIDENCE_SCHEMA,
+        )
+        self.assertEqual(
+            consumer["nav2_goal_execution_evidence"]["goal_result_status"],
+            "STATUS_SUCCEEDED",
+        )
+        self.assertTrue(consumer["nav2_goal_execution_evidence"]["base_motion_command_nonzero_proven"])
+        self.assertFalse(consumer["nav2_goal_execution_evidence"]["robot_control_executed"])
+        self.assertEqual(
+            consumer["field_evidence_consumer_ingest"]["nav2_goal_execution_evidence"]["proof_status"],
+            "software_proof",
+        )
+
+    def test_o6_field_evidence_probe_readback_fail_closes_hostile_payload(self):
+        payload = self._field_evidence_archive_request_payload()
+        payload["cloud_external_probe"] = {
+            **self._cloud_external_probe_payload("field-evidence-field-run-001"),
+            "authorization": "Bearer should-never-leak",
+        }
+        payload["cloud_db_queue_external_probe"] = {
+            **self._cloud_db_queue_external_probe_payload("field-evidence-field-run-001"),
+            "delivery_success": True,
+        }
+
+        status, created = self.client.request("POST", "/api/o6/archive/field-evidence", payload)
+
+        self.assertEqual(status, 201)
+        self.assertEqual(
+            created["task"]["field_evidence"]["cloud_external_probe"]["status"],
+            "blocked_not_proven",
+        )
+        self.assertIn(
+            "cloud_external_probe_unsafe",
+            created["task"]["field_evidence"]["cloud_external_probe"]["blocked_reasons"],
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["cloud_db_queue_external_probe"]["status"],
+            "blocked_not_proven",
+        )
+        self.assertIn(
+            "cloud_db_queue_external_probe_unsafe",
+            created["task"]["field_evidence"]["cloud_db_queue_external_probe"]["blocked_reasons"],
+        )
+        status, consumer = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/field-evidence-field-run-001?include=field_evidence,trajectory,evidence,events",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(
+            consumer["route_bag_evidence"]["schema"],
+            relay_module.O6_ROUTE_BAG_EVIDENCE_SCHEMA,
+        )
+        self.assertEqual(consumer["route_bag_evidence"]["topic_count"], 3)
+        self.assertEqual(consumer["route_bag_evidence"]["message_count"], 42)
+        self.assertEqual(
+            consumer["field_evidence"]["route_bag_evidence"]["sample_topic_names"],
+            ["tf", "odom", "scan"],
+        )
+        self.assertEqual(
+            consumer["field_evidence_consumer_ingest"]["route_bag_evidence"]["proof_scope"],
+            relay_module.O6_ROUTE_BAG_EVIDENCE_PROOF_SCOPE,
+        )
+        self.assertEqual(
+            consumer["route_bag_payload_replay"]["schema"],
+            relay_module.O6_ROUTE_BAG_PAYLOAD_REPLAY_SCHEMA,
+        )
+        self.assertEqual(
+            consumer["field_evidence"]["route_bag_payload_replay"]["payload_sample_count"],
+            3,
+        )
+        self.assertEqual(
+            consumer["field_evidence_consumer_ingest"]["route_bag_payload_replay"]["proof_scope"],
+            relay_module.O6_ROUTE_BAG_PAYLOAD_REPLAY_PROOF_SCOPE,
+        )
+        self.assertEqual(
+            consumer["route_bag_semantic_replay"]["schema"],
+            relay_module.O6_ROUTE_BAG_SEMANTIC_REPLAY_SCHEMA,
+        )
+        self.assertEqual(
+            consumer["field_evidence"]["route_bag_semantic_replay"]["laser_scan_summary"]["range_sample_count"],
+            1440,
+        )
+        self.assertEqual(
+            consumer["field_evidence_consumer_ingest"]["route_bag_semantic_replay"]["tf_summary"]["frame_id_samples"],
+            ["map", "odom"],
+        )
+        self.assertIn(
+            "nav_msgs.msg.Odometry",
+            consumer["route_bag_semantic_replay"]["semantic_topic_types"],
+        )
+        self.assertEqual(
+            consumer["route_bag_full_semantic_decode_matrix"]["schema"],
+            relay_module.O6_ROUTE_BAG_FULL_SEMANTIC_DECODE_MATRIX_SCHEMA,
+        )
+        self.assertEqual(
+            consumer["field_evidence"]["route_bag_full_semantic_decode_matrix"]["counts"][
+                "failed_topic_type_count"
+            ],
+            1,
+        )
+        self.assertEqual(
+            consumer["field_evidence_consumer_ingest"]["route_bag_full_semantic_decode_matrix"][
+                "topic_type_matrix"
+            ][2]["decoder"],
+            "decode_odometry_payload",
+        )
+        self.assertEqual(
+            consumer["field_evidence_consumer_ingest"]["route_bag_full_semantic_decode_matrix"][
+                "topic_type_matrix"
+            ][3]["decoder_name"],
+            "decode_diagnostic_array_payload",
+        )
+        self.assertEqual(
+            consumer["field_evidence_consumer_ingest"]["route_bag_full_semantic_decode_matrix"][
+                "topic_type_matrix"
+            ][3]["decoded_message_sample_count"],
+            3,
+        )
+        self.assertFalse(consumer["route_bag_full_semantic_decode_matrix"]["safe_to_control"])
+        self.assertFalse(consumer["route_bag_full_semantic_decode_matrix"]["delivery_success"])
+        self.assertFalse(consumer["route_bag_full_semantic_decode_matrix"]["route_execution_success"])
+        self.assertEqual(
+            consumer["route_bag_pose_progress_replay"]["schema"],
+            relay_module.O6_ROUTE_BAG_POSE_PROGRESS_REPLAY_SCHEMA,
+        )
+        self.assertEqual(
+            consumer["field_evidence"]["route_bag_pose_progress_replay"]["pose_time_span_ns"]["duration_ns"],
+            187000000,
+        )
+        self.assertEqual(
+            consumer["field_evidence_consumer_ingest"]["route_bag_pose_progress_replay"]["pose_frame_pairs"],
+            [
+                {"parent_frame": "map", "child_frame": "base_link"},
+                {"parent_frame": "odom", "child_frame": "base_link"},
+            ],
+        )
+        self.assertFalse(consumer["route_bag_semantic_replay"]["robot_control_executed"])
+        self.assertEqual(consumer["artifact_access_probe"]["schema"], relay_module.O6_ARTIFACT_ACCESS_PROBE_SCHEMA)
+        self.assertIn("allowlist_root_missing", consumer["artifact_access_probe"]["blocked_reasons"])
+        self.assertEqual(consumer["route_root_seed_gate"]["schema"], relay_module.O6_ROUTE_ROOT_SEED_GATE_SCHEMA)
+        self.assertEqual(consumer["route_root_seed_gate"]["route_root_seed_status"], "local_mock_route_root_seed_ready")
+        self.assertFalse(consumer["route_root_seed_gate"]["route_bag_required"])
+        self.assertTrue(consumer["route_root_seed_gate"]["route_bag_present"])
+        self.assertEqual(consumer["route_root_seed_gate"]["route_csv_summary"]["sample_ref"], "route.csv")
+        self.assertEqual(consumer["field_evidence"]["route_root_seed_gate"]["schema"], relay_module.O6_ROUTE_ROOT_SEED_GATE_SCHEMA)
+        self.assertEqual(
+            consumer["field_evidence_consumer_ingest"]["route_root_seed_gate"]["proof_scope"],
+            relay_module.O6_ROUTE_ROOT_SEED_GATE_PROOF_SCOPE,
+        )
+        self.assertEqual(consumer["trajectory"]["status"], "local_mock_archive_ready")
+        self.assertEqual(consumer["trajectory"]["total_count"], 2)
+        self.assertEqual(consumer["trajectory"]["frames"][0]["frame_index"], 0)
+        self.assertEqual(consumer["evidence"]["status"], "local_mock_archive_ready")
+        self.assertEqual(consumer["events"]["events"][0]["event_type"], "operator.note")
+        self.assertFalse(consumer["proof_boundary"]["safe_to_control"])
+        for forbidden_key in (
+            "safe_to_control",
+            "delivery_success",
+            "primary_actions_enabled",
+            "connects_cloud_production",
+            "robot_control_executed",
+            "real_cloud_db_connected",
+            "real_oss_connected",
+        ):
+            self.assertFalse(consumer[forbidden_key])
+            self.assertFalse(consumer["field_evidence"][forbidden_key])
+            self.assertFalse(consumer["field_evidence_consumer_ingest"][forbidden_key])
+
+        status, duplicate = self.client.request(
+            "POST",
+            "/api/o6/archive/field-evidence",
+            self._field_evidence_archive_request_payload(),
+        )
+        self.assertEqual(status, 200)
+        self.assertTrue(duplicate["duplicate"])
+        self.assertEqual(duplicate["write_status"], "updated")
+
+        status, explicit = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/field-evidence-field-run-001?include=route_execution_result_delivery_readiness,route_bag_evidence,route_bag_payload_replay,route_bag_semantic_replay,route_bag_full_semantic_decode_matrix,route_bag_pose_progress_replay",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(
+            explicit["route_execution_result_delivery_readiness"]["status"],
+            "route_execution_result_delivery_readiness_ready_not_delivery_proof",
+        )
+        self.assertEqual(explicit["route_bag_evidence"]["schema"], relay_module.O6_ROUTE_BAG_EVIDENCE_SCHEMA)
+        self.assertEqual(explicit["route_bag_evidence"]["status"], "ready_not_route_execution_proof")
+        self.assertFalse(explicit["route_bag_evidence"]["robot_control_executed"])
+        self.assertEqual(
+            explicit["route_bag_payload_replay"]["schema"],
+            relay_module.O6_ROUTE_BAG_PAYLOAD_REPLAY_SCHEMA,
+        )
+        self.assertEqual(
+            explicit["route_bag_payload_replay"]["status"],
+            "route_bag_payload_replay_ready_not_route_execution_proof",
+        )
+        self.assertEqual(
+            explicit["route_bag_semantic_replay"]["status"],
+            "route_bag_semantic_replay_ready_not_route_execution_proof",
+        )
+        self.assertEqual(
+            explicit["route_bag_full_semantic_decode_matrix"]["status"],
+            "route_bag_full_semantic_decode_matrix_ready_not_route_execution_proof",
+        )
+        self.assertEqual(
+            explicit["route_bag_full_semantic_decode_matrix"]["counts"]["topic_type_count"],
+            5,
+        )
+        self.assertEqual(
+            explicit["route_bag_full_semantic_decode_matrix"]["topic_type_matrix"][3]["type"],
+            "diagnostic_msgs.msg.DiagnosticArray",
+        )
+        self.assertEqual(
+            explicit["route_bag_full_semantic_decode_matrix"]["topic_type_matrix"][3]["status"],
+            "decoded",
+        )
+        self.assertEqual(
+            explicit["route_bag_full_semantic_decode_matrix"]["topic_type_matrix"][3]["decoder_name"],
+            "decode_diagnostic_array_payload",
+        )
+        self.assertFalse(explicit["route_bag_full_semantic_decode_matrix"]["safe_to_control"])
+        self.assertFalse(explicit["route_bag_full_semantic_decode_matrix"]["delivery_success"])
+        self.assertEqual(
+            explicit["route_bag_pose_progress_replay"]["status"],
+            "ready_not_live_nav2_proof",
+        )
+
+    def test_o6_field_evidence_manifest_ingest_rejects_unsafe_gate_and_bad_artifacts(self):
+        unsafe_manifest = self._field_evidence_manifest_payload()
+        unsafe_manifest["safe_to_control"] = True
+        status, body = self.client.request(
+            "POST",
+            "/api/o6/archive/field-evidence",
+            {
+                "robot_id": "trashbot-001",
+                "task_id": "field-evidence-field-run-001",
+                "field_evidence_manifest": unsafe_manifest,
+            },
+        )
+        self.assertEqual(status, 400)
+        self.assertEqual(body["error"]["code"], "bad_request")
+        self.assertIn("unsafe", body["error"]["message"].lower())
+
+        real_claim = self._field_evidence_manifest_payload()
+        real_claim["connects_cloud_production"] = True
+        status, body = self.client.request(
+            "POST",
+            "/api/o6/archive/field-evidence",
+            {
+                "robot_id": "trashbot-001",
+                "task_id": "field-evidence-field-run-001",
+                "field_evidence_manifest": real_claim,
+            },
+        )
+        self.assertEqual(status, 400)
+        self.assertEqual(body["error"]["code"], "bad_request")
+        self.assertIn("unsafe", body["error"]["message"].lower())
+
+        status, body = self.client.request(
+            "POST",
+            "/api/o6/archive/field-evidence",
+            raw_body=b"{bad-json",
+        )
+        self.assertEqual(status, 400)
+        self.assertEqual(body["error"]["code"], "malformed_json")
+
+        missing_schema = self._field_evidence_manifest_payload()
+        missing_schema.pop("schema")
+        status, body = self.client.request(
+            "POST",
+            "/api/o6/archive/field-evidence",
+            {
+                "robot_id": "trashbot-001",
+                "task_id": "field-evidence-field-run-001",
+                "field_evidence_manifest": missing_schema,
+            },
+        )
+        self.assertEqual(status, 400)
+        self.assertEqual(body["error"]["code"], "bad_request")
+        self.assertIn("schema", body["error"]["message"].lower())
+
+        bad_gate = self._field_evidence_manifest_payload()
+        bad_gate["manifest_gate"]["gate_pass"] = False
+        status, body = self.client.request(
+            "POST",
+            "/api/o6/archive/field-evidence",
+            {
+                "robot_id": "trashbot-001",
+                "task_id": "field-evidence-field-run-001",
+                "field_evidence_manifest": bad_gate,
+            },
+        )
+        self.assertEqual(status, 400)
+        self.assertEqual(body["error"]["code"], "bad_request")
+        self.assertIn("gate", body["error"]["message"].lower())
+
+        bad_artifact = self._field_evidence_manifest_payload()
+        bad_artifact["artifacts"]["route_csv"]["sha256"] = ""
+        status, body = self.client.request(
+            "POST",
+            "/api/o6/archive/field-evidence",
+            {
+                "robot_id": "trashbot-001",
+                "task_id": "field-evidence-field-run-001",
+                "field_evidence_manifest": bad_artifact,
+            },
+        )
+        self.assertEqual(status, 400)
+        self.assertEqual(body["error"]["code"], "bad_request")
+        self.assertIn("checksum", body["error"]["message"].lower())
+
+        unsafe_token = self._field_evidence_manifest_payload()
+        unsafe_token["artifacts"]["route_csv"]["path"] = "https://example.test/route.csv?token=secret"
+        status, body = self.client.request(
+            "POST",
+            "/api/o6/archive/field-evidence",
+            {
+                "robot_id": "trashbot-001",
+                "task_id": "field-evidence-field-run-001",
+                "field_evidence_manifest": unsafe_token,
+            },
+        )
+        self.assertEqual(status, 400)
+        self.assertEqual(body["error"]["code"], "bad_request")
+        self.assertIn("unsafe", body["error"]["message"].lower())
+
+        unsafe_raw = self._field_evidence_archive_request_payload()
+        unsafe_raw["evidence_refs"] = [{"evidence_ref": "frame-001", "image_base64": "base64,raw"}]
+        status, body = self.client.request("POST", "/api/o6/archive/field-evidence", unsafe_raw)
+        self.assertEqual(status, 400)
+        self.assertEqual(body["error"]["code"], "bad_request")
+        self.assertIn("unsafe", body["error"]["message"].lower())
+
+        dangerous_true = self._field_evidence_archive_request_payload()
+        dangerous_true["real_oss_connected"] = True
+        status, body = self.client.request("POST", "/api/o6/archive/field-evidence", dangerous_true)
+        self.assertEqual(status, 400)
+        self.assertEqual(body["error"]["code"], "bad_request")
+        self.assertIn("unsafe", body["error"]["message"].lower())
+
+        dangerous_route_gate = self._field_evidence_archive_request_payload()
+        dangerous_route_gate["field_evidence_manifest"]["route_root_seed_gate"]["robot_control_executed"] = True
+        status, body = self.client.request("POST", "/api/o6/archive/field-evidence", dangerous_route_gate)
+        self.assertEqual(status, 400)
+        self.assertEqual(body["error"]["code"], "bad_request")
+        self.assertIn("unsafe", body["error"]["message"].lower())
+
+        status, listing = self.client.request("GET", "/api/o6/archive/tasks", token="")
+        self.assertEqual(status, 200)
+        self.assertEqual(listing["task_list"]["total_tasks"], 0)
+
+    def test_o6_route_bag_pose_progress_replay_missing_or_unsafe_returns_blocked_summary(self):
+        bad_schema_payload = self._artifact_bundle_payload()
+        bad_schema_payload["artifact_bundle"]["task_id"] = "artifact-bundle-pose-bad-schema-001"
+        bad_schema_payload["artifact_bundle"]["route_bag_pose_progress_replay"]["schema"] = "trashbot.route_bag_pose_progress_replay.v0"
+        status, bad_schema_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            bad_schema_payload,
+        )
+        self.assertEqual(status, 201)
+        self.assertEqual(
+            bad_schema_created["task"]["artifact_bundle"]["route_bag_pose_progress_replay"]["status"],
+            "blocked_not_proven",
+        )
+        self.assertTrue(
+            any(
+                reason in bad_schema_created["task"]["artifact_bundle"]["route_bag_pose_progress_replay"]["blocked_reasons"]
+                for reason in (
+                    "route_bag_pose_progress_replay_schema_unsupported",
+                    "route_bag_pose_progress_replay_unsafe",
+                )
+            )
+        )
+
+        bad_scope_payload = self._artifact_bundle_payload()
+        bad_scope_payload["artifact_bundle"]["task_id"] = "artifact-bundle-pose-bad-scope-001"
+        bad_scope_payload["artifact_bundle"]["route_bag_pose_progress_replay"]["proof_scope"] = "wrong_scope"
+        status, bad_scope_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            bad_scope_payload,
+        )
+        self.assertEqual(status, 201)
+        self.assertEqual(
+            bad_scope_created["task"]["artifact_bundle"]["route_bag_pose_progress_replay"]["status"],
+            "blocked_not_proven",
+        )
+        self.assertTrue(
+            any(
+                reason in bad_scope_created["task"]["artifact_bundle"]["route_bag_pose_progress_replay"]["blocked_reasons"]
+                for reason in (
+                    "route_bag_pose_progress_replay_proof_scope_unsupported",
+                    "route_bag_pose_progress_replay_unsafe",
+                )
+            )
+        )
+
+        unsafe_frame_payload = self._artifact_bundle_payload()
+        unsafe_frame_payload["artifact_bundle"]["task_id"] = "artifact-bundle-pose-unsafe-frame-001"
+        unsafe_frame_payload["artifact_bundle"]["route_bag_pose_progress_replay"]["start_pose"]["frame"] = "/tmp/should-not-echo"
+        status, unsafe_frame_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            unsafe_frame_payload,
+        )
+        encoded = json.dumps(unsafe_frame_created, ensure_ascii=False)
+        self.assertEqual(status, 201)
+        self.assertEqual(
+            unsafe_frame_created["task"]["artifact_bundle"]["route_bag_pose_progress_replay"]["status"],
+            "blocked_not_proven",
+        )
+        self.assertIn(
+            "route_bag_pose_progress_replay_unsafe",
+            unsafe_frame_created["task"]["artifact_bundle"]["route_bag_pose_progress_replay"]["blocked_reasons"],
+        )
+        self.assertNotIn("/tmp/should-not-echo", encoded)
+
+        missing_fields_payload = self._artifact_bundle_payload()
+        missing_fields_payload["artifact_bundle"]["task_id"] = "artifact-bundle-pose-missing-001"
+        missing_fields_payload["artifact_bundle"]["route_bag_pose_progress_replay"].pop("pose_frame_pairs")
+        status, missing_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            missing_fields_payload,
+        )
+        self.assertEqual(status, 201)
+        self.assertEqual(
+            missing_created["task"]["artifact_bundle"]["route_bag_pose_progress_replay"]["status"],
+            "blocked_not_proven",
+        )
+        self.assertIn(
+            "route_bag_pose_progress_replay_frame_pairs_invalid",
+            missing_created["task"]["artifact_bundle"]["route_bag_pose_progress_replay"]["blocked_reasons"],
+        )
+
+        status, explicit = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/artifact-bundle-pose-unsafe-frame-001?include=route_bag_pose_progress_replay",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(explicit["route_bag_pose_progress_replay"]["status"], "blocked_not_proven")
+        self.assertIn(
+            "route_bag_pose_progress_replay_unsafe",
+            explicit["route_bag_pose_progress_replay"]["blocked_reasons"],
+        )
+
+    def test_o6_artifact_bundle_ingest_seeds_archive_and_consumer_aliases(self):
+        status, created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            self._artifact_bundle_payload(),
+        )
+
+        self.assertEqual(status, 201)
+        self.assertEqual(created["schema"], relay_module.O6_ARTIFACT_BUNDLE_ARCHIVE_SCHEMA)
+        self.assertTrue(created["artifact_bundle_written"])
+        self.assertEqual(created["task"]["task_origin"], "artifact_bundle")
+        self.assertEqual(created["task"]["artifact_bundle"]["schema"], relay_module.O6_ARTIFACT_BUNDLE_SCHEMA)
+        self.assertEqual(created["task"]["artifact_bundle"]["route_refs"], ["route.csv"])
+        self.assertEqual(created["task"]["artifact_bundle"]["replay_refs"], ["fixed_route_replay.jsonl"])
+        self.assertEqual(created["task"]["artifact_bundle"]["keyframe_refs"], ["keyframe-0001.jpg"])
+        self.assertEqual(created["task"]["artifact_bundle"]["evidence_refs"], ["evidence-0001.json"])
+        self.assertEqual(
+            created["task"]["artifact_bundle"]["field_motion_evidence_packet"]["schema"],
+            relay_module.FIELD_MOTION_EVIDENCE_PACKET_SCHEMA,
+        )
+        self.assertEqual(
+            created["task"]["artifact_bundle"]["field_motion_evidence_packet"]["status"],
+            "field_motion_packet_ready_not_delivery_proof",
+        )
+        self.assertEqual(
+            created["task"]["artifact_bundle"]["delivery_result_evidence"]["schema"],
+            relay_module.DELIVERY_RESULT_EVIDENCE_SCHEMA,
+        )
+        self.assertEqual(
+            created["task"]["artifact_bundle"]["delivery_result_evidence"]["status"],
+            "delivery_result_evidence_ready_not_delivery_proof",
+        )
+        self.assertEqual(
+            created["task"]["artifact_bundle"]["route_execution_result_delivery_readiness"]["schema"],
+            relay_module.O6_ROUTE_EXECUTION_RESULT_DELIVERY_READINESS_SCHEMA,
+        )
+        self.assertEqual(
+            created["task"]["artifact_bundle"]["route_execution_result_delivery_readiness"]["status"],
+            "route_execution_result_delivery_readiness_ready_not_delivery_proof",
+        )
+        self.assertEqual(
+            created["task"]["artifact_bundle"]["route_delivery_closure_packet"]["schema"],
+            relay_module.O6_ROUTE_DELIVERY_CLOSURE_PACKET_SCHEMA,
+        )
+        self.assertEqual(
+            created["task"]["artifact_bundle"]["route_delivery_closure_packet"]["status"],
+            "route_delivery_closure_ready_not_success_proof",
+        )
+        self.assertEqual(
+            created["task"]["artifact_bundle"]["nav2_goal_execution_evidence"]["schema"],
+            relay_module.NAV2_GOAL_EXECUTION_EVIDENCE_SCHEMA,
+        )
+        self.assertEqual(
+            created["task"]["artifact_bundle"]["nav2_goal_execution_evidence"]["status"],
+            "nav2_goal_execution_ready_not_delivery_proof",
+        )
+        self.assertEqual(
+            created["task"]["artifact_bundle"]["route_bag_evidence"]["schema"],
+            relay_module.O6_ROUTE_BAG_EVIDENCE_SCHEMA,
+        )
+        self.assertEqual(
+            created["task"]["artifact_bundle"]["route_bag_evidence"]["status"],
+            "ready_not_route_execution_proof",
+        )
+        self.assertEqual(created["task"]["artifact_bundle"]["route_bag_evidence"]["sample_topic_names"], ["tf", "odom", "scan"])
+        self.assertEqual(
+            created["task"]["artifact_bundle"]["route_bag_pose_progress_replay"]["schema"],
+            relay_module.O6_ROUTE_BAG_POSE_PROGRESS_REPLAY_SCHEMA,
+        )
+        self.assertEqual(
+            created["task"]["artifact_bundle"]["route_bag_full_semantic_decode_matrix"]["schema"],
+            relay_module.O6_ROUTE_BAG_FULL_SEMANTIC_DECODE_MATRIX_SCHEMA,
+        )
+        self.assertEqual(
+            created["task"]["artifact_bundle"]["route_bag_full_semantic_decode_matrix"]["counts"][
+                "decoded_message_sample_count"
+            ],
+            14,
+        )
+        self.assertEqual(
+            created["task"]["artifact_bundle"]["route_bag_full_semantic_decode_matrix"]["topic_type_matrix"][2][
+                "decoder"
+            ],
+            "decode_odometry_payload",
+        )
+        self.assertEqual(
+            created["task"]["artifact_bundle"]["route_bag_full_semantic_decode_matrix"]["topic_type_matrix"][3][
+                "decoder_name"
+            ],
+            "decode_diagnostic_array_payload",
+        )
+        self.assertEqual(
+            created["task"]["artifact_bundle"]["route_bag_pose_progress_replay"]["status"],
+            "ready_not_live_nav2_proof",
+        )
+        self.assertEqual(
+            created["task"]["artifact_bundle"]["same_task_field_material_packet"]["schema"],
+            relay_module.O6_SAME_TASK_FIELD_MATERIAL_PACKET_SCHEMA,
+        )
+        self.assertEqual(
+            created["task"]["artifact_bundle"]["same_task_field_material_packet"]["counts"][
+                "present_material_count"
+            ],
+            4,
+        )
+        self.assertFalse(
+            created["task"]["artifact_bundle"]["same_task_field_material_packet"]["map_yaml_present"]
+        )
+        self.assertEqual(
+            created["task"]["artifact_bundle"]["route_bag_pose_progress_replay"]["pose_topic_types"],
+            ["tf2_msgs.msg.TFMessage", "nav_msgs.msg.Odometry"],
+        )
+        self.assertEqual(
+            created["task"]["artifact_bundle"]["artifact_media_preflight"]["counts"]["route_ref_count"],
+            1,
+        )
+        self.assertEqual(created["task"]["trajectory_frames"][0]["state"], "bundle_ingested")
+        self.assertEqual(created["task"]["events"][0]["event_id"], "artifact-bundle-ingest")
+        self.assertNotIn("captures/", json.dumps(created, ensure_ascii=False))
+
+        status, detail = self.client.request(
+            "GET",
+            "/api/o6/archive/tasks/artifact-bundle-task-001",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(detail["task"]["artifact_bundle"]["task_origin"], "artifact_bundle")
+        self.assertEqual(
+            detail["task"]["field_motion_evidence_packet"]["proof_scope"],
+            relay_module.O6_FIELD_MOTION_EVIDENCE_PACKET_PROOF_SCOPE,
+        )
+        self.assertEqual(
+            detail["task"]["artifact_bundle_consumer_ingest"]["status"],
+            "local_mock_artifact_bundle_ready",
+        )
+        self.assertTrue(detail["task"]["artifact_bundle"]["delivery_result_evidence"]["record_present"])
+        self.assertTrue(
+            detail["task"]["artifact_bundle"]["route_execution_result_delivery_readiness"][
+                "delivery_result_readiness_ready"
+            ]
+        )
+        self.assertTrue(
+            detail["task"]["artifact_bundle"]["route_delivery_closure_packet"][
+                "linked_operator_confirmation_ready"
+            ]
+        )
+        self.assertTrue(detail["task"]["artifact_bundle"]["nav2_goal_execution_evidence"]["goal_accepted"])
+        self.assertTrue(detail["task"]["artifact_bundle"]["route_bag_evidence"]["db3_read_ok"])
+        self.assertEqual(detail["task"]["route_bag_evidence"]["source_label"], "board_live_full_stack_route_bag")
+        self.assertEqual(
+            detail["task"]["route_bag_semantic_replay"]["schema"],
+            relay_module.O6_ROUTE_BAG_SEMANTIC_REPLAY_SCHEMA,
+        )
+        self.assertEqual(
+            detail["task"]["route_bag_pose_progress_replay"]["schema"],
+            relay_module.O6_ROUTE_BAG_POSE_PROGRESS_REPLAY_SCHEMA,
+        )
+        self.assertEqual(
+            detail["task"]["route_bag_full_semantic_decode_matrix"]["schema"],
+            relay_module.O6_ROUTE_BAG_FULL_SEMANTIC_DECODE_MATRIX_SCHEMA,
+        )
+        self.assertEqual(
+            detail["task"]["artifact_bundle"]["route_bag_full_semantic_decode_matrix"]["coverage_ratio"],
+            0.8,
+        )
+        self.assertEqual(
+            detail["task"]["artifact_bundle"]["route_bag_semantic_replay"]["semantic_decode_failed_count"],
+            1,
+        )
+        self.assertEqual(
+            detail["task"]["artifact_bundle"]["route_bag_pose_progress_replay"]["pose_decode_failed_count"],
+            1,
+        )
+        self.assertEqual(
+            detail["task"]["same_task_field_material_packet"]["material_sample_refs"]["route_bag_or_rosbag"]["basename"],
+            "route_001.db3",
+        )
+
+        status, consumer = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/artifact-bundle-task-001?include=field_evidence,trajectory,evidence,events",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(consumer["field_evidence"]["task_origin"], "artifact_bundle")
+        self.assertEqual(consumer["artifact_bundle"]["route_refs"], ["route.csv"])
+        self.assertEqual(
+            consumer["artifact_bundle_consumer_ingest"]["status"],
+            "local_mock_artifact_bundle_ready",
+        )
+        self.assertEqual(
+            consumer["field_motion_evidence_packet"]["status"],
+            "field_motion_packet_ready_not_delivery_proof",
+        )
+        self.assertEqual(
+            consumer["route_delivery_closure_packet"]["status"],
+            "route_delivery_closure_ready_not_success_proof",
+        )
+        self.assertEqual(
+            consumer["artifact_bundle"]["field_motion_evidence_packet"]["motion_log_summary"]["evidence_sources"],
+            ["remote_capture_motion_log"],
+        )
+        self.assertEqual(
+            consumer["delivery_result_evidence"]["completed_at_utc"],
+            "2026-07-09T08:15:00Z",
+        )
+        self.assertEqual(
+            consumer["artifact_bundle"]["delivery_result_evidence"]["source_schema"],
+            "trashbot.delivery_result_record.v1",
+        )
+        self.assertEqual(
+            consumer["route_execution_result_delivery_readiness"]["operator_confirmation_readiness_status"],
+            "operator_confirmation_summary_ready",
+        )
+        self.assertEqual(
+            consumer["artifact_bundle"]["route_execution_result_delivery_readiness"]["task_id_source"],
+            "manifest_task_id",
+        )
+        self.assertEqual(
+            consumer["nav2_goal_execution_evidence"]["source"],
+            "o11_nav2_goal_execution_proof",
+        )
+        self.assertEqual(
+            consumer["artifact_bundle"]["nav2_goal_execution_evidence"]["base_command_mode"],
+            "T1",
+        )
+        self.assertEqual(consumer["route_bag_evidence"]["db3_sha256_prefix"], "0123456789abcdef")
+        self.assertTrue(consumer["artifact_bundle"]["route_bag_evidence"]["metadata_present"])
+        self.assertEqual(
+            consumer["route_bag_semantic_replay"]["semantic_decode_ok_count"],
+            5,
+        )
+        self.assertEqual(
+            consumer["route_bag_full_semantic_decode_matrix"]["counts"]["unsupported_message_sample_count"],
+            2,
+        )
+        self.assertEqual(
+            consumer["artifact_bundle"]["route_bag_full_semantic_decode_matrix"]["topic_type_matrix"][2]["type"],
+            "nav_msgs.msg.Odometry",
+        )
+        self.assertEqual(
+            consumer["artifact_bundle"]["route_bag_full_semantic_decode_matrix"]["topic_type_matrix"][3]["type"],
+            "diagnostic_msgs.msg.DiagnosticArray",
+        )
+        self.assertEqual(
+            consumer["artifact_bundle"]["route_bag_full_semantic_decode_matrix"]["topic_type_matrix"][3][
+                "decoder_name"
+            ],
+            "decode_diagnostic_array_payload",
+        )
+        self.assertEqual(
+            consumer["route_bag_pose_progress_replay"]["displacement_m"],
+            1.8,
+        )
+        self.assertEqual(
+            consumer["same_task_field_material_packet"]["sample_refs"][-1],
+            "fixed_route_replay.jsonl",
+        )
+        self.assertTrue(consumer["artifact_bundle"]["same_task_field_material_packet"]["same_task_id_consumed"])
+        self.assertEqual(
+            consumer["artifact_bundle"]["route_bag_semantic_replay"]["image_summary"]["width"],
+            640,
+        )
+        self.assertEqual(consumer["artifact_media_preflight"]["sample_refs"]["replay_ref"], "fixed_route_replay.jsonl")
+        self.assertIn("real_media_fetch_blocked", consumer["artifact_media_preflight"]["blocked_reasons"])
+        self.assertFalse(consumer["artifact_bundle"]["safe_to_control"])
+
+        status, alias = self.client.request(
+            "POST",
+            "/api/o6/archive/field-evidence",
+            self._artifact_bundle_payload(),
+        )
+        self.assertEqual(status, 200)
+        self.assertTrue(alias["artifact_bundle_written"])
+        self.assertTrue(alias["duplicate"])
+
+    def test_o6_delivery_result_evidence_preserves_cloud_terminal_source_schema(self):
+        # 云端终态结果是 Algorithm 转换后的 delivery_result_evidence 来源；O6 只能保留摘要，不能放宽控制边界。
+        payload = self._artifact_bundle_payload()
+        payload["artifact_bundle"]["task_id"] = "artifact-bundle-cloud-terminal-result-001"
+        payload["artifact_bundle"]["delivery_result_evidence"].update(
+            {
+                "status": "ready_not_delivery_proof",
+                "source": "cloud_command_terminal_result",
+                "source_schema": "trashbot.cloud_command_terminal_result.v1",
+                "record_status": "cloud_terminal_result_received_not_delivery_success",
+                "dropoff_confirmation_type": "cloud_terminal_dropoff_terminal",
+            }
+        )
+
+        status, created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            payload,
+        )
+
+        self.assertEqual(status, 201)
+
+        def assert_cloud_terminal_evidence(section):
+            # 这里集中校验三条读路径，防止以后某个 alias 漏掉 source_schema 或安全 false 字段。
+            self.assertEqual(section["schema"], relay_module.DELIVERY_RESULT_EVIDENCE_SCHEMA)
+            self.assertEqual(section["proof_scope"], relay_module.O6_DELIVERY_RESULT_EVIDENCE_PROOF_SCOPE)
+            self.assertEqual(section["source"], "cloud_command_terminal_result")
+            self.assertEqual(section["source_schema"], "trashbot.cloud_command_terminal_result.v1")
+            self.assertEqual(section["status"], "delivery_result_evidence_ready_not_delivery_proof")
+            self.assertEqual(section["proof_scope"], "software_proof_delivery_result_evidence_only")
+            self.assertEqual(section["record_status"], "cloud_terminal_result_received_not_delivery_success")
+            self.assertTrue(section["record_present"])
+            self.assertTrue(section["record_read_ok"])
+            self.assertTrue(section["delivery_result_claimed"])
+            self.assertTrue(section["operator_confirmation_present"])
+            self.assertFalse(section["safe_to_control"])
+            self.assertFalse(section["delivery_success"])
+            self.assertFalse(section["primary_actions_enabled"])
+            self.assertFalse(section["robot_control_executed"])
+
+        assert_cloud_terminal_evidence(created["task"]["artifact_bundle"]["delivery_result_evidence"])
+
+        status, detail = self.client.request(
+            "GET",
+            "/api/o6/archive/tasks/artifact-bundle-cloud-terminal-result-001",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        assert_cloud_terminal_evidence(detail["task"]["delivery_result_evidence"])
+        assert_cloud_terminal_evidence(detail["task"]["artifact_bundle"]["delivery_result_evidence"])
+        assert_cloud_terminal_evidence(
+            detail["task"]["artifact_bundle_consumer_ingest"]["delivery_result_evidence"]
+        )
+
+        status, consumer = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/artifact-bundle-cloud-terminal-result-001?include=field_evidence",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        assert_cloud_terminal_evidence(consumer["delivery_result_evidence"])
+        assert_cloud_terminal_evidence(consumer["artifact_bundle"]["delivery_result_evidence"])
+
+        status, explicit = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/artifact-bundle-cloud-terminal-result-001?include=delivery_result_evidence",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        assert_cloud_terminal_evidence(explicit["delivery_result_evidence"])
+
+    def test_o6_field_motion_evidence_packet_missing_returns_blocked_summary(self):
+        payload = self._artifact_bundle_payload()
+        payload["artifact_bundle"].pop("field_motion_evidence_packet")
+
+        status, created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            payload,
+        )
+
+        self.assertEqual(status, 201)
+        packet = created["task"]["artifact_bundle"]["field_motion_evidence_packet"]
+        self.assertEqual(packet["schema"], relay_module.FIELD_MOTION_EVIDENCE_PACKET_SCHEMA)
+        self.assertEqual(packet["status"], "blocked_not_proven")
+        self.assertIn("field_motion_evidence_packet_not_available", packet["blocked_reasons"])
+        self.assertEqual(packet["next_required_evidence"], ["field_motion_evidence_packet"])
+        self.assertFalse(packet["safe_to_control"])
+
+        status, consumer = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/artifact-bundle-task-001?include=field_evidence",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(consumer["field_motion_evidence_packet"]["status"], "blocked_not_proven")
+        self.assertIn(
+            "field_motion_evidence_packet_not_available",
+            consumer["field_motion_evidence_packet"]["blocked_reasons"],
+        )
+
+    def test_o6_nav2_goal_execution_evidence_missing_or_unsafe_returns_blocked_summary(self):
+        missing_payload = self._artifact_bundle_payload()
+        missing_payload["artifact_bundle"].pop("nav2_goal_execution_evidence")
+
+        status, created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            missing_payload,
+        )
+
+        self.assertEqual(status, 201)
+        packet = created["task"]["artifact_bundle"]["nav2_goal_execution_evidence"]
+        self.assertEqual(packet["schema"], relay_module.NAV2_GOAL_EXECUTION_EVIDENCE_SCHEMA)
+        self.assertEqual(packet["status"], "blocked_not_proven")
+        self.assertIn("nav2_goal_execution_evidence_not_available", packet["blocked_reasons"])
+        self.assertEqual(packet["next_required_evidence"], ["nav2_goal_execution_evidence"])
+        self.assertFalse(packet["safe_to_control"])
+
+        status, consumer = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/artifact-bundle-task-001?include=field_evidence",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(consumer["nav2_goal_execution_evidence"]["status"], "blocked_not_proven")
+        self.assertIn(
+            "nav2_goal_execution_evidence_not_available",
+            consumer["nav2_goal_execution_evidence"]["blocked_reasons"],
+        )
+
+        bad_scope_payload = self._artifact_bundle_payload()
+        bad_scope_payload["artifact_bundle"]["task_id"] = "artifact-bundle-nav2-bad-scope-001"
+        bad_scope_payload["artifact_bundle"]["nav2_goal_execution_evidence"]["proof_scope"] = "wrong_scope"
+        status, bad_scope_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            bad_scope_payload,
+        )
+        self.assertEqual(status, 201)
+        self.assertEqual(
+            bad_scope_created["task"]["artifact_bundle"]["nav2_goal_execution_evidence"]["status"],
+            "blocked_not_proven",
+        )
+        self.assertIn(
+            "nav2_goal_execution_evidence_proof_scope_unsupported",
+            bad_scope_created["task"]["artifact_bundle"]["nav2_goal_execution_evidence"]["blocked_reasons"],
+        )
+
+        unsafe_text_payload = self._artifact_bundle_payload()
+        unsafe_text_payload["artifact_bundle"]["task_id"] = "artifact-bundle-nav2-unsafe-text-001"
+        unsafe_text_payload["artifact_bundle"]["nav2_goal_execution_evidence"]["source"] = "/tmp/root/nav2.log"
+        status, unsafe_text_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            unsafe_text_payload,
+        )
+        self.assertEqual(status, 201)
+        self.assertEqual(
+            unsafe_text_created["task"]["artifact_bundle"]["nav2_goal_execution_evidence"]["status"],
+            "blocked_not_proven",
+        )
+        self.assertIn(
+            "nav2_goal_execution_evidence_unsafe",
+            unsafe_text_created["task"]["artifact_bundle"]["nav2_goal_execution_evidence"]["blocked_reasons"],
+        )
+        self.assertNotIn("/tmp/root", json.dumps(unsafe_text_created, ensure_ascii=False))
+
+        unsafe_payload = self._artifact_bundle_payload()
+        unsafe_payload["artifact_bundle"]["task_id"] = "artifact-bundle-nav2-unsafe-001"
+        unsafe_payload["artifact_bundle"]["nav2_goal_execution_evidence"]["source"] = "/tmp/root/nav2.log?token=secret"
+        unsafe_payload["artifact_bundle"]["nav2_goal_execution_evidence"]["robot_control_executed"] = True
+        status, unsafe_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            unsafe_payload,
+        )
+
+        encoded = json.dumps(unsafe_created, ensure_ascii=False)
+        self.assertEqual(status, 201)
+        unsafe_packet = unsafe_created["task"]["artifact_bundle"]["nav2_goal_execution_evidence"]
+        self.assertEqual(unsafe_packet["status"], "blocked_not_proven")
+        self.assertIn("nav2_goal_execution_evidence_dangerous_true", unsafe_packet["blocked_reasons"])
+        self.assertNotIn("/tmp/root", encoded)
+        self.assertNotIn("token=secret", encoded)
+        self.assertFalse(unsafe_packet["robot_control_executed"])
+
+        status, explicit = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/artifact-bundle-nav2-unsafe-001?include=nav2_goal_execution_evidence",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(explicit["nav2_goal_execution_evidence"]["status"], "blocked_not_proven")
+        self.assertIn(
+            "nav2_goal_execution_evidence_dangerous_true",
+            explicit["nav2_goal_execution_evidence"]["blocked_reasons"],
+        )
+
+    def test_o6_delivery_result_evidence_missing_or_unsafe_returns_blocked_summary(self):
+        missing_payload = self._artifact_bundle_payload()
+        missing_payload["artifact_bundle"].pop("delivery_result_evidence")
+
+        status, created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            missing_payload,
+        )
+
+        self.assertEqual(status, 201)
+        packet = created["task"]["artifact_bundle"]["delivery_result_evidence"]
+        self.assertEqual(packet["schema"], relay_module.DELIVERY_RESULT_EVIDENCE_SCHEMA)
+        self.assertEqual(packet["status"], "blocked_not_proven")
+        self.assertIn("delivery_result_evidence_not_available", packet["blocked_reasons"])
+        self.assertEqual(packet["next_required_evidence"], ["delivery_result_evidence"])
+        self.assertFalse(packet["safe_to_control"])
+
+        status, consumer = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/artifact-bundle-task-001?include=field_evidence",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(consumer["delivery_result_evidence"]["status"], "blocked_not_proven")
+        self.assertIn(
+            "delivery_result_evidence_not_available",
+            consumer["delivery_result_evidence"]["blocked_reasons"],
+        )
+
+        bad_scope_payload = self._artifact_bundle_payload()
+        bad_scope_payload["artifact_bundle"]["task_id"] = "artifact-bundle-delivery-bad-scope-001"
+        bad_scope_payload["artifact_bundle"]["delivery_result_evidence"]["proof_scope"] = "wrong_scope"
+        status, bad_scope_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            bad_scope_payload,
+        )
+        self.assertEqual(status, 201)
+        self.assertEqual(
+            bad_scope_created["task"]["artifact_bundle"]["delivery_result_evidence"]["status"],
+            "blocked_not_proven",
+        )
+        self.assertIn(
+            "delivery_result_evidence_proof_scope_unsupported",
+            bad_scope_created["task"]["artifact_bundle"]["delivery_result_evidence"]["blocked_reasons"],
+        )
+
+        unsafe_text_payload = self._artifact_bundle_payload()
+        unsafe_text_payload["artifact_bundle"]["task_id"] = "artifact-bundle-delivery-unsafe-text-001"
+        unsafe_text_payload["artifact_bundle"]["delivery_result_evidence"]["source"] = "/tmp/root/delivery.json"
+        status, unsafe_text_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            unsafe_text_payload,
+        )
+        self.assertEqual(status, 201)
+        self.assertEqual(
+            unsafe_text_created["task"]["artifact_bundle"]["delivery_result_evidence"]["status"],
+            "blocked_not_proven",
+        )
+        self.assertIn(
+            "delivery_result_evidence_unsafe",
+            unsafe_text_created["task"]["artifact_bundle"]["delivery_result_evidence"]["blocked_reasons"],
+        )
+        self.assertNotIn("/tmp/root", json.dumps(unsafe_text_created, ensure_ascii=False))
+
+        unsafe_payload = self._artifact_bundle_payload()
+        unsafe_payload["artifact_bundle"]["task_id"] = "artifact-bundle-delivery-unsafe-001"
+        unsafe_payload["artifact_bundle"]["delivery_result_evidence"]["source_schema"] = (
+            "https://example.test/delivery?token=secret"
+        )
+        unsafe_payload["artifact_bundle"]["delivery_result_evidence"]["robot_control_executed"] = True
+        status, unsafe_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            unsafe_payload,
+        )
+
+        encoded = json.dumps(unsafe_created, ensure_ascii=False)
+        self.assertEqual(status, 201)
+        unsafe_packet = unsafe_created["task"]["artifact_bundle"]["delivery_result_evidence"]
+        self.assertEqual(unsafe_packet["status"], "blocked_not_proven")
+        self.assertIn("delivery_result_evidence_dangerous_true", unsafe_packet["blocked_reasons"])
+        self.assertNotIn("token=secret", encoded)
+        self.assertFalse(unsafe_packet["robot_control_executed"])
+
+        status, explicit = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/artifact-bundle-delivery-unsafe-001?include=delivery_result_evidence",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(explicit["delivery_result_evidence"]["status"], "blocked_not_proven")
+        self.assertIn(
+            "delivery_result_evidence_dangerous_true",
+            explicit["delivery_result_evidence"]["blocked_reasons"],
+        )
+
+    def test_o6_route_execution_result_delivery_readiness_missing_or_unsafe_returns_blocked_summary(self):
+        missing_payload = self._artifact_bundle_payload()
+        missing_payload["artifact_bundle"].pop("route_execution_result_delivery_readiness")
+
+        status, created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            missing_payload,
+        )
+
+        self.assertEqual(status, 201)
+        packet = created["task"]["artifact_bundle"]["route_execution_result_delivery_readiness"]
+        self.assertEqual(packet["schema"], relay_module.O6_ROUTE_EXECUTION_RESULT_DELIVERY_READINESS_SCHEMA)
+        self.assertEqual(packet["status"], "blocked_not_proven")
+        self.assertIn(
+            "route_execution_result_delivery_readiness_not_available",
+            packet["blocked_reasons"],
+        )
+        self.assertEqual(packet["next_required_evidence"], ["route_execution_result_delivery_readiness"])
+        self.assertFalse(packet["safe_to_control"])
+
+        status, consumer = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/artifact-bundle-task-001?include=field_evidence",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(consumer["route_execution_result_delivery_readiness"]["status"], "blocked_not_proven")
+        self.assertIn(
+            "route_execution_result_delivery_readiness_not_available",
+            consumer["route_execution_result_delivery_readiness"]["blocked_reasons"],
+        )
+
+        bad_scope_payload = self._artifact_bundle_payload()
+        bad_scope_payload["artifact_bundle"]["task_id"] = "artifact-bundle-result-readiness-bad-scope-001"
+        bad_scope_payload["artifact_bundle"]["route_execution_result_delivery_readiness"][
+            "proof_scope"
+        ] = "wrong_scope"
+        bad_scope_payload["artifact_bundle"]["route_execution_result_delivery_readiness"]["task_id"] = (
+            "artifact-bundle-result-readiness-bad-scope-001"
+        )
+        status, bad_scope_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            bad_scope_payload,
+        )
+        self.assertEqual(status, 201)
+        self.assertEqual(
+            bad_scope_created["task"]["artifact_bundle"]["route_execution_result_delivery_readiness"]["status"],
+            "blocked_not_proven",
+        )
+        self.assertIn(
+            "route_execution_result_delivery_readiness_proof_scope_unsupported",
+            bad_scope_created["task"]["artifact_bundle"]["route_execution_result_delivery_readiness"][
+                "blocked_reasons"
+            ],
+        )
+
+        unsafe_text_payload = self._artifact_bundle_payload()
+        unsafe_text_payload["artifact_bundle"]["task_id"] = "artifact-bundle-result-readiness-unsafe-text-001"
+        unsafe_text_payload["artifact_bundle"]["route_execution_result_delivery_readiness"]["task_id"] = (
+            "artifact-bundle-result-readiness-unsafe-text-001"
+        )
+        unsafe_text_payload["artifact_bundle"]["route_execution_result_delivery_readiness"][
+            "route_execution_result_source"
+        ] = "/tmp/root/nav2-result.json"
+        status, unsafe_text_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            unsafe_text_payload,
+        )
+        self.assertEqual(status, 201)
+        self.assertEqual(
+            unsafe_text_created["task"]["artifact_bundle"]["route_execution_result_delivery_readiness"][
+                "status"
+            ],
+            "blocked_not_proven",
+        )
+        self.assertIn(
+            "route_execution_result_delivery_readiness_unsafe",
+            unsafe_text_created["task"]["artifact_bundle"]["route_execution_result_delivery_readiness"][
+                "blocked_reasons"
+            ],
+        )
+        self.assertNotIn("/tmp/root", json.dumps(unsafe_text_created, ensure_ascii=False))
+
+        unsafe_payload = self._artifact_bundle_payload()
+        unsafe_payload["artifact_bundle"]["task_id"] = "artifact-bundle-result-readiness-unsafe-001"
+        unsafe_payload["artifact_bundle"]["route_execution_result_delivery_readiness"]["task_id"] = (
+            "artifact-bundle-result-readiness-unsafe-001"
+        )
+        unsafe_payload["artifact_bundle"]["route_execution_result_delivery_readiness"][
+            "route_execution_success"
+        ] = True
+        unsafe_payload["artifact_bundle"]["route_execution_result_delivery_readiness"][
+            "robot_control_executed"
+        ] = True
+        status, unsafe_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            unsafe_payload,
+        )
+
+        encoded = json.dumps(unsafe_created, ensure_ascii=False)
+        self.assertEqual(status, 201)
+        unsafe_packet = unsafe_created["task"]["artifact_bundle"]["route_execution_result_delivery_readiness"]
+        self.assertEqual(unsafe_packet["status"], "blocked_not_proven")
+        self.assertIn(
+            "route_execution_result_delivery_readiness_dangerous_true",
+            unsafe_packet["blocked_reasons"],
+        )
+        self.assertNotIn("route_execution_success\": true", encoded)
+        self.assertFalse(unsafe_packet["robot_control_executed"])
+
+        status, explicit = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/artifact-bundle-result-readiness-unsafe-001?include=route_execution_result_delivery_readiness",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(
+            explicit["route_execution_result_delivery_readiness"]["status"],
+            "blocked_not_proven",
+        )
+        self.assertIn(
+            "route_execution_result_delivery_readiness_dangerous_true",
+            explicit["route_execution_result_delivery_readiness"]["blocked_reasons"],
+        )
+
+    def test_o6_route_delivery_closure_packet_missing_or_unsafe_returns_blocked_summary(self):
+        missing_payload = self._artifact_bundle_payload()
+        missing_payload["artifact_bundle"].pop("route_delivery_closure_packet")
+
+        status, created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            missing_payload,
+        )
+
+        self.assertEqual(status, 201)
+        packet = created["task"]["artifact_bundle"]["route_delivery_closure_packet"]
+        self.assertEqual(packet["schema"], relay_module.O6_ROUTE_DELIVERY_CLOSURE_PACKET_SCHEMA)
+        self.assertEqual(packet["status"], "blocked_not_proven")
+        self.assertIn("route_delivery_closure_packet_not_available", packet["blocked_reasons"])
+        self.assertEqual(packet["next_required_evidence"], ["route_delivery_closure_packet"])
+        self.assertFalse(packet["safe_to_control"])
+
+        status, consumer = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/artifact-bundle-task-001?include=route_delivery_closure_packet",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(consumer["route_delivery_closure_packet"]["status"], "blocked_not_proven")
+        self.assertIn(
+            "route_delivery_closure_packet_not_available",
+            consumer["route_delivery_closure_packet"]["blocked_reasons"],
+        )
+
+        bad_scope_payload = self._artifact_bundle_payload()
+        bad_scope_payload["artifact_bundle"]["task_id"] = "artifact-bundle-closure-bad-scope-001"
+        bad_scope_payload["artifact_bundle"]["route_delivery_closure_packet"]["task_id"] = (
+            "artifact-bundle-closure-bad-scope-001"
+        )
+        bad_scope_payload["artifact_bundle"]["route_delivery_closure_packet"]["proof_scope"] = "wrong_scope"
+        status, bad_scope_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            bad_scope_payload,
+        )
+        self.assertEqual(status, 201)
+        self.assertEqual(
+            bad_scope_created["task"]["artifact_bundle"]["route_delivery_closure_packet"]["status"],
+            "blocked_not_proven",
+        )
+        self.assertIn(
+            "route_delivery_closure_packet_proof_scope_unsupported",
+            bad_scope_created["task"]["artifact_bundle"]["route_delivery_closure_packet"][
+                "blocked_reasons"
+            ],
+        )
+
+        unsafe_text_payload = self._artifact_bundle_payload()
+        unsafe_text_payload["artifact_bundle"]["task_id"] = "artifact-bundle-closure-unsafe-text-001"
+        unsafe_text_payload["artifact_bundle"]["route_delivery_closure_packet"]["task_id"] = (
+            "artifact-bundle-closure-unsafe-text-001"
+        )
+        unsafe_text_payload["artifact_bundle"]["route_delivery_closure_packet"]["source"] = (
+            "/tmp/root/closure.json"
+        )
+        status, unsafe_text_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            unsafe_text_payload,
+        )
+        self.assertEqual(status, 201)
+        self.assertEqual(
+            unsafe_text_created["task"]["artifact_bundle"]["route_delivery_closure_packet"]["status"],
+            "blocked_not_proven",
+        )
+        self.assertIn(
+            "route_delivery_closure_packet_unsafe",
+            unsafe_text_created["task"]["artifact_bundle"]["route_delivery_closure_packet"][
+                "blocked_reasons"
+            ],
+        )
+        self.assertNotIn("/tmp/root", json.dumps(unsafe_text_created, ensure_ascii=False))
+
+        unsafe_payload = self._artifact_bundle_payload()
+        unsafe_payload["artifact_bundle"]["task_id"] = "artifact-bundle-closure-unsafe-001"
+        unsafe_payload["artifact_bundle"]["route_delivery_closure_packet"]["task_id"] = (
+            "artifact-bundle-closure-unsafe-001"
+        )
+        unsafe_payload["artifact_bundle"]["route_delivery_closure_packet"]["delivery_success"] = True
+        unsafe_payload["artifact_bundle"]["route_delivery_closure_packet"]["robot_control_executed"] = True
+        status, unsafe_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            unsafe_payload,
+        )
+
+        encoded = json.dumps(unsafe_created, ensure_ascii=False)
+        self.assertEqual(status, 201)
+        unsafe_packet = unsafe_created["task"]["artifact_bundle"]["route_delivery_closure_packet"]
+        self.assertEqual(unsafe_packet["status"], "blocked_not_proven")
+        self.assertIn(
+            "route_delivery_closure_packet_dangerous_true",
+            unsafe_packet["blocked_reasons"],
+        )
+        self.assertNotIn("delivery_success\": true", encoded)
+        self.assertFalse(unsafe_packet["robot_control_executed"])
+
+        status, explicit = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/artifact-bundle-closure-unsafe-001?include=route_delivery_closure_packet",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(explicit["route_delivery_closure_packet"]["status"], "blocked_not_proven")
+        self.assertIn(
+            "route_delivery_closure_packet_dangerous_true",
+            explicit["route_delivery_closure_packet"]["blocked_reasons"],
+        )
+
+    def test_o6_same_task_mission_evidence_gate_missing_or_unsafe_returns_blocked_summary(self):
+        missing_payload = self._artifact_bundle_payload()
+        missing_payload["artifact_bundle"].pop("same_task_mission_evidence_gate")
+
+        status, created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            missing_payload,
+        )
+
+        self.assertEqual(status, 201)
+        packet = created["task"]["artifact_bundle"]["same_task_mission_evidence_gate"]
+        self.assertEqual(packet["schema"], relay_module.O6_SAME_TASK_MISSION_EVIDENCE_GATE_SCHEMA)
+        self.assertEqual(packet["status"], "blocked_not_proven")
+        self.assertIn("same_task_mission_evidence_gate_not_available", packet["blocked_reasons"])
+        self.assertEqual(packet["next_required_evidence"], ["same_task_mission_evidence_gate"])
+        self.assertFalse(packet["safe_to_control"])
+
+        status, consumer = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/artifact-bundle-task-001?include=same_task_mission_evidence_gate",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(consumer["same_task_mission_evidence_gate"]["status"], "blocked_not_proven")
+        self.assertIn(
+            "same_task_mission_evidence_gate_not_available",
+            consumer["same_task_mission_evidence_gate"]["blocked_reasons"],
+        )
+
+        bad_schema_payload = self._artifact_bundle_payload()
+        bad_schema_payload["artifact_bundle"]["task_id"] = "artifact-bundle-same-task-bad-schema-001"
+        bad_schema_payload["artifact_bundle"]["same_task_mission_evidence_gate"]["task_id"] = (
+            "artifact-bundle-same-task-bad-schema-001"
+        )
+        bad_schema_payload["artifact_bundle"]["same_task_mission_evidence_gate"]["schema"] = (
+            "trashbot.bad_same_task_gate.v1"
+        )
+        status, bad_schema_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            bad_schema_payload,
+        )
+        self.assertEqual(status, 201)
+        self.assertEqual(
+            bad_schema_created["task"]["artifact_bundle"]["same_task_mission_evidence_gate"]["status"],
+            "blocked_not_proven",
+        )
+        self.assertIn(
+            "same_task_mission_evidence_gate_schema_unsupported",
+            bad_schema_created["task"]["artifact_bundle"]["same_task_mission_evidence_gate"][
+                "blocked_reasons"
+            ],
+        )
+
+        bad_scope_payload = self._artifact_bundle_payload()
+        bad_scope_payload["artifact_bundle"]["task_id"] = "artifact-bundle-same-task-bad-scope-001"
+        bad_scope_payload["artifact_bundle"]["same_task_mission_evidence_gate"]["task_id"] = (
+            "artifact-bundle-same-task-bad-scope-001"
+        )
+        bad_scope_payload["artifact_bundle"]["same_task_mission_evidence_gate"]["proof_scope"] = "wrong_scope"
+        status, bad_scope_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            bad_scope_payload,
+        )
+        self.assertEqual(status, 201)
+        self.assertIn(
+            "same_task_mission_evidence_gate_proof_scope_unsupported",
+            bad_scope_created["task"]["artifact_bundle"]["same_task_mission_evidence_gate"][
+                "blocked_reasons"
+            ],
+        )
+
+        task_mismatch_payload = self._artifact_bundle_payload()
+        task_mismatch_payload["artifact_bundle"]["task_id"] = "artifact-bundle-same-task-mismatch-001"
+        task_mismatch_payload["artifact_bundle"]["same_task_mission_evidence_gate"]["task_id"] = "other-task"
+        status, task_mismatch_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            task_mismatch_payload,
+        )
+        self.assertEqual(status, 201)
+        self.assertEqual(
+            task_mismatch_created["task"]["artifact_bundle"]["same_task_mission_evidence_gate"]["status"],
+            "blocked_not_proven",
+        )
+        self.assertIn(
+            "same_task_mission_evidence_gate_task_mismatch",
+            task_mismatch_created["task"]["artifact_bundle"]["same_task_mission_evidence_gate"][
+                "blocked_reasons"
+            ],
+        )
+
+        unsafe_text_payload = self._artifact_bundle_payload()
+        unsafe_text_payload["artifact_bundle"]["task_id"] = "artifact-bundle-same-task-unsafe-text-001"
+        unsafe_text_payload["artifact_bundle"]["same_task_mission_evidence_gate"]["task_id"] = (
+            "artifact-bundle-same-task-unsafe-text-001"
+        )
+        unsafe_text_payload["artifact_bundle"]["same_task_mission_evidence_gate"]["source"] = (
+            "/tmp/root/same-task-gate.json"
+        )
+        unsafe_text_payload["artifact_bundle"]["same_task_mission_evidence_gate"][
+            "raw_payload_base64"
+        ] = "QUJDREVGRw=="
+        status, unsafe_text_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            unsafe_text_payload,
+        )
+        self.assertEqual(status, 201)
+        self.assertEqual(
+            unsafe_text_created["task"]["artifact_bundle"]["same_task_mission_evidence_gate"]["status"],
+            "blocked_not_proven",
+        )
+        self.assertIn(
+            "same_task_mission_evidence_gate_unsafe",
+            unsafe_text_created["task"]["artifact_bundle"]["same_task_mission_evidence_gate"][
+                "blocked_reasons"
+            ],
+        )
+        encoded_unsafe_text = json.dumps(unsafe_text_created, ensure_ascii=False)
+        self.assertNotIn("/tmp/root", encoded_unsafe_text)
+        self.assertNotIn("QUJDREVGRw==", encoded_unsafe_text)
+
+        unsafe_payload = self._artifact_bundle_payload()
+        unsafe_payload["artifact_bundle"]["task_id"] = "artifact-bundle-same-task-unsafe-001"
+        unsafe_payload["artifact_bundle"]["same_task_mission_evidence_gate"]["task_id"] = (
+            "artifact-bundle-same-task-unsafe-001"
+        )
+        unsafe_payload["artifact_bundle"]["same_task_mission_evidence_gate"][
+            "terminal_refs"
+        ] = ["https://example.test/gate.json?token=secret"]
+        unsafe_payload["artifact_bundle"]["same_task_mission_evidence_gate"]["delivery_success"] = True
+        unsafe_payload["artifact_bundle"]["same_task_mission_evidence_gate"]["robot_control_executed"] = True
+        status, unsafe_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            unsafe_payload,
+        )
+
+        encoded = json.dumps(unsafe_created, ensure_ascii=False)
+        self.assertEqual(status, 201)
+        unsafe_packet = unsafe_created["task"]["artifact_bundle"]["same_task_mission_evidence_gate"]
+        self.assertEqual(unsafe_packet["status"], "blocked_not_proven")
+        self.assertIn("same_task_mission_evidence_gate_dangerous_true", unsafe_packet["blocked_reasons"])
+        self.assertNotIn("token=secret", encoded)
+        self.assertNotIn("delivery_success\": true", encoded)
+        self.assertFalse(unsafe_packet["robot_control_executed"])
+
+        status, explicit = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/artifact-bundle-same-task-unsafe-001?include=same_task_mission_evidence_gate",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(explicit["same_task_mission_evidence_gate"]["status"], "blocked_not_proven")
+        self.assertIn(
+            "same_task_mission_evidence_gate_dangerous_true",
+            explicit["same_task_mission_evidence_gate"]["blocked_reasons"],
+        )
+
+    def test_o6_same_task_mission_evidence_gate_allows_credit_only_for_live_or_field_same_task_input(self):
+        payload = self._artifact_bundle_payload()
+        payload["artifact_bundle"]["task_id"] = "artifact-bundle-same-task-credit-001"
+        payload["artifact_bundle"]["same_task_mission_evidence_gate"]["task_id"] = (
+            "artifact-bundle-same-task-credit-001"
+        )
+        payload["artifact_bundle"]["same_task_mission_evidence_gate"]["mission_artifact_delta"] = {
+            "same_task_id_consumed": True,
+            "cloud_terminal_result_source_consumed": True,
+            "route_execution_readiness_consumed": True,
+            "route_delivery_closure_consumed": True,
+            "nonzero_pose_progress_consumed": True,
+            "live_or_field_command_executed": True,
+            "okr_credit_allowed": True,
+        }
+        payload["artifact_bundle"]["same_task_mission_evidence_gate"]["live_or_field_command_executed"] = True
+        payload["artifact_bundle"]["same_task_mission_evidence_gate"]["okr_credit_allowed"] = True
+        payload["artifact_bundle"]["same_task_mission_evidence_gate"].pop("support_only_reason", None)
+
+        status, created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            payload,
+        )
+
+        self.assertEqual(status, 201)
+        gate = created["task"]["artifact_bundle"]["same_task_mission_evidence_gate"]
+        self.assertEqual(gate["status"], "same_task_mission_gate_ready_not_success_proof")
+        self.assertTrue(gate["same_task_id_consumed"])
+        self.assertTrue(gate["live_or_field_command_executed"])
+        self.assertTrue(gate["okr_credit_allowed"])
+        self.assertEqual(gate["support_only_reason"], "")
+
+        status, explicit = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/artifact-bundle-same-task-credit-001?include=same_task_mission_evidence_gate",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertTrue(explicit["same_task_mission_evidence_gate"]["okr_credit_allowed"])
+        self.assertTrue(explicit["same_task_mission_evidence_gate"]["live_or_field_command_executed"])
+
+    def test_o6_same_task_field_material_packet_missing_or_unsafe_returns_blocked_summary(self):
+        missing_payload = self._artifact_bundle_payload()
+        missing_payload["artifact_bundle"].pop("same_task_field_material_packet")
+
+        status, created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            missing_payload,
+        )
+
+        self.assertEqual(status, 201)
+        packet = created["task"]["artifact_bundle"]["same_task_field_material_packet"]
+        self.assertEqual(packet["schema"], relay_module.O6_SAME_TASK_FIELD_MATERIAL_PACKET_SCHEMA)
+        self.assertEqual(packet["status"], "blocked_not_proven")
+        self.assertIn("same_task_field_material_packet_not_available", packet["blocked_reasons"])
+        self.assertEqual(
+            packet["next_required_evidence"],
+            ["same_task_field_material_packet", "map_yaml_material_optional"],
+        )
+        self.assertFalse(packet["safe_to_control"])
+
+        status, consumer = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/artifact-bundle-task-001?include=same_task_field_material_packet",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(consumer["same_task_field_material_packet"]["status"], "blocked_not_proven")
+        self.assertIn(
+            "same_task_field_material_packet_not_available",
+            consumer["same_task_field_material_packet"]["blocked_reasons"],
+        )
+
+        bad_schema_payload = self._artifact_bundle_payload()
+        bad_schema_payload["artifact_bundle"]["task_id"] = "artifact-bundle-material-bad-schema-001"
+        bad_schema_payload["artifact_bundle"]["same_task_field_material_packet"]["task_id"] = (
+            "artifact-bundle-material-bad-schema-001"
+        )
+        bad_schema_payload["artifact_bundle"]["same_task_field_material_packet"]["schema"] = (
+            "trashbot.bad_same_task_field_material_packet.v1"
+        )
+        status, bad_schema_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            bad_schema_payload,
+        )
+        self.assertEqual(status, 201)
+        self.assertIn(
+            "same_task_field_material_packet_schema_unsupported",
+            bad_schema_created["task"]["artifact_bundle"]["same_task_field_material_packet"][
+                "blocked_reasons"
+            ],
+        )
+
+        bad_scope_payload = self._artifact_bundle_payload()
+        bad_scope_payload["artifact_bundle"]["task_id"] = "artifact-bundle-material-bad-scope-001"
+        bad_scope_payload["artifact_bundle"]["same_task_field_material_packet"]["task_id"] = (
+            "artifact-bundle-material-bad-scope-001"
+        )
+        bad_scope_payload["artifact_bundle"]["same_task_field_material_packet"]["proof_scope"] = "wrong_scope"
+        status, bad_scope_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            bad_scope_payload,
+        )
+        self.assertEqual(status, 201)
+        self.assertIn(
+            "same_task_field_material_packet_proof_scope_unsupported",
+            bad_scope_created["task"]["artifact_bundle"]["same_task_field_material_packet"][
+                "blocked_reasons"
+            ],
+        )
+
+        unsafe_text_payload = self._artifact_bundle_payload()
+        unsafe_text_payload["artifact_bundle"]["task_id"] = "artifact-bundle-material-unsafe-text-001"
+        unsafe_text_payload["artifact_bundle"]["same_task_field_material_packet"]["task_id"] = (
+            "artifact-bundle-material-unsafe-text-001"
+        )
+        unsafe_text_payload["artifact_bundle"]["same_task_field_material_packet"]["source"] = (
+            "/tmp/field_material_packet.json"
+        )
+        unsafe_text_payload["artifact_bundle"]["same_task_field_material_packet"]["raw_payload_base64"] = (
+            "QUJDREVGRw=="
+        )
+        status, unsafe_text_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            unsafe_text_payload,
+        )
+        encoded_unsafe_text = json.dumps(unsafe_text_created, ensure_ascii=False)
+        self.assertEqual(status, 201)
+        self.assertIn(
+            "same_task_field_material_packet_unsafe",
+            unsafe_text_created["task"]["artifact_bundle"]["same_task_field_material_packet"][
+                "blocked_reasons"
+            ],
+        )
+        self.assertNotIn("/tmp/field_material_packet.json", encoded_unsafe_text)
+        self.assertNotIn("QUJDREVGRw==", encoded_unsafe_text)
+
+        unsafe_ref_payload = self._artifact_bundle_payload()
+        unsafe_ref_payload["artifact_bundle"]["task_id"] = "artifact-bundle-material-unsafe-ref-001"
+        unsafe_ref_payload["artifact_bundle"]["same_task_field_material_packet"]["task_id"] = (
+            "artifact-bundle-material-unsafe-ref-001"
+        )
+        unsafe_ref_payload["artifact_bundle"]["same_task_field_material_packet"]["sample_refs"][0] = (
+            "https://example.test/route.csv?token=secret"
+        )
+        unsafe_ref_payload["artifact_bundle"]["same_task_field_material_packet"]["delivery_success"] = True
+        status, unsafe_ref_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            unsafe_ref_payload,
+        )
+        encoded = json.dumps(unsafe_ref_created, ensure_ascii=False)
+        self.assertEqual(status, 201)
+        unsafe_packet = unsafe_ref_created["task"]["artifact_bundle"]["same_task_field_material_packet"]
+        self.assertEqual(unsafe_packet["status"], "blocked_not_proven")
+        self.assertIn("same_task_field_material_packet_dangerous_true", unsafe_packet["blocked_reasons"])
+        self.assertNotIn("token=secret", encoded)
+        self.assertFalse(unsafe_packet["delivery_success"])
+
+        status, explicit = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/artifact-bundle-material-unsafe-ref-001?include=same_task_field_material_packet",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(explicit["same_task_field_material_packet"]["status"], "blocked_not_proven")
+        self.assertIn(
+            "same_task_field_material_packet_dangerous_true",
+            explicit["same_task_field_material_packet"]["blocked_reasons"],
+        )
+
+    def test_o6_same_task_field_material_packet_accepts_algorithm_material_summaries_shape(self):
+        payload = self._artifact_bundle_payload()
+        payload["artifact_bundle"]["task_id"] = "artifact-bundle-material-actual-shape-001"
+        payload["artifact_bundle"]["same_task_field_material_packet"]["task_id"] = (
+            "artifact-bundle-material-actual-shape-001"
+        )
+        payload["artifact_bundle"]["same_task_field_material_packet"]["present_materials"] = [
+            "route_csv",
+            "keyframes",
+            "route_bag_or_rosbag",
+            "replay_jsonl",
+        ]
+        payload["artifact_bundle"]["same_task_field_material_packet"]["missing_materials"] = ["map_yaml"]
+        payload["artifact_bundle"]["same_task_field_material_packet"]["sample_refs"] = [
+            "captures/route.csv",
+            "captures/keyframes/keyframe-0001.jpg",
+            "captures/route_001.db3",
+            "captures/fixed_route_replay.jsonl",
+        ]
+        payload["artifact_bundle"]["same_task_field_material_packet"]["material_summaries"] = {
+            "map_yaml": {"present": False, "count": 0, "sample_refs": []},
+            "route_csv": {
+                "present": True,
+                "basename": "route.csv",
+                "size_bytes": 128,
+                "sha256_prefix": "1234567890abcdef",
+                "count": 1,
+                "sample_refs": ["captures/route.csv"],
+            },
+            "keyframes": {
+                "present": True,
+                "basename": "keyframe-0001.jpg",
+                "size_bytes": 2048,
+                "sha256_prefix": "abcdef1234567890",
+                "count": 17,
+                "sample_refs": ["captures/keyframes/keyframe-0001.jpg"],
+            },
+            "route_bag_or_rosbag": {
+                "present": True,
+                "basename": "route_001.db3",
+                "size_bytes": 4096,
+                "sha256_prefix": "1122334455667788",
+                "count": 1,
+                "sample_refs": ["captures/route_001.db3"],
+            },
+            "replay_jsonl": {
+                "present": True,
+                "basename": "fixed_route_replay.jsonl",
+                "size_bytes": 512,
+                "sha256_prefix": "aabbccddeeff0011",
+                "count": 1,
+                "sample_refs": ["captures/fixed_route_replay.jsonl"],
+            },
+        }
+
+        status, created = self.client.request("POST", "/api/o6/archive/artifact-bundle", payload)
+
+        self.assertEqual(status, 201)
+        packet = created["task"]["artifact_bundle"]["same_task_field_material_packet"]
+        self.assertEqual(packet["status"], "ready_not_delivery_proof")
+        self.assertFalse(packet["map_yaml_present"])
+        self.assertEqual(packet["counts"]["missing_material_count"], 1)
+        self.assertEqual(packet["sample_refs"], ["route.csv", "keyframe-0001.jpg", "route_001.db3", "fixed_route_replay.jsonl"])
+        self.assertEqual(packet["material_sample_refs"]["route_csv"]["basename"], "route.csv")
+        self.assertEqual(packet["material_sample_refs"]["keyframes"]["count"], 17)
+        self.assertIn("same_task_field_material_map_yaml_missing_optional", packet["blocked_reasons"])
+
+        status, explicit = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/artifact-bundle-material-actual-shape-001?include=same_task_field_material_packet",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(explicit["same_task_field_material_packet"]["status"], "ready_not_delivery_proof")
+        self.assertEqual(
+            explicit["same_task_field_material_packet"]["material_sample_refs"]["route_bag_or_rosbag"][
+                "basename"
+            ],
+            "route_001.db3",
+        )
+
+    def test_o6_route_bag_evidence_missing_or_unsafe_returns_blocked_summary(self):
+        missing_payload = self._artifact_bundle_payload()
+        missing_payload["artifact_bundle"].pop("route_bag_evidence")
+
+        status, created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            missing_payload,
+        )
+
+        self.assertEqual(status, 201)
+        packet = created["task"]["artifact_bundle"]["route_bag_evidence"]
+        self.assertEqual(packet["schema"], relay_module.O6_ROUTE_BAG_EVIDENCE_SCHEMA)
+        self.assertEqual(packet["status"], "blocked_not_proven")
+        self.assertIn("route_bag_evidence_not_available", packet["blocked_reasons"])
+        self.assertEqual(packet["next_required_evidence"], ["route_bag_evidence"])
+        self.assertFalse(packet["safe_to_control"])
+        self.assertFalse(packet["delivery_success"])
+
+        status, consumer = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/artifact-bundle-task-001?include=field_evidence",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(consumer["route_bag_evidence"]["status"], "blocked_not_proven")
+        self.assertIn(
+            "route_bag_evidence_not_available",
+            consumer["route_bag_evidence"]["blocked_reasons"],
+        )
+
+        bad_schema_payload = self._artifact_bundle_payload()
+        bad_schema_payload["artifact_bundle"]["task_id"] = "artifact-bundle-route-bag-bad-schema-001"
+        bad_schema_payload["artifact_bundle"]["route_bag_evidence"]["schema"] = "trashbot.bad_route_bag.v1"
+        status, bad_schema_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            bad_schema_payload,
+        )
+        self.assertEqual(status, 201)
+        self.assertIn(
+            "route_bag_evidence_schema_unsupported",
+            bad_schema_created["task"]["artifact_bundle"]["route_bag_evidence"]["blocked_reasons"],
+        )
+
+        bad_scope_payload = self._artifact_bundle_payload()
+        bad_scope_payload["artifact_bundle"]["task_id"] = "artifact-bundle-route-bag-bad-scope-001"
+        bad_scope_payload["artifact_bundle"]["route_bag_evidence"]["proof_scope"] = "wrong_scope"
+        status, bad_scope_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            bad_scope_payload,
+        )
+        self.assertEqual(status, 201)
+        self.assertIn(
+            "route_bag_evidence_proof_scope_unsupported",
+            bad_scope_created["task"]["artifact_bundle"]["route_bag_evidence"]["blocked_reasons"],
+        )
+
+        unsafe_cases = [
+            (
+                "path",
+                lambda evidence: evidence.update({"db3_path": "/tmp/route_bag_0.db3"}),
+                ["/tmp/route_bag_0.db3"],
+            ),
+            (
+                "root",
+                lambda evidence: evidence.update({"artifact_root": "/tmp/route_bag"}),
+                ["/tmp/route_bag"],
+            ),
+            (
+                "token",
+                lambda evidence: evidence.update({"token": "secret-token"}),
+                ["secret-token"],
+            ),
+            (
+                "raw",
+                lambda evidence: evidence.update({"raw_payload": {"topic": "/tf"}}),
+                ["raw_payload"],
+            ),
+            (
+                "base64",
+                lambda evidence: evidence.update({"db3_base64": "data:application/octet-stream;base64,AAAA"}),
+                ["base64,AAAA"],
+            ),
+            (
+                "credential-url",
+                lambda evidence: evidence.update({"source_label": "https://user:pass@example.test/db3"}),
+                ["user:pass@example.test"],
+            ),
+            (
+                "unsafe-topic",
+                lambda evidence: evidence.update({"sample_topic_names": ["/cmd_vel"]}),
+                ["/cmd_vel"],
+            ),
+        ]
+        for case_index, (case_name, mutate, forbidden_texts) in enumerate(unsafe_cases):
+            payload = self._artifact_bundle_payload()
+            payload["artifact_bundle"]["task_id"] = f"artifact-bundle-route-bag-unsafe-case-{case_index:02d}"
+            mutate(payload["artifact_bundle"]["route_bag_evidence"])
+            status, unsafe_created = self.client.request("POST", "/api/o6/archive/artifact-bundle", payload)
+            encoded = json.dumps(unsafe_created, ensure_ascii=False)
+            self.assertEqual(status, 201)
+            unsafe_packet = unsafe_created["task"]["artifact_bundle"]["route_bag_evidence"]
+            self.assertEqual(unsafe_packet["status"], "blocked_not_proven")
+            self.assertIn("route_bag_evidence_unsafe", unsafe_packet["blocked_reasons"])
+            self.assertFalse(unsafe_packet["robot_control_executed"])
+            for forbidden_text in forbidden_texts:
+                self.assertNotIn(forbidden_text, encoded)
+
+        dangerous_payload = self._artifact_bundle_payload()
+        dangerous_payload["artifact_bundle"]["task_id"] = "artifact-bundle-route-bag-dangerous-001"
+        dangerous_payload["artifact_bundle"]["route_bag_evidence"]["route_execution_success"] = True
+        status, dangerous_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            dangerous_payload,
+        )
+        self.assertEqual(status, 201)
+        dangerous_packet = dangerous_created["task"]["artifact_bundle"]["route_bag_evidence"]
+        self.assertEqual(dangerous_packet["status"], "blocked_not_proven")
+        self.assertIn("route_bag_evidence_dangerous_true", dangerous_packet["blocked_reasons"])
+        self.assertFalse(dangerous_packet["delivery_success"])
+
+        status, explicit = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/artifact-bundle-route-bag-dangerous-001?include=route_bag_evidence",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(explicit["route_bag_evidence"]["status"], "blocked_not_proven")
+        self.assertIn("route_bag_evidence_dangerous_true", explicit["route_bag_evidence"]["blocked_reasons"])
+
+    def test_o6_route_bag_payload_replay_missing_or_unsafe_returns_blocked_summary(self):
+        missing_payload = self._artifact_bundle_payload()
+        missing_payload["artifact_bundle"].pop("route_bag_payload_replay")
+
+        status, created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            missing_payload,
+        )
+
+        self.assertEqual(status, 201)
+        packet = created["task"]["artifact_bundle"]["route_bag_payload_replay"]
+        self.assertEqual(packet["schema"], relay_module.O6_ROUTE_BAG_PAYLOAD_REPLAY_SCHEMA)
+        self.assertEqual(packet["status"], "blocked_not_proven")
+        self.assertIn("route_bag_payload_replay_not_available", packet["blocked_reasons"])
+        self.assertEqual(packet["next_required_evidence"], ["route_bag_payload_replay"])
+        self.assertFalse(packet["safe_to_control"])
+        self.assertFalse(packet["delivery_success"])
+
+        status, consumer = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/artifact-bundle-task-001?include=route_bag_payload_replay",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(consumer["route_bag_payload_replay"]["status"], "blocked_not_proven")
+        self.assertIn(
+            "route_bag_payload_replay_not_available",
+            consumer["route_bag_payload_replay"]["blocked_reasons"],
+        )
+
+        bad_schema_payload = self._artifact_bundle_payload()
+        bad_schema_payload["artifact_bundle"]["task_id"] = "artifact-bundle-route-bag-payload-bad-schema-001"
+        bad_schema_payload["artifact_bundle"]["route_bag_payload_replay"]["schema"] = "trashbot.bad_route_bag_payload_replay.v1"
+        status, bad_schema_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            bad_schema_payload,
+        )
+        self.assertEqual(status, 201)
+        self.assertIn(
+            "route_bag_payload_replay_schema_unsupported",
+            bad_schema_created["task"]["artifact_bundle"]["route_bag_payload_replay"]["blocked_reasons"],
+        )
+
+        unsafe_topic_payload = self._artifact_bundle_payload()
+        unsafe_topic_payload["artifact_bundle"]["task_id"] = "artifact-bundle-route-bag-payload-unsafe-topic-001"
+        unsafe_topic_payload["artifact_bundle"]["route_bag_payload_replay"]["sample_topic_names"] = ["/cmd_vel"]
+        status, unsafe_topic_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            unsafe_topic_payload,
+        )
+        self.assertEqual(status, 201)
+        self.assertEqual(
+            unsafe_topic_created["task"]["artifact_bundle"]["route_bag_payload_replay"]["status"],
+            "blocked_not_proven",
+        )
+        self.assertIn(
+            "route_bag_payload_replay_unsafe",
+            unsafe_topic_created["task"]["artifact_bundle"]["route_bag_payload_replay"]["blocked_reasons"],
+        )
+
+        dangerous_payload = self._artifact_bundle_payload()
+        dangerous_payload["artifact_bundle"]["task_id"] = "artifact-bundle-route-bag-payload-dangerous-001"
+        dangerous_payload["artifact_bundle"]["route_bag_payload_replay"]["payload_replay_success"] = True
+        status, dangerous_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            dangerous_payload,
+        )
+        self.assertEqual(status, 201)
+        dangerous_packet = dangerous_created["task"]["artifact_bundle"]["route_bag_payload_replay"]
+        self.assertEqual(dangerous_packet["status"], "blocked_not_proven")
+        self.assertIn("route_bag_payload_replay_dangerous_true", dangerous_packet["blocked_reasons"])
+        self.assertFalse(dangerous_packet["robot_control_executed"])
+
+        status, explicit = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/artifact-bundle-route-bag-payload-dangerous-001?include=route_bag_payload_replay",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(explicit["route_bag_payload_replay"]["status"], "blocked_not_proven")
+        self.assertIn(
+            "route_bag_payload_replay_dangerous_true",
+            explicit["route_bag_payload_replay"]["blocked_reasons"],
+        )
+
+    def test_o6_route_bag_semantic_replay_missing_or_unsafe_returns_blocked_summary(self):
+        missing_payload = self._artifact_bundle_payload()
+        missing_payload["artifact_bundle"].pop("route_bag_semantic_replay")
+
+        status, created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            missing_payload,
+        )
+
+        self.assertEqual(status, 201)
+        packet = created["task"]["artifact_bundle"]["route_bag_semantic_replay"]
+        self.assertEqual(packet["schema"], relay_module.O6_ROUTE_BAG_SEMANTIC_REPLAY_SCHEMA)
+        self.assertEqual(packet["status"], "blocked_not_proven")
+        self.assertIn("route_bag_semantic_replay_not_available", packet["blocked_reasons"])
+        self.assertEqual(packet["next_required_evidence"], ["route_bag_semantic_replay"])
+        self.assertFalse(packet["safe_to_control"])
+        self.assertFalse(packet["delivery_success"])
+
+        status, consumer = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/artifact-bundle-task-001?include=route_bag_semantic_replay",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(consumer["route_bag_semantic_replay"]["status"], "blocked_not_proven")
+        self.assertIn(
+            "route_bag_semantic_replay_not_available",
+            consumer["route_bag_semantic_replay"]["blocked_reasons"],
+        )
+
+        bad_schema_payload = self._artifact_bundle_payload()
+        bad_schema_payload["artifact_bundle"]["task_id"] = "artifact-bundle-route-bag-semantic-bad-schema-001"
+        bad_schema_payload["artifact_bundle"]["route_bag_semantic_replay"]["schema"] = (
+            "trashbot.bad_route_bag_semantic_replay.v1"
+        )
+        status, bad_schema_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            bad_schema_payload,
+        )
+        self.assertEqual(status, 201)
+        self.assertIn(
+            "route_bag_semantic_replay_schema_unsupported",
+            bad_schema_created["task"]["artifact_bundle"]["route_bag_semantic_replay"]["blocked_reasons"],
+        )
+
+        bad_scope_payload = self._artifact_bundle_payload()
+        bad_scope_payload["artifact_bundle"]["task_id"] = "artifact-bundle-route-bag-semantic-bad-scope-001"
+        bad_scope_payload["artifact_bundle"]["route_bag_semantic_replay"]["proof_scope"] = "wrong_scope"
+        status, bad_scope_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            bad_scope_payload,
+        )
+        self.assertEqual(status, 201)
+        self.assertIn(
+            "route_bag_semantic_replay_proof_scope_unsupported",
+            bad_scope_created["task"]["artifact_bundle"]["route_bag_semantic_replay"]["blocked_reasons"],
+        )
+
+        unsafe_topic_payload = self._artifact_bundle_payload()
+        unsafe_topic_payload["artifact_bundle"]["task_id"] = "artifact-bundle-route-bag-semantic-unsafe-topic-001"
+        unsafe_topic_payload["artifact_bundle"]["route_bag_semantic_replay"]["sample_topic_names"] = ["/cmd_vel"]
+        status, unsafe_topic_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            unsafe_topic_payload,
+        )
+        self.assertEqual(status, 201)
+        self.assertEqual(
+            unsafe_topic_created["task"]["artifact_bundle"]["route_bag_semantic_replay"]["status"],
+            "blocked_not_proven",
+        )
+        self.assertIn(
+            "route_bag_semantic_replay_unsafe",
+            unsafe_topic_created["task"]["artifact_bundle"]["route_bag_semantic_replay"]["blocked_reasons"],
+        )
+
+        unsafe_text_payload = self._artifact_bundle_payload()
+        unsafe_text_payload["artifact_bundle"]["task_id"] = "artifact-bundle-route-bag-semantic-unsafe-text-001"
+        unsafe_text_payload["artifact_bundle"]["route_bag_semantic_replay"]["tf_summary"] = {
+            "sample_count": 1,
+            "transform_count": 2,
+            "frame_id_samples": ["map"],
+            "child_frame_id_samples": ["https://example.test/token=secret"],
+        }
+        status, unsafe_text_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            unsafe_text_payload,
+        )
+        encoded = json.dumps(unsafe_text_created, ensure_ascii=False)
+        self.assertEqual(status, 201)
+        self.assertIn(
+            "route_bag_semantic_replay_unsafe",
+            unsafe_text_created["task"]["artifact_bundle"]["route_bag_semantic_replay"]["blocked_reasons"],
+        )
+        self.assertNotIn("token=secret", encoded)
+
+        dangerous_payload = self._artifact_bundle_payload()
+        dangerous_payload["artifact_bundle"]["task_id"] = "artifact-bundle-route-bag-semantic-dangerous-001"
+        dangerous_payload["artifact_bundle"]["route_bag_semantic_replay"]["semantic_replay_success"] = True
+        status, dangerous_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            dangerous_payload,
+        )
+        self.assertEqual(status, 201)
+        dangerous_packet = dangerous_created["task"]["artifact_bundle"]["route_bag_semantic_replay"]
+        self.assertEqual(dangerous_packet["status"], "blocked_not_proven")
+        self.assertIn("route_bag_semantic_replay_dangerous_true", dangerous_packet["blocked_reasons"])
+        self.assertFalse(dangerous_packet["robot_control_executed"])
+
+        status, explicit = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/artifact-bundle-route-bag-semantic-dangerous-001?include=route_bag_semantic_replay",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(explicit["route_bag_semantic_replay"]["status"], "blocked_not_proven")
+        self.assertIn(
+            "route_bag_semantic_replay_dangerous_true",
+            explicit["route_bag_semantic_replay"]["blocked_reasons"],
+        )
+
+    def test_o6_route_bag_full_semantic_decode_matrix_missing_or_unsafe_returns_blocked_summary(self):
+        missing_payload = self._artifact_bundle_payload()
+        missing_payload["artifact_bundle"].pop("route_bag_full_semantic_decode_matrix")
+
+        status, created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            missing_payload,
+        )
+
+        self.assertEqual(status, 201)
+        packet = created["task"]["artifact_bundle"]["route_bag_full_semantic_decode_matrix"]
+        self.assertEqual(packet["schema"], relay_module.O6_ROUTE_BAG_FULL_SEMANTIC_DECODE_MATRIX_SCHEMA)
+        self.assertEqual(packet["status"], "blocked_not_proven")
+        self.assertIn("route_bag_full_semantic_decode_matrix_not_available", packet["blocked_reasons"])
+        self.assertEqual(packet["next_required_evidence"], ["route_bag_full_semantic_decode_matrix"])
+        self.assertFalse(packet["safe_to_control"])
+        self.assertFalse(packet["delivery_success"])
+        self.assertFalse(packet["route_execution_success"])
+
+        status, consumer = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/artifact-bundle-task-001?include=route_bag_full_semantic_decode_matrix",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(consumer["route_bag_full_semantic_decode_matrix"]["status"], "blocked_not_proven")
+        self.assertIn(
+            "route_bag_full_semantic_decode_matrix_not_available",
+            consumer["route_bag_full_semantic_decode_matrix"]["blocked_reasons"],
+        )
+
+        bad_schema_payload = self._artifact_bundle_payload()
+        bad_schema_payload["artifact_bundle"]["task_id"] = "artifact-bundle-route-bag-matrix-bad-schema-001"
+        bad_schema_payload["artifact_bundle"]["route_bag_full_semantic_decode_matrix"]["schema"] = (
+            "trashbot.bad_route_bag_full_semantic_decode_matrix.v1"
+        )
+        status, bad_schema_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            bad_schema_payload,
+        )
+        self.assertEqual(status, 201)
+        self.assertIn(
+            "route_bag_full_semantic_decode_matrix_schema_unsupported",
+            bad_schema_created["task"]["artifact_bundle"]["route_bag_full_semantic_decode_matrix"][
+                "blocked_reasons"
+            ],
+        )
+
+        bad_scope_payload = self._artifact_bundle_payload()
+        bad_scope_payload["artifact_bundle"]["task_id"] = "artifact-bundle-route-bag-matrix-bad-scope-001"
+        bad_scope_payload["artifact_bundle"]["route_bag_full_semantic_decode_matrix"][
+            "proof_scope"
+        ] = "wrong_scope"
+        status, bad_scope_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            bad_scope_payload,
+        )
+        self.assertEqual(status, 201)
+        self.assertIn(
+            "route_bag_full_semantic_decode_matrix_proof_scope_unsupported",
+            bad_scope_created["task"]["artifact_bundle"]["route_bag_full_semantic_decode_matrix"][
+                "blocked_reasons"
+            ],
+        )
+
+        unsafe_cases = [
+            (
+                "unsafe-topic",
+                lambda matrix: matrix["topic_type_matrix"][0].update({"topic": "/cmd_vel"}),
+                ["/cmd_vel"],
+                "route_bag_full_semantic_decode_matrix_unsafe",
+            ),
+            (
+                "unsafe-text",
+                lambda matrix: matrix.update({"operator_text": "https://example.test/route?token=secret"}),
+                ["token=secret"],
+                "route_bag_full_semantic_decode_matrix_unsafe",
+            ),
+            (
+                "raw",
+                lambda matrix: matrix.update({"raw_payload": "raw bytes should not echo"}),
+                ["raw bytes should not echo"],
+                "route_bag_full_semantic_decode_matrix_unsafe",
+            ),
+            (
+                "base64",
+                lambda matrix: matrix.update({"sample_base64": "data:application/octet-stream;base64,AAAA"}),
+                ["base64,AAAA"],
+                "route_bag_full_semantic_decode_matrix_unsafe",
+            ),
+            (
+                "missing-count",
+                lambda matrix: matrix.pop("decoded_message_sample_count"),
+                [],
+                "route_bag_full_semantic_decode_matrix_decoded_message_sample_count_invalid",
+            ),
+            (
+                "negative-count",
+                lambda matrix: matrix.update({"failed_topic_type_count": -1}),
+                ["failed_topic_type_count\": -1"],
+                "route_bag_full_semantic_decode_matrix_failed_topic_type_count_invalid",
+            ),
+        ]
+        for case_index, (case_name, mutate, forbidden_texts, expected_reason) in enumerate(unsafe_cases):
+            payload = self._artifact_bundle_payload()
+            payload["artifact_bundle"]["task_id"] = f"artifact-bundle-route-bag-matrix-{case_name}-{case_index:02d}"
+            mutate(payload["artifact_bundle"]["route_bag_full_semantic_decode_matrix"])
+            status, unsafe_created = self.client.request("POST", "/api/o6/archive/artifact-bundle", payload)
+            encoded = json.dumps(unsafe_created, ensure_ascii=False)
+            self.assertEqual(status, 201)
+            unsafe_packet = unsafe_created["task"]["artifact_bundle"]["route_bag_full_semantic_decode_matrix"]
+            self.assertEqual(unsafe_packet["status"], "blocked_not_proven")
+            self.assertIn(expected_reason, unsafe_packet["blocked_reasons"])
+            self.assertFalse(unsafe_packet["robot_control_executed"])
+            self.assertFalse(unsafe_packet["connects_cloud_production"])
+            for forbidden_text in forbidden_texts:
+                self.assertNotIn(forbidden_text, encoded)
+
+        dangerous_payload = self._artifact_bundle_payload()
+        dangerous_payload["artifact_bundle"]["task_id"] = "artifact-bundle-route-bag-matrix-dangerous-001"
+        dangerous_payload["artifact_bundle"]["route_bag_full_semantic_decode_matrix"][
+            "route_execution_success"
+        ] = True
+        dangerous_payload["artifact_bundle"]["route_bag_full_semantic_decode_matrix"][
+            "connects_cloud_production"
+        ] = True
+        status, dangerous_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            dangerous_payload,
+        )
+        self.assertEqual(status, 201)
+        dangerous_packet = dangerous_created["task"]["artifact_bundle"]["route_bag_full_semantic_decode_matrix"]
+        self.assertEqual(dangerous_packet["status"], "blocked_not_proven")
+        self.assertIn("route_bag_full_semantic_decode_matrix_dangerous_true", dangerous_packet["blocked_reasons"])
+        self.assertFalse(dangerous_packet["route_execution_success"])
+        self.assertFalse(dangerous_packet["connects_cloud_production"])
+
+        status, explicit = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/artifact-bundle-route-bag-matrix-dangerous-001?include=route_bag_full_semantic_decode_matrix",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(explicit["route_bag_full_semantic_decode_matrix"]["status"], "blocked_not_proven")
+        self.assertIn(
+            "route_bag_full_semantic_decode_matrix_dangerous_true",
+            explicit["route_bag_full_semantic_decode_matrix"]["blocked_reasons"],
+        )
+
+    def test_o6_artifact_access_probe_reads_allowlisted_artifact_bundle_refs(self):
+        artifact_root = pathlib.Path(self.tmp.name) / "artifact-access-root"
+        captures_dir = artifact_root / "captures"
+        captures_dir.mkdir(parents=True)
+        route_bytes = b"x,y,yaw\n0,0,0\n"
+        replay_bytes = b'{"frame_index":0,"state":"mock"}\n'
+        keyframe_bytes = b"\x89PNG\r\n\x1a\nmock"
+        evidence_bytes = b'{"ok": false}\n'
+        (captures_dir / "route.csv").write_bytes(route_bytes)
+        (captures_dir / "fixed_route_replay.jsonl").write_bytes(replay_bytes)
+        (captures_dir / "keyframe-0001.jpg").write_bytes(keyframe_bytes)
+        (captures_dir / "evidence-0001.json").write_bytes(evidence_bytes)
+        payload = self._artifact_bundle_payload()
+        payload["artifact_access_root"] = str(artifact_root)
+
+        status, created = self.client.request("POST", "/api/o6/archive/artifact-bundle", payload)
+
+        self.assertEqual(status, 201)
+        probe = created["task"]["artifact_bundle"]["artifact_access_probe"]
+        encoded = json.dumps(created, ensure_ascii=False)
+        self.assertEqual(probe["schema"], relay_module.O6_ARTIFACT_ACCESS_PROBE_SCHEMA)
+        self.assertEqual(probe["proof_scope"], relay_module.O6_ARTIFACT_ACCESS_PROBE_PROOF_SCOPE)
+        self.assertEqual(probe["status"], "local_mock_artifact_access_probe_ready")
+        self.assertTrue(probe["allowlist_root_configured"])
+        self.assertFalse(probe["allowlist_root_echoed"])
+        self.assertNotIn(str(artifact_root), encoded)
+        self.assertNotIn("captures/", encoded)
+        by_ref = {item["ref"]: item for item in probe["probes"]}
+        self.assertEqual(by_ref["route.csv"]["exists"], True)
+        self.assertEqual(by_ref["route.csv"]["size_bytes"], len(route_bytes))
+        self.assertEqual(by_ref["route.csv"]["sha256"], hashlib.sha256(route_bytes).hexdigest())
+        self.assertEqual(by_ref["route.csv"]["detected_type"], "text/csv")
+        self.assertEqual(by_ref["route.csv"]["blocked_reason"], "")
+        self.assertEqual(by_ref["fixed_route_replay.jsonl"]["sha256"], hashlib.sha256(replay_bytes).hexdigest())
+        self.assertEqual(probe["counts"]["readable_ref_count"], 4)
+        self.assertFalse(probe["safe_to_control"])
+        self.assertFalse(probe["delivery_success"])
+        self.assertFalse(probe["primary_actions_enabled"])
+        self.assertFalse(probe["robot_control_executed"])
+        self.assertFalse(probe["real_oss_connected"])
+
+        status, detail = self.client.request(
+            "GET",
+            "/api/o6/archive/tasks/artifact-bundle-task-001",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(detail["task"]["artifact_access_probe"]["counts"]["readable_ref_count"], 4)
+
+        status, consumer = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/artifact-bundle-task-001?include=artifact_access_probe",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(consumer["artifact_access_probe"]["status"], "local_mock_artifact_access_probe_ready")
+        self.assertEqual(consumer["artifact_access_probe"]["counts"]["readable_ref_count"], 4)
+
+    def test_o6_offline_artifact_seed_smoke_uses_repo_fixtures_and_surfaces_in_consumer_detail(self):
+        status, created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            self._offline_artifact_seed_smoke_payload(),
+        )
+
+        self.assertEqual(status, 201)
+        self.assertEqual(created["schema"], relay_module.O6_ARTIFACT_BUNDLE_ARCHIVE_SCHEMA)
+        self.assertEqual(created["task"]["task_origin"], "artifact_bundle")
+        self.assertEqual(created["task"]["offline_artifact_seed_smoke"]["schema"], relay_module.O6_OFFLINE_ARTIFACT_SEED_SMOKE_SCHEMA)
+        self.assertEqual(created["task"]["offline_artifact_seed_smoke"]["source"], relay_module.O6_OFFLINE_ARTIFACT_SEED_SMOKE_SOURCE)
+        self.assertEqual(created["task"]["offline_artifact_seed_smoke"]["proof_scope"], relay_module.O6_OFFLINE_ARTIFACT_SEED_SMOKE_PROOF_SCOPE)
+        self.assertEqual(created["task"]["offline_artifact_seed_smoke"]["counts"]["route_ref_count"], 1)
+        self.assertEqual(created["task"]["offline_artifact_seed_smoke"]["counts"]["replay_ref_count"], 1)
+        self.assertEqual(created["task"]["offline_artifact_seed_smoke"]["counts"]["keyframe_ref_count"], 1)
+        self.assertEqual(created["task"]["offline_artifact_seed_smoke"]["counts"]["evidence_ref_count"], 1)
+        self.assertEqual(created["task"]["offline_artifact_seed_smoke"]["counts"]["readable_ref_count"], 4)
+        self.assertFalse(created["task"]["offline_artifact_seed_smoke"]["safe_to_control"])
+        self.assertFalse(created["task"]["offline_artifact_seed_smoke"]["delivery_success"])
+        self.assertFalse(created["task"]["offline_artifact_seed_smoke"]["primary_actions_enabled"])
+        self.assertFalse(created["task"]["offline_artifact_seed_smoke"]["connects_cloud_production"])
+        self.assertFalse(created["task"]["offline_artifact_seed_smoke"]["robot_control_executed"])
+        self.assertEqual(created["task"]["offline_artifact_seed_smoke"]["sample_refs"]["route_ref"]["basename"], "route.csv")
+        self.assertEqual(created["task"]["offline_artifact_seed_smoke"]["sample_refs"]["replay_ref"]["basename"], "derived_replay.jsonl")
+        self.assertEqual(created["task"]["offline_artifact_seed_smoke"]["sample_refs"]["keyframe_ref"]["basename"], "001.jpg")
+        self.assertEqual(created["task"]["offline_artifact_seed_smoke"]["sample_refs"]["evidence_ref"]["basename"], "manifest.json")
+        self.assertTrue(created["task"]["offline_artifact_seed_smoke"]["sample_refs"]["route_ref"]["sha256_prefix"])
+        self.assertIn("local_mock_only", created["task"]["offline_artifact_seed_smoke"]["blocked_reasons"])
+        self.assertIn("not_proven", created["task"]["offline_artifact_seed_smoke"]["blocked_reasons"])
+        self.assertIn("real_media_fetch_blocked", created["task"]["offline_artifact_seed_smoke"]["blocked_reasons"])
+        self.assertIn("real_cloud_archive_readback", created["task"]["offline_artifact_seed_smoke"]["next_required_evidence"])
+        self.assertEqual(created["task"]["route_root_seed_gate"]["schema"], relay_module.O6_ROUTE_ROOT_SEED_GATE_SCHEMA)
+        self.assertEqual(
+            created["task"]["route_root_seed_gate"]["route_root_seed_status"],
+            "local_mock_route_root_seed_ready",
+        )
+        self.assertFalse(created["task"]["route_root_seed_gate"]["route_bag_required"])
+        self.assertFalse(created["task"]["route_root_seed_gate"]["route_bag_present"])
+        self.assertEqual(created["task"]["route_root_seed_gate"]["manifest_summary"]["sample_ref"], "manifest.json")
+        self.assertIn("route_bag_missing_optional", created["task"]["route_root_seed_gate"]["blocked_reasons"])
+        self.assertIn("route_bag_optional_evidence", created["task"]["route_root_seed_gate"]["next_required_evidence"])
+        self.assertFalse(created["task"]["route_root_seed_gate"]["safe_to_control"])
+        self.assertFalse(created["task"]["route_root_seed_gate"]["delivery_success"])
+        self.assertNotIn(str(REPO_ROOT), json.dumps(created, ensure_ascii=False))
+        self.assertNotIn("https://", json.dumps(created, ensure_ascii=False))
+        self.assertNotIn("/cmd_vel", json.dumps(created, ensure_ascii=False))
+
+        status, detail = self.client.request(
+            "GET",
+            "/api/o6/archive/tasks/offline-artifact-seed-smoke-001",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(detail["task"]["offline_artifact_seed_smoke"]["schema"], relay_module.O6_OFFLINE_ARTIFACT_SEED_SMOKE_SCHEMA)
+        self.assertEqual(detail["task"]["artifact_bundle"]["offline_artifact_seed_smoke"]["proof_scope"], relay_module.O6_OFFLINE_ARTIFACT_SEED_SMOKE_PROOF_SCOPE)
+        self.assertEqual(detail["task"]["route_root_seed_gate"]["proof_scope"], relay_module.O6_ROUTE_ROOT_SEED_GATE_PROOF_SCOPE)
+
+        status, consumer = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/offline-artifact-seed-smoke-001?include=offline_artifact_seed_smoke,route_root_seed_gate",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(consumer["offline_artifact_seed_smoke"]["schema"], relay_module.O6_OFFLINE_ARTIFACT_SEED_SMOKE_SCHEMA)
+        self.assertEqual(consumer["offline_artifact_seed_smoke"]["sample_refs"]["route_ref"]["basename"], "route.csv")
+        self.assertEqual(consumer["offline_artifact_seed_smoke"]["counts"]["requested_ref_count"], 4)
+        self.assertFalse(consumer["offline_artifact_seed_smoke"]["safe_to_control"])
+        self.assertEqual(consumer["route_root_seed_gate"]["schema"], relay_module.O6_ROUTE_ROOT_SEED_GATE_SCHEMA)
+        self.assertFalse(consumer["route_root_seed_gate"]["route_bag_required"])
+        self.assertFalse(consumer["route_root_seed_gate"]["route_bag_present"])
+
+        status, consumer_default = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/offline-artifact-seed-smoke-001",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertIn("offline_artifact_seed_smoke", consumer_default)
+        self.assertEqual(consumer_default["offline_artifact_seed_smoke"]["schema"], relay_module.O6_OFFLINE_ARTIFACT_SEED_SMOKE_SCHEMA)
+        self.assertEqual(
+            consumer_default["field_evidence_consumer_ingest"]["offline_artifact_seed_smoke"]["source"],
+            relay_module.O6_OFFLINE_ARTIFACT_SEED_SMOKE_SOURCE,
+        )
+        self.assertEqual(
+            consumer_default["field_evidence"]["offline_artifact_seed_smoke"]["proof_scope"],
+            relay_module.O6_OFFLINE_ARTIFACT_SEED_SMOKE_PROOF_SCOPE,
+        )
+        self.assertEqual(
+            consumer_default["field_evidence"]["route_root_seed_gate"]["route_root_seed_status"],
+            "local_mock_route_root_seed_ready",
+        )
+
+    def test_o6_artifact_access_probe_blocks_unsafe_and_large_refs_without_reading(self):
+        artifact_root = pathlib.Path(self.tmp.name) / "artifact-access-large"
+        artifact_root.mkdir()
+        (artifact_root / "route.csv").write_bytes(b"x" * (relay_module.O6_ARTIFACT_ACCESS_PROBE_MAX_FILE_BYTES + 1))
+
+        probe = relay_module._o6_artifact_access_probe_from_refs(
+            [
+                {"ref_kind": "route", "ref": "route.csv"},
+                {"ref_kind": "route", "ref": "../secret.csv"},
+                {"ref_kind": "evidence", "ref": "https://example.test/evidence.json?token=secret"},
+                {"ref_kind": "evidence", "ref": "credential.json"},
+                {"ref_kind": "evidence", "ref": "/cmd_vel"},
+            ],
+            task_id="probe-task",
+            artifact_access_root=str(artifact_root),
+        )
+
+        self.assertEqual(probe["status"], "blocked_not_proven")
+        by_ref = {item["ref"]: item for item in probe["probes"] if item["ref"]}
+        self.assertEqual(by_ref["route.csv"]["exists"], True)
+        self.assertEqual(by_ref["route.csv"]["blocked_reason"], "file_too_large")
+        self.assertEqual(by_ref["route.csv"]["sha256"], "")
+        self.assertIn("file_too_large", probe["blocked_reasons"])
+        self.assertIn("path_traversal_ref_blocked", probe["blocked_reasons"])
+        self.assertIn("credential_ref_blocked", probe["blocked_reasons"])
+        self.assertIn("unsafe_ref", probe["blocked_reasons"])
+        self.assertFalse(probe["proof_boundary"]["file_read_attempted"])
+        self.assertFalse(probe["safe_to_control"])
+
+    def test_o6_artifact_bundle_ingest_rejects_unsafe_or_empty_refs(self):
+        empty_refs = self._artifact_bundle_payload()
+        empty_refs["artifact_bundle"]["route_refs"] = []
+        empty_refs["artifact_bundle"]["replay_refs"] = []
+        empty_refs["artifact_bundle"]["keyframe_refs"] = []
+        empty_refs["artifact_bundle"]["evidence_refs"] = []
+        status, body = self.client.request("POST", "/api/o6/archive/artifact-bundle", empty_refs)
+        self.assertEqual(status, 400)
+        self.assertEqual(body["error"]["code"], "bad_request")
+
+        dangerous = self._artifact_bundle_payload()
+        dangerous["artifact_bundle"]["delivery_success"] = True
+        status, body = self.client.request("POST", "/api/o6/archive/artifact-bundle", dangerous)
+        self.assertEqual(status, 400)
+        self.assertEqual(body["error"]["code"], "bad_request")
+        self.assertIn("unsafe", body["error"]["message"].lower())
+
+        unsafe_ref = self._artifact_bundle_payload()
+        unsafe_ref["artifact_bundle"]["route_refs"] = ["https://example.test/route.csv?token=secret"]
+        status, body = self.client.request("POST", "/api/o6/archive/artifact-bundle", unsafe_ref)
+        self.assertEqual(status, 400)
+        self.assertEqual(body["error"]["code"], "bad_request")
+        self.assertIn("unsafe", body["error"]["message"].lower())
 
     def _o6_archive_task_payload(self, task_id="task-o6-001", robot_id="trashbot-001", finished_at=2000):
         # 标注接口依赖已有 task，先用 local mock task API 固定创建/更新同一份可复用输入。
@@ -1383,6 +5384,26 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
         self.assertFalse(created["real_dataset_export_connected"])
         self.assertFalse(created["connects_cloud_production"])
         self.assertFalse(created["robot_control_executed"])
+        self.assertTrue(created["local_mock_annotation_submit_written"])
+        self.assertEqual(created["submit_receipt"]["status"], "local_mock_annotation_written")
+        self.assertTrue(created["submit_receipt"]["receipt_id"].startswith("o6-label-receipt-"))
+        self.assertEqual(created["submit_receipt"]["task_id"], "task-o6-001")
+        self.assertEqual(created["submit_receipt"]["label_count"], 2)
+        for key in (
+            "safe_to_control",
+            "delivery_success",
+            "primary_actions_enabled",
+            "robot_control_executed",
+            "connects_cloud_production",
+            "real_annotation_api_connected",
+            "real_dataset_export_connected",
+            "submit_enabled",
+            "dataset_export_available",
+        ):
+            self.assertFalse(created["submit_receipt"][key])
+        self.assertEqual(created["dataset_export"]["export_status"], "local_mock_export_ready")
+        self.assertTrue(created["dataset_export"]["local_mock_dataset_export_ready"])
+        self.assertFalse(created["dataset_export"]["dataset_export_available"])
 
         status, listing = self.client.request("GET", "/api/o6/archive/labels?status=pending")
         self.assertEqual(status, 200)
@@ -1404,6 +5425,9 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
         self.assertEqual(detail["task_id"], "task-o6-001")
         self.assertEqual(detail["robot_id"], "trashbot-001")
         self.assertEqual(detail["task_status"], "partial")
+        self.assertEqual(detail["submit_receipt"]["status"], "local_mock_annotation_written")
+        self.assertEqual(detail["dataset_export"]["export_status"], "local_mock_export_ready")
+        self.assertFalse(detail["dataset_export_available"])
         self.assertEqual(len(detail["itemized_labels"]), 2)
         self.assertEqual(detail["itemized_labels"][0]["item_type"], "trajectory_frame")
         self.assertEqual(detail["itemized_labels"][0]["label_type"], "elevator_door_state")
@@ -1472,6 +5496,10 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
         self.assertTrue(updated["duplicate"])
         self.assertEqual(updated["write_status"], "updated")
         self.assertEqual(updated["label_summary"]["labeled_item_count"], 2)
+        self.assertTrue(updated["local_mock_annotation_submit_written"])
+        self.assertEqual(updated["submit_receipt"]["status"], "local_mock_annotation_written")
+        self.assertEqual(updated["submit_receipt"]["label_count"], 2)
+        self.assertFalse(updated["submit_receipt"]["robot_control_executed"])
 
         status, list_detail = self.client.request("GET", "/api/o6/archive/labels/task-o6-002", token="")
         self.assertEqual(status, 200)
@@ -1589,6 +5617,138 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertEqual(list_detail["task_status"], "labeled")
 
+    def test_o6_cloud_archive_labels_task_export_returns_safe_manifest_and_consumer_summary(self):
+        status, _ = self.client.request(
+            "POST",
+            "/api/o6/archive/tasks",
+            self._o6_archive_task_payload(task_id="task-o6-export"),
+        )
+        self.assertEqual(status, 201)
+        status, _ = self.client.request(
+            "POST",
+            "/api/o6/archive/labels",
+            {
+                "robot_id": "trashbot-001",
+                "task_id": "task-o6-export",
+                "labels": [
+                    {
+                        "item_id": "traj-export-0001",
+                        "item_type": "trajectory_frame",
+                        "label_type": "elevator_door_state",
+                        "value": "open",
+                        "confidence": 0.91,
+                        "annotator_id": "labeler-export",
+                        "evidence_ref": "labels/export-evidence-0001.json",
+                    },
+                    {
+                        "item_id": "traj-export-0002",
+                        "item_type": "trajectory_frame",
+                        "label_type": "trajectory_gate",
+                        "value": "valid",
+                        "confidence": 0.86,
+                        "evidence_ref": "labels/export-evidence-0002.json",
+                    },
+                ],
+            },
+        )
+        self.assertEqual(status, 201)
+
+        status, exported = self.client.request(
+            "GET",
+            "/api/o6/archive/labels/task-o6-export/export?format=jsonl&robot_id=trashbot-001",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(exported["schema"], relay_module.O6_ANNOTATION_DATASET_EXPORT_SCHEMA)
+        self.assertEqual(exported["export_status"], "local_mock_export_ready")
+        self.assertEqual(exported["format"], "jsonl")
+        self.assertEqual(exported["label_count"], 2)
+        self.assertEqual(exported["item_count"], 2)
+        self.assertTrue(exported["local_mock_dataset_export_ready"])
+        self.assertTrue(exported["local_mock_dataset_export_written"])
+        self.assertFalse(exported["dataset_export_available"])
+        self.assertFalse(exported["real_dataset_export_connected"])
+        self.assertFalse(exported["real_annotation_api_connected"])
+        self.assertFalse(exported["connects_cloud_production"])
+        self.assertFalse(exported["robot_control_executed"])
+        self.assertEqual(exported["submit_receipt"]["status"], "local_mock_annotation_written")
+        self.assertEqual(len(exported["sample_rows"]), 2)
+        self.assertEqual(exported["sample_rows"][0]["evidence_ref"], "export-evidence-0001.json")
+        self.assertFalse(exported["export_manifest"]["contains_raw_media"])
+        self.assertFalse(exported["export_manifest"]["contains_base64"])
+        self.assertFalse(exported["export_manifest"]["contains_credentials"])
+        self.assertFalse(exported["export_manifest"]["contains_absolute_paths"])
+        exported_text = json.dumps(exported, ensure_ascii=False)
+        for forbidden in ("base64,", "/cmd_vel", "Authorization", "Bearer", "secret=", "/tmp/"):
+            self.assertNotIn(forbidden, exported_text)
+
+        status, consumer = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/task-o6-export?include=labeling",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(consumer["labeling"]["submit_receipt"]["status"], "local_mock_annotation_written")
+        self.assertEqual(consumer["labeling"]["dataset_export"]["export_status"], "local_mock_export_ready")
+        self.assertTrue(consumer["labeling"]["local_mock_annotation_submit_written"])
+        self.assertFalse(consumer["labeling"]["dataset_export"]["real_dataset_export_connected"])
+
+    def test_o6_cloud_archive_labels_export_fail_closed_paths(self):
+        status, _ = self.client.request(
+            "POST",
+            "/api/o6/archive/tasks",
+            self._o6_archive_task_payload(task_id="task-o6-export-empty"),
+        )
+        self.assertEqual(status, 201)
+
+        status, missing = self.client.request(
+            "GET",
+            "/api/o6/archive/labels/missing-task/export?format=jsonl",
+            token="",
+        )
+        self.assertEqual(status, 404)
+        self.assertEqual(missing["error"]["code"], "unknown_task")
+
+        status, mismatch = self.client.request(
+            "GET",
+            "/api/o6/archive/labels/task-o6-export-empty/export?format=jsonl&robot_id=trashbot-other",
+            token="",
+        )
+        self.assertEqual(status, 403)
+        self.assertEqual(mismatch["error"]["code"], "unauthorized_task")
+
+        status, bad_format = self.client.request(
+            "GET",
+            "/api/o6/archive/labels/task-o6-export-empty/export?format=csv",
+            token="",
+        )
+        self.assertEqual(status, 400)
+        self.assertEqual(bad_format["error"]["code"], "bad_request")
+
+        status, dangerous_query = self.client.request(
+            "GET",
+            "/api/o6/archive/labels/task-o6-export-empty/export?format=jsonl&safe_to_control=true",
+            token="",
+        )
+        self.assertEqual(status, 400)
+        self.assertEqual(dangerous_query["error"]["code"], "bad_request")
+
+        status, blocked = self.client.request(
+            "GET",
+            "/api/o6/archive/labels/task-o6-export-empty/export?format=jsonl",
+            token="",
+        )
+        self.assertEqual(status, 409)
+        self.assertEqual(blocked["schema"], relay_module.O6_ANNOTATION_DATASET_EXPORT_SCHEMA)
+        self.assertEqual(blocked["export_status"], "blocked_not_proven")
+        self.assertFalse(blocked["local_mock_dataset_export_ready"])
+        self.assertFalse(blocked["dataset_export_available"])
+        self.assertEqual(blocked["blocked_reasons"], ["local_mock_labels_not_available"])
+
+        status, detail = self.client.request("GET", "/api/o6/archive/labels/task-o6-export-empty", token="")
+        self.assertEqual(status, 200)
+        self.assertEqual(detail["label_summary"]["itemized_label_count"], 0)
+
     def test_o6_cloud_archive_labels_endpoint_rejects_bad_json_labels_and_invalid_query(self):
         status, _ = self.client.request("POST", "/api/o6/archive/tasks", self._o6_archive_task_payload(task_id="task-o6-003"))
         self.assertEqual(status, 201)
@@ -1616,6 +5776,18 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
         self.assertEqual(status, 400)
         self.assertEqual(missing["error"]["code"], "bad_request")
 
+        status, empty_labels = self.client.request(
+            "POST",
+            "/api/o6/archive/labels",
+            {
+                "robot_id": "trashbot-001",
+                "task_id": "task-o6-003",
+                "labels": [],
+            },
+        )
+        self.assertEqual(status, 400)
+        self.assertEqual(empty_labels["error"]["code"], "bad_request")
+
         status, raw_body = self.client.request(
             "POST",
             "/api/o6/archive/labels",
@@ -1640,6 +5812,42 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
         self.assertEqual(status, 400)
         self.assertEqual(unsafe["error"]["code"], "bad_request")
         self.assertIn("unsafe", unsafe["error"]["message"].lower())
+
+        dangerous_true = {
+            "robot_id": "trashbot-001",
+            "task_id": "task-o6-003",
+            "real_annotation_api_connected": True,
+            "labels": [
+                {
+                    "item_id": "traj-0302",
+                    "item_type": "trajectory_frame",
+                    "label_type": "elevator_door_state",
+                    "value": "open",
+                }
+            ],
+        }
+        status, dangerous = self.client.request("POST", "/api/o6/archive/labels", dangerous_true)
+        self.assertEqual(status, 400)
+        self.assertEqual(dangerous["error"]["code"], "bad_request")
+        self.assertIn("unsafe", dangerous["error"]["message"].lower())
+
+        unsafe_ref = {
+            "robot_id": "trashbot-001",
+            "task_id": "task-o6-003",
+            "labels": [
+                {
+                    "item_id": "traj-0303",
+                    "item_type": "trajectory_frame",
+                    "label_type": "trajectory_gate",
+                    "value": "valid",
+                    "evidence_ref": "https://example.test/evidence.json?token=secret",
+                }
+            ],
+        }
+        status, unsafe_ref_body = self.client.request("POST", "/api/o6/archive/labels", unsafe_ref)
+        self.assertEqual(status, 400)
+        self.assertEqual(unsafe_ref_body["error"]["code"], "bad_request")
+        self.assertIn("unsafe", unsafe_ref_body["error"]["message"].lower())
 
         too_large = {
             "robot_id": "trashbot-001",
@@ -1671,6 +5879,11 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertLessEqual(capped_listing["limit"], relay_module.O6_CLOUD_LABELING_MAX_LIST_LIMIT)
         self.assertEqual(capped_listing["status_filter"], "all")
+
+        status, detail = self.client.request("GET", "/api/o6/archive/labels/task-o6-003", token="")
+        self.assertEqual(status, 200)
+        self.assertEqual(detail["label_summary"]["itemized_label_count"], 0)
+        self.assertEqual(detail["submit_receipt"]["status"], "blocked_not_proven")
 
     def _o6_inference_payload(self, task_id="task-o6-001", inference_id="infer-001", input_id="frame-001"):
         # 推理接口只消费已有 archive task，因此测试 payload 固定落在 helper task 的时间窗口内。
@@ -2244,16 +6457,57 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
 
         status, empty_detail = self.client.request(
             "GET",
-            "/api/o6/consumer/tasks/task-o6-consumer-empty?include=labeling,inference,tunnel",
+            "/api/o6/consumer/tasks/task-o6-consumer-empty?include=field_evidence,labeling,inference,tunnel",
             token="",
         )
         self.assertEqual(status, 200)
         self.assertEqual(empty_detail["labeling"]["labeling_status"], "pending")
         self.assertEqual(empty_detail["labeling"]["label_count"], 0)
+        self.assertFalse(empty_detail["labeling"]["local_mock_annotation_submit_written"])
+        self.assertEqual(empty_detail["labeling"]["submit_receipt"]["status"], "blocked_not_proven")
+        self.assertEqual(empty_detail["labeling"]["dataset_export"]["export_status"], "blocked_not_proven")
+        self.assertFalse(empty_detail["labeling"]["dataset_export"]["local_mock_dataset_export_ready"])
         self.assertEqual(empty_detail["inference"]["status"], "absent")
         self.assertEqual(empty_detail["inference"]["inference_status"], "absent")
         self.assertEqual(empty_detail["tunnel_status"]["status"], "blocked_not_proven")
         self.assertEqual(empty_detail["tunnel_status"]["tunnel_status_summary"], "unknown_not_proven")
+        self.assertEqual(empty_detail["artifact_media_preflight"]["status"], "blocked_not_proven")
+        self.assertEqual(
+            empty_detail["artifact_media_preflight"]["consumer_section_names"],
+            ["artifact_media_preflight", "route_replay_mvp", "labeling_mvp"],
+        )
+        self.assertIn(
+            "field_evidence_manifest_not_available",
+            empty_detail["artifact_media_preflight"]["blocked_reasons"],
+        )
+        self.assertFalse(empty_detail["artifact_media_preflight"]["real_oss_connected"])
+        self.assertEqual(
+            empty_detail["delivery_result_evidence"]["schema"],
+            relay_module.DELIVERY_RESULT_EVIDENCE_SCHEMA,
+        )
+        self.assertEqual(empty_detail["delivery_result_evidence"]["status"], "blocked_not_proven")
+        self.assertIn(
+            "delivery_result_evidence_not_available",
+            empty_detail["delivery_result_evidence"]["blocked_reasons"],
+        )
+        self.assertEqual(
+            empty_detail["route_execution_result_delivery_readiness"]["schema"],
+            relay_module.O6_ROUTE_EXECUTION_RESULT_DELIVERY_READINESS_SCHEMA,
+        )
+        self.assertEqual(
+            empty_detail["route_execution_result_delivery_readiness"]["status"],
+            "blocked_not_proven",
+        )
+        self.assertIn(
+            "route_execution_result_delivery_readiness_not_available",
+            empty_detail["route_execution_result_delivery_readiness"]["blocked_reasons"],
+        )
+        self.assertEqual(empty_detail["nav2_goal_execution_evidence"]["schema"], relay_module.NAV2_GOAL_EXECUTION_EVIDENCE_SCHEMA)
+        self.assertEqual(empty_detail["nav2_goal_execution_evidence"]["status"], "blocked_not_proven")
+        self.assertIn(
+            "nav2_goal_execution_evidence_not_available",
+            empty_detail["nav2_goal_execution_evidence"]["blocked_reasons"],
+        )
 
         status, missing = self.client.request("GET", "/api/o6/consumer/tasks/missing-task", token="")
         self.assertEqual(status, 404)
@@ -2282,6 +6536,14 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
         status, unsafe_query = self.client.request("GET", "/api/o6/consumer/tasks?robot_id=Authorization%20Bearer%20leaked", token="")
         self.assertEqual(status, 400)
         self.assertEqual(unsafe_query["error"]["code"], "bad_request")
+
+        status, unsafe_detail_query = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/task-o6-consumer-empty?include=field_evidence&robot_id=%2Ftmp%2Ffield_evidence",
+            token="",
+        )
+        self.assertEqual(status, 400)
+        self.assertEqual(unsafe_detail_query["error"]["code"], "bad_request")
 
     def test_o7_realtime_elevator_snapshot_endpoint_is_public_readonly_and_fail_closed(self):
         with mock.patch.dict(os.environ, {"TRASHBOT_O7_REALTIME_ELEVATOR_SNAPSHOT_JSON": ""}):
@@ -2949,6 +7211,7 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
         self.assertEqual(reconciliation["schema"], "trashbot.cloud_command_result_reconciliation.v2")
         self.assertEqual(reconciliation["command_state"], "terminal_result_recorded")
         self.assertEqual(reconciliation["result_state"], "terminal_result_recorded")
+        self.assertEqual(reconciliation["terminal_result"]["schema"], "trashbot.cloud_command_terminal_result.v1")
         self.assertEqual(reconciliation["terminal_result_type"], "delivery_terminal")
         self.assertEqual(reconciliation["result_code"], "task_terminal_completed")
         self.assertFalse(reconciliation["delivery_success"])

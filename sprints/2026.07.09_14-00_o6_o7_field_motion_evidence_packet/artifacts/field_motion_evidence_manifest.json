@@ -1,0 +1,674 @@
+{
+  "artifact_health": {
+    "blocked_artifacts": [],
+    "blocked_count": 0,
+    "empty_count": 0,
+    "missing_artifacts": [],
+    "missing_count": 0,
+    "optional_missing_artifacts": [
+      "rosbag"
+    ],
+    "optional_present_artifacts": [],
+    "present_artifacts": [
+      "map_yaml",
+      "map_pgm",
+      "route_csv",
+      "source_manifest",
+      "keyframes",
+      "replay_jsonl"
+    ],
+    "present_count": 6,
+    "required_count": 6,
+    "status": "gated",
+    "summary": "all_required_artifacts_present"
+  },
+  "artifact_root": "sprints/2026.06.10_01-15_esp32-bridge-dynamic-odom-tf/artifacts/route",
+  "artifact_status": "gated",
+  "artifacts": {
+    "keyframes": {
+      "file_count": 32,
+      "files": [
+        {
+          "path": "001.jpg",
+          "sha256": "92761c933a0e1067b7bebbe3363db4328c2565eeadbedbeef442e832b75701f0",
+          "size_bytes": 12850
+        },
+        {
+          "path": "001.json",
+          "sha256": "5d4c1ba170e567bcd528ac9487ddf0fe59c25d6980032dda886320742ffa5b87",
+          "size_bytes": 568
+        },
+        {
+          "path": "002.jpg",
+          "sha256": "3356c9cbddf7df52c44fb7725537feb10068ac5e1a5f297b2225c3e66782b2fc",
+          "size_bytes": 12707
+        },
+        {
+          "path": "002.json",
+          "sha256": "7ec63e293358acf176fc866a66edd62f1da050ba52a29f59c78be9b44b7469bc",
+          "size_bytes": 567
+        },
+        {
+          "path": "003.jpg",
+          "sha256": "3356c9cbddf7df52c44fb7725537feb10068ac5e1a5f297b2225c3e66782b2fc",
+          "size_bytes": 12707
+        },
+        {
+          "path": "003.json",
+          "sha256": "11bf2f0104a7a236a236d7825a57dc6940dade1699bfd85b5c4b661c4fd02b28",
+          "size_bytes": 575
+        },
+        {
+          "path": "004.jpg",
+          "sha256": "3356c9cbddf7df52c44fb7725537feb10068ac5e1a5f297b2225c3e66782b2fc",
+          "size_bytes": 12707
+        },
+        {
+          "path": "004.json",
+          "sha256": "a0d4c8fdf3c625d30be79968584a3e0206410bd0e70d806095668930d8873843",
+          "size_bytes": 576
+        },
+        {
+          "path": "005.jpg",
+          "sha256": "2f191b8985cc3a870513cc336832abda0a08f3a7b57114e168f44e7d63d527b1",
+          "size_bytes": 12598
+        },
+        {
+          "path": "005.json",
+          "sha256": "d54d0e33c97c7c52dd4dce5692ab32387f982a925532ff8fcb4e66961a1a6231",
+          "size_bytes": 568
+        },
+        {
+          "path": "006.jpg",
+          "sha256": "2f191b8985cc3a870513cc336832abda0a08f3a7b57114e168f44e7d63d527b1",
+          "size_bytes": 12598
+        },
+        {
+          "path": "006.json",
+          "sha256": "1cce17b91449f4bc987adf62c9d6445ca63a6c548660c7491493fb4cf1509905",
+          "size_bytes": 568
+        },
+        {
+          "path": "007.jpg",
+          "sha256": "2f191b8985cc3a870513cc336832abda0a08f3a7b57114e168f44e7d63d527b1",
+          "size_bytes": 12598
+        },
+        {
+          "path": "007.json",
+          "sha256": "40bd8c27d111eff80ead13f745d5f099a0f0e57ff46a2a987446fd6061674713",
+          "size_bytes": 569
+        },
+        {
+          "path": "008.jpg",
+          "sha256": "c550ed225ff49498a65f40ac6123ae39a17fd177bc2453fa5b1bfbf078d18f3a",
+          "size_bytes": 12603
+        },
+        {
+          "path": "008.json",
+          "sha256": "81bc49c5e5655ca9f335cb2be54d83b6ef32770acc415f44f67e08aa71348525",
+          "size_bytes": 575
+        },
+        {
+          "path": "009.jpg",
+          "sha256": "c550ed225ff49498a65f40ac6123ae39a17fd177bc2453fa5b1bfbf078d18f3a",
+          "size_bytes": 12603
+        },
+        {
+          "path": "009.json",
+          "sha256": "350bea08947045642690d836c6536dfdd009ce1180e72b9fee744fe8885afe31",
+          "size_bytes": 574
+        },
+        {
+          "path": "010.jpg",
+          "sha256": "c550ed225ff49498a65f40ac6123ae39a17fd177bc2453fa5b1bfbf078d18f3a",
+          "size_bytes": 12603
+        },
+        {
+          "path": "010.json",
+          "sha256": "65375a6b9ad822ceeec9382c5776cc36449c03b94aec685648cf81dd8a15a7f5",
+          "size_bytes": 576
+        }
+      ],
+      "mtime_utc": "2026-06-09T17:19:47+00:00",
+      "path": "sprints/2026.06.10_01-15_esp32-bridge-dynamic-odom-tf/artifacts/route/keyframes",
+      "present": true,
+      "reason": null,
+      "required": true,
+      "sha256": "ac45437d67943953d08534f0adeaba5ace010c97c17be35e78b758fc9e02c18b",
+      "size_bytes": 211866
+    },
+    "map_pgm": {
+      "mtime_utc": "2026-06-09T17:19:46+00:00",
+      "path": "sprints/2026.06.10_01-15_esp32-bridge-dynamic-odom-tf/artifacts/map/trashbot_dynamic_odom_tf_map.pgm",
+      "present": true,
+      "reason": null,
+      "required": true,
+      "sha256": "255dc6d72577bfdd3f1729020dcbbf99fc104439a11db17b748445f6b73ab5b8",
+      "size_bytes": 6290
+    },
+    "map_yaml": {
+      "mtime_utc": "2026-06-09T17:19:46+00:00",
+      "path": "sprints/2026.06.10_01-15_esp32-bridge-dynamic-odom-tf/artifacts/map/trashbot_dynamic_odom_tf_map.yaml",
+      "present": true,
+      "reason": null,
+      "required": true,
+      "sha256": "62946ea1e89c0165c55633a37d34fd4d74fb2531038d348b855c6cbdeefc61ff",
+      "size_bytes": 149
+    },
+    "replay_jsonl": {
+      "mtime_utc": "2026-07-09T06:12:36+00:00",
+      "path": "sprints/2026.07.09_14-00_o6_o7_field_motion_evidence_packet/artifacts/derived_replay.jsonl",
+      "present": true,
+      "reason": null,
+      "required": true,
+      "sha256": "ed218581f36a130fe6fc83d2e7795a52844d38421ba2f11b94319b619e17777f",
+      "size_bytes": 5705
+    },
+    "rosbag": {
+      "mtime_utc": null,
+      "path": "sprints/2026.06.10_01-15_esp32-bridge-dynamic-odom-tf/artifacts/route/rosbag",
+      "present": false,
+      "reason": "route_bag_missing_optional_for_route_root_seed",
+      "required": false,
+      "sha256": null,
+      "size_bytes": 0
+    },
+    "route_csv": {
+      "mtime_utc": "2026-06-09T17:19:46+00:00",
+      "path": "sprints/2026.06.10_01-15_esp32-bridge-dynamic-odom-tf/artifacts/route/route.csv",
+      "present": true,
+      "reason": null,
+      "required": true,
+      "sha256": "334f3c7ec002f1beae817c5b7ee906e095d63b4c23996f18163e7b9afb07a39d",
+      "size_bytes": 1370
+    },
+    "source_manifest": {
+      "mtime_utc": "2026-06-09T17:19:46+00:00",
+      "path": "sprints/2026.06.10_01-15_esp32-bridge-dynamic-odom-tf/artifacts/route/manifest.json",
+      "present": true,
+      "reason": null,
+      "required": true,
+      "sha256": "5b01c491d4da93fc3ad5e587d911059564ba4b777f6535eff89cdccc6a61d634",
+      "size_bytes": 8655
+    }
+  },
+  "blocked_reason": "missing_preflight_json",
+  "delivery_success": false,
+  "derived_replay": {
+    "blocked_reason": null,
+    "frame_count": 17,
+    "generated": true,
+    "output": "sprints/2026.07.09_14-00_o6_o7_field_motion_evidence_packet/artifacts/derived_replay.jsonl",
+    "source_route_csv": "sprints/2026.06.10_01-15_esp32-bridge-dynamic-odom-tf/artifacts/route/route.csv"
+  },
+  "field_motion_evidence_packet": {
+    "blocked_reasons": [
+      "source_manifest_task_id_missing"
+    ],
+    "delivery_success": false,
+    "derived_replay_summary": {
+      "blocked_reason": null,
+      "frame_count": 17,
+      "generated": true,
+      "output_ref": "derived_replay.jsonl"
+    },
+    "keyframe_summary": {
+      "blocked_reason": null,
+      "count": 32,
+      "path": "sprints/2026.06.10_01-15_esp32-bridge-dynamic-odom-tf/artifacts/route/keyframes",
+      "present": true,
+      "sample_refs": [
+        "001.jpg",
+        "001.json",
+        "002.jpg",
+        "002.json",
+        "003.jpg"
+      ]
+    },
+    "map_summary": {
+      "blocked_reasons": [],
+      "map_pgm_present": true,
+      "map_pgm_ref": "trashbot_dynamic_odom_tf_map.pgm",
+      "map_yaml_present": true,
+      "map_yaml_ref": "trashbot_dynamic_odom_tf_map.yaml"
+    },
+    "motion_log_summary": {
+      "blocked_reasons": [
+        "direct_odom_capture_zero_or_missing"
+      ],
+      "direct_odom_capture_nonzero": false,
+      "direct_tf_capture_nonzero": true,
+      "evidence_sources": [
+        "learn_launch.log:nonzero_waypoints",
+        "pulse_and_stop2.log:nonzero_cmd_vel",
+        "tf_after_motion2.txt:nonzero_translation",
+        "route.csv:nonzero_displacement"
+      ],
+      "file_count": 15,
+      "live_motion_evidence_present": true,
+      "live_nav2_log_present": true,
+      "motion_log_present": true,
+      "nonzero_cmd_vel_log_present": true,
+      "nonzero_odom_evidence_present": true,
+      "nonzero_tf_evidence_present": true,
+      "path": "sprints/2026.06.10_01-15_esp32-bridge-dynamic-odom-tf/artifacts/remote_capture",
+      "present": true,
+      "route_pose_nonzero": true,
+      "sample_files": [
+        "battery_once.txt",
+        "camera_once.txt",
+        "esp32_bridge.log",
+        "esp32_bridge.pid",
+        "imu_once.txt",
+        "learn_launch.log",
+        "learn_launch.pid",
+        "odom_after_motion.txt"
+      ]
+    },
+    "next_required_evidence": [
+      "nonzero_odom_capture_or_bag_replay",
+      "route_bag_or_live_nav2_log_with_pose_progress",
+      "nav2_goal_result_or_delivery_record"
+    ],
+    "primary_actions_enabled": false,
+    "proof_scope": "software_proof_field_motion_evidence_packet_only",
+    "robot_control_executed": false,
+    "route_bag_or_live_nav2_log": {
+      "blocked_reasons": [],
+      "live_motion_log_present": true,
+      "present": true,
+      "route_bag_present": false,
+      "source": "live_motion_log",
+      "status": "live_motion_log_present_not_delivery_proof"
+    },
+    "route_id": "dynamic_odom_tf_20260610",
+    "route_summary": {
+      "basename": "route.csv",
+      "blocked_reason": null,
+      "distance_m": 0.167998,
+      "duration_ms": 179150,
+      "end_pose": {
+        "frame_id": "map",
+        "x_m": 0.1679980841099999,
+        "y_m": 0.0
+      },
+      "frame_count": 17,
+      "nonzero_displacement_observed": true,
+      "path": "sprints/2026.06.10_01-15_esp32-bridge-dynamic-odom-tf/artifacts/route/route.csv",
+      "present": true,
+      "start_pose": {
+        "frame_id": "map",
+        "x_m": 0.0,
+        "y_m": 0.0
+      }
+    },
+    "safe_to_control": false,
+    "schema": "trashbot.field_motion_evidence_packet.v1",
+    "status": "field_motion_evidence_packet_ready_not_delivery_proof",
+    "task_id": "field_motion_evidence_packet_20260709",
+    "task_id_source": "run_id_fallback_due_missing_source_task_id"
+  },
+  "gate_pass": true,
+  "generated_at": "2026-07-09T06:12:36+00:00",
+  "input_manifest": {
+    "blocked_reason": null,
+    "dangerous_true_fields": [],
+    "gate_pass": null,
+    "path": null,
+    "present": false,
+    "safe_for_reuse": true,
+    "schema": null,
+    "status": "not_found"
+  },
+  "manifest_gate": {
+    "blocked_reason": "missing_preflight_json",
+    "gate_pass": true,
+    "schema": "trashbot.field_evidence_manifest.v1",
+    "source": "local_fixture",
+    "status": "gated"
+  },
+  "mode": "local",
+  "not_proven": true,
+  "preflight": {
+    "blocked_reason": "missing_preflight_json",
+    "dry_run": null,
+    "read_ok": false,
+    "status": "missing_preflight_json"
+  },
+  "preflight_json": null,
+  "preflight_status": "missing_preflight_json",
+  "primary_actions_enabled": false,
+  "robot_control_executed": false,
+  "route_root_seed_gate": {
+    "blocked_reasons": [
+      "route_bag_missing_optional_for_route_root_seed"
+    ],
+    "delivery_success": false,
+    "derived_replay_frame_count": 17,
+    "enabled": true,
+    "keyframe_count": 32,
+    "next_required_evidence": [
+      "route_bag_or_live_nav2_log_for_motion_proof"
+    ],
+    "primary_actions_enabled": false,
+    "replay_enabled_or_present": true,
+    "replay_jsonl_present": true,
+    "robot_control_executed": false,
+    "route_bag_present": false,
+    "route_bag_required": false,
+    "route_csv_present": true,
+    "route_root_explicit": true,
+    "safe_to_control": false,
+    "schema": "trashbot.route_root_seed_gate.v1",
+    "source_manifest_present": true,
+    "status": "route_root_seed_gated_not_delivery_proof"
+  },
+  "run_id": "field_motion_evidence_packet_20260709",
+  "safe_to_control": false,
+  "schema": "trashbot.field_evidence_manifest.v1",
+  "source": "local_fixture",
+  "source_manifest": {
+    "blocked_reason": null,
+    "loaded": {
+      "sample_output_dir": "/tmp/trashbot_dynamic_odom_tf_route",
+      "samples": [
+        {
+          "annotated_image": "",
+          "context": {
+            "anomaly_type": "",
+            "checkpoint_id": "1",
+            "event_type": "route_keyframe",
+            "route_id": "dynamic_odom_tf_20260610",
+            "task_id": ""
+          },
+          "detection_count": 0,
+          "frame_id": "map",
+          "json": "keyframes/001.json",
+          "max_confidence": 0,
+          "raw_image": "keyframes/001.jpg",
+          "sample_id": "route_keyframe_001",
+          "sample_ref": "vision_sample://keyframes/001.json",
+          "timestamp": 1781025531.470293
+        },
+        {
+          "annotated_image": "",
+          "context": {
+            "anomaly_type": "",
+            "checkpoint_id": "2",
+            "event_type": "route_keyframe",
+            "route_id": "dynamic_odom_tf_20260610",
+            "task_id": ""
+          },
+          "detection_count": 0,
+          "frame_id": "map",
+          "json": "keyframes/002.json",
+          "max_confidence": 0,
+          "raw_image": "keyframes/002.jpg",
+          "sample_id": "route_keyframe_002",
+          "sample_ref": "vision_sample://keyframes/002.json",
+          "timestamp": 1781025531.820688
+        },
+        {
+          "annotated_image": "",
+          "context": {
+            "anomaly_type": "",
+            "checkpoint_id": "3",
+            "event_type": "route_keyframe",
+            "route_id": "dynamic_odom_tf_20260610",
+            "task_id": ""
+          },
+          "detection_count": 0,
+          "frame_id": "map",
+          "json": "keyframes/003.json",
+          "max_confidence": 0,
+          "raw_image": "keyframes/003.jpg",
+          "sample_id": "route_keyframe_003",
+          "sample_ref": "vision_sample://keyframes/003.json",
+          "timestamp": 1781025532.1703582
+        },
+        {
+          "annotated_image": "",
+          "context": {
+            "anomaly_type": "",
+            "checkpoint_id": "4",
+            "event_type": "route_keyframe",
+            "route_id": "dynamic_odom_tf_20260610",
+            "task_id": ""
+          },
+          "detection_count": 0,
+          "frame_id": "map",
+          "json": "keyframes/004.json",
+          "max_confidence": 0,
+          "raw_image": "keyframes/004.jpg",
+          "sample_id": "route_keyframe_004",
+          "sample_ref": "vision_sample://keyframes/004.json",
+          "timestamp": 1781025532.5208337
+        },
+        {
+          "annotated_image": "",
+          "context": {
+            "anomaly_type": "",
+            "checkpoint_id": "5",
+            "event_type": "route_keyframe",
+            "route_id": "dynamic_odom_tf_20260610",
+            "task_id": ""
+          },
+          "detection_count": 0,
+          "frame_id": "map",
+          "json": "keyframes/005.json",
+          "max_confidence": 0,
+          "raw_image": "keyframes/005.jpg",
+          "sample_id": "route_keyframe_005",
+          "sample_ref": "vision_sample://keyframes/005.json",
+          "timestamp": 1781025532.870494
+        },
+        {
+          "annotated_image": "",
+          "context": {
+            "anomaly_type": "",
+            "checkpoint_id": "6",
+            "event_type": "route_keyframe",
+            "route_id": "dynamic_odom_tf_20260610",
+            "task_id": ""
+          },
+          "detection_count": 0,
+          "frame_id": "map",
+          "json": "keyframes/006.json",
+          "max_confidence": 0,
+          "raw_image": "keyframes/006.jpg",
+          "sample_id": "route_keyframe_006",
+          "sample_ref": "vision_sample://keyframes/006.json",
+          "timestamp": 1781025533.220391
+        },
+        {
+          "annotated_image": "",
+          "context": {
+            "anomaly_type": "",
+            "checkpoint_id": "7",
+            "event_type": "route_keyframe",
+            "route_id": "dynamic_odom_tf_20260610",
+            "task_id": ""
+          },
+          "detection_count": 0,
+          "frame_id": "map",
+          "json": "keyframes/007.json",
+          "max_confidence": 0,
+          "raw_image": "keyframes/007.jpg",
+          "sample_id": "route_keyframe_007",
+          "sample_ref": "vision_sample://keyframes/007.json",
+          "timestamp": 1781025533.5702963
+        },
+        {
+          "annotated_image": "",
+          "context": {
+            "anomaly_type": "",
+            "checkpoint_id": "8",
+            "event_type": "route_keyframe",
+            "route_id": "dynamic_odom_tf_20260610",
+            "task_id": ""
+          },
+          "detection_count": 0,
+          "frame_id": "map",
+          "json": "keyframes/008.json",
+          "max_confidence": 0,
+          "raw_image": "keyframes/008.jpg",
+          "sample_id": "route_keyframe_008",
+          "sample_ref": "vision_sample://keyframes/008.json",
+          "timestamp": 1781025533.9202857
+        },
+        {
+          "annotated_image": "",
+          "context": {
+            "anomaly_type": "",
+            "checkpoint_id": "9",
+            "event_type": "route_keyframe",
+            "route_id": "dynamic_odom_tf_20260610",
+            "task_id": ""
+          },
+          "detection_count": 0,
+          "frame_id": "map",
+          "json": "keyframes/009.json",
+          "max_confidence": 0,
+          "raw_image": "keyframes/009.jpg",
+          "sample_id": "route_keyframe_009",
+          "sample_ref": "vision_sample://keyframes/009.json",
+          "timestamp": 1781025534.270401
+        },
+        {
+          "annotated_image": "",
+          "context": {
+            "anomaly_type": "",
+            "checkpoint_id": "10",
+            "event_type": "route_keyframe",
+            "route_id": "dynamic_odom_tf_20260610",
+            "task_id": ""
+          },
+          "detection_count": 0,
+          "frame_id": "map",
+          "json": "keyframes/010.json",
+          "max_confidence": 0,
+          "raw_image": "keyframes/010.jpg",
+          "sample_id": "route_keyframe_010",
+          "sample_ref": "vision_sample://keyframes/010.json",
+          "timestamp": 1781025534.6202655
+        },
+        {
+          "annotated_image": "",
+          "context": {
+            "anomaly_type": "",
+            "checkpoint_id": "11",
+            "event_type": "route_keyframe",
+            "route_id": "dynamic_odom_tf_20260610",
+            "task_id": ""
+          },
+          "detection_count": 0,
+          "frame_id": "map",
+          "json": "keyframes/011.json",
+          "max_confidence": 0,
+          "raw_image": "keyframes/011.jpg",
+          "sample_id": "route_keyframe_011",
+          "sample_ref": "vision_sample://keyframes/011.json",
+          "timestamp": 1781025534.970242
+        },
+        {
+          "annotated_image": "",
+          "context": {
+            "anomaly_type": "",
+            "checkpoint_id": "12",
+            "event_type": "route_keyframe",
+            "route_id": "dynamic_odom_tf_20260610",
+            "task_id": ""
+          },
+          "detection_count": 0,
+          "frame_id": "map",
+          "json": "keyframes/012.json",
+          "max_confidence": 0,
+          "raw_image": "keyframes/012.jpg",
+          "sample_id": "route_keyframe_012",
+          "sample_ref": "vision_sample://keyframes/012.json",
+          "timestamp": 1781025535.320316
+        },
+        {
+          "annotated_image": "",
+          "context": {
+            "anomaly_type": "",
+            "checkpoint_id": "13",
+            "event_type": "route_keyframe",
+            "route_id": "dynamic_odom_tf_20260610",
+            "task_id": ""
+          },
+          "detection_count": 0,
+          "frame_id": "map",
+          "json": "keyframes/013.json",
+          "max_confidence": 0,
+          "raw_image": "keyframes/013.jpg",
+          "sample_id": "route_keyframe_013",
+          "sample_ref": "vision_sample://keyframes/013.json",
+          "timestamp": 1781025535.6702304
+        },
+        {
+          "annotated_image": "",
+          "context": {
+            "anomaly_type": "",
+            "checkpoint_id": "14",
+            "event_type": "route_keyframe",
+            "route_id": "dynamic_odom_tf_20260610",
+            "task_id": ""
+          },
+          "detection_count": 0,
+          "frame_id": "map",
+          "json": "keyframes/014.json",
+          "max_confidence": 0,
+          "raw_image": "keyframes/014.jpg",
+          "sample_id": "route_keyframe_014",
+          "sample_ref": "vision_sample://keyframes/014.json",
+          "timestamp": 1781025536.02019
+        },
+        {
+          "annotated_image": "",
+          "context": {
+            "anomaly_type": "",
+            "checkpoint_id": "15",
+            "event_type": "route_keyframe",
+            "route_id": "dynamic_odom_tf_20260610",
+            "task_id": ""
+          },
+          "detection_count": 0,
+          "frame_id": "map",
+          "json": "keyframes/015.json",
+          "max_confidence": 0,
+          "raw_image": "keyframes/015.jpg",
+          "sample_id": "route_keyframe_015",
+          "sample_ref": "vision_sample://keyframes/015.json",
+          "timestamp": 1781025536.3703027
+        },
+        {
+          "annotated_image": "",
+          "context": {
+            "anomaly_type": "",
+            "checkpoint_id": "16",
+            "event_type": "route_keyframe",
+            "route_id": "dynamic_odom_tf_20260610",
+            "task_id": ""
+          },
+          "detection_count": 0,
+          "frame_id": "map",
+          "json": "keyframes/016.json",
+          "max_confidence": 0,
+          "raw_image": "keyframes/016.jpg",
+          "sample_id": "route_keyframe_016",
+          "sample_ref": "vision_sample://keyframes/016.json",
+          "timestamp": 1781025536.7202017
+        }
+      ],
+      "schema": "trashbot.vision_samples.v1",
+      "updated_at": 1781025536.7349088
+    },
+    "path": "sprints/2026.06.10_01-15_esp32-bridge-dynamic-odom-tf/artifacts/route/manifest.json",
+    "present": true,
+    "sample_count": 16,
+    "schema": "trashbot.vision_samples.v1",
+    "status": "source_manifest"
+  },
+  "status": "field_evidence_manifest_ready_not_delivery_proof"
+}

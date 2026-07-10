@@ -1819,6 +1819,9 @@ export interface O7CloudOperatorConsoleProbeResponse extends ProofFlags {
 export interface O7ConsumerTaskListItem {
   task_id: string;
   robot_id: string;
+  task_origin: string;
+  field_evidence_source: string;
+  field_evidence_artifact_status: "gated" | "missing" | "blocked";
   started_at_ms: number | null;
   finished_at_ms: number | null;
   task_status_summary: string;
@@ -1857,6 +1860,1358 @@ export interface O7ConsumerTaskListResponse extends ProofFlags {
   primary_actions_enabled: false;
 }
 
+export interface O7ConsumerRouteReplayMvpFrame {
+  frame_index: number;
+  cursor_index: number;
+  timestamp_ms: number | null;
+  pose: {
+    x_m: number | null;
+    y_m: number | null;
+    yaw_rad: number | null;
+  };
+  velocity: {
+    linear_mps: number | null;
+    angular_radps: number | null;
+  };
+  state: string;
+  evidence_ref: string;
+  keyframe_ref: string;
+}
+
+export interface O7ConsumerRouteReplayMvpEvent {
+  event_type: string;
+  state: string;
+  timestamp_ms: number | null;
+  evidence_ref: string;
+}
+
+export interface O7ConsumerArtifactMediaDependency {
+  status: string;
+  route_ref: string;
+  replay_ref: string;
+  keyframe_ref: string;
+  sample_refs: string[];
+  review_item_media_refs: string[];
+  blocked_reasons: string[];
+  next_required_evidence: string[];
+  media_access_proven: false;
+  real_oss_connected: false;
+  real_cdn_connected: false;
+}
+
+// artifact bundle 只表达同一 task_id 下 route/replay/keyframe/evidence 的结构化摘要，不等于真实媒体可读。
+export interface O7ConsumerArtifactBundleSummary extends ProofFlags {
+  schema: "trashbot.o6.artifact_bundle.v1" | "not_loaded";
+  source: "software_proof";
+  task_origin: "artifact_bundle" | "not_loaded";
+  bundle_status: string;
+  request_summary: {
+    task_id: string;
+    robot_id: string;
+    status: string;
+  };
+  route_refs: string[];
+  replay_refs: string[];
+  keyframe_refs: string[];
+  evidence_refs: string[];
+  route_bag_payload_replay: O7ConsumerRouteBagPayloadReplaySummary;
+  route_bag_semantic_replay: O7ConsumerRouteBagSemanticReplaySummary;
+  route_bag_full_semantic_decode_matrix: O7ConsumerRouteBagFullSemanticDecodeMatrixSummary;
+  route_bag_pose_progress_replay: O7ConsumerRouteBagPoseProgressReplaySummary;
+  route_execution_result_delivery_readiness: O7ConsumerRouteExecutionResultDeliveryReadinessSummary;
+  route_delivery_closure_packet: O7ConsumerRouteDeliveryClosurePacketSummary;
+  same_task_field_material_packet: O7ConsumerSameTaskFieldMaterialPacketSummary;
+  same_task_mission_evidence_gate: O7ConsumerSameTaskMissionEvidenceGateSummary;
+  same_task_mission_material_checklist: O7ConsumerSameTaskMissionMaterialChecklist;
+  artifact_media_preflight: O7ConsumerArtifactMediaPreflight;
+  connects_cloud_production: false;
+  robot_control_executed: false;
+  real_cloud_db_connected: false;
+  real_oss_connected: false;
+}
+
+// artifact bundle consumer ingest 只补充来源和门禁摘要，不把 O7 误导成真实 archive 读写入口。
+export interface O7ConsumerArtifactBundleConsumerIngestSummary extends ProofFlags {
+  schema: "trashbot.o6.artifact_bundle_consumer_ingest.v1" | "not_loaded";
+  status: string;
+  source: "software_proof";
+  task_origin: "artifact_bundle" | "field_evidence_manifest" | "not_loaded";
+  run_id: string;
+  manifest_schema: "trashbot.o6.artifact_bundle.v1" | "trashbot.field_evidence_manifest.v1" | "not_loaded";
+  manifest_status: string;
+  bundle_status: string;
+  artifact_summary: {
+    summary: string;
+    artifact_count: number;
+    gate_pass: boolean;
+  };
+  field_evidence_summary: {
+    run_id: string;
+    summary: string;
+    artifact_count: number;
+    gate_pass: boolean;
+  };
+  manifest_gate: {
+    schema: "trashbot.o6.artifact_bundle.v1" | "trashbot.field_evidence_manifest.v1" | "not_loaded";
+    status: string;
+    gate_pass: boolean;
+    blocked_reason: string;
+    source: string;
+  };
+  artifact_bundle: O7ConsumerArtifactBundleSummary | null;
+  route_bag_payload_replay: O7ConsumerRouteBagPayloadReplaySummary;
+  route_bag_semantic_replay: O7ConsumerRouteBagSemanticReplaySummary;
+  route_bag_full_semantic_decode_matrix: O7ConsumerRouteBagFullSemanticDecodeMatrixSummary;
+  route_bag_pose_progress_replay: O7ConsumerRouteBagPoseProgressReplaySummary;
+  route_execution_result_delivery_readiness: O7ConsumerRouteExecutionResultDeliveryReadinessSummary;
+  route_delivery_closure_packet: O7ConsumerRouteDeliveryClosurePacketSummary;
+  same_task_field_material_packet: O7ConsumerSameTaskFieldMaterialPacketSummary;
+  same_task_mission_evidence_gate: O7ConsumerSameTaskMissionEvidenceGateSummary;
+  same_task_mission_material_checklist: O7ConsumerSameTaskMissionMaterialChecklist;
+  artifact_media_preflight: O7ConsumerArtifactMediaPreflight;
+  connects_cloud_production: false;
+  robot_control_executed: false;
+  real_cloud_db_connected: false;
+  real_oss_connected: false;
+}
+
+// artifact/media preflight 只表达 O6 detail 里 route replay 与 labeling 依赖的媒体摘要。
+// 即使有 evidence_ref/sample ref，也不能把它解释成 OSS/CDN 可读、媒体已探活或真实数据已可访问。
+export interface O7ConsumerArtifactMediaPreflight {
+  schema: "trashbot.o6.artifact_media_preflight.v1" | "not_loaded";
+  status: "local_mock_media_preflight_ready" | "derived_blocked_not_proven" | "blocked_not_proven";
+  task_id: string;
+  consumer_section_names: Array<
+    | "artifact_media_preflight"
+    | "route_replay_mvp"
+    | "labeling_mvp"
+    | "artifact_bundle_readiness"
+    | "artifact_bundle"
+    | "artifact_bundle_consumer_ingest"
+  >;
+  counts: {
+    route_ref_count: number;
+    replay_ref_count: number;
+    keyframe_ref_count: number;
+    sample_ref_count: number;
+    review_item_media_ref_count: number;
+  };
+  route_replay_dependency: O7ConsumerArtifactMediaDependency;
+  labeling_dependency: O7ConsumerArtifactMediaDependency;
+  proof_boundary: {
+    local_mock: boolean;
+    not_proven: boolean;
+    real_media_read_executed: false;
+    real_oss_connected: false;
+    real_cdn_connected: false;
+  };
+  blocked_reasons: string[];
+  next_required_evidence: string[];
+  media_access_proven: false;
+  real_oss_connected: false;
+  real_cdn_connected: false;
+}
+
+export interface O7ConsumerArtifactAccessProbeSample {
+  task_id: string;
+  ref_kind: string;
+  ref: string;
+  exists: boolean;
+  size_bytes: number | null;
+  sha256_prefix: string;
+  detected_type: string;
+  blocked_reason: string;
+  proof_scope: string;
+}
+
+export interface O7ConsumerOfflineArtifactSeedSmokeSample {
+  task_id: string;
+  ref_kind: string;
+  ref: string;
+  exists: boolean;
+  size_bytes: number | null;
+  sha256_prefix: string;
+  detected_type: string;
+  blocked_reason: string;
+  proof_scope: string;
+}
+
+// offline artifact seed smoke 只展示 route/replay/keyframe/evidence 的离线软件证据，不暴露 allowlist root、原始路径或完整 sha256。
+export interface O7ConsumerOfflineArtifactSeedSmokeSummary extends ProofFlags {
+  schema: "trashbot.o6.offline_artifact_seed_smoke.v1" | "not_loaded";
+  status: "local_mock_offline_artifact_seed_smoke_ready" | "derived_blocked_not_proven" | "blocked_not_proven";
+  task_id: string;
+  source_contract: "trashbot.o6.offline_artifact_seed_smoke.v1" | "not_loaded";
+  source_origin:
+    | "remote_offline_artifact_seed_smoke"
+    | "remote_field_evidence"
+    | "remote_artifact_bundle"
+    | "remote_artifact_bundle_consumer_ingest"
+    | "remote_field_evidence_consumer_ingest"
+    | "not_loaded";
+  source_path: string;
+  proof_scope: "software_proof_offline_artifact_seed_smoke_only" | "not_loaded";
+  allowlist_root_echoed: false;
+  counts: {
+    route_ref_count: number;
+    replay_ref_count: number;
+    keyframe_ref_count: number;
+    evidence_ref_count: number;
+    sample_ref_count: number;
+    readable_ref_count: number;
+    blocked_ref_count: number;
+    missing_ref_count: number;
+  };
+  sample_probes: O7ConsumerOfflineArtifactSeedSmokeSample[];
+  sample_refs: string[];
+  sample_sha256_prefixes: string[];
+  blocked_reasons: string[];
+  next_required_evidence: string[];
+  proof_boundary: {
+    local_mock: boolean;
+    not_proven: boolean;
+    file_read_attempted: boolean;
+    real_oss_connected: false;
+    real_cdn_connected: false;
+  };
+  media_access_proven: false;
+  real_oss_connected: false;
+  real_cdn_connected: false;
+  robot_control_executed: false;
+}
+
+// artifact access probe 只展示 O6 已脱敏的小文件读取摘要，不能暴露 allowlist root 或原始路径。
+export interface O7ConsumerArtifactAccessProbeSummary extends ProofFlags {
+  schema: "trashbot.o6.artifact_access_probe.v1" | "not_loaded";
+  status: "local_mock_artifact_access_probe_ready" | "blocked_not_proven";
+  task_id: string;
+  source_contract: "trashbot.o6.artifact_access_probe.v1" | "not_loaded";
+  source_origin:
+    | "remote_artifact_access_probe"
+    | "remote_field_evidence"
+    | "remote_artifact_bundle"
+    | "remote_artifact_bundle_consumer_ingest"
+    | "remote_field_evidence_consumer_ingest"
+    | "not_loaded";
+  source_path: string;
+  proof_scope: "software_proof_local_mock_artifact_access_probe_only" | "not_loaded";
+  allowlist_root_configured: boolean;
+  allowlist_root_echoed: false;
+  max_file_size_bytes: number | null;
+  counts: {
+    requested_ref_count: number;
+    readable_ref_count: number;
+    blocked_ref_count: number;
+    missing_ref_count: number;
+  };
+  sample_probes: O7ConsumerArtifactAccessProbeSample[];
+  sample_refs: string[];
+  sample_sha256_prefixes: string[];
+  blocked_reasons: string[];
+  next_required_evidence: string[];
+  proof_boundary: {
+    local_mock: boolean;
+    not_proven: boolean;
+    file_read_attempted: boolean;
+    real_oss_connected: false;
+    real_cdn_connected: false;
+  };
+  media_access_proven: false;
+  real_oss_connected: false;
+  real_cdn_connected: false;
+  robot_control_executed: false;
+}
+
+// route-root seed gate 只消费 O6 的结构化摘要，不读取 operator 本机任意路径，也不把缺 route_bag 当成硬阻塞。
+export interface O7ConsumerRouteRootSeedGateSummary extends ProofFlags {
+  schema: "trashbot.o6.route_root_seed_gate.v1" | "not_loaded";
+  status: "local_mock_route_root_seed_ready" | "derived_blocked_not_proven" | "blocked_not_proven";
+  schema_version: number | null;
+  task_id: string;
+  source_contract: "trashbot.o6.route_root_seed_gate.v1" | "not_loaded";
+  source_origin:
+    | "remote_route_root_seed_gate"
+    | "remote_field_evidence"
+    | "remote_artifact_bundle"
+    | "remote_artifact_bundle_consumer_ingest"
+    | "remote_field_evidence_consumer_ingest"
+    | "not_loaded";
+  source_path: string;
+  proof_scope: string;
+  route_root_seed_status: string;
+  route_bag_required: false;
+  route_bag_present: false;
+  counts: {
+    route_frame_count: number;
+    derived_replay_frame_count: number;
+    route_ref_count: number;
+    manifest_ref_count: number;
+    replay_ref_count: number;
+    keyframe_ref_count: number;
+    evidence_ref_count: number;
+    sample_ref_count: number;
+  };
+  sample_refs: string[];
+  blocked_reasons: string[];
+  next_required_evidence: string[];
+  proof_boundary: {
+    local_mock: boolean;
+    not_proven: true;
+    reads_local_path: false;
+    route_bag_required: false;
+    route_bag_present: false;
+    real_route_bag_connected: false;
+    real_oss_connected: false;
+    real_cdn_connected: false;
+  };
+  connects_cloud_production: false;
+  robot_control_executed: false;
+  media_access_proven: false;
+  real_oss_connected: false;
+  real_cdn_connected: false;
+}
+
+// route bag evidence 只展示 O6 已脱敏 DB3/metadata 摘要；topic 仅允许短名称，不展示消息 payload、路径或完整 hash。
+export interface O7ConsumerRouteBagEvidenceSummary extends ProofFlags {
+  schema: "trashbot.route_bag_evidence.v1" | "trashbot.o6.route_bag_evidence.v1" | "not_loaded";
+  status: "ready_not_route_execution_proof" | "derived_blocked_not_proven" | "blocked_not_proven";
+  source_contract: "trashbot.route_bag_evidence.v1" | "trashbot.o6.route_bag_evidence.v1" | "not_loaded";
+  source_origin:
+    | "remote_route_bag_evidence"
+    | "remote_field_evidence"
+    | "remote_field_motion_evidence_packet"
+    | "remote_artifact_bundle"
+    | "remote_artifact_bundle_consumer_ingest"
+    | "remote_field_evidence_consumer_ingest"
+    | "remote_artifact_bundle_readiness"
+    | "not_loaded";
+  source_path: string;
+  task_id: string;
+  task_id_source: string;
+  proof_scope: "software_proof_route_bag_evidence_intake_only" | "not_loaded";
+  route_bag_source: string;
+  source_label: string;
+  metadata_present: boolean;
+  db3_present: boolean;
+  db3_read_ok: boolean;
+  db3_size_bytes: number | null;
+  db3_sha256_prefix: string;
+  topic_count: number;
+  message_count: number;
+  timestamp_first_ns: number | null;
+  timestamp_last_ns: number | null;
+  sample_topic_names: string[];
+  blocked_reasons: string[];
+  next_required_evidence: string[];
+  proof_boundary: {
+    local_mock: boolean;
+    not_proven: true;
+    reads_local_path: false;
+    route_bag_connected: false;
+    live_nav2_run_connected: false;
+    route_execution_success: false;
+    real_oss_connected: false;
+    real_cdn_connected: false;
+  };
+  connects_cloud_production: false;
+  media_access_proven: false;
+  real_oss_connected: false;
+  real_cdn_connected: false;
+  robot_control_executed: false;
+}
+
+// route bag payload replay 只展示 DB3 payload 派生摘要，不回显 raw/base64/content/完整 hash 或绝对路径。
+export interface O7ConsumerRouteBagPayloadReplaySummary extends ProofFlags {
+  schema: "trashbot.route_bag_payload_replay.v1" | "trashbot.o6.route_bag_payload_replay.v1" | "not_loaded";
+  status: "ready_not_route_execution_proof" | "derived_blocked_not_proven" | "blocked_not_proven";
+  source_contract: "trashbot.route_bag_payload_replay.v1" | "trashbot.o6.route_bag_payload_replay.v1" | "not_loaded";
+  source_origin:
+    | "remote_route_bag_payload_replay"
+    | "remote_route_bag_evidence"
+    | "remote_field_evidence"
+    | "remote_field_motion_evidence_packet"
+    | "remote_artifact_bundle"
+    | "remote_artifact_bundle_consumer_ingest"
+    | "remote_field_evidence_consumer_ingest"
+    | "remote_artifact_bundle_readiness"
+    | "not_loaded";
+  source_path: string;
+  task_id: string;
+  task_id_source: string;
+  proof_scope: "software_proof_route_bag_payload_replay_only" | "not_loaded";
+  route_bag_source: string;
+  source_label: string;
+  metadata_present: boolean;
+  db3_present: boolean;
+  db3_read_ok: boolean;
+  db3_size_bytes: number | null;
+  db3_sha256_prefix: string;
+  topic_count: number;
+  message_count: number;
+  timestamp_first_ns: number | null;
+  timestamp_last_ns: number | null;
+  sample_topic_names: string[];
+  payload_sample_count: number;
+  payload_size_min_bytes: number | null;
+  payload_size_max_bytes: number | null;
+  payload_size_avg_bytes: number | null;
+  payload_sha256_prefix_samples: string[];
+  blocked_reasons: string[];
+  next_required_evidence: string[];
+  proof_boundary: {
+    local_mock: boolean;
+    not_proven: true;
+    reads_local_path: false;
+    route_bag_connected: false;
+    live_nav2_run_connected: false;
+    route_execution_success: false;
+    real_oss_connected: false;
+    real_cdn_connected: false;
+  };
+  connects_cloud_production: false;
+  media_access_proven: false;
+  real_oss_connected: false;
+  real_cdn_connected: false;
+  robot_control_executed: false;
+}
+
+export interface O7ConsumerRouteBagSemanticReplayLaserScanSummary {
+  sample_count: number;
+  range_sample_length: number | null;
+  finite_count: number | null;
+  range_min: number | null;
+  range_max: number | null;
+  angle_min: number | null;
+  angle_max: number | null;
+  angle_increment: number | null;
+}
+
+export interface O7ConsumerRouteBagSemanticReplayImageSummary {
+  sample_count: number;
+  width: number | null;
+  height: number | null;
+  encoding: string;
+  step: number | null;
+  data_size: number | null;
+}
+
+export interface O7ConsumerRouteBagSemanticReplayTfSummary {
+  sample_count: number;
+  transform_count: number | null;
+  frame_id_samples: string[];
+  child_frame_id_samples: string[];
+}
+
+// route bag semantic replay 只展示白名单 topic type 的语义摘要（含 Odometry），不回显 raw/base64/path/token 或真实执行成功。
+export interface O7ConsumerRouteBagSemanticReplaySummary extends ProofFlags {
+  schema: "trashbot.route_bag_semantic_replay.v1" | "trashbot.o6.route_bag_semantic_replay.v1" | "not_loaded";
+  status: "ready_not_route_execution_proof" | "derived_blocked_not_proven" | "blocked_not_proven";
+  semantic_decode_status: "ready_not_route_execution_proof" | "derived_blocked_not_proven" | "blocked_not_proven";
+  source_contract:
+    | "trashbot.route_bag_semantic_replay.v1"
+    | "trashbot.o6.route_bag_semantic_replay.v1"
+    | "not_loaded";
+  source_origin:
+    | "remote_route_bag_semantic_replay"
+    | "remote_field_evidence"
+    | "remote_field_motion_evidence_packet"
+    | "remote_artifact_bundle"
+    | "remote_artifact_bundle_consumer_ingest"
+    | "remote_field_evidence_consumer_ingest"
+    | "remote_artifact_bundle_readiness"
+    | "not_loaded";
+  source_path: string;
+  task_id: string;
+  task_id_source: string;
+  proof_scope: "software_proof_route_bag_semantic_replay_only" | "not_loaded";
+  route_bag_source: string;
+  source_label: string;
+  metadata_present: boolean;
+  db3_present: boolean;
+  db3_read_ok: boolean;
+  db3_size_bytes: number | null;
+  db3_sha256_prefix: string;
+  topic_count: number;
+  message_count: number;
+  timestamp_first_ns: number | null;
+  timestamp_last_ns: number | null;
+  sample_topic_names: string[];
+  semantic_sample_count: number;
+  semantic_decode_ok_count: number;
+  semantic_decode_failed_count: number;
+  semantic_topic_types: string[];
+  laser_scan_summary: O7ConsumerRouteBagSemanticReplayLaserScanSummary;
+  image_summary: O7ConsumerRouteBagSemanticReplayImageSummary;
+  tf_summary: O7ConsumerRouteBagSemanticReplayTfSummary;
+  blocked_reasons: string[];
+  next_required_evidence: string[];
+  proof_boundary: {
+    local_mock: boolean;
+    not_proven: true;
+    reads_local_path: false;
+    route_bag_connected: false;
+    live_nav2_run_connected: false;
+    route_execution_success: false;
+    real_oss_connected: false;
+    real_cdn_connected: false;
+  };
+  connects_cloud_production: false;
+  media_access_proven: false;
+  real_oss_connected: false;
+  real_cdn_connected: false;
+  robot_control_executed: false;
+}
+
+export interface O7ConsumerRouteBagFullSemanticDecodeMatrixTopicTypeSummary {
+  topic_name: string;
+  topic_type: string;
+  decode_status: "decoded" | "unsupported" | "failed" | "blocked_not_proven";
+  decoder_name: string;
+  decoded_message_sample_count: number;
+  unsupported_message_sample_count: number;
+  decode_failed_message_sample_count: number;
+  blocked_reason: string;
+}
+
+// full semantic decode matrix 只展示 per topic/type 的覆盖摘要；ready 只说明离线解码覆盖可读，不说明路线执行或送达成功。
+export interface O7ConsumerRouteBagFullSemanticDecodeMatrixSummary extends ProofFlags {
+  schema:
+    | "trashbot.route_bag_full_semantic_decode_matrix.v1"
+    | "trashbot.o6.route_bag_full_semantic_decode_matrix.v1"
+    | "not_loaded";
+  status: "ready_not_route_execution_proof" | "derived_blocked_not_proven" | "blocked_not_proven";
+  semantic_decode_matrix_status:
+    | "ready_not_route_execution_proof"
+    | "derived_blocked_not_proven"
+    | "blocked_not_proven";
+  source_contract:
+    | "trashbot.route_bag_full_semantic_decode_matrix.v1"
+    | "trashbot.o6.route_bag_full_semantic_decode_matrix.v1"
+    | "not_loaded";
+  source_origin:
+    | "remote_route_bag_full_semantic_decode_matrix"
+    | "remote_field_evidence"
+    | "remote_field_motion_evidence_packet"
+    | "remote_artifact_bundle"
+    | "remote_artifact_bundle_consumer_ingest"
+    | "remote_field_evidence_consumer_ingest"
+    | "remote_artifact_bundle_readiness"
+    | "not_loaded";
+  source_path: string;
+  task_id: string;
+  task_id_source: string;
+  proof_scope: "software_proof_route_bag_full_semantic_decode_matrix_only" | "not_loaded";
+  route_bag_source: string;
+  source_label: string;
+  topic_type_count: number;
+  decoded_topic_type_count: number;
+  unsupported_topic_type_count: number;
+  failed_topic_type_count: number;
+  decoded_message_sample_count: number;
+  unsupported_message_sample_count: number;
+  decode_failed_message_sample_count: number;
+  coverage_ratio: number;
+  sample_topic_type_matrix: O7ConsumerRouteBagFullSemanticDecodeMatrixTopicTypeSummary[];
+  sample_topic_names: string[];
+  sample_topic_types: string[];
+  blocked_reasons: string[];
+  next_required_evidence: string[];
+  proof_boundary: {
+    local_mock: boolean;
+    not_proven: true;
+    reads_local_path: false;
+    route_bag_connected: false;
+    live_nav2_run_connected: false;
+    route_execution_success: false;
+    real_oss_connected: false;
+    real_cdn_connected: false;
+  };
+  connects_cloud_production: false;
+  media_access_proven: false;
+  real_oss_connected: false;
+  real_cdn_connected: false;
+  robot_control_executed: false;
+}
+
+export interface O7ConsumerRouteBagPoseProgressFramePairSummary {
+  source_frame_id: string;
+  target_frame_id: string;
+  sample_count: number;
+}
+
+export interface O7ConsumerRouteBagPoseProgressPoseSummary {
+  frame_id: string;
+  x_m: number | null;
+  y_m: number | null;
+  yaw_rad: number | null;
+  timestamp_ns: number | null;
+}
+
+// route bag pose progress replay 只展示位姿进度的安全摘要，不回显 raw payload、控制字段或真实执行成功。
+export interface O7ConsumerRouteBagPoseProgressReplaySummary extends ProofFlags {
+  schema: "trashbot.route_bag_pose_progress_replay.v1" | "trashbot.o6.route_bag_pose_progress_replay.v1" | "not_loaded";
+  status: "ready_not_live_nav2_proof" | "derived_blocked_not_proven" | "blocked_not_proven";
+  pose_decode_status: "ready_not_live_nav2_proof" | "derived_blocked_not_proven" | "blocked_not_proven";
+  source_contract:
+    | "trashbot.route_bag_pose_progress_replay.v1"
+    | "trashbot.o6.route_bag_pose_progress_replay.v1"
+    | "not_loaded";
+  source_origin:
+    | "remote_route_bag_pose_progress_replay"
+    | "remote_field_evidence"
+    | "remote_field_motion_evidence_packet"
+    | "remote_artifact_bundle"
+    | "remote_artifact_bundle_consumer_ingest"
+    | "remote_artifact_bundle_readiness"
+    | "not_loaded";
+  source_path: string;
+  task_id: string;
+  task_id_source: string;
+  proof_scope: "software_proof_route_bag_pose_progress_replay_only" | "not_loaded";
+  route_bag_source: string;
+  source_label: string;
+  metadata_present: boolean;
+  db3_present: boolean;
+  db3_read_ok: boolean;
+  db3_size_bytes: number | null;
+  db3_sha256_prefix: string;
+  topic_count: number;
+  message_count: number;
+  timestamp_first_ns: number | null;
+  timestamp_last_ns: number | null;
+  sample_topic_names: string[];
+  pose_sample_count: number;
+  pose_decode_ok_count: number;
+  pose_decode_failed_count: number;
+  pose_topic_types: string[];
+  pose_frame_pairs: O7ConsumerRouteBagPoseProgressFramePairSummary[];
+  pose_time_span_ns: number | null;
+  start_pose: O7ConsumerRouteBagPoseProgressPoseSummary;
+  end_pose: O7ConsumerRouteBagPoseProgressPoseSummary;
+  displacement_m: number;
+  nonzero_pose_progress_observed: boolean;
+  blocked_reasons: string[];
+  next_required_evidence: string[];
+  proof_boundary: {
+    local_mock: boolean;
+    not_proven: true;
+    reads_local_path: false;
+    route_bag_connected: false;
+    live_nav2_run_connected: false;
+    route_execution_success: false;
+    real_oss_connected: false;
+    real_cdn_connected: false;
+  };
+  connects_cloud_production: false;
+  media_access_proven: false;
+  real_oss_connected: false;
+  real_cdn_connected: false;
+  robot_control_executed: false;
+}
+
+// nav2 goal execution evidence 只消费 O6 已脱敏摘要；goal/result 只能作为执行证据，不能外推成送达成功。
+export interface O7ConsumerNav2GoalExecutionEvidenceSummary extends ProofFlags {
+  schema: "trashbot.nav2_goal_execution_evidence.v1" | "not_loaded";
+  status:
+    | "nav2_goal_execution_evidence_ready_not_delivery_proof"
+    | "derived_blocked_not_proven"
+    | "blocked_not_proven";
+  source_contract: "trashbot.nav2_goal_execution_evidence.v1" | "not_loaded";
+  source_origin:
+    | "remote_nav2_goal_execution_evidence"
+    | "remote_field_evidence"
+    | "remote_field_motion_evidence_packet"
+    | "remote_artifact_bundle"
+    | "remote_artifact_bundle_consumer_ingest"
+    | "remote_field_evidence_consumer_ingest"
+    | "remote_artifact_bundle_readiness"
+    | "not_loaded";
+  source_path: string;
+  task_id: string;
+  proof_scope: "software_proof_nav2_goal_execution_evidence_only" | "not_loaded";
+  source_proof_status: string;
+  evidence_source: string;
+  goal_requested: boolean;
+  goal_sent: boolean;
+  goal_accepted: boolean;
+  result_received: boolean;
+  goal_result_status: string;
+  result_status_code: number | null;
+  nav2_goal_execution_proven: boolean;
+  base_motion_command_nonzero_proven: boolean;
+  requested_base_command_mode: string;
+  base_command_mode: string;
+  pose_progress_summary: string;
+  base_feedback_summary: string;
+  base_command_summary: string;
+  blocked_reasons: string[];
+  next_required_evidence: string[];
+  proof_boundary: {
+    local_mock: boolean;
+    not_proven: true;
+    reads_local_path: false;
+    live_nav2_goal_connected: false;
+    delivery_result_connected: false;
+    base_feedback_connected: boolean;
+    real_oss_connected: false;
+    real_cdn_connected: false;
+  };
+  connects_cloud_production: false;
+  media_access_proven: false;
+  real_oss_connected: false;
+  real_cdn_connected: false;
+  robot_control_executed: false;
+}
+
+// delivery result evidence 只消费 O6 已脱敏的送达记录摘要；人工确认存在也不能外推成真实 delivery success。
+export interface O7ConsumerDeliveryResultEvidenceSummary extends ProofFlags {
+  schema: "trashbot.delivery_result_evidence.v1" | "not_loaded";
+  status:
+    | "delivery_result_evidence_ready_not_delivery_proof"
+    | "derived_blocked_not_proven"
+    | "blocked_not_proven";
+  source_contract: "trashbot.delivery_result_evidence.v1" | "not_loaded";
+  source_origin:
+    | "remote_delivery_result_evidence"
+    | "remote_field_evidence"
+    | "remote_field_motion_evidence_packet"
+    | "remote_artifact_bundle"
+    | "remote_artifact_bundle_consumer_ingest"
+    | "remote_field_evidence_consumer_ingest"
+    | "remote_artifact_bundle_readiness"
+    | "not_loaded";
+  source_path: string;
+  task_id: string;
+  proof_scope: "software_proof_delivery_result_evidence_only" | "not_loaded";
+  source_proof_status: string;
+  evidence_source: string;
+  record_source: string;
+  source_schema: string;
+  task_id_source: string;
+  record_present: boolean;
+  record_read_ok: boolean;
+  record_status: string;
+  delivery_result_claimed: boolean;
+  operator_confirmation_present: boolean;
+  dropoff_confirmation_type: string;
+  completed_at_utc: string;
+  linked_nav2_goal_execution_proven: boolean;
+  blocked_reasons: string[];
+  next_required_evidence: string[];
+  proof_boundary: {
+    local_mock: boolean;
+    not_proven: true;
+    reads_local_path: false;
+    operator_confirmation_connected: false;
+    delivery_record_connected: false;
+    linked_nav2_goal_execution_connected: false;
+    real_oss_connected: false;
+    real_cdn_connected: false;
+  };
+  connects_cloud_production: false;
+  media_access_proven: false;
+  real_oss_connected: false;
+  real_cdn_connected: false;
+  robot_control_executed: false;
+}
+
+// route execution result / delivery readiness 只消费 O6 的统一结果链摘要，不把 ready 外推成真实执行或送达成功。
+export interface O7ConsumerRouteExecutionResultDeliveryReadinessSummary extends ProofFlags {
+  schema: "trashbot.o6.route_execution_result_delivery_readiness.v1" | "not_loaded";
+  status:
+    | "route_execution_result_delivery_readiness_ready_not_delivery_proof"
+    | "derived_blocked_not_proven"
+    | "blocked_not_proven";
+  source_contract: "trashbot.o6.route_execution_result_delivery_readiness.v1" | "not_loaded";
+  source_origin:
+    | "remote_route_execution_result_delivery_readiness"
+    | "remote_field_evidence"
+    | "remote_field_motion_evidence_packet"
+    | "remote_artifact_bundle"
+    | "remote_artifact_bundle_consumer_ingest"
+    | "remote_field_evidence_consumer_ingest"
+    | "remote_artifact_bundle_readiness"
+    | "not_loaded";
+  source_path: string;
+  task_id: string;
+  proof_scope: "software_proof_route_execution_result_delivery_readiness_only" | "not_loaded";
+  source_proof_status: string;
+  route_execution_result_status: string;
+  route_execution_source: string;
+  delivery_result_readiness_status: string;
+  delivery_result_source: string;
+  operator_confirmation_readiness_status: string;
+  operator_confirmation_source: string;
+  nav2_goal_execution_ready: boolean;
+  delivery_result_ready: boolean;
+  operator_confirmation_ready: boolean;
+  blocked_reasons: string[];
+  next_required_evidence: string[];
+  proof_boundary: {
+    local_mock: boolean;
+    not_proven: true;
+    reads_local_path: false;
+    live_nav2_goal_connected: false;
+    delivery_result_connected: false;
+    operator_confirmation_connected: false;
+    real_oss_connected: false;
+    real_cdn_connected: false;
+  };
+  connects_cloud_production: false;
+  media_access_proven: false;
+  real_oss_connected: false;
+  real_cdn_connected: false;
+  robot_control_executed: false;
+}
+
+// route delivery closure packet 只消费 O6 的闭合包摘要，ready 仅表示软件证据闭合，不能外推成真实送达成功。
+export interface O7ConsumerRouteDeliveryClosurePacketSummary extends ProofFlags {
+  schema: "trashbot.o6.route_delivery_closure_packet.v1" | "not_loaded";
+  status:
+    | "route_delivery_closure_ready_not_success_proof"
+    | "derived_blocked_not_proven"
+    | "blocked_not_proven";
+  source_contract: "trashbot.o6.route_delivery_closure_packet.v1" | "not_loaded";
+  source_origin:
+    | "remote_route_delivery_closure_packet"
+    | "remote_field_evidence"
+    | "remote_field_motion_evidence_packet"
+    | "remote_artifact_bundle"
+    | "remote_artifact_bundle_consumer_ingest"
+    | "remote_field_evidence_consumer_ingest"
+    | "remote_artifact_bundle_readiness"
+    | "not_loaded";
+  source_path: string;
+  task_id: string;
+  proof_scope: "software_proof_route_delivery_closure_packet_only" | "not_loaded";
+  source_proof_status: string;
+  closure_status: string;
+  linked_evidence_flags: {
+    nav2_goal_execution_ready: boolean;
+    delivery_result_ready: boolean;
+    operator_confirmation_ready: boolean;
+    route_pose_progress_ready: boolean;
+    route_execution_readiness_ready: boolean;
+  };
+  blocked_reasons: string[];
+  next_required_evidence: string[];
+  proof_boundary: {
+    local_mock: boolean;
+    not_proven: true;
+    reads_local_path: false;
+    live_nav2_goal_connected: false;
+    delivery_result_connected: false;
+    operator_confirmation_connected: false;
+    route_pose_progress_connected: false;
+    route_execution_success: false;
+    real_oss_connected: false;
+    real_cdn_connected: false;
+  };
+  connects_cloud_production: false;
+  media_access_proven: false;
+  real_oss_connected: false;
+  real_cdn_connected: false;
+  robot_control_executed: false;
+}
+
+// same-task mission evidence gate 只检查同 task_id 的 terminal result 与 route execution materials 是否配对；ready 仍不是送达成功。
+export interface O7ConsumerSameTaskMissionEvidenceGateSummary extends ProofFlags {
+  schema: "trashbot.o6.same_task_mission_evidence_gate.v1" | "trashbot.same_task_mission_evidence_gate.v1" | "not_loaded";
+  status:
+    | "same_task_mission_gate_ready_not_success_proof"
+    | "derived_blocked_not_proven"
+    | "blocked_not_proven";
+  source_contract:
+    | "trashbot.o6.same_task_mission_evidence_gate.v1"
+    | "trashbot.same_task_mission_evidence_gate.v1"
+    | "not_loaded";
+  source_origin:
+    | "remote_same_task_mission_evidence_gate"
+    | "remote_field_evidence"
+    | "remote_field_motion_evidence_packet"
+    | "remote_artifact_bundle"
+    | "remote_artifact_bundle_consumer_ingest"
+    | "remote_field_evidence_consumer_ingest"
+    | "remote_artifact_bundle_readiness"
+    | "not_loaded";
+  source_path: string;
+  task_id: string;
+  proof_scope: "software_proof_same_task_mission_evidence_gate_only" | "not_loaded";
+  source_proof_status: string;
+  gate_status: string;
+  terminal_result_source: string;
+  terminal_result_ref: string;
+  terminal_source_schema: string;
+  terminal_result_status: string;
+  route_execution_materials_status: string;
+  mission_artifact_delta: string;
+  same_task_id_consumed: boolean;
+  live_or_field_command_executed: boolean;
+  support_only_reason: string;
+  okr_credit_allowed: boolean;
+  linked_evidence_flags: {
+    same_task_id: boolean;
+    terminal_result_ready: boolean;
+    cloud_terminal_source_ready: boolean;
+    route_execution_readiness_ready: boolean;
+    route_delivery_closure_ready: boolean;
+    route_pose_progress_ready: boolean;
+  };
+  blocked_reasons: string[];
+  next_required_evidence: string[];
+  proof_boundary: {
+    local_mock: boolean;
+    not_proven: true;
+    reads_local_path: false;
+    terminal_result_connected: false;
+    route_execution_materials_connected: false;
+    delivery_success_proven: false;
+    real_production_cloud_connected: false;
+    real_oss_connected: false;
+    real_cdn_connected: false;
+  };
+  connects_cloud_production: false;
+  media_access_proven: false;
+  real_oss_connected: false;
+  real_cdn_connected: false;
+  robot_control_executed: false;
+}
+
+export interface O7ConsumerSameTaskFieldMaterialPacketSummary extends ProofFlags {
+  schema: "trashbot.o6.same_task_field_material_packet.v1" | "trashbot.same_task_field_material_packet.v1" | "not_loaded";
+  status: "ready_not_delivery_proof" | "derived_blocked_not_proven" | "blocked_not_proven";
+  source_contract:
+    | "trashbot.o6.same_task_field_material_packet.v1"
+    | "trashbot.same_task_field_material_packet.v1"
+    | "not_loaded";
+  source_origin:
+    | "remote_same_task_field_material_packet"
+    | "remote_field_evidence"
+    | "remote_field_motion_evidence_packet"
+    | "remote_artifact_bundle"
+    | "remote_artifact_bundle_consumer_ingest"
+    | "remote_field_evidence_consumer_ingest"
+    | "remote_artifact_bundle_readiness"
+    | "not_loaded";
+  source_path: string;
+  task_id: string;
+  proof_scope: "software_proof_same_task_field_material_packet_only" | "not_loaded";
+  source_proof_status: string;
+  packet_status: string;
+  task_id_source: string;
+  same_task_id_consumed: boolean;
+  live_or_field_material_consumed: boolean;
+  present_materials: string[];
+  missing_materials: string[];
+  sample_refs: string[];
+  material_summaries: {
+    map_yaml?: O7ConsumerSameTaskFieldMaterialSummary;
+    route_csv?: O7ConsumerSameTaskFieldMaterialSummary;
+    keyframes?: O7ConsumerSameTaskFieldMaterialSummary;
+    route_bag_or_rosbag?: O7ConsumerSameTaskFieldMaterialSummary;
+    replay_jsonl?: O7ConsumerSameTaskFieldMaterialSummary;
+  };
+  route_csv_present: boolean;
+  keyframes_present: boolean;
+  route_bag_or_rosbag_present: boolean;
+  replay_jsonl_present: boolean;
+  map_yaml_present: boolean;
+  blocked_reasons: string[];
+  next_required_evidence: string[];
+  proof_boundary: {
+    local_mock: boolean;
+    not_proven: true;
+    reads_local_path: false;
+    field_materials_connected: false;
+    delivery_success_proven: false;
+    real_production_cloud_connected: false;
+    real_oss_connected: false;
+    real_cdn_connected: false;
+  };
+  connects_cloud_production: false;
+  media_access_proven: false;
+  real_oss_connected: false;
+  real_cdn_connected: false;
+  robot_control_executed: false;
+}
+
+export interface O7ConsumerSameTaskFieldMaterialSummary {
+  present: boolean;
+  basename: string;
+  size_bytes: number | null;
+  sha256_prefix: string;
+  sample_refs: string[];
+  count: number | null;
+}
+
+export type O7SameTaskMissionMaterialStatus =
+  | "ready_not_success_proof"
+  | "present"
+  | "missing"
+  | "blocked"
+  | "not_proven";
+
+export type O7SameTaskMissionMaterialItemId =
+  | "same_task_identity"
+  | "terminal_cloud_result"
+  | "route_execution_material"
+  | "same_task_field_material_packet"
+  | "delivery_record"
+  | "operator_confirmation"
+  | "route_pose_progress"
+  | "production_cloud_readback"
+  | "safety_invariants";
+
+export interface O7ConsumerSameTaskMissionMaterialChecklistItem {
+  id: O7SameTaskMissionMaterialItemId;
+  label: string;
+  material_status: O7SameTaskMissionMaterialStatus;
+  source_summary: string;
+  blocked_reasons: string[];
+  next_required_evidence: string[];
+  owner_hint: string;
+}
+
+// same-task mission material checklist 是 O7 给 operator 的补材料清单，不是送达成功或控制准入证明。
+export interface O7ConsumerSameTaskMissionMaterialChecklist extends ProofFlags {
+  schema: "trashbot.pc_tools_workstation.o7_same_task_mission_material_checklist.v1";
+  status: "blocked_not_proven" | "materials_ready_not_success_proof" | "fail_closed";
+  overall_status: "blocked_not_proven" | "materials_ready_not_success_proof" | "fail_closed";
+  task_id: string;
+  source_gate_schema: "trashbot.o6.same_task_mission_evidence_gate.v1" | "trashbot.same_task_mission_evidence_gate.v1" | "not_loaded";
+  source_gate_status: string;
+  source_gate_task_id: string;
+  source_gate_source_origin: string;
+  proof_status: "not_proven";
+  okr_credit_allowed: boolean;
+  support_only_reason: string;
+  same_task_id_consumed: boolean;
+  live_or_field_command_executed: boolean;
+  items: O7ConsumerSameTaskMissionMaterialChecklistItem[];
+  blocked_reasons: string[];
+  next_required_evidence: string[];
+  connects_cloud_production: false;
+  robot_control_executed: false;
+}
+
+// artifact bundle readiness 是 O7 consumer detail 的主路径摘要，优先消费 O6 bundle/preflight，而不是旧 debug fallback。
+export interface O7ConsumerArtifactBundleReadiness extends ProofFlags {
+  schema: "trashbot.pc_tools_workstation.o7_consumer_artifact_bundle_readiness.v1";
+  status: "consumer_detail_artifact_bundle_ready" | "derived_blocked_not_proven" | "blocked_not_proven";
+  selected_task_id: string;
+  source_detail_task_id: string;
+  source_contract:
+    | "trashbot.o6.artifact_bundle.v1"
+    | "trashbot.o6.artifact_bundle_consumer_ingest.v1"
+    | "not_loaded";
+  source_origin:
+    | "remote_artifact_bundle"
+    | "remote_artifact_bundle_consumer_ingest"
+    | "remote_field_evidence"
+    | "remote_field_evidence_consumer_ingest"
+    | "local_manifest_fallback"
+    | "not_loaded";
+  task_id: string;
+  bundle_status: string;
+  counts: {
+    route_ref_count: number;
+    replay_ref_count: number;
+    keyframe_ref_count: number;
+    evidence_ref_count: number;
+    review_item_count: number;
+    sample_ref_count: number;
+    review_item_media_ref_count: number;
+  };
+  refs: {
+    route_refs: string[];
+    replay_refs: string[];
+    keyframe_refs: string[];
+    evidence_refs: string[];
+    review_item_media_refs: string[];
+    sample_refs: string[];
+  };
+  blocked_reasons: string[];
+  next_required_evidence: string[];
+  route_bag_evidence: O7ConsumerRouteBagEvidenceSummary;
+  route_bag_payload_replay: O7ConsumerRouteBagPayloadReplaySummary;
+  route_bag_semantic_replay: O7ConsumerRouteBagSemanticReplaySummary;
+  route_bag_full_semantic_decode_matrix: O7ConsumerRouteBagFullSemanticDecodeMatrixSummary;
+  route_bag_pose_progress_replay: O7ConsumerRouteBagPoseProgressReplaySummary;
+  route_root_seed_gate: O7ConsumerRouteRootSeedGateSummary;
+  field_motion_evidence_packet: O7ConsumerFieldMotionEvidencePacketSummary;
+  nav2_goal_execution_evidence: O7ConsumerNav2GoalExecutionEvidenceSummary;
+  delivery_result_evidence: O7ConsumerDeliveryResultEvidenceSummary;
+  route_execution_result_delivery_readiness: O7ConsumerRouteExecutionResultDeliveryReadinessSummary;
+  route_delivery_closure_packet: O7ConsumerRouteDeliveryClosurePacketSummary;
+  same_task_field_material_packet: O7ConsumerSameTaskFieldMaterialPacketSummary;
+  same_task_mission_evidence_gate: O7ConsumerSameTaskMissionEvidenceGateSummary;
+  same_task_mission_material_checklist: O7ConsumerSameTaskMissionMaterialChecklist;
+  artifact_access_probe: O7ConsumerArtifactAccessProbeSummary;
+  offline_artifact_seed_smoke: O7ConsumerOfflineArtifactSeedSmokeSummary;
+  artifact_media_preflight: O7ConsumerArtifactMediaPreflight;
+  route_replay_dependency: O7ConsumerArtifactMediaDependency;
+  labeling_dependency: O7ConsumerArtifactMediaDependency;
+  real_oss_connected: false;
+  real_cdn_connected: false;
+}
+
+// field motion evidence packet 只消费 O6 的运动摘要，不回显 route bag/live log 原始路径或未脱敏 payload。
+export interface O7ConsumerFieldMotionEvidencePacketSummary extends ProofFlags {
+  schema:
+    | "trashbot.o6.field_motion_evidence_packet.v1"
+    | "trashbot.field_motion_evidence_packet.v1"
+    | "not_loaded";
+  status:
+    | "field_motion_packet_ready_not_delivery_proof"
+    | "derived_blocked_not_proven"
+    | "blocked_not_proven";
+  source_contract:
+    | "trashbot.o6.field_motion_evidence_packet.v1"
+    | "trashbot.field_motion_evidence_packet.v1"
+    | "not_loaded";
+  source_origin:
+    | "remote_field_motion_evidence_packet"
+    | "remote_field_evidence"
+    | "remote_field_evidence_consumer_ingest"
+    | "remote_artifact_bundle_readiness"
+    | "not_loaded";
+  source_path: string;
+  task_id: string;
+  proof_scope: "software_proof_field_motion_evidence_packet_only" | "not_loaded";
+  route_summary: {
+    frame_count: number;
+    nonzero_displacement_observed: boolean;
+    displacement_m: number;
+  };
+  motion_log_summary: {
+    live_motion_evidence_present: boolean;
+    evidence_sources: string[];
+  };
+  route_bag_or_live_nav2_log: {
+    present: boolean;
+    source: string;
+    route_bag_present: boolean;
+    live_motion_log_present: boolean;
+  };
+  blocked_reasons: string[];
+  next_required_evidence: string[];
+  proof_boundary: {
+    local_mock: true;
+    not_proven: true;
+    reads_local_path: false;
+    route_bag_connected: false;
+    live_nav2_log_connected: false;
+    real_oss_connected: false;
+    real_cdn_connected: false;
+  };
+  media_access_proven: false;
+  real_oss_connected: false;
+  real_cdn_connected: false;
+}
+
+// O7 consumer route replay MVP 只消费 O6 detail 的白名单摘要，cursor 永远留在浏览器本地。
+export interface O7ConsumerRouteReplayMvp {
+  schema: "trashbot.pc_tools_workstation.o7_consumer_route_replay_mvp.v1";
+  status: "consumer_detail_replay_ready" | "blocked_not_proven";
+  selected_task_id: string;
+  source_detail_task_id: string;
+  source_contract: "trashbot.o6.consumer_read.v1" | "not_loaded";
+  trajectory: {
+    frame_count: number;
+    current_frame: O7ConsumerRouteReplayMvpFrame | null;
+    sample_frames: O7ConsumerRouteReplayMvpFrame[];
+    status: string;
+  };
+  events_timeline: {
+    count: number;
+    sample: O7ConsumerRouteReplayMvpEvent[];
+    status: string;
+  };
+  evidence_refs: {
+    count: number;
+    sample_refs: string[];
+    keyframe_refs: string[];
+    status: string;
+  };
+  cursor_contract: {
+    local_cursor_only: true;
+    supported_actions: Array<"previous_frame" | "next_frame" | "reset_cursor" | "toggle_playing">;
+    initial_frame_index: number | null;
+    playing_initial: false;
+    safe_to_play: false;
+    playback_available: false;
+    sends_to_robot: false;
+    status: "local_cursor_ready" | "blocked_not_proven";
+  };
+  media_preflight_dependency: O7ConsumerArtifactMediaDependency;
+  blocked_reasons: string[];
+  not_proven: string[];
+  safe_to_control: false;
+  delivery_success: false;
+  primary_actions_enabled: false;
+  robot_control_executed: false;
+}
+
+export interface O7ConsumerLabelingMvpLabel {
+  label_type: string;
+  value: string;
+  status: string;
+  evidence_ref: string;
+}
+
+export interface O7ConsumerLabelingMvpReviewItem {
+  item_id: string;
+  task_id: string;
+  frame_id: string;
+  media_ref: string;
+  evidence_ref: string;
+  current_labels: {
+    count: number;
+    sample: O7ConsumerLabelingMvpLabel[];
+  };
+}
+
+// O7 consumer labeling MVP 只展示草稿槽位和 fail-closed receipt，不连接真实 annotation API。
+export interface O7ConsumerLabelingMvp {
+  schema: "trashbot.pc_tools_workstation.o7_consumer_labeling_mvp.v1";
+  status: "consumer_detail_labeling_ready" | "blocked_not_proven";
+  selected_task_id: string;
+  source_detail_task_id: string;
+  review_items: {
+    review_item_count: number;
+    current_item: O7ConsumerLabelingMvpReviewItem | null;
+    sample: O7ConsumerLabelingMvpReviewItem[];
+    status: string;
+  };
+  label_schema: {
+    schema_ref: string;
+    version: string;
+    required_fields: string[];
+    allowed_fields: string[];
+    status: string;
+  };
+  allowed_label_types: string[];
+  draft_labels: {
+    count: number;
+    sample: O7ConsumerLabelingMvpLabel[];
+    autosave_available: false;
+    status: string;
+  };
+  submit_receipt: {
+    status: "submit_blocked_fail_closed";
+    receipt_id: "not_created";
+    submit_enabled: false;
+    rollback_enabled: false;
+    dataset_export_available: false;
+    real_annotation_api_connected: false;
+    cloud_write_executed: false;
+    blocked_reason: string;
+  };
+  media_preflight_dependency: O7ConsumerArtifactMediaDependency;
+  blocked_reasons: string[];
+  not_proven: string[];
+  safe_to_control: false;
+  delivery_success: false;
+  primary_actions_enabled: false;
+  robot_control_executed: false;
+}
+
+export interface O7AnnotationSubmitLabel {
+  item_id: string;
+  item_type: string;
+  label_type: string;
+  value: string;
+  confidence: number | null;
+  annotator_id: string;
+  evidence_ref: string;
+  notes: string;
+}
+
+export interface O7AnnotationSubmitResult extends ProofFlags {
+  schema: "trashbot.pc_tools_workstation.o7_annotation_submit_result.v1";
+  adapter_status: "local_mock_annotation_written" | "fail_closed";
+  source_base_url: string;
+  remote_endpoint: "/api/o6/archive/labels";
+  remote_schema: string;
+  requested_task_id: string;
+  o6_http_status: number | null;
+  submit_receipt: {
+    status: "local_mock_annotation_written" | "submit_blocked_fail_closed";
+    receipt_id: string;
+    task_id: string;
+    robot_id: string;
+    label_count: number;
+    write_status: "created" | "updated" | "blocked_not_proven";
+    duplicate: boolean;
+    blocked_reason: string;
+  };
+  submitted_labels: O7AnnotationSubmitLabel[];
+  label_summary: {
+    itemized_label_count: number;
+    pending_item_count: number;
+    labeled_item_count: number;
+    latest_label_updated_at_ms: number | null;
+  };
+  local_mock_annotation_submit_written: boolean;
+  submit_enabled: false;
+  rollback_enabled: false;
+  dataset_export_available: false;
+  real_annotation_api_connected: false;
+  real_dataset_export_connected: false;
+  cloud_write_executed: false;
+  connects_cloud_production: false;
+  robot_control_executed: false;
+  blocked_reasons: string[];
+  not_proven: string[];
+  fail_closed_reason: string;
+  local_loopback_only: true;
+}
+
+export interface O7AnnotationDatasetExportRow {
+  row_index: number;
+  task_id: string;
+  item_id: string;
+  label_type: string;
+  value: string;
+  evidence_ref: string;
+}
+
+export interface O7AnnotationDatasetExportResult extends ProofFlags {
+  schema: "trashbot.pc_tools_workstation.o7_annotation_dataset_export_result.v1";
+  adapter_status: "local_mock_export_ready" | "fail_closed";
+  source_base_url: string;
+  remote_endpoint: string;
+  remote_schema: string;
+  requested_task_id: string;
+  o6_http_status: number | null;
+  format: "jsonl" | "blocked";
+  export_status: "local_mock_export_ready" | "blocked_not_proven";
+  export_manifest: {
+    manifest_id: string;
+    task_id: string;
+    robot_id: string;
+    format: "jsonl" | "blocked";
+    label_count: number;
+    item_count: number;
+    row_count: number;
+    status: "local_mock_export_ready" | "blocked_not_proven";
+  };
+  sample_rows: O7AnnotationDatasetExportRow[];
+  local_mock_dataset_export_written: boolean;
+  dataset_export_available: false;
+  submit_enabled: false;
+  rollback_enabled: false;
+  real_annotation_api_connected: false;
+  real_dataset_export_connected: false;
+  connects_cloud_production: false;
+  cloud_write_executed: false;
+  robot_control_executed: false;
+  blocked_reasons: string[];
+  not_proven: string[];
+  fail_closed_reason: string;
+  local_loopback_only: true;
+}
+
 export interface O7ConsumerTaskDetailResponse extends ProofFlags {
   schema: "trashbot.pc_tools_workstation.o7_consumer_task_detail.v1";
   detail_status: "loaded_fail_closed_summary" | "fail_closed";
@@ -1875,6 +3230,18 @@ export interface O7ConsumerTaskDetailResponse extends ProofFlags {
       | "trashbot.field_evidence_manifest.v1"
       | "trashbot.pc_tools_workstation.o7_field_evidence_consumer_ingest.v1"
       | "not_loaded";
+    source_origin:
+      | "remote_field_evidence"
+      | "remote_field_evidence_manifest"
+      | "remote_field_evidence_consumer_ingest"
+      | "local_manifest_fallback"
+      | "not_loaded";
+    task_origin: string;
+    manifest_run_id: string;
+    artifact_root: string;
+    artifact_health_summary: string;
+    present_artifacts: string[];
+    missing_artifacts: string[];
     input_status:
       | "loaded"
       | "missing"
@@ -1920,6 +3287,28 @@ export interface O7ConsumerTaskDetailResponse extends ProofFlags {
     count: number;
     sample_evidence: Record<string, unknown>[];
   };
+  artifact_media_preflight: O7ConsumerArtifactMediaPreflight;
+  artifact_access_probe: O7ConsumerArtifactAccessProbeSummary;
+  offline_artifact_seed_smoke: O7ConsumerOfflineArtifactSeedSmokeSummary;
+  route_bag_evidence: O7ConsumerRouteBagEvidenceSummary;
+  route_bag_payload_replay: O7ConsumerRouteBagPayloadReplaySummary;
+  route_bag_semantic_replay: O7ConsumerRouteBagSemanticReplaySummary;
+  route_bag_full_semantic_decode_matrix: O7ConsumerRouteBagFullSemanticDecodeMatrixSummary;
+  route_bag_pose_progress_replay: O7ConsumerRouteBagPoseProgressReplaySummary;
+  route_root_seed_gate: O7ConsumerRouteRootSeedGateSummary;
+  field_motion_evidence_packet: O7ConsumerFieldMotionEvidencePacketSummary;
+  nav2_goal_execution_evidence: O7ConsumerNav2GoalExecutionEvidenceSummary;
+  delivery_result_evidence: O7ConsumerDeliveryResultEvidenceSummary;
+  route_execution_result_delivery_readiness: O7ConsumerRouteExecutionResultDeliveryReadinessSummary;
+  route_delivery_closure_packet: O7ConsumerRouteDeliveryClosurePacketSummary;
+  same_task_field_material_packet: O7ConsumerSameTaskFieldMaterialPacketSummary;
+  same_task_mission_evidence_gate: O7ConsumerSameTaskMissionEvidenceGateSummary;
+  same_task_mission_material_checklist: O7ConsumerSameTaskMissionMaterialChecklist;
+  artifact_bundle: O7ConsumerArtifactBundleSummary;
+  artifact_bundle_consumer_ingest: O7ConsumerArtifactBundleConsumerIngestSummary;
+  artifact_bundle_readiness: O7ConsumerArtifactBundleReadiness;
+  route_replay_mvp: O7ConsumerRouteReplayMvp;
+  labeling_mvp: O7ConsumerLabelingMvp;
   labeling: {
     status: string;
     label_count: number;

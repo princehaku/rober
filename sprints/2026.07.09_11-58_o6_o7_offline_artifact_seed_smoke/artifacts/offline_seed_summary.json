@@ -1,0 +1,56 @@
+{
+  "schema": "trashbot.offline_seed_summary.v1",
+  "task_id": "offline-artifact-seed-20260610",
+  "sprint": "sprints/2026.07.09_11-58_o6_o7_offline_artifact_seed_smoke",
+  "source_materials": [
+    "sprints/2026.06.10_01-15_esp32-bridge-dynamic-odom-tf/artifacts/route/route.csv",
+    "sprints/2026.06.10_01-15_esp32-bridge-dynamic-odom-tf/artifacts/route/manifest.json",
+    "sprints/2026.06.10_01-15_esp32-bridge-dynamic-odom-tf/artifacts/route/keyframes/001.jpg",
+    "sprints/2026.06.10_01-15_esp32-bridge-dynamic-odom-tf/artifacts/map/trashbot_dynamic_odom_tf_map.yaml",
+    "sprints/2026.06.10_01-15_esp32-bridge-dynamic-odom-tf/artifacts/map/trashbot_dynamic_odom_tf_map.pgm",
+    "sprints/2026.06.10_02-05_field-run-bundle-replay-intake/artifacts/derived_replay.jsonl"
+  ],
+  "supporting_fixture": {
+    "path": "sprints/2026.06.09_23-20_board-bringup-blocker-fix/artifacts/no_motion_sensor_20260609_235445/no_motion_sensor_20260609_235445/route_bag",
+    "reason": "current script still gates route-root local intake on route_bag presence"
+  },
+  "route_frame_count": 17,
+  "derived_replay_frame_count": 17,
+  "keyframe_sample": {
+    "path": "sprints/2026.06.10_01-15_esp32-bridge-dynamic-odom-tf/artifacts/route/keyframes/001.jpg",
+    "sha256": "92761c933a0e1067b7bebbe3363db4328c2565eeadbedbeef442e832b75701f0",
+    "size_bytes": 12850
+  },
+  "sha256_summary": {
+    "inputs": {
+      "route_csv": "334f3c7ec002f1beae817c5b7ee906e095d63b4c23996f18163e7b9afb07a39d",
+      "route_manifest": "5b01c491d4da93fc3ad5e587d911059564ba4b777f6535eff89cdccc6a61d634",
+      "map_yaml": "62946ea1e89c0165c55633a37d34fd4d74fb2531038d348b855c6cbdeefc61ff",
+      "map_pgm": "255dc6d72577bfdd3f1729020dcbbf99fc104439a11db17b748445f6b73ab5b8",
+      "seed_replay_source": "ed218581f36a130fe6fc83d2e7795a52844d38421ba2f11b94319b619e17777f"
+    },
+    "outputs": {
+      "field_run_manifest_from_seed": "811876e1243dc45cbcea173ac5c9e8910180e1ab1a9325d8a9792cbf393e817a",
+      "derived_replay_from_seed": "ed218581f36a130fe6fc83d2e7795a52844d38421ba2f11b94319b619e17777f"
+    }
+  },
+  "proof_boundary": {
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "robot_control_executed": false,
+    "not_proven": true,
+    "manifest_gate": "gated_only_for_software_proof",
+    "notes": [
+      "seed smoke used a temporary bundle assembled from the listed route/map materials plus an existing route_bag fixture",
+      "no ROS2 runtime was started",
+      "no /cmd_vel was published",
+      "no control or delivery claim was made"
+    ]
+  },
+  "next_required_evidence": [
+    "same-task_id live preflight that is explicitly ready_for_live_route_capture_not_proven and not dry_run",
+    "same-task_id field route capture with a route_bag from the same run if the gate keeps requiring it",
+    "field-level Nav2 or route replay evidence from a live capture lane, not only offline replay derivation"
+  ]
+}

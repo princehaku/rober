@@ -1,0 +1,32 @@
+# Algorithm Worker Report
+
+- status: done
+- owner: robot-algorithm-engineer
+- autonomous_capability_goal: 复用现有 Odometry 位姿 CDR 解析，把 `nav_msgs/msg/Odometry` 纳入 `route_bag_semantic_replay` 与 `route_bag_full_semantic_decode_matrix` 的 decoded 覆盖，同时保持所有安全字段为 false。
+- changed_files:
+  - `onboard/scripts/field_route_evidence_manifest.py`
+  - `onboard/tests/test_field_route_evidence_manifest.py`
+  - `docs/navigation/field_route_evidence_manifest.md`
+  - `sprints/2026.07.09_23-07_o6_o7_route_bag_odometry_semantic_decoder/artifacts/algorithm_worker_report.md`
+- interface_impact:
+  - `trashbot.route_bag_semantic_replay.v1` 新增 `odometry_summary`
+  - `trashbot.route_bag_full_semantic_decode_matrix.v1` 的 `/odom` / `nav_msgs/msg/Odometry` 现在可显示 `decoder_name=decode_odometry_payload` 且 `status=decoded`
+  - 未新增 schema，未打开任何控制或成功字段
+- implementation:
+  - 在 semantic replay 白名单中加入 `nav_msgs/msg/Odometry`
+  - 新增 `decode_odometry_payload`，复用既有 Odometry 位姿 CDR 解析，只导出 frame pair 与平移安全摘要
+  - 扩展 semantic replay 聚合，输出 `odometry_summary`
+  - 扩展 full semantic matrix decoder map，使 Odometry topic/type 从 unsupported 转为 decoded
+  - 更新文档说明新增 decoder 覆盖与 `odometry_summary` 字段
+- validation:
+  - 命令：`python3 -m py_compile onboard/scripts/field_route_evidence_manifest.py && python3 -m unittest onboard.tests.test_field_route_evidence_manifest`
+  - 结果：`Ran 48 tests in 0.275s`
+  - 结果：`OK`
+- failure_triage:
+  - 首轮失败是新增 semantic replay 断言把 Odometry translation 预期写成非零；实际最小 fixture 经现有安全 decoder 产出的是零平移摘要，但不影响 decoder 成功与 `/odom` 在 full matrix 中变为 decoded。已把断言收紧到当前 decoder 可证明的安全输出。
+- data_or_debug_output_changes:
+  - semantic replay 现在会输出 `odometry_summary.sample_count/frame_pairs/start_translation/end_translation/translation_norm_min/translation_norm_max`
+  - full semantic matrix 现在允许 `/odom` / `nav_msgs/msg/Odometry` 产出 `decoder_name=decode_odometry_payload`
+- remaining_risk:
+  - 当前 Odometry semantic fixture 只证明安全 decoder 已接线并可被 replay/matrix 消费，不证明真实 route bag 中 Odometry 平移值的完整语义精度。
+  - 未证明真实 production cloud、真实 live Nav2 route execution、真实 robot motion、真实 delivery record、真实 operator confirmation 或真实 delivery success。

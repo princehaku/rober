@@ -52,6 +52,735 @@ afterEach(() => {
   window.history.pushState({}, "", "/");
 });
 
+function sampleNav2GoalExecutionEvidenceFixture(taskId: string, sourceOrigin = "remote_nav2_goal_execution_evidence") {
+  // Nav2 goal fixture 只给 UI 展示只读 goal/result 摘要，不打开控制或送达成功语义。
+  return {
+    schema: "trashbot.nav2_goal_execution_evidence.v1",
+    status: "nav2_goal_execution_evidence_ready_not_delivery_proof",
+    source_contract: "trashbot.nav2_goal_execution_evidence.v1",
+    source_origin: sourceOrigin,
+    source_path: "nav2_goal_execution_evidence",
+    task_id: taskId,
+    proof_scope: "software_proof_nav2_goal_execution_evidence_only",
+    source_proof_status: "not_proven",
+    evidence_source: "o11_nav2_goal_execution_proof",
+    goal_requested: true,
+    goal_sent: true,
+    goal_accepted: true,
+    result_received: true,
+    goal_result_status: "succeeded",
+    result_status_code: 4,
+    nav2_goal_execution_proven: true,
+    base_motion_command_nonzero_proven: false,
+    requested_base_command_mode: "ros",
+    base_command_mode: "ros",
+    pose_progress_summary: "goal_result_received_pose_progress_not_delivery_proof",
+    base_feedback_summary: "base_feedback_nonzero_not_proven",
+    base_command_summary: "base_command_mode_ros_no_real_control_opened",
+    blocked_reasons: ["local_mock_only", "not_proven", "base_motion_command_nonzero_not_proven"],
+    next_required_evidence: ["delivery_result_for_selected_task", "nonzero_base_feedback_for_selected_task"],
+    proof_boundary: {
+      local_mock: true,
+      not_proven: true,
+      reads_local_path: false,
+      live_nav2_goal_connected: false,
+      delivery_result_connected: false,
+      base_feedback_connected: false,
+      real_oss_connected: false,
+      real_cdn_connected: false,
+    },
+    connects_cloud_production: false,
+    media_access_proven: false,
+    real_oss_connected: false,
+    real_cdn_connected: false,
+    robot_control_executed: false,
+    ...PROOF_FLAGS,
+  };
+}
+
+function sampleDeliveryResultEvidenceFixture(taskId: string, sourceOrigin = "remote_delivery_result_evidence") {
+  // delivery result fixture 只表达同 task 的记录/人工确认摘要，不把 operator claim 升级成真实送达成功。
+  return {
+    schema: "trashbot.delivery_result_evidence.v1",
+    status: "delivery_result_evidence_ready_not_delivery_proof",
+    source_contract: "trashbot.delivery_result_evidence.v1",
+    source_origin: sourceOrigin,
+    source_path: "delivery_result_evidence",
+    task_id: taskId,
+    proof_scope: "software_proof_delivery_result_evidence_only",
+    source_proof_status: "not_proven",
+    evidence_source: "o6_delivery_result_fixture",
+    record_source: "fixture_delivery_result_json",
+    source_schema: "trashbot.delivery_result_record.v1",
+    task_id_source: "delivery_result_record.task_id",
+    record_present: true,
+    record_read_ok: true,
+    record_status: "operator_dropoff_recorded_not_delivery_proof",
+    delivery_result_claimed: true,
+    operator_confirmation_present: true,
+    dropoff_confirmation_type: "operator_visual_confirmation",
+    completed_at_utc: "2026-07-09T15:58:00Z",
+    linked_nav2_goal_execution_proven: true,
+    blocked_reasons: ["local_mock_only", "not_proven", "delivery_success_not_proven"],
+    next_required_evidence: ["delivery_record_or_operator_dropoff_confirmation", "real_drop_off_completion_proof"],
+    proof_boundary: {
+      local_mock: true,
+      not_proven: true,
+      reads_local_path: false,
+      operator_confirmation_connected: false,
+      delivery_record_connected: false,
+      linked_nav2_goal_execution_connected: false,
+      real_oss_connected: false,
+      real_cdn_connected: false,
+    },
+    connects_cloud_production: false,
+    media_access_proven: false,
+    real_oss_connected: false,
+    real_cdn_connected: false,
+    robot_control_executed: false,
+    ...PROOF_FLAGS,
+  };
+}
+
+function sampleRouteExecutionResultDeliveryReadinessFixture(
+  taskId: string,
+  sourceOrigin = "remote_route_execution_result_delivery_readiness",
+) {
+  // 统一结果链摘要只表示 O6 已有哪一级 readiness，不表示真实 route execution 或 delivery 成功。
+  return {
+    schema: "trashbot.o6.route_execution_result_delivery_readiness.v1",
+    status: "route_execution_result_delivery_readiness_ready_not_delivery_proof",
+    source_contract: "trashbot.o6.route_execution_result_delivery_readiness.v1",
+    source_origin: sourceOrigin,
+    source_path: "route_execution_result_delivery_readiness",
+    task_id: taskId,
+    proof_scope: "software_proof_route_execution_result_delivery_readiness_only",
+    source_proof_status: "not_proven",
+    route_execution_result_status: "route_execution_result_ready_not_delivery_proof",
+    route_execution_source: "nav2_goal_execution_evidence",
+    delivery_result_readiness_status: "delivery_result_readiness_ready_not_delivery_proof",
+    delivery_result_source: "delivery_result_evidence",
+    operator_confirmation_readiness_status: "operator_confirmation_readiness_ready_not_delivery_proof",
+    operator_confirmation_source: "delivery_result_evidence",
+    nav2_goal_execution_ready: true,
+    delivery_result_ready: true,
+    operator_confirmation_ready: true,
+    blocked_reasons: ["local_mock_only", "not_proven", "delivery_success_not_proven"],
+    next_required_evidence: [
+      "real_live_nav2_route_execution_result",
+      "delivery_record_or_operator_dropoff_confirmation",
+      "real_drop_off_completion_proof",
+    ],
+    connects_cloud_production: false,
+    media_access_proven: false,
+    real_oss_connected: false,
+    real_cdn_connected: false,
+    robot_control_executed: false,
+    ...PROOF_FLAGS,
+  };
+}
+
+function sampleRouteDeliveryClosurePacketFixture(
+  taskId: string,
+  sourceOrigin = "remote_route_delivery_closure_packet",
+) {
+  // closure packet fixture 只说明软件证据闭合，不把 ready 解释成真实送达成功。
+  return {
+    schema: "trashbot.o6.route_delivery_closure_packet.v1",
+    status: "route_delivery_closure_ready_not_success_proof",
+    source_contract: "trashbot.o6.route_delivery_closure_packet.v1",
+    source_origin: sourceOrigin,
+    source_path: "route_delivery_closure_packet",
+    task_id: taskId,
+    proof_scope: "software_proof_route_delivery_closure_packet_only",
+    source_proof_status: "not_proven",
+    closure_status: "route_delivery_closure_ready_not_success_proof",
+    linked_evidence_flags: {
+      nav2_goal_execution_ready: true,
+      delivery_result_ready: true,
+      operator_confirmation_ready: true,
+      route_pose_progress_ready: true,
+      route_execution_readiness_ready: true,
+    },
+    blocked_reasons: ["local_mock_only", "not_proven", "delivery_success_not_proven"],
+    next_required_evidence: [
+      "real_live_nav2_route_execution_result",
+      "delivery_record_or_operator_dropoff_confirmation",
+      "route_pose_progress_replay_for_selected_task",
+    ],
+    connects_cloud_production: false,
+    media_access_proven: false,
+    real_oss_connected: false,
+    real_cdn_connected: false,
+    robot_control_executed: false,
+    ...PROOF_FLAGS,
+  };
+}
+
+function sampleSameTaskFieldMaterialPacketFixture(
+  taskId: string,
+  sourceOrigin = "remote_same_task_field_material_packet",
+) {
+  // field material packet fixture 贴近 Algorithm/O6 readback：top-level sample_refs 是 list，per-material 摘要走 material_summaries。
+  return {
+    schema: "trashbot.o6.same_task_field_material_packet.v1",
+    status: "ready_not_delivery_proof",
+    source_contract: "trashbot.o6.same_task_field_material_packet.v1",
+    source_origin: sourceOrigin,
+    source_path: "same_task_field_material_packet",
+    task_id: taskId,
+    task_id_source: "field_evidence_manifest.task_id",
+    proof_scope: "software_proof_same_task_field_material_packet_only",
+    source_proof_status: "not_proven",
+    packet_status: "ready_not_delivery_proof",
+    same_task_id_consumed: true,
+    live_or_field_material_consumed: true,
+    present_materials: ["map_yaml", "route_csv", "keyframes", "route_bag_or_rosbag", "replay_jsonl"],
+    missing_materials: [],
+    sample_refs: ["map.yaml", "route.csv", "keyframe-000.jpg", "route_bag_0.db3", "fixed_route_replay.jsonl"],
+    material_summaries: {
+      map_yaml: {
+        basename: "map.yaml",
+        size_bytes: 4096,
+        sha256_prefix: "aaaaaaaaaaaa",
+        sample_refs: ["map.yaml"],
+        count: 1,
+        present: true,
+      },
+      route_csv: {
+        basename: "route.csv",
+        size_bytes: 2048,
+        sha256_prefix: "bbbbbbbbbbbb",
+        sample_refs: ["route.csv"],
+        count: 1,
+        present: true,
+      },
+      keyframes: {
+        basename: "keyframe-000.jpg",
+        size_bytes: 8192,
+        sha256_prefix: "cccccccccccc",
+        sample_refs: ["keyframe-000.jpg"],
+        count: 1,
+        present: true,
+      },
+      route_bag_or_rosbag: {
+        basename: "route_bag_0.db3",
+        size_bytes: 16384,
+        sha256_prefix: "dddddddddddd",
+        sample_refs: ["route_bag_0.db3"],
+        count: 1,
+        present: true,
+      },
+      replay_jsonl: {
+        basename: "fixed_route_replay.jsonl",
+        size_bytes: 1024,
+        sha256_prefix: "eeeeeeeeeeee",
+        sample_refs: ["fixed_route_replay.jsonl"],
+        count: 1,
+        present: true,
+      },
+    },
+    route_csv_present: true,
+    keyframes_present: true,
+    route_bag_or_rosbag_present: true,
+    replay_jsonl_present: true,
+    map_yaml_present: true,
+    blocked_reasons: ["local_mock_only", "not_proven", "delivery_success_not_proven"],
+    next_required_evidence: [
+      "same_task_live_or_replay_route_execution_materials",
+      "real_drop_off_completion_proof",
+    ],
+    proof_boundary: {
+      local_mock: true,
+      not_proven: true,
+      reads_local_path: false,
+      field_materials_connected: false,
+      delivery_success_proven: false,
+      real_production_cloud_connected: false,
+      real_oss_connected: false,
+      real_cdn_connected: false,
+    },
+    connects_cloud_production: false,
+    media_access_proven: false,
+    real_oss_connected: false,
+    real_cdn_connected: false,
+    robot_control_executed: false,
+    ...PROOF_FLAGS,
+  };
+}
+
+function sampleSameTaskMissionEvidenceGateFixture(
+  taskId: string,
+  sourceOrigin = "remote_same_task_mission_evidence_gate",
+) {
+  // same-task gate fixture 只证明同 task_id 证据配对，不把 terminal result 或 route materials 升级成真实送达成功。
+  return {
+    schema: "trashbot.o6.same_task_mission_evidence_gate.v1",
+    status: "same_task_mission_gate_ready_not_success_proof",
+    source_contract: "trashbot.o6.same_task_mission_evidence_gate.v1",
+    source_origin: sourceOrigin,
+    source_path: "same_task_mission_evidence_gate",
+    task_id: taskId,
+    proof_scope: "software_proof_same_task_mission_evidence_gate_only",
+    source_proof_status: "not_proven",
+    gate_status: "same_task_mission_gate_ready_not_success_proof",
+    terminal_result_source: "cloud_command_terminal_result",
+    terminal_result_ref: "cloud-terminal-result.json",
+    terminal_source_schema: "trashbot.cloud_command_terminal_result.v1",
+    terminal_result_status: "ready_not_delivery_proof",
+    route_execution_materials_status: "route_delivery_closure_ready_not_success_proof",
+    mission_artifact_delta: {
+      summary: "terminal_result_and_route_execution_materials_same_task",
+      same_task_id_consumed: true,
+      live_or_field_command_executed: false,
+      support_only_reason: "local_mock_only_credit_gate",
+      okr_credit_allowed: false,
+    },
+    same_task_id_consumed: true,
+    live_or_field_command_executed: false,
+    support_only_reason: "local_mock_only_credit_gate",
+    okr_credit_allowed: false,
+    linked_evidence_flags: {
+      same_task_id: true,
+      terminal_result_ready: true,
+      cloud_terminal_source_ready: true,
+      route_execution_readiness_ready: true,
+      route_delivery_closure_ready: true,
+      route_pose_progress_ready: true,
+    },
+    blocked_reasons: ["local_mock_only", "not_proven", "delivery_success_not_proven"],
+    next_required_evidence: [
+      "same_task_cloud_terminal_result_for_selected_task",
+      "same_task_live_or_replay_route_execution_materials",
+      "real_drop_off_completion_proof",
+    ],
+    proof_boundary: {
+      local_mock: true,
+      not_proven: true,
+      reads_local_path: false,
+      terminal_result_connected: false,
+      route_execution_materials_connected: false,
+      delivery_success_proven: false,
+      real_production_cloud_connected: false,
+      real_oss_connected: false,
+      real_cdn_connected: false,
+    },
+    connects_cloud_production: false,
+    media_access_proven: false,
+    real_oss_connected: false,
+    real_cdn_connected: false,
+    robot_control_executed: false,
+    ...PROOF_FLAGS,
+  };
+}
+
+function sampleSameTaskMissionMaterialChecklistFixture(taskId: string) {
+  // checklist fixture 是 operator 补材料清单，不把 materials_ready 升级成真实云端、控制或送达成功。
+  return {
+    schema: "trashbot.pc_tools_workstation.o7_same_task_mission_material_checklist.v1",
+    status: "materials_ready_not_success_proof",
+    overall_status: "materials_ready_not_success_proof",
+    task_id: taskId,
+    source_gate_schema: "trashbot.o6.same_task_mission_evidence_gate.v1",
+    source_gate_status: "same_task_mission_gate_ready_not_success_proof",
+    source_gate_task_id: taskId,
+    source_gate_source_origin: "remote_same_task_mission_evidence_gate",
+    okr_credit_allowed: false,
+    support_only_reason: "local_mock_only_credit_gate",
+    same_task_id_consumed: true,
+    live_or_field_command_executed: false,
+    items: [
+      "same_task_identity",
+      "terminal_cloud_result",
+      "route_execution_material",
+      "same_task_field_material_packet",
+      "delivery_record",
+      "operator_confirmation",
+      "route_pose_progress",
+      "production_cloud_readback",
+      "safety_invariants",
+    ].map((id) => ({
+      id,
+      label: id,
+      material_status: id === "production_cloud_readback" ? "not_proven" : "ready_not_success_proof",
+      source_summary:
+        id === "safety_invariants"
+          ? "delivery_success=false · safe_to_control=false · primary_actions_enabled=false · robot_control_executed=false"
+          : id === "same_task_field_material_packet"
+            ? "packet_status=ready_not_delivery_proof · present_materials=map_yaml,route_csv,keyframes,route_bag_or_rosbag,replay_jsonl"
+            : id === "production_cloud_readback"
+              ? "connects_cloud_production=false · production_cloud_readback_not_proven · support_only_reason=local_mock_only_credit_gate"
+            : `${id}=same_task_material_ready_not_success_proof`,
+      blocked_reasons: ["delivery_success_not_proven"],
+      next_required_evidence:
+        id === "production_cloud_readback"
+          ? ["production_cloud_db_queue_endpoint_readback_for_same_task"]
+          : id === "same_task_field_material_packet"
+            ? ["same_task_field_material_packet_for_selected_task"]
+          : ["same_task_live_or_replay_route_execution_materials"],
+      owner_hint: id === "route_execution_material" || id === "route_pose_progress"
+        ? "robot-algorithm-engineer"
+        : "full-stack-software-engineer",
+    })),
+    blocked_reasons: ["delivery_success_not_proven", "production_cloud_readback_not_proven"],
+    next_required_evidence: [
+      "production_cloud_db_queue_endpoint_readback_for_same_task",
+      "real_live_nav2_route_execution_result",
+      "delivery_record_or_operator_dropoff_confirmation",
+      "operator_confirmation_for_selected_task",
+    ],
+    connects_cloud_production: false,
+    robot_control_executed: false,
+    ...PROOF_FLAGS,
+  };
+}
+
+function sampleRouteBagFullSemanticDecodeMatrixFixture(
+  taskId: string,
+  sourceOrigin = "remote_route_bag_full_semantic_decode_matrix",
+) {
+  // matrix fixture 只给 DOM 渲染覆盖摘要，不提供 raw ROS payload 或真实路线成功语义。
+  return {
+    schema: "trashbot.route_bag_full_semantic_decode_matrix.v1",
+    status: "ready_not_route_execution_proof",
+    semantic_decode_matrix_status: "ready_not_route_execution_proof",
+    source_contract: "trashbot.route_bag_full_semantic_decode_matrix.v1",
+    source_origin: sourceOrigin,
+    source_path: "route_bag_full_semantic_decode_matrix",
+    task_id: taskId,
+    task_id_source: "route_bag_metadata.task_id",
+    proof_scope: "software_proof_route_bag_full_semantic_decode_matrix_only",
+    route_bag_source: "board_live_full_stack_route_bag",
+    source_label: "route_bag_0.db3",
+    topic_type_count: 4,
+    decoded_topic_type_count: 4,
+    unsupported_topic_type_count: 0,
+    failed_topic_type_count: 0,
+    decoded_message_sample_count: 10,
+    unsupported_message_sample_count: 0,
+    decode_failed_message_sample_count: 0,
+    coverage_ratio: 1,
+    sample_topic_type_matrix: [
+      {
+        topic_name: "/scan",
+        topic_type: "sensor_msgs/msg/LaserScan",
+        decode_status: "decoded",
+        decoder_name: "laser_scan_summary",
+        decoded_message_sample_count: 4,
+        unsupported_message_sample_count: 0,
+        decode_failed_message_sample_count: 0,
+        blocked_reason: "none",
+      },
+      {
+        topic_name: "/camera/image",
+        topic_type: "sensor_msgs/msg/Image",
+        decode_status: "decoded",
+        decoder_name: "image_summary",
+        decoded_message_sample_count: 3,
+        unsupported_message_sample_count: 0,
+        decode_failed_message_sample_count: 0,
+        blocked_reason: "none",
+      },
+      {
+        topic_name: "/diagnostics",
+        topic_type: "diagnostic_msgs/msg/DiagnosticArray",
+        decode_status: "decoded",
+        decoder_name: "decode_diagnostic_array_payload",
+        decoded_message_sample_count: 2,
+        unsupported_message_sample_count: 0,
+        decode_failed_message_sample_count: 0,
+        blocked_reason: "none",
+      },
+      {
+        topic_name: "/odom",
+        topic_type: "nav_msgs/msg/Odometry",
+        decode_status: "decoded",
+        decoder_name: "decode_odometry_payload",
+        decoded_message_sample_count: 1,
+        unsupported_message_sample_count: 0,
+        decode_failed_message_sample_count: 0,
+        blocked_reason: "none",
+      },
+    ],
+    sample_topic_names: ["/scan", "/camera/image", "/diagnostics", "/odom"],
+    sample_topic_types: [
+      "sensor_msgs/msg/LaserScan",
+      "sensor_msgs/msg/Image",
+      "diagnostic_msgs/msg/DiagnosticArray",
+      "nav_msgs/msg/Odometry",
+    ],
+    blocked_reasons: [
+      "local_mock_only",
+      "not_proven",
+      "route_execution_success_not_proven",
+      "delivery_success_not_proven",
+    ],
+    next_required_evidence: [
+      "real_live_nav2_run_or_route_execution_proof",
+      "delivery_result_for_selected_task",
+    ],
+    proof_boundary: {
+      local_mock: true,
+      not_proven: true,
+      reads_local_path: false,
+      route_bag_connected: false,
+      live_nav2_run_connected: false,
+      route_execution_success: false,
+      real_oss_connected: false,
+      real_cdn_connected: false,
+    },
+    connects_cloud_production: false,
+    media_access_proven: false,
+    real_oss_connected: false,
+    real_cdn_connected: false,
+    robot_control_executed: false,
+    ...PROOF_FLAGS,
+  };
+}
+
+function sampleRouteBagEvidenceFixture(taskId: string, sourceOrigin = "remote_route_bag_evidence") {
+  // route bag fixture 只展示脱敏 DB3 结构摘要，不包含绝对路径、raw payload、base64 或 /cmd_vel。
+  return {
+    schema: "trashbot.route_bag_evidence.v1",
+    status: "ready_not_route_execution_proof",
+    source_contract: "trashbot.route_bag_evidence.v1",
+    source_origin: sourceOrigin,
+    source_path: "route_bag_evidence",
+    task_id: taskId,
+    task_id_source: "route_bag_metadata.task_id",
+    proof_scope: "software_proof_route_bag_evidence_intake_only",
+    route_bag_source: "board_live_full_stack_route_bag",
+    source_label: "route_bag_0.db3",
+    metadata_present: true,
+    db3_present: true,
+    db3_read_ok: true,
+    db3_size_bytes: 245760,
+    db3_sha256_prefix: "abcdef123456",
+    topic_count: 4,
+    message_count: 128,
+    timestamp_first_ns: 1781040000000000,
+    timestamp_last_ns: 1781040015000000,
+    sample_topic_names: ["/tf", "/odom", "/imu/data", "/battery"],
+    route_bag_payload_replay: {
+      schema: "trashbot.route_bag_payload_replay.v1",
+      status: "ready_not_route_execution_proof",
+      source_contract: "trashbot.route_bag_payload_replay.v1",
+      source_origin: "remote_route_bag_evidence",
+      task_id: taskId,
+      task_id_source: "route_bag_metadata.task_id",
+      proof_scope: "software_proof_route_bag_payload_replay_only",
+      route_bag_source: "board_live_full_stack_route_bag",
+      source_label: "route_bag_0.db3",
+      metadata_present: true,
+      db3_present: true,
+      db3_read_ok: true,
+      db3_size_bytes: 245760,
+      db3_sha256_prefix: "abcdef123456",
+      topic_count: 4,
+      message_count: 128,
+      timestamp_first_ns: 1781040000000000,
+      timestamp_last_ns: 1781040015000000,
+      sample_topic_names: ["/tf", "/odom", "/imu/data", "/battery"],
+      payload_sample_count: 4,
+      payload_size_min_bytes: 64,
+      payload_size_max_bytes: 256,
+      payload_size_avg_bytes: 128,
+      payload_sha256_prefix_samples: ["111111111111", "222222222222", "333333333333"],
+      blocked_reasons: ["not_proven", "route_execution_success_not_proven", "delivery_success_not_proven"],
+      next_required_evidence: ["real_live_nav2_run_or_route_execution_proof", "delivery_result_for_selected_task"],
+      proof_boundary: {
+        local_mock: true,
+        not_proven: true,
+        reads_local_path: false,
+        route_bag_connected: false,
+        live_nav2_run_connected: false,
+        route_execution_success: false,
+        real_oss_connected: false,
+        real_cdn_connected: false,
+      },
+      connects_cloud_production: false,
+      media_access_proven: false,
+      real_oss_connected: false,
+      real_cdn_connected: false,
+      robot_control_executed: false,
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+    },
+    route_bag_semantic_replay: {
+      schema: "trashbot.route_bag_semantic_replay.v1",
+      status: "ready_not_route_execution_proof",
+      semantic_decode_status: "ready_not_route_execution_proof",
+      source_contract: "trashbot.route_bag_semantic_replay.v1",
+      source_origin: sourceOrigin,
+      source_path: "route_bag_semantic_replay",
+      task_id: taskId,
+      task_id_source: "route_bag_metadata.task_id",
+      proof_scope: "software_proof_route_bag_semantic_replay_only",
+      route_bag_source: "board_live_full_stack_route_bag",
+      source_label: "route_bag_0.db3",
+      metadata_present: true,
+      db3_present: true,
+      db3_read_ok: true,
+      db3_size_bytes: 245760,
+      db3_sha256_prefix: "abcdef123456",
+      topic_count: 4,
+      message_count: 128,
+      timestamp_first_ns: 1781040000000000,
+      timestamp_last_ns: 1781040015000000,
+      sample_topic_names: ["/scan", "/camera/image_raw", "/tf", "/tf_static"],
+      semantic_sample_count: 4,
+      semantic_decode_ok_count: 4,
+      semantic_decode_failed_count: 0,
+      semantic_topic_types: [
+        "sensor_msgs/msg/LaserScan",
+        "sensor_msgs/msg/Image",
+        "tf2_msgs/msg/TFMessage",
+        "nav_msgs/msg/Odometry",
+      ],
+      laser_scan_summary: {
+        sample_count: 1,
+        range_sample_length: 720,
+        finite_count: 701,
+        range_min: 0.12,
+        range_max: 5.6,
+        angle_min: -1.57,
+        angle_max: 1.57,
+        angle_increment: 0.00436,
+      },
+      image_summary: {
+        sample_count: 1,
+        width: 640,
+        height: 480,
+        encoding: "rgb8",
+        step: 1920,
+        data_size: 921600,
+      },
+      tf_summary: {
+        sample_count: 2,
+        transform_count: 3,
+        frame_id_samples: ["map", "odom"],
+        child_frame_id_samples: ["base_link", "laser"],
+      },
+      blocked_reasons: ["not_proven", "route_execution_success_not_proven", "delivery_success_not_proven"],
+      next_required_evidence: [
+        "real_live_nav2_run_or_route_execution_proof",
+        "delivery_result_for_selected_task",
+        "semantic_decode_crosscheck_for_selected_task",
+      ],
+      proof_boundary: {
+        local_mock: true,
+        not_proven: true,
+        reads_local_path: false,
+        route_bag_connected: false,
+        live_nav2_run_connected: false,
+        route_execution_success: false,
+        real_oss_connected: false,
+        real_cdn_connected: false,
+      },
+      connects_cloud_production: false,
+      media_access_proven: false,
+      real_oss_connected: false,
+      real_cdn_connected: false,
+      robot_control_executed: false,
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+    },
+    route_bag_full_semantic_decode_matrix: sampleRouteBagFullSemanticDecodeMatrixFixture(taskId, sourceOrigin),
+    route_bag_pose_progress_replay: {
+      schema: "trashbot.route_bag_pose_progress_replay.v1",
+      status: "ready_not_live_nav2_proof",
+      pose_decode_status: "ready_not_live_nav2_proof",
+      source_contract: "trashbot.route_bag_pose_progress_replay.v1",
+      source_origin: sourceOrigin,
+      source_path: "route_bag_pose_progress_replay",
+      task_id: taskId,
+      task_id_source: "route_bag_metadata.task_id",
+      proof_scope: "software_proof_route_bag_pose_progress_replay_only",
+      route_bag_source: "board_live_full_stack_route_bag",
+      source_label: "route_bag_0.db3",
+      metadata_present: true,
+      db3_present: true,
+      db3_read_ok: true,
+      db3_size_bytes: 245760,
+      db3_sha256_prefix: "abcdef123456",
+      topic_count: 4,
+      message_count: 128,
+      timestamp_first_ns: 1781040000000000,
+      timestamp_last_ns: 1781040015000000,
+      sample_topic_names: ["/tf", "/odom", "/imu/data", "/battery"],
+      pose_sample_count: 3,
+      pose_decode_ok_count: 3,
+      pose_decode_failed_count: 0,
+      pose_topic_types: ["tf2_msgs/msg/TFMessage", "nav_msgs/msg/Odometry"],
+      pose_frame_pairs: [
+        { source_frame_id: "map", target_frame_id: "odom", sample_count: 2 },
+        { source_frame_id: "odom", target_frame_id: "base_link", sample_count: 1 },
+      ],
+      pose_time_span_ns: 1500000000,
+      start_pose: {
+        frame_id: "map",
+        x_m: 1.0,
+        y_m: 2.0,
+        yaw_rad: 0.1,
+        timestamp_ns: 1781040000000000,
+      },
+      end_pose: {
+        frame_id: "base_link",
+        x_m: 1.3,
+        y_m: 2.4,
+        yaw_rad: 0.3,
+        timestamp_ns: 1781040015000000,
+      },
+      displacement_m: 0.5,
+      nonzero_pose_progress_observed: true,
+      blocked_reasons: ["not_proven", "route_execution_success_not_proven", "delivery_success_not_proven"],
+      next_required_evidence: [
+        "real_live_nav2_run_or_route_execution_proof",
+        "delivery_result_for_selected_task",
+        "pose_progress_crosscheck_for_selected_task",
+      ],
+      proof_boundary: {
+        local_mock: true,
+        not_proven: true,
+        reads_local_path: false,
+        route_bag_connected: false,
+        live_nav2_run_connected: false,
+        route_execution_success: false,
+        real_oss_connected: false,
+        real_cdn_connected: false,
+      },
+      connects_cloud_production: false,
+      media_access_proven: false,
+      real_oss_connected: false,
+      real_cdn_connected: false,
+      robot_control_executed: false,
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+    },
+    blocked_reasons: ["not_proven", "route_execution_success_not_proven", "delivery_success_not_proven"],
+    next_required_evidence: ["real_live_nav2_run_or_route_execution_proof", "delivery_result_for_selected_task"],
+    proof_boundary: {
+      local_mock: true,
+      not_proven: true,
+      reads_local_path: false,
+      route_bag_connected: false,
+      live_nav2_run_connected: false,
+      route_execution_success: false,
+      real_oss_connected: false,
+      real_cdn_connected: false,
+    },
+    connects_cloud_production: false,
+    media_access_proven: false,
+    real_oss_connected: false,
+    real_cdn_connected: false,
+    robot_control_executed: false,
+    ...PROOF_FLAGS,
+  };
+}
+
 const fixtures: Record<string, unknown> = {
   "/api/health": {
     schema: "trashbot.pc_tools_workstation.health.v1",
@@ -5549,6 +6278,9 @@ const fixtures: Record<string, unknown> = {
       {
         task_id: "task-consumer-001",
         robot_id: "robot_fixture",
+        task_origin: "field_evidence_manifest",
+        field_evidence_source: "trashbot.field_evidence_manifest.v1",
+        field_evidence_artifact_status: "gated",
         started_at_ms: 1000,
         finished_at_ms: 2000,
         task_status_summary: "completed_mock",
@@ -5570,22 +6302,48 @@ const fixtures: Record<string, unknown> = {
     robot_control_executed: false,
     ...PROOF_FLAGS,
   },
-  "/api/o7/consumer-read/tasks/task-consumer-001": {
-    schema: "trashbot.pc_tools_workstation.o7_consumer_task_detail.v1",
-    detail_status: "loaded_fail_closed_summary",
-    source_base_url: "http://127.0.0.1:8088",
-    remote_endpoint:
-      "/api/o6/consumer/tasks/task-consumer-001?view=default&include=trajectory,events,evidence,labeling,inference,tunnel",
-    remote_schema: "trashbot.o6.consumer_read.v1",
-    requested_task_id: "task-consumer-001",
-    query_strategy: {
-      view: "default",
-      include: ["trajectory", "events", "evidence", "labeling", "inference", "tunnel"],
-      primary_path: true,
-      fail_closed_visible: true,
-    },
+      "/api/o7/consumer-read/tasks/task-consumer-001": {
+        schema: "trashbot.pc_tools_workstation.o7_consumer_task_detail.v1",
+        detail_status: "loaded_fail_closed_summary",
+        source_base_url: "http://127.0.0.1:8088",
+        remote_endpoint:
+          "/api/o6/consumer/tasks/task-consumer-001?view=default&include=trajectory,events,evidence,field_evidence,labeling,inference,tunnel,artifact_access_probe,offline_artifact_seed_smoke,route_root_seed_gate,route_bag_evidence,route_bag_payload_replay,nav2_goal_execution_evidence,delivery_result_evidence,route_execution_result_delivery_readiness,route_delivery_closure_packet,same_task_field_material_packet,same_task_mission_evidence_gate",
+        remote_schema: "trashbot.o6.consumer_read.v1",
+        requested_task_id: "task-consumer-001",
+        query_strategy: {
+          view: "default",
+          include: [
+            "trajectory",
+            "events",
+            "evidence",
+            "field_evidence",
+            "labeling",
+            "inference",
+            "tunnel",
+            "artifact_access_probe",
+            "offline_artifact_seed_smoke",
+            "route_root_seed_gate",
+            "route_bag_evidence",
+            "route_bag_payload_replay",
+            "nav2_goal_execution_evidence",
+            "delivery_result_evidence",
+            "route_execution_result_delivery_readiness",
+            "route_delivery_closure_packet",
+            "same_task_field_material_packet",
+            "same_task_mission_evidence_gate",
+          ],
+          primary_path: true,
+          fail_closed_visible: true,
+        },
     field_evidence: {
       source_contract: "trashbot.field_evidence_manifest.v1",
+      source_origin: "remote_field_evidence",
+      task_origin: "field_evidence_manifest",
+      manifest_run_id: "field_evidence_20260609T101500Z",
+      artifact_root: "file:field_evidence_fixture",
+      artifact_health_summary: "all_required_artifacts_present",
+      present_artifacts: ["map_yaml", "route_csv", "keyframes", "rosbag", "replay_jsonl"],
+      missing_artifacts: [],
       input_status: "loaded",
       artifact_status: "gated",
       manifest_gate: {
@@ -5640,6 +6398,601 @@ const fixtures: Record<string, unknown> = {
       count: 1,
       sample_evidence: [{ evidence_type: "snapshot", state: "consumer_en_route", timestamp_ms: 1200, evidence_ref: "consumer-evidence-001.jpg" }],
     },
+    artifact_access_probe: {
+      schema: "trashbot.o6.artifact_access_probe.v1",
+      status: "local_mock_artifact_access_probe_ready",
+      task_id: "task-consumer-001",
+      source_contract: "trashbot.o6.artifact_access_probe.v1",
+      source_origin: "remote_artifact_bundle",
+      source_path: "artifact_bundle.artifact_access_probe",
+      proof_scope: "software_proof_local_mock_artifact_access_probe_only",
+      allowlist_root_configured: true,
+      allowlist_root_echoed: false,
+      max_file_size_bytes: 65536,
+      counts: {
+        requested_ref_count: 4,
+        readable_ref_count: 3,
+        blocked_ref_count: 1,
+        missing_ref_count: 0,
+      },
+      sample_probes: [
+        {
+          task_id: "task-consumer-001",
+          ref_kind: "route_csv",
+          ref: "route.csv",
+          exists: true,
+          size_bytes: 128,
+          sha256_prefix: "aaaaaaaaaaaa",
+          detected_type: "text/csv",
+          blocked_reason: "none",
+          proof_scope: "software_proof_local_mock_artifact_access_probe_only",
+        },
+        {
+          task_id: "task-consumer-001",
+          ref_kind: "keyframe",
+          ref: "keyframe-0001.jpg",
+          exists: true,
+          size_bytes: 4096,
+          sha256_prefix: "cccccccccccc",
+          detected_type: "image/jpeg",
+          blocked_reason: "none",
+          proof_scope: "software_proof_local_mock_artifact_access_probe_only",
+        },
+        {
+          task_id: "task-consumer-001",
+          ref_kind: "evidence",
+          ref: "blocked-evidence.bin",
+          exists: false,
+          size_bytes: null,
+          sha256_prefix: "",
+          detected_type: "unknown",
+          blocked_reason: "ref_blocked_by_allowlist",
+          proof_scope: "software_proof_local_mock_artifact_access_probe_only",
+        },
+      ],
+      sample_refs: ["route.csv", "keyframe-0001.jpg", "blocked-evidence.bin"],
+      sample_sha256_prefixes: ["aaaaaaaaaaaa", "cccccccccccc"],
+      blocked_reasons: ["local_mock_only", "not_proven", "ref_blocked_by_allowlist"],
+      next_required_evidence: ["real_or_offline_artifact_access_probe_for_selected_task"],
+      proof_boundary: {
+        local_mock: true,
+        not_proven: true,
+        file_read_attempted: true,
+        real_oss_connected: false,
+        real_cdn_connected: false,
+      },
+      media_access_proven: false,
+      real_oss_connected: false,
+      real_cdn_connected: false,
+      robot_control_executed: false,
+      ...PROOF_FLAGS,
+    },
+    artifact_bundle: {
+      schema: "trashbot.o6.artifact_bundle.v1",
+      source: "local_mock_artifact_bundle_archive",
+      task_origin: "artifact_bundle",
+      bundle_status: "local_mock_artifact_bundle_ready",
+    },
+    offline_artifact_seed_smoke: {
+      schema: "trashbot.o6.offline_artifact_seed_smoke.v1",
+      status: "local_mock_offline_artifact_seed_smoke_ready",
+      task_id: "task-consumer-001",
+      source_contract: "trashbot.o6.offline_artifact_seed_smoke.v1",
+      source_origin: "remote_artifact_bundle",
+      source_path: "artifact_bundle.offline_artifact_seed_smoke",
+      proof_scope: "software_proof_offline_artifact_seed_smoke_only",
+      allowlist_root_echoed: false,
+      counts: {
+        route_ref_count: 1,
+        replay_ref_count: 1,
+        keyframe_ref_count: 1,
+        evidence_ref_count: 1,
+        sample_ref_count: 4,
+        readable_ref_count: 3,
+        blocked_ref_count: 1,
+        missing_ref_count: 0,
+      },
+      sample_probes: [
+        {
+          task_id: "task-consumer-001",
+          ref_kind: "route_csv",
+          ref: "route.csv",
+          exists: true,
+          size_bytes: 128,
+          sha256_prefix: "aaaaaaaaaaaa",
+          detected_type: "text/csv",
+          blocked_reason: "none",
+          proof_scope: "software_proof_offline_artifact_seed_smoke_only",
+        },
+        {
+          task_id: "task-consumer-001",
+          ref_kind: "replay_jsonl",
+          ref: "derived_replay.jsonl",
+          exists: true,
+          size_bytes: 2048,
+          sha256_prefix: "bbbbbbbbbbbb",
+          detected_type: "application/jsonl",
+          blocked_reason: "none",
+          proof_scope: "software_proof_offline_artifact_seed_smoke_only",
+        },
+        {
+          task_id: "task-consumer-001",
+          ref_kind: "keyframe",
+          ref: "keyframe-0001.jpg",
+          exists: true,
+          size_bytes: 4096,
+          sha256_prefix: "cccccccccccc",
+          detected_type: "image/jpeg",
+          blocked_reason: "none",
+          proof_scope: "software_proof_offline_artifact_seed_smoke_only",
+        },
+        {
+          task_id: "task-consumer-001",
+          ref_kind: "evidence",
+          ref: "blocked-evidence.bin",
+          exists: false,
+          size_bytes: null,
+          sha256_prefix: "",
+          detected_type: "unknown",
+          blocked_reason: "ref_blocked_by_allowlist",
+          proof_scope: "software_proof_offline_artifact_seed_smoke_only",
+        },
+      ],
+      sample_refs: ["route.csv", "derived_replay.jsonl", "keyframe-0001.jpg", "blocked-evidence.bin"],
+      sample_sha256_prefixes: ["aaaaaaaaaaaa", "bbbbbbbbbbbb", "cccccccccccc"],
+      blocked_reasons: ["local_mock_only", "not_proven", "ref_blocked_by_allowlist"],
+      next_required_evidence: ["real_or_offline_artifact_seed_smoke_for_selected_task"],
+      proof_boundary: {
+        local_mock: true,
+        not_proven: true,
+        file_read_attempted: true,
+        real_oss_connected: false,
+        real_cdn_connected: false,
+      },
+      media_access_proven: false,
+      real_oss_connected: false,
+      real_cdn_connected: false,
+      robot_control_executed: false,
+    },
+      route_root_seed_gate: {
+        schema: "trashbot.o6.route_root_seed_gate.v1",
+        status: "local_mock_route_root_seed_ready",
+      schema_version: 1,
+      task_id: "task-consumer-001",
+      source_contract: "trashbot.o6.route_root_seed_gate.v1",
+      source_origin: "remote_route_root_seed_gate",
+      source_path: "route_root_seed_gate",
+      proof_scope: "software_proof_route_root_seed_gate_only",
+      route_root_seed_status: "local_mock_route_root_seed_ready",
+      route_bag_required: false,
+      route_bag_present: false,
+      counts: {
+        route_frame_count: 17,
+        derived_replay_frame_count: 17,
+        route_ref_count: 1,
+        manifest_ref_count: 1,
+        replay_ref_count: 1,
+        keyframe_ref_count: 1,
+        evidence_ref_count: 2,
+        sample_ref_count: 4,
+      },
+      sample_refs: ["route.csv", "derived_replay.jsonl", "keyframe-0001.jpg", "consumer-evidence-001.jpg"],
+      blocked_reasons: ["route_bag_missing_optional", "local_mock_only", "not_proven"],
+      next_required_evidence: [
+        "real_route_root_seed_from_allowlist_root",
+        "route_bag_optional_for_enhanced_route_replay",
+      ],
+      proof_boundary: {
+        local_mock: true,
+        not_proven: true,
+        reads_local_path: false,
+        route_bag_required: false,
+        route_bag_present: false,
+        real_route_bag_connected: false,
+        real_oss_connected: false,
+        real_cdn_connected: false,
+      },
+      connects_cloud_production: false,
+      robot_control_executed: false,
+      media_access_proven: false,
+      real_oss_connected: false,
+      real_cdn_connected: false,
+      ...PROOF_FLAGS,
+    },
+    route_bag_evidence: sampleRouteBagEvidenceFixture("task-consumer-001"),
+    route_bag_payload_replay: sampleRouteBagEvidenceFixture("task-consumer-001").route_bag_payload_replay,
+    route_bag_semantic_replay: sampleRouteBagEvidenceFixture("task-consumer-001").route_bag_semantic_replay,
+    route_bag_full_semantic_decode_matrix:
+      sampleRouteBagEvidenceFixture("task-consumer-001").route_bag_full_semantic_decode_matrix,
+    nav2_goal_execution_evidence: sampleNav2GoalExecutionEvidenceFixture("task-consumer-001"),
+    delivery_result_evidence: sampleDeliveryResultEvidenceFixture("task-consumer-001"),
+    route_execution_result_delivery_readiness: sampleRouteExecutionResultDeliveryReadinessFixture("task-consumer-001"),
+    route_delivery_closure_packet: sampleRouteDeliveryClosurePacketFixture("task-consumer-001"),
+    same_task_field_material_packet: sampleSameTaskFieldMaterialPacketFixture("task-consumer-001"),
+    same_task_mission_evidence_gate: sampleSameTaskMissionEvidenceGateFixture("task-consumer-001"),
+    same_task_mission_material_checklist: sampleSameTaskMissionMaterialChecklistFixture("task-consumer-001"),
+    artifact_bundle_consumer_ingest: {
+      schema: "trashbot.o6.artifact_bundle_consumer_ingest.v1",
+      status: "local_mock_artifact_bundle_ready",
+      source: "local_mock_artifact_bundle_archive",
+      task_origin: "artifact_bundle",
+    },
+    artifact_bundle_readiness: {
+      schema: "trashbot.pc_tools_workstation.o7_consumer_artifact_bundle_readiness.v1",
+      status: "consumer_detail_artifact_bundle_ready",
+      selected_task_id: "task-consumer-001",
+      source_detail_task_id: "task-consumer-001",
+      source_contract: "trashbot.o6.artifact_bundle.v1",
+      source_origin: "remote_artifact_bundle",
+      task_id: "task-consumer-001",
+      bundle_status: "local_mock_artifact_bundle_ready",
+      counts: {
+        route_ref_count: 1,
+        replay_ref_count: 1,
+        keyframe_ref_count: 1,
+        evidence_ref_count: 1,
+        review_item_count: 2,
+        sample_ref_count: 6,
+        review_item_media_ref_count: 2,
+      },
+      refs: {
+        route_refs: ["route.csv"],
+        replay_refs: ["fixed_route_replay.jsonl"],
+        keyframe_refs: ["consumer-keyframe-000.jpg"],
+        evidence_refs: ["consumer-field-evidence-001"],
+        review_item_media_refs: ["consumer-frame-000.jpg", "consumer-frame-001.jpg"],
+        sample_refs: [
+          "route.csv",
+          "fixed_route_replay.jsonl",
+          "consumer-keyframe-000.jpg",
+          "consumer-field-evidence-001",
+          "consumer-frame-000.jpg",
+          "consumer-frame-001.jpg",
+        ],
+      },
+      blocked_reasons: ["local_mock_only", "not_proven", "base_motion_command_nonzero_not_proven"],
+      next_required_evidence: [
+        "real_keyframe_media_access_probe_without_credentials",
+        "review_item_media_capture_for_selected_task",
+        "nonzero_base_feedback_for_selected_task",
+      ],
+      route_bag_evidence: sampleRouteBagEvidenceFixture("task-consumer-001", "remote_artifact_bundle_readiness"),
+      route_bag_payload_replay:
+        sampleRouteBagEvidenceFixture("task-consumer-001", "remote_artifact_bundle_readiness").route_bag_payload_replay,
+      route_bag_semantic_replay:
+        sampleRouteBagEvidenceFixture("task-consumer-001", "remote_artifact_bundle_readiness").route_bag_semantic_replay,
+      route_bag_full_semantic_decode_matrix: sampleRouteBagFullSemanticDecodeMatrixFixture(
+        "task-consumer-001",
+        "remote_artifact_bundle_readiness",
+      ),
+      nav2_goal_execution_evidence: sampleNav2GoalExecutionEvidenceFixture("task-consumer-001"),
+      delivery_result_evidence: sampleDeliveryResultEvidenceFixture(
+        "task-consumer-001",
+        "remote_artifact_bundle_readiness",
+      ),
+      route_execution_result_delivery_readiness: sampleRouteExecutionResultDeliveryReadinessFixture(
+        "task-consumer-001",
+        "remote_artifact_bundle_readiness",
+      ),
+      route_delivery_closure_packet: sampleRouteDeliveryClosurePacketFixture(
+        "task-consumer-001",
+        "remote_artifact_bundle_readiness",
+      ),
+      same_task_field_material_packet: sampleSameTaskFieldMaterialPacketFixture(
+        "task-consumer-001",
+        "remote_artifact_bundle_readiness",
+      ),
+      same_task_mission_evidence_gate: sampleSameTaskMissionEvidenceGateFixture(
+        "task-consumer-001",
+        "remote_artifact_bundle_readiness",
+      ),
+      same_task_mission_material_checklist: sampleSameTaskMissionMaterialChecklistFixture("task-consumer-001"),
+      offline_artifact_seed_smoke: {
+        schema: "trashbot.o6.offline_artifact_seed_smoke.v1",
+        status: "local_mock_offline_artifact_seed_smoke_ready",
+        task_id: "task-consumer-001",
+        source_contract: "trashbot.o6.offline_artifact_seed_smoke.v1",
+        source_origin: "remote_artifact_bundle",
+        source_path: "artifact_bundle.offline_artifact_seed_smoke",
+        proof_scope: "software_proof_offline_artifact_seed_smoke_only",
+        allowlist_root_echoed: false,
+        counts: {
+          route_ref_count: 1,
+          replay_ref_count: 1,
+          keyframe_ref_count: 1,
+          evidence_ref_count: 1,
+          sample_ref_count: 4,
+          readable_ref_count: 3,
+          blocked_ref_count: 1,
+          missing_ref_count: 0,
+        },
+        sample_probes: [
+          {
+            task_id: "task-consumer-001",
+            ref_kind: "route_csv",
+            ref: "route.csv",
+            exists: true,
+            size_bytes: 128,
+            sha256_prefix: "aaaaaaaaaaaa",
+            detected_type: "text/csv",
+            blocked_reason: "none",
+            proof_scope: "software_proof_offline_artifact_seed_smoke_only",
+          },
+          {
+            task_id: "task-consumer-001",
+            ref_kind: "replay_jsonl",
+            ref: "derived_replay.jsonl",
+            exists: true,
+            size_bytes: 2048,
+            sha256_prefix: "bbbbbbbbbbbb",
+            detected_type: "application/jsonl",
+            blocked_reason: "none",
+            proof_scope: "software_proof_offline_artifact_seed_smoke_only",
+          },
+          {
+            task_id: "task-consumer-001",
+            ref_kind: "keyframe",
+            ref: "keyframe-0001.jpg",
+            exists: true,
+            size_bytes: 4096,
+            sha256_prefix: "cccccccccccc",
+            detected_type: "image/jpeg",
+            blocked_reason: "none",
+            proof_scope: "software_proof_offline_artifact_seed_smoke_only",
+          },
+          {
+            task_id: "task-consumer-001",
+            ref_kind: "evidence",
+            ref: "blocked-evidence.bin",
+            exists: false,
+            size_bytes: null,
+            sha256_prefix: "",
+            detected_type: "unknown",
+            blocked_reason: "ref_blocked_by_allowlist",
+            proof_scope: "software_proof_offline_artifact_seed_smoke_only",
+          },
+        ],
+        sample_refs: ["route.csv", "derived_replay.jsonl", "keyframe-0001.jpg", "blocked-evidence.bin"],
+        sample_sha256_prefixes: ["aaaaaaaaaaaa", "bbbbbbbbbbbb", "cccccccccccc"],
+        blocked_reasons: ["local_mock_only", "not_proven", "ref_blocked_by_allowlist"],
+        next_required_evidence: ["real_or_offline_artifact_seed_smoke_for_selected_task"],
+        proof_boundary: {
+          local_mock: true,
+          not_proven: true,
+          file_read_attempted: true,
+          real_oss_connected: false,
+          real_cdn_connected: false,
+        },
+        media_access_proven: false,
+        real_oss_connected: false,
+        real_cdn_connected: false,
+        robot_control_executed: false,
+      },
+      artifact_media_preflight: {
+        schema: "trashbot.o6.artifact_media_preflight.v1",
+        status: "local_mock_media_preflight_ready",
+        task_id: "task-consumer-001",
+        consumer_section_names: [
+          "artifact_bundle_readiness",
+          "artifact_bundle",
+          "artifact_bundle_consumer_ingest",
+          "artifact_media_preflight",
+          "route_replay_mvp",
+          "labeling_mvp",
+        ],
+        counts: {
+          route_ref_count: 1,
+          replay_ref_count: 1,
+          keyframe_ref_count: 1,
+          sample_ref_count: 6,
+          review_item_media_ref_count: 2,
+        },
+        route_replay_dependency: {
+          status: "local_mock_media_preflight_ready",
+          route_ref: "route.csv",
+          replay_ref: "fixed_route_replay.jsonl",
+          keyframe_ref: "keyframes",
+          sample_refs: ["consumer-frame-000.jpg", "consumer-event-001.json", "consumer-evidence-001.jpg"],
+          review_item_media_refs: [],
+          blocked_reasons: ["local_mock_only", "not_proven"],
+          next_required_evidence: [
+            "real_keyframe_media_access_probe_without_credentials",
+            "review_item_media_capture_for_selected_task",
+          ],
+          media_access_proven: false,
+          real_oss_connected: false,
+          real_cdn_connected: false,
+        },
+        labeling_dependency: {
+          status: "local_mock_media_preflight_ready",
+          route_ref: "route.csv",
+          replay_ref: "fixed_route_replay.jsonl",
+          keyframe_ref: "keyframes",
+          sample_refs: ["consumer-frame-000.jpg", "consumer-event-001.json", "consumer-evidence-001.jpg"],
+          review_item_media_refs: ["consumer-frame-000.jpg", "consumer-frame-001.jpg"],
+          blocked_reasons: ["local_mock_only", "not_proven"],
+          next_required_evidence: [
+            "real_keyframe_media_access_probe_without_credentials",
+            "review_item_media_capture_for_selected_task",
+          ],
+          media_access_proven: false,
+          real_oss_connected: false,
+          real_cdn_connected: false,
+        },
+        proof_boundary: {
+          local_mock: true,
+          not_proven: true,
+          real_media_read_executed: false,
+          real_oss_connected: false,
+          real_cdn_connected: false,
+        },
+        blocked_reasons: ["local_mock_only", "not_proven"],
+        next_required_evidence: [
+          "real_keyframe_media_access_probe_without_credentials",
+          "review_item_media_capture_for_selected_task",
+        ],
+        media_access_proven: false,
+        real_oss_connected: false,
+        real_cdn_connected: false,
+      },
+    },
+    route_replay_mvp: {
+      schema: "trashbot.pc_tools_workstation.o7_consumer_route_replay_mvp.v1",
+      status: "consumer_detail_replay_ready",
+      selected_task_id: "task-consumer-001",
+      source_detail_task_id: "task-consumer-001",
+      source_contract: "trashbot.o6.consumer_read.v1",
+      trajectory: {
+        frame_count: 3,
+        current_frame: {
+          frame_index: 0,
+          cursor_index: 0,
+          timestamp_ms: 1000,
+          pose: { x_m: 0.2, y_m: 0.1, yaw_rad: 0 },
+          velocity: { linear_mps: 0.1, angular_radps: null },
+          state: "consumer_departed",
+          evidence_ref: "consumer-frame-000.jpg",
+          keyframe_ref: "consumer-keyframe-000.jpg",
+        },
+        sample_frames: [
+          {
+            frame_index: 0,
+            cursor_index: 0,
+            timestamp_ms: 1000,
+            pose: { x_m: 0.2, y_m: 0.1, yaw_rad: 0 },
+            velocity: { linear_mps: 0.1, angular_radps: null },
+            state: "consumer_departed",
+            evidence_ref: "consumer-frame-000.jpg",
+            keyframe_ref: "consumer-keyframe-000.jpg",
+          },
+          {
+            frame_index: 1,
+            cursor_index: 1,
+            timestamp_ms: 1200,
+            pose: { x_m: 0.4, y_m: 0.3, yaw_rad: 0.1 },
+            velocity: { linear_mps: 0.2, angular_radps: 0.02 },
+            state: "consumer_en_route",
+            evidence_ref: "consumer-frame-001.jpg",
+            keyframe_ref: "consumer-keyframe-001.jpg",
+          },
+        ],
+        status: "consumer_detail_trajectory_summary_only",
+      },
+      events_timeline: {
+        count: 2,
+        sample: [
+          { event_type: "route.frame", state: "consumer_en_route", timestamp_ms: 1200, evidence_ref: "consumer-event-001.json" },
+        ],
+        status: "consumer_detail_events_summary_only",
+      },
+      evidence_refs: {
+        count: 4,
+        sample_refs: ["consumer-frame-000.jpg", "consumer-event-001.json", "consumer-evidence-001.jpg"],
+        keyframe_refs: ["consumer-keyframe-000.jpg", "consumer-keyframe-001.jpg"],
+        status: "consumer_detail_refs_summary_only",
+      },
+      cursor_contract: {
+        local_cursor_only: true,
+        supported_actions: ["previous_frame", "next_frame", "reset_cursor", "toggle_playing"],
+        initial_frame_index: 0,
+        playing_initial: false,
+        safe_to_play: false,
+        playback_available: false,
+        sends_to_robot: false,
+        status: "local_cursor_ready",
+      },
+      blocked_reasons: ["robot_control_disabled", "playback_available_false", "delivery_success_not_proven"],
+      not_proven: ["real_route_replay_playback", "real_keyframe_media_access", "delivery_success"],
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+      robot_control_executed: false,
+    },
+    labeling_mvp: {
+      schema: "trashbot.pc_tools_workstation.o7_consumer_labeling_mvp.v1",
+      status: "consumer_detail_labeling_ready",
+      selected_task_id: "task-consumer-001",
+      source_detail_task_id: "task-consumer-001",
+      review_items: {
+        review_item_count: 1,
+        current_item: {
+          item_id: "label-1",
+          task_id: "task-consumer-001",
+          frame_id: "frame-001",
+          media_ref: "consumer-frame-001.jpg",
+          evidence_ref: "consumer-label-001.json",
+          current_labels: {
+            count: 1,
+            sample: [
+              {
+                label_type: "floor_label",
+                value: "F3",
+                status: "consumer_existing",
+                evidence_ref: "consumer-current-label-001.json",
+              },
+            ],
+          },
+        },
+        sample: [
+          {
+            item_id: "label-1",
+            task_id: "task-consumer-001",
+            frame_id: "frame-001",
+            media_ref: "consumer-frame-001.jpg",
+            evidence_ref: "consumer-label-001.json",
+            current_labels: {
+              count: 1,
+              sample: [
+                {
+                  label_type: "floor_label",
+                  value: "F3",
+                  status: "consumer_existing",
+                  evidence_ref: "consumer-current-label-001.json",
+                },
+              ],
+            },
+          },
+        ],
+        status: "consumer_detail_review_items_summary_only",
+      },
+      label_schema: {
+        schema_ref: "consumer-label-schema.json",
+        version: "consumer-v1",
+        required_fields: ["label_type", "value", "evidence_ref"],
+        allowed_fields: ["label_type", "value", "confidence", "notes", "evidence_ref"],
+        status: "consumer_detail_schema_summary_only",
+      },
+      allowed_label_types: ["floor_label", "elevator_door_state", "obstacle_type"],
+      draft_labels: {
+        count: 1,
+        sample: [
+          {
+            label_type: "floor_label",
+            value: "F3",
+            status: "draft_consumer_detail",
+            evidence_ref: "consumer-draft-label-001.json",
+          },
+        ],
+        autosave_available: false,
+        status: "consumer_detail_draft_slots_only",
+      },
+      submit_receipt: {
+        status: "submit_blocked_fail_closed",
+        receipt_id: "not_created",
+        submit_enabled: false,
+        rollback_enabled: false,
+        dataset_export_available: false,
+        real_annotation_api_connected: false,
+        cloud_write_executed: false,
+        blocked_reason: "submit_disabled_no_annotation_api",
+      },
+      blocked_reasons: ["submit_disabled_no_annotation_api", "rollback_disabled", "dataset_export_disabled"],
+      not_proven: ["real_annotation_submit", "real_training_dataset_export", "delivery_success"],
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+      robot_control_executed: false,
+    },
     labeling: {
       status: "partial",
       label_count: 1,
@@ -5661,6 +7014,102 @@ const fixtures: Record<string, unknown> = {
     local_loopback_only: true,
     connects_cloud_production: false,
     robot_control_executed: false,
+    ...PROOF_FLAGS,
+  },
+  "/api/o7/consumer-read/tasks/task-consumer-001/annotations/submit": {
+    schema: "trashbot.pc_tools_workstation.o7_annotation_submit_result.v1",
+    adapter_status: "local_mock_annotation_written",
+    source_base_url: "http://127.0.0.1:8088",
+    remote_endpoint: "/api/o6/archive/labels",
+    remote_schema: "trashbot.o6.archive_labeling.v1",
+    requested_task_id: "task-consumer-001",
+    o6_http_status: 201,
+    submit_receipt: {
+      status: "local_mock_annotation_written",
+      receipt_id: "local_mock:task-consumer-001:created:1",
+      task_id: "task-consumer-001",
+      robot_id: "robot_fixture",
+      label_count: 1,
+      write_status: "created",
+      duplicate: false,
+      blocked_reason: "none_local_mock_annotation_written_not_real_api",
+    },
+    submitted_labels: [
+      {
+        item_id: "label-1",
+        item_type: "consumer_detail_review_item",
+        label_type: "floor_label",
+        value: "F3",
+        confidence: null,
+        annotator_id: "pc_o7_local_mock",
+        evidence_ref: "consumer-draft-label-001.json",
+        notes: "local/mock submit from PC O7 consumer detail; not production",
+      },
+    ],
+    label_summary: {
+      itemized_label_count: 1,
+      pending_item_count: 0,
+      labeled_item_count: 1,
+      latest_label_updated_at_ms: 1781040010000,
+    },
+    local_mock_annotation_submit_written: true,
+    submit_enabled: false,
+    rollback_enabled: false,
+    dataset_export_available: false,
+    real_annotation_api_connected: false,
+    real_dataset_export_connected: false,
+    cloud_write_executed: false,
+    connects_cloud_production: false,
+    robot_control_executed: false,
+    blocked_reasons: ["real_annotation_api_connected_false", "cloud_write_executed_false"],
+    not_proven: ["real_annotation_submit_success", "real_annotation_review_api", "delivery_success"],
+    fail_closed_reason: "none",
+    local_loopback_only: true,
+    ...PROOF_FLAGS,
+  },
+  "/api/o7/consumer-read/tasks/task-consumer-001/annotations/export": {
+    schema: "trashbot.pc_tools_workstation.o7_annotation_dataset_export_result.v1",
+    adapter_status: "local_mock_export_ready",
+    source_base_url: "http://127.0.0.1:8088",
+    remote_endpoint: "/api/o6/archive/labels/task-consumer-001/export?format=jsonl",
+    remote_schema: "trashbot.o6.annotation_dataset_export.v1",
+    requested_task_id: "task-consumer-001",
+    o6_http_status: 200,
+    format: "jsonl",
+    export_status: "local_mock_export_ready",
+    export_manifest: {
+      manifest_id: "local-mock-export-task-consumer-001",
+      task_id: "task-consumer-001",
+      robot_id: "robot_fixture",
+      format: "jsonl",
+      label_count: 1,
+      item_count: 1,
+      row_count: 1,
+      status: "local_mock_export_ready",
+    },
+    sample_rows: [
+      {
+        row_index: 0,
+        task_id: "task-consumer-001",
+        item_id: "label-1",
+        label_type: "floor_label",
+        value: "F3",
+        evidence_ref: "consumer-draft-label-001.json",
+      },
+    ],
+    local_mock_dataset_export_written: true,
+    dataset_export_available: false,
+    submit_enabled: false,
+    rollback_enabled: false,
+    real_annotation_api_connected: false,
+    real_dataset_export_connected: false,
+    connects_cloud_production: false,
+    cloud_write_executed: false,
+    robot_control_executed: false,
+    blocked_reasons: ["real_dataset_export_connected_false", "dataset_export_available_false"],
+    not_proven: ["real_dataset_export", "real_dataset_export_connected", "delivery_success"],
+    fail_closed_reason: "none",
+    local_loopback_only: true,
     ...PROOF_FLAGS,
   },
   "/api/proof-boundary": {
@@ -6072,6 +7521,10 @@ function stubWorkstationFetch(fixtureOverrides: Record<string, unknown> = {}) {
       fixtureKey = "/api/robot-control/camera/offer";
     } else if (url.startsWith("/api/robot-control/camera/peers/peer-preview-001/close")) {
       fixtureKey = "/api/robot-control/camera/peers/peer-preview-001/close";
+    } else if (url.startsWith("/api/o7/consumer-read/tasks/") && url.includes("/annotations/submit")) {
+      fixtureKey = "/api/o7/consumer-read/tasks/task-consumer-001/annotations/submit";
+    } else if (url.startsWith("/api/o7/consumer-read/tasks/") && url.includes("/annotations/export")) {
+      fixtureKey = "/api/o7/consumer-read/tasks/task-consumer-001/annotations/export";
     } else if (url.startsWith("/api/o7/consumer-read/tasks/")) {
       fixtureKey = "/api/o7/consumer-read/tasks/task-consumer-001";
     } else if (url.startsWith("/api/o7/consumer-read/tasks")) {
@@ -32845,7 +34298,11 @@ describe("App", () => {
         ? "/api/route/debug-summary"
         : url.startsWith("/api/robot-control/summary")
           ? "/api/robot-control/summary"
-          : url.startsWith("/api/o7/consumer-read/tasks/")
+          : url.startsWith("/api/o7/consumer-read/tasks/") && url.includes("/annotations/submit")
+            ? "/api/o7/consumer-read/tasks/task-consumer-001/annotations/submit"
+            : url.startsWith("/api/o7/consumer-read/tasks/") && url.includes("/annotations/export")
+              ? "/api/o7/consumer-read/tasks/task-consumer-001/annotations/export"
+              : url.startsWith("/api/o7/consumer-read/tasks/")
             ? "/api/o7/consumer-read/tasks/task-consumer-001"
             : url.startsWith("/api/o7/consumer-read/tasks")
               ? "/api/o7/consumer-read/tasks"
@@ -33115,6 +34572,8 @@ describe("App", () => {
     expect(wrapper.text()).toContain("realtime_elevator_probe_not_loaded");
     expect(wrapper.text()).toContain("Debug fallback: archive fixture labeling review panel");
     expect(wrapper.findAll("button").find((button) => button.text() === "Next item")?.attributes("disabled")).toBeDefined();
+    expect(wrapper.findAll("button").find((button) => button.text() === "提交 local/mock 标注")?.attributes("disabled")).toBeDefined();
+    expect(wrapper.findAll("button").find((button) => button.text() === "导出 local/mock 数据集")?.attributes("disabled")).toBeDefined();
     expect(wrapper.text()).toContain("Local voice ASR/TTS monitor panel");
     expect(wrapper.findAll("button").find((button) => button.text() === "Next ASR event")?.attributes("disabled")).toBeDefined();
     expect(wrapper.text()).toContain("Local TTS draft editor");
@@ -33176,6 +34635,12 @@ describe("App", () => {
     await wrapper.findAll("button").find((button) => button.text() === "Load consumer task detail")?.trigger("click");
     await flushPromises();
 
+    await wrapper.findAll("button").find((button) => button.text() === "提交 local/mock 标注")?.trigger("click");
+    await flushPromises();
+
+    await wrapper.findAll("button").find((button) => button.text() === "导出 local/mock 数据集")?.trigger("click");
+    await flushPromises();
+
     await wrapper.findAll("button").find((button) => button.text() === "Load archive tasks")?.trigger("click");
     await flushPromises();
 
@@ -33198,6 +34663,12 @@ describe("App", () => {
     expect(previewCalls).toContain(
       "/api/o7/consumer-read/tasks/task-consumer-001?baseUrl=http%3A%2F%2F127.0.0.1%3A8088&fieldEvidenceManifestJson=fixtures%2Ffield-evidence-manifest.json",
     );
+    expect(previewCalls).toContain(
+      "/api/o7/consumer-read/tasks/task-consumer-001/annotations/submit?baseUrl=http%3A%2F%2F127.0.0.1%3A8088",
+    );
+    expect(previewCalls).toContain(
+      "/api/o7/consumer-read/tasks/task-consumer-001/annotations/export?baseUrl=http%3A%2F%2F127.0.0.1%3A8088&format=jsonl",
+    );
     expect(previewCalls).toContain("/api/o7/cloud-archive/tasks-probe?baseUrl=http%3A%2F%2F127.0.0.1%3A8088");
     expect(previewCalls).toContain("/api/o7/rtc-signaling-contract-probe?baseUrl=http%3A%2F%2F127.0.0.1%3A8088");
     expect(previewCalls).toContain("/api/o7/realtime-elevator-probe?baseUrl=http%3A%2F%2F127.0.0.1%3A8088");
@@ -33216,6 +34687,10 @@ describe("App", () => {
     expect(wrapper.text()).toContain("trashbot.pc_tools_workstation.o7_cloud_operator_console_probe.v1");
     expect(wrapper.text()).toContain("trashbot.pc_tools_workstation.o7_consumer_task_list.v1");
     expect(wrapper.text()).toContain("trashbot.pc_tools_workstation.o7_consumer_task_detail.v1");
+    expect(wrapper.text()).toContain("trashbot.pc_tools_workstation.o7_consumer_route_replay_mvp.v1");
+    expect(wrapper.text()).toContain("trashbot.pc_tools_workstation.o7_consumer_labeling_mvp.v1");
+    expect(wrapper.text()).toContain("consumer_detail_replay_ready");
+    expect(wrapper.text()).toContain("consumer_detail_labeling_ready");
     expect(wrapper.text()).toContain("trashbot.pc_tools_workstation.o7_cloud_archive_tasks_probe.v1");
     expect(wrapper.text()).toContain("trashbot.pc_tools_workstation.o7_rtc_signaling_contract_probe.v1");
     expect(wrapper.text()).toContain("trashbot.pc_tools_workstation.o7_realtime_elevator_probe.v1");
@@ -33240,10 +34715,148 @@ describe("App", () => {
     expect(wrapper.text()).toContain("task-consumer-001");
     expect(wrapper.text()).toContain("local_consumer_detail_cursor_ready");
     expect(wrapper.text()).toContain("readonly_consumer_detail_trajectory_ready");
+    expect(wrapper.text()).toContain("Artifact bundle readiness");
+    expect(wrapper.text()).toContain(
+      "artifact_bundle_readiness 主路径 · bundle / consumer_ingest / preflight 优先 · route_bag_evidence / route_bag_payload_replay / route_bag_semantic_replay / route_bag_full_semantic_decode_matrix / route_delivery_closure_packet / same_task_field_material_packet / same_task_mission_evidence_gate 只读汇总 · route replay / labeling 旧 fallback 只做兼容",
+    );
+    expect(wrapper.text()).toContain("consumer_detail_artifact_bundle_ready");
+    expect(wrapper.text()).toContain("route_ref_count");
+    expect(wrapper.text()).toContain("review_item_count");
+    expect(wrapper.text()).toContain("consumer-field-evidence-001");
+    expect(wrapper.text()).toContain("real_keyframe_media_access_probe_without_credentials");
+    expect(wrapper.text()).toContain("Bundle source");
+    expect(wrapper.text()).toContain("Bundle blockers");
+    expect(wrapper.text()).toContain("Bundle next evidence");
+    expect(wrapper.text()).toContain("Offline artifact seed smoke");
+    expect(wrapper.text()).toContain("offline_artifact_seed_smoke");
+    expect(wrapper.text()).toContain("local_mock_offline_artifact_seed_smoke_ready");
+    expect(wrapper.text()).toContain("sample_sha256_prefixes=aaaaaaaaaaaa,bbbbbbbbbbbb,cccccccccccc");
+    expect(wrapper.text()).toContain("real_or_offline_artifact_seed_smoke_for_selected_task");
+    expect(wrapper.text()).toContain("Route-root seed gate");
+    expect(wrapper.text()).toContain("trashbot.o6.route_root_seed_gate.v1");
+    expect(wrapper.text()).toContain("local_mock_route_root_seed_ready");
+    expect(wrapper.text()).toContain("route_root_seed_status=local_mock_route_root_seed_ready");
+    expect(wrapper.text()).toContain("route_bag_required=false");
+    expect(wrapper.text()).toContain("route_bag_present=false");
+    expect(wrapper.text()).toContain("route_frame_count=17");
+    expect(wrapper.text()).toContain("derived_replay_frame_count=17");
+    expect(wrapper.text()).toContain("route_bag_missing_optional");
+    expect(wrapper.text()).toContain("route_bag_optional_for_enhanced_route_replay");
+    expect(wrapper.text()).toContain("Route bag evidence");
+    expect(wrapper.text()).toContain("trashbot.route_bag_evidence.v1");
+    expect(wrapper.text()).toContain("ready_not_route_execution_proof");
+    expect(wrapper.text()).toContain("software_proof_route_bag_evidence_intake_only");
+    expect(wrapper.text()).toContain("source_label=route_bag_0.db3");
+    expect(wrapper.text()).toContain("topic_count=4");
+    expect(wrapper.text()).toContain("message_count=128");
+    expect(wrapper.text()).toContain("sample_topic_names=/tf,/odom,/imu/data,/battery");
+    expect(wrapper.text()).toContain("route_execution_success=false");
+    expect(wrapper.text()).toContain("real_live_nav2_run_or_route_execution_proof");
+    expect(wrapper.text()).toContain("Route bag full semantic decode matrix");
+    expect(wrapper.text()).toContain("trashbot.route_bag_full_semantic_decode_matrix.v1");
+    expect(wrapper.text()).toContain("software_proof_route_bag_full_semantic_decode_matrix_only");
+    expect(wrapper.text()).toContain("route_bag_full_semantic_decode_matrix_status=ready_not_route_execution_proof");
+    expect(wrapper.text()).toContain("coverage_ratio=1");
+    expect(wrapper.text()).toContain("decoded_topic_type_count=4");
+    expect(wrapper.text()).toContain("unsupported_topic_type_count=0");
+    expect(wrapper.text()).toContain("failed_topic_type_count=0");
+    expect(wrapper.text()).toContain("topic_name=/scan");
+    expect(wrapper.text()).toContain("topic_type=sensor_msgs/msg/LaserScan");
+    expect(wrapper.text()).toContain("topic_name=/diagnostics");
+    expect(wrapper.text()).toContain("decoder_name=decode_diagnostic_array_payload");
+    expect(wrapper.text()).toContain("topic_name=/odom");
+    expect(wrapper.text()).toContain("decoder_name=decode_odometry_payload");
+    expect(wrapper.text()).not.toContain("decoder_not_supported");
+    expect(wrapper.text()).not.toContain("decoder_for_unsupported_topic_types");
+    expect(wrapper.text()).toContain("Nav2 goal execution evidence");
+    expect(wrapper.text()).toContain("trashbot.nav2_goal_execution_evidence.v1");
+    expect(wrapper.text()).toContain("nav2_goal_execution_evidence_ready_not_delivery_proof");
+    expect(wrapper.text()).toContain("software_proof_nav2_goal_execution_evidence_only");
+    expect(wrapper.text()).toContain("goal_result_status=succeeded");
+    expect(wrapper.text()).toContain("base_motion_command_nonzero_proven=false");
+    expect(wrapper.text()).toContain("nonzero_base_feedback_for_selected_task");
+    expect(wrapper.text()).toContain("Delivery result evidence");
+    expect(wrapper.text()).toContain("trashbot.delivery_result_evidence.v1");
+    expect(wrapper.text()).toContain("delivery_result_evidence_ready_not_delivery_proof");
+    expect(wrapper.text()).toContain("operator_confirmation_present=true");
+    expect(wrapper.text()).toContain("delivery_record_or_operator_dropoff_confirmation");
+    expect(wrapper.text()).toContain("Route execution result delivery readiness");
+    expect(wrapper.text()).toContain("trashbot.o6.route_execution_result_delivery_readiness.v1");
+    expect(wrapper.text()).toContain("route_execution_result_delivery_readiness_ready_not_delivery_proof");
+    expect(wrapper.text()).toContain("software_proof_route_execution_result_delivery_readiness_only");
+    expect(wrapper.text()).toContain("nav2_goal_execution_ready=true");
+    expect(wrapper.text()).toContain("operator_confirmation_ready=true");
+    expect(wrapper.text()).toContain("Route delivery closure packet");
+    expect(wrapper.text()).toContain("trashbot.o6.route_delivery_closure_packet.v1");
+    expect(wrapper.text()).toContain("route_delivery_closure_ready_not_success_proof");
+    expect(wrapper.text()).toContain("software_proof_route_delivery_closure_packet_only");
+    expect(wrapper.text()).toContain("route_pose_progress_ready=true");
+    expect(wrapper.text()).toContain("Same task field material packet");
+    expect(wrapper.text()).toContain("trashbot.o6.same_task_field_material_packet.v1");
+    expect(wrapper.text()).toContain("software_proof_same_task_field_material_packet_only");
+    expect(wrapper.text()).toContain("present_materials=map_yaml,route_csv,keyframes,route_bag_or_rosbag,replay_jsonl");
+    expect(wrapper.text()).toContain("route_bag_or_rosbag_present=true");
+    expect(wrapper.text()).toContain("material:route_bag_or_rosbag.basename=route_bag_0.db3");
+    expect(wrapper.text()).toContain("optional_map_gap=false");
+    expect(wrapper.text()).toContain("Same task mission evidence gate");
+    expect(wrapper.text()).toContain("trashbot.o6.same_task_mission_evidence_gate.v1");
+    expect(wrapper.text()).toContain("same_task_mission_gate_ready_not_success_proof");
+    expect(wrapper.text()).toContain("software_proof_same_task_mission_evidence_gate_only");
+    expect(wrapper.text()).toContain("terminal_result_source=cloud_command_terminal_result");
+    expect(wrapper.text()).toContain("terminal_source_schema=trashbot.cloud_command_terminal_result.v1");
+    expect(wrapper.text()).toContain("ready_not_success_proof 不等于真实送达成功");
+    expect(wrapper.text()).toContain("okr_credit_allowed=false");
+    expect(wrapper.text()).toContain("support_only_reason=local_mock_only_credit_gate");
+    expect(wrapper.text()).toContain("same_task_id_consumed=true");
+    expect(wrapper.text()).toContain("live_or_field_command_executed=false");
+    expect(wrapper.text()).toContain("delivery_success_proven=false");
+    expect(wrapper.text()).toContain("Same task mission material checklist");
+    expect(wrapper.text()).toContain("trashbot.pc_tools_workstation.o7_same_task_mission_material_checklist.v1");
+    expect(wrapper.text()).toContain("statusblocked_not_proven");
+    expect(wrapper.text()).toContain("okr_credit_allowed=false 时必须保留 support-only/blocked 语义");
+    expect(wrapper.text()).toContain("id=same_task_identity");
+    expect(wrapper.text()).toContain("id=terminal_cloud_result");
+    expect(wrapper.text()).toContain("id=route_execution_material");
+    expect(wrapper.text()).toContain("id=same_task_field_material_packet");
+    expect(wrapper.text()).toContain("id=delivery_record");
+    expect(wrapper.text()).toContain("id=operator_confirmation");
+    expect(wrapper.text()).toContain("id=route_pose_progress");
+    expect(wrapper.text()).toContain("id=production_cloud_readback");
+    expect(wrapper.text()).toContain("id=safety_invariants");
+    expect(wrapper.text()).toContain("production_cloud_db_queue_endpoint_readback_for_same_task");
+    expect(wrapper.text()).toContain("delivery_success=false · safe_to_control=false · primary_actions_enabled=false · robot_control_executed=false");
+    expect(wrapper.text()).toContain("support_only_reason=local_mock_only_credit_gate");
+    expect(wrapper.text()).toContain("Artifact access probe");
+    expect(wrapper.text()).toContain("trashbot.o6.artifact_access_probe.v1");
+    expect(wrapper.text()).toContain("local_mock_artifact_access_probe_ready");
+    expect(wrapper.text()).toContain("artifact_access_probe 二级消费");
+    expect(wrapper.text()).toContain("requested_ref_count=4");
+    expect(wrapper.text()).toContain("sha256_prefixes=aaaaaaaaaaaa,cccccccccccc");
+    expect(wrapper.text()).toContain("detected_type=image/jpeg");
+    expect(wrapper.text()).toContain("ref_blocked_by_allowlist");
+    expect(wrapper.text()).toContain("real_or_offline_artifact_access_probe_for_selected_task");
+    expect(wrapper.text()).toContain("allowlist_root_echoed=false");
+    expect(wrapper.text()).toContain("media_access_proven=false");
+    expect(wrapper.text()).toContain("real_cdn_connected=false");
     expect(wrapper.text()).toContain("consumer-frame-000.jpg");
+    expect(wrapper.text()).toContain("consumer-keyframe-000.jpg");
     expect(wrapper.text()).toContain("consumer_en_route");
     expect(wrapper.text()).toContain("consumer-event-001.json");
     expect(wrapper.text()).toContain("consumer-evidence-001.jpg");
+    expect(wrapper.text()).toContain("consumer-frame-001.jpg");
+    expect(wrapper.text()).toContain("consumer-label-schema.json");
+    expect(wrapper.text()).toContain("draft_consumer_detail");
+    expect(wrapper.text()).toContain("submit_blocked_fail_closed");
+    expect(wrapper.text()).toContain("submit_disabled_no_annotation_api");
+    expect(wrapper.text()).toContain("trashbot.pc_tools_workstation.o7_annotation_submit_result.v1");
+    expect(wrapper.text()).toContain("local_mock_annotation_written");
+    expect(wrapper.text()).toContain("local_mock_annotation_submit_written=true");
+    expect(wrapper.text()).toContain("trashbot.pc_tools_workstation.o7_annotation_dataset_export_result.v1");
+    expect(wrapper.text()).toContain("local_mock_export_ready");
+    expect(wrapper.text()).toContain("local-mock-export-task-consumer-001");
+    expect(wrapper.text()).toContain("consumer-draft-label-001.json");
+    expect(wrapper.text()).toContain("real_dataset_export_connected=false");
+    expect(wrapper.text()).toContain("cloud_write_executed=false");
     expect(wrapper.text()).toContain("consumer-inference-001.json");
     expect(wrapper.text()).toContain("latest_known_robot_snapshot_not_task_aligned");
     expect(wrapper.text()).toContain("idempotent_command_api_trace");
@@ -33366,6 +34979,11 @@ describe("App", () => {
     expect(wrapper.text()).toContain("keyframe_ref_001");
     expect(wrapper.text()).toContain("playing=false");
     expect(wrapper.text()).toContain("safe_to_play=false");
+    expect(wrapper.text()).toContain("field evidence origin");
+    expect(wrapper.text()).toContain("remote_field_evidence");
+    expect(wrapper.text()).toContain("field_evidence_20260609T101500Z");
+    expect(wrapper.text()).toContain("all_required_artifacts_present");
+    expect(wrapper.text()).toContain("present=map_yaml,route_csv,keyframes,rosbag,replay_jsonl");
 
     const callsBeforeLocalCursor = mockedFetch.mock.calls.length;
     await wrapper.findAll("button").find((button) => button.text() === "Next frame")?.trigger("click");
@@ -33382,10 +35000,14 @@ describe("App", () => {
     expect(wrapper.text()).toContain("consumer_detail_labeling_queue_ready");
     expect(wrapper.text()).toContain("submit_enabled=false");
     expect(wrapper.text()).toContain("export_enabled=false");
+    expect(wrapper.text()).toContain("false_real_dataset_export; local_mock_button=true");
     expect(wrapper.text()).toContain("rollback_enabled=false");
     expect(wrapper.text()).toContain("real_annotation_api_connected=false");
+    expect(wrapper.text()).toContain("real_dataset_export_connected=false");
+    expect(wrapper.text()).toContain("cloud_write_executed=false");
     expect(wrapper.text()).toContain("dataset_export_available=false");
     expect(wrapper.text()).toContain("consumer-detail labeling primary path uses task detail labels plus evidence/events/trajectory checks");
+    expect(wrapper.text()).toContain("local/mock submit/export only calls PC backend adapter; browser never calls O6 directly");
     expect(wrapper.text()).toContain("Labeling queue inspector debug fallback");
     expect(wrapper.text()).toContain("Debug fallback: archive fixture labeling review panel");
     expect(wrapper.text()).toContain("local_fixture_item_cursor_only");
@@ -33675,6 +35297,1137 @@ describe("App", () => {
     expect(advancedToolsText).not.toContain("/cmd_vel");
   });
 
+  it("renders O6 field_evidence summary and keeps remote detail ahead of local fallback", async () => {
+    // 这里专门验证 O6 直接 field_evidence 摘要：远端摘要必须优先，local manifest 只做缺失时补齐。
+    const mockedFetch = stubWorkstationFetch({
+      "/api/o7/consumer-read/tasks": {
+        schema: "trashbot.pc_tools_workstation.o7_consumer_task_list.v1",
+        list_status: "loaded_fail_closed_summary",
+        source_base_url: "http://127.0.0.1:8088",
+        remote_endpoint: "/api/o6/consumer/tasks?view=summary&limit=50",
+        remote_schema: "trashbot.o6.consumer_read.v1",
+        query_strategy: {
+          view: "summary",
+          include: [],
+          limit: 50,
+          primary_path: true,
+          fail_closed_visible: true,
+        },
+        task_list: [
+          {
+            task_id: "task-consumer-summary-001",
+            robot_id: "robot_fixture",
+            task_origin: "field_evidence_manifest",
+            field_evidence_source: "local_mock_field_evidence_manifest",
+            field_evidence_artifact_status: "gated",
+            started_at_ms: 1000,
+            finished_at_ms: 2000,
+            task_status_summary: "completed_mock",
+            latest_event_at_ms: 1900,
+            trajectory_frame_count: 2,
+            event_count: 1,
+            evidence_count: 1,
+            labeling_status: "partial",
+            inference_status: "present",
+            tunnel_status_summary: "online",
+            selected: true,
+          },
+        ],
+        blocked_reasons: [],
+        not_proven: ["proof_status=not_proven", "safe_to_control=false"],
+        fail_closed_reason: "none",
+        local_loopback_only: true,
+        connects_cloud_production: false,
+        robot_control_executed: false,
+        ...PROOF_FLAGS,
+      },
+      "/api/o7/consumer-read/tasks/task-consumer-summary-001": {
+        schema: "trashbot.pc_tools_workstation.o7_consumer_task_detail.v1",
+        detail_status: "loaded_fail_closed_summary",
+        source_base_url: "http://127.0.0.1:8088",
+        remote_endpoint:
+          "/api/o6/consumer/tasks/task-consumer-summary-001?view=default&include=trajectory,events,evidence,field_evidence,labeling,inference,tunnel,artifact_access_probe,offline_artifact_seed_smoke,route_root_seed_gate,route_bag_evidence,route_bag_payload_replay,route_bag_semantic_replay,route_bag_full_semantic_decode_matrix,route_bag_pose_progress_replay,nav2_goal_execution_evidence,delivery_result_evidence,route_execution_result_delivery_readiness,route_delivery_closure_packet,same_task_field_material_packet,same_task_mission_evidence_gate",
+        remote_schema: "trashbot.o6.consumer_read.v1",
+        requested_task_id: "task-consumer-summary-001",
+        query_strategy: {
+          view: "default",
+          include: [
+            "trajectory",
+            "events",
+            "evidence",
+            "field_evidence",
+            "labeling",
+            "inference",
+            "tunnel",
+            "artifact_access_probe",
+            "offline_artifact_seed_smoke",
+            "route_root_seed_gate",
+            "route_bag_evidence",
+            "route_bag_payload_replay",
+            "route_bag_semantic_replay",
+            "route_bag_full_semantic_decode_matrix",
+            "route_bag_pose_progress_replay",
+            "nav2_goal_execution_evidence",
+            "delivery_result_evidence",
+            "route_execution_result_delivery_readiness",
+            "route_delivery_closure_packet",
+            "same_task_field_material_packet",
+            "same_task_mission_evidence_gate",
+          ],
+          primary_path: true,
+          fail_closed_visible: true,
+        },
+        field_evidence: {
+          schema: "trashbot.field_evidence_manifest.v1",
+          source: "local_mock_field_evidence_manifest",
+          task_origin: "field_evidence_manifest",
+          run_id: "field_evidence_20260609T101500Z",
+          manifest_status: "field_evidence_manifest_ready_not_delivery_proof",
+          manifest_gate: {
+            schema: "trashbot.field_evidence_manifest.v1",
+            status: "gated",
+            gate_pass: true,
+            blocked_reason: "preflight_ready_not_delivery_proof",
+            source: "local_fixture",
+          },
+          artifact_status: "gated",
+          artifact_summary: {
+            required_count: 5,
+            present_count: 5,
+            missing_count: 0,
+            blocked_count: 0,
+            summary: "all_required_artifacts_present",
+          },
+          artifacts: [
+            {
+              artifact_name: "map_yaml",
+              required: true,
+              present: true,
+              evidence_id: "map_yaml",
+              evidence_type: "map_yaml",
+              evidence_ref: "map.yaml",
+              captured_at_ms: 1717928100000,
+              size_bytes: 24,
+              checksum: "map-sha",
+              content_type: "text/yaml",
+              metadata: { file_count: 1 },
+            },
+            {
+              artifact_name: "route_csv",
+              required: true,
+              present: true,
+              evidence_id: "route_csv",
+              evidence_type: "route_csv",
+              evidence_ref: "route.csv",
+              captured_at_ms: 1717928100000,
+              size_bytes: 18,
+              checksum: "route-sha",
+              content_type: "text/csv",
+              metadata: { file_count: 1 },
+            },
+            {
+              artifact_name: "keyframes",
+              required: true,
+              present: true,
+              evidence_id: "keyframes",
+              evidence_type: "keyframes",
+              evidence_ref: "keyframes",
+              captured_at_ms: 1717928100000,
+              size_bytes: 128,
+              checksum: "keyframes-sha",
+              content_type: "application/x-directory",
+              metadata: { file_count: 2 },
+            },
+            {
+              artifact_name: "rosbag",
+              required: true,
+              present: true,
+              evidence_id: "rosbag",
+              evidence_type: "rosbag",
+              evidence_ref: "route_bag",
+              captured_at_ms: 1717928100000,
+              size_bytes: 256,
+              checksum: "rosbag-sha",
+              content_type: "application/x-directory",
+              metadata: { file_count: 1 },
+            },
+            {
+              artifact_name: "replay_jsonl",
+              required: true,
+              present: true,
+              evidence_id: "replay_jsonl",
+              evidence_type: "replay_jsonl",
+              evidence_ref: "fixtures/field-evidence-summary.json",
+              captured_at_ms: 1717928100000,
+              size_bytes: 96,
+              checksum: "replay-sha",
+              content_type: "application/jsonl",
+              metadata: { file_count: 2 },
+            },
+          ],
+          derived_replay: {
+            generated: true,
+            frame_count: 2,
+            blocked_reason: "",
+            output_ref: "derived_replay.jsonl",
+          },
+          preflight: {
+            status: "ready_for_live_route_capture_not_proven",
+            dry_run: false,
+            read_ok: true,
+            blocked_reason: "preflight_ready_not_delivery_proof",
+          },
+          source_manifest: {
+            schema: "trashbot.vision_samples.v1",
+            sample_count: 2,
+            status: "ready",
+          },
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          connects_cloud_production: false,
+          robot_control_executed: false,
+        },
+        task_summary: {
+          task_id: "task-consumer-summary-001",
+          robot_id: "robot_fixture",
+          task_status_summary: "completed_mock",
+          started_at_ms: 1000,
+          finished_at_ms: 2000,
+        },
+        trajectory: {
+          status: "loaded_not_proven",
+          frame_count: 2,
+          sample_frames: [
+            {
+              frame_index: 0,
+              timestamp_ms: 1000,
+              pose: { x_m: 0.2, y_m: 0.1, yaw_rad: 0 },
+              velocity: { linear_mps: 0.1 },
+              state: "consumer_departed",
+              evidence_ref: "consumer-frame-000.jpg",
+            },
+          ],
+        },
+        events: {
+          status: "loaded_not_proven",
+          count: 1,
+          sample_events: [{ event_type: "route.frame", state: "consumer_en_route", timestamp_ms: 1200, evidence_ref: "consumer-event-001.json" }],
+        },
+        evidence: {
+          status: "loaded_not_proven",
+          count: 1,
+          sample_evidence: [{ evidence_type: "snapshot", state: "consumer_en_route", timestamp_ms: 1200, evidence_ref: "consumer-evidence-001.jpg" }],
+        },
+        artifact_access_probe: {
+          schema: "trashbot.o6.artifact_access_probe.v1",
+          status: "local_mock_artifact_access_probe_ready",
+          task_id: "task-consumer-summary-001",
+          source_contract: "trashbot.o6.artifact_access_probe.v1",
+          source_origin: "remote_artifact_bundle",
+          source_path: "artifact_bundle.artifact_access_probe",
+          proof_scope: "software_proof_local_mock_artifact_access_probe_only",
+          allowlist_root_configured: true,
+          allowlist_root_echoed: false,
+          max_file_size_bytes: 65536,
+          counts: {
+            requested_ref_count: 4,
+            readable_ref_count: 3,
+            blocked_ref_count: 1,
+            missing_ref_count: 0,
+          },
+          sample_probes: [
+            {
+              task_id: "task-consumer-summary-001",
+              ref_kind: "route_csv",
+              ref: "route.csv",
+              exists: true,
+              size_bytes: 128,
+              sha256_prefix: "aaaaaaaaaaaa",
+              detected_type: "text/csv",
+              blocked_reason: "none",
+              proof_scope: "software_proof_local_mock_artifact_access_probe_only",
+            },
+            {
+              task_id: "task-consumer-summary-001",
+              ref_kind: "keyframe",
+              ref: "keyframe-0001.jpg",
+              exists: true,
+              size_bytes: 4096,
+              sha256_prefix: "cccccccccccc",
+              detected_type: "image/jpeg",
+              blocked_reason: "none",
+              proof_scope: "software_proof_local_mock_artifact_access_probe_only",
+            },
+            {
+              task_id: "task-consumer-summary-001",
+              ref_kind: "evidence",
+              ref: "blocked-evidence.bin",
+              exists: false,
+              size_bytes: null,
+              sha256_prefix: "",
+              detected_type: "unknown",
+              blocked_reason: "ref_blocked_by_allowlist",
+              proof_scope: "software_proof_local_mock_artifact_access_probe_only",
+            },
+          ],
+          sample_refs: ["route.csv", "keyframe-0001.jpg", "blocked-evidence.bin"],
+          sample_sha256_prefixes: ["aaaaaaaaaaaa", "cccccccccccc"],
+          blocked_reasons: ["local_mock_only", "not_proven", "ref_blocked_by_allowlist"],
+          next_required_evidence: ["real_or_offline_artifact_access_probe_for_selected_task"],
+          proof_boundary: {
+            local_mock: true,
+            not_proven: true,
+            file_read_attempted: true,
+            real_oss_connected: false,
+            real_cdn_connected: false,
+          },
+          media_access_proven: false,
+          real_oss_connected: false,
+          real_cdn_connected: false,
+          robot_control_executed: false,
+          ...PROOF_FLAGS,
+        },
+        artifact_media_preflight: {
+          schema: "trashbot.o6.artifact_media_preflight.v1",
+          status: "local_mock_media_preflight_ready",
+          task_id: "task-consumer-summary-001",
+          consumer_section_names: ["artifact_media_preflight", "route_replay_mvp", "labeling_mvp"],
+          counts: {
+            route_ref_count: 1,
+            replay_ref_count: 1,
+            keyframe_ref_count: 1,
+            sample_ref_count: 3,
+            review_item_media_ref_count: 2,
+          },
+          route_replay_dependency: {
+            status: "local_mock_media_preflight_ready",
+            route_ref: "route.csv",
+            replay_ref: "fixed_route_replay.jsonl",
+            keyframe_ref: "keyframes",
+            sample_refs: ["consumer-frame-000.jpg", "consumer-event-001.json", "consumer-evidence-001.jpg"],
+            review_item_media_refs: [],
+            blocked_reasons: ["local_mock_only", "not_proven"],
+            next_required_evidence: [
+              "real_keyframe_media_access_probe_without_credentials",
+              "review_item_media_capture_for_selected_task",
+            ],
+            media_access_proven: false,
+            real_oss_connected: false,
+            real_cdn_connected: false,
+          },
+          labeling_dependency: {
+            status: "local_mock_media_preflight_ready",
+            route_ref: "route.csv",
+            replay_ref: "fixed_route_replay.jsonl",
+            keyframe_ref: "keyframes",
+            sample_refs: ["consumer-frame-000.jpg", "consumer-event-001.json", "consumer-evidence-001.jpg"],
+            review_item_media_refs: ["frame_media_001.jpg", "frame_media_002.jpg"],
+            blocked_reasons: ["local_mock_only", "not_proven"],
+            next_required_evidence: [
+              "real_keyframe_media_access_probe_without_credentials",
+              "review_item_media_capture_for_selected_task",
+            ],
+            media_access_proven: false,
+            real_oss_connected: false,
+            real_cdn_connected: false,
+          },
+          proof_boundary: {
+            local_mock: true,
+            not_proven: true,
+            real_media_read_executed: false,
+            real_oss_connected: false,
+            real_cdn_connected: false,
+          },
+          blocked_reasons: ["local_mock_only", "not_proven"],
+          next_required_evidence: [
+            "real_keyframe_media_access_probe_without_credentials",
+            "review_item_media_capture_for_selected_task",
+          ],
+          media_access_proven: false,
+          real_oss_connected: false,
+          real_cdn_connected: false,
+        },
+      artifact_bundle: {
+        schema: "trashbot.o6.artifact_bundle.v1",
+        source: "local_mock_artifact_bundle_archive",
+        task_origin: "artifact_bundle",
+        bundle_status: "local_mock_artifact_bundle_ready",
+          offline_artifact_seed_smoke: {
+            schema: "trashbot.o6.offline_artifact_seed_smoke.v1",
+            status: "local_mock_offline_artifact_seed_smoke_ready",
+            task_id: "task-consumer-001",
+            source_contract: "trashbot.o6.offline_artifact_seed_smoke.v1",
+            source_origin: "remote_artifact_bundle",
+            source_path: "artifact_bundle.offline_artifact_seed_smoke",
+            proof_scope: "software_proof_offline_artifact_seed_smoke_only",
+            allowlist_root_echoed: false,
+            counts: {
+              route_ref_count: 1,
+              replay_ref_count: 1,
+              keyframe_ref_count: 1,
+              evidence_ref_count: 1,
+              sample_ref_count: 4,
+              readable_ref_count: 3,
+              blocked_ref_count: 1,
+              missing_ref_count: 0,
+            },
+            sample_probes: [
+              {
+                task_id: "task-consumer-001",
+                ref_kind: "route_csv",
+                ref: "route.csv",
+                exists: true,
+                size_bytes: 128,
+                sha256_prefix: "aaaaaaaaaaaa",
+                detected_type: "text/csv",
+                blocked_reason: "none",
+                proof_scope: "software_proof_offline_artifact_seed_smoke_only",
+              },
+              {
+                task_id: "task-consumer-001",
+                ref_kind: "replay_jsonl",
+                ref: "derived_replay.jsonl",
+                exists: true,
+                size_bytes: 2048,
+                sha256_prefix: "bbbbbbbbbbbb",
+                detected_type: "application/jsonl",
+                blocked_reason: "none",
+                proof_scope: "software_proof_offline_artifact_seed_smoke_only",
+              },
+              {
+                task_id: "task-consumer-001",
+                ref_kind: "keyframe",
+                ref: "keyframe-0001.jpg",
+                exists: true,
+                size_bytes: 4096,
+                sha256_prefix: "cccccccccccc",
+                detected_type: "image/jpeg",
+                blocked_reason: "none",
+                proof_scope: "software_proof_offline_artifact_seed_smoke_only",
+              },
+              {
+                task_id: "task-consumer-001",
+                ref_kind: "evidence",
+                ref: "blocked-evidence.bin",
+                exists: false,
+                size_bytes: null,
+                sha256_prefix: "",
+                detected_type: "unknown",
+                blocked_reason: "ref_blocked_by_allowlist",
+                proof_scope: "software_proof_offline_artifact_seed_smoke_only",
+              },
+            ],
+            sample_refs: ["route.csv", "derived_replay.jsonl", "keyframe-0001.jpg", "blocked-evidence.bin"],
+            sample_sha256_prefixes: ["aaaaaaaaaaaa", "bbbbbbbbbbbb", "cccccccccccc"],
+            blocked_reasons: ["local_mock_only", "not_proven", "ref_blocked_by_allowlist"],
+            next_required_evidence: ["real_or_offline_artifact_seed_smoke_for_selected_task"],
+            proof_boundary: {
+              local_mock: true,
+              not_proven: true,
+              file_read_attempted: true,
+              real_oss_connected: false,
+              real_cdn_connected: false,
+            },
+            media_access_proven: false,
+          real_oss_connected: false,
+          real_cdn_connected: false,
+          robot_control_executed: false,
+        },
+      },
+      offline_artifact_seed_smoke: {
+        schema: "trashbot.o6.offline_artifact_seed_smoke.v1",
+        status: "local_mock_offline_artifact_seed_smoke_ready",
+        task_id: "task-consumer-summary-001",
+        source_contract: "trashbot.o6.offline_artifact_seed_smoke.v1",
+        source_origin: "remote_artifact_bundle",
+        source_path: "artifact_bundle.offline_artifact_seed_smoke",
+        proof_scope: "software_proof_offline_artifact_seed_smoke_only",
+        allowlist_root_echoed: false,
+        counts: {
+          route_ref_count: 1,
+          replay_ref_count: 1,
+          keyframe_ref_count: 1,
+          evidence_ref_count: 1,
+          sample_ref_count: 4,
+          readable_ref_count: 3,
+          blocked_ref_count: 1,
+          missing_ref_count: 0,
+        },
+        sample_probes: [
+          {
+            task_id: "task-consumer-summary-001",
+            ref_kind: "route_csv",
+            ref: "route.csv",
+            exists: true,
+            size_bytes: 128,
+            sha256_prefix: "aaaaaaaaaaaa",
+            detected_type: "text/csv",
+            blocked_reason: "none",
+            proof_scope: "software_proof_offline_artifact_seed_smoke_only",
+          },
+          {
+            task_id: "task-consumer-summary-001",
+            ref_kind: "replay_jsonl",
+            ref: "derived_replay.jsonl",
+            exists: true,
+            size_bytes: 2048,
+            sha256_prefix: "bbbbbbbbbbbb",
+            detected_type: "application/jsonl",
+            blocked_reason: "none",
+            proof_scope: "software_proof_offline_artifact_seed_smoke_only",
+          },
+          {
+            task_id: "task-consumer-summary-001",
+            ref_kind: "keyframe",
+            ref: "keyframe-0001.jpg",
+            exists: true,
+            size_bytes: 4096,
+            sha256_prefix: "cccccccccccc",
+            detected_type: "image/jpeg",
+            blocked_reason: "none",
+            proof_scope: "software_proof_offline_artifact_seed_smoke_only",
+          },
+          {
+            task_id: "task-consumer-summary-001",
+            ref_kind: "evidence",
+            ref: "blocked-evidence.bin",
+            exists: false,
+            size_bytes: null,
+            sha256_prefix: "",
+            detected_type: "unknown",
+            blocked_reason: "ref_blocked_by_allowlist",
+            proof_scope: "software_proof_offline_artifact_seed_smoke_only",
+          },
+        ],
+        sample_refs: ["route.csv", "derived_replay.jsonl", "keyframe-0001.jpg", "blocked-evidence.bin"],
+        sample_sha256_prefixes: ["aaaaaaaaaaaa", "bbbbbbbbbbbb", "cccccccccccc"],
+        blocked_reasons: ["local_mock_only", "not_proven", "ref_blocked_by_allowlist"],
+        next_required_evidence: ["real_or_offline_artifact_seed_smoke_for_selected_task"],
+        proof_boundary: {
+          local_mock: true,
+          not_proven: true,
+          file_read_attempted: true,
+          real_oss_connected: false,
+          real_cdn_connected: false,
+        },
+        media_access_proven: false,
+        real_oss_connected: false,
+        real_cdn_connected: false,
+        robot_control_executed: false,
+      },
+      field_motion_evidence_packet: {
+        schema: "trashbot.o6.field_motion_evidence_packet.v1",
+        status: "field_motion_packet_ready_not_delivery_proof",
+        source_contract: "trashbot.o6.field_motion_evidence_packet.v1",
+        source_origin: "remote_field_motion_evidence_packet",
+        source_path: "field_motion_evidence_packet",
+        task_id: "task-consumer-summary-001",
+        proof_scope: "software_proof_field_motion_evidence_packet_only",
+        route_summary: {
+          frame_count: 17,
+          nonzero_displacement_observed: true,
+          displacement_m: 2.4,
+        },
+        motion_log_summary: {
+          live_motion_evidence_present: true,
+          evidence_sources: ["route_bag", "live_nav2_log"],
+        },
+        route_bag_or_live_nav2_log: {
+          present: true,
+          source: "route_bag_and_live_nav2_log",
+          route_bag_present: true,
+          live_motion_log_present: true,
+        },
+        blocked_reasons: ["local_mock_only", "not_proven"],
+        next_required_evidence: ["delivery_result_for_selected_task", "real_drop_off_completion_proof"],
+        proof_boundary: {
+          local_mock: true,
+          not_proven: true,
+          reads_local_path: false,
+          route_bag_connected: false,
+          live_nav2_log_connected: false,
+          real_oss_connected: false,
+          real_cdn_connected: false,
+        },
+        media_access_proven: false,
+        real_oss_connected: false,
+        real_cdn_connected: false,
+        robot_control_executed: false,
+        ...PROOF_FLAGS,
+      },
+          route_bag_evidence: sampleRouteBagEvidenceFixture("task-consumer-summary-001"),
+          route_bag_payload_replay:
+            sampleRouteBagEvidenceFixture("task-consumer-summary-001").route_bag_payload_replay,
+          route_bag_semantic_replay:
+            sampleRouteBagEvidenceFixture("task-consumer-summary-001").route_bag_semantic_replay,
+          route_bag_full_semantic_decode_matrix:
+            sampleRouteBagEvidenceFixture("task-consumer-summary-001").route_bag_full_semantic_decode_matrix,
+          nav2_goal_execution_evidence: sampleNav2GoalExecutionEvidenceFixture("task-consumer-summary-001"),
+          route_execution_result_delivery_readiness: sampleRouteExecutionResultDeliveryReadinessFixture(
+            "task-consumer-summary-001",
+          ),
+          route_delivery_closure_packet: sampleRouteDeliveryClosurePacketFixture("task-consumer-summary-001"),
+          same_task_field_material_packet: sampleSameTaskFieldMaterialPacketFixture("task-consumer-summary-001"),
+          same_task_mission_evidence_gate: sampleSameTaskMissionEvidenceGateFixture("task-consumer-summary-001"),
+          same_task_mission_material_checklist: sampleSameTaskMissionMaterialChecklistFixture(
+            "task-consumer-summary-001",
+          ),
+      delivery_result_evidence: sampleDeliveryResultEvidenceFixture(
+        "task-consumer-summary-001",
+        "remote_artifact_bundle_readiness",
+      ),
+      artifact_bundle_consumer_ingest: {
+        schema: "trashbot.o6.artifact_bundle_consumer_ingest.v1",
+        status: "local_mock_artifact_bundle_ready",
+        source: "local_mock_artifact_bundle_archive",
+        task_origin: "artifact_bundle",
+        },
+        artifact_bundle_readiness: {
+          schema: "trashbot.pc_tools_workstation.o7_consumer_artifact_bundle_readiness.v1",
+          status: "consumer_detail_artifact_bundle_ready",
+          selected_task_id: "task-consumer-summary-001",
+          source_detail_task_id: "task-consumer-summary-001",
+          source_contract: "trashbot.o6.artifact_bundle.v1",
+          source_origin: "remote_artifact_bundle",
+          task_id: "task-consumer-summary-001",
+          bundle_status: "local_mock_artifact_bundle_ready",
+          counts: {
+            route_ref_count: 1,
+            replay_ref_count: 1,
+            keyframe_ref_count: 1,
+            evidence_ref_count: 1,
+            review_item_count: 2,
+            sample_ref_count: 6,
+            review_item_media_ref_count: 2,
+          },
+          refs: {
+            route_refs: ["route.csv"],
+            replay_refs: ["fixed_route_replay.jsonl"],
+            keyframe_refs: ["keyframe-0001.jpg"],
+            evidence_refs: ["consumer-field-evidence-001"],
+            review_item_media_refs: ["frame_media_001.jpg", "frame_media_002.jpg"],
+            sample_refs: ["route.csv", "fixed_route_replay.jsonl", "keyframe-0001.jpg", "consumer-field-evidence-001", "frame_media_001.jpg", "frame_media_002.jpg"],
+          },
+          blocked_reasons: ["local_mock_only", "not_proven", "base_motion_command_nonzero_not_proven"],
+          next_required_evidence: [
+            "real_keyframe_media_access_probe_without_credentials",
+            "review_item_media_capture_for_selected_task",
+            "nonzero_base_feedback_for_selected_task",
+          ],
+          field_motion_evidence_packet: {
+            schema: "trashbot.o6.field_motion_evidence_packet.v1",
+            status: "field_motion_packet_ready_not_delivery_proof",
+            source_contract: "trashbot.o6.field_motion_evidence_packet.v1",
+            source_origin: "remote_field_motion_evidence_packet",
+            source_path: "field_motion_evidence_packet",
+            task_id: "task-consumer-summary-001",
+            proof_scope: "software_proof_field_motion_evidence_packet_only",
+            route_summary: {
+              frame_count: 17,
+              nonzero_displacement_observed: true,
+              displacement_m: 2.4,
+            },
+            motion_log_summary: {
+              live_motion_evidence_present: true,
+              evidence_sources: ["route_bag", "live_nav2_log"],
+            },
+            route_bag_or_live_nav2_log: {
+              present: true,
+              source: "route_bag_and_live_nav2_log",
+              route_bag_present: true,
+              live_motion_log_present: true,
+            },
+            blocked_reasons: ["local_mock_only", "not_proven"],
+            next_required_evidence: ["delivery_result_for_selected_task", "real_drop_off_completion_proof"],
+            proof_boundary: {
+              local_mock: true,
+              not_proven: true,
+              reads_local_path: false,
+              route_bag_connected: false,
+              live_nav2_log_connected: false,
+              real_oss_connected: false,
+              real_cdn_connected: false,
+            },
+            media_access_proven: false,
+            real_oss_connected: false,
+            real_cdn_connected: false,
+            robot_control_executed: false,
+            ...PROOF_FLAGS,
+          },
+          route_bag_evidence: sampleRouteBagEvidenceFixture("task-consumer-summary-001", "remote_artifact_bundle_readiness"),
+          route_bag_payload_replay:
+            sampleRouteBagEvidenceFixture("task-consumer-summary-001", "remote_artifact_bundle_readiness").route_bag_payload_replay,
+          route_bag_semantic_replay:
+            sampleRouteBagEvidenceFixture("task-consumer-summary-001", "remote_artifact_bundle_readiness").route_bag_semantic_replay,
+          route_bag_full_semantic_decode_matrix: sampleRouteBagFullSemanticDecodeMatrixFixture(
+            "task-consumer-summary-001",
+            "remote_artifact_bundle_readiness",
+          ),
+          nav2_goal_execution_evidence: sampleNav2GoalExecutionEvidenceFixture("task-consumer-summary-001"),
+          delivery_result_evidence: sampleDeliveryResultEvidenceFixture(
+            "task-consumer-summary-001",
+            "remote_artifact_bundle_readiness",
+          ),
+          route_execution_result_delivery_readiness: sampleRouteExecutionResultDeliveryReadinessFixture(
+            "task-consumer-summary-001",
+            "remote_artifact_bundle_readiness",
+          ),
+          route_delivery_closure_packet: sampleRouteDeliveryClosurePacketFixture(
+            "task-consumer-summary-001",
+            "remote_artifact_bundle_readiness",
+          ),
+          same_task_field_material_packet: sampleSameTaskFieldMaterialPacketFixture(
+            "task-consumer-summary-001",
+            "remote_artifact_bundle_readiness",
+          ),
+          same_task_mission_evidence_gate: sampleSameTaskMissionEvidenceGateFixture(
+            "task-consumer-summary-001",
+            "remote_artifact_bundle_readiness",
+          ),
+          same_task_mission_material_checklist: sampleSameTaskMissionMaterialChecklistFixture(
+            "task-consumer-summary-001",
+          ),
+          artifact_media_preflight: {
+            schema: "trashbot.o6.artifact_media_preflight.v1",
+            status: "local_mock_media_preflight_ready",
+            task_id: "task-consumer-summary-001",
+            consumer_section_names: [
+              "artifact_bundle_readiness",
+              "artifact_bundle",
+              "artifact_bundle_consumer_ingest",
+              "artifact_media_preflight",
+              "route_replay_mvp",
+              "labeling_mvp",
+            ],
+            counts: {
+              route_ref_count: 1,
+              replay_ref_count: 1,
+              keyframe_ref_count: 1,
+              sample_ref_count: 6,
+              review_item_media_ref_count: 2,
+            },
+            route_replay_dependency: {
+              status: "local_mock_media_preflight_ready",
+              route_ref: "route.csv",
+              replay_ref: "fixed_route_replay.jsonl",
+              keyframe_ref: "keyframes",
+              sample_refs: ["route.csv", "fixed_route_replay.jsonl", "keyframe-0001.jpg", "consumer-field-evidence-001"],
+              review_item_media_refs: [],
+              blocked_reasons: ["local_mock_only", "not_proven"],
+              next_required_evidence: [
+                "real_keyframe_media_access_probe_without_credentials",
+                "review_item_media_capture_for_selected_task",
+              ],
+              media_access_proven: false,
+              real_oss_connected: false,
+              real_cdn_connected: false,
+            },
+            labeling_dependency: {
+              status: "local_mock_media_preflight_ready",
+              route_ref: "route.csv",
+              replay_ref: "fixed_route_replay.jsonl",
+              keyframe_ref: "keyframes",
+              sample_refs: ["route.csv", "fixed_route_replay.jsonl", "keyframe-0001.jpg", "consumer-field-evidence-001"],
+              review_item_media_refs: ["frame_media_001.jpg", "frame_media_002.jpg"],
+              blocked_reasons: ["local_mock_only", "not_proven"],
+              next_required_evidence: [
+                "real_keyframe_media_access_probe_without_credentials",
+                "review_item_media_capture_for_selected_task",
+              ],
+              media_access_proven: false,
+              real_oss_connected: false,
+              real_cdn_connected: false,
+            },
+            proof_boundary: {
+              local_mock: true,
+              not_proven: true,
+              real_media_read_executed: false,
+              real_oss_connected: false,
+              real_cdn_connected: false,
+            },
+            blocked_reasons: ["local_mock_only", "not_proven"],
+            next_required_evidence: [
+              "real_keyframe_media_access_probe_without_credentials",
+              "review_item_media_capture_for_selected_task",
+            ],
+            media_access_proven: false,
+            real_oss_connected: false,
+            real_cdn_connected: false,
+          },
+        },
+        route_replay_mvp: {
+          schema: "trashbot.pc_tools_workstation.o7_consumer_route_replay_mvp.v1",
+          status: "consumer_detail_replay_ready",
+          selected_task_id: "task-consumer-summary-001",
+          source_detail_task_id: "task-consumer-summary-001",
+          source_contract: "trashbot.o6.consumer_read.v1",
+          trajectory: {
+            frame_count: 2,
+            current_frame: {
+              frame_index: 0,
+              cursor_index: 0,
+              timestamp_ms: 1000,
+              pose: { x_m: 0.2, y_m: 0.1, yaw_rad: 0 },
+              velocity: { linear_mps: 0.1, angular_radps: null },
+              state: "consumer_departed",
+              evidence_ref: "consumer-frame-000.jpg",
+              keyframe_ref: "consumer-keyframe-000.jpg",
+            },
+            sample_frames: [
+              {
+                frame_index: 0,
+                cursor_index: 0,
+                timestamp_ms: 1000,
+                pose: { x_m: 0.2, y_m: 0.1, yaw_rad: 0 },
+                velocity: { linear_mps: 0.1, angular_radps: null },
+                state: "consumer_departed",
+                evidence_ref: "consumer-frame-000.jpg",
+                keyframe_ref: "consumer-keyframe-000.jpg",
+              },
+            ],
+            status: "consumer_detail_trajectory_summary_only",
+          },
+          events_timeline: {
+            count: 1,
+            sample: [{ event_type: "route.frame", state: "consumer_en_route", timestamp_ms: 1200, evidence_ref: "consumer-event-001.json" }],
+            status: "consumer_detail_events_summary_only",
+          },
+          evidence_refs: {
+            count: 3,
+            sample_refs: ["consumer-frame-000.jpg", "consumer-event-001.json", "consumer-evidence-001.jpg"],
+            keyframe_refs: ["consumer-keyframe-000.jpg"],
+            status: "consumer_detail_refs_summary_only",
+          },
+          cursor_contract: {
+            local_cursor_only: true,
+            supported_actions: ["previous_frame", "next_frame", "reset_cursor", "toggle_playing"],
+            initial_frame_index: 0,
+            playing_initial: false,
+            safe_to_play: false,
+            playback_available: false,
+            sends_to_robot: false,
+            status: "local_cursor_ready",
+          },
+          media_preflight_dependency: {
+            status: "local_mock_media_preflight_ready",
+            route_ref: "route.csv",
+            replay_ref: "fixed_route_replay.jsonl",
+            keyframe_ref: "keyframes",
+            sample_refs: ["consumer-frame-000.jpg", "consumer-event-001.json", "consumer-evidence-001.jpg"],
+            review_item_media_refs: [],
+            blocked_reasons: ["local_mock_only", "not_proven"],
+            next_required_evidence: [
+              "real_keyframe_media_access_probe_without_credentials",
+              "review_item_media_capture_for_selected_task",
+            ],
+            media_access_proven: false,
+            real_oss_connected: false,
+            real_cdn_connected: false,
+          },
+          blocked_reasons: ["robot_control_disabled", "playback_available_false", "delivery_success_not_proven"],
+          not_proven: ["real_route_replay_playback"],
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          robot_control_executed: false,
+        },
+        labeling_mvp: {
+          schema: "trashbot.pc_tools_workstation.o7_consumer_labeling_mvp.v1",
+          status: "consumer_detail_labeling_ready",
+          selected_task_id: "task-consumer-summary-001",
+          source_detail_task_id: "task-consumer-summary-001",
+          review_items: {
+            review_item_count: 2,
+            current_item: {
+              item_id: "label-1",
+              task_id: "task-consumer-summary-001",
+              frame_id: "frame-000",
+              media_ref: "frame_media_001.jpg",
+              evidence_ref: "consumer-label-001.json",
+              current_labels: {
+                count: 1,
+                sample: [{ label_type: "floor_label", value: "F3", status: "consumer_existing", evidence_ref: "consumer-current-label-001.json" }],
+              },
+            },
+            sample: [
+              {
+                item_id: "label-1",
+                task_id: "task-consumer-summary-001",
+                frame_id: "frame-000",
+                media_ref: "frame_media_001.jpg",
+                evidence_ref: "consumer-label-001.json",
+                current_labels: {
+                  count: 1,
+                  sample: [{ label_type: "floor_label", value: "F3", status: "consumer_existing", evidence_ref: "consumer-current-label-001.json" }],
+                },
+              },
+              {
+                item_id: "label-2",
+                task_id: "task-consumer-summary-001",
+                frame_id: "frame-001",
+                media_ref: "frame_media_002.jpg",
+                evidence_ref: "consumer-label-002.json",
+                current_labels: { count: 0, sample: [] },
+              },
+            ],
+            status: "consumer_detail_review_items_summary_only",
+          },
+          label_schema: {
+            schema_ref: "consumer-label-schema.json",
+            version: "v1",
+            required_fields: ["label_type", "value", "evidence_ref"],
+            allowed_fields: ["label_type", "value", "confidence", "notes", "evidence_ref"],
+            status: "consumer_detail_schema_summary_only",
+          },
+          allowed_label_types: ["floor_label", "elevator_door_state", "obstacle_type"],
+          draft_labels: {
+            count: 1,
+            sample: [{ label_type: "floor_label", value: "F3", status: "draft_consumer_detail", evidence_ref: "consumer-draft-label-001.json" }],
+            autosave_available: false,
+            status: "consumer_detail_draft_slots_only",
+          },
+          submit_receipt: {
+            status: "submit_blocked_fail_closed",
+            receipt_id: "not_created",
+            submit_enabled: false,
+            rollback_enabled: false,
+            dataset_export_available: false,
+            real_annotation_api_connected: false,
+            cloud_write_executed: false,
+            blocked_reason: "submit_disabled_no_annotation_api",
+          },
+          media_preflight_dependency: {
+            status: "local_mock_media_preflight_ready",
+            route_ref: "route.csv",
+            replay_ref: "fixed_route_replay.jsonl",
+            keyframe_ref: "keyframes",
+            sample_refs: ["consumer-frame-000.jpg", "consumer-event-001.json", "consumer-evidence-001.jpg"],
+            review_item_media_refs: ["frame_media_001.jpg", "frame_media_002.jpg"],
+            blocked_reasons: ["local_mock_only", "not_proven"],
+            next_required_evidence: [
+              "real_keyframe_media_access_probe_without_credentials",
+              "review_item_media_capture_for_selected_task",
+            ],
+            media_access_proven: false,
+            real_oss_connected: false,
+            real_cdn_connected: false,
+          },
+          blocked_reasons: ["submit_disabled_no_annotation_api", "rollback_disabled", "dataset_export_disabled", "delivery_success_not_proven"],
+          not_proven: ["real_annotation_submit"],
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          robot_control_executed: false,
+        },
+        labeling: {
+          status: "pending",
+          label_count: 0,
+          sample_items: [],
+        },
+        inference: {
+          status: "present",
+          count: 1,
+          sample_results: [{ result_type: "floor_recognition", status: "not_proven", timestamp_ms: 1200, evidence_ref: "consumer-inference-001.json" }],
+        },
+        tunnel_status: {
+          status: "loaded_not_proven",
+          latest_known_status: "online",
+          temporal_alignment: "latest_known_robot_snapshot_not_task_aligned",
+        },
+        blocked_reasons: [],
+        not_proven: ["proof_status=not_proven", "robot_control_executed=false"],
+        fail_closed_reason: "none",
+        local_loopback_only: true,
+        connects_cloud_production: false,
+        robot_control_executed: false,
+        ...PROOF_FLAGS,
+      },
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    await wrapper.findAll("button").find((button) => button.text() === "预览")?.trigger("click");
+    await wrapper.vm.$nextTick();
+
+    await wrapper.find('input[aria-label="O7 consumer read base URL"]').setValue("http://127.0.0.1:8088");
+    await wrapper.find('input[aria-label="O7 consumer selected task ID"]').setValue("task-consumer-summary-001");
+    await wrapper
+      .find('input[aria-label="O7 consumer local field evidence manifest JSON"]')
+      .setValue("fixtures/local-field-evidence-override.json");
+    await wrapper.findAll("button").find((button) => button.text() === "Load consumer task list")?.trigger("click");
+    await flushPromises();
+    await wrapper.findAll("button").find((button) => button.text() === "Load consumer task detail")?.trigger("click");
+    await flushPromises();
+
+    expect(wrapper.text()).toContain("local_mock_field_evidence_manifest");
+    expect(wrapper.text()).toContain("remote_field_evidence");
+    expect(wrapper.text()).toContain("field_evidence_20260609T101500Z");
+    expect(wrapper.text()).not.toContain("field_evidence_local_override");
+    expect(wrapper.text()).toContain("route_bag_pose_progress_replay_status=blocked_not_proven");
+    expect(wrapper.text()).toContain("Artifact bundle readiness");
+    expect(wrapper.text()).toContain("consumer_detail_artifact_bundle_ready");
+    expect(wrapper.text()).toContain(
+      "artifact_bundle_readiness 主路径 · bundle / consumer_ingest / preflight 优先 · route_bag_evidence / route_bag_payload_replay / route_bag_semantic_replay / route_bag_full_semantic_decode_matrix / route_delivery_closure_packet / same_task_field_material_packet / same_task_mission_evidence_gate 只读汇总 · route replay / labeling 旧 fallback 只做兼容",
+    );
+    expect(wrapper.text()).toContain("Field motion evidence packet");
+    expect(wrapper.text()).toContain("Nav2 goal execution evidence");
+    expect(wrapper.text()).toContain("Route bag evidence");
+    expect(wrapper.text()).toContain("route_bag_status=ready_not_route_execution_proof");
+    expect(wrapper.text()).toContain("route_bag_topic_count=4");
+    expect(wrapper.text()).toContain("Route bag payload replay");
+    expect(wrapper.text()).toContain("route_bag_payload_replay_status=ready_not_route_execution_proof");
+    expect(wrapper.text()).toContain("route_bag_semantic_replay_status=ready_not_route_execution_proof");
+    expect(wrapper.text()).toContain("route_bag_pose_progress_replay_status=blocked_not_proven");
+    expect(wrapper.text()).toContain("route_bag_pose_sample_count=0");
+    expect(wrapper.text()).toContain("route_bag_pose_nonzero_observed=false");
+    expect(wrapper.text()).toContain("nav2_goal_status=nav2_goal_execution_evidence_ready_not_delivery_proof");
+    expect(wrapper.text()).toContain("Delivery result evidence");
+    expect(wrapper.text()).toContain("Route bag semantic replay");
+    expect(wrapper.text()).toContain("semantic_decode_ok_count=4");
+    expect(wrapper.text()).toContain(
+      "semantic_topic_types=sensor_msgs/msg/LaserScan,sensor_msgs/msg/Image,tf2_msgs/msg/TFMessage,nav_msgs/msg/Odometry",
+    );
+    expect(wrapper.text()).toContain("laser_scan_summary · sample_count=1");
+    expect(wrapper.text()).toContain("image_summary · sample_count=1");
+    expect(wrapper.text()).toContain("tf_summary · sample_count=2");
+    expect(wrapper.text()).toContain("Route bag full semantic decode matrix");
+    expect(wrapper.text()).toContain("route_bag_full_semantic_decode_matrix_status=ready_not_route_execution_proof");
+    expect(wrapper.text()).toContain("route_bag_full_semantic_decode_matrix_coverage_ratio=1");
+    expect(wrapper.text()).toContain("route_bag_full_semantic_decoded_topic_type_count=4");
+    expect(wrapper.text()).toContain("route_bag_full_semantic_unsupported_topic_type_count=0");
+    expect(wrapper.text()).toContain("sample_topic_types=sensor_msgs/msg/LaserScan,sensor_msgs/msg/Image,diagnostic_msgs/msg/DiagnosticArray,nav_msgs/msg/Odometry");
+    expect(wrapper.text()).toContain("decoder_name=decode_diagnostic_array_payload");
+    expect(wrapper.text()).toContain("decoder_name=decode_odometry_payload");
+    expect(wrapper.text()).not.toContain("route_bag_full_semantic_decode_matrix_unsupported_types_present");
+    expect(wrapper.text()).not.toContain("route_bag_full_semantic_decode_matrix_failed_types_present");
+    expect(wrapper.text()).toContain("delivery_result_status=delivery_result_evidence_ready_not_delivery_proof");
+    expect(wrapper.text()).toContain(
+      "route_execution_result_delivery_readiness_status=route_execution_result_delivery_readiness_ready_not_delivery_proof",
+    );
+    expect(wrapper.text()).toContain("route_delivery_closure_packet_status=route_delivery_closure_ready_not_success_proof");
+    expect(wrapper.text()).toContain("same_task_field_material_packet_status=ready_not_delivery_proof");
+    expect(wrapper.text()).toContain("present_materials=map_yaml,route_csv,keyframes,route_bag_or_rosbag,replay_jsonl");
+    expect(wrapper.text()).toContain("operator_confirmation_present=true");
+    expect(wrapper.text()).toContain("base_feedback_nonzero_not_proven");
+    expect(wrapper.text()).toContain("Artifact access probe");
+    expect(wrapper.text()).toContain("local_mock_artifact_access_probe_ready");
+    expect(wrapper.text()).toContain("requested_ref_count=4");
+    expect(wrapper.text()).toContain("real_or_offline_artifact_access_probe_for_selected_task");
+    expect(wrapper.text()).toContain("all_required_artifacts_present");
+    expect(wrapper.text()).toContain("Labeling dependency media refs");
+    expect(wrapper.text()).toContain("Media dependency blocked reasons");
+    expect(wrapper.text()).toContain("Media dependency next required evidence");
+    expect(wrapper.text()).toContain("present=map_yaml,route_csv,keyframes,rosbag,replay_jsonl");
+    expect(wrapper.text()).toContain("safe_to_controlfalse");
+    expect(wrapper.text()).toContain("delivery_successfalse");
+    expect(wrapper.text()).toContain("primary_actions_enabledfalse");
+    expect(wrapper.text()).toContain("robot_control_executedfalse");
+    expect(wrapper.text()).toContain("blocked_not_proven");
+    expect(wrapper.text()).toContain("field evidence contract");
+    expect(wrapper.text()).not.toContain("real_cloud_archive_connectedtrue");
+    expect(wrapper.text()).not.toContain("robot_control_executedtrue");
+
+    const previewCalls = mockedFetch.mock.calls.map(([url]) => String(url)).filter((url) => url.startsWith("/api/o7/"));
+    expect(previewCalls).toContain("/api/o7/consumer-read/tasks?baseUrl=http%3A%2F%2F127.0.0.1%3A8088");
+    expect(previewCalls).toContain(
+      "/api/o7/consumer-read/tasks/task-consumer-summary-001?baseUrl=http%3A%2F%2F127.0.0.1%3A8088&fieldEvidenceManifestJson=fixtures%2Flocal-field-evidence-override.json",
+    );
+  });
+
+  it("renders blocked route execution readiness even when child readiness booleans stay true", async () => {
+    // 顶层 blocked 不能被 child readiness 布尔值覆盖，UI 也必须明确显示 blocked 和后续证据。
+    const blockedReadinessFixture = {
+      ...sampleRouteExecutionResultDeliveryReadinessFixture("task-consumer-001"),
+      status: "blocked_not_proven",
+      route_execution_result_status: "blocked_not_proven",
+      nav2_goal_execution_ready: false,
+      delivery_result_readiness_status: "delivery_result_readiness_ready_not_delivery_proof",
+      delivery_result_ready: true,
+      operator_confirmation_readiness_status: "operator_confirmation_readiness_ready_not_delivery_proof",
+      operator_confirmation_ready: true,
+      blocked_reasons: ["top_level_route_execution_result_delivery_readiness_blocked", "delivery_success_not_proven"],
+      next_required_evidence: ["route_execution_result_for_selected_task", "real_drop_off_completion_proof"],
+    };
+    const detailFixture = fixtures["/api/o7/consumer-read/tasks/task-consumer-001"] as Record<string, unknown>;
+    const mockedFetch = stubWorkstationFetch({
+      "/api/o7/consumer-read/tasks/task-consumer-001": {
+        ...detailFixture,
+        route_execution_result_delivery_readiness: blockedReadinessFixture,
+        route_delivery_closure_packet: {
+          ...sampleRouteDeliveryClosurePacketFixture("task-consumer-001"),
+          status: "blocked_not_proven",
+          closure_status: "blocked_not_proven",
+          linked_evidence_flags: {
+            nav2_goal_execution_ready: false,
+            delivery_result_ready: true,
+            operator_confirmation_ready: true,
+            route_pose_progress_ready: false,
+            route_execution_readiness_ready: false,
+          },
+          blocked_reasons: ["top_level_route_delivery_closure_packet_blocked", "delivery_success_not_proven"],
+          next_required_evidence: ["route_execution_result_for_selected_task", "route_pose_progress_replay_for_selected_task"],
+        },
+        artifact_bundle_readiness: {
+          ...((detailFixture.artifact_bundle_readiness as Record<string, unknown>) ?? {}),
+          route_execution_result_delivery_readiness: {
+            ...blockedReadinessFixture,
+            source_origin: "remote_artifact_bundle_readiness",
+          },
+          route_delivery_closure_packet: {
+            ...sampleRouteDeliveryClosurePacketFixture("task-consumer-001", "remote_artifact_bundle_readiness"),
+            status: "blocked_not_proven",
+            closure_status: "blocked_not_proven",
+            linked_evidence_flags: {
+              nav2_goal_execution_ready: false,
+              delivery_result_ready: true,
+              operator_confirmation_ready: true,
+              route_pose_progress_ready: false,
+              route_execution_readiness_ready: false,
+            },
+            blocked_reasons: ["top_level_route_delivery_closure_packet_blocked", "delivery_success_not_proven"],
+            next_required_evidence: ["route_execution_result_for_selected_task", "route_pose_progress_replay_for_selected_task"],
+          },
+        },
+      },
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    await wrapper.findAll("button").find((button) => button.text() === "预览")?.trigger("click");
+    await wrapper.vm.$nextTick();
+    await wrapper.find('input[aria-label="O7 consumer read base URL"]').setValue("http://127.0.0.1:8088");
+    await wrapper.find('input[aria-label="O7 consumer selected task ID"]').setValue("task-consumer-001");
+    await wrapper.findAll("button").find((button) => button.text() === "Load consumer task list")?.trigger("click");
+    await flushPromises();
+    await wrapper.findAll("button").find((button) => button.text() === "Load consumer task detail")?.trigger("click");
+    await flushPromises();
+
+    expect(wrapper.text()).toContain("Route execution result delivery readiness");
+    expect(wrapper.text()).toContain("route_execution_result_delivery_readiness_status=blocked_not_proven");
+    expect(wrapper.text()).toContain("Route delivery closure packet");
+    expect(wrapper.text()).toContain("closure_status=blocked_not_proven");
+    expect(wrapper.text()).toContain("delivery_result_ready=true");
+    expect(wrapper.text()).toContain("operator_confirmation_ready=true");
+    expect(wrapper.text()).toContain("nav2_goal_execution_ready=false");
+    expect(wrapper.text()).toContain("top_level_route_execution_result_delivery_readiness_blocked");
+    expect(wrapper.text()).toContain("top_level_route_delivery_closure_packet_blocked");
+    expect(wrapper.text()).toContain("route_execution_result_for_selected_task");
+    expect(wrapper.text()).not.toContain(
+      "route_execution_result_delivery_readiness_status=route_execution_result_delivery_readiness_ready_not_delivery_proof",
+    );
+
+    const previewCalls = mockedFetch.mock.calls.map(([url]) => String(url)).filter((url) => url.startsWith("/api/o7/"));
+    expect(previewCalls).toContain("/api/o7/consumer-read/tasks?baseUrl=http%3A%2F%2F127.0.0.1%3A8088");
+    expect(previewCalls).toContain(
+      "/api/o7/consumer-read/tasks/task-consumer-001?baseUrl=http%3A%2F%2F127.0.0.1%3A8088",
+    );
+  });
+
   it("blocks consumer-detail labeling queue primary path when labeling samples are missing", async () => {
     // 这个用例只验证 consumer-detail 标注主路径的 fail-closed 分支，不依赖 archive fallback。
     const consumerTaskListFixture = fixtures["/api/o7/consumer-read/tasks"] as Record<string, unknown>;
@@ -33686,6 +36439,9 @@ describe("App", () => {
           {
             task_id: "task-consumer-labeling-blocked",
             robot_id: "robot_fixture",
+            task_origin: "field_evidence_manifest",
+            field_evidence_source: "trashbot.field_evidence_manifest.v1",
+            field_evidence_artifact_status: "gated",
             started_at_ms: 1000,
             finished_at_ms: 2000,
             task_status_summary: "completed_mock",
@@ -33704,18 +36460,47 @@ describe("App", () => {
         schema: "trashbot.pc_tools_workstation.o7_consumer_task_detail.v1",
         detail_status: "loaded_fail_closed_summary",
         source_base_url: "http://127.0.0.1:8088",
-        remote_endpoint:
-          "/api/o6/consumer/tasks/task-consumer-labeling-blocked?view=default&include=trajectory,events,evidence,labeling,inference,tunnel",
+          remote_endpoint:
+          "/api/o6/consumer/tasks/task-consumer-labeling-blocked?view=default&include=trajectory,events,evidence,field_evidence,labeling,inference,tunnel,artifact_access_probe,offline_artifact_seed_smoke,route_root_seed_gate,route_bag_evidence,route_bag_payload_replay,route_bag_semantic_replay,route_bag_full_semantic_decode_matrix,route_bag_pose_progress_replay,nav2_goal_execution_evidence,delivery_result_evidence,route_execution_result_delivery_readiness,route_delivery_closure_packet,same_task_field_material_packet,same_task_mission_evidence_gate",
         remote_schema: "trashbot.o6.consumer_read.v1",
         requested_task_id: "task-consumer-labeling-blocked",
         query_strategy: {
           view: "default",
-          include: ["trajectory", "events", "evidence", "labeling", "inference", "tunnel"],
+          include: [
+            "trajectory",
+            "events",
+            "evidence",
+            "field_evidence",
+            "labeling",
+            "inference",
+            "tunnel",
+            "artifact_access_probe",
+            "offline_artifact_seed_smoke",
+            "route_root_seed_gate",
+            "route_bag_evidence",
+            "route_bag_payload_replay",
+            "route_bag_semantic_replay",
+            "route_bag_full_semantic_decode_matrix",
+            "route_bag_pose_progress_replay",
+            "nav2_goal_execution_evidence",
+            "delivery_result_evidence",
+            "route_execution_result_delivery_readiness",
+            "route_delivery_closure_packet",
+            "same_task_field_material_packet",
+            "same_task_mission_evidence_gate",
+          ],
           primary_path: true,
           fail_closed_visible: true,
         },
         field_evidence: {
           source_contract: "trashbot.field_evidence_manifest.v1",
+          source_origin: "remote_field_evidence",
+          task_origin: "field_evidence_manifest",
+          manifest_run_id: "field_evidence_20260609T101500Z",
+          artifact_root: "file:field_evidence_fixture",
+          artifact_health_summary: "all_required_artifacts_present",
+          present_artifacts: ["map_yaml", "route_csv", "keyframes", "rosbag", "replay_jsonl"],
+          missing_artifacts: [],
           input_status: "loaded",
           artifact_status: "gated",
           manifest_gate: {
@@ -33761,6 +36546,375 @@ describe("App", () => {
           status: "loaded_not_proven",
           count: 1,
           sample_evidence: [{ evidence_type: "snapshot", state: "consumer_en_route", timestamp_ms: 1200, evidence_ref: "consumer-evidence-001.jpg" }],
+        },
+        artifact_access_probe: {
+          schema: "trashbot.o6.artifact_access_probe.v1",
+          status: "local_mock_artifact_access_probe_ready",
+          task_id: "task-consumer-labeling-blocked",
+          source_contract: "trashbot.o6.artifact_access_probe.v1",
+          source_origin: "remote_artifact_bundle",
+          source_path: "artifact_bundle.artifact_access_probe",
+          proof_scope: "software_proof_local_mock_artifact_access_probe_only",
+          allowlist_root_configured: true,
+          allowlist_root_echoed: false,
+          max_file_size_bytes: 65536,
+          counts: {
+            requested_ref_count: 3,
+            readable_ref_count: 2,
+            blocked_ref_count: 1,
+            missing_ref_count: 0,
+          },
+          sample_probes: [
+            {
+              task_id: "task-consumer-labeling-blocked",
+              ref_kind: "route_csv",
+              ref: "route.csv",
+              exists: true,
+              size_bytes: 128,
+              sha256_prefix: "aaaaaaaaaaaa",
+              detected_type: "text/csv",
+              blocked_reason: "none",
+              proof_scope: "software_proof_local_mock_artifact_access_probe_only",
+            },
+            {
+              task_id: "task-consumer-labeling-blocked",
+              ref_kind: "keyframe",
+              ref: "keyframe-0001.jpg",
+              exists: true,
+              size_bytes: 4096,
+              sha256_prefix: "cccccccccccc",
+              detected_type: "image/jpeg",
+              blocked_reason: "none",
+              proof_scope: "software_proof_local_mock_artifact_access_probe_only",
+            },
+            {
+              task_id: "task-consumer-labeling-blocked",
+              ref_kind: "evidence",
+              ref: "blocked-evidence.bin",
+              exists: false,
+              size_bytes: null,
+              sha256_prefix: "",
+              detected_type: "unknown",
+              blocked_reason: "ref_blocked_by_allowlist",
+              proof_scope: "software_proof_local_mock_artifact_access_probe_only",
+            },
+          ],
+          sample_refs: ["route.csv", "keyframe-0001.jpg", "blocked-evidence.bin"],
+          sample_sha256_prefixes: ["aaaaaaaaaaaa", "cccccccccccc"],
+          blocked_reasons: ["local_mock_only", "not_proven", "ref_blocked_by_allowlist"],
+          next_required_evidence: ["real_or_offline_artifact_access_probe_for_selected_task"],
+          proof_boundary: {
+            local_mock: true,
+            not_proven: true,
+            file_read_attempted: true,
+            real_oss_connected: false,
+            real_cdn_connected: false,
+          },
+          media_access_proven: false,
+          real_oss_connected: false,
+          real_cdn_connected: false,
+          robot_control_executed: false,
+          ...PROOF_FLAGS,
+        },
+        artifact_media_preflight: {
+          schema: "trashbot.o6.artifact_media_preflight.v1",
+          status: "local_mock_media_preflight_ready",
+          task_id: "task-consumer-labeling-blocked",
+          consumer_section_names: ["artifact_media_preflight", "route_replay_mvp", "labeling_mvp"],
+          counts: {
+            route_ref_count: 1,
+            replay_ref_count: 1,
+            keyframe_ref_count: 1,
+            sample_ref_count: 2,
+            review_item_media_ref_count: 0,
+          },
+          route_replay_dependency: {
+            status: "local_mock_media_preflight_ready",
+            route_ref: "route.csv",
+            replay_ref: "fixed_route_replay.jsonl",
+            keyframe_ref: "keyframes",
+            sample_refs: ["consumer-frame-000.jpg", "consumer-event-001.json"],
+            review_item_media_refs: [],
+            blocked_reasons: ["local_mock_only", "not_proven"],
+            next_required_evidence: [
+              "real_keyframe_media_access_probe_without_credentials",
+              "review_item_media_capture_for_selected_task",
+            ],
+            media_access_proven: false,
+            real_oss_connected: false,
+            real_cdn_connected: false,
+          },
+          labeling_dependency: {
+            status: "local_mock_media_preflight_ready",
+            route_ref: "route.csv",
+            replay_ref: "fixed_route_replay.jsonl",
+            keyframe_ref: "keyframes",
+            sample_refs: ["consumer-frame-000.jpg", "consumer-event-001.json"],
+            review_item_media_refs: [],
+            blocked_reasons: ["local_mock_only", "not_proven", "review_item_media_refs_missing"],
+            next_required_evidence: [
+              "real_keyframe_media_access_probe_without_credentials",
+              "review_item_media_capture_for_selected_task",
+            ],
+            media_access_proven: false,
+            real_oss_connected: false,
+            real_cdn_connected: false,
+          },
+          proof_boundary: {
+            local_mock: true,
+            not_proven: true,
+            real_media_read_executed: false,
+            real_oss_connected: false,
+            real_cdn_connected: false,
+          },
+          blocked_reasons: ["local_mock_only", "not_proven"],
+          next_required_evidence: [
+            "real_keyframe_media_access_probe_without_credentials",
+            "review_item_media_capture_for_selected_task",
+          ],
+          media_access_proven: false,
+          real_oss_connected: false,
+          real_cdn_connected: false,
+        },
+        route_bag_evidence: sampleRouteBagEvidenceFixture("task-consumer-labeling-blocked"),
+        route_bag_full_semantic_decode_matrix: sampleRouteBagEvidenceFixture(
+          "task-consumer-labeling-blocked",
+        ).route_bag_full_semantic_decode_matrix,
+        nav2_goal_execution_evidence: sampleNav2GoalExecutionEvidenceFixture("task-consumer-labeling-blocked"),
+        route_execution_result_delivery_readiness: sampleRouteExecutionResultDeliveryReadinessFixture(
+          "task-consumer-labeling-blocked",
+        ),
+        route_delivery_closure_packet: sampleRouteDeliveryClosurePacketFixture("task-consumer-labeling-blocked"),
+        same_task_field_material_packet: sampleSameTaskFieldMaterialPacketFixture("task-consumer-labeling-blocked"),
+        same_task_mission_evidence_gate: sampleSameTaskMissionEvidenceGateFixture("task-consumer-labeling-blocked"),
+        same_task_mission_material_checklist: sampleSameTaskMissionMaterialChecklistFixture(
+          "task-consumer-labeling-blocked",
+        ),
+        artifact_bundle: {
+          schema: "trashbot.o6.artifact_bundle.v1",
+          source: "local_mock_artifact_bundle_archive",
+          task_origin: "artifact_bundle",
+          bundle_status: "local_mock_artifact_bundle_ready",
+        },
+        artifact_bundle_consumer_ingest: {
+          schema: "trashbot.o6.artifact_bundle_consumer_ingest.v1",
+          status: "local_mock_artifact_bundle_ready",
+          source: "local_mock_artifact_bundle_archive",
+          task_origin: "artifact_bundle",
+        },
+        artifact_bundle_readiness: {
+          schema: "trashbot.pc_tools_workstation.o7_consumer_artifact_bundle_readiness.v1",
+          status: "consumer_detail_artifact_bundle_ready",
+          selected_task_id: "task-consumer-labeling-blocked",
+          source_detail_task_id: "task-consumer-labeling-blocked",
+          source_contract: "trashbot.o6.artifact_bundle.v1",
+          source_origin: "remote_artifact_bundle",
+          task_id: "task-consumer-labeling-blocked",
+          bundle_status: "local_mock_artifact_bundle_ready",
+          counts: {
+            route_ref_count: 1,
+            replay_ref_count: 1,
+            keyframe_ref_count: 1,
+            evidence_ref_count: 1,
+            review_item_count: 0,
+            sample_ref_count: 4,
+            review_item_media_ref_count: 0,
+          },
+          refs: {
+            route_refs: ["route.csv"],
+            replay_refs: ["fixed_route_replay.jsonl"],
+            keyframe_refs: ["keyframe-0001.jpg"],
+            evidence_refs: ["consumer-field-evidence-001"],
+            review_item_media_refs: [],
+            sample_refs: ["route.csv", "fixed_route_replay.jsonl", "keyframe-0001.jpg", "consumer-field-evidence-001"],
+          },
+          blocked_reasons: [
+            "local_mock_only",
+            "not_proven",
+            "review_item_media_refs_missing",
+            "base_motion_command_nonzero_not_proven",
+          ],
+          next_required_evidence: [
+            "real_keyframe_media_access_probe_without_credentials",
+            "review_item_media_capture_for_selected_task",
+            "nonzero_base_feedback_for_selected_task",
+          ],
+          route_bag_evidence: sampleRouteBagEvidenceFixture("task-consumer-labeling-blocked", "remote_artifact_bundle_readiness"),
+          route_bag_full_semantic_decode_matrix: sampleRouteBagFullSemanticDecodeMatrixFixture(
+            "task-consumer-labeling-blocked",
+            "remote_artifact_bundle_readiness",
+          ),
+          nav2_goal_execution_evidence: sampleNav2GoalExecutionEvidenceFixture("task-consumer-labeling-blocked"),
+          route_execution_result_delivery_readiness: sampleRouteExecutionResultDeliveryReadinessFixture(
+            "task-consumer-labeling-blocked",
+            "remote_artifact_bundle_readiness",
+          ),
+          route_delivery_closure_packet: sampleRouteDeliveryClosurePacketFixture(
+            "task-consumer-labeling-blocked",
+            "remote_artifact_bundle_readiness",
+          ),
+          same_task_field_material_packet: sampleSameTaskFieldMaterialPacketFixture(
+            "task-consumer-labeling-blocked",
+            "remote_artifact_bundle_readiness",
+          ),
+          same_task_mission_evidence_gate: sampleSameTaskMissionEvidenceGateFixture(
+            "task-consumer-labeling-blocked",
+            "remote_artifact_bundle_readiness",
+          ),
+          same_task_mission_material_checklist: sampleSameTaskMissionMaterialChecklistFixture(
+            "task-consumer-labeling-blocked",
+          ),
+          artifact_media_preflight: {
+            schema: "trashbot.o6.artifact_media_preflight.v1",
+            status: "local_mock_media_preflight_ready",
+            task_id: "task-consumer-labeling-blocked",
+            consumer_section_names: [
+              "artifact_bundle_readiness",
+              "artifact_bundle",
+              "artifact_bundle_consumer_ingest",
+              "artifact_media_preflight",
+              "route_replay_mvp",
+              "labeling_mvp",
+            ],
+            counts: {
+              route_ref_count: 1,
+              replay_ref_count: 1,
+              keyframe_ref_count: 1,
+              sample_ref_count: 4,
+              review_item_media_ref_count: 0,
+            },
+            route_replay_dependency: {
+              status: "local_mock_media_preflight_ready",
+              route_ref: "route.csv",
+              replay_ref: "fixed_route_replay.jsonl",
+              keyframe_ref: "keyframes",
+              sample_refs: ["route.csv", "fixed_route_replay.jsonl", "keyframe-0001.jpg", "consumer-field-evidence-001"],
+              review_item_media_refs: [],
+              blocked_reasons: ["local_mock_only", "not_proven"],
+              next_required_evidence: [
+                "real_keyframe_media_access_probe_without_credentials",
+                "review_item_media_capture_for_selected_task",
+              ],
+              media_access_proven: false,
+              real_oss_connected: false,
+              real_cdn_connected: false,
+            },
+            labeling_dependency: {
+              status: "local_mock_media_preflight_ready",
+              route_ref: "route.csv",
+              replay_ref: "fixed_route_replay.jsonl",
+              keyframe_ref: "keyframes",
+              sample_refs: ["route.csv", "fixed_route_replay.jsonl", "keyframe-0001.jpg", "consumer-field-evidence-001"],
+              review_item_media_refs: [],
+              blocked_reasons: ["local_mock_only", "not_proven", "review_item_media_refs_missing"],
+              next_required_evidence: [
+                "real_keyframe_media_access_probe_without_credentials",
+                "review_item_media_capture_for_selected_task",
+              ],
+              media_access_proven: false,
+              real_oss_connected: false,
+              real_cdn_connected: false,
+            },
+            proof_boundary: {
+              local_mock: true,
+              not_proven: true,
+              real_media_read_executed: false,
+              real_oss_connected: false,
+              real_cdn_connected: false,
+            },
+            blocked_reasons: ["local_mock_only", "not_proven"],
+            next_required_evidence: [
+              "real_keyframe_media_access_probe_without_credentials",
+              "review_item_media_capture_for_selected_task",
+            ],
+            media_access_proven: false,
+            real_oss_connected: false,
+            real_cdn_connected: false,
+          },
+        },
+        route_replay_mvp: {
+          schema: "trashbot.pc_tools_workstation.o7_consumer_route_replay_mvp.v1",
+          status: "blocked_not_proven",
+          selected_task_id: "task-consumer-labeling-blocked",
+          source_detail_task_id: "task-consumer-labeling-blocked",
+          source_contract: "trashbot.o6.consumer_read.v1",
+          trajectory: { frame_count: 0, current_frame: null, sample_frames: [], status: "blocked_not_proven" },
+          events_timeline: { count: 0, sample: [], status: "blocked_not_proven" },
+          evidence_refs: { count: 0, sample_refs: [], keyframe_refs: [], status: "blocked_not_proven" },
+          cursor_contract: {
+            local_cursor_only: true,
+            supported_actions: ["previous_frame", "next_frame", "reset_cursor", "toggle_playing"],
+            initial_frame_index: null,
+            playing_initial: false,
+            safe_to_play: false,
+            playback_available: false,
+            sends_to_robot: false,
+            status: "blocked_not_proven",
+          },
+          media_preflight_dependency: {
+            status: "local_mock_media_preflight_ready",
+            route_ref: "route.csv",
+            replay_ref: "fixed_route_replay.jsonl",
+            keyframe_ref: "keyframes",
+            sample_refs: ["consumer-frame-000.jpg", "consumer-event-001.json"],
+            review_item_media_refs: [],
+            blocked_reasons: ["local_mock_only", "not_proven"],
+            next_required_evidence: [
+              "real_keyframe_media_access_probe_without_credentials",
+              "review_item_media_capture_for_selected_task",
+            ],
+            media_access_proven: false,
+            real_oss_connected: false,
+            real_cdn_connected: false,
+          },
+          blocked_reasons: ["trajectory_missing"],
+          not_proven: ["real_route_replay_playback"],
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          robot_control_executed: false,
+        },
+        labeling_mvp: {
+          schema: "trashbot.pc_tools_workstation.o7_consumer_labeling_mvp.v1",
+          status: "blocked_not_proven",
+          selected_task_id: "task-consumer-labeling-blocked",
+          source_detail_task_id: "task-consumer-labeling-blocked",
+          review_items: { review_item_count: 0, current_item: null, sample: [], status: "blocked_not_proven" },
+          label_schema: { schema_ref: "not_loaded", version: "not_loaded", required_fields: [], allowed_fields: [], status: "blocked_not_proven" },
+          allowed_label_types: [],
+          draft_labels: { count: 0, sample: [], autosave_available: false, status: "blocked_not_proven" },
+          submit_receipt: {
+            status: "submit_blocked_fail_closed",
+            receipt_id: "not_created",
+            submit_enabled: false,
+            rollback_enabled: false,
+            dataset_export_available: false,
+            real_annotation_api_connected: false,
+            cloud_write_executed: false,
+            blocked_reason: "labeling_missing",
+          },
+          media_preflight_dependency: {
+            status: "local_mock_media_preflight_ready",
+            route_ref: "route.csv",
+            replay_ref: "fixed_route_replay.jsonl",
+            keyframe_ref: "keyframes",
+            sample_refs: ["consumer-frame-000.jpg", "consumer-event-001.json"],
+            review_item_media_refs: [],
+            blocked_reasons: ["local_mock_only", "not_proven", "review_item_media_refs_missing"],
+            next_required_evidence: [
+              "real_keyframe_media_access_probe_without_credentials",
+              "review_item_media_capture_for_selected_task",
+            ],
+            media_access_proven: false,
+            real_oss_connected: false,
+            real_cdn_connected: false,
+          },
+          blocked_reasons: ["labeling_missing"],
+          not_proven: ["real_annotation_submit"],
+          safe_to_control: false,
+          delivery_success: false,
+          primary_actions_enabled: false,
+          robot_control_executed: false,
         },
         labeling: {
           status: "pending",
@@ -33821,6 +36975,11 @@ describe("App", () => {
     expect(wrapper.text()).toContain("rollback_enabled=false");
     expect(wrapper.text()).toContain("real_annotation_api_connected=false");
     expect(wrapper.text()).toContain("dataset_export_available=false");
+    expect(wrapper.text()).toContain("review_item_media_refs_missing");
+    expect(wrapper.findAll("button").find((button) => button.text() === "提交 local/mock 标注")?.attributes("disabled")).toBeDefined();
+    expect(wrapper.findAll("button").find((button) => button.text() === "导出 local/mock 数据集")?.attributes("disabled")).toBeDefined();
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/annotations/submit"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/annotations/export"))).toBe(false);
     expect(wrapper.text()).not.toContain("consumer_detail_labeling_queue_ready");
   });
 });

@@ -3,6 +3,9 @@ import type {
   HardwareMaterialsResponse,
   O7CloudArchiveTasksProbeResponse,
   O7CloudArchiveTasksResponse,
+  O7AnnotationDatasetExportResult,
+  O7AnnotationSubmitLabel,
+  O7AnnotationSubmitResult,
   O7ConsumerTaskDetailResponse,
   O7ConsumerTaskListResponse,
   O7CloudOperatorConsoleProbeResponse,
@@ -103,6 +106,8 @@ const API_ENDPOINTS = {
   o7ConsumerTaskList: "/api/o7/consumer-read/tasks",
   o7CloudArchiveTasksProbe: "/api/o7/cloud-archive/tasks-probe",
   o7ConsumerTaskDetailPrefix: "/api/o7/consumer-read/tasks/",
+  o7ConsumerAnnotationSubmitSuffix: "/annotations/submit",
+  o7ConsumerAnnotationExportSuffix: "/annotations/export",
   o7RealtimeElevatorProbe: "/api/o7/realtime-elevator-probe",
   o7RtcSignalingContractProbe: "/api/o7/rtc-signaling-contract-probe",
   o7RealtimeElevatorPreview: "/api/o7/realtime-elevator-preview",
@@ -420,6 +425,19 @@ function consumerTaskDetailUrl(baseUrl: string, taskId: string, fieldEvidenceMan
   }
   const trimmedTaskId = taskId.trim();
   return `${API_ENDPOINTS.o7ConsumerTaskDetailPrefix}${encodeURIComponent(trimmedTaskId)}?${params.toString()}`;
+}
+
+function consumerAnnotationActionUrl(baseUrl: string, taskId: string, suffix: string, format = ""): string {
+  // submit/export 都只把 baseUrl 交给 PC 后端；O6 真实路径由 Node adapter 固定拼接。
+  const params = new URLSearchParams();
+  const trimmedBaseUrl = baseUrl.trim();
+  if (trimmedBaseUrl) {
+    params.set("baseUrl", trimmedBaseUrl);
+  }
+  if (format.trim()) {
+    params.set("format", format.trim());
+  }
+  return `${API_ENDPOINTS.o7ConsumerTaskDetailPrefix}${encodeURIComponent(taskId.trim())}${suffix}?${params.toString()}`;
 }
 
 function cloudOperatorConsoleProbeUrl(baseUrl: string): string {
@@ -845,6 +863,29 @@ export async function getO7ConsumerTaskDetail(
 ): Promise<O7ConsumerTaskDetailResponse> {
   // 可选本地 manifest 只补齐缺失 field_evidence，不改变 detail 的轨迹/事件/标注等远端来源。
   return loadJson<O7ConsumerTaskDetailResponse>(consumerTaskDetailUrl(baseUrl, taskId, fieldEvidenceManifestJson));
+}
+
+export async function postO7ConsumerAnnotationSubmit(
+  baseUrl: string,
+  taskId: string,
+  robotId: string,
+  labels: O7AnnotationSubmitLabel[],
+): Promise<O7AnnotationSubmitResult> {
+  // 标注提交只交给 PC 后端 adapter；浏览器不认识 O6 /api/o6/archive/labels。
+  return postJson<O7AnnotationSubmitResult>(
+    consumerAnnotationActionUrl(baseUrl, taskId, API_ENDPOINTS.o7ConsumerAnnotationSubmitSuffix),
+    { robot_id: robotId, labels },
+  );
+}
+
+export async function getO7ConsumerAnnotationExport(
+  baseUrl: string,
+  taskId: string,
+): Promise<O7AnnotationDatasetExportResult> {
+  // export 固定请求 jsonl local/mock 摘要；真实训练集导出状态由后端固定 false 字段表达。
+  return loadJson<O7AnnotationDatasetExportResult>(
+    consumerAnnotationActionUrl(baseUrl, taskId, API_ENDPOINTS.o7ConsumerAnnotationExportSuffix, "jsonl"),
+  );
 }
 
 export async function loadO7FixturePreview(

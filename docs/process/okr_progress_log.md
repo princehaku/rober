@@ -6,6 +6,697 @@
 
 ---
 
+## 2026-07-10 系列
+
+### 2026-07-10 08-14｜same_task_mission_artifact_credit_gate｜same-task mission artifact credit gate 收口
+
+本轮 `sprints/2026.07.10_08-14_same_task_mission_artifact_credit_gate/` 完成 hard gate / credit gate 软件合同的产品收口：目标不是再增加一层 summary，而是把“哪些 same-task mission materials 允许计入主 OKR 进度”变成可执行的 fail-closed 规则。Algorithm 在 `field_route_evidence_manifest.py` 的 `same_task_mission_evidence_gate` 中新增结构化 `mission_artifact_delta` 与 `same_task_id_consumed`、`live_or_field_command_executed`、`support_only_reason`、`okr_credit_allowed`，把同一 `task_id` 消费、是否真正拿到 live/field mission artifact、以及 support-only 原因拆开表达。这样 local/mock probe、readback-only、checklist-only 和 wrapper-only 输入不再能被误包装成 mission 主进度。Algorithm 验证为 `python3 -m py_compile onboard/scripts/field_route_evidence_manifest.py` 通过，`python3 -m unittest onboard.tests.test_field_route_evidence_manifest` 输出 `Ran 60 tests in 0.313s OK`，`git diff --check` 通过。
+
+O6 本轮在 `remote_cloud_relay.py` 中兼容 legacy 字符串和结构化 `mission_artifact_delta`，但把 credit 判定收紧到结构化字段：archive detail、field evidence、consumer detail 和 `include=same_task_mission_evidence_gate` 回读现在都能保留 `same_task_id_consumed`、`live_or_field_command_executed`、`support_only_reason`、`okr_credit_allowed`。support-only、缺字段、legacy unstructured delta、unsafe text、dangerous true 和 task mismatch 全部 fail-closed，继续输出 `okr_credit_allowed=false`。O6 文档同步更新 `docs/interfaces/o6_cloud_archive_api.md`。验证证据为 `python3 -m py_compile onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior/remote_cloud_relay.py` 通过，`python3 -m unittest onboard.src.ros2_trashbot_behavior.test.test_remote_cloud_relay` 输出 `Ran 168 tests in 64.612s OK`，`git diff --check` 通过。
+
+O7 本轮在 `o7ConsumerReadAdapter.ts`、`contracts.ts`、`O7FixturePreviewPanel.vue` 与相关测试中补齐 credit fields 消费和展示，并把 `okr_credit_allowed=false` 收紧为 support-only/blocked：same-task checklist 不再因为材料项看起来 ready 就显示为 `materials_ready_not_success_proof`，而是显式保留 `support_only_reason`、`same_task_id_consumed` 和 `live_or_field_command_executed`。验证证据为 `cd pc-tools/workstation && npm run test` 输出 `Tests 484 passed (484)`，`npm run build` 通过并仅保留既有 Vite chunk-size warning，`npm run lint` 通过，`git diff --check` 通过。
+
+OKR 结论：O5 / O6 / O7 本轮**均不调整百分比**，继续维持约 `~85% / ~85% / ~85%`。原因很具体：本轮虽然把 same-task mission credit 判定规则从口头约束变成了软件合同，但没有新增真实 production cloud、真实 production DB/queue external probe、真实 live endpoint evidence、真实 live Nav2 route execution、真实 delivery record、真实 operator confirmation 或真实 delivery success。换言之，本轮解决的是“防止 support-only 虚增”的记分问题，不是“新增 mission 主证据”的交付问题。证据边界明确为 `software_proof_same_task_mission_artifact_credit_gate_only`。从本轮开始，`okr_credit_allowed=false` 的 probe/checklist/readback-only/support-only 工作只能算回归守护或合同硬化，不再计入 O5/O6/O7 主 OKR 增量；下一轮若要继续提升百分比，必须在同一 `task_id` 下消费至少一类真实或准现场 mission artifact delta。
+
+### 2026-07-10 07-13｜o5_o6_live_endpoint_probe_readback｜O5/O6 live endpoint probe readback 收口
+
+本轮 `sprints/2026.07.10_07-13_o5_o6_live_endpoint_probe_readback/` 完成 `software_proof_o5_o6_live_endpoint_probe_readback_only` 的产品收口：Robot Software 在 `o5_same_task_mission_archive_smoke.py` 中复用既有 `cloud_external_probe` / `cloud_db_queue_external_probe` artifact 生成与 summary 逻辑，对本地 relay `/healthz`、`/readyz`、`/preflightz` 做 software proof live endpoint probe，并把两类 probe 摘要作为 `cloud_external_probe` / `cloud_db_queue_external_probe` additive section 写入同一 `task_id` 的 O6 archive/readback。smoke summary 现在同时回显 same-task gate、cloud external probe、cloud DB/queue probe 的 readback 状态，并继续固定 `connects_cloud_production=false`、`delivery_success=false`、`safe_to_control=false`、`primary_actions_enabled=false`、`robot_control_executed=false`。
+
+O6 本轮新增 `trashbot.o6.cloud_external_probe_readback.v1` 与 `trashbot.o6.cloud_db_queue_external_probe_readback.v1`，支持 archive detail、`field_evidence`、`artifact_bundle`、consumer detail 顶层 alias，以及 `include=cloud_external_probe,cloud_db_queue_external_probe` 回读。hostile probe payload 走 fail-closed：只把对应 section 降级为 `blocked_not_proven`，不回显 URL、token、连接串、response body、本地路径或 traceback。首轮返工集中在三处：其一，通用 unsafe path 清洗误删 `/healthz`、`/readyz`、`/preflightz`，已改为 endpoint 白名单；其二，全局 unsafe gate 在 probe section 之前拦截导致 `POST /api/o6/archive/field-evidence` 直接 `400`，已调整为先剥离 probe section，再只降级当前摘要；其三，consumer detail 初版缺少 probe 顶层 alias，已补齐 field evidence section 与 top-level alias 映射并加测试覆盖。
+
+验证证据：`python3 -m py_compile onboard/scripts/o5_same_task_mission_archive_smoke.py onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior/remote_cloud_relay.py` 通过；`python3 -m unittest onboard.tests.test_o5_same_task_mission_archive_smoke` 输出 `Ran 3 tests in 2.338s` 和 `OK`；`python3 -m unittest onboard.src.ros2_trashbot_behavior.test.test_remote_cloud_relay` 输出 `Ran 167 tests in 64.655s` 和 `OK`；`git diff --check` 通过。Product closeout 复核 `rg -n "live_endpoint_probe|cloud_external_probe|same_task|software_proof"` 命中本 sprint 收口文件、`OKR.md` 和 `docs/process/okr_progress_log.md` 中的新增条目。
+
+OKR 结论：O5 从约 `~84%` 保守上调到约 `~85%`，因为同一 `task_id` 的 O5 smoke 已从 SQLite shadow readback 继续推进到 live endpoint probe summary 可被 O6 archive/readback 安全消费；O6 从约 `~84%` 保守上调到约 `~85%`，因为 archive/read model 新增了 `cloud_external_probe` / `cloud_db_queue_external_probe` additive readback 合同并完成同 task 回读。O7 维持约 `~85%`，O1 维持约 `~85%`。本轮不标完成、不归档任何 KR。证据边界明确为 `software_proof_o5_o6_live_endpoint_probe_readback_only`，不证明真实 production cloud、production DB/queue、多实例一致性、真实 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、真实 live Nav2 route execution、真实 robot motion、真实 delivery record、真实 operator confirmation、真实手机/browser 现场验收或真实 delivery success。下一轮必须消费真实 production cloud、production DB/queue external probe 或真实 live endpoint evidence；若外部材料仍不可得，O5/O6 只能做回归守护，不应继续靠 local/mock probe wrapper 提升百分比。
+
+### 2026-07-10 06-10｜o7_same_task_mission_material_checklist｜O7 same-task mission material checklist 收口
+
+本轮 `sprints/2026.07.10_06-10_o7_same_task_mission_material_checklist/` 完成 `software_proof_o7_same_task_mission_material_checklist_only` 的产品收口：Full-stack/O7 在 workstation consumer detail 主路径新增 additive `same_task_mission_material_checklist`，schema 为 `trashbot.pc_tools_workstation.o7_same_task_mission_material_checklist.v1`。该 checklist 从现有 O6 `same_task_mission_evidence_gate` 派生 operator 可执行材料清单，覆盖 `same_task_identity`、`terminal_cloud_result`、`route_execution_material`、`delivery_record`、`operator_confirmation`、`route_pose_progress`、`production_cloud_readback`、`safety_invariants` 8 个材料项，并在 UI 中邻近 `same_task_mission_evidence_gate` 展示。
+
+安全边界保持 observe-only：固定 `delivery_success=false`、`safe_to_control=false`、`primary_actions_enabled=false`、`robot_control_executed=false`，不启用 submit/TTS/nav/control，不连接真实公网云或硬件。Fail-closed 覆盖 schema mismatch、task mismatch、dangerous true、unsafe ref/path/token/base64 以及 blocked/next 列表类型不安全。首轮 TypeScript 失败定位为 `unsafeList[0]` 可能为 `undefined`、重复 `proof_status` spread、route pose progress ready 字面量不匹配和 App fixture 重复 `proof_status`，已修复并完整复验。
+
+验证证据：`cd pc-tools/workstation && npm run test && npm run build && npm run lint` 通过，关键结果为 `Test Files 3 passed (3)`、`Tests 484 passed (484)`；build 通过但有 Vite chunk-size warning；lint 通过。`git diff --check` 通过。关键 `rg` 命中 `same_task_mission_material_checklist`、`same_task_mission_evidence_gate`、`delivery_success=false`、`safe_to_control=false`、`primary_actions_enabled=false`、`robot_control_executed=false`。
+
+OKR 结论：O7 从约 `~83%` 保守上调到约 `~85%`，因为本轮把 O7 从 same-task gate summary 推进到 operator material checklist 主路径，并完成 test/build/lint/diff-check 证据；O5 维持约 `~84%`，O6 维持约 `~84%`，因为本轮没有新增真实 production cloud、production DB/queue、真实隧道、OSS、生产级查询容量或 O6 后端合同。本轮不标完成、不归档任何 KR。证据边界明确为 `software_proof_o7_same_task_mission_material_checklist_only`，不证明真实 production cloud、production DB/queue、live Nav2 route execution、真实 robot motion、真实 delivery record、真实 operator confirmation、hardware safety、真实 annotation API/export、真实 dataset export、真实手机/browser 现场验收或真实 delivery success。下一轮由于 O5/O6 约 84% 成为最低/并列低项，应优先真实 production cloud、production DB/queue external probe 或 live endpoint evidence；若外部材料仍不可得，O7 下一步要消费真实或准现场 same-task materials，而不是再做只读 checklist/surface。
+
+### 2026-07-10 05-10｜o5_sqlite_shadow_same_task_gate｜O5 SQLite shadow same-task gate 收口
+
+本轮 `sprints/2026.07.10_05-10_o5_sqlite_shadow_same_task_gate/` 完成 `software_proof_o5_sqlite_shadow_same_task_gate_only` 的产品收口：Robot Software 将 `onboard/scripts/o5_same_task_mission_archive_smoke.py` 从上一轮 file/in-process smoke 扩展为 `--state-backend file|sqlite`，默认 `file` 保持兼容；`sqlite` shadow 模式使用 `build_server(..., state_backend="sqlite")` 写入 terminal result 后关闭 relay，再用同一 SQLite state path 重启 relay，并读取 `GET /api/commands/<command_id>/result?robot_id=...` 返回的 `trashbot.cloud_command_result_reconciliation.v2`。该 readback reconciliation 继续输入 Algorithm manifest，写入 O6 field evidence archive，并通过 `GET /api/o6/consumer/tasks/<task_id>?include=same_task_mission_evidence_gate` 读回 `same_task_mission_gate_ready_not_success_proof`。
+
+Robot Software summary 固定输出 `relay_state_backend=sqlite`、`relay_restart_readback=true`、`sqlite_state_store_reopened=true`、`reconciliation.result_state=terminal_result_recorded`、`consumer.same_task_mission_gate_status=same_task_mission_gate_ready_not_success_proof`，并继续固定 `connects_cloud_production=false`、`delivery_success=false`、`safe_to_control=false`、`primary_actions_enabled=false`、`robot_control_executed=false`。验证证据为 `python3 -m py_compile onboard/scripts/o5_same_task_mission_archive_smoke.py` 通过无输出，`python3 -m unittest onboard.tests.test_o5_same_task_mission_archive_smoke` 输出 `Ran 3 tests in 2.282s OK`，`python3 -m unittest onboard.src.ros2_trashbot_behavior.test.test_remote_cloud_relay` 输出 `Ran 166 tests in 64.559s OK`，scoped `git diff --check` 通过无输出。
+
+OKR 结论：O5 从约 `~83%` 保守上调到约 `~84%`，因为同一 `task_id` 的 O5 command/result/reconciliation 主路径已从单次 file/in-process smoke 推进到 SQLite shadow store 的 restart/readback；O6 维持约 `~84%`，因为本轮复用既有 `same_task_mission_evidence_gate` archive/readback 合同，没有新增生产 DB/queue、真实隧道、OSS、生产级查询容量或新 O6 数据类型；O7 维持约 `~83%`，因为本轮没有新增 O7 UI、真实 browser 证据、真实媒体或现场回放材料。本轮不标完成、不归档任何 KR。证据边界明确为 `software_proof_o5_sqlite_shadow_same_task_gate_only`，不证明真实 production cloud、production DB、queue、多实例一致性、真实 HTTPS/TLS、4G/SIM、OSS/CDN live traffic、真实 live Nav2 route execution、真实 robot motion、真实 delivery record、真实 operator confirmation、真实 delivery success、真实 annotation API/export、真实 dataset export、真实手机/browser 现场验收或完整路线长期验收。下一轮继续 O5 只能接真实 production cloud、production DB/queue external probe 或 live endpoint evidence；如果没有这些外部材料，应转向 O7 的 same-task mission material checklist，不再用 local shadow/smoke 提升 OKR 百分比。
+
+### 2026-07-10 04-10｜o5_reconciliation_same_task_archive_smoke｜O5 reconciliation same-task archive smoke 收口
+
+本轮 `sprints/2026.07.10_04-10_o5_reconciliation_same_task_archive_smoke/` 完成 `software_proof_o5_reconciliation_same_task_archive_smoke_only` 的产品收口：Algorithm 扩展 `field_route_evidence_manifest.py --cloud-terminal-result-json`，让 O5 relay `trashbot.cloud_command_result_reconciliation.v2` wrapper 在 `result_state=terminal_result_recorded`、nested `terminal_result` 为 object、nested `terminal_result.schema=trashbot.cloud_command_terminal_result.v1`，且 wrapper / nested `task_id` 与 manifest `task_id` 不漂移时，才下钻复用既有 `delivery_result_evidence` 生成逻辑。输出合同保持 `trashbot.delivery_result_evidence.v1`、`source=cloud_command_terminal_result`、`source_schema=trashbot.cloud_command_terminal_result.v1`；pending、missing、schema mismatch、task drift、unsafe refs 和 dangerous true 均 fail closed。Algorithm 验证 `python3 -m py_compile onboard/scripts/field_route_evidence_manifest.py` 通过，`python3 -m unittest onboard.tests.test_field_route_evidence_manifest` 输出 `Ran 58 tests in 0.304s OK`，scoped `git diff --check` 通过。
+
+Robot Software 新增 `onboard/scripts/o5_same_task_mission_archive_smoke.py` 与 `onboard/tests/test_o5_same_task_mission_archive_smoke.py`，本地串起 `POST /api/commands/confirm-dropoff`、`POST /robots/<robot_id>/commands/<command_id>/terminal-result`、`GET /api/commands/<command_id>/result?robot_id=...`、`field_route_evidence_manifest.py --cloud-terminal-result-json`、`POST /api/o6/archive/field-evidence` 和 `GET /api/o6/consumer/tasks/<task_id>?include=same_task_mission_evidence_gate`。smoke 固定使用 in-process relay、mock Nav2 proof、mock route bag pose progress、mock `route.csv` / keyframe / replay，不触发真实硬件、外网、Nav2 launch 或 `/cmd_vel`；读回 `same_task_mission_gate_ready_not_success_proof` 时仍保持 `delivery_success=false`、`safe_to_control=false`、`primary_actions_enabled=false`、`robot_control_executed=false`。Robot Software 验证 `python3 -m py_compile onboard/scripts/o5_same_task_mission_archive_smoke.py` 通过，`python3 -m unittest onboard.tests.test_o5_same_task_mission_archive_smoke` 输出 `Ran 2 tests in 1.180s OK`，`python3 -m unittest onboard.src.ros2_trashbot_behavior.test.test_remote_cloud_relay` 输出 `Ran 166 tests in 64.457s OK`，scoped `git diff --check` 通过。
+
+OKR 结论：O5 从约 `~82%` 保守上调到约 `~83%`，因为云端命令结果不再停留在单个 terminal result 或 hand-written fixture，而是通过 reconciliation v2 的本地 relay 读模型进入同一 `task_id` manifest、O6 archive/readback 和 same-task gate；O6 维持约 `~84%`，因为本轮复用既有 O6 `same_task_mission_evidence_gate` 合同并证明 smoke 消费链路，未新增生产 DB/queue、OSS、真实隧道或新 O6 数据类型；O7 维持约 `~83%`，因为本轮没有新增 O7 UI、真实 browser 证据、真实媒体或现场回放材料。本轮不标完成、不归档任何 KR。证据边界明确为 `software_proof_o5_reconciliation_same_task_archive_smoke_only`，不证明真实 production cloud、真实 HTTPS/TLS、4G/SIM、production DB/queue、OSS/CDN live traffic、真实 live Nav2 route execution、真实 robot motion、真实 delivery record、真实 operator confirmation、真实 delivery success、真实 annotation API/export、真实 dataset export、真实手机/browser 现场验收或完整路线长期验收。下一轮必须接真实或准现场 same-task production cloud / live route execution / delivery record / operator confirmation 材料；若仍是本地 smoke，只能作为回归验证，不应继续提升 OKR 百分比。
+
+### 2026-07-10 03-09｜o5_o6_o7_same_task_mission_gate｜O5/O6/O7 same task mission evidence gate 收口
+
+本轮 `sprints/2026.07.10_03-09_o5_o6_o7_same_task_mission_gate/` 完成 `software_proof_same_task_mission_evidence_gate_only` 的产品收口：Algorithm 在 `field_route_evidence_manifest.py` 中新增 `trashbot.same_task_mission_evidence_gate.v1`，把上一轮 O5 `trashbot.cloud_command_terminal_result.v1` terminal result source 与 Nav2 goal evidence、route execution readiness、route delivery closure packet、route bag pose progress replay 等 linked mission materials 做严格同一 `task_id` gate。ready 状态固定为 `same_task_mission_gate_ready_not_success_proof`，blocked 状态为 `blocked_not_proven`；task mismatch、source schema mismatch、proof scope mismatch、dangerous true、unsafe 文本/路径/token/raw/base64、unsafe count 或缺任一 linked material 均 fail closed。Algorithm 验证 `python3 -m py_compile onboard/scripts/field_route_evidence_manifest.py` 通过，`python3 -m unittest onboard.tests.test_field_route_evidence_manifest` 输出 `Ran 55 tests in 0.291s OK`。
+
+Robot/O6 新增 `trashbot.o6.same_task_mission_evidence_gate.v1` 安全摘要和 `include=same_task_mission_evidence_gate` allowlist，让同一 `task_id` gate 可从 field evidence、artifact bundle、field motion evidence packet、archive task detail、consumer detail 和 explicit include 回读。O6 继续固定 `safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`、`robot_control_executed=false`、`connects_cloud_production=false`，并对缺失、schema mismatch、proof scope mismatch、task mismatch、unsafe text/raw/base64/绝对路径/credential URL/token、dangerous true 全部降级为 blocked section。O6 首轮完整 unittest 暴露 artifact bundle alias helper 中误用不存在的 `task_origin` 局部变量，已修复为固定 `task_origin="artifact_bundle"` 并复验通过；最终验证 `python3 -m unittest onboard.src.ros2_trashbot_behavior.test.test_remote_cloud_relay` 输出 `Ran 166 tests in 63.477s OK`。
+
+Full-stack/O7 在 workstation consumer adapter、shared contracts、fixture preview panel、测试和文档中新增 `same_task_mission_evidence_gate` 消费与展示，默认 detail include 该 section，并在 artifact bundle readiness 汇总 gate status、O5 terminal/cloud source、linked flags、blocked reasons 与 next required evidence。O7 首次测试因 App fixture 缺少 `proof_boundary` 触发 render `TypeError`，已补齐 fixture 并复验通过；最终 `cd pc-tools/workstation && npm run test && npm run build && npm run lint` 输出 `Tests 484 passed (484)`、build passed、lint passed。
+
+OKR 结论：O5 从约 `~81%` 保守上调到约 `~82%`，因为 O5 terminal result 不再只是单点 delivery bridge，而是进入同一 `task_id` mission evidence gate；O6 从约 `~82%` 保守上调到约 `~84%`，因为 O6 archive/readback/include 已接住 `same_task_mission_evidence_gate` 并保持 fail-closed；O7 从约 `~81%` 保守上调到约 `~83%`，因为 O7 workstation 已能展示同 task gate 的 terminal/cloud source、linked flags、blocked reasons 和 next evidence。本轮不标完成、不归档任何 KR。证据边界明确为 `software_proof_same_task_mission_evidence_gate_only`，not production cloud，not delivery success，不证明真实 HTTPS/TLS、4G/SIM、production DB/queue、OSS/CDN live traffic、真实 live Nav2 route execution、真实 robot motion、真实 delivery record、真实 operator confirmation、真实 annotation API/export、真实 dataset export、真实手机/browser 现场验收或完整路线长期验收。下一轮必须消费真实或准现场 same-task mission materials，优先 production cloud / live route execution / delivery record / operator confirmation，不能继续把 wrapper、decoder、handoff 或 review surface 包装成 OKR 进度。
+
+### 2026-07-10 02-06｜o5_o6_cloud_terminal_result_delivery_bridge｜O5/O6 cloud terminal result delivery bridge 收口
+
+本轮 `sprints/2026.07.10_02-06_o5_o6_cloud_terminal_result_delivery_bridge/` 完成 `software_proof_cloud_terminal_result_delivery_bridge_only` 的产品收口：Algorithm 在 `field_route_evidence_manifest.py` 中新增 `--cloud-terminal-result-json`，把 O5 `trashbot.cloud_command_terminal_result.v1` robot-facing terminal result 转换为既有 `trashbot.delivery_result_evidence.v1`，并写入 manifest 顶层与 `field_motion_evidence_packet.delivery_result_evidence`。输出保留 `source=cloud_command_terminal_result`、`source_schema=trashbot.cloud_command_terminal_result.v1`、`status=ready_not_delivery_proof`，`command_id`、`task_record_ref`、`evidence_ref` 只作为 safe ref 摘要，不回显路径、URL、token、raw/base64 或 credential。Algorithm 验证 `python3 -m py_compile onboard/scripts/field_route_evidence_manifest.py` 通过，`python3 -m unittest onboard.tests.test_field_route_evidence_manifest` 输出 `Ran 53 tests in 0.272s OK`。
+
+Robot/O6 新增 cloud terminal source schema readback 回归，并在返工中修正状态兼容：O6 现在接受 Algorithm 输出的 `ready_not_delivery_proof`，并对外规范化为 O7 兼容的 `delivery_result_evidence_ready_not_delivery_proof`。archive write response、archive detail、field evidence、artifact bundle alias、consumer detail 和 `include=delivery_result_evidence` 均保留 `source=cloud_command_terminal_result` / `source_schema=trashbot.cloud_command_terminal_result.v1`，并继续固定 `safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`、`robot_control_executed=false`。O6 返工后验证 `python3 -m py_compile onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior/remote_cloud_relay.py` 通过，`python3 -m unittest onboard.src.ros2_trashbot_behavior.test.test_remote_cloud_relay` 输出 `Ran 165 tests in 62.817s OK`。
+
+OKR 结论：O5 从约 80% 保守上调到约 `~81%`，因为 O5 terminal result 已可进入同一 `task_id` 的 delivery result evidence 链，但尚未连接真实 production cloud、4G/TLS、production DB/queue 或 OSS/CDN live traffic。O6 从约 80% 保守上调到约 `~82%`，因为 O6 archive/readback 已保留 O5 source schema 并修复状态规范化缺口。O7 从约 80% 保守上调到约 `~81%`，因为 O7 可沿既有只读 `delivery_result_evidence` 路径识别 O5 terminal result 来源；本轮没有新增 O7 UI action、控制入口或现场验收。本轮不标完成、不归档任何 KR。证据边界明确为 `software_proof_cloud_terminal_result_delivery_bridge_only`，不证明真实 production cloud、真实 HTTPS/TLS、4G/SIM、production DB/queue、OSS/CDN live traffic、真实 live Nav2 route execution、真实 robot motion、真实 delivery record、真实 operator confirmation、真实 delivery success、真实 annotation API/export、真实 dataset export、真实手机/browser 现场验收或完整路线长期验收。下一轮应优先用该桥接合同接真实或准现场 same-task terminal result + live route execution / production cloud evidence，而不是继续堆 wrapper/decoder。
+
+### 2026-07-10 01-07｜o6_o7_route_delivery_closure_packet｜O6/O7 route delivery closure packet 收口
+
+本轮 `sprints/2026.07.10_01-07_o6_o7_route_delivery_closure_packet/` 完成 route delivery closure packet 收口：Algorithm 在 `field_route_evidence_manifest.py` 中新增 `trashbot.route_delivery_closure_packet.v1`，把同一 `task_id` 的 `nav2_goal_execution_evidence`、`delivery_result_evidence`、`route_execution_result_delivery_readiness` 与 `route_bag_pose_progress_replay` 收束为一个 summary-only 闭合包，并同时写入 manifest 顶层与 `field_motion_evidence_packet.route_delivery_closure_packet`。ready 状态固定为 `route_delivery_closure_ready_not_success_proof`，继续固定 `safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`、`robot_control_executed=false`、`route_execution_success=false`；缺关键输入、schema mismatch、dangerous true、unsafe text、unsafe count 或 task mismatch 时全部 blocked。Algorithm 验证 `python3 -m py_compile onboard/scripts/field_route_evidence_manifest.py && python3 -m unittest onboard.tests.test_field_route_evidence_manifest` 通过，结果 `Ran 50 tests in 0.252s OK`。
+
+Robot/O6 新增 `trashbot.o6.route_delivery_closure_packet.v1` 安全摘要和 `include=route_delivery_closure_packet` allowlist，支持从 field evidence、artifact bundle、field motion evidence packet、archive detail、consumer detail 与别名路径回读 closure packet。O6 只保留 `task_id`、`status`、`proof_scope`、`source`、`source_schema`、5 个 linked readiness flags、`blocked_reasons`、`next_required_evidence` 和固定 false safety fields；bad schema、bad proof_scope、dangerous true、unsafe text、缺关键 linked flags 时只把当前 packet 降级为 `blocked_not_proven`，不放开控制字段。O6 验证 `python3 -m unittest onboard.src.ros2_trashbot_behavior.test.test_remote_cloud_relay` 通过，结果 `Ran 164 tests in 61.973s OK`。
+
+Full-stack/O7 在 `o7ConsumerReadAdapter.ts`、shared contracts、fixture preview panel 和测试中新增 `route_delivery_closure_packet` 消费与展示，能从 direct、field evidence、field motion evidence packet、artifact bundle、artifact bundle consumer ingest、artifact bundle readiness 等常见来源统一折叠出 closure status、linked evidence flags、blocked reasons、next required evidence 和固定 false safety fields。`cd pc-tools/workstation && npm run test && npm run build && npm run lint` 通过，结果 `Tests 483 passed (483)`、build 通过、lint 通过。
+
+OKR 结论：O6 从约 78% 保守上调到约 `~80%`，因为 O6 archive/read model 已从分散的结果链 readiness 进一步推进到同一 `task_id` 的 route delivery closure packet 收束与回读；O7 从约 78% 保守上调到约 `~80%`，因为 O7 workstation 已能围绕同一 `task_id` 展示 closure packet 摘要，并完成 `483 passed`、build、lint 证据。本轮不标完成、不归档任何 KR。证据边界仍是 `software_proof_route_delivery_closure_packet_only`，不证明真实 production cloud、真实 4G/TLS、production DB/queue、OSS/CDN live traffic、raw ROS message payload 已全量语义回放、真实 live Nav2 route execution、真实 robot motion、真实 delivery record、真实 operator confirmation、真实 delivery success、真实 annotation API/export、真实 dataset export、真实手机/browser 现场验收或完整路线长期验收。下一轮建议优先 production cloud、真实或准现场 live route execution、delivery record/operator confirmation，而不是继续做 summary wrapper。
+
+### 2026-07-10 00-06｜o6_o7_diagnostic_array_semantic_decoder｜O6/O7 DiagnosticArray semantic decoder 收口
+
+本轮 `sprints/2026.07.10_00-06_o6_o7_diagnostic_array_semantic_decoder/` 完成 DiagnosticArray semantic decoder 覆盖收口：Algorithm 在 `field_route_evidence_manifest.py` 中把 `diagnostic_msgs/msg/DiagnosticArray` 纳入 `route_bag_semantic_replay` 白名单和 `route_bag_full_semantic_decode_matrix` decoder map，新增 `decode_diagnostic_array_payload`，只输出 `status_count`、`highest_level`、`level_distribution`、短 `status_name_samples`、短 `hardware_id_samples` 和 `key_value_pair_count` 等安全 `diagnostic_array_summary`，不输出 raw message、raw payload、完整 key/value、base64、绝对路径、URL、token、credential、traceback 或 `/cmd_vel`。Algorithm 验证 `python3 -m py_compile onboard/scripts/field_route_evidence_manifest.py && python3 -m unittest onboard.tests.test_field_route_evidence_manifest` 通过，结果 `Ran 48 tests in 0.236s OK`。
+
+Robot/O6 保留并规范化 full semantic decode matrix 中 DiagnosticArray decoded item，兼容 canonical `decoder_name` 与旧 alias `decoder`。本轮 fixture/readback 证明 `diagnostic_msgs.msg.DiagnosticArray`、`decode_status=decoded`、`decoder_name=decode_diagnostic_array_payload`、decoded counts、blocked reasons、next required evidence 和 false safety fields 可通过 field evidence、artifact bundle、archive detail、consumer detail 与 explicit include 回读；`safe_to_control=false`、`delivery_success=false` 不丢失。O6 验证 `python3 -m unittest onboard.src.ros2_trashbot_behavior.test.test_remote_cloud_relay` 通过，结果 `Ran 163 tests in 60.706s OK`。
+
+Full-stack/O7 同步更新 consumer/UI fixture 和文档，证明 full semantic decode matrix 中 `/diagnostics`、`diagnostic_msgs/msg/DiagnosticArray`、`decode_status=decoded`、`decoder_name=decode_diagnostic_array_payload` 可见，fixture `decoded_topic_type_count=4`、`unsupported_topic_type_count=0`、`coverage_ratio=1`，并继续保持 `safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`、`robot_control_executed=false`。`cd pc-tools/workstation && npm run test && npm run build && npm run lint` 通过，结果 `Tests 482 passed (482)`、build 通过、lint 通过。
+
+OKR 结论：O6 从约 76% 保守上调到约 `~78%`，因为 O6 archive/read model 已从 Odometry decoded coverage 进一步推进到 DiagnosticArray decoded coverage；O7 从约 76% 保守上调到约 `~78%`，因为 O7 已能围绕同一 `task_id` 展示 DiagnosticArray decoded matrix item，并完成 `482 passed`、build、lint 证据。本轮不标完成、不归档任何 KR。证据边界仍是 local/offline software proof，底层沿用 `software_proof_route_bag_semantic_replay_only` 与 `software_proof_route_bag_full_semantic_decode_matrix_only`；不证明真实 production cloud、真实 4G/TLS、production DB/queue、OSS/CDN live traffic、raw ROS message payload 已全量语义回放、真实 live Nav2 route execution、真实 robot motion、真实 delivery record、真实 operator confirmation、真实 delivery success、真实 annotation API/export、真实 dataset export、真实手机/browser 现场验收或完整路线长期验收。下一轮建议不要继续只补 decoder，优先补真实或准现场 live Nav2 result、delivery record/operator confirmation、production cloud；若继续 decoder，必须选择 matrix 仍有实际 gap 的安全 topic type。
+
+## 2026-07-09 系列
+
+### 2026-07-09 23-07｜o6_o7_route_bag_odometry_semantic_decoder｜O6/O7 Odometry semantic decoder 收口
+
+本轮 `sprints/2026.07.09_23-07_o6_o7_route_bag_odometry_semantic_decoder/` 完成 Odometry semantic decoder 覆盖收口：Algorithm 在 `field_route_evidence_manifest.py` 中把 `nav_msgs/msg/Odometry` 纳入 `route_bag_semantic_replay` 白名单和 `route_bag_full_semantic_decode_matrix` decoder map，新增 `decode_odometry_payload`，复用现有 Odometry CDR 位姿解析，只输出 frame pair、translation summary、sample count 和安全 `odometry_summary`，不输出 covariance、twist、raw payload、base64、完整 hash、绝对路径、token、credential URL 或 `/cmd_vel`。Algorithm 验证 `python3 -m py_compile onboard/scripts/field_route_evidence_manifest.py && python3 -m unittest onboard.tests.test_field_route_evidence_manifest` 通过，结果 `Ran 48 tests in 0.275s OK`。
+
+Robot/O6 不需要修改 `remote_cloud_relay.py` 实现本体；现有归一逻辑已能安全透传 Odometry matrix item。本轮补齐 `test_remote_cloud_relay.py` fixture 与断言，证明 `nav_msgs.msg.Odometry` 可出现在 semantic replay topic list，并且 full semantic decode matrix 中 Odometry decoded item 保留 `decoder=decode_odometry_payload`、decoded counts、coverage ratio、blocked reasons、next required evidence 和 false safety fields，可通过 field evidence、artifact bundle、archive detail、consumer detail 与 explicit include 回读。O6 文档同步更新，验证 `python3 -m py_compile onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior/remote_cloud_relay.py && python3 -m unittest onboard.src.ros2_trashbot_behavior.test.test_remote_cloud_relay` 通过，结果 `Ran 163 tests in 60.247s OK`。
+
+Full-stack/O7 同步更新 consumer/UI fixture、shared contract 注释、页面提示和文档，证明 `semantic_topic_types` 包含 `nav_msgs/msg/Odometry`，`/odom` matrix item 为 `decode_status=decoded`、`decoder_name=decode_odometry_payload`，fixture coverage ratio 为 `0.75`，且不再出现 `route_bag_full_semantic_decode_matrix_failed_types_present`。`cd pc-tools/workstation && npm run test && npm run build && npm run lint` 通过，结果 `Tests 482 passed (482)`、build 通过、lint 通过。
+
+OKR 结论：O6 从约 74% 保守上调到约 `~76%`，因为 O6 archive/read model 已从 full semantic decode matrix 进一步推进到 Odometry decoded coverage；O7 从约 74% 保守上调到约 `~76%`，因为 O7 已能围绕同一 `task_id` 展示 Odometry decoded matrix item，并完成 tests/build/lint 证据。本轮不标完成、不归档任何 KR。证据边界仍是 local/offline software proof，底层沿用 `software_proof_route_bag_semantic_replay_only` 与 `software_proof_route_bag_full_semantic_decode_matrix_only`；不证明真实 production cloud、真实 4G/TLS、production DB/queue、OSS/CDN live traffic、raw ROS message payload 已全量语义回放、真实 live Nav2 route execution、真实 robot motion、真实 delivery record、真实 operator confirmation、真实 delivery success、真实 annotation API/export、真实 dataset export、真实手机/browser 现场验收或完整路线长期验收。下一步优先继续把 unsupported safe ROS types 转成 decoded evidence，或转向真实 live Nav2 / delivery / production cloud 证据。
+
+### 2026-07-09 22-05｜o6_o7_route_bag_full_semantic_decode_matrix｜O6/O7 route bag full semantic decode matrix 收口
+
+本轮 `sprints/2026.07.09_22-05_o6_o7_route_bag_full_semantic_decode_matrix/` 完成
+`software_proof_route_bag_full_semantic_decode_matrix_only` 的产品收口：Algorithm 在
+`field_route_evidence_manifest.py` 新增 `trashbot.route_bag_full_semantic_decode_matrix.v1`，
+只读 SQLite DB3 `topics` / `messages.data`，按 safe topic/type 输出 per topic/type semantic decode
+coverage matrix，并同时写入 manifest 顶层与
+`field_motion_evidence_packet.route_bag_full_semantic_decode_matrix`。矩阵输出
+`topic_type_count`、`decoded_topic_type_count`、`unsupported_topic_type_count`、
+`failed_topic_type_count`、`decoded_message_sample_count`、`decode_failed_message_sample_count`、
+`unsupported_message_sample_count`、`coverage_ratio` 和 `topic_type_matrix[]`；item 只保留安全
+topic/type、计数、status、blocked reason、decoder name 和短 sample hash prefix，不回显 raw payload、
+base64、完整 hash、绝对路径、token、credential URL 或 `/cmd_vel`。Algorithm 验证
+`Ran 48 tests in 0.251s OK`。
+
+Robot/O6 新增 `trashbot.o6.route_bag_full_semantic_decode_matrix.v1` readback schema 和
+`include=route_bag_full_semantic_decode_matrix` allowlist，让同一 `task_id` 的 matrix 可通过
+field evidence ingest、artifact bundle ingest、archive task detail、field evidence、artifact bundle、
+consumer detail aliases 和 explicit include 回读。O6 只输出 counts、coverage ratio、safe
+topic/type matrix、blocked reasons、next required evidence 和 false safety fields；bad schema、bad
+proof_scope、dangerous true、unsafe topic/text/path/url/token/raw/base64、缺必填计数或负数计数继续
+fail-closed。O6 验证为 `Ran 163 tests in 61.181s OK`。
+
+Full-stack/O7 在 consumer adapter、shared contracts、`artifact_bundle_readiness` 和 PC 工作站 UI 中
+新增 `route_bag_full_semantic_decode_matrix` 只读摘要，默认 include 该 section，并展示 matrix status、
+coverage ratio、decoded/unsupported/failed counts、sample topic/type、blocked reasons、next required
+evidence 和 false safety fields。初次验证发现 fixture 的 `/camera/image_raw` 命中既有 topic safety guard，
+且 readiness candidate 可能携带已适配的 `sample_topic_type_matrix`；worker 修复为安全 sample topic 并兼容
+`topic_type_matrix` / `sample_topic_type_matrix` 后，`cd pc-tools/workstation && npm run test && npm run build && npm run lint`
+通过，结果 `Tests 482 passed (482)`、build `built in 1.74s`、lint exit code 0。
+
+OKR 结论：O6 从约 71% 保守上调到约 `~74%`，因为 O6 archive/read model 已从 route execution readiness
+进一步推进到 route bag DB3 payload per topic/type semantic decode coverage matrix；O7 从约 71% 保守上调到约
+`~74%`，因为 O7 已能围绕同一 `task_id` 展示 semantic coverage matrix，并完成 tests/build/lint 证据。本轮不标完成、
+不归档任何 KR。证据边界明确为 `software_proof_route_bag_full_semantic_decode_matrix_only`，不证明真实
+production cloud、真实 4G/TLS、production DB/queue、OSS/CDN live traffic、raw ROS message payload 已全量语义回放、
+真实 live Nav2 route execution、真实 robot motion、真实 delivery record、真实 operator confirmation、
+真实 delivery success、真实 annotation API/export、真实 dataset export、真实手机/browser 现场验收或完整路线长期验收。
+下一步优先级应转向补更多安全 ROS message decoder、真实 live Nav2 route execution result、真实 delivery record /
+operator confirmation 和 production cloud，而不是继续叠加 local/mock wrapper。
+
+### 2026-07-09 21-04｜o6_o7_route_execution_result_delivery_readiness｜O6/O7 route execution result delivery readiness 收口
+
+本轮 `sprints/2026.07.09_21-04_o6_o7_route_execution_result_delivery_readiness/` 完成
+`software_proof_route_execution_result_delivery_readiness_only` 的产品收口：Algorithm 在
+`field_route_evidence_manifest.py` 新增 `trashbot.route_execution_result_delivery_readiness.v1`，
+把同一 `task_id` 的 route execution result、delivery readiness、operator confirmation readiness
+统一收束成只读安全摘要，并同时写入 manifest 顶层与
+`field_motion_evidence_packet.route_execution_result_delivery_readiness`。输出包括
+`route_execution_result_status`、`route_execution_source`、`route_execution_result_ready`、
+`delivery_result_readiness_status`、`delivery_result_source`、
+`operator_confirmation_readiness_status`、`operator_confirmation_source`、
+`blocked_reasons`、`next_required_evidence` 与 false safety fields；linked Nav2 goal、pose progress、
+delivery claim、operator confirmation 任一缺失、冲突、dangerous true、unsafe text/path/url/token/raw/base64、
+schema mismatch 或结果自相矛盾时全部 fail-closed。Algorithm 验证
+`Ran 44 tests in 0.204s OK`；manifest smoke 保持
+`safe_to_control=false`、`delivery_success=false`。
+
+Robot/O6 新增 `trashbot.o6.route_execution_result_delivery_readiness.v1` readback schema 和
+`include=route_execution_result_delivery_readiness` allowlist，让同一 `task_id` 的结果链摘要可通过
+field evidence ingest、artifact bundle ingest、archive task detail、field evidence、artifact bundle、
+consumer detail aliases 和 explicit include 回读。O6 对 bad schema、bad proof_scope、dangerous true、
+unsafe path/topic/url/token/raw/base64/text、缺必填字段继续 fail-closed，并保持
+`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`、
+`robot_control_executed=false`。O6 验证为 `Ran 162 tests in 58.732s OK`。
+
+Full-stack/O7 在 consumer adapter、shared contracts、`artifact_bundle_readiness` 和 PC 工作站 UI 中
+新增 `route_execution_result_delivery_readiness` 只读摘要，展示 route execution result、delivery readiness、
+operator confirmation readiness、blocked reasons、next required evidence 和 false safety fields；
+同时把这条结果链接入默认 include。返工后进一步收紧 fail-closed 语义：顶层 ready 只信任 O6 顶层
+`status==="route_execution_result_delivery_readiness_ready_not_delivery_proof"`，子 readiness 继续展示，
+但不得把整体 `blocked_not_proven` 推成 ready。危险 true、bad schema、bad proof_scope、unsafe text/path/url/token、
+base64、raw/path/root、credential URL、串口路径和控制字段继续 fail-closed，不打开 submit/control/action。
+前端验证 `cd pc-tools/workstation && npm run test` 输出 `Tests 482 passed (482)`，
+`npm run build` 通过并输出 `built in 1.81s`，`npm run lint` 通过；仅保留既有 Vite chunk size warning。
+
+OKR 结论：O6 从约 68% 保守上调到约 `~71%`，因为 O6 archive/read model 已从 route bag pose progress replay
+进一步推进到同一 `task_id` 的 route execution result / delivery readiness / operator confirmation readiness
+统一结果链回读；O7 从约 68% 保守上调到约 `~71%`，因为 O7 已能围绕同一 `task_id` 展示统一结果链，并完成
+`482 passed`、build、lint 证据，同时补齐“顶层 blocked 不被子 readiness 误推成 ready”的 fail-closed 护栏。本轮不标完成、不归档任何 KR。证据边界明确为
+`software_proof_route_execution_result_delivery_readiness_only`，不证明真实 production cloud、真实 4G/TLS、
+production DB/queue、OSS/CDN live traffic、raw ROS message payload 全量语义解码、真实 live Nav2 route execution、
+真实 robot motion、真实 delivery record、真实 operator confirmation、真实 delivery success、真实 annotation API/export、
+真实 dataset export、真实手机/browser 现场验收或完整路线长期验收。下一步优先级应转向真实 live Nav2 route execution result、
+真实 delivery record / operator confirmation 和 production cloud，而不是继续叠加 local/mock wrapper。
+
+### 2026-07-09 20-03｜o6_o7_route_bag_pose_progress_replay｜O6/O7 route bag pose progress replay 收口
+
+本轮 `sprints/2026.07.09_20-03_o6_o7_route_bag_pose_progress_replay/` 完成
+`software_proof_route_bag_pose_progress_replay_only` 的产品收口：Algorithm 在
+`field_route_evidence_manifest.py` 把准现场 DB3 route bag 从 white-list semantic replay 推进到
+pose progress replay，只读解析 `tf2_msgs/msg/TFMessage` 与 `nav_msgs/msg/Odometry` 白名单位姿摘要，
+并把结果写入 manifest 顶层与 `field_motion_evidence_packet.route_bag_pose_progress_replay`。输出包括
+`pose_sample_count`、`pose_decode_ok_count`、`pose_decode_failed_count`、`pose_topic_types`、
+`pose_frame_pairs`、`pose_time_span_ns`、`start_pose`、`end_pose`、`displacement_m`、
+`nonzero_pose_progress_observed`、`blocked_reasons`、`next_required_evidence` 与 false safety fields；
+未知类型、坏 schema、短 payload、unsafe topic/text/frame、dangerous true 和 decode failure 全部
+fail-closed，不回显 raw payload、base64、绝对路径、token、credential URL 或完整 DB3 内容。
+Algorithm 首轮 ready case 因 CDR fixture 对齐导致位移为 0，worker 已定位为 `child_frame_id` 后没有按
+8 字节边界补齐，修复后验证 `Ran 41 tests in 0.192s OK`。
+
+Robot/O6 新增 `trashbot.o6.route_bag_pose_progress_replay.v1` readback schema 和
+`include=route_bag_pose_progress_replay` allowlist，让同一 `task_id` 的
+`route_bag_pose_progress_replay` 可通过 field evidence ingest、artifact bundle ingest、archive task detail、
+field evidence、artifact bundle、consumer detail aliases 和 explicit include 回读。O6 对 bad schema、
+bad proof_scope、dangerous true、unsafe topic/text/frame、path/root/token/raw/base64/credential URL
+继续 fail-closed，并保持 `safe_to_control=false`、`delivery_success=false`、
+`primary_actions_enabled=false`、`robot_control_executed=false`。O6 worker 首轮发现 HTTP 回包的
+generic `safe_value()` 会因字段名包含 `topic` 裁掉 `pose_topic_types`，已把 `pose_topic_types`
+加入安全例外后复验通过，验证为 `Ran 161 tests in 57.594s OK`。
+
+Full-stack/O7 在 consumer adapter、shared contracts、`artifact_bundle_readiness` 和 PC 工作站 UI 中
+新增 `route_bag_pose_progress_replay` 只读摘要，展示 source/status、pose topic types、frame pairs、
+start/end pose、displacement、nonzero observed、blocked reasons、next required evidence 和 false
+safety fields；同时把 pose progress 的 blocked reasons / next evidence 合并回 readiness。危险 true、
+bad schema、bad proof_scope、unsafe text/frame、URL、绝对路径、base64、raw/path/root、credential URL、
+串口路径和控制字段继续 fail-closed，不打开 submit/control/action。前端验证
+`cd pc-tools/workstation && npm run test` 输出 `Test Files 3 passed` / `Tests 479 passed`，
+`npm run build` 通过，`npm run lint` 通过；仅保留既有 Vite chunk size warning。
+
+OKR 结论：O6 从约 65% 保守上调到约 `~68%`，因为 O6 archive/read model 已从 route bag semantic replay
+进一步推进到 TF/Odometry pose progress replay 回读；O7 从约 65% 保守上调到约 `~68%`，因为 O7 已能围绕同一
+`task_id` 展示 pose progress readiness 并完成 `479 passed`、build、lint 证据。本轮不标完成、不归档任何 KR。
+证据边界明确为 `software_proof_route_bag_pose_progress_replay_only`，不证明真实 production cloud、真实 4G/TLS、
+production DB/queue、OSS/CDN live traffic、raw ROS message payload 全量语义解析、真实 live Nav2 route execution、
+真实 robot motion、真实 delivery record、真实 operator confirmation、真实 delivery success、真实 annotation API/export、
+真实 dataset export、真实手机/browser 现场验收或完整路线长期验收。
+
+### 2026-07-09 19-00｜o6_o7_route_bag_semantic_replay｜O6/O7 route bag semantic replay 收口
+
+本轮 `sprints/2026.07.09_19-00_o6_o7_route_bag_semantic_replay/` 完成
+`software_proof_route_bag_semantic_replay_only` 的产品收口：Algorithm 在
+`field_route_evidence_manifest.py` 把准现场 DB3 route bag 从 payload 摘要推进到 white-list ROS
+语义摘要，只对白名单 topic type 做有限 CDR 统计级解码，并把结果写入 manifest 顶层与
+`field_motion_evidence_packet.route_bag_semantic_replay`。当前覆盖
+`sensor_msgs/msg/LaserScan`、`sensor_msgs/msg/Image`、`tf2_msgs/msg/TFMessage` 三类，
+输出 `semantic_topic_types`、LaserScan/Image/TF summary、`blocked_reasons`、
+`next_required_evidence` 与 false safety fields；未知类型、坏 schema、短 payload、unsafe text/topic、
+dangerous true 和 decode failure 全部 fail-closed，不回显 raw payload、base64、绝对路径、token、
+credential URL 或完整 DB3 内容。Algorithm 验证为 `Ran 37 tests in 0.169s` 和 `OK`。
+
+Robot/O6 新增 `trashbot.o6.route_bag_semantic_replay.v1` readback schema 和
+`include=route_bag_semantic_replay` allowlist，让同一 `task_id` 的
+`route_bag_semantic_replay` 可通过 field evidence ingest、artifact bundle ingest、archive task detail、
+field evidence、artifact bundle、consumer detail aliases 和 explicit include 回读。O6 同时修正了
+semantic replay fixture、topic sanitizer 和 `semantic_topic_types` 响应层白名单，继续对 bad schema、
+bad proof_scope、dangerous true、unsafe topic/text、path/root/token/raw/base64/credential URL
+fail-closed，并保持 `safe_to_control=false`、`delivery_success=false`、
+`primary_actions_enabled=false`、`robot_control_executed=false`。O6 验证为
+`Ran 160 tests in 56.976s OK`。
+
+Full-stack/O7 在 consumer adapter、shared contracts、`artifact_bundle_readiness` 和 PC 工作站 UI 中
+新增 `route_bag_semantic_replay` 只读摘要，展示 source/status、semantic topic types、
+LaserScan/Image/TF summary、blocked reasons、next required evidence 和 false safety fields；
+同时把 semantic replay 的 blocked reasons / next evidence 合并回 readiness。危险 true、bad schema、
+bad proof_scope、unsafe text、URL、绝对路径、base64、raw/path/root、credential URL、串口路径和控制字段
+继续 fail-closed，不打开 submit/control/action。前端验证
+`cd pc-tools/workstation && npm run test` 输出 `Test Files 3 passed` / `Tests 479 passed`，
+`npm run build` 输出 `built in 1.74s`，`npm run lint` 通过。
+
+OKR 结论：O6 从约 62% 保守上调到约 `~65%`，因为 O6 archive/read model 已从 route bag payload replay
+进一步推进到 white-list ROS semantic replay 回读；O7 从约 62% 保守上调到约 `~65%`，因为 O7 已能围绕同一
+`task_id` 展示 semantic replay readiness 并完成 `479 passed`、build、lint 证据。本轮不标完成、
+不归档任何 KR。证据边界明确为 `software_proof_route_bag_semantic_replay_only`，不证明真实 production cloud、
+真实 4G/TLS、production DB/queue、OSS/CDN live traffic、raw ROS message payload 全量语义解析、
+真实 live Nav2 route execution、真实 robot motion、真实 delivery record、真实 operator confirmation、
+真实 delivery success、真实 annotation API/export、真实 dataset export、真实手机/browser 现场验收或
+完整路线长期验收。
+
+### 2026-07-09 18-01｜o6_o7_route_bag_payload_replay｜O6/O7 route bag payload replay 收口
+
+本轮 `sprints/2026.07.09_18-01_o6_o7_route_bag_payload_replay/` 完成
+`software_proof_route_bag_payload_replay_only` 的产品收口：Algorithm 在
+`field_route_evidence_manifest.py` 新增 `route_bag_payload_replay` generator 和可选 route bag payload 输入，
+只读解析准现场 DB3 `messages.data` BLOB 并输出脱敏 payload 摘要。摘要写入 manifest 顶层和
+`field_motion_evidence_packet.route_bag_payload_replay`，不读取或回显 raw ROS message payload、
+绝对路径、完整 hash、token、credential URL、raw/base64 或完整 DB3 内容。Algorithm 验证为
+`Ran 26 tests ... OK`，worker report 记录 `32 tests passed`；准现场 DB3 smoke 输出
+`payload_sample_count=8`、`payload_size_min_bytes=72`、`payload_size_max_bytes=921652`、
+`payload_size_avg_bytes=1371.093`、`payload_sha256_prefix_samples` 为短 hex `string[]`、
+`contains_abs_path=false`、`safe_to_control=false`、`delivery_success=false`。
+
+Robot/O6 新增 `trashbot.o6.route_bag_payload_replay.v1` readback schema 和
+`include=route_bag_payload_replay` allowlist，让同一 `task_id` 的
+`route_bag_payload_replay` 可通过 field evidence ingest、artifact bundle ingest、archive task detail、
+field evidence、artifact bundle、consumer detail aliases 和 explicit include 回读。O6 对 missing
+evidence、bad schema、bad proof_scope、dangerous true、path/root/token/raw/base64/credential URL 和
+unsafe topic text 继续 fail-closed，并保持 `safe_to_control=false`、`delivery_success=false`、
+`primary_actions_enabled=false`、`robot_control_executed=false`。O6 验证为 `Ran 159 tests in 56.274s OK`。
+
+Full-stack/O7 在 consumer adapter、shared contracts、`artifact_bundle_readiness` 和 PC 工作站 UI 中
+新增 `route_bag_payload_replay` 只读摘要，展示 source/status、topic/message/timestamp 摘要、
+payload size/hash prefix 摘要、blocked reasons、next required evidence 和 false safety fields；
+危险 true、bad schema、bad proof_scope、unsafe text、URL、绝对路径、base64、raw/path/root、
+credential URL、串口路径、完整 DB3 内容和 `/cmd_vel` topic 均 fail-closed，不打开 submit/control/action。
+前端验证 `cd pc-tools/workstation && npm run test` 输出 `Test Files 3 passed` / `Tests 479 passed`，
+`npm run build` 输出 `built in 1.72s`，`npm run lint` 通过；本轮还修复了
+`payload_sha256_prefix_samples` 合同形状与 `ProofFlags.source` collision 的边界问题。
+
+OKR 结论：O6 从约 59% 保守上调到约 62%，因为 O6 archive/read model 已从 route bag evidence intake
+进一步消费准现场 DB3 route bag payload-derived replay evidence，并支持
+`include=route_bag_payload_replay` 回读；O7 从约 59% 保守上调到约 62%，因为 O7 已能围绕同一
+`task_id` 展示 route bag payload replay readiness 并完成 `479 passed`、build、lint 证据。本轮不标完成、
+不归档任何 KR。证据边界明确为 `software_proof_route_bag_payload_replay_only`，不证明真实 production cloud、
+真实 4G/TLS、production DB/queue、OSS/CDN live traffic、raw ROS message payload 语义解析、
+真实 live Nav2 route execution、真实 robot motion、真实 delivery record、真实 operator confirmation、
+真实 delivery success、真实 annotation API/export、真实 dataset export、真实手机/browser 现场验收或完整路线长期验收。
+
+### 2026-07-09 17-00｜o6_o7_route_bag_evidence_intake｜O6/O7 route bag evidence intake 收口
+
+本轮 `sprints/2026.07.09_17-00_o6_o7_route_bag_evidence_intake/` 完成
+`software_proof_route_bag_evidence_intake_only` 的产品收口：Algorithm 在
+`field_route_evidence_manifest.py` 新增 `route_bag_evidence` generator 和可选 route bag 输入，
+只读扫描准现场 DB3 的 `topics` / `messages` 表并输出脱敏摘要。摘要写入 manifest 顶层和
+`field_motion_evidence_packet.route_bag_evidence`，不读取或回显 raw ROS message payload、
+绝对路径、完整 hash、token、credential URL、raw/base64 或完整 DB3 内容。Algorithm 验证为
+`Ran 26 tests in 0.100s` 和 `OK`；准现场 DB3 smoke 输出 `topic_count=3`、
+`message_count=1473`、sample topics `/tf_static`、`/scan`、`/camera/image_raw`、
+`contains_abs_path=false`、`safe_to_control=false`、`delivery_success=false`。
+
+Robot/O6 新增 `trashbot.o6.route_bag_evidence.v1` readback schema 和
+`include=route_bag_evidence` allowlist，让同一 `task_id` 的 `route_bag_evidence`
+可通过 field evidence ingest、artifact bundle ingest、archive task detail、field evidence、
+artifact bundle、consumer detail aliases 和 explicit include 回读。O6 对 missing evidence、
+bad schema、bad proof_scope、dangerous true、path/root/token/raw/base64/credential URL 和
+unsafe topic text 继续 fail-closed，并保持 `safe_to_control=false`、`delivery_success=false`、
+`primary_actions_enabled=false`、`robot_control_executed=false`。O6 验证为
+`Ran 158 tests in 56.274s OK`。
+
+Full-stack/O7 在 consumer adapter、shared contracts、`artifact_bundle_readiness` 和 PC 工作站
+UI 中新增 `route_bag_evidence` 只读摘要，展示 source/status、metadata/db3 状态、
+topic/message/timestamp 摘要、blocked reasons、next required evidence 和 false safety fields；
+危险 true、bad schema、bad proof_scope、unsafe text、URL、绝对路径、base64、raw/path/root、
+credential URL、串口路径、完整 DB3 内容和 `/cmd_vel` topic 均 fail-closed，不打开
+submit/control/action。前端验证 `cd pc-tools/workstation && npm run test` 输出
+`Test Files 3 passed` / `Tests 479 passed`，`npm run build` 输出 `built in 1.72s`，
+`npm run lint` 通过；本轮还修复 `ProofFlags.source` collision。
+
+OKR 结论：O6 从约 56% 保守上调到约 59%，因为 O6 archive/read model 已从 delivery result
+readiness 进一步消费准现场 DB3 route bag 摘要，并支持 `include=route_bag_evidence` 回读；
+O7 从约 56% 保守上调到约 59%，因为 O7 已能围绕同一 `task_id` 展示 route bag evidence
+readiness 并完成 `479 passed`、build、lint 证据。本轮不标完成、不归档任何 KR。证据边界明确为
+`software_proof_route_bag_evidence_intake_only`，不证明真实 production cloud、真实 4G/TLS、
+production DB/queue、OSS/CDN live traffic、raw ROS message payload、真实 live Nav2 route
+execution、真实 robot motion、真实 delivery record、真实 operator confirmation、真实
+delivery success、真实 annotation API/export、真实 dataset export、真实手机/browser 现场验收或
+完整路线长期验收。
+
+### 2026-07-09 16-00｜o6_o7_delivery_result_evidence｜O6/O7 delivery result evidence 收口
+
+本轮 `sprints/2026.07.09_16-00_o6_o7_delivery_result_evidence/` 完成
+`software_proof_delivery_result_evidence_only` 的产品收口：Algorithm 在
+`field_route_evidence_manifest.py` 新增可选 `--delivery-result-json`，从安全裁剪的 delivery
+result JSON 生成 `trashbot.delivery_result_evidence.v1` 摘要，并同时写入 manifest 顶层和
+`field_motion_evidence_packet.delivery_result_evidence`。摘要保持 field packet 的
+`task_id` lineage，不允许外部输入覆盖；缺输入、JSON 不可读、root 非 object、
+schema mismatch、`task_id` mismatch、UTC 时间非法、dangerous true、unsafe
+path/root/token/raw/base64/credential URL 等输入会输出 `blocked_not_proven`，并保持
+`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`、
+`robot_control_executed=false`。Algorithm 验证为 `Ran 20 tests in 0.069s` 和 `OK`；
+首轮 ready fixture 因 `task_id` 与 packet lineage 不一致被正确拦截，修正 fixture 后复验通过。
+
+Robot/O6 新增 `delivery_result_evidence` sanitizer/readback helper，让同一 `task_id` 的摘要
+可通过 field evidence manifest、artifact bundle ingest、archive task detail、field evidence、
+artifact bundle、consumer detail 顶层 alias 和 standalone
+`include=delivery_result_evidence` 回读；O6 对坏 schema、坏 proof_scope、dangerous true、
+unsafe path/root/token/raw/base64/credential URL/unsafe text 继续 fail-closed。O6 验证为
+`python3 -m unittest onboard.src.ros2_trashbot_behavior.test.test_remote_cloud_relay`
+输出 `Ran 157 tests in 55.196s` 和 `OK`。
+
+Full-stack/O7 在 consumer detail、shared contracts、`artifact_bundle_readiness` 和 PC 工作站
+UI 新增 `delivery_result_evidence` 只读摘要，展示 schema/status/proof_scope、delivery
+record/operator confirmation readiness、blocked reasons、next required evidence 和 false
+safety fields；危险 true、坏 schema、unsafe path/root/token/raw/base64/credential URL/
+unsafe text 均 fail-closed，不打开 submit/control/action。前端验证
+`cd pc-tools/workstation && npm run test` 输出 `Test Files 3 passed` / `Tests 478 passed`，
+`npm run build` 通过并仅保留既有 Vite chunk warning，`npm run lint` 通过。
+
+OKR 结论：O6 从约 53% 保守上调到约 56%，因为 O6 archive/read model 已从 Nav2 goal
+evidence 再推进到 `trashbot.delivery_result_evidence.v1`；O7 从约 53% 保守上调到约 56%，
+因为 O7 已能围绕同一 `task_id` 直接展示 delivery result readiness，而不是只靠
+`next_required_evidence` 反推。本轮不标完成、不归档任何 KR。证据边界明确为
+`software_proof_delivery_result_evidence_only`，不证明真实 production cloud、真实
+`route_bag`、真实 live Nav2 run、真实 delivery record、真实 operator confirmation、
+真实 delivery success、真实 OSS/CDN、真实 annotation API/export、真实 dataset export、
+真实手机/browser 现场验收或完整路线长期验收。
+
+### 2026-07-09 15-00｜o6_o7_nav2_goal_evidence_packet｜O6/O7 Nav2 goal evidence 收口
+
+本轮 `sprints/2026.07.09_15-00_o6_o7_nav2_goal_evidence_packet/` 完成
+`software_proof_nav2_goal_execution_evidence_only` 的产品收口：Algorithm 把 O11
+`o11_nav2_goal_execution_proof.py` 产出的 proof JSON 通过新增
+`--nav2-goal-proof-json` 接入 `field_route_evidence_manifest.py`，输出
+`trashbot.nav2_goal_execution_evidence.v1` 摘要，并同时写入 manifest 顶层和
+`field_motion_evidence_packet.nav2_goal_execution_evidence`。摘要保留 field packet 的
+`task_id` lineage，不允许 O11 proof 覆盖；schema mismatch、dangerous true、unsafe
+path/root/token/raw/base64 等输入会输出 `blocked_not_proven`，并保持
+`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`、
+`robot_control_executed=false`。Algorithm 验证为 `Ran 29 tests in 0.059s` 和 `OK`。
+
+Robot/O6 新增 `nav2_goal_execution_evidence` sanitizer/readback helper，让同一 `task_id`
+的摘要可通过 field evidence manifest、artifact bundle、archive task detail、
+field evidence consumer ingest、artifact bundle consumer ingest、consumer include 以及
+standalone `include=nav2_goal_execution_evidence` 回读；O6 对缺字段、schema/proof-scope
+mismatch、dangerous true、unsafe path/root/token/raw/base64 继续 fail-closed。O6 验证为
+`python3 -m unittest onboard.src.ros2_trashbot_behavior.test.test_remote_cloud_relay`
+输出 `Ran 156 tests in 53.382s` 和 `OK`。
+
+Full-stack/O7 在 consumer detail 和 PC 工作站 UI 新增 `Nav2 goal execution evidence`
+只读摘要，展示 schema/status/proof_scope、goal requested/sent/accepted/result received、
+result status/code、base command/feedback、blocked reasons、next required evidence 和
+false safety fields；首次 `npm run build` 失败于 TS2783 重复字段覆盖，修复后 build 通过。
+前端验证 `cd pc-tools/workstation && npm run test` 输出 `3 passed` / `477 passed`，
+`npm run build` 与 `npm run lint` 通过。
+
+OKR 结论：O6 从约 50% 保守上调到约 53%，因为 O6 archive/read model 已从 field motion
+packet 进一步接住 `trashbot.nav2_goal_execution_evidence.v1`；O7 从约 50% 保守上调到
+约 53%，因为 O7 已能围绕同一 `task_id` 展示 Nav2 goal/result readiness，并通过 test/build/lint
+证据。本轮不标完成、不归档任何 KR。证据边界明确为
+`software_proof_nav2_goal_execution_evidence_only`，不证明真实 production cloud、真实
+`route_bag`、真实 live Nav2 run、真实 delivery success、真实 OSS/CDN、真实 annotation
+API/export、真实媒体访问或完整路线长期验收。
+
+### 2026-07-09 14-00｜o6_o7_field_motion_evidence_packet｜O6/O7 现场运动证据包收口
+
+本轮 `sprints/2026.07.09_14-00_o6_o7_field_motion_evidence_packet/` 完成
+`software_proof_field_motion_evidence_packet_only` 的产品收口：Algorithm 在
+`field_route_evidence_manifest.py` 新增 `--motion-log-root`，围绕同一 `task_id` 输出
+`field_motion_evidence_manifest.json` 与 `derived_replay.jsonl`，并新增
+`field_motion_evidence_packet`。该 packet 归一 6 月现场 `map.yaml/.pgm`、`route.csv`、
+keyframes、remote_capture motion logs 和 replay 摘要，关键事实包括
+`schema=trashbot.field_motion_evidence_packet.v1`、`frame_count=17`、
+`distance_m=0.167998`、`nonzero_displacement_observed=true`、
+`live_motion_evidence_present=true`、`route_bag_or_live_nav2_log.present=true`、
+`source=live_motion_log`、`route_bag_present=false`，并保持
+`safe_to_control: false`、`delivery_success: false`、`primary_actions_enabled: false`、
+`robot_control_executed: false`。packet 同时暴露
+`source_manifest_task_id_missing`、`direct_odom_capture_zero_or_missing` 和
+`next_required_evidence=[nonzero_odom_capture_or_bag_replay, route_bag_or_live_nav2_log_with_pose_progress, nav2_goal_result_or_delivery_record]`，
+因此本轮仍是现场运动软件证据，不是送达闭环。
+
+Robot/O6 把 `field_motion_evidence_packet` additive 接到 field evidence manifest /
+artifact bundle ingest 与 readback 主路径；O6 验证为
+`python3 -m unittest onboard.src.ros2_trashbot_behavior.test.test_remote_cloud_relay`
+输出 `Ran 155 tests in 53.281s` 和 `OK`，`py_compile` 与 `git diff --check` 通过。
+Full-stack/O7 消费同一 packet 到 consumer detail、artifact bundle readiness、
+route replay、labeling workspace，支持顶层和 nested alias，并对 dangerous true、
+schema mismatch、unsafe text 继续 fail-closed；前端验证
+`cd pc-tools/workstation && npm run test` 输出 `3 passed` / `476 passed`，
+`npm run build`、`npm run lint`、`git diff --check` 通过。Algorithm 验证为
+`python3 -m unittest onboard/tests/test_field_route_evidence_manifest.py` 输出
+`Ran 13 tests ... OK`，`py_compile` 通过，生成命令结果
+`gate_pass=true`、`status=field_evidence_manifest_ready_not_delivery_proof`。
+
+OKR 结论：O6 从约 47% 保守上调到约 50%，因为 O6 archive/read model 已从 route-root seed /
+offline seed smoke 再推进到同一 `task_id` 的 field motion evidence packet ingest/readback；
+O7 从约 47% 保守上调到约 50%，因为 O7 已能围绕同一 packet 消费 route replay /
+labeling / readiness 主路径，并完成 `476 passed`、build、lint 证据。本轮不标完成、
+不归档任何 KR。证据边界明确为 `software_proof_field_motion_evidence_packet_only`，
+不证明真实 production cloud、真实 `route_bag`、真实 Nav2 live run、真实 delivery success、
+真实 OSS/CDN、真实 annotation API/export、真实媒体访问或完整路线长期验收。
+
+### 2026-07-09 12-58｜o6_o7_route_root_seed_gate｜O6/O7 route-root seed gate 收口
+
+本轮 `sprints/2026.07.09_12-58_o6_o7_route_root_seed_gate/` 完成
+`software_proof_local_mock_route_root_seed_gate_only` 的产品收口：Algorithm worker 修改
+`onboard/scripts/field_route_evidence_manifest.py` 与 `docs/navigation/field_route_evidence_manifest.md`，
+让显式 route root + replay 场景把 `rosbag/route_bag` 视为可选增强证据，不再阻断
+`gate_pass=true`；manifest 暴露 `route_root_seed_gate`、`route_bag_required=false`、
+`route_bag_present=false`、`frame_count=2`，safe flags false。Robot/O6 新增
+`trashbot.o6.route_root_seed_gate.v1` 摘要，挂到 archive detail、field evidence consumer ingest、
+artifact bundle alias 和 O6 consumer detail；缺 `route_bag` 时输出 `route_bag_missing_optional`
+和 `route_bag_optional_evidence`，但 route.csv + manifest + derived replay 可用时
+`route_root_seed_status=local_mock_route_root_seed_ready`。Full-stack/O7 消费同一摘要并展示
+route-root seed status、counts、blocked reasons、next evidence、`route_bag_required=false`、
+`route_bag_present=false` 和 false safety fields，dangerous true / unsafe refs / schema mismatch
+继续 fail-closed。
+
+验证证据：Algorithm `python3 -m py_compile onboard/scripts/field_route_evidence_manifest.py` 通过，
+route-root fixture 输出 `gate_pass=true`，`rg` 命中关键 token，`git diff --check` 通过；O6
+`python3 -m py_compile ...remote_cloud_relay.py` 通过，
+`python3 -m unittest onboard.src.ros2_trashbot_behavior.test.test_remote_cloud_relay` 输出
+`Ran 154 tests in 53.491s` 和 `OK`，`rg` 命中关键 token，`git diff --check` 通过；O7
+`cd pc-tools/workstation && npm run test && npm run build && npm run lint` 通过，Vitest 输出
+`3 passed` / `475 passed`，build/lint 通过，`rg` 命中关键 token，`git diff --check` 通过。
+
+OKR 结论：O7 从约 44% 保守上调到约 47%，O6 从约 45% 保守上调到约 47%。上调理由是本轮把
+route-root seed 从 `route_bag` 硬 gate 中解耦，并让 O6/O7 可以在 local/mock 范围内围绕同一
+`task_id` 回读和展示 seed readiness；但这仍然只是 software proof，不归档 O6/O7 KR。本轮不证明真实
+生产云、真实 `route_bag`、真实媒体、真实 annotation API、真实 dataset export、真实机器人运动或
+delivery success。所有危险字段继续保持 `safe_to_control: false`、`delivery_success: false`、
+`primary_actions_enabled: false`、`robot_control_executed: false`。
+
+### 2026-07-09 11-58｜o6_o7_offline_artifact_seed_smoke｜O6/O7 离线 seed smoke 收口
+
+本轮 `sprints/2026.07.09_11-58_o6_o7_offline_artifact_seed_smoke/` 完成
+`software_proof_offline_artifact_seed_smoke_only` 的产品收口：Algorithm worker 把离线路线材料整理成
+`trashbot.offline_seed_summary.v1`，同一 `task_id=offline-artifact-seed-20260610` 下串起
+`route.csv`、`manifest.json`、`derived_replay.jsonl` 和 `artifact_access_probe` 摘要，离线 replay 帧数为
+`17`；该 seed smoke 明确保留 `route_bag` 仍参与 gate 的事实，因此路线根 seed 仍需要临时 bundle 或同类完整
+fixture。Robot/O6 进一步新增 `trashbot.o6.offline_artifact_seed_smoke.v1`，把离线 route / manifest / replay /
+probe 归并到 archive detail 与 consumer detail；O6 `test_remote_cloud_relay` 达到 `154 tests OK`。Full-stack/O7
+消费同一 `task_id` 的 O6 摘要并在 consumer detail 继续 fail-closed 展示 readiness、blocked reasons 和
+next evidence，`npm run test` 达到 `473 passed`，同时 `npm run build`、`npm run lint`、`git diff --check`
+通过。
+
+OKR 结论：O6 从约 42% 保守上调到约 45%，O7 从约 42% 保守上调到约 44%。上调理由是本轮把 O6/O7 从
+local/mock wrapper 再推进到可重复的离线 seed smoke 贯通，并明确保留 failure boundary 与安全旗标；但这仍然只是
+software proof，不证明真实生产云、真实媒体、真实 annotation API、真实 dataset export、真实机器人运动或
+delivery success。所有危险字段继续保持 `safe_to_control: false`、`delivery_success: false`、
+`primary_actions_enabled: false`、`robot_control_executed: false`。
+
+### 2026-07-09 10-58｜o6_artifact_access_probe｜O6/O7 artifact access probe 可访问性摘要
+
+本轮 `sprints/2026.07.09_10-58_o6_artifact_access_probe/` 完成
+`software_proof_local_mock_artifact_access_probe_only`：Robot/O6 在
+`remote_cloud_relay.py`、测试和接口文档里新增 `trashbot.o6.artifact_access_probe.v1`，
+支持 `artifact_access_root` / `TRASHBOT_O6_ARTIFACT_ACCESS_ROOT`、64KB 小文件上限和固定
+proof scope。O6 会对 artifact bundle / field evidence refs 做 allowlist root 内只读 probe，
+回读 `exists`、`size_bytes`、`sha256`、`detected_type`、`blocked_reason` 和 `proof_scope`；
+root 缺失、root 无效、绝对路径、`..`、URL/query、credential/control/raw/base64、越界、
+目录、缺文件和超 64KB 都 fail-closed。archive task detail、field_evidence、artifact_bundle、
+consumer detail 和 `include=artifact_access_probe` 均可回读同一 `task_id` 的 probe。
+
+Full-stack/O7 secondary consumer 读取 top-level `artifact_access_probe`、
+`field_evidence.artifact_access_probe`、`artifact_bundle.artifact_access_probe` 和相关 ingest wrapper，
+在 `artifact_bundle_readiness` 与 UI 展示 counts、basename refs、`detected_type`、`size_bytes`、
+sha256 prefix、blocked reasons 和 next required evidence；缺失 probe、unsafe ref、allowlist root echo、
+schema mismatch 和危险 true 字段继续 fail-closed，不暴露 root、绝对路径、URL query、token 或原始媒体内容。
+
+验证证据：O6 `python3 -m py_compile ...remote_cloud_relay.py` 通过；
+`python3 -m unittest onboard.src.ros2_trashbot_behavior.test.test_remote_cloud_relay` 首次失败后修复
+blocked reason 判定顺序，复验输出 `Ran 153 tests in 52.427s` 和 `OK`；O7
+`cd pc-tools/workstation && npm run test` 输出 `3 passed` / `472 passed`；`npm run build`
+首次 TypeScript `TS2783` 重复字段失败后修复并通过；`npm run lint` 通过；
+`git diff --check` 通过。
+
+OKR 结论：O6 从约 39% 保守上调到约 42%，因为 archive/read model 已从保存 artifact refs 和 bundle 摘要
+推进到可对受限本地/mock 小文件生成可回读访问性摘要；O7 从约 40% 保守上调到约 42%，因为 PC/O7
+已能消费并展示同一 `task_id` 的 `artifact_access_probe` readiness。本轮不标完成、不归档 KR。
+证据边界为 `software_proof_local_mock_artifact_access_probe_only`，不证明真实 OSS/CDN、production cloud、
+真实机器人数据、真实媒体访问、真实 annotation API、真实 dataset export、ROS2 runtime、机器人运动或
+delivery success；所有危险字段继续保持 `safe_to_control: false`、`delivery_success: false`、
+`primary_actions_enabled: false`、`robot_control_executed: false`。
+
+### 2026-07-09 09-57｜o7_artifact_bundle_consumer_readiness｜O7 artifact bundle readiness 主路径
+
+本轮 `sprints/2026.07.09_09-57_o7_artifact_bundle_consumer_readiness/` 完成
+`software_proof_local_mock_artifact_bundle_consumer_readiness`：PC/O7 在
+`o7ConsumerReadAdapter.ts`、`contracts.ts`、`O7FixturePreviewPanel.vue`、`catalog.test.ts`、
+`App.test.ts` 和产品文档里，把 O6 `artifact_bundle` / `artifact_bundle_consumer_ingest`
+显式归一为 `artifact_bundle_readiness`，围绕同一 `task_id` 回读计数、样本 refs、
+blocked reasons 与 next required evidence。旧 debug fallback 仍保留，但不覆盖主路径；
+危险 bundle ref、危险 true 字段和 schema mismatch 继续 fail closed。
+
+验证证据：worker 记录 `npm run test -- --runInBand` 失败，原因是 Vitest 不支持该参数；
+回退 `npm run test` 成功，结果 `3 passed` / `470 passed`；`npm run build` 通过；
+`npm run lint` 通过；`git diff --check` 通过。Product closeout 轻量验证要求本轮收口文件
+`side2side_check.md`、`final.md` 存在，且 `rg` 可命中 `artifact_bundle_readiness`、
+`470 passed`、`software_proof` 与 O7 相关条目。
+
+OKR 结论：O7 从约 38% 保守上调到约 40%，因为本轮补齐了 `artifact_bundle_readiness`
+主路径并完成 test/build/lint/diff-check 证据；O6 维持约 39%，因为本轮没有新增 O6 写入能力。
+本轮不标完成、不归档 O7 KR3/KR4。证据边界仍为 `software_proof_local_mock_artifact_bundle_consumer_readiness`，
+不证明真实生产云、真实媒体、真实 annotation API、真实 dataset export、真实 RTC/视频、
+真实 ASR/TTS、wheel raw 非零或完整路线长期验收。
+
+### 2026-07-09 08-56｜o6_artifact_bundle_ingest｜O6 artifact bundle 结构化归档入口
+
+本轮 `sprints/2026.07.09_08-56_o6_artifact_bundle_ingest/` 完成
+`software_proof_local_mock_artifact_bundle_ingest_only`：Robot/O6 在 `remote_cloud_relay.py`、
+测试和接口文档里新增 `POST /api/o6/archive/artifact-bundle`，接受
+`trashbot.o6.artifact_bundle.v1` 结构化摘要，并复用既有 file-backed O6 archive store，把同一
+`task_id` 下的 route/replay/keyframe/evidence refs、trajectory frames、events 和
+`artifact_media_preflight` 写入 archive/read model。archive task detail 与 consumer detail 新增
+`artifact_bundle`、`artifact_bundle_consumer_ingest` additive alias；`POST /api/o6/archive/field-evidence`
+在收到 `artifact_bundle` wrapper 或直传 bundle 时也走同一 ingest 逻辑。empty refs、
+dangerous true claims、unsafe refs、绝对路径、credential URL、token path、raw/base64 media
+继续 fail-closed。
+
+验证证据：O6 `python3 -m py_compile ...remote_cloud_relay.py` 通过；
+`python3 -m unittest onboard.src.ros2_trashbot_behavior.test.test_remote_cloud_relay` 输出
+`Ran 151 tests in 50.374s` 和 `OK`；`git diff --check` 通过。Product closeout 轻量验证要求本 sprint
+`tech-done.md`、`side2side_check.md`、`final.md` 存在，且 `rg` 可命中 `artifact_bundle`、
+`software_proof_local_mock_artifact_bundle_ingest_only`、`151 tests` 与 `O6`。
+
+OKR 结论：O6 从约 37% 保守上调到约 39%，因为 O6 已从 field evidence/media preflight 摘要继续推进到可接收
+`artifact_bundle` 结构化归档入口，并在 archive/consumer read 主路径回读同一 `task_id` 的
+task/trajectory/events/evidence/media preflight 摘要；O7 保持约 38% 不上调，因为本轮没有新增 O7 UI 或真实消费证据。
+本轮不标完成、不归档 KR。本轮明确不证明真实 `route.csv`、replay JSONL、keyframe 或 evidence 文件存在、可读、
+可播放，也不证明真实 production DB/queue、OSS/CDN、TLS/4G、真实 annotation API、真实 dataset export、
+真实机器人控制或 delivery success；所有危险字段继续保持 `safe_to_control: false`、
+`delivery_success: false`、`primary_actions_enabled: false`、`robot_control_executed: false`。
+
+### 2026-07-09 07-55｜o6_artifact_seed_media_preflight｜O6/O7 artifact media 依赖预检
+
+本轮 `sprints/2026.07.09_07-55_o6_artifact_seed_media_preflight/` 完成 `software_proof_local_mock_media_preflight_only`：
+Robot/O6 在 `remote_cloud_relay.py`、测试和接口文档里新增 `artifact_media_preflight` additive 合同，绑定同一
+`task_id`，围绕 field evidence / consumer detail 主路径暴露 route/replay/keyframe/evidence 计数、样本 ref、
+`blocked_reasons[]`、`local_mock/not_proven` 边界和固定
+`consumer_section_names=["artifact_media_preflight","route_replay_mvp","labeling_mvp"]`。同轮继续对 token path、
+credential URL、raw/base64 evidence refs、dangerous true claims 和非法 consumer query path fail-closed。
+Full-stack/O7 让 `o7ConsumerReadAdapter.ts` 优先读取 O6 `artifact_media_preflight`；远端缺字段时，才从
+`field_evidence` / `field_evidence_consumer_ingest` / `evidence` / `trajectory` 派生保守
+`derived_blocked_not_proven`，并在 route replay / labeling 中展示 media refs、blocked reasons 与
+`next_required_evidence`。
+
+验证证据：O6 `python3 -m py_compile ...remote_cloud_relay.py` 通过；
+`python3 -m unittest onboard.src.ros2_trashbot_behavior.test.test_remote_cloud_relay` 输出 `Ran 149 tests in 50.480s`
+和 `OK`；O7 `cd pc-tools/workstation && npm run test -- catalog.test.ts` 输出 `204 passed`；
+`cd pc-tools/workstation && npm run test -- App.test.ts` 输出 `247 passed`；`cd pc-tools/workstation && npm run build`
+通过；`cd pc-tools/workstation && npm run lint` 通过；Product closeout 要求 `git diff --check` 通过。
+
+OKR 结论：O6 从约 36% 保守上调到约 37%，O7 从约 37% 保守上调到约 38%。这次只证明 local/mock media
+preflight/readback 与 O7 消费链路，不标完成、不归档 KR。本轮明确不证明真实媒体/OSS/CDN、真实 annotation API、
+真实 dataset export、production cloud、真实机器人控制或 delivery success；所有危险字段继续保持
+`safe_to_control: false`、`delivery_success: false`、`primary_actions_enabled: false`、
+`robot_control_executed: false`。
+
+### 2026-07-09 06-53｜o6_o7_annotation_submit_export｜O6/O7 local/mock 标注提交与导出
+
+本轮 `sprints/2026.07.09_06-53_o6_o7_annotation_submit_export/` 完成 `software_proof_local_mock_annotation_only`：
+Robot/O6 扩展 `POST /api/o6/archive/labels`，返回 `local_mock_annotation_submit_written=true`、
+`submit_receipt.status=local_mock_annotation_written`、`receipt_id`、`task_id` 和 `label_count`，并新增
+`GET /api/o6/archive/labels/<task_id>/export?format=jsonl`，从既有 task labels 派生安全 `export_manifest`
+与限量 `sample_rows[]`。O6 consumer `labeling` section 与 labels detail 可回读 submit/export 摘要。
+Full-stack/O7 新增 PC 后端 `POST /api/o7/consumer-read/tasks/<task_id>/annotations/submit` 与
+`GET /api/o7/consumer-read/tasks/<task_id>/annotations/export`，浏览器只调用 PC route，不直连 O6；
+consumer-detail labeling 主路径可触发 local/mock submit/export，并展示 receipt/export manifest/sample rows。
+
+验证证据：O6 `python3 -m py_compile ...remote_cloud_relay.py` 通过；
+`python3 -m unittest onboard.src.ros2_trashbot_behavior.test.test_remote_cloud_relay` 输出 149 tests OK；
+O7 `cd pc-tools/workstation && npm run test -- catalog.test.ts` 输出 204 passed；
+`cd pc-tools/workstation && npm run test -- App.test.ts` 输出 247 passed；
+`cd pc-tools/workstation && npm run build` 通过，Vite 仅既有 chunk warning；
+`cd pc-tools/workstation && npm run lint` 通过；
+Product closeout 轻量验证要求 `git diff --check` 通过。O7 首轮 `App.test.ts` 和 `catalog.test.ts` 曾失败，
+分别定位为英文按钮文案触发只读安全断言、`index.ts` 引入路径仍指向已恢复的 `server/catalog.ts`；full-stack worker
+已修复并复验。
+
+OKR 结论：O6 从约 33% 保守上调到约 36%，O7 从约 34% 保守上调到约 37%。O6 KR4/KR6 和 O7 KR4 只推进
+local/mock 子能力，不标完成、不归档 KR。本轮明确不证明真实 annotation API、真实 dataset export、
+production cloud、真实媒体、真实机器人控制或 delivery success；所有危险字段继续保持
+`safe_to_control: false`、`delivery_success: false`、`primary_actions_enabled: false`、
+`robot_control_executed: false`。
+
+### 2026-07-09 05-51｜o7_route_replay_labeling_mvp｜O7 consumer detail 路线回放和标注 MVP
+
+本轮 `sprints/2026.07.09_05-51_o7_route_replay_labeling_mvp/` 完成 `software_proof_local_mock_consumer_only`：
+PC `O7FixturePreviewPanel` 不再只停留在 O6 `field_evidence` wrapper 展示，而是围绕同一个 `task_id` 优先消费
+O6 consumer detail 派生的 `route_replay_mvp` 和 `labeling_mvp`。Route replay MVP 覆盖 trajectory frame count、
+current frame、pose/velocity、events timeline、evidence/keyframe refs 和本地 cursor contract；labeling MVP 覆盖
+review item、media/evidence ref、current/draft labels、label schema、allowed label types 和
+`submit_blocked_fail_closed` receipt。旧 archive fixture route/labeling 继续保留为 debug fallback，但不覆盖
+consumer detail 主路径。
+
+验证证据：`cd pc-tools/workstation && npm run test -- catalog.test.ts` 输出 201 passed；
+`cd pc-tools/workstation && npm run test -- App.test.ts` 输出 247 passed；
+`cd pc-tools/workstation && npm run build` 通过，Vite 仅 chunk warning；
+`cd pc-tools/workstation && npm run lint` 通过；
+`git diff --check` 通过。首次 `App.test.ts` 曾有 1 个失败，根因是旧 fixture 没有 `route_replay_mvp`
+时 optional chain 少一层；full-stack worker 已修复 fallback 并重跑到 247 passed。危险字段继续保持
+`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`、`robot_control_executed=false`。
+
+OKR 结论：O7 从约 31% 保守上调到约 34%，因为本轮已经从 wrapper 兼容推进到 consumer detail 主路径的历史路线回放
+和标注 MVP，且具备 test/build/lint/diff-check 证据。O7 KR3/KR4 不标完成：仍缺真实生产云数据流、真实关键帧媒体可访问、
+真实 annotation submit/export、真实 RTC/视频、真实 ASR/TTS、wheel raw 非零、真实机器人运动和完整路线长期验收。
+O6/O5/O1/O2/O3/O4 不调整。
+
+### 2026-07-09 02-31｜o6_field_evidence_archive_ingest｜现场证据进入 O6/O7 主数据链
+
+本轮 `sprints/2026.07.09_02-31_o6_field_evidence_archive_ingest/` 完成 `software_proof_local_mock_archive_only`：
+Robot/O6 新增 `POST /api/o6/archive/field-evidence`，支持显式 `robot_id`、`task_id`、`field_evidence_manifest`，
+兼容旧包装和直传 manifest，并对 `trajectory_frames`、`events`、`evidence_refs` 做 fail-closed 校验后写入
+file-backed O6 archive。O6 consumer list/detail 可回读 `field_evidence`、`request_summary`、轨迹、事件和证据计数。
+Full-stack/O7 让 consumer read adapter 和预览面板兼容 O6 `field_evidence` wrapper，继续保持只读展示和危险字段关闭。
+
+验证证据：`python3 -m unittest onboard.src.ros2_trashbot_behavior.test.test_remote_cloud_relay` 输出 147 tests OK；
+`cd pc-tools/workstation && npm run test -- catalog.test.ts` 输出 201 passed；
+`cd pc-tools/workstation && npm run test -- App.test.ts` 输出 247 passed；
+`cd pc-tools/workstation && npm run build` 通过，Vite 仅 chunk warning；
+`cd pc-tools/workstation && npm run lint` 通过；
+`git diff --check` 通过。本轮未复跑 cloud-relay Docker smoke，也未单独复跑 targeted local/mock HTTP smoke；
+POST field evidence 后 O6 consumer list/detail 可回读由 `test_remote_cloud_relay` 单元测试覆盖，且保持 `safe_to_control=false`、
+`delivery_success=false`、`primary_actions_enabled=false`。
+
+OKR 结论：O6 从约 30% 保守上调到约 33%，因为 field evidence manifest 已进入 local/mock archive 写入和 consumer
+readback 主链路；O7 从约 30% 保守上调到约 31%，因为 PC/O7 已能消费并展示该 wrapper，但仍没有真实路线回放播放器、
+标注提交闭环或生产云数据流。O5/O1/O2/O3/O4 不调整。本轮不证明真实 production DB/queue、OSS/CDN、TLS/4G、
+真实隧道、真实机器人数据、真实 RTC/视频、wheel raw 非零、真实路线执行、电梯/送达或手机验收。
+
+---
+
 ## 2026-07-06 系列
 
 ### 2026-07-06 07-26｜pc_map_800_ros2_companion｜PC 大地图默认 800% 与 ROS2 配套口径

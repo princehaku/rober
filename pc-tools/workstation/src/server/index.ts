@@ -37,6 +37,10 @@ import {
   buildRouteDebugSummary,
   buildTrainingLabelingResponse,
 } from "./catalog";
+import {
+  buildO7ConsumerAnnotationExport,
+  buildO7ConsumerAnnotationSubmit,
+} from "./o7ConsumerReadAdapter";
 import { DEFAULT_ROBOT_API_BASE_URL } from "../shared/robotDefaults";
 import {
   endpointUrl,
@@ -4914,6 +4918,28 @@ export function createWorkstationApp(): express.Express {
         queryString(req.query.baseUrl),
         req.params.taskId ?? "",
         queryString(req.query.fieldEvidenceManifestJson),
+      ),
+    );
+  });
+
+  workstationApp.post("/api/o7/consumer-read/tasks/:taskId/annotations/submit", async (req, res) => {
+    // 标注提交只走 PC Node adapter；浏览器不能直连 O6，也不能传任意远端 endpoint。
+    res.json(
+      await buildO7ConsumerAnnotationSubmit(
+        queryString(req.query.baseUrl),
+        req.params.taskId ?? "",
+        req.body,
+      ),
+    );
+  });
+
+  workstationApp.get("/api/o7/consumer-read/tasks/:taskId/annotations/export", async (req, res) => {
+    // dataset export 仍是 local/mock task 级摘要，真实训练集导出和生产云字段继续固定 false。
+    res.json(
+      await buildO7ConsumerAnnotationExport(
+        queryString(req.query.baseUrl),
+        req.params.taskId ?? "",
+        queryString(req.query.format) || "jsonl",
       ),
     );
   });
