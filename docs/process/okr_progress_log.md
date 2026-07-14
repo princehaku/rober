@@ -8,6 +8,16 @@
 
 ## 2026-07-15 系列
 
+### 2026-07-15 05-38｜o3_controlled_initialpose_localization_proof｜Current live delta accepted，TF freshness fail-closed
+
+本轮 `sprints/2026.07.15_04-55_o3_controlled_initialpose_localization_proof/` 完成 Product acceptance closeout。首轮写前 gate 因 map_saver 三行 `origin` parser 与 `/initialpose` endpoint summary 保留问题 fail-closed，`initialpose_publish_attempts=0`、attempted/published=`false`，未消费发布额度。Engineer 修复并补回归后只执行一次 final live run：canonical pose=`map (0.8011511639109115,4.12500006146729,0.0)`，pre-gate clean，`initialpose_publish_attempts=1`、attempted/published=`true`；此后没有重跑，本 sprint 永久禁止再次发布 `/initialpose`。
+
+Product 接受 actual current live strict-no-motion artifact delta：fresh `/scan` age=`22ms`，fresh `/amcl_pose` age=`96ms` 且 header stamp parsed，dynamic `map->odom` observed、source class=`dynamic`、stamp parsed、publisher attribution=`attributed_unique_amcl`；helper PGID `648519` cleanup residual=`0`、graph diff=`0` 行，既有 LiDAR、ESP32 bridge 与 Upper API 保持。拒绝 clean localization：`map->odom` age=`5090ms` 超过 threshold=`3000ms`，post gate 唯一 blocker=`map_to_odom_fresh`，runtime exit=`2`、clean assertion exit=`1`。结构断言 PASS；本地 `py_compile`、`Ran 155 tests ... OK`、required `rg`、forbidden scan 与 scoped diff check 均通过。
+
+本轮 `current_run_artifact_delta=true`，但 `external_artifact_delta=false`、`live_control_delta=false`、`user_action_delta=false`；Mission Objective 0 / mission closure 仍未满足。O5 约 `85%` 仍最低，production/cloud success blocker 继续跳过；O1 约 `94%`、O6/O7 各约 `93%`，主百分比不调整，`okr_credit=false`，KR `不归档`。固定 `safe_to_control=false`、`robot_control_executed=false`、`route_execution_success=false`、`delivery_success=false`、`hil_pass=false`；不证明真实物理位姿、path/route、delivery/operator acceptance、HIL、production cloud 或 safe-to-control。
+
+下一轮由 `robot-algorithm-engineer` 优先做 no-topic-write/no-motion 的 TF receipt-time vs header-stamp 根因分析；若现有 artifact 已足够证明 collector 判定延迟，先离线修复并测试。不要重复 wrapper，也不要再次 initialpose；任何新的 live localization write 必须获得新的明确授权并进入新 sprint。
+
 ### 2026-07-15 01-34｜o3_current_localization_runtime_recovery｜Runtime recovered，initial-pose scope fail-closed
 
 本轮 `sprints/2026.07.15_00-53_o3_current_localization_runtime_recovery/` 完成 Product acceptance closeout。Final Attempt local/remote helper SHA 均为 `75e5722f1a050df5174d52fffa7df40302dbbb31bb498bab1550a297d0a1e9b2`；本地 `py_compile`、`Ran 148 tests ... OK`、required `rg` 与 scoped diff 通过。真实上位机 run natural exit `2`、pull exit `0`、elapsed `97.743s`，不是 outer timeout；helper-owned PGID residual `0`。

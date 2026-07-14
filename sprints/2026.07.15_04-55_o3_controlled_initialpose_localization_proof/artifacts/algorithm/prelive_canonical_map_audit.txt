@@ -1,0 +1,1 @@
+{"free_cell_verified": true, "ok": true, "origin": null, "world_pose": {"frame_id": "map", "x": 0.8011511639109115, "y": 4.12500006146729, "yaw": 0.0}, "world_pose_auditable": true}

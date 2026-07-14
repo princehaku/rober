@@ -1517,7 +1517,7 @@ AMCL 是当前广播源；应同时读取
 
 - `source_topic=/tf`、`source_class=dynamic`、`dynamic_source_observed=true`；
 - `timestamp.parsed=true` 与 `freshness.status=fresh`；
-- `publisher_attribution_status=attributed_to_amcl_graph_endpoint`；
+- `publisher_attribution_status=attributed_unique_amcl`；
 - `publisher_endpoint.node_full_name=/amcl`、topic type 与 QoS；
 - `publisher_endpoint_candidates`，用于保留同窗其他 `/tf` publisher，而不把它们冒充 AMCL。
 
@@ -1560,3 +1560,33 @@ safety scope 禁止发布 `/initialpose`，所以 dynamic `map->odom` 无 curren
 `/amcl_pose_once_not_observed` 和 `map_to_odom_dynamic_source_missing` fail closed。该证据只证明
 localization runtime active 与 blocker 收紧，不证明定位 ready、路线执行、HIL、delivery 或
 safe-to-control。
+
+`2026-07-15 04:55` controlled initialpose 合同把 `/initialpose` 从“显式 opt-in 后立即发布”
+收紧为“全部写前门禁 clean 后，全 helper 最多一次实际 publish”。调用方必须同时显式传
+`--initialpose-opt-in --initialpose-canonical-free-cell-opt-in`；helper 会先完成：
+
+- `persisted_pose_audit`：分别记录仓库 config presence、helper 生成参数中的
+  `set_initial_pose: false`、current runtime effective AMCL params、startup log 与发布前 live
+  `/amcl_pose` / dynamic `map->odom`。仓库 `set_initial_pose: true` 永远不直接等于 live consumed；
+  只有 fresh `/amcl_pose` 与 fresh、唯一归因 AMCL 的 dynamic `map->odom` 同窗成立才允许零次发布收口。
+- `canonical_initialpose_map_audit`：绑定 YAML/PGM SHA256、尺寸、resolution、origin、mode/threshold，
+  选择离图像中心最近且 row/column 可稳定 tie-break 的 free cell，并按 PGM 左上原点到 map
+  左下坐标和 origin yaw 旋转换算 `frame_id=map` world pose。non-free、像素数不符、字段缺失、
+  world pose 越界或 canonical ranking top 不一致都 fail-closed。
+- `pre_initialpose_gate`：要求 map_server/AMCL active、current `/scan` sample/stamp fresh、
+  `/initialpose` subscriber 只归属 `/amcl`、无 static `map->odom`、无竞争 dynamic `map->odom`。
+  任一失败必须保持 `initialpose_publish_attempts=0`。
+
+rclpy publisher 即使调用方传入大于一的 limit，也会被 helper 钳制为一次。若 rclpy 在 publish 前
+import/初始化失败且 attempt 仍为 `0`，才允许一次 CLI `--once` fallback；若 rclpy 已调用过一次
+publish，无论 subscriber match 或 post-write 输出如何，都禁止 CLI 重发。发布后只读采集必须得到
+fresh `/amcl_pose` 与 `source_class=dynamic`、`publisher_attribution_status=attributed_unique_amcl`、
+timestamp parsed/fresh 的 `map->odom`。旧字段值 `attributed_to_amcl_graph_endpoint` 已被更严格的
+`attributed_unique_amcl` 取代。
+
+managed runtime cleanup 继续只作用于 helper 以 `start_new_session=True` 创建的 PGID；artifact 必须
+记录 expected PID、PGID identity、cleanup signals、remaining processes 与 `residual_count=0`。
+该合同不启动 planner/controller/path，不调用 NavigateToPose、`/cmd_vel`、`/api/base/manual`，不打开
+UART 或修改 LiDAR/硬件参数。即使 clean，proof boundary 仍为
+`robot_runtime_o3_strict_no_motion_controlled_initialpose_localization_proof_only`；不证明真实物理位姿
+准确、route execution、delivery、HIL 或 safe-to-control。

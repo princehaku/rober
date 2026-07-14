@@ -1,0 +1,151 @@
+{
+  "schema": "trashbot.product_acceptance.o3.controlled_initialpose_localization_proof.v1",
+  "sprint": "sprints/2026.07.15_04-55_o3_controlled_initialpose_localization_proof/",
+  "accepted_at": "2026-07-15T05:38:00+08:00",
+  "status": "blocked_fail_closed",
+  "product_status": "blocked_fail_closed_current_live_initialpose_delta_tf_freshness_rejected_no_okr_credit",
+  "proof_boundary": "robot_runtime_o3_strict_no_motion_controlled_initialpose_localization_proof_only",
+  "source_artifacts": {
+    "first_pre_gate_attempt": "artifacts/algorithm/attempt1-runtime-proof.json",
+    "final_runtime_proof": "artifacts/algorithm/runtime-proof.json",
+    "runtime_summary": "artifacts/algorithm/runtime_summary.log",
+    "runtime_structural_assertions": "artifacts/algorithm/runtime_structural_assertions.log",
+    "runtime_clean_gate": "artifacts/algorithm/runtime_clean_gate.log",
+    "runtime_exit": "artifacts/algorithm/runtime.exit",
+    "runtime_clean_gate_exit": "artifacts/algorithm/runtime_clean_gate.exit",
+    "graph_cleanup_diff": "artifacts/algorithm/graph_cleanup.diff",
+    "stable_process_readback": "artifacts/algorithm/stable_process_readback.txt"
+  },
+  "engineering_validation": {
+    "py_compile_exit": 0,
+    "tests_run": 155,
+    "tests_status": "OK",
+    "runtime_structural_assertion_passed": true,
+    "runtime_clean_assertion_exit": 1,
+    "runtime_clean_assertion_expected_fail_closed": true,
+    "forbidden_runtime_scan_passed": true,
+    "required_rg_passed": true,
+    "scoped_diff_check_exit": 0
+  },
+  "first_pre_gate_attempt": {
+    "started_at": "2026-07-14T21:23:11Z",
+    "finished_at": "2026-07-14T21:24:48Z",
+    "runtime_exit": 2,
+    "helper_sha256": "57b9c69c35934fd747d28bdda19f9d78b8edc3bb6dba64bfcb74cde57f04a38f",
+    "initialpose_publish_attempts": 0,
+    "initialpose_publish_attempted": false,
+    "initialpose_published": false,
+    "publication_budget_consumed": false,
+    "failure_reasons": [
+      "map_saver_multiline_origin_not_supported_by_initial_parser",
+      "initialpose_endpoint_summary_not_preserved_for_ownership_audit"
+    ]
+  },
+  "final_live_attempt": {
+    "started_at": "2026-07-14T21:30:04Z",
+    "finished_at": "2026-07-14T21:31:49Z",
+    "runtime_exit": 2,
+    "helper_local_sha256": "8212a95c89a5d4626df3e418867e7bb265199f7d0e9404280136a6022d50f2f7",
+    "helper_remote_sha256": "8212a95c89a5d4626df3e418867e7bb265199f7d0e9404280136a6022d50f2f7",
+    "initialpose_publish_attempts": 1,
+    "initialpose_publish_attempted": true,
+    "initialpose_published": true,
+    "initialpose_publish_method": "ros2_topic_pub_once_cli_fallback",
+    "no_live_rerun_after_publication": true
+  },
+  "accepted_facts": {
+    "current_live_strict_no_motion_artifact": true,
+    "canonical_pose_auditable": true,
+    "canonical_pose": {
+      "frame_id": "map",
+      "x": 0.8011511639109115,
+      "y": 4.12500006146729,
+      "yaw": 0.0
+    },
+    "pre_initialpose_gate_clean": true,
+    "initialpose_publish_attempts": 1,
+    "initialpose_published": true,
+    "scan_fresh_accepted": true,
+    "scan_age_ms": 22,
+    "amcl_pose_fresh_accepted": true,
+    "amcl_pose_age_ms": 96,
+    "amcl_pose_timestamp_parsed": true,
+    "dynamic_map_to_odom_observed_accepted": true,
+    "dynamic_map_to_odom_source_class": "dynamic",
+    "dynamic_map_to_odom_timestamp_parsed": true,
+    "dynamic_map_to_odom_publisher_attribution": "attributed_unique_amcl",
+    "managed_runtime_cleanup_accepted": true,
+    "graph_diff_zero": true,
+    "existing_lidar_esp32_upper_api_preserved": true
+  },
+  "rejected_facts": {
+    "clean_localization": false,
+    "map_to_odom_fresh_accepted": false,
+    "map_to_odom_age_ms": 5090,
+    "map_to_odom_freshness_threshold_ms": 3000,
+    "map_to_odom_freshness_status": "stale",
+    "real_physical_pose_proven": false,
+    "path_or_route_proven": false,
+    "delivery_or_operator_acceptance_proven": false,
+    "hil_proven": false,
+    "production_cloud_proven": false
+  },
+  "failure": {
+    "post_initialpose_gate_clean": false,
+    "primary_and_only_post_gate_blocker": "map_to_odom_fresh",
+    "runtime_exit": 2,
+    "clean_assertion_exit": 1,
+    "secondary_diagnostic_only": "ros2_node_list_timeout"
+  },
+  "cleanup": {
+    "managed_runtime_process_group": 648519,
+    "helper_owned_identity_verified": true,
+    "process_group_residual_count": 0,
+    "cleanup_ok": true,
+    "graph_diff_line_count": 0
+  },
+  "safety": {
+    "strict_no_motion": true,
+    "publication_budget_exhausted_for_sprint": true,
+    "future_initialpose_in_this_sprint_forbidden": true,
+    "new_live_localization_write_requires_new_explicit_authorization_and_sprint": true,
+    "robot_control_executed": false,
+    "safe_to_control": false,
+    "route_execution_success": false,
+    "delivery_success": false,
+    "hil_pass": false
+  },
+  "mission_delta": {
+    "current_run_artifact_delta": true,
+    "external_artifact_delta": false,
+    "live_control_delta": false,
+    "user_action_delta": false,
+    "mission_objective_0_satisfied": false,
+    "mission_closure_satisfied": false
+  },
+  "okr_decision": {
+    "okr_credit": false,
+    "kr_archived": false,
+    "kr_status": "not_archived",
+    "percentages_unchanged": true,
+    "percentages": {
+      "O5": 85,
+      "O1": 94,
+      "O6": 93,
+      "O7": 93
+    },
+    "o5_still_lowest": true,
+    "o5_no_repeat": true,
+    "o5_no_repeat_reason": "production_cloud_success_class_evidence_still_blocked_and_support_wrappers_retired"
+  },
+  "next_step": {
+    "owner": "robot-algorithm-engineer",
+    "priority": "P0",
+    "action": "read_only_tf_receipt_time_vs_header_stamp_root_cause_analysis",
+    "prefer_offline_fix_if_current_artifact_is_sufficient": true,
+    "topic_write_forbidden": true,
+    "motion_forbidden": true,
+    "wrapper_repeat_forbidden": true,
+    "initialpose_repeat_forbidden": true
+  }
+}

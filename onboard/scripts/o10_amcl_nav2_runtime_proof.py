@@ -174,6 +174,8 @@ LOCALIZATION_SIGNAL_TOPICS = {
     "/tf": "tf2_msgs/msg/TFMessage",
     "/tf_static": "tf2_msgs/msg/TFMessage",
 }
+INITIALPOSE_TOPIC = "/initialpose"
+INITIALPOSE_TOPIC_TYPE = "geometry_msgs/msg/PoseWithCovarianceStamped"
 FRESHNESS_WALL_CLOCK_MIN_MS = 946684800000
 FRESHNESS_STALE_AFTER_MS = 3000
 ROS2_PREFLIGHT_COMMAND = "command -v ros2"
@@ -279,13 +281,16 @@ class PhaseArtifactWriter:
         self.phase_history: list[dict[str, Any]] = []
         self.root_causes: list[dict[str, str]] = []
         self.snapshot: dict[str, Any] = {
-            "initialpose_publish_attempted": bool(getattr(args, "initialpose_opt_in", False)),
+            "initialpose_publish_attempted": False,
             "initialpose_published": False,
             "initialpose_publish_method": None,
             "initialpose_subscriber_count": None,
             "initialpose_publish_attempts": 0,
             "initialpose_publish_elapsed_ms": None,
             "initialpose_publish_error": None,
+            "persisted_pose_audit": {},
+            "canonical_initialpose_map_audit": {},
+            "pre_initialpose_gate": {"clean": False, "blocking_reasons": ["not_evaluated"]},
             "amcl_pose_observed": False,
             "base_link_to_laser_frame_transform": None,
             "localization_tf_observed": {"map_to_odom": False, "map_to_base_link": False},
@@ -317,6 +322,7 @@ class PhaseArtifactWriter:
             "amcl_node_info_observed": False,
             "amcl_tf_broadcast_param": None,
             "amcl_frame_params": {},
+            "amcl_runtime_params": {},
             "amcl_log_tail": "",
             "managed_static_tf_processes": {},
             "static_tf_source_observed": False,
@@ -3358,6 +3364,44 @@ def initialpose_request(args: argparse.Namespace) -> dict[str, Any]:
     }
 
 
+def canonicalize_initialpose_request(
+    args: argparse.Namespace,
+    map_audit: dict[str, Any],
+) -> dict[str, Any]:
+    """显式 canonical opt-in 时只接受已审计 free cell，禁止静默回退 CLI x/y。"""
+    request = initialpose_request(args)
+    request["canonical_free_cell_opt_in"] = bool(args.initialpose_canonical_free_cell_opt_in)
+    if not request["canonical_free_cell_opt_in"]:
+        request["source"] = "explicit_cli_pose"
+        return request
+    world_pose = map_audit.get("world_pose") if isinstance(map_audit.get("world_pose"), dict) else {}
+    if not (
+        map_audit.get("ok")
+        and map_audit.get("free_cell_verified")
+        and map_audit.get("world_pose_auditable")
+        and world_pose.get("frame_id") == "map"
+    ):
+        request.update({"valid": False, "source": "canonical_free_cell_audit_failed"})
+        return request
+    yaw = float(world_pose["yaw"])
+    request.update(
+        {
+            "valid": True,
+            "source": "canonical_map_free_cell_world_pose",
+            "frame_id": "map",
+            "x": float(world_pose["x"]),
+            "y": float(world_pose["y"]),
+            "yaw": yaw,
+            "orientation_z": math.sin(yaw / 2.0),
+            "orientation_w": math.cos(yaw / 2.0),
+            "free_cell": map_audit.get("free_cell"),
+            "map_yaml_sha256": map_audit.get("map_yaml_sha256"),
+            "map_image_sha256": map_audit.get("map_image_sha256"),
+        }
+    )
+    return request
+
+
 def initialpose_payload(request: dict[str, Any]) -> str:
     """生成 PoseWithCovarianceStamped YAML；协方差保守放宽，只用于定位 proof。"""
     covariance = [0.0] * 36
@@ -3396,15 +3440,15 @@ def publish_initialpose_inprocess_burst(
     request: dict[str, Any],
     *,
     wait_subscription_s: float = 2.0,
-    publish_attempt_limit: int = 5,
+    publish_attempt_limit: int = 1,
     publish_period_s: float = 0.12,
 ) -> dict[str, Any]:
-    """用进程内 transient-local publisher 稳定发布 `/initialpose`，避免 CLI 冷启动与 QoS 抖动。"""
+    """用进程内 publisher 最多写一次 `/initialpose`；全路径不得形成 burst。"""
     result: dict[str, Any] = {
-        "command": "rclpy in-process /initialpose burst",
+        "command": "rclpy in-process /initialpose single publish",
         "executed": True,
         "ok": False,
-        "publish_method": "rclpy_inprocess_burst",
+        "publish_method": "rclpy_inprocess_single",
         "boundary": "rclpy_initialpose_publish_not_attempted",
         "subscriber_count": None,
         "subscription_match_proven": False,
@@ -3474,7 +3518,8 @@ def publish_initialpose_inprocess_burst(
         covariance[35] = 0.06853891945200942
         message.pose.covariance = covariance
 
-        publish_attempts = max(int(publish_attempt_limit), 1)
+        # 即使调用方错误传入更大 limit，也在 helper 内强制钳制为一次。
+        publish_attempts = min(max(int(publish_attempt_limit), 1), 1)
         for index in range(publish_attempts):
             publisher.publish(message)
             result["publish_attempts"] = index + 1
@@ -3495,7 +3540,7 @@ def publish_initialpose_inprocess_burst(
         if not result["ok"]:
             result["error"] = {
                 "type": "subscriber_missing",
-                "message": "publisher burst completed but /initialpose subscriber match was not proven",
+                "message": "single publisher attempt completed but /initialpose subscriber match was not proven",
             }
         return result
     except Exception as exc:  # noqa: BLE001 - 现场 ROS graph 异常要结构化返回给 artifact。
@@ -3601,6 +3646,244 @@ def map_yaml_runtime_analysis(map_yaml: str | None) -> dict[str, Any]:
     except Exception as exc:  # noqa: BLE001 - map 诊断失败不能阻塞已有 proof 主路径。
         result["error"] = compact_error(exc)
         return result
+
+
+def sha256_file(path: Path) -> str:
+    """地图审计必须绑定文件内容，不能只记录可能被覆盖的路径。"""
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(65536), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def parse_canonical_map_yaml_fields(path: Path) -> dict[str, Any]:
+    """只解析 ROS map_server 合同字段；未知 YAML 结构直接 fail-closed。"""
+    fields: dict[str, Any] = {
+        "image": None,
+        "resolution": None,
+        "origin": None,
+        "negate": 0,
+        "occupied_thresh": 0.65,
+        "free_thresh": 0.196,
+        "mode": "trinary",
+    }
+    raw_lines = path.read_text(encoding="utf-8", errors="strict").splitlines()
+    for line_index, raw_line in enumerate(raw_lines):
+        line = raw_line.split("#", 1)[0].strip()
+        if not line or ":" not in line:
+            continue
+        key, raw_value = (part.strip() for part in line.split(":", 1))
+        if key not in fields:
+            continue
+        value = raw_value.strip().strip("'\"")
+        if key == "image":
+            fields[key] = value
+        elif key == "origin":
+            if value.startswith("[") and value.endswith("]"):
+                fields[key] = [float(part.strip()) for part in value[1:-1].split(",")]
+            elif not value:
+                # map_saver 可能把 origin 写成三行 YAML sequence；只接受紧随其后的三个标量，
+                # 避免为了兼容现场地图而引入宽松或有副作用的通用 YAML 反序列化。
+                sequence_values: list[float] = []
+                for sequence_line in raw_lines[line_index + 1:]:
+                    sequence_value = sequence_line.split("#", 1)[0].strip()
+                    if not sequence_value:
+                        continue
+                    if not sequence_value.startswith("-"):
+                        break
+                    sequence_values.append(float(sequence_value[1:].strip()))
+                    if len(sequence_values) == 3:
+                        break
+                fields[key] = sequence_values
+            else:
+                raise ValueError("map origin must be an inline list or three-element sequence")
+        elif key in {"resolution", "occupied_thresh", "free_thresh"}:
+            fields[key] = float(value)
+        elif key == "negate":
+            fields[key] = int(value)
+        elif key == "mode":
+            fields[key] = value.lower()
+    if not fields["image"] or fields["resolution"] is None or not isinstance(fields["origin"], list):
+        raise ValueError("map yaml missing image, resolution, or origin")
+    if len(fields["origin"]) != 3:
+        raise ValueError("map origin must contain x, y, yaw")
+    if fields["mode"] not in {"trinary", "scale", "raw"}:
+        raise ValueError("unsupported map mode")
+    if fields["negate"] not in {0, 1}:
+        raise ValueError("map negate must be 0 or 1")
+    if float(fields["resolution"]) <= 0.0:
+        raise ValueError("map resolution must be positive")
+    return fields
+
+
+def read_binary_pgm(path: Path) -> tuple[int, int, int, bytes]:
+    """读取 P5 PGM，并严格校验像素数量，避免截断地图仍进入写前门禁。"""
+    raw = path.read_bytes()
+    index = 0
+
+    def token() -> bytes:
+        nonlocal index
+        while index < len(raw):
+            if raw[index:index + 1] == b"#":
+                newline = raw.find(b"\n", index)
+                index = len(raw) if newline < 0 else newline + 1
+            elif raw[index:index + 1].isspace():
+                index += 1
+            else:
+                break
+        start = index
+        while index < len(raw) and not raw[index:index + 1].isspace() and raw[index:index + 1] != b"#":
+            index += 1
+        if start == index:
+            raise ValueError("PGM header token missing")
+        return raw[start:index]
+
+    if token() != b"P5":
+        raise ValueError("map image is not binary PGM P5")
+    width = int(token())
+    height = int(token())
+    max_value = int(token())
+    if index >= len(raw) or not raw[index:index + 1].isspace():
+        raise ValueError("PGM header lacks pixel separator")
+    index += 1
+    pixels = raw[index:]
+    if width <= 0 or height <= 0 or max_value != 255 or len(pixels) != width * height:
+        raise ValueError("PGM dimensions, max value, or pixel count invalid")
+    return width, height, max_value, pixels
+
+
+def pixel_is_free(value: int, *, negate: int, free_thresh: float, mode: str) -> bool:
+    """按 map_server 的归一化占用率判断 free，禁止把 unknown 当成 free。"""
+    normalized = (float(value) / 255.0) if negate else ((255.0 - float(value)) / 255.0)
+    if mode == "raw":
+        # raw 仍按 YAML free threshold 做写前安全判断；不接受中间值或 unknown。
+        return normalized < free_thresh
+    return normalized < free_thresh
+
+
+def canonical_initialpose_map_audit(
+    map_yaml: str | None,
+    *,
+    map_inputs: dict[str, Any] | None = None,
+    yaw: float = 0.0,
+) -> dict[str, Any]:
+    """审计 canonical map、确定性 free cell 与 image->world 坐标换算。"""
+    audit: dict[str, Any] = {
+        "executed": bool(map_yaml),
+        "ok": False,
+        "map_yaml": map_yaml,
+        "map_yaml_sha256": None,
+        "map_image": None,
+        "map_image_sha256": None,
+        "canonical_ranking": [],
+        "canonical_map_unique_top": False,
+        "free_cell_verified": False,
+        "world_pose_auditable": False,
+        "world_pose": None,
+        "error": None,
+    }
+    if not map_yaml:
+        audit["error"] = {"type": "map_yaml_missing", "message": "canonical map yaml not resolved"}
+        return audit
+    try:
+        yaml_path = Path(map_yaml).resolve()
+        fields = parse_canonical_map_yaml_fields(yaml_path)
+        image_path = (yaml_path.parent / str(fields["image"])).resolve()
+        width, height, max_value, pixels = read_binary_pgm(image_path)
+        free_cells = [
+            (row, column, int(pixels[row * width + column]))
+            for row in range(height)
+            for column in range(width)
+            if pixel_is_free(
+                int(pixels[row * width + column]),
+                negate=int(fields["negate"]),
+                free_thresh=float(fields["free_thresh"]),
+                mode=str(fields["mode"]),
+            )
+        ]
+        if not free_cells:
+            raise ValueError("canonical map contains no verified free cell")
+        # 中心最近点减少把 seed 放在地图边缘的风险；row/column 作为稳定 tie-break。
+        center_row = (height - 1) / 2.0
+        center_column = (width - 1) / 2.0
+        row, column, pixel_value = min(
+            free_cells,
+            key=lambda item: (
+                (item[0] - center_row) ** 2 + (item[1] - center_column) ** 2,
+                item[0],
+                item[1],
+            ),
+        )
+        resolution = float(fields["resolution"])
+        origin_x, origin_y, origin_yaw = (float(value) for value in fields["origin"])
+        map_x = (column + 0.5) * resolution
+        map_y = (height - row - 0.5) * resolution
+        world_x = origin_x + math.cos(origin_yaw) * map_x - math.sin(origin_yaw) * map_y
+        world_y = origin_y + math.sin(origin_yaw) * map_x + math.cos(origin_yaw) * map_y
+        finite_world = all(math.isfinite(value) for value in (world_x, world_y, yaw))
+        world_in_local_bounds = bool(0.0 <= map_x <= width * resolution and 0.0 <= map_y <= height * resolution)
+
+        candidate_paths: set[str] = {str(yaml_path)}
+        for candidate in (map_inputs or {}).get("map_yaml_candidates") or []:
+            if isinstance(candidate, dict) and candidate.get("path"):
+                candidate_paths.add(str(Path(str(candidate["path"])).resolve()))
+        ranking: list[dict[str, Any]] = []
+        for candidate_path in sorted(candidate_paths):
+            candidate_analysis = map_yaml_runtime_analysis(candidate_path)
+            cell_counts = candidate_analysis.get("cell_counts") if isinstance(candidate_analysis.get("cell_counts"), dict) else {}
+            candidate_file = Path(candidate_path)
+            ranking.append(
+                {
+                    "path": candidate_path,
+                    "free_cells": int(cell_counts.get("free") or 0),
+                    "mtime_ms": int(candidate_file.stat().st_mtime_ns // 1_000_000) if candidate_file.exists() else 0,
+                    "analysis_ok": bool(candidate_analysis.get("ok")),
+                }
+            )
+        ranking.sort(key=lambda item: (item["free_cells"], item["mtime_ms"], item["path"]), reverse=True)
+        unique_top = bool(ranking and ranking[0]["path"] == str(yaml_path))
+        audit.update(
+            {
+                "ok": bool(unique_top and finite_world and world_in_local_bounds),
+                "map_yaml": str(yaml_path),
+                "map_yaml_sha256": sha256_file(yaml_path),
+                "map_image": str(image_path),
+                "map_image_sha256": sha256_file(image_path),
+                "width": width,
+                "height": height,
+                "max_value": max_value,
+                "resolution": resolution,
+                "origin": [origin_x, origin_y, origin_yaw],
+                "mode": fields["mode"],
+                "negate": fields["negate"],
+                "occupied_thresh": fields["occupied_thresh"],
+                "free_thresh": fields["free_thresh"],
+                "free_cell_count": len(free_cells),
+                "free_cell": {"row": row, "column": column, "pixel_value": pixel_value},
+                "image_to_map_formula": {
+                    "map_x": "(column + 0.5) * resolution",
+                    "map_y": "(height - row - 0.5) * resolution",
+                    "origin_yaw_rotation_applied": True,
+                },
+                "map_local_pose": {"x": map_x, "y": map_y},
+                "world_pose": {"frame_id": "map", "x": world_x, "y": world_y, "yaw": float(yaw)},
+                "world_pose_in_map_bounds": world_in_local_bounds,
+                "canonical_ranking": ranking,
+                "canonical_map_unique_top": unique_top,
+                "free_cell_verified": pixel_is_free(
+                    pixel_value,
+                    negate=int(fields["negate"]),
+                    free_thresh=float(fields["free_thresh"]),
+                    mode=str(fields["mode"]),
+                ),
+                "world_pose_auditable": bool(finite_world and world_in_local_bounds),
+            }
+        )
+        return audit
+    except Exception as exc:  # noqa: BLE001 - 任一地图字段失败都必须阻止写动作。
+        audit["error"] = compact_error(exc)
+        return audit
 
 
 def point_in_map_bounds(x: float, y: float, map_analysis: dict[str, Any]) -> bool:
@@ -3910,9 +4193,15 @@ def parse_pose_stamped(request: dict[str, Any]) -> str:
     return json.dumps(payload, ensure_ascii=False)
 
 
-def maybe_publish_initialpose(args: argparse.Namespace, ros2_ok: bool) -> tuple[dict[str, Any], dict[str, Any]]:
-    """显式 opt-in 时只发布一次 /initialpose；默认路径不产生任何额外 ROS 写动作。"""
-    request = initialpose_request(args)
+def maybe_publish_initialpose(
+    args: argparse.Namespace,
+    ros2_ok: bool,
+    *,
+    request: dict[str, Any] | None = None,
+    pre_initialpose_gate: dict[str, Any] | None = None,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """只有写前门禁 clean 时才允许全路径最多一次 `/initialpose`。"""
+    request = dict(request or initialpose_request(args))
     if not request["enabled"]:
         return request, {
             "command": "initialpose opt-in disabled",
@@ -3933,8 +4222,36 @@ def maybe_publish_initialpose(args: argparse.Namespace, ros2_ok: bool) -> tuple[
             "publish_attempts": 0,
             "boundary": "ros2_unavailable_no_initialpose_publish",
         }
+    gate = pre_initialpose_gate if isinstance(pre_initialpose_gate, dict) else {"clean": True}
+    if not gate.get("clean"):
+        return request, {
+            "command": "initialpose pre-write gate blocked",
+            "executed": False,
+            "ok": False,
+            "publish_method": "blocked_by_pre_initialpose_gate",
+            "subscriber_count": gate.get("initialpose_subscriber_count"),
+            "publish_attempts": 0,
+            "boundary": "pre_initialpose_gate_not_clean_no_publish",
+            "blocking_reasons": list(gate.get("blocking_reasons") or []),
+        }
+    if gate.get("persisted_pose_live_consumed"):
+        return request, {
+            "command": "initialpose skipped because persisted pose is live consumed",
+            "executed": False,
+            "ok": False,
+            "satisfied_without_publish": True,
+            "publish_method": "persisted_pose_live_consumed_skip",
+            "subscriber_count": gate.get("initialpose_subscriber_count"),
+            "publish_attempts": 0,
+            "boundary": "persisted_pose_live_consumed_no_publish_required",
+        }
     rclpy_publish = publish_initialpose_inprocess_burst(request)
     if rclpy_publish.get("ok"):
+        return request, rclpy_publish
+    if int(rclpy_publish.get("publish_attempts") or 0) > 0:
+        # 一旦 rclpy 已真正调用 publish，无论 subscriber match 或后置结果如何都禁止 CLI 重发。
+        rclpy_publish["boundary"] = "rclpy_single_publish_attempted_no_cli_retry"
+        rclpy_publish["cli_fallback_forbidden_after_attempt"] = True
         return request, rclpy_publish
     # 唯一允许的写 topic 是 /initialpose；它只给 AMCL 定位种子，不会触发运动执行。
     payload = initialpose_payload(request)
@@ -3953,7 +4270,7 @@ def maybe_publish_initialpose(args: argparse.Namespace, ros2_ok: bool) -> tuple[
             ),
             "subscriber_count": rclpy_publish.get("subscriber_count"),
             "subscription_match_proven": bool(rclpy_publish.get("subscription_match_proven")),
-            "publish_attempts": int(rclpy_publish.get("publish_attempts") or 0) + 1,
+            "publish_attempts": 1,
             "elapsed_ms": int(rclpy_publish.get("elapsed_ms") or 0) + int(cli_publish.get("elapsed_ms") or 0),
             "fallback_after_method": rclpy_publish.get("publish_method"),
             "rclpy_attempt": {
@@ -3966,6 +4283,219 @@ def maybe_publish_initialpose(args: argparse.Namespace, ros2_ok: bool) -> tuple[
         }
     )
     return request, cli_publish
+
+
+def config_set_initial_pose_audit(path: Path) -> dict[str, Any]:
+    """记录仓库配置事实，但永远不把 presence 直接提升为 live consumption。"""
+    result = {
+        "path": str(path),
+        "exists": path.exists(),
+        "set_initial_pose_values": [],
+        "set_initial_pose_true_present": False,
+        "sha256": None,
+        "error": None,
+    }
+    if not path.exists():
+        return result
+    try:
+        text = path.read_text(encoding="utf-8", errors="strict")
+        values = re.findall(r"^\s*set_initial_pose\s*:\s*([^#\s]+)", text, flags=re.MULTILINE)
+        result.update(
+            {
+                "set_initial_pose_values": values,
+                "set_initial_pose_true_present": any(value.lower() in {"true", "1"} for value in values),
+                "sha256": hashlib.sha256(text.encode("utf-8")).hexdigest(),
+            }
+        )
+    except Exception as exc:  # noqa: BLE001 - repo 配置读取失败也必须作为审计缺口保留。
+        result["error"] = compact_error(exc)
+    return result
+
+
+def build_persisted_pose_audit(
+    *,
+    managed_params_path: str | None,
+    tf_source_diagnostics: dict[str, Any],
+    pre_localization_signals: dict[str, Any],
+    pre_tf_source_freshness: dict[str, Any],
+    amcl_startup_log: str,
+) -> dict[str, Any]:
+    """区分静态配置、helper effective 参数与 current live pose/TF 消费事实。"""
+    repo_config = config_set_initial_pose_audit(NAV2_PLANNER_CONFIG_PATH)
+    helper_params_text = ""
+    helper_params_error = None
+    if managed_params_path:
+        try:
+            helper_params_text = Path(managed_params_path).read_text(encoding="utf-8", errors="strict")
+        except Exception as exc:  # noqa: BLE001 - 临时参数审计失败必须阻止写动作。
+            helper_params_error = compact_error(exc)
+    helper_values = re.findall(
+        r"^\s*set_initial_pose\s*:\s*([^#\s]+)",
+        helper_params_text,
+        flags=re.MULTILINE,
+    )
+    helper_effective_false = bool(helper_values and helper_values[-1].lower() in {"false", "0"})
+    runtime_params = (
+        tf_source_diagnostics.get("amcl_runtime_params")
+        if isinstance(tf_source_diagnostics.get("amcl_runtime_params"), dict)
+        else {}
+    )
+    pose_entry = (
+        pre_localization_signals.get("/amcl_pose")
+        if isinstance(pre_localization_signals.get("/amcl_pose"), dict)
+        else {}
+    )
+    pose_freshness = pose_entry.get("freshness") if isinstance(pose_entry.get("freshness"), dict) else {}
+    map_edge = (
+        (pre_tf_source_freshness.get("edges") or {}).get("map_to_odom")
+        if isinstance(pre_tf_source_freshness.get("edges"), dict)
+        else {}
+    )
+    if not isinstance(map_edge, dict):
+        map_edge = {}
+    map_freshness = map_edge.get("freshness") if isinstance(map_edge.get("freshness"), dict) else {}
+    unique_amcl_dynamic = bool(
+        map_edge.get("source_class") == "dynamic"
+        and map_edge.get("publisher_attribution_status") == "attributed_unique_amcl"
+        and map_edge.get("timestamp", {}).get("parsed") is True
+        and map_freshness.get("status") == "fresh"
+    )
+    fresh_pose = bool(
+        pose_entry.get("probe", {}).get("observed")
+        and pose_entry.get("timestamp", {}).get("parsed") is True
+        and pose_freshness.get("status") == "fresh"
+    )
+    live_consumed = bool(fresh_pose and unique_amcl_dynamic)
+    return {
+        "audited": bool(
+            not helper_params_error
+            and helper_effective_false
+            and tf_source_diagnostics.get("amcl_node_info_observed")
+            and runtime_params.get("set_initial_pose") is not None
+        ),
+        "config_presence_is_live_consumption": False,
+        "repo_config": repo_config,
+        "helper_generated_params": {
+            "path": managed_params_path,
+            "set_initial_pose_values": helper_values,
+            "effective_set_initial_pose_false": helper_effective_false,
+            "error": helper_params_error,
+        },
+        "runtime_effective_amcl_params": runtime_params,
+        "amcl_startup_log": {
+            "please_set_initial_pose_observed": "please set the initial pose" in amcl_startup_log.lower(),
+            "tail": amcl_startup_log[-1600:],
+        },
+        "pre_publish_live_outputs": {
+            "fresh_amcl_pose": fresh_pose,
+            "unique_amcl_dynamic_map_to_odom": unique_amcl_dynamic,
+            "amcl_pose": pose_entry,
+            "map_to_odom": map_edge,
+        },
+        "persisted_pose_live_consumed": live_consumed,
+        "publish_decision": "skip_publish_persisted_pose_live_consumed" if live_consumed else "persisted_pose_not_live_consumed",
+    }
+
+
+def build_initialpose_subscriber_audit(tf_source_diagnostics: dict[str, Any]) -> dict[str, Any]:
+    """写前只接受归属清楚的 AMCL `/initialpose` subscriber。"""
+    endpoints = (
+        tf_source_diagnostics.get("topic_endpoint_summaries")
+        if isinstance(tf_source_diagnostics.get("topic_endpoint_summaries"), dict)
+        else {}
+    )
+    summary = endpoints.get(INITIALPOSE_TOPIC) if isinstance(endpoints.get(INITIALPOSE_TOPIC), dict) else {}
+    raw_subscribers = summary.get("subscribers") if isinstance(summary.get("subscribers"), list) else []
+    subscribers = [normalize_publisher_endpoint(item, source_topic=INITIALPOSE_TOPIC) for item in raw_subscribers if isinstance(item, dict)]
+    identities = sorted({str(item.get("node_full_name") or "") for item in subscribers if item.get("node_full_name")})
+    amcl_only = bool(identities and set(identities) == {"/amcl"})
+    return {
+        "inventory_observed": bool(summary.get("inventory_observed")),
+        "subscriber_count": int(summary.get("subscriber_count") or len(subscribers)),
+        "subscriber_identities": identities,
+        "subscribers": subscribers,
+        "amcl_subscriber_active": bool(amcl_only and int(summary.get("subscriber_count") or len(subscribers)) > 0),
+        "ownership_clear": amcl_only,
+    }
+
+
+def build_pre_initialpose_tf_authority_audit(
+    tf_source_diagnostics: dict[str, Any],
+    *,
+    persisted_pose_live_consumed: bool,
+) -> dict[str, Any]:
+    """禁止 static/竞争 `map->odom`；persisted live edge 只允许唯一 AMCL。"""
+    inventory = tf_source_diagnostics.get("tf_frame_inventory") if isinstance(tf_source_diagnostics.get("tf_frame_inventory"), dict) else {}
+    dynamic_edges = inventory.get("dynamic_edges") if isinstance(inventory.get("dynamic_edges"), list) else []
+    static_edges = inventory.get("static_edges") if isinstance(inventory.get("static_edges"), list) else []
+    dynamic_map_edges = [edge for edge in dynamic_edges if edge.get("parent") == "map" and edge.get("child") == "odom"]
+    static_map_edges = [edge for edge in static_edges if edge.get("parent") == "map" and edge.get("child") == "odom"]
+    attribution = (
+        tf_source_diagnostics.get("map_to_odom_publisher_attribution")
+        if isinstance(tf_source_diagnostics.get("map_to_odom_publisher_attribution"), dict)
+        else {}
+    )
+    attribution_status = str(attribution.get("publisher_attribution_status") or "")
+    dynamic_clear = bool(
+        not dynamic_map_edges
+        or (
+            persisted_pose_live_consumed
+            and attribution_status == "attributed_unique_amcl"
+        )
+    )
+    return {
+        "clean": bool(not static_map_edges and dynamic_clear),
+        "static_map_to_odom_forbidden": bool(static_map_edges),
+        "dynamic_map_to_odom_count": len(dynamic_map_edges),
+        "dynamic_map_to_odom_edges": dynamic_map_edges,
+        "publisher_attribution_status": attribution_status,
+        "persisted_pose_live_consumed": persisted_pose_live_consumed,
+        "competing_dynamic_map_to_odom": bool(dynamic_map_edges and not dynamic_clear),
+        "odom_to_base_link_observed": bool(tf_source_diagnostics.get("odom_to_base_link_source_observed")),
+        "base_link_to_laser_frame_observed": bool(tf_source_diagnostics.get("base_link_to_laser_frame_source_observed")),
+    }
+
+
+def build_pre_initialpose_gate(
+    *,
+    lifecycle_clean: bool,
+    canonical_map_audit: dict[str, Any],
+    pre_localization_signals: dict[str, Any],
+    subscriber_audit: dict[str, Any],
+    tf_authority_audit: dict[str, Any],
+    persisted_pose_audit: dict[str, Any],
+) -> dict[str, Any]:
+    """把所有写前条件固化为单一 fail-closed gate。"""
+    scan = pre_localization_signals.get("/scan") if isinstance(pre_localization_signals.get("/scan"), dict) else {}
+    scan_fresh = bool(
+        scan.get("probe", {}).get("observed")
+        and scan.get("timestamp", {}).get("parsed") is True
+        and scan.get("freshness", {}).get("status") == "fresh"
+    )
+    checks = {
+        "map_server_and_amcl_lifecycle_active": bool(lifecycle_clean),
+        "canonical_map_free_cell_world_pose_clean": bool(
+            canonical_map_audit.get("ok")
+            and canonical_map_audit.get("free_cell_verified")
+            and canonical_map_audit.get("world_pose_auditable")
+        ),
+        "scan_current_window_fresh": scan_fresh,
+        "initialpose_amcl_subscriber_active": bool(subscriber_audit.get("amcl_subscriber_active")),
+        "initialpose_subscriber_ownership_clear": bool(subscriber_audit.get("ownership_clear")),
+        "tf_authority_clear": bool(tf_authority_audit.get("clean")),
+        "persisted_pose_audited": bool(persisted_pose_audit.get("audited")),
+    }
+    blocking_reasons = [name for name, clean in checks.items() if not clean]
+    return {
+        "clean": not blocking_reasons,
+        "checks": checks,
+        "blocking_reasons": blocking_reasons,
+        "initialpose_subscriber_count": int(subscriber_audit.get("subscriber_count") or 0),
+        "persisted_pose_live_consumed": bool(persisted_pose_audit.get("persisted_pose_live_consumed")),
+        "scan": scan,
+        "subscriber_audit": subscriber_audit,
+        "tf_authority_audit": tf_authority_audit,
+    }
 
 
 def maybe_compute_path_generation(
@@ -5009,7 +5539,10 @@ def topic_endpoint_summary(node: Any, topic: str) -> dict[str, Any]:
 
 def signal_topic_endpoint_summaries(node: Any) -> dict[str, Any]:
     """只采本轮关心的定位信号，避免把整张 ROS graph 泄进 artifact。"""
-    return {topic: topic_endpoint_summary(node, topic) for topic in LOCALIZATION_SIGNAL_TOPICS}
+    # `/initialpose` 只加入端点清单，不加入 freshness 信号集合；这样可以在写前确认
+    # AMCL subscriber 身份，同时避免把一次性写 topic 误包装成持续定位输出。
+    topics = [*LOCALIZATION_SIGNAL_TOPICS, INITIALPOSE_TOPIC]
+    return {topic: topic_endpoint_summary(node, topic) for topic in topics}
 
 
 def endpoint_node_full_name(endpoint: dict[str, Any]) -> str:
@@ -5106,7 +5639,7 @@ def tf_map_to_odom_publisher_attribution(
     if len(matching) == 1:
         return {
             **base,
-            "publisher_attribution_status": "attributed_to_amcl_graph_endpoint",
+            "publisher_attribution_status": "attributed_unique_amcl",
             "publisher_attribution_reason": "unique_amcl_tf_endpoint_matches_amcl_node_publisher_inventory",
             "publisher_endpoint": matching[0],
         }
@@ -5605,7 +6138,18 @@ def collect_amcl_rclpy_probe(args: argparse.Namespace | None = None, timeout_s: 
                 break
         result["publishers"] = graph_topics_to_artifact(publishers)
         result["subscribers"] = graph_topics_to_artifact(subscribers)
-        names = ["tf_broadcast", "global_frame_id", "odom_frame_id", "base_frame_id"]
+        # persisted pose 审计必须读取 current runtime 的 effective 参数；只看仓库
+        # `set_initial_pose: true` 不能证明本窗口 AMCL 已实际消费保存位姿。
+        names = [
+            "tf_broadcast",
+            "global_frame_id",
+            "odom_frame_id",
+            "base_frame_id",
+            "set_initial_pose",
+            "initial_pose.x",
+            "initial_pose.y",
+            "initial_pose.yaw",
+        ]
         params: dict[str, Any] = {}
         param_future: Any = None
         param_boundary = "amcl_parameter_service_unavailable"
@@ -5838,7 +6382,7 @@ def compact_tf_source_child_payload(payload: dict[str, Any]) -> dict[str, Any]:
     }
     endpoint_summaries = payload.get("topic_endpoint_summaries") if isinstance(payload.get("topic_endpoint_summaries"), dict) else {}
     compact_endpoints: dict[str, Any] = {}
-    for topic in ("/tf", "/tf_static", "/amcl_pose"):
+    for topic in ("/tf", "/tf_static", "/amcl_pose", INITIALPOSE_TOPIC):
         summary = endpoint_summaries.get(topic) if isinstance(endpoint_summaries.get(topic), dict) else {}
         compact_summary = {
             "publisher_count": int(summary.get("publisher_count") or 0),
@@ -6160,6 +6704,7 @@ def default_tf_source_diagnostics(
         "amcl_node_info_observed": False,
         "amcl_tf_broadcast_param": None,
         "amcl_frame_params": {},
+        "amcl_runtime_params": {},
         "tf_source_root_cause_detail": {"reason": root_cause_reason, "probe_boundary": probe_boundary},
         "amcl_broadcast_conditions": {},
         "map_frame_observed": False,
@@ -6312,7 +6857,7 @@ def build_tf_source_diagnostics(
         root_cause = "amcl_base_frame_id_mismatch"
     elif not map_to_odom_source_observed:
         root_cause = "amcl_map_to_odom_tf_not_observed_on_tf"
-    elif publisher_attribution["publisher_attribution_status"] != "attributed_to_amcl_graph_endpoint":
+    elif publisher_attribution["publisher_attribution_status"] != "attributed_unique_amcl":
         root_cause = str(publisher_attribution["publisher_attribution_status"])
     elif not odom_to_base_source_observed:
         root_cause = "odom_to_base_link_tf_not_observed"
@@ -6385,7 +6930,8 @@ def build_tf_source_diagnostics(
                 topic,
                 {"publishers": [], "subscribers": [], "publisher_count": 0, "subscriber_count": 0, "error": None},
             )
-            for topic in LOCALIZATION_SIGNAL_TOPICS
+            # `/initialpose` 不属于只读定位 signal，但必须保留到写前订阅归属门禁。
+            for topic in (*LOCALIZATION_SIGNAL_TOPICS, INITIALPOSE_TOPIC)
         },
         "amcl_pose_frame_id": amcl_pose_frame_id,
         "amcl_pose_sample": amcl_pose_sample,
@@ -6398,6 +6944,12 @@ def build_tf_source_diagnostics(
             "global_frame_id": params.get("global_frame_id"),
             "odom_frame_id": params.get("odom_frame_id"),
             "base_frame_id": params.get("base_frame_id"),
+        },
+        "amcl_runtime_params": {
+            "set_initial_pose": params.get("set_initial_pose"),
+            "initial_pose.x": params.get("initial_pose.x"),
+            "initial_pose.y": params.get("initial_pose.y"),
+            "initial_pose.yaw": params.get("initial_pose.yaw"),
         },
         "map_frame_observed": "map" in frames,
         "odom_frame_observed": frame_ids["odom"] in frames,
@@ -9867,19 +10419,48 @@ def preview_file(path: str, limit: int = 4000) -> str:
         return ""
 
 
-def cleanup_process_group(process_group: int, process: subprocess.Popen[str] | None = None) -> dict[str, Any]:
+def cleanup_process_group(
+    process_group: int,
+    process: subprocess.Popen[str] | None = None,
+    *,
+    expected_process_pid: int | None = None,
+) -> dict[str, Any]:
     """清理 managed runtime 进程组，并确认没有相同 PGID 的孤儿进程残留。"""
     if process_group <= 0:
         return {"attempted": False, "ok": False, "reason": "invalid_process_group"}
+    process_pid = int(getattr(process, "pid", 0) or 0) if process is not None else None
+    expected_pid = int(expected_process_pid or process_pid or 0) or None
+    members_before_cleanup = process_group_members(process_group)
+    identity_verified = bool(expected_pid is None or expected_pid == process_group)
     result: dict[str, Any] = {
         "attempted": True,
         "process_group": process_group,
+        "helper_owned_identity": {
+            "expected_process_pid": expected_pid,
+            "process_object_pid": process_pid,
+            "process_group": process_group,
+            "start_new_session_contract": True,
+            "pid_equals_pgid": bool(expected_pid is not None and expected_pid == process_group),
+            "members_before_cleanup": members_before_cleanup,
+            "verified": identity_verified,
+        },
         "sent_signal": None,
         "killed_with_sigkill": False,
         "group_present_after_cleanup": None,
         "remaining_processes": [],
         "ok": False,
     }
+    if not identity_verified:
+        result.update(
+            {
+                "attempted": False,
+                "reason": "helper_owned_process_group_identity_mismatch_no_signal_sent",
+                "remaining_processes": members_before_cleanup,
+                "group_present_after_cleanup": bool(members_before_cleanup),
+                "residual_count": len(members_before_cleanup),
+            }
+        )
+        return result
     try:
         os.killpg(process_group, signal.SIGINT)
         result["sent_signal"] = "SIGINT"
@@ -9904,6 +10485,7 @@ def cleanup_process_group(process_group: int, process: subprocess.Popen[str] | N
     remaining = process_group_members(process_group)
     result["remaining_processes"] = remaining
     result["group_present_after_cleanup"] = bool(remaining)
+    result["residual_count"] = len(remaining)
     result["ok"] = not remaining
     return result
 
@@ -9989,12 +10571,13 @@ def managed_static_tf_process_summary(args: argparse.Namespace, runtime: dict[st
 def managed_runtime_cleanup_guard(process_group: int | None) -> dict[str, Any]:
     """把清场守卫显式写成 artifact 字段，便于测试锁定 no-orphan 要求。"""
     if not process_group:
-        return {"ok": True, "boundary": "no_managed_runtime_process_group_started"}
+        return {"ok": True, "boundary": "no_managed_runtime_process_group_started", "residual_count": 0}
     remaining = process_group_members(process_group)
     return {
         "ok": not remaining,
         "boundary": "managed_runtime_process_group_cleanup_guard",
         "remaining_processes": remaining,
+        "residual_count": len(remaining),
     }
 
 
@@ -11348,14 +11931,14 @@ def build_tf_readiness_summary(proof: dict[str, Any]) -> dict[str, Any]:
     map_freshness = map_to_odom.get("freshness") if isinstance(map_to_odom.get("freshness"), dict) else {}
     map_source_accepted = bool(
         map_to_odom["observed"]
-        and map_attribution_status == "attributed_to_amcl_graph_endpoint"
+        and map_attribution_status == "attributed_unique_amcl"
         and map_freshness.get("status") == "fresh"
     )
     if tf_signal and not tf_topic["topic_present"]:
         blocked_reason = "/tf_topic_missing"
     elif not map_to_odom["observed"]:
         blocked_reason = tf_edge_root_cause_reason(freshness, "map_to_odom", "map_to_odom_not_observed")
-    elif map_attribution_status != "attributed_to_amcl_graph_endpoint":
+    elif map_attribution_status != "attributed_unique_amcl":
         blocked_reason = map_attribution_status or "map_to_odom_publisher_attribution_missing"
     elif map_freshness.get("status") != "fresh":
         blocked_reason = f"map_to_odom_dynamic_timestamp_{map_freshness.get('status') or 'missing'}"
@@ -11876,6 +12459,7 @@ def classify_root_causes(
     lifecycle_results: dict[str, dict[str, Any]] | None = None,
     localization_signal_freshness: dict[str, Any] | None = None,
     tf_source_freshness: dict[str, Any] | None = None,
+    pre_initialpose_gate: dict[str, Any] | None = None,
 ) -> list[dict[str, str]]:
     """root cause 按层输出，方便下一轮知道是 map、runtime 还是 localization 卡住。"""
     causes = list(map_inputs.get("root_causes") or [])
@@ -11923,10 +12507,12 @@ def classify_root_causes(
     if not map_once_observed:
         causes.append({"layer": "Nav2 map input", "reason": "/map_once_not_observed"})
     if initialpose_enabled:
-        if not initialpose_publish.get("ok"):
+        if not initialpose_publish.get("ok") and not initialpose_publish.get("satisfied_without_publish"):
             boundary = str(initialpose_publish.get("boundary") or "initialpose_publish_failed")
             if boundary not in {"default_read_only_no_initialpose_publish", "ros2_unavailable_no_initialpose_publish"}:
                 causes.append({"layer": "AMCL initialpose", "reason": boundary})
+            for reason in (pre_initialpose_gate or {}).get("blocking_reasons") or []:
+                causes.append({"layer": "AMCL initialpose pre-write gate", "reason": str(reason)})
     if initialpose_enabled or localization_outputs_required:
         if (
             localization_outputs_required
@@ -12528,133 +13114,155 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         },
     )
 
+    echo_timeout_s = min(max(float(args.timeout_s), 4.0), 18.0)
+    canonical_map_audit = canonical_initialpose_map_audit(
+        managed_map_yaml,
+        map_inputs=map_inputs,
+        yaw=float(args.initialpose_yaw),
+    )
+    initialpose_request_payload = canonicalize_initialpose_request(args, canonical_map_audit)
+    phase_writer.update_snapshot(canonical_initialpose_map_audit=canonical_map_audit)
+    phase_writer.record_phase(
+        "canonical_initialpose_map_audit",
+        ok=bool(canonical_map_audit.get("ok")),
+        detail={
+            "free_cell_verified": canonical_map_audit.get("free_cell_verified"),
+            "world_pose_auditable": canonical_map_audit.get("world_pose_auditable"),
+        },
+    )
+
+    # 所有写动作前先采 persisted pose、fresh scan、subscriber 与 TF authority。
+    phase_writer.record_phase("pre_initialpose_read_only_audit")
+    amcl_pose_once = (
+        run_ros(args, "timeout 6 ros2 topic echo --once /amcl_pose", timeout_s=echo_timeout_s)
+        if ros2_ok and board_source_ready and pre_downstream_lifecycle_clean
+        else {"executed": False, "ok": False, "boundary": "pre_initialpose_amcl_pose_probe_not_ready"}
+    )
+    pre_initialpose_scan_once = (
+        scan_probe(args, ros2_ok=True)
+        if ros2_ok and board_source_ready and pre_downstream_lifecycle_clean
+        else {"executed": False, "ok": False, "boundary": "pre_initialpose_scan_probe_not_ready"}
+    )
+    if board_source_ready:
+        pre_tf_source_probe_result, pre_tf_source_diagnostics = collect_tf_source_diagnostics(
+            args,
+            ros2_cli_ready=ros2_ok and board_source_cli_ready,
+            rclpy_runtime_ready=board_source_runtime_ready,
+            board_source_preflight_result=board_source,
+            amcl_pose_result=amcl_pose_once,
+        )
+    else:
+        pre_tf_source_probe_result = {
+            "executed": False,
+            "ok": False,
+            "boundary": "pre_initialpose_tf_source_probe_skipped_without_board_source_readiness",
+        }
+        pre_tf_source_diagnostics = default_tf_source_diagnostics(
+            args,
+            amcl_pose_result=amcl_pose_once,
+            root_cause_reason="pre_initialpose_tf_source_probe_skipped_without_board_source_readiness",
+            probe_boundary="pre_initialpose_tf_source_probe_skipped_without_board_source_readiness",
+        )
+    pre_freshness_generated_at_ms = now_ms()
+    pre_localization_signals = build_localization_signal_freshness(
+        generated_at_ms=pre_freshness_generated_at_ms,
+        tf_source_diagnostics=pre_tf_source_diagnostics,
+        tf_source_probe_result=pre_tf_source_probe_result,
+        topic_list_result={"stdout": ""},
+        scan_once=pre_initialpose_scan_once,
+        map_once={"executed": False, "ok": False, "boundary": "pre_initialpose_map_sample_not_required"},
+        amcl_pose_once=amcl_pose_once,
+        post_initialpose_amcl_pose_once={"executed": False, "ok": False, "boundary": "pre_write_phase"},
+        odom_once={"executed": False, "ok": False, "boundary": "pre_initialpose_odom_sample_not_required"},
+        managed_runtime_started=bool(managed_runtime.get("started")),
+    )
+    pre_tf_source_freshness = build_tf_source_freshness(
+        args=args,
+        generated_at_ms=pre_freshness_generated_at_ms,
+        tf_source_diagnostics=pre_tf_source_diagnostics,
+    )
+    persisted_pose_audit = build_persisted_pose_audit(
+        managed_params_path=str(managed_runtime.get("params_path") or "") or None,
+        tf_source_diagnostics=pre_tf_source_diagnostics,
+        pre_localization_signals=pre_localization_signals,
+        pre_tf_source_freshness=pre_tf_source_freshness,
+        amcl_startup_log=preview_file(str(managed_runtime.get("log_path") or ""), limit=12000),
+    )
+    initialpose_subscriber_audit = build_initialpose_subscriber_audit(pre_tf_source_diagnostics)
+    pre_initialpose_tf_authority = build_pre_initialpose_tf_authority_audit(
+        pre_tf_source_diagnostics,
+        persisted_pose_live_consumed=bool(persisted_pose_audit.get("persisted_pose_live_consumed")),
+    )
+    pre_initialpose_gate = build_pre_initialpose_gate(
+        lifecycle_clean=bool(pre_downstream_lifecycle_clean),
+        canonical_map_audit=canonical_map_audit,
+        pre_localization_signals=pre_localization_signals,
+        subscriber_audit=initialpose_subscriber_audit,
+        tf_authority_audit=pre_initialpose_tf_authority,
+        persisted_pose_audit=persisted_pose_audit,
+    )
+    phase_writer.update_snapshot(
+        persisted_pose_audit=persisted_pose_audit,
+        pre_initialpose_gate=pre_initialpose_gate,
+        initialpose_subscriber_count=pre_initialpose_gate.get("initialpose_subscriber_count"),
+    )
+    phase_writer.record_phase(
+        "pre_initialpose_read_only_audit",
+        ok=bool(pre_initialpose_gate.get("clean")),
+        detail={"blocking_reasons": pre_initialpose_gate.get("blocking_reasons")},
+    )
+
     phase_writer.record_phase("initialpose")
     initialpose_request_payload, initialpose_publish = maybe_publish_initialpose(
         args,
-        ros2_ok
-        and board_source_ready
-        and pre_downstream_lifecycle_clean
-        and not managed_runtime_wait_graph_blocked_without_lifecycle_log,
+        ros2_ok and board_source_ready,
+        request=initialpose_request_payload,
+        pre_initialpose_gate=pre_initialpose_gate,
     )
-    if initialpose_request_payload["enabled"] and managed_runtime_wait_graph_blocked_without_lifecycle_log:
-        initialpose_publish.update(
-            {
-                "executed": False,
-                "ok": False,
-                "boundary": "initialpose_skipped_after_managed_runtime_graph_wait_blocked",
-                "publish_method": "skipped_after_managed_runtime_graph_wait_blocked",
-                "error": {
-                    "type": "ManagedRuntimeGraphWaitBlocked",
-                    "message": str(managed_runtime_wait_snapshot.get("reason") or managed_runtime_wait_snapshot.get("boundary"))[:240],
-                },
-            }
-        )
-    elif initialpose_request_payload["enabled"] and not board_source_ready:
-        initialpose_publish.update(
-            {
-                "executed": False,
-                "ok": False,
-                "boundary": "board_source_preflight_failed_no_initialpose_publish",
-                "error": {
-                    "type": "BoardSourcePreflightFailed",
-                    "message": str(board_source.get("classification") or "board_source_preflight_failed")[:240],
-                },
-            }
-        )
+    publish_attempts = int(initialpose_publish.get("publish_attempts") or 0)
+    if initialpose_publish.get("subscriber_count") is None:
+        initialpose_publish["subscriber_count"] = pre_initialpose_gate.get("initialpose_subscriber_count")
     phase_writer.update_snapshot(
-        initialpose_publish_attempted=bool(initialpose_request_payload["enabled"]),
-        initialpose_published=bool(initialpose_publish.get("ok")),
+        initialpose_publish_attempted=publish_attempts > 0,
+        initialpose_published=bool(initialpose_publish.get("ok") and publish_attempts > 0),
         initialpose_publish_method=initialpose_publish.get("publish_method"),
         initialpose_subscriber_count=initialpose_publish.get("subscriber_count"),
-        initialpose_publish_attempts=int(initialpose_publish.get("publish_attempts") or 0),
+        initialpose_publish_attempts=publish_attempts,
         initialpose_publish_elapsed_ms=initialpose_publish.get("elapsed_ms"),
         initialpose_publish_error=initialpose_publish.get("error"),
     )
     phase_writer.record_phase(
         "initialpose",
-        ok=bool(initialpose_publish.get("ok")) if initialpose_request_payload["enabled"] else True,
+        ok=bool(
+            not initialpose_request_payload["enabled"]
+            or initialpose_publish.get("ok")
+            or initialpose_publish.get("satisfied_without_publish")
+        ),
         detail={
             "enabled": bool(initialpose_request_payload["enabled"]),
             "method": initialpose_publish.get("publish_method"),
             "subscriber_count": initialpose_publish.get("subscriber_count"),
-            "publish_attempts": initialpose_publish.get("publish_attempts"),
+            "publish_attempts": publish_attempts,
         },
     )
-    echo_timeout_s = min(max(float(args.timeout_s), 4.0), 18.0)
-    amcl_pose_once = {
-        "executed": False,
-        "ok": False,
-        "boundary": "pre_initialpose_amcl_pose_probe_skipped_to_prioritize_initialpose",
-    }
-    phase_writer.record_phase("amcl_pose_probe")
     post_initialpose_amcl_pose_once = (
         run_ros(args, "timeout 8 ros2 topic echo --once /amcl_pose", timeout_s=echo_timeout_s + 2.0)
-        if ros2_ok
-        and board_source_ready
-        and pre_downstream_lifecycle_clean
-        and initialpose_request_payload["enabled"]
-        and not managed_runtime_wait_graph_blocked_without_lifecycle_log
+        if initialpose_request_payload["enabled"] and pre_initialpose_gate.get("clean")
         else {"executed": False, "ok": False, "boundary": "post_initialpose_probe_not_requested"}
     )
     amcl_pose_probe_ok = bool(topic_once_observed(amcl_pose_once) or topic_once_observed(post_initialpose_amcl_pose_once))
-    early_amcl_pose_entry = build_signal_entry(
-        topic="/amcl_pose",
-        topic_type=None,
-        endpoint_summary={
-            "publishers": [],
-            "subscribers": [],
-            "publisher_count": 0,
-            "subscriber_count": 0,
-            "inventory_observed": False,
-            "error": {"type": "endpoint_inventory_not_yet_collected", "message": "tf source probe has not run yet"},
-        },
-        probe_result=select_amcl_pose_probe(amcl_pose_once, post_initialpose_amcl_pose_once),
-        observed=amcl_pose_probe_ok,
-        stamp=parse_first_ros_stamp(
-            str(select_amcl_pose_probe(amcl_pose_once, post_initialpose_amcl_pose_once).get("stdout") or ""),
-            source="/amcl_pose.header.stamp",
-        ),
-        source_class="message",
-        reference_ms=now_ms(),
-    )
-    phase_writer.update_snapshot(
-        amcl_pose_observed=amcl_pose_probe_ok,
-        amcl_pose_frame_id=parse_pose_frame_id(str(post_initialpose_amcl_pose_once.get("stdout") or "")),
-        localization_signal_freshness={"/amcl_pose": early_amcl_pose_entry},
-    )
-    phase_writer.record_phase(
-        "amcl_pose_probe",
-        ok=amcl_pose_probe_ok,
-        root_cause=(
-            {"layer": "AMCL localization", "reason": "/amcl_pose_once_not_observed"}
-            if initialpose_request_payload["enabled"] and not amcl_pose_probe_ok
-            else None
-        ),
-    )
     phase_writer.record_phase("tf_source_probe")
-    if board_source_ready:
+    if board_source_ready and initialpose_request_payload["enabled"] and pre_initialpose_gate.get("clean"):
         tf_source_probe_result, tf_source_diagnostics = collect_tf_source_diagnostics(
             args,
-            # 本轮 source inventory 是独立只读事实；lifecycle 不 clean 也要采 endpoint/edge，
-            # 但后续 readiness 仍由 lifecycle gate fail closed，不能把 source probe 当成 AMCL ready。
             ros2_cli_ready=ros2_ok and board_source_cli_ready,
             rclpy_runtime_ready=board_source_runtime_ready,
             board_source_preflight_result=board_source,
             amcl_pose_result=post_initialpose_amcl_pose_once,
         )
     else:
-        tf_source_probe_result = {
-            "executed": False,
-            "ok": False,
-            "boundary": "tf_source_probe_skipped_without_board_source_readiness",
-            "board_source_ready": False,
-        }
-        tf_source_diagnostics = default_tf_source_diagnostics(
-            args,
-            amcl_pose_result=post_initialpose_amcl_pose_once,
-            root_cause_reason="tf_source_probe_skipped_without_board_source_readiness",
-            probe_boundary="tf_source_probe_skipped_without_board_source_readiness",
-        )
+        tf_source_probe_result = pre_tf_source_probe_result
+        tf_source_diagnostics = pre_tf_source_diagnostics
     ros2_graph_timeout_root_cause = build_ros2_graph_timeout_root_cause(
         board_source_preflight=board_source,
         managed_runtime=managed_runtime,
@@ -12676,6 +13284,7 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         amcl_node_info_observed=tf_source_diagnostics["amcl_node_info_observed"],
         amcl_tf_broadcast_param=tf_source_diagnostics["amcl_tf_broadcast_param"],
         amcl_frame_params=tf_source_diagnostics["amcl_frame_params"],
+        amcl_runtime_params=tf_source_diagnostics.get("amcl_runtime_params", {}),
         tf_source_root_cause_detail=tf_source_diagnostics["tf_source_root_cause_detail"],
         amcl_broadcast_conditions=tf_source_diagnostics["amcl_broadcast_conditions"],
         managed_static_tf_processes=managed_static_tf_processes,
@@ -12687,6 +13296,9 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         map_frame_observed=tf_source_diagnostics["map_frame_observed"],
         odom_frame_observed=tf_source_diagnostics["odom_frame_observed"],
         amcl_tf_root_cause=tf_source_diagnostics["amcl_tf_root_cause"],
+        persisted_pose_audit=persisted_pose_audit,
+        canonical_initialpose_map_audit=canonical_map_audit,
+        pre_initialpose_gate=pre_initialpose_gate,
     )
     phase_writer.record_phase(
         "tf_source_probe",
@@ -13438,6 +14050,9 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
                 "active": recheck_active,
                 "results": recheck_results,
             }
+    # 写前已取得的 current `/scan` 是门禁事实，后续 fast path 不得用 inference 覆盖它。
+    if topic_once_observed(pre_initialpose_scan_once):
+        scan_once = pre_initialpose_scan_once
     initialpose_subscriber_count = initialpose_publish.get("subscriber_count")
     if initialpose_subscriber_count is None:
         initialpose_subscriber_count = topic_info_count(initialpose_info, "subscription")
@@ -13541,6 +14156,32 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         generated_at_ms=freshness_generated_at_ms,
         tf_source_diagnostics=tf_source_diagnostics,
     )
+    final_scan_entry = localization_signal_freshness.get("/scan", {})
+    final_pose_entry = localization_signal_freshness.get("/amcl_pose", {})
+    final_map_edge = (tf_source_freshness.get("edges") or {}).get("map_to_odom", {})
+    post_write_checks = {
+        "scan_fresh": final_scan_entry.get("freshness", {}).get("status") == "fresh",
+        "amcl_pose_fresh": final_pose_entry.get("freshness", {}).get("status") == "fresh",
+        "amcl_pose_timestamp_parsed": final_pose_entry.get("timestamp", {}).get("parsed") is True,
+        "map_to_odom_dynamic": final_map_edge.get("source_class") == "dynamic",
+        "map_to_odom_unique_amcl": final_map_edge.get("publisher_attribution_status") == "attributed_unique_amcl",
+        "map_to_odom_timestamp_parsed": final_map_edge.get("timestamp", {}).get("parsed") is True,
+        "map_to_odom_fresh": final_map_edge.get("freshness", {}).get("status") == "fresh",
+        "initialpose_publish_attempts_lte_one": int(initialpose_publish.get("publish_attempts") or 0) <= 1,
+        "publish_or_persisted_consumption_satisfied": bool(
+            int(initialpose_publish.get("publish_attempts") or 0) == 1
+            or persisted_pose_audit.get("persisted_pose_live_consumed")
+        ),
+    }
+    controlled_initialpose_post_write_gate = {
+        "clean": all(post_write_checks.values()),
+        "checks": post_write_checks,
+        "blocking_reasons": [name for name, clean in post_write_checks.items() if not clean],
+        "initialpose_publish_attempts": int(initialpose_publish.get("publish_attempts") or 0),
+        "scan": final_scan_entry,
+        "amcl_pose": final_pose_entry,
+        "map_to_odom": final_map_edge,
+    }
     phase_writer.update_snapshot(
         amcl_pose_observed=amcl_pose_observed,
         localization_tf_observed=localization_tf_observed,
@@ -13560,6 +14201,7 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         amcl_node_info_observed=tf_source_diagnostics["amcl_node_info_observed"],
         amcl_tf_broadcast_param=tf_source_diagnostics["amcl_tf_broadcast_param"],
         amcl_frame_params=tf_source_diagnostics["amcl_frame_params"],
+        amcl_runtime_params=tf_source_diagnostics.get("amcl_runtime_params", {}),
         tf_source_root_cause_detail=tf_source_diagnostics["tf_source_root_cause_detail"],
         amcl_broadcast_conditions=tf_source_diagnostics["amcl_broadcast_conditions"],
         managed_static_tf_processes=managed_static_tf_processes,
@@ -13571,6 +14213,7 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         map_frame_observed=tf_source_diagnostics["map_frame_observed"],
         odom_frame_observed=tf_source_diagnostics["odom_frame_observed"],
         amcl_tf_root_cause=tf_source_diagnostics["amcl_tf_root_cause"],
+        controlled_initialpose_post_write_gate=controlled_initialpose_post_write_gate,
     )
     localization_ready = bool(
         scan_observed and map_observed and lifecycle_active.get("map_server") and lifecycle_active.get("amcl")
@@ -13643,7 +14286,15 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         localization_outputs_required=localization_outputs_required,
         localization_signal_freshness=localization_signal_freshness,
         tf_source_freshness=tf_source_freshness,
+        pre_initialpose_gate=pre_initialpose_gate,
     )
+    if initialpose_request_payload["enabled"] and not controlled_initialpose_post_write_gate["clean"]:
+        existing_reasons = {str(item.get("reason") or "") for item in localization_root_causes}
+        for reason in controlled_initialpose_post_write_gate["blocking_reasons"]:
+            if reason not in existing_reasons:
+                localization_root_causes.append(
+                    {"layer": "AMCL controlled initialpose post-write gate", "reason": str(reason)}
+                )
     path_generation_preconditions_ready = bool(
         initialpose_request_payload["enabled"] and localization_ready and not localization_root_causes
     )
@@ -13718,6 +14369,8 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
     complete = bool(
         effective_map_inputs["inputs_ready"]
         and localization_ready
+        and pre_initialpose_gate.get("clean")
+        and controlled_initialpose_post_write_gate.get("clean")
         and not localization_root_causes
         and (
             not path_generation_request["enabled"]
@@ -13738,6 +14391,7 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         cleanup_result = cleanup_process_group(
             int(managed_runtime["process_group"]),
             managed_runtime.get("process"),
+            expected_process_pid=int(getattr(managed_runtime.get("process"), "pid", 0) or 0) or None,
         )
         managed_runtime["cleanup_result"] = cleanup_result
         managed_runtime["cleanup_ok"] = bool(cleanup_result.get("ok"))
@@ -13750,6 +14404,11 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
     else:
         phase_writer.record_phase("cleanup", ok=True, detail={"managed_runtime_started": False})
     cleanup_guard = managed_runtime_cleanup_guard(managed_runtime.get("process_group"))
+    cleanup_contract_clean = bool(managed_runtime.get("cleanup_ok", True) and cleanup_guard.get("ok"))
+    if not cleanup_contract_clean:
+        root_causes.append({"layer": "Managed runtime cleanup", "reason": "helper_owned_process_group_residual_not_zero"})
+        complete = False
+        proof_status = "blocked_with_root_cause"
     blocked_commands_not_sent = list(BLOCKED_COMMAND_TOKENS)
     if not initialpose_request_payload["enabled"]:
         blocked_commands_not_sent.append("/initialpose")
@@ -13788,6 +14447,7 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         "status": proof_status,
         "evidence_ref": f"o10-amcl-nav2-runtime-{started_ms}",
         "evidence_type": "robot_runtime_material" if complete else "blocked_with_root_cause",
+        "proof_boundary": "robot_runtime_o3_strict_no_motion_controlled_initialpose_localization_proof_only",
         "started_at_ms": started_ms,
         "generated_at_ms": now_ms(),
         "elapsed_ms": now_ms() - started_ms,
@@ -13843,14 +14503,20 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         "scan_once_observed": scan_observed,
         "map_once_observed": map_observed,
         "amcl_pose_observed": amcl_pose_observed,
-        "initialpose_publish_attempted": bool(initialpose_request_payload["enabled"]),
-        "initialpose_published": bool(initialpose_publish.get("ok")),
+        "initialpose_publish_attempted": int(initialpose_publish.get("publish_attempts") or 0) > 0,
+        "initialpose_published": bool(
+            initialpose_publish.get("ok") and int(initialpose_publish.get("publish_attempts") or 0) > 0
+        ),
         "initialpose_publish_method": initialpose_publish.get("publish_method"),
         "initialpose_subscriber_count": initialpose_publish.get("subscriber_count"),
         "initialpose_publish_attempts": int(initialpose_publish.get("publish_attempts") or 0),
         "initialpose_publish_elapsed_ms": initialpose_publish.get("elapsed_ms"),
         "initialpose_publish_error": initialpose_publish.get("error"),
         "initialpose_request": initialpose_request_payload,
+        "persisted_pose_audit": persisted_pose_audit,
+        "canonical_initialpose_map_audit": canonical_map_audit,
+        "pre_initialpose_gate": pre_initialpose_gate,
+        "controlled_initialpose_post_write_gate": controlled_initialpose_post_write_gate,
         "initialpose_boundary": (
             "explicit_opt_in_single_initialpose_for_amcl_localization_only"
             if initialpose_request_payload["enabled"]
@@ -13871,6 +14537,7 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         "amcl_node_info_observed": tf_source_diagnostics["amcl_node_info_observed"],
         "amcl_tf_broadcast_param": tf_source_diagnostics["amcl_tf_broadcast_param"],
         "amcl_frame_params": tf_source_diagnostics["amcl_frame_params"],
+        "amcl_runtime_params": tf_source_diagnostics.get("amcl_runtime_params", {}),
         "amcl_log_tail": preview_file(str(managed_runtime.get("log_path") or "")),
         "managed_static_tf_processes": managed_static_tf_processes,
         "static_tf_source_observed": bool(
@@ -13887,6 +14554,7 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         "managed_runtime_started": bool(managed_runtime.get("started")),
         "managed_runtime_process_group": managed_runtime.get("process_group"),
         "managed_runtime_cleanup_ok": bool(managed_runtime.get("cleanup_ok", True)) and bool(cleanup_guard.get("ok")),
+        "managed_runtime_cleanup": managed_runtime.get("cleanup_result"),
         "managed_runtime_boundary": managed_runtime.get("boundary"),
         "managed_runtime_map_yaml": managed_runtime.get("map_yaml"),
         "managed_runtime_requested_map_yaml": managed_runtime.get("requested_map_yaml"),
@@ -14016,6 +14684,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--managed-odom-frame-id", default=DEFAULT_MANAGED_ODOM_FRAME_ID)
     parser.add_argument("--managed-laser-frame-id", default=DEFAULT_MANAGED_LASER_FRAME_ID)
     parser.add_argument("--initialpose-opt-in", action="store_true")
+    parser.add_argument("--initialpose-canonical-free-cell-opt-in", action="store_true")
     parser.add_argument("--initialpose-x", type=float, default=0.0)
     parser.add_argument("--initialpose-y", type=float, default=0.0)
     parser.add_argument("--initialpose-yaw", type=float, default=0.0)
@@ -14097,10 +14766,35 @@ def main() -> int:
                 **safety_flags(),
             }
             write_json_atomic(args.output, payload)
-        print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
+        proof = payload.get("proof") if isinstance(payload.get("proof"), dict) else {}
+        print(
+            json.dumps(
+                {
+                    "status": payload.get("status"),
+                    "output": args.output,
+                    "initialpose_publish_attempts": int(proof.get("initialpose_publish_attempts") or 0),
+                    "last_phase": proof.get("last_phase"),
+                },
+                ensure_ascii=False,
+                sort_keys=True,
+            )
+        )
         return 2
     write_json_atomic(args.output, payload)
-    print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
+    proof = payload.get("proof") if isinstance(payload.get("proof"), dict) else {}
+    # 完整证据只写 output JSON；stdout 保持短摘要，避免 forbidden-command 扫描被安全否定清单误命中。
+    print(
+        json.dumps(
+            {
+                "status": payload.get("status"),
+                "output": args.output,
+                "initialpose_publish_attempts": int(proof.get("initialpose_publish_attempts") or 0),
+                "managed_runtime_cleanup_ok": bool(proof.get("managed_runtime_cleanup_ok")),
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+    )
     return 0 if payload["proof"]["status"] in {
         "nav2_no_motion_localization_runtime_observed",
         "nav2_no_motion_path_generation_runtime_observed",

@@ -1,0 +1,135 @@
+{
+  "status": "blocked_with_root_cause",
+  "attempts": 1,
+  "attempted": true,
+  "published": true,
+  "method": "ros2_topic_pub_once_cli_fallback",
+  "boundary": "explicit_opt_in_single_initialpose_for_amcl_localization_only",
+  "canonical_ok": true,
+  "canonical_pose": {
+    "frame_id": "map",
+    "x": 0.8011511639109115,
+    "y": 4.12500006146729,
+    "yaw": 0.0
+  },
+  "subscriber_count": 1,
+  "pre_gate": true,
+  "pre_blockers": [],
+  "scan_freshness": {
+    "age_ms": 22,
+    "reason": "within_threshold",
+    "status": "fresh",
+    "threshold_ms": 3000
+  },
+  "amcl_pose_observed": true,
+  "amcl_pose_timestamp": {
+    "epoch_ms": 1784064691513,
+    "nanosec": 513727408,
+    "parsed": true,
+    "sec": 1784064691,
+    "source": "/amcl_pose.header.stamp"
+  },
+  "amcl_pose_freshness": {
+    "age_ms": 96,
+    "reason": "within_threshold",
+    "status": "fresh",
+    "threshold_ms": 3000
+  },
+  "map_to_odom_observed": true,
+  "map_to_odom_source_class": "dynamic",
+  "map_to_odom_attribution": "attributed_unique_amcl",
+  "map_to_odom_timestamp": {
+    "epoch_ms": 1784064692513,
+    "nanosec": 513727408,
+    "parsed": true,
+    "sec": 1784064692,
+    "source": "/tf.header.stamp"
+  },
+  "map_to_odom_freshness": {
+    "age_ms": 5090,
+    "reason": "older_than_threshold",
+    "status": "stale",
+    "threshold_ms": 3000
+  },
+  "post_gate": false,
+  "post_blockers": [
+    "map_to_odom_fresh"
+  ],
+  "managed_runtime_cleanup_ok": true,
+  "cleanup": {
+    "attempted": true,
+    "group_present_after_cleanup": false,
+    "helper_owned_identity": {
+      "expected_process_pid": 648519,
+      "members_before_cleanup": [
+        {
+          "command": "bash -lc set -e; set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; export RMW_FASTRTPS_USE_SHM=0; export FASTDDS_BUILTIN_TRANSPORTS=UDPv4; cd /root/rober/onboard; export RMW_FASTRTPS_USE_SHM=0; export FASTDDS_BUILTIN_TRANSPORTS=UDPv4; pids=(); cleanup(){ for pid in \"${pids[@]}\"; do kill -INT \"$pid\" 2>/dev/null || true; done; wait || true; }; trap cleanup EXIT INT TERM; printf '%s\\n' 'managed_map_yaml=/root/rober/onboard/runtime/maps/trashbot_map.yaml' > /tmp/rober_nav2_localization_pnj2wow3.log; printf '%s\\n' 'managed_runtime_boundary=no_motion_localization_only' >> /tmp/rober_nav2_localization_pnj2wow3.log; printf '%s\\n' 'blocked_device=/dev/ttyS5' >> /tmp/rober_nav2_localization_pnj2wow3.log; printf '%s\\n' 'managed_lidar_policy=reuse_existing_lidar_lifecycle_no_driver_start' >> /tmp/rober_nav2_localization_pnj2wow3.log; printf '%s\\n' 'reuse_existing_lidar_lifecycle serial_port=/dev/ttyACM0 serial_baudrate=230400 driver_started_by_helper=false' >> /tmp/rober_nav2_localization_pnj2wow3.log; printf '%s\\n' 'starting role=static_tf_broadcaster' >> /tmp/rober_nav2_localization_pnj2wow3.log; (python3 -c 'import json import sys  import rclpy from geometry_msgs.msg import TransformStamped from tf2_ros.static_transform_broadcaster import StaticTransformBroadcaster   def make_transform(node, parent, child):     # 两条边都是 no-motion proof 的固定几何关系；这里显式置零，避免引入底盘里程计假设。     transform = TransformStamped()     transform.header.stamp = node.get_clock().now().to_msg()     transform.header.frame_id = parent     transform.child_frame_id = child     transform.transform.translation.x = 0.0     transform.transform.translation.y = 0.0     transform.transform.translation.z = 0.0     transform.transform.rotation.x = 0.0     transform.transform.rotation.y = 0.0     transform.transform.rotation.z = 0.0     transform.transform.rotation.w = 1.0     return transform   def main():     frames = json.loads(sys.argv[1])     rclpy.init(args=None)     node = rclpy.create_node(\"managed_static_tf_broadcaster\")     broadcaster = StaticTransformBroadcaster(node)      def publish_static_transforms():         # 同一个 TFMessage 同时包含 odom->base_link 与 base_link->laser_frame。         # transient-local late subscriber 因此不再依赖两个独立 CLI publisher 的发现时序。         broadcaster.sendTransform(             [                 make_transform(node, frames[\"odom\"], frames[\"base\"]),                 make_transform(node, frames[\"base\"], frames[\"laser\"]),             ]         )      publish_static_transforms()     node.create_timer(0.5, publish_static_transforms)     try:         rclpy.spin(node)     finally:         node.destroy_node()         if rclpy.ok():             rclpy.shutdown()   if __name__ == \"__main__\":     main()' '{\"odom\": \"odom\", \"base\": \"base_link\", \"laser\": \"laser_frame\"}' static_tf_odom_base static_tf_base_laser odom_to_base_link base_link_to_laser_frame) >> /tmp/rober_nav2_localization_pnj2wow3.log 2>&1 & pid=$!; pids+=($pid); printf '%s\\n' 'started role=static_tf_broadcaster pid='$pid >> /tmp/rober_nav2_localization_pnj2wow3.log; printf '%s\\n' 'starting role=map_server' >> /tmp/rober_nav2_localization_pnj2wow3.log; (ros2 run nav2_map_server map_server --ros-args --params-file /tmp/rober_nav2_localization__k5pb3gx.yaml -r __node:=map_server) >> /tmp/rober_nav2_localization_pnj2wow3.log 2>&1 & pid=$!; pids+=($pid); printf '%s\\n' 'started role=map_server pid='$pid >> /tmp/rober_nav2_localization_pnj2wow3.log; printf '%s\\n' 'starting role=amcl' >> /tmp/rober_nav2_localization_pnj2wow3.log; (ros2 run nav2_amcl amcl --ros-args --params-file /tmp/rober_nav2_localization__k5pb3gx.yaml -r __node:=amcl) >> /tmp/rober_nav2_localization_pnj2wow3.log 2>&1 & pid=$!; pids+=($pid); printf '%s\\n' 'started role=amcl pid='$pid >> /tmp/rober_nav2_localization_pnj2wow3.log; printf '%s\\n' 'waiting before lifecycle_manager start delay_s=3' >> /tmp/rober_nav2_localization_pnj2wow3.log; sleep 3; printf '%s\\n' 'starting role=lifecycle_manager' >> /tmp/rober_nav2_localization_pnj2wow3.log; (ros2 run nav2_lifecycle_manager lifecycle_manager --ros-args --params-file /tmp/rober_nav2_localization__k5pb3gx.yaml -r __node:=lifecycle_manager) >> /tmp/rober_nav2_localization_pnj2wow3.log 2>&1 & pid=$!; pids+=($pid); printf '%s\\n' 'started role=lifecycle_manager pid='$pid >> /tmp/rober_nav2_localization_pnj2wow3.log; wait",
+          "pgid": 648519,
+          "pid": 648519
+        },
+        {
+          "command": "python3 -c import json import sys  import rclpy from geometry_msgs.msg import TransformStamped from tf2_ros.static_transform_broadcaster import StaticTransformBroadcaster   def make_transform(node, parent, child):     # 两条边都是 no-motion proof 的固定几何关系；这里显式置零，避免引入底盘里程计假设。     transform = TransformStamped()     transform.header.stamp = node.get_clock().now().to_msg()     transform.header.frame_id = parent     transform.child_frame_id = child     transform.transform.translation.x = 0.0     transform.transform.translation.y = 0.0     transform.transform.translation.z = 0.0     transform.transform.rotation.x = 0.0     transform.transform.rotation.y = 0.0     transform.transform.rotation.z = 0.0     transform.transform.rotation.w = 1.0     return transform   def main():     frames = json.loads(sys.argv[1])     rclpy.init(args=None)     node = rclpy.create_node(\"managed_static_tf_broadcaster\")     broadcaster = StaticTransformBroadcaster(node)      def publish_static_transforms():         # 同一个 TFMessage 同时包含 odom->base_link 与 base_link->laser_frame。         # transient-local late subscriber 因此不再依赖两个独立 CLI publisher 的发现时序。         broadcaster.sendTransform(             [                 make_transform(node, frames[\"odom\"], frames[\"base\"]),                 make_transform(node, frames[\"base\"], frames[\"laser\"]),             ]         )      publish_static_transforms()     node.create_timer(0.5, publish_static_transforms)     try:         rclpy.spin(node)     finally:         node.destroy_node()         if rclpy.ok():             rclpy.shutdown()   if __name__ == \"__main__\":     main() {\"odom\": \"odom\", \"base\": \"base_link\", \"laser\": \"laser_frame\"} static_tf_odom_base static_tf_base_laser odom_to_base_link base_link_to_laser_frame",
+          "pgid": 648519,
+          "pid": 648559
+        },
+        {
+          "command": "/usr/bin/python3 /opt/ros/humble/bin/ros2 run nav2_map_server map_server --ros-args --params-file /tmp/rober_nav2_localization__k5pb3gx.yaml -r __node:=map_server",
+          "pgid": 648519,
+          "pid": 648560
+        },
+        {
+          "command": "/usr/bin/python3 /opt/ros/humble/bin/ros2 run nav2_amcl amcl --ros-args --params-file /tmp/rober_nav2_localization__k5pb3gx.yaml -r __node:=amcl",
+          "pgid": 648519,
+          "pid": 648561
+        },
+        {
+          "command": "/opt/ros/humble/lib/nav2_amcl/amcl --ros-args --params-file /tmp/rober_nav2_localization__k5pb3gx.yaml -r __node:=amcl",
+          "pgid": 648519,
+          "pid": 648582
+        },
+        {
+          "command": "/opt/ros/humble/lib/nav2_map_server/map_server --ros-args --params-file /tmp/rober_nav2_localization__k5pb3gx.yaml -r __node:=map_server",
+          "pgid": 648519,
+          "pid": 648589
+        },
+        {
+          "command": "/usr/bin/python3 /opt/ros/humble/bin/ros2 run nav2_lifecycle_manager lifecycle_manager --ros-args --params-file /tmp/rober_nav2_localization__k5pb3gx.yaml -r __node:=lifecycle_manager",
+          "pgid": 648519,
+          "pid": 648610
+        },
+        {
+          "command": "/opt/ros/humble/lib/nav2_lifecycle_manager/lifecycle_manager --ros-args --params-file /tmp/rober_nav2_localization__k5pb3gx.yaml -r __node:=lifecycle_manager",
+          "pgid": 648519,
+          "pid": 648621
+        }
+      ],
+      "pid_equals_pgid": true,
+      "process_group": 648519,
+      "process_object_pid": 648519,
+      "start_new_session_contract": true,
+      "verified": true
+    },
+    "killed_with_sigkill": true,
+    "ok": true,
+    "process_group": 648519,
+    "remaining_processes": [],
+    "residual_count": 0,
+    "sent_signal": "SIGINT"
+  },
+  "safe_to_control": false,
+  "robot_control_executed": false,
+  "route_execution_success": false,
+  "delivery_success": false,
+  "hil_pass": false,
+  "proof_boundary": "robot_runtime_o3_strict_no_motion_controlled_initialpose_localization_proof_only",
+  "blockers": [
+    {
+      "layer": "Managed runtime wait",
+      "reason": "ros2_node_list_timeout"
+    },
+    {
+      "layer": "AMCL controlled initialpose post-write gate",
+      "reason": "map_to_odom_fresh"
+    }
+  ]
+}

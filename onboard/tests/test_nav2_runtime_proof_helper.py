@@ -439,6 +439,140 @@ pose:
         self.assertEqual({"sec": 0, "nanosec": 0}, payload["header"]["stamp"])
         self.assertEqual("map", payload["header"]["frame_id"])
 
+    def test_canonical_map_free_cell_world_pose_audit_is_deterministic(self) -> None:
+        """canonical free cell 必须绑定 YAML/PGM hash，并可复算 image->world pose。"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            pgm = root / "map.pgm"
+            pgm.write_bytes(b"P5\n3 3\n255\n" + bytes([0, 0, 0, 0, 254, 0, 0, 0, 0]))
+            yaml_path = root / "map.yaml"
+            yaml_path.write_text(
+                "image: map.pgm\nresolution: 0.5\norigin:\n- -1.0\n- -2.0\n- 0.0\nnegate: 0\noccupied_thresh: 0.65\nfree_thresh: 0.196\nmode: trinary\n",
+                encoding="utf-8",
+            )
+
+            audit = HELPER.canonical_initialpose_map_audit(str(yaml_path), yaw=0.0)
+            args = HELPER.parse_args(
+                ["--initialpose-opt-in", "--initialpose-canonical-free-cell-opt-in"]
+            )
+            request = HELPER.canonicalize_initialpose_request(args, audit)
+
+        self.assertTrue(audit["ok"])
+        self.assertEqual({"row": 1, "column": 1, "pixel_value": 254}, audit["free_cell"])
+        self.assertAlmostEqual(-0.25, audit["world_pose"]["x"])
+        self.assertAlmostEqual(-1.25, audit["world_pose"]["y"])
+        self.assertEqual(64, len(audit["map_yaml_sha256"]))
+        self.assertEqual("canonical_map_free_cell_world_pose", request["source"])
+
+    def test_canonical_map_without_free_cell_fails_closed(self) -> None:
+        """non-free 地图不得生成 fallback initialpose。"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "map.pgm").write_bytes(b"P5\n2 2\n255\n" + bytes([0, 0, 0, 0]))
+            yaml_path = root / "map.yaml"
+            yaml_path.write_text(
+                "image: map.pgm\nresolution: 0.1\norigin: [0.0, 0.0, 0.0]\nnegate: 0\noccupied_thresh: 0.65\nfree_thresh: 0.196\nmode: trinary\n",
+                encoding="utf-8",
+            )
+            audit = HELPER.canonical_initialpose_map_audit(str(yaml_path))
+
+        self.assertFalse(audit["ok"])
+        self.assertFalse(audit["free_cell_verified"])
+
+    def test_persisted_config_true_does_not_equal_live_consumption(self) -> None:
+        """仓库 `set_initial_pose: true` 只算静态事实；上一轮 helper effective false 必须保留。"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            config = root / "nav2.yaml"
+            config.write_text("amcl:\n  ros__parameters:\n    set_initial_pose: true\n", encoding="utf-8")
+            params = root / "managed.yaml"
+            params.write_text("amcl:\n  ros__parameters:\n    set_initial_pose: false\n", encoding="utf-8")
+            with mock.patch.object(HELPER, "NAV2_PLANNER_CONFIG_PATH", config):
+                audit = HELPER.build_persisted_pose_audit(
+                    managed_params_path=str(params),
+                    tf_source_diagnostics={
+                        "amcl_node_info_observed": True,
+                        "amcl_runtime_params": {"set_initial_pose": False},
+                    },
+                    pre_localization_signals={"/amcl_pose": {}},
+                    pre_tf_source_freshness={"edges": {}},
+                    amcl_startup_log="Please set the initial pose",
+                )
+
+        self.assertTrue(audit["repo_config"]["set_initial_pose_true_present"])
+        self.assertFalse(audit["config_presence_is_live_consumption"])
+        self.assertTrue(audit["helper_generated_params"]["effective_set_initial_pose_false"])
+        self.assertFalse(audit["persisted_pose_live_consumed"])
+
+    def test_persisted_live_pose_and_unique_amcl_tf_skip_publish(self) -> None:
+        """同窗 fresh pose + unique AMCL dynamic map->odom 已成立时必须零次发布。"""
+        fresh_entry = {
+            "probe": {"observed": True},
+            "timestamp": {"parsed": True},
+            "freshness": {"status": "fresh"},
+        }
+        map_edge = {
+            "source_class": "dynamic",
+            "publisher_attribution_status": "attributed_unique_amcl",
+            "timestamp": {"parsed": True},
+            "freshness": {"status": "fresh"},
+        }
+        audit = HELPER.build_persisted_pose_audit(
+            managed_params_path=None,
+            tf_source_diagnostics={"amcl_node_info_observed": True, "amcl_runtime_params": {}},
+            pre_localization_signals={"/amcl_pose": fresh_entry},
+            pre_tf_source_freshness={"edges": {"map_to_odom": map_edge}},
+            amcl_startup_log="",
+        )
+        args = HELPER.parse_args(["--initialpose-opt-in"])
+        with mock.patch.object(HELPER, "publish_initialpose_inprocess_burst") as publish_mock:
+            _, result = HELPER.maybe_publish_initialpose(
+                args,
+                True,
+                pre_initialpose_gate={
+                    "clean": True,
+                    "persisted_pose_live_consumed": audit["persisted_pose_live_consumed"],
+                    "initialpose_subscriber_count": 1,
+                },
+            )
+
+        self.assertTrue(audit["persisted_pose_live_consumed"])
+        self.assertEqual(0, result["publish_attempts"])
+        self.assertTrue(result["satisfied_without_publish"])
+        publish_mock.assert_not_called()
+
+    def test_initialpose_total_attempt_never_falls_back_after_rclpy_write(self) -> None:
+        """rclpy 一旦 publish 过一次，即使 match 未证实也不得再走 CLI。"""
+        args = HELPER.parse_args(["--initialpose-opt-in"])
+        with mock.patch.object(
+            HELPER,
+            "publish_initialpose_inprocess_burst",
+            return_value={"ok": False, "publish_attempts": 1, "boundary": "subscriber_missing"},
+        ), mock.patch.object(HELPER, "run_ros") as run_mock:
+            _, result = HELPER.maybe_publish_initialpose(
+                args,
+                True,
+                pre_initialpose_gate={"clean": True, "persisted_pose_live_consumed": False},
+            )
+
+        self.assertEqual(1, result["publish_attempts"])
+        self.assertTrue(result["cli_fallback_forbidden_after_attempt"])
+        run_mock.assert_not_called()
+
+    def test_initialpose_prewrite_gate_failure_keeps_attempt_zero(self) -> None:
+        """subscriber/TF/free-cell 任一门禁失败时必须保持 publish attempt=0。"""
+        args = HELPER.parse_args(["--initialpose-opt-in"])
+        with mock.patch.object(HELPER, "publish_initialpose_inprocess_burst") as publish_mock:
+            _, result = HELPER.maybe_publish_initialpose(
+                args,
+                True,
+                pre_initialpose_gate={"clean": False, "blocking_reasons": ["tf_authority_clear"]},
+            )
+
+        self.assertEqual(0, result["publish_attempts"])
+        self.assertEqual("pre_initialpose_gate_not_clean_no_publish", result["boundary"])
+        publish_mock.assert_not_called()
+
     def test_package_checks_use_single_sourced_pkg_list_command(self) -> None:
         """包可用性是诊断信息，必须一次 pkg list 检查，不能逐包 prefix 阻塞主路径。"""
         args = HELPER.parse_args([])
@@ -470,12 +604,14 @@ pose:
             self.assertEqual("single_sourced_pkg_list_package_check", results[package]["diagnostic_mode"])
 
     def test_initialpose_phase_precedes_slow_topic_probe(self) -> None:
-        """board source preflight 必须先拆清 runtime，再决定是否允许 `/initialpose`。"""
+        """board source 与写前只读门禁必须先完成，才能决定是否允许 `/initialpose`。"""
         text = SCRIPT.read_text(encoding="utf-8")
         preflight_index = text.index('phase_writer.record_phase("board_source_preflight")')
+        gate_index = text.index('phase_writer.record_phase("pre_initialpose_read_only_audit")')
         initialpose_index = text.index('phase_writer.record_phase("initialpose")')
 
-        self.assertLess(preflight_index, initialpose_index)
+        self.assertLess(preflight_index, gate_index)
+        self.assertLess(gate_index, initialpose_index)
         self.assertLess(
             initialpose_index,
             text.index('phase_writer.record_phase(\n        "package_checks"'),
@@ -489,8 +625,8 @@ pose:
             text.index('phase_writer.record_phase(\n            "topic_probe"'),
         )
         self.assertIn('ROS2_PREFLIGHT_COMMAND = "command -v ros2"', text)
-        self.assertIn("board_source_preflight_failed_no_initialpose_publish", text)
-        self.assertIn("pre_initialpose_amcl_pose_probe_skipped_to_prioritize_initialpose", text)
+        self.assertIn("pre_initialpose_gate_not_clean_no_publish", text)
+        self.assertIn("pre_initialpose_amcl_pose_probe_not_ready", text)
 
     def test_board_source_preflight_separates_ros2_cli_and_rclpy_runtime(self) -> None:
         """artifact 必须把 sourced shell 的 `ros2` CLI 与 Python `rclpy` runtime 拆开记录。"""
@@ -1129,7 +1265,7 @@ pose:
         for required in (
             "MANAGED_RUNTIME_GRAPH_BLOCKED_REASONS",
             "managed_runtime_wait_graph_blocked",
-            "initialpose_skipped_after_managed_runtime_graph_wait_blocked",
+            "pre_initialpose_gate_not_clean_no_publish",
             "tf_probe_skipped_after_managed_runtime_graph_wait_blocked",
             "scan_probe_skipped_after_managed_runtime_graph_wait_blocked",
             "map_probe_skipped_after_managed_runtime_graph_wait_blocked",
@@ -1915,11 +2051,12 @@ pose:
         self.assertNotIn("map_server_lifecycle_not_active", {cause["reason"] for cause in causes})
         self.assertNotIn("amcl_lifecycle_not_active", {cause["reason"] for cause in causes})
 
-    def test_initialpose_topic_info_probe_is_lazy_when_burst_publish_already_knows_subscriber_count(self) -> None:
-        """现场不再允许 `/initialpose` verbose info 阻断后续 AMCL/TF/path 收口。"""
+    def test_initialpose_topic_info_probe_reuses_prewrite_endpoint_inventory(self) -> None:
+        """现场不跑 `/initialpose --verbose`，subscriber 由写前 endpoint inventory 提供。"""
         text = SCRIPT.read_text(encoding="utf-8")
 
-        self.assertNotIn('initialpose_publish.get("subscriber_count") is None', text)
+        self.assertIn('initialpose_publish.get("subscriber_count") is None', text)
+        self.assertIn('pre_initialpose_gate.get("initialpose_subscriber_count")', text)
         self.assertIn("initialpose_subscriber_count_already_observed_by_publish", text)
         self.assertIn("initialpose_verbose_info_skipped_to_avoid_cli_stall", text)
         self.assertNotIn('run_ros(args, "ros2 topic info /initialpose --verbose"', text)
@@ -2468,6 +2605,20 @@ status: STATUS_SUCCEEDED
         self.assertEqual("managed_runtime_process_group_cleanup_guard", result["boundary"])
         self.assertEqual(123, result["remaining_processes"][0]["pid"])
 
+    def test_cleanup_rejects_non_helper_process_group_identity(self) -> None:
+        """expected PID 与 PGID 不一致时不得发 signal，避免误伤既有 LiDAR/ESP32/API。"""
+        with mock.patch.object(
+            HELPER,
+            "process_group_members",
+            return_value=[{"pid": 123, "pgid": 456, "command": "existing_lidar_driver"}],
+        ), mock.patch.object(HELPER.os, "killpg") as kill_mock:
+            result = HELPER.cleanup_process_group(456, expected_process_pid=999)
+
+        self.assertFalse(result["attempted"])
+        self.assertFalse(result["helper_owned_identity"]["verified"])
+        self.assertEqual(1, result["residual_count"])
+        kill_mock.assert_not_called()
+
     def test_static_no_motion_guard_terms(self) -> None:
         """helper artifact 必须显式声明不会发车、不会调用底盘、不会写成功。"""
         text = SCRIPT.read_text(encoding="utf-8")
@@ -2722,7 +2873,7 @@ __TF_STATIC_ONCE__
         self.assertTrue(source["base_link_to_laser_frame_source_observed"])
         self.assertEqual("source_inventory_observed", source["amcl_tf_root_cause"])
         self.assertEqual(
-            "attributed_to_amcl_graph_endpoint",
+            "attributed_unique_amcl",
             source["map_to_odom_publisher_attribution"]["publisher_attribution_status"],
         )
 
@@ -2778,7 +2929,7 @@ __TF_STATIC_ONCE__
         edge = freshness["edges"]["map_to_odom"]
 
         self.assertEqual("/tf", edge["source_topic"])
-        self.assertEqual("attributed_to_amcl_graph_endpoint", edge["publisher_attribution_status"])
+        self.assertEqual("attributed_unique_amcl", edge["publisher_attribution_status"])
         self.assertEqual("/amcl", edge["publisher_endpoint"]["node_full_name"])
         self.assertTrue(edge["timestamp"]["parsed"])
         self.assertEqual("fresh", edge["freshness"]["status"])
@@ -3654,6 +3805,20 @@ __TF_STATIC_ONCE__
                     "inventory_observed": True,
                     "error": None,
                 },
+                "/initialpose": {
+                    "publishers": [],
+                    "subscribers": [
+                        {
+                            "node_name": "amcl",
+                            "node_namespace": "/",
+                            "topic_type": "geometry_msgs/msg/PoseWithCovarianceStamped",
+                        }
+                    ],
+                    "publisher_count": 0,
+                    "subscriber_count": 1,
+                    "inventory_observed": True,
+                    "error": None,
+                },
             },
             "static_edges": [],
             "dynamic_edges": [],
@@ -3673,6 +3838,8 @@ __TF_STATIC_ONCE__
         self.assertTrue(source["tf_topics_observed"]["/tf"])
         self.assertFalse(source["tf_static_observed"])
         self.assertEqual("amcl_param_probe_failed", source["amcl_tf_root_cause"])
+        self.assertEqual(1, source["topic_endpoint_summaries"]["/initialpose"]["subscriber_count"])
+        self.assertTrue(HELPER.build_initialpose_subscriber_audit(source)["amcl_subscriber_active"])
 
     def test_sourced_rclpy_probe_parses_child_json_without_cli_fallback(self) -> None:
         """SSH parent 未 source 时应使用单个 sourced child，避免串行 CLI 吞掉 90 秒窗口。"""

@@ -1,0 +1,57 @@
+sprints/2026.07.15_04-55_o3_controlled_initialpose_localization_proof/tech-done.md:15:- 新增 `--initialpose-canonical-free-cell-opt-in` 与完整写前门禁：map_server/AMCL lifecycle、fresh `/scan`、只归属 `/amcl` 的 `/initialpose` subscriber、persisted audit 与 TF authority 必须全部 clean。
+sprints/2026.07.15_04-55_o3_controlled_initialpose_localization_proof/tech-done.md:18:- 新增 post-write gate，要求 fresh `/scan`、fresh `/amcl_pose`、parsed stamp、dynamic `map->odom`、`attributed_unique_amcl` 与 fresh TF。
+sprints/2026.07.15_04-55_o3_controlled_initialpose_localization_proof/tech-done.md:30:- 将 TF 归因值统一为更严格的 `attributed_unique_amcl`，并明确本证据不证明真实物理位姿、路径、路线、履约、HIL 或 safe-to-control。
+sprints/2026.07.15_04-55_o3_controlled_initialpose_localization_proof/tech-done.md:43:- `initialpose_publish_attempts=0`、`initialpose_publish_attempted=false`、`initialpose_published=false`，因此没有消费单次发布额度。
+sprints/2026.07.15_04-55_o3_controlled_initialpose_localization_proof/tech-done.md:55:- 实际 `initialpose_publish_attempts=1`、`initialpose_publish_attempted=true`、`initialpose_published=true`，method=`ros2_topic_pub_once_cli_fallback`。从这一刻起严格禁止本 sprint 第二次发布或第三次 live run。
+sprints/2026.07.15_04-55_o3_controlled_initialpose_localization_proof/tech-done.md:57:- 发布后观测到 dynamic `map->odom`，stamp parsed，publisher attribution=`attributed_unique_amcl`；但最终 freshness age=`5090ms`，超过 `3000ms` 门槛。
+sprints/2026.07.15_04-55_o3_controlled_initialpose_localization_proof/tech-done.md:69:- helper cleanup：identity verified，expected PID=PGID=`648519`，`residual_count=0`，`managed_runtime_cleanup_ok=true`。
+docs/navigation/field_route_evidence_preflight.md:1520:- `publisher_attribution_status=attributed_unique_amcl`；
+docs/navigation/field_route_evidence_preflight.md:1566:`--initialpose-opt-in --initialpose-canonical-free-cell-opt-in`；helper 会先完成：
+docs/navigation/field_route_evidence_preflight.md:1578:  任一失败必须保持 `initialpose_publish_attempts=0`。
+docs/navigation/field_route_evidence_preflight.md:1583:fresh `/amcl_pose` 与 `source_class=dynamic`、`publisher_attribution_status=attributed_unique_amcl`、
+docs/navigation/field_route_evidence_preflight.md:1585:`attributed_unique_amcl` 取代。
+onboard/tests/test_nav2_runtime_proof_helper.py:456:                ["--initialpose-opt-in", "--initialpose-canonical-free-cell-opt-in"]
+onboard/tests/test_nav2_runtime_proof_helper.py:505:        self.assertFalse(audit["persisted_pose_live_consumed"])
+onboard/tests/test_nav2_runtime_proof_helper.py:516:            "publisher_attribution_status": "attributed_unique_amcl",
+onboard/tests/test_nav2_runtime_proof_helper.py:534:                    "persisted_pose_live_consumed": audit["persisted_pose_live_consumed"],
+onboard/tests/test_nav2_runtime_proof_helper.py:539:        self.assertTrue(audit["persisted_pose_live_consumed"])
+onboard/tests/test_nav2_runtime_proof_helper.py:555:                pre_initialpose_gate={"clean": True, "persisted_pose_live_consumed": False},
+onboard/tests/test_nav2_runtime_proof_helper.py:2142:    def test_stale_managed_runtime_cleanup_parser_scopes_to_helper_process_groups(self) -> None:
+onboard/tests/test_nav2_runtime_proof_helper.py:2602:            result = HELPER.managed_runtime_cleanup_guard(456)
+onboard/tests/test_nav2_runtime_proof_helper.py:2634:            "managed_runtime_cleanup_ok",
+onboard/tests/test_nav2_runtime_proof_helper.py:2876:            "attributed_unique_amcl",
+onboard/tests/test_nav2_runtime_proof_helper.py:2932:        self.assertEqual("attributed_unique_amcl", edge["publisher_attribution_status"])
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:288:            "initialpose_publish_attempts": 0,
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:343:            "managed_runtime_cleanup_ok": False,
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:4237:    if gate.get("persisted_pose_live_consumed"):
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:4243:            "publish_method": "persisted_pose_live_consumed_skip",
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:4246:            "boundary": "persisted_pose_live_consumed_no_publish_required",
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:4359:        and map_edge.get("publisher_attribution_status") == "attributed_unique_amcl"
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:4395:        "persisted_pose_live_consumed": live_consumed,
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:4396:        "publish_decision": "skip_publish_persisted_pose_live_consumed" if live_consumed else "persisted_pose_not_live_consumed",
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:4425:    persisted_pose_live_consumed: bool,
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:4442:            persisted_pose_live_consumed
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:4443:            and attribution_status == "attributed_unique_amcl"
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:4452:        "persisted_pose_live_consumed": persisted_pose_live_consumed,
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:4494:        "persisted_pose_live_consumed": bool(persisted_pose_audit.get("persisted_pose_live_consumed")),
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:5642:            "publisher_attribution_status": "attributed_unique_amcl",
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:6860:    elif publisher_attribution["publisher_attribution_status"] != "attributed_unique_amcl":
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:10284:        "schema": "trashbot.o10.stale_managed_runtime_cleanup.v1",
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:10571:def managed_runtime_cleanup_guard(process_group: int | None) -> dict[str, Any]:
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:11934:        and map_attribution_status == "attributed_unique_amcl"
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:11941:    elif map_attribution_status != "attributed_unique_amcl":
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:13194:        persisted_pose_live_consumed=bool(persisted_pose_audit.get("persisted_pose_live_consumed")),
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:13230:        initialpose_publish_attempts=publish_attempts,
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:14167:        "map_to_odom_unique_amcl": final_map_edge.get("publisher_attribution_status") == "attributed_unique_amcl",
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:14170:        "initialpose_publish_attempts_lte_one": int(initialpose_publish.get("publish_attempts") or 0) <= 1,
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:14173:            or persisted_pose_audit.get("persisted_pose_live_consumed")
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:14180:        "initialpose_publish_attempts": int(initialpose_publish.get("publish_attempts") or 0),
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:14398:        phase_writer.update_snapshot(managed_runtime_cleanup_ok=bool(managed_runtime.get("cleanup_ok")))
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:14406:    cleanup_guard = managed_runtime_cleanup_guard(managed_runtime.get("process_group"))
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:14512:        "initialpose_publish_attempts": int(initialpose_publish.get("publish_attempts") or 0),
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:14556:        "managed_runtime_cleanup_ok": bool(managed_runtime.get("cleanup_ok", True)) and bool(cleanup_guard.get("ok")),
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:14557:        "managed_runtime_cleanup": managed_runtime.get("cleanup_result"),
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:14687:    parser.add_argument("--initialpose-canonical-free-cell-opt-in", action="store_true")
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:14775:                    "initialpose_publish_attempts": int(proof.get("initialpose_publish_attempts") or 0),
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:14791:                "initialpose_publish_attempts": int(proof.get("initialpose_publish_attempts") or 0),
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:14792:                "managed_runtime_cleanup_ok": bool(proof.get("managed_runtime_cleanup_ok")),
