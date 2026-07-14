@@ -1,0 +1,89 @@
+{
+  "schema": "trashbot.product_acceptance_28_pose_fixed_route_consumer.v1",
+  "sprint": "sprints/2026.07.13_04-02_o3_28_pose_fixed_route_consumer",
+  "accepted_at": "2026-07-13 04:02 CST",
+  "product_owner": "product-okr-owner",
+  "implementation_owner": "robot-algorithm-engineer",
+  "decision": "accepted_with_strict_no_motion_boundary",
+  "product_north_star": "make fixed-route trash delivery verifiable by turning fresh structured path material into consumer-ready route evidence before any controlled execution",
+  "primary_source": {
+    "source_time": "2026-07-13 03:00 CST",
+    "artifact": "sprints/2026.07.13_03-00_o3_live_full_structured_path_capture/artifacts/algorithm/live_full_structured_path_capture_summary.json",
+    "fresh_28_pose_structured_material_consumed": true,
+    "historic_21_57_artifact_primary_source": false
+  },
+  "accepted_facts": {
+    "summary_artifact": "sprints/2026.07.13_04-02_o3_28_pose_fixed_route_consumer/artifacts/algorithm/fixed_route_28_pose_consumer_summary.json",
+    "replay_jsonl": "sprints/2026.07.13_04-02_o3_28_pose_fixed_route_consumer/artifacts/algorithm/fixed_route_28_pose_replay.jsonl",
+    "route_csv": "sprints/2026.07.13_04-02_o3_28_pose_fixed_route_consumer/artifacts/algorithm/fixed_route_28_pose_route.csv",
+    "route_intent_id": "route_intent_20260713_0402_from_20260713_0300_28_pose_structured_path",
+    "task_id": "task_o3_28_pose_fixed_route_consumer_20260713_0402",
+    "path_structured_pose_count": 28,
+    "structured_pose_event_count": 28,
+    "csv_route_row_count": 28,
+    "validation_status": "pass_fresh_28_pose_structured_material",
+    "dry_run_status": "accepted_strict_no_motion_28_pose_consumer_material"
+  },
+  "safety_invariants": {
+    "route_execution_success": false,
+    "delivery_success": false,
+    "hil_pass": false,
+    "safe_to_control": false,
+    "publishes_cmd_vel": false,
+    "calls_base_manual": false,
+    "uses_base_uart": false,
+    "robot_control_executed": false
+  },
+  "rejected_claims": [
+    "route_execution",
+    "fixed_route_movement",
+    "NavigateToPose",
+    "controller_or_behavior_tree_execution",
+    "/cmd_vel",
+    "/api/base/manual",
+    "WAVE_ROVER_UART",
+    "delivery_or_operator_acceptance",
+    "current_live_HIL",
+    "safe_to_control",
+    "O5_production_or_external_evidence"
+  ],
+  "okr_decision": {
+    "direction": "continue_o3_o1_strict_no_motion_consumer_chain",
+    "o5_progress": "~85%",
+    "o1_progress": "~94%",
+    "o6_progress": "~93%",
+    "o7_progress": "~93%",
+    "main_percentage_changed": false,
+    "kr_archived": false,
+    "kr_archive_text": "不归档",
+    "credit_boundary": "O3/O1 strict no-motion fixed-route consumer material only"
+  },
+  "next_recommended_work": [
+    "strict_no_motion_route_replay_consumer_integration",
+    "controlled_route_execution_evidence_only_after_explicit_safety_gate"
+  ],
+  "do_not_repeat_next": [
+    "helper_export_readiness_packaging",
+    "route_intent_packaging",
+    "historic_21_57_stdout_tail_wrapper",
+    "O5_support_only_readiness_without_external_evidence"
+  ],
+  "required_anchor_text": [
+    "2026-07-13 04:02",
+    "28-pose",
+    "fresh_28_pose_structured_material_consumed",
+    "historic_21_57_artifact_primary_source=false",
+    "route_execution_success=false",
+    "delivery_success=false",
+    "hil_pass=false",
+    "safe_to_control=false",
+    "不归档",
+    "O5"
+  ],
+  "verification": {
+    "product_required_commands_status": "passed",
+    "structured_assertion_stdout": "product_o3_28_pose_consumer_acceptance_ok",
+    "jsonl_structured_pose_events": 28,
+    "csv_route_rows": 28
+  }
+}

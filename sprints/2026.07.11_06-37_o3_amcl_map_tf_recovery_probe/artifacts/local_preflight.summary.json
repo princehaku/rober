@@ -1,0 +1,39 @@
+{
+  "blocked_reason": "dry_run_template_only_not_proven",
+  "delivery_success": false,
+  "hil_pass": false,
+  "primary_actions_enabled": false,
+  "robot_control_executed": false,
+  "root_cause_summary": {
+    "amcl_pose_topic": {
+      "blocked_reasons": [],
+      "publisher_count": null,
+      "topic_type": null
+    },
+    "lifecycle_states": [],
+    "localization_blocked_reasons": [],
+    "managed_map_yaml": {
+      "blocked_reasons": [],
+      "configured_basename": null,
+      "summary": null
+    },
+    "map_topic": {
+      "blocked_reasons": [],
+      "publisher_count": null,
+      "topic_type": null
+    },
+    "nav2_refresh": {
+      "blocked_reasons": [],
+      "path_generated": null,
+      "path_generation_succeeded": null,
+      "path_point_count": null,
+      "root_causes": [],
+      "status": null
+    },
+    "tf_failures": []
+  },
+  "route_execution_success": false,
+  "safe_to_control": false,
+  "schema": "trashbot.board_field_evidence_preflight.v1",
+  "status": "dry_run_template_only_not_proven"
+}

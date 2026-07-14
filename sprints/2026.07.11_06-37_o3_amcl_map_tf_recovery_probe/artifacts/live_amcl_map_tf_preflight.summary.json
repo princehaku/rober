@@ -1,0 +1,87 @@
+{
+  "blocked_reason": "blocked_refresh_readback_failed",
+  "delivery_success": false,
+  "hil_pass": false,
+  "primary_actions_enabled": false,
+  "robot_control_executed": false,
+  "root_cause_summary": {
+    "amcl_pose_topic": {
+      "blocked_reasons": [
+        "blocked_amcl_pose_topic_type_missing"
+      ],
+      "publisher_count": null,
+      "topic_type": null
+    },
+    "lifecycle_states": [
+      {
+        "blocked_reasons": [
+          "blocked_map_server_lifecycle_unavailable"
+        ],
+        "node": "/map_server",
+        "state": null
+      },
+      {
+        "blocked_reasons": [
+          "blocked_amcl_lifecycle_unavailable"
+        ],
+        "node": "/amcl",
+        "state": null
+      },
+      {
+        "blocked_reasons": [
+          "blocked_planner_server_lifecycle_unavailable"
+        ],
+        "node": "/planner_server",
+        "state": null
+      }
+    ],
+    "localization_blocked_reasons": [
+      "blocked_amcl_pose_not_observed",
+      "blocked_map_to_odom_not_observed",
+      "blocked_map_to_base_link_not_observed"
+    ],
+    "managed_map_yaml": {
+      "blocked_reasons": [],
+      "configured_basename": "trashbot_map.yaml",
+      "summary": {
+        "basename": "trashbot_map.yaml",
+        "exists": true,
+        "sha256_prefix": "1b54312162c6",
+        "size_bytes": 148
+      }
+    },
+    "map_topic": {
+      "blocked_reasons": [
+        "blocked_map_topic_type_missing"
+      ],
+      "publisher_count": null,
+      "topic_type": null
+    },
+    "nav2_refresh": {
+      "blocked_reasons": [],
+      "path_generated": null,
+      "path_generation_succeeded": null,
+      "path_point_count": null,
+      "root_causes": [],
+      "status": "refresh_command_failed"
+    },
+    "tf_failures": [
+      {
+        "blocked_reason": "blocked_map_to_odom_not_observed",
+        "failure_summary": "[INFO] [1783724419.728962441] [tf2_echo]: Waiting for transform map ->  odom: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist",
+        "name": "map->odom",
+        "observed": false
+      },
+      {
+        "blocked_reason": "blocked_map_to_base_link_not_observed",
+        "failure_summary": "[INFO] [1783724429.948851552] [tf2_echo]: Waiting for transform map ->  base_link: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist",
+        "name": "map->base_link",
+        "observed": false
+      }
+    ]
+  },
+  "route_execution_success": false,
+  "safe_to_control": false,
+  "schema": "trashbot.board_field_evidence_preflight.v1",
+  "status": "blocked_refresh_readback_failed"
+}

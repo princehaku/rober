@@ -1,0 +1,107 @@
+{
+  "schema": "trashbot.o3.product_acceptance_live_upper_computer_same_window_evidence.v1",
+  "acceptance_status": "accepted_current_window_live_planner_material_with_dynamic_source_gap_no_okr_lift",
+  "accepted_at": "2026-07-14T19:45:00+08:00",
+  "proof_boundary": "robot_runtime_o3_strict_no_motion_localization_planner_evidence_only",
+  "source_artifacts": {
+    "capture_envelope": "artifacts/algorithm/live_upper_computer_same_window_evidence.raw.json",
+    "remote_raw": "artifacts/algorithm/live_upper_computer_same_window_evidence.remote.raw.json",
+    "implementation_record": "tech-done.md"
+  },
+  "target": {
+    "host": "192.168.1.11",
+    "port": 37878,
+    "remote_hostname": "op-z3-b6.home"
+  },
+  "execution": {
+    "preflight_exit_code": 0,
+    "capture_exit_code": 0,
+    "scp_exit_code": 0,
+    "fresh_live_attempted": true,
+    "historic_artifact_used_as_current_live_proof": false,
+    "helper_sha256_match": true
+  },
+  "hardware_read_only_audit": {
+    "existing_lifecycle_disambiguated_current_150000": true,
+    "serial_port": "/dev/ttyACM0",
+    "current_baudrate": 150000,
+    "baudrate_readback_source": "driver_diagnostics_latest.serial.serial_baudrate",
+    "synthetic_reference_baudrate": 230400,
+    "synthetic_reference_trusted_current": false,
+    "managed_lidar_policy": "reuse_existing_lidar_lifecycle_no_driver_start",
+    "managed_lidar_driver_started_by_helper": false
+  },
+  "accepted_facts": {
+    "scan_once_observed": true,
+    "amcl_pose_observed": true,
+    "map_server_active": true,
+    "amcl_active": true,
+    "map_to_odom_tf2_chain_observed": true,
+    "path_generation_attempted": true,
+    "path_generated": true,
+    "path_point_count": 28,
+    "path_structured_pose_count": 28,
+    "path_generation_boundary": "explicit_opt_in_compute_path_to_pose_cli_action_no_motion"
+  },
+  "dynamic_source_contract": {
+    "map_to_odom_dynamic_observed": true,
+    "map_to_odom_dynamic_source_observed": false,
+    "source_class": "missing",
+    "tf_readiness_blocked_reason": "/tf_topic_missing",
+    "exact_root_cause": "map_to_odom_dynamic_source_not_observed_in_tf_source_inventory",
+    "clean_same_window_contract_met": false
+  },
+  "safety": {
+    "safe_to_control": false,
+    "publishes_cmd_vel": false,
+    "calls_base_manual": false,
+    "uses_base_uart": false,
+    "robot_control_executed": false,
+    "route_execution_success": false,
+    "delivery_success": false,
+    "hil_pass": false
+  },
+  "comparison_and_credit_boundary": {
+    "fresh_current_window_robot_runtime_material": true,
+    "stronger_than_2026_07_14_13_38_readiness_wrapper": true,
+    "planner_only_path_class_already_credited_on_2026_07_12": true,
+    "fresh_28_pose_planner_material_already_observed_on_2026_07_13": true,
+    "duplicate_planner_class_not_recredited": true,
+    "route_execution_proven": false,
+    "delivery_or_operator_acceptance_proven": false,
+    "current_live_hil_proven": false,
+    "o5_external_success_proven": false
+  },
+  "okr_decision": {
+    "direction": "continue_o3_live_evidence_but_close_dynamic_source_inventory_before_motion",
+    "o1_percentage_before": "约 94%",
+    "o1_percentage_after": "约 94%",
+    "o5_percentage": "约 85%",
+    "o6_o7_percentage": "约 93%",
+    "main_percentage_adjusted": false,
+    "kr_archival_decision": "不归档",
+    "reason": "本轮是真实 current-window robot-runtime material，但 planner-only path class 已于 7 月 12 日计分，7 月 13 日已有 fresh 28-pose material；dynamic /tf source inventory 仍缺，且 route execution、delivery、current HIL、safe-to-control 与 O5 external success 均未证明。"
+  },
+  "next_actions": [
+    {
+      "priority": 1,
+      "owner": "robot-algorithm-engineer",
+      "action": "执行有界 no-motion /tf source inventory，复验 map_to_odom dynamic source、publisher endpoint、timestamp 与 freshness，不重复整套 planner wrapper。"
+    },
+    {
+      "priority": 2,
+      "owner": "robot-software-engineer",
+      "action": "修正 lifecycle status synthetic 230400 metadata 与 current diagnostics 150000 的语义冲突，保持只读 status 不把 reference 候选呈现为 current。"
+    },
+    {
+      "priority": 3,
+      "owner": "robot-hardware-engineer",
+      "action": "仅在 explicit operator approval 后采 current live stop/HIL；未获批准前不得进入真实运动或底盘 UART。"
+    },
+    {
+      "priority": 4,
+      "owner": "robot-algorithm-engineer",
+      "action": "只有 dynamic source inventory clean、current HIL 与 explicit operator approval 同时存在后，才进入 controlled route execution evidence。"
+    }
+  ]
+}

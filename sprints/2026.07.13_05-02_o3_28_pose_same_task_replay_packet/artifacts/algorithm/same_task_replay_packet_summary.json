@@ -1,0 +1,134 @@
+{
+  "artifact_boundary": "software_proof_o3_o1_strict_no_motion_same_task_route_replay_packet_only",
+  "calls_base_manual": false,
+  "checks": [
+    {
+      "detail": "04:02 summary, route_csv, and replay_jsonl were all read and cross-checked",
+      "name": "summary_route_csv_replay_jsonl_consumed",
+      "status": "pass"
+    },
+    {
+      "detail": "task_id and route_intent_id match across summary, CSV, JSONL, and output packet",
+      "name": "same_task_identity",
+      "status": "pass"
+    },
+    {
+      "detail": "28 route CSV rows and 28 replay JSONL events matched order/source_index/pose fields",
+      "name": "twenty_eight_pose_readback",
+      "status": "pass"
+    },
+    {
+      "detail": "route/control/delivery/HIL/safe-to-control fields remain false",
+      "name": "strict_no_motion_safety_fields",
+      "status": "pass"
+    }
+  ],
+  "consumer_integration_status": "pass_strict_no_motion_same_task_replay_packet",
+  "delivery_success": false,
+  "generated_at_utc": "2026-07-12T21:16:51Z",
+  "hil_pass": false,
+  "next_evidence_required": [
+    "controlled route execution record before route_execution_success can change",
+    "delivery/operator acceptance evidence before delivery_success can change",
+    "current live HIL evidence before hil_pass or safe_to_control can change",
+    "O6/O7 archive/readback should be a separate cross-owner sprint if needed"
+  ],
+  "packet_id": "packet_o3_28_pose_same_task_replay_7d57826142b0c79c",
+  "packet_jsonl_ref": "sprints/2026.07.13_05-02_o3_28_pose_same_task_replay_packet/artifacts/algorithm/same_task_route_replay_packet.jsonl",
+  "path_structured_pose_count": 28,
+  "pose_readback": {
+    "first_pose": {
+      "frame_id": "map",
+      "order": 0,
+      "orientation": {
+        "qw": 1.0,
+        "qx": 0.0,
+        "qy": 0.0,
+        "qz": 0.0
+      },
+      "position": {
+        "x": 0.07615115310756959,
+        "y": 0.2500000037252903,
+        "z": 0.0
+      },
+      "primary_source_artifact": "sprints/2026.07.13_03-00_o3_live_full_structured_path_capture/artifacts/algorithm/live_full_structured_path_capture_summary.json",
+      "source_index": 0,
+      "stamp": {
+        "nanosec": 997523160,
+        "sec": 1783883494
+      }
+    },
+    "frame_ids": [
+      "map"
+    ],
+    "last_pose": {
+      "frame_id": "map",
+      "order": 27,
+      "orientation": {
+        "qw": 1.0,
+        "qx": 0.0,
+        "qy": 0.0,
+        "qz": 0.0
+      },
+      "position": {
+        "x": 0.8,
+        "y": 0.2500000037252903,
+        "z": 0.0
+      },
+      "primary_source_artifact": "sprints/2026.07.13_03-00_o3_live_full_structured_path_capture/artifacts/algorithm/live_full_structured_path_capture_summary.json",
+      "source_index": 27,
+      "stamp": {
+        "nanosec": 997523160,
+        "sec": 1783883494
+      }
+    },
+    "source_index_max": 27,
+    "source_index_min": 0
+  },
+  "publishes_cmd_vel": false,
+  "rejected_claims": [
+    "route_execution_success",
+    "fixed_route_movement",
+    "NavigateToPose",
+    "controller_bt_execution",
+    "publishes_cmd_vel",
+    "calls_base_manual",
+    "uses_base_uart",
+    "delivery_success",
+    "hil_pass",
+    "safe_to_control",
+    "production_external_evidence"
+  ],
+  "replay_jsonl_event_count": 28,
+  "replay_jsonl_ref": "sprints/2026.07.13_04-02_o3_28_pose_fixed_route_consumer/artifacts/algorithm/fixed_route_28_pose_replay.jsonl",
+  "rg_acceptance_anchors": [
+    "same-task",
+    "28-pose",
+    "route_csv",
+    "replay_jsonl",
+    "route_execution_success=false",
+    "delivery_success=false",
+    "hil_pass=false",
+    "safe_to_control=false",
+    "robot-algorithm-engineer"
+  ],
+  "robot_control_executed": false,
+  "route_csv_ref": "sprints/2026.07.13_04-02_o3_28_pose_fixed_route_consumer/artifacts/algorithm/fixed_route_28_pose_route.csv",
+  "route_csv_row_count": 28,
+  "route_execution_success": false,
+  "route_intent_id": "route_intent_20260713_0402_from_20260713_0300_28_pose_structured_path",
+  "safe_to_control": false,
+  "same_task_identity_verified": true,
+  "same_task_replay_packet_ready": true,
+  "schema": "trashbot.o3.same_task_route_replay_packet.v1",
+  "source_fingerprints": {
+    "replay_jsonl_sha256": "530941a7ecb4768f6583cda4abca0d9bc92715ea0266fc96e83d3a860a0400b5",
+    "route_csv_sha256": "61b4020c93f01e595df4608e8b42545ce1b1d04eaff8798db55b0dda2aae7601",
+    "summary_sha256": "9948414e1a46b6e78de5503a06d634e24c5e96aff38c1f4c7d756bd20eb0dc93"
+  },
+  "source_summary_ref": "sprints/2026.07.13_04-02_o3_28_pose_fixed_route_consumer/artifacts/algorithm/fixed_route_28_pose_consumer_summary.json",
+  "strict_no_motion": true,
+  "strict_no_motion_boundary": "offline same-task replay packet only; no NavigateToPose, controller/BT, /cmd_vel, /api/base/manual, WAVE ROVER UART, route execution, delivery, HIL, or safe-to-control path was used",
+  "task_id": "task_o3_28_pose_fixed_route_consumer_20260713_0402",
+  "uses_base_uart": false
+}

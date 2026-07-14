@@ -1,0 +1,80 @@
+{
+  "schema": "trashbot.product.acceptance.controlled_route_execution_gate_record.v1",
+  "acceptance_status": "accepted_fail_closed_controlled_route_execution_gate_record_only",
+  "acceptance_time_cst": "2026-07-13 07:25:13 CST",
+  "sprint": "sprints/2026.07.13_07-07_o3_controlled_route_execution_gate_record/",
+  "product_owner": "product-okr-owner",
+  "implementation_owner": "robot-algorithm-engineer",
+  "algorithm_artifact": "sprints/2026.07.13_07-07_o3_controlled_route_execution_gate_record/artifacts/algorithm/controlled_route_execution_gate_record.json",
+  "proof_boundary": "software_proof_o3_o1_fail_closed_controlled_route_execution_gate_record_only",
+  "accepted_as": [
+    "O3/O1 fail-closed controlled route execution gate record only",
+    "controlled route execution input packet validation before any live control"
+  ],
+  "accepted_facts": {
+    "schema": "trashbot.o3.controlled_route_execution_gate_record.v1",
+    "controlled_route_execution_gate_status": "fail_closed_input_packet_validated",
+    "identity_validation_status": "pass_exact_same_task_identity",
+    "count_validation_status": "pass_exact_28_28_28",
+    "source_hash_validation_status": "pass_exact_source_hashes",
+    "packet_id": "packet_o3_28_pose_same_task_replay_7d57826142b0c79c",
+    "task_id": "task_o3_28_pose_fixed_route_consumer_20260713_0402",
+    "route_intent_id": "route_intent_20260713_0402_from_20260713_0300_28_pose_structured_path",
+    "route_csv_row_count": 28,
+    "replay_jsonl_event_count": 28,
+    "packet_jsonl_event_count": 28,
+    "path_structured_pose_count": 28
+  },
+  "source_hashes": {
+    "summary_sha256": "9948414e1a46b6e78de5503a06d634e24c5e96aff38c1f4c7d756bd20eb0dc93",
+    "route_csv_sha256": "61b4020c93f01e595df4608e8b42545ce1b1d04eaff8798db55b0dda2aae7601",
+    "replay_jsonl_sha256": "530941a7ecb4768f6583cda4abca0d9bc92715ea0266fc96e83d3a860a0400b5"
+  },
+  "fixed_false_fields": {
+    "route_execution_success": false,
+    "delivery_success": false,
+    "hil_pass": false,
+    "safe_to_control": false,
+    "robot_control_executed": false,
+    "publishes_cmd_vel": false,
+    "calls_base_manual": false,
+    "uses_base_uart": false
+  },
+  "control_guard_anchors": [
+    "no /cmd_vel",
+    "no /api/base/manual",
+    "no NavigateToPose",
+    "no WAVE ROVER UART"
+  ],
+  "rejected_claims": [
+    "route execution",
+    "fixed-route movement",
+    "NavigateToPose",
+    "controller/BT execution",
+    "/cmd_vel",
+    "/api/base/manual",
+    "WAVE ROVER UART",
+    "delivery/operator acceptance",
+    "current live HIL",
+    "safe-to-control",
+    "O5 production/external evidence"
+  ],
+  "okr_decision": {
+    "main_percentages_changed": false,
+    "o5_percent": "~85%",
+    "o1_percent": "~94%",
+    "o6_percent": "~93%",
+    "o7_percent": "~93%",
+    "kr_archived": false,
+    "kr_archive_decision": "不归档"
+  },
+  "next_owner": "robot-algorithm-engineer",
+  "next_required_evidence": [
+    "explicit safety operator approval or equivalent recorded safety gate",
+    "current live HIL / stop path / controlled environment material",
+    "bounded route execution command plan with abort criteria",
+    "LiDAR/localization/TF readiness in the same live window",
+    "Nav2/controller execution result",
+    "delivery/operator acceptance evidence"
+  ]
+}

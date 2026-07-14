@@ -1,0 +1,125 @@
+{
+  "blocked_reasons": [],
+  "capture_gate_status": "ready_for_mock_stop_hil_capture_gate_not_hil",
+  "cmd_vel_published": false,
+  "delivery_success": false,
+  "evidence_boundary": "software_proof_o1_live_stop_hil_capture_gate_mock_only",
+  "fixed_false_field_summary": [
+    "hil_pass=false",
+    "safe_to_control=false",
+    "route_execution_success=false",
+    "delivery_success=false",
+    "robot_control_executed=false",
+    "nonzero_motion_command_sent=false",
+    "uses_real_uart=false"
+  ],
+  "generated_at": "2026-07-13T02:28:51.541152Z",
+  "hil_pass": false,
+  "manual_endpoint_called": false,
+  "manual_endpoint_forbidden": "/api/base/manual",
+  "mock_http_stop_call": {
+    "called": true,
+    "json_body": {
+      "manual_endpoint_called": false,
+      "mode": "mock",
+      "nonzero_motion_command_sent": false,
+      "reason": "operator_gated_stop_hil_capture_gate"
+    },
+    "method": "POST",
+    "network_transport": "mock_in_memory_no_socket",
+    "path": "/api/base/stop",
+    "response": {
+      "body": {
+        "mock": true,
+        "ok": true
+      },
+      "status_code": 200
+    },
+    "shape_valid": true
+  },
+  "mock_http_stop_call_shape_valid": true,
+  "mock_http_stop_called": true,
+  "mock_mode": true,
+  "mock_t1001_feedback": {
+    "after_stop_lr_zero": true,
+    "blocked_reasons": [],
+    "fixture_path": "sprints/2026.07.13_10-12_o1_live_stop_hil_capture_gate/artifacts/hardware/mock_t1001_feedback.json",
+    "fixture_used": true,
+    "invalid_json_count": 0,
+    "invalid_t1001_count": 0,
+    "non_t1001_count": 0,
+    "observed_t1001_count": 1,
+    "samples": [
+      {
+        "left_speed": 0.0,
+        "phase": "after_stop",
+        "pitch": 0.0,
+        "right_speed": 0.0,
+        "roll": 0.0,
+        "vendor_frame": {
+          "L": 0,
+          "R": 0,
+          "T": 1001,
+          "p": 0,
+          "r": 0,
+          "v": 12.3,
+          "y": "null"
+        },
+        "voltage": 12.3,
+        "yaw": null
+      }
+    ]
+  },
+  "mock_t1001_feedback_fixture_used": true,
+  "nav2_controller_called": false,
+  "navigate_to_pose_sent": false,
+  "next_live_required_evidence": [
+    "explicit_operator_approval",
+    "current_live_stop_call",
+    "same_window_uart_zero_stop_frame_capture",
+    "post_stop_t1001_lr_zero",
+    "hil_acceptance",
+    "same_window_lidar_localization_tf_readiness",
+    "current_live_nav2_controller_result",
+    "delivery_operator_acceptance"
+  ],
+  "no_motion_control_guard": [
+    "no real /api/base/stop",
+    "no /api/base/manual",
+    "no /cmd_vel",
+    "no NavigateToPose",
+    "no Nav2 controller/BT",
+    "no WAVE ROVER UART",
+    "no nonzero motion"
+  ],
+  "nonzero_motion_command_sent": false,
+  "operator_approval_mode": "mock_token_only",
+  "operator_approval_token_recorded": "not_recorded",
+  "operator_approval_token_required": "MOCK_APPROVED_STOP_ONLY",
+  "operator_approval_token_valid": true,
+  "proof_boundary": "software_proof_o1_live_stop_hil_capture_gate_mock_only",
+  "real_stop_endpoint_called": false,
+  "real_uart_opened": false,
+  "robot_control_executed": false,
+  "route_execution_success": false,
+  "safe_to_control": false,
+  "schema": "trashbot.o1.current_stop_hil_capture_gate.v1",
+  "stop_endpoint": "/api/base/stop",
+  "t1001_feedback_zero_after_stop_fixture": true,
+  "uses_real_uart": false,
+  "vendor_source_summary": {
+    "base_feedback_frame": "WAVE_ROVER_V0.9/json_cmd.h defines FEEDBACK_BASE_INFO as T=1001.",
+    "stop_boundary": "Current artifact validates mock POST /api/base/stop shape and fixture T=1001 L/R zero only; it is not a live ESP32 ACK or HIL acceptance.",
+    "uart_json_framing": "ugv_rpi/base_ctrl.py writes json.dumps(data) + newline as UTF-8; WAVE_ROVER_V0.9/uart_ctrl.h parses a complete JSON command on newline.",
+    "vendor_rpi_uart_reference": "ugv_rpi/base_ctrl.py example uses /dev/ttyAMA0 at 115200 and comments /dev/serial0 at 115200; this helper does not hardcode an Orange Pi UART."
+  },
+  "vendor_sources": [
+    "docs/vendor/VENDOR_INDEX.md",
+    "docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py",
+    "docs/vendor/waveshare_wave_rover/ugv_rpi/config.yaml",
+    "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h",
+    "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/uart_ctrl.h",
+    "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/movtion_module.h",
+    "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/ugv_config.h"
+  ]
+}

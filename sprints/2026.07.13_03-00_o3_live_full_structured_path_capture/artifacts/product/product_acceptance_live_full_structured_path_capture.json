@@ -1,0 +1,52 @@
+{
+  "schema": "trashbot.product_acceptance.live_full_structured_path_capture.v1",
+  "sprint": "sprints/2026.07.13_03-00_o3_live_full_structured_path_capture/",
+  "accepted_at": "2026-07-13 03:00 +0800",
+  "product_status": "accepted_additive_strict_no_motion_fresh_structured_path_material",
+  "accepted_as": [
+    "O3/O1 strict no-motion fresh structured planner path material",
+    "current live 28-pose structured path artifact for fixed-route or route-intent consumer input"
+  ],
+  "rejected_as": [
+    "original_21_pose_target_achieved",
+    "route_execution",
+    "fixed_route_movement",
+    "NavigateToPose",
+    "controller_or_bt_execution",
+    "cmd_vel_publication",
+    "base_manual_call",
+    "wave_rover_uart_use",
+    "delivery_or_operator_acceptance",
+    "hil_pass",
+    "safe_to_control",
+    "o5_production_or_external_evidence"
+  ],
+  "artifact": "sprints/2026.07.13_03-00_o3_live_full_structured_path_capture/artifacts/algorithm/live_full_structured_path_capture_summary.json",
+  "fresh_live_artifact_used": true,
+  "historic_21_57_artifact_reused_as_live_proof": false,
+  "path_generated": true,
+  "expected_path_structured_pose_count": 21,
+  "path_structured_pose_count": 28,
+  "path_point_count": 28,
+  "expected_target_met": false,
+  "blocked_reason": "expected_21_structured_pose_count_not_reproduced_current_live_returned_28_after_map_bounds_adaptation",
+  "safety_flags": {
+    "safe_to_control": false,
+    "publishes_cmd_vel": false,
+    "calls_base_manual": false,
+    "uses_base_uart": false,
+    "robot_control_executed": false,
+    "route_execution_success": false,
+    "delivery_success": false,
+    "hil_pass": false
+  },
+  "okr_decision": {
+    "o5_percent": "about_85_percent_unchanged",
+    "o1_percent": "about_94_percent_unchanged_additive_material_only",
+    "o6_percent": "about_93_percent_unchanged",
+    "o7_percent": "about_93_percent_unchanged",
+    "kr_archive": "do_not_archive"
+  },
+  "next_owner": "robot-algorithm-engineer",
+  "next_recommended_action": "consume_the_28_pose_structured_artifact_in_fixed_route_or_route_intent_consumer_or_rerun_with_current_live_amcl_map_state_without_map_bounds_adaptation"
+}

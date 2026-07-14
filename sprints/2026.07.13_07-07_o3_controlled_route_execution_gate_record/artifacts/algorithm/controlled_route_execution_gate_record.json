@@ -1,0 +1,147 @@
+{
+  "artifact_boundary": "software_proof_o3_o1_fail_closed_controlled_route_execution_gate_record_only",
+  "blocked_reasons": [
+    "controlled route execution was not run in this sprint",
+    "explicit safety operator approval or equivalent recorded safety gate is missing",
+    "current live HIL, stop path, and controlled environment material are missing",
+    "Nav2/controller execution result is missing; only same-task replay packet material is validated",
+    "delivery/operator acceptance evidence is missing"
+  ],
+  "calls_base_manual": false,
+  "checks": [
+    {
+      "detail": "packet_id, task_id, and route_intent_id match the 05:02 same-task replay packet",
+      "name": "packet_identity",
+      "status": "pass"
+    },
+    {
+      "detail": "route CSV, replay JSONL, packet JSONL, and path structured pose counts are 28",
+      "name": "source_counts",
+      "status": "pass"
+    },
+    {
+      "detail": "05:02 source fingerprints match tech-plan constants and recomputed file hashes",
+      "name": "source_hashes",
+      "status": "pass"
+    },
+    {
+      "detail": "no /cmd_vel, no /api/base/manual, no NavigateToPose, no WAVE ROVER UART",
+      "name": "control_guard",
+      "status": "pass"
+    }
+  ],
+  "controlled_route_execution_gate_status": "fail_closed_input_packet_validated",
+  "count_validation_status": "pass_exact_28_28_28",
+  "delivery_success": false,
+  "dry_run_execution_readiness_status": "blocked_manual_safety_review_required",
+  "fixed_false_fields": {
+    "calls_base_manual": false,
+    "delivery_success": false,
+    "hil_pass": false,
+    "publishes_cmd_vel": false,
+    "robot_control_executed": false,
+    "route_execution_success": false,
+    "safe_to_control": false,
+    "uses_base_uart": false
+  },
+  "generated_at_utc": "2026-07-12T23:19:05Z",
+  "hil_pass": false,
+  "identity_validation_status": "pass_exact_same_task_identity",
+  "missing_live_execution_prerequisites": [
+    "explicit safety operator approval or equivalent recorded safety gate",
+    "current live HIL / stop path / controlled environment material",
+    "bounded route execution command plan with abort criteria",
+    "LiDAR/localization/TF readiness in the same live window",
+    "Nav2/controller execution result, not only planner path or replay packet proof",
+    "delivery/operator acceptance evidence before delivery_success can change"
+  ],
+  "next_live_command_gate": {
+    "forbidden_in_this_artifact": [
+      "no /cmd_vel",
+      "no /api/base/manual",
+      "no NavigateToPose",
+      "no WAVE ROVER UART"
+    ],
+    "required_before_any_control": [
+      "explicit safety operator approval or equivalent recorded safety gate",
+      "current live HIL / stop path / controlled environment material",
+      "bounded route execution command plan with abort criteria",
+      "LiDAR/localization/TF readiness in the same live window",
+      "Nav2/controller execution result, not only planner path proof",
+      "delivery/operator acceptance evidence before delivery_success can change"
+    ],
+    "status": "blocked_until_new_controlled_live_execution_sprint"
+  },
+  "no_motion_control_guard": [
+    "no /cmd_vel",
+    "no /api/base/manual",
+    "no NavigateToPose",
+    "no WAVE ROVER UART"
+  ],
+  "owner_role": "robot-algorithm-engineer",
+  "packet_id": "packet_o3_28_pose_same_task_replay_7d57826142b0c79c",
+  "packet_jsonl_event_count": 28,
+  "packet_jsonl_ref": "sprints/2026.07.13_05-02_o3_28_pose_same_task_replay_packet/artifacts/algorithm/same_task_route_replay_packet.jsonl",
+  "packet_summary_ref": "sprints/2026.07.13_05-02_o3_28_pose_same_task_replay_packet/artifacts/algorithm/same_task_replay_packet_summary.json",
+  "packet_summary_sha256": "2814089b8c394a3a0866824a9712b0304298c19c81c0318c7cac0837ed22d659",
+  "path_structured_pose_count": 28,
+  "proof_boundary": "software_proof_o3_o1_fail_closed_controlled_route_execution_gate_record_only",
+  "publishes_cmd_vel": false,
+  "rejected_claims": [
+    "route_execution_success",
+    "fixed_route_movement",
+    "NavigateToPose",
+    "controller_bt_execution",
+    "publishes_cmd_vel",
+    "calls_base_manual",
+    "uses_base_uart",
+    "delivery_success",
+    "hil_pass",
+    "safe_to_control",
+    "robot_control_executed",
+    "production_external_evidence"
+  ],
+  "replay_jsonl_event_count": 28,
+  "replay_jsonl_ref": "sprints/2026.07.13_04-02_o3_28_pose_fixed_route_consumer/artifacts/algorithm/fixed_route_28_pose_replay.jsonl",
+  "rg_acceptance_anchors": [
+    "controlled_route_execution_gate_record",
+    "packet_o3_28_pose_same_task_replay_7d57826142b0c79c",
+    "route_execution_success=false",
+    "safe_to_control=false",
+    "no /cmd_vel",
+    "no /api/base/manual",
+    "no NavigateToPose",
+    "no WAVE ROVER UART",
+    "robot-algorithm-engineer"
+  ],
+  "robot_control_executed": false,
+  "route_csv_ref": "sprints/2026.07.13_04-02_o3_28_pose_fixed_route_consumer/artifacts/algorithm/fixed_route_28_pose_route.csv",
+  "route_csv_row_count": 28,
+  "route_execution_success": false,
+  "route_intent_id": "route_intent_20260713_0402_from_20260713_0300_28_pose_structured_path",
+  "safe_to_control": false,
+  "same_task_identity_verified": true,
+  "same_task_replay_packet_ready": true,
+  "schema": "trashbot.o3.controlled_route_execution_gate_record.v1",
+  "source_fingerprints": {
+    "computed": {
+      "replay_jsonl_sha256": "530941a7ecb4768f6583cda4abca0d9bc92715ea0266fc96e83d3a860a0400b5",
+      "route_csv_sha256": "61b4020c93f01e595df4608e8b42545ce1b1d04eaff8798db55b0dda2aae7601",
+      "summary_sha256": "9948414e1a46b6e78de5503a06d634e24c5e96aff38c1f4c7d756bd20eb0dc93"
+    },
+    "expected": {
+      "replay_jsonl_sha256": "530941a7ecb4768f6583cda4abca0d9bc92715ea0266fc96e83d3a860a0400b5",
+      "route_csv_sha256": "61b4020c93f01e595df4608e8b42545ce1b1d04eaff8798db55b0dda2aae7601",
+      "summary_sha256": "9948414e1a46b6e78de5503a06d634e24c5e96aff38c1f4c7d756bd20eb0dc93"
+    },
+    "from_packet_summary": {
+      "replay_jsonl_sha256": "530941a7ecb4768f6583cda4abca0d9bc92715ea0266fc96e83d3a860a0400b5",
+      "route_csv_sha256": "61b4020c93f01e595df4608e8b42545ce1b1d04eaff8798db55b0dda2aae7601",
+      "summary_sha256": "9948414e1a46b6e78de5503a06d634e24c5e96aff38c1f4c7d756bd20eb0dc93"
+    }
+  },
+  "source_hash_validation_status": "pass_exact_source_hashes",
+  "source_summary_ref": "sprints/2026.07.13_04-02_o3_28_pose_fixed_route_consumer/artifacts/algorithm/fixed_route_28_pose_consumer_summary.json",
+  "task_id": "task_o3_28_pose_fixed_route_consumer_20260713_0402",
+  "uses_base_uart": false
+}

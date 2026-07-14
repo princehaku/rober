@@ -1,0 +1,790 @@
+{
+  "blocked_reason": "expected_21_structured_pose_count_not_reproduced_current_live_returned_28_after_map_bounds_adaptation",
+  "calls_base_manual": false,
+  "delivery_success": false,
+  "generated_at": "2026-07-12T19:17:36.631100Z",
+  "hil_pass": false,
+  "path_generated": true,
+  "path_point_count": 28,
+  "path_structured_pose_count": 28,
+  "proof": {
+    "attempted_commands": [
+      "ssh -p 37878 root@192.168.1.11 echo ssh_ok hostname date",
+      "scp -P 37878 onboard/scripts/o10_amcl_nav2_runtime_proof.py root@192.168.1.11:/root/rober/onboard/scripts/o10_amcl_nav2_runtime_proof.py",
+      "ssh -p 37878 root@192.168.1.11 python3 -m py_compile /root/rober/onboard/scripts/o10_amcl_nav2_runtime_proof.py",
+      "timeout 180 python3 /root/rober/onboard/scripts/o10_amcl_nav2_runtime_proof.py --strict-no-motion --no-base-uart --managed-runtime-opt-in --reuse-existing-lidar-lifecycle --managed-lidar-serial-port /dev/ttyACM0 --managed-lidar-serial-baudrate 150000 --initialpose-opt-in --path-generation-opt-in --output /root/rober/onboard/runtime/o3_live_full_structured_path_capture_20260713_0300.raw.json",
+      "timeout 420 python3 /root/rober/onboard/scripts/o10_amcl_nav2_runtime_proof.py --strict-no-motion --no-base-uart --managed-runtime-opt-in --reuse-existing-lidar-lifecycle --managed-lidar-serial-port /dev/ttyACM0 --managed-lidar-serial-baudrate 150000 --initialpose-opt-in --path-generation-opt-in --path-generation-timeout-s 30 --output /root/rober/onboard/runtime/o3_live_full_structured_path_capture_20260713_0300_retry.raw.json",
+      "timeout 420 python3 /root/rober/onboard/scripts/o10_amcl_nav2_runtime_proof.py --strict-no-motion --no-base-uart --managed-runtime-opt-in --reuse-existing-lidar-lifecycle --managed-lidar-serial-port /dev/ttyACM0 --managed-lidar-serial-baudrate 150000 --initialpose-opt-in --initialpose-x -0.17263047657814312 --initialpose-y 0.04965488959436613 --initialpose-yaw 0.1431336057643779 --path-generation-opt-in --path-generation-timeout-s 30 --path-goal-x 0.8 --path-goal-y 0.0 --path-goal-yaw 0.0 --output /root/rober/onboard/runtime/o3_live_full_structured_path_capture_20260713_0300_pinned_start.raw.json"
+    ],
+    "blocked_reason": "expected_21_structured_pose_count_not_reproduced_current_live_returned_28_after_map_bounds_adaptation",
+    "board_runtime": {
+      "amcl_active": true,
+      "amcl_pose_observed": true,
+      "helper_sha256": "56215a5325b29fe8c08c4d36b761f237d299d99d473f85a210f996ddad44df33",
+      "host": "root@192.168.1.11",
+      "hostname": "op-z3-b6.home",
+      "initialpose_published": true,
+      "managed_lidar_driver_started_by_helper": false,
+      "managed_lidar_policy": "reuse_existing_lidar_lifecycle_no_driver_start",
+      "managed_lidar_serial_baudrate": 150000,
+      "managed_lidar_serial_port": "/dev/ttyACM0",
+      "managed_runtime_map_yaml": "/root/rober/onboard/runtime/maps/trashbot_map.yaml",
+      "managed_runtime_started": true,
+      "map_once_observed": true,
+      "map_server_active": true,
+      "planner_server_active": true,
+      "port": 37878,
+      "scan_once_observed": true
+    },
+    "calls_base_manual": false,
+    "delivery_success": false,
+    "evidence_type": "robot_runtime_material",
+    "expected_path_point_count": 21,
+    "expected_path_structured_pose_count": 21,
+    "first_successful_capture": {
+      "adaptation_boundary": "map_bounds_adapted_no_motion_planner_probe",
+      "adapted_from_map_bounds": true,
+      "artifact": "sprints/2026.07.13_03-00_o3_live_full_structured_path_capture/artifacts/algorithm/live_full_structured_path_capture.raw.json",
+      "goal_x": 0.8,
+      "goal_y": 0.2500000037252903,
+      "original_goal": {
+        "x": 0.8,
+        "y": 0.0,
+        "yaw": 0.0
+      },
+      "path_point_count": 28,
+      "path_structured_pose_count": 28,
+      "start_x": 0.021298760736211068,
+      "start_y": 0.2500000037252903,
+      "status": "nav2_no_motion_path_generation_runtime_observed"
+    },
+    "fresh_live_artifact_used": true,
+    "hil_pass": false,
+    "historic_21_57_artifact_reused_as_live_proof": false,
+    "next_evidence_required": "rerun with current live AMCL/map state that does not require map_bounds_adapted_no_motion_planner_probe, or update the fixed-route consumer acceptance to consume a fresh 28-pose structured path instead of the prior expected 21-pose shape",
+    "not_proven": [
+      "path_structured_pose_count_21",
+      "route_execution_success",
+      "navigate_to_pose_execution",
+      "controller_or_bt_execution",
+      "cmd_vel_publication",
+      "base_manual_call",
+      "wave_rover_uart_use",
+      "delivery_success",
+      "hil_pass",
+      "safe_to_control_true",
+      "production_external_evidence"
+    ],
+    "path_generated": true,
+    "path_generation_attempted": true,
+    "path_generation_boundary": "explicit_opt_in_compute_path_to_pose_cli_action_no_motion",
+    "path_generation_requested": true,
+    "path_generation_service_name": "/compute_path_to_pose",
+    "path_goal_request": {
+      "adaptation_boundary": "map_bounds_adapted_no_motion_planner_probe",
+      "adapted_from_map_bounds": true,
+      "goal_frame_id": "map",
+      "goal_x": 0.8,
+      "goal_y": 0.2500000037252903,
+      "goal_yaw": 0.0,
+      "map_goal_diagnostics": {
+        "adaptation_boundary": "map_bounds_adapted_no_motion_planner_probe",
+        "adapted": true,
+        "adapted_goal": {
+          "x": 0.8,
+          "y": 0.2500000037252903
+        },
+        "adapted_start": {
+          "x": 0.021298760736211068,
+          "y": 0.2500000037252903
+        },
+        "bounds": {
+          "max_x": 7.5761512648662785,
+          "max_y": 5.650000084191561,
+          "min_x": -5.473848929593875,
+          "min_y": 0.0
+        },
+        "cell_counts": {
+          "free": 425,
+          "occupied": 45,
+          "other": 0,
+          "unknown": 29023
+        },
+        "goal_in_bounds": true,
+        "map_analysis_ok": true,
+        "original_goal": {
+          "x": 0.8,
+          "y": 0.0
+        },
+        "original_start": {
+          "x": 0.021298760736211068,
+          "y": -0.049107587686457475
+        },
+        "start_in_bounds": false
+      },
+      "original_goal": {
+        "x": 0.8,
+        "y": 0.0,
+        "yaw": 0.0
+      },
+      "planner_id": "",
+      "start_source": "amcl_pose_observed_for_planner_only_start",
+      "start_x": 0.021298760736211068,
+      "start_y": 0.2500000037252903,
+      "start_yaw": -0.21736642145032162,
+      "use_start": true
+    },
+    "path_point_count": 28,
+    "path_preview_frame_id": "map",
+    "path_preview_point_count": 28,
+    "path_preview_points": [
+      {
+        "frame_id": "map",
+        "source_index": 0,
+        "x": 0.0762,
+        "y": 0.25
+      },
+      {
+        "frame_id": "map",
+        "source_index": 1,
+        "x": 0.1012,
+        "y": 0.25
+      },
+      {
+        "frame_id": "map",
+        "source_index": 2,
+        "x": 0.1262,
+        "y": 0.25
+      },
+      {
+        "frame_id": "map",
+        "source_index": 3,
+        "x": 0.1512,
+        "y": 0.25
+      },
+      {
+        "frame_id": "map",
+        "source_index": 4,
+        "x": 0.1762,
+        "y": 0.25
+      },
+      {
+        "frame_id": "map",
+        "source_index": 5,
+        "x": 0.2012,
+        "y": 0.25
+      },
+      {
+        "frame_id": "map",
+        "source_index": 6,
+        "x": 0.2262,
+        "y": 0.25
+      },
+      {
+        "frame_id": "map",
+        "source_index": 7,
+        "x": 0.2512,
+        "y": 0.25
+      },
+      {
+        "frame_id": "map",
+        "source_index": 8,
+        "x": 0.2762,
+        "y": 0.25
+      },
+      {
+        "frame_id": "map",
+        "source_index": 9,
+        "x": 0.3012,
+        "y": 0.25
+      },
+      {
+        "frame_id": "map",
+        "source_index": 10,
+        "x": 0.3262,
+        "y": 0.25
+      },
+      {
+        "frame_id": "map",
+        "source_index": 11,
+        "x": 0.3512,
+        "y": 0.25
+      },
+      {
+        "frame_id": "map",
+        "source_index": 12,
+        "x": 0.3762,
+        "y": 0.25
+      },
+      {
+        "frame_id": "map",
+        "source_index": 13,
+        "x": 0.4012,
+        "y": 0.25
+      },
+      {
+        "frame_id": "map",
+        "source_index": 14,
+        "x": 0.4262,
+        "y": 0.25
+      },
+      {
+        "frame_id": "map",
+        "source_index": 15,
+        "x": 0.4512,
+        "y": 0.25
+      },
+      {
+        "frame_id": "map",
+        "source_index": 16,
+        "x": 0.4762,
+        "y": 0.25
+      },
+      {
+        "frame_id": "map",
+        "source_index": 17,
+        "x": 0.5012,
+        "y": 0.25
+      },
+      {
+        "frame_id": "map",
+        "source_index": 18,
+        "x": 0.5262,
+        "y": 0.25
+      },
+      {
+        "frame_id": "map",
+        "source_index": 19,
+        "x": 0.5512,
+        "y": 0.25
+      },
+      {
+        "frame_id": "map",
+        "source_index": 20,
+        "x": 0.5762,
+        "y": 0.25
+      },
+      {
+        "frame_id": "map",
+        "source_index": 21,
+        "x": 0.6012,
+        "y": 0.25
+      },
+      {
+        "frame_id": "map",
+        "source_index": 22,
+        "x": 0.6262,
+        "y": 0.25
+      },
+      {
+        "frame_id": "map",
+        "source_index": 23,
+        "x": 0.6512,
+        "y": 0.25
+      },
+      {
+        "frame_id": "map",
+        "source_index": 24,
+        "x": 0.6762,
+        "y": 0.25
+      },
+      {
+        "frame_id": "map",
+        "source_index": 25,
+        "x": 0.7262,
+        "y": 0.25
+      },
+      {
+        "frame_id": "map",
+        "source_index": 26,
+        "x": 0.7762,
+        "y": 0.25
+      },
+      {
+        "frame_id": "map",
+        "source_index": 27,
+        "x": 0.8,
+        "y": 0.25
+      }
+    ],
+    "path_preview_source_point_count": 28,
+    "path_structured_pose_count": 28,
+    "path_structured_pose_count_reached_expected_21": false,
+    "path_structured_poses": [
+      {
+        "frame_id": "map",
+        "qw": 1.0,
+        "qx": 0.0,
+        "qy": 0.0,
+        "qz": 0.0,
+        "source_index": 0,
+        "stamp": {
+          "nanosec": 997523160,
+          "sec": 1783883494
+        },
+        "x": 0.07615115310756959,
+        "y": 0.2500000037252903,
+        "z": 0.0
+      },
+      {
+        "frame_id": "map",
+        "qw": 1.0,
+        "qx": 0.0,
+        "qy": 0.0,
+        "qz": 0.0,
+        "source_index": 1,
+        "stamp": {
+          "nanosec": 997523160,
+          "sec": 1783883494
+        },
+        "x": 0.10115115348009862,
+        "y": 0.2500000037252903,
+        "z": 0.0
+      },
+      {
+        "frame_id": "map",
+        "qw": 1.0,
+        "qx": 0.0,
+        "qy": 0.0,
+        "qz": 0.0,
+        "source_index": 2,
+        "stamp": {
+          "nanosec": 997523160,
+          "sec": 1783883494
+        },
+        "x": 0.12615115385262765,
+        "y": 0.2500000037252903,
+        "z": 0.0
+      },
+      {
+        "frame_id": "map",
+        "qw": 1.0,
+        "qx": 0.0,
+        "qy": 0.0,
+        "qz": 0.0,
+        "source_index": 3,
+        "stamp": {
+          "nanosec": 997523160,
+          "sec": 1783883494
+        },
+        "x": 0.15115115422515668,
+        "y": 0.2500000037252903,
+        "z": 0.0
+      },
+      {
+        "frame_id": "map",
+        "qw": 1.0,
+        "qx": 0.0,
+        "qy": 0.0,
+        "qz": 0.0,
+        "source_index": 4,
+        "stamp": {
+          "nanosec": 997523160,
+          "sec": 1783883494
+        },
+        "x": 0.1761511545976857,
+        "y": 0.2500000037252903,
+        "z": 0.0
+      },
+      {
+        "frame_id": "map",
+        "qw": 1.0,
+        "qx": 0.0,
+        "qy": 0.0,
+        "qz": 0.0,
+        "source_index": 5,
+        "stamp": {
+          "nanosec": 997523160,
+          "sec": 1783883494
+        },
+        "x": 0.20115115497021474,
+        "y": 0.2500000037252903,
+        "z": 0.0
+      },
+      {
+        "frame_id": "map",
+        "qw": 1.0,
+        "qx": 0.0,
+        "qy": 0.0,
+        "qz": 0.0,
+        "source_index": 6,
+        "stamp": {
+          "nanosec": 997523160,
+          "sec": 1783883494
+        },
+        "x": 0.22615115534274377,
+        "y": 0.2500000037252903,
+        "z": 0.0
+      },
+      {
+        "frame_id": "map",
+        "qw": 1.0,
+        "qx": 0.0,
+        "qy": 0.0,
+        "qz": 0.0,
+        "source_index": 7,
+        "stamp": {
+          "nanosec": 997523160,
+          "sec": 1783883494
+        },
+        "x": 0.2511511557152728,
+        "y": 0.2500000037252903,
+        "z": 0.0
+      },
+      {
+        "frame_id": "map",
+        "qw": 1.0,
+        "qx": 0.0,
+        "qy": 0.0,
+        "qz": 0.0,
+        "source_index": 8,
+        "stamp": {
+          "nanosec": 997523160,
+          "sec": 1783883494
+        },
+        "x": 0.27615115608780183,
+        "y": 0.2500000037252903,
+        "z": 0.0
+      },
+      {
+        "frame_id": "map",
+        "qw": 1.0,
+        "qx": 0.0,
+        "qy": 0.0,
+        "qz": 0.0,
+        "source_index": 9,
+        "stamp": {
+          "nanosec": 997523160,
+          "sec": 1783883494
+        },
+        "x": 0.30115115646033086,
+        "y": 0.2500000037252903,
+        "z": 0.0
+      },
+      {
+        "frame_id": "map",
+        "qw": 1.0,
+        "qx": 0.0,
+        "qy": 0.0,
+        "qz": 0.0,
+        "source_index": 10,
+        "stamp": {
+          "nanosec": 997523160,
+          "sec": 1783883494
+        },
+        "x": 0.3261511568328599,
+        "y": 0.2500000037252903,
+        "z": 0.0
+      },
+      {
+        "frame_id": "map",
+        "qw": 1.0,
+        "qx": 0.0,
+        "qy": 0.0,
+        "qz": 0.0,
+        "source_index": 11,
+        "stamp": {
+          "nanosec": 997523160,
+          "sec": 1783883494
+        },
+        "x": 0.3511511572053889,
+        "y": 0.2500000037252903,
+        "z": 0.0
+      },
+      {
+        "frame_id": "map",
+        "qw": 1.0,
+        "qx": 0.0,
+        "qy": 0.0,
+        "qz": 0.0,
+        "source_index": 12,
+        "stamp": {
+          "nanosec": 997523160,
+          "sec": 1783883494
+        },
+        "x": 0.37615115757791795,
+        "y": 0.2500000037252903,
+        "z": 0.0
+      },
+      {
+        "frame_id": "map",
+        "qw": 1.0,
+        "qx": 0.0,
+        "qy": 0.0,
+        "qz": 0.0,
+        "source_index": 13,
+        "stamp": {
+          "nanosec": 997523160,
+          "sec": 1783883494
+        },
+        "x": 0.401151157950447,
+        "y": 0.2500000037252903,
+        "z": 0.0
+      },
+      {
+        "frame_id": "map",
+        "qw": 1.0,
+        "qx": 0.0,
+        "qy": 0.0,
+        "qz": 0.0,
+        "source_index": 14,
+        "stamp": {
+          "nanosec": 997523160,
+          "sec": 1783883494
+        },
+        "x": 0.426151158322976,
+        "y": 0.2500000037252903,
+        "z": 0.0
+      },
+      {
+        "frame_id": "map",
+        "qw": 1.0,
+        "qx": 0.0,
+        "qy": 0.0,
+        "qz": 0.0,
+        "source_index": 15,
+        "stamp": {
+          "nanosec": 997523160,
+          "sec": 1783883494
+        },
+        "x": 0.45115115869550504,
+        "y": 0.2500000037252903,
+        "z": 0.0
+      },
+      {
+        "frame_id": "map",
+        "qw": 1.0,
+        "qx": 0.0,
+        "qy": 0.0,
+        "qz": 0.0,
+        "source_index": 16,
+        "stamp": {
+          "nanosec": 997523160,
+          "sec": 1783883494
+        },
+        "x": 0.47615115906803407,
+        "y": 0.2500000037252903,
+        "z": 0.0
+      },
+      {
+        "frame_id": "map",
+        "qw": 1.0,
+        "qx": 0.0,
+        "qy": 0.0,
+        "qz": 0.0,
+        "source_index": 17,
+        "stamp": {
+          "nanosec": 997523160,
+          "sec": 1783883494
+        },
+        "x": 0.5011511594405631,
+        "y": 0.2500000037252903,
+        "z": 0.0
+      },
+      {
+        "frame_id": "map",
+        "qw": 1.0,
+        "qx": 0.0,
+        "qy": 0.0,
+        "qz": 0.0,
+        "source_index": 18,
+        "stamp": {
+          "nanosec": 997523160,
+          "sec": 1783883494
+        },
+        "x": 0.5261511598130921,
+        "y": 0.2500000037252903,
+        "z": 0.0
+      },
+      {
+        "frame_id": "map",
+        "qw": 1.0,
+        "qx": 0.0,
+        "qy": 0.0,
+        "qz": 0.0,
+        "source_index": 19,
+        "stamp": {
+          "nanosec": 997523160,
+          "sec": 1783883494
+        },
+        "x": 0.5511511601856212,
+        "y": 0.2500000037252903,
+        "z": 0.0
+      },
+      {
+        "frame_id": "map",
+        "qw": 1.0,
+        "qx": 0.0,
+        "qy": 0.0,
+        "qz": 0.0,
+        "source_index": 20,
+        "stamp": {
+          "nanosec": 997523160,
+          "sec": 1783883494
+        },
+        "x": 0.5761511605581502,
+        "y": 0.2500000037252903,
+        "z": 0.0
+      },
+      {
+        "frame_id": "map",
+        "qw": 1.0,
+        "qx": 0.0,
+        "qy": 0.0,
+        "qz": 0.0,
+        "source_index": 21,
+        "stamp": {
+          "nanosec": 997523160,
+          "sec": 1783883494
+        },
+        "x": 0.6011511609306792,
+        "y": 0.2500000037252903,
+        "z": 0.0
+      },
+      {
+        "frame_id": "map",
+        "qw": 1.0,
+        "qx": 0.0,
+        "qy": 0.0,
+        "qz": 0.0,
+        "source_index": 22,
+        "stamp": {
+          "nanosec": 997523160,
+          "sec": 1783883494
+        },
+        "x": 0.6261511613032082,
+        "y": 0.2500000037252903,
+        "z": 0.0
+      },
+      {
+        "frame_id": "map",
+        "qw": 1.0,
+        "qx": 0.0,
+        "qy": 0.0,
+        "qz": 0.0,
+        "source_index": 23,
+        "stamp": {
+          "nanosec": 997523160,
+          "sec": 1783883494
+        },
+        "x": 0.6511511616757373,
+        "y": 0.2500000037252903,
+        "z": 0.0
+      },
+      {
+        "frame_id": "map",
+        "qw": 1.0,
+        "qx": 0.0,
+        "qy": 0.0,
+        "qz": 0.0,
+        "source_index": 24,
+        "stamp": {
+          "nanosec": 997523160,
+          "sec": 1783883494
+        },
+        "x": 0.6761511620482663,
+        "y": 0.2500000037252903,
+        "z": 0.0
+      },
+      {
+        "frame_id": "map",
+        "qw": 1.0,
+        "qx": 0.0,
+        "qy": 0.0,
+        "qz": 0.0,
+        "source_index": 25,
+        "stamp": {
+          "nanosec": 997523160,
+          "sec": 1783883494
+        },
+        "x": 0.7261511627933244,
+        "y": 0.2500000037252903,
+        "z": 0.0
+      },
+      {
+        "frame_id": "map",
+        "qw": 1.0,
+        "qx": 0.0,
+        "qy": 0.0,
+        "qz": 0.0,
+        "source_index": 26,
+        "stamp": {
+          "nanosec": 997523160,
+          "sec": 1783883494
+        },
+        "x": 0.7761511635383824,
+        "y": 0.2500000037252903,
+        "z": 0.0
+      },
+      {
+        "frame_id": "map",
+        "qw": 1.0,
+        "qx": 0.0,
+        "qy": 0.0,
+        "qz": 0.0,
+        "source_index": 27,
+        "stamp": {
+          "nanosec": 997523160,
+          "sec": 1783883494
+        },
+        "x": 0.8,
+        "y": 0.2500000037252903,
+        "z": 0.0
+      }
+    ],
+    "pinned_start_capture_artifact": "sprints/2026.07.13_03-00_o3_live_full_structured_path_capture/artifacts/algorithm/live_full_structured_path_capture_pinned_start.raw.json",
+    "pinned_start_retry": {
+      "adaptation_boundary": "map_bounds_adapted_no_motion_planner_probe",
+      "adapted_from_map_bounds": true,
+      "artifact": "sprints/2026.07.13_03-00_o3_live_full_structured_path_capture/artifacts/algorithm/live_full_structured_path_capture_pinned_start.raw.json",
+      "goal_x": 0.8,
+      "goal_y": 0.2500000037252903,
+      "original_goal": {
+        "x": 0.8,
+        "y": 0.0,
+        "yaw": 0.0
+      },
+      "path_point_count": 28,
+      "path_structured_pose_count": 28,
+      "path_structured_pose_count_reached_expected_21": false,
+      "start_x": -0.3765056140278378,
+      "start_y": 0.2500000037252903,
+      "status": "nav2_no_motion_path_generation_runtime_observed"
+    },
+    "primary_capture_artifact": "sprints/2026.07.13_03-00_o3_live_full_structured_path_capture/artifacts/algorithm/live_full_structured_path_capture.raw.json",
+    "proof_boundary": "software_proof_o3_o1_strict_no_motion_live_full_structured_path_material_count_mismatch_only",
+    "publishes_cmd_vel": false,
+    "raw_proof_status": "nav2_no_motion_path_generation_runtime_observed",
+    "robot_control_executed": false,
+    "root_causes": [],
+    "route_execution_success": false,
+    "safe_to_control": false,
+    "status": "full_structured_path_generated_count_mismatch",
+    "strict_no_motion": true,
+    "timeout180_attempt": {
+      "artifact": "sprints/2026.07.13_03-00_o3_live_full_structured_path_capture/artifacts/algorithm/live_full_structured_path_capture_timeout180.partial.raw.json",
+      "path_generated": false,
+      "path_generation_attempted": false,
+      "root_causes": [
+        {
+          "layer": "Managed runtime wait",
+          "reason": "ros2_node_list_timeout"
+        },
+        {
+          "layer": "helper process",
+          "reason": "sigterm_before_final_artifact"
+        }
+      ],
+      "status": "interrupted_before_final_artifact"
+    },
+    "timeout_partial_artifact": "sprints/2026.07.13_03-00_o3_live_full_structured_path_capture/artifacts/algorithm/live_full_structured_path_capture_timeout180.partial.raw.json",
+    "uses_base_uart": false
+  },
+  "publishes_cmd_vel": false,
+  "robot_control_executed": false,
+  "route_execution_success": false,
+  "safe_to_control": false,
+  "schema": "trashbot.live_full_structured_path_capture_summary.v1",
+  "sprint": "sprints/2026.07.13_03-00_o3_live_full_structured_path_capture",
+  "uses_base_uart": false
+}

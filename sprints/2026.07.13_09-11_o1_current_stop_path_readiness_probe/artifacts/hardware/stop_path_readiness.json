@@ -1,0 +1,133 @@
+{
+  "blocked_reasons": [],
+  "cmd_vel_published": false,
+  "current_stop_path_readiness_status": "ready_for_mock_stop_only_probe_not_hil",
+  "delivery_success": false,
+  "fixed_false_field_summary": [
+    "safe_to_control=false",
+    "hil_pass=false",
+    "route_execution_success=false",
+    "delivery_success=false",
+    "robot_control_executed=false",
+    "nonzero_motion_command_sent=false"
+  ],
+  "generated_at": "2026-07-13T01:31:11.212959Z",
+  "hil_pass": false,
+  "manual_endpoint_called": false,
+  "manual_endpoint_forbidden": "/api/base/manual",
+  "mock_virtual_serial_validation": {
+    "all_frames_json_objects": true,
+    "all_frames_newline_terminated": true,
+    "all_motion_axes_zero": true,
+    "frame_count": 3,
+    "frames": [
+      {
+        "all_motion_axes_zero": true,
+        "command": {
+          "L": 0,
+          "R": 0,
+          "T": 1
+        },
+        "frame_text": "{\"T\":1,\"L\":0,\"R\":0}\n",
+        "index": 0,
+        "json_object": true,
+        "newline_terminated": true
+      },
+      {
+        "all_motion_axes_zero": true,
+        "command": {
+          "L": 0,
+          "R": 0,
+          "T": 11
+        },
+        "frame_text": "{\"T\":11,\"L\":0,\"R\":0}\n",
+        "index": 1,
+        "json_object": true,
+        "newline_terminated": true
+      },
+      {
+        "all_motion_axes_zero": true,
+        "command": {
+          "T": 13,
+          "X": 0,
+          "Z": 0
+        },
+        "frame_text": "{\"T\":13,\"X\":0,\"Z\":0}\n",
+        "index": 2,
+        "json_object": true,
+        "newline_terminated": true
+      }
+    ]
+  },
+  "nav2_controller_called": false,
+  "navigate_to_pose_called": false,
+  "next_required_evidence": [
+    "explicit_operator_approval_for_current_live_stop_hil",
+    "current_live_stop_endpoint_invocation_record",
+    "current_live_uart_frame_capture_for_zero_stop",
+    "current_live_t1001_feedback_after_stop",
+    "same_window_lidar_localization_tf_readiness",
+    "current_live_hil_acceptance_record",
+    "current_live_nav2_controller_result",
+    "delivery_operator_acceptance_record"
+  ],
+  "no_motion_control_guard": [
+    "no /api/base/manual",
+    "no /cmd_vel",
+    "no NavigateToPose",
+    "no Nav2 controller/BT",
+    "no real UART",
+    "no nonzero motion"
+  ],
+  "nonzero_motion_command_sent": false,
+  "proof_boundary": "software_proof_o1_o3_current_stop_path_readiness_probe_only",
+  "real_uart_opened": false,
+  "robot_control_executed": false,
+  "route_execution_success": false,
+  "safe_to_control": false,
+  "schema": "trashbot.o1.current_stop_path_readiness.v1",
+  "stop_endpoint": "/api/base/stop",
+  "uses_real_uart": false,
+  "vendor_source_summary": {
+    "heartbeat_boundary": "source_readback_only_not_current_live_esp32_observation",
+    "heartbeat_summary": "uart_ctrl.h/json_cmd.h refresh lastCmdRecvTime for T=1/T=11/T=13; ugv_config.h sets HEART_BEAT_DELAY=3000; movtion_module.h heartBeatCtrl calls setGoalSpeed(0,0) after timeout.",
+    "uart_json_framing": "base_ctrl.py writes json.dumps(data) + newline as UTF-8; uart_ctrl.h parses complete JSON when receivedChar == '\\n'.",
+    "vendor_rpi_uart_reference": "base_ctrl.py example uses /dev/ttyAMA0 at 115200 and comments /dev/serial0 at 115200; Orange Pi device is not hardcoded by this helper.",
+    "zero_stop_vendor_commands": [
+      "json_cmd.h CMD_SPEED_CTRL T=1 accepts L/R speed control.",
+      "json_cmd.h CMD_PWM_INPUT T=11 accepts L/R PWM input.",
+      "json_cmd.h CMD_ROS_CTRL T=13 accepts X/Z m/s and rad/s ROS control."
+    ]
+  },
+  "vendor_sources": [
+    "docs/vendor/VENDOR_INDEX.md",
+    "docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py",
+    "docs/vendor/waveshare_wave_rover/ugv_rpi/config.yaml",
+    "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h",
+    "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/uart_ctrl.h",
+    "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/movtion_module.h",
+    "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/ugv_config.h"
+  ],
+  "zero_stop_command_plan": [
+    {
+      "L": 0,
+      "R": 0,
+      "T": 1
+    },
+    {
+      "L": 0,
+      "R": 0,
+      "T": 11
+    },
+    {
+      "T": 13,
+      "X": 0,
+      "Z": 0
+    }
+  ],
+  "zero_stop_command_plan_summary": [
+    "T=1 speed control zero-stop {L=0,R=0}",
+    "T=11 PWM input zero-stop {L=0,R=0}",
+    "T=13 ROS control zero-stop {X=0,Z=0}"
+  ]
+}

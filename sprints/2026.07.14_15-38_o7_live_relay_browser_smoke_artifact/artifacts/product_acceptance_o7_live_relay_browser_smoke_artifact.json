@@ -1,0 +1,58 @@
+{
+  "schema": "trashbot.product_acceptance.o7_live_relay_browser_smoke_artifact.v1",
+  "accepted_at_cst": "2026-07-14 15:38",
+  "sprint": "sprints/2026.07.14_15-38_o7_live_relay_browser_smoke_artifact/",
+  "product_status": "accepted_support_only_no_okr_lift",
+  "accepted_proof_boundary": "software_proof_o7_live_relay_browser_smoke_artifact_only",
+  "accepted_as": [
+    "o7_live_loopback_http_socket_smoke_artifact",
+    "fail_closed_operator_console_contract_readback",
+    "stronger_than_jsdom_only_operator_dropoff_browser_artifact"
+  ],
+  "flat_okr_result": {
+    "o5_percent": "about_85",
+    "o1_percent": "about_94",
+    "o6_o7_percent": "about_93",
+    "main_percentages_changed": false,
+    "kr_archived": false,
+    "kr_archive_note": "不归档"
+  },
+  "required_artifact_fields": {
+    "schema": "trashbot.pc_tools_workstation.o7_live_relay_browser_smoke_artifact.v1",
+    "proof_boundary": "software_proof_o7_live_relay_browser_smoke_artifact_only",
+    "endpoint_transport": "live_loopback_http_socket",
+    "server_started": true,
+    "http_smoke_executed": true,
+    "browser_smoke_status": "not_run_http_only_minimum",
+    "browser_runtime": "not_configured_in_workstation_package",
+    "operator_console_schema": "trashbot.o7.operator_console.v1",
+    "cloud_operator_console_probe_schema": "trashbot.pc_tools_workstation.o7_cloud_operator_console_probe.v1",
+    "probe_status": "loaded_fail_closed_contract"
+  },
+  "fixed_false_fields": {
+    "delivery_success": false,
+    "safe_to_control": false,
+    "route_execution_success": false,
+    "hil_pass": false,
+    "robot_control_executed": false,
+    "connects_cloud_production": false
+  },
+  "rejected_claims": [
+    "browser_automation",
+    "production_cloud",
+    "public_https_tls",
+    "4g_or_sim",
+    "production_db_or_queue",
+    "oss_or_cdn",
+    "route_execution",
+    "delivery_or_operator_acceptance",
+    "hil",
+    "safe_to_control",
+    "robot_control_proof",
+    "cmd_vel",
+    "api_base_manual",
+    "navigate_to_pose",
+    "wave_rover_uart"
+  ],
+  "product_decision": "accept_with_browser_gap_and_flat_okr"
+}

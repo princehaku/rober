@@ -89,6 +89,19 @@ class FakeEmptySerial(FakeSerial):
         self.read_chunks = []
 
 
+class FakeReadExceptionSerial(FakeSerial):
+    def read(self, size):
+        # 复现 pyserial 在 USB ready-to-read 但返回空数据时抛出的 runtime 异常形态。
+        raise RuntimeError("device reports readiness to read but returned no data")
+
+
+class FakeNoiseOnlySerial(FakeSerial):
+    def __init__(self, *, port, baudrate, timeout):
+        super().__init__(port=port, baudrate=baudrate, timeout=timeout)
+        # 有 raw bytes 但没有 0x54/0xAA55 完整帧，用来区分 wrong-baud/协议不匹配。
+        self.read_chunks = [b"\x00\x01not-a-lidar-packet"]
+
+
 class LidarDriverStubsTest(unittest.TestCase):
     def setUp(self):
         FakeSerial.instances = []
@@ -190,6 +203,36 @@ class LidarDriverStubsTest(unittest.TestCase):
         self.assertEqual(diagnostics["empty_read_count"], 2)
         self.assertEqual(diagnostics["bytes_read_total"], 0)
         self.assertEqual(diagnostics["packet_count_total"], 0)
+
+    def test_serial_session_diagnostics_reports_read_exception_hint(self):
+        config = LidarRuntimeConfig(serial_port="/dev/ttyACM0", serial_baudrate=230400)
+        session = LidarSerialSession(config, serial_factory=FakeReadExceptionSerial)
+
+        session.open()
+        with self.assertRaises(RuntimeError):
+            session.read_packets()
+        diagnostics = session.diagnostics()
+        session.close()
+
+        self.assertEqual(diagnostics["read_exception_count"], 1)
+        self.assertEqual(diagnostics["last_error"], "serial_read_failed")
+        self.assertIn("RuntimeError", diagnostics["last_exception_type"])
+        self.assertIn("device reports readiness", diagnostics["last_exception_message_hint"])
+        self.assertFalse(diagnostics["raw_bytes_observed"])
+
+    def test_serial_session_diagnostics_reports_raw_bytes_without_packets(self):
+        config = LidarRuntimeConfig(serial_port="/dev/ttyACM0", serial_baudrate=150000)
+        session = LidarSerialSession(config, serial_factory=FakeNoiseOnlySerial)
+
+        session.open()
+        self.assertEqual(session.read_packets(), [])
+        diagnostics = session.diagnostics()
+        session.close()
+
+        self.assertTrue(diagnostics["raw_bytes_observed"])
+        self.assertGreater(diagnostics["bytes_read_total"], 0)
+        self.assertEqual(diagnostics["packet_count_total"], 0)
+        self.assertIn("6e 6f 74", diagnostics["last_chunk_preview_hex"])
 
     def test_start_write_failure_closes_serial_handle(self):
         config = LidarRuntimeConfig(serial_port="/dev/ttyACM0", serial_baudrate=230400)

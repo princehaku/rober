@@ -1,0 +1,85 @@
+{
+  "schema": "trashbot.o10.daemon_safe_graph_readback.manual_summary.v1",
+  "strict_no_motion": true,
+  "source": "manual_ssh_command_sequence",
+  "command_sequence": [
+    "ros2 daemon status",
+    "ros2 daemon stop",
+    "ros2 daemon start",
+    "timeout 8 ros2 node list",
+    "timeout 8 ros2 topic list"
+  ],
+  "results": {
+    "ros2_daemon_status": {
+      "returncode": 0,
+      "stdout_summary": "The daemon is running"
+    },
+    "ros2_daemon_stop": {
+      "returncode": 0,
+      "stdout_summary": "The daemon has been stopped"
+    },
+    "ros2_daemon_start": {
+      "returncode": 0,
+      "stdout_summary": "The daemon has been started"
+    },
+    "ros2_node_list": {
+      "returncode": 0,
+      "observed_nodes": [
+        "/amcl",
+        "/global_costmap/global_costmap",
+        "/lidar_driver",
+        "/lifecycle_manager",
+        "/managed_static_tf_broadcaster",
+        "/planner_server",
+        "/static_transform_publisher_KYH9CFMLpqyhDOdj",
+        "/transform_listener_impl_aaaacd5d2300",
+        "/transform_listener_impl_aaaaf0110eb0"
+      ]
+    },
+    "ros2_topic_list": {
+      "returncode": 0,
+      "observed_topics": [
+        "/amcl/transition_event",
+        "/amcl_pose",
+        "/battery",
+        "/bond",
+        "/cmd_vel",
+        "/diagnostics",
+        "/global_costmap/costmap",
+        "/global_costmap/costmap_raw",
+        "/global_costmap/costmap_updates",
+        "/global_costmap/footprint",
+        "/global_costmap/global_costmap/transition_event",
+        "/global_costmap/published_footprint",
+        "/imu/data",
+        "/initialpose",
+        "/lidar/raw_packet",
+        "/map",
+        "/map_server/transition_event",
+        "/odom",
+        "/parameter_events",
+        "/particle_cloud",
+        "/plan",
+        "/planner_server/transition_event",
+        "/rosout",
+        "/scan",
+        "/tf",
+        "/tf_static"
+      ]
+    }
+  },
+  "primary_conclusion": "manual_daemon_safe_graph_readback_recovered_graph_visibility",
+  "next_step": "return_to_managed_lifecycle_and_localization_gate_without_motion",
+  "evidence_boundary": {
+    "path_generation_attempted": false,
+    "path_generated": false,
+    "safe_to_control": false,
+    "publishes_cmd_vel": false,
+    "calls_base_manual": false,
+    "robot_control_executed": false,
+    "route_execution_success": false,
+    "delivery_success": false,
+    "hil_pass": false,
+    "uses_base_uart": false
+  }
+}

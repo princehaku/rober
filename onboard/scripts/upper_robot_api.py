@@ -271,6 +271,8 @@ LIDAR_VENDOR_SOURCES = [
     "docs/vendor/lidar_pkg_ros2-main/launch/lidar.launch.py",
     "docs/vendor/lidar_pkg_ros2-main/scripts/99-lidar.rules",
 ]
+LIDAR_VENDOR_REFERENCE_BAUDRATE = 230400
+LIDAR_HISTORICAL_FIELD_BAUDRATE_CANDIDATE = 150000
 
 
 def now_ms() -> int:
@@ -2941,6 +2943,149 @@ def _extract_flag_value(argv: list[str], flag: str) -> str | None:
         if item.startswith(f"{flag}="):
             return item.split("=", 1)[1]
     return None
+
+
+def parse_lidar_baudrate(value: Any) -> int | None:
+    """把多来源 baudrate 归一成正整数；非法值不能参与 current readback。"""
+    if isinstance(value, bool) or value is None:
+        return None
+    try:
+        parsed = int(str(value).strip())
+    except (TypeError, ValueError):
+        return None
+    return parsed if 0 < parsed <= 4_000_000 else None
+
+
+def radar_baudrate_from_command_info(command_info: dict[str, Any] | None) -> int | None:
+    """只从已解析 argv 读取 `--serial-baudrate`，避免从整段命令字符串做脆弱匹配。"""
+    if not isinstance(command_info, dict) or command_info.get("error"):
+        return None
+    argv = command_info.get("argv")
+    if not isinstance(argv, list):
+        return None
+    return parse_lidar_baudrate(_extract_flag_value([str(item) for item in argv], "--serial-baudrate"))
+
+
+def build_radar_baudrate_readback(
+    *,
+    lifecycle_status_readback: dict[str, Any],
+    driver_diagnostics_latest: dict[str, Any],
+    start_command_info: dict[str, Any],
+    scan_proof_runtime_command_info: dict[str, Any],
+    radar_start_command: str | None,
+    lidar_scan_proof_runtime_command: str | None,
+) -> dict[str, Any]:
+    """选择 `/api/radar/status` current baudrate，并把 stale/reference 候选完整暴露。"""
+    lifecycle_latest = lifecycle_status_readback.get("latest_result")
+    lifecycle_latest = lifecycle_latest if isinstance(lifecycle_latest, dict) else {}
+    diagnostics_serial = driver_diagnostics_latest.get("serial")
+    diagnostics_serial = diagnostics_serial if isinstance(diagnostics_serial, dict) else {}
+    diagnostics_runtime = driver_diagnostics_latest.get("runtime")
+    diagnostics_runtime = diagnostics_runtime if isinstance(diagnostics_runtime, dict) else {}
+    candidates: list[dict[str, Any]] = []
+
+    def add(source: str, value: Any, kind: str, *, static_default: bool = False) -> None:
+        baudrate = parse_lidar_baudrate(value)
+        if baudrate is None:
+            return
+        candidates.append(
+            {
+                "source": source,
+                "baudrate": baudrate,
+                "kind": kind,
+                "trusted_current": False,
+                "status": "candidate",
+                "static_default": static_default,
+            }
+        )
+
+    add("lifecycle_status_readback.baudrate", lifecycle_status_readback.get("baudrate"), "lifecycle_status")
+    add(
+        "lifecycle_status_readback.serial_baudrate",
+        lifecycle_status_readback.get("serial_baudrate"),
+        "lifecycle_status",
+    )
+    add("lifecycle_status_readback.latest_result.baudrate", lifecycle_latest.get("baudrate"), "lifecycle_status")
+    add(
+        "lifecycle_status_readback.latest_result.serial_baudrate",
+        lifecycle_latest.get("serial_baudrate"),
+        "lifecycle_status",
+    )
+    add(
+        "driver_diagnostics_latest.serial.serial_baudrate",
+        diagnostics_serial.get("serial_baudrate"),
+        "driver_diagnostics",
+    )
+    add(
+        "driver_diagnostics_latest.serial.baudrate",
+        diagnostics_serial.get("baudrate"),
+        "driver_diagnostics",
+    )
+    add(
+        "driver_diagnostics_latest.runtime.serial_baudrate",
+        diagnostics_runtime.get("serial_baudrate"),
+        "driver_diagnostics",
+    )
+    add(
+        "controls.start.command.argv",
+        radar_baudrate_from_command_info(start_command_info),
+        "control_command",
+        static_default=radar_start_command == DEFAULT_RADAR_START_COMMAND,
+    )
+    add(
+        "controls.scan_proof_refresh.runtime_command.argv",
+        radar_baudrate_from_command_info(scan_proof_runtime_command_info),
+        "control_command",
+        static_default=not bool(lidar_scan_proof_runtime_command and lidar_scan_proof_runtime_command.strip()),
+    )
+
+    current_evidence_values = {
+        item["baudrate"]
+        for item in candidates
+        if item["kind"] in {"driver_diagnostics", "control_command"} and not item["static_default"]
+    }
+    for item in candidates:
+        if item["kind"] == "lifecycle_status":
+            # status 脚本历史上会把 vendor/reference 230400 当成默认字段；和 current command
+            # 或 diagnostics 冲突时必须只当 drift 证据，不能覆盖真实运行窗口。
+            if item["baudrate"] == LIDAR_VENDOR_REFERENCE_BAUDRATE and item["baudrate"] not in current_evidence_values:
+                item["status"] = (
+                    "reference_conflict_not_current"
+                    if current_evidence_values
+                    else "reference_only_not_current"
+                )
+                continue
+            item["trusted_current"] = True
+            item["status"] = "trusted_current_candidate"
+            continue
+        if item["kind"] == "driver_diagnostics":
+            item["trusted_current"] = driver_diagnostics_latest.get("status") == "loaded"
+            item["status"] = "trusted_current_candidate" if item["trusted_current"] else "diagnostics_not_loaded"
+            continue
+        if item["kind"] == "control_command":
+            item["trusted_current"] = not item["static_default"]
+            item["status"] = (
+                "trusted_current_candidate"
+                if item["trusted_current"]
+                else "static_default_not_current_readback"
+            )
+
+    selected = next((item for item in candidates if item["trusted_current"]), None)
+    reference_conflict = any(str(item.get("status", "")).endswith("not_current") for item in candidates)
+    return {
+        "baudrate": selected["baudrate"] if selected else None,
+        "baudrate_readback_source": selected["source"] if selected else "unknown",
+        "baudrate_readback_status": (
+            "current_with_reference_conflict"
+            if selected and reference_conflict
+            else "current"
+            if selected
+            else "unknown_no_current_readback"
+        ),
+        "baudrate_candidates": candidates,
+        "vendor_reference_baudrate": LIDAR_VENDOR_REFERENCE_BAUDRATE,
+        "historical_field_baudrate_candidate": LIDAR_HISTORICAL_FIELD_BAUDRATE_CANDIDATE,
+    }
 
 
 def _is_lidar_serial_path(path: str) -> bool:
@@ -8825,6 +8970,20 @@ class UpperRobotApi:
         continuous_window_observed = continuity_window_status == "latest_proof_fresh_while_lifecycle_running"
         continuous_scan_status = continuity_window_status
         continuous_blocked_reasons = [] if continuous_window_observed else list(dict.fromkeys(continuity_blocked_reasons or ["scan_continuity_not_observed"]))
+        start_command_info = command_config_info("ROBER_RADAR_START_COMMAND", self.radar_start_command)
+        stop_command_info = command_config_info("ROBER_RADAR_STOP_COMMAND", self.radar_stop_command)
+        scan_proof_runtime_command_info = command_config_info(
+            "ROBER_LIDAR_SCAN_PROOF_RUNTIME_COMMAND",
+            self.lidar_scan_proof_runtime_command,
+        )
+        baudrate_readback = build_radar_baudrate_readback(
+            lifecycle_status_readback=lifecycle_status_readback,
+            driver_diagnostics_latest=driver_diagnostics_latest,
+            start_command_info=start_command_info,
+            scan_proof_runtime_command_info=scan_proof_runtime_command_info,
+            radar_start_command=self.radar_start_command,
+            lidar_scan_proof_runtime_command=self.lidar_scan_proof_runtime_command,
+        )
         return {
             "schema": f"{SCHEMA}.radar_status",
             "generated_at_ms": now_ms(),
@@ -8853,7 +9012,12 @@ class UpperRobotApi:
             "dev_lidar": describe_path("/dev/lidar"),
             "observed_lidar_port": "/dev/ttyACM0" if lidar_observed else None,
             "observed_lidar_port_info": tty_acm0,
-            "baudrate": 230400,
+            "baudrate": baudrate_readback["baudrate"],
+            "baudrate_readback_source": baudrate_readback["baudrate_readback_source"],
+            "baudrate_readback_status": baudrate_readback["baudrate_readback_status"],
+            "baudrate_candidates": baudrate_readback["baudrate_candidates"],
+            "vendor_reference_baudrate": baudrate_readback["vendor_reference_baudrate"],
+            "historical_field_baudrate_candidate": baudrate_readback["historical_field_baudrate_candidate"],
             "start_command_hex": "a5 60",
             "stop_command_hex": "a5 00 a5 65 a5 65",
             "candidates": candidates,
@@ -8871,13 +9035,13 @@ class UpperRobotApi:
             "controls": {
                 "start": {
                     "endpoint": ROUTE_PATHS["radar_start"],
-                    "command": command_config_info("ROBER_RADAR_START_COMMAND", self.radar_start_command),
+                    "command": start_command_info,
                     "recommended_command": DEFAULT_RADAR_START_COMMAND,
                     "allowed_runtime_script": SAFE_RADAR_LIFECYCLE_SCRIPT,
                 },
                 "stop": {
                     "endpoint": ROUTE_PATHS["radar_stop"],
-                    "command": command_config_info("ROBER_RADAR_STOP_COMMAND", self.radar_stop_command),
+                    "command": stop_command_info,
                     "recommended_command": DEFAULT_RADAR_STOP_COMMAND,
                     "allowed_runtime_script": SAFE_RADAR_LIFECYCLE_SCRIPT,
                 },
@@ -8886,10 +9050,7 @@ class UpperRobotApi:
                     "mode": "driver_diagnostics",
                     "legacy_mode": "legacy_ros2_cli",
                     "artifact": lidar_scan_proof_artifact_info(self.lidar_scan_proof_artifact_path),
-                    "runtime_command": command_config_info(
-                        "ROBER_LIDAR_SCAN_PROOF_RUNTIME_COMMAND",
-                        self.lidar_scan_proof_runtime_command,
-                    ),
+                    "runtime_command": scan_proof_runtime_command_info,
                     "runtime_warmup_s": self.lidar_scan_proof_runtime_warmup_s,
                     "allowed_runtime_script": SAFE_LIDAR_RUNTIME_SCRIPT,
                     "starts_driver": False,
@@ -8910,6 +9071,9 @@ class UpperRobotApi:
             "sends_base_motion_commands": False,
             "calls_base_manual": False,
             "publishes_cmd_vel": False,
+            "uses_base_uart": False,
+            "route_execution_success": False,
+            "hil_pass": False,
             **proof_flags(),
         }
 
@@ -9572,6 +9736,9 @@ class UpperRobotApi:
         proof = latest.get("latest_result", {}).get("proof") if isinstance(latest.get("latest_result"), dict) else {}
         proof_status = proof.get("status") if isinstance(proof, dict) else "not_proven"
         latest_result = latest.get("latest_result") if isinstance(latest.get("latest_result"), dict) else {}
+        # refresh 允许 helper 在 no-motion 边界内短暂拉起 managed runtime。
+        # readback 必须显式回传这个事实，避免 body opt-in 与结果层状态打架。
+        managed_runtime_started = bool(proof.get("managed_runtime_started")) if isinstance(proof, dict) else False
         # collector 可能把 evidence_type 放在顶层或 proof 内；两处都缺失时必须保守 blocked。
         evidence_type = latest_proof_value(latest_result, "evidence_type") or "blocked_with_root_cause"
         return software_guard_payload(
@@ -9610,7 +9777,7 @@ class UpperRobotApi:
                 "calls_base_manual": False,
                 "sends_base_motion_commands": False,
                 "starts_ros2": bool(body.get("managed_runtime_opt_in") is True),
-                "starts_nav2": False,
+                "starts_nav2": managed_runtime_started,
                 "robot_control_executed": False,
                 "safe_to_control": False,
                 "hil_pass": False,

@@ -5,6 +5,7 @@ import json
 import math
 import os
 import pathlib
+import re
 import socket
 import sqlite3
 import tempfile
@@ -125,6 +126,11 @@ O6_CLEAN_BASELINE_NAV2_PATH_MATERIAL_SCHEMA = "trashbot.o6.clean_baseline_nav2_p
 O6_CLEAN_BASELINE_NAV2_PATH_MATERIAL_PROOF_SCOPE = (
     "software_proof_clean_baseline_nav2_path_material_only"
 )
+PC_LIVE_NAV2_EXECUTION_MATERIAL_SCHEMA = "trashbot.pc_live_nav2_execution_material.v1"
+O6_PC_LIVE_NAV2_EXECUTION_MATERIAL_SCHEMA = "trashbot.o6.pc_live_nav2_execution_material.v1"
+O6_PC_LIVE_NAV2_EXECUTION_MATERIAL_PROOF_SCOPE = (
+    "software_proof_pc_live_nav2_execution_material_only"
+)
 LOCALIZATION_PATH_MATERIAL_READBACK_SCHEMA = (
     "trashbot.localization_path_material_readback.v1"
 )
@@ -139,6 +145,29 @@ SAME_TASK_ROUTE_EXECUTION_MATERIAL_PACKET_SCHEMA = (
 )
 O6_SAME_TASK_ROUTE_EXECUTION_MATERIAL_PACKET_SCHEMA = (
     "trashbot.o6.same_task_route_execution_material_packet.v1"
+)
+SAME_TASK_REPLAY_PACKET_SOURCE_SCHEMA = "trashbot.o3.same_task_route_replay_packet.v1"
+O6_SAME_TASK_REPLAY_PACKET_READBACK_SCHEMA = (
+    "trashbot.o6.same_task_replay_packet_readback.v1"
+)
+CONTROLLED_ROUTE_EXECUTION_GATE_RECORD_SOURCE_SCHEMA = (
+    "trashbot.o3.controlled_route_execution_gate_record.v1"
+)
+BOUNDED_ROUTE_COMMAND_PLAN_SOURCE_SCHEMA = "trashbot.o3.bounded_route_command_plan.v1"
+O6_BOUNDED_ROUTE_EXECUTION_GATE_MATERIAL_SCHEMA = (
+    "trashbot.o6.bounded_route_execution_gate_material.v1"
+)
+O6_BOUNDED_ROUTE_TERMINAL_RESULT_MATERIAL_SCHEMA = (
+    "trashbot.o6.bounded_route_terminal_result_material.v1"
+)
+O5_BOUNDED_ROUTE_TERMINAL_RESULT_BRIDGE_SCHEMA = (
+    "trashbot.o5.bounded_route_terminal_result_bridge.v1"
+)
+O6_PHONE_BROWSER_TERMINAL_MATERIAL_SCHEMA = (
+    "trashbot.o6.phone_browser_terminal_material.v1"
+)
+O6_PHONE_BROWSER_TERMINAL_MATERIAL_PROOF_SCOPE = (
+    "software_proof_o6_o7_phone_browser_terminal_material_intake_only"
 )
 O6_CLOUD_EXTERNAL_PROBE_READBACK_SCHEMA = "trashbot.o6.cloud_external_probe_readback.v1"
 O6_CLOUD_DB_QUEUE_EXTERNAL_PROBE_READBACK_SCHEMA = (
@@ -186,6 +215,9 @@ O6_ARCHIVE_MAX_METADATA_BYTES = 8 * 1024
 O6_ARCHIVE_MAX_METADATA_DEPTH = 3
 O6_ARCHIVE_MAX_METADATA_ITEMS = 32
 O6_ARCHIVE_MAX_EVIDENCE_REF_LENGTH = 512
+O6_ARCHIVE_TASK_QUERY_FILTERS_PROOF_SCOPE = "software_proof_o6_archive_task_query_filters_only"
+O6_ARCHIVE_TASK_QUERY_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$")
+O6_ARCHIVE_TASK_QUERY_DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 O6_ARCHIVE_ALLOWED_EVENT_TYPES = {
     "perception.detected_object",
     "route.frame",
@@ -195,6 +227,10 @@ O6_ARCHIVE_ALLOWED_EVENT_TYPES = {
     "task.failure",
     "task.recovery",
     "operator.note",
+    "operator.dropoff_acceptance",
+    "voice.tts_draft",
+    "voice.speaker_ack",
+    "voice.speaker_failure",
 }
 O6_ARCHIVE_ALLOWED_EVIDENCE_TYPES = {
     "camera_frame",
@@ -238,6 +274,82 @@ O6_SAME_TASK_FIELD_MATERIAL_PACKET_PROOF_SCOPE = (
 O6_SAME_TASK_ROUTE_EXECUTION_MATERIAL_PACKET_PROOF_SCOPE = (
     "software_proof_same_task_route_execution_material_packet_only"
 )
+O3_SAME_TASK_REPLAY_PACKET_PROOF_SCOPE = (
+    "software_proof_o3_o1_strict_no_motion_same_task_route_replay_packet_only"
+)
+O6_SAME_TASK_REPLAY_PACKET_READBACK_PROOF_SCOPE = (
+    "software_proof_o6_o7_same_task_replay_packet_readback_only"
+)
+O3_CONTROLLED_ROUTE_EXECUTION_GATE_RECORD_PROOF_SCOPE = (
+    "software_proof_o3_o1_fail_closed_controlled_route_execution_gate_record_only"
+)
+O3_BOUNDED_ROUTE_COMMAND_PLAN_PROOF_SCOPE = (
+    "software_proof_o3_o1_no_motion_bounded_route_command_plan_only"
+)
+O6_BOUNDED_ROUTE_EXECUTION_GATE_MATERIAL_PROOF_SCOPE = (
+    "software_proof_o6_o7_bounded_route_gate_material_intake_only"
+)
+O5_BOUNDED_ROUTE_TERMINAL_RESULT_BRIDGE_PROOF_SCOPE = (
+    "software_proof_o5_bounded_route_terminal_result_bridge_only"
+)
+O6_BOUNDED_ROUTE_TERMINAL_RESULT_MATERIAL_PROOF_SCOPE = (
+    "software_proof_o6_o7_bounded_route_terminal_result_intake_only"
+)
+O6_BOUNDED_ROUTE_EXECUTION_GATE_PACKET_ID = "packet_o3_28_pose_same_task_replay_7d57826142b0c79c"
+O6_BOUNDED_ROUTE_EXECUTION_GATE_TASK_ID = "task_o3_28_pose_fixed_route_consumer_20260713_0402"
+O6_BOUNDED_ROUTE_EXECUTION_GATE_ROUTE_INTENT_ID = (
+    "route_intent_20260713_0402_from_20260713_0300_28_pose_structured_path"
+)
+O6_BOUNDED_ROUTE_EXECUTION_GATE_FALSE_KEYS = {
+    "safe_to_control",
+    "delivery_success",
+    "route_execution_success",
+    "hil_pass",
+    "robot_control_executed",
+    "connects_cloud_production",
+    "primary_actions_enabled",
+    "publishes_cmd_vel",
+    "calls_base_manual",
+    "uses_base_uart",
+    "nav2_route_execution_success",
+    "controller_bt_execution",
+    "fixed_route_movement",
+}
+O6_BOUNDED_ROUTE_TERMINAL_RESULT_CODE = "mock_route_execution_completed_not_live_delivery"
+O6_BOUNDED_ROUTE_TERMINAL_RESULT_STATE = "terminal_result_recorded"
+O6_BOUNDED_ROUTE_TERMINAL_RESULT_FALSE_KEYS = {
+    "safe_to_control",
+    "delivery_success",
+    "route_execution_success",
+    "hil_pass",
+    "robot_control_executed",
+    "connects_cloud_production",
+    "primary_actions_enabled",
+    "publishes_cmd_vel",
+    "calls_base_manual",
+    "uses_base_uart",
+    "production_cloud_ready",
+    "real_world_delivery_proven",
+}
+O6_PHONE_BROWSER_TERMINAL_ALLOWED_MATERIALS = {
+    "true_phone_browser_evidence",
+    "diagnostics_mobile_safe_summary",
+    "terminal_result_summary",
+}
+O6_PHONE_BROWSER_TERMINAL_DANGEROUS_TRUE_KEYS = {
+    "safe_to_control",
+    "delivery_success",
+    "route_execution_success",
+    "hil_pass",
+    "connects_cloud_production",
+    "robot_control_executed",
+    "primary_actions_enabled",
+    "publishes_cmd_vel",
+    "calls_base_manual",
+    "uses_base_uart",
+    "real_cloud_db_connected",
+    "real_oss_connected",
+}
 O6_ROUTE_BAG_EVIDENCE_PROOF_SCOPE = (
     "software_proof_route_bag_evidence_intake_only"
 )
@@ -293,6 +405,9 @@ O6_CLOUD_LABELING_MAX_EVIDENCE_REF_LENGTH = 512
 O6_CLOUD_LABELING_MAX_NOTES_LENGTH = 512
 O6_CLOUD_LABELING_DEFAULT_LIST_LIMIT = 50
 O6_CLOUD_LABELING_MAX_LIST_LIMIT = 100
+O6_CLOUD_LABELING_QUERY_ID_MAX_LENGTH = 80
+O6_CLOUD_LABELING_QUERY_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,79}$")
+O6_CLOUD_LABELING_DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 O6_CLOUD_LABELING_EXPORT_FORMATS = {"jsonl"}
 O6_CLOUD_LABELING_EXPORT_SAMPLE_LIMIT = 5
 O6_CLOUD_LABELING_DANGEROUS_TRUE_KEYS = {
@@ -330,7 +445,12 @@ O6_CONSUMER_ALLOWED_INCLUDES = {
     "current_field_evidence_material",
     "field_operator_confirmation_material",
     "clean_baseline_nav2_path_material",
+    "pc_live_nav2_execution_material",
     "localization_path_material_readback",
+    "phone_browser_terminal_material",
+    "same_task_replay_packet_readback",
+    "bounded_route_execution_gate_material",
+    "bounded_route_terminal_result_material",
     "same_task_mission_evidence_gate",
     "same_task_route_execution_material_packet",
     "route_bag_evidence",
@@ -396,8 +516,28 @@ CLOUD_DB_QUEUE_EXTERNAL_PROBE_SCHEMA = "trashbot.cloud_db_queue_external_probe_b
 CLOUD_DB_QUEUE_EXTERNAL_PROBE_SCHEMA_VERSION = 1
 OSS_CDN_LIVE_PROBE_SCHEMA = "trashbot.oss_cdn_live_probe"
 OSS_CDN_LIVE_PROBE_SCHEMA_VERSION = 1
+CDN_TLS_EXTERNAL_EVIDENCE_SCHEMA = "trashbot.o5.cdn_tls_external_evidence.v1"
+CDN_TLS_EXTERNAL_EVIDENCE_SCHEMA_VERSION = 1
+CDN_TLS_EXTERNAL_EVIDENCE_ENV = "TRASHBOT_REMOTE_CLOUD_CDN_TLS_EXTERNAL_EVIDENCE_ARTIFACT"
+CDN_TLS_EXTERNAL_EVIDENCE_EVIDENCE_BOUNDARY = (
+    "software_proof_o5_cdn_tls_external_evidence_readiness_packet_consumption_only"
+)
 EXTERNAL_EVIDENCE_INTAKE_SCHEMA = "trashbot.external_evidence_intake"
 EXTERNAL_EVIDENCE_INTAKE_SCHEMA_VERSION = 1
+CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_SCHEMA = (
+    "trashbot.cloud_external_evidence_review_decision.v1"
+)
+CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_SCHEMA_VERSION = 1
+CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_SUMMARY_SCHEMA = (
+    "trashbot.cloud_external_evidence_review_decision_summary.v1"
+)
+CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_SUMMARY_SCHEMA_VERSION = 1
+CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_ENV = (
+    "TRASHBOT_REMOTE_CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_ARTIFACT"
+)
+CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_EVIDENCE_BOUNDARY = (
+    "software_proof_docker_cloud_external_evidence_review_decision_gate"
+)
 CLOUD_WORKER_MIGRATION_REHEARSAL_SCHEMA = "trashbot.cloud_worker_migration_rehearsal.v1"
 CLOUD_WORKER_MIGRATION_REHEARSAL_SCHEMA_VERSION = 1
 CLOUD_WORKER_MIGRATION_REHEARSAL_SUMMARY_SCHEMA = "trashbot.cloud_worker_migration_rehearsal_summary.v1"
@@ -762,6 +902,20 @@ OSS_CDN_LIVE_PROBE_NOT_PROVEN = [
     "wave_rover_or_hil",
     "delivery_success",
 ]
+CDN_TLS_EXTERNAL_EVIDENCE_NOT_PROVEN = [
+    "http_success_class",
+    "production_cloud_ready",
+    "oss_object_upload",
+    "cdn_origin_fetch",
+    "production_db_queue",
+    "production_worker_cutover",
+    "real_4g_sim",
+    "real_phone_browser_acceptance",
+    "nav2_or_fixed_route_delivery",
+    "wave_rover_or_hil",
+    "delivery_success",
+    "safe_to_control",
+]
 EXTERNAL_EVIDENCE_INTAKE_NOT_PROVEN = [
     "real_cloud",
     "real_https_tls",
@@ -780,6 +934,22 @@ EXTERNAL_EVIDENCE_INTAKE_NOT_PROVEN = [
     "nav2_or_fixed_route_delivery",
     "wave_rover_or_hil",
     "delivery_success",
+]
+CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_NOT_PROVEN = [
+    "software_proof",
+    "not_proven",
+    "public_https_tls_success",
+    "oss_cdn_live_traffic",
+    "production_db_queue_external_success",
+    "production_worker_cutover",
+    "real_4g_sim",
+    "true_phone_browser_proof",
+    "verified_terminal_result",
+    "route_execution",
+    "delivery_success",
+    "hil",
+    "safe_to_control",
+    "no OKR percentage lift",
 ]
 CLOUD_WORKER_MIGRATION_REHEARSAL_NOT_PROVEN = [
     "real_production_db_connectivity",
@@ -922,6 +1092,7 @@ PHONE_SAFE_KEY_EXCEPTIONS = {
 PHONE_SAFE_FALSE_ONLY_KEYS = {
     # 固定 false 的能力边界字段需要保留给 PC probe，但任何 true 值都必须被脱敏过滤掉。
     "hardware_probe",
+    "publishes_cmd_vel",
     "reads_hardware",
 }
 
@@ -3607,6 +3778,222 @@ def external_evidence_intake_artifact_summary(artifact_path):
         }
 
 
+CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_MATERIAL_FAMILIES = (
+    "public_ingress_tls",
+    "oss_cdn",
+    "production_db_queue",
+    "four_g_sim",
+    "worker_cutover",
+    "true_phone_browser_proof",
+    "verified_terminal_result",
+)
+CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_ACCEPTED = "accepted_external_evidence_not_proven"
+CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_ALLOWED_STATES = {
+    CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_ACCEPTED,
+    "needs_external_evidence_backfill_not_proven",
+    "rejected_unsafe_external_evidence_not_proven",
+    "blocked_missing_external_evidence_intake_not_proven",
+    "external_evidence_ref_mismatch_not_proven",
+}
+
+
+def _cloud_external_evidence_review_decision_checksum(payload):
+    # 独立 CLI 用原始规范化 JSON 做 checksum；这里保持专用校验，不影响 relay 旧 artifact。
+    encoded = json.dumps(
+        payload,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def _cloud_external_evidence_review_decision_forbidden_markers(payload):
+    # 复核结果会进入 preflight/packet，任何 URL、凭证、路径或控制词进入都必须 fail closed。
+    encoded = json.dumps(payload, ensure_ascii=False).lower()
+    markers = (
+        "authorization",
+        "bearer ",
+        "token=",
+        "token:",
+        '"token"',
+        "secret",
+        "password",
+        "access_key",
+        "ak/sk",
+        "http://",
+        "https://",
+        "://",
+        "postgres://",
+        "mysql://",
+        "redis://",
+        "amqp://",
+        "database url",
+        "queue url",
+        "response body",
+        "raw response",
+        "/tmp/",
+        "/var/",
+        "/etc/",
+        "/dev/",
+        "serial",
+        "uart",
+        "wave rover",
+        "ros topic",
+        "/cmd_vel",
+        "/api/base/manual",
+        "traceback",
+    )
+    return [marker for marker in markers if marker in encoded]
+
+
+def _cloud_external_evidence_review_decision_dangerous_true_paths(value, path=""):
+    # review decision 只能是材料复核，不能携带任何生产成功、控制成功或安全放行 true 值。
+    dangerous_keys = {
+        "connects_cloud_production",
+        "delivery_success",
+        "safe_to_control",
+        "primary_actions_enabled",
+        "robot_control_executed",
+        "production_ready",
+        "external_evidence_complete",
+        "external_evidence_proven",
+        "route_execution_success",
+        "hil_pass",
+        "true_phone_browser_proof",
+        "okr_credit_allowed",
+    }
+    hits = []
+    if isinstance(value, dict):
+        for key, item in value.items():
+            key_text = str(key)
+            child_path = f"{path}.{key_text}" if path else key_text
+            if key_text in dangerous_keys and item is True:
+                hits.append(child_path)
+            hits.extend(_cloud_external_evidence_review_decision_dangerous_true_paths(item, child_path))
+    elif isinstance(value, list):
+        for index, item in enumerate(value):
+            hits.extend(
+                _cloud_external_evidence_review_decision_dangerous_true_paths(
+                    item,
+                    f"{path}[{index}]",
+                )
+            )
+    return hits
+
+
+def validate_cloud_external_evidence_review_decision_artifact_payload(artifact):
+    # 有效 artifact 也只能说明本地复核接受；accepted 仍然不是生产云、手机/browser 或 delivery proof。
+    if not isinstance(artifact, dict):
+        raise ValueError("cloud external evidence review decision artifact must be an object")
+    checksum = str(artifact.get("checksum") or "")
+    body = {key: value for key, value in artifact.items() if key != "checksum"}
+    if artifact.get("schema") != CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_SCHEMA:
+        raise ValueError("cloud external evidence review decision schema mismatch")
+    if artifact.get("schema_version") != CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_SCHEMA_VERSION:
+        raise ValueError("cloud external evidence review decision schema version mismatch")
+    if artifact.get("summary_schema") != CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_SUMMARY_SCHEMA:
+        raise ValueError("cloud external evidence review decision summary schema mismatch")
+    if artifact.get("evidence_boundary") != CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_EVIDENCE_BOUNDARY:
+        raise ValueError("cloud external evidence review decision evidence boundary mismatch")
+    if artifact.get("source_schema") != EXTERNAL_EVIDENCE_INTAKE_SCHEMA:
+        raise ValueError("cloud external evidence review decision source schema mismatch")
+    if artifact.get("source_evidence_boundary") != EXTERNAL_EVIDENCE_INTAKE_EVIDENCE_BOUNDARY:
+        raise ValueError("cloud external evidence review decision source boundary mismatch")
+    if checksum != _cloud_external_evidence_review_decision_checksum(body):
+        raise ValueError("cloud external evidence review decision checksum mismatch")
+    decision = str(artifact.get("review_decision") or artifact.get("status") or "")
+    if decision not in CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_ALLOWED_STATES:
+        raise ValueError("cloud external evidence review decision status mismatch")
+    if artifact.get("production_ready") is not False or artifact.get("overall_status") != "blocked":
+        raise ValueError("cloud external evidence review decision must stay production blocked")
+    for key in (
+        "connects_cloud_production",
+        "delivery_success",
+        "primary_actions_enabled",
+        "safe_to_control",
+        "robot_control_executed",
+        "route_execution_success",
+        "hil_pass",
+        "true_phone_browser_proof",
+        "okr_credit_allowed",
+    ):
+        if artifact.get(key) is not False:
+            raise ValueError(f"cloud external evidence review decision {key} must stay false")
+    if artifact.get("support_only_reason") != "no_real_production_external_evidence":
+        raise ValueError("cloud external evidence review decision support reason mismatch")
+    if artifact.get("proof_scope_class") != "software_proof_support_only":
+        raise ValueError("cloud external evidence review decision proof scope class mismatch")
+    if _cloud_external_evidence_review_decision_dangerous_true_paths(artifact):
+        raise ValueError("cloud external evidence review decision contains dangerous true")
+    if _cloud_external_evidence_review_decision_forbidden_markers(artifact):
+        raise ValueError("cloud external evidence review decision contains forbidden phone-unsafe markers")
+
+    rows = artifact.get("material_family_statuses")
+    if not isinstance(rows, list):
+        raise ValueError("cloud external evidence review decision material families missing")
+    by_name = {str(item.get("name") or ""): item for item in rows if isinstance(item, dict)}
+    if set(by_name) != set(CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_MATERIAL_FAMILIES):
+        raise ValueError("cloud external evidence review decision material coverage mismatch")
+    accepted_count = 0
+    for name, row in by_name.items():
+        if row.get("not_proven") is not True:
+            raise ValueError("cloud external evidence review decision material must stay not_proven")
+        status = str(row.get("status") or "")
+        if not status.endswith("_not_proven"):
+            raise ValueError("cloud external evidence review decision material status mismatch")
+        if status == "accepted_not_proven":
+            accepted_count += 1
+    redaction = artifact.get("redaction_status")
+    if not isinstance(redaction, dict) or redaction.get("status") != "pass":
+        raise ValueError("cloud external evidence review decision redaction status missing")
+    not_proven = set(artifact.get("not_proven") if isinstance(artifact.get("not_proven"), list) else [])
+    if [item for item in CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_NOT_PROVEN if item not in not_proven]:
+        raise ValueError("cloud external evidence review decision not_proven list is incomplete")
+    return {
+        "ok": decision == CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_ACCEPTED,
+        "schema": CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_SCHEMA,
+        "schema_version": CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_SCHEMA_VERSION,
+        "summary_schema": CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_SUMMARY_SCHEMA,
+        "summary_schema_version": CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_SUMMARY_SCHEMA_VERSION,
+        "evidence_boundary": CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_EVIDENCE_BOUNDARY,
+        "source_schema": EXTERNAL_EVIDENCE_INTAKE_SCHEMA,
+        "source_evidence_boundary": EXTERNAL_EVIDENCE_INTAKE_EVIDENCE_BOUNDARY,
+        "review_decision": decision,
+        "state": decision,
+        "reason_code": "" if decision == CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_ACCEPTED else decision,
+        "production_ready": False,
+        "overall_status": "blocked",
+        "external_evidence_complete": False,
+        "material_family_count": len(by_name),
+        "accepted_material_family_count": accepted_count,
+        "missing_or_backfill_material_family_count": len(by_name) - accepted_count,
+        "readiness_details": safe_value(artifact.get("readiness_details") or {}),
+        "blocked_reasons": safe_value(artifact.get("blocked_reasons") or []),
+        "next_required_evidence": safe_value(artifact.get("next_required_evidence") or []),
+        "safe_summary": str(artifact.get("safe_summary") or ""),
+        "retry_hint": str(artifact.get("retry_hint") or ""),
+        "redaction_status": safe_value(redaction),
+        "not_proven": list(CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_NOT_PROVEN),
+    }
+
+
+def cloud_external_evidence_review_decision_artifact_summary(artifact_path):
+    # 失败时只返回枚举 reason，不泄露 artifact 路径、原始材料或异常细节。
+    try:
+        artifact = _load_json_file(artifact_path, "cloud external evidence review decision artifact")
+        return validate_cloud_external_evidence_review_decision_artifact_payload(artifact)
+    except ValueError as exc:
+        return {
+            "ok": False,
+            "state": "invalid",
+            "reason_code": "cloud_external_evidence_review_decision_invalid",
+            "safe_summary": _safe_error_reason(exc),
+            "retry_hint": "重新生成 cloud external evidence review decision artifact 后重跑 preflight。",
+            "not_proven": list(CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_NOT_PROVEN),
+        }
+
+
 def _cloud_worker_migration_rehearsal_forbidden_markers(payload):
     # Rehearsal artifact 会进入 preflight 和手机摘要；只允许枚举/布尔结果，不保存连接串、路径或底层控制词。
     encoded = json.dumps(payload, ensure_ascii=False).lower()
@@ -5841,6 +6228,286 @@ def oss_cdn_live_probe_summary(artifact_path):
         }
 
 
+def _cdn_tls_external_evidence_forbidden_markers(payload):
+    # CDN/TLS 外部证据只允许脱敏摘要；真实 URL、header、响应体、路径和凭证一律拒绝进入 packet。
+    encoded = json.dumps(payload, ensure_ascii=False).lower()
+    markers = (
+        "authorization",
+        "bearer ",
+        "token=",
+        "token:",
+        '"token"',
+        "cookie",
+        "secret",
+        "password",
+        "access_key",
+        "ak/sk",
+        "http://",
+        "https://",
+        "://",
+        "response body",
+        "raw response",
+        "raw header",
+        "traceback",
+        "file://",
+        "/tmp/",
+        "/users/",
+        "/var/",
+        "/etc/",
+        "/dev/",
+        "serial",
+        "uart",
+        "baudrate",
+        "wave rover",
+        "ros topic",
+        "/cmd_vel",
+        "/api/base/manual",
+        "navigatetopose",
+    )
+    return [marker for marker in markers if marker in encoded]
+
+
+def _cdn_tls_external_evidence_dangerous_true_paths(value, path=""):
+    # 这些 true 会把 CDN/TLS 摘要误读成生产云、交付或硬件成功，所以必须 fail closed。
+    dangerous_keys = {
+        "production_cloud_ready",
+        "oss_object_upload",
+        "cdn_origin_fetch",
+        "production_db_queue",
+        "production_worker_cutover",
+        "four_g_sim",
+        "real_phone_browser",
+        "delivery_success",
+        "safe_to_control",
+        "robot_control_executed",
+        "route_execution_success",
+        "hil_pass",
+        "connects_cloud_production",
+        "primary_actions_enabled",
+    }
+    hits = []
+    if isinstance(value, dict):
+        for key, item in value.items():
+            key_text = str(key)
+            child_path = f"{path}.{key_text}" if path else key_text
+            if key_text in dangerous_keys and item is True:
+                hits.append(child_path)
+            hits.extend(_cdn_tls_external_evidence_dangerous_true_paths(item, child_path))
+    elif isinstance(value, list):
+        for index, item in enumerate(value):
+            hits.extend(_cdn_tls_external_evidence_dangerous_true_paths(item, f"{path}[{index}]"))
+    return hits
+
+
+def _cdn_tls_external_evidence_safe_status(value, allowed, default="invalid_or_unsupported"):
+    # artifact 来自外部网络探测；所有状态字段都压成白名单枚举，避免把原始错误带入 UI。
+    text = str(value or "").strip()
+    return text if text in allowed else default
+
+
+def validate_cdn_tls_external_evidence_payload(artifact):
+    """Validate and summarize a sanitized O5 CDN/TLS external evidence artifact.
+
+    4xx artifact 是有效但 blocked 的材料，因此返回 ok=false 而不是抛异常；抛异常只用于
+    schema、脱敏、危险 true 或固定 false 边界被破坏的情况。
+    """
+    if not isinstance(artifact, dict):
+        raise ValueError("CDN/TLS external evidence artifact must be an object")
+    if artifact.get("schema") != CDN_TLS_EXTERNAL_EVIDENCE_SCHEMA:
+        raise ValueError("CDN/TLS external evidence schema mismatch")
+    if int(artifact.get("schema_version", 0) or 0) != CDN_TLS_EXTERNAL_EVIDENCE_SCHEMA_VERSION:
+        raise ValueError("CDN/TLS external evidence schema version mismatch")
+    if artifact.get("evidence_key") != "cdn_tls_external_evidence":
+        raise ValueError("CDN/TLS external evidence key mismatch")
+    if _cdn_tls_external_evidence_forbidden_markers(artifact):
+        raise ValueError("CDN/TLS external evidence contains forbidden unsafe markers")
+    if _cdn_tls_external_evidence_dangerous_true_paths(artifact):
+        raise ValueError("CDN/TLS external evidence contains dangerous true")
+
+    for key in (
+        "production_cloud_ready",
+        "oss_object_upload",
+        "cdn_origin_fetch",
+        "production_db_queue",
+        "production_worker_cutover",
+        "four_g_sim",
+        "real_phone_browser",
+        "delivery_success",
+        "safe_to_control",
+        "robot_control_executed",
+        "route_execution_success",
+        "hil_pass",
+    ):
+        if artifact.get(key) is not False:
+            raise ValueError(f"CDN/TLS external evidence {key} must stay false")
+
+    redaction = artifact.get("redaction_status")
+    if not isinstance(redaction, dict) or redaction.get("status") != "pass":
+        raise ValueError("CDN/TLS external evidence redaction status missing")
+    for key in (
+        "url_omitted",
+        "path_query_omitted",
+        "header_lines_omitted",
+        "payload_bytes_omitted",
+        "exception_stack_omitted",
+        "local_abs_path_omitted",
+        "sensitive_material_omitted",
+    ):
+        if redaction.get(key) is not True:
+            raise ValueError(f"CDN/TLS external evidence redaction {key} must be true")
+
+    fixed_false = artifact.get("fixed_false_invariants")
+    if not isinstance(fixed_false, list):
+        raise ValueError("CDN/TLS external evidence fixed false invariants missing")
+    for invariant in (
+        "delivery_success=false",
+        "safe_to_control=false",
+        "robot_control_executed=false",
+        "route_execution_success=false",
+        "hil_pass=false",
+    ):
+        if invariant not in fixed_false:
+            raise ValueError("CDN/TLS external evidence fixed false invariant incomplete")
+
+    scheme = _cdn_tls_external_evidence_safe_status(artifact.get("scheme"), {"https"})
+    http_method = _cdn_tls_external_evidence_safe_status(artifact.get("http_method"), {"HEAD", "GET"})
+    http_status_class = _cdn_tls_external_evidence_safe_status(
+        artifact.get("http_status_class"),
+        {"2xx", "3xx", "4xx", "5xx", "unknown"},
+    )
+    accepted_claim = _cdn_tls_external_evidence_safe_status(
+        artifact.get("accepted_claim"),
+        {"none", "o5_cdn_tls_external_evidence_delta"},
+        "none",
+    )
+    source_status = _cloud_production_cutover_readiness_safe_label(
+        artifact.get("cdn_tls_external_evidence_status"),
+        limit=120,
+    )
+    blocked_reasons = _cloud_production_cutover_readiness_safe_list(artifact.get("blocked_reasons"))
+    tls_observed = artifact.get("tls_handshake_observed") is True
+    cert_valid = artifact.get("certificate_valid_for_host") is True
+    probe_attempted = artifact.get("probe_attempted") is True
+    external_attempted = artifact.get("external_request_attempted") is True
+    host_hash_present = bool(
+        _cloud_production_cutover_readiness_safe_label(
+            artifact.get("target_host_hash_prefix"),
+            limit=32,
+        )
+    )
+    success_class = (
+        accepted_claim == "o5_cdn_tls_external_evidence_delta"
+        and http_status_class in {"2xx", "3xx"}
+        and scheme == "https"
+        and tls_observed
+        and cert_valid
+        and probe_attempted
+        and external_attempted
+        and host_hash_present
+    )
+    reason_code = "" if success_class else source_status or "blocked_http_status_not_success_class"
+    if not success_class and "blocked_http_status_not_success_class" not in blocked_reasons:
+        if http_status_class not in {"2xx", "3xx"}:
+            blocked_reasons.append("blocked_http_status_not_success_class")
+        elif reason_code:
+            blocked_reasons.append(reason_code)
+    if not blocked_reasons and not success_class:
+        blocked_reasons.append("cdn_tls_external_evidence_not_success_class")
+
+    safe_summary = (
+        "CDN/TLS external evidence 已达到 success-class 软件证明，但 readiness packet 仍保持 support-only。"
+        if success_class
+        else "CDN/TLS external evidence 已被读取；当前 HTTP class 仍未达到 success-class。"
+    )
+    retry_hint = (
+        "consume_success_class_external_artifact_then_collect_4g_db_queue_worker_phone_evidence"
+        if success_class
+        else "fix_cdn_origin_or_public_path_then_regenerate_sanitized_cdn_tls_external_evidence"
+    )
+    details = {
+        "proof_boundary": CDN_TLS_EXTERNAL_EVIDENCE_EVIDENCE_BOUNDARY,
+        "probe_attempted": probe_attempted,
+        "external_request_attempted": external_attempted,
+        "tls_handshake_observed": tls_observed,
+        "certificate_valid_for_host": cert_valid,
+        "scheme": scheme,
+        "http_method": http_method,
+        "http_status_class": http_status_class,
+        "accepted_claim": accepted_claim,
+        "target_host_hash_prefix_present": host_hash_present,
+        "production_ready": False,
+        "okr_credit_allowed": False,
+        "delivery_success": False,
+        "safe_to_control": False,
+        "robot_control_executed": False,
+        "route_execution_success": False,
+        "hil_pass": False,
+    }
+    return {
+        "ok": bool(success_class),
+        "schema": CDN_TLS_EXTERNAL_EVIDENCE_SCHEMA,
+        "schema_version": CDN_TLS_EXTERNAL_EVIDENCE_SCHEMA_VERSION,
+        "evidence_boundary": CDN_TLS_EXTERNAL_EVIDENCE_EVIDENCE_BOUNDARY,
+        "proof_boundary": CDN_TLS_EXTERNAL_EVIDENCE_EVIDENCE_BOUNDARY,
+        "production_ready": False,
+        "overall_status": "blocked",
+        "status": (
+            "cdn_tls_external_evidence_ready_not_production_proof"
+            if success_class
+            else "blocked_http_status_not_success_class"
+        ),
+        "reason_code": reason_code,
+        "cdn_tls_external_evidence_status": source_status,
+        "accepted_claim": accepted_claim,
+        "probe_count": 1 if probe_attempted else 0,
+        "probe_attempted": probe_attempted,
+        "external_request_attempted": external_attempted,
+        "tls_handshake_observed": tls_observed,
+        "certificate_valid_for_host": cert_valid,
+        "http_method": http_method,
+        "http_status_class": http_status_class,
+        "scheme": scheme,
+        "target_source": _cloud_production_cutover_readiness_safe_label(
+            artifact.get("target_source"),
+            limit=80,
+        ),
+        "target_host_hash_prefix_present": host_hash_present,
+        "blocked_reasons": blocked_reasons,
+        "safe_summary": safe_summary,
+        "retry_hint": retry_hint,
+        "generated_at": str(artifact.get("generated_at") or ""),
+        "redaction_status": safe_value(redaction),
+        "readiness_details": details,
+        "not_proven": list(CDN_TLS_EXTERNAL_EVIDENCE_NOT_PROVEN),
+    }
+
+
+def cdn_tls_external_evidence_artifact_summary(artifact_path):
+    # packet/preflight 只消费脱敏 summary；完整 artifact 路径、URL、header 和响应体都不进入输出。
+    try:
+        artifact = _load_json_file(artifact_path, "CDN/TLS external evidence artifact")
+        return validate_cdn_tls_external_evidence_payload(artifact)
+    except ValueError as exc:
+        return {
+            "ok": False,
+            "state": "invalid",
+            "reason_code": "cdn_tls_external_evidence_invalid",
+            "safe_summary": _safe_error_reason(exc),
+            "retry_hint": "重新生成 sanitized CDN/TLS external evidence artifact 后重跑 preflight。",
+            "not_proven": list(CDN_TLS_EXTERNAL_EVIDENCE_NOT_PROVEN),
+            "readiness_details": {
+                "proof_boundary": CDN_TLS_EXTERNAL_EVIDENCE_EVIDENCE_BOUNDARY,
+                "production_ready": False,
+                "okr_credit_allowed": False,
+                "delivery_success": False,
+                "safe_to_control": False,
+                "robot_control_executed": False,
+                "route_execution_success": False,
+                "hil_pass": False,
+            },
+        }
+
+
 def _cloud_production_cutover_readiness_sources():
     # readiness packet 只聚合已有 O5 生产切换 gate 的摘要函数，不读取或复制原始 artifact 正文。
     return (
@@ -5894,11 +6561,25 @@ def _cloud_production_cutover_readiness_sources():
             oss_cdn_live_probe_summary,
         ),
         (
+            "cdn_tls_external_evidence",
+            CDN_TLS_EXTERNAL_EVIDENCE_ENV,
+            CDN_TLS_EXTERNAL_EVIDENCE_SCHEMA,
+            CDN_TLS_EXTERNAL_EVIDENCE_EVIDENCE_BOUNDARY,
+            cdn_tls_external_evidence_artifact_summary,
+        ),
+        (
             "external_evidence_intake",
             "TRASHBOT_REMOTE_CLOUD_EXTERNAL_EVIDENCE_INTAKE_ARTIFACT",
             EXTERNAL_EVIDENCE_INTAKE_SCHEMA,
             EXTERNAL_EVIDENCE_INTAKE_EVIDENCE_BOUNDARY,
             external_evidence_intake_artifact_summary,
+        ),
+        (
+            "cloud_external_evidence_review_decision",
+            CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_ENV,
+            CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_SCHEMA,
+            CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_EVIDENCE_BOUNDARY,
+            cloud_external_evidence_review_decision_artifact_summary,
         ),
     )
 
@@ -6037,6 +6718,9 @@ def _cloud_production_cutover_readiness_counts(summary):
         "endpoint_count",
         "probe_count",
         "material_count",
+        "material_family_count",
+        "accepted_material_family_count",
+        "missing_or_backfill_material_family_count",
         "object_count",
         "terminal_ack_count",
         "pending_count_before",
@@ -6101,6 +6785,7 @@ def _cloud_production_cutover_readiness_section(
         "evidence_boundary": evidence_boundary,
         "source_ref": source_ref,
         "counts": _cloud_production_cutover_readiness_counts(summary) if summary_ok else {},
+        "details": safe_value(summary.get("readiness_details") if isinstance(summary, dict) else {}),
         "blocked_reasons": _cloud_production_cutover_readiness_safe_list(
             section_reasons,
             default_items=[f"{name}_not_ready"],
@@ -6491,6 +7176,7 @@ def production_preflight_payload(env=None):
     backup_artifact_path = _env_value(env, "TRASHBOT_REMOTE_CLOUD_BACKUP_ARTIFACT")
     oss_cdn_manifest_artifact_path = _env_value(env, "TRASHBOT_REMOTE_CLOUD_OSS_CDN_MANIFEST_ARTIFACT")
     oss_cdn_live_probe_artifact_path = _env_value(env, "TRASHBOT_REMOTE_CLOUD_OSS_CDN_LIVE_PROBE_ARTIFACT")
+    cdn_tls_external_evidence_artifact_path = _env_value(env, CDN_TLS_EXTERNAL_EVIDENCE_ENV)
     network_recovery_artifact_path = _env_value(env, "TRASHBOT_REMOTE_CLOUD_NETWORK_RECOVERY_ARTIFACT")
     credential_rotation_artifact_path = _env_value(env, "TRASHBOT_REMOTE_CLOUD_CREDENTIAL_ROTATION_ARTIFACT")
     provisioning_audit_artifact_path = _env_value(env, "TRASHBOT_REMOTE_CLOUD_PROVISIONING_AUDIT_ARTIFACT")
@@ -6526,6 +7212,10 @@ def production_preflight_payload(env=None):
     external_evidence_intake_artifact_path = _env_value(
         env,
         "TRASHBOT_REMOTE_CLOUD_EXTERNAL_EVIDENCE_INTAKE_ARTIFACT",
+    )
+    cloud_external_evidence_review_decision_artifact_path = _env_value(
+        env,
+        CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_ENV,
     )
     cloud_deployment_readiness_artifact_path = _env_value(
         env,
@@ -7042,6 +7732,90 @@ def production_preflight_payload(env=None):
             )
         )
 
+    if cloud_external_evidence_review_decision_artifact_path:
+        # review decision 只消费脱敏 intake 输出；accepted 也不能提升为生产云或手机/browser proof。
+        review_summary = cloud_external_evidence_review_decision_artifact_summary(
+            cloud_external_evidence_review_decision_artifact_path
+        )
+        if review_summary.get("ok"):
+            checks.append(
+                _check(
+                    "cloud_external_evidence_review_decision",
+                    "pass",
+                    "local_cloud_external_evidence_review_decision_valid",
+                    str(
+                        review_summary.get("safe_summary")
+                        or "Cloud external evidence review decision 已通过本地软件复核。"
+                    ),
+                    str(review_summary.get("retry_hint") or "继续补真实生产外部证据。"),
+                    {
+                        "artifact_schema": CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_SCHEMA,
+                        "schema_version": CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_SCHEMA_VERSION,
+                        "summary_schema": CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_SUMMARY_SCHEMA,
+                        "summary_schema_version": (
+                            CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_SUMMARY_SCHEMA_VERSION
+                        ),
+                        "evidence_boundary": CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_EVIDENCE_BOUNDARY,
+                        "source_schema": EXTERNAL_EVIDENCE_INTAKE_SCHEMA,
+                        "source_evidence_boundary": EXTERNAL_EVIDENCE_INTAKE_EVIDENCE_BOUNDARY,
+                        "review_decision": review_summary.get("review_decision"),
+                        "production_ready": False,
+                        "overall_status": "blocked",
+                        "external_evidence_complete": False,
+                        "material_family_count": review_summary.get("material_family_count"),
+                        "accepted_material_family_count": review_summary.get(
+                            "accepted_material_family_count"
+                        ),
+                        "missing_or_backfill_material_family_count": review_summary.get(
+                            "missing_or_backfill_material_family_count"
+                        ),
+                        "redaction_status": review_summary.get("redaction_status"),
+                        "software_proof_only": True,
+                        "delivery_success": False,
+                        "safe_to_control": False,
+                        "robot_control_executed": False,
+                    },
+                )
+            )
+        else:
+            checks.append(
+                _check(
+                    "cloud_external_evidence_review_decision",
+                    "blocked",
+                    f"cloud_external_evidence_review_decision_{review_summary.get('reason_code') or 'blocked'}",
+                    str(
+                        review_summary.get("safe_summary")
+                        or "Cloud external evidence review decision artifact 不可用。"
+                    ),
+                    str(
+                        review_summary.get("retry_hint")
+                        or "重新生成 cloud external evidence review decision artifact 后重跑 preflight。"
+                    ),
+                    {
+                        "artifact_present": True,
+                        "software_proof_only": True,
+                        "production_ready": False,
+                        "delivery_success": False,
+                        "safe_to_control": False,
+                        "robot_control_executed": False,
+                    },
+                )
+            )
+    else:
+        checks.append(
+            _check(
+                "cloud_external_evidence_review_decision",
+                "warning",
+                "cloud_external_evidence_review_decision_artifact_missing",
+                "尚未提供 cloud external evidence review decision artifact，不能声明外部材料复核软件证明。",
+                (
+                    "运行 pc-tools/evidence/cloud_external_evidence_review_decision.py 后，"
+                    "用 TRASHBOT_REMOTE_CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_ARTIFACT 传给 preflight。"
+                ),
+                {"artifact_present": False, "software_proof_only": True},
+            )
+        )
+
     if cloud_production_cutover_readiness_packet_artifact_path:
         # readiness packet 是 O5 cutover gate 的聚合 readback，只证明机读合同可消费，不允许生产成功或 OKR credit。
         packet_summary = cloud_production_cutover_readiness_packet_summary(
@@ -7409,6 +8183,91 @@ def production_preflight_payload(env=None):
                 "尚未提供 OSS/CDN live probe artifact，不能声明 CDN live traffic 软件证明入口。",
                 "生成 OSS/CDN live probe artifact，并用 TRASHBOT_REMOTE_CLOUD_OSS_CDN_LIVE_PROBE_ARTIFACT 传给 preflight。",
                 {"artifact_present": False, "software_proof_only": True},
+            )
+        )
+
+    if cdn_tls_external_evidence_artifact_path:
+        # CDN/TLS external evidence 来自真实外部 probe，但 4xx 只能说明 TLS/cert 被观察到，不能提升 O5。
+        cdn_tls_summary = cdn_tls_external_evidence_artifact_summary(
+            cdn_tls_external_evidence_artifact_path
+        )
+        cdn_tls_details = cdn_tls_summary.get("readiness_details") if isinstance(cdn_tls_summary, dict) else {}
+        if cdn_tls_summary.get("ok"):
+            checks.append(
+                _check(
+                    "cdn_tls_external_evidence",
+                    "pass",
+                    "cdn_tls_external_evidence_success_class_software_proof",
+                    str(
+                        cdn_tls_summary.get("safe_summary")
+                        or "CDN/TLS external evidence 已通过 success-class 软件证明。"
+                    ),
+                    str(cdn_tls_summary.get("retry_hint") or "继续补 4G、DB/queue、worker 和手机验收证据。"),
+                    {
+                        "artifact_schema": CDN_TLS_EXTERNAL_EVIDENCE_SCHEMA,
+                        "schema_version": CDN_TLS_EXTERNAL_EVIDENCE_SCHEMA_VERSION,
+                        "evidence_boundary": CDN_TLS_EXTERNAL_EVIDENCE_EVIDENCE_BOUNDARY,
+                        "production_ready": False,
+                        "overall_status": "blocked",
+                        "okr_credit_allowed": False,
+                        "tls_handshake_observed": cdn_tls_summary.get("tls_handshake_observed"),
+                        "certificate_valid_for_host": cdn_tls_summary.get("certificate_valid_for_host"),
+                        "http_method": cdn_tls_summary.get("http_method"),
+                        "http_status_class": cdn_tls_summary.get("http_status_class"),
+                        "accepted_claim": cdn_tls_summary.get("accepted_claim"),
+                        "target_host_hash_prefix_present": cdn_tls_summary.get(
+                            "target_host_hash_prefix_present"
+                        ),
+                        "redaction_status": cdn_tls_summary.get("redaction_status"),
+                        "readiness_details": safe_value(cdn_tls_details),
+                        "software_proof_only": True,
+                    },
+                )
+            )
+        else:
+            checks.append(
+                _check(
+                    "cdn_tls_external_evidence",
+                    "blocked",
+                    f"cdn_tls_external_evidence_artifact_{cdn_tls_summary.get('reason_code') or cdn_tls_summary.get('state') or 'blocked'}",
+                    str(
+                        cdn_tls_summary.get("safe_summary")
+                        or "CDN/TLS external evidence artifact 当前未达到 success-class。"
+                    ),
+                    str(
+                        cdn_tls_summary.get("retry_hint")
+                        or "修复 CDN/origin/path 后重新生成 sanitized artifact。"
+                    ),
+                    {
+                        "artifact_present": True,
+                        "reason_code": cdn_tls_summary.get(
+                            "reason_code",
+                            "blocked_http_status_not_success_class",
+                        ),
+                        "blocked_reasons": cdn_tls_summary.get("blocked_reasons"),
+                        "readiness_details": safe_value(cdn_tls_details),
+                        "software_proof_only": True,
+                        "production_ready": False,
+                        "okr_credit_allowed": False,
+                        "delivery_success": False,
+                        "safe_to_control": False,
+                    },
+                )
+            )
+    else:
+        checks.append(
+            _check(
+                "cdn_tls_external_evidence",
+                "warning",
+                "cdn_tls_external_evidence_artifact_missing",
+                "尚未提供 CDN/TLS external evidence artifact，不能把公网 TLS/cert observation 纳入 preflight。",
+                "生成 sanitized CDN/TLS external evidence artifact，并用 TRASHBOT_REMOTE_CLOUD_CDN_TLS_EXTERNAL_EVIDENCE_ARTIFACT 传给 preflight。",
+                {
+                    "artifact_present": False,
+                    "software_proof_only": True,
+                    "production_ready": False,
+                    "okr_credit_allowed": False,
+                },
             )
         )
 
@@ -7838,6 +8697,10 @@ def production_preflight_payload(env=None):
         check["name"] == "oss_cdn_live_probe" and check["status"] == "pass"
         for check in checks
     )
+    local_cdn_tls_external_evidence_ok = any(
+        check["name"] == "cdn_tls_external_evidence" and check["status"] == "pass"
+        for check in checks
+    )
     local_network_recovery_ok = any(
         check["name"] == "network_recovery_drill" and check["status"] == "pass"
         for check in checks
@@ -7896,6 +8759,10 @@ def production_preflight_payload(env=None):
     )
     local_external_evidence_intake_ok = any(
         check["name"] == "external_evidence_intake" and check["status"] == "pass"
+        for check in checks
+    )
+    local_cloud_external_evidence_review_decision_ok = any(
+        check["name"] == "cloud_external_evidence_review_decision" and check["status"] == "pass"
         for check in checks
     )
     local_cloud_production_cutover_readiness_packet_ok = any(
@@ -7959,14 +8826,19 @@ def production_preflight_payload(env=None):
         not_proven.insert(16, "cloud_worker_cutover_drain")
     if not local_oss_cdn_live_probe_ok:
         not_proven.insert(16, "oss_cdn_live_probe_gate")
+    if not local_cdn_tls_external_evidence_ok:
+        not_proven.insert(16, "cdn_tls_external_evidence_success_class")
     if not local_external_evidence_intake_ok:
         not_proven.insert(16, "external_evidence_intake_gate")
+    if not local_cloud_external_evidence_review_decision_ok:
+        not_proven.insert(16, "cloud_external_evidence_review_decision_gate")
     if cloud_production_cutover_readiness_packet_artifact_path and not local_cloud_production_cutover_readiness_packet_ok:
         not_proven.insert(16, "cloud_production_cutover_readiness_packet")
     payload = {
         "ok": production_ready,
         "software_proof_ready": bool(
             local_cloud_production_cutover_readiness_packet_ok
+            or local_cloud_external_evidence_review_decision_ok
             or local_oss_cdn_live_probe_ok
             or local_external_evidence_intake_ok
             or local_network_recovery_ok
@@ -7977,6 +8849,7 @@ def production_preflight_payload(env=None):
             or local_transaction_isolation_ok
             or local_production_recovery_ok
             or local_cloud_external_probe_ok
+            or local_cdn_tls_external_evidence_ok
             or local_cloud_public_ingress_tls_seen
             or local_cloud_db_queue_config_seen
             or local_cloud_db_queue_external_probe_ok
@@ -7989,6 +8862,8 @@ def production_preflight_payload(env=None):
         "evidence_boundary": (
             CLOUD_PRODUCTION_CUTOVER_READINESS_PACKET_EVIDENCE_BOUNDARY
             if local_cloud_production_cutover_readiness_packet_ok
+            else CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_EVIDENCE_BOUNDARY
+            if local_cloud_external_evidence_review_decision_ok
             else EXTERNAL_EVIDENCE_INTAKE_EVIDENCE_BOUNDARY
             if local_external_evidence_intake_ok
             else CLOUD_WORKER_CUTOVER_DRAIN_EVIDENCE_BOUNDARY
@@ -7997,6 +8872,8 @@ def production_preflight_payload(env=None):
             if local_cloud_worker_migration_rehearsal_ok
             else OSS_CDN_LIVE_PROBE_EVIDENCE_BOUNDARY
             if local_oss_cdn_live_probe_ok
+            else CDN_TLS_EXTERNAL_EVIDENCE_EVIDENCE_BOUNDARY
+            if local_cdn_tls_external_evidence_ok
             else PRODUCTION_RECOVERY_EVIDENCE_BOUNDARY
             if local_production_recovery_ok
             else CLOUD_DB_QUEUE_EXTERNAL_PROBE_EVIDENCE_BOUNDARY
@@ -13134,12 +14011,20 @@ def _o6_archive_has_real_capability_claim(value):
         "oss_upload_success",
         "robot_control_executed",
         "delivery_success",
+        "route_execution_success",
+        "hil_pass",
         "safe_to_control",
         "primary_actions_enabled",
+        "real_operator_action_proven",
         "real_cloud_db_connected",
         "real_oss_connected",
         "real_oss_upload_success",
         "connects_cloud_production",
+        "tts_send_enabled",
+        "speaker_dispatch_enabled",
+        "real_speaker_ack_proven",
+        "real_voice_api_connected",
+        "real_asr_tts_runtime_connected",
     }
     if isinstance(value, dict):
         for key, item in value.items():
@@ -13163,9 +14048,17 @@ def _o6_archive_has_real_capability_claim(value):
                 "oss_upload_success=true",
                 "robot_control_executed=true",
                 "delivery_success=true",
+                "route_execution_success=true",
+                "hil_pass=true",
                 "safe_to_control=true",
                 "primary_actions_enabled=true",
+                "real_operator_action_proven=true",
                 "connects_cloud_production=true",
+                "tts_send_enabled=true",
+                "speaker_dispatch_enabled=true",
+                "real_speaker_ack_proven=true",
+                "real_voice_api_connected=true",
+                "real_asr_tts_runtime_connected=true",
             )
         )
     return False
@@ -16736,6 +17629,1722 @@ def _o6_same_task_route_execution_material_packet_summary(
     }
 
 
+def _o6_same_task_replay_packet_readback_placeholder(
+    *, task_id="", task_origin="field_evidence_manifest", blocked_reasons=None, next_required_evidence=None
+):
+    """replay packet 缺失或不安全时只返回 blocked 摘要，不推断 route execution 已发生。"""
+
+    reasons = _o6_same_task_route_execution_material_packet_safe_list(
+        blocked_reasons,
+        default_items=["same_task_replay_packet_readback_not_available"],
+    )
+    next_items = _o6_same_task_route_execution_material_packet_safe_list(
+        next_required_evidence,
+        default_items=["same_task_replay_packet_readback"],
+    )
+    return {
+        "schema": O6_SAME_TASK_REPLAY_PACKET_READBACK_SCHEMA,
+        "source_schema": "",
+        "proof_scope": O6_SAME_TASK_REPLAY_PACKET_READBACK_PROOF_SCOPE,
+        "evidence_boundary": O6_SAME_TASK_REPLAY_PACKET_READBACK_PROOF_SCOPE,
+        "source_artifact_boundary": "",
+        "task_id": _o6_cloud_archive_safe_text(task_id or "", 80),
+        "task_origin": _o6_cloud_archive_safe_text(task_origin or "field_evidence_manifest", 80),
+        "status": "blocked_not_proven",
+        "source": "",
+        "packet_id": "",
+        "route_intent_id": "",
+        "route_csv_row_count": 0,
+        "replay_jsonl_event_count": 0,
+        "path_structured_pose_count": 0,
+        "same_task_identity_verified": False,
+        "same_task_replay_packet_ready": False,
+        "source_refs": {
+            "source_summary_ref": "",
+            "packet_jsonl_ref": "",
+            "route_csv_ref": "",
+            "replay_jsonl_ref": "",
+        },
+        "sha256_prefixes": {"summary": "", "route_csv": "", "replay_jsonl": ""},
+        "blocked_reasons": reasons,
+        "next_required_evidence": next_items,
+        "route_execution_success": False,
+        "delivery_success": False,
+        "hil_pass": False,
+        "safe_to_control": False,
+        "robot_control_executed": False,
+        "primary_actions_enabled": False,
+        "publishes_cmd_vel": False,
+        "calls_base_manual": False,
+        "uses_base_uart": False,
+        "connects_cloud_production": False,
+    }
+
+
+def _o6_same_task_replay_packet_readback_ref_text_is_unsafe(value):
+    """源 refs 允许 repo-relative 路径输入，但 O6 回读只保留 basename。"""
+
+    text = str(value or "").strip()
+    if not text:
+        return False
+    lowered = text.lower()
+    if _o6_archive_has_raw_content(text) or any(
+        marker in lowered
+        for marker in ("base64", "data:", "token=", "signature=", "authorization", "bearer")
+    ):
+        return True
+    if lowered.startswith(("http://", "https://", "file://", "oss://", "s3://", "gs://", "c:\\", "\\\\")):
+        return True
+    if text.startswith(("/", "~/")) or "/tmp/" in lowered or "/users/" in lowered or "\\users\\" in lowered:
+        return True
+    parsed = urlparse(text) if "://" in text else None
+    return bool(parsed and (parsed.username or parsed.password or parsed.query or parsed.fragment))
+
+
+def _o6_same_task_replay_packet_readback_safe_ref(value):
+    """所有 replay packet ref 都脱敏为 basename，避免 O7 展示源目录结构。"""
+
+    if _o6_same_task_replay_packet_readback_ref_text_is_unsafe(value):
+        raise ValueError("unsafe same task replay packet ref")
+    return _o6_field_evidence_safe_basename(value or "", "")
+
+
+def _o6_same_task_replay_packet_readback_unsafe_reason(value, path=""):
+    """只扫描本 section 的危险文本；坏包降级为 blocked，不拒绝整个 archive。"""
+
+    ref_key_names = {
+        "source_summary_ref",
+        "packet_jsonl_ref",
+        "route_csv_ref",
+        "replay_jsonl_ref",
+        "summary_ref",
+        "packet_ref",
+        "route_ref",
+        "replay_ref",
+    }
+    allowed_struct_keys = {"source_refs", "source_fingerprints", "sha256_prefixes"}
+    if isinstance(value, dict):
+        for key, item in value.items():
+            key_text = str(key).lower()
+            key_path = f"{path}.{key_text}" if path else key_text
+            if key_text in allowed_struct_keys:
+                nested_reason = _o6_same_task_replay_packet_readback_unsafe_reason(item, key_path)
+                if nested_reason:
+                    return nested_reason
+                continue
+            if any(
+                marker in key_text
+                for marker in (
+                    "token",
+                    "bearer",
+                    "authorization",
+                    "secret",
+                    "password",
+                    "credential",
+                    "raw",
+                    "base64",
+                    "content",
+                    "payload",
+                    "traceback",
+                    "url",
+                    "uri",
+                )
+            ):
+                return "same_task_replay_packet_readback_unsafe"
+            nested_reason = _o6_same_task_replay_packet_readback_unsafe_reason(item, key_path)
+            if nested_reason:
+                return nested_reason
+        return ""
+    if isinstance(value, list):
+        # replay readback 不接受原始 pose/frame 数组；只允许短 token list 出现在 blockers/next evidence。
+        if not (
+            path.endswith("blocked_reasons")
+            or path.endswith("next_required_evidence")
+            or path.endswith("not_proven")
+        ):
+            return "same_task_replay_packet_readback_unsafe"
+        for index, item in enumerate(value):
+            nested_reason = _o6_same_task_replay_packet_readback_unsafe_reason(item, f"{path}[{index}]")
+            if nested_reason:
+                return nested_reason
+        return ""
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return ""
+        lowered = text.lower()
+        if path.split(".")[-1] in ref_key_names:
+            if _o6_same_task_replay_packet_readback_ref_text_is_unsafe(text):
+                return "same_task_replay_packet_readback_unsafe"
+            return ""
+        if _o6_cloud_archive_has_unsafe_claim(text) or _o6_archive_has_raw_content(text):
+            return "same_task_replay_packet_readback_unsafe"
+        if any(marker in lowered for marker in ("base64", "token=", "secret=", "password=", "data:", "raw_", "traceback")):
+            return "same_task_replay_packet_readback_unsafe"
+        if text.startswith(("/", "~/")) or lowered.startswith(("http://", "https://", "file://", "c:\\", "\\\\")):
+            return "same_task_replay_packet_readback_unsafe"
+    return ""
+
+
+def _o6_same_task_replay_packet_readback_source_refs(packet):
+    """兼容 O3 packet 顶层 ref 和 O6 summary source_refs，同时只输出 basename。"""
+
+    source_refs = _o6_cloud_archive_dict(packet.get("source_refs"))
+    refs = {
+        "source_summary_ref": (
+            source_refs.get("source_summary_ref")
+            or source_refs.get("summary_ref")
+            or packet.get("source_summary_ref")
+            or packet.get("summary_ref")
+        ),
+        "packet_jsonl_ref": (
+            source_refs.get("packet_jsonl_ref")
+            or source_refs.get("packet_ref")
+            or packet.get("packet_jsonl_ref")
+            or packet.get("packet_ref")
+        ),
+        "route_csv_ref": (
+            source_refs.get("route_csv_ref")
+            or source_refs.get("route_ref")
+            or packet.get("route_csv_ref")
+            or packet.get("route_ref")
+        ),
+        "replay_jsonl_ref": (
+            source_refs.get("replay_jsonl_ref")
+            or source_refs.get("replay_ref")
+            or packet.get("replay_jsonl_ref")
+            or packet.get("replay_ref")
+        ),
+    }
+    output = {}
+    for key, value in refs.items():
+        output[key] = _o6_same_task_replay_packet_readback_safe_ref(value) if value else ""
+    return output
+
+
+def _o6_same_task_replay_packet_readback_sha256_prefixes(packet):
+    """sha256 只给短 prefix，既能核对同源，又不会变成对象完整地址。"""
+
+    fingerprints = _o6_cloud_archive_dict(packet.get("source_fingerprints") or packet.get("sha256_prefixes"))
+    return {
+        "summary": _o6_same_task_field_material_packet_sha256_prefix(
+            fingerprints.get("summary") or fingerprints.get("source_summary") or packet.get("summary_sha256")
+        ),
+        "route_csv": _o6_same_task_field_material_packet_sha256_prefix(
+            fingerprints.get("route_csv") or packet.get("route_csv_sha256")
+        ),
+        "replay_jsonl": _o6_same_task_field_material_packet_sha256_prefix(
+            fingerprints.get("replay_jsonl") or packet.get("replay_jsonl_sha256")
+        ),
+    }
+
+
+def _o6_same_task_replay_packet_readback_summary(
+    raw_packet, *, task_id="", task_origin="field_evidence_manifest"
+):
+    """把 28-pose same-task replay packet 收敛为 O6/O7 专用 readback，绝不提升为执行证明。"""
+
+    packet = _o6_cloud_archive_dict(raw_packet)
+    if not packet:
+        return _o6_same_task_replay_packet_readback_placeholder(task_id=task_id, task_origin=task_origin)
+    schema_text = _o6_cloud_archive_safe_text(packet.get("schema") or packet.get("source_schema") or "", 160)
+    if schema_text not in {SAME_TASK_REPLAY_PACKET_SOURCE_SCHEMA, O6_SAME_TASK_REPLAY_PACKET_READBACK_SCHEMA}:
+        return _o6_same_task_replay_packet_readback_placeholder(
+            task_id=task_id,
+            task_origin=task_origin,
+            blocked_reasons=["same_task_replay_packet_readback_schema_unsupported"],
+        )
+    source_schema_text = _o6_cloud_archive_safe_text(packet.get("source_schema") or "", 160)
+    if not source_schema_text:
+        source_schema_text = (
+            SAME_TASK_REPLAY_PACKET_SOURCE_SCHEMA
+            if schema_text == O6_SAME_TASK_REPLAY_PACKET_READBACK_SCHEMA
+            else schema_text
+        )
+    source_artifact_boundary = _o6_cloud_archive_safe_text(
+        packet.get("source_artifact_boundary")
+        or packet.get("artifact_boundary")
+        or packet.get("strict_no_motion_boundary")
+        or "",
+        180,
+    )
+    proof_scope = _o6_cloud_archive_safe_text(
+        packet.get("proof_scope") or packet.get("evidence_boundary") or "",
+        180,
+    )
+    proof_scope_supported = (
+        proof_scope == O6_SAME_TASK_REPLAY_PACKET_READBACK_PROOF_SCOPE
+        or source_artifact_boundary == O3_SAME_TASK_REPLAY_PACKET_PROOF_SCOPE
+    )
+    if not proof_scope_supported:
+        return _o6_same_task_replay_packet_readback_placeholder(
+            task_id=task_id,
+            task_origin=task_origin,
+            blocked_reasons=["same_task_replay_packet_readback_proof_scope_unsupported"],
+        )
+    expected_task_id = _o6_cloud_archive_safe_text(task_id or "", 80)
+    actual_task_id = _o6_cloud_archive_safe_text(packet.get("task_id") or "", 80)
+    if expected_task_id and actual_task_id and expected_task_id != actual_task_id:
+        return _o6_same_task_replay_packet_readback_placeholder(
+            task_id=expected_task_id,
+            task_origin=task_origin,
+            blocked_reasons=["same_task_replay_packet_readback_task_mismatch"],
+        )
+    if (
+        _o6_same_task_route_execution_material_packet_has_dangerous_true(packet)
+        or _o6_field_evidence_dangerous_true_paths(packet)
+        or _o6_archive_has_real_capability_claim(packet)
+    ):
+        return _o6_same_task_replay_packet_readback_placeholder(
+            task_id=expected_task_id or actual_task_id,
+            task_origin=task_origin,
+            blocked_reasons=["same_task_replay_packet_readback_dangerous_true"],
+        )
+    unsafe_reason = _o6_same_task_replay_packet_readback_unsafe_reason(packet)
+    if unsafe_reason:
+        return _o6_same_task_replay_packet_readback_placeholder(
+            task_id=expected_task_id or actual_task_id,
+            task_origin=task_origin,
+            blocked_reasons=[unsafe_reason],
+        )
+
+    counts_source = _o6_cloud_archive_dict(packet.get("counts"))
+    route_count = _o6_cloud_archive_int(
+        packet.get("route_csv_row_count") or counts_source.get("route_csv_row_count"),
+        0,
+    )
+    replay_count = _o6_cloud_archive_int(
+        packet.get("replay_jsonl_event_count") or counts_source.get("replay_jsonl_event_count"),
+        0,
+    )
+    pose_count = _o6_cloud_archive_int(
+        packet.get("path_structured_pose_count") or counts_source.get("path_structured_pose_count"),
+        0,
+    )
+    blocked_reasons = _o6_same_task_route_execution_material_packet_safe_list(packet.get("blocked_reasons"))
+    next_required = _o6_same_task_route_execution_material_packet_safe_list(packet.get("next_required_evidence"))
+    if not bool(packet.get("same_task_replay_packet_ready")):
+        blocked_reasons.append("same_task_replay_packet_readback_not_ready")
+    if not bool(packet.get("same_task_identity_verified")):
+        blocked_reasons.append("same_task_replay_packet_readback_identity_not_verified")
+    if route_count <= 0 or replay_count <= 0 or pose_count <= 0:
+        blocked_reasons.append("same_task_replay_packet_readback_counts_missing")
+    if len({route_count, replay_count, pose_count}) != 1:
+        blocked_reasons.append("same_task_replay_packet_readback_counts_mismatch")
+
+    is_ready = not blocked_reasons
+    if not next_required:
+        next_required = [
+            "controlled_route_execution_record_for_same_packet",
+            "delivery_or_operator_acceptance_record",
+            "current_live_hil_acceptance",
+        ]
+    return {
+        "schema": O6_SAME_TASK_REPLAY_PACKET_READBACK_SCHEMA,
+        "source_schema": source_schema_text,
+        "proof_scope": O6_SAME_TASK_REPLAY_PACKET_READBACK_PROOF_SCOPE,
+        "evidence_boundary": O6_SAME_TASK_REPLAY_PACKET_READBACK_PROOF_SCOPE,
+        "source_artifact_boundary": source_artifact_boundary,
+        "task_id": actual_task_id or expected_task_id,
+        "task_origin": _o6_cloud_archive_safe_text(task_origin or "field_evidence_manifest", 80),
+        "status": "same_task_replay_packet_ready_not_route_execution_proof" if is_ready else "blocked_not_proven",
+        "source": _o6_same_task_route_execution_material_packet_safe_label(
+            packet.get("source"),
+            default="same_task_replay_packet_readback",
+            limit=120,
+        )
+        if is_ready
+        else "",
+        "packet_id": _o6_same_task_route_execution_material_packet_safe_label(packet.get("packet_id"), limit=160)
+        if is_ready
+        else "",
+        "route_intent_id": _o6_same_task_route_execution_material_packet_safe_label(
+            packet.get("route_intent_id"),
+            limit=180,
+        )
+        if is_ready
+        else "",
+        "route_csv_row_count": route_count if is_ready else 0,
+        "replay_jsonl_event_count": replay_count if is_ready else 0,
+        "path_structured_pose_count": pose_count if is_ready else 0,
+        "same_task_identity_verified": bool(packet.get("same_task_identity_verified")) if is_ready else False,
+        "same_task_replay_packet_ready": bool(packet.get("same_task_replay_packet_ready")) if is_ready else False,
+        "source_refs": _o6_same_task_replay_packet_readback_source_refs(packet) if is_ready else {
+            "source_summary_ref": "",
+            "packet_jsonl_ref": "",
+            "route_csv_ref": "",
+            "replay_jsonl_ref": "",
+        },
+        "sha256_prefixes": _o6_same_task_replay_packet_readback_sha256_prefixes(packet) if is_ready else {
+            "summary": "",
+            "route_csv": "",
+            "replay_jsonl": "",
+        },
+        "blocked_reasons": list(dict.fromkeys(blocked_reasons)),
+        "next_required_evidence": list(dict.fromkeys(next_required)),
+        "route_execution_success": False,
+        "delivery_success": False,
+        "hil_pass": False,
+        "safe_to_control": False,
+        "robot_control_executed": False,
+        "primary_actions_enabled": False,
+        "publishes_cmd_vel": False,
+        "calls_base_manual": False,
+        "uses_base_uart": False,
+        "connects_cloud_production": False,
+    }
+
+
+def _o6_same_task_replay_packet_readback_without_evidence(value):
+    """全局安全扫描前剥离 replay packet；坏包只降级该 readback section。"""
+
+    if isinstance(value, dict):
+        sanitized = {}
+        for key, item in value.items():
+            if str(key) == "same_task_replay_packet_readback":
+                continue
+            sanitized[key] = _o6_same_task_replay_packet_readback_without_evidence(item)
+        return sanitized
+    if isinstance(value, list):
+        return [_o6_same_task_replay_packet_readback_without_evidence(item) for item in value]
+    return value
+
+
+def _o6_same_task_replay_packet_readback_request(payload, container):
+    """readback 支持顶层、manifest/bundle 内或 field motion packet 内三种 additive 位置。"""
+
+    candidates = []
+    if isinstance(payload, dict):
+        candidates.append(payload)
+    if isinstance(container, dict):
+        candidates.append(container)
+    for candidate in candidates:
+        packet = candidate.get("same_task_replay_packet_readback")
+        if isinstance(packet, dict):
+            return packet
+    for candidate in candidates:
+        field_motion_packet = _o6_cloud_archive_dict(candidate.get("field_motion_evidence_packet"))
+        packet = field_motion_packet.get("same_task_replay_packet_readback")
+        if isinstance(packet, dict):
+            return packet
+    return {}
+
+
+def _o6_bounded_route_execution_gate_material_placeholder(
+    *, task_id="", task_origin="field_evidence_manifest", blocked_reasons=None, next_required_evidence=None
+):
+    """bounded route gate 缺失或不安全时只返回 blocked 摘要，避免消费者推断已可控。"""
+
+    reasons = _o6_same_task_route_execution_material_packet_safe_list(
+        blocked_reasons,
+        default_items=["bounded_route_execution_gate_material_not_available"],
+    )
+    next_items = _o6_same_task_route_execution_material_packet_safe_list(
+        next_required_evidence,
+        default_items=["current_live_safety_gate_and_hil_acceptance"],
+    )
+    fixed_false_fields = {key: False for key in sorted(O6_BOUNDED_ROUTE_EXECUTION_GATE_FALSE_KEYS)}
+    return {
+        "schema": O6_BOUNDED_ROUTE_EXECUTION_GATE_MATERIAL_SCHEMA,
+        "source_schema": "",
+        "proof_scope": O6_BOUNDED_ROUTE_EXECUTION_GATE_MATERIAL_PROOF_SCOPE,
+        "evidence_boundary": O6_BOUNDED_ROUTE_EXECUTION_GATE_MATERIAL_PROOF_SCOPE,
+        "task_id": _o6_cloud_archive_safe_text(task_id or "", 80),
+        "task_origin": _o6_cloud_archive_safe_text(task_origin or "field_evidence_manifest", 80),
+        "status": "blocked_not_proven",
+        "source": "",
+        "packet_id": "",
+        "route_intent_id": "",
+        "route_csv_row_count": 0,
+        "path_structured_pose_count": 0,
+        "segment_count": 0,
+        "execution_plan_status": "",
+        "controlled_route_execution_gate_status": "",
+        "bounded_command_plan_status": "",
+        "source_materials": [],
+        "source_artifact_boundaries": {},
+        "global_abort_criteria_count": 0,
+        "bounded_segment_plan_count": 0,
+        "bounded_route_execution_gate_material_readback": False,
+        "blocked_reasons": reasons,
+        "next_required_evidence": next_items,
+        "fixed_false_fields": fixed_false_fields,
+        **fixed_false_fields,
+    }
+
+
+def _o6_bounded_route_execution_gate_material_is_allowed_negative_control_text(value, path=""):
+    """07:07/08:09 源材料会写“no /cmd_vel”等拒绝语；这些负向声明允许保留为摘要来源。"""
+
+    text = str(value or "").strip().lower()
+    path_text = str(path or "").lower()
+    negative_context = any(
+        marker in path_text
+        for marker in (
+            "no_motion_control_guard",
+            "forbidden_in_this_artifact",
+            "rejected_claims",
+            "control_guard",
+        )
+    )
+    if not negative_context:
+        return False
+    allowed_phrases = (
+        "no /cmd_vel",
+        "no /api/base/manual",
+        "no navigatetopose",
+        "no navigate_to_pose",
+        "no wave rover uart",
+        "no wave rover",
+        "no serial",
+        "uses_base_uart",
+        "calls_base_manual",
+        "publishes_cmd_vel",
+    )
+    if "rejected_claims" in path_text:
+        allowed_phrases = allowed_phrases + (
+            "/cmd_vel",
+            "/api/base/manual",
+            "navigatetopose",
+            "navigate_to_pose",
+            "wave rover",
+            "serial",
+            "uart",
+        )
+    return any(phrase in text for phrase in allowed_phrases)
+
+
+def _o6_bounded_route_execution_gate_material_has_dangerous_true(value):
+    """route/delivery/HIL/control/production true 会破坏本 section 的 intake-only 边界。"""
+
+    blocked_true_keys = set(O6_BOUNDED_ROUTE_EXECUTION_GATE_FALSE_KEYS) | {
+        "success",
+        "safe_to_replay",
+        "ready_to_control",
+        "control_capability",
+        "control_permission",
+        "live_execution_ready",
+        "route_execution_ready",
+        "production_ready",
+        "real_cloud_db_connected",
+        "real_oss_connected",
+        "real_robot_motion",
+        "real_route_execution_success",
+        "real_delivery_success",
+        "current_live_hil_acceptance",
+    }
+    if isinstance(value, dict):
+        for key, item in value.items():
+            if str(key).lower() in blocked_true_keys and item is True:
+                return True
+            if _o6_bounded_route_execution_gate_material_has_dangerous_true(item):
+                return True
+        return False
+    if isinstance(value, list):
+        return any(_o6_bounded_route_execution_gate_material_has_dangerous_true(item) for item in value)
+    if isinstance(value, str):
+        lowered = value.strip().lower()
+        for key in blocked_true_keys:
+            if f"{key}=true" in lowered or f'"{key}":true' in lowered or f'"{key}": true' in lowered:
+                return True
+    return False
+
+
+def _o6_bounded_route_execution_gate_material_unsafe_reason(value, path=""):
+    """只接受安全摘要字段；raw 路径、raw command、控制接口或凭证文本会降级本 section。"""
+
+    if isinstance(value, dict):
+        for key, item in value.items():
+            key_text = str(key).lower()
+            key_path = f"{path}.{key_text}" if path else key_text
+            if key_text not in O6_BOUNDED_ROUTE_EXECUTION_GATE_FALSE_KEYS and any(
+                marker in key_text
+                for marker in (
+                    "raw",
+                    "base64",
+                    "content",
+                    "payload",
+                    "body",
+                    "token",
+                    "bearer",
+                    "authorization",
+                    "secret",
+                    "password",
+                    "credential",
+                    "local_path",
+                    "artifact_path",
+                    "root_path",
+                    "command_body",
+                    "command_payload",
+                    "cmd_vel",
+                    "api_base_manual",
+                    "navigatetopose",
+                    "serial",
+                    "uart_device",
+                    "baudrate",
+                    "wave_rover",
+                    "traceback",
+                    "response_body",
+                )
+            ):
+                return "bounded_route_execution_gate_material_unsafe"
+            nested_reason = _o6_bounded_route_execution_gate_material_unsafe_reason(item, key_path)
+            if nested_reason:
+                return nested_reason
+        return ""
+    if isinstance(value, list):
+        for index, item in enumerate(value):
+            nested_reason = _o6_bounded_route_execution_gate_material_unsafe_reason(item, f"{path}[{index}]")
+            if nested_reason:
+                return nested_reason
+        return ""
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return ""
+        lowered = text.lower()
+        if _o6_bounded_route_execution_gate_material_is_allowed_negative_control_text(text, path):
+            return ""
+        if _o6_archive_has_raw_content(text):
+            return "bounded_route_execution_gate_material_unsafe"
+        if text.startswith(("/", "~/")) or "/users/" in lowered or "/tmp/" in lowered:
+            return "bounded_route_execution_gate_material_unsafe"
+        if lowered.startswith(("file://", "http://", "https://", "oss://", "s3://", "c:\\", "\\\\")):
+            return "bounded_route_execution_gate_material_unsafe"
+        if any(
+            marker in lowered
+            for marker in (
+                "authorization",
+                "bearer",
+                "token=",
+                "secret=",
+                "password=",
+                "credential",
+                "base64",
+                "raw command",
+                "command body",
+                "response body",
+                "traceback",
+                "/cmd_vel",
+                "/api/base/manual",
+                "navigatetopose",
+                "navigate_to_pose",
+                "serial",
+                "uart",
+                "wave rover",
+            )
+        ):
+            return "bounded_route_execution_gate_material_unsafe"
+    return ""
+
+
+def _o6_bounded_route_execution_gate_material_without_evidence(value):
+    """全局安全扫描前剥离 bounded gate 材料；坏包只降级自身摘要。"""
+
+    if isinstance(value, dict):
+        sanitized = {}
+        for key, item in value.items():
+            if str(key) == "bounded_route_execution_gate_material":
+                continue
+            sanitized[key] = _o6_bounded_route_execution_gate_material_without_evidence(item)
+        return sanitized
+    if isinstance(value, list):
+        return [_o6_bounded_route_execution_gate_material_without_evidence(item) for item in value]
+    return value
+
+
+def _o6_bounded_route_execution_gate_material_request(payload, container):
+    """bounded gate material 支持顶层、manifest/bundle 内或 field motion packet 内三种 additive 位置。"""
+
+    candidates = []
+    if isinstance(payload, dict):
+        candidates.append(payload)
+    if isinstance(container, dict):
+        candidates.append(container)
+    for candidate in candidates:
+        material = candidate.get("bounded_route_execution_gate_material")
+        if isinstance(material, dict):
+            return material
+    for candidate in candidates:
+        field_motion_packet = _o6_cloud_archive_dict(candidate.get("field_motion_evidence_packet"))
+        material = field_motion_packet.get("bounded_route_execution_gate_material")
+        if isinstance(material, dict):
+            return material
+    return {}
+
+
+def _o6_bounded_route_execution_gate_material_source_pair(material):
+    """兼容 O6 wrapper 的两份源摘要，并把历史别名收敛到 gate/plan 两个输入。"""
+
+    material = _o6_cloud_archive_dict(material)
+    gate = _o6_cloud_archive_dict(
+        material.get("controlled_route_execution_gate_record")
+        or material.get("controlled_route_execution_gate")
+        or material.get("gate_record")
+    )
+    plan = _o6_cloud_archive_dict(
+        material.get("bounded_route_command_plan")
+        or material.get("bounded_command_plan")
+        or material.get("command_plan")
+    )
+    return gate, plan
+
+
+def _o6_bounded_route_execution_gate_material_false_fields(source):
+    """源材料缺字段可以接受；只要出现 true 就必须 fail-closed。"""
+
+    source = _o6_cloud_archive_dict(source)
+    fixed_false = _o6_cloud_archive_dict(source.get("fixed_false_fields"))
+    for key in O6_BOUNDED_ROUTE_EXECUTION_GATE_FALSE_KEYS:
+        if source.get(key) is True or fixed_false.get(key) is True:
+            return False
+    return True
+
+
+def _o6_bounded_route_execution_gate_material_summary(
+    raw_material, *, task_id="", task_origin="field_evidence_manifest"
+):
+    """把 07:07 gate 与 08:09 bounded plan 收敛成 O6/O7 readback，不声明执行或控制能力。"""
+
+    material = _o6_cloud_archive_dict(raw_material)
+    if not material:
+        return _o6_bounded_route_execution_gate_material_placeholder(task_id=task_id, task_origin=task_origin)
+    schema_text = _o6_cloud_archive_safe_text(material.get("schema") or "", 160)
+    if schema_text != O6_BOUNDED_ROUTE_EXECUTION_GATE_MATERIAL_SCHEMA:
+        return _o6_bounded_route_execution_gate_material_placeholder(
+            task_id=task_id,
+            task_origin=task_origin,
+            blocked_reasons=["bounded_route_execution_gate_material_schema_unsupported"],
+        )
+    proof_scope = _o6_cloud_archive_safe_text(
+        material.get("proof_scope") or material.get("evidence_boundary") or "",
+        180,
+    )
+    if proof_scope != O6_BOUNDED_ROUTE_EXECUTION_GATE_MATERIAL_PROOF_SCOPE:
+        return _o6_bounded_route_execution_gate_material_placeholder(
+            task_id=task_id,
+            task_origin=task_origin,
+            blocked_reasons=["bounded_route_execution_gate_material_proof_scope_unsupported"],
+        )
+    expected_task_id = _o6_cloud_archive_safe_text(task_id or "", 80)
+    wrapper_task_id = _o6_cloud_archive_safe_text(material.get("task_id") or "", 80)
+    if expected_task_id and wrapper_task_id and expected_task_id != wrapper_task_id:
+        return _o6_bounded_route_execution_gate_material_placeholder(
+            task_id=expected_task_id,
+            task_origin=task_origin,
+            blocked_reasons=["bounded_route_execution_gate_material_task_mismatch"],
+        )
+    if (
+        _o6_bounded_route_execution_gate_material_has_dangerous_true(material)
+        or _o6_field_evidence_dangerous_true_paths(material)
+        or _o6_archive_has_real_capability_claim(material)
+    ):
+        return _o6_bounded_route_execution_gate_material_placeholder(
+            task_id=expected_task_id or wrapper_task_id,
+            task_origin=task_origin,
+            blocked_reasons=["bounded_route_execution_gate_material_dangerous_true"],
+        )
+    unsafe_reason = _o6_bounded_route_execution_gate_material_unsafe_reason(material)
+    if unsafe_reason:
+        return _o6_bounded_route_execution_gate_material_placeholder(
+            task_id=expected_task_id or wrapper_task_id,
+            task_origin=task_origin,
+            blocked_reasons=[unsafe_reason],
+        )
+
+    gate, plan = _o6_bounded_route_execution_gate_material_source_pair(material)
+    already_summarized = not gate and not plan
+    source_boundaries = _o6_cloud_archive_dict(material.get("source_artifact_boundaries"))
+    gate_schema = _o6_cloud_archive_safe_text(gate.get("schema") or "", 160)
+    plan_schema = _o6_cloud_archive_safe_text(plan.get("schema") or "", 160)
+    if already_summarized:
+        # store reload/detail 会再次调用 summary；已净化的 O6 shape 不应因为缺原始子对象而自降级。
+        gate_schema = CONTROLLED_ROUTE_EXECUTION_GATE_RECORD_SOURCE_SCHEMA
+        plan_schema = BOUNDED_ROUTE_COMMAND_PLAN_SOURCE_SCHEMA
+    gate_boundary = _o6_cloud_archive_safe_text(
+        gate.get("proof_boundary")
+        or gate.get("artifact_boundary")
+        or source_boundaries.get("controlled_route_execution_gate_record")
+        or "",
+        180,
+    )
+    plan_boundary = _o6_cloud_archive_safe_text(
+        plan.get("proof_boundary")
+        or plan.get("artifact_boundary")
+        or source_boundaries.get("bounded_route_command_plan")
+        or "",
+        180,
+    )
+    packet_id = _o6_same_task_route_execution_material_packet_safe_label(
+        plan.get("packet_id") or gate.get("packet_id") or material.get("packet_id"),
+        limit=180,
+    )
+    actual_task_id = _o6_same_task_route_execution_material_packet_safe_label(
+        plan.get("task_id") or gate.get("task_id") or wrapper_task_id or material.get("task_id"),
+        limit=120,
+    )
+    route_intent_id = _o6_same_task_route_execution_material_packet_safe_label(
+        plan.get("route_intent_id") or gate.get("route_intent_id") or material.get("route_intent_id"),
+        limit=200,
+    )
+    route_csv_row_count = _o6_cloud_archive_int(
+        plan.get("route_csv_row_count") or gate.get("route_csv_row_count") or material.get("route_csv_row_count"),
+        0,
+    )
+    path_structured_pose_count = _o6_cloud_archive_int(
+        plan.get("path_structured_pose_count")
+        or gate.get("path_structured_pose_count")
+        or material.get("path_structured_pose_count"),
+        0,
+    )
+    segment_count = _o6_cloud_archive_int(plan.get("segment_count") or material.get("segment_count"), 0)
+    bounded_segment_plan_count = len(_o6_cloud_archive_list(plan.get("bounded_segment_plan")))
+    if already_summarized:
+        bounded_segment_plan_count = _o6_cloud_archive_int(material.get("bounded_segment_plan_count"), 0)
+    if segment_count <= 0 and bounded_segment_plan_count:
+        segment_count = bounded_segment_plan_count
+    global_abort_criteria_count = len(_o6_cloud_archive_list(plan.get("global_abort_criteria")))
+    if already_summarized:
+        global_abort_criteria_count = _o6_cloud_archive_int(material.get("global_abort_criteria_count"), 0)
+    execution_plan_status = _o6_same_task_route_execution_material_packet_safe_label(
+        plan.get("execution_plan_status") or material.get("execution_plan_status"),
+        limit=160,
+    )
+    gate_status = _o6_same_task_route_execution_material_packet_safe_label(
+        gate.get("controlled_route_execution_gate_status")
+        or gate.get("status")
+        or material.get("controlled_route_execution_gate_status"),
+        limit=160,
+    )
+    plan_status = _o6_same_task_route_execution_material_packet_safe_label(
+        plan.get("bounded_route_command_plan_status")
+        or plan.get("status")
+        or material.get("bounded_command_plan_status")
+        or "bounded_plan_ready_not_control_proof",
+        limit=160,
+    )
+    blocked_reasons = _o6_same_task_route_execution_material_packet_safe_list(material.get("blocked_reasons"))
+    next_required = _o6_same_task_route_execution_material_packet_safe_list(material.get("next_required_evidence"))
+    validation_blockers = []
+    if gate_schema != CONTROLLED_ROUTE_EXECUTION_GATE_RECORD_SOURCE_SCHEMA:
+        validation_blockers.append("controlled_route_execution_gate_record_schema_unsupported")
+    if plan_schema != BOUNDED_ROUTE_COMMAND_PLAN_SOURCE_SCHEMA:
+        validation_blockers.append("bounded_route_command_plan_schema_unsupported")
+    if gate_boundary != O3_CONTROLLED_ROUTE_EXECUTION_GATE_RECORD_PROOF_SCOPE:
+        validation_blockers.append("controlled_route_execution_gate_record_boundary_mismatch")
+    if plan_boundary != O3_BOUNDED_ROUTE_COMMAND_PLAN_PROOF_SCOPE:
+        validation_blockers.append("bounded_route_command_plan_boundary_mismatch")
+    if packet_id != O6_BOUNDED_ROUTE_EXECUTION_GATE_PACKET_ID:
+        validation_blockers.append("bounded_route_execution_gate_material_packet_id_mismatch")
+    if actual_task_id != O6_BOUNDED_ROUTE_EXECUTION_GATE_TASK_ID:
+        validation_blockers.append("bounded_route_execution_gate_material_task_id_mismatch")
+    if expected_task_id and actual_task_id != expected_task_id:
+        validation_blockers.append("bounded_route_execution_gate_material_archive_task_mismatch")
+    if route_intent_id != O6_BOUNDED_ROUTE_EXECUTION_GATE_ROUTE_INTENT_ID:
+        validation_blockers.append("bounded_route_execution_gate_material_route_intent_mismatch")
+    if route_csv_row_count != 28:
+        validation_blockers.append("bounded_route_execution_gate_material_route_count_mismatch")
+    if path_structured_pose_count != 28:
+        validation_blockers.append("bounded_route_execution_gate_material_pose_count_mismatch")
+    if segment_count != 27:
+        validation_blockers.append("bounded_route_execution_gate_material_segment_count_mismatch")
+    if execution_plan_status != "blocked_pending_live_safety_gate":
+        validation_blockers.append("bounded_route_execution_gate_material_execution_status_mismatch")
+    if gate_status != "fail_closed_input_packet_validated":
+        validation_blockers.append("controlled_route_execution_gate_status_mismatch")
+    if not (
+        _o6_bounded_route_execution_gate_material_false_fields(material)
+        and _o6_bounded_route_execution_gate_material_false_fields(gate)
+        and _o6_bounded_route_execution_gate_material_false_fields(plan)
+    ):
+        validation_blockers.append("bounded_route_execution_gate_material_false_field_mismatch")
+    for reason in validation_blockers:
+        if reason not in blocked_reasons:
+            blocked_reasons.append(reason)
+    if not next_required:
+        next_required = [
+            "explicit_live_safety_operator_gate",
+            "current_live_hil_acceptance",
+            "same_window_nav2_controller_result",
+            "delivery_operator_acceptance_evidence",
+        ]
+
+    is_ready = not validation_blockers
+    fixed_false_fields = {key: False for key in sorted(O6_BOUNDED_ROUTE_EXECUTION_GATE_FALSE_KEYS)}
+    return {
+        "schema": O6_BOUNDED_ROUTE_EXECUTION_GATE_MATERIAL_SCHEMA,
+        "source_schema": O6_BOUNDED_ROUTE_EXECUTION_GATE_MATERIAL_SCHEMA,
+        "proof_scope": O6_BOUNDED_ROUTE_EXECUTION_GATE_MATERIAL_PROOF_SCOPE,
+        "evidence_boundary": O6_BOUNDED_ROUTE_EXECUTION_GATE_MATERIAL_PROOF_SCOPE,
+        "task_id": actual_task_id if is_ready else (expected_task_id or wrapper_task_id),
+        "task_origin": _o6_cloud_archive_safe_text(task_origin or "field_evidence_manifest", 80),
+        "status": "bounded_route_execution_gate_material_ready_not_route_execution_proof"
+        if is_ready
+        else "blocked_not_proven",
+        "source": _o6_same_task_route_execution_material_packet_safe_label(
+            material.get("source"),
+            default="algorithm_bounded_route_execution_gate_material",
+            limit=140,
+        )
+        if is_ready
+        else "",
+        "packet_id": packet_id if is_ready else "",
+        "route_intent_id": route_intent_id if is_ready else "",
+        "route_csv_row_count": route_csv_row_count if is_ready else 0,
+        "path_structured_pose_count": path_structured_pose_count if is_ready else 0,
+        "segment_count": segment_count if is_ready else 0,
+        "execution_plan_status": execution_plan_status if is_ready else "",
+        "controlled_route_execution_gate_status": gate_status if is_ready else "",
+        "bounded_command_plan_status": plan_status if is_ready else "",
+        "source_materials": ["controlled_route_execution_gate_record", "bounded_route_command_plan"]
+        if is_ready
+        else [],
+        "source_artifact_boundaries": {
+            "controlled_route_execution_gate_record": gate_boundary,
+            "bounded_route_command_plan": plan_boundary,
+        }
+        if is_ready
+        else {},
+        "global_abort_criteria_count": global_abort_criteria_count if is_ready else 0,
+        "bounded_segment_plan_count": bounded_segment_plan_count if is_ready else 0,
+        "bounded_route_execution_gate_material_readback": bool(is_ready),
+        "blocked_reasons": list(dict.fromkeys(blocked_reasons)),
+        "next_required_evidence": list(dict.fromkeys(next_required)),
+        "fixed_false_fields": fixed_false_fields,
+        **fixed_false_fields,
+    }
+
+
+def _o6_bounded_route_terminal_result_material_placeholder(
+    *, task_id="", task_origin="field_evidence_manifest", blocked_reasons=None, next_required_evidence=None
+):
+    """terminal result 材料缺失或不安全时只返回 blocked 摘要，避免把 mock terminal result 当成送达。"""
+
+    reasons = _o6_same_task_route_execution_material_packet_safe_list(
+        blocked_reasons,
+        default_items=["bounded_route_terminal_result_material_not_available"],
+    )
+    next_items = _o6_same_task_route_execution_material_packet_safe_list(
+        next_required_evidence,
+        default_items=["current_live_route_execution_delivery_or_hil_evidence"],
+    )
+    fixed_false_fields = {key: False for key in sorted(O6_BOUNDED_ROUTE_TERMINAL_RESULT_FALSE_KEYS)}
+    return {
+        "schema": O6_BOUNDED_ROUTE_TERMINAL_RESULT_MATERIAL_SCHEMA,
+        "source_schema": "",
+        "proof_scope": O6_BOUNDED_ROUTE_TERMINAL_RESULT_MATERIAL_PROOF_SCOPE,
+        "evidence_boundary": O6_BOUNDED_ROUTE_TERMINAL_RESULT_MATERIAL_PROOF_SCOPE,
+        "source_proof_boundary": "",
+        "task_id": _o6_cloud_archive_safe_text(task_id or "", 80),
+        "task_origin": _o6_cloud_archive_safe_text(task_origin or "field_evidence_manifest", 80),
+        "status": "blocked_not_proven",
+        "source": "",
+        "packet_id": "",
+        "route_intent_id": "",
+        "result_code": "",
+        "terminal_result_state": "",
+        "reconciliation_state": "",
+        "safe_evidence_ref": "",
+        "route_csv_row_count": 0,
+        "path_structured_pose_count": 0,
+        "segment_count": 0,
+        "same_task_id_consumed": False,
+        "bounded_route_terminal_result_material_written": False,
+        "bounded_route_terminal_result_material_readback": False,
+        "source_materials": [],
+        "blocked_reasons": reasons,
+        "next_required_evidence": next_items,
+        "fixed_false_fields": fixed_false_fields,
+        **fixed_false_fields,
+    }
+
+
+def _o6_bounded_route_terminal_result_material_has_dangerous_true(value):
+    """terminal-result intake 只能消费安全摘要，任何成功/控制/生产 true 都必须降级。"""
+
+    blocked_true_keys = set(O6_BOUNDED_ROUTE_TERMINAL_RESULT_FALSE_KEYS) | {
+        "success",
+        "ready_to_control",
+        "control_capability",
+        "control_permission",
+        "live_execution_ready",
+        "route_execution_ready",
+        "production_ready",
+        "real_cloud_db_connected",
+        "real_oss_connected",
+        "real_robot_motion",
+        "real_route_execution_success",
+        "real_world_delivery_success",
+        "real_delivery_success",
+        "current_live_hil_acceptance",
+        "operator_acceptance",
+        "delivery_operator_acceptance",
+    }
+    if isinstance(value, dict):
+        for key, item in value.items():
+            if str(key).lower() in blocked_true_keys and item is True:
+                return True
+            if _o6_bounded_route_terminal_result_material_has_dangerous_true(item):
+                return True
+        return False
+    if isinstance(value, list):
+        return any(_o6_bounded_route_terminal_result_material_has_dangerous_true(item) for item in value)
+    if isinstance(value, str):
+        lowered = value.strip().lower()
+        for key in blocked_true_keys:
+            if f"{key}=true" in lowered or f'"{key}":true' in lowered or f'"{key}": true' in lowered:
+                return True
+    return False
+
+
+def _o6_bounded_route_terminal_result_material_unsafe_reason(value, path=""):
+    """只接受 O5/O6 安全摘要字段；raw 路径、URL、命令、串口或凭证文本会降级本 section。"""
+
+    allowed_ref_keys = {"safe_evidence_ref", "evidence_ref", "source_summary_ref", "source_ref"}
+    if isinstance(value, dict):
+        for key, item in value.items():
+            key_text = str(key).lower()
+            key_path = f"{path}.{key_text}" if path else key_text
+            if key_text not in O6_BOUNDED_ROUTE_TERMINAL_RESULT_FALSE_KEYS and any(
+                marker in key_text
+                for marker in (
+                    "raw",
+                    "base64",
+                    "content",
+                    "payload",
+                    "body",
+                    "token",
+                    "bearer",
+                    "authorization",
+                    "secret",
+                    "password",
+                    "credential",
+                    "local_path",
+                    "artifact_path",
+                    "root_path",
+                    "command_body",
+                    "command_payload",
+                    "cmd_vel",
+                    "api_base_manual",
+                    "navigatetopose",
+                    "serial",
+                    "uart_device",
+                    "baudrate",
+                    "wave_rover",
+                    "traceback",
+                    "response_body",
+                )
+            ):
+                return "bounded_route_terminal_result_material_unsafe"
+            nested_reason = _o6_bounded_route_terminal_result_material_unsafe_reason(item, key_path)
+            if nested_reason:
+                return nested_reason
+        return ""
+    if isinstance(value, list):
+        for index, item in enumerate(value):
+            nested_reason = _o6_bounded_route_terminal_result_material_unsafe_reason(item, f"{path}[{index}]")
+            if nested_reason:
+                return nested_reason
+        return ""
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return ""
+        lowered = text.lower()
+        field_name = path.split(".")[-1]
+        if field_name in allowed_ref_keys:
+            if _o6_phone_browser_terminal_material_ref(text):
+                return ""
+            return "bounded_route_terminal_result_material_unsafe"
+        if _o6_archive_has_raw_content(text):
+            return "bounded_route_terminal_result_material_unsafe"
+        if text.startswith(("/", "~/")) or "/users/" in lowered or "/tmp/" in lowered:
+            return "bounded_route_terminal_result_material_unsafe"
+        if lowered.startswith(("file://", "http://", "https://", "oss://", "s3://", "c:\\", "\\\\")):
+            return "bounded_route_terminal_result_material_unsafe"
+        if any(
+            marker in lowered
+            for marker in (
+                "authorization",
+                "bearer",
+                "token=",
+                "secret=",
+                "password=",
+                "credential",
+                "base64",
+                "raw command",
+                "command body",
+                "response body",
+                "traceback",
+                "/cmd_vel",
+                "/api/base/manual",
+                "navigatetopose",
+                "navigate_to_pose",
+                "serial",
+                "uart",
+                "wave rover",
+            )
+        ):
+            return "bounded_route_terminal_result_material_unsafe"
+    return ""
+
+
+def _o6_bounded_route_terminal_result_material_without_evidence(value):
+    """全局安全扫描前剥离 terminal-result 材料；坏包只降级自身摘要。"""
+
+    if isinstance(value, dict):
+        sanitized = {}
+        for key, item in value.items():
+            if str(key) == "bounded_route_terminal_result_material":
+                continue
+            sanitized[key] = _o6_bounded_route_terminal_result_material_without_evidence(item)
+        return sanitized
+    if isinstance(value, list):
+        return [_o6_bounded_route_terminal_result_material_without_evidence(item) for item in value]
+    return value
+
+
+def _o6_bounded_route_terminal_result_material_request(payload, container):
+    """terminal-result material 支持顶层、manifest/bundle 内或 field motion packet 内三种 additive 位置。"""
+
+    candidates = []
+    if isinstance(payload, dict):
+        candidates.append(payload)
+    if isinstance(container, dict):
+        candidates.append(container)
+    for candidate in candidates:
+        material = candidate.get("bounded_route_terminal_result_material")
+        if isinstance(material, dict):
+            return material
+    for candidate in candidates:
+        field_motion_packet = _o6_cloud_archive_dict(candidate.get("field_motion_evidence_packet"))
+        material = field_motion_packet.get("bounded_route_terminal_result_material")
+        if isinstance(material, dict):
+            return material
+    for candidate in candidates:
+        # 允许 O7/O6 intake 直接提交 00:24 O5 安全摘要；仍然会在 summary 里做全量身份校验。
+        if candidate.get("schema") == O5_BOUNDED_ROUTE_TERMINAL_RESULT_BRIDGE_SCHEMA:
+            return candidate
+    return {}
+
+
+def _o6_bounded_route_terminal_result_material_false_fields(source):
+    """源材料缺字段可以接受；只要出现 true 就必须 fail-closed。"""
+
+    source = _o6_cloud_archive_dict(source)
+    fixed_false = _o6_cloud_archive_dict(source.get("fixed_false_fields"))
+    for key in O6_BOUNDED_ROUTE_TERMINAL_RESULT_FALSE_KEYS:
+        if source.get(key) is True or fixed_false.get(key) is True:
+            return False
+    return True
+
+
+def _o6_bounded_route_terminal_result_material_safe_ref(material):
+    """source artifact 只回显 basename；没有显式 ref 时使用本 sprint 固定 artifact 文件名。"""
+
+    for key in ("safe_evidence_ref", "source_ref", "source_summary_ref"):
+        safe_ref = _o6_phone_browser_terminal_material_ref(_o6_cloud_archive_dict(material).get(key))
+        if safe_ref:
+            return safe_ref
+    return "o5_bounded_route_terminal_result_bridge_summary.json"
+
+
+def _o6_bounded_route_terminal_result_material_summary(
+    raw_material, *, task_id="", task_origin="field_evidence_manifest"
+):
+    """把 00:24 O5 terminal-result bridge 收敛成 O6/O7 readback，不声明真实 delivery。"""
+
+    material = _o6_cloud_archive_dict(raw_material)
+    expected_task_id = _o6_cloud_archive_safe_text(task_id or "", 80)
+    if not material:
+        return _o6_bounded_route_terminal_result_material_placeholder(
+            task_id=expected_task_id,
+            task_origin=task_origin,
+        )
+    schema_text = _o6_cloud_archive_safe_text(material.get("schema") or "", 160)
+    if schema_text == O6_BOUNDED_ROUTE_TERMINAL_RESULT_MATERIAL_SCHEMA:
+        source_schema = _o6_cloud_archive_safe_text(material.get("source_schema") or "", 160)
+        source_proof_boundary = _o6_cloud_archive_safe_text(
+            material.get("source_proof_boundary") or material.get("source_artifact_boundary") or "",
+            180,
+        )
+        proof_scope = _o6_cloud_archive_safe_text(
+            material.get("proof_scope") or material.get("evidence_boundary") or "",
+            180,
+        )
+    else:
+        source_schema = schema_text
+        source_proof_boundary = _o6_cloud_archive_safe_text(
+            material.get("proof_boundary") or material.get("source_proof_boundary") or "",
+            180,
+        )
+        proof_scope = O6_BOUNDED_ROUTE_TERMINAL_RESULT_MATERIAL_PROOF_SCOPE
+    if schema_text == O6_BOUNDED_ROUTE_TERMINAL_RESULT_MATERIAL_SCHEMA and material.get("status") == "blocked_not_proven":
+        # archive 重载和 task detail 会二次归一化已有 O6 摘要；已 blocked 的 section 保留原始原因即可。
+        return _o6_bounded_route_terminal_result_material_placeholder(
+            task_id=expected_task_id or _o6_cloud_archive_safe_text(material.get("task_id") or "", 80),
+            task_origin=task_origin,
+            blocked_reasons=material.get("blocked_reasons"),
+            next_required_evidence=material.get("next_required_evidence"),
+        )
+    if schema_text not in {
+        O5_BOUNDED_ROUTE_TERMINAL_RESULT_BRIDGE_SCHEMA,
+        O6_BOUNDED_ROUTE_TERMINAL_RESULT_MATERIAL_SCHEMA,
+    }:
+        return _o6_bounded_route_terminal_result_material_placeholder(
+            task_id=expected_task_id,
+            task_origin=task_origin,
+            blocked_reasons=["bounded_route_terminal_result_material_schema_unsupported"],
+        )
+    if source_schema != O5_BOUNDED_ROUTE_TERMINAL_RESULT_BRIDGE_SCHEMA:
+        return _o6_bounded_route_terminal_result_material_placeholder(
+            task_id=expected_task_id,
+            task_origin=task_origin,
+            blocked_reasons=["bounded_route_terminal_result_material_source_schema_unsupported"],
+        )
+    if proof_scope != O6_BOUNDED_ROUTE_TERMINAL_RESULT_MATERIAL_PROOF_SCOPE:
+        return _o6_bounded_route_terminal_result_material_placeholder(
+            task_id=expected_task_id,
+            task_origin=task_origin,
+            blocked_reasons=["bounded_route_terminal_result_material_proof_scope_unsupported"],
+        )
+    if source_proof_boundary != O5_BOUNDED_ROUTE_TERMINAL_RESULT_BRIDGE_PROOF_SCOPE:
+        return _o6_bounded_route_terminal_result_material_placeholder(
+            task_id=expected_task_id,
+            task_origin=task_origin,
+            blocked_reasons=["bounded_route_terminal_result_material_source_boundary_mismatch"],
+        )
+    wrapper_task_id = _o6_cloud_archive_safe_text(material.get("task_id") or "", 80)
+    if expected_task_id and wrapper_task_id and expected_task_id != wrapper_task_id:
+        return _o6_bounded_route_terminal_result_material_placeholder(
+            task_id=expected_task_id,
+            task_origin=task_origin,
+            blocked_reasons=["bounded_route_terminal_result_material_task_mismatch"],
+        )
+    if (
+        _o6_bounded_route_terminal_result_material_has_dangerous_true(material)
+        or _o6_field_evidence_dangerous_true_paths(material)
+        or _o6_archive_has_real_capability_claim(material)
+    ):
+        return _o6_bounded_route_terminal_result_material_placeholder(
+            task_id=expected_task_id or wrapper_task_id,
+            task_origin=task_origin,
+            blocked_reasons=["bounded_route_terminal_result_material_dangerous_true"],
+        )
+    unsafe_reason = _o6_bounded_route_terminal_result_material_unsafe_reason(material)
+    if unsafe_reason:
+        return _o6_bounded_route_terminal_result_material_placeholder(
+            task_id=expected_task_id or wrapper_task_id,
+            task_origin=task_origin,
+            blocked_reasons=[unsafe_reason],
+        )
+
+    packet_id = _o6_same_task_route_execution_material_packet_safe_label(
+        material.get("packet_id"),
+        limit=180,
+    )
+    actual_task_id = _o6_same_task_route_execution_material_packet_safe_label(
+        material.get("task_id") or wrapper_task_id,
+        limit=120,
+    )
+    route_intent_id = _o6_same_task_route_execution_material_packet_safe_label(
+        material.get("route_intent_id"),
+        limit=200,
+    )
+    result_code = _o6_same_task_route_execution_material_packet_safe_label(
+        material.get("result_code"),
+        limit=160,
+    )
+    terminal_result_state = _o6_same_task_route_execution_material_packet_safe_label(
+        material.get("terminal_result_state") or material.get("task_terminal_state"),
+        limit=160,
+    )
+    reconciliation_state = _o6_same_task_route_execution_material_packet_safe_label(
+        material.get("reconciliation_state") or material.get("reconciliation_command_state"),
+        limit=160,
+    )
+    route_csv_row_count = _o6_cloud_archive_int(material.get("route_csv_row_count"), 0)
+    path_structured_pose_count = _o6_cloud_archive_int(material.get("path_structured_pose_count"), 0)
+    segment_count = _o6_cloud_archive_int(material.get("segment_count"), 0)
+    blocked_reasons = _o6_same_task_route_execution_material_packet_safe_list(material.get("blocked_reasons"))
+    next_required = _o6_same_task_route_execution_material_packet_safe_list(material.get("next_required_evidence"))
+
+    validation_blockers = []
+    if packet_id != O6_BOUNDED_ROUTE_EXECUTION_GATE_PACKET_ID:
+        validation_blockers.append("bounded_route_terminal_result_material_packet_id_mismatch")
+    if actual_task_id != O6_BOUNDED_ROUTE_EXECUTION_GATE_TASK_ID:
+        validation_blockers.append("bounded_route_terminal_result_material_task_id_mismatch")
+    if expected_task_id and actual_task_id != expected_task_id:
+        validation_blockers.append("bounded_route_terminal_result_material_archive_task_mismatch")
+    if route_intent_id != O6_BOUNDED_ROUTE_EXECUTION_GATE_ROUTE_INTENT_ID:
+        validation_blockers.append("bounded_route_terminal_result_material_route_intent_mismatch")
+    if result_code != O6_BOUNDED_ROUTE_TERMINAL_RESULT_CODE:
+        validation_blockers.append("bounded_route_terminal_result_material_result_code_mismatch")
+    if terminal_result_state != O6_BOUNDED_ROUTE_TERMINAL_RESULT_STATE:
+        validation_blockers.append("bounded_route_terminal_result_material_terminal_state_mismatch")
+    if reconciliation_state != O6_BOUNDED_ROUTE_TERMINAL_RESULT_STATE:
+        validation_blockers.append("bounded_route_terminal_result_material_reconciliation_state_mismatch")
+    if route_csv_row_count != 28:
+        validation_blockers.append("bounded_route_terminal_result_material_route_count_mismatch")
+    if path_structured_pose_count != 28:
+        validation_blockers.append("bounded_route_terminal_result_material_pose_count_mismatch")
+    if segment_count != 27:
+        validation_blockers.append("bounded_route_terminal_result_material_segment_count_mismatch")
+    if not _o6_bounded_route_terminal_result_material_false_fields(material):
+        validation_blockers.append("bounded_route_terminal_result_material_false_field_mismatch")
+    for reason in validation_blockers:
+        if reason not in blocked_reasons:
+            blocked_reasons.append(reason)
+    if not next_required:
+        next_required = [
+            "current_live_route_execution_result",
+            "delivery_or_operator_acceptance_evidence",
+            "current_live_hil_acceptance",
+            "production_cloud_success_class_evidence",
+        ]
+
+    is_ready = not validation_blockers
+    fixed_false_fields = {key: False for key in sorted(O6_BOUNDED_ROUTE_TERMINAL_RESULT_FALSE_KEYS)}
+    return {
+        "schema": O6_BOUNDED_ROUTE_TERMINAL_RESULT_MATERIAL_SCHEMA,
+        "source_schema": source_schema,
+        "proof_scope": O6_BOUNDED_ROUTE_TERMINAL_RESULT_MATERIAL_PROOF_SCOPE,
+        "evidence_boundary": O6_BOUNDED_ROUTE_TERMINAL_RESULT_MATERIAL_PROOF_SCOPE,
+        "source_proof_boundary": source_proof_boundary,
+        "task_id": actual_task_id if is_ready else (expected_task_id or wrapper_task_id),
+        "task_origin": _o6_cloud_archive_safe_text(task_origin or "field_evidence_manifest", 80),
+        "status": "bounded_route_terminal_result_material_ready_not_delivery_proof"
+        if is_ready
+        else "blocked_not_proven",
+        "source": _o6_same_task_route_execution_material_packet_safe_label(
+            material.get("source"),
+            default="o5_bounded_route_terminal_result_bridge",
+            limit=140,
+        )
+        if is_ready
+        else "",
+        "packet_id": packet_id if is_ready else "",
+        "route_intent_id": route_intent_id if is_ready else "",
+        "result_code": result_code if is_ready else "",
+        "terminal_result_state": terminal_result_state if is_ready else "",
+        "reconciliation_state": reconciliation_state if is_ready else "",
+        "safe_evidence_ref": _o6_bounded_route_terminal_result_material_safe_ref(material) if is_ready else "",
+        "route_csv_row_count": route_csv_row_count if is_ready else 0,
+        "path_structured_pose_count": path_structured_pose_count if is_ready else 0,
+        "segment_count": segment_count if is_ready else 0,
+        "same_task_id_consumed": bool(is_ready),
+        "bounded_route_terminal_result_material_written": bool(is_ready),
+        "bounded_route_terminal_result_material_readback": bool(is_ready),
+        "source_materials": ["o5_bounded_route_terminal_result_bridge"] if is_ready else [],
+        "blocked_reasons": list(dict.fromkeys(blocked_reasons)),
+        "next_required_evidence": list(dict.fromkeys(next_required)),
+        "fixed_false_fields": fixed_false_fields,
+        **fixed_false_fields,
+    }
+
+
+def _o6_phone_browser_terminal_material_placeholder(
+    *, task_id="", task_origin="field_evidence_manifest", blocked_reasons=None, next_required_evidence=None
+):
+    """phone/browser 材料缺失或不安全时只返回 blocked 摘要，避免被误读成真实手机验收。"""
+
+    reasons = []
+    for reason in blocked_reasons or ["phone_browser_terminal_material_not_available"]:
+        safe_reason = _o6_cloud_archive_safe_text(reason or "", 160).strip()
+        if safe_reason and safe_reason not in reasons:
+            reasons.append(safe_reason)
+    next_items = []
+    for item in next_required_evidence or [
+        "safe_phone_browser_terminal_material_summary",
+        "verified_terminal_result_or_delivery_acceptance",
+    ]:
+        safe_item = _o6_cloud_archive_safe_text(item or "", 160).strip()
+        if safe_item and safe_item not in next_items:
+            next_items.append(safe_item)
+    return {
+        "schema": O6_PHONE_BROWSER_TERMINAL_MATERIAL_SCHEMA,
+        "proof_scope": O6_PHONE_BROWSER_TERMINAL_MATERIAL_PROOF_SCOPE,
+        "evidence_boundary": O6_PHONE_BROWSER_TERMINAL_MATERIAL_PROOF_SCOPE,
+        "task_id": _o6_cloud_archive_safe_text(task_id or "", 80),
+        "task_origin": _o6_cloud_archive_safe_text(task_origin or "field_evidence_manifest", 80),
+        "status": "blocked_not_proven",
+        "source": "",
+        "same_task_id_consumed": False,
+        "phone_browser_terminal_material_written": False,
+        "phone_browser_terminal_material_readback": False,
+        "true_phone_browser_evidence": False,
+        "diagnostics_mobile_safe_summary": False,
+        "terminal_result_type": "",
+        "safe_evidence_ref": "",
+        "accepted_materials": [],
+        "missing_materials": sorted(O6_PHONE_BROWSER_TERMINAL_ALLOWED_MATERIALS),
+        "rejected_materials": [],
+        "material_counts": {
+            "accepted_count": 0,
+            "missing_count": len(O6_PHONE_BROWSER_TERMINAL_ALLOWED_MATERIALS),
+            "rejected_count": 0,
+        },
+        "blocked_reasons": reasons,
+        "next_required_evidence": next_items,
+        "safe_to_control": False,
+        "delivery_success": False,
+        "route_execution_success": False,
+        "hil_pass": False,
+        "connects_cloud_production": False,
+        "robot_control_executed": False,
+        "primary_actions_enabled": False,
+        "real_cloud_db_connected": False,
+        "real_oss_connected": False,
+    }
+
+
+def _o6_phone_browser_terminal_material_without_evidence(value):
+    """全局扫描前剥离 phone/browser 子包，让坏材料只降级该 section 或由专用扫描阻断。"""
+
+    if isinstance(value, dict):
+        sanitized = {}
+        for key, item in value.items():
+            key_text = str(key)
+            if key_text in {
+                "phone_browser_terminal_material",
+                "true_phone_browser_evidence",
+                "diagnostics_mobile_safe_summary",
+                "terminal_result_summary",
+                "terminal_result_type",
+                "safe_evidence_ref",
+            }:
+                continue
+            sanitized[key_text] = _o6_phone_browser_terminal_material_without_evidence(item)
+        return sanitized
+    if isinstance(value, list):
+        return [_o6_phone_browser_terminal_material_without_evidence(item) for item in value]
+    return value
+
+
+def _o6_phone_browser_terminal_material_request(payload, container):
+    """同一材料支持顶层、manifest/bundle 内或 field motion packet 内三种 additive 位置。"""
+
+    candidates = []
+    if isinstance(payload, dict):
+        candidates.append(payload)
+    if isinstance(container, dict):
+        candidates.append(container)
+    for candidate in candidates:
+        material = candidate.get("phone_browser_terminal_material")
+        if isinstance(material, dict):
+            return material
+    for candidate in candidates:
+        packet = _o6_cloud_archive_dict(candidate.get("field_motion_evidence_packet"))
+        material = packet.get("phone_browser_terminal_material")
+        if isinstance(material, dict):
+            return material
+    for candidate in candidates:
+        if any(
+            key in candidate
+            for key in (
+                "true_phone_browser_evidence",
+                "diagnostics_mobile_safe_summary",
+                "terminal_result_summary",
+                "terminal_result_type",
+                "safe_evidence_ref",
+            )
+        ):
+            # 兼容轻量 intake body：输入没有 wrapper 时也统一成同一 section，再走专用安全检查。
+            return {
+                "schema": O6_PHONE_BROWSER_TERMINAL_MATERIAL_SCHEMA,
+                "proof_scope": O6_PHONE_BROWSER_TERMINAL_MATERIAL_PROOF_SCOPE,
+                "task_id": candidate.get("task_id"),
+                "status": "phone_browser_terminal_material_ready_not_delivery_proof",
+                "true_phone_browser_evidence": candidate.get("true_phone_browser_evidence"),
+                "diagnostics_mobile_safe_summary": candidate.get("diagnostics_mobile_safe_summary"),
+                "terminal_result_summary": candidate.get("terminal_result_summary"),
+                "terminal_result_type": candidate.get("terminal_result_type"),
+                "safe_evidence_ref": candidate.get("safe_evidence_ref"),
+            }
+    return {}
+
+
+def _o6_phone_browser_terminal_material_value_truthy(value):
+    """材料 presence 只表达“安全摘要已提交”，不能把任意 truthy 值解释为真实成功。"""
+
+    if value in (None, False, "", [], {}):
+        return False
+    return True
+
+
+def _o6_phone_browser_terminal_material_safe_list(value, *, allowed=None, limit=8):
+    """只保留短枚举标签，避免 blocked/missing 列表夹带 URL、路径或凭证。"""
+
+    output = []
+    for item in _o6_cloud_archive_list(value)[:limit]:
+        safe_item = _o6_cloud_archive_safe_text(item or "", 160).strip()
+        if not safe_item or safe_item == "[redacted]":
+            continue
+        if allowed is not None and safe_item not in allowed:
+            continue
+        if _o6_phone_browser_terminal_material_unsafe_reason(safe_item):
+            continue
+        if safe_item not in output:
+            output.append(safe_item)
+    return output
+
+
+def _o6_phone_browser_terminal_material_ref(value):
+    """safe_evidence_ref 必须已经是 basename/ref 形态；raw URL 和本地路径不能被静默裁剪。"""
+
+    if value is None or isinstance(value, (dict, list)):
+        return ""
+    text = str(value).strip()
+    if not text or len(text) > O6_ARCHIVE_MAX_EVIDENCE_REF_LENGTH:
+        return ""
+    lowered = text.lower()
+    if (
+        "://" in text
+        or "?" in text
+        or "#" in text
+        or text.startswith(("/", "~/", "\\"))
+        or lowered.startswith(("file:", "c:\\", "\\\\"))
+        or "/" in text
+        or "\\" in text
+    ):
+        return ""
+    if _o6_phone_browser_terminal_material_unsafe_reason(text):
+        return ""
+    safe_ref = _o6_cloud_archive_safe_ref(text)
+    return safe_ref if safe_ref == text and safe_ref != "[redacted]" else ""
+
+
+def _o6_phone_browser_terminal_material_unsafe_reason(value, path=""):
+    """phone/browser intake 专用危险扫描：任何 URL、原始截图/DOM、cookie/token 或控制痕迹都 blocked。"""
+
+    dangerous_key_markers = (
+        "raw_url",
+        "cookie",
+        "authorization",
+        "token",
+        "local_path",
+        "screenshot_body",
+        "dom_dump",
+        "traceback",
+        "cmd_vel",
+        "serial",
+        "uart",
+        "wave_rover",
+        "wave rover",
+        "base64",
+    )
+    raw_key_markers = ("body", "payload", "raw", "content")
+    allowed_raw_keys = {
+        "schema",
+        "proof_scope",
+        "evidence_boundary",
+        "source",
+        "source_schema",
+        "status",
+        "task_id",
+        "task_origin",
+        "robot_id",
+        "terminal_result_type",
+        "safe_evidence_ref",
+        "accepted_materials",
+        "missing_materials",
+        "rejected_materials",
+        "blocked_reasons",
+        "next_required_evidence",
+        "true_phone_browser_evidence",
+        "diagnostics_mobile_safe_summary",
+        "terminal_result_summary",
+    }
+    if isinstance(value, dict):
+        for key, item in value.items():
+            key_text = str(key)
+            key_lc = key_text.lower()
+            if key_lc in O6_PHONE_BROWSER_TERMINAL_DANGEROUS_TRUE_KEYS and _o6_labeling_truthy_claim(item):
+                return "phone_browser_terminal_material_dangerous_true"
+            if any(marker in key_lc for marker in dangerous_key_markers):
+                return "phone_browser_terminal_material_unsafe"
+            if key_lc == "url" or key_lc.endswith("_url"):
+                return "phone_browser_terminal_material_raw_url_blocked"
+            if key_lc in {"path", "localpath"} or key_lc.endswith("_path"):
+                return "phone_browser_terminal_material_local_path_blocked"
+            if key_lc not in allowed_raw_keys and any(marker in key_lc for marker in raw_key_markers):
+                return "phone_browser_terminal_material_raw_body_blocked"
+            nested_reason = _o6_phone_browser_terminal_material_unsafe_reason(
+                item,
+                f"{path}.{key_text}" if path else key_text,
+            )
+            if nested_reason:
+                return nested_reason
+        return ""
+    if isinstance(value, list):
+        for index, item in enumerate(value):
+            nested_reason = _o6_phone_browser_terminal_material_unsafe_reason(item, f"{path}[{index}]")
+            if nested_reason:
+                return nested_reason
+        return ""
+    if isinstance(value, str):
+        text = value.strip()
+        lowered = text.lower()
+        if not text:
+            return ""
+        if _o6_cloud_archive_has_unsafe_claim(text) or _o6_archive_has_raw_content(text):
+            return "phone_browser_terminal_material_unsafe"
+        if "://" in lowered or lowered.startswith(("www.", "file:", "c:\\", "\\\\")):
+            return "phone_browser_terminal_material_raw_url_blocked"
+        if text.startswith(("/", "~/", "\\")) or "/tmp/" in lowered or "/users/" in lowered:
+            return "phone_browser_terminal_material_local_path_blocked"
+        if any(
+            marker in lowered
+            for marker in (
+                "cookie",
+                "authorization",
+                "bearer",
+                "token",
+                "dom dump",
+                "dom_dump",
+                "screenshot body",
+                "screenshot_body",
+                "traceback",
+                "/cmd_vel",
+                "cmd_vel",
+                "serial",
+                "uart",
+                "wave rover",
+                "wave_rover",
+            )
+        ):
+            return "phone_browser_terminal_material_unsafe"
+    return ""
+
+
+def _o6_phone_browser_terminal_material_summary(
+    raw_material, *, task_id="", task_origin="field_evidence_manifest"
+):
+    """把 phone/browser terminal material 收敛为安全摘要，只证明 O6/O7 本地收件和回读。"""
+
+    material = _o6_cloud_archive_dict(raw_material)
+    expected_task_id = _o6_cloud_archive_safe_text(task_id or "", 80)
+    if not material:
+        return _o6_phone_browser_terminal_material_placeholder(
+            task_id=expected_task_id,
+            task_origin=task_origin,
+        )
+    unsafe_reason = _o6_phone_browser_terminal_material_unsafe_reason(material)
+    if unsafe_reason:
+        return _o6_phone_browser_terminal_material_placeholder(
+            task_id=expected_task_id,
+            task_origin=task_origin,
+            blocked_reasons=[unsafe_reason],
+        )
+    if (
+        _o6_field_evidence_dangerous_true_paths(material)
+        or _o6_archive_has_real_capability_claim(material)
+        or _o6_archive_has_raw_content(material)
+    ):
+        return _o6_phone_browser_terminal_material_placeholder(
+            task_id=expected_task_id,
+            task_origin=task_origin,
+            blocked_reasons=["phone_browser_terminal_material_dangerous_true"],
+        )
+    schema_text = _o6_cloud_archive_safe_text(material.get("schema") or "", 160)
+    if schema_text != O6_PHONE_BROWSER_TERMINAL_MATERIAL_SCHEMA:
+        return _o6_phone_browser_terminal_material_placeholder(
+            task_id=expected_task_id,
+            task_origin=task_origin,
+            blocked_reasons=["phone_browser_terminal_material_schema_unsupported"],
+        )
+    proof_scope = _o6_cloud_archive_safe_text(
+        material.get("proof_scope") or material.get("evidence_boundary") or "",
+        180,
+    )
+    if proof_scope != O6_PHONE_BROWSER_TERMINAL_MATERIAL_PROOF_SCOPE:
+        return _o6_phone_browser_terminal_material_placeholder(
+            task_id=expected_task_id,
+            task_origin=task_origin,
+            blocked_reasons=["phone_browser_terminal_material_proof_scope_unsupported"],
+        )
+    actual_task_id = _o6_cloud_archive_safe_text(material.get("task_id") or "", 80)
+    if expected_task_id and actual_task_id and expected_task_id != actual_task_id:
+        return _o6_phone_browser_terminal_material_placeholder(
+            task_id=expected_task_id,
+            task_origin=task_origin,
+            blocked_reasons=["phone_browser_terminal_material_task_mismatch"],
+        )
+    accepted_materials = _o6_phone_browser_terminal_material_safe_list(
+        material.get("accepted_materials") or material.get("present_materials"),
+        allowed=O6_PHONE_BROWSER_TERMINAL_ALLOWED_MATERIALS,
+    )
+    for material_name in sorted(O6_PHONE_BROWSER_TERMINAL_ALLOWED_MATERIALS):
+        if _o6_phone_browser_terminal_material_value_truthy(material.get(material_name)):
+            if material_name not in accepted_materials:
+                accepted_materials.append(material_name)
+    terminal_result_type = _o6_cloud_archive_safe_text(material.get("terminal_result_type") or "", 80).strip()
+    safe_evidence_ref = _o6_phone_browser_terminal_material_ref(material.get("safe_evidence_ref"))
+    blocked_reasons = _o6_phone_browser_terminal_material_safe_list(material.get("blocked_reasons"))
+    next_required = _o6_phone_browser_terminal_material_safe_list(material.get("next_required_evidence"))
+    if not accepted_materials:
+        blocked_reasons.append("phone_browser_terminal_material_missing_allowed_material")
+    if not safe_evidence_ref:
+        blocked_reasons.append("phone_browser_terminal_material_safe_evidence_ref_missing")
+    raw_status = _o6_cloud_archive_safe_text(material.get("status") or "", 160)
+    if raw_status != "phone_browser_terminal_material_ready_not_delivery_proof":
+        blocked_reasons.append("phone_browser_terminal_material_status_not_ready")
+    accepted_materials = list(dict.fromkeys(accepted_materials))
+    blocked_reasons = list(dict.fromkeys(blocked_reasons))
+    is_ready = not blocked_reasons
+    missing_materials = [
+        item for item in sorted(O6_PHONE_BROWSER_TERMINAL_ALLOWED_MATERIALS) if item not in accepted_materials
+    ]
+    if terminal_result_type == "":
+        missing_materials.append("terminal_result_type")
+    if "verified_terminal_result_or_delivery_acceptance" not in missing_materials:
+        missing_materials.append("verified_terminal_result_or_delivery_acceptance")
+    if not next_required:
+        next_required = [
+            "real_phone_browser_terminal_trace",
+            "production_cloud_write_trace",
+            "delivery_or_operator_acceptance_record",
+        ]
+    return {
+        "schema": O6_PHONE_BROWSER_TERMINAL_MATERIAL_SCHEMA,
+        "source_schema": _o6_cloud_archive_safe_text(material.get("source_schema") or schema_text, 160),
+        "proof_scope": O6_PHONE_BROWSER_TERMINAL_MATERIAL_PROOF_SCOPE,
+        "evidence_boundary": O6_PHONE_BROWSER_TERMINAL_MATERIAL_PROOF_SCOPE,
+        "task_id": actual_task_id or expected_task_id,
+        "task_origin": _o6_cloud_archive_safe_text(task_origin or "field_evidence_manifest", 80),
+        "status": "phone_browser_terminal_material_ready_not_delivery_proof" if is_ready else "blocked_not_proven",
+        "source": _o6_cloud_archive_safe_text(material.get("source") or "local_mock_phone_browser_terminal_material", 120)
+        if is_ready
+        else "",
+        "same_task_id_consumed": bool(actual_task_id or expected_task_id) and is_ready,
+        "phone_browser_terminal_material_written": is_ready,
+        "phone_browser_terminal_material_readback": is_ready,
+        "true_phone_browser_evidence": "true_phone_browser_evidence" in accepted_materials and is_ready,
+        "diagnostics_mobile_safe_summary": "diagnostics_mobile_safe_summary" in accepted_materials and is_ready,
+        "terminal_result_type": terminal_result_type if is_ready else "",
+        "safe_evidence_ref": safe_evidence_ref if is_ready else "",
+        "accepted_materials": accepted_materials if is_ready else [],
+        "missing_materials": list(dict.fromkeys(missing_materials)),
+        "rejected_materials": _o6_phone_browser_terminal_material_safe_list(material.get("rejected_materials")),
+        "material_counts": {
+            "accepted_count": len(accepted_materials) if is_ready else 0,
+            "missing_count": len(list(dict.fromkeys(missing_materials))),
+            "rejected_count": len(_o6_phone_browser_terminal_material_safe_list(material.get("rejected_materials"))),
+        },
+        "blocked_reasons": blocked_reasons,
+        "next_required_evidence": list(dict.fromkeys(next_required)),
+        "safe_to_control": False,
+        "delivery_success": False,
+        "route_execution_success": False,
+        "hil_pass": False,
+        "connects_cloud_production": False,
+        "robot_control_executed": False,
+        "primary_actions_enabled": False,
+        "real_cloud_db_connected": False,
+        "real_oss_connected": False,
+    }
+
+
 def _o6_cloud_external_probe_summary(raw_probe, *, task_id="", task_origin="field_evidence_manifest"):
     """把外部 endpoint probe 收敛成 O6/O7 可回读的 phone-safe 摘要。"""
 
@@ -18136,6 +20745,361 @@ def _o6_clean_baseline_nav2_path_material_summary(
         "connects_cloud_production": False,
         "real_cloud_db_connected": False,
         "real_oss_connected": False,
+    }
+
+
+def _o6_pc_live_nav2_execution_material_without_evidence(value):
+    """全局安全扫描前剥离 pc live Nav2 section，让坏包只降级自身摘要。"""
+
+    if isinstance(value, dict):
+        sanitized = {}
+        for key, item in value.items():
+            if str(key) == "pc_live_nav2_execution_material":
+                continue
+            sanitized[key] = _o6_pc_live_nav2_execution_material_without_evidence(item)
+        return sanitized
+    if isinstance(value, list):
+        return [_o6_pc_live_nav2_execution_material_without_evidence(item) for item in value]
+    return value
+
+
+def _o6_pc_live_nav2_execution_material_request(payload, container):
+    """pc live Nav2 material 支持顶层、manifest/bundle 内或 field motion packet 内三种 additive 位置。"""
+
+    candidates = []
+    if isinstance(payload, dict):
+        candidates.append(payload)
+    if isinstance(container, dict):
+        candidates.append(container)
+    for candidate in candidates:
+        material = candidate.get("pc_live_nav2_execution_material")
+        if isinstance(material, dict):
+            return material
+    for candidate in candidates:
+        packet = _o6_cloud_archive_dict(candidate.get("field_motion_evidence_packet"))
+        material = packet.get("pc_live_nav2_execution_material")
+        if isinstance(material, dict):
+            return material
+    return {}
+
+
+def _o6_pc_live_nav2_execution_material_safe_label(value, *, default="", limit=120):
+    """pc live Nav2 material 只保留短标签，不回显原始日志、路径或凭证。"""
+
+    return _o6_same_task_route_execution_material_packet_safe_label(value, default=default, limit=limit)
+
+
+def _o6_pc_live_nav2_execution_material_safe_list(value, *, default_items=None, limit=8):
+    """pc live Nav2 material 只接受去重后的安全短标签列表。"""
+
+    return _o6_same_task_route_execution_material_packet_safe_list(
+        value,
+        default_items=default_items,
+        limit=limit,
+    )
+
+
+def _o6_pc_live_nav2_execution_material_unsafe_reason(value, path=""):
+    """pc live Nav2 material 只接受脱敏摘要；路径、token、traceback 和原始正文一律 blocked。"""
+
+    dangerous_key_names = {
+        "authorization",
+        "base64",
+        "body",
+        "command_debug_log_path",
+        "content",
+        "credential",
+        "feedback_debug_log_path",
+        "file_path",
+        "payload",
+        "password",
+        "raw",
+        "raw_body",
+        "raw_content",
+        "raw_payload",
+        "response_body",
+        "response_text",
+        "secret",
+        "source_path",
+        "stderr",
+        "stdout",
+        "token",
+        "traceback",
+        "uri",
+        "url",
+    }
+    if isinstance(value, dict):
+        for key, item in value.items():
+            key_text = str(key).lower()
+            key_path = f"{path}.{key_text}" if path else key_text
+            if key_text in dangerous_key_names:
+                return "pc_live_nav2_execution_material_unsafe"
+            nested_reason = _o6_pc_live_nav2_execution_material_unsafe_reason(item, key_path)
+            if nested_reason:
+                return nested_reason
+        return ""
+    if isinstance(value, list):
+        for index, item in enumerate(value):
+            nested_reason = _o6_pc_live_nav2_execution_material_unsafe_reason(item, f"{path}[{index}]")
+            if nested_reason:
+                return nested_reason
+        return ""
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return ""
+        lowered = text.lower()
+        if _o6_cloud_archive_has_unsafe_claim(text) or _o6_archive_has_raw_content(text):
+            return "pc_live_nav2_execution_material_unsafe"
+        if text.startswith(("/", "~/")) or lowered.startswith(("http://", "https://", "file://", "c:\\", "\\\\")):
+            return "pc_live_nav2_execution_material_unsafe"
+        if any(
+            marker in lowered
+            for marker in (
+                "base64",
+                "traceback",
+                "response body",
+                "token=",
+                "secret=",
+                "password=",
+                "/cmd_vel",
+                "/odom",
+                "/imu",
+                "/dev/tty",
+            )
+        ):
+            return "pc_live_nav2_execution_material_unsafe"
+    return ""
+
+
+def _o6_pc_live_nav2_execution_material_placeholder(
+    *, task_id="", task_origin="field_evidence_manifest", blocked_reasons=None, next_required_evidence=None
+):
+    """pc live Nav2 material 缺失或不安全时只返回 blocked 摘要，不污染其它 additive section。"""
+
+    reasons = _o6_pc_live_nav2_execution_material_safe_list(
+        blocked_reasons,
+        default_items=["pc_live_nav2_execution_material_not_available"],
+    )
+    next_items = _o6_pc_live_nav2_execution_material_safe_list(
+        next_required_evidence,
+        default_items=["pc_live_nav2_execution_material"],
+    )
+    return {
+        "schema": O6_PC_LIVE_NAV2_EXECUTION_MATERIAL_SCHEMA,
+        "source_schema": "",
+        "proof_scope": O6_PC_LIVE_NAV2_EXECUTION_MATERIAL_PROOF_SCOPE,
+        "task_id": _o6_cloud_archive_safe_text(task_id or "", 80),
+        "task_origin": _o6_cloud_archive_safe_text(task_origin or "field_evidence_manifest", 80),
+        "status": "blocked_not_proven",
+        "source": "",
+        "source_sprint": "",
+        "task_id_source": "",
+        "goal_accepted": False,
+        "cancel_accepted": False,
+        "goal_result_status": "",
+        "uses_base_uart": False,
+        "base_command_nonzero_observed": False,
+        "base_command_nonzero_count": 0,
+        "base_feedback_sample_count": 0,
+        "base_feedback_lr_nonzero_proven": False,
+        "base_feedback_imu_attitude_delta_observed": False,
+        "result_status": "",
+        "blocked_reasons": reasons,
+        "next_required_evidence": next_items,
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "robot_control_executed": False,
+        "route_execution_success": False,
+        "hil_pass": False,
+        "connects_cloud_production": False,
+    }
+
+
+def _o6_pc_live_nav2_execution_material_summary(
+    raw_material, *, task_id="", task_origin="field_evidence_manifest"
+):
+    """把 pc live Nav2 execution material 收敛成 O6/O7 可回读的安全摘要。"""
+
+    material = _o6_cloud_archive_dict(raw_material)
+    if not material:
+        return _o6_pc_live_nav2_execution_material_placeholder(task_id=task_id, task_origin=task_origin)
+    schema_text = _o6_cloud_archive_safe_text(material.get("schema") or "", 160)
+    if schema_text not in {
+        PC_LIVE_NAV2_EXECUTION_MATERIAL_SCHEMA,
+        O6_PC_LIVE_NAV2_EXECUTION_MATERIAL_SCHEMA,
+    }:
+        return _o6_pc_live_nav2_execution_material_placeholder(
+            task_id=task_id,
+            task_origin=task_origin,
+            blocked_reasons=["pc_live_nav2_execution_material_schema_unsupported"],
+        )
+    proof_scope = _o6_cloud_archive_safe_text(material.get("proof_scope") or "", 160)
+    if proof_scope != O6_PC_LIVE_NAV2_EXECUTION_MATERIAL_PROOF_SCOPE:
+        return _o6_pc_live_nav2_execution_material_placeholder(
+            task_id=task_id,
+            task_origin=task_origin,
+            blocked_reasons=["pc_live_nav2_execution_material_proof_scope_unsupported"],
+        )
+    expected_task_id = _o6_cloud_archive_safe_text(task_id or "", 80)
+    actual_task_id = _o6_cloud_archive_safe_text(material.get("task_id") or "", 80)
+    if expected_task_id and actual_task_id and expected_task_id != actual_task_id:
+        return _o6_pc_live_nav2_execution_material_placeholder(
+            task_id=expected_task_id,
+            task_origin=task_origin,
+            blocked_reasons=["pc_live_nav2_execution_material_task_mismatch"],
+        )
+    if _o6_field_evidence_dangerous_true_paths(material) or _o6_archive_has_real_capability_claim(material):
+        return _o6_pc_live_nav2_execution_material_placeholder(
+            task_id=expected_task_id or actual_task_id,
+            task_origin=task_origin,
+            blocked_reasons=["pc_live_nav2_execution_material_dangerous_true"],
+        )
+    unsafe_reason = _o6_pc_live_nav2_execution_material_unsafe_reason(material)
+    if unsafe_reason:
+        return _o6_pc_live_nav2_execution_material_placeholder(
+            task_id=expected_task_id or actual_task_id,
+            task_origin=task_origin,
+            blocked_reasons=[unsafe_reason],
+        )
+
+    raw_status = _o6_pc_live_nav2_execution_material_safe_label(material.get("status"), limit=160)
+    ready_statuses = {
+        "pc_live_nav2_execution_material_ready_not_delivery_proof",
+        "ready_not_delivery_proof",
+    }
+    normalized_status = (
+        "pc_live_nav2_execution_material_ready_not_delivery_proof"
+        if raw_status in ready_statuses
+        else "blocked_not_proven"
+    )
+    bool_values = {}
+    bool_types_valid = True
+    bool_alias_sources = {
+        "goal_accepted": ("goal_accepted", "nav2_goal_accepted"),
+        "cancel_accepted": ("cancel_accepted",),
+        "uses_base_uart": ("uses_base_uart",),
+        "base_command_nonzero_observed": ("base_command_nonzero_observed",),
+        "base_feedback_lr_nonzero_proven": ("base_feedback_lr_nonzero_proven",),
+        "base_feedback_imu_attitude_delta_observed": ("base_feedback_imu_attitude_delta_observed",),
+    }
+    for normalized_name, candidate_names in bool_alias_sources.items():
+        value = False
+        candidate_valid = False
+        for candidate_name in candidate_names:
+            candidate_value = material.get(candidate_name)
+            if isinstance(candidate_value, bool):
+                value = candidate_value
+                candidate_valid = True
+                break
+        bool_values[normalized_name] = value
+        if not candidate_valid:
+            bool_types_valid = False
+    base_command_nonzero_count = _o6_cloud_archive_int(material.get("base_command_nonzero_count"), 0)
+    base_feedback_sample_count = _o6_cloud_archive_int(material.get("base_feedback_sample_count"), 0)
+    source_sprint = _o6_pc_live_nav2_execution_material_safe_label(material.get("source_sprint"), limit=160)
+    task_id_source = _o6_pc_live_nav2_execution_material_safe_label(material.get("task_id_source"), limit=120)
+    goal_result_status = ""
+    for candidate_name in (
+        "goal_result_status",
+        "result_status",
+        "nav2_terminal_status",
+        "terminal_status",
+    ):
+        candidate_value = _o6_pc_live_nav2_execution_material_safe_label(
+            material.get(candidate_name),
+            limit=160,
+        )
+        if candidate_value:
+            goal_result_status = candidate_value
+            break
+    result_status = goal_result_status
+    blocked_reasons = _o6_pc_live_nav2_execution_material_safe_list(material.get("blocked_reasons"))
+    next_required = _o6_pc_live_nav2_execution_material_safe_list(
+        material.get("next_required_evidence"),
+        default_items=["pc_live_nav2_execution_material"],
+    )
+
+    validation_blockers = []
+    if normalized_status == "blocked_not_proven":
+        validation_blockers.append("pc_live_nav2_execution_material_not_ready")
+    if not bool_types_valid:
+        validation_blockers.append("pc_live_nav2_execution_material_boolean_fields_invalid")
+    if not source_sprint:
+        validation_blockers.append("pc_live_nav2_execution_material_source_sprint_missing")
+    if not task_id_source:
+        validation_blockers.append("pc_live_nav2_execution_material_task_id_source_missing")
+    if not goal_result_status:
+        validation_blockers.append("pc_live_nav2_execution_material_goal_result_status_missing")
+    if not bool_values["goal_accepted"]:
+        validation_blockers.append("pc_live_nav2_execution_material_goal_not_accepted")
+    if not bool_values["base_command_nonzero_observed"]:
+        validation_blockers.append("pc_live_nav2_execution_material_base_command_not_observed")
+    if base_command_nonzero_count <= 0:
+        validation_blockers.append("pc_live_nav2_execution_material_base_command_count_invalid")
+    if base_feedback_sample_count <= 0:
+        validation_blockers.append("pc_live_nav2_execution_material_base_feedback_samples_missing")
+    if bool_values["base_feedback_lr_nonzero_proven"]:
+        validation_blockers.append("pc_live_nav2_execution_material_wheel_lr_nonzero_claimed")
+    if not bool_values["base_feedback_imu_attitude_delta_observed"]:
+        validation_blockers.append("pc_live_nav2_execution_material_imu_delta_missing")
+    for reason in validation_blockers:
+        if reason not in blocked_reasons:
+            blocked_reasons.append(reason)
+    if validation_blockers:
+        normalized_status = "blocked_not_proven"
+    if normalized_status != "blocked_not_proven":
+        for item in (
+            "same_window_wheel_lr_nonzero_feedback",
+            "real_live_nav2_route_execution_trace",
+            "delivery_record_and_operator_confirmation",
+        ):
+            if item not in next_required:
+                next_required.append(item)
+
+    is_ready = normalized_status != "blocked_not_proven"
+    return {
+        "schema": O6_PC_LIVE_NAV2_EXECUTION_MATERIAL_SCHEMA,
+        "source_schema": _o6_pc_live_nav2_execution_material_safe_label(
+            material.get("source_schema") or PC_LIVE_NAV2_EXECUTION_MATERIAL_SCHEMA,
+            default=PC_LIVE_NAV2_EXECUTION_MATERIAL_SCHEMA,
+            limit=160,
+        ),
+        "proof_scope": O6_PC_LIVE_NAV2_EXECUTION_MATERIAL_PROOF_SCOPE,
+        "task_id": actual_task_id or expected_task_id,
+        "task_origin": _o6_cloud_archive_safe_text(task_origin or "field_evidence_manifest", 80),
+        "status": normalized_status,
+        "source": _o6_pc_live_nav2_execution_material_safe_label(
+            material.get("source"),
+            default="pc_live_nav2_execution_material",
+            limit=120,
+        )
+        if is_ready
+        else "",
+        "source_sprint": source_sprint if is_ready else "",
+        "task_id_source": task_id_source if is_ready else "",
+        "goal_accepted": bool_values["goal_accepted"] if is_ready else False,
+        "cancel_accepted": bool_values["cancel_accepted"] if is_ready else False,
+        "goal_result_status": goal_result_status if is_ready else "",
+        "uses_base_uart": bool_values["uses_base_uart"] if is_ready else False,
+        "base_command_nonzero_observed": bool_values["base_command_nonzero_observed"] if is_ready else False,
+        "base_command_nonzero_count": base_command_nonzero_count if is_ready else 0,
+        "base_feedback_sample_count": base_feedback_sample_count if is_ready else 0,
+        "base_feedback_lr_nonzero_proven": False,
+        "base_feedback_imu_attitude_delta_observed": (
+            bool_values["base_feedback_imu_attitude_delta_observed"] if is_ready else False
+        ),
+        "result_status": result_status if is_ready else "",
+        "blocked_reasons": list(dict.fromkeys(blocked_reasons)),
+        "next_required_evidence": list(dict.fromkeys(next_required)),
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "robot_control_executed": False,
+        "route_execution_success": False,
+        "hil_pass": False,
+        "connects_cloud_production": False,
     }
 
 
@@ -22261,6 +25225,26 @@ def _o6_artifact_bundle_summary_payload(field_evidence):
             task_id=_o6_cloud_archive_safe_text(data.get("task_id") or "", 80),
             task_origin="artifact_bundle",
         ),
+        "same_task_replay_packet_readback": _o6_same_task_replay_packet_readback_summary(
+            data.get("same_task_replay_packet_readback"),
+            task_id=_o6_cloud_archive_safe_text(data.get("task_id") or "", 80),
+            task_origin="artifact_bundle",
+        ),
+        "bounded_route_execution_gate_material": _o6_bounded_route_execution_gate_material_summary(
+            data.get("bounded_route_execution_gate_material"),
+            task_id=_o6_cloud_archive_safe_text(data.get("task_id") or "", 80),
+            task_origin="artifact_bundle",
+        ),
+        "bounded_route_terminal_result_material": _o6_bounded_route_terminal_result_material_summary(
+            data.get("bounded_route_terminal_result_material"),
+            task_id=_o6_cloud_archive_safe_text(data.get("task_id") or "", 80),
+            task_origin="artifact_bundle",
+        ),
+        "phone_browser_terminal_material": _o6_phone_browser_terminal_material_summary(
+            data.get("phone_browser_terminal_material"),
+            task_id=_o6_cloud_archive_safe_text(data.get("task_id") or "", 80),
+            task_origin="artifact_bundle",
+        ),
         "localization_path_material_readback": _o6_localization_path_material_readback_summary(
             data.get("localization_path_material_readback"),
             task_id=_o6_cloud_archive_safe_text(data.get("task_id") or "", 80),
@@ -22278,6 +25262,11 @@ def _o6_artifact_bundle_summary_payload(field_evidence):
         ),
         "clean_baseline_nav2_path_material": _o6_clean_baseline_nav2_path_material_summary(
             data.get("clean_baseline_nav2_path_material"),
+            task_id=_o6_cloud_archive_safe_text(data.get("task_id") or "", 80),
+            task_origin="artifact_bundle",
+        ),
+        "pc_live_nav2_execution_material": _o6_pc_live_nav2_execution_material_summary(
+            data.get("pc_live_nav2_execution_material"),
             task_id=_o6_cloud_archive_safe_text(data.get("task_id") or "", 80),
             task_origin="artifact_bundle",
         ),
@@ -22369,38 +25358,42 @@ def _o6_field_evidence_validate_manifest(payload):
 
     if not isinstance(payload, dict):
         raise ValueError("request body must be an object")
+    # additive sections 先从全局 gate 临时剥离，坏包在各自 summary 内 fail-closed。
+    payload_for_global_gate = _o6_nav2_goal_execution_without_evidence(payload)
+    payload_for_global_gate = _o6_route_execution_result_delivery_readiness_without_evidence(
+        payload_for_global_gate
+    )
+    payload_for_global_gate = _o6_delivery_result_without_evidence(payload_for_global_gate)
+    payload_for_global_gate = _o6_route_delivery_closure_packet_without_evidence(payload_for_global_gate)
+    payload_for_global_gate = _o6_route_bag_without_payload_replay(payload_for_global_gate)
+    payload_for_global_gate = _o6_route_bag_without_pose_progress(payload_for_global_gate)
+    payload_for_global_gate = _o6_route_bag_without_semantic_replay(payload_for_global_gate)
+    payload_for_global_gate = _o6_route_bag_without_full_semantic_decode_matrix(payload_for_global_gate)
+    payload_for_global_gate = _o6_route_bag_without_evidence(payload_for_global_gate)
+    payload_for_global_gate = _o6_probe_readback_without_evidence(payload_for_global_gate)
+    payload_for_global_gate = _o6_same_task_mission_evidence_gate_without_evidence(payload_for_global_gate)
+    payload_for_global_gate = _o6_same_task_field_material_packet_without_evidence(payload_for_global_gate)
+    payload_for_global_gate = _o6_same_task_route_execution_material_packet_without_evidence(
+        payload_for_global_gate
+    )
+    payload_for_global_gate = _o6_same_task_replay_packet_readback_without_evidence(payload_for_global_gate)
+    payload_for_global_gate = _o6_bounded_route_execution_gate_material_without_evidence(
+        payload_for_global_gate
+    )
+    payload_for_global_gate = _o6_bounded_route_terminal_result_material_without_evidence(
+        payload_for_global_gate
+    )
+    payload_for_global_gate = _o6_phone_browser_terminal_material_without_evidence(payload_for_global_gate)
+    payload_for_global_gate = _o6_localization_path_material_readback_without_evidence(
+        payload_for_global_gate
+    )
+    payload_for_global_gate = _o6_pc_live_nav2_execution_material_without_evidence(payload_for_global_gate)
+    payload_for_global_gate = _o6_clean_baseline_nav2_path_material_without_evidence(
+        payload_for_global_gate
+    )
+    payload_for_global_gate = _o6_current_field_evidence_material_without_evidence(payload_for_global_gate)
     payload_for_global_gate = _o6_field_operator_confirmation_material_without_evidence(
-        _o6_current_field_evidence_material_without_evidence(
-            _o6_clean_baseline_nav2_path_material_without_evidence(
-                _o6_localization_path_material_readback_without_evidence(
-                    _o6_same_task_route_execution_material_packet_without_evidence(
-                        _o6_same_task_field_material_packet_without_evidence(
-                            _o6_same_task_mission_evidence_gate_without_evidence(
-                                _o6_probe_readback_without_evidence(
-                                    _o6_route_bag_without_evidence(
-                                        _o6_route_bag_without_full_semantic_decode_matrix(
-                                            _o6_route_bag_without_semantic_replay(
-                                                _o6_route_bag_without_pose_progress(
-                                                    _o6_route_bag_without_payload_replay(
-                                                        _o6_route_delivery_closure_packet_without_evidence(
-                                                            _o6_delivery_result_without_evidence(
-                                                                _o6_route_execution_result_delivery_readiness_without_evidence(
-                                                                    _o6_nav2_goal_execution_without_evidence(payload)
-                                                                )
-                                                            )
-                                                        )
-                                                    )
-                                                )
-                                            )
-                                        )
-                                    )
-                                )
-                            )
-                        )
-                    )
-                )
-            )
-        )
+        payload_for_global_gate
     )
     if _o6_cloud_archive_has_unsafe_claim(payload_for_global_gate) or _o6_archive_has_real_capability_claim(
         payload_for_global_gate
@@ -22512,6 +25505,30 @@ def _o6_field_evidence_validate_manifest(payload):
         task_id=task_id,
         task_origin="field_evidence_manifest",
     )
+    # same-task replay packet 只消费 28-pose packet identity/count/readback，不消费原始路径或运动执行。
+    same_task_replay_packet_readback = _o6_same_task_replay_packet_readback_summary(
+        _o6_same_task_replay_packet_readback_request(payload, manifest),
+        task_id=task_id,
+        task_origin="field_evidence_manifest",
+    )
+    # 07:07 gate + 08:09 bounded plan 只落同 task 安全摘要，不能把 blocked plan 当成控制能力。
+    bounded_route_execution_gate_material = _o6_bounded_route_execution_gate_material_summary(
+        _o6_bounded_route_execution_gate_material_request(payload, manifest),
+        task_id=task_id,
+        task_origin="field_evidence_manifest",
+    )
+    # 00:24 O5 terminal result 只落本地 readback；它仍不是 delivery success 或 live execution。
+    bounded_route_terminal_result_material = _o6_bounded_route_terminal_result_material_summary(
+        _o6_bounded_route_terminal_result_material_request(payload, manifest),
+        task_id=task_id,
+        task_origin="field_evidence_manifest",
+    )
+    # phone/browser terminal material 只消费同 task 安全摘要，raw URL/截图/DOM/cookie/token 一律 blocked。
+    phone_browser_terminal_material = _o6_phone_browser_terminal_material_summary(
+        _o6_phone_browser_terminal_material_request(payload, manifest),
+        task_id=task_id,
+        task_origin="field_evidence_manifest",
+    )
     current_field_evidence_material = _o6_current_field_evidence_material_summary(
         _o6_current_field_evidence_material_request(payload, manifest),
         task_id=task_id,
@@ -22526,6 +25543,11 @@ def _o6_field_evidence_validate_manifest(payload):
     # clean-baseline Nav2 path material 只表达 no-motion preflight 摘要，不提升为路线执行成功证明。
     clean_baseline_nav2_path_material = _o6_clean_baseline_nav2_path_material_summary(
         _o6_clean_baseline_nav2_path_material_request(payload, manifest),
+        task_id=task_id,
+        task_origin="field_evidence_manifest",
+    )
+    pc_live_nav2_execution_material = _o6_pc_live_nav2_execution_material_summary(
+        _o6_pc_live_nav2_execution_material_request(payload, manifest),
         task_id=task_id,
         task_origin="field_evidence_manifest",
     )
@@ -22675,10 +25697,15 @@ def _o6_field_evidence_validate_manifest(payload):
         "route_bag_full_semantic_decode_matrix": route_bag_full_semantic_decode_matrix,
         "route_bag_pose_progress_replay": route_bag_pose_progress_replay,
         "same_task_field_material_packet": same_task_field_material_packet,
+        "same_task_replay_packet_readback": same_task_replay_packet_readback,
+        "bounded_route_execution_gate_material": bounded_route_execution_gate_material,
+        "bounded_route_terminal_result_material": bounded_route_terminal_result_material,
+        "phone_browser_terminal_material": phone_browser_terminal_material,
         "localization_path_material_readback": localization_path_material_readback,
         "current_field_evidence_material": current_field_evidence_material,
         "field_operator_confirmation_material": field_operator_confirmation_material,
         "clean_baseline_nav2_path_material": clean_baseline_nav2_path_material,
+        "pc_live_nav2_execution_material": pc_live_nav2_execution_material,
         "same_task_route_execution_material_packet": same_task_route_execution_material_packet,
         "route_delivery_closure_packet": route_delivery_closure_packet,
         "same_task_mission_evidence_gate": same_task_mission_evidence_gate,
@@ -22733,38 +25760,42 @@ def _o6_artifact_bundle_validate_payload(payload):
 
     if not isinstance(payload, dict):
         raise ValueError("request body must be an object")
+    # artifact bundle 入口同样剥离 additive sections，让 section 自己返回 blocked 摘要。
+    payload_for_global_gate = _o6_nav2_goal_execution_without_evidence(payload)
+    payload_for_global_gate = _o6_route_execution_result_delivery_readiness_without_evidence(
+        payload_for_global_gate
+    )
+    payload_for_global_gate = _o6_delivery_result_without_evidence(payload_for_global_gate)
+    payload_for_global_gate = _o6_route_delivery_closure_packet_without_evidence(payload_for_global_gate)
+    payload_for_global_gate = _o6_route_bag_without_payload_replay(payload_for_global_gate)
+    payload_for_global_gate = _o6_route_bag_without_pose_progress(payload_for_global_gate)
+    payload_for_global_gate = _o6_route_bag_without_semantic_replay(payload_for_global_gate)
+    payload_for_global_gate = _o6_route_bag_without_full_semantic_decode_matrix(payload_for_global_gate)
+    payload_for_global_gate = _o6_route_bag_without_evidence(payload_for_global_gate)
+    payload_for_global_gate = _o6_probe_readback_without_evidence(payload_for_global_gate)
+    payload_for_global_gate = _o6_same_task_mission_evidence_gate_without_evidence(payload_for_global_gate)
+    payload_for_global_gate = _o6_same_task_field_material_packet_without_evidence(payload_for_global_gate)
+    payload_for_global_gate = _o6_same_task_route_execution_material_packet_without_evidence(
+        payload_for_global_gate
+    )
+    payload_for_global_gate = _o6_same_task_replay_packet_readback_without_evidence(payload_for_global_gate)
+    payload_for_global_gate = _o6_bounded_route_execution_gate_material_without_evidence(
+        payload_for_global_gate
+    )
+    payload_for_global_gate = _o6_bounded_route_terminal_result_material_without_evidence(
+        payload_for_global_gate
+    )
+    payload_for_global_gate = _o6_phone_browser_terminal_material_without_evidence(payload_for_global_gate)
+    payload_for_global_gate = _o6_localization_path_material_readback_without_evidence(
+        payload_for_global_gate
+    )
+    payload_for_global_gate = _o6_pc_live_nav2_execution_material_without_evidence(payload_for_global_gate)
+    payload_for_global_gate = _o6_clean_baseline_nav2_path_material_without_evidence(
+        payload_for_global_gate
+    )
+    payload_for_global_gate = _o6_current_field_evidence_material_without_evidence(payload_for_global_gate)
     payload_for_global_gate = _o6_field_operator_confirmation_material_without_evidence(
-        _o6_current_field_evidence_material_without_evidence(
-            _o6_clean_baseline_nav2_path_material_without_evidence(
-                _o6_localization_path_material_readback_without_evidence(
-                    _o6_same_task_route_execution_material_packet_without_evidence(
-                        _o6_same_task_field_material_packet_without_evidence(
-                            _o6_same_task_mission_evidence_gate_without_evidence(
-                                _o6_probe_readback_without_evidence(
-                                    _o6_route_bag_without_evidence(
-                                        _o6_route_bag_without_full_semantic_decode_matrix(
-                                            _o6_route_bag_without_semantic_replay(
-                                                _o6_route_bag_without_pose_progress(
-                                                    _o6_route_bag_without_payload_replay(
-                                                        _o6_route_delivery_closure_packet_without_evidence(
-                                                            _o6_delivery_result_without_evidence(
-                                                                _o6_route_execution_result_delivery_readiness_without_evidence(
-                                                                    _o6_nav2_goal_execution_without_evidence(payload)
-                                                                )
-                                                            )
-                                                        )
-                                                    )
-                                                )
-                                            )
-                                        )
-                                    )
-                                )
-                            )
-                        )
-                    )
-                )
-            )
-        )
+        payload_for_global_gate
     )
     if _o6_cloud_archive_has_unsafe_claim(payload_for_global_gate) or _o6_archive_has_real_capability_claim(
         payload_for_global_gate
@@ -22903,6 +25934,30 @@ def _o6_artifact_bundle_validate_payload(payload):
         task_id=task_id,
         task_origin="artifact_bundle",
     )
+    # bundle 入口同样只落 replay packet 的 identity/count/readback 摘要，仍保持所有控制字段 false。
+    same_task_replay_packet_readback = _o6_same_task_replay_packet_readback_summary(
+        _o6_same_task_replay_packet_readback_request(payload, bundle),
+        task_id=task_id,
+        task_origin="artifact_bundle",
+    )
+    # artifact bundle 入口同样只接 07:07/08:09 的 bounded gate 摘要，不读取或回显 raw command。
+    bounded_route_execution_gate_material = _o6_bounded_route_execution_gate_material_summary(
+        _o6_bounded_route_execution_gate_material_request(payload, bundle),
+        task_id=task_id,
+        task_origin="artifact_bundle",
+    )
+    # bundle 入口也消费同一 O5 terminal-result bridge 摘要，仍固定所有成功/控制字段为 false。
+    bounded_route_terminal_result_material = _o6_bounded_route_terminal_result_material_summary(
+        _o6_bounded_route_terminal_result_material_request(payload, bundle),
+        task_id=task_id,
+        task_origin="artifact_bundle",
+    )
+    # artifact bundle 入口也只收 phone/browser 安全摘要，不能让 raw 浏览器材料进入 archive。
+    phone_browser_terminal_material = _o6_phone_browser_terminal_material_summary(
+        _o6_phone_browser_terminal_material_request(payload, bundle),
+        task_id=task_id,
+        task_origin="artifact_bundle",
+    )
     current_field_evidence_material = _o6_current_field_evidence_material_summary(
         _o6_current_field_evidence_material_request(payload, bundle),
         task_id=task_id,
@@ -22917,6 +25972,11 @@ def _o6_artifact_bundle_validate_payload(payload):
     # clean-baseline no-motion path 也是 additive section；坏包只在本 section fail-closed。
     clean_baseline_nav2_path_material = _o6_clean_baseline_nav2_path_material_summary(
         _o6_clean_baseline_nav2_path_material_request(payload, bundle),
+        task_id=task_id,
+        task_origin="artifact_bundle",
+    )
+    pc_live_nav2_execution_material = _o6_pc_live_nav2_execution_material_summary(
+        _o6_pc_live_nav2_execution_material_request(payload, bundle),
         task_id=task_id,
         task_origin="artifact_bundle",
     )
@@ -23066,10 +26126,15 @@ def _o6_artifact_bundle_validate_payload(payload):
         "route_bag_full_semantic_decode_matrix": route_bag_full_semantic_decode_matrix,
         "route_bag_pose_progress_replay": route_bag_pose_progress_replay,
         "same_task_field_material_packet": same_task_field_material_packet,
+        "same_task_replay_packet_readback": same_task_replay_packet_readback,
+        "bounded_route_execution_gate_material": bounded_route_execution_gate_material,
+        "bounded_route_terminal_result_material": bounded_route_terminal_result_material,
+        "phone_browser_terminal_material": phone_browser_terminal_material,
         "localization_path_material_readback": localization_path_material_readback,
         "current_field_evidence_material": current_field_evidence_material,
         "field_operator_confirmation_material": field_operator_confirmation_material,
         "clean_baseline_nav2_path_material": clean_baseline_nav2_path_material,
+        "pc_live_nav2_execution_material": pc_live_nav2_execution_material,
         "same_task_route_execution_material_packet": same_task_route_execution_material_packet,
         "route_delivery_closure_packet": route_delivery_closure_packet,
         "same_task_mission_evidence_gate": same_task_mission_evidence_gate,
@@ -23232,6 +26297,26 @@ def _o6_cloud_archive_field_evidence_payload(field_evidence):
             task_id=_o6_cloud_archive_safe_text(data.get("task_id") or "", 80),
             task_origin=task_origin,
         ),
+        "same_task_replay_packet_readback": _o6_same_task_replay_packet_readback_summary(
+            data.get("same_task_replay_packet_readback"),
+            task_id=_o6_cloud_archive_safe_text(data.get("task_id") or "", 80),
+            task_origin=task_origin,
+        ),
+        "bounded_route_execution_gate_material": _o6_bounded_route_execution_gate_material_summary(
+            data.get("bounded_route_execution_gate_material"),
+            task_id=_o6_cloud_archive_safe_text(data.get("task_id") or "", 80),
+            task_origin=task_origin,
+        ),
+        "bounded_route_terminal_result_material": _o6_bounded_route_terminal_result_material_summary(
+            data.get("bounded_route_terminal_result_material"),
+            task_id=_o6_cloud_archive_safe_text(data.get("task_id") or "", 80),
+            task_origin=task_origin,
+        ),
+        "phone_browser_terminal_material": _o6_phone_browser_terminal_material_summary(
+            data.get("phone_browser_terminal_material"),
+            task_id=_o6_cloud_archive_safe_text(data.get("task_id") or "", 80),
+            task_origin=task_origin,
+        ),
         "localization_path_material_readback": _o6_localization_path_material_readback_summary(
             data.get("localization_path_material_readback"),
             task_id=_o6_cloud_archive_safe_text(data.get("task_id") or "", 80),
@@ -23249,6 +26334,11 @@ def _o6_cloud_archive_field_evidence_payload(field_evidence):
         ),
         "clean_baseline_nav2_path_material": _o6_clean_baseline_nav2_path_material_summary(
             data.get("clean_baseline_nav2_path_material"),
+            task_id=_o6_cloud_archive_safe_text(data.get("task_id") or "", 80),
+            task_origin=task_origin,
+        ),
+        "pc_live_nav2_execution_material": _o6_pc_live_nav2_execution_material_summary(
+            data.get("pc_live_nav2_execution_material"),
             task_id=_o6_cloud_archive_safe_text(data.get("task_id") or "", 80),
             task_origin=task_origin,
         ),
@@ -23525,6 +26615,26 @@ def _o6_cloud_archive_field_evidence_consumer_ingest_payload(field_evidence):
             task_id=_o6_cloud_archive_safe_text(manifest.get("task_id") or "", 80),
             task_origin=_o6_cloud_archive_safe_text(manifest.get("task_origin") or "field_evidence_manifest", 80),
         ),
+        "same_task_replay_packet_readback": _o6_same_task_replay_packet_readback_summary(
+            manifest.get("same_task_replay_packet_readback"),
+            task_id=_o6_cloud_archive_safe_text(manifest.get("task_id") or "", 80),
+            task_origin=_o6_cloud_archive_safe_text(manifest.get("task_origin") or "field_evidence_manifest", 80),
+        ),
+        "bounded_route_execution_gate_material": _o6_bounded_route_execution_gate_material_summary(
+            manifest.get("bounded_route_execution_gate_material"),
+            task_id=_o6_cloud_archive_safe_text(manifest.get("task_id") or "", 80),
+            task_origin=_o6_cloud_archive_safe_text(manifest.get("task_origin") or "field_evidence_manifest", 80),
+        ),
+        "bounded_route_terminal_result_material": _o6_bounded_route_terminal_result_material_summary(
+            manifest.get("bounded_route_terminal_result_material"),
+            task_id=_o6_cloud_archive_safe_text(manifest.get("task_id") or "", 80),
+            task_origin=_o6_cloud_archive_safe_text(manifest.get("task_origin") or "field_evidence_manifest", 80),
+        ),
+        "phone_browser_terminal_material": _o6_phone_browser_terminal_material_summary(
+            manifest.get("phone_browser_terminal_material"),
+            task_id=_o6_cloud_archive_safe_text(manifest.get("task_id") or "", 80),
+            task_origin=_o6_cloud_archive_safe_text(manifest.get("task_origin") or "field_evidence_manifest", 80),
+        ),
         "current_field_evidence_material": _o6_current_field_evidence_material_summary(
             manifest.get("current_field_evidence_material"),
             task_id=_o6_cloud_archive_safe_text(manifest.get("task_id") or "", 80),
@@ -23537,6 +26647,11 @@ def _o6_cloud_archive_field_evidence_consumer_ingest_payload(field_evidence):
         ),
         "clean_baseline_nav2_path_material": _o6_clean_baseline_nav2_path_material_summary(
             manifest.get("clean_baseline_nav2_path_material"),
+            task_id=_o6_cloud_archive_safe_text(manifest.get("task_id") or "", 80),
+            task_origin=_o6_cloud_archive_safe_text(manifest.get("task_origin") or "field_evidence_manifest", 80),
+        ),
+        "pc_live_nav2_execution_material": _o6_pc_live_nav2_execution_material_summary(
+            manifest.get("pc_live_nav2_execution_material"),
             task_id=_o6_cloud_archive_safe_text(manifest.get("task_id") or "", 80),
             task_origin=_o6_cloud_archive_safe_text(manifest.get("task_origin") or "field_evidence_manifest", 80),
         ),
@@ -24081,11 +27196,20 @@ def _o6_cloud_archive_task_detail(task):
         ]
         detail["route_bag_pose_progress_replay"] = field_evidence["route_bag_pose_progress_replay"]
         detail["same_task_field_material_packet"] = field_evidence["same_task_field_material_packet"]
+        detail["same_task_replay_packet_readback"] = field_evidence["same_task_replay_packet_readback"]
+        detail["bounded_route_execution_gate_material"] = field_evidence[
+            "bounded_route_execution_gate_material"
+        ]
+        detail["bounded_route_terminal_result_material"] = field_evidence[
+            "bounded_route_terminal_result_material"
+        ]
+        detail["phone_browser_terminal_material"] = field_evidence["phone_browser_terminal_material"]
         detail["current_field_evidence_material"] = field_evidence["current_field_evidence_material"]
         detail["field_operator_confirmation_material"] = field_evidence[
             "field_operator_confirmation_material"
         ]
         detail["clean_baseline_nav2_path_material"] = field_evidence["clean_baseline_nav2_path_material"]
+        detail["pc_live_nav2_execution_material"] = field_evidence["pc_live_nav2_execution_material"]
         detail["localization_path_material_readback"] = field_evidence["localization_path_material_readback"]
         detail["same_task_route_execution_material_packet"] = field_evidence[
             "same_task_route_execution_material_packet"
@@ -24707,6 +27831,34 @@ def _o6_consumer_build_field_evidence_section(task):
                     80,
                 ),
             ),
+            "same_task_replay_packet_readback": _o6_same_task_replay_packet_readback_placeholder(
+                task_id=_o6_cloud_archive_dict(task).get("task_id") or "",
+                task_origin=_o6_cloud_archive_safe_text(
+                    _o6_cloud_archive_dict(task).get("task_origin") or "local_mock_archive",
+                    80,
+                ),
+            ),
+            "bounded_route_execution_gate_material": _o6_bounded_route_execution_gate_material_placeholder(
+                task_id=_o6_cloud_archive_dict(task).get("task_id") or "",
+                task_origin=_o6_cloud_archive_safe_text(
+                    _o6_cloud_archive_dict(task).get("task_origin") or "local_mock_archive",
+                    80,
+                ),
+            ),
+            "bounded_route_terminal_result_material": _o6_bounded_route_terminal_result_material_placeholder(
+                task_id=_o6_cloud_archive_dict(task).get("task_id") or "",
+                task_origin=_o6_cloud_archive_safe_text(
+                    _o6_cloud_archive_dict(task).get("task_origin") or "local_mock_archive",
+                    80,
+                ),
+            ),
+            "phone_browser_terminal_material": _o6_phone_browser_terminal_material_placeholder(
+                task_id=_o6_cloud_archive_dict(task).get("task_id") or "",
+                task_origin=_o6_cloud_archive_safe_text(
+                    _o6_cloud_archive_dict(task).get("task_origin") or "local_mock_archive",
+                    80,
+                ),
+            ),
             "current_field_evidence_material": _o6_current_field_evidence_material_placeholder(
                 task_id=_o6_cloud_archive_dict(task).get("task_id") or "",
                 task_origin=_o6_cloud_archive_safe_text(
@@ -24722,6 +27874,13 @@ def _o6_consumer_build_field_evidence_section(task):
                 ),
             ),
             "clean_baseline_nav2_path_material": _o6_clean_baseline_nav2_path_material_placeholder(
+                task_id=_o6_cloud_archive_dict(task).get("task_id") or "",
+                task_origin=_o6_cloud_archive_safe_text(
+                    _o6_cloud_archive_dict(task).get("task_origin") or "local_mock_archive",
+                    80,
+                ),
+            ),
+            "pc_live_nav2_execution_material": _o6_pc_live_nav2_execution_material_placeholder(
                 task_id=_o6_cloud_archive_dict(task).get("task_id") or "",
                 task_origin=_o6_cloud_archive_safe_text(
                     _o6_cloud_archive_dict(task).get("task_origin") or "local_mock_archive",
@@ -24806,9 +27965,16 @@ def _o6_consumer_build_field_evidence_section(task):
         ],
         "route_bag_pose_progress_replay": field_evidence["route_bag_pose_progress_replay"],
         "same_task_field_material_packet": field_evidence["same_task_field_material_packet"],
+        "same_task_replay_packet_readback": field_evidence["same_task_replay_packet_readback"],
+        "bounded_route_execution_gate_material": field_evidence["bounded_route_execution_gate_material"],
+        "bounded_route_terminal_result_material": field_evidence[
+            "bounded_route_terminal_result_material"
+        ],
+        "phone_browser_terminal_material": field_evidence["phone_browser_terminal_material"],
         "current_field_evidence_material": field_evidence["current_field_evidence_material"],
         "field_operator_confirmation_material": field_evidence["field_operator_confirmation_material"],
         "clean_baseline_nav2_path_material": field_evidence["clean_baseline_nav2_path_material"],
+        "pc_live_nav2_execution_material": field_evidence["pc_live_nav2_execution_material"],
         "localization_path_material_readback": field_evidence["localization_path_material_readback"],
         "same_task_route_execution_material_packet": field_evidence[
             "same_task_route_execution_material_packet"
@@ -24931,6 +28097,58 @@ def _o6_consumer_build_same_task_field_material_packet_section(task):
     )
 
 
+def _o6_consumer_build_same_task_replay_packet_readback_section(task):
+    """same-task replay packet 可单独 include；只回读 identity/count，不推断 route execution。"""
+
+    task_payload = _o6_cloud_archive_dict(task)
+    field_evidence = _o6_cloud_archive_field_evidence_payload(task_payload.get("field_evidence"))
+    if field_evidence and "same_task_replay_packet_readback" in field_evidence:
+        return field_evidence["same_task_replay_packet_readback"]
+    return _o6_same_task_replay_packet_readback_placeholder(
+        task_id=task_payload.get("task_id") or "",
+        task_origin=_o6_cloud_archive_safe_text(task_payload.get("task_origin") or "local_mock_archive", 80),
+    )
+
+
+def _o6_consumer_build_bounded_route_execution_gate_material_section(task):
+    """bounded gate material 可单独 include；只回读 gate/plan 摘要，不开放控制面。"""
+
+    task_payload = _o6_cloud_archive_dict(task)
+    field_evidence = _o6_cloud_archive_field_evidence_payload(task_payload.get("field_evidence"))
+    if field_evidence and "bounded_route_execution_gate_material" in field_evidence:
+        return field_evidence["bounded_route_execution_gate_material"]
+    return _o6_bounded_route_execution_gate_material_placeholder(
+        task_id=task_payload.get("task_id") or "",
+        task_origin=_o6_cloud_archive_safe_text(task_payload.get("task_origin") or "local_mock_archive", 80),
+    )
+
+
+def _o6_consumer_build_bounded_route_terminal_result_material_section(task):
+    """terminal-result material 可单独 include；只回读 O5 安全摘要，不推断真实送达。"""
+
+    task_payload = _o6_cloud_archive_dict(task)
+    field_evidence = _o6_cloud_archive_field_evidence_payload(task_payload.get("field_evidence"))
+    if field_evidence and "bounded_route_terminal_result_material" in field_evidence:
+        return field_evidence["bounded_route_terminal_result_material"]
+    return _o6_bounded_route_terminal_result_material_placeholder(
+        task_id=task_payload.get("task_id") or "",
+        task_origin=_o6_cloud_archive_safe_text(task_payload.get("task_origin") or "local_mock_archive", 80),
+    )
+
+
+def _o6_consumer_build_phone_browser_terminal_material_section(task):
+    """phone/browser material 可单独 include；缺材料时只返回 blocked 摘要，不推断真实验收。"""
+
+    task_payload = _o6_cloud_archive_dict(task)
+    field_evidence = _o6_cloud_archive_field_evidence_payload(task_payload.get("field_evidence"))
+    if field_evidence and "phone_browser_terminal_material" in field_evidence:
+        return field_evidence["phone_browser_terminal_material"]
+    return _o6_phone_browser_terminal_material_placeholder(
+        task_id=task_payload.get("task_id") or "",
+        task_origin=_o6_cloud_archive_safe_text(task_payload.get("task_origin") or "local_mock_archive", 80),
+    )
+
+
 def _o6_consumer_build_current_field_evidence_material_section(task):
     """current field evidence material 可单独 include；缺材料时只返回 blocked 摘要。"""
 
@@ -24965,6 +28183,19 @@ def _o6_consumer_build_clean_baseline_nav2_path_material_section(task):
     if field_evidence and "clean_baseline_nav2_path_material" in field_evidence:
         return field_evidence["clean_baseline_nav2_path_material"]
     return _o6_clean_baseline_nav2_path_material_placeholder(
+        task_id=task_payload.get("task_id") or "",
+        task_origin=_o6_cloud_archive_safe_text(task_payload.get("task_origin") or "local_mock_archive", 80),
+    )
+
+
+def _o6_consumer_build_pc_live_nav2_execution_material_section(task):
+    """pc live Nav2 material 可单独 include；缺材料时只返回 blocked 摘要。"""
+
+    task_payload = _o6_cloud_archive_dict(task)
+    field_evidence = _o6_cloud_archive_field_evidence_payload(task_payload.get("field_evidence"))
+    if field_evidence and "pc_live_nav2_execution_material" in field_evidence:
+        return field_evidence["pc_live_nav2_execution_material"]
+    return _o6_pc_live_nav2_execution_material_placeholder(
         task_id=task_payload.get("task_id") or "",
         task_origin=_o6_cloud_archive_safe_text(task_payload.get("task_origin") or "local_mock_archive", 80),
     )
@@ -25226,6 +28457,22 @@ def _o6_consumer_build_task_detail(task, store, *, view, includes):
             payload["same_task_field_material_packet"] = field_evidence_section[
                 "same_task_field_material_packet"
             ]
+        if "same_task_replay_packet_readback" in field_evidence_section:
+            payload["same_task_replay_packet_readback"] = field_evidence_section[
+                "same_task_replay_packet_readback"
+            ]
+        if "bounded_route_execution_gate_material" in field_evidence_section:
+            payload["bounded_route_execution_gate_material"] = field_evidence_section[
+                "bounded_route_execution_gate_material"
+            ]
+        if "bounded_route_terminal_result_material" in field_evidence_section:
+            payload["bounded_route_terminal_result_material"] = field_evidence_section[
+                "bounded_route_terminal_result_material"
+            ]
+        if "phone_browser_terminal_material" in field_evidence_section:
+            payload["phone_browser_terminal_material"] = field_evidence_section[
+                "phone_browser_terminal_material"
+            ]
         if "current_field_evidence_material" in field_evidence_section:
             payload["current_field_evidence_material"] = field_evidence_section[
                 "current_field_evidence_material"
@@ -25237,6 +28484,10 @@ def _o6_consumer_build_task_detail(task, store, *, view, includes):
         if "clean_baseline_nav2_path_material" in field_evidence_section:
             payload["clean_baseline_nav2_path_material"] = field_evidence_section[
                 "clean_baseline_nav2_path_material"
+            ]
+        if "pc_live_nav2_execution_material" in field_evidence_section:
+            payload["pc_live_nav2_execution_material"] = field_evidence_section[
+                "pc_live_nav2_execution_material"
             ]
         if "localization_path_material_readback" in field_evidence_section:
             payload["localization_path_material_readback"] = field_evidence_section[
@@ -25297,6 +28548,34 @@ def _o6_consumer_build_task_detail(task, store, *, view, includes):
             task
         )
     if (
+        "same_task_replay_packet_readback" in requested_includes
+        and "same_task_replay_packet_readback" not in payload
+    ):
+        payload["same_task_replay_packet_readback"] = (
+            _o6_consumer_build_same_task_replay_packet_readback_section(task)
+        )
+    if (
+        "bounded_route_execution_gate_material" in requested_includes
+        and "bounded_route_execution_gate_material" not in payload
+    ):
+        payload["bounded_route_execution_gate_material"] = (
+            _o6_consumer_build_bounded_route_execution_gate_material_section(task)
+        )
+    if (
+        "bounded_route_terminal_result_material" in requested_includes
+        and "bounded_route_terminal_result_material" not in payload
+    ):
+        payload["bounded_route_terminal_result_material"] = (
+            _o6_consumer_build_bounded_route_terminal_result_material_section(task)
+        )
+    if (
+        "phone_browser_terminal_material" in requested_includes
+        and "phone_browser_terminal_material" not in payload
+    ):
+        payload["phone_browser_terminal_material"] = _o6_consumer_build_phone_browser_terminal_material_section(
+            task
+        )
+    if (
         "current_field_evidence_material" in requested_includes
         and "current_field_evidence_material" not in payload
     ):
@@ -25316,6 +28595,13 @@ def _o6_consumer_build_task_detail(task, store, *, view, includes):
     ):
         payload["clean_baseline_nav2_path_material"] = (
             _o6_consumer_build_clean_baseline_nav2_path_material_section(task)
+        )
+    if (
+        "pc_live_nav2_execution_material" in requested_includes
+        and "pc_live_nav2_execution_material" not in payload
+    ):
+        payload["pc_live_nav2_execution_material"] = (
+            _o6_consumer_build_pc_live_nav2_execution_material_section(task)
         )
     if (
         "localization_path_material_readback" in requested_includes
@@ -26096,6 +29382,329 @@ def _o6_cloud_archive_label_status_for_filter(task_status_filter, task_status):
     return task_status == task_status_filter
 
 
+def _o6_cloud_archive_label_query_invalid(field_name):
+    """错误原因只暴露字段名和稳定 reason，避免把危险 query 原文写进响应。"""
+
+    return f"invalid_label_query_filter:{field_name}"
+
+
+def _o6_cloud_archive_date_from_ms(timestamp_ms):
+    """label list 的日期过滤统一用 UTC 日，避免本地时区影响查询结果。"""
+
+    value_ms = _o6_cloud_archive_int(timestamp_ms, None)
+    if value_ms is None:
+        return ""
+    try:
+        return datetime.fromtimestamp(value_ms / 1000.0, tz=timezone.utc).strftime("%Y-%m-%d")
+    except (OverflowError, OSError, ValueError):
+        return ""
+
+
+def _o6_cloud_archive_label_query_has_path_like_value(value):
+    """query 标识符不能像路径或 URL；这类值直接 fail closed。"""
+
+    text = str(value or "").strip()
+    lowered = text.lower()
+    return (
+        text.startswith(("/", "~/", "\\"))
+        or lowered.startswith(("file://", "http://", "https://", "c:\\", "\\\\"))
+        or "/tmp/" in lowered
+        or "../" in text
+        or "..\\" in text
+        or "/" in text
+        or "\\" in text
+    )
+
+
+def _o6_cloud_archive_label_query_is_raw_like(value):
+    """拒绝常见 raw/base64-like blob，避免 list 查询被当成 payload 或 token 通道。"""
+
+    text = str(value or "").strip()
+    lowered = text.lower()
+    if lowered.startswith(("data:", "base64,")) or "base64" in lowered:
+        return True
+    if len(text) >= 48 and re.fullmatch(r"[A-Za-z0-9+/=]+", text):
+        return True
+    return False
+
+
+def _o6_cloud_archive_validate_label_query_identifier(field_name, value):
+    """robot_id/task_id 只接受短安全精确匹配标识；安全但不存在的值后续返回空列表。"""
+
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    if len(text) > O6_CLOUD_LABELING_QUERY_ID_MAX_LENGTH:
+        raise ValueError(_o6_cloud_archive_label_query_invalid(field_name))
+    if _o6_cloud_archive_has_unsafe_claim(text):
+        raise ValueError(_o6_cloud_archive_label_query_invalid(field_name))
+    if _o6_cloud_archive_label_query_has_path_like_value(text):
+        raise ValueError(_o6_cloud_archive_label_query_invalid(field_name))
+    if _o6_cloud_archive_label_query_is_raw_like(text):
+        raise ValueError(_o6_cloud_archive_label_query_invalid(field_name))
+    if not O6_CLOUD_LABELING_QUERY_ID_PATTERN.fullmatch(text):
+        raise ValueError(_o6_cloud_archive_label_query_invalid(field_name))
+    safe_text = _o6_cloud_archive_safe_text(text, O6_CLOUD_LABELING_QUERY_ID_MAX_LENGTH).strip()
+    if safe_text == "[redacted]" or safe_text != text:
+        raise ValueError(_o6_cloud_archive_label_query_invalid(field_name))
+    return text
+
+
+def _o6_cloud_archive_validate_label_query_date(value):
+    """date 只接受真实存在的 YYYY-MM-DD；其它格式不能降级成宽查询。"""
+
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    if not O6_CLOUD_LABELING_DATE_PATTERN.fullmatch(text):
+        raise ValueError(_o6_cloud_archive_label_query_invalid("date"))
+    try:
+        parsed = datetime.strptime(text, "%Y-%m-%d")
+    except ValueError as exc:
+        raise ValueError(_o6_cloud_archive_label_query_invalid("date")) from exc
+    if parsed.strftime("%Y-%m-%d") != text:
+        raise ValueError(_o6_cloud_archive_label_query_invalid("date"))
+    return text
+
+
+def _o6_cloud_archive_validate_label_list_query(query):
+    """GET /labels 的 query 合同在进入 store 前完成校验，保证失败不写 state。"""
+
+    query = query if isinstance(query, dict) else {}
+    allowed_keys = {"robot_id", "task_id", "date", "status", "limit"}
+    unknown_keys = set(query.keys()) - allowed_keys
+    if unknown_keys:
+        raise ValueError(_o6_cloud_archive_label_query_invalid("unsupported"))
+    for field_name, values in query.items():
+        if len(values) > 1:
+            raise ValueError(_o6_cloud_archive_label_query_invalid(field_name))
+        if values and str(values[0]).strip() == "":
+            raise ValueError(_o6_cloud_archive_label_query_invalid(field_name))
+
+    def _single_value(name, default=""):
+        values = query.get(name, [])
+        return values[0] if values else default
+
+    status_filter = str(_single_value("status", "all") or "all").strip().lower()
+    if status_filter not in {"all", "pending", "labeled"}:
+        raise ValueError(_o6_cloud_archive_label_query_invalid("status"))
+    raw_limit = str(_single_value("limit", str(O6_CLOUD_LABELING_DEFAULT_LIST_LIMIT))).strip()
+    try:
+        limit = int(raw_limit)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(_o6_cloud_archive_label_query_invalid("limit")) from exc
+    if limit <= 0:
+        raise ValueError(_o6_cloud_archive_label_query_invalid("limit"))
+    if limit > O6_CLOUD_LABELING_MAX_LIST_LIMIT:
+        limit = O6_CLOUD_LABELING_MAX_LIST_LIMIT
+    return {
+        "robot_id": _o6_cloud_archive_validate_label_query_identifier("robot_id", _single_value("robot_id", "")),
+        "task_id": _o6_cloud_archive_validate_label_query_identifier("task_id", _single_value("task_id", "")),
+        "date": _o6_cloud_archive_validate_label_query_date(_single_value("date", "")),
+        "status": status_filter,
+        "limit": limit,
+    }
+
+
+def _o6_cloud_archive_label_date_match_source(task, date_filter):
+    """date 先看 label 时间；只有 label 没时间时才回落 task 时间并暴露 source。"""
+
+    if not date_filter:
+        return True, ""
+    task = _o6_cloud_archive_dict(task)
+    label_timestamp_seen = False
+    for label in _o6_cloud_archive_list(task.get("labels")):
+        label_payload = _o6_cloud_archive_dict(label)
+        for field_name in ("updated_at_ms", "created_at_ms", "timestamp_ms", "captured_at_ms", "occurred_at_ms"):
+            label_date = _o6_cloud_archive_date_from_ms(label_payload.get(field_name))
+            if not label_date:
+                continue
+            label_timestamp_seen = True
+            if label_date == date_filter:
+                return True, f"label.{field_name}"
+    if label_timestamp_seen:
+        return False, "label.timestamp"
+    for field_name in ("finished_at_ms", "started_at_ms"):
+        task_date = _o6_cloud_archive_date_from_ms(task.get(field_name))
+        if task_date == date_filter:
+            return True, f"task.{field_name}"
+    return False, "task.timestamp"
+
+
+def _o6_cloud_archive_task_query_invalid(field_name):
+    """archive task query 错误只暴露字段名，避免把危险值写回响应。"""
+
+    return f"invalid_archive_task_query_filter:{field_name}"
+
+
+def _o6_cloud_archive_validate_task_query_identifier(field_name, value):
+    """archive task list 只接受短安全 ID；不存在的安全 ID 后续返回空列表。"""
+
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    lowered = text.lower()
+    if len(text) > O6_ARCHIVE_MAX_ID_LENGTH:
+        raise ValueError(_o6_cloud_archive_task_query_invalid(field_name))
+    if _o6_cloud_archive_has_unsafe_claim(text):
+        raise ValueError(_o6_cloud_archive_task_query_invalid(field_name))
+    if any(
+        marker in lowered
+        for marker in (
+            "credential",
+            "token=",
+            "secret=",
+            "password=",
+            "signature=",
+            "authorization",
+            "bearer",
+        )
+    ):
+        raise ValueError(_o6_cloud_archive_task_query_invalid(field_name))
+    if _o6_cloud_archive_label_query_has_path_like_value(text):
+        raise ValueError(_o6_cloud_archive_task_query_invalid(field_name))
+    if _o6_cloud_archive_label_query_is_raw_like(text):
+        raise ValueError(_o6_cloud_archive_task_query_invalid(field_name))
+    if not O6_ARCHIVE_TASK_QUERY_ID_PATTERN.fullmatch(text):
+        raise ValueError(_o6_cloud_archive_task_query_invalid(field_name))
+    safe_text = _o6_cloud_archive_safe_text(text, O6_ARCHIVE_MAX_ID_LENGTH).strip()
+    if safe_text == "[redacted]" or safe_text != text:
+        raise ValueError(_o6_cloud_archive_task_query_invalid(field_name))
+    return text
+
+
+def _o6_cloud_archive_validate_task_query_date(value):
+    """archive task date 仅接受真实 UTC 日格式，坏值不能退化成全量查询。"""
+
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    if not O6_ARCHIVE_TASK_QUERY_DATE_PATTERN.fullmatch(text):
+        raise ValueError(_o6_cloud_archive_task_query_invalid("date"))
+    try:
+        parsed = datetime.strptime(text, "%Y-%m-%d")
+    except ValueError as exc:
+        raise ValueError(_o6_cloud_archive_task_query_invalid("date")) from exc
+    if parsed.strftime("%Y-%m-%d") != text:
+        raise ValueError(_o6_cloud_archive_task_query_invalid("date"))
+    return text
+
+
+def _o6_cloud_archive_validate_task_list_query(query):
+    """GET /tasks 的 query 在进入 store 前完成校验，失败路径不读取宽泛结果。"""
+
+    query = query if isinstance(query, dict) else {}
+    allowed_keys = {"robot_id", "task_id", "date", "status", "limit"}
+    if set(query.keys()) - allowed_keys:
+        raise ValueError(_o6_cloud_archive_task_query_invalid("unsupported"))
+    for field_name, values in query.items():
+        if len(values) > 1:
+            raise ValueError(_o6_cloud_archive_task_query_invalid(field_name))
+        if values and str(values[0]).strip() == "":
+            raise ValueError(_o6_cloud_archive_task_query_invalid(field_name))
+
+    def _single_value(name, default=""):
+        values = query.get(name, [])
+        return values[0] if values else default
+
+    status_filter = str(_single_value("status", "all") or "all").strip().lower()
+    allowed_statuses = {"all", "local_mock_archive_ready"} | set(O6_CONSUMER_ALLOWED_STATUS)
+    if status_filter not in allowed_statuses:
+        raise ValueError(_o6_cloud_archive_task_query_invalid("status"))
+    raw_limit = str(_single_value("limit", str(O6_ARCHIVE_DEFAULT_QUERY_LIMIT))).strip()
+    try:
+        limit = _o6_archive_validate_query_limit(raw_limit)
+    except ValueError as exc:
+        raise ValueError(_o6_cloud_archive_task_query_invalid("limit")) from exc
+    return {
+        "robot_id": _o6_cloud_archive_validate_task_query_identifier("robot_id", _single_value("robot_id", "")),
+        "task_id": _o6_cloud_archive_validate_task_query_identifier("task_id", _single_value("task_id", "")),
+        "date": _o6_cloud_archive_validate_task_query_date(_single_value("date", "")),
+        "status": status_filter,
+        "limit": limit,
+    }
+
+
+def _o6_cloud_archive_task_date_match_source(task, date_filter):
+    """archive task date 优先 started_at_ms；只有缺失时才回落 finished_at_ms。"""
+
+    if not date_filter:
+        return True, ""
+    task = _o6_cloud_archive_dict(task)
+    started_date = _o6_cloud_archive_date_from_ms(task.get("started_at_ms"))
+    if started_date:
+        return started_date == date_filter, "started_at_ms"
+    finished_date = _o6_cloud_archive_date_from_ms(task.get("finished_at_ms"))
+    if finished_date:
+        return finished_date == date_filter, "finished_at_ms"
+    return False, "no_task_timestamp"
+
+
+def _o6_cloud_archive_task_matches_status_filter(task, status_filter):
+    """status 对齐 consumer task_status_summary，同时兼容 archive ready 行状态。"""
+
+    if status_filter == "all":
+        return True
+    if status_filter == "local_mock_archive_ready":
+        return _o6_cloud_archive_task_summary(task).get("status") == status_filter
+    return _o6_consumer_task_status_summary(task) == status_filter
+
+
+def _o6_cloud_archive_filtered_task_list_payload(tasks, task_query_filters):
+    """按 AND 语义构造 archive task list 响应；limit 只在过滤后裁剪。"""
+
+    task_query_filters = _o6_cloud_archive_dict(task_query_filters)
+    robot_id_filter = str(task_query_filters.get("robot_id") or "").strip()
+    task_id_filter = str(task_query_filters.get("task_id") or "").strip()
+    date_filter = str(task_query_filters.get("date") or "").strip()
+    status_filter = str(task_query_filters.get("status") or "all").strip().lower() or "all"
+    limit = _o6_archive_validate_query_limit(task_query_filters.get("limit", O6_ARCHIVE_DEFAULT_QUERY_LIMIT))
+
+    filtered_tasks = []
+    date_filter_sources = set()
+    for task in tasks:
+        task_payload = _o6_cloud_archive_dict(task)
+        if robot_id_filter and task_payload.get("robot_id") != robot_id_filter:
+            continue
+        if task_id_filter and task_payload.get("task_id") != task_id_filter:
+            continue
+        date_matches, date_filter_source = _o6_cloud_archive_task_date_match_source(task_payload, date_filter)
+        if not date_matches:
+            continue
+        if date_filter and date_filter_source:
+            date_filter_sources.add(date_filter_source)
+        if not _o6_cloud_archive_task_matches_status_filter(task_payload, status_filter):
+            continue
+        filtered_tasks.append(task_payload)
+
+    filtered_result_count = len(filtered_tasks)
+    limited_tasks = filtered_tasks[:limit]
+    payload = _o6_cloud_archive_collection_payload(limited_tasks)
+    payload.update(
+        {
+            "archive_task_query_filters_ready_not_production_proof": True,
+            "archive_task_query_filters_proof_scope": O6_ARCHIVE_TASK_QUERY_FILTERS_PROOF_SCOPE,
+            "applied_filters": {
+                "robot_id": robot_id_filter,
+                "task_id": task_id_filter,
+                "date": date_filter,
+                "status": status_filter,
+                "limit": limit,
+            },
+            "filter_semantics": "and",
+            "filtered_result_count": filtered_result_count,
+        }
+    )
+    if date_filter:
+        payload["date_filter_source"] = (
+            ",".join(sorted(date_filter_sources)) if date_filter_sources else "no_matching_task_timestamp"
+        )
+    query_active = bool(robot_id_filter or task_id_filter or date_filter or status_filter != "all")
+    if not limited_tasks and (tasks or query_active):
+        payload["blocked_reasons"] = ["archive_task_query_filter_no_matches"]
+    return payload
+
+
 def _o6_cloud_archive_label_item_summary(label):
     """只回显白名单字段，防止后续 payload 泄露。"""
 
@@ -26201,15 +29810,42 @@ def _o6_cloud_archive_labeling_task_summary(task):
     }
 
 
-def _o6_cloud_archive_build_labeling_list_payload(tasks, *, status_filter="all", limit=O6_CLOUD_LABELING_DEFAULT_LIST_LIMIT):
+def _o6_cloud_archive_build_labeling_list_payload(
+    tasks,
+    *,
+    status_filter="all",
+    limit=O6_CLOUD_LABELING_DEFAULT_LIST_LIMIT,
+    label_query_filters=None,
+):
     """列表响应只返回摘要，不返回完整 labels payload。"""
 
+    label_query_filters = _o6_cloud_archive_dict(label_query_filters)
+    robot_id_filter = str(label_query_filters.get("robot_id") or "").strip()
+    task_id_filter = str(label_query_filters.get("task_id") or "").strip()
+    date_filter = str(label_query_filters.get("date") or "").strip()
     task_summaries = []
     for task in tasks:
         task_summary = _o6_cloud_archive_labeling_task_summary(task)
+        if robot_id_filter and task_summary.get("robot_id") != robot_id_filter:
+            continue
+        if task_id_filter and task_summary.get("task_id") != task_id_filter:
+            continue
+        date_matches, date_filter_source = _o6_cloud_archive_label_date_match_source(task, date_filter)
+        if not date_matches:
+            continue
+        if date_filter:
+            task_summary["date_filter_source"] = date_filter_source
         if not _o6_cloud_archive_label_status_for_filter(status_filter, task_summary["task_status"]):
             continue
         task_summaries.append(task_summary)
+    filtered_result_count = len(task_summaries)
+    date_filter_sources = sorted(
+        {
+            item.get("date_filter_source")
+            for item in task_summaries
+            if item.get("date_filter_source")
+        }
+    )
     task_summaries.sort(
         key=lambda item: _o6_cloud_archive_int(item.get("latest_label_updated_at_ms"), -1) or -1,
         reverse=True,
@@ -26219,7 +29855,7 @@ def _o6_cloud_archive_build_labeling_list_payload(tasks, *, status_filter="all",
     task_status_counts = {}
     for item in task_summaries:
         task_status_counts[item["task_status"]] = task_status_counts.get(item["task_status"], 0) + 1
-    return {
+    payload = {
         **_o6_cloud_archive_labeling_fixed_payload(),
         "task_summary": task_summaries,
         "status": "local_mock_labeling_ready" if task_count else "blocked_not_proven",
@@ -26232,8 +29868,25 @@ def _o6_cloud_archive_build_labeling_list_payload(tasks, *, status_filter="all",
         },
         "status_filter": status_filter,
         "limit": int(limit),
-        "blocked_reasons": [] if task_count else ["local_mock_labeling_store_empty"],
+        "label_query_filters_ready_not_production_proof": True,
+        "applied_filters": {
+            "robot_id": robot_id_filter,
+            "task_id": task_id_filter,
+            "date": date_filter,
+            "status": status_filter,
+            "limit": int(limit),
+        },
+        "filter_semantics": "and",
+        "filtered_result_count": filtered_result_count,
+        "blocked_reasons": [] if task_count else (
+            ["label_query_filter_no_matches"]
+            if (tasks or robot_id_filter or task_id_filter or date_filter or status_filter != "all")
+            else ["local_mock_labeling_store_empty"]
+        ),
     }
+    if date_filter:
+        payload["date_filter_source"] = ",".join(date_filter_sources) if date_filter_sources else "no_matching_label_or_task_timestamp"
+    return payload
 
 
 def _o6_cloud_archive_build_labeling_detail_payload(task, *, write_status=None, duplicate=False):
@@ -26300,7 +29953,18 @@ def _o6_cloud_archive_validate_task_payload(payload):
 
     if not isinstance(payload, dict):
         raise ValueError("request body must be an object")
-    if _o6_cloud_archive_has_unsafe_claim(payload) or _o6_archive_has_real_capability_claim(payload):
+    # same-task replay readback 固定暴露 publishes_cmd_vel=false 这类安全边界字段；
+    # 通用扫描会把字段名本身误判为控制痕迹，因此先剥离，后续 field_evidence 白名单会重建摘要。
+    payload_for_global_gate = _o6_same_task_replay_packet_readback_without_evidence(payload)
+    payload_for_global_gate = _o6_bounded_route_execution_gate_material_without_evidence(
+        payload_for_global_gate
+    )
+    payload_for_global_gate = _o6_bounded_route_terminal_result_material_without_evidence(
+        payload_for_global_gate
+    )
+    if _o6_cloud_archive_has_unsafe_claim(payload_for_global_gate) or _o6_archive_has_real_capability_claim(
+        payload_for_global_gate
+    ):
         raise ValueError("unsafe archive payload")
     robot_id = _o6_cloud_archive_safe_text(payload.get("robot_id") or "", 80).strip()
     task_id = _o6_cloud_archive_safe_text(payload.get("task_id") or "", 80).strip()
@@ -26941,7 +30605,13 @@ class FileBackedO6CloudArchiveStore:
             updated_count=updated_count,
         )
 
-    def list_labels(self, status_filter="all", limit=O6_CLOUD_LABELING_DEFAULT_LIST_LIMIT):
+    def list_labels(
+        self,
+        status_filter="all",
+        limit=O6_CLOUD_LABELING_DEFAULT_LIST_LIMIT,
+        *,
+        label_query_filters=None,
+    ):
         # 只返回任务级摘要，禁止原样回显 itemized labels，避免查询端误用原始 payload。
         if not isinstance(status_filter, str):
             raise TypeError("status filter must be a string")
@@ -26958,7 +30628,12 @@ class FileBackedO6CloudArchiveStore:
             limit = O6_CLOUD_LABELING_MAX_LIST_LIMIT
         with self._lock:
             tasks = list(self._tasks.values())
-        return 200, _o6_cloud_archive_build_labeling_list_payload(tasks, status_filter=status_filter, limit=limit)
+        return 200, _o6_cloud_archive_build_labeling_list_payload(
+            tasks,
+            status_filter=status_filter,
+            limit=limit,
+            label_query_filters=label_query_filters,
+        )
 
     def get_task_labels(self, task_id):
         task_id = _o6_cloud_archive_safe_text(task_id or "", 80).strip()
@@ -26994,10 +30669,12 @@ class FileBackedO6CloudArchiveStore:
             )
         return 200, _o6_cloud_archive_build_label_export_payload(task, export_format=export_format)
 
-    def list_tasks(self):
+    def list_tasks(self, *, task_query_filters=None):
         with self._lock:
             tasks = list(self._tasks.values())
-        return 200, _o6_cloud_archive_collection_payload(tasks)
+        if task_query_filters is None:
+            return 200, _o6_cloud_archive_collection_payload(tasks)
+        return 200, _o6_cloud_archive_filtered_task_list_payload(tasks, task_query_filters)
 
     def get_task(self, task_id):
         task_id = _o6_cloud_archive_safe_text(task_id or "", 80).strip()
@@ -28586,8 +32263,10 @@ def make_handler(store, archive_store, bearer_token):
                 return
             if parsed.path == "/api/o6/archive/tasks":
                 # O6 archive tasks 是本地 mock file-backed store；它只证明数据形状，不连接真实云。
+                query = parse_qs(parsed.query, keep_blank_values=True)
                 try:
-                    status_code, payload = archive_store.list_tasks()
+                    task_query_filters = _o6_cloud_archive_validate_task_list_query(query)
+                    status_code, payload = archive_store.list_tasks(task_query_filters=task_query_filters)
                 except ValueError as exc:
                     self._send_json(400, phone_error("bad_request", _safe_error_reason(exc)))
                     return
@@ -28643,16 +32322,14 @@ def make_handler(store, archive_store, bearer_token):
                 return
             if parsed.path == "/api/o6/archive/labels":
                 # 标注接口只返回 task 级摘要，不回显完整 label payload，确保前端不能把原始标注当 truth 使用。
-                query = parse_qs(parsed.query)
-                status_filter = next(iter(query.get("status", ["all"])), "all")
-                raw_limit = next(iter(query.get("limit", [str(O6_CLOUD_LABELING_DEFAULT_LIST_LIMIT)])), str(O6_CLOUD_LABELING_DEFAULT_LIST_LIMIT))
+                query = parse_qs(parsed.query, keep_blank_values=True)
                 try:
-                    limit = int(raw_limit)
-                except (TypeError, ValueError):
-                    self._send_json(400, phone_error("bad_request", "invalid limit"))
-                    return
-                try:
-                    status_code, payload = archive_store.list_labels(status_filter=status_filter, limit=limit)
+                    label_query_filters = _o6_cloud_archive_validate_label_list_query(query)
+                    status_code, payload = archive_store.list_labels(
+                        status_filter=label_query_filters["status"],
+                        limit=label_query_filters["limit"],
+                        label_query_filters=label_query_filters,
+                    )
                 except ValueError as exc:
                     self._send_json(400, phone_error("bad_request", _safe_error_reason(exc)))
                     return
@@ -29192,6 +32869,11 @@ def main(argv=None):
         help="phone-safe OSS/CDN live probe artifact consumed by preflight",
     )
     parser.add_argument(
+        "--cdn-tls-external-evidence-artifact",
+        default=os.environ.get(CDN_TLS_EXTERNAL_EVIDENCE_ENV, ""),
+        help="phone-safe O5 CDN/TLS external evidence artifact consumed by preflight and cutover packet",
+    )
+    parser.add_argument(
         "--network-recovery-artifact",
         default=os.environ.get("TRASHBOT_REMOTE_CLOUD_NETWORK_RECOVERY_ARTIFACT", ""),
         help="phone-safe network recovery drill artifact consumed by preflight",
@@ -29255,6 +32937,11 @@ def main(argv=None):
         "--external-evidence-intake-artifact",
         default=os.environ.get("TRASHBOT_REMOTE_CLOUD_EXTERNAL_EVIDENCE_INTAKE_ARTIFACT", ""),
         help="phone-safe external evidence intake artifact consumed by preflight",
+    )
+    parser.add_argument(
+        "--cloud-external-evidence-review-decision-artifact",
+        default=os.environ.get(CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_ENV, ""),
+        help="phone-safe external evidence review decision artifact consumed by preflight and cutover packet",
     )
     parser.add_argument(
         "--cloud-worker-migration-rehearsal-artifact",
@@ -29510,6 +33197,8 @@ def main(argv=None):
             preflight_env["TRASHBOT_REMOTE_CLOUD_OSS_CDN_LIVE_PROBE_ARTIFACT"] = (
                 args.oss_cdn_live_probe_artifact
             )
+        if args.cdn_tls_external_evidence_artifact:
+            preflight_env[CDN_TLS_EXTERNAL_EVIDENCE_ENV] = args.cdn_tls_external_evidence_artifact
         if args.network_recovery_artifact:
             preflight_env["TRASHBOT_REMOTE_CLOUD_NETWORK_RECOVERY_ARTIFACT"] = args.network_recovery_artifact
         if args.credential_rotation_artifact:
@@ -29554,6 +33243,10 @@ def main(argv=None):
             preflight_env["TRASHBOT_REMOTE_CLOUD_EXTERNAL_EVIDENCE_INTAKE_ARTIFACT"] = (
                 args.external_evidence_intake_artifact
             )
+        if args.cloud_external_evidence_review_decision_artifact:
+            preflight_env[CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_ENV] = (
+                args.cloud_external_evidence_review_decision_artifact
+            )
         if args.cloud_worker_migration_rehearsal_artifact:
             preflight_env["TRASHBOT_REMOTE_CLOUD_WORKER_MIGRATION_REHEARSAL_ARTIFACT"] = (
                 args.cloud_worker_migration_rehearsal_artifact
@@ -29571,9 +33264,16 @@ def main(argv=None):
         return 0 if payload.get("production_ready") or payload.get("software_proof_ready") else 2
     if args.write_cloud_production_cutover_readiness_packet_artifact:
         try:
+            packet_env = dict(os.environ)
+            if args.cdn_tls_external_evidence_artifact:
+                packet_env[CDN_TLS_EXTERNAL_EVIDENCE_ENV] = args.cdn_tls_external_evidence_artifact
+            if args.cloud_external_evidence_review_decision_artifact:
+                packet_env[CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_ENV] = (
+                    args.cloud_external_evidence_review_decision_artifact
+                )
             payload = create_cloud_production_cutover_readiness_packet_artifact(
                 args.write_cloud_production_cutover_readiness_packet_artifact,
-                dict(os.environ),
+                packet_env,
             )
         except (ValueError, OSError) as exc:
             payload = phone_error(

@@ -1,0 +1,66 @@
+{
+  "schema": "trashbot.product_acceptance.o6_o7_bounded_route_gate_intake.v1",
+  "accepted": true,
+  "accepted_at_cst": "2026-07-13 21:57",
+  "sprint": "sprints/2026.07.13_21-21_o6_o7_bounded_route_gate_intake/",
+  "proof_boundary": "software_proof_o6_o7_bounded_route_gate_material_intake_only",
+  "accepted_as": "O6/O7 bounded route gate material local/mock intake/readback software proof only",
+  "ready_status": "bounded_route_execution_gate_material_ready_not_route_execution_proof",
+  "packet_id": "packet_o3_28_pose_same_task_replay_7d57826142b0c79c",
+  "task_id": "task_o3_28_pose_fixed_route_consumer_20260713_0402",
+  "route_intent_id": "route_intent_20260713_0402_from_20260713_0300_28_pose_structured_path",
+  "route_csv_row_count": 28,
+  "path_structured_pose_count": 28,
+  "segment_count": 27,
+  "execution_plan_status": "blocked_pending_live_safety_gate",
+  "o6_schema": "trashbot.o6.bounded_route_execution_gate_material.v1",
+  "o7_receipt_schema": "trashbot.pc_tools_workstation.o7_bounded_route_gate_intake_result.v1",
+  "o7_endpoint": "POST /api/o7/consumer-read/tasks/:taskId/bounded-route-gate/intake?baseUrl=<local-loopback-url>",
+  "fixed_false_fields": {
+    "safe_to_control": false,
+    "delivery_success": false,
+    "route_execution_success": false,
+    "hil_pass": false,
+    "robot_control_executed": false,
+    "connects_cloud_production": false
+  },
+  "verification": {
+    "o6_py_compile": "passed",
+    "o6_unittest": "Ran 195 tests in 86.718s OK",
+    "o7_test": "3 files / 510 tests passed",
+    "o7_build": "passed with existing Vite chunk size warning",
+    "o7_lint": "passed",
+    "product_anchor_check": "passed",
+    "scoped_git_diff_check": "passed"
+  },
+  "rejected_claims": [
+    "route_execution_success",
+    "fixed_route_movement",
+    "NavigateToPose",
+    "controller_bt_execution",
+    "publishes_cmd_vel",
+    "calls_base_manual",
+    "uses_base_uart",
+    "delivery_success",
+    "operator_acceptance",
+    "hil_pass",
+    "safe_to_control",
+    "robot_control_executed",
+    "production_external_evidence"
+  ],
+  "okr_result": {
+    "o5_percent": "about 85%, unchanged",
+    "o1_percent": "about 94%, unchanged",
+    "o6_percent": "about 93%, unchanged",
+    "o7_percent": "about 93%, unchanged",
+    "kr_archival": "不归档"
+  },
+  "next_required_evidence": [
+    "explicit_operator_approval",
+    "current_live_hil_or_stop_path",
+    "same_window_lidar_localization_tf_readiness",
+    "nav2_controller_execution_result",
+    "delivery_or_operator_acceptance",
+    "success_class_o5_production_evidence"
+  ]
+}

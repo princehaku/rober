@@ -1,0 +1,71 @@
+{
+  "schema": "trashbot.product_acceptance.o5_cdn_tls_readiness_packet_consumption.v1",
+  "schema_version": 1,
+  "sprint": "sprints/2026.07.13_19-19_o5_cdn_tls_readiness_packet_consumption/",
+  "accepted_at": "2026-07-13 19:19 CST",
+  "product_owner": "product-okr-owner",
+  "implementation_owner": "robot-software-engineer",
+  "target_objective": "O5",
+  "product_acceptance_decision": "accepted_o5_readiness_packet_consumption_software_proof_only",
+  "accepted_as": "O5 readiness packet consumption software proof only",
+  "proof_boundary": "software_proof_o5_cdn_tls_external_evidence_readiness_packet_consumption_only",
+  "source_artifact": "sprints/2026.07.13_13-13_o5_cdn_tls_external_evidence_probe/artifacts/cdn_tls_external_evidence_summary.json",
+  "source_artifact_status": "blocked_http_status_not_success_class",
+  "accepted_material_facts": {
+    "cdn_tls_external_evidence_source_slot_added": true,
+    "cloud_production_cutover_readiness_packet_consumes_source_slot": true,
+    "env_var": "TRASHBOT_REMOTE_CLOUD_CDN_TLS_EXTERNAL_EVIDENCE_ARTIFACT",
+    "cli_arg": "--cdn-tls-external-evidence-artifact",
+    "source_artifact_machine_read": true,
+    "source_http_status_class": "4xx",
+    "source_tls_handshake_observed": true,
+    "source_certificate_valid_for_host": true,
+    "source_accepted_claim": "none",
+    "readiness_packet_section_status": "blocked_not_proven",
+    "future_success_class_boundary": "section_level_software_proof_only"
+  },
+  "okr_result": {
+    "o5_progress_after_closeout": "about_85_percent",
+    "o5_progress_changed": false,
+    "kr_archival": "不归档",
+    "direction_judgment": "continue_o5_only_with_success_class_or_stronger_production_evidence_else_pivot"
+  },
+  "rejected_claims": [
+    "production_cloud",
+    "http_success_class_endpoint",
+    "oss_cdn_origin_fetch",
+    "production_db_queue",
+    "production_worker_cutover",
+    "four_g_sim",
+    "real_phone_browser",
+    "route_execution",
+    "delivery",
+    "hil",
+    "safe_to_control"
+  ],
+  "fixed_false_fields": {
+    "safe_to_control": false,
+    "delivery_success": false,
+    "robot_control_executed": false,
+    "route_execution_success": false,
+    "hil_pass": false,
+    "production_ready": false,
+    "okr_credit_allowed": false
+  },
+  "validation_evidence": {
+    "implementation_py_compile": "passed",
+    "implementation_unittest": "python3 -m unittest onboard.src.ros2_trashbot_behavior.test.test_remote_cloud_relay: Ran 192 tests in 83.412s OK",
+    "implementation_json_tool": "passed",
+    "implementation_rg": "passed",
+    "implementation_git_diff_check": "passed",
+    "product_json_tool": "passed_after_closeout_validation",
+    "product_rg": "passed_after_closeout_validation",
+    "product_git_diff_check": "passed_after_closeout_validation"
+  },
+  "remaining_risk": [
+    "Consumed source artifact still has http_status_class=4xx and blocked_http_status_not_success_class.",
+    "No success-class public endpoint is proven.",
+    "No production DB/queue, worker cutover, OSS/CDN origin fetch, 4G/SIM, real phone/browser, route execution, delivery, HIL, or safe-to-control evidence is proven."
+  ],
+  "next_recommendation": "Collect success-class external CDN/TLS or stronger production evidence; otherwise pivot to explicit-operator-approved current live HIL or current route evidence instead of repeating support-only O5 packet work."
+}

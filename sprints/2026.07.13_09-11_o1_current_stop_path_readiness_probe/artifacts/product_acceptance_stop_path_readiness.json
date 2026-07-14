@@ -1,0 +1,107 @@
+{
+  "schema": "trashbot.product_acceptance.stop_path_readiness.v1",
+  "sprint": "sprints/2026.07.13_09-11_o1_current_stop_path_readiness_probe",
+  "sprint_started_at": "2026-07-13 09:11 CST",
+  "accepted_at": "2026-07-13 09:36 CST",
+  "accepted_by": "product-okr-owner",
+  "accepted_as": "o1_o3_no_motion_current_stop_path_readiness_probe_only",
+  "product_status": "accepted",
+  "direction_decision": "continue_o1_o3_current_stop_path_readiness_without_okr_percent_change",
+  "okr_percent_changed": false,
+  "kr_archived": false,
+  "okr_mapping": {
+    "O5": "about_85_percent_no_change_external_production_evidence_still_missing",
+    "O1": "about_94_percent_no_change_stop_readiness_is_mock_only_not_hil",
+    "O6": "about_93_percent_no_change",
+    "O7": "about_93_percent_no_change"
+  },
+  "accepted_facts": {
+    "source_artifact": "sprints/2026.07.13_09-11_o1_current_stop_path_readiness_probe/artifacts/hardware/stop_path_readiness.json",
+    "source_schema": "trashbot.o1.current_stop_path_readiness.v1",
+    "current_stop_path_readiness_status": "ready_for_mock_stop_only_probe_not_hil",
+    "stop_endpoint": "/api/base/stop",
+    "zero_stop_command_plan": [
+      {
+        "T": 1,
+        "L": 0,
+        "R": 0
+      },
+      {
+        "T": 11,
+        "L": 0,
+        "R": 0
+      },
+      {
+        "T": 13,
+        "X": 0,
+        "Z": 0
+      }
+    ],
+    "mock_virtual_serial_validation": {
+      "frame_count": 3,
+      "all_frames_newline_terminated": true,
+      "all_frames_json_objects": true,
+      "all_motion_axes_zero": true
+    },
+    "fixed_false_fields": {
+      "safe_to_control": false,
+      "hil_pass": false,
+      "route_execution_success": false,
+      "delivery_success": false,
+      "robot_control_executed": false,
+      "nonzero_motion_command_sent": false,
+      "uses_real_uart": false,
+      "manual_endpoint_called": false
+    }
+  },
+  "rejected_claims": [
+    "current live HIL pass",
+    "real UART ACK",
+    "safe-to-control",
+    "route execution",
+    "fixed-route movement",
+    "NavigateToPose",
+    "controller or BT execution",
+    "/cmd_vel",
+    "/api/base/manual",
+    "delivery success",
+    "operator acceptance",
+    "O5 production or external evidence"
+  ],
+  "validation_deviation": {
+    "bare_module_command": "python3 -m ros2_trashbot_hardware.wave_rover_stop_path_readiness",
+    "bare_module_result": "failed_with_ModuleNotFoundError_in_current_macos_conda_python",
+    "classification": "environment_import_path_deviation_not_artifact_logic_failure",
+    "accepted_rerun": "PYTHONPATH=\"$PWD/onboard/src/ros2_trashbot_hardware\" python3 -m ros2_trashbot_hardware.wave_rover_stop_path_readiness",
+    "rerun_result": "passed_and_wrote_artifact"
+  },
+  "proof_boundary": "software_proof_o1_o3_current_stop_path_readiness_probe_only",
+  "next_owner": "rober-hardware-engineer",
+  "next_required_evidence": [
+    "explicit_operator_approval_for_current_live_stop_hil",
+    "current_live_stop_endpoint_invocation_record",
+    "current_live_uart_frame_capture_for_zero_stop",
+    "current_live_t1001_feedback_after_stop",
+    "same_window_lidar_localization_tf_readiness",
+    "current_live_hil_acceptance_record",
+    "current_live_nav2_controller_result",
+    "delivery_operator_acceptance_record"
+  ],
+  "anchor_strings": [
+    "2026-07-13 09:11",
+    "current stop path",
+    "stop_path_readiness",
+    "ready_for_mock_stop_only_probe_not_hil",
+    "/api/base/stop",
+    "T=1",
+    "T=11",
+    "T=13",
+    "mock_virtual_serial",
+    "safe_to_control=false",
+    "hil_pass=false",
+    "route_execution_success=false",
+    "不归档",
+    "O5",
+    "O1"
+  ]
+}

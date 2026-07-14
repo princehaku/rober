@@ -2276,6 +2276,155 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertFalse(status["calls_base_manual"])
         self.assertFalse(status["safe_to_control"])
 
+    def test_radar_status_prefers_driver_diagnostics_baudrate_over_stale_lifecycle_reference(self) -> None:
+        """driver diagnostics 是当前 runtime readback，应纠正 lifecycle stale/reference 230400。"""
+        start_command = (
+            "bash /root/rober/onboard/scripts/o1_lidar_lifecycle.sh start "
+            "--serial-port /dev/ttyACM0 --serial-baudrate 150000 --frame-id laser_frame"
+        )
+        scan_command = (
+            "bash /root/rober/onboard/scripts/o1_lidar_ros2_scan_smoke.sh "
+            "--serial-port /dev/ttyACM0 --serial-baudrate 150000 --frame-id laser_frame"
+        )
+        api = upper_robot_api.UpperRobotApi(
+            camera_base_url="http://127.0.0.1:8088",
+            base_port="/dev/ttyS5",
+            base_baudrate=115200,
+            max_speed=0.12,
+            radar_start_command=start_command,
+            lidar_scan_proof_runtime_command=scan_command,
+        )
+
+        with mock.patch.object(
+            upper_robot_api,
+            "read_radar_lifecycle_status",
+            return_value={
+                "status": "loaded",
+                "running": True,
+                "state": "running",
+                "pid": 550851,
+                "latest_result": {
+                    "running": True,
+                    "state": "running",
+                    "pid": 550851,
+                    "baudrate": 230400,
+                    "driver_diagnostics_path": "/tmp/rober_lidar_lifecycle/lidar_driver_diagnostics.json",
+                },
+            },
+        ), mock.patch.object(
+            upper_robot_api,
+            "read_lidar_driver_diagnostics_artifact",
+            return_value={
+                "status": "loaded",
+                "diagnosis_status": "scan_published",
+                "serial": {"serial_baudrate": 150000},
+                "runtime": {"published_scan_count": 3053},
+            },
+        ):
+            status = api.radar_status()
+
+        self.assertEqual(150000, status["baudrate"])
+        self.assertEqual("driver_diagnostics_latest.serial.serial_baudrate", status["baudrate_readback_source"])
+        self.assertEqual("current_with_reference_conflict", status["baudrate_readback_status"])
+        self.assertEqual(230400, status["vendor_reference_baudrate"])
+        self.assertEqual(150000, status["historical_field_baudrate_candidate"])
+        self.assertEqual(
+            "150000",
+            status["controls"]["start"]["command"]["argv"][
+                status["controls"]["start"]["command"]["argv"].index("--serial-baudrate") + 1
+            ],
+        )
+        self.assertEqual(
+            "150000",
+            status["controls"]["scan_proof_refresh"]["runtime_command"]["argv"][
+                status["controls"]["scan_proof_refresh"]["runtime_command"]["argv"].index("--serial-baudrate") + 1
+            ],
+        )
+        self.assertFalse(status["safe_to_control"])
+        self.assertFalse(status["publishes_cmd_vel"])
+        self.assertFalse(status["uses_base_uart"])
+        self.assertFalse(status["route_execution_success"])
+        self.assertFalse(status["delivery_success"])
+        self.assertFalse(status["hil_pass"])
+
+    def test_radar_status_falls_back_to_configured_start_command_baudrate(self) -> None:
+        """diagnostics 缺失时，可以用显式配置的 start argv 作为 current command readback。"""
+        start_command = (
+            "bash /root/rober/onboard/scripts/o1_lidar_lifecycle.sh start "
+            "--serial-port /dev/ttyACM0 --serial-baudrate 150000 --frame-id laser_frame"
+        )
+        api = upper_robot_api.UpperRobotApi(
+            camera_base_url="http://127.0.0.1:8088",
+            base_port="/dev/ttyS5",
+            base_baudrate=115200,
+            max_speed=0.12,
+            radar_start_command=start_command,
+        )
+
+        with mock.patch.object(
+            upper_robot_api,
+            "read_radar_lifecycle_status",
+            return_value={
+                "status": "loaded",
+                "running": True,
+                "state": "running",
+                "pid": 550851,
+                "latest_result": {"running": True, "state": "running", "pid": 550851, "baudrate": 230400},
+            },
+        ), mock.patch.object(
+            upper_robot_api,
+            "read_lidar_driver_diagnostics_artifact",
+            return_value={"status": "not_configured", "diagnosis_status": "not_configured"},
+        ):
+            status = api.radar_status()
+
+        self.assertEqual(150000, status["baudrate"])
+        self.assertEqual("controls.start.command.argv", status["baudrate_readback_source"])
+        self.assertEqual("current_with_reference_conflict", status["baudrate_readback_status"])
+        stale_candidate = next(
+            item for item in status["baudrate_candidates"] if item["source"] == "lifecycle_status_readback.latest_result.baudrate"
+        )
+        self.assertEqual("reference_conflict_not_current", stale_candidate["status"])
+        self.assertFalse(status["safe_to_control"])
+
+    def test_radar_status_does_not_promote_reference_baudrate_without_current_readback(self) -> None:
+        """只有 lifecycle reference 230400 时，top-level baudrate 必须 unknown/fail-closed。"""
+        api = upper_robot_api.UpperRobotApi(
+            camera_base_url="http://127.0.0.1:8088",
+            base_port="/dev/ttyS5",
+            base_baudrate=115200,
+            max_speed=0.12,
+            radar_start_command=None,
+            lidar_scan_proof_runtime_command=None,
+        )
+
+        with mock.patch.object(
+            upper_robot_api,
+            "read_radar_lifecycle_status",
+            return_value={
+                "status": "loaded",
+                "running": True,
+                "state": "running",
+                "pid": 550851,
+                "latest_result": {"running": True, "state": "running", "pid": 550851, "baudrate": 230400},
+            },
+        ), mock.patch.object(
+            upper_robot_api,
+            "read_lidar_driver_diagnostics_artifact",
+            return_value={"status": "not_configured", "diagnosis_status": "not_configured"},
+        ):
+            status = api.radar_status()
+
+        self.assertIsNone(status["baudrate"])
+        self.assertEqual("unknown", status["baudrate_readback_source"])
+        self.assertEqual("unknown_no_current_readback", status["baudrate_readback_status"])
+        stale_candidate = next(
+            item for item in status["baudrate_candidates"] if item["source"] == "lifecycle_status_readback.latest_result.baudrate"
+        )
+        self.assertEqual("reference_only_not_current", stale_candidate["status"])
+        self.assertEqual(230400, status["vendor_reference_baudrate"])
+        self.assertFalse(status["safe_to_control"])
+
     def test_radar_control_uses_default_managed_lifecycle_command(self) -> None:
         """未显式传入命令时，start 使用默认 LiDAR-only lifecycle 脚本。"""
         api = upper_robot_api.UpperRobotApi(
@@ -2527,6 +2676,21 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         )
         self.assertFalse(payload["sends_base_motion_commands"])
         self.assertFalse(payload["safe_to_control"])
+
+    def test_default_nav2_start_command_keeps_no_motion_runtime_flags(self) -> None:
+        """默认 start 命令必须把 no-motion runtime 关键参数都传给受管脚本。"""
+        argv = shlex.split(upper_robot_api.DEFAULT_NAV2_START_COMMAND)
+
+        self.assertIn("--base-enabled", argv)
+        self.assertEqual("auto", argv[argv.index("--base-enabled") + 1])
+        self.assertIn("--lidar-enabled", argv)
+        self.assertEqual("auto", argv[argv.index("--lidar-enabled") + 1])
+        self.assertIn("--lidar-serial-port", argv)
+        self.assertEqual("/dev/ttyACM0", argv[argv.index("--lidar-serial-port") + 1])
+        self.assertIn("--lidar-serial-baudrate", argv)
+        self.assertEqual("230400", argv[argv.index("--lidar-serial-baudrate") + 1])
+        self.assertIn("--static-laser-tf-enabled", argv)
+        self.assertEqual("true", argv[argv.index("--static-laser-tf-enabled") + 1])
 
     def test_nav2_lifecycle_validation_rejects_unsafe_command_without_execution(self) -> None:
         """Nav2 lifecycle 命令不能夹带 shell、直接 /cmd_vel 或错误底盘串口。"""
@@ -4297,7 +4461,7 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertEqual("refreshed", payload["status"])
         self.assertEqual("nav2_no_motion_path_generation_runtime_observed", payload["proof_state"])
         self.assertTrue(payload["starts_ros2"])
-        self.assertFalse(payload["starts_nav2"])
+        self.assertTrue(payload["starts_nav2"])
         self.assertTrue(payload["managed_runtime_opt_in"])
         self.assertTrue(payload["initialpose_opt_in"])
         self.assertTrue(payload["path_generation_opt_in"])

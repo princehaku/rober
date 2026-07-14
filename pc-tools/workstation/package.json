@@ -8,6 +8,8 @@
     "dev:public": "npm run dev",
     "api": "tsx src/server/index.ts",
     "api:public": "npm run api",
+    "smoke:o7-live-relay-browser": "tsx src/server/o7LiveRelayBrowserSmokeArtifact.ts",
+    "smoke:o7-live-relay-headless-browser": "tsx src/server/o7LiveRelayHeadlessBrowserSmoke.ts",
     "build": "tsc -p tsconfig.app.json && vite build && tsc -p tsconfig.server.json",
     "test": "vitest run",
     "lint": "eslint ."

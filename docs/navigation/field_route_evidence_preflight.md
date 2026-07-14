@@ -18,6 +18,10 @@ dry-run 输出状态固定为 `dry_run_template_only_not_proven`，并保持：
 - `not_proven=true`
 - `delivery_success=false`
 - `primary_actions_enabled=false`
+- `safe_to_control=false`
+- `robot_control_executed=false`
+- `route_execution_success=false`
+- `hil_pass=false`
 
 ## 上位机或本机真实预检
 
@@ -52,6 +56,399 @@ python3 onboard/scripts/field_route_evidence_preflight.py \
 
 SSH 不可达时，工具仍会写出 JSON，状态为 `blocked_ssh_unreachable`。这份 JSON 只能证明预检入口可用和网络 blocker 已分层，不能证明现场路线材料已经产生。
 
+## 2026-07-11 live localization smoke
+
+`2026-07-11` 起，预检脚本在真实模式下会在通用 topic smoke 之后追加一段固定 no-motion localization smoke，并在 smoke 后只读重跑一次 `/api/nav2/proof/refresh`：
+
+```bash
+python3 onboard/scripts/field_route_evidence_preflight.py \
+  --mode ssh \
+  --ssh-target root@192.168.1.11 \
+  --ssh-port 37878 \
+  --timeout-s 8 \
+  --output sprints/2026.07.11_05-55_o3_live_localization_sensor_smoke/artifacts/live_localization_preflight.raw.json
+```
+
+新增只读命令模板固定为：
+
+- `ros2 topic echo --once /scan`
+- `ros2 topic echo --once /amcl_pose`
+- `ros2 topic type /map`、`ros2 topic info -v /map`
+- `ros2 topic type /amcl_pose`、`ros2 topic info -v /amcl_pose`
+- `ros2 lifecycle get /map_server`、`/amcl`、`/planner_server`
+- managed map yaml 存在性、basename、size 和 `sha256` 前缀摘要
+- `ros2 run tf2_ros tf2_echo map odom`
+- `ros2 run tf2_ros tf2_echo map base_link`
+- `curl ... /api/nav2/proof/refresh`（固定 no-motion body）
+
+这段 smoke 的目标是把上一轮 `localization_not_ready_for_path_generation` 拆成当前同窗可复验的子 blocker，而不是发起导航执行。
+
+从 `2026-07-11 08:39` 这轮返工起，refresh readback 的 `curl --max-time` 与外层
+`subprocess.run(timeout=...)` 都改成由请求体 timeout 推导出的硬上限，并封顶在 45 秒量级，
+不再使用 `args.timeout_s + 62` 这类长等待吞掉 automation。即使远端 readback 超时，脚本也必须自然返回并写出主 JSON artifact。
+
+从 `2026-07-11 06:37` 这轮 root-cause probe 起，artifact 顶层还会新增 `root_cause_summary`，专门收敛：
+
+- `/scan` topic type / publisher count；
+- `/map` topic type / publisher count；
+- `/amcl_pose` topic type / publisher count；
+- `map_server`、`amcl`、`planner_server` lifecycle state；
+- managed map yaml 的安全摘要；
+- `map->odom`、`map->base_link` 的 TF 失败短句；
+- `/api/nav2/proof/refresh` 的 readback status / root causes / blocked reasons。
+
+这样做是为了把“topic 名字存在但无 publisher”、“configured managed map basename 对应文件缺失”、“AMCL lifecycle 未 active”、“TF 因 `Invalid frame ID \"map\"` 失败”等根因与单纯 echo timeout 分开记录。
+
+从 `2026-07-11 09:39` 这轮 daemon-safe recovery 起，所有 ROS graph 只读查询还会额外检测
+`xmlrpc.client.Fault: RuntimeError: !rclpy.ok()`。命中时，脚本只允许对 CLI graph 层执行一次
+`ros2 daemon stop` / `ros2 daemon start` / 原命令重试；不会触发 `/cmd_vel`、`/api/base/manual`、
+`NavigateToPose` 或其他运动入口。artifact 顶层同步新增：
+
+- `daemon_fault_detected`
+- `daemon_recovered`
+- `retry_attempts`
+- `recovered_topics`
+- `unrecovered_blockers`
+- `ros_daemon_health`
+- `ros_cli_retry_summary`
+- `root_cause_summary.root_cause_layers`
+
+如果 daemon 恢复后 `/scan` 仍缺 publisher，会收口到 `lidar_missing`；如果 `/map_server` 或
+`/amcl` lifecycle 不可读/不 active，会收口到 `map_server_not_active`、`amcl_not_active`；
+如果 TF 仍报 `Invalid frame ID "map"`，则继续收口到 `tf_missing`。这样下一轮可以直接修
+launch/runtime 或 map/AMCL，而不是再把 graph fault 误记成 topic 缺失。
+
+输出中的顶层危险字段固定保持：
+
+- `safe_to_control=false`
+- `delivery_success=false`
+- `primary_actions_enabled=false`
+- `robot_control_executed=false`
+- `route_execution_success=false`
+- `hil_pass=false`
+
+如果 live localization smoke 任一步失败，脚本会 fail-closed 在：
+
+- `blocked_live_localization_chain_not_ready`
+- `blocked_scan_not_observed`
+- `blocked_amcl_pose_not_observed`
+- `blocked_map_to_odom_not_observed`
+- `blocked_map_to_base_link_not_observed`
+
+如果 `/api/nav2/proof/refresh` 返回里出现 `safe_to_control=true`、`publishes_cmd_vel=true`、`calls_base_manual=true`、`sends_motion_commands=true`、`robot_control_executed=true` 等危险 true 字段，脚本会直接返回 `blocked_refresh_invokes_motion_or_goal_execution`。这表示 refresh 边界被破坏，本轮 readback 不能继续使用。
+
+如果 refresh artifact 明确给出 `managed_runtime_started=true`，readback 中的
+`starts_nav2=true` 也是允许且预期的。它只表示 helper 曾在 no-motion 边界内短暂拉起
+Nav2 runtime，不表示执行过 goal、发过 `/cmd_vel`、调用过 `/api/base/manual`，更不表示
+safe-to-control、HIL pass 或 delivery success。
+
+`2026-07-11 11:40` 这一轮 O3 path recovery 继续把 helper 侧 root cause 往前推了一步。
+`onboard/scripts/o10_amcl_nav2_runtime_proof.py` 已把
+`ros2 topic info /initialpose --verbose` 从主路径移除：如果 initialpose publish 没有拿到
+`initialpose_subscriber_count`，artifact 只记录
+`initialpose_verbose_info_skipped_to_avoid_cli_stall`。原因是现场 direct helper 已经证明
+这条 CLI 可能卡成不可回收阻塞，但它对当前 root cause 没有新增信息。
+
+这一轮最新 live direct helper 产物已经越过旧的 `/initialpose` topic-info 卡点，但仍然
+fail-closed，关键边界是：
+
+- `/scan_once_not_observed`
+- `cli_initialpose_publish_failed`
+- `/amcl_pose_once_not_observed`
+- `map_to_odom_not_observed`
+- `path_generated=false`
+
+也就是说，本轮新增价值是“旧卡点已移除、当前 blocker 更前置”，而不是拿到
+`map_to_odom=true`、`map_to_base_link=true` 或 path proof。proof boundary 仍固定保持：
+
+- `safe_to_control=false`
+- `robot_control_executed=false`
+- `hil_pass=false`
+- `delivery_success=false`
+
+如果 refresh 在硬上限内仍未完成，`checks.nav2_proof_refresh.summary` 会固定输出：
+
+- `status=refresh_readback_timed_out`
+- `timed_out=true`
+- `naturally_returned=false`
+- 固定 no-motion false 字段：`safe_to_control=false`、`delivery_success=false`、`robot_control_executed=false`、`route_execution_success=false`、`hil_pass=false`
+
+这样做是为了保证 `*.raw.json` 仍可被 sprint、O6/O7 和后续 automation 消费，而不是只留下中断说明。
+
+`2026-07-11 12:41` 这一轮 O3 signal freshness / TF source 分层把
+`o10_amcl_nav2_runtime_proof.py` 的 helper artifact 扩展为两块可回读摘要：
+
+- `proof.localization_signal_freshness`：覆盖 `/scan`、`/amcl_pose`、`/odom`、`/tf`、
+  `/tf_static`，记录 topic type、topic presence、publisher/subscriber 摘要、once probe
+  `executed/observed/elapsed_ms/timeout_s/timed_out`、可解析 header stamp 与 freshness 状态。
+- `proof.tf_source_freshness`：按 `map_to_odom`、`odom_to_base_link`、
+  `base_link_to_laser_frame` 记录 dynamic/static source、source topic、transform stamp 和 freshness。
+
+本轮真实板 direct helper 产物为
+`sprints/2026.07.11_12-41_o3_signal_freshness_tf_source/artifacts/live_o10_signal_freshness.raw.json`。
+关键结论是：`/scan` topic type 为 `sensor_msgs/msg/LaserScan`，但 once probe timeout；
+`/amcl_pose` topic type 为 `geometry_msgs/msg/PoseWithCovarianceStamped`，但 once probe timeout；
+`/odom` topic type 为 `nav_msgs/msg/Odometry`，且 header stamp freshness 为 `fresh`；
+`/tf` 与 `/tf_static` topic type 均可见，但 rclpy source inventory 失败，未拿到 dynamic/static edge source；
+最终 root causes 收敛为 `/scan_probe_timeout`、`/amcl_pose_probe_timeout`、
+`map_to_odom_dynamic_source_missing`、`map_to_base_link_blocked_by_missing_map_to_odom` 和
+`localization_not_ready_for_path_generation`。本轮仍 `map_to_odom=false`、`path_generated=false`。
+
+`2026-07-11 22:48` 这一轮再把 board source preflight 拆成两层 readiness：
+
+- `board_source_preflight.cli_ready`：只要求 sourced shell + `ros2` CLI 可用，足以继续跑
+  managed runtime、lifecycle 和只读 CLI probe；
+- `board_source_preflight.runtime_ready`：在 `cli_ready=true` 基础上再要求 `rclpy import`
+  成功，才允许把 rclpy child/runtime 当成可执行前提。
+
+这样做是为了避免板端偶发 `rclpy` import 抖动时，把整个 managed runtime / map lifecycle /
+TF source 链路一起误判成“不可执行”。当 `cli_ready=true` 但 `runtime_ready=false` 时，
+helper 必须继续保留 no-motion false safety 字段，并把 TF source 收口成
+`tf_source_probe_rclpy_runtime_unavailable_after_board_preflight` 这类明确 boundary，
+而不是再次只留下 `tf_source_probe_not_executed`。
+
+`2026-07-11 13:41` 这一轮继续把 `/scan` once probe 改成多尝试 QoS 诊断。新的
+`proof.localization_signal_freshness["/scan"].probe` 除了原有 `executed/observed/timed_out`
+外，还会新增：
+
+- `attempts[]`：逐次记录 `label`、`source`、`qos_profile`、`command`、`elapsed_ms`、
+  `timed_out`、`error`；
+- `best_attempt`：当前最有信息的一次尝试；
+- `qos_probe_boundary`：本轮 `/scan` probe 的汇总边界；
+- `source`：最终被采信的 probe 来源。
+
+当前 live artifact
+`sprints/2026.07.11_13-41_o3_scan_probe_qos_repair/artifacts/live_o10_scan_qos_repair.raw.json`
+显示：
+
+- `rclpy_sensor_data_once` 首次尝试立即失败，错误为
+  `ImportError: librcl_action.so ... _rclpy_pybind11... failed to be imported`；
+- `cli_sensor_data_echo_once` 与 `cli_default_echo_once` 都超时；
+- 因为 endpoint inventory 本轮并未成功建立，root cause 不再误记成
+  `/scan_no_publishers`，而是保守收口到 `/scan_rclpy_probe_failed`；
+- `/amcl_pose` 仍为 `probe_timeout`，`map_to_odom` 仍缺 dynamic source。
+
+这说明 blocker 已经从“topic 是否存在”进一步拆成“板端 rclpy/rcl 依赖不完整”与
+“CLI sensor-data/default echo 都未在窗口内读到一帧”。它仍不是 fixed-route path proof、
+Nav2 route execution、HIL pass 或 delivery success。
+
+`2026-07-11 21:47` 这一轮继续修 helper 的 managed runtime wait 语义。此前 artifact 容易把
+“`/map_server`、`/amcl` 节点已经进 graph”误读成 lifecycle 已就绪，随后又被一次性的
+`ros2 lifecycle get` `inactive [2]` 快照固定成最终 blocker。另外，旧的
+`rclpy_node_names()` 直接跑在 helper 主 Python 进程里，板端一旦主进程没有继承好 ROS Python
+环境，就会反复报 `No module named 'rclpy'`，把 managed wait 误收口成 timeout。现在
+`o10_amcl_nav2_runtime_proof.py` 改成 sourced child Python node graph probe，并在 managed wait
+窗口内反复做只读 lifecycle recheck，把结果写回 `managed_runtime_wait_result.lifecycle_active`、
+`managed_runtime_wait_result.lifecycle_results` 和
+`managed_runtime_wait_result.lifecycle_history`。
+
+因此当前 no-motion artifact 会明确区分三类边界：
+
+- `managed_runtime_lifecycle_active_observed`：节点已进 graph，且 `/map_server`、`/amcl`
+  已在同一 helper 窗口内确认 `active`；
+- `managed_runtime_nodes_observed_but_lifecycle_inactive`：节点出现过，但到窗口结束 lifecycle
+  仍未 active；
+- `managed_runtime_wait_timeout`：连节点都没在窗口内稳定出现。
+
+收口时优先看这三类边界，再看 `/scan`、`/map`、`/amcl_pose` freshness 与 `map->odom`。
+这样可以避免把“启动中 lifecycle 还没切到 active”和“根本没拉起 runtime”混成同一个 blocker。
+
+`2026-07-11 23:49` 起，`rclpy_node_names()` 再增加一层 `ros2 node list` fallback。也就是说：
+
+- 如果 sourced child Python 成功，仍以 `rclpy_node_names_observed` 为准；
+- 如果 child timeout、parse 失败或 import 失败，但 `ros2 node list` 仍能看到 `/map_server`、
+  `/amcl`，artifact 会写成
+  `rclpy_node_names_failed_with_ros2_node_list_fallback_observed` 之类的组合 boundary；
+- 只有 child 与 CLI 两层都拿不到节点名，才继续落到带 `ros2_node_list_*` 后缀的失败边界。
+
+同一轮里 `collect_amcl_rclpy_probe()` 若命中 `librcl_action.so`、`_rclpy_pybind11` 或其他
+rclpy runtime/import failure，也不再只回 `rclpy_amcl_probe_failed`。helper 会追加 ROS CLI
+inventory fallback，把 `/tf`、`/tf_static` topic availability、`ros2 topic info --verbose`
+计数，以及 `/amcl` node info 写进 artifact，并额外保留：
+
+- `probe_mode=ros2_cli_fallback`
+- `fallback_used=true`
+- `fallback_boundary=cli_amcl_inventory_*`
+- `rclpy_import_failure_classification`
+
+因此 closeout 要先看 `amcl_tf_root_cause` 是否已经从 `/tf_topic_missing` 收窄到
+`amcl_param_probe_failed`、`amcl_node_info_not_observed` 或更具体的 TF/source blocker，再决定
+是否继续追 `map_to_odom`。
+
+`2026-07-12 00:49` 起，managed runtime wait 的 graph probe 不再允许一条 child Python
+或 `ros2 node list` fallback 独占整个 wait 窗口。helper 会按剩余 managed wait 预算给
+child probe 与 CLI fallback 分配短窗口，并在 final artifact 中写回：
+
+- `proof.managed_runtime_wait_result.reason`
+- `proof.managed_runtime_wait_result.graph_wait_summary.latest_node_list_boundary`
+- `proof.managed_runtime_wait_result.graph_wait_summary.latest_ros2_node_list_boundary`
+- `proof.managed_runtime_wait_result.graph_wait_summary.fallback_used`
+- `proof.managed_runtime_wait_result.graph_wait_summary.observed_node_names`
+
+如果 final reason 是 `ros2_node_list_timeout`、`ros2_node_list_empty_after_wait`、
+`ros2_node_list_failed` 或 `managed_runtime_required_nodes_not_observed`，说明本轮已经自然收口到
+graph/wait 层；不能再把结论写成上一轮的 `partial_runtime_in_progress` 或
+`current_command.command=ros2 node list`。同一轮里，AMCL/TF source probe 即使 rclpy runtime
+不可用或 rclpy probe 返回不完整，也会尝试短窗口 ROS CLI fallback，artifact 会保留
+`commands.tf_source_probe.amcl_rclpy_probe.probe_mode=ros2_cli_fallback`、
+`fallback_boundary=cli_amcl_inventory_*`、`/tf`、`/tf_static` 和 `/amcl` node/param closeout
+字段。只有 `map_server_active=true`、`amcl_active=true`、`amcl_pose_observed=true`、
+dynamic `map->odom` 与 `map->base_link` gate 全部成立后，才允许 planner-only path attempt；
+否则 `path_generation_attempted=false`、`path_generated=false` 必须保持。
+
+`2026-07-11 14:42` 这一轮继续修正 `/scan` rclpy probe 的运行时边界：`rclpy_sensor_data_once`
+不再在 helper 主 Python 进程内直接 import ROS 包，而是通过与 `run_ros()` 相同的
+`bash -lc` / `source /opt/ros/humble/setup.bash` / workspace setup 环境启动 child Python
+订阅 `/scan`。artifact 中 `/scan.probe.attempts[]` 因此新增并保留：
+
+- `runtime=ros_sourced_child_python`
+- `environment_check`：`LD_LIBRARY_PATH`、`PYTHONPATH`、`AMENT_PREFIX_PATH`、Python 版本和 cwd 摘要
+- `import_check`：rclpy import 是否成功、失败分类或 `rclpy_file`
+- `runtime_diagnostics.child_process`：child 进程 timeout/returncode/elapsed 摘要
+
+本轮 live artifact
+`sprints/2026.07.11_14-42_o3_rclpy_scan_runtime_repair/artifacts/live_o10_rclpy_scan_runtime_repair.raw.json`
+显示 `/scan.topic_type=sensor_msgs/msg/LaserScan` 仍可见，但 `/scan` frame 仍未 observed。
+关键变化是 `/scan` 的 `rclpy_sensor_data_once` 已在 sourced child Python 中完成 import：
+`import_check.ok=true`，不再是上一轮 `librcl_action.so` / `_rclpy_pybind11` import failure；
+新的第一层 blocker 收口为 `/scan_rclpy_child_timeout_after_import`。两条 CLI fallback
+`cli_sensor_data_echo_once` 与 `cli_default_echo_once` 仍 timeout，因此下一轮应优先确认
+LiDAR publisher 是否在 managed runtime 窗口内实际发布 sample，或把 child probe 的 graph/endpoint
+采样提前到 timeout 前，而不是再重复修主进程 import。
+
+这份证据只说明 signal freshness / TF source root cause 比上一轮更细，不证明
+fixed-route path proof、Nav2 route execution、HIL pass、safe-to-control 或 delivery success。
+顶层安全字段继续固定为 `safe_to_control=false`、`robot_control_executed=false`、
+`hil_pass=false`、`delivery_success=false`。
+
+`2026-07-11 15:44` 这一轮继续把 `/scan` blocker 从 child timeout 拆成 publisher、
+endpoint QoS 与 sample timing 三层。读取
+`sprints/2026.07.11_15-44_o3_scan_endpoint_timing_inventory/artifacts/*_o10_scan_endpoint_timing_inventory.raw.json`
+时，先看 `proof.localization_signal_freshness["/scan"]` 下列字段：
+
+- `publisher_inventory`：确认 `/scan` topic 是否可见、`publisher_count` 是否大于 0、
+  publisher node 是否像 LiDAR driver，而不是先看 child timeout；
+- `endpoint_inventory`：确认 publisher/subscriber endpoint、`endpoint_qos_profiles` 与
+  `requested_qos_profile`，用来区分无 publisher、QoS 不匹配和 sample window 不足；
+- `sample_timing`：确认 `sample_wait_started_at_ms`、`timeout_boundary_ms`、
+  `first_sample_latency_ms`、`sample_count`、`last_sample_stamp` 和
+  `last_sample_received_at_ms`；
+- `managed_runtime_scan_status`：把 managed runtime 是否启动、LiDAR publisher 是否可见、
+  sample 是否 observed 和 `blocked_reason` 放在同一层；
+- `probe.classification`：稳定分类只能使用 `/scan_no_publisher`、
+
+`2026-07-11 17:43` 这一轮进一步把读取顺序前移到 managed runtime / lifecycle readiness。
+如果 true-board latest artifact 已满足下列条件：
+
+- `managed_runtime_started=true`
+- `initialpose_opt_in=true`
+- `ros2 lifecycle get /map_server`、`/amcl` 已证明 active
+- 但 `amcl_tf_root_cause` 仍是 `/tf_topic_missing`、`map_to_odom_not_observed` 或同类定位 blocker
+
+则 helper 会直接把 `/scan` 与 `/map` 标成：
+
+- `scan_probe_skipped_after_managed_runtime_lifecycle_ready`
+- `map_probe_skipped_after_managed_runtime_lifecycle_ready`
+
+并在 phase detail 里标出
+`managed_runtime_cli_lifecycle_confirmed_root_cause_fast_path`。这表示本轮应先处理
+`/tf`、`map->odom`、`map->base_link` 或 AMCL source blocker，而不是把 latest artifact
+再次卡回 BEST_EFFORT / RELIABLE `/scan` attempt 的长等待。只有当 lifecycle readiness
+本身不成立时，才继续解释 `/scan.probe.best_effort_attempt`、`reliable_attempt`、
+`sample_timing` 和 QoS/timeout 分类。
+  `/scan_lidar_runtime_not_started`、`/scan_publisher_visible_but_no_sample`、
+  `/scan_qos_or_window_timeout`、`/scan_rclpy_child_timeout_after_import` 或
+  `/scan_sample_observed`。
+
+如果 `endpoint_inventory.inventory_observed=true` 且 `publisher_count=0`，后续 root cause 不应再写成
+`/scan_rclpy_child_timeout_after_import`；应先处理 no publisher 或 LiDAR runtime 未启动。如果
+publisher 可见但 `sample_count=0`，下一轮应调 QoS/window 或检查 LiDAR driver 是否持续发帧。只有
+`probe.classification=/scan_sample_observed` 后，才继续复验 `/amcl_pose`、dynamic `map_to_odom` 和
+`path_generated`。本轮 artifact 仍固定 `safe_to_control=false`、`robot_control_executed=false`、
+`route_execution_success=false`、`hil_pass=false`、`delivery_success=false`，不证明 fixed-route
+path proof、Nav2 route execution、HIL pass 或 production cloud。
+
+`2026-07-11 16:43` 起，`/scan` child probe 继续扩成双 QoS 对照：同一轮 artifact 必须同时保留
+`BEST_EFFORT` / `VOLATILE` 与 `RELIABLE` / `VOLATILE` 两条 child subscription attempt，
+并分别记录 `requested_qos_profile`、`sample_timing`、`timed_out`、`error`。读取
+`sprints/2026.07.11_16-43_o3_scan_long_window_reliable_probe/artifacts/*_o10_scan_long_window_reliable_probe.raw.json`
+时，优先对照：
+
+- `proof.localization_signal_freshness["/scan"].probe.best_effort_attempt`
+- `proof.localization_signal_freshness["/scan"].probe.reliable_attempt`
+- `proof.localization_signal_freshness["/scan"].probe.attempts[]`
+
+如果任一 attempt 收到 sample，classification 应进入 `/scan_sample_observed`；如果两条 child
+attempt 都 timeout 且 publisher endpoint 仍可见，classification 至少应收口到
+`/scan_reliable_and_best_effort_timeout` 或同等具体值，而不是继续泛化成单条
+`/scan_qos_or_window_timeout`。这仍是 no-motion diagnostic evidence，不证明 `safe_to_control`、
+`route_execution_success`、`hil_pass` 或 `delivery_success`。
+
+`2026-07-12 19:56` 起，`o10_amcl_nav2_runtime_proof.py` 会在上述原始 probe 外再输出
+`proof.scan_qos_endpoint_readback_split`，作为 `/scan_reliable_and_best_effort_timeout`
+的第一层结构化拆分。现场或 sprint closeout 读取顺序改为：
+
+1. `publisher_endpoint_classification`：确认 `/scan` topic/type、publisher endpoint、
+   publisher 节点、publisher QoS 和 endpoint 是否跨 child attempts 稳定。
+2. `qos_window_ros_readback_classification`：确认 BEST_EFFORT / RELIABLE 两条 child
+   attempt 是否分别 timeout、请求 QoS 与 endpoint QoS 是否兼容、CLI fallback 是否也 timeout。
+3. `lidar_runtime_classification`：只有 endpoint 可见、QoS 兼容、两条 child attempt 都 timeout、
+   `sample_count=0` 时才进入 runtime candidate；若 managed runtime log 同时出现 LiDAR runtime
+   exception，只允许输出 Hardware handoff 条件。
+4. `primary_split`：给 `artifact_closeout.primary_root_cause` 使用的最细 split reason，同时保留
+   `canonical_blocker=/scan_reliable_and_best_effort_timeout` 方便历史检索。
+
+本轮 live artifact
+`sprints/2026.07.12_19-56_o3_scan_qos_endpoint_readback_split/artifacts/live_o10_scan_qos_endpoint_readback_split.raw.json`
+的结论是：`publisher_endpoint_classification.classification=publisher_endpoint_visible`，
+publisher 为 `lidar_driver`，publisher QoS 为 `RELIABLE`，AMCL/probe subscriber 为
+`BEST_EFFORT`，endpoint 两次 child attempt 观测稳定；BEST_EFFORT 与 RELIABLE child
+attempt 均 timeout，`sample_count=0`，QoS compatibility risk 为 false；managed runtime log
+出现 `serial.serialutil.SerialException` 且包含 `device reports readiness to read but returned no data`。
+因此 closeout primary split 为
+`/scan_lidar_runtime_exception_after_endpoint_visible_qos_compatible_timeout`，
+但该字段仍只是 runtime handoff 条件，不是 vendor-backed hardware root cause。Hardware 介入前仍必须
+按 `AGENTS.md` 读取 `docs/vendor/VENDOR_INDEX.md`；本 helper 不改 serial、UART、baudrate、
+wiring、电压或 WAVE ROVER 配置。
+
+`2026-07-12 20:57` 起，Hardware handoff 的下一层不再重复 generic
+`/scan_reliable_and_best_effort_timeout`。LiDAR runtime gate 必须读取本地 vendor 来源后，
+用 no-motion smoke 对 `/dev/ttyACM0`、baudrate、raw bytes、empty read 和 topic sample
+做结构化对比：
+
+- 本地 WAVE ROVER vendor 上位机参考
+  `docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py` 打开 `/dev/ttyACM* @ 230400`，
+  并按 STC `0x54`、47 字节 packet、12 个采样点解析 LiDAR。
+- 历史现场 runbook 仍保留 `/dev/ttyACM0 @ 150000` 候选；该值来自实板 artifact，
+  不是 vendor 文档。两者必须通过同一 smoke 对比，不能凭默认值直接覆盖。
+- `o1_lidar_ros2_scan_smoke.sh` 会写 `device_snapshot_before/during/after.json`、
+  `lidar_driver_diagnostics.json` 和 `summary.json`，其中 `read_exception_count`、
+  `last_exception_type`、`last_exception_message_hint`、`empty_read_count`、
+  `raw_bytes_observed`、`bytes_read_total`、`last_chunk_preview_hex` 和
+  `packet_count_total` 是判定下一步的主字段。
+- 若 `raw_bytes_observed=false` 且出现 `serial.serialutil.SerialException`，优先检查
+  `/dev/ttyACM0` holder、USB 供电/线缆和雷达供电；若已有 raw bytes 但无 packet，
+  优先检查 baud/protocol mismatch；若 packet 有但 `/scan` sample 缺失，优先检查
+  aggregation 阈值、ROS topic discovery 或 `/lidar/raw_packet` 发布。
+
+该 Hardware gate 仍固定 strict no-motion：`safe_to_control=false`、
+`publishes_cmd_vel=false`、`calls_base_manual=false`、`uses_base_uart=false`、
+`robot_control_executed=false`、`route_execution_success=false`、`delivery_success=false`、
+`hil_pass=false`。
+
+`2026-07-12 21:57` Gate 2 起，如果 `/api/radar/status` 已经证明 current readback 为
+`baudrate=150000`，Algorithm 的 path proof 不再允许随 managed runtime 启动第二个
+`lidar_driver`。板端命令必须在 `--managed-lidar-serial-baudrate 150000` 外额外带
+`--reuse-existing-lidar-lifecycle`，artifact 需要回写：
+
+- `managed_lidar_policy=reuse_existing_lidar_lifecycle_no_driver_start`
+- `managed_lidar_serial_baudrate=150000`
+- `managed_lidar_driver_started_by_helper=false`
+
+这表示 helper 只拉起 strict no-motion Nav2/map/AMCL/planner/static TF 侧 proof，继续复用
+已有 `/dev/ttyACM0` LiDAR holder；它不得 stop/start 当前 LiDAR lifecycle，也不得把 `/scan`
+readiness 误写成 route execution、delivery、HIL 或 safe-to-control。
+
 ## JSON contract
 
 输出 schema 为 `trashbot.board_field_evidence_preflight.v1`，关键字段包括：
@@ -78,7 +475,10 @@ SSH 不可达时，工具仍会写出 JSON，状态为 `blocked_ssh_unreachable`
 - `blocked_trashbot_packages_missing`
 - `blocked_required_topics_missing`
 - `blocked_topic_smoke_failed`
-- `ready_for_live_route_capture_not_proven`
+- `blocked_live_localization_chain_not_ready`
+- `blocked_refresh_readback_failed`
+- `blocked_refresh_invokes_motion_or_goal_execution`
+- `live_localization_smoke_refresh_readback_not_proven`
 - `dry_run_template_only_not_proven`
 
 `checks.setup_candidates.candidates` 现在也会优先列出 `/root/rober/onboard/install/setup.bash`，
@@ -346,7 +746,7 @@ delivery success 证明。
 - `start` 固定调用 `ros2 launch ros2_trashbot_bringup autonomous.launch.py nav2_stack_only:=true`。
 - `nav2_stack_only=true` 只启动 ESP32 bridge 与 Nav2 bringup，不启动 `waypoint_manager`、`nav_to_goal`、
   `task_orchestrator`、`fixed_route_autonomy`、operator gateway 或 remote bridge。
-- 默认地图为 `/root/rober/onboard/runtime/maps/trashbot_map.yaml`。
+- 默认 managed map yaml basename 为 `trashbot_map.yaml`；summary-facing 输出只记录 basename，不回显板上完整路径。
 - 默认 WAVE ROVER UART 为现场确认的 `/dev/ttyS5@115200`，默认 `command_mode=ros`，即按
   `docs/vendor/VENDOR_INDEX.md`、`docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py` 和
   `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h` 的本地资料使用 newline JSON，
@@ -489,3 +889,623 @@ helper 复用现有 ROS graph，不再启动第二套 Nav2/bridge runtime，也�
   `robot_control_executed=false`、`delivery_success=false` 必须保持关闭；下一步应先通过
   `POST /api/nav2/stop` 与 `POST /api/nav2/start` 恢复 lifecycle，再重跑 goal execution 并复验
   同窗口 wheel raw L/R 与 delivery result。
+`2026-07-11 18:45` 起，`o10_amcl_nav2_runtime_proof.py` 在进入 `/scan`、`/initialpose`、
+AMCL/TF 和 path generation 之前，先落一层 `proof.board_source_preflight`。`2026-07-11 19:46`
+继续把这层从“`command -v ros2` 整段 timeout”拆成四个只读阶段，避免把 source 卡顿、
+PATH 缺失、CLI 启动卡死和 Python/rclpy import 混成同一个 blocker：
+
+- `source_stage`：`/opt/ros/humble/setup.bash`、workspace setup、`cd workdir` 是否完成；
+- `path_lookup`：`command -v ros2`、`type -a ros2`、`which ros2` 的 returncode、timeout 与短输出；
+- `cli_invocation`：最小 `ros2 --help` invocation 是否能自然返回；
+- `python_rclpy`：sourced shell `python3 -c 'import rclpy'`。
+
+artifact 必须至少能读回：
+
+- `proof.board_source_preflight.source_stage_ok`
+- `proof.board_source_preflight.source_stage`
+- `proof.board_source_preflight.path_lookup`
+- `proof.board_source_preflight.cli_invocation`
+- `proof.board_source_preflight.python_rclpy`
+- `proof.board_source_preflight.ros2_cli_path_ok`
+- `proof.board_source_preflight.ros2_cli_invocation_ok`
+- `proof.board_source_preflight.ros2_cli_ok`
+- `proof.board_source_preflight.rclpy_import_ok`
+- `python_executable`
+- `rclpy.__file__`
+- `sys.path[:8]`
+- `proof.board_source_preflight.classification`
+
+如果这层失败，helper 必须 fail-closed：
+
+- 跳过 `/scan` attempt
+- 跳过 `/initialpose` publish
+- 跳过 path generation
+- 继续保持 `safe_to_control=false`
+- 继续保持 `robot_control_executed=false`
+- 继续保持 `delivery_success=false`
+- 继续保持 `hil_pass=false`
+
+同时，map lifecycle 不再只混在泛化 root cause 中，而是单独写到
+`proof.map_lifecycle_preflight`。因此这轮之后的现场读数顺序必须是：
+
+1. `board_source_preflight`
+2. `map_lifecycle_preflight`
+3. `/scan` attempts
+4. `/amcl_pose`
+5. `map->odom`
+6. `path_generated`
+
+如果 root cause 仍只写历史泛化 `ros2_command_unavailable_after_bash_source`，而没有以上 preflight
+字段，就说明 helper 还没有进入 18:45/19:46 合同。本轮之后新的失败分类必须落到更窄层级：
+
+- `board_source_preflight_source_timeout`
+- `board_source_preflight_source_failed`
+- `board_source_preflight_ros2_cli_path_missing`
+- `board_source_preflight_ros2_cli_which_timeout`
+- `board_source_preflight_ros2_cli_invocation_timeout`
+- `board_source_preflight_ros2_cli_invocation_failed`
+- `board_source_preflight_rclpy_import_timeout`
+- `board_source_preflight_rclpy_import_failed_*`
+- `board_source_preflight_ready`
+
+`2026-07-12 05:52` 起，`proof.board_source_preflight` 的主路径改为
+`schema=trashbot.o10.source_amortized_cli_preflight.v1`。helper 会在同一个 bounded shell
+内完成 `/opt/ros/humble/setup.bash`、workspace setup、`cd workdir`、`command -v ros2`、
+`which ros2`、`type -a ros2`、最小 `ros2 --help` invocation 和 child Python
+`rclpy import`。这些子命令继承同一次 source 后的环境，不再分别通过 `run_ros()` 重新
+source ROS/workspace，因此 artifact 中会额外写：
+
+- `proof.board_source_preflight.source_amortized_cli_preflight_schema`
+- `proof.board_source_preflight.source_and_cli_in_one_shell`
+- `proof.board_source_preflight.per_command_source_overhead_eliminated`
+- `proof.board_source_preflight.commands_executed_after_single_source`
+- `proof.board_source_preflight.amortized_shell`
+
+旧字段仍必须存在：`source_stage`、`path_lookup`、`cli_invocation`、`python_rclpy`、
+`ros2_cli_path_ok`、`ros2_cli_invocation_ok`、`ros2_cli_ok`、`cli_ready`、`runtime_ready`、
+`classification` 和 `commands`。读数规则也随之收紧：
+
+- source 成功但 `command -v` / `which` / `type -a` 任一超时，继续收口为
+  `board_source_preflight_ros2_cli_which_timeout`；
+- source 成功且 PATH lookup 成功，但 `ros2 --help` 超时，收口为
+  `board_source_preflight_ros2_cli_invocation_timeout`；
+- `cli_ready=true` 后，rclpy import、graph、lifecycle、AMCL 或 TF 失败不得再反推成
+  `workspace_source_or_env_mismatch`，只能写成对应 runtime/graph/lifecycle blocker；
+- 所有场景仍保持 strict no-motion：不得发布 `/cmd_vel`、不得调用 `/api/base/manual`、
+  不得发送 NavigateToPose、不得打开 WAVE ROVER UART。
+
+`2026-07-12 06:54` 起，`proof.board_source_preflight` 再把 CLI readiness 明确拆成
+heavy/light/rclpy 三段：
+
+- `cli_invocation` 继续保留 `ros2 --help >/dev/null`，但只做 heavy 诊断；
+- `lightweight_readiness` 当前固定记录 `ros2 daemon status` 和 `ros2 node list`；
+- `python_rclpy` 继续只回答 child Python `rclpy import` 是否可用。
+
+因此 closeout 时不要再把 `ros2 --help` timeout 直接当成 preflight 主 blocker。只要
+`lightweight_readiness.ok=true`，就接受：
+
+- `proof.board_source_preflight.classification=board_source_preflight_ready`
+- `proof.board_source_preflight.lightweight_cli_ready=true`
+- `proof.board_source_preflight.cli_ready=true`
+- `proof.board_source_preflight.runtime_ready=true`（前提是 `rclpy_import_ok=true`）
+
+最新 true-board `330s` no-motion artifact
+`sprints/2026.07.12_06-54_o3_lightweight_cli_readiness_gate/artifacts/live_o10_lightweight_cli_readiness_330s.raw.json`
+已经证明：
+
+- `source_stage_ok=true`
+- `ros2_cli_path_ok=true`
+- `lightweight_readiness.primary_label=ros2_node_list`
+- `lightweight_readiness.successful_labels=["ros2_node_list"]`
+- `cli_invocation.timed_out=true`
+- `cli_ready=true`
+- `runtime_ready=true`
+
+helper 也因此真正进入了 downstream no-motion probes。当前 final blocker 已从 preflight 前移到
+`map_server/amcl inactive`、`/scan_no_publisher`、`/map_once_not_observed` 和
+`/tf_topic_missing`，不再回退成 `workspace_source_or_env_mismatch`。
+
+`2026-07-12 07:53` 起，本轮 strict no-motion helper 会在旧字段外新增
+`proof.downstream_recovery_summary`，专门把 map、AMCL、scan 和 TF 的下游 blocker 放在同一层读。
+这层 summary 不替代旧的 `map_lifecycle_preflight`、`localization_signal_freshness`、
+`amcl_readiness_summary`、`tf_readiness_summary` 或 `path_generation_gate`；它只是把这些字段归一成
+下一轮可派工的摘要。
+
+读取顺序固定为：
+
+1. `proof.downstream_recovery_summary.readiness_inputs`：确认
+   `board_source_preflight_ready=true`、`lightweight_cli_ready=true`、`cli_ready=true`、
+   `runtime_ready=true`。`ros2 --help` 仍只是 heavy diagnostic。
+2. `proof.downstream_recovery_summary.map_lifecycle.node_summaries`：区分
+   `*_lifecycle_command_timeout`、`*_lifecycle_inactive_stdout`、`*_lifecycle_command_failed`
+   和 `*_lifecycle_probe_skipped`。只有 stdout 明确 inactive 或 active parse 失败，才把它写成
+   lifecycle 事实；graph blocked 后 skipped 不能当作 inactive。
+3. `proof.downstream_recovery_summary.scan`：先看 `publisher_count` 和
+   `blocked_reason`。`/scan_no_publisher`、`/scan_qos_or_window_timeout`、
+   `/scan_publisher_visible_but_no_sample` 是不同 blocker；如果落到 LiDAR serial/runtime 事实，
+   必须交 Hardware owner 读取 `docs/vendor/VENDOR_INDEX.md`，不能在本 helper 里猜串口或接线。
+4. `proof.downstream_recovery_summary.map.topic_sample`：保留 `/map_once_not_observed`
+   的 legacy root cause，同时把当前分类拆成 `/map_topic_missing`、`/map_no_publisher`、
+   `/map_sample_timeout` 或 `/map_sample_not_observed`。
+5. `proof.downstream_recovery_summary.tf`：先看 `tf_topic.blocked_reason` 是否为
+   `/tf_topic_missing`，再看 `map_to_odom_dynamic.blocked_reason` 是否为
+   `map_to_odom_dynamic_source_missing`。`map_to_base_link` 只是 downstream derived gate，不能替代
+   AMCL dynamic `map->odom` source。
+6. `proof.downstream_recovery_summary.path_generation_gate`：只有 map、scan、AMCL 和 TF 全 ready
+   时才允许 planner-only path gate；否则 `path_generation_attempted=false` 必须保持。
+
+本字段仍是 `software_proof_o3_o1_strict_no_motion_downstream_recovery_only`。它不证明
+NavigateToPose、`/cmd_vel`、`/api/base/manual`、WAVE ROVER UART、route execution、HIL pass、
+delivery success 或 production evidence。
+
+`2026-07-11 20:46` 起，`o10_amcl_nav2_runtime_proof.py` 的 live/local artifact
+继续把 AMCL、TF 和 path gate 收束成固定摘要字段，便于在 helper 被 timeout、SIGTERM
+或 SSH 中断时仍能读到第一 root cause：
+
+- `proof.artifact_closeout`：记录 `artifact_kind`、`last_phase`、`primary_root_cause`
+  和 `signal_root_causes`。如果同时存在 AMCL/TF blocker 与 `sigterm_before_final_artifact`，
+  读取时优先看 `primary_root_cause`，不要把 signal 当成定位根因。
+- `proof.amcl_readiness_summary.amcl_lifecycle`：记录 `/amcl` lifecycle 是否 active、
+  `map_server_active`、`classification` 和原始 lifecycle result。
+- `proof.amcl_readiness_summary.amcl_pose_sample`：记录 `/amcl_pose` topic type、
+  publisher/subscriber、sample timing、stamp/freshness 和 blocked reason。AMCL active
+  不等于 `/amcl_pose` sample fresh，二者必须分开验收。
+- `proof.tf_readiness_summary.map_to_odom_dynamic`：只接受 dynamic `map->odom` 作为 AMCL
+  定位边，不能用 static source 或 downstream `map->base_link` 反推。
+- `proof.tf_readiness_summary.odom_to_base_link`：记录 odom/base edge 的 source、freshness
+  和 failure reason。
+- `proof.tf_readiness_summary.map_to_base_link`：作为 downstream derived gate，只在
+  `map->odom` 和 `odom->base_link` 都 ready 时成立；失败时写 `blocking_segment`。
+- `proof.path_generation_gate`：记录 path generation requested/attempted/generated、point
+  count、planner readiness 和未 attempt 的 root cause。
+
+本轮真实板 artifact
+`sprints/2026.07.11_20-46_o3_amcl_tf_final_artifact_bounded_probe/artifacts/live_o10_amcl_tf_final_artifact_bounded_probe.raw.json`
+显示旧 source/CLI blocker 已保持 ready：`board_source_preflight_ready`、
+`ros2_cli_ok=true`、`rclpy_import_ok=true`。新的 live 结论是：
+
+- `managed_runtime_started=true`；
+- `/amcl_pose` 有 sample，但 freshness 为 stale；
+- `/amcl` lifecycle readback 为 inactive，`amcl_readiness_summary.ready=false`；
+- `map_to_odom_dynamic.observed=false`，`map_to_base_link.observed=false`；
+- `path_generation_requested=true`，但 `path_generation_attempted=false`、
+  `path_generated=false`，blocked reason 为 `path_generation_blocked_by_localization_not_ready`；
+- `safe_to_control=false`、`publishes_cmd_vel=false`、`calls_base_manual=false`、
+  `robot_control_executed=false`、`route_execution_success=false`、`delivery_success=false`、
+  `hil_pass=false`、`uses_base_uart=false`。
+
+因此该 artifact 是 no-motion AMCL/TF/path readiness diagnosis，不是 fixed-route execution、
+NavigateToPose、HIL pass、delivery success 或 production evidence。下一轮最小命令仍是复跑
+同一 no-motion helper，但优先修复 `/amcl` lifecycle inactive、`/scan` 双 QoS timeout、
+`/map_once_not_observed`、`cli_initialpose_publish_failed` 和 dynamic `map->odom` 缺失。
+
+`2026-07-12 01:50` 起，`o10_amcl_nav2_runtime_proof.py` 在 strict no-motion helper 中新增
+`proof.ros2_graph_timeout_root_cause`。该字段专门承接上一轮 final
+`ros2_node_list_timeout`，不能被 `/tf_topic_missing`、lifecycle skipped 或 path gate 失败覆盖。
+
+字段形状固定为：
+
+- `classification`：主分类，取值限定在 `ros2_daemon_or_dds_graph_discovery_timeout`、
+  `ros2_cli_plugin_or_import_timeout`、`workspace_source_or_env_mismatch`、
+  `managed_process_lifecycle_not_ready`、`tf_runtime_secondary_after_graph_blocked`、
+  `root_cause_unclassified_after_probe`。
+- `primary_candidate`：当前最可信主因和短 reason。
+- `excluded_candidates`：本轮已通过 probe 排除的候选，例如 sourced env ready、`ros2 node list --help`
+  可返回、`rclpy import` 可返回。
+- `remaining_candidates`：仍未排除的候选；当 graph wait blocked 时，managed lifecycle 和
+  `/tf_topic_missing` 通常只能留在这里，不能写成主因。
+- `probes`：低预算只读命令摘要，包括 `ros2 node list`、`ros2 node list --no-daemon`、
+  `ros2 daemon status`、`ros2 node list --help`、`ros2 topic list`、
+  `rclpy_graph_segments` 和 `workspace_environment`。
+- `evidence_boundary`：固定写明 strict no-motion proof boundary。
+
+`2026-07-12 02:51` 起，root-cause probes 的测量口径改为 source-amortized batch。
+旧版每条 `probes.*` 都通过 `run_ros()` 重新 source ROS/workspace；当
+`board_source_preflight.source_stage.elapsed_ms` 接近 5 秒，而单条 timeout 只有 2 到 5 秒时，
+timeout 可能只是在 source 阶段耗尽预算。新版 artifact 必须优先看：
+
+- `probes.source_amortized_batch.source_stage`：单次 source ROS setup、workspace setup 和
+  `cd workdir` 的结果与耗时；
+- `probes.source_amortized_batch.commands.ros2_node_list`、
+  `ros2_node_list_no_daemon`、`ros2_daemon_status`、`ros2_node_list_help`、
+  `ros2_topic_list`：这些 command 的 timeout 不再包含重复 source 开销；
+- `probes.source_amortized_batch.workspace_environment.summary`：同一个 sourced shell 内的
+  ROS/workspace 环境摘要；
+- `probes.source_amortized_batch.rclpy_graph_stage_stream`：逐段 flush 的
+  `import_rclpy`、`rclpy_init`、`create_node`、`graph_wait` stage，用于定位 timeout
+  发生在 rclpy 启动前段还是 graph discovery 窗口。
+
+兼容旧 reader 时，`probes.ros2_node_list`、`probes.ros2_node_list_help`、
+`probes.workspace_environment` 和 `probes.rclpy_graph_segments` 仍会存在，但它们应视为
+`source_amortized_batch` 的回填摘要，不再代表逐条 `run_ros()` 的旧测量方式。分类器也必须把
+`evidence_priority=source_amortized_batch` 作为主读数：只有 source 后 `ros2 node list --help`
+仍 timeout，且 `rclpy_graph_stage_stream` 卡在 `import_rclpy` / `rclpy_init` /
+`create_node` 前段时，才允许继续把主因写成 `ros2_cli_plugin_or_import_timeout`；如果 help
+可完成而 node/topic/daemon graph timeout，则主因应优先落到 daemon/DDS graph discovery 或
+managed lifecycle，而不是 CLI/plugin/import。
+
+`probes.workspace_environment` 只保留 `ROS_DISTRO`、`ROS_DOMAIN_ID`、`RMW_IMPLEMENTATION`
+和 `AMENT_PREFIX_PATH` / `PYTHONPATH` / `LD_LIBRARY_PATH` 是否包含 ROS 与上车 workspace 的摘要；
+不得记录全量环境变量。`ros2 node list --no-daemon` 在当前 ROS2 CLI 不支持时应写
+`boundary=unsupported_option`，这不是失败，只说明该对照不可用。
+
+如果 `managed_runtime_started=true` 但 graph wait blocked，`probes.managed_process` 必须写：
+
+- managed process 是否仍存活；
+- expected nodes 与 observed nodes；
+- missing expected nodes；
+- managed runtime log tail；
+- lifecycle probe 是 executed、partial 还是 `skipped_after_ros2_graph_timeout`。
+
+这条规则的验收含义是：skipped lifecycle 不能再被读成 `map_server_active=false` 或
+`amcl_active=false` 的强证明。它只能说明 graph blocked 后未能完成 lifecycle proof。只有实际
+`ros2 lifecycle get` 返回 inactive，才能把 lifecycle inactive 当成主证据。
+
+同一 artifact 必须继续保持 no-motion false 字段：
+
+- `safe_to_control=false`
+- `publishes_cmd_vel=false`
+- `calls_base_manual=false`
+- `robot_control_executed=false`
+- `route_execution_success=false`
+- `delivery_success=false`
+- `hil_pass=false`
+- `uses_base_uart=false`
+- gate 未 ready 时 `path_generation_attempted=false`、`path_generated=false`
+
+`2026-07-12 03:52` 起，`proof.ros2_graph_timeout_root_cause` 下还有 additive
+`daemon_dds_split`。该字段不替代旧 `classification`、`primary_candidate` 或
+`probes`，只负责把 `ros2_daemon_or_dds_graph_discovery_timeout` 继续拆成可执行候选。
+读取顺序如下：
+
+1. 先读 `daemon_dds_split.primary_candidate.candidate`。候选名固定为
+   `ros2_daemon_state_timeout`、`dds_discovery_or_domain_mismatch`、
+   `workspace_source_or_env_mismatch`、`managed_process_lifecycle_visibility_blocked`、
+   `graph_command_budget_insufficient`、`ros2_cli_no_daemon_unsupported`。
+2. 再读 `safe_environment_summary`。这里仅保留 `ROS_DISTRO`、`ROS_DOMAIN_ID`、
+   `RMW_IMPLEMENTATION`、`which_ros2`，以及 `AMENT_PREFIX_PATH`、`PYTHONPATH`、
+   `LD_LIBRARY_PATH` 是否包含 ROS 和 onboard workspace 的布尔/count 摘要。
+3. 再读 `daemon_command_summaries`。若 `reset_skipped=true`，必须记录
+   `reset_skip_reason`；若 `reset_attempted=true`，必须对照 `ros2_daemon_stop`、
+   `ros2_daemon_start`、`ros2_node_list_after_daemon_reset`、
+   `ros2_topic_list_after_daemon_reset` 的 bounded summary。
+4. 再读 `managed_lifecycle_visibility_summary` 和 `graph_budget_summary`，区分
+   managed lifecycle 被 graph timeout 遮蔽，还是命令预算不足。
+
+`2026-07-12 04:51` 起，`daemon_dds_split` 下继续新增 additive
+`daemon_safe_graph_readback`。它专门记录上一轮 `next_live_command` 等价的 daemon-safe
+stop/start + 8s graph readback，读取顺序如下：
+
+1. `reset_attempted`、`reset_completed`、`reset_skipped`、`reset_skip_reason`
+2. `commands.ros2_daemon_stop`、`ros2_daemon_start`、`ros2_daemon_status_after_reset`
+3. `commands.ros2_node_list_after_daemon_reset`、
+   `commands.ros2_topic_list_after_daemon_reset`
+4. `graph_readback.node_list_outcome`、`graph_readback.topic_list_outcome`
+5. `primary_conclusion`
+6. `next_step`
+
+这个合同不替代 `daemon_command_summaries`、`graph_budget_summary` 或
+`primary_candidate`；它只是把 reset 后的 8s node/topic readback 单独固化出来。即使
+`primary_conclusion=graph_readback_recovered_after_daemon_reset`，下一跳也只能回
+lifecycle/localization gate，不能直接进入 motion/path。
+
+daemon reset 只允许用于 ROS2 CLI graph 层的 no-motion recovery。它不发布 `/cmd_vel`，
+不调用 `/api/base/manual`，不发送 NavigateToPose，也不打开 WAVE ROVER UART。reset 后
+如果 node/topic list 恢复，只能说明 daemon graph visibility 有进展；reset 后如果仍 timeout，
+下一步应优先查 DDS/domain/RMW/env 或 managed lifecycle visibility。该 split 仍不证明
+path generation、fixed-route execution、HIL pass、delivery success 或 production cloud。
+
+`2026-07-12 08:55` 起，strict no-motion helper 又新增
+`proof.map_lifecycle_preflight.lifecycle_cli_budget_recovery`。它是本轮 O3/O1
+`lifecycle_cli_budget_recovery` 的主读数，必须优先于 `/scan`、`/map` 和 TF 下游字段读取：
+
+- `map_server.command_summary.first_attempt`：`ros2 lifecycle get /map_server`，10s budget。
+- `map_server.command_summary.retry_attempt`：同一命令，retry budget 来自 `--timeout-s`，本轮为 18s。
+- `amcl.command_summary.first_attempt` / `retry_attempt`：同样保留 command、timeout budget、
+  elapsed、stdout、stderr、returncode、timed_out 和 classification。
+- `graph_visibility`：同窗 `ros2 node list` readback，记录 target node 是否可见。
+- `classification`：稳定值包含 `lifecycle_command_timeout`、`inactive stdout`、
+  `graph ok but lifecycle timeout`、`active` 和 `lifecycle command failed`。
+
+本轮 live artifact 为
+`sprints/2026.07.12_08-55_o3_lifecycle_cli_budget_recovery/artifacts/live_o10_lifecycle_cli_budget_recovery.raw.json`。
+关键结论是：`board_source_preflight_ready` 仍成立；`/amcl` first attempt 10s timeout，
+retry 15.615s 返回 `active [3]`，因此 `amcl` 分类为 `active`；`/map_server`
+first attempt 10s timeout，retry 11.324s 返回 `Node not found`，因此
+`map_lifecycle_preflight.classification=map_lifecycle_preflight_map_server_inactive`，
+`blocking_reasons.map_server=map_server_lifecycle_command_failed`。同窗
+`ros2 node list` lifecycle visibility probe 8s timeout，但 daemon-safe graph readback 后
+node/topic graph 可见，且只看到 `/amcl`、`/planner_server` 等节点，没有 `/map_server`。
+
+因此该轮只允许收口为 lifecycle/graph diagnostic delta：`/scan`、`/map`、`/odom` 和
+TF source 已按 gate 写成 `*_skipped_until_lifecycle_cli_readback_clean`，不能再把
+`/scan_reliable_and_best_effort_timeout`、`/map_topic_missing` 或 `/tf_topic_missing`
+当作本轮主 blocker。安全字段必须继续为 `safe_to_control=false`、
+`publishes_cmd_vel=false`、`calls_base_manual=false`、`robot_control_executed=false`、
+`route_execution_success=false`、`delivery_success=false`、`hil_pass=false`、
+`uses_base_uart=false`，且 `path_generation_attempted=false`、`path_generated=false`。
+
+`2026-07-12 09:54` 起，strict no-motion helper 在 08-55 lifecycle budget 字段外新增
+`proof.map_server_graph_lifecycle_visibility`。这个字段是本轮主读数，proof boundary 为
+`software_proof_o3_o1_strict_no_motion_map_server_graph_lifecycle_visibility_only`。读取顺序是：
+
+1. `readiness_inputs`：确认 `board_source_preflight_ready`、`lightweight_cli_ready=true`、
+   `cli_ready=true`、`runtime_ready=true` 是否仍成立。这些只是进入 graph/lifecycle
+   诊断的前提，不能写成 localization ready。
+2. `node_graph_inventory`：看 `/map_server` 是否在 graph 中可见，并同时保留 lifecycle
+   snapshot、managed wait observed nodes 和 target node visibility。
+3. `daemon_dds_visibility`：看 `ros2 node list`、`ros2 node list --no-daemon`、
+   `ros2 daemon status`、`ros2 topic list` 与 daemon-safe readback 是否把问题归到
+   daemon/DDS graph visibility。
+4. `lifecycle_readback`：读取 `/map_server` first/retry `ros2 lifecycle get /map_server`
+   的 command、timeout budget、elapsed、stdout、stderr、returncode 和 classification。
+5. `managed_runtime_context` 与 `lifecycle_manager_or_process_startup_context`：只用于区分
+   lifecycle manager 或 managed process startup 未完成，不能替代 node graph 事实。
+6. `canonical_classification`：稳定值为 `map_server_node_absent`、
+   `lifecycle_manager_or_process_startup_missing`、`daemon_or_dds_graph_visibility_failed`、
+   `helper_budget_or_timing_exhausted` 或 `map_server_lifecycle_active`。
+
+09-54 与 08-55 的区别是：08-55 证明 `/amcl` retry 已读到 `active [3]`，并把
+`/map_server` retry 收口为 `Node not found`；09-54 进一步解释 `Node not found`
+属于节点缺席、daemon/DDS graph 不可见、lifecycle manager/process startup 未完成，还是 helper
+budget/timing 不足。09-54 与 07-53 的区别是：07-53 关注 downstream `/scan`、`/map`
+和 TF；09-54 只把这些字段当 guarded context，主 blocker 必须来自 `/map_server`
+graph/lifecycle visibility。
+
+无论分类是否变成 `map_server_lifecycle_active`，该 artifact 仍不证明 planner path、
+NavigateToPose、route execution、delivery、HIL 或 production cloud。固定红线仍是：不发布
+`/cmd_vel`，不调用 `/api/base/manual`，不发送 NavigateToPose，不打开 WAVE ROVER UART，
+并继续保持 `safe_to_control=false`、`publishes_cmd_vel=false`、`calls_base_manual=false`、
+`robot_control_executed=false`、`route_execution_success=false`、`delivery_success=false`、
+`hil_pass=false`、`uses_base_uart=false`、`path_generation_attempted=false`、
+`path_generated=false`。
+
+`2026-07-12 10:54` 起，strict no-motion helper 在 09-54 visibility 字段外新增
+`proof.map_server_presence_recovery`。这个字段是 presence recovery sprint 的主读数，
+schema 为 `trashbot.o10.map_server_presence_recovery.v1`，proof boundary 为
+`software_proof_o3_o1_strict_no_motion_map_server_presence_recovery_only`。读取顺序是：
+
+1. `recovery_attempted` 与 `recovery_path.managed_runtime_requested`：必须为 `true` 才说明
+   本轮真的走了 `--managed-runtime-opt-in` recovery，而不是继续只读 existing graph。
+2. `managed_map_yaml`：只把 `basename`、`configured_basename`、`exists`、`size_bytes`、
+   `sha256_prefix` 和 `path_policy` 作为消费字段；绝对 board path 只保留在内部 artifact
+   字段中，不作为外部 summary 的匹配条件。
+3. `process_presence`：读取 managed runtime process group、startup error、expected process
+   names 和 log tail，用来区分进程未起、提前退出、启动日志报错。
+4. `node_presence`：读取 observed nodes、`/lifecycle_manager` 是否可见、`/amcl` 是否可见、
+   `/map_server` target 是否可见，以及 managed wait reason。
+5. `lifecycle_readback`：读取 `/map_server` first/retry lifecycle command、timeout budget、
+   stdout/stderr/returncode 和 `node_not_found_observed`。
+6. `canonical_classification`：稳定值包含
+   `presence_recovery_not_requested_read_only_existing_graph`、`managed_map_yaml_missing`、
+   `managed_map_yaml_unreadable`、`managed_runtime_start_failed`、
+   `managed_runtime_process_exited_before_map_server_presence`、
+   `managed_runtime_graph_unreadable_after_start`、`managed_runtime_started_map_server_not_observed`、
+   `lifecycle_manager_not_serving_map_server`、`map_server_lifecycle_rpc_timeout_after_recovery`、
+   `map_server_lifecycle_not_active_after_recovery`、
+   `map_server_lifecycle_command_failed_after_recovery` 或 `map_server_lifecycle_active`。
+
+如果 09-54 的 `map_server_graph_lifecycle_visibility.canonical_classification` 仍显示
+`map_server_node_absent`，但 10-54 的 `map_server_presence_recovery.canonical_classification`
+已经变成 `lifecycle_manager_not_serving_map_server`、`managed_runtime_started_map_server_not_observed`
+或 `managed_runtime_graph_unreadable_after_start`，closeout 应以 10-54 字段为主，因为它证明
+recovery path 已执行，blocker 已从“只读节点缺席”收窄到 managed runtime 启动后的可修复层。
+
+该 recovery 仍是 no-motion proof。即使 `canonical_classification=map_server_lifecycle_active`，
+也只能继续交给 Algorithm 恢复 `/map` sample、AMCL pose、dynamic `map->odom` 和 planner/path
+readiness；不能宣称 route execution、delivery、HIL、safe-to-control 或 production cloud。
+
+`2026-07-12 11:54` 起，strict no-motion helper 在 presence recovery 外新增
+`proof.map_server_lifecycle_activation`。这个字段只回答 `/map_server` configure/activate
+为什么没有 clean，不把 `/scan`、AMCL、TF 或 planner timeout 当作主结论。读取顺序是：
+
+1. `map_yaml_pgm_readback.yaml` / `pgm`：确认 `trashbot_map.yaml` 与 `trashbot_map.pgm`
+   是否存在、可读、size 和 `sha256_prefix`。
+2. `map_yaml_pgm_readback.fields`：读取 `image`、`image_path`、`resolution`、`origin`、
+   `occupied_thresh`、`free_thresh`、`mode`、`negate`、`required_missing` 和
+   `valid_for_map_server`。
+3. `launch_parameters`：确认 map_server `frame_id=map`、`use_sim_time=false`、
+   lifecycle manager `managed_node_list=["map_server","amcl"]`、`bond_timeout_s=8.0`、
+   `service_timeout_s=12.0`，以及 `RMW_FASTRTPS_USE_SHM=0`、
+   `FASTDDS_BUILTIN_TRANSPORTS=UDPv4`。
+4. `runtime_log` 与 `lifecycle_manager_state_change_result`：读取 configure、yaml load、
+   image load、map read、`Failed to change state for node: map_server` 和 bringup failed 的顺序。
+5. `canonical_classification`：稳定值包含
+   `map_server_yaml_image_unreadable`、`map_server_yaml_invalid_fields`、
+   `map_server_frame_id_missing_or_invalid`、`map_server_process_exited_during_configure`、
+   `map_server_configure_exception`、`lifecycle_manager_map_server_name_mismatch`、
+   `lifecycle_manager_map_server_namespace_mismatch`、`map_server_activate_callback_failed`、
+   `map_server_lifecycle_service_timeout_with_process_alive` 或 `map_server_lifecycle_active`。
+
+本轮 true-board primary artifact 为
+`sprints/2026.07.12_11-54_o3_map_server_lifecycle_activation_repair/artifacts/live_o10_map_server_lifecycle_activation_repair.raw.json`。
+结论是 `board_source_preflight_ready`、managed runtime 已启动，map yaml/PGM 都可读，
+required yaml fields valid，但 lifecycle manager 在 valid map readback 后仍报
+`Failed to change state for node: map_server`。因此主分类收口为
+`map_server_activate_callback_failed`，下一轮应检查 Nav2 map_server transition callback、
+lifecycle manager RPC/bond 时序或同一进程日志，而不是转去消费 `/scan`、AMCL、TF 或 planner
+secondary blocker。
+
+`2026-07-12 12:55` 起，strict no-motion helper 在 activation summary 外新增
+`proof.map_server_transition_callback_probe`。这个字段专门消费 `/map_server` configure/activate
+transition、`/map_server/change_state` response、lifecycle manager service/RPC timing、bond timing、
+process status 和 preserved pre-cleanup log evidence。当前 true-board artifact 为
+`sprints/2026.07.12_12-55_o3_map_server_transition_callback_probe/artifacts/live_o10_map_server_transition_callback_probe.raw.json`，
+主分类已从上一轮泛化的 `map_server_activate_callback_failed` 下钻为
+`map_server_configure_callback_return_failure`，detail 为
+`lifecycle_manager_changestate_response_failure_during_configure_before_deferred_map_read_completed`。
+
+读取该字段时，优先看：
+
+1. `transition_sequence.observed_stage`：当前为 `configure`，说明 activate 阶段尚未 clean 到达。
+2. `transition_sequence.configure`：确认 lifecycle manager requested、map_server callback entered、
+   yaml/image load、map read completed、state change failed 以及 state-change failure 与 map read
+   完成的先后顺序。
+3. `service_rpc_timing`：记录 `/map_server/change_state`、service timeout budget、readback timeout
+   与 inferred change-state response；当前 response 收口为 `failure`，不是 generic CLI timeout。
+4. `bond_timing`：当前为 `not_created_before_configure_return_failure`，说明尚未进入 active 后 bond wait。
+5. `activation_summary_reference`：保留上一轮 activation 字段，供兼容旧 closeout，但不能再把它作为
+   本轮最窄主 blocker。
+
+这个 transition callback proof 仍是 O3/O1 strict no-motion diagnostic material。它不证明
+`/map_server` lifecycle active、`/map` sample、AMCL pose、dynamic `map->odom`、planner path、
+route execution、delivery、HIL 或 production external evidence。
+
+`2026-07-12 13:54` 起，helper 对同一 configure failure 再细分 map IO / ChangeState ordering。
+为了避免板端 FastDDS SHM 端口锁把 graph/lifecycle RPC 混成泛化 callback failure，所有
+`run_ros()` 与 managed runtime 子进程都继承 `RMW_FASTRTPS_USE_SHM=0` 和
+`FASTDDS_BUILTIN_TRANSPORTS=UDPv4`。`proof.map_server_transition_callback_probe.canonical_classification`
+新增稳定值：
+
+- `map_server_configure_return_failure_before_deferred_map_read_completed`：lifecycle manager 已发起
+  configure ChangeState 并收到 failure，但 map read completion 在 failure 之后才出现在日志中。
+- `map_server_configure_return_failure_after_map_read_completed`：map read completion 已先出现，随后
+  configure ChangeState 仍失败。
+- `map_server_change_state_rpc_dds_shm_transport_port_lock`：日志出现 FastDDS SHM
+  `open_and_lock_file failed`，同时 graph/lifecycle readback timeout 或 state-change failure 存在。
+
+本轮 true-board artifact 为
+`sprints/2026.07.12_13-54_o3_map_server_configure_failure_repair/artifacts/live_o10_map_server_configure_failure_repair.raw.json`。
+结论是 `board_source_preflight_ready`、`managed_runtime_started=true`，但
+`map_server_active=false`、`amcl_active=false`。Primary root cause 已从 12:55 的泛化
+`map_server_configure_callback_return_failure` 收窄为
+`map_server_configure_return_failure_before_deferred_map_read_completed`，detail 仍记录
+`lifecycle_manager_changestate_response_failure_during_configure_before_deferred_map_read_completed`。
+下一轮应继续查 lifecycle manager ChangeState 与 map_server `on_configure` / map IO completion
+ordering；不能把该 artifact 当成 lifecycle clean、path generation、route execution、delivery、
+HIL 或 production external evidence。固定保持
+`safe_to_control=false`、`publishes_cmd_vel=false`、`calls_base_manual=false`、
+`robot_control_executed=false`、`route_execution_success=false`、`delivery_success=false`、
+`hil_pass=false`、`uses_base_uart=false`、`path_generation_attempted=false`、
+`path_generated=false`。
+
+`2026-07-12 14:54` 起，helper 不再简单优先使用 managed runtime cleanup tail，而是从
+`process_presence.log_tail`、`managed_runtime_wait_result.log_tail`、`commands.managed_runtime.log_tail`
+等候选中选择包含 `/map_server` configure、ChangeState failure、yaml/image/map IO 事件最多的
+日志窗口。`proof.map_server_transition_callback_probe.transition_sequence` 与
+`runtime_log_window` 会新增：
+
+- `line_indices.lifecycle_manager_configure_requested`
+- `line_indices.map_server_configure_callback_entered`
+- `event_timestamps_s.*`
+- `transition_sequence.configure.state_change_failed_before_map_server_configure_callback`
+
+若同一 pre-cleanup 窗口证明 lifecycle manager 的 ChangeState failure 发生在 `/map_server`
+callback 进入之后、`image_file` 开始加载之后、`Read map` 完成之前，canonical classification 会收口为
+`map_server_changestate_response_failure_after_image_load_before_map_read_completed`。这个分类比
+`map_server_configure_return_failure_before_deferred_map_read_completed` 更窄，下一步应查
+lifecycle manager ChangeState future/response timeout 与 map IO image decode completion 的顺序；
+它仍然不是 lifecycle clean/active、planner path、route execution、HIL 或 delivery proof。
+
+如果某次 live 窗口已经完成 map read 并继续进入 `Configuring amcl` 后才失败，helper 会把主因降到
+`map_server_configure_completed_lifecycle_blocked_by_amcl_configure_failure`。该分类说明旧 map_server
+configure blocker 当轮未复现，但仍未证明 `/map_server` active，因为 lifecycle manager 在完成整组
+configure/activate 前已被 AMCL configure 阻断。
+
+`2026-07-12 15:54` 起，helper 会继续拆分 14:54 的 image-load 窗口：如果同一 runtime log
+证明 lifecycle manager 已收到 `/map_server/change_state` failure，并且后续仍出现 `Read map ...`
+完成日志，则主分类升级为
+`map_server_changestate_response_false_before_map_io_completion`。这个分类表示 ChangeState response
+已经是 false，但 map IO 在 response failure 后继续完成；比
+`map_server_changestate_response_failure_after_image_load_before_map_read_completed` 更窄，下一步应查
+`nav2_map_server` `on_configure` return false path、map IO continuation 和 lifecycle manager
+ChangeState future/response 关系。`service_rpc_timing.map_io_timing` 会记录
+`image_load_to_state_failure_ms`、`state_failure_to_map_read_completed_ms`、
+`configure_to_map_read_completed_ms` 和
+`change_state_response_false_while_map_io_incomplete`。
+
+`2026-07-12 16:55` 起，如果同一窗口还能证明 managed map YAML/PGM readable、
+YAML fields valid、runtime analysis ok，且未观察到 map_server-scoped exception 或 ChangeState RPC
+timeout，helper 会把主因继续收窄到
+`map_server_on_configure_return_false_after_valid_map_io_deferred_completion`。这时必须同时读取
+`proof.map_server_transition_callback_probe.on_configure_return_source`：
+
+- `primary_source=on_configure_return_false_after_valid_map_inputs_while_map_io_log_completes_later`
+- `source_family=on_configure_return_false_source`
+- `map_input_validation.valid_for_map_server=true`
+- `excluded_sources.parameter_or_map_file_invalid_excluded_by_readback=true`
+- `return_path_evidence.change_state_response_false_before_map_io_completion=true`
+
+这个分类把 15:54 的 timing 现象落到 `on_configure` return false source bucket，而不是再次包装
+同名 wrapper。下一轮应查 Nav2 map_server `loadMapResponseFromYaml` return code、callback exception
+是否被吞掉、executor/log ordering，或 lifecycle manager 对 ChangeState response 的处理。
+
+该分类仍是 strict no-motion diagnostic material，不证明 `/map_server active`、AMCL ready、
+planner path、route execution、HIL、delivery 或 production external evidence。
+
+`2026-07-12 17:55` 起，helper 在 transition summary 中新增
+`proof.map_server_transition_callback_probe.load_map_response_from_yaml`，并把 valid map inputs 下的
+主分类继续收窄到
+`map_server_loadmap_response_success_equivalent_after_changestate_failure`。这个字段的核心边界是：
+
+- `direct_return_code_observed=false`
+- `return_code=not_logged_by_nav2_map_server_runtime`
+- `response_status=success_equivalent_logged_after_lifecycle_changestate_failure`
+- `load_map_response_status_at_changestate_failure=pending_or_not_logged`
+- `on_configure_return_path=return_failure_before_deferred_loadmap_response_completion_log`
+- `lifecycle_changestate_response_handling.inferred_response_status=failure`
+
+这表示现场 runtime log 没有直接打印 `loadMapResponseFromYaml` return code 或 error string，
+但已同时证明 YAML/image 开始加载、lifecycle manager 先收到 ChangeState failure、随后 `Read map ...`
+仍完成。因此可把 root cause 从 16:55 的 on_configure source bucket 继续下钻到
+LoadMap response/status ordering：response success-equivalent 证据晚于 lifecycle failure 出现，
+下一步应查 `nav2_map_server` 的 `on_configure` return false 分支、executor/log ordering，或
+lifecycle manager 对 ChangeState response 的处理。该字段仍不能证明 `/map_server active`。
+
+17:55 accepted true-board artifact 的最终 routing baseline 是
+`canonical_classification=map_server_lifecycle_active`，应以
+`proof.managed_runtime_log_lifecycle_readback` 为准解释生命周期状态：
+
+- `clean=true`
+- `managed_nodes_active_logged=true`
+- `map_server_active=true`
+- `amcl_active=true`
+- `load_map_response_from_yaml.response_status=success_equivalent_map_read_completed_before_failure`
+
+这表示 runtime log 已证明 `Read map ...`、`Server map_server connected with bond`、
+`Server amcl connected with bond` 和 `Managed nodes are active` 同窗出现，16:55 的
+`/map_server active=false` 上游 blocker 已被越过。但如果 artifact closeout 仍为
+`managed_runtime_graph_probe_timeout_after_lifecycle_active_log`，它只说明 graph/downstream
+readback 未 clean：`/scan_no_publisher`、`/map_once_not_observed`、`/amcl_pose_topic_missing` 或
+`/tf_topic_missing` 仍会阻塞 path gate。该证据仍固定保持 strict no-motion，不能声明
+route execution、HIL、delivery 或 safe-to-control。
+
+`2026-07-12 18:56` 起，helper 对这类 artifact 的处理顺序改为：如果 managed runtime log 已经
+`clean=true` 证明 `/map_server` 与 `/amcl` lifecycle active，即使
+`managed_runtime_wait_result.reason` 仍是 `ros2_node_list_timeout`、`ros2_node_list_failed` 等
+graph wait blocker，也不能再整体跳过下游只读 readback。helper 会继续在 strict no-motion
+边界内读取 `/scan`、`/map`、`/amcl_pose`、`/tf` / `/tf_static` 与 AMCL/TF fallback summary；
+如果读到了更具体 blocker，`proof.artifact_closeout.primary_root_cause` 应优先落到这些 topic/TF
+gate，并把 `managed_runtime_graph_probe_timeout_after_lifecycle_active_log` 保留为 secondary
+diagnostic。所有 motion/control 字段仍必须保持 false。
+
+同一轮还要读取 `transition_sequence.configure.map_server_callback_entered` 与
+`map_server_configure_callback_log_observed`。如果 lifecycle manager 已记录
+`Configuring map_server` 和 `Failed to change state for node: map_server`，但没有出现
+`[map_server]: Configuring`、yaml load、image load 或 `Read map`，主分类应为
+`map_server_changestate_response_failure_before_configure_callback_log`。这表示 failure 已在
+map_server `on_configure` 日志可见前发生，下一步应查 lifecycle manager ChangeState future/response、
+service discovery 和 map_server executor/callback dispatch 顺序；仍不能转成运动或 planner 证据。
+
+`2026-07-12 21:57` Gate 2 返工后，Algorithm path proof 的读取规则更新为：当
+`--reuse-existing-lidar-lifecycle` 与 `--managed-lidar-serial-baudrate 150000` 同时出现时，helper
+必须复用既有 `/dev/ttyACM0` LiDAR holder，artifact 里应看到
+`managed_lidar_policy=reuse_existing_lidar_lifecycle_no_driver_start`、
+`managed_lidar_driver_started_by_helper=false` 和 `managed_lidar_serial_baudrate=150000`。
+若板端 Python action runtime 因 `librcl_action.so` / `_rclpy_pybind11` ImportError 不能创建
+ActionClient，helper 允许转入 `ros2 action send_goal` CLI fallback，但 action 类型必须仍是
+`nav2_msgs/action/ComputePathToPose`，不得调用 NavigateToPose、controller、BT、`/cmd_vel`、
+`/api/base/manual`、WAVE ROVER UART 或 `/dev/ttyS5`。
+
+同轮成功 artifact
+`sprints/2026.07.12_21-57_o3_radar_status_baudrate_readback_repair/artifacts/algorithm/live_o10_reuse_existing_lidar_lifecycle_path_proof_after_fallback.raw.json`
+显示 `status=nav2_no_motion_path_generation_runtime_observed`、
+`path_generation_attempted=true`、`path_generated=true`、`path_point_count=21`、
+`path_generation_boundary=explicit_opt_in_compute_path_to_pose_cli_action_no_motion`、
+`fallback_used=true`、`fallback_mode=ros2_cli_action_send_goal`。为了避免
+`use_start=false` 触发 planner 回查当前 TF 时间窗并产生 extrapolation，helper 在同一 run 已观测
+`/amcl_pose` 且 frame 为 `map` 时，会把 `path_goal_request.start_source` 写成
+`amcl_pose_observed_for_planner_only_start` 并发送 `use_start=true`。这只证明
+`/scan -> /amcl_pose -> map->odom -> ComputePathToPose` 的 planner-only same-run path generation；
+`safe_to_control`、`publishes_cmd_vel`、`calls_base_manual`、`uses_base_uart`、
+`route_execution_success`、`delivery_success` 和 `hil_pass` 必须继续为 false。

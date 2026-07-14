@@ -1,0 +1,769 @@
+{
+  "calls_base_manual": false,
+  "delivery_success": false,
+  "evidence_type": "partial_runtime_material",
+  "generated_at_ms": 1783785754229,
+  "hil_pass": false,
+  "not_proven": true,
+  "proof": {
+    "amcl_broadcast_conditions": {},
+    "amcl_frame_params": {},
+    "amcl_log_tail": "",
+    "amcl_node_info_observed": false,
+    "amcl_node_publishers": [],
+    "amcl_node_subscribers": [],
+    "amcl_param_probe_ok": false,
+    "amcl_pose_frame_id": null,
+    "amcl_pose_observed": false,
+    "amcl_readiness_summary": {
+      "amcl_lifecycle": {
+        "active": false,
+        "classification": null,
+        "map_server_active": false,
+        "observed": false,
+        "result": {}
+      },
+      "amcl_pose_sample": {
+        "blocked_reason": "amcl_lifecycle_not_active",
+        "observed": false,
+        "publishers": {
+          "count": 0,
+          "nodes": []
+        },
+        "sample_timing": {
+          "elapsed_ms": null,
+          "freshness": {
+            "reason": "not_evaluated",
+            "status": "unknown"
+          },
+          "probe_executed": false,
+          "sample_observed": false,
+          "stamp": {
+            "parsed": false,
+            "reason": "not_evaluated"
+          },
+          "timed_out": false,
+          "timeout_s": null
+        },
+        "subscribers": {
+          "count": 0,
+          "nodes": []
+        },
+        "topic_present": false,
+        "topic_type": null
+      },
+      "blocked_reason": "amcl_lifecycle_not_active",
+      "ready": false
+    },
+    "amcl_tf_broadcast_param": null,
+    "amcl_tf_root_cause": "not_evaluated",
+    "artifact_closeout": {
+      "artifact_kind": "partial",
+      "current_command": {
+        "command": "ros2 node list",
+        "started_at_ms": 1783785754228,
+        "timeout_s": 6.0
+      },
+      "interruption_does_not_override_primary_root_cause": false,
+      "last_phase": "managed_runtime_started",
+      "primary_root_cause": null,
+      "root_cause_count": 0,
+      "signal_root_causes": [],
+      "status": "partial_runtime_in_progress"
+    },
+    "base_link_to_laser_frame_transform": null,
+    "blocked_commands_not_sent": [
+      "T=1",
+      "T=13",
+      "T=130",
+      "T=131",
+      "/cmd_vel",
+      "/api/base/manual",
+      "/api/base/",
+      "/api/nav2/start",
+      "/api/nav2/stop",
+      "navigate_to_pose"
+    ],
+    "blocked_devices_not_opened": [
+      "/dev/ttyS5"
+    ],
+    "blockers": [],
+    "board_source_preflight": {
+      "classification": "board_source_preflight_ready",
+      "cli_invocation": {
+        "command": "ros2 --help >/dev/null",
+        "elapsed_ms": 3081,
+        "executed": true,
+        "finished_at_ms": 1783785702503,
+        "label": "ros2_help",
+        "ok": true,
+        "returncode": 0,
+        "started_at_ms": 1783785699422,
+        "stderr": "",
+        "stdout": "",
+        "timed_out": false,
+        "timeout_s": 4.0
+      },
+      "cli_invocation_timeout_s": 4.0,
+      "cli_ready": true,
+      "commands": {
+        "rclpy_import": {
+          "command": "python3 -c 'import json\nimport sys\n\npayload = {\n    \"python_executable\": sys.executable,\n    \"python_version\": sys.version.split()[0],\n    \"sys_path_head\": sys.path[:8],\n    \"rclpy_import_ok\": False,\n    \"rclpy_file\": None,\n    \"error\": None,\n}\n\ntry:\n    import rclpy\n    payload[\"rclpy_import_ok\"] = True\n    payload[\"rclpy_file\"] = getattr(rclpy, \"__file__\", None)\nexcept Exception as exc:\n    payload[\"error\"] = {\n        \"type\": type(exc).__name__,\n        \"message\": str(exc)[:240],\n    }\n\nprint(json.dumps(payload, ensure_ascii=False))'",
+          "elapsed_ms": 3011,
+          "executed": true,
+          "finished_at_ms": 1783785705586,
+          "ok": true,
+          "returncode": 0,
+          "started_at_ms": 1783785702575,
+          "stderr": "",
+          "stdout": "{\"python_executable\": \"/usr/bin/python3\", \"python_version\": \"3.10.12\", \"sys_path_head\": [\"\", \"/root/rober/onboard/build/ros2_trashbot_behavior\", \"/root/rober/onboard/install/ros2_trashbot_behavior/lib/python3.10/site-packages\", \"/root/rober/onboard/build/ros2_trashbot_vision\", \"/root/rober/onboard/install/ros2_trashbot_vision/lib/python3.10/site-packages\", \"/root/rober/onboard/build/ros2_trashbot_nav\", \"/root/rober/onboard/install/ros2_trashbot_nav/lib/python3.10/site-packages\", \"/root/rober/onboard/build/ros2_trashbot_hardware\"], \"rclpy_import_ok\": true, \"rclpy_file\": \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/__init__.py\", \"error\": null}\n",
+          "timed_out": false,
+          "timeout_s": 6.0
+        },
+        "ros2_cli": {
+          "command": "command -v ros2",
+          "elapsed_ms": 33,
+          "executed": true,
+          "finished_at_ms": 1783785699359,
+          "label": "command_v",
+          "ok": true,
+          "returncode": 0,
+          "started_at_ms": 1783785699326,
+          "stderr": "",
+          "stdout": "/opt/ros/humble/bin/ros2\n",
+          "timed_out": false,
+          "timeout_s": 2.0
+        },
+        "ros2_cli_invocation": {
+          "command": "ros2 --help >/dev/null",
+          "elapsed_ms": 3081,
+          "executed": true,
+          "finished_at_ms": 1783785702503,
+          "label": "ros2_help",
+          "ok": true,
+          "returncode": 0,
+          "started_at_ms": 1783785699422,
+          "stderr": "",
+          "stdout": "",
+          "timed_out": false,
+          "timeout_s": 4.0
+        },
+        "ros2_cli_layer": {
+          "command": "python3 -c 'import json\nimport os\nimport subprocess\nimport time\n\nPATH_TIMEOUT_S = 2.0\nINVOCATION_TIMEOUT_S = 4.0\n\ndef now_ms():\n    return int(time.time() * 1000)\n\ndef compact(text, limit):\n    return (text or \"\")[-limit:]\n\ndef run_layer(label, command, timeout_s):\n    started_ms = now_ms()\n    try:\n        completed = subprocess.run(\n            [\"bash\", \"-lc\", command],\n            check=False,\n            text=True,\n            stdout=subprocess.PIPE,\n            stderr=subprocess.PIPE,\n            timeout=timeout_s,\n        )\n        return {\n            \"label\": label,\n            \"command\": command,\n            \"executed\": True,\n            \"ok\": completed.returncode == 0,\n            \"returncode\": completed.returncode,\n            \"started_at_ms\": started_ms,\n            \"finished_at_ms\": now_ms(),\n            \"timeout_s\": timeout_s,\n            \"timed_out\": False,\n            \"elapsed_ms\": now_ms() - started_ms,\n            \"stdout\": compact(completed.stdout, 2000),\n            \"stderr\": compact(completed.stderr, 1000),\n        }\n    except subprocess.TimeoutExpired as exc:\n        stdout = exc.stdout if isinstance(exc.stdout, str) else \"\"\n        stderr = exc.stderr if isinstance(exc.stderr, str) else \"\"\n        return {\n            \"label\": label,\n            \"command\": command,\n            \"executed\": True,\n            \"ok\": False,\n            \"returncode\": None,\n            \"started_at_ms\": started_ms,\n            \"finished_at_ms\": now_ms(),\n            \"timeout_s\": timeout_s,\n            \"timed_out\": True,\n            \"elapsed_ms\": now_ms() - started_ms,\n            \"stdout\": compact(stdout, 2000),\n            \"stderr\": compact(stderr, 1000),\n            \"error\": {\"type\": \"TimeoutExpired\", \"message\": f\"{label} timed out after {timeout_s}s\"},\n        }\n\npath_lookup = {\n    \"command_v\": run_layer(\"command_v\", \"command -v ros2\", PATH_TIMEOUT_S),\n    \"type_a\": run_layer(\"type_a\", \"type -a ros2\", PATH_TIMEOUT_S),\n    \"which\": run_layer(\"which\", \"which ros2\", PATH_TIMEOUT_S),\n}\nros2_path = \"\"\nfor key in (\"command_v\", \"which\"):\n    candidate = str(path_lookup[key].get(\"stdout\") or \"\").strip().splitlines()\n    if candidate:\n        ros2_path = candidate[0].strip()\n        break\nif ros2_path:\n    cli_invocation = run_layer(\"ros2_help\", \"ros2 --help >/dev/null\", INVOCATION_TIMEOUT_S)\nelse:\n    cli_invocation = {\n        \"label\": \"ros2_help\",\n        \"command\": \"ros2 --help >/dev/null\",\n        \"executed\": False,\n        \"ok\": False,\n        \"timeout_s\": INVOCATION_TIMEOUT_S,\n        \"timed_out\": False,\n        \"boundary\": \"ros2_path_missing_skip_cli_invocation\",\n        \"stdout\": \"\",\n        \"stderr\": \"\",\n    }\npayload = {\n    \"environment\": {\n        \"PATH\": os.environ.get(\"PATH\", \"\"),\n        \"AMENT_PREFIX_PATH\": os.environ.get(\"AMENT_PREFIX_PATH\", \"\"),\n        \"PYTHONPATH\": os.environ.get(\"PYTHONPATH\", \"\"),\n        \"LD_LIBRARY_PATH\": os.environ.get(\"LD_LIBRARY_PATH\", \"\"),\n    },\n    \"path_lookup\": path_lookup,\n    \"ros2_cli_path\": ros2_path or None,\n    \"cli_invocation\": cli_invocation,\n}\nprint(json.dumps(payload, ensure_ascii=False))'",
+          "elapsed_ms": 6069,
+          "executed": true,
+          "finished_at_ms": 1783785702567,
+          "ok": true,
+          "returncode": 0,
+          "started_at_ms": 1783785696498,
+          "stderr": "",
+          "stdout": "{\"environment\": {\"PATH\": \"/opt/ros/humble/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin\", \"AMENT_PREFIX_PATH\": \"/root/rober/onboard/install/ros2_trashbot_bringup:/root/rober/onboard/install/ros2_trashbot_behavior:/root/rober/onboard/install/ros2_trashbot_vision:/root/rober/onboard/install/ros2_trashbot_nav:/root/rober/onboard/install/ros2_trashbot_hardware:/root/rober/onboard/install/ros2_trashbot_interfaces:/opt/ros/humble\", \"PYTHONPATH\": \"/root/rober/onboard/build/ros2_trashbot_behavior:/root/rober/onboard/install/ros2_trashbot_behavior/lib/python3.10/site-packages:/root/rober/onboard/build/ros2_trashbot_vision:/root/rober/onboard/install/ros2_trashbot_vision/lib/python3.10/site-packages:/root/rober/onboard/build/ros2_trashbot_nav:/root/rober/onboard/install/ros2_trashbot_nav/lib/python3.10/site-packages:/root/rober/onboard/build/ros2_trashbot_hardware:/root/rober/onboard/install/ros2_trashbot_hardware/lib/python3.10/site-packages:/root/rober/onboard/install/ros2_trashbot_interfaces/local/lib/python3.10/dist-packages:/opt/ros/humble/lib/python3.10/site-packages:/opt/ros/humble/local/lib/python3.10/dist-packages\", \"LD_LIBRARY_PATH\": \"/root/rober/onboard/install/ros2_trashbot_interfaces/lib:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/aarch64-linux-gnu:/opt/ros/humble/lib\"}, \"path_lookup\": {\"command_v\": {\"label\": \"command_v\", \"command\": \"command -v ros2\", \"executed\": true, \"ok\": true, \"returncode\": 0, \"started_at_ms\": 1783785699326, \"finished_at_ms\": 1783785699359, \"timeout_s\": 2.0, \"timed_out\": false, \"elapsed_ms\": 33, \"stdout\": \"/opt/ros/humble/bin/ros2\\n\", \"stderr\": \"\"}, \"type_a\": {\"label\": \"type_a\", \"command\": \"type -a ros2\", \"executed\": true, \"ok\": true, \"returncode\": 0, \"started_at_ms\": 1783785699359, \"finished_at_ms\": 1783785699393, \"timeout_s\": 2.0, \"timed_out\": false, \"elapsed_ms\": 34, \"stdout\": \"ros2 is /opt/ros/humble/bin/ros2\\n\", \"stderr\": \"\"}, \"which\": {\"label\": \"which\", \"command\": \"which ros2\", \"executed\": true, \"ok\": true, \"returncode\": 0, \"started_at_ms\": 1783785699393, \"finished_at_ms\": 1783785699422, \"timeout_s\": 2.0, \"timed_out\": false, \"elapsed_ms\": 29, \"stdout\": \"/opt/ros/humble/bin/ros2\\n\", \"stderr\": \"\"}}, \"ros2_cli_path\": \"/opt/ros/humble/bin/ros2\", \"cli_invocation\": {\"label\": \"ros2_help\", \"command\": \"ros2 --help >/dev/null\", \"executed\": true, \"ok\": true, \"returncode\": 0, \"started_at_ms\": 1783785699422, \"finished_at_ms\": 1783785702503, \"timeout_s\": 4.0, \"timed_out\": false, \"elapsed_ms\": 3081, \"stdout\": \"\", \"stderr\": \"\"}}\n",
+          "timed_out": false,
+          "timeout_s": 12.0
+        },
+        "ros2_type": {
+          "command": "type -a ros2",
+          "elapsed_ms": 34,
+          "executed": true,
+          "finished_at_ms": 1783785699393,
+          "label": "type_a",
+          "ok": true,
+          "returncode": 0,
+          "started_at_ms": 1783785699359,
+          "stderr": "",
+          "stdout": "ros2 is /opt/ros/humble/bin/ros2\n",
+          "timed_out": false,
+          "timeout_s": 2.0
+        },
+        "ros2_which": {
+          "command": "which ros2",
+          "elapsed_ms": 29,
+          "executed": true,
+          "finished_at_ms": 1783785699422,
+          "label": "which",
+          "ok": true,
+          "returncode": 0,
+          "started_at_ms": 1783785699393,
+          "stderr": "",
+          "stdout": "/opt/ros/humble/bin/ros2\n",
+          "timed_out": false,
+          "timeout_s": 2.0
+        },
+        "source_stage": {
+          "command": "board_source_stage_probe",
+          "elapsed_ms": 3908,
+          "executed": true,
+          "finished_at_ms": 1783785696492,
+          "ok": true,
+          "returncode": 0,
+          "started_at_ms": 1783785692584,
+          "stderr": "",
+          "stdout": "{\"started_at_ms\": 1783785692702, \"finished_at_ms\": 1783785696172, \"elapsed_ms\": 3470, \"ros_setup\": {\"path\": \"/opt/ros/humble/setup.bash\", \"exists\": true, \"sourced\": true, \"returncode\": 0, \"elapsed_ms\": 1371}, \"workspace_setup\": {\"path\": \"/root/rober/onboard/install/setup.bash\", \"exists\": true, \"sourced\": true, \"skipped\": false, \"returncode\": 0, \"elapsed_ms\": 1531, \"failure_tolerated\": false}, \"workdir\": \"/root/rober/onboard\", \"cd_ok\": true}\n",
+          "timed_out": false,
+          "timeout_s": 8.0
+        }
+      },
+      "executed": true,
+      "path_lookup": {
+        "command_v": {
+          "command": "command -v ros2",
+          "elapsed_ms": 33,
+          "executed": true,
+          "finished_at_ms": 1783785699359,
+          "label": "command_v",
+          "ok": true,
+          "returncode": 0,
+          "started_at_ms": 1783785699326,
+          "stderr": "",
+          "stdout": "/opt/ros/humble/bin/ros2\n",
+          "timed_out": false,
+          "timeout_s": 2.0
+        },
+        "type_a": {
+          "command": "type -a ros2",
+          "elapsed_ms": 34,
+          "executed": true,
+          "finished_at_ms": 1783785699393,
+          "label": "type_a",
+          "ok": true,
+          "returncode": 0,
+          "started_at_ms": 1783785699359,
+          "stderr": "",
+          "stdout": "ros2 is /opt/ros/humble/bin/ros2\n",
+          "timed_out": false,
+          "timeout_s": 2.0
+        },
+        "which": {
+          "command": "which ros2",
+          "elapsed_ms": 29,
+          "executed": true,
+          "finished_at_ms": 1783785699422,
+          "label": "which",
+          "ok": true,
+          "returncode": 0,
+          "started_at_ms": 1783785699393,
+          "stderr": "",
+          "stdout": "/opt/ros/humble/bin/ros2\n",
+          "timed_out": false,
+          "timeout_s": 2.0
+        }
+      },
+      "path_lookup_timeout_s": 2.0,
+      "python_executable": "/usr/bin/python3",
+      "python_rclpy": {
+        "error": null,
+        "python_executable": "/usr/bin/python3",
+        "python_version": "3.10.12",
+        "rclpy_file": "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/__init__.py",
+        "rclpy_import_ok": true,
+        "sys_path_head": [
+          "",
+          "/root/rober/onboard/build/ros2_trashbot_behavior",
+          "/root/rober/onboard/install/ros2_trashbot_behavior/lib/python3.10/site-packages",
+          "/root/rober/onboard/build/ros2_trashbot_vision",
+          "/root/rober/onboard/install/ros2_trashbot_vision/lib/python3.10/site-packages",
+          "/root/rober/onboard/build/ros2_trashbot_nav",
+          "/root/rober/onboard/install/ros2_trashbot_nav/lib/python3.10/site-packages",
+          "/root/rober/onboard/build/ros2_trashbot_hardware"
+        ]
+      },
+      "python_version": "3.10.12",
+      "rclpy_error": null,
+      "rclpy_file": "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/__init__.py",
+      "rclpy_import_ok": true,
+      "rclpy_import_timeout_s": 6.0,
+      "ready": true,
+      "ros2_cli_invocation_ok": true,
+      "ros2_cli_ok": true,
+      "ros2_cli_path": "/opt/ros/humble/bin/ros2",
+      "ros2_cli_path_ok": true,
+      "ros2_cli_timeout_s": 6.0,
+      "runtime_ready": true,
+      "source_stage": {
+        "cd_ok": true,
+        "elapsed_ms": 3470,
+        "finished_at_ms": 1783785696172,
+        "ros_setup": {
+          "elapsed_ms": 1371,
+          "exists": true,
+          "path": "/opt/ros/humble/setup.bash",
+          "returncode": 0,
+          "sourced": true
+        },
+        "started_at_ms": 1783785692702,
+        "workdir": "/root/rober/onboard",
+        "workspace_setup": {
+          "elapsed_ms": 1531,
+          "exists": true,
+          "failure_tolerated": false,
+          "path": "/root/rober/onboard/install/setup.bash",
+          "returncode": 0,
+          "skipped": false,
+          "sourced": true
+        }
+      },
+      "source_stage_ok": true,
+      "source_stage_timeout_s": 8.0,
+      "sys_path_head": [
+        "",
+        "/root/rober/onboard/build/ros2_trashbot_behavior",
+        "/root/rober/onboard/install/ros2_trashbot_behavior/lib/python3.10/site-packages",
+        "/root/rober/onboard/build/ros2_trashbot_vision",
+        "/root/rober/onboard/install/ros2_trashbot_vision/lib/python3.10/site-packages",
+        "/root/rober/onboard/build/ros2_trashbot_nav",
+        "/root/rober/onboard/install/ros2_trashbot_nav/lib/python3.10/site-packages",
+        "/root/rober/onboard/build/ros2_trashbot_hardware"
+      ]
+    },
+    "board_source_ready": true,
+    "calls_base_manual": false,
+    "current_command": {
+      "command": "ros2 node list",
+      "started_at_ms": 1783785754228,
+      "timeout_s": 6.0
+    },
+    "delivery_success": false,
+    "elapsed_ms": 61677,
+    "evidence_ref": "o10-amcl-nav2-runtime-partial-1783785692551",
+    "evidence_type": "partial_runtime_material",
+    "generated_at_ms": 1783785754228,
+    "hil_pass": false,
+    "initialpose_publish_attempted": true,
+    "initialpose_publish_attempts": 0,
+    "initialpose_publish_elapsed_ms": null,
+    "initialpose_publish_error": null,
+    "initialpose_publish_method": null,
+    "initialpose_published": false,
+    "initialpose_subscriber_count": null,
+    "last_phase": "managed_runtime_started",
+    "last_successful_phase": "managed_runtime_started",
+    "localization_signal_freshness": {
+      "/amcl_pose": {
+        "expected_type": "geometry_msgs/msg/PoseWithCovarianceStamped",
+        "freshness": {
+          "reason": "not_evaluated",
+          "status": "unknown"
+        },
+        "probe": {
+          "boundary": "not_evaluated",
+          "executed": false,
+          "observed": false
+        },
+        "publishers": {
+          "count": 0,
+          "nodes": []
+        },
+        "source_class": "message",
+        "subscribers": {
+          "count": 0,
+          "nodes": []
+        },
+        "timestamp": {
+          "parsed": false,
+          "reason": "not_evaluated"
+        },
+        "topic": "/amcl_pose",
+        "topic_present": false,
+        "topic_type": null
+      },
+      "/odom": {
+        "expected_type": "nav_msgs/msg/Odometry",
+        "freshness": {
+          "reason": "not_evaluated",
+          "status": "unknown"
+        },
+        "probe": {
+          "boundary": "not_evaluated",
+          "executed": false,
+          "observed": false
+        },
+        "publishers": {
+          "count": 0,
+          "nodes": []
+        },
+        "source_class": "message",
+        "subscribers": {
+          "count": 0,
+          "nodes": []
+        },
+        "timestamp": {
+          "parsed": false,
+          "reason": "not_evaluated"
+        },
+        "topic": "/odom",
+        "topic_present": false,
+        "topic_type": null
+      },
+      "/scan": {
+        "expected_type": "sensor_msgs/msg/LaserScan",
+        "freshness": {
+          "reason": "not_evaluated",
+          "status": "unknown"
+        },
+        "probe": {
+          "boundary": "not_evaluated",
+          "executed": false,
+          "observed": false
+        },
+        "publishers": {
+          "count": 0,
+          "nodes": []
+        },
+        "source_class": "message",
+        "subscribers": {
+          "count": 0,
+          "nodes": []
+        },
+        "timestamp": {
+          "parsed": false,
+          "reason": "not_evaluated"
+        },
+        "topic": "/scan",
+        "topic_present": false,
+        "topic_type": null
+      },
+      "/tf": {
+        "expected_type": "tf2_msgs/msg/TFMessage",
+        "freshness": {
+          "reason": "not_evaluated",
+          "status": "unknown"
+        },
+        "probe": {
+          "boundary": "not_evaluated",
+          "executed": false,
+          "observed": false
+        },
+        "publishers": {
+          "count": 0,
+          "nodes": []
+        },
+        "source_class": "dynamic",
+        "subscribers": {
+          "count": 0,
+          "nodes": []
+        },
+        "timestamp": {
+          "parsed": false,
+          "reason": "not_evaluated"
+        },
+        "topic": "/tf",
+        "topic_present": false,
+        "topic_type": null
+      },
+      "/tf_static": {
+        "expected_type": "tf2_msgs/msg/TFMessage",
+        "freshness": {
+          "reason": "not_evaluated",
+          "status": "unknown"
+        },
+        "probe": {
+          "boundary": "not_evaluated",
+          "executed": false,
+          "observed": false
+        },
+        "publishers": {
+          "count": 0,
+          "nodes": []
+        },
+        "source_class": "static",
+        "subscribers": {
+          "count": 0,
+          "nodes": []
+        },
+        "timestamp": {
+          "parsed": false,
+          "reason": "not_evaluated"
+        },
+        "topic": "/tf_static",
+        "topic_present": false,
+        "topic_type": null
+      }
+    },
+    "localization_tf_observed": {
+      "map_to_base_link": false,
+      "map_to_odom": false
+    },
+    "managed_runtime_boundary": "explicit_opt_in_managed_path_generation_runtime_no_motion",
+    "managed_runtime_cleanup_ok": false,
+    "managed_runtime_process_group": 489058,
+    "managed_runtime_requested": true,
+    "managed_runtime_started": true,
+    "managed_static_tf_processes": {},
+    "map_frame_observed": false,
+    "map_inputs_ready": false,
+    "odom_frame_observed": false,
+    "package_availability": {
+      "nav2_amcl": null,
+      "nav2_lifecycle_manager": null,
+      "nav2_map_server": null,
+      "ros2_trashbot_bringup": null,
+      "ros2_trashbot_nav": null
+    },
+    "package_check_mode": "deferred_after_localization_main_path",
+    "package_checks_batch_ok": false,
+    "path_generated": false,
+    "path_generation_attempted": false,
+    "path_generation_gate": {
+      "amcl_gate_ready": false,
+      "attempted": false,
+      "blocked_reason": "path_generation_not_attempted",
+      "boundary": null,
+      "generated": false,
+      "localization_root_causes": [],
+      "localization_tf_gate_ready": false,
+      "planner_server_ready_for_path_generation": false,
+      "point_count": 0,
+      "requested": true
+    },
+    "path_generation_requested": true,
+    "path_generation_succeeded": false,
+    "path_point_count": 0,
+    "phase_history": [
+      {
+        "at_ms": 1783785692551,
+        "detail": {
+          "mode": "no_motion_amcl_nav2_runtime_proof"
+        },
+        "ok": true,
+        "phase": "start"
+      },
+      {
+        "at_ms": 1783785692570,
+        "detail": {
+          "source_proof_status": "blocked_with_root_cause"
+        },
+        "ok": false,
+        "phase": "map_inputs"
+      },
+      {
+        "at_ms": 1783785692578,
+        "phase": "board_source_preflight"
+      },
+      {
+        "at_ms": 1783785705604,
+        "detail": {
+          "classification": "board_source_preflight_ready",
+          "cli_ready": true,
+          "rclpy_import_ok": true,
+          "ros2_cli_ok": true,
+          "runtime_ready": true
+        },
+        "ok": true,
+        "phase": "board_source_preflight"
+      },
+      {
+        "at_ms": 1783785705614,
+        "detail": {
+          "map_yaml_source": "explicit_cli_managed_map_yaml",
+          "requested": true
+        },
+        "phase": "managed_runtime"
+      },
+      {
+        "at_ms": 1783785705637,
+        "detail": {
+          "map_yaml": "/root/rober/onboard/runtime/maps/trashbot_map.yaml",
+          "process_group": 489058
+        },
+        "ok": true,
+        "phase": "managed_runtime_started"
+      }
+    ],
+    "publishes_cmd_vel": false,
+    "recent_commands": [
+      {
+        "command": "board_source_stage_probe",
+        "elapsed_ms": 3908,
+        "error": null,
+        "finished_at_ms": 1783785696492,
+        "ok": true,
+        "returncode": 0
+      },
+      {
+        "command": "python3 -c 'import json\nimport os\nimport subprocess\nimport time\n\nPATH_TIMEOUT_S = 2.0\nINVOCATION_TIMEOUT_S = 4.0\n\ndef now_ms():\n    return int(time.time() * 1000)\n\ndef compact(text, limit):\n    return (text or \"\")[-limit:]\n\ndef run_layer(label, command, timeout_s):\n    started_ms = now_ms()\n    try:\n        completed = subprocess.run(\n            [\"bash\", \"-lc\", command],\n            check=False,\n            text=True,\n            stdout=subprocess.PIPE,\n            stderr=subprocess.PIPE,\n            timeout=timeout_s,\n        )\n        return {\n            \"label\": label,\n            \"command\": command,\n            \"executed\": True,\n            \"ok\": completed.returncode == 0,\n            \"returncode\": completed.returncode,\n            \"started_at_ms\": started_ms,\n            \"finished_at_ms\": now_ms(),\n            \"timeout_s\": timeout_s,\n            \"timed_out\": False,\n            \"elapsed_ms\": now_ms() - started_ms,\n            \"stdout\": compact(completed.stdout, 2000),\n            \"stderr\": compact(completed.stderr, 1000),\n        }\n    except subprocess.TimeoutExpired as exc:\n        stdout = exc.stdout if isinstance(exc.stdout, str) else \"\"\n        stderr = exc.stderr if isinstance(exc.stderr, str) else \"\"\n        return {\n            \"label\": label,\n            \"command\": command,\n            \"executed\": True,\n            \"ok\": False,\n            \"returncode\": None,\n            \"started_at_ms\": started_ms,\n            \"finished_at_ms\": now_ms(),\n            \"timeout_s\": timeout_s,\n            \"timed_out\": True,\n            \"elapsed_ms\": now_ms() - started_ms,\n            \"stdout\": compact(stdout, 2000),\n            \"stderr\": compact(stderr, 1000),\n            \"error\": {\"type\": \"TimeoutExpired\", \"message\": f\"{label} timed out after {timeout_s}s\"},\n        }\n\npath_lookup = {\n    \"command_v\": run_layer(\"command_v\", \"command -v ros2\", PATH_TIMEOUT_S),\n    \"type_a\": run_layer(\"type_a\", \"type -a ros2\", PATH_TIMEOUT_S),\n    \"which\": run_layer(\"which\", \"which ros2\", PATH_TIMEOUT_S),\n}\nros2_path = \"\"\nfor key in (\"command_v\", \"which\"):\n    candidate = str(path_lookup[key].get(\"stdout\") or \"\").strip().splitlines()\n    if candidate:\n        ros2_path = candidate[0].strip()\n        break\nif ros2_path:\n    cli_invocation = run_layer(\"ros2_help\", \"ros2 --help >/dev/null\", INVOCATION_TIMEOUT_S)\nelse:\n    cli_invocation = {\n        \"label\": \"ros2_help\",\n        \"command\": \"ros2 --help >/dev/null\",\n        \"executed\": False,\n        \"ok\": False,\n        \"timeout_s\": INVOCATION_TIMEOUT_S,\n        \"timed_out\": False,\n        \"boundary\": \"ros2_path_missing_skip_cli_invocation\",\n        \"stdout\": \"\",\n        \"stderr\": \"\",\n    }\npayload = {\n    \"environment\": {\n        \"PATH\": os.environ.get(\"PATH\", \"\"),\n        \"AMENT_PREFIX_PATH\": os.environ.get(\"AMENT_PREFIX_PATH\", \"\"),\n        \"PYTHONPATH\": os.environ.get(\"PYTHONPATH\", \"\"),\n        \"LD_LIBRARY_PATH\": os.environ.get(\"LD_LIBRARY_PATH\", \"\"),\n    },\n    \"path_lookup\": path_lookup,\n    \"ros2_cli_path\": ros2_path or None,\n    \"cli_invocation\": cli_invocation,\n}\nprint(json.dumps(payload, ensure_ascii=False))'",
+        "elapsed_ms": 6069,
+        "error": null,
+        "finished_at_ms": 1783785702568,
+        "ok": true,
+        "returncode": 0
+      },
+      {
+        "command": "python3 -c 'import json\nimport sys\n\npayload = {\n    \"python_executable\": sys.executable,\n    \"python_version\": sys.version.split()[0],\n    \"sys_path_head\": sys.path[:8],\n    \"rclpy_import_ok\": False,\n    \"rclpy_file\": None,\n    \"error\": None,\n}\n\ntry:\n    import rclpy\n    payload[\"rclpy_import_ok\"] = True\n    payload[\"rclpy_file\"] = getattr(rclpy, \"__file__\", None)\nexcept Exception as exc:\n    payload[\"error\"] = {\n        \"type\": type(exc).__name__,\n        \"message\": str(exc)[:240],\n    }\n\nprint(json.dumps(payload, ensure_ascii=False))'",
+        "elapsed_ms": 3011,
+        "error": null,
+        "finished_at_ms": 1783785705586,
+        "ok": true,
+        "returncode": 0
+      },
+      {
+        "command": "python3 - <<'PY'\nimport json\nimport time\n\npayload = {\n    \"executed\": False,\n    \"ok\": False,\n    \"node_names\": [],\n    \"boundary\": \"rclpy_node_names_not_started\",\n    \"error\": None,\n}\nnode = None\nrclpy_initialized = False\nstarted_ms = int(time.time() * 1000)\ntry:\n    import rclpy\n\n    payload[\"executed\"] = True\n    if not rclpy.ok():\n        rclpy.init(args=None)\n    rclpy_initialized = True\n    node = rclpy.create_node(\"o10_managed_runtime_graph_probe\")\n    deadline = time.time() + 0.8\n    names = []\n    while time.time() < deadline:\n        rclpy.spin_once(node, timeout_sec=0.05)\n        names = sorted({name for name in node.get_node_names() if name})\n        if names:\n            break\n    payload.update({\n        \"ok\": bool(names),\n        \"node_names\": names,\n        \"boundary\": \"rclpy_node_names_observed\" if names else \"rclpy_node_names_empty_after_wait\",\n    })\nexcept Exception as exc:\n    payload[\"error\"] = {\"type\": type(exc).__name__, \"message\": str(exc)[:240]}\n    payload[\"boundary\"] = \"rclpy_node_names_failed\"\nfinally:\n    payload[\"elapsed_ms\"] = int(time.time() * 1000) - started_ms\n    if node is not None:\n        try:\n            node.destroy_node()\n        except Exception:\n            pass\n    if rclpy_initialized:\n        try:\n            if rclpy.ok():\n                rclpy.shutdown()\n        except Exception:\n            pass\nprint(json.dumps(payload, ensure_ascii=False))\nPY",
+        "elapsed_ms": 8149,
+        "error": {
+          "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; python3 - <<\\'PY\\'\\nimport json\\nimport tim",
+          "type": "TimeoutExpired"
+        },
+        "finished_at_ms": 1783785713799,
+        "ok": false,
+        "returncode": null
+      },
+      {
+        "command": "ros2 node list",
+        "elapsed_ms": 6095,
+        "error": {
+          "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; ros2 node list']' timed out after 6.0 secon",
+          "type": "TimeoutExpired"
+        },
+        "finished_at_ms": 1783785719941,
+        "ok": false,
+        "returncode": null
+      },
+      {
+        "command": "python3 - <<'PY'\nimport json\nimport time\n\npayload = {\n    \"executed\": False,\n    \"ok\": False,\n    \"node_names\": [],\n    \"boundary\": \"rclpy_node_names_not_started\",\n    \"error\": None,\n}\nnode = None\nrclpy_initialized = False\nstarted_ms = int(time.time() * 1000)\ntry:\n    import rclpy\n\n    payload[\"executed\"] = True\n    if not rclpy.ok():\n        rclpy.init(args=None)\n    rclpy_initialized = True\n    node = rclpy.create_node(\"o10_managed_runtime_graph_probe\")\n    deadline = time.time() + 0.8\n    names = []\n    while time.time() < deadline:\n        rclpy.spin_once(node, timeout_sec=0.05)\n        names = sorted({name for name in node.get_node_names() if name})\n        if names:\n            break\n    payload.update({\n        \"ok\": bool(names),\n        \"node_names\": names,\n        \"boundary\": \"rclpy_node_names_observed\" if names else \"rclpy_node_names_empty_after_wait\",\n    })\nexcept Exception as exc:\n    payload[\"error\"] = {\"type\": type(exc).__name__, \"message\": str(exc)[:240]}\n    payload[\"boundary\"] = \"rclpy_node_names_failed\"\nfinally:\n    payload[\"elapsed_ms\"] = int(time.time() * 1000) - started_ms\n    if node is not None:\n        try:\n            node.destroy_node()\n        except Exception:\n            pass\n    if rclpy_initialized:\n        try:\n            if rclpy.ok():\n                rclpy.shutdown()\n        except Exception:\n            pass\nprint(json.dumps(payload, ensure_ascii=False))\nPY",
+        "elapsed_ms": 6524,
+        "error": {
+          "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; python3 - <<\\'PY\\'\\nimport json\\nimport tim",
+          "type": "TimeoutExpired"
+        },
+        "finished_at_ms": 1783785727079,
+        "ok": false,
+        "returncode": null
+      },
+      {
+        "command": "ros2 node list",
+        "elapsed_ms": 6293,
+        "error": {
+          "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; ros2 node list']' timed out after 6.0 secon",
+          "type": "TimeoutExpired"
+        },
+        "finished_at_ms": 1783785733468,
+        "ok": false,
+        "returncode": null
+      },
+      {
+        "command": "python3 - <<'PY'\nimport json\nimport time\n\npayload = {\n    \"executed\": False,\n    \"ok\": False,\n    \"node_names\": [],\n    \"boundary\": \"rclpy_node_names_not_started\",\n    \"error\": None,\n}\nnode = None\nrclpy_initialized = False\nstarted_ms = int(time.time() * 1000)\ntry:\n    import rclpy\n\n    payload[\"executed\"] = True\n    if not rclpy.ok():\n        rclpy.init(args=None)\n    rclpy_initialized = True\n    node = rclpy.create_node(\"o10_managed_runtime_graph_probe\")\n    deadline = time.time() + 0.8\n    names = []\n    while time.time() < deadline:\n        rclpy.spin_once(node, timeout_sec=0.05)\n        names = sorted({name for name in node.get_node_names() if name})\n        if names:\n            break\n    payload.update({\n        \"ok\": bool(names),\n        \"node_names\": names,\n        \"boundary\": \"rclpy_node_names_observed\" if names else \"rclpy_node_names_empty_after_wait\",\n    })\nexcept Exception as exc:\n    payload[\"error\"] = {\"type\": type(exc).__name__, \"message\": str(exc)[:240]}\n    payload[\"boundary\"] = \"rclpy_node_names_failed\"\nfinally:\n    payload[\"elapsed_ms\"] = int(time.time() * 1000) - started_ms\n    if node is not None:\n        try:\n            node.destroy_node()\n        except Exception:\n            pass\n    if rclpy_initialized:\n        try:\n            if rclpy.ok():\n                rclpy.shutdown()\n        except Exception:\n            pass\nprint(json.dumps(payload, ensure_ascii=False))\nPY",
+        "elapsed_ms": 6223,
+        "error": {
+          "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; python3 - <<\\'PY\\'\\nimport json\\nimport tim",
+          "type": "TimeoutExpired"
+        },
+        "finished_at_ms": 1783785740327,
+        "ok": false,
+        "returncode": null
+      },
+      {
+        "command": "ros2 node list",
+        "elapsed_ms": 6506,
+        "error": {
+          "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; ros2 node list']' timed out after 6.0 secon",
+          "type": "TimeoutExpired"
+        },
+        "finished_at_ms": 1783785746902,
+        "ok": false,
+        "returncode": null
+      },
+      {
+        "command": "python3 - <<'PY'\nimport json\nimport time\n\npayload = {\n    \"executed\": False,\n    \"ok\": False,\n    \"node_names\": [],\n    \"boundary\": \"rclpy_node_names_not_started\",\n    \"error\": None,\n}\nnode = None\nrclpy_initialized = False\nstarted_ms = int(time.time() * 1000)\ntry:\n    import rclpy\n\n    payload[\"executed\"] = True\n    if not rclpy.ok():\n        rclpy.init(args=None)\n    rclpy_initialized = True\n    node = rclpy.create_node(\"o10_managed_runtime_graph_probe\")\n    deadline = time.time() + 0.8\n    names = []\n    while time.time() < deadline:\n        rclpy.spin_once(node, timeout_sec=0.05)\n        names = sorted({name for name in node.get_node_names() if name})\n        if names:\n            break\n    payload.update({\n        \"ok\": bool(names),\n        \"node_names\": names,\n        \"boundary\": \"rclpy_node_names_observed\" if names else \"rclpy_node_names_empty_after_wait\",\n    })\nexcept Exception as exc:\n    payload[\"error\"] = {\"type\": type(exc).__name__, \"message\": str(exc)[:240]}\n    payload[\"boundary\"] = \"rclpy_node_names_failed\"\nfinally:\n    payload[\"elapsed_ms\"] = int(time.time() * 1000) - started_ms\n    if node is not None:\n        try:\n            node.destroy_node()\n        except Exception:\n            pass\n    if rclpy_initialized:\n        try:\n            if rclpy.ok():\n                rclpy.shutdown()\n        except Exception:\n            pass\nprint(json.dumps(payload, ensure_ascii=False))\nPY",
+        "elapsed_ms": 6610,
+        "error": {
+          "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; python3 - <<\\'PY\\'\\nimport json\\nimport tim",
+          "type": "TimeoutExpired"
+        },
+        "finished_at_ms": 1783785754194,
+        "ok": false,
+        "returncode": null
+      }
+    ],
+    "robot_control_executed": false,
+    "root_causes": [],
+    "route_execution_success": false,
+    "safe_to_control": false,
+    "sends_base_motion_commands": false,
+    "sends_motion_commands": false,
+    "started_at_ms": 1783785692551,
+    "static_tf_source_observed": false,
+    "status": "partial_runtime_in_progress",
+    "tf_chain_diagnostics": {},
+    "tf_chain_observed": {
+      "base_link_to_laser_frame": false,
+      "map_to_base_link": false,
+      "map_to_odom": false,
+      "odom_to_base_link": false
+    },
+    "tf_failure_classification": {
+      "frame_naming_consistent": true,
+      "map_to_base_link": "not_evaluated"
+    },
+    "tf_frame_inventory": {
+      "dynamic_edges": [],
+      "edges": [],
+      "frames": [],
+      "static_edges": [],
+      "transforms": []
+    },
+    "tf_readiness_summary": {
+      "blocked_reason": "map_to_base_link_not_observed",
+      "map_to_base_link": {
+        "blocked_reason": "map_to_base_link_not_observed",
+        "blocking_segment": null,
+        "boundary": "not_evaluated",
+        "freshness": {
+          "reason": "map_to_base_link_not_observed",
+          "status": "not_observed"
+        },
+        "observed": false,
+        "source_class": "missing",
+        "source_edges": [
+          "map_to_odom",
+          "odom_to_base_link"
+        ]
+      },
+      "map_to_odom_dynamic": {
+        "boundary": null,
+        "dynamic_source_observed": false,
+        "failure_reason": null,
+        "freshness": {},
+        "observed": false,
+        "required_source_class": "dynamic",
+        "source_class": "missing",
+        "source_topic": null,
+        "static_source_observed": false,
+        "timestamp": {}
+      },
+      "odom_to_base_link": {
+        "boundary": null,
+        "dynamic_source_observed": false,
+        "failure_reason": null,
+        "freshness": {},
+        "observed": false,
+        "required_source_class": null,
+        "source_class": "missing",
+        "source_topic": null,
+        "static_source_observed": false,
+        "timestamp": {}
+      },
+      "ready": false
+    },
+    "tf_source_freshness": {
+      "dynamic_edge_count": 0,
+      "edges": {},
+      "static_edge_count": 0
+    },
+    "tf_source_root_cause_detail": {},
+    "tf_static_observed": false,
+    "tf_topics_observed": {
+      "/tf": false,
+      "/tf_static": false
+    },
+    "uses_base_uart": false
+  },
+  "publishes_cmd_vel": false,
+  "robot_control_executed": false,
+  "route_execution_success": false,
+  "safe_to_control": false,
+  "schema": "trashbot.upper_robot_api.v1.nav2_lifecycle_runtime_proof",
+  "sends_base_motion_commands": false,
+  "sends_motion_commands": false,
+  "software_guard": true,
+  "status": "partial_runtime_in_progress",
+  "uses_base_uart": false
+}

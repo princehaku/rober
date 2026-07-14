@@ -1,0 +1,119 @@
+{
+  "calls_base_manual": false,
+  "checks": [
+    {
+      "detail": "source schema and proof boundary matched O5 bounded route terminal-result bridge",
+      "name": "source_terminal_result_schema",
+      "status": "pass"
+    },
+    {
+      "detail": "mock terminal result was reconciled as error and cannot be used as delivery, dropoff, route execution, HIL, or safe-to-control evidence",
+      "name": "mock_terminal_result_fail_closed",
+      "status": "pass"
+    },
+    {
+      "detail": "terminal_result_accepted_for_delivery=false, delivery_success=false, route_execution_success=false, safe_to_control=false, hil_pass=false",
+      "name": "fixed_false_fields",
+      "status": "pass"
+    }
+  ],
+  "connects_cloud_production": false,
+  "delivery_success": false,
+  "dropoff_success": false,
+  "error_message": "mock terminal result is not delivery success, dropoff success, live route execution, operator acceptance, HIL, or safe-to-control",
+  "failure_code": "MOCK_TERMINAL_RESULT_NOT_DELIVERY",
+  "final_state": "error",
+  "fixed_false_fields": {
+    "calls_base_manual": false,
+    "connects_cloud_production": false,
+    "delivery_success": false,
+    "dropoff_success": false,
+    "hil_pass": false,
+    "primary_actions_enabled": false,
+    "production_cloud_ready": false,
+    "publishes_cmd_vel": false,
+    "real_world_delivery_proven": false,
+    "robot_control_executed": false,
+    "route_execution_success": false,
+    "safe_to_control": false,
+    "terminal_result_accepted_for_delivery": false,
+    "uses_base_uart": false
+  },
+  "fixed_false_invariants": [
+    "terminal_result_accepted_for_delivery=false",
+    "dropoff_success=false",
+    "delivery_success=false",
+    "route_execution_success=false",
+    "safe_to_control=false",
+    "hil_pass=false",
+    "robot_control_executed=false",
+    "connects_cloud_production=false",
+    "uses_base_uart=false",
+    "publishes_cmd_vel=false",
+    "calls_base_manual=false",
+    "primary_actions_enabled=false",
+    "real_world_delivery_proven=false",
+    "production_cloud_ready=false"
+  ],
+  "generated_at_utc": "2026-07-13T20:39:41Z",
+  "hil_pass": false,
+  "next_required_evidence": "collect live route execution, dropoff/operator acceptance, and HIL before accepting delivery success",
+  "owner_role": "robot-software-engineer",
+  "packet_id": "packet_o3_28_pose_same_task_replay_7d57826142b0c79c",
+  "path_structured_pose_count": 28,
+  "primary_actions_enabled": false,
+  "production_cloud_ready": false,
+  "proof_boundary": "software_proof_o5_delivery_state_terminal_reconciliation_only",
+  "proof_boundary_class": "software_proof_local_mock_only",
+  "publishes_cmd_vel": false,
+  "real_world_delivery_proven": false,
+  "reconciliation_state": "terminal_result_recorded",
+  "reconciliation_status": "fail_closed_mock_terminal_result_not_delivery",
+  "rejected_claims": [
+    "production cloud",
+    "public https tls",
+    "real 4g sim",
+    "live route execution",
+    "route execution success",
+    "delivery success",
+    "dropoff success",
+    "delivery operator acceptance",
+    "hil pass",
+    "safe to control",
+    "robot control execution"
+  ],
+  "result_code": "mock_route_execution_completed_not_live_delivery",
+  "rg_acceptance_anchors": [
+    "delivery_state_terminal_reconciliation",
+    "mock_route_execution_completed_not_live_delivery",
+    "terminal_result_accepted_for_delivery=false",
+    "delivery_success=false",
+    "safe_to_control=false",
+    "route_execution_success=false",
+    "hil_pass=false"
+  ],
+  "robot_control_executed": false,
+  "route_csv_row_count": 28,
+  "route_execution_success": false,
+  "route_intent_id": "route_intent_20260713_0402_from_20260713_0300_28_pose_structured_path",
+  "safe_to_control": false,
+  "schema": "trashbot.o5.delivery_state_terminal_reconciliation.v1",
+  "segment_count": 27,
+  "source_proof_boundary": "software_proof_o5_bounded_route_terminal_result_bridge_only",
+  "source_schema": "trashbot.o5.bounded_route_terminal_result_bridge.v1",
+  "source_summary_ref": "o5_bounded_route_terminal_result_bridge_summary.json",
+  "state_machine_events": [
+    {
+      "event": "terminal_result_reconciled",
+      "from_state": "idle",
+      "message": "mock terminal result is not delivery success, dropoff success, live route execution, operator acceptance, HIL, or safe-to-control",
+      "to_state": "error"
+    }
+  ],
+  "task_id": "task_o3_28_pose_fixed_route_consumer_20260713_0402",
+  "task_terminal_state": "mock_route_execution_completed_not_live_route_execution",
+  "terminal_result_accepted_for_delivery": false,
+  "terminal_result_state": "terminal_result_recorded",
+  "terminal_result_type": "delivery_terminal",
+  "uses_base_uart": false
+}

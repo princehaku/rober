@@ -1,0 +1,156 @@
+{
+  "acceptance_decision": "blocked_missing_live_success_evidence",
+  "blocked_reasons": [
+    "source_mode_live",
+    "terminal_result_recorded",
+    "live_route_execution_success",
+    "operator_dropoff_acceptance",
+    "hil_pass",
+    "safe_to_control"
+  ],
+  "checks": [
+    {
+      "detail": "operator dropoff acceptance evidence can be evaluated independently",
+      "name": "operator_dropoff_acceptance_gate_ready",
+      "status": "pass"
+    },
+    {
+      "detail": "source_mode=live, field-live, or production-live is required for positive acceptance",
+      "name": "source_mode_live",
+      "status": "blocked"
+    },
+    {
+      "detail": "operator evidence ref must be a sanitized basename, not a URL or local path",
+      "name": "safe_evidence_ref",
+      "status": "pass"
+    },
+    {
+      "detail": "this gate is necessary input only and keeps delivery_success=false",
+      "name": "delivery_success_not_claimed_here",
+      "status": "pass"
+    }
+  ],
+  "current_live_evidence_observed": false,
+  "current_run_required_false_invariants": [
+    "delivery_success=false",
+    "route_execution_success=false",
+    "safe_to_control=false",
+    "hil_pass=false",
+    "operator_dropoff_acceptance_gate_accepted=false",
+    "delivery_success_accepted_for_state_machine=false"
+  ],
+  "dangerous_true_fields": [],
+  "delivery_success": false,
+  "delivery_success_accepted_for_state_machine": false,
+  "delivery_success_candidate_for_live_success_gate": false,
+  "error_message": "operator dropoff acceptance gate blocked: source_mode_live, terminal_result_recorded, live_route_execution_success, operator_dropoff_acceptance, hil_pass, safe_to_control",
+  "evidence_fresh": true,
+  "failure_code": "OPERATOR_DROPOFF_ACCEPTANCE_GATE_BLOCKED",
+  "final_state": "error",
+  "fixture_mode": "synthetic",
+  "fresh_same_window_evidence": true,
+  "generated_at_utc": "2026-07-13T23:43:55Z",
+  "hil": {
+    "pass": false,
+    "robot_id": "robot-synthetic-o5-operator-dropoff",
+    "task_id": "task_o3_28_pose_fixed_route_consumer_20260713_0402"
+  },
+  "hil_pass": false,
+  "identity": {
+    "packet_id": "packet_o3_28_pose_same_task_replay_7d57826142b0c79c",
+    "robot_id": "robot-synthetic-o5-operator-dropoff",
+    "route_intent_id": "route_intent_20260713_0402_from_20260713_0300_28_pose_structured_path",
+    "task_id": "task_o3_28_pose_fixed_route_consumer_20260713_0402",
+    "terminal_result_id": "terminal_result_synthetic_operator_dropoff_20260714_0729"
+  },
+  "identity_mismatches": [],
+  "live_route_execution_success": false,
+  "missing_identity_fields": [],
+  "missing_live_evidence": [
+    "source_mode_live",
+    "terminal_result_recorded",
+    "live_route_execution_success",
+    "operator_dropoff_acceptance",
+    "hil_pass",
+    "safe_to_control"
+  ],
+  "next_required_evidence": "feed this gate into delivery_state_live_success_gate only after source_mode=live, same-task terminal result, live route execution success, operator_dropoff_acceptance, HIL pass, safe_to_control, and same-window freshness all pass",
+  "normalized_source_mode": "synthetic",
+  "operator_dropoff_acceptance": {
+    "acceptance_id": "synthetic_operator_dropoff_acceptance_fixture",
+    "accepted": false,
+    "action_type": "operator_dropoff_acceptance",
+    "actor_source_label": "synthetic_fixture",
+    "occurred_at_utc": "2026-07-14T07:29:00Z",
+    "redaction_status": "passed",
+    "robot_id": "robot-synthetic-o5-operator-dropoff",
+    "safe_evidence_ref": "operator_dropoff_acceptance_synthetic_fixture.json",
+    "task_id": "task_o3_28_pose_fixed_route_consumer_20260713_0402"
+  },
+  "operator_dropoff_acceptance_gate_accepted": false,
+  "operator_dropoff_acceptance_gate_ready": true,
+  "operator_dropoff_acceptance_recorded": false,
+  "owner_role": "robot-software-engineer",
+  "packet_id": "packet_o3_28_pose_same_task_replay_7d57826142b0c79c",
+  "proof_boundary": "software_proof_o5_operator_dropoff_acceptance_gate_only",
+  "proof_boundary_class": "software_proof_o5_operator_acceptance_gate_only",
+  "real_world_delivery_proven": false,
+  "required_evidence": [
+    "source_mode_live",
+    "same_task_identity",
+    "terminal_result_recorded",
+    "live_route_execution_success",
+    "operator_dropoff_acceptance",
+    "hil_pass",
+    "safe_to_control",
+    "fresh_same_window_evidence",
+    "safe_evidence_ref"
+  ],
+  "rg_acceptance_anchors": [
+    "operator_dropoff_acceptance",
+    "software_proof_o5_operator_dropoff_acceptance_gate_only",
+    "delivery_success=false",
+    "blocked_missing_live_success_evidence",
+    "source_mode=live",
+    "safe_to_control"
+  ],
+  "robot_id": "robot-synthetic-o5-operator-dropoff",
+  "route_execution": {
+    "packet_id": "packet_o3_28_pose_same_task_replay_7d57826142b0c79c",
+    "robot_id": "robot-synthetic-o5-operator-dropoff",
+    "route_intent_id": "route_intent_20260713_0402_from_20260713_0300_28_pose_structured_path",
+    "success": false,
+    "task_id": "task_o3_28_pose_fixed_route_consumer_20260713_0402"
+  },
+  "route_execution_success": false,
+  "route_intent_id": "route_intent_20260713_0402_from_20260713_0300_28_pose_structured_path",
+  "safe_evidence_ref": "operator_dropoff_acceptance_synthetic_fixture.json",
+  "safe_evidence_ref_status": "pass",
+  "safe_to_control": false,
+  "same_evidence_window": true,
+  "same_task_identity_verified": true,
+  "schema": "trashbot.o5.operator_dropoff_acceptance_gate.v1",
+  "source_mode": "synthetic",
+  "source_mode_live": false,
+  "source_summary_ref": "synthetic_operator_dropoff_acceptance_fixture",
+  "state_machine_events": [
+    {
+      "event": "operator_dropoff_acceptance_gate",
+      "from_state": "idle",
+      "message": "operator dropoff acceptance gate blocked: source_mode_live, terminal_result_recorded, live_route_execution_success, operator_dropoff_acceptance, hil_pass, safe_to_control",
+      "to_state": "error"
+    }
+  ],
+  "task_id": "task_o3_28_pose_fixed_route_consumer_20260713_0402",
+  "terminal_result": {
+    "packet_id": "packet_o3_28_pose_same_task_replay_7d57826142b0c79c",
+    "recorded": false,
+    "robot_id": "robot-synthetic-o5-operator-dropoff",
+    "route_intent_id": "route_intent_20260713_0402_from_20260713_0300_28_pose_structured_path",
+    "task_id": "task_o3_28_pose_fixed_route_consumer_20260713_0402",
+    "terminal_result_id": "terminal_result_synthetic_operator_dropoff_20260714_0729"
+  },
+  "terminal_result_id": "terminal_result_synthetic_operator_dropoff_20260714_0729",
+  "terminal_result_recorded": false,
+  "unsafe_evidence_ref_reasons": []
+}

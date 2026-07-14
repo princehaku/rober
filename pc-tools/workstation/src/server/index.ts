@@ -21,6 +21,8 @@ import {
   buildO7RouteReplayPreview,
   buildO7RtcSignalingContractProbe,
   buildO7SafeCommandPreview,
+  buildO7VoiceRuntimePreflight,
+  buildO7VoiceRuntimeOfflineSmoke,
   buildO7VoicePreview,
   buildProofBoundary,
   buildLocalizationResetProxy,
@@ -40,6 +42,16 @@ import {
 import {
   buildO7ConsumerAnnotationExport,
   buildO7ConsumerAnnotationSubmit,
+  buildO7ConsumerDeliveryResultIntake,
+  buildO7ConsumerBoundedRouteGateIntake,
+  buildO7ConsumerBoundedRouteTerminalResultIntake,
+  buildO7ConsumerInferenceRequest,
+  buildO7ConsumerMissionEvidenceBundleExport,
+  buildO7ConsumerMissionEventAppend,
+  buildO7OperatorDropoffActionCapture,
+  buildO7ConsumerVoiceTtsDraftRequest,
+  buildO7VoiceSpeakerAckEvent,
+  buildO7ConsumerPhoneBrowserProofIntake,
 } from "./o7ConsumerReadAdapter";
 import { DEFAULT_ROBOT_API_BASE_URL } from "../shared/robotDefaults";
 import {
@@ -4907,8 +4919,8 @@ export function createWorkstationApp(): express.Express {
   });
 
   workstationApp.get("/api/o7/consumer-read/tasks", async (req, res) => {
-    // O7 列表主入口只读代理本机回环 O6 consumer read，不直连公网或机器人。
-    res.json(await buildO7ConsumerTaskList(queryString(req.query.baseUrl)));
+    // O7 列表主入口只读代理本机回环 O6 consumer read；原始 query 留给 adapter 做重复/unsafe fail-closed。
+    res.json(await buildO7ConsumerTaskList(queryString(req.query.baseUrl), req.query as Record<string, unknown>));
   });
 
   workstationApp.get("/api/o7/consumer-read/tasks/:taskId", async (req, res) => {
@@ -4929,6 +4941,116 @@ export function createWorkstationApp(): express.Express {
         queryString(req.query.baseUrl),
         req.params.taskId ?? "",
         req.body,
+      ),
+    );
+  });
+
+  workstationApp.post("/api/o7/consumer-read/tasks/:taskId/inference/request", async (req, res) => {
+    // inference request 只走 PC Node adapter；O6 路径固定，浏览器不能传模型 endpoint、token 或控制字段。
+    res.json(
+      await buildO7ConsumerInferenceRequest(
+        queryString(req.query.baseUrl),
+        req.params.taskId ?? "",
+        req.body,
+      ),
+    );
+  });
+
+  workstationApp.post("/api/o7/consumer-read/tasks/:taskId/delivery-result/intake", async (req, res) => {
+    // delivery result intake 只走 PC Node adapter；O6 field-evidence 路径固定且仍是 local/mock 证明边界。
+    res.json(
+      await buildO7ConsumerDeliveryResultIntake(
+        queryString(req.query.baseUrl),
+        req.params.taskId ?? "",
+        req.body,
+      ),
+    );
+  });
+
+  workstationApp.post("/api/o7/consumer-read/tasks/:taskId/events/append", async (req, res) => {
+    // mission event append 只走 PC Node adapter；O6 路径固定，浏览器不能传任意 archive endpoint。
+    res.json(
+      await buildO7ConsumerMissionEventAppend(
+        queryString(req.query.baseUrl),
+        req.params.taskId ?? "",
+        req.body,
+      ),
+    );
+  });
+
+  workstationApp.post("/api/o7/consumer-read/tasks/:taskId/operator/dropoff-acceptance/request", async (req, res) => {
+    // operator dropoff capture 只写 O6 local/mock event；不证明真实 operator、送达、路线、HIL 或控制。
+    res.json(
+      await buildO7OperatorDropoffActionCapture(
+        queryString(req.query.baseUrl),
+        req.params.taskId ?? "",
+        req.body,
+      ),
+    );
+  });
+
+  workstationApp.post("/api/o7/consumer-read/tasks/:taskId/voice/tts-draft/request", async (req, res) => {
+    // voice/TTS draft request 只写 O6 local/mock event；不连接语音 API、不发音频、不派发喇叭。
+    res.json(
+      await buildO7ConsumerVoiceTtsDraftRequest(
+        queryString(req.query.baseUrl),
+        req.params.taskId ?? "",
+        req.body,
+      ),
+    );
+  });
+
+  workstationApp.post("/api/o7/consumer-read/tasks/:taskId/voice/speaker-ack/request", async (req, res) => {
+    // speaker ACK/failure request 只写 O6 local/mock event；不证明真实播放、喇叭 ACK 或控制闭环。
+    res.json(
+      await buildO7VoiceSpeakerAckEvent(
+        queryString(req.query.baseUrl),
+        req.params.taskId ?? "",
+        req.body,
+      ),
+    );
+  });
+
+  workstationApp.post("/api/o7/consumer-read/tasks/:taskId/phone-browser-proof/intake", async (req, res) => {
+    // phone/browser proof intake 只走 PC Node adapter；O6 field-evidence 路径固定且只接收安全摘要。
+    res.json(
+      await buildO7ConsumerPhoneBrowserProofIntake(
+        queryString(req.query.baseUrl),
+        req.params.taskId ?? "",
+        req.body,
+      ),
+    );
+  });
+
+  workstationApp.post("/api/o7/consumer-read/tasks/:taskId/bounded-route-gate/intake", async (req, res) => {
+    // bounded route gate intake 只写 O6 local/mock 安全摘要；不触发路线执行、/cmd_vel 或底盘控制。
+    res.json(
+      await buildO7ConsumerBoundedRouteGateIntake(
+        queryString(req.query.baseUrl),
+        req.params.taskId ?? "",
+        req.body,
+      ),
+    );
+  });
+
+  workstationApp.post("/api/o7/consumer-read/tasks/:taskId/bounded-route-terminal-result/intake", async (req, res) => {
+    // terminal result intake 只写 O6 local/mock 终态材料；不触发路线执行、送达声明或底盘控制。
+    res.json(
+      await buildO7ConsumerBoundedRouteTerminalResultIntake(
+        queryString(req.query.baseUrl),
+        req.params.taskId ?? "",
+        req.body,
+      ),
+    );
+  });
+
+  workstationApp.get("/api/o7/consumer-read/tasks/:taskId/mission-evidence/export", async (req, res) => {
+    // mission evidence bundle export 只读 selected-task O6 detail，返回摘要 receipt，不生成真实文件。
+    res.json(
+      await buildO7ConsumerMissionEvidenceBundleExport(
+        queryString(req.query.baseUrl),
+        req.params.taskId ?? "",
+        queryString(req.query.format) || "json",
       ),
     );
   });
@@ -4988,6 +5110,24 @@ export function createWorkstationApp(): express.Express {
   workstationApp.get("/api/o7/voice-preview", async (req, res) => {
     // Voice preview 只读取本地 ASR/TTS fixture 摘要，不连接语音 API、不发送 TTS、不播放音频。
     res.json(await buildO7VoicePreview({ fixtureJson: queryString(req.query.fixtureJson) }));
+  });
+
+  workstationApp.get("/api/o7/voice-runtime/preflight", async (req, res) => {
+    // Voice runtime preflight 只检查 PC/Node 本地配置，不连云端、不开麦克风/喇叭、不写 O6 events。
+    res.json(await buildO7VoiceRuntimePreflight({
+      configJson: queryString(req.query.configJson),
+      mode: queryString(req.query.mode),
+    }));
+  });
+
+  workstationApp.get("/api/o7/voice-runtime/offline-smoke", async (req, res) => {
+    // Offline smoke 生成本地 deterministic trace；它消费 preflight 状态，但不连语音 API 或音频设备。
+    res.json(await buildO7VoiceRuntimeOfflineSmoke({
+      configJson: queryString(req.query.configJson),
+      fixtureJson: queryString(req.query.fixtureJson),
+      mode: queryString(req.query.mode),
+      taskId: queryString(req.query.taskId),
+    }));
   });
 
   workstationApp.get("/api/o7/safe-command-preview", async (req, res) => {

@@ -1,0 +1,1098 @@
+{
+  "schema": "trashbot.pc_tools_workstation.o7_live_relay_headless_browser_smoke.v1",
+  "generated_at_ms": 1784019166119,
+  "generated_at_iso": "2026-07-14T08:52:46.119Z",
+  "proof_boundary": "software_proof_o7_live_relay_headless_browser_smoke_only",
+  "artifact_status": "headless_browser_smoke_ready_not_delivery_proof",
+  "endpoint_transport": "live_loopback_http_socket",
+  "browser_runtime": "headless_chrome",
+  "browser_smoke_status": "live_headless_chrome_executed",
+  "server_started": true,
+  "server_host": "127.0.0.1",
+  "server_port": 17002,
+  "server_base_url": "http://127.0.0.1:17002",
+  "listen_attempts": [
+    {
+      "host": "127.0.0.1",
+      "port": 17002,
+      "status": "listening"
+    }
+  ],
+  "http_smoke_executed": true,
+  "headless_browser_smoke_executed": true,
+  "chrome_path": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+  "chrome_execution_mode": "--headless=new --dump-dom",
+  "health_schema": "trashbot.pc_tools_workstation.health.v1",
+  "operator_console_schema": "trashbot.o7.operator_console.v1",
+  "cloud_operator_console_probe_schema": "trashbot.pc_tools_workstation.o7_cloud_operator_console_probe.v1",
+  "probe_status": "loaded_fail_closed_contract",
+  "response_false_field_checks": [
+    "/api/health.delivery_success=false_or_absent",
+    "/api/health.safe_to_control=false_or_absent",
+    "/api/health.route_execution_success=false_or_absent",
+    "/api/health.hil_pass=false_or_absent",
+    "/api/health.robot_control_executed=false_or_absent",
+    "/api/health.connects_cloud_production=false_or_absent",
+    "/api/health.primary_actions_enabled=false_or_absent",
+    "/api/o7/operator-console.delivery_success=false_or_absent",
+    "/api/o7/operator-console.safe_to_control=false_or_absent",
+    "/api/o7/operator-console.route_execution_success=false_or_absent",
+    "/api/o7/operator-console.hil_pass=false_or_absent",
+    "/api/o7/operator-console.robot_control_executed=false_or_absent",
+    "/api/o7/operator-console.connects_cloud_production=false_or_absent",
+    "/api/o7/operator-console.primary_actions_enabled=false_or_absent",
+    "/api/o7/cloud-operator-console-probe?baseUrl=http%3A%2F%2F127.0.0.1%3A17002.delivery_success=false_or_absent",
+    "/api/o7/cloud-operator-console-probe?baseUrl=http%3A%2F%2F127.0.0.1%3A17002.safe_to_control=false_or_absent",
+    "/api/o7/cloud-operator-console-probe?baseUrl=http%3A%2F%2F127.0.0.1%3A17002.route_execution_success=false_or_absent",
+    "/api/o7/cloud-operator-console-probe?baseUrl=http%3A%2F%2F127.0.0.1%3A17002.hil_pass=false_or_absent",
+    "/api/o7/cloud-operator-console-probe?baseUrl=http%3A%2F%2F127.0.0.1%3A17002.robot_control_executed=false_or_absent",
+    "/api/o7/cloud-operator-console-probe?baseUrl=http%3A%2F%2F127.0.0.1%3A17002.connects_cloud_production=false_or_absent",
+    "/api/o7/cloud-operator-console-probe?baseUrl=http%3A%2F%2F127.0.0.1%3A17002.primary_actions_enabled=false_or_absent"
+  ],
+  "browser_observations": {
+    "health": {
+      "endpoint": "/api/health",
+      "method": "GET",
+      "url": "http://127.0.0.1:17002/api/health",
+      "browser_runtime": "headless_chrome",
+      "chrome_path": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+      "duration_ms": 7306,
+      "dom_length": 4998,
+      "stderr_excerpt": "",
+      "ok": true,
+      "schema": "trashbot.pc_tools_workstation.health.v1",
+      "payload": {
+        "schema": "trashbot.pc_tools_workstation.health.v1",
+        "source": "software_proof",
+        "proof_status": "not_proven",
+        "safe_to_control": false,
+        "delivery_success": false,
+        "primary_actions_enabled": false,
+        "pc_only": true,
+        "version": "0.2.0",
+        "mode": "pc_only_readonly_workstation",
+        "workstation_host": "0.0.0.0",
+        "workstation_port": 7001,
+        "workstation_listen_address": "http://0.0.0.0:7001",
+        "default_robot_api_base_url": "http://192.168.1.11:8787",
+        "server_started_at_ms": 1784019166107,
+        "server_started_at_iso": "2026-07-14T08:52:46.107Z",
+        "health_readback_only": true,
+        "robot_api_probe_executed": false,
+        "sends_motion_when_clicked": false,
+        "starts_nav2": false,
+        "starts_manual": false,
+        "starts_keyboard": false,
+        "starts_free_roam": false,
+        "starts_map_runtime": false,
+        "submits_delivery": false,
+        "stops_motion": false,
+        "api_routes": [
+          "/api/health",
+          "/api/tools/evidence",
+          "/api/hardware/wave-rover/material-coverage",
+          "/api/tools/hardware-materials",
+          "/api/tools/training-labeling",
+          "/api/route/debug-summary",
+          "/api/o7/operator-console",
+          "/api/o7/operator-console/acceptance",
+          "/api/o7/previews/acceptance",
+          "/api/o7/live-endpoints/manifest",
+          "/api/o7/cloud-operator-console-probe?baseUrl=<local-loopback-url>",
+          "/api/o7/cloud-archive/tasks-probe?baseUrl=<local-loopback-url>",
+          "/api/o7/rtc-signaling-contract-probe?baseUrl=<local-loopback-url>",
+          "/api/o7/realtime-elevator-probe?baseUrl=<local-loopback-url>",
+          "/api/o7/realtime-elevator-preview?fixtureJson=<local-json>",
+          "/api/o7/route-replay-preview?fixtureJson=<local-json>",
+          "/api/o7/labeling-preview?fixtureJson=<local-json>",
+          "/api/o7/field-evidence-consumer-ingest?manifestJson=<local-json>&routeReplayFixtureJson=<local-json>&labelingFixtureJson=<local-json>",
+          "/api/o7/consumer-read/tasks/<task_id>/inference/request?baseUrl=<local-loopback-url>",
+          "/api/o7/consumer-read/tasks/<task_id>/events/append?baseUrl=<local-loopback-url>",
+          "/api/o7/consumer-read/tasks/<task_id>/operator/dropoff-acceptance/request?baseUrl=<local-loopback-url>",
+          "/api/o7/consumer-read/tasks/<task_id>/voice/tts-draft/request?baseUrl=<local-loopback-url>",
+          "/api/o7/voice-preview?fixtureJson=<local-json>",
+          "/api/o7/voice-runtime/preflight?mode=<offline_stub>",
+          "/api/o7/voice-runtime/offline-smoke?mode=<offline_stub>&taskId=<task-id>&fixtureJson=<local-json>",
+          "/api/o7/safe-command-preview?fixtureJson=<local-json>",
+          "/api/o7/cloud-archive/tasks?archiveJson=<local-json>",
+          "/api/robot-control/summary?baseUrl=<robot-api-base-url>",
+          "/api/robot-control/base/manual?baseUrl=<robot-api-base-url>",
+          "/api/robot-control/base/first-jog?baseUrl=<robot-api-base-url>",
+          "/api/robot-control/base/stop?baseUrl=<robot-api-base-url>",
+          "/api/robot-control/base/feedback-samples?baseUrl=<robot-api-base-url>",
+          "/api/robot-control/radar/status?baseUrl=<robot-api-base-url>",
+          "/api/robot-control/radar/scan-proof/refresh?baseUrl=<robot-api-base-url>",
+          "/api/robot-control/radar/start?baseUrl=<robot-api-base-url>",
+          "/api/robot-control/radar/stop?baseUrl=<robot-api-base-url>",
+          "/api/robot-control/map/proof/refresh?baseUrl=<robot-api-base-url>",
+          "/api/robot-control/map/list?baseUrl=<robot-api-base-url>",
+          "/api/robot-control/map/preview?baseUrl=<robot-api-base-url>",
+          "/api/robot-control/map/start?baseUrl=<robot-api-base-url>",
+          "/api/robot-control/map/save?baseUrl=<robot-api-base-url>",
+          "/api/robot-control/map/reset?baseUrl=<robot-api-base-url>",
+          "/api/robot-control/free-roam/autonomy/start?baseUrl=<robot-api-base-url>",
+          "/api/robot-control/free-roam/autonomy/stop?baseUrl=<robot-api-base-url>",
+          "/api/robot-control/nav2/start?baseUrl=<robot-api-base-url>",
+          "/api/robot-control/nav2/stop?baseUrl=<robot-api-base-url>",
+          "/api/robot-control/nav2/proof/refresh?baseUrl=<robot-api-base-url>",
+          "/api/robot-control/nav2/goal/preflight?baseUrl=<robot-api-base-url>",
+          "/api/robot-control/nav2/goal/execute?baseUrl=<robot-api-base-url>",
+          "/api/robot-control/nav2/goal/execution/latest?baseUrl=<robot-api-base-url>",
+          "/api/robot-control/delivery/latest?baseUrl=<robot-api-base-url>",
+          "/api/robot-control/delivery/check?baseUrl=<robot-api-base-url>",
+          "/api/robot-control/delivery/complete?baseUrl=<robot-api-base-url>",
+          "/api/robot-control/localize/reset?baseUrl=<robot-api-base-url>",
+          "/api/robot-control/camera/offer?baseUrl=<robot-api-base-url>",
+          "/api/robot-control/camera/first-frame/probe?baseUrl=<robot-api-base-url>",
+          "/api/robot-control/camera/usb-recovery?baseUrl=<robot-api-base-url>",
+          "/api/robot-control/camera/peers/<peer-id>/close?baseUrl=<robot-api-base-url>",
+          "/api/robot-control/operator/report?baseUrl=<robot-api-base-url>",
+          "/api/proof-boundary"
+        ]
+      }
+    },
+    "operator_console": {
+      "endpoint": "/api/o7/operator-console",
+      "method": "GET",
+      "url": "http://127.0.0.1:17002/api/o7/operator-console",
+      "browser_runtime": "headless_chrome",
+      "chrome_path": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+      "duration_ms": 12043,
+      "dom_length": 21285,
+      "stderr_excerpt": "",
+      "ok": true,
+      "schema": "trashbot.o7.operator_console.v1",
+      "payload": {
+        "schema": "trashbot.o7.operator_console.v1",
+        "source": "software_proof",
+        "proof_status": "not_proven",
+        "safe_to_control": false,
+        "delivery_success": false,
+        "primary_actions_enabled": false,
+        "pc_only": true,
+        "contract_source": "cloud-relay/src/ros2_trashbot_cloud_relay/remote_cloud_relay.py",
+        "workstation_endpoint": "/api/o7/operator-console",
+        "cloud_api_status": "draft_blocked_not_proven",
+        "robot_connection": "not_connected_by_pc",
+        "realtime_stream_status": "blocked_not_proven",
+        "operator_mode": "observe_only",
+        "board_media_preflight_required": true,
+        "board_media_preflight_schema": "trashbot.o7_board_media_preflight.v1",
+        "board_media_preflight_state": "blocked",
+        "board_media_preflight_summary": {
+          "schema": "trashbot.o7_board_media_preflight.v1",
+          "schema_version": 1,
+          "evidence_boundary": "software_proof_o7_board_media_preflight_contract",
+          "source": "operator_media_preflight",
+          "overall_state": "blocked",
+          "safe_to_control": false,
+          "primary_actions_enabled": false,
+          "device_probe_allowed": false,
+          "device_probe_attempted": false,
+          "software_proof_only": true,
+          "blocked_reasons": [
+            "board_media_preflight_not_collected_by_pc",
+            "rtc_signaling_stun_turn_not_proven",
+            "camera_video_source_not_proven",
+            "audio_input_output_not_proven",
+            "asr_tts_runtime_not_proven"
+          ],
+          "not_proven": [
+            "real_rtc_session",
+            "real_camera_video_source",
+            "real_audio_capture",
+            "real_audio_playback",
+            "real_asr_stream",
+            "real_tts_playback",
+            "orange_pi_media_runtime",
+            "on_robot_media_smoke"
+          ],
+          "next_required_evidence": [
+            "resolve_blocked_preflight_items",
+            "orange_pi_camera_device_enumeration",
+            "orange_pi_audio_input_output_enumeration",
+            "rtc_signaling_stun_turn_trace",
+            "camera_frame_evidence_with_timestamp",
+            "asr_partial_and_final_transcript_trace",
+            "tts_audio_playback_trace",
+            "cpu_encoding_budget_trace",
+            "on_robot_media_smoke_with_no_chassis_motion"
+          ]
+        },
+        "realtime_map_snapshot": {
+          "schema": "trashbot.o7.realtime_map_snapshot.v1",
+          "schema_version": 1,
+          "source": "software_proof",
+          "snapshot_status": "blocked_not_proven",
+          "safe_to_control": false,
+          "primary_actions_enabled": false,
+          "map_ref": {
+            "value": "not_connected",
+            "status": "not_proven",
+            "evidence_ref": "missing_cloud_realtime_map_ref"
+          },
+          "map_frame": {
+            "value": "map",
+            "status": "contract_placeholder_not_tf",
+            "frame_source": "cloud_contract_draft"
+          },
+          "robot_pose": {
+            "x_m": null,
+            "y_m": null,
+            "yaw_rad": null,
+            "pose_source": "not_connected",
+            "status": "not_proven"
+          },
+          "pose_freshness": {
+            "last_update_ms": null,
+            "age_ms": null,
+            "latency_lt_2s_proven": false,
+            "status": "blocked_no_realtime_stream"
+          },
+          "route_membership": {
+            "route_id": "not_connected",
+            "on_route": false,
+            "in_elevator_zone": false,
+            "status": "not_proven",
+            "reason": "cloud_realtime_map_pose_stream_not_connected"
+          },
+          "blocked_reasons": [
+            "cloud_realtime_api_draft",
+            "ros2_tf_forwarding_not_proven",
+            "map_artifact_not_connected",
+            "robot_position_latency_lt_2s_not_proven"
+          ],
+          "not_proven": [
+            "real_ros2_tf",
+            "real_map_artifact",
+            "real_robot_pose",
+            "real_route_membership",
+            "real_elevator_zone_membership",
+            "robot_position_latency_lt_2s"
+          ]
+        },
+        "elevator_state_snapshot": {
+          "schema": "trashbot.o7.elevator_state_snapshot.v1",
+          "schema_version": 1,
+          "source": "software_proof",
+          "snapshot_status": "blocked_not_proven",
+          "safe_to_control": false,
+          "primary_actions_enabled": false,
+          "state_chain": [
+            {
+              "state": "not_connected",
+              "status": "not_proven",
+              "evidence_ref": "missing_cloud_elevator_state_chain"
+            }
+          ],
+          "current_state": "not_connected",
+          "current_floor_evidence": {
+            "floor_label": "not_connected",
+            "confidence": null,
+            "evidence_ref": "missing_floor_evidence",
+            "status": "not_proven"
+          },
+          "target_floor": {
+            "floor_label": "not_connected",
+            "confirmation_status": "not_proven"
+          },
+          "human_takeover": {
+            "required": true,
+            "reason": "real_elevator_state_chain_not_proven",
+            "operator_action": "keep_observe_only_until_cloud_archive_and_field_evidence_exist"
+          },
+          "blocked_reasons": [
+            "elevator_event_archive_not_connected",
+            "real_elevator_door_state_not_proven",
+            "floor_recognition_not_proven",
+            "human_takeover_reason_not_backfilled_from_task_record"
+          ],
+          "not_proven": [
+            "real_elevator_state_chain",
+            "real_current_floor",
+            "real_target_floor_confirmation",
+            "real_elevator_arrival",
+            "real_human_takeover_reason"
+          ]
+        },
+        "route_replay_snapshot": {
+          "schema": "trashbot.o7.route_replay_snapshot.v1",
+          "schema_version": 1,
+          "source": "software_proof",
+          "snapshot_status": "blocked_not_proven",
+          "safe_to_control": false,
+          "primary_actions_enabled": false,
+          "playback_available": false,
+          "real_archive_connected": false,
+          "task_selector": {
+            "source_contract": "history.route_replay.v1",
+            "status": "blocked_no_cloud_task_archive",
+            "available_task_count": 0,
+            "selected_task_id": "not_connected",
+            "task_list_ref": "missing_o6_cloud_task_archive",
+            "selection_required": true
+          },
+          "selected_task": {
+            "task_id": "not_connected",
+            "robot_id": "not_connected",
+            "route_id": "not_connected",
+            "started_at_ms": null,
+            "completed_at_ms": null,
+            "status": "not_proven",
+            "evidence_ref": "missing_selected_task_record"
+          },
+          "trajectory": {
+            "frame_count": 0,
+            "sample_frames": [],
+            "frame_schema": "pending_cloud_trajectory_frame_v1",
+            "map_frame": "not_connected",
+            "status": "blocked_no_trajectory_api"
+          },
+          "playback_cursor": {
+            "frame_index": null,
+            "timestamp_ms": null,
+            "playing": false,
+            "speed": 0,
+            "status": "blocked_not_available"
+          },
+          "keyframes": {
+            "count": 0,
+            "sample_refs": [],
+            "status": "blocked_no_keyframe_archive"
+          },
+          "evidence_refs": {
+            "task_archive": "missing_o6_cloud_task_archive",
+            "trajectory_api": "missing_trajectory_api",
+            "keyframe_archive": "missing_keyframe_archive",
+            "state_transition_archive": "missing_state_transition_archive"
+          },
+          "state_transitions": {
+            "count": 0,
+            "sample": [],
+            "status": "blocked_no_state_transition_archive",
+            "gaps": [
+              "cloud_task_archive_not_connected",
+              "trajectory_frame_schema_not_backfilled",
+              "keyframe_evidence_refs_not_backfilled",
+              "state_transition_timeline_not_backfilled"
+            ]
+          },
+          "blocked_reasons": [
+            "o6_cloud_task_archive_not_connected",
+            "history_route_replay_api_draft",
+            "trajectory_frames_not_available",
+            "keyframe_evidence_refs_not_available",
+            "state_transitions_not_available"
+          ],
+          "not_proven": [
+            "real_history_task_list",
+            "real_selected_task",
+            "real_trajectory_frames",
+            "real_route_playback_cursor",
+            "real_keyframe_evidence_refs",
+            "real_state_transition_timeline",
+            "cloud_archive_query_latency"
+          ],
+          "next_required_evidence": [
+            "o6_cloud_task_archive_query_contract",
+            "history_route_replay_task_list_fixture",
+            "trajectory_frame_schema_with_map_frame_and_timestamp",
+            "keyframe_evidence_ref_archive_sample",
+            "state_transition_timeline_archive_sample",
+            "pc_playback_cursor_bound_to_cloud_frames_without_robot_control"
+          ]
+        },
+        "labeling_queue_snapshot": {
+          "schema": "trashbot.o7.labeling_queue_snapshot.v1",
+          "schema_version": 1,
+          "source": "software_proof",
+          "snapshot_status": "blocked_not_proven",
+          "safe_to_control": false,
+          "primary_actions_enabled": false,
+          "submit_enabled": false,
+          "rollback_enabled": false,
+          "real_annotation_api_connected": false,
+          "dataset_export_available": false,
+          "review_queue": {
+            "source_contract": "labeling.review_queue.v1",
+            "status": "blocked_no_annotation_api",
+            "available_item_count": 0,
+            "assigned_operator": "not_connected",
+            "queue_ref": "missing_o6_annotation_review_queue",
+            "selection_required": true
+          },
+          "selected_item": {
+            "item_id": "not_connected",
+            "task_id": "not_connected",
+            "frame_id": "not_connected",
+            "media_ref": "missing_review_item_media_ref",
+            "evidence_ref": "missing_selected_labeling_item_record",
+            "status": "not_proven"
+          },
+          "label_schema": {
+            "schema_ref": "missing_label_schema",
+            "version": "not_connected",
+            "status": "blocked_no_label_schema_api",
+            "required_fields": []
+          },
+          "allowed_label_types": [
+            {
+              "type": "elevator_door_state",
+              "status": "contract_placeholder_not_api",
+              "values": [
+                "open",
+                "closed",
+                "unknown"
+              ]
+            },
+            {
+              "type": "floor_label",
+              "status": "contract_placeholder_not_api",
+              "values": []
+            },
+            {
+              "type": "obstacle_type",
+              "status": "contract_placeholder_not_api",
+              "values": [
+                "none",
+                "person",
+                "cart",
+                "trash_bag",
+                "unknown"
+              ]
+            }
+          ],
+          "draft_labels": {
+            "count": 0,
+            "items": [],
+            "status": "blocked_no_selected_item",
+            "autosave_available": false
+          },
+          "submit_audit": {
+            "status": "blocked_not_available",
+            "endpoint": "POST /api/o6/annotations (future, disabled)",
+            "last_submit_id": "not_connected",
+            "idempotency_key_required": true,
+            "audit_ref": "missing_submit_audit_log"
+          },
+          "rollback_audit": {
+            "status": "blocked_not_available",
+            "endpoint": "POST /api/o6/annotations/rollback (future, disabled)",
+            "last_rollback_id": "not_connected",
+            "requires_reason": true,
+            "audit_ref": "missing_rollback_audit_log"
+          },
+          "dataset_export": {
+            "status": "blocked_not_available",
+            "export_ref": "missing_training_dataset_export",
+            "supported_formats": [],
+            "gaps": [
+              "o6_annotation_api_not_connected",
+              "accepted_label_schema_not_proven",
+              "reviewed_items_not_available",
+              "dataset_manifest_export_not_available",
+              "training_split_policy_not_defined"
+            ]
+          },
+          "blocked_reasons": [
+            "o6_annotation_api_not_connected",
+            "labeling_review_queue_api_draft",
+            "label_schema_not_available",
+            "selected_review_item_not_available",
+            "submit_audit_not_available",
+            "rollback_audit_not_available",
+            "training_dataset_export_not_available"
+          ],
+          "not_proven": [
+            "real_labeling_review_queue",
+            "real_selected_labeling_item",
+            "real_frame_or_screenshot_media",
+            "real_label_schema",
+            "real_allowed_label_types_from_cloud",
+            "real_draft_label_autosave",
+            "real_annotation_submit",
+            "real_annotation_rollback",
+            "real_training_dataset_export"
+          ],
+          "next_required_evidence": [
+            "o6_annotation_review_queue_query_contract",
+            "label_schema_fixture_with_allowed_types",
+            "selected_review_item_with_media_evidence_ref",
+            "draft_label_payload_schema",
+            "submit_annotation_audit_log_sample",
+            "rollback_annotation_audit_log_sample",
+            "dataset_export_manifest_contract",
+            "pc_labeling_panel_bound_to_cloud_api_without_robot_control"
+          ]
+        },
+        "voice_asr_tts_snapshot": {
+          "schema": "trashbot.o7.voice_asr_tts_snapshot.v1",
+          "schema_version": 1,
+          "source": "software_proof",
+          "snapshot_status": "blocked_not_proven",
+          "safe_to_control": false,
+          "primary_actions_enabled": false,
+          "asr_stream_connected": false,
+          "tts_send_enabled": false,
+          "speaker_dispatch_enabled": false,
+          "real_voice_api_connected": false,
+          "real_asr_tts_runtime_connected": false,
+          "media_preflight_dependency": {
+            "required": true,
+            "source_schema": "trashbot.o7_board_media_preflight.v1",
+            "status": "blocked",
+            "dependency_ref": "board_media_preflight_summary"
+          },
+          "asr_stream": {
+            "source_contract": "voice.asr_tts_operator.v1",
+            "status": "blocked_no_voice_api",
+            "connection_state": "not_connected",
+            "last_event_at_ms": null,
+            "partial_slot": {
+              "text": "",
+              "status": "empty_not_connected",
+              "evidence_ref": "missing_asr_partial_transcript_trace"
+            },
+            "final_slot": {
+              "text": "",
+              "status": "empty_not_connected",
+              "evidence_ref": "missing_asr_final_transcript_trace"
+            }
+          },
+          "tts_draft": {
+            "text": "",
+            "status": "draft_disabled",
+            "max_chars": 0,
+            "language": "zh-CN",
+            "voice_profile": "not_connected",
+            "confirmation_required": true
+          },
+          "speaker_dispatch": {
+            "status": "blocked_not_available",
+            "endpoint": "POST /api/o7/operator/voice/tts (future, disabled)",
+            "sends_to_robot": false,
+            "idempotency_key_required": true,
+            "timeout_ms": null,
+            "recovery_path": "Keep observe_only mode until cloud voice ACK, speaker ACK, failure event, and board media smoke exist."
+          },
+          "command_ack_audit": {
+            "ack_status": "blocked_no_ack_contract",
+            "last_command_id": "not_connected",
+            "audit_ref": "missing_voice_command_audit_log",
+            "speaker_ack_ref": "missing_speaker_dispatch_ack",
+            "failure_event_ref": "missing_speaker_failure_event"
+          },
+          "blocked_reasons": [
+            "voice_api_not_connected",
+            "asr_event_stream_not_connected",
+            "tts_command_ack_contract_pending",
+            "speaker_dispatch_ack_not_proven",
+            "board_media_preflight_blocked",
+            "real_asr_tts_runtime_not_connected"
+          ],
+          "not_proven": [
+            "real_voice_api_connected",
+            "real_asr_stream",
+            "real_asr_partial_transcript",
+            "real_asr_final_transcript",
+            "real_tts_draft_send",
+            "real_tts_playback",
+            "real_speaker_dispatch_ack",
+            "real_audio_device",
+            "real_rtc_session",
+            "real_asr_tts_runtime_connected"
+          ],
+          "next_required_evidence": [
+            "voice_asr_tts_cloud_api_contract",
+            "asr_stream_connection_trace_with_partial_and_final_events",
+            "tts_draft_payload_schema_with_voice_profile",
+            "tts_command_ack_and_audit_log_sample",
+            "speaker_dispatch_ack_or_failure_event_sample",
+            "board_media_preflight_audio_input_output_pass",
+            "rtc_media_smoke_with_no_chassis_motion"
+          ]
+        },
+        "safe_command_snapshot": {
+          "schema": "trashbot.o7.safe_command_snapshot.v1",
+          "schema_version": 1,
+          "source": "software_proof",
+          "snapshot_status": "blocked_not_proven",
+          "safe_to_control": false,
+          "primary_actions_enabled": false,
+          "command_dispatch_enabled": false,
+          "manual_control_enabled": false,
+          "navigate_goal_enabled": false,
+          "keyboard_control_enabled": false,
+          "real_command_api_connected": false,
+          "real_robot_ack_connected": false,
+          "manual_turn_envelope": {
+            "source_contract": "operator.safe_command_preview.v1",
+            "status": "blocked_not_proven",
+            "sends_to_robot": false,
+            "accepted_input_slots": [
+              "ui_turn_left",
+              "ui_turn_right",
+              "keyboard_arrow_keys_disabled"
+            ],
+            "requested_direction": "not_connected",
+            "velocity_limited": true,
+            "steering_limited": true,
+            "evidence_ref": "missing_manual_turn_command_envelope_trace"
+          },
+          "velocity_limits": {
+            "max_linear_mps": null,
+            "max_angular_radps": null,
+            "source": "not_connected",
+            "status": "blocked_no_robot_hil_limits",
+            "hardware_verified": false
+          },
+          "steering_limits": {
+            "max_steering_angle_rad": null,
+            "max_turn_rate_radps": null,
+            "source": "not_connected",
+            "status": "blocked_no_robot_hil_limits",
+            "hardware_verified": false
+          },
+          "navigate_goal_envelope": {
+            "source_contract": "operator.safe_command_preview.v1",
+            "status": "blocked_not_proven",
+            "sends_to_robot": false,
+            "goal_source": "map_click_disabled",
+            "requires_map_goal_slot": true,
+            "evidence_ref": "missing_navigate_goal_command_envelope_trace"
+          },
+          "map_goal_slot": {
+            "map_frame": "map",
+            "x_m": null,
+            "y_m": null,
+            "yaw_rad": null,
+            "status": "empty_not_connected",
+            "evidence_ref": "missing_map_goal_selection_trace"
+          },
+          "cloud_command_endpoint": {
+            "manual_turn": "POST /api/o7/operator/commands/manual-turn (future, disabled)",
+            "navigate_goal": "POST /api/o7/operator/commands/navigate-goal (future, disabled)",
+            "status": "future_disabled",
+            "sends_to_robot": false
+          },
+          "idempotency_key_requirement": {
+            "required": true,
+            "header": "Idempotency-Key",
+            "status": "required_not_connected",
+            "replay_policy": "reject_duplicate_future_contract"
+          },
+          "confirmation_policy": {
+            "manual_turn_requires_confirmation": true,
+            "navigate_goal_requires_confirmation": true,
+            "keyboard_control_requires_hold": true,
+            "status": "blocked_no_confirmation_ui"
+          },
+          "robot_ack_status": {
+            "ack_status": "blocked_no_robot_ack_contract",
+            "last_command_id": "not_connected",
+            "ack_ref": "missing_robot_command_ack",
+            "timeout_ms": null,
+            "cancel_ack_ref": "missing_robot_cancel_ack",
+            "stop_ack_ref": "missing_robot_stop_ack",
+            "recovery_ref": "missing_robot_recovery_event"
+          },
+          "evidence_gaps": {
+            "timeout": "missing_command_timeout_policy_and_trace",
+            "cancel": "missing_cancel_command_ack_trace",
+            "stop": "missing_stop_command_ack_trace",
+            "recovery": "missing_robot_recovery_event_trace"
+          },
+          "blocked_reasons": [
+            "safe_command_api_not_connected",
+            "manual_turn_command_dispatch_disabled",
+            "navigate_goal_dispatch_disabled",
+            "keyboard_control_disabled",
+            "velocity_and_steering_limits_not_hil_verified",
+            "robot_ack_timeout_cancel_stop_recovery_not_proven"
+          ],
+          "not_proven": [
+            "real_manual_turn_control",
+            "real_velocity_control",
+            "real_steering_control",
+            "real_keyboard_control",
+            "real_navigate_goal_dispatch",
+            "real_cloud_command_api_connected",
+            "real_robot_command_ack",
+            "real_timeout_cancel_stop_recovery",
+            "real_chassis_safety"
+          ],
+          "next_required_evidence": [
+            "cloud_safe_command_api_contract_with_bearer_auth",
+            "idempotency_key_replay_rejection_trace",
+            "manual_turn_payload_schema_with_velocity_and_steering_limits",
+            "navigate_goal_payload_schema_with_map_frame_and_goal_slot",
+            "operator_confirmation_ui_policy_trace",
+            "robot_command_ack_timeout_trace",
+            "cancel_stop_recovery_ack_trace",
+            "hardware_hil_or_controlled_field_safety_evidence"
+          ]
+        },
+        "manual_control_policy": {
+          "pc_direct_robot_connection": false,
+          "cloud_mediated_only": true,
+          "command_dispatch_enabled": false,
+          "manual_control_enabled": false,
+          "navigate_goal_enabled": false,
+          "keyboard_control_enabled": false,
+          "real_command_api_connected": false,
+          "real_robot_ack_connected": false,
+          "confirmation_required_before_future_dispatch": true,
+          "success_claim_allowed": false
+        },
+        "kr_views": [
+          {
+            "id": "O7-KR1",
+            "title": "实时地图与机器人位置",
+            "status": "blocked",
+            "cloud_contract": "realtime.map_pose.v1",
+            "pc_surface": "Map/Pose panel",
+            "current_view": [
+              "map_ref=draft",
+              "pose=not_proven",
+              "route_membership=blocked"
+            ],
+            "blocked_by": [
+              "cloud realtime stream not connected",
+              "ROS2 /tf forwarding not proven"
+            ],
+            "next_required_contract": "Cloud must expose robot pose snapshots with map frame and freshness timestamp."
+          },
+          {
+            "id": "O7-KR2",
+            "title": "电梯状态展示",
+            "status": "blocked",
+            "cloud_contract": "realtime.elevator_state.v1",
+            "pc_surface": "Elevator state panel",
+            "current_view": [
+              "state_chain=draft",
+              "floor_evidence=not_proven",
+              "handoff_reason=blocked"
+            ],
+            "blocked_by": [
+              "elevator event archive not connected",
+              "real elevator evidence not proven"
+            ],
+            "next_required_contract": "Cloud must expose elevator state chain and evidence refs per task."
+          },
+          {
+            "id": "O7-KR3",
+            "title": "历史路线回放",
+            "status": "draft",
+            "cloud_contract": "history.route_replay.v1",
+            "pc_surface": "Route replay panel",
+            "current_view": [
+              "task_selector=draft",
+              "trajectory_frames=not_proven",
+              "playback=blocked"
+            ],
+            "blocked_by": [
+              "cloud task archive query not connected",
+              "trajectory frame schema pending"
+            ],
+            "next_required_contract": "Cloud must expose task list, trajectory frames, and timestamped state transitions."
+          },
+          {
+            "id": "O7-KR4",
+            "title": "数据标注/打标界面",
+            "status": "draft",
+            "cloud_contract": "labeling.review_queue.v1",
+            "pc_surface": "Labeling queue panel",
+            "current_view": [
+              "queue=draft",
+              "label_schema=not_proven",
+              "submit=blocked"
+            ],
+            "blocked_by": [
+              "annotation API not connected",
+              "training dataset export not proven"
+            ],
+            "next_required_contract": "Cloud must expose review queue, label schema, and submit/rollback audit trail."
+          },
+          {
+            "id": "O7-KR5",
+            "title": "实时 ASR 监听 + TTS 发言控制",
+            "status": "blocked",
+            "cloud_contract": "voice.asr_tts_operator.v1",
+            "pc_surface": "Voice monitor panel",
+            "current_view": [
+              "asr_stream=blocked",
+              "tts_draft=not_proven",
+              "speaker_dispatch=blocked"
+            ],
+            "blocked_by": [
+              "ASR event stream not connected",
+              "TTS command ACK contract pending"
+            ],
+            "next_required_contract": "Cloud must expose ASR transcript events and TTS draft command ACK without direct robot control."
+          },
+          {
+            "id": "O7-KR6",
+            "title": "手动转向控制 + 自动寻路下发",
+            "status": "blocked",
+            "cloud_contract": "operator.safe_command_preview.v1",
+            "pc_surface": "Safe command preview panel",
+            "current_view": [
+              "manual_control=blocked",
+              "navigate_goal=blocked",
+              "ack=not_proven"
+            ],
+            "blocked_by": [
+              "safe command dispatch disabled",
+              "robot-side ACK and recovery path not proven"
+            ],
+            "next_required_contract": "Cloud must expose idempotent safe command API with confirmation, ACK, timeout, and cancel recovery."
+          }
+        ],
+        "command_previews": [
+          {
+            "id": "manual_turn_preview",
+            "label": "Manual turn envelope",
+            "status": "blocked_not_proven",
+            "requires_confirmation": true,
+            "sends_to_robot": false,
+            "cloud_endpoint": "POST /api/o7/operator/commands/manual-turn (future, disabled)",
+            "recovery_path": "Keep observe_only mode until Robot/Hardware provide ACK, timeout, and stop evidence."
+          },
+          {
+            "id": "navigate_goal_preview",
+            "label": "Navigate goal envelope",
+            "status": "blocked_not_proven",
+            "requires_confirmation": true,
+            "sends_to_robot": false,
+            "cloud_endpoint": "POST /api/o7/operator/commands/navigate-goal (future, disabled)",
+            "recovery_path": "Require cloud idempotency key, robot ACK, cancel path, and task archive evidence before enabling."
+          },
+          {
+            "id": "tts_preview",
+            "label": "TTS utterance envelope",
+            "status": "blocked_not_proven",
+            "requires_confirmation": true,
+            "sends_to_robot": false,
+            "cloud_endpoint": "POST /api/o7/operator/voice/tts (future, disabled)",
+            "recovery_path": "Require cloud TTS ACK and speaker-side failure event before any dispatch UI."
+          }
+        ],
+        "blocked_reasons": [
+          "cloud_realtime_api_draft",
+          "pc_must_not_direct_connect_robot",
+          "robot_ack_timeout_recovery_not_proven",
+          "real_map_pose_stream_not_proven",
+          "realtime_map_snapshot_blocked",
+          "elevator_state_snapshot_blocked",
+          "route_replay_snapshot_blocked",
+          "labeling_queue_snapshot_blocked",
+          "voice_asr_tts_snapshot_blocked",
+          "safe_command_snapshot_blocked",
+          "o6_cloud_task_archive_not_connected",
+          "o6_annotation_api_not_connected",
+          "voice_api_not_connected",
+          "real_voice_stream_not_proven",
+          "board_media_preflight_blocked",
+          "manual_or_navigation_dispatch_disabled"
+        ],
+        "not_proven": [
+          "real_o7_realtime_cloud_stream",
+          "real_robot_position_latency_lt_2s",
+          "real_elevator_state_chain",
+          "real_route_replay_archive",
+          "real_route_replay_task_selector",
+          "real_route_replay_trajectory_frames",
+          "real_route_replay_state_transitions",
+          "real_labeling_review_queue",
+          "real_selected_labeling_item",
+          "real_annotation_submit_api",
+          "real_annotation_rollback",
+          "real_training_dataset_export",
+          "real_voice_api_connected",
+          "real_asr_stream",
+          "real_asr_partial_transcript",
+          "real_asr_final_transcript",
+          "real_asr_tts_runtime",
+          "real_speaker_dispatch_ack",
+          "real_rtc_session",
+          "real_camera_video_source",
+          "real_audio_capture",
+          "real_audio_playback",
+          "real_tts_playback",
+          "on_robot_media_smoke",
+          "real_manual_turn_control",
+          "real_velocity_control",
+          "real_steering_control",
+          "real_keyboard_control",
+          "real_navigate_goal_dispatch",
+          "real_robot_command_ack",
+          "real_timeout_cancel_stop_recovery",
+          "real_operator_safe_command_dispatch",
+          "delivery_success"
+        ],
+        "recovery_paths": [
+          "Connect O6 cloud archive and realtime stream before replacing draft values.",
+          "Connect O6 annotation API, submit audit, rollback audit, and dataset export before enabling labeling actions.",
+          "Collect board media preflight JSON and on-robot media smoke before interpreting KR5 fields.",
+          "Connect voice API, ASR transcript stream, TTS ACK audit, and speaker failure events before enabling TTS send.",
+          "Ask Robot Software for robot-side ACK, timeout, cancel, and stop evidence before enabling commands.",
+          "Ask Hardware for HIL/safety evidence before treating manual control as safe."
+        ]
+      }
+    },
+    "cloud_operator_console_probe": {
+      "endpoint": "/api/o7/cloud-operator-console-probe?baseUrl=http%3A%2F%2F127.0.0.1%3A17002",
+      "method": "GET",
+      "url": "http://127.0.0.1:17002/api/o7/cloud-operator-console-probe?baseUrl=http%3A%2F%2F127.0.0.1%3A17002",
+      "browser_runtime": "headless_chrome",
+      "chrome_path": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+      "duration_ms": 12021,
+      "dom_length": 2744,
+      "stderr_excerpt": "",
+      "ok": true,
+      "schema": "trashbot.pc_tools_workstation.o7_cloud_operator_console_probe.v1",
+      "status_field": "probe_status",
+      "status_value": "loaded_fail_closed_contract",
+      "payload": {
+        "schema": "trashbot.pc_tools_workstation.o7_cloud_operator_console_probe.v1",
+        "probe_status": "loaded_fail_closed_contract",
+        "source_base_url": "http://127.0.0.1:17002",
+        "remote_endpoint": "/api/o7/operator-console",
+        "remote_schema": "trashbot.o7.operator_console.v1",
+        "cloud_api_status": "draft_blocked_not_proven",
+        "operator_mode": "observe_only",
+        "kr_ids": [
+          "O7-KR1",
+          "O7-KR2",
+          "O7-KR3",
+          "O7-KR4",
+          "O7-KR5",
+          "O7-KR6"
+        ],
+        "key_false_fields": [
+          "safe_to_control=false",
+          "delivery_success=false",
+          "primary_actions_enabled=false",
+          "command_dispatch_enabled=false",
+          "manual_control_enabled=false",
+          "navigate_goal_enabled=false",
+          "keyboard_control_enabled=false",
+          "real_command_api_connected=false",
+          "real_robot_ack_connected=false",
+          "tts_send_enabled=false",
+          "submit_enabled=false",
+          "playback_available=false"
+        ],
+        "blocked_reasons": [
+          "cloud_realtime_api_draft",
+          "pc_must_not_direct_connect_robot",
+          "robot_ack_timeout_recovery_not_proven",
+          "real_map_pose_stream_not_proven",
+          "realtime_map_snapshot_blocked",
+          "elevator_state_snapshot_blocked",
+          "route_replay_snapshot_blocked",
+          "labeling_queue_snapshot_blocked",
+          "voice_asr_tts_snapshot_blocked",
+          "safe_command_snapshot_blocked",
+          "o6_cloud_task_archive_not_connected",
+          "o6_annotation_api_not_connected",
+          "voice_api_not_connected",
+          "real_voice_stream_not_proven",
+          "board_media_preflight_blocked",
+          "manual_or_navigation_dispatch_disabled"
+        ],
+        "not_proven": [
+          "real_o7_realtime_cloud_stream",
+          "real_robot_position_latency_lt_2s",
+          "real_elevator_state_chain",
+          "real_route_replay_archive",
+          "real_route_replay_task_selector",
+          "real_route_replay_trajectory_frames",
+          "real_route_replay_state_transitions",
+          "real_labeling_review_queue",
+          "real_selected_labeling_item",
+          "real_annotation_submit_api",
+          "real_annotation_rollback",
+          "real_training_dataset_export",
+          "real_voice_api_connected",
+          "real_asr_stream",
+          "real_asr_partial_transcript",
+          "real_asr_final_transcript",
+          "real_asr_tts_runtime",
+          "real_speaker_dispatch_ack",
+          "real_rtc_session",
+          "real_camera_video_source",
+          "real_audio_capture",
+          "real_audio_playback",
+          "real_tts_playback",
+          "on_robot_media_smoke",
+          "real_manual_turn_control",
+          "real_velocity_control",
+          "real_steering_control",
+          "real_keyboard_control",
+          "real_navigate_goal_dispatch",
+          "real_robot_command_ack",
+          "real_timeout_cancel_stop_recovery",
+          "real_operator_safe_command_dispatch",
+          "delivery_success"
+        ],
+        "fail_closed_reason": "none_remote_contract_is_still_observe_only",
+        "local_loopback_only": true,
+        "connects_cloud_production": false,
+        "sends_commands": false,
+        "reads_hardware": false,
+        "source": "software_proof",
+        "proof_status": "not_proven",
+        "safe_to_control": false,
+        "delivery_success": false,
+        "primary_actions_enabled": false,
+        "pc_only": true
+      }
+    }
+  },
+  "command_summary": {
+    "script": "src/server/o7LiveRelayHeadlessBrowserSmoke.ts",
+    "preferred_command": "cd pc-tools/workstation && npm run smoke:o7-live-relay-headless-browser -- --artifact ../../sprints/2026.07.14_16-40_o7_live_relay_headless_browser_smoke/artifacts/o7_live_relay_headless_browser_smoke.json",
+    "argv": [
+      "--artifact",
+      "../../sprints/2026.07.14_16-40_o7_live_relay_headless_browser_smoke/artifacts/o7_live_relay_headless_browser_smoke.json"
+    ]
+  },
+  "not_proven": [
+    "production_cloud_success",
+    "public_https_tls",
+    "4g_or_sim_path",
+    "production_db_or_queue",
+    "oss_or_cdn_live_traffic",
+    "real_phone_browser_production_path",
+    "route_execution",
+    "delivery_success",
+    "operator_acceptance",
+    "hil_pass",
+    "safe_to_control",
+    "robot_control_side_effect"
+  ],
+  "acceptance_anchors": [
+    "schema=trashbot.pc_tools_workstation.o7_live_relay_headless_browser_smoke.v1",
+    "proof_boundary=software_proof_o7_live_relay_headless_browser_smoke_only",
+    "artifact_status=headless_browser_smoke_ready_not_delivery_proof",
+    "endpoint_transport=live_loopback_http_socket",
+    "browser_runtime=headless_chrome",
+    "browser_smoke_status=live_headless_chrome_executed",
+    "server_started=true",
+    "http_smoke_executed=true",
+    "headless_browser_smoke_executed=true",
+    "delivery_success=false",
+    "safe_to_control=false",
+    "route_execution_success=false",
+    "hil_pass=false",
+    "robot_control_executed=false",
+    "connects_cloud_production=false"
+  ],
+  "delivery_success": false,
+  "safe_to_control": false,
+  "route_execution_success": false,
+  "hil_pass": false,
+  "robot_control_executed": false,
+  "connects_cloud_production": false
+}

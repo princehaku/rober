@@ -1,0 +1,57 @@
+{
+  "schema": "trashbot.product_acceptance.o7_mission_evidence_bundle_export.v1",
+  "sprint": "sprints/2026.07.13_18-17_o7_mission_evidence_bundle_export",
+  "accepted": true,
+  "accepted_as": "O7/O6 selected-task local/mock mission evidence bundle export software proof only",
+  "proof_boundary": "software_proof_o7_o6_mission_evidence_bundle_export_only",
+  "okr_result": {
+    "o5_percent": "85%",
+    "o1_percent": "94%",
+    "o6_percent": "93%",
+    "o7_percent": "93%",
+    "main_percent_changed": false,
+    "kr_archived": false
+  },
+  "accepted_facts": {
+    "endpoint": "GET /api/o7/consumer-read/tasks/:taskId/mission-evidence/export?baseUrl=<local-loopback-url>&format=json",
+    "receipt_schema": "trashbot.pc_tools_workstation.o7_mission_evidence_bundle_export_result.v1",
+    "export_status": "local_mock_mission_evidence_bundle_ready",
+    "local_loopback_only": true,
+    "o6_consumer_detail_only": true,
+    "worker_tests": "Test Files 3 passed (3); Tests 504 passed (504)",
+    "worker_build": "passed with existing Vite large chunk warning",
+    "worker_lint": "passed",
+    "worker_diff_check": "passed"
+  },
+  "fixed_false_fields": {
+    "safe_to_control": false,
+    "delivery_success": false,
+    "route_execution_success": false,
+    "hil_pass": false,
+    "robot_control_executed": false,
+    "connects_cloud_production": false,
+    "real_cloud_db_connected": false,
+    "real_oss_connected": false
+  },
+  "rejected_claims": [
+    "production_cloud",
+    "real_cloud_db",
+    "real_oss",
+    "production_db_queue",
+    "oss_cdn",
+    "4g_sim",
+    "real_phone_browser",
+    "route_execution",
+    "delivery_success",
+    "operator_acceptance",
+    "hil",
+    "safe_to_control",
+    "real_dataset_export",
+    "o5_external_evidence",
+    "cmd_vel",
+    "api_base_manual",
+    "navigate_to_pose",
+    "wave_rover_uart"
+  ],
+  "next_owner": "explicit operator-approved live HIL/current route evidence, or stronger O5 production/cloud evidence"
+}

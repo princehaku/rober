@@ -1,0 +1,212 @@
+{
+    "blocked_reason": "dry_run_template_only_not_proven",
+    "checks": {
+        "environment": {
+            "cwd": "/Users/m1/apps/rober",
+            "hostname": "HAKU-M1-PRO.local",
+            "ok": true,
+            "platform": "macOS-15.7.4-arm64-arm-64bit-Mach-O",
+            "python": "3.13.5",
+            "time_utc": "2026-07-10T20:44:18+00:00"
+        },
+        "learning_commands": {
+            "ok": null,
+            "templates": [
+                {
+                    "command": "RUN_ID=field_route_$(date +%Y%m%d_%H%M%S); OUT_DIR=$HOME/.ros/trashbot_runs/${RUN_ID}; mkdir -p $OUT_DIR",
+                    "name": "prepare_output_dir"
+                },
+                {
+                    "command": "ros2 launch ros2_trashbot_bringup learn.launch.py route_recorder:=true route_output_dir:=$HOME/.ros/trashbot_runs/${RUN_ID}/route_data route_id:=board_field_route",
+                    "name": "learn_launch_route_record"
+                },
+                {
+                    "command": "ros2 service call /trashbot/save_map std_srvs/srv/Trigger",
+                    "name": "save_map"
+                },
+                {
+                    "command": "ros2 run ros2_trashbot_nav route_csv_to_yaml --ros-args -p input_csv:=$HOME/.ros/trashbot_runs/${RUN_ID}/route_data/route.csv -p output_yaml:=$HOME/.ros/trashbot_runs/${RUN_ID}/route_data/fixed_route.yaml",
+                    "name": "route_csv_to_yaml"
+                },
+                {
+                    "command": "ros2 run ros2_trashbot_nav fixed_route_autonomy --ros-args -p route_file:=$HOME/.ros/trashbot_runs/${RUN_ID}/route_data/fixed_route.yaml -p keyframe_dir:=$HOME/.ros/trashbot_runs/${RUN_ID}/route_data/keyframes -p dry_run:=true -p enable_visual_gate:=false",
+                    "name": "fixed_route_autonomy_dry_run"
+                },
+                {
+                    "command": "ros2 bag record -o $HOME/.ros/trashbot_runs/${RUN_ID}/route_bag /scan /camera/image_raw /odom /tf /map",
+                    "name": "optional_rosbag_record"
+                }
+            ]
+        },
+        "output_contract": {
+            "ok": true,
+            "out_dir_template": "$HOME/.ros/trashbot_runs/${RUN_ID}",
+            "required_artifacts": [
+                "field_preflight.json",
+                "map.yaml",
+                "route.csv",
+                "keyframes/",
+                "route_bag/",
+                "fixed_route_replay.jsonl"
+            ],
+            "run_id_template": "field_route_$(date +%Y%m%d_%H%M%S)"
+        },
+        "ros2_cli": {
+            "command_template": [
+                "command",
+                "-v",
+                "ros2"
+            ],
+            "note": "dry-run skips local ROS2 detection",
+            "ok": null
+        },
+        "setup_candidates": {
+            "candidates": [
+                "/opt/ros/humble/setup.bash",
+                "/root/rober/onboard/install/setup.bash",
+                "/root/rober/install/setup.bash",
+                "/ws/install/setup.bash",
+                "~/rober/onboard/install/setup.bash",
+                "~/apps/rober/onboard/install/setup.bash"
+            ],
+            "note": "dry-run records candidates only",
+            "ok": null
+        },
+        "ssh_reachability": {
+            "command_template": [
+                "ssh",
+                "-o",
+                "ConnectTimeout=8",
+                "-o",
+                "BatchMode=yes",
+                "-o",
+                "StrictHostKeyChecking=accept-new",
+                "-p",
+                "37878",
+                "root@192.168.1.11",
+                "true"
+            ],
+            "note": "dry-run skips network access",
+            "ok": null,
+            "port": 37878,
+            "target": "root@192.168.1.11"
+        },
+        "topic_smoke_commands": {
+            "ok": null,
+            "templates": [
+                {
+                    "command": "ros2 topic hz /scan --window 2",
+                    "topic": "/scan"
+                },
+                {
+                    "command": "ros2 topic hz /odom --window 2",
+                    "topic": "/odom"
+                },
+                {
+                    "command": "ros2 topic hz /camera/image_raw --window 2",
+                    "topic": "/camera/image_raw"
+                },
+                {
+                    "command": "ros2 topic echo --once /tf",
+                    "topic": "/tf"
+                }
+            ]
+        },
+        "topics": {
+            "command_template": [
+                "ros2",
+                "topic",
+                "list"
+            ],
+            "ok": null,
+            "required": [
+                "/scan",
+                "/camera/image_raw",
+                "/odom",
+                "/tf",
+                "/map"
+            ]
+        },
+        "trashbot_packages": {
+            "command_template": [
+                "ros2",
+                "pkg",
+                "list"
+            ],
+            "ok": null,
+            "required": [
+                "ros2_trashbot_bringup",
+                "ros2_trashbot_nav",
+                "ros2_trashbot_hardware",
+                "ros2_trashbot_behavior"
+            ]
+        }
+    },
+    "commands": {
+        "learning": [
+            {
+                "command": "RUN_ID=field_route_$(date +%Y%m%d_%H%M%S); OUT_DIR=$HOME/.ros/trashbot_runs/${RUN_ID}; mkdir -p $OUT_DIR",
+                "name": "prepare_output_dir"
+            },
+            {
+                "command": "ros2 launch ros2_trashbot_bringup learn.launch.py route_recorder:=true route_output_dir:=$HOME/.ros/trashbot_runs/${RUN_ID}/route_data route_id:=board_field_route",
+                "name": "learn_launch_route_record"
+            },
+            {
+                "command": "ros2 service call /trashbot/save_map std_srvs/srv/Trigger",
+                "name": "save_map"
+            },
+            {
+                "command": "ros2 run ros2_trashbot_nav route_csv_to_yaml --ros-args -p input_csv:=$HOME/.ros/trashbot_runs/${RUN_ID}/route_data/route.csv -p output_yaml:=$HOME/.ros/trashbot_runs/${RUN_ID}/route_data/fixed_route.yaml",
+                "name": "route_csv_to_yaml"
+            },
+            {
+                "command": "ros2 run ros2_trashbot_nav fixed_route_autonomy --ros-args -p route_file:=$HOME/.ros/trashbot_runs/${RUN_ID}/route_data/fixed_route.yaml -p keyframe_dir:=$HOME/.ros/trashbot_runs/${RUN_ID}/route_data/keyframes -p dry_run:=true -p enable_visual_gate:=false",
+                "name": "fixed_route_autonomy_dry_run"
+            },
+            {
+                "command": "ros2 bag record -o $HOME/.ros/trashbot_runs/${RUN_ID}/route_bag /scan /camera/image_raw /odom /tf /map",
+                "name": "optional_rosbag_record"
+            }
+        ],
+        "topic_smoke": [
+            {
+                "command": "ros2 topic hz /scan --window 2",
+                "topic": "/scan"
+            },
+            {
+                "command": "ros2 topic hz /odom --window 2",
+                "topic": "/odom"
+            },
+            {
+                "command": "ros2 topic hz /camera/image_raw --window 2",
+                "topic": "/camera/image_raw"
+            },
+            {
+                "command": "ros2 topic echo --once /tf",
+                "topic": "/tf"
+            }
+        ]
+    },
+    "delivery_success": false,
+    "dry_run": true,
+    "generated_at": "2026-07-10T20:44:18+00:00",
+    "mode": "local",
+    "next_required_evidence": [
+        "\u771f\u5b9e\u4e0a\u4f4d\u673a SSH \u53ef\u8fbe\u8bc1\u636e",
+        "ROS2 setup.bash \u548c trashbot package \u53ef\u7528\u8bc1\u636e",
+        "/scan\u3001/camera/image_raw\u3001/odom\u3001/tf\u3001/map topic \u4e0e smoke \u8f93\u51fa",
+        "map.yaml\u3001route.csv\u3001keyframes\u3001rosbag \u6216 replay JSONL"
+    ],
+    "not_proven": true,
+    "primary_actions_enabled": false,
+    "schema": "trashbot.board_field_evidence_preflight.v1",
+    "source": "software_preflight",
+    "status": "dry_run_template_only_not_proven",
+    "target": {
+        "mode": "local",
+        "ssh_port": null,
+        "ssh_target": null,
+        "timeout_s": 8
+    }
+}

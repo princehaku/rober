@@ -1,0 +1,120 @@
+{
+  "acceptance_decision": "blocked_missing_live_success_evidence",
+  "blocked_reasons": [
+    "source_mode_live",
+    "live_route_execution_success",
+    "operator_dropoff_acceptance",
+    "hil_pass",
+    "safe_to_control",
+    "terminal_result_recorded"
+  ],
+  "checks": [
+    {
+      "detail": "delivery_state_live_success_gate contract exists and is evaluated fail-closed",
+      "name": "live_success_gate_contract_ready",
+      "status": "pass"
+    },
+    {
+      "detail": "source mode must be live, field-live, or production-live",
+      "name": "source_mode_live",
+      "status": "blocked"
+    },
+    {
+      "detail": "task, robot, packet, route, and terminal result identity must match",
+      "name": "same_task_identity",
+      "status": "pass"
+    },
+    {
+      "detail": "route execution, operator/dropoff acceptance, HIL, safe-to-control, terminal record, and fresh same-window evidence are all required",
+      "name": "complete_live_delivery_evidence",
+      "status": "blocked"
+    }
+  ],
+  "current_live_evidence_observed": false,
+  "current_run_required_false_invariants": [
+    "current_live_evidence_observed=false",
+    "delivery_success_claimed_by_this_run=false",
+    "real_world_delivery_proven=false",
+    "safe_to_control=false",
+    "hil_pass=false",
+    "delivery_success_accepted_for_state_machine=false"
+  ],
+  "dangerous_true_fields": [],
+  "delivery_success_accepted_for_state_machine": false,
+  "delivery_success_claimed_by_this_run": false,
+  "error_message": "delivery live success gate blocked: source_mode_live, live_route_execution_success, operator_dropoff_acceptance, hil_pass, safe_to_control, terminal_result_recorded",
+  "evidence_fresh": true,
+  "failure_code": "LIVE_SUCCESS_GATE_BLOCKED",
+  "final_state": "error",
+  "fixture_mode": "synthetic-current-live",
+  "fresh_same_window_evidence": true,
+  "generated_at_utc": "2026-07-13T21:42:38Z",
+  "hil_pass": false,
+  "identity_mismatches": [],
+  "live_route_execution_success": false,
+  "live_success_gate_contract_ready": true,
+  "missing_identity_fields": [],
+  "missing_live_evidence": [
+    "source_mode_live",
+    "live_route_execution_success",
+    "operator_dropoff_acceptance",
+    "hil_pass",
+    "safe_to_control",
+    "terminal_result_recorded"
+  ],
+  "next_required_evidence": "collect same-window live route execution success, operator/dropoff acceptance, HIL pass, safe-to-control, terminal result record, and same-task identity before accepting delivery success",
+  "normalized_source_mode": "synthetic-current-live",
+  "operator_dropoff_acceptance": false,
+  "owner_role": "robot-software-engineer",
+  "packet_id": "packet_o3_28_pose_same_task_replay_7d57826142b0c79c",
+  "proof_boundary": "software_proof_o5_delivery_state_live_success_gate_only",
+  "proof_boundary_class": "software_proof_contract_only",
+  "real_world_delivery_proven": false,
+  "rejected_source_modes": [
+    "synthetic-current-live",
+    "synthetic",
+    "mock",
+    "local-replay",
+    "historical",
+    "readback-only",
+    "wrapper-only"
+  ],
+  "required_evidence": [
+    "source_mode_live",
+    "same_task_identity",
+    "live_route_execution_success",
+    "operator_dropoff_acceptance",
+    "hil_pass",
+    "safe_to_control",
+    "terminal_result_recorded",
+    "fresh_same_window_evidence"
+  ],
+  "rg_acceptance_anchors": [
+    "delivery_state_live_success_gate",
+    "software_proof_o5_delivery_state_live_success_gate_only",
+    "live_success_gate_contract_ready",
+    "current_live_evidence_observed=false",
+    "delivery_success_claimed_by_this_run=false",
+    "real_world_delivery_proven=false"
+  ],
+  "robot_id": "robot-synthetic-o5-live-gate",
+  "route_intent_id": "route_intent_20260713_0402_from_20260713_0300_28_pose_structured_path",
+  "safe_to_control": false,
+  "same_evidence_window": true,
+  "same_task_identity_verified": true,
+  "schema": "trashbot.o5.delivery_state_live_success_gate.v1",
+  "source_mode": "synthetic-current-live",
+  "source_mode_live": false,
+  "source_summary_ref": "synthetic-current-live_fixture",
+  "state_machine_events": [
+    {
+      "event": "delivery_state_live_success_gate",
+      "from_state": "idle",
+      "message": "delivery live success gate blocked: source_mode_live, live_route_execution_success, operator_dropoff_acceptance, hil_pass, safe_to_control, terminal_result_recorded",
+      "to_state": "error"
+    }
+  ],
+  "task_id": "task_o3_28_pose_fixed_route_consumer_20260713_0402",
+  "terminal_result_id": "terminal_result_synthetic_current_live_shape_20260714_0528",
+  "terminal_result_recorded": false
+}

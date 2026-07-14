@@ -1,0 +1,3233 @@
+{
+  "calls_base_manual": false,
+  "delivery_success": false,
+  "evidence_type": "blocked_with_root_cause",
+  "generated_at_ms": 1783746194784,
+  "hil_pass": false,
+  "not_proven": true,
+  "proof": {
+    "amcl_active": true,
+    "amcl_broadcast_conditions": {
+      "amcl_active": true,
+      "amcl_frame_params_match_helper": false,
+      "amcl_pose_frame_id_is_map": false,
+      "amcl_pose_observed": false,
+      "base_link_to_laser_frame_source_observed": false,
+      "initialpose_published": true,
+      "map_once_observed": true,
+      "map_server_active": true,
+      "map_to_odom_source_observed": false,
+      "odom_to_base_link_dynamic_source_observed": false,
+      "odom_to_base_link_source_observed": false,
+      "odom_to_base_link_static_source_observed": false,
+      "scan_once_observed": false,
+      "static_tf_processes_observed": true,
+      "tf_broadcast_enabled": false
+    },
+    "amcl_frame_params": {
+      "base_frame_id": null,
+      "global_frame_id": null,
+      "odom_frame_id": null
+    },
+    "amcl_log_tail": "ecycleNode rcl preshutdown (planner_server)\n[INFO] [1783746192.886711640] [planner_server]: Destroying bond (planner_server) to lifecycle manager.\n[INFO] [1783746192.886753931] [rclcpp]: signal_handler(SIGINT/SIGTERM)\n[INFO] [1783746192.886922223] [rclcpp]: signal_handler(SIGINT/SIGTERM)\n[INFO] [1783746192.887015889] [map_server]: Running Nav2 LifecycleNode rcl preshutdown (map_server)\n[INFO] [1783746192.887139431] [amcl]: Running Nav2 LifecycleNode rcl preshutdown (amcl)\n[INFO] [1783746192.887264264] [map_server]: Deactivating\n[INFO] [1783746192.887336847] [map_server]: Destroying bond (map_server) to lifecycle manager.\n[INFO] [1783746192.887332847] [amcl]: Deactivating\n[INFO] [1783746192.887408889] [amcl]: Destroying bond (amcl) to lifecycle manager.\n[INFO] [1783746192.889769511] [global_costmap.global_costmap]: start\n[ERROR] [1783746192.889952677] [global_costmap.global_costmap]: Failed to finish transition 3. Current state is now: active (Could not publish transition: publisher's context is invalid, at ./src/rcl/publisher.c:389, at ./src/rcl_lifecycle.c:368)\n[INFO] [1783746192.889990844] [planner_server]: Activating plugin GridBased of type NavfnPlanner\n[ERROR] [1783746192.890330427] [planner_server]: Caught exception in callback for transition 13\n[ERROR] [1783746192.890354468] [planner_server]: Original error: could not create service: rcl node's context is invalid, at ./src/rcl/node.c:428\n[ERROR] [1783746192.890395010] [planner_server]: Failed to finish transition 3. Current state is now: errorprocessing (Could not publish transition: publisher's context is invalid, at ./src/rcl/publisher.c:389, at ./src/rcl_lifecycle.c:368)\n[INFO] [1783746192.901485454] [map_server]: Cleaning up\n[INFO] [1783746192.901741328] [map_server]: Destroying bond (map_server) to lifecycle manager.\n[INFO] [1783746192.918366598] [amcl]: Cleaning up\nTraceback (most recent call last):\n  File \"<string>\", line 44, in main\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/__init__.py\", line 229, in spin\n    executor.spin_once()\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py\", line 808, in spin_once\n    self._spin_once_impl(timeout_sec)\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py\", line 797, in _spin_once_impl\n[INFO] [1783746192.943913190] [planner_server]: Destroying plugin GridBased of type NavfnPlanner\n    handler, entity, node = self.wait_for_ready_callbacks(timeout_sec=timeout_sec)\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py\", line 780, in wait_for_ready_callbacks\n    return next(self._cb_iter)\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py\", line 677, in _wait_for_ready_callbacks\n    wait_set.wait(timeout_nsec)\nKeyboardInterrupt\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"<string>\", line 52, in <module>\n  File \"<string>\", line 46, in main\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/node.py\", line 1685, in destroy_node\n    self.destroy_publisher(self._publishers[0])\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/node.py\", line 1565, in destroy_publisher\n    publisher.destroy()\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/publisher.py\", line 99, in destroy\n    self.__publisher.destroy_when_not_in_use()\nKeyboardInterrupt\n[INFO] [1783746193.081699675] [map_server]: Destroying\nWarning: class_loader.ClassLoader: SEVERE WARNING!!! Attempting to unload library while objects created by this loader exist in the heap! You should delete your objects before attempting to unload the library or destroying the ClassLoader. The library will NOT be unloaded.\n         at line 127 in ./src/class_loader.cpp\nterminate called without an active exception\n[INFO] [1783746193.131516943] [amcl]: Destroying bond (amcl) to lifecycle manager.\n[INFO] [1783746193.325832813] [amcl]: Destroying\n[ros2run]: Aborted\n",
+    "amcl_node_info_observed": false,
+    "amcl_node_publishers": [],
+    "amcl_node_subscribers": [],
+    "amcl_param_probe_ok": false,
+    "amcl_pose": null,
+    "amcl_pose_frame_id": null,
+    "amcl_pose_observed": false,
+    "amcl_tf_broadcast_param": null,
+    "amcl_tf_root_cause": "/tf_topic_missing",
+    "base_link_to_laser_frame_transform": {
+      "child_frame_id": "laser_frame",
+      "parent_frame_id": "base_link",
+      "rotation": {
+        "quaternion": {
+          "w": 1.0,
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "yaw": 0.0
+      },
+      "source": "tf2_echo",
+      "translation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      }
+    },
+    "blocked_commands_not_sent": [
+      "T=1",
+      "T=13",
+      "T=130",
+      "T=131",
+      "/cmd_vel",
+      "/api/base/manual",
+      "/api/base/",
+      "/api/nav2/start",
+      "/api/nav2/stop",
+      "navigate_to_pose",
+      "compute_path_to_pose"
+    ],
+    "blocked_devices_not_opened": [
+      "/dev/ttyS5"
+    ],
+    "blockers": [
+      {
+        "layer": "Nav2 sensor input",
+        "reason": "/scan_probe_timeout"
+      },
+      {
+        "layer": "AMCL localization",
+        "reason": "/amcl_pose_probe_timeout"
+      },
+      {
+        "layer": "Localization TF",
+        "reason": "map_to_odom_dynamic_source_missing"
+      },
+      {
+        "detail": "/tf_topic_missing",
+        "layer": "Localization TF",
+        "reason": "map_to_base_link_blocked_by_missing_map_to_odom",
+        "source": "map_to_odom"
+      },
+      {
+        "layer": "planner readiness",
+        "reason": "localization_not_ready_for_path_generation"
+      }
+    ],
+    "calls_base_manual": false,
+    "collector_mode": "managed_no_motion_path_generation_runtime",
+    "commands": {
+      "amcl_node_info": {
+        "command": "ros2 node info /amcl",
+        "elapsed_ms": 4052,
+        "executed": true,
+        "finished_at_ms": 1783746188703,
+        "ok": true,
+        "returncode": 0,
+        "started_at_ms": 1783746184651,
+        "stderr": "",
+        "stdout": "/amcl\n  Subscribers:\n    /bond: bond/msg/Status\n    /initialpose: geometry_msgs/msg/PoseWithCovarianceStamped\n    /map: nav_msgs/msg/OccupancyGrid\n    /parameter_events: rcl_interfaces/msg/ParameterEvent\n    /scan: sensor_msgs/msg/LaserScan\n  Publishers:\n    /amcl/transition_event: lifecycle_msgs/msg/TransitionEvent\n    /amcl_pose: geometry_msgs/msg/PoseWithCovarianceStamped\n    /bond: bond/msg/Status\n    /parameter_events: rcl_interfaces/msg/ParameterEvent\n    /particle_cloud: nav2_msgs/msg/ParticleCloud\n    /rosout: rcl_interfaces/msg/Log\n    /tf: tf2_msgs/msg/TFMessage\n  Service Servers:\n    /amcl/change_state: lifecycle_msgs/srv/ChangeState\n    /amcl/describe_parameters: rcl_interfaces/srv/DescribeParameters\n    /amcl/get_available_states: lifecycle_msgs/srv/GetAvailableStates\n    /amcl/get_available_transitions: lifecycle_msgs/srv/GetAvailableTransitions\n    /amcl/get_parameter_types: rcl_interfaces/srv/GetParameterTypes\n    /amcl/get_parameters: rcl_interfaces/srv/GetParameters\n    /amcl/get_state: lifecycle_msgs/srv/GetState\n    /amcl/get_transition_graph: lifecycle_msgs/srv/GetAvailableTransitions\n    /amcl/list_parameters: rcl_interfaces/srv/ListParameters\n    /amcl/set_parameters: rcl_interfaces/srv/SetParameters\n    /amcl/set_parameters_atomically: rcl_interfaces/srv/SetParametersAtomically\n    /reinitialize_global_localization: std_srvs/srv/Empty\n    /request_nomotion_update: std_srvs/srv/Empty\n    /set_initial_pose: nav2_msgs/srv/SetInitialPose\n  Service Clients:\n\n  Action Servers:\n\n  Action Clients:\n\n",
+        "timed_out": false,
+        "timeout_s": 8.0
+      },
+      "amcl_pose_once": {
+        "boundary": "pre_initialpose_amcl_pose_probe_skipped_to_prioritize_initialpose",
+        "executed": false,
+        "ok": false
+      },
+      "base_link_to_laser_frame_tf": {
+        "command": "timeout 10 ros2 run tf2_ros tf2_echo base_link laser_frame",
+        "elapsed_ms": 12454,
+        "executed": true,
+        "finished_at_ms": 1783746132589,
+        "ok": false,
+        "returncode": 124,
+        "started_at_ms": 1783746120135,
+        "stderr": "[INFO] [1783746123.772789837] [tf2_echo]: Waiting for transform base_link ->  laser_frame: Invalid frame ID \"base_link\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1783746132.289392406] [rclcpp]: signal_handler(SIGINT/SIGTERM)\n",
+        "stdout": "At time 0.0\n- Translation: [0.000, 0.000, 0.000]\n- Rotation: in Quaternion (xyzw) [0.000, 0.000, 0.000, 1.000]\n- Rotation: in RPY (radian) [0.000, -0.000, 0.000]\n- Rotation: in RPY (degree) [0.000, -0.000, 0.000]\n- Matrix:\n  1.000  0.000  0.000  0.000\n  0.000  1.000  0.000  0.000\n  0.000  0.000  1.000  0.000\n  0.000  0.000  0.000  1.000\nAt time 0.0\n- Translation: [0.000, 0.000, 0.000]\n- Rotation: in Quaternion (xyzw) [0.000, 0.000, 0.000, 1.000]\n- Rotation: in RPY (radian) [0.000, -0.000, 0.000]\n- Rotation: in RPY (degree) [0.000, -0.000, 0.000]\n- Matrix:\n  1.000  0.000  0.000  0.000\n  0.000  1.000  0.000  0.000\n  0.000  0.000  1.000  0.000\n  0.000  0.000  0.000  1.000\nAt time 0.0\n- Translation: [0.000, 0.000, 0.000]\n- Rotation: in Quaternion (xyzw) [0.000, 0.000, 0.000, 1.000]\n- Rotation: in RPY (radian) [0.000, -0.000, 0.000]\n- Rotation: in RPY (degree) [0.000, -0.000, 0.000]\n- Matrix:\n  1.000  0.000  0.000  0.000\n  0.000  1.000  0.000  0.000\n  0.000  0.000  1.000  0.000\n  0.000  0.000  0.000  1.000\nAt time 0.0\n- Translation: [0.000, 0.000, 0.000]\n- Rotation: in Quaternion (xyzw) [0.000, 0.000, 0.000, 1.000]\n- Rotation: in RPY (radian) [0.000, -0.000, 0.000]\n- Rotation: in RPY (degree) [0.000, -0.000, 0.000]\n- Matrix:\n  1.000  0.000  0.000  0.000\n  0.000  1.000  0.000  0.000\n  0.000  0.000  1.000  0.000\n  0.000  0.000  0.000  1.000\nAt time 0.0\n- Translation: [0.000, 0.000, 0.000]\n- Rotation: in Quaternion (xyzw) [0.000, 0.000, 0.000, 1.000]\n- Rotation: in RPY (radian) [0.000, -0.000, 0.000]\n- Rotation: in RPY (degree) [0.000, -0.000, 0.000]\n- Matrix:\n  1.000  0.000  0.000  0.000\n  0.000  1.000  0.000  0.000\n  0.000  0.000  1.000  0.000\n  0.000  0.000  0.000  1.000\nAt time 0.0\n- Translation: [0.000, 0.000, 0.000]\n- Rotation: in Quaternion (xyzw) [0.000, 0.000, 0.000, 1.000]\n- Rotation: in RPY (radian) [0.000, -0.000, 0.000]\n- Rotation: in RPY (degree) [0.000, -0.000, 0.000]\n- Matrix:\n  1.000  0.000  0.000  0.000\n  0.000  1.000  0.000  0.000\n  0.000  0.000  1.000  0.000\n  0.000  0.000  0.000  1.000\nAt time 0.0\n- Translation: [0.000, 0.000, 0.000]\n- Rotation: in Quaternion (xyzw) [0.000, 0.000, 0.000, 1.000]\n- Rotation: in RPY (radian) [0.000, -0.000, 0.000]\n- Rotation: in RPY (degree) [0.000, -0.000, 0.000]\n- Matrix:\n  1.000  0.000  0.000  0.000\n  0.000  1.000  0.000  0.000\n  0.000  0.000  1.000  0.000\n  0.000  0.000  0.000  1.000\nAt time 0.0\n- Translation: [0.000, 0.000, 0.000]\n- Rotation: in Quaternion (xyzw) [0.000, 0.000, 0.000, 1.000]\n- Rotation: in RPY (radian) [0.000, -0.000, 0.000]\n- Rotation: in RPY (degree) [0.000, -0.000, 0.000]\n- Matrix:\n  1.000  0.000  0.000  0.000\n  0.000  1.000  0.000  0.000\n  0.000  0.000  1.000  0.000\n  0.000  0.000  0.000  1.000\n",
+        "timed_out": false,
+        "timeout_s": 14.0
+      },
+      "controller_node_info": {
+        "boundary": "controller_never_requested_no_motion",
+        "executed": false,
+        "ok": false
+      },
+      "initialpose_info": {
+        "command": "ros2 topic info /initialpose --verbose",
+        "elapsed_ms": 4181,
+        "executed": true,
+        "finished_at_ms": 1783746184640,
+        "ok": true,
+        "returncode": 0,
+        "started_at_ms": 1783746180459,
+        "stderr": "",
+        "stdout": "Type: geometry_msgs/msg/PoseWithCovarianceStamped\n\nPublisher count: 0\n\nSubscription count: 1\n\nNode name: amcl\nNode namespace: /\nTopic type: geometry_msgs/msg/PoseWithCovarianceStamped\nEndpoint type: SUBSCRIPTION\nGID: 01.0f.1b.26.4d.cb.d7.f1.00.00.00.00.00.00.25.04.00.00.00.00.00.00.00.00\nQoS profile:\n  Reliability: BEST_EFFORT\n  History (Depth): UNKNOWN\n  Durability: VOLATILE\n  Lifespan: Infinite\n  Deadline: Infinite\n  Liveliness: AUTOMATIC\n  Liveliness lease duration: Infinite\n\n",
+        "timed_out": false,
+        "timeout_s": 6.0
+      },
+      "initialpose_publish": {
+        "boundary": "cli_initialpose_publish_observed",
+        "command": "ros2 topic pub --once /initialpose geometry_msgs/msg/PoseWithCovarianceStamped '{\"header\": {\"frame_id\": \"map\", \"stamp\": {\"sec\": 0, \"nanosec\": 0}}, \"pose\": {\"pose\": {\"position\": {\"x\": 0.0, \"y\": 0.0, \"z\": 0.0}, \"orientation\": {\"x\": 0.0, \"y\": 0.0, \"z\": 0.0, \"w\": 1.0}}, \"covariance\": [0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.06853891945200942]}}'",
+        "elapsed_ms": 5834,
+        "executed": true,
+        "fallback_after_method": "rclpy_inprocess_burst",
+        "finished_at_ms": 1783746084369,
+        "ok": true,
+        "publish_attempts": 1,
+        "publish_method": "ros2_topic_pub_once_cli_fallback",
+        "rclpy_attempt": {
+          "boundary": "rclpy_initialpose_import_failed",
+          "elapsed_ms": 81,
+          "error": {
+            "message": "librcl_action.so: cannot open shared object file: No such file or directory\nThe C extension '/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/_rclpy_pybind11.cpython-310-aarch64-linux-gnu.so' failed to be imported while being presen",
+            "type": "ImportError"
+          },
+          "publish_attempts": 0,
+          "subscriber_count": null
+        },
+        "returncode": 0,
+        "started_at_ms": 1783746078616,
+        "stderr": "",
+        "stdout": "publisher: beginning loop\npublishing #1: geometry_msgs.msg.PoseWithCovarianceStamped(header=std_msgs.msg.Header(stamp=builtin_interfaces.msg.Time(sec=0, nanosec=0), frame_id='map'), pose=geometry_msgs.msg.PoseWithCovariance(pose=geometry_msgs.msg.Pose(position=geometry_msgs.msg.Point(x=0.0, y=0.0, z=0.0), orientation=geometry_msgs.msg.Quaternion(x=0.0, y=0.0, z=0.0, w=1.0)), covariance=array([0.25      , 0.        , 0.        , 0.        , 0.        ,\n       0.        , 0.        , 0.25      , 0.        , 0.        ,\n       0.        , 0.        , 0.        , 0.        , 0.        ,\n       0.        , 0.        , 0.        , 0.        , 0.        ,\n       0.        , 0.        , 0.        , 0.        , 0.        ,\n       0.        , 0.        , 0.        , 0.        , 0.        ,\n       0.        , 0.        , 0.        , 0.        , 0.        ,\n       0.06853892])))\n\n",
+        "subscriber_count": 1,
+        "subscription_match_proven": false,
+        "timed_out": false,
+        "timeout_s": 8.0
+      },
+      "lifecycle": {
+        "amcl": {
+          "command": "ros2 lifecycle get /amcl",
+          "elapsed_ms": 5186,
+          "executed": true,
+          "finished_at_ms": 1783746157147,
+          "ok": true,
+          "returncode": 0,
+          "started_at_ms": 1783746151961,
+          "stderr": "",
+          "stdout": "active [3]\n",
+          "timed_out": false,
+          "timeout_s": 10.0
+        },
+        "map_server": {
+          "command": "ros2 lifecycle get /map_server",
+          "elapsed_ms": 7610,
+          "executed": true,
+          "finished_at_ms": 1783746151950,
+          "ok": true,
+          "returncode": 0,
+          "started_at_ms": 1783746144340,
+          "stderr": "",
+          "stdout": "active [3]\n",
+          "timed_out": false,
+          "timeout_s": 10.0
+        }
+      },
+      "lifecycle_recheck": {
+        "boundary": "initial_lifecycle_snapshot_sufficient",
+        "executed": false
+      },
+      "managed_runtime": {
+        "cleanup_guard": {
+          "boundary": "managed_runtime_process_group_cleanup_guard",
+          "ok": true,
+          "remaining_processes": []
+        },
+        "cleanup_result": {
+          "attempted": true,
+          "group_present_after_cleanup": false,
+          "killed_with_sigkill": true,
+          "ok": true,
+          "process_group": 445227,
+          "remaining_processes": [],
+          "sent_signal": "SIGINT"
+        },
+        "log_path": "/tmp/rober_nav2_localization_ds5_udqt.log",
+        "log_tail": "ecycleNode rcl preshutdown (planner_server)\n[INFO] [1783746192.886711640] [planner_server]: Destroying bond (planner_server) to lifecycle manager.\n[INFO] [1783746192.886753931] [rclcpp]: signal_handler(SIGINT/SIGTERM)\n[INFO] [1783746192.886922223] [rclcpp]: signal_handler(SIGINT/SIGTERM)\n[INFO] [1783746192.887015889] [map_server]: Running Nav2 LifecycleNode rcl preshutdown (map_server)\n[INFO] [1783746192.887139431] [amcl]: Running Nav2 LifecycleNode rcl preshutdown (amcl)\n[INFO] [1783746192.887264264] [map_server]: Deactivating\n[INFO] [1783746192.887336847] [map_server]: Destroying bond (map_server) to lifecycle manager.\n[INFO] [1783746192.887332847] [amcl]: Deactivating\n[INFO] [1783746192.887408889] [amcl]: Destroying bond (amcl) to lifecycle manager.\n[INFO] [1783746192.889769511] [global_costmap.global_costmap]: start\n[ERROR] [1783746192.889952677] [global_costmap.global_costmap]: Failed to finish transition 3. Current state is now: active (Could not publish transition: publisher's context is invalid, at ./src/rcl/publisher.c:389, at ./src/rcl_lifecycle.c:368)\n[INFO] [1783746192.889990844] [planner_server]: Activating plugin GridBased of type NavfnPlanner\n[ERROR] [1783746192.890330427] [planner_server]: Caught exception in callback for transition 13\n[ERROR] [1783746192.890354468] [planner_server]: Original error: could not create service: rcl node's context is invalid, at ./src/rcl/node.c:428\n[ERROR] [1783746192.890395010] [planner_server]: Failed to finish transition 3. Current state is now: errorprocessing (Could not publish transition: publisher's context is invalid, at ./src/rcl/publisher.c:389, at ./src/rcl_lifecycle.c:368)\n[INFO] [1783746192.901485454] [map_server]: Cleaning up\n[INFO] [1783746192.901741328] [map_server]: Destroying bond (map_server) to lifecycle manager.\n[INFO] [1783746192.918366598] [amcl]: Cleaning up\nTraceback (most recent call last):\n  File \"<string>\", line 44, in main\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/__init__.py\", line 229, in spin\n    executor.spin_once()\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py\", line 808, in spin_once\n    self._spin_once_impl(timeout_sec)\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py\", line 797, in _spin_once_impl\n[INFO] [1783746192.943913190] [planner_server]: Destroying plugin GridBased of type NavfnPlanner\n    handler, entity, node = self.wait_for_ready_callbacks(timeout_sec=timeout_sec)\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py\", line 780, in wait_for_ready_callbacks\n    return next(self._cb_iter)\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py\", line 677, in _wait_for_ready_callbacks\n    wait_set.wait(timeout_nsec)\nKeyboardInterrupt\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"<string>\", line 52, in <module>\n  File \"<string>\", line 46, in main\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/node.py\", line 1685, in destroy_node\n    self.destroy_publisher(self._publishers[0])\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/node.py\", line 1565, in destroy_publisher\n    publisher.destroy()\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/publisher.py\", line 99, in destroy\n    self.__publisher.destroy_when_not_in_use()\nKeyboardInterrupt\n[INFO] [1783746193.081699675] [map_server]: Destroying\nWarning: class_loader.ClassLoader: SEVERE WARNING!!! Attempting to unload library while objects created by this loader exist in the heap! You should delete your objects before attempting to unload the library or destroying the ClassLoader. The library will NOT be unloaded.\n         at line 127 in ./src/class_loader.cpp\nterminate called without an active exception\n[INFO] [1783746193.131516943] [amcl]: Destroying bond (amcl) to lifecycle manager.\n[INFO] [1783746193.325832813] [amcl]: Destroying\n[ros2run]: Aborted\n",
+        "map_analysis": {
+          "bounds": {
+            "max_x": 7.5761512648662785,
+            "max_y": 5.650000084191561,
+            "min_x": -5.473848929593875,
+            "min_y": 0.0
+          },
+          "cell_counts": {
+            "free": 425,
+            "occupied": 45,
+            "other": 0,
+            "unknown": 29023
+          },
+          "error": null,
+          "executed": true,
+          "height": 113,
+          "image": "/root/rober/onboard/runtime/maps/trashbot_map.pgm",
+          "map_yaml": "/root/rober/onboard/runtime/maps/trashbot_map.yaml",
+          "ok": true,
+          "origin": [
+            -5.473848929593875,
+            0.0,
+            0.0
+          ],
+          "resolution": 0.05000000074505806,
+          "width": 261
+        },
+        "map_yaml": "/root/rober/onboard/runtime/maps/trashbot_map.yaml",
+        "map_yaml_source": "explicit_cli_managed_map_yaml",
+        "process_group": 445227,
+        "requested": true,
+        "started": true,
+        "startup_error": null,
+        "wait_result": {
+          "boundary": "managed_runtime_wait_timeout",
+          "history": [
+            {
+              "lifecycle_active": {
+                "amcl": false,
+                "map_server": false,
+                "planner_server": false
+              },
+              "node_list": {
+                "boundary": "rclpy_node_names_failed",
+                "elapsed_ms": 1,
+                "error": {
+                  "message": "No module named 'rclpy'",
+                  "type": "ModuleNotFoundError"
+                },
+                "executed": false,
+                "node_names": [],
+                "ok": false
+              }
+            },
+            {
+              "lifecycle_active": {
+                "amcl": false,
+                "map_server": false,
+                "planner_server": false
+              },
+              "node_list": {
+                "boundary": "rclpy_node_names_failed",
+                "elapsed_ms": 1,
+                "error": {
+                  "message": "No module named 'rclpy'",
+                  "type": "ModuleNotFoundError"
+                },
+                "executed": false,
+                "node_names": [],
+                "ok": false
+              }
+            },
+            {
+              "lifecycle_active": {
+                "amcl": false,
+                "map_server": false,
+                "planner_server": false
+              },
+              "node_list": {
+                "boundary": "rclpy_node_names_failed",
+                "elapsed_ms": 0,
+                "error": {
+                  "message": "No module named 'rclpy'",
+                  "type": "ModuleNotFoundError"
+                },
+                "executed": false,
+                "node_names": [],
+                "ok": false
+              }
+            },
+            {
+              "lifecycle_active": {
+                "amcl": false,
+                "map_server": false,
+                "planner_server": false
+              },
+              "node_list": {
+                "boundary": "rclpy_node_names_failed",
+                "elapsed_ms": 1,
+                "error": {
+                  "message": "No module named 'rclpy'",
+                  "type": "ModuleNotFoundError"
+                },
+                "executed": false,
+                "node_names": [],
+                "ok": false
+              }
+            },
+            {
+              "lifecycle_active": {
+                "amcl": false,
+                "map_server": false,
+                "planner_server": false
+              },
+              "node_list": {
+                "boundary": "rclpy_node_names_failed",
+                "elapsed_ms": 1,
+                "error": {
+                  "message": "No module named 'rclpy'",
+                  "type": "ModuleNotFoundError"
+                },
+                "executed": false,
+                "node_names": [],
+                "ok": false
+              }
+            },
+            {
+              "lifecycle_active": {
+                "amcl": false,
+                "map_server": false,
+                "planner_server": false
+              },
+              "node_list": {
+                "boundary": "rclpy_node_names_failed",
+                "elapsed_ms": 1,
+                "error": {
+                  "message": "No module named 'rclpy'",
+                  "type": "ModuleNotFoundError"
+                },
+                "executed": false,
+                "node_names": [],
+                "ok": false
+              }
+            },
+            {
+              "lifecycle_active": {
+                "amcl": false,
+                "map_server": false,
+                "planner_server": false
+              },
+              "node_list": {
+                "boundary": "rclpy_node_names_failed",
+                "elapsed_ms": 1,
+                "error": {
+                  "message": "No module named 'rclpy'",
+                  "type": "ModuleNotFoundError"
+                },
+                "executed": false,
+                "node_names": [],
+                "ok": false
+              }
+            },
+            {
+              "lifecycle_active": {
+                "amcl": false,
+                "map_server": false,
+                "planner_server": false
+              },
+              "node_list": {
+                "boundary": "rclpy_node_names_failed",
+                "elapsed_ms": 1,
+                "error": {
+                  "message": "No module named 'rclpy'",
+                  "type": "ModuleNotFoundError"
+                },
+                "executed": false,
+                "node_names": [],
+                "ok": false
+              }
+            },
+            {
+              "lifecycle_active": {
+                "amcl": false,
+                "map_server": false,
+                "planner_server": false
+              },
+              "node_list": {
+                "boundary": "rclpy_node_names_failed",
+                "elapsed_ms": 4,
+                "error": {
+                  "message": "No module named 'rclpy'",
+                  "type": "ModuleNotFoundError"
+                },
+                "executed": false,
+                "node_names": [],
+                "ok": false
+              }
+            },
+            {
+              "lifecycle_active": {
+                "amcl": false,
+                "map_server": false,
+                "planner_server": false
+              },
+              "node_list": {
+                "boundary": "rclpy_node_names_failed",
+                "elapsed_ms": 1,
+                "error": {
+                  "message": "No module named 'rclpy'",
+                  "type": "ModuleNotFoundError"
+                },
+                "executed": false,
+                "node_names": [],
+                "ok": false
+              }
+            },
+            {
+              "lifecycle_active": {
+                "amcl": false,
+                "map_server": false,
+                "planner_server": false
+              },
+              "node_list": {
+                "boundary": "rclpy_node_names_failed",
+                "elapsed_ms": 1,
+                "error": {
+                  "message": "No module named 'rclpy'",
+                  "type": "ModuleNotFoundError"
+                },
+                "executed": false,
+                "node_names": [],
+                "ok": false
+              }
+            },
+            {
+              "lifecycle_active": {
+                "amcl": false,
+                "map_server": false,
+                "planner_server": false
+              },
+              "node_list": {
+                "boundary": "rclpy_node_names_failed",
+                "elapsed_ms": 1,
+                "error": {
+                  "message": "No module named 'rclpy'",
+                  "type": "ModuleNotFoundError"
+                },
+                "executed": false,
+                "node_names": [],
+                "ok": false
+              }
+            },
+            {
+              "lifecycle_active": {
+                "amcl": false,
+                "map_server": false,
+                "planner_server": false
+              },
+              "node_list": {
+                "boundary": "rclpy_node_names_failed",
+                "elapsed_ms": 2,
+                "error": {
+                  "message": "No module named 'rclpy'",
+                  "type": "ModuleNotFoundError"
+                },
+                "executed": false,
+                "node_names": [],
+                "ok": false
+              }
+            },
+            {
+              "lifecycle_active": {
+                "amcl": false,
+                "map_server": false,
+                "planner_server": false
+              },
+              "node_list": {
+                "boundary": "rclpy_node_names_failed",
+                "elapsed_ms": 1,
+                "error": {
+                  "message": "No module named 'rclpy'",
+                  "type": "ModuleNotFoundError"
+                },
+                "executed": false,
+                "node_names": [],
+                "ok": false
+              }
+            },
+            {
+              "lifecycle_active": {
+                "amcl": false,
+                "map_server": false,
+                "planner_server": false
+              },
+              "node_list": {
+                "boundary": "rclpy_node_names_failed",
+                "elapsed_ms": 1,
+                "error": {
+                  "message": "No module named 'rclpy'",
+                  "type": "ModuleNotFoundError"
+                },
+                "executed": false,
+                "node_names": [],
+                "ok": false
+              }
+            },
+            {
+              "lifecycle_active": {
+                "amcl": false,
+                "map_server": false,
+                "planner_server": false
+              },
+              "node_list": {
+                "boundary": "rclpy_node_names_failed",
+                "elapsed_ms": 2,
+                "error": {
+                  "message": "No module named 'rclpy'",
+                  "type": "ModuleNotFoundError"
+                },
+                "executed": false,
+                "node_names": [],
+                "ok": false
+              }
+            },
+            {
+              "lifecycle_active": {
+                "amcl": false,
+                "map_server": false,
+                "planner_server": false
+              },
+              "node_list": {
+                "boundary": "rclpy_node_names_failed",
+                "elapsed_ms": 5,
+                "error": {
+                  "message": "No module named 'rclpy'",
+                  "type": "ModuleNotFoundError"
+                },
+                "executed": false,
+                "node_names": [],
+                "ok": false
+              }
+            },
+            {
+              "lifecycle_active": {
+                "amcl": false,
+                "map_server": false,
+                "planner_server": false
+              },
+              "node_list": {
+                "boundary": "rclpy_node_names_failed",
+                "elapsed_ms": 1,
+                "error": {
+                  "message": "No module named 'rclpy'",
+                  "type": "ModuleNotFoundError"
+                },
+                "executed": false,
+                "node_names": [],
+                "ok": false
+              }
+            },
+            {
+              "lifecycle_active": {
+                "amcl": false,
+                "map_server": false,
+                "planner_server": false
+              },
+              "node_list": {
+                "boundary": "rclpy_node_names_failed",
+                "elapsed_ms": 1,
+                "error": {
+                  "message": "No module named 'rclpy'",
+                  "type": "ModuleNotFoundError"
+                },
+                "executed": false,
+                "node_names": [],
+                "ok": false
+              }
+            },
+            {
+              "lifecycle_active": {
+                "amcl": false,
+                "map_server": false,
+                "planner_server": false
+              },
+              "node_list": {
+                "boundary": "rclpy_node_names_failed",
+                "elapsed_ms": 2,
+                "error": {
+                  "message": "No module named 'rclpy'",
+                  "type": "ModuleNotFoundError"
+                },
+                "executed": false,
+                "node_names": [],
+                "ok": false
+              }
+            },
+            {
+              "lifecycle_active": {
+                "amcl": false,
+                "map_server": false,
+                "planner_server": false
+              },
+              "node_list": {
+                "boundary": "rclpy_node_names_failed",
+                "elapsed_ms": 1,
+                "error": {
+                  "message": "No module named 'rclpy'",
+                  "type": "ModuleNotFoundError"
+                },
+                "executed": false,
+                "node_names": [],
+                "ok": false
+              }
+            },
+            {
+              "lifecycle_active": {
+                "amcl": false,
+                "map_server": false,
+                "planner_server": false
+              },
+              "node_list": {
+                "boundary": "rclpy_node_names_failed",
+                "elapsed_ms": 1,
+                "error": {
+                  "message": "No module named 'rclpy'",
+                  "type": "ModuleNotFoundError"
+                },
+                "executed": false,
+                "node_names": [],
+                "ok": false
+              }
+            },
+            {
+              "lifecycle_active": {
+                "amcl": false,
+                "map_server": false,
+                "planner_server": false
+              },
+              "node_list": {
+                "boundary": "rclpy_node_names_failed",
+                "elapsed_ms": 2,
+                "error": {
+                  "message": "No module named 'rclpy'",
+                  "type": "ModuleNotFoundError"
+                },
+                "executed": false,
+                "node_names": [],
+                "ok": false
+              }
+            },
+            {
+              "lifecycle_active": {
+                "amcl": false,
+                "map_server": false,
+                "planner_server": false
+              },
+              "node_list": {
+                "boundary": "rclpy_node_names_failed",
+                "elapsed_ms": 0,
+                "error": {
+                  "message": "No module named 'rclpy'",
+                  "type": "ModuleNotFoundError"
+                },
+                "executed": false,
+                "node_names": [],
+                "ok": false
+              }
+            },
+            {
+              "lifecycle_active": {
+                "amcl": false,
+                "map_server": false,
+                "planner_server": false
+              },
+              "node_list": {
+                "boundary": "rclpy_node_names_failed",
+                "elapsed_ms": 1,
+                "error": {
+                  "message": "No module named 'rclpy'",
+                  "type": "ModuleNotFoundError"
+                },
+                "executed": false,
+                "node_names": [],
+                "ok": false
+              }
+            },
+            {
+              "lifecycle_active": {
+                "amcl": false,
+                "map_server": false,
+                "planner_server": false
+              },
+              "node_list": {
+                "boundary": "rclpy_node_names_failed",
+                "elapsed_ms": 1,
+                "error": {
+                  "message": "No module named 'rclpy'",
+                  "type": "ModuleNotFoundError"
+                },
+                "executed": false,
+                "node_names": [],
+                "ok": false
+              }
+            },
+            {
+              "lifecycle_active": {
+                "amcl": false,
+                "map_server": false,
+                "planner_server": false
+              },
+              "node_list": {
+                "boundary": "rclpy_node_names_failed",
+                "elapsed_ms": 1,
+                "error": {
+                  "message": "No module named 'rclpy'",
+                  "type": "ModuleNotFoundError"
+                },
+                "executed": false,
+                "node_names": [],
+                "ok": false
+              }
+            },
+            {
+              "lifecycle_active": {
+                "amcl": false,
+                "map_server": false,
+                "planner_server": false
+              },
+              "node_list": {
+                "boundary": "rclpy_node_names_failed",
+                "elapsed_ms": 1,
+                "error": {
+                  "message": "No module named 'rclpy'",
+                  "type": "ModuleNotFoundError"
+                },
+                "executed": false,
+                "node_names": [],
+                "ok": false
+              }
+            },
+            {
+              "lifecycle_active": {
+                "amcl": false,
+                "map_server": false,
+                "planner_server": false
+              },
+              "node_list": {
+                "boundary": "rclpy_node_names_failed",
+                "elapsed_ms": 1,
+                "error": {
+                  "message": "No module named 'rclpy'",
+                  "type": "ModuleNotFoundError"
+                },
+                "executed": false,
+                "node_names": [],
+                "ok": false
+              }
+            },
+            {
+              "lifecycle_active": {
+                "amcl": false,
+                "map_server": false,
+                "planner_server": false
+              },
+              "node_list": {
+                "boundary": "rclpy_node_names_failed",
+                "elapsed_ms": 1,
+                "error": {
+                  "message": "No module named 'rclpy'",
+                  "type": "ModuleNotFoundError"
+                },
+                "executed": false,
+                "node_names": [],
+                "ok": false
+              }
+            },
+            {
+              "lifecycle_active": {
+                "amcl": false,
+                "map_server": false,
+                "planner_server": false
+              },
+              "node_list": {
+                "boundary": "rclpy_node_names_failed",
+                "elapsed_ms": 1,
+                "error": {
+                  "message": "No module named 'rclpy'",
+                  "type": "ModuleNotFoundError"
+                },
+                "executed": false,
+                "node_names": [],
+                "ok": false
+              }
+            },
+            {
+              "lifecycle_active": {
+                "amcl": false,
+                "map_server": false,
+                "planner_server": false
+              },
+              "node_list": {
+                "boundary": "rclpy_node_names_failed",
+                "elapsed_ms": 1,
+                "error": {
+                  "message": "No module named 'rclpy'",
+                  "type": "ModuleNotFoundError"
+                },
+                "executed": false,
+                "node_names": [],
+                "ok": false
+              }
+            },
+            {
+              "lifecycle_active": {
+                "amcl": false,
+                "map_server": false,
+                "planner_server": false
+              },
+              "node_list": {
+                "boundary": "rclpy_node_names_failed",
+                "elapsed_ms": 1,
+                "error": {
+                  "message": "No module named 'rclpy'",
+                  "type": "ModuleNotFoundError"
+                },
+                "executed": false,
+                "node_names": [],
+                "ok": false
+              }
+            },
+            {
+              "lifecycle_active": {
+                "amcl": false,
+                "map_server": false,
+                "planner_server": false
+              },
+              "node_list": {
+                "boundary": "rclpy_node_names_failed",
+                "elapsed_ms": 1,
+                "error": {
+                  "message": "No module named 'rclpy'",
+                  "type": "ModuleNotFoundError"
+                },
+                "executed": false,
+                "node_names": [],
+                "ok": false
+              }
+            }
+          ],
+          "log_tail": "] [1783746069.596829298] [amcl]: Received a 261 X 113 map @ 0.050 m/pix\n[INFO] [1783746069.596894756] [global_costmap.global_costmap]: StaticLayer: Resizing costmap to 261 X 113 at 0.050000 m/pix\n[INFO] [1783746070.038017761] [lifecycle_manager]: Server map_server connected with bond.\n[INFO] [1783746070.038256635] [lifecycle_manager]: \u001b[34m\u001b[1mActivating amcl\u001b[0m\u001b[0m\n[INFO] [1783746070.040215174] [amcl]: Activating\n[INFO] [1783746070.040486091] [amcl]: Creating bond (amcl) to lifecycle manager.\n[INFO] [1783746070.168274715] [lifecycle_manager]: Server amcl connected with bond.\n[INFO] [1783746070.168534298] [lifecycle_manager]: \u001b[34m\u001b[1mActivating planner_server\u001b[0m\u001b[0m\n[INFO] [1783746070.169392296] [planner_server]: Activating\n[INFO] [1783746070.169559171] [global_costmap.global_costmap]: Activating\n[INFO] [1783746070.169614713] [global_costmap.global_costmap]: Checking transform\n[INFO] [1783746070.169745254] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1783746070.669790139] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1783746071.169772650] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1783746071.669768702] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1783746072.169769878] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1783746072.669801972] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1783746073.169789524] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1783746073.669781076] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1783746074.169781086] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1783746074.669774513] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1783746075.169771690] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1783746075.669778033] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1783746076.169778627] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n",
+          "ok": false,
+          "reason": "managed_runtime_wait_timeout"
+        }
+      },
+      "map_once": {
+        "command": "timeout 8 ros2 topic echo --once /map",
+        "elapsed_ms": 7111,
+        "executed": true,
+        "finished_at_ms": 1783746172909,
+        "ok": true,
+        "returncode": 0,
+        "started_at_ms": 1783746165798,
+        "stderr": "",
+        "stdout": "header:\n  stamp:\n    sec: 1783746068\n    nanosec: 927663885\n  frame_id: map\ninfo:\n  map_load_time:\n    sec: 1783746068\n    nanosec: 927654843\n  resolution: 0.05000000074505806\n  width: 261\n  height: 113\n  origin:\n    position:\n      x: -5.473848929593875\n      y: 0.0\n      z: 0.0\n    orientation:\n      x: 0.0\n      y: 0.0\n      z: 0.0\n      w: 1.0\ndata:\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- -1\n- '...'\n---\n",
+        "timed_out": false,
+        "timeout_s": 10.0
+      },
+      "map_server_info": {
+        "command": "ros2 node info /map_server",
+        "elapsed_ms": 4073,
+        "executed": true,
+        "finished_at_ms": 1783746192787,
+        "ok": true,
+        "returncode": 0,
+        "started_at_ms": 1783746188714,
+        "stderr": "",
+        "stdout": "/map_server\n  Subscribers:\n    /bond: bond/msg/Status\n    /parameter_events: rcl_interfaces/msg/ParameterEvent\n  Publishers:\n    /bond: bond/msg/Status\n    /map: nav_msgs/msg/OccupancyGrid\n    /map_server/transition_event: lifecycle_msgs/msg/TransitionEvent\n    /parameter_events: rcl_interfaces/msg/ParameterEvent\n    /rosout: rcl_interfaces/msg/Log\n  Service Servers:\n    /map_server/change_state: lifecycle_msgs/srv/ChangeState\n    /map_server/describe_parameters: rcl_interfaces/srv/DescribeParameters\n    /map_server/get_available_states: lifecycle_msgs/srv/GetAvailableStates\n    /map_server/get_available_transitions: lifecycle_msgs/srv/GetAvailableTransitions\n    /map_server/get_parameter_types: rcl_interfaces/srv/GetParameterTypes\n    /map_server/get_parameters: rcl_interfaces/srv/GetParameters\n    /map_server/get_state: lifecycle_msgs/srv/GetState\n    /map_server/get_transition_graph: lifecycle_msgs/srv/GetAvailableTransitions\n    /map_server/list_parameters: rcl_interfaces/srv/ListParameters\n    /map_server/load_map: nav2_msgs/srv/LoadMap\n    /map_server/map: nav_msgs/srv/GetMap\n    /map_server/set_parameters: rcl_interfaces/srv/SetParameters\n    /map_server/set_parameters_atomically: rcl_interfaces/srv/SetParametersAtomically\n  Service Clients:\n\n  Action Servers:\n\n  Action Clients:\n\n",
+        "timed_out": false,
+        "timeout_s": 8.0
+      },
+      "map_to_base_link_tf": {
+        "boundary": "map_to_base_link_tf_probe_skipped_until_chain_inputs_observed",
+        "executed": false,
+        "ok": false
+      },
+      "map_to_odom_tf": {
+        "command": "timeout 10 ros2 run tf2_ros tf2_echo map odom",
+        "elapsed_ms": 12528,
+        "executed": true,
+        "finished_at_ms": 1783746107596,
+        "ok": false,
+        "returncode": 124,
+        "started_at_ms": 1783746095068,
+        "stderr": "[INFO] [1783746098.657580103] [tf2_echo]: Waiting for transform map ->  odom: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1783746100.101003624] [tf2_echo]: Waiting for transform map ->  odom: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1783746102.100968040] [tf2_echo]: Waiting for transform map ->  odom: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1783746104.100956123] [tf2_echo]: Waiting for transform map ->  odom: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1783746105.101003393] [tf2_echo]: Waiting for transform map ->  odom: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1783746107.100953726] [tf2_echo]: Waiting for transform map ->  odom: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1783746107.210285332] [rclcpp]: signal_handler(SIGINT/SIGTERM)\n",
+        "stdout": "",
+        "timed_out": false,
+        "timeout_s": 14.0
+      },
+      "node_list": {
+        "command": "ros2 node list",
+        "elapsed_ms": 4070,
+        "executed": true,
+        "finished_at_ms": 1783746144318,
+        "ok": true,
+        "returncode": 0,
+        "started_at_ms": 1783746140248,
+        "stderr": "",
+        "stdout": "/amcl\n/esp32_bridge\n/global_costmap/global_costmap\n/lidar_driver\n/lifecycle_manager\n/managed_static_tf_broadcaster\n/map_server\n/planner_server\n/static_transform_publisher_7DHFuwt4RdNljT0f\n/transform_listener_impl_aaaad2288320\n/transform_listener_impl_aaab03beb530\n",
+        "timed_out": false,
+        "timeout_s": 8.0
+      },
+      "odom_once": {
+        "command": "timeout 6 ros2 topic echo --once /odom",
+        "elapsed_ms": 7515,
+        "executed": true,
+        "finished_at_ms": 1783746180436,
+        "ok": true,
+        "returncode": 0,
+        "started_at_ms": 1783746172921,
+        "stderr": "",
+        "stdout": "header:\n  stamp:\n    sec: 1783746179\n    nanosec: 676518900\n  frame_id: odom\nchild_frame_id: base_link\npose:\n  pose:\n    position:\n      x: -0.5741148754328981\n      y: 0.0817563754203391\n      z: 0.0\n    orientation:\n      x: 0.0\n      y: 0.0\n      z: -0.9243702388729308\n      w: -0.381496607437079\n  covariance:\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\ntwist:\n  twist:\n    linear:\n      x: 0.0\n      y: 0.0\n      z: 0.0\n    angular:\n      x: 0.0\n      y: 0.0\n      z: 0.0\n  covariance:\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n---\n",
+        "timed_out": false,
+        "timeout_s": 8.0
+      },
+      "odom_to_base_link_tf": {
+        "command": "timeout 10 ros2 run tf2_ros tf2_echo odom base_link",
+        "elapsed_ms": 12461,
+        "executed": true,
+        "finished_at_ms": 1783746120084,
+        "ok": false,
+        "returncode": 124,
+        "started_at_ms": 1783746107623,
+        "stderr": "[INFO] [1783746111.100708975] [tf2_echo]: Waiting for transform odom ->  base_link: Invalid frame ID \"odom\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1783746119.769242052] [rclcpp]: signal_handler(SIGINT/SIGTERM)\n",
+        "stdout": "At time 0.0\n- Translation: [0.000, 0.000, 0.000]\n- Rotation: in Quaternion (xyzw) [0.000, 0.000, 0.000, 1.000]\n- Rotation: in RPY (radian) [0.000, -0.000, 0.000]\n- Rotation: in RPY (degree) [0.000, -0.000, 0.000]\n- Matrix:\n  1.000  0.000  0.000  0.000\n  0.000  1.000  0.000  0.000\n  0.000  0.000  1.000  0.000\n  0.000  0.000  0.000  1.000\nAt time 0.0\n- Translation: [0.000, 0.000, 0.000]\n- Rotation: in Quaternion (xyzw) [0.000, 0.000, 0.000, 1.000]\n- Rotation: in RPY (radian) [0.000, -0.000, 0.000]\n- Rotation: in RPY (degree) [0.000, -0.000, 0.000]\n- Matrix:\n  1.000  0.000  0.000  0.000\n  0.000  1.000  0.000  0.000\n  0.000  0.000  1.000  0.000\n  0.000  0.000  0.000  1.000\nAt time 1783746114.676412155\n- Translation: [-0.574, 0.082, 0.000]\n- Rotation: in Quaternion (xyzw) [0.000, 0.000, 0.924, 0.381]\n- Rotation: in RPY (radian) [0.000, -0.000, 2.359]\n- Rotation: in RPY (degree) [0.000, -0.000, 135.147]\n- Matrix:\n -0.709 -0.705  0.000 -0.574\n  0.705 -0.709  0.000  0.082\n  0.000  0.000  1.000  0.000\n  0.000  0.000  0.000  1.000\nAt time 1783746115.676468800\n- Translation: [-0.574, 0.082, 0.000]\n- Rotation: in Quaternion (xyzw) [0.000, 0.000, 0.924, 0.381]\n- Rotation: in RPY (radian) [0.000, -0.000, 2.359]\n- Rotation: in RPY (degree) [0.000, -0.000, 135.147]\n- Matrix:\n -0.709 -0.705  0.000 -0.574\n  0.705 -0.709  0.000  0.082\n  0.000  0.000  1.000  0.000\n  0.000  0.000  0.000  1.000\nAt time 1783746116.676451529\n- Translation: [-0.574, 0.082, 0.000]\n- Rotation: in Quaternion (xyzw) [0.000, 0.000, 0.924, 0.381]\n- Rotation: in RPY (radian) [0.000, -0.000, 2.359]\n- Rotation: in RPY (degree) [0.000, -0.000, 135.147]\n- Matrix:\n -0.709 -0.705  0.000 -0.574\n  0.705 -0.709  0.000  0.082\n  0.000  0.000  1.000  0.000\n  0.000  0.000  0.000  1.000\nAt time 1783746117.676376758\n- Translation: [-0.574, 0.082, 0.000]\n- Rotation: in Quaternion (xyzw) [0.000, 0.000, 0.924, 0.381]\n- Rotation: in RPY (radian) [0.000, -0.000, 2.359]\n- Rotation: in RPY (degree) [0.000, -0.000, 135.147]\n- Matrix:\n -0.709 -0.705  0.000 -0.574\n  0.705 -0.709  0.000  0.082\n  0.000  0.000  1.000  0.000\n  0.000  0.000  0.000  1.000\nAt time 1783746118.676486862\n- Translation: [-0.574, 0.082, 0.000]\n- Rotation: in Quaternion (xyzw) [0.000, 0.000, 0.924, 0.381]\n- Rotation: in RPY (radian) [0.000, -0.000, 2.359]\n- Rotation: in RPY (degree) [0.000, -0.000, 135.147]\n- Matrix:\n -0.709 -0.705  0.000 -0.574\n  0.705 -0.709  0.000  0.082\n  0.000  0.000  1.000  0.000\n  0.000  0.000  0.000  1.000\nAt time 1783746119.676817757\n- Translation: [-0.574, 0.082, 0.000]\n- Rotation: in Quaternion (xyzw) [0.000, 0.000, 0.924, 0.381]\n- Rotation: in RPY (radian) [0.000, -0.000, 2.359]\n- Rotation: in RPY (degree) [0.000, -0.000, 135.147]\n- Matrix:\n -0.709 -0.705  0.000 -0.574\n  0.705 -0.709  0.000  0.082\n  0.000  0.000  1.000  0.000\n  0.000  0.000  0.000  1.000\n",
+        "timed_out": false,
+        "timeout_s": 14.0
+      },
+      "package_checks": {
+        "nav2_amcl": {
+          "batch_command": "ros2 pkg list",
+          "command": "ros2 pkg list contains nav2_amcl",
+          "diagnostic_mode": "single_sourced_pkg_list_package_check",
+          "elapsed_ms": 3377,
+          "executed": true,
+          "ok": true,
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "nav2_amcl"
+        },
+        "nav2_lifecycle_manager": {
+          "batch_command": "ros2 pkg list",
+          "command": "ros2 pkg list contains nav2_lifecycle_manager",
+          "diagnostic_mode": "single_sourced_pkg_list_package_check",
+          "elapsed_ms": 3377,
+          "executed": true,
+          "ok": true,
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "nav2_lifecycle_manager"
+        },
+        "nav2_map_server": {
+          "batch_command": "ros2 pkg list",
+          "command": "ros2 pkg list contains nav2_map_server",
+          "diagnostic_mode": "single_sourced_pkg_list_package_check",
+          "elapsed_ms": 3377,
+          "executed": true,
+          "ok": true,
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "nav2_map_server"
+        },
+        "ros2_trashbot_bringup": {
+          "batch_command": "ros2 pkg list",
+          "command": "ros2 pkg list contains ros2_trashbot_bringup",
+          "diagnostic_mode": "single_sourced_pkg_list_package_check",
+          "elapsed_ms": 3377,
+          "executed": true,
+          "ok": true,
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "ros2_trashbot_bringup"
+        },
+        "ros2_trashbot_nav": {
+          "batch_command": "ros2 pkg list",
+          "command": "ros2 pkg list contains ros2_trashbot_nav",
+          "diagnostic_mode": "single_sourced_pkg_list_package_check",
+          "elapsed_ms": 3377,
+          "executed": true,
+          "ok": true,
+          "returncode": 0,
+          "stderr": "",
+          "stdout": "ros2_trashbot_nav"
+        }
+      },
+      "package_checks_batch": {
+        "command": "ros2 pkg list",
+        "elapsed_ms": 3377,
+        "executed": true,
+        "finished_at_ms": 1783746136041,
+        "ok": true,
+        "returncode": 0,
+        "started_at_ms": 1783746132664,
+        "stderr": "",
+        "stdout": "action_msgs\nactionlib_msgs\nament_cmake\nament_cmake_auto\nament_cmake_copyright\nament_cmake_core\nament_cmake_cppcheck\nament_cmake_cpplint\nament_cmake_export_definitions\nament_cmake_export_dependencies\nament_cmake_export_include_directories\nament_cmake_export_interfaces\nament_cmake_export_libraries\nament_cmake_export_link_flags\nament_cmake_export_targets\nament_cmake_flake8\nament_cmake_gen_version_h\nament_cmake_gmock\nament_cmake_gtest\nament_cmake_include_directories\nament_cmake_libraries\nament_cmake_lint_cmake\nament_cmake_pep257\nament_cmake_pytest\nament_cmake_python\nament_cmake_ros\nament_cmake_target_dependencies\nament_cmake_test\nament_cmake_uncrustify\nament_cmake_version\nament_cmake_xmllint\nament_copyright\nament_cppcheck\nament_cpplint\nament_flake8\nament_index_cpp\nament_index_python\nament_lint\nament_lint_auto\nament_lint_cmake\nament_lint_common\nament_package\nament_pep257\nament_uncrustify\nament_xmllint\nangles\nbehaviortree_cpp_v3\nbond\nbondcpp\nbuiltin_interfaces\nclass_loader\ncommon_interfaces\ncomposition_interfaces\nconsole_bridge_vendor\ncostmap_queue\ncv_bridge\ndiagnostic_msgs\ndiagnostic_updater\ndomain_coordinator\ndwb_core\ndwb_critics\ndwb_msgs\ndwb_plugins\neigen3_cmake_module\nfastrtps_cmake_module\nfoxglove_bridge\ngeometry2\ngeometry_msgs\nimage_transport\ninteractive_markers\nkdl_parser\nkeyboard_handler\nlaser_geometry\nlaunch\nlaunch_ros\nlaunch_testing\nlaunch_testing_ament_cmake\nlaunch_testing_ros\nlaunch_xml\nlaunch_yaml\nlibcurl_vendor\nlibstatistics_collector\nlibyaml_vendor\nlifecycle_msgs\nmap_msgs\nmessage_filters\nnav2_amcl\nnav2_behavior_tree\nnav2_behaviors\nnav2_bringup\nnav2_bt_navigator\nnav2_collision_monitor\nnav2_common\nnav2_constrained_smoother\nnav2_controller\nnav2_core\nnav2_costmap_2d\nnav2_dwb_controller\nnav2_lifecycle_manager\nnav2_map_server\nnav2_mppi_controller\nnav2_msgs\nnav2_navfn_planner\nnav2_planner\nnav2_regulated_pure_pursuit_controller\nnav2_rotation_shim_controller\nnav2_route\nnav2_rviz_plugins\nnav2_simple_commander\nnav2_smac_planner\nnav2_smoother\nnav2_theta_star_planner\nnav2_util\nnav2_velocity_smoother\nnav2_voxel_grid\nnav2_waypoint_follower\nnav_2d_msgs\nnav_2d_utils\nnav_msgs\nnavigation2\nompl\norocos_kdl_vendor\nosrf_pycommon\npluginlib\npybind11_vendor\npython_cmake_module\npython_orocos_kdl_vendor\nrcl\nrcl_action\nrcl_interfaces\nrcl_lifecycle\nrcl_logging_interface\nrcl_logging_spdlog\nrcl_yaml_param_parser\nrclcpp\nrclcpp_action\nrclcpp_components\nrclcpp_lifecycle\nrclpy\nrcpputils\nrcutils\nresource_retriever\nrmw\nrmw_dds_common\nrmw_fastrtps_cpp\nrmw_fastrtps_shared_cpp\nrmw_implementation\nrmw_implementation_cmake\nrobot_state_publisher\nros2_trashbot_behavior\nros2_trashbot_bringup\nros2_trashbot_hardware\nros2_trashbot_interfaces\nros2_trashbot_nav\nros2_trashbot_vision\nros2action\nros2bag\nros2cli\nros2cli_common_extensions\nros2component\nros2doctor\nros2interface\nros2launch\nros2lifecycle\nros2multicast\nros2node\nros2param\nros2pkg\nros2plugin\nros2run\nros2service\nros2topic\nros_base\nros_core\nros_environment\nros_workspace\nrosbag2\nrosbag2_compression\nrosbag2_compression_zstd\nrosbag2_cpp\nrosbag2_interfaces\nrosbag2_py\nrosbag2_storage\nrosbag2_storage_default_plugins\nrosbag2_transport\nrosgraph_msgs\nrosidl_adapter\nrosidl_cli\nrosidl_cmake\nrosidl_default_generators\nrosidl_default_runtime\nrosidl_generator_c\nrosidl_generator_cpp\nrosidl_generator_py\nrosidl_generator_rs\nrosidl_parser\nrosidl_runtime_c\nrosidl_runtime_cpp\nrosidl_runtime_py\nrosidl_typesupport_c\nrosidl_typesupport_cpp\nrosidl_typesupport_fastrtps_c\nrosidl_typesupport_fastrtps_cpp\nrosidl_typesupport_interface\nrosidl_typesupport_introspection_c\nrosidl_typesupport_introspection_cpp\nrosx_introspection\nrpyutils\nrviz_assimp_vendor\nrviz_common\nrviz_default_plugins\nrviz_ogre_vendor\nrviz_rendering\nsensor_msgs\nsensor_msgs_py\nshape_msgs\nshared_queues_vendor\nslam_toolbox\nsmclib\nspdlog_vendor\nsqlite3_vendor\nsros2\nsros2_cmake\nstatistics_msgs\nstd_msgs\nstd_srvs\nstereo_msgs\ntf2\ntf2_bullet\ntf2_eigen\ntf2_eigen_kdl\ntf2_geometry_msgs\ntf2_kdl\ntf2_msgs\ntf2_py\ntf2_ros\ntf2_ros_py\ntf2_sensor_msgs\ntf2_tools\ntinyxml2_vendor\ntinyxml_vendor\ntracetools\ntrajectory_msgs\nuncrustify_vendor\nunique_identifier_msgs\nurdf\nurdf_parser_plugin\nvisualization_msgs\nyaml_cpp_vendor\nzstd_vendor\n",
+        "timed_out": false,
+        "timeout_s": 5.0
+      },
+      "path_generation": {
+        "request": {
+          "enabled": true,
+          "frame_id": "map",
+          "map_free_cell_count": 425,
+          "map_goal_diagnostics": {
+            "adapted": false,
+            "bounds": {
+              "max_x": 7.5761512648662785,
+              "max_y": 5.650000084191561,
+              "min_x": -5.473848929593875,
+              "min_y": 0.0
+            },
+            "cell_counts": {
+              "free": 425,
+              "occupied": 45,
+              "other": 0,
+              "unknown": 29023
+            },
+            "goal_in_bounds": true,
+            "map_analysis_ok": true,
+            "original_goal": {
+              "x": 0.8,
+              "y": 0.0
+            },
+            "original_start": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "start_in_bounds": true
+          },
+          "map_has_free_cells_for_path_proof": true,
+          "orientation_w": 1.0,
+          "orientation_z": 0.0,
+          "planner_id": "",
+          "start_x": 0.0,
+          "start_y": 0.0,
+          "use_start": false,
+          "x": 0.8,
+          "y": 0.0,
+          "yaw": 0.0
+        },
+        "result": {
+          "attempted": false,
+          "boundary": "path_generation_blocked_by_localization_not_ready",
+          "ok": false
+        }
+      },
+      "planner_lifecycle": {
+        "controller_server": {
+          "boundary": "planner_probe_deferred_until_localization_ready",
+          "executed": false,
+          "ok": false
+        },
+        "planner_server": {
+          "boundary": "planner_probe_deferred_until_localization_ready",
+          "executed": false,
+          "ok": false
+        }
+      },
+      "planner_lifecycle_recheck": {
+        "boundary": "path_generation_planner_recheck_not_requested",
+        "executed": false
+      },
+      "planner_node_info": {
+        "boundary": "planner_probe_deferred_until_localization_ready",
+        "executed": false,
+        "ok": false
+      },
+      "post_initialpose_amcl_pose_once": {
+        "command": "timeout 8 ros2 topic echo --once /amcl_pose",
+        "elapsed_ms": 10589,
+        "error": {
+          "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; timeout 8 ros2 topic echo --once /amcl_pose",
+          "type": "TimeoutExpired"
+        },
+        "executed": true,
+        "finished_at_ms": 1783746094989,
+        "ok": false,
+        "returncode": null,
+        "started_at_ms": 1783746084400,
+        "stderr": "",
+        "stdout": "",
+        "timed_out": true,
+        "timeout_s": 10.0
+      },
+      "ros2_check": {
+        "command": "command -v ros2",
+        "elapsed_ms": 2141,
+        "executed": true,
+        "finished_at_ms": 1783746078509,
+        "ok": true,
+        "returncode": 0,
+        "started_at_ms": 1783746076368,
+        "stderr": "",
+        "stdout": "/opt/ros/humble/bin/ros2\n",
+        "timed_out": false,
+        "timeout_s": 6.0
+      },
+      "scan_once": {
+        "command": "timeout 6 ros2 topic echo --once /scan",
+        "elapsed_ms": 8607,
+        "error": {
+          "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; timeout 6 ros2 topic echo --once /scan']' t",
+          "type": "TimeoutExpired"
+        },
+        "executed": true,
+        "finished_at_ms": 1783746165787,
+        "ok": false,
+        "returncode": null,
+        "started_at_ms": 1783746157180,
+        "stderr": "",
+        "stdout": "",
+        "timed_out": true,
+        "timeout_s": 8.0
+      },
+      "tf_source_probe": {
+        "amcl_rclpy_probe": {
+          "boundary": "rclpy_amcl_probe_failed",
+          "command_statuses": {
+            "rclpy_graph": null,
+            "tf": null,
+            "tf_static": null
+          },
+          "dynamic_edges": [],
+          "dynamic_transforms": [],
+          "elapsed_ms": 5,
+          "error": {
+            "message": "librcl_action.so: cannot open shared object file: No such file or directory\nThe C extension '/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/_rclpy_pybind11.cpython-310-aarch64-linux-gnu.so' failed to be imported while being presen",
+            "type": "ImportError"
+          },
+          "executed": false,
+          "node_info_observed": false,
+          "ok": false,
+          "param_probe_ok": false,
+          "params": {},
+          "publishers": [],
+          "static_edges": [],
+          "static_transforms": [],
+          "subscribers": [],
+          "tf_inventory_observed": false,
+          "topic_endpoint_summaries": {},
+          "topic_types": {}
+        },
+        "boundary": "rclpy_amcl_probe_failed",
+        "elapsed_ms": 5,
+        "executed": true,
+        "ok": false,
+        "stderr": "",
+        "stdout": ""
+      },
+      "topic_list": {
+        "command": "ros2 topic list -t",
+        "elapsed_ms": 4164,
+        "executed": true,
+        "finished_at_ms": 1783746140238,
+        "ok": true,
+        "returncode": 0,
+        "started_at_ms": 1783746136074,
+        "stderr": "",
+        "stdout": "/amcl/transition_event [lifecycle_msgs/msg/TransitionEvent]\n/amcl_pose [geometry_msgs/msg/PoseWithCovarianceStamped]\n/battery [sensor_msgs/msg/BatteryState]\n/bond [bond/msg/Status]\n/cmd_vel [geometry_msgs/msg/Twist]\n/diagnostics [diagnostic_msgs/msg/DiagnosticArray]\n/global_costmap/costmap [nav_msgs/msg/OccupancyGrid]\n/global_costmap/costmap_raw [nav2_msgs/msg/Costmap]\n/global_costmap/costmap_updates [map_msgs/msg/OccupancyGridUpdate]\n/global_costmap/footprint [geometry_msgs/msg/Polygon]\n/global_costmap/global_costmap/transition_event [lifecycle_msgs/msg/TransitionEvent]\n/global_costmap/published_footprint [geometry_msgs/msg/PolygonStamped]\n/imu/data [sensor_msgs/msg/Imu]\n/initialpose [geometry_msgs/msg/PoseWithCovarianceStamped]\n/lidar/raw_packet [std_msgs/msg/UInt8MultiArray]\n/map [nav_msgs/msg/OccupancyGrid]\n/map_server/transition_event [lifecycle_msgs/msg/TransitionEvent]\n/odom [nav_msgs/msg/Odometry]\n/parameter_events [rcl_interfaces/msg/ParameterEvent]\n/particle_cloud [nav2_msgs/msg/ParticleCloud]\n/plan [nav_msgs/msg/Path]\n/planner_server/transition_event [lifecycle_msgs/msg/TransitionEvent]\n/rosout [rcl_interfaces/msg/Log]\n/scan [sensor_msgs/msg/LaserScan]\n/tf [tf2_msgs/msg/TFMessage]\n/tf_static [tf2_msgs/msg/TFMessage]\n",
+        "timed_out": false,
+        "timeout_s": 8.0
+      }
+    },
+    "controller_active": false,
+    "controller_server_active": false,
+    "controller_server_observed": false,
+    "controller_server_requested": false,
+    "current_command": null,
+    "delivery_success": false,
+    "effective_map_inputs_ready": true,
+    "elapsed_ms": 138988,
+    "evidence_ref": "o10-amcl-nav2-runtime-1783746055782",
+    "evidence_type": "blocked_with_root_cause",
+    "generated_at_ms": 1783746194770,
+    "hil_pass": false,
+    "initialpose_boundary": "explicit_opt_in_single_initialpose_for_amcl_localization_only",
+    "initialpose_publish_attempted": true,
+    "initialpose_publish_attempts": 1,
+    "initialpose_publish_elapsed_ms": 5834,
+    "initialpose_publish_error": null,
+    "initialpose_publish_method": "ros2_topic_pub_once_cli_fallback",
+    "initialpose_published": true,
+    "initialpose_request": {
+      "enabled": true,
+      "frame_id": "map",
+      "orientation_w": 1.0,
+      "orientation_z": 0.0,
+      "x": 0.0,
+      "y": 0.0,
+      "yaw": 0.0
+    },
+    "initialpose_subscriber_count": 1,
+    "last_phase": "final",
+    "last_successful_phase": "cleanup",
+    "localization_signal_freshness": {
+      "/amcl_pose": {
+        "endpoint_error": null,
+        "expected_type": "geometry_msgs/msg/PoseWithCovarianceStamped",
+        "freshness": {
+          "age_ms": null,
+          "reason": "probe_or_source_not_observed",
+          "status": "not_observed"
+        },
+        "probe": {
+          "boundary": "/amcl_pose_probe_not_observed",
+          "elapsed_ms": 10589,
+          "error": {
+            "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; timeout 8 ros2 topic echo --once /amcl_pose",
+            "type": "TimeoutExpired"
+          },
+          "executed": true,
+          "observed": false,
+          "returncode": null,
+          "timed_out": true,
+          "timeout_s": 10.0
+        },
+        "publishers": {
+          "count": 0,
+          "nodes": []
+        },
+        "source_class": "message",
+        "subscribers": {
+          "count": 0,
+          "nodes": []
+        },
+        "timestamp": {
+          "parsed": false,
+          "reason": "stamp_not_found",
+          "source": "/amcl_pose.header.stamp"
+        },
+        "topic": "/amcl_pose",
+        "topic_present": true,
+        "topic_type": "geometry_msgs/msg/PoseWithCovarianceStamped"
+      },
+      "/odom": {
+        "endpoint_error": null,
+        "expected_type": "nav_msgs/msg/Odometry",
+        "freshness": {
+          "age_ms": 760,
+          "reason": "within_threshold",
+          "status": "fresh",
+          "threshold_ms": 3000
+        },
+        "probe": {
+          "boundary": "/odom_probe_not_observed",
+          "elapsed_ms": 7515,
+          "error": null,
+          "executed": true,
+          "observed": true,
+          "returncode": 0,
+          "timed_out": false,
+          "timeout_s": 8.0
+        },
+        "publishers": {
+          "count": 0,
+          "nodes": []
+        },
+        "source_class": "message",
+        "subscribers": {
+          "count": 0,
+          "nodes": []
+        },
+        "timestamp": {
+          "epoch_ms": 1783746179676,
+          "nanosec": 676518900,
+          "parsed": true,
+          "sec": 1783746179,
+          "source": "/odom.header.stamp"
+        },
+        "topic": "/odom",
+        "topic_present": true,
+        "topic_type": "nav_msgs/msg/Odometry"
+      },
+      "/scan": {
+        "endpoint_error": null,
+        "expected_type": "sensor_msgs/msg/LaserScan",
+        "freshness": {
+          "age_ms": null,
+          "reason": "probe_or_source_not_observed",
+          "status": "not_observed"
+        },
+        "probe": {
+          "boundary": "/scan_probe_not_observed",
+          "elapsed_ms": 8607,
+          "error": {
+            "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; timeout 6 ros2 topic echo --once /scan']' t",
+            "type": "TimeoutExpired"
+          },
+          "executed": true,
+          "observed": false,
+          "returncode": null,
+          "timed_out": true,
+          "timeout_s": 8.0
+        },
+        "publishers": {
+          "count": 0,
+          "nodes": []
+        },
+        "source_class": "message",
+        "subscribers": {
+          "count": 0,
+          "nodes": []
+        },
+        "timestamp": {
+          "parsed": false,
+          "reason": "stamp_not_found",
+          "source": "/scan.header.stamp"
+        },
+        "topic": "/scan",
+        "topic_present": true,
+        "topic_type": "sensor_msgs/msg/LaserScan"
+      },
+      "/tf": {
+        "dynamic_edge_count": 0,
+        "endpoint_error": null,
+        "expected_type": "tf2_msgs/msg/TFMessage",
+        "freshness": {
+          "age_ms": null,
+          "reason": "probe_or_source_not_observed",
+          "status": "not_observed"
+        },
+        "probe": {
+          "boundary": "rclpy_amcl_probe_failed",
+          "elapsed_ms": 5,
+          "error": null,
+          "executed": true,
+          "observed": false,
+          "returncode": null,
+          "timed_out": false,
+          "timeout_s": null
+        },
+        "publishers": {
+          "count": 0,
+          "nodes": []
+        },
+        "sample_edges": [],
+        "source_class": "dynamic",
+        "subscribers": {
+          "count": 0,
+          "nodes": []
+        },
+        "timestamp": {
+          "parsed": false,
+          "reason": "tf_transform_stamp_not_observed",
+          "source": "/tf.header.stamp"
+        },
+        "topic": "/tf",
+        "topic_present": true,
+        "topic_type": "tf2_msgs/msg/TFMessage"
+      },
+      "/tf_static": {
+        "endpoint_error": null,
+        "expected_type": "tf2_msgs/msg/TFMessage",
+        "freshness": {
+          "age_ms": null,
+          "reason": "probe_or_source_not_observed",
+          "status": "not_observed"
+        },
+        "probe": {
+          "boundary": "rclpy_amcl_probe_failed",
+          "elapsed_ms": 5,
+          "error": null,
+          "executed": true,
+          "observed": false,
+          "returncode": null,
+          "timed_out": false,
+          "timeout_s": null
+        },
+        "publishers": {
+          "count": 0,
+          "nodes": []
+        },
+        "sample_edges": [],
+        "source_class": "static",
+        "static_edge_count": 0,
+        "subscribers": {
+          "count": 0,
+          "nodes": []
+        },
+        "timestamp": {
+          "parsed": false,
+          "reason": "tf_static_transform_stamp_not_observed",
+          "source": "/tf_static.header.stamp"
+        },
+        "topic": "/tf_static",
+        "topic_present": true,
+        "topic_type": "tf2_msgs/msg/TFMessage"
+      }
+    },
+    "localization_tf_observed": {
+      "map_to_base_link": false,
+      "map_to_odom": false
+    },
+    "managed_runtime_boundary": "explicit_opt_in_managed_path_generation_runtime_no_motion",
+    "managed_runtime_cleanup_ok": true,
+    "managed_runtime_map_analysis": {
+      "bounds": {
+        "max_x": 7.5761512648662785,
+        "max_y": 5.650000084191561,
+        "min_x": -5.473848929593875,
+        "min_y": 0.0
+      },
+      "cell_counts": {
+        "free": 425,
+        "occupied": 45,
+        "other": 0,
+        "unknown": 29023
+      },
+      "error": null,
+      "executed": true,
+      "height": 113,
+      "image": "/root/rober/onboard/runtime/maps/trashbot_map.pgm",
+      "map_yaml": "/root/rober/onboard/runtime/maps/trashbot_map.yaml",
+      "ok": true,
+      "origin": [
+        -5.473848929593875,
+        0.0,
+        0.0
+      ],
+      "resolution": 0.05000000074505806,
+      "width": 261
+    },
+    "managed_runtime_map_inputs_ready": true,
+    "managed_runtime_map_yaml": "/root/rober/onboard/runtime/maps/trashbot_map.yaml",
+    "managed_runtime_map_yaml_source": "explicit_cli_managed_map_yaml",
+    "managed_runtime_process_group": 445227,
+    "managed_runtime_requested": true,
+    "managed_runtime_started": true,
+    "managed_runtime_vendor_boundary": "Vendor facts from docs/vendor/VENDOR_INDEX.md: WAVE ROVER base is newline-delimited UART JSON, vendor Raspberry Pi UART path is not Orange Pi fixed fact; this proof only opens LiDAR /dev/ttyACM0 and never opens /dev/ttyS5.",
+    "managed_runtime_wait_result": {
+      "boundary": "managed_runtime_wait_timeout",
+      "history": [
+        {
+          "lifecycle_active": {
+            "amcl": false,
+            "map_server": false,
+            "planner_server": false
+          },
+          "node_list": {
+            "boundary": "rclpy_node_names_failed",
+            "elapsed_ms": 1,
+            "error": {
+              "message": "No module named 'rclpy'",
+              "type": "ModuleNotFoundError"
+            },
+            "executed": false,
+            "node_names": [],
+            "ok": false
+          }
+        },
+        {
+          "lifecycle_active": {
+            "amcl": false,
+            "map_server": false,
+            "planner_server": false
+          },
+          "node_list": {
+            "boundary": "rclpy_node_names_failed",
+            "elapsed_ms": 1,
+            "error": {
+              "message": "No module named 'rclpy'",
+              "type": "ModuleNotFoundError"
+            },
+            "executed": false,
+            "node_names": [],
+            "ok": false
+          }
+        },
+        {
+          "lifecycle_active": {
+            "amcl": false,
+            "map_server": false,
+            "planner_server": false
+          },
+          "node_list": {
+            "boundary": "rclpy_node_names_failed",
+            "elapsed_ms": 0,
+            "error": {
+              "message": "No module named 'rclpy'",
+              "type": "ModuleNotFoundError"
+            },
+            "executed": false,
+            "node_names": [],
+            "ok": false
+          }
+        },
+        {
+          "lifecycle_active": {
+            "amcl": false,
+            "map_server": false,
+            "planner_server": false
+          },
+          "node_list": {
+            "boundary": "rclpy_node_names_failed",
+            "elapsed_ms": 1,
+            "error": {
+              "message": "No module named 'rclpy'",
+              "type": "ModuleNotFoundError"
+            },
+            "executed": false,
+            "node_names": [],
+            "ok": false
+          }
+        },
+        {
+          "lifecycle_active": {
+            "amcl": false,
+            "map_server": false,
+            "planner_server": false
+          },
+          "node_list": {
+            "boundary": "rclpy_node_names_failed",
+            "elapsed_ms": 1,
+            "error": {
+              "message": "No module named 'rclpy'",
+              "type": "ModuleNotFoundError"
+            },
+            "executed": false,
+            "node_names": [],
+            "ok": false
+          }
+        },
+        {
+          "lifecycle_active": {
+            "amcl": false,
+            "map_server": false,
+            "planner_server": false
+          },
+          "node_list": {
+            "boundary": "rclpy_node_names_failed",
+            "elapsed_ms": 1,
+            "error": {
+              "message": "No module named 'rclpy'",
+              "type": "ModuleNotFoundError"
+            },
+            "executed": false,
+            "node_names": [],
+            "ok": false
+          }
+        },
+        {
+          "lifecycle_active": {
+            "amcl": false,
+            "map_server": false,
+            "planner_server": false
+          },
+          "node_list": {
+            "boundary": "rclpy_node_names_failed",
+            "elapsed_ms": 1,
+            "error": {
+              "message": "No module named 'rclpy'",
+              "type": "ModuleNotFoundError"
+            },
+            "executed": false,
+            "node_names": [],
+            "ok": false
+          }
+        },
+        {
+          "lifecycle_active": {
+            "amcl": false,
+            "map_server": false,
+            "planner_server": false
+          },
+          "node_list": {
+            "boundary": "rclpy_node_names_failed",
+            "elapsed_ms": 1,
+            "error": {
+              "message": "No module named 'rclpy'",
+              "type": "ModuleNotFoundError"
+            },
+            "executed": false,
+            "node_names": [],
+            "ok": false
+          }
+        },
+        {
+          "lifecycle_active": {
+            "amcl": false,
+            "map_server": false,
+            "planner_server": false
+          },
+          "node_list": {
+            "boundary": "rclpy_node_names_failed",
+            "elapsed_ms": 4,
+            "error": {
+              "message": "No module named 'rclpy'",
+              "type": "ModuleNotFoundError"
+            },
+            "executed": false,
+            "node_names": [],
+            "ok": false
+          }
+        },
+        {
+          "lifecycle_active": {
+            "amcl": false,
+            "map_server": false,
+            "planner_server": false
+          },
+          "node_list": {
+            "boundary": "rclpy_node_names_failed",
+            "elapsed_ms": 1,
+            "error": {
+              "message": "No module named 'rclpy'",
+              "type": "ModuleNotFoundError"
+            },
+            "executed": false,
+            "node_names": [],
+            "ok": false
+          }
+        },
+        {
+          "lifecycle_active": {
+            "amcl": false,
+            "map_server": false,
+            "planner_server": false
+          },
+          "node_list": {
+            "boundary": "rclpy_node_names_failed",
+            "elapsed_ms": 1,
+            "error": {
+              "message": "No module named 'rclpy'",
+              "type": "ModuleNotFoundError"
+            },
+            "executed": false,
+            "node_names": [],
+            "ok": false
+          }
+        },
+        {
+          "lifecycle_active": {
+            "amcl": false,
+            "map_server": false,
+            "planner_server": false
+          },
+          "node_list": {
+            "boundary": "rclpy_node_names_failed",
+            "elapsed_ms": 1,
+            "error": {
+              "message": "No module named 'rclpy'",
+              "type": "ModuleNotFoundError"
+            },
+            "executed": false,
+            "node_names": [],
+            "ok": false
+          }
+        },
+        {
+          "lifecycle_active": {
+            "amcl": false,
+            "map_server": false,
+            "planner_server": false
+          },
+          "node_list": {
+            "boundary": "rclpy_node_names_failed",
+            "elapsed_ms": 2,
+            "error": {
+              "message": "No module named 'rclpy'",
+              "type": "ModuleNotFoundError"
+            },
+            "executed": false,
+            "node_names": [],
+            "ok": false
+          }
+        },
+        {
+          "lifecycle_active": {
+            "amcl": false,
+            "map_server": false,
+            "planner_server": false
+          },
+          "node_list": {
+            "boundary": "rclpy_node_names_failed",
+            "elapsed_ms": 1,
+            "error": {
+              "message": "No module named 'rclpy'",
+              "type": "ModuleNotFoundError"
+            },
+            "executed": false,
+            "node_names": [],
+            "ok": false
+          }
+        },
+        {
+          "lifecycle_active": {
+            "amcl": false,
+            "map_server": false,
+            "planner_server": false
+          },
+          "node_list": {
+            "boundary": "rclpy_node_names_failed",
+            "elapsed_ms": 1,
+            "error": {
+              "message": "No module named 'rclpy'",
+              "type": "ModuleNotFoundError"
+            },
+            "executed": false,
+            "node_names": [],
+            "ok": false
+          }
+        },
+        {
+          "lifecycle_active": {
+            "amcl": false,
+            "map_server": false,
+            "planner_server": false
+          },
+          "node_list": {
+            "boundary": "rclpy_node_names_failed",
+            "elapsed_ms": 2,
+            "error": {
+              "message": "No module named 'rclpy'",
+              "type": "ModuleNotFoundError"
+            },
+            "executed": false,
+            "node_names": [],
+            "ok": false
+          }
+        },
+        {
+          "lifecycle_active": {
+            "amcl": false,
+            "map_server": false,
+            "planner_server": false
+          },
+          "node_list": {
+            "boundary": "rclpy_node_names_failed",
+            "elapsed_ms": 5,
+            "error": {
+              "message": "No module named 'rclpy'",
+              "type": "ModuleNotFoundError"
+            },
+            "executed": false,
+            "node_names": [],
+            "ok": false
+          }
+        },
+        {
+          "lifecycle_active": {
+            "amcl": false,
+            "map_server": false,
+            "planner_server": false
+          },
+          "node_list": {
+            "boundary": "rclpy_node_names_failed",
+            "elapsed_ms": 1,
+            "error": {
+              "message": "No module named 'rclpy'",
+              "type": "ModuleNotFoundError"
+            },
+            "executed": false,
+            "node_names": [],
+            "ok": false
+          }
+        },
+        {
+          "lifecycle_active": {
+            "amcl": false,
+            "map_server": false,
+            "planner_server": false
+          },
+          "node_list": {
+            "boundary": "rclpy_node_names_failed",
+            "elapsed_ms": 1,
+            "error": {
+              "message": "No module named 'rclpy'",
+              "type": "ModuleNotFoundError"
+            },
+            "executed": false,
+            "node_names": [],
+            "ok": false
+          }
+        },
+        {
+          "lifecycle_active": {
+            "amcl": false,
+            "map_server": false,
+            "planner_server": false
+          },
+          "node_list": {
+            "boundary": "rclpy_node_names_failed",
+            "elapsed_ms": 2,
+            "error": {
+              "message": "No module named 'rclpy'",
+              "type": "ModuleNotFoundError"
+            },
+            "executed": false,
+            "node_names": [],
+            "ok": false
+          }
+        },
+        {
+          "lifecycle_active": {
+            "amcl": false,
+            "map_server": false,
+            "planner_server": false
+          },
+          "node_list": {
+            "boundary": "rclpy_node_names_failed",
+            "elapsed_ms": 1,
+            "error": {
+              "message": "No module named 'rclpy'",
+              "type": "ModuleNotFoundError"
+            },
+            "executed": false,
+            "node_names": [],
+            "ok": false
+          }
+        },
+        {
+          "lifecycle_active": {
+            "amcl": false,
+            "map_server": false,
+            "planner_server": false
+          },
+          "node_list": {
+            "boundary": "rclpy_node_names_failed",
+            "elapsed_ms": 1,
+            "error": {
+              "message": "No module named 'rclpy'",
+              "type": "ModuleNotFoundError"
+            },
+            "executed": false,
+            "node_names": [],
+            "ok": false
+          }
+        },
+        {
+          "lifecycle_active": {
+            "amcl": false,
+            "map_server": false,
+            "planner_server": false
+          },
+          "node_list": {
+            "boundary": "rclpy_node_names_failed",
+            "elapsed_ms": 2,
+            "error": {
+              "message": "No module named 'rclpy'",
+              "type": "ModuleNotFoundError"
+            },
+            "executed": false,
+            "node_names": [],
+            "ok": false
+          }
+        },
+        {
+          "lifecycle_active": {
+            "amcl": false,
+            "map_server": false,
+            "planner_server": false
+          },
+          "node_list": {
+            "boundary": "rclpy_node_names_failed",
+            "elapsed_ms": 0,
+            "error": {
+              "message": "No module named 'rclpy'",
+              "type": "ModuleNotFoundError"
+            },
+            "executed": false,
+            "node_names": [],
+            "ok": false
+          }
+        },
+        {
+          "lifecycle_active": {
+            "amcl": false,
+            "map_server": false,
+            "planner_server": false
+          },
+          "node_list": {
+            "boundary": "rclpy_node_names_failed",
+            "elapsed_ms": 1,
+            "error": {
+              "message": "No module named 'rclpy'",
+              "type": "ModuleNotFoundError"
+            },
+            "executed": false,
+            "node_names": [],
+            "ok": false
+          }
+        },
+        {
+          "lifecycle_active": {
+            "amcl": false,
+            "map_server": false,
+            "planner_server": false
+          },
+          "node_list": {
+            "boundary": "rclpy_node_names_failed",
+            "elapsed_ms": 1,
+            "error": {
+              "message": "No module named 'rclpy'",
+              "type": "ModuleNotFoundError"
+            },
+            "executed": false,
+            "node_names": [],
+            "ok": false
+          }
+        },
+        {
+          "lifecycle_active": {
+            "amcl": false,
+            "map_server": false,
+            "planner_server": false
+          },
+          "node_list": {
+            "boundary": "rclpy_node_names_failed",
+            "elapsed_ms": 1,
+            "error": {
+              "message": "No module named 'rclpy'",
+              "type": "ModuleNotFoundError"
+            },
+            "executed": false,
+            "node_names": [],
+            "ok": false
+          }
+        },
+        {
+          "lifecycle_active": {
+            "amcl": false,
+            "map_server": false,
+            "planner_server": false
+          },
+          "node_list": {
+            "boundary": "rclpy_node_names_failed",
+            "elapsed_ms": 1,
+            "error": {
+              "message": "No module named 'rclpy'",
+              "type": "ModuleNotFoundError"
+            },
+            "executed": false,
+            "node_names": [],
+            "ok": false
+          }
+        },
+        {
+          "lifecycle_active": {
+            "amcl": false,
+            "map_server": false,
+            "planner_server": false
+          },
+          "node_list": {
+            "boundary": "rclpy_node_names_failed",
+            "elapsed_ms": 1,
+            "error": {
+              "message": "No module named 'rclpy'",
+              "type": "ModuleNotFoundError"
+            },
+            "executed": false,
+            "node_names": [],
+            "ok": false
+          }
+        },
+        {
+          "lifecycle_active": {
+            "amcl": false,
+            "map_server": false,
+            "planner_server": false
+          },
+          "node_list": {
+            "boundary": "rclpy_node_names_failed",
+            "elapsed_ms": 1,
+            "error": {
+              "message": "No module named 'rclpy'",
+              "type": "ModuleNotFoundError"
+            },
+            "executed": false,
+            "node_names": [],
+            "ok": false
+          }
+        },
+        {
+          "lifecycle_active": {
+            "amcl": false,
+            "map_server": false,
+            "planner_server": false
+          },
+          "node_list": {
+            "boundary": "rclpy_node_names_failed",
+            "elapsed_ms": 1,
+            "error": {
+              "message": "No module named 'rclpy'",
+              "type": "ModuleNotFoundError"
+            },
+            "executed": false,
+            "node_names": [],
+            "ok": false
+          }
+        },
+        {
+          "lifecycle_active": {
+            "amcl": false,
+            "map_server": false,
+            "planner_server": false
+          },
+          "node_list": {
+            "boundary": "rclpy_node_names_failed",
+            "elapsed_ms": 1,
+            "error": {
+              "message": "No module named 'rclpy'",
+              "type": "ModuleNotFoundError"
+            },
+            "executed": false,
+            "node_names": [],
+            "ok": false
+          }
+        },
+        {
+          "lifecycle_active": {
+            "amcl": false,
+            "map_server": false,
+            "planner_server": false
+          },
+          "node_list": {
+            "boundary": "rclpy_node_names_failed",
+            "elapsed_ms": 1,
+            "error": {
+              "message": "No module named 'rclpy'",
+              "type": "ModuleNotFoundError"
+            },
+            "executed": false,
+            "node_names": [],
+            "ok": false
+          }
+        },
+        {
+          "lifecycle_active": {
+            "amcl": false,
+            "map_server": false,
+            "planner_server": false
+          },
+          "node_list": {
+            "boundary": "rclpy_node_names_failed",
+            "elapsed_ms": 1,
+            "error": {
+              "message": "No module named 'rclpy'",
+              "type": "ModuleNotFoundError"
+            },
+            "executed": false,
+            "node_names": [],
+            "ok": false
+          }
+        }
+      ],
+      "log_tail": "] [1783746069.596829298] [amcl]: Received a 261 X 113 map @ 0.050 m/pix\n[INFO] [1783746069.596894756] [global_costmap.global_costmap]: StaticLayer: Resizing costmap to 261 X 113 at 0.050000 m/pix\n[INFO] [1783746070.038017761] [lifecycle_manager]: Server map_server connected with bond.\n[INFO] [1783746070.038256635] [lifecycle_manager]: \u001b[34m\u001b[1mActivating amcl\u001b[0m\u001b[0m\n[INFO] [1783746070.040215174] [amcl]: Activating\n[INFO] [1783746070.040486091] [amcl]: Creating bond (amcl) to lifecycle manager.\n[INFO] [1783746070.168274715] [lifecycle_manager]: Server amcl connected with bond.\n[INFO] [1783746070.168534298] [lifecycle_manager]: \u001b[34m\u001b[1mActivating planner_server\u001b[0m\u001b[0m\n[INFO] [1783746070.169392296] [planner_server]: Activating\n[INFO] [1783746070.169559171] [global_costmap.global_costmap]: Activating\n[INFO] [1783746070.169614713] [global_costmap.global_costmap]: Checking transform\n[INFO] [1783746070.169745254] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1783746070.669790139] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1783746071.169772650] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1783746071.669768702] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1783746072.169769878] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1783746072.669801972] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1783746073.169789524] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1783746073.669781076] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1783746074.169781086] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1783746074.669774513] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1783746075.169771690] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1783746075.669778033] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1783746076.169778627] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n",
+      "ok": false,
+      "reason": "managed_runtime_wait_timeout"
+    },
+    "managed_static_tf_processes": {
+      "all_expected_processes_observed": true,
+      "checked_before_cleanup": true,
+      "expected": [
+        {
+          "child": "base_link",
+          "parent": "odom",
+          "role": "static_tf_odom_base"
+        },
+        {
+          "child": "laser_frame",
+          "parent": "base_link",
+          "role": "static_tf_base_laser"
+        }
+      ],
+      "observed_roles": [
+        "static_tf_base_laser",
+        "static_tf_odom_base"
+      ],
+      "process_group": 445227,
+      "processes": [
+        {
+          "command": "bash -lc set -e; set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; pids=(); cleanup(){ for pid in \"${pids[@]}\"; do kill -INT \"$pid\" 2>/dev/null || true; done; wait || true; }; trap cleanup EXIT INT TERM; printf '%s\\n' 'managed_map_yaml=/root/rober/onboard/runtime/maps/trashbot_map.yaml' > /tmp/rober_nav2_localization_ds5_udqt.log; printf '%s\\n' 'managed_runtime_boundary=no_motion_path_generation_planner_only' >> /tmp/rober_nav2_localization_ds5_udqt.log; printf '%s\\n' 'blocked_device=/dev/ttyS5' >> /tmp/rober_nav2_localization_ds5_udqt.log; printf '%s\\n' 'starting role=lidar_driver' >> /tmp/rober_nav2_localization_ds5_udqt.log; (ros2 run ros2_trashbot_hardware lidar_driver --ros-args -p serial_port:=/dev/ttyACM0 -p serial_baudrate:=230400 -p frame_id:=laser_frame -p scan_topic:=/scan -p publish_raw_packets:=false) >> /tmp/rober_nav2_localization_ds5_udqt.log 2>&1 & pid=$!; pids+=($pid); printf '%s\\n' 'started role=lidar_driver pid='$pid >> /tmp/rober_nav2_localization_ds5_udqt.log; printf '%s\\n' 'starting role=static_tf_broadcaster' >> /tmp/rober_nav2_localization_ds5_udqt.log; (python3 -c 'import json import sys  import rclpy from geometry_msgs.msg import TransformStamped from tf2_ros.static_transform_broadcaster import StaticTransformBroadcaster   def make_transform(node, parent, child):     # 两条边都是 no-motion proof 的固定几何关系；这里显式置零，避免引入底盘里程计假设。     transform = TransformStamped()     transform.header.stamp = node.get_clock().now().to_msg()     transform.header.frame_id = parent     transform.child_frame_id = child     transform.transform.translation.x = 0.0     transform.transform.translation.y = 0.0     transform.transform.translation.z = 0.0     transform.transform.rotation.x = 0.0     transform.transform.rotation.y = 0.0     transform.transform.rotation.z = 0.0     transform.transform.rotation.w = 1.0     return transform   def main():     frames = json.loads(sys.argv[1])     rclpy.init(args=None)     node = rclpy.create_node(\"managed_static_tf_broadcaster\")     broadcaster = StaticTransformBroadcaster(node)      def publish_static_transforms():         # 同一个 TFMessage 同时包含 odom->base_link 与 base_link->laser_frame。         # transient-local late subscriber 因此不再依赖两个独立 CLI publisher 的发现时序。         broadcaster.sendTransform(             [                 make_transform(node, frames[\"odom\"], frames[\"base\"]),                 make_transform(node, frames[\"base\"], frames[\"laser\"]),             ]         )      publish_static_transforms()     node.create_timer(0.5, publish_static_transforms)     try:         rclpy.spin(node)     finally:         node.destroy_node()         if rclpy.ok():             rclpy.shutdown()   if __name__ == \"__main__\":     main()' '{\"odom\": \"odom\", \"base\": \"base_link\", \"laser\": \"laser_frame\"}' static_tf_odom_base static_tf_base_laser odom_to_base_link base_link_to_laser_frame) >> /tmp/rober_nav2_localization_ds5_udqt.log 2>&1 & pid=$!; pids+=($pid); printf '%s\\n' 'started role=static_tf_broadcaster pid='$pid >> /tmp/rober_nav2_localization_ds5_udqt.log; printf '%s\\n' 'starting role=map_server' >> /tmp/rober_nav2_localization_ds5_udqt.log; (ros2 run nav2_map_server map_server --ros-args --params-file /tmp/rober_nav2_localization_p9fmd04f.yaml -r __node:=map_server) >> /tmp/rober_nav2_localization_ds5_udqt.log 2>&1 & pid=$!; pids+=($pid); printf '%s\\n' 'started role=map_server pid='$pid >> /tmp/rober_nav2_localization_ds5_udqt.log; printf '%s\\n' 'starting role=amcl' >> /tmp/rober_nav2_localization_ds5_udqt.log; (ros2 run nav2_amcl amcl --ros-args --params-file /tmp/rober_nav2_localization_p9fmd04f.yaml -r __node:=amcl) >> /tmp/rober_nav2_localization_ds5_udqt.log 2>&1 & pid=$!; pids+=($pid); printf '%s\\n' 'started role=amcl pid='$pid >> /tmp/rober_nav2_localization_ds5_udqt.log; printf '%s\\n' 'starting role=planner_server' >> /tmp/rober_nav2_localization_ds5_udqt.log; (ros2 run nav2_planner planner_server --ros-args --params-file /tmp/rober_nav2_localization_p9fmd04f.yaml -r __node:=planner_server) >> /tmp/rober_nav2_localization_ds5_udqt.log 2>&1 & pid=$!; pids+=($pid); printf '%s\\n' 'started role=planner_server pid='$pid >> /tmp/rober_nav2_localization_ds5_udqt.log; printf '%s\\n' 'waiting before lifecycle_manager start delay_s=3' >> /tmp/rober_nav2_localization_ds5_udqt.log; sleep 3; printf '%s\\n' 'starting role=lifecycle_manager' >> /tmp/rober_nav2_localization_ds5_udqt.log; (ros2 run nav2_lifecycle_manager lifecycle_manager --ros-args --params-file /tmp/rober_nav2_localization_p9fmd04f.yaml -r __node:=lifecycle_manager) >> /tmp/rober_nav2_localization_ds5_udqt.log 2>&1 & pid=$!; pids+=($pid); printf '%s\\n' 'started role=lifecycle_manager pid='$pid >> /tmp/rober_nav2_localization_ds5_udqt.log; wait",
+          "pgid": 445227,
+          "pid": 445227,
+          "role": "static_tf_base_laser",
+          "roles": [
+            "static_tf_base_laser",
+            "static_tf_odom_base"
+          ],
+          "source_type": "single_rclpy_static_transform_broadcaster"
+        },
+        {
+          "command": "python3 -c import json import sys  import rclpy from geometry_msgs.msg import TransformStamped from tf2_ros.static_transform_broadcaster import StaticTransformBroadcaster   def make_transform(node, parent, child):     # 两条边都是 no-motion proof 的固定几何关系；这里显式置零，避免引入底盘里程计假设。     transform = TransformStamped()     transform.header.stamp = node.get_clock().now().to_msg()     transform.header.frame_id = parent     transform.child_frame_id = child     transform.transform.translation.x = 0.0     transform.transform.translation.y = 0.0     transform.transform.translation.z = 0.0     transform.transform.rotation.x = 0.0     transform.transform.rotation.y = 0.0     transform.transform.rotation.z = 0.0     transform.transform.rotation.w = 1.0     return transform   def main():     frames = json.loads(sys.argv[1])     rclpy.init(args=None)     node = rclpy.create_node(\"managed_static_tf_broadcaster\")     broadcaster = StaticTransformBroadcaster(node)      def publish_static_transforms():         # 同一个 TFMessage 同时包含 odom->base_link 与 base_link->laser_frame。         # transient-local late subscriber 因此不再依赖两个独立 CLI publisher 的发现时序。         broadcaster.sendTransform(             [                 make_transform(node, frames[\"odom\"], frames[\"base\"]),                 make_transform(node, frames[\"base\"], frames[\"laser\"]),             ]         )      publish_static_transforms()     node.create_timer(0.5, publish_static_transforms)     try:         rclpy.spin(node)     finally:         node.destroy_node()         if rclpy.ok():             rclpy.shutdown()   if __name__ == \"__main__\":     main() {\"odom\": \"odom\", \"base\": \"base_link\", \"laser\": \"laser_frame\"} static_tf_odom_base static_tf_base_laser odom_to_base_link base_link_to_laser_frame",
+          "pgid": 445227,
+          "pid": 445251,
+          "role": "static_tf_base_laser",
+          "roles": [
+            "static_tf_base_laser",
+            "static_tf_odom_base"
+          ],
+          "source_type": "single_rclpy_static_transform_broadcaster"
+        }
+      ],
+      "source_strategy": "single_rclpy_static_transform_broadcaster_transient_local"
+    },
+    "map_consumed": false,
+    "map_frame_observed": false,
+    "map_inputs": {
+      "inputs_ready": false,
+      "map_artifact_dir": "/root/rober/onboard/runtime/maps",
+      "map_image_candidates": [
+        {
+          "mtime_ms": 1782061700286,
+          "name": "field_first_jog_20260622_0135.pgm",
+          "path": "/root/rober/onboard/runtime/maps/field_first_jog_20260622_0135.pgm",
+          "size_bytes": 31280,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1781118091538,
+          "name": "final_direct_save.pgm",
+          "path": "/root/rober/onboard/runtime/maps/final_direct_save.pgm",
+          "size_bytes": 13266,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1782062002493,
+          "name": "fixed_free_cells_20260622_0112.pgm",
+          "path": "/root/rober/onboard/runtime/maps/fixed_free_cells_20260622_0112.pgm",
+          "size_bytes": 33062,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1782061841826,
+          "name": "manual_motion_map_20260622_0135.pgm",
+          "path": "/root/rober/onboard/runtime/maps/manual_motion_map_20260622_0135.pgm",
+          "size_bytes": 44198,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1781140891863,
+          "name": "pc_integrated_current_20260611_0920.pgm",
+          "path": "/root/rober/onboard/runtime/maps/pc_integrated_current_20260611_0920.pgm",
+          "size_bytes": 19316,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1781141101886,
+          "name": "pc_integrated_current_retry_20260611_0920.pgm",
+          "path": "/root/rober/onboard/runtime/maps/pc_integrated_current_retry_20260611_0920.pgm",
+          "size_bytes": 7036,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1781133958365,
+          "name": "pc_integrated_smoke_20260611_0735.pgm",
+          "path": "/root/rober/onboard/runtime/maps/pc_integrated_smoke_20260611_0735.pgm",
+          "size_bytes": 42883,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1781156934777,
+          "name": "pc_map_lifecycle_20260611_1350.pgm",
+          "path": "/root/rober/onboard/runtime/maps/pc_map_lifecycle_20260611_1350.pgm",
+          "size_bytes": 28892,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1781166497889,
+          "name": "pc_no_motion_20260611_162507.pgm",
+          "path": "/root/rober/onboard/runtime/maps/pc_no_motion_20260611_162507.pgm",
+          "size_bytes": 31758,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1781117808598,
+          "name": "pc_proxy_save2.pgm",
+          "path": "/root/rober/onboard/runtime/maps/pc_proxy_save2.pgm",
+          "size_bytes": 52223,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1781135890521,
+          "name": "pc_proxy_scan_stabilize_20260611_0758.pgm",
+          "path": "/root/rober/onboard/runtime/maps/pc_proxy_scan_stabilize_20260611_0758.pgm",
+          "size_bytes": 29318,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1781117645935,
+          "name": "pc_proxy_start.pgm",
+          "path": "/root/rober/onboard/runtime/maps/pc_proxy_start.pgm",
+          "size_bytes": 47468,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1781117556603,
+          "name": "pc_runtime_v1.pgm",
+          "path": "/root/rober/onboard/runtime/maps/pc_runtime_v1.pgm",
+          "size_bytes": 8218,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1781135633986,
+          "name": "scan_stabilize_20260611_075301.pgm",
+          "path": "/root/rober/onboard/runtime/maps/scan_stabilize_20260611_075301.pgm",
+          "size_bytes": 30502,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1781135815398,
+          "name": "scan_stabilize_fixed_20260611_0756.pgm",
+          "path": "/root/rober/onboard/runtime/maps/scan_stabilize_fixed_20260611_0756.pgm",
+          "size_bytes": 8070,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1782749748961,
+          "name": "trashbot_map.pgm",
+          "path": "/root/rober/onboard/runtime/maps/trashbot_map.pgm",
+          "size_bytes": 29531,
+          "suffix": ".pgm"
+        }
+      ],
+      "map_metadata": {
+        "frame_id": "map",
+        "height": 113,
+        "resolution": 0.05000000074505806,
+        "width": 261
+      },
+      "map_proof_path": "/root/rober/onboard/runtime/map_lifecycle_latest.json",
+      "map_yaml_candidates": [
+        {
+          "mtime_ms": 1782061700294,
+          "name": "field_first_jog_20260622_0135.yaml",
+          "path": "/root/rober/onboard/runtime/maps/field_first_jog_20260622_0135.yaml",
+          "size_bytes": 182,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1781118091546,
+          "name": "final_direct_save.yaml",
+          "path": "/root/rober/onboard/runtime/maps/final_direct_save.yaml",
+          "size_bytes": 169,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1782062002501,
+          "name": "fixed_free_cells_20260622_0112.yaml",
+          "path": "/root/rober/onboard/runtime/maps/fixed_free_cells_20260622_0112.yaml",
+          "size_bytes": 183,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1782061841830,
+          "name": "manual_motion_map_20260622_0135.yaml",
+          "path": "/root/rober/onboard/runtime/maps/manual_motion_map_20260622_0135.yaml",
+          "size_bytes": 182,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1781140891871,
+          "name": "pc_integrated_current_20260611_0920.yaml",
+          "path": "/root/rober/onboard/runtime/maps/pc_integrated_current_20260611_0920.yaml",
+          "size_bytes": 172,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1781141101890,
+          "name": "pc_integrated_current_retry_20260611_0920.yaml",
+          "path": "/root/rober/onboard/runtime/maps/pc_integrated_current_retry_20260611_0920.yaml",
+          "size_bytes": 178,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1781133958369,
+          "name": "pc_integrated_smoke_20260611_0735.yaml",
+          "path": "/root/rober/onboard/runtime/maps/pc_integrated_smoke_20260611_0735.yaml",
+          "size_bytes": 184,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1781156934781,
+          "name": "pc_map_lifecycle_20260611_1350.yaml",
+          "path": "/root/rober/onboard/runtime/maps/pc_map_lifecycle_20260611_1350.yaml",
+          "size_bytes": 182,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1781166497893,
+          "name": "pc_no_motion_20260611_162507.yaml",
+          "path": "/root/rober/onboard/runtime/maps/pc_no_motion_20260611_162507.yaml",
+          "size_bytes": 181,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1781117808606,
+          "name": "pc_proxy_save2.yaml",
+          "path": "/root/rober/onboard/runtime/maps/pc_proxy_save2.yaml",
+          "size_bytes": 165,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1781135890525,
+          "name": "pc_proxy_scan_stabilize_20260611_0758.yaml",
+          "path": "/root/rober/onboard/runtime/maps/pc_proxy_scan_stabilize_20260611_0758.yaml",
+          "size_bytes": 171,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1781117645955,
+          "name": "pc_proxy_start.yaml",
+          "path": "/root/rober/onboard/runtime/maps/pc_proxy_start.yaml",
+          "size_bytes": 165,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1781117556611,
+          "name": "pc_runtime_v1.yaml",
+          "path": "/root/rober/onboard/runtime/maps/pc_runtime_v1.yaml",
+          "size_bytes": 166,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1781135634030,
+          "name": "scan_stabilize_20260611_075301.yaml",
+          "path": "/root/rober/onboard/runtime/maps/scan_stabilize_20260611_075301.yaml",
+          "size_bytes": 181,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1781135815410,
+          "name": "scan_stabilize_fixed_20260611_0756.yaml",
+          "path": "/root/rober/onboard/runtime/maps/scan_stabilize_fixed_20260611_0756.yaml",
+          "size_bytes": 188,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1782749748969,
+          "name": "trashbot_map.yaml",
+          "path": "/root/rober/onboard/runtime/maps/trashbot_map.yaml",
+          "size_bytes": 148,
+          "suffix": ".yaml"
+        }
+      ],
+      "root_causes": [
+        {
+          "layer": "canonical map proof",
+          "reason": "map_lifecycle_proof_not_clean"
+        }
+      ],
+      "source_evidence_ref": "o3-map-lifecycle-1782749676965",
+      "source_evidence_type": "blocked_with_root_cause",
+      "source_proof_status": "blocked_with_root_cause"
+    },
+    "map_inputs_ready": false,
+    "map_once_observed": true,
+    "map_server_active": true,
+    "not_proven": [
+      "nav2_goal_execution",
+      "controller_cmd_vel_output",
+      "fixed_route_execution",
+      "delivery_success",
+      "hil_pass",
+      "safe_to_control_true"
+    ],
+    "odom_frame_observed": false,
+    "package_availability": {
+      "nav2_amcl": true,
+      "nav2_lifecycle_manager": true,
+      "nav2_map_server": true,
+      "ros2_trashbot_bringup": true,
+      "ros2_trashbot_nav": true
+    },
+    "package_check_mode": "single_sourced_pkg_list_diagnostic",
+    "package_checks_batch_ok": true,
+    "path_generated": false,
+    "path_generation_attempted": false,
+    "path_generation_boundary": "path_generation_blocked_by_localization_not_ready",
+    "path_generation_ready": false,
+    "path_generation_requested": true,
+    "path_generation_service_available": false,
+    "path_generation_service_name": null,
+    "path_generation_succeeded": false,
+    "path_goal_request": null,
+    "path_goal_response": {
+      "accepted": false,
+      "attempted": false,
+      "result_received": false
+    },
+    "path_point_count": 0,
+    "path_preview_frame_id": null,
+    "path_preview_point_count": 0,
+    "path_preview_points": [],
+    "path_preview_source_point_count": 0,
+    "phase_history": [
+      {
+        "at_ms": 1783746055783,
+        "detail": {
+          "mode": "no_motion_amcl_nav2_runtime_proof"
+        },
+        "ok": true,
+        "phase": "start"
+      },
+      {
+        "at_ms": 1783746055799,
+        "detail": {
+          "source_proof_status": "blocked_with_root_cause"
+        },
+        "ok": false,
+        "phase": "map_inputs"
+      },
+      {
+        "at_ms": 1783746055804,
+        "detail": {
+          "map_yaml_source": "explicit_cli_managed_map_yaml",
+          "requested": true
+        },
+        "phase": "managed_runtime"
+      },
+      {
+        "at_ms": 1783746055817,
+        "detail": {
+          "map_yaml": "/root/rober/onboard/runtime/maps/trashbot_map.yaml",
+          "process_group": 445227
+        },
+        "ok": true,
+        "phase": "managed_runtime_started"
+      },
+      {
+        "at_ms": 1783746076297,
+        "detail": {
+          "reason": "managed_runtime_wait_timeout"
+        },
+        "ok": false,
+        "phase": "managed_runtime_wait"
+      },
+      {
+        "at_ms": 1783746076357,
+        "phase": "ros2_preflight"
+      },
+      {
+        "at_ms": 1783746078514,
+        "ok": true,
+        "phase": "ros2_preflight"
+      },
+      {
+        "at_ms": 1783746078523,
+        "phase": "initialpose"
+      },
+      {
+        "at_ms": 1783746084385,
+        "detail": {
+          "enabled": true,
+          "method": "ros2_topic_pub_once_cli_fallback",
+          "publish_attempts": 1,
+          "subscriber_count": null
+        },
+        "ok": true,
+        "phase": "initialpose"
+      },
+      {
+        "at_ms": 1783746084395,
+        "phase": "amcl_pose_probe"
+      },
+      {
+        "at_ms": 1783746095001,
+        "ok": false,
+        "phase": "amcl_pose_probe",
+        "root_cause": {
+          "layer": "AMCL localization",
+          "reason": "/amcl_pose_once_not_observed"
+        }
+      },
+      {
+        "at_ms": 1783746095007,
+        "phase": "tf_source_probe"
+      },
+      {
+        "at_ms": 1783746095053,
+        "detail": {
+          "amcl_tf_root_cause": "/tf_topic_missing"
+        },
+        "ok": false,
+        "phase": "tf_source_probe"
+      },
+      {
+        "at_ms": 1783746095061,
+        "phase": "tf_probe"
+      },
+      {
+        "at_ms": 1783746107612,
+        "ok": false,
+        "phase": "tf_probe_map_to_odom",
+        "root_cause": {
+          "detail": "frame_missing_or_name_mismatch",
+          "layer": "Localization TF",
+          "reason": "map_to_odom_not_observed",
+          "source": "map_to_odom"
+        }
+      },
+      {
+        "at_ms": 1783746120104,
+        "ok": true,
+        "phase": "tf_probe_odom_to_base_link"
+      },
+      {
+        "at_ms": 1783746120124,
+        "ok": false,
+        "phase": "tf_probe_map_to_base_link",
+        "root_cause": {
+          "detail": "/tf_topic_missing",
+          "layer": "Localization TF",
+          "reason": "map_to_base_link_blocked_by_missing_map_to_odom",
+          "source": "map_to_odom"
+        }
+      },
+      {
+        "at_ms": 1783746132612,
+        "ok": true,
+        "phase": "tf_probe_base_link_to_laser_frame"
+      },
+      {
+        "at_ms": 1783746132622,
+        "detail": {
+          "tf_chain_observed": {
+            "base_link_to_laser_frame": true,
+            "map_to_base_link": false,
+            "map_to_odom": false,
+            "odom_to_base_link": true
+          },
+          "tf_failure_classification": {
+            "amcl_tf_root_cause": "/tf_topic_missing",
+            "blocking_segment": "map_to_odom",
+            "frame_naming_consistent": true,
+            "map_to_base_link": "blocked_by_missing_map_to_odom",
+            "reason": "/tf_topic_missing"
+          }
+        },
+        "ok": false,
+        "phase": "tf_probe",
+        "root_cause": {
+          "detail": "/tf_topic_missing",
+          "layer": "Localization TF",
+          "reason": "map_to_base_link_blocked_by_missing_map_to_odom",
+          "source": "map_to_odom"
+        }
+      },
+      {
+        "at_ms": 1783746132633,
+        "detail": {
+          "mode": "single_sourced_pkg_list_diagnostic"
+        },
+        "phase": "package_checks"
+      },
+      {
+        "at_ms": 1783746136063,
+        "detail": {
+          "mode": "single_sourced_pkg_list_diagnostic",
+          "packages": {
+            "nav2_amcl": true,
+            "nav2_lifecycle_manager": true,
+            "nav2_map_server": true,
+            "ros2_trashbot_bringup": true,
+            "ros2_trashbot_nav": true
+          }
+        },
+        "ok": true,
+        "phase": "package_checks"
+      },
+      {
+        "at_ms": 1783746144329,
+        "ok": true,
+        "phase": "graph_discovery"
+      },
+      {
+        "at_ms": 1783746157158,
+        "ok": true,
+        "phase": "lifecycle_probe"
+      },
+      {
+        "at_ms": 1783746157170,
+        "detail": {
+          "echo_timeout_s": 8.0
+        },
+        "phase": "topic_probe"
+      },
+      {
+        "at_ms": 1783746180447,
+        "detail": {
+          "amcl_pose_observed_pre_initialpose": false,
+          "map_once_observed": true,
+          "odom_once_observed": true,
+          "scan_once_observed": false
+        },
+        "ok": false,
+        "phase": "topic_probe"
+      },
+      {
+        "at_ms": 1783746192831,
+        "detail": {
+          "requested": true
+        },
+        "phase": "path_generation"
+      },
+      {
+        "at_ms": 1783746192859,
+        "detail": {
+          "boundary": "path_generation_blocked_by_localization_not_ready"
+        },
+        "ok": false,
+        "phase": "path_generation"
+      },
+      {
+        "at_ms": 1783746192872,
+        "detail": {
+          "process_group": 445227
+        },
+        "phase": "cleanup"
+      },
+      {
+        "at_ms": 1783746194715,
+        "detail": {
+          "cleanup_result": {
+            "attempted": true,
+            "group_present_after_cleanup": false,
+            "killed_with_sigkill": true,
+            "ok": true,
+            "process_group": 445227,
+            "remaining_processes": [],
+            "sent_signal": "SIGINT"
+          }
+        },
+        "ok": true,
+        "phase": "cleanup"
+      },
+      {
+        "at_ms": 1783746194771,
+        "detail": {
+          "status": "blocked_with_root_cause"
+        },
+        "ok": false,
+        "phase": "final"
+      }
+    ],
+    "planner_active": false,
+    "planner_readiness_summary": {
+      "controller_server_active": false,
+      "controller_server_observed": false,
+      "controller_server_requested": false,
+      "localization_ready": false,
+      "managed_runtime_boundary": "explicit_opt_in_managed_path_generation_runtime_no_motion",
+      "managed_runtime_requested": true,
+      "managed_runtime_started": true,
+      "path_generated": false,
+      "path_generation_attempted": false,
+      "path_generation_requested": true,
+      "path_generation_succeeded": false,
+      "path_point_count": 0,
+      "planner_server_active": false,
+      "planner_server_observed": true
+    },
+    "planner_server_active": false,
+    "planner_server_observed": true,
+    "planner_server_ready_for_path_generation": true,
+    "publishes_cmd_vel": false,
+    "recent_commands": [
+      {
+        "command": "timeout 10 ros2 run tf2_ros tf2_echo base_link laser_frame",
+        "elapsed_ms": 12454,
+        "error": null,
+        "finished_at_ms": 1783746132589,
+        "ok": false,
+        "returncode": 124
+      },
+      {
+        "command": "ros2 pkg list",
+        "elapsed_ms": 3377,
+        "error": null,
+        "finished_at_ms": 1783746136041,
+        "ok": true,
+        "returncode": 0
+      },
+      {
+        "command": "ros2 topic list -t",
+        "elapsed_ms": 4164,
+        "error": null,
+        "finished_at_ms": 1783746140238,
+        "ok": true,
+        "returncode": 0
+      },
+      {
+        "command": "ros2 node list",
+        "elapsed_ms": 4070,
+        "error": null,
+        "finished_at_ms": 1783746144318,
+        "ok": true,
+        "returncode": 0
+      },
+      {
+        "command": "ros2 lifecycle get /map_server",
+        "elapsed_ms": 7610,
+        "error": null,
+        "finished_at_ms": 1783746151950,
+        "ok": true,
+        "returncode": 0
+      },
+      {
+        "command": "ros2 lifecycle get /amcl",
+        "elapsed_ms": 5186,
+        "error": null,
+        "finished_at_ms": 1783746157147,
+        "ok": true,
+        "returncode": 0
+      },
+      {
+        "command": "timeout 6 ros2 topic echo --once /scan",
+        "elapsed_ms": 8607,
+        "error": {
+          "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; timeout 6 ros2 topic echo --once /scan']' t",
+          "type": "TimeoutExpired"
+        },
+        "finished_at_ms": 1783746165787,
+        "ok": false,
+        "returncode": null
+      },
+      {
+        "command": "timeout 8 ros2 topic echo --once /map",
+        "elapsed_ms": 7111,
+        "error": null,
+        "finished_at_ms": 1783746172909,
+        "ok": true,
+        "returncode": 0
+      },
+      {
+        "command": "timeout 6 ros2 topic echo --once /odom",
+        "elapsed_ms": 7515,
+        "error": null,
+        "finished_at_ms": 1783746180436,
+        "ok": true,
+        "returncode": 0
+      },
+      {
+        "command": "ros2 topic info /initialpose --verbose",
+        "elapsed_ms": 4181,
+        "error": null,
+        "finished_at_ms": 1783746184640,
+        "ok": true,
+        "returncode": 0
+      },
+      {
+        "command": "ros2 node info /amcl",
+        "elapsed_ms": 4052,
+        "error": null,
+        "finished_at_ms": 1783746188703,
+        "ok": true,
+        "returncode": 0
+      },
+      {
+        "command": "ros2 node info /map_server",
+        "elapsed_ms": 4073,
+        "error": null,
+        "finished_at_ms": 1783746192787,
+        "ok": true,
+        "returncode": 0
+      }
+    ],
+    "robot_control_executed": false,
+    "root_causes": [
+      {
+        "layer": "Nav2 sensor input",
+        "reason": "/scan_probe_timeout"
+      },
+      {
+        "layer": "AMCL localization",
+        "reason": "/amcl_pose_probe_timeout"
+      },
+      {
+        "layer": "Localization TF",
+        "reason": "map_to_odom_dynamic_source_missing"
+      },
+      {
+        "detail": "/tf_topic_missing",
+        "layer": "Localization TF",
+        "reason": "map_to_base_link_blocked_by_missing_map_to_odom",
+        "source": "map_to_odom"
+      },
+      {
+        "layer": "planner readiness",
+        "reason": "localization_not_ready_for_path_generation"
+      }
+    ],
+    "safe_to_control": false,
+    "scan_consumed": false,
+    "scan_once_observed": false,
+    "sends_base_motion_commands": false,
+    "sends_motion_commands": false,
+    "source_map_evidence_ref": "o3-map-lifecycle-1782749676965",
+    "source_map_evidence_type": "blocked_with_root_cause",
+    "started_at_ms": 1783746055782,
+    "static_tf_source_observed": false,
+    "status": "blocked_with_root_cause",
+    "tf_chain_diagnostics": {
+      "frame_contract": {
+        "actual": {
+          "base": "base_link",
+          "laser": "laser_frame",
+          "map": "map",
+          "odom": "odom"
+        },
+        "consistent_with_defaults": true,
+        "expected": {
+          "base": "base_link",
+          "laser": "laser_frame",
+          "map": "map",
+          "odom": "odom"
+        }
+      },
+      "pairs": {
+        "base_link_to_laser_frame": {
+          "boundary": null,
+          "elapsed_ms": 12454,
+          "error": null,
+          "executed": true,
+          "failure_reason": "observed",
+          "observed": true,
+          "returncode": 124,
+          "source_frame": "base_link",
+          "stderr_preview": "[INFO] [1783746123.772789837] [tf2_echo]: Waiting for transform base_link ->  laser_frame: Invalid frame ID \"base_link\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1783746132.289392406] [rclcpp]: signal_handler(SIGINT/SIGTERM)\n",
+          "stdout_preview": "00\n  0.000  0.000  1.000  0.000\n  0.000  0.000  0.000  1.000\nAt time 0.0\n- Translation: [0.000, 0.000, 0.000]\n- Rotation: in Quaternion (xyzw) [0.000, 0.000, 0.000, 1.000]\n- Rotation: in RPY (radian) [0.000, -0.000, 0.000]\n- Rotation: in RPY (degree) [0.000, -0.000, 0.000]\n- Matrix:\n  1.000  0.000  0.000  0.000\n  0.000  1.000  0.000  0.000\n  0.000  0.000  1.000  0.000\n  0.000  0.000  0.000  1.000\n",
+          "target_frame": "laser_frame"
+        },
+        "map_to_base_link": {
+          "boundary": "map_to_base_link_tf_probe_skipped_until_chain_inputs_observed",
+          "elapsed_ms": null,
+          "error": null,
+          "executed": false,
+          "failure_reason": "tf2_empty_output_or_timing",
+          "observed": false,
+          "returncode": null,
+          "source_frame": "map",
+          "stderr_preview": "",
+          "stdout_preview": "",
+          "target_frame": "base_link"
+        },
+        "map_to_odom": {
+          "boundary": null,
+          "elapsed_ms": 12528,
+          "error": null,
+          "executed": true,
+          "failure_reason": "frame_missing_or_name_mismatch",
+          "observed": false,
+          "returncode": 124,
+          "source_frame": "map",
+          "stderr_preview": "783746105.101003393] [tf2_echo]: Waiting for transform map ->  odom: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1783746107.100953726] [tf2_echo]: Waiting for transform map ->  odom: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1783746107.210285332] [rclcpp]: signal_handler(SIGINT/SIGTERM)\n",
+          "stdout_preview": "",
+          "target_frame": "odom"
+        },
+        "odom_to_base_link": {
+          "boundary": null,
+          "elapsed_ms": 12461,
+          "error": null,
+          "executed": true,
+          "failure_reason": "observed",
+          "observed": true,
+          "returncode": 124,
+          "source_frame": "odom",
+          "stderr_preview": "[INFO] [1783746111.100708975] [tf2_echo]: Waiting for transform odom ->  base_link: Invalid frame ID \"odom\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1783746119.769242052] [rclcpp]: signal_handler(SIGINT/SIGTERM)\n",
+          "stdout_preview": ".000  0.000\n  0.000  0.000  0.000  1.000\nAt time 1783746119.676817757\n- Translation: [-0.574, 0.082, 0.000]\n- Rotation: in Quaternion (xyzw) [0.000, 0.000, 0.924, 0.381]\n- Rotation: in RPY (radian) [0.000, -0.000, 2.359]\n- Rotation: in RPY (degree) [0.000, -0.000, 135.147]\n- Matrix:\n -0.709 -0.705  0.000 -0.574\n  0.705 -0.709  0.000  0.082\n  0.000  0.000  1.000  0.000\n  0.000  0.000  0.000  1.000\n",
+          "target_frame": "base_link"
+        }
+      },
+      "source_diagnostics": {
+        "amcl_broadcast_conditions": {
+          "amcl_active": true,
+          "amcl_frame_params_match_helper": false,
+          "amcl_pose_frame_id_is_map": false,
+          "amcl_pose_observed": false,
+          "base_link_to_laser_frame_source_observed": false,
+          "initialpose_published": true,
+          "map_once_observed": true,
+          "map_server_active": true,
+          "map_to_odom_source_observed": false,
+          "odom_to_base_link_dynamic_source_observed": false,
+          "odom_to_base_link_source_observed": false,
+          "odom_to_base_link_static_source_observed": false,
+          "scan_once_observed": false,
+          "static_tf_processes_observed": true,
+          "tf_broadcast_enabled": false
+        },
+        "amcl_frame_params": {
+          "base_frame_id": null,
+          "global_frame_id": null,
+          "odom_frame_id": null
+        },
+        "amcl_node_info_observed": false,
+        "amcl_node_publishers": [],
+        "amcl_node_subscribers": [],
+        "amcl_param_probe_ok": false,
+        "amcl_pose_frame_id": null,
+        "amcl_tf_broadcast_param": null,
+        "amcl_tf_root_cause": "/tf_topic_missing",
+        "base_frame_observed": false,
+        "base_link_to_laser_frame_source_observed": false,
+        "base_link_to_laser_frame_source_transform": null,
+        "frame_contract": {
+          "actual": {
+            "base": "base_link",
+            "laser": "laser_frame",
+            "map": "map",
+            "odom": "odom"
+          },
+          "consistent_with_defaults": true,
+          "expected": {
+            "base": "base_link",
+            "laser": "laser_frame",
+            "map": "map",
+            "odom": "odom"
+          }
+        },
+        "laser_frame_observed": false,
+        "map_frame_observed": false,
+        "map_to_odom_source_observed": false,
+        "odom_frame_observed": false,
+        "odom_to_base_link_dynamic_source_observed": false,
+        "odom_to_base_link_source_observed": false,
+        "odom_to_base_link_static_source_observed": false,
+        "tf_frame_inventory": {
+          "command_statuses": {
+            "tf": null,
+            "tf_static": null,
+            "topic_list": null
+          },
+          "dynamic_edges": [],
+          "dynamic_transforms": [],
+          "edges": [],
+          "frames": [],
+          "static_edges": [],
+          "static_transforms": [],
+          "topic_types": {},
+          "transforms": []
+        },
+        "tf_source_root_cause_detail": {
+          "amcl_broadcast_conditions": {
+            "amcl_active": true,
+            "amcl_frame_params_match_helper": false,
+            "amcl_pose_frame_id_is_map": false,
+            "amcl_pose_observed": false,
+            "base_link_to_laser_frame_source_observed": false,
+            "initialpose_published": true,
+            "map_once_observed": true,
+            "map_server_active": true,
+            "map_to_odom_source_observed": false,
+            "odom_to_base_link_dynamic_source_observed": false,
+            "odom_to_base_link_source_observed": false,
+            "odom_to_base_link_static_source_observed": false,
+            "scan_once_observed": false,
+            "static_tf_processes_observed": true,
+            "tf_broadcast_enabled": false
+          },
+          "amcl_node_info_observed": false,
+          "amcl_param_probe_boundary": "rclpy_amcl_probe_failed",
+          "amcl_param_probe_error": {
+            "message": "librcl_action.so: cannot open shared object file: No such file or directory\nThe C extension '/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/_rclpy_pybind11.cpython-310-aarch64-linux-gnu.so' failed to be imported while being presen",
+            "type": "ImportError"
+          },
+          "amcl_param_probe_ok": false,
+          "amcl_pose_frame_id": null,
+          "base_link_to_laser_frame_source_observed": false,
+          "base_link_to_laser_frame_source_transform": null,
+          "expected_params": {
+            "base_frame_id": "base_link",
+            "global_frame_id": "map",
+            "odom_frame_id": "odom",
+            "tf_broadcast": "true"
+          },
+          "map_to_odom_source_observed": false,
+          "observed_params": {
+            "base_frame_id": null,
+            "global_frame_id": null,
+            "odom_frame_id": null,
+            "tf_broadcast": null
+          },
+          "odom_to_base_link_dynamic_source_observed": false,
+          "odom_to_base_link_source_observed": false,
+          "odom_to_base_link_static_source_observed": false,
+          "reason": "/tf_topic_missing",
+          "tf_command_statuses": {
+            "tf": null,
+            "tf_static": null,
+            "topic_list": null
+          }
+        },
+        "tf_static_observed": false,
+        "tf_topics_observed": {
+          "/tf": false,
+          "/tf_static": false
+        },
+        "topic_endpoint_summaries": {
+          "/amcl_pose": {
+            "error": null,
+            "publisher_count": 0,
+            "publishers": [],
+            "subscriber_count": 0,
+            "subscribers": []
+          },
+          "/odom": {
+            "error": null,
+            "publisher_count": 0,
+            "publishers": [],
+            "subscriber_count": 0,
+            "subscribers": []
+          },
+          "/scan": {
+            "error": null,
+            "publisher_count": 0,
+            "publishers": [],
+            "subscriber_count": 0,
+            "subscribers": []
+          },
+          "/tf": {
+            "error": null,
+            "publisher_count": 0,
+            "publishers": [],
+            "subscriber_count": 0,
+            "subscribers": []
+          },
+          "/tf_static": {
+            "error": null,
+            "publisher_count": 0,
+            "publishers": [],
+            "subscriber_count": 0,
+            "subscribers": []
+          }
+        }
+      }
+    },
+    "tf_chain_observed": {
+      "base_link_to_laser_frame": true,
+      "map_to_base_link": false,
+      "map_to_odom": false,
+      "odom_to_base_link": true
+    },
+    "tf_failure_classification": {
+      "amcl_tf_root_cause": "/tf_topic_missing",
+      "blocking_segment": "map_to_odom",
+      "frame_naming_consistent": true,
+      "map_to_base_link": "blocked_by_missing_map_to_odom",
+      "reason": "/tf_topic_missing"
+    },
+    "tf_frame_inventory": {
+      "command_statuses": {
+        "tf": null,
+        "tf_static": null,
+        "topic_list": null
+      },
+      "dynamic_edges": [],
+      "dynamic_transforms": [],
+      "edges": [],
+      "frames": [],
+      "static_edges": [],
+      "static_transforms": [],
+      "topic_types": {},
+      "transforms": []
+    },
+    "tf_source_freshness": {
+      "dynamic_edge_count": 0,
+      "dynamic_edges": [],
+      "edges": {
+        "base_link_to_laser_frame": {
+          "child_frame_id": "laser_frame",
+          "dynamic_source_observed": false,
+          "edge": "base_link_to_laser_frame",
+          "freshness": {
+            "age_ms": null,
+            "reason": "probe_or_source_not_observed",
+            "status": "not_observed"
+          },
+          "observed": false,
+          "parent_frame_id": "base_link",
+          "required_source_class": "static",
+          "source_class": "missing",
+          "source_topic": null,
+          "static_source_observed": false,
+          "timestamp": {
+            "parsed": false,
+            "reason": "transform_stamp_not_observed",
+            "source": "base_link_to_laser_frame.header.stamp"
+          }
+        },
+        "map_to_odom": {
+          "child_frame_id": "odom",
+          "dynamic_source_observed": false,
+          "edge": "map_to_odom",
+          "freshness": {
+            "age_ms": null,
+            "reason": "probe_or_source_not_observed",
+            "status": "not_observed"
+          },
+          "observed": false,
+          "parent_frame_id": "map",
+          "required_source_class": "dynamic",
+          "source_class": "missing",
+          "source_topic": null,
+          "static_source_observed": false,
+          "timestamp": {
+            "parsed": false,
+            "reason": "transform_stamp_not_observed",
+            "source": "map_to_odom.header.stamp"
+          }
+        },
+        "odom_to_base_link": {
+          "child_frame_id": "base_link",
+          "dynamic_source_observed": false,
+          "edge": "odom_to_base_link",
+          "freshness": {
+            "age_ms": null,
+            "reason": "probe_or_source_not_observed",
+            "status": "not_observed"
+          },
+          "observed": false,
+          "parent_frame_id": "odom",
+          "required_source_class": null,
+          "source_class": "missing",
+          "source_topic": null,
+          "static_source_observed": false,
+          "timestamp": {
+            "parsed": false,
+            "reason": "transform_stamp_not_observed",
+            "source": "odom_to_base_link.header.stamp"
+          }
+        }
+      },
+      "static_edge_count": 0,
+      "static_edges": []
+    },
+    "tf_source_root_cause_detail": {
+      "amcl_broadcast_conditions": {
+        "amcl_active": true,
+        "amcl_frame_params_match_helper": false,
+        "amcl_pose_frame_id_is_map": false,
+        "amcl_pose_observed": false,
+        "base_link_to_laser_frame_source_observed": false,
+        "initialpose_published": true,
+        "map_once_observed": true,
+        "map_server_active": true,
+        "map_to_odom_source_observed": false,
+        "odom_to_base_link_dynamic_source_observed": false,
+        "odom_to_base_link_source_observed": false,
+        "odom_to_base_link_static_source_observed": false,
+        "scan_once_observed": false,
+        "static_tf_processes_observed": true,
+        "tf_broadcast_enabled": false
+      },
+      "amcl_node_info_observed": false,
+      "amcl_param_probe_boundary": "rclpy_amcl_probe_failed",
+      "amcl_param_probe_error": {
+        "message": "librcl_action.so: cannot open shared object file: No such file or directory\nThe C extension '/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/_rclpy_pybind11.cpython-310-aarch64-linux-gnu.so' failed to be imported while being presen",
+        "type": "ImportError"
+      },
+      "amcl_param_probe_ok": false,
+      "amcl_pose_frame_id": null,
+      "base_link_to_laser_frame_source_observed": false,
+      "base_link_to_laser_frame_source_transform": null,
+      "expected_params": {
+        "base_frame_id": "base_link",
+        "global_frame_id": "map",
+        "odom_frame_id": "odom",
+        "tf_broadcast": "true"
+      },
+      "map_to_odom_source_observed": false,
+      "observed_params": {
+        "base_frame_id": null,
+        "global_frame_id": null,
+        "odom_frame_id": null,
+        "tf_broadcast": null
+      },
+      "odom_to_base_link_dynamic_source_observed": false,
+      "odom_to_base_link_source_observed": false,
+      "odom_to_base_link_static_source_observed": false,
+      "reason": "/tf_topic_missing",
+      "tf_command_statuses": {
+        "tf": null,
+        "tf_static": null,
+        "topic_list": null
+      }
+    },
+    "tf_static_observed": false,
+    "tf_topics_observed": {
+      "/tf": false,
+      "/tf_static": false
+    },
+    "uses_base_uart": false
+  },
+  "publishes_cmd_vel": false,
+  "robot_control_executed": false,
+  "safe_to_control": false,
+  "schema": "trashbot.upper_robot_api.v1.nav2_lifecycle_runtime_proof",
+  "sends_base_motion_commands": false,
+  "sends_motion_commands": false,
+  "software_guard": true,
+  "status": "blocked_with_root_cause",
+  "uses_base_uart": false
+}

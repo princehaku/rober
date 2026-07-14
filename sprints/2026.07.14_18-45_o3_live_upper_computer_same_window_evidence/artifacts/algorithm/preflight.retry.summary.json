@@ -1,0 +1,103 @@
+{
+  "baudrate_readback_source": "driver_diagnostics_latest.serial.serial_baudrate",
+  "baudrate_readback_status": "current_with_reference_conflict",
+  "calls_base_manual": false,
+  "delivery_success": false,
+  "diagnostics_counters_increased": true,
+  "diagnostics_sample_1": {
+    "generated_at_ms": 1784028683463,
+    "runtime": {
+      "last_scan_range_count": 180,
+      "parsed_packet_count": 48936662,
+      "published_raw_packet_count": 48936662,
+      "published_scan_count": 2599905,
+      "uptime_s": 166451.223
+    },
+    "serial": {
+      "bytes_read_total": 1622511136,
+      "empty_read_count": 59415,
+      "last_chunk_preview_hex": "",
+      "last_chunk_size": 0,
+      "last_error": "",
+      "last_exception_message_hint": "",
+      "last_exception_type": "",
+      "last_packet_preview_hex": "aa 55 40 03 fd a0 01 00 50 7f 00 00 10 39 00 00",
+      "packet_count_total": 48936662,
+      "raw_bytes_observed": true,
+      "read_call_count": 6327890,
+      "read_exception_count": 0,
+      "serial_baudrate": 150000,
+      "serial_port": "/dev/ttyACM0",
+      "start_command_written": true,
+      "stop_command_written": false,
+      "unparsed_buffer_preview_hex": "",
+      "unparsed_buffer_size": 0
+    }
+  },
+  "diagnostics_sample_2": {
+    "generated_at_ms": 1784028685475,
+    "runtime": {
+      "last_scan_range_count": 2,
+      "parsed_packet_count": 48937171,
+      "published_raw_packet_count": 48937171,
+      "published_scan_count": 2599931,
+      "uptime_s": 166453.236
+    },
+    "serial": {
+      "bytes_read_total": 1622528010,
+      "empty_read_count": 59427,
+      "last_chunk_preview_hex": "aa 55 00 08 6d 29 eb 2c e3 56 e7 8c 17 e8 a4 17 ea bc 17 e8 cc 17 e3 dc 17 e7 fc 17 e4 10 18 ce",
+      "last_chunk_size": 272,
+      "last_error": "",
+      "last_exception_message_hint": "",
+      "last_exception_type": "",
+      "last_packet_preview_hex": "aa 55 00 08 6d 44 25 48 37 51 ff 00 00 ff 00 00",
+      "packet_count_total": 48937171,
+      "raw_bytes_observed": true,
+      "read_call_count": 6327970,
+      "read_exception_count": 0,
+      "serial_baudrate": 150000,
+      "serial_port": "/dev/ttyACM0",
+      "start_command_written": true,
+      "stop_command_written": false,
+      "unparsed_buffer_preview_hex": "",
+      "unparsed_buffer_size": 0
+    }
+  },
+  "existing_lifecycle_disambiguated_current_150000": true,
+  "hil_pass": false,
+  "manager_cmdline": "bash /root/rober/onboard/scripts/o1_lidar_lifecycle.sh __run --onboard-root /root/rober/onboard --serial-port /dev/ttyACM0 --serial-baudrate 150000 --frame-id laser_frame --runtime-dir /tmp/rober_lidar_lifecycle ",
+  "persisted_status": {
+    "baudrate": 150000,
+    "pid": 550851,
+    "running": true,
+    "serial_port": "/dev/ttyACM0",
+    "state": "running"
+  },
+  "preflight_exit_code": 0,
+  "process_inventory": [
+    "550851       1 bash /root/rober/onboard/scripts/o1_lidar_lifecycle.sh __run --onboard-root /root/rober/onboard --serial-port /dev/ttyACM0 --serial-baudrate 150000 --frame-id laser_frame --runtime-dir /tmp/rober_lidar_lifecycle",
+    "550914  550851 /usr/bin/python3 /opt/ros/humble/bin/ros2 run ros2_trashbot_hardware lidar_driver --ros-args -p serial_port:=/dev/ttyACM0 -p serial_baudrate:=150000 -p frame_id:=laser_frame -p publish_raw_packets:=true -p diagnostics_path:=/tmp/rober_lidar_lifecycle/lidar_driver_diagnostics.json",
+    "550922  550914 /usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_hardware/lib/ros2_trashbot_hardware/lidar_driver --ros-args -p serial_port:=/dev/ttyACM0 -p serial_baudrate:=150000 -p frame_id:=laser_frame -p publish_raw_packets:=true -p diagnostics_path:=/tmp/rober_lidar_lifecycle/lidar_driver_diagnostics.json"
+  ],
+  "publishes_cmd_vel": false,
+  "reference_conflict_candidate": {
+    "baudrate": 230400,
+    "kind": "lifecycle_status",
+    "source": "lifecycle_status_readback.latest_result.baudrate",
+    "static_default": false,
+    "status": "reference_conflict_not_current",
+    "trusted_current": false
+  },
+  "remote_hostname": "op-z3-b6.home",
+  "remote_time": "2026-07-14T19:31:18,152535228+08:00",
+  "robot_control_executed": false,
+  "ros_param_serial_baudrate": "Integer value is: 150000",
+  "route_execution_success": false,
+  "safe_to_control": false,
+  "schema": "trashbot.o3.live_upper_computer_same_window_preflight_retry.v1",
+  "target_host": "192.168.1.11",
+  "target_port": 37878,
+  "top_level_baudrate": 150000,
+  "uses_base_uart": false
+}

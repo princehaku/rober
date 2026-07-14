@@ -1,0 +1,83 @@
+{
+  "schema": "trashbot.o5.product_acceptance_cdn_tls_external_evidence.v1",
+  "schema_version": 1,
+  "accepted_at": "2026-07-13T13:13:00+08:00",
+  "sprint": "sprints/2026.07.13_13-13_o5_cdn_tls_external_evidence_probe",
+  "source_artifact": "artifacts/cdn_tls_external_evidence_summary.json",
+  "product_status": "accepted_fail_closed_no_okr_lift",
+  "decision": "accept_implementation_as_fail_closed_probe",
+  "user_value": "公网入口 TLS 和证书链路已有真实外部观测，但还不能证明普通手机生产入口可用。",
+  "north_star": "面向普通手机用户的固定路线垃圾投递机器人；本轮只补 O5 云端公开入口证据，不触碰路线执行或送达。",
+  "okr_mapping": {
+    "objective": "O5",
+    "direction": "continue",
+    "o5_percent_after": "about_85",
+    "o1_percent_after": "about_94",
+    "o6_percent_after": "about_93",
+    "o7_percent_after": "about_93",
+    "okr_percentage_raised": false,
+    "kr_archived": false,
+    "kr_archive_text": "不归档"
+  },
+  "artifact_facts": {
+    "schema": "trashbot.o5.cdn_tls_external_evidence.v1",
+    "evidence_key": "cdn_tls_external_evidence",
+    "probe_attempted": true,
+    "external_request_attempted": true,
+    "tls_handshake_observed": true,
+    "certificate_valid_for_host": true,
+    "http_method": "HEAD",
+    "http_status_class": "4xx",
+    "cdn_tls_external_evidence_status": "blocked_http_status_not_success_class",
+    "accepted_claim": "none",
+    "target_source": "okr_kr4_default",
+    "scheme": "https",
+    "target_host_hash_prefix_present": true,
+    "redaction_status": "pass"
+  },
+  "accepted_observations": [
+    "external_request_attempted=true",
+    "tls_handshake_observed=true",
+    "certificate_valid_for_host=true",
+    "http_method=HEAD",
+    "http_status_class=4xx"
+  ],
+  "failure_positioning": {
+    "blocker": "blocked_http_status_not_success_class",
+    "reason": "TLS 和证书校验已观测，但 HTTP class 为 4xx，不能接受为成功 external production evidence。",
+    "accepted_claim": "none"
+  },
+  "fixed_false_fields": {
+    "delivery_success": false,
+    "safe_to_control": false,
+    "robot_control_executed": false,
+    "route_execution_success": false,
+    "hil_pass": false
+  },
+  "rejected_claims": [
+    "production_cloud_ready",
+    "oss_object_upload",
+    "cdn_origin_fetch",
+    "production_db_queue",
+    "production_worker_cutover",
+    "four_g_sim",
+    "real_phone_browser",
+    "route_execution",
+    "delivery_success",
+    "hil",
+    "safe_to_control"
+  ],
+  "product_acceptance_gate": {
+    "implementation_artifact_valid_json": true,
+    "product_acceptance_artifact_valid_json": true,
+    "required_fact_assertions_passed": true,
+    "redaction_assertions_passed": true,
+    "okr_updated": true,
+    "progress_log_updated": true
+  },
+  "remaining_risks": [
+    "HTTP status class is 4xx, so CDN/TLS evidence is fail-closed.",
+    "No OSS upload, CDN origin fetch, production DB/queue, worker cutover, 4G/SIM, real phone/browser, route execution, delivery, HIL, or safe-to-control evidence was produced."
+  ],
+  "next_recommendation": "Rerun the sanitized external probe when the intended public CDN endpoint can return a success HTTP class; otherwise pivot to explicit operator-approved current live HIL or current route evidence instead of repeating support-only wrappers."
+}

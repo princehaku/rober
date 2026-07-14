@@ -1,0 +1,37 @@
+{
+  "schema": "trashbot.o10.source_amortized_graph_probe_live_incomplete.v1",
+  "generated_at": "2026-07-12 03:08:35 CST",
+  "status": "superseded_by_final_live_artifact",
+  "evidence_type": "historical_live_incomplete_no_motion_boundary",
+  "reason": "later bounded closeout found and pulled a final live artifact",
+  "observations": {
+    "ssh_reachability_check": "passed",
+    "scp_helper_push": "passed",
+    "first_live_run_returncode": 1,
+    "first_live_run_failure": "ValueError circular reference detected while writing partial artifact; fixed locally before second run",
+    "pulled_live_raw_path": "sprints/2026.07.12_02-51_o3_source_amortized_graph_probe/artifacts/live_o10_source_amortized_graph_probe.raw.json",
+    "pulled_live_raw_status": "partial_runtime_in_progress",
+    "pulled_live_raw_graph_root_cause_present": false,
+    "second_live_run_status": "later_confirmed_final_artifact_written",
+    "second_live_ssh_exit_code_after_local_interrupt": 255,
+    "superseding_artifact": "sprints/2026.07.12_02-51_o3_source_amortized_graph_probe/artifacts/live_o10_source_amortized_graph_probe.raw.json",
+    "superseding_status": "blocked_with_root_cause",
+    "superseding_artifact_kind": "final",
+    "superseding_classification": "ros2_daemon_or_dds_graph_discovery_timeout",
+    "superseding_primary_reason": "ros2_node_list_timeout",
+    "superseding_evidence_priority": "source_amortized_batch"
+  },
+  "proof_boundary": {
+    "safe_to_control": false,
+    "publishes_cmd_vel": false,
+    "calls_base_manual": false,
+    "robot_control_executed": false,
+    "route_execution_success": false,
+    "delivery_success": false,
+    "hil_pass": false,
+    "uses_base_uart": false,
+    "path_generated": false,
+    "path_generation_attempted": false
+  },
+  "next_step": "use the superseding final live artifact for sprint evidence; keep this file only as earlier failed-run history"
+}

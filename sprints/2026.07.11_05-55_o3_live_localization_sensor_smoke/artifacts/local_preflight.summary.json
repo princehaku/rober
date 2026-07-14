@@ -1,0 +1,11 @@
+{
+  "schema": "trashbot.board_field_evidence_preflight.v1",
+  "status": "dry_run_template_only_not_proven",
+  "blocked_reason": "dry_run_template_only_not_proven",
+  "safe_to_control": false,
+  "delivery_success": false,
+  "primary_actions_enabled": false,
+  "robot_control_executed": false,
+  "route_execution_success": false,
+  "hil_pass": false
+}

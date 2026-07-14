@@ -7,6 +7,7 @@
 - `docs/vendor/VENDOR_INDEX.md`
 - `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h`
 - `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/uart_ctrl.h`
+- `docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/ugv_advance.h`
 - `docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py`
 - `docs/vendor/waveshare_wave_rover/ugv_rpi/config.yaml`
 
@@ -15,7 +16,8 @@
 - WAVE ROVER 上下位机链路是 UTF-8 JSON line，以 `\n` 分帧。
 - `T=1` 是左右轮速度命令，字段为 `L/R`。
 - `T=130` 是一次性底盘反馈请求。
-- `T=1001` 是底盘反馈类型，历史 feedback sample 至少观察到 `[130, 1001]`。
+- `T=1001` 是底盘反馈类型；`ugv_advance.h` 的 `baseInfoFeedback()` 会输出 `T`、`L`、`R`、`r/p/y` 和 `v`。
+- 历史 feedback sample 至少观察到 `[130, 1001]`；同会话 wheel feedback artifact 的 motion window 观察到 `[1, 130, 1001]`，但 bundle 不回显 raw frames。
 - `base_feedback_samples_latest.latest_result.sends_commands=true` 在本 bundle 中只解释为发送 `T=130` feedback request 的上下文；它不表示 motion command、safe control 或 HIL pass。
 
 ## Historical inputs
@@ -211,6 +213,64 @@ Comparator 的成功路径只用于说明“成功 path proof 的形态”，不
 
 这里的 `manual_hil_gate_status=blocked` 不是 bundle 失败，而是现场 manual gate 仍 blocked。bundle ready 仅表示这些 blocked/not-yet-safe 事实已被安全 intake。
 
+本轮新增同会话 wheel feedback additive material：
+
+- 输入：`sprints/2026.06.22_11-00_wheel_lr_samesession_first_jog/artifacts/01_upper_manual_samesession_012.json`
+- 输入 schema：`trashbot.upper_robot_api.v1.base_manual_result`
+- 仅消费 allowlisted 字段：`accepted`、`manual_command_executed`、`auto_stop_executed`、`feedback_during_motion_attempted`、`feedback_during_motion.t1001_feedback_status`、`feedback_during_motion.request.command.T`、`feedback_during_motion.observed_feedback_types` 和 `feedback_during_motion.wheel_feedback_summary.latest_nonzero_pair`
+- 输出字段：
+  - `same_session_wheel_feedback_material_present=true`
+  - `same_session_wheel_feedback_material_status=same_session_wheel_feedback_material_ready_not_hil_pass`
+  - `same_session_wheel_feedback_lr_nonzero_material_present=true`
+  - `same_session_wheel_feedback_latest_nonzero_pair.left_speed=61.0`
+  - `same_session_wheel_feedback_latest_nonzero_pair.right_speed=61.0`
+  - `same_session_wheel_feedback_latest_nonzero_pair.sign_pattern=both_positive`
+  - `same_session_wheel_feedback_motion_window_nonzero_pair_count=1`
+  - `same_session_wheel_feedback_feedback_request_t130_observed=true`
+  - `same_session_wheel_feedback_current_live_rerun=false`
+  - `same_session_hil_acceptance_status=blocked_missing_current_live_acceptance`
+  - `same_session_hil_acceptance_missing_fields=["external_video_recorded","physical_motion_lidar_delta_proven","current_live_hil_acceptance_record","current_live_nav2_route_execution_success"]`
+  - `same_session_hil_acceptance_ready_not_hil_pass=true`
+
+该材料是 historical same-session upper-computer artifact，不是本轮 current live rerun。bundle 不输出顶层 `wheel_feedback_lr_nonzero_proven=true`；只能输出带 `same_session_wheel_feedback_` 前缀的 material 字段。顶层 `hil_pass=false`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`、`robot_control_executed=false` 和 `nav2_route_execution_success=false` 继续固定为 false。
+
+本轮再新增同会话 PC command additive material：
+
+- 输入：`sprints/2026.06.22_11-00_wheel_lr_samesession_first_jog/artifacts/02_pc_first_jog_samesession_timeoutfix.json`
+- 输入：`sprints/2026.06.22_11-00_wheel_lr_samesession_first_jog/artifacts/03_base_status_after_pc_jog.json`
+- `02` 的 vendor 相关事实仍遵循 `json_cmd.h` / `uart_ctrl.h` / `ugv_rpi/base_ctrl.py` / `config.yaml`：motion command 事实来自 PC proxy 摘要，真实底盘反馈只能认 `T=130` 请求后的 `T=1001`。
+- bundle 只输出 `same_session_pc_command_*` 前缀字段，包含：
+  - `same_session_pc_command_material_present=true`
+  - `same_session_pc_command_material_status=same_session_pc_command_material_ready_not_hil_pass`
+  - `same_session_pc_command_requested_direction=forward`
+  - `same_session_pc_command_applied_direction=forward`
+  - `same_session_pc_command_clamped_speed_mps=0.04`
+  - `same_session_pc_command_clamped_duration_ms=800`
+  - `same_session_pc_command_checklist_confirmed=true`
+  - `same_session_pc_command_evidence_capture_status=captured`
+  - `same_session_pc_command_wheel_feedback_lr_nonzero_material_present=true`
+  - `same_session_pc_command_motion_window_nonzero_frame_count=1`
+  - `same_session_pc_command_latest_nonzero_pair.left_speed=20.0`
+  - `same_session_pc_command_latest_nonzero_pair.right_speed=20.0`
+  - `same_session_pc_command_feedback_during_motion_attempted=true`
+  - `same_session_pc_command_feedback_after_stop_attempted=true`
+  - `same_session_pc_command_manual_command_executed=true`
+  - `same_session_pc_command_auto_stop_executed=true`
+  - `same_session_pc_command_after_jog_t1001_observed=true`
+  - `same_session_pc_command_after_jog_feedback_source=fresh_readback`
+  - `same_session_pc_command_after_jog_latest_pair.left_speed=0.0`
+  - `same_session_pc_command_after_jog_latest_pair.right_speed=0.0`
+  - `same_session_pc_command_after_jog_wheel_feedback_lr_zero_readback=true`
+  - `same_session_pc_command_after_jog_feedback_samples_freshness_status=stale`
+  - `same_session_pc_command_after_jog_readback_sends_commands=true`
+
+这里有意同时保留两个方向相反的事实：
+
+- motion window material 表示同会话 PC proxy 曾记录到 `remote_motion_key_values.wheel_feedback_lr_nonzero_proven=true`；
+- after-jog readback summary 表示随后 `03` 的 latest `T=1001` readback 已回到 `L=0/R=0`。
+
+这两个事实只能说明 historical same-session command/readback material 已被 intake，不能把 bundle 顶层抬升成 current live HIL、safe-to-control、delivery success 或 current live route execution success。
+
 ## Fail-closed rules
 
 下列任一情况必须 blocked：
@@ -235,6 +295,9 @@ Comparator 的成功路径只用于说明“成功 path proof 的形态”，不
 - 输入试图把 `hil_pass`、`safe_to_control`、`delivery_success`、`primary_actions_enabled`、`robot_control_executed`、`nav2_route_execution_success`、`same_run_path_proven`、`wheel_feedback_lr_nonzero_proven`、`real_route_map_proven` 提升为 `true`。
 - bounded motion summary schema 不匹配、短动时长超出 0.3s、stop/zero command 缺失、before/after T1001 readback 缺失。
 - `pulse_and_stop.log`、`odom_after_motion.txt` 或 `imu_once.txt` 缺 required sample/readback section。
+- `02_pc_first_jog_samesession_timeoutfix.json` 缺 `remote_motion_key_values`、motion-window 非零 frame 计数、latest nonzero pair、checklist 或 captured evidence 状态。
+- `03_base_status_after_pc_jog.json` 缺 `feedback_ack.t1001_observed=true`、`feedback_readback.t1001_feedback_status=observed`、`feedback_readback.wheel_feedback_lr_nonzero_proven=false`、latest pair `L=0/R=0`、或 `feedback_samples_latest.readback_sends_commands=true`。
+- 同会话 PC command 材料试图泄露 `source_base_url`、`normalized_base_url`、endpoint、`/root/`、`/Users/`、`/dev/tty*`、baudrate、token、secret、traceback、raw frames 或长 base64。
 - `readback_summary.json` 未证明 base direct status loaded 且 T1001 observed，或 safety proof boundary 不是 fixed false。
 - `base_feedback_samples_latest.json` 不是 2/2 T1001 observed，或 observed feedback types 不是 `[1001]`。
 - `base_feedback_samples_latest.latest_result.sends_commands=true` 缺少 `T=130` feedback request context，或任何层级把 `sends_motion_commands`、`robot_control_executed`、`safe_to_control`、`delivery_success`、`hil_pass` 提升为 `true`。
@@ -245,6 +308,10 @@ Comparator 的成功路径只用于说明“成功 path proof 的形态”，不
 - proxy smoke 未证明 `remote_base_manual_not_called_by_local_reject=true`。
 - manual gate feedback 不是 `T=130` request、`t1001_observed_count!=2`、`all_samples_observed_t1001!=true`，或 `sends_motion_commands=true`。
 - operator structured report 不是 material-only，或 nested `delivery_success=true` 泄漏到顶层 `delivery_success=true`。
+- same-session wheel feedback artifact 缺失、schema 不匹配、`accepted/manual_command_executed/auto_stop_executed/feedback_during_motion_attempted` 任一不是 `true`。
+- same-session motion feedback request 不是 `T=130`，`t1001_feedback_status` 不是 `observed`，或 `observed_feedback_types` 未包含 `1001`。
+- same-session `wheel_feedback_summary` 不是 `vendor_t1001_L_R`，`lr_nonzero_observed` 不是 `true`，`nonzero_frame_count<=0`，或 `latest_nonzero_pair.left_speed/right_speed` 任一缺失、非有限数或为 `0`。
+- same-session artifact 或 motion feedback section 把 `hil_pass`、`safe_to_control`、`delivery_success`、`primary_actions_enabled`、`nav2_route_execution_success`、`robot_control_executed` 或 `sends_motion_commands` 等安全字段提升为 `true`。
 
 正例原始材料里虽然含有 `source_base_url`、endpoint、`/root/...` 等 runtime 上下文，但 bundle 明确忽略这些 raw 字段；只要 allowlist 投影本身安全，正例仍应 ready。
 
@@ -276,6 +343,12 @@ bounded motion 负向覆盖示例：
 PYTHONPATH=onboard/src/ros2_trashbot_hardware python3 -m ros2_trashbot_hardware.wave_rover_motion_map_hil_material_bundle --bounded-motion-feedback-summary-json bad-feedback-motion-summary.json
 ```
 
+same-session wheel feedback 负向覆盖示例：
+
+```bash
+PYTHONPATH=onboard/src/ros2_trashbot_hardware python3 -m ros2_trashbot_hardware.wave_rover_motion_map_hil_material_bundle --same-session-wheel-feedback-json bad-same-session.json
+```
+
 ready 输出只证明历史 motion + map 材料已被当前软件安全 intake。它不证明：
 
 - current live HIL pass
@@ -285,6 +358,7 @@ ready 输出只证明历史 motion + map 材料已被当前软件安全 intake�
 - Nav2 route execution success
 - same-run Nav2 path generation success
 - delivery success
+- current live same-session HIL acceptance
 
 ## Next evidence required
 

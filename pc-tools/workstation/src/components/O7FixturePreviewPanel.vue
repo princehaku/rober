@@ -7,18 +7,61 @@ import {
   getO7ConsumerTaskDetail,
   getO7ConsumerTaskList,
   getO7ConsumerAnnotationExport,
+  getO7ConsumerMissionEvidenceBundleExport,
   getO7LiveEndpointsManifest,
   getO7PreviewsAcceptance,
   getO7RealtimeElevatorProbe,
   getO7RtcSignalingContractProbe,
   loadO7FixturePreview,
   postO7ConsumerAnnotationSubmit,
+  postO7ConsumerDeliveryResultIntake,
+  postO7ConsumerBoundedRouteGateIntake,
+  postO7ConsumerBoundedRouteTerminalResultIntake,
+  postO7ConsumerInferenceRequest,
+  postO7ConsumerMissionEventAppend,
+  postO7OperatorDropoffActionCapture,
+  postO7ConsumerVoiceTtsDraftRequest,
+  postO7VoiceSpeakerAckEvent,
+  postO7ConsumerPhoneBrowserProofIntake,
+  getO7VoiceRuntimePreflight,
+  getO7VoiceRuntimeOfflineSmoke,
 } from "../client/workstationApi";
 import type { O7FixturePreviewInputs, O7FixturePreviewKind, O7FixturePreviewResponses } from "../client/workstationApi";
 import type {
   O7AnnotationDatasetExportResult,
   O7AnnotationSubmitLabel,
   O7AnnotationSubmitResult,
+  O7ConsumerDeliveryResultDropoffConfirmationType,
+  O7ConsumerInferenceInputType,
+  O7ConsumerInferenceRequestBody,
+  O7ConsumerInferenceRequestResult,
+  O7ConsumerInferenceRequestedOutput,
+  O7ConsumerDeliveryResultIntakeRequestBody,
+  O7ConsumerDeliveryResultIntakeResult,
+  O7ConsumerDeliveryResultRecordStatus,
+  O7ConsumerMissionEventAppendRequestBody,
+  O7ConsumerMissionEventAppendResult,
+  O7ConsumerMissionEventType,
+  O7OperatorDropoffActionCaptureRequestBody,
+  O7OperatorDropoffActionCaptureResult,
+  O7ConsumerVoiceTtsDraftRequestBody,
+  O7ConsumerVoiceTtsDraftRequestResult,
+  O7VoiceSpeakerAckEventRequestBody,
+  O7VoiceSpeakerAckEventResult,
+  O7VoiceRuntimeOfflineSmokeResult,
+  O7VoiceRuntimePreflightResult,
+  O7ConsumerPhoneBrowserProofIntakeRequestBody,
+  O7ConsumerPhoneBrowserProofIntakeResult,
+  O7ConsumerPhoneBrowserTerminalMaterialName,
+  O7ConsumerPhoneBrowserTerminalMaterialSummary,
+  O7ConsumerPhoneBrowserTerminalResultType,
+  O7ConsumerBoundedRouteGateIntakeRequestBody,
+  O7ConsumerBoundedRouteGateIntakeResult,
+  O7ConsumerBoundedRouteGateMaterialSummary,
+  O7ConsumerBoundedRouteTerminalResultIntakeRequestBody,
+  O7ConsumerBoundedRouteTerminalResultIntakeResult,
+  O7ConsumerBoundedRouteTerminalResultMaterialSummary,
+  O7MissionEvidenceBundleExportResult,
   O7ConsumerArtifactAccessProbeSummary,
   O7ConsumerArtifactBundleConsumerIngestSummary,
   O7ConsumerArtifactBundleReadiness,
@@ -29,11 +72,13 @@ import type {
   O7ConsumerOfflineArtifactSeedSmokeSummary,
   O7ConsumerRouteDeliveryClosurePacketSummary,
   O7ConsumerCurrentFieldEvidenceMaterialSummary,
+  O7ConsumerPcLiveNav2ExecutionMaterialSummary,
   O7ConsumerLocalizationPathMaterialReadbackSummary,
   O7ConsumerCleanBaselineNav2PathMaterialSummary,
   O7ConsumerFieldOperatorConfirmationMaterialSummary,
   O7ConsumerRouteExecutionResultDeliveryReadinessSummary,
   O7ConsumerSameTaskFieldMaterialPacketSummary,
+  O7ConsumerSameTaskReplayPacketReadbackSummary,
   O7ConsumerSameTaskRouteExecutionMaterialPacketSummary,
   O7ConsumerSameTaskMissionEvidenceGateSummary,
   O7ConsumerSameTaskMissionMaterialChecklist,
@@ -48,6 +93,7 @@ import type {
   O7FieldEvidenceConsumerIngestResponse,
   O7ConsumerLabelingMvpReviewItem,
   O7ConsumerTaskDetailResponse,
+  O7ConsumerTaskListQuery,
   O7ConsumerTaskListResponse,
   O7LabelingQueueInspectorReviewItem,
   O7LiveEndpointsManifestResponse,
@@ -200,6 +246,12 @@ const archiveResult = ref<O7CloudArchiveTasksResponse | null>(null);
 const archiveError = ref("");
 const archiveLoading = ref(false);
 const consumerReadBaseUrl = ref("http://127.0.0.1:8088");
+const consumerTaskFilterRobotId = ref("");
+const consumerTaskFilterTaskId = ref("");
+const consumerTaskFilterDate = ref("");
+const consumerTaskFilterStatus = ref("");
+const consumerTaskFilterLimit = ref("");
+const consumerTaskFilterBeforeStartedAtMs = ref("");
 const consumerTaskListResult = ref<O7ConsumerTaskListResponse | null>(null);
 const consumerTaskListError = ref("");
 const consumerTaskListLoading = ref(false);
@@ -214,6 +266,126 @@ const consumerAnnotationSubmitLoading = ref(false);
 const consumerAnnotationExportResult = ref<O7AnnotationDatasetExportResult | null>(null);
 const consumerAnnotationExportError = ref("");
 const consumerAnnotationExportLoading = ref(false);
+const consumerInferenceRequestResult = ref<O7ConsumerInferenceRequestResult | null>(null);
+const consumerInferenceRequestError = ref("");
+const consumerInferenceRequestLoading = ref(false);
+const consumerDeliveryResultIntakeResult = ref<O7ConsumerDeliveryResultIntakeResult | null>(null);
+const consumerDeliveryResultIntakeError = ref("");
+const consumerDeliveryResultIntakeLoading = ref(false);
+const consumerDeliveryResultRecordStatus = ref<O7ConsumerDeliveryResultRecordStatus>("operator_confirmed_not_delivery_proof");
+const consumerDeliveryResultClaimed = ref(true);
+const consumerDeliveryResultEvidenceRef = ref("");
+const consumerDeliveryResultDropoffConfirmationType =
+  ref<O7ConsumerDeliveryResultDropoffConfirmationType>("operator_terminal_claim");
+const consumerDeliveryResultCompletedAtUtc = ref("");
+const consumerDeliveryResultNotes = ref("");
+const consumerMissionEventAppendResult = ref<O7ConsumerMissionEventAppendResult | null>(null);
+const consumerMissionEventAppendError = ref("");
+const consumerMissionEventAppendLoading = ref(false);
+const consumerOperatorDropoffActionCaptureResult = ref<O7OperatorDropoffActionCaptureResult | null>(null);
+const consumerOperatorDropoffActionCaptureError = ref("");
+const consumerOperatorDropoffActionCaptureLoading = ref(false);
+const consumerVoiceTtsDraftRequestResult = ref<O7ConsumerVoiceTtsDraftRequestResult | null>(null);
+const consumerVoiceTtsDraftRequestError = ref("");
+const consumerVoiceTtsDraftRequestLoading = ref(false);
+const consumerVoiceSpeakerAckEventResult = ref<O7VoiceSpeakerAckEventResult | null>(null);
+const consumerVoiceSpeakerAckEventError = ref("");
+const consumerVoiceSpeakerAckEventLoading = ref(false);
+const voiceRuntimePreflightResult = ref<O7VoiceRuntimePreflightResult | null>(null);
+const voiceRuntimePreflightError = ref("");
+const voiceRuntimePreflightLoading = ref(false);
+const voiceRuntimePreflightMode = ref("offline_stub");
+const voiceRuntimePreflightConfigJson = ref("");
+const voiceRuntimeOfflineSmokeResult = ref<O7VoiceRuntimeOfflineSmokeResult | null>(null);
+const voiceRuntimeOfflineSmokeError = ref("");
+const voiceRuntimeOfflineSmokeLoading = ref(false);
+const voiceRuntimeOfflineSmokeMode = ref("offline_stub");
+const voiceRuntimeOfflineSmokeFixtureJson = ref("");
+const voiceRuntimeOfflineSmokeConfigJson = ref("");
+const consumerMissionEvidenceBundleExportResult = ref<O7MissionEvidenceBundleExportResult | null>(null);
+const consumerMissionEvidenceBundleExportError = ref("");
+const consumerMissionEvidenceBundleExportLoading = ref(false);
+const phoneBrowserTerminalMaterialOptions: O7ConsumerPhoneBrowserTerminalMaterialName[] = [
+  "true_phone_browser_evidence",
+  "diagnostics_mobile_safe_summary",
+  "terminal_result_summary",
+];
+const consumerPhoneBrowserProofIntakeResult = ref<O7ConsumerPhoneBrowserProofIntakeResult | null>(null);
+const consumerPhoneBrowserProofIntakeError = ref("");
+const consumerPhoneBrowserProofIntakeLoading = ref(false);
+const consumerPhoneBrowserSafeEvidenceRef = ref("");
+const consumerPhoneBrowserTerminalResultType =
+  ref<O7ConsumerPhoneBrowserTerminalResultType>("browser_terminal_claim");
+const consumerPhoneBrowserAcceptedMaterials = ref<O7ConsumerPhoneBrowserTerminalMaterialName[]>([
+  "true_phone_browser_evidence",
+  "diagnostics_mobile_safe_summary",
+]);
+const consumerPhoneBrowserCapturedAtUtc = ref("");
+const boundedRouteGateFixed = {
+  task_id: "task_o3_28_pose_fixed_route_consumer_20260713_0402",
+  packet_id: "packet_o3_28_pose_same_task_replay_7d57826142b0c79c",
+  route_intent_id: "route_intent_20260713_0402_from_20260713_0300_28_pose_structured_path",
+  execution_plan_status: "blocked_pending_live_safety_gate",
+  route_csv_row_count: 28,
+  path_structured_pose_count: 28,
+  segment_count: 27,
+  safe_refs: ["controlled_route_execution_gate_record.json", "bounded_route_command_plan.json"],
+} as const;
+const boundedRouteTerminalResultFixed = {
+  task_id: "task_o3_28_pose_fixed_route_consumer_20260713_0402",
+  packet_id: "packet_o3_28_pose_same_task_replay_7d57826142b0c79c",
+  route_intent_id: "route_intent_20260713_0402_from_20260713_0300_28_pose_structured_path",
+  result_code: "mock_route_execution_completed_not_live_delivery",
+  terminal_result_state: "terminal_result_recorded",
+  reconciliation_state: "terminal_result_recorded",
+  source_schema: "trashbot.o5.bounded_route_terminal_result_bridge.v1",
+  source_proof_boundary: "software_proof_o5_bounded_route_terminal_result_bridge_only",
+  route_csv_row_count: 28,
+  path_structured_pose_count: 28,
+  segment_count: 27,
+  safe_evidence_ref: "o5_bounded_route_terminal_result_bridge_summary.json",
+} as const;
+const consumerBoundedRouteGateIntakeResult = ref<O7ConsumerBoundedRouteGateIntakeResult | null>(null);
+const consumerBoundedRouteGateIntakeError = ref("");
+const consumerBoundedRouteGateIntakeLoading = ref(false);
+const consumerBoundedRouteTerminalResultIntakeResult =
+  ref<O7ConsumerBoundedRouteTerminalResultIntakeResult | null>(null);
+const consumerBoundedRouteTerminalResultIntakeError = ref("");
+const consumerBoundedRouteTerminalResultIntakeLoading = ref(false);
+const consumerMissionEventId = ref("");
+const consumerMissionEventType = ref<O7ConsumerMissionEventType>("operator.note");
+const consumerMissionEventEvidenceRef = ref("");
+const consumerMissionEventOccurredAtMs = ref("");
+const consumerMissionEventSummary = ref("");
+const consumerMissionEventSeverity = ref<"info" | "warning" | "error">("info");
+const consumerOperatorDropoffEventId = ref("");
+const consumerOperatorDropoffEvidenceRef = ref("");
+const consumerOperatorDropoffOccurredAtMs = ref("");
+const consumerOperatorDropoffActionId = ref("");
+const consumerOperatorDropoffDisplayName = ref("pc-o7-operator");
+const consumerOperatorDropoffSummary = ref("");
+const consumerVoiceTtsDraftEventId = ref("");
+const consumerVoiceTtsDraftEvidenceRef = ref("");
+const consumerVoiceTtsDraftOccurredAtMs = ref("");
+const consumerVoiceTtsDraftText = ref("");
+const consumerVoiceTtsDraftVoiceProfile = ref("operator-soft");
+const consumerVoiceTtsDraftLocale = ref("zh-CN");
+const consumerVoiceSpeakerAckEventId = ref("");
+const consumerVoiceSpeakerAckEvidenceRef = ref("");
+const consumerVoiceSpeakerAckOccurredAtMs = ref("");
+const consumerVoiceSpeakerAckStatus = ref<"ack" | "failure">("ack");
+const consumerVoiceSpeakerAckFailureReasonCode = ref("speaker_ack_missing_not_real_runtime");
+const consumerVoiceSpeakerAckSummary = ref("");
+const consumerInferenceId = ref("");
+const consumerInferenceModelFamily = ref("elevator_scene_stub");
+const consumerInferenceInputId = ref("");
+const consumerInferenceInputType = ref<O7ConsumerInferenceInputType>("image_ref");
+const consumerInferenceEvidenceRef = ref("");
+const consumerInferenceCapturedAtMs = ref("");
+const consumerInferenceRequestedOutputs = ref<O7ConsumerInferenceRequestedOutput[]>([
+  "elevator_door_state",
+  "floor_recognition",
+]);
 const cloudArchiveProbeBaseUrl = ref("http://127.0.0.1:8088");
 const cloudArchiveProbeResult = ref<O7CloudArchiveTasksProbeResponse | null>(null);
 const cloudArchiveProbeError = ref("");
@@ -1080,8 +1252,20 @@ const consumerSameTaskFieldMaterialPacket = computed<O7ConsumerSameTaskFieldMate
     consumerArtifactBundleReadiness.value?.same_task_field_material_packet ??
     null,
 );
+const consumerSameTaskReplayPacketReadback = computed<O7ConsumerSameTaskReplayPacketReadbackSummary | null>(
+  () =>
+    consumerTaskDetailResult.value?.same_task_replay_packet_readback ??
+    consumerArtifactBundleReadiness.value?.same_task_replay_packet_readback ??
+    null,
+);
 const consumerCurrentFieldEvidenceMaterial = computed<O7ConsumerCurrentFieldEvidenceMaterialSummary | null>(
   () => consumerTaskDetailResult.value?.current_field_evidence_material ?? null,
+);
+const consumerPcLiveNav2ExecutionMaterial = computed<O7ConsumerPcLiveNav2ExecutionMaterialSummary | null>(
+  () =>
+    consumerTaskDetailResult.value?.pc_live_nav2_execution_material ??
+    consumerArtifactBundleReadiness.value?.pc_live_nav2_execution_material ??
+    null,
 );
 const consumerLocalizationPathMaterialReadback = computed<O7ConsumerLocalizationPathMaterialReadbackSummary | null>(
   () =>
@@ -1126,6 +1310,17 @@ const consumerArtifactBundleConsumerIngest = computed<O7ConsumerArtifactBundleCo
 );
 const consumerArtifactBundleReadiness = computed<O7ConsumerArtifactBundleReadiness | null>(
   () => consumerTaskDetailResult.value?.artifact_bundle_readiness ?? null,
+);
+const consumerPhoneBrowserTerminalMaterial = computed<O7ConsumerPhoneBrowserTerminalMaterialSummary | null>(
+  () => consumerTaskDetailResult.value?.phone_browser_terminal_material ?? null,
+);
+const consumerBoundedRouteGateMaterial = computed<O7ConsumerBoundedRouteGateMaterialSummary | null>(
+  () => consumerTaskDetailResult.value?.bounded_route_execution_gate_material ?? null,
+);
+const consumerBoundedRouteTerminalResultMaterial = computed<
+  O7ConsumerBoundedRouteTerminalResultMaterialSummary | null
+>(
+  () => consumerTaskDetailResult.value?.bounded_route_terminal_result_material ?? null,
 );
 const consumerRouteReplayMvp = computed(() => consumerTaskDetailResult.value?.route_replay_mvp ?? null);
 const consumerLabelingMvp = computed(() => consumerTaskDetailResult.value?.labeling_mvp ?? null);
@@ -1378,6 +1573,1647 @@ const consumerAnnotationExportSummary = computed(() => {
   ].join(" · ");
 });
 
+function consumerInferenceUnsafeText(value: string): boolean {
+  // 前端先给 operator 明确 blocker；真正拦截仍以 Node adapter 的白名单校验为准。
+  const lowered = value.toLowerCase();
+  return Boolean(
+    value.startsWith("/") ||
+      value.includes("\\") ||
+      value.includes("..") ||
+      value.includes("?") ||
+      value.includes("#") ||
+      lowered.includes("://") ||
+      lowered.includes("/cmd_vel") ||
+      lowered.includes("/api/base/manual") ||
+      lowered.includes("/dev/tty") ||
+      lowered.includes("baudrate") ||
+      lowered.includes("traceback") ||
+      lowered.includes("bearer") ||
+      lowered.includes("token") ||
+      lowered.includes("password") ||
+      lowered.includes("secret") ||
+      lowered.includes("base64") ||
+      lowered.startsWith("data:"),
+  );
+}
+
+function consumerInferenceDefaultInput(): { inputId: string; evidenceRef: string; capturedAtMs: number | null } {
+  const detail = consumerTaskDetailResult.value;
+  // 默认值优先来自 consumer detail 的轨迹帧，其次用 evidence 样本；缺口仍显示为 blocked_not_proven。
+  const frame = sampleRecords(detail?.trajectory.sample_frames, 1)[0];
+  const evidence = sampleRecords(detail?.evidence.sample_evidence, 1)[0];
+  const frameIndex = asFiniteNumber(frame?.frame_index);
+  const frameTimestamp = asFiniteNumber(frame?.timestamp_ms);
+  const explicitCapturedAtMs = consumerInferenceCapturedAtMs.value.trim()
+    ? asFiniteNumber(Number(consumerInferenceCapturedAtMs.value.trim()))
+    : null;
+  return {
+    inputId: consumerInferenceInputId.value.trim() || `frame-${frameIndex ?? "001"}`,
+    evidenceRef:
+      consumerInferenceEvidenceRef.value.trim() ||
+      asCursorLabel(frame?.evidence_ref, "") ||
+      asCursorLabel(evidence?.evidence_ref, ""),
+    capturedAtMs:
+      explicitCapturedAtMs ??
+      frameTimestamp ??
+      detail?.task_summary?.started_at_ms ??
+      null,
+  };
+}
+
+const consumerInferenceActionBlockedReason = computed(() => {
+  const detail = consumerTaskDetailResult.value;
+  const defaults = consumerInferenceDefaultInput();
+  // inference action 必须绑定已加载的 selected task；没有 detail 时按钮保持 disabled。
+  if (consumerInferenceRequestLoading.value) {
+    return "consumer_inference_request_loading";
+  }
+  if (consumerTaskDetailLoading.value) {
+    return "consumer_task_detail_loading";
+  }
+  if (consumerTaskDetailError.value) {
+    return "consumer_task_detail_api_unavailable";
+  }
+  if (!detail) {
+    return "consumer_task_detail_not_loaded";
+  }
+  if (detail.detail_status !== "loaded_fail_closed_summary") {
+    return detail.fail_closed_reason || "consumer_task_detail_fail_closed";
+  }
+  const taskId = detail.task_summary?.task_id ?? "";
+  if (!taskId || taskId !== consumerSelectedTaskId.value.trim()) {
+    return "task_id_mismatch";
+  }
+  if (!detail.task_summary?.robot_id || detail.task_summary.robot_id === "unknown_robot") {
+    return "robot_id_missing";
+  }
+  if (!consumerInferenceRequestedOutputs.value.length) {
+    return "requested_outputs_missing";
+  }
+  if (!consumerInferenceModelFamily.value.trim() || consumerInferenceUnsafeText(consumerInferenceModelFamily.value)) {
+    return "model_family_unsafe_or_missing";
+  }
+  if (!defaults.inputId || consumerInferenceUnsafeText(defaults.inputId)) {
+    return "input_id_unsafe_or_missing";
+  }
+  if (!defaults.evidenceRef || consumerInferenceUnsafeText(defaults.evidenceRef)) {
+    return "evidence_ref_unsafe_or_missing";
+  }
+  if (defaults.capturedAtMs === null) {
+    return "captured_at_ms_missing";
+  }
+  if (
+    detail.task_summary.started_at_ms !== null &&
+    detail.task_summary.finished_at_ms !== null &&
+    (defaults.capturedAtMs < detail.task_summary.started_at_ms || defaults.capturedAtMs > detail.task_summary.finished_at_ms)
+  ) {
+    return "captured_at_ms_outside_task_window";
+  }
+  return "";
+});
+
+const consumerInferenceRequestEnabled = computed(() =>
+  !consumerInferenceRequestLoading.value && consumerInferenceActionBlockedReason.value === "",
+);
+
+function buildConsumerInferenceRequestBody(): O7ConsumerInferenceRequestBody {
+  const detail = consumerTaskDetailResult.value;
+  const defaults = consumerInferenceDefaultInput();
+  // body 只包含 O6 archive/inference 白名单字段；task_id 同时带上，交给后端复核 path/body 一致性。
+  return {
+    robot_id: detail?.task_summary?.robot_id ?? "",
+    task_id: detail?.task_summary?.task_id ?? consumerSelectedTaskId.value.trim(),
+    inference_id: consumerInferenceId.value.trim() || undefined,
+    model_family: consumerInferenceModelFamily.value.trim(),
+    requested_outputs: [...consumerInferenceRequestedOutputs.value],
+    inputs: [
+      {
+        input_id: defaults.inputId,
+        input_type: consumerInferenceInputType.value,
+        evidence_ref: defaults.evidenceRef,
+        captured_at_ms: defaults.capturedAtMs ?? 0,
+        metadata: {
+          source: "pc_o7_consumer_detail",
+          detail_status: detail?.detail_status ?? "not_loaded",
+        },
+      },
+    ],
+  };
+}
+
+const consumerInferenceRequestSummary = computed(() => {
+  const result = consumerInferenceRequestResult.value;
+  // receipt 摘要只展示 local/mock 写入和 not_proven，不展示 O6 原始 response body。
+  if (!result) {
+    return `local/mock inference request not run · blocker=${consumerInferenceActionBlockedReason.value || "none"}`;
+  }
+  return [
+    `status=${result.request_status}`,
+    `task_id=${result.task_id}`,
+    `inference_id=${result.inference_id}`,
+    `write_status=${result.write_status}`,
+    `created=${result.created_count}`,
+    `updated=${result.updated_count}`,
+    `archive_event_written=${result.archive_event_written}`,
+    `proof_status=not_proven`,
+  ].join(" · ");
+});
+
+function consumerInferenceFalseFields(): string[] {
+  const result = consumerInferenceRequestResult.value;
+  // 这些字段是 inference action 的边界，不随 local/mock 写入成功而改变。
+  return [
+    `safe_to_control=${String(result?.safe_to_control ?? false)}`,
+    `delivery_success=${String(result?.delivery_success ?? false)}`,
+    `primary_actions_enabled=${String(result?.primary_actions_enabled ?? false)}`,
+    `connects_cloud_production=${String(result?.connects_cloud_production ?? false)}`,
+    `robot_control_executed=${String(result?.robot_control_executed ?? false)}`,
+    `real_model_inference_success=${String(result?.real_model_inference_success ?? false)}`,
+    `real_floor_recognition_proven=${String(result?.real_floor_recognition_proven ?? false)}`,
+    `real_elevator_door_state_proven=${String(result?.real_elevator_door_state_proven ?? false)}`,
+  ];
+}
+
+function consumerDeliveryResultUnsafeText(value: string): boolean {
+  // delivery result intake 的前端 blocker 要比普通输入更严；O6 会再次拒绝路径、URL、凭证和控制词。
+  const lowered = value.toLowerCase();
+  return Boolean(
+    value.startsWith("/") ||
+      value.includes("/") ||
+      value.includes("\\") ||
+      value.includes("..") ||
+      value.includes("?") ||
+      value.includes("#") ||
+      lowered.includes("://") ||
+      lowered.includes("/cmd_vel") ||
+      lowered.includes("/api/base/manual") ||
+      lowered.includes("/tf") ||
+      lowered.includes("/odom") ||
+      lowered.includes("/scan") ||
+      lowered.includes("/amcl_pose") ||
+      lowered.includes("navigatetopose") ||
+      lowered.includes("/dev/tty") ||
+      lowered.includes("wave rover") ||
+      lowered.includes("wave_rover") ||
+      lowered.includes("uart") ||
+      lowered.includes("baudrate") ||
+      lowered.includes("traceback") ||
+      lowered.includes("bearer") ||
+      lowered.includes("token") ||
+      lowered.includes("password") ||
+      lowered.includes("secret") ||
+      lowered.includes("base64") ||
+      lowered.startsWith("data:"),
+  );
+}
+
+function consumerDeliveryResultDefaults(): { evidenceRef: string; completedAtUtc: string } {
+  const detail = consumerTaskDetailResult.value;
+  const evidence = consumerDeliveryResultEvidence.value;
+  // 默认值绑定当前 selected task 的送达摘要；没有现成记录时使用 task window 的结束时间。
+  const explicitCompletedAtUtc = consumerDeliveryResultCompletedAtUtc.value.trim();
+  const fallbackMs = detail?.task_summary?.finished_at_ms ?? detail?.task_summary?.started_at_ms ?? 0;
+  const fallbackCompletedAtUtc = new Date(fallbackMs).toISOString();
+  return {
+    evidenceRef:
+      consumerDeliveryResultEvidenceRef.value.trim() ||
+      asCursorLabel(evidence?.record_source, "") ||
+      "delivery-result-evidence.json",
+    completedAtUtc:
+      explicitCompletedAtUtc ||
+      (evidence?.completed_at_utc && evidence.completed_at_utc !== "not_loaded"
+        ? evidence.completed_at_utc
+        : fallbackCompletedAtUtc),
+  };
+}
+
+const consumerDeliveryResultIntakeBlockedReason = computed(() => {
+  const detail = consumerTaskDetailResult.value;
+  const defaults = consumerDeliveryResultDefaults();
+  // delivery result intake 是 selected-task action；按钮必须等 detail 和安全字段都可复核。
+  if (consumerDeliveryResultIntakeLoading.value) {
+    return "consumer_delivery_result_intake_loading";
+  }
+  if (consumerTaskDetailLoading.value) {
+    return "consumer_task_detail_loading";
+  }
+  if (consumerTaskDetailError.value) {
+    return "consumer_task_detail_api_unavailable";
+  }
+  if (!detail) {
+    return "consumer_task_detail_not_loaded";
+  }
+  if (detail.detail_status !== "loaded_fail_closed_summary") {
+    return detail.fail_closed_reason || "consumer_task_detail_fail_closed";
+  }
+  const taskId = detail.task_summary?.task_id ?? "";
+  if (!taskId || taskId !== consumerSelectedTaskId.value.trim()) {
+    return "task_id_mismatch";
+  }
+  if (!detail.task_summary?.robot_id || detail.task_summary.robot_id === "unknown_robot") {
+    return "robot_id_missing";
+  }
+  if (!defaults.evidenceRef || consumerDeliveryResultUnsafeText(defaults.evidenceRef)) {
+    return "delivery_result_evidence_ref_unsafe_or_missing";
+  }
+  if (!defaults.completedAtUtc || Number.isNaN(Date.parse(defaults.completedAtUtc)) || !defaults.completedAtUtc.endsWith("Z")) {
+    return "completed_at_utc_invalid";
+  }
+  if (consumerDeliveryResultClaimed.value && consumerDeliveryResultDropoffConfirmationType.value === "none") {
+    return "delivery_result_claim_requires_confirmation";
+  }
+  if (consumerDeliveryResultClaimed.value && consumerDeliveryResultRecordStatus.value === "blocked_not_proven") {
+    return "delivery_result_claim_status_blocked";
+  }
+  if (consumerDeliveryResultNotes.value.trim() && consumerDeliveryResultUnsafeText(consumerDeliveryResultNotes.value.trim())) {
+    return "delivery_result_notes_unsafe";
+  }
+  return "";
+});
+
+const consumerDeliveryResultIntakeEnabled = computed(() =>
+  !consumerDeliveryResultIntakeLoading.value && consumerDeliveryResultIntakeBlockedReason.value === "",
+);
+
+function buildConsumerDeliveryResultIntakeBody(): O7ConsumerDeliveryResultIntakeRequestBody {
+  const detail = consumerTaskDetailResult.value;
+  const defaults = consumerDeliveryResultDefaults();
+  // body 只包含 delivery_result_evidence 白名单字段；真实控制和成功字段不从 UI 输入。
+  return {
+    robot_id: detail?.task_summary?.robot_id ?? "",
+    task_id: detail?.task_summary?.task_id ?? consumerSelectedTaskId.value.trim(),
+    record_status: consumerDeliveryResultRecordStatus.value,
+    delivery_result_claimed: consumerDeliveryResultClaimed.value,
+    evidence_ref: defaults.evidenceRef,
+    dropoff_confirmation_type: consumerDeliveryResultDropoffConfirmationType.value,
+    completed_at_utc: defaults.completedAtUtc,
+    notes: consumerDeliveryResultNotes.value.trim() || undefined,
+    metadata: {
+      source: "pc_o7_consumer_detail",
+      detail_status: detail?.detail_status ?? "not_loaded",
+    },
+  };
+}
+
+const consumerDeliveryResultIntakeSummary = computed(() => {
+  const result = consumerDeliveryResultIntakeResult.value;
+  // receipt 摘要只展示 intake/write 结果和 not_proven，不展示 O6 原始 field-evidence payload。
+  if (!result) {
+    return `local/mock delivery result intake not run · blocker=${consumerDeliveryResultIntakeBlockedReason.value || "none"}`;
+  }
+  return [
+    `status=${result.intake_status}`,
+    `task_id=${result.task_id}`,
+    `record_status=${result.record_status}`,
+    `delivery_result_claimed=${result.delivery_result_claimed}`,
+    `operator_confirmation_present=${result.operator_confirmation_present}`,
+    `write_status=${result.write_status}`,
+    `field_evidence_written=${result.field_evidence_written}`,
+    `proof_status=not_proven`,
+  ].join(" · ");
+});
+
+function consumerDeliveryResultIntakeFalseFields(): string[] {
+  const result = consumerDeliveryResultIntakeResult.value;
+  // local/mock 写入成功也不能改变控制、送达、路线执行、HIL、生产云或 OSS 字段。
+  return [
+    `safe_to_control=${String(result?.safe_to_control ?? false)}`,
+    `delivery_success=${String(result?.delivery_success ?? false)}`,
+    `primary_actions_enabled=${String(result?.primary_actions_enabled ?? false)}`,
+    `connects_cloud_production=${String(result?.connects_cloud_production ?? false)}`,
+    `robot_control_executed=${String(result?.robot_control_executed ?? false)}`,
+    `route_execution_success=${String(result?.route_execution_success ?? false)}`,
+    `hil_pass=${String(result?.hil_pass ?? false)}`,
+    `real_cloud_db_connected=${String(result?.real_cloud_db_connected ?? false)}`,
+    `real_oss_connected=${String(result?.real_oss_connected ?? false)}`,
+  ];
+}
+
+function consumerPhoneBrowserUnsafeText(value: string): boolean {
+  // phone/browser material 只能提交短 token 摘要，URL、路径、raw body、凭证和控制词都在前端先关闸。
+  const lowered = value.toLowerCase();
+  return consumerDeliveryResultUnsafeText(value) ||
+    lowered.includes("raw_url") ||
+    lowered.includes("raw_body") ||
+    lowered.includes("local_path") ||
+    lowered.includes("screenshot") ||
+    lowered.includes("dom dump") ||
+    lowered.includes("cookie") ||
+    lowered.includes("credential") ||
+    lowered.includes("access_key");
+}
+
+function consumerPhoneBrowserProofDefaults(): { safeEvidenceRef: string; capturedAtUtc: string } {
+  const detail = consumerTaskDetailResult.value;
+  const material = consumerPhoneBrowserTerminalMaterial.value;
+  const evidence = sampleRecords(detail?.evidence.sample_evidence, 1)[0];
+  const explicitCapturedAtUtc = consumerPhoneBrowserCapturedAtUtc.value.trim();
+  const fallbackMs = detail?.task_summary?.finished_at_ms ?? detail?.task_summary?.started_at_ms ?? 0;
+  // 默认只复用 safe evidence ref 的文件名式摘要，不把 detail 的原始样本对象或路径透传给 O6。
+  return {
+    safeEvidenceRef:
+      consumerPhoneBrowserSafeEvidenceRef.value.trim() ||
+      material?.safe_evidence_ref ||
+      asCursorLabel(evidence?.evidence_ref, "") ||
+      "phone-browser-terminal.json",
+    capturedAtUtc: explicitCapturedAtUtc || new Date(fallbackMs).toISOString(),
+  };
+}
+
+const consumerPhoneBrowserProofIntakeBlockedReason = computed(() => {
+  const detail = consumerTaskDetailResult.value;
+  const defaults = consumerPhoneBrowserProofDefaults();
+  // phone/browser intake 是 selected-task action；缺 detail、task mismatch 或摘要不安全时都不能写入 O6。
+  if (consumerPhoneBrowserProofIntakeLoading.value) {
+    return "consumer_phone_browser_proof_intake_loading";
+  }
+  if (consumerTaskDetailLoading.value) {
+    return "consumer_task_detail_loading";
+  }
+  if (consumerTaskDetailError.value) {
+    return "consumer_task_detail_api_unavailable";
+  }
+  if (!detail) {
+    return "consumer_task_detail_not_loaded";
+  }
+  if (detail.detail_status !== "loaded_fail_closed_summary") {
+    return detail.fail_closed_reason || "consumer_task_detail_fail_closed";
+  }
+  const taskId = detail.task_summary?.task_id ?? "";
+  if (!taskId || taskId !== consumerSelectedTaskId.value.trim()) {
+    return "task_id_mismatch";
+  }
+  if (!detail.task_summary?.robot_id || detail.task_summary.robot_id === "unknown_robot") {
+    return "robot_id_missing";
+  }
+  if (!consumerPhoneBrowserAcceptedMaterials.value.length) {
+    return "phone_browser_accepted_materials_missing";
+  }
+  if (!defaults.safeEvidenceRef || consumerPhoneBrowserUnsafeText(defaults.safeEvidenceRef)) {
+    return "phone_browser_safe_evidence_ref_unsafe_or_missing";
+  }
+  if (!defaults.capturedAtUtc || Number.isNaN(Date.parse(defaults.capturedAtUtc)) || !defaults.capturedAtUtc.endsWith("Z")) {
+    return "phone_browser_captured_at_utc_invalid";
+  }
+  return "";
+});
+
+const consumerPhoneBrowserProofIntakeEnabled = computed(() =>
+  !consumerPhoneBrowserProofIntakeLoading.value && consumerPhoneBrowserProofIntakeBlockedReason.value === "",
+);
+
+function buildConsumerPhoneBrowserProofIntakeBody(): O7ConsumerPhoneBrowserProofIntakeRequestBody {
+  const detail = consumerTaskDetailResult.value;
+  const defaults = consumerPhoneBrowserProofDefaults();
+  // body 只包含 terminal material 安全摘要；O6 baseUrl 与 field-evidence endpoint 由 Node adapter 固定。
+  return {
+    robot_id: detail?.task_summary?.robot_id ?? "",
+    task_id: detail?.task_summary?.task_id ?? consumerSelectedTaskId.value.trim(),
+    safe_evidence_ref: defaults.safeEvidenceRef,
+    terminal_result_type: consumerPhoneBrowserTerminalResultType.value,
+    accepted_materials: [...consumerPhoneBrowserAcceptedMaterials.value],
+    captured_at_utc: defaults.capturedAtUtc,
+    metadata: {
+      source: "pc_o7_consumer_detail",
+      detail_status: detail?.detail_status ?? "not_loaded",
+    },
+  };
+}
+
+const consumerPhoneBrowserProofIntakeSummary = computed(() => {
+  const result = consumerPhoneBrowserProofIntakeResult.value;
+  // receipt 摘要固定展示写入、读回和 same-task 结果，不把 O6 原始 body 灌进 UI。
+  if (!result) {
+    return `phone/browser terminal material intake not run · blocker=${consumerPhoneBrowserProofIntakeBlockedReason.value || "none"}`;
+  }
+  return [
+    `status=${result.intake_status}`,
+    `task_id=${result.task_id}`,
+    `safe_evidence_ref=${result.safe_evidence_ref}`,
+    `phone_browser_terminal_material_written=${result.phone_browser_terminal_material_written}`,
+    `phone_browser_terminal_material_readback=${result.phone_browser_terminal_material_readback}`,
+    `same_task_id_consumed=${result.same_task_id_consumed}`,
+    `proof_boundary=${result.proof_boundary}`,
+  ].join(" · ");
+});
+
+function consumerPhoneBrowserMaterialLines(): string[] {
+  const material = consumerPhoneBrowserProofIntakeResult.value?.phone_browser_terminal_material ?? consumerPhoneBrowserTerminalMaterial.value;
+  if (!material) {
+    return ["phone_browser_terminal_material=not_loaded"];
+  }
+  return [
+    `status=${material.status}`,
+    `source_origin=${material.source_origin}`,
+    `safe_evidence_ref=${material.safe_evidence_ref}`,
+    `accepted_materials=${material.accepted_materials.join(",") || "none"}`,
+    `missing_materials=${material.missing_materials.join(",") || "none"}`,
+    `rejected_materials=${material.rejected_materials.join(",") || "none"}`,
+    `phone_browser_terminal_material_written=${material.phone_browser_terminal_material_written}`,
+    `phone_browser_terminal_material_readback=${material.phone_browser_terminal_material_readback}`,
+    `same_task_id_consumed=${material.same_task_id_consumed}`,
+    `proof_scope=${material.proof_scope}`,
+  ];
+}
+
+function consumerPhoneBrowserProofIntakeFalseFields(): string[] {
+  const result = consumerPhoneBrowserProofIntakeResult.value;
+  const material = result?.phone_browser_terminal_material ?? consumerPhoneBrowserTerminalMaterial.value;
+  // phone/browser terminal material 只是 readback 支持证据，所有控制、送达、路线执行、HIL、云生产字段固定为 false。
+  return [
+    `safe_to_control=${String(result?.safe_to_control ?? material?.safe_to_control ?? false)}`,
+    `delivery_success=${String(result?.delivery_success ?? material?.delivery_success ?? false)}`,
+    `primary_actions_enabled=${String(result?.primary_actions_enabled ?? material?.primary_actions_enabled ?? false)}`,
+    `connects_cloud_production=${String(result?.connects_cloud_production ?? material?.connects_cloud_production ?? false)}`,
+    `robot_control_executed=${String(result?.robot_control_executed ?? material?.robot_control_executed ?? false)}`,
+    `route_execution_success=${String(result?.route_execution_success ?? material?.route_execution_success ?? false)}`,
+    `hil_pass=${String(result?.hil_pass ?? material?.hil_pass ?? false)}`,
+    `real_cloud_db_connected=${String(result?.real_cloud_db_connected ?? material?.real_cloud_db_connected ?? false)}`,
+    `real_oss_connected=${String(result?.real_oss_connected ?? material?.real_oss_connected ?? false)}`,
+    `real_phone_browser_proof_connected=${String(material?.proof_boundary.real_phone_browser_proof_connected ?? false)}`,
+  ];
+}
+
+const consumerBoundedRouteGateIntakeBlockedReason = computed(() => {
+  const detail = consumerTaskDetailResult.value;
+  const packet = consumerSameTaskReplayPacketReadback.value;
+  // bounded-route-gate 只允许固定 selected task 和固定 28-pose packet，避免 operator 把其他 task 混入 O6。
+  if (consumerBoundedRouteGateIntakeLoading.value) {
+    return "bounded_route_gate_intake_loading";
+  }
+  if (consumerTaskDetailLoading.value) {
+    return "consumer_task_detail_loading";
+  }
+  if (consumerTaskDetailError.value) {
+    return "consumer_task_detail_api_unavailable";
+  }
+  if (!detail) {
+    return "consumer_task_detail_not_loaded";
+  }
+  if (detail.detail_status !== "loaded_fail_closed_summary") {
+    return detail.fail_closed_reason || "consumer_task_detail_fail_closed";
+  }
+  if (detail.task_summary?.task_id !== boundedRouteGateFixed.task_id) {
+    return "bounded_route_gate_task_not_selected_source";
+  }
+  if (!detail.task_summary?.robot_id || detail.task_summary.robot_id === "unknown_robot") {
+    return "robot_id_missing";
+  }
+  if (packet?.packet_id !== boundedRouteGateFixed.packet_id) {
+    return "packet_id_mismatch";
+  }
+  if (packet?.route_intent_id !== boundedRouteGateFixed.route_intent_id) {
+    return "route_intent_id_mismatch";
+  }
+  if (
+    packet?.route_csv_row_count !== boundedRouteGateFixed.route_csv_row_count ||
+    packet?.path_structured_pose_count !== boundedRouteGateFixed.path_structured_pose_count
+  ) {
+    return "same_task_replay_packet_counts_mismatch";
+  }
+  if (packet?.same_task_replay_packet_ready !== true) {
+    return "same_task_replay_packet_not_ready";
+  }
+  return "";
+});
+
+const consumerBoundedRouteGateIntakeEnabled = computed(() =>
+  !consumerBoundedRouteGateIntakeLoading.value && consumerBoundedRouteGateIntakeBlockedReason.value === "",
+);
+
+function buildConsumerBoundedRouteGateIntakeBody(): O7ConsumerBoundedRouteGateIntakeRequestBody {
+  const detail = consumerTaskDetailResult.value;
+  // body 明确携带固定事实，让 Node adapter 再次校验 path/body/packet/count 一致性。
+  return {
+    robot_id: detail?.task_summary?.robot_id ?? "",
+    task_id: boundedRouteGateFixed.task_id,
+    packet_id: boundedRouteGateFixed.packet_id,
+    route_intent_id: boundedRouteGateFixed.route_intent_id,
+    execution_plan_status: boundedRouteGateFixed.execution_plan_status,
+    route_csv_row_count: boundedRouteGateFixed.route_csv_row_count,
+    path_structured_pose_count: boundedRouteGateFixed.path_structured_pose_count,
+    segment_count: boundedRouteGateFixed.segment_count,
+    safe_refs: [...boundedRouteGateFixed.safe_refs],
+    metadata: {
+      source: "pc_o7_consumer_detail",
+      proof_boundary: "software_proof_o6_o7_bounded_route_gate_material_intake_only",
+    },
+  };
+}
+
+const consumerBoundedRouteGateIntakeSummary = computed(() => {
+  const result = consumerBoundedRouteGateIntakeResult.value;
+  // receipt 摘要只展示 fixed facts、写入和读回；不展示 O6 原始响应体。
+  if (!result) {
+    return `bounded route gate intake not run · blocker=${consumerBoundedRouteGateIntakeBlockedReason.value || "none"}`;
+  }
+  return [
+    `status=${result.intake_status}`,
+    `task_id=${result.task_id}`,
+    `packet_id=${result.packet_id}`,
+    `execution_plan_status=${result.execution_plan_status}`,
+    `route_csv_row_count=${result.route_csv_row_count}`,
+    `path_structured_pose_count=${result.path_structured_pose_count}`,
+    `segment_count=${result.segment_count}`,
+    `bounded_route_execution_gate_material_written=${result.bounded_route_execution_gate_material_written}`,
+    `bounded_route_execution_gate_material_readback=${result.bounded_route_execution_gate_material_readback}`,
+  ].join(" · ");
+});
+
+function consumerBoundedRouteGateMaterialLines(): string[] {
+  const material = consumerBoundedRouteGateIntakeResult.value?.bounded_route_execution_gate_material ??
+    consumerBoundedRouteGateMaterial.value;
+  if (!material) {
+    return ["bounded_route_execution_gate_material=not_loaded"];
+  }
+  return [
+    `status=${material.status}`,
+    `source_origin=${material.source_origin}`,
+    `packet_id=${material.packet_id}`,
+    `route_intent_id=${material.route_intent_id}`,
+    `execution_plan_status=${material.execution_plan_status}`,
+    `route_csv_row_count=${material.route_csv_row_count}`,
+    `path_structured_pose_count=${material.path_structured_pose_count}`,
+    `segment_count=${material.segment_count}`,
+    `safe_refs=${material.safe_refs.join(",") || "none"}`,
+    `same_task_id_consumed=${material.same_task_id_consumed}`,
+    `bounded_route_execution_gate_material_written=${material.bounded_route_execution_gate_material_written}`,
+    `bounded_route_execution_gate_material_readback=${material.bounded_route_execution_gate_material_readback}`,
+    `proof_scope=${material.proof_scope}`,
+  ];
+}
+
+function consumerBoundedRouteGateFalseFields(): string[] {
+  const result = consumerBoundedRouteGateIntakeResult.value;
+  const material = result?.bounded_route_execution_gate_material ?? consumerBoundedRouteGateMaterial.value;
+  // bounded gate material 只是 O6/O7 local/mock readback，所有控制、交付、路线执行、HIL、生产云字段必须固定 false。
+  return [
+    `safe_to_control=${String(result?.safe_to_control ?? material?.safe_to_control ?? false)}`,
+    `delivery_success=${String(result?.delivery_success ?? material?.delivery_success ?? false)}`,
+    `route_execution_success=${String(result?.route_execution_success ?? material?.route_execution_success ?? false)}`,
+    `hil_pass=${String(result?.hil_pass ?? material?.hil_pass ?? false)}`,
+    `robot_control_executed=${String(result?.robot_control_executed ?? material?.robot_control_executed ?? false)}`,
+    `connects_cloud_production=${String(result?.connects_cloud_production ?? material?.connects_cloud_production ?? false)}`,
+    `bounded_route_gate_material_connected=${String(material?.proof_boundary.bounded_route_gate_material_connected ?? false)}`,
+  ];
+}
+
+const consumerBoundedRouteTerminalResultIntakeBlockedReason = computed(() => {
+  const detail = consumerTaskDetailResult.value;
+  const packet = consumerSameTaskReplayPacketReadback.value;
+  // terminal-result intake 只允许固定 selected task 和 O5 bridge 摘要进入 O6；任何身份漂移都先在前端关闸。
+  if (consumerBoundedRouteTerminalResultIntakeLoading.value) {
+    return "bounded_route_terminal_result_intake_loading";
+  }
+  if (consumerTaskDetailLoading.value) {
+    return "consumer_task_detail_loading";
+  }
+  if (consumerTaskDetailError.value) {
+    return "consumer_task_detail_api_unavailable";
+  }
+  if (!detail) {
+    return "consumer_task_detail_not_loaded";
+  }
+  if (detail.detail_status !== "loaded_fail_closed_summary") {
+    return detail.fail_closed_reason || "consumer_task_detail_fail_closed";
+  }
+  if (detail.task_summary?.task_id !== boundedRouteTerminalResultFixed.task_id) {
+    return "bounded_route_terminal_result_task_not_selected_source";
+  }
+  if (!detail.task_summary?.robot_id || detail.task_summary.robot_id === "unknown_robot") {
+    return "robot_id_missing";
+  }
+  if (packet?.packet_id !== boundedRouteTerminalResultFixed.packet_id) {
+    return "packet_id_mismatch";
+  }
+  if (packet?.route_intent_id !== boundedRouteTerminalResultFixed.route_intent_id) {
+    return "route_intent_id_mismatch";
+  }
+  if (
+    packet?.route_csv_row_count !== boundedRouteTerminalResultFixed.route_csv_row_count ||
+    packet?.path_structured_pose_count !== boundedRouteTerminalResultFixed.path_structured_pose_count
+  ) {
+    return "same_task_replay_packet_counts_mismatch";
+  }
+  if (packet?.same_task_replay_packet_ready !== true) {
+    return "same_task_replay_packet_not_ready";
+  }
+  return "";
+});
+
+const consumerBoundedRouteTerminalResultIntakeEnabled = computed(() =>
+  !consumerBoundedRouteTerminalResultIntakeLoading.value &&
+  consumerBoundedRouteTerminalResultIntakeBlockedReason.value === "",
+);
+
+function buildConsumerBoundedRouteTerminalResultIntakeBody(): O7ConsumerBoundedRouteTerminalResultIntakeRequestBody {
+  const detail = consumerTaskDetailResult.value;
+  // body 只携带 O5/O6 terminal-result 安全摘要；Node adapter 会再次校验 path/body/packet/result 一致性。
+  return {
+    robot_id: detail?.task_summary?.robot_id ?? "",
+    task_id: boundedRouteTerminalResultFixed.task_id,
+    packet_id: boundedRouteTerminalResultFixed.packet_id,
+    route_intent_id: boundedRouteTerminalResultFixed.route_intent_id,
+    result_code: boundedRouteTerminalResultFixed.result_code,
+    terminal_result_state: boundedRouteTerminalResultFixed.terminal_result_state,
+    reconciliation_state: boundedRouteTerminalResultFixed.reconciliation_state,
+    source_schema: boundedRouteTerminalResultFixed.source_schema,
+    source_proof_boundary: boundedRouteTerminalResultFixed.source_proof_boundary,
+    route_csv_row_count: boundedRouteTerminalResultFixed.route_csv_row_count,
+    path_structured_pose_count: boundedRouteTerminalResultFixed.path_structured_pose_count,
+    segment_count: boundedRouteTerminalResultFixed.segment_count,
+    safe_evidence_ref: boundedRouteTerminalResultFixed.safe_evidence_ref,
+    metadata: {
+      source: "pc_o7_consumer_detail",
+      proof_boundary: "software_proof_o6_o7_bounded_route_terminal_result_intake_only",
+    },
+  };
+}
+
+const consumerBoundedRouteTerminalResultIntakeSummary = computed(() => {
+  const result = consumerBoundedRouteTerminalResultIntakeResult.value;
+  // receipt 摘要只展示 fixed terminal result、写入和读回；不展示 O6 原始响应体。
+  if (!result) {
+    return `bounded route terminal result intake not run · blocker=${
+      consumerBoundedRouteTerminalResultIntakeBlockedReason.value || "none"
+    }`;
+  }
+  return [
+    `status=${result.intake_status}`,
+    `task_id=${result.task_id}`,
+    `packet_id=${result.packet_id}`,
+    `result_code=${result.result_code}`,
+    `terminal_result_state=${result.terminal_result_state}`,
+    `reconciliation_state=${result.reconciliation_state}`,
+    `bounded_route_terminal_result_material_written=${result.bounded_route_terminal_result_material_written}`,
+    `bounded_route_terminal_result_material_readback=${result.bounded_route_terminal_result_material_readback}`,
+  ].join(" · ");
+});
+
+function consumerBoundedRouteTerminalResultMaterialLines(): string[] {
+  const material = consumerBoundedRouteTerminalResultIntakeResult.value?.bounded_route_terminal_result_material ??
+    consumerBoundedRouteTerminalResultMaterial.value;
+  if (!material) {
+    return ["bounded_route_terminal_result_material=not_loaded"];
+  }
+  return [
+    `status=${material.status}`,
+    `source_origin=${material.source_origin}`,
+    `packet_id=${material.packet_id}`,
+    `route_intent_id=${material.route_intent_id}`,
+    `result_code=${material.result_code}`,
+    `terminal_result_state=${material.terminal_result_state}`,
+    `reconciliation_state=${material.reconciliation_state}`,
+    `source_schema=${material.source_material_schema}`,
+    `source_proof_boundary=${material.source_proof_boundary}`,
+    `safe_evidence_ref=${material.safe_evidence_ref}`,
+    `same_task_id_consumed=${material.same_task_id_consumed}`,
+    `bounded_route_terminal_result_material_written=${material.bounded_route_terminal_result_material_written}`,
+    `bounded_route_terminal_result_material_readback=${material.bounded_route_terminal_result_material_readback}`,
+    `proof_scope=${material.proof_scope}`,
+  ];
+}
+
+function consumerBoundedRouteTerminalResultFalseFields(): string[] {
+  const result = consumerBoundedRouteTerminalResultIntakeResult.value;
+  const material = result?.bounded_route_terminal_result_material ?? consumerBoundedRouteTerminalResultMaterial.value;
+  // terminal result material 是 O5/O6/O7 local/mock readback，所有控制、送达、路线执行、HIL、生产云字段必须固定 false。
+  return [
+    `safe_to_control=${String(result?.safe_to_control ?? material?.safe_to_control ?? false)}`,
+    `delivery_success=${String(result?.delivery_success ?? material?.delivery_success ?? false)}`,
+    `route_execution_success=${String(result?.route_execution_success ?? material?.route_execution_success ?? false)}`,
+    `hil_pass=${String(result?.hil_pass ?? material?.hil_pass ?? false)}`,
+    `robot_control_executed=${String(result?.robot_control_executed ?? material?.robot_control_executed ?? false)}`,
+    `connects_cloud_production=${String(result?.connects_cloud_production ?? material?.connects_cloud_production ?? false)}`,
+    `bounded_route_terminal_result_material_connected=${String(
+      material?.proof_boundary.bounded_route_terminal_result_material_connected ?? false,
+    )}`,
+  ];
+}
+
+function consumerMissionEventUnsafeText(value: string): boolean {
+  // 前端只做即时 blocker 提示；Node adapter 仍会重新校验 event body 和 O6 receipt。
+  const lowered = value.toLowerCase();
+  return consumerInferenceUnsafeText(value) ||
+    lowered.includes("/tf") ||
+    lowered.includes("/odom") ||
+    lowered.includes("/scan") ||
+    lowered.includes("/amcl_pose") ||
+    lowered.includes("navigatetopose") ||
+    lowered.includes("wave rover") ||
+    lowered.includes("wave_rover") ||
+    lowered.includes("uart");
+}
+
+function generatedConsumerMissionEventId(taskId: string): string {
+  // 自动 event_id 只用安全 token，重复点击同一个 selected task 时能触发 O6 幂等 update。
+  return `evt-o7-${consumerMissionEventType.value}-${taskId}`
+    .replace(/[^A-Za-z0-9._:-]/g, "-")
+    .slice(0, 120);
+}
+
+function consumerMissionEventDefaults(): { eventId: string; evidenceRef: string; occurredAtMs: number | null } {
+  const detail = consumerTaskDetailResult.value;
+  // 默认值优先选已加载 detail 的事件/evidence/trajectory 样本，保持 action 绑定 selected task。
+  const event = sampleRecords(detail?.events.sample_events, 1)[0];
+  const evidence = sampleRecords(detail?.evidence.sample_evidence, 1)[0];
+  const frame = sampleRecords(detail?.trajectory.sample_frames, 1)[0];
+  const explicitOccurredAtMs = consumerMissionEventOccurredAtMs.value.trim()
+    ? asFiniteNumber(Number(consumerMissionEventOccurredAtMs.value.trim()))
+    : null;
+  const eventTimestamp = asFiniteNumber(event?.occurred_at_ms ?? event?.timestamp_ms);
+  const frameTimestamp = asFiniteNumber(frame?.timestamp_ms);
+  const taskId = detail?.task_summary?.task_id ?? consumerSelectedTaskId.value.trim();
+  return {
+    eventId: consumerMissionEventId.value.trim() || generatedConsumerMissionEventId(taskId || "task"),
+    evidenceRef:
+      consumerMissionEventEvidenceRef.value.trim() ||
+      asCursorLabel(event?.evidence_ref, "") ||
+      asCursorLabel(evidence?.evidence_ref, "") ||
+      asCursorLabel(frame?.evidence_ref, ""),
+    occurredAtMs:
+      explicitOccurredAtMs ??
+      eventTimestamp ??
+      frameTimestamp ??
+      detail?.task_summary?.started_at_ms ??
+      null,
+  };
+}
+
+const consumerMissionEventAppendBlockedReason = computed(() => {
+  const detail = consumerTaskDetailResult.value;
+  const defaults = consumerMissionEventDefaults();
+  // event append 是 selected-task action；缺 detail 或字段不安全时按钮保持 disabled。
+  if (consumerMissionEventAppendLoading.value) {
+    return "consumer_mission_event_append_loading";
+  }
+  if (consumerTaskDetailLoading.value) {
+    return "consumer_task_detail_loading";
+  }
+  if (consumerTaskDetailError.value) {
+    return "consumer_task_detail_api_unavailable";
+  }
+  if (!detail) {
+    return "consumer_task_detail_not_loaded";
+  }
+  if (detail.detail_status !== "loaded_fail_closed_summary") {
+    return detail.fail_closed_reason || "consumer_task_detail_fail_closed";
+  }
+  const taskId = detail.task_summary?.task_id ?? "";
+  if (!taskId || taskId !== consumerSelectedTaskId.value.trim()) {
+    return "task_id_mismatch";
+  }
+  if (!detail.task_summary?.robot_id || detail.task_summary.robot_id === "unknown_robot") {
+    return "robot_id_missing";
+  }
+  if (!defaults.eventId || consumerMissionEventUnsafeText(defaults.eventId)) {
+    return "event_id_unsafe_or_missing";
+  }
+  if (!defaults.evidenceRef || consumerMissionEventUnsafeText(defaults.evidenceRef)) {
+    return "evidence_ref_unsafe_or_missing";
+  }
+  if (defaults.occurredAtMs === null) {
+    return "occurred_at_ms_missing";
+  }
+  if (
+    detail.task_summary.started_at_ms !== null &&
+    detail.task_summary.finished_at_ms !== null &&
+    (defaults.occurredAtMs < detail.task_summary.started_at_ms || defaults.occurredAtMs > detail.task_summary.finished_at_ms)
+  ) {
+    return "occurred_at_ms_outside_task_window";
+  }
+  if (consumerMissionEventSummary.value.trim() && consumerMissionEventUnsafeText(consumerMissionEventSummary.value.trim())) {
+    return "summary_unsafe";
+  }
+  return "";
+});
+
+const consumerMissionEventAppendEnabled = computed(() =>
+  !consumerMissionEventAppendLoading.value && consumerMissionEventAppendBlockedReason.value === "",
+);
+
+function buildConsumerMissionEventAppendBody(): O7ConsumerMissionEventAppendRequestBody {
+  const detail = consumerTaskDetailResult.value;
+  const defaults = consumerMissionEventDefaults();
+  // body 只包含 O6 archive/events 的单事件白名单字段；path/body task_id 交给后端复核一致性。
+  return {
+    robot_id: detail?.task_summary?.robot_id ?? "",
+    task_id: detail?.task_summary?.task_id ?? consumerSelectedTaskId.value.trim(),
+    event_id: defaults.eventId,
+    event_type: consumerMissionEventType.value,
+    occurred_at_ms: defaults.occurredAtMs ?? 0,
+    summary: consumerMissionEventSummary.value.trim() || "selected task local/mock mission event",
+    severity: consumerMissionEventSeverity.value,
+    evidence_ref: defaults.evidenceRef,
+    metadata: {
+      source: "pc_o7_consumer_detail",
+      detail_status: detail?.detail_status ?? "not_loaded",
+    },
+  };
+}
+
+const consumerMissionEventAppendSummary = computed(() => {
+  const result = consumerMissionEventAppendResult.value;
+  // receipt 摘要只展示 append 结果和固定 not_proven，不展示 O6 原始 events payload。
+  if (!result) {
+    return `local/mock mission event append not run · blocker=${consumerMissionEventAppendBlockedReason.value || "none"}`;
+  }
+  return [
+    `status=${result.append_status}`,
+    `task_id=${result.task_id}`,
+    `event_id=${result.event_id}`,
+    `event_type=${result.event_type}`,
+    `write_status=${result.write_status}`,
+    `created=${result.created_count}`,
+    `updated=${result.updated_count}`,
+    `archive_event_written=${result.archive_event_written}`,
+    `proof_status=not_proven`,
+  ].join(" · ");
+});
+
+function consumerMissionEventFalseFields(): string[] {
+  const result = consumerMissionEventAppendResult.value;
+  // local/mock event 写入成功也不能改变控制、送达、路线执行、HIL、生产云或 OSS 字段。
+  return [
+    `safe_to_control=${String(result?.safe_to_control ?? false)}`,
+    `delivery_success=${String(result?.delivery_success ?? false)}`,
+    `primary_actions_enabled=${String(result?.primary_actions_enabled ?? false)}`,
+    `connects_cloud_production=${String(result?.connects_cloud_production ?? false)}`,
+    `robot_control_executed=${String(result?.robot_control_executed ?? false)}`,
+    `route_execution_success=${String(result?.route_execution_success ?? false)}`,
+    `hil_pass=${String(result?.hil_pass ?? false)}`,
+    `real_cloud_db_connected=${String(result?.real_cloud_db_connected ?? false)}`,
+    `real_oss_connected=${String(result?.real_oss_connected ?? false)}`,
+  ];
+}
+
+function generatedOperatorDropoffEventId(taskId: string): string {
+  // operator action capture 使用固定事件类型和 task_id 生成幂等 id，重复点击可触发 O6 update receipt。
+  return `evt-o7-operator-dropoff-${taskId}`.replace(/[^A-Za-z0-9._:-]/g, "-").slice(0, 120);
+}
+
+function consumerOperatorDropoffDefaults(): {
+  eventId: string;
+  evidenceRef: string;
+  occurredAtMs: number | null;
+  operatorActionId: string;
+  operatorDisplayName: string;
+  summary: string;
+} {
+  const detail = consumerTaskDetailResult.value;
+  // dropoff action 优先绑定 selected task 的 delivery/operator 材料；缺材料时仍输出本地 mock receipt blocker。
+  const evidence = consumerDeliveryResultEvidence.value;
+  const event = sampleRecords(detail?.events.sample_events, 1)[0];
+  const detailEvidence = sampleRecords(detail?.evidence.sample_evidence, 1)[0];
+  const explicitOccurredAtMs = consumerOperatorDropoffOccurredAtMs.value.trim()
+    ? asFiniteNumber(Number(consumerOperatorDropoffOccurredAtMs.value.trim()))
+    : null;
+  const taskId = detail?.task_summary?.task_id ?? consumerSelectedTaskId.value.trim();
+  return {
+    eventId: consumerOperatorDropoffEventId.value.trim() || generatedOperatorDropoffEventId(taskId || "task"),
+    evidenceRef:
+      consumerOperatorDropoffEvidenceRef.value.trim() ||
+      asCursorLabel(evidence?.record_source, "") ||
+      asCursorLabel(event?.evidence_ref, "") ||
+      asCursorLabel(detailEvidence?.evidence_ref, "") ||
+      "operator-dropoff-acceptance.json",
+    occurredAtMs:
+      explicitOccurredAtMs ??
+      detail?.task_summary?.finished_at_ms ??
+      detail?.task_summary?.started_at_ms ??
+      null,
+    operatorActionId:
+      consumerOperatorDropoffActionId.value.trim() ||
+      `dropoff-action-${taskId || "task"}`.replace(/[^A-Za-z0-9._:-]/g, "-").slice(0, 120),
+    operatorDisplayName: consumerOperatorDropoffDisplayName.value.trim() || "pc-o7-operator",
+    summary:
+      consumerOperatorDropoffSummary.value.trim() ||
+      "selected task operator dropoff acceptance capture requested",
+  };
+}
+
+const consumerOperatorDropoffActionCaptureBlockedReason = computed(() => {
+  const detail = consumerTaskDetailResult.value;
+  const defaults = consumerOperatorDropoffDefaults();
+  // operator dropoff capture 是 selected-task action；没有 detail 或任意字段不安全时按钮保持 disabled。
+  if (consumerOperatorDropoffActionCaptureLoading.value) {
+    return "consumer_operator_dropoff_action_capture_loading";
+  }
+  if (consumerTaskDetailLoading.value) {
+    return "consumer_task_detail_loading";
+  }
+  if (consumerTaskDetailError.value) {
+    return "consumer_task_detail_api_unavailable";
+  }
+  if (!detail) {
+    return "consumer_task_detail_not_loaded";
+  }
+  if (detail.detail_status !== "loaded_fail_closed_summary") {
+    return detail.fail_closed_reason || "consumer_task_detail_fail_closed";
+  }
+  const taskId = detail.task_summary?.task_id ?? "";
+  if (!taskId || taskId !== consumerSelectedTaskId.value.trim()) {
+    return "task_id_mismatch";
+  }
+  if (!detail.task_summary?.robot_id || detail.task_summary.robot_id === "unknown_robot") {
+    return "robot_id_missing";
+  }
+  if (!defaults.eventId || consumerMissionEventUnsafeText(defaults.eventId)) {
+    return "event_id_unsafe_or_missing";
+  }
+  if (!defaults.evidenceRef || consumerMissionEventUnsafeText(defaults.evidenceRef)) {
+    return "evidence_ref_unsafe_or_missing";
+  }
+  if (defaults.occurredAtMs === null) {
+    return "occurred_at_ms_missing";
+  }
+  if (
+    detail.task_summary.started_at_ms !== null &&
+    detail.task_summary.finished_at_ms !== null &&
+    (defaults.occurredAtMs < detail.task_summary.started_at_ms || defaults.occurredAtMs > detail.task_summary.finished_at_ms)
+  ) {
+    return "occurred_at_ms_outside_task_window";
+  }
+  if (!defaults.operatorActionId || consumerMissionEventUnsafeText(defaults.operatorActionId)) {
+    return "operator_action_id_unsafe_or_missing";
+  }
+  if (!defaults.operatorDisplayName || consumerMissionEventUnsafeText(defaults.operatorDisplayName)) {
+    return "operator_display_name_unsafe_or_missing";
+  }
+  if (!defaults.summary || consumerMissionEventUnsafeText(defaults.summary)) {
+    return "summary_unsafe_or_empty";
+  }
+  return "";
+});
+
+const consumerOperatorDropoffActionCaptureEnabled = computed(() =>
+  !consumerOperatorDropoffActionCaptureLoading.value && consumerOperatorDropoffActionCaptureBlockedReason.value === "",
+);
+
+function buildConsumerOperatorDropoffActionCaptureBody(): O7OperatorDropoffActionCaptureRequestBody {
+  const detail = consumerTaskDetailResult.value;
+  const defaults = consumerOperatorDropoffDefaults();
+  // body 不接受 event_type 或成功字段；Node adapter 会固定 operator.dropoff_acceptance 并补 false proof flags。
+  return {
+    robot_id: detail?.task_summary?.robot_id ?? "",
+    task_id: detail?.task_summary?.task_id ?? consumerSelectedTaskId.value.trim(),
+    event_id: defaults.eventId,
+    occurred_at_ms: defaults.occurredAtMs ?? 0,
+    operator_action_id: defaults.operatorActionId,
+    operator_display_name: defaults.operatorDisplayName,
+    evidence_ref: defaults.evidenceRef,
+    summary: defaults.summary,
+    metadata: {
+      source: "pc_o7_consumer_detail",
+      detail_status: detail?.detail_status ?? "not_loaded",
+    },
+  };
+}
+
+const consumerOperatorDropoffActionCaptureSummary = computed(() => {
+  const result = consumerOperatorDropoffActionCaptureResult.value;
+  // receipt 摘要只展示 operator action capture 写入结果，不展示 O6 原始 events payload。
+  if (!result) {
+    return `operator dropoff action capture not run · blocker=${consumerOperatorDropoffActionCaptureBlockedReason.value || "none"}`;
+  }
+  return [
+    `status=${result.capture_status}`,
+    `task_id=${result.task_id}`,
+    `event_id=${result.event_id}`,
+    `event_type=${result.event_type}`,
+    `operator_action_id=${result.operator_action_id}`,
+    `write_status=${result.write_status}`,
+    `archive_event_written=${result.archive_event_written}`,
+    `proof_status=not_proven`,
+  ].join(" · ");
+});
+
+function consumerOperatorDropoffActionCaptureFalseFields(): string[] {
+  const result = consumerOperatorDropoffActionCaptureResult.value;
+  // local/mock action capture 成功也不能改变 operator、送达、路线执行、HIL、生产云或控制字段。
+  return [
+    `real_operator_action_proven=${String(result?.real_operator_action_proven ?? false)}`,
+    `delivery_success=${String(result?.delivery_success ?? false)}`,
+    `route_execution_success=${String(result?.route_execution_success ?? false)}`,
+    `safe_to_control=${String(result?.safe_to_control ?? false)}`,
+    `hil_pass=${String(result?.hil_pass ?? false)}`,
+    `robot_control_executed=${String(result?.robot_control_executed ?? false)}`,
+    `connects_cloud_production=${String(result?.connects_cloud_production ?? false)}`,
+  ];
+}
+
+function consumerVoiceTtsDraftUnsafeText(value: string): boolean {
+  // voice draft 前端先拒绝音频、播放、API、控制和成功 copy；Node adapter 与 O6 会再次关闸。
+  const lowered = value.toLowerCase();
+  return consumerMissionEventUnsafeText(value) ||
+    lowered.includes("raw_audio") ||
+    lowered.includes("audio_base64") ||
+    lowered.includes("audio_url") ||
+    lowered.includes("speaker_ack") ||
+    lowered.includes("playback_url") ||
+    lowered.includes("tts_send_enabled=true") ||
+    lowered.includes("speaker_dispatch_enabled=true") ||
+    lowered.includes("real_voice_api_connected=true") ||
+    lowered.includes("real_asr_tts_runtime_connected=true") ||
+    lowered.includes("safe_to_control=true") ||
+    lowered.includes("delivery_success=true") ||
+    lowered.includes("robot_control_executed=true") ||
+    lowered.includes("connects_cloud_production=true");
+}
+
+function generatedConsumerVoiceTtsDraftEventId(taskId: string): string {
+  // voice draft event_id 独立于通用 mission event，便于 O6 幂等 update 不互相覆盖。
+  return `evt-o7-voice-tts-draft-${taskId}`
+    .replace(/[^A-Za-z0-9._:-]/g, "-")
+    .slice(0, 120);
+}
+
+function consumerVoiceTtsDraftDefaults(): {
+  eventId: string;
+  evidenceRef: string;
+  occurredAtMs: number | null;
+  draftText: string;
+  voiceProfile: string;
+  locale: string;
+} {
+  const detail = consumerTaskDetailResult.value;
+  const event = sampleRecords(detail?.events.sample_events, 1)[0];
+  const evidence = sampleRecords(detail?.evidence.sample_evidence, 1)[0];
+  const explicitOccurredAtMs = consumerVoiceTtsDraftOccurredAtMs.value.trim()
+    ? asFiniteNumber(Number(consumerVoiceTtsDraftOccurredAtMs.value.trim()))
+    : null;
+  const eventTimestamp = asFiniteNumber(event?.occurred_at_ms ?? event?.timestamp_ms);
+  const taskId = detail?.task_summary?.task_id ?? consumerSelectedTaskId.value.trim();
+  // 草稿默认可来自本地 voice editor 当前值；若未打开 fixture，则给出一条短安全文本供 selected-task proof。
+  return {
+    eventId: consumerVoiceTtsDraftEventId.value.trim() || generatedConsumerVoiceTtsDraftEventId(taskId || "task"),
+    evidenceRef:
+      consumerVoiceTtsDraftEvidenceRef.value.trim() ||
+      asCursorLabel(event?.evidence_ref, "") ||
+      asCursorLabel(evidence?.evidence_ref, "") ||
+      "voice-tts-draft.json",
+    occurredAtMs:
+      explicitOccurredAtMs ??
+      eventTimestamp ??
+      detail?.task_summary?.started_at_ms ??
+      null,
+    draftText:
+      consumerVoiceTtsDraftText.value.trim() ||
+      currentLocalTtsDraft.value.text.trim() ||
+      "请帮我按电梯到一楼",
+    voiceProfile: consumerVoiceTtsDraftVoiceProfile.value.trim() || "operator-soft",
+    locale: consumerVoiceTtsDraftLocale.value.trim() || "zh-CN",
+  };
+}
+
+const consumerVoiceTtsDraftRequestBlockedReason = computed(() => {
+  const detail = consumerTaskDetailResult.value;
+  const defaults = consumerVoiceTtsDraftDefaults();
+  // voice/TTS draft 是 selected-task action；缺 detail、task mismatch 或任何音频/真实 API copy 都不允许写入。
+  if (consumerVoiceTtsDraftRequestLoading.value) {
+    return "consumer_voice_tts_draft_request_loading";
+  }
+  if (consumerTaskDetailLoading.value) {
+    return "consumer_task_detail_loading";
+  }
+  if (consumerTaskDetailError.value) {
+    return "consumer_task_detail_api_unavailable";
+  }
+  if (!detail) {
+    return "consumer_task_detail_not_loaded";
+  }
+  if (detail.detail_status !== "loaded_fail_closed_summary") {
+    return detail.fail_closed_reason || "consumer_task_detail_fail_closed";
+  }
+  const taskId = detail.task_summary?.task_id ?? "";
+  if (!taskId || taskId !== consumerSelectedTaskId.value.trim()) {
+    return "task_id_mismatch";
+  }
+  if (!detail.task_summary?.robot_id || detail.task_summary.robot_id === "unknown_robot") {
+    return "robot_id_missing";
+  }
+  if (!defaults.eventId || consumerVoiceTtsDraftUnsafeText(defaults.eventId)) {
+    return "voice_tts_event_id_unsafe_or_missing";
+  }
+  if (!defaults.evidenceRef || consumerVoiceTtsDraftUnsafeText(defaults.evidenceRef)) {
+    return "voice_tts_evidence_ref_unsafe_or_missing";
+  }
+  if (defaults.occurredAtMs === null) {
+    return "occurred_at_ms_missing";
+  }
+  if (
+    detail.task_summary.started_at_ms !== null &&
+    detail.task_summary.finished_at_ms !== null &&
+    (defaults.occurredAtMs < detail.task_summary.started_at_ms || defaults.occurredAtMs > detail.task_summary.finished_at_ms)
+  ) {
+    return "occurred_at_ms_outside_task_window";
+  }
+  if (!defaults.draftText || defaults.draftText.length > 160 || consumerVoiceTtsDraftUnsafeText(defaults.draftText)) {
+    return "draft_text_unsafe_or_missing";
+  }
+  if (!/^[A-Za-z0-9._:-]{1,80}$/.test(defaults.voiceProfile)) {
+    return "voice_profile_unsafe_or_missing";
+  }
+  if (!/^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8}){0,2}$/.test(defaults.locale)) {
+    return "locale_unsafe_or_missing";
+  }
+  return "";
+});
+
+const consumerVoiceTtsDraftRequestEnabled = computed(() =>
+  !consumerVoiceTtsDraftRequestLoading.value && consumerVoiceTtsDraftRequestBlockedReason.value === "",
+);
+
+function buildConsumerVoiceTtsDraftRequestBody(): O7ConsumerVoiceTtsDraftRequestBody {
+  const detail = consumerTaskDetailResult.value;
+  const defaults = consumerVoiceTtsDraftDefaults();
+  // body 不包含发送、播放或 speaker 字段；这些 false 字段由后端 receipt 固定返回。
+  return {
+    robot_id: detail?.task_summary?.robot_id ?? "",
+    task_id: detail?.task_summary?.task_id ?? consumerSelectedTaskId.value.trim(),
+    event_id: defaults.eventId,
+    occurred_at_ms: defaults.occurredAtMs ?? 0,
+    draft_text: defaults.draftText,
+    evidence_ref: defaults.evidenceRef,
+    voice_profile: defaults.voiceProfile,
+    locale: defaults.locale,
+    metadata: {
+      source: "pc_o7_consumer_detail",
+      detail_status: detail?.detail_status ?? "not_loaded",
+    },
+  };
+}
+
+const consumerVoiceTtsDraftRequestSummary = computed(() => {
+  const result = consumerVoiceTtsDraftRequestResult.value;
+  // receipt 摘要只展示 event-write 状态，不展示完整草稿文本，避免 UI 把它当作已播放音频。
+  if (!result) {
+    return `voice/TTS draft event-write not run · blocker=${consumerVoiceTtsDraftRequestBlockedReason.value || "none"}`;
+  }
+  return [
+    `status=${result.request_status}`,
+    `task_id=${result.task_id}`,
+    `event_id=${result.event_id}`,
+    `event_type=${result.event_type}`,
+    `draft_text_length=${result.draft_text_length}`,
+    `write_status=${result.write_status}`,
+    `archive_event_written=${result.archive_event_written}`,
+    `proof_boundary=${result.proof_boundary}`,
+  ].join(" · ");
+});
+
+function consumerVoiceTtsDraftFalseFields(): string[] {
+  const result = consumerVoiceTtsDraftRequestResult.value;
+  // local/mock 草稿写入成功也不代表真实语音、喇叭、控制、送达或生产云已连接。
+  return [
+    `tts_send_enabled=${String(result?.tts_send_enabled ?? false)}`,
+    `speaker_dispatch_enabled=${String(result?.speaker_dispatch_enabled ?? false)}`,
+    `real_voice_api_connected=${String(result?.real_voice_api_connected ?? false)}`,
+    `real_asr_tts_runtime_connected=${String(result?.real_asr_tts_runtime_connected ?? false)}`,
+    `safe_to_control=${String(result?.safe_to_control ?? false)}`,
+    `delivery_success=${String(result?.delivery_success ?? false)}`,
+    `primary_actions_enabled=${String(result?.primary_actions_enabled ?? false)}`,
+    `connects_cloud_production=${String(result?.connects_cloud_production ?? false)}`,
+    `robot_control_executed=${String(result?.robot_control_executed ?? false)}`,
+    `route_execution_success=${String(result?.route_execution_success ?? false)}`,
+    `hil_pass=${String(result?.hil_pass ?? false)}`,
+  ];
+}
+
+function consumerVoiceSpeakerAckUnsafeText(value: string): boolean {
+  // speaker ACK action 允许本地 ack/failure 状态，但拒绝真实喇叭、播放、API、控制或成功 copy。
+  const lowered = value.toLowerCase();
+  return consumerMissionEventUnsafeText(value) ||
+    lowered.includes("raw_audio") ||
+    lowered.includes("audio_base64") ||
+    lowered.includes("audio_url") ||
+    lowered.includes("playback_url") ||
+    lowered.includes("tts_send_enabled=true") ||
+    lowered.includes("speaker_dispatch_enabled=true") ||
+    lowered.includes("real_speaker_ack_proven=true") ||
+    lowered.includes("real_voice_api_connected=true") ||
+    lowered.includes("real_asr_tts_runtime_connected=true") ||
+    lowered.includes("safe_to_control=true") ||
+    lowered.includes("delivery_success=true") ||
+    lowered.includes("robot_control_executed=true") ||
+    lowered.includes("connects_cloud_production=true");
+}
+
+function generatedConsumerVoiceSpeakerAckEventId(taskId: string, ackStatus: "ack" | "failure"): string {
+  // ack/failure 使用不同幂等键，避免 operator 记录失败后再记录 ACK 时覆盖同一事件。
+  return `evt-o7-voice-speaker-${ackStatus}-${taskId}`
+    .replace(/[^A-Za-z0-9._:-]/g, "-")
+    .slice(0, 120);
+}
+
+function consumerVoiceSpeakerAckDefaults(): {
+  eventId: string;
+  evidenceRef: string;
+  occurredAtMs: number | null;
+  ackStatus: "ack" | "failure";
+  failureReasonCode: string;
+  summary: string;
+} {
+  const detail = consumerTaskDetailResult.value;
+  const event = sampleRecords(detail?.events.sample_events, 1)[0];
+  const evidence = sampleRecords(detail?.evidence.sample_evidence, 1)[0];
+  const explicitOccurredAtMs = consumerVoiceSpeakerAckOccurredAtMs.value.trim()
+    ? asFiniteNumber(Number(consumerVoiceSpeakerAckOccurredAtMs.value.trim()))
+    : null;
+  const eventTimestamp = asFiniteNumber(event?.occurred_at_ms ?? event?.timestamp_ms);
+  const taskId = detail?.task_summary?.task_id ?? consumerSelectedTaskId.value.trim();
+  const ackStatus = consumerVoiceSpeakerAckStatus.value;
+  const fallbackRef = ackStatus === "ack" ? "voice-speaker-ack.json" : "voice-speaker-failure.json";
+  return {
+    eventId:
+      consumerVoiceSpeakerAckEventId.value.trim() ||
+      generatedConsumerVoiceSpeakerAckEventId(taskId || "task", ackStatus),
+    evidenceRef:
+      consumerVoiceSpeakerAckEvidenceRef.value.trim() ||
+      asCursorLabel(event?.evidence_ref, "") ||
+      asCursorLabel(evidence?.evidence_ref, "") ||
+      fallbackRef,
+    occurredAtMs:
+      explicitOccurredAtMs ??
+      eventTimestamp ??
+      detail?.task_summary?.started_at_ms ??
+      null,
+    ackStatus,
+    failureReasonCode: ackStatus === "failure"
+      ? consumerVoiceSpeakerAckFailureReasonCode.value.trim() || "speaker_ack_missing_not_real_runtime"
+      : "none",
+    summary:
+      consumerVoiceSpeakerAckSummary.value.trim() ||
+      (ackStatus === "ack"
+        ? "local mock speaker ack event recorded"
+        : "local mock speaker failure event recorded"),
+  };
+}
+
+const consumerVoiceSpeakerAckEventBlockedReason = computed(() => {
+  const detail = consumerTaskDetailResult.value;
+  const defaults = consumerVoiceSpeakerAckDefaults();
+  // speaker ACK/failure 是 selected-task action；缺 detail 或任何真实能力 copy 都不允许写入。
+  if (consumerVoiceSpeakerAckEventLoading.value) {
+    return "consumer_voice_speaker_ack_event_loading";
+  }
+  if (consumerTaskDetailLoading.value) {
+    return "consumer_task_detail_loading";
+  }
+  if (consumerTaskDetailError.value) {
+    return "consumer_task_detail_api_unavailable";
+  }
+  if (!detail) {
+    return "consumer_task_detail_not_loaded";
+  }
+  if (detail.detail_status !== "loaded_fail_closed_summary") {
+    return detail.fail_closed_reason || "consumer_task_detail_fail_closed";
+  }
+  const taskId = detail.task_summary?.task_id ?? "";
+  if (!taskId || taskId !== consumerSelectedTaskId.value.trim()) {
+    return "task_id_mismatch";
+  }
+  if (!detail.task_summary?.robot_id || detail.task_summary.robot_id === "unknown_robot") {
+    return "robot_id_missing";
+  }
+  if (!defaults.eventId || consumerVoiceSpeakerAckUnsafeText(defaults.eventId)) {
+    return "voice_speaker_ack_event_id_unsafe_or_missing";
+  }
+  if (!defaults.evidenceRef || consumerVoiceSpeakerAckUnsafeText(defaults.evidenceRef)) {
+    return "voice_speaker_ack_evidence_ref_unsafe_or_missing";
+  }
+  if (defaults.occurredAtMs === null) {
+    return "occurred_at_ms_missing";
+  }
+  if (
+    detail.task_summary.started_at_ms !== null &&
+    detail.task_summary.finished_at_ms !== null &&
+    (defaults.occurredAtMs < detail.task_summary.started_at_ms || defaults.occurredAtMs > detail.task_summary.finished_at_ms)
+  ) {
+    return "occurred_at_ms_outside_task_window";
+  }
+  if (defaults.ackStatus !== "ack" && defaults.ackStatus !== "failure") {
+    return "ack_status_must_be_ack_or_failure";
+  }
+  if (!/^[A-Za-z0-9._:-]{1,128}$/.test(defaults.failureReasonCode)) {
+    return "failure_reason_code_unsafe_or_missing";
+  }
+  if (!defaults.summary || defaults.summary.length > 160 || consumerVoiceSpeakerAckUnsafeText(defaults.summary)) {
+    return "summary_unsafe_or_empty";
+  }
+  return "";
+});
+
+const consumerVoiceSpeakerAckEventEnabled = computed(() =>
+  !consumerVoiceSpeakerAckEventLoading.value && consumerVoiceSpeakerAckEventBlockedReason.value === "",
+);
+
+function buildConsumerVoiceSpeakerAckEventBody(): O7VoiceSpeakerAckEventRequestBody {
+  const detail = consumerTaskDetailResult.value;
+  const defaults = consumerVoiceSpeakerAckDefaults();
+  // body 不接受 event_type、播放或真实 ACK 字段；Node adapter 会固定 event type 和 false proof flags。
+  return {
+    robot_id: detail?.task_summary?.robot_id ?? "",
+    task_id: detail?.task_summary?.task_id ?? consumerSelectedTaskId.value.trim(),
+    event_id: defaults.eventId,
+    occurred_at_ms: defaults.occurredAtMs ?? 0,
+    ack_status: defaults.ackStatus,
+    evidence_ref: defaults.evidenceRef,
+    failure_reason_code: defaults.failureReasonCode,
+    summary: defaults.summary,
+    metadata: {
+      source: "pc_o7_consumer_detail",
+      detail_status: detail?.detail_status ?? "not_loaded",
+    },
+  };
+}
+
+const consumerVoiceSpeakerAckEventSummary = computed(() => {
+  const result = consumerVoiceSpeakerAckEventResult.value;
+  // receipt 摘要只展示 ACK/failure event-write 状态，不展示原始 O6 events payload。
+  if (!result) {
+    return `voice speaker ACK event-write not run · blocker=${consumerVoiceSpeakerAckEventBlockedReason.value || "none"}`;
+  }
+  return [
+    `status=${result.ack_event_status}`,
+    `ack_status=${result.ack_status}`,
+    `task_id=${result.task_id}`,
+    `event_id=${result.event_id}`,
+    `event_type=${result.event_type}`,
+    `write_status=${result.write_status}`,
+    `archive_event_written=${result.archive_event_written}`,
+    `proof_boundary=${result.proof_boundary}`,
+  ].join(" · ");
+});
+
+function consumerVoiceSpeakerAckFalseFields(): string[] {
+  const result = consumerVoiceSpeakerAckEventResult.value;
+  // local/mock ACK/failure 写入成功也不能改变真实 speaker、语音、控制、送达或生产云字段。
+  return [
+    `speaker_dispatch_enabled=${String(result?.speaker_dispatch_enabled ?? false)}`,
+    `real_speaker_ack_proven=${String(result?.real_speaker_ack_proven ?? false)}`,
+    `tts_send_enabled=${String(result?.tts_send_enabled ?? false)}`,
+    `real_voice_api_connected=${String(result?.real_voice_api_connected ?? false)}`,
+    `real_asr_tts_runtime_connected=${String(result?.real_asr_tts_runtime_connected ?? false)}`,
+    `safe_to_control=${String(result?.safe_to_control ?? false)}`,
+    `delivery_success=${String(result?.delivery_success ?? false)}`,
+    `primary_actions_enabled=${String(result?.primary_actions_enabled ?? false)}`,
+    `connects_cloud_production=${String(result?.connects_cloud_production ?? false)}`,
+    `robot_control_executed=${String(result?.robot_control_executed ?? false)}`,
+    `route_execution_success=${String(result?.route_execution_success ?? false)}`,
+    `hil_pass=${String(result?.hil_pass ?? false)}`,
+  ];
+}
+
+function voiceRuntimePreflightUnsafeText(value: string): boolean {
+  // preflight 输入只能是本地/离线 mode 或 JSON 路径，不能夹带真实 API、音频、控制或成功声明。
+  const lowered = value.toLowerCase();
+  return lowered.includes("http://") ||
+    lowered.includes("https://") ||
+    lowered.includes("ws://") ||
+    lowered.includes("wss://") ||
+    lowered.includes("bearer ") ||
+    lowered.includes("token=") ||
+    lowered.includes("/cmd_vel") ||
+    lowered.includes("/api/base/manual") ||
+    lowered.includes("navigatetopose") ||
+    lowered.includes("wave rover") ||
+    lowered.includes("/dev/tty") ||
+    lowered.includes("/dev/snd") ||
+    lowered.includes("raw_audio") ||
+    lowered.includes("audio_base64") ||
+    lowered.includes("real_voice_api_connected=true") ||
+    lowered.includes("real_asr_tts_runtime_connected=true") ||
+    lowered.includes("tts_send_enabled=true") ||
+    lowered.includes("speaker_dispatch_enabled=true") ||
+    lowered.includes("real_speaker_ack_proven=true") ||
+    lowered.includes("microphone_opened=true") ||
+    lowered.includes("speaker_playback_opened=true") ||
+    lowered.includes("safe_to_control=true") ||
+    lowered.includes("delivery_success=true") ||
+    lowered.includes("robot_control_executed=true");
+}
+
+const voiceRuntimePreflightBlockedReason = computed(() => {
+  // UI 先挡掉明显危险输入；后端仍会做完整 fail-closed 扫描。
+  const mode = voiceRuntimePreflightMode.value.trim();
+  const configJson = voiceRuntimePreflightConfigJson.value.trim();
+  if (voiceRuntimePreflightLoading.value) {
+    return "voice_runtime_preflight_loading";
+  }
+  if (mode && !["local_stub", "offline_stub", "disabled_local"].includes(mode)) {
+    return "voice_runtime_mode_not_safe_local_or_offline";
+  }
+  if (voiceRuntimePreflightUnsafeText(mode) || voiceRuntimePreflightUnsafeText(configJson)) {
+    return "voice_runtime_preflight_input_unsafe";
+  }
+  if (!mode && !configJson) {
+    return "voice_runtime_preflight_missing_config_or_mode";
+  }
+  return "";
+});
+
+const voiceRuntimePreflightEnabled = computed(() =>
+  !voiceRuntimePreflightLoading.value && voiceRuntimePreflightBlockedReason.value === "",
+);
+
+const voiceRuntimePreflightSummary = computed(() => {
+  const result = voiceRuntimePreflightResult.value;
+  // summary 固定强调 no side effects，防止 ready 被读成真实语音 runtime ready。
+  if (!result) {
+    return `voice runtime preflight not run · blocker=${voiceRuntimePreflightBlockedReason.value || "none"}`;
+  }
+  return [
+    `status=${result.preflight_status}`,
+    `runtime_mode=${result.runtime_mode}`,
+    `runtime_configured=${result.runtime_configured}`,
+    `proof_boundary=${result.proof_boundary}`,
+    `network_probe_executed=${result.network_probe_executed}`,
+    `writes_o6_archive_events=${result.writes_o6_archive_events}`,
+  ].join(" · ");
+});
+
+function voiceRuntimePreflightFalseFields(): string[] {
+  const result = voiceRuntimePreflightResult.value;
+  // preflight ready 也必须把真实语音、音频、O6、控制、送达和 HIL 字段固定为 false。
+  return [
+    `real_voice_api_connected=${String(result?.real_voice_api_connected ?? false)}`,
+    `real_asr_tts_runtime_connected=${String(result?.real_asr_tts_runtime_connected ?? false)}`,
+    `tts_send_enabled=${String(result?.tts_send_enabled ?? false)}`,
+    `speaker_dispatch_enabled=${String(result?.speaker_dispatch_enabled ?? false)}`,
+    `microphone_opened=${String(result?.microphone_opened ?? false)}`,
+    `speaker_playback_opened=${String(result?.speaker_playback_opened ?? false)}`,
+    `network_probe_executed=${String(result?.network_probe_executed ?? false)}`,
+    `writes_o6_archive_events=${String(result?.writes_o6_archive_events ?? false)}`,
+    `safe_to_control=${String(result?.safe_to_control ?? false)}`,
+    `delivery_success=${String(result?.delivery_success ?? false)}`,
+    `robot_control_executed=${String(result?.robot_control_executed ?? false)}`,
+    `connects_cloud_production=${String(result?.connects_cloud_production ?? false)}`,
+    `route_execution_success=${String(result?.route_execution_success ?? false)}`,
+    `hil_pass=${String(result?.hil_pass ?? false)}`,
+  ];
+}
+
+const voiceRuntimeOfflineSmokeSelectedTaskId = computed(() =>
+  consumerTaskDetailResult.value?.task_summary?.task_id?.trim() || consumerSelectedTaskId.value.trim(),
+);
+
+const voiceRuntimeOfflineSmokeBlockedReason = computed(() => {
+  // offline smoke 输入仍先在 UI 挡掉明显危险文本；后端保留完整 fail-closed 扫描。
+  const mode = voiceRuntimeOfflineSmokeMode.value.trim();
+  const taskId = voiceRuntimeOfflineSmokeSelectedTaskId.value;
+  const fixtureJson = voiceRuntimeOfflineSmokeFixtureJson.value.trim();
+  const configJson = voiceRuntimeOfflineSmokeConfigJson.value.trim();
+  if (voiceRuntimeOfflineSmokeLoading.value) {
+    return "voice_runtime_offline_smoke_loading";
+  }
+  if (mode && !["local_stub", "offline_stub", "disabled_local"].includes(mode)) {
+    return "voice_runtime_mode_not_safe_local_or_offline";
+  }
+  if (
+    voiceRuntimePreflightUnsafeText(mode) ||
+    voiceRuntimePreflightUnsafeText(taskId) ||
+    voiceRuntimePreflightUnsafeText(fixtureJson) ||
+    voiceRuntimePreflightUnsafeText(configJson)
+  ) {
+    return "voice_runtime_offline_smoke_input_unsafe";
+  }
+  return "";
+});
+
+const voiceRuntimeOfflineSmokeEnabled = computed(() =>
+  !voiceRuntimeOfflineSmokeLoading.value && voiceRuntimeOfflineSmokeBlockedReason.value === "",
+);
+
+const voiceRuntimeOfflineSmokeSummary = computed(() => {
+  const result = voiceRuntimeOfflineSmokeResult.value;
+  // smoke summary 必须包含 trace event count 和 preflight 派生状态，避免和单纯 preflight 混淆。
+  if (!result) {
+    return `voice runtime offline smoke not run · blocker=${voiceRuntimeOfflineSmokeBlockedReason.value || "none"}`;
+  }
+  return [
+    `status=${result.smoke_status}`,
+    `selected_task_id=${result.selected_task_id}`,
+    `preflight_status=${result.preflight_derived_status.preflight_status}`,
+    `trace_event_count=${result.smoke_trace_event_count}`,
+    `proof_boundary=${result.proof_boundary}`,
+  ].join(" · ");
+});
+
+function voiceRuntimeOfflineSmokeFalseFields(): string[] {
+  const result = voiceRuntimeOfflineSmokeResult.value;
+  // offline smoke 生成 trace 后也必须把真实 voice、音频、O6、控制、送达和 HIL 字段固定为 false。
+  return [
+    `real_voice_api_connected=${String(result?.real_voice_api_connected ?? false)}`,
+    `real_asr_tts_runtime_connected=${String(result?.real_asr_tts_runtime_connected ?? false)}`,
+    `tts_send_enabled=${String(result?.tts_send_enabled ?? false)}`,
+    `speaker_dispatch_enabled=${String(result?.speaker_dispatch_enabled ?? false)}`,
+    `real_speaker_ack_proven=${String(result?.real_speaker_ack_proven ?? false)}`,
+    `microphone_opened=${String(result?.microphone_opened ?? false)}`,
+    `speaker_playback_opened=${String(result?.speaker_playback_opened ?? false)}`,
+    `network_probe_executed=${String(result?.network_probe_executed ?? false)}`,
+    `writes_o6_archive_events=${String(result?.writes_o6_archive_events ?? false)}`,
+    `safe_to_control=${String(result?.safe_to_control ?? false)}`,
+    `delivery_success=${String(result?.delivery_success ?? false)}`,
+    `robot_control_executed=${String(result?.robot_control_executed ?? false)}`,
+    `connects_cloud_production=${String(result?.connects_cloud_production ?? false)}`,
+    `route_execution_success=${String(result?.route_execution_success ?? false)}`,
+    `hil_pass=${String(result?.hil_pass ?? false)}`,
+  ];
+}
+
+function voiceRuntimeOfflineSmokeTraceLines(): string[] {
+  const events = voiceRuntimeOfflineSmokeResult.value?.smoke_trace_events ?? [];
+  // trace 行只展示后端生成的 deterministic safe summary，不展开任何原始 fixture。
+  return events.length > 0
+    ? events.map((event) =>
+        `${event.event_index}. ${event.event_type} · ${event.event_status} · task_id=${event.task_id} · ${event.detail}`,
+      )
+    : ["offline_smoke_trace_not_run"];
+}
+
+const consumerMissionEvidenceBundleExportBlockedReason = computed(() => {
+  const detail = consumerTaskDetailResult.value;
+  // bundle export 必须绑定已加载的 selected task detail，不能在空 detail 下生成“成功”receipt。
+  if (consumerMissionEvidenceBundleExportLoading.value) {
+    return "consumer_mission_evidence_bundle_export_loading";
+  }
+  if (consumerTaskDetailLoading.value) {
+    return "consumer_task_detail_loading";
+  }
+  if (consumerTaskDetailError.value) {
+    return "consumer_task_detail_api_unavailable";
+  }
+  if (!detail) {
+    return "consumer_task_detail_not_loaded";
+  }
+  if (detail.detail_status !== "loaded_fail_closed_summary") {
+    return detail.fail_closed_reason || "consumer_task_detail_fail_closed";
+  }
+  const taskId = detail.task_summary?.task_id ?? "";
+  if (!taskId || taskId !== consumerSelectedTaskId.value.trim()) {
+    return "task_id_mismatch";
+  }
+  if (!detail.task_summary?.robot_id || detail.task_summary.robot_id === "unknown_robot") {
+    return "robot_id_missing";
+  }
+  return "";
+});
+
+const consumerMissionEvidenceBundleExportEnabled = computed(() =>
+  !consumerMissionEvidenceBundleExportLoading.value && consumerMissionEvidenceBundleExportBlockedReason.value === "",
+);
+
+const consumerMissionEvidenceBundleExportSummary = computed(() => {
+  const result = consumerMissionEvidenceBundleExportResult.value;
+  // receipt 摘要展示 section/count/identity，不展示 O6 raw detail 或 artifact body。
+  if (!result) {
+    return `mission evidence bundle export not run · blocker=${consumerMissionEvidenceBundleExportBlockedReason.value || "none"}`;
+  }
+  return [
+    `status=${result.export_status}`,
+    `task_id=${result.task_id}`,
+    `sections=${result.counts.section_count}`,
+    `events=${result.counts.mission_event_count}`,
+    `evidence=${result.counts.evidence_count}`,
+    `sample_refs=${result.counts.sample_ref_count}`,
+    `packet_id=${result.identity.packet_id || "not_loaded"}`,
+    `proof_scope=${result.proof_scope}`,
+  ].join(" · ");
+});
+
+function consumerMissionEvidenceBundleExportFalseFields(): string[] {
+  const result = consumerMissionEvidenceBundleExportResult.value;
+  // bundle ready 也不能改变控制、送达、路线执行、HIL、生产云或 OSS 字段。
+  return [
+    `safe_to_control=${String(result?.safe_to_control ?? false)}`,
+    `delivery_success=${String(result?.delivery_success ?? false)}`,
+    `primary_actions_enabled=${String(result?.primary_actions_enabled ?? false)}`,
+    `connects_cloud_production=${String(result?.connects_cloud_production ?? false)}`,
+    `robot_control_executed=${String(result?.robot_control_executed ?? false)}`,
+    `route_execution_success=${String(result?.route_execution_success ?? false)}`,
+    `hil_pass=${String(result?.hil_pass ?? false)}`,
+    `real_cloud_db_connected=${String(result?.real_cloud_db_connected ?? false)}`,
+    `real_oss_connected=${String(result?.real_oss_connected ?? false)}`,
+  ];
+}
+
+function consumerMissionEvidenceBundleExportSections(): string[] {
+  const result = consumerMissionEvidenceBundleExportResult.value;
+  if (!result) {
+    return ["mission_evidence_bundle=not_run"];
+  }
+  return result.section_summaries.slice(0, 8).map((section) =>
+    [
+      section.section,
+      `status=${section.status}`,
+      `schema=${section.schema}`,
+      `items=${section.item_count}`,
+      `refs=${section.safe_ref_count}`,
+    ].join(" · "),
+  );
+}
+
 function consumerDetailLabelingQueueFalseFields(): string[] {
   const detail = consumerTaskDetailResult.value;
   // 这些 false 字段让 operator 一眼看见：这里只是只读检查视图，不是 annotation 生产入口。
@@ -1419,6 +3255,7 @@ const consumerDetailLabelingQueueSummary = computed(() => {
       `route_execution_result_delivery_readiness_status=${consumerArtifactBundleReadiness.value.route_execution_result_delivery_readiness?.status ?? "blocked_not_proven"}`,
       `route_delivery_closure_packet_status=${consumerArtifactBundleReadiness.value.route_delivery_closure_packet?.status ?? "blocked_not_proven"}`,
       `same_task_field_material_packet_status=${consumerArtifactBundleReadiness.value.same_task_field_material_packet?.status ?? "blocked_not_proven"}`,
+      `pc_live_nav2_execution_material_status=${consumerArtifactBundleReadiness.value.pc_live_nav2_execution_material?.status ?? "blocked_not_proven"}`,
       `same_task_route_execution_material_packet_status=${consumerArtifactBundleReadiness.value.same_task_route_execution_material_packet?.status ?? "blocked_not_proven"}`,
       `same_task_mission_gate_status=${consumerArtifactBundleReadiness.value.same_task_mission_evidence_gate?.status ?? "blocked_not_proven"}`,
       `same_task_mission_material_checklist_status=${consumerArtifactBundleReadiness.value.same_task_mission_material_checklist?.status ?? "blocked_not_proven"}`,
@@ -1467,6 +3304,8 @@ function consumerArtifactBundleReadinessSummary(): string {
     readiness.route_delivery_closure_packet?.status ?? "blocked_not_proven";
   const sameTaskFieldMaterialPacketStatus =
     readiness.same_task_field_material_packet?.status ?? "blocked_not_proven";
+  const pcLiveNav2ExecutionMaterialStatus =
+    readiness.pc_live_nav2_execution_material?.status ?? "blocked_not_proven";
   const sameTaskRouteExecutionMaterialPacketStatus =
     readiness.same_task_route_execution_material_packet?.status ?? "blocked_not_proven";
   const sameTaskMissionGateStatus =
@@ -1508,6 +3347,7 @@ function consumerArtifactBundleReadinessSummary(): string {
     `route_execution_result_delivery_readiness_status=${routeExecutionResultDeliveryReadinessStatus}`,
     `route_delivery_closure_packet_status=${routeDeliveryClosurePacketStatus}`,
     `same_task_field_material_packet_status=${sameTaskFieldMaterialPacketStatus}`,
+    `pc_live_nav2_execution_material_status=${pcLiveNav2ExecutionMaterialStatus}`,
     `same_task_route_execution_material_packet_status=${sameTaskRouteExecutionMaterialPacketStatus}`,
     `same_task_mission_gate_status=${sameTaskMissionGateStatus}`,
     `field_operator_confirmation_material_status=${fieldOperatorConfirmationMaterialStatus}`,
@@ -2691,6 +4531,96 @@ function consumerCurrentFieldEvidenceMaterialFalseFields(): string[] {
   ];
 }
 
+function consumerPcLiveNav2ExecutionMaterialSummary(): string {
+  const material = consumerPcLiveNav2ExecutionMaterial.value;
+  // pc live Nav2 material 只说明现场 live Nav2 安全摘要可读，不把 goal accepted / IMU 痕迹升级成送达或可控。
+  if (!material) {
+    return "pc_live_nav2_execution_material=blocked_not_proven";
+  }
+  return [
+    "pc_live_nav2_execution_material",
+    `status=${material.status}`,
+    `task_id=${material.task_id}`,
+    `material_status=${material.material_status}`,
+    `source_sprint=${material.source_sprint}`,
+    `goal_accepted=${material.goal_accepted}`,
+  ].join(" · ");
+}
+
+function consumerPcLiveNav2ExecutionMaterialSources(): string[] {
+  const material = consumerPcLiveNav2ExecutionMaterial.value;
+  if (!material) {
+    return ["blocked_not_proven"];
+  }
+  return [
+    `source_schema=${material.source_schema}`,
+    `source_origin=${material.source_origin}`,
+    `source_path=${material.source_path}`,
+    `proof_scope=${material.proof_scope}`,
+    `source_proof_status=${material.source_proof_status}`,
+  ];
+}
+
+function consumerPcLiveNav2ExecutionMaterialFacts(): string[] {
+  const material = consumerPcLiveNav2ExecutionMaterial.value;
+  if (!material) {
+    return [
+      "goal_result_status=blocked_not_proven",
+      "uses_base_uart=false",
+      "base_command_nonzero_observed=false",
+      "base_command_nonzero_count=0",
+      "base_feedback_sample_count=0",
+    ];
+  }
+  return [
+    `goal_result_status=${material.goal_result_status}`,
+    `uses_base_uart=${material.uses_base_uart}`,
+    `base_command_nonzero_observed=${material.base_command_nonzero_observed}`,
+    `base_command_nonzero_count=${material.base_command_nonzero_count}`,
+    `base_feedback_sample_count=${material.base_feedback_sample_count}`,
+  ];
+}
+
+function consumerPcLiveNav2ExecutionMaterialImuAndWheelFlags(): string[] {
+  const material = consumerPcLiveNav2ExecutionMaterial.value;
+  if (!material) {
+    return [
+      "base_feedback_imu_attitude_delta_observed=false",
+      "base_feedback_imu_pitch_delta=null",
+      "base_feedback_lr_nonzero_proven=false",
+      "route_execution_success=false",
+    ];
+  }
+  return [
+    `base_feedback_imu_attitude_delta_observed=${material.base_feedback_imu.attitude_delta_observed}`,
+    `base_feedback_imu_pitch_delta=${material.base_feedback_imu.pitch_delta_deg ?? "null"}`,
+    `base_feedback_lr_nonzero_proven=${material.base_feedback_lr_nonzero_proven}`,
+    `route_execution_success=${material.route_execution_success}`,
+  ];
+}
+
+function consumerPcLiveNav2ExecutionMaterialFalseFields(): string[] {
+  const material = consumerPcLiveNav2ExecutionMaterial.value;
+  if (!material) {
+    return [
+      "safe_to_control=false",
+      "delivery_success=false",
+      "primary_actions_enabled=false",
+      "robot_control_executed=false",
+      "connects_cloud_production=false",
+      "hil_pass=false",
+    ];
+  }
+  return [
+    `safe_to_control=${material.safe_to_control}`,
+    `delivery_success=${material.delivery_success}`,
+    `primary_actions_enabled=${material.primary_actions_enabled}`,
+    `robot_control_executed=${material.robot_control_executed}`,
+    `connects_cloud_production=${material.connects_cloud_production}`,
+    `hil_pass=${material.hil_pass}`,
+  ];
+}
+
 function consumerLocalizationPathMaterialReadbackSummary(): string {
   const material = consumerLocalizationPathMaterialReadback.value;
   // localization/path readback 只说明 same-run 定位/路径材料状态，不能把 cross-run comparator 当成当前路径成功。
@@ -3044,6 +4974,91 @@ function consumerFieldOperatorConfirmationMaterialFalseFields(): string[] {
     `connects_cloud_production=${material.connects_cloud_production}`,
     `route_execution_success=${material.route_execution_success}`,
     `hil_pass=${material.hil_pass}`,
+  ];
+}
+
+function consumerSameTaskReplayPacketReadbackSummary(): string {
+  const packet = consumerSameTaskReplayPacketReadback.value;
+  // replay packet readback 只展示 identity/count，不把 packet ready 解释成路线执行。
+  if (!packet) {
+    return "same_task_replay_packet_readback=blocked_not_proven";
+  }
+  return [
+    "same_task_replay_packet_readback",
+    `status=${packet.status}`,
+    `task_id=${packet.task_id}`,
+    `packet_id=${packet.packet_id}`,
+    `route_intent_id=${packet.route_intent_id}`,
+  ].join(" · ");
+}
+
+function consumerSameTaskReplayPacketReadbackSources(): string[] {
+  const packet = consumerSameTaskReplayPacketReadback.value;
+  if (!packet) {
+    return ["blocked_not_proven"];
+  }
+  return [
+    `source_contract=${packet.source_contract}`,
+    `source_origin=${packet.source_origin}`,
+    `source_schema=${packet.source_schema}`,
+    `proof_scope=${packet.proof_scope}`,
+    `source_artifact_boundary=${packet.source_artifact_boundary}`,
+  ];
+}
+
+function consumerSameTaskReplayPacketReadbackCountsAndRefs(): string[] {
+  const packet = consumerSameTaskReplayPacketReadback.value;
+  if (!packet) {
+    return [
+      "route_csv_row_count=0",
+      "replay_jsonl_event_count=0",
+      "path_structured_pose_count=0",
+      "source_refs=none",
+    ];
+  }
+  return [
+    `route_csv_row_count=${packet.route_csv_row_count}`,
+    `replay_jsonl_event_count=${packet.replay_jsonl_event_count}`,
+    `path_structured_pose_count=${packet.path_structured_pose_count}`,
+    `same_task_identity_verified=${packet.same_task_identity_verified}`,
+    `same_task_replay_packet_ready=${packet.same_task_replay_packet_ready}`,
+    `source_summary_ref=${packet.source_refs.source_summary_ref}`,
+    `packet_jsonl_ref=${packet.source_refs.packet_jsonl_ref}`,
+    `route_csv_ref=${packet.source_refs.route_csv_ref}`,
+    `replay_jsonl_ref=${packet.source_refs.replay_jsonl_ref}`,
+    `summary_sha256_prefix=${packet.sha256_prefixes.summary}`,
+    `route_csv_sha256_prefix=${packet.sha256_prefixes.route_csv}`,
+    `replay_jsonl_sha256_prefix=${packet.sha256_prefixes.replay_jsonl}`,
+  ];
+}
+
+function consumerSameTaskReplayPacketReadbackFalseFields(): string[] {
+  const packet = consumerSameTaskReplayPacketReadback.value;
+  if (!packet) {
+    return [
+      "route_execution_success=false",
+      "delivery_success=false",
+      "hil_pass=false",
+      "safe_to_control=false",
+      "robot_control_executed=false",
+      "primary_actions_enabled=false",
+      "publishes_cmd_vel=false",
+      "calls_base_manual=false",
+      "uses_base_uart=false",
+      "connects_cloud_production=false",
+    ];
+  }
+  return [
+    `route_execution_success=${packet.route_execution_success}`,
+    `delivery_success=${packet.delivery_success}`,
+    `hil_pass=${packet.hil_pass}`,
+    `safe_to_control=${packet.safe_to_control}`,
+    `robot_control_executed=${packet.robot_control_executed}`,
+    `primary_actions_enabled=${packet.primary_actions_enabled}`,
+    `publishes_cmd_vel=${packet.publishes_cmd_vel}`,
+    `calls_base_manual=${packet.calls_base_manual}`,
+    `uses_base_uart=${packet.uses_base_uart}`,
+    `connects_cloud_production=${packet.connects_cloud_production}`,
   ];
 }
 
@@ -4010,13 +6025,26 @@ async function loadArchiveTasks(): Promise<void> {
   }
 }
 
+function consumerTaskListQuery(): O7ConsumerTaskListQuery {
+  // 空 filter 不发送，避免 UI 空值覆盖 O6 默认；adapter 会再次校验所有显式输入。
+  return {
+    robot_id: consumerTaskFilterRobotId.value,
+    task_id: consumerTaskFilterTaskId.value,
+    date: consumerTaskFilterDate.value,
+    status: consumerTaskFilterStatus.value as O7ConsumerTaskListQuery["status"],
+    limit: consumerTaskFilterLimit.value,
+    before_started_at_ms: consumerTaskFilterBeforeStartedAtMs.value,
+  };
+}
+
 async function loadConsumerTaskList(): Promise<void> {
   // O7 任务列表主入口固定走 O6 consumer read summary 视图，避免前端继续 join 低层接口。
   consumerTaskListLoading.value = true;
   consumerTaskListError.value = "";
   try {
-    consumerTaskListResult.value = await getO7ConsumerTaskList(consumerReadBaseUrl.value);
-    consumerSelectedTaskId.value = consumerTaskListResult.value.task_list[0]?.task_id ?? "";
+    const query = consumerTaskListQuery();
+    consumerTaskListResult.value = await getO7ConsumerTaskList(consumerReadBaseUrl.value, query);
+    consumerSelectedTaskId.value = consumerTaskListResult.value.task_list[0]?.task_id ?? query.task_id ?? "";
   } catch (error) {
     consumerTaskListError.value = error instanceof Error ? error.message : "consumer_task_list_not_available";
   } finally {
@@ -4032,6 +6060,22 @@ async function loadConsumerTaskDetail(): Promise<void> {
   consumerAnnotationSubmitError.value = "";
   consumerAnnotationExportResult.value = null;
   consumerAnnotationExportError.value = "";
+  consumerInferenceRequestResult.value = null;
+  consumerInferenceRequestError.value = "";
+  consumerDeliveryResultIntakeResult.value = null;
+  consumerDeliveryResultIntakeError.value = "";
+  consumerMissionEventAppendResult.value = null;
+  consumerMissionEventAppendError.value = "";
+  consumerOperatorDropoffActionCaptureResult.value = null;
+  consumerOperatorDropoffActionCaptureError.value = "";
+  consumerVoiceTtsDraftRequestResult.value = null;
+  consumerVoiceTtsDraftRequestError.value = "";
+  consumerMissionEvidenceBundleExportResult.value = null;
+  consumerMissionEvidenceBundleExportError.value = "";
+  consumerPhoneBrowserProofIntakeResult.value = null;
+  consumerPhoneBrowserProofIntakeError.value = "";
+  consumerBoundedRouteGateIntakeResult.value = null;
+  consumerBoundedRouteGateIntakeError.value = "";
   try {
     consumerTaskDetailResult.value = await getO7ConsumerTaskDetail(
       consumerReadBaseUrl.value,
@@ -4043,6 +6087,28 @@ async function loadConsumerTaskDetail(): Promise<void> {
     consumerTaskDetailError.value = error instanceof Error ? error.message : "consumer_task_detail_not_available";
   } finally {
     consumerTaskDetailLoading.value = false;
+  }
+}
+
+async function exportConsumerMissionEvidenceBundle(): Promise<void> {
+  // mission evidence bundle export 只调用 PC 后端 adapter；没有 selected detail 时必须直接显示 blocker。
+  if (consumerMissionEvidenceBundleExportBlockedReason.value) {
+    consumerMissionEvidenceBundleExportError.value = consumerMissionEvidenceBundleExportBlockedReason.value;
+    return;
+  }
+  const taskId = consumerTaskDetailResult.value?.task_summary?.task_id ?? consumerSelectedTaskId.value;
+  consumerMissionEvidenceBundleExportLoading.value = true;
+  consumerMissionEvidenceBundleExportError.value = "";
+  try {
+    consumerMissionEvidenceBundleExportResult.value = await getO7ConsumerMissionEvidenceBundleExport(
+      consumerReadBaseUrl.value,
+      taskId,
+    );
+  } catch (error) {
+    consumerMissionEvidenceBundleExportError.value =
+      error instanceof Error ? error.message : "consumer_mission_evidence_bundle_export_not_available";
+  } finally {
+    consumerMissionEvidenceBundleExportLoading.value = false;
   }
 }
 
@@ -4088,6 +6154,255 @@ async function exportConsumerAnnotationDataset(): Promise<void> {
   }
 }
 
+async function requestConsumerInference(): Promise<void> {
+  // inference request 只调用 PC 后端 adapter；失败必须返回 fail-closed receipt 或显式错误。
+  if (consumerInferenceActionBlockedReason.value) {
+    consumerInferenceRequestError.value = consumerInferenceActionBlockedReason.value;
+    return;
+  }
+  const taskId = consumerTaskDetailResult.value?.task_summary?.task_id ?? consumerSelectedTaskId.value;
+  consumerInferenceRequestLoading.value = true;
+  consumerInferenceRequestError.value = "";
+  try {
+    consumerInferenceRequestResult.value = await postO7ConsumerInferenceRequest(
+      consumerReadBaseUrl.value,
+      taskId,
+      buildConsumerInferenceRequestBody(),
+    );
+  } catch (error) {
+    consumerInferenceRequestError.value = error instanceof Error ? error.message : "consumer_inference_request_not_available";
+  } finally {
+    consumerInferenceRequestLoading.value = false;
+  }
+}
+
+async function intakeConsumerDeliveryResult(): Promise<void> {
+  // delivery result intake 只调用 PC 后端 adapter；O6 field-evidence 路径由 Node 固定转发。
+  if (consumerDeliveryResultIntakeBlockedReason.value) {
+    consumerDeliveryResultIntakeError.value = consumerDeliveryResultIntakeBlockedReason.value;
+    return;
+  }
+  const taskId = consumerTaskDetailResult.value?.task_summary?.task_id ?? consumerSelectedTaskId.value;
+  consumerDeliveryResultIntakeLoading.value = true;
+  consumerDeliveryResultIntakeError.value = "";
+  try {
+    consumerDeliveryResultIntakeResult.value = await postO7ConsumerDeliveryResultIntake(
+      consumerReadBaseUrl.value,
+      taskId,
+      buildConsumerDeliveryResultIntakeBody(),
+    );
+  } catch (error) {
+    consumerDeliveryResultIntakeError.value = error instanceof Error ? error.message : "consumer_delivery_result_intake_not_available";
+  } finally {
+    consumerDeliveryResultIntakeLoading.value = false;
+  }
+}
+
+async function intakeConsumerPhoneBrowserProof(): Promise<void> {
+  // phone/browser proof intake 只调用 PC adapter；raw terminal material、URL、token 和路径都不从 UI 透传。
+  if (consumerPhoneBrowserProofIntakeBlockedReason.value) {
+    consumerPhoneBrowserProofIntakeError.value = consumerPhoneBrowserProofIntakeBlockedReason.value;
+    return;
+  }
+  const taskId = consumerTaskDetailResult.value?.task_summary?.task_id ?? consumerSelectedTaskId.value;
+  consumerPhoneBrowserProofIntakeLoading.value = true;
+  consumerPhoneBrowserProofIntakeError.value = "";
+  try {
+    consumerPhoneBrowserProofIntakeResult.value = await postO7ConsumerPhoneBrowserProofIntake(
+      consumerReadBaseUrl.value,
+      taskId,
+      buildConsumerPhoneBrowserProofIntakeBody(),
+    );
+  } catch (error) {
+    consumerPhoneBrowserProofIntakeError.value =
+      error instanceof Error ? error.message : "consumer_phone_browser_proof_intake_not_available";
+  } finally {
+    consumerPhoneBrowserProofIntakeLoading.value = false;
+  }
+}
+
+async function intakeConsumerBoundedRouteGate(): Promise<void> {
+  // bounded-route gate 只调用 PC adapter；写入 O6 安全摘要后必须读回同一 task/material receipt。
+  if (consumerBoundedRouteGateIntakeBlockedReason.value) {
+    consumerBoundedRouteGateIntakeError.value = consumerBoundedRouteGateIntakeBlockedReason.value;
+    return;
+  }
+  const taskId = consumerTaskDetailResult.value?.task_summary?.task_id ?? consumerSelectedTaskId.value;
+  consumerBoundedRouteGateIntakeLoading.value = true;
+  consumerBoundedRouteGateIntakeError.value = "";
+  try {
+    consumerBoundedRouteGateIntakeResult.value = await postO7ConsumerBoundedRouteGateIntake(
+      consumerReadBaseUrl.value,
+      taskId,
+      buildConsumerBoundedRouteGateIntakeBody(),
+    );
+  } catch (error) {
+    consumerBoundedRouteGateIntakeError.value =
+      error instanceof Error ? error.message : "consumer_bounded_route_gate_intake_not_available";
+  } finally {
+    consumerBoundedRouteGateIntakeLoading.value = false;
+  }
+}
+
+async function intakeConsumerBoundedRouteTerminalResult(): Promise<void> {
+  // terminal-result 只调用 PC adapter；O6 field-evidence 路径由 Node 固定，UI 不透传 O5 raw artifact。
+  if (consumerBoundedRouteTerminalResultIntakeBlockedReason.value) {
+    consumerBoundedRouteTerminalResultIntakeError.value = consumerBoundedRouteTerminalResultIntakeBlockedReason.value;
+    return;
+  }
+  const taskId = consumerTaskDetailResult.value?.task_summary?.task_id ?? consumerSelectedTaskId.value;
+  consumerBoundedRouteTerminalResultIntakeLoading.value = true;
+  consumerBoundedRouteTerminalResultIntakeError.value = "";
+  try {
+    consumerBoundedRouteTerminalResultIntakeResult.value =
+      await postO7ConsumerBoundedRouteTerminalResultIntake(
+        consumerReadBaseUrl.value,
+        taskId,
+        buildConsumerBoundedRouteTerminalResultIntakeBody(),
+      );
+  } catch (error) {
+    consumerBoundedRouteTerminalResultIntakeError.value =
+      error instanceof Error ? error.message : "consumer_bounded_route_terminal_result_intake_not_available";
+  } finally {
+    consumerBoundedRouteTerminalResultIntakeLoading.value = false;
+  }
+}
+
+async function appendConsumerMissionEvent(): Promise<void> {
+  // mission event append 只调用 PC 后端 adapter；任何失败都必须显示 fail-closed blocker。
+  if (consumerMissionEventAppendBlockedReason.value) {
+    consumerMissionEventAppendError.value = consumerMissionEventAppendBlockedReason.value;
+    return;
+  }
+  const taskId = consumerTaskDetailResult.value?.task_summary?.task_id ?? consumerSelectedTaskId.value;
+  consumerMissionEventAppendLoading.value = true;
+  consumerMissionEventAppendError.value = "";
+  try {
+    consumerMissionEventAppendResult.value = await postO7ConsumerMissionEventAppend(
+      consumerReadBaseUrl.value,
+      taskId,
+      buildConsumerMissionEventAppendBody(),
+    );
+  } catch (error) {
+    consumerMissionEventAppendError.value = error instanceof Error ? error.message : "consumer_mission_event_append_not_available";
+  } finally {
+    consumerMissionEventAppendLoading.value = false;
+  }
+}
+
+async function captureConsumerOperatorDropoffAction(): Promise<void> {
+  // operator dropoff capture 只写 O6 local/mock event；失败必须保留 fail-closed blocker 和 false 字段。
+  if (consumerOperatorDropoffActionCaptureBlockedReason.value) {
+    consumerOperatorDropoffActionCaptureError.value = consumerOperatorDropoffActionCaptureBlockedReason.value;
+    return;
+  }
+  const taskId = consumerTaskDetailResult.value?.task_summary?.task_id ?? consumerSelectedTaskId.value;
+  consumerOperatorDropoffActionCaptureLoading.value = true;
+  consumerOperatorDropoffActionCaptureError.value = "";
+  try {
+    consumerOperatorDropoffActionCaptureResult.value = await postO7OperatorDropoffActionCapture(
+      consumerReadBaseUrl.value,
+      taskId,
+      buildConsumerOperatorDropoffActionCaptureBody(),
+    );
+  } catch (error) {
+    consumerOperatorDropoffActionCaptureError.value =
+      error instanceof Error ? error.message : "consumer_operator_dropoff_action_capture_not_available";
+  } finally {
+    consumerOperatorDropoffActionCaptureLoading.value = false;
+  }
+}
+
+async function requestConsumerVoiceTtsDraft(): Promise<void> {
+  // voice/TTS draft 只请求 PC adapter 写 O6 event；真实语音 API、音频播放和 speaker dispatch 都不触发。
+  if (consumerVoiceTtsDraftRequestBlockedReason.value) {
+    consumerVoiceTtsDraftRequestError.value = consumerVoiceTtsDraftRequestBlockedReason.value;
+    return;
+  }
+  const taskId = consumerTaskDetailResult.value?.task_summary?.task_id ?? consumerSelectedTaskId.value;
+  consumerVoiceTtsDraftRequestLoading.value = true;
+  consumerVoiceTtsDraftRequestError.value = "";
+  try {
+    consumerVoiceTtsDraftRequestResult.value = await postO7ConsumerVoiceTtsDraftRequest(
+      consumerReadBaseUrl.value,
+      taskId,
+      buildConsumerVoiceTtsDraftRequestBody(),
+    );
+  } catch (error) {
+    consumerVoiceTtsDraftRequestError.value =
+      error instanceof Error ? error.message : "consumer_voice_tts_draft_request_not_available";
+  } finally {
+    consumerVoiceTtsDraftRequestLoading.value = false;
+  }
+}
+
+async function requestConsumerVoiceSpeakerAckEvent(): Promise<void> {
+  // speaker ACK/failure 只请求 PC adapter 写 O6 event；真实播放、speaker ACK 和控制闭环都不触发。
+  if (consumerVoiceSpeakerAckEventBlockedReason.value) {
+    consumerVoiceSpeakerAckEventError.value = consumerVoiceSpeakerAckEventBlockedReason.value;
+    return;
+  }
+  const taskId = consumerTaskDetailResult.value?.task_summary?.task_id ?? consumerSelectedTaskId.value;
+  consumerVoiceSpeakerAckEventLoading.value = true;
+  consumerVoiceSpeakerAckEventError.value = "";
+  try {
+    consumerVoiceSpeakerAckEventResult.value = await postO7VoiceSpeakerAckEvent(
+      consumerReadBaseUrl.value,
+      taskId,
+      buildConsumerVoiceSpeakerAckEventBody(),
+    );
+  } catch (error) {
+    consumerVoiceSpeakerAckEventError.value =
+      error instanceof Error ? error.message : "consumer_voice_speaker_ack_event_not_available";
+  } finally {
+    consumerVoiceSpeakerAckEventLoading.value = false;
+  }
+}
+
+async function loadVoiceRuntimePreflight(): Promise<void> {
+  // preflight 只调用 PC Node GET；它不连接语音 API、不写 O6、不打开任何音频设备。
+  if (voiceRuntimePreflightBlockedReason.value) {
+    voiceRuntimePreflightError.value = voiceRuntimePreflightBlockedReason.value;
+    return;
+  }
+  voiceRuntimePreflightLoading.value = true;
+  voiceRuntimePreflightError.value = "";
+  try {
+    voiceRuntimePreflightResult.value = await getO7VoiceRuntimePreflight(
+      voiceRuntimePreflightMode.value,
+      voiceRuntimePreflightConfigJson.value,
+    );
+  } catch (error) {
+    voiceRuntimePreflightError.value =
+      error instanceof Error ? error.message : "voice_runtime_preflight_not_available";
+  } finally {
+    voiceRuntimePreflightLoading.value = false;
+  }
+}
+
+async function loadVoiceRuntimeOfflineSmoke(): Promise<void> {
+  // offline smoke 只调用 PC Node GET；它生成本地 trace，不写 O6、不打开麦克风/喇叭。
+  if (voiceRuntimeOfflineSmokeBlockedReason.value) {
+    voiceRuntimeOfflineSmokeError.value = voiceRuntimeOfflineSmokeBlockedReason.value;
+    return;
+  }
+  voiceRuntimeOfflineSmokeLoading.value = true;
+  voiceRuntimeOfflineSmokeError.value = "";
+  try {
+    voiceRuntimeOfflineSmokeResult.value = await getO7VoiceRuntimeOfflineSmoke(
+      voiceRuntimeOfflineSmokeMode.value,
+      voiceRuntimeOfflineSmokeSelectedTaskId.value,
+      voiceRuntimeOfflineSmokeFixtureJson.value,
+      voiceRuntimeOfflineSmokeConfigJson.value,
+    );
+  } catch (error) {
+    voiceRuntimeOfflineSmokeError.value =
+      error instanceof Error ? error.message : "voice_runtime_offline_smoke_not_available";
+  } finally {
+    voiceRuntimeOfflineSmokeLoading.value = false;
+  }
+}
+
 watch(localDraftItemKey, () => {
   // item cursor 改变时不复用上一条 item 的草稿；新 item 通过独立 key 读取自己的内存槽位。
   if (localDraftItemKey.value && !localAnnotationDrafts.value[localDraftItemKey.value]) {
@@ -4109,6 +6424,22 @@ watch([consumerSelectedTaskId, consumerReadBaseUrl], () => {
   consumerAnnotationSubmitError.value = "";
   consumerAnnotationExportResult.value = null;
   consumerAnnotationExportError.value = "";
+  consumerInferenceRequestResult.value = null;
+  consumerInferenceRequestError.value = "";
+  consumerDeliveryResultIntakeResult.value = null;
+  consumerDeliveryResultIntakeError.value = "";
+  consumerMissionEventAppendResult.value = null;
+  consumerMissionEventAppendError.value = "";
+  consumerOperatorDropoffActionCaptureResult.value = null;
+  consumerOperatorDropoffActionCaptureError.value = "";
+  consumerVoiceTtsDraftRequestResult.value = null;
+  consumerVoiceTtsDraftRequestError.value = "";
+  consumerMissionEvidenceBundleExportResult.value = null;
+  consumerMissionEvidenceBundleExportError.value = "";
+  consumerPhoneBrowserProofIntakeResult.value = null;
+  consumerPhoneBrowserProofIntakeError.value = "";
+  consumerBoundedRouteGateIntakeResult.value = null;
+  consumerBoundedRouteGateIntakeError.value = "";
 });
 
 async function loadCloudOperatorConsoleProbe(): Promise<void> {
@@ -4919,6 +7250,63 @@ async function loadPreview(kind: O7FixturePreviewKind): Promise<void> {
         >
       </label>
       <div class="route-inputs">
+        <label>
+          <span>robot_id filter</span>
+          <input
+            v-model="consumerTaskFilterRobotId"
+            aria-label="O7 consumer task list robot_id filter"
+            placeholder="optional robot_id"
+          >
+        </label>
+        <label>
+          <span>task_id filter</span>
+          <input
+            v-model="consumerTaskFilterTaskId"
+            aria-label="O7 consumer task list task_id filter"
+            placeholder="optional task_id"
+          >
+        </label>
+        <label>
+          <span>date filter</span>
+          <input
+            v-model="consumerTaskFilterDate"
+            aria-label="O7 consumer task list date filter"
+            placeholder="YYYY-MM-DD"
+          >
+        </label>
+        <label>
+          <span>status filter</span>
+          <select
+            v-model="consumerTaskFilterStatus"
+            aria-label="O7 consumer task list status filter"
+          >
+            <option value="">all</option>
+            <option value="completed_mock">completed_mock</option>
+            <option value="failed_mock">failed_mock</option>
+            <option value="in_progress_mock">in_progress_mock</option>
+            <option value="unknown_not_proven">unknown_not_proven</option>
+          </select>
+        </label>
+        <label>
+          <span>limit filter</span>
+          <input
+            v-model="consumerTaskFilterLimit"
+            aria-label="O7 consumer task list limit filter"
+            inputmode="numeric"
+            placeholder="50"
+          >
+        </label>
+        <label>
+          <span>before_started_at_ms</span>
+          <input
+            v-model="consumerTaskFilterBeforeStartedAtMs"
+            aria-label="O7 consumer task list before_started_at_ms filter"
+            inputmode="numeric"
+            placeholder="optional cursor"
+          >
+        </label>
+      </div>
+      <div class="route-inputs">
         <button class="secondary" type="button" @click="loadConsumerTaskList">
           {{ consumerTaskListLoading ? "Loading consumer task list" : "Load consumer task list" }}
         </button>
@@ -4967,6 +7355,29 @@ async function loadPreview(kind: O7FixturePreviewKind): Promise<void> {
             <dd>{{ consumerTaskListResult?.query_strategy.primary_path ?? true }}</dd>
             <dt>fail-closed visible</dt>
             <dd>{{ consumerTaskListResult?.query_strategy.fail_closed_visible ?? true }}</dd>
+            <dt>filter semantics</dt>
+            <dd>{{ consumerTaskListResult?.filter_semantics ?? "and" }}</dd>
+            <dt>proof scope</dt>
+            <dd>
+              {{
+                consumerTaskListResult?.o7_consumer_read_query_filters_proof_scope ??
+                  "software_proof_o7_consumer_read_query_filters_only"
+              }}
+            </dd>
+            <dt>applied robot_id</dt>
+            <dd>{{ consumerTaskListResult?.applied_filters?.robot_id || "all" }}</dd>
+            <dt>applied task_id</dt>
+            <dd>{{ consumerTaskListResult?.applied_filters?.task_id || "all" }}</dd>
+            <dt>applied date</dt>
+            <dd>{{ consumerTaskListResult?.applied_filters?.date || "all" }}</dd>
+            <dt>applied status</dt>
+            <dd>{{ consumerTaskListResult?.applied_filters?.status ?? "all" }}</dd>
+            <dt>applied limit</dt>
+            <dd>{{ consumerTaskListResult?.applied_filters?.limit ?? 50 }}</dd>
+            <dt>before_started_at_ms</dt>
+            <dd>{{ consumerTaskListResult?.applied_filters?.before_started_at_ms ?? "none" }}</dd>
+            <dt>filtered result count</dt>
+            <dd>{{ consumerTaskListResult?.filtered_result_count ?? 0 }}</dd>
             <dt>task count</dt>
             <dd>{{ consumerTaskListResult?.task_list.length ?? 0 }}</dd>
           </dl>
@@ -5023,7 +7434,7 @@ async function loadPreview(kind: O7FixturePreviewKind): Promise<void> {
             <dt>view</dt>
             <dd>{{ consumerTaskDetailResult?.query_strategy.view ?? "default" }}</dd>
             <dt>include</dt>
-            <dd>{{ consumerTaskDetailResult?.query_strategy.include.join(",") ?? "trajectory,events,evidence,field_evidence,labeling,inference,tunnel,artifact_access_probe,offline_artifact_seed_smoke,route_root_seed_gate,route_bag_evidence,route_bag_payload_replay,route_bag_semantic_replay,route_bag_full_semantic_decode_matrix,route_bag_pose_progress_replay,nav2_goal_execution_evidence,delivery_result_evidence,route_execution_result_delivery_readiness,route_delivery_closure_packet,same_task_field_material_packet,current_field_evidence_material,clean_baseline_nav2_path_material,localization_path_material_readback,same_task_route_execution_material_packet,same_task_mission_evidence_gate" }}</dd>
+            <dd>{{ consumerTaskDetailResult?.query_strategy.include.join(",") ?? "trajectory,events,evidence,field_evidence,labeling,inference,tunnel,artifact_access_probe,offline_artifact_seed_smoke,route_root_seed_gate,route_bag_evidence,route_bag_payload_replay,route_bag_semantic_replay,route_bag_full_semantic_decode_matrix,route_bag_pose_progress_replay,nav2_goal_execution_evidence,delivery_result_evidence,route_execution_result_delivery_readiness,route_delivery_closure_packet,same_task_field_material_packet,same_task_replay_packet_readback,bounded_route_execution_gate_material,bounded_route_terminal_result_material,current_field_evidence_material,pc_live_nav2_execution_material,clean_baseline_nav2_path_material,localization_path_material_readback,same_task_route_execution_material_packet,same_task_mission_evidence_gate" }}</dd>
             <dt>fail-closed visible</dt>
             <dd>{{ consumerTaskDetailResult?.query_strategy.fail_closed_visible ?? true }}</dd>
             <dt>field evidence contract</dt>
@@ -5075,7 +7486,7 @@ async function loadPreview(kind: O7FixturePreviewKind): Promise<void> {
           </ul>
           <h3>Artifact bundle readiness</h3>
           <div class="notice" role="note">
-            artifact_bundle_readiness 主路径 · bundle / consumer_ingest / preflight 优先 · route_bag_evidence / route_bag_payload_replay / route_bag_semantic_replay / route_bag_full_semantic_decode_matrix / route_delivery_closure_packet / same_task_field_material_packet / same_task_route_execution_material_packet / same_task_mission_evidence_gate / field_operator_confirmation_material 只读汇总 · route replay / labeling 旧 fallback 只做兼容
+            artifact_bundle_readiness 主路径 · bundle / consumer_ingest / preflight 优先 · route_bag_evidence / route_bag_payload_replay / route_bag_semantic_replay / route_bag_full_semantic_decode_matrix / route_delivery_closure_packet / same_task_field_material_packet / same_task_replay_packet_readback / pc_live_nav2_execution_material / same_task_route_execution_material_packet / same_task_mission_evidence_gate / field_operator_confirmation_material 只读汇总 · bounded_route_execution_gate_material 与 bounded_route_terminal_result_material 走 detail + intake receipt 独立区块 · route replay / labeling 旧 fallback 只做兼容
           </div>
           <dl class="kv compact-kv">
             <dt>schema</dt>
@@ -5521,6 +7932,111 @@ async function loadPreview(kind: O7FixturePreviewKind): Promise<void> {
           <ul class="dense">
             <li v-for="line in consumerDeliveryResultEvidenceFalseFields()" :key="line">{{ line }}</li>
           </ul>
+
+          <h3>Consumer-detail local/mock delivery result intake</h3>
+          <div class="notice" role="note">
+            POST /api/o7/consumer-read/tasks/&lt;task_id&gt;/delivery-result/intake · PC adapter 固定转发 O6 /api/o6/archive/field-evidence ·
+            proof_scope=software_proof_o7_o6_consumer_delivery_result_intake_only · delivery_success=false
+          </div>
+          <div class="route-inputs">
+            <label>
+              <span>record_status</span>
+              <select
+                v-model="consumerDeliveryResultRecordStatus"
+                aria-label="O7 consumer delivery result record_status"
+              >
+                <option value="ready_not_delivery_proof">ready_not_delivery_proof</option>
+                <option value="operator_confirmed_not_delivery_proof">operator_confirmed_not_delivery_proof</option>
+                <option value="failed_not_delivery_proof">failed_not_delivery_proof</option>
+                <option value="blocked_not_proven">blocked_not_proven</option>
+              </select>
+            </label>
+            <label>
+              <span>evidence_ref</span>
+              <input
+                v-model="consumerDeliveryResultEvidenceRef"
+                aria-label="O7 consumer delivery result evidence_ref"
+                placeholder="delivery-result-evidence.json"
+              >
+            </label>
+            <label>
+              <span>dropoff_confirmation_type</span>
+              <select
+                v-model="consumerDeliveryResultDropoffConfirmationType"
+                aria-label="O7 consumer delivery result dropoff confirmation type"
+              >
+                <option value="operator_terminal_claim">operator_terminal_claim</option>
+                <option value="operator_visual_check">operator_visual_check</option>
+                <option value="local_mock_receipt">local_mock_receipt</option>
+                <option value="none">none</option>
+              </select>
+            </label>
+            <label>
+              <span>completed_at_utc</span>
+              <input
+                v-model="consumerDeliveryResultCompletedAtUtc"
+                aria-label="O7 consumer delivery result completed_at_utc"
+                placeholder="defaults from detail window"
+              >
+            </label>
+            <label>
+              <span>notes</span>
+              <input
+                v-model="consumerDeliveryResultNotes"
+                aria-label="O7 consumer delivery result notes"
+                placeholder="optional short local/mock note"
+              >
+            </label>
+          </div>
+          <div class="route-inputs compact-options">
+            <label class="check-row">
+              <input
+                v-model="consumerDeliveryResultClaimed"
+                type="checkbox"
+                aria-label="O7 consumer delivery result claimed"
+              >
+              <span>delivery_result_claimed</span>
+            </label>
+            <button
+              class="secondary"
+              type="button"
+              :disabled="!consumerDeliveryResultIntakeEnabled"
+              @click="intakeConsumerDeliveryResult"
+            >
+              {{ consumerDeliveryResultIntakeLoading ? "正在写入 local/mock 送达结果" : "写入 local/mock 送达结果" }}
+            </button>
+          </div>
+          <div v-if="consumerDeliveryResultIntakeError" class="notice" role="alert">
+            Local/mock delivery result intake blocked: {{ consumerDeliveryResultIntakeError }}. not_proven=true.
+          </div>
+          <dl class="kv compact-kv">
+            <dt>intake schema</dt>
+            <dd>{{ consumerDeliveryResultIntakeResult?.schema ?? "trashbot.pc_tools_workstation.o7_consumer_delivery_result_intake_result.v1" }}</dd>
+            <dt>intake status</dt>
+            <dd>{{ consumerDeliveryResultIntakeResult?.intake_status ?? "not_run" }}</dd>
+            <dt>action blocker</dt>
+            <dd>{{ consumerDeliveryResultIntakeBlockedReason || "none_local_mock_only" }}</dd>
+            <dt>receipt</dt>
+            <dd>{{ consumerDeliveryResultIntakeSummary }}</dd>
+            <dt>remote endpoint</dt>
+            <dd><code>{{ consumerDeliveryResultIntakeResult?.remote_endpoint ?? "/api/o6/archive/field-evidence" }}</code></dd>
+            <dt>O6 schema/source</dt>
+            <dd>{{ consumerDeliveryResultIntakeResult?.o6_schema ?? "not_loaded" }} / {{ consumerDeliveryResultIntakeResult?.o6_source ?? "not_loaded" }}</dd>
+            <dt>delivery evidence</dt>
+            <dd>{{ consumerDeliveryResultIntakeResult?.delivery_result_evidence.status ?? consumerDeliveryResultEvidence?.status ?? "blocked_not_proven" }}</dd>
+            <dt>evidence ref</dt>
+            <dd>{{ consumerDeliveryResultIntakeResult?.evidence_ref ?? consumerDeliveryResultDefaults().evidenceRef }}</dd>
+            <dt>proof scope</dt>
+            <dd>{{ consumerDeliveryResultIntakeResult?.proof_scope ?? "software_proof_o7_o6_consumer_delivery_result_intake_only" }}</dd>
+          </dl>
+          <h4>Delivery result intake false fields</h4>
+          <ul class="dense">
+            <li v-for="line in consumerDeliveryResultIntakeFalseFields()" :key="line">{{ line }}</li>
+          </ul>
+          <h4>Delivery result intake not proven</h4>
+          <ul class="dense">
+            <li v-for="item in consumerDeliveryResultIntakeResult?.not_proven ?? ['real_delivery_result_trace','real_live_nav2_route_execution_trace','robot_control_not_executed']" :key="item">{{ item }}</li>
+          </ul>
           <h4>Route execution result delivery readiness</h4>
           <div class="notice" role="note">
             route execution result / delivery / operator confirmation readiness 只读摘要 · readiness only · safe_to_control=false ·
@@ -5640,6 +8156,150 @@ async function loadPreview(kind: O7FixturePreviewKind): Promise<void> {
           <ul class="dense">
             <li v-for="line in consumerSameTaskFieldMaterialPacketFalseFields()" :key="line">{{ line }}</li>
           </ul>
+          <h4>Same task replay packet readback</h4>
+          <div class="notice" role="note">
+            same_task_replay_packet_readback 只读摘要 · 05:02 same-task packet identity + 28/28/28 counts + basename refs only ·
+            packet ready 不等于 route execution success、delivery success、HIL pass 或控制准入 · safe_to_control=false ·
+            delivery_success=false · primary_actions_enabled=false · robot_control_executed=false
+          </div>
+          <dl class="kv compact-kv">
+            <dt>schema</dt>
+            <dd>{{ consumerSameTaskReplayPacketReadback?.schema ?? "not_loaded" }}</dd>
+            <dt>status</dt>
+            <dd>{{ consumerSameTaskReplayPacketReadback?.status ?? "blocked_not_proven" }}</dd>
+            <dt>task_id</dt>
+            <dd>{{ consumerSameTaskReplayPacketReadback?.task_id ?? "not_loaded" }}</dd>
+            <dt>proof_scope</dt>
+            <dd>{{ consumerSameTaskReplayPacketReadback?.proof_scope ?? "not_loaded" }}</dd>
+            <dt>source_origin</dt>
+            <dd>{{ consumerSameTaskReplayPacketReadback?.source_origin ?? "not_loaded" }}</dd>
+          </dl>
+          <h5>Replay packet summary</h5>
+          <ul class="dense">
+            <li>{{ consumerSameTaskReplayPacketReadbackSummary() }}</li>
+            <li v-for="line in consumerSameTaskReplayPacketReadbackSources()" :key="line">{{ line }}</li>
+          </ul>
+          <h5>Replay packet counts and refs</h5>
+          <ul class="dense">
+            <li v-for="line in consumerSameTaskReplayPacketReadbackCountsAndRefs()" :key="line">{{ line }}</li>
+          </ul>
+          <h5>Replay packet blockers</h5>
+          <ul class="dense">
+            <li v-for="reason in consumerSameTaskReplayPacketReadback?.blocked_reasons ?? ['blocked_not_proven']" :key="reason">{{ reason }}</li>
+          </ul>
+          <h5>Replay packet next evidence</h5>
+          <ul class="dense">
+            <li v-for="item in consumerSameTaskReplayPacketReadback?.next_required_evidence ?? ['blocked_not_proven']" :key="item">{{ item }}</li>
+          </ul>
+          <h5>Replay packet false fields</h5>
+          <ul class="dense">
+            <li v-for="line in consumerSameTaskReplayPacketReadbackFalseFields()" :key="line">{{ line }}</li>
+          </ul>
+          <h4>Bounded route gate intake</h4>
+          <div class="notice" role="note">
+            bounded_route_execution_gate_material 只写入 O6/O7 local/mock 安全摘要 · fixed 28-pose packet/task/route intent ·
+            execution_plan_status=blocked_pending_live_safety_gate · software_proof_o6_o7_bounded_route_gate_material_intake_only ·
+            safe_to_control=false · delivery_success=false · route_execution_success=false · hil_pass=false · robot_control_executed=false
+          </div>
+          <div class="field-row">
+            <button
+              type="button"
+              class="secondary"
+              :disabled="!consumerBoundedRouteGateIntakeEnabled"
+              @click="intakeConsumerBoundedRouteGate"
+            >
+              {{ consumerBoundedRouteGateIntakeLoading ? "正在接收 bounded route gate" : "接收 bounded route gate" }}
+            </button>
+          </div>
+          <div v-if="consumerBoundedRouteGateIntakeError" class="notice" role="alert">
+            Bounded route gate intake blocked: {{ consumerBoundedRouteGateIntakeError }}. not_proven=true.
+          </div>
+          <dl class="kv compact-kv">
+            <dt>schema</dt>
+            <dd>{{ consumerBoundedRouteGateIntakeResult?.schema ?? "trashbot.pc_tools_workstation.o7_bounded_route_gate_intake_result.v1" }}</dd>
+            <dt>intake_status</dt>
+            <dd>{{ consumerBoundedRouteGateIntakeResult?.intake_status ?? "not_run" }}</dd>
+            <dt>blocked_reason</dt>
+            <dd>{{ consumerBoundedRouteGateIntakeBlockedReason || "none_local_mock_only" }}</dd>
+            <dt>summary</dt>
+            <dd>{{ consumerBoundedRouteGateIntakeSummary }}</dd>
+            <dt>remote_endpoint</dt>
+            <dd><code>{{ consumerBoundedRouteGateIntakeResult?.remote_endpoint ?? "/api/o6/archive/field-evidence" }}</code></dd>
+            <dt>proof_scope</dt>
+            <dd>{{ consumerBoundedRouteGateIntakeResult?.proof_scope ?? "software_proof_o6_o7_bounded_route_gate_material_intake_only" }}</dd>
+            <dt>packet</dt>
+            <dd>{{ consumerBoundedRouteGateIntakeResult?.packet_id ?? boundedRouteGateFixed.packet_id }}</dd>
+          </dl>
+          <h5>Bounded route gate material</h5>
+          <ul class="dense">
+            <li v-for="line in consumerBoundedRouteGateMaterialLines()" :key="line">{{ line }}</li>
+          </ul>
+          <h5>Bounded route gate false fields</h5>
+          <ul class="dense">
+            <li v-for="line in consumerBoundedRouteGateFalseFields()" :key="line">{{ line }}</li>
+          </ul>
+          <h5>Bounded route gate blockers</h5>
+          <ul class="dense">
+            <li v-for="reason in consumerBoundedRouteGateIntakeResult?.blocked_reasons ?? consumerBoundedRouteGateMaterial?.blocked_reasons ?? ['bounded_route_gate_intake_not_run']" :key="reason">{{ reason }}</li>
+          </ul>
+          <h5>Bounded route gate next evidence</h5>
+          <ul class="dense">
+            <li v-for="item in consumerBoundedRouteGateIntakeResult?.bounded_route_execution_gate_material.next_required_evidence ?? consumerBoundedRouteGateMaterial?.next_required_evidence ?? ['current_live_safety_gate_acceptance_for_same_packet']" :key="item">{{ item }}</li>
+          </ul>
+          <h4>Bounded route terminal result intake</h4>
+          <div class="notice" role="note">
+            bounded_route_terminal_result_material 只写入 O6/O7 local/mock terminal-result 安全摘要 · fixed packet/task/route intent ·
+            result_code=mock_route_execution_completed_not_live_delivery · terminal_result_state=terminal_result_recorded ·
+            reconciliation_state=terminal_result_recorded · software_proof_o6_o7_bounded_route_terminal_result_intake_only ·
+            safe_to_control=false · delivery_success=false · route_execution_success=false · hil_pass=false · robot_control_executed=false
+          </div>
+          <div class="field-row">
+            <button
+              type="button"
+              class="secondary"
+              :disabled="!consumerBoundedRouteTerminalResultIntakeEnabled"
+              @click="intakeConsumerBoundedRouteTerminalResult"
+            >
+              {{ consumerBoundedRouteTerminalResultIntakeLoading ? "正在接收 terminal result" : "接收 terminal result" }}
+            </button>
+          </div>
+          <div v-if="consumerBoundedRouteTerminalResultIntakeError" class="notice" role="alert">
+            Bounded route terminal result intake blocked: {{ consumerBoundedRouteTerminalResultIntakeError }}. not_proven=true.
+          </div>
+          <dl class="kv compact-kv">
+            <dt>schema</dt>
+            <dd>{{ consumerBoundedRouteTerminalResultIntakeResult?.schema ?? "trashbot.pc_tools_workstation.o7_bounded_route_terminal_result_intake_result.v1" }}</dd>
+            <dt>intake_status</dt>
+            <dd>{{ consumerBoundedRouteTerminalResultIntakeResult?.intake_status ?? "not_run" }}</dd>
+            <dt>blocked_reason</dt>
+            <dd>{{ consumerBoundedRouteTerminalResultIntakeBlockedReason || "none_local_mock_only" }}</dd>
+            <dt>summary</dt>
+            <dd>{{ consumerBoundedRouteTerminalResultIntakeSummary }}</dd>
+            <dt>remote_endpoint</dt>
+            <dd><code>{{ consumerBoundedRouteTerminalResultIntakeResult?.remote_endpoint ?? "/api/o6/archive/field-evidence" }}</code></dd>
+            <dt>api_path</dt>
+            <dd><code>/api/o7/consumer-read/tasks/&lt;task_id&gt;/bounded-route-terminal-result/intake</code></dd>
+            <dt>proof_scope</dt>
+            <dd>{{ consumerBoundedRouteTerminalResultIntakeResult?.proof_scope ?? "software_proof_o6_o7_bounded_route_terminal_result_intake_only" }}</dd>
+            <dt>result_code</dt>
+            <dd>{{ consumerBoundedRouteTerminalResultIntakeResult?.result_code ?? boundedRouteTerminalResultFixed.result_code }}</dd>
+          </dl>
+          <h5>Bounded route terminal result material</h5>
+          <ul class="dense">
+            <li v-for="line in consumerBoundedRouteTerminalResultMaterialLines()" :key="line">{{ line }}</li>
+          </ul>
+          <h5>Bounded route terminal result false fields</h5>
+          <ul class="dense">
+            <li v-for="line in consumerBoundedRouteTerminalResultFalseFields()" :key="line">{{ line }}</li>
+          </ul>
+          <h5>Bounded route terminal result blockers</h5>
+          <ul class="dense">
+            <li v-for="reason in consumerBoundedRouteTerminalResultIntakeResult?.blocked_reasons ?? consumerBoundedRouteTerminalResultMaterial?.blocked_reasons ?? ['bounded_route_terminal_result_intake_not_run']" :key="reason">{{ reason }}</li>
+          </ul>
+          <h5>Bounded route terminal result next evidence</h5>
+          <ul class="dense">
+            <li v-for="item in consumerBoundedRouteTerminalResultIntakeResult?.bounded_route_terminal_result_material.next_required_evidence ?? consumerBoundedRouteTerminalResultMaterial?.next_required_evidence ?? ['current_live_route_execution_result_for_same_packet']" :key="item">{{ item }}</li>
+          </ul>
           <h4>Current field evidence material</h4>
           <div class="notice" role="note">
             current_field_evidence_material 只读摘要 · current field status + present/missing materials + camera/radar/map/nav2/manual gate booleans ·
@@ -5682,6 +8342,49 @@ async function loadPreview(kind: O7FixturePreviewKind): Promise<void> {
           <h5>Current field false fields</h5>
           <ul class="dense">
             <li v-for="line in consumerCurrentFieldEvidenceMaterialFalseFields()" :key="line">{{ line }}</li>
+          </ul>
+          <h4>PC live Nav2 execution material</h4>
+          <div class="notice" role="note">
+            pc_live_nav2_execution_material 只读摘要 · source sprint / goal accepted / UART/base command/IMU facts only ·
+            wheel L/R 仍固定 false，不能把 goal accepted、base UART 或 IMU 姿态变化解释成 route execution success、delivery success 或控制准入 ·
+            safe_to_control=false · delivery_success=false · primary_actions_enabled=false · robot_control_executed=false
+          </div>
+          <dl class="kv compact-kv">
+            <dt>schema</dt>
+            <dd>{{ consumerPcLiveNav2ExecutionMaterial?.schema ?? "not_loaded" }}</dd>
+            <dt>status</dt>
+            <dd>{{ consumerPcLiveNav2ExecutionMaterial?.status ?? "blocked_not_proven" }}</dd>
+            <dt>task_id</dt>
+            <dd>{{ consumerPcLiveNav2ExecutionMaterial?.task_id ?? "not_loaded" }}</dd>
+            <dt>proof_scope</dt>
+            <dd>{{ consumerPcLiveNav2ExecutionMaterial?.proof_scope ?? "not_loaded" }}</dd>
+            <dt>source_origin</dt>
+            <dd>{{ consumerPcLiveNav2ExecutionMaterial?.source_origin ?? "not_loaded" }}</dd>
+          </dl>
+          <h5>PC live Nav2 summary</h5>
+          <ul class="dense">
+            <li>{{ consumerPcLiveNav2ExecutionMaterialSummary() }}</li>
+            <li v-for="line in consumerPcLiveNav2ExecutionMaterialSources()" :key="line">{{ line }}</li>
+          </ul>
+          <h5>Goal and UART facts</h5>
+          <ul class="dense">
+            <li v-for="line in consumerPcLiveNav2ExecutionMaterialFacts()" :key="line">{{ line }}</li>
+          </ul>
+          <h5>IMU and wheel flags</h5>
+          <ul class="dense">
+            <li v-for="line in consumerPcLiveNav2ExecutionMaterialImuAndWheelFlags()" :key="line">{{ line }}</li>
+          </ul>
+          <h5>PC live Nav2 blockers</h5>
+          <ul class="dense">
+            <li v-for="reason in consumerPcLiveNav2ExecutionMaterial?.blocked_reasons ?? ['blocked_not_proven']" :key="reason">{{ reason }}</li>
+          </ul>
+          <h5>PC live Nav2 next evidence</h5>
+          <ul class="dense">
+            <li v-for="item in consumerPcLiveNav2ExecutionMaterial?.next_required_evidence ?? ['blocked_not_proven']" :key="item">{{ item }}</li>
+          </ul>
+          <h5>PC live Nav2 false fields</h5>
+          <ul class="dense">
+            <li v-for="line in consumerPcLiveNav2ExecutionMaterialFalseFields()" :key="line">{{ line }}</li>
           </ul>
           <h4>Localization path material readback</h4>
           <div class="notice" role="note">
@@ -6064,6 +8767,902 @@ async function loadPreview(kind: O7FixturePreviewKind): Promise<void> {
           <h3>Detail not proven</h3>
           <ul class="dense">
             <li v-for="item in consumerDetailNotProven()" :key="item">{{ item }}</li>
+          </ul>
+
+          <h3>Consumer-detail mission evidence bundle export</h3>
+          <div class="notice" role="note">
+            GET /api/o7/consumer-read/tasks/&lt;task_id&gt;/mission-evidence/export?format=json · PC adapter 固定读取 O6 selected-task detail ·
+            mission evidence bundle receipt only · safe_to_control=false · delivery_success=false · route_execution_success=false · hil_pass=false
+          </div>
+          <div class="route-inputs compact-options">
+            <button
+              class="secondary"
+              type="button"
+              :disabled="!consumerMissionEvidenceBundleExportEnabled"
+              @click="exportConsumerMissionEvidenceBundle"
+            >
+              {{ consumerMissionEvidenceBundleExportLoading ? "正在导出 local/mock bundle" : "导出 local/mock mission evidence bundle" }}
+            </button>
+          </div>
+          <div v-if="consumerMissionEvidenceBundleExportError" class="notice" role="alert">
+            Local/mock mission evidence bundle export blocked: {{ consumerMissionEvidenceBundleExportError }}. not_proven=true.
+          </div>
+          <dl class="kv compact-kv">
+            <dt>export schema</dt>
+            <dd>{{ consumerMissionEvidenceBundleExportResult?.schema ?? "trashbot.pc_tools_workstation.o7_mission_evidence_bundle_export_result.v1" }}</dd>
+            <dt>export status</dt>
+            <dd>{{ consumerMissionEvidenceBundleExportResult?.export_status ?? "not_run" }}</dd>
+            <dt>action blocker</dt>
+            <dd>{{ consumerMissionEvidenceBundleExportBlockedReason || "none_local_mock_only" }}</dd>
+            <dt>receipt</dt>
+            <dd>{{ consumerMissionEvidenceBundleExportSummary }}</dd>
+            <dt>remote endpoint</dt>
+            <dd><code>{{ consumerMissionEvidenceBundleExportResult?.remote_endpoint ?? "/api/o6/consumer/tasks/<task_id>?view=default" }}</code></dd>
+            <dt>proof scope</dt>
+            <dd>{{ consumerMissionEvidenceBundleExportResult?.proof_scope ?? "software_proof_o7_o6_mission_evidence_bundle_export_only" }}</dd>
+            <dt>bundle ready</dt>
+            <dd>{{ consumerMissionEvidenceBundleExportResult?.bundle_ready ?? false }}</dd>
+            <dt>identity</dt>
+            <dd>
+              packet={{ consumerMissionEvidenceBundleExportResult?.identity.packet_id ?? "not_loaded" }} ·
+              route_intent={{ consumerMissionEvidenceBundleExportResult?.identity.route_intent_id ?? "not_loaded" }} ·
+              same_task={{ consumerMissionEvidenceBundleExportResult?.identity.same_task_id_verified ?? false }}
+            </dd>
+          </dl>
+          <h4>Mission evidence bundle sections</h4>
+          <ul class="dense">
+            <li v-for="line in consumerMissionEvidenceBundleExportSections()" :key="line">{{ line }}</li>
+          </ul>
+          <h4>Mission evidence bundle false fields</h4>
+          <ul class="dense">
+            <li v-for="line in consumerMissionEvidenceBundleExportFalseFields()" :key="line">{{ line }}</li>
+          </ul>
+          <h4>Mission evidence bundle not proven</h4>
+          <ul class="dense">
+            <li v-for="item in consumerMissionEvidenceBundleExportResult?.not_proven ?? ['production_cloud','route_execution_success','delivery_success','hil_pass','safe_to_control','real_dataset_export']" :key="item">{{ item }}</li>
+          </ul>
+
+          <h3>Consumer-detail phone/browser proof intake</h3>
+          <div class="notice" role="note">
+            POST /api/o7/consumer-read/tasks/&lt;task_id&gt;/phone-browser-proof/intake · PC adapter 固定转发 O6 /api/o6/archive/field-evidence ·
+            phone_browser_terminal_material_written/readback · same_task_id_consumed ·
+            proof_boundary=software_proof_o6_o7_phone_browser_terminal_material_intake_only ·
+            safe_to_control=false · delivery_success=false · route_execution_success=false · hil_pass=false
+          </div>
+          <div class="route-inputs">
+            <label>
+              <span>safe_evidence_ref</span>
+              <input
+                v-model="consumerPhoneBrowserSafeEvidenceRef"
+                aria-label="O7 consumer phone browser safe_evidence_ref"
+                placeholder="defaults from detail or phone-browser-terminal.json"
+              >
+            </label>
+            <label>
+              <span>terminal_result_type</span>
+              <select
+                v-model="consumerPhoneBrowserTerminalResultType"
+                aria-label="O7 consumer phone browser terminal_result_type"
+              >
+                <option value="browser_terminal_claim">browser_terminal_claim</option>
+                <option value="operator_terminal_claim">operator_terminal_claim</option>
+                <option value="diagnostics_only">diagnostics_only</option>
+                <option value="terminal_result_summary">terminal_result_summary</option>
+              </select>
+            </label>
+            <label>
+              <span>captured_at_utc</span>
+              <input
+                v-model="consumerPhoneBrowserCapturedAtUtc"
+                aria-label="O7 consumer phone browser captured_at_utc"
+                placeholder="defaults from selected task time"
+              >
+            </label>
+          </div>
+          <div class="route-inputs compact-options">
+            <label
+              v-for="materialName in phoneBrowserTerminalMaterialOptions"
+              :key="materialName"
+              class="check-row"
+            >
+              <input
+                v-model="consumerPhoneBrowserAcceptedMaterials"
+                type="checkbox"
+                :value="materialName"
+                :aria-label="`O7 consumer phone browser accepted ${materialName}`"
+              >
+              <span>{{ materialName }}</span>
+            </label>
+            <button
+              class="secondary"
+              type="button"
+              :disabled="!consumerPhoneBrowserProofIntakeEnabled"
+              @click="intakeConsumerPhoneBrowserProof"
+            >
+              {{ consumerPhoneBrowserProofIntakeLoading ? "正在接收 phone/browser 材料" : "接收 phone/browser 材料" }}
+            </button>
+          </div>
+          <div v-if="consumerPhoneBrowserProofIntakeError" class="notice" role="alert">
+            Phone/browser proof intake blocked: {{ consumerPhoneBrowserProofIntakeError }}. not_proven=true.
+          </div>
+          <dl class="kv compact-kv">
+            <dt>intake schema</dt>
+            <dd>{{ consumerPhoneBrowserProofIntakeResult?.schema ?? "trashbot.pc_tools_workstation.o7_phone_browser_proof_intake_result.v1" }}</dd>
+            <dt>intake status</dt>
+            <dd>{{ consumerPhoneBrowserProofIntakeResult?.intake_status ?? "not_run" }}</dd>
+            <dt>action blocker</dt>
+            <dd>{{ consumerPhoneBrowserProofIntakeBlockedReason || "none_local_mock_only" }}</dd>
+            <dt>receipt</dt>
+            <dd>{{ consumerPhoneBrowserProofIntakeSummary }}</dd>
+            <dt>remote endpoint</dt>
+            <dd><code>{{ consumerPhoneBrowserProofIntakeResult?.remote_endpoint ?? "/api/o6/archive/field-evidence" }}</code></dd>
+            <dt>adapter endpoint</dt>
+            <dd><code>/api/o7/consumer-read/tasks/&lt;task_id&gt;/phone-browser-proof/intake</code></dd>
+            <dt>proof scope</dt>
+            <dd>{{ consumerPhoneBrowserProofIntakeResult?.proof_scope ?? "software_proof_o6_o7_phone_browser_terminal_material_intake_only" }}</dd>
+            <dt>safe_evidence_ref</dt>
+            <dd>{{ consumerPhoneBrowserProofIntakeResult?.safe_evidence_ref ?? consumerPhoneBrowserProofDefaults().safeEvidenceRef }}</dd>
+            <dt>terminal_result_type</dt>
+            <dd>{{ consumerPhoneBrowserProofIntakeResult?.terminal_result_type ?? consumerPhoneBrowserTerminalResultType }}</dd>
+            <dt>accepted/missing/rejected</dt>
+            <dd>
+              accepted={{ consumerPhoneBrowserProofIntakeResult?.accepted_materials.join(",") || consumerPhoneBrowserAcceptedMaterials.join(",") || "none" }} ·
+              missing={{ consumerPhoneBrowserProofIntakeResult?.missing_materials.join(",") || "not_run" }} ·
+              rejected={{ consumerPhoneBrowserProofIntakeResult?.rejected_materials.join(",") || "none" }}
+            </dd>
+            <dt>written/readback/same_task</dt>
+            <dd>
+              phone_browser_terminal_material_written={{ consumerPhoneBrowserProofIntakeResult?.phone_browser_terminal_material_written ?? false }} ·
+              phone_browser_terminal_material_readback={{ consumerPhoneBrowserProofIntakeResult?.phone_browser_terminal_material_readback ?? false }} ·
+              same_task_id_consumed={{ consumerPhoneBrowserProofIntakeResult?.same_task_id_consumed ?? false }}
+            </dd>
+          </dl>
+          <h4>Phone/browser terminal material</h4>
+          <ul class="dense">
+            <li v-for="line in consumerPhoneBrowserMaterialLines()" :key="line">{{ line }}</li>
+          </ul>
+          <h4>Phone/browser intake false fields</h4>
+          <ul class="dense">
+            <li v-for="line in consumerPhoneBrowserProofIntakeFalseFields()" :key="line">{{ line }}</li>
+          </ul>
+          <h4>Phone/browser intake not proven</h4>
+          <ul class="dense">
+            <li v-for="item in consumerPhoneBrowserProofIntakeResult?.not_proven ?? ['route_execution_success','delivery_success','hil_pass','safe_to_control','robot_control_executed','connects_cloud_production']" :key="item">{{ item }}</li>
+          </ul>
+
+          <h3>Consumer-detail local/mock inference request</h3>
+          <div class="notice" role="note">
+            POST /api/o7/consumer-read/tasks/&lt;task_id&gt;/inference/request · PC adapter 固定转发 O6 /api/o6/archive/inference ·
+            proof_status=not_proven · real_model_inference_success=false · real_floor_recognition_proven=false · real_elevator_door_state_proven=false
+          </div>
+          <div class="route-inputs">
+            <label>
+              <span>inference_id</span>
+              <input
+                v-model="consumerInferenceId"
+                aria-label="O7 consumer inference_id"
+                placeholder="optional local/mock id"
+              >
+            </label>
+            <label>
+              <span>model_family</span>
+              <input
+                v-model="consumerInferenceModelFamily"
+                aria-label="O7 consumer inference model_family"
+                placeholder="elevator_scene_stub"
+              >
+            </label>
+            <label>
+              <span>input_id</span>
+              <input
+                v-model="consumerInferenceInputId"
+                aria-label="O7 consumer inference input_id"
+                placeholder="defaults from first trajectory frame"
+              >
+            </label>
+            <label>
+              <span>input_type</span>
+              <select
+                v-model="consumerInferenceInputType"
+                aria-label="O7 consumer inference input_type"
+              >
+                <option value="image_ref">image_ref</option>
+                <option value="frame_ref">frame_ref</option>
+                <option value="snapshot_ref">snapshot_ref</option>
+                <option value="metadata_only">metadata_only</option>
+              </select>
+            </label>
+            <label>
+              <span>evidence_ref</span>
+              <input
+                v-model="consumerInferenceEvidenceRef"
+                aria-label="O7 consumer inference evidence_ref"
+                placeholder="defaults from detail frame/evidence"
+              >
+            </label>
+            <label>
+              <span>captured_at_ms</span>
+              <input
+                v-model="consumerInferenceCapturedAtMs"
+                aria-label="O7 consumer inference captured_at_ms"
+                inputmode="numeric"
+                placeholder="defaults from first trajectory frame"
+              >
+            </label>
+          </div>
+          <div class="route-inputs compact-options">
+            <label class="check-row">
+              <input
+                v-model="consumerInferenceRequestedOutputs"
+                type="checkbox"
+                value="elevator_door_state"
+                aria-label="O7 consumer inference output elevator_door_state"
+              >
+              <span>elevator_door_state</span>
+            </label>
+            <label class="check-row">
+              <input
+                v-model="consumerInferenceRequestedOutputs"
+                type="checkbox"
+                value="floor_recognition"
+                aria-label="O7 consumer inference output floor_recognition"
+              >
+              <span>floor_recognition</span>
+            </label>
+            <button
+              class="secondary"
+              type="button"
+              :disabled="!consumerInferenceRequestEnabled"
+              @click="requestConsumerInference"
+            >
+              {{ consumerInferenceRequestLoading ? "正在请求 local/mock 推理" : "请求 local/mock 推理" }}
+            </button>
+          </div>
+          <div v-if="consumerInferenceRequestError" class="notice" role="alert">
+            Local/mock inference request blocked: {{ consumerInferenceRequestError }}. not_proven=true.
+          </div>
+          <dl class="kv compact-kv">
+            <dt>request schema</dt>
+            <dd>{{ consumerInferenceRequestResult?.schema ?? "trashbot.pc_tools_workstation.o7_consumer_inference_request_result.v1" }}</dd>
+            <dt>request status</dt>
+            <dd>{{ consumerInferenceRequestResult?.request_status ?? "not_run" }}</dd>
+            <dt>action blocker</dt>
+            <dd>{{ consumerInferenceActionBlockedReason || "none_local_mock_only" }}</dd>
+            <dt>receipt</dt>
+            <dd>{{ consumerInferenceRequestSummary }}</dd>
+            <dt>remote endpoint</dt>
+            <dd><code>{{ consumerInferenceRequestResult?.remote_endpoint ?? "/api/o6/archive/inference" }}</code></dd>
+            <dt>O6 schema/source</dt>
+            <dd>{{ consumerInferenceRequestResult?.o6_schema ?? "not_loaded" }} / {{ consumerInferenceRequestResult?.o6_source ?? "not_loaded" }}</dd>
+            <dt>requested outputs</dt>
+            <dd>{{ consumerInferenceRequestResult?.requested_outputs.join(",") || consumerInferenceRequestedOutputs.join(",") || "none" }}</dd>
+            <dt>input ids</dt>
+            <dd>{{ consumerInferenceRequestResult?.input_ids.join(",") || consumerInferenceDefaultInput().inputId }}</dd>
+            <dt>result event types</dt>
+            <dd>{{ consumerInferenceRequestResult?.result_summary.event_types.join(",") || "not_loaded" }}</dd>
+          </dl>
+          <h4>Inference request false fields</h4>
+          <ul class="dense">
+            <li v-for="line in consumerInferenceFalseFields()" :key="line">{{ line }}</li>
+          </ul>
+          <h4>Inference request not proven</h4>
+          <ul class="dense">
+            <li v-for="item in consumerInferenceRequestResult?.not_proven ?? ['real_model_inference','real_floor_recognition','real_elevator_door_state']" :key="item">{{ item }}</li>
+          </ul>
+
+          <h3>Consumer-detail local/mock mission event append</h3>
+          <div class="notice" role="note">
+            POST /api/o7/consumer-read/tasks/&lt;task_id&gt;/events/append · PC adapter 固定转发 O6 /api/o6/archive/events ·
+            proof_status=not_proven · route_execution_success=false · hil_pass=false
+          </div>
+          <div class="route-inputs">
+            <label>
+              <span>event_id</span>
+              <input
+                v-model="consumerMissionEventId"
+                aria-label="O7 consumer mission event_id"
+                placeholder="optional local/mock id"
+              >
+            </label>
+            <label>
+              <span>event_type</span>
+              <select
+                v-model="consumerMissionEventType"
+                aria-label="O7 consumer mission event_type"
+              >
+                <option value="operator.note">operator.note</option>
+                <option value="task.failure">task.failure</option>
+                <option value="task.recovery">task.recovery</option>
+                <option value="route.frame">route.frame</option>
+                <option value="route.pose">route.pose</option>
+                <option value="elevator.door_state">elevator.door_state</option>
+                <option value="elevator.floor_evidence">elevator.floor_evidence</option>
+                <option value="perception.detected_object">perception.detected_object</option>
+              </select>
+            </label>
+            <label>
+              <span>evidence_ref</span>
+              <input
+                v-model="consumerMissionEventEvidenceRef"
+                aria-label="O7 consumer mission event evidence_ref"
+                placeholder="defaults from detail event/evidence"
+              >
+            </label>
+            <label>
+              <span>occurred_at_ms</span>
+              <input
+                v-model="consumerMissionEventOccurredAtMs"
+                aria-label="O7 consumer mission event occurred_at_ms"
+                inputmode="numeric"
+                placeholder="defaults from detail event/frame"
+              >
+            </label>
+            <label>
+              <span>severity</span>
+              <select
+                v-model="consumerMissionEventSeverity"
+                aria-label="O7 consumer mission event severity"
+              >
+                <option value="info">info</option>
+                <option value="warning">warning</option>
+                <option value="error">error</option>
+              </select>
+            </label>
+            <label>
+              <span>summary</span>
+              <input
+                v-model="consumerMissionEventSummary"
+                aria-label="O7 consumer mission event summary"
+                placeholder="selected task local/mock mission event"
+              >
+            </label>
+          </div>
+          <div class="route-inputs compact-options">
+            <button
+              class="secondary"
+              type="button"
+              :disabled="!consumerMissionEventAppendEnabled"
+              @click="appendConsumerMissionEvent"
+            >
+              {{ consumerMissionEventAppendLoading ? "正在追加 local/mock 事件" : "追加 local/mock 事件" }}
+            </button>
+          </div>
+          <div v-if="consumerMissionEventAppendError" class="notice" role="alert">
+            Local/mock mission event append blocked: {{ consumerMissionEventAppendError }}. not_proven=true.
+          </div>
+          <dl class="kv compact-kv">
+            <dt>append schema</dt>
+            <dd>{{ consumerMissionEventAppendResult?.schema ?? "trashbot.pc_tools_workstation.o7_consumer_mission_event_append_result.v1" }}</dd>
+            <dt>append status</dt>
+            <dd>{{ consumerMissionEventAppendResult?.append_status ?? "not_run" }}</dd>
+            <dt>action blocker</dt>
+            <dd>{{ consumerMissionEventAppendBlockedReason || "none_local_mock_only" }}</dd>
+            <dt>receipt</dt>
+            <dd>{{ consumerMissionEventAppendSummary }}</dd>
+            <dt>remote endpoint</dt>
+            <dd><code>{{ consumerMissionEventAppendResult?.remote_endpoint ?? "/api/o6/archive/events" }}</code></dd>
+            <dt>O6 schema/source</dt>
+            <dd>{{ consumerMissionEventAppendResult?.o6_schema ?? "not_loaded" }} / {{ consumerMissionEventAppendResult?.o6_source ?? "not_loaded" }}</dd>
+            <dt>event identity</dt>
+            <dd>{{ consumerMissionEventAppendResult?.event_id ?? consumerMissionEventDefaults().eventId }} / {{ consumerMissionEventAppendResult?.event_type ?? consumerMissionEventType }}</dd>
+            <dt>archive event written</dt>
+            <dd>{{ consumerMissionEventAppendResult?.archive_event_written ?? false }}</dd>
+            <dt>write counts</dt>
+            <dd>created={{ consumerMissionEventAppendResult?.created_count ?? 0 }} · updated={{ consumerMissionEventAppendResult?.updated_count ?? 0 }}</dd>
+            <dt>evidence refs</dt>
+            <dd>{{ consumerMissionEventAppendResult?.evidence_refs_consumed.join(",") || consumerMissionEventDefaults().evidenceRef || "not_loaded" }}</dd>
+          </dl>
+          <h4>Mission event append false fields</h4>
+          <ul class="dense">
+            <li v-for="line in consumerMissionEventFalseFields()" :key="line">{{ line }}</li>
+          </ul>
+          <h4>Mission event append not proven</h4>
+          <ul class="dense">
+            <li v-for="item in consumerMissionEventAppendResult?.not_proven ?? ['real_cloud_db_not_connected','real_oss_not_connected','robot_control_not_executed']" :key="item">{{ item }}</li>
+          </ul>
+
+          <h3>Selected-task operator dropoff action capture</h3>
+          <div class="notice" role="note">
+            POST /api/o7/consumer-read/tasks/&lt;task_id&gt;/operator/dropoff-acceptance/request ·
+            operator.dropoff_acceptance · software_proof_o6_o7_operator_dropoff_action_capture_only ·
+            real_operator_action_proven=false · delivery_success=false · route_execution_success=false ·
+            safe_to_control=false · hil_pass=false · robot_control_executed=false · connects_cloud_production=false
+          </div>
+          <div class="route-inputs">
+            <label>
+              <span>event_id</span>
+              <input
+                v-model="consumerOperatorDropoffEventId"
+                aria-label="O7 operator dropoff event_id"
+                placeholder="optional idempotent dropoff event id"
+              >
+            </label>
+            <label>
+              <span>evidence_ref</span>
+              <input
+                v-model="consumerOperatorDropoffEvidenceRef"
+                aria-label="O7 operator dropoff evidence_ref"
+                placeholder="operator-dropoff-acceptance.json"
+              >
+            </label>
+            <label>
+              <span>occurred_at_ms</span>
+              <input
+                v-model="consumerOperatorDropoffOccurredAtMs"
+                aria-label="O7 operator dropoff occurred_at_ms"
+                inputmode="numeric"
+                placeholder="defaults from selected task"
+              >
+            </label>
+            <label>
+              <span>operator_action_id</span>
+              <input
+                v-model="consumerOperatorDropoffActionId"
+                aria-label="O7 operator dropoff action id"
+                placeholder="optional local/mock action id"
+              >
+            </label>
+            <label>
+              <span>operator_display_name</span>
+              <input
+                v-model="consumerOperatorDropoffDisplayName"
+                aria-label="O7 operator dropoff display name"
+                placeholder="pc-o7-operator"
+              >
+            </label>
+          </div>
+          <label class="single-input">
+            <span>summary</span>
+            <input
+              v-model="consumerOperatorDropoffSummary"
+              aria-label="O7 operator dropoff summary"
+              placeholder="selected task operator dropoff acceptance capture requested"
+            >
+          </label>
+          <div class="route-inputs compact-options">
+            <button
+              class="secondary"
+              type="button"
+              :disabled="!consumerOperatorDropoffActionCaptureEnabled"
+              @click="captureConsumerOperatorDropoffAction"
+            >
+              {{ consumerOperatorDropoffActionCaptureLoading ? "正在记录 operator dropoff capture" : "记录 operator dropoff capture" }}
+            </button>
+          </div>
+          <div v-if="consumerOperatorDropoffActionCaptureError" class="notice" role="alert">
+            Operator dropoff capture blocked: {{ consumerOperatorDropoffActionCaptureError }}. not_proven=true.
+          </div>
+          <dl class="kv compact-kv">
+            <dt>receipt schema</dt>
+            <dd>{{ consumerOperatorDropoffActionCaptureResult?.schema ?? "trashbot.pc_tools_workstation.o7_operator_dropoff_action_capture_result.v1" }}</dd>
+            <dt>capture status</dt>
+            <dd>{{ consumerOperatorDropoffActionCaptureResult?.capture_status ?? "not_run" }}</dd>
+            <dt>action blocker</dt>
+            <dd>{{ consumerOperatorDropoffActionCaptureBlockedReason || "none_local_mock_only" }}</dd>
+            <dt>receipt</dt>
+            <dd>{{ consumerOperatorDropoffActionCaptureSummary }}</dd>
+            <dt>remote endpoint</dt>
+            <dd><code>{{ consumerOperatorDropoffActionCaptureResult?.remote_endpoint ?? "/api/o6/archive/events" }}</code></dd>
+            <dt>event identity</dt>
+            <dd>{{ consumerOperatorDropoffActionCaptureResult?.event_id ?? consumerOperatorDropoffDefaults().eventId }} / {{ consumerOperatorDropoffActionCaptureResult?.event_type ?? "operator.dropoff_acceptance" }}</dd>
+            <dt>write receipt</dt>
+            <dd>
+              archive_event_written={{ consumerOperatorDropoffActionCaptureResult?.archive_event_written ?? false }} ·
+              write_status={{ consumerOperatorDropoffActionCaptureResult?.write_status ?? "not_run" }}
+            </dd>
+            <dt>operator action</dt>
+            <dd>{{ consumerOperatorDropoffActionCaptureResult?.operator_action_id ?? consumerOperatorDropoffDefaults().operatorActionId }} / {{ consumerOperatorDropoffActionCaptureResult?.operator_display_name ?? consumerOperatorDropoffDefaults().operatorDisplayName }}</dd>
+            <dt>proof boundary</dt>
+            <dd>{{ consumerOperatorDropoffActionCaptureResult?.proof_boundary ?? "software_proof_o6_o7_operator_dropoff_action_capture_only" }}</dd>
+            <dt>O6 receipt</dt>
+            <dd>{{ consumerOperatorDropoffActionCaptureResult?.o6_schema ?? "not_loaded" }} / {{ consumerOperatorDropoffActionCaptureResult?.o6_source ?? "not_loaded" }}</dd>
+            <dt>evidence refs</dt>
+            <dd>{{ consumerOperatorDropoffActionCaptureResult?.evidence_refs_consumed.join(",") || consumerOperatorDropoffDefaults().evidenceRef }}</dd>
+          </dl>
+          <h4>Operator dropoff capture false fields</h4>
+          <ul class="dense">
+            <li v-for="line in consumerOperatorDropoffActionCaptureFalseFields()" :key="line">{{ line }}</li>
+          </ul>
+          <h4>Operator dropoff capture not proven</h4>
+          <ul class="dense">
+            <li v-for="item in consumerOperatorDropoffActionCaptureResult?.not_proven ?? ['real_operator_action_not_proven','delivery_success_false','route_execution_success_false','safe_to_control_false','hil_pass_false','robot_control_not_executed']" :key="item">{{ item }}</li>
+          </ul>
+
+          <h3>O7 voice runtime preflight</h3>
+          <div class="notice" role="note">
+            GET /api/o7/voice-runtime/preflight · voice runtime preflight ·
+            software_proof_o7_voice_runtime_preflight_only · real_voice_api_connected=false ·
+            real_asr_tts_runtime_connected=false · tts_send_enabled=false · speaker_dispatch_enabled=false ·
+            safe_to_control=false · delivery_success=false · robot_control_executed=false · connects_cloud_production=false
+          </div>
+          <div class="route-inputs">
+            <label>
+              <span>mode</span>
+              <select v-model="voiceRuntimePreflightMode" aria-label="O7 voice runtime preflight mode">
+                <option value="offline_stub">offline_stub</option>
+                <option value="local_stub">local_stub</option>
+                <option value="disabled_local">disabled_local</option>
+              </select>
+            </label>
+            <label>
+              <span>configJson</span>
+              <input
+                v-model="voiceRuntimePreflightConfigJson"
+                aria-label="O7 voice runtime preflight config JSON"
+                placeholder="optional local config JSON path"
+              >
+            </label>
+          </div>
+          <div class="route-inputs compact-options">
+            <button
+              class="secondary"
+              type="button"
+              :disabled="!voiceRuntimePreflightEnabled"
+              @click="loadVoiceRuntimePreflight"
+            >
+              {{ voiceRuntimePreflightLoading ? "正在检查 voice runtime preflight" : "检查 voice runtime preflight" }}
+            </button>
+          </div>
+          <div v-if="voiceRuntimePreflightError" class="notice" role="alert">
+            Voice runtime preflight blocked: {{ voiceRuntimePreflightError }}. not_proven=true.
+          </div>
+          <dl class="kv compact-kv">
+            <dt>preflight schema</dt>
+            <dd>{{ voiceRuntimePreflightResult?.schema ?? "trashbot.pc_tools_workstation.o7_voice_runtime_preflight_result.v1" }}</dd>
+            <dt>preflight status</dt>
+            <dd>{{ voiceRuntimePreflightResult?.preflight_status ?? "not_run" }}</dd>
+            <dt>action blocker</dt>
+            <dd>{{ voiceRuntimePreflightBlockedReason || "none_local_offline_check_only" }}</dd>
+            <dt>receipt</dt>
+            <dd>{{ voiceRuntimePreflightSummary }}</dd>
+            <dt>endpoint</dt>
+            <dd><code>{{ voiceRuntimePreflightResult?.endpoint ?? "/api/o7/voice-runtime/preflight" }}</code></dd>
+            <dt>config source</dt>
+            <dd>{{ voiceRuntimePreflightResult?.config_source ?? "not_configured" }} · {{ voiceRuntimePreflightResult?.config_path_ref ?? "not_configured" }}</dd>
+            <dt>runtime mode</dt>
+            <dd>{{ voiceRuntimePreflightResult?.runtime_mode ?? voiceRuntimePreflightMode }} · runtime_configured={{ voiceRuntimePreflightResult?.runtime_configured ?? false }}</dd>
+            <dt>proof boundary</dt>
+            <dd>{{ voiceRuntimePreflightResult?.proof_boundary ?? "software_proof_o7_voice_runtime_preflight_only" }}</dd>
+            <dt>config checks</dt>
+            <dd>
+              status={{ voiceRuntimePreflightResult?.config_checks.status ?? "not_run" }} ·
+              no_network_access={{ voiceRuntimePreflightResult?.config_checks.no_network_access ?? true }} ·
+              no_device_access={{ voiceRuntimePreflightResult?.config_checks.no_device_access ?? true }} ·
+              no_audio_dispatch={{ voiceRuntimePreflightResult?.config_checks.no_audio_dispatch ?? true }}
+            </dd>
+          </dl>
+          <h4>Voice runtime preflight false fields</h4>
+          <ul class="dense">
+            <li v-for="line in voiceRuntimePreflightFalseFields()" :key="line">{{ line }}</li>
+          </ul>
+          <h4>Voice runtime preflight not proven</h4>
+          <ul class="dense">
+            <li v-for="item in voiceRuntimePreflightResult?.not_proven ?? ['real_voice_api_connected=false','real_asr_tts_runtime_connected=false','tts_send_enabled=false','speaker_dispatch_enabled=false','safe_to_control=false','delivery_success=false']" :key="item">{{ item }}</li>
+          </ul>
+          <h4>Voice runtime preflight next evidence</h4>
+          <ul class="dense">
+            <li v-for="item in voiceRuntimePreflightResult?.next_required_evidence ?? ['authorized_real_voice_runtime_smoke','real_microphone_and_speaker_preflight','real_speaker_ack_for_selected_task']" :key="item">{{ item }}</li>
+          </ul>
+
+          <h3>O7 voice runtime offline smoke</h3>
+          <div class="notice" role="note">
+            GET /api/o7/voice-runtime/offline-smoke · voice runtime offline smoke ·
+            trashbot.pc_tools_workstation.o7_voice_runtime_offline_smoke_result.v1 ·
+            software_proof_o7_voice_runtime_offline_smoke_only · real_voice_api_connected=false ·
+            real_asr_tts_runtime_connected=false · tts_send_enabled=false · speaker_dispatch_enabled=false ·
+            real_speaker_ack_proven=false · microphone_opened=false · speaker_playback_opened=false ·
+            safe_to_control=false · delivery_success=false
+          </div>
+          <div class="route-inputs">
+            <label>
+              <span>mode</span>
+              <select v-model="voiceRuntimeOfflineSmokeMode" aria-label="O7 voice runtime offline smoke mode">
+                <option value="offline_stub">offline_stub</option>
+                <option value="local_stub">local_stub</option>
+                <option value="disabled_local">disabled_local</option>
+              </select>
+            </label>
+            <label>
+              <span>fixtureJson</span>
+              <input
+                v-model="voiceRuntimeOfflineSmokeFixtureJson"
+                aria-label="O7 voice runtime offline smoke fixture JSON"
+                placeholder="optional local smoke fixture JSON path"
+              >
+            </label>
+            <label>
+              <span>configJson</span>
+              <input
+                v-model="voiceRuntimeOfflineSmokeConfigJson"
+                aria-label="O7 voice runtime offline smoke config JSON"
+                placeholder="optional local preflight config JSON path"
+              >
+            </label>
+          </div>
+          <div class="route-inputs compact-options">
+            <button
+              class="secondary"
+              type="button"
+              :disabled="!voiceRuntimeOfflineSmokeEnabled"
+              @click="loadVoiceRuntimeOfflineSmoke"
+            >
+              {{ voiceRuntimeOfflineSmokeLoading ? "正在运行 voice runtime offline smoke" : "运行 voice runtime offline smoke" }}
+            </button>
+          </div>
+          <div v-if="voiceRuntimeOfflineSmokeError" class="notice" role="alert">
+            Voice runtime offline smoke blocked: {{ voiceRuntimeOfflineSmokeError }}. not_proven=true.
+          </div>
+          <dl class="kv compact-kv">
+            <dt>smoke schema</dt>
+            <dd>{{ voiceRuntimeOfflineSmokeResult?.schema ?? "trashbot.pc_tools_workstation.o7_voice_runtime_offline_smoke_result.v1" }}</dd>
+            <dt>smoke status</dt>
+            <dd>{{ voiceRuntimeOfflineSmokeResult?.smoke_status ?? "not_run" }}</dd>
+            <dt>action blocker</dt>
+            <dd>{{ voiceRuntimeOfflineSmokeBlockedReason || "none_local_offline_smoke_only" }}</dd>
+            <dt>receipt</dt>
+            <dd>{{ voiceRuntimeOfflineSmokeSummary }}</dd>
+            <dt>endpoint</dt>
+            <dd><code>{{ voiceRuntimeOfflineSmokeResult?.endpoint ?? "/api/o7/voice-runtime/offline-smoke" }}</code></dd>
+            <dt>selected task</dt>
+            <dd>{{ voiceRuntimeOfflineSmokeResult?.selected_task_id ?? (voiceRuntimeOfflineSmokeSelectedTaskId || "task_o3_28_pose_fixed_route_consumer_20260713_0402") }} · {{ voiceRuntimeOfflineSmokeResult?.selected_robot_id ?? "robot_fixture" }}</dd>
+            <dt>selected packet</dt>
+            <dd>{{ voiceRuntimeOfflineSmokeResult?.selected_packet_id ?? "packet_o3_28_pose_same_task_replay_7d57826142b0c79c" }}</dd>
+            <dt>preflight derived</dt>
+            <dd>
+              status={{ voiceRuntimeOfflineSmokeResult?.preflight_derived_status.preflight_status ?? "not_run" }} ·
+              runtime_mode={{ voiceRuntimeOfflineSmokeResult?.preflight_derived_status.runtime_mode ?? voiceRuntimeOfflineSmokeMode }} ·
+              runtime_configured={{ voiceRuntimeOfflineSmokeResult?.preflight_derived_status.runtime_configured ?? false }}
+            </dd>
+            <dt>proof boundary</dt>
+            <dd>{{ voiceRuntimeOfflineSmokeResult?.proof_boundary ?? "software_proof_o7_voice_runtime_offline_smoke_only" }}</dd>
+            <dt>trace count</dt>
+            <dd>{{ voiceRuntimeOfflineSmokeResult?.smoke_trace_event_count ?? 0 }}</dd>
+          </dl>
+          <h4>Voice runtime offline smoke trace events</h4>
+          <ul class="dense">
+            <li v-for="line in voiceRuntimeOfflineSmokeTraceLines()" :key="line">{{ line }}</li>
+          </ul>
+          <h4>Voice runtime offline smoke false fields</h4>
+          <ul class="dense">
+            <li v-for="line in voiceRuntimeOfflineSmokeFalseFields()" :key="line">{{ line }}</li>
+          </ul>
+          <h4>Voice runtime offline smoke blocked reasons</h4>
+          <ul class="dense">
+            <li v-for="item in voiceRuntimeOfflineSmokeResult?.blocked_reasons ?? ['offline_smoke_trace_not_run']" :key="item">{{ item }}</li>
+          </ul>
+          <h4>Voice runtime offline smoke not proven</h4>
+          <ul class="dense">
+            <li v-for="item in voiceRuntimeOfflineSmokeResult?.not_proven ?? ['real_voice_api_connected=false','real_asr_tts_runtime_connected=false','tts_send_enabled=false','speaker_dispatch_enabled=false','real_speaker_ack_proven=false','microphone_opened=false','speaker_playback_opened=false','safe_to_control=false','delivery_success=false']" :key="item">{{ item }}</li>
+          </ul>
+          <h4>Voice runtime offline smoke next evidence</h4>
+          <ul class="dense">
+            <li v-for="item in voiceRuntimeOfflineSmokeResult?.next_required_evidence ?? ['authorized_real_voice_runtime_smoke','same_task_real_asr_tts_trace','real_microphone_open_readback','real_speaker_playback_readback','real_speaker_ack_for_selected_task']" :key="item">{{ item }}</li>
+          </ul>
+
+          <h3>Selected-task voice TTS draft event-write</h3>
+          <div class="notice" role="note">
+            POST /api/o7/consumer-read/tasks/&lt;task_id&gt;/voice/tts-draft/request · voice.tts_draft ·
+            software_proof_o6_o7_voice_tts_draft_event_write_only · tts_send_enabled=false ·
+            speaker_dispatch_enabled=false · real_voice_api_connected=false · real_asr_tts_runtime_connected=false ·
+            safe_to_control=false · delivery_success=false · robot_control_executed=false
+          </div>
+          <div class="route-inputs">
+            <label>
+              <span>event_id</span>
+              <input
+                v-model="consumerVoiceTtsDraftEventId"
+                aria-label="O7 voice TTS draft event_id"
+                placeholder="optional idempotent voice event id"
+              >
+            </label>
+            <label>
+              <span>evidence_ref</span>
+              <input
+                v-model="consumerVoiceTtsDraftEvidenceRef"
+                aria-label="O7 voice TTS draft evidence_ref"
+                placeholder="voice-tts-draft.json"
+              >
+            </label>
+            <label>
+              <span>occurred_at_ms</span>
+              <input
+                v-model="consumerVoiceTtsDraftOccurredAtMs"
+                aria-label="O7 voice TTS draft occurred_at_ms"
+                inputmode="numeric"
+                placeholder="defaults from selected task"
+              >
+            </label>
+            <label>
+              <span>voice_profile</span>
+              <input
+                v-model="consumerVoiceTtsDraftVoiceProfile"
+                aria-label="O7 voice TTS draft voice_profile"
+                placeholder="operator-soft"
+              >
+            </label>
+            <label>
+              <span>locale</span>
+              <input
+                v-model="consumerVoiceTtsDraftLocale"
+                aria-label="O7 voice TTS draft locale"
+                placeholder="zh-CN"
+              >
+            </label>
+          </div>
+          <label class="single-input">
+            <span>draft_text</span>
+            <textarea
+              v-model="consumerVoiceTtsDraftText"
+              aria-label="O7 voice TTS draft text"
+              rows="3"
+              maxlength="160"
+              placeholder="请帮我按电梯到一楼"
+            />
+          </label>
+          <div class="route-inputs compact-options">
+            <button
+              class="secondary"
+              type="button"
+              :disabled="!consumerVoiceTtsDraftRequestEnabled"
+              @click="requestConsumerVoiceTtsDraft"
+            >
+              {{ consumerVoiceTtsDraftRequestLoading ? "正在写入 voice/TTS 草稿事件" : "写入 voice/TTS 草稿事件" }}
+            </button>
+          </div>
+          <div v-if="consumerVoiceTtsDraftRequestError" class="notice" role="alert">
+            Voice/TTS draft event-write blocked: {{ consumerVoiceTtsDraftRequestError }}. not_proven=true.
+          </div>
+          <dl class="kv compact-kv">
+            <dt>receipt schema</dt>
+            <dd>{{ consumerVoiceTtsDraftRequestResult?.schema ?? "trashbot.pc_tools_workstation.o7_voice_tts_draft_request_result.v1" }}</dd>
+            <dt>request status</dt>
+            <dd>{{ consumerVoiceTtsDraftRequestResult?.request_status ?? "not_run" }}</dd>
+            <dt>action blocker</dt>
+            <dd>{{ consumerVoiceTtsDraftRequestBlockedReason || "none_local_mock_only" }}</dd>
+            <dt>receipt</dt>
+            <dd>{{ consumerVoiceTtsDraftRequestSummary }}</dd>
+            <dt>remote endpoint</dt>
+            <dd><code>{{ consumerVoiceTtsDraftRequestResult?.remote_endpoint ?? "/api/o6/archive/events" }}</code></dd>
+            <dt>event identity</dt>
+            <dd>{{ consumerVoiceTtsDraftRequestResult?.event_id ?? consumerVoiceTtsDraftDefaults().eventId }} / {{ consumerVoiceTtsDraftRequestResult?.event_type ?? "voice.tts_draft" }}</dd>
+            <dt>draft/ref</dt>
+            <dd>draft_text_length={{ consumerVoiceTtsDraftRequestResult?.draft_text_length ?? consumerVoiceTtsDraftDefaults().draftText.length }} · refs={{ consumerVoiceTtsDraftRequestResult?.evidence_refs_consumed.join(",") || consumerVoiceTtsDraftDefaults().evidenceRef }}</dd>
+            <dt>write receipt</dt>
+            <dd>
+              archive_event_written={{ consumerVoiceTtsDraftRequestResult?.archive_event_written ?? false }} ·
+              tts_draft_event_written={{ consumerVoiceTtsDraftRequestResult?.tts_draft_event_written ?? false }} ·
+              write_status={{ consumerVoiceTtsDraftRequestResult?.write_status ?? "not_run" }}
+            </dd>
+            <dt>O6 receipt</dt>
+            <dd>
+              schema={{ consumerVoiceTtsDraftRequestResult?.o6_schema ?? "not_loaded" }} ·
+              source={{ consumerVoiceTtsDraftRequestResult?.o6_source ?? "not_loaded" }}
+            </dd>
+            <dt>proof boundary</dt>
+            <dd>{{ consumerVoiceTtsDraftRequestResult?.proof_boundary ?? "software_proof_o6_o7_voice_tts_draft_event_write_only" }}</dd>
+          </dl>
+          <h4>Voice TTS draft false fields</h4>
+          <ul class="dense">
+            <li v-for="line in consumerVoiceTtsDraftFalseFields()" :key="line">{{ line }}</li>
+          </ul>
+          <h4>Voice TTS draft not proven</h4>
+          <ul class="dense">
+            <li v-for="item in consumerVoiceTtsDraftRequestResult?.not_proven ?? ['real_voice_api_not_connected','real_asr_tts_runtime_not_connected','real_tts_playback','real_speaker_ack','robot_control_not_executed']" :key="item">{{ item }}</li>
+          </ul>
+
+          <h3>Selected-task voice speaker ACK/failure event-write</h3>
+          <div class="notice" role="note">
+            POST /api/o7/consumer-read/tasks/&lt;task_id&gt;/voice/speaker-ack/request ·
+            voice.speaker_ack / voice.speaker_failure · software_proof_o6_o7_voice_speaker_ack_event_write_only ·
+            speaker_dispatch_enabled=false · real_speaker_ack_proven=false · tts_send_enabled=false ·
+            real_voice_api_connected=false · real_asr_tts_runtime_connected=false · safe_to_control=false ·
+            delivery_success=false · robot_control_executed=false · connects_cloud_production=false
+          </div>
+          <div class="route-inputs">
+            <label>
+              <span>ack_status</span>
+              <select v-model="consumerVoiceSpeakerAckStatus" aria-label="O7 voice speaker ACK status">
+                <option value="ack">ack</option>
+                <option value="failure">failure</option>
+              </select>
+            </label>
+            <label>
+              <span>event_id</span>
+              <input
+                v-model="consumerVoiceSpeakerAckEventId"
+                aria-label="O7 voice speaker ACK event_id"
+                placeholder="optional idempotent speaker event id"
+              >
+            </label>
+            <label>
+              <span>evidence_ref</span>
+              <input
+                v-model="consumerVoiceSpeakerAckEvidenceRef"
+                aria-label="O7 voice speaker ACK evidence_ref"
+                placeholder="voice-speaker-ack.json"
+              >
+            </label>
+            <label>
+              <span>occurred_at_ms</span>
+              <input
+                v-model="consumerVoiceSpeakerAckOccurredAtMs"
+                aria-label="O7 voice speaker ACK occurred_at_ms"
+                inputmode="numeric"
+                placeholder="defaults from selected task"
+              >
+            </label>
+            <label>
+              <span>failure_reason_code</span>
+              <input
+                v-model="consumerVoiceSpeakerAckFailureReasonCode"
+                aria-label="O7 voice speaker ACK failure reason code"
+                placeholder="speaker_ack_missing_not_real_runtime"
+              >
+            </label>
+          </div>
+          <label class="single-input">
+            <span>summary</span>
+            <input
+              v-model="consumerVoiceSpeakerAckSummary"
+              aria-label="O7 voice speaker ACK summary"
+              placeholder="local mock speaker ack event recorded"
+            >
+          </label>
+          <div class="route-inputs compact-options">
+            <button
+              class="secondary"
+              type="button"
+              :disabled="!consumerVoiceSpeakerAckEventEnabled"
+              @click="requestConsumerVoiceSpeakerAckEvent"
+            >
+              {{ consumerVoiceSpeakerAckEventLoading ? "正在写入 speaker ACK/failure 事件" : "写入 speaker ACK/failure 事件" }}
+            </button>
+          </div>
+          <div v-if="consumerVoiceSpeakerAckEventError" class="notice" role="alert">
+            Voice speaker ACK event-write blocked: {{ consumerVoiceSpeakerAckEventError }}. not_proven=true.
+          </div>
+          <dl class="kv compact-kv">
+            <dt>receipt schema</dt>
+            <dd>{{ consumerVoiceSpeakerAckEventResult?.schema ?? "trashbot.pc_tools_workstation.o7_voice_speaker_ack_event_result.v1" }}</dd>
+            <dt>request status</dt>
+            <dd>{{ consumerVoiceSpeakerAckEventResult?.ack_event_status ?? "not_run" }}</dd>
+            <dt>action blocker</dt>
+            <dd>{{ consumerVoiceSpeakerAckEventBlockedReason || "none_local_mock_only" }}</dd>
+            <dt>receipt</dt>
+            <dd>{{ consumerVoiceSpeakerAckEventSummary }}</dd>
+            <dt>remote endpoint</dt>
+            <dd><code>{{ consumerVoiceSpeakerAckEventResult?.remote_endpoint ?? "/api/o6/archive/events" }}</code></dd>
+            <dt>event identity</dt>
+            <dd>{{ consumerVoiceSpeakerAckEventResult?.event_id ?? consumerVoiceSpeakerAckDefaults().eventId }} / {{ consumerVoiceSpeakerAckEventResult?.event_type ?? "voice.speaker_ack" }}</dd>
+            <dt>ack status</dt>
+            <dd>
+              ack_status={{ consumerVoiceSpeakerAckEventResult?.ack_status ?? consumerVoiceSpeakerAckDefaults().ackStatus }} ·
+              failure_reason_code={{ consumerVoiceSpeakerAckEventResult?.failure_reason_code ?? consumerVoiceSpeakerAckDefaults().failureReasonCode }}
+            </dd>
+            <dt>write receipt</dt>
+            <dd>
+              archive_event_written={{ consumerVoiceSpeakerAckEventResult?.archive_event_written ?? false }} ·
+              speaker_ack_event_written={{ consumerVoiceSpeakerAckEventResult?.speaker_ack_event_written ?? false }} ·
+              speaker_failure_event_written={{ consumerVoiceSpeakerAckEventResult?.speaker_failure_event_written ?? false }} ·
+              write_status={{ consumerVoiceSpeakerAckEventResult?.write_status ?? "not_run" }}
+            </dd>
+            <dt>O6 receipt</dt>
+            <dd>
+              schema={{ consumerVoiceSpeakerAckEventResult?.o6_schema ?? "not_loaded" }} ·
+              source={{ consumerVoiceSpeakerAckEventResult?.o6_source ?? "not_loaded" }}
+            </dd>
+            <dt>proof boundary</dt>
+            <dd>{{ consumerVoiceSpeakerAckEventResult?.proof_boundary ?? "software_proof_o6_o7_voice_speaker_ack_event_write_only" }}</dd>
+            <dt>evidence refs</dt>
+            <dd>{{ consumerVoiceSpeakerAckEventResult?.evidence_refs_consumed.join(",") || consumerVoiceSpeakerAckDefaults().evidenceRef }}</dd>
+          </dl>
+          <h4>Voice speaker ACK false fields</h4>
+          <ul class="dense">
+            <li v-for="line in consumerVoiceSpeakerAckFalseFields()" :key="line">{{ line }}</li>
+          </ul>
+          <h4>Voice speaker ACK not proven</h4>
+          <ul class="dense">
+            <li v-for="item in consumerVoiceSpeakerAckEventResult?.not_proven ?? ['real_speaker_ack_not_proven','speaker_dispatch_not_enabled','real_voice_api_not_connected','real_asr_tts_runtime_not_connected','robot_control_not_executed']" :key="item">{{ item }}</li>
           </ul>
 
           <h3>Consumer-detail labeling queue primary path</h3>

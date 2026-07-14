@@ -1,3 +1,5 @@
+import importlib.util
+import io
 import json
 import hashlib
 import os
@@ -59,10 +61,17 @@ from ros2_trashbot_behavior.remote_cloud_relay import (  # noqa: E402
     CLOUD_WORKER_CUTOVER_DRAIN_EVIDENCE_BOUNDARY,
     CLOUD_WORKER_CUTOVER_DRAIN_SCHEMA,
     CLOUD_WORKER_CUTOVER_DRAIN_SUMMARY_SCHEMA,
+    CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_ENV,
+    CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_EVIDENCE_BOUNDARY,
+    CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_SCHEMA,
+    CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_SUMMARY_SCHEMA,
     CLOUD_PRODUCTION_CUTOVER_READINESS_PACKET_EVIDENCE_BOUNDARY,
     CLOUD_PRODUCTION_CUTOVER_READINESS_PACKET_SCHEMA,
     CLOUD_PUBLIC_INGRESS_TLS_EVIDENCE_BOUNDARY,
     CLOUD_PUBLIC_INGRESS_TLS_SCHEMA,
+    CDN_TLS_EXTERNAL_EVIDENCE_ENV,
+    CDN_TLS_EXTERNAL_EVIDENCE_EVIDENCE_BOUNDARY,
+    CDN_TLS_EXTERNAL_EVIDENCE_SCHEMA,
     CREDENTIAL_ROTATION_EVIDENCE_BOUNDARY,
     CREDENTIAL_ROTATION_PHONE_EVIDENCE_BOUNDARY,
     CREDENTIAL_ROTATION_SCHEMA,
@@ -127,6 +136,7 @@ from ros2_trashbot_behavior.remote_cloud_relay import (  # noqa: E402
     cloud_db_queue_external_probe_bundle_summary,
     cloud_external_probe_bundle_summary,
     cloud_public_ingress_tls_artifact_summary,
+    cdn_tls_external_evidence_artifact_summary,
     build_production_store_queue_artifact_payload,
     build_production_recovery_artifact_payload,
     build_provisioning_audit_artifact_payload,
@@ -156,6 +166,7 @@ from ros2_trashbot_behavior.remote_cloud_relay import (  # noqa: E402
     external_evidence_intake_artifact_summary,
     cloud_worker_migration_rehearsal_artifact_summary,
     cloud_worker_cutover_drain_artifact_summary,
+    cloud_external_evidence_review_decision_artifact_summary,
     cloud_production_cutover_readiness_packet_summary,
     network_recovery_artifact_summary,
     network_recovery_drill_payload,
@@ -170,6 +181,15 @@ from ros2_trashbot_behavior.remote_cloud_relay import (  # noqa: E402
     transaction_isolation_artifact_summary,
 )
 from ros2_trashbot_behavior import remote_cloud_relay as relay_module  # noqa: E402
+
+
+def _load_cloud_external_evidence_review_decision_tool():
+    # pc-tools 目录名不能直接 import；测试按绝对路径加载，避免改包结构。
+    tool_path = WORKSPACE_ROOT / "pc-tools" / "evidence" / "cloud_external_evidence_review_decision.py"
+    spec = importlib.util.spec_from_file_location("cloud_external_evidence_review_decision_tool", tool_path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 class RelayHttpClient:
@@ -733,6 +753,14 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
         self.assertIsNone(body["selected_task"])
         self.assertIsNone(body["latest_task"])
         self.assertEqual(body["summary"]["task_count"], 0)
+        self.assertTrue(body["archive_task_query_filters_ready_not_production_proof"])
+        self.assertEqual(
+            body["archive_task_query_filters_proof_scope"],
+            "software_proof_o6_archive_task_query_filters_only",
+        )
+        self.assertEqual(body["applied_filters"]["status"], "all")
+        self.assertEqual(body["filter_semantics"], "and")
+        self.assertEqual(body["filtered_result_count"], 0)
         self.assertIn("real_cloud_db_not_connected", body["not_proven"])
 
     def test_o6_cloud_archive_tasks_endpoint_upserts_lists_and_gets_item(self):
@@ -805,6 +833,153 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
         self.assertEqual(updated["task"]["finished_at_ms"], 2500)
         self.assertEqual(updated["task_list"]["total_tasks"], 1)
         self.assertEqual(updated["summary"]["task_count"], 1)
+
+    def test_o6_cloud_archive_tasks_list_filters_robot_task_date_status_and_limit(self):
+        def create_task(task_id, robot_id, started_at_ms, finished_at_ms, *, failure=False):
+            payload = self._o6_archive_task_payload(
+                task_id=task_id,
+                robot_id=robot_id,
+                finished_at=finished_at_ms,
+            )
+            payload["started_at_ms"] = started_at_ms
+            if failure:
+                payload["events"] = [
+                    {
+                        "event_id": f"evt-{task_id}",
+                        "event_type": "task.failure",
+                        "occurred_at_ms": finished_at_ms,
+                        "summary": "local mock failure marker",
+                        "severity": "error",
+                        "evidence_refs": [f"events/{task_id}.json"],
+                    }
+                ]
+            status, _ = self.client.request("POST", "/api/o6/archive/tasks", payload)
+            self.assertEqual(status, 201)
+
+        create_task("task-archive-filter-a", "trashbot-alpha", 86400000, 86401000)
+        create_task("task-archive-filter-b", "trashbot-beta", 172800000, 172801000)
+        create_task("task-archive-filter-c", "trashbot-alpha", 172800000, 172801000, failure=True)
+        create_task("task-archive-filter-d", "trashbot-alpha", 172800000, 172802000)
+
+        status, by_robot_limited = self.client.request(
+            "GET",
+            "/api/o6/archive/tasks?robot_id=trashbot-alpha&limit=1",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertTrue(by_robot_limited["archive_task_query_filters_ready_not_production_proof"])
+        self.assertEqual(by_robot_limited["filter_semantics"], "and")
+        self.assertEqual(by_robot_limited["filtered_result_count"], 3)
+        self.assertEqual(by_robot_limited["task_list"]["total_tasks"], 1)
+        self.assertEqual(by_robot_limited["applied_filters"]["robot_id"], "trashbot-alpha")
+        self.assertEqual(by_robot_limited["applied_filters"]["limit"], 1)
+        for key in (
+            "safe_to_control",
+            "delivery_success",
+            "primary_actions_enabled",
+            "connects_cloud_production",
+            "robot_control_executed",
+        ):
+            self.assertFalse(by_robot_limited[key])
+
+        status, by_task = self.client.request(
+            "GET",
+            "/api/o6/archive/tasks?task_id=task-archive-filter-b",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(by_task["filtered_result_count"], 1)
+        self.assertEqual(by_task["task_list"]["tasks"][0]["task_id"], "task-archive-filter-b")
+        self.assertEqual(by_task["task_list"]["tasks"][0]["robot_id"], "trashbot-beta")
+
+        status, by_date = self.client.request(
+            "GET",
+            "/api/o6/archive/tasks?date=1970-01-03",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(by_date["filtered_result_count"], 3)
+        self.assertEqual(by_date["date_filter_source"], "started_at_ms")
+
+        status, combined = self.client.request(
+            "GET",
+            "/api/o6/archive/tasks?robot_id=trashbot-alpha&date=1970-01-03&status=completed_mock&limit=2",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(combined["filtered_result_count"], 1)
+        self.assertEqual(combined["task_list"]["tasks"][0]["task_id"], "task-archive-filter-d")
+        self.assertEqual(
+            combined["applied_filters"],
+            {
+                "robot_id": "trashbot-alpha",
+                "task_id": "",
+                "date": "1970-01-03",
+                "status": "completed_mock",
+                "limit": 2,
+            },
+        )
+
+        status, failed = self.client.request(
+            "GET",
+            "/api/o6/archive/tasks?status=failed_mock",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(failed["filtered_result_count"], 1)
+        self.assertEqual(failed["task_list"]["tasks"][0]["task_id"], "task-archive-filter-c")
+
+        status, unknown = self.client.request(
+            "GET",
+            "/api/o6/archive/tasks?robot_id=trashbot-missing",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(unknown["filtered_result_count"], 0)
+        self.assertEqual(unknown["task_list"]["tasks"], [])
+        self.assertEqual(unknown["blocked_reasons"], ["archive_task_query_filter_no_matches"])
+
+        matches, source = relay_module._o6_cloud_archive_task_date_match_source(
+            {"finished_at_ms": 172800000},
+            "1970-01-03",
+        )
+        self.assertTrue(matches)
+        self.assertEqual(source, "finished_at_ms")
+
+    def test_o6_cloud_archive_tasks_list_query_filters_fail_closed_without_store_mutation(self):
+        status, _ = self.client.request(
+            "POST",
+            "/api/o6/archive/tasks",
+            self._o6_archive_task_payload(task_id="task-o6-archive-query-filter-safe"),
+        )
+        self.assertEqual(status, 201)
+
+        invalid_paths = [
+            "/api/o6/archive/tasks?unknown=1",
+            "/api/o6/archive/tasks?date=2026-02-30",
+            f"/api/o6/archive/tasks?robot_id={'a' * 129}",
+            "/api/o6/archive/tasks?robot_id=/tmp/archive.json",
+            "/api/o6/archive/tasks?robot_id=https%3A%2F%2Fexample.test%2Ftasks%3Ftoken%3Dsecret",
+            "/api/o6/archive/tasks?task_id=QUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVo0MTIzNDU2Nzg5MA",
+            "/api/o6/archive/tasks?robot_id=trashbot-001&robot_id=trashbot-002",
+            "/api/o6/archive/tasks?limit=1&limit=2",
+            "/api/o6/archive/tasks?status=completed_mock&status=failed_mock",
+            "/api/o6/archive/tasks?status=invalid",
+        ]
+        for path in invalid_paths:
+            status, body = self.client.request("GET", path, token="")
+            self.assertEqual(status, 400, path)
+            self.assertEqual(body["error"]["code"], "bad_request")
+            self.assertIn("invalid_archive_task_query_filter", body["error"]["message"])
+            encoded = json.dumps(body, ensure_ascii=False).lower()
+            self.assertNotIn("secret", encoded)
+            self.assertNotIn("/tmp/archive.json", encoded)
+            self.assertNotIn("qujdrev", encoded)
+
+        status, listing = self.client.request("GET", "/api/o6/archive/tasks", token="")
+        self.assertEqual(status, 200)
+        self.assertEqual(listing["filtered_result_count"], 1)
+        self.assertEqual(listing["task_list"]["tasks"][0]["task_id"], "task-o6-archive-query-filter-safe")
 
     def test_o6_cloud_archive_tasks_endpoint_rejects_unsafe_or_oversized_payloads(self):
         unsafe_payload = {
@@ -1317,6 +1492,195 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
             "robot_control_executed": False,
         }
 
+    def _same_task_replay_packet_readback_payload(
+        self,
+        task_id="task_o3_28_pose_fixed_route_consumer_20260713_0402",
+    ):
+        # 05:02 accepted packet 这里只作为 readback 证据消费；所有控制、HIL、送达字段必须保持 false。
+        return {
+            "schema": relay_module.SAME_TASK_REPLAY_PACKET_SOURCE_SCHEMA,
+            "source_schema": relay_module.SAME_TASK_REPLAY_PACKET_SOURCE_SCHEMA,
+            "artifact_boundary": relay_module.O3_SAME_TASK_REPLAY_PACKET_PROOF_SCOPE,
+            "status": "same_task_replay_packet_ready_not_route_execution_proof",
+            "source": "algorithm_same_task_replay_packet_summary",
+            "packet_id": "packet_o3_28_pose_same_task_replay_7d57826142b0c79c",
+            "task_id": task_id,
+            "route_intent_id": (
+                "route_intent_20260713_0402_from_20260713_0300_28_pose_structured_path"
+            ),
+            "route_csv_row_count": 28,
+            "replay_jsonl_event_count": 28,
+            "path_structured_pose_count": 28,
+            "same_task_identity_verified": True,
+            "same_task_replay_packet_ready": True,
+            "source_refs": {
+                "source_summary_ref": (
+                    "sprints/2026.07.13_05-02_o3_28_pose_same_task_replay_packet/"
+                    "artifacts/algorithm/same_task_replay_packet_summary.json"
+                ),
+                "packet_jsonl_ref": (
+                    "sprints/2026.07.13_05-02_o3_28_pose_same_task_replay_packet/"
+                    "artifacts/algorithm/same_task_route_replay_packet.jsonl"
+                ),
+                "route_csv_ref": (
+                    "sprints/2026.07.13_04-02_o3_28_pose_fixed_route_consumer/"
+                    "artifacts/algorithm/fixed_route_28_pose_route.csv"
+                ),
+                "replay_jsonl_ref": (
+                    "sprints/2026.07.13_04-02_o3_28_pose_fixed_route_consumer/"
+                    "artifacts/algorithm/fixed_route_28_pose_replay.jsonl"
+                ),
+            },
+            "source_fingerprints": {
+                "summary": "9948414e1a46b6e78de5503a06d634e24c5e96aff38c1f4c7d756bd20eb0dc93",
+                "route_csv": "61b4020c93f01e595df4608e8b42545ce1b1d04eaff8798db55b0dda2aae7601",
+                "replay_jsonl": "530941a7ecb4768f6583cda4abca0d9bc92715ea0266fc96e83d3a860a0400b5",
+            },
+            "blocked_reasons": [],
+            "next_required_evidence": [
+                "controlled_route_execution_record_for_same_packet",
+                "delivery_or_operator_acceptance_record",
+                "current_live_hil_acceptance",
+            ],
+            "route_execution_success": False,
+            "delivery_success": False,
+            "hil_pass": False,
+            "safe_to_control": False,
+            "robot_control_executed": False,
+            "primary_actions_enabled": False,
+            "publishes_cmd_vel": False,
+            "calls_base_manual": False,
+            "uses_base_uart": False,
+            "connects_cloud_production": False,
+        }
+
+    def _bounded_route_execution_gate_material_payload(
+        self,
+        task_id="task_o3_28_pose_fixed_route_consumer_20260713_0402",
+    ):
+        # 07:07 gate 与 08:09 bounded plan 只作为 O6/O7 readback 摘要，不允许升级成控制能力。
+        fixed_false_fields = {
+            "safe_to_control": False,
+            "delivery_success": False,
+            "route_execution_success": False,
+            "hil_pass": False,
+            "robot_control_executed": False,
+            "connects_cloud_production": False,
+            "primary_actions_enabled": False,
+            "publishes_cmd_vel": False,
+            "calls_base_manual": False,
+            "uses_base_uart": False,
+        }
+        controlled_gate = {
+            "schema": relay_module.CONTROLLED_ROUTE_EXECUTION_GATE_RECORD_SOURCE_SCHEMA,
+            "proof_boundary": relay_module.O3_CONTROLLED_ROUTE_EXECUTION_GATE_RECORD_PROOF_SCOPE,
+            "artifact_boundary": relay_module.O3_CONTROLLED_ROUTE_EXECUTION_GATE_RECORD_PROOF_SCOPE,
+            "controlled_route_execution_gate_status": "fail_closed_input_packet_validated",
+            "packet_id": relay_module.O6_BOUNDED_ROUTE_EXECUTION_GATE_PACKET_ID,
+            "task_id": task_id,
+            "route_intent_id": relay_module.O6_BOUNDED_ROUTE_EXECUTION_GATE_ROUTE_INTENT_ID,
+            "route_csv_row_count": 28,
+            "replay_jsonl_event_count": 28,
+            "path_structured_pose_count": 28,
+            "same_task_identity_verified": True,
+            "same_task_replay_packet_ready": True,
+            "no_motion_control_guard": [
+                "no /cmd_vel",
+                "no /api/base/manual",
+                "no NavigateToPose",
+                "no WAVE ROVER UART",
+            ],
+            "rejected_claims": [
+                "route_execution_success",
+                "delivery_success",
+                "hil_pass",
+                "safe_to_control",
+                "robot_control_executed",
+                "NavigateToPose",
+                "/cmd_vel",
+                "/api/base/manual",
+                "WAVE ROVER UART",
+            ],
+            "fixed_false_fields": fixed_false_fields,
+            **fixed_false_fields,
+        }
+        bounded_plan = {
+            "schema": relay_module.BOUNDED_ROUTE_COMMAND_PLAN_SOURCE_SCHEMA,
+            "proof_boundary": relay_module.O3_BOUNDED_ROUTE_COMMAND_PLAN_PROOF_SCOPE,
+            "artifact_boundary": relay_module.O3_BOUNDED_ROUTE_COMMAND_PLAN_PROOF_SCOPE,
+            "bounded_route_command_plan_status": "bounded_plan_ready_not_control_proof",
+            "execution_plan_status": "blocked_pending_live_safety_gate",
+            "packet_id": relay_module.O6_BOUNDED_ROUTE_EXECUTION_GATE_PACKET_ID,
+            "task_id": task_id,
+            "route_intent_id": relay_module.O6_BOUNDED_ROUTE_EXECUTION_GATE_ROUTE_INTENT_ID,
+            "route_csv_row_count": 28,
+            "path_structured_pose_count": 28,
+            "segment_count": 27,
+            "global_abort_criteria": [f"abort_{index:02d}" for index in range(11)],
+            "bounded_segment_plan": [
+                {"segment_index": index, "abort_check_ids": ["operator_stop_requested"]}
+                for index in range(27)
+            ],
+            "next_live_command_gate": {
+                "status": "blocked_until_new_controlled_live_execution_sprint",
+                "forbidden_in_this_artifact": [
+                    "no /cmd_vel",
+                    "no /api/base/manual",
+                    "no NavigateToPose",
+                    "no WAVE ROVER UART",
+                ],
+            },
+            "fixed_false_fields": fixed_false_fields,
+            **fixed_false_fields,
+        }
+        return {
+            "schema": relay_module.O6_BOUNDED_ROUTE_EXECUTION_GATE_MATERIAL_SCHEMA,
+            "proof_scope": relay_module.O6_BOUNDED_ROUTE_EXECUTION_GATE_MATERIAL_PROOF_SCOPE,
+            "evidence_boundary": relay_module.O6_BOUNDED_ROUTE_EXECUTION_GATE_MATERIAL_PROOF_SCOPE,
+            "status": "bounded_route_execution_gate_material_ready_not_route_execution_proof",
+            "source": "algorithm_controlled_route_execution_gate_and_bounded_plan",
+            "task_id": task_id,
+            "controlled_route_execution_gate_record": controlled_gate,
+            "bounded_route_command_plan": bounded_plan,
+            "blocked_reasons": ["route_execution_not_run"],
+            "next_required_evidence": [
+                "explicit_live_safety_operator_gate",
+                "current_live_hil_acceptance",
+                "same_window_nav2_controller_result",
+                "delivery_operator_acceptance_evidence",
+            ],
+            **fixed_false_fields,
+        }
+
+    def _bounded_route_terminal_result_material_payload(
+        self,
+        task_id="task_o3_28_pose_fixed_route_consumer_20260713_0402",
+    ):
+        # 00:24 O5 bridge 是本轮 O6 的唯一来源；这里固定身份和 false fields，防止误升格为 delivery。
+        fixed_false_fields = {
+            key: False for key in sorted(relay_module.O6_BOUNDED_ROUTE_TERMINAL_RESULT_FALSE_KEYS)
+        }
+        return {
+            "schema": relay_module.O5_BOUNDED_ROUTE_TERMINAL_RESULT_BRIDGE_SCHEMA,
+            "proof_boundary": relay_module.O5_BOUNDED_ROUTE_TERMINAL_RESULT_BRIDGE_PROOF_SCOPE,
+            "source": "o5_bounded_route_terminal_result_bridge",
+            "safe_evidence_ref": "o5_bounded_route_terminal_result_bridge_summary.json",
+            "task_id": task_id,
+            "packet_id": relay_module.O6_BOUNDED_ROUTE_EXECUTION_GATE_PACKET_ID,
+            "route_intent_id": relay_module.O6_BOUNDED_ROUTE_EXECUTION_GATE_ROUTE_INTENT_ID,
+            "route_csv_row_count": 28,
+            "path_structured_pose_count": 28,
+            "segment_count": 27,
+            "result_code": relay_module.O6_BOUNDED_ROUTE_TERMINAL_RESULT_CODE,
+            "terminal_result_state": relay_module.O6_BOUNDED_ROUTE_TERMINAL_RESULT_STATE,
+            "reconciliation_state": relay_module.O6_BOUNDED_ROUTE_TERMINAL_RESULT_STATE,
+            "source_identity_verified": True,
+            "source_counts_verified": True,
+            "source_fixed_false_fields_verified": True,
+            "fixed_false_fields": fixed_false_fields,
+            **fixed_false_fields,
+        }
+
     def _current_field_evidence_material_payload(self, task_id="field-evidence-field-run-001"):
         # current field evidence material 只保留当前上位机材料的安全摘要，不回显 URL、路径或正文。
         return {
@@ -1492,6 +1856,78 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
             "connects_cloud_production": False,
             "real_cloud_db_connected": False,
             "real_oss_connected": False,
+        }
+
+    def _pc_live_nav2_execution_material_payload(self, task_id="field-evidence-field-run-001"):
+        # 这份 canonical material 只证明 PC live Nav2/bridge 摘要可回读，不证明 wheel L/R 非零、路线执行成功或送达成功。
+        return {
+            "schema": relay_module.PC_LIVE_NAV2_EXECUTION_MATERIAL_SCHEMA,
+            "source_schema": relay_module.PC_LIVE_NAV2_EXECUTION_MATERIAL_SCHEMA,
+            "proof_scope": relay_module.O6_PC_LIVE_NAV2_EXECUTION_MATERIAL_PROOF_SCOPE,
+            "status": "pc_live_nav2_execution_material_ready_not_delivery_proof",
+            "source": "algorithm_pc_live_nav2_execution_material_summary",
+            "source_sprint": "2026.07.03_20-46_pc_nav2_o11_tail_wasd_back_alias",
+            "task_id": task_id,
+            "task_id_source": "manifest_task_id",
+            "goal_accepted": True,
+            "cancel_accepted": True,
+            "goal_result_status": "goal_timeout_cancel_requested",
+            "uses_base_uart": True,
+            "base_command_nonzero_observed": True,
+            "base_command_nonzero_count": 733,
+            "base_feedback_sample_count": 5941,
+            "base_feedback_lr_nonzero_proven": False,
+            "base_feedback_imu_attitude_delta_observed": True,
+            "blocked_reasons": [
+                "same_window_wheel_lr_nonzero_feedback_missing",
+                "real_route_execution_success_not_proven",
+            ],
+            "next_required_evidence": [
+                "same_window_wheel_lr_nonzero_feedback",
+                "real_live_nav2_route_execution_trace",
+            ],
+            "safe_to_control": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "robot_control_executed": False,
+            "route_execution_success": False,
+            "hil_pass": False,
+        }
+
+    def _pc_live_nav2_execution_material_legacy_payload(self, task_id="artifact-bundle-task-001"):
+        # 这份 legacy material 模拟 Algorithm 返工前字段，验证 O6 对 nav2_goal_accepted/nav2_terminal_status 兼容读取。
+        return {
+            "schema": relay_module.PC_LIVE_NAV2_EXECUTION_MATERIAL_SCHEMA,
+            "source_schema": relay_module.PC_LIVE_NAV2_EXECUTION_MATERIAL_SCHEMA,
+            "proof_scope": relay_module.O6_PC_LIVE_NAV2_EXECUTION_MATERIAL_PROOF_SCOPE,
+            "status": "pc_live_nav2_execution_material_ready_not_delivery_proof",
+            "source": "algorithm_pc_live_nav2_execution_material_summary",
+            "source_sprint": "2026.07.03_20-46_pc_nav2_o11_tail_wasd_back_alias",
+            "task_id": task_id,
+            "task_id_source": "manifest_task_id",
+            "nav2_goal_accepted": True,
+            "cancel_accepted": True,
+            "nav2_terminal_status": "goal_timeout_cancel_requested",
+            "uses_base_uart": True,
+            "base_command_nonzero_observed": True,
+            "base_command_nonzero_count": 733,
+            "base_feedback_sample_count": 5941,
+            "base_feedback_lr_nonzero_proven": False,
+            "base_feedback_imu_attitude_delta_observed": True,
+            "blocked_reasons": [
+                "same_window_wheel_lr_nonzero_feedback_missing",
+                "real_route_execution_success_not_proven",
+            ],
+            "next_required_evidence": [
+                "same_window_wheel_lr_nonzero_feedback",
+                "real_live_nav2_route_execution_trace",
+            ],
+            "safe_to_control": False,
+            "delivery_success": False,
+            "primary_actions_enabled": False,
+            "robot_control_executed": False,
+            "route_execution_success": False,
+            "hil_pass": False,
         }
 
     def _localization_path_material_readback_payload(self, task_id="field-evidence-field-run-001"):
@@ -1943,6 +2379,32 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
             "connects_cloud_production": False,
         }
 
+    def _phone_browser_terminal_material_payload(self, task_id):
+        # phone/browser terminal material 只模拟同 task 安全摘要，不携带真实截图、DOM、URL 或凭证。
+        return {
+            "schema": relay_module.O6_PHONE_BROWSER_TERMINAL_MATERIAL_SCHEMA,
+            "proof_scope": relay_module.O6_PHONE_BROWSER_TERMINAL_MATERIAL_PROOF_SCOPE,
+            "task_id": task_id,
+            "status": "phone_browser_terminal_material_ready_not_delivery_proof",
+            "source": "local_mock_phone_browser_terminal_material",
+            "safe_evidence_ref": "phone-browser-terminal-summary.json",
+            "accepted_materials": [
+                "true_phone_browser_evidence",
+                "diagnostics_mobile_safe_summary",
+                "terminal_result_summary",
+            ],
+            "terminal_result_type": "browser_terminal_material_summary",
+            "true_phone_browser_evidence": True,
+            "diagnostics_mobile_safe_summary": True,
+            "terminal_result_summary": True,
+            "safe_to_control": False,
+            "delivery_success": False,
+            "route_execution_success": False,
+            "hil_pass": False,
+            "connects_cloud_production": False,
+            "robot_control_executed": False,
+        }
+
     def _field_evidence_archive_request_payload(self):
         # 这个请求体模拟 O6 archive ingest 的新合同：只给 manifest，让 relay 自己派生轨迹与摘要。
         return {
@@ -1970,7 +2432,16 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
             "clean_baseline_nav2_path_material": self._clean_baseline_nav2_path_material_payload(
                 "field-evidence-field-run-001"
             ),
+            "pc_live_nav2_execution_material": self._pc_live_nav2_execution_material_payload(
+                "field-evidence-field-run-001"
+            ),
             "same_task_route_execution_material_packet": self._same_task_route_execution_material_packet_payload(
+                "field-evidence-field-run-001"
+            ),
+            "phone_browser_terminal_material": self._phone_browser_terminal_material_payload(
+                "field-evidence-field-run-001"
+            ),
+            "bounded_route_terminal_result_material": self._bounded_route_terminal_result_material_payload(
                 "field-evidence-field-run-001"
             ),
             "cloud_external_probe": self._cloud_external_probe_payload("field-evidence-field-run-001"),
@@ -2026,8 +2497,17 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
                 "clean_baseline_nav2_path_material": self._clean_baseline_nav2_path_material_payload(
                     "artifact-bundle-task-001"
                 ),
+                "pc_live_nav2_execution_material": self._pc_live_nav2_execution_material_payload(
+                    "artifact-bundle-task-001"
+                ),
                 "same_task_route_execution_material_packet": self._same_task_route_execution_material_packet_payload(
                     "artifact-bundle-task-001"
+                ),
+                "phone_browser_terminal_material": self._phone_browser_terminal_material_payload(
+                    "artifact-bundle-task-001"
+                ),
+                "bounded_route_terminal_result_material": (
+                    self._bounded_route_terminal_result_material_payload("artifact-bundle-task-001")
                 ),
                 "route_refs": [
                     "captures/route.csv",
@@ -2568,6 +3048,43 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
         self.assertFalse(
             created["task"]["field_evidence"]["same_task_route_execution_material_packet"]["safe_to_control"]
         )
+        self.assertEqual(
+            created["task"]["field_evidence"]["phone_browser_terminal_material"]["schema"],
+            relay_module.O6_PHONE_BROWSER_TERMINAL_MATERIAL_SCHEMA,
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["phone_browser_terminal_material"]["proof_scope"],
+            relay_module.O6_PHONE_BROWSER_TERMINAL_MATERIAL_PROOF_SCOPE,
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["phone_browser_terminal_material"]["status"],
+            "phone_browser_terminal_material_ready_not_delivery_proof",
+        )
+        self.assertTrue(
+            created["task"]["field_evidence"]["phone_browser_terminal_material"]["same_task_id_consumed"]
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["phone_browser_terminal_material"]["accepted_materials"],
+            [
+                "true_phone_browser_evidence",
+                "diagnostics_mobile_safe_summary",
+                "terminal_result_summary",
+            ],
+        )
+        self.assertEqual(
+            created["task"]["field_evidence"]["phone_browser_terminal_material"]["safe_evidence_ref"],
+            "phone-browser-terminal-summary.json",
+        )
+        self.assertFalse(
+            created["task"]["field_evidence"]["phone_browser_terminal_material"]["route_execution_success"]
+        )
+        self.assertFalse(created["task"]["field_evidence"]["phone_browser_terminal_material"]["hil_pass"])
+        self.assertFalse(
+            created["task"]["field_evidence"]["phone_browser_terminal_material"]["connects_cloud_production"]
+        )
+        self.assertFalse(
+            created["task"]["field_evidence"]["phone_browser_terminal_material"]["robot_control_executed"]
+        )
         self.assertFalse(created["task"]["field_evidence"]["route_bag_evidence"]["delivery_success"])
         self.assertFalse(created["task"]["field_evidence"]["route_bag_evidence"]["safe_to_control"])
         self.assertFalse(created["task"]["field_evidence"]["route_root_seed_gate"]["route_bag_required"])
@@ -2732,6 +3249,20 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
             "route_execution_result_delivery_readiness_ready_not_delivery_proof",
         )
         self.assertEqual(
+            detail["task"]["phone_browser_terminal_material"]["status"],
+            "phone_browser_terminal_material_ready_not_delivery_proof",
+        )
+        self.assertEqual(
+            detail["task"]["field_evidence_consumer_ingest"]["phone_browser_terminal_material"][
+                "terminal_result_type"
+            ],
+            "browser_terminal_material_summary",
+        )
+        self.assertFalse(detail["task"]["phone_browser_terminal_material"]["safe_to_control"])
+        self.assertFalse(detail["task"]["phone_browser_terminal_material"]["delivery_success"])
+        self.assertFalse(detail["task"]["phone_browser_terminal_material"]["route_execution_success"])
+        self.assertFalse(detail["task"]["phone_browser_terminal_material"]["hil_pass"])
+        self.assertEqual(
             detail["task"]["same_task_mission_evidence_gate"]["source_schema"],
             relay_module.SAME_TASK_MISSION_EVIDENCE_GATE_SCHEMA,
         )
@@ -2860,6 +3391,20 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
             ]["route_delivery_closure_packet"]["basename"],
             "route_delivery_closure_packet.json",
         )
+        self.assertEqual(
+            consumer["phone_browser_terminal_material"]["proof_scope"],
+            relay_module.O6_PHONE_BROWSER_TERMINAL_MATERIAL_PROOF_SCOPE,
+        )
+        self.assertTrue(consumer["phone_browser_terminal_material"]["phone_browser_terminal_material_written"])
+        self.assertTrue(consumer["phone_browser_terminal_material"]["phone_browser_terminal_material_readback"])
+        self.assertTrue(consumer["phone_browser_terminal_material"]["true_phone_browser_evidence"])
+        self.assertTrue(consumer["phone_browser_terminal_material"]["diagnostics_mobile_safe_summary"])
+        self.assertFalse(consumer["phone_browser_terminal_material"]["safe_to_control"])
+        self.assertFalse(consumer["phone_browser_terminal_material"]["delivery_success"])
+        self.assertFalse(consumer["phone_browser_terminal_material"]["route_execution_success"])
+        self.assertFalse(consumer["phone_browser_terminal_material"]["hil_pass"])
+        self.assertFalse(consumer["phone_browser_terminal_material"]["connects_cloud_production"])
+        self.assertFalse(consumer["phone_browser_terminal_material"]["robot_control_executed"])
         self.assertTrue(
             consumer["route_delivery_closure_packet"][
                 "linked_route_execution_result_delivery_readiness_ready"
@@ -2930,6 +3475,212 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
             consumer["field_evidence_consumer_ingest"]["nav2_goal_execution_evidence"]["proof_status"],
             "software_proof",
         )
+
+    def test_o6_bounded_route_execution_gate_material_ingest_and_readback(self):
+        task_id = relay_module.O6_BOUNDED_ROUTE_EXECUTION_GATE_TASK_ID
+        payload = self._field_evidence_archive_request_payload()
+        payload["task_id"] = task_id
+        payload["field_evidence_manifest"]["task_id"] = task_id
+        payload["bounded_route_execution_gate_material"] = (
+            self._bounded_route_execution_gate_material_payload(task_id)
+        )
+
+        status, created = self.client.request("POST", "/api/o6/archive/field-evidence", payload)
+
+        self.assertEqual(status, 201)
+        section = created["task"]["field_evidence"]["bounded_route_execution_gate_material"]
+        self.assertEqual(section["schema"], relay_module.O6_BOUNDED_ROUTE_EXECUTION_GATE_MATERIAL_SCHEMA)
+        self.assertEqual(section["proof_scope"], relay_module.O6_BOUNDED_ROUTE_EXECUTION_GATE_MATERIAL_PROOF_SCOPE)
+        self.assertEqual(section["status"], "bounded_route_execution_gate_material_ready_not_route_execution_proof")
+        self.assertEqual(section["packet_id"], relay_module.O6_BOUNDED_ROUTE_EXECUTION_GATE_PACKET_ID)
+        self.assertEqual(section["task_id"], task_id)
+        self.assertEqual(section["route_intent_id"], relay_module.O6_BOUNDED_ROUTE_EXECUTION_GATE_ROUTE_INTENT_ID)
+        self.assertEqual(section["route_csv_row_count"], 28)
+        self.assertEqual(section["path_structured_pose_count"], 28)
+        self.assertEqual(section["segment_count"], 27)
+        self.assertEqual(section["execution_plan_status"], "blocked_pending_live_safety_gate")
+        self.assertEqual(section["global_abort_criteria_count"], 11)
+        self.assertEqual(section["bounded_segment_plan_count"], 27)
+        self.assertTrue(section["bounded_route_execution_gate_material_readback"])
+        self.assertFalse(section["safe_to_control"])
+        self.assertFalse(section["delivery_success"])
+        self.assertFalse(section["route_execution_success"])
+        self.assertFalse(section["hil_pass"])
+        self.assertFalse(section["robot_control_executed"])
+        self.assertFalse(section["connects_cloud_production"])
+        self.assertFalse(section["fixed_false_fields"]["safe_to_control"])
+
+        status, detail = self.client.request("GET", f"/api/o6/archive/tasks/{task_id}", token="")
+        self.assertEqual(status, 200)
+        self.assertEqual(
+            detail["task"]["bounded_route_execution_gate_material"]["execution_plan_status"],
+            "blocked_pending_live_safety_gate",
+        )
+        self.assertFalse(detail["task"]["field_evidence_consumer_ingest"][
+            "bounded_route_execution_gate_material"
+        ]["safe_to_control"])
+
+        status, consumer = self.client.request(
+            "GET",
+            f"/api/o6/consumer/tasks/{task_id}?include=bounded_route_execution_gate_material",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(
+            consumer["bounded_route_execution_gate_material"]["status"],
+            "bounded_route_execution_gate_material_ready_not_route_execution_proof",
+        )
+        self.assertEqual(consumer["bounded_route_execution_gate_material"]["segment_count"], 27)
+        self.assertFalse(consumer["bounded_route_execution_gate_material"]["route_execution_success"])
+
+    def test_o6_bounded_route_execution_gate_material_fail_closes_hostile_payload(self):
+        task_id = relay_module.O6_BOUNDED_ROUTE_EXECUTION_GATE_TASK_ID
+        payload = self._field_evidence_archive_request_payload()
+        payload["task_id"] = task_id
+        payload["field_evidence_manifest"]["task_id"] = task_id
+        hostile_material = self._bounded_route_execution_gate_material_payload(task_id)
+        hostile_material["safe_to_control"] = True
+        hostile_material["bounded_route_command_plan"]["raw_command_body"] = (
+            "NavigateToPose /cmd_vel /api/base/manual WAVE ROVER serial UART"
+        )
+        hostile_material["bounded_route_command_plan"]["local_path"] = "/Users/m1/secrets/route.json"
+        hostile_material["bounded_route_command_plan"]["route_execution_success"] = True
+        payload["bounded_route_execution_gate_material"] = hostile_material
+
+        status, created = self.client.request("POST", "/api/o6/archive/field-evidence", payload)
+
+        self.assertEqual(status, 201)
+        section = created["task"]["field_evidence"]["bounded_route_execution_gate_material"]
+        self.assertEqual(section["status"], "blocked_not_proven")
+        self.assertIn("bounded_route_execution_gate_material_dangerous_true", section["blocked_reasons"])
+        self.assertFalse(section["safe_to_control"])
+        self.assertFalse(section["delivery_success"])
+        self.assertFalse(section["route_execution_success"])
+        self.assertFalse(section["hil_pass"])
+        self.assertFalse(section["robot_control_executed"])
+        encoded = json.dumps(created, ensure_ascii=False).lower()
+        self.assertNotIn("/users/m1/secrets", encoded)
+        self.assertNotIn("raw_command_body", encoded)
+        self.assertNotIn("navigatetopose /cmd_vel", encoded)
+
+        status, consumer = self.client.request(
+            "GET",
+            f"/api/o6/consumer/tasks/{task_id}?include=bounded_route_execution_gate_material",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(consumer["bounded_route_execution_gate_material"]["status"], "blocked_not_proven")
+        self.assertFalse(consumer["bounded_route_execution_gate_material"]["safe_to_control"])
+
+    def test_o6_bounded_route_terminal_result_material_ingest_and_readback(self):
+        task_id = relay_module.O6_BOUNDED_ROUTE_EXECUTION_GATE_TASK_ID
+        payload = self._field_evidence_archive_request_payload()
+        payload["task_id"] = task_id
+        payload["field_evidence_manifest"]["task_id"] = task_id
+        payload["bounded_route_terminal_result_material"] = (
+            self._bounded_route_terminal_result_material_payload(task_id)
+        )
+
+        status, created = self.client.request("POST", "/api/o6/archive/field-evidence", payload)
+
+        self.assertEqual(status, 201)
+        section = created["task"]["field_evidence"]["bounded_route_terminal_result_material"]
+        self.assertEqual(section["schema"], relay_module.O6_BOUNDED_ROUTE_TERMINAL_RESULT_MATERIAL_SCHEMA)
+        self.assertEqual(section["source_schema"], relay_module.O5_BOUNDED_ROUTE_TERMINAL_RESULT_BRIDGE_SCHEMA)
+        self.assertEqual(section["proof_scope"], relay_module.O6_BOUNDED_ROUTE_TERMINAL_RESULT_MATERIAL_PROOF_SCOPE)
+        self.assertEqual(section["source_proof_boundary"], relay_module.O5_BOUNDED_ROUTE_TERMINAL_RESULT_BRIDGE_PROOF_SCOPE)
+        self.assertEqual(section["status"], "bounded_route_terminal_result_material_ready_not_delivery_proof")
+        self.assertEqual(section["packet_id"], relay_module.O6_BOUNDED_ROUTE_EXECUTION_GATE_PACKET_ID)
+        self.assertEqual(section["task_id"], task_id)
+        self.assertEqual(section["route_intent_id"], relay_module.O6_BOUNDED_ROUTE_EXECUTION_GATE_ROUTE_INTENT_ID)
+        self.assertEqual(section["result_code"], relay_module.O6_BOUNDED_ROUTE_TERMINAL_RESULT_CODE)
+        self.assertEqual(section["terminal_result_state"], relay_module.O6_BOUNDED_ROUTE_TERMINAL_RESULT_STATE)
+        self.assertEqual(section["reconciliation_state"], relay_module.O6_BOUNDED_ROUTE_TERMINAL_RESULT_STATE)
+        self.assertEqual(section["safe_evidence_ref"], "o5_bounded_route_terminal_result_bridge_summary.json")
+        self.assertEqual(section["route_csv_row_count"], 28)
+        self.assertEqual(section["path_structured_pose_count"], 28)
+        self.assertEqual(section["segment_count"], 27)
+        self.assertTrue(section["same_task_id_consumed"])
+        self.assertTrue(section["bounded_route_terminal_result_material_written"])
+        self.assertTrue(section["bounded_route_terminal_result_material_readback"])
+        self.assertFalse(section["delivery_success"])
+        self.assertFalse(section["route_execution_success"])
+        self.assertFalse(section["safe_to_control"])
+        self.assertFalse(section["hil_pass"])
+        self.assertFalse(section["robot_control_executed"])
+        self.assertFalse(section["connects_cloud_production"])
+        self.assertFalse(section["fixed_false_fields"]["delivery_success"])
+
+        status, detail = self.client.request("GET", f"/api/o6/archive/tasks/{task_id}", token="")
+        self.assertEqual(status, 200)
+        self.assertEqual(
+            detail["task"]["bounded_route_terminal_result_material"]["result_code"],
+            relay_module.O6_BOUNDED_ROUTE_TERMINAL_RESULT_CODE,
+        )
+        self.assertEqual(
+            detail["task"]["field_evidence_consumer_ingest"]["bounded_route_terminal_result_material"][
+                "status"
+            ],
+            "bounded_route_terminal_result_material_ready_not_delivery_proof",
+        )
+        self.assertFalse(detail["task"]["bounded_route_terminal_result_material"]["safe_to_control"])
+
+        status, consumer = self.client.request(
+            "GET",
+            f"/api/o6/consumer/tasks/{task_id}?include=bounded_route_terminal_result_material",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(
+            consumer["bounded_route_terminal_result_material"]["status"],
+            "bounded_route_terminal_result_material_ready_not_delivery_proof",
+        )
+        self.assertEqual(
+            consumer["bounded_route_terminal_result_material"]["result_code"],
+            relay_module.O6_BOUNDED_ROUTE_TERMINAL_RESULT_CODE,
+        )
+        self.assertFalse(consumer["bounded_route_terminal_result_material"]["delivery_success"])
+        self.assertFalse(consumer["bounded_route_terminal_result_material"]["route_execution_success"])
+        self.assertFalse(consumer["bounded_route_terminal_result_material"]["safe_to_control"])
+        self.assertFalse(consumer["bounded_route_terminal_result_material"]["hil_pass"])
+        self.assertFalse(consumer["bounded_route_terminal_result_material"]["robot_control_executed"])
+
+    def test_o6_bounded_route_terminal_result_material_fail_closes_hostile_payload(self):
+        task_id = relay_module.O6_BOUNDED_ROUTE_EXECUTION_GATE_TASK_ID
+        payload = self._field_evidence_archive_request_payload()
+        payload["task_id"] = task_id
+        payload["field_evidence_manifest"]["task_id"] = task_id
+        hostile_material = self._bounded_route_terminal_result_material_payload(task_id)
+        hostile_material["safe_to_control"] = True
+        hostile_material["raw_command_body"] = "NavigateToPose /cmd_vel /api/base/manual"
+        hostile_material["local_path"] = "/Users/m1/secrets/o5_terminal.json"
+        hostile_material["route_execution_success"] = True
+        payload["bounded_route_terminal_result_material"] = hostile_material
+
+        status, created = self.client.request("POST", "/api/o6/archive/field-evidence", payload)
+
+        self.assertEqual(status, 201)
+        section = created["task"]["field_evidence"]["bounded_route_terminal_result_material"]
+        self.assertEqual(section["status"], "blocked_not_proven")
+        self.assertIn("bounded_route_terminal_result_material_dangerous_true", section["blocked_reasons"])
+        self.assertFalse(section["delivery_success"])
+        self.assertFalse(section["route_execution_success"])
+        self.assertFalse(section["safe_to_control"])
+        self.assertFalse(section["hil_pass"])
+        self.assertFalse(section["robot_control_executed"])
+        encoded = json.dumps(created, ensure_ascii=False).lower()
+        self.assertNotIn("/users/m1/secrets", encoded)
+        self.assertNotIn("raw_command_body", encoded)
+        self.assertNotIn("navigatetopose /cmd_vel", encoded)
+
+        status, consumer = self.client.request(
+            "GET",
+            f"/api/o6/consumer/tasks/{task_id}?include=bounded_route_terminal_result_material",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(consumer["bounded_route_terminal_result_material"]["status"], "blocked_not_proven")
+        self.assertFalse(consumer["bounded_route_terminal_result_material"]["safe_to_control"])
 
     def test_o6_field_evidence_probe_readback_fail_closes_hostile_payload(self):
         payload = self._field_evidence_archive_request_payload()
@@ -3089,6 +3840,20 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
             explicit_route_material["same_task_route_execution_material_packet"]["status"],
             "route_execution_material_ready_not_delivery_proof",
         )
+        status, explicit_phone_browser = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/field-evidence-field-run-001?include=phone_browser_terminal_material",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(
+            explicit_phone_browser["phone_browser_terminal_material"]["safe_evidence_ref"],
+            "phone-browser-terminal-summary.json",
+        )
+        self.assertFalse(explicit_phone_browser["phone_browser_terminal_material"]["safe_to_control"])
+        self.assertFalse(explicit_phone_browser["phone_browser_terminal_material"]["delivery_success"])
+        self.assertFalse(explicit_phone_browser["phone_browser_terminal_material"]["route_execution_success"])
+        self.assertFalse(explicit_phone_browser["phone_browser_terminal_material"]["hil_pass"])
         for forbidden_key in (
             "safe_to_control",
             "delivery_success",
@@ -3384,6 +4149,73 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
             explicit["route_bag_pose_progress_replay"]["blocked_reasons"],
         )
 
+    def test_o6_phone_browser_terminal_material_fail_closes_hostile_payload(self):
+        payload = self._artifact_bundle_payload()
+        payload["artifact_bundle"]["task_id"] = "artifact-bundle-phone-browser-hostile-001"
+        payload["artifact_bundle"]["phone_browser_terminal_material"] = {
+            **self._phone_browser_terminal_material_payload("artifact-bundle-phone-browser-hostile-001"),
+            "raw_url": "https://example.test/result?token=should-never-leak",
+            "cookie": "session=cookie-secret",
+            "Authorization": "Bearer should-never-leak",
+            "local_path": "/Users/m1/private/screenshot.png",
+            "screenshot_body": "data:image/png;base64,abc123",
+            "dom_dump": "<html>secret dom</html>",
+            "traceback": "Traceback should never echo",
+            "cmd_vel_topic": "/cmd_vel",
+            "serial_device": "/dev/ttyUSB0",
+            "wave_rover_note": "WAVE ROVER UART raw frame",
+            "delivery_success": True,
+        }
+
+        status, created = self.client.request("POST", "/api/o6/archive/artifact-bundle", payload)
+        encoded = json.dumps(created, ensure_ascii=False)
+
+        self.assertEqual(status, 201)
+        section = created["task"]["artifact_bundle"]["phone_browser_terminal_material"]
+        self.assertEqual(section["status"], "blocked_not_proven")
+        self.assertFalse(section["phone_browser_terminal_material_written"])
+        self.assertFalse(section["phone_browser_terminal_material_readback"])
+        self.assertFalse(section["safe_to_control"])
+        self.assertFalse(section["delivery_success"])
+        self.assertFalse(section["route_execution_success"])
+        self.assertFalse(section["hil_pass"])
+        self.assertFalse(section["connects_cloud_production"])
+        self.assertFalse(section["robot_control_executed"])
+        self.assertTrue(
+            any(
+                reason in section["blocked_reasons"]
+                for reason in (
+                    "phone_browser_terminal_material_dangerous_true",
+                    "phone_browser_terminal_material_raw_url_blocked",
+                    "phone_browser_terminal_material_unsafe",
+                )
+            )
+        )
+        for forbidden in (
+            "https://example.test",
+            "should-never-leak",
+            "cookie-secret",
+            "/Users/m1/private",
+            "data:image",
+            "<html>",
+            "Traceback should never echo",
+            "/cmd_vel",
+            "/dev/ttyUSB0",
+            "WAVE ROVER UART",
+        ):
+            self.assertNotIn(forbidden, encoded)
+
+        status, explicit = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/artifact-bundle-phone-browser-hostile-001?include=phone_browser_terminal_material",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(explicit["phone_browser_terminal_material"]["status"], "blocked_not_proven")
+        self.assertFalse(explicit["phone_browser_terminal_material"]["phone_browser_terminal_material_written"])
+        self.assertFalse(explicit["phone_browser_terminal_material"]["safe_to_control"])
+        self.assertFalse(explicit["phone_browser_terminal_material"]["delivery_success"])
+
     def test_o6_artifact_bundle_ingest_seeds_archive_and_consumer_aliases(self):
         status, created = self.client.request(
             "POST",
@@ -3506,6 +4338,29 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
             ]
         )
         self.assertEqual(
+            created["task"]["artifact_bundle"]["phone_browser_terminal_material"]["schema"],
+            relay_module.O6_PHONE_BROWSER_TERMINAL_MATERIAL_SCHEMA,
+        )
+        self.assertEqual(
+            created["task"]["artifact_bundle"]["phone_browser_terminal_material"]["status"],
+            "phone_browser_terminal_material_ready_not_delivery_proof",
+        )
+        self.assertTrue(
+            created["task"]["artifact_bundle"]["phone_browser_terminal_material"][
+                "phone_browser_terminal_material_written"
+            ]
+        )
+        self.assertFalse(
+            created["task"]["artifact_bundle"]["phone_browser_terminal_material"]["safe_to_control"]
+        )
+        self.assertFalse(
+            created["task"]["artifact_bundle"]["phone_browser_terminal_material"]["delivery_success"]
+        )
+        self.assertFalse(
+            created["task"]["artifact_bundle"]["phone_browser_terminal_material"]["route_execution_success"]
+        )
+        self.assertFalse(created["task"]["artifact_bundle"]["phone_browser_terminal_material"]["hil_pass"])
+        self.assertEqual(
             created["task"]["artifact_bundle"]["route_bag_pose_progress_replay"]["pose_topic_types"],
             ["tf2_msgs.msg.TFMessage", "nav_msgs.msg.Odometry"],
         )
@@ -3581,6 +4436,13 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
             "same_task_field_material_packet.json",
         )
         self.assertFalse(detail["task"]["same_task_route_execution_material_packet"]["hil_pass"])
+        self.assertEqual(
+            detail["task"]["artifact_bundle_consumer_ingest"]["phone_browser_terminal_material"][
+                "safe_evidence_ref"
+            ],
+            "phone-browser-terminal-summary.json",
+        )
+        self.assertFalse(detail["task"]["phone_browser_terminal_material"]["robot_control_executed"])
 
         status, consumer = self.client.request(
             "GET",
@@ -3671,6 +4533,14 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
             consumer["artifact_bundle"]["same_task_route_execution_material_packet"]["source_sections"][0],
             "same_task_field_material_packet",
         )
+        self.assertEqual(
+            consumer["phone_browser_terminal_material"]["status"],
+            "phone_browser_terminal_material_ready_not_delivery_proof",
+        )
+        self.assertTrue(consumer["phone_browser_terminal_material"]["same_task_id_consumed"])
+        self.assertFalse(consumer["phone_browser_terminal_material"]["connects_cloud_production"])
+        self.assertFalse(consumer["phone_browser_terminal_material"]["route_execution_success"])
+        self.assertFalse(consumer["phone_browser_terminal_material"]["hil_pass"])
         self.assertEqual(
             consumer["artifact_bundle"]["route_bag_semantic_replay"]["image_summary"]["width"],
             640,
@@ -4709,6 +5579,9 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
         )
 
         bundle_payload = self._artifact_bundle_payload()
+        bundle_payload["artifact_bundle"]["pc_live_nav2_execution_material"] = (
+            self._pc_live_nav2_execution_material_legacy_payload("artifact-bundle-task-001")
+        )
         bundle_status, bundle_created = self.client.request(
             "POST",
             "/api/o6/archive/artifact-bundle",
@@ -5346,6 +6219,241 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
         self.assertEqual(dangerous_packet["status"], "blocked_not_proven")
         self.assertIn("clean_baseline_nav2_path_material_dangerous_true", dangerous_packet["blocked_reasons"])
 
+    def test_o6_pc_live_nav2_execution_material_in_field_and_bundle_readback(self):
+        field_payload = self._field_evidence_archive_request_payload()
+        status, field_created = self.client.request(
+            "POST",
+            "/api/o6/archive/field-evidence",
+            field_payload,
+        )
+
+        self.assertEqual(status, 201)
+        field_section = field_created["task"]["field_evidence"]["pc_live_nav2_execution_material"]
+        self.assertEqual(field_section["schema"], relay_module.O6_PC_LIVE_NAV2_EXECUTION_MATERIAL_SCHEMA)
+        self.assertEqual(
+            field_section["proof_scope"],
+            relay_module.O6_PC_LIVE_NAV2_EXECUTION_MATERIAL_PROOF_SCOPE,
+        )
+        self.assertEqual(
+            field_section["status"],
+            "pc_live_nav2_execution_material_ready_not_delivery_proof",
+        )
+        self.assertEqual(
+            field_section["source_sprint"],
+            "2026.07.03_20-46_pc_nav2_o11_tail_wasd_back_alias",
+        )
+        self.assertTrue(field_section["goal_accepted"])
+        self.assertTrue(field_section["cancel_accepted"])
+        self.assertTrue(field_section["uses_base_uart"])
+        self.assertTrue(field_section["base_command_nonzero_observed"])
+        self.assertEqual(field_section["base_command_nonzero_count"], 733)
+        self.assertEqual(field_section["base_feedback_sample_count"], 5941)
+        self.assertFalse(field_section["base_feedback_lr_nonzero_proven"])
+        self.assertTrue(field_section["base_feedback_imu_attitude_delta_observed"])
+        self.assertEqual(field_section["goal_result_status"], "goal_timeout_cancel_requested")
+        self.assertEqual(field_section["result_status"], "goal_timeout_cancel_requested")
+        self.assertFalse(field_section["delivery_success"])
+
+        status, detail = self.client.request(
+            "GET",
+            "/api/o6/archive/tasks/field-evidence-field-run-001",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(
+            detail["task"]["pc_live_nav2_execution_material"]["status"],
+            "pc_live_nav2_execution_material_ready_not_delivery_proof",
+        )
+        self.assertEqual(
+            detail["task"]["field_evidence_consumer_ingest"]["pc_live_nav2_execution_material"][
+                "base_feedback_sample_count"
+            ],
+            5941,
+        )
+
+        status, field_consumer = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/field-evidence-field-run-001?include=field_evidence,pc_live_nav2_execution_material",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(
+            field_consumer["pc_live_nav2_execution_material"]["status"],
+            "pc_live_nav2_execution_material_ready_not_delivery_proof",
+        )
+        self.assertEqual(
+            field_consumer["field_evidence_consumer_ingest"]["pc_live_nav2_execution_material"][
+                "base_command_nonzero_count"
+            ],
+            733,
+        )
+
+        bundle_payload = self._artifact_bundle_payload()
+        bundle_status, bundle_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            bundle_payload,
+        )
+
+        self.assertEqual(bundle_status, 201)
+        bundle_section = bundle_created["task"]["artifact_bundle"]["pc_live_nav2_execution_material"]
+        self.assertEqual(bundle_section["schema"], relay_module.O6_PC_LIVE_NAV2_EXECUTION_MATERIAL_SCHEMA)
+        self.assertTrue(bundle_section["goal_accepted"])
+        self.assertEqual(bundle_section["goal_result_status"], "goal_timeout_cancel_requested")
+        self.assertEqual(bundle_section["result_status"], "goal_timeout_cancel_requested")
+        self.assertFalse(bundle_section["base_feedback_lr_nonzero_proven"])
+
+        status, bundle_consumer = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/artifact-bundle-task-001?include=field_evidence,pc_live_nav2_execution_material",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(
+            bundle_consumer["pc_live_nav2_execution_material"]["base_feedback_sample_count"],
+            5941,
+        )
+        self.assertEqual(
+            bundle_consumer["pc_live_nav2_execution_material"]["goal_result_status"],
+            "goal_timeout_cancel_requested",
+        )
+        self.assertEqual(
+            bundle_consumer["artifact_bundle_consumer_ingest"]["pc_live_nav2_execution_material"][
+                "result_status"
+            ],
+            "goal_timeout_cancel_requested",
+        )
+
+    def test_o6_pc_live_nav2_execution_material_missing_or_unsafe_returns_blocked_summary(self):
+        missing_payload = self._artifact_bundle_payload()
+        missing_payload["artifact_bundle"].pop("pc_live_nav2_execution_material")
+
+        status, created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            missing_payload,
+        )
+
+        self.assertEqual(status, 201)
+        packet = created["task"]["artifact_bundle"]["pc_live_nav2_execution_material"]
+        self.assertEqual(packet["schema"], relay_module.O6_PC_LIVE_NAV2_EXECUTION_MATERIAL_SCHEMA)
+        self.assertEqual(packet["status"], "blocked_not_proven")
+        self.assertIn("pc_live_nav2_execution_material_not_available", packet["blocked_reasons"])
+        self.assertEqual(packet["next_required_evidence"], ["pc_live_nav2_execution_material"])
+
+        status, consumer = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/artifact-bundle-task-001?include=pc_live_nav2_execution_material",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(consumer["pc_live_nav2_execution_material"]["status"], "blocked_not_proven")
+
+        bad_schema_payload = self._artifact_bundle_payload()
+        bad_schema_payload["artifact_bundle"]["task_id"] = "artifact-bundle-pc-live-bad-schema-001"
+        bad_schema_payload["artifact_bundle"]["pc_live_nav2_execution_material"]["task_id"] = (
+            "artifact-bundle-pc-live-bad-schema-001"
+        )
+        bad_schema_payload["artifact_bundle"]["pc_live_nav2_execution_material"]["schema"] = (
+            "trashbot.bad_pc_live_nav2_execution_material.v1"
+        )
+        status, bad_schema_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            bad_schema_payload,
+        )
+        self.assertEqual(status, 201)
+        self.assertIn(
+            "pc_live_nav2_execution_material_schema_unsupported",
+            bad_schema_created["task"]["artifact_bundle"]["pc_live_nav2_execution_material"][
+                "blocked_reasons"
+            ],
+        )
+
+        bad_scope_payload = self._artifact_bundle_payload()
+        bad_scope_payload["artifact_bundle"]["task_id"] = "artifact-bundle-pc-live-bad-scope-001"
+        bad_scope_payload["artifact_bundle"]["pc_live_nav2_execution_material"]["task_id"] = (
+            "artifact-bundle-pc-live-bad-scope-001"
+        )
+        bad_scope_payload["artifact_bundle"]["pc_live_nav2_execution_material"]["proof_scope"] = "wrong_scope"
+        status, bad_scope_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            bad_scope_payload,
+        )
+        self.assertEqual(status, 201)
+        self.assertIn(
+            "pc_live_nav2_execution_material_proof_scope_unsupported",
+            bad_scope_created["task"]["artifact_bundle"]["pc_live_nav2_execution_material"][
+                "blocked_reasons"
+            ],
+        )
+
+        task_mismatch_payload = self._artifact_bundle_payload()
+        task_mismatch_payload["artifact_bundle"]["task_id"] = "artifact-bundle-pc-live-task-mismatch-001"
+        task_mismatch_payload["artifact_bundle"]["pc_live_nav2_execution_material"]["task_id"] = "other-task"
+        status, task_mismatch_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            task_mismatch_payload,
+        )
+        self.assertEqual(status, 201)
+        self.assertIn(
+            "pc_live_nav2_execution_material_task_mismatch",
+            task_mismatch_created["task"]["artifact_bundle"]["pc_live_nav2_execution_material"][
+                "blocked_reasons"
+            ],
+        )
+
+        unsafe_text_payload = self._artifact_bundle_payload()
+        unsafe_text_payload["artifact_bundle"]["task_id"] = "artifact-bundle-pc-live-unsafe-text-001"
+        unsafe_text_payload["artifact_bundle"]["pc_live_nav2_execution_material"]["task_id"] = (
+            "artifact-bundle-pc-live-unsafe-text-001"
+        )
+        unsafe_text_payload["artifact_bundle"]["pc_live_nav2_execution_material"]["source"] = (
+            "/tmp/pc_live_nav2_execution_material.json"
+        )
+        unsafe_text_payload["artifact_bundle"]["pc_live_nav2_execution_material"]["response_body"] = (
+            "Traceback: Authorization Bearer secret"
+        )
+        status, unsafe_text_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            unsafe_text_payload,
+        )
+        encoded_unsafe_text = json.dumps(unsafe_text_created, ensure_ascii=False)
+        self.assertEqual(status, 201)
+        self.assertIn(
+            "pc_live_nav2_execution_material_unsafe",
+            unsafe_text_created["task"]["artifact_bundle"]["pc_live_nav2_execution_material"][
+                "blocked_reasons"
+            ],
+        )
+        self.assertNotIn("/tmp/pc_live_nav2_execution_material.json", encoded_unsafe_text)
+        self.assertNotIn("Authorization Bearer secret", encoded_unsafe_text)
+
+        dangerous_payload = self._artifact_bundle_payload()
+        dangerous_payload["artifact_bundle"]["task_id"] = "artifact-bundle-pc-live-dangerous-001"
+        dangerous_payload["artifact_bundle"]["pc_live_nav2_execution_material"]["task_id"] = (
+            "artifact-bundle-pc-live-dangerous-001"
+        )
+        dangerous_payload["artifact_bundle"]["pc_live_nav2_execution_material"][
+            "base_feedback_lr_nonzero_proven"
+        ] = True
+        status, dangerous_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            dangerous_payload,
+        )
+        self.assertEqual(status, 201)
+        dangerous_packet = dangerous_created["task"]["artifact_bundle"]["pc_live_nav2_execution_material"]
+        self.assertEqual(dangerous_packet["status"], "blocked_not_proven")
+        self.assertIn(
+            "pc_live_nav2_execution_material_wheel_lr_nonzero_claimed",
+            dangerous_packet["blocked_reasons"],
+        )
+        self.assertFalse(dangerous_packet["base_feedback_lr_nonzero_proven"])
+
     def test_o6_localization_path_material_readback_in_field_and_bundle_readback(self):
         field_payload = self._field_evidence_archive_request_payload()
         status, field_created = self.client.request(
@@ -5601,6 +6709,120 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
             dangerous_packet["blocked_reasons"],
         )
         self.assertFalse(dangerous_packet["same_run_path_generation_succeeded"])
+
+    def test_o6_same_task_replay_packet_readback_consumes_exact_identity_counts_and_false_fields(self):
+        task_id = "task_o3_28_pose_fixed_route_consumer_20260713_0402"
+        payload = {
+            "artifact_bundle": {
+                "schema": relay_module.O6_ARTIFACT_BUNDLE_SCHEMA,
+                "robot_id": "trashbot-001",
+                "task_id": task_id,
+                "status": "same_task_replay_packet_readback_ready",
+                "safe_to_control": False,
+                "delivery_success": False,
+                "primary_actions_enabled": False,
+                "same_task_replay_packet_readback": self._same_task_replay_packet_readback_payload(task_id),
+                "route_refs": ["captures/fixed_route_28_pose_route.csv"],
+                "replay_refs": ["captures/same_task_route_replay_packet.jsonl"],
+                "keyframe_refs": [],
+                "evidence_refs": [],
+            }
+        }
+
+        status, created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            payload,
+        )
+
+        self.assertEqual(status, 201)
+        packet = created["task"]["artifact_bundle"]["same_task_replay_packet_readback"]
+        self.assertEqual(packet["schema"], relay_module.O6_SAME_TASK_REPLAY_PACKET_READBACK_SCHEMA)
+        self.assertEqual(packet["source_schema"], relay_module.SAME_TASK_REPLAY_PACKET_SOURCE_SCHEMA)
+        self.assertEqual(
+            packet["proof_scope"],
+            relay_module.O6_SAME_TASK_REPLAY_PACKET_READBACK_PROOF_SCOPE,
+        )
+        self.assertEqual(packet["status"], "same_task_replay_packet_ready_not_route_execution_proof")
+        self.assertEqual(packet["packet_id"], "packet_o3_28_pose_same_task_replay_7d57826142b0c79c")
+        self.assertEqual(packet["task_id"], task_id)
+        self.assertEqual(
+            packet["route_intent_id"],
+            "route_intent_20260713_0402_from_20260713_0300_28_pose_structured_path",
+        )
+        self.assertEqual(packet["route_csv_row_count"], 28)
+        self.assertEqual(packet["replay_jsonl_event_count"], 28)
+        self.assertEqual(packet["path_structured_pose_count"], 28)
+        self.assertTrue(packet["same_task_identity_verified"])
+        self.assertTrue(packet["same_task_replay_packet_ready"])
+        self.assertEqual(packet["source_refs"]["route_csv_ref"], "fixed_route_28_pose_route.csv")
+        self.assertEqual(packet["source_refs"]["packet_jsonl_ref"], "same_task_route_replay_packet.jsonl")
+        self.assertEqual(packet["sha256_prefixes"]["summary"], "9948414e1a46b6e7")
+        for false_key in (
+            "route_execution_success",
+            "delivery_success",
+            "hil_pass",
+            "safe_to_control",
+            "robot_control_executed",
+            "primary_actions_enabled",
+            "publishes_cmd_vel",
+            "calls_base_manual",
+            "uses_base_uart",
+            "connects_cloud_production",
+        ):
+            self.assertFalse(packet[false_key], false_key)
+
+        status, consumer = self.client.request(
+            "GET",
+            f"/api/o6/consumer/tasks/{task_id}?include=same_task_replay_packet_readback",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        readback = consumer["same_task_replay_packet_readback"]
+        self.assertEqual(readback["packet_id"], "packet_o3_28_pose_same_task_replay_7d57826142b0c79c")
+        self.assertEqual(readback["route_csv_row_count"], 28)
+        self.assertFalse(readback["route_execution_success"])
+        self.assertFalse(readback["calls_base_manual"])
+        self.assertFalse(readback["uses_base_uart"])
+
+    def test_o6_same_task_replay_packet_readback_missing_or_unsafe_returns_blocked_summary(self):
+        missing_payload = self._artifact_bundle_payload()
+        missing_payload["artifact_bundle"].pop("same_task_replay_packet_readback", None)
+
+        status, created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            missing_payload,
+        )
+
+        self.assertEqual(status, 201)
+        packet = created["task"]["artifact_bundle"]["same_task_replay_packet_readback"]
+        self.assertEqual(packet["schema"], relay_module.O6_SAME_TASK_REPLAY_PACKET_READBACK_SCHEMA)
+        self.assertEqual(packet["status"], "blocked_not_proven")
+        self.assertIn("same_task_replay_packet_readback_not_available", packet["blocked_reasons"])
+        self.assertFalse(packet["safe_to_control"])
+
+        unsafe_payload = self._artifact_bundle_payload()
+        unsafe_payload["artifact_bundle"]["task_id"] = "artifact-bundle-replay-readback-unsafe-001"
+        unsafe_payload["artifact_bundle"]["same_task_replay_packet_readback"] = (
+            self._same_task_replay_packet_readback_payload("artifact-bundle-replay-readback-unsafe-001")
+        )
+        unsafe_payload["artifact_bundle"]["same_task_replay_packet_readback"]["safe_to_control"] = True
+        unsafe_payload["artifact_bundle"]["same_task_replay_packet_readback"]["source_refs"][
+            "route_csv_ref"
+        ] = "https://example.test/route.csv?token=secret"
+        status, unsafe_created = self.client.request(
+            "POST",
+            "/api/o6/archive/artifact-bundle",
+            unsafe_payload,
+        )
+        encoded = json.dumps(unsafe_created, ensure_ascii=False)
+        self.assertEqual(status, 201)
+        unsafe_packet = unsafe_created["task"]["artifact_bundle"]["same_task_replay_packet_readback"]
+        self.assertEqual(unsafe_packet["status"], "blocked_not_proven")
+        self.assertIn("same_task_replay_packet_readback_dangerous_true", unsafe_packet["blocked_reasons"])
+        self.assertNotIn("token=secret", encoded)
+        self.assertFalse(unsafe_packet["safe_to_control"])
 
     def test_o6_same_task_route_execution_material_packet_missing_or_unsafe_returns_blocked_summary(self):
         missing_payload = self._artifact_bundle_payload()
@@ -6660,6 +7882,270 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
         self.assertEqual(events["evt-a"]["summary"], "route pose frame updated")
         self.assertIn("evt-b", events)
 
+    def test_o6_archive_events_endpoint_accepts_safe_voice_tts_draft_and_rejects_runtime_claims(self):
+        # voice.tts_draft 只记录文字草稿事件；真实 TTS、喇叭、语音 API 和控制能力继续由 O6 拒绝。
+        status, _ = self.client.request(
+            "POST",
+            "/api/o6/archive/tasks",
+            self._o6_archive_task_payload(task_id="task-o6-voice-tts-draft"),
+        )
+        self.assertEqual(status, 201)
+
+        payload = self._o6_event_archive_payload(
+            task_id="task-o6-voice-tts-draft",
+            event_id="evt-voice-tts-draft-0001",
+            event_type="voice.tts_draft",
+        )
+        payload["events"][0].update(
+            {
+                "summary": "请帮我按电梯到一楼",
+                "evidence_refs": ["voice-tts-draft.json"],
+                "metadata": {
+                    "proof_boundary": "software_proof_o6_o7_voice_tts_draft_event_write_only",
+                    "draft_text": "请帮我按电梯到一楼",
+                    "locale": "zh-CN",
+                    "voice_profile": "operator-soft",
+                    "tts_send_enabled": False,
+                    "speaker_dispatch_enabled": False,
+                    "real_voice_api_connected": False,
+                    "real_asr_tts_runtime_connected": False,
+                    "safe_to_control": False,
+                    "delivery_success": False,
+                    "robot_control_executed": False,
+                    "connects_cloud_production": False,
+                },
+            }
+        )
+        status, created = self.client.request("POST", "/api/o6/archive/events", payload)
+
+        self.assertEqual(status, 201)
+        self.assertEqual(created["schema"], "trashbot.o6.archive_events.v1")
+        self.assertTrue(created["archive_event_written"])
+        self.assertEqual(created["events_written"][0]["event_type"], "voice.tts_draft")
+        self.assertEqual(created["events_written"][0]["evidence_refs"], ["voice-tts-draft.json"])
+        self.assertFalse(created["safe_to_control"])
+        self.assertFalse(created["delivery_success"])
+        self.assertFalse(created["robot_control_executed"])
+
+        status, listing = self.client.request(
+            "GET",
+            "/api/o6/archive/events?task_id=task-o6-voice-tts-draft&event_type=voice.tts_draft&limit=10",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(listing["event_summary"]["event_type_counts"]["voice.tts_draft"], 1)
+
+        status, detail = self.client.request("GET", "/api/o6/archive/tasks/task-o6-voice-tts-draft", token="")
+        self.assertEqual(status, 200)
+        event_by_id = {event.get("event_id"): event for event in detail["task"]["events"] if event.get("event_id")}
+        self.assertEqual(
+            event_by_id["evt-voice-tts-draft-0001"]["metadata"]["proof_boundary"],
+            "software_proof_o6_o7_voice_tts_draft_event_write_only",
+        )
+        self.assertFalse(event_by_id["evt-voice-tts-draft-0001"]["metadata"]["tts_send_enabled"])
+        self.assertFalse(event_by_id["evt-voice-tts-draft-0001"]["metadata"]["real_voice_api_connected"])
+
+        dangerous = self._o6_event_archive_payload(
+            task_id="task-o6-voice-tts-draft",
+            event_id="evt-voice-tts-draft-dangerous",
+            event_type="voice.tts_draft",
+        )
+        dangerous["events"][0]["metadata"] = {"real_voice_api_connected": True}
+        status, dangerous_body = self.client.request("POST", "/api/o6/archive/events", dangerous)
+        self.assertEqual(status, 400)
+        self.assertIn("unsafe", dangerous_body["error"]["message"].lower())
+
+        tts_send_claim = self._o6_event_archive_payload(
+            task_id="task-o6-voice-tts-draft",
+            event_id="evt-voice-tts-send-dangerous",
+            event_type="voice.tts_draft",
+        )
+        tts_send_claim["events"][0]["tts_send_enabled"] = True
+        status, tts_send_body = self.client.request("POST", "/api/o6/archive/events", tts_send_claim)
+        self.assertEqual(status, 400)
+        self.assertIn("unsafe", tts_send_body["error"]["message"].lower())
+
+    def test_o6_archive_events_endpoint_accepts_voice_speaker_ack_failure_and_rejects_true_ack_claims(self):
+        # speaker ACK/failure 只记录 O7 selected-task 本地事件；真实喇叭回执仍必须保持未证明。
+        status, _ = self.client.request(
+            "POST",
+            "/api/o6/archive/tasks",
+            self._o6_archive_task_payload(task_id="task-o6-voice-speaker-ack"),
+        )
+        self.assertEqual(status, 201)
+
+        ack = self._o6_event_archive_payload(
+            task_id="task-o6-voice-speaker-ack",
+            event_id="evt-voice-speaker-ack-0001",
+            event_type="voice.speaker_ack",
+        )
+        ack["events"][0].update(
+            {
+                "summary": "local mock speaker ack event recorded",
+                "evidence_refs": ["voice-speaker-ack.json"],
+                "metadata": {
+                    "proof_boundary": "software_proof_o6_o7_voice_speaker_ack_event_write_only",
+                    "ack_status": "ack",
+                    "speaker_dispatch_enabled": False,
+                    "real_speaker_ack_proven": False,
+                    "tts_send_enabled": False,
+                    "real_voice_api_connected": False,
+                    "real_asr_tts_runtime_connected": False,
+                    "safe_to_control": False,
+                    "delivery_success": False,
+                    "robot_control_executed": False,
+                    "connects_cloud_production": False,
+                },
+            }
+        )
+        failure = self._o6_event_archive_payload(
+            task_id="task-o6-voice-speaker-ack",
+            event_id="evt-voice-speaker-failure-0001",
+            event_type="voice.speaker_failure",
+        )
+        failure["events"][0].update(
+            {
+                "summary": "local mock speaker failure event recorded",
+                "evidence_refs": ["voice-speaker-failure.json"],
+                "metadata": {
+                    "proof_boundary": "software_proof_o6_o7_voice_speaker_ack_event_write_only",
+                    "ack_status": "failure",
+                    "failure_reason_code": "speaker_ack_missing_not_real_runtime",
+                    "speaker_dispatch_enabled": False,
+                    "real_speaker_ack_proven": False,
+                    "tts_send_enabled": False,
+                    "real_voice_api_connected": False,
+                    "real_asr_tts_runtime_connected": False,
+                    "safe_to_control": False,
+                    "delivery_success": False,
+                    "robot_control_executed": False,
+                    "connects_cloud_production": False,
+                },
+            }
+        )
+        ack["events"].append(failure["events"][0])
+        status, created = self.client.request("POST", "/api/o6/archive/events", ack)
+
+        self.assertEqual(status, 201)
+        self.assertTrue(created["archive_event_written"])
+        self.assertEqual(created["event_summary"]["event_type_counts"]["voice.speaker_ack"], 1)
+        self.assertEqual(created["event_summary"]["event_type_counts"]["voice.speaker_failure"], 1)
+        self.assertFalse(created["safe_to_control"])
+        self.assertFalse(created["delivery_success"])
+        self.assertFalse(created["robot_control_executed"])
+        written_types = {event["event_id"]: event["event_type"] for event in created["events_written"]}
+        self.assertEqual(written_types["evt-voice-speaker-ack-0001"], "voice.speaker_ack")
+        self.assertEqual(written_types["evt-voice-speaker-failure-0001"], "voice.speaker_failure")
+
+        status, listing = self.client.request(
+            "GET",
+            "/api/o6/archive/events?task_id=task-o6-voice-speaker-ack&event_type=voice.speaker_ack&limit=10",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(listing["event_summary"]["event_type_counts"]["voice.speaker_ack"], 1)
+
+        status, detail = self.client.request("GET", "/api/o6/archive/tasks/task-o6-voice-speaker-ack", token="")
+        self.assertEqual(status, 200)
+        event_by_id = {event.get("event_id"): event for event in detail["task"]["events"] if event.get("event_id")}
+        self.assertEqual(
+            event_by_id["evt-voice-speaker-ack-0001"]["metadata"]["proof_boundary"],
+            "software_proof_o6_o7_voice_speaker_ack_event_write_only",
+        )
+        self.assertFalse(event_by_id["evt-voice-speaker-ack-0001"]["metadata"]["real_speaker_ack_proven"])
+        self.assertFalse(event_by_id["evt-voice-speaker-failure-0001"]["metadata"]["speaker_dispatch_enabled"])
+
+        dangerous = self._o6_event_archive_payload(
+            task_id="task-o6-voice-speaker-ack",
+            event_id="evt-voice-speaker-ack-dangerous",
+            event_type="voice.speaker_ack",
+        )
+        dangerous["events"][0]["metadata"] = {"real_speaker_ack_proven": True}
+        status, dangerous_body = self.client.request("POST", "/api/o6/archive/events", dangerous)
+        self.assertEqual(status, 400)
+        self.assertIn("unsafe", dangerous_body["error"]["message"].lower())
+
+    def test_o6_archive_events_endpoint_accepts_operator_dropoff_acceptance_and_rejects_real_claims(self):
+        # operator.dropoff_acceptance 只记录本地 action capture 请求，不能升级成真实投放或控制证明。
+        status, _ = self.client.request(
+            "POST",
+            "/api/o6/archive/tasks",
+            self._o6_archive_task_payload(task_id="task-o6-operator-dropoff"),
+        )
+        self.assertEqual(status, 201)
+
+        payload = self._o6_event_archive_payload(
+            task_id="task-o6-operator-dropoff",
+            event_id="evt-operator-dropoff-0001",
+            event_type="operator.dropoff_acceptance",
+        )
+        payload["events"][0].update(
+            {
+                "summary": "operator requested local/mock dropoff acceptance capture",
+                "evidence_refs": ["operator-dropoff-acceptance.json"],
+                "metadata": {
+                    "proof_boundary": "software_proof_o6_o7_operator_dropoff_action_capture_only",
+                    "operator_action_id": "dropoff-action-0001",
+                    "operator_display_name": "pc-o7-operator",
+                    "real_operator_action_proven": False,
+                    "delivery_success": False,
+                    "route_execution_success": False,
+                    "safe_to_control": False,
+                    "hil_pass": False,
+                    "robot_control_executed": False,
+                    "connects_cloud_production": False,
+                },
+            }
+        )
+        status, created = self.client.request("POST", "/api/o6/archive/events", payload)
+
+        self.assertEqual(status, 201)
+        self.assertEqual(created["schema"], "trashbot.o6.archive_events.v1")
+        self.assertEqual(created["source"], "local_mock_event_archive")
+        self.assertTrue(created["archive_event_written"])
+        self.assertEqual(created["events_written"][0]["event_type"], "operator.dropoff_acceptance")
+        self.assertEqual(created["events_written"][0]["evidence_refs"], ["operator-dropoff-acceptance.json"])
+        self.assertFalse(created["safe_to_control"])
+        self.assertFalse(created["delivery_success"])
+        self.assertFalse(created["robot_control_executed"])
+
+        status, listing = self.client.request(
+            "GET",
+            "/api/o6/archive/events?task_id=task-o6-operator-dropoff&event_type=operator.dropoff_acceptance&limit=10",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(listing["event_summary"]["event_type_counts"]["operator.dropoff_acceptance"], 1)
+
+        status, detail = self.client.request("GET", "/api/o6/archive/tasks/task-o6-operator-dropoff", token="")
+        self.assertEqual(status, 200)
+        event_by_id = {event.get("event_id"): event for event in detail["task"]["events"] if event.get("event_id")}
+        self.assertEqual(
+            event_by_id["evt-operator-dropoff-0001"]["metadata"]["proof_boundary"],
+            "software_proof_o6_o7_operator_dropoff_action_capture_only",
+        )
+        self.assertFalse(event_by_id["evt-operator-dropoff-0001"]["metadata"]["real_operator_action_proven"])
+
+        dangerous = self._o6_event_archive_payload(
+            task_id="task-o6-operator-dropoff",
+            event_id="evt-operator-dropoff-dangerous",
+            event_type="operator.dropoff_acceptance",
+        )
+        dangerous["events"][0]["metadata"] = {"real_operator_action_proven": True}
+        status, dangerous_body = self.client.request("POST", "/api/o6/archive/events", dangerous)
+        self.assertEqual(status, 400)
+        self.assertIn("unsafe", dangerous_body["error"]["message"].lower())
+
+        route_claim = self._o6_event_archive_payload(
+            task_id="task-o6-operator-dropoff",
+            event_id="evt-operator-dropoff-route-claim",
+            event_type="operator.dropoff_acceptance",
+        )
+        route_claim["events"][0]["metadata"] = {"route_execution_success": True}
+        status, route_claim_body = self.client.request("POST", "/api/o6/archive/events", route_claim)
+        self.assertEqual(status, 400)
+        self.assertIn("unsafe", route_claim_body["error"]["message"].lower())
+
     def test_o6_archive_events_endpoint_rejects_bad_json_scope_query_and_unsafe_payloads(self):
         status, _ = self.client.request(
             "POST",
@@ -7037,6 +8523,127 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
         self.assertEqual(detail["itemized_labels"][0]["item_type"], "trajectory_frame")
         self.assertEqual(detail["itemized_labels"][0]["label_type"], "elevator_door_state")
         self.assertIn("real_annotation_submit_success", detail["not_proven"])
+
+    def test_o6_cloud_archive_labels_list_filters_robot_task_date_status_and_limit(self):
+        def create_task(task_id, robot_id, started_at_ms, finished_at_ms):
+            payload = self._o6_archive_task_payload(task_id=task_id, robot_id=robot_id, finished_at=finished_at_ms)
+            payload["started_at_ms"] = started_at_ms
+            status, _ = self.client.request("POST", "/api/o6/archive/tasks", payload)
+            self.assertEqual(status, 201)
+
+        def post_label(task_id, robot_id, now_seconds, *, confidence=None):
+            label = {
+                "item_id": f"item-{task_id}",
+                "item_type": "trajectory_frame",
+                "label_type": "elevator_door_state",
+                "value": "open",
+                "evidence_ref": f"labels/{task_id}.json",
+            }
+            if confidence is not None:
+                label["confidence"] = confidence
+            with mock.patch.object(relay_module, "_now", return_value=now_seconds):
+                status, body = self.client.request(
+                    "POST",
+                    "/api/o6/archive/labels",
+                    {"robot_id": robot_id, "task_id": task_id, "labels": [label]},
+                )
+            self.assertIn(status, (200, 201))
+            return body
+
+        create_task("task-label-filter-a", "trashbot-alpha", 1000, 2000)
+        create_task("task-label-filter-b", "trashbot-beta", 1000, 2000)
+        create_task("task-label-filter-c", "trashbot-alpha", 1000, 2000)
+        create_task("task-label-filter-d", "trashbot-alpha", 259200000, 259201000)
+        post_label("task-label-filter-a", "trashbot-alpha", 86400.0, confidence=0.91)
+        post_label("task-label-filter-b", "trashbot-beta", 172800.0)
+        post_label("task-label-filter-c", "trashbot-alpha", 172800.0, confidence=0.82)
+
+        status, by_robot_limited = self.client.request(
+            "GET",
+            "/api/o6/archive/labels?robot_id=trashbot-alpha&limit=1",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertTrue(by_robot_limited["label_query_filters_ready_not_production_proof"])
+        self.assertEqual(by_robot_limited["filter_semantics"], "and")
+        self.assertEqual(by_robot_limited["filtered_result_count"], 3)
+        self.assertEqual(len(by_robot_limited["task_summary"]), 1)
+        self.assertEqual(by_robot_limited["applied_filters"]["robot_id"], "trashbot-alpha")
+        self.assertEqual(by_robot_limited["applied_filters"]["limit"], 1)
+        for key in (
+            "safe_to_control",
+            "delivery_success",
+            "primary_actions_enabled",
+            "submit_enabled",
+            "rollback_enabled",
+            "dataset_export_available",
+            "real_annotation_api_connected",
+            "real_dataset_export_connected",
+            "connects_cloud_production",
+            "robot_control_executed",
+        ):
+            self.assertFalse(by_robot_limited[key])
+
+        status, by_task = self.client.request(
+            "GET",
+            "/api/o6/archive/labels?task_id=task-label-filter-b",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(by_task["filtered_result_count"], 1)
+        self.assertEqual(by_task["task_summary"][0]["task_id"], "task-label-filter-b")
+        self.assertEqual(by_task["task_summary"][0]["robot_id"], "trashbot-beta")
+
+        status, by_label_date = self.client.request(
+            "GET",
+            "/api/o6/archive/labels?date=1970-01-02",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(by_label_date["filtered_result_count"], 1)
+        self.assertEqual(by_label_date["date_filter_source"], "label.updated_at_ms")
+        self.assertEqual(by_label_date["task_summary"][0]["task_id"], "task-label-filter-a")
+        self.assertEqual(by_label_date["task_summary"][0]["date_filter_source"], "label.updated_at_ms")
+
+        status, combined = self.client.request(
+            "GET",
+            "/api/o6/archive/labels?robot_id=trashbot-alpha&task_id=task-label-filter-c&date=1970-01-03&status=labeled&limit=1",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(combined["filtered_result_count"], 1)
+        self.assertEqual(combined["label_summary"]["labeled_task_count"], 1)
+        self.assertEqual(combined["task_summary"][0]["task_id"], "task-label-filter-c")
+        self.assertEqual(
+            combined["applied_filters"],
+            {
+                "robot_id": "trashbot-alpha",
+                "task_id": "task-label-filter-c",
+                "date": "1970-01-03",
+                "status": "labeled",
+                "limit": 1,
+            },
+        )
+
+        status, fallback_date = self.client.request(
+            "GET",
+            "/api/o6/archive/labels?robot_id=trashbot-alpha&date=1970-01-04&status=pending",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(fallback_date["filtered_result_count"], 1)
+        self.assertEqual(fallback_date["date_filter_source"], "task.finished_at_ms")
+        self.assertEqual(fallback_date["task_summary"][0]["task_id"], "task-label-filter-d")
+
+        status, unknown = self.client.request(
+            "GET",
+            "/api/o6/archive/labels?robot_id=trashbot-missing",
+            token="",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(unknown["filtered_result_count"], 0)
+        self.assertEqual(unknown["task_summary"], [])
+        self.assertEqual(unknown["blocked_reasons"], ["label_query_filter_no_matches"])
 
     def test_o6_cloud_archive_labels_endpoint_idempotent_upsert_and_task_scope(self):
         status, _ = self.client.request("POST", "/api/o6/archive/tasks", self._o6_archive_task_payload(task_id="task-o6-002"))
@@ -7475,10 +9082,12 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
         status, invalid_status = self.client.request("GET", "/api/o6/archive/labels?status=invalid", token="")
         self.assertEqual(status, 400)
         self.assertEqual(invalid_status["error"]["code"], "bad_request")
+        self.assertIn("invalid_label_query_filter", invalid_status["error"]["message"])
 
         status, invalid_limit = self.client.request("GET", "/api/o6/archive/labels?limit=-1", token="")
         self.assertEqual(status, 400)
         self.assertEqual(invalid_limit["error"]["code"], "bad_request")
+        self.assertIn("invalid_label_query_filter", invalid_limit["error"]["message"])
 
         status, capped_listing = self.client.request("GET", "/api/o6/archive/labels?limit=99999", token="")
         self.assertEqual(status, 200)
@@ -7486,6 +9095,39 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
         self.assertEqual(capped_listing["status_filter"], "all")
 
         status, detail = self.client.request("GET", "/api/o6/archive/labels/task-o6-003", token="")
+        self.assertEqual(status, 200)
+        self.assertEqual(detail["label_summary"]["itemized_label_count"], 0)
+        self.assertEqual(detail["submit_receipt"]["status"], "blocked_not_proven")
+
+    def test_o6_cloud_archive_labels_list_query_filters_fail_closed_without_store_mutation(self):
+        status, _ = self.client.request(
+            "POST",
+            "/api/o6/archive/tasks",
+            self._o6_archive_task_payload(task_id="task-o6-query-filter-safe"),
+        )
+        self.assertEqual(status, 201)
+
+        invalid_paths = [
+            "/api/o6/archive/labels?date=2026-02-30",
+            f"/api/o6/archive/labels?robot_id={'a' * 81}",
+            "/api/o6/archive/labels?robot_id=/tmp/labels.json",
+            "/api/o6/archive/labels?robot_id=https%3A%2F%2Fexample.test%2Flabels%3Ftoken%3Dsecret",
+            "/api/o6/archive/labels?task_id=QUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVo0MTIzNDU2Nzg5MA",
+            "/api/o6/archive/labels?robot_id=trashbot-001&robot_id=trashbot-002",
+            "/api/o6/archive/labels?limit=1&limit=2",
+            "/api/o6/archive/labels?status=pending&status=labeled",
+        ]
+        for path in invalid_paths:
+            status, body = self.client.request("GET", path, token="")
+            self.assertEqual(status, 400, path)
+            self.assertEqual(body["error"]["code"], "bad_request")
+            self.assertIn("invalid_label_query_filter", body["error"]["message"])
+            encoded = json.dumps(body, ensure_ascii=False).lower()
+            self.assertNotIn("secret", encoded)
+            self.assertNotIn("/tmp/labels.json", encoded)
+            self.assertNotIn("qujdrev", encoded)
+
+        status, detail = self.client.request("GET", "/api/o6/archive/labels/task-o6-query-filter-safe", token="")
         self.assertEqual(status, 200)
         self.assertEqual(detail["label_summary"]["itemized_label_count"], 0)
         self.assertEqual(detail["submit_receipt"]["status"], "blocked_not_proven")
@@ -14204,6 +15846,348 @@ class RemoteCloudRelayPreflightTest(unittest.TestCase):
             ):
                 self.assertNotIn(forbidden, encoded)
 
+    def test_cdn_tls_external_evidence_summary_consumes_1313_artifact_fail_closed(self):
+        fixture_path = (
+            WORKSPACE_ROOT
+            / "sprints"
+            / "2026.07.13_13-13_o5_cdn_tls_external_evidence_probe"
+            / "artifacts"
+            / "cdn_tls_external_evidence_summary.json"
+        )
+
+        summary = cdn_tls_external_evidence_artifact_summary(fixture_path)
+
+        self.assertFalse(summary["ok"])
+        self.assertEqual(summary["schema"], CDN_TLS_EXTERNAL_EVIDENCE_SCHEMA)
+        self.assertEqual(summary["evidence_boundary"], CDN_TLS_EXTERNAL_EVIDENCE_EVIDENCE_BOUNDARY)
+        self.assertEqual(summary["reason_code"], "blocked_http_status_not_success_class")
+        self.assertTrue(summary["probe_attempted"])
+        self.assertTrue(summary["external_request_attempted"])
+        self.assertTrue(summary["tls_handshake_observed"])
+        self.assertTrue(summary["certificate_valid_for_host"])
+        self.assertEqual(summary["http_method"], "HEAD")
+        self.assertEqual(summary["http_status_class"], "4xx")
+        self.assertEqual(summary["accepted_claim"], "none")
+        self.assertTrue(summary["target_host_hash_prefix_present"])
+        self.assertFalse(summary["readiness_details"]["delivery_success"])
+        self.assertFalse(summary["readiness_details"]["safe_to_control"])
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            payload = production_preflight_payload(
+                {
+                    "TRASHBOT_REMOTE_CLOUD_STATE": str(root / "preflight_state.sqlite"),
+                    "TRASHBOT_REMOTE_CLOUD_STATE_BACKEND": "sqlite",
+                    CDN_TLS_EXTERNAL_EVIDENCE_ENV: str(fixture_path),
+                }
+            )
+            checks = {check["name"]: check for check in payload["checks"]}
+            cdn_check = checks["cdn_tls_external_evidence"]
+            encoded = json.dumps({"summary": summary, "preflight": payload}, ensure_ascii=False)
+
+            self.assertEqual(cdn_check["status"], "blocked")
+            self.assertIn("blocked_http_status_not_success_class", cdn_check["code"])
+            self.assertEqual(
+                cdn_check["details"]["reason_code"],
+                "blocked_http_status_not_success_class",
+            )
+            self.assertTrue(cdn_check["details"]["readiness_details"]["tls_handshake_observed"])
+            self.assertTrue(cdn_check["details"]["readiness_details"]["certificate_valid_for_host"])
+            self.assertFalse(cdn_check["details"]["production_ready"])
+            self.assertFalse(cdn_check["details"]["delivery_success"])
+            self.assertFalse(cdn_check["details"]["safe_to_control"])
+            for forbidden in (
+                str(fixture_path),
+                str(root / "preflight_state.sqlite"),
+                "https://",
+                "Authorization",
+                "Bearer",
+                "token=",
+                "/tmp/",
+                "/cmd_vel",
+            ):
+                self.assertNotIn(forbidden, encoded)
+
+    def test_cloud_production_cutover_packet_consumes_cdn_tls_external_evidence_slot(self):
+        fixture_path = (
+            WORKSPACE_ROOT
+            / "sprints"
+            / "2026.07.13_13-13_o5_cdn_tls_external_evidence_probe"
+            / "artifacts"
+            / "cdn_tls_external_evidence_summary.json"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            packet_path = root / "cloud_production_cutover_readiness_packet.json"
+            result = create_cloud_production_cutover_readiness_packet_artifact(
+                packet_path,
+                {CDN_TLS_EXTERNAL_EVIDENCE_ENV: str(fixture_path)},
+            )
+            artifact = json.loads(packet_path.read_text(encoding="utf-8"))
+            summary = cloud_production_cutover_readiness_packet_summary(packet_path)
+            section = artifact["artifact_statuses"]["cdn_tls_external_evidence"]
+            encoded = json.dumps({"result": result, "artifact": artifact, "summary": summary}, ensure_ascii=False)
+
+            self.assertTrue(result["ok"])
+            self.assertTrue(summary["ok"])
+            self.assertEqual(artifact["artifact_counts"]["artifact_slots"], 10)
+            self.assertEqual(artifact["artifact_counts"]["artifact_present"], 1)
+            self.assertEqual(artifact["artifact_counts"]["artifact_ready"], 0)
+            self.assertEqual(section["status"], "blocked_not_proven")
+            self.assertEqual(section["source_schema"], CDN_TLS_EXTERNAL_EVIDENCE_SCHEMA)
+            self.assertEqual(section["evidence_boundary"], CDN_TLS_EXTERNAL_EVIDENCE_EVIDENCE_BOUNDARY)
+            self.assertEqual(section["source_ref"]["basename"], "cdn_tls_external_evidence_summary.json")
+            self.assertIn("blocked_http_status_not_success_class", section["blocked_reasons"])
+            self.assertTrue(section["details"]["tls_handshake_observed"])
+            self.assertTrue(section["details"]["certificate_valid_for_host"])
+            self.assertEqual(section["details"]["http_status_class"], "4xx")
+            self.assertFalse(section["details"]["okr_credit_allowed"])
+            self.assertFalse(section["details"]["safe_to_control"])
+            self.assertFalse(artifact["production_ready"])
+            self.assertFalse(artifact["okr_credit_allowed"])
+            self.assertFalse(artifact["delivery_success"])
+            self.assertFalse(artifact["safe_to_control"])
+            self.assertEqual(artifact["proof_scope_class"], "software_proof_support_only")
+            for forbidden in (
+                str(fixture_path),
+                str(packet_path),
+                "https://",
+                "Authorization",
+                "Bearer",
+                "token=",
+                "/tmp/",
+                "/cmd_vel",
+            ):
+                self.assertNotIn(forbidden, encoded)
+
+    def test_cloud_external_evidence_review_decision_packet_and_preflight_are_fail_closed(self):
+        tool = _load_cloud_external_evidence_review_decision_tool()
+        fixture_root = (
+            WORKSPACE_ROOT
+            / "pc-tools"
+            / "evidence"
+            / "fixtures"
+            / "cloud_external_evidence_review_decision"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            accepted_path = root / "cloud_external_evidence_review_decision.json"
+            accepted_summary_path = root / "cloud_external_evidence_review_decision_summary.json"
+            unsafe_path = root / "unsafe_cloud_external_evidence_review_decision.json"
+            unsafe_summary_path = root / "unsafe_cloud_external_evidence_review_decision_summary.json"
+            packet_path = root / "cloud_production_cutover_readiness_packet.json"
+
+            with mock.patch("sys.stdout", new_callable=io.StringIO):
+                accepted_exit = tool.main(
+                    [
+                        "--intake-json",
+                        str(fixture_root / "accepted_intake.json"),
+                        "--evidence-ref",
+                        "external_evidence_ref_20260524_0001",
+                        "--output",
+                        str(accepted_path),
+                        "--summary-output",
+                        str(accepted_summary_path),
+                    ]
+                )
+            self.assertEqual(accepted_exit, 0)
+            result = create_cloud_production_cutover_readiness_packet_artifact(
+                packet_path,
+                {CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_ENV: str(accepted_path)},
+            )
+            artifact = json.loads(packet_path.read_text(encoding="utf-8"))
+            review_summary = cloud_external_evidence_review_decision_artifact_summary(accepted_path)
+            section = artifact["artifact_statuses"]["cloud_external_evidence_review_decision"]
+            preflight = production_preflight_payload(
+                {
+                    "TRASHBOT_REMOTE_CLOUD_STATE": str(root / "preflight_state.sqlite"),
+                    "TRASHBOT_REMOTE_CLOUD_STATE_BACKEND": "sqlite",
+                    CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_ENV: str(accepted_path),
+                }
+            )
+            checks = {check["name"]: check for check in preflight["checks"]}
+
+            self.assertTrue(result["ok"])
+            self.assertTrue(review_summary["ok"])
+            self.assertEqual(review_summary["review_decision"], "accepted_external_evidence_not_proven")
+            self.assertEqual(artifact["artifact_counts"]["artifact_slots"], 10)
+            self.assertEqual(artifact["artifact_counts"]["artifact_present"], 1)
+            self.assertEqual(artifact["artifact_counts"]["artifact_ready"], 1)
+            self.assertEqual(section["status"], "software_proof_ready")
+            self.assertEqual(section["source_schema"], CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_SCHEMA)
+            self.assertEqual(
+                section["evidence_boundary"],
+                CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_EVIDENCE_BOUNDARY,
+            )
+            self.assertEqual(
+                section["details"]["review_decision"],
+                "accepted_external_evidence_not_proven",
+            )
+            self.assertFalse(section["details"]["production_ready"])
+            self.assertFalse(section["details"]["delivery_success"])
+            self.assertFalse(section["details"]["safe_to_control"])
+            self.assertEqual(checks["cloud_external_evidence_review_decision"]["status"], "pass")
+            self.assertEqual(
+                checks["cloud_external_evidence_review_decision"]["details"]["summary_schema"],
+                CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_SUMMARY_SCHEMA,
+            )
+            self.assertFalse(preflight["production_ready"])
+            self.assertTrue(preflight["software_proof_ready"])
+            self.assertEqual(
+                preflight["evidence_boundary"],
+                CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_EVIDENCE_BOUNDARY,
+            )
+
+            with mock.patch("sys.stdout", new_callable=io.StringIO):
+                unsafe_exit = tool.main(
+                    [
+                        "--intake-json",
+                        str(fixture_root / "unsafe_intake.json"),
+                        "--evidence-ref",
+                        "external_evidence_ref_20260524_0001",
+                        "--output",
+                        str(unsafe_path),
+                        "--summary-output",
+                        str(unsafe_summary_path),
+                    ]
+                )
+            self.assertEqual(unsafe_exit, 0)
+            unsafe_summary = cloud_external_evidence_review_decision_artifact_summary(unsafe_path)
+            unsafe_packet = create_cloud_production_cutover_readiness_packet_artifact(
+                packet_path,
+                {CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_ENV: str(unsafe_path)},
+            )
+            unsafe_artifact = json.loads(packet_path.read_text(encoding="utf-8"))
+            unsafe_section = unsafe_artifact["artifact_statuses"]["cloud_external_evidence_review_decision"]
+            unsafe_preflight = production_preflight_payload(
+                {
+                    "TRASHBOT_REMOTE_CLOUD_STATE": str(root / "unsafe_preflight_state.sqlite"),
+                    "TRASHBOT_REMOTE_CLOUD_STATE_BACKEND": "sqlite",
+                    CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_ENV: str(unsafe_path),
+                }
+            )
+            unsafe_checks = {check["name"]: check for check in unsafe_preflight["checks"]}
+            encoded = json.dumps(
+                {
+                    "summary": unsafe_summary,
+                    "packet": unsafe_packet,
+                    "artifact": unsafe_artifact,
+                    "preflight": unsafe_preflight,
+                },
+                ensure_ascii=False,
+            )
+
+            self.assertFalse(unsafe_summary["ok"])
+            self.assertEqual(
+                unsafe_summary["reason_code"],
+                "rejected_unsafe_external_evidence_not_proven",
+            )
+            self.assertEqual(unsafe_section["status"], "blocked_not_proven")
+            self.assertEqual(unsafe_artifact["artifact_counts"]["artifact_ready"], 0)
+            self.assertEqual(unsafe_checks["cloud_external_evidence_review_decision"]["status"], "blocked")
+            self.assertFalse(unsafe_preflight["production_ready"])
+            for forbidden in (
+                str(accepted_path),
+                str(unsafe_path),
+                str(root / "preflight_state.sqlite"),
+                "https://example.invalid",
+                "Authorization",
+                "Bearer",
+                "secret-token",
+                "/tmp/",
+                "/cmd_vel",
+                "/api/base/manual",
+            ):
+                self.assertNotIn(forbidden, encoded)
+
+    def test_cdn_tls_external_evidence_success_class_and_hostile_artifacts_stay_bounded(self):
+        fixture_path = (
+            WORKSPACE_ROOT
+            / "sprints"
+            / "2026.07.13_13-13_o5_cdn_tls_external_evidence_probe"
+            / "artifacts"
+            / "cdn_tls_external_evidence_summary.json"
+        )
+        base_artifact = json.loads(fixture_path.read_text(encoding="utf-8"))
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            success_path = root / "cdn_tls_external_evidence_success.json"
+            packet_path = root / "cloud_production_cutover_readiness_packet.json"
+            success_artifact = json.loads(json.dumps(base_artifact))
+            success_artifact.update(
+                {
+                    "accepted_claim": "o5_cdn_tls_external_evidence_delta",
+                    "http_status_class": "2xx",
+                    "cdn_tls_external_evidence_status": (
+                        "cdn_tls_external_evidence_ready_not_production_proof"
+                    ),
+                    "blocked_reasons": [],
+                }
+            )
+            success_path.write_text(json.dumps(success_artifact, ensure_ascii=False), encoding="utf-8")
+
+            success_summary = cdn_tls_external_evidence_artifact_summary(success_path)
+            result = create_cloud_production_cutover_readiness_packet_artifact(
+                packet_path,
+                {CDN_TLS_EXTERNAL_EVIDENCE_ENV: str(success_path)},
+            )
+            packet = json.loads(packet_path.read_text(encoding="utf-8"))
+            section = packet["artifact_statuses"]["cdn_tls_external_evidence"]
+            preflight = production_preflight_payload(
+                {
+                    "TRASHBOT_REMOTE_CLOUD_STATE": str(root / "preflight_state.sqlite"),
+                    "TRASHBOT_REMOTE_CLOUD_STATE_BACKEND": "sqlite",
+                    CDN_TLS_EXTERNAL_EVIDENCE_ENV: str(success_path),
+                }
+            )
+            checks = {check["name"]: check for check in preflight["checks"]}
+
+            self.assertTrue(success_summary["ok"])
+            self.assertEqual(section["status"], "software_proof_ready")
+            self.assertTrue(packet["software_proof_ready"])
+            self.assertFalse(packet["production_ready"])
+            self.assertFalse(packet["okr_credit_allowed"])
+            self.assertFalse(packet["delivery_success"])
+            self.assertFalse(packet["safe_to_control"])
+            self.assertTrue(result["ok"])
+            self.assertEqual(checks["cdn_tls_external_evidence"]["status"], "pass")
+            self.assertFalse(preflight["production_ready"])
+
+            hostile_path = root / "hostile_cdn_tls_external_evidence.json"
+            hostile_artifact = json.loads(json.dumps(base_artifact))
+            hostile_artifact["safe_to_control"] = True
+            hostile_artifact["target_url"] = "https://cdn.example.test/rober/path?token=secret"
+            hostile_artifact["response_body"] = "Authorization Bearer token raw response"
+            hostile_path.write_text(json.dumps(hostile_artifact, ensure_ascii=False), encoding="utf-8")
+            hostile_summary = cdn_tls_external_evidence_artifact_summary(hostile_path)
+            hostile_preflight = production_preflight_payload(
+                {
+                    "TRASHBOT_REMOTE_CLOUD_STATE": str(root / "hostile_preflight_state.sqlite"),
+                    "TRASHBOT_REMOTE_CLOUD_STATE_BACKEND": "sqlite",
+                    CDN_TLS_EXTERNAL_EVIDENCE_ENV: str(hostile_path),
+                }
+            )
+            hostile_checks = {check["name"]: check for check in hostile_preflight["checks"]}
+            encoded = json.dumps(
+                {"summary": hostile_summary, "preflight": hostile_preflight},
+                ensure_ascii=False,
+            )
+
+            self.assertFalse(hostile_summary["ok"])
+            self.assertEqual(hostile_summary["reason_code"], "cdn_tls_external_evidence_invalid")
+            self.assertEqual(hostile_checks["cdn_tls_external_evidence"]["status"], "blocked")
+            self.assertFalse(hostile_checks["cdn_tls_external_evidence"]["details"]["safe_to_control"])
+            for forbidden in (
+                str(hostile_path),
+                "https://cdn.example.test",
+                "token=secret",
+                "Authorization",
+                "Bearer",
+                "raw response",
+                "safe_to_control\": true",
+            ):
+                self.assertNotIn(forbidden, encoded)
+
     def test_cloud_production_cutover_readiness_packet_and_preflight_are_support_only(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = pathlib.Path(tmp)
@@ -14296,10 +16280,14 @@ class RemoteCloudRelayPreflightTest(unittest.TestCase):
             self.assertFalse(artifact["safe_to_control"])
             self.assertFalse(artifact["primary_actions_enabled"])
             self.assertFalse(artifact["robot_control_executed"])
-            self.assertEqual(artifact["artifact_counts"]["artifact_slots"], 8)
+            self.assertEqual(artifact["artifact_counts"]["artifact_slots"], 10)
             self.assertGreaterEqual(artifact["artifact_counts"]["artifact_ready"], 7)
             self.assertEqual(
                 artifact["artifact_statuses"]["cloud_external_probe"]["status"],
+                "missing",
+            )
+            self.assertEqual(
+                artifact["artifact_statuses"]["cdn_tls_external_evidence"]["status"],
                 "missing",
             )
             self.assertIn("real_public_https_tls_probe", artifact["next_required_evidence"])

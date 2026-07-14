@@ -1,0 +1,1118 @@
+{
+  "calls_base_manual": false,
+  "delivery_success": false,
+  "evidence_type": "blocked_with_root_cause",
+  "generated_at_ms": 1783746040205,
+  "hil_pass": false,
+  "not_proven": true,
+  "proof": {
+    "amcl_active": false,
+    "amcl_broadcast_conditions": {
+      "amcl_active": false,
+      "amcl_pose_observed": false,
+      "initialpose_published": false,
+      "map_once_observed": false,
+      "map_server_active": false,
+      "scan_once_observed": false,
+      "static_tf_processes_observed": false
+    },
+    "amcl_frame_params": {},
+    "amcl_log_tail": "",
+    "amcl_node_info_observed": false,
+    "amcl_node_publishers": [],
+    "amcl_node_subscribers": [],
+    "amcl_param_probe_ok": false,
+    "amcl_pose": null,
+    "amcl_pose_frame_id": null,
+    "amcl_pose_observed": false,
+    "amcl_tf_broadcast_param": null,
+    "amcl_tf_root_cause": "tf_source_probe_not_executed",
+    "base_link_to_laser_frame_transform": null,
+    "blocked_commands_not_sent": [
+      "T=1",
+      "T=13",
+      "T=130",
+      "T=131",
+      "/cmd_vel",
+      "/api/base/manual",
+      "/api/base/",
+      "/api/nav2/start",
+      "/api/nav2/stop",
+      "navigate_to_pose",
+      "/initialpose",
+      "compute_path_to_pose"
+    ],
+    "blocked_devices_not_opened": [
+      "/dev/ttyS5"
+    ],
+    "blockers": [
+      {
+        "layer": "canonical map proof",
+        "reason": "map_lifecycle_latest_missing"
+      },
+      {
+        "layer": "ROS install/source",
+        "reason": "ros2_command_unavailable_after_bash_source"
+      }
+    ],
+    "calls_base_manual": false,
+    "collector_mode": "read_only_existing_ros_graph_no_motion",
+    "commands": {
+      "amcl_node_info": {
+        "executed": false,
+        "ok": false
+      },
+      "amcl_pose_once": {
+        "boundary": "pre_initialpose_amcl_pose_probe_skipped_to_prioritize_initialpose",
+        "executed": false,
+        "ok": false
+      },
+      "base_link_to_laser_frame_tf": {
+        "boundary": "tf_probe_not_requested_without_initialpose_opt_in",
+        "executed": false,
+        "ok": false
+      },
+      "controller_node_info": {
+        "boundary": "controller_never_requested_no_motion",
+        "executed": false,
+        "ok": false
+      },
+      "initialpose_info": {
+        "boundary": "initialpose_info_skipped_without_ros2",
+        "executed": false,
+        "ok": false
+      },
+      "initialpose_publish": {
+        "boundary": "default_read_only_no_initialpose_publish",
+        "command": "initialpose opt-in disabled",
+        "executed": false,
+        "ok": false,
+        "publish_attempts": 0,
+        "publish_method": "disabled",
+        "subscriber_count": null
+      },
+      "lifecycle": {},
+      "lifecycle_recheck": {
+        "boundary": "initial_lifecycle_snapshot_sufficient",
+        "executed": false
+      },
+      "managed_runtime": {
+        "cleanup_guard": {
+          "boundary": "no_managed_runtime_process_group_started",
+          "ok": true
+        },
+        "cleanup_result": {
+          "attempted": false,
+          "boundary": "managed_runtime_not_requested",
+          "ok": true
+        },
+        "log_path": null,
+        "log_tail": "",
+        "map_analysis": {
+          "bounds": null,
+          "cell_counts": {},
+          "error": {
+            "message": "managed map yaml is not resolved",
+            "type": "map_yaml_missing"
+          },
+          "executed": false,
+          "height": null,
+          "image": null,
+          "map_yaml": null,
+          "ok": false,
+          "origin": null,
+          "resolution": null,
+          "width": null
+        },
+        "map_yaml": null,
+        "map_yaml_source": "canonical_map_yaml_candidate_missing",
+        "process_group": null,
+        "requested": false,
+        "started": false,
+        "startup_error": null,
+        "wait_result": {
+          "boundary": "managed_runtime_not_requested",
+          "executed": false,
+          "ok": false
+        }
+      },
+      "map_once": {
+        "executed": false,
+        "ok": false
+      },
+      "map_server_info": {
+        "executed": false,
+        "ok": false
+      },
+      "map_to_base_link_tf": {
+        "boundary": "tf_probe_not_requested_without_initialpose_opt_in",
+        "executed": false,
+        "ok": false
+      },
+      "map_to_odom_tf": {
+        "boundary": "tf_probe_not_requested_without_initialpose_opt_in",
+        "executed": false,
+        "ok": false
+      },
+      "node_list": {
+        "executed": false,
+        "ok": false
+      },
+      "odom_once": {
+        "executed": false,
+        "ok": false
+      },
+      "odom_to_base_link_tf": {
+        "boundary": "tf_probe_not_requested_without_initialpose_opt_in",
+        "executed": false,
+        "ok": false
+      },
+      "package_checks": {},
+      "package_checks_batch": {
+        "boundary": "ros2_unavailable_package_check_skipped",
+        "executed": false,
+        "ok": false
+      },
+      "path_generation": {
+        "request": {
+          "enabled": false,
+          "frame_id": "map",
+          "map_free_cell_count": 0,
+          "map_goal_diagnostics": {
+            "adapted": false,
+            "map_analysis_ok": false
+          },
+          "map_has_free_cells_for_path_proof": true,
+          "orientation_w": 1.0,
+          "orientation_z": 0.0,
+          "planner_id": "",
+          "start_x": 0.0,
+          "start_y": 0.0,
+          "use_start": false,
+          "x": 0.8,
+          "y": 0.0,
+          "yaw": 0.0
+        },
+        "result": {
+          "attempted": false,
+          "boundary": "default_read_only_no_path_generation_attempt",
+          "ok": false
+        }
+      },
+      "planner_lifecycle": {
+        "controller_server": {
+          "boundary": "planner_probe_deferred_until_localization_ready",
+          "executed": false,
+          "ok": false
+        },
+        "planner_server": {
+          "boundary": "planner_probe_deferred_until_localization_ready",
+          "executed": false,
+          "ok": false
+        }
+      },
+      "planner_lifecycle_recheck": {
+        "boundary": "path_generation_planner_recheck_not_requested",
+        "executed": false
+      },
+      "planner_node_info": {
+        "boundary": "planner_probe_deferred_until_localization_ready",
+        "executed": false,
+        "ok": false
+      },
+      "post_initialpose_amcl_pose_once": {
+        "boundary": "post_initialpose_probe_not_requested",
+        "executed": false,
+        "ok": false
+      },
+      "ros2_check": {
+        "command": "command -v ros2",
+        "elapsed_ms": 892,
+        "executed": true,
+        "finished_at_ms": 1783746040193,
+        "ok": false,
+        "returncode": 1,
+        "started_at_ms": 1783746039301,
+        "stderr": "bash: /opt/ros/humble/setup.bash: No such file or directory\n",
+        "stdout": "",
+        "timed_out": false,
+        "timeout_s": 6.0
+      },
+      "scan_once": {
+        "executed": false,
+        "ok": false
+      },
+      "tf_source_probe": {
+        "boundary": "ros2_unavailable_tf_source_probe_skipped",
+        "executed": false,
+        "ok": false
+      },
+      "topic_list": {
+        "executed": false,
+        "ok": false
+      }
+    },
+    "controller_active": false,
+    "controller_server_active": false,
+    "controller_server_observed": false,
+    "controller_server_requested": false,
+    "current_command": null,
+    "delivery_success": false,
+    "effective_map_inputs_ready": false,
+    "elapsed_ms": 904,
+    "evidence_ref": "o10-amcl-nav2-runtime-1783746039300",
+    "evidence_type": "blocked_with_root_cause",
+    "generated_at_ms": 1783746040204,
+    "hil_pass": false,
+    "initialpose_boundary": "default_read_only_not_published_by_collector_no_motion_boundary",
+    "initialpose_publish_attempted": false,
+    "initialpose_publish_attempts": 0,
+    "initialpose_publish_elapsed_ms": null,
+    "initialpose_publish_error": null,
+    "initialpose_publish_method": "disabled",
+    "initialpose_published": false,
+    "initialpose_request": {
+      "enabled": false,
+      "frame_id": "map",
+      "orientation_w": 1.0,
+      "orientation_z": 0.0,
+      "x": 0.0,
+      "y": 0.0,
+      "yaw": 0.0
+    },
+    "initialpose_subscriber_count": null,
+    "last_phase": "final",
+    "last_successful_phase": "cleanup",
+    "localization_signal_freshness": {
+      "/amcl_pose": {
+        "endpoint_error": null,
+        "expected_type": "geometry_msgs/msg/PoseWithCovarianceStamped",
+        "freshness": {
+          "age_ms": null,
+          "reason": "probe_or_source_not_observed",
+          "status": "not_observed"
+        },
+        "probe": {
+          "boundary": "pre_initialpose_amcl_pose_probe_skipped_to_prioritize_initialpose",
+          "elapsed_ms": null,
+          "error": null,
+          "executed": false,
+          "observed": false,
+          "returncode": null,
+          "timed_out": false,
+          "timeout_s": null
+        },
+        "publishers": {
+          "count": 0,
+          "nodes": []
+        },
+        "source_class": "message",
+        "subscribers": {
+          "count": 0,
+          "nodes": []
+        },
+        "timestamp": {
+          "parsed": false,
+          "reason": "stamp_not_found",
+          "source": "/amcl_pose.header.stamp"
+        },
+        "topic": "/amcl_pose",
+        "topic_present": false,
+        "topic_type": null
+      },
+      "/odom": {
+        "endpoint_error": null,
+        "expected_type": "nav_msgs/msg/Odometry",
+        "freshness": {
+          "age_ms": null,
+          "reason": "probe_or_source_not_observed",
+          "status": "not_observed"
+        },
+        "probe": {
+          "boundary": "/odom_probe_not_observed",
+          "elapsed_ms": null,
+          "error": null,
+          "executed": false,
+          "observed": false,
+          "returncode": null,
+          "timed_out": false,
+          "timeout_s": null
+        },
+        "publishers": {
+          "count": 0,
+          "nodes": []
+        },
+        "source_class": "message",
+        "subscribers": {
+          "count": 0,
+          "nodes": []
+        },
+        "timestamp": {
+          "parsed": false,
+          "reason": "stamp_not_found",
+          "source": "/odom.header.stamp"
+        },
+        "topic": "/odom",
+        "topic_present": false,
+        "topic_type": null
+      },
+      "/scan": {
+        "endpoint_error": null,
+        "expected_type": "sensor_msgs/msg/LaserScan",
+        "freshness": {
+          "age_ms": null,
+          "reason": "probe_or_source_not_observed",
+          "status": "not_observed"
+        },
+        "probe": {
+          "boundary": "/scan_probe_not_observed",
+          "elapsed_ms": null,
+          "error": null,
+          "executed": false,
+          "observed": false,
+          "returncode": null,
+          "timed_out": false,
+          "timeout_s": null
+        },
+        "publishers": {
+          "count": 0,
+          "nodes": []
+        },
+        "source_class": "message",
+        "subscribers": {
+          "count": 0,
+          "nodes": []
+        },
+        "timestamp": {
+          "parsed": false,
+          "reason": "stamp_not_found",
+          "source": "/scan.header.stamp"
+        },
+        "topic": "/scan",
+        "topic_present": false,
+        "topic_type": null
+      },
+      "/tf": {
+        "dynamic_edge_count": 0,
+        "endpoint_error": null,
+        "expected_type": "tf2_msgs/msg/TFMessage",
+        "freshness": {
+          "age_ms": null,
+          "reason": "probe_or_source_not_observed",
+          "status": "not_observed"
+        },
+        "probe": {
+          "boundary": "ros2_unavailable_tf_source_probe_skipped",
+          "elapsed_ms": null,
+          "error": null,
+          "executed": false,
+          "observed": false,
+          "returncode": null,
+          "timed_out": false,
+          "timeout_s": null
+        },
+        "publishers": {
+          "count": 0,
+          "nodes": []
+        },
+        "sample_edges": [],
+        "source_class": "dynamic",
+        "subscribers": {
+          "count": 0,
+          "nodes": []
+        },
+        "timestamp": {
+          "parsed": false,
+          "reason": "tf_transform_stamp_not_observed",
+          "source": "/tf.header.stamp"
+        },
+        "topic": "/tf",
+        "topic_present": false,
+        "topic_type": null
+      },
+      "/tf_static": {
+        "endpoint_error": null,
+        "expected_type": "tf2_msgs/msg/TFMessage",
+        "freshness": {
+          "age_ms": null,
+          "reason": "probe_or_source_not_observed",
+          "status": "not_observed"
+        },
+        "probe": {
+          "boundary": "ros2_unavailable_tf_source_probe_skipped",
+          "elapsed_ms": null,
+          "error": null,
+          "executed": false,
+          "observed": false,
+          "returncode": null,
+          "timed_out": false,
+          "timeout_s": null
+        },
+        "publishers": {
+          "count": 0,
+          "nodes": []
+        },
+        "sample_edges": [],
+        "source_class": "static",
+        "static_edge_count": 0,
+        "subscribers": {
+          "count": 0,
+          "nodes": []
+        },
+        "timestamp": {
+          "parsed": false,
+          "reason": "tf_static_transform_stamp_not_observed",
+          "source": "/tf_static.header.stamp"
+        },
+        "topic": "/tf_static",
+        "topic_present": false,
+        "topic_type": null
+      }
+    },
+    "localization_tf_observed": {
+      "map_to_base_link": false,
+      "map_to_odom": false
+    },
+    "managed_runtime_boundary": "default_read_only_existing_ros_graph_no_runtime_start",
+    "managed_runtime_cleanup_ok": true,
+    "managed_runtime_map_analysis": {
+      "bounds": null,
+      "cell_counts": {},
+      "error": {
+        "message": "managed map yaml is not resolved",
+        "type": "map_yaml_missing"
+      },
+      "executed": false,
+      "height": null,
+      "image": null,
+      "map_yaml": null,
+      "ok": false,
+      "origin": null,
+      "resolution": null,
+      "width": null
+    },
+    "managed_runtime_map_inputs_ready": false,
+    "managed_runtime_map_yaml": null,
+    "managed_runtime_map_yaml_source": "canonical_map_yaml_candidate_missing",
+    "managed_runtime_process_group": null,
+    "managed_runtime_requested": false,
+    "managed_runtime_started": false,
+    "managed_runtime_vendor_boundary": null,
+    "managed_runtime_wait_result": {
+      "boundary": "managed_runtime_not_requested",
+      "executed": false,
+      "ok": false
+    },
+    "managed_static_tf_processes": {
+      "all_expected_processes_observed": false,
+      "checked_before_cleanup": false,
+      "expected": [],
+      "observed_roles": [],
+      "processes": []
+    },
+    "map_consumed": false,
+    "map_frame_observed": false,
+    "map_inputs": {
+      "inputs_ready": false,
+      "map_artifact_dir": "/root/rober/onboard/runtime/maps",
+      "map_image_candidates": [],
+      "map_metadata": {},
+      "map_proof_path": "/root/rober/onboard/runtime/map_lifecycle_latest.json",
+      "map_yaml_candidates": [],
+      "root_causes": [
+        {
+          "layer": "canonical map proof",
+          "reason": "map_lifecycle_latest_missing"
+        }
+      ],
+      "source_evidence_ref": null,
+      "source_evidence_type": null,
+      "source_proof_status": null
+    },
+    "map_inputs_ready": false,
+    "map_once_observed": false,
+    "map_server_active": false,
+    "not_proven": [
+      "nav2_goal_execution",
+      "controller_cmd_vel_output",
+      "fixed_route_execution",
+      "delivery_success",
+      "hil_pass",
+      "safe_to_control_true"
+    ],
+    "odom_frame_observed": false,
+    "package_availability": {
+      "nav2_amcl": false,
+      "nav2_lifecycle_manager": false,
+      "nav2_map_server": false,
+      "ros2_trashbot_bringup": false,
+      "ros2_trashbot_nav": false
+    },
+    "package_check_mode": "single_sourced_pkg_list_diagnostic",
+    "package_checks_batch_ok": false,
+    "path_generated": false,
+    "path_generation_attempted": false,
+    "path_generation_boundary": "default_read_only_no_path_generation_attempt",
+    "path_generation_ready": false,
+    "path_generation_requested": false,
+    "path_generation_service_available": false,
+    "path_generation_service_name": null,
+    "path_generation_succeeded": false,
+    "path_goal_request": {
+      "frame_id": "map",
+      "orientation": {
+        "w": 1.0,
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "position": {
+        "x": 0.8,
+        "y": 0.0,
+        "z": 0.0
+      }
+    },
+    "path_goal_response": {
+      "accepted": false,
+      "result_received": false
+    },
+    "path_point_count": 0,
+    "path_preview_frame_id": null,
+    "path_preview_point_count": 0,
+    "path_preview_points": [],
+    "path_preview_source_point_count": 0,
+    "phase_history": [
+      {
+        "at_ms": 1783746039300,
+        "detail": {
+          "mode": "no_motion_amcl_nav2_runtime_proof"
+        },
+        "ok": true,
+        "phase": "start"
+      },
+      {
+        "at_ms": 1783746039300,
+        "detail": {
+          "source_proof_status": null
+        },
+        "ok": false,
+        "phase": "map_inputs"
+      },
+      {
+        "at_ms": 1783746039301,
+        "detail": {
+          "requested": false
+        },
+        "ok": true,
+        "phase": "managed_runtime"
+      },
+      {
+        "at_ms": 1783746039301,
+        "phase": "ros2_preflight"
+      },
+      {
+        "at_ms": 1783746040194,
+        "ok": false,
+        "phase": "ros2_preflight"
+      },
+      {
+        "at_ms": 1783746040194,
+        "phase": "initialpose"
+      },
+      {
+        "at_ms": 1783746040195,
+        "detail": {
+          "enabled": false,
+          "method": "disabled",
+          "publish_attempts": 0,
+          "subscriber_count": null
+        },
+        "ok": true,
+        "phase": "initialpose"
+      },
+      {
+        "at_ms": 1783746040195,
+        "phase": "amcl_pose_probe"
+      },
+      {
+        "at_ms": 1783746040196,
+        "ok": false,
+        "phase": "amcl_pose_probe"
+      },
+      {
+        "at_ms": 1783746040196,
+        "phase": "tf_source_probe"
+      },
+      {
+        "at_ms": 1783746040197,
+        "detail": {
+          "amcl_tf_root_cause": "tf_source_probe_not_executed"
+        },
+        "ok": false,
+        "phase": "tf_source_probe"
+      },
+      {
+        "at_ms": 1783746040197,
+        "phase": "tf_probe"
+      },
+      {
+        "at_ms": 1783746040198,
+        "ok": true,
+        "phase": "tf_probe_map_to_odom"
+      },
+      {
+        "at_ms": 1783746040199,
+        "ok": true,
+        "phase": "tf_probe_odom_to_base_link"
+      },
+      {
+        "at_ms": 1783746040199,
+        "ok": true,
+        "phase": "tf_probe_map_to_base_link"
+      },
+      {
+        "at_ms": 1783746040200,
+        "ok": true,
+        "phase": "tf_probe_base_link_to_laser_frame"
+      },
+      {
+        "at_ms": 1783746040200,
+        "detail": {
+          "tf_chain_observed": {
+            "base_link_to_laser_frame": false,
+            "map_to_base_link": false,
+            "map_to_odom": false,
+            "odom_to_base_link": false
+          },
+          "tf_failure_classification": {
+            "amcl_tf_root_cause": "tf_source_probe_not_executed",
+            "blocking_segment": "map_to_odom",
+            "frame_naming_consistent": true,
+            "map_to_base_link": "blocked_by_missing_map_to_odom",
+            "reason": "tf_source_probe_not_executed"
+          }
+        },
+        "ok": true,
+        "phase": "tf_probe"
+      },
+      {
+        "at_ms": 1783746040200,
+        "detail": {
+          "mode": "single_sourced_pkg_list_diagnostic"
+        },
+        "phase": "package_checks"
+      },
+      {
+        "at_ms": 1783746040201,
+        "detail": {
+          "mode": "single_sourced_pkg_list_diagnostic",
+          "packages": {
+            "nav2_amcl": false,
+            "nav2_lifecycle_manager": false,
+            "nav2_map_server": false,
+            "ros2_trashbot_bringup": false,
+            "ros2_trashbot_nav": false
+          }
+        },
+        "ok": false,
+        "phase": "package_checks"
+      },
+      {
+        "at_ms": 1783746040201,
+        "ok": false,
+        "phase": "graph_discovery"
+      },
+      {
+        "at_ms": 1783746040201,
+        "ok": false,
+        "phase": "lifecycle_probe"
+      },
+      {
+        "at_ms": 1783746040201,
+        "detail": {
+          "echo_timeout_s": 8.0
+        },
+        "phase": "topic_probe"
+      },
+      {
+        "at_ms": 1783746040202,
+        "detail": {
+          "amcl_pose_observed_pre_initialpose": false,
+          "map_once_observed": false,
+          "odom_once_observed": false,
+          "scan_once_observed": false
+        },
+        "ok": false,
+        "phase": "topic_probe"
+      },
+      {
+        "at_ms": 1783746040203,
+        "detail": {
+          "requested": false
+        },
+        "phase": "path_generation"
+      },
+      {
+        "at_ms": 1783746040204,
+        "detail": {
+          "boundary": "default_read_only_no_path_generation_attempt"
+        },
+        "ok": true,
+        "phase": "path_generation"
+      },
+      {
+        "at_ms": 1783746040204,
+        "detail": {
+          "managed_runtime_started": false
+        },
+        "ok": true,
+        "phase": "cleanup"
+      },
+      {
+        "at_ms": 1783746040204,
+        "detail": {
+          "status": "blocked_with_root_cause"
+        },
+        "ok": false,
+        "phase": "final"
+      }
+    ],
+    "planner_active": false,
+    "planner_readiness_summary": {
+      "controller_server_active": false,
+      "controller_server_observed": false,
+      "controller_server_requested": false,
+      "localization_ready": false,
+      "managed_runtime_boundary": "default_read_only_existing_ros_graph_no_runtime_start",
+      "managed_runtime_requested": false,
+      "managed_runtime_started": false,
+      "path_generated": false,
+      "path_generation_attempted": false,
+      "path_generation_requested": false,
+      "path_generation_succeeded": false,
+      "path_point_count": 0,
+      "planner_server_active": false,
+      "planner_server_observed": false
+    },
+    "planner_server_active": false,
+    "planner_server_observed": false,
+    "planner_server_ready_for_path_generation": false,
+    "publishes_cmd_vel": false,
+    "recent_commands": [
+      {
+        "command": "command -v ros2",
+        "elapsed_ms": 892,
+        "error": null,
+        "finished_at_ms": 1783746040193,
+        "ok": false,
+        "returncode": 1
+      }
+    ],
+    "robot_control_executed": false,
+    "root_causes": [
+      {
+        "layer": "canonical map proof",
+        "reason": "map_lifecycle_latest_missing"
+      },
+      {
+        "layer": "ROS install/source",
+        "reason": "ros2_command_unavailable_after_bash_source"
+      }
+    ],
+    "safe_to_control": false,
+    "scan_consumed": false,
+    "scan_once_observed": false,
+    "sends_base_motion_commands": false,
+    "sends_motion_commands": false,
+    "source_map_evidence_ref": null,
+    "source_map_evidence_type": null,
+    "started_at_ms": 1783746039300,
+    "static_tf_source_observed": false,
+    "status": "blocked_with_root_cause",
+    "tf_chain_diagnostics": {
+      "frame_contract": {
+        "actual": {
+          "base": "base_link",
+          "laser": "laser_frame",
+          "map": "map",
+          "odom": "odom"
+        },
+        "consistent_with_defaults": true,
+        "expected": {
+          "base": "base_link",
+          "laser": "laser_frame",
+          "map": "map",
+          "odom": "odom"
+        }
+      },
+      "pairs": {
+        "base_link_to_laser_frame": {
+          "boundary": "tf_probe_not_requested_without_initialpose_opt_in",
+          "elapsed_ms": null,
+          "error": null,
+          "executed": false,
+          "failure_reason": "tf2_empty_output_or_timing",
+          "observed": false,
+          "returncode": null,
+          "source_frame": "base_link",
+          "stderr_preview": "",
+          "stdout_preview": "",
+          "target_frame": "laser_frame"
+        },
+        "map_to_base_link": {
+          "boundary": "tf_probe_not_requested_without_initialpose_opt_in",
+          "elapsed_ms": null,
+          "error": null,
+          "executed": false,
+          "failure_reason": "tf2_empty_output_or_timing",
+          "observed": false,
+          "returncode": null,
+          "source_frame": "map",
+          "stderr_preview": "",
+          "stdout_preview": "",
+          "target_frame": "base_link"
+        },
+        "map_to_odom": {
+          "boundary": "tf_probe_not_requested_without_initialpose_opt_in",
+          "elapsed_ms": null,
+          "error": null,
+          "executed": false,
+          "failure_reason": "tf2_empty_output_or_timing",
+          "observed": false,
+          "returncode": null,
+          "source_frame": "map",
+          "stderr_preview": "",
+          "stdout_preview": "",
+          "target_frame": "odom"
+        },
+        "odom_to_base_link": {
+          "boundary": "tf_probe_not_requested_without_initialpose_opt_in",
+          "elapsed_ms": null,
+          "error": null,
+          "executed": false,
+          "failure_reason": "tf2_empty_output_or_timing",
+          "observed": false,
+          "returncode": null,
+          "source_frame": "odom",
+          "stderr_preview": "",
+          "stdout_preview": "",
+          "target_frame": "base_link"
+        }
+      },
+      "source_diagnostics": {
+        "amcl_broadcast_conditions": {
+          "amcl_active": false,
+          "amcl_pose_observed": false,
+          "initialpose_published": false,
+          "map_once_observed": false,
+          "map_server_active": false,
+          "scan_once_observed": false,
+          "static_tf_processes_observed": false
+        },
+        "amcl_frame_params": {},
+        "amcl_node_info_observed": false,
+        "amcl_node_publishers": [],
+        "amcl_node_subscribers": [],
+        "amcl_param_probe_ok": false,
+        "amcl_pose_frame_id": null,
+        "amcl_tf_broadcast_param": null,
+        "amcl_tf_root_cause": "tf_source_probe_not_executed",
+        "base_frame_observed": false,
+        "base_link_to_laser_frame_source_observed": false,
+        "base_link_to_laser_frame_source_transform": null,
+        "frame_contract": {
+          "actual": {
+            "base": "base_link",
+            "laser": "laser_frame",
+            "map": "map",
+            "odom": "odom"
+          }
+        },
+        "laser_frame_observed": false,
+        "map_frame_observed": false,
+        "map_to_odom_source_observed": false,
+        "odom_frame_observed": false,
+        "odom_to_base_link_source_observed": false,
+        "tf_frame_inventory": {
+          "dynamic_edges": [],
+          "edges": [],
+          "frames": [],
+          "static_edges": [],
+          "transforms": []
+        },
+        "tf_source_root_cause_detail": {
+          "amcl_broadcast_conditions": {
+            "amcl_active": false,
+            "amcl_pose_observed": false,
+            "initialpose_published": false,
+            "map_once_observed": false,
+            "map_server_active": false,
+            "scan_once_observed": false,
+            "static_tf_processes_observed": false
+          },
+          "reason": "tf_source_probe_not_executed"
+        },
+        "tf_static_observed": false,
+        "tf_topics_observed": {
+          "/tf": false,
+          "/tf_static": false
+        },
+        "topic_endpoint_summaries": {
+          "/amcl_pose": {
+            "error": null,
+            "publisher_count": 0,
+            "publishers": [],
+            "subscriber_count": 0,
+            "subscribers": []
+          },
+          "/odom": {
+            "error": null,
+            "publisher_count": 0,
+            "publishers": [],
+            "subscriber_count": 0,
+            "subscribers": []
+          },
+          "/scan": {
+            "error": null,
+            "publisher_count": 0,
+            "publishers": [],
+            "subscriber_count": 0,
+            "subscribers": []
+          },
+          "/tf": {
+            "error": null,
+            "publisher_count": 0,
+            "publishers": [],
+            "subscriber_count": 0,
+            "subscribers": []
+          },
+          "/tf_static": {
+            "error": null,
+            "publisher_count": 0,
+            "publishers": [],
+            "subscriber_count": 0,
+            "subscribers": []
+          }
+        }
+      }
+    },
+    "tf_chain_observed": {
+      "base_link_to_laser_frame": false,
+      "map_to_base_link": false,
+      "map_to_odom": false,
+      "odom_to_base_link": false
+    },
+    "tf_failure_classification": {
+      "amcl_tf_root_cause": "tf_source_probe_not_executed",
+      "blocking_segment": "map_to_odom",
+      "frame_naming_consistent": true,
+      "map_to_base_link": "blocked_by_missing_map_to_odom",
+      "reason": "tf_source_probe_not_executed"
+    },
+    "tf_frame_inventory": {
+      "dynamic_edges": [],
+      "edges": [],
+      "frames": [],
+      "static_edges": [],
+      "transforms": []
+    },
+    "tf_source_freshness": {
+      "dynamic_edge_count": 0,
+      "dynamic_edges": [],
+      "edges": {
+        "base_link_to_laser_frame": {
+          "child_frame_id": "laser_frame",
+          "dynamic_source_observed": false,
+          "edge": "base_link_to_laser_frame",
+          "freshness": {
+            "age_ms": null,
+            "reason": "probe_or_source_not_observed",
+            "status": "not_observed"
+          },
+          "observed": false,
+          "parent_frame_id": "base_link",
+          "required_source_class": "static",
+          "source_class": "missing",
+          "source_topic": null,
+          "static_source_observed": false,
+          "timestamp": {
+            "parsed": false,
+            "reason": "transform_stamp_not_observed",
+            "source": "base_link_to_laser_frame.header.stamp"
+          }
+        },
+        "map_to_odom": {
+          "child_frame_id": "odom",
+          "dynamic_source_observed": false,
+          "edge": "map_to_odom",
+          "freshness": {
+            "age_ms": null,
+            "reason": "probe_or_source_not_observed",
+            "status": "not_observed"
+          },
+          "observed": false,
+          "parent_frame_id": "map",
+          "required_source_class": "dynamic",
+          "source_class": "missing",
+          "source_topic": null,
+          "static_source_observed": false,
+          "timestamp": {
+            "parsed": false,
+            "reason": "transform_stamp_not_observed",
+            "source": "map_to_odom.header.stamp"
+          }
+        },
+        "odom_to_base_link": {
+          "child_frame_id": "base_link",
+          "dynamic_source_observed": false,
+          "edge": "odom_to_base_link",
+          "freshness": {
+            "age_ms": null,
+            "reason": "probe_or_source_not_observed",
+            "status": "not_observed"
+          },
+          "observed": false,
+          "parent_frame_id": "odom",
+          "required_source_class": null,
+          "source_class": "missing",
+          "source_topic": null,
+          "static_source_observed": false,
+          "timestamp": {
+            "parsed": false,
+            "reason": "transform_stamp_not_observed",
+            "source": "odom_to_base_link.header.stamp"
+          }
+        }
+      },
+      "static_edge_count": 0,
+      "static_edges": []
+    },
+    "tf_source_root_cause_detail": {
+      "amcl_broadcast_conditions": {
+        "amcl_active": false,
+        "amcl_pose_observed": false,
+        "initialpose_published": false,
+        "map_once_observed": false,
+        "map_server_active": false,
+        "scan_once_observed": false,
+        "static_tf_processes_observed": false
+      },
+      "reason": "tf_source_probe_not_executed"
+    },
+    "tf_static_observed": false,
+    "tf_topics_observed": {
+      "/tf": false,
+      "/tf_static": false
+    },
+    "uses_base_uart": false
+  },
+  "publishes_cmd_vel": false,
+  "robot_control_executed": false,
+  "safe_to_control": false,
+  "schema": "trashbot.upper_robot_api.v1.nav2_lifecycle_runtime_proof",
+  "sends_base_motion_commands": false,
+  "sends_motion_commands": false,
+  "software_guard": true,
+  "status": "blocked_with_root_cause",
+  "uses_base_uart": false
+}

@@ -1,0 +1,22 @@
+{
+  "source_sprint": "2026.07.03_20-46_pc_nav2_o11_tail_wasd_back_alias",
+  "source_doc": "tech-done.md",
+  "verified_at": "2026-07-03T20:46:00Z",
+  "goal_accepted": true,
+  "cancel_accepted": true,
+  "uses_base_uart": true,
+  "robot_control_executed": true,
+  "base_command_nonzero_observed": true,
+  "base_command_nonzero_count": 733,
+  "base_feedback_sample_count": 5941,
+  "base_feedback_lr_nonzero_proven": false,
+  "base_feedback_imu_attitude_delta_observed": true,
+  "motion_signal_observed": true,
+  "goal_result_status": "goal_timeout_cancel_requested",
+  "terminal_status": "goal_timeout_cancel_requested",
+  "remaining_evidence": [
+    "current_live_wheel_lr_nonzero_feedback",
+    "same_run_nav2_route_execution_success",
+    "delivery_record_or_operator_confirmation"
+  ]
+}

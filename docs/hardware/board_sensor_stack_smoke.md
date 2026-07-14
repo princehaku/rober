@@ -49,9 +49,109 @@ ros2 topic echo --once /tf_static
 - `static_laser_tf_enabled` 发布的是 smoke/拓扑 TF，不是机械标定值。
 - `lidar_serial_baudrate=150000` 来自 `root@192.168.1.11` 实板 `lidar_driver` smoke 结果，
   不是来自 WAVE ROVER 底盘 UART 文档。
+- `docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py` 的本地 vendor 参考会打开
+  `/dev/ttyACM* @ 230400` 并解析 STC `0x54` 固定 47 字节 LiDAR 帧；这证明
+  `230400` 是 vendor 上位机参考值，但不能直接覆盖历史现场 `150000` 候选。
+  现场必须用 LiDAR-only no-motion smoke 分别保留 `230400` 与 `150000` 的
+  `summary.json`、`lidar_driver_diagnostics.json`、设备 holder 和 topic readback，
+  再决定配置/接线/波特率下一步。
 - `camera_device:=/dev/video1` 是当前 Orange Pi Zero 3 实板 + DV20 USB 的观察结果，
   不应写死成所有板卡的默认值。
 - 本入口只解决传感器证据采集，不解决 `/dev/ttyS5` 与底盘桥的串口独占。
+
+## 2026-07-12 LiDAR Runtime Hardware Probe
+
+`sprints/2026.07.12_20-57_o3_lidar_runtime_hardware_probe/` 从
+`/scan_lidar_runtime_exception_after_endpoint_visible_qos_compatible_timeout` 接手。
+本轮只允许 LiDAR 串口和 ROS2 topic readback，不发布 `/cmd_vel`，不调用
+`/api/base/manual`，不打开 WAVE ROVER UART，也不把任何结果声明成 HIL pass。
+
+采用的本地资料边界：
+
+- `docs/vendor/VENDOR_INDEX.md` 是硬件事实入口。
+- Orange Pi USB/供电/串口风险以
+  `docs/vendor/orangepizero3/OrangePi_Zero3_H618_用户手册_v1.6.pdf` 与
+  `docs/vendor/orangepizero3/OrangePi-ZERO3_电路图.pdf` 为入口。手册说明
+  Type-C 供电需要高质量 `5V/2A` 或 `5V/3A`，不应接入大于 `5V` 的电源；供电
+  不稳会导致启动和 USB 外设异常。
+- WAVE ROVER vendor 上位机参考 `docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py`
+  只证明 LiDAR 侧 `/dev/ttyACM* @ 230400`、STC `0x54` header、47 字节 packet、
+  12 个采样点和 `0.83333` 度步进。它不证明本项目历史现场 `150000` 错误，也不证明
+  LiDAR 启停命令 `A5 60` 的 vendor 来源。
+- `docs/vendor/` 当前没有 `docs/vendor/lidar_pkg_ros2-main/` 专用 LiDAR vendor 包；
+  因此任何 baud/config/wiring 结论必须来自本地 WAVE ROVER reference 加现场 readback，
+  不能写成专用 LiDAR vendor 已确认。
+
+本轮 `onboard/scripts/o1_lidar_ros2_scan_smoke.sh` 会把以下文件写进 output dir：
+
+- `device_snapshot_before.json` / `device_snapshot_during.json` / `device_snapshot_after.json`：
+  只读记录 `/dev/ttyACM0`、`/dev/lidar`、STC by-id/by-path 候选和 `lsof/fuser` holder；
+  不检查、不打开 `/dev/ttyS5`。
+- `lidar_driver_diagnostics.json`：记录 `empty_read_count`、`bytes_read_total`、
+  `raw_bytes_observed`、`last_chunk_preview_hex`、`packet_count_total`、
+  `read_exception_count`、`last_exception_type` 和 `last_exception_message_hint`。
+- `summary.json`：合并 `/scan`、`/lidar/raw_packet`、TF、driver diagnostics、
+  tested baudrate、vendor `230400` 参考、历史现场 `150000` 候选和 strict no-motion false 字段。
+
+推荐在真实板上先跑 vendor 参考 baud，再跑历史现场候选：
+
+```bash
+bash scripts/o1_lidar_ros2_scan_smoke.sh \
+  --serial-port /dev/ttyACM0 \
+  --serial-baudrate 230400 \
+  --output-dir /tmp/rober_o1_lidar_artifacts/smoke_230400
+
+bash scripts/o1_lidar_ros2_scan_smoke.sh \
+  --serial-port /dev/ttyACM0 \
+  --serial-baudrate 150000 \
+  --output-dir /tmp/rober_o1_lidar_artifacts/smoke_150000
+```
+
+收口分类建议：
+
+- `raw_bytes_observed=false` 且 `read_exception_count>0`：优先检查 `/dev/ttyACM0`
+  holder、USB 供电/线缆、雷达供电和设备枚举稳定性。
+- `raw_bytes_observed=true` 但 `packet_count_total=0`：优先怀疑 baud/protocol mismatch，
+  对比 `230400` 与 `150000` 的 raw byte preview 和 packet parser 结果。
+- `packet_count_total>0` 但 `/scan` sample 仍缺失：优先检查 scan aggregation 阈值、
+  topic discovery 和 `/lidar/raw_packet` 发布状态。
+- `/scan` 和 `/lidar/raw_packet` 都 observed：再交给 Algorithm 复验 `/amcl_pose`、
+  dynamic `map->odom` 和 planner-only path proof。
+
+## 2026-07-12 Radar Status Baudrate Readback Repair
+
+`sprints/2026.07.12_21-57_o3_radar_status_baudrate_readback_repair/` 修复
+`GET /api/radar/status` 的 top-level `baudrate` 语义：该字段现在表示 current
+lifecycle/status command 或 driver diagnostics readback，不再把静态 vendor/reference
+`230400` 当成当前运行窗口。
+
+Readback 选择顺序：
+
+1. `lifecycle_status_readback.baudrate` 或 `lifecycle_status_readback.latest_result.*`
+   中可信的 current baudrate。
+2. `driver_diagnostics_latest.serial.serial_baudrate`、
+   `driver_diagnostics_latest.serial.baudrate` 或
+   `driver_diagnostics_latest.runtime.serial_baudrate`。
+3. `controls.start.command.argv` 或
+   `controls.scan_proof_refresh.runtime_command.argv` 中的 `--serial-baudrate`。
+4. 如果只有 reference/default `230400`，则 `baudrate=null`、
+   `baudrate_readback_status=unknown_no_current_readback`，fail closed。
+
+状态响应新增 provenance 字段：
+
+- `baudrate_readback_source`：当前 top-level `baudrate` 的来源，例如
+  `driver_diagnostics_latest.serial.serial_baudrate` 或 `controls.start.command.argv`。
+- `baudrate_readback_status`：`current`、`current_with_reference_conflict` 或
+  `unknown_no_current_readback`。
+- `baudrate_candidates`：保留 lifecycle、diagnostics、command argv 的候选和是否可信。
+- `vendor_reference_baudrate=230400`：WAVE ROVER vendor 上位机 reference，只能作为参考。
+- `historical_field_baudrate_candidate=150000`：现场历史/当前 run 候选，不等于 vendor 确认。
+
+安全边界不变：`/api/radar/status` 仍是只读 endpoint，不发布 `/cmd_vel`，不调用
+`/api/base/manual`，不打开 WAVE ROVER UART 或 `/dev/ttyS5`，也不 stop/start 当前 LiDAR
+holder。`safe_to_control=false`、`publishes_cmd_vel=false`、`calls_base_manual=false`、
+`uses_base_uart=false`、`robot_control_executed=false`、`route_execution_success=false`、
+`delivery_success=false`、`hil_pass=false` 必须继续保持 false。
 
 ## 2026-06-22 Map Lifecycle Quality Gate
 

@@ -1,0 +1,61 @@
+{
+  "schema": "trashbot.product_acceptance.o7_live_relay_headless_browser_smoke.v1",
+  "sprint": "sprints/2026.07.14_16-40_o7_live_relay_headless_browser_smoke/",
+  "accepted": true,
+  "accepted_as": "o7_o5_supporting_headless_chrome_live_relay_software_proof_only",
+  "product_closeout_time_cst": "2026-07-14 16-40",
+  "source_artifact": "sprints/2026.07.14_16-40_o7_live_relay_headless_browser_smoke/artifacts/o7_live_relay_headless_browser_smoke.json",
+  "matched_contract": {
+    "schema": "trashbot.pc_tools_workstation.o7_live_relay_headless_browser_smoke.v1",
+    "proof_boundary": "software_proof_o7_live_relay_headless_browser_smoke_only",
+    "artifact_status": "headless_browser_smoke_ready_not_delivery_proof",
+    "endpoint_transport": "live_loopback_http_socket",
+    "browser_runtime": "headless_chrome",
+    "browser_smoke_status": "live_headless_chrome_executed",
+    "server_started": true,
+    "http_smoke_executed": true,
+    "headless_browser_smoke_executed": true,
+    "health_schema": "trashbot.pc_tools_workstation.health.v1",
+    "operator_console_schema": "trashbot.o7.operator_console.v1",
+    "cloud_operator_console_probe_schema": "trashbot.pc_tools_workstation.o7_cloud_operator_console_probe.v1",
+    "probe_status": "loaded_fail_closed_contract"
+  },
+  "fixed_false_fields": {
+    "delivery_success": false,
+    "safe_to_control": false,
+    "route_execution_success": false,
+    "hil_pass": false,
+    "robot_control_executed": false,
+    "connects_cloud_production": false
+  },
+  "okr_result": {
+    "o5": "about_85_percent_flat",
+    "o1": "about_94_percent_flat",
+    "o6_o7": "about_93_percent_flat",
+    "main_percentages_flat": true,
+    "kr_archival": "不归档"
+  },
+  "stronger_than_previous_15_38_http_only_smoke": true,
+  "rejected_claims": [
+    "production_cloud",
+    "real_phone_browser_production_proof",
+    "public_https_tls",
+    "4g_sim",
+    "production_db_queue",
+    "oss_cdn",
+    "route_execution",
+    "delivery_operator_acceptance",
+    "real_delivery_success",
+    "hil",
+    "safe_to_control",
+    "robot_control",
+    "cmd_vel",
+    "api_base_manual",
+    "navigate_to_pose",
+    "wave_rover_uart"
+  ],
+  "next_required_evidence": [
+    "success_class_o5_production_cloud_evidence",
+    "same_window_live_route_execution_terminal_result_operator_dropoff_hil_safe_to_control"
+  ]
+}

@@ -7,6 +7,7 @@ import argparse
 import json
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import tempfile
@@ -35,6 +36,17 @@ VENDOR_SOURCES = (
     "AGENTS.md",
     "OKR.md",
     "docs/vendor/VENDOR_INDEX.md",
+    "docs/vendor/orangepizero3/OrangePi_Zero3_H618_用户手册_v1.6.pdf",
+    "docs/vendor/orangepizero3/OrangePi-ZERO3_电路图.pdf",
+    "docs/vendor/waveshare_wave_rover/WAVE_ROVER.wiki.html",
+    "docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py",
+    "docs/vendor/waveshare_wave_rover/ugv_rpi/config.yaml",
+    "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h",
+    "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/uart_ctrl.h",
+    "docs/hardware/board_sensor_stack_smoke.md",
+)
+
+DEDICATED_LIDAR_VENDOR_DOC_CANDIDATES = (
     "docs/vendor/lidar_pkg_ros2-main/README.md",
     "docs/vendor/lidar_pkg_ros2-main/src/lidar_node.cpp",
     "docs/vendor/lidar_pkg_ros2-main/config/lidar_params.yaml",
@@ -96,6 +108,36 @@ def describe_path(path: str) -> dict[str, Any]:
     return entry
 
 
+def build_source_status(path_exists: Callable[[str], bool] = os.path.exists) -> dict[str, Any]:
+    """记录本地 vendor gate 覆盖情况，缺专用 LiDAR 包时也要显式留痕。"""
+    def source_exists(path: str) -> bool:
+        # 真板常在 `/root/rober/onboard` 执行脚本，而 docs 位于仓库根；两处都查。
+        if path_exists(path):
+            return True
+        return any(path_exists(str(Path(prefix) / path)) for prefix in ("..", "/root/rober"))
+
+    return {
+        "required_sources": [{"path": path, "exists": bool(source_exists(path))} for path in VENDOR_SOURCES],
+        "dedicated_lidar_vendor_doc_candidates": [
+            {"path": path, "exists": bool(source_exists(path))} for path in DEDICATED_LIDAR_VENDOR_DOC_CANDIDATES
+        ],
+        "dedicated_lidar_vendor_doc_present_in_local_tree": any(source_exists(path) for path in DEDICATED_LIDAR_VENDOR_DOC_CANDIDATES),
+        "wave_rover_lidar_reference": {
+            "source": "docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py",
+            "serial_glob": "/dev/ttyACM*",
+            "baudrate": 230400,
+            "packet_header": "0x54",
+            "packet_size_bytes": 47,
+            "samples_per_packet": 12,
+        },
+        "historical_field_baudrate_candidate": {
+            "source": "docs/hardware/board_sensor_stack_smoke.md",
+            "serial_port": "/dev/ttyACM0",
+            "baudrate": 150000,
+        },
+    }
+
+
 def fetch_json_url(url: str, timeout_s: float) -> dict[str, Any]:
     """只执行 GET 读取 8787 状态，不 POST、不触发硬件动作。"""
     try:
@@ -137,6 +179,38 @@ def run_bash(command: str, timeout_s: float) -> dict[str, Any]:
             "stderr_preview": preview_timeout_text(exc.stderr),
             "error": {"type": "TimeoutExpired", "message": str(exc)},
         }
+
+
+def build_lidar_process_probe(
+    lidar_devices: dict[str, dict[str, Any]],
+    *,
+    timeout_s: float,
+    command_runner: Callable[[str, float], dict[str, Any]],
+) -> dict[str, Any]:
+    """只读查看 LiDAR 设备 holder；不打开串口、不检查 WAVE ROVER 底盘 UART。"""
+    existing_paths = [path for path, info in lidar_devices.items() if info.get("exists")]
+    probe: dict[str, Any] = {
+        "attempted": bool(existing_paths),
+        "reason": "no_lidar_device_candidate_exists" if not existing_paths else "read_only_lsof_fuser_for_lidar_candidates",
+        "paths": existing_paths,
+        "results": {},
+        "safe_to_control": False,
+        "uses_base_uart": False,
+        "publishes_cmd_vel": False,
+    }
+    for path in existing_paths:
+        quoted = shlex.quote(path)
+        probe["results"][path] = {
+            "lsof": command_runner(
+                f"if command -v lsof >/dev/null 2>&1; then lsof -nP -- {quoted}; else echo lsof_missing; exit 127; fi",
+                min(float(timeout_s), 4.0),
+            ),
+            "fuser": command_runner(
+                f"if command -v fuser >/dev/null 2>&1; then fuser -v {quoted}; else echo fuser_missing; exit 127; fi",
+                min(float(timeout_s), 4.0),
+            ),
+        }
+    return probe
 
 
 def preview_timeout_text(value: Any, limit: int = 2000) -> str:
@@ -228,7 +302,11 @@ def proof_flags() -> dict[str, bool]:
         "safe_to_control": False,
         "sends_commands": False,
         "sends_motion_commands": False,
+        "publishes_cmd_vel": False,
+        "calls_base_manual": False,
+        "uses_base_uart": False,
         "robot_control_executed": False,
+        "route_execution_success": False,
         "delivery_success": False,
         "hil_pass": False,
         "primary_actions_enabled": False,
@@ -368,6 +446,11 @@ def build_probe_payload(
         "/dev/ttyACM0": path_describer("/dev/ttyACM0"),
         "/dev/serial/by-id/usb-STC_STC_USB_Serial-if00": path_describer("/dev/serial/by-id/usb-STC_STC_USB_Serial-if00"),
     }
+    lidar_device_process_probe = build_lidar_process_probe(
+        lidar_devices,
+        timeout_s=timeout_s,
+        command_runner=command_runner,
+    )
     upper_api = {
         "health": url_fetcher(f"{upper_api_base_url.rstrip('/')}/health", timeout_s),
         "radar_status": url_fetcher(f"{upper_api_base_url.rstrip('/')}/api/radar/status", timeout_s),
@@ -435,6 +518,15 @@ def build_probe_payload(
         "generated_at": utc_now(),
         "generated_at_ms": generated_at_ms,
         "vendor_sources": list(VENDOR_SOURCES),
+        "vendor_source_status": build_source_status(path_exists),
+        "hardware_runtime_probe": {
+            "primary_serial_port": "/dev/ttyACM0",
+            "baudrate_candidates": [230400, 150000],
+            "starting_blocker": "/scan_lidar_runtime_exception_after_endpoint_visible_qos_compatible_timeout",
+            "canonical_previous_blocker": "/scan_reliable_and_best_effort_timeout",
+            "exception_anchor": "serial.serialutil.SerialException",
+            "next_evidence_needed": "compare no-motion /dev/ttyACM0 @ 230400 and @ 150000 with driver diagnostics",
+        },
         "evidence_boundary": "lidar_scan_proof_artifact_not_base_hil",
         "upper_api_base_url": upper_api_base_url,
         "ros_runtime": {
@@ -447,6 +539,7 @@ def build_probe_payload(
             "ros2_cli_check": ros2_cli_check,
         },
         "lidar_devices": lidar_devices,
+        "lidar_device_process_probe": lidar_device_process_probe,
         "upper_api": upper_api,
         "topic_reads": topic_reads,
         "proof": {

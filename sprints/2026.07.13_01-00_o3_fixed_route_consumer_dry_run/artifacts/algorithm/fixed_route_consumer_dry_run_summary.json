@@ -1,0 +1,178 @@
+{
+  "artifact_boundary": "software_proof_o3_o1_strict_no_motion_fixed_route_consumer_dry_run_only",
+  "calls_base_manual": false,
+  "checks": [
+    {
+      "detail": "summary/jsonl/csv route_intent_id and task_id match expected values",
+      "name": "identity_consistency",
+      "status": "pass"
+    },
+    {
+      "detail": "summary/jsonl/csv reference the same source path proof",
+      "name": "source_proof_ref_consistency",
+      "status": "pass"
+    },
+    {
+      "detail": "path_generation_attempted/path_generated/path_point_count/fallback_mode preserved",
+      "name": "source_evidence_preserved",
+      "status": "pass"
+    },
+    {
+      "detail": "17 JSONL lines and 16 CSV material rows with 14 stdout-tail pose rows",
+      "name": "route_material_shape",
+      "status": "pass"
+    },
+    {
+      "detail": "first CSV material row is request_start anchor",
+      "name": "request_start_anchor_present",
+      "status": "pass"
+    },
+    {
+      "detail": "last CSV material row is request_goal anchor",
+      "name": "request_goal_anchor_present",
+      "status": "pass"
+    },
+    {
+      "detail": "materialized_order values are contiguous from 0 through 15",
+      "name": "route_order_deterministic",
+      "status": "pass"
+    },
+    {
+      "detail": "frame/position/quaternion fields are present for all materialized rows",
+      "name": "frame_and_pose_fields_present",
+      "status": "pass"
+    },
+    {
+      "detail": "all control, route execution, delivery, and HIL fields remain false",
+      "name": "strict_no_motion_invariants",
+      "status": "pass"
+    },
+    {
+      "detail": "partial_stdout_tail_only boundary and unmaterialized pose count are recorded",
+      "name": "partial_material_boundary_recorded",
+      "status": "pass"
+    },
+    {
+      "blocked_reason": "full_structured_path_poses_missing",
+      "detail": "source artifact did not persist full structured path poses; do not claim full 21-point replay",
+      "name": "full_structured_path_pose_availability",
+      "status": "blocked"
+    }
+  ],
+  "consumer_kind": "fixed-route consumer dry-run",
+  "delivery_success": false,
+  "dry_run_result": {
+    "anchors_validated": true,
+    "blocked_reason": "full_structured_path_poses_missing",
+    "can_claim_delivery": false,
+    "can_claim_full_21_point_replay": false,
+    "can_claim_hil": false,
+    "can_claim_route_execution": false,
+    "can_validate_partial_route_material": true,
+    "consumer_loaded_replay_jsonl": true,
+    "consumer_loaded_route_csv": true,
+    "consumer_loaded_summary_json": true,
+    "materialized_pose_rows_validated": true,
+    "route_order_deterministic": true,
+    "route_rows_iterable": true
+  },
+  "dry_run_status": "accepted_partial_material_dry_run",
+  "generated_at_local": "2026-07-13T01:11:29+08:00",
+  "hil_pass": false,
+  "input_refs": {
+    "route_csv_ref": "sprints/2026.07.13_00-00_o3_fixed_route_intent_replay_material/artifacts/algorithm/route.csv",
+    "route_intent_replay_jsonl_ref": "sprints/2026.07.13_00-00_o3_fixed_route_intent_replay_material/artifacts/algorithm/route_intent_replay.jsonl",
+    "route_intent_summary_ref": "sprints/2026.07.13_00-00_o3_fixed_route_intent_replay_material/artifacts/algorithm/route_intent_summary.json",
+    "source_path_proof_ref": "sprints/2026.07.12_21-57_o3_radar_status_baudrate_readback_repair/artifacts/algorithm/live_o10_reuse_existing_lidar_lifecycle_path_proof_after_fallback.raw.json",
+    "source_path_proof_sha256": "39536d8fa0f51cf1d5b9d4eb1c78fd9228aa977ddbb177ed11bd4285efc039bd"
+  },
+  "material_shape": {
+    "anchor_event_count": 2,
+    "authoritative_path_point_count": 21,
+    "blocked_reason": "full_structured_path_poses_missing",
+    "csv_header_fields": [
+      "route_intent_id",
+      "task_id",
+      "materialized_order",
+      "source_role",
+      "source_path_index",
+      "source_index_status",
+      "frame_id",
+      "stamp_sec",
+      "stamp_nanosec",
+      "x",
+      "y",
+      "z",
+      "qx",
+      "qy",
+      "qz",
+      "qw",
+      "source_path_proof_ref",
+      "path_pose_materialization_status",
+      "strict_no_motion"
+    ],
+    "csv_material_row_count": 16,
+    "full_structured_path_poses_available": false,
+    "jsonl_event_count": 17,
+    "materialized_stdout_tail_pose_count": 14,
+    "materialized_stdout_tail_pose_event_count": 14,
+    "metadata_event_count": 1,
+    "minimum_unmaterialized_path_pose_count": 7,
+    "path_pose_materialization_status": "partial_stdout_tail_only",
+    "source_index_status": "unknown_due_to_stdout_tail_truncation",
+    "structured_path_preview_point_count": 0,
+    "summary_loaded": true
+  },
+  "next_evidence_required": [
+    "full structured path poses export or new route capture if exact 21-point replay is required",
+    "later explicit Nav2/fixed-route route execution record before route_execution_success can change",
+    "delivery/operator acceptance evidence before delivery_success can change",
+    "current live HIL evidence before hil_pass or safe_to_control can change",
+    "production cloud/readback evidence before O5/O6/O7 production credit can change"
+  ],
+  "publishes_cmd_vel": false,
+  "rejected_claims": [
+    "route_execution_success",
+    "NavigateToPose",
+    "controller_bt_execution",
+    "publishes_cmd_vel",
+    "calls_base_manual",
+    "uses_base_uart",
+    "delivery_success",
+    "hil_pass",
+    "safe_to_control",
+    "production_external_evidence",
+    "full_21_point_route_replay"
+  ],
+  "rg_acceptance_anchors": [
+    "route_intent_20260713_0000_from_20260712_2157_path_proof",
+    "task_o3_fixed_route_intent_20260713_0000",
+    "strict no-motion",
+    "fixed-route consumer dry-run",
+    "route_execution_success=false",
+    "delivery_success=false",
+    "hil_pass=false",
+    "full_structured_path_poses_missing",
+    "next_evidence_required"
+  ],
+  "robot_control_executed": false,
+  "route_execution_success": false,
+  "route_intent_id": "route_intent_20260713_0000_from_20260712_2157_path_proof",
+  "safe_to_control": false,
+  "schema": "trashbot.fixed_route_consumer_dry_run.v1",
+  "source_evidence": {
+    "evidence_type": "robot_runtime_material",
+    "fallback_mode": "ros2_cli_action_send_goal",
+    "path_generated": true,
+    "path_generation_attempted": true,
+    "path_generation_boundary": "explicit_opt_in_compute_path_to_pose_cli_action_no_motion",
+    "path_point_count": 21,
+    "service_name": "/compute_path_to_pose",
+    "status": "nav2_no_motion_path_generation_runtime_observed"
+  },
+  "strict_no_motion": true,
+  "strict_no_motion_boundary": "strict no-motion artifact-only fixed-route consumer dry-run; no /cmd_vel, /api/base/manual, NavigateToPose, controller/BT, WAVE ROVER UART, delivery, HIL, or safe-to-control claim was produced",
+  "task_id": "task_o3_fixed_route_intent_20260713_0000",
+  "uses_base_uart": false,
+  "validation_status": "pass_with_material_boundary"
+}

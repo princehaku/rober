@@ -87,6 +87,8 @@ The UI classifies the reconciliation row by `lifecycle_state` first, then falls 
 
 This is Docker/local `software_proof` only from `mobile/web/fixtures/robot_diagnostics_cloud_command_result_reconciliation.json` and `mobile/web/fixtures/robot_diagnostics_cloud_phone_command_api.json`. Terminal ACK is still only lifecycle evidence: without a verified terminal delivery/dropoff/cancel result under the same safe `command_id`, it is not delivery success, not dropoff completion, not cancel completion, not true phone/browser proof, not real 4G/cloud proof, not HIL, and not route/elevator field pass. Start Delivery、Confirm Dropoff、Cancel 继续 disabled.
 
+O5 now treats `operator_dropoff_acceptance` as a separate user/operator action evidence gate, not as a mobile delivery-success button. The gate artifact schema is `trashbot.o5.operator_dropoff_acceptance_gate.v1` and the proof boundary is `software_proof_o5_operator_dropoff_acceptance_gate_only`; mobile copy must explain that this action is only a necessary input for later `delivery_state_live_success_gate`. A future enabled confirmation requires `source_mode=live`, same-task terminal result recorded, live route execution success, same-task `operator_dropoff_acceptance`, HIL pass, `safe_to_control=true`, and same-window freshness. Until those all exist, the status row must show `acceptance_decision=blocked_missing_live_success_evidence`, `delivery_success=false`, `route_execution_success=false`, `safe_to_control=false`, and `hil_pass=false`; Start Delivery, Confirm Dropoff, and Cancel must not infer delivery success from this gate alone.
+
 ## Mobile Web Entrypoint
 
 The standalone phone entrypoint now lives in `mobile/web/`:

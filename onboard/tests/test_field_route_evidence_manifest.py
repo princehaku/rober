@@ -789,6 +789,35 @@ def write_current_field_evidence_json(path: Path, **overrides) -> None:
     path.write_text(json.dumps(payload), encoding="utf-8")
 
 
+def write_pc_live_nav2_execution_material_json(path: Path, **overrides) -> None:
+    # 该 fixture 只保留 PC live Nav2 的短安全事实，不允许路径、URL、raw log 或 token。
+    payload = {
+        "source_sprint": "2026.07.03_20-46_pc_nav2_o11_tail_wasd_back_alias",
+        "source_doc": "tech-done.md",
+        "verified_at": "2026-07-03T20:46:00Z",
+        "goal_accepted": True,
+        "cancel_accepted": True,
+        "uses_base_uart": True,
+        "robot_control_executed": True,
+        "base_command_nonzero_observed": True,
+        "base_command_nonzero_count": 733,
+        "base_feedback_sample_count": 5941,
+        "base_feedback_lr_nonzero_proven": False,
+        "base_feedback_imu_attitude_delta_observed": True,
+        "motion_signal_observed": True,
+        "goal_result_status": "goal_timeout_cancel_requested",
+        "terminal_status": "goal_timeout_cancel_requested",
+        "remaining_evidence": [
+            "current_live_wheel_lr_nonzero_feedback",
+            "same_run_nav2_route_execution_success",
+            "delivery_record_or_operator_confirmation",
+        ],
+    }
+    payload.update(overrides)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+
 def write_localization_path_material_json(path: Path, **overrides) -> None:
     # localization/path fixture 直接复用 O1 已收口的 38 号 summary，确保合同与当前历史材料一致。
     payload = json.loads(LOCALIZATION_PATH_MATERIAL_ARTIFACT.read_text(encoding="utf-8"))
@@ -5007,6 +5036,130 @@ class FieldRouteEvidenceManifestTest(unittest.TestCase):
         self.assertFalse(evidence["safe_to_control"])
         self.assertFalse(evidence["delivery_success"])
         self.assertFalse(evidence["robot_control_executed"])
+
+    def test_pc_live_nav2_execution_material_ready_consumes_safe_short_summary(self):
+        # PC live Nav2 additive 只消费短安全材料，保留 base/UART/IMU 事实，并继续固定所有成功/控制字段为 false。
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir) / "complete"
+            output = Path(tmpdir) / "manifest.json"
+            pc_material = Path(tmpdir) / "pc_live_nav2_execution_material.json"
+            make_complete_fixture(root)
+            write_pc_live_nav2_execution_material_json(pc_material)
+
+            rc = manifest.main(
+                [
+                    "--mode",
+                    "local",
+                    "--artifact-root",
+                    str(root),
+                    "--pc-live-nav2-execution-material-json",
+                    str(pc_material),
+                    "--output",
+                    str(output),
+                    "--run-id",
+                    "pc_live_nav2_execution_material_ready",
+                ]
+            )
+            packet = json.loads(output.read_text(encoding="utf-8"))
+            evidence = packet["pc_live_nav2_execution_material"]
+            nested = packet["field_motion_evidence_packet"]["pc_live_nav2_execution_material"]
+            evidence_text = json.dumps(evidence, ensure_ascii=False)
+
+        self.assertEqual(rc, 0)
+        self.assertEqual(evidence, nested)
+        self.assertEqual(evidence["schema"], manifest.PC_LIVE_NAV2_EXECUTION_MATERIAL_SCHEMA)
+        self.assertEqual(evidence["proof_scope"], manifest.PC_LIVE_NAV2_EXECUTION_MATERIAL_PROOF_SCOPE)
+        self.assertEqual(evidence["evidence_boundary"], manifest.PC_LIVE_NAV2_EXECUTION_MATERIAL_PROOF_SCOPE)
+        self.assertEqual(evidence["status"], manifest.PC_LIVE_NAV2_EXECUTION_MATERIAL_READY_STATUS)
+        self.assertTrue(evidence["pc_live_nav2_execution_material_ready_not_delivery_proof"])
+        self.assertEqual(evidence["source_sprint"], "2026.07.03_20-46_pc_nav2_o11_tail_wasd_back_alias")
+        self.assertEqual(evidence["source_doc"], "tech-done.md")
+        self.assertTrue(evidence["goal_accepted"])
+        self.assertTrue(evidence["nav2_goal_accepted"])
+        self.assertTrue(evidence["cancel_accepted"])
+        self.assertTrue(evidence["uses_base_uart"])
+        self.assertTrue(evidence["source_robot_control_executed"])
+        self.assertTrue(evidence["base_command_nonzero_observed"])
+        self.assertEqual(evidence["base_command_nonzero_count"], 733)
+        self.assertEqual(evidence["base_feedback_sample_count"], 5941)
+        self.assertFalse(evidence["base_feedback_lr_nonzero_proven"])
+        self.assertTrue(evidence["base_feedback_imu_attitude_delta_observed"])
+        self.assertTrue(evidence["motion_signal_observed"])
+        self.assertEqual(evidence["goal_result_status"], "goal_timeout_cancel_requested")
+        self.assertEqual(evidence["result_status"], "goal_timeout_cancel_requested")
+        self.assertEqual(evidence["nav2_terminal_status"], "goal_timeout_cancel_requested")
+        self.assertEqual(evidence["blocked_reasons"], [])
+        self.assertEqual(
+            evidence["next_required_evidence"],
+            [
+                "current_live_wheel_lr_nonzero_feedback",
+                "delivery_record_or_operator_confirmation",
+                "same_run_nav2_route_execution_success",
+            ],
+        )
+        self.assertFalse(evidence["safe_to_control"])
+        self.assertFalse(evidence["delivery_success"])
+        self.assertFalse(evidence["primary_actions_enabled"])
+        self.assertFalse(evidence["robot_control_executed"])
+        self.assertFalse(evidence["route_execution_success"])
+        self.assertFalse(evidence["hil_pass"])
+        self.assertNotIn("/Users/m1", evidence_text)
+        self.assertNotIn("token", evidence_text.lower())
+        self.assertNotIn("http://", evidence_text.lower())
+
+    def test_pc_live_nav2_execution_material_fail_closed_on_dangerous_true_and_unsafe_text(self):
+        # 若材料混入 delivery/hil 真值或本机路径，section 必须 blocked 且不回显原文。
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir) / "complete"
+            output = Path(tmpdir) / "manifest.json"
+            pc_material = Path(tmpdir) / "pc_live_nav2_execution_material.json"
+            make_complete_fixture(root)
+            write_pc_live_nav2_execution_material_json(
+                pc_material,
+                hil_pass=True,
+                base_feedback_lr_nonzero_proven=True,
+                raw_log_path="/Users/m1/secret/wave_rover_feedback_debug.jsonl",
+                goal_result_status="traceback token leak",
+                terminal_status="traceback token leak",
+            )
+
+            rc = manifest.main(
+                [
+                    "--mode",
+                    "local",
+                    "--artifact-root",
+                    str(root),
+                    "--pc-live-nav2-execution-material-json",
+                    str(pc_material),
+                    "--output",
+                    str(output),
+                    "--run-id",
+                    "pc_live_nav2_execution_material_blocked",
+                ]
+            )
+            packet = json.loads(output.read_text(encoding="utf-8"))
+            evidence = packet["pc_live_nav2_execution_material"]
+            evidence_text = json.dumps(evidence, ensure_ascii=False)
+
+        self.assertEqual(rc, 0)
+        self.assertEqual(evidence["status"], "blocked_not_proven")
+        self.assertFalse(evidence["pc_live_nav2_execution_material_ready_not_delivery_proof"])
+        self.assertIn("pc_live_nav2_wheel_lr_nonzero_unexpected_true", evidence["blocked_reasons"])
+        self.assertIn("pc_live_nav2_execution_material_dangerous_true_claim", evidence["blocked_reasons"])
+        self.assertIn("pc_live_nav2_execution_material_unsafe_field", evidence["blocked_reasons"])
+        self.assertIn("pc_live_nav2_execution_material_unsafe_text", evidence["blocked_reasons"])
+        self.assertIn("hil_pass", evidence["dangerous_true_fields"])
+        self.assertGreaterEqual(evidence["unsafe_field_count"], 1)
+        self.assertGreaterEqual(evidence["unsafe_text_field_count"], 1)
+        self.assertFalse(evidence["safe_to_control"])
+        self.assertFalse(evidence["delivery_success"])
+        self.assertFalse(evidence["primary_actions_enabled"])
+        self.assertFalse(evidence["robot_control_executed"])
+        self.assertFalse(evidence["route_execution_success"])
+        self.assertFalse(evidence["hil_pass"])
+        self.assertNotIn("/Users/m1", evidence_text)
+        self.assertNotIn("wave_rover_feedback_debug", evidence_text)
+        self.assertNotIn("traceback", evidence_text.lower())
 
 
 if __name__ == "__main__":

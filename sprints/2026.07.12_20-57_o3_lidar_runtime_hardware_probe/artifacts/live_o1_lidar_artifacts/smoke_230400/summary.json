@@ -1,0 +1,1047 @@
+{
+  "schema": "trashbot.o1.lidar_ros2_scan_smoke.v1",
+  "output_dir": "/tmp/rober_o1_lidar_artifacts/smoke_230400",
+  "serial_port": "/dev/ttyACM0",
+  "serial_baudrate": 230400,
+  "baudrate_probe": {
+    "tested_baudrate": 230400,
+    "vendor_wave_rover_reference_baudrate": 230400,
+    "historical_field_baudrate_candidate": 150000,
+    "vendor_reference_source": "docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py",
+    "historical_field_source": "docs/hardware/board_sensor_stack_smoke.md"
+  },
+  "required_observations": {
+    "scan_once": {
+      "topic": "/scan",
+      "artifact_file": "scan_once.txt",
+      "observed": true
+    },
+    "scan_hz": {
+      "topic": "/scan",
+      "artifact_file": "scan_hz.txt",
+      "observed": true
+    },
+    "raw_packet_once": {
+      "topic": "/lidar/raw_packet",
+      "artifact_file": "raw_packet_once.txt",
+      "observed": true
+    },
+    "tf": {
+      "parent_frame": "base_link",
+      "child_frame": "laser_frame",
+      "artifact_file": "tf2_echo.txt",
+      "observed": true
+    }
+  },
+  "device_snapshots": {
+    "before": {
+      "schema": "trashbot.o1.lidar_device_snapshot.v1",
+      "generated_at_ms": 1783862062444,
+      "phase": "before",
+      "serial_port": "/dev/ttyACM0",
+      "serial_baudrate": 230400,
+      "devices": {
+        "/dev/ttyACM0": {
+          "path": "/dev/ttyACM0",
+          "exists": true,
+          "lexists": true,
+          "is_symlink": false,
+          "realpath": "/dev/ttyACM0",
+          "mode_octal": "0o660",
+          "uid": 0,
+          "gid": 20,
+          "error": null
+        },
+        "/dev/lidar": {
+          "path": "/dev/lidar",
+          "exists": false,
+          "lexists": false,
+          "is_symlink": false,
+          "realpath": null,
+          "mode_octal": null,
+          "uid": null,
+          "gid": null,
+          "error": null
+        },
+        "/dev/serial/by-id/usb-STC_STC_USB_Serial-if00": {
+          "path": "/dev/serial/by-id/usb-STC_STC_USB_Serial-if00",
+          "exists": true,
+          "lexists": true,
+          "is_symlink": true,
+          "realpath": "/dev/ttyACM0",
+          "mode_octal": "0o660",
+          "uid": 0,
+          "gid": 20,
+          "error": null
+        },
+        "/dev/serial/by-path/platform-5200400.usb-usb-0:1:1.0": {
+          "path": "/dev/serial/by-path/platform-5200400.usb-usb-0:1:1.0",
+          "exists": true,
+          "lexists": true,
+          "is_symlink": true,
+          "realpath": "/dev/ttyACM0",
+          "mode_octal": "0o660",
+          "uid": 0,
+          "gid": 20,
+          "error": null
+        }
+      },
+      "processes": {
+        "/dev/ttyACM0": {
+          "lsof": {
+            "command": [
+              "lsof",
+              "-nP",
+              "--",
+              "/dev/ttyACM0"
+            ],
+            "returncode": 0,
+            "stdout_preview": "COMMAND      PID USER   FD   TYPE DEVICE SIZE/OFF NODE NAME\nlidar_dri 544420 root   24u   CHR  166,0      0t0  440 /dev/ttyACM0\n",
+            "stderr_preview": "",
+            "tool_present": true
+          },
+          "fuser": {
+            "command": [
+              "fuser",
+              "-v",
+              "/dev/ttyACM0"
+            ],
+            "returncode": 0,
+            "stdout_preview": " 544420",
+            "stderr_preview": "                     USER        PID ACCESS COMMAND\n/dev/ttyACM0:        root      F.... lidar_driver\n",
+            "tool_present": true
+          }
+        },
+        "/dev/serial/by-id/usb-STC_STC_USB_Serial-if00": {
+          "lsof": {
+            "command": [
+              "lsof",
+              "-nP",
+              "--",
+              "/dev/serial/by-id/usb-STC_STC_USB_Serial-if00"
+            ],
+            "returncode": 0,
+            "stdout_preview": "COMMAND      PID USER   FD   TYPE DEVICE SIZE/OFF NODE NAME\nlidar_dri 544420 root   24u   CHR  166,0      0t0  440 /dev/serial/by-id/../../ttyACM0\n",
+            "stderr_preview": "",
+            "tool_present": true
+          },
+          "fuser": {
+            "command": [
+              "fuser",
+              "-v",
+              "/dev/serial/by-id/usb-STC_STC_USB_Serial-if00"
+            ],
+            "returncode": 0,
+            "stdout_preview": " 544420",
+            "stderr_preview": "                     USER        PID ACCESS COMMAND\n/dev/ttyACM0:        root      F.... lidar_driver\n",
+            "tool_present": true
+          }
+        },
+        "/dev/serial/by-path/platform-5200400.usb-usb-0:1:1.0": {
+          "lsof": {
+            "command": [
+              "lsof",
+              "-nP",
+              "--",
+              "/dev/serial/by-path/platform-5200400.usb-usb-0:1:1.0"
+            ],
+            "returncode": 0,
+            "stdout_preview": "COMMAND      PID USER   FD   TYPE DEVICE SIZE/OFF NODE NAME\nlidar_dri 544420 root   24u   CHR  166,0      0t0  440 /dev/serial/by-path/../../ttyACM0\n",
+            "stderr_preview": "",
+            "tool_present": true
+          },
+          "fuser": {
+            "command": [
+              "fuser",
+              "-v",
+              "/dev/serial/by-path/platform-5200400.usb-usb-0:1:1.0"
+            ],
+            "returncode": 0,
+            "stdout_preview": " 544420",
+            "stderr_preview": "                     USER        PID ACCESS COMMAND\n/dev/ttyACM0:        root      F.... lidar_driver\n",
+            "tool_present": true
+          }
+        }
+      },
+      "safe_to_control": false,
+      "publishes_cmd_vel": false,
+      "calls_base_manual": false,
+      "uses_base_uart": false,
+      "robot_control_executed": false,
+      "route_execution_success": false,
+      "delivery_success": false,
+      "hil_pass": false
+    },
+    "during": {
+      "schema": "trashbot.o1.lidar_device_snapshot.v1",
+      "generated_at_ms": 1783862069739,
+      "phase": "during",
+      "serial_port": "/dev/ttyACM0",
+      "serial_baudrate": 230400,
+      "devices": {
+        "/dev/ttyACM0": {
+          "path": "/dev/ttyACM0",
+          "exists": true,
+          "lexists": true,
+          "is_symlink": false,
+          "realpath": "/dev/ttyACM0",
+          "mode_octal": "0o660",
+          "uid": 0,
+          "gid": 20,
+          "error": null
+        },
+        "/dev/lidar": {
+          "path": "/dev/lidar",
+          "exists": false,
+          "lexists": false,
+          "is_symlink": false,
+          "realpath": null,
+          "mode_octal": null,
+          "uid": null,
+          "gid": null,
+          "error": null
+        },
+        "/dev/serial/by-id/usb-STC_STC_USB_Serial-if00": {
+          "path": "/dev/serial/by-id/usb-STC_STC_USB_Serial-if00",
+          "exists": true,
+          "lexists": true,
+          "is_symlink": true,
+          "realpath": "/dev/ttyACM0",
+          "mode_octal": "0o660",
+          "uid": 0,
+          "gid": 20,
+          "error": null
+        },
+        "/dev/serial/by-path/platform-5200400.usb-usb-0:1:1.0": {
+          "path": "/dev/serial/by-path/platform-5200400.usb-usb-0:1:1.0",
+          "exists": true,
+          "lexists": true,
+          "is_symlink": true,
+          "realpath": "/dev/ttyACM0",
+          "mode_octal": "0o660",
+          "uid": 0,
+          "gid": 20,
+          "error": null
+        }
+      },
+      "processes": {
+        "/dev/ttyACM0": {
+          "lsof": {
+            "command": [
+              "lsof",
+              "-nP",
+              "--",
+              "/dev/ttyACM0"
+            ],
+            "returncode": 0,
+            "stdout_preview": "COMMAND      PID USER   FD   TYPE DEVICE SIZE/OFF NODE NAME\nlidar_dri 549589 root   24u   CHR  166,0      0t0  440 /dev/ttyACM0\n",
+            "stderr_preview": "",
+            "tool_present": true
+          },
+          "fuser": {
+            "command": [
+              "fuser",
+              "-v",
+              "/dev/ttyACM0"
+            ],
+            "returncode": 0,
+            "stdout_preview": " 549589",
+            "stderr_preview": "                     USER        PID ACCESS COMMAND\n/dev/ttyACM0:        root      F.... lidar_driver\n",
+            "tool_present": true
+          }
+        },
+        "/dev/serial/by-id/usb-STC_STC_USB_Serial-if00": {
+          "lsof": {
+            "command": [
+              "lsof",
+              "-nP",
+              "--",
+              "/dev/serial/by-id/usb-STC_STC_USB_Serial-if00"
+            ],
+            "returncode": 0,
+            "stdout_preview": "COMMAND      PID USER   FD   TYPE DEVICE SIZE/OFF NODE NAME\nlidar_dri 549589 root   24u   CHR  166,0      0t0  440 /dev/serial/by-id/../../ttyACM0\n",
+            "stderr_preview": "",
+            "tool_present": true
+          },
+          "fuser": {
+            "command": [
+              "fuser",
+              "-v",
+              "/dev/serial/by-id/usb-STC_STC_USB_Serial-if00"
+            ],
+            "returncode": 0,
+            "stdout_preview": " 549589",
+            "stderr_preview": "                     USER        PID ACCESS COMMAND\n/dev/ttyACM0:        root      F.... lidar_driver\n",
+            "tool_present": true
+          }
+        },
+        "/dev/serial/by-path/platform-5200400.usb-usb-0:1:1.0": {
+          "lsof": {
+            "command": [
+              "lsof",
+              "-nP",
+              "--",
+              "/dev/serial/by-path/platform-5200400.usb-usb-0:1:1.0"
+            ],
+            "returncode": 0,
+            "stdout_preview": "COMMAND      PID USER   FD   TYPE DEVICE SIZE/OFF NODE NAME\nlidar_dri 549589 root   24u   CHR  166,0      0t0  440 /dev/serial/by-path/../../ttyACM0\n",
+            "stderr_preview": "",
+            "tool_present": true
+          },
+          "fuser": {
+            "command": [
+              "fuser",
+              "-v",
+              "/dev/serial/by-path/platform-5200400.usb-usb-0:1:1.0"
+            ],
+            "returncode": 0,
+            "stdout_preview": " 549589",
+            "stderr_preview": "                     USER        PID ACCESS COMMAND\n/dev/ttyACM0:        root      F.... lidar_driver\n",
+            "tool_present": true
+          }
+        }
+      },
+      "safe_to_control": false,
+      "publishes_cmd_vel": false,
+      "calls_base_manual": false,
+      "uses_base_uart": false,
+      "robot_control_executed": false,
+      "route_execution_success": false,
+      "delivery_success": false,
+      "hil_pass": false
+    },
+    "after": {
+      "schema": "trashbot.o1.lidar_device_snapshot.v1",
+      "generated_at_ms": 1783862109622,
+      "phase": "after",
+      "serial_port": "/dev/ttyACM0",
+      "serial_baudrate": 230400,
+      "devices": {
+        "/dev/ttyACM0": {
+          "path": "/dev/ttyACM0",
+          "exists": true,
+          "lexists": true,
+          "is_symlink": false,
+          "realpath": "/dev/ttyACM0",
+          "mode_octal": "0o660",
+          "uid": 0,
+          "gid": 20,
+          "error": null
+        },
+        "/dev/lidar": {
+          "path": "/dev/lidar",
+          "exists": false,
+          "lexists": false,
+          "is_symlink": false,
+          "realpath": null,
+          "mode_octal": null,
+          "uid": null,
+          "gid": null,
+          "error": null
+        },
+        "/dev/serial/by-id/usb-STC_STC_USB_Serial-if00": {
+          "path": "/dev/serial/by-id/usb-STC_STC_USB_Serial-if00",
+          "exists": true,
+          "lexists": true,
+          "is_symlink": true,
+          "realpath": "/dev/ttyACM0",
+          "mode_octal": "0o660",
+          "uid": 0,
+          "gid": 20,
+          "error": null
+        },
+        "/dev/serial/by-path/platform-5200400.usb-usb-0:1:1.0": {
+          "path": "/dev/serial/by-path/platform-5200400.usb-usb-0:1:1.0",
+          "exists": true,
+          "lexists": true,
+          "is_symlink": true,
+          "realpath": "/dev/ttyACM0",
+          "mode_octal": "0o660",
+          "uid": 0,
+          "gid": 20,
+          "error": null
+        }
+      },
+      "processes": {
+        "/dev/ttyACM0": {
+          "lsof": {
+            "command": [
+              "lsof",
+              "-nP",
+              "--",
+              "/dev/ttyACM0"
+            ],
+            "returncode": 0,
+            "stdout_preview": "COMMAND      PID USER   FD   TYPE DEVICE SIZE/OFF NODE NAME\nlidar_dri 549725 root   24u   CHR  166,0      0t0  440 /dev/ttyACM0\n",
+            "stderr_preview": "",
+            "tool_present": true
+          },
+          "fuser": {
+            "command": [
+              "fuser",
+              "-v",
+              "/dev/ttyACM0"
+            ],
+            "returncode": 0,
+            "stdout_preview": " 549725",
+            "stderr_preview": "                     USER        PID ACCESS COMMAND\n/dev/ttyACM0:        root      F.... lidar_driver\n",
+            "tool_present": true
+          }
+        },
+        "/dev/serial/by-id/usb-STC_STC_USB_Serial-if00": {
+          "lsof": {
+            "command": [
+              "lsof",
+              "-nP",
+              "--",
+              "/dev/serial/by-id/usb-STC_STC_USB_Serial-if00"
+            ],
+            "returncode": 0,
+            "stdout_preview": "COMMAND      PID USER   FD   TYPE DEVICE SIZE/OFF NODE NAME\nlidar_dri 549725 root   24u   CHR  166,0      0t0  440 /dev/serial/by-id/../../ttyACM0\n",
+            "stderr_preview": "",
+            "tool_present": true
+          },
+          "fuser": {
+            "command": [
+              "fuser",
+              "-v",
+              "/dev/serial/by-id/usb-STC_STC_USB_Serial-if00"
+            ],
+            "returncode": 0,
+            "stdout_preview": " 549725",
+            "stderr_preview": "                     USER        PID ACCESS COMMAND\n/dev/ttyACM0:        root      F.... lidar_driver\n",
+            "tool_present": true
+          }
+        },
+        "/dev/serial/by-path/platform-5200400.usb-usb-0:1:1.0": {
+          "lsof": {
+            "command": [
+              "lsof",
+              "-nP",
+              "--",
+              "/dev/serial/by-path/platform-5200400.usb-usb-0:1:1.0"
+            ],
+            "returncode": 0,
+            "stdout_preview": "COMMAND      PID USER   FD   TYPE DEVICE SIZE/OFF NODE NAME\nlidar_dri 549725 root   24u   CHR  166,0      0t0  440 /dev/serial/by-path/../../ttyACM0\n",
+            "stderr_preview": "",
+            "tool_present": true
+          },
+          "fuser": {
+            "command": [
+              "fuser",
+              "-v",
+              "/dev/serial/by-path/platform-5200400.usb-usb-0:1:1.0"
+            ],
+            "returncode": 0,
+            "stdout_preview": " 549725",
+            "stderr_preview": "                     USER        PID ACCESS COMMAND\n/dev/ttyACM0:        root      F.... lidar_driver\n",
+            "tool_present": true
+          }
+        }
+      },
+      "safe_to_control": false,
+      "publishes_cmd_vel": false,
+      "calls_base_manual": false,
+      "uses_base_uart": false,
+      "robot_control_executed": false,
+      "route_execution_success": false,
+      "delivery_success": false,
+      "hil_pass": false
+    }
+  },
+  "driver_diagnostics": {
+    "schema": "trashbot.o1.lidar_driver_diagnostics.v1",
+    "generated_at_ms": 1783862107211,
+    "state": "stopped",
+    "evidence_boundary": "lidar_driver_runtime_diagnostics_not_base_hil",
+    "readback_sends_commands": false,
+    "sends_base_motion_commands": false,
+    "publishes_cmd_vel": false,
+    "robot_control_executed": false,
+    "hil_pass": false,
+    "safe_to_control": false,
+    "calls_base_manual": false,
+    "uses_base_uart": false,
+    "route_execution_success": false,
+    "delivery_success": false,
+    "vendor_readback_boundary": {
+      "vendor_index": "docs/vendor/VENDOR_INDEX.md",
+      "wave_rover_lidar_reference": "docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py",
+      "wave_rover_reference_baudrate": 230400,
+      "historical_field_baudrate_candidate": 150000,
+      "dedicated_lidar_vendor_doc_present_in_local_tree": false
+    },
+    "config": {
+      "serial_port": "/dev/ttyACM0",
+      "serial_baudrate": 230400,
+      "frame_id": "laser_frame",
+      "scan_topic": "/scan",
+      "raw_packet_topic": "/lidar/raw_packet",
+      "publish_raw_packets": true,
+      "read_size": 1024,
+      "aggregation_max_packets": 24,
+      "aggregation_min_points": 48,
+      "mock_mode": false
+    },
+    "runtime": {
+      "uptime_s": 41.879,
+      "parsed_packet_count": 2611,
+      "published_raw_packet_count": 2611,
+      "published_scan_count": 166,
+      "last_scan_range_count": 69
+    },
+    "scan_preview": {
+      "scan_preview_points": [
+        {
+          "x_m": 4.760179196705182,
+          "y_m": 0.025963007437743647,
+          "range_m": 4.76025,
+          "angle_rad": 0.00545415391248228,
+          "frame_id": "laser_frame",
+          "source_index": 0
+        },
+        {
+          "x_m": 1.325645607114597,
+          "y_m": 0.1299527773376617,
+          "range_m": 1.332,
+          "angle_rad": 0.09771758399378179,
+          "frame_id": "laser_frame",
+          "source_index": 1
+        },
+        {
+          "x_m": 0.8159752313890899,
+          "y_m": 0.621981046141698,
+          "range_m": 1.026,
+          "angle_rad": 0.6512981644815788,
+          "frame_id": "laser_frame",
+          "source_index": 7
+        },
+        {
+          "x_m": 3.356812301257059,
+          "y_m": 3.087065179766908,
+          "range_m": 4.5605,
+          "angle_rad": 0.7435615945628784,
+          "frame_id": "laser_frame",
+          "source_index": 8
+        },
+        {
+          "x_m": 0.022115873229560053,
+          "y_m": 0.044842927550440205,
+          "range_m": 0.05,
+          "angle_rad": 1.1126153148880766,
+          "frame_id": "laser_frame",
+          "source_index": 12
+        },
+        {
+          "x_m": 0.017890313953740127,
+          "y_m": 0.046689791888983735,
+          "range_m": 0.05,
+          "angle_rad": 1.204878744969376,
+          "frame_id": "laser_frame",
+          "source_index": 13
+        },
+        {
+          "x_m": 0.10539805112698811,
+          "y_m": 0.37548801687754674,
+          "range_m": 0.39,
+          "angle_rad": 1.2971421750506755,
+          "frame_id": "laser_frame",
+          "source_index": 14
+        },
+        {
+          "x_m": 0.07360224225677332,
+          "y_m": 0.4013062545423074,
+          "range_m": 0.408,
+          "angle_rad": 1.3894056051319752,
+          "frame_id": "laser_frame",
+          "source_index": 15
+        },
+        {
+          "x_m": 0.5368598266542665,
+          "y_m": 6.007559718931203,
+          "range_m": 6.0315,
+          "angle_rad": 1.4816690352132746,
+          "frame_id": "laser_frame",
+          "source_index": 16
+        },
+        {
+          "x_m": -0.0013140398773521537,
+          "y_m": 0.4189979394927864,
+          "range_m": 0.419,
+          "angle_rad": 1.573932465294574,
+          "frame_id": "laser_frame",
+          "source_index": 17
+        },
+        {
+          "x_m": -0.04010232466069982,
+          "y_m": 0.419085675675998,
+          "range_m": 0.421,
+          "angle_rad": 1.6661958953758738,
+          "frame_id": "laser_frame",
+          "source_index": 18
+        },
+        {
+          "x_m": -0.07891633347921886,
+          "y_m": 0.41557335370569265,
+          "range_m": 0.423,
+          "angle_rad": 1.7584593254571732,
+          "frame_id": "laser_frame",
+          "source_index": 19
+        },
+        {
+          "x_m": -0.11686853036455136,
+          "y_m": 0.4065350496702959,
+          "range_m": 0.423,
+          "angle_rad": 1.8507227555384727,
+          "frame_id": "laser_frame",
+          "source_index": 20
+        },
+        {
+          "x_m": -0.15419024090048264,
+          "y_m": 0.39497008698261077,
+          "range_m": 0.424,
+          "angle_rad": 1.9429861856197723,
+          "frame_id": "laser_frame",
+          "source_index": 21
+        },
+        {
+          "x_m": -0.190371980722799,
+          "y_m": 0.37997830063791566,
+          "range_m": 0.425,
+          "angle_rad": 2.0352496157010713,
+          "frame_id": "laser_frame",
+          "source_index": 22
+        },
+        {
+          "x_m": -0.22457066437124523,
+          "y_m": 0.36082269427498254,
+          "range_m": 0.425,
+          "angle_rad": 2.127513045782371,
+          "frame_id": "laser_frame",
+          "source_index": 23
+        },
+        {
+          "x_m": -3.468956839403944,
+          "y_m": 4.572862179079159,
+          "range_m": 5.73975,
+          "angle_rad": 2.2197764758636707,
+          "frame_id": "laser_frame",
+          "source_index": 24
+        },
+        {
+          "x_m": -0.2626550305667198,
+          "y_m": 0.2869378589834313,
+          "range_m": 0.389,
+          "angle_rad": 2.31203990594497,
+          "frame_id": "laser_frame",
+          "source_index": 25
+        },
+        {
+          "x_m": -0.28945480691858544,
+          "y_m": 0.26286292007760326,
+          "range_m": 0.391,
+          "angle_rad": 2.4043033360262696,
+          "frame_id": "laser_frame",
+          "source_index": 26
+        },
+        {
+          "x_m": -0.31563826024871333,
+          "y_m": 0.23748155437247231,
+          "range_m": 0.395,
+          "angle_rad": 2.496566766107569,
+          "frame_id": "laser_frame",
+          "source_index": 27
+        },
+        {
+          "x_m": -0.33957987055575783,
+          "y_m": 0.20949107740745132,
+          "range_m": 0.399,
+          "angle_rad": 2.5888301961888684,
+          "frame_id": "laser_frame",
+          "source_index": 28
+        },
+        {
+          "x_m": -0.35833233749186055,
+          "y_m": 0.17775808253809267,
+          "range_m": 0.4,
+          "angle_rad": 2.6810936262701683,
+          "frame_id": "laser_frame",
+          "source_index": 29
+        },
+        {
+          "x_m": -0.37598446351599385,
+          "y_m": 0.14506785720686133,
+          "range_m": 0.403,
+          "angle_rad": 2.773357056351468,
+          "frame_id": "laser_frame",
+          "source_index": 30
+        },
+        {
+          "x_m": -0.3896751053124123,
+          "y_m": 0.11035539089578002,
+          "range_m": 0.405,
+          "angle_rad": 2.8656204864327672,
+          "frame_id": "laser_frame",
+          "source_index": 31
+        },
+        {
+          "x_m": -5.103896599782691,
+          "y_m": 0.9483227621578493,
+          "range_m": 5.19125,
+          "angle_rad": 2.9578839165140667,
+          "frame_id": "laser_frame",
+          "source_index": 32
+        },
+        {
+          "x_m": -0.5745891732527304,
+          "y_m": 0.05269043538199101,
+          "range_m": 0.577,
+          "angle_rad": 3.050147346595366,
+          "frame_id": "laser_frame",
+          "source_index": 33
+        },
+        {
+          "x_m": -0.6309997888278527,
+          "y_m": -0.0005162356102281726,
+          "range_m": 0.631,
+          "angle_rad": 3.1424107766766656,
+          "frame_id": "laser_frame",
+          "source_index": 34
+        },
+        {
+          "x_m": -0.6451948333740247,
+          "y_m": -0.06022978488641983,
+          "range_m": 0.648,
+          "angle_rad": 3.234674206757965,
+          "frame_id": "laser_frame",
+          "source_index": 35
+        },
+        {
+          "x_m": -0.6457473860194238,
+          "y_m": -0.12107565175988608,
+          "range_m": 0.657,
+          "angle_rad": 3.326937636839265,
+          "frame_id": "laser_frame",
+          "source_index": 36
+        },
+        {
+          "x_m": -0.647233264711462,
+          "y_m": -0.18443996598064802,
+          "range_m": 0.673,
+          "angle_rad": 3.4192010669205644,
+          "frame_id": "laser_frame",
+          "source_index": 37
+        },
+        {
+          "x_m": -0.6433378401311459,
+          "y_m": -0.24943220212192344,
+          "range_m": 0.69,
+          "angle_rad": 3.511464497001864,
+          "frame_id": "laser_frame",
+          "source_index": 38
+        },
+        {
+          "x_m": -3.9870103324228463,
+          "y_m": -1.9859737338780348,
+          "range_m": 4.45425,
+          "angle_rad": 3.6037279270831633,
+          "frame_id": "laser_frame",
+          "source_index": 39
+        },
+        {
+          "x_m": -0.6096056863181333,
+          "y_m": -0.37745186078306414,
+          "range_m": 0.717,
+          "angle_rad": 3.6959913571644627,
+          "frame_id": "laser_frame",
+          "source_index": 40
+        },
+        {
+          "x_m": -0.5881992514713541,
+          "y_m": -0.4440615279086207,
+          "range_m": 0.737,
+          "angle_rad": 3.788254787245762,
+          "frame_id": "laser_frame",
+          "source_index": 41
+        },
+        {
+          "x_m": -0.558829614464142,
+          "y_m": -0.5091615283953201,
+          "range_m": 0.756,
+          "angle_rad": 3.880518217327062,
+          "frame_id": "laser_frame",
+          "source_index": 42
+        },
+        {
+          "x_m": -0.5250443542855495,
+          "y_m": -0.5754732192143005,
+          "range_m": 0.779,
+          "angle_rad": 3.9727816474083615,
+          "frame_id": "laser_frame",
+          "source_index": 43
+        },
+        {
+          "x_m": -0.47763127969972374,
+          "y_m": -0.6317692305362809,
+          "range_m": 0.792,
+          "angle_rad": 4.0650450774896605,
+          "frame_id": "laser_frame",
+          "source_index": 44
+        },
+        {
+          "x_m": -0.4300415409794985,
+          "y_m": -0.6934841548528548,
+          "range_m": 0.816,
+          "angle_rad": 4.157308507570961,
+          "frame_id": "laser_frame",
+          "source_index": 45
+        },
+        {
+          "x_m": -0.16474763674259263,
+          "y_m": -0.3301805811790432,
+          "range_m": 0.369,
+          "angle_rad": 4.24957193765226,
+          "frame_id": "laser_frame",
+          "source_index": 46
+        },
+        {
+          "x_m": -2.073565110643555,
+          "y_m": -5.337359247036101,
+          "range_m": 5.726,
+          "angle_rad": 4.34183536773356,
+          "frame_id": "laser_frame",
+          "source_index": 47
+        },
+        {
+          "x_m": -0.09669862965508494,
+          "y_m": -0.3384573459430726,
+          "range_m": 0.352,
+          "angle_rad": 4.434098797814859,
+          "frame_id": "laser_frame",
+          "source_index": 48
+        },
+        {
+          "x_m": -0.0645495283525705,
+          "y_m": -0.342978655880305,
+          "range_m": 0.349,
+          "angle_rad": 4.526362227896159,
+          "frame_id": "laser_frame",
+          "source_index": 49
+        },
+        {
+          "x_m": -0.033143602276575604,
+          "y_m": -0.3524450334848431,
+          "range_m": 0.354,
+          "angle_rad": 4.618625657977458,
+          "frame_id": "laser_frame",
+          "source_index": 50
+        },
+        {
+          "x_m": -0.0005519601689877044,
+          "y_m": -0.36799958605951155,
+          "range_m": 0.368,
+          "angle_rad": 4.7108890880587575,
+          "frame_id": "laser_frame",
+          "source_index": 51
+        },
+        {
+          "x_m": 0.47077881246118286,
+          "y_m": -5.172620545694188,
+          "range_m": 5.194,
+          "angle_rad": 4.803152518140057,
+          "frame_id": "laser_frame",
+          "source_index": 52
+        },
+        {
+          "x_m": 1.0273829515332595,
+          "y_m": -5.55046726261842,
+          "range_m": 5.64475,
+          "angle_rad": 4.895415948221356,
+          "frame_id": "laser_frame",
+          "source_index": 53
+        },
+        {
+          "x_m": 0.585785917376996,
+          "y_m": -2.0738562773255986,
+          "range_m": 2.155,
+          "angle_rad": 4.987679378302656,
+          "frame_id": "laser_frame",
+          "source_index": 54
+        },
+        {
+          "x_m": 0.772926830175798,
+          "y_m": -2.007332836176998,
+          "range_m": 2.151,
+          "angle_rad": 5.079942808383955,
+          "frame_id": "laser_frame",
+          "source_index": 55
+        },
+        {
+          "x_m": 0.9532487906744205,
+          "y_m": -1.9248949953381238,
+          "range_m": 2.148,
+          "angle_rad": 5.172206238465255,
+          "frame_id": "laser_frame",
+          "source_index": 56
+        },
+        {
+          "x_m": 1.1254910181635946,
+          "y_m": -1.8271797853613296,
+          "range_m": 2.146,
+          "angle_rad": 5.264469668546554,
+          "frame_id": "laser_frame",
+          "source_index": 57
+        },
+        {
+          "x_m": 1.2884461467317958,
+          "y_m": -1.7149144372160345,
+          "range_m": 2.145,
+          "angle_rad": 5.3567330986278545,
+          "frame_id": "laser_frame",
+          "source_index": 58
+        },
+        {
+          "x_m": 1.4402937845904498,
+          "y_m": -1.588171846517284,
+          "range_m": 2.144,
+          "angle_rad": 5.448996528709154,
+          "frame_id": "laser_frame",
+          "source_index": 59
+        },
+        {
+          "x_m": 1.5804902323345107,
+          "y_m": -1.4487189601490018,
+          "range_m": 2.144,
+          "angle_rad": 5.541259958790453,
+          "frame_id": "laser_frame",
+          "source_index": 60
+        },
+        {
+          "x_m": 4.529885382313097,
+          "y_m": -3.4412228910092595,
+          "range_m": 5.68875,
+          "angle_rad": 5.633523388871753,
+          "frame_id": "laser_frame",
+          "source_index": 61
+        },
+        {
+          "x_m": 1.8440819635134895,
+          "y_m": -1.1494741022938417,
+          "range_m": 2.173,
+          "angle_rad": 5.725786818953052,
+          "frame_id": "laser_frame",
+          "source_index": 62
+        },
+        {
+          "x_m": 1.9466114455921384,
+          "y_m": -0.9769277761890514,
+          "range_m": 2.178,
+          "angle_rad": 5.818050249034352,
+          "frame_id": "laser_frame",
+          "source_index": 63
+        },
+        {
+          "x_m": 1.8169371870062059,
+          "y_m": -0.7107321988442453,
+          "range_m": 1.951,
+          "angle_rad": 5.910313679115651,
+          "frame_id": "laser_frame",
+          "source_index": 64
+        },
+        {
+          "x_m": 1.7142227320166608,
+          "y_m": -0.4940611551592938,
+          "range_m": 1.784,
+          "angle_rad": 6.002577109196951,
+          "frame_id": "laser_frame",
+          "source_index": 65
+        },
+        {
+          "x_m": 1.6777948655208097,
+          "y_m": -0.3197942920566408,
+          "range_m": 1.708,
+          "angle_rad": 6.09484053927825,
+          "frame_id": "laser_frame",
+          "source_index": 66
+        },
+        {
+          "x_m": 1.575698789446865,
+          "y_m": -0.15186284909642672,
+          "range_m": 1.583,
+          "angle_rad": 6.1871039693595495,
+          "frame_id": "laser_frame",
+          "source_index": 67
+        },
+        {
+          "x_m": 1.4759892426154748,
+          "y_m": -0.005635218132136011,
+          "range_m": 1.476,
+          "angle_rad": 6.279367399440849,
+          "frame_id": "laser_frame",
+          "source_index": 68
+        }
+      ],
+      "scan_preview_point_count": 61,
+      "scan_preview_source_point_count": 69,
+      "scan_preview_frame_id": "laser_frame",
+      "scan_preview_angle_min": 0.00545415391248228,
+      "scan_preview_angle_increment": 0.09226343008129952,
+      "scan_preview_range_min": 0.05,
+      "scan_preview_range_max": 8.0,
+      "scan_preview_source": "lidar_driver_diagnostics.last_scan_preview"
+    },
+    "serial": {
+      "serial_port": "/dev/ttyACM0",
+      "serial_baudrate": 230400,
+      "start_command_written": true,
+      "stop_command_written": true,
+      "read_call_count": 1780,
+      "empty_read_count": 837,
+      "bytes_read_total": 86530,
+      "packet_count_total": 2611,
+      "last_chunk_size": 0,
+      "last_chunk_preview_hex": "",
+      "raw_bytes_observed": true,
+      "unparsed_buffer_size": 0,
+      "unparsed_buffer_preview_hex": "",
+      "last_packet_preview_hex": "aa 55 00 08 d3 72 43 76 7c 59 e9 70 05 4b 94 05",
+      "read_exception_count": 484,
+      "last_exception_type": "serial.serialutil.SerialException",
+      "last_exception_message_hint": "device reports readiness to read but returned no data (device disconnected or multiple access on port?)",
+      "last_error": "serial_read_failed"
+    },
+    "diagnosis": {
+      "status": "scan_published",
+      "next_action_plain": "LiDAR driver 已发布 /scan；继续用 scan proof 验证 topic 一次读取和 hz。"
+    }
+  },
+  "driver_log_tail": "ted or multiple access on port?)\n[ERROR] [1783862101.179555753] [lidar_driver]: LiDAR serial read failed: serial.serialutil.SerialException: device reports readiness to read but returned no data (device disconnected or multiple access on port?)\n[ERROR] [1783862102.197251186] [lidar_driver]: LiDAR serial read failed: serial.serialutil.SerialException: device reports readiness to read but returned no data (device disconnected or multiple access on port?)\n[ERROR] [1783862103.200098678] [lidar_driver]: LiDAR serial read failed: serial.serialutil.SerialException: device reports readiness to read but returned no data (device disconnected or multiple access on port?)\n[ERROR] [1783862104.200169840] [lidar_driver]: LiDAR serial read failed: serial.serialutil.SerialException: device reports readiness to read but returned no data (device disconnected or multiple access on port?)\n[ERROR] [1783862106.545422884] [lidar_driver]: LiDAR serial read failed: serial.serialutil.SerialException: device reports readiness to read but returned no data (device disconnected or multiple access on port?)\nTraceback (most recent call last):\n  File \"/root/rober/onboard/install/ros2_trashbot_hardware/lib/ros2_trashbot_hardware/lidar_driver\", line 33, in <module>\n    sys.exit(load_entry_point('ros2-trashbot-hardware', 'console_scripts', 'lidar_driver')())\n  File \"/root/rober/onboard/build/ros2_trashbot_hardware/ros2_trashbot_hardware/lidar_driver.py\", line 657, in main\n    rclpy.shutdown()\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/__init__.py\", line 130, in shutdown\n    _shutdown(context=context)\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/utilities.py\", line 58, in shutdown\n    return context.shutdown()\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/context.py\", line 102, in shutdown\n    self.__context.shutdown()\nrclpy._rclpy_pybind11.RCLError: failed to shutdown: rcl_shutdown already called on the given context, at ./src/rcl/init.c:241\n",
+  "serial_exception_observed": true,
+  "serial_exception_type": "serial.serialutil.SerialException",
+  "serial_exception_message_hint": "device reports readiness to read but returned no data (device disconnected or multiple access on port?)",
+  "empty_read_count": 837,
+  "raw_bytes_observed": true,
+  "bytes_read_total": 86530,
+  "last_chunk_preview_hex": "",
+  "packet_count_total": 2611,
+  "published_raw_packet_count": 2611,
+  "published_scan_count": 166,
+  "driver_started_by_smoke": true,
+  "lidar_start_command_sent_by_smoke": true,
+  "lidar_start_command_hex": "A5 60",
+  "refuses_base_uart_ttyS5": true,
+  "safe_to_control": false,
+  "sends_base_motion_commands": false,
+  "calls_base_manual": false,
+  "publishes_cmd_vel": false,
+  "uses_base_uart": false,
+  "robot_control_executed": false,
+  "route_execution_success": false,
+  "delivery_success": false,
+  "hil_pass": false,
+  "scan_once_observed": true,
+  "scan_hz_observed": true,
+  "raw_packet_once_observed": true,
+  "tf_observed": true,
+  "all_required_observations_observed": true
+}

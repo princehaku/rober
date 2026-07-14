@@ -6,7 +6,27 @@ import type {
   O7AnnotationDatasetExportResult,
   O7AnnotationSubmitLabel,
   O7AnnotationSubmitResult,
+  O7ConsumerDeliveryResultIntakeRequestBody,
+  O7ConsumerDeliveryResultIntakeResult,
+  O7ConsumerInferenceRequestBody,
+  O7ConsumerInferenceRequestResult,
+  O7MissionEvidenceBundleExportResult,
+  O7ConsumerMissionEventAppendRequestBody,
+  O7ConsumerMissionEventAppendResult,
+  O7OperatorDropoffActionCaptureRequestBody,
+  O7OperatorDropoffActionCaptureResult,
+  O7ConsumerVoiceTtsDraftRequestBody,
+  O7ConsumerVoiceTtsDraftRequestResult,
+  O7VoiceSpeakerAckEventRequestBody,
+  O7VoiceSpeakerAckEventResult,
+  O7ConsumerPhoneBrowserProofIntakeRequestBody,
+  O7ConsumerPhoneBrowserProofIntakeResult,
+  O7ConsumerBoundedRouteGateIntakeRequestBody,
+  O7ConsumerBoundedRouteGateIntakeResult,
+  O7ConsumerBoundedRouteTerminalResultIntakeRequestBody,
+  O7ConsumerBoundedRouteTerminalResultIntakeResult,
   O7ConsumerTaskDetailResponse,
+  O7ConsumerTaskListQuery,
   O7ConsumerTaskListResponse,
   O7CloudOperatorConsoleProbeResponse,
   O7LabelingPreviewResponse,
@@ -20,6 +40,8 @@ import type {
   O7RtcSignalingContractProbeResponse,
   O7SafeCommandPreviewResponse,
   O7VoicePreviewResponse,
+  O7VoiceRuntimeOfflineSmokeResult,
+  O7VoiceRuntimePreflightResult,
   ProofBoundaryResponse,
   RobotControlProofRefreshProxyResponse,
   RobotControlCameraCloseProxyResponse,
@@ -108,12 +130,24 @@ const API_ENDPOINTS = {
   o7ConsumerTaskDetailPrefix: "/api/o7/consumer-read/tasks/",
   o7ConsumerAnnotationSubmitSuffix: "/annotations/submit",
   o7ConsumerAnnotationExportSuffix: "/annotations/export",
+  o7ConsumerInferenceRequestSuffix: "/inference/request",
+  o7ConsumerDeliveryResultIntakeSuffix: "/delivery-result/intake",
+  o7ConsumerMissionEventAppendSuffix: "/events/append",
+  o7OperatorDropoffActionCaptureSuffix: "/operator/dropoff-acceptance/request",
+  o7ConsumerVoiceTtsDraftRequestSuffix: "/voice/tts-draft/request",
+  o7VoiceSpeakerAckEventSuffix: "/voice/speaker-ack/request",
+  o7ConsumerPhoneBrowserProofIntakeSuffix: "/phone-browser-proof/intake",
+  o7ConsumerBoundedRouteGateIntakeSuffix: "/bounded-route-gate/intake",
+  o7ConsumerBoundedRouteTerminalResultIntakeSuffix: "/bounded-route-terminal-result/intake",
+  o7ConsumerMissionEvidenceBundleExportSuffix: "/mission-evidence/export",
   o7RealtimeElevatorProbe: "/api/o7/realtime-elevator-probe",
   o7RtcSignalingContractProbe: "/api/o7/rtc-signaling-contract-probe",
   o7RealtimeElevatorPreview: "/api/o7/realtime-elevator-preview",
   o7RouteReplayPreview: "/api/o7/route-replay-preview",
   o7LabelingPreview: "/api/o7/labeling-preview",
   o7VoicePreview: "/api/o7/voice-preview",
+  o7VoiceRuntimePreflight: "/api/o7/voice-runtime/preflight",
+  o7VoiceRuntimeOfflineSmoke: "/api/o7/voice-runtime/offline-smoke",
   o7SafeCommandPreview: "/api/o7/safe-command-preview",
   o7CloudArchiveTasks: "/api/o7/cloud-archive/tasks",
   robotControlSummary: "/api/robot-control/summary",
@@ -402,13 +436,27 @@ function robotControlCameraCloseUrl(baseUrl: string, peerId: string): string {
   return `${API_ENDPOINTS.robotControlCameraPeersPrefix}${encodeURIComponent(peerId)}/close?${params.toString()}`;
 }
 
-function consumerTaskListUrl(baseUrl: string): string {
-  // consumer read 列表固定走 view=summary；这里只允许 operator 提供 loopback base URL。
+function setConsumerTaskListParam(params: URLSearchParams, key: keyof O7ConsumerTaskListQuery, value: unknown): void {
+  // filter 输入只在 operator 显式填写后进入 query，避免空字符串覆盖后端默认值。
+  const text = typeof value === "number" ? String(value) : typeof value === "string" ? value.trim() : "";
+  if (text) {
+    params.set(key, text);
+  }
+}
+
+function consumerTaskListUrl(baseUrl: string, filters: O7ConsumerTaskListQuery = {}): string {
+  // consumer read 列表固定走 workstation 后端；过滤字段仍由后端做 loopback 和 fail-closed 校验。
   const params = new URLSearchParams();
   const trimmed = baseUrl.trim();
   if (trimmed) {
     params.set("baseUrl", trimmed);
   }
+  setConsumerTaskListParam(params, "robot_id", filters.robot_id);
+  setConsumerTaskListParam(params, "task_id", filters.task_id);
+  setConsumerTaskListParam(params, "date", filters.date);
+  setConsumerTaskListParam(params, "status", filters.status);
+  setConsumerTaskListParam(params, "limit", filters.limit);
+  setConsumerTaskListParam(params, "before_started_at_ms", filters.before_started_at_ms);
   return `${API_ENDPOINTS.o7ConsumerTaskList}?${params.toString()}`;
 }
 
@@ -563,6 +611,56 @@ export async function getO7LabelingPreview(fixtureJson: string): Promise<O7Label
 export async function getO7VoicePreview(fixtureJson: string): Promise<O7VoicePreviewResponse> {
   // Voice preview 不监听、不发送 TTS、不播放，只展示本地 fixture 摘要。
   return loadJson<O7VoicePreviewResponse>(previewUrl(API_ENDPOINTS.o7VoicePreview, fixtureJson));
+}
+
+export async function getO7VoiceRuntimePreflight(
+  mode: string,
+  configJson = "",
+): Promise<O7VoiceRuntimePreflightResult> {
+  // Runtime preflight 是 PC/Node 本地配置检查；浏览器不能借它连接真实 voice API 或音频设备。
+  const params = new URLSearchParams();
+  const trimmedMode = mode.trim();
+  const trimmedConfig = configJson.trim();
+  if (trimmedMode) {
+    params.set("mode", trimmedMode);
+  }
+  if (trimmedConfig) {
+    params.set("configJson", trimmedConfig);
+  }
+  const query = params.toString();
+  return loadJson<O7VoiceRuntimePreflightResult>(
+    query ? `${API_ENDPOINTS.o7VoiceRuntimePreflight}?${query}` : API_ENDPOINTS.o7VoiceRuntimePreflight,
+  );
+}
+
+export async function getO7VoiceRuntimeOfflineSmoke(
+  mode: string,
+  taskId = "",
+  fixtureJson = "",
+  configJson = "",
+): Promise<O7VoiceRuntimeOfflineSmokeResult> {
+  // Offline smoke 只调用 PC/Node 本地 GET；taskId/fixture/config 都由后端再做 fail-closed 扫描。
+  const params = new URLSearchParams();
+  const trimmedMode = mode.trim();
+  const trimmedTaskId = taskId.trim();
+  const trimmedFixture = fixtureJson.trim();
+  const trimmedConfig = configJson.trim();
+  if (trimmedMode) {
+    params.set("mode", trimmedMode);
+  }
+  if (trimmedTaskId) {
+    params.set("taskId", trimmedTaskId);
+  }
+  if (trimmedFixture) {
+    params.set("fixtureJson", trimmedFixture);
+  }
+  if (trimmedConfig) {
+    params.set("configJson", trimmedConfig);
+  }
+  const query = params.toString();
+  return loadJson<O7VoiceRuntimeOfflineSmokeResult>(
+    query ? `${API_ENDPOINTS.o7VoiceRuntimeOfflineSmoke}?${query}` : API_ENDPOINTS.o7VoiceRuntimeOfflineSmoke,
+  );
 }
 
 export async function getO7SafeCommandPreview(fixtureJson: string): Promise<O7SafeCommandPreviewResponse> {
@@ -851,9 +949,12 @@ export async function getRobotControlCameraMjpegStatus(baseUrl: string): Promise
   return loadJson<RobotControlCameraMjpegStatusResponse>(robotControlCameraMjpegStatusUrl(baseUrl));
 }
 
-export async function getO7ConsumerTaskList(baseUrl: string): Promise<O7ConsumerTaskListResponse> {
+export async function getO7ConsumerTaskList(
+  baseUrl: string,
+  filters: O7ConsumerTaskListQuery = {},
+): Promise<O7ConsumerTaskListResponse> {
   // O7 任务列表主路径统一走 workstation 后端 adapter，浏览器不直连 relay。
-  return loadJson<O7ConsumerTaskListResponse>(consumerTaskListUrl(baseUrl));
+  return loadJson<O7ConsumerTaskListResponse>(consumerTaskListUrl(baseUrl, filters));
 }
 
 export async function getO7ConsumerTaskDetail(
@@ -885,6 +986,124 @@ export async function getO7ConsumerAnnotationExport(
   // export 固定请求 jsonl local/mock 摘要；真实训练集导出状态由后端固定 false 字段表达。
   return loadJson<O7AnnotationDatasetExportResult>(
     consumerAnnotationActionUrl(baseUrl, taskId, API_ENDPOINTS.o7ConsumerAnnotationExportSuffix, "jsonl"),
+  );
+}
+
+export async function postO7ConsumerInferenceRequest(
+  baseUrl: string,
+  taskId: string,
+  body: O7ConsumerInferenceRequestBody,
+): Promise<O7ConsumerInferenceRequestResult> {
+  // inference request 固定走 PC adapter；浏览器不认识 O6 archive/inference，也不能改远端路径。
+  return postJson<O7ConsumerInferenceRequestResult>(
+    consumerAnnotationActionUrl(baseUrl, taskId, API_ENDPOINTS.o7ConsumerInferenceRequestSuffix),
+    body,
+  );
+}
+
+export async function postO7ConsumerMissionEventAppend(
+  baseUrl: string,
+  taskId: string,
+  body: O7ConsumerMissionEventAppendRequestBody,
+): Promise<O7ConsumerMissionEventAppendResult> {
+  // mission event append 固定走 PC adapter；浏览器不能直连 O6 archive/events 或替换 endpoint。
+  return postJson<O7ConsumerMissionEventAppendResult>(
+    consumerAnnotationActionUrl(baseUrl, taskId, API_ENDPOINTS.o7ConsumerMissionEventAppendSuffix),
+    body,
+  );
+}
+
+export async function postO7OperatorDropoffActionCapture(
+  baseUrl: string,
+  taskId: string,
+  body: O7OperatorDropoffActionCaptureRequestBody,
+): Promise<O7OperatorDropoffActionCaptureResult> {
+  // operator dropoff capture 固定走 PC adapter；浏览器不能直连 O6 events 或声明真实 operator 成功。
+  return postJson<O7OperatorDropoffActionCaptureResult>(
+    consumerAnnotationActionUrl(baseUrl, taskId, API_ENDPOINTS.o7OperatorDropoffActionCaptureSuffix),
+    body,
+  );
+}
+
+export async function postO7ConsumerVoiceTtsDraftRequest(
+  baseUrl: string,
+  taskId: string,
+  body: O7ConsumerVoiceTtsDraftRequestBody,
+): Promise<O7ConsumerVoiceTtsDraftRequestResult> {
+  // voice/TTS draft 固定走 PC adapter；浏览器不能连接真实语音 API、发送音频或替换 O6 endpoint。
+  return postJson<O7ConsumerVoiceTtsDraftRequestResult>(
+    consumerAnnotationActionUrl(baseUrl, taskId, API_ENDPOINTS.o7ConsumerVoiceTtsDraftRequestSuffix),
+    body,
+  );
+}
+
+export async function postO7VoiceSpeakerAckEvent(
+  baseUrl: string,
+  taskId: string,
+  body: O7VoiceSpeakerAckEventRequestBody,
+): Promise<O7VoiceSpeakerAckEventResult> {
+  // speaker ACK/failure 固定走 PC adapter；浏览器不能连接真实 speaker、音频 API 或 O6 endpoint。
+  return postJson<O7VoiceSpeakerAckEventResult>(
+    consumerAnnotationActionUrl(baseUrl, taskId, API_ENDPOINTS.o7VoiceSpeakerAckEventSuffix),
+    body,
+  );
+}
+
+export async function postO7ConsumerDeliveryResultIntake(
+  baseUrl: string,
+  taskId: string,
+  body: O7ConsumerDeliveryResultIntakeRequestBody,
+): Promise<O7ConsumerDeliveryResultIntakeResult> {
+  // delivery result intake 固定走 PC adapter；浏览器不能直连 O6 field-evidence 或替换 endpoint。
+  return postJson<O7ConsumerDeliveryResultIntakeResult>(
+    consumerAnnotationActionUrl(baseUrl, taskId, API_ENDPOINTS.o7ConsumerDeliveryResultIntakeSuffix),
+    body,
+  );
+}
+
+export async function postO7ConsumerPhoneBrowserProofIntake(
+  baseUrl: string,
+  taskId: string,
+  body: O7ConsumerPhoneBrowserProofIntakeRequestBody,
+): Promise<O7ConsumerPhoneBrowserProofIntakeResult> {
+  // phone/browser proof intake 固定走 PC adapter；浏览器不能直连 O6 field-evidence 或上传 raw 材料。
+  return postJson<O7ConsumerPhoneBrowserProofIntakeResult>(
+    consumerAnnotationActionUrl(baseUrl, taskId, API_ENDPOINTS.o7ConsumerPhoneBrowserProofIntakeSuffix),
+    body,
+  );
+}
+
+export async function postO7ConsumerBoundedRouteGateIntake(
+  baseUrl: string,
+  taskId: string,
+  body: O7ConsumerBoundedRouteGateIntakeRequestBody,
+): Promise<O7ConsumerBoundedRouteGateIntakeResult> {
+  // bounded route gate 固定走 PC adapter；浏览器不能传 O6 endpoint、控制命令或硬件路径。
+  return postJson<O7ConsumerBoundedRouteGateIntakeResult>(
+    consumerAnnotationActionUrl(baseUrl, taskId, API_ENDPOINTS.o7ConsumerBoundedRouteGateIntakeSuffix),
+    body,
+  );
+}
+
+export async function postO7ConsumerBoundedRouteTerminalResultIntake(
+  baseUrl: string,
+  taskId: string,
+  body: O7ConsumerBoundedRouteTerminalResultIntakeRequestBody,
+): Promise<O7ConsumerBoundedRouteTerminalResultIntakeResult> {
+  // terminal result 固定走 PC adapter；浏览器不能传 O6 endpoint、O5 raw artifact、控制命令或硬件路径。
+  return postJson<O7ConsumerBoundedRouteTerminalResultIntakeResult>(
+    consumerAnnotationActionUrl(baseUrl, taskId, API_ENDPOINTS.o7ConsumerBoundedRouteTerminalResultIntakeSuffix),
+    body,
+  );
+}
+
+export async function getO7ConsumerMissionEvidenceBundleExport(
+  baseUrl: string,
+  taskId: string,
+): Promise<O7MissionEvidenceBundleExportResult> {
+  // mission evidence bundle export 固定请求 JSON receipt；真实文件导出和云端数据集由后端 false 字段表达。
+  return loadJson<O7MissionEvidenceBundleExportResult>(
+    consumerAnnotationActionUrl(baseUrl, taskId, API_ENDPOINTS.o7ConsumerMissionEvidenceBundleExportSuffix, "json"),
   );
 }
 

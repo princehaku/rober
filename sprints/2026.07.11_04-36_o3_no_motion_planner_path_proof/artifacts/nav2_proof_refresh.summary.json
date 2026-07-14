@@ -1,0 +1,30 @@
+{
+  "endpoint": "/api/nav2/proof/refresh",
+  "action": "nav2_proof_refresh",
+  "status": "blocked_with_root_cause",
+  "proof_state": null,
+  "boundary": null,
+  "path_generated": false,
+  "path_generation_succeeded": false,
+  "path_point_count": 0,
+  "planner_server_active": false,
+  "managed_runtime_started": null,
+  "map_yaml": null,
+  "blocked_commands_not_sent": [
+    "T=1",
+    "T=13",
+    "T=130",
+    "T=131",
+    "/cmd_vel",
+    "/api/base/manual",
+    "/api/base/",
+    "/api/nav2/start",
+    "/api/nav2/stop",
+    "navigate_to_pose",
+    "compute_path_to_pose"
+  ],
+  "safe_to_control": false,
+  "delivery_success": false,
+  "hil_pass": false,
+  "robot_control_executed": false
+}

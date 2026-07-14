@@ -1,0 +1,162 @@
+{
+  "schema": "trashbot.route_intent_material.v1",
+  "generated_at_local": "2026-07-13T00:00:00+08:00",
+  "route_intent_id": "route_intent_20260713_0000_from_20260712_2157_path_proof",
+  "task_id": "task_o3_fixed_route_intent_20260713_0000",
+  "source_sprint": "sprints/2026.07.12_21-57_o3_radar_status_baudrate_readback_repair",
+  "source_path_proof_ref": "sprints/2026.07.12_21-57_o3_radar_status_baudrate_readback_repair/artifacts/algorithm/live_o10_reuse_existing_lidar_lifecycle_path_proof_after_fallback.raw.json",
+  "source_path_proof_sha256": "39536d8fa0f51cf1d5b9d4eb1c78fd9228aa977ddbb177ed11bd4285efc039bd",
+  "artifact_boundary": "fixed_route_route_intent_material_only",
+  "source_evidence": {
+    "status": "nav2_no_motion_path_generation_runtime_observed",
+    "evidence_type": "robot_runtime_material",
+    "path_generation_attempted": true,
+    "path_generated": true,
+    "path_point_count": 21,
+    "path_generation_boundary": "explicit_opt_in_compute_path_to_pose_cli_action_no_motion",
+    "fallback_used": true,
+    "fallback_mode": "ros2_cli_action_send_goal",
+    "service_name": "/compute_path_to_pose",
+    "goal_accepted": true,
+    "result_received": true,
+    "result_ok": true,
+    "planner_error_code": null,
+    "planner_error_msg": null
+  },
+  "planned_pose_summary": {
+    "path_frame_id": "map",
+    "path_pose_materialization_status": "partial_stdout_tail_only",
+    "authoritative_path_point_count": 21,
+    "structured_path_preview_point_count": 0,
+    "materialized_stdout_tail_pose_count": 14,
+    "minimum_unmaterialized_path_pose_count": 7,
+    "source_index_status": "unknown_due_to_stdout_tail_truncation",
+    "start_pose": {
+      "source": "path_goal_request.start",
+      "start_source": "amcl_pose_observed_for_planner_only_start",
+      "frame_id": "map",
+      "x": -0.17263047657814312,
+      "y": 0.04965488959436613,
+      "z": 0.0,
+      "yaw": 0.1431336057643779,
+      "qx": 0.0,
+      "qy": 0.0,
+      "qz": 0.07150572663005444,
+      "qw": 0.9974401892139237,
+      "use_start": true
+    },
+    "goal_pose_request": {
+      "source": "path_goal_request.goal",
+      "frame_id": "map",
+      "x": 0.8,
+      "y": 0.0,
+      "z": 0.0,
+      "yaw": 0.0,
+      "qx": 0.0,
+      "qy": 0.0,
+      "qz": 0.0,
+      "qw": 1.0
+    },
+    "first_materialized_stdout_tail_pose": {
+      "materialized_tail_order": 0,
+      "frame_id": "map",
+      "stamp": {
+        "sec": 1783868111,
+        "nanosec": 698275634
+      },
+      "x": 0.1761511545976857,
+      "y": 0.05000000074505806,
+      "z": 0.0,
+      "qx": 0.0,
+      "qy": 0.0,
+      "qz": 0.0,
+      "qw": 1.0
+    },
+    "last_materialized_stdout_tail_pose": {
+      "materialized_tail_order": 13,
+      "frame_id": "map",
+      "stamp": {
+        "sec": 1783868111,
+        "nanosec": 698275634
+      },
+      "x": 0.8000000074505806,
+      "y": 0.05000000819563866,
+      "z": 0.0,
+      "qx": 0.0,
+      "qy": 0.0,
+      "qz": 0.0,
+      "qw": 1.0
+    },
+    "map_goal_diagnostics": {
+      "adapted": false,
+      "goal_in_bounds": true,
+      "start_in_bounds": true,
+      "map_analysis_ok": true,
+      "cell_counts": {
+        "free": 425,
+        "occupied": 45,
+        "unknown": 29023,
+        "other": 0
+      },
+      "bounds": {
+        "min_x": -5.473848929593875,
+        "max_x": 7.5761512648662785,
+        "min_y": 0.0,
+        "max_y": 5.650000084191561
+      }
+    }
+  },
+  "route_material_refs": {
+    "route_intent_replay_jsonl_ref": "sprints/2026.07.13_00-00_o3_fixed_route_intent_replay_material/artifacts/algorithm/route_intent_replay.jsonl",
+    "route_csv_ref": "sprints/2026.07.13_00-00_o3_fixed_route_intent_replay_material/artifacts/algorithm/route.csv"
+  },
+  "route_intent_summary": {
+    "intent_kind": "planner_path_to_fixed_route_material",
+    "usable_next_step": "Use route_intent_id/task_id plus route.csv or JSONL as the no-motion route intent packet for a later route execution or replay sprint.",
+    "route_execution_boundary": "No NavigateToPose, controller/BT, /cmd_vel, /api/base/manual, WAVE ROVER UART, delivery, HIL, or safe-to-control claim was produced.",
+    "materialization_note": "Only complete pose blocks present in the CLI stdout_tail were materialized; the source artifact remains authoritative for path_point_count=21."
+  },
+  "strict_no_motion": true,
+  "strict_no_motion_boundary": "strict no-motion artifact-only parsing; no live robot command was sent in this sprint",
+  "safe_to_control": false,
+  "publishes_cmd_vel": false,
+  "calls_base_manual": false,
+  "uses_base_uart": false,
+  "robot_control_executed": false,
+  "route_execution_success": false,
+  "delivery_success": false,
+  "hil_pass": false,
+  "rejected_claims": [
+    "route_execution_success",
+    "NavigateToPose",
+    "controller_bt_execution",
+    "publishes_cmd_vel",
+    "calls_base_manual",
+    "uses_base_uart",
+    "delivery_success",
+    "hil_pass",
+    "safe_to_control",
+    "production_external_evidence"
+  ],
+  "next_evidence_required": [
+    "full structured path or route capture if exact 21-point replay is required",
+    "strict no-motion fixed-route dry-run consumer check against this route_intent_id",
+    "later explicit route execution record before route_execution_success can change",
+    "delivery/operator acceptance evidence before delivery_success can change",
+    "current live HIL evidence before hil_pass or safe_to_control can change",
+    "production cloud/readback evidence before O5/O6/O7 production credit can change"
+  ],
+  "rg_acceptance_anchors": [
+    "route_intent_id",
+    "task_id",
+    "source_path_proof_ref",
+    "path_generated=true",
+    "path_point_count=21",
+    "fallback_mode=ros2_cli_action_send_goal",
+    "route_execution_success=false",
+    "delivery_success=false",
+    "hil_pass=false",
+    "strict no-motion",
+    "next_evidence_required"
+  ]
+}

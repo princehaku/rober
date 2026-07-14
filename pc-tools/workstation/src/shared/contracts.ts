@@ -1581,6 +1581,159 @@ export interface O7VoicePreviewResponse extends ProofFlags {
   not_proven: string[];
 }
 
+export type O7VoiceRuntimePreflightStatus =
+  | "ready_for_configured_runtime_check_only"
+  | "blocked_missing_voice_runtime_config"
+  | "blocked_voice_runtime_config_not_ready"
+  | "fail_closed";
+
+export type O7VoiceRuntimePreflightMode =
+  | "local_stub"
+  | "offline_stub"
+  | "disabled_local"
+  | "not_configured";
+
+// Voice runtime preflight 只检查 PC/Node 本地配置，不连接云端、麦克风、喇叭或 O6 events。
+// 它和 voice preview、TTS draft、speaker ACK 分开定义，避免把配置检查误读成真实语音运行。
+export interface O7VoiceRuntimePreflightResult extends ProofFlags {
+  schema: "trashbot.pc_tools_workstation.o7_voice_runtime_preflight_result.v1";
+  schema_version: 1;
+  endpoint: "/api/o7/voice-runtime/preflight";
+  preflight_status: O7VoiceRuntimePreflightStatus;
+  proof_boundary: "software_proof_o7_voice_runtime_preflight_only";
+  config_source:
+    | "query_config_json"
+    | "env_config_json"
+    | "query_mode"
+    | "env_mode"
+    | "not_configured";
+  config_schema:
+    | "trashbot.pc_tools_workstation.o7_voice_runtime_preflight_config.v1"
+    | "not_loaded"
+    | "unsupported_schema";
+  config_path_ref: string;
+  runtime_mode: O7VoiceRuntimePreflightMode;
+  runtime_configured: boolean;
+  config_checks: {
+    config_loaded: boolean;
+    schema_supported: boolean;
+    local_offline_mode: boolean;
+    no_network_access: true;
+    no_device_access: true;
+    no_audio_dispatch: true;
+    dangerous_true_claims: string[];
+    unsafe_copy_detected: boolean;
+    status: "ready" | "blocked";
+  };
+  real_voice_api_connected: false;
+  real_asr_tts_runtime_connected: false;
+  asr_stream_connected: false;
+  tts_send_enabled: false;
+  speaker_dispatch_enabled: false;
+  microphone_opened: false;
+  speaker_playback_opened: false;
+  reads_audio_device: false;
+  network_probe_executed: false;
+  writes_o6_archive_events: false;
+  connects_cloud_production: false;
+  robot_control_executed: false;
+  route_execution_success: false;
+  hil_pass: false;
+  blocked_reasons: string[];
+  not_proven: string[];
+  next_required_evidence: string[];
+  fail_closed_reason: string;
+}
+
+export type O7VoiceRuntimeOfflineSmokeStatus =
+  | "ready_for_offline_smoke_trace_only"
+  | "blocked_by_voice_runtime_preflight"
+  | "fail_closed";
+
+export type O7VoiceRuntimeOfflineSmokeTaskSource =
+  | "query_task_id"
+  | "fixture_json"
+  | "default_fixture";
+
+export interface O7VoiceRuntimeOfflineSmokeSelectedTask {
+  task_id: string;
+  robot_id: string;
+  packet_id: string;
+  route_intent_id: string;
+  source: O7VoiceRuntimeOfflineSmokeTaskSource;
+  identity_status: "selected_task_identity_loaded_not_execution_proof";
+}
+
+export interface O7VoiceRuntimeOfflineSmokeTraceEvent {
+  event_index: number;
+  event_type:
+    | "preflight_config_checked"
+    | "offline_asr_stub_loaded"
+    | "tts_draft_trace_prepared"
+    | "speaker_ack_pending_not_real";
+  event_status:
+    | "ready_not_real_runtime"
+    | "stub_trace_only"
+    | "draft_not_sent"
+    | "pending_not_real_ack"
+    | "fail_closed";
+  task_id: string;
+  detail: string;
+  proof_boundary: "software_proof_o7_voice_runtime_offline_smoke_only";
+}
+
+// Voice runtime offline smoke 消费 preflight 派生状态和本地/offline fixture，产出 trace，不连接真实语音链路。
+// 它刻意不同于 preflight：preflight 只判断配置，offline smoke 生成 selected-task 级 deterministic trace。
+export interface O7VoiceRuntimeOfflineSmokeResult extends ProofFlags {
+  schema: "trashbot.pc_tools_workstation.o7_voice_runtime_offline_smoke_result.v1";
+  schema_version: 1;
+  endpoint: "/api/o7/voice-runtime/offline-smoke";
+  smoke_status: O7VoiceRuntimeOfflineSmokeStatus;
+  proof_boundary: "software_proof_o7_voice_runtime_offline_smoke_only";
+  local_offline_only: true;
+  fixture_schema:
+    | "trashbot.pc_tools_workstation.o7_voice_runtime_offline_smoke_fixture.v1"
+    | "not_loaded";
+  fixture_path_ref: string;
+  selected_task_id: string;
+  selected_robot_id: string;
+  selected_packet_id: string;
+  selected_route_intent_id: string;
+  selected_task: O7VoiceRuntimeOfflineSmokeSelectedTask;
+  preflight_derived_status: {
+    preflight_status: O7VoiceRuntimePreflightStatus;
+    runtime_mode: O7VoiceRuntimePreflightMode;
+    runtime_configured: boolean;
+    config_source: O7VoiceRuntimePreflightResult["config_source"];
+    config_path_ref: string;
+    no_network_access: true;
+    no_device_access: true;
+    no_audio_dispatch: true;
+    blocked_reasons: string[];
+  };
+  smoke_trace_events: O7VoiceRuntimeOfflineSmokeTraceEvent[];
+  smoke_trace_event_count: number;
+  real_voice_api_connected: false;
+  real_asr_tts_runtime_connected: false;
+  asr_stream_connected: false;
+  tts_send_enabled: false;
+  speaker_dispatch_enabled: false;
+  real_speaker_ack_proven: false;
+  microphone_opened: false;
+  speaker_playback_opened: false;
+  reads_audio_device: false;
+  network_probe_executed: false;
+  writes_o6_archive_events: false;
+  connects_cloud_production: false;
+  robot_control_executed: false;
+  route_execution_success: false;
+  hil_pass: false;
+  blocked_reasons: string[];
+  not_proven: string[];
+  next_required_evidence: string[];
+  fail_closed_reason: string;
+}
+
 // 标注队列 snapshot 只定义 O7-KR4 的字段槽位；提交、回滚和导出必须显式关闭。
 // allowed_label_types 是未来云端 schema 的占位清单，不代表真实 annotation API 已返回。
 export interface O7LabelingQueueSnapshot {
@@ -1835,6 +1988,31 @@ export interface O7ConsumerTaskListItem {
   selected: boolean;
 }
 
+export type O7ConsumerTaskStatusFilter =
+  | "all"
+  | "completed_mock"
+  | "failed_mock"
+  | "in_progress_mock"
+  | "unknown_not_proven";
+
+export interface O7ConsumerTaskListQuery {
+  robot_id?: string;
+  task_id?: string;
+  date?: string;
+  status?: O7ConsumerTaskStatusFilter | "";
+  limit?: string | number;
+  before_started_at_ms?: string | number;
+}
+
+export interface O7ConsumerTaskListAppliedFilters {
+  robot_id: string;
+  task_id: string;
+  date: string;
+  status: O7ConsumerTaskStatusFilter;
+  limit: number;
+  before_started_at_ms: number | null;
+}
+
 export interface O7ConsumerTaskListResponse extends ProofFlags {
   schema: "trashbot.pc_tools_workstation.o7_consumer_task_list.v1";
   list_status: "loaded_fail_closed_summary" | "fail_closed";
@@ -1847,7 +2025,14 @@ export interface O7ConsumerTaskListResponse extends ProofFlags {
     limit: number;
     primary_path: true;
     fail_closed_visible: true;
+    applied_filters: O7ConsumerTaskListAppliedFilters;
+    filter_semantics: "and";
   };
+  applied_filters: O7ConsumerTaskListAppliedFilters;
+  filter_semantics: "and";
+  filtered_result_count: number;
+  o7_consumer_read_query_filters_ready_not_production_proof: true;
+  o7_consumer_read_query_filters_proof_scope: "software_proof_o7_consumer_read_query_filters_only";
   task_list: O7ConsumerTaskListItem[];
   blocked_reasons: string[];
   not_proven: string[];
@@ -1921,6 +2106,8 @@ export interface O7ConsumerArtifactBundleSummary extends ProofFlags {
   route_execution_result_delivery_readiness: O7ConsumerRouteExecutionResultDeliveryReadinessSummary;
   route_delivery_closure_packet: O7ConsumerRouteDeliveryClosurePacketSummary;
   same_task_field_material_packet: O7ConsumerSameTaskFieldMaterialPacketSummary;
+  same_task_replay_packet_readback: O7ConsumerSameTaskReplayPacketReadbackSummary;
+  pc_live_nav2_execution_material: O7ConsumerPcLiveNav2ExecutionMaterialSummary;
   localization_path_material_readback: O7ConsumerLocalizationPathMaterialReadbackSummary;
   same_task_route_execution_material_packet: O7ConsumerSameTaskRouteExecutionMaterialPacketSummary;
   same_task_mission_evidence_gate: O7ConsumerSameTaskMissionEvidenceGateSummary;
@@ -1969,6 +2156,8 @@ export interface O7ConsumerArtifactBundleConsumerIngestSummary extends ProofFlag
   route_execution_result_delivery_readiness: O7ConsumerRouteExecutionResultDeliveryReadinessSummary;
   route_delivery_closure_packet: O7ConsumerRouteDeliveryClosurePacketSummary;
   same_task_field_material_packet: O7ConsumerSameTaskFieldMaterialPacketSummary;
+  same_task_replay_packet_readback: O7ConsumerSameTaskReplayPacketReadbackSummary;
+  pc_live_nav2_execution_material: O7ConsumerPcLiveNav2ExecutionMaterialSummary;
   localization_path_material_readback: O7ConsumerLocalizationPathMaterialReadbackSummary;
   same_task_route_execution_material_packet: O7ConsumerSameTaskRouteExecutionMaterialPacketSummary;
   same_task_mission_evidence_gate: O7ConsumerSameTaskMissionEvidenceGateSummary;
@@ -2850,6 +3039,191 @@ export interface O7ConsumerSameTaskFieldMaterialSummary {
   count: number | null;
 }
 
+// same-task replay packet readback 只核对 packet identity、row/event/pose counts 和来源 refs，不是路线执行证明。
+export interface O7ConsumerSameTaskReplayPacketReadbackSummary extends ProofFlags {
+  schema: "trashbot.pc_tools_workstation.o7_same_task_replay_packet_readback.v1" | "not_loaded";
+  status:
+    | "same_task_replay_packet_ready_not_route_execution_proof"
+    | "derived_blocked_not_proven"
+    | "blocked_not_proven";
+  source_contract:
+    | "trashbot.o6.same_task_replay_packet_readback.v1"
+    | "trashbot.o3.same_task_route_replay_packet.v1"
+    | "not_loaded";
+  source_origin:
+    | "remote_same_task_replay_packet_readback"
+    | "remote_field_evidence"
+    | "remote_field_motion_evidence_packet"
+    | "remote_artifact_bundle"
+    | "remote_artifact_bundle_consumer_ingest"
+    | "remote_field_evidence_consumer_ingest"
+    | "remote_artifact_bundle_readiness"
+    | "not_loaded";
+  source_path: string;
+  task_id: string;
+  proof_scope: "software_proof_o6_o7_same_task_replay_packet_readback_only" | "not_loaded";
+  source_schema: "trashbot.o6.same_task_replay_packet_readback.v1" | "trashbot.o3.same_task_route_replay_packet.v1" | "not_loaded";
+  source_artifact_boundary: string;
+  packet_id: string;
+  route_intent_id: string;
+  route_csv_row_count: number;
+  replay_jsonl_event_count: number;
+  path_structured_pose_count: number;
+  same_task_identity_verified: boolean;
+  same_task_replay_packet_ready: boolean;
+  source_refs: {
+    source_summary_ref: string;
+    packet_jsonl_ref: string;
+    route_csv_ref: string;
+    replay_jsonl_ref: string;
+  };
+  sha256_prefixes: {
+    summary: string;
+    route_csv: string;
+    replay_jsonl: string;
+  };
+  blocked_reasons: string[];
+  next_required_evidence: string[];
+  proof_boundary: {
+    local_mock: true;
+    not_proven: true;
+    reads_local_path: false;
+    replay_packet_connected: boolean;
+    route_execution_success: false;
+    delivery_success_proven: false;
+    hil_pass: false;
+    real_production_cloud_connected: false;
+    real_oss_connected: false;
+    real_cdn_connected: false;
+  };
+  route_execution_success: false;
+  delivery_success: false;
+  hil_pass: false;
+  safe_to_control: false;
+  robot_control_executed: false;
+  primary_actions_enabled: false;
+  publishes_cmd_vel: false;
+  calls_base_manual: false;
+  uses_base_uart: false;
+  connects_cloud_production: false;
+  media_access_proven: false;
+  real_oss_connected: false;
+  real_cdn_connected: false;
+}
+
+// bounded route gate material 只消费 28-pose 同任务安全摘要，不证明路线执行、HIL、交付或可控。
+export interface O7ConsumerBoundedRouteGateMaterialSummary extends ProofFlags {
+  schema: "trashbot.pc_tools_workstation.o7_bounded_route_gate_material.v1";
+  status:
+    | "bounded_route_execution_gate_material_ready_not_route_execution_proof"
+    | "derived_blocked_not_proven"
+    | "blocked_not_proven";
+  source_schema: "trashbot.o6.bounded_route_execution_gate_material.v1" | "not_loaded";
+  source_origin:
+    | "remote_bounded_route_execution_gate_material"
+    | "remote_field_evidence"
+    | "remote_field_evidence_consumer_ingest"
+    | "remote_artifact_bundle"
+    | "remote_artifact_bundle_consumer_ingest"
+    | "remote_artifact_bundle_readiness"
+    | "not_loaded";
+  source_path: string;
+  task_id: string;
+  packet_id: string;
+  route_intent_id: string;
+  proof_scope: "software_proof_o6_o7_bounded_route_gate_material_intake_only" | "not_loaded";
+  execution_plan_status: string;
+  route_csv_row_count: number;
+  path_structured_pose_count: number;
+  segment_count: number;
+  global_abort_criteria_count: number;
+  safe_refs: string[];
+  same_task_id_consumed: boolean;
+  bounded_route_execution_gate_material_written: boolean;
+  bounded_route_execution_gate_material_readback: boolean;
+  support_only_reason: string;
+  blocked_reasons: string[];
+  next_required_evidence: string[];
+  proof_boundary: {
+    local_mock: true;
+    not_proven: true;
+    reads_local_path: false;
+    bounded_route_gate_material_connected: boolean;
+    route_execution_success: false;
+    delivery_success_proven: false;
+    hil_pass: false;
+    safe_to_control: false;
+    robot_control_executed: false;
+    real_production_cloud_connected: false;
+    real_oss_connected: false;
+    real_cdn_connected: false;
+  };
+  safe_to_control: false;
+  delivery_success: false;
+  route_execution_success: false;
+  hil_pass: false;
+  robot_control_executed: false;
+  connects_cloud_production: false;
+}
+
+// bounded route terminal result material 只消费 O5/O6 同任务 terminal-result 摘要，不证明真实路线执行、送达、HIL 或可控。
+export interface O7ConsumerBoundedRouteTerminalResultMaterialSummary extends ProofFlags {
+  schema: "trashbot.pc_tools_workstation.o7_bounded_route_terminal_result_material.v1";
+  status:
+    | "bounded_route_terminal_result_material_ready_not_delivery_proof"
+    | "derived_blocked_not_proven"
+    | "blocked_not_proven";
+  source_schema: "trashbot.o6.bounded_route_terminal_result_material.v1" | "not_loaded";
+  source_origin:
+    | "remote_bounded_route_terminal_result_material"
+    | "remote_field_evidence"
+    | "remote_field_evidence_consumer_ingest"
+    | "remote_artifact_bundle"
+    | "remote_artifact_bundle_consumer_ingest"
+    | "remote_artifact_bundle_readiness"
+    | "not_loaded";
+  source_path: string;
+  task_id: string;
+  packet_id: string;
+  route_intent_id: string;
+  proof_scope: "software_proof_o6_o7_bounded_route_terminal_result_intake_only" | "not_loaded";
+  source_material_schema: string;
+  source_proof_boundary: string;
+  result_code: string;
+  terminal_result_state: string;
+  reconciliation_state: string;
+  route_csv_row_count: number;
+  path_structured_pose_count: number;
+  segment_count: number;
+  safe_evidence_ref: string;
+  same_task_id_consumed: boolean;
+  bounded_route_terminal_result_material_written: boolean;
+  bounded_route_terminal_result_material_readback: boolean;
+  support_only_reason: string;
+  blocked_reasons: string[];
+  next_required_evidence: string[];
+  proof_boundary: {
+    local_mock: true;
+    not_proven: true;
+    reads_local_path: false;
+    bounded_route_terminal_result_material_connected: boolean;
+    route_execution_success: false;
+    delivery_success_proven: false;
+    hil_pass: false;
+    safe_to_control: false;
+    robot_control_executed: false;
+    real_production_cloud_connected: false;
+    real_oss_connected: false;
+    real_cdn_connected: false;
+  };
+  safe_to_control: false;
+  delivery_success: false;
+  route_execution_success: false;
+  hil_pass: false;
+  robot_control_executed: false;
+  connects_cloud_production: false;
+}
+
 // current field evidence material 只读消费同 task 的当前现场材料状态，不把 support-only 摘要误读成路线执行成功。
 export interface O7ConsumerCurrentFieldEvidenceMaterialSummary extends ProofFlags {
   schema:
@@ -2915,6 +3289,68 @@ export interface O7ConsumerLocalizationPathCrossRunComparatorSummary {
   path_generated: boolean;
   path_point_count: number;
   same_run_override_allowed: false;
+}
+
+export interface O7ConsumerPcLiveNav2ExecutionImuSummary {
+  attitude_delta_observed: boolean;
+  pitch_delta_deg: number | null;
+}
+
+// pc live Nav2 execution material 只消费现场 live Nav2 的安全摘要，不把 goal accepted 或 IMU 痕迹外推成真实送达、可控或轮速闭环。
+export interface O7ConsumerPcLiveNav2ExecutionMaterialSummary extends ProofFlags {
+  schema: "trashbot.pc_tools_workstation.o7_pc_live_nav2_execution_material.v1";
+  status:
+    | "pc_live_nav2_execution_material_ready_not_delivery_proof"
+    | "derived_blocked_not_proven"
+    | "blocked_not_proven";
+  source_schema:
+    | "trashbot.o6.pc_live_nav2_execution_material.v1"
+    | "trashbot.pc_live_nav2_execution_material.v1"
+    | "not_loaded";
+  source_origin:
+    | "remote_pc_live_nav2_execution_material"
+    | "remote_field_evidence"
+    | "remote_field_motion_evidence_packet"
+    | "remote_artifact_bundle"
+    | "remote_artifact_bundle_consumer_ingest"
+    | "remote_field_evidence_consumer_ingest"
+    | "remote_artifact_bundle_readiness"
+    | "not_loaded";
+  source_path: string;
+  task_id: string;
+  proof_scope: "software_proof_pc_live_nav2_execution_material_only" | "not_loaded";
+  source_proof_status: string;
+  material_status: string;
+  source_sprint: string;
+  goal_accepted: boolean;
+  goal_result_status: string;
+  uses_base_uart: boolean;
+  base_command_nonzero_observed: boolean;
+  base_command_nonzero_count: number;
+  base_feedback_sample_count: number;
+  base_feedback_lr_nonzero_proven: false;
+  base_feedback_imu: O7ConsumerPcLiveNav2ExecutionImuSummary;
+  blocked_reasons: string[];
+  next_required_evidence: string[];
+  proof_boundary: {
+    local_mock: true;
+    not_proven: true;
+    reads_local_path: false;
+    live_nav2_route_execution_connected: false;
+    base_uart_connected: false;
+    wheel_feedback_nonzero_proven: false;
+    delivery_success_proven: false;
+    real_production_cloud_connected: false;
+    real_oss_connected: false;
+    real_cdn_connected: false;
+  };
+  connects_cloud_production: false;
+  hil_pass: false;
+  route_execution_success: false;
+  delivery_success: false;
+  safe_to_control: false;
+  primary_actions_enabled: false;
+  robot_control_executed: false;
 }
 
 // localization/path readback 只表达 same-run 定位与路径材料的只读结论，不把 cross-run comparator 误读成当前路线成功。
@@ -3320,6 +3756,8 @@ export interface O7ConsumerArtifactBundleReadiness extends ProofFlags {
   route_execution_result_delivery_readiness: O7ConsumerRouteExecutionResultDeliveryReadinessSummary;
   route_delivery_closure_packet: O7ConsumerRouteDeliveryClosurePacketSummary;
   same_task_field_material_packet: O7ConsumerSameTaskFieldMaterialPacketSummary;
+  same_task_replay_packet_readback: O7ConsumerSameTaskReplayPacketReadbackSummary;
+  pc_live_nav2_execution_material: O7ConsumerPcLiveNav2ExecutionMaterialSummary;
   localization_path_material_readback: O7ConsumerLocalizationPathMaterialReadbackSummary;
   same_task_route_execution_material_packet: O7ConsumerSameTaskRouteExecutionMaterialPacketSummary;
   same_task_mission_evidence_gate: O7ConsumerSameTaskMissionEvidenceGateSummary;
@@ -3591,6 +4029,669 @@ export interface O7AnnotationDatasetExportResult extends ProofFlags {
   local_loopback_only: true;
 }
 
+export type O7ConsumerInferenceRequestedOutput = "elevator_door_state" | "floor_recognition";
+export type O7ConsumerInferenceInputType = "image_ref" | "frame_ref" | "snapshot_ref" | "metadata_only";
+
+export interface O7ConsumerInferenceRequestInput {
+  input_id: string;
+  input_type: O7ConsumerInferenceInputType;
+  evidence_ref: string;
+  captured_at_ms: number;
+  metadata?: Record<string, string | number | boolean | null>;
+}
+
+export interface O7ConsumerInferenceRequestBody {
+  robot_id: string;
+  task_id?: string;
+  inference_id?: string;
+  model_family: string;
+  requested_outputs: O7ConsumerInferenceRequestedOutput[];
+  inputs: O7ConsumerInferenceRequestInput[];
+}
+
+export interface O7ConsumerInferenceRequestResult extends ProofFlags {
+  schema: "trashbot.pc_tools_workstation.o7_consumer_inference_request_result.v1";
+  request_status: "local_mock_inference_written" | "local_mock_inference_updated" | "fail_closed";
+  source_base_url: string;
+  remote_endpoint: "/api/o6/archive/inference";
+  remote_schema: string;
+  requested_task_id: string;
+  o6_http_status: number | null;
+  task_id: string;
+  robot_id: string;
+  inference_id: string;
+  model_family: string;
+  requested_outputs: O7ConsumerInferenceRequestedOutput[];
+  input_ids: string[];
+  write_status: "created" | "updated" | "blocked_not_proven";
+  duplicate: boolean;
+  created_count: number;
+  updated_count: number;
+  archive_event_written: boolean;
+  o6_schema: string;
+  o6_source: string;
+  result_summary: {
+    result_count: number;
+    created_count: number;
+    updated_count: number;
+    event_types: string[];
+  };
+  request_summary: {
+    input_count: number;
+    requested_output_count: number;
+    local_mock_only: true;
+  };
+  real_model_inference_success: false;
+  real_floor_recognition_proven: false;
+  real_elevator_door_state_proven: false;
+  connects_cloud_production: false;
+  robot_control_executed: false;
+  blocked_reasons: string[];
+  not_proven: string[];
+  fail_closed_reason: string;
+  local_loopback_only: true;
+}
+
+export type O7ConsumerMissionEventType =
+  | "operator.note"
+  | "operator.dropoff_acceptance"
+  | "task.failure"
+  | "task.recovery"
+  | "route.frame"
+  | "route.pose"
+  | "elevator.door_state"
+  | "elevator.floor_evidence"
+  | "perception.detected_object"
+  | "voice.tts_draft"
+  | "voice.speaker_ack"
+  | "voice.speaker_failure";
+
+export interface O7ConsumerMissionEventAppendRequestBody {
+  robot_id: string;
+  task_id?: string;
+  event_id: string;
+  event_type: O7ConsumerMissionEventType;
+  occurred_at_ms: number;
+  summary?: string;
+  severity?: "info" | "warning" | "error";
+  evidence_ref?: string;
+  evidence_refs?: string[];
+  metadata?: Record<string, string | number | boolean | null>;
+}
+
+export interface O7ConsumerMissionEventAppendResult extends ProofFlags {
+  schema: "trashbot.pc_tools_workstation.o7_consumer_mission_event_append_result.v1";
+  append_status: "local_mock_event_written" | "local_mock_event_updated" | "fail_closed";
+  source_base_url: string;
+  remote_endpoint: "/api/o6/archive/events";
+  remote_schema: string;
+  requested_task_id: string;
+  o6_http_status: number | null;
+  task_id: string;
+  robot_id: string;
+  event_id: string;
+  event_type: string;
+  occurred_at_ms: number | null;
+  evidence_refs_consumed: string[];
+  write_status: "created" | "updated" | "blocked_not_proven";
+  duplicate: boolean;
+  created_count: number;
+  updated_count: number;
+  archive_event_written: boolean;
+  events_written_count: number;
+  o6_schema: string;
+  o6_source: string;
+  event_summary: Record<string, unknown>;
+  route_execution_success: false;
+  hil_pass: false;
+  real_cloud_db_connected: false;
+  real_oss_connected: false;
+  connects_cloud_production: false;
+  robot_control_executed: false;
+  blocked_reasons: string[];
+  not_proven: string[];
+  fail_closed_reason: string;
+  local_loopback_only: true;
+}
+
+export interface O7OperatorDropoffActionCaptureRequestBody {
+  robot_id: string;
+  task_id?: string;
+  event_id: string;
+  occurred_at_ms: number;
+  operator_action_id?: string;
+  operator_display_name?: string;
+  evidence_ref?: string;
+  evidence_refs?: string[];
+  summary?: string;
+  metadata?: Record<string, string | number | boolean | null>;
+}
+
+export interface O7OperatorDropoffActionCaptureResult extends ProofFlags {
+  schema: "trashbot.pc_tools_workstation.o7_operator_dropoff_action_capture_result.v1";
+  capture_status:
+    | "local_mock_operator_dropoff_acceptance_event_written"
+    | "local_mock_operator_dropoff_acceptance_event_updated"
+    | "fail_closed";
+  source_base_url: string;
+  remote_endpoint: "/api/o6/archive/events";
+  remote_schema: string;
+  requested_task_id: string;
+  o6_http_status: number | null;
+  task_id: string;
+  robot_id: string;
+  event_id: string;
+  event_type: "operator.dropoff_acceptance" | "not_loaded";
+  occurred_at_ms: number | null;
+  operator_action_id: string;
+  operator_display_name: string;
+  evidence_refs_consumed: string[];
+  write_status: "created" | "updated" | "blocked_not_proven";
+  duplicate: boolean;
+  created_count: number;
+  updated_count: number;
+  archive_event_written: boolean;
+  events_written_count: number;
+  o6_schema: string;
+  o6_source: string;
+  proof_boundary: "software_proof_o6_o7_operator_dropoff_action_capture_only";
+  event_summary: Record<string, unknown>;
+  real_operator_action_proven: false;
+  route_execution_success: false;
+  hil_pass: false;
+  real_cloud_db_connected: false;
+  real_oss_connected: false;
+  connects_cloud_production: false;
+  robot_control_executed: false;
+  blocked_reasons: string[];
+  not_proven: string[];
+  fail_closed_reason: string;
+  local_loopback_only: true;
+}
+
+export interface O7ConsumerVoiceTtsDraftRequestBody {
+  robot_id: string;
+  task_id?: string;
+  event_id: string;
+  occurred_at_ms: number;
+  draft_text: string;
+  evidence_ref: string;
+  evidence_refs?: string[];
+  voice_profile?: string;
+  locale?: string;
+  metadata?: Record<string, string | number | boolean | null>;
+}
+
+export interface O7ConsumerVoiceTtsDraftRequestResult extends ProofFlags {
+  schema: "trashbot.pc_tools_workstation.o7_voice_tts_draft_request_result.v1";
+  request_status: "local_mock_voice_tts_draft_event_written" | "local_mock_voice_tts_draft_event_updated" | "fail_closed";
+  source_base_url: string;
+  remote_endpoint: "/api/o6/archive/events";
+  remote_schema: string;
+  requested_task_id: string;
+  o6_http_status: number | null;
+  task_id: string;
+  robot_id: string;
+  event_id: string;
+  event_type: "voice.tts_draft" | "not_loaded";
+  occurred_at_ms: number | null;
+  draft_text_length: number;
+  voice_profile: string;
+  locale: string;
+  evidence_refs_consumed: string[];
+  write_status: "created" | "updated" | "blocked_not_proven";
+  duplicate: boolean;
+  created_count: number;
+  updated_count: number;
+  archive_event_written: boolean;
+  tts_draft_event_written: boolean;
+  events_written_count: number;
+  o6_schema: string;
+  o6_source: string;
+  proof_boundary: "software_proof_o6_o7_voice_tts_draft_event_write_only";
+  event_summary: Record<string, unknown>;
+  tts_send_enabled: false;
+  speaker_dispatch_enabled: false;
+  real_voice_api_connected: false;
+  real_asr_tts_runtime_connected: false;
+  route_execution_success: false;
+  hil_pass: false;
+  real_cloud_db_connected: false;
+  real_oss_connected: false;
+  connects_cloud_production: false;
+  robot_control_executed: false;
+  blocked_reasons: string[];
+  not_proven: string[];
+  fail_closed_reason: string;
+  local_loopback_only: true;
+}
+
+export interface O7VoiceSpeakerAckEventRequestBody {
+  robot_id: string;
+  task_id?: string;
+  event_id: string;
+  occurred_at_ms: number;
+  ack_status: "ack" | "failure";
+  evidence_ref: string;
+  evidence_refs?: string[];
+  failure_reason_code?: string;
+  summary?: string;
+  metadata?: Record<string, string | number | boolean | null>;
+}
+
+export interface O7VoiceSpeakerAckEventResult extends ProofFlags {
+  schema: "trashbot.pc_tools_workstation.o7_voice_speaker_ack_event_result.v1";
+  ack_event_status:
+    | "local_mock_voice_speaker_ack_event_written"
+    | "local_mock_voice_speaker_ack_event_updated"
+    | "local_mock_voice_speaker_failure_event_written"
+    | "local_mock_voice_speaker_failure_event_updated"
+    | "fail_closed";
+  source_base_url: string;
+  remote_endpoint: "/api/o6/archive/events";
+  remote_schema: string;
+  requested_task_id: string;
+  o6_http_status: number | null;
+  task_id: string;
+  robot_id: string;
+  event_id: string;
+  event_type: "voice.speaker_ack" | "voice.speaker_failure" | "not_loaded";
+  ack_status: "ack" | "failure" | "not_loaded";
+  occurred_at_ms: number | null;
+  failure_reason_code: string;
+  evidence_refs_consumed: string[];
+  write_status: "created" | "updated" | "blocked_not_proven";
+  duplicate: boolean;
+  created_count: number;
+  updated_count: number;
+  archive_event_written: boolean;
+  speaker_ack_event_written: boolean;
+  speaker_failure_event_written: boolean;
+  events_written_count: number;
+  o6_schema: string;
+  o6_source: string;
+  proof_boundary: "software_proof_o6_o7_voice_speaker_ack_event_write_only";
+  event_summary: Record<string, unknown>;
+  speaker_dispatch_enabled: false;
+  real_speaker_ack_proven: false;
+  tts_send_enabled: false;
+  real_voice_api_connected: false;
+  real_asr_tts_runtime_connected: false;
+  route_execution_success: false;
+  hil_pass: false;
+  real_cloud_db_connected: false;
+  real_oss_connected: false;
+  connects_cloud_production: false;
+  robot_control_executed: false;
+  blocked_reasons: string[];
+  not_proven: string[];
+  fail_closed_reason: string;
+  local_loopback_only: true;
+}
+
+export type O7ConsumerDeliveryResultRecordStatus =
+  | "ready_not_delivery_proof"
+  | "operator_confirmed_not_delivery_proof"
+  | "failed_not_delivery_proof"
+  | "blocked_not_proven";
+
+export type O7ConsumerDeliveryResultDropoffConfirmationType =
+  | "operator_visual_check"
+  | "operator_terminal_claim"
+  | "local_mock_receipt"
+  | "none";
+
+export interface O7ConsumerDeliveryResultIntakeRequestBody {
+  robot_id: string;
+  task_id?: string;
+  record_status: O7ConsumerDeliveryResultRecordStatus;
+  delivery_result_claimed: boolean;
+  evidence_ref: string;
+  dropoff_confirmation_type: O7ConsumerDeliveryResultDropoffConfirmationType;
+  completed_at_utc: string;
+  notes?: string;
+  metadata?: Record<string, string | number | boolean | null>;
+}
+
+export interface O7ConsumerDeliveryResultIntakeResult extends ProofFlags {
+  schema: "trashbot.pc_tools_workstation.o7_consumer_delivery_result_intake_result.v1";
+  intake_status: "local_mock_delivery_result_written" | "local_mock_delivery_result_updated" | "fail_closed";
+  source_base_url: string;
+  remote_endpoint: "/api/o6/archive/field-evidence";
+  remote_schema: string;
+  requested_task_id: string;
+  o6_http_status: number | null;
+  task_id: string;
+  robot_id: string;
+  record_status: string;
+  delivery_result_claimed: boolean;
+  operator_confirmation_present: boolean;
+  dropoff_confirmation_type: string;
+  completed_at_utc: string;
+  evidence_ref: string;
+  write_status: "created" | "updated" | "blocked_not_proven";
+  duplicate: boolean;
+  field_evidence_written: boolean;
+  o6_schema: string;
+  o6_source: string;
+  proof_scope: "software_proof_o7_o6_consumer_delivery_result_intake_only";
+  delivery_result_evidence: O7ConsumerDeliveryResultEvidenceSummary;
+  route_execution_success: false;
+  hil_pass: false;
+  real_cloud_db_connected: false;
+  real_oss_connected: false;
+  connects_cloud_production: false;
+  robot_control_executed: false;
+  blocked_reasons: string[];
+  not_proven: string[];
+  fail_closed_reason: string;
+  local_loopback_only: true;
+}
+
+export type O7ConsumerPhoneBrowserTerminalMaterialName =
+  | "true_phone_browser_evidence"
+  | "diagnostics_mobile_safe_summary"
+  | "terminal_result_summary";
+
+export type O7ConsumerPhoneBrowserTerminalResultType =
+  | "operator_terminal_claim"
+  | "browser_terminal_claim"
+  | "diagnostics_only"
+  | "terminal_result_summary";
+
+export interface O7ConsumerPhoneBrowserTerminalMaterialSummary extends ProofFlags {
+  schema: "trashbot.pc_tools_workstation.o7_phone_browser_terminal_material.v1";
+  status:
+    | "phone_browser_terminal_material_ready_not_delivery_proof"
+    | "derived_blocked_not_proven"
+    | "blocked_not_proven";
+  source_schema: "trashbot.o6.phone_browser_terminal_material.v1" | "not_loaded";
+  source_origin:
+    | "remote_phone_browser_terminal_material"
+    | "remote_field_evidence"
+    | "remote_field_motion_evidence_packet"
+    | "remote_artifact_bundle"
+    | "remote_artifact_bundle_consumer_ingest"
+    | "remote_field_evidence_consumer_ingest"
+    | "remote_artifact_bundle_readiness"
+    | "not_loaded";
+  source_path: string;
+  task_id: string;
+  proof_scope: "software_proof_o6_o7_phone_browser_terminal_material_intake_only" | "not_loaded";
+  source_proof_status: string;
+  material_status: string;
+  terminal_result_type: string;
+  safe_evidence_ref: string;
+  accepted_materials: O7ConsumerPhoneBrowserTerminalMaterialName[];
+  missing_materials: string[];
+  rejected_materials: string[];
+  accepted_material_count: number;
+  missing_material_count: number;
+  rejected_material_count: number;
+  same_task_id_consumed: boolean;
+  phone_browser_terminal_material_written: boolean;
+  phone_browser_terminal_material_readback: boolean;
+  support_only_reason: string;
+  blocked_reasons: string[];
+  next_required_evidence: string[];
+  proof_boundary: {
+    local_mock: true;
+    not_proven: true;
+    reads_local_path: false;
+    phone_browser_material_connected: boolean;
+    route_execution_success: false;
+    delivery_success_proven: false;
+    hil_pass: false;
+    real_phone_browser_proof_connected: false;
+    real_production_cloud_connected: false;
+    real_oss_connected: false;
+    real_cdn_connected: false;
+  };
+  route_execution_success: false;
+  hil_pass: false;
+  real_cloud_db_connected: false;
+  real_oss_connected: false;
+  connects_cloud_production: false;
+  robot_control_executed: false;
+}
+
+export interface O7ConsumerPhoneBrowserProofIntakeRequestBody {
+  robot_id: string;
+  task_id?: string;
+  safe_evidence_ref: string;
+  terminal_result_type: O7ConsumerPhoneBrowserTerminalResultType;
+  accepted_materials: O7ConsumerPhoneBrowserTerminalMaterialName[];
+  missing_materials?: O7ConsumerPhoneBrowserTerminalMaterialName[];
+  rejected_materials?: O7ConsumerPhoneBrowserTerminalMaterialName[];
+  captured_at_utc?: string;
+  metadata?: Record<string, string | number | boolean | null>;
+}
+
+export interface O7ConsumerPhoneBrowserProofIntakeResult extends ProofFlags {
+  schema: "trashbot.pc_tools_workstation.o7_phone_browser_proof_intake_result.v1";
+  intake_status: "local_mock_phone_browser_material_written" | "local_mock_phone_browser_material_updated" | "fail_closed";
+  source_base_url: string;
+  remote_endpoint: "/api/o6/archive/field-evidence";
+  remote_schema: string;
+  requested_task_id: string;
+  o6_http_status: number | null;
+  task_id: string;
+  robot_id: string;
+  terminal_result_type: string;
+  safe_evidence_ref: string;
+  accepted_materials: O7ConsumerPhoneBrowserTerminalMaterialName[];
+  missing_materials: string[];
+  rejected_materials: string[];
+  write_status: "created" | "updated" | "blocked_not_proven";
+  duplicate: boolean;
+  field_evidence_written: boolean;
+  phone_browser_terminal_material_written: boolean;
+  phone_browser_terminal_material_readback: boolean;
+  same_task_id_consumed: boolean;
+  o6_schema: string;
+  o6_source: string;
+  proof_scope: "software_proof_o6_o7_phone_browser_terminal_material_intake_only";
+  phone_browser_terminal_material: O7ConsumerPhoneBrowserTerminalMaterialSummary;
+  route_execution_success: false;
+  hil_pass: false;
+  real_cloud_db_connected: false;
+  real_oss_connected: false;
+  connects_cloud_production: false;
+  robot_control_executed: false;
+  blocked_reasons: string[];
+  not_proven: string[];
+  fail_closed_reason: string;
+  local_loopback_only: true;
+}
+
+export interface O7ConsumerBoundedRouteGateIntakeRequestBody {
+  robot_id: string;
+  task_id?: string;
+  packet_id: "packet_o3_28_pose_same_task_replay_7d57826142b0c79c";
+  route_intent_id: "route_intent_20260713_0402_from_20260713_0300_28_pose_structured_path";
+  execution_plan_status: "blocked_pending_live_safety_gate";
+  route_csv_row_count: 28;
+  path_structured_pose_count: 28;
+  segment_count: 27;
+  safe_refs?: string[];
+  metadata?: Record<string, string | number | boolean | null>;
+}
+
+export interface O7ConsumerBoundedRouteGateIntakeResult extends ProofFlags {
+  schema: "trashbot.pc_tools_workstation.o7_bounded_route_gate_intake_result.v1";
+  intake_status:
+    | "local_mock_bounded_route_gate_written"
+    | "local_mock_bounded_route_gate_updated"
+    | "fail_closed";
+  source_base_url: string;
+  remote_endpoint: "/api/o6/archive/field-evidence";
+  remote_schema: string;
+  requested_task_id: string;
+  o6_http_status: number | null;
+  task_id: string;
+  robot_id: string;
+  packet_id: string;
+  route_intent_id: string;
+  execution_plan_status: string;
+  route_csv_row_count: number;
+  path_structured_pose_count: number;
+  segment_count: number;
+  write_status: "created" | "updated" | "blocked_not_proven";
+  duplicate: boolean;
+  field_evidence_written: boolean;
+  same_task_id_consumed: boolean;
+  bounded_route_execution_gate_material_written: boolean;
+  bounded_route_execution_gate_material_readback: boolean;
+  o6_schema: string;
+  o6_source: string;
+  proof_scope: "software_proof_o6_o7_bounded_route_gate_material_intake_only";
+  bounded_route_execution_gate_material: O7ConsumerBoundedRouteGateMaterialSummary;
+  safe_to_control: false;
+  delivery_success: false;
+  route_execution_success: false;
+  hil_pass: false;
+  robot_control_executed: false;
+  connects_cloud_production: false;
+  blocked_reasons: string[];
+  not_proven: string[];
+  fail_closed_reason: string;
+  local_loopback_only: true;
+}
+
+export interface O7ConsumerBoundedRouteTerminalResultIntakeRequestBody {
+  robot_id: string;
+  task_id?: string;
+  packet_id: "packet_o3_28_pose_same_task_replay_7d57826142b0c79c";
+  route_intent_id: "route_intent_20260713_0402_from_20260713_0300_28_pose_structured_path";
+  result_code: "mock_route_execution_completed_not_live_delivery";
+  terminal_result_state: "terminal_result_recorded";
+  reconciliation_state: "terminal_result_recorded";
+  source_schema?: "trashbot.o5.bounded_route_terminal_result_bridge.v1";
+  source_proof_boundary?: "software_proof_o5_bounded_route_terminal_result_bridge_only";
+  route_csv_row_count?: 28;
+  path_structured_pose_count?: 28;
+  segment_count?: 27;
+  safe_evidence_ref?: "o5_bounded_route_terminal_result_bridge_summary.json";
+  metadata?: Record<string, string | number | boolean | null>;
+}
+
+export interface O7ConsumerBoundedRouteTerminalResultIntakeResult extends ProofFlags {
+  schema: "trashbot.pc_tools_workstation.o7_bounded_route_terminal_result_intake_result.v1";
+  status:
+    | "local_mock_bounded_route_terminal_result_written"
+    | "local_mock_bounded_route_terminal_result_updated"
+    | "fail_closed";
+  intake_status:
+    | "local_mock_bounded_route_terminal_result_written"
+    | "local_mock_bounded_route_terminal_result_updated"
+    | "fail_closed";
+  source_base_url: string;
+  remote_endpoint: "/api/o6/archive/field-evidence";
+  remote_schema: string;
+  requested_task_id: string;
+  o6_http_status: number | null;
+  task_id: string;
+  robot_id: string;
+  packet_id: string;
+  route_intent_id: string;
+  result_code: string;
+  terminal_result_state: string;
+  reconciliation_state: string;
+  route_csv_row_count: number;
+  path_structured_pose_count: number;
+  segment_count: number;
+  safe_evidence_ref: string;
+  write_status: "created" | "updated" | "blocked_not_proven";
+  duplicate: boolean;
+  field_evidence_written: boolean;
+  same_task_id_consumed: boolean;
+  bounded_route_terminal_result_material_written: boolean;
+  bounded_route_terminal_result_material_readback: boolean;
+  o6_schema: string;
+  o6_source: string;
+  proof_scope: "software_proof_o6_o7_bounded_route_terminal_result_intake_only";
+  bounded_route_terminal_result_material: O7ConsumerBoundedRouteTerminalResultMaterialSummary;
+  safe_to_control: false;
+  delivery_success: false;
+  route_execution_success: false;
+  hil_pass: false;
+  robot_control_executed: false;
+  connects_cloud_production: false;
+  blocked_reasons: string[];
+  not_proven: string[];
+  fail_closed_reason: string;
+  local_loopback_only: true;
+}
+
+export interface O7MissionEvidenceBundleSectionSummary {
+  section: string;
+  status: string;
+  schema: string;
+  proof_scope: string;
+  source_origin: string;
+  item_count: number;
+  safe_ref_count: number;
+  sample_refs: string[];
+  blocked_reasons: string[];
+  not_proven: string[];
+}
+
+export interface O7MissionEvidenceBundleExportResult extends ProofFlags {
+  schema: "trashbot.pc_tools_workstation.o7_mission_evidence_bundle_export_result.v1";
+  export_status: "local_mock_mission_evidence_bundle_ready" | "fail_closed";
+  source_base_url: string;
+  remote_endpoint: string;
+  remote_schema: string;
+  requested_task_id: string;
+  o6_http_status: number | null;
+  format: "json" | "blocked";
+  task_id: string;
+  robot_id: string;
+  proof_scope: "software_proof_o7_o6_mission_evidence_bundle_export_only";
+  receipt_id: string;
+  selected_task: {
+    task_id: string;
+    robot_id: string;
+    task_status_summary: string;
+    started_at_ms: number | null;
+    finished_at_ms: number | null;
+  };
+  identity: {
+    same_task_id_verified: boolean;
+    same_task_replay_packet_ready: boolean;
+    packet_id: string;
+    route_intent_id: string;
+    path_structured_pose_count: number;
+    route_csv_row_count: number;
+    replay_jsonl_event_count: number;
+  };
+  counts: {
+    section_count: number;
+    mission_event_count: number;
+    evidence_count: number;
+    field_evidence_artifact_count: number;
+    route_section_count: number;
+    closure_section_count: number;
+    material_section_count: number;
+    readiness_section_count: number;
+    sample_ref_count: number;
+  };
+  section_summaries: O7MissionEvidenceBundleSectionSummary[];
+  bundle_ready: boolean;
+  local_mock_only: true;
+  o6_consumer_detail_only: true;
+  route_execution_success: false;
+  hil_pass: false;
+  real_cloud_db_connected: false;
+  real_oss_connected: false;
+  connects_cloud_production: false;
+  robot_control_executed: false;
+  blocked_reasons: string[];
+  not_proven: string[];
+  fail_closed_reason: string;
+  local_loopback_only: true;
+}
+
 export interface O7ConsumerTaskDetailResponse extends ProofFlags {
   schema: "trashbot.pc_tools_workstation.o7_consumer_task_detail.v1";
   detail_status: "loaded_fail_closed_summary" | "fail_closed";
@@ -3681,12 +4782,17 @@ export interface O7ConsumerTaskDetailResponse extends ProofFlags {
   route_execution_result_delivery_readiness: O7ConsumerRouteExecutionResultDeliveryReadinessSummary;
   route_delivery_closure_packet: O7ConsumerRouteDeliveryClosurePacketSummary;
   same_task_field_material_packet: O7ConsumerSameTaskFieldMaterialPacketSummary;
+  same_task_replay_packet_readback: O7ConsumerSameTaskReplayPacketReadbackSummary;
+  bounded_route_execution_gate_material: O7ConsumerBoundedRouteGateMaterialSummary;
+  bounded_route_terminal_result_material: O7ConsumerBoundedRouteTerminalResultMaterialSummary;
   current_field_evidence_material: O7ConsumerCurrentFieldEvidenceMaterialSummary;
+  pc_live_nav2_execution_material: O7ConsumerPcLiveNav2ExecutionMaterialSummary;
   localization_path_material_readback: O7ConsumerLocalizationPathMaterialReadbackSummary;
   clean_baseline_nav2_path_material: O7ConsumerCleanBaselineNav2PathMaterialSummary;
   same_task_route_execution_material_packet: O7ConsumerSameTaskRouteExecutionMaterialPacketSummary;
   same_task_mission_evidence_gate: O7ConsumerSameTaskMissionEvidenceGateSummary;
   field_operator_confirmation_material: O7ConsumerFieldOperatorConfirmationMaterialSummary;
+  phone_browser_terminal_material: O7ConsumerPhoneBrowserTerminalMaterialSummary;
   same_task_mission_material_checklist: O7ConsumerSameTaskMissionMaterialChecklist;
   artifact_bundle: O7ConsumerArtifactBundleSummary;
   artifact_bundle_consumer_ingest: O7ConsumerArtifactBundleConsumerIngestSummary;
@@ -8921,7 +10027,13 @@ export const API_ROUTES = [
   "/api/o7/route-replay-preview?fixtureJson=<local-json>",
   "/api/o7/labeling-preview?fixtureJson=<local-json>",
   "/api/o7/field-evidence-consumer-ingest?manifestJson=<local-json>&routeReplayFixtureJson=<local-json>&labelingFixtureJson=<local-json>",
+  "/api/o7/consumer-read/tasks/<task_id>/inference/request?baseUrl=<local-loopback-url>",
+  "/api/o7/consumer-read/tasks/<task_id>/events/append?baseUrl=<local-loopback-url>",
+  "/api/o7/consumer-read/tasks/<task_id>/operator/dropoff-acceptance/request?baseUrl=<local-loopback-url>",
+  "/api/o7/consumer-read/tasks/<task_id>/voice/tts-draft/request?baseUrl=<local-loopback-url>",
   "/api/o7/voice-preview?fixtureJson=<local-json>",
+  "/api/o7/voice-runtime/preflight?mode=<offline_stub>",
+  "/api/o7/voice-runtime/offline-smoke?mode=<offline_stub>&taskId=<task-id>&fixtureJson=<local-json>",
   "/api/o7/safe-command-preview?fixtureJson=<local-json>",
   "/api/o7/cloud-archive/tasks?archiveJson=<local-json>",
   "/api/robot-control/summary?baseUrl=<robot-api-base-url>",

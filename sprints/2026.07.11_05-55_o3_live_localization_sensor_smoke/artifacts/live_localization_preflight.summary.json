@@ -1,0 +1,57 @@
+{
+  "schema": "trashbot.board_field_evidence_preflight.v1",
+  "status": "blocked_refresh_readback_failed",
+  "blocked_reason": "blocked_refresh_readback_failed",
+  "safe_to_control": false,
+  "delivery_success": false,
+  "primary_actions_enabled": false,
+  "robot_control_executed": false,
+  "route_execution_success": false,
+  "hil_pass": false,
+  "localization_ready_for_no_motion_refresh": false,
+  "localization_blocked_reasons": [
+    "blocked_amcl_pose_not_observed",
+    "blocked_map_to_odom_not_observed",
+    "blocked_map_to_base_link_not_observed"
+  ],
+  "localization_results": [
+    {
+      "name": "/scan",
+      "observed": true,
+      "blocked_reason": null,
+      "timed_out": false,
+      "returncode": 0
+    },
+    {
+      "name": "/amcl_pose",
+      "observed": false,
+      "blocked_reason": "blocked_amcl_pose_not_observed",
+      "timed_out": false,
+      "returncode": 1
+    },
+    {
+      "name": "map->odom",
+      "observed": false,
+      "blocked_reason": "blocked_map_to_odom_not_observed",
+      "timed_out": true,
+      "returncode": null
+    },
+    {
+      "name": "map->base_link",
+      "observed": false,
+      "blocked_reason": "blocked_map_to_base_link_not_observed",
+      "timed_out": true,
+      "returncode": null
+    }
+  ],
+  "nav2_proof_refresh": {
+    "delivery_success": false,
+    "endpoint": "http://127.0.0.1:8787/api/nav2/proof/refresh",
+    "hil_pass": false,
+    "primary_actions_enabled": false,
+    "robot_control_executed": false,
+    "route_execution_success": false,
+    "safe_to_control": false,
+    "status": "refresh_command_failed"
+  }
+}

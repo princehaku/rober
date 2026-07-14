@@ -1,0 +1,83 @@
+{
+  "schema": "trashbot.product_acceptance.o3.same_task_replay_packet.v1",
+  "acceptance_id": "product_acceptance_o3_28_pose_same_task_replay_packet_20260713_0502",
+  "accepted_at_cst": "2026-07-13 05:02 CST",
+  "sprint": "sprints/2026.07.13_05-02_o3_28_pose_same_task_replay_packet",
+  "product_owner": "product-okr-owner",
+  "implementation_owner": "robot-algorithm-engineer",
+  "decision": "accepted_strict_no_motion_same_task_replay_packet",
+  "proof_boundary": "software_proof_o3_o1_strict_no_motion_same_task_route_replay_packet_only",
+  "source_artifacts": {
+    "algorithm_summary": "sprints/2026.07.13_05-02_o3_28_pose_same_task_replay_packet/artifacts/algorithm/same_task_replay_packet_summary.json",
+    "packet_jsonl": "sprints/2026.07.13_05-02_o3_28_pose_same_task_replay_packet/artifacts/algorithm/same_task_route_replay_packet.jsonl",
+    "source_summary": "sprints/2026.07.13_04-02_o3_28_pose_fixed_route_consumer/artifacts/algorithm/fixed_route_28_pose_consumer_summary.json",
+    "source_route_csv": "sprints/2026.07.13_04-02_o3_28_pose_fixed_route_consumer/artifacts/algorithm/fixed_route_28_pose_route.csv",
+    "source_replay_jsonl": "sprints/2026.07.13_04-02_o3_28_pose_fixed_route_consumer/artifacts/algorithm/fixed_route_28_pose_replay.jsonl"
+  },
+  "accepted_facts": {
+    "schema": "trashbot.o3.same_task_route_replay_packet.v1",
+    "packet_id": "packet_o3_28_pose_same_task_replay_7d57826142b0c79c",
+    "task_id": "task_o3_28_pose_fixed_route_consumer_20260713_0402",
+    "route_intent_id": "route_intent_20260713_0402_from_20260713_0300_28_pose_structured_path",
+    "consumed_04_02_summary": true,
+    "consumed_route_csv": true,
+    "consumed_replay_jsonl": true,
+    "route_csv_row_count": 28,
+    "replay_jsonl_event_count": 28,
+    "path_structured_pose_count": 28,
+    "packet_jsonl_line_count": 28,
+    "same_task_identity_verified": true,
+    "same_task_replay_packet_ready": true,
+    "consumer_integration_status": "pass_strict_no_motion_same_task_replay_packet"
+  },
+  "safety_fields": {
+    "route_execution_success": false,
+    "delivery_success": false,
+    "hil_pass": false,
+    "safe_to_control": false,
+    "robot_control_executed": false,
+    "publishes_cmd_vel": false,
+    "calls_base_manual": false,
+    "uses_base_uart": false
+  },
+  "rejected_claims": [
+    "route_execution_success",
+    "fixed_route_movement",
+    "NavigateToPose",
+    "controller_bt_execution",
+    "publishes_cmd_vel",
+    "calls_base_manual",
+    "uses_base_uart",
+    "delivery_success",
+    "operator_acceptance",
+    "current_live_hil",
+    "safe_to_control",
+    "o5_production_external_evidence",
+    "o6_archive_readback_complete",
+    "o7_ui_consumer_complete"
+  ],
+  "okr_decision": {
+    "o5_percent": "about_85",
+    "o1_percent": "about_94",
+    "o6_percent": "about_93",
+    "o7_percent": "about_93",
+    "percent_adjustment": "none",
+    "kr_archived": false,
+    "kr_archive_decision": "不归档",
+    "direction": "continue_o3_o1_strict_no_motion_evidence_chain_pause_o5_support_only"
+  },
+  "next_evidence_required": [
+    "controlled route execution record before route_execution_success can change",
+    "delivery or operator acceptance evidence before delivery_success can change",
+    "current live HIL evidence before hil_pass or safe_to_control can change",
+    "real external production evidence before O5 can increase",
+    "separate O6/O7 archive/readback sprint if cloud or PC consumption is required"
+  ],
+  "validation": {
+    "summary_json_tool": "passed",
+    "structured_assertions": "product_same_task_replay_packet_acceptance_ok",
+    "product_acceptance_json_tool": "passed",
+    "anchor_rg": "passed",
+    "git_diff_check": "passed"
+  }
+}

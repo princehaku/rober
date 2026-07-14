@@ -4,6 +4,7 @@ Vendor 来源：
 - docs/vendor/VENDOR_INDEX.md
 - docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h
 - docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/uart_ctrl.h
+- docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/ugv_advance.h
 - docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py
 - docs/vendor/waveshare_wave_rover/ugv_rpi/config.yaml
 
@@ -54,6 +55,9 @@ MANUAL_HIL_GATE_ARTIFACT_DIR = (
 STRUCTURED_HIL_REPORT_ARTIFACT_DIR = (
     REPO_ROOT / "sprints/2026.06.11_06-05_pc_structured_hil_report_readback/artifacts"
 )
+SAME_SESSION_WHEEL_FEEDBACK_ARTIFACT_DIR = (
+    REPO_ROOT / "sprints/2026.06.22_11-00_wheel_lr_samesession_first_jog/artifacts"
+)
 DEFAULT_PATHS = {
     "first_jog_json": DEFAULT_ARTIFACT_DIR / "10_pc_first_jog_for_scan_delta.json",
     "feedback_samples_json": DEFAULT_ARTIFACT_DIR / "12_pc_feedback_samples_after_scan_delta_jog.json",
@@ -91,11 +95,18 @@ DEFAULT_PATHS = {
     / "real_board_operator_report_direct_192_168_1_11_8787.json",
     "manual_hil_gate_robot_control_summary_json": STRUCTURED_HIL_REPORT_ARTIFACT_DIR
     / "real_board_robot_control_summary_192_168_1_11_8787.json",
+    "same_session_wheel_feedback_json": SAME_SESSION_WHEEL_FEEDBACK_ARTIFACT_DIR
+    / "01_upper_manual_samesession_012.json",
+    "same_session_pc_first_jog_json": SAME_SESSION_WHEEL_FEEDBACK_ARTIFACT_DIR
+    / "02_pc_first_jog_samesession_timeoutfix.json",
+    "same_session_pc_after_jog_base_status_json": SAME_SESSION_WHEEL_FEEDBACK_ARTIFACT_DIR
+    / "03_base_status_after_pc_jog.json",
 }
 VENDOR_SOURCES = [
     "docs/vendor/VENDOR_INDEX.md",
     "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h",
     "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/uart_ctrl.h",
+    "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/ugv_advance.h",
     "docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py",
     "docs/vendor/waveshare_wave_rover/ugv_rpi/config.yaml",
 ]
@@ -170,6 +181,8 @@ EXPECTED_SCHEMAS = {
     "robot_control_base_command_proxy": "trashbot.pc_tools_workstation.robot_control_base_command_proxy.v1",
     "operator_report_latest_result": "trashbot.upper_robot_api.v1.operator_report_latest_result",
     "robot_control_summary": "trashbot.pc_tools_workstation.robot_control_summary.v1",
+    "same_session_manual_result": "trashbot.upper_robot_api.v1.base_manual_result",
+    "base_status": "trashbot.upper_robot_api.v1.base_status",
 }
 MANUAL_HIL_GATE_REQUIRED_MISSING_FIELDS = [
     "external_video_recorded",
@@ -177,6 +190,17 @@ MANUAL_HIL_GATE_REQUIRED_MISSING_FIELDS = [
     "wheel_feedback_lr_nonzero_proven",
     "physical_motion_lidar_delta_proven",
 ]
+SAME_SESSION_HIL_ACCEPTANCE_MISSING_FIELDS = [
+    "external_video_recorded",
+    "physical_motion_lidar_delta_proven",
+    "current_live_hil_acceptance_record",
+    "current_live_nav2_route_execution_success",
+]
+SAME_SESSION_WHEEL_FEEDBACK_READY_STATUS = "same_session_wheel_feedback_material_ready_not_hil_pass"
+SAME_SESSION_WHEEL_FEEDBACK_BLOCKED_STATUS = "same_session_wheel_feedback_material_blocked_not_hil_pass"
+SAME_SESSION_HIL_ACCEPTANCE_STATUS = "blocked_missing_current_live_acceptance"
+SAME_SESSION_PC_COMMAND_READY_STATUS = "same_session_pc_command_material_ready_not_hil_pass"
+SAME_SESSION_PC_COMMAND_BLOCKED_STATUS = "same_session_pc_command_material_blocked_not_hil_pass"
 EXPECTED_FREE_CELL_PIXEL_COUNT = 394
 REQUIRED_LOCALIZATION_FALSE_FIELDS = (
     "safe_to_control",
@@ -433,6 +457,41 @@ def _safe_base_summary(status: str, source_refs: dict[str, str], blocked_reasons
         "operator_structured_delivery_claim_material_only": False,
         "manual_hil_gate_ready_not_hil_pass": False,
         "manual_hil_gate_current_evidence_summary": None,
+        "same_session_wheel_feedback_material_present": False,
+        "same_session_wheel_feedback_material_status": None,
+        "same_session_wheel_feedback_lr_nonzero_material_present": False,
+        "same_session_wheel_feedback_latest_nonzero_pair": None,
+        "same_session_wheel_feedback_motion_window_nonzero_pair_count": None,
+        "same_session_wheel_feedback_motion_window_t1001_count": None,
+        "same_session_wheel_feedback_feedback_request_t130_observed": False,
+        "same_session_wheel_feedback_current_live_rerun": False,
+        "same_session_wheel_feedback_summary": None,
+        "same_session_hil_acceptance_status": None,
+        "same_session_hil_acceptance_missing_fields": [],
+        "same_session_hil_acceptance_ready_not_hil_pass": False,
+        "same_session_pc_command_material_present": False,
+        "same_session_pc_command_material_status": None,
+        "same_session_pc_command_requested_direction": None,
+        "same_session_pc_command_applied_direction": None,
+        "same_session_pc_command_clamped_speed_mps": None,
+        "same_session_pc_command_clamped_duration_ms": None,
+        "same_session_pc_command_checklist_confirmed": False,
+        "same_session_pc_command_evidence_capture_status": None,
+        "same_session_pc_command_wheel_feedback_lr_nonzero_material_present": False,
+        "same_session_pc_command_motion_window_nonzero_frame_count": None,
+        "same_session_pc_command_latest_nonzero_pair": None,
+        "same_session_pc_command_feedback_during_motion_attempted": False,
+        "same_session_pc_command_feedback_after_stop_attempted": False,
+        "same_session_pc_command_manual_command_executed": False,
+        "same_session_pc_command_auto_stop_executed": False,
+        "same_session_pc_command_after_jog_t1001_observed": False,
+        "same_session_pc_command_after_jog_feedback_source": None,
+        "same_session_pc_command_after_jog_latest_pair": None,
+        "same_session_pc_command_after_jog_wheel_feedback_lr_zero_readback": False,
+        "same_session_pc_command_after_jog_feedback_samples_freshness_status": None,
+        "same_session_pc_command_after_jog_readback_sends_commands": False,
+        "same_session_pc_command_readback_summary": None,
+        "same_session_pc_command_summary": None,
         "blocked_reasons": blocked_reasons,
         "next_required_evidence": list(NEXT_REQUIRED_EVIDENCE),
         **FALSE_SAFETY_FIELDS,
@@ -579,6 +638,42 @@ def _parse_feedback_type_list(raw_value: Any, reason: str, blocked_reasons: list
             return []
         parsed.append(int(float(item)))
     return parsed
+
+
+def _append_optional_false_fields(
+    payload: dict[str, Any],
+    label: str,
+    fields: tuple[str, ...],
+    blocked_reasons: list[str],
+) -> None:
+    """历史材料可缺少部分 safety 字段；一旦出现 true 就 fail-closed。"""
+    for field in fields:
+        if field not in payload:
+            continue
+        parsed = _safe_string_bool(
+            payload.get(field),
+            f"{label}_{field}_invalid",
+            blocked_reasons,
+        )
+        if parsed is not False:
+            blocked_reasons.append(f"{label}_{field}_not_false")
+
+
+def _wheel_sign_pattern(left: float, right: float) -> str:
+    """只描述同帧 L/R 符号，不把它升级成轮向标定结论。"""
+    if left > 0 and right > 0:
+        return "both_positive"
+    if left < 0 and right < 0:
+        return "both_negative"
+    if left > 0 and right < 0:
+        return "left_positive_right_negative"
+    if left < 0 and right > 0:
+        return "left_negative_right_positive"
+    if left == 0 and right == 0:
+        return "both_zero"
+    if left == 0:
+        return "left_zero_right_nonzero"
+    return "left_nonzero_right_zero"
 
 
 def _collect_source_refs(paths: dict[str, Path]) -> dict[str, str]:
@@ -2819,6 +2914,580 @@ def _parse_wheel_feedback_diagnostic_sweep(
     return present, summary
 
 
+def _parse_same_session_wheel_feedback_material(
+    same_session_artifact: dict[str, Any] | None,
+    blocked_reasons: list[str],
+) -> tuple[bool, dict[str, Any] | None]:
+    """消费同会话轮速材料，只输出 prefix 化摘要和 HIL acceptance 缺口。"""
+    if same_session_artifact is None:
+        blocked_reasons.append("same_session_wheel_feedback_artifact_missing")
+        return False, None
+    if same_session_artifact.get("schema") != EXPECTED_SCHEMAS["same_session_manual_result"]:
+        blocked_reasons.append("same_session_wheel_feedback_schema_mismatch")
+        return False, None
+
+    # 顶层 robot_control_executed=true 是历史人工点动事实，不能拿来抬升本 bundle 的控制许可。
+    _append_optional_false_fields(
+        same_session_artifact,
+        "same_session_wheel_feedback_top_level",
+        (
+            "hil_pass",
+            "safe_to_control",
+            "delivery_success",
+            "primary_actions_enabled",
+            "nav2_route_execution_success",
+        ),
+        blocked_reasons,
+    )
+    accepted = _safe_bool(
+        same_session_artifact.get("accepted"),
+        "same_session_wheel_feedback_accepted_invalid",
+        blocked_reasons,
+    )
+    manual_executed = _safe_bool(
+        same_session_artifact.get("manual_command_executed"),
+        "same_session_wheel_feedback_manual_executed_invalid",
+        blocked_reasons,
+    )
+    auto_stop_executed = _safe_bool(
+        same_session_artifact.get("auto_stop_executed"),
+        "same_session_wheel_feedback_auto_stop_invalid",
+        blocked_reasons,
+    )
+    feedback_attempted = _safe_bool(
+        same_session_artifact.get("feedback_during_motion_attempted"),
+        "same_session_wheel_feedback_attempted_invalid",
+        blocked_reasons,
+    )
+    if accepted is not True:
+        blocked_reasons.append("same_session_wheel_feedback_not_accepted")
+    if manual_executed is not True:
+        blocked_reasons.append("same_session_wheel_feedback_manual_not_executed")
+    if auto_stop_executed is not True:
+        blocked_reasons.append("same_session_wheel_feedback_auto_stop_not_executed")
+    if feedback_attempted is not True:
+        blocked_reasons.append("same_session_wheel_feedback_attempt_not_true")
+
+    feedback = same_session_artifact.get("feedback_during_motion")
+    if not isinstance(feedback, dict):
+        blocked_reasons.append("same_session_wheel_feedback_motion_section_missing")
+        return False, None
+    if feedback.get("schema") != EXPECTED_SCHEMAS["base_feedback_request_result"]:
+        blocked_reasons.append("same_session_wheel_feedback_motion_schema_mismatch")
+    _append_optional_false_fields(
+        feedback,
+        "same_session_wheel_feedback_motion",
+        (
+            "hil_pass",
+            "safe_to_control",
+            "delivery_success",
+            "primary_actions_enabled",
+            "robot_control_executed",
+            "sends_motion_commands",
+            "nav2_route_execution_success",
+        ),
+        blocked_reasons,
+    )
+
+    request = feedback.get("request")
+    request_command = request.get("command") if isinstance(request, dict) else None
+    if not isinstance(request_command, dict):
+        blocked_reasons.append("same_session_wheel_feedback_request_command_missing")
+        request_command = {}
+    request_t = _safe_int(
+        request_command.get("T"),
+        "same_session_wheel_feedback_request_t_invalid",
+        blocked_reasons,
+    )
+    if request_t != 130:
+        blocked_reasons.append("same_session_wheel_feedback_request_not_t130")
+
+    t1001_status = _safe_string(
+        feedback.get("t1001_feedback_status"),
+        "same_session_wheel_feedback_t1001_status_invalid",
+        blocked_reasons,
+    )
+    observed_types = _parse_feedback_type_list(
+        feedback.get("observed_feedback_types"),
+        "same_session_wheel_feedback_observed_types_invalid",
+        blocked_reasons,
+    )
+    if t1001_status != "observed":
+        blocked_reasons.append("same_session_wheel_feedback_t1001_not_observed")
+    if 1001 not in observed_types:
+        blocked_reasons.append("same_session_wheel_feedback_observed_types_missing_t1001")
+
+    wheel_summary = feedback.get("wheel_feedback_summary")
+    if not isinstance(wheel_summary, dict):
+        blocked_reasons.append("same_session_wheel_feedback_summary_missing")
+        return False, None
+    source = _safe_string(
+        wheel_summary.get("source"),
+        "same_session_wheel_feedback_source_invalid",
+        blocked_reasons,
+    )
+    if source != "vendor_t1001_L_R":
+        blocked_reasons.append("same_session_wheel_feedback_source_mismatch")
+    frame_count = _safe_int(
+        wheel_summary.get("frame_count"),
+        "same_session_wheel_feedback_frame_count_invalid",
+        blocked_reasons,
+    )
+    matched_frame_count = _safe_int(
+        wheel_summary.get("matched_frame_count"),
+        "same_session_wheel_feedback_matched_count_invalid",
+        blocked_reasons,
+    )
+    nonzero_frame_count = _safe_int(
+        wheel_summary.get("nonzero_frame_count"),
+        "same_session_wheel_feedback_nonzero_count_invalid",
+        blocked_reasons,
+    )
+    lr_nonzero_observed = _safe_bool(
+        wheel_summary.get("lr_nonzero_observed"),
+        "same_session_wheel_feedback_lr_nonzero_invalid",
+        blocked_reasons,
+    )
+    if frame_count is None or frame_count <= 0:
+        blocked_reasons.append("same_session_wheel_feedback_frame_count_missing")
+    if matched_frame_count is None or matched_frame_count <= 0:
+        blocked_reasons.append("same_session_wheel_feedback_matched_count_missing")
+    if nonzero_frame_count is None or nonzero_frame_count <= 0:
+        blocked_reasons.append("same_session_wheel_feedback_nonzero_count_missing")
+    if lr_nonzero_observed is not True:
+        blocked_reasons.append("same_session_wheel_feedback_lr_nonzero_not_true")
+
+    latest_pair = wheel_summary.get("latest_nonzero_pair")
+    if not isinstance(latest_pair, dict):
+        blocked_reasons.append("same_session_wheel_feedback_latest_pair_missing")
+        latest_pair = {}
+    pair_source = _safe_string(
+        latest_pair.get("source"),
+        "same_session_wheel_feedback_latest_pair_source_invalid",
+        blocked_reasons,
+    )
+    left_speed = _safe_float(
+        latest_pair.get("left_speed"),
+        "same_session_wheel_feedback_latest_pair_left_invalid",
+        blocked_reasons,
+    )
+    right_speed = _safe_float(
+        latest_pair.get("right_speed"),
+        "same_session_wheel_feedback_latest_pair_right_invalid",
+        blocked_reasons,
+    )
+    if pair_source != "vendor_t1001_L_R":
+        blocked_reasons.append("same_session_wheel_feedback_latest_pair_source_mismatch")
+    if left_speed is None or left_speed == 0.0:
+        blocked_reasons.append("same_session_wheel_feedback_latest_pair_left_zero_or_missing")
+    if right_speed is None or right_speed == 0.0:
+        blocked_reasons.append("same_session_wheel_feedback_latest_pair_right_zero_or_missing")
+
+    present = (
+        accepted is True
+        and manual_executed is True
+        and auto_stop_executed is True
+        and feedback_attempted is True
+        and request_t == 130
+        and t1001_status == "observed"
+        and 1001 in observed_types
+        and source == "vendor_t1001_L_R"
+        and frame_count is not None
+        and frame_count > 0
+        and matched_frame_count is not None
+        and matched_frame_count > 0
+        and nonzero_frame_count is not None
+        and nonzero_frame_count > 0
+        and lr_nonzero_observed is True
+        and pair_source == "vendor_t1001_L_R"
+        and left_speed is not None
+        and left_speed != 0.0
+        and right_speed is not None
+        and right_speed != 0.0
+    )
+    pair_summary = None
+    if left_speed is not None and right_speed is not None:
+        pair_summary = {
+            "phase": "motion_window",
+            "left_speed": left_speed,
+            "right_speed": right_speed,
+            "sign_pattern": _wheel_sign_pattern(left_speed, right_speed),
+        }
+    summary = {
+        "source_schema": EXPECTED_SCHEMAS["same_session_manual_result"],
+        "feedback_source_schema": EXPECTED_SCHEMAS["base_feedback_request_result"],
+        "historical_same_session_material": True,
+        "current_live_rerun": False,
+        "accepted": accepted is True,
+        "manual_command_executed": manual_executed is True,
+        "auto_stop_executed": auto_stop_executed is True,
+        "feedback_during_motion_attempted": feedback_attempted is True,
+        "feedback_request_t130_observed": request_t == 130,
+        "t1001_feedback_status": t1001_status,
+        "observed_feedback_types": observed_types,
+        "frame_count": frame_count,
+        "matched_frame_count": matched_frame_count,
+        "nonzero_frame_count": nonzero_frame_count,
+        "lr_nonzero_observed": lr_nonzero_observed is True,
+        "latest_nonzero_pair": pair_summary,
+        "material_ready_not_hil_pass": present,
+        "hil_acceptance_status": SAME_SESSION_HIL_ACCEPTANCE_STATUS,
+        "hil_acceptance_missing_fields": list(SAME_SESSION_HIL_ACCEPTANCE_MISSING_FIELDS),
+    }
+    return present, summary
+
+
+def _parse_same_session_pc_command_material(
+    pc_first_jog_artifact: dict[str, Any] | None,
+    after_jog_base_status: dict[str, Any] | None,
+    blocked_reasons: list[str],
+) -> tuple[bool, dict[str, Any] | None]:
+    """消费同会话 PC first-jog 与 after-jog base status，只输出 prefix 化 material 摘要。"""
+    if pc_first_jog_artifact is None:
+        blocked_reasons.append("same_session_pc_command_artifact_missing")
+        return False, None
+    if after_jog_base_status is None:
+        blocked_reasons.append("same_session_pc_command_after_jog_base_status_missing")
+        return False, None
+    if pc_first_jog_artifact.get("schema") != EXPECTED_SCHEMAS["robot_control_base_command_proxy"]:
+        blocked_reasons.append("same_session_pc_command_schema_mismatch")
+        return False, None
+    if after_jog_base_status.get("schema") != EXPECTED_SCHEMAS["base_status"]:
+        blocked_reasons.append("same_session_pc_command_after_jog_schema_mismatch")
+        return False, None
+
+    _append_optional_false_fields(
+        pc_first_jog_artifact,
+        "same_session_pc_command_top_level",
+        (
+            "safe_to_control",
+            "delivery_success",
+            "primary_actions_enabled",
+            "robot_control_executed",
+            "hil_pass",
+            "nav2_route_execution_success",
+        ),
+        blocked_reasons,
+    )
+    _append_optional_false_fields(
+        after_jog_base_status,
+        "same_session_pc_command_after_jog_top_level",
+        (
+            "safe_to_control",
+            "delivery_success",
+            "primary_actions_enabled",
+            "robot_control_executed",
+            "hil_pass",
+            "sends_motion_commands",
+        ),
+        blocked_reasons,
+    )
+
+    requested_direction = _safe_string(
+        pc_first_jog_artifact.get("requested_direction"),
+        "same_session_pc_command_requested_direction_invalid",
+        blocked_reasons,
+    )
+    applied_direction = _safe_string(
+        pc_first_jog_artifact.get("applied_direction"),
+        "same_session_pc_command_applied_direction_invalid",
+        blocked_reasons,
+    )
+    clamped_speed = _safe_float(
+        pc_first_jog_artifact.get("clamped_speed_mps"),
+        "same_session_pc_command_clamped_speed_invalid",
+        blocked_reasons,
+    )
+    clamped_duration = _safe_int(
+        pc_first_jog_artifact.get("clamped_duration_ms"),
+        "same_session_pc_command_clamped_duration_invalid",
+        blocked_reasons,
+    )
+    checklist_confirmed = _safe_bool(
+        pc_first_jog_artifact.get("confirm_hil_checklist"),
+        "same_session_pc_command_checklist_invalid",
+        blocked_reasons,
+    )
+    evidence_capture_status = _safe_string(
+        pc_first_jog_artifact.get("evidence_capture_status"),
+        "same_session_pc_command_evidence_capture_status_invalid",
+        blocked_reasons,
+    )
+    if requested_direction not in {"forward", "back", "left", "right", "stop"}:
+        blocked_reasons.append("same_session_pc_command_requested_direction_unexpected")
+    if applied_direction not in {"forward", "back", "left", "right", "stop"}:
+        blocked_reasons.append("same_session_pc_command_applied_direction_unexpected")
+    if clamped_speed is None or clamped_speed <= 0.0:
+        blocked_reasons.append("same_session_pc_command_clamped_speed_not_positive")
+    if clamped_duration is None or clamped_duration <= 0:
+        blocked_reasons.append("same_session_pc_command_clamped_duration_missing")
+    if checklist_confirmed is not True:
+        blocked_reasons.append("same_session_pc_command_checklist_not_confirmed")
+    if evidence_capture_status != "captured":
+        blocked_reasons.append("same_session_pc_command_evidence_not_captured")
+
+    remote_motion_key_values = pc_first_jog_artifact.get("remote_motion_key_values")
+    if not isinstance(remote_motion_key_values, dict):
+        blocked_reasons.append("same_session_pc_command_remote_motion_key_values_missing")
+        remote_motion_key_values = {}
+    remote_lr_nonzero = _safe_string_bool(
+        remote_motion_key_values.get("wheel_feedback_lr_nonzero_proven"),
+        "same_session_pc_command_remote_lr_nonzero_invalid",
+        blocked_reasons,
+    )
+    nonzero_frame_count = _safe_int(
+        remote_motion_key_values.get("wheel_feedback_nonzero_frame_count"),
+        "same_session_pc_command_nonzero_frame_count_invalid",
+        blocked_reasons,
+    )
+    latest_left = _safe_float(
+        remote_motion_key_values.get("wheel_feedback_latest_left_speed"),
+        "same_session_pc_command_latest_left_invalid",
+        blocked_reasons,
+    )
+    latest_right = _safe_float(
+        remote_motion_key_values.get("wheel_feedback_latest_right_speed"),
+        "same_session_pc_command_latest_right_invalid",
+        blocked_reasons,
+    )
+    feedback_during_motion_attempted = _safe_string_bool(
+        remote_motion_key_values.get("feedback_during_motion_attempted"),
+        "same_session_pc_command_feedback_during_motion_attempted_invalid",
+        blocked_reasons,
+    )
+    feedback_after_stop_attempted = _safe_string_bool(
+        remote_motion_key_values.get("feedback_after_stop_attempted"),
+        "same_session_pc_command_feedback_after_stop_attempted_invalid",
+        blocked_reasons,
+    )
+    manual_command_executed = _safe_string_bool(
+        remote_motion_key_values.get("manual_command_executed"),
+        "same_session_pc_command_manual_command_executed_invalid",
+        blocked_reasons,
+    )
+    auto_stop_executed = _safe_string_bool(
+        remote_motion_key_values.get("auto_stop_executed"),
+        "same_session_pc_command_auto_stop_executed_invalid",
+        blocked_reasons,
+    )
+    if remote_lr_nonzero is not True:
+        blocked_reasons.append("same_session_pc_command_remote_lr_nonzero_not_true")
+    if nonzero_frame_count is None or nonzero_frame_count <= 0:
+        blocked_reasons.append("same_session_pc_command_nonzero_frame_count_missing")
+    if latest_left is None or latest_left == 0.0:
+        blocked_reasons.append("same_session_pc_command_latest_left_zero_or_missing")
+    if latest_right is None or latest_right == 0.0:
+        blocked_reasons.append("same_session_pc_command_latest_right_zero_or_missing")
+    if feedback_during_motion_attempted is not True:
+        blocked_reasons.append("same_session_pc_command_feedback_during_motion_not_true")
+    if feedback_after_stop_attempted is not True:
+        blocked_reasons.append("same_session_pc_command_feedback_after_stop_not_true")
+    if manual_command_executed is not True:
+        blocked_reasons.append("same_session_pc_command_manual_command_not_executed")
+    if auto_stop_executed is not True:
+        blocked_reasons.append("same_session_pc_command_auto_stop_not_executed")
+
+    feedback_ack = after_jog_base_status.get("feedback_ack")
+    feedback_readback = after_jog_base_status.get("feedback_readback")
+    feedback_samples_latest = after_jog_base_status.get("feedback_samples_latest")
+    if not isinstance(feedback_ack, dict):
+        blocked_reasons.append("same_session_pc_command_after_jog_feedback_ack_missing")
+        feedback_ack = {}
+    if not isinstance(feedback_readback, dict):
+        blocked_reasons.append("same_session_pc_command_after_jog_feedback_readback_missing")
+        feedback_readback = {}
+    if not isinstance(feedback_samples_latest, dict):
+        blocked_reasons.append("same_session_pc_command_after_jog_feedback_samples_latest_missing")
+        feedback_samples_latest = {}
+    _append_optional_false_fields(
+        feedback_readback,
+        "same_session_pc_command_after_jog_feedback_readback",
+        (
+            "safe_to_control",
+            "delivery_success",
+            "primary_actions_enabled",
+            "robot_control_executed",
+            "hil_pass",
+            "sends_motion_commands",
+        ),
+        blocked_reasons,
+    )
+    _append_optional_false_fields(
+        feedback_samples_latest,
+        "same_session_pc_command_after_jog_feedback_samples_latest",
+        (
+            "safe_to_control",
+            "delivery_success",
+            "primary_actions_enabled",
+            "robot_control_executed",
+            "hil_pass",
+            "sends_motion_commands",
+        ),
+        blocked_reasons,
+    )
+    ack_t1001_observed = _safe_bool(
+        feedback_ack.get("t1001_observed"),
+        "same_session_pc_command_after_jog_t1001_observed_invalid",
+        blocked_reasons,
+    )
+    ack_source = _safe_string(
+        feedback_ack.get("source"),
+        "same_session_pc_command_after_jog_feedback_source_invalid",
+        blocked_reasons,
+    )
+    if ack_t1001_observed is not True:
+        blocked_reasons.append("same_session_pc_command_after_jog_t1001_not_observed")
+    if ack_source != "fresh_readback":
+        blocked_reasons.append("same_session_pc_command_after_jog_feedback_source_not_fresh_readback")
+
+    readback_status = _safe_string(
+        feedback_readback.get("t1001_feedback_status"),
+        "same_session_pc_command_after_jog_feedback_status_invalid",
+        blocked_reasons,
+    )
+    readback_lr_nonzero = _safe_bool(
+        feedback_readback.get("wheel_feedback_lr_nonzero_proven"),
+        "same_session_pc_command_after_jog_lr_nonzero_invalid",
+        blocked_reasons,
+    )
+    readback_sends_commands = _safe_bool(
+        after_jog_base_status.get("readback_sends_commands"),
+        "same_session_pc_command_after_jog_readback_sends_commands_invalid",
+        blocked_reasons,
+    )
+    latest_pair = None
+    wheel_feedback_summary = feedback_readback.get("wheel_feedback_summary")
+    if isinstance(wheel_feedback_summary, dict):
+        latest_pair = wheel_feedback_summary.get("latest_pair")
+    if not isinstance(latest_pair, dict):
+        blocked_reasons.append("same_session_pc_command_after_jog_latest_pair_missing")
+        latest_pair = {}
+    pair_source = _safe_string(
+        latest_pair.get("source"),
+        "same_session_pc_command_after_jog_latest_pair_source_invalid",
+        blocked_reasons,
+    )
+    after_left = _safe_float(
+        latest_pair.get("left_speed"),
+        "same_session_pc_command_after_jog_latest_pair_left_invalid",
+        blocked_reasons,
+    )
+    after_right = _safe_float(
+        latest_pair.get("right_speed"),
+        "same_session_pc_command_after_jog_latest_pair_right_invalid",
+        blocked_reasons,
+    )
+    if readback_status != "observed":
+        blocked_reasons.append("same_session_pc_command_after_jog_feedback_status_not_observed")
+    if readback_lr_nonzero is not False:
+        blocked_reasons.append("same_session_pc_command_after_jog_lr_nonzero_not_false")
+    if readback_sends_commands is not True:
+        blocked_reasons.append("same_session_pc_command_after_jog_readback_sends_commands_not_true")
+    if pair_source != "vendor_t1001_L_R":
+        blocked_reasons.append("same_session_pc_command_after_jog_latest_pair_source_mismatch")
+    if after_left is None or after_left != 0.0:
+        blocked_reasons.append("same_session_pc_command_after_jog_latest_pair_left_not_zero")
+    if after_right is None or after_right != 0.0:
+        blocked_reasons.append("same_session_pc_command_after_jog_latest_pair_right_not_zero")
+
+    freshness = feedback_samples_latest.get("freshness")
+    if not isinstance(freshness, dict):
+        blocked_reasons.append("same_session_pc_command_after_jog_freshness_missing")
+        freshness = {}
+    freshness_status = _safe_string(
+        freshness.get("status"),
+        "same_session_pc_command_after_jog_freshness_status_invalid",
+        blocked_reasons,
+    )
+    latest_summary_sends_commands = _safe_bool(
+        feedback_samples_latest.get("readback_sends_commands"),
+        "same_session_pc_command_after_jog_feedback_samples_readback_sends_commands_invalid",
+        blocked_reasons,
+    )
+    if freshness_status not in {"fresh", "stale"}:
+        blocked_reasons.append("same_session_pc_command_after_jog_freshness_status_unexpected")
+    if latest_summary_sends_commands is not False:
+        blocked_reasons.append("same_session_pc_command_after_jog_feedback_samples_readback_sends_commands_not_false")
+
+    latest_nonzero_pair = None
+    if latest_left is not None and latest_right is not None:
+        latest_nonzero_pair = {
+            "phase": "motion_window",
+            "left_speed": latest_left,
+            "right_speed": latest_right,
+            "sign_pattern": _wheel_sign_pattern(latest_left, latest_right),
+        }
+    after_jog_pair_summary = None
+    if after_left is not None and after_right is not None:
+        after_jog_pair_summary = {
+            "phase": "after_jog_readback_latest",
+            "left_speed": after_left,
+            "right_speed": after_right,
+            "sign_pattern": _wheel_sign_pattern(after_left, after_right),
+        }
+    present = (
+        requested_direction in {"forward", "back", "left", "right", "stop"}
+        and applied_direction in {"forward", "back", "left", "right", "stop"}
+        and clamped_speed is not None
+        and clamped_speed > 0.0
+        and clamped_duration is not None
+        and clamped_duration > 0
+        and checklist_confirmed is True
+        and evidence_capture_status == "captured"
+        and remote_lr_nonzero is True
+        and nonzero_frame_count is not None
+        and nonzero_frame_count > 0
+        and latest_left is not None
+        and latest_left != 0.0
+        and latest_right is not None
+        and latest_right != 0.0
+        and feedback_during_motion_attempted is True
+        and feedback_after_stop_attempted is True
+        and manual_command_executed is True
+        and auto_stop_executed is True
+        and ack_t1001_observed is True
+        and ack_source == "fresh_readback"
+        and readback_status == "observed"
+        and readback_lr_nonzero is False
+        and readback_sends_commands is True
+        and pair_source == "vendor_t1001_L_R"
+        and after_left == 0.0
+        and after_right == 0.0
+        and freshness_status in {"fresh", "stale"}
+        and latest_summary_sends_commands is False
+    )
+    summary = {
+        "source_schema": EXPECTED_SCHEMAS["robot_control_base_command_proxy"],
+        "after_jog_source_schema": EXPECTED_SCHEMAS["base_status"],
+        "historical_same_session_material": True,
+        "current_live_rerun": False,
+        "requested_direction": requested_direction,
+        "applied_direction": applied_direction,
+        "clamped_speed_mps": clamped_speed,
+        "clamped_duration_ms": clamped_duration,
+        "checklist_confirmed": checklist_confirmed is True,
+        "evidence_capture_status": evidence_capture_status,
+        "wheel_feedback_lr_nonzero_material_present": remote_lr_nonzero is True,
+        "motion_window_nonzero_frame_count": nonzero_frame_count,
+        "latest_nonzero_pair": latest_nonzero_pair,
+        "feedback_during_motion_attempted": feedback_during_motion_attempted is True,
+        "feedback_after_stop_attempted": feedback_after_stop_attempted is True,
+        "manual_command_executed": manual_command_executed is True,
+        "auto_stop_executed": auto_stop_executed is True,
+        "after_jog_t1001_observed": ack_t1001_observed is True,
+        "after_jog_feedback_source": ack_source,
+        "after_jog_latest_pair": after_jog_pair_summary,
+        "after_jog_wheel_feedback_lr_zero_readback": (
+            readback_lr_nonzero is False and after_left == 0.0 and after_right == 0.0
+        ),
+        "after_jog_feedback_samples_freshness_status": freshness_status,
+        "after_jog_readback_sends_commands": readback_sends_commands is True,
+        "after_jog_feedback_samples_latest_readback_sends_commands": latest_summary_sends_commands,
+        "material_ready_not_hil_pass": present,
+    }
+    return present, summary
+
+
 def _parse_manual_hil_gate_current_evidence(
     gate_decision: dict[str, Any] | None,
     stop_safety_smoke: dict[str, Any] | None,
@@ -3353,6 +4022,9 @@ def build_motion_map_hil_material_bundle(
     manual_hil_gate_feedback_samples_latest: dict[str, Any] | None = None,
     manual_hil_gate_operator_report_latest: dict[str, Any] | None = None,
     manual_hil_gate_robot_control_summary: dict[str, Any] | None = None,
+    same_session_wheel_feedback: dict[str, Any] | None = None,
+    same_session_pc_first_jog: dict[str, Any] | None = None,
+    same_session_pc_after_jog_base_status: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """把历史 motion+map 材料压成可回归的安全 bundle。"""
     blocked_reasons: list[str] = []
@@ -3464,6 +4136,19 @@ def build_motion_map_hil_material_bundle(
         manual_hil_gate_robot_control_summary,
         blocked_reasons,
     )
+    same_session_wheel_feedback_present, same_session_wheel_feedback_summary = (
+        _parse_same_session_wheel_feedback_material(
+            same_session_wheel_feedback,
+            blocked_reasons,
+        )
+    )
+    same_session_pc_command_present, same_session_pc_command_summary = (
+        _parse_same_session_pc_command_material(
+            same_session_pc_first_jog,
+            same_session_pc_after_jog_base_status,
+            blocked_reasons,
+        )
+    )
 
     run_tokens = {token for token in (operator_run_token, field_run_token, manual_run_token) if token is not None}
     if len(run_tokens) != 1:
@@ -3485,6 +4170,8 @@ def build_motion_map_hil_material_bundle(
         and base_feedback_latest_present
         and status == READY_STATUS
     )
+    same_session_wheel_feedback_ready = same_session_wheel_feedback_present and status == READY_STATUS
+    same_session_pc_command_ready = same_session_pc_command_present and status == READY_STATUS
     summary.update(
         {
             "same_run_material_present": status == READY_STATUS,
@@ -3787,6 +4474,168 @@ def build_motion_map_hil_material_bundle(
                 manual_hil_gate_present and status == READY_STATUS
             ),
             "manual_hil_gate_current_evidence_summary": manual_hil_gate_summary,
+            "same_session_wheel_feedback_material_present": same_session_wheel_feedback_ready,
+            "same_session_wheel_feedback_material_status": (
+                SAME_SESSION_WHEEL_FEEDBACK_READY_STATUS
+                if same_session_wheel_feedback_ready
+                else SAME_SESSION_WHEEL_FEEDBACK_BLOCKED_STATUS
+            ),
+            "same_session_wheel_feedback_lr_nonzero_material_present": (
+                same_session_wheel_feedback_ready
+                and isinstance(same_session_wheel_feedback_summary, dict)
+                and same_session_wheel_feedback_summary.get("latest_nonzero_pair") is not None
+            ),
+            "same_session_wheel_feedback_latest_nonzero_pair": (
+                same_session_wheel_feedback_summary.get("latest_nonzero_pair")
+                if isinstance(same_session_wheel_feedback_summary, dict)
+                else None
+            ),
+            "same_session_wheel_feedback_motion_window_nonzero_pair_count": (
+                same_session_wheel_feedback_summary.get("nonzero_frame_count")
+                if isinstance(same_session_wheel_feedback_summary, dict)
+                else None
+            ),
+            "same_session_wheel_feedback_motion_window_t1001_count": (
+                same_session_wheel_feedback_summary.get("frame_count")
+                if isinstance(same_session_wheel_feedback_summary, dict)
+                else None
+            ),
+            "same_session_wheel_feedback_feedback_request_t130_observed": (
+                same_session_wheel_feedback_summary.get("feedback_request_t130_observed") is True
+                if isinstance(same_session_wheel_feedback_summary, dict)
+                else False
+            ),
+            "same_session_wheel_feedback_current_live_rerun": False,
+            "same_session_wheel_feedback_summary": same_session_wheel_feedback_summary,
+            "same_session_hil_acceptance_status": (
+                SAME_SESSION_HIL_ACCEPTANCE_STATUS if same_session_wheel_feedback_ready else None
+            ),
+            "same_session_hil_acceptance_missing_fields": (
+                list(SAME_SESSION_HIL_ACCEPTANCE_MISSING_FIELDS)
+                if same_session_wheel_feedback_ready
+                else []
+            ),
+            "same_session_hil_acceptance_ready_not_hil_pass": same_session_wheel_feedback_ready,
+            "same_session_pc_command_material_present": same_session_pc_command_ready,
+            "same_session_pc_command_material_status": (
+                SAME_SESSION_PC_COMMAND_READY_STATUS
+                if same_session_pc_command_ready
+                else SAME_SESSION_PC_COMMAND_BLOCKED_STATUS
+            ),
+            "same_session_pc_command_requested_direction": (
+                same_session_pc_command_summary.get("requested_direction")
+                if isinstance(same_session_pc_command_summary, dict)
+                else None
+            ),
+            "same_session_pc_command_applied_direction": (
+                same_session_pc_command_summary.get("applied_direction")
+                if isinstance(same_session_pc_command_summary, dict)
+                else None
+            ),
+            "same_session_pc_command_clamped_speed_mps": (
+                same_session_pc_command_summary.get("clamped_speed_mps")
+                if isinstance(same_session_pc_command_summary, dict)
+                else None
+            ),
+            "same_session_pc_command_clamped_duration_ms": (
+                same_session_pc_command_summary.get("clamped_duration_ms")
+                if isinstance(same_session_pc_command_summary, dict)
+                else None
+            ),
+            "same_session_pc_command_checklist_confirmed": (
+                same_session_pc_command_summary.get("checklist_confirmed") is True
+                if isinstance(same_session_pc_command_summary, dict)
+                else False
+            ),
+            "same_session_pc_command_evidence_capture_status": (
+                same_session_pc_command_summary.get("evidence_capture_status")
+                if isinstance(same_session_pc_command_summary, dict)
+                else None
+            ),
+            "same_session_pc_command_wheel_feedback_lr_nonzero_material_present": (
+                same_session_pc_command_ready
+                and isinstance(same_session_pc_command_summary, dict)
+                and same_session_pc_command_summary.get("wheel_feedback_lr_nonzero_material_present") is True
+            ),
+            "same_session_pc_command_motion_window_nonzero_frame_count": (
+                same_session_pc_command_summary.get("motion_window_nonzero_frame_count")
+                if isinstance(same_session_pc_command_summary, dict)
+                else None
+            ),
+            "same_session_pc_command_latest_nonzero_pair": (
+                same_session_pc_command_summary.get("latest_nonzero_pair")
+                if isinstance(same_session_pc_command_summary, dict)
+                else None
+            ),
+            "same_session_pc_command_feedback_during_motion_attempted": (
+                same_session_pc_command_summary.get("feedback_during_motion_attempted") is True
+                if isinstance(same_session_pc_command_summary, dict)
+                else False
+            ),
+            "same_session_pc_command_feedback_after_stop_attempted": (
+                same_session_pc_command_summary.get("feedback_after_stop_attempted") is True
+                if isinstance(same_session_pc_command_summary, dict)
+                else False
+            ),
+            "same_session_pc_command_manual_command_executed": (
+                same_session_pc_command_summary.get("manual_command_executed") is True
+                if isinstance(same_session_pc_command_summary, dict)
+                else False
+            ),
+            "same_session_pc_command_auto_stop_executed": (
+                same_session_pc_command_summary.get("auto_stop_executed") is True
+                if isinstance(same_session_pc_command_summary, dict)
+                else False
+            ),
+            "same_session_pc_command_after_jog_t1001_observed": (
+                same_session_pc_command_summary.get("after_jog_t1001_observed") is True
+                if isinstance(same_session_pc_command_summary, dict)
+                else False
+            ),
+            "same_session_pc_command_after_jog_feedback_source": (
+                same_session_pc_command_summary.get("after_jog_feedback_source")
+                if isinstance(same_session_pc_command_summary, dict)
+                else None
+            ),
+            "same_session_pc_command_after_jog_latest_pair": (
+                same_session_pc_command_summary.get("after_jog_latest_pair")
+                if isinstance(same_session_pc_command_summary, dict)
+                else None
+            ),
+            "same_session_pc_command_after_jog_wheel_feedback_lr_zero_readback": (
+                same_session_pc_command_summary.get("after_jog_wheel_feedback_lr_zero_readback") is True
+                if isinstance(same_session_pc_command_summary, dict)
+                else False
+            ),
+            "same_session_pc_command_after_jog_feedback_samples_freshness_status": (
+                same_session_pc_command_summary.get("after_jog_feedback_samples_freshness_status")
+                if isinstance(same_session_pc_command_summary, dict)
+                else None
+            ),
+            "same_session_pc_command_after_jog_readback_sends_commands": (
+                same_session_pc_command_summary.get("after_jog_readback_sends_commands") is True
+                if isinstance(same_session_pc_command_summary, dict)
+                else False
+            ),
+            "same_session_pc_command_readback_summary": (
+                {
+                    "after_jog_t1001_observed": same_session_pc_command_summary.get("after_jog_t1001_observed"),
+                    "after_jog_feedback_source": same_session_pc_command_summary.get("after_jog_feedback_source"),
+                    "after_jog_latest_pair": same_session_pc_command_summary.get("after_jog_latest_pair"),
+                    "after_jog_wheel_feedback_lr_zero_readback": (
+                        same_session_pc_command_summary.get("after_jog_wheel_feedback_lr_zero_readback")
+                    ),
+                    "after_jog_feedback_samples_freshness_status": (
+                        same_session_pc_command_summary.get("after_jog_feedback_samples_freshness_status")
+                    ),
+                    "after_jog_readback_sends_commands": (
+                        same_session_pc_command_summary.get("after_jog_readback_sends_commands")
+                    ),
+                }
+                if isinstance(same_session_pc_command_summary, dict)
+                else None
+            ),
+            "same_session_pc_command_summary": same_session_pc_command_summary,
         }
     )
     _ensure_summary_is_safe(summary)
@@ -3839,6 +4688,11 @@ def build_motion_map_hil_material_bundle_from_files(paths: dict[str, Path]) -> d
         )
         manual_hil_gate_robot_control_summary = _load_json_object(
             paths["manual_hil_gate_robot_control_summary_json"]
+        )
+        same_session_wheel_feedback = _load_json_object(paths["same_session_wheel_feedback_json"])
+        same_session_pc_first_jog = _load_json_object(paths["same_session_pc_first_jog_json"])
+        same_session_pc_after_jog_base_status = _load_json_object(
+            paths["same_session_pc_after_jog_base_status_json"]
         )
         # 这里显式探测 PGM 文件存在与 header，可把 map 配对缺口尽早转成 blocked。
         _read_pgm_header(paths["field_map_pgm"])
@@ -3906,6 +4760,9 @@ def build_motion_map_hil_material_bundle_from_files(paths: dict[str, Path]) -> d
         manual_hil_gate_feedback_samples_latest=manual_hil_gate_feedback_samples_latest,
         manual_hil_gate_operator_report_latest=manual_hil_gate_operator_report_latest,
         manual_hil_gate_robot_control_summary=manual_hil_gate_robot_control_summary,
+        same_session_wheel_feedback=same_session_wheel_feedback,
+        same_session_pc_first_jog=same_session_pc_first_jog,
+        same_session_pc_after_jog_base_status=same_session_pc_after_jog_base_status,
     )
 
 

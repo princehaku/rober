@@ -1,0 +1,87 @@
+{
+  "boundary_statement": "Future CLI fallback captures export structured poses; historic 21:57 replay remains partial because saved stdout_tail only contains 14 complete pose blocks.",
+  "calls_base_manual": false,
+  "cli_fallback_structured_path_pose_export_ready": true,
+  "delivery_success": false,
+  "fallback_mode": "ros2_cli_action_send_goal",
+  "generated_at": "2026-07-12T18:09:57.710921+00:00",
+  "hil_pass": false,
+  "historic_authoritative_path_point_count": 21,
+  "historic_full_21_pose_replay_from_saved_artifact_available": false,
+  "historic_minimum_unmaterialized_path_pose_count": 7,
+  "historic_path_goal_response_has_stdout_tail": false,
+  "historic_path_goal_response_has_structured_poses": false,
+  "historic_source_artifact": "sprints/2026.07.12_21-57_o3_radar_status_baudrate_readback_repair/artifacts/algorithm/live_o10_reuse_existing_lidar_lifecycle_path_proof_after_fallback.raw.json",
+  "historic_stdout_tail_structured_pose_count": 14,
+  "historic_stdout_tail_truncated_full_pose_replay_unavailable": true,
+  "historic_top_level_path_preview_point_count": 0,
+  "historic_top_level_path_structured_pose_count": 0,
+  "next_evidence_required": "rerun strict no-motion ComputePathToPose capture with updated helper to obtain full 21 structured poses",
+  "okr_credit_boundary": "helper_export_readiness_only_no_okr_percentage_change",
+  "owner": "robot-algorithm-engineer",
+  "path_generation_boundary": "explicit_opt_in_compute_path_to_pose_cli_action_no_motion",
+  "path_preview_frame_id": "map",
+  "path_preview_point_count": 2,
+  "path_preview_source_point_count": 2,
+  "path_structured_pose_count": 2,
+  "publishes_cmd_vel": false,
+  "robot_control_executed": false,
+  "route_execution_success": false,
+  "runs_controller_or_bt": false,
+  "runs_navigate_to_pose": false,
+  "safe_to_control": false,
+  "sample_cli_parse": {
+    "action_name": "/compute_path_to_pose",
+    "first_pose": {
+      "frame_id": "map",
+      "qw": 1.0,
+      "qx": 0.0,
+      "qy": 0.0,
+      "qz": 0.0,
+      "source_index": 0,
+      "stamp": {
+        "nanosec": 698275634,
+        "sec": 1783868111
+      },
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0
+    },
+    "last_pose": {
+      "frame_id": "map",
+      "qw": 1.0,
+      "qx": 0.0,
+      "qy": 0.0,
+      "qz": 0.0,
+      "source_index": 1,
+      "stamp": {
+        "nanosec": 698275634,
+        "sec": 1783868111
+      },
+      "x": 0.8,
+      "y": 0.0,
+      "z": 0.0
+    },
+    "path_generated": true,
+    "path_point_count": 2,
+    "path_preview_points": [
+      {
+        "frame_id": "map",
+        "source_index": 0,
+        "x": 0.0,
+        "y": 0.0
+      },
+      {
+        "frame_id": "map",
+        "source_index": 1,
+        "x": 0.8,
+        "y": 0.0
+      }
+    ],
+    "path_structured_pose_count": 2
+  },
+  "schema": "trashbot.cli_full_path_pose_export_summary.v1",
+  "sprint": "sprints/2026.07.13_02-00_o3_cli_full_path_pose_export",
+  "strict_no_motion": true,
+  "uses_base_uart": false
+}

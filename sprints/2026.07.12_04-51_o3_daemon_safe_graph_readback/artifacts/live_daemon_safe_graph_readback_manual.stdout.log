@@ -1,0 +1,48 @@
+=== daemon_status ===
+The daemon is running
+RC=0
+=== daemon_stop ===
+The daemon has been stopped
+RC=0
+=== daemon_start ===
+The daemon has been started
+RC=0
+=== node_list ===
+/amcl
+/global_costmap/global_costmap
+/lidar_driver
+/lifecycle_manager
+/managed_static_tf_broadcaster
+/planner_server
+/static_transform_publisher_KYH9CFMLpqyhDOdj
+/transform_listener_impl_aaaacd5d2300
+/transform_listener_impl_aaaaf0110eb0
+RC=0
+=== topic_list ===
+/amcl/transition_event
+/amcl_pose
+/battery
+/bond
+/cmd_vel
+/diagnostics
+/global_costmap/costmap
+/global_costmap/costmap_raw
+/global_costmap/costmap_updates
+/global_costmap/footprint
+/global_costmap/global_costmap/transition_event
+/global_costmap/published_footprint
+/imu/data
+/initialpose
+/lidar/raw_packet
+/map
+/map_server/transition_event
+/odom
+/parameter_events
+/particle_cloud
+/plan
+/planner_server/transition_event
+/rosout
+/scan
+/tf
+/tf_static
+RC=0

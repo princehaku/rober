@@ -1,0 +1,138 @@
+{
+  "schema": "trashbot.o1.lidar_device_snapshot.v1",
+  "generated_at_ms": 1783862609454,
+  "phase": "after",
+  "serial_port": "/dev/ttyACM0",
+  "serial_baudrate": 230400,
+  "devices": {
+    "/dev/ttyACM0": {
+      "path": "/dev/ttyACM0",
+      "exists": true,
+      "lexists": true,
+      "is_symlink": false,
+      "realpath": "/dev/ttyACM0",
+      "mode_octal": "0o660",
+      "uid": 0,
+      "gid": 20,
+      "error": null
+    },
+    "/dev/lidar": {
+      "path": "/dev/lidar",
+      "exists": false,
+      "lexists": false,
+      "is_symlink": false,
+      "realpath": null,
+      "mode_octal": null,
+      "uid": null,
+      "gid": null,
+      "error": null
+    },
+    "/dev/serial/by-id/usb-STC_STC_USB_Serial-if00": {
+      "path": "/dev/serial/by-id/usb-STC_STC_USB_Serial-if00",
+      "exists": true,
+      "lexists": true,
+      "is_symlink": true,
+      "realpath": "/dev/ttyACM0",
+      "mode_octal": "0o660",
+      "uid": 0,
+      "gid": 20,
+      "error": null
+    },
+    "/dev/serial/by-path/platform-5200400.usb-usb-0:1:1.0": {
+      "path": "/dev/serial/by-path/platform-5200400.usb-usb-0:1:1.0",
+      "exists": true,
+      "lexists": true,
+      "is_symlink": true,
+      "realpath": "/dev/ttyACM0",
+      "mode_octal": "0o660",
+      "uid": 0,
+      "gid": 20,
+      "error": null
+    }
+  },
+  "processes": {
+    "/dev/ttyACM0": {
+      "lsof": {
+        "command": [
+          "lsof",
+          "-nP",
+          "--",
+          "/dev/ttyACM0"
+        ],
+        "returncode": 0,
+        "stdout_preview": "COMMAND      PID USER   FD   TYPE DEVICE SIZE/OFF NODE NAME\nlidar_dri 550922 root   24u   CHR  166,0      0t0  440 /dev/ttyACM0\n",
+        "stderr_preview": "",
+        "tool_present": true
+      },
+      "fuser": {
+        "command": [
+          "fuser",
+          "-v",
+          "/dev/ttyACM0"
+        ],
+        "returncode": 0,
+        "stdout_preview": " 550922",
+        "stderr_preview": "                     USER        PID ACCESS COMMAND\n/dev/ttyACM0:        root      F.... lidar_driver\n",
+        "tool_present": true
+      }
+    },
+    "/dev/serial/by-id/usb-STC_STC_USB_Serial-if00": {
+      "lsof": {
+        "command": [
+          "lsof",
+          "-nP",
+          "--",
+          "/dev/serial/by-id/usb-STC_STC_USB_Serial-if00"
+        ],
+        "returncode": 0,
+        "stdout_preview": "COMMAND      PID USER   FD   TYPE DEVICE SIZE/OFF NODE NAME\nlidar_dri 550922 root   24u   CHR  166,0      0t0  440 /dev/serial/by-id/../../ttyACM0\n",
+        "stderr_preview": "",
+        "tool_present": true
+      },
+      "fuser": {
+        "command": [
+          "fuser",
+          "-v",
+          "/dev/serial/by-id/usb-STC_STC_USB_Serial-if00"
+        ],
+        "returncode": 0,
+        "stdout_preview": " 550922",
+        "stderr_preview": "                     USER        PID ACCESS COMMAND\n/dev/ttyACM0:        root      F.... lidar_driver\n",
+        "tool_present": true
+      }
+    },
+    "/dev/serial/by-path/platform-5200400.usb-usb-0:1:1.0": {
+      "lsof": {
+        "command": [
+          "lsof",
+          "-nP",
+          "--",
+          "/dev/serial/by-path/platform-5200400.usb-usb-0:1:1.0"
+        ],
+        "returncode": 0,
+        "stdout_preview": "COMMAND      PID USER   FD   TYPE DEVICE SIZE/OFF NODE NAME\nlidar_dri 550922 root   24u   CHR  166,0      0t0  440 /dev/serial/by-path/../../ttyACM0\n",
+        "stderr_preview": "",
+        "tool_present": true
+      },
+      "fuser": {
+        "command": [
+          "fuser",
+          "-v",
+          "/dev/serial/by-path/platform-5200400.usb-usb-0:1:1.0"
+        ],
+        "returncode": 0,
+        "stdout_preview": " 550922",
+        "stderr_preview": "                     USER        PID ACCESS COMMAND\n/dev/ttyACM0:        root      F.... lidar_driver\n",
+        "tool_present": true
+      }
+    }
+  },
+  "safe_to_control": false,
+  "publishes_cmd_vel": false,
+  "calls_base_manual": false,
+  "uses_base_uart": false,
+  "robot_control_executed": false,
+  "route_execution_success": false,
+  "delivery_success": false,
+  "hil_pass": false
+}

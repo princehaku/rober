@@ -85,7 +85,13 @@ class LidarSerialSession:
         self.bytes_read_total = 0
         self.packet_count_total = 0
         self.last_chunk_size = 0
+        self.last_chunk_preview_hex = ""
+        self.unparsed_buffer_size = 0
+        self.unparsed_buffer_preview_hex = ""
         self.last_packet_preview_hex = ""
+        self.read_exception_count = 0
+        self.last_exception_type = ""
+        self.last_exception_message_hint = ""
         self.last_error = ""
 
     def open(self) -> None:
@@ -104,7 +110,8 @@ class LidarSerialSession:
             timeout=0.02,
         )
         try:
-            # WAVE ROVER vendor base_ctrl.py 使用 /dev/ttyACM* @ 230400，并用 A5 60 启动电机。
+            # WAVE ROVER vendor base_ctrl.py 证明 /dev/ttyACM* @ 230400 和 0x54 STC 帧；
+            # A5 60 是本项目既有 LiDAR 启动序列，仍需现场 smoke 证明不能外推为 vendor 结论。
             serial_obj.write(LIDAR_START_COMMAND)
             self.start_command_written = True
         except Exception:
@@ -126,16 +133,22 @@ class LidarSerialSession:
         # read_size 保持可配置，后续真机调参时不需要改解析逻辑。
         try:
             chunk = self._serial.read(int(self.config.read_size)) or b""
-        except Exception:
+        except Exception as exc:
             self.last_error = "serial_read_failed"
+            self.read_exception_count += 1
+            self.last_exception_type = f"{type(exc).__module__}.{type(exc).__name__}"
+            self.last_exception_message_hint = str(exc)[:240]
             raise
         self.last_chunk_size = len(chunk)
+        self.last_chunk_preview_hex = bytes(chunk[:32]).hex(" ")
         if not chunk:
             self.empty_read_count += 1
             return []
         self.bytes_read_total += len(chunk)
         self._buffer += bytes(chunk)
         packets, self._buffer = find_packets(self._buffer)
+        self.unparsed_buffer_size = len(self._buffer)
+        self.unparsed_buffer_preview_hex = self._buffer[:32].hex(" ")
         self.packet_count_total += len(packets)
         if packets:
             self.last_packet_preview_hex = packets[-1][:16].hex(" ")
@@ -177,7 +190,14 @@ class LidarSerialSession:
             "bytes_read_total": self.bytes_read_total,
             "packet_count_total": self.packet_count_total,
             "last_chunk_size": self.last_chunk_size,
+            "last_chunk_preview_hex": self.last_chunk_preview_hex,
+            "raw_bytes_observed": self.bytes_read_total > 0,
+            "unparsed_buffer_size": self.unparsed_buffer_size,
+            "unparsed_buffer_preview_hex": self.unparsed_buffer_preview_hex,
             "last_packet_preview_hex": self.last_packet_preview_hex,
+            "read_exception_count": self.read_exception_count,
+            "last_exception_type": self.last_exception_type,
+            "last_exception_message_hint": self.last_exception_message_hint,
             "last_error": self.last_error,
         }
 
@@ -386,6 +406,7 @@ def main() -> None:
             self.last_scan_range_count = 0
             self.last_scan_preview = scan_preview_from_scan_dict({"ranges": [], "frame_id": self.config.frame_id})
             self.last_diagnostics_written_at = 0.0
+            self.last_serial_error_logged_at = 0.0
             self.started_at = time.time()
             self.scan_aggregator = LidarScanAggregator(
                 frame_id=self.config.frame_id,
@@ -469,7 +490,17 @@ def main() -> None:
                 return [packet]
             if self.serial_session is None:
                 return []
-            return self.serial_session.read_packets()
+            try:
+                return self.serial_session.read_packets()
+            except Exception as exc:  # noqa: BLE001 - 现场串口异常必须落诊断，不能只让节点退出。
+                now = time.time()
+                if now - self.last_serial_error_logged_at >= 1.0:
+                    self.last_serial_error_logged_at = now
+                    self.get_logger().error(
+                        f"LiDAR serial read failed: {type(exc).__module__}.{type(exc).__name__}: {str(exc)[:240]}"
+                    )
+                self._write_diagnostics("serial_read_exception")
+                return []
 
         def _publish_packet(self, packet: bytes) -> None:
             self.parsed_packet_count += 1
@@ -513,6 +544,14 @@ def main() -> None:
                 status = "mock_runtime"
                 next_action = "软件 mock 正常时只能证明解析链路，不能作为真实雷达贴图验收。"
             elif serial.get("bytes_read_total", 0) == 0:
+                if serial.get("read_exception_count", 0) > 0:
+                    return {
+                        "status": "serial_read_exception",
+                        "next_action_plain": (
+                            "LiDAR 串口 read 抛出异常但没有形成 /scan；优先用同一脚本对比 230400 与 150000，"
+                            "并检查 /dev/ttyACM0 ownership、USB 供电/线缆和是否被其他进程抢占。"
+                        ),
+                    }
                 status = "serial_open_but_no_bytes"
                 next_action = "LiDAR 串口已打开且启动命令已写入，但没有读到任何字节；检查雷达供电、线序、波特率或设备节点。"
             elif serial.get("packet_count_total", 0) == 0:
@@ -539,6 +578,18 @@ def main() -> None:
                 "publishes_cmd_vel": False,
                 "robot_control_executed": False,
                 "hil_pass": False,
+                "safe_to_control": False,
+                "calls_base_manual": False,
+                "uses_base_uart": False,
+                "route_execution_success": False,
+                "delivery_success": False,
+                "vendor_readback_boundary": {
+                    "vendor_index": "docs/vendor/VENDOR_INDEX.md",
+                    "wave_rover_lidar_reference": "docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py",
+                    "wave_rover_reference_baudrate": 230400,
+                    "historical_field_baudrate_candidate": 150000,
+                    "dedicated_lidar_vendor_doc_present_in_local_tree": False,
+                },
                 "config": {
                     "serial_port": self.config.serial_port,
                     "serial_baudrate": int(self.config.serial_baudrate),
@@ -569,7 +620,14 @@ def main() -> None:
                     "bytes_read_total": 0,
                     "packet_count_total": 0,
                     "last_chunk_size": 0,
+                    "last_chunk_preview_hex": "",
+                    "raw_bytes_observed": False,
+                    "unparsed_buffer_size": 0,
+                    "unparsed_buffer_preview_hex": "",
                     "last_packet_preview_hex": "",
+                    "read_exception_count": 0,
+                    "last_exception_type": "",
+                    "last_exception_message_hint": "",
                     "last_error": "",
                 },
                 "diagnosis": self._diagnose_driver_state(),

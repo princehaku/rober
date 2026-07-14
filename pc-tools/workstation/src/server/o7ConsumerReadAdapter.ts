@@ -1,4 +1,5 @@
 import { promises as fs } from "node:fs";
+import { createHash } from "node:crypto";
 import path from "node:path";
 import { PROOF_FLAGS } from "../shared/contracts";
 import type {
@@ -13,12 +14,16 @@ import type {
   O7ConsumerFieldMotionEvidencePacketSummary,
   O7ConsumerNav2GoalExecutionEvidenceSummary,
   O7ConsumerOfflineArtifactSeedSmokeSummary,
+  O7ConsumerTaskListAppliedFilters,
+  O7ConsumerTaskListQuery,
   O7ConsumerRouteDeliveryClosurePacketSummary,
   O7ConsumerCurrentFieldEvidenceMaterialSummary,
+  O7ConsumerPcLiveNav2ExecutionMaterialSummary,
   O7ConsumerLocalizationPathMaterialReadbackSummary,
   O7ConsumerCleanBaselineNav2PathMaterialSummary,
   O7ConsumerFieldOperatorConfirmationMaterialSummary,
   O7ConsumerSameTaskFieldMaterialPacketSummary,
+  O7ConsumerSameTaskReplayPacketReadbackSummary,
   O7ConsumerSameTaskRouteExecutionMaterialPacketSummary,
   O7ConsumerRouteExecutionResultDeliveryReadinessSummary,
   O7ConsumerSameTaskMissionEvidenceGateSummary,
@@ -47,6 +52,37 @@ import type {
   O7AnnotationDatasetExportRow,
   O7AnnotationSubmitLabel,
   O7AnnotationSubmitResult,
+  O7ConsumerInferenceInputType,
+  O7ConsumerInferenceRequestBody,
+  O7ConsumerInferenceRequestInput,
+  O7ConsumerInferenceRequestResult,
+  O7ConsumerInferenceRequestedOutput,
+  O7ConsumerDeliveryResultDropoffConfirmationType,
+  O7ConsumerDeliveryResultIntakeRequestBody,
+  O7ConsumerDeliveryResultIntakeResult,
+  O7ConsumerDeliveryResultRecordStatus,
+  O7ConsumerPhoneBrowserProofIntakeRequestBody,
+  O7ConsumerPhoneBrowserProofIntakeResult,
+  O7ConsumerPhoneBrowserTerminalMaterialName,
+  O7ConsumerPhoneBrowserTerminalMaterialSummary,
+  O7ConsumerPhoneBrowserTerminalResultType,
+  O7ConsumerMissionEventAppendRequestBody,
+  O7ConsumerMissionEventAppendResult,
+  O7ConsumerMissionEventType,
+  O7OperatorDropoffActionCaptureRequestBody,
+  O7OperatorDropoffActionCaptureResult,
+  O7ConsumerVoiceTtsDraftRequestBody,
+  O7ConsumerVoiceTtsDraftRequestResult,
+  O7VoiceSpeakerAckEventRequestBody,
+  O7VoiceSpeakerAckEventResult,
+  O7MissionEvidenceBundleExportResult,
+  O7MissionEvidenceBundleSectionSummary,
+  O7ConsumerBoundedRouteGateIntakeRequestBody,
+  O7ConsumerBoundedRouteGateIntakeResult,
+  O7ConsumerBoundedRouteGateMaterialSummary,
+  O7ConsumerBoundedRouteTerminalResultIntakeRequestBody,
+  O7ConsumerBoundedRouteTerminalResultIntakeResult,
+  O7ConsumerBoundedRouteTerminalResultMaterialSummary,
   O7LabelingPreviewResponse,
   O7RouteReplayPreviewResponse,
 } from "../shared/contracts";
@@ -62,18 +98,125 @@ type DetailFieldEvidenceSourceContract =
   O7ConsumerTaskDetailResponse["field_evidence"]["source_contract"];
 type DetailFieldEvidenceSourceOrigin =
   O7ConsumerTaskDetailResponse["field_evidence"]["source_origin"];
+type NormalizedMissionEventAppendPayload = O7ConsumerMissionEventAppendRequestBody & {
+  task_id: string;
+  evidence_refs: string[];
+};
+type NormalizedOperatorDropoffActionCapturePayload = O7OperatorDropoffActionCaptureRequestBody & {
+  task_id: string;
+  event_type: "operator.dropoff_acceptance";
+  summary: string;
+  evidence_refs: string[];
+  operator_action_id: string;
+  operator_display_name: string;
+  metadata: Record<string, string | number | boolean | null>;
+};
+type NormalizedVoiceTtsDraftRequestPayload = O7ConsumerVoiceTtsDraftRequestBody & {
+  task_id: string;
+  event_type: "voice.tts_draft";
+  summary: string;
+  severity: "info";
+  evidence_refs: string[];
+  voice_profile: string;
+  locale: string;
+  metadata: Record<string, string | number | boolean | null>;
+};
+type NormalizedVoiceSpeakerAckEventPayload = O7VoiceSpeakerAckEventRequestBody & {
+  task_id: string;
+  event_type: "voice.speaker_ack" | "voice.speaker_failure";
+  ack_status: "ack" | "failure";
+  summary: string;
+  severity: "info" | "warning";
+  evidence_refs: string[];
+  failure_reason_code: string;
+  metadata: Record<string, string | number | boolean | null>;
+};
+type NormalizedDeliveryResultIntakePayload = O7ConsumerDeliveryResultIntakeRequestBody & {
+  task_id: string;
+  operator_confirmation_present: boolean;
+  evidence_ref: string;
+};
+type NormalizedPhoneBrowserProofIntakePayload = O7ConsumerPhoneBrowserProofIntakeRequestBody & {
+  task_id: string;
+  safe_evidence_ref: string;
+  accepted_materials: O7ConsumerPhoneBrowserTerminalMaterialName[];
+  missing_materials: O7ConsumerPhoneBrowserTerminalMaterialName[];
+  rejected_materials: O7ConsumerPhoneBrowserTerminalMaterialName[];
+  captured_at_utc: string;
+};
+type NormalizedBoundedRouteGateIntakePayload = O7ConsumerBoundedRouteGateIntakeRequestBody & {
+  task_id: string;
+  robot_id: string;
+  safe_refs: string[];
+};
+type NormalizedBoundedRouteTerminalResultIntakePayload =
+  O7ConsumerBoundedRouteTerminalResultIntakeRequestBody & {
+    task_id: string;
+    robot_id: string;
+    source_schema: "trashbot.o5.bounded_route_terminal_result_bridge.v1";
+    source_proof_boundary: "software_proof_o5_bounded_route_terminal_result_bridge_only";
+    route_csv_row_count: 28;
+    path_structured_pose_count: 28;
+    segment_count: 27;
+    safe_evidence_ref: "o5_bounded_route_terminal_result_bridge_summary.json";
+  };
 
 const LIST_SCHEMA = "trashbot.pc_tools_workstation.o7_consumer_task_list.v1" as const;
 const DETAIL_SCHEMA = "trashbot.pc_tools_workstation.o7_consumer_task_detail.v1" as const;
 const ANNOTATION_SUBMIT_SCHEMA = "trashbot.pc_tools_workstation.o7_annotation_submit_result.v1" as const;
 const ANNOTATION_EXPORT_SCHEMA = "trashbot.pc_tools_workstation.o7_annotation_dataset_export_result.v1" as const;
+const INFERENCE_REQUEST_SCHEMA =
+  "trashbot.pc_tools_workstation.o7_consumer_inference_request_result.v1" as const;
+const MISSION_EVENT_APPEND_SCHEMA =
+  "trashbot.pc_tools_workstation.o7_consumer_mission_event_append_result.v1" as const;
+const OPERATOR_DROPOFF_ACTION_CAPTURE_SCHEMA =
+  "trashbot.pc_tools_workstation.o7_operator_dropoff_action_capture_result.v1" as const;
+const VOICE_TTS_DRAFT_REQUEST_SCHEMA =
+  "trashbot.pc_tools_workstation.o7_voice_tts_draft_request_result.v1" as const;
+const VOICE_SPEAKER_ACK_EVENT_SCHEMA =
+  "trashbot.pc_tools_workstation.o7_voice_speaker_ack_event_result.v1" as const;
+const DELIVERY_RESULT_INTAKE_SCHEMA =
+  "trashbot.pc_tools_workstation.o7_consumer_delivery_result_intake_result.v1" as const;
+const PHONE_BROWSER_PROOF_INTAKE_SCHEMA =
+  "trashbot.pc_tools_workstation.o7_phone_browser_proof_intake_result.v1" as const;
+const BOUNDED_ROUTE_GATE_INTAKE_SCHEMA =
+  "trashbot.pc_tools_workstation.o7_bounded_route_gate_intake_result.v1" as const;
+const O7_BOUNDED_ROUTE_GATE_MATERIAL_SCHEMA =
+  "trashbot.pc_tools_workstation.o7_bounded_route_gate_material.v1" as const;
+const BOUNDED_ROUTE_TERMINAL_RESULT_INTAKE_SCHEMA =
+  "trashbot.pc_tools_workstation.o7_bounded_route_terminal_result_intake_result.v1" as const;
+const O7_BOUNDED_ROUTE_TERMINAL_RESULT_MATERIAL_SCHEMA =
+  "trashbot.pc_tools_workstation.o7_bounded_route_terminal_result_material.v1" as const;
+const MISSION_EVIDENCE_BUNDLE_EXPORT_SCHEMA =
+  "trashbot.pc_tools_workstation.o7_mission_evidence_bundle_export_result.v1" as const;
 const REMOTE_LIST_ENDPOINT = "/api/o6/consumer/tasks" as const;
 const REMOTE_DETAIL_ENDPOINT_PREFIX = "/api/o6/consumer/tasks/" as const;
 const REMOTE_LABEL_SUBMIT_ENDPOINT = "/api/o6/archive/labels" as const;
 const REMOTE_LABEL_EXPORT_ENDPOINT_PREFIX = "/api/o6/archive/labels/" as const;
+const REMOTE_INFERENCE_ENDPOINT = "/api/o6/archive/inference" as const;
+const REMOTE_EVENT_APPEND_ENDPOINT = "/api/o6/archive/events" as const;
+const REMOTE_DELIVERY_RESULT_INTAKE_ENDPOINT = "/api/o6/archive/field-evidence" as const;
 const DEFAULT_BASE_URL = "http://127.0.0.1:8088" as const;
 const DEFAULT_LIST_VIEW = "summary" as const;
 const DEFAULT_DETAIL_VIEW = "default" as const;
+const O7_CONSUMER_READ_QUERY_FILTERS_PROOF_SCOPE =
+  "software_proof_o7_consumer_read_query_filters_only" as const;
+const O7_CONSUMER_TASK_LIST_QUERY_KEYS = new Set([
+  "baseUrl",
+  "robot_id",
+  "task_id",
+  "date",
+  "status",
+  "limit",
+  "before_started_at_ms",
+]);
+const O7_CONSUMER_ALLOWED_STATUS = new Set([
+  "all",
+  "completed_mock",
+  "failed_mock",
+  "in_progress_mock",
+  "unknown_not_proven",
+]);
 const DEFAULT_DETAIL_INCLUDE = [
   "trajectory",
   "events",
@@ -95,12 +238,17 @@ const DEFAULT_DETAIL_INCLUDE = [
   "route_execution_result_delivery_readiness",
   "route_delivery_closure_packet",
   "same_task_field_material_packet",
+  "same_task_replay_packet_readback",
+  "bounded_route_execution_gate_material",
+  "bounded_route_terminal_result_material",
   "current_field_evidence_material",
+  "pc_live_nav2_execution_material",
   "clean_baseline_nav2_path_material",
   "localization_path_material_readback",
   "same_task_route_execution_material_packet",
   "same_task_mission_evidence_gate",
   "field_operator_confirmation_material",
+  "phone_browser_terminal_material",
 ] as const;
 const FIELD_EVIDENCE_MANIFEST_SCHEMA = "trashbot.field_evidence_manifest.v1" as const;
 const FIELD_EVIDENCE_CONSUMER_INGEST_SCHEMA =
@@ -144,6 +292,34 @@ const NAV2_GOAL_EXECUTION_EVIDENCE_PROOF_SCOPE =
   "software_proof_nav2_goal_execution_evidence_only" as const;
 const DELIVERY_RESULT_EVIDENCE_SCHEMA = "trashbot.delivery_result_evidence.v1" as const;
 const DELIVERY_RESULT_EVIDENCE_PROOF_SCOPE = "software_proof_delivery_result_evidence_only" as const;
+const O7_DELIVERY_RESULT_INTAKE_PROOF_SCOPE =
+  "software_proof_o7_o6_consumer_delivery_result_intake_only" as const;
+const O7_OPERATOR_DROPOFF_ACTION_CAPTURE_PROOF_SCOPE =
+  "software_proof_o6_o7_operator_dropoff_action_capture_only" as const;
+const O7_VOICE_TTS_DRAFT_REQUEST_PROOF_SCOPE =
+  "software_proof_o6_o7_voice_tts_draft_event_write_only" as const;
+const O7_VOICE_SPEAKER_ACK_EVENT_PROOF_SCOPE =
+  "software_proof_o6_o7_voice_speaker_ack_event_write_only" as const;
+const O6_PHONE_BROWSER_TERMINAL_MATERIAL_SCHEMA =
+  "trashbot.o6.phone_browser_terminal_material.v1" as const;
+const O7_PHONE_BROWSER_TERMINAL_MATERIAL_SCHEMA =
+  "trashbot.pc_tools_workstation.o7_phone_browser_terminal_material.v1" as const;
+const O7_PHONE_BROWSER_PROOF_INTAKE_PROOF_SCOPE =
+  "software_proof_o6_o7_phone_browser_terminal_material_intake_only" as const;
+const O6_BOUNDED_ROUTE_GATE_MATERIAL_SCHEMA =
+  "trashbot.o6.bounded_route_execution_gate_material.v1" as const;
+const O7_BOUNDED_ROUTE_GATE_INTAKE_PROOF_SCOPE =
+  "software_proof_o6_o7_bounded_route_gate_material_intake_only" as const;
+const O6_BOUNDED_ROUTE_TERMINAL_RESULT_MATERIAL_SCHEMA =
+  "trashbot.o6.bounded_route_terminal_result_material.v1" as const;
+const O5_BOUNDED_ROUTE_TERMINAL_RESULT_BRIDGE_SCHEMA =
+  "trashbot.o5.bounded_route_terminal_result_bridge.v1" as const;
+const O5_BOUNDED_ROUTE_TERMINAL_RESULT_BRIDGE_PROOF_SCOPE =
+  "software_proof_o5_bounded_route_terminal_result_bridge_only" as const;
+const O7_BOUNDED_ROUTE_TERMINAL_RESULT_INTAKE_PROOF_SCOPE =
+  "software_proof_o6_o7_bounded_route_terminal_result_intake_only" as const;
+const O7_MISSION_EVIDENCE_BUNDLE_EXPORT_PROOF_SCOPE =
+  "software_proof_o7_o6_mission_evidence_bundle_export_only" as const;
 const O6_ROUTE_EXECUTION_RESULT_DELIVERY_READINESS_SCHEMA =
   "trashbot.o6.route_execution_result_delivery_readiness.v1" as const;
 const ROUTE_EXECUTION_RESULT_DELIVERY_READINESS_PROOF_SCOPE =
@@ -161,6 +337,14 @@ const O6_CURRENT_FIELD_EVIDENCE_MATERIAL_SCHEMA =
   "trashbot.o6.current_field_evidence_material.v1" as const;
 const CURRENT_FIELD_EVIDENCE_MATERIAL_PROOF_SCOPE =
   "software_proof_current_field_evidence_material_only" as const;
+const PC_LIVE_NAV2_EXECUTION_MATERIAL_SCHEMA =
+  "trashbot.pc_live_nav2_execution_material.v1" as const;
+const O6_PC_LIVE_NAV2_EXECUTION_MATERIAL_SCHEMA =
+  "trashbot.o6.pc_live_nav2_execution_material.v1" as const;
+const O7_PC_LIVE_NAV2_EXECUTION_MATERIAL_SCHEMA =
+  "trashbot.pc_tools_workstation.o7_pc_live_nav2_execution_material.v1" as const;
+const PC_LIVE_NAV2_EXECUTION_MATERIAL_PROOF_SCOPE =
+  "software_proof_pc_live_nav2_execution_material_only" as const;
 const CLEAN_BASELINE_NAV2_PATH_MATERIAL_SCHEMA =
   "trashbot.clean_baseline_nav2_path_material.v1" as const;
 const O6_CLEAN_BASELINE_NAV2_PATH_MATERIAL_SCHEMA =
@@ -185,6 +369,13 @@ const O6_SAME_TASK_ROUTE_EXECUTION_MATERIAL_PACKET_SCHEMA =
   "trashbot.o6.same_task_route_execution_material_packet.v1" as const;
 const SAME_TASK_ROUTE_EXECUTION_MATERIAL_PACKET_PROOF_SCOPE =
   "software_proof_same_task_route_execution_material_packet_only" as const;
+const SAME_TASK_REPLAY_PACKET_SOURCE_SCHEMA = "trashbot.o3.same_task_route_replay_packet.v1" as const;
+const O6_SAME_TASK_REPLAY_PACKET_READBACK_SCHEMA =
+  "trashbot.o6.same_task_replay_packet_readback.v1" as const;
+const O7_SAME_TASK_REPLAY_PACKET_READBACK_SCHEMA =
+  "trashbot.pc_tools_workstation.o7_same_task_replay_packet_readback.v1" as const;
+const SAME_TASK_REPLAY_PACKET_READBACK_PROOF_SCOPE =
+  "software_proof_o6_o7_same_task_replay_packet_readback_only" as const;
 const SAME_TASK_MISSION_EVIDENCE_GATE_SCHEMA = "trashbot.same_task_mission_evidence_gate.v1" as const;
 const O6_SAME_TASK_MISSION_EVIDENCE_GATE_SCHEMA =
   "trashbot.o6.same_task_mission_evidence_gate.v1" as const;
@@ -213,6 +404,93 @@ const MVP_REF_SAMPLE_LIMIT = 12;
 const MVP_LABEL_SAMPLE_LIMIT = 5;
 const O7_ANNOTATION_LABEL_LIMIT = 5;
 const O7_ANNOTATION_EXPORT_ROW_LIMIT = 5;
+const O7_INFERENCE_MAX_BODY_BYTES = 16 * 1024;
+const O7_INFERENCE_INPUT_LIMIT = 4;
+const O7_INFERENCE_METADATA_KEY_LIMIT = 8;
+const O7_INFERENCE_METADATA_BYTES_LIMIT = 1024;
+const O7_INFERENCE_ALLOWED_OUTPUTS = new Set(["elevator_door_state", "floor_recognition"]);
+const O7_INFERENCE_ALLOWED_INPUT_TYPES = new Set(["image_ref", "frame_ref", "snapshot_ref", "metadata_only"]);
+const O7_MISSION_EVENT_MAX_BODY_BYTES = 16 * 1024;
+const O7_MISSION_EVENT_REF_LIMIT = 8;
+const O7_MISSION_EVENT_METADATA_KEY_LIMIT = 16;
+const O7_MISSION_EVENT_METADATA_BYTES_LIMIT = 2048;
+const O7_MISSION_EVENT_ALLOWED_TYPES = new Set([
+  "operator.note",
+  "operator.dropoff_acceptance",
+  "task.failure",
+  "task.recovery",
+  "route.frame",
+  "route.pose",
+  "elevator.door_state",
+  "elevator.floor_evidence",
+  "perception.detected_object",
+  "voice.tts_draft",
+  "voice.speaker_ack",
+  "voice.speaker_failure",
+]);
+const O7_DELIVERY_RESULT_MAX_BODY_BYTES = 16 * 1024;
+const O7_DELIVERY_RESULT_METADATA_KEY_LIMIT = 16;
+const O7_DELIVERY_RESULT_METADATA_BYTES_LIMIT = 2048;
+const O7_DELIVERY_RESULT_RECORD_STATUSES = new Set([
+  "ready_not_delivery_proof",
+  "operator_confirmed_not_delivery_proof",
+  "failed_not_delivery_proof",
+  "blocked_not_proven",
+]);
+const O7_DELIVERY_RESULT_DROPOFF_TYPES = new Set([
+  "operator_visual_check",
+  "operator_terminal_claim",
+  "local_mock_receipt",
+  "none",
+]);
+const O7_PHONE_BROWSER_PROOF_MAX_BODY_BYTES = 16 * 1024;
+const O7_PHONE_BROWSER_METADATA_KEY_LIMIT = 16;
+const O7_PHONE_BROWSER_METADATA_BYTES_LIMIT = 2048;
+const O7_BOUNDED_ROUTE_GATE_MAX_BODY_BYTES = 12 * 1024;
+const O7_BOUNDED_ROUTE_GATE_METADATA_KEY_LIMIT = 12;
+const O7_BOUNDED_ROUTE_GATE_METADATA_BYTES_LIMIT = 1024;
+const O7_BOUNDED_ROUTE_GATE_FIXED = {
+  packet_id: "packet_o3_28_pose_same_task_replay_7d57826142b0c79c",
+  task_id: "task_o3_28_pose_fixed_route_consumer_20260713_0402",
+  route_intent_id: "route_intent_20260713_0402_from_20260713_0300_28_pose_structured_path",
+  execution_plan_status: "blocked_pending_live_safety_gate",
+  route_csv_row_count: 28,
+  path_structured_pose_count: 28,
+  segment_count: 27,
+  global_abort_criteria_count: 11,
+} as const;
+const O7_BOUNDED_ROUTE_GATE_SAFE_REFS = [
+  "controlled_route_execution_gate_record.json",
+  "bounded_route_command_plan.json",
+] as const;
+const O7_BOUNDED_ROUTE_TERMINAL_RESULT_MAX_BODY_BYTES = 12 * 1024;
+const O7_BOUNDED_ROUTE_TERMINAL_RESULT_METADATA_KEY_LIMIT = 12;
+const O7_BOUNDED_ROUTE_TERMINAL_RESULT_METADATA_BYTES_LIMIT = 1024;
+const O7_BOUNDED_ROUTE_TERMINAL_RESULT_FIXED = {
+  task_id: "task_o3_28_pose_fixed_route_consumer_20260713_0402",
+  packet_id: "packet_o3_28_pose_same_task_replay_7d57826142b0c79c",
+  route_intent_id: "route_intent_20260713_0402_from_20260713_0300_28_pose_structured_path",
+  result_code: "mock_route_execution_completed_not_live_delivery",
+  terminal_result_state: "terminal_result_recorded",
+  reconciliation_state: "terminal_result_recorded",
+  route_csv_row_count: 28,
+  path_structured_pose_count: 28,
+  segment_count: 27,
+  source_schema: O5_BOUNDED_ROUTE_TERMINAL_RESULT_BRIDGE_SCHEMA,
+  source_proof_boundary: O5_BOUNDED_ROUTE_TERMINAL_RESULT_BRIDGE_PROOF_SCOPE,
+  safe_evidence_ref: "o5_bounded_route_terminal_result_bridge_summary.json",
+} as const;
+const O7_PHONE_BROWSER_ALLOWED_MATERIALS = new Set([
+  "true_phone_browser_evidence",
+  "diagnostics_mobile_safe_summary",
+  "terminal_result_summary",
+]);
+const O7_PHONE_BROWSER_TERMINAL_RESULT_TYPES = new Set([
+  "operator_terminal_claim",
+  "browser_terminal_claim",
+  "diagnostics_only",
+  "terminal_result_summary",
+]);
 const O6_MEDIA_PREFLIGHT_SECTION_NAMES = ["artifact_media_preflight", "route_replay_mvp", "labeling_mvp"] as const;
 const O6_ARTIFACT_BUNDLE_SECTION_NAMES = [
   "artifact_bundle_readiness",
@@ -246,6 +524,9 @@ const DANGEROUS_TRUE_FIELDS = new Set([
   "safe_to_play",
   "tts_send_enabled",
   "speaker_dispatch_enabled",
+  "real_speaker_ack_proven",
+  "real_voice_api_connected",
+  "real_asr_tts_runtime_connected",
   "real_cloud_db_connected",
   "real_oss_connected",
   "real_cdn_connected",
@@ -256,6 +537,14 @@ const DANGEROUS_TRUE_FIELDS = new Set([
   "sends_to_robot",
   "route_execution_success",
   "hil_pass",
+  "real_gpu_model_connected",
+  "real_external_model_api_connected",
+  "real_model_inference_success",
+  "real_floor_recognition_proven",
+  "real_elevator_door_state_proven",
+  "floor_recognition_proven",
+  "elevator_door_state_proven",
+  "real_operator_action_proven",
 ]);
 
 const MANIFEST_UNSAFE_COPY_PATTERNS = [
@@ -401,6 +690,121 @@ function fixedAnnotationFalseFields() {
   };
 }
 
+function fixedInferenceFalseFields() {
+  // 推理 request action 只证明 local/mock 写入链路，真实模型、电梯识别和楼层识别必须固定 false。
+  return {
+    real_model_inference_success: false as const,
+    real_floor_recognition_proven: false as const,
+    real_elevator_door_state_proven: false as const,
+    ...fixedFalseFields(),
+  };
+}
+
+function fixedMissionEventAppendFalseFields() {
+  // 事件 append 只证明 O6 local/mock 归档写入，不得打开路线执行、HIL、生产云或 OSS 语义。
+  return {
+    route_execution_success: false as const,
+    hil_pass: false as const,
+    real_cloud_db_connected: false as const,
+    real_oss_connected: false as const,
+    ...fixedFalseFields(),
+  };
+}
+
+function fixedOperatorDropoffActionCaptureFalseFields() {
+  // dropoff action capture 只记录 operator 请求写入，不证明真实人工操作、送达、路线、HIL、生产云或控制。
+  return {
+    real_operator_action_proven: false as const,
+    route_execution_success: false as const,
+    hil_pass: false as const,
+    real_cloud_db_connected: false as const,
+    real_oss_connected: false as const,
+    ...fixedFalseFields(),
+  };
+}
+
+function fixedVoiceTtsDraftRequestFalseFields() {
+  // voice/TTS draft 只写文字草稿事件；真实 TTS、喇叭派发、语音 API、控制和送达全部保持关闭。
+  return {
+    tts_send_enabled: false as const,
+    speaker_dispatch_enabled: false as const,
+    real_voice_api_connected: false as const,
+    real_asr_tts_runtime_connected: false as const,
+    route_execution_success: false as const,
+    hil_pass: false as const,
+    real_cloud_db_connected: false as const,
+    real_oss_connected: false as const,
+    ...fixedFalseFields(),
+  };
+}
+
+function fixedVoiceSpeakerAckEventFalseFields() {
+  // speaker ACK/failure 只写 selected-task event；真实喇叭派发、ACK、语音 runtime 和控制全部保持关闭。
+  return {
+    speaker_dispatch_enabled: false as const,
+    real_speaker_ack_proven: false as const,
+    tts_send_enabled: false as const,
+    real_voice_api_connected: false as const,
+    real_asr_tts_runtime_connected: false as const,
+    route_execution_success: false as const,
+    hil_pass: false as const,
+    real_cloud_db_connected: false as const,
+    real_oss_connected: false as const,
+    ...fixedFalseFields(),
+  };
+}
+
+function fixedDeliveryResultIntakeFalseFields() {
+  // delivery result intake 只写 local/mock 证据请求，不提升为路线执行、HIL、生产云或 OSS 成功。
+  return {
+    route_execution_success: false as const,
+    hil_pass: false as const,
+    real_cloud_db_connected: false as const,
+    real_oss_connected: false as const,
+    ...fixedFalseFields(),
+  };
+}
+
+function fixedPhoneBrowserProofIntakeFalseFields() {
+  // phone/browser terminal material 只接收安全摘要，不证明真实手机、送达、路线执行、HIL 或生产云。
+  return {
+    route_execution_success: false as const,
+    hil_pass: false as const,
+    real_cloud_db_connected: false as const,
+    real_oss_connected: false as const,
+    ...fixedFalseFields(),
+  };
+}
+
+function fixedBoundedRouteGateIntakeFalseFields() {
+  // bounded route gate intake 只接收 28-pose 安全摘要，不能被解释成路线执行、交付、HIL 或控制能力。
+  return {
+    route_execution_success: false as const,
+    hil_pass: false as const,
+    ...fixedFalseFields(),
+  };
+}
+
+function fixedBoundedRouteTerminalResultIntakeFalseFields() {
+  // terminal result intake 只记录 mock terminal material，不能提升为真实送达、路线执行、HIL、生产云或控制能力。
+  return {
+    route_execution_success: false as const,
+    hil_pass: false as const,
+    ...fixedFalseFields(),
+  };
+}
+
+function fixedMissionEvidenceBundleExportFalseFields() {
+  // mission evidence bundle export 是只读摘要，不生成真实数据集、不连接生产云、不证明路线或送达。
+  return {
+    route_execution_success: false as const,
+    hil_pass: false as const,
+    real_cloud_db_connected: false as const,
+    real_oss_connected: false as const,
+    ...fixedFalseFields(),
+  };
+}
+
 function safeTaskId(value: string): { ok: true; taskId: string } | { ok: false; reason: string } {
   // task_id 会进入远端路径；只允许短 token，避免路径穿越、query 注入或空任务误提交。
   const trimmed = value.trim();
@@ -413,10 +817,249 @@ function safeTaskId(value: string): { ok: true; taskId: string } | { ok: false; 
   return { ok: true, taskId: trimmed };
 }
 
+function defaultConsumerTaskListFilters(): O7ConsumerTaskListAppliedFilters {
+  // 默认过滤值和 O6 consumer read 保持一致，O7 只做只读 query narrowing，不改变后端默认列表语义。
+  return {
+    robot_id: "",
+    task_id: "",
+    date: "",
+    status: "all",
+    limit: 50,
+    before_started_at_ms: null,
+  };
+}
+
+function invalidConsumerListFilter(fieldName: string): string {
+  // 错误只暴露字段名，不回显 operator 输入，避免把 token/path/raw query 写进 UI。
+  return `invalid_o7_consumer_read_query_filter:${fieldName}`;
+}
+
+function queryValue(
+  query: Record<string, unknown>,
+  fieldName: keyof O7ConsumerTaskListQuery,
+): { ok: true; value: string } | { ok: false; reason: string } {
+  // Express 遇到重复 query 会给 array/object；O7 list filter 对这种形态直接 fail-closed。
+  const raw = query[fieldName];
+  if (raw === undefined || raw === null) {
+    return { ok: true, value: "" };
+  }
+  if (typeof raw === "number" && Number.isFinite(raw)) {
+    return { ok: true, value: String(raw) };
+  }
+  if (typeof raw !== "string") {
+    return { ok: false, reason: invalidConsumerListFilter(fieldName) };
+  }
+  return { ok: true, value: raw.trim() };
+}
+
+function containsUnsafeQueryText(value: string): boolean {
+  // 查询字段不接受 URL、路径、凭证词或长 raw/base64-like token，防止 PC adapter 变成反射面。
+  const text = value.trim();
+  if (!text) {
+    return false;
+  }
+  const lowered = text.toLowerCase();
+  if (
+    text.startsWith("/") ||
+    text.startsWith("~/") ||
+    text.includes("\\") ||
+    text.includes("..") ||
+    lowered.includes("://") ||
+    lowered.includes("/tmp/") ||
+    lowered.startsWith("file:") ||
+    lowered.includes("authorization") ||
+    lowered.includes("bearer") ||
+    lowered.includes("credential") ||
+    lowered.includes("token") ||
+    lowered.includes("secret") ||
+    lowered.includes("password") ||
+    lowered.includes("signature")
+  ) {
+    return true;
+  }
+  return /^[A-Za-z0-9+/=]{48,}$/.test(text);
+}
+
+function normalizeConsumerListIdFilter(
+  query: Record<string, unknown>,
+  fieldName: "robot_id" | "task_id",
+): { ok: true; value: string } | { ok: false; reason: string } {
+  // robot_id/task_id 最终会转发到 O6；这里只允许短 token，阻断路径穿越和 query 注入。
+  const raw = queryValue(query, fieldName);
+  if (!raw.ok) {
+    return raw;
+  }
+  if (!raw.value) {
+    return { ok: true, value: "" };
+  }
+  if (raw.value.length > 80 || containsUnsafeQueryText(raw.value) || !/^[A-Za-z0-9._:-]+$/.test(raw.value)) {
+    return { ok: false, reason: invalidConsumerListFilter(fieldName) };
+  }
+  return { ok: true, value: raw.value };
+}
+
+function normalizeConsumerListDateFilter(
+  query: Record<string, unknown>,
+): { ok: true; value: string } | { ok: false; reason: string } {
+  // date 只接受真实存在的 UTC 日，避免 JS Date 自动滚动出 2026-02-30 这类坏输入。
+  const raw = queryValue(query, "date");
+  if (!raw.ok || !raw.value) {
+    return raw;
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw.value) || containsUnsafeQueryText(raw.value)) {
+    return { ok: false, reason: invalidConsumerListFilter("date") };
+  }
+  const [yearText, monthText, dayText] = raw.value.split("-");
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  ) {
+    return { ok: false, reason: invalidConsumerListFilter("date") };
+  }
+  return { ok: true, value: raw.value };
+}
+
+function normalizeConsumerListStatusFilter(
+  query: Record<string, unknown>,
+): { ok: true; value: O7ConsumerTaskListAppliedFilters["status"] } | { ok: false; reason: string } {
+  // status 对齐 O6 consumer summary 状态；空值等价 all，其他自由字符串直接 fail-closed。
+  const raw = queryValue(query, "status");
+  if (!raw.ok) {
+    return raw;
+  }
+  const status = raw.value.toLowerCase() || "all";
+  if (!O7_CONSUMER_ALLOWED_STATUS.has(status)) {
+    return { ok: false, reason: invalidConsumerListFilter("status") };
+  }
+  return { ok: true, value: status as O7ConsumerTaskListAppliedFilters["status"] };
+}
+
+function normalizePositiveIntegerFilter(
+  query: Record<string, unknown>,
+  fieldName: "limit" | "before_started_at_ms",
+): { ok: true; value: number | null } | { ok: false; reason: string } {
+  // limit 和 before cursor 都只接受十进制整数，避免 1e9/NaN/负值穿透到 O6。
+  const raw = queryValue(query, fieldName);
+  if (!raw.ok || !raw.value) {
+    return raw.ok ? { ok: true, value: null } : raw;
+  }
+  if (!/^\d+$/.test(raw.value) || containsUnsafeQueryText(raw.value)) {
+    return { ok: false, reason: invalidConsumerListFilter(fieldName) };
+  }
+  const value = Number(raw.value);
+  if (!Number.isSafeInteger(value) || value < 0) {
+    return { ok: false, reason: invalidConsumerListFilter(fieldName) };
+  }
+  if (fieldName === "limit" && (value < 1 || value > 200)) {
+    return { ok: false, reason: invalidConsumerListFilter("limit") };
+  }
+  return { ok: true, value };
+}
+
+function normalizeConsumerTaskListQuery(
+  query: Record<string, unknown>,
+): { ok: true; filters: O7ConsumerTaskListAppliedFilters } | { ok: false; reason: string } {
+  // O7 只接受一组明确白名单 filter；unknown key 直接阻断，避免隐藏控制或导出语义混进 list API。
+  const unknownKey = Object.keys(query).find((key) => !O7_CONSUMER_TASK_LIST_QUERY_KEYS.has(key));
+  if (unknownKey) {
+    return { ok: false, reason: invalidConsumerListFilter(unknownKey) };
+  }
+  const robotId = normalizeConsumerListIdFilter(query, "robot_id");
+  if (!robotId.ok) {
+    return robotId;
+  }
+  const taskId = normalizeConsumerListIdFilter(query, "task_id");
+  if (!taskId.ok) {
+    return taskId;
+  }
+  const date = normalizeConsumerListDateFilter(query);
+  if (!date.ok) {
+    return date;
+  }
+  const status = normalizeConsumerListStatusFilter(query);
+  if (!status.ok) {
+    return status;
+  }
+  const limit = normalizePositiveIntegerFilter(query, "limit");
+  if (!limit.ok) {
+    return limit;
+  }
+  const beforeStartedAtMs = normalizePositiveIntegerFilter(query, "before_started_at_ms");
+  if (!beforeStartedAtMs.ok) {
+    return beforeStartedAtMs;
+  }
+  const defaults = defaultConsumerTaskListFilters();
+  return {
+    ok: true,
+    filters: {
+      robot_id: robotId.value,
+      task_id: taskId.value,
+      date: date.value,
+      status: status.value,
+      limit: limit.value ?? defaults.limit,
+      before_started_at_ms: beforeStartedAtMs.value,
+    },
+  };
+}
+
+function appendConsumerTaskListFilters(url: URL, filters: O7ConsumerTaskListAppliedFilters): void {
+  // 只把非默认 filter 追加给 O6；limit 始终发送，保持旧 summary 限量语义稳定。
+  url.searchParams.set("view", DEFAULT_LIST_VIEW);
+  url.searchParams.set("limit", String(filters.limit));
+  if (filters.robot_id) {
+    url.searchParams.set("robot_id", filters.robot_id);
+  }
+  if (filters.task_id) {
+    url.searchParams.set("task_id", filters.task_id);
+  }
+  if (filters.date) {
+    url.searchParams.set("date", filters.date);
+  }
+  if (filters.status !== "all") {
+    url.searchParams.set("status", filters.status);
+  }
+  if (filters.before_started_at_ms !== null) {
+    url.searchParams.set("before_started_at_ms", String(filters.before_started_at_ms));
+  }
+}
+
 function containsUnsafeAnnotationCopy(value: unknown): boolean {
   // 标注 submit/export 不允许 token、密码、URL 或控制面词汇混入任意字段。
   const encoded = JSON.stringify(value ?? {});
   return MANIFEST_UNSAFE_COPY_PATTERNS.some((token) => encoded.includes(token));
+}
+
+function containsUnsafeInferenceCopy(value: unknown): boolean {
+  // inference request 不允许原图、base64、凭证、串口、控制 topic 或 traceback 混入任意字段。
+  const encoded = JSON.stringify(value ?? {});
+  const lowered = encoded.toLowerCase();
+  const unsafeTokens = [
+    "/cmd_vel",
+    "/api/base/manual",
+    "navigatetopose",
+    "/dev/tty",
+    "/dev/ttyusb",
+    "/dev/ttyacm",
+    "baudrate",
+    "traceback",
+    "authorization",
+    "bearer",
+    "token",
+    "password",
+    "secret",
+    "credential",
+    "access_key",
+    "data:",
+    "base64",
+    "wave rover",
+    "cmd_ros_ctrl",
+  ];
+  return unsafeTokens.some((token) => lowered.includes(token)) || /[A-Za-z0-9+/]{180,}={0,2}/.test(encoded);
 }
 
 function annotationText(value: unknown, fallback = "not_provided", limit = 160): string {
@@ -434,6 +1077,169 @@ function annotationNumber(value: unknown): number | null {
     return null;
   }
   return Math.min(Math.max(value, 0), 1);
+}
+
+function inferenceToken(value: unknown, fallback: string, limit: number): string {
+  // 进入 O6 inference body 的 token 只能是短字符串，不能由数组/对象隐式 stringify。
+  return typeof value === "string" && value.trim() ? value.trim().slice(0, limit) : fallback;
+}
+
+function safeInferenceIdentifier(value: unknown, fallback = ""): string {
+  // inference_id、robot_id 和 input_id 会参与幂等 key，必须保持路径安全和可复核。
+  const text = inferenceToken(value, fallback, 120);
+  return /^[A-Za-z0-9._:-]{1,120}$/.test(text) ? text.slice(0, 80) : "";
+}
+
+function safeInferenceEvidenceRef(value: unknown): string {
+  // evidence_ref 允许相对 refs，但禁止 URL、绝对路径、query/hash、父目录和敏感/原始内容。
+  const text = inferenceToken(value, "", 180);
+  if (!text || containsUnsafeInferenceCopy(text) || unsafeMediaRefReason(text)) {
+    return "";
+  }
+  if (text.includes("..") || text.startsWith("/") || text.startsWith("\\") || text.includes("\\")) {
+    return "";
+  }
+  return text;
+}
+
+function normalizeInferenceMetadata(value: unknown): Record<string, string | number | boolean | null> | null {
+  // metadata 只留小型 primitive 摘要，避免 UI 把模型原始返回、图片内容或凭证塞进 archive。
+  const metadata = value === undefined ? {} : asRecord(value);
+  if (!metadata || containsUnsafeInferenceCopy(metadata)) {
+    return null;
+  }
+  if (Object.keys(metadata).length > O7_INFERENCE_METADATA_KEY_LIMIT) {
+    return null;
+  }
+  if (JSON.stringify(metadata).length > O7_INFERENCE_METADATA_BYTES_LIMIT) {
+    return null;
+  }
+  const normalized: Record<string, string | number | boolean | null> = {};
+  for (const [key, item] of Object.entries(metadata)) {
+    const safeKey = safeInferenceIdentifier(key, "");
+    if (!safeKey || Array.isArray(item) || (item !== null && typeof item === "object")) {
+      return null;
+    }
+    if (typeof item === "string") {
+      const text = inferenceToken(item, "", 160);
+      if (!text || containsUnsafeInferenceCopy(text)) {
+        return null;
+      }
+      normalized[safeKey] = text;
+    } else if (typeof item === "number") {
+      if (!Number.isFinite(item)) {
+        return null;
+      }
+      normalized[safeKey] = item;
+    } else if (typeof item === "boolean" || item === null) {
+      normalized[safeKey] = item;
+    } else {
+      return null;
+    }
+  }
+  return normalized;
+}
+
+function normalizeInferenceInput(value: unknown): O7ConsumerInferenceRequestInput | null {
+  // 单个 input 只允许 O6 inference 需要的五个字段，其他字段不能透传到本地/mock 写接口。
+  const input = asRecord(value);
+  if (!input || containsUnsafeInferenceCopy(input)) {
+    return null;
+  }
+  const allowedKeys = new Set(["input_id", "input_type", "evidence_ref", "captured_at_ms", "metadata"]);
+  if (Object.keys(input).some((key) => !allowedKeys.has(key))) {
+    return null;
+  }
+  const inputId = safeInferenceIdentifier(input.input_id, "");
+  const inputType = inferenceToken(input.input_type, "", 80);
+  const evidenceRef = safeInferenceEvidenceRef(input.evidence_ref);
+  const capturedAtMs = asNumber(input.captured_at_ms);
+  const metadata = normalizeInferenceMetadata(input.metadata ?? {});
+  if (!inputId || !O7_INFERENCE_ALLOWED_INPUT_TYPES.has(inputType) || !evidenceRef || capturedAtMs === null || !metadata) {
+    return null;
+  }
+  return {
+    input_id: inputId,
+    input_type: inputType as O7ConsumerInferenceInputType,
+    evidence_ref: evidenceRef,
+    captured_at_ms: Math.trunc(capturedAtMs),
+    metadata,
+  };
+}
+
+function generatedInferenceId(taskId: string, outputs: O7ConsumerInferenceRequestedOutput[], inputs: O7ConsumerInferenceRequestInput[]): string {
+  // 自动 id 只由安全 token 组成，便于测试和重复点击时获得可解释的幂等行为。
+  const seed = `o7-${taskId}-${inputs[0]?.input_id ?? "input"}-${outputs.join("-")}`;
+  return seed.replace(/[^A-Za-z0-9._:-]/g, "-").slice(0, 80);
+}
+
+function inferencePayloadFromBody(
+  taskId: string,
+  body: unknown,
+): { ok: true; payload: O7ConsumerInferenceRequestBody } | { ok: false; reason: string } {
+  // O7 只构造 O6 inference 的安全子集；schema、proof、false 字段由 O6 成功响应回读确认。
+  const payload = asRecord(body);
+  if (!payload) {
+    return { ok: false, reason: "inference_body_not_object" };
+  }
+  if (JSON.stringify(payload).length > O7_INFERENCE_MAX_BODY_BYTES) {
+    return { ok: false, reason: "inference_body_too_large" };
+  }
+  if (containsUnsafeInferenceCopy(payload)) {
+    return { ok: false, reason: "inference_body_contains_unsafe_copy" };
+  }
+  const dangerous = scanDangerousTrueFields(payload);
+  if (dangerous.length > 0) {
+    return { ok: false, reason: `dangerous_true_fields:${dangerous.join(",")}` };
+  }
+  const allowedKeys = new Set(["robot_id", "task_id", "inference_id", "model_family", "requested_outputs", "inputs"]);
+  const extraKeys = Object.keys(payload).filter((key) => !allowedKeys.has(key));
+  if (extraKeys.length > 0) {
+    return { ok: false, reason: `inference_body_unknown_fields:${extraKeys.join(",")}` };
+  }
+  const bodyTaskId = payload.task_id === undefined ? taskId : safeInferenceIdentifier(payload.task_id, "");
+  if (!bodyTaskId || bodyTaskId !== taskId) {
+    return { ok: false, reason: "task_id_mismatch" };
+  }
+  const robotId = safeInferenceIdentifier(payload.robot_id, "");
+  const modelFamily = safeInferenceIdentifier(payload.model_family, "");
+  if (!robotId) {
+    return { ok: false, reason: "robot_id_not_provided" };
+  }
+  if (!modelFamily) {
+    return { ok: false, reason: "model_family_not_provided" };
+  }
+  if (!Array.isArray(payload.requested_outputs) || payload.requested_outputs.length === 0) {
+    return { ok: false, reason: "requested_outputs_not_provided" };
+  }
+  const outputs = Array.from(new Set(payload.requested_outputs.map((output) => inferenceToken(output, "", 80))));
+  if (outputs.length !== payload.requested_outputs.length || outputs.some((output) => !O7_INFERENCE_ALLOWED_OUTPUTS.has(output))) {
+    return { ok: false, reason: "requested_outputs_unsupported" };
+  }
+  if (!Array.isArray(payload.inputs) || payload.inputs.length === 0 || payload.inputs.length > O7_INFERENCE_INPUT_LIMIT) {
+    return { ok: false, reason: "inputs_invalid_or_too_large" };
+  }
+  const inputs = payload.inputs.map((input) => normalizeInferenceInput(input));
+  if (inputs.some((input) => input === null)) {
+    return { ok: false, reason: "input_schema_mismatch" };
+  }
+  const typedOutputs = outputs as O7ConsumerInferenceRequestedOutput[];
+  const typedInputs = inputs as O7ConsumerInferenceRequestInput[];
+  const inferenceId = safeInferenceIdentifier(payload.inference_id, "") || generatedInferenceId(taskId, typedOutputs, typedInputs);
+  if (!inferenceId) {
+    return { ok: false, reason: "inference_id_unsafe" };
+  }
+  return {
+    ok: true,
+    payload: {
+      robot_id: robotId,
+      task_id: taskId,
+      inference_id: inferenceId,
+      model_family: modelFamily,
+      requested_outputs: typedOutputs,
+      inputs: typedInputs,
+    },
+  };
 }
 
 function rawString(value: unknown): string {
@@ -614,6 +1420,4101 @@ function failClosedAnnotationExport(
   };
 }
 
+function failClosedInferenceRequest(
+  reason: string,
+  baseUrl: string,
+  taskId: string,
+  o6HttpStatus: number | null = null,
+): O7ConsumerInferenceRequestResult {
+  // inference 失败也返回固定 receipt，UI 可以显示 blocker，同时所有真实能力字段保持 false。
+  return {
+    schema: INFERENCE_REQUEST_SCHEMA,
+    request_status: "fail_closed",
+    source_base_url: baseUrl || DEFAULT_BASE_URL,
+    remote_endpoint: REMOTE_INFERENCE_ENDPOINT,
+    remote_schema: "not_loaded",
+    requested_task_id: taskId || "not_provided",
+    o6_http_status: o6HttpStatus,
+    task_id: taskId || "not_provided",
+    robot_id: "not_loaded",
+    inference_id: "not_created",
+    model_family: "not_loaded",
+    requested_outputs: [],
+    input_ids: [],
+    write_status: "blocked_not_proven",
+    duplicate: false,
+    created_count: 0,
+    updated_count: 0,
+    archive_event_written: false,
+    o6_schema: "not_loaded",
+    o6_source: "not_loaded",
+    result_summary: {
+      result_count: 0,
+      created_count: 0,
+      updated_count: 0,
+      event_types: [],
+    },
+    request_summary: {
+      input_count: 0,
+      requested_output_count: 0,
+      local_mock_only: true,
+    },
+    blocked_reasons: [reason],
+    not_proven: [
+      "real_model_inference",
+      "real_floor_recognition",
+      "real_elevator_door_state",
+      "delivery_success",
+    ],
+    fail_closed_reason: reason,
+    local_loopback_only: true,
+    ...fixedInferenceFalseFields(),
+    ...PROOF_FLAGS,
+  };
+}
+
+function o6InferenceFixedFalseMismatch(remote: JsonRecord): string {
+  // O7 必须复核 O6 返回的固定 false 字段，防止坏 mock 把真实能力宣称透传到 UI。
+  const requiredFalse = [
+    "safe_to_control",
+    "delivery_success",
+    "primary_actions_enabled",
+    "connects_cloud_production",
+    "robot_control_executed",
+    "real_model_inference_success",
+    "real_floor_recognition_proven",
+    "real_elevator_door_state_proven",
+  ];
+  return requiredFalse.find((key) => remote[key] !== false) ?? "";
+}
+
+function normalizeInferenceResultSummary(value: unknown): O7ConsumerInferenceRequestResult["result_summary"] | null {
+  // result_summary 是本轮 write receipt 的核心摘要；缺数值时不能把响应当成可验收。
+  const summary = asRecord(value);
+  if (!summary) {
+    return null;
+  }
+  const resultCount = asNumber(summary.result_count);
+  const createdCount = asNumber(summary.created_count);
+  const updatedCount = asNumber(summary.updated_count);
+  const eventTypes = stringList(summary.event_types, 8);
+  if (resultCount === null || createdCount === null || updatedCount === null || eventTypes.length === 0) {
+    return null;
+  }
+  if (!eventTypes.every((eventType) => /^model_inference\.(elevator_door_state|floor_recognition)$/.test(eventType))) {
+    return null;
+  }
+  return {
+    result_count: Math.trunc(resultCount),
+    created_count: Math.trunc(createdCount),
+    updated_count: Math.trunc(updatedCount),
+    event_types: eventTypes,
+  };
+}
+
+function validateO6InferenceResponse(
+  remote: JsonRecord,
+  payload: O7ConsumerInferenceRequestBody,
+): { ok: true; resultSummary: O7ConsumerInferenceRequestResult["result_summary"] } | { ok: false; reason: string } {
+  // 成功响应必须保留 O6 local/mock/not_proven contract；任何 schema/source/false 字段漂移都 fail-closed。
+  if (asString(remote.schema, "") !== "trashbot.o6.model_inference.v1") {
+    return { ok: false, reason: "o6_inference_schema_mismatch" };
+  }
+  if (asString(remote.source, "") !== "local_mock_inference") {
+    return { ok: false, reason: "o6_inference_source_mismatch" };
+  }
+  if (asString(remote.proof_status, "") !== "not_proven") {
+    return { ok: false, reason: "o6_inference_proof_status_mismatch" };
+  }
+  const falseMismatch = o6InferenceFixedFalseMismatch(remote);
+  if (falseMismatch) {
+    return { ok: false, reason: `o6_inference_false_field_mismatch:${falseMismatch}` };
+  }
+  if (scanDangerousTrueFields(remote).length > 0 || containsUnsafeInferenceCopy(remote)) {
+    return { ok: false, reason: "o6_inference_response_unsafe" };
+  }
+  if (remote.archive_event_written !== true) {
+    return { ok: false, reason: "o6_inference_archive_event_not_written" };
+  }
+  if (asString(remote.task_id, "") !== payload.task_id || asString(remote.robot_id, "") !== payload.robot_id) {
+    return { ok: false, reason: "o6_inference_identity_mismatch" };
+  }
+  if (asString(remote.inference_id, "") !== payload.inference_id) {
+    return { ok: false, reason: "o6_inference_id_mismatch" };
+  }
+  if (!["created", "updated"].includes(asString(remote.write_status, ""))) {
+    return { ok: false, reason: "o6_inference_write_status_mismatch" };
+  }
+  const resultSummary = normalizeInferenceResultSummary(remote.result_summary);
+  if (!resultSummary) {
+    return { ok: false, reason: "o6_inference_result_summary_mismatch" };
+  }
+  const expectedResultCount = payload.inputs.length * payload.requested_outputs.length;
+  if (resultSummary.result_count !== expectedResultCount) {
+    return { ok: false, reason: "o6_inference_result_count_mismatch" };
+  }
+  const notProven = stringList(remote.not_proven, 12);
+  if (!notProven.includes("robot_control") || !notProven.includes("real_cloud_production")) {
+    return { ok: false, reason: "o6_inference_not_proven_mismatch" };
+  }
+  return { ok: true, resultSummary };
+}
+
+function containsUnsafeMissionEventCopy(value: unknown): boolean {
+  // event append 不能携带原始控制、串口、凭证、ROS topic、URL 或大段 raw/base64 payload。
+  const encoded = JSON.stringify(value ?? {});
+  const lowered = encoded.toLowerCase();
+  const unsafeTokens = [
+    "/cmd_vel",
+    "/api/base/manual",
+    "/tf",
+    "/odom",
+    "/scan",
+    "/amcl_pose",
+    "navigatetopose",
+    "/dev/tty",
+    "/dev/ttyusb",
+    "/dev/ttyacm",
+    "wave rover",
+    "wave_rover",
+    "uart",
+    "baudrate",
+    "traceback",
+    "authorization",
+    "bearer",
+    "token",
+    "password",
+    "secret",
+    "credential",
+    "access_key",
+    "data:",
+    "base64",
+    "://",
+  ];
+  return unsafeTokens.some((token) => lowered.includes(token)) || /[A-Za-z0-9+/]{180,}={0,2}/.test(encoded);
+}
+
+function missionEventToken(value: unknown, fallback = "", limit = 160): string {
+  // mission event 的可写字段只接受短字符串；对象/数组不会被隐式 stringify 后写进 O6。
+  return typeof value === "string" && value.trim() ? value.trim().slice(0, limit) : fallback;
+}
+
+function safeMissionEventIdentifier(value: unknown, fallback = ""): string {
+  // robot_id/event_id/task_id 是幂等和身份字段，只允许短 token，避免 path/query 注入。
+  const text = missionEventToken(value, fallback, 128);
+  return /^[A-Za-z0-9._:-]{1,128}$/.test(text) ? text.slice(0, 128) : "";
+}
+
+function safeMissionEventEvidenceRef(value: unknown): string {
+  // evidence ref 允许相对 archive token，但拒绝 URL、credentials、绝对路径、父目录和控制字符串。
+  const text = missionEventToken(value, "", 240);
+  if (!text || containsUnsafeMissionEventCopy(text)) {
+    return "";
+  }
+  if (
+    path.isAbsolute(text) ||
+    /^[A-Za-z]:[\\/]/.test(text) ||
+    text.startsWith("/") ||
+    text.startsWith("\\") ||
+    text.includes("..") ||
+    text.includes("?") ||
+    text.includes("#")
+  ) {
+    return "";
+  }
+  return text;
+}
+
+function normalizeMissionEventMetadata(value: unknown): Record<string, string | number | boolean | null> | null {
+  // metadata 只保留小型 primitive 摘要，避免把原始模型输出、图片内容或凭证塞进事件归档。
+  const metadata = value === undefined ? {} : asRecord(value);
+  if (!metadata || containsUnsafeMissionEventCopy(metadata)) {
+    return null;
+  }
+  if (Object.keys(metadata).length > O7_MISSION_EVENT_METADATA_KEY_LIMIT) {
+    return null;
+  }
+  if (JSON.stringify(metadata).length > O7_MISSION_EVENT_METADATA_BYTES_LIMIT) {
+    return null;
+  }
+  const normalized: Record<string, string | number | boolean | null> = {};
+  for (const [key, item] of Object.entries(metadata)) {
+    const safeKey = safeMissionEventIdentifier(key, "");
+    if (!safeKey || Array.isArray(item) || (item !== null && typeof item === "object")) {
+      return null;
+    }
+    if (typeof item === "string") {
+      const text = missionEventToken(item, "", 240);
+      if (!text || containsUnsafeMissionEventCopy(text)) {
+        return null;
+      }
+      normalized[safeKey] = text;
+    } else if (typeof item === "number") {
+      if (!Number.isFinite(item)) {
+        return null;
+      }
+      normalized[safeKey] = item;
+    } else if (typeof item === "boolean" || item === null) {
+      normalized[safeKey] = item;
+    } else {
+      return null;
+    }
+  }
+  return normalized;
+}
+
+function missionEventPayloadFromBody(
+  taskId: string,
+  body: unknown,
+): { ok: true; payload: NormalizedMissionEventAppendPayload } | { ok: false; reason: string } {
+  // O7 只构造 O6 events API 的单事件安全子集；task_id 必须同时通过 path/body 一致性复核。
+  const payload = asRecord(body);
+  if (!payload) {
+    return { ok: false, reason: "event_body_not_object" };
+  }
+  if (JSON.stringify(payload).length > O7_MISSION_EVENT_MAX_BODY_BYTES) {
+    return { ok: false, reason: "event_body_too_large" };
+  }
+  if (containsUnsafeMissionEventCopy(payload)) {
+    return { ok: false, reason: "event_body_contains_unsafe_copy" };
+  }
+  const dangerous = scanDangerousTrueFields(payload);
+  if (dangerous.length > 0) {
+    return { ok: false, reason: `dangerous_true_fields:${dangerous.join(",")}` };
+  }
+  const allowedKeys = new Set([
+    "robot_id",
+    "task_id",
+    "event_id",
+    "event_type",
+    "occurred_at_ms",
+    "summary",
+    "severity",
+    "evidence_ref",
+    "evidence_refs",
+    "metadata",
+  ]);
+  const extraKeys = Object.keys(payload).filter((key) => !allowedKeys.has(key));
+  if (extraKeys.length > 0) {
+    return { ok: false, reason: `event_body_unknown_fields:${extraKeys.join(",")}` };
+  }
+  const bodyTaskId = payload.task_id === undefined ? taskId : safeMissionEventIdentifier(payload.task_id, "");
+  if (!bodyTaskId || bodyTaskId !== taskId) {
+    return { ok: false, reason: "task_id_mismatch" };
+  }
+  const robotId = safeMissionEventIdentifier(payload.robot_id, "");
+  const eventId = safeMissionEventIdentifier(payload.event_id, "");
+  const eventType = missionEventToken(payload.event_type, "", 80);
+  const occurredAtMs = asNumber(payload.occurred_at_ms);
+  if (!robotId) {
+    return { ok: false, reason: "robot_id_not_provided" };
+  }
+  if (!eventId) {
+    return { ok: false, reason: "event_id_not_provided" };
+  }
+  if (!O7_MISSION_EVENT_ALLOWED_TYPES.has(eventType)) {
+    return { ok: false, reason: "event_type_unsupported" };
+  }
+  if (occurredAtMs === null || !Number.isSafeInteger(Math.trunc(occurredAtMs)) || occurredAtMs < 0) {
+    return { ok: false, reason: "occurred_at_ms_invalid" };
+  }
+  const evidenceRefs = [
+    safeMissionEventEvidenceRef(payload.evidence_ref),
+    ...(Array.isArray(payload.evidence_refs)
+      ? payload.evidence_refs.map((ref) => safeMissionEventEvidenceRef(ref))
+      : payload.evidence_refs === undefined
+        ? []
+        : [""]),
+  ].filter(Boolean);
+  const uniqueEvidenceRefs = Array.from(new Set(evidenceRefs)).slice(0, O7_MISSION_EVENT_REF_LIMIT);
+  if (uniqueEvidenceRefs.length === 0 || uniqueEvidenceRefs.length !== evidenceRefs.length) {
+    return { ok: false, reason: "evidence_refs_invalid" };
+  }
+  const severity = payload.severity === undefined ? undefined : missionEventToken(payload.severity, "", 16);
+  if (severity !== undefined && !["info", "warning", "error"].includes(severity)) {
+    return { ok: false, reason: "severity_unsupported" };
+  }
+  const summary = payload.summary === undefined ? undefined : missionEventToken(payload.summary, "", 512);
+  if (summary !== undefined && (!summary || containsUnsafeMissionEventCopy(summary))) {
+    return { ok: false, reason: "summary_unsafe_or_empty" };
+  }
+  const metadata = normalizeMissionEventMetadata(payload.metadata ?? {});
+  if (!metadata) {
+    return { ok: false, reason: "metadata_invalid_or_too_large" };
+  }
+  return {
+    ok: true,
+    payload: {
+      robot_id: robotId,
+      task_id: taskId,
+      event_id: eventId,
+      event_type: eventType as O7ConsumerMissionEventType,
+      occurred_at_ms: Math.trunc(occurredAtMs),
+      summary,
+      severity: severity as O7ConsumerMissionEventAppendRequestBody["severity"],
+      evidence_refs: uniqueEvidenceRefs,
+      metadata,
+    },
+  };
+}
+
+function operatorDropoffActionCapturePayloadFromBody(
+  taskId: string,
+  body: unknown,
+): { ok: true; payload: NormalizedOperatorDropoffActionCapturePayload } | { ok: false; reason: string } {
+  // dedicated dropoff action 只允许固定 event type；真实 operator、送达、路线、HIL 和控制 claim 都必须关闸。
+  const payload = asRecord(body);
+  if (!payload) {
+    return { ok: false, reason: "operator_dropoff_body_not_object" };
+  }
+  if (JSON.stringify(payload).length > O7_MISSION_EVENT_MAX_BODY_BYTES) {
+    return { ok: false, reason: "operator_dropoff_body_too_large" };
+  }
+  if (containsUnsafeMissionEventCopy(payload)) {
+    return { ok: false, reason: "operator_dropoff_body_contains_unsafe_copy" };
+  }
+  const dangerous = scanDangerousTrueFields(payload);
+  if (dangerous.length > 0) {
+    return { ok: false, reason: `dangerous_true_fields:${dangerous.join(",")}` };
+  }
+  const allowedKeys = new Set([
+    "robot_id",
+    "task_id",
+    "event_id",
+    "occurred_at_ms",
+    "operator_action_id",
+    "operator_display_name",
+    "evidence_ref",
+    "evidence_refs",
+    "summary",
+    "metadata",
+  ]);
+  const extraKeys = Object.keys(payload).filter((key) => !allowedKeys.has(key));
+  if (extraKeys.length > 0) {
+    return { ok: false, reason: `operator_dropoff_body_unknown_fields:${extraKeys.join(",")}` };
+  }
+  const bodyTaskId = payload.task_id === undefined ? taskId : safeMissionEventIdentifier(payload.task_id, "");
+  if (!bodyTaskId || bodyTaskId !== taskId) {
+    return { ok: false, reason: "task_id_mismatch" };
+  }
+  const robotId = safeMissionEventIdentifier(payload.robot_id, "");
+  const eventId = safeMissionEventIdentifier(payload.event_id, "");
+  const occurredAtMs = asNumber(payload.occurred_at_ms);
+  const operatorActionId = safeMissionEventIdentifier(payload.operator_action_id, `dropoff-${eventId || taskId}`);
+  const operatorDisplayName = missionEventToken(payload.operator_display_name, "pc-o7-operator", 80);
+  if (!robotId) {
+    return { ok: false, reason: "robot_id_not_provided" };
+  }
+  if (!eventId) {
+    return { ok: false, reason: "event_id_not_provided" };
+  }
+  if (occurredAtMs === null || !Number.isSafeInteger(Math.trunc(occurredAtMs)) || occurredAtMs < 0) {
+    return { ok: false, reason: "occurred_at_ms_invalid" };
+  }
+  if (!operatorActionId || containsUnsafeMissionEventCopy(operatorActionId)) {
+    return { ok: false, reason: "operator_action_id_unsafe_or_missing" };
+  }
+  if (!operatorDisplayName || containsUnsafeMissionEventCopy(operatorDisplayName)) {
+    return { ok: false, reason: "operator_display_name_unsafe_or_missing" };
+  }
+  const evidenceRefs = [
+    safeMissionEventEvidenceRef(payload.evidence_ref),
+    ...(Array.isArray(payload.evidence_refs)
+      ? payload.evidence_refs.map((ref) => safeMissionEventEvidenceRef(ref))
+      : payload.evidence_refs === undefined
+        ? []
+        : [""]),
+  ].filter(Boolean);
+  const uniqueEvidenceRefs = Array.from(new Set(evidenceRefs)).slice(0, O7_MISSION_EVENT_REF_LIMIT);
+  if (uniqueEvidenceRefs.length === 0 || uniqueEvidenceRefs.length !== evidenceRefs.length) {
+    return { ok: false, reason: "evidence_refs_invalid" };
+  }
+  const summary = missionEventToken(
+    payload.summary,
+    "selected task operator dropoff acceptance capture requested",
+    512,
+  );
+  if (!summary || containsUnsafeMissionEventCopy(summary)) {
+    return { ok: false, reason: "summary_unsafe_or_empty" };
+  }
+  const metadata = normalizeMissionEventMetadata(payload.metadata ?? {});
+  if (!metadata) {
+    return { ok: false, reason: "metadata_invalid_or_too_large" };
+  }
+  return {
+    ok: true,
+    payload: {
+      robot_id: robotId,
+      task_id: taskId,
+      event_id: eventId,
+      event_type: "operator.dropoff_acceptance",
+      occurred_at_ms: Math.trunc(occurredAtMs),
+      operator_action_id: operatorActionId,
+      operator_display_name: operatorDisplayName,
+      evidence_ref: uniqueEvidenceRefs[0] ?? "",
+      evidence_refs: uniqueEvidenceRefs,
+      summary,
+      metadata: {
+        ...metadata,
+        source: "pc_o7_operator_dropoff_action_capture",
+        proof_boundary: O7_OPERATOR_DROPOFF_ACTION_CAPTURE_PROOF_SCOPE,
+        operator_action_id: operatorActionId,
+        operator_display_name: operatorDisplayName,
+        real_operator_action_proven: false,
+        delivery_success: false,
+        route_execution_success: false,
+        safe_to_control: false,
+        hil_pass: false,
+        robot_control_executed: false,
+        connects_cloud_production: false,
+      },
+    },
+  };
+}
+
+function failClosedMissionEventAppend(
+  reason: string,
+  baseUrl: string,
+  taskId: string,
+  o6HttpStatus: number | null = null,
+): O7ConsumerMissionEventAppendResult {
+  // 事件写入失败也返回完整 receipt；UI 必须能看见没有归档、没有控制、没有生产云连接。
+  return {
+    schema: MISSION_EVENT_APPEND_SCHEMA,
+    append_status: "fail_closed",
+    source_base_url: baseUrl || DEFAULT_BASE_URL,
+    remote_endpoint: REMOTE_EVENT_APPEND_ENDPOINT,
+    remote_schema: "not_loaded",
+    requested_task_id: taskId || "not_provided",
+    o6_http_status: o6HttpStatus,
+    task_id: taskId || "not_provided",
+    robot_id: "not_loaded",
+    event_id: "not_created",
+    event_type: "not_loaded",
+    occurred_at_ms: null,
+    evidence_refs_consumed: [],
+    write_status: "blocked_not_proven",
+    duplicate: false,
+    created_count: 0,
+    updated_count: 0,
+    archive_event_written: false,
+    events_written_count: 0,
+    o6_schema: "not_loaded",
+    o6_source: "not_loaded",
+    event_summary: {
+      event_count: 0,
+      event_types: [],
+      created_count: 0,
+      updated_count: 0,
+    },
+    blocked_reasons: [reason],
+    not_proven: [
+      "real_cloud_db_not_connected",
+      "real_oss_not_connected",
+      "real_cloud_production_not_connected",
+      "robot_control_not_executed",
+      "route_execution_success_false",
+      "hil_pass_false",
+    ],
+    fail_closed_reason: reason,
+    local_loopback_only: true,
+    ...fixedMissionEventAppendFalseFields(),
+    ...PROOF_FLAGS,
+  };
+}
+
+function failClosedOperatorDropoffActionCapture(
+  reason: string,
+  baseUrl: string,
+  taskId: string,
+  o6HttpStatus: number | null = null,
+): O7OperatorDropoffActionCaptureResult {
+  // fail-closed receipt 仍展示完整边界，避免 UI 把未写入事件误读为真实 operator acceptance。
+  return {
+    schema: OPERATOR_DROPOFF_ACTION_CAPTURE_SCHEMA,
+    capture_status: "fail_closed",
+    source_base_url: baseUrl || DEFAULT_BASE_URL,
+    remote_endpoint: REMOTE_EVENT_APPEND_ENDPOINT,
+    remote_schema: "not_loaded",
+    requested_task_id: taskId || "not_provided",
+    o6_http_status: o6HttpStatus,
+    task_id: taskId || "not_provided",
+    robot_id: "not_loaded",
+    event_id: "not_created",
+    event_type: "not_loaded",
+    occurred_at_ms: null,
+    operator_action_id: "not_created",
+    operator_display_name: "not_loaded",
+    evidence_refs_consumed: [],
+    write_status: "blocked_not_proven",
+    duplicate: false,
+    created_count: 0,
+    updated_count: 0,
+    archive_event_written: false,
+    events_written_count: 0,
+    o6_schema: "not_loaded",
+    o6_source: "not_loaded",
+    proof_boundary: O7_OPERATOR_DROPOFF_ACTION_CAPTURE_PROOF_SCOPE,
+    event_summary: {
+      event_count: 0,
+      event_types: [],
+      created_count: 0,
+      updated_count: 0,
+    },
+    blocked_reasons: [reason],
+    not_proven: [
+      "real_operator_action_not_proven",
+      "delivery_success_false",
+      "route_execution_success_false",
+      "safe_to_control_false",
+      "hil_pass_false",
+      "robot_control_not_executed",
+      "real_cloud_production_not_connected",
+    ],
+    fail_closed_reason: reason,
+    local_loopback_only: true,
+    ...fixedOperatorDropoffActionCaptureFalseFields(),
+    ...PROOF_FLAGS,
+  };
+}
+
+function o6MissionEventFixedFalseMismatch(remote: JsonRecord): string {
+  // O6 events receipt 必须保留 local/mock 固定 false；route/hil 若上游显式给出，也只能是 false。
+  const requiredFalse = [
+    "safe_to_control",
+    "delivery_success",
+    "primary_actions_enabled",
+    "connects_cloud_production",
+    "robot_control_executed",
+    "real_cloud_db_connected",
+    "real_oss_connected",
+  ];
+  const optionalFalse = ["route_execution_success", "hil_pass"];
+  const requiredMismatch = requiredFalse.find((key) => remote[key] !== false);
+  if (requiredMismatch) {
+    return requiredMismatch;
+  }
+  return optionalFalse.find((key) => remote[key] !== undefined && remote[key] !== false) ?? "";
+}
+
+function normalizeMissionEventSummary(value: unknown): Record<string, unknown> | null {
+  // event_summary 是 write receipt 的核心摘要；必须能证明本次单事件 created/updated 计数。
+  const summary = asRecord(value);
+  if (!summary || containsUnsafeMissionEventCopy(summary)) {
+    return null;
+  }
+  const eventCount = asNumber(summary.event_count);
+  const createdCount = asNumber(summary.created_count);
+  const updatedCount = asNumber(summary.updated_count);
+  const eventTypes = stringList(summary.event_types, 8);
+  if (eventCount === null || createdCount === null || updatedCount === null || eventTypes.length === 0) {
+    return null;
+  }
+  if (eventTypes.some((eventType) => !O7_MISSION_EVENT_ALLOWED_TYPES.has(eventType))) {
+    return null;
+  }
+  const eventTypeCounts = asRecord(summary.event_type_counts) ?? {};
+  return {
+    event_count: Math.trunc(eventCount),
+    event_types: eventTypes,
+    event_type_counts: eventTypeCounts,
+    created_count: Math.trunc(createdCount),
+    updated_count: Math.trunc(updatedCount),
+  };
+}
+
+function validateO6MissionEventAppendResponse(
+  remote: JsonRecord,
+  payload: NormalizedMissionEventAppendPayload,
+): { ok: true; eventSummary: Record<string, unknown>; eventsWritten: JsonRecord[] } | { ok: false; reason: string } {
+  // 成功响应必须是 O6 events local/mock/not_proven contract；任何身份、schema 或 false 字段漂移都关闸。
+  if (asString(remote.schema, "") !== "trashbot.o6.archive_events.v1") {
+    return { ok: false, reason: "o6_event_schema_mismatch" };
+  }
+  if (asString(remote.source, "") !== "local_mock_event_archive") {
+    return { ok: false, reason: "o6_event_source_mismatch" };
+  }
+  if (asString(remote.proof_status, "") !== "not_proven") {
+    return { ok: false, reason: "o6_event_proof_status_mismatch" };
+  }
+  const falseMismatch = o6MissionEventFixedFalseMismatch(remote);
+  if (falseMismatch) {
+    return { ok: false, reason: `o6_event_false_field_mismatch:${falseMismatch}` };
+  }
+  if (scanDangerousTrueFields(remote).length > 0 || containsUnsafeMissionEventCopy(remote)) {
+    return { ok: false, reason: "o6_event_response_unsafe" };
+  }
+  if (remote.archive_event_written !== true) {
+    return { ok: false, reason: "o6_event_archive_not_written" };
+  }
+  if (asString(remote.task_id, "") !== payload.task_id || asString(remote.robot_id, "") !== payload.robot_id) {
+    return { ok: false, reason: "o6_event_identity_mismatch" };
+  }
+  const writeStatus = asString(remote.write_status, "");
+  if (!["created", "updated"].includes(writeStatus)) {
+    return { ok: false, reason: "o6_event_write_status_mismatch" };
+  }
+  const eventSummary = normalizeMissionEventSummary(remote.event_summary);
+  if (!eventSummary) {
+    return { ok: false, reason: "o6_event_summary_mismatch" };
+  }
+  if (eventSummary.event_count !== 1 || !(eventSummary.event_types as string[]).includes(payload.event_type)) {
+    return { ok: false, reason: "o6_event_summary_identity_mismatch" };
+  }
+  if (writeStatus === "created" && eventSummary.created_count !== 1) {
+    return { ok: false, reason: "o6_event_created_count_mismatch" };
+  }
+  if (writeStatus === "updated" && eventSummary.updated_count !== 1) {
+    return { ok: false, reason: "o6_event_updated_count_mismatch" };
+  }
+  const eventsWritten = sampleObjectArray(remote.events_written, 2);
+  if (eventsWritten.length !== 1) {
+    return { ok: false, reason: "o6_event_written_count_mismatch" };
+  }
+  const event = eventsWritten[0];
+  if (!event) {
+    return { ok: false, reason: "o6_event_written_count_mismatch" };
+  }
+  if (
+    asString(event.event_id, "") !== payload.event_id ||
+    asString(event.event_type, "") !== payload.event_type ||
+    asNumber(event.occurred_at_ms) !== payload.occurred_at_ms
+  ) {
+    return { ok: false, reason: "o6_event_written_identity_mismatch" };
+  }
+  const remoteRefs = stringList(event.evidence_refs, O7_MISSION_EVENT_REF_LIMIT);
+  if (remoteRefs.length === 0 || remoteRefs.some((ref) => !safeMissionEventEvidenceRef(ref))) {
+    return { ok: false, reason: "o6_event_written_evidence_refs_mismatch" };
+  }
+  return { ok: true, eventSummary, eventsWritten };
+}
+
+function containsUnsafeVoiceTtsDraftCopy(value: unknown): boolean {
+  // voice draft 入口比普通 event 更严格：拒绝音频、播放、喇叭、真实 API 和成功/控制 copy。
+  const encoded = JSON.stringify(value ?? {});
+  const lowered = encoded.toLowerCase();
+  const unsafeTokens = [
+    "raw_audio",
+    "audio_base64",
+    "audio_url",
+    "audio_uri",
+    "speaker_ack",
+    "playback_url",
+    "tts_send_enabled=true",
+    "speaker_dispatch_enabled=true",
+    "real_voice_api_connected=true",
+    "real_asr_tts_runtime_connected=true",
+    "safe_to_control=true",
+    "delivery_success=true",
+    "robot_control_executed=true",
+    "connects_cloud_production=true",
+  ];
+  return containsUnsafeMissionEventCopy(value) || unsafeTokens.some((token) => lowered.includes(token));
+}
+
+function safeVoiceTtsDraftText(value: unknown): string {
+  // 草稿文本是真正要写入 O6 event 的用户内容；为空、过长或夹带危险 copy 时直接 fail-closed。
+  if (typeof value !== "string") {
+    return "";
+  }
+  const text = value.trim();
+  if (!text || text.length > 160 || containsUnsafeVoiceTtsDraftCopy(text)) {
+    return "";
+  }
+  return text;
+}
+
+function safeVoiceTtsDraftLocale(value: unknown, fallback = "zh-CN"): string {
+  // locale 只作为展示/后续 TTS 选择摘要，不允许路径、URL 或复杂对象。
+  const text = missionEventToken(value, fallback, 24);
+  return /^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8}){0,2}$/.test(text) ? text : "";
+}
+
+function voiceTtsDraftPayloadFromBody(
+  taskId: string,
+  body: unknown,
+): { ok: true; payload: NormalizedVoiceTtsDraftRequestPayload } | { ok: false; reason: string } {
+  // dedicated voice action 只接受草稿字段；真实发送、播放、音频和控制字段都不能进入 O6。
+  const payload = asRecord(body);
+  if (!payload) {
+    return { ok: false, reason: "voice_tts_draft_body_not_object" };
+  }
+  if (JSON.stringify(payload).length > O7_MISSION_EVENT_MAX_BODY_BYTES) {
+    return { ok: false, reason: "voice_tts_draft_body_too_large" };
+  }
+  if (containsUnsafeVoiceTtsDraftCopy(payload)) {
+    return { ok: false, reason: "voice_tts_draft_body_contains_unsafe_copy" };
+  }
+  const dangerous = scanDangerousTrueFields(payload);
+  if (dangerous.length > 0) {
+    return { ok: false, reason: `dangerous_true_fields:${dangerous.join(",")}` };
+  }
+  const allowedKeys = new Set([
+    "robot_id",
+    "task_id",
+    "event_id",
+    "occurred_at_ms",
+    "draft_text",
+    "evidence_ref",
+    "evidence_refs",
+    "voice_profile",
+    "locale",
+    "metadata",
+  ]);
+  const extraKeys = Object.keys(payload).filter((key) => !allowedKeys.has(key));
+  if (extraKeys.length > 0) {
+    return { ok: false, reason: `voice_tts_draft_body_unknown_fields:${extraKeys.join(",")}` };
+  }
+  const bodyTaskId = payload.task_id === undefined ? taskId : safeMissionEventIdentifier(payload.task_id, "");
+  if (!bodyTaskId || bodyTaskId !== taskId) {
+    return { ok: false, reason: "task_id_mismatch" };
+  }
+  const robotId = safeMissionEventIdentifier(payload.robot_id, "");
+  const eventId = safeMissionEventIdentifier(payload.event_id, "");
+  const draftText = safeVoiceTtsDraftText(payload.draft_text);
+  const occurredAtMs = asNumber(payload.occurred_at_ms);
+  const voiceProfile = safeMissionEventIdentifier(payload.voice_profile, "operator-soft");
+  const locale = safeVoiceTtsDraftLocale(payload.locale, "zh-CN");
+  if (!robotId) {
+    return { ok: false, reason: "robot_id_not_provided" };
+  }
+  if (!eventId) {
+    return { ok: false, reason: "event_id_not_provided" };
+  }
+  if (!draftText) {
+    return { ok: false, reason: "draft_text_unsafe_or_empty" };
+  }
+  if (occurredAtMs === null || !Number.isSafeInteger(Math.trunc(occurredAtMs)) || occurredAtMs < 0) {
+    return { ok: false, reason: "occurred_at_ms_invalid" };
+  }
+  if (!voiceProfile) {
+    return { ok: false, reason: "voice_profile_unsafe_or_missing" };
+  }
+  if (!locale) {
+    return { ok: false, reason: "locale_unsafe_or_missing" };
+  }
+  const evidenceRefs = [
+    safeMissionEventEvidenceRef(payload.evidence_ref),
+    ...(Array.isArray(payload.evidence_refs)
+      ? payload.evidence_refs.map((ref) => safeMissionEventEvidenceRef(ref))
+      : payload.evidence_refs === undefined
+        ? []
+        : [""]),
+  ].filter(Boolean);
+  const uniqueEvidenceRefs = Array.from(new Set(evidenceRefs)).slice(0, O7_MISSION_EVENT_REF_LIMIT);
+  if (uniqueEvidenceRefs.length === 0 || uniqueEvidenceRefs.length !== evidenceRefs.length) {
+    return { ok: false, reason: "evidence_refs_invalid" };
+  }
+  const metadata = normalizeMissionEventMetadata(payload.metadata ?? {});
+  if (!metadata) {
+    return { ok: false, reason: "metadata_invalid_or_too_large" };
+  }
+  return {
+    ok: true,
+    payload: {
+      robot_id: robotId,
+      task_id: taskId,
+      event_id: eventId,
+      event_type: "voice.tts_draft",
+      occurred_at_ms: Math.trunc(occurredAtMs),
+      draft_text: draftText,
+      summary: draftText,
+      severity: "info",
+      evidence_ref: uniqueEvidenceRefs[0] ?? "",
+      evidence_refs: uniqueEvidenceRefs,
+      voice_profile: voiceProfile,
+      locale,
+      metadata: {
+        ...metadata,
+        source: "pc_o7_voice_tts_draft_request",
+        proof_boundary: O7_VOICE_TTS_DRAFT_REQUEST_PROOF_SCOPE,
+        draft_text_length: draftText.length,
+        voice_profile: voiceProfile,
+        locale,
+        tts_send_enabled: false,
+        speaker_dispatch_enabled: false,
+        real_voice_api_connected: false,
+        real_asr_tts_runtime_connected: false,
+        safe_to_control: false,
+        delivery_success: false,
+        robot_control_executed: false,
+        connects_cloud_production: false,
+      },
+    },
+  };
+}
+
+function failClosedVoiceTtsDraftRequest(
+  reason: string,
+  baseUrl: string,
+  taskId: string,
+  o6HttpStatus: number | null = null,
+): O7ConsumerVoiceTtsDraftRequestResult {
+  // fail-closed receipt 也完整列出禁用字段，避免 UI 把错误状态解释成待发送音频。
+  return {
+    schema: VOICE_TTS_DRAFT_REQUEST_SCHEMA,
+    request_status: "fail_closed",
+    source_base_url: baseUrl || DEFAULT_BASE_URL,
+    remote_endpoint: REMOTE_EVENT_APPEND_ENDPOINT,
+    remote_schema: "not_loaded",
+    requested_task_id: taskId || "not_provided",
+    o6_http_status: o6HttpStatus,
+    task_id: taskId || "not_provided",
+    robot_id: "not_loaded",
+    event_id: "not_created",
+    event_type: "not_loaded",
+    occurred_at_ms: null,
+    draft_text_length: 0,
+    voice_profile: "not_loaded",
+    locale: "not_loaded",
+    evidence_refs_consumed: [],
+    write_status: "blocked_not_proven",
+    duplicate: false,
+    created_count: 0,
+    updated_count: 0,
+    archive_event_written: false,
+    tts_draft_event_written: false,
+    events_written_count: 0,
+    o6_schema: "not_loaded",
+    o6_source: "not_loaded",
+    proof_boundary: O7_VOICE_TTS_DRAFT_REQUEST_PROOF_SCOPE,
+    event_summary: {
+      event_count: 0,
+      event_types: [],
+      created_count: 0,
+      updated_count: 0,
+    },
+    blocked_reasons: [reason],
+    not_proven: [
+      "real_voice_api_not_connected",
+      "real_asr_tts_runtime_not_connected",
+      "real_tts_playback",
+      "real_speaker_ack",
+      "robot_control_not_executed",
+      "delivery_success_false",
+    ],
+    fail_closed_reason: reason,
+    local_loopback_only: true,
+    ...fixedVoiceTtsDraftRequestFalseFields(),
+    ...PROOF_FLAGS,
+  };
+}
+
+function containsUnsafeVoiceSpeakerAckEventCopy(value: unknown): boolean {
+  // speaker ACK 入口允许 ack_status=ack，但拒绝音频、播放、真实 ACK、语音 API 和成功/控制 copy。
+  const encoded = JSON.stringify(value ?? {});
+  const lowered = encoded.toLowerCase();
+  const unsafeTokens = [
+    "raw_audio",
+    "audio_base64",
+    "audio_url",
+    "audio_uri",
+    "playback_url",
+    "tts_send_enabled=true",
+    "speaker_dispatch_enabled=true",
+    "real_speaker_ack_proven=true",
+    "real_voice_api_connected=true",
+    "real_asr_tts_runtime_connected=true",
+    "safe_to_control=true",
+    "delivery_success=true",
+    "robot_control_executed=true",
+    "connects_cloud_production=true",
+  ];
+  return containsUnsafeMissionEventCopy(value) || unsafeTokens.some((token) => lowered.includes(token));
+}
+
+function voiceSpeakerAckEventType(ackStatus: "ack" | "failure"): "voice.speaker_ack" | "voice.speaker_failure" {
+  // O7 只把离线 ACK 状态映射成 O6 event type，不把 ack_status=ack 解释成真实喇叭回执。
+  return ackStatus === "ack" ? "voice.speaker_ack" : "voice.speaker_failure";
+}
+
+function voiceSpeakerAckReceiptStatus(
+  ackStatus: "ack" | "failure",
+  writeStatus: "created" | "updated",
+): O7VoiceSpeakerAckEventResult["ack_event_status"] {
+  // receipt status 同时表达 ACK/failure 分支和幂等写入结果，方便 UI 不读取原始 O6 events。
+  if (ackStatus === "ack") {
+    return writeStatus === "created"
+      ? "local_mock_voice_speaker_ack_event_written"
+      : "local_mock_voice_speaker_ack_event_updated";
+  }
+  return writeStatus === "created"
+    ? "local_mock_voice_speaker_failure_event_written"
+    : "local_mock_voice_speaker_failure_event_updated";
+}
+
+function voiceSpeakerAckEventPayloadFromBody(
+  taskId: string,
+  body: unknown,
+): { ok: true; payload: NormalizedVoiceSpeakerAckEventPayload } | { ok: false; reason: string } {
+  // dedicated speaker ACK action 只接收 ack/failure 状态；event_type 和真实能力字段由 adapter 固定。
+  const payload = asRecord(body);
+  if (!payload) {
+    return { ok: false, reason: "voice_speaker_ack_body_not_object" };
+  }
+  if (JSON.stringify(payload).length > O7_MISSION_EVENT_MAX_BODY_BYTES) {
+    return { ok: false, reason: "voice_speaker_ack_body_too_large" };
+  }
+  if (containsUnsafeVoiceSpeakerAckEventCopy(payload)) {
+    return { ok: false, reason: "voice_speaker_ack_body_contains_unsafe_copy" };
+  }
+  const dangerous = scanDangerousTrueFields(payload);
+  if (dangerous.length > 0) {
+    return { ok: false, reason: `dangerous_true_fields:${dangerous.join(",")}` };
+  }
+  const allowedKeys = new Set([
+    "robot_id",
+    "task_id",
+    "event_id",
+    "occurred_at_ms",
+    "ack_status",
+    "evidence_ref",
+    "evidence_refs",
+    "failure_reason_code",
+    "summary",
+    "metadata",
+  ]);
+  const extraKeys = Object.keys(payload).filter((key) => !allowedKeys.has(key));
+  if (extraKeys.length > 0) {
+    return { ok: false, reason: `voice_speaker_ack_body_unknown_fields:${extraKeys.join(",")}` };
+  }
+  const bodyTaskId = payload.task_id === undefined ? taskId : safeMissionEventIdentifier(payload.task_id, "");
+  if (!bodyTaskId || bodyTaskId !== taskId) {
+    return { ok: false, reason: "task_id_mismatch" };
+  }
+  const robotId = safeMissionEventIdentifier(payload.robot_id, "");
+  const eventId = safeMissionEventIdentifier(payload.event_id, "");
+  const occurredAtMs = asNumber(payload.occurred_at_ms);
+  const ackStatusText = missionEventToken(payload.ack_status, "", 24);
+  if (!robotId) {
+    return { ok: false, reason: "robot_id_not_provided" };
+  }
+  if (!eventId) {
+    return { ok: false, reason: "event_id_not_provided" };
+  }
+  if (occurredAtMs === null || !Number.isSafeInteger(Math.trunc(occurredAtMs)) || occurredAtMs < 0) {
+    return { ok: false, reason: "occurred_at_ms_invalid" };
+  }
+  if (ackStatusText !== "ack" && ackStatusText !== "failure") {
+    return { ok: false, reason: "ack_status_must_be_ack_or_failure" };
+  }
+  const ackStatus = ackStatusText;
+  const failureReasonCode = ackStatus === "failure"
+    ? safeMissionEventIdentifier(payload.failure_reason_code, "speaker_ack_missing_not_real_runtime")
+    : "none";
+  if (!failureReasonCode) {
+    return { ok: false, reason: "failure_reason_code_unsafe_or_missing" };
+  }
+  const evidenceRefs = [
+    safeMissionEventEvidenceRef(payload.evidence_ref),
+    ...(Array.isArray(payload.evidence_refs)
+      ? payload.evidence_refs.map((ref) => safeMissionEventEvidenceRef(ref))
+      : payload.evidence_refs === undefined
+        ? []
+        : [""]),
+  ].filter(Boolean);
+  const uniqueEvidenceRefs = Array.from(new Set(evidenceRefs)).slice(0, O7_MISSION_EVENT_REF_LIMIT);
+  if (uniqueEvidenceRefs.length === 0 || uniqueEvidenceRefs.length !== evidenceRefs.length) {
+    return { ok: false, reason: "evidence_refs_invalid" };
+  }
+  const defaultSummary = ackStatus === "ack"
+    ? "local mock speaker ack event recorded"
+    : `local mock speaker failure event recorded: ${failureReasonCode}`;
+  const summary = missionEventToken(payload.summary, defaultSummary, 512);
+  if (!summary || containsUnsafeVoiceSpeakerAckEventCopy(summary)) {
+    return { ok: false, reason: "summary_unsafe_or_empty" };
+  }
+  const metadata = normalizeMissionEventMetadata(payload.metadata ?? {});
+  if (!metadata) {
+    return { ok: false, reason: "metadata_invalid_or_too_large" };
+  }
+  const eventType = voiceSpeakerAckEventType(ackStatus);
+  return {
+    ok: true,
+    payload: {
+      robot_id: robotId,
+      task_id: taskId,
+      event_id: eventId,
+      event_type: eventType,
+      ack_status: ackStatus,
+      occurred_at_ms: Math.trunc(occurredAtMs),
+      evidence_ref: uniqueEvidenceRefs[0] ?? "",
+      evidence_refs: uniqueEvidenceRefs,
+      failure_reason_code: failureReasonCode,
+      summary,
+      severity: ackStatus === "ack" ? "info" : "warning",
+      metadata: {
+        ...metadata,
+        source: "pc_o7_voice_speaker_ack_event",
+        proof_boundary: O7_VOICE_SPEAKER_ACK_EVENT_PROOF_SCOPE,
+        ack_status: ackStatus,
+        event_type: eventType,
+        failure_reason_code: failureReasonCode,
+        speaker_dispatch_enabled: false,
+        real_speaker_ack_proven: false,
+        tts_send_enabled: false,
+        real_voice_api_connected: false,
+        real_asr_tts_runtime_connected: false,
+        safe_to_control: false,
+        delivery_success: false,
+        robot_control_executed: false,
+        connects_cloud_production: false,
+      },
+    },
+  };
+}
+
+function failClosedVoiceSpeakerAckEvent(
+  reason: string,
+  baseUrl: string,
+  taskId: string,
+  o6HttpStatus: number | null = null,
+): O7VoiceSpeakerAckEventResult {
+  // fail-closed receipt 也固定 false 字段，避免 ACK 失败被误读成真实喇叭或控制闭环。
+  return {
+    schema: VOICE_SPEAKER_ACK_EVENT_SCHEMA,
+    ack_event_status: "fail_closed",
+    source_base_url: baseUrl || DEFAULT_BASE_URL,
+    remote_endpoint: REMOTE_EVENT_APPEND_ENDPOINT,
+    remote_schema: "not_loaded",
+    requested_task_id: taskId || "not_provided",
+    o6_http_status: o6HttpStatus,
+    task_id: taskId || "not_provided",
+    robot_id: "not_loaded",
+    event_id: "not_created",
+    event_type: "not_loaded",
+    ack_status: "not_loaded",
+    occurred_at_ms: null,
+    failure_reason_code: "not_loaded",
+    evidence_refs_consumed: [],
+    write_status: "blocked_not_proven",
+    duplicate: false,
+    created_count: 0,
+    updated_count: 0,
+    archive_event_written: false,
+    speaker_ack_event_written: false,
+    speaker_failure_event_written: false,
+    events_written_count: 0,
+    o6_schema: "not_loaded",
+    o6_source: "not_loaded",
+    proof_boundary: O7_VOICE_SPEAKER_ACK_EVENT_PROOF_SCOPE,
+    event_summary: {
+      event_count: 0,
+      event_types: [],
+      created_count: 0,
+      updated_count: 0,
+    },
+    blocked_reasons: [reason],
+    not_proven: [
+      "real_speaker_ack_not_proven",
+      "speaker_dispatch_not_enabled",
+      "real_voice_api_not_connected",
+      "real_asr_tts_runtime_not_connected",
+      "robot_control_not_executed",
+      "delivery_success_false",
+    ],
+    fail_closed_reason: reason,
+    local_loopback_only: true,
+    ...fixedVoiceSpeakerAckEventFalseFields(),
+    ...PROOF_FLAGS,
+  };
+}
+
+function containsUnsafeDeliveryResultIntakeCopy(value: unknown): boolean {
+  // delivery result intake 只能携带短标签和 receipt 字段；控制 topic、串口、URL、路径、凭证或 raw/base64 都关闸。
+  const encoded = JSON.stringify(value ?? {});
+  const lowered = encoded.toLowerCase();
+  const unsafeTokens = [
+    "/cmd_vel",
+    "/api/base/manual",
+    "/tf",
+    "/odom",
+    "/scan",
+    "/amcl_pose",
+    "navigatetopose",
+    "/dev/tty",
+    "/dev/ttyusb",
+    "/dev/ttyacm",
+    "wave rover",
+    "wave_rover",
+    "uart",
+    "baudrate",
+    "traceback",
+    "authorization",
+    "bearer",
+    "token",
+    "password",
+    "secret",
+    "credential",
+    "access_key",
+    "data:",
+    "base64",
+    "raw_content",
+    "://",
+  ];
+  return unsafeTokens.some((token) => lowered.includes(token)) || /[A-Za-z0-9+/]{180,}={0,2}/.test(encoded);
+}
+
+function deliveryResultToken(value: unknown, fallback = "", limit = 160): string {
+  // action body 的字符串字段只保留短文本；对象/数组不会被隐式 stringify 进入 O6。
+  return typeof value === "string" && value.trim() ? value.trim().slice(0, limit) : fallback;
+}
+
+function safeDeliveryResultIdentifier(value: unknown, fallback = ""): string {
+  // robot_id/task_id/run_id 都只允许短 token，避免 O7 adapter 成为路径或 query 注入口。
+  const text = deliveryResultToken(value, fallback, 128);
+  return /^[A-Za-z0-9._:-]{1,128}$/.test(text) ? text.slice(0, 128) : "";
+}
+
+function safeDeliveryResultEvidenceRef(value: unknown): string {
+  // O6 delivery_result_evidence 会拒绝路径；O7 这里直接收敛为 basename token。
+  const text = deliveryResultToken(value, "", 160);
+  if (!text || containsUnsafeDeliveryResultIntakeCopy(text)) {
+    return "";
+  }
+  if (
+    path.isAbsolute(text) ||
+    /^[A-Za-z]:[\\/]/.test(text) ||
+    text.startsWith("/") ||
+    text.startsWith("\\") ||
+    text.includes("/") ||
+    text.includes("\\") ||
+    text.includes("..") ||
+    text.includes("?") ||
+    text.includes("#")
+  ) {
+    return "";
+  }
+  return /^[A-Za-z0-9._:-]{1,160}$/.test(text) ? text : "";
+}
+
+function normalizeDeliveryResultMetadata(value: unknown): Record<string, string | number | boolean | null> | null {
+  // metadata 只能补充小型 primitive 摘要，避免把原始送达记录或凭证塞进本地归档。
+  const metadata = value === undefined ? {} : asRecord(value);
+  if (!metadata || containsUnsafeDeliveryResultIntakeCopy(metadata)) {
+    return null;
+  }
+  if (Object.keys(metadata).length > O7_DELIVERY_RESULT_METADATA_KEY_LIMIT) {
+    return null;
+  }
+  if (JSON.stringify(metadata).length > O7_DELIVERY_RESULT_METADATA_BYTES_LIMIT) {
+    return null;
+  }
+  const normalized: Record<string, string | number | boolean | null> = {};
+  for (const [key, item] of Object.entries(metadata)) {
+    const safeKey = safeDeliveryResultIdentifier(key, "");
+    if (!safeKey || Array.isArray(item) || (item !== null && typeof item === "object")) {
+      return null;
+    }
+    if (typeof item === "string") {
+      const text = deliveryResultToken(item, "", 180);
+      if (!text || containsUnsafeDeliveryResultIntakeCopy(text) || text.includes("/") || text.includes("\\")) {
+        return null;
+      }
+      normalized[safeKey] = text;
+    } else if (typeof item === "number") {
+      if (!Number.isFinite(item)) {
+        return null;
+      }
+      normalized[safeKey] = item;
+    } else if (typeof item === "boolean" || item === null) {
+      normalized[safeKey] = item;
+    } else {
+      return null;
+    }
+  }
+  return normalized;
+}
+
+function deliveryResultPayloadFromBody(
+  taskId: string,
+  body: unknown,
+): { ok: true; payload: NormalizedDeliveryResultIntakePayload } | { ok: false; reason: string } {
+  // O7 只构造 O6 field-evidence 的 delivery result additive 安全集；path/body task_id 必须一致。
+  const payload = asRecord(body);
+  if (!payload) {
+    return { ok: false, reason: "delivery_result_body_not_object" };
+  }
+  if (JSON.stringify(payload).length > O7_DELIVERY_RESULT_MAX_BODY_BYTES) {
+    return { ok: false, reason: "delivery_result_body_too_large" };
+  }
+  if (containsUnsafeDeliveryResultIntakeCopy(payload)) {
+    return { ok: false, reason: "delivery_result_body_contains_unsafe_copy" };
+  }
+  const dangerous = scanDangerousTrueFields(payload);
+  if (dangerous.length > 0) {
+    return { ok: false, reason: `dangerous_true_fields:${dangerous.join(",")}` };
+  }
+  const allowedKeys = new Set([
+    "robot_id",
+    "task_id",
+    "record_status",
+    "delivery_result_claimed",
+    "evidence_ref",
+    "dropoff_confirmation_type",
+    "completed_at_utc",
+    "notes",
+    "metadata",
+  ]);
+  const extraKeys = Object.keys(payload).filter((key) => !allowedKeys.has(key));
+  if (extraKeys.length > 0) {
+    return { ok: false, reason: `delivery_result_body_unknown_fields:${extraKeys.join(",")}` };
+  }
+  const bodyTaskId = payload.task_id === undefined ? taskId : safeDeliveryResultIdentifier(payload.task_id, "");
+  if (!bodyTaskId || bodyTaskId !== taskId) {
+    return { ok: false, reason: "task_id_mismatch" };
+  }
+  const robotId = safeDeliveryResultIdentifier(payload.robot_id, "");
+  if (!robotId) {
+    return { ok: false, reason: "robot_id_not_provided" };
+  }
+  const recordStatus = deliveryResultToken(payload.record_status, "", 80);
+  if (!O7_DELIVERY_RESULT_RECORD_STATUSES.has(recordStatus)) {
+    return { ok: false, reason: "record_status_unsupported" };
+  }
+  if (typeof payload.delivery_result_claimed !== "boolean") {
+    return { ok: false, reason: "delivery_result_claimed_not_boolean" };
+  }
+  const dropoffConfirmationType = deliveryResultToken(payload.dropoff_confirmation_type, "", 80);
+  if (!O7_DELIVERY_RESULT_DROPOFF_TYPES.has(dropoffConfirmationType)) {
+    return { ok: false, reason: "dropoff_confirmation_type_unsupported" };
+  }
+  if (
+    payload.delivery_result_claimed === true &&
+    (dropoffConfirmationType === "none" || recordStatus === "blocked_not_proven")
+  ) {
+    return { ok: false, reason: "delivery_result_claim_requires_confirmation" };
+  }
+  const evidenceRef = safeDeliveryResultEvidenceRef(payload.evidence_ref);
+  if (!evidenceRef) {
+    return { ok: false, reason: "evidence_ref_invalid" };
+  }
+  const completedAtUtc = deliveryResultToken(payload.completed_at_utc, "", 64);
+  const completedAtMs = Date.parse(completedAtUtc);
+  if (!completedAtUtc || !Number.isFinite(completedAtMs) || !completedAtUtc.endsWith("Z")) {
+    return { ok: false, reason: "completed_at_utc_invalid" };
+  }
+  const notes = payload.notes === undefined ? undefined : deliveryResultToken(payload.notes, "", 240);
+  if (notes !== undefined && (!notes || containsUnsafeDeliveryResultIntakeCopy(notes) || notes.includes("/") || notes.includes("\\"))) {
+    return { ok: false, reason: "notes_unsafe_or_empty" };
+  }
+  const metadata = normalizeDeliveryResultMetadata(payload.metadata ?? {});
+  if (!metadata) {
+    return { ok: false, reason: "metadata_invalid_or_too_large" };
+  }
+  return {
+    ok: true,
+    payload: {
+      robot_id: robotId,
+      task_id: taskId,
+      record_status: recordStatus as O7ConsumerDeliveryResultRecordStatus,
+      delivery_result_claimed: payload.delivery_result_claimed,
+      evidence_ref: evidenceRef,
+      dropoff_confirmation_type: dropoffConfirmationType as O7ConsumerDeliveryResultDropoffConfirmationType,
+      completed_at_utc: completedAtUtc,
+      notes,
+      metadata,
+      operator_confirmation_present: dropoffConfirmationType !== "none",
+    },
+  };
+}
+
+function failClosedDeliveryResultIntake(
+  reason: string,
+  baseUrl: string,
+  taskId: string,
+  o6HttpStatus: number | null = null,
+): O7ConsumerDeliveryResultIntakeResult {
+  // delivery result 写入失败也返回完整 receipt，避免 UI 把异常吞成“未点击”。
+  return {
+    schema: DELIVERY_RESULT_INTAKE_SCHEMA,
+    intake_status: "fail_closed",
+    source_base_url: baseUrl || DEFAULT_BASE_URL,
+    remote_endpoint: REMOTE_DELIVERY_RESULT_INTAKE_ENDPOINT,
+    remote_schema: "not_loaded",
+    requested_task_id: taskId || "not_provided",
+    o6_http_status: o6HttpStatus,
+    task_id: taskId || "not_provided",
+    robot_id: "not_loaded",
+    record_status: "blocked_not_proven",
+    delivery_result_claimed: false,
+    operator_confirmation_present: false,
+    dropoff_confirmation_type: "not_loaded",
+    completed_at_utc: "not_loaded",
+    evidence_ref: "not_loaded",
+    write_status: "blocked_not_proven",
+    duplicate: false,
+    field_evidence_written: false,
+    o6_schema: "not_loaded",
+    o6_source: "not_loaded",
+    proof_scope: O7_DELIVERY_RESULT_INTAKE_PROOF_SCOPE,
+    delivery_result_evidence: blockedDeliveryResultEvidence(reason, taskId),
+    blocked_reasons: [reason],
+    not_proven: [
+      "delivery_result_intake_not_written",
+      "real_cloud_db_not_connected",
+      "real_oss_not_connected",
+      "real_cloud_production_not_connected",
+      "robot_control_not_executed",
+      "route_execution_success_false",
+      "hil_pass_false",
+    ],
+    fail_closed_reason: reason,
+    local_loopback_only: true,
+    ...fixedDeliveryResultIntakeFalseFields(),
+    ...PROOF_FLAGS,
+  };
+}
+
+function missionEvidenceBundleRemoteEndpoint(taskId: string): string {
+  // export 固定复用 consumer detail include 集，避免前端传任意 O6 endpoint 或缩小安全扫描范围。
+  return `${REMOTE_DETAIL_ENDPOINT_PREFIX}${taskId || "<task_id>"}?view=${DEFAULT_DETAIL_VIEW}&include=${DEFAULT_DETAIL_INCLUDE.join(",")}`;
+}
+
+function failClosedMissionEvidenceBundleExport(
+  reason: string,
+  baseUrl: string,
+  taskId: string,
+  o6HttpStatus: number | null = null,
+): O7MissionEvidenceBundleExportResult {
+  // export fail-closed 仍返回完整 receipt；按钮状态、proof 边界和 false 字段都能被 UI/测试读到。
+  return {
+    schema: MISSION_EVIDENCE_BUNDLE_EXPORT_SCHEMA,
+    export_status: "fail_closed",
+    source_base_url: baseUrl || DEFAULT_BASE_URL,
+    remote_endpoint: missionEvidenceBundleRemoteEndpoint(taskId || "<task_id>"),
+    remote_schema: "not_loaded",
+    requested_task_id: taskId || "not_provided",
+    o6_http_status: o6HttpStatus,
+    format: "blocked",
+    task_id: taskId || "not_provided",
+    robot_id: "not_loaded",
+    proof_scope: O7_MISSION_EVIDENCE_BUNDLE_EXPORT_PROOF_SCOPE,
+    receipt_id: "not_created",
+    selected_task: {
+      task_id: taskId || "not_provided",
+      robot_id: "not_loaded",
+      task_status_summary: "blocked_not_proven",
+      started_at_ms: null,
+      finished_at_ms: null,
+    },
+    identity: {
+      same_task_id_verified: false,
+      same_task_replay_packet_ready: false,
+      packet_id: "not_loaded",
+      route_intent_id: "not_loaded",
+      path_structured_pose_count: 0,
+      route_csv_row_count: 0,
+      replay_jsonl_event_count: 0,
+    },
+    counts: {
+      section_count: 0,
+      mission_event_count: 0,
+      evidence_count: 0,
+      field_evidence_artifact_count: 0,
+      route_section_count: 0,
+      closure_section_count: 0,
+      material_section_count: 0,
+      readiness_section_count: 0,
+      sample_ref_count: 0,
+    },
+    section_summaries: [],
+    bundle_ready: false,
+    local_mock_only: true,
+    o6_consumer_detail_only: true,
+    blocked_reasons: [reason],
+    not_proven: [
+      "mission_evidence_bundle_export_not_ready",
+      "real_dataset_export_not_connected",
+      "route_execution_success_false",
+      "delivery_success_false",
+      "hil_pass_false",
+    ],
+    fail_closed_reason: reason,
+    local_loopback_only: true,
+    ...fixedMissionEvidenceBundleExportFalseFields(),
+    ...PROOF_FLAGS,
+  };
+}
+
+function collectSafeRefTokens(value: unknown, limit = 12): string[] {
+  // bundle receipt 只允许 basename/token 级引用；完整对象、绝对路径和正文永远不进入响应。
+  const refs: string[] = [];
+  const seen = new Set<string>();
+  const refKeyPattern = /(ref|refs|path|file|source|packet_id|route_intent_id|output)$/i;
+  const visit = (nested: unknown, key = "", depth = 0): void => {
+    if (refs.length >= limit || depth > 4 || nested === null || nested === undefined) {
+      return;
+    }
+    if (typeof nested === "string") {
+      if (!refKeyPattern.test(key)) {
+        return;
+      }
+      const token = safePathToken(nested);
+      if (token && token !== "file:." && !seen.has(token)) {
+        seen.add(token);
+        refs.push(token);
+      }
+      return;
+    }
+    if (Array.isArray(nested)) {
+      nested.slice(0, limit).forEach((item) => visit(item, key, depth + 1));
+      return;
+    }
+    if (typeof nested === "object") {
+      Object.entries(nested as JsonRecord).forEach(([childKey, childValue]) => visit(childValue, childKey, depth + 1));
+    }
+  };
+  visit(value);
+  return refs;
+}
+
+function missionEvidenceBundleSectionSummary(
+  section: string,
+  candidate: unknown,
+): O7MissionEvidenceBundleSectionSummary {
+  // 每个 section 都压缩成状态、schema、proof 和 refs 计数，避免导出 raw event 或 raw artifact body。
+  const record = asRecord(candidate);
+  const sampleRefs = collectSafeRefTokens(record);
+  const itemCount =
+    asNumber(record?.count) ??
+    asNumber(record?.event_count) ??
+    asNumber(record?.frame_count) ??
+    asNumber(record?.label_count) ??
+    asNumber(record?.topic_count) ??
+    sampleObjectArray(record?.items).length;
+  return {
+    section,
+    status: asString(
+      record?.status ??
+        record?.bundle_status ??
+        record?.archive_status ??
+        record?.readiness_status ??
+        record?.gate_status ??
+        record?.route_execution_readiness_status,
+      "blocked_not_proven",
+    ),
+    schema: asString(record?.schema ?? record?.source_contract, "not_loaded"),
+    proof_scope: asString(record?.proof_scope, "not_loaded"),
+    source_origin: asString(record?.source_origin ?? record?.source ?? record?.source_label, "not_loaded"),
+    item_count: itemCount,
+    safe_ref_count: sampleRefs.length,
+    sample_refs: sampleRefs,
+    blocked_reasons: stringList(record?.blocked_reasons),
+    not_proven: stringList(record?.not_proven),
+  };
+}
+
+function missionEvidenceBundleSectionSummaries(remote: JsonRecord): O7MissionEvidenceBundleSectionSummary[] {
+  // 分类和 UI 呈现保持稳定顺序，便于 reviewer 比较同一 task 的 bundle receipt。
+  const sections: Array<[string, unknown]> = [
+    ["mission_events", asRecord(remote.events)],
+    ["field_evidence", asRecord(remote.field_evidence)],
+    ["same_task_replay_packet_readback", asRecord(remote.same_task_replay_packet_readback)],
+    ["bounded_route_execution_gate_material", asRecord(remote.bounded_route_execution_gate_material)],
+    ["bounded_route_terminal_result_material", asRecord(remote.bounded_route_terminal_result_material)],
+    ["delivery_result_evidence", asRecord(remote.delivery_result_evidence)],
+    ["route_execution_result_delivery_readiness", asRecord(remote.route_execution_result_delivery_readiness)],
+    ["route_delivery_closure_packet", asRecord(remote.route_delivery_closure_packet)],
+    ["trajectory", asRecord(remote.trajectory)],
+    ["route_root_seed_gate", asRecord(remote.route_root_seed_gate)],
+    ["route_bag_evidence", asRecord(remote.route_bag_evidence)],
+    ["route_bag_payload_replay", asRecord(remote.route_bag_payload_replay)],
+    ["route_bag_semantic_replay", asRecord(remote.route_bag_semantic_replay)],
+    ["route_bag_full_semantic_decode_matrix", asRecord(remote.route_bag_full_semantic_decode_matrix)],
+    ["route_bag_pose_progress_replay", asRecord(remote.route_bag_pose_progress_replay)],
+    ["same_task_field_material_packet", asRecord(remote.same_task_field_material_packet)],
+    ["current_field_evidence_material", asRecord(remote.current_field_evidence_material)],
+    ["pc_live_nav2_execution_material", asRecord(remote.pc_live_nav2_execution_material)],
+    ["clean_baseline_nav2_path_material", asRecord(remote.clean_baseline_nav2_path_material)],
+    ["localization_path_material_readback", asRecord(remote.localization_path_material_readback)],
+    ["same_task_route_execution_material_packet", asRecord(remote.same_task_route_execution_material_packet)],
+    ["same_task_mission_evidence_gate", asRecord(remote.same_task_mission_evidence_gate)],
+    ["field_operator_confirmation_material", asRecord(remote.field_operator_confirmation_material)],
+    ["phone_browser_terminal_material", asRecord(remote.phone_browser_terminal_material)],
+    ["artifact_bundle_readiness", asRecord(remote.artifact_bundle_readiness)],
+  ];
+  return sections.map(([section, candidate]) => missionEvidenceBundleSectionSummary(section, candidate));
+}
+
+function missionEvidenceBundleUnsafeReason(remote: JsonRecord): string {
+  // 导出摘要入口比普通 detail 更保守：控制面、串口、URL、凭证和 traceback 文本一律关闸。
+  const unsafeTokens = scanUnsafeManifestCopy(remote);
+  return unsafeTokens.length > 0 ? `unsafe_mission_evidence_bundle_content:${unsafeTokens.join(",")}` : "";
+}
+
+function buildDeliveryResultEvidencePayload(payload: NormalizedDeliveryResultIntakePayload): JsonRecord {
+  // O6 delivery_result_evidence 合同只承载人工提交的记录摘要；真实送达和 Nav2 execution 仍固定未证明。
+  return {
+    schema: DELIVERY_RESULT_EVIDENCE_SCHEMA,
+    proof_scope: DELIVERY_RESULT_EVIDENCE_PROOF_SCOPE,
+    task_id: payload.task_id,
+    status: "ready_not_delivery_proof",
+    source: "pc_o7_delivery_result_intake",
+    source_schema: "trashbot.pc_tools_workstation.o7_consumer_delivery_result_intake_request.v1",
+    task_id_source: "pc_o7_selected_task_path_and_body_match",
+    record_present: true,
+    record_read_ok: true,
+    record_status: payload.record_status,
+    delivery_result_claimed: payload.delivery_result_claimed,
+    operator_confirmation_present: payload.operator_confirmation_present,
+    dropoff_confirmation_type: payload.dropoff_confirmation_type,
+    completed_at_utc: payload.completed_at_utc,
+    linked_nav2_goal_execution_proven: false,
+    blocked_reasons: [
+      "local_mock_only",
+      "delivery_success_not_proven",
+      "linked_nav2_goal_execution_not_proven",
+    ],
+    next_required_evidence: [
+      "real_delivery_result_trace_for_selected_task",
+      "real_live_nav2_route_execution_trace",
+      "operator_confirmation_for_selected_task",
+    ],
+    notes: payload.notes,
+    metadata: payload.metadata,
+    safe_to_control: false,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    robot_control_executed: false,
+  };
+}
+
+function buildDeliveryResultFieldEvidenceBody(payload: NormalizedDeliveryResultIntakePayload): JsonRecord {
+  // field-evidence manifest 只提供 O6 archive 必需的安全 artifact 摘要，不让 O7 上传文件或读取本地路径。
+  const deliveryResultEvidence = buildDeliveryResultEvidencePayload(payload);
+  const evidenceJson = JSON.stringify(deliveryResultEvidence);
+  const checksum = createHash("sha256").update(evidenceJson).digest("hex");
+  const completedAtMs = Date.parse(payload.completed_at_utc);
+  return {
+    robot_id: payload.robot_id,
+    task_id: payload.task_id,
+    field_evidence_manifest: {
+      schema: FIELD_EVIDENCE_MANIFEST_SCHEMA,
+      source: "pc_o7_delivery_result_intake",
+      robot_id: payload.robot_id,
+      task_id: payload.task_id,
+      run_id: `o7_delivery_result_${payload.task_id}`.slice(0, 80),
+      status: "local_mock_delivery_result_intake_ready",
+      generated_at: payload.completed_at_utc,
+      gate_pass: true,
+      manifest_gate: {
+        schema: FIELD_EVIDENCE_MANIFEST_SCHEMA,
+        status: "gated",
+        gate_pass: true,
+        blocked_reason: "delivery_result_intake_local_mock_only",
+        source: "pc_o7_delivery_result_intake",
+      },
+      artifact_status: "gated",
+      artifact_health: {
+        required_count: 1,
+        present_count: 1,
+        missing_count: 0,
+        blocked_count: 0,
+        summary: "delivery_result_evidence_ready_not_delivery_proof",
+      },
+      artifacts: {
+        delivery_result_evidence: {
+          path: payload.evidence_ref,
+          required: true,
+          present: true,
+          size_bytes: Math.max(1, Buffer.byteLength(evidenceJson, "utf8")),
+          sha256: checksum,
+          mtime_utc: payload.completed_at_utc,
+          file_count: 1,
+        },
+      },
+      derived_replay: {
+        generated: false,
+        frame_count: 1,
+        blocked_reason: "delivery_result_intake_only_not_route_replay",
+        output: "delivery-result-intake.jsonl",
+      },
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+      connects_cloud_production: false,
+      robot_control_executed: false,
+      real_cloud_db_connected: false,
+      real_oss_connected: false,
+    },
+    delivery_result_evidence: deliveryResultEvidence,
+    trajectory_frames: [
+      {
+        frame_index: 0,
+        timestamp_ms: Number.isFinite(completedAtMs) ? completedAtMs : 0,
+        state: "delivery_result_intake_local_mock",
+        evidence_ref: payload.evidence_ref,
+      },
+    ],
+    events: [
+      {
+        event_id: `o7-delivery-result-${payload.task_id}`.replace(/[^A-Za-z0-9._:-]/g, "-").slice(0, 120),
+        event_type: "operator.note",
+        occurred_at_ms: Number.isFinite(completedAtMs) ? completedAtMs : 0,
+        summary: "local mock delivery result intake",
+        severity: "info",
+        evidence_refs: [payload.evidence_ref],
+        metadata: {
+          source: "pc_o7_delivery_result_intake",
+          record_status: payload.record_status,
+        },
+      },
+    ],
+    safe_to_control: false,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    connects_cloud_production: false,
+    robot_control_executed: false,
+    real_cloud_db_connected: false,
+    real_oss_connected: false,
+  };
+}
+
+function o6DeliveryResultIntakeFixedFalseMismatch(remote: JsonRecord): string {
+  // field-evidence 写入口的 false 字段是 O7 proof boundary 的硬门槛。
+  const requiredFalse = [
+    "safe_to_control",
+    "delivery_success",
+    "primary_actions_enabled",
+    "connects_cloud_production",
+    "robot_control_executed",
+    "real_cloud_db_connected",
+    "real_oss_connected",
+  ];
+  const optionalFalse = ["route_execution_success", "hil_pass"];
+  const requiredMismatch = requiredFalse.find((key) => remote[key] !== false);
+  if (requiredMismatch) {
+    return requiredMismatch;
+  }
+  return optionalFalse.find((key) => remote[key] !== undefined && remote[key] !== false) ?? "";
+}
+
+function deliveryResultEvidenceSummaryFromO6Task(
+  task: JsonRecord,
+  taskId: string,
+): O7ConsumerDeliveryResultEvidenceSummary {
+  // O6 当前详情会丢弃 task_id_source；O7 receipt 用请求身份补齐该只读摘要字段。
+  const candidate = deliveryResultEvidenceCandidateFromRemote(task);
+  if (!candidate) {
+    return blockedDeliveryResultEvidence("o6_delivery_result_evidence_missing", taskId);
+  }
+  return buildDeliveryResultEvidenceSummary(
+    {
+      ...candidate,
+      payload: {
+        ...candidate.payload,
+        task_id_source: asString(candidate.payload.task_id_source, "pc_o7_selected_task_path_and_body_match"),
+      },
+    },
+    taskId,
+  );
+}
+
+function validateO6DeliveryResultIntakeResponse(
+  remote: JsonRecord,
+  payload: NormalizedDeliveryResultIntakePayload,
+): { ok: true; deliveryResultEvidence: O7ConsumerDeliveryResultEvidenceSummary } | { ok: false; reason: string } {
+  // 成功响应必须是 O6 field-evidence local/mock/not_proven receipt；任何身份或 false 字段漂移都关闸。
+  if (asString(remote.schema, "") !== "trashbot.o6.field_evidence_archive.v1") {
+    return { ok: false, reason: "o6_field_evidence_schema_mismatch" };
+  }
+  if (asString(remote.source, "") !== "local_mock_field_evidence_archive") {
+    return { ok: false, reason: "o6_field_evidence_source_mismatch" };
+  }
+  if (asString(remote.proof_status, "") !== "not_proven") {
+    return { ok: false, reason: "o6_field_evidence_proof_status_mismatch" };
+  }
+  const falseMismatch = o6DeliveryResultIntakeFixedFalseMismatch(remote);
+  if (falseMismatch) {
+    return { ok: false, reason: `o6_field_evidence_false_field_mismatch:${falseMismatch}` };
+  }
+  if (scanDangerousTrueFields(remote).length > 0 || containsUnsafeDeliveryResultIntakeCopy(remote)) {
+    return { ok: false, reason: "o6_field_evidence_response_unsafe" };
+  }
+  if (asString(remote.archive_status, "") !== "local_mock_field_evidence_ready") {
+    return { ok: false, reason: "o6_field_evidence_archive_status_mismatch" };
+  }
+  if (remote.field_evidence_written !== true) {
+    return { ok: false, reason: "o6_field_evidence_not_written" };
+  }
+  if (!["created", "updated"].includes(asString(remote.write_status, ""))) {
+    return { ok: false, reason: "o6_field_evidence_write_status_mismatch" };
+  }
+  const task = asRecord(remote.task);
+  if (!task) {
+    return { ok: false, reason: "o6_field_evidence_task_missing" };
+  }
+  if (asString(task.task_id, "") !== payload.task_id || asString(task.robot_id, "") !== payload.robot_id) {
+    return { ok: false, reason: "o6_field_evidence_identity_mismatch" };
+  }
+  const deliveryResultEvidence = deliveryResultEvidenceSummaryFromO6Task(task, payload.task_id);
+  if (deliveryResultEvidence.status !== "delivery_result_evidence_ready_not_delivery_proof") {
+    return { ok: false, reason: deliveryResultEvidence.blocked_reasons[0] ?? "o6_delivery_result_evidence_not_ready" };
+  }
+  if (
+    deliveryResultEvidence.task_id !== payload.task_id ||
+    deliveryResultEvidence.record_status !== payload.record_status ||
+    deliveryResultEvidence.delivery_result_claimed !== payload.delivery_result_claimed ||
+    deliveryResultEvidence.operator_confirmation_present !== payload.operator_confirmation_present ||
+    deliveryResultEvidence.dropoff_confirmation_type !== payload.dropoff_confirmation_type ||
+    deliveryResultEvidence.completed_at_utc !== payload.completed_at_utc
+  ) {
+    return { ok: false, reason: "o6_delivery_result_evidence_identity_mismatch" };
+  }
+  return { ok: true, deliveryResultEvidence };
+}
+
+function containsUnsafePhoneBrowserProofCopy(value: unknown): boolean {
+  // phone/browser intake 只允许摘要 token；URL、凭证、本地路径、DOM/screenshot/raw body 或控制词一律关闸。
+  const encoded = JSON.stringify(value ?? {});
+  const lowered = encoded.toLowerCase();
+  const unsafeTokens = [
+    "/cmd_vel",
+    "/api/base/manual",
+    "/tf",
+    "/odom",
+    "/scan",
+    "/amcl_pose",
+    "navigatetopose",
+    "/dev/tty",
+    "/dev/ttyusb",
+    "/dev/ttyacm",
+    "wave rover",
+    "wave_rover",
+    "uart",
+    "baudrate",
+    "traceback",
+    "authorization",
+    "bearer",
+    "cookie",
+    "token",
+    "password",
+    "secret",
+    "credential",
+    "access_key",
+    "raw_url",
+    "raw_body",
+    "raw screenshot",
+    "screenshot_body",
+    "dom dump",
+    "local_path",
+    "data:",
+    "base64",
+    "://",
+    "/",
+    "\\",
+  ];
+  return unsafeTokens.some((token) => lowered.includes(token)) || /[A-Za-z0-9+/]{180,}={0,2}/.test(encoded);
+}
+
+function containsUnsafePhoneBrowserProofValue(value: unknown): boolean {
+  // O6 receipt 可以带 reads_local_path=false 这类固定 false key；response 扫描只检查字符串值里的 raw 内容。
+  if (typeof value === "string") {
+    return containsUnsafePhoneBrowserProofCopy(value);
+  }
+  if (Array.isArray(value)) {
+    return value.some((item) => containsUnsafePhoneBrowserProofValue(item));
+  }
+  const record = asRecord(value);
+  if (!record) {
+    return false;
+  }
+  return Object.values(record).some((item) => containsUnsafePhoneBrowserProofValue(item));
+}
+
+function phoneBrowserToken(value: unknown, fallback = "", limit = 160): string {
+  // action body 的文本字段只接受短字符串，避免对象/数组被隐式 stringify 成 raw 内容。
+  return typeof value === "string" && value.trim() ? value.trim().slice(0, limit) : fallback;
+}
+
+function safePhoneBrowserIdentifier(value: unknown, fallback = ""): string {
+  // robot_id/task_id 是路径和幂等身份字段，只允许短 token。
+  const text = phoneBrowserToken(value, fallback, 128);
+  return /^[A-Za-z0-9._:-]{1,128}$/.test(text) ? text.slice(0, 128) : "";
+}
+
+function safePhoneBrowserEvidenceRef(value: unknown): string {
+  // safe_evidence_ref 只能是 basename/token 级引用，不能是 URL、绝对/相对路径或查询串。
+  const text = phoneBrowserToken(value, "", 160);
+  if (!text || containsUnsafePhoneBrowserProofCopy(text)) {
+    return "";
+  }
+  if (
+    path.isAbsolute(text) ||
+    /^[A-Za-z]:[\\/]/.test(text) ||
+    text.startsWith("/") ||
+    text.startsWith("\\") ||
+    text.includes("/") ||
+    text.includes("\\") ||
+    text.includes("..") ||
+    text.includes("?") ||
+    text.includes("#")
+  ) {
+    return "";
+  }
+  return /^[A-Za-z0-9._:-]{1,160}$/.test(text) ? text : "";
+}
+
+function phoneBrowserMaterialList(value: unknown, limit = 3): O7ConsumerPhoneBrowserTerminalMaterialName[] | null {
+  // material 名称只接受 O6/O7 合同白名单；未知 label 不会作为 rejected material 继续透传。
+  if (!Array.isArray(value) || value.length > limit) {
+    return null;
+  }
+  const materials = value.map((item) => phoneBrowserToken(item, "", 80));
+  if (
+    materials.length !== value.length ||
+    materials.some((item) => !O7_PHONE_BROWSER_ALLOWED_MATERIALS.has(item))
+  ) {
+    return null;
+  }
+  const unique = Array.from(new Set(materials)) as O7ConsumerPhoneBrowserTerminalMaterialName[];
+  return unique.length === materials.length ? unique : null;
+}
+
+function normalizePhoneBrowserMetadata(value: unknown): Record<string, string | number | boolean | null> | null {
+  // metadata 只留小型 primitive 摘要，不能把浏览器原始返回、URL、token 或本地路径塞进 archive。
+  const metadata = value === undefined ? {} : asRecord(value);
+  if (!metadata || containsUnsafePhoneBrowserProofCopy(metadata)) {
+    return null;
+  }
+  if (Object.keys(metadata).length > O7_PHONE_BROWSER_METADATA_KEY_LIMIT) {
+    return null;
+  }
+  if (JSON.stringify(metadata).length > O7_PHONE_BROWSER_METADATA_BYTES_LIMIT) {
+    return null;
+  }
+  const normalized: Record<string, string | number | boolean | null> = {};
+  for (const [key, item] of Object.entries(metadata)) {
+    const safeKey = safePhoneBrowserIdentifier(key, "");
+    if (!safeKey || Array.isArray(item) || (item !== null && typeof item === "object")) {
+      return null;
+    }
+    if (typeof item === "string") {
+      const text = phoneBrowserToken(item, "", 180);
+      if (!text || containsUnsafePhoneBrowserProofCopy(text)) {
+        return null;
+      }
+      normalized[safeKey] = text;
+    } else if (typeof item === "number") {
+      if (!Number.isFinite(item)) {
+        return null;
+      }
+      normalized[safeKey] = item;
+    } else if (typeof item === "boolean" || item === null) {
+      normalized[safeKey] = item;
+    } else {
+      return null;
+    }
+  }
+  return normalized;
+}
+
+function phoneBrowserProofPayloadFromBody(
+  taskId: string,
+  body: unknown,
+): { ok: true; payload: NormalizedPhoneBrowserProofIntakePayload } | { ok: false; reason: string } {
+  // O7 只构造 O6 field-evidence 的 phone/browser 安全子集；path/body task_id 必须一致。
+  const payload = asRecord(body);
+  if (!payload) {
+    return { ok: false, reason: "phone_browser_body_not_object" };
+  }
+  if (JSON.stringify(payload).length > O7_PHONE_BROWSER_PROOF_MAX_BODY_BYTES) {
+    return { ok: false, reason: "phone_browser_body_too_large" };
+  }
+  if (containsUnsafePhoneBrowserProofCopy(payload)) {
+    return { ok: false, reason: "phone_browser_body_contains_unsafe_copy" };
+  }
+  const dangerous = scanDangerousTrueFields(payload);
+  if (dangerous.length > 0) {
+    return { ok: false, reason: `dangerous_true_fields:${dangerous.join(",")}` };
+  }
+  const allowedKeys = new Set([
+    "robot_id",
+    "task_id",
+    "safe_evidence_ref",
+    "terminal_result_type",
+    "accepted_materials",
+    "missing_materials",
+    "rejected_materials",
+    "captured_at_utc",
+    "metadata",
+  ]);
+  const extraKeys = Object.keys(payload).filter((key) => !allowedKeys.has(key));
+  if (extraKeys.length > 0) {
+    return { ok: false, reason: `phone_browser_body_unknown_fields:${extraKeys.join(",")}` };
+  }
+  const bodyTaskId = payload.task_id === undefined ? taskId : safePhoneBrowserIdentifier(payload.task_id, "");
+  if (!bodyTaskId || bodyTaskId !== taskId) {
+    return { ok: false, reason: "task_id_mismatch" };
+  }
+  const robotId = safePhoneBrowserIdentifier(payload.robot_id, "");
+  if (!robotId) {
+    return { ok: false, reason: "robot_id_not_provided" };
+  }
+  const safeEvidenceRef = safePhoneBrowserEvidenceRef(payload.safe_evidence_ref);
+  if (!safeEvidenceRef) {
+    return { ok: false, reason: "safe_evidence_ref_invalid" };
+  }
+  const terminalResultType = phoneBrowserToken(payload.terminal_result_type, "", 80);
+  if (!O7_PHONE_BROWSER_TERMINAL_RESULT_TYPES.has(terminalResultType)) {
+    return { ok: false, reason: "terminal_result_type_unsupported" };
+  }
+  const acceptedMaterials = phoneBrowserMaterialList(payload.accepted_materials);
+  if (!acceptedMaterials || acceptedMaterials.length === 0) {
+    return { ok: false, reason: "accepted_materials_invalid_or_missing" };
+  }
+  const missingMaterials = payload.missing_materials === undefined
+    ? (Array.from(O7_PHONE_BROWSER_ALLOWED_MATERIALS)
+        .filter((material) => !acceptedMaterials.includes(material as O7ConsumerPhoneBrowserTerminalMaterialName)) as O7ConsumerPhoneBrowserTerminalMaterialName[])
+    : phoneBrowserMaterialList(payload.missing_materials);
+  if (!missingMaterials) {
+    return { ok: false, reason: "missing_materials_invalid" };
+  }
+  const rejectedMaterials = payload.rejected_materials === undefined ? [] : phoneBrowserMaterialList(payload.rejected_materials);
+  if (!rejectedMaterials) {
+    return { ok: false, reason: "rejected_materials_invalid" };
+  }
+  const capturedAtUtc = phoneBrowserToken(payload.captured_at_utc, "1970-01-01T00:00:00.000Z", 64);
+  if (!capturedAtUtc || !capturedAtUtc.endsWith("Z") || !Number.isFinite(Date.parse(capturedAtUtc))) {
+    return { ok: false, reason: "captured_at_utc_invalid" };
+  }
+  const metadata = normalizePhoneBrowserMetadata(payload.metadata ?? {});
+  if (!metadata) {
+    return { ok: false, reason: "metadata_invalid_or_too_large" };
+  }
+  return {
+    ok: true,
+    payload: {
+      robot_id: robotId,
+      task_id: taskId,
+      safe_evidence_ref: safeEvidenceRef,
+      terminal_result_type: terminalResultType as O7ConsumerPhoneBrowserTerminalResultType,
+      accepted_materials: acceptedMaterials,
+      missing_materials: missingMaterials,
+      rejected_materials: rejectedMaterials,
+      captured_at_utc: capturedAtUtc,
+      metadata,
+    },
+  };
+}
+
+function phoneBrowserTerminalMaterialCandidateFromRemote(
+  remote: JsonRecord,
+): PhoneBrowserTerminalMaterialSourceResult | null {
+  // O6 可以把 phone/browser section 放在顶层或同 task wrappers 下；O7 只读固定白名单路径。
+  const direct = asRecord(remote.phone_browser_terminal_material);
+  if (direct) {
+    return {
+      payload: direct,
+      source_origin: "remote_phone_browser_terminal_material",
+      source_path: "phone_browser_terminal_material",
+    };
+  }
+  const fieldEvidence =
+    nestedRecord(remote, "field_evidence", "phone_browser_terminal_material") ??
+    nestedRecord(remote, "field_evidence_manifest", "phone_browser_terminal_material");
+  if (fieldEvidence) {
+    return {
+      payload: fieldEvidence,
+      source_origin: "remote_field_evidence",
+      source_path: "field_evidence.phone_browser_terminal_material",
+    };
+  }
+  const fieldMotion =
+    nestedRecord(remote, "field_motion_evidence_packet", "phone_browser_terminal_material") ??
+    nestedRecord(remote, "field_evidence", "field_motion_evidence_packet", "phone_browser_terminal_material");
+  if (fieldMotion) {
+    return {
+      payload: fieldMotion,
+      source_origin: "remote_field_motion_evidence_packet",
+      source_path: "field_motion_evidence_packet.phone_browser_terminal_material",
+    };
+  }
+  const fieldIngest =
+    nestedRecord(remote, "field_evidence_consumer_ingest", "phone_browser_terminal_material") ??
+    nestedRecord(remote, "field_evidence_ingest", "phone_browser_terminal_material") ??
+    nestedRecord(remote, "field_evidence", "field_evidence_consumer_ingest", "phone_browser_terminal_material") ??
+    nestedRecord(remote, "field_evidence", "field_evidence_ingest", "phone_browser_terminal_material");
+  if (fieldIngest) {
+    return {
+      payload: fieldIngest,
+      source_origin: "remote_field_evidence_consumer_ingest",
+      source_path: "field_evidence_consumer_ingest.phone_browser_terminal_material",
+    };
+  }
+  const bundle =
+    nestedRecord(remote, "artifact_bundle", "phone_browser_terminal_material") ??
+    nestedRecord(remote, "field_evidence", "artifact_bundle", "phone_browser_terminal_material");
+  if (bundle) {
+    return {
+      payload: bundle,
+      source_origin: "remote_artifact_bundle",
+      source_path: "artifact_bundle.phone_browser_terminal_material",
+    };
+  }
+  const ingest =
+    nestedRecord(remote, "artifact_bundle_consumer_ingest", "phone_browser_terminal_material") ??
+    nestedRecord(remote, "field_evidence", "artifact_bundle_consumer_ingest", "phone_browser_terminal_material");
+  if (ingest) {
+    return {
+      payload: ingest,
+      source_origin: "remote_artifact_bundle_consumer_ingest",
+      source_path: "artifact_bundle_consumer_ingest.phone_browser_terminal_material",
+    };
+  }
+  const readiness =
+    nestedRecord(remote, "artifact_bundle_readiness", "phone_browser_terminal_material") ??
+    nestedRecord(remote, "artifact_bundle_readiness", "artifact_bundle", "phone_browser_terminal_material") ??
+    nestedRecord(remote, "artifact_bundle_readiness", "artifact_bundle_consumer_ingest", "phone_browser_terminal_material");
+  if (readiness) {
+    return {
+      payload: readiness,
+      source_origin: "remote_artifact_bundle_readiness",
+      source_path: "artifact_bundle_readiness.phone_browser_terminal_material",
+    };
+  }
+  return null;
+}
+
+function unsafePhoneBrowserTerminalMaterialTextReason(value: unknown): string {
+  // UI 只展示状态 token、material 名称和 basename ref，不显示 URL/path/token/raw body。
+  const text = rawString(value);
+  if (!text) {
+    return "";
+  }
+  return containsUnsafePhoneBrowserProofCopy(text) ||
+    path.isAbsolute(text) ||
+    /^[A-Za-z]:\\/.test(text) ||
+    text.includes("/") ||
+    text.includes("\\")
+    ? "phone_browser_terminal_material_unsafe_text"
+    : "";
+}
+
+function unsafePhoneBrowserTerminalMaterialListReason(value: unknown, fieldName: string): string {
+  // accepted/missing/rejected/blocked/next 列表只能是短字符串数组，不能带对象或 raw 内容。
+  if (!Array.isArray(value)) {
+    return "";
+  }
+  return value.every((item) => typeof item === "string")
+    ? ""
+    : `phone_browser_terminal_material_unsafe_list:${fieldName}`;
+}
+
+function blockedPhoneBrowserTerminalMaterial(
+  reason: string,
+  taskId: string,
+): O7ConsumerPhoneBrowserTerminalMaterialSummary {
+  // 缺失或不可信时返回完整 schema，页面能明确看到 phone/browser 材料仍未被接入。
+  return {
+    schema: O7_PHONE_BROWSER_TERMINAL_MATERIAL_SCHEMA,
+    status: "blocked_not_proven",
+    source_schema: "not_loaded",
+    source_origin: "not_loaded",
+    source_path: "not_loaded",
+    task_id: taskId || "not_provided",
+    proof_scope: "not_loaded",
+    source_proof_status: "not_proven",
+    material_status: "blocked_not_proven",
+    terminal_result_type: "not_loaded",
+    safe_evidence_ref: "not_loaded",
+    accepted_materials: [],
+    missing_materials: ["true_phone_browser_evidence", "diagnostics_mobile_safe_summary", "terminal_result_summary"],
+    rejected_materials: [],
+    accepted_material_count: 0,
+    missing_material_count: 3,
+    rejected_material_count: 0,
+    same_task_id_consumed: false,
+    phone_browser_terminal_material_written: false,
+    phone_browser_terminal_material_readback: false,
+    support_only_reason: "phone_browser_terminal_material_missing_or_blocked",
+    blocked_reasons: [reason],
+    next_required_evidence: ["phone_browser_terminal_material_for_selected_task"],
+    proof_boundary: {
+      local_mock: true,
+      not_proven: true,
+      reads_local_path: false,
+      phone_browser_material_connected: false,
+      route_execution_success: false,
+      delivery_success_proven: false,
+      hil_pass: false,
+      real_phone_browser_proof_connected: false,
+      real_production_cloud_connected: false,
+      real_oss_connected: false,
+      real_cdn_connected: false,
+    },
+    ...fixedPhoneBrowserProofIntakeFalseFields(),
+    ...PROOF_FLAGS,
+  };
+}
+
+function failClosedPhoneBrowserProofIntake(
+  reason: string,
+  baseUrl: string,
+  taskId: string,
+  o6HttpStatus: number | null = null,
+): O7ConsumerPhoneBrowserProofIntakeResult {
+  // intake 失败也返回完整 receipt，让 operator 看见未写入、未回读以及所有真实能力 false 字段。
+  return {
+    schema: PHONE_BROWSER_PROOF_INTAKE_SCHEMA,
+    intake_status: "fail_closed",
+    source_base_url: baseUrl || DEFAULT_BASE_URL,
+    remote_endpoint: REMOTE_DELIVERY_RESULT_INTAKE_ENDPOINT,
+    remote_schema: "not_loaded",
+    requested_task_id: taskId || "not_provided",
+    o6_http_status: o6HttpStatus,
+    task_id: taskId || "not_provided",
+    robot_id: "not_loaded",
+    terminal_result_type: "not_loaded",
+    safe_evidence_ref: "not_loaded",
+    accepted_materials: [],
+    missing_materials: ["true_phone_browser_evidence", "diagnostics_mobile_safe_summary", "terminal_result_summary"],
+    rejected_materials: [],
+    write_status: "blocked_not_proven",
+    duplicate: false,
+    field_evidence_written: false,
+    phone_browser_terminal_material_written: false,
+    phone_browser_terminal_material_readback: false,
+    same_task_id_consumed: false,
+    o6_schema: "not_loaded",
+    o6_source: "not_loaded",
+    proof_scope: O7_PHONE_BROWSER_PROOF_INTAKE_PROOF_SCOPE,
+    phone_browser_terminal_material: blockedPhoneBrowserTerminalMaterial(reason, taskId),
+    blocked_reasons: [reason],
+    not_proven: [
+      "phone_browser_terminal_material_intake_not_written",
+      "real_phone_browser_proof_not_connected",
+      "real_cloud_db_not_connected",
+      "real_oss_not_connected",
+      "real_cloud_production_not_connected",
+      "robot_control_not_executed",
+      "route_execution_success_false",
+      "hil_pass_false",
+    ],
+    fail_closed_reason: reason,
+    local_loopback_only: true,
+    ...fixedPhoneBrowserProofIntakeFalseFields(),
+    ...PROOF_FLAGS,
+  };
+}
+
+function phoneBrowserTerminalMaterialHardFailReason(
+  summary: O7ConsumerPhoneBrowserTerminalMaterialSummary,
+): string {
+  // 坏 schema、task mismatch、危险 true、unsafe 文本/list 和 proof scope 漂移都会让 detail 主入口 fail-closed。
+  const reason = summary.blocked_reasons[0] ?? "";
+  return /^(phone_browser_terminal_material_schema_mismatch|phone_browser_terminal_material_task_mismatch|phone_browser_terminal_material_dangerous_true|phone_browser_terminal_material_missing_required_fields|phone_browser_terminal_material_unsafe_text|phone_browser_terminal_material_unsafe_list|phone_browser_terminal_material_proof_scope_mismatch|phone_browser_terminal_material_name_mismatch)/.test(
+    reason,
+  )
+    ? reason
+    : "";
+}
+
+function buildPhoneBrowserTerminalMaterialSummary(
+  candidate: PhoneBrowserTerminalMaterialSourceResult | null,
+  taskId: string,
+): O7ConsumerPhoneBrowserTerminalMaterialSummary {
+  // O7 只消费 O6 已脱敏的 phone/browser terminal material 摘要，不解释成真实送达或手机验收完成。
+  if (!candidate) {
+    return blockedPhoneBrowserTerminalMaterial("phone_browser_terminal_material_missing", taskId);
+  }
+  const payload = candidate.payload;
+  if (asString(payload.schema, "") !== O6_PHONE_BROWSER_TERMINAL_MATERIAL_SCHEMA) {
+    return blockedPhoneBrowserTerminalMaterial("phone_browser_terminal_material_schema_mismatch", taskId);
+  }
+  const dangerous = scanDangerousTrueFields(payload);
+  if (dangerous.length > 0) {
+    return blockedPhoneBrowserTerminalMaterial(
+      `phone_browser_terminal_material_dangerous_true:${dangerous.join(",")}`,
+      taskId,
+    );
+  }
+  const proofScope = asString(payload.proof_scope ?? payload.evidence_boundary, "not_loaded");
+  if (proofScope !== O7_PHONE_BROWSER_PROOF_INTAKE_PROOF_SCOPE) {
+    return blockedPhoneBrowserTerminalMaterial("phone_browser_terminal_material_proof_scope_mismatch", taskId);
+  }
+  const payloadTaskId = asString(payload.task_id, taskId || "not_provided");
+  if (payloadTaskId !== (taskId || "not_provided")) {
+    return blockedPhoneBrowserTerminalMaterial("phone_browser_terminal_material_task_mismatch", taskId);
+  }
+  const acceptedMaterials = phoneBrowserMaterialList(payload.accepted_materials);
+  const missingMaterials = phoneBrowserMaterialList(payload.missing_materials);
+  const rejectedMaterials = phoneBrowserMaterialList(payload.rejected_materials);
+  if (!acceptedMaterials || !missingMaterials || !rejectedMaterials) {
+    return blockedPhoneBrowserTerminalMaterial("phone_browser_terminal_material_name_mismatch", taskId);
+  }
+  const packetStatus = asString(payload.status, "blocked_not_proven");
+  const materialStatus = asString(payload.material_status ?? payload.status, "blocked_not_proven");
+  const terminalResultType = asString(payload.terminal_result_type, "blocked_not_proven");
+  const safeEvidenceRef = safePhoneBrowserEvidenceRef(payload.safe_evidence_ref);
+  if (!safeEvidenceRef) {
+    return blockedPhoneBrowserTerminalMaterial("phone_browser_terminal_material_unsafe_text", taskId);
+  }
+  const supportOnlyReason = asString(
+    payload.support_only_reason,
+    "phone_browser_terminal_material_intake_only_not_delivery_proof",
+  );
+  const blockedReasons = stringList(payload.blocked_reasons, 12);
+  const nextRequiredEvidence = stringList(payload.next_required_evidence, 12);
+  const materialWritten = asBoolean(payload.phone_browser_terminal_material_written);
+  const materialReadback = asBoolean(payload.phone_browser_terminal_material_readback);
+  const sameTaskIdConsumed = asBoolean(payload.same_task_id_consumed);
+  const missingFields = [
+    rawString(payload.status) ? "" : "status",
+    rawString(payload.proof_scope ?? payload.evidence_boundary) ? "" : "proof_scope",
+    rawString(payload.terminal_result_type) ? "" : "terminal_result_type",
+    rawString(payload.safe_evidence_ref) ? "" : "safe_evidence_ref",
+    Array.isArray(payload.accepted_materials) ? "" : "accepted_materials",
+    Array.isArray(payload.missing_materials) ? "" : "missing_materials",
+    Array.isArray(payload.rejected_materials) ? "" : "rejected_materials",
+    typeof payload.same_task_id_consumed === "boolean" ? "" : "same_task_id_consumed",
+    typeof payload.phone_browser_terminal_material_written === "boolean" ? "" : "phone_browser_terminal_material_written",
+    typeof payload.phone_browser_terminal_material_readback === "boolean" ? "" : "phone_browser_terminal_material_readback",
+    rawString(payload.support_only_reason) ? "" : "support_only_reason",
+    Array.isArray(payload.blocked_reasons) ? "" : "blocked_reasons",
+    Array.isArray(payload.next_required_evidence) ? "" : "next_required_evidence",
+  ].filter(Boolean);
+  if (missingFields.length > 0) {
+    return blockedPhoneBrowserTerminalMaterial(
+      `phone_browser_terminal_material_missing_required_fields:${missingFields.join(",")}`,
+      taskId,
+    );
+  }
+  const unsafeList = aggregateDistinct([
+    unsafePhoneBrowserTerminalMaterialListReason(payload.accepted_materials, "accepted_materials"),
+    unsafePhoneBrowserTerminalMaterialListReason(payload.missing_materials, "missing_materials"),
+    unsafePhoneBrowserTerminalMaterialListReason(payload.rejected_materials, "rejected_materials"),
+    unsafePhoneBrowserTerminalMaterialListReason(payload.blocked_reasons, "blocked_reasons"),
+    unsafePhoneBrowserTerminalMaterialListReason(payload.next_required_evidence, "next_required_evidence"),
+  ]);
+  if (unsafeList.length > 0) {
+    return blockedPhoneBrowserTerminalMaterial(
+      unsafeList[0] ?? "phone_browser_terminal_material_unsafe_list",
+      taskId,
+    );
+  }
+  const unsafeText = aggregateDistinct([
+    unsafePhoneBrowserTerminalMaterialTextReason(packetStatus),
+    unsafePhoneBrowserTerminalMaterialTextReason(materialStatus),
+    unsafePhoneBrowserTerminalMaterialTextReason(terminalResultType),
+    unsafePhoneBrowserTerminalMaterialTextReason(payload.safe_evidence_ref),
+    unsafePhoneBrowserTerminalMaterialTextReason(supportOnlyReason),
+    acceptedMaterials.map((item) => unsafePhoneBrowserTerminalMaterialTextReason(item)),
+    missingMaterials.map((item) => unsafePhoneBrowserTerminalMaterialTextReason(item)),
+    rejectedMaterials.map((item) => unsafePhoneBrowserTerminalMaterialTextReason(item)),
+    blockedReasons.map((item) => unsafePhoneBrowserTerminalMaterialTextReason(item)),
+    nextRequiredEvidence.map((item) => unsafePhoneBrowserTerminalMaterialTextReason(item)),
+  ]);
+  if (unsafeText.length > 0) {
+    return blockedPhoneBrowserTerminalMaterial("phone_browser_terminal_material_unsafe_text", taskId);
+  }
+  const ready =
+    packetStatus === "phone_browser_terminal_material_ready_not_delivery_proof" &&
+    materialWritten &&
+    materialReadback &&
+    sameTaskIdConsumed &&
+    acceptedMaterials.length > 0 &&
+    Boolean(safeEvidenceRef);
+  return {
+    schema: O7_PHONE_BROWSER_TERMINAL_MATERIAL_SCHEMA,
+    status: ready
+      ? "phone_browser_terminal_material_ready_not_delivery_proof"
+      : packetStatus === "blocked_not_proven"
+        ? "blocked_not_proven"
+        : "derived_blocked_not_proven",
+    source_schema: O6_PHONE_BROWSER_TERMINAL_MATERIAL_SCHEMA,
+    source_origin: candidate.source_origin,
+    source_path: candidate.source_path,
+    task_id: payloadTaskId,
+    proof_scope: O7_PHONE_BROWSER_PROOF_INTAKE_PROOF_SCOPE,
+    source_proof_status: asString(payload.proof_status, "not_proven"),
+    material_status: materialStatus,
+    terminal_result_type: terminalResultType,
+    safe_evidence_ref: safeEvidenceRef,
+    accepted_materials: acceptedMaterials,
+    missing_materials: missingMaterials,
+    rejected_materials: rejectedMaterials,
+    accepted_material_count: acceptedMaterials.length,
+    missing_material_count: missingMaterials.length,
+    rejected_material_count: rejectedMaterials.length,
+    same_task_id_consumed: sameTaskIdConsumed,
+    phone_browser_terminal_material_written: materialWritten,
+    phone_browser_terminal_material_readback: materialReadback,
+    support_only_reason: supportOnlyReason,
+    blocked_reasons: aggregateDistinct([
+      blockedReasons,
+      "delivery_success_not_proven",
+      "route_execution_success_not_proven",
+      "hil_pass_not_proven",
+      ready ? "" : "phone_browser_terminal_material_not_ready",
+      sameTaskIdConsumed ? "" : "same_task_id_not_consumed",
+      materialWritten ? "" : "phone_browser_terminal_material_not_written",
+      materialReadback ? "" : "phone_browser_terminal_material_not_readback",
+    ]),
+    next_required_evidence: nextRequiredEvidence.length
+      ? nextRequiredEvidence
+      : [
+          "real_phone_browser_terminal_evidence_for_selected_task",
+          "production_cloud_receipt_for_selected_task",
+          "route_execution_and_delivery_acceptance_for_selected_task",
+        ],
+    proof_boundary: {
+      local_mock: true,
+      not_proven: true,
+      reads_local_path: false,
+      phone_browser_material_connected: ready,
+      route_execution_success: false,
+      delivery_success_proven: false,
+      hil_pass: false,
+      real_phone_browser_proof_connected: false,
+      real_production_cloud_connected: false,
+      real_oss_connected: false,
+      real_cdn_connected: false,
+    },
+    ...fixedPhoneBrowserProofIntakeFalseFields(),
+    ...PROOF_FLAGS,
+  };
+}
+
+function buildPhoneBrowserTerminalMaterialPayload(payload: NormalizedPhoneBrowserProofIntakePayload): JsonRecord {
+  // 写给 O6 的 additive section 只包含材料名、safe ref 和固定 false 字段，不含截图、DOM、URL 或路径。
+  return {
+    schema: O6_PHONE_BROWSER_TERMINAL_MATERIAL_SCHEMA,
+    status: "phone_browser_terminal_material_ready_not_delivery_proof",
+    proof_scope: O7_PHONE_BROWSER_PROOF_INTAKE_PROOF_SCOPE,
+    source: "pc_o7_phone_browser_proof_intake",
+    source_schema: "trashbot.pc_tools_workstation.o7_phone_browser_proof_intake_request.v1",
+    proof_status: "not_proven",
+    material_status: "phone_browser_terminal_material_ready_not_delivery_proof",
+    task_id: payload.task_id,
+    robot_id: payload.robot_id,
+    terminal_result_type: payload.terminal_result_type,
+    safe_evidence_ref: payload.safe_evidence_ref,
+    accepted_materials: payload.accepted_materials,
+    missing_materials: payload.missing_materials,
+    rejected_materials: payload.rejected_materials,
+    accepted_material_count: payload.accepted_materials.length,
+    missing_material_count: payload.missing_materials.length,
+    rejected_material_count: payload.rejected_materials.length,
+    captured_at_utc: payload.captured_at_utc,
+    metadata: payload.metadata,
+    same_task_id_consumed: true,
+    phone_browser_terminal_material_written: true,
+    phone_browser_terminal_material_readback: true,
+    support_only_reason: "phone_browser_terminal_material_intake_only_not_delivery_proof",
+    blocked_reasons: [
+      "local_mock_only",
+      "delivery_success_not_proven",
+      "route_execution_success_not_proven",
+      "hil_pass_not_proven",
+    ],
+    next_required_evidence: [
+      "real_phone_browser_terminal_evidence_for_selected_task",
+      "production_cloud_receipt_for_selected_task",
+      "route_execution_and_delivery_acceptance_for_selected_task",
+    ],
+    safe_to_control: false,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    connects_cloud_production: false,
+    robot_control_executed: false,
+    route_execution_success: false,
+    hil_pass: false,
+    real_cloud_db_connected: false,
+    real_oss_connected: false,
+  };
+}
+
+function buildPhoneBrowserProofFieldEvidenceBody(payload: NormalizedPhoneBrowserProofIntakePayload): JsonRecord {
+  // field-evidence manifest 只给 O6 archive 一个可写材料摘要，不上传文件、不读取本地路径。
+  const phoneBrowserMaterial = buildPhoneBrowserTerminalMaterialPayload(payload);
+  const materialJson = JSON.stringify(phoneBrowserMaterial);
+  const checksum = createHash("sha256").update(materialJson).digest("hex");
+  const capturedAtMs = Date.parse(payload.captured_at_utc);
+  return {
+    robot_id: payload.robot_id,
+    task_id: payload.task_id,
+    field_evidence_manifest: {
+      schema: FIELD_EVIDENCE_MANIFEST_SCHEMA,
+      source: "pc_o7_phone_browser_proof_intake",
+      robot_id: payload.robot_id,
+      task_id: payload.task_id,
+      run_id: `o7_phone_browser_${payload.task_id}`.slice(0, 80),
+      status: "local_mock_phone_browser_terminal_material_ready",
+      generated_at: payload.captured_at_utc,
+      gate_pass: true,
+      manifest_gate: {
+        schema: FIELD_EVIDENCE_MANIFEST_SCHEMA,
+        status: "gated",
+        gate_pass: true,
+        blocked_reason: "phone_browser_terminal_material_intake_local_mock_only",
+        source: "pc_o7_phone_browser_proof_intake",
+      },
+      artifact_status: "gated",
+      artifact_health: {
+        required_count: 1,
+        present_count: 1,
+        missing_count: 0,
+        blocked_count: 0,
+        summary: "phone_browser_terminal_material_ready_not_delivery_proof",
+      },
+      artifacts: {
+        phone_browser_terminal_material: {
+          path: payload.safe_evidence_ref,
+          required: true,
+          present: true,
+          size_bytes: Math.max(1, Buffer.byteLength(materialJson, "utf8")),
+          sha256: checksum,
+          mtime_utc: payload.captured_at_utc,
+          file_count: 1,
+        },
+      },
+      phone_browser_terminal_material: phoneBrowserMaterial,
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+      connects_cloud_production: false,
+      robot_control_executed: false,
+      route_execution_success: false,
+      hil_pass: false,
+      real_cloud_db_connected: false,
+      real_oss_connected: false,
+    },
+    phone_browser_terminal_material: phoneBrowserMaterial,
+    trajectory_frames: [
+      {
+        frame_index: 0,
+        timestamp_ms: Number.isFinite(capturedAtMs) ? capturedAtMs : 0,
+        state: "phone_browser_terminal_material_intake_local_mock",
+        evidence_ref: payload.safe_evidence_ref,
+      },
+    ],
+    events: [
+      {
+        event_id: `o7-phone-browser-${payload.task_id}`.replace(/[^A-Za-z0-9._:-]/g, "-").slice(0, 120),
+        event_type: "operator.note",
+        occurred_at_ms: Number.isFinite(capturedAtMs) ? capturedAtMs : 0,
+        summary: "local mock phone browser terminal material intake",
+        severity: "info",
+        evidence_refs: [payload.safe_evidence_ref],
+        metadata: {
+          source: "pc_o7_phone_browser_proof_intake",
+          terminal_result_type: payload.terminal_result_type,
+        },
+      },
+    ],
+    safe_to_control: false,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    connects_cloud_production: false,
+    robot_control_executed: false,
+    route_execution_success: false,
+    hil_pass: false,
+    real_cloud_db_connected: false,
+    real_oss_connected: false,
+  };
+}
+
+function o6PhoneBrowserProofIntakeFixedFalseMismatch(remote: JsonRecord): string {
+  // O6 field-evidence receipt 的固定 false 字段是 phone/browser proof boundary 的硬门槛。
+  const requiredFalse = [
+    "safe_to_control",
+    "delivery_success",
+    "primary_actions_enabled",
+    "connects_cloud_production",
+    "robot_control_executed",
+    "real_cloud_db_connected",
+    "real_oss_connected",
+  ];
+  const optionalFalse = ["route_execution_success", "hil_pass"];
+  const requiredMismatch = requiredFalse.find((key) => remote[key] !== false);
+  if (requiredMismatch) {
+    return requiredMismatch;
+  }
+  return optionalFalse.find((key) => remote[key] !== undefined && remote[key] !== false) ?? "";
+}
+
+function phoneBrowserTerminalMaterialSummaryFromO6Task(
+  task: JsonRecord,
+  taskId: string,
+): O7ConsumerPhoneBrowserTerminalMaterialSummary {
+  // O6 archive response 的 task section 是 readback 来源；缺 section 就不能返回成功 intake receipt。
+  const candidate = phoneBrowserTerminalMaterialCandidateFromRemote(task);
+  if (!candidate) {
+    return blockedPhoneBrowserTerminalMaterial("o6_phone_browser_terminal_material_missing", taskId);
+  }
+  return buildPhoneBrowserTerminalMaterialSummary(candidate, taskId);
+}
+
+function validateO6PhoneBrowserProofIntakeResponse(
+  remote: JsonRecord,
+  payload: NormalizedPhoneBrowserProofIntakePayload,
+): { ok: true; phoneBrowserMaterial: O7ConsumerPhoneBrowserTerminalMaterialSummary } | { ok: false; reason: string } {
+  // 成功响应必须是 O6 field-evidence local/mock/not_proven receipt，并能回读同一 task 的 phone/browser section。
+  if (asString(remote.schema, "") !== "trashbot.o6.field_evidence_archive.v1") {
+    return { ok: false, reason: "o6_field_evidence_schema_mismatch" };
+  }
+  if (asString(remote.source, "") !== "local_mock_field_evidence_archive") {
+    return { ok: false, reason: "o6_field_evidence_source_mismatch" };
+  }
+  if (asString(remote.proof_status, "") !== "not_proven") {
+    return { ok: false, reason: "o6_field_evidence_proof_status_mismatch" };
+  }
+  const falseMismatch = o6PhoneBrowserProofIntakeFixedFalseMismatch(remote);
+  if (falseMismatch) {
+    return { ok: false, reason: `o6_field_evidence_false_field_mismatch:${falseMismatch}` };
+  }
+  if (scanDangerousTrueFields(remote).length > 0 || containsUnsafePhoneBrowserProofValue(remote)) {
+    return { ok: false, reason: "o6_field_evidence_response_unsafe" };
+  }
+  if (asString(remote.archive_status, "") !== "local_mock_field_evidence_ready") {
+    return { ok: false, reason: "o6_field_evidence_archive_status_mismatch" };
+  }
+  if (remote.field_evidence_written !== true) {
+    return { ok: false, reason: "o6_field_evidence_not_written" };
+  }
+  if (!["created", "updated"].includes(asString(remote.write_status, ""))) {
+    return { ok: false, reason: "o6_field_evidence_write_status_mismatch" };
+  }
+  const task = asRecord(remote.task);
+  if (!task) {
+    return { ok: false, reason: "o6_field_evidence_task_missing" };
+  }
+  if (asString(task.task_id, "") !== payload.task_id || asString(task.robot_id, "") !== payload.robot_id) {
+    return { ok: false, reason: "o6_field_evidence_identity_mismatch" };
+  }
+  const phoneBrowserMaterial = phoneBrowserTerminalMaterialSummaryFromO6Task(task, payload.task_id);
+  if (phoneBrowserMaterial.status !== "phone_browser_terminal_material_ready_not_delivery_proof") {
+    return { ok: false, reason: phoneBrowserMaterial.blocked_reasons[0] ?? "o6_phone_browser_terminal_material_not_ready" };
+  }
+  if (
+    phoneBrowserMaterial.task_id !== payload.task_id ||
+    phoneBrowserMaterial.safe_evidence_ref !== payload.safe_evidence_ref ||
+    phoneBrowserMaterial.terminal_result_type !== payload.terminal_result_type ||
+    phoneBrowserMaterial.same_task_id_consumed !== true ||
+    phoneBrowserMaterial.phone_browser_terminal_material_written !== true ||
+    phoneBrowserMaterial.phone_browser_terminal_material_readback !== true
+  ) {
+    return { ok: false, reason: "o6_phone_browser_terminal_material_identity_mismatch" };
+  }
+  if (!payload.accepted_materials.every((material) => phoneBrowserMaterial.accepted_materials.includes(material))) {
+    return { ok: false, reason: "o6_phone_browser_terminal_material_accepted_mismatch" };
+  }
+  return { ok: true, phoneBrowserMaterial };
+}
+
+function containsUnsafeBoundedRouteGateCopy(value: unknown): boolean {
+  // bounded route gate intake 只允许安全摘要；控制 topic、串口、真实硬件词、URL/path/raw body 都关闸。
+  const encoded = JSON.stringify(value ?? {});
+  const lowered = encoded.toLowerCase();
+  const unsafeTokens = [
+    "/cmd_vel",
+    "/api/base/manual",
+    "/tf",
+    "/odom",
+    "/scan",
+    "/amcl_pose",
+    "navigatetopose",
+    "/dev/tty",
+    "/dev/ttyusb",
+    "/dev/ttyacm",
+    "serial",
+    "wave rover",
+    "wave_rover",
+    "uart",
+    "baudrate",
+    "raw_command",
+    "raw body",
+    "raw_body",
+    "raw_local_path",
+    "local_path",
+    "traceback",
+    "authorization",
+    "bearer",
+    "token",
+    "password",
+    "secret",
+    "credential",
+    "access_key",
+    "data:",
+    "base64",
+    "://",
+  ];
+  return unsafeTokens.some((token) => lowered.includes(token)) || /[A-Za-z0-9+/]{180,}={0,2}/.test(encoded);
+}
+
+function boundedRouteGateToken(value: unknown, fallback = "", limit = 180): string {
+  // O6 additive section 只能接收短 token；对象/数组不会被隐式转成字符串。
+  return typeof value === "string" && value.trim() ? value.trim().slice(0, limit) : fallback;
+}
+
+function safeBoundedRouteGateIdentifier(value: unknown, fallback = ""): string {
+  // packet/task/route intent/robot id 都走 token 白名单，避免路径、query 或命令注入。
+  const text = boundedRouteGateToken(value, fallback, 180);
+  return /^[A-Za-z0-9._:-]{1,180}$/.test(text) ? text : "";
+}
+
+function safeBoundedRouteGateRef(value: unknown): string {
+  // safe_ref 只允许 basename/token，不能是本机路径、URL、控制 topic 或串口设备。
+  const text = boundedRouteGateToken(value, "", 180);
+  if (!text || containsUnsafeBoundedRouteGateCopy(text)) {
+    return "";
+  }
+  if (
+    path.isAbsolute(text) ||
+    /^[A-Za-z]:[\\/]/.test(text) ||
+    text.startsWith("/") ||
+    text.startsWith("\\") ||
+    text.includes("/") ||
+    text.includes("\\") ||
+    text.includes("..") ||
+    text.includes("?") ||
+    text.includes("#")
+  ) {
+    return "";
+  }
+  return /^[A-Za-z0-9._:-]{1,180}$/.test(text) ? text : "";
+}
+
+function boundedRouteGateMetadata(value: unknown): Record<string, string | number | boolean | null> | null {
+  // metadata 只保留小型 primitive 摘要，避免把原始计划、命令体或本机路径塞进 O6。
+  const metadata = value === undefined ? {} : asRecord(value);
+  if (!metadata || containsUnsafeBoundedRouteGateCopy(metadata)) {
+    return null;
+  }
+  if (Object.keys(metadata).length > O7_BOUNDED_ROUTE_GATE_METADATA_KEY_LIMIT) {
+    return null;
+  }
+  if (JSON.stringify(metadata).length > O7_BOUNDED_ROUTE_GATE_METADATA_BYTES_LIMIT) {
+    return null;
+  }
+  const normalized: Record<string, string | number | boolean | null> = {};
+  for (const [key, item] of Object.entries(metadata)) {
+    const safeKey = safeBoundedRouteGateIdentifier(key, "");
+    if (!safeKey || Array.isArray(item) || (item !== null && typeof item === "object")) {
+      return null;
+    }
+    if (typeof item === "string") {
+      const text = boundedRouteGateToken(item, "", 180);
+      if (!text || containsUnsafeBoundedRouteGateCopy(text)) {
+        return null;
+      }
+      normalized[safeKey] = text;
+    } else if (typeof item === "number") {
+      if (!Number.isFinite(item)) {
+        return null;
+      }
+      normalized[safeKey] = item;
+    } else if (typeof item === "boolean" || item === null) {
+      normalized[safeKey] = item;
+    } else {
+      return null;
+    }
+  }
+  return normalized;
+}
+
+function boundedRouteGatePayloadFromBody(
+  taskId: string,
+  body: unknown,
+): { ok: true; payload: NormalizedBoundedRouteGateIntakePayload } | { ok: false; reason: string } {
+  // 本轮只允许固定 28-pose selected task gate 摘要，任何 task/material identity 漂移都不写入 O6。
+  const payload = asRecord(body);
+  if (!payload) {
+    return { ok: false, reason: "bounded_route_gate_body_not_object" };
+  }
+  if (JSON.stringify(payload).length > O7_BOUNDED_ROUTE_GATE_MAX_BODY_BYTES) {
+    return { ok: false, reason: "bounded_route_gate_body_too_large" };
+  }
+  if (containsUnsafeBoundedRouteGateCopy(payload)) {
+    return { ok: false, reason: "bounded_route_gate_body_contains_unsafe_copy" };
+  }
+  const dangerous = scanDangerousTrueFields(payload);
+  if (dangerous.length > 0) {
+    return { ok: false, reason: `dangerous_true_fields:${dangerous.join(",")}` };
+  }
+  const allowedKeys = new Set([
+    "robot_id",
+    "task_id",
+    "packet_id",
+    "route_intent_id",
+    "execution_plan_status",
+    "route_csv_row_count",
+    "path_structured_pose_count",
+    "segment_count",
+    "safe_refs",
+    "metadata",
+  ]);
+  const extraKeys = Object.keys(payload).filter((key) => !allowedKeys.has(key));
+  if (extraKeys.length > 0) {
+    return { ok: false, reason: `bounded_route_gate_body_unknown_fields:${extraKeys.join(",")}` };
+  }
+  if (taskId !== O7_BOUNDED_ROUTE_GATE_FIXED.task_id) {
+    return { ok: false, reason: "bounded_route_gate_task_not_selected_source" };
+  }
+  const bodyTaskId = payload.task_id === undefined ? taskId : safeBoundedRouteGateIdentifier(payload.task_id, "");
+  if (!bodyTaskId || bodyTaskId !== taskId) {
+    return { ok: false, reason: "task_id_mismatch" };
+  }
+  const robotId = safeBoundedRouteGateIdentifier(payload.robot_id, "");
+  if (!robotId) {
+    return { ok: false, reason: "robot_id_not_provided" };
+  }
+  const packetId = safeBoundedRouteGateIdentifier(payload.packet_id, "");
+  if (packetId !== O7_BOUNDED_ROUTE_GATE_FIXED.packet_id) {
+    return { ok: false, reason: "packet_id_mismatch" };
+  }
+  const routeIntentId = safeBoundedRouteGateIdentifier(payload.route_intent_id, "");
+  if (routeIntentId !== O7_BOUNDED_ROUTE_GATE_FIXED.route_intent_id) {
+    return { ok: false, reason: "route_intent_id_mismatch" };
+  }
+  const executionPlanStatus = boundedRouteGateToken(payload.execution_plan_status, "", 80);
+  if (executionPlanStatus !== O7_BOUNDED_ROUTE_GATE_FIXED.execution_plan_status) {
+    return { ok: false, reason: "execution_plan_status_mismatch" };
+  }
+  const routeCsvRowCount = asNumber(payload.route_csv_row_count);
+  const pathStructuredPoseCount = asNumber(payload.path_structured_pose_count);
+  const segmentCount = asNumber(payload.segment_count);
+  if (routeCsvRowCount !== O7_BOUNDED_ROUTE_GATE_FIXED.route_csv_row_count) {
+    return { ok: false, reason: "route_csv_row_count_mismatch" };
+  }
+  if (pathStructuredPoseCount !== O7_BOUNDED_ROUTE_GATE_FIXED.path_structured_pose_count) {
+    return { ok: false, reason: "path_structured_pose_count_mismatch" };
+  }
+  if (segmentCount !== O7_BOUNDED_ROUTE_GATE_FIXED.segment_count) {
+    return { ok: false, reason: "segment_count_mismatch" };
+  }
+  const safeRefs = payload.safe_refs === undefined
+    ? [...O7_BOUNDED_ROUTE_GATE_SAFE_REFS]
+    : Array.isArray(payload.safe_refs)
+      ? payload.safe_refs.map((ref) => safeBoundedRouteGateRef(ref))
+      : [];
+  if (
+    safeRefs.length !== O7_BOUNDED_ROUTE_GATE_SAFE_REFS.length ||
+    !O7_BOUNDED_ROUTE_GATE_SAFE_REFS.every((ref) => safeRefs.includes(ref))
+  ) {
+    return { ok: false, reason: "safe_refs_mismatch_or_unsafe" };
+  }
+  const metadata = boundedRouteGateMetadata(payload.metadata ?? {});
+  if (!metadata) {
+    return { ok: false, reason: "metadata_invalid_or_too_large" };
+  }
+  return {
+    ok: true,
+    payload: {
+      robot_id: robotId,
+      task_id: O7_BOUNDED_ROUTE_GATE_FIXED.task_id,
+      packet_id: O7_BOUNDED_ROUTE_GATE_FIXED.packet_id,
+      route_intent_id: O7_BOUNDED_ROUTE_GATE_FIXED.route_intent_id,
+      execution_plan_status: O7_BOUNDED_ROUTE_GATE_FIXED.execution_plan_status,
+      route_csv_row_count: O7_BOUNDED_ROUTE_GATE_FIXED.route_csv_row_count,
+      path_structured_pose_count: O7_BOUNDED_ROUTE_GATE_FIXED.path_structured_pose_count,
+      segment_count: O7_BOUNDED_ROUTE_GATE_FIXED.segment_count,
+      safe_refs: [...O7_BOUNDED_ROUTE_GATE_SAFE_REFS],
+      metadata,
+    },
+  };
+}
+
+type BoundedRouteGateMaterialSourceResult = {
+  payload: JsonRecord;
+  source_origin: O7ConsumerBoundedRouteGateMaterialSummary["source_origin"];
+  source_path: string;
+};
+
+function boundedRouteGateMaterialCandidateFromRemote(remote: JsonRecord): BoundedRouteGateMaterialSourceResult | null {
+  // bounded route gate 只从 O6 白名单 section 读取，不用 UI 自己拼装执行准入语义。
+  const direct = asRecord(remote.bounded_route_execution_gate_material);
+  if (direct) {
+    return {
+      payload: direct,
+      source_origin: "remote_bounded_route_execution_gate_material",
+      source_path: "bounded_route_execution_gate_material",
+    };
+  }
+  const fieldEvidence =
+    nestedRecord(remote, "field_evidence", "bounded_route_execution_gate_material") ??
+    nestedRecord(remote, "field_evidence_manifest", "bounded_route_execution_gate_material");
+  if (fieldEvidence) {
+    return {
+      payload: fieldEvidence,
+      source_origin: "remote_field_evidence",
+      source_path: "field_evidence.bounded_route_execution_gate_material",
+    };
+  }
+  const fieldIngest =
+    nestedRecord(remote, "field_evidence_consumer_ingest", "bounded_route_execution_gate_material") ??
+    nestedRecord(remote, "field_evidence", "field_evidence_consumer_ingest", "bounded_route_execution_gate_material");
+  if (fieldIngest) {
+    return {
+      payload: fieldIngest,
+      source_origin: "remote_field_evidence_consumer_ingest",
+      source_path: "field_evidence_consumer_ingest.bounded_route_execution_gate_material",
+    };
+  }
+  const bundle =
+    nestedRecord(remote, "artifact_bundle", "bounded_route_execution_gate_material") ??
+    nestedRecord(remote, "field_evidence", "artifact_bundle", "bounded_route_execution_gate_material");
+  if (bundle) {
+    return {
+      payload: bundle,
+      source_origin: "remote_artifact_bundle",
+      source_path: "artifact_bundle.bounded_route_execution_gate_material",
+    };
+  }
+  const ingest =
+    nestedRecord(remote, "artifact_bundle_consumer_ingest", "bounded_route_execution_gate_material") ??
+    nestedRecord(remote, "field_evidence", "artifact_bundle_consumer_ingest", "bounded_route_execution_gate_material");
+  if (ingest) {
+    return {
+      payload: ingest,
+      source_origin: "remote_artifact_bundle_consumer_ingest",
+      source_path: "artifact_bundle_consumer_ingest.bounded_route_execution_gate_material",
+    };
+  }
+  const readiness =
+    nestedRecord(remote, "artifact_bundle_readiness", "bounded_route_execution_gate_material") ??
+    nestedRecord(remote, "artifact_bundle_readiness", "artifact_bundle", "bounded_route_execution_gate_material") ??
+    nestedRecord(remote, "artifact_bundle_readiness", "artifact_bundle_consumer_ingest", "bounded_route_execution_gate_material");
+  if (readiness) {
+    return {
+      payload: readiness,
+      source_origin: "remote_artifact_bundle_readiness",
+      source_path: "artifact_bundle_readiness.bounded_route_execution_gate_material",
+    };
+  }
+  return null;
+}
+
+function blockedBoundedRouteGateMaterial(
+  reason: string,
+  taskId: string,
+): O7ConsumerBoundedRouteGateMaterialSummary {
+  // 缺失或校验失败时也返回完整摘要，UI 能明确看到 gate intake 还没有成功。
+  return {
+    schema: O7_BOUNDED_ROUTE_GATE_MATERIAL_SCHEMA,
+    status: "blocked_not_proven",
+    source_schema: "not_loaded",
+    source_origin: "not_loaded",
+    source_path: "not_loaded",
+    task_id: taskId || "not_provided",
+    packet_id: "not_loaded",
+    route_intent_id: "not_loaded",
+    proof_scope: "not_loaded",
+    execution_plan_status: "blocked_not_proven",
+    route_csv_row_count: 0,
+    path_structured_pose_count: 0,
+    segment_count: 0,
+    global_abort_criteria_count: 0,
+    safe_refs: [],
+    same_task_id_consumed: false,
+    bounded_route_execution_gate_material_written: false,
+    bounded_route_execution_gate_material_readback: false,
+    support_only_reason: "bounded_route_gate_material_missing_or_blocked",
+    blocked_reasons: [reason],
+    next_required_evidence: [
+      "bounded_route_execution_gate_material_for_selected_task",
+      "current_live_safety_gate_acceptance",
+      "controlled_route_execution_result",
+    ],
+    proof_boundary: {
+      local_mock: true,
+      not_proven: true,
+      reads_local_path: false,
+      bounded_route_gate_material_connected: false,
+      route_execution_success: false,
+      delivery_success_proven: false,
+      hil_pass: false,
+      safe_to_control: false,
+      robot_control_executed: false,
+      real_production_cloud_connected: false,
+      real_oss_connected: false,
+      real_cdn_connected: false,
+    },
+    ...fixedBoundedRouteGateIntakeFalseFields(),
+    ...PROOF_FLAGS,
+  };
+}
+
+function unsafeBoundedRouteGateMaterialTextReason(value: unknown): string {
+  // 状态和 ref 只允许短 token；任何路径、URL、凭证、串口或控制词都让 readback 失败。
+  const text = rawString(value);
+  if (!text) {
+    return "";
+  }
+  if (
+    containsUnsafeBoundedRouteGateCopy(text) ||
+    path.isAbsolute(text) ||
+    /^[A-Za-z]:\\/.test(text) ||
+    text.includes("/") ||
+    text.includes("\\")
+  ) {
+    return "bounded_route_gate_material_unsafe_text";
+  }
+  return "";
+}
+
+function boundedRouteGateMaterialHardFailReason(
+  summary: O7ConsumerBoundedRouteGateMaterialSummary,
+): string {
+  // 坏 schema、task/fact mismatch、危险 true、unsafe 文本和 proof scope 漂移会让 detail 主路径 fail-closed。
+  const reason = summary.blocked_reasons[0] ?? "";
+  return /^(bounded_route_gate_material_schema_mismatch|bounded_route_gate_material_task_mismatch|bounded_route_gate_material_dangerous_true|bounded_route_gate_material_proof_scope_mismatch|bounded_route_gate_material_identity_mismatch|bounded_route_gate_material_missing_required_fields|bounded_route_gate_material_unsafe_text|bounded_route_gate_material_unsafe_list)/.test(
+    reason,
+  )
+    ? reason
+    : "";
+}
+
+function buildBoundedRouteGateMaterialSummary(
+  candidate: BoundedRouteGateMaterialSourceResult | null,
+  taskId: string,
+): O7ConsumerBoundedRouteGateMaterialSummary {
+  // O7 只核对 O6 已写入的 gate 摘要；ready 仍只是 material/readback，不是安全准入。
+  if (!candidate) {
+    return blockedBoundedRouteGateMaterial("bounded_route_gate_material_missing", taskId);
+  }
+  const payload = candidate.payload;
+  if (asString(payload.schema, "") !== O6_BOUNDED_ROUTE_GATE_MATERIAL_SCHEMA) {
+    return blockedBoundedRouteGateMaterial("bounded_route_gate_material_schema_mismatch", taskId);
+  }
+  const dangerous = scanDangerousTrueFields(payload);
+  if (dangerous.length > 0) {
+    return blockedBoundedRouteGateMaterial(`bounded_route_gate_material_dangerous_true:${dangerous.join(",")}`, taskId);
+  }
+  const proofScope = asString(payload.proof_scope, "not_loaded");
+  if (proofScope !== O7_BOUNDED_ROUTE_GATE_INTAKE_PROOF_SCOPE) {
+    return blockedBoundedRouteGateMaterial("bounded_route_gate_material_proof_scope_mismatch", taskId);
+  }
+  const payloadTaskId = asString(payload.task_id, taskId || "not_provided");
+  if (payloadTaskId !== taskId) {
+    return blockedBoundedRouteGateMaterial("bounded_route_gate_material_task_mismatch", taskId);
+  }
+  const packetId = safeBoundedRouteGateIdentifier(payload.packet_id, "");
+  const routeIntentId = safeBoundedRouteGateIdentifier(payload.route_intent_id, "");
+  const executionPlanStatus = boundedRouteGateToken(payload.execution_plan_status, "", 80);
+  const routeCsvRowCount = asNumber(payload.route_csv_row_count);
+  const pathStructuredPoseCount = asNumber(payload.path_structured_pose_count);
+  const segmentCount = asNumber(payload.segment_count);
+  const globalAbortCriteriaCount = asNumber(payload.global_abort_criteria_count);
+  if (
+    packetId !== O7_BOUNDED_ROUTE_GATE_FIXED.packet_id ||
+    routeIntentId !== O7_BOUNDED_ROUTE_GATE_FIXED.route_intent_id ||
+    executionPlanStatus !== O7_BOUNDED_ROUTE_GATE_FIXED.execution_plan_status ||
+    routeCsvRowCount !== O7_BOUNDED_ROUTE_GATE_FIXED.route_csv_row_count ||
+    pathStructuredPoseCount !== O7_BOUNDED_ROUTE_GATE_FIXED.path_structured_pose_count ||
+    segmentCount !== O7_BOUNDED_ROUTE_GATE_FIXED.segment_count
+  ) {
+    return blockedBoundedRouteGateMaterial("bounded_route_gate_material_identity_mismatch", taskId);
+  }
+  const safeRefs = Array.isArray(payload.safe_refs)
+    ? payload.safe_refs.map((ref) => safeBoundedRouteGateRef(ref))
+    : [];
+  const blockedReasons = stringList(payload.blocked_reasons, 12);
+  const nextRequiredEvidence = stringList(payload.next_required_evidence, 12);
+  const missingFields = [
+    rawString(payload.status) ? "" : "status",
+    rawString(payload.support_only_reason) ? "" : "support_only_reason",
+    Array.isArray(payload.safe_refs) ? "" : "safe_refs",
+    Array.isArray(payload.blocked_reasons) ? "" : "blocked_reasons",
+    Array.isArray(payload.next_required_evidence) ? "" : "next_required_evidence",
+    typeof payload.same_task_id_consumed === "boolean" ? "" : "same_task_id_consumed",
+    typeof payload.bounded_route_execution_gate_material_written === "boolean" ? "" : "bounded_route_execution_gate_material_written",
+    typeof payload.bounded_route_execution_gate_material_readback === "boolean" ? "" : "bounded_route_execution_gate_material_readback",
+  ].filter(Boolean);
+  if (missingFields.length > 0) {
+    return blockedBoundedRouteGateMaterial(`bounded_route_gate_material_missing_required_fields:${missingFields.join(",")}`, taskId);
+  }
+  if (
+    safeRefs.length !== O7_BOUNDED_ROUTE_GATE_SAFE_REFS.length ||
+    !O7_BOUNDED_ROUTE_GATE_SAFE_REFS.every((ref) => safeRefs.includes(ref))
+  ) {
+    return blockedBoundedRouteGateMaterial("bounded_route_gate_material_unsafe_list:safe_refs", taskId);
+  }
+  const unsafeText = aggregateDistinct([
+    unsafeBoundedRouteGateMaterialTextReason(payload.status),
+    unsafeBoundedRouteGateMaterialTextReason(packetId),
+    unsafeBoundedRouteGateMaterialTextReason(routeIntentId),
+    unsafeBoundedRouteGateMaterialTextReason(executionPlanStatus),
+    unsafeBoundedRouteGateMaterialTextReason(payload.support_only_reason),
+    safeRefs.map((ref) => unsafeBoundedRouteGateMaterialTextReason(ref)),
+    blockedReasons.map((reason) => unsafeBoundedRouteGateMaterialTextReason(reason)),
+    nextRequiredEvidence.map((item) => unsafeBoundedRouteGateMaterialTextReason(item)),
+  ]);
+  if (unsafeText.length > 0) {
+    return blockedBoundedRouteGateMaterial("bounded_route_gate_material_unsafe_text", taskId);
+  }
+  const materialWritten = asBoolean(payload.bounded_route_execution_gate_material_written);
+  const materialReadback = asBoolean(payload.bounded_route_execution_gate_material_readback);
+  const sameTaskIdConsumed = asBoolean(payload.same_task_id_consumed);
+  const ready =
+    asString(payload.status, "") === "bounded_route_execution_gate_material_ready_not_route_execution_proof" &&
+    materialWritten &&
+    materialReadback &&
+    sameTaskIdConsumed;
+  return {
+    schema: O7_BOUNDED_ROUTE_GATE_MATERIAL_SCHEMA,
+    status: ready ? "bounded_route_execution_gate_material_ready_not_route_execution_proof" : "derived_blocked_not_proven",
+    source_schema: O6_BOUNDED_ROUTE_GATE_MATERIAL_SCHEMA,
+    source_origin: candidate.source_origin,
+    source_path: candidate.source_path,
+    task_id: payloadTaskId,
+    packet_id: packetId,
+    route_intent_id: routeIntentId,
+    proof_scope: O7_BOUNDED_ROUTE_GATE_INTAKE_PROOF_SCOPE,
+    execution_plan_status: executionPlanStatus,
+    route_csv_row_count: routeCsvRowCount ?? 0,
+    path_structured_pose_count: pathStructuredPoseCount ?? 0,
+    segment_count: segmentCount ?? 0,
+    global_abort_criteria_count: globalAbortCriteriaCount ?? O7_BOUNDED_ROUTE_GATE_FIXED.global_abort_criteria_count,
+    safe_refs: safeRefs,
+    same_task_id_consumed: sameTaskIdConsumed,
+    bounded_route_execution_gate_material_written: materialWritten,
+    bounded_route_execution_gate_material_readback: materialReadback,
+    support_only_reason: asString(
+      payload.support_only_reason,
+      "bounded_route_gate_material_intake_only_not_route_execution_proof",
+    ),
+    blocked_reasons: aggregateDistinct([
+      blockedReasons,
+      "local_mock_only",
+      "route_execution_success_not_proven",
+      "delivery_success_not_proven",
+      "hil_pass_not_proven",
+      ready ? "" : "bounded_route_gate_material_not_ready",
+    ]),
+    next_required_evidence: nextRequiredEvidence.length
+      ? nextRequiredEvidence
+      : [
+          "current_live_safety_gate_acceptance_for_same_packet",
+          "controlled_route_execution_result_for_same_task",
+          "delivery_or_operator_acceptance_for_same_task",
+        ],
+    proof_boundary: {
+      local_mock: true,
+      not_proven: true,
+      reads_local_path: false,
+      bounded_route_gate_material_connected: ready,
+      route_execution_success: false,
+      delivery_success_proven: false,
+      hil_pass: false,
+      safe_to_control: false,
+      robot_control_executed: false,
+      real_production_cloud_connected: false,
+      real_oss_connected: false,
+      real_cdn_connected: false,
+    },
+    ...fixedBoundedRouteGateIntakeFalseFields(),
+    ...PROOF_FLAGS,
+  };
+}
+
+function buildBoundedRouteGateMaterialPayload(payload: NormalizedBoundedRouteGateIntakePayload): JsonRecord {
+  // 写给 O6 的 section 是固定 28-pose 安全摘要；不包含命令、路径、串口或任何控制能力字段。
+  return {
+    schema: O6_BOUNDED_ROUTE_GATE_MATERIAL_SCHEMA,
+    status: "bounded_route_execution_gate_material_ready_not_route_execution_proof",
+    proof_scope: O7_BOUNDED_ROUTE_GATE_INTAKE_PROOF_SCOPE,
+    proof_status: "not_proven",
+    source: "pc_o7_bounded_route_gate_intake",
+    source_schema: "trashbot.pc_tools_workstation.o7_bounded_route_gate_intake_request.v1",
+    task_id: payload.task_id,
+    robot_id: payload.robot_id,
+    packet_id: payload.packet_id,
+    route_intent_id: payload.route_intent_id,
+    execution_plan_status: payload.execution_plan_status,
+    route_csv_row_count: payload.route_csv_row_count,
+    path_structured_pose_count: payload.path_structured_pose_count,
+    segment_count: payload.segment_count,
+    global_abort_criteria_count: O7_BOUNDED_ROUTE_GATE_FIXED.global_abort_criteria_count,
+    safe_refs: payload.safe_refs,
+    metadata: payload.metadata,
+    same_task_id_consumed: true,
+    bounded_route_execution_gate_material_written: true,
+    bounded_route_execution_gate_material_readback: true,
+    support_only_reason: "bounded_route_gate_material_intake_only_not_route_execution_proof",
+    blocked_reasons: [
+      "local_mock_only",
+      "execution_plan_status=blocked_pending_live_safety_gate",
+      "route_execution_success_not_proven",
+      "delivery_success_not_proven",
+      "hil_pass_not_proven",
+    ],
+    next_required_evidence: [
+      "current_live_safety_gate_acceptance_for_same_packet",
+      "controlled_route_execution_result_for_same_task",
+      "delivery_or_operator_acceptance_for_same_task",
+    ],
+    ...fixedBoundedRouteGateIntakeFalseFields(),
+  };
+}
+
+function buildBoundedRouteGateFieldEvidenceBody(payload: NormalizedBoundedRouteGateIntakePayload): JsonRecord {
+  // field-evidence 写入只提交 checksum/ref 摘要和 additive section，不上传本机文件或执行路线。
+  const material = buildBoundedRouteGateMaterialPayload(payload);
+  const materialJson = JSON.stringify(material);
+  const checksum = createHash("sha256").update(materialJson).digest("hex");
+  return {
+    robot_id: payload.robot_id,
+    task_id: payload.task_id,
+    field_evidence_manifest: {
+      schema: FIELD_EVIDENCE_MANIFEST_SCHEMA,
+      source: "pc_o7_bounded_route_gate_intake",
+      robot_id: payload.robot_id,
+      task_id: payload.task_id,
+      run_id: `o7_bounded_route_gate_${payload.task_id}`.slice(0, 80),
+      status: "local_mock_bounded_route_gate_material_ready",
+      generated_at: "2026-07-13T21:21:00.000Z",
+      gate_pass: true,
+      manifest_gate: {
+        schema: FIELD_EVIDENCE_MANIFEST_SCHEMA,
+        status: "gated",
+        gate_pass: true,
+        blocked_reason: "bounded_route_gate_material_intake_local_mock_only",
+        source: "pc_o7_bounded_route_gate_intake",
+      },
+      artifact_status: "gated",
+      artifact_health: {
+        required_count: 1,
+        present_count: 1,
+        missing_count: 0,
+        blocked_count: 0,
+        summary: "bounded_route_execution_gate_material_ready_not_route_execution_proof",
+      },
+      artifacts: {
+        bounded_route_execution_gate_material: {
+          path: "bounded-route-gate-material.json",
+          required: true,
+          present: true,
+          size_bytes: Math.max(1, Buffer.byteLength(materialJson, "utf8")),
+          sha256: checksum,
+          mtime_utc: "2026-07-13T21:21:00.000Z",
+          file_count: 1,
+        },
+      },
+      bounded_route_execution_gate_material: material,
+      ...fixedBoundedRouteGateIntakeFalseFields(),
+      real_cloud_db_connected: false,
+      real_oss_connected: false,
+    },
+    bounded_route_execution_gate_material: material,
+    trajectory_frames: [
+      {
+        frame_index: 0,
+        timestamp_ms: 0,
+        state: "bounded_route_gate_material_intake_local_mock",
+        evidence_ref: "bounded-route-gate-material.json",
+      },
+    ],
+    events: [
+      {
+        event_id: `o7-bounded-route-gate-${payload.task_id}`.replace(/[^A-Za-z0-9._:-]/g, "-").slice(0, 120),
+        event_type: "operator.note",
+        occurred_at_ms: 0,
+        summary: "local mock bounded route gate material intake",
+        severity: "info",
+        evidence_refs: ["bounded-route-gate-material.json"],
+        metadata: {
+          source: "pc_o7_bounded_route_gate_intake",
+          execution_plan_status: payload.execution_plan_status,
+        },
+      },
+    ],
+    ...fixedBoundedRouteGateIntakeFalseFields(),
+    real_cloud_db_connected: false,
+    real_oss_connected: false,
+  };
+}
+
+function o6BoundedRouteGateIntakeFixedFalseMismatch(remote: JsonRecord): string {
+  // O6 field-evidence receipt 的固定 false 字段是本 proof boundary 的硬门槛。
+  const requiredFalse = [
+    "safe_to_control",
+    "delivery_success",
+    "primary_actions_enabled",
+    "connects_cloud_production",
+    "robot_control_executed",
+    "real_cloud_db_connected",
+    "real_oss_connected",
+  ];
+  const optionalFalse = ["route_execution_success", "hil_pass"];
+  const requiredMismatch = requiredFalse.find((key) => remote[key] !== false);
+  if (requiredMismatch) {
+    return requiredMismatch;
+  }
+  return optionalFalse.find((key) => remote[key] !== undefined && remote[key] !== false) ?? "";
+}
+
+function boundedRouteGateMaterialSummaryFromO6Task(
+  task: JsonRecord,
+  taskId: string,
+): O7ConsumerBoundedRouteGateMaterialSummary {
+  // O6 archive response 的 task section 是 receipt readback 来源；缺 section 不能返回成功 intake。
+  const candidate = boundedRouteGateMaterialCandidateFromRemote(task);
+  if (!candidate) {
+    return blockedBoundedRouteGateMaterial("o6_bounded_route_gate_material_missing", taskId);
+  }
+  return buildBoundedRouteGateMaterialSummary(candidate, taskId);
+}
+
+function validateO6BoundedRouteGateIntakeResponse(
+  remote: JsonRecord,
+  payload: NormalizedBoundedRouteGateIntakePayload,
+): { ok: true; material: O7ConsumerBoundedRouteGateMaterialSummary } | { ok: false; reason: string } {
+  // 成功响应必须是 O6 field-evidence local/mock/not_proven receipt，并回读同一 28-pose gate section。
+  if (asString(remote.schema, "") !== "trashbot.o6.field_evidence_archive.v1") {
+    return { ok: false, reason: "o6_field_evidence_schema_mismatch" };
+  }
+  if (asString(remote.source, "") !== "local_mock_field_evidence_archive") {
+    return { ok: false, reason: "o6_field_evidence_source_mismatch" };
+  }
+  if (asString(remote.proof_status, "") !== "not_proven") {
+    return { ok: false, reason: "o6_field_evidence_proof_status_mismatch" };
+  }
+  const falseMismatch = o6BoundedRouteGateIntakeFixedFalseMismatch(remote);
+  if (falseMismatch) {
+    return { ok: false, reason: `o6_field_evidence_false_field_mismatch:${falseMismatch}` };
+  }
+  if (scanDangerousTrueFields(remote).length > 0 || containsUnsafeBoundedRouteGateCopy(remote)) {
+    return { ok: false, reason: "o6_field_evidence_response_unsafe" };
+  }
+  if (asString(remote.archive_status, "") !== "local_mock_field_evidence_ready") {
+    return { ok: false, reason: "o6_field_evidence_archive_status_mismatch" };
+  }
+  if (remote.field_evidence_written !== true) {
+    return { ok: false, reason: "o6_field_evidence_not_written" };
+  }
+  if (!["created", "updated"].includes(asString(remote.write_status, ""))) {
+    return { ok: false, reason: "o6_field_evidence_write_status_mismatch" };
+  }
+  const task = asRecord(remote.task);
+  if (!task) {
+    return { ok: false, reason: "o6_field_evidence_task_missing" };
+  }
+  if (asString(task.task_id, "") !== payload.task_id || asString(task.robot_id, "") !== payload.robot_id) {
+    return { ok: false, reason: "o6_field_evidence_identity_mismatch" };
+  }
+  const material = boundedRouteGateMaterialSummaryFromO6Task(task, payload.task_id);
+  if (material.status !== "bounded_route_execution_gate_material_ready_not_route_execution_proof") {
+    return { ok: false, reason: material.blocked_reasons[0] ?? "o6_bounded_route_gate_material_not_ready" };
+  }
+  if (
+    material.task_id !== payload.task_id ||
+    material.packet_id !== payload.packet_id ||
+    material.route_intent_id !== payload.route_intent_id ||
+    material.execution_plan_status !== payload.execution_plan_status ||
+    material.route_csv_row_count !== payload.route_csv_row_count ||
+    material.path_structured_pose_count !== payload.path_structured_pose_count ||
+    material.segment_count !== payload.segment_count ||
+    material.same_task_id_consumed !== true ||
+    material.bounded_route_execution_gate_material_written !== true ||
+    material.bounded_route_execution_gate_material_readback !== true
+  ) {
+    return { ok: false, reason: "o6_bounded_route_gate_material_identity_mismatch" };
+  }
+  return { ok: true, material };
+}
+
+function failClosedBoundedRouteGateIntake(
+  reason: string,
+  baseUrl: string,
+  taskId: string,
+  o6HttpStatus: number | null = null,
+): O7ConsumerBoundedRouteGateIntakeResult {
+  // intake 失败也返回完整 receipt，避免 UI 把异常误解为未运行或可重试成功。
+  return {
+    schema: BOUNDED_ROUTE_GATE_INTAKE_SCHEMA,
+    intake_status: "fail_closed",
+    source_base_url: baseUrl || DEFAULT_BASE_URL,
+    remote_endpoint: REMOTE_DELIVERY_RESULT_INTAKE_ENDPOINT,
+    remote_schema: "not_loaded",
+    requested_task_id: taskId || "not_provided",
+    o6_http_status: o6HttpStatus,
+    task_id: taskId || "not_provided",
+    robot_id: "not_loaded",
+    packet_id: "not_loaded",
+    route_intent_id: "not_loaded",
+    execution_plan_status: "blocked_not_proven",
+    route_csv_row_count: 0,
+    path_structured_pose_count: 0,
+    segment_count: 0,
+    write_status: "blocked_not_proven",
+    duplicate: false,
+    field_evidence_written: false,
+    same_task_id_consumed: false,
+    bounded_route_execution_gate_material_written: false,
+    bounded_route_execution_gate_material_readback: false,
+    o6_schema: "not_loaded",
+    o6_source: "not_loaded",
+    proof_scope: O7_BOUNDED_ROUTE_GATE_INTAKE_PROOF_SCOPE,
+    bounded_route_execution_gate_material: blockedBoundedRouteGateMaterial(reason, taskId),
+    blocked_reasons: [reason],
+    not_proven: [
+      "bounded_route_gate_material_intake_not_written",
+      "route_execution_success_false",
+      "delivery_success_false",
+      "hil_pass_false",
+      "safe_to_control_false",
+      "robot_control_not_executed",
+    ],
+    fail_closed_reason: reason,
+    local_loopback_only: true,
+    ...fixedBoundedRouteGateIntakeFalseFields(),
+    ...PROOF_FLAGS,
+  };
+}
+
+function boundedRouteTerminalResultMetadata(value: unknown): Record<string, string | number | boolean | null> | null {
+  // terminal-result metadata 只保留小型 primitive 摘要，避免把 O5 原始 artifact、路径或控制内容塞进 O6。
+  const metadata = value === undefined ? {} : asRecord(value);
+  if (!metadata || containsUnsafeBoundedRouteGateCopy(metadata)) {
+    return null;
+  }
+  if (Object.keys(metadata).length > O7_BOUNDED_ROUTE_TERMINAL_RESULT_METADATA_KEY_LIMIT) {
+    return null;
+  }
+  if (JSON.stringify(metadata).length > O7_BOUNDED_ROUTE_TERMINAL_RESULT_METADATA_BYTES_LIMIT) {
+    return null;
+  }
+  const normalized: Record<string, string | number | boolean | null> = {};
+  for (const [key, item] of Object.entries(metadata)) {
+    const safeKey = safeBoundedRouteGateIdentifier(key, "");
+    if (!safeKey || Array.isArray(item) || (item !== null && typeof item === "object")) {
+      return null;
+    }
+    if (typeof item === "string") {
+      const text = boundedRouteGateToken(item, "", 180);
+      if (!text || containsUnsafeBoundedRouteGateCopy(text)) {
+        return null;
+      }
+      normalized[safeKey] = text;
+    } else if (typeof item === "number") {
+      if (!Number.isFinite(item)) {
+        return null;
+      }
+      normalized[safeKey] = item;
+    } else if (typeof item === "boolean" || item === null) {
+      normalized[safeKey] = item;
+    } else {
+      return null;
+    }
+  }
+  return normalized;
+}
+
+function boundedRouteTerminalResultPayloadFromBody(
+  taskId: string,
+  body: unknown,
+):
+  | { ok: true; payload: NormalizedBoundedRouteTerminalResultIntakePayload }
+  | { ok: false; reason: string } {
+  // 只允许 00:24 O5 terminal-result bridge 的固定 selected-task identity，防止 O7 混入其他任务或真实控制语义。
+  const payload = asRecord(body);
+  if (!payload) {
+    return { ok: false, reason: "bounded_route_terminal_result_body_not_object" };
+  }
+  if (JSON.stringify(payload).length > O7_BOUNDED_ROUTE_TERMINAL_RESULT_MAX_BODY_BYTES) {
+    return { ok: false, reason: "bounded_route_terminal_result_body_too_large" };
+  }
+  if (containsUnsafeBoundedRouteGateCopy(payload)) {
+    return { ok: false, reason: "bounded_route_terminal_result_body_contains_unsafe_copy" };
+  }
+  const dangerous = scanDangerousTrueFields(payload);
+  if (dangerous.length > 0) {
+    return { ok: false, reason: `dangerous_true_fields:${dangerous.join(",")}` };
+  }
+  const allowedKeys = new Set([
+    "robot_id",
+    "task_id",
+    "packet_id",
+    "route_intent_id",
+    "result_code",
+    "terminal_result_state",
+    "reconciliation_state",
+    "source_schema",
+    "source_proof_boundary",
+    "route_csv_row_count",
+    "path_structured_pose_count",
+    "segment_count",
+    "safe_evidence_ref",
+    "metadata",
+  ]);
+  const extraKeys = Object.keys(payload).filter((key) => !allowedKeys.has(key));
+  if (extraKeys.length > 0) {
+    return { ok: false, reason: `bounded_route_terminal_result_body_unknown_fields:${extraKeys.join(",")}` };
+  }
+  if (taskId !== O7_BOUNDED_ROUTE_TERMINAL_RESULT_FIXED.task_id) {
+    return { ok: false, reason: "bounded_route_terminal_result_task_not_selected_source" };
+  }
+  const bodyTaskId = payload.task_id === undefined ? taskId : safeBoundedRouteGateIdentifier(payload.task_id, "");
+  if (!bodyTaskId || bodyTaskId !== taskId) {
+    return { ok: false, reason: "task_id_mismatch" };
+  }
+  const robotId = safeBoundedRouteGateIdentifier(payload.robot_id, "");
+  if (!robotId) {
+    return { ok: false, reason: "robot_id_not_provided" };
+  }
+  const packetId = safeBoundedRouteGateIdentifier(payload.packet_id, "");
+  if (packetId !== O7_BOUNDED_ROUTE_TERMINAL_RESULT_FIXED.packet_id) {
+    return { ok: false, reason: "packet_id_mismatch" };
+  }
+  const routeIntentId = safeBoundedRouteGateIdentifier(payload.route_intent_id, "");
+  if (routeIntentId !== O7_BOUNDED_ROUTE_TERMINAL_RESULT_FIXED.route_intent_id) {
+    return { ok: false, reason: "route_intent_id_mismatch" };
+  }
+  const resultCode = boundedRouteGateToken(payload.result_code, "", 100);
+  if (resultCode !== O7_BOUNDED_ROUTE_TERMINAL_RESULT_FIXED.result_code) {
+    return { ok: false, reason: "result_code_mismatch" };
+  }
+  const terminalResultState = boundedRouteGateToken(payload.terminal_result_state, "", 80);
+  if (terminalResultState !== O7_BOUNDED_ROUTE_TERMINAL_RESULT_FIXED.terminal_result_state) {
+    return { ok: false, reason: "terminal_result_state_mismatch" };
+  }
+  const reconciliationState = boundedRouteGateToken(payload.reconciliation_state, "", 80);
+  if (reconciliationState !== O7_BOUNDED_ROUTE_TERMINAL_RESULT_FIXED.reconciliation_state) {
+    return { ok: false, reason: "reconciliation_state_mismatch" };
+  }
+  const sourceSchema = boundedRouteGateToken(
+    payload.source_schema ?? O7_BOUNDED_ROUTE_TERMINAL_RESULT_FIXED.source_schema,
+    "",
+    100,
+  );
+  if (sourceSchema !== O7_BOUNDED_ROUTE_TERMINAL_RESULT_FIXED.source_schema) {
+    return { ok: false, reason: "source_schema_mismatch" };
+  }
+  const sourceProofBoundary = boundedRouteGateToken(
+    payload.source_proof_boundary ?? O7_BOUNDED_ROUTE_TERMINAL_RESULT_FIXED.source_proof_boundary,
+    "",
+    120,
+  );
+  if (sourceProofBoundary !== O7_BOUNDED_ROUTE_TERMINAL_RESULT_FIXED.source_proof_boundary) {
+    return { ok: false, reason: "source_proof_boundary_mismatch" };
+  }
+  const routeCsvRowCount = asNumber(payload.route_csv_row_count ?? O7_BOUNDED_ROUTE_TERMINAL_RESULT_FIXED.route_csv_row_count);
+  const pathStructuredPoseCount = asNumber(
+    payload.path_structured_pose_count ?? O7_BOUNDED_ROUTE_TERMINAL_RESULT_FIXED.path_structured_pose_count,
+  );
+  const segmentCount = asNumber(payload.segment_count ?? O7_BOUNDED_ROUTE_TERMINAL_RESULT_FIXED.segment_count);
+  if (routeCsvRowCount !== O7_BOUNDED_ROUTE_TERMINAL_RESULT_FIXED.route_csv_row_count) {
+    return { ok: false, reason: "route_csv_row_count_mismatch" };
+  }
+  if (pathStructuredPoseCount !== O7_BOUNDED_ROUTE_TERMINAL_RESULT_FIXED.path_structured_pose_count) {
+    return { ok: false, reason: "path_structured_pose_count_mismatch" };
+  }
+  if (segmentCount !== O7_BOUNDED_ROUTE_TERMINAL_RESULT_FIXED.segment_count) {
+    return { ok: false, reason: "segment_count_mismatch" };
+  }
+  const safeEvidenceRef = safeBoundedRouteGateRef(
+    payload.safe_evidence_ref ?? O7_BOUNDED_ROUTE_TERMINAL_RESULT_FIXED.safe_evidence_ref,
+  );
+  if (safeEvidenceRef !== O7_BOUNDED_ROUTE_TERMINAL_RESULT_FIXED.safe_evidence_ref) {
+    return { ok: false, reason: "safe_evidence_ref_mismatch_or_unsafe" };
+  }
+  const metadata = boundedRouteTerminalResultMetadata(payload.metadata ?? {});
+  if (!metadata) {
+    return { ok: false, reason: "metadata_invalid_or_too_large" };
+  }
+  return {
+    ok: true,
+    payload: {
+      robot_id: robotId,
+      task_id: O7_BOUNDED_ROUTE_TERMINAL_RESULT_FIXED.task_id,
+      packet_id: O7_BOUNDED_ROUTE_TERMINAL_RESULT_FIXED.packet_id,
+      route_intent_id: O7_BOUNDED_ROUTE_TERMINAL_RESULT_FIXED.route_intent_id,
+      result_code: O7_BOUNDED_ROUTE_TERMINAL_RESULT_FIXED.result_code,
+      terminal_result_state: O7_BOUNDED_ROUTE_TERMINAL_RESULT_FIXED.terminal_result_state,
+      reconciliation_state: O7_BOUNDED_ROUTE_TERMINAL_RESULT_FIXED.reconciliation_state,
+      source_schema: O7_BOUNDED_ROUTE_TERMINAL_RESULT_FIXED.source_schema,
+      source_proof_boundary: O7_BOUNDED_ROUTE_TERMINAL_RESULT_FIXED.source_proof_boundary,
+      route_csv_row_count: O7_BOUNDED_ROUTE_TERMINAL_RESULT_FIXED.route_csv_row_count,
+      path_structured_pose_count: O7_BOUNDED_ROUTE_TERMINAL_RESULT_FIXED.path_structured_pose_count,
+      segment_count: O7_BOUNDED_ROUTE_TERMINAL_RESULT_FIXED.segment_count,
+      safe_evidence_ref: O7_BOUNDED_ROUTE_TERMINAL_RESULT_FIXED.safe_evidence_ref,
+      metadata,
+    },
+  };
+}
+
+type BoundedRouteTerminalResultMaterialSourceResult = {
+  payload: JsonRecord;
+  source_origin: O7ConsumerBoundedRouteTerminalResultMaterialSummary["source_origin"];
+  source_path: string;
+};
+
+function boundedRouteTerminalResultMaterialCandidateFromRemote(
+  remote: JsonRecord,
+): BoundedRouteTerminalResultMaterialSourceResult | null {
+  // terminal-result material 只从 O6 白名单 section 读取，不让 UI 自己合成 delivery/result 成功语义。
+  const direct = asRecord(remote.bounded_route_terminal_result_material);
+  if (direct) {
+    return {
+      payload: direct,
+      source_origin: "remote_bounded_route_terminal_result_material",
+      source_path: "bounded_route_terminal_result_material",
+    };
+  }
+  const fieldEvidence =
+    nestedRecord(remote, "field_evidence", "bounded_route_terminal_result_material") ??
+    nestedRecord(remote, "field_evidence_manifest", "bounded_route_terminal_result_material");
+  if (fieldEvidence) {
+    return {
+      payload: fieldEvidence,
+      source_origin: "remote_field_evidence",
+      source_path: "field_evidence.bounded_route_terminal_result_material",
+    };
+  }
+  const fieldIngest =
+    nestedRecord(remote, "field_evidence_consumer_ingest", "bounded_route_terminal_result_material") ??
+    nestedRecord(remote, "field_evidence", "field_evidence_consumer_ingest", "bounded_route_terminal_result_material");
+  if (fieldIngest) {
+    return {
+      payload: fieldIngest,
+      source_origin: "remote_field_evidence_consumer_ingest",
+      source_path: "field_evidence_consumer_ingest.bounded_route_terminal_result_material",
+    };
+  }
+  const bundle =
+    nestedRecord(remote, "artifact_bundle", "bounded_route_terminal_result_material") ??
+    nestedRecord(remote, "field_evidence", "artifact_bundle", "bounded_route_terminal_result_material");
+  if (bundle) {
+    return {
+      payload: bundle,
+      source_origin: "remote_artifact_bundle",
+      source_path: "artifact_bundle.bounded_route_terminal_result_material",
+    };
+  }
+  const ingest =
+    nestedRecord(remote, "artifact_bundle_consumer_ingest", "bounded_route_terminal_result_material") ??
+    nestedRecord(remote, "field_evidence", "artifact_bundle_consumer_ingest", "bounded_route_terminal_result_material");
+  if (ingest) {
+    return {
+      payload: ingest,
+      source_origin: "remote_artifact_bundle_consumer_ingest",
+      source_path: "artifact_bundle_consumer_ingest.bounded_route_terminal_result_material",
+    };
+  }
+  const readiness =
+    nestedRecord(remote, "artifact_bundle_readiness", "bounded_route_terminal_result_material") ??
+    nestedRecord(remote, "artifact_bundle_readiness", "artifact_bundle", "bounded_route_terminal_result_material") ??
+    nestedRecord(remote, "artifact_bundle_readiness", "artifact_bundle_consumer_ingest", "bounded_route_terminal_result_material");
+  if (readiness) {
+    return {
+      payload: readiness,
+      source_origin: "remote_artifact_bundle_readiness",
+      source_path: "artifact_bundle_readiness.bounded_route_terminal_result_material",
+    };
+  }
+  return null;
+}
+
+function blockedBoundedRouteTerminalResultMaterial(
+  reason: string,
+  taskId: string,
+): O7ConsumerBoundedRouteTerminalResultMaterialSummary {
+  // 缺失或校验失败时返回完整摘要，operator 能看到 terminal-result intake 尚未形成 delivery proof。
+  return {
+    schema: O7_BOUNDED_ROUTE_TERMINAL_RESULT_MATERIAL_SCHEMA,
+    status: "blocked_not_proven",
+    source_schema: "not_loaded",
+    source_origin: "not_loaded",
+    source_path: "not_loaded",
+    task_id: taskId || "not_provided",
+    packet_id: "not_loaded",
+    route_intent_id: "not_loaded",
+    proof_scope: "not_loaded",
+    source_material_schema: "not_loaded",
+    source_proof_boundary: "not_loaded",
+    result_code: "blocked_not_proven",
+    terminal_result_state: "blocked_not_proven",
+    reconciliation_state: "blocked_not_proven",
+    route_csv_row_count: 0,
+    path_structured_pose_count: 0,
+    segment_count: 0,
+    safe_evidence_ref: "not_loaded",
+    same_task_id_consumed: false,
+    bounded_route_terminal_result_material_written: false,
+    bounded_route_terminal_result_material_readback: false,
+    support_only_reason: "bounded_route_terminal_result_material_missing_or_blocked",
+    blocked_reasons: [reason],
+    next_required_evidence: [
+      "bounded_route_terminal_result_material_for_selected_task",
+      "current_live_route_execution_result",
+      "delivery_or_operator_acceptance_for_same_task",
+    ],
+    proof_boundary: {
+      local_mock: true,
+      not_proven: true,
+      reads_local_path: false,
+      bounded_route_terminal_result_material_connected: false,
+      route_execution_success: false,
+      delivery_success_proven: false,
+      hil_pass: false,
+      safe_to_control: false,
+      robot_control_executed: false,
+      real_production_cloud_connected: false,
+      real_oss_connected: false,
+      real_cdn_connected: false,
+    },
+    ...fixedBoundedRouteTerminalResultIntakeFalseFields(),
+    ...PROOF_FLAGS,
+  };
+}
+
+function unsafeBoundedRouteTerminalResultMaterialTextReason(value: unknown): string {
+  // 状态、ref 和 identity 都必须是短 token；路径、URL、凭证、串口或控制词会让 readback fail-closed。
+  const text = rawString(value);
+  if (!text) {
+    return "";
+  }
+  if (
+    containsUnsafeBoundedRouteGateCopy(text) ||
+    path.isAbsolute(text) ||
+    /^[A-Za-z]:\\/.test(text) ||
+    text.includes("/") ||
+    text.includes("\\")
+  ) {
+    return "bounded_route_terminal_result_material_unsafe_text";
+  }
+  return "";
+}
+
+function boundedRouteTerminalResultMaterialHardFailReason(
+  summary: O7ConsumerBoundedRouteTerminalResultMaterialSummary,
+): string {
+  // schema、task、identity、proof scope、危险 true 或 unsafe 文本漂移时，consumer detail 主路径必须 fail-closed。
+  const reason = summary.blocked_reasons[0] ?? "";
+  return /^(bounded_route_terminal_result_material_schema_mismatch|bounded_route_terminal_result_material_task_mismatch|bounded_route_terminal_result_material_dangerous_true|bounded_route_terminal_result_material_proof_scope_mismatch|bounded_route_terminal_result_material_identity_mismatch|bounded_route_terminal_result_material_missing_required_fields|bounded_route_terminal_result_material_unsafe_text)/.test(
+    reason,
+  )
+    ? reason
+    : "";
+}
+
+function buildBoundedRouteTerminalResultMaterialSummary(
+  candidate: BoundedRouteTerminalResultMaterialSourceResult | null,
+  taskId: string,
+): O7ConsumerBoundedRouteTerminalResultMaterialSummary {
+  // O7 只核对 O6 已写入的 terminal-result 摘要；ready 仍是 material/readback，不是 delivery proof。
+  if (!candidate) {
+    return blockedBoundedRouteTerminalResultMaterial("bounded_route_terminal_result_material_missing", taskId);
+  }
+  const payload = candidate.payload;
+  if (asString(payload.schema, "") !== O6_BOUNDED_ROUTE_TERMINAL_RESULT_MATERIAL_SCHEMA) {
+    return blockedBoundedRouteTerminalResultMaterial("bounded_route_terminal_result_material_schema_mismatch", taskId);
+  }
+  const dangerous = scanDangerousTrueFields(payload);
+  if (dangerous.length > 0) {
+    return blockedBoundedRouteTerminalResultMaterial(
+      `bounded_route_terminal_result_material_dangerous_true:${dangerous.join(",")}`,
+      taskId,
+    );
+  }
+  const proofScope = asString(payload.proof_scope, "not_loaded");
+  if (proofScope !== O7_BOUNDED_ROUTE_TERMINAL_RESULT_INTAKE_PROOF_SCOPE) {
+    return blockedBoundedRouteTerminalResultMaterial("bounded_route_terminal_result_material_proof_scope_mismatch", taskId);
+  }
+  const payloadTaskId = asString(payload.task_id, taskId || "not_provided");
+  if (payloadTaskId !== taskId || payloadTaskId !== O7_BOUNDED_ROUTE_TERMINAL_RESULT_FIXED.task_id) {
+    return blockedBoundedRouteTerminalResultMaterial("bounded_route_terminal_result_material_task_mismatch", taskId);
+  }
+  const packetId = safeBoundedRouteGateIdentifier(payload.packet_id, "");
+  const routeIntentId = safeBoundedRouteGateIdentifier(payload.route_intent_id, "");
+  const resultCode = boundedRouteGateToken(payload.result_code, "", 100);
+  const terminalResultState = boundedRouteGateToken(payload.terminal_result_state, "", 80);
+  const reconciliationState = boundedRouteGateToken(payload.reconciliation_state, "", 80);
+  const sourceMaterialSchema = boundedRouteGateToken(payload.source_schema, "", 100);
+  const sourceProofBoundary = boundedRouteGateToken(payload.source_proof_boundary, "", 120);
+  const routeCsvRowCount = asNumber(payload.route_csv_row_count);
+  const pathStructuredPoseCount = asNumber(payload.path_structured_pose_count);
+  const segmentCount = asNumber(payload.segment_count);
+  const safeEvidenceRef = safeBoundedRouteGateRef(payload.safe_evidence_ref);
+  if (
+    packetId !== O7_BOUNDED_ROUTE_TERMINAL_RESULT_FIXED.packet_id ||
+    routeIntentId !== O7_BOUNDED_ROUTE_TERMINAL_RESULT_FIXED.route_intent_id ||
+    resultCode !== O7_BOUNDED_ROUTE_TERMINAL_RESULT_FIXED.result_code ||
+    terminalResultState !== O7_BOUNDED_ROUTE_TERMINAL_RESULT_FIXED.terminal_result_state ||
+    reconciliationState !== O7_BOUNDED_ROUTE_TERMINAL_RESULT_FIXED.reconciliation_state ||
+    sourceMaterialSchema !== O7_BOUNDED_ROUTE_TERMINAL_RESULT_FIXED.source_schema ||
+    sourceProofBoundary !== O7_BOUNDED_ROUTE_TERMINAL_RESULT_FIXED.source_proof_boundary ||
+    routeCsvRowCount !== O7_BOUNDED_ROUTE_TERMINAL_RESULT_FIXED.route_csv_row_count ||
+    pathStructuredPoseCount !== O7_BOUNDED_ROUTE_TERMINAL_RESULT_FIXED.path_structured_pose_count ||
+    segmentCount !== O7_BOUNDED_ROUTE_TERMINAL_RESULT_FIXED.segment_count ||
+    safeEvidenceRef !== O7_BOUNDED_ROUTE_TERMINAL_RESULT_FIXED.safe_evidence_ref
+  ) {
+    return blockedBoundedRouteTerminalResultMaterial("bounded_route_terminal_result_material_identity_mismatch", taskId);
+  }
+  const blockedReasons = stringList(payload.blocked_reasons, 12);
+  const nextRequiredEvidence = stringList(payload.next_required_evidence, 12);
+  const missingFields = [
+    rawString(payload.status) ? "" : "status",
+    rawString(payload.support_only_reason) ? "" : "support_only_reason",
+    rawString(payload.safe_evidence_ref) ? "" : "safe_evidence_ref",
+    Array.isArray(payload.blocked_reasons) ? "" : "blocked_reasons",
+    Array.isArray(payload.next_required_evidence) ? "" : "next_required_evidence",
+    typeof payload.same_task_id_consumed === "boolean" ? "" : "same_task_id_consumed",
+    typeof payload.bounded_route_terminal_result_material_written === "boolean"
+      ? ""
+      : "bounded_route_terminal_result_material_written",
+    typeof payload.bounded_route_terminal_result_material_readback === "boolean"
+      ? ""
+      : "bounded_route_terminal_result_material_readback",
+  ].filter(Boolean);
+  if (missingFields.length > 0) {
+    return blockedBoundedRouteTerminalResultMaterial(
+      `bounded_route_terminal_result_material_missing_required_fields:${missingFields.join(",")}`,
+      taskId,
+    );
+  }
+  const unsafeText = aggregateDistinct([
+    unsafeBoundedRouteTerminalResultMaterialTextReason(payload.status),
+    unsafeBoundedRouteTerminalResultMaterialTextReason(packetId),
+    unsafeBoundedRouteTerminalResultMaterialTextReason(routeIntentId),
+    unsafeBoundedRouteTerminalResultMaterialTextReason(resultCode),
+    unsafeBoundedRouteTerminalResultMaterialTextReason(terminalResultState),
+    unsafeBoundedRouteTerminalResultMaterialTextReason(reconciliationState),
+    unsafeBoundedRouteTerminalResultMaterialTextReason(sourceMaterialSchema),
+    unsafeBoundedRouteTerminalResultMaterialTextReason(sourceProofBoundary),
+    unsafeBoundedRouteTerminalResultMaterialTextReason(safeEvidenceRef),
+    unsafeBoundedRouteTerminalResultMaterialTextReason(payload.support_only_reason),
+    blockedReasons.map((reason) => unsafeBoundedRouteTerminalResultMaterialTextReason(reason)),
+    nextRequiredEvidence.map((item) => unsafeBoundedRouteTerminalResultMaterialTextReason(item)),
+  ]);
+  if (unsafeText.length > 0) {
+    return blockedBoundedRouteTerminalResultMaterial("bounded_route_terminal_result_material_unsafe_text", taskId);
+  }
+  const materialWritten = asBoolean(payload.bounded_route_terminal_result_material_written);
+  const materialReadback = asBoolean(payload.bounded_route_terminal_result_material_readback);
+  const sameTaskIdConsumed = asBoolean(payload.same_task_id_consumed);
+  const ready =
+    asString(payload.status, "") === "bounded_route_terminal_result_material_ready_not_delivery_proof" &&
+    materialWritten &&
+    materialReadback &&
+    sameTaskIdConsumed;
+  return {
+    schema: O7_BOUNDED_ROUTE_TERMINAL_RESULT_MATERIAL_SCHEMA,
+    status: ready ? "bounded_route_terminal_result_material_ready_not_delivery_proof" : "derived_blocked_not_proven",
+    source_schema: O6_BOUNDED_ROUTE_TERMINAL_RESULT_MATERIAL_SCHEMA,
+    source_origin: candidate.source_origin,
+    source_path: candidate.source_path,
+    task_id: payloadTaskId,
+    packet_id: packetId,
+    route_intent_id: routeIntentId,
+    proof_scope: O7_BOUNDED_ROUTE_TERMINAL_RESULT_INTAKE_PROOF_SCOPE,
+    source_material_schema: sourceMaterialSchema,
+    source_proof_boundary: sourceProofBoundary,
+    result_code: resultCode,
+    terminal_result_state: terminalResultState,
+    reconciliation_state: reconciliationState,
+    route_csv_row_count: routeCsvRowCount ?? 0,
+    path_structured_pose_count: pathStructuredPoseCount ?? 0,
+    segment_count: segmentCount ?? 0,
+    safe_evidence_ref: safeEvidenceRef,
+    same_task_id_consumed: sameTaskIdConsumed,
+    bounded_route_terminal_result_material_written: materialWritten,
+    bounded_route_terminal_result_material_readback: materialReadback,
+    support_only_reason: asString(
+      payload.support_only_reason,
+      "bounded_route_terminal_result_intake_only_not_delivery_proof",
+    ),
+    blocked_reasons: aggregateDistinct([
+      blockedReasons,
+      "local_mock_only",
+      "route_execution_success_not_proven",
+      "delivery_success_not_proven",
+      "hil_pass_not_proven",
+      ready ? "" : "bounded_route_terminal_result_material_not_ready",
+    ]),
+    next_required_evidence: nextRequiredEvidence.length
+      ? nextRequiredEvidence
+      : [
+          "current_live_route_execution_result_for_same_packet",
+          "delivery_or_operator_acceptance_for_same_task",
+          "production_cloud_readback_for_same_task",
+        ],
+    proof_boundary: {
+      local_mock: true,
+      not_proven: true,
+      reads_local_path: false,
+      bounded_route_terminal_result_material_connected: ready,
+      route_execution_success: false,
+      delivery_success_proven: false,
+      hil_pass: false,
+      safe_to_control: false,
+      robot_control_executed: false,
+      real_production_cloud_connected: false,
+      real_oss_connected: false,
+      real_cdn_connected: false,
+    },
+    ...fixedBoundedRouteTerminalResultIntakeFalseFields(),
+    ...PROOF_FLAGS,
+  };
+}
+
+function buildBoundedRouteTerminalResultMaterialPayload(
+  payload: NormalizedBoundedRouteTerminalResultIntakePayload,
+): JsonRecord {
+  // 写给 O6 的 section 只记录 mock terminal-result 摘要，不包含 O5 原始路径、命令、串口或成功 claim。
+  return {
+    schema: O6_BOUNDED_ROUTE_TERMINAL_RESULT_MATERIAL_SCHEMA,
+    status: "bounded_route_terminal_result_material_ready_not_delivery_proof",
+    proof_scope: O7_BOUNDED_ROUTE_TERMINAL_RESULT_INTAKE_PROOF_SCOPE,
+    proof_status: "not_proven",
+    source: "pc_o7_bounded_route_terminal_result_intake",
+    source_schema: payload.source_schema,
+    source_proof_boundary: payload.source_proof_boundary,
+    task_id: payload.task_id,
+    robot_id: payload.robot_id,
+    packet_id: payload.packet_id,
+    route_intent_id: payload.route_intent_id,
+    result_code: payload.result_code,
+    terminal_result_state: payload.terminal_result_state,
+    reconciliation_state: payload.reconciliation_state,
+    route_csv_row_count: payload.route_csv_row_count,
+    path_structured_pose_count: payload.path_structured_pose_count,
+    segment_count: payload.segment_count,
+    safe_evidence_ref: payload.safe_evidence_ref,
+    metadata: payload.metadata,
+    same_task_id_consumed: true,
+    bounded_route_terminal_result_material_written: true,
+    bounded_route_terminal_result_material_readback: true,
+    support_only_reason: "bounded_route_terminal_result_intake_only_not_delivery_proof",
+    blocked_reasons: [
+      "local_mock_only",
+      "result_code=mock_route_execution_completed_not_live_delivery",
+      "route_execution_success_not_proven",
+      "delivery_success_not_proven",
+      "hil_pass_not_proven",
+    ],
+    next_required_evidence: [
+      "current_live_route_execution_result_for_same_packet",
+      "delivery_or_operator_acceptance_for_same_task",
+      "production_cloud_readback_for_same_task",
+    ],
+    ...fixedBoundedRouteTerminalResultIntakeFalseFields(),
+  };
+}
+
+function buildBoundedRouteTerminalResultFieldEvidenceBody(
+  payload: NormalizedBoundedRouteTerminalResultIntakePayload,
+): JsonRecord {
+  // field-evidence 写入只提交 checksum/ref 摘要和 additive section，不上传 O5 artifact、不读取本机文件、不执行路线。
+  const material = buildBoundedRouteTerminalResultMaterialPayload(payload);
+  const materialJson = JSON.stringify(material);
+  const checksum = createHash("sha256").update(materialJson).digest("hex");
+  return {
+    robot_id: payload.robot_id,
+    task_id: payload.task_id,
+    field_evidence_manifest: {
+      schema: FIELD_EVIDENCE_MANIFEST_SCHEMA,
+      source: "pc_o7_bounded_route_terminal_result_intake",
+      robot_id: payload.robot_id,
+      task_id: payload.task_id,
+      run_id: `o7_bounded_route_terminal_result_${payload.task_id}`.slice(0, 80),
+      status: "local_mock_bounded_route_terminal_result_material_ready",
+      generated_at: "2026-07-14T01:24:00.000Z",
+      gate_pass: true,
+      manifest_gate: {
+        schema: FIELD_EVIDENCE_MANIFEST_SCHEMA,
+        status: "gated",
+        gate_pass: true,
+        blocked_reason: "bounded_route_terminal_result_intake_local_mock_only",
+        source: "pc_o7_bounded_route_terminal_result_intake",
+      },
+      artifact_status: "gated",
+      artifact_health: {
+        required_count: 1,
+        present_count: 1,
+        missing_count: 0,
+        blocked_count: 0,
+        summary: "bounded_route_terminal_result_material_ready_not_delivery_proof",
+      },
+      artifacts: {
+        bounded_route_terminal_result_material: {
+          path: payload.safe_evidence_ref,
+          required: true,
+          present: true,
+          size_bytes: Math.max(1, Buffer.byteLength(materialJson, "utf8")),
+          sha256: checksum,
+          mtime_utc: "2026-07-14T01:24:00.000Z",
+          file_count: 1,
+        },
+      },
+      bounded_route_terminal_result_material: material,
+      ...fixedBoundedRouteTerminalResultIntakeFalseFields(),
+      real_cloud_db_connected: false,
+      real_oss_connected: false,
+    },
+    bounded_route_terminal_result_material: material,
+    trajectory_frames: [
+      {
+        frame_index: 0,
+        timestamp_ms: 0,
+        state: "bounded_route_terminal_result_material_intake_local_mock",
+        evidence_ref: payload.safe_evidence_ref,
+      },
+    ],
+    events: [
+      {
+        event_id: `o7-bounded-route-terminal-result-${payload.task_id}`.replace(/[^A-Za-z0-9._:-]/g, "-").slice(0, 120),
+        event_type: "operator.note",
+        occurred_at_ms: 0,
+        summary: "local mock bounded route terminal result material intake",
+        severity: "info",
+        evidence_refs: [payload.safe_evidence_ref],
+        metadata: {
+          source: "pc_o7_bounded_route_terminal_result_intake",
+          result_code: payload.result_code,
+          terminal_result_state: payload.terminal_result_state,
+          reconciliation_state: payload.reconciliation_state,
+        },
+      },
+    ],
+    ...fixedBoundedRouteTerminalResultIntakeFalseFields(),
+    real_cloud_db_connected: false,
+    real_oss_connected: false,
+  };
+}
+
+function o6BoundedRouteTerminalResultIntakeFixedFalseMismatch(remote: JsonRecord): string {
+  // O6 field-evidence receipt 的固定 false 字段是 terminal-result proof boundary 的硬门槛。
+  const requiredFalse = [
+    "safe_to_control",
+    "delivery_success",
+    "primary_actions_enabled",
+    "connects_cloud_production",
+    "robot_control_executed",
+    "real_cloud_db_connected",
+    "real_oss_connected",
+    "route_execution_success",
+    "hil_pass",
+  ];
+  return requiredFalse.find((key) => remote[key] !== false) ?? "";
+}
+
+function boundedRouteTerminalResultMaterialSummaryFromO6Task(
+  task: JsonRecord,
+  taskId: string,
+): O7ConsumerBoundedRouteTerminalResultMaterialSummary {
+  // O6 archive response 的 task section 是 terminal-result readback 来源；缺 section 不能返回成功 receipt。
+  const candidate = boundedRouteTerminalResultMaterialCandidateFromRemote(task);
+  if (!candidate) {
+    return blockedBoundedRouteTerminalResultMaterial("o6_bounded_route_terminal_result_material_missing", taskId);
+  }
+  return buildBoundedRouteTerminalResultMaterialSummary(candidate, taskId);
+}
+
+function validateO6BoundedRouteTerminalResultIntakeResponse(
+  remote: JsonRecord,
+  payload: NormalizedBoundedRouteTerminalResultIntakePayload,
+): { ok: true; material: O7ConsumerBoundedRouteTerminalResultMaterialSummary } | { ok: false; reason: string } {
+  // 成功响应必须是 O6 field-evidence local/mock/not_proven receipt，并回读同一 terminal-result section。
+  if (asString(remote.schema, "") !== "trashbot.o6.field_evidence_archive.v1") {
+    return { ok: false, reason: "o6_field_evidence_schema_mismatch" };
+  }
+  if (asString(remote.source, "") !== "local_mock_field_evidence_archive") {
+    return { ok: false, reason: "o6_field_evidence_source_mismatch" };
+  }
+  if (asString(remote.proof_status, "") !== "not_proven") {
+    return { ok: false, reason: "o6_field_evidence_proof_status_mismatch" };
+  }
+  const falseMismatch = o6BoundedRouteTerminalResultIntakeFixedFalseMismatch(remote);
+  if (falseMismatch) {
+    return { ok: false, reason: `o6_field_evidence_false_field_mismatch:${falseMismatch}` };
+  }
+  if (scanDangerousTrueFields(remote).length > 0 || containsUnsafeBoundedRouteGateCopy(remote)) {
+    return { ok: false, reason: "o6_field_evidence_response_unsafe" };
+  }
+  if (asString(remote.archive_status, "") !== "local_mock_field_evidence_ready") {
+    return { ok: false, reason: "o6_field_evidence_archive_status_mismatch" };
+  }
+  if (remote.field_evidence_written !== true) {
+    return { ok: false, reason: "o6_field_evidence_not_written" };
+  }
+  if (!["created", "updated"].includes(asString(remote.write_status, ""))) {
+    return { ok: false, reason: "o6_field_evidence_write_status_mismatch" };
+  }
+  const task = asRecord(remote.task);
+  if (!task) {
+    return { ok: false, reason: "o6_field_evidence_task_missing" };
+  }
+  if (asString(task.task_id, "") !== payload.task_id || asString(task.robot_id, "") !== payload.robot_id) {
+    return { ok: false, reason: "o6_field_evidence_identity_mismatch" };
+  }
+  const material = boundedRouteTerminalResultMaterialSummaryFromO6Task(task, payload.task_id);
+  if (material.status !== "bounded_route_terminal_result_material_ready_not_delivery_proof") {
+    return { ok: false, reason: material.blocked_reasons[0] ?? "o6_bounded_route_terminal_result_material_not_ready" };
+  }
+  if (
+    material.task_id !== payload.task_id ||
+    material.packet_id !== payload.packet_id ||
+    material.route_intent_id !== payload.route_intent_id ||
+    material.result_code !== payload.result_code ||
+    material.terminal_result_state !== payload.terminal_result_state ||
+    material.reconciliation_state !== payload.reconciliation_state ||
+    material.safe_evidence_ref !== payload.safe_evidence_ref ||
+    material.same_task_id_consumed !== true ||
+    material.bounded_route_terminal_result_material_written !== true ||
+    material.bounded_route_terminal_result_material_readback !== true
+  ) {
+    return { ok: false, reason: "o6_bounded_route_terminal_result_material_identity_mismatch" };
+  }
+  return { ok: true, material };
+}
+
+function failClosedBoundedRouteTerminalResultIntake(
+  reason: string,
+  baseUrl: string,
+  taskId: string,
+  o6HttpStatus: number | null = null,
+): O7ConsumerBoundedRouteTerminalResultIntakeResult {
+  // 失败也返回完整 receipt，防止 UI 把异常误读成 terminal result 已接收或可控。
+  return {
+    schema: BOUNDED_ROUTE_TERMINAL_RESULT_INTAKE_SCHEMA,
+    status: "fail_closed",
+    intake_status: "fail_closed",
+    source_base_url: baseUrl || DEFAULT_BASE_URL,
+    remote_endpoint: REMOTE_DELIVERY_RESULT_INTAKE_ENDPOINT,
+    remote_schema: "not_loaded",
+    requested_task_id: taskId || "not_provided",
+    o6_http_status: o6HttpStatus,
+    task_id: taskId || "not_provided",
+    robot_id: "not_loaded",
+    packet_id: "not_loaded",
+    route_intent_id: "not_loaded",
+    result_code: "blocked_not_proven",
+    terminal_result_state: "blocked_not_proven",
+    reconciliation_state: "blocked_not_proven",
+    route_csv_row_count: 0,
+    path_structured_pose_count: 0,
+    segment_count: 0,
+    safe_evidence_ref: "not_loaded",
+    write_status: "blocked_not_proven",
+    duplicate: false,
+    field_evidence_written: false,
+    same_task_id_consumed: false,
+    bounded_route_terminal_result_material_written: false,
+    bounded_route_terminal_result_material_readback: false,
+    o6_schema: "not_loaded",
+    o6_source: "not_loaded",
+    proof_scope: O7_BOUNDED_ROUTE_TERMINAL_RESULT_INTAKE_PROOF_SCOPE,
+    bounded_route_terminal_result_material: blockedBoundedRouteTerminalResultMaterial(reason, taskId),
+    blocked_reasons: [reason],
+    not_proven: [
+      "bounded_route_terminal_result_material_intake_not_written",
+      "route_execution_success_false",
+      "delivery_success_false",
+      "hil_pass_false",
+      "safe_to_control_false",
+      "robot_control_not_executed",
+    ],
+    fail_closed_reason: reason,
+    local_loopback_only: true,
+    ...fixedBoundedRouteTerminalResultIntakeFalseFields(),
+    ...PROOF_FLAGS,
+  };
+}
+
 function normalizeManifestArtifactStatus(value: unknown): ManifestArtifactStatus {
   // artifact_status 只接受 manifest 约定的三种枚举，避免上游自由字符串污染 UI 语义。
   return typeof value === "string" && MANIFEST_ARTIFACT_STATUSES.has(value) ? (value as ManifestArtifactStatus) : "blocked";
@@ -624,21 +5525,32 @@ function normalizeManifestGateStatus(value: unknown): ManifestGateStatus {
   return typeof value === "string" && MANIFEST_GATE_STATUSES.has(value) ? (value as ManifestGateStatus) : "blocked_not_proven";
 }
 
-function failClosedList(reason: string, baseUrl: string): O7ConsumerTaskListResponse {
+function failClosedList(
+  reason: string,
+  baseUrl: string,
+  appliedFilters = defaultConsumerTaskListFilters(),
+): O7ConsumerTaskListResponse {
   // 列表失败时仍返回完整 contract，让 UI 能明确看到主路径被关闸的原因。
   return {
     schema: LIST_SCHEMA,
     list_status: "fail_closed",
     source_base_url: baseUrl || DEFAULT_BASE_URL,
-    remote_endpoint: REMOTE_LIST_ENDPOINT,
+    remote_endpoint: `${REMOTE_LIST_ENDPOINT}?view=${DEFAULT_LIST_VIEW}&limit=${appliedFilters.limit}`,
     remote_schema: "not_loaded",
     query_strategy: {
       view: DEFAULT_LIST_VIEW,
       include: [],
-      limit: 50,
+      limit: appliedFilters.limit,
       primary_path: true,
       fail_closed_visible: true,
+      applied_filters: appliedFilters,
+      filter_semantics: "and",
     },
+    applied_filters: appliedFilters,
+    filter_semantics: "and",
+    filtered_result_count: 0,
+    o7_consumer_read_query_filters_ready_not_production_proof: true,
+    o7_consumer_read_query_filters_proof_scope: O7_CONSUMER_READ_QUERY_FILTERS_PROOF_SCOPE,
     task_list: [],
     blocked_reasons: [reason],
     not_proven: ["o7_consumer_task_list_not_proven"],
@@ -664,6 +5576,9 @@ function failClosedDetail(reason: string, baseUrl: string, taskId: string): O7Co
   const routeExecutionResultDeliveryReadiness = blockedRouteExecutionResultDeliveryReadiness(reason, taskId);
   const routeDeliveryClosurePacket = blockedRouteDeliveryClosurePacket(reason, taskId);
   const sameTaskFieldMaterialPacket = blockedSameTaskFieldMaterialPacket(reason, taskId);
+  const sameTaskReplayPacketReadback = blockedSameTaskReplayPacketReadback(reason, taskId);
+  const boundedRouteGateMaterial = blockedBoundedRouteGateMaterial(reason, taskId);
+  const boundedRouteTerminalResultMaterial = blockedBoundedRouteTerminalResultMaterial(reason, taskId);
   const currentFieldEvidenceMaterial = blockedCurrentFieldEvidenceMaterial(reason, taskId);
   const sameTaskRouteExecutionMaterialPacket = blockedSameTaskRouteExecutionMaterialPacket(reason, taskId);
   const sameTaskMissionEvidenceGate = blockedSameTaskMissionEvidenceGate(reason, taskId);
@@ -728,12 +5643,17 @@ function failClosedDetail(reason: string, baseUrl: string, taskId: string): O7Co
     route_execution_result_delivery_readiness: routeExecutionResultDeliveryReadiness,
     route_delivery_closure_packet: routeDeliveryClosurePacket,
     same_task_field_material_packet: sameTaskFieldMaterialPacket,
+    same_task_replay_packet_readback: sameTaskReplayPacketReadback,
+    bounded_route_execution_gate_material: boundedRouteGateMaterial,
+    bounded_route_terminal_result_material: boundedRouteTerminalResultMaterial,
     current_field_evidence_material: currentFieldEvidenceMaterial,
+    pc_live_nav2_execution_material: blockedPcLiveNav2ExecutionMaterial(reason, taskId),
     localization_path_material_readback: blockedLocalizationPathMaterialReadback(reason, taskId),
     clean_baseline_nav2_path_material: blockedCleanBaselineNav2PathMaterial(reason, taskId),
     same_task_route_execution_material_packet: sameTaskRouteExecutionMaterialPacket,
     same_task_mission_evidence_gate: sameTaskMissionEvidenceGate,
     field_operator_confirmation_material: blockedFieldOperatorConfirmationMaterial(reason, taskId),
+    phone_browser_terminal_material: blockedPhoneBrowserTerminalMaterial(reason, taskId),
     same_task_mission_material_checklist: sameTaskMissionMaterialChecklist,
     artifact_bundle: buildArtifactBundleSummary(null, taskId),
     artifact_bundle_consumer_ingest: buildArtifactBundleConsumerIngestSummary(
@@ -759,6 +5679,8 @@ function failClosedDetail(reason: string, baseUrl: string, taskId: string): O7Co
       routeExecutionResultDeliveryReadiness,
       routeDeliveryClosurePacket,
       sameTaskFieldMaterialPacket,
+      sameTaskReplayPacketReadback,
+      blockedPcLiveNav2ExecutionMaterial(reason, taskId),
       blockedLocalizationPathMaterialReadback(reason, taskId),
       sameTaskRouteExecutionMaterialPacket,
       sameTaskMissionEvidenceGate,
@@ -1124,6 +6046,22 @@ interface CurrentFieldEvidenceMaterialSourceResult {
   source_path: string;
 }
 
+type PcLiveNav2ExecutionMaterialSourceOrigin =
+  | "remote_pc_live_nav2_execution_material"
+  | "remote_field_evidence"
+  | "remote_field_motion_evidence_packet"
+  | "remote_artifact_bundle"
+  | "remote_artifact_bundle_consumer_ingest"
+  | "remote_field_evidence_consumer_ingest"
+  | "remote_artifact_bundle_readiness"
+  | "not_loaded";
+
+interface PcLiveNav2ExecutionMaterialSourceResult {
+  payload: JsonRecord;
+  source_origin: PcLiveNav2ExecutionMaterialSourceOrigin;
+  source_path: string;
+}
+
 type CleanBaselineNav2PathMaterialSourceOrigin =
   | "remote_clean_baseline_nav2_path_material"
   | "remote_field_evidence"
@@ -1153,6 +6091,22 @@ type LocalizationPathMaterialReadbackSourceOrigin =
 interface LocalizationPathMaterialReadbackSourceResult {
   payload: JsonRecord;
   source_origin: LocalizationPathMaterialReadbackSourceOrigin;
+  source_path: string;
+}
+
+type SameTaskReplayPacketReadbackSourceOrigin =
+  | "remote_same_task_replay_packet_readback"
+  | "remote_field_evidence"
+  | "remote_field_motion_evidence_packet"
+  | "remote_artifact_bundle"
+  | "remote_artifact_bundle_consumer_ingest"
+  | "remote_field_evidence_consumer_ingest"
+  | "remote_artifact_bundle_readiness"
+  | "not_loaded";
+
+interface SameTaskReplayPacketReadbackSourceResult {
+  payload: JsonRecord;
+  source_origin: SameTaskReplayPacketReadbackSourceOrigin;
   source_path: string;
 }
 
@@ -1201,6 +6155,22 @@ type FieldOperatorConfirmationMaterialSourceOrigin =
 interface FieldOperatorConfirmationMaterialSourceResult {
   payload: JsonRecord;
   source_origin: FieldOperatorConfirmationMaterialSourceOrigin;
+  source_path: string;
+}
+
+type PhoneBrowserTerminalMaterialSourceOrigin =
+  | "remote_phone_browser_terminal_material"
+  | "remote_field_evidence"
+  | "remote_field_motion_evidence_packet"
+  | "remote_artifact_bundle"
+  | "remote_artifact_bundle_consumer_ingest"
+  | "remote_field_evidence_consumer_ingest"
+  | "remote_artifact_bundle_readiness"
+  | "not_loaded";
+
+interface PhoneBrowserTerminalMaterialSourceResult {
+  payload: JsonRecord;
+  source_origin: PhoneBrowserTerminalMaterialSourceOrigin;
   source_path: string;
 }
 
@@ -5981,6 +10951,357 @@ function buildCurrentFieldEvidenceMaterialSummary(
   };
 }
 
+function pcLiveNav2ExecutionMaterialCandidateFromRemote(
+  remote: JsonRecord,
+): PcLiveNav2ExecutionMaterialSourceResult | null {
+  // pc live Nav2 material 只从 O6/Algorithm 白名单 section 读取，不回看原始 runtime log 或控制回包。
+  const direct = asRecord(remote.pc_live_nav2_execution_material);
+  if (direct) {
+    return {
+      payload: direct,
+      source_origin: "remote_pc_live_nav2_execution_material",
+      source_path: "pc_live_nav2_execution_material",
+    };
+  }
+  const fieldEvidence =
+    nestedRecord(remote, "field_evidence", "pc_live_nav2_execution_material") ??
+    nestedRecord(remote, "field_evidence_manifest", "pc_live_nav2_execution_material");
+  if (fieldEvidence) {
+    return {
+      payload: fieldEvidence,
+      source_origin: "remote_field_evidence",
+      source_path: "field_evidence.pc_live_nav2_execution_material",
+    };
+  }
+  const fieldMotion =
+    nestedRecord(remote, "field_motion_evidence_packet", "pc_live_nav2_execution_material") ??
+    nestedRecord(remote, "field_evidence", "field_motion_evidence_packet", "pc_live_nav2_execution_material");
+  if (fieldMotion) {
+    return {
+      payload: fieldMotion,
+      source_origin: "remote_field_motion_evidence_packet",
+      source_path: "field_motion_evidence_packet.pc_live_nav2_execution_material",
+    };
+  }
+  const fieldIngest =
+    nestedRecord(remote, "field_evidence_consumer_ingest", "pc_live_nav2_execution_material") ??
+    nestedRecord(remote, "field_evidence_ingest", "pc_live_nav2_execution_material") ??
+    nestedRecord(remote, "field_evidence", "field_evidence_consumer_ingest", "pc_live_nav2_execution_material") ??
+    nestedRecord(remote, "field_evidence", "field_evidence_ingest", "pc_live_nav2_execution_material");
+  if (fieldIngest) {
+    return {
+      payload: fieldIngest,
+      source_origin: "remote_field_evidence_consumer_ingest",
+      source_path: "field_evidence_consumer_ingest.pc_live_nav2_execution_material",
+    };
+  }
+  const bundle =
+    nestedRecord(remote, "artifact_bundle", "pc_live_nav2_execution_material") ??
+    nestedRecord(remote, "field_evidence", "artifact_bundle", "pc_live_nav2_execution_material");
+  if (bundle) {
+    return {
+      payload: bundle,
+      source_origin: "remote_artifact_bundle",
+      source_path: "artifact_bundle.pc_live_nav2_execution_material",
+    };
+  }
+  const ingest =
+    nestedRecord(remote, "artifact_bundle_consumer_ingest", "pc_live_nav2_execution_material") ??
+    nestedRecord(remote, "field_evidence", "artifact_bundle_consumer_ingest", "pc_live_nav2_execution_material");
+  if (ingest) {
+    return {
+      payload: ingest,
+      source_origin: "remote_artifact_bundle_consumer_ingest",
+      source_path: "artifact_bundle_consumer_ingest.pc_live_nav2_execution_material",
+    };
+  }
+  const readiness =
+    nestedRecord(remote, "artifact_bundle_readiness", "pc_live_nav2_execution_material") ??
+    nestedRecord(remote, "artifact_bundle_readiness", "artifact_bundle", "pc_live_nav2_execution_material") ??
+    nestedRecord(remote, "artifact_bundle_readiness", "artifact_bundle_consumer_ingest", "pc_live_nav2_execution_material");
+  if (readiness) {
+    return {
+      payload: readiness,
+      source_origin: "remote_artifact_bundle_readiness",
+      source_path: "artifact_bundle_readiness.pc_live_nav2_execution_material",
+    };
+  }
+  return null;
+}
+
+function unsafePcLiveNav2ExecutionMaterialTextReason(value: unknown): string {
+  // live Nav2 material 文本只允许短状态、sprint id 和 basename 级字段，不能带 URL、路径、token 或 raw log。
+  const text = rawString(value);
+  if (!text) {
+    return "";
+  }
+  const lowered = text.toLowerCase();
+  if (
+    lowered.includes("://") ||
+    lowered.includes("authorization") ||
+    lowered.includes("bearer") ||
+    lowered.includes("token") ||
+    lowered.includes("secret") ||
+    lowered.includes("credential") ||
+    lowered.includes("password") ||
+    lowered.includes("base64") ||
+    lowered.includes("traceback") ||
+    lowered.includes("response body") ||
+    lowered.includes("/cmd_vel") ||
+    lowered.includes("/dev/tty") ||
+    lowered.startsWith("data:") ||
+    path.isAbsolute(text) ||
+    /^[A-Za-z]:\\/.test(text) ||
+    text.includes("/") ||
+    text.includes("\\")
+  ) {
+    return "pc_live_nav2_execution_material_unsafe_text";
+  }
+  return "";
+}
+
+function unsafePcLiveNav2ExecutionMaterialListReason(value: unknown, fieldName: string): string {
+  // blocked / next evidence 列表必须保持短字符串数组，避免原始日志或对象出现在 UI。
+  if (!Array.isArray(value)) {
+    return "";
+  }
+  return value.every((item) => typeof item === "string")
+    ? ""
+    : `pc_live_nav2_execution_material_unsafe_list:${fieldName}`;
+}
+
+function blockedPcLiveNav2ExecutionMaterial(
+  reason: string,
+  taskId: string,
+): O7ConsumerPcLiveNav2ExecutionMaterialSummary {
+  // 缺失或异常时仍返回完整 O7 schema，避免 UI 把空值误读成现场 live Nav2 已跑通。
+  return {
+    schema: O7_PC_LIVE_NAV2_EXECUTION_MATERIAL_SCHEMA,
+    status: "blocked_not_proven",
+    source_schema: "not_loaded",
+    source_origin: "not_loaded",
+    source_path: "not_loaded",
+    task_id: taskId || "not_provided",
+    proof_scope: "not_loaded",
+    source_proof_status: "not_proven",
+    material_status: "blocked_not_proven",
+    source_sprint: "not_loaded",
+    goal_accepted: false,
+    goal_result_status: "blocked_not_proven",
+    uses_base_uart: false,
+    base_command_nonzero_observed: false,
+    base_command_nonzero_count: 0,
+    base_feedback_sample_count: 0,
+    base_feedback_lr_nonzero_proven: false,
+    base_feedback_imu: {
+      attitude_delta_observed: false,
+      pitch_delta_deg: null,
+    },
+    blocked_reasons: [reason],
+    next_required_evidence: ["pc_live_nav2_execution_material_for_selected_task"],
+    proof_boundary: {
+      local_mock: true,
+      not_proven: true,
+      reads_local_path: false,
+      live_nav2_route_execution_connected: false,
+      base_uart_connected: false,
+      wheel_feedback_nonzero_proven: false,
+      delivery_success_proven: false,
+      real_production_cloud_connected: false,
+      real_oss_connected: false,
+      real_cdn_connected: false,
+    },
+    route_execution_success: false,
+    hil_pass: false,
+    ...fixedFalseFields(),
+    ...PROOF_FLAGS,
+  };
+}
+
+function pcLiveNav2ExecutionMaterialHardFailReason(
+  summary: O7ConsumerPcLiveNav2ExecutionMaterialSummary,
+): string {
+  // 坏 schema、危险 true、缺必填、task mismatch、unsafe text/list 和 scope mismatch 都必须让 detail fail-closed。
+  const reason = summary.blocked_reasons[0] ?? "";
+  return /^(pc_live_nav2_execution_material_schema_mismatch|pc_live_nav2_execution_material_task_mismatch|pc_live_nav2_execution_material_dangerous_true|pc_live_nav2_execution_material_missing_required_fields|pc_live_nav2_execution_material_unsafe_text|pc_live_nav2_execution_material_unsafe_list|pc_live_nav2_execution_material_proof_scope_mismatch|pc_live_nav2_execution_material_goal_result_status_missing)/.test(
+    reason,
+  )
+    ? reason
+    : "";
+}
+
+function buildPcLiveNav2ExecutionMaterialSummary(
+  candidate: PcLiveNav2ExecutionMaterialSourceResult | null,
+  taskId: string,
+): O7ConsumerPcLiveNav2ExecutionMaterialSummary {
+  // O7 只消费现场 live Nav2 的脱敏结果摘要，不把 goal accepted、UART 或 IMU 痕迹升级成送达成功或控制准入。
+  if (!candidate) {
+    return blockedPcLiveNav2ExecutionMaterial("pc_live_nav2_execution_material_missing", taskId);
+  }
+  const payload = candidate.payload;
+  const schema = asString(payload.schema, "");
+  if (schema !== O6_PC_LIVE_NAV2_EXECUTION_MATERIAL_SCHEMA && schema !== PC_LIVE_NAV2_EXECUTION_MATERIAL_SCHEMA) {
+    return blockedPcLiveNav2ExecutionMaterial("pc_live_nav2_execution_material_schema_mismatch", taskId);
+  }
+  const dangerous = scanDangerousTrueFields(payload);
+  if (dangerous.length > 0) {
+    return blockedPcLiveNav2ExecutionMaterial(
+      `pc_live_nav2_execution_material_dangerous_true:${dangerous.join(",")}`,
+      taskId,
+    );
+  }
+  const proofScope = asString(payload.proof_scope ?? payload.evidence_boundary, "not_loaded");
+  if (proofScope !== PC_LIVE_NAV2_EXECUTION_MATERIAL_PROOF_SCOPE) {
+    return blockedPcLiveNav2ExecutionMaterial("pc_live_nav2_execution_material_proof_scope_mismatch", taskId);
+  }
+  const payloadTaskId = asString(payload.task_id, taskId || "not_provided");
+  if (payloadTaskId !== (taskId || "not_provided")) {
+    return blockedPcLiveNav2ExecutionMaterial("pc_live_nav2_execution_material_task_mismatch", taskId);
+  }
+  const sourceSchema = asString(payload.source_schema, schema || "not_loaded");
+  if (
+    sourceSchema !== O6_PC_LIVE_NAV2_EXECUTION_MATERIAL_SCHEMA &&
+    sourceSchema !== PC_LIVE_NAV2_EXECUTION_MATERIAL_SCHEMA
+  ) {
+    return blockedPcLiveNav2ExecutionMaterial("pc_live_nav2_execution_material_schema_mismatch", taskId);
+  }
+  const packetStatus = asString(payload.status, "blocked_not_proven");
+  const materialStatus = asString(payload.material_status ?? payload.status, "blocked_not_proven");
+  const sourceSprint = asString(payload.source_sprint, "not_loaded");
+  // 上游正在把 goal/result 字段收敛到 canonical 口径；这里先兼容 O6 alias 和 Algorithm 旧字段，避免 UI 误判 blocked。
+  const goalResultStatus = asString(
+    payload.goal_result_status
+      ?? payload.result_status
+      ?? payload.nav2_terminal_status
+      ?? payload.terminal_status,
+    "",
+  );
+  const blockedReasons = stringList(payload.blocked_reasons, 12);
+  const nextRequiredEvidence = stringList(payload.next_required_evidence, 12);
+  // goal_accepted 统一优先 canonical；旧 payload 仍允许沿用 nav2_goal_accepted。
+  const goalAccepted = asBoolean(payload.goal_accepted ?? payload.nav2_goal_accepted);
+  const usesBaseUart = asBoolean(payload.uses_base_uart);
+  const baseCommandNonzeroObserved = asBoolean(payload.base_command_nonzero_observed);
+  const baseCommandNonzeroCount = asNumber(payload.base_command_nonzero_count) ?? 0;
+  const baseFeedbackSampleCount = asNumber(payload.base_feedback_sample_count) ?? 0;
+  const baseFeedbackImuAttitudeDeltaObserved = asBoolean(payload.base_feedback_imu_attitude_delta_observed);
+  const baseFeedbackImuPitchDelta = asNumber(payload.base_feedback_imu_pitch_delta);
+  const baseFeedbackLrNonzeroProven = false;
+  const missingFields = [
+    rawString(payload.status) ? "" : "status",
+    rawString(payload.source_schema ?? schema) ? "" : "source_schema",
+    rawString(payload.proof_scope ?? payload.evidence_boundary) ? "" : "proof_scope",
+    rawString(payload.source_sprint) ? "" : "source_sprint",
+    typeof (payload.goal_accepted ?? payload.nav2_goal_accepted) === "boolean" ? "" : "goal_accepted",
+    goalResultStatus ? "" : "goal_result_status",
+    typeof payload.uses_base_uart === "boolean" ? "" : "uses_base_uart",
+    typeof payload.base_command_nonzero_observed === "boolean" ? "" : "base_command_nonzero_observed",
+    asNumber(payload.base_command_nonzero_count) !== null ? "" : "base_command_nonzero_count",
+    asNumber(payload.base_feedback_sample_count) !== null ? "" : "base_feedback_sample_count",
+    typeof payload.base_feedback_lr_nonzero_proven === "boolean" ? "" : "base_feedback_lr_nonzero_proven",
+    typeof payload.base_feedback_imu_attitude_delta_observed === "boolean"
+      ? ""
+      : "base_feedback_imu_attitude_delta_observed",
+    Array.isArray(payload.blocked_reasons) ? "" : "blocked_reasons",
+    Array.isArray(payload.next_required_evidence) ? "" : "next_required_evidence",
+  ].filter(Boolean);
+  if (missingFields.length > 0) {
+    return blockedPcLiveNav2ExecutionMaterial(
+      `pc_live_nav2_execution_material_missing_required_fields:${missingFields.join(",")}`,
+      taskId,
+    );
+  }
+  if (!goalResultStatus) {
+    return blockedPcLiveNav2ExecutionMaterial("pc_live_nav2_execution_material_goal_result_status_missing", taskId);
+  }
+  const unsafeList = aggregateDistinct([
+    unsafePcLiveNav2ExecutionMaterialListReason(payload.blocked_reasons, "blocked_reasons"),
+    unsafePcLiveNav2ExecutionMaterialListReason(payload.next_required_evidence, "next_required_evidence"),
+  ]);
+  if (unsafeList.length > 0) {
+    return blockedPcLiveNav2ExecutionMaterial(
+      unsafeList[0] ?? "pc_live_nav2_execution_material_unsafe_list",
+      taskId,
+    );
+  }
+  const unsafeText = aggregateDistinct([
+    unsafePcLiveNav2ExecutionMaterialTextReason(packetStatus),
+    unsafePcLiveNav2ExecutionMaterialTextReason(materialStatus),
+    unsafePcLiveNav2ExecutionMaterialTextReason(sourceSchema),
+    unsafePcLiveNav2ExecutionMaterialTextReason(sourceSprint),
+    unsafePcLiveNav2ExecutionMaterialTextReason(goalResultStatus),
+    blockedReasons.map((value) => unsafePcLiveNav2ExecutionMaterialTextReason(value)),
+    nextRequiredEvidence.map((value) => unsafePcLiveNav2ExecutionMaterialTextReason(value)),
+  ]);
+  if (unsafeText.length > 0) {
+    return blockedPcLiveNav2ExecutionMaterial("pc_live_nav2_execution_material_unsafe_text", taskId);
+  }
+  const ready = packetStatus === "pc_live_nav2_execution_material_ready_not_delivery_proof";
+  return {
+    schema: O7_PC_LIVE_NAV2_EXECUTION_MATERIAL_SCHEMA,
+    status: ready
+      ? "pc_live_nav2_execution_material_ready_not_delivery_proof"
+      : packetStatus === "blocked_not_proven"
+        ? "blocked_not_proven"
+        : "derived_blocked_not_proven",
+    source_schema: sourceSchema as O7ConsumerPcLiveNav2ExecutionMaterialSummary["source_schema"],
+    source_origin: candidate.source_origin,
+    source_path: candidate.source_path,
+    task_id: payloadTaskId,
+    proof_scope: PC_LIVE_NAV2_EXECUTION_MATERIAL_PROOF_SCOPE,
+    source_proof_status: asString(payload.proof_status, "not_proven"),
+    material_status: materialStatus,
+    source_sprint: sourceSprint,
+    goal_accepted: goalAccepted,
+    goal_result_status: goalResultStatus,
+    uses_base_uart: usesBaseUart,
+    base_command_nonzero_observed: baseCommandNonzeroObserved,
+    base_command_nonzero_count: baseCommandNonzeroCount,
+    base_feedback_sample_count: baseFeedbackSampleCount,
+    base_feedback_lr_nonzero_proven: baseFeedbackLrNonzeroProven,
+    base_feedback_imu: {
+      attitude_delta_observed: baseFeedbackImuAttitudeDeltaObserved,
+      pitch_delta_deg: baseFeedbackImuPitchDelta,
+    },
+    blocked_reasons: aggregateDistinct([
+      blockedReasons,
+      "delivery_success_not_proven",
+      "safe_to_control_not_proven",
+      goalAccepted ? "" : "goal_not_accepted",
+      usesBaseUart ? "" : "base_uart_not_observed",
+      baseCommandNonzeroObserved ? "" : "base_command_nonzero_not_observed",
+      baseFeedbackSampleCount > 0 ? "" : "base_feedback_missing",
+      baseFeedbackImuAttitudeDeltaObserved ? "" : "base_feedback_imu_attitude_delta_not_observed",
+      baseFeedbackLrNonzeroProven ? "" : "wheel_lr_nonzero_not_proven",
+      ready ? "" : "pc_live_nav2_execution_material_not_ready",
+    ]),
+    next_required_evidence: nextRequiredEvidence.length
+      ? nextRequiredEvidence
+      : [
+          "pc_live_nav2_execution_material_for_selected_task",
+          "wheel_lr_nonzero_feedback_for_selected_task",
+          "real_live_nav2_route_execution_result",
+          "delivery_record_or_operator_dropoff_confirmation",
+        ],
+    proof_boundary: {
+      local_mock: true,
+      not_proven: true,
+      reads_local_path: false,
+      live_nav2_route_execution_connected: false,
+      base_uart_connected: false,
+      wheel_feedback_nonzero_proven: false,
+      delivery_success_proven: false,
+      real_production_cloud_connected: false,
+      real_oss_connected: false,
+      real_cdn_connected: false,
+    },
+    route_execution_success: false,
+    hil_pass: false,
+    ...fixedFalseFields(),
+    ...PROOF_FLAGS,
+  };
+}
+
 function localizationPathMaterialReadbackCandidateFromRemote(
   remote: JsonRecord,
 ): LocalizationPathMaterialReadbackSourceResult | null {
@@ -6734,6 +12055,364 @@ function buildCleanBaselineNav2PathMaterialSummary(
     },
     hil_pass: false,
     ...fixedFalseFields(),
+    ...PROOF_FLAGS,
+  };
+}
+
+function sameTaskReplayPacketReadbackCandidateFromRemote(
+  remote: JsonRecord,
+): SameTaskReplayPacketReadbackSourceResult | null {
+  // replay packet readback 只取 O6 dedicated section；不从 route execution material 里反推同名证据。
+  const direct = asRecord(remote.same_task_replay_packet_readback);
+  if (direct) {
+    return {
+      payload: direct,
+      source_origin: "remote_same_task_replay_packet_readback",
+      source_path: "same_task_replay_packet_readback",
+    };
+  }
+  const fieldEvidence =
+    nestedRecord(remote, "field_evidence", "same_task_replay_packet_readback") ??
+    nestedRecord(remote, "field_evidence_manifest", "same_task_replay_packet_readback");
+  if (fieldEvidence) {
+    return {
+      payload: fieldEvidence,
+      source_origin: "remote_field_evidence",
+      source_path: "field_evidence.same_task_replay_packet_readback",
+    };
+  }
+  const fieldMotion =
+    nestedRecord(remote, "field_motion_evidence_packet", "same_task_replay_packet_readback") ??
+    nestedRecord(remote, "field_evidence", "field_motion_evidence_packet", "same_task_replay_packet_readback");
+  if (fieldMotion) {
+    return {
+      payload: fieldMotion,
+      source_origin: "remote_field_motion_evidence_packet",
+      source_path: "field_motion_evidence_packet.same_task_replay_packet_readback",
+    };
+  }
+  const fieldIngest =
+    nestedRecord(remote, "field_evidence_consumer_ingest", "same_task_replay_packet_readback") ??
+    nestedRecord(remote, "field_evidence_ingest", "same_task_replay_packet_readback") ??
+    nestedRecord(remote, "field_evidence", "field_evidence_consumer_ingest", "same_task_replay_packet_readback") ??
+    nestedRecord(remote, "field_evidence", "field_evidence_ingest", "same_task_replay_packet_readback");
+  if (fieldIngest) {
+    return {
+      payload: fieldIngest,
+      source_origin: "remote_field_evidence_consumer_ingest",
+      source_path: "field_evidence_consumer_ingest.same_task_replay_packet_readback",
+    };
+  }
+  const bundle =
+    nestedRecord(remote, "artifact_bundle", "same_task_replay_packet_readback") ??
+    nestedRecord(remote, "field_evidence", "artifact_bundle", "same_task_replay_packet_readback");
+  if (bundle) {
+    return {
+      payload: bundle,
+      source_origin: "remote_artifact_bundle",
+      source_path: "artifact_bundle.same_task_replay_packet_readback",
+    };
+  }
+  const ingest =
+    nestedRecord(remote, "artifact_bundle_consumer_ingest", "same_task_replay_packet_readback") ??
+    nestedRecord(remote, "field_evidence", "artifact_bundle_consumer_ingest", "same_task_replay_packet_readback");
+  if (ingest) {
+    return {
+      payload: ingest,
+      source_origin: "remote_artifact_bundle_consumer_ingest",
+      source_path: "artifact_bundle_consumer_ingest.same_task_replay_packet_readback",
+    };
+  }
+  const readiness =
+    nestedRecord(remote, "artifact_bundle_readiness", "same_task_replay_packet_readback") ??
+    nestedRecord(remote, "artifact_bundle_readiness", "artifact_bundle", "same_task_replay_packet_readback") ??
+    nestedRecord(remote, "artifact_bundle_readiness", "artifact_bundle_consumer_ingest", "same_task_replay_packet_readback");
+  if (readiness) {
+    return {
+      payload: readiness,
+      source_origin: "remote_artifact_bundle_readiness",
+      source_path: "artifact_bundle_readiness.same_task_replay_packet_readback",
+    };
+  }
+  return null;
+}
+
+function unsafeSameTaskReplayPacketReadbackTextReason(value: unknown): string {
+  // readback 文本只能是短 id、status、basename 和 sha prefix；原始路径、URL、token 和控制 topic 都拒绝。
+  const text = rawString(value);
+  if (!text) {
+    return "";
+  }
+  const lowered = text.toLowerCase();
+  if (
+    lowered.includes("://") ||
+    lowered.includes("authorization") ||
+    lowered.includes("bearer") ||
+    lowered.includes("token") ||
+    lowered.includes("secret") ||
+    lowered.includes("credential") ||
+    lowered.includes("password") ||
+    lowered.includes("base64") ||
+    lowered.includes("/cmd_vel") ||
+    lowered.includes("/api/base/manual") ||
+    lowered.includes("/dev/tty") ||
+    lowered.startsWith("data:") ||
+    path.isAbsolute(text) ||
+    /^[A-Za-z]:\\/.test(text) ||
+    text.includes("/") ||
+    text.includes("\\")
+  ) {
+    return "same_task_replay_packet_readback_unsafe_text";
+  }
+  return "";
+}
+
+function unsafeSameTaskReplayPacketReadbackListReason(value: unknown, fieldName: string): string {
+  // blocked/next 列表只允许短字符串，避免对象 payload 进入 UI。
+  if (!Array.isArray(value)) {
+    return "";
+  }
+  return value.every((item) => typeof item === "string")
+    ? ""
+    : `same_task_replay_packet_readback_unsafe_list:${fieldName}`;
+}
+
+function sameTaskReplayPacketReadbackSourceRefs(payload: JsonRecord) {
+  const refs = asRecord(payload.source_refs);
+  return {
+    source_summary_ref: safePathToken(refs?.source_summary_ref ?? ""),
+    packet_jsonl_ref: safePathToken(refs?.packet_jsonl_ref ?? ""),
+    route_csv_ref: safePathToken(refs?.route_csv_ref ?? ""),
+    replay_jsonl_ref: safePathToken(refs?.replay_jsonl_ref ?? ""),
+  };
+}
+
+function sameTaskReplayPacketReadbackSha256Prefixes(payload: JsonRecord) {
+  const sha = asRecord(payload.sha256_prefixes);
+  return {
+    summary: asString(sha?.summary, "not_loaded"),
+    route_csv: asString(sha?.route_csv, "not_loaded"),
+    replay_jsonl: asString(sha?.replay_jsonl, "not_loaded"),
+  };
+}
+
+function blockedSameTaskReplayPacketReadback(
+  reason: string,
+  taskId: string,
+): O7ConsumerSameTaskReplayPacketReadbackSummary {
+  // 缺失时也返回完整结构，UI 不需要靠 undefined 判断当前 packet 是否已消费。
+  return {
+    schema: "not_loaded",
+    status: "blocked_not_proven",
+    source_contract: "not_loaded",
+    source_origin: "not_loaded",
+    source_path: "not_loaded",
+    task_id: taskId || "not_provided",
+    proof_scope: "not_loaded",
+    source_schema: "not_loaded",
+    source_artifact_boundary: "not_loaded",
+    packet_id: "not_loaded",
+    route_intent_id: "not_loaded",
+    route_csv_row_count: 0,
+    replay_jsonl_event_count: 0,
+    path_structured_pose_count: 0,
+    same_task_identity_verified: false,
+    same_task_replay_packet_ready: false,
+    source_refs: {
+      source_summary_ref: "",
+      packet_jsonl_ref: "",
+      route_csv_ref: "",
+      replay_jsonl_ref: "",
+    },
+    sha256_prefixes: {
+      summary: "",
+      route_csv: "",
+      replay_jsonl: "",
+    },
+    blocked_reasons: [reason],
+    next_required_evidence: ["same_task_replay_packet_readback_for_selected_task"],
+    proof_boundary: {
+      local_mock: true,
+      not_proven: true,
+      reads_local_path: false,
+      replay_packet_connected: false,
+      route_execution_success: false,
+      delivery_success_proven: false,
+      hil_pass: false,
+      real_production_cloud_connected: false,
+      real_oss_connected: false,
+      real_cdn_connected: false,
+    },
+    route_execution_success: false,
+    hil_pass: false,
+    robot_control_executed: false,
+    publishes_cmd_vel: false,
+    calls_base_manual: false,
+    uses_base_uart: false,
+    connects_cloud_production: false,
+    media_access_proven: false,
+    real_oss_connected: false,
+    real_cdn_connected: false,
+    ...PROOF_FLAGS,
+  };
+}
+
+function sameTaskReplayPacketReadbackHardFailReason(
+  summary: O7ConsumerSameTaskReplayPacketReadbackSummary,
+): string {
+  // schema/task/proof/unsafe/dangerous/missing required 属于合同错误，detail 必须 fail-closed。
+  const reason = summary.blocked_reasons[0] ?? "";
+  return /^(same_task_replay_packet_readback_schema_mismatch|same_task_replay_packet_readback_task_mismatch|same_task_replay_packet_readback_dangerous_true|same_task_replay_packet_readback_missing_required_fields|same_task_replay_packet_readback_unsafe_text|same_task_replay_packet_readback_unsafe_list|same_task_replay_packet_readback_proof_scope_mismatch)/.test(
+    reason,
+  )
+    ? reason
+    : "";
+}
+
+function buildSameTaskReplayPacketReadbackSummary(
+  candidate: SameTaskReplayPacketReadbackSourceResult | null,
+  taskId: string,
+): O7ConsumerSameTaskReplayPacketReadbackSummary {
+  // O7 只把 packet readback 当成 identity/count 证据，不使用它打开任何 route execution 或控制动作。
+  if (!candidate) {
+    return blockedSameTaskReplayPacketReadback("same_task_replay_packet_readback_missing", taskId);
+  }
+  const payload = candidate.payload;
+  const schema = asString(payload.schema, "");
+  if (schema !== O6_SAME_TASK_REPLAY_PACKET_READBACK_SCHEMA && schema !== SAME_TASK_REPLAY_PACKET_SOURCE_SCHEMA) {
+    return blockedSameTaskReplayPacketReadback("same_task_replay_packet_readback_schema_mismatch", taskId);
+  }
+  const dangerous = aggregateDistinct([
+    scanDangerousTrueFields(payload),
+    payload.publishes_cmd_vel === true ? "publishes_cmd_vel" : "",
+    payload.calls_base_manual === true ? "calls_base_manual" : "",
+    payload.uses_base_uart === true ? "uses_base_uart" : "",
+  ]);
+  if (dangerous.length > 0) {
+    return blockedSameTaskReplayPacketReadback(
+      `same_task_replay_packet_readback_dangerous_true:${dangerous.join(",")}`,
+      taskId,
+    );
+  }
+  const proofScope = asString(payload.proof_scope, "not_loaded");
+  if (proofScope !== SAME_TASK_REPLAY_PACKET_READBACK_PROOF_SCOPE) {
+    return blockedSameTaskReplayPacketReadback("same_task_replay_packet_readback_proof_scope_mismatch", taskId);
+  }
+  const payloadTaskId = asString(payload.task_id, taskId || "not_provided");
+  if (payloadTaskId !== (taskId || "not_provided")) {
+    return blockedSameTaskReplayPacketReadback("same_task_replay_packet_readback_task_mismatch", taskId);
+  }
+
+  const sourceRefs = sameTaskReplayPacketReadbackSourceRefs(payload);
+  const sha256Prefixes = sameTaskReplayPacketReadbackSha256Prefixes(payload);
+  const blockedReasons = stringList(payload.blocked_reasons, 12);
+  const nextRequiredEvidence = stringList(payload.next_required_evidence, 12);
+  const routeCsvRowCount = asNumber(payload.route_csv_row_count) ?? 0;
+  const replayJsonlEventCount = asNumber(payload.replay_jsonl_event_count) ?? 0;
+  const pathStructuredPoseCount = asNumber(payload.path_structured_pose_count) ?? 0;
+  const missingFields = [
+    rawString(payload.packet_id) ? "" : "packet_id",
+    rawString(payload.route_intent_id) ? "" : "route_intent_id",
+    typeof payload.same_task_identity_verified === "boolean" ? "" : "same_task_identity_verified",
+    typeof payload.same_task_replay_packet_ready === "boolean" ? "" : "same_task_replay_packet_ready",
+    Number.isFinite(routeCsvRowCount) && routeCsvRowCount > 0 ? "" : "route_csv_row_count",
+    Number.isFinite(replayJsonlEventCount) && replayJsonlEventCount > 0 ? "" : "replay_jsonl_event_count",
+    Number.isFinite(pathStructuredPoseCount) && pathStructuredPoseCount > 0 ? "" : "path_structured_pose_count",
+    asRecord(payload.source_refs) ? "" : "source_refs",
+    asRecord(payload.sha256_prefixes) ? "" : "sha256_prefixes",
+    Array.isArray(payload.blocked_reasons) ? "" : "blocked_reasons",
+    Array.isArray(payload.next_required_evidence) ? "" : "next_required_evidence",
+  ].filter(Boolean);
+  if (missingFields.length > 0) {
+    return blockedSameTaskReplayPacketReadback(
+      `same_task_replay_packet_readback_missing_required_fields:${missingFields.join(",")}`,
+      taskId,
+    );
+  }
+  const unsafeList = aggregateDistinct([
+    unsafeSameTaskReplayPacketReadbackListReason(payload.blocked_reasons, "blocked_reasons"),
+    unsafeSameTaskReplayPacketReadbackListReason(payload.next_required_evidence, "next_required_evidence"),
+  ]);
+  if (unsafeList.length > 0) {
+    return blockedSameTaskReplayPacketReadback(unsafeList[0] ?? "same_task_replay_packet_readback_unsafe_list", taskId);
+  }
+  const unsafeText = aggregateDistinct([
+    unsafeSameTaskReplayPacketReadbackTextReason(payload.status),
+    unsafeSameTaskReplayPacketReadbackTextReason(payload.packet_id),
+    unsafeSameTaskReplayPacketReadbackTextReason(payload.route_intent_id),
+    unsafeSameTaskReplayPacketReadbackTextReason(payload.source_artifact_boundary),
+    Object.values(sourceRefs).map((value) => unsafeSameTaskReplayPacketReadbackTextReason(value)),
+    Object.values(sha256Prefixes).map((value) => unsafeSameTaskReplayPacketReadbackTextReason(value)),
+    blockedReasons.map((value) => unsafeSameTaskReplayPacketReadbackTextReason(value)),
+    nextRequiredEvidence.map((value) => unsafeSameTaskReplayPacketReadbackTextReason(value)),
+  ]);
+  if (unsafeText.length > 0) {
+    return blockedSameTaskReplayPacketReadback("same_task_replay_packet_readback_unsafe_text", taskId);
+  }
+
+  const ready =
+    asString(payload.status, "blocked_not_proven") === "same_task_replay_packet_ready_not_route_execution_proof" &&
+    asBoolean(payload.same_task_identity_verified) &&
+    asBoolean(payload.same_task_replay_packet_ready) &&
+    routeCsvRowCount === replayJsonlEventCount &&
+    replayJsonlEventCount === pathStructuredPoseCount;
+  return {
+    schema: O7_SAME_TASK_REPLAY_PACKET_READBACK_SCHEMA,
+    status: ready
+      ? "same_task_replay_packet_ready_not_route_execution_proof"
+      : asString(payload.status, "blocked_not_proven") === "blocked_not_proven"
+        ? "blocked_not_proven"
+        : "derived_blocked_not_proven",
+    source_contract: schema === O6_SAME_TASK_REPLAY_PACKET_READBACK_SCHEMA
+      ? O6_SAME_TASK_REPLAY_PACKET_READBACK_SCHEMA
+      : SAME_TASK_REPLAY_PACKET_SOURCE_SCHEMA,
+    source_origin: candidate.source_origin,
+    source_path: candidate.source_path,
+    task_id: payloadTaskId,
+    proof_scope: SAME_TASK_REPLAY_PACKET_READBACK_PROOF_SCOPE,
+    source_schema: asString(payload.source_schema, schema) as
+      | typeof O6_SAME_TASK_REPLAY_PACKET_READBACK_SCHEMA
+      | typeof SAME_TASK_REPLAY_PACKET_SOURCE_SCHEMA,
+    source_artifact_boundary: asString(payload.source_artifact_boundary, "not_loaded"),
+    packet_id: asString(payload.packet_id, "not_loaded"),
+    route_intent_id: asString(payload.route_intent_id, "not_loaded"),
+    route_csv_row_count: routeCsvRowCount,
+    replay_jsonl_event_count: replayJsonlEventCount,
+    path_structured_pose_count: pathStructuredPoseCount,
+    same_task_identity_verified: asBoolean(payload.same_task_identity_verified),
+    same_task_replay_packet_ready: asBoolean(payload.same_task_replay_packet_ready),
+    source_refs: sourceRefs,
+    sha256_prefixes: sha256Prefixes,
+    blocked_reasons: ready ? blockedReasons : aggregateDistinct([blockedReasons, "same_task_replay_packet_readback_not_ready"]),
+    next_required_evidence: nextRequiredEvidence.length > 0
+      ? nextRequiredEvidence
+      : [
+          "controlled_route_execution_record_for_same_packet",
+          "delivery_or_operator_acceptance_record",
+          "current_live_hil_acceptance",
+        ],
+    proof_boundary: {
+      local_mock: true,
+      not_proven: true,
+      reads_local_path: false,
+      replay_packet_connected: ready,
+      route_execution_success: false,
+      delivery_success_proven: false,
+      hil_pass: false,
+      real_production_cloud_connected: false,
+      real_oss_connected: false,
+      real_cdn_connected: false,
+    },
+    route_execution_success: false,
+    hil_pass: false,
+    robot_control_executed: false,
+    publishes_cmd_vel: false,
+    calls_base_manual: false,
+    uses_base_uart: false,
+    connects_cloud_production: false,
+    media_access_proven: false,
+    real_oss_connected: false,
+    real_cdn_connected: false,
     ...PROOF_FLAGS,
   };
 }
@@ -8909,6 +14588,8 @@ function buildArtifactBundleSummary(
       ),
       route_delivery_closure_packet: blockedRouteDeliveryClosurePacket("artifact_bundle_missing", taskId),
       same_task_field_material_packet: blockedSameTaskFieldMaterialPacket("artifact_bundle_missing", taskId),
+      same_task_replay_packet_readback: blockedSameTaskReplayPacketReadback("artifact_bundle_missing", taskId),
+      pc_live_nav2_execution_material: blockedPcLiveNav2ExecutionMaterial("artifact_bundle_missing", taskId),
       localization_path_material_readback: blockedLocalizationPathMaterialReadback("artifact_bundle_missing", taskId),
       same_task_route_execution_material_packet: blockedSameTaskRouteExecutionMaterialPacket(
         "artifact_bundle_missing",
@@ -8963,6 +14644,11 @@ function buildArtifactBundleSummary(
       ),
       route_delivery_closure_packet: blockedRouteDeliveryClosurePacket("artifact_bundle_schema_mismatch", taskId),
       same_task_field_material_packet: blockedSameTaskFieldMaterialPacket("artifact_bundle_schema_mismatch", taskId),
+      same_task_replay_packet_readback: blockedSameTaskReplayPacketReadback(
+        "artifact_bundle_schema_mismatch",
+        taskId,
+      ),
+      pc_live_nav2_execution_material: blockedPcLiveNav2ExecutionMaterial("artifact_bundle_schema_mismatch", taskId),
       localization_path_material_readback: blockedLocalizationPathMaterialReadback("artifact_bundle_schema_mismatch", taskId),
       same_task_route_execution_material_packet: blockedSameTaskRouteExecutionMaterialPacket(
         "artifact_bundle_schema_mismatch",
@@ -9008,6 +14694,14 @@ function buildArtifactBundleSummary(
         taskId,
       ),
       same_task_field_material_packet: blockedSameTaskFieldMaterialPacket(
+        `artifact_bundle_dangerous_true:${dangerous.join(",")}`,
+        taskId,
+      ),
+      same_task_replay_packet_readback: blockedSameTaskReplayPacketReadback(
+        `artifact_bundle_dangerous_true:${dangerous.join(",")}`,
+        taskId,
+      ),
+      pc_live_nav2_execution_material: blockedPcLiveNav2ExecutionMaterial(
         `artifact_bundle_dangerous_true:${dangerous.join(",")}`,
         taskId,
       ),
@@ -9071,6 +14765,14 @@ function buildArtifactBundleSummary(
         unsafeRefs[0] ?? "artifact_bundle_unsafe_ref",
         taskId,
       ),
+      same_task_replay_packet_readback: blockedSameTaskReplayPacketReadback(
+        unsafeRefs[0] ?? "artifact_bundle_unsafe_ref",
+        taskId,
+      ),
+      pc_live_nav2_execution_material: blockedPcLiveNav2ExecutionMaterial(
+        unsafeRefs[0] ?? "artifact_bundle_unsafe_ref",
+        taskId,
+      ),
       localization_path_material_readback: blockedLocalizationPathMaterialReadback(
         unsafeRefs[0] ?? "artifact_bundle_unsafe_ref",
         taskId,
@@ -9118,6 +14820,11 @@ function buildArtifactBundleSummary(
       ),
       route_delivery_closure_packet: blockedRouteDeliveryClosurePacket("artifact_bundle_empty_refs", taskId),
       same_task_field_material_packet: blockedSameTaskFieldMaterialPacket("artifact_bundle_empty_refs", taskId),
+      same_task_replay_packet_readback: blockedSameTaskReplayPacketReadback(
+        "artifact_bundle_empty_refs",
+        taskId,
+      ),
+      pc_live_nav2_execution_material: blockedPcLiveNav2ExecutionMaterial("artifact_bundle_empty_refs", taskId),
       localization_path_material_readback: blockedLocalizationPathMaterialReadback("artifact_bundle_empty_refs", taskId),
       same_task_route_execution_material_packet: blockedSameTaskRouteExecutionMaterialPacket(
         "artifact_bundle_empty_refs",
@@ -9143,6 +14850,14 @@ function buildArtifactBundleSummary(
   );
   const sameTaskFieldMaterialPacket = buildSameTaskFieldMaterialPacketSummary(
     sameTaskFieldMaterialPacketCandidateFromRemote(payload),
+    taskId,
+  );
+  const sameTaskReplayPacketReadback = buildSameTaskReplayPacketReadbackSummary(
+    sameTaskReplayPacketReadbackCandidateFromRemote(payload),
+    taskId,
+  );
+  const pcLiveNav2ExecutionMaterial = buildPcLiveNav2ExecutionMaterialSummary(
+    pcLiveNav2ExecutionMaterialCandidateFromRemote(payload),
     taskId,
   );
   const localizationPathMaterialReadback = buildLocalizationPathMaterialReadbackSummary(
@@ -9191,6 +14906,8 @@ function buildArtifactBundleSummary(
     route_execution_result_delivery_readiness: routeExecutionResultDeliveryReadiness,
     route_delivery_closure_packet: routeDeliveryClosurePacket,
     same_task_field_material_packet: sameTaskFieldMaterialPacket,
+    same_task_replay_packet_readback: sameTaskReplayPacketReadback,
+    pc_live_nav2_execution_material: pcLiveNav2ExecutionMaterial,
     localization_path_material_readback: localizationPathMaterialReadback,
     same_task_route_execution_material_packet: sameTaskRouteExecutionMaterialPacket,
     same_task_mission_evidence_gate: sameTaskMissionEvidenceGate,
@@ -9249,6 +14966,14 @@ function buildArtifactBundleConsumerIngestSummary(
         "artifact_bundle_consumer_ingest_missing",
         taskId,
       ),
+      same_task_replay_packet_readback: blockedSameTaskReplayPacketReadback(
+        "artifact_bundle_consumer_ingest_missing",
+        taskId,
+      ),
+      pc_live_nav2_execution_material: blockedPcLiveNav2ExecutionMaterial(
+        "artifact_bundle_consumer_ingest_missing",
+        taskId,
+      ),
       localization_path_material_readback: blockedLocalizationPathMaterialReadback(
         "artifact_bundle_consumer_ingest_missing",
         taskId,
@@ -9302,6 +15027,14 @@ function buildArtifactBundleConsumerIngestSummary(
   );
   const sameTaskFieldMaterialPacket = buildSameTaskFieldMaterialPacketSummary(
     sameTaskFieldMaterialPacketCandidateFromRemote(payload),
+    taskId,
+  );
+  const sameTaskReplayPacketReadback = buildSameTaskReplayPacketReadbackSummary(
+    sameTaskReplayPacketReadbackCandidateFromRemote(payload),
+    taskId,
+  );
+  const pcLiveNav2ExecutionMaterial = buildPcLiveNav2ExecutionMaterialSummary(
+    pcLiveNav2ExecutionMaterialCandidateFromRemote(payload),
     taskId,
   );
   const localizationPathMaterialReadback = buildLocalizationPathMaterialReadbackSummary(
@@ -9374,6 +15107,8 @@ function buildArtifactBundleConsumerIngestSummary(
     route_execution_result_delivery_readiness: routeExecutionResultDeliveryReadiness,
     route_delivery_closure_packet: routeDeliveryClosurePacket,
     same_task_field_material_packet: sameTaskFieldMaterialPacket,
+    same_task_replay_packet_readback: sameTaskReplayPacketReadback,
+    pc_live_nav2_execution_material: pcLiveNav2ExecutionMaterial,
     localization_path_material_readback: localizationPathMaterialReadback,
     same_task_route_execution_material_packet: sameTaskRouteExecutionMaterialPacket,
     same_task_mission_evidence_gate: sameTaskMissionEvidenceGate,
@@ -9449,6 +15184,8 @@ function artifactBundleReadinessBlockedReasons(
   routeExecutionResultDeliveryReadiness: O7ConsumerRouteExecutionResultDeliveryReadinessSummary,
   routeDeliveryClosurePacket: O7ConsumerRouteDeliveryClosurePacketSummary,
   sameTaskFieldMaterialPacket: O7ConsumerSameTaskFieldMaterialPacketSummary,
+  sameTaskReplayPacketReadback: O7ConsumerSameTaskReplayPacketReadbackSummary,
+  pcLiveNav2ExecutionMaterial: O7ConsumerPcLiveNav2ExecutionMaterialSummary,
   localizationPathMaterialReadback: O7ConsumerLocalizationPathMaterialReadbackSummary,
   sameTaskRouteExecutionMaterialPacket: O7ConsumerSameTaskRouteExecutionMaterialPacketSummary,
   sameTaskMissionEvidenceGate: O7ConsumerSameTaskMissionEvidenceGateSummary,
@@ -9508,6 +15245,14 @@ function artifactBundleReadinessBlockedReasons(
     sameTaskFieldMaterialPacket.schema === SAME_TASK_FIELD_MATERIAL_PACKET_SCHEMA
       ? ""
       : "same_task_field_material_packet_missing",
+    sameTaskReplayPacketReadback.blocked_reasons,
+    sameTaskReplayPacketReadback.schema === O7_SAME_TASK_REPLAY_PACKET_READBACK_SCHEMA
+      ? ""
+      : "same_task_replay_packet_readback_missing",
+    pcLiveNav2ExecutionMaterial.blocked_reasons,
+    pcLiveNav2ExecutionMaterial.schema === O7_PC_LIVE_NAV2_EXECUTION_MATERIAL_SCHEMA
+      ? ""
+      : "pc_live_nav2_execution_material_missing",
     localizationPathMaterialReadback.blocked_reasons,
     localizationPathMaterialReadback.schema === O7_LOCALIZATION_PATH_MATERIAL_READBACK_SCHEMA
       ? ""
@@ -9555,6 +15300,8 @@ function blockedArtifactBundleReadiness(
   routeExecutionResultDeliveryReadiness = blockedRouteExecutionResultDeliveryReadiness(reason, taskId),
   routeDeliveryClosurePacket = blockedRouteDeliveryClosurePacket(reason, taskId),
   sameTaskFieldMaterialPacket = blockedSameTaskFieldMaterialPacket(reason, taskId),
+  sameTaskReplayPacketReadback = blockedSameTaskReplayPacketReadback(reason, taskId),
+  pcLiveNav2ExecutionMaterial = blockedPcLiveNav2ExecutionMaterial(reason, taskId),
   localizationPathMaterialReadback = blockedLocalizationPathMaterialReadback(reason, taskId),
   sameTaskRouteExecutionMaterialPacket = blockedSameTaskRouteExecutionMaterialPacket(reason, taskId),
   sameTaskMissionEvidenceGate = blockedSameTaskMissionEvidenceGate(reason, taskId),
@@ -9605,6 +15352,8 @@ function blockedArtifactBundleReadiness(
       routeExecutionResultDeliveryReadiness.next_required_evidence,
       routeDeliveryClosurePacket.next_required_evidence,
       sameTaskFieldMaterialPacket.next_required_evidence,
+      sameTaskReplayPacketReadback.next_required_evidence,
+      pcLiveNav2ExecutionMaterial.next_required_evidence,
       localizationPathMaterialReadback.next_required_evidence,
       sameTaskRouteExecutionMaterialPacket.next_required_evidence,
       sameTaskMissionEvidenceGate.next_required_evidence,
@@ -9623,6 +15372,8 @@ function blockedArtifactBundleReadiness(
     route_execution_result_delivery_readiness: routeExecutionResultDeliveryReadiness,
     route_delivery_closure_packet: routeDeliveryClosurePacket,
     same_task_field_material_packet: sameTaskFieldMaterialPacket,
+    same_task_replay_packet_readback: sameTaskReplayPacketReadback,
+    pc_live_nav2_execution_material: pcLiveNav2ExecutionMaterial,
     localization_path_material_readback: localizationPathMaterialReadback,
     same_task_route_execution_material_packet: sameTaskRouteExecutionMaterialPacket,
     same_task_mission_evidence_gate: sameTaskMissionEvidenceGate,
@@ -10261,6 +16012,8 @@ function buildConsumerArtifactBundleReadiness(
   routeExecutionResultDeliveryReadiness: O7ConsumerRouteExecutionResultDeliveryReadinessSummary,
   routeDeliveryClosurePacket: O7ConsumerRouteDeliveryClosurePacketSummary,
   sameTaskFieldMaterialPacket: O7ConsumerSameTaskFieldMaterialPacketSummary,
+  sameTaskReplayPacketReadback: O7ConsumerSameTaskReplayPacketReadbackSummary,
+  pcLiveNav2ExecutionMaterial: O7ConsumerPcLiveNav2ExecutionMaterialSummary,
   localizationPathMaterialReadback: O7ConsumerLocalizationPathMaterialReadbackSummary,
   sameTaskRouteExecutionMaterialPacket: O7ConsumerSameTaskRouteExecutionMaterialPacketSummary,
   sameTaskMissionEvidenceGate: O7ConsumerSameTaskMissionEvidenceGateSummary,
@@ -10295,6 +16048,8 @@ function buildConsumerArtifactBundleReadiness(
     routeExecutionResultDeliveryReadiness,
     routeDeliveryClosurePacket,
     sameTaskFieldMaterialPacket,
+    sameTaskReplayPacketReadback,
+    pcLiveNav2ExecutionMaterial,
     localizationPathMaterialReadback,
     sameTaskRouteExecutionMaterialPacket,
     sameTaskMissionEvidenceGate,
@@ -10355,6 +16110,12 @@ function buildConsumerArtifactBundleReadiness(
     (sameTaskFieldMaterialPacket.schema === O6_SAME_TASK_FIELD_MATERIAL_PACKET_SCHEMA ||
       sameTaskFieldMaterialPacket.schema === SAME_TASK_FIELD_MATERIAL_PACKET_SCHEMA) &&
     sameTaskFieldMaterialPacket.status === "ready_not_delivery_proof";
+  const sameTaskReplayPacketReadbackReady =
+    sameTaskReplayPacketReadback.schema === O7_SAME_TASK_REPLAY_PACKET_READBACK_SCHEMA &&
+    sameTaskReplayPacketReadback.status === "same_task_replay_packet_ready_not_route_execution_proof";
+  const pcLiveNav2ExecutionMaterialReady =
+    pcLiveNav2ExecutionMaterial.schema === O7_PC_LIVE_NAV2_EXECUTION_MATERIAL_SCHEMA &&
+    pcLiveNav2ExecutionMaterial.status === "pc_live_nav2_execution_material_ready_not_delivery_proof";
   const localizationPathMaterialReadbackReady =
     localizationPathMaterialReadback.schema === O7_LOCALIZATION_PATH_MATERIAL_READBACK_SCHEMA &&
     localizationPathMaterialReadback.status === "localization_path_material_ready_not_route_execution_proof";
@@ -10382,6 +16143,8 @@ function buildConsumerArtifactBundleReadiness(
     routeExecutionResultDeliveryReadinessReady &&
     routeDeliveryClosurePacketReady &&
     sameTaskFieldMaterialPacketReady &&
+    sameTaskReplayPacketReadbackReady &&
+    pcLiveNav2ExecutionMaterialReady &&
     localizationPathMaterialReadbackReady &&
     sameTaskRouteExecutionMaterialPacketReady &&
     sameTaskMissionGateReady &&
@@ -10412,6 +16175,8 @@ function buildConsumerArtifactBundleReadiness(
         routeExecutionResultDeliveryReadiness.next_required_evidence,
         routeDeliveryClosurePacket.next_required_evidence,
         sameTaskFieldMaterialPacket.next_required_evidence,
+        sameTaskReplayPacketReadback.next_required_evidence,
+        pcLiveNav2ExecutionMaterial.next_required_evidence,
         localizationPathMaterialReadback.next_required_evidence,
         sameTaskRouteExecutionMaterialPacket.next_required_evidence,
         sameTaskMissionEvidenceGate.next_required_evidence,
@@ -10435,6 +16200,8 @@ function buildConsumerArtifactBundleReadiness(
         routeExecutionResultDeliveryReadiness.next_required_evidence,
         routeDeliveryClosurePacket.next_required_evidence,
         sameTaskFieldMaterialPacket.next_required_evidence,
+        sameTaskReplayPacketReadback.next_required_evidence,
+        pcLiveNav2ExecutionMaterial.next_required_evidence,
         localizationPathMaterialReadback.next_required_evidence,
         sameTaskRouteExecutionMaterialPacket.next_required_evidence,
         sameTaskMissionEvidenceGate.next_required_evidence,
@@ -10474,6 +16241,8 @@ function buildConsumerArtifactBundleReadiness(
     route_execution_result_delivery_readiness: routeExecutionResultDeliveryReadiness,
     route_delivery_closure_packet: routeDeliveryClosurePacket,
     same_task_field_material_packet: sameTaskFieldMaterialPacket,
+    same_task_replay_packet_readback: sameTaskReplayPacketReadback,
+    pc_live_nav2_execution_material: pcLiveNav2ExecutionMaterial,
     localization_path_material_readback: localizationPathMaterialReadback,
     same_task_route_execution_material_packet: sameTaskRouteExecutionMaterialPacket,
     same_task_mission_evidence_gate: sameTaskMissionEvidenceGate,
@@ -11130,15 +16899,21 @@ function consumerEntryFallbackMode(manifest: O7FieldEvidenceManifestSummary): O7
   return "blocked_not_proven";
 }
 
-export async function buildO7ConsumerTaskList(baseUrl: string): Promise<O7ConsumerTaskListResponse> {
+export async function buildO7ConsumerTaskList(
+  baseUrl: string,
+  query: Record<string, unknown> = {},
+): Promise<O7ConsumerTaskListResponse> {
   const normalized = normalizeLoopbackBaseUrl(baseUrl);
   if (!normalized.ok) {
     return failClosedList(normalized.reason, baseUrl);
   }
+  const normalizedQuery = normalizeConsumerTaskListQuery(query);
+  if (!normalizedQuery.ok) {
+    return failClosedList(normalizedQuery.reason, normalized.normalized);
+  }
 
   const url = new URL(`${normalized.normalized}${REMOTE_LIST_ENDPOINT}`);
-  url.searchParams.set("view", DEFAULT_LIST_VIEW);
-  url.searchParams.set("limit", "50");
+  appendConsumerTaskListFilters(url, normalizedQuery.filters);
 
   let remoteJson: unknown;
   try {
@@ -11162,19 +16937,27 @@ export async function buildO7ConsumerTaskList(baseUrl: string): Promise<O7Consum
 
   const taskList = asRecord(remote.task_list);
   const rawTasks = Array.isArray(taskList?.tasks) ? taskList.tasks : [];
+  const filteredResultCount = asNumber(taskList?.total_tasks) ?? rawTasks.length;
   return {
     schema: LIST_SCHEMA,
     list_status: "loaded_fail_closed_summary",
     source_base_url: normalized.normalized,
-    remote_endpoint: `${REMOTE_LIST_ENDPOINT}?view=${DEFAULT_LIST_VIEW}&limit=50`,
+    remote_endpoint: `${REMOTE_LIST_ENDPOINT}?${url.searchParams.toString()}`,
     remote_schema: "trashbot.o6.consumer_read.v1",
     query_strategy: {
       view: DEFAULT_LIST_VIEW,
       include: [],
-      limit: 50,
+      limit: normalizedQuery.filters.limit,
       primary_path: true,
       fail_closed_visible: true,
+      applied_filters: normalizedQuery.filters,
+      filter_semantics: "and",
     },
+    applied_filters: normalizedQuery.filters,
+    filter_semantics: "and",
+    filtered_result_count: filteredResultCount,
+    o7_consumer_read_query_filters_ready_not_production_proof: true,
+    o7_consumer_read_query_filters_proof_scope: O7_CONSUMER_READ_QUERY_FILTERS_PROOF_SCOPE,
     task_list: rawTasks.map((item) => mapTaskItem(item)),
     blocked_reasons: stringList(remote.blocked_reasons),
     not_proven: stringList(remote.not_proven),
@@ -11387,6 +17170,48 @@ export async function buildO7ConsumerTaskDetail(
   if (sameTaskFieldMaterialPacketFailClosedReason) {
     return failClosedDetail(sameTaskFieldMaterialPacketFailClosedReason, normalized.normalized, trimmedTaskId);
   }
+  const sameTaskReplayPacketReadbackCandidate = sameTaskReplayPacketReadbackCandidateFromRemote(remote);
+  const sameTaskReplayPacketReadback = buildSameTaskReplayPacketReadbackSummary(
+    sameTaskReplayPacketReadbackCandidate,
+    trimmedTaskId,
+  );
+  const sameTaskReplayPacketReadbackFailClosedReason =
+    sameTaskReplayPacketReadbackHardFailReason(sameTaskReplayPacketReadback);
+  if (sameTaskReplayPacketReadbackFailClosedReason) {
+    return failClosedDetail(
+      sameTaskReplayPacketReadbackFailClosedReason,
+      normalized.normalized,
+      trimmedTaskId,
+    );
+  }
+  const boundedRouteGateMaterialCandidate = boundedRouteGateMaterialCandidateFromRemote(remote);
+  const boundedRouteGateMaterial = buildBoundedRouteGateMaterialSummary(
+    boundedRouteGateMaterialCandidate,
+    trimmedTaskId,
+  );
+  const boundedRouteGateMaterialFailClosedReason =
+    boundedRouteGateMaterialHardFailReason(boundedRouteGateMaterial);
+  if (boundedRouteGateMaterialFailClosedReason) {
+    return failClosedDetail(
+      boundedRouteGateMaterialFailClosedReason,
+      normalized.normalized,
+      trimmedTaskId,
+    );
+  }
+  const boundedRouteTerminalResultMaterialCandidate = boundedRouteTerminalResultMaterialCandidateFromRemote(remote);
+  const boundedRouteTerminalResultMaterial = buildBoundedRouteTerminalResultMaterialSummary(
+    boundedRouteTerminalResultMaterialCandidate,
+    trimmedTaskId,
+  );
+  const boundedRouteTerminalResultMaterialFailClosedReason =
+    boundedRouteTerminalResultMaterialHardFailReason(boundedRouteTerminalResultMaterial);
+  if (boundedRouteTerminalResultMaterialFailClosedReason) {
+    return failClosedDetail(
+      boundedRouteTerminalResultMaterialFailClosedReason,
+      normalized.normalized,
+      trimmedTaskId,
+    );
+  }
   const currentFieldEvidenceMaterialCandidate = currentFieldEvidenceMaterialCandidateFromRemote(remote);
   const currentFieldEvidenceMaterial = buildCurrentFieldEvidenceMaterialSummary(
     currentFieldEvidenceMaterialCandidate,
@@ -11398,6 +17223,21 @@ export async function buildO7ConsumerTaskDetail(
   if (currentFieldEvidenceMaterialFailClosedReason) {
     return failClosedDetail(
       currentFieldEvidenceMaterialFailClosedReason,
+      normalized.normalized,
+      trimmedTaskId,
+    );
+  }
+  const pcLiveNav2ExecutionMaterialCandidate = pcLiveNav2ExecutionMaterialCandidateFromRemote(remote);
+  const pcLiveNav2ExecutionMaterial = buildPcLiveNav2ExecutionMaterialSummary(
+    pcLiveNav2ExecutionMaterialCandidate,
+    trimmedTaskId,
+  );
+  const pcLiveNav2ExecutionMaterialFailClosedReason = pcLiveNav2ExecutionMaterialHardFailReason(
+    pcLiveNav2ExecutionMaterial,
+  );
+  if (pcLiveNav2ExecutionMaterialFailClosedReason) {
+    return failClosedDetail(
+      pcLiveNav2ExecutionMaterialFailClosedReason,
       normalized.normalized,
       trimmedTaskId,
     );
@@ -11472,6 +17312,20 @@ export async function buildO7ConsumerTaskDetail(
       trimmedTaskId,
     );
   }
+  const phoneBrowserTerminalMaterialCandidate = phoneBrowserTerminalMaterialCandidateFromRemote(remote);
+  const phoneBrowserTerminalMaterial = buildPhoneBrowserTerminalMaterialSummary(
+    phoneBrowserTerminalMaterialCandidate,
+    trimmedTaskId,
+  );
+  const phoneBrowserTerminalMaterialFailClosedReason =
+    phoneBrowserTerminalMaterialHardFailReason(phoneBrowserTerminalMaterial);
+  if (phoneBrowserTerminalMaterialFailClosedReason) {
+    return failClosedDetail(
+      phoneBrowserTerminalMaterialFailClosedReason,
+      normalized.normalized,
+      trimmedTaskId,
+    );
+  }
   const artifactMediaPreflight = buildConsumerArtifactMediaPreflight(
     remote,
     fieldEvidenceSource.manifest,
@@ -11510,6 +17364,8 @@ export async function buildO7ConsumerTaskDetail(
     routeExecutionResultDeliveryReadiness,
     routeDeliveryClosurePacket,
     sameTaskFieldMaterialPacket,
+    sameTaskReplayPacketReadback,
+    pcLiveNav2ExecutionMaterial,
     localizationPathMaterialReadback,
     sameTaskRouteExecutionMaterialPacket,
     sameTaskMissionEvidenceGate,
@@ -11588,12 +17444,17 @@ export async function buildO7ConsumerTaskDetail(
     route_execution_result_delivery_readiness: routeExecutionResultDeliveryReadiness,
     route_delivery_closure_packet: routeDeliveryClosurePacket,
     same_task_field_material_packet: sameTaskFieldMaterialPacket,
+    same_task_replay_packet_readback: sameTaskReplayPacketReadback,
+    bounded_route_execution_gate_material: boundedRouteGateMaterial,
+    bounded_route_terminal_result_material: boundedRouteTerminalResultMaterial,
     current_field_evidence_material: currentFieldEvidenceMaterial,
+    pc_live_nav2_execution_material: pcLiveNav2ExecutionMaterial,
     localization_path_material_readback: localizationPathMaterialReadback,
     clean_baseline_nav2_path_material: cleanBaselineNav2PathMaterial,
     same_task_route_execution_material_packet: sameTaskRouteExecutionMaterialPacket,
     same_task_mission_evidence_gate: sameTaskMissionEvidenceGate,
     field_operator_confirmation_material: fieldOperatorConfirmationMaterial,
+    phone_browser_terminal_material: phoneBrowserTerminalMaterial,
     same_task_mission_material_checklist: sameTaskMissionMaterialChecklist,
     artifact_bundle: artifactBundle,
     artifact_bundle_consumer_ingest: artifactBundleConsumerIngest,
@@ -11724,6 +17585,1151 @@ export async function buildO7ConsumerAnnotationSubmit(
     fail_closed_reason: "none",
     local_loopback_only: true,
     ...fixedAnnotationFalseFields(),
+    ...PROOF_FLAGS,
+  };
+}
+
+export async function buildO7ConsumerInferenceRequest(
+  baseUrl: string,
+  taskId: string,
+  body: unknown,
+): Promise<O7ConsumerInferenceRequestResult> {
+  const normalized = normalizeLoopbackBaseUrl(baseUrl);
+  if (!normalized.ok) {
+    return failClosedInferenceRequest(normalized.reason, baseUrl, taskId);
+  }
+  const safeId = safeTaskId(taskId);
+  if (!safeId.ok) {
+    return failClosedInferenceRequest(safeId.reason, normalized.normalized, taskId);
+  }
+  const inferencePayload = inferencePayloadFromBody(safeId.taskId, body);
+  if (!inferencePayload.ok) {
+    return failClosedInferenceRequest(inferencePayload.reason, normalized.normalized, safeId.taskId);
+  }
+
+  let responseStatus: number | null = null;
+  let remoteJson: unknown;
+  try {
+    const response = await fetch(`${normalized.normalized}${REMOTE_INFERENCE_ENDPOINT}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(inferencePayload.payload),
+    });
+    responseStatus = response.status;
+    remoteJson = await response.json();
+    if (!response.ok) {
+      return failClosedInferenceRequest(`o6_inference_http_${response.status}`, normalized.normalized, safeId.taskId, responseStatus);
+    }
+  } catch {
+    return failClosedInferenceRequest("o6_inference_fetch_failed", normalized.normalized, safeId.taskId, responseStatus);
+  }
+
+  const remote = asRecord(remoteJson);
+  if (!remote) {
+    return failClosedInferenceRequest("o6_inference_response_not_object", normalized.normalized, safeId.taskId, responseStatus);
+  }
+  const validation = validateO6InferenceResponse(remote, inferencePayload.payload);
+  if (!validation.ok) {
+    return failClosedInferenceRequest(validation.reason, normalized.normalized, safeId.taskId, responseStatus);
+  }
+
+  const writeStatus = asString(remote.write_status, "blocked_not_proven") as "created" | "updated";
+  const resultSummary = validation.resultSummary;
+  return {
+    schema: INFERENCE_REQUEST_SCHEMA,
+    request_status: writeStatus === "created" ? "local_mock_inference_written" : "local_mock_inference_updated",
+    source_base_url: normalized.normalized,
+    remote_endpoint: REMOTE_INFERENCE_ENDPOINT,
+    remote_schema: "trashbot.o6.model_inference.v1",
+    requested_task_id: safeId.taskId,
+    o6_http_status: responseStatus,
+    task_id: inferencePayload.payload.task_id ?? safeId.taskId,
+    robot_id: inferencePayload.payload.robot_id,
+    inference_id: inferencePayload.payload.inference_id ?? "not_created",
+    model_family: inferencePayload.payload.model_family,
+    requested_outputs: inferencePayload.payload.requested_outputs,
+    input_ids: inferencePayload.payload.inputs.map((input) => input.input_id),
+    write_status: writeStatus,
+    duplicate: asBoolean(remote.duplicate),
+    created_count: resultSummary.created_count,
+    updated_count: resultSummary.updated_count,
+    archive_event_written: true,
+    o6_schema: "trashbot.o6.model_inference.v1",
+    o6_source: "local_mock_inference",
+    result_summary: resultSummary,
+    request_summary: {
+      input_count: inferencePayload.payload.inputs.length,
+      requested_output_count: inferencePayload.payload.requested_outputs.length,
+      local_mock_only: true,
+    },
+    blocked_reasons: [
+      "real_model_inference_success_false",
+      "real_floor_recognition_proven_false",
+      "real_elevator_door_state_proven_false",
+    ],
+    not_proven: stringList(remote.not_proven).length > 0
+      ? stringList(remote.not_proven)
+      : ["real_model_inference", "real_floor_recognition", "real_elevator_door_state", "robot_control"],
+    fail_closed_reason: "none",
+    local_loopback_only: true,
+    ...fixedInferenceFalseFields(),
+    ...PROOF_FLAGS,
+  };
+}
+
+export async function buildO7ConsumerMissionEventAppend(
+  baseUrl: string,
+  taskId: string,
+  body: unknown,
+): Promise<O7ConsumerMissionEventAppendResult> {
+  const normalized = normalizeLoopbackBaseUrl(baseUrl);
+  if (!normalized.ok) {
+    return failClosedMissionEventAppend(normalized.reason, baseUrl, taskId);
+  }
+  const safeId = safeTaskId(taskId);
+  if (!safeId.ok) {
+    return failClosedMissionEventAppend(safeId.reason, normalized.normalized, taskId);
+  }
+  const eventPayload = missionEventPayloadFromBody(safeId.taskId, body);
+  if (!eventPayload.ok) {
+    return failClosedMissionEventAppend(eventPayload.reason, normalized.normalized, safeId.taskId);
+  }
+
+  const normalizedEvent = {
+    event_id: eventPayload.payload.event_id,
+    event_type: eventPayload.payload.event_type,
+    occurred_at_ms: eventPayload.payload.occurred_at_ms,
+    summary: eventPayload.payload.summary,
+    severity: eventPayload.payload.severity,
+    evidence_refs: eventPayload.payload.evidence_refs,
+    metadata: eventPayload.payload.metadata,
+  };
+  const forwardingBody = {
+    robot_id: eventPayload.payload.robot_id,
+    task_id: safeId.taskId,
+    events: [normalizedEvent],
+  };
+
+  let responseStatus: number | null = null;
+  let remoteJson: unknown;
+  try {
+    const response = await fetch(`${normalized.normalized}${REMOTE_EVENT_APPEND_ENDPOINT}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(forwardingBody),
+    });
+    responseStatus = response.status;
+    remoteJson = await response.json();
+    if (!response.ok) {
+      return failClosedMissionEventAppend(`o6_event_http_${response.status}`, normalized.normalized, safeId.taskId, responseStatus);
+    }
+  } catch {
+    return failClosedMissionEventAppend("o6_event_fetch_failed", normalized.normalized, safeId.taskId, responseStatus);
+  }
+
+  const remote = asRecord(remoteJson);
+  if (!remote) {
+    return failClosedMissionEventAppend("o6_event_response_not_object", normalized.normalized, safeId.taskId, responseStatus);
+  }
+  const validation = validateO6MissionEventAppendResponse(remote, eventPayload.payload);
+  if (!validation.ok) {
+    return failClosedMissionEventAppend(validation.reason, normalized.normalized, safeId.taskId, responseStatus);
+  }
+
+  const writeStatus = asString(remote.write_status, "blocked_not_proven") as "created" | "updated";
+  const firstEvent = validation.eventsWritten[0];
+  if (!firstEvent) {
+    return failClosedMissionEventAppend("o6_event_written_count_mismatch", normalized.normalized, safeId.taskId, responseStatus);
+  }
+  const evidenceRefs = stringList(firstEvent.evidence_refs, O7_MISSION_EVENT_REF_LIMIT);
+  return {
+    schema: MISSION_EVENT_APPEND_SCHEMA,
+    append_status: writeStatus === "created" ? "local_mock_event_written" : "local_mock_event_updated",
+    source_base_url: normalized.normalized,
+    remote_endpoint: REMOTE_EVENT_APPEND_ENDPOINT,
+    remote_schema: "trashbot.o6.archive_events.v1",
+    requested_task_id: safeId.taskId,
+    o6_http_status: responseStatus,
+    task_id: safeId.taskId,
+    robot_id: eventPayload.payload.robot_id,
+    event_id: eventPayload.payload.event_id,
+    event_type: eventPayload.payload.event_type,
+    occurred_at_ms: eventPayload.payload.occurred_at_ms,
+    evidence_refs_consumed: evidenceRefs,
+    write_status: writeStatus,
+    duplicate: asBoolean(remote.duplicate),
+    created_count: validation.eventSummary.created_count as number,
+    updated_count: validation.eventSummary.updated_count as number,
+    archive_event_written: true,
+    events_written_count: validation.eventsWritten.length,
+    o6_schema: "trashbot.o6.archive_events.v1",
+    o6_source: "local_mock_event_archive",
+    event_summary: validation.eventSummary,
+    blocked_reasons: [
+      "real_cloud_db_connected_false",
+      "real_oss_connected_false",
+      "robot_control_executed_false",
+      "route_execution_success_false",
+      "hil_pass_false",
+    ],
+    not_proven: stringList(remote.not_proven).length > 0
+      ? stringList(remote.not_proven)
+      : ["real_cloud_db_not_connected", "real_oss_not_connected", "real_cloud_production_not_connected", "robot_control_not_executed"],
+    fail_closed_reason: "none",
+    local_loopback_only: true,
+    ...fixedMissionEventAppendFalseFields(),
+    ...PROOF_FLAGS,
+  };
+}
+
+export async function buildO7OperatorDropoffActionCapture(
+  baseUrl: string,
+  taskId: string,
+  body: unknown,
+): Promise<O7OperatorDropoffActionCaptureResult> {
+  const normalized = normalizeLoopbackBaseUrl(baseUrl);
+  if (!normalized.ok) {
+    return failClosedOperatorDropoffActionCapture(normalized.reason, baseUrl, taskId);
+  }
+  const safeId = safeTaskId(taskId);
+  if (!safeId.ok) {
+    return failClosedOperatorDropoffActionCapture(safeId.reason, normalized.normalized, taskId);
+  }
+  const dropoffPayload = operatorDropoffActionCapturePayloadFromBody(safeId.taskId, body);
+  if (!dropoffPayload.ok) {
+    return failClosedOperatorDropoffActionCapture(dropoffPayload.reason, normalized.normalized, safeId.taskId);
+  }
+
+  const normalizedEvent = {
+    event_id: dropoffPayload.payload.event_id,
+    event_type: "operator.dropoff_acceptance" as const,
+    occurred_at_ms: dropoffPayload.payload.occurred_at_ms,
+    summary: dropoffPayload.payload.summary,
+    severity: "info" as const,
+    evidence_refs: dropoffPayload.payload.evidence_refs,
+    metadata: dropoffPayload.payload.metadata,
+  };
+  const forwardingBody = {
+    robot_id: dropoffPayload.payload.robot_id,
+    task_id: safeId.taskId,
+    events: [normalizedEvent],
+  };
+
+  let responseStatus: number | null = null;
+  let remoteJson: unknown;
+  try {
+    const response = await fetch(`${normalized.normalized}${REMOTE_EVENT_APPEND_ENDPOINT}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(forwardingBody),
+    });
+    responseStatus = response.status;
+    remoteJson = await response.json();
+    if (!response.ok) {
+      return failClosedOperatorDropoffActionCapture(
+        `o6_event_http_${response.status}`,
+        normalized.normalized,
+        safeId.taskId,
+        responseStatus,
+      );
+    }
+  } catch {
+    return failClosedOperatorDropoffActionCapture("o6_event_fetch_failed", normalized.normalized, safeId.taskId, responseStatus);
+  }
+
+  const remote = asRecord(remoteJson);
+  if (!remote) {
+    return failClosedOperatorDropoffActionCapture("o6_event_response_not_object", normalized.normalized, safeId.taskId, responseStatus);
+  }
+  const validation = validateO6MissionEventAppendResponse(remote, dropoffPayload.payload);
+  if (!validation.ok) {
+    return failClosedOperatorDropoffActionCapture(validation.reason, normalized.normalized, safeId.taskId, responseStatus);
+  }
+
+  const writeStatus = asString(remote.write_status, "blocked_not_proven") as "created" | "updated";
+  const firstEvent = validation.eventsWritten[0];
+  if (!firstEvent || asString(firstEvent.event_type, "") !== "operator.dropoff_acceptance") {
+    return failClosedOperatorDropoffActionCapture("o6_operator_dropoff_event_identity_mismatch", normalized.normalized, safeId.taskId, responseStatus);
+  }
+  const evidenceRefs = stringList(firstEvent.evidence_refs, O7_MISSION_EVENT_REF_LIMIT);
+  return {
+    schema: OPERATOR_DROPOFF_ACTION_CAPTURE_SCHEMA,
+    capture_status:
+      writeStatus === "created"
+        ? "local_mock_operator_dropoff_acceptance_event_written"
+        : "local_mock_operator_dropoff_acceptance_event_updated",
+    source_base_url: normalized.normalized,
+    remote_endpoint: REMOTE_EVENT_APPEND_ENDPOINT,
+    remote_schema: "trashbot.o6.archive_events.v1",
+    requested_task_id: safeId.taskId,
+    o6_http_status: responseStatus,
+    task_id: safeId.taskId,
+    robot_id: dropoffPayload.payload.robot_id,
+    event_id: dropoffPayload.payload.event_id,
+    event_type: "operator.dropoff_acceptance",
+    occurred_at_ms: dropoffPayload.payload.occurred_at_ms,
+    operator_action_id: dropoffPayload.payload.operator_action_id,
+    operator_display_name: dropoffPayload.payload.operator_display_name,
+    evidence_refs_consumed: evidenceRefs,
+    write_status: writeStatus,
+    duplicate: asBoolean(remote.duplicate),
+    created_count: validation.eventSummary.created_count as number,
+    updated_count: validation.eventSummary.updated_count as number,
+    archive_event_written: true,
+    events_written_count: validation.eventsWritten.length,
+    o6_schema: "trashbot.o6.archive_events.v1",
+    o6_source: "local_mock_event_archive",
+    proof_boundary: O7_OPERATOR_DROPOFF_ACTION_CAPTURE_PROOF_SCOPE,
+    event_summary: validation.eventSummary,
+    blocked_reasons: [
+      "real_operator_action_proven_false",
+      "delivery_success_false",
+      "route_execution_success_false",
+      "safe_to_control_false",
+      "hil_pass_false",
+      "robot_control_executed_false",
+      "connects_cloud_production_false",
+    ],
+    not_proven: stringList(remote.not_proven).length > 0
+      ? stringList(remote.not_proven)
+      : [
+        "real_operator_action_not_proven",
+        "delivery_success_false",
+        "route_execution_success_false",
+        "safe_to_control_false",
+        "hil_pass_false",
+        "robot_control_not_executed",
+      ],
+    fail_closed_reason: "none",
+    local_loopback_only: true,
+    ...fixedOperatorDropoffActionCaptureFalseFields(),
+    ...PROOF_FLAGS,
+  };
+}
+
+export async function buildO7ConsumerVoiceTtsDraftRequest(
+  baseUrl: string,
+  taskId: string,
+  body: unknown,
+): Promise<O7ConsumerVoiceTtsDraftRequestResult> {
+  const normalized = normalizeLoopbackBaseUrl(baseUrl);
+  if (!normalized.ok) {
+    return failClosedVoiceTtsDraftRequest(normalized.reason, baseUrl, taskId);
+  }
+  const safeId = safeTaskId(taskId);
+  if (!safeId.ok) {
+    return failClosedVoiceTtsDraftRequest(safeId.reason, normalized.normalized, taskId);
+  }
+  const voicePayload = voiceTtsDraftPayloadFromBody(safeId.taskId, body);
+  if (!voicePayload.ok) {
+    return failClosedVoiceTtsDraftRequest(voicePayload.reason, normalized.normalized, safeId.taskId);
+  }
+
+  const normalizedEvent = {
+    event_id: voicePayload.payload.event_id,
+    event_type: "voice.tts_draft" as const,
+    occurred_at_ms: voicePayload.payload.occurred_at_ms,
+    summary: voicePayload.payload.summary,
+    severity: voicePayload.payload.severity,
+    evidence_refs: voicePayload.payload.evidence_refs,
+    metadata: voicePayload.payload.metadata,
+  };
+  const forwardingBody = {
+    robot_id: voicePayload.payload.robot_id,
+    task_id: safeId.taskId,
+    events: [normalizedEvent],
+  };
+
+  let responseStatus: number | null = null;
+  let remoteJson: unknown;
+  try {
+    const response = await fetch(`${normalized.normalized}${REMOTE_EVENT_APPEND_ENDPOINT}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(forwardingBody),
+    });
+    responseStatus = response.status;
+    remoteJson = await response.json();
+    if (!response.ok) {
+      return failClosedVoiceTtsDraftRequest(`o6_event_http_${response.status}`, normalized.normalized, safeId.taskId, responseStatus);
+    }
+  } catch {
+    return failClosedVoiceTtsDraftRequest("o6_event_fetch_failed", normalized.normalized, safeId.taskId, responseStatus);
+  }
+
+  const remote = asRecord(remoteJson);
+  if (!remote) {
+    return failClosedVoiceTtsDraftRequest("o6_event_response_not_object", normalized.normalized, safeId.taskId, responseStatus);
+  }
+  const validation = validateO6MissionEventAppendResponse(remote, voicePayload.payload);
+  if (!validation.ok) {
+    return failClosedVoiceTtsDraftRequest(validation.reason, normalized.normalized, safeId.taskId, responseStatus);
+  }
+
+  const writeStatus = asString(remote.write_status, "blocked_not_proven") as "created" | "updated";
+  const firstEvent = validation.eventsWritten[0];
+  if (!firstEvent) {
+    return failClosedVoiceTtsDraftRequest("o6_event_written_count_mismatch", normalized.normalized, safeId.taskId, responseStatus);
+  }
+  const evidenceRefs = stringList(firstEvent.evidence_refs, O7_MISSION_EVENT_REF_LIMIT);
+  return {
+    schema: VOICE_TTS_DRAFT_REQUEST_SCHEMA,
+    request_status:
+      writeStatus === "created"
+        ? "local_mock_voice_tts_draft_event_written"
+        : "local_mock_voice_tts_draft_event_updated",
+    source_base_url: normalized.normalized,
+    remote_endpoint: REMOTE_EVENT_APPEND_ENDPOINT,
+    remote_schema: "trashbot.o6.archive_events.v1",
+    requested_task_id: safeId.taskId,
+    o6_http_status: responseStatus,
+    task_id: safeId.taskId,
+    robot_id: voicePayload.payload.robot_id,
+    event_id: voicePayload.payload.event_id,
+    event_type: "voice.tts_draft",
+    occurred_at_ms: voicePayload.payload.occurred_at_ms,
+    draft_text_length: voicePayload.payload.draft_text.length,
+    voice_profile: voicePayload.payload.voice_profile,
+    locale: voicePayload.payload.locale,
+    evidence_refs_consumed: evidenceRefs,
+    write_status: writeStatus,
+    duplicate: asBoolean(remote.duplicate),
+    created_count: validation.eventSummary.created_count as number,
+    updated_count: validation.eventSummary.updated_count as number,
+    archive_event_written: true,
+    tts_draft_event_written: true,
+    events_written_count: validation.eventsWritten.length,
+    o6_schema: "trashbot.o6.archive_events.v1",
+    o6_source: "local_mock_event_archive",
+    proof_boundary: O7_VOICE_TTS_DRAFT_REQUEST_PROOF_SCOPE,
+    event_summary: validation.eventSummary,
+    blocked_reasons: [
+      "tts_send_enabled_false",
+      "speaker_dispatch_enabled_false",
+      "real_voice_api_connected_false",
+      "real_asr_tts_runtime_connected_false",
+      "robot_control_executed_false",
+      "delivery_success_false",
+    ],
+    not_proven: stringList(remote.not_proven).length > 0
+      ? stringList(remote.not_proven)
+      : [
+        "real_voice_api_not_connected",
+        "real_asr_tts_runtime_not_connected",
+        "real_tts_playback",
+        "real_speaker_ack",
+        "robot_control_not_executed",
+      ],
+    fail_closed_reason: "none",
+    local_loopback_only: true,
+    ...fixedVoiceTtsDraftRequestFalseFields(),
+    ...PROOF_FLAGS,
+  };
+}
+
+export async function buildO7VoiceSpeakerAckEvent(
+  baseUrl: string,
+  taskId: string,
+  body: unknown,
+): Promise<O7VoiceSpeakerAckEventResult> {
+  const normalized = normalizeLoopbackBaseUrl(baseUrl);
+  if (!normalized.ok) {
+    return failClosedVoiceSpeakerAckEvent(normalized.reason, baseUrl, taskId);
+  }
+  const safeId = safeTaskId(taskId);
+  if (!safeId.ok) {
+    return failClosedVoiceSpeakerAckEvent(safeId.reason, normalized.normalized, taskId);
+  }
+  const speakerPayload = voiceSpeakerAckEventPayloadFromBody(safeId.taskId, body);
+  if (!speakerPayload.ok) {
+    return failClosedVoiceSpeakerAckEvent(speakerPayload.reason, normalized.normalized, safeId.taskId);
+  }
+
+  const normalizedEvent = {
+    event_id: speakerPayload.payload.event_id,
+    event_type: speakerPayload.payload.event_type,
+    occurred_at_ms: speakerPayload.payload.occurred_at_ms,
+    summary: speakerPayload.payload.summary,
+    severity: speakerPayload.payload.severity,
+    evidence_refs: speakerPayload.payload.evidence_refs,
+    metadata: speakerPayload.payload.metadata,
+  };
+  const forwardingBody = {
+    robot_id: speakerPayload.payload.robot_id,
+    task_id: safeId.taskId,
+    events: [normalizedEvent],
+  };
+
+  let responseStatus: number | null = null;
+  let remoteJson: unknown;
+  try {
+    const response = await fetch(`${normalized.normalized}${REMOTE_EVENT_APPEND_ENDPOINT}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(forwardingBody),
+    });
+    responseStatus = response.status;
+    remoteJson = await response.json();
+    if (!response.ok) {
+      return failClosedVoiceSpeakerAckEvent(`o6_event_http_${response.status}`, normalized.normalized, safeId.taskId, responseStatus);
+    }
+  } catch {
+    return failClosedVoiceSpeakerAckEvent("o6_event_fetch_failed", normalized.normalized, safeId.taskId, responseStatus);
+  }
+
+  const remote = asRecord(remoteJson);
+  if (!remote) {
+    return failClosedVoiceSpeakerAckEvent("o6_event_response_not_object", normalized.normalized, safeId.taskId, responseStatus);
+  }
+  const validation = validateO6MissionEventAppendResponse(remote, speakerPayload.payload);
+  if (!validation.ok) {
+    return failClosedVoiceSpeakerAckEvent(validation.reason, normalized.normalized, safeId.taskId, responseStatus);
+  }
+
+  const writeStatus = asString(remote.write_status, "blocked_not_proven") as "created" | "updated";
+  const firstEvent = validation.eventsWritten[0];
+  if (!firstEvent || asString(firstEvent.event_type, "") !== speakerPayload.payload.event_type) {
+    return failClosedVoiceSpeakerAckEvent("o6_voice_speaker_event_identity_mismatch", normalized.normalized, safeId.taskId, responseStatus);
+  }
+  const evidenceRefs = stringList(firstEvent.evidence_refs, O7_MISSION_EVENT_REF_LIMIT);
+  return {
+    schema: VOICE_SPEAKER_ACK_EVENT_SCHEMA,
+    ack_event_status: voiceSpeakerAckReceiptStatus(speakerPayload.payload.ack_status, writeStatus),
+    source_base_url: normalized.normalized,
+    remote_endpoint: REMOTE_EVENT_APPEND_ENDPOINT,
+    remote_schema: "trashbot.o6.archive_events.v1",
+    requested_task_id: safeId.taskId,
+    o6_http_status: responseStatus,
+    task_id: safeId.taskId,
+    robot_id: speakerPayload.payload.robot_id,
+    event_id: speakerPayload.payload.event_id,
+    event_type: speakerPayload.payload.event_type,
+    ack_status: speakerPayload.payload.ack_status,
+    occurred_at_ms: speakerPayload.payload.occurred_at_ms,
+    failure_reason_code: speakerPayload.payload.failure_reason_code,
+    evidence_refs_consumed: evidenceRefs,
+    write_status: writeStatus,
+    duplicate: asBoolean(remote.duplicate),
+    created_count: validation.eventSummary.created_count as number,
+    updated_count: validation.eventSummary.updated_count as number,
+    archive_event_written: true,
+    speaker_ack_event_written: speakerPayload.payload.ack_status === "ack",
+    speaker_failure_event_written: speakerPayload.payload.ack_status === "failure",
+    events_written_count: validation.eventsWritten.length,
+    o6_schema: "trashbot.o6.archive_events.v1",
+    o6_source: "local_mock_event_archive",
+    proof_boundary: O7_VOICE_SPEAKER_ACK_EVENT_PROOF_SCOPE,
+    event_summary: validation.eventSummary,
+    blocked_reasons: [
+      "speaker_dispatch_enabled_false",
+      "real_speaker_ack_proven_false",
+      "tts_send_enabled_false",
+      "real_voice_api_connected_false",
+      "real_asr_tts_runtime_connected_false",
+      "robot_control_executed_false",
+      "delivery_success_false",
+    ],
+    not_proven: stringList(remote.not_proven).length > 0
+      ? stringList(remote.not_proven)
+      : [
+        "real_speaker_ack_not_proven",
+        "speaker_dispatch_not_enabled",
+        "real_voice_api_not_connected",
+        "real_asr_tts_runtime_not_connected",
+        "robot_control_not_executed",
+      ],
+    fail_closed_reason: "none",
+    local_loopback_only: true,
+    ...fixedVoiceSpeakerAckEventFalseFields(),
+    ...PROOF_FLAGS,
+  };
+}
+
+export async function buildO7ConsumerDeliveryResultIntake(
+  baseUrl: string,
+  taskId: string,
+  body: unknown,
+): Promise<O7ConsumerDeliveryResultIntakeResult> {
+  const normalized = normalizeLoopbackBaseUrl(baseUrl);
+  if (!normalized.ok) {
+    return failClosedDeliveryResultIntake(normalized.reason, baseUrl, taskId);
+  }
+  const safeId = safeTaskId(taskId);
+  if (!safeId.ok) {
+    return failClosedDeliveryResultIntake(safeId.reason, normalized.normalized, taskId);
+  }
+  const deliveryPayload = deliveryResultPayloadFromBody(safeId.taskId, body);
+  if (!deliveryPayload.ok) {
+    return failClosedDeliveryResultIntake(deliveryPayload.reason, normalized.normalized, safeId.taskId);
+  }
+  const forwardingBody = buildDeliveryResultFieldEvidenceBody(deliveryPayload.payload);
+
+  let responseStatus: number | null = null;
+  let remoteJson: unknown;
+  try {
+    const response = await fetch(`${normalized.normalized}${REMOTE_DELIVERY_RESULT_INTAKE_ENDPOINT}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(forwardingBody),
+    });
+    responseStatus = response.status;
+    remoteJson = await response.json();
+    if (!response.ok) {
+      return failClosedDeliveryResultIntake(
+        `o6_field_evidence_http_${response.status}`,
+        normalized.normalized,
+        safeId.taskId,
+        responseStatus,
+      );
+    }
+  } catch {
+    return failClosedDeliveryResultIntake("o6_field_evidence_fetch_failed", normalized.normalized, safeId.taskId, responseStatus);
+  }
+
+  const remote = asRecord(remoteJson);
+  if (!remote) {
+    return failClosedDeliveryResultIntake("o6_field_evidence_response_not_object", normalized.normalized, safeId.taskId, responseStatus);
+  }
+  const validation = validateO6DeliveryResultIntakeResponse(remote, deliveryPayload.payload);
+  if (!validation.ok) {
+    return failClosedDeliveryResultIntake(validation.reason, normalized.normalized, safeId.taskId, responseStatus);
+  }
+
+  const writeStatus = asString(remote.write_status, "blocked_not_proven") as "created" | "updated";
+  return {
+    schema: DELIVERY_RESULT_INTAKE_SCHEMA,
+    intake_status: writeStatus === "created" ? "local_mock_delivery_result_written" : "local_mock_delivery_result_updated",
+    source_base_url: normalized.normalized,
+    remote_endpoint: REMOTE_DELIVERY_RESULT_INTAKE_ENDPOINT,
+    remote_schema: "trashbot.o6.field_evidence_archive.v1",
+    requested_task_id: safeId.taskId,
+    o6_http_status: responseStatus,
+    task_id: deliveryPayload.payload.task_id,
+    robot_id: deliveryPayload.payload.robot_id,
+    record_status: deliveryPayload.payload.record_status,
+    delivery_result_claimed: deliveryPayload.payload.delivery_result_claimed,
+    operator_confirmation_present: deliveryPayload.payload.operator_confirmation_present,
+    dropoff_confirmation_type: deliveryPayload.payload.dropoff_confirmation_type,
+    completed_at_utc: deliveryPayload.payload.completed_at_utc,
+    evidence_ref: deliveryPayload.payload.evidence_ref,
+    write_status: writeStatus,
+    duplicate: asBoolean(remote.duplicate),
+    field_evidence_written: true,
+    o6_schema: "trashbot.o6.field_evidence_archive.v1",
+    o6_source: "local_mock_field_evidence_archive",
+    proof_scope: O7_DELIVERY_RESULT_INTAKE_PROOF_SCOPE,
+    delivery_result_evidence: validation.deliveryResultEvidence,
+    blocked_reasons: [
+      "local_mock_only",
+      "delivery_success_not_proven",
+      "robot_control_executed_false",
+      "route_execution_success_false",
+      "hil_pass_false",
+    ],
+    not_proven: stringList(remote.not_proven).length > 0
+      ? stringList(remote.not_proven)
+      : [
+        "field_evidence_gate_is_not_delivery_success",
+        "real_cloud_db_not_connected",
+        "real_oss_not_connected",
+        "real_cloud_production_not_connected",
+        "robot_control_not_executed",
+      ],
+    fail_closed_reason: "none",
+    local_loopback_only: true,
+    ...fixedDeliveryResultIntakeFalseFields(),
+    ...PROOF_FLAGS,
+  };
+}
+
+export async function buildO7ConsumerPhoneBrowserProofIntake(
+  baseUrl: string,
+  taskId: string,
+  body: unknown,
+): Promise<O7ConsumerPhoneBrowserProofIntakeResult> {
+  const normalized = normalizeLoopbackBaseUrl(baseUrl);
+  if (!normalized.ok) {
+    return failClosedPhoneBrowserProofIntake(normalized.reason, baseUrl, taskId);
+  }
+  const safeId = safeTaskId(taskId);
+  if (!safeId.ok) {
+    return failClosedPhoneBrowserProofIntake(safeId.reason, normalized.normalized, taskId);
+  }
+  const phoneBrowserPayload = phoneBrowserProofPayloadFromBody(safeId.taskId, body);
+  if (!phoneBrowserPayload.ok) {
+    return failClosedPhoneBrowserProofIntake(phoneBrowserPayload.reason, normalized.normalized, safeId.taskId);
+  }
+  const forwardingBody = buildPhoneBrowserProofFieldEvidenceBody(phoneBrowserPayload.payload);
+
+  let responseStatus: number | null = null;
+  let remoteJson: unknown;
+  try {
+    const response = await fetch(`${normalized.normalized}${REMOTE_DELIVERY_RESULT_INTAKE_ENDPOINT}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(forwardingBody),
+    });
+    responseStatus = response.status;
+    remoteJson = await response.json();
+    if (!response.ok) {
+      return failClosedPhoneBrowserProofIntake(
+        `o6_field_evidence_http_${response.status}`,
+        normalized.normalized,
+        safeId.taskId,
+        responseStatus,
+      );
+    }
+  } catch {
+    return failClosedPhoneBrowserProofIntake("o6_field_evidence_fetch_failed", normalized.normalized, safeId.taskId, responseStatus);
+  }
+
+  const remote = asRecord(remoteJson);
+  if (!remote) {
+    return failClosedPhoneBrowserProofIntake("o6_field_evidence_response_not_object", normalized.normalized, safeId.taskId, responseStatus);
+  }
+  const validation = validateO6PhoneBrowserProofIntakeResponse(remote, phoneBrowserPayload.payload);
+  if (!validation.ok) {
+    return failClosedPhoneBrowserProofIntake(validation.reason, normalized.normalized, safeId.taskId, responseStatus);
+  }
+
+  const writeStatus = asString(remote.write_status, "blocked_not_proven") as "created" | "updated";
+  return {
+    schema: PHONE_BROWSER_PROOF_INTAKE_SCHEMA,
+    intake_status: writeStatus === "created"
+      ? "local_mock_phone_browser_material_written"
+      : "local_mock_phone_browser_material_updated",
+    source_base_url: normalized.normalized,
+    remote_endpoint: REMOTE_DELIVERY_RESULT_INTAKE_ENDPOINT,
+    remote_schema: "trashbot.o6.field_evidence_archive.v1",
+    requested_task_id: safeId.taskId,
+    o6_http_status: responseStatus,
+    task_id: phoneBrowserPayload.payload.task_id,
+    robot_id: phoneBrowserPayload.payload.robot_id,
+    terminal_result_type: phoneBrowserPayload.payload.terminal_result_type,
+    safe_evidence_ref: phoneBrowserPayload.payload.safe_evidence_ref,
+    accepted_materials: phoneBrowserPayload.payload.accepted_materials,
+    missing_materials: validation.phoneBrowserMaterial.missing_materials,
+    rejected_materials: validation.phoneBrowserMaterial.rejected_materials,
+    write_status: writeStatus,
+    duplicate: asBoolean(remote.duplicate),
+    field_evidence_written: true,
+    phone_browser_terminal_material_written: true,
+    phone_browser_terminal_material_readback: true,
+    same_task_id_consumed: true,
+    o6_schema: "trashbot.o6.field_evidence_archive.v1",
+    o6_source: "local_mock_field_evidence_archive",
+    proof_scope: O7_PHONE_BROWSER_PROOF_INTAKE_PROOF_SCOPE,
+    phone_browser_terminal_material: validation.phoneBrowserMaterial,
+    blocked_reasons: [
+      "local_mock_only",
+      "delivery_success_not_proven",
+      "robot_control_executed_false",
+      "route_execution_success_false",
+      "hil_pass_false",
+    ],
+    not_proven: stringList(remote.not_proven).length > 0
+      ? stringList(remote.not_proven)
+      : [
+        "phone_browser_terminal_material_intake_only",
+        "real_phone_browser_proof_not_connected",
+        "real_cloud_db_not_connected",
+        "real_oss_not_connected",
+        "real_cloud_production_not_connected",
+        "robot_control_not_executed",
+      ],
+    fail_closed_reason: "none",
+    local_loopback_only: true,
+    ...fixedPhoneBrowserProofIntakeFalseFields(),
+    ...PROOF_FLAGS,
+  };
+}
+
+export async function buildO7ConsumerBoundedRouteGateIntake(
+  baseUrl: string,
+  taskId: string,
+  body: unknown,
+): Promise<O7ConsumerBoundedRouteGateIntakeResult> {
+  const normalized = normalizeLoopbackBaseUrl(baseUrl);
+  if (!normalized.ok) {
+    return failClosedBoundedRouteGateIntake(normalized.reason, baseUrl, taskId);
+  }
+  const safeId = safeTaskId(taskId);
+  if (!safeId.ok) {
+    return failClosedBoundedRouteGateIntake(safeId.reason, normalized.normalized, taskId);
+  }
+  const gatePayload = boundedRouteGatePayloadFromBody(safeId.taskId, body);
+  if (!gatePayload.ok) {
+    return failClosedBoundedRouteGateIntake(gatePayload.reason, normalized.normalized, safeId.taskId);
+  }
+  const forwardingBody = buildBoundedRouteGateFieldEvidenceBody(gatePayload.payload);
+
+  let responseStatus: number | null = null;
+  let remoteJson: unknown;
+  try {
+    const response = await fetch(`${normalized.normalized}${REMOTE_DELIVERY_RESULT_INTAKE_ENDPOINT}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(forwardingBody),
+    });
+    responseStatus = response.status;
+    remoteJson = await response.json();
+    if (!response.ok) {
+      return failClosedBoundedRouteGateIntake(
+        `o6_field_evidence_http_${response.status}`,
+        normalized.normalized,
+        safeId.taskId,
+        responseStatus,
+      );
+    }
+  } catch {
+    return failClosedBoundedRouteGateIntake("o6_field_evidence_fetch_failed", normalized.normalized, safeId.taskId, responseStatus);
+  }
+
+  const remote = asRecord(remoteJson);
+  if (!remote) {
+    return failClosedBoundedRouteGateIntake("o6_field_evidence_response_not_object", normalized.normalized, safeId.taskId, responseStatus);
+  }
+  const validation = validateO6BoundedRouteGateIntakeResponse(remote, gatePayload.payload);
+  if (!validation.ok) {
+    return failClosedBoundedRouteGateIntake(validation.reason, normalized.normalized, safeId.taskId, responseStatus);
+  }
+
+  const writeStatus = asString(remote.write_status, "blocked_not_proven") as "created" | "updated";
+  return {
+    schema: BOUNDED_ROUTE_GATE_INTAKE_SCHEMA,
+    intake_status: writeStatus === "created"
+      ? "local_mock_bounded_route_gate_written"
+      : "local_mock_bounded_route_gate_updated",
+    source_base_url: normalized.normalized,
+    remote_endpoint: REMOTE_DELIVERY_RESULT_INTAKE_ENDPOINT,
+    remote_schema: "trashbot.o6.field_evidence_archive.v1",
+    requested_task_id: safeId.taskId,
+    o6_http_status: responseStatus,
+    task_id: gatePayload.payload.task_id,
+    robot_id: gatePayload.payload.robot_id,
+    packet_id: gatePayload.payload.packet_id,
+    route_intent_id: gatePayload.payload.route_intent_id,
+    execution_plan_status: gatePayload.payload.execution_plan_status,
+    route_csv_row_count: gatePayload.payload.route_csv_row_count,
+    path_structured_pose_count: gatePayload.payload.path_structured_pose_count,
+    segment_count: gatePayload.payload.segment_count,
+    write_status: writeStatus,
+    duplicate: asBoolean(remote.duplicate),
+    field_evidence_written: true,
+    same_task_id_consumed: true,
+    bounded_route_execution_gate_material_written: true,
+    bounded_route_execution_gate_material_readback: true,
+    o6_schema: "trashbot.o6.field_evidence_archive.v1",
+    o6_source: "local_mock_field_evidence_archive",
+    proof_scope: O7_BOUNDED_ROUTE_GATE_INTAKE_PROOF_SCOPE,
+    bounded_route_execution_gate_material: validation.material,
+    blocked_reasons: [
+      "local_mock_only",
+      "execution_plan_status=blocked_pending_live_safety_gate",
+      "route_execution_success_not_proven",
+      "delivery_success_not_proven",
+      "hil_pass_not_proven",
+    ],
+    not_proven: stringList(remote.not_proven).length > 0
+      ? stringList(remote.not_proven)
+      : [
+          "bounded_route_gate_material_intake_only",
+          "safe_to_control_false",
+          "route_execution_success_false",
+          "delivery_success_false",
+          "hil_pass_false",
+          "robot_control_not_executed",
+        ],
+    fail_closed_reason: "none",
+    local_loopback_only: true,
+    ...fixedBoundedRouteGateIntakeFalseFields(),
+    ...PROOF_FLAGS,
+  };
+}
+
+export async function buildO7ConsumerBoundedRouteTerminalResultIntake(
+  baseUrl: string,
+  taskId: string,
+  body: unknown,
+): Promise<O7ConsumerBoundedRouteTerminalResultIntakeResult> {
+  const normalized = normalizeLoopbackBaseUrl(baseUrl);
+  if (!normalized.ok) {
+    return failClosedBoundedRouteTerminalResultIntake(normalized.reason, baseUrl, taskId);
+  }
+  const safeId = safeTaskId(taskId);
+  if (!safeId.ok) {
+    return failClosedBoundedRouteTerminalResultIntake(safeId.reason, normalized.normalized, taskId);
+  }
+  const terminalPayload = boundedRouteTerminalResultPayloadFromBody(safeId.taskId, body);
+  if (!terminalPayload.ok) {
+    return failClosedBoundedRouteTerminalResultIntake(terminalPayload.reason, normalized.normalized, safeId.taskId);
+  }
+  const forwardingBody = buildBoundedRouteTerminalResultFieldEvidenceBody(terminalPayload.payload);
+
+  let responseStatus: number | null = null;
+  let remoteJson: unknown;
+  try {
+    const response = await fetch(`${normalized.normalized}${REMOTE_DELIVERY_RESULT_INTAKE_ENDPOINT}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(forwardingBody),
+    });
+    responseStatus = response.status;
+    remoteJson = await response.json();
+    if (!response.ok) {
+      return failClosedBoundedRouteTerminalResultIntake(
+        `o6_field_evidence_http_${response.status}`,
+        normalized.normalized,
+        safeId.taskId,
+        responseStatus,
+      );
+    }
+  } catch {
+    return failClosedBoundedRouteTerminalResultIntake(
+      "o6_field_evidence_fetch_failed",
+      normalized.normalized,
+      safeId.taskId,
+      responseStatus,
+    );
+  }
+
+  const remote = asRecord(remoteJson);
+  if (!remote) {
+    return failClosedBoundedRouteTerminalResultIntake(
+      "o6_field_evidence_response_not_object",
+      normalized.normalized,
+      safeId.taskId,
+      responseStatus,
+    );
+  }
+  const validation = validateO6BoundedRouteTerminalResultIntakeResponse(remote, terminalPayload.payload);
+  if (!validation.ok) {
+    return failClosedBoundedRouteTerminalResultIntake(validation.reason, normalized.normalized, safeId.taskId, responseStatus);
+  }
+
+  const writeStatus = asString(remote.write_status, "blocked_not_proven") as "created" | "updated";
+  const status = writeStatus === "created"
+    ? "local_mock_bounded_route_terminal_result_written"
+    : "local_mock_bounded_route_terminal_result_updated";
+  return {
+    schema: BOUNDED_ROUTE_TERMINAL_RESULT_INTAKE_SCHEMA,
+    status,
+    intake_status: status,
+    source_base_url: normalized.normalized,
+    remote_endpoint: REMOTE_DELIVERY_RESULT_INTAKE_ENDPOINT,
+    remote_schema: "trashbot.o6.field_evidence_archive.v1",
+    requested_task_id: safeId.taskId,
+    o6_http_status: responseStatus,
+    task_id: terminalPayload.payload.task_id,
+    robot_id: terminalPayload.payload.robot_id,
+    packet_id: terminalPayload.payload.packet_id,
+    route_intent_id: terminalPayload.payload.route_intent_id,
+    result_code: terminalPayload.payload.result_code,
+    terminal_result_state: terminalPayload.payload.terminal_result_state,
+    reconciliation_state: terminalPayload.payload.reconciliation_state,
+    route_csv_row_count: terminalPayload.payload.route_csv_row_count,
+    path_structured_pose_count: terminalPayload.payload.path_structured_pose_count,
+    segment_count: terminalPayload.payload.segment_count,
+    safe_evidence_ref: terminalPayload.payload.safe_evidence_ref,
+    write_status: writeStatus,
+    duplicate: asBoolean(remote.duplicate),
+    field_evidence_written: true,
+    same_task_id_consumed: true,
+    bounded_route_terminal_result_material_written: true,
+    bounded_route_terminal_result_material_readback: true,
+    o6_schema: "trashbot.o6.field_evidence_archive.v1",
+    o6_source: "local_mock_field_evidence_archive",
+    proof_scope: O7_BOUNDED_ROUTE_TERMINAL_RESULT_INTAKE_PROOF_SCOPE,
+    bounded_route_terminal_result_material: validation.material,
+    blocked_reasons: [
+      "local_mock_only",
+      "result_code=mock_route_execution_completed_not_live_delivery",
+      "route_execution_success_not_proven",
+      "delivery_success_not_proven",
+      "hil_pass_not_proven",
+    ],
+    not_proven: stringList(remote.not_proven).length > 0
+      ? stringList(remote.not_proven)
+      : [
+          "bounded_route_terminal_result_material_intake_only",
+          "safe_to_control=false",
+          "route_execution_success=false",
+          "delivery_success=false",
+          "hil_pass=false",
+          "robot_control_not_executed",
+        ],
+    fail_closed_reason: "none",
+    local_loopback_only: true,
+    ...fixedBoundedRouteTerminalResultIntakeFalseFields(),
+    ...PROOF_FLAGS,
+  };
+}
+
+export async function buildO7ConsumerMissionEvidenceBundleExport(
+  baseUrl: string,
+  taskId: string,
+  format: string,
+): Promise<O7MissionEvidenceBundleExportResult> {
+  const normalized = normalizeLoopbackBaseUrl(baseUrl);
+  if (!normalized.ok) {
+    return failClosedMissionEvidenceBundleExport(normalized.reason, baseUrl, taskId);
+  }
+  const safeId = safeTaskId(taskId);
+  if (!safeId.ok) {
+    return failClosedMissionEvidenceBundleExport(safeId.reason, normalized.normalized, taskId);
+  }
+  const normalizedFormat = format.trim() || "json";
+  if (normalizedFormat !== "json") {
+    return failClosedMissionEvidenceBundleExport("mission_evidence_bundle_format_not_supported", normalized.normalized, safeId.taskId);
+  }
+
+  const url = new URL(`${normalized.normalized}${REMOTE_DETAIL_ENDPOINT_PREFIX}${encodeURIComponent(safeId.taskId)}`);
+  url.searchParams.set("view", DEFAULT_DETAIL_VIEW);
+  url.searchParams.set("include", DEFAULT_DETAIL_INCLUDE.join(","));
+
+  let responseStatus: number | null = null;
+  let remoteJson: unknown;
+  try {
+    const response = await fetch(url, { method: "GET" });
+    responseStatus = response.status;
+    remoteJson = await response.json();
+    if (!response.ok) {
+      return failClosedMissionEvidenceBundleExport(
+        `o6_consumer_detail_http_${response.status}`,
+        normalized.normalized,
+        safeId.taskId,
+        responseStatus,
+      );
+    }
+  } catch {
+    return failClosedMissionEvidenceBundleExport("o6_consumer_detail_fetch_failed", normalized.normalized, safeId.taskId, responseStatus);
+  }
+
+  const remote = asRecord(remoteJson);
+  if (!remote) {
+    return failClosedMissionEvidenceBundleExport("o6_consumer_detail_response_not_object", normalized.normalized, safeId.taskId, responseStatus);
+  }
+  if (asString(remote.schema, "") !== "trashbot.o6.consumer_read.v1") {
+    return failClosedMissionEvidenceBundleExport("o6_consumer_detail_schema_mismatch", normalized.normalized, safeId.taskId, responseStatus);
+  }
+  const dangerous = scanDangerousTrueFields(remote);
+  if (dangerous.length > 0) {
+    return failClosedMissionEvidenceBundleExport(
+      `dangerous_true_fields:${dangerous.join(",")}`,
+      normalized.normalized,
+      safeId.taskId,
+      responseStatus,
+    );
+  }
+  const unsafeReason = missionEvidenceBundleUnsafeReason(remote);
+  if (unsafeReason) {
+    return failClosedMissionEvidenceBundleExport(unsafeReason, normalized.normalized, safeId.taskId, responseStatus);
+  }
+
+  const taskSummary = asRecord(remote.task_summary);
+  const detailTaskId = asString(taskSummary?.task_id ?? remote.task_id, "");
+  if (!detailTaskId || detailTaskId !== safeId.taskId) {
+    return failClosedMissionEvidenceBundleExport("o6_consumer_detail_task_mismatch", normalized.normalized, safeId.taskId, responseStatus);
+  }
+
+  const sectionSummaries = missionEvidenceBundleSectionSummaries(remote);
+  const fieldEvidence = asRecord(remote.field_evidence);
+  const fieldEvidenceArtifacts = sampleObjectArray(fieldEvidence?.artifacts, Number.MAX_SAFE_INTEGER);
+  const events = asRecord(remote.events);
+  const evidence = asRecord(remote.evidence);
+  const sameTaskReplayPacket = asRecord(remote.same_task_replay_packet_readback);
+  const safeRefs = Array.from(new Set(sectionSummaries.flatMap((section) => section.sample_refs)));
+  const routeSectionNames = new Set([
+    "trajectory",
+    "route_root_seed_gate",
+    "route_bag_evidence",
+    "route_bag_payload_replay",
+    "route_bag_semantic_replay",
+    "route_bag_full_semantic_decode_matrix",
+    "route_bag_pose_progress_replay",
+  ]);
+  const closureSectionNames = new Set([
+    "delivery_result_evidence",
+    "route_execution_result_delivery_readiness",
+    "route_delivery_closure_packet",
+  ]);
+  const materialSectionNames = new Set([
+    "same_task_field_material_packet",
+    "same_task_replay_packet_readback",
+    "bounded_route_execution_gate_material",
+    "bounded_route_terminal_result_material",
+    "current_field_evidence_material",
+    "pc_live_nav2_execution_material",
+    "clean_baseline_nav2_path_material",
+    "localization_path_material_readback",
+    "same_task_route_execution_material_packet",
+    "same_task_mission_evidence_gate",
+    "field_operator_confirmation_material",
+    "phone_browser_terminal_material",
+  ]);
+  return {
+    schema: MISSION_EVIDENCE_BUNDLE_EXPORT_SCHEMA,
+    export_status: "local_mock_mission_evidence_bundle_ready",
+    source_base_url: normalized.normalized,
+    remote_endpoint: missionEvidenceBundleRemoteEndpoint(safeId.taskId),
+    remote_schema: "trashbot.o6.consumer_read.v1",
+    requested_task_id: safeId.taskId,
+    o6_http_status: responseStatus,
+    format: "json",
+    task_id: detailTaskId,
+    robot_id: asString(taskSummary?.robot_id ?? remote.robot_id, "unknown_robot"),
+    proof_scope: O7_MISSION_EVIDENCE_BUNDLE_EXPORT_PROOF_SCOPE,
+    receipt_id: `local_mock_mission_evidence_bundle:${safeId.taskId}:json`,
+    selected_task: {
+      task_id: detailTaskId,
+      robot_id: asString(taskSummary?.robot_id ?? remote.robot_id, "unknown_robot"),
+      task_status_summary: asString(taskSummary?.task_status_summary, "unknown_not_proven"),
+      started_at_ms: asNumber(taskSummary?.started_at_ms),
+      finished_at_ms: asNumber(taskSummary?.finished_at_ms),
+    },
+    identity: {
+      same_task_id_verified: asBoolean(sameTaskReplayPacket?.same_task_identity_verified),
+      same_task_replay_packet_ready: asBoolean(sameTaskReplayPacket?.same_task_replay_packet_ready),
+      packet_id: safePathToken(sameTaskReplayPacket?.packet_id),
+      route_intent_id: safePathToken(sameTaskReplayPacket?.route_intent_id),
+      path_structured_pose_count: asNumber(sameTaskReplayPacket?.path_structured_pose_count) ?? 0,
+      route_csv_row_count: asNumber(sameTaskReplayPacket?.route_csv_row_count) ?? 0,
+      replay_jsonl_event_count: asNumber(sameTaskReplayPacket?.replay_jsonl_event_count) ?? 0,
+    },
+    counts: {
+      section_count: sectionSummaries.length,
+      mission_event_count: asNumber(events?.count) ?? sampleObjectArray(events?.sample_events).length,
+      evidence_count: asNumber(evidence?.count) ?? sampleObjectArray(evidence?.sample_evidence).length,
+      field_evidence_artifact_count: fieldEvidenceArtifacts.length,
+      route_section_count: sectionSummaries.filter((section) => routeSectionNames.has(section.section)).length,
+      closure_section_count: sectionSummaries.filter((section) => closureSectionNames.has(section.section)).length,
+      material_section_count: sectionSummaries.filter((section) => materialSectionNames.has(section.section)).length,
+      readiness_section_count: sectionSummaries.filter((section) => section.section.includes("readiness")).length,
+      sample_ref_count: safeRefs.length,
+    },
+    section_summaries: sectionSummaries,
+    bundle_ready: true,
+    local_mock_only: true,
+    o6_consumer_detail_only: true,
+    blocked_reasons: [
+      "local_mock_only",
+      "route_execution_success_false",
+      "delivery_success_false",
+      "hil_pass_false",
+    ],
+    not_proven: stringList(remote.not_proven).length > 0
+      ? stringList(remote.not_proven)
+      : [
+        "production_cloud",
+        "route_execution_success",
+        "delivery_success",
+        "hil_pass",
+        "safe_to_control",
+        "real_dataset_export",
+      ],
+    fail_closed_reason: "none",
+    local_loopback_only: true,
+    ...fixedMissionEvidenceBundleExportFalseFields(),
     ...PROOF_FLAGS,
   };
 }

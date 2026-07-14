@@ -26,6 +26,7 @@
 - `--cloud-terminal-result-json <cloud_terminal_result.json>`：可选接入 O5 `trashbot.cloud_command_terminal_result.v1`，也兼容 `trashbot.cloud_command_result_reconciliation.v2` wrapper；在未提供 `--delivery-result-json` 时转换成同一个 additive `delivery_result_evidence`；如果两者同时提供，优先使用 `--delivery-result-json`。
 - `--localization-path-material-json <38_pc_summary_after_map_fix.json>`：可选接入 same-run localization/path readback summary，生成 additive `localization_path_material_readback`，并同时写入 manifest 顶层和 `field_motion_evidence_packet.localization_path_material_readback`。
 - `--field-operator-confirmation-json <operator_report_or_summary.json>`：可选接入真实上位机 operator report/latest result 或准现场 summary，生成 additive `field_operator_confirmation_material` 安全摘要，并同时写入 manifest 顶层和 `field_motion_evidence_packet.field_operator_confirmation_material`。
+- `--pc-live-nav2-execution-material-json <pc_live_nav2_execution_material.json>`：可选接入 2026-07-03 PC live Nav2 execution 的短安全 JSON material，生成 additive `pc_live_nav2_execution_material` 安全摘要，并同时写入 manifest 顶层和 `field_motion_evidence_packet.pc_live_nav2_execution_material`。
 - `--route-bag-db3 <route_bag_0.db3>`：可选接入 rosbag2 SQLite DB3，生成 additive `route_bag_evidence` 安全摘要，并同时写入 manifest 顶层和 `field_motion_evidence_packet.route_bag_evidence`；同一输入还会生成 `route_bag_payload_replay`（messages.data payload hash 摘要）、`route_bag_pose_progress_replay`（白名单位姿进度摘要）、`route_bag_semantic_replay`（白名单 ROS 语义统计）与 `route_bag_full_semantic_decode_matrix`（per topic/type 语义解码覆盖矩阵），它们都写入 manifest 顶层和 `field_motion_evidence_packet` 同名 section。
 - `--route-bag-metadata-yaml <metadata.yaml>`：可选接入同一 route bag 的 metadata，只输出 basename、size、hash prefix 和安全状态。
 - `--route-bag-source-label <safe-label>`：可选写入短 source label；绝对路径、credential URL、token/raw/base64 等文本会 fail closed，输出不会回显原值。
@@ -88,6 +89,22 @@
 - `blocked_reasons`、`next_required_evidence`、`material_summaries`
 
 该 additive 固定 `delivery_success=false`、`safe_to_control=false`、`primary_actions_enabled=false`、`robot_control_executed=false`、`route_execution_success=false`、`hil_pass=false`、`connects_cloud_production=false`。缺输入、bad JSON、非 object、task mismatch、operator identity 缺失、危险 true、字段名或文本里出现 raw/body/path/token/URL/base64/traceback/credential，都会只让本 section fail-closed；输出不会回显 operator identity 原文、raw/body、路径、URL、token、base64、traceback 或长备注正文。
+
+脚本还支持可选 `--pc-live-nav2-execution-material-json <pc_live_nav2_execution_material.json>`，生成 additive `trashbot.pc_live_nav2_execution_material.v1`。它的 `proof_scope` 与 `evidence_boundary` 都固定为 `software_proof_pc_live_nav2_execution_material_only`，并同时写入 manifest 顶层与 `field_motion_evidence_packet.pc_live_nav2_execution_material`。这个入口只消费 2026-07-03 PC live Nav2 执行记录里的短安全字段：`source_sprint`、`source_doc`、`verified_at`、`goal_accepted`、`cancel_accepted`、`uses_base_uart`、`robot_control_executed`（仅作为 source fact 摘要）、`base_command_nonzero_observed`、`base_command_nonzero_count`、`base_feedback_sample_count`、`base_feedback_lr_nonzero_proven`、`base_feedback_imu_attitude_delta_observed`、`motion_signal_observed`、`goal_result_status`（兼容 `terminal_status` alias）和短 `remaining_evidence[]`。
+
+`pc_live_nav2_execution_material.status=pc_live_nav2_execution_material_ready_not_delivery_proof` 的前提是：输入 JSON 可读且为 object、`task_id` 已稳定、`source_sprint` 与 `source_doc` 存在、`goal_accepted=true`、`uses_base_uart=true`、`base_command_nonzero_observed=true`、`base_command_nonzero_count > 0`、`base_feedback_sample_count > 0`、`base_feedback_lr_nonzero_proven=false`、`base_feedback_imu_attitude_delta_observed=true`、`motion_signal_observed=true`，并且输入没有 dangerous true、unsafe key 或 unsafe text。否则 status 固定为 `blocked_not_proven`。它会输出：
+
+- `schema`、`proof_scope`、`evidence_boundary`、`status`
+- `task_id`、`task_id_source`、`source`
+- `source_sprint`、`source_doc`、`verified_at`
+- `goal_accepted`、`nav2_goal_accepted`、`cancel_accepted`、`uses_base_uart`
+- `source_robot_control_executed`
+- `base_command_nonzero_observed`、`base_command_nonzero_count`
+- `base_feedback_sample_count`、`base_feedback_lr_nonzero_proven`、`base_feedback_imu_attitude_delta_observed`
+- `motion_signal_observed`、`goal_result_status`、`result_status`、`nav2_terminal_status`
+- `blocked_reasons`、`next_required_evidence`、`material_summaries`
+
+该 additive 固定 `delivery_success=false`、`safe_to_control=false`、`primary_actions_enabled=false`、`robot_control_executed=false`、`route_execution_success=false`、`hil_pass=false`。输入若试图把 `delivery_success=true`、`safe_to_control=true`、`primary_actions_enabled=true`、`route_execution_success=true` 或 `hil_pass=true` 混入材料，或者字段名/文本中出现 URL、token、raw log、traceback、base64 或本机绝对路径，section 必须 fail-closed，而且不会回显原值。
 
 在这个基础上，packet 还会输出 credit-aware 字段，专门给 O6/O7 / Product 判断“这次 same-task route execution material 只是 support-only，还是已经具备 credit candidate 形态”：
 

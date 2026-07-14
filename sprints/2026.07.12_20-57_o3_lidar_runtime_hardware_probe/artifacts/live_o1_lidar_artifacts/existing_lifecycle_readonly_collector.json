@@ -1,0 +1,2919 @@
+{
+  "blocked_commands_not_sent": [
+    {
+      "command": {
+        "T": 1
+      },
+      "reason": "LiDAR proof must not send wheel speed commands"
+    },
+    {
+      "command": {
+        "T": 13
+      },
+      "reason": "LiDAR proof must not send ROS velocity control JSON"
+    },
+    {
+      "command": {
+        "T": 130
+      },
+      "reason": "base feedback probe is outside LiDAR scan proof"
+    },
+    {
+      "command": {
+        "T": 131
+      },
+      "reason": "feedback-flow state change is outside LiDAR scan proof"
+    },
+    {
+      "command": "cmd_vel",
+      "reason": "collector reads LiDAR topics only and never publishes motion"
+    },
+    {
+      "command": "A5 60",
+      "reason": "collector does not start the LiDAR driver; run driver manually when runtime is ready"
+    }
+  ],
+  "blockers": [],
+  "calls_base_manual": false,
+  "delivery_success": false,
+  "evidence_boundary": "lidar_scan_proof_artifact_not_base_hil",
+  "generated_at": "2026-07-12T13:18:47.884089Z",
+  "generated_at_ms": 1783862280333,
+  "hardware_runtime_probe": {
+    "baudrate_candidates": [
+      230400,
+      150000
+    ],
+    "canonical_previous_blocker": "/scan_reliable_and_best_effort_timeout",
+    "exception_anchor": "serial.serialutil.SerialException",
+    "next_evidence_needed": "compare no-motion /dev/ttyACM0 @ 230400 and @ 150000 with driver diagnostics",
+    "primary_serial_port": "/dev/ttyACM0",
+    "starting_blocker": "/scan_lidar_runtime_exception_after_endpoint_visible_qos_compatible_timeout"
+  },
+  "hil_pass": false,
+  "lidar_device_process_probe": {
+    "attempted": true,
+    "paths": [
+      "/dev/ttyACM0",
+      "/dev/serial/by-id/usb-STC_STC_USB_Serial-if00"
+    ],
+    "publishes_cmd_vel": false,
+    "reason": "read_only_lsof_fuser_for_lidar_candidates",
+    "results": {
+      "/dev/serial/by-id/usb-STC_STC_USB_Serial-if00": {
+        "fuser": {
+          "command": "if command -v fuser >/dev/null 2>&1; then fuser -v /dev/serial/by-id/usb-STC_STC_USB_Serial-if00; else echo fuser_missing; exit 127; fi",
+          "ok": true,
+          "returncode": 0,
+          "stderr_preview": "                     USER        PID ACCESS COMMAND\n/dev/ttyACM0:        root      F.... lidar_driver\n",
+          "stdout_preview": " 550922"
+        },
+        "lsof": {
+          "command": "if command -v lsof >/dev/null 2>&1; then lsof -nP -- /dev/serial/by-id/usb-STC_STC_USB_Serial-if00; else echo lsof_missing; exit 127; fi",
+          "ok": true,
+          "returncode": 0,
+          "stderr_preview": "",
+          "stdout_preview": "COMMAND      PID USER   FD   TYPE DEVICE SIZE/OFF NODE NAME\nlidar_dri 550922 root   24u   CHR  166,0      0t0  440 /dev/serial/by-id/../../ttyACM0\n"
+        }
+      },
+      "/dev/ttyACM0": {
+        "fuser": {
+          "command": "if command -v fuser >/dev/null 2>&1; then fuser -v /dev/ttyACM0; else echo fuser_missing; exit 127; fi",
+          "ok": true,
+          "returncode": 0,
+          "stderr_preview": "                     USER        PID ACCESS COMMAND\n/dev/ttyACM0:        root      F.... lidar_driver\n",
+          "stdout_preview": " 550922"
+        },
+        "lsof": {
+          "command": "if command -v lsof >/dev/null 2>&1; then lsof -nP -- /dev/ttyACM0; else echo lsof_missing; exit 127; fi",
+          "ok": true,
+          "returncode": 0,
+          "stderr_preview": "",
+          "stdout_preview": "COMMAND      PID USER   FD   TYPE DEVICE SIZE/OFF NODE NAME\nlidar_dri 550922 root   24u   CHR  166,0      0t0  440 /dev/ttyACM0\n"
+        }
+      }
+    },
+    "safe_to_control": false,
+    "uses_base_uart": false
+  },
+  "lidar_devices": {
+    "/dev/lidar": {
+      "error": null,
+      "exists": false,
+      "is_symlink": false,
+      "lexists": false,
+      "path": "/dev/lidar",
+      "realpath": null
+    },
+    "/dev/serial/by-id/usb-STC_STC_USB_Serial-if00": {
+      "error": null,
+      "exists": true,
+      "gid": 20,
+      "is_symlink": true,
+      "lexists": true,
+      "mode_octal": "0o660",
+      "path": "/dev/serial/by-id/usb-STC_STC_USB_Serial-if00",
+      "realpath": "/dev/ttyACM0",
+      "uid": 0
+    },
+    "/dev/ttyACM0": {
+      "error": null,
+      "exists": true,
+      "gid": 20,
+      "is_symlink": false,
+      "lexists": true,
+      "mode_octal": "0o660",
+      "path": "/dev/ttyACM0",
+      "realpath": "/dev/ttyACM0",
+      "uid": 0
+    }
+  },
+  "primary_actions_enabled": false,
+  "proof": {
+    "all_required_observations_observed": true,
+    "driver_started_by_collector": false,
+    "lidar_start_command_sent_by_collector": false,
+    "pointcloud_fabricated": false,
+    "raw_packet_once_observed": true,
+    "raw_packet_topic": "/lidar/raw_packet",
+    "required_observations": {
+      "raw_packet_once": {
+        "observed": true,
+        "result_key": "raw_packet_once",
+        "topic": "/lidar/raw_packet"
+      },
+      "scan_hz": {
+        "average_rate_hz": 14.847,
+        "observed": true,
+        "result_key": "scan_hz",
+        "topic": "/scan"
+      },
+      "scan_once": {
+        "observed": true,
+        "result_key": "scan_once",
+        "topic": "/scan"
+      },
+      "tf": {
+        "child_frame": "laser_frame",
+        "observed": true,
+        "parent_frame": "base_link",
+        "result_key": "tf"
+      }
+    },
+    "runtime_summary_fallback_source": null,
+    "runtime_summary_fallback_used": false,
+    "scan_hz_average_rate_hz": 14.847,
+    "scan_hz_observed": true,
+    "scan_once_observed": true,
+    "scan_topic": "/scan",
+    "status": "scan_once_hz_raw_packet_tf_observed",
+    "tf_child_frame": "laser_frame",
+    "tf_observed": true,
+    "tf_parent_frame": "base_link"
+  },
+  "publishes_cmd_vel": false,
+  "robot_control_executed": false,
+  "ros_runtime": {
+    "humble_setup": {
+      "exists": true,
+      "path": "/opt/ros/humble/setup.bash"
+    },
+    "rober_install_setup": {
+      "exists": true,
+      "path": "/root/rober/onboard/install/setup.bash"
+    },
+    "ros2_available": true,
+    "ros2_cli_check": {
+      "command": "export HOME=${HOME:-/root} && export USER=${USER:-root} && export LOGNAME=${LOGNAME:-root} && export ROS_HOME=${ROS_HOME:-$HOME/.ros} && mkdir -p \"$ROS_HOME/log\" && export ROS_LOG_DIR=${ROS_LOG_DIR:-$ROS_HOME/log} && source /opt/ros/humble/setup.bash && source /root/rober/onboard/install/setup.bash && command -v ros2 && ros2 --help >/dev/null",
+      "ok": true,
+      "returncode": 0,
+      "stderr_preview": "",
+      "stdout_preview": "/opt/ros/humble/bin/ros2\n"
+    },
+    "ros_home_default": "/root/.ros",
+    "ros_log_dir_default": "/root/.ros/log"
+  },
+  "route_execution_success": false,
+  "safe_to_control": false,
+  "schema": "trashbot.o1.lidar_scan_proof.v1",
+  "sends_commands": false,
+  "sends_motion_commands": false,
+  "topic_reads": {
+    "attempted": true,
+    "commands": {
+      "raw_packet_once": "export HOME=${HOME:-/root} && export USER=${USER:-root} && export LOGNAME=${LOGNAME:-root} && export ROS_HOME=${ROS_HOME:-$HOME/.ros} && mkdir -p \"$ROS_HOME/log\" && export ROS_LOG_DIR=${ROS_LOG_DIR:-$ROS_HOME/log} && source /opt/ros/humble/setup.bash && source /root/rober/onboard/install/setup.bash && timeout 12 ros2 topic echo --no-daemon --once /lidar/raw_packet std_msgs/msg/UInt8MultiArray",
+      "scan_hz": "export HOME=${HOME:-/root} && export USER=${USER:-root} && export LOGNAME=${LOGNAME:-root} && export ROS_HOME=${ROS_HOME:-$HOME/.ros} && mkdir -p \"$ROS_HOME/log\" && export ROS_LOG_DIR=${ROS_LOG_DIR:-$ROS_HOME/log} && source /opt/ros/humble/setup.bash && source /root/rober/onboard/install/setup.bash && timeout 12 ros2 topic hz /scan",
+      "scan_once": "export HOME=${HOME:-/root} && export USER=${USER:-root} && export LOGNAME=${LOGNAME:-root} && export ROS_HOME=${ROS_HOME:-$HOME/.ros} && mkdir -p \"$ROS_HOME/log\" && export ROS_LOG_DIR=${ROS_LOG_DIR:-$ROS_HOME/log} && source /opt/ros/humble/setup.bash && source /root/rober/onboard/install/setup.bash && timeout 12 ros2 topic echo --no-daemon --once /scan sensor_msgs/msg/LaserScan",
+      "tf": "export HOME=${HOME:-/root} && export USER=${USER:-root} && export LOGNAME=${LOGNAME:-root} && export ROS_HOME=${ROS_HOME:-$HOME/.ros} && mkdir -p \"$ROS_HOME/log\" && export ROS_LOG_DIR=${ROS_LOG_DIR:-$ROS_HOME/log} && source /opt/ros/humble/setup.bash && source /root/rober/onboard/install/setup.bash && timeout 12 ros2 run tf2_ros tf2_echo base_link laser_frame"
+    },
+    "mode": "parallel_topic_and_tf_observation",
+    "reason": "expect_existing_topics_requested_read_only_ros2_topic_observation",
+    "results": {
+      "raw_packet_once": {
+        "command": "export HOME=${HOME:-/root} && export USER=${USER:-root} && export LOGNAME=${LOGNAME:-root} && export ROS_HOME=${ROS_HOME:-$HOME/.ros} && mkdir -p \"$ROS_HOME/log\" && export ROS_LOG_DIR=${ROS_LOG_DIR:-$ROS_HOME/log} && source /opt/ros/humble/setup.bash && source /root/rober/onboard/install/setup.bash && timeout 12 ros2 topic echo --no-daemon --once /lidar/raw_packet std_msgs/msg/UInt8MultiArray",
+        "ok": true,
+        "returncode": 0,
+        "stderr_preview": "",
+        "stdout_preview": "layout:\n  dim: []\n  data_offset: 0\ndata:\n- 170\n- 85\n- 0\n- 8\n- 39\n- 90\n- 225\n- 93\n- 71\n- 89\n- 255\n- 184\n- 6\n- 255\n- 192\n- 6\n- 206\n- 252\n- 5\n- 164\n- 20\n- 6\n- 156\n- 24\n- 6\n- 141\n- 36\n- 6\n- 132\n- 56\n- 6\n- 124\n---\n"
+      },
+      "scan_hz": {
+        "command": "export HOME=${HOME:-/root} && export USER=${USER:-root} && export LOGNAME=${LOGNAME:-root} && export ROS_HOME=${ROS_HOME:-$HOME/.ros} && mkdir -p \"$ROS_HOME/log\" && export ROS_LOG_DIR=${ROS_LOG_DIR:-$ROS_HOME/log} && source /opt/ros/humble/setup.bash && source /root/rober/onboard/install/setup.bash && timeout 12 ros2 topic hz /scan",
+        "error": {
+          "message": "Command '['bash', '-lc', 'export HOME=${HOME:-/root} && export USER=${USER:-root} && export LOGNAME=${LOGNAME:-root} && export ROS_HOME=${ROS_HOME:-$HOME/.ros} && mkdir -p \"$ROS_HOME/log\" && export ROS_LOG_DIR=${ROS_LOG_DIR:-$ROS_HOME/log} && source /opt/ros/humble/setup.bash && source /root/rober/onboard/install/setup.bash && timeout 12 ros2 topic hz /scan']' timed out after 14.0 seconds",
+          "type": "TimeoutExpired"
+        },
+        "ok": false,
+        "returncode": null,
+        "stderr_preview": "",
+        "stdout_preview": "WARNING: topic [/scan] does not appear to be published yet\naverage rate: 14.847\n\tmin: 0.002s max: 0.406s std dev: 0.09569s window: 16\naverage rate: 14.876\n\tmin: 0.002s max: 0.406s std dev: 0.07089s window: 32\naverage rate: 15.218\n\tmin: 0.002s max: 0.406s std dev: 0.06069s window: 48\naverage rate: 15.395\n\tmin: 0.002s max: 0.406s std dev: 0.05498s window: 64\naverage rate: 15.320\n\tmin: 0.002s max: 0.406s std dev: 0.05080s window: 80\naverage rate: 15.405\n\tmin: 0.002s max: 0.406s std dev: 0.04824s window: 96\naverage rate: 15.590\n\tmin: 0.002s max: 0.406s std dev: 0.04620s window: 113\naverage rate: 15.629\n\tmin: 0.002s max: 0.406s std dev: 0.04456s window: 130\n"
+      },
+      "scan_once": {
+        "command": "export HOME=${HOME:-/root} && export USER=${USER:-root} && export LOGNAME=${LOGNAME:-root} && export ROS_HOME=${ROS_HOME:-$HOME/.ros} && mkdir -p \"$ROS_HOME/log\" && export ROS_LOG_DIR=${ROS_LOG_DIR:-$ROS_HOME/log} && source /opt/ros/humble/setup.bash && source /root/rober/onboard/install/setup.bash && timeout 12 ros2 topic echo --no-daemon --once /scan sensor_msgs/msg/LaserScan",
+        "ok": true,
+        "returncode": 0,
+        "stderr_preview": "",
+        "stdout_preview": "header:\n  stamp:\n    sec: 1783862292\n    nanosec: 383654916\n  frame_id: laser_frame\nangle_min: 0.006544984877109528\nangle_max: 6.274731159210205\nangle_increment: 0.04414215683937073\ntime_increment: 9.999999747378752e-05\nscan_time: 0.10000000149011612\nrange_min: 0.05000000074505806\nrange_max: 8.0\nranges:\n- 5.4382500648498535\n- 5.647749900817871\n- 0.46399998664855957\n- 0.47099998593330383\n- 0.47600001096725464\n- 0.4790000021457672\n- 0.48100000619888306\n- 0.4779999852180481\n- 0.05999999865889549\n- 5.636000156402588\n- 0.06199999898672104\n- 0.06199999898672104\n- 0.06499999761581421\n- 0.5230000019073486\n- 0.527999997138977\n- 0.5329999923706055\n- 0.05999999865889549\n- 5.873499870300293\n- 0.057999998331069946\n- 0.5540000200271606\n- 0.5580000281333923\n- 0.5680000185966492\n- 0.5770000219345093\n- 0.6309999823570251\n- 5.64300012588501\n- 0.6570000052452087\n- 0.6729999780654907\n- 0.6909999847412109\n- 0.7099999785423279\n- 0.7200000286102295\n- 0.7390000224113464\n- 0.7599999904632568\n- 5.887249946594238\n- 0.7950000166893005\n- 0.8109999895095825\n- 0.3619999885559082\n- 0.35199999809265137\n- 0.3499999940395355\n- 0.3490000069141388\n- 0.3540000021457672\n- 6.026000022888184\n- 5.202499866485596\n- 5.683499813079834\n- 10.302499771118164\n- 5.727749824523926\n- 4.394499778747559\n- 0.11400000005960464\n- 0.0989999994635582\n- 0.10400000214576721\n- 1.5269999504089355\n- 1.5360000133514404\n- 5.863500118255615\n- 1.555999994277954\n- 1.562999963760376\n- 1.5740000009536743\n- 1.590999960899353\n- 1.5989999771118164\n- 1.6160000562667847\n- 1.6330000162124634\n- 4.125\n- 1.659999966621399\n- 1.6710000038146973\n- 1.6920000314712524\n- 1.7070000171661377\n- 1.7079999446868896\n- 1.7280000448226929\n- 1.6859999895095825\n- 4.978250026702881\n- 0.052000001072883606\n- 0.052000001072883606\n- 0.05299999937415123\n- 0.054999999701976776\n- 0.061000000685453415\n- 1.4670000076293945\n- 1.3930000066757202\n- 5.441249847412109\n- 1.409999966621399\n- 1.3849999904632568\n- 1.3639999628067017\n- 1.3380000591278076\n- 1.3289999961853027\n- 1."
+      },
+      "tf": {
+        "command": "export HOME=${HOME:-/root} && export USER=${USER:-root} && export LOGNAME=${LOGNAME:-root} && export ROS_HOME=${ROS_HOME:-$HOME/.ros} && mkdir -p \"$ROS_HOME/log\" && export ROS_LOG_DIR=${ROS_LOG_DIR:-$ROS_HOME/log} && source /opt/ros/humble/setup.bash && source /root/rober/onboard/install/setup.bash && timeout 12 ros2 run tf2_ros tf2_echo base_link laser_frame",
+        "error": {
+          "message": "Command '['bash', '-lc', 'export HOME=${HOME:-/root} && export USER=${USER:-root} && export LOGNAME=${LOGNAME:-root} && export ROS_HOME=${ROS_HOME:-$HOME/.ros} && mkdir -p \"$ROS_HOME/log\" && export ROS_LOG_DIR=${ROS_LOG_DIR:-$ROS_HOME/log} && source /opt/ros/humble/setup.bash && source /root/rober/onboard/install/setup.bash && timeout 12 ros2 run tf2_ros tf2_echo base_link laser_frame']' timed out after 14.0 seconds",
+          "type": "TimeoutExpired"
+        },
+        "ok": false,
+        "returncode": null,
+        "stderr_preview": "[INFO] [1783862316.961976793] [tf2_echo]: Waiting for transform base_link ->  laser_frame: Invalid frame ID \"base_link\" passed to canTransform argument target_frame - frame does not exist\n",
+        "stdout_preview": " 0.000, 0.000]\n- Rotation: in Quaternion (xyzw) [0.000, 0.000, 0.000, 1.000]\n- Rotation: in RPY (radian) [0.000, -0.000, 0.000]\n- Rotation: in RPY (degree) [0.000, -0.000, 0.000]\n- Matrix:\n  1.000  0.000  0.000  0.000\n  0.000  1.000  0.000  0.000\n  0.000  0.000  1.000  0.000\n  0.000  0.000  0.000  1.000\nAt time 0.0\n- Translation: [0.000, 0.000, 0.000]\n- Rotation: in Quaternion (xyzw) [0.000, 0.000, 0.000, 1.000]\n- Rotation: in RPY (radian) [0.000, -0.000, 0.000]\n- Rotation: in RPY (degree) [0.000, -0.000, 0.000]\n- Matrix:\n  1.000  0.000  0.000  0.000\n  0.000  1.000  0.000  0.000\n  0.000  0.000  1.000  0.000\n  0.000  0.000  0.000  1.000\nAt time 0.0\n- Translation: [0.000, 0.000, 0.000]\n- Rotation: in Quaternion (xyzw) [0.000, 0.000, 0.000, 1.000]\n- Rotation: in RPY (radian) [0.000, -0.000, 0.000]\n- Rotation: in RPY (degree) [0.000, -0.000, 0.000]\n- Matrix:\n  1.000  0.000  0.000  0.000\n  0.000  1.000  0.000  0.000\n  0.000  0.000  1.000  0.000\n  0.000  0.000  0.000  1.000\nAt time 0.0\n- Translation: [0.000, 0.000, 0.000]\n- Rotation: in Quaternion (xyzw) [0.000, 0.000, 0.000, 1.000]\n- Rotation: in RPY (radian) [0.000, -0.000, 0.000]\n- Rotation: in RPY (degree) [0.000, -0.000, 0.000]\n- Matrix:\n  1.000  0.000  0.000  0.000\n  0.000  1.000  0.000  0.000\n  0.000  0.000  1.000  0.000\n  0.000  0.000  0.000  1.000\nAt time 0.0\n- Translation: [0.000, 0.000, 0.000]\n- Rotation: in Quaternion (xyzw) [0.000, 0.000, 0.000, 1.000]\n- Rotation: in RPY (radian) [0.000, -0.000, 0.000]\n- Rotation: in RPY (degree) [0.000, -0.000, 0.000]\n- Matrix:\n  1.000  0.000  0.000  0.000\n  0.000  1.000  0.000  0.000\n  0.000  0.000  1.000  0.000\n  0.000  0.000  0.000  1.000\nAt time 0.0\n- Translation: [0.000, 0.000, 0.000]\n- Rotation: in Quaternion (xyzw) [0.000, 0.000, 0.000, 1.000]\n- Rotation: in RPY (radian) [0.000, -0.000, 0.000]\n- Rotation: in RPY (degree) [0.000, -0.000, 0.000]\n- Matrix:\n  1.000  0.000  0.000  0.000\n  0.000  1.000  0.000  0.000\n  0.000  0.000  1.000  0.000\n  0.000  0.000  0.000  1.000\n"
+      }
+    }
+  },
+  "upper_api": {
+    "health": {
+      "ok": true,
+      "payload": {
+        "cloud_relay": false,
+        "delivery_success": false,
+        "generated_at_ms": 1783862281817,
+        "primary_actions_enabled": false,
+        "robot_control_executed": false,
+        "safe_to_control": false,
+        "schema": "trashbot.upper_robot_api.v1.health",
+        "status": "ready"
+      },
+      "status": "loaded"
+    },
+    "radar_status": {
+      "ok": true,
+      "payload": {
+        "baudrate": 230400,
+        "blocked_reasons": [
+          "latest_scan_proof_stale"
+        ],
+        "calls_base_manual": false,
+        "candidates": [
+          {
+            "error": null,
+            "exists": true,
+            "gid": 20,
+            "is_symlink": true,
+            "lexists": true,
+            "mode_octal": "0o660",
+            "path": "/dev/serial/by-id/usb-STC_STC_USB_Serial-if00",
+            "realpath": "/dev/ttyACM0",
+            "uid": 0
+          },
+          {
+            "error": null,
+            "exists": true,
+            "gid": 20,
+            "is_symlink": true,
+            "lexists": true,
+            "mode_octal": "0o660",
+            "path": "/dev/serial/by-path/platform-5200400.usb-usb-0:1:1.0",
+            "realpath": "/dev/ttyACM0",
+            "uid": 0
+          },
+          {
+            "error": null,
+            "exists": true,
+            "gid": 20,
+            "is_symlink": false,
+            "lexists": true,
+            "mode_octal": "0o660",
+            "path": "/dev/ttyACM0",
+            "realpath": "/dev/ttyACM0",
+            "uid": 0
+          }
+        ],
+        "cloud_relay": false,
+        "continuity_blocked_reasons": [
+          "latest_scan_proof_stale"
+        ],
+        "continuity_window_status": "latest_proof_stale_while_lifecycle_running",
+        "continuous_blocked_reasons": [
+          "latest_scan_proof_stale"
+        ],
+        "continuous_scan_status": "latest_proof_stale_while_lifecycle_running",
+        "continuous_window_observed": false,
+        "controls": {
+          "scan_proof_refresh": {
+            "allowed_runtime_script": "o1_lidar_ros2_scan_smoke.sh",
+            "artifact": {
+              "configured_by": "ROBER_LIDAR_SCAN_PROOF_ARTIFACT_PATH or --lidar-scan-proof-artifact-path",
+              "format": "json",
+              "path": "runtime/lidar_scan_proof_latest.json",
+              "schema": "trashbot.o1.lidar_scan_proof.v1"
+            },
+            "endpoint": "/api/radar/scan-proof/refresh",
+            "legacy_mode": "legacy_ros2_cli",
+            "mode": "driver_diagnostics",
+            "opens_lidar_serial": false,
+            "runtime_command": {
+              "argv": [
+                "bash",
+                "/root/rober/onboard/scripts/o1_lidar_ros2_scan_smoke.sh",
+                "--serial-port",
+                "/dev/ttyACM0",
+                "--serial-baudrate",
+                "150000",
+                "--frame-id",
+                "laser_frame"
+              ],
+              "configured": true,
+              "env": "ROBER_LIDAR_SCAN_PROOF_RUNTIME_COMMAND",
+              "error": null,
+              "mode": "command"
+            },
+            "runtime_warmup_s": 6.0,
+            "sends_lidar_start_command": false,
+            "sends_motion_commands": false,
+            "starts_driver": false
+          },
+          "start": {
+            "allowed_runtime_script": "o1_lidar_lifecycle.sh",
+            "command": {
+              "argv": [
+                "bash",
+                "/root/rober/onboard/scripts/o1_lidar_lifecycle.sh",
+                "start",
+                "--serial-port",
+                "/dev/ttyACM0",
+                "--serial-baudrate",
+                "150000",
+                "--frame-id",
+                "laser_frame"
+              ],
+              "configured": true,
+              "env": "ROBER_RADAR_START_COMMAND",
+              "error": null,
+              "mode": "command"
+            },
+            "endpoint": "/api/radar/start",
+            "recommended_command": "bash /root/rober/onboard/scripts/o1_lidar_lifecycle.sh start --serial-port /dev/ttyACM0 --serial-baudrate 230400 --frame-id laser_frame"
+          },
+          "stop": {
+            "allowed_runtime_script": "o1_lidar_lifecycle.sh",
+            "command": {
+              "argv": [
+                "bash",
+                "/root/rober/onboard/scripts/o1_lidar_lifecycle.sh",
+                "stop"
+              ],
+              "configured": true,
+              "env": "ROBER_RADAR_STOP_COMMAND",
+              "error": null,
+              "mode": "command"
+            },
+            "endpoint": "/api/radar/stop",
+            "recommended_command": "bash /root/rober/onboard/scripts/o1_lidar_lifecycle.sh stop"
+          }
+        },
+        "delivery_success": false,
+        "dev_lidar": {
+          "error": null,
+          "exists": false,
+          "is_symlink": false,
+          "lexists": false,
+          "path": "/dev/lidar",
+          "realpath": null
+        },
+        "driver_diagnostics_latest": {
+          "artifact": {
+            "bytes_read": 36712,
+            "configured_by": "o1_lidar_lifecycle.sh driver_diagnostics_path",
+            "format": "json",
+            "mtime_ms": 1783862282031,
+            "path": "/tmp/rober_lidar_lifecycle/lidar_driver_diagnostics.json",
+            "schema": "trashbot.o1.lidar_driver_diagnostics.v1"
+          },
+          "diagnosis_status": "scan_published",
+          "hil_pass": false,
+          "next_action_plain": "LiDAR driver 已发布 /scan；继续用 scan proof 验证 topic 一次读取和 hz。",
+          "publishes_cmd_vel": false,
+          "readback_sends_commands": false,
+          "robot_control_executed": false,
+          "runtime": {
+            "last_scan_range_count": 182,
+            "parsed_packet_count": 13292,
+            "published_raw_packet_count": 13292,
+            "published_scan_count": 688,
+            "uptime_s": 49.778
+          },
+          "scan_preview": {
+            "scan_preview_angle_increment": 0.017043477640331366,
+            "scan_preview_angle_min": 0.0234528618236738,
+            "scan_preview_frame_id": "laser_frame",
+            "scan_preview_point_count": 157,
+            "scan_preview_points": [
+              {
+                "angle_rad": 0.0234528618236738,
+                "frame_id": "laser_frame",
+                "range_m": 5.476,
+                "source_index": 0,
+                "x_m": 5.474494068467871,
+                "y_m": 0.12841609832920473
+              },
+              {
+                "angle_rad": 0.04049633946400517,
+                "frame_id": "laser_frame",
+                "range_m": 4.6475,
+                "source_index": 1,
+                "x_m": 4.643689678803011,
+                "y_m": 0.18815530016022944
+              },
+              {
+                "angle_rad": 0.10867025002533064,
+                "frame_id": "laser_frame",
+                "range_m": 1.025,
+                "source_index": 5,
+                "x_m": 1.0189537267534,
+                "y_m": 0.11116790335055135
+              },
+              {
+                "angle_rad": 0.125713727665662,
+                "frame_id": "laser_frame",
+                "range_m": 1.035,
+                "source_index": 6,
+                "x_m": 1.0268322257891558,
+                "y_m": 0.129771260612232
+              },
+              {
+                "angle_rad": 0.14275720530599334,
+                "frame_id": "laser_frame",
+                "range_m": 1.057,
+                "source_index": 7,
+                "x_m": 1.0462476503615195,
+                "y_m": 0.15038235971349664
+              },
+              {
+                "angle_rad": 0.1598006829463247,
+                "frame_id": "laser_frame",
+                "range_m": 1.073,
+                "source_index": 8,
+                "x_m": 1.0593289269588995,
+                "y_m": 0.17073729676935434
+              },
+              {
+                "angle_rad": 0.17684416058665609,
+                "frame_id": "laser_frame",
+                "range_m": 5.16725,
+                "source_index": 9,
+                "x_m": 5.086660438561115,
+                "y_m": 0.909042433155488
+              },
+              {
+                "angle_rad": 0.19388763822698746,
+                "frame_id": "laser_frame",
+                "range_m": 1.082,
+                "source_index": 10,
+                "x_m": 1.0617261343280235,
+                "y_m": 0.20847449648547375
+              },
+              {
+                "angle_rad": 0.21093111586731883,
+                "frame_id": "laser_frame",
+                "range_m": 1.088,
+                "source_index": 11,
+                "x_m": 1.0638859928278166,
+                "y_m": 0.22779507076486744
+              },
+              {
+                "angle_rad": 0.2279745935076502,
+                "frame_id": "laser_frame",
+                "range_m": 2.15,
+                "source_index": 12,
+                "x_m": 2.0943712111581094,
+                "y_m": 0.4859107221209609
+              },
+              {
+                "angle_rad": 0.24501807114798158,
+                "frame_id": "laser_frame",
+                "range_m": 2.172,
+                "source_index": 13,
+                "x_m": 2.107128749031373,
+                "y_m": 0.5268704157622455
+              },
+              {
+                "angle_rad": 0.2620615487883129,
+                "frame_id": "laser_frame",
+                "range_m": 2.186,
+                "source_index": 14,
+                "x_m": 2.1113654586755985,
+                "y_m": 0.5663319697064424
+              },
+              {
+                "angle_rad": 0.27910502642864427,
+                "frame_id": "laser_frame",
+                "range_m": 2.216,
+                "source_index": 15,
+                "x_m": 2.130246083802821,
+                "y_m": 0.6104978480246637
+              },
+              {
+                "angle_rad": 0.29614850406897564,
+                "frame_id": "laser_frame",
+                "range_m": 2.239,
+                "source_index": 16,
+                "x_m": 2.1415309462195613,
+                "y_m": 0.6534265118465502
+              },
+              {
+                "angle_rad": 0.313191981709307,
+                "frame_id": "laser_frame",
+                "range_m": 5.39275,
+                "source_index": 17,
+                "x_m": 5.130419559834335,
+                "y_m": 1.6614896035092332
+              },
+              {
+                "angle_rad": 0.3302354593496384,
+                "frame_id": "laser_frame",
+                "range_m": 2.275,
+                "source_index": 18,
+                "x_m": 2.152072691731587,
+                "y_m": 0.737704635679593
+              },
+              {
+                "angle_rad": 0.34727893698996976,
+                "frame_id": "laser_frame",
+                "range_m": 2.31,
+                "source_index": 19,
+                "x_m": 2.1720982681722423,
+                "y_m": 0.7861864367967354
+              },
+              {
+                "angle_rad": 0.36432241463030113,
+                "frame_id": "laser_frame",
+                "range_m": 2.332,
+                "source_index": 20,
+                "x_m": 2.1789401368836883,
+                "y_m": 0.8309295276239095
+              },
+              {
+                "angle_rad": 0.38136589227063245,
+                "frame_id": "laser_frame",
+                "range_m": 2.529,
+                "source_index": 21,
+                "x_m": 2.3473093869417316,
+                "y_m": 0.9412649159377141
+              },
+              {
+                "angle_rad": 0.3984093699109638,
+                "frame_id": "laser_frame",
+                "range_m": 2.547,
+                "source_index": 22,
+                "x_m": 2.347517047417815,
+                "y_m": 0.9881157382021326
+              },
+              {
+                "angle_rad": 0.4154528475512952,
+                "frame_id": "laser_frame",
+                "range_m": 2.601,
+                "source_index": 23,
+                "x_m": 2.3797424056935434,
+                "y_m": 1.0497747770564434
+              },
+              {
+                "angle_rad": 0.43249632519162656,
+                "frame_id": "laser_frame",
+                "range_m": 2.812,
+                "source_index": 24,
+                "x_m": 2.5530774330763784,
+                "y_m": 1.1786176736822374
+              },
+              {
+                "angle_rad": 0.44953980283195794,
+                "frame_id": "laser_frame",
+                "range_m": 4.1565,
+                "source_index": 25,
+                "x_m": 3.743539990799889,
+                "y_m": 1.8062116673529631
+              },
+              {
+                "angle_rad": 0.4665832804722893,
+                "frame_id": "laser_frame",
+                "range_m": 2.884,
+                "source_index": 26,
+                "x_m": 2.575730585481251,
+                "y_m": 1.2973310876628257
+              },
+              {
+                "angle_rad": 0.4836267581126207,
+                "frame_id": "laser_frame",
+                "range_m": 2.932,
+                "source_index": 27,
+                "x_m": 2.595741620244878,
+                "y_m": 1.3633596154091174
+              },
+              {
+                "angle_rad": 0.500670235752952,
+                "frame_id": "laser_frame",
+                "range_m": 2.983,
+                "source_index": 28,
+                "x_m": 2.6168696723733014,
+                "y_m": 1.4318806227520686
+              },
+              {
+                "angle_rad": 0.5177137133932834,
+                "frame_id": "laser_frame",
+                "range_m": 3.034,
+                "source_index": 29,
+                "x_m": 2.6364031623189885,
+                "y_m": 1.5015106945055157
+              },
+              {
+                "angle_rad": 0.5347571910336147,
+                "frame_id": "laser_frame",
+                "range_m": 3.064,
+                "source_index": 30,
+                "x_m": 2.636242307135762,
+                "y_m": 1.5615128875765052
+              },
+              {
+                "angle_rad": 0.5518006686739462,
+                "frame_id": "laser_frame",
+                "range_m": 3.125,
+                "source_index": 31,
+                "x_m": 2.661193606040826,
+                "y_m": 1.6381921716231662
+              },
+              {
+                "angle_rad": 0.5688441463142775,
+                "frame_id": "laser_frame",
+                "range_m": 2.778,
+                "source_index": 32,
+                "x_m": 2.3405320840524295,
+                "y_m": 1.4963935189385154
+              },
+              {
+                "angle_rad": 0.5858876239546088,
+                "frame_id": "laser_frame",
+                "range_m": 4.86375,
+                "source_index": 33,
+                "x_m": 4.052581615953293,
+                "y_m": 2.6893579732972324
+              },
+              {
+                "angle_rad": 0.6029311015949402,
+                "frame_id": "laser_frame",
+                "range_m": 2.768,
+                "source_index": 34,
+                "x_m": 2.2799380673455287,
+                "y_m": 1.5696198294710524
+              },
+              {
+                "angle_rad": 0.6199745792352716,
+                "frame_id": "laser_frame",
+                "range_m": 3.36,
+                "source_index": 35,
+                "x_m": 2.7346812419057946,
+                "y_m": 1.9522086223476682
+              },
+              {
+                "angle_rad": 0.637018056875603,
+                "frame_id": "laser_frame",
+                "range_m": 3.436,
+                "source_index": 36,
+                "x_m": 2.762107600431049,
+                "y_m": 2.043736187388439
+              },
+              {
+                "angle_rad": 0.6540615345159343,
+                "frame_id": "laser_frame",
+                "range_m": 3.521,
+                "source_index": 37,
+                "x_m": 2.794333392335286,
+                "y_m": 2.14222825405697
+              },
+              {
+                "angle_rad": 0.6711050121562657,
+                "frame_id": "laser_frame",
+                "range_m": 3.563,
+                "source_index": 38,
+                "x_m": 2.790309970839899,
+                "y_m": 2.2156577503376833
+              },
+              {
+                "angle_rad": 0.688148489796597,
+                "frame_id": "laser_frame",
+                "range_m": 3.65,
+                "source_index": 39,
+                "x_m": 2.8193448532343277,
+                "y_m": 2.3181446457331147
+              },
+              {
+                "angle_rad": 0.7051919674369285,
+                "frame_id": "laser_frame",
+                "range_m": 3.748,
+                "source_index": 40,
+                "x_m": 2.854053786988318,
+                "y_m": 2.4293787232495556
+              },
+              {
+                "angle_rad": 0.7222354450772598,
+                "frame_id": "laser_frame",
+                "range_m": 5.9955,
+                "source_index": 41,
+                "x_m": 4.498602517846689,
+                "y_m": 3.963407074276301
+              },
+              {
+                "angle_rad": 0.7392789227175911,
+                "frame_id": "laser_frame",
+                "range_m": 3.9,
+                "source_index": 42,
+                "x_m": 2.8819228635524823,
+                "y_m": 2.6276454495485995
+              },
+              {
+                "angle_rad": 0.7563224003579225,
+                "frame_id": "laser_frame",
+                "range_m": 4.022,
+                "source_index": 43,
+                "x_m": 2.9254607457207755,
+                "y_m": 2.7601020679038024
+              },
+              {
+                "angle_rad": 0.7733658779982538,
+                "frame_id": "laser_frame",
+                "range_m": 4.144,
+                "source_index": 44,
+                "x_m": 2.9652951485673675,
+                "y_m": 2.894781629395011
+              },
+              {
+                "angle_rad": 0.7904093556385853,
+                "frame_id": "laser_frame",
+                "range_m": 4.272,
+                "source_index": 45,
+                "x_m": 3.0055846940052158,
+                "y_m": 3.035859787137999
+              },
+              {
+                "angle_rad": 0.8074528332789166,
+                "frame_id": "laser_frame",
+                "range_m": 4.337,
+                "source_index": 46,
+                "x_m": 2.9983462396383413,
+                "y_m": 3.133606361246833
+              },
+              {
+                "angle_rad": 0.824496310919248,
+                "frame_id": "laser_frame",
+                "range_m": 4.473,
+                "source_index": 47,
+                "x_m": 3.0368398592257404,
+                "y_m": 3.2841030235694166
+              },
+              {
+                "angle_rad": 0.8415397885595793,
+                "frame_id": "laser_frame",
+                "range_m": 4.629,
+                "source_index": 48,
+                "x_m": 3.0843741813760697,
+                "y_m": 3.4517063764550855
+              },
+              {
+                "angle_rad": 0.8585832661999107,
+                "frame_id": "laser_frame",
+                "range_m": 5.17975,
+                "source_index": 49,
+                "x_m": 3.385020878810328,
+                "y_m": 3.920643277896901
+              },
+              {
+                "angle_rad": 0.8756267438402421,
+                "frame_id": "laser_frame",
+                "range_m": 4.881,
+                "source_index": 50,
+                "x_m": 3.126357029874445,
+                "y_m": 3.748339995485287
+              },
+              {
+                "angle_rad": 0.8926702214805734,
+                "frame_id": "laser_frame",
+                "range_m": 5.009,
+                "source_index": 51,
+                "x_m": 3.1423201709268147,
+                "y_m": 3.9007569705618006
+              },
+              {
+                "angle_rad": 0.9097136991209048,
+                "frame_id": "laser_frame",
+                "range_m": 5.019,
+                "source_index": 52,
+                "x_m": 3.08152426317214,
+                "y_m": 3.961637188774535
+              },
+              {
+                "angle_rad": 0.9267571767612361,
+                "frame_id": "laser_frame",
+                "range_m": 4.982,
+                "source_index": 53,
+                "x_m": 2.9913439843948626,
+                "y_m": 3.983991110309444
+              },
+              {
+                "angle_rad": 0.9438006544015676,
+                "frame_id": "laser_frame",
+                "range_m": 4.964,
+                "source_index": 54,
+                "x_m": 2.912450894357601,
+                "y_m": 4.0198166361111065
+              },
+              {
+                "angle_rad": 0.9608441320418989,
+                "frame_id": "laser_frame",
+                "range_m": 4.927,
+                "source_index": 55,
+                "x_m": 2.82232491570394,
+                "y_m": 4.038540710479064
+              },
+              {
+                "angle_rad": 0.9778876096822302,
+                "frame_id": "laser_frame",
+                "range_m": 2.506,
+                "source_index": 56,
+                "x_m": 1.400291747062096,
+                "y_m": 2.0782730867500985
+              },
+              {
+                "angle_rad": 0.9949310873225616,
+                "frame_id": "laser_frame",
+                "range_m": 5.87475,
+                "source_index": 57,
+                "x_m": 3.1991579096410097,
+                "y_m": 4.927278785666726
+              },
+              {
+                "angle_rad": 1.011974564962893,
+                "frame_id": "laser_frame",
+                "range_m": 2.481,
+                "source_index": 58,
+                "x_m": 1.3153953391727937,
+                "y_m": 2.1035912392103393
+              },
+              {
+                "angle_rad": 1.0290180426032243,
+                "frame_id": "laser_frame",
+                "range_m": 2.466,
+                "source_index": 59,
+                "x_m": 1.2716186147422883,
+                "y_m": 2.1128516508834463
+              },
+              {
+                "angle_rad": 1.0460615202435557,
+                "frame_id": "laser_frame",
+                "range_m": 2.452,
+                "source_index": 60,
+                "x_m": 1.2284115636061812,
+                "y_m": 2.122100146175627
+              },
+              {
+                "angle_rad": 1.0631049978838871,
+                "frame_id": "laser_frame",
+                "range_m": 2.439,
+                "source_index": 61,
+                "x_m": 1.1857468440650434,
+                "y_m": 2.1313670312242774
+              },
+              {
+                "angle_rad": 1.0801484755242186,
+                "frame_id": "laser_frame",
+                "range_m": 2.433,
+                "source_index": 62,
+                "x_m": 1.1464232981195353,
+                "y_m": 2.14597358360459
+              },
+              {
+                "angle_rad": 1.0971919531645498,
+                "frame_id": "laser_frame",
+                "range_m": 2.422,
+                "source_index": 63,
+                "x_m": 1.1046666477524472,
+                "y_m": 2.1554107722991858
+              },
+              {
+                "angle_rad": 1.1142354308048812,
+                "frame_id": "laser_frame",
+                "range_m": 2.412,
+                "source_index": 64,
+                "x_m": 1.0633636542502123,
+                "y_m": 2.164948437912468
+              },
+              {
+                "angle_rad": 1.1312789084452126,
+                "frame_id": "laser_frame",
+                "range_m": 6.36,
+                "source_index": 65,
+                "x_m": 2.7061978012248065,
+                "y_m": 5.75552720961738
+              },
+              {
+                "angle_rad": 1.1483223860855438,
+                "frame_id": "laser_frame",
+                "range_m": 2.397,
+                "source_index": 66,
+                "x_m": 0.982813459603483,
+                "y_m": 2.1862494605195977
+              },
+              {
+                "angle_rad": 1.1653658637258753,
+                "frame_id": "laser_frame",
+                "range_m": 2.388,
+                "source_index": 67,
+                "x_m": 0.9418615000180787,
+                "y_m": 2.1944112911630067
+              },
+              {
+                "angle_rad": 1.1824093413662067,
+                "frame_id": "laser_frame",
+                "range_m": 1.425,
+                "source_index": 68,
+                "x_m": 0.5396418418798493,
+                "y_m": 1.3188675757984665
+              },
+              {
+                "angle_rad": 1.199452819006538,
+                "frame_id": "laser_frame",
+                "range_m": 1.405,
+                "source_index": 69,
+                "x_m": 0.5098291104605889,
+                "y_m": 1.3092361429959702
+              },
+              {
+                "angle_rad": 1.2164962966468693,
+                "frame_id": "laser_frame",
+                "range_m": 1.403,
+                "source_index": 70,
+                "x_m": 0.4867483400759253,
+                "y_m": 1.3158590553069622
+              },
+              {
+                "angle_rad": 1.2335397742872007,
+                "frame_id": "laser_frame",
+                "range_m": 1.399,
+                "source_index": 71,
+                "x_m": 0.4629283200113759,
+                "y_m": 1.320188763219656
+              },
+              {
+                "angle_rad": 1.2505832519275322,
+                "frame_id": "laser_frame",
+                "range_m": 1.397,
+                "source_index": 72,
+                "x_m": 0.43973202992337296,
+                "y_m": 1.3259882133184555
+              },
+              {
+                "angle_rad": 1.2676267295678634,
+                "frame_id": "laser_frame",
+                "range_m": 5.775,
+                "source_index": 73,
+                "x_m": 1.7241074756487262,
+                "y_m": 5.511631193431957
+              },
+              {
+                "angle_rad": 1.2846702072081948,
+                "frame_id": "laser_frame",
+                "range_m": 1.395,
+                "source_index": 74,
+                "x_m": 0.3937219633739534,
+                "y_m": 1.3382854761062601
+              },
+              {
+                "angle_rad": 1.3017136848485262,
+                "frame_id": "laser_frame",
+                "range_m": 1.414,
+                "source_index": 75,
+                "x_m": 0.3759079430423904,
+                "y_m": 1.3631174631548224
+              },
+              {
+                "angle_rad": 1.3187571624888577,
+                "frame_id": "laser_frame",
+                "range_m": 1.405,
+                "source_index": 76,
+                "x_m": 0.3503777972646641,
+                "y_m": 1.3606103039386266
+              },
+              {
+                "angle_rad": 1.3358006401291889,
+                "frame_id": "laser_frame",
+                "range_m": 1.393,
+                "source_index": 77,
+                "x_m": 0.32434443548799413,
+                "y_m": 1.35471387649495
+              },
+              {
+                "angle_rad": 1.3528441177695203,
+                "frame_id": "laser_frame",
+                "range_m": 1.395,
+                "source_index": 78,
+                "x_m": 0.30164187242560164,
+                "y_m": 1.361997496620158
+              },
+              {
+                "angle_rad": 1.3698875954098517,
+                "frame_id": "laser_frame",
+                "range_m": 1.397,
+                "source_index": 79,
+                "x_m": 0.2787851326642037,
+                "y_m": 1.3689002336932383
+              },
+              {
+                "angle_rad": 1.3869310730501831,
+                "frame_id": "laser_frame",
+                "range_m": 1.401,
+                "source_index": 80,
+                "x_m": 0.2561462759840721,
+                "y_m": 1.3773852348923636
+              },
+              {
+                "angle_rad": 1.4039745506905144,
+                "frame_id": "laser_frame",
+                "range_m": 5.34875,
+                "source_index": 81,
+                "x_m": 0.8881550745198062,
+                "y_m": 5.274495912037919
+              },
+              {
+                "angle_rad": 1.4210180283308458,
+                "frame_id": "laser_frame",
+                "range_m": 1.405,
+                "source_index": 82,
+                "x_m": 0.20965257801429774,
+                "y_m": 1.3892698789407185
+              },
+              {
+                "angle_rad": 1.4380615059711772,
+                "frame_id": "laser_frame",
+                "range_m": 1.495,
+                "source_index": 83,
+                "x_m": 0.19785637086496646,
+                "y_m": 1.481849471609092
+              },
+              {
+                "angle_rad": 1.4551049836115084,
+                "frame_id": "laser_frame",
+                "range_m": 1.506,
+                "source_index": 84,
+                "x_m": 0.1738427570701871,
+                "y_m": 1.495932717676245
+              },
+              {
+                "angle_rad": 1.4721484612518398,
+                "frame_id": "laser_frame",
+                "range_m": 1.51,
+                "source_index": 85,
+                "x_m": 0.14871679903231994,
+                "y_m": 1.5026587482477785
+              },
+              {
+                "angle_rad": 1.4891919388921713,
+                "frame_id": "laser_frame",
+                "range_m": 1.512,
+                "source_index": 86,
+                "x_m": 0.12324893670856661,
+                "y_m": 1.506968380424821
+              },
+              {
+                "angle_rad": 1.5062354165325027,
+                "frame_id": "laser_frame",
+                "range_m": 1.516,
+                "source_index": 87,
+                "x_m": 0.09780636227191296,
+                "y_m": 1.51284166901204
+              },
+              {
+                "angle_rad": 1.523278894172834,
+                "frame_id": "laser_frame",
+                "range_m": 1.521,
+                "source_index": 88,
+                "x_m": 0.07224682009497192,
+                "y_m": 1.5192831852509145
+              },
+              {
+                "angle_rad": 1.5403223718131653,
+                "frame_id": "laser_frame",
+                "range_m": 5.9055,
+                "source_index": 89,
+                "x_m": 0.17993608816106002,
+                "y_m": 5.902758105680538
+              },
+              {
+                "angle_rad": 1.5573658494534968,
+                "frame_id": "laser_frame",
+                "range_m": 1.528,
+                "source_index": 90,
+                "x_m": 0.02052115243822246,
+                "y_m": 1.527862193492138
+              },
+              {
+                "angle_rad": 1.574409327093828,
+                "frame_id": "laser_frame",
+                "range_m": 1.533,
+                "source_index": 91,
+                "x_m": -0.005538717408051815,
+                "y_m": 1.53298999429529
+              },
+              {
+                "angle_rad": 1.5914528047341594,
+                "frame_id": "laser_frame",
+                "range_m": 1.541,
+                "source_index": 92,
+                "x_m": -0.03182936884572401,
+                "y_m": 1.540671246982588
+              },
+              {
+                "angle_rad": 1.6084962823744908,
+                "frame_id": "laser_frame",
+                "range_m": 1.551,
+                "source_index": 93,
+                "x_m": -0.058458781026563836,
+                "y_m": 1.5498979227422973
+              },
+              {
+                "angle_rad": 1.6255397600148223,
+                "frame_id": "laser_frame",
+                "range_m": 1.508,
+                "source_index": 94,
+                "x_m": -0.08251187035509341,
+                "y_m": 1.5057409442697984
+              },
+              {
+                "angle_rad": 1.6425832376551535,
+                "frame_id": "laser_frame",
+                "range_m": 1.406,
+                "source_index": 95,
+                "x_m": -0.10084572883184649,
+                "y_m": 1.4023787430563732
+              },
+              {
+                "angle_rad": 1.6596267152954849,
+                "frame_id": "laser_frame",
+                "range_m": 1.327,
+                "source_index": 96,
+                "x_m": -0.11772296075886293,
+                "y_m": 1.3217678708873835
+              },
+              {
+                "angle_rad": 1.6766701929358163,
+                "frame_id": "laser_frame",
+                "range_m": 6.0815,
+                "source_index": 97,
+                "x_m": -0.642669701311493,
+                "y_m": 6.047447222176991
+              },
+              {
+                "angle_rad": 1.6937136705761475,
+                "frame_id": "laser_frame",
+                "range_m": 1.222,
+                "source_index": 98,
+                "x_m": -0.14982704669468414,
+                "y_m": 1.2127802175492264
+              },
+              {
+                "angle_rad": 1.710757148216479,
+                "frame_id": "laser_frame",
+                "range_m": 1.155,
+                "source_index": 99,
+                "x_m": -0.16112748877081598,
+                "y_m": 1.1437057892493203
+              },
+              {
+                "angle_rad": 1.7278006258568104,
+                "frame_id": "laser_frame",
+                "range_m": 1.097,
+                "source_index": 100,
+                "x_m": -0.171526984131357,
+                "y_m": 1.083507034455615
+              },
+              {
+                "angle_rad": 1.7448441034971418,
+                "frame_id": "laser_frame",
+                "range_m": 0.703,
+                "source_index": 101,
+                "x_m": -0.12173877661174878,
+                "y_m": 0.6923789932320843
+              },
+              {
+                "angle_rad": 1.761887581137473,
+                "frame_id": "laser_frame",
+                "range_m": 0.71,
+                "source_index": 102,
+                "x_m": -0.13485058307688355,
+                "y_m": 0.6970762657298156
+              },
+              {
+                "angle_rad": 1.7789310587778044,
+                "frame_id": "laser_frame",
+                "range_m": 0.978,
+                "source_index": 103,
+                "x_m": -0.20208927301311766,
+                "y_m": 0.9568928496613556
+              },
+              {
+                "angle_rad": 1.7959745364181359,
+                "frame_id": "laser_frame",
+                "range_m": 0.938,
+                "source_index": 104,
+                "x_m": -0.20943671154932858,
+                "y_m": 0.9143195633121951
+              },
+              {
+                "angle_rad": 1.813018014058467,
+                "frame_id": "laser_frame",
+                "range_m": 5.912,
+                "source_index": 105,
+                "x_m": -1.4180525991760151,
+                "y_m": 5.739413805082375
+              },
+              {
+                "angle_rad": 1.8300614916987985,
+                "frame_id": "laser_frame",
+                "range_m": 0.892,
+                "source_index": 106,
+                "x_m": -0.2286823479844999,
+                "y_m": 0.862188137079313
+              },
+              {
+                "angle_rad": 1.84710496933913,
+                "frame_id": "laser_frame",
+                "range_m": 0.863,
+                "source_index": 107,
+                "x_m": -0.23543172871233914,
+                "y_m": 0.8302655605982459
+              },
+              {
+                "angle_rad": 1.8641484469794614,
+                "frame_id": "laser_frame",
+                "range_m": 0.833,
+                "source_index": 108,
+                "x_m": -0.24087258003498951,
+                "y_m": 0.797414196128516
+              },
+              {
+                "angle_rad": 1.8811919246197926,
+                "frame_id": "laser_frame",
+                "range_m": 0.805,
+                "source_index": 109,
+                "x_m": -0.24587545968982885,
+                "y_m": 0.7665313159436576
+              },
+              {
+                "angle_rad": 1.898235402260124,
+                "frame_id": "laser_frame",
+                "range_m": 0.791,
+                "source_index": 110,
+                "x_m": -0.2544008072944722,
+                "y_m": 0.7489734502957505
+              },
+              {
+                "angle_rad": 1.9152788799004554,
+                "frame_id": "laser_frame",
+                "range_m": 0.765,
+                "source_index": 111,
+                "x_m": -0.2583479016984716,
+                "y_m": 0.7200564989554618
+              },
+              {
+                "angle_rad": 1.9323223575407866,
+                "frame_id": "laser_frame",
+                "range_m": 0.744,
+                "source_index": 112,
+                "x_m": -0.26315431022026736,
+                "y_m": 0.6959064657067753
+              },
+              {
+                "angle_rad": 1.949365835181118,
+                "frame_id": "laser_frame",
+                "range_m": 5.37075,
+                "source_index": 113,
+                "x_m": -1.9849843187071525,
+                "y_m": 4.990470199989847
+              },
+              {
+                "angle_rad": 1.9664093128214495,
+                "frame_id": "laser_frame",
+                "range_m": 0.713,
+                "source_index": 114,
+                "x_m": -0.27477159103734006,
+                "y_m": 0.6579282428645306
+              },
+              {
+                "angle_rad": 1.983452790461781,
+                "frame_id": "laser_frame",
+                "range_m": 0.69,
+                "source_index": 115,
+                "x_m": -0.2767205095994514,
+                "y_m": 0.6320805008596768
+              },
+              {
+                "angle_rad": 2.000496268102112,
+                "frame_id": "laser_frame",
+                "range_m": 0.668,
+                "source_index": 116,
+                "x_m": -0.27828749111555173,
+                "y_m": 0.6072726507003355
+              },
+              {
+                "angle_rad": 2.0175397457424435,
+                "frame_id": "laser_frame",
+                "range_m": 0.65,
+                "source_index": 117,
+                "x_m": -0.2808200550023519,
+                "y_m": 0.5862082366433247
+              },
+              {
+                "angle_rad": 2.034583223382775,
+                "frame_id": "laser_frame",
+                "range_m": 0.64,
+                "source_index": 118,
+                "x_m": -0.28629643121062315,
+                "y_m": 0.5723935302534969
+              },
+              {
+                "angle_rad": 2.0516267010231064,
+                "frame_id": "laser_frame",
+                "range_m": 0.631,
+                "source_index": 119,
+                "x_m": -0.29184731456010254,
+                "y_m": 0.5594516466899142
+              },
+              {
+                "angle_rad": 2.068670178663438,
+                "frame_id": "laser_frame",
+                "range_m": 0.625,
+                "source_index": 120,
+                "x_m": -0.2984741161645276,
+                "y_m": 0.5491249420485323
+              },
+              {
+                "angle_rad": 2.0857136563037693,
+                "frame_id": "laser_frame",
+                "range_m": 5.84225,
+                "source_index": 121,
+                "x_m": -2.8770913765103243,
+                "y_m": 5.084705524778197
+              },
+              {
+                "angle_rad": 2.1027571339441007,
+                "frame_id": "laser_frame",
+                "range_m": 0.601,
+                "source_index": 122,
+                "x_m": -0.30484172410553306,
+                "y_m": 0.5179503096286033
+              },
+              {
+                "angle_rad": 2.119800611584432,
+                "frame_id": "laser_frame",
+                "range_m": 0.586,
+                "source_index": 123,
+                "x_m": -0.30579712562034445,
+                "y_m": 0.4998841045305754
+              },
+              {
+                "angle_rad": 2.1368440892247635,
+                "frame_id": "laser_frame",
+                "range_m": 0.58,
+                "source_index": 124,
+                "x_m": -0.3110542610940397,
+                "y_m": 0.48953574604439354
+              },
+              {
+                "angle_rad": 2.1538875668650945,
+                "frame_id": "laser_frame",
+                "range_m": 0.573,
+                "source_index": 125,
+                "x_m": -0.31549782311465835,
+                "y_m": 0.47832010579727013
+              },
+              {
+                "angle_rad": 2.170931044505426,
+                "frame_id": "laser_frame",
+                "range_m": 0.569,
+                "source_index": 126,
+                "x_m": -0.3213448300337535,
+                "y_m": 0.46957267830505006
+              },
+              {
+                "angle_rad": 2.1879745221457574,
+                "frame_id": "laser_frame",
+                "range_m": 0.562,
+                "source_index": 127,
+                "x_m": -0.32524976929879706,
+                "y_m": 0.45831930743868876
+              },
+              {
+                "angle_rad": 2.205017999786089,
+                "frame_id": "laser_frame",
+                "range_m": 0.548,
+                "source_index": 128,
+                "x_m": -0.3247177976848729,
+                "y_m": 0.4414321599823533
+              },
+              {
+                "angle_rad": 2.2220614774264202,
+                "frame_id": "laser_frame",
+                "range_m": 2.17725,
+                "source_index": 129,
+                "x_m": -1.3198338987913096,
+                "y_m": 1.7316050479544494
+              },
+              {
+                "angle_rad": 2.358409298549071,
+                "frame_id": "laser_frame",
+                "range_m": 5.794,
+                "source_index": 137,
+                "x_m": -4.106040652385462,
+                "y_m": 4.087892630801103
+              },
+              {
+                "angle_rad": 2.443626686750728,
+                "frame_id": "laser_frame",
+                "range_m": 5.192,
+                "source_index": 142,
+                "x_m": -3.9778558068162546,
+                "y_m": 3.336694049531393
+              },
+              {
+                "angle_rad": 2.511800597312053,
+                "frame_id": "laser_frame",
+                "range_m": 0.054,
+                "source_index": 146,
+                "x_m": -0.04364009998895115,
+                "y_m": 0.0318047429317444
+              },
+              {
+                "angle_rad": 2.5288440749523846,
+                "frame_id": "laser_frame",
+                "range_m": 0.054,
+                "source_index": 147,
+                "x_m": -0.04417579903370376,
+                "y_m": 0.031056380660563432
+              },
+              {
+                "angle_rad": 2.545887552592716,
+                "frame_id": "laser_frame",
+                "range_m": 0.429,
+                "source_index": 148,
+                "x_m": -0.3551060703446489,
+                "y_m": 0.2407087011397412
+              },
+              {
+                "angle_rad": 2.5629310302330475,
+                "frame_id": "laser_frame",
+                "range_m": 0.421,
+                "source_index": 149,
+                "x_m": -0.35245924781271165,
+                "y_m": 0.23024656052001619
+              },
+              {
+                "angle_rad": 2.579974507873379,
+                "frame_id": "laser_frame",
+                "range_m": 5.69875,
+                "source_index": 150,
+                "x_m": -4.8233904602308835,
+                "y_m": 3.034906263899053
+              },
+              {
+                "angle_rad": 2.71632232899603,
+                "frame_id": "laser_frame",
+                "range_m": 4.27225,
+                "source_index": 158,
+                "x_m": -3.8917088977589813,
+                "y_m": 1.7625895488183208
+              },
+              {
+                "angle_rad": 2.7333658066363613,
+                "frame_id": "laser_frame",
+                "range_m": 0.05,
+                "source_index": 159,
+                "x_m": -0.04589130880220477,
+                "y_m": 0.01984912533137628
+              },
+              {
+                "angle_rad": 2.7674527619170237,
+                "frame_id": "laser_frame",
+                "range_m": 0.382,
+                "source_index": 161,
+                "x_m": -0.3555741230836806,
+                "y_m": 0.13961032552526895
+              },
+              {
+                "angle_rad": 2.784496239557355,
+                "frame_id": "laser_frame",
+                "range_m": 0.405,
+                "source_index": 162,
+                "x_m": -0.37945087290952967,
+                "y_m": 0.14156989456871122
+              },
+              {
+                "angle_rad": 2.8015397171976866,
+                "frame_id": "laser_frame",
+                "range_m": 0.409,
+                "source_index": 163,
+                "x_m": -0.3855794373370195,
+                "y_m": 0.13641663206100424
+              },
+              {
+                "angle_rad": 2.818583194838018,
+                "frame_id": "laser_frame",
+                "range_m": 0.414,
+                "source_index": 164,
+                "x_m": -0.39258976059772,
+                "y_m": 0.131412632093817
+              },
+              {
+                "angle_rad": 2.8356266724783494,
+                "frame_id": "laser_frame",
+                "range_m": 0.413,
+                "source_index": 165,
+                "x_m": -0.3938188056111156,
+                "y_m": 0.1244015608705707
+              },
+              {
+                "angle_rad": 2.852670150118681,
+                "frame_id": "laser_frame",
+                "range_m": 5.708,
+                "source_index": 166,
+                "x_m": -5.471411572275621,
+                "y_m": 1.6263208191400662
+              },
+              {
+                "angle_rad": 2.8697136277590123,
+                "frame_id": "laser_frame",
+                "range_m": 0.417,
+                "source_index": 167,
+                "x_m": -0.401682755996082,
+                "y_m": 0.11198197861884755
+              },
+              {
+                "angle_rad": 2.8867571053993433,
+                "frame_id": "laser_frame",
+                "range_m": 0.419,
+                "source_index": 168,
+                "x_m": -0.4054682964584712,
+                "y_m": 0.10562414765130793
+              },
+              {
+                "angle_rad": 2.9038005830396747,
+                "frame_id": "laser_frame",
+                "range_m": 0.419,
+                "source_index": 169,
+                "x_m": -0.4072095232884287,
+                "y_m": 0.0986985518800081
+              },
+              {
+                "angle_rad": 2.920844060680006,
+                "frame_id": "laser_frame",
+                "range_m": 0.418,
+                "source_index": 170,
+                "x_m": -0.40785673289562785,
+                "y_m": 0.09152532672274091
+              },
+              {
+                "angle_rad": 2.9378875383203376,
+                "frame_id": "laser_frame",
+                "range_m": 0.418,
+                "source_index": 171,
+                "x_m": -0.40935733153128634,
+                "y_m": 0.08456107332327639
+              },
+              {
+                "angle_rad": 2.954931015960669,
+                "frame_id": "laser_frame",
+                "range_m": 0.418,
+                "source_index": 172,
+                "x_m": -0.4107390228744261,
+                "y_m": 0.07757225720682392
+              },
+              {
+                "angle_rad": 2.9719744936010004,
+                "frame_id": "laser_frame",
+                "range_m": 0.42,
+                "source_index": 173,
+                "x_m": -0.4139727041721776,
+                "y_m": 0.07089852043854462
+              },
+              {
+                "angle_rad": 2.989017971241332,
+                "frame_id": "laser_frame",
+                "range_m": 5.1885,
+                "source_index": 174,
+                "x_m": -5.128225430874641,
+                "y_m": 0.788565900943353
+              },
+              {
+                "angle_rad": 3.006061448881663,
+                "frame_id": "laser_frame",
+                "range_m": 0.422,
+                "source_index": 175,
+                "x_m": -0.4181301318789183,
+                "y_m": 0.05701923197411919
+              },
+              {
+                "angle_rad": 3.0231049265219943,
+                "frame_id": "laser_frame",
+                "range_m": 0.422,
+                "source_index": 176,
+                "x_m": -0.41904116305892275,
+                "y_m": 0.04988490415171007
+              },
+              {
+                "angle_rad": 3.0401484041623257,
+                "frame_id": "laser_frame",
+                "range_m": 0.422,
+                "source_index": 177,
+                "x_m": -0.41983047405385854,
+                "y_m": 0.04273608610661935
+              },
+              {
+                "angle_rad": 3.057191881802657,
+                "frame_id": "laser_frame",
+                "range_m": 0.423,
+                "source_index": 178,
+                "x_m": -0.42149427595881217,
+                "y_m": 0.0356591549809677
+              },
+              {
+                "angle_rad": 3.0742353594429885,
+                "frame_id": "laser_frame",
+                "range_m": 0.423,
+                "source_index": 179,
+                "x_m": -0.4220407861721363,
+                "y_m": 0.028470595483851564
+              },
+              {
+                "angle_rad": 3.09127883708332,
+                "frame_id": "laser_frame",
+                "range_m": 0.425,
+                "source_index": 180,
+                "x_m": -0.4244621739444276,
+                "y_m": 0.021374351226890846
+              },
+              {
+                "angle_rad": 3.1083223147236514,
+                "frame_id": "laser_frame",
+                "range_m": 0.426,
+                "source_index": 181,
+                "x_m": -0.4257642487571136,
+                "y_m": 0.014170549752591658
+              }
+            ],
+            "scan_preview_range_max": 8.0,
+            "scan_preview_range_min": 0.05,
+            "scan_preview_source": "lidar_driver_diagnostics.last_scan_preview",
+            "scan_preview_source_point_count": 182
+          },
+          "schema": "trashbot.o1.lidar_driver_diagnostics.v1",
+          "sends_base_motion_commands": false,
+          "serial": {
+            "bytes_read_total": 440922,
+            "empty_read_count": 205,
+            "last_chunk_preview_hex": "aa 55 00 08 d1 49 51 4d 0b 59 dc c4 00 f5 b4 00 fe b4 00 fc b8 00 fb bc 00 f7 c0 00 f4 c4 00 f2",
+            "last_chunk_size": 238,
+            "last_error": "",
+            "last_exception_message_hint": "",
+            "last_exception_type": "",
+            "last_packet_preview_hex": "aa 55 00 08 01 61 8f 64 61 58 da 34 07 db 60 07",
+            "packet_count_total": 13292,
+            "raw_bytes_observed": true,
+            "read_call_count": 1907,
+            "read_exception_count": 0,
+            "serial_baudrate": 150000,
+            "serial_port": "/dev/ttyACM0",
+            "start_command_written": true,
+            "stop_command_written": false,
+            "unparsed_buffer_preview_hex": "",
+            "unparsed_buffer_size": 0
+          },
+          "state": "running",
+          "status": "loaded"
+        },
+        "driver_diagnostics_next_action_plain": "LiDAR driver 已发布 /scan；继续用 scan proof 验证 topic 一次读取和 hz。",
+        "driver_diagnostics_status": "scan_published",
+        "evidence_ref": "o1-lidar-scan-proof-1783532579766",
+        "fresh_scan_proof_observed": true,
+        "generated_at_ms": 1783862282071,
+        "latest_evidence_ref": "o1-lidar-scan-proof-1783532579766",
+        "latest_scan_hz_average_rate_hz": null,
+        "latest_scan_proof": {
+          "all_required_observations_observed": true,
+          "artifact": {
+            "age_ms": 329702082,
+            "bytes_read": 48453,
+            "configured_by": "ROBER_LIDAR_SCAN_PROOF_ARTIFACT_PATH or --lidar-scan-proof-artifact-path",
+            "format": "json",
+            "mtime_ms": 1783532579784,
+            "ok": true,
+            "path": "runtime/lidar_scan_proof_latest.json",
+            "schema": "trashbot.o1.lidar_scan_proof.v1",
+            "status": "loaded"
+          },
+          "calls_base_manual": false,
+          "delivery_success": false,
+          "endpoint": "/api/radar/scan-proof/latest",
+          "evidence_ref": "o1-lidar-scan-proof-1783532579766",
+          "failure_reason": null,
+          "fresh_while_observed": false,
+          "freshness": {
+            "age_seconds": 329702.082,
+            "basis": "artifact_mtime_only_material_freshness_not_hil_or_safe_to_control",
+            "stale_after_ms": 900000,
+            "status": "stale"
+          },
+          "freshness_status": "stale",
+          "hil_pass": false,
+          "latest_evidence_ref": "o1-lidar-scan-proof-1783532579766",
+          "missing_required_observations": [],
+          "observed": true,
+          "primary_actions_enabled": false,
+          "publishes_cmd_vel": false,
+          "raw_packet_once_observed": true,
+          "readback_sends_commands": false,
+          "required_observations": {
+            "raw_packet_once": {
+              "average_rate_hz": null,
+              "child_frame": null,
+              "observed": true,
+              "parent_frame": null,
+              "result_key": "driver_diagnostics.runtime.published_raw_packet_count",
+              "topic": "/lidar/raw_packet"
+            },
+            "scan_hz": {
+              "average_rate_hz": null,
+              "child_frame": null,
+              "observed": true,
+              "parent_frame": null,
+              "result_key": "driver_diagnostics.artifact.mtime_ms",
+              "topic": "/scan"
+            },
+            "scan_once": {
+              "average_rate_hz": null,
+              "child_frame": null,
+              "observed": true,
+              "parent_frame": null,
+              "result_key": "driver_diagnostics.runtime.last_scan_range_count",
+              "topic": "/scan"
+            },
+            "tf": {
+              "average_rate_hz": null,
+              "child_frame": "laser_frame",
+              "observed": true,
+              "parent_frame": "base_link",
+              "result_key": "lidar_lifecycle_status.static_tf",
+              "topic": null
+            }
+          },
+          "robot_control_executed": false,
+          "runtime_summary_fallback_used": false,
+          "runtime_summary_path": null,
+          "safe_to_control": false,
+          "scan_hz_average_rate_hz": null,
+          "scan_hz_observed": true,
+          "scan_once_observed": true,
+          "sends_base_motion_commands": false,
+          "sends_commands": false,
+          "sends_motion_commands": false,
+          "state": "scan_once_hz_raw_packet_tf_observed",
+          "tf_observed": true
+        },
+        "latest_scan_proof_blocked_reasons": [],
+        "latest_scan_proof_fresh": false,
+        "latest_scan_proof_state": "scan_once_hz_raw_packet_tf_observed",
+        "lifecycle_pid": 550851,
+        "lifecycle_running": true,
+        "lifecycle_state": "running",
+        "lifecycle_status": "latest_proof_stale_while_lifecycle_running",
+        "lifecycle_status_readback": {
+          "argv": [
+            "bash",
+            "/root/rober/onboard/scripts/o1_lidar_lifecycle.sh",
+            "status"
+          ],
+          "attempts": [],
+          "cloud_relay": false,
+          "command": "bash /root/rober/onboard/scripts/o1_lidar_lifecycle.sh status",
+          "delivery_success": false,
+          "latest_result": {
+            "baudrate": 230400,
+            "blocked_base_uart": "/dev/ttyS5",
+            "blocked_commands_not_sent": [
+              "T=1",
+              "T=13",
+              "T=130",
+              "T=131",
+              "/cmd_vel",
+              "/api/base/manual"
+            ],
+            "calls_base_manual": false,
+            "delivery_success": false,
+            "driver": "ros2_trashbot_hardware lidar_driver",
+            "driver_diagnostics_path": "/tmp/rober_lidar_lifecycle/lidar_driver_diagnostics.json",
+            "frame_id": "laser_frame",
+            "generated_at_ms": 1783862282033,
+            "hil_pass": false,
+            "log_dir": "/tmp/rober_lidar_lifecycle/logs",
+            "message": "LiDAR lifecycle running",
+            "pid": 550851,
+            "publishes_cmd_vel": false,
+            "robot_control_executed": false,
+            "route_execution_success": false,
+            "running": true,
+            "runtime_dir": "/tmp/rober_lidar_lifecycle",
+            "safe_to_control": false,
+            "schema": "trashbot.o1.lidar_lifecycle.v1",
+            "sends_base_motion_commands": false,
+            "serial_port": "/dev/ttyACM0",
+            "state": "running",
+            "static_tf": "base_link -> laser_frame",
+            "uses_base_uart": false,
+            "vendor_readback_boundary": {
+              "dedicated_lidar_vendor_doc_present_in_local_tree": false,
+              "historical_field_baudrate_candidate": 150000,
+              "vendor_index": "docs/vendor/VENDOR_INDEX.md",
+              "wave_rover_lidar_reference": "docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py",
+              "wave_rover_reference_baudrate": 230400
+            }
+          },
+          "message": "LiDAR lifecycle running",
+          "pid": 550851,
+          "primary_actions_enabled": false,
+          "readback_sends_commands": false,
+          "robot_control_executed": false,
+          "running": true,
+          "safe_to_control": false,
+          "sends_commands": false,
+          "sends_motion_commands": false,
+          "source": "managed_runtime_absolute",
+          "state": "running",
+          "status": "loaded",
+          "uses_base_uart": false
+        },
+        "observed_lidar_port": "/dev/ttyACM0",
+        "observed_lidar_port_info": {
+          "error": null,
+          "exists": true,
+          "gid": 20,
+          "is_symlink": false,
+          "lexists": true,
+          "mode_octal": "0o660",
+          "path": "/dev/ttyACM0",
+          "realpath": "/dev/ttyACM0",
+          "uid": 0
+        },
+        "pointcloud_fabricated": false,
+        "primary_actions_enabled": false,
+        "publishes_cmd_vel": false,
+        "raw_packet_proof_latest": {
+          "artifact": {
+            "age_ms": 3372801255,
+            "bytes_read": 3220,
+            "configured_by": "ROBER_LIDAR_RAW_PACKET_PROOF_ARTIFACT_PATH or --lidar-raw-packet-proof-artifact-path",
+            "format": "json",
+            "mtime_ms": 1780489480816,
+            "ok": true,
+            "path": "runtime/lidar_raw_packet_proof_latest.json",
+            "schema": "trashbot.o1.lidar_raw_packet_proof.v1",
+            "status": "loaded"
+          },
+          "bytes_read": 9086,
+          "calls_base_manual": false,
+          "delivery_success": false,
+          "endpoint": "/api/radar/raw-packet-proof/latest",
+          "freshness": {
+            "age_seconds": 3372801.255,
+            "basis": "artifact_mtime_only_material_freshness_not_hil_or_safe_to_control",
+            "stale_after_ms": 900000,
+            "status": "stale"
+          },
+          "generated_at_ms": 1783862282071,
+          "hil_pass": false,
+          "latest_bytes_read": 9086,
+          "latest_packet_parse_ok": true,
+          "latest_packets_parse_ok": 275,
+          "latest_points_observed": true,
+          "latest_points_total": 1923,
+          "latest_proof_status": "raw_packets_parsed",
+          "latest_raw_bytes_observed": true,
+          "latest_sync_header_count": 275,
+          "latest_sync_header_observed": true,
+          "opens_lidar_serial": false,
+          "packet_parse_ok": true,
+          "packets_parse_ok": 275,
+          "points_observed": true,
+          "points_total": 1923,
+          "primary_actions_enabled": false,
+          "raw_bytes_observed": true,
+          "readback_sends_commands": false,
+          "robot_control_executed": false,
+          "safe_to_control": false,
+          "schema": "trashbot.upper_robot_api.v1.lidar_raw_packet_proof_latest_summary",
+          "sends_commands": false,
+          "sends_lidar_start_command": false,
+          "sends_motion_commands": false,
+          "starts_ros2": false,
+          "sync_header_count": 275,
+          "sync_header_observed": true
+        },
+        "robot_control_executed": false,
+        "ros2": {
+          "driver": "ros2_trashbot_hardware lidar_driver",
+          "frame_id": "laser_frame",
+          "launch": "ros2 launch ros2_trashbot_bringup learn.launch.py lidar_enabled:=true lidar_serial_port:=/dev/ttyACM0 lidar_serial_baudrate:=230400 lidar_publish_raw_packets:=true",
+          "raw_packet_topic": "/lidar/raw_packet",
+          "scan_topic": "/scan"
+        },
+        "runtime_summary_fallback_used": false,
+        "safe_to_control": false,
+        "scan_proof_latest": {
+          "artifact": {
+            "age_ms": 329702082,
+            "bytes_read": 48453,
+            "configured_by": "ROBER_LIDAR_SCAN_PROOF_ARTIFACT_PATH or --lidar-scan-proof-artifact-path",
+            "format": "json",
+            "mtime_ms": 1783532579784,
+            "ok": true,
+            "path": "runtime/lidar_scan_proof_latest.json",
+            "schema": "trashbot.o1.lidar_scan_proof.v1",
+            "status": "loaded"
+          },
+          "delivery_success": false,
+          "endpoint": "/api/radar/scan-proof/latest",
+          "evidence_ref": "o1-lidar-scan-proof-1783532579766",
+          "freshness": {
+            "age_seconds": 329702.082,
+            "basis": "artifact_mtime_only_material_freshness_not_hil_or_safe_to_control",
+            "stale_after_ms": 900000,
+            "status": "stale"
+          },
+          "generated_at_ms": 1783862281867,
+          "hil_pass": false,
+          "http_status": 200,
+          "latest_all_required_observations_observed": true,
+          "latest_evidence_ref": "o1-lidar-scan-proof-1783532579766",
+          "latest_proof_status": "scan_once_hz_raw_packet_tf_observed",
+          "latest_raw_packet_once_observed": true,
+          "latest_required_observations": {
+            "raw_packet_once": {
+              "average_rate_hz": null,
+              "child_frame": null,
+              "observed": true,
+              "parent_frame": null,
+              "result_key": "driver_diagnostics.runtime.published_raw_packet_count",
+              "topic": "/lidar/raw_packet"
+            },
+            "scan_hz": {
+              "average_rate_hz": null,
+              "child_frame": null,
+              "observed": true,
+              "parent_frame": null,
+              "result_key": "driver_diagnostics.artifact.mtime_ms",
+              "topic": "/scan"
+            },
+            "scan_once": {
+              "average_rate_hz": null,
+              "child_frame": null,
+              "observed": true,
+              "parent_frame": null,
+              "result_key": "driver_diagnostics.runtime.last_scan_range_count",
+              "topic": "/scan"
+            },
+            "tf": {
+              "average_rate_hz": null,
+              "child_frame": "laser_frame",
+              "observed": true,
+              "parent_frame": "base_link",
+              "result_key": "lidar_lifecycle_status.static_tf",
+              "topic": null
+            }
+          },
+          "latest_runtime_summary_fallback_used": false,
+          "latest_runtime_summary_path": null,
+          "latest_scan_hz_average_rate_hz": null,
+          "latest_scan_hz_observed": true,
+          "latest_scan_once_observed": true,
+          "latest_tf_observed": true,
+          "primary_actions_enabled": false,
+          "readback_sends_commands": false,
+          "robot_control_executed": false,
+          "safe_to_control": false,
+          "scan_preview_frame_id": "laser_frame",
+          "scan_preview_point_count": 97,
+          "scan_preview_points": [
+            {
+              "angle_rad": 0.012817261694333358,
+              "frame_id": "laser_frame",
+              "range_m": 5.42725,
+              "source_index": 0,
+              "x_m": 5.426804205825294,
+              "y_m": 0.06956057889994115
+            },
+            {
+              "angle_rad": 0.07487581294408224,
+              "frame_id": "laser_frame",
+              "range_m": 5.6595,
+              "source_index": 1,
+              "x_m": 5.643642735930899,
+              "y_m": 0.4233638142005082
+            },
+            {
+              "angle_rad": 0.13693436419383112,
+              "frame_id": "laser_frame",
+              "range_m": 5.1555,
+              "source_index": 2,
+              "x_m": 5.107240038989726,
+              "y_m": 0.7037609211516511
+            },
+            {
+              "angle_rad": 0.19899291544358,
+              "frame_id": "laser_frame",
+              "range_m": 0.101,
+              "source_index": 3,
+              "x_m": 0.09900688191973316,
+              "y_m": 0.01996590425029677
+            },
+            {
+              "angle_rad": 0.26105146669332885,
+              "frame_id": "laser_frame",
+              "range_m": 0.098,
+              "source_index": 4,
+              "x_m": 0.0946796749688076,
+              "y_m": 0.02529346057385088
+            },
+            {
+              "angle_rad": 0.32311001794307775,
+              "frame_id": "laser_frame",
+              "range_m": 0.09,
+              "source_index": 5,
+              "x_m": 0.08534272692712358,
+              "y_m": 0.028576545638729918
+            },
+            {
+              "angle_rad": 0.3851685691928266,
+              "frame_id": "laser_frame",
+              "range_m": 0.09,
+              "source_index": 6,
+              "x_m": 0.08340616006246711,
+              "y_m": 0.03381438249671454
+            },
+            {
+              "angle_rad": 0.44722712044257545,
+              "frame_id": "laser_frame",
+              "range_m": 5.5335,
+              "source_index": 7,
+              "x_m": 4.989278870269545,
+              "y_m": 2.3930563312805346
+            },
+            {
+              "angle_rad": 0.5092856716923244,
+              "frame_id": "laser_frame",
+              "range_m": 1.525,
+              "source_index": 8,
+              "x_m": 1.331466830760318,
+              "y_m": 0.7435193868253029
+            },
+            {
+              "angle_rad": 0.5713442229420733,
+              "frame_id": "laser_frame",
+              "range_m": 1.522,
+              "source_index": 9,
+              "x_m": 1.2802680896928698,
+              "y_m": 0.823041686984426
+            },
+            {
+              "angle_rad": 0.6334027741918222,
+              "frame_id": "laser_frame",
+              "range_m": 1.535,
+              "source_index": 10,
+              "x_m": 1.2372377951417608,
+              "y_m": 0.9085524961568011
+            },
+            {
+              "angle_rad": 0.695461325441571,
+              "frame_id": "laser_frame",
+              "range_m": 1.55,
+              "source_index": 11,
+              "x_m": 1.1900252006656526,
+              "y_m": 0.9931465258362803
+            },
+            {
+              "angle_rad": 0.7575198766913199,
+              "frame_id": "laser_frame",
+              "range_m": 1.555,
+              "source_index": 12,
+              "x_m": 1.1297734162741895,
+              "y_m": 1.068474158732979
+            },
+            {
+              "angle_rad": 0.8195784279410688,
+              "frame_id": "laser_frame",
+              "range_m": 1.566,
+              "source_index": 13,
+              "x_m": 1.0688410048644865,
+              "y_m": 1.1445238775666826
+            },
+            {
+              "angle_rad": 0.8816369791908176,
+              "frame_id": "laser_frame",
+              "range_m": 1.579,
+              "source_index": 14,
+              "x_m": 1.004068111350993,
+              "y_m": 1.218641960449438
+            },
+            {
+              "angle_rad": 0.9436955304405665,
+              "frame_id": "laser_frame",
+              "range_m": 6.0325,
+              "source_index": 15,
+              "x_m": 3.5398688821978994,
+              "y_m": 4.884709259193119
+            },
+            {
+              "angle_rad": 1.0057540816903154,
+              "frame_id": "laser_frame",
+              "range_m": 1.606,
+              "source_index": 16,
+              "x_m": 0.8599351013990607,
+              "y_m": 1.3563729654419492
+            },
+            {
+              "angle_rad": 1.0678126329400643,
+              "frame_id": "laser_frame",
+              "range_m": 1.622,
+              "source_index": 17,
+              "x_m": 0.7818718618715296,
+              "y_m": 1.4211123782493587
+            },
+            {
+              "angle_rad": 1.1298711841898132,
+              "frame_id": "laser_frame",
+              "range_m": 1.638,
+              "source_index": 18,
+              "x_m": 0.699059590831373,
+              "y_m": 1.4813371285654975
+            },
+            {
+              "angle_rad": 1.1919297354395622,
+              "frame_id": "laser_frame",
+              "range_m": 1.656,
+              "source_index": 19,
+              "x_m": 0.6125008695803768,
+              "y_m": 1.5385638383776221
+            },
+            {
+              "angle_rad": 1.253988286689311,
+              "frame_id": "laser_frame",
+              "range_m": 1.665,
+              "source_index": 20,
+              "x_m": 0.5187058447302492,
+              "y_m": 1.582140716448028
+            },
+            {
+              "angle_rad": 1.3160468379390597,
+              "frame_id": "laser_frame",
+              "range_m": 1.682,
+              "source_index": 21,
+              "x_m": 0.4238690296553509,
+              "y_m": 1.6277158983370013
+            },
+            {
+              "angle_rad": 1.3781053891888086,
+              "frame_id": "laser_frame",
+              "range_m": 1.697,
+              "source_index": 22,
+              "x_m": 0.3249767220708819,
+              "y_m": 1.6655927263626198
+            },
+            {
+              "angle_rad": 1.4401639404385576,
+              "frame_id": "laser_frame",
+              "range_m": 5.14,
+              "source_index": 23,
+              "x_m": 0.6695423977107474,
+              "y_m": 5.096205743263094
+            },
+            {
+              "angle_rad": 1.5022224916883065,
+              "frame_id": "laser_frame",
+              "range_m": 1.729,
+              "source_index": 24,
+              "x_m": 0.11847126063532631,
+              "y_m": 1.7249363931471435
+            },
+            {
+              "angle_rad": 1.5642810429380554,
+              "frame_id": "laser_frame",
+              "range_m": 1.692,
+              "source_index": 25,
+              "x_m": 0.011023782294106844,
+              "y_m": 1.6919640883375544
+            },
+            {
+              "angle_rad": 1.6263395941878043,
+              "frame_id": "laser_frame",
+              "range_m": 1.626,
+              "source_index": 26,
+              "x_m": -0.09026692300667179,
+              "y_m": 1.623492495397163
+            },
+            {
+              "angle_rad": 1.9366323504365486,
+              "frame_id": "laser_frame",
+              "range_m": 5.744,
+              "source_index": 31,
+              "x_m": -2.0548018046402086,
+              "y_m": 5.363890895949258
+            },
+            {
+              "angle_rad": 1.9986909016862975,
+              "frame_id": "laser_frame",
+              "range_m": 1.459,
+              "source_index": 32,
+              "x_m": -0.6054209799199026,
+              "y_m": 1.3274586385544467
+            },
+            {
+              "angle_rad": 2.0607494529360464,
+              "frame_id": "laser_frame",
+              "range_m": 1.385,
+              "source_index": 33,
+              "x_m": -0.6517595730919676,
+              "y_m": 1.222061561003772
+            },
+            {
+              "angle_rad": 2.1228080041857953,
+              "frame_id": "laser_frame",
+              "range_m": 1.416,
+              "source_index": 34,
+              "x_m": -0.7425520630398377,
+              "y_m": 1.2056833886536218
+            },
+            {
+              "angle_rad": 2.184866555435544,
+              "frame_id": "laser_frame",
+              "range_m": 1.391,
+              "source_index": 35,
+              "x_m": -0.8014926148912029,
+              "y_m": 1.1368775608106891
+            },
+            {
+              "angle_rad": 2.246925106685293,
+              "frame_id": "laser_frame",
+              "range_m": 1.379,
+              "source_index": 36,
+              "x_m": -0.8629480891802355,
+              "y_m": 1.0756214926172591
+            },
+            {
+              "angle_rad": 2.308983657935042,
+              "frame_id": "laser_frame",
+              "range_m": 1.357,
+              "source_index": 37,
+              "x_m": -0.9131907150319811,
+              "y_m": 1.0037587947208129
+            },
+            {
+              "angle_rad": 2.371042209184791,
+              "frame_id": "laser_frame",
+              "range_m": 1.333,
+              "source_index": 38,
+              "x_m": -0.9564639937056727,
+              "y_m": 0.928474893976458
+            },
+            {
+              "angle_rad": 2.43310076043454,
+              "frame_id": "laser_frame",
+              "range_m": 5.61225,
+              "source_index": 39,
+              "x_m": -4.261628634430976,
+              "y_m": 3.651831245375117
+            },
+            {
+              "angle_rad": 2.4951593116842887,
+              "frame_id": "laser_frame",
+              "range_m": 1.301,
+              "source_index": 40,
+              "x_m": -1.0385066277212682,
+              "y_m": 0.7836485080563855
+            },
+            {
+              "angle_rad": 2.557217862934037,
+              "frame_id": "laser_frame",
+              "range_m": 1.277,
+              "source_index": 41,
+              "x_m": -1.0650909973231097,
+              "y_m": 0.7044928441235317
+            },
+            {
+              "angle_rad": 2.619276414183786,
+              "frame_id": "laser_frame",
+              "range_m": 1.265,
+              "source_index": 42,
+              "x_m": -1.0963324386949922,
+              "y_m": 0.6310944333973252
+            },
+            {
+              "angle_rad": 2.681334965433535,
+              "frame_id": "laser_frame",
+              "range_m": 1.25,
+              "source_index": 43,
+              "x_m": -1.1199225845090786,
+              "y_m": 0.5552237429239725
+            },
+            {
+              "angle_rad": 2.743393516683284,
+              "frame_id": "laser_frame",
+              "range_m": 1.241,
+              "source_index": 44,
+              "x_m": -1.1439051393906685,
+              "y_m": 0.48120892767655027
+            },
+            {
+              "angle_rad": 2.805452067933033,
+              "frame_id": "laser_frame",
+              "range_m": 1.223,
+              "source_index": 45,
+              "x_m": -1.1545544454452856,
+              "y_m": 0.40340182511055805
+            },
+            {
+              "angle_rad": 2.8675106191827817,
+              "frame_id": "laser_frame",
+              "range_m": 1.207,
+              "source_index": 46,
+              "x_m": -1.1619475938469837,
+              "y_m": 0.32669066278852477
+            },
+            {
+              "angle_rad": 2.9295691704325306,
+              "frame_id": "laser_frame",
+              "range_m": 5.83675,
+              "source_index": 47,
+              "x_m": -5.706048227210808,
+              "y_m": 1.2282769196090906
+            },
+            {
+              "angle_rad": 2.9916277216822795,
+              "frame_id": "laser_frame",
+              "range_m": 1.184,
+              "source_index": 48,
+              "x_m": -1.17071116032056,
+              "y_m": 0.1768936943502744
+            },
+            {
+              "angle_rad": 3.0536862729320284,
+              "frame_id": "laser_frame",
+              "range_m": 1.169,
+              "source_index": 49,
+              "x_m": -1.1644861655427756,
+              "y_m": 0.1026302599601277
+            },
+            {
+              "angle_rad": 3.1157448241817773,
+              "frame_id": "laser_frame",
+              "range_m": 1.154,
+              "source_index": 50,
+              "x_m": -1.1536145218280385,
+              "y_m": 0.029825073804873235
+            },
+            {
+              "angle_rad": 3.1778033754315262,
+              "frame_id": "laser_frame",
+              "range_m": 1.14,
+              "source_index": 51,
+              "x_m": -1.1392526883281382,
+              "y_m": -0.04127120227361502
+            },
+            {
+              "angle_rad": 3.239861926681275,
+              "frame_id": "laser_frame",
+              "range_m": 1.133,
+              "source_index": 52,
+              "x_m": -1.1275337954403575,
+              "y_m": -0.11115997544018198
+            },
+            {
+              "angle_rad": 3.301920477931024,
+              "frame_id": "laser_frame",
+              "range_m": 1.12,
+              "source_index": 53,
+              "x_m": -1.1056360021754528,
+              "y_m": -0.17879885540316667
+            },
+            {
+              "angle_rad": 3.363979029180773,
+              "frame_id": "laser_frame",
+              "range_m": 1.089,
+              "source_index": 54,
+              "x_m": -1.0621821697118916,
+              "y_m": -0.24018750664041216
+            },
+            {
+              "angle_rad": 3.426037580430522,
+              "frame_id": "laser_frame",
+              "range_m": 6.21225,
+              "source_index": 55,
+              "x_m": -5.962626685349834,
+              "y_m": -1.7433109515098135
+            },
+            {
+              "angle_rad": 3.4880961316802703,
+              "frame_id": "laser_frame",
+              "range_m": 1.085,
+              "source_index": 56,
+              "x_m": -1.020514020898136,
+              "y_m": -0.3684781311697054
+            },
+            {
+              "angle_rad": 3.5501546829300192,
+              "frame_id": "laser_frame",
+              "range_m": 1.043,
+              "source_index": 57,
+              "x_m": -0.9571538646515151,
+              "y_m": -0.41437359880024827
+            },
+            {
+              "angle_rad": 3.612213234179768,
+              "frame_id": "laser_frame",
+              "range_m": 1.007,
+              "source_index": 58,
+              "x_m": -0.8975260735433556,
+              "y_m": -0.45661356452677443
+            },
+            {
+              "angle_rad": 3.674271785429517,
+              "frame_id": "laser_frame",
+              "range_m": 1.017,
+              "source_index": 59,
+              "x_m": -0.8760942281085176,
+              "y_m": -0.5164764307061267
+            },
+            {
+              "angle_rad": 3.736330336679266,
+              "frame_id": "laser_frame",
+              "range_m": 1.017,
+              "source_index": 60,
+              "x_m": -0.8423765247917847,
+              "y_m": -0.569816453324854
+            },
+            {
+              "angle_rad": 3.798388887929015,
+              "frame_id": "laser_frame",
+              "range_m": 1.007,
+              "source_index": 61,
+              "x_m": -0.7974961237676395,
+              "y_m": -0.6148568390898729
+            },
+            {
+              "angle_rad": 3.8604474391787638,
+              "frame_id": "laser_frame",
+              "range_m": 1.007,
+              "source_index": 62,
+              "x_m": -0.7578282954116151,
+              "y_m": -0.6631329238346757
+            },
+            {
+              "angle_rad": 3.9225059904285127,
+              "frame_id": "laser_frame",
+              "range_m": 4.5285,
+              "source_index": 63,
+              "x_m": -3.216461818578372,
+              "y_m": -3.1877398920908706
+            },
+            {
+              "angle_rad": 3.9845645416782616,
+              "frame_id": "laser_frame",
+              "range_m": 0.997,
+              "source_index": 64,
+              "x_m": -0.6632511448705776,
+              "y_m": -0.7443835831262455
+            },
+            {
+              "angle_rad": 4.04662309292801,
+              "frame_id": "laser_frame",
+              "range_m": 1.063,
+              "source_index": 65,
+              "x_m": -0.6565743247932888,
+              "y_m": -0.8359899257899205
+            },
+            {
+              "angle_rad": 4.108681644177759,
+              "frame_id": "laser_frame",
+              "range_m": 1.121,
+              "source_index": 66,
+              "x_m": -0.6363898869829343,
+              "y_m": -0.9228482604122132
+            },
+            {
+              "angle_rad": 4.170740195427507,
+              "frame_id": "laser_frame",
+              "range_m": 1.186,
+              "source_index": 67,
+              "x_m": -0.6114416706452609,
+              "y_m": -1.0162357420394796
+            },
+            {
+              "angle_rad": 4.232798746677257,
+              "frame_id": "laser_frame",
+              "range_m": 2.212,
+              "source_index": 68,
+              "x_m": -1.0206514756710459,
+              "y_m": -1.9624511625032908
+            },
+            {
+              "angle_rad": 4.294857297927005,
+              "frame_id": "laser_frame",
+              "range_m": 2.205,
+              "source_index": 69,
+              "x_m": -0.8941394505284064,
+              "y_m": -2.015574271270786
+            },
+            {
+              "angle_rad": 4.356915849176755,
+              "frame_id": "laser_frame",
+              "range_m": 2.194,
+              "source_index": 70,
+              "x_m": -0.763586499750334,
+              "y_m": -2.0568353500946626
+            },
+            {
+              "angle_rad": 4.418974400426503,
+              "frame_id": "laser_frame",
+              "range_m": 5.2095,
+              "source_index": 71,
+              "x_m": -1.5067048850147406,
+              "y_m": -4.986855786913506
+            },
+            {
+              "angle_rad": 4.481032951676252,
+              "frame_id": "laser_frame",
+              "range_m": 2.18,
+              "source_index": 72,
+              "x_m": -0.49986884018097044,
+              "y_m": -2.1219168557264756
+            },
+            {
+              "angle_rad": 4.543091502926001,
+              "frame_id": "laser_frame",
+              "range_m": 2.171,
+              "source_index": 73,
+              "x_m": -0.3657915986477832,
+              "y_m": -2.139962033859175
+            },
+            {
+              "angle_rad": 4.60515005417575,
+              "frame_id": "laser_frame",
+              "range_m": 2.164,
+              "source_index": 74,
+              "x_m": -0.2316204934457766,
+              "y_m": -2.1515687177071374
+            },
+            {
+              "angle_rad": 4.667208605425499,
+              "frame_id": "laser_frame",
+              "range_m": 2.158,
+              "source_index": 75,
+              "x_m": -0.09746608222561284,
+              "y_m": -2.1557978483187124
+            },
+            {
+              "angle_rad": 4.729267156675248,
+              "frame_id": "laser_frame",
+              "range_m": 2.155,
+              "source_index": 76,
+              "x_m": 0.03637074300931455,
+              "y_m": -2.1546930568071523
+            },
+            {
+              "angle_rad": 4.7913257079249965,
+              "frame_id": "laser_frame",
+              "range_m": 2.15,
+              "source_index": 77,
+              "x_m": 0.1695377709651314,
+              "y_m": -2.1433051449143155
+            },
+            {
+              "angle_rad": 4.853384259174746,
+              "frame_id": "laser_frame",
+              "range_m": 2.146,
+              "source_index": 78,
+              "x_m": 0.3015743462981663,
+              "y_m": -2.1247044297160094
+            },
+            {
+              "angle_rad": 4.915442810424494,
+              "frame_id": "laser_frame",
+              "range_m": 5.70875,
+              "source_index": 79,
+              "x_m": 1.1512342690178494,
+              "y_m": -5.591465480564013
+            },
+            {
+              "angle_rad": 4.977501361674244,
+              "frame_id": "laser_frame",
+              "range_m": 2.14,
+              "source_index": 80,
+              "x_m": 0.5607179311472964,
+              "y_m": -2.0652349507234997
+            },
+            {
+              "angle_rad": 5.039559912923992,
+              "frame_id": "laser_frame",
+              "range_m": 2.138,
+              "source_index": 81,
+              "x_m": 0.6870790490209272,
+              "y_m": -2.0245904228748337
+            },
+            {
+              "angle_rad": 5.1016184641737405,
+              "frame_id": "laser_frame",
+              "range_m": 2.136,
+              "source_index": 82,
+              "x_m": 0.8105599775307193,
+              "y_m": -1.9762308880354544
+            },
+            {
+              "angle_rad": 5.16367701542349,
+              "frame_id": "laser_frame",
+              "range_m": 2.135,
+              "source_index": 83,
+              "x_m": 0.9311268331489638,
+              "y_m": -1.9212568335831575
+            },
+            {
+              "angle_rad": 5.225735566673238,
+              "frame_id": "laser_frame",
+              "range_m": 2.135,
+              "source_index": 84,
+              "x_m": 1.0484883001051175,
+              "y_m": -1.8598110884019055
+            },
+            {
+              "angle_rad": 5.287794117922988,
+              "frame_id": "laser_frame",
+              "range_m": 2.135,
+              "source_index": 85,
+              "x_m": 1.1618130578294668,
+              "y_m": -1.7912050185997535
+            },
+            {
+              "angle_rad": 5.349852669172736,
+              "frame_id": "laser_frame",
+              "range_m": 2.135,
+              "source_index": 86,
+              "x_m": 1.2706648028404606,
+              "y_m": -1.715702759461094
+            },
+            {
+              "angle_rad": 5.473969771672234,
+              "frame_id": "laser_frame",
+              "range_m": 2.139,
+              "source_index": 88,
+              "x_m": 1.4760520259870547,
+              "y_m": -1.5480928320289808
+            },
+            {
+              "angle_rad": 5.536028322921983,
+              "frame_id": "laser_frame",
+              "range_m": 2.144,
+              "source_index": 89,
+              "x_m": 1.57288946786243,
+              "y_m": -1.4569676461361256
+            },
+            {
+              "angle_rad": 5.598086874171732,
+              "frame_id": "laser_frame",
+              "range_m": 2.149,
+              "source_index": 90,
+              "x_m": 1.6640926932131561,
+              "y_m": -1.3597781099850756
+            },
+            {
+              "angle_rad": 5.660145425421481,
+              "frame_id": "laser_frame",
+              "range_m": 2.154,
+              "source_index": 91,
+              "x_m": 1.7492815382381945,
+              "y_m": -1.2568731439485112
+            },
+            {
+              "angle_rad": 5.72220397667123,
+              "frame_id": "laser_frame",
+              "range_m": 2.157,
+              "source_index": 92,
+              "x_m": 1.8264040169613134,
+              "y_m": -1.1475614871664082
+            },
+            {
+              "angle_rad": 5.784262527920979,
+              "frame_id": "laser_frame",
+              "range_m": 2.163,
+              "source_index": 93,
+              "x_m": 1.8993270549577144,
+              "y_m": -1.0349520463797606
+            },
+            {
+              "angle_rad": 5.846321079170727,
+              "frame_id": "laser_frame",
+              "range_m": 2.166,
+              "source_index": 94,
+              "x_m": 1.9625754787405967,
+              "y_m": -0.9164352078822144
+            },
+            {
+              "angle_rad": 5.908379630420477,
+              "frame_id": "laser_frame",
+              "range_m": 4.90675,
+              "source_index": 95,
+              "x_m": 4.566117426841924,
+              "y_m": -1.7963204632777756
+            },
+            {
+              "angle_rad": 5.970438181670225,
+              "frame_id": "laser_frame",
+              "range_m": 1.936,
+              "source_index": 96,
+              "x_m": 1.8420884018277022,
+              "y_m": -0.5956562094462391
+            },
+            {
+              "angle_rad": 6.032496732919974,
+              "frame_id": "laser_frame",
+              "range_m": 1.766,
+              "source_index": 97,
+              "x_m": 1.710798082426575,
+              "y_m": -0.4380935073309734
+            },
+            {
+              "angle_rad": 6.094555284169723,
+              "frame_id": "laser_frame",
+              "range_m": 1.626,
+              "source_index": 98,
+              "x_m": 1.597158086545699,
+              "y_m": -0.30489678020878075
+            },
+            {
+              "angle_rad": 6.1566138354194715,
+              "frame_id": "laser_frame",
+              "range_m": 1.509,
+              "source_index": 99,
+              "x_m": 1.49692878371391,
+              "y_m": -0.19048678822635912
+            },
+            {
+              "angle_rad": 6.218672386669221,
+              "frame_id": "laser_frame",
+              "range_m": 1.458,
+              "source_index": 100,
+              "x_m": 1.4549670147089202,
+              "y_m": -0.09399460680811812
+            },
+            {
+              "angle_rad": 6.280730937918969,
+              "frame_id": "laser_frame",
+              "range_m": 1.358,
+              "source_index": 101,
+              "x_m": 1.357995909754624,
+              "y_m": -0.0033330301095932766
+            }
+          ],
+          "scan_preview_source": "lidar_driver_diagnostics.last_scan_preview",
+          "scan_preview_source_point_count": 102,
+          "schema": "trashbot.upper_robot_api.v1.lidar_scan_proof_latest_summary",
+          "sends_commands": false,
+          "sends_motion_commands": false
+        },
+        "scan_status": "fresh_scan_proof_observed",
+        "schema": "trashbot.upper_robot_api.v1.radar_status",
+        "sends_base_motion_commands": false,
+        "sends_commands": false,
+        "sends_motion_commands": false,
+        "start_command_hex": "a5 60",
+        "stop_command_hex": "a5 00 a5 65 a5 65"
+      },
+      "status": "loaded"
+    }
+  },
+  "upper_api_base_url": "http://127.0.0.1:8787",
+  "uses_base_uart": false,
+  "vendor_source_status": {
+    "dedicated_lidar_vendor_doc_candidates": [
+      {
+        "exists": false,
+        "path": "docs/vendor/lidar_pkg_ros2-main/README.md"
+      },
+      {
+        "exists": false,
+        "path": "docs/vendor/lidar_pkg_ros2-main/src/lidar_node.cpp"
+      },
+      {
+        "exists": false,
+        "path": "docs/vendor/lidar_pkg_ros2-main/config/lidar_params.yaml"
+      },
+      {
+        "exists": false,
+        "path": "docs/vendor/lidar_pkg_ros2-main/launch/lidar.launch.py"
+      },
+      {
+        "exists": false,
+        "path": "docs/vendor/lidar_pkg_ros2-main/scripts/99-lidar.rules"
+      }
+    ],
+    "dedicated_lidar_vendor_doc_present_in_local_tree": false,
+    "historical_field_baudrate_candidate": {
+      "baudrate": 150000,
+      "serial_port": "/dev/ttyACM0",
+      "source": "docs/hardware/board_sensor_stack_smoke.md"
+    },
+    "required_sources": [
+      {
+        "exists": false,
+        "path": "AGENTS.md"
+      },
+      {
+        "exists": false,
+        "path": "OKR.md"
+      },
+      {
+        "exists": false,
+        "path": "docs/vendor/VENDOR_INDEX.md"
+      },
+      {
+        "exists": false,
+        "path": "docs/vendor/orangepizero3/OrangePi_Zero3_H618_用户手册_v1.6.pdf"
+      },
+      {
+        "exists": false,
+        "path": "docs/vendor/orangepizero3/OrangePi-ZERO3_电路图.pdf"
+      },
+      {
+        "exists": false,
+        "path": "docs/vendor/waveshare_wave_rover/WAVE_ROVER.wiki.html"
+      },
+      {
+        "exists": false,
+        "path": "docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py"
+      },
+      {
+        "exists": false,
+        "path": "docs/vendor/waveshare_wave_rover/ugv_rpi/config.yaml"
+      },
+      {
+        "exists": false,
+        "path": "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h"
+      },
+      {
+        "exists": false,
+        "path": "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/uart_ctrl.h"
+      },
+      {
+        "exists": false,
+        "path": "docs/hardware/board_sensor_stack_smoke.md"
+      }
+    ],
+    "wave_rover_lidar_reference": {
+      "baudrate": 230400,
+      "packet_header": "0x54",
+      "packet_size_bytes": 47,
+      "samples_per_packet": 12,
+      "serial_glob": "/dev/ttyACM*",
+      "source": "docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py"
+    }
+  },
+  "vendor_sources": [
+    "AGENTS.md",
+    "OKR.md",
+    "docs/vendor/VENDOR_INDEX.md",
+    "docs/vendor/orangepizero3/OrangePi_Zero3_H618_用户手册_v1.6.pdf",
+    "docs/vendor/orangepizero3/OrangePi-ZERO3_电路图.pdf",
+    "docs/vendor/waveshare_wave_rover/WAVE_ROVER.wiki.html",
+    "docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py",
+    "docs/vendor/waveshare_wave_rover/ugv_rpi/config.yaml",
+    "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h",
+    "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/uart_ctrl.h",
+    "docs/hardware/board_sensor_stack_smoke.md"
+  ]
+}

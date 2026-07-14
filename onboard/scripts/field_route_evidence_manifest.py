@@ -58,6 +58,9 @@ CLEAN_BASELINE_NAV2_PATH_MATERIAL_PROOF_SCOPE = "software_proof_clean_baseline_n
 FIELD_OPERATOR_CONFIRMATION_MATERIAL_SCHEMA = "trashbot.field_operator_confirmation_material.v1"
 FIELD_OPERATOR_CONFIRMATION_MATERIAL_PROOF_SCOPE = "software_proof_field_operator_confirmation_material_only"
 FIELD_OPERATOR_CONFIRMATION_READY_STATUS = "field_operator_confirmation_material_ready_not_delivery_proof"
+PC_LIVE_NAV2_EXECUTION_MATERIAL_SCHEMA = "trashbot.pc_live_nav2_execution_material.v1"
+PC_LIVE_NAV2_EXECUTION_MATERIAL_PROOF_SCOPE = "software_proof_pc_live_nav2_execution_material_only"
+PC_LIVE_NAV2_EXECUTION_MATERIAL_READY_STATUS = "pc_live_nav2_execution_material_ready_not_delivery_proof"
 ROUTE_BAG_EVIDENCE_SCHEMA = "trashbot.route_bag_evidence.v1"
 ROUTE_BAG_EVIDENCE_PROOF_SCOPE = "software_proof_route_bag_evidence_intake_only"
 ROUTE_BAG_PAYLOAD_REPLAY_SCHEMA = "trashbot.route_bag_payload_replay.v1"
@@ -331,6 +334,42 @@ FIELD_OPERATOR_CONFIRMATION_UNSAFE_TEXT_MARKERS = (
     "bearer ",
     "password",
     "connection string",
+)
+PC_LIVE_NAV2_EXECUTION_MATERIAL_DANGEROUS_TRUE_FIELDS = {
+    "safe_to_control",
+    "delivery_success",
+    "primary_actions_enabled",
+    "route_execution_success",
+    "hil_pass",
+}
+PC_LIVE_NAV2_EXECUTION_MATERIAL_UNSAFE_KEY_MARKERS = (
+    "token",
+    "secret",
+    "credential",
+    "raw",
+    "traceback",
+    "base64",
+    "path",
+    "url",
+    "authorization",
+    "bearer",
+    "password",
+)
+PC_LIVE_NAV2_EXECUTION_MATERIAL_UNSAFE_TEXT_MARKERS = (
+    "/users/",
+    "/root/",
+    "/tmp/",
+    "token",
+    "secret",
+    "credential",
+    "raw log",
+    "traceback",
+    "base64",
+    "authorization",
+    "bearer ",
+    "password",
+    "http://",
+    "https://",
 )
 
 
@@ -6817,6 +6856,298 @@ def read_field_operator_confirmation_material(path: Path | None) -> dict[str, An
     }
 
 
+def read_pc_live_nav2_execution_material(path: Path | None) -> dict[str, Any]:
+    # PC live Nav2 材料只接收短 JSON 摘要；原始日志、URL、路径和 token 都不能进入 manifest。
+    if path is None:
+        return {
+            "present": False,
+            "status": "missing_pc_live_nav2_execution_material_json",
+            "loaded": None,
+            "blocked_reasons": ["pc_live_nav2_execution_material_json_missing"],
+            "read_ok": False,
+        }
+    try:
+        loaded = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {
+            "present": True,
+            "status": "invalid_pc_live_nav2_execution_material_json",
+            "loaded": None,
+            "blocked_reasons": ["pc_live_nav2_execution_material_json_unreadable"],
+            "read_ok": False,
+        }
+    if not isinstance(loaded, dict):
+        return {
+            "present": True,
+            "status": "invalid_pc_live_nav2_execution_material_json",
+            "loaded": None,
+            "blocked_reasons": ["pc_live_nav2_execution_material_json_root_not_object"],
+            "read_ok": False,
+        }
+    return {
+        "present": True,
+        "status": str(loaded.get("status") or "loaded"),
+        "loaded": loaded,
+        "blocked_reasons": [],
+        "read_ok": True,
+    }
+
+
+def pc_live_nav2_execution_material_text_unsafe(value: str) -> bool:
+    # 该材料必须保持短文本；路径、URL、token 和 traceback 都视为污染。
+    lowered = value.lower()
+    if CLOUD_TERMINAL_URL_RE.search(value) or SUMMARY_UNSAFE_CREDENTIAL_URL_RE.search(value):
+        return True
+    if lowered.startswith(("/", "~", "/users/", "/root/", "/tmp/", "/var/", "/home/", "/private/")):
+        return True
+    if re.search(r"\b[a-z]:\\", value, re.IGNORECASE):
+        return True
+    return any(marker in lowered for marker in PC_LIVE_NAV2_EXECUTION_MATERIAL_UNSAFE_TEXT_MARKERS)
+
+
+def collect_pc_live_nav2_execution_material_safety_issues(value: Any, parent: str = "") -> tuple[list[str], list[str], list[str]]:
+    # 先做全树安全审计，再从白名单字段抽安全摘要。
+    dangerous_true_fields: list[str] = []
+    unsafe_fields: list[str] = []
+    unsafe_text_fields: list[str] = []
+    if isinstance(value, dict):
+        for key, child in value.items():
+            key_text = str(key)
+            child_path = f"{parent}.{key_text}" if parent else key_text
+            key_lower = key_text.lower()
+            if key_lower in PC_LIVE_NAV2_EXECUTION_MATERIAL_DANGEROUS_TRUE_FIELDS and child is True:
+                dangerous_true_fields.append(child_path)
+            if any(marker in key_lower for marker in PC_LIVE_NAV2_EXECUTION_MATERIAL_UNSAFE_KEY_MARKERS):
+                unsafe_fields.append(child_path)
+            child_dangerous, child_unsafe, child_unsafe_text = collect_pc_live_nav2_execution_material_safety_issues(child, child_path)
+            dangerous_true_fields.extend(child_dangerous)
+            unsafe_fields.extend(child_unsafe)
+            unsafe_text_fields.extend(child_unsafe_text)
+    elif isinstance(value, list):
+        for index, child in enumerate(value):
+            child_path = f"{parent}[{index}]" if parent else f"[{index}]"
+            child_dangerous, child_unsafe, child_unsafe_text = collect_pc_live_nav2_execution_material_safety_issues(child, child_path)
+            dangerous_true_fields.extend(child_dangerous)
+            unsafe_fields.extend(child_unsafe)
+            unsafe_text_fields.extend(child_unsafe_text)
+    elif isinstance(value, str) and (summary_contains_unsafe_text(value) or pc_live_nav2_execution_material_text_unsafe(value)):
+        unsafe_text_fields.append(parent or "text")
+    return sorted(set(dangerous_true_fields)), sorted(set(unsafe_fields)), sorted(set(unsafe_text_fields))
+
+
+def safe_pc_live_nav2_execution_material_text(value: Any) -> str | None:
+    # 文本只保留短状态词和 sprint/doc 引用，不回显长文本或敏感载荷。
+    if not isinstance(value, str):
+        return None
+    text = value.strip()
+    if not text or summary_contains_unsafe_text(text) or pc_live_nav2_execution_material_text_unsafe(text):
+        return None
+    return text[:160]
+
+
+def safe_pc_live_nav2_execution_material_bool(value: Any) -> bool:
+    # 兼容少量明确状态词，但不把任意非空字符串都当成真值。
+    if value is True:
+        return True
+    if value is False:
+        return False
+    if isinstance(value, str):
+        lowered = value.strip().lower()
+        if lowered in {"true", "yes", "ready", "accepted", "observed", "loaded"}:
+            return True
+        if lowered in {"false", "no", "blocked", "missing", "failed", "not_ready", "not_loaded"}:
+            return False
+    return False
+
+
+def safe_pc_live_nav2_execution_material_int(value: Any) -> int | None:
+    # 计数字段只接收 int 或纯数字字符串，避免把自由文本带进摘要。
+    if isinstance(value, bool):
+        return int(value)
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str) and value.strip().isdigit():
+        return int(value.strip())
+    return None
+
+
+def build_pc_live_nav2_execution_material_packet(
+    packet: dict[str, Any],
+    pc_live_nav2_execution_material: dict[str, Any] | None,
+) -> dict[str, Any]:
+    # 该 additive 只证明 2026-07-03 PC live Nav2 执行材料被安全消费，不证明 route execution 或 delivery 成功。
+    task_id = str(packet.get("task_id") or "")
+    task_id_source = str(packet.get("task_id_source") or "field_motion_evidence_packet")
+    material = pc_live_nav2_execution_material if isinstance(pc_live_nav2_execution_material, dict) else {}
+    loaded = material.get("loaded") if isinstance(material.get("loaded"), dict) else {}
+
+    source_sprint = safe_pc_live_nav2_execution_material_text(loaded.get("source_sprint"))
+    source_doc = safe_pc_live_nav2_execution_material_text(loaded.get("source_doc"))
+    source_verified_at = safe_pc_live_nav2_execution_material_text(loaded.get("verified_at"))
+    goal_accepted = safe_pc_live_nav2_execution_material_bool(loaded.get("goal_accepted"))
+    cancel_accepted = safe_pc_live_nav2_execution_material_bool(loaded.get("cancel_accepted"))
+    uses_base_uart = safe_pc_live_nav2_execution_material_bool(loaded.get("uses_base_uart"))
+    source_robot_control_executed = safe_pc_live_nav2_execution_material_bool(loaded.get("robot_control_executed"))
+    base_command_nonzero_observed = safe_pc_live_nav2_execution_material_bool(loaded.get("base_command_nonzero_observed"))
+    base_command_nonzero_count = safe_pc_live_nav2_execution_material_int(loaded.get("base_command_nonzero_count")) or 0
+    base_feedback_sample_count = safe_pc_live_nav2_execution_material_int(loaded.get("base_feedback_sample_count")) or 0
+    base_feedback_lr_nonzero_proven = safe_pc_live_nav2_execution_material_bool(loaded.get("base_feedback_lr_nonzero_proven"))
+    base_feedback_imu_attitude_delta_observed = safe_pc_live_nav2_execution_material_bool(
+        loaded.get("base_feedback_imu_attitude_delta_observed")
+    )
+    motion_signal_observed = safe_pc_live_nav2_execution_material_bool(loaded.get("motion_signal_observed"))
+    goal_result_status = safe_pc_live_nav2_execution_material_text(loaded.get("goal_result_status")) or safe_pc_live_nav2_execution_material_text(
+        loaded.get("terminal_status")
+    )
+    result_status = goal_result_status
+    remaining_evidence = [
+        item
+        for item in (
+            safe_pc_live_nav2_execution_material_text(candidate)
+            for candidate in (loaded.get("remaining_evidence") if isinstance(loaded.get("remaining_evidence"), list) else [])
+        )
+        if item
+    ]
+
+    dangerous_true_fields, unsafe_fields, unsafe_text_fields = collect_pc_live_nav2_execution_material_safety_issues(loaded)
+    blocked_reasons: list[str] = list(material.get("blocked_reasons") or [])
+    next_required_evidence: list[str] = []
+    if not material.get("present"):
+        next_required_evidence.append("pc_live_nav2_execution_material_json")
+    if not material.get("read_ok"):
+        next_required_evidence.append("readable_pc_live_nav2_execution_material_json_object")
+    if not task_id:
+        blocked_reasons.append("pc_live_nav2_execution_material_task_id_missing")
+        next_required_evidence.append("stable_same_task_id_for_pc_live_nav2_material")
+    if not source_sprint:
+        blocked_reasons.append("pc_live_nav2_execution_material_source_sprint_missing")
+        next_required_evidence.append("source_sprint_reference")
+    if not source_doc:
+        blocked_reasons.append("pc_live_nav2_execution_material_source_doc_missing")
+        next_required_evidence.append("source_doc_reference")
+    if not goal_accepted:
+        blocked_reasons.append("pc_live_nav2_goal_not_accepted")
+        next_required_evidence.append("goal_accepted_fact")
+    if not uses_base_uart:
+        blocked_reasons.append("pc_live_nav2_base_uart_not_proven")
+        next_required_evidence.append("uses_base_uart_fact")
+    if not base_command_nonzero_observed or base_command_nonzero_count <= 0:
+        blocked_reasons.append("pc_live_nav2_nonzero_command_missing")
+        next_required_evidence.append("base_command_nonzero_observed_fact")
+    if base_feedback_sample_count <= 0:
+        blocked_reasons.append("pc_live_nav2_base_feedback_sample_missing")
+        next_required_evidence.append("base_feedback_sample_count")
+    if not base_feedback_imu_attitude_delta_observed:
+        blocked_reasons.append("pc_live_nav2_imu_attitude_delta_missing")
+        next_required_evidence.append("base_feedback_imu_attitude_delta_observed_fact")
+    if not motion_signal_observed:
+        blocked_reasons.append("pc_live_nav2_motion_signal_missing")
+        next_required_evidence.append("motion_signal_observed_fact")
+    if base_feedback_lr_nonzero_proven:
+        blocked_reasons.append("pc_live_nav2_wheel_lr_nonzero_unexpected_true")
+    if dangerous_true_fields:
+        blocked_reasons.append("pc_live_nav2_execution_material_dangerous_true_claim")
+    if unsafe_fields:
+        blocked_reasons.append("pc_live_nav2_execution_material_unsafe_field")
+    if unsafe_text_fields:
+        blocked_reasons.append("pc_live_nav2_execution_material_unsafe_text")
+
+    ready = (
+        bool(material.get("present"))
+        and bool(material.get("read_ok"))
+        and bool(task_id)
+        and bool(source_sprint)
+        and bool(source_doc)
+        and goal_accepted
+        and uses_base_uart
+        and base_command_nonzero_observed
+        and base_command_nonzero_count > 0
+        and base_feedback_sample_count > 0
+        and not base_feedback_lr_nonzero_proven
+        and base_feedback_imu_attitude_delta_observed
+        and motion_signal_observed
+        and not dangerous_true_fields
+        and not unsafe_fields
+        and not unsafe_text_fields
+    )
+    if ready:
+        next_required_evidence.extend(
+            remaining_evidence
+            or [
+                "current_live_wheel_lr_nonzero_feedback",
+                "same_run_nav2_route_execution_success",
+                "delivery_record_or_operator_confirmation",
+            ]
+        )
+
+    material_summaries = {
+        "source": {
+            "source_sprint": source_sprint,
+            "source_doc": source_doc,
+            "verified_at": source_verified_at,
+        },
+        "nav2_execution": {
+            "goal_accepted": goal_accepted,
+            "cancel_accepted": cancel_accepted,
+            "goal_result_status": goal_result_status,
+            "result_status": result_status,
+            "terminal_status": goal_result_status,
+        },
+        "base_command": {
+            "uses_base_uart": uses_base_uart,
+            "robot_control_executed_source_fact": source_robot_control_executed,
+            "base_command_nonzero_observed": base_command_nonzero_observed,
+            "base_command_nonzero_count": base_command_nonzero_count,
+        },
+        "base_feedback": {
+            "base_feedback_sample_count": base_feedback_sample_count,
+            "base_feedback_lr_nonzero_proven": base_feedback_lr_nonzero_proven,
+            "base_feedback_imu_attitude_delta_observed": base_feedback_imu_attitude_delta_observed,
+            "motion_signal_observed": motion_signal_observed,
+        },
+    }
+
+    return {
+        "schema": PC_LIVE_NAV2_EXECUTION_MATERIAL_SCHEMA,
+        "proof_scope": PC_LIVE_NAV2_EXECUTION_MATERIAL_PROOF_SCOPE,
+        "evidence_boundary": PC_LIVE_NAV2_EXECUTION_MATERIAL_PROOF_SCOPE,
+        "status": PC_LIVE_NAV2_EXECUTION_MATERIAL_READY_STATUS if ready else "blocked_not_proven",
+        "task_id": task_id,
+        "task_id_source": task_id_source,
+        "source": "pc_live_nav2_execution_material_json",
+        "source_sprint": source_sprint,
+        "source_doc": source_doc,
+        "verified_at": source_verified_at,
+        "goal_accepted": goal_accepted,
+        "nav2_goal_accepted": goal_accepted,
+        "cancel_accepted": cancel_accepted,
+        "uses_base_uart": uses_base_uart,
+        "source_robot_control_executed": source_robot_control_executed,
+        "base_command_nonzero_observed": base_command_nonzero_observed,
+        "base_command_nonzero_count": base_command_nonzero_count,
+        "base_feedback_sample_count": base_feedback_sample_count,
+        "base_feedback_lr_nonzero_proven": base_feedback_lr_nonzero_proven,
+        "base_feedback_imu_attitude_delta_observed": base_feedback_imu_attitude_delta_observed,
+        "motion_signal_observed": motion_signal_observed,
+        "goal_result_status": goal_result_status,
+        "result_status": result_status,
+        "nav2_terminal_status": goal_result_status,
+        PC_LIVE_NAV2_EXECUTION_MATERIAL_READY_STATUS: ready,
+        "blocked_reasons": sorted(set(reason for reason in blocked_reasons if reason)),
+        "dangerous_true_fields": sorted(set(dangerous_true_fields)),
+        "unsafe_field_count": len(set(unsafe_fields)),
+        "unsafe_text_field_count": len(set(unsafe_text_fields)),
+        "next_required_evidence": sorted(set(item for item in next_required_evidence if item)),
+        "material_summaries": material_summaries,
+        "safe_to_control": False,
+        "delivery_success": False,
+        "primary_actions_enabled": False,
+        "robot_control_executed": False,
+        "route_execution_success": False,
+        "hil_pass": False,
+    }
+
+
 def field_operator_confirmation_text_unsafe(value: str) -> bool:
     # 人工报告常含备注；这里把路径、URL、token、raw/body/base64/traceback 都挡在摘要外。
     lowered = value.lower()
@@ -7992,6 +8323,7 @@ def build_manifest(
     current_field_evidence_summary: dict[str, Any] | None = None,
     clean_baseline_nav2_path_material: dict[str, Any] | None = None,
     field_operator_confirmation_material: dict[str, Any] | None = None,
+    pc_live_nav2_execution_material: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     input_manifest = input_manifest or {
         "present": False,
@@ -8053,6 +8385,8 @@ def build_manifest(
     packet["clean_baseline_nav2_path_material"] = clean_baseline_nav2_path_packet
     field_operator_confirmation_packet = build_field_operator_confirmation_material_packet(packet, field_operator_confirmation_material)
     packet["field_operator_confirmation_material"] = field_operator_confirmation_packet
+    pc_live_nav2_execution_material_packet = build_pc_live_nav2_execution_material_packet(packet, pc_live_nav2_execution_material)
+    packet["pc_live_nav2_execution_material"] = pc_live_nav2_execution_material_packet
     same_task_mission_evidence_gate = build_same_task_mission_evidence_gate(packet)
     packet["same_task_mission_evidence_gate"] = same_task_mission_evidence_gate
     return {
@@ -8087,6 +8421,7 @@ def build_manifest(
         "current_field_evidence_material": current_field_evidence_material,
         "clean_baseline_nav2_path_material": clean_baseline_nav2_path_packet,
         "field_operator_confirmation_material": field_operator_confirmation_packet,
+        "pc_live_nav2_execution_material": pc_live_nav2_execution_material_packet,
         "same_task_mission_evidence_gate": same_task_mission_evidence_gate,
         "manifest_gate": manifest_gate,
         "status": status,
@@ -8185,6 +8520,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--current-field-evidence-json", help="Optional current field evidence summary JSON; only safe summary fields are consumed into a current-field evidence packet.")
     parser.add_argument("--clean-baseline-nav2-path-json", help="Optional clean-baseline Nav2 path summary/latest/status input; the tool safely consumes same-dir refresh/retry/readback siblings into clean_baseline_nav2_path_material.")
     parser.add_argument("--field-operator-confirmation-json", help="Optional operator report/latest result or quasi-field summary JSON; only whitelisted operator confirmation fields are consumed.")
+    parser.add_argument("--pc-live-nav2-execution-material-json", help="Optional short PC live Nav2 execution material JSON; only whitelist summary fields are consumed into pc_live_nav2_execution_material.")
     parser.add_argument("--motion-log-root", help="Remote capture directory used to summarize live field motion evidence without claiming delivery success.")
     parser.add_argument("--derive-replay-jsonl", help="Derive a replay JSONL from route.csv without enabling control or delivery claims.")
     parser.add_argument("--nav2-goal-proof-json", help="Optional O11 Nav2 goal execution proof JSON; only safe whitelist fields are summarized.")
@@ -8225,6 +8561,9 @@ def main(argv: list[str] | None = None) -> int:
     )
     field_operator_confirmation_material = read_field_operator_confirmation_material(
         Path(args.field_operator_confirmation_json).expanduser() if args.field_operator_confirmation_json else None
+    )
+    pc_live_nav2_execution_material = read_pc_live_nav2_execution_material(
+        Path(args.pc_live_nav2_execution_material_json).expanduser() if args.pc_live_nav2_execution_material_json else None
     )
     ssh_status = None
     ssh_result = None
@@ -8267,6 +8606,7 @@ def main(argv: list[str] | None = None) -> int:
         current_field_evidence_summary.get("loaded") if isinstance(current_field_evidence_summary, dict) else None,
         clean_baseline_nav2_path_material if isinstance(clean_baseline_nav2_path_material, dict) else None,
         field_operator_confirmation_material if isinstance(field_operator_confirmation_material, dict) else None,
+        pc_live_nav2_execution_material if isinstance(pc_live_nav2_execution_material, dict) else None,
     )
     if ssh_result is not None:
         manifest["ssh_scan"] = ssh_result

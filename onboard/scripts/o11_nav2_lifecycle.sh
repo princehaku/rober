@@ -374,6 +374,11 @@ start_manager() {
     --base-port "$BASE_PORT" \
     --base-baudrate "$BASE_BAUDRATE" \
     --command-mode "$COMMAND_MODE" \
+    --base-enabled "$BASE_ENABLED" \
+    --lidar-enabled "$LIDAR_ENABLED" \
+    --lidar-serial-port "$LIDAR_SERIAL_PORT" \
+    --lidar-serial-baudrate "$LIDAR_SERIAL_BAUDRATE" \
+    --static-laser-tf-enabled "$STATIC_LASER_TF_ENABLED" \
     --runtime-dir "$RUNTIME_DIR" \
     >"$MANAGER_LOG" 2>&1 &
   local deadline=$((SECONDS + START_CONFIRM_TIMEOUT_S))

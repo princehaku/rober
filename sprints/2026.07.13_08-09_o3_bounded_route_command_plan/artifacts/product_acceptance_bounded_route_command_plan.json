@@ -1,0 +1,52 @@
+{
+  "schema": "trashbot.product_acceptance.o3_bounded_route_command_plan.v1",
+  "accepted": true,
+  "accepted_as": "o3_o1_no_motion_bounded_route_command_plan_only",
+  "proof_boundary": "software_proof_o3_o1_no_motion_bounded_route_command_plan_only",
+  "sprint": "sprints/2026.07.13_08-09_o3_bounded_route_command_plan/",
+  "artifact": "sprints/2026.07.13_08-09_o3_bounded_route_command_plan/artifacts/algorithm/bounded_route_command_plan.json",
+  "packet_id": "packet_o3_28_pose_same_task_replay_7d57826142b0c79c",
+  "task_id": "task_o3_28_pose_fixed_route_consumer_20260713_0402",
+  "route_intent_id": "route_intent_20260713_0402_from_20260713_0300_28_pose_structured_path",
+  "execution_plan_status": "blocked_pending_live_safety_gate",
+  "route_csv_row_count": 28,
+  "segment_count": 27,
+  "global_abort_criteria_count": 11,
+  "fixed_false_fields": {
+    "route_execution_success": false,
+    "delivery_success": false,
+    "hil_pass": false,
+    "safe_to_control": false,
+    "robot_control_executed": false,
+    "publishes_cmd_vel": false,
+    "calls_base_manual": false,
+    "uses_base_uart": false
+  },
+  "rejected_claims": [
+    "route_execution",
+    "fixed_route_movement",
+    "NavigateToPose",
+    "controller_bt_execution",
+    "cmd_vel",
+    "api_base_manual",
+    "wave_rover_uart",
+    "delivery_operator_acceptance",
+    "current_live_hil",
+    "safe_to_control",
+    "o5_production_external_evidence"
+  ],
+  "okr_effect": {
+    "o5": "unchanged_approximately_85_percent",
+    "o1": "unchanged_approximately_94_percent",
+    "o6_o7": "unchanged_approximately_93_percent",
+    "kr_archived": false
+  },
+  "next_owner": "robot-algorithm-engineer",
+  "next_required_evidence": [
+    "explicit operator approval",
+    "current live HIL / stop path",
+    "same-window LiDAR/localization/TF readiness",
+    "Nav2/controller execution result",
+    "delivery/operator acceptance before delivery_success changes"
+  ]
+}

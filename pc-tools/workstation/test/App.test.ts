@@ -5,11 +5,21 @@ import { resolve } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import App from "../src/App.vue";
 import TrainingLabelingPanel from "../src/components/TrainingLabelingPanel.vue";
+import { buildO7ConsumerTaskList } from "../src/server/o7ConsumerReadAdapter";
 import { PROOF_FLAGS, type RobotControlMapPreviewResponse, type RobotControlSummaryResponse } from "../src/shared/contracts";
 
 const SPRINT_ARTIFACT_DIR = resolve(
   process.cwd(),
   "../../sprints/2026.06.11_18-00_pc_simple_user_console_repair/artifacts",
+);
+
+const O7_OPERATOR_DROPOFF_BROWSER_ARTIFACT_DIR = resolve(
+  process.cwd(),
+  "../../sprints/2026.07.14_09-33_o7_operator_dropoff_browser_artifact/artifacts",
+);
+const O7_OPERATOR_DROPOFF_BROWSER_ARTIFACT_PATH = resolve(
+  O7_OPERATOR_DROPOFF_BROWSER_ARTIFACT_DIR,
+  "o7_operator_dropoff_browser_artifact.json",
 );
 
 const DEFAULT_FIRST_SCREEN_FORBIDDEN_TOKENS = [
@@ -138,6 +148,161 @@ function sampleDeliveryResultEvidenceFixture(taskId: string, sourceOrigin = "rem
     real_oss_connected: false,
     real_cdn_connected: false,
     robot_control_executed: false,
+    ...PROOF_FLAGS,
+  };
+}
+
+function samplePhoneBrowserTerminalMaterialFixture(taskId: string, sourceOrigin = "remote_phone_browser_terminal_material") {
+  // phone/browser terminal material fixture 只表达安全摘要 readback，固定不代表路线执行、送达、HIL 或真实云连接。
+  return {
+    schema: "trashbot.pc_tools_workstation.o7_phone_browser_terminal_material.v1",
+    status: "phone_browser_terminal_material_ready_not_delivery_proof",
+    source_schema: "trashbot.o6.phone_browser_terminal_material.v1",
+    source_origin: sourceOrigin,
+    source_path: "phone_browser_terminal_material",
+    task_id: taskId,
+    proof_scope: "software_proof_o6_o7_phone_browser_terminal_material_intake_only",
+    source_proof_status: "not_proven",
+    material_status: "phone_browser_terminal_material_ready_not_delivery_proof",
+    terminal_result_type: "browser_terminal_claim",
+    safe_evidence_ref: "phone-browser-terminal.json",
+    accepted_materials: ["true_phone_browser_evidence", "diagnostics_mobile_safe_summary"],
+    missing_materials: ["terminal_result_summary"],
+    rejected_materials: [],
+    accepted_material_count: 2,
+    missing_material_count: 1,
+    rejected_material_count: 0,
+    same_task_id_consumed: true,
+    phone_browser_terminal_material_written: true,
+    phone_browser_terminal_material_readback: true,
+    support_only_reason: "phone_browser_terminal_material_intake_only_not_delivery_proof",
+    blocked_reasons: ["local_mock_only", "delivery_success_not_proven"],
+    next_required_evidence: ["real_phone_browser_terminal_evidence_for_selected_task", "delivery_result_for_selected_task"],
+    proof_boundary: {
+      local_mock: true,
+      not_proven: true,
+      reads_local_path: false,
+      phone_browser_material_connected: true,
+      route_execution_success: false,
+      delivery_success_proven: false,
+      hil_pass: false,
+      real_phone_browser_proof_connected: false,
+      real_production_cloud_connected: false,
+      real_oss_connected: false,
+      real_cdn_connected: false,
+    },
+    route_execution_success: false,
+    hil_pass: false,
+    real_cloud_db_connected: false,
+    real_oss_connected: false,
+    connects_cloud_production: false,
+    robot_control_executed: false,
+    ...PROOF_FLAGS,
+  };
+}
+
+function sampleBoundedRouteGateMaterialFixture(taskId: string, sourceOrigin = "remote_bounded_route_execution_gate_material") {
+  // bounded route gate fixture 固定 28-pose 同任务摘要，不提升为路线执行、交付、HIL 或可控。
+  return {
+    schema: "trashbot.pc_tools_workstation.o7_bounded_route_gate_material.v1",
+    status: "bounded_route_execution_gate_material_ready_not_route_execution_proof",
+    source_schema: "trashbot.o6.bounded_route_execution_gate_material.v1",
+    source_origin: sourceOrigin,
+    source_path: "bounded_route_execution_gate_material",
+    task_id: taskId,
+    packet_id: "packet_o3_28_pose_same_task_replay_7d57826142b0c79c",
+    route_intent_id: "route_intent_20260713_0402_from_20260713_0300_28_pose_structured_path",
+    proof_scope: "software_proof_o6_o7_bounded_route_gate_material_intake_only",
+    execution_plan_status: "blocked_pending_live_safety_gate",
+    route_csv_row_count: 28,
+    path_structured_pose_count: 28,
+    segment_count: 27,
+    global_abort_criteria_count: 11,
+    safe_refs: ["controlled_route_execution_gate_record.json", "bounded_route_command_plan.json"],
+    same_task_id_consumed: true,
+    bounded_route_execution_gate_material_written: true,
+    bounded_route_execution_gate_material_readback: true,
+    support_only_reason: "bounded_route_gate_material_intake_only_not_route_execution_proof",
+    blocked_reasons: ["local_mock_only", "route_execution_success_not_proven", "delivery_success_not_proven", "hil_pass_not_proven"],
+    next_required_evidence: [
+      "current_live_safety_gate_acceptance_for_same_packet",
+      "controlled_route_execution_result_for_same_task",
+      "delivery_or_operator_acceptance_for_same_task",
+    ],
+    proof_boundary: {
+      local_mock: true,
+      not_proven: true,
+      reads_local_path: false,
+      bounded_route_gate_material_connected: true,
+      route_execution_success: false,
+      delivery_success_proven: false,
+      hil_pass: false,
+      safe_to_control: false,
+      robot_control_executed: false,
+      real_production_cloud_connected: false,
+      real_oss_connected: false,
+      real_cdn_connected: false,
+    },
+    route_execution_success: false,
+    hil_pass: false,
+    robot_control_executed: false,
+    connects_cloud_production: false,
+    ...PROOF_FLAGS,
+  };
+}
+
+function sampleBoundedRouteTerminalResultMaterialFixture(
+  taskId: string,
+  sourceOrigin = "remote_bounded_route_terminal_result_material",
+) {
+  // terminal-result fixture 只表示 O5/O6 mock 终态材料可读，不提升为 delivery_success 或真实控制。
+  return {
+    schema: "trashbot.pc_tools_workstation.o7_bounded_route_terminal_result_material.v1",
+    status: "bounded_route_terminal_result_material_ready_not_delivery_proof",
+    source_schema: "trashbot.o6.bounded_route_terminal_result_material.v1",
+    source_origin: sourceOrigin,
+    source_path: "bounded_route_terminal_result_material",
+    task_id: taskId,
+    packet_id: "packet_o3_28_pose_same_task_replay_7d57826142b0c79c",
+    route_intent_id: "route_intent_20260713_0402_from_20260713_0300_28_pose_structured_path",
+    proof_scope: "software_proof_o6_o7_bounded_route_terminal_result_intake_only",
+    source_material_schema: "trashbot.o5.bounded_route_terminal_result_bridge.v1",
+    source_proof_boundary: "software_proof_o5_bounded_route_terminal_result_bridge_only",
+    result_code: "mock_route_execution_completed_not_live_delivery",
+    terminal_result_state: "terminal_result_recorded",
+    reconciliation_state: "terminal_result_recorded",
+    route_csv_row_count: 28,
+    path_structured_pose_count: 28,
+    segment_count: 27,
+    safe_evidence_ref: "o5_bounded_route_terminal_result_bridge_summary.json",
+    same_task_id_consumed: true,
+    bounded_route_terminal_result_material_written: true,
+    bounded_route_terminal_result_material_readback: true,
+    support_only_reason: "bounded_route_terminal_result_intake_only_not_delivery_proof",
+    blocked_reasons: ["local_mock_only", "route_execution_success_not_proven", "delivery_success_not_proven", "hil_pass_not_proven"],
+    next_required_evidence: [
+      "current_live_route_execution_result_for_same_packet",
+      "delivery_or_operator_acceptance_for_same_task",
+      "production_cloud_readback_for_same_task",
+    ],
+    proof_boundary: {
+      local_mock: true,
+      not_proven: true,
+      reads_local_path: false,
+      bounded_route_terminal_result_material_connected: true,
+      route_execution_success: false,
+      delivery_success_proven: false,
+      hil_pass: false,
+      safe_to_control: false,
+      robot_control_executed: false,
+      real_production_cloud_connected: false,
+      real_oss_connected: false,
+      real_cdn_connected: false,
+    },
+    route_execution_success: false,
+    hil_pass: false,
+    robot_control_executed: false,
+    connects_cloud_production: false,
     ...PROOF_FLAGS,
   };
 }
@@ -353,6 +518,53 @@ function sampleCurrentFieldEvidenceMaterialFixture(
     },
     hil_pass: false,
     ...PROOF_FLAGS,
+  };
+}
+
+function samplePcLiveNav2ExecutionMaterialFixture(
+  taskId: string,
+  sourceOrigin = "remote_pc_live_nav2_execution_material",
+  overrides: Record<string, unknown> = {},
+) {
+  // pc live Nav2 fixture 只展示现场 live Nav2 安全摘要，不把 goal accepted / IMU 痕迹外推成真实路线成功。
+  return {
+    schema: "trashbot.pc_tools_workstation.o7_pc_live_nav2_execution_material.v1",
+    source_schema: "trashbot.o6.pc_live_nav2_execution_material.v1",
+    source_origin: sourceOrigin,
+    source_path: "pc_live_nav2_execution_material",
+    status: "pc_live_nav2_execution_material_ready_not_delivery_proof",
+    task_id: taskId,
+    proof_scope: "software_proof_pc_live_nav2_execution_material_only",
+    source_proof_status: "not_proven",
+    material_status: "pc_live_nav2_execution_material_ready_not_delivery_proof",
+    source_sprint: "2026.07.03_20-46_pc_nav2_o11_tail_wasd_back_alias",
+    goal_accepted: true,
+    goal_result_status: "goal_timeout_cancel_requested",
+    uses_base_uart: true,
+    base_command_nonzero_observed: true,
+    base_command_nonzero_count: 733,
+    base_feedback_sample_count: 5941,
+    base_feedback_lr_nonzero_proven: false,
+    base_feedback_imu: {
+      attitude_delta_observed: true,
+      pitch_delta_deg: 24.210531,
+    },
+    blocked_reasons: ["local_mock_only", "not_proven", "wheel_lr_nonzero_not_proven", "delivery_success_not_proven"],
+    next_required_evidence: [
+      "pc_live_nav2_execution_material_for_selected_task",
+      "wheel_lr_nonzero_feedback_for_selected_task",
+      "real_live_nav2_route_execution_result",
+      "delivery_record_or_operator_dropoff_confirmation",
+    ],
+    ...PROOF_FLAGS,
+    safe_to_control: false,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    robot_control_executed: false,
+    connects_cloud_production: false,
+    route_execution_success: false,
+    hil_pass: false,
+    ...overrides,
   };
 }
 
@@ -6699,7 +6911,7 @@ const fixtures: Record<string, unknown> = {
         detail_status: "loaded_fail_closed_summary",
         source_base_url: "http://127.0.0.1:8088",
         remote_endpoint:
-          "/api/o6/consumer/tasks/task-consumer-001?view=default&include=trajectory,events,evidence,field_evidence,labeling,inference,tunnel,artifact_access_probe,offline_artifact_seed_smoke,route_root_seed_gate,route_bag_evidence,route_bag_payload_replay,nav2_goal_execution_evidence,delivery_result_evidence,route_execution_result_delivery_readiness,route_delivery_closure_packet,same_task_field_material_packet,current_field_evidence_material,clean_baseline_nav2_path_material,localization_path_material_readback,same_task_route_execution_material_packet,same_task_mission_evidence_gate,field_operator_confirmation_material",
+          "/api/o6/consumer/tasks/task-consumer-001?view=default&include=trajectory,events,evidence,field_evidence,labeling,inference,tunnel,artifact_access_probe,offline_artifact_seed_smoke,route_root_seed_gate,route_bag_evidence,route_bag_payload_replay,nav2_goal_execution_evidence,delivery_result_evidence,route_execution_result_delivery_readiness,route_delivery_closure_packet,same_task_field_material_packet,same_task_replay_packet_readback,bounded_route_execution_gate_material,bounded_route_terminal_result_material,current_field_evidence_material,pc_live_nav2_execution_material,clean_baseline_nav2_path_material,localization_path_material_readback,same_task_route_execution_material_packet,same_task_mission_evidence_gate,field_operator_confirmation_material,phone_browser_terminal_material",
         remote_schema: "trashbot.o6.consumer_read.v1",
         requested_task_id: "task-consumer-001",
         query_strategy: {
@@ -6728,6 +6940,7 @@ const fixtures: Record<string, unknown> = {
             "same_task_route_execution_material_packet",
             "same_task_mission_evidence_gate",
             "field_operator_confirmation_material",
+            "phone_browser_terminal_material",
           ],
           primary_path: true,
           fail_closed_visible: true,
@@ -7003,10 +7216,12 @@ const fixtures: Record<string, unknown> = {
       sampleRouteBagEvidenceFixture("task-consumer-001").route_bag_full_semantic_decode_matrix,
     nav2_goal_execution_evidence: sampleNav2GoalExecutionEvidenceFixture("task-consumer-001"),
     delivery_result_evidence: sampleDeliveryResultEvidenceFixture("task-consumer-001"),
+    phone_browser_terminal_material: samplePhoneBrowserTerminalMaterialFixture("task-consumer-001"),
     route_execution_result_delivery_readiness: sampleRouteExecutionResultDeliveryReadinessFixture("task-consumer-001"),
     route_delivery_closure_packet: sampleRouteDeliveryClosurePacketFixture("task-consumer-001"),
     same_task_field_material_packet: sampleSameTaskFieldMaterialPacketFixture("task-consumer-001"),
     current_field_evidence_material: sampleCurrentFieldEvidenceMaterialFixture("task-consumer-001"),
+    pc_live_nav2_execution_material: samplePcLiveNav2ExecutionMaterialFixture("task-consumer-001"),
     clean_baseline_nav2_path_material: sampleCleanBaselineNav2PathMaterialFixture("task-consumer-001"),
     localization_path_material_readback: sampleLocalizationPathMaterialReadbackFixture("task-consumer-001"),
     same_task_route_execution_material_packet:
@@ -7086,6 +7301,10 @@ const fixtures: Record<string, unknown> = {
         "remote_artifact_bundle_readiness",
       ),
       current_field_evidence_material: sampleCurrentFieldEvidenceMaterialFixture(
+        "task-consumer-001",
+        "remote_artifact_bundle_readiness",
+      ),
+      pc_live_nav2_execution_material: samplePcLiveNav2ExecutionMaterialFixture(
         "task-consumer-001",
         "remote_artifact_bundle_readiness",
       ),
@@ -7486,6 +7705,765 @@ const fixtures: Record<string, unknown> = {
     robot_control_executed: false,
     blocked_reasons: ["real_annotation_api_connected_false", "cloud_write_executed_false"],
     not_proven: ["real_annotation_submit_success", "real_annotation_review_api", "delivery_success"],
+    fail_closed_reason: "none",
+    local_loopback_only: true,
+    ...PROOF_FLAGS,
+  },
+  "/api/o7/consumer-read/tasks/task-consumer-001/inference/request": {
+    schema: "trashbot.pc_tools_workstation.o7_consumer_inference_request_result.v1",
+    request_status: "local_mock_inference_written",
+    source_base_url: "http://127.0.0.1:8088",
+    remote_endpoint: "/api/o6/archive/inference",
+    remote_schema: "trashbot.o6.model_inference.v1",
+    requested_task_id: "task-consumer-001",
+    o6_http_status: 201,
+    task_id: "task-consumer-001",
+    robot_id: "robot_fixture",
+    inference_id: "o7-task-consumer-001-frame-0-elevator_door_state-floor_recognition",
+    model_family: "elevator_scene_stub",
+    requested_outputs: ["elevator_door_state", "floor_recognition"],
+    input_ids: ["frame-0"],
+    write_status: "created",
+    duplicate: false,
+    created_count: 2,
+    updated_count: 0,
+    archive_event_written: true,
+    o6_schema: "trashbot.o6.model_inference.v1",
+    o6_source: "local_mock_inference",
+    result_summary: {
+      result_count: 2,
+      created_count: 2,
+      updated_count: 0,
+      event_types: ["model_inference.elevator_door_state", "model_inference.floor_recognition"],
+    },
+    request_summary: {
+      input_count: 1,
+      requested_output_count: 2,
+      local_mock_only: true,
+    },
+    real_model_inference_success: false,
+    real_floor_recognition_proven: false,
+    real_elevator_door_state_proven: false,
+    connects_cloud_production: false,
+    robot_control_executed: false,
+    blocked_reasons: [
+      "real_model_inference_success_false",
+      "real_floor_recognition_proven_false",
+      "real_elevator_door_state_proven_false",
+    ],
+    not_proven: [
+      "real_gpu_model",
+      "real_external_model_api",
+      "real_cloud_production",
+      "real_elevator_door_state",
+      "real_floor_recognition",
+      "robot_control",
+    ],
+    fail_closed_reason: "none",
+    local_loopback_only: true,
+    ...PROOF_FLAGS,
+  },
+  "/api/o7/consumer-read/tasks/task-consumer-001/delivery-result/intake": {
+    schema: "trashbot.pc_tools_workstation.o7_consumer_delivery_result_intake_result.v1",
+    intake_status: "local_mock_delivery_result_written",
+    source_base_url: "http://127.0.0.1:8088",
+    remote_endpoint: "/api/o6/archive/field-evidence",
+    remote_schema: "trashbot.o6.field_evidence_archive.v1",
+    requested_task_id: "task-consumer-001",
+    o6_http_status: 201,
+    task_id: "task-consumer-001",
+    robot_id: "robot_fixture",
+    record_status: "operator_confirmed_not_delivery_proof",
+    delivery_result_claimed: true,
+    operator_confirmation_present: true,
+    dropoff_confirmation_type: "operator_terminal_claim",
+    completed_at_utc: "2026-07-13T09:17:00.000Z",
+    evidence_ref: "delivery-result-evidence.json",
+    write_status: "created",
+    duplicate: false,
+    field_evidence_written: true,
+    o6_schema: "trashbot.o6.field_evidence_archive.v1",
+    o6_source: "local_mock_field_evidence_archive",
+    proof_scope: "software_proof_o7_o6_consumer_delivery_result_intake_only",
+    delivery_result_evidence: sampleDeliveryResultEvidenceFixture("task-consumer-001"),
+    route_execution_success: false,
+    hil_pass: false,
+    real_cloud_db_connected: false,
+    real_oss_connected: false,
+    connects_cloud_production: false,
+    robot_control_executed: false,
+    blocked_reasons: [
+      "local_mock_only",
+      "delivery_success_not_proven",
+      "robot_control_executed_false",
+      "route_execution_success_false",
+      "hil_pass_false",
+    ],
+    not_proven: [
+      "field_evidence_gate_is_not_delivery_success",
+      "real_cloud_db_not_connected",
+      "real_oss_not_connected",
+      "real_cloud_production_not_connected",
+      "robot_control_not_executed",
+    ],
+    fail_closed_reason: "none",
+    local_loopback_only: true,
+    ...PROOF_FLAGS,
+  },
+  "/api/o7/consumer-read/tasks/task-consumer-001/phone-browser-proof/intake": {
+    schema: "trashbot.pc_tools_workstation.o7_phone_browser_proof_intake_result.v1",
+    intake_status: "local_mock_phone_browser_material_written",
+    source_base_url: "http://127.0.0.1:8088",
+    remote_endpoint: "/api/o6/archive/field-evidence",
+    remote_schema: "trashbot.o6.field_evidence_archive.v1",
+    requested_task_id: "task-consumer-001",
+    o6_http_status: 201,
+    task_id: "task-consumer-001",
+    robot_id: "robot_fixture",
+    terminal_result_type: "browser_terminal_claim",
+    safe_evidence_ref: "phone-browser-terminal.json",
+    accepted_materials: ["true_phone_browser_evidence", "diagnostics_mobile_safe_summary"],
+    missing_materials: ["terminal_result_summary"],
+    rejected_materials: [],
+    write_status: "created",
+    duplicate: false,
+    field_evidence_written: true,
+    phone_browser_terminal_material_written: true,
+    phone_browser_terminal_material_readback: true,
+    same_task_id_consumed: true,
+    o6_schema: "trashbot.o6.field_evidence_archive.v1",
+    o6_source: "local_mock_field_evidence_archive",
+    proof_scope: "software_proof_o6_o7_phone_browser_terminal_material_intake_only",
+    phone_browser_terminal_material: samplePhoneBrowserTerminalMaterialFixture("task-consumer-001"),
+    route_execution_success: false,
+    hil_pass: false,
+    real_cloud_db_connected: false,
+    real_oss_connected: false,
+    connects_cloud_production: false,
+    robot_control_executed: false,
+    blocked_reasons: [
+      "phone_browser_terminal_material_intake_only",
+      "delivery_success_not_proven",
+      "robot_control_executed_false",
+      "route_execution_success_false",
+      "hil_pass_false",
+    ],
+    not_proven: [
+      "phone_browser_terminal_material_intake_only",
+      "delivery_success",
+      "route_execution_success",
+      "hil_pass",
+      "safe_to_control",
+      "robot_control_executed",
+      "connects_cloud_production",
+    ],
+    fail_closed_reason: "none",
+    local_loopback_only: true,
+    ...PROOF_FLAGS,
+  },
+  "/api/o7/consumer-read/tasks/task-consumer-001/bounded-route-gate/intake": {
+    schema: "trashbot.pc_tools_workstation.o7_bounded_route_gate_intake_result.v1",
+    intake_status: "local_mock_bounded_route_gate_written",
+    source_base_url: "http://127.0.0.1:8088",
+    remote_endpoint: "/api/o6/archive/field-evidence",
+    remote_schema: "trashbot.o6.field_evidence_archive.v1",
+    requested_task_id: "task_o3_28_pose_fixed_route_consumer_20260713_0402",
+    o6_http_status: 201,
+    task_id: "task_o3_28_pose_fixed_route_consumer_20260713_0402",
+    robot_id: "robot_fixture",
+    packet_id: "packet_o3_28_pose_same_task_replay_7d57826142b0c79c",
+    route_intent_id: "route_intent_20260713_0402_from_20260713_0300_28_pose_structured_path",
+    execution_plan_status: "blocked_pending_live_safety_gate",
+    route_csv_row_count: 28,
+    path_structured_pose_count: 28,
+    segment_count: 27,
+    write_status: "created",
+    duplicate: false,
+    field_evidence_written: true,
+    same_task_id_consumed: true,
+    bounded_route_execution_gate_material_written: true,
+    bounded_route_execution_gate_material_readback: true,
+    o6_schema: "trashbot.o6.field_evidence_archive.v1",
+    o6_source: "local_mock_field_evidence_archive",
+    proof_scope: "software_proof_o6_o7_bounded_route_gate_material_intake_only",
+    bounded_route_execution_gate_material: sampleBoundedRouteGateMaterialFixture(
+      "task_o3_28_pose_fixed_route_consumer_20260713_0402",
+    ),
+    route_execution_success: false,
+    hil_pass: false,
+    robot_control_executed: false,
+    connects_cloud_production: false,
+    blocked_reasons: [
+      "local_mock_only",
+      "execution_plan_status=blocked_pending_live_safety_gate",
+      "route_execution_success_not_proven",
+      "delivery_success_not_proven",
+      "hil_pass_not_proven",
+    ],
+    not_proven: [
+      "bounded_route_gate_material_intake_only",
+      "safe_to_control=false",
+      "route_execution_success=false",
+      "delivery_success=false",
+      "hil_pass=false",
+      "robot_control_not_executed",
+    ],
+    fail_closed_reason: "none",
+    local_loopback_only: true,
+    ...PROOF_FLAGS,
+  },
+  "/api/o7/consumer-read/tasks/task-consumer-001/bounded-route-terminal-result/intake": {
+    schema: "trashbot.pc_tools_workstation.o7_bounded_route_terminal_result_intake_result.v1",
+    status: "local_mock_bounded_route_terminal_result_written",
+    intake_status: "local_mock_bounded_route_terminal_result_written",
+    source_base_url: "http://127.0.0.1:8088",
+    remote_endpoint: "/api/o6/archive/field-evidence",
+    remote_schema: "trashbot.o6.field_evidence_archive.v1",
+    requested_task_id: "task_o3_28_pose_fixed_route_consumer_20260713_0402",
+    o6_http_status: 201,
+    task_id: "task_o3_28_pose_fixed_route_consumer_20260713_0402",
+    robot_id: "robot_fixture",
+    packet_id: "packet_o3_28_pose_same_task_replay_7d57826142b0c79c",
+    route_intent_id: "route_intent_20260713_0402_from_20260713_0300_28_pose_structured_path",
+    result_code: "mock_route_execution_completed_not_live_delivery",
+    terminal_result_state: "terminal_result_recorded",
+    reconciliation_state: "terminal_result_recorded",
+    route_csv_row_count: 28,
+    path_structured_pose_count: 28,
+    segment_count: 27,
+    safe_evidence_ref: "o5_bounded_route_terminal_result_bridge_summary.json",
+    write_status: "created",
+    duplicate: false,
+    field_evidence_written: true,
+    same_task_id_consumed: true,
+    bounded_route_terminal_result_material_written: true,
+    bounded_route_terminal_result_material_readback: true,
+    o6_schema: "trashbot.o6.field_evidence_archive.v1",
+    o6_source: "local_mock_field_evidence_archive",
+    proof_scope: "software_proof_o6_o7_bounded_route_terminal_result_intake_only",
+    bounded_route_terminal_result_material: sampleBoundedRouteTerminalResultMaterialFixture(
+      "task_o3_28_pose_fixed_route_consumer_20260713_0402",
+    ),
+    route_execution_success: false,
+    hil_pass: false,
+    robot_control_executed: false,
+    connects_cloud_production: false,
+    blocked_reasons: [
+      "local_mock_only",
+      "result_code=mock_route_execution_completed_not_live_delivery",
+      "route_execution_success_not_proven",
+      "delivery_success_not_proven",
+      "hil_pass_not_proven",
+    ],
+    not_proven: [
+      "bounded_route_terminal_result_material_intake_only",
+      "safe_to_control=false",
+      "route_execution_success=false",
+      "delivery_success=false",
+      "hil_pass=false",
+      "robot_control_not_executed",
+    ],
+    fail_closed_reason: "none",
+    local_loopback_only: true,
+    ...PROOF_FLAGS,
+  },
+  "/api/o7/consumer-read/tasks/task-consumer-001/events/append": {
+    schema: "trashbot.pc_tools_workstation.o7_consumer_mission_event_append_result.v1",
+    append_status: "local_mock_event_written",
+    source_base_url: "http://127.0.0.1:8088",
+    remote_endpoint: "/api/o6/archive/events",
+    remote_schema: "trashbot.o6.archive_events.v1",
+    requested_task_id: "task-consumer-001",
+    o6_http_status: 201,
+    task_id: "task-consumer-001",
+    robot_id: "robot_fixture",
+    event_id: "evt-o7-operator.note-task-consumer-001",
+    event_type: "operator.note",
+    occurred_at_ms: 1200,
+    evidence_refs_consumed: ["consumer-event-001.json"],
+    write_status: "created",
+    duplicate: false,
+    created_count: 1,
+    updated_count: 0,
+    archive_event_written: true,
+    events_written_count: 1,
+    o6_schema: "trashbot.o6.archive_events.v1",
+    o6_source: "local_mock_event_archive",
+    event_summary: {
+      event_count: 1,
+      event_types: ["operator.note"],
+      event_type_counts: { "operator.note": 1 },
+      created_count: 1,
+      updated_count: 0,
+    },
+    route_execution_success: false,
+    hil_pass: false,
+    real_cloud_db_connected: false,
+    real_oss_connected: false,
+    connects_cloud_production: false,
+    robot_control_executed: false,
+    blocked_reasons: [
+      "real_cloud_db_connected_false",
+      "real_oss_connected_false",
+      "robot_control_executed_false",
+      "route_execution_success_false",
+      "hil_pass_false",
+    ],
+    not_proven: [
+      "real_cloud_db_not_connected",
+      "real_oss_not_connected",
+      "real_cloud_production_not_connected",
+      "robot_control_not_executed",
+    ],
+    fail_closed_reason: "none",
+    local_loopback_only: true,
+    ...PROOF_FLAGS,
+  },
+  "/api/o7/consumer-read/tasks/task-consumer-001/operator/dropoff-acceptance/request": {
+    schema: "trashbot.pc_tools_workstation.o7_operator_dropoff_action_capture_result.v1",
+    capture_status: "local_mock_operator_dropoff_acceptance_event_written",
+    source_base_url: "http://127.0.0.1:8088",
+    remote_endpoint: "/api/o6/archive/events",
+    remote_schema: "trashbot.o6.archive_events.v1",
+    requested_task_id: "task-consumer-001",
+    o6_http_status: 201,
+    task_id: "task-consumer-001",
+    robot_id: "robot_fixture",
+    event_id: "evt-o7-operator-dropoff-task-consumer-001",
+    event_type: "operator.dropoff_acceptance",
+    occurred_at_ms: 1200,
+    operator_action_id: "dropoff-action-task-consumer-001",
+    operator_display_name: "pc-o7-operator",
+    evidence_refs_consumed: ["operator-dropoff-acceptance.json"],
+    write_status: "created",
+    duplicate: false,
+    created_count: 1,
+    updated_count: 0,
+    archive_event_written: true,
+    events_written_count: 1,
+    o6_schema: "trashbot.o6.archive_events.v1",
+    o6_source: "local_mock_event_archive",
+    proof_boundary: "software_proof_o6_o7_operator_dropoff_action_capture_only",
+    event_summary: {
+      event_count: 1,
+      event_types: ["operator.dropoff_acceptance"],
+      event_type_counts: { "operator.dropoff_acceptance": 1 },
+      created_count: 1,
+      updated_count: 0,
+    },
+    real_operator_action_proven: false,
+    route_execution_success: false,
+    hil_pass: false,
+    real_cloud_db_connected: false,
+    real_oss_connected: false,
+    connects_cloud_production: false,
+    robot_control_executed: false,
+    blocked_reasons: [
+      "real_operator_action_proven_false",
+      "delivery_success_false",
+      "route_execution_success_false",
+      "safe_to_control_false",
+      "hil_pass_false",
+      "robot_control_executed_false",
+      "connects_cloud_production_false",
+    ],
+    not_proven: [
+      "real_operator_action_not_proven",
+      "delivery_success_false",
+      "route_execution_success_false",
+      "safe_to_control_false",
+      "hil_pass_false",
+      "robot_control_not_executed",
+    ],
+    fail_closed_reason: "none",
+    local_loopback_only: true,
+    ...PROOF_FLAGS,
+  },
+  "/api/o7/voice-runtime/preflight": {
+    schema: "trashbot.pc_tools_workstation.o7_voice_runtime_preflight_result.v1",
+    schema_version: 1,
+    endpoint: "/api/o7/voice-runtime/preflight",
+    preflight_status: "ready_for_configured_runtime_check_only",
+    proof_boundary: "software_proof_o7_voice_runtime_preflight_only",
+    config_source: "query_mode",
+    config_schema: "not_loaded",
+    config_path_ref: "not_configured",
+    runtime_mode: "offline_stub",
+    runtime_configured: true,
+    config_checks: {
+      config_loaded: true,
+      schema_supported: true,
+      local_offline_mode: true,
+      no_network_access: true,
+      no_device_access: true,
+      no_audio_dispatch: true,
+      dangerous_true_claims: [],
+      unsafe_copy_detected: false,
+      status: "ready",
+    },
+    real_voice_api_connected: false,
+    real_asr_tts_runtime_connected: false,
+    asr_stream_connected: false,
+    tts_send_enabled: false,
+    speaker_dispatch_enabled: false,
+    microphone_opened: false,
+    speaker_playback_opened: false,
+    reads_audio_device: false,
+    network_probe_executed: false,
+    writes_o6_archive_events: false,
+    connects_cloud_production: false,
+    robot_control_executed: false,
+    route_execution_success: false,
+    hil_pass: false,
+    blocked_reasons: ["real_voice_runtime_not_connected", "configured_check_only"],
+    not_proven: [
+      "real_voice_api_connected=false",
+      "real_asr_tts_runtime_connected=false",
+      "tts_send_enabled=false",
+      "speaker_dispatch_enabled=false",
+      "safe_to_control=false",
+      "delivery_success=false",
+    ],
+    next_required_evidence: [
+      "authorized_real_voice_runtime_smoke",
+      "real_microphone_and_speaker_preflight",
+      "real_speaker_ack_for_selected_task",
+    ],
+    fail_closed_reason: "none",
+    ...PROOF_FLAGS,
+  },
+  "/api/o7/voice-runtime/offline-smoke": {
+    schema: "trashbot.pc_tools_workstation.o7_voice_runtime_offline_smoke_result.v1",
+    schema_version: 1,
+    endpoint: "/api/o7/voice-runtime/offline-smoke",
+    smoke_status: "ready_for_offline_smoke_trace_only",
+    proof_boundary: "software_proof_o7_voice_runtime_offline_smoke_only",
+    local_offline_only: true,
+    fixture_schema: "not_loaded",
+    fixture_path_ref: "not_configured",
+    selected_task_id: "task-consumer-001",
+    selected_robot_id: "robot_fixture",
+    selected_packet_id: "packet_o3_28_pose_same_task_replay_7d57826142b0c79c",
+    selected_route_intent_id: "route_intent_20260713_0402_from_20260713_0300_28_pose_structured_path",
+    selected_task: {
+      task_id: "task-consumer-001",
+      robot_id: "robot_fixture",
+      packet_id: "packet_o3_28_pose_same_task_replay_7d57826142b0c79c",
+      route_intent_id: "route_intent_20260713_0402_from_20260713_0300_28_pose_structured_path",
+      source: "query_task_id",
+      identity_status: "selected_task_identity_loaded_not_execution_proof",
+    },
+    preflight_derived_status: {
+      preflight_status: "ready_for_configured_runtime_check_only",
+      runtime_mode: "offline_stub",
+      runtime_configured: true,
+      config_source: "query_mode",
+      config_path_ref: "not_configured",
+      no_network_access: true,
+      no_device_access: true,
+      no_audio_dispatch: true,
+      blocked_reasons: ["real_voice_runtime_not_connected", "configured_check_only"],
+    },
+    smoke_trace_events: [
+      {
+        event_index: 1,
+        event_type: "preflight_config_checked",
+        event_status: "ready_not_real_runtime",
+        task_id: "task-consumer-001",
+        detail: "preflight_status=ready_for_configured_runtime_check_only; no_network_access=true",
+        proof_boundary: "software_proof_o7_voice_runtime_offline_smoke_only",
+      },
+      {
+        event_index: 2,
+        event_type: "offline_asr_stub_loaded",
+        event_status: "stub_trace_only",
+        task_id: "task-consumer-001",
+        detail: "microphone_opened=false; asr_stream_connected=false",
+        proof_boundary: "software_proof_o7_voice_runtime_offline_smoke_only",
+      },
+      {
+        event_index: 3,
+        event_type: "tts_draft_trace_prepared",
+        event_status: "draft_not_sent",
+        task_id: "task-consumer-001",
+        detail: "tts_send_enabled=false; real_voice_api_connected=false",
+        proof_boundary: "software_proof_o7_voice_runtime_offline_smoke_only",
+      },
+      {
+        event_index: 4,
+        event_type: "speaker_ack_pending_not_real",
+        event_status: "pending_not_real_ack",
+        task_id: "task-consumer-001",
+        detail: "speaker_dispatch_enabled=false; real_speaker_ack_proven=false",
+        proof_boundary: "software_proof_o7_voice_runtime_offline_smoke_only",
+      },
+    ],
+    smoke_trace_event_count: 4,
+    real_voice_api_connected: false,
+    real_asr_tts_runtime_connected: false,
+    asr_stream_connected: false,
+    tts_send_enabled: false,
+    speaker_dispatch_enabled: false,
+    real_speaker_ack_proven: false,
+    microphone_opened: false,
+    speaker_playback_opened: false,
+    reads_audio_device: false,
+    network_probe_executed: false,
+    writes_o6_archive_events: false,
+    connects_cloud_production: false,
+    robot_control_executed: false,
+    route_execution_success: false,
+    hil_pass: false,
+    blocked_reasons: [
+      "real_voice_runtime_not_connected",
+      "offline_smoke_trace_only",
+      "real_speaker_ack_not_proven",
+      "delivery_success_false",
+      "safe_to_control_false",
+    ],
+    not_proven: [
+      "real_voice_api_connected=false",
+      "real_asr_tts_runtime_connected=false",
+      "tts_send_enabled=false",
+      "speaker_dispatch_enabled=false",
+      "real_speaker_ack_proven=false",
+      "microphone_opened=false",
+      "speaker_playback_opened=false",
+      "safe_to_control=false",
+      "delivery_success=false",
+      "robot_control_executed=false",
+      "route_execution_success=false",
+      "hil_pass=false",
+    ],
+    next_required_evidence: [
+      "authorized_real_voice_runtime_smoke",
+      "same_task_real_asr_tts_trace",
+      "real_microphone_open_readback",
+      "real_speaker_playback_readback",
+      "real_speaker_ack_for_selected_task",
+      "delivery_result_for_selected_task",
+    ],
+    fail_closed_reason: "none",
+    ...PROOF_FLAGS,
+  },
+  "/api/o7/consumer-read/tasks/task-consumer-001/voice/tts-draft/request": {
+    schema: "trashbot.pc_tools_workstation.o7_voice_tts_draft_request_result.v1",
+    request_status: "local_mock_voice_tts_draft_event_written",
+    source_base_url: "http://127.0.0.1:8088",
+    remote_endpoint: "/api/o6/archive/events",
+    remote_schema: "trashbot.o6.archive_events.v1",
+    requested_task_id: "task-consumer-001",
+    o6_http_status: 201,
+    task_id: "task-consumer-001",
+    robot_id: "robot_fixture",
+    event_id: "evt-o7-voice-tts-draft-task-consumer-001",
+    event_type: "voice.tts_draft",
+    occurred_at_ms: 1200,
+    draft_text_length: 9,
+    voice_profile: "operator-soft",
+    locale: "zh-CN",
+    evidence_refs_consumed: ["voice-tts-draft.json"],
+    write_status: "created",
+    duplicate: false,
+    created_count: 1,
+    updated_count: 0,
+    archive_event_written: true,
+    tts_draft_event_written: true,
+    events_written_count: 1,
+    o6_schema: "trashbot.o6.archive_events.v1",
+    o6_source: "local_mock_event_archive",
+    proof_boundary: "software_proof_o6_o7_voice_tts_draft_event_write_only",
+    event_summary: {
+      event_count: 1,
+      event_types: ["voice.tts_draft"],
+      event_type_counts: { "voice.tts_draft": 1 },
+      created_count: 1,
+      updated_count: 0,
+    },
+    tts_send_enabled: false,
+    speaker_dispatch_enabled: false,
+    real_voice_api_connected: false,
+    real_asr_tts_runtime_connected: false,
+    route_execution_success: false,
+    hil_pass: false,
+    real_cloud_db_connected: false,
+    real_oss_connected: false,
+    connects_cloud_production: false,
+    robot_control_executed: false,
+    blocked_reasons: [
+      "tts_send_enabled_false",
+      "speaker_dispatch_enabled_false",
+      "real_voice_api_connected_false",
+      "real_asr_tts_runtime_connected_false",
+      "robot_control_executed_false",
+      "delivery_success_false",
+    ],
+    not_proven: [
+      "real_voice_api_not_connected",
+      "real_asr_tts_runtime_not_connected",
+      "real_tts_playback",
+      "real_speaker_ack",
+      "robot_control_not_executed",
+    ],
+    fail_closed_reason: "none",
+    local_loopback_only: true,
+    ...PROOF_FLAGS,
+  },
+  "/api/o7/consumer-read/tasks/task-consumer-001/voice/speaker-ack/request": {
+    schema: "trashbot.pc_tools_workstation.o7_voice_speaker_ack_event_result.v1",
+    ack_event_status: "local_mock_voice_speaker_ack_event_written",
+    source_base_url: "http://127.0.0.1:8088",
+    remote_endpoint: "/api/o6/archive/events",
+    remote_schema: "trashbot.o6.archive_events.v1",
+    requested_task_id: "task-consumer-001",
+    o6_http_status: 201,
+    task_id: "task-consumer-001",
+    robot_id: "robot_fixture",
+    event_id: "evt-o7-voice-speaker-ack-task-consumer-001",
+    event_type: "voice.speaker_ack",
+    ack_status: "ack",
+    occurred_at_ms: 1200,
+    failure_reason_code: "none",
+    evidence_refs_consumed: ["voice-speaker-ack.json"],
+    write_status: "created",
+    duplicate: false,
+    created_count: 1,
+    updated_count: 0,
+    archive_event_written: true,
+    speaker_ack_event_written: true,
+    speaker_failure_event_written: false,
+    events_written_count: 1,
+    o6_schema: "trashbot.o6.archive_events.v1",
+    o6_source: "local_mock_event_archive",
+    proof_boundary: "software_proof_o6_o7_voice_speaker_ack_event_write_only",
+    event_summary: {
+      event_count: 1,
+      event_types: ["voice.speaker_ack"],
+      event_type_counts: { "voice.speaker_ack": 1 },
+      created_count: 1,
+      updated_count: 0,
+    },
+    speaker_dispatch_enabled: false,
+    real_speaker_ack_proven: false,
+    tts_send_enabled: false,
+    real_voice_api_connected: false,
+    real_asr_tts_runtime_connected: false,
+    route_execution_success: false,
+    hil_pass: false,
+    real_cloud_db_connected: false,
+    real_oss_connected: false,
+    connects_cloud_production: false,
+    robot_control_executed: false,
+    blocked_reasons: [
+      "speaker_dispatch_enabled_false",
+      "real_speaker_ack_proven_false",
+      "tts_send_enabled_false",
+      "real_voice_api_connected_false",
+      "real_asr_tts_runtime_connected_false",
+      "robot_control_executed_false",
+      "delivery_success_false",
+    ],
+    not_proven: [
+      "real_speaker_ack_not_proven",
+      "speaker_dispatch_not_enabled",
+      "real_voice_api_not_connected",
+      "real_asr_tts_runtime_not_connected",
+      "robot_control_not_executed",
+    ],
+    fail_closed_reason: "none",
+    local_loopback_only: true,
+    ...PROOF_FLAGS,
+  },
+  "/api/o7/consumer-read/tasks/task-consumer-001/mission-evidence/export": {
+    schema: "trashbot.pc_tools_workstation.o7_mission_evidence_bundle_export_result.v1",
+    export_status: "local_mock_mission_evidence_bundle_ready",
+    source_base_url: "http://127.0.0.1:8088",
+    remote_endpoint:
+      "/api/o6/consumer/tasks/task-consumer-001?view=default&include=trajectory,events,evidence,field_evidence,labeling,inference,tunnel,artifact_access_probe,offline_artifact_seed_smoke,route_root_seed_gate,route_bag_evidence,route_bag_payload_replay,route_bag_semantic_replay,route_bag_full_semantic_decode_matrix,route_bag_pose_progress_replay,nav2_goal_execution_evidence,delivery_result_evidence,route_execution_result_delivery_readiness,route_delivery_closure_packet,same_task_field_material_packet,same_task_replay_packet_readback,bounded_route_execution_gate_material,bounded_route_terminal_result_material,current_field_evidence_material,pc_live_nav2_execution_material,clean_baseline_nav2_path_material,localization_path_material_readback,same_task_route_execution_material_packet,same_task_mission_evidence_gate,field_operator_confirmation_material,phone_browser_terminal_material",
+    remote_schema: "trashbot.o6.consumer_read.v1",
+    requested_task_id: "task-consumer-001",
+    o6_http_status: 200,
+    format: "json",
+    task_id: "task-consumer-001",
+    robot_id: "robot_fixture",
+    proof_scope: "software_proof_o7_o6_mission_evidence_bundle_export_only",
+    receipt_id: "local_mock_mission_evidence_bundle:task-consumer-001:json",
+    selected_task: {
+      task_id: "task-consumer-001",
+      robot_id: "robot_fixture",
+      task_status_summary: "completed_mock",
+      started_at_ms: 1000,
+      finished_at_ms: 2000,
+    },
+    identity: {
+      same_task_id_verified: true,
+      same_task_replay_packet_ready: true,
+      packet_id: "packet_o3_28_pose_same_task_replay_7d57826142b0c79c",
+      route_intent_id: "route_intent_20260713_0402_from_20260713_0300_28_pose_structured_path",
+      path_structured_pose_count: 28,
+      route_csv_row_count: 28,
+      replay_jsonl_event_count: 28,
+    },
+    counts: {
+      section_count: 22,
+      mission_event_count: 2,
+      evidence_count: 1,
+      field_evidence_artifact_count: 2,
+      route_section_count: 7,
+      closure_section_count: 3,
+      material_section_count: 9,
+      readiness_section_count: 1,
+      sample_ref_count: 6,
+    },
+    section_summaries: [
+      {
+        section: "mission_events",
+        status: "loaded_not_proven",
+        schema: "not_loaded",
+        proof_scope: "not_loaded",
+        source_origin: "not_loaded",
+        item_count: 2,
+        safe_ref_count: 1,
+        sample_refs: ["consumer-event-001.json"],
+        blocked_reasons: [],
+        not_proven: [],
+      },
+      {
+        section: "field_evidence",
+        status: "field_evidence_manifest_ready_not_delivery_proof",
+        schema: "trashbot.field_evidence_manifest.v1",
+        proof_scope: "not_loaded",
+        source_origin: "remote_field_evidence",
+        item_count: 2,
+        safe_ref_count: 2,
+        sample_refs: ["route.csv", "fixed_route_replay.jsonl"],
+        blocked_reasons: ["delivery_success_not_proven"],
+        not_proven: ["safe_to_control=false"],
+      },
+      {
+        section: "same_task_replay_packet_readback",
+        status: "same_task_replay_packet_ready_not_route_execution_proof",
+        schema: "trashbot.o6.same_task_replay_packet_readback.v1",
+        proof_scope: "software_proof_o6_o7_same_task_replay_packet_readback_only",
+        source_origin: "remote_same_task_replay_packet_readback",
+        item_count: 0,
+        safe_ref_count: 4,
+        sample_refs: ["same_task_replay_packet_summary.json", "same_task_replay_packet.jsonl", "route.csv", "fixed_route_replay.jsonl"],
+        blocked_reasons: ["local_mock_only", "not_proven", "route_execution_success_not_proven"],
+        not_proven: ["route_execution_success", "delivery_success", "hil_pass", "safe_to_control"],
+      },
+    ],
+    bundle_ready: true,
+    local_mock_only: true,
+    o6_consumer_detail_only: true,
+    route_execution_success: false,
+    hil_pass: false,
+    real_cloud_db_connected: false,
+    real_oss_connected: false,
+    connects_cloud_production: false,
+    robot_control_executed: false,
+    blocked_reasons: ["local_mock_only", "route_execution_success_false", "delivery_success_false", "hil_pass_false"],
+    not_proven: ["production_cloud", "route_execution_success", "delivery_success", "hil_pass", "safe_to_control", "real_dataset_export"],
     fail_closed_reason: "none",
     local_loopback_only: true,
     ...PROOF_FLAGS,
@@ -7946,6 +8924,26 @@ function stubWorkstationFetch(fixtureOverrides: Record<string, unknown> = {}) {
       fixtureKey = "/api/robot-control/camera/peers/peer-preview-001/close";
     } else if (url.startsWith("/api/o7/consumer-read/tasks/") && url.includes("/annotations/submit")) {
       fixtureKey = "/api/o7/consumer-read/tasks/task-consumer-001/annotations/submit";
+    } else if (url.startsWith("/api/o7/consumer-read/tasks/") && url.includes("/inference/request")) {
+      fixtureKey = "/api/o7/consumer-read/tasks/task-consumer-001/inference/request";
+    } else if (url.startsWith("/api/o7/consumer-read/tasks/") && url.includes("/delivery-result/intake")) {
+      fixtureKey = "/api/o7/consumer-read/tasks/task-consumer-001/delivery-result/intake";
+    } else if (url.startsWith("/api/o7/consumer-read/tasks/") && url.includes("/phone-browser-proof/intake")) {
+      fixtureKey = "/api/o7/consumer-read/tasks/task-consumer-001/phone-browser-proof/intake";
+    } else if (url.startsWith("/api/o7/consumer-read/tasks/") && url.includes("/bounded-route-gate/intake")) {
+      fixtureKey = "/api/o7/consumer-read/tasks/task-consumer-001/bounded-route-gate/intake";
+    } else if (url.startsWith("/api/o7/consumer-read/tasks/") && url.includes("/bounded-route-terminal-result/intake")) {
+      fixtureKey = "/api/o7/consumer-read/tasks/task-consumer-001/bounded-route-terminal-result/intake";
+    } else if (url.startsWith("/api/o7/consumer-read/tasks/") && url.includes("/voice/speaker-ack/request")) {
+      fixtureKey = "/api/o7/consumer-read/tasks/task-consumer-001/voice/speaker-ack/request";
+    } else if (url.startsWith("/api/o7/consumer-read/tasks/") && url.includes("/voice/tts-draft/request")) {
+      fixtureKey = "/api/o7/consumer-read/tasks/task-consumer-001/voice/tts-draft/request";
+    } else if (url.startsWith("/api/o7/consumer-read/tasks/") && url.includes("/operator/dropoff-acceptance/request")) {
+      fixtureKey = "/api/o7/consumer-read/tasks/task-consumer-001/operator/dropoff-acceptance/request";
+    } else if (url.startsWith("/api/o7/consumer-read/tasks/") && url.includes("/events/append")) {
+      fixtureKey = "/api/o7/consumer-read/tasks/task-consumer-001/events/append";
+    } else if (url.startsWith("/api/o7/consumer-read/tasks/") && url.includes("/mission-evidence/export")) {
+      fixtureKey = "/api/o7/consumer-read/tasks/task-consumer-001/mission-evidence/export";
     } else if (url.startsWith("/api/o7/consumer-read/tasks/") && url.includes("/annotations/export")) {
       fixtureKey = "/api/o7/consumer-read/tasks/task-consumer-001/annotations/export";
     } else if (url.startsWith("/api/o7/consumer-read/tasks/")) {
@@ -7962,6 +8960,10 @@ function stubWorkstationFetch(fixtureOverrides: Record<string, unknown> = {}) {
       fixtureKey = "/api/o7/field-evidence-consumer-ingest";
     } else if (url.startsWith("/api/o7/voice-preview")) {
       fixtureKey = "/api/o7/voice-preview";
+    } else if (url.startsWith("/api/o7/voice-runtime/preflight")) {
+      fixtureKey = "/api/o7/voice-runtime/preflight";
+    } else if (url.startsWith("/api/o7/voice-runtime/offline-smoke")) {
+      fixtureKey = "/api/o7/voice-runtime/offline-smoke";
     } else if (url.startsWith("/api/o7/safe-command-preview")) {
       fixtureKey = "/api/o7/safe-command-preview";
     } else if (url.startsWith("/api/o7/previews/acceptance")) {
@@ -8048,6 +9050,100 @@ function writeCameraFrameQualityArtifact(payload: Record<string, unknown>): void
   );
 }
 
+function writeO7OperatorDropoffBrowserArtifact(params: {
+  requestUrl: string;
+  receipt: Record<string, unknown>;
+  domText: string;
+}): Record<string, unknown> {
+  // 该 artifact 只绑定 Vitest 本地 DOM 与 fetch stub receipt，不能被解释为真实手机、生产云或机器人动作。
+  const endpointPath = params.requestUrl.split("?")[0];
+  const fixedFalseFields = {
+    real_operator_action_proven: false,
+    delivery_success: false,
+    route_execution_success: false,
+    safe_to_control: false,
+    hil_pass: false,
+    robot_control_executed: false,
+    connects_cloud_production: false,
+  };
+  const artifact = {
+    schema: "trashbot.pc_tools_workstation.o7_operator_dropoff_browser_artifact.v1",
+    artifact_status: "local_browser_dom_operator_dropoff_capture_observed_not_real_operator_action",
+    proof_boundary: "software_proof_o7_operator_dropoff_browser_artifact_only",
+    source_receipt_proof_boundary: params.receipt.proof_boundary,
+    selected_task_id: params.receipt.task_id,
+    task_id: params.receipt.task_id,
+    triggered_button_label: "记录 operator dropoff capture",
+    endpoint_path: endpointPath,
+    endpoint_template: "/api/o7/consumer-read/tasks/<task_id>/operator/dropoff-acceptance/request",
+    endpoint_query_keys: ["baseUrl"],
+    endpoint_transport: "vitest_fetch_stub_no_socket",
+    remote_endpoint_path: params.receipt.remote_endpoint,
+    receipt_schema: params.receipt.schema,
+    receipt_status_field: "capture_status",
+    receipt_status: params.receipt.capture_status,
+    receipt_http_status: params.receipt.o6_http_status,
+    write_status: params.receipt.write_status,
+    archive_event_written: params.receipt.archive_event_written,
+    event_type: params.receipt.event_type,
+    event_id: params.receipt.event_id,
+    operator_action_id: params.receipt.operator_action_id,
+    operator_display_name: params.receipt.operator_display_name,
+    evidence_refs_consumed: params.receipt.evidence_refs_consumed,
+    fixed_false_fields: fixedFalseFields,
+    fixed_false_field_text: Object.entries(fixedFalseFields).map(([key, value]) => `${key}=${String(value)}`),
+    not_proven: [
+      "real_operator_action",
+      "delivery_success",
+      "route_execution_success",
+      "hil",
+      "safe_to_control",
+      "production_cloud_db_queue_oss_cdn_4g_sim",
+      "true_mobile_phone_browser",
+      "robot_motion",
+      "/cmd_vel",
+      "/api/base/manual",
+      "NavigateToPose",
+      "WAVE_ROVER_UART",
+    ],
+    receipt_not_proven: params.receipt.not_proven,
+    blocked_reasons: params.receipt.blocked_reasons,
+    local_loopback_only: true,
+    real_operator_action_proven: false,
+    delivery_success: false,
+    route_execution_success: false,
+    safe_to_control: false,
+    hil_pass: false,
+    robot_control_executed: false,
+    connects_cloud_production: false,
+    dom_assertions: {
+      rendered_receipt_schema: params.domText.includes(String(params.receipt.schema)),
+      rendered_receipt_status: params.domText.includes(String(params.receipt.capture_status)),
+      rendered_event_type: params.domText.includes(String(params.receipt.event_type)),
+      rendered_source_receipt_proof_boundary: params.domText.includes(String(params.receipt.proof_boundary)),
+      rendered_real_operator_action_false: params.domText.includes("real_operator_action_proven=false"),
+      rendered_delivery_success_false: params.domText.includes("delivery_success=false"),
+      rendered_route_execution_success_false: params.domText.includes("route_execution_success=false"),
+      rendered_safe_to_control_false: params.domText.includes("safe_to_control=false"),
+      rendered_hil_pass_false: params.domText.includes("hil_pass=false"),
+      rendered_robot_control_executed_false: params.domText.includes("robot_control_executed=false"),
+      rendered_connects_cloud_production_false: params.domText.includes("connects_cloud_production=false"),
+    },
+    artifact_limits: {
+      stores_raw_screenshot: false,
+      stores_raw_dom: false,
+      stores_credentials: false,
+      connects_production_cloud: false,
+      uses_real_mobile_phone: false,
+      sends_robot_motion_command: false,
+    },
+  };
+
+  mkdirSync(O7_OPERATOR_DROPOFF_BROWSER_ARTIFACT_DIR, { recursive: true });
+  writeFileSync(O7_OPERATOR_DROPOFF_BROWSER_ARTIFACT_PATH, `${JSON.stringify(artifact, null, 2)}\n`);
+  return artifact;
+}
+
 function visiblePlainHomeText(wrapper: VueWrapper): string {
   // Vue Test Utils 会把关闭的 details 文本也算进 wrapper.text()；这里显式拼默认可见首屏。
   return [
@@ -8062,6 +9158,106 @@ describe("App", () => {
     vi.useRealTimers();
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+  });
+
+  it("forwards safe O7 consumer task list filters to the O6 summary endpoint", async () => {
+    // O7 adapter 只做 query narrowing，不生成控制、播放、提交或生产云语义。
+    const mockedFetch = vi.fn(async (url: string | URL) => {
+      void url;
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+        schema: "trashbot.o6.consumer_read.v1",
+        task_list: {
+          total_tasks: 1,
+          tasks: [
+            {
+              task_id: "task-filter-001",
+              robot_id: "robot-filter",
+              task_origin: "local_mock_archive",
+              field_evidence_source: "not_loaded",
+              field_evidence_artifact_status: "blocked",
+              started_at_ms: 1720800000000,
+              finished_at_ms: null,
+              task_status_summary: "completed_mock",
+              latest_event_at_ms: 1720800001000,
+              trajectory_frame_count: 0,
+              event_count: 1,
+              evidence_count: 0,
+              labeling_status: "pending",
+              inference_status: "absent",
+              tunnel_status_summary: "unknown_not_proven",
+              selected: true,
+            },
+          ],
+        },
+        blocked_reasons: [],
+        not_proven: ["real_robot_data_not_proven"],
+        safe_to_control: false,
+        delivery_success: false,
+        primary_actions_enabled: false,
+        connects_cloud_production: false,
+        robot_control_executed: false,
+        }),
+      };
+    });
+    vi.stubGlobal("fetch", mockedFetch);
+
+    const result = await buildO7ConsumerTaskList("http://127.0.0.1:8088", {
+      robot_id: "robot-filter",
+      task_id: "task-filter-001",
+      date: "2026-07-13",
+      status: "completed_mock",
+      limit: "25",
+      before_started_at_ms: "1720800005000",
+    });
+
+    expect(mockedFetch.mock.calls.length).toBe(1);
+    const [forwardedUrl] = mockedFetch.mock.calls[0]!;
+    expect(String(forwardedUrl)).toBe(
+      "http://127.0.0.1:8088/api/o6/consumer/tasks?view=summary&limit=25&robot_id=robot-filter&task_id=task-filter-001&date=2026-07-13&status=completed_mock&before_started_at_ms=1720800005000",
+    );
+    expect(result.remote_endpoint).toBe(
+      "/api/o6/consumer/tasks?view=summary&limit=25&robot_id=robot-filter&task_id=task-filter-001&date=2026-07-13&status=completed_mock&before_started_at_ms=1720800005000",
+    );
+    expect(result.applied_filters).toEqual({
+      robot_id: "robot-filter",
+      task_id: "task-filter-001",
+      date: "2026-07-13",
+      status: "completed_mock",
+      limit: 25,
+      before_started_at_ms: 1720800005000,
+    });
+    expect(result.filter_semantics).toBe("and");
+    expect(result.filtered_result_count).toBe(1);
+    expect(result.o7_consumer_read_query_filters_proof_scope).toBe(
+      "software_proof_o7_consumer_read_query_filters_only",
+    );
+    expect(result.safe_to_control).toBe(false);
+    expect(result.delivery_success).toBe(false);
+    expect(result.primary_actions_enabled).toBe(false);
+  });
+
+  it("fails closed on unsafe O7 consumer task list filters before contacting O6", async () => {
+    // unsafe query 不能被 O7 adapter 反射给 O6，也不能回显危险原文。
+    const mockedFetch = vi.fn();
+    vi.stubGlobal("fetch", mockedFetch);
+
+    const result = await buildO7ConsumerTaskList("http://127.0.0.1:8088", {
+      robot_id: "https://example.test/tasks?token=secret",
+      limit: "10",
+    });
+
+    expect(mockedFetch).not.toHaveBeenCalled();
+    expect(result.list_status).toBe("fail_closed");
+    expect(result.fail_closed_reason).toBe("invalid_o7_consumer_read_query_filter:robot_id");
+    expect(result.blocked_reasons).toEqual(["invalid_o7_consumer_read_query_filter:robot_id"]);
+    expect(result.remote_endpoint).toBe("/api/o6/consumer/tasks?view=summary&limit=50");
+    expect(JSON.stringify(result)).not.toContain("example.test");
+    expect(result.local_loopback_only).toBe(true);
+    expect(result.safe_to_control).toBe(false);
+    expect(result.robot_control_executed).toBe(false);
   });
 
   it("renders fail-closed Node route loader and evidence fixture index", async () => {
@@ -34722,7 +35918,25 @@ describe("App", () => {
         : url.startsWith("/api/robot-control/summary")
           ? "/api/robot-control/summary"
           : url.startsWith("/api/o7/consumer-read/tasks/") && url.includes("/annotations/submit")
-            ? "/api/o7/consumer-read/tasks/task-consumer-001/annotations/submit"
+          ? "/api/o7/consumer-read/tasks/task-consumer-001/annotations/submit"
+          : url.startsWith("/api/o7/consumer-read/tasks/") && url.includes("/inference/request")
+            ? "/api/o7/consumer-read/tasks/task-consumer-001/inference/request"
+            : url.startsWith("/api/o7/consumer-read/tasks/") && url.includes("/delivery-result/intake")
+              ? "/api/o7/consumer-read/tasks/task-consumer-001/delivery-result/intake"
+            : url.startsWith("/api/o7/consumer-read/tasks/") && url.includes("/phone-browser-proof/intake")
+              ? "/api/o7/consumer-read/tasks/task-consumer-001/phone-browser-proof/intake"
+            : url.startsWith("/api/o7/consumer-read/tasks/") && url.includes("/bounded-route-gate/intake")
+              ? "/api/o7/consumer-read/tasks/task-consumer-001/bounded-route-gate/intake"
+            : url.startsWith("/api/o7/consumer-read/tasks/") && url.includes("/bounded-route-terminal-result/intake")
+              ? "/api/o7/consumer-read/tasks/task-consumer-001/bounded-route-terminal-result/intake"
+            : url.startsWith("/api/o7/consumer-read/tasks/") && url.includes("/operator/dropoff-acceptance/request")
+              ? "/api/o7/consumer-read/tasks/task-consumer-001/operator/dropoff-acceptance/request"
+            : url.startsWith("/api/o7/consumer-read/tasks/") && url.includes("/voice/speaker-ack/request")
+              ? "/api/o7/consumer-read/tasks/task-consumer-001/voice/speaker-ack/request"
+            : url.startsWith("/api/o7/consumer-read/tasks/") && url.includes("/voice/tts-draft/request")
+              ? "/api/o7/consumer-read/tasks/task-consumer-001/voice/tts-draft/request"
+            : url.startsWith("/api/o7/consumer-read/tasks/") && url.includes("/mission-evidence/export")
+              ? "/api/o7/consumer-read/tasks/task-consumer-001/mission-evidence/export"
             : url.startsWith("/api/o7/consumer-read/tasks/") && url.includes("/annotations/export")
               ? "/api/o7/consumer-read/tasks/task-consumer-001/annotations/export"
               : url.startsWith("/api/o7/consumer-read/tasks/")
@@ -34953,7 +36167,7 @@ describe("App", () => {
     expect(wrapper.text()).not.toMatch(/keyboard controltrue/i);
   });
 
-  it("loads O7 fixture previews through PC-only read-only API clients", async () => {
+  it("loads O7 fixture previews through PC-only read-only API clients and records operator dropoff browser artifact", async () => {
     // O7 Previews tab 不自动读本地路径；operator 必须显式点击 Load preview。
     const mockedFetch = stubWorkstationFetch();
 
@@ -34995,6 +36209,14 @@ describe("App", () => {
     expect(wrapper.text()).toContain("realtime_elevator_probe_not_loaded");
     expect(wrapper.text()).toContain("Debug fallback: archive fixture labeling review panel");
     expect(wrapper.findAll("button").find((button) => button.text() === "Next item")?.attributes("disabled")).toBeDefined();
+    expect(wrapper.findAll("button").find((button) => button.text() === "请求 local/mock 推理")?.attributes("disabled")).toBeDefined();
+    expect(wrapper.findAll("button").find((button) => button.text() === "写入 local/mock 送达结果")?.attributes("disabled")).toBeDefined();
+    expect(wrapper.findAll("button").find((button) => button.text() === "追加 local/mock 事件")?.attributes("disabled")).toBeDefined();
+    expect(wrapper.findAll("button").find((button) => button.text() === "写入 voice/TTS 草稿事件")?.attributes("disabled")).toBeDefined();
+    expect(wrapper.findAll("button").find((button) => button.text() === "导出 local/mock mission evidence bundle")?.attributes("disabled")).toBeDefined();
+    expect(wrapper.findAll("button").find((button) => button.text() === "接收 phone/browser 材料")?.attributes("disabled")).toBeDefined();
+    expect(wrapper.findAll("button").find((button) => button.text() === "接收 bounded route gate")?.attributes("disabled")).toBeDefined();
+    expect(wrapper.findAll("button").find((button) => button.text() === "接收 terminal result")?.attributes("disabled")).toBeDefined();
     expect(wrapper.findAll("button").find((button) => button.text() === "提交 local/mock 标注")?.attributes("disabled")).toBeDefined();
     expect(wrapper.findAll("button").find((button) => button.text() === "导出 local/mock 数据集")?.attributes("disabled")).toBeDefined();
     expect(wrapper.text()).toContain("Local voice ASR/TTS monitor panel");
@@ -35058,6 +36280,83 @@ describe("App", () => {
     await wrapper.findAll("button").find((button) => button.text() === "Load consumer task detail")?.trigger("click");
     await flushPromises();
 
+    await wrapper.findAll("button").find((button) => button.text() === "请求 local/mock 推理")?.trigger("click");
+    await flushPromises();
+
+    await wrapper.findAll("button").find((button) => button.text() === "写入 local/mock 送达结果")?.trigger("click");
+    await flushPromises();
+
+    await wrapper.findAll("button").find((button) => button.text() === "接收 phone/browser 材料")?.trigger("click");
+    await flushPromises();
+
+    await wrapper.findAll("button").find((button) => button.text() === "接收 bounded route gate")?.trigger("click");
+    await flushPromises();
+
+    await wrapper.findAll("button").find((button) => button.text() === "接收 terminal result")?.trigger("click");
+    await flushPromises();
+
+    await wrapper.findAll("button").find((button) => button.text() === "追加 local/mock 事件")?.trigger("click");
+    await flushPromises();
+
+    await wrapper.findAll("button").find((button) => button.text() === "记录 operator dropoff capture")?.trigger("click");
+    await flushPromises();
+
+    const operatorDropoffRequestUrl = mockedFetch.mock.calls
+      .map(([url]) => String(url))
+      .find((url) => url.includes("/api/o7/consumer-read/tasks/task-consumer-001/operator/dropoff-acceptance/request"));
+    expect(operatorDropoffRequestUrl).toBeDefined();
+    const operatorDropoffReceipt = fixtures[
+      "/api/o7/consumer-read/tasks/task-consumer-001/operator/dropoff-acceptance/request"
+    ] as Record<string, unknown>;
+    expect(operatorDropoffReceipt.schema).toBe("trashbot.pc_tools_workstation.o7_operator_dropoff_action_capture_result.v1");
+    expect(operatorDropoffReceipt.capture_status).toBe("local_mock_operator_dropoff_acceptance_event_written");
+    expect(operatorDropoffReceipt.event_type).toBe("operator.dropoff_acceptance");
+    expect(operatorDropoffReceipt.real_operator_action_proven).toBe(false);
+    expect(operatorDropoffReceipt.delivery_success).toBe(false);
+    expect(operatorDropoffReceipt.route_execution_success).toBe(false);
+    expect(operatorDropoffReceipt.safe_to_control).toBe(false);
+    const operatorDropoffArtifact = writeO7OperatorDropoffBrowserArtifact({
+      requestUrl: operatorDropoffRequestUrl ?? "",
+      receipt: operatorDropoffReceipt,
+      domText: wrapper.text(),
+    });
+    expect(operatorDropoffArtifact).toMatchObject({
+      schema: "trashbot.pc_tools_workstation.o7_operator_dropoff_browser_artifact.v1",
+      proof_boundary: "software_proof_o7_operator_dropoff_browser_artifact_only",
+      selected_task_id: "task-consumer-001",
+      triggered_button_label: "记录 operator dropoff capture",
+      endpoint_path: "/api/o7/consumer-read/tasks/task-consumer-001/operator/dropoff-acceptance/request",
+      receipt_schema: "trashbot.pc_tools_workstation.o7_operator_dropoff_action_capture_result.v1",
+      receipt_status: "local_mock_operator_dropoff_acceptance_event_written",
+      event_type: "operator.dropoff_acceptance",
+      real_operator_action_proven: false,
+      delivery_success: false,
+      route_execution_success: false,
+      safe_to_control: false,
+      hil_pass: false,
+      robot_control_executed: false,
+      connects_cloud_production: false,
+    });
+    const persistedOperatorDropoffArtifact = JSON.parse(
+      readFileSync(O7_OPERATOR_DROPOFF_BROWSER_ARTIFACT_PATH, "utf8"),
+    ) as Record<string, unknown>;
+    expect(persistedOperatorDropoffArtifact).toMatchObject(operatorDropoffArtifact);
+
+    await wrapper.findAll("button").find((button) => button.text() === "检查 voice runtime preflight")?.trigger("click");
+    await flushPromises();
+
+    await wrapper.findAll("button").find((button) => button.text() === "运行 voice runtime offline smoke")?.trigger("click");
+    await flushPromises();
+
+    await wrapper.findAll("button").find((button) => button.text() === "写入 voice/TTS 草稿事件")?.trigger("click");
+    await flushPromises();
+
+    await wrapper.findAll("button").find((button) => button.text() === "写入 speaker ACK/failure 事件")?.trigger("click");
+    await flushPromises();
+
+    await wrapper.findAll("button").find((button) => button.text() === "导出 local/mock mission evidence bundle")?.trigger("click");
+    await flushPromises();
+
     await wrapper.findAll("button").find((button) => button.text() === "提交 local/mock 标注")?.trigger("click");
     await flushPromises();
 
@@ -35090,6 +36389,35 @@ describe("App", () => {
       "/api/o7/consumer-read/tasks/task-consumer-001/annotations/submit?baseUrl=http%3A%2F%2F127.0.0.1%3A8088",
     );
     expect(previewCalls).toContain(
+      "/api/o7/consumer-read/tasks/task-consumer-001/inference/request?baseUrl=http%3A%2F%2F127.0.0.1%3A8088",
+    );
+    expect(previewCalls).toContain(
+      "/api/o7/consumer-read/tasks/task-consumer-001/delivery-result/intake?baseUrl=http%3A%2F%2F127.0.0.1%3A8088",
+    );
+    expect(previewCalls).toContain(
+      "/api/o7/consumer-read/tasks/task-consumer-001/phone-browser-proof/intake?baseUrl=http%3A%2F%2F127.0.0.1%3A8088",
+    );
+    expect(previewCalls).not.toContain(
+      "/api/o7/consumer-read/tasks/task-consumer-001/bounded-route-terminal-result/intake?baseUrl=http%3A%2F%2F127.0.0.1%3A8088",
+    );
+    expect(previewCalls).toContain(
+      "/api/o7/consumer-read/tasks/task-consumer-001/events/append?baseUrl=http%3A%2F%2F127.0.0.1%3A8088",
+    );
+    expect(previewCalls).toContain(
+      "/api/o7/consumer-read/tasks/task-consumer-001/operator/dropoff-acceptance/request?baseUrl=http%3A%2F%2F127.0.0.1%3A8088",
+    );
+    expect(previewCalls).toContain("/api/o7/voice-runtime/preflight?mode=offline_stub");
+    expect(previewCalls).toContain("/api/o7/voice-runtime/offline-smoke?mode=offline_stub&taskId=task-consumer-001");
+    expect(previewCalls).toContain(
+      "/api/o7/consumer-read/tasks/task-consumer-001/voice/tts-draft/request?baseUrl=http%3A%2F%2F127.0.0.1%3A8088",
+    );
+    expect(previewCalls).toContain(
+      "/api/o7/consumer-read/tasks/task-consumer-001/voice/speaker-ack/request?baseUrl=http%3A%2F%2F127.0.0.1%3A8088",
+    );
+    expect(previewCalls).toContain(
+      "/api/o7/consumer-read/tasks/task-consumer-001/mission-evidence/export?baseUrl=http%3A%2F%2F127.0.0.1%3A8088&format=json",
+    );
+    expect(previewCalls).toContain(
       "/api/o7/consumer-read/tasks/task-consumer-001/annotations/export?baseUrl=http%3A%2F%2F127.0.0.1%3A8088&format=jsonl",
     );
     expect(previewCalls).toContain("/api/o7/cloud-archive/tasks-probe?baseUrl=http%3A%2F%2F127.0.0.1%3A8088");
@@ -35110,6 +36438,103 @@ describe("App", () => {
     expect(wrapper.text()).toContain("trashbot.pc_tools_workstation.o7_cloud_operator_console_probe.v1");
     expect(wrapper.text()).toContain("trashbot.pc_tools_workstation.o7_consumer_task_list.v1");
     expect(wrapper.text()).toContain("trashbot.pc_tools_workstation.o7_consumer_task_detail.v1");
+    expect(wrapper.text()).toContain("trashbot.pc_tools_workstation.o7_consumer_inference_request_result.v1");
+    expect(wrapper.text()).toContain("local_mock_inference_written");
+    expect(wrapper.text()).toContain("real_model_inference_success=false");
+    expect(wrapper.text()).toContain("trashbot.pc_tools_workstation.o7_consumer_delivery_result_intake_result.v1");
+    expect(wrapper.text()).toContain("local_mock_delivery_result_written");
+    expect(wrapper.text()).toContain("/api/o6/archive/field-evidence");
+    expect(wrapper.text()).toContain("field_evidence_written=true");
+    expect(wrapper.text()).toContain("software_proof_o7_o6_consumer_delivery_result_intake_only");
+    expect(wrapper.text()).toContain("trashbot.pc_tools_workstation.o7_phone_browser_proof_intake_result.v1");
+    expect(wrapper.text()).toContain("local_mock_phone_browser_material_written");
+    expect(wrapper.text()).toContain("/api/o7/consumer-read/tasks/<task_id>/phone-browser-proof/intake");
+    expect(wrapper.text()).toContain("software_proof_o6_o7_phone_browser_terminal_material_intake_only");
+    expect(wrapper.text()).toContain("phone_browser_terminal_material_written=true");
+    expect(wrapper.text()).toContain("phone_browser_terminal_material_readback=true");
+    expect(wrapper.text()).toContain("same_task_id_consumed=true");
+    expect(wrapper.text()).toContain("safe_evidence_ref=phone-browser-terminal.json");
+    expect(wrapper.text()).toContain("accepted_materials=true_phone_browser_evidence,diagnostics_mobile_safe_summary");
+    expect(wrapper.text()).toContain("missing_materials=terminal_result_summary");
+    expect(wrapper.text()).toContain("trashbot.pc_tools_workstation.o7_bounded_route_gate_intake_result.v1");
+    expect(wrapper.text()).toContain("bounded_route_execution_gate_material 只写入 O6/O7 local/mock 安全摘要");
+    expect(wrapper.text()).toContain("software_proof_o6_o7_bounded_route_gate_material_intake_only");
+    expect(wrapper.text()).toContain("bounded_route_gate_task_not_selected_source");
+    expect(wrapper.text()).toContain("bounded_route_execution_gate_material=not_loaded");
+    expect(wrapper.text()).toContain("trashbot.pc_tools_workstation.o7_bounded_route_terminal_result_intake_result.v1");
+    expect(wrapper.text()).toContain("bounded_route_terminal_result_material 只写入 O6/O7 local/mock terminal-result 安全摘要");
+    expect(wrapper.text()).toContain("/api/o7/consumer-read/tasks/<task_id>/bounded-route-terminal-result/intake");
+    expect(wrapper.text()).toContain("software_proof_o6_o7_bounded_route_terminal_result_intake_only");
+    expect(wrapper.text()).toContain("mock_route_execution_completed_not_live_delivery");
+    expect(wrapper.text()).toContain("terminal_result_recorded");
+    expect(wrapper.text()).toContain("bounded_route_terminal_result_task_not_selected_source");
+    expect(wrapper.text()).toContain("bounded_route_terminal_result_material=not_loaded");
+    expect(wrapper.text()).toContain("route_execution_success=false");
+    expect(wrapper.text()).toContain("hil_pass=false");
+    expect(wrapper.text()).toContain("safe_to_control=false");
+    expect(wrapper.text()).toContain("delivery_success=false");
+    expect(wrapper.text()).toContain("route_execution_success=false");
+    expect(wrapper.text()).toContain("hil_pass=false");
+    expect(wrapper.text()).toContain("connects_cloud_production=false");
+    expect(wrapper.text()).toContain("robot_control_executed=false");
+    expect(wrapper.text()).toContain("trashbot.pc_tools_workstation.o7_consumer_mission_event_append_result.v1");
+    expect(wrapper.text()).toContain("local_mock_event_written");
+    expect(wrapper.text()).toContain("/api/o6/archive/events");
+    expect(wrapper.text()).toContain("archive_event_written=true");
+    expect(wrapper.text()).toContain("route_execution_success=false");
+    expect(wrapper.text()).toContain("hil_pass=false");
+    expect(wrapper.text()).toContain("real_cloud_db_connected=false");
+    expect(wrapper.text()).toContain("real_oss_connected=false");
+    expect(wrapper.text()).toContain("trashbot.pc_tools_workstation.o7_operator_dropoff_action_capture_result.v1");
+    expect(wrapper.text()).toContain("local_mock_operator_dropoff_acceptance_event_written");
+    expect(wrapper.text()).toContain("operator.dropoff_acceptance");
+    expect(wrapper.text()).toContain("software_proof_o6_o7_operator_dropoff_action_capture_only");
+    expect(wrapper.text()).toContain("real_operator_action_proven=false");
+    expect(wrapper.text()).toContain("operator_action_id=dropoff-action-task-consumer-001");
+    expect(wrapper.text()).toContain("trashbot.pc_tools_workstation.o7_voice_runtime_preflight_result.v1");
+    expect(wrapper.text()).toContain("ready_for_configured_runtime_check_only");
+    expect(wrapper.text()).toContain("software_proof_o7_voice_runtime_preflight_only");
+    expect(wrapper.text()).toContain("runtime_mode=offline_stub");
+    expect(wrapper.text()).toContain("runtime_configured=true");
+    expect(wrapper.text()).toContain("network_probe_executed=false");
+    expect(wrapper.text()).toContain("writes_o6_archive_events=false");
+    expect(wrapper.text()).toContain("microphone_opened=false");
+    expect(wrapper.text()).toContain("speaker_playback_opened=false");
+    expect(wrapper.text()).toContain("trashbot.pc_tools_workstation.o7_voice_runtime_offline_smoke_result.v1");
+    expect(wrapper.text()).toContain("ready_for_offline_smoke_trace_only");
+    expect(wrapper.text()).toContain("software_proof_o7_voice_runtime_offline_smoke_only");
+    expect(wrapper.text()).toContain("/api/o7/voice-runtime/offline-smoke");
+    expect(wrapper.text()).toContain("selected_task_id=task-consumer-001");
+    expect(wrapper.text()).toContain("preflight_status=ready_for_configured_runtime_check_only");
+    expect(wrapper.text()).toContain("trace_event_count=4");
+    expect(wrapper.text()).toContain("preflight_config_checked");
+    expect(wrapper.text()).toContain("offline_asr_stub_loaded");
+    expect(wrapper.text()).toContain("tts_draft_trace_prepared");
+    expect(wrapper.text()).toContain("speaker_ack_pending_not_real");
+    expect(wrapper.text()).toContain("real_speaker_ack_proven=false");
+    expect(wrapper.text()).toContain("trashbot.pc_tools_workstation.o7_voice_tts_draft_request_result.v1");
+    expect(wrapper.text()).toContain("local_mock_voice_tts_draft_event_written");
+    expect(wrapper.text()).toContain("voice.tts_draft");
+    expect(wrapper.text()).toContain("software_proof_o6_o7_voice_tts_draft_event_write_only");
+    expect(wrapper.text()).toContain("tts_draft_event_written=true");
+    expect(wrapper.text()).toContain("tts_send_enabled=false");
+    expect(wrapper.text()).toContain("speaker_dispatch_enabled=false");
+    expect(wrapper.text()).toContain("real_voice_api_connected=false");
+    expect(wrapper.text()).toContain("real_asr_tts_runtime_connected=false");
+    expect(wrapper.text()).toContain("trashbot.pc_tools_workstation.o7_voice_speaker_ack_event_result.v1");
+    expect(wrapper.text()).toContain("local_mock_voice_speaker_ack_event_written");
+    expect(wrapper.text()).toContain("voice.speaker_ack");
+    expect(wrapper.text()).toContain("software_proof_o6_o7_voice_speaker_ack_event_write_only");
+    expect(wrapper.text()).toContain("speaker_ack_event_written=true");
+    expect(wrapper.text()).toContain("speaker_failure_event_written=false");
+    expect(wrapper.text()).toContain("real_speaker_ack_proven=false");
+    expect(wrapper.text()).toContain("tts_send_enabled=false");
+    expect(wrapper.text()).toContain("trashbot.pc_tools_workstation.o7_mission_evidence_bundle_export_result.v1");
+    expect(wrapper.text()).toContain("local_mock_mission_evidence_bundle_ready");
+    expect(wrapper.text()).toContain("mission evidence bundle receipt only");
+    expect(wrapper.text()).toContain("software_proof_o7_o6_mission_evidence_bundle_export_only");
+    expect(wrapper.text()).toContain("packet_o3_28_pose_same_task_replay_7d57826142b0c79c");
+    expect(wrapper.text()).toContain("mission_events · status=loaded_not_proven");
     expect(wrapper.text()).toContain("trashbot.pc_tools_workstation.o7_consumer_route_replay_mvp.v1");
     expect(wrapper.text()).toContain("trashbot.pc_tools_workstation.o7_consumer_labeling_mvp.v1");
     expect(wrapper.text()).toContain("consumer_detail_replay_ready");
@@ -35140,9 +36565,12 @@ describe("App", () => {
     expect(wrapper.text()).toContain("readonly_consumer_detail_trajectory_ready");
     expect(wrapper.text()).toContain("Artifact bundle readiness");
     expect(wrapper.text()).toContain(
-      "artifact_bundle_readiness 主路径 · bundle / consumer_ingest / preflight 优先 · route_bag_evidence / route_bag_payload_replay / route_bag_semantic_replay / route_bag_full_semantic_decode_matrix / route_delivery_closure_packet / same_task_field_material_packet / same_task_route_execution_material_packet / same_task_mission_evidence_gate / field_operator_confirmation_material 只读汇总 · route replay / labeling 旧 fallback 只做兼容",
+      "artifact_bundle_readiness 主路径 · bundle / consumer_ingest / preflight 优先 · route_bag_evidence / route_bag_payload_replay / route_bag_semantic_replay / route_bag_full_semantic_decode_matrix / route_delivery_closure_packet / same_task_field_material_packet / same_task_replay_packet_readback / pc_live_nav2_execution_material / same_task_route_execution_material_packet / same_task_mission_evidence_gate / field_operator_confirmation_material 只读汇总 · bounded_route_execution_gate_material 与 bounded_route_terminal_result_material 走 detail + intake receipt 独立区块 · route replay / labeling 旧 fallback 只做兼容",
     );
     expect(wrapper.text()).toContain("consumer_detail_artifact_bundle_ready");
+    expect(wrapper.text()).toContain(
+      "pc_live_nav2_execution_material_status=pc_live_nav2_execution_material_ready_not_delivery_proof",
+    );
     expect(wrapper.text()).toContain(
       "same_task_route_execution_material_packet_status=route_execution_material_ready_not_delivery_proof",
     );
@@ -35224,6 +36652,22 @@ describe("App", () => {
     expect(wrapper.text()).toContain("route_bag_or_rosbag_present=true");
     expect(wrapper.text()).toContain("material:route_bag_or_rosbag.basename=route_bag_0.db3");
     expect(wrapper.text()).toContain("optional_map_gap=false");
+    expect(wrapper.text()).toContain("PC live Nav2 execution material");
+    expect(wrapper.text()).toContain("trashbot.pc_tools_workstation.o7_pc_live_nav2_execution_material.v1");
+    expect(wrapper.text()).toContain("pc_live_nav2_execution_material_ready_not_delivery_proof");
+    expect(wrapper.text()).toContain("software_proof_pc_live_nav2_execution_material_only");
+    expect(wrapper.text()).toContain("source_sprint=2026.07.03_20-46_pc_nav2_o11_tail_wasd_back_alias");
+    expect(wrapper.text()).toContain("goal_accepted=true");
+    expect(wrapper.text()).toContain("goal_result_status=goal_timeout_cancel_requested");
+    expect(wrapper.text()).toContain("uses_base_uart=true");
+    expect(wrapper.text()).toContain("base_command_nonzero_observed=true");
+    expect(wrapper.text()).toContain("base_command_nonzero_count=733");
+    expect(wrapper.text()).toContain("base_feedback_sample_count=5941");
+    expect(wrapper.text()).toContain("base_feedback_imu_attitude_delta_observed=true");
+    expect(wrapper.text()).toContain("base_feedback_imu_pitch_delta=24.210531");
+    expect(wrapper.text()).toContain("base_feedback_lr_nonzero_proven=false");
+    expect(wrapper.text()).toContain("pc_live_nav2_execution_material_for_selected_task");
+    expect(wrapper.text()).toContain("wheel_lr_nonzero_feedback_for_selected_task");
     expect(wrapper.text()).toContain("Clean baseline Nav2 path material");
     expect(wrapper.text()).toContain("trashbot.o6.clean_baseline_nav2_path_material.v1");
     expect(wrapper.text()).toContain("clean_baseline_nav2_path_material_ready_not_route_execution_proof");
@@ -35759,6 +37203,78 @@ describe("App", () => {
     );
   });
 
+  it("sends O7 consumer read task list filters from the PC UI and renders applied values", async () => {
+    // UI 只把 operator 输入传给 workstation adapter；实际 safe query contract 由 adapter 统一校验。
+    const filteredListFixture = {
+      ...(fixtures["/api/o7/consumer-read/tasks"] as Record<string, unknown>),
+      remote_endpoint:
+        "/api/o6/consumer/tasks?view=summary&limit=25&robot_id=robot-filter&task_id=task-filter-001&date=2026-07-13&status=completed_mock&before_started_at_ms=1720800005000",
+      query_strategy: {
+        view: "summary",
+        include: [],
+        limit: 25,
+        primary_path: true,
+        fail_closed_visible: true,
+        applied_filters: {
+          robot_id: "robot-filter",
+          task_id: "task-filter-001",
+          date: "2026-07-13",
+          status: "completed_mock",
+          limit: 25,
+          before_started_at_ms: 1720800005000,
+        },
+        filter_semantics: "and",
+      },
+      applied_filters: {
+        robot_id: "robot-filter",
+        task_id: "task-filter-001",
+        date: "2026-07-13",
+        status: "completed_mock",
+        limit: 25,
+        before_started_at_ms: 1720800005000,
+      },
+      filter_semantics: "and",
+      filtered_result_count: 1,
+      o7_consumer_read_query_filters_ready_not_production_proof: true,
+      o7_consumer_read_query_filters_proof_scope: "software_proof_o7_consumer_read_query_filters_only",
+    };
+    const mockedFetch = stubWorkstationFetch({
+      "/api/o7/consumer-read/tasks": filteredListFixture,
+    });
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    await wrapper.findAll("button").find((button) => button.text() === "预览")?.trigger("click");
+    await wrapper.vm.$nextTick();
+
+    await wrapper.find('input[aria-label="O7 consumer read base URL"]').setValue("http://127.0.0.1:8088");
+    await wrapper.find('input[aria-label="O7 consumer task list robot_id filter"]').setValue("robot-filter");
+    await wrapper.find('input[aria-label="O7 consumer task list task_id filter"]').setValue("task-filter-001");
+    await wrapper.find('input[aria-label="O7 consumer task list date filter"]').setValue("2026-07-13");
+    await wrapper.find('select[aria-label="O7 consumer task list status filter"]').setValue("completed_mock");
+    await wrapper.find('input[aria-label="O7 consumer task list limit filter"]').setValue("25");
+    await wrapper
+      .find('input[aria-label="O7 consumer task list before_started_at_ms filter"]')
+      .setValue("1720800005000");
+    await wrapper.findAll("button").find((button) => button.text() === "Load consumer task list")?.trigger("click");
+    await flushPromises();
+
+    const previewCalls = mockedFetch.mock.calls.map(([url]) => String(url)).filter((url) => url.startsWith("/api/o7/"));
+    expect(previewCalls).toContain(
+      "/api/o7/consumer-read/tasks?baseUrl=http%3A%2F%2F127.0.0.1%3A8088&robot_id=robot-filter&task_id=task-filter-001&date=2026-07-13&status=completed_mock&limit=25&before_started_at_ms=1720800005000",
+    );
+    expect(wrapper.text()).toContain("software_proof_o7_consumer_read_query_filters_only");
+    expect(wrapper.text()).toContain("robot-filter");
+    expect(wrapper.text()).toContain("task-filter-001");
+    expect(wrapper.text()).toContain("completed_mock");
+    expect(wrapper.text()).toContain("1720800005000");
+    expect(wrapper.text()).toContain("filtered result count");
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/annotations/submit"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).includes("/annotations/export"))).toBe(false);
+    expect(mockedFetch.mock.calls.some(([url]) => String(url).startsWith("/api/robot-control/base/manual"))).toBe(false);
+  });
+
   it("loads field evidence consumer ingest from manifest and route/labeling fixtures", async () => {
     // 新入口必须把 manifest、route replay 和 labeling 绑成同一条只读消费链。
     const mockedFetch = stubWorkstationFetch();
@@ -35850,7 +37366,7 @@ describe("App", () => {
         detail_status: "loaded_fail_closed_summary",
         source_base_url: "http://127.0.0.1:8088",
         remote_endpoint:
-          "/api/o6/consumer/tasks/task-consumer-summary-001?view=default&include=trajectory,events,evidence,field_evidence,labeling,inference,tunnel,artifact_access_probe,offline_artifact_seed_smoke,route_root_seed_gate,route_bag_evidence,route_bag_payload_replay,route_bag_semantic_replay,route_bag_full_semantic_decode_matrix,route_bag_pose_progress_replay,nav2_goal_execution_evidence,delivery_result_evidence,route_execution_result_delivery_readiness,route_delivery_closure_packet,same_task_field_material_packet,current_field_evidence_material,clean_baseline_nav2_path_material,localization_path_material_readback,same_task_route_execution_material_packet,same_task_mission_evidence_gate,field_operator_confirmation_material",
+          "/api/o6/consumer/tasks/task-consumer-summary-001?view=default&include=trajectory,events,evidence,field_evidence,labeling,inference,tunnel,artifact_access_probe,offline_artifact_seed_smoke,route_root_seed_gate,route_bag_evidence,route_bag_payload_replay,route_bag_semantic_replay,route_bag_full_semantic_decode_matrix,route_bag_pose_progress_replay,nav2_goal_execution_evidence,delivery_result_evidence,route_execution_result_delivery_readiness,route_delivery_closure_packet,same_task_field_material_packet,same_task_replay_packet_readback,bounded_route_execution_gate_material,bounded_route_terminal_result_material,current_field_evidence_material,pc_live_nav2_execution_material,clean_baseline_nav2_path_material,localization_path_material_readback,same_task_route_execution_material_packet,same_task_mission_evidence_gate,field_operator_confirmation_material,phone_browser_terminal_material",
         remote_schema: "trashbot.o6.consumer_read.v1",
         requested_task_id: "task-consumer-summary-001",
         query_strategy: {
@@ -35882,6 +37398,7 @@ describe("App", () => {
             "same_task_route_execution_material_packet",
             "same_task_mission_evidence_gate",
             "field_operator_confirmation_material",
+            "phone_browser_terminal_material",
           ],
           primary_path: true,
           fail_closed_visible: true,
@@ -36793,7 +38310,7 @@ describe("App", () => {
     expect(wrapper.text()).toContain("Artifact bundle readiness");
     expect(wrapper.text()).toContain("consumer_detail_artifact_bundle_ready");
     expect(wrapper.text()).toContain(
-      "artifact_bundle_readiness 主路径 · bundle / consumer_ingest / preflight 优先 · route_bag_evidence / route_bag_payload_replay / route_bag_semantic_replay / route_bag_full_semantic_decode_matrix / route_delivery_closure_packet / same_task_field_material_packet / same_task_route_execution_material_packet / same_task_mission_evidence_gate / field_operator_confirmation_material 只读汇总 · route replay / labeling 旧 fallback 只做兼容",
+      "artifact_bundle_readiness 主路径 · bundle / consumer_ingest / preflight 优先 · route_bag_evidence / route_bag_payload_replay / route_bag_semantic_replay / route_bag_full_semantic_decode_matrix / route_delivery_closure_packet / same_task_field_material_packet / same_task_replay_packet_readback / pc_live_nav2_execution_material / same_task_route_execution_material_packet / same_task_mission_evidence_gate / field_operator_confirmation_material 只读汇总 · bounded_route_execution_gate_material 与 bounded_route_terminal_result_material 走 detail + intake receipt 独立区块 · route replay / labeling 旧 fallback 只做兼容",
     );
     expect(wrapper.text()).toContain("Field motion evidence packet");
     expect(wrapper.text()).toContain("Nav2 goal execution evidence");
@@ -36991,7 +38508,7 @@ describe("App", () => {
         detail_status: "loaded_fail_closed_summary",
         source_base_url: "http://127.0.0.1:8088",
           remote_endpoint:
-          "/api/o6/consumer/tasks/task-consumer-labeling-blocked?view=default&include=trajectory,events,evidence,field_evidence,labeling,inference,tunnel,artifact_access_probe,offline_artifact_seed_smoke,route_root_seed_gate,route_bag_evidence,route_bag_payload_replay,route_bag_semantic_replay,route_bag_full_semantic_decode_matrix,route_bag_pose_progress_replay,nav2_goal_execution_evidence,delivery_result_evidence,route_execution_result_delivery_readiness,route_delivery_closure_packet,same_task_field_material_packet,current_field_evidence_material,clean_baseline_nav2_path_material,localization_path_material_readback,same_task_route_execution_material_packet,same_task_mission_evidence_gate,field_operator_confirmation_material",
+          "/api/o6/consumer/tasks/task-consumer-labeling-blocked?view=default&include=trajectory,events,evidence,field_evidence,labeling,inference,tunnel,artifact_access_probe,offline_artifact_seed_smoke,route_root_seed_gate,route_bag_evidence,route_bag_payload_replay,route_bag_semantic_replay,route_bag_full_semantic_decode_matrix,route_bag_pose_progress_replay,nav2_goal_execution_evidence,delivery_result_evidence,route_execution_result_delivery_readiness,route_delivery_closure_packet,same_task_field_material_packet,same_task_replay_packet_readback,bounded_route_execution_gate_material,bounded_route_terminal_result_material,current_field_evidence_material,pc_live_nav2_execution_material,clean_baseline_nav2_path_material,localization_path_material_readback,same_task_route_execution_material_packet,same_task_mission_evidence_gate,field_operator_confirmation_material,phone_browser_terminal_material",
         remote_schema: "trashbot.o6.consumer_read.v1",
         requested_task_id: "task-consumer-labeling-blocked",
         query_strategy: {
@@ -37023,6 +38540,7 @@ describe("App", () => {
             "same_task_route_execution_material_packet",
             "same_task_mission_evidence_gate",
             "field_operator_confirmation_material",
+            "phone_browser_terminal_material",
           ],
           primary_path: true,
           fail_closed_visible: true,

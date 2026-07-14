@@ -1,0 +1,46 @@
+{
+  "schema": "trashbot.product_acceptance.same_window_route_readiness_precheck.v1",
+  "sprint": "sprints/2026.07.14_13-38_o3_same_window_route_readiness_precheck/",
+  "accepted_at_local": "2026-07-14 13-38 Asia/Shanghai",
+  "product_status": "accepted_with_blocker_boundary",
+  "same_window_route_readiness_status": "blocked_missing_same_window_live_evidence",
+  "proof_boundary": "software_proof_o3_o1_same_window_route_readiness_precheck_only",
+  "okr": {
+    "o5_percent": "约 85%",
+    "o1_percent": "约 94%",
+    "o6_o7_percent": "约 93%",
+    "main_percent_changed": false,
+    "kr_archived": false,
+    "kr_status": "不归档"
+  },
+  "accepted_claim": "same-window route readiness blocker precheck software proof only",
+  "rejected_claims": [
+    "route execution",
+    "delivery",
+    "HIL",
+    "safe-to-control",
+    "O5 production/cloud evidence",
+    "/cmd_vel",
+    "/api/base/manual",
+    "NavigateToPose",
+    "WAVE ROVER UART"
+  ],
+  "fixed_false_fields": {
+    "route_execution_success": false,
+    "delivery_success": false,
+    "hil_pass": false,
+    "safe_to_control": false,
+    "robot_control_executed": false,
+    "publishes_cmd_vel": false,
+    "calls_base_manual": false,
+    "uses_base_uart": false,
+    "next_live_capture_allowed": false
+  },
+  "no_motion_guard": [
+    "no /cmd_vel",
+    "no /api/base/manual",
+    "no NavigateToPose",
+    "no WAVE ROVER UART"
+  ],
+  "next_recommendation": "Do not repeat readiness wrappers; collect explicit operator-approved current live stop/HIL, same-window scan, AMCL pose, dynamic map_to_odom TF, Nav2/controller result, and delivery/operator acceptance before route execution evidence."
+}

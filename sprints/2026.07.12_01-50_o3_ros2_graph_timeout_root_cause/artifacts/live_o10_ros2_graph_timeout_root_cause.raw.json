@@ -1,0 +1,3960 @@
+{
+  "calls_base_manual": false,
+  "delivery_success": false,
+  "evidence_type": "blocked_with_root_cause",
+  "generated_at_ms": 1783794876032,
+  "hil_pass": false,
+  "not_proven": true,
+  "proof": {
+    "amcl_active": false,
+    "amcl_broadcast_conditions": {
+      "amcl_active": false,
+      "amcl_frame_params_match_helper": false,
+      "amcl_pose_frame_id_is_map": false,
+      "amcl_pose_observed": false,
+      "base_link_to_laser_frame_source_observed": false,
+      "initialpose_published": false,
+      "map_once_observed": false,
+      "map_server_active": false,
+      "map_to_odom_source_observed": false,
+      "odom_to_base_link_dynamic_source_observed": false,
+      "odom_to_base_link_source_observed": false,
+      "odom_to_base_link_static_source_observed": false,
+      "scan_once_observed": false,
+      "static_tf_processes_observed": true,
+      "tf_broadcast_enabled": false
+    },
+    "amcl_frame_params": {
+      "base_frame_id": "",
+      "global_frame_id": "",
+      "odom_frame_id": ""
+    },
+    "amcl_log_tail": "ed out waiting for transform from base_link to map to become available, tf error: Lookup would require extrapolation into the past.  Requested time 1783794788.523291 but the earliest data is at time 1783794873.626646, when looking up transform from frame [base_link] to frame [map]\n[INFO] [1783794874.085476681] [rclcpp]: signal_handler(SIGINT/SIGTERM)\n[INFO] [1783794874.085875847] [planner_server]: Running Nav2 LifecycleNode rcl preshutdown (planner_server)\n[INFO] [1783794874.086085055] [planner_server]: Destroying bond (planner_server) to lifecycle manager.\n[INFO] [1783794874.087853428] [rclcpp]: signal_handler(SIGINT/SIGTERM)\n[INFO] [1783794874.088277677] [amcl]: Running Nav2 LifecycleNode rcl preshutdown (amcl)\n[INFO] [1783794874.088909302] [amcl]: Deactivating\n[INFO] [1783794874.089074010] [amcl]: Destroying bond (amcl) to lifecycle manager.\n[INFO] [1783794874.091593840] [rclcpp]: signal_handler(SIGINT/SIGTERM)\n[INFO] [1783794874.092007048] [lifecycle_manager]: Running Nav2 LifecycleManager rcl preshutdown (lifecycle_manager)\n[INFO] [1783794874.092949380] [rclcpp]: signal_handler(SIGINT/SIGTERM)\n[INFO] [1783794874.093324254] [map_server]: Running Nav2 LifecycleNode rcl preshutdown (map_server)\n[INFO] [1783794874.094213461] [map_server]: Deactivating\n[INFO] [1783794874.094410419] [map_server]: Destroying bond (map_server) to lifecycle manager.\n[INFO] [1783794874.098061331] [global_costmap.global_costmap]: start\n[ERROR] [1783794874.098325956] [global_costmap.global_costmap]: Failed to finish transition 3. Current state is now: active (Could not publish transition: publisher's context is invalid, at ./src/rcl/publisher.c:389, at ./src/rcl_lifecycle.c:368)\n[INFO] [1783794874.098367164] [planner_server]: Activating plugin GridBased of type NavfnPlanner\n[ERROR] [1783794874.098736039] [planner_server]: Caught exception in callback for transition 13\n[ERROR] [1783794874.098765705] [planner_server]: Original error: could not create service: rcl node's context is invalid, at ./src/rcl/node.c:428\n[ERROR] [1783794874.098807414] [planner_server]: Failed to finish transition 3. Current state is now: errorprocessing (Could not publish transition: publisher's context is invalid, at ./src/rcl/publisher.c:389, at ./src/rcl_lifecycle.c:368)\nTraceback (most recent call last):\n  File \"<string>\", line 44, in main\nterminate called after throwing an instance of 'rclcpp::exceptions::RCLError'\n  what():  failed to publish message: cannot publish data, at ./src/rmw_publish.cpp:62, at ./src/rcl/publisher.c:250\nMagick: abort due to signal 6 (SIGABRT) \"Abort\"...\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/__init__.py\", line 229, in spin\n    executor.spin_once()\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py\", line 808, in spin_once\n    self._spin_once_impl(timeout_sec)\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py\", line 797, in _spin_once_impl\n    handler, entity, node = self.wait_for_ready_callbacks(timeout_sec=timeout_sec)\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py\", line 780, in wait_for_ready_callbacks\n    return next(self._cb_iter)\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py\", line 677, in _wait_for_ready_callbacks\n    wait_set.wait(timeout_nsec)\nKeyboardInterrupt\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"<string>\", line 52, in <module>\n  File \"<string>\", line 46, in main\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/node.py\", line 1685, in destroy_node\n    self.destroy_publisher(self._publishers[0])\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/node.py\", line 1565, in destroy_publisher\n    publisher.destroy()\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/publisher.py\", line 99, in destroy\n    self.__publisher.destroy_when_not_in_use()\nKeyboardInterrupt\n[ros2run]: Aborted\n",
+    "amcl_node_info_observed": false,
+    "amcl_node_publishers": [],
+    "amcl_node_subscribers": [],
+    "amcl_param_probe_ok": true,
+    "amcl_pose": null,
+    "amcl_pose_frame_id": null,
+    "amcl_pose_observed": false,
+    "amcl_readiness_summary": {
+      "amcl_lifecycle": {
+        "active": false,
+        "classification": "map_lifecycle_preflight_lifecycle_probe_skipped_after_graph_blocked",
+        "map_server_active": false,
+        "observed": false,
+        "result": {
+          "boundary": "managed_runtime_lifecycle_check_not_run",
+          "executed": false,
+          "ok": false
+        }
+      },
+      "amcl_pose_sample": {
+        "blocked_reason": "amcl_lifecycle_not_active",
+        "observed": false,
+        "publishers": {
+          "count": 0,
+          "nodes": []
+        },
+        "sample_timing": {
+          "elapsed_ms": null,
+          "freshness": {
+            "age_ms": null,
+            "reason": "probe_or_source_not_observed",
+            "status": "not_observed"
+          },
+          "probe_executed": false,
+          "sample_observed": false,
+          "stamp": {
+            "parsed": false,
+            "reason": "stamp_not_found",
+            "source": "/amcl_pose.header.stamp"
+          },
+          "timed_out": false,
+          "timeout_s": null
+        },
+        "subscribers": {
+          "count": 0,
+          "nodes": []
+        },
+        "topic_present": false,
+        "topic_type": null
+      },
+      "blocked_reason": "amcl_lifecycle_not_active",
+      "ready": false
+    },
+    "amcl_tf_broadcast_param": "",
+    "amcl_tf_root_cause": "/tf_topic_missing",
+    "artifact_closeout": {
+      "artifact_kind": "final",
+      "current_command": null,
+      "interruption_does_not_override_primary_root_cause": false,
+      "last_phase": "final",
+      "primary_root_cause": {
+        "layer": "Managed runtime wait",
+        "reason": "ros2_node_list_timeout"
+      },
+      "root_cause_count": 15,
+      "signal_root_causes": [],
+      "status": "blocked_with_root_cause"
+    },
+    "base_link_to_laser_frame_transform": null,
+    "blocked_commands_not_sent": [
+      "T=1",
+      "T=13",
+      "T=130",
+      "T=131",
+      "/cmd_vel",
+      "/api/base/manual",
+      "/api/base/",
+      "/api/nav2/start",
+      "/api/nav2/stop",
+      "navigate_to_pose",
+      "compute_path_to_pose"
+    ],
+    "blocked_devices_not_opened": [
+      "/dev/ttyS5"
+    ],
+    "blockers": [
+      {
+        "layer": "Managed runtime wait",
+        "reason": "ros2_node_list_timeout"
+      },
+      {
+        "layer": "canonical map proof",
+        "reason": "map_lifecycle_proof_not_clean"
+      },
+      {
+        "layer": "ROS install/source",
+        "reason": "ros2_trashbot_bringup_missing"
+      },
+      {
+        "layer": "ROS install/source",
+        "reason": "ros2_trashbot_nav_missing"
+      },
+      {
+        "layer": "ROS install/source",
+        "reason": "nav2_map_server_missing"
+      },
+      {
+        "layer": "ROS install/source",
+        "reason": "nav2_amcl_missing"
+      },
+      {
+        "layer": "ROS install/source",
+        "reason": "nav2_lifecycle_manager_missing"
+      },
+      {
+        "layer": "Nav2 sensor input",
+        "reason": "/scan_no_publisher"
+      },
+      {
+        "layer": "Nav2 map input",
+        "reason": "/map_once_not_observed"
+      },
+      {
+        "layer": "AMCL initialpose",
+        "reason": "initialpose_skipped_after_managed_runtime_graph_wait_blocked"
+      },
+      {
+        "layer": "AMCL localization",
+        "reason": "/amcl_pose_topic_missing"
+      },
+      {
+        "layer": "Localization TF",
+        "reason": "map_to_odom_dynamic_source_missing"
+      },
+      {
+        "detail": "/tf_topic_missing",
+        "layer": "Localization TF",
+        "reason": "map_to_base_link_blocked_by_missing_map_to_odom",
+        "source": "map_to_odom"
+      },
+      {
+        "detail": "static_lidar_tf_missing_or_not_yet_observed",
+        "layer": "Managed static TF",
+        "reason": "base_link_to_laser_frame_not_observed",
+        "source": "base_link_to_laser_frame"
+      },
+      {
+        "layer": "planner readiness",
+        "reason": "localization_not_ready_for_path_generation"
+      }
+    ],
+    "board_source_preflight": {
+      "classification": "board_source_preflight_ready",
+      "cli_invocation": {
+        "command": "ros2 --help >/dev/null",
+        "elapsed_ms": 4759,
+        "executed": true,
+        "finished_at_ms": 1783794754905,
+        "label": "ros2_help",
+        "ok": true,
+        "returncode": 0,
+        "started_at_ms": 1783794750146,
+        "stderr": "",
+        "stdout": "",
+        "timed_out": false,
+        "timeout_s": 6.0
+      },
+      "cli_invocation_timeout_s": 6.0,
+      "cli_ready": true,
+      "commands": {
+        "rclpy_import": {
+          "command": "python3 -c 'import json\nimport sys\n\npayload = {\n    \"python_executable\": sys.executable,\n    \"python_version\": sys.version.split()[0],\n    \"sys_path_head\": sys.path[:8],\n    \"rclpy_import_ok\": False,\n    \"rclpy_file\": None,\n    \"error\": None,\n}\n\ntry:\n    import rclpy\n    payload[\"rclpy_import_ok\"] = True\n    payload[\"rclpy_file\"] = getattr(rclpy, \"__file__\", None)\nexcept Exception as exc:\n    payload[\"error\"] = {\n        \"type\": type(exc).__name__,\n        \"message\": str(exc)[:240],\n    }\n\nprint(json.dumps(payload, ensure_ascii=False))'",
+          "elapsed_ms": 4859,
+          "executed": true,
+          "finished_at_ms": 1783794759853,
+          "ok": true,
+          "returncode": 0,
+          "started_at_ms": 1783794754994,
+          "stderr": "",
+          "stdout": "{\"python_executable\": \"/usr/bin/python3\", \"python_version\": \"3.10.12\", \"sys_path_head\": [\"\", \"/root/rober/onboard/build/ros2_trashbot_behavior\", \"/root/rober/onboard/install/ros2_trashbot_behavior/lib/python3.10/site-packages\", \"/root/rober/onboard/build/ros2_trashbot_vision\", \"/root/rober/onboard/install/ros2_trashbot_vision/lib/python3.10/site-packages\", \"/root/rober/onboard/build/ros2_trashbot_nav\", \"/root/rober/onboard/install/ros2_trashbot_nav/lib/python3.10/site-packages\", \"/root/rober/onboard/build/ros2_trashbot_hardware\"], \"rclpy_import_ok\": true, \"rclpy_file\": \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/__init__.py\", \"error\": null}\n",
+          "timed_out": false,
+          "timeout_s": 6.0
+        },
+        "ros2_cli": {
+          "command": "command -v ros2",
+          "elapsed_ms": 44,
+          "executed": true,
+          "finished_at_ms": 1783794750083,
+          "label": "command_v",
+          "ok": true,
+          "returncode": 0,
+          "started_at_ms": 1783794750040,
+          "stderr": "",
+          "stdout": "/opt/ros/humble/bin/ros2\n",
+          "timed_out": false,
+          "timeout_s": 2.0
+        },
+        "ros2_cli_invocation": {
+          "command": "ros2 --help >/dev/null",
+          "elapsed_ms": 4759,
+          "executed": true,
+          "finished_at_ms": 1783794754905,
+          "label": "ros2_help",
+          "ok": true,
+          "returncode": 0,
+          "started_at_ms": 1783794750146,
+          "stderr": "",
+          "stdout": "",
+          "timed_out": false,
+          "timeout_s": 6.0
+        },
+        "ros2_cli_layer": {
+          "command": "python3 -c 'import json\nimport os\nimport subprocess\nimport time\n\nPATH_TIMEOUT_S = 2.0\nINVOCATION_TIMEOUT_S = 6.0\n\ndef now_ms():\n    return int(time.time() * 1000)\n\ndef compact(text, limit):\n    return (text or \"\")[-limit:]\n\ndef run_layer(label, command, timeout_s):\n    started_ms = now_ms()\n    try:\n        completed = subprocess.run(\n            [\"bash\", \"-lc\", command],\n            check=False,\n            text=True,\n            stdout=subprocess.PIPE,\n            stderr=subprocess.PIPE,\n            timeout=timeout_s,\n        )\n        return {\n            \"label\": label,\n            \"command\": command,\n            \"executed\": True,\n            \"ok\": completed.returncode == 0,\n            \"returncode\": completed.returncode,\n            \"started_at_ms\": started_ms,\n            \"finished_at_ms\": now_ms(),\n            \"timeout_s\": timeout_s,\n            \"timed_out\": False,\n            \"elapsed_ms\": now_ms() - started_ms,\n            \"stdout\": compact(completed.stdout, 2000),\n            \"stderr\": compact(completed.stderr, 1000),\n        }\n    except subprocess.TimeoutExpired as exc:\n        stdout = exc.stdout if isinstance(exc.stdout, str) else \"\"\n        stderr = exc.stderr if isinstance(exc.stderr, str) else \"\"\n        return {\n            \"label\": label,\n            \"command\": command,\n            \"executed\": True,\n            \"ok\": False,\n            \"returncode\": None,\n            \"started_at_ms\": started_ms,\n            \"finished_at_ms\": now_ms(),\n            \"timeout_s\": timeout_s,\n            \"timed_out\": True,\n            \"elapsed_ms\": now_ms() - started_ms,\n            \"stdout\": compact(stdout, 2000),\n            \"stderr\": compact(stderr, 1000),\n            \"error\": {\"type\": \"TimeoutExpired\", \"message\": f\"{label} timed out after {timeout_s}s\"},\n        }\n\npath_lookup = {\n    \"command_v\": run_layer(\"command_v\", \"command -v ros2\", PATH_TIMEOUT_S),\n    \"type_a\": run_layer(\"type_a\", \"type -a ros2\", PATH_TIMEOUT_S),\n    \"which\": run_layer(\"which\", \"which ros2\", PATH_TIMEOUT_S),\n}\nros2_path = \"\"\nfor key in (\"command_v\", \"which\"):\n    candidate = str(path_lookup[key].get(\"stdout\") or \"\").strip().splitlines()\n    if candidate:\n        ros2_path = candidate[0].strip()\n        break\nif ros2_path:\n    cli_invocation = run_layer(\"ros2_help\", \"ros2 --help >/dev/null\", INVOCATION_TIMEOUT_S)\nelse:\n    cli_invocation = {\n        \"label\": \"ros2_help\",\n        \"command\": \"ros2 --help >/dev/null\",\n        \"executed\": False,\n        \"ok\": False,\n        \"timeout_s\": INVOCATION_TIMEOUT_S,\n        \"timed_out\": False,\n        \"boundary\": \"ros2_path_missing_skip_cli_invocation\",\n        \"stdout\": \"\",\n        \"stderr\": \"\",\n    }\npayload = {\n    \"environment\": {\n        \"PATH\": os.environ.get(\"PATH\", \"\"),\n        \"AMENT_PREFIX_PATH\": os.environ.get(\"AMENT_PREFIX_PATH\", \"\"),\n        \"PYTHONPATH\": os.environ.get(\"PYTHONPATH\", \"\"),\n        \"LD_LIBRARY_PATH\": os.environ.get(\"LD_LIBRARY_PATH\", \"\"),\n    },\n    \"path_lookup\": path_lookup,\n    \"ros2_cli_path\": ros2_path or None,\n    \"cli_invocation\": cli_invocation,\n}\nprint(json.dumps(payload, ensure_ascii=False))'",
+          "elapsed_ms": 9357,
+          "executed": true,
+          "finished_at_ms": 1783794754983,
+          "ok": true,
+          "returncode": 0,
+          "started_at_ms": 1783794745626,
+          "stderr": "",
+          "stdout": "{\"environment\": {\"PATH\": \"/opt/ros/humble/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin\", \"AMENT_PREFIX_PATH\": \"/root/rober/onboard/install/ros2_trashbot_bringup:/root/rober/onboard/install/ros2_trashbot_behavior:/root/rober/onboard/install/ros2_trashbot_vision:/root/rober/onboard/install/ros2_trashbot_nav:/root/rober/onboard/install/ros2_trashbot_hardware:/root/rober/onboard/install/ros2_trashbot_interfaces:/opt/ros/humble\", \"PYTHONPATH\": \"/root/rober/onboard/build/ros2_trashbot_behavior:/root/rober/onboard/install/ros2_trashbot_behavior/lib/python3.10/site-packages:/root/rober/onboard/build/ros2_trashbot_vision:/root/rober/onboard/install/ros2_trashbot_vision/lib/python3.10/site-packages:/root/rober/onboard/build/ros2_trashbot_nav:/root/rober/onboard/install/ros2_trashbot_nav/lib/python3.10/site-packages:/root/rober/onboard/build/ros2_trashbot_hardware:/root/rober/onboard/install/ros2_trashbot_hardware/lib/python3.10/site-packages:/root/rober/onboard/install/ros2_trashbot_interfaces/local/lib/python3.10/dist-packages:/opt/ros/humble/lib/python3.10/site-packages:/opt/ros/humble/local/lib/python3.10/dist-packages\", \"LD_LIBRARY_PATH\": \"/root/rober/onboard/install/ros2_trashbot_interfaces/lib:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/aarch64-linux-gnu:/opt/ros/humble/lib\"}, \"path_lookup\": {\"command_v\": {\"label\": \"command_v\", \"command\": \"command -v ros2\", \"executed\": true, \"ok\": true, \"returncode\": 0, \"started_at_ms\": 1783794750040, \"finished_at_ms\": 1783794750083, \"timeout_s\": 2.0, \"timed_out\": false, \"elapsed_ms\": 44, \"stdout\": \"/opt/ros/humble/bin/ros2\\n\", \"stderr\": \"\"}, \"type_a\": {\"label\": \"type_a\", \"command\": \"type -a ros2\", \"executed\": true, \"ok\": true, \"returncode\": 0, \"started_at_ms\": 1783794750084, \"finished_at_ms\": 1783794750111, \"timeout_s\": 2.0, \"timed_out\": false, \"elapsed_ms\": 27, \"stdout\": \"ros2 is /opt/ros/humble/bin/ros2\\n\", \"stderr\": \"\"}, \"which\": {\"label\": \"which\", \"command\": \"which ros2\", \"executed\": true, \"ok\": true, \"returncode\": 0, \"started_at_ms\": 1783794750111, \"finished_at_ms\": 1783794750146, \"timeout_s\": 2.0, \"timed_out\": false, \"elapsed_ms\": 35, \"stdout\": \"/opt/ros/humble/bin/ros2\\n\", \"stderr\": \"\"}}, \"ros2_cli_path\": \"/opt/ros/humble/bin/ros2\", \"cli_invocation\": {\"label\": \"ros2_help\", \"command\": \"ros2 --help >/dev/null\", \"executed\": true, \"ok\": true, \"returncode\": 0, \"started_at_ms\": 1783794750146, \"finished_at_ms\": 1783794754905, \"timeout_s\": 6.0, \"timed_out\": false, \"elapsed_ms\": 4759, \"stdout\": \"\", \"stderr\": \"\"}}\n",
+          "timed_out": false,
+          "timeout_s": 12.0
+        },
+        "ros2_type": {
+          "command": "type -a ros2",
+          "elapsed_ms": 27,
+          "executed": true,
+          "finished_at_ms": 1783794750111,
+          "label": "type_a",
+          "ok": true,
+          "returncode": 0,
+          "started_at_ms": 1783794750084,
+          "stderr": "",
+          "stdout": "ros2 is /opt/ros/humble/bin/ros2\n",
+          "timed_out": false,
+          "timeout_s": 2.0
+        },
+        "ros2_which": {
+          "command": "which ros2",
+          "elapsed_ms": 35,
+          "executed": true,
+          "finished_at_ms": 1783794750146,
+          "label": "which",
+          "ok": true,
+          "returncode": 0,
+          "started_at_ms": 1783794750111,
+          "stderr": "",
+          "stdout": "/opt/ros/humble/bin/ros2\n",
+          "timed_out": false,
+          "timeout_s": 2.0
+        },
+        "source_stage": {
+          "command": "board_source_stage_probe",
+          "elapsed_ms": 5583,
+          "executed": true,
+          "finished_at_ms": 1783794745619,
+          "ok": true,
+          "returncode": 0,
+          "started_at_ms": 1783794740036,
+          "stderr": "",
+          "stdout": "{\"started_at_ms\": 1783794740176, \"finished_at_ms\": 1783794745310, \"elapsed_ms\": 5134, \"ros_setup\": {\"path\": \"/opt/ros/humble/setup.bash\", \"exists\": true, \"sourced\": true, \"returncode\": 0, \"elapsed_ms\": 1891}, \"workspace_setup\": {\"path\": \"/root/rober/onboard/install/setup.bash\", \"exists\": true, \"sourced\": true, \"skipped\": false, \"returncode\": 0, \"elapsed_ms\": 2411, \"failure_tolerated\": false}, \"workdir\": \"/root/rober/onboard\", \"cd_ok\": true}\n",
+          "timed_out": false,
+          "timeout_s": 8.0
+        }
+      },
+      "executed": true,
+      "path_lookup": {
+        "command_v": {
+          "command": "command -v ros2",
+          "elapsed_ms": 44,
+          "executed": true,
+          "finished_at_ms": 1783794750083,
+          "label": "command_v",
+          "ok": true,
+          "returncode": 0,
+          "started_at_ms": 1783794750040,
+          "stderr": "",
+          "stdout": "/opt/ros/humble/bin/ros2\n",
+          "timed_out": false,
+          "timeout_s": 2.0
+        },
+        "type_a": {
+          "command": "type -a ros2",
+          "elapsed_ms": 27,
+          "executed": true,
+          "finished_at_ms": 1783794750111,
+          "label": "type_a",
+          "ok": true,
+          "returncode": 0,
+          "started_at_ms": 1783794750084,
+          "stderr": "",
+          "stdout": "ros2 is /opt/ros/humble/bin/ros2\n",
+          "timed_out": false,
+          "timeout_s": 2.0
+        },
+        "which": {
+          "command": "which ros2",
+          "elapsed_ms": 35,
+          "executed": true,
+          "finished_at_ms": 1783794750146,
+          "label": "which",
+          "ok": true,
+          "returncode": 0,
+          "started_at_ms": 1783794750111,
+          "stderr": "",
+          "stdout": "/opt/ros/humble/bin/ros2\n",
+          "timed_out": false,
+          "timeout_s": 2.0
+        }
+      },
+      "path_lookup_timeout_s": 2.0,
+      "python_executable": "/usr/bin/python3",
+      "python_rclpy": {
+        "error": null,
+        "python_executable": "/usr/bin/python3",
+        "python_version": "3.10.12",
+        "rclpy_file": "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/__init__.py",
+        "rclpy_import_ok": true,
+        "sys_path_head": [
+          "",
+          "/root/rober/onboard/build/ros2_trashbot_behavior",
+          "/root/rober/onboard/install/ros2_trashbot_behavior/lib/python3.10/site-packages",
+          "/root/rober/onboard/build/ros2_trashbot_vision",
+          "/root/rober/onboard/install/ros2_trashbot_vision/lib/python3.10/site-packages",
+          "/root/rober/onboard/build/ros2_trashbot_nav",
+          "/root/rober/onboard/install/ros2_trashbot_nav/lib/python3.10/site-packages",
+          "/root/rober/onboard/build/ros2_trashbot_hardware"
+        ]
+      },
+      "python_version": "3.10.12",
+      "rclpy_error": null,
+      "rclpy_file": "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/__init__.py",
+      "rclpy_import_ok": true,
+      "rclpy_import_timeout_s": 6.0,
+      "ready": true,
+      "ros2_cli_invocation_ok": true,
+      "ros2_cli_ok": true,
+      "ros2_cli_path": "/opt/ros/humble/bin/ros2",
+      "ros2_cli_path_ok": true,
+      "ros2_cli_timeout_s": 6.0,
+      "runtime_ready": true,
+      "source_stage": {
+        "cd_ok": true,
+        "elapsed_ms": 5134,
+        "finished_at_ms": 1783794745310,
+        "ros_setup": {
+          "elapsed_ms": 1891,
+          "exists": true,
+          "path": "/opt/ros/humble/setup.bash",
+          "returncode": 0,
+          "sourced": true
+        },
+        "started_at_ms": 1783794740176,
+        "workdir": "/root/rober/onboard",
+        "workspace_setup": {
+          "elapsed_ms": 2411,
+          "exists": true,
+          "failure_tolerated": false,
+          "path": "/root/rober/onboard/install/setup.bash",
+          "returncode": 0,
+          "skipped": false,
+          "sourced": true
+        }
+      },
+      "source_stage_ok": true,
+      "source_stage_timeout_s": 8.0,
+      "sys_path_head": [
+        "",
+        "/root/rober/onboard/build/ros2_trashbot_behavior",
+        "/root/rober/onboard/install/ros2_trashbot_behavior/lib/python3.10/site-packages",
+        "/root/rober/onboard/build/ros2_trashbot_vision",
+        "/root/rober/onboard/install/ros2_trashbot_vision/lib/python3.10/site-packages",
+        "/root/rober/onboard/build/ros2_trashbot_nav",
+        "/root/rober/onboard/install/ros2_trashbot_nav/lib/python3.10/site-packages",
+        "/root/rober/onboard/build/ros2_trashbot_hardware"
+      ]
+    },
+    "calls_base_manual": false,
+    "collector_mode": "managed_no_motion_path_generation_runtime",
+    "commands": {
+      "amcl_node_info": {
+        "boundary": "amcl_node_info_available_under_tf_source_cli_fallback_or_skipped_after_graph_wait_blocked",
+        "executed": false,
+        "ok": false
+      },
+      "amcl_pose_once": {
+        "boundary": "pre_initialpose_amcl_pose_probe_skipped_to_prioritize_initialpose",
+        "executed": false,
+        "ok": false
+      },
+      "base_link_to_laser_frame_tf": {
+        "boundary": "tf_probe_skipped_after_managed_runtime_graph_wait_blocked",
+        "executed": false,
+        "ok": false
+      },
+      "board_source_preflight": {
+        "classification": "board_source_preflight_ready",
+        "cli_invocation": {
+          "command": "ros2 --help >/dev/null",
+          "elapsed_ms": 4759,
+          "executed": true,
+          "finished_at_ms": 1783794754905,
+          "label": "ros2_help",
+          "ok": true,
+          "returncode": 0,
+          "started_at_ms": 1783794750146,
+          "stderr": "",
+          "stdout": "",
+          "timed_out": false,
+          "timeout_s": 6.0
+        },
+        "cli_invocation_timeout_s": 6.0,
+        "cli_ready": true,
+        "commands": {
+          "rclpy_import": {
+            "command": "python3 -c 'import json\nimport sys\n\npayload = {\n    \"python_executable\": sys.executable,\n    \"python_version\": sys.version.split()[0],\n    \"sys_path_head\": sys.path[:8],\n    \"rclpy_import_ok\": False,\n    \"rclpy_file\": None,\n    \"error\": None,\n}\n\ntry:\n    import rclpy\n    payload[\"rclpy_import_ok\"] = True\n    payload[\"rclpy_file\"] = getattr(rclpy, \"__file__\", None)\nexcept Exception as exc:\n    payload[\"error\"] = {\n        \"type\": type(exc).__name__,\n        \"message\": str(exc)[:240],\n    }\n\nprint(json.dumps(payload, ensure_ascii=False))'",
+            "elapsed_ms": 4859,
+            "executed": true,
+            "finished_at_ms": 1783794759853,
+            "ok": true,
+            "returncode": 0,
+            "started_at_ms": 1783794754994,
+            "stderr": "",
+            "stdout": "{\"python_executable\": \"/usr/bin/python3\", \"python_version\": \"3.10.12\", \"sys_path_head\": [\"\", \"/root/rober/onboard/build/ros2_trashbot_behavior\", \"/root/rober/onboard/install/ros2_trashbot_behavior/lib/python3.10/site-packages\", \"/root/rober/onboard/build/ros2_trashbot_vision\", \"/root/rober/onboard/install/ros2_trashbot_vision/lib/python3.10/site-packages\", \"/root/rober/onboard/build/ros2_trashbot_nav\", \"/root/rober/onboard/install/ros2_trashbot_nav/lib/python3.10/site-packages\", \"/root/rober/onboard/build/ros2_trashbot_hardware\"], \"rclpy_import_ok\": true, \"rclpy_file\": \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/__init__.py\", \"error\": null}\n",
+            "timed_out": false,
+            "timeout_s": 6.0
+          },
+          "ros2_cli": {
+            "command": "command -v ros2",
+            "elapsed_ms": 44,
+            "executed": true,
+            "finished_at_ms": 1783794750083,
+            "label": "command_v",
+            "ok": true,
+            "returncode": 0,
+            "started_at_ms": 1783794750040,
+            "stderr": "",
+            "stdout": "/opt/ros/humble/bin/ros2\n",
+            "timed_out": false,
+            "timeout_s": 2.0
+          },
+          "ros2_cli_invocation": {
+            "command": "ros2 --help >/dev/null",
+            "elapsed_ms": 4759,
+            "executed": true,
+            "finished_at_ms": 1783794754905,
+            "label": "ros2_help",
+            "ok": true,
+            "returncode": 0,
+            "started_at_ms": 1783794750146,
+            "stderr": "",
+            "stdout": "",
+            "timed_out": false,
+            "timeout_s": 6.0
+          },
+          "ros2_cli_layer": {
+            "command": "python3 -c 'import json\nimport os\nimport subprocess\nimport time\n\nPATH_TIMEOUT_S = 2.0\nINVOCATION_TIMEOUT_S = 6.0\n\ndef now_ms():\n    return int(time.time() * 1000)\n\ndef compact(text, limit):\n    return (text or \"\")[-limit:]\n\ndef run_layer(label, command, timeout_s):\n    started_ms = now_ms()\n    try:\n        completed = subprocess.run(\n            [\"bash\", \"-lc\", command],\n            check=False,\n            text=True,\n            stdout=subprocess.PIPE,\n            stderr=subprocess.PIPE,\n            timeout=timeout_s,\n        )\n        return {\n            \"label\": label,\n            \"command\": command,\n            \"executed\": True,\n            \"ok\": completed.returncode == 0,\n            \"returncode\": completed.returncode,\n            \"started_at_ms\": started_ms,\n            \"finished_at_ms\": now_ms(),\n            \"timeout_s\": timeout_s,\n            \"timed_out\": False,\n            \"elapsed_ms\": now_ms() - started_ms,\n            \"stdout\": compact(completed.stdout, 2000),\n            \"stderr\": compact(completed.stderr, 1000),\n        }\n    except subprocess.TimeoutExpired as exc:\n        stdout = exc.stdout if isinstance(exc.stdout, str) else \"\"\n        stderr = exc.stderr if isinstance(exc.stderr, str) else \"\"\n        return {\n            \"label\": label,\n            \"command\": command,\n            \"executed\": True,\n            \"ok\": False,\n            \"returncode\": None,\n            \"started_at_ms\": started_ms,\n            \"finished_at_ms\": now_ms(),\n            \"timeout_s\": timeout_s,\n            \"timed_out\": True,\n            \"elapsed_ms\": now_ms() - started_ms,\n            \"stdout\": compact(stdout, 2000),\n            \"stderr\": compact(stderr, 1000),\n            \"error\": {\"type\": \"TimeoutExpired\", \"message\": f\"{label} timed out after {timeout_s}s\"},\n        }\n\npath_lookup = {\n    \"command_v\": run_layer(\"command_v\", \"command -v ros2\", PATH_TIMEOUT_S),\n    \"type_a\": run_layer(\"type_a\", \"type -a ros2\", PATH_TIMEOUT_S),\n    \"which\": run_layer(\"which\", \"which ros2\", PATH_TIMEOUT_S),\n}\nros2_path = \"\"\nfor key in (\"command_v\", \"which\"):\n    candidate = str(path_lookup[key].get(\"stdout\") or \"\").strip().splitlines()\n    if candidate:\n        ros2_path = candidate[0].strip()\n        break\nif ros2_path:\n    cli_invocation = run_layer(\"ros2_help\", \"ros2 --help >/dev/null\", INVOCATION_TIMEOUT_S)\nelse:\n    cli_invocation = {\n        \"label\": \"ros2_help\",\n        \"command\": \"ros2 --help >/dev/null\",\n        \"executed\": False,\n        \"ok\": False,\n        \"timeout_s\": INVOCATION_TIMEOUT_S,\n        \"timed_out\": False,\n        \"boundary\": \"ros2_path_missing_skip_cli_invocation\",\n        \"stdout\": \"\",\n        \"stderr\": \"\",\n    }\npayload = {\n    \"environment\": {\n        \"PATH\": os.environ.get(\"PATH\", \"\"),\n        \"AMENT_PREFIX_PATH\": os.environ.get(\"AMENT_PREFIX_PATH\", \"\"),\n        \"PYTHONPATH\": os.environ.get(\"PYTHONPATH\", \"\"),\n        \"LD_LIBRARY_PATH\": os.environ.get(\"LD_LIBRARY_PATH\", \"\"),\n    },\n    \"path_lookup\": path_lookup,\n    \"ros2_cli_path\": ros2_path or None,\n    \"cli_invocation\": cli_invocation,\n}\nprint(json.dumps(payload, ensure_ascii=False))'",
+            "elapsed_ms": 9357,
+            "executed": true,
+            "finished_at_ms": 1783794754983,
+            "ok": true,
+            "returncode": 0,
+            "started_at_ms": 1783794745626,
+            "stderr": "",
+            "stdout": "{\"environment\": {\"PATH\": \"/opt/ros/humble/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin\", \"AMENT_PREFIX_PATH\": \"/root/rober/onboard/install/ros2_trashbot_bringup:/root/rober/onboard/install/ros2_trashbot_behavior:/root/rober/onboard/install/ros2_trashbot_vision:/root/rober/onboard/install/ros2_trashbot_nav:/root/rober/onboard/install/ros2_trashbot_hardware:/root/rober/onboard/install/ros2_trashbot_interfaces:/opt/ros/humble\", \"PYTHONPATH\": \"/root/rober/onboard/build/ros2_trashbot_behavior:/root/rober/onboard/install/ros2_trashbot_behavior/lib/python3.10/site-packages:/root/rober/onboard/build/ros2_trashbot_vision:/root/rober/onboard/install/ros2_trashbot_vision/lib/python3.10/site-packages:/root/rober/onboard/build/ros2_trashbot_nav:/root/rober/onboard/install/ros2_trashbot_nav/lib/python3.10/site-packages:/root/rober/onboard/build/ros2_trashbot_hardware:/root/rober/onboard/install/ros2_trashbot_hardware/lib/python3.10/site-packages:/root/rober/onboard/install/ros2_trashbot_interfaces/local/lib/python3.10/dist-packages:/opt/ros/humble/lib/python3.10/site-packages:/opt/ros/humble/local/lib/python3.10/dist-packages\", \"LD_LIBRARY_PATH\": \"/root/rober/onboard/install/ros2_trashbot_interfaces/lib:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/aarch64-linux-gnu:/opt/ros/humble/lib\"}, \"path_lookup\": {\"command_v\": {\"label\": \"command_v\", \"command\": \"command -v ros2\", \"executed\": true, \"ok\": true, \"returncode\": 0, \"started_at_ms\": 1783794750040, \"finished_at_ms\": 1783794750083, \"timeout_s\": 2.0, \"timed_out\": false, \"elapsed_ms\": 44, \"stdout\": \"/opt/ros/humble/bin/ros2\\n\", \"stderr\": \"\"}, \"type_a\": {\"label\": \"type_a\", \"command\": \"type -a ros2\", \"executed\": true, \"ok\": true, \"returncode\": 0, \"started_at_ms\": 1783794750084, \"finished_at_ms\": 1783794750111, \"timeout_s\": 2.0, \"timed_out\": false, \"elapsed_ms\": 27, \"stdout\": \"ros2 is /opt/ros/humble/bin/ros2\\n\", \"stderr\": \"\"}, \"which\": {\"label\": \"which\", \"command\": \"which ros2\", \"executed\": true, \"ok\": true, \"returncode\": 0, \"started_at_ms\": 1783794750111, \"finished_at_ms\": 1783794750146, \"timeout_s\": 2.0, \"timed_out\": false, \"elapsed_ms\": 35, \"stdout\": \"/opt/ros/humble/bin/ros2\\n\", \"stderr\": \"\"}}, \"ros2_cli_path\": \"/opt/ros/humble/bin/ros2\", \"cli_invocation\": {\"label\": \"ros2_help\", \"command\": \"ros2 --help >/dev/null\", \"executed\": true, \"ok\": true, \"returncode\": 0, \"started_at_ms\": 1783794750146, \"finished_at_ms\": 1783794754905, \"timeout_s\": 6.0, \"timed_out\": false, \"elapsed_ms\": 4759, \"stdout\": \"\", \"stderr\": \"\"}}\n",
+            "timed_out": false,
+            "timeout_s": 12.0
+          },
+          "ros2_type": {
+            "command": "type -a ros2",
+            "elapsed_ms": 27,
+            "executed": true,
+            "finished_at_ms": 1783794750111,
+            "label": "type_a",
+            "ok": true,
+            "returncode": 0,
+            "started_at_ms": 1783794750084,
+            "stderr": "",
+            "stdout": "ros2 is /opt/ros/humble/bin/ros2\n",
+            "timed_out": false,
+            "timeout_s": 2.0
+          },
+          "ros2_which": {
+            "command": "which ros2",
+            "elapsed_ms": 35,
+            "executed": true,
+            "finished_at_ms": 1783794750146,
+            "label": "which",
+            "ok": true,
+            "returncode": 0,
+            "started_at_ms": 1783794750111,
+            "stderr": "",
+            "stdout": "/opt/ros/humble/bin/ros2\n",
+            "timed_out": false,
+            "timeout_s": 2.0
+          },
+          "source_stage": {
+            "command": "board_source_stage_probe",
+            "elapsed_ms": 5583,
+            "executed": true,
+            "finished_at_ms": 1783794745619,
+            "ok": true,
+            "returncode": 0,
+            "started_at_ms": 1783794740036,
+            "stderr": "",
+            "stdout": "{\"started_at_ms\": 1783794740176, \"finished_at_ms\": 1783794745310, \"elapsed_ms\": 5134, \"ros_setup\": {\"path\": \"/opt/ros/humble/setup.bash\", \"exists\": true, \"sourced\": true, \"returncode\": 0, \"elapsed_ms\": 1891}, \"workspace_setup\": {\"path\": \"/root/rober/onboard/install/setup.bash\", \"exists\": true, \"sourced\": true, \"skipped\": false, \"returncode\": 0, \"elapsed_ms\": 2411, \"failure_tolerated\": false}, \"workdir\": \"/root/rober/onboard\", \"cd_ok\": true}\n",
+            "timed_out": false,
+            "timeout_s": 8.0
+          }
+        },
+        "executed": true,
+        "path_lookup": {
+          "command_v": {
+            "command": "command -v ros2",
+            "elapsed_ms": 44,
+            "executed": true,
+            "finished_at_ms": 1783794750083,
+            "label": "command_v",
+            "ok": true,
+            "returncode": 0,
+            "started_at_ms": 1783794750040,
+            "stderr": "",
+            "stdout": "/opt/ros/humble/bin/ros2\n",
+            "timed_out": false,
+            "timeout_s": 2.0
+          },
+          "type_a": {
+            "command": "type -a ros2",
+            "elapsed_ms": 27,
+            "executed": true,
+            "finished_at_ms": 1783794750111,
+            "label": "type_a",
+            "ok": true,
+            "returncode": 0,
+            "started_at_ms": 1783794750084,
+            "stderr": "",
+            "stdout": "ros2 is /opt/ros/humble/bin/ros2\n",
+            "timed_out": false,
+            "timeout_s": 2.0
+          },
+          "which": {
+            "command": "which ros2",
+            "elapsed_ms": 35,
+            "executed": true,
+            "finished_at_ms": 1783794750146,
+            "label": "which",
+            "ok": true,
+            "returncode": 0,
+            "started_at_ms": 1783794750111,
+            "stderr": "",
+            "stdout": "/opt/ros/humble/bin/ros2\n",
+            "timed_out": false,
+            "timeout_s": 2.0
+          }
+        },
+        "path_lookup_timeout_s": 2.0,
+        "python_executable": "/usr/bin/python3",
+        "python_rclpy": {
+          "error": null,
+          "python_executable": "/usr/bin/python3",
+          "python_version": "3.10.12",
+          "rclpy_file": "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/__init__.py",
+          "rclpy_import_ok": true,
+          "sys_path_head": [
+            "",
+            "/root/rober/onboard/build/ros2_trashbot_behavior",
+            "/root/rober/onboard/install/ros2_trashbot_behavior/lib/python3.10/site-packages",
+            "/root/rober/onboard/build/ros2_trashbot_vision",
+            "/root/rober/onboard/install/ros2_trashbot_vision/lib/python3.10/site-packages",
+            "/root/rober/onboard/build/ros2_trashbot_nav",
+            "/root/rober/onboard/install/ros2_trashbot_nav/lib/python3.10/site-packages",
+            "/root/rober/onboard/build/ros2_trashbot_hardware"
+          ]
+        },
+        "python_version": "3.10.12",
+        "rclpy_error": null,
+        "rclpy_file": "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/__init__.py",
+        "rclpy_import_ok": true,
+        "rclpy_import_timeout_s": 6.0,
+        "ready": true,
+        "ros2_cli_invocation_ok": true,
+        "ros2_cli_ok": true,
+        "ros2_cli_path": "/opt/ros/humble/bin/ros2",
+        "ros2_cli_path_ok": true,
+        "ros2_cli_timeout_s": 6.0,
+        "runtime_ready": true,
+        "source_stage": {
+          "cd_ok": true,
+          "elapsed_ms": 5134,
+          "finished_at_ms": 1783794745310,
+          "ros_setup": {
+            "elapsed_ms": 1891,
+            "exists": true,
+            "path": "/opt/ros/humble/setup.bash",
+            "returncode": 0,
+            "sourced": true
+          },
+          "started_at_ms": 1783794740176,
+          "workdir": "/root/rober/onboard",
+          "workspace_setup": {
+            "elapsed_ms": 2411,
+            "exists": true,
+            "failure_tolerated": false,
+            "path": "/root/rober/onboard/install/setup.bash",
+            "returncode": 0,
+            "skipped": false,
+            "sourced": true
+          }
+        },
+        "source_stage_ok": true,
+        "source_stage_timeout_s": 8.0,
+        "sys_path_head": [
+          "",
+          "/root/rober/onboard/build/ros2_trashbot_behavior",
+          "/root/rober/onboard/install/ros2_trashbot_behavior/lib/python3.10/site-packages",
+          "/root/rober/onboard/build/ros2_trashbot_vision",
+          "/root/rober/onboard/install/ros2_trashbot_vision/lib/python3.10/site-packages",
+          "/root/rober/onboard/build/ros2_trashbot_nav",
+          "/root/rober/onboard/install/ros2_trashbot_nav/lib/python3.10/site-packages",
+          "/root/rober/onboard/build/ros2_trashbot_hardware"
+        ]
+      },
+      "controller_node_info": {
+        "boundary": "controller_never_requested_no_motion",
+        "executed": false,
+        "ok": false
+      },
+      "initialpose_info": {
+        "boundary": "initialpose_info_skipped_after_managed_runtime_graph_wait_blocked",
+        "executed": false,
+        "ok": false
+      },
+      "initialpose_publish": {
+        "boundary": "initialpose_skipped_after_managed_runtime_graph_wait_blocked",
+        "command": "initialpose opt-in requested but ros2 unavailable",
+        "error": {
+          "message": "ros2_node_list_timeout",
+          "type": "ManagedRuntimeGraphWaitBlocked"
+        },
+        "executed": false,
+        "ok": false,
+        "publish_attempts": 0,
+        "publish_method": "skipped_after_managed_runtime_graph_wait_blocked",
+        "subscriber_count": null
+      },
+      "lifecycle": {
+        "amcl": {
+          "boundary": "managed_runtime_lifecycle_check_not_run",
+          "executed": false,
+          "ok": false
+        },
+        "map_server": {
+          "boundary": "managed_runtime_lifecycle_check_not_run",
+          "executed": false,
+          "ok": false
+        },
+        "planner_server": {
+          "boundary": "managed_runtime_lifecycle_check_not_run",
+          "executed": false,
+          "ok": false
+        }
+      },
+      "lifecycle_recheck": {
+        "boundary": "managed_runtime_graph_wait_blocked_downstream_recheck_skipped",
+        "executed": false
+      },
+      "managed_runtime": {
+        "cleanup_guard": {
+          "boundary": "managed_runtime_process_group_cleanup_guard",
+          "ok": true,
+          "remaining_processes": []
+        },
+        "cleanup_result": {
+          "attempted": true,
+          "group_present_after_cleanup": false,
+          "killed_with_sigkill": true,
+          "ok": true,
+          "process_group": 501769,
+          "remaining_processes": [],
+          "sent_signal": "SIGINT"
+        },
+        "log_path": "/tmp/rober_nav2_localization_7ioxidi2.log",
+        "log_tail": "ed out waiting for transform from base_link to map to become available, tf error: Lookup would require extrapolation into the past.  Requested time 1783794788.523291 but the earliest data is at time 1783794873.626646, when looking up transform from frame [base_link] to frame [map]\n[INFO] [1783794874.085476681] [rclcpp]: signal_handler(SIGINT/SIGTERM)\n[INFO] [1783794874.085875847] [planner_server]: Running Nav2 LifecycleNode rcl preshutdown (planner_server)\n[INFO] [1783794874.086085055] [planner_server]: Destroying bond (planner_server) to lifecycle manager.\n[INFO] [1783794874.087853428] [rclcpp]: signal_handler(SIGINT/SIGTERM)\n[INFO] [1783794874.088277677] [amcl]: Running Nav2 LifecycleNode rcl preshutdown (amcl)\n[INFO] [1783794874.088909302] [amcl]: Deactivating\n[INFO] [1783794874.089074010] [amcl]: Destroying bond (amcl) to lifecycle manager.\n[INFO] [1783794874.091593840] [rclcpp]: signal_handler(SIGINT/SIGTERM)\n[INFO] [1783794874.092007048] [lifecycle_manager]: Running Nav2 LifecycleManager rcl preshutdown (lifecycle_manager)\n[INFO] [1783794874.092949380] [rclcpp]: signal_handler(SIGINT/SIGTERM)\n[INFO] [1783794874.093324254] [map_server]: Running Nav2 LifecycleNode rcl preshutdown (map_server)\n[INFO] [1783794874.094213461] [map_server]: Deactivating\n[INFO] [1783794874.094410419] [map_server]: Destroying bond (map_server) to lifecycle manager.\n[INFO] [1783794874.098061331] [global_costmap.global_costmap]: start\n[ERROR] [1783794874.098325956] [global_costmap.global_costmap]: Failed to finish transition 3. Current state is now: active (Could not publish transition: publisher's context is invalid, at ./src/rcl/publisher.c:389, at ./src/rcl_lifecycle.c:368)\n[INFO] [1783794874.098367164] [planner_server]: Activating plugin GridBased of type NavfnPlanner\n[ERROR] [1783794874.098736039] [planner_server]: Caught exception in callback for transition 13\n[ERROR] [1783794874.098765705] [planner_server]: Original error: could not create service: rcl node's context is invalid, at ./src/rcl/node.c:428\n[ERROR] [1783794874.098807414] [planner_server]: Failed to finish transition 3. Current state is now: errorprocessing (Could not publish transition: publisher's context is invalid, at ./src/rcl/publisher.c:389, at ./src/rcl_lifecycle.c:368)\nTraceback (most recent call last):\n  File \"<string>\", line 44, in main\nterminate called after throwing an instance of 'rclcpp::exceptions::RCLError'\n  what():  failed to publish message: cannot publish data, at ./src/rmw_publish.cpp:62, at ./src/rcl/publisher.c:250\nMagick: abort due to signal 6 (SIGABRT) \"Abort\"...\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/__init__.py\", line 229, in spin\n    executor.spin_once()\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py\", line 808, in spin_once\n    self._spin_once_impl(timeout_sec)\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py\", line 797, in _spin_once_impl\n    handler, entity, node = self.wait_for_ready_callbacks(timeout_sec=timeout_sec)\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py\", line 780, in wait_for_ready_callbacks\n    return next(self._cb_iter)\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py\", line 677, in _wait_for_ready_callbacks\n    wait_set.wait(timeout_nsec)\nKeyboardInterrupt\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"<string>\", line 52, in <module>\n  File \"<string>\", line 46, in main\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/node.py\", line 1685, in destroy_node\n    self.destroy_publisher(self._publishers[0])\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/node.py\", line 1565, in destroy_publisher\n    publisher.destroy()\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/publisher.py\", line 99, in destroy\n    self.__publisher.destroy_when_not_in_use()\nKeyboardInterrupt\n[ros2run]: Aborted\n",
+        "map_analysis": {
+          "bounds": {
+            "max_x": 7.5761512648662785,
+            "max_y": 5.650000084191561,
+            "min_x": -5.473848929593875,
+            "min_y": 0.0
+          },
+          "cell_counts": {
+            "free": 425,
+            "occupied": 45,
+            "other": 0,
+            "unknown": 29023
+          },
+          "error": null,
+          "executed": true,
+          "height": 113,
+          "image": "/root/rober/onboard/runtime/maps/trashbot_map.pgm",
+          "map_yaml": "/root/rober/onboard/runtime/maps/trashbot_map.yaml",
+          "ok": true,
+          "origin": [
+            -5.473848929593875,
+            0.0,
+            0.0
+          ],
+          "resolution": 0.05000000074505806,
+          "width": 261
+        },
+        "map_yaml": "/root/rober/onboard/runtime/maps/trashbot_map.yaml",
+        "map_yaml_source": "explicit_cli_managed_map_yaml",
+        "process_group": 501769,
+        "requested": true,
+        "started": true,
+        "startup_error": null,
+        "wait_result": {
+          "boundary": "ros2_node_list_timeout",
+          "graph_wait_summary": {
+            "fallback_boundaries": [
+              "ros2_node_list_timeout",
+              "ros2_node_list_timeout",
+              "ros2_node_list_timeout",
+              "ros2_node_list_timeout",
+              "ros2_node_list_timeout",
+              "ros2_node_list_timeout",
+              "ros2_node_list_timeout",
+              "ros2_node_list_timeout",
+              "ros2_node_list_timeout",
+              "ros2_node_list_timeout"
+            ],
+            "fallback_observed": false,
+            "fallback_used": true,
+            "history_count": 10,
+            "latest_node_list_boundary": "rclpy_node_names_failed_with_ros2_node_list_timeout",
+            "latest_ros2_node_list_boundary": "ros2_node_list_timeout",
+            "latest_ros2_node_list_timed_out": true,
+            "observed_node_names": []
+          },
+          "history": [
+            {
+              "lifecycle_active": {
+                "amcl": false,
+                "map_server": false,
+                "planner_server": false
+              },
+              "node_list": {
+                "boundary": "rclpy_node_names_failed_with_ros2_node_list_timeout",
+                "child_command_timeout_s": 3.0,
+                "elapsed_ms": 3029,
+                "error": {
+                  "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; python3 - <<\\'PY\\'\\nimport json\\nimport tim",
+                  "type": "TimeoutExpired"
+                },
+                "executed": false,
+                "fallback": {
+                  "boundary": "ros2_node_list_timeout",
+                  "error": {
+                    "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; ros2 node list']' timed out after 2.5 secon",
+                    "type": "TimeoutExpired"
+                  },
+                  "executed": true,
+                  "node_names": [],
+                  "ok": false,
+                  "returncode": null,
+                  "timed_out": true
+                },
+                "fallback_timeout_s": 2.5,
+                "fallback_used": true,
+                "node_names": [],
+                "ok": false,
+                "stderr": "",
+                "stdout": ""
+              },
+              "probe_timeouts": {
+                "child_command_timeout_s": 3.0,
+                "fallback_timeout_s": 2.5
+              },
+              "remaining_budget_s": 54.42
+            },
+            {
+              "lifecycle_active": {
+                "amcl": false,
+                "map_server": false,
+                "planner_server": false
+              },
+              "node_list": {
+                "boundary": "rclpy_node_names_failed_with_ros2_node_list_timeout",
+                "child_command_timeout_s": 3.0,
+                "elapsed_ms": 3045,
+                "error": {
+                  "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; python3 - <<\\'PY\\'\\nimport json\\nimport tim",
+                  "type": "TimeoutExpired"
+                },
+                "executed": false,
+                "fallback": {
+                  "boundary": "ros2_node_list_timeout",
+                  "error": {
+                    "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; ros2 node list']' timed out after 2.5 secon",
+                    "type": "TimeoutExpired"
+                  },
+                  "executed": true,
+                  "node_names": [],
+                  "ok": false,
+                  "returncode": null,
+                  "timed_out": true
+                },
+                "fallback_timeout_s": 2.5,
+                "fallback_used": true,
+                "node_names": [],
+                "ok": false,
+                "stderr": "",
+                "stdout": ""
+              },
+              "probe_timeouts": {
+                "child_command_timeout_s": 3.0,
+                "fallback_timeout_s": 2.5
+              },
+              "remaining_budget_s": 47.962
+            },
+            {
+              "lifecycle_active": {
+                "amcl": false,
+                "map_server": false,
+                "planner_server": false
+              },
+              "node_list": {
+                "boundary": "rclpy_node_names_failed_with_ros2_node_list_timeout",
+                "child_command_timeout_s": 3.0,
+                "elapsed_ms": 3514,
+                "error": {
+                  "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; python3 - <<\\'PY\\'\\nimport json\\nimport tim",
+                  "type": "TimeoutExpired"
+                },
+                "executed": false,
+                "fallback": {
+                  "boundary": "ros2_node_list_timeout",
+                  "error": {
+                    "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; ros2 node list']' timed out after 2.5 secon",
+                    "type": "TimeoutExpired"
+                  },
+                  "executed": true,
+                  "node_names": [],
+                  "ok": false,
+                  "returncode": null,
+                  "timed_out": true
+                },
+                "fallback_timeout_s": 2.5,
+                "fallback_used": true,
+                "node_names": [],
+                "ok": false,
+                "stderr": "",
+                "stdout": ""
+              },
+              "probe_timeouts": {
+                "child_command_timeout_s": 3.0,
+                "fallback_timeout_s": 2.5
+              },
+              "remaining_budget_s": 41.196
+            },
+            {
+              "lifecycle_active": {
+                "amcl": false,
+                "map_server": false,
+                "planner_server": false
+              },
+              "node_list": {
+                "boundary": "rclpy_node_names_failed_with_ros2_node_list_timeout",
+                "child_command_timeout_s": 3.0,
+                "elapsed_ms": 3194,
+                "error": {
+                  "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; python3 - <<\\'PY\\'\\nimport json\\nimport tim",
+                  "type": "TimeoutExpired"
+                },
+                "executed": false,
+                "fallback": {
+                  "boundary": "ros2_node_list_timeout",
+                  "error": {
+                    "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; ros2 node list']' timed out after 2.5 secon",
+                    "type": "TimeoutExpired"
+                  },
+                  "executed": true,
+                  "node_names": [],
+                  "ok": false,
+                  "returncode": null,
+                  "timed_out": true
+                },
+                "fallback_timeout_s": 2.5,
+                "fallback_used": true,
+                "node_names": [],
+                "ok": false,
+                "stderr": "",
+                "stdout": ""
+              },
+              "probe_timeouts": {
+                "child_command_timeout_s": 3.0,
+                "fallback_timeout_s": 2.5
+              },
+              "remaining_budget_s": 34.347
+            },
+            {
+              "lifecycle_active": {
+                "amcl": false,
+                "map_server": false,
+                "planner_server": false
+              },
+              "node_list": {
+                "boundary": "rclpy_node_names_failed_with_ros2_node_list_timeout",
+                "child_command_timeout_s": 3.0,
+                "elapsed_ms": 3109,
+                "error": {
+                  "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; python3 - <<\\'PY\\'\\nimport json\\nimport tim",
+                  "type": "TimeoutExpired"
+                },
+                "executed": false,
+                "fallback": {
+                  "boundary": "ros2_node_list_timeout",
+                  "error": {
+                    "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; ros2 node list']' timed out after 2.5 secon",
+                    "type": "TimeoutExpired"
+                  },
+                  "executed": true,
+                  "node_names": [],
+                  "ok": false,
+                  "returncode": null,
+                  "timed_out": true
+                },
+                "fallback_timeout_s": 2.5,
+                "fallback_used": true,
+                "node_names": [],
+                "ok": false,
+                "stderr": "",
+                "stdout": ""
+              },
+              "probe_timeouts": {
+                "child_command_timeout_s": 3.0,
+                "fallback_timeout_s": 2.5
+              },
+              "remaining_budget_s": 28.042
+            },
+            {
+              "lifecycle_active": {
+                "amcl": false,
+                "map_server": false,
+                "planner_server": false
+              },
+              "node_list": {
+                "boundary": "rclpy_node_names_failed_with_ros2_node_list_timeout",
+                "child_command_timeout_s": 3.0,
+                "elapsed_ms": 3037,
+                "error": {
+                  "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; python3 - <<\\'PY\\'\\nimport json\\nimport tim",
+                  "type": "TimeoutExpired"
+                },
+                "executed": false,
+                "fallback": {
+                  "boundary": "ros2_node_list_timeout",
+                  "error": {
+                    "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; ros2 node list']' timed out after 2.5 secon",
+                    "type": "TimeoutExpired"
+                  },
+                  "executed": true,
+                  "node_names": [],
+                  "ok": false,
+                  "returncode": null,
+                  "timed_out": true
+                },
+                "fallback_timeout_s": 2.5,
+                "fallback_used": true,
+                "node_names": [],
+                "ok": false,
+                "stderr": "",
+                "stdout": ""
+              },
+              "probe_timeouts": {
+                "child_command_timeout_s": 3.0,
+                "fallback_timeout_s": 2.5
+              },
+              "remaining_budget_s": 21.801
+            },
+            {
+              "lifecycle_active": {
+                "amcl": false,
+                "map_server": false,
+                "planner_server": false
+              },
+              "node_list": {
+                "boundary": "rclpy_node_names_failed_with_ros2_node_list_timeout",
+                "child_command_timeout_s": 3.0,
+                "elapsed_ms": 3060,
+                "error": {
+                  "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; python3 - <<\\'PY\\'\\nimport json\\nimport tim",
+                  "type": "TimeoutExpired"
+                },
+                "executed": false,
+                "fallback": {
+                  "boundary": "ros2_node_list_timeout",
+                  "error": {
+                    "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; ros2 node list']' timed out after 2.5 secon",
+                    "type": "TimeoutExpired"
+                  },
+                  "executed": true,
+                  "node_names": [],
+                  "ok": false,
+                  "returncode": null,
+                  "timed_out": true
+                },
+                "fallback_timeout_s": 2.5,
+                "fallback_used": true,
+                "node_names": [],
+                "ok": false,
+                "stderr": "",
+                "stdout": ""
+              },
+              "probe_timeouts": {
+                "child_command_timeout_s": 3.0,
+                "fallback_timeout_s": 2.5
+              },
+              "remaining_budget_s": 15.582
+            },
+            {
+              "lifecycle_active": {
+                "amcl": false,
+                "map_server": false,
+                "planner_server": false
+              },
+              "node_list": {
+                "boundary": "rclpy_node_names_failed_with_ros2_node_list_timeout",
+                "child_command_timeout_s": 3.0,
+                "elapsed_ms": 3105,
+                "error": {
+                  "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; python3 - <<\\'PY\\'\\nimport json\\nimport tim",
+                  "type": "TimeoutExpired"
+                },
+                "executed": false,
+                "fallback": {
+                  "boundary": "ros2_node_list_timeout",
+                  "error": {
+                    "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; ros2 node list']' timed out after 2.5 secon",
+                    "type": "TimeoutExpired"
+                  },
+                  "executed": true,
+                  "node_names": [],
+                  "ok": false,
+                  "returncode": null,
+                  "timed_out": true
+                },
+                "fallback_timeout_s": 2.5,
+                "fallback_used": true,
+                "node_names": [],
+                "ok": false,
+                "stderr": "",
+                "stdout": ""
+              },
+              "probe_timeouts": {
+                "child_command_timeout_s": 3.0,
+                "fallback_timeout_s": 2.5
+              },
+              "remaining_budget_s": 9.301
+            },
+            {
+              "lifecycle_active": {
+                "amcl": false,
+                "map_server": false,
+                "planner_server": false
+              },
+              "node_list": {
+                "boundary": "rclpy_node_names_failed_with_ros2_node_list_timeout",
+                "child_command_timeout_s": 3.0,
+                "elapsed_ms": 3113,
+                "error": {
+                  "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; python3 - <<\\'PY\\'\\nimport json\\nimport tim",
+                  "type": "TimeoutExpired"
+                },
+                "executed": false,
+                "fallback": {
+                  "boundary": "ros2_node_list_timeout",
+                  "error": {
+                    "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; ros2 node list']' timed out after 2.5 secon",
+                    "type": "TimeoutExpired"
+                  },
+                  "executed": true,
+                  "node_names": [],
+                  "ok": false,
+                  "returncode": null,
+                  "timed_out": true
+                },
+                "fallback_timeout_s": 2.5,
+                "fallback_used": true,
+                "node_names": [],
+                "ok": false,
+                "stderr": "",
+                "stdout": ""
+              },
+              "probe_timeouts": {
+                "child_command_timeout_s": 3.0,
+                "fallback_timeout_s": 2.5
+              },
+              "remaining_budget_s": 2.959
+            },
+            {
+              "lifecycle_active": {
+                "amcl": false,
+                "map_server": false,
+                "planner_server": false
+              },
+              "node_list": {
+                "boundary": "rclpy_node_names_failed_with_ros2_node_list_timeout",
+                "child_command_timeout_s": 0.8844932556152344,
+                "elapsed_ms": 930,
+                "error": {
+                  "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; python3 - <<\\'PY\\'\\nimport json\\nimport tim",
+                  "type": "TimeoutExpired"
+                },
+                "executed": false,
+                "fallback": {
+                  "boundary": "ros2_node_list_timeout",
+                  "error": {
+                    "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; ros2 node list']' timed out after 0.7236763",
+                    "type": "TimeoutExpired"
+                  },
+                  "executed": true,
+                  "node_names": [],
+                  "ok": false,
+                  "returncode": null,
+                  "timed_out": true
+                },
+                "fallback_timeout_s": 0.7236763000488281,
+                "fallback_used": true,
+                "node_names": [],
+                "ok": false,
+                "stderr": "",
+                "stdout": ""
+              },
+              "probe_timeouts": {
+                "child_command_timeout_s": 0.8844932556152344,
+                "fallback_timeout_s": 0.7236763000488281
+              },
+              "remaining_budget_s": 0.564
+            }
+          ],
+          "lifecycle_active": {
+            "amcl": false,
+            "map_server": false,
+            "planner_server": false
+          },
+          "lifecycle_history": [],
+          "lifecycle_results": {
+            "amcl": {
+              "boundary": "managed_runtime_lifecycle_check_not_run",
+              "executed": false,
+              "ok": false
+            },
+            "map_server": {
+              "boundary": "managed_runtime_lifecycle_check_not_run",
+              "executed": false,
+              "ok": false
+            },
+            "planner_server": {
+              "boundary": "managed_runtime_lifecycle_check_not_run",
+              "executed": false,
+              "ok": false
+            }
+          },
+          "log_tail": "lation into the past.  Requested time 1783794788.523291 but the earliest data is at time 1783794814.126644, when looking up transform from frame [base_link] to frame [map]\n[INFO] [1783794814.723905615] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Lookup would require extrapolation into the past.  Requested time 1783794788.523291 but the earliest data is at time 1783794814.626747, when looking up transform from frame [base_link] to frame [map]\n[INFO] [1783794815.225094205] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Lookup would require extrapolation into the past.  Requested time 1783794788.523291 but the earliest data is at time 1783794815.126665, when looking up transform from frame [base_link] to frame [map]\n[INFO] [1783794815.724914673] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Lookup would require extrapolation into the past.  Requested time 1783794788.523291 but the earliest data is at time 1783794815.626623, when looking up transform from frame [base_link] to frame [map]\n[INFO] [1783794816.223887975] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Lookup would require extrapolation into the past.  Requested time 1783794788.523291 but the earliest data is at time 1783794816.126716, when looking up transform from frame [base_link] to frame [map]\n[INFO] [1783794816.723886150] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Lookup would require extrapolation into the past.  Requested time 1783794788.523291 but the earliest data is at time 1783794816.626685, when looking up transform from frame [base_link] to frame [map]\n[INFO] [1783794817.232965689] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Lookup would require extrapolation into the past.  Requested time 1783794788.523291 but the earliest data is at time 1783794817.126726, when looking up transform from frame [base_link] to frame [map]\n[INFO] [1783794817.724755250] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Lookup would require extrapolation into the past.  Requested time 1783794788.523291 but the earliest data is at time 1783794817.626610, when looking up transform from frame [base_link] to frame [map]\n[INFO] [1783794818.226132299] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Lookup would require extrapolation into the past.  Requested time 1783794788.523291 but the earliest data is at time 1783794818.127126, when looking up transform from frame [base_link] to frame [map]\n[INFO] [1783794818.724693309] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Lookup would require extrapolation into the past.  Requested time 1783794788.523291 but the earliest data is at time 1783794818.626676, when looking up transform from frame [base_link] to frame [map]\n[INFO] [1783794819.224053611] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Lookup would require extrapolation into the past.  Requested time 1783794788.523291 but the earliest data is at time 1783794819.126555, when looking up transform from frame [base_link] to frame [map]\n[INFO] [1783794819.723888495] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Lookup would require extrapolation into the past.  Requested time 1783794788.523291 but the earliest data is at time 1783794819.626644, when looking up transform from frame [base_link] to frame [map]\n",
+          "observed_node_names": [],
+          "ok": false,
+          "reason": "ros2_node_list_timeout"
+        }
+      },
+      "map_lifecycle_preflight": {
+        "amcl_active": false,
+        "classification": "map_lifecycle_preflight_lifecycle_probe_skipped_after_graph_blocked",
+        "executed": true,
+        "map_server_active": false,
+        "results": {
+          "amcl": {
+            "boundary": "managed_runtime_lifecycle_check_not_run",
+            "executed": false,
+            "ok": false
+          },
+          "map_server": {
+            "boundary": "managed_runtime_lifecycle_check_not_run",
+            "executed": false,
+            "ok": false
+          },
+          "planner_server": {
+            "boundary": "managed_runtime_lifecycle_check_not_run",
+            "executed": false,
+            "ok": false
+          }
+        },
+        "root_causes": [],
+        "skipped_nodes": [
+          "map_server",
+          "amcl"
+        ]
+      },
+      "map_once": {
+        "boundary": "map_probe_skipped_after_managed_runtime_graph_wait_blocked",
+        "executed": false,
+        "ok": false
+      },
+      "map_server_info": {
+        "boundary": "map_server_info_skipped_after_managed_runtime_graph_wait_blocked",
+        "executed": false,
+        "ok": false
+      },
+      "map_to_base_link_tf": {
+        "boundary": "tf_probe_skipped_after_managed_runtime_graph_wait_blocked",
+        "executed": false,
+        "ok": false
+      },
+      "map_to_odom_tf": {
+        "boundary": "tf_probe_skipped_after_managed_runtime_graph_wait_blocked",
+        "executed": false,
+        "ok": false
+      },
+      "node_list": {
+        "boundary": "skipped_after_managed_runtime_graph_wait_blocked",
+        "executed": false,
+        "ok": false,
+        "stdout": ""
+      },
+      "odom_once": {
+        "boundary": "odom_probe_skipped_after_managed_runtime_graph_wait_blocked",
+        "executed": false,
+        "ok": false
+      },
+      "odom_to_base_link_tf": {
+        "boundary": "tf_probe_skipped_after_managed_runtime_graph_wait_blocked",
+        "executed": false,
+        "ok": false
+      },
+      "package_checks": {
+        "nav2_amcl": {
+          "batch_command": "ros2 pkg list",
+          "command": "ros2 pkg list contains nav2_amcl",
+          "diagnostic_mode": "single_sourced_pkg_list_package_check",
+          "elapsed_ms": 5060,
+          "executed": true,
+          "ok": false,
+          "returncode": null,
+          "stderr": "nav2_amcl not found in ros2 pkg list",
+          "stdout": ""
+        },
+        "nav2_lifecycle_manager": {
+          "batch_command": "ros2 pkg list",
+          "command": "ros2 pkg list contains nav2_lifecycle_manager",
+          "diagnostic_mode": "single_sourced_pkg_list_package_check",
+          "elapsed_ms": 5060,
+          "executed": true,
+          "ok": false,
+          "returncode": null,
+          "stderr": "nav2_lifecycle_manager not found in ros2 pkg list",
+          "stdout": ""
+        },
+        "nav2_map_server": {
+          "batch_command": "ros2 pkg list",
+          "command": "ros2 pkg list contains nav2_map_server",
+          "diagnostic_mode": "single_sourced_pkg_list_package_check",
+          "elapsed_ms": 5060,
+          "executed": true,
+          "ok": false,
+          "returncode": null,
+          "stderr": "nav2_map_server not found in ros2 pkg list",
+          "stdout": ""
+        },
+        "ros2_trashbot_bringup": {
+          "batch_command": "ros2 pkg list",
+          "command": "ros2 pkg list contains ros2_trashbot_bringup",
+          "diagnostic_mode": "single_sourced_pkg_list_package_check",
+          "elapsed_ms": 5060,
+          "executed": true,
+          "ok": false,
+          "returncode": null,
+          "stderr": "ros2_trashbot_bringup not found in ros2 pkg list",
+          "stdout": ""
+        },
+        "ros2_trashbot_nav": {
+          "batch_command": "ros2 pkg list",
+          "command": "ros2 pkg list contains ros2_trashbot_nav",
+          "diagnostic_mode": "single_sourced_pkg_list_package_check",
+          "elapsed_ms": 5060,
+          "executed": true,
+          "ok": false,
+          "returncode": null,
+          "stderr": "ros2_trashbot_nav not found in ros2 pkg list",
+          "stdout": ""
+        }
+      },
+      "package_checks_batch": {
+        "command": "ros2 pkg list",
+        "elapsed_ms": 5060,
+        "error": {
+          "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; ros2 pkg list']' timed out after 5.0 second",
+          "type": "TimeoutExpired"
+        },
+        "executed": true,
+        "finished_at_ms": 1783794873545,
+        "ok": false,
+        "returncode": null,
+        "started_at_ms": 1783794868485,
+        "stderr": "",
+        "stdout": "",
+        "timed_out": true,
+        "timeout_s": 5.0
+      },
+      "path_generation": {
+        "request": {
+          "enabled": true,
+          "frame_id": "map",
+          "map_free_cell_count": 425,
+          "map_goal_diagnostics": {
+            "adapted": false,
+            "bounds": {
+              "max_x": 7.5761512648662785,
+              "max_y": 5.650000084191561,
+              "min_x": -5.473848929593875,
+              "min_y": 0.0
+            },
+            "cell_counts": {
+              "free": 425,
+              "occupied": 45,
+              "other": 0,
+              "unknown": 29023
+            },
+            "goal_in_bounds": true,
+            "map_analysis_ok": true,
+            "original_goal": {
+              "x": 0.8,
+              "y": 0.0
+            },
+            "original_start": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "start_in_bounds": true
+          },
+          "map_has_free_cells_for_path_proof": true,
+          "orientation_w": 1.0,
+          "orientation_z": 0.0,
+          "planner_id": "",
+          "start_x": 0.0,
+          "start_y": 0.0,
+          "use_start": false,
+          "x": 0.8,
+          "y": 0.0,
+          "yaw": 0.0
+        },
+        "result": {
+          "attempted": false,
+          "boundary": "path_generation_blocked_by_localization_not_ready",
+          "ok": false
+        }
+      },
+      "planner_lifecycle": {
+        "controller_server": {
+          "boundary": "planner_probe_deferred_until_localization_ready",
+          "executed": false,
+          "ok": false
+        },
+        "planner_server": {
+          "boundary": "planner_probe_deferred_until_localization_ready",
+          "executed": false,
+          "ok": false
+        }
+      },
+      "planner_lifecycle_recheck": {
+        "boundary": "path_generation_planner_recheck_not_requested",
+        "executed": false
+      },
+      "planner_node_info": {
+        "boundary": "planner_probe_deferred_until_localization_ready",
+        "executed": false,
+        "ok": false
+      },
+      "post_initialpose_amcl_pose_once": {
+        "boundary": "post_initialpose_probe_not_requested",
+        "executed": false,
+        "ok": false
+      },
+      "ros2_check": {
+        "command": "command -v ros2",
+        "elapsed_ms": 44,
+        "executed": true,
+        "finished_at_ms": 1783794750083,
+        "label": "command_v",
+        "ok": true,
+        "returncode": 0,
+        "started_at_ms": 1783794750040,
+        "stderr": "",
+        "stdout": "/opt/ros/humble/bin/ros2\n",
+        "timed_out": false,
+        "timeout_s": 2.0
+      },
+      "scan_once": {
+        "boundary": "scan_probe_skipped_after_managed_runtime_graph_wait_blocked",
+        "executed": false,
+        "ok": false
+      },
+      "tf_source_probe": {
+        "amcl_rclpy_probe": {
+          "boundary": "cli_amcl_inventory_observed_amcl_params",
+          "command_statuses": {
+            "rclpy_graph": null,
+            "tf": null,
+            "tf_static": null
+          },
+          "command_timeout_s": 3.0,
+          "commands": {
+            "amcl_node_info": {
+              "command": "ros2 node info /amcl",
+              "elapsed_ms": 3088,
+              "error": {
+                "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; ros2 node info /amcl']' timed out after 3.0",
+                "type": "TimeoutExpired"
+              },
+              "executed": true,
+              "finished_at_ms": 1783794848806,
+              "ok": false,
+              "returncode": null,
+              "started_at_ms": 1783794845718,
+              "stderr": "",
+              "stdout": "",
+              "timed_out": true,
+              "timeout_s": 3.0
+            },
+            "tf_info": {
+              "command": "ros2 topic info /tf --verbose",
+              "elapsed_ms": 3123,
+              "error": {
+                "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; ros2 topic info /tf --verbose']' timed out ",
+                "type": "TimeoutExpired"
+              },
+              "executed": true,
+              "finished_at_ms": 1783794852039,
+              "ok": false,
+              "returncode": null,
+              "started_at_ms": 1783794848916,
+              "stderr": "",
+              "stdout": "",
+              "timed_out": true,
+              "timeout_s": 3.0
+            },
+            "tf_static_info": {
+              "command": "ros2 topic info /tf_static --verbose",
+              "elapsed_ms": 3152,
+              "error": {
+                "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; ros2 topic info /tf_static --verbose']' tim",
+                "type": "TimeoutExpired"
+              },
+              "executed": true,
+              "finished_at_ms": 1783794855288,
+              "ok": false,
+              "returncode": null,
+              "started_at_ms": 1783794852136,
+              "stderr": "",
+              "stdout": "",
+              "timed_out": true,
+              "timeout_s": 3.0
+            },
+            "topic_list": {
+              "command": "ros2 topic list -t",
+              "elapsed_ms": 3063,
+              "error": {
+                "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; ros2 topic list -t']' timed out after 3.0 s",
+                "type": "TimeoutExpired"
+              },
+              "executed": true,
+              "finished_at_ms": 1783794845664,
+              "ok": false,
+              "returncode": null,
+              "started_at_ms": 1783794842601,
+              "stderr": "",
+              "stdout": "",
+              "timed_out": true,
+              "timeout_s": 3.0
+            }
+          },
+          "dynamic_edges": [],
+          "dynamic_transforms": [],
+          "elapsed_ms": 12426,
+          "error": {
+            "message": "No module named 'rclpy'",
+            "type": "ModuleNotFoundError"
+          },
+          "executed": true,
+          "fallback_boundary": "cli_amcl_inventory_observed_amcl_params",
+          "fallback_used": true,
+          "node_info_observed": false,
+          "ok": false,
+          "param_probe_boundary": "cli_amcl_param_probe_observed",
+          "param_probe_ok": true,
+          "params": {
+            "base_frame_id": "",
+            "global_frame_id": "",
+            "odom_frame_id": "",
+            "tf_broadcast": ""
+          },
+          "probe_mode": "ros2_cli_fallback",
+          "publishers": [],
+          "rclpy_boundary": "rclpy_amcl_probe_failed",
+          "rclpy_import_failure_classification": "pythonpath_missing",
+          "static_edges": [],
+          "static_transforms": [],
+          "subscribers": [],
+          "tf_inventory_observed": false,
+          "topic_endpoint_summaries": {
+            "/amcl_pose": {
+              "error": null,
+              "inventory_observed": false,
+              "publisher_count": 0,
+              "publishers": [],
+              "subscriber_count": 0,
+              "subscribers": []
+            },
+            "/odom": {
+              "error": null,
+              "inventory_observed": false,
+              "publisher_count": 0,
+              "publishers": [],
+              "subscriber_count": 0,
+              "subscribers": []
+            },
+            "/scan": {
+              "error": null,
+              "inventory_observed": false,
+              "publisher_count": 0,
+              "publishers": [],
+              "subscriber_count": 0,
+              "subscribers": []
+            },
+            "/tf": {
+              "error": {
+                "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; ros2 topic info /tf --verbose']' timed out ",
+                "type": "TimeoutExpired"
+              },
+              "inventory_observed": false,
+              "publisher_count": 0,
+              "publishers": [],
+              "subscriber_count": 0,
+              "subscribers": []
+            },
+            "/tf_static": {
+              "error": {
+                "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; ros2 topic info /tf_static --verbose']' tim",
+                "type": "TimeoutExpired"
+              },
+              "inventory_observed": false,
+              "publisher_count": 0,
+              "publishers": [],
+              "subscriber_count": 0,
+              "subscribers": []
+            }
+          },
+          "topic_types": {}
+        },
+        "boundary": "cli_amcl_inventory_observed_amcl_params",
+        "elapsed_ms": 12426,
+        "executed": true,
+        "ok": false,
+        "stderr": "",
+        "stdout": ""
+      },
+      "topic_list": {
+        "boundary": "skipped_after_managed_runtime_graph_wait_blocked",
+        "executed": false,
+        "ok": false,
+        "stdout": ""
+      }
+    },
+    "controller_active": false,
+    "controller_server_active": false,
+    "controller_server_observed": false,
+    "controller_server_requested": false,
+    "current_command": null,
+    "delivery_success": false,
+    "effective_map_inputs_ready": false,
+    "elapsed_ms": 136004,
+    "evidence_ref": "o10-amcl-nav2-runtime-1783794740000",
+    "evidence_type": "blocked_with_root_cause",
+    "generated_at_ms": 1783794876004,
+    "hil_pass": false,
+    "initialpose_boundary": "explicit_opt_in_single_initialpose_for_amcl_localization_only",
+    "initialpose_publish_attempted": true,
+    "initialpose_publish_attempts": 0,
+    "initialpose_publish_elapsed_ms": null,
+    "initialpose_publish_error": {
+      "message": "ros2_node_list_timeout",
+      "type": "ManagedRuntimeGraphWaitBlocked"
+    },
+    "initialpose_publish_method": "skipped_after_managed_runtime_graph_wait_blocked",
+    "initialpose_published": false,
+    "initialpose_request": {
+      "enabled": true,
+      "frame_id": "map",
+      "orientation_w": 1.0,
+      "orientation_z": 0.0,
+      "x": 0.0,
+      "y": 0.0,
+      "yaw": 0.0
+    },
+    "initialpose_subscriber_count": null,
+    "last_phase": "final",
+    "last_successful_phase": "cleanup",
+    "localization_signal_freshness": {
+      "/amcl_pose": {
+        "endpoint_error": null,
+        "endpoint_inventory_observed": false,
+        "expected_type": "geometry_msgs/msg/PoseWithCovarianceStamped",
+        "freshness": {
+          "age_ms": null,
+          "reason": "probe_or_source_not_observed",
+          "status": "not_observed"
+        },
+        "probe": {
+          "boundary": "pre_initialpose_amcl_pose_probe_skipped_to_prioritize_initialpose",
+          "elapsed_ms": null,
+          "error": null,
+          "executed": false,
+          "observed": false,
+          "returncode": null,
+          "timed_out": false,
+          "timeout_s": null
+        },
+        "publishers": {
+          "count": 0,
+          "nodes": []
+        },
+        "source_class": "message",
+        "subscribers": {
+          "count": 0,
+          "nodes": []
+        },
+        "timestamp": {
+          "parsed": false,
+          "reason": "stamp_not_found",
+          "source": "/amcl_pose.header.stamp"
+        },
+        "topic": "/amcl_pose",
+        "topic_present": false,
+        "topic_type": null
+      },
+      "/odom": {
+        "endpoint_error": null,
+        "endpoint_inventory_observed": false,
+        "expected_type": "nav_msgs/msg/Odometry",
+        "freshness": {
+          "age_ms": null,
+          "reason": "probe_or_source_not_observed",
+          "status": "not_observed"
+        },
+        "probe": {
+          "boundary": "odom_probe_skipped_after_managed_runtime_graph_wait_blocked",
+          "elapsed_ms": null,
+          "error": null,
+          "executed": false,
+          "observed": false,
+          "returncode": null,
+          "timed_out": false,
+          "timeout_s": null
+        },
+        "publishers": {
+          "count": 0,
+          "nodes": []
+        },
+        "source_class": "message",
+        "subscribers": {
+          "count": 0,
+          "nodes": []
+        },
+        "timestamp": {
+          "parsed": false,
+          "reason": "stamp_not_found",
+          "source": "/odom.header.stamp"
+        },
+        "topic": "/odom",
+        "topic_present": false,
+        "topic_type": null
+      },
+      "/scan": {
+        "endpoint_error": null,
+        "endpoint_inventory": {
+          "endpoint_qos_profiles": {
+            "publishers": [],
+            "subscribers": []
+          },
+          "error": null,
+          "inventory_observed": false,
+          "publisher_count": 0,
+          "publishers": [],
+          "requested_qos_profile": null,
+          "subscriber_count": 0,
+          "subscribers": [],
+          "topic": "/scan",
+          "topic_type": null,
+          "topic_visible": false
+        },
+        "endpoint_inventory_observed": false,
+        "expected_type": "sensor_msgs/msg/LaserScan",
+        "freshness": {
+          "age_ms": null,
+          "reason": "probe_or_source_not_observed",
+          "status": "not_observed"
+        },
+        "managed_runtime_scan_status": {
+          "blocked_reason": "/scan_no_publisher",
+          "lidar_runtime_started": false,
+          "managed_runtime_started": true,
+          "publisher_visible": false,
+          "sample_observed": false,
+          "topic_visible": false
+        },
+        "probe": {
+          "boundary": "scan_probe_skipped_after_managed_runtime_graph_wait_blocked",
+          "child_runtime": null,
+          "classification": "/scan_no_publisher",
+          "elapsed_ms": null,
+          "error": null,
+          "executed": false,
+          "observed": false,
+          "requested_qos_profile": null,
+          "returncode": null,
+          "timed_out": false,
+          "timeout_s": null
+        },
+        "publisher_inventory": {
+          "blocked_reason": "/scan_no_publisher",
+          "inventory_observed": false,
+          "publisher_count": 0,
+          "publisher_nodes": [],
+          "topic_type": null,
+          "topic_visible": false
+        },
+        "publishers": {
+          "count": 0,
+          "nodes": []
+        },
+        "sample_timing": {
+          "first_sample_latency_ms": null,
+          "last_sample_received_at_ms": null,
+          "last_sample_stamp": null,
+          "probe_window_sec": null,
+          "sample_count": 0,
+          "sample_wait_finished_at_ms": null,
+          "sample_wait_started_at_ms": null,
+          "timed_out": false,
+          "timeout_boundary_ms": null
+        },
+        "source_class": "message",
+        "subscribers": {
+          "count": 0,
+          "nodes": []
+        },
+        "timestamp": {
+          "parsed": false,
+          "reason": "stamp_not_found",
+          "source": "/scan.header.stamp"
+        },
+        "topic": "/scan",
+        "topic_present": false,
+        "topic_type": null
+      },
+      "/tf": {
+        "dynamic_edge_count": 0,
+        "endpoint_error": {
+          "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; ros2 topic info /tf --verbose']' timed out ",
+          "type": "TimeoutExpired"
+        },
+        "endpoint_inventory_observed": false,
+        "expected_type": "tf2_msgs/msg/TFMessage",
+        "freshness": {
+          "age_ms": null,
+          "reason": "probe_or_source_not_observed",
+          "status": "not_observed"
+        },
+        "probe": {
+          "boundary": "cli_amcl_inventory_observed_amcl_params",
+          "elapsed_ms": 12426,
+          "error": null,
+          "executed": true,
+          "observed": false,
+          "returncode": null,
+          "timed_out": false,
+          "timeout_s": null
+        },
+        "publishers": {
+          "count": 0,
+          "nodes": []
+        },
+        "sample_edges": [],
+        "source_class": "dynamic",
+        "subscribers": {
+          "count": 0,
+          "nodes": []
+        },
+        "timestamp": {
+          "parsed": false,
+          "reason": "tf_transform_stamp_not_observed",
+          "source": "/tf.header.stamp"
+        },
+        "topic": "/tf",
+        "topic_present": false,
+        "topic_type": null
+      },
+      "/tf_static": {
+        "endpoint_error": {
+          "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; ros2 topic info /tf_static --verbose']' tim",
+          "type": "TimeoutExpired"
+        },
+        "endpoint_inventory_observed": false,
+        "expected_type": "tf2_msgs/msg/TFMessage",
+        "freshness": {
+          "age_ms": null,
+          "reason": "probe_or_source_not_observed",
+          "status": "not_observed"
+        },
+        "probe": {
+          "boundary": "cli_amcl_inventory_observed_amcl_params",
+          "elapsed_ms": 12426,
+          "error": null,
+          "executed": true,
+          "observed": false,
+          "returncode": null,
+          "timed_out": false,
+          "timeout_s": null
+        },
+        "publishers": {
+          "count": 0,
+          "nodes": []
+        },
+        "sample_edges": [],
+        "source_class": "static",
+        "static_edge_count": 0,
+        "subscribers": {
+          "count": 0,
+          "nodes": []
+        },
+        "timestamp": {
+          "parsed": false,
+          "reason": "tf_static_transform_stamp_not_observed",
+          "source": "/tf_static.header.stamp"
+        },
+        "topic": "/tf_static",
+        "topic_present": false,
+        "topic_type": null
+      }
+    },
+    "localization_tf_observed": {
+      "map_to_base_link": false,
+      "map_to_odom": false
+    },
+    "managed_runtime_boundary": "explicit_opt_in_managed_path_generation_runtime_no_motion",
+    "managed_runtime_cleanup_ok": true,
+    "managed_runtime_map_analysis": {
+      "bounds": {
+        "max_x": 7.5761512648662785,
+        "max_y": 5.650000084191561,
+        "min_x": -5.473848929593875,
+        "min_y": 0.0
+      },
+      "cell_counts": {
+        "free": 425,
+        "occupied": 45,
+        "other": 0,
+        "unknown": 29023
+      },
+      "error": null,
+      "executed": true,
+      "height": 113,
+      "image": "/root/rober/onboard/runtime/maps/trashbot_map.pgm",
+      "map_yaml": "/root/rober/onboard/runtime/maps/trashbot_map.yaml",
+      "ok": true,
+      "origin": [
+        -5.473848929593875,
+        0.0,
+        0.0
+      ],
+      "resolution": 0.05000000074505806,
+      "width": 261
+    },
+    "managed_runtime_map_inputs_ready": false,
+    "managed_runtime_map_yaml": "/root/rober/onboard/runtime/maps/trashbot_map.yaml",
+    "managed_runtime_map_yaml_source": "explicit_cli_managed_map_yaml",
+    "managed_runtime_process_group": 501769,
+    "managed_runtime_requested": true,
+    "managed_runtime_started": true,
+    "managed_runtime_vendor_boundary": "Vendor facts from docs/vendor/VENDOR_INDEX.md: WAVE ROVER base is newline-delimited UART JSON, vendor Raspberry Pi UART path is not Orange Pi fixed fact; this proof only opens LiDAR /dev/ttyACM0 and never opens /dev/ttyS5.",
+    "managed_runtime_wait_result": {
+      "boundary": "ros2_node_list_timeout",
+      "graph_wait_summary": {
+        "fallback_boundaries": [
+          "ros2_node_list_timeout",
+          "ros2_node_list_timeout",
+          "ros2_node_list_timeout",
+          "ros2_node_list_timeout",
+          "ros2_node_list_timeout",
+          "ros2_node_list_timeout",
+          "ros2_node_list_timeout",
+          "ros2_node_list_timeout",
+          "ros2_node_list_timeout",
+          "ros2_node_list_timeout"
+        ],
+        "fallback_observed": false,
+        "fallback_used": true,
+        "history_count": 10,
+        "latest_node_list_boundary": "rclpy_node_names_failed_with_ros2_node_list_timeout",
+        "latest_ros2_node_list_boundary": "ros2_node_list_timeout",
+        "latest_ros2_node_list_timed_out": true,
+        "observed_node_names": []
+      },
+      "history": [
+        {
+          "lifecycle_active": {
+            "amcl": false,
+            "map_server": false,
+            "planner_server": false
+          },
+          "node_list": {
+            "boundary": "rclpy_node_names_failed_with_ros2_node_list_timeout",
+            "child_command_timeout_s": 3.0,
+            "elapsed_ms": 3029,
+            "error": {
+              "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; python3 - <<\\'PY\\'\\nimport json\\nimport tim",
+              "type": "TimeoutExpired"
+            },
+            "executed": false,
+            "fallback": {
+              "boundary": "ros2_node_list_timeout",
+              "error": {
+                "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; ros2 node list']' timed out after 2.5 secon",
+                "type": "TimeoutExpired"
+              },
+              "executed": true,
+              "node_names": [],
+              "ok": false,
+              "returncode": null,
+              "timed_out": true
+            },
+            "fallback_timeout_s": 2.5,
+            "fallback_used": true,
+            "node_names": [],
+            "ok": false,
+            "stderr": "",
+            "stdout": ""
+          },
+          "probe_timeouts": {
+            "child_command_timeout_s": 3.0,
+            "fallback_timeout_s": 2.5
+          },
+          "remaining_budget_s": 54.42
+        },
+        {
+          "lifecycle_active": {
+            "amcl": false,
+            "map_server": false,
+            "planner_server": false
+          },
+          "node_list": {
+            "boundary": "rclpy_node_names_failed_with_ros2_node_list_timeout",
+            "child_command_timeout_s": 3.0,
+            "elapsed_ms": 3045,
+            "error": {
+              "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; python3 - <<\\'PY\\'\\nimport json\\nimport tim",
+              "type": "TimeoutExpired"
+            },
+            "executed": false,
+            "fallback": {
+              "boundary": "ros2_node_list_timeout",
+              "error": {
+                "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; ros2 node list']' timed out after 2.5 secon",
+                "type": "TimeoutExpired"
+              },
+              "executed": true,
+              "node_names": [],
+              "ok": false,
+              "returncode": null,
+              "timed_out": true
+            },
+            "fallback_timeout_s": 2.5,
+            "fallback_used": true,
+            "node_names": [],
+            "ok": false,
+            "stderr": "",
+            "stdout": ""
+          },
+          "probe_timeouts": {
+            "child_command_timeout_s": 3.0,
+            "fallback_timeout_s": 2.5
+          },
+          "remaining_budget_s": 47.962
+        },
+        {
+          "lifecycle_active": {
+            "amcl": false,
+            "map_server": false,
+            "planner_server": false
+          },
+          "node_list": {
+            "boundary": "rclpy_node_names_failed_with_ros2_node_list_timeout",
+            "child_command_timeout_s": 3.0,
+            "elapsed_ms": 3514,
+            "error": {
+              "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; python3 - <<\\'PY\\'\\nimport json\\nimport tim",
+              "type": "TimeoutExpired"
+            },
+            "executed": false,
+            "fallback": {
+              "boundary": "ros2_node_list_timeout",
+              "error": {
+                "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; ros2 node list']' timed out after 2.5 secon",
+                "type": "TimeoutExpired"
+              },
+              "executed": true,
+              "node_names": [],
+              "ok": false,
+              "returncode": null,
+              "timed_out": true
+            },
+            "fallback_timeout_s": 2.5,
+            "fallback_used": true,
+            "node_names": [],
+            "ok": false,
+            "stderr": "",
+            "stdout": ""
+          },
+          "probe_timeouts": {
+            "child_command_timeout_s": 3.0,
+            "fallback_timeout_s": 2.5
+          },
+          "remaining_budget_s": 41.196
+        },
+        {
+          "lifecycle_active": {
+            "amcl": false,
+            "map_server": false,
+            "planner_server": false
+          },
+          "node_list": {
+            "boundary": "rclpy_node_names_failed_with_ros2_node_list_timeout",
+            "child_command_timeout_s": 3.0,
+            "elapsed_ms": 3194,
+            "error": {
+              "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; python3 - <<\\'PY\\'\\nimport json\\nimport tim",
+              "type": "TimeoutExpired"
+            },
+            "executed": false,
+            "fallback": {
+              "boundary": "ros2_node_list_timeout",
+              "error": {
+                "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; ros2 node list']' timed out after 2.5 secon",
+                "type": "TimeoutExpired"
+              },
+              "executed": true,
+              "node_names": [],
+              "ok": false,
+              "returncode": null,
+              "timed_out": true
+            },
+            "fallback_timeout_s": 2.5,
+            "fallback_used": true,
+            "node_names": [],
+            "ok": false,
+            "stderr": "",
+            "stdout": ""
+          },
+          "probe_timeouts": {
+            "child_command_timeout_s": 3.0,
+            "fallback_timeout_s": 2.5
+          },
+          "remaining_budget_s": 34.347
+        },
+        {
+          "lifecycle_active": {
+            "amcl": false,
+            "map_server": false,
+            "planner_server": false
+          },
+          "node_list": {
+            "boundary": "rclpy_node_names_failed_with_ros2_node_list_timeout",
+            "child_command_timeout_s": 3.0,
+            "elapsed_ms": 3109,
+            "error": {
+              "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; python3 - <<\\'PY\\'\\nimport json\\nimport tim",
+              "type": "TimeoutExpired"
+            },
+            "executed": false,
+            "fallback": {
+              "boundary": "ros2_node_list_timeout",
+              "error": {
+                "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; ros2 node list']' timed out after 2.5 secon",
+                "type": "TimeoutExpired"
+              },
+              "executed": true,
+              "node_names": [],
+              "ok": false,
+              "returncode": null,
+              "timed_out": true
+            },
+            "fallback_timeout_s": 2.5,
+            "fallback_used": true,
+            "node_names": [],
+            "ok": false,
+            "stderr": "",
+            "stdout": ""
+          },
+          "probe_timeouts": {
+            "child_command_timeout_s": 3.0,
+            "fallback_timeout_s": 2.5
+          },
+          "remaining_budget_s": 28.042
+        },
+        {
+          "lifecycle_active": {
+            "amcl": false,
+            "map_server": false,
+            "planner_server": false
+          },
+          "node_list": {
+            "boundary": "rclpy_node_names_failed_with_ros2_node_list_timeout",
+            "child_command_timeout_s": 3.0,
+            "elapsed_ms": 3037,
+            "error": {
+              "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; python3 - <<\\'PY\\'\\nimport json\\nimport tim",
+              "type": "TimeoutExpired"
+            },
+            "executed": false,
+            "fallback": {
+              "boundary": "ros2_node_list_timeout",
+              "error": {
+                "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; ros2 node list']' timed out after 2.5 secon",
+                "type": "TimeoutExpired"
+              },
+              "executed": true,
+              "node_names": [],
+              "ok": false,
+              "returncode": null,
+              "timed_out": true
+            },
+            "fallback_timeout_s": 2.5,
+            "fallback_used": true,
+            "node_names": [],
+            "ok": false,
+            "stderr": "",
+            "stdout": ""
+          },
+          "probe_timeouts": {
+            "child_command_timeout_s": 3.0,
+            "fallback_timeout_s": 2.5
+          },
+          "remaining_budget_s": 21.801
+        },
+        {
+          "lifecycle_active": {
+            "amcl": false,
+            "map_server": false,
+            "planner_server": false
+          },
+          "node_list": {
+            "boundary": "rclpy_node_names_failed_with_ros2_node_list_timeout",
+            "child_command_timeout_s": 3.0,
+            "elapsed_ms": 3060,
+            "error": {
+              "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; python3 - <<\\'PY\\'\\nimport json\\nimport tim",
+              "type": "TimeoutExpired"
+            },
+            "executed": false,
+            "fallback": {
+              "boundary": "ros2_node_list_timeout",
+              "error": {
+                "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; ros2 node list']' timed out after 2.5 secon",
+                "type": "TimeoutExpired"
+              },
+              "executed": true,
+              "node_names": [],
+              "ok": false,
+              "returncode": null,
+              "timed_out": true
+            },
+            "fallback_timeout_s": 2.5,
+            "fallback_used": true,
+            "node_names": [],
+            "ok": false,
+            "stderr": "",
+            "stdout": ""
+          },
+          "probe_timeouts": {
+            "child_command_timeout_s": 3.0,
+            "fallback_timeout_s": 2.5
+          },
+          "remaining_budget_s": 15.582
+        },
+        {
+          "lifecycle_active": {
+            "amcl": false,
+            "map_server": false,
+            "planner_server": false
+          },
+          "node_list": {
+            "boundary": "rclpy_node_names_failed_with_ros2_node_list_timeout",
+            "child_command_timeout_s": 3.0,
+            "elapsed_ms": 3105,
+            "error": {
+              "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; python3 - <<\\'PY\\'\\nimport json\\nimport tim",
+              "type": "TimeoutExpired"
+            },
+            "executed": false,
+            "fallback": {
+              "boundary": "ros2_node_list_timeout",
+              "error": {
+                "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; ros2 node list']' timed out after 2.5 secon",
+                "type": "TimeoutExpired"
+              },
+              "executed": true,
+              "node_names": [],
+              "ok": false,
+              "returncode": null,
+              "timed_out": true
+            },
+            "fallback_timeout_s": 2.5,
+            "fallback_used": true,
+            "node_names": [],
+            "ok": false,
+            "stderr": "",
+            "stdout": ""
+          },
+          "probe_timeouts": {
+            "child_command_timeout_s": 3.0,
+            "fallback_timeout_s": 2.5
+          },
+          "remaining_budget_s": 9.301
+        },
+        {
+          "lifecycle_active": {
+            "amcl": false,
+            "map_server": false,
+            "planner_server": false
+          },
+          "node_list": {
+            "boundary": "rclpy_node_names_failed_with_ros2_node_list_timeout",
+            "child_command_timeout_s": 3.0,
+            "elapsed_ms": 3113,
+            "error": {
+              "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; python3 - <<\\'PY\\'\\nimport json\\nimport tim",
+              "type": "TimeoutExpired"
+            },
+            "executed": false,
+            "fallback": {
+              "boundary": "ros2_node_list_timeout",
+              "error": {
+                "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; ros2 node list']' timed out after 2.5 secon",
+                "type": "TimeoutExpired"
+              },
+              "executed": true,
+              "node_names": [],
+              "ok": false,
+              "returncode": null,
+              "timed_out": true
+            },
+            "fallback_timeout_s": 2.5,
+            "fallback_used": true,
+            "node_names": [],
+            "ok": false,
+            "stderr": "",
+            "stdout": ""
+          },
+          "probe_timeouts": {
+            "child_command_timeout_s": 3.0,
+            "fallback_timeout_s": 2.5
+          },
+          "remaining_budget_s": 2.959
+        },
+        {
+          "lifecycle_active": {
+            "amcl": false,
+            "map_server": false,
+            "planner_server": false
+          },
+          "node_list": {
+            "boundary": "rclpy_node_names_failed_with_ros2_node_list_timeout",
+            "child_command_timeout_s": 0.8844932556152344,
+            "elapsed_ms": 930,
+            "error": {
+              "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; python3 - <<\\'PY\\'\\nimport json\\nimport tim",
+              "type": "TimeoutExpired"
+            },
+            "executed": false,
+            "fallback": {
+              "boundary": "ros2_node_list_timeout",
+              "error": {
+                "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; ros2 node list']' timed out after 0.7236763",
+                "type": "TimeoutExpired"
+              },
+              "executed": true,
+              "node_names": [],
+              "ok": false,
+              "returncode": null,
+              "timed_out": true
+            },
+            "fallback_timeout_s": 0.7236763000488281,
+            "fallback_used": true,
+            "node_names": [],
+            "ok": false,
+            "stderr": "",
+            "stdout": ""
+          },
+          "probe_timeouts": {
+            "child_command_timeout_s": 0.8844932556152344,
+            "fallback_timeout_s": 0.7236763000488281
+          },
+          "remaining_budget_s": 0.564
+        }
+      ],
+      "lifecycle_active": {
+        "amcl": false,
+        "map_server": false,
+        "planner_server": false
+      },
+      "lifecycle_history": [],
+      "lifecycle_results": {
+        "amcl": {
+          "boundary": "managed_runtime_lifecycle_check_not_run",
+          "executed": false,
+          "ok": false
+        },
+        "map_server": {
+          "boundary": "managed_runtime_lifecycle_check_not_run",
+          "executed": false,
+          "ok": false
+        },
+        "planner_server": {
+          "boundary": "managed_runtime_lifecycle_check_not_run",
+          "executed": false,
+          "ok": false
+        }
+      },
+      "log_tail": "lation into the past.  Requested time 1783794788.523291 but the earliest data is at time 1783794814.126644, when looking up transform from frame [base_link] to frame [map]\n[INFO] [1783794814.723905615] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Lookup would require extrapolation into the past.  Requested time 1783794788.523291 but the earliest data is at time 1783794814.626747, when looking up transform from frame [base_link] to frame [map]\n[INFO] [1783794815.225094205] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Lookup would require extrapolation into the past.  Requested time 1783794788.523291 but the earliest data is at time 1783794815.126665, when looking up transform from frame [base_link] to frame [map]\n[INFO] [1783794815.724914673] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Lookup would require extrapolation into the past.  Requested time 1783794788.523291 but the earliest data is at time 1783794815.626623, when looking up transform from frame [base_link] to frame [map]\n[INFO] [1783794816.223887975] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Lookup would require extrapolation into the past.  Requested time 1783794788.523291 but the earliest data is at time 1783794816.126716, when looking up transform from frame [base_link] to frame [map]\n[INFO] [1783794816.723886150] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Lookup would require extrapolation into the past.  Requested time 1783794788.523291 but the earliest data is at time 1783794816.626685, when looking up transform from frame [base_link] to frame [map]\n[INFO] [1783794817.232965689] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Lookup would require extrapolation into the past.  Requested time 1783794788.523291 but the earliest data is at time 1783794817.126726, when looking up transform from frame [base_link] to frame [map]\n[INFO] [1783794817.724755250] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Lookup would require extrapolation into the past.  Requested time 1783794788.523291 but the earliest data is at time 1783794817.626610, when looking up transform from frame [base_link] to frame [map]\n[INFO] [1783794818.226132299] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Lookup would require extrapolation into the past.  Requested time 1783794788.523291 but the earliest data is at time 1783794818.127126, when looking up transform from frame [base_link] to frame [map]\n[INFO] [1783794818.724693309] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Lookup would require extrapolation into the past.  Requested time 1783794788.523291 but the earliest data is at time 1783794818.626676, when looking up transform from frame [base_link] to frame [map]\n[INFO] [1783794819.224053611] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Lookup would require extrapolation into the past.  Requested time 1783794788.523291 but the earliest data is at time 1783794819.126555, when looking up transform from frame [base_link] to frame [map]\n[INFO] [1783794819.723888495] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Lookup would require extrapolation into the past.  Requested time 1783794788.523291 but the earliest data is at time 1783794819.626644, when looking up transform from frame [base_link] to frame [map]\n",
+      "observed_node_names": [],
+      "ok": false,
+      "reason": "ros2_node_list_timeout"
+    },
+    "managed_static_tf_processes": {
+      "all_expected_processes_observed": true,
+      "checked_before_cleanup": true,
+      "expected": [
+        {
+          "child": "base_link",
+          "parent": "odom",
+          "role": "static_tf_odom_base"
+        },
+        {
+          "child": "laser_frame",
+          "parent": "base_link",
+          "role": "static_tf_base_laser"
+        }
+      ],
+      "observed_roles": [
+        "static_tf_base_laser",
+        "static_tf_odom_base"
+      ],
+      "process_group": 501769,
+      "processes": [
+        {
+          "command": "bash -lc set -e; set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; pids=(); cleanup(){ for pid in \"${pids[@]}\"; do kill -INT \"$pid\" 2>/dev/null || true; done; wait || true; }; trap cleanup EXIT INT TERM; printf '%s\\n' 'managed_map_yaml=/root/rober/onboard/runtime/maps/trashbot_map.yaml' > /tmp/rober_nav2_localization_7ioxidi2.log; printf '%s\\n' 'managed_runtime_boundary=no_motion_path_generation_planner_only' >> /tmp/rober_nav2_localization_7ioxidi2.log; printf '%s\\n' 'blocked_device=/dev/ttyS5' >> /tmp/rober_nav2_localization_7ioxidi2.log; printf '%s\\n' 'starting role=lidar_driver' >> /tmp/rober_nav2_localization_7ioxidi2.log; (ros2 run ros2_trashbot_hardware lidar_driver --ros-args -p serial_port:=/dev/ttyACM0 -p serial_baudrate:=230400 -p frame_id:=laser_frame -p scan_topic:=/scan -p publish_raw_packets:=false) >> /tmp/rober_nav2_localization_7ioxidi2.log 2>&1 & pid=$!; pids+=($pid); printf '%s\\n' 'started role=lidar_driver pid='$pid >> /tmp/rober_nav2_localization_7ioxidi2.log; printf '%s\\n' 'starting role=static_tf_broadcaster' >> /tmp/rober_nav2_localization_7ioxidi2.log; (python3 -c 'import json import sys  import rclpy from geometry_msgs.msg import TransformStamped from tf2_ros.static_transform_broadcaster import StaticTransformBroadcaster   def make_transform(node, parent, child):     # 两条边都是 no-motion proof 的固定几何关系；这里显式置零，避免引入底盘里程计假设。     transform = TransformStamped()     transform.header.stamp = node.get_clock().now().to_msg()     transform.header.frame_id = parent     transform.child_frame_id = child     transform.transform.translation.x = 0.0     transform.transform.translation.y = 0.0     transform.transform.translation.z = 0.0     transform.transform.rotation.x = 0.0     transform.transform.rotation.y = 0.0     transform.transform.rotation.z = 0.0     transform.transform.rotation.w = 1.0     return transform   def main():     frames = json.loads(sys.argv[1])     rclpy.init(args=None)     node = rclpy.create_node(\"managed_static_tf_broadcaster\")     broadcaster = StaticTransformBroadcaster(node)      def publish_static_transforms():         # 同一个 TFMessage 同时包含 odom->base_link 与 base_link->laser_frame。         # transient-local late subscriber 因此不再依赖两个独立 CLI publisher 的发现时序。         broadcaster.sendTransform(             [                 make_transform(node, frames[\"odom\"], frames[\"base\"]),                 make_transform(node, frames[\"base\"], frames[\"laser\"]),             ]         )      publish_static_transforms()     node.create_timer(0.5, publish_static_transforms)     try:         rclpy.spin(node)     finally:         node.destroy_node()         if rclpy.ok():             rclpy.shutdown()   if __name__ == \"__main__\":     main()' '{\"odom\": \"odom\", \"base\": \"base_link\", \"laser\": \"laser_frame\"}' static_tf_odom_base static_tf_base_laser odom_to_base_link base_link_to_laser_frame) >> /tmp/rober_nav2_localization_7ioxidi2.log 2>&1 & pid=$!; pids+=($pid); printf '%s\\n' 'started role=static_tf_broadcaster pid='$pid >> /tmp/rober_nav2_localization_7ioxidi2.log; printf '%s\\n' 'starting role=map_server' >> /tmp/rober_nav2_localization_7ioxidi2.log; (ros2 run nav2_map_server map_server --ros-args --params-file /tmp/rober_nav2_localization_hgnyye02.yaml -r __node:=map_server) >> /tmp/rober_nav2_localization_7ioxidi2.log 2>&1 & pid=$!; pids+=($pid); printf '%s\\n' 'started role=map_server pid='$pid >> /tmp/rober_nav2_localization_7ioxidi2.log; printf '%s\\n' 'starting role=amcl' >> /tmp/rober_nav2_localization_7ioxidi2.log; (ros2 run nav2_amcl amcl --ros-args --params-file /tmp/rober_nav2_localization_hgnyye02.yaml -r __node:=amcl) >> /tmp/rober_nav2_localization_7ioxidi2.log 2>&1 & pid=$!; pids+=($pid); printf '%s\\n' 'started role=amcl pid='$pid >> /tmp/rober_nav2_localization_7ioxidi2.log; printf '%s\\n' 'starting role=planner_server' >> /tmp/rober_nav2_localization_7ioxidi2.log; (ros2 run nav2_planner planner_server --ros-args --params-file /tmp/rober_nav2_localization_hgnyye02.yaml -r __node:=planner_server) >> /tmp/rober_nav2_localization_7ioxidi2.log 2>&1 & pid=$!; pids+=($pid); printf '%s\\n' 'started role=planner_server pid='$pid >> /tmp/rober_nav2_localization_7ioxidi2.log; printf '%s\\n' 'waiting before lifecycle_manager start delay_s=3' >> /tmp/rober_nav2_localization_7ioxidi2.log; sleep 3; printf '%s\\n' 'starting role=lifecycle_manager' >> /tmp/rober_nav2_localization_7ioxidi2.log; (ros2 run nav2_lifecycle_manager lifecycle_manager --ros-args --params-file /tmp/rober_nav2_localization_hgnyye02.yaml -r __node:=lifecycle_manager) >> /tmp/rober_nav2_localization_7ioxidi2.log 2>&1 & pid=$!; pids+=($pid); printf '%s\\n' 'started role=lifecycle_manager pid='$pid >> /tmp/rober_nav2_localization_7ioxidi2.log; wait",
+          "pgid": 501769,
+          "pid": 501769,
+          "role": "static_tf_base_laser",
+          "roles": [
+            "static_tf_base_laser",
+            "static_tf_odom_base"
+          ],
+          "source_type": "single_rclpy_static_transform_broadcaster"
+        },
+        {
+          "command": "python3 -c import json import sys  import rclpy from geometry_msgs.msg import TransformStamped from tf2_ros.static_transform_broadcaster import StaticTransformBroadcaster   def make_transform(node, parent, child):     # 两条边都是 no-motion proof 的固定几何关系；这里显式置零，避免引入底盘里程计假设。     transform = TransformStamped()     transform.header.stamp = node.get_clock().now().to_msg()     transform.header.frame_id = parent     transform.child_frame_id = child     transform.transform.translation.x = 0.0     transform.transform.translation.y = 0.0     transform.transform.translation.z = 0.0     transform.transform.rotation.x = 0.0     transform.transform.rotation.y = 0.0     transform.transform.rotation.z = 0.0     transform.transform.rotation.w = 1.0     return transform   def main():     frames = json.loads(sys.argv[1])     rclpy.init(args=None)     node = rclpy.create_node(\"managed_static_tf_broadcaster\")     broadcaster = StaticTransformBroadcaster(node)      def publish_static_transforms():         # 同一个 TFMessage 同时包含 odom->base_link 与 base_link->laser_frame。         # transient-local late subscriber 因此不再依赖两个独立 CLI publisher 的发现时序。         broadcaster.sendTransform(             [                 make_transform(node, frames[\"odom\"], frames[\"base\"]),                 make_transform(node, frames[\"base\"], frames[\"laser\"]),             ]         )      publish_static_transforms()     node.create_timer(0.5, publish_static_transforms)     try:         rclpy.spin(node)     finally:         node.destroy_node()         if rclpy.ok():             rclpy.shutdown()   if __name__ == \"__main__\":     main() {\"odom\": \"odom\", \"base\": \"base_link\", \"laser\": \"laser_frame\"} static_tf_odom_base static_tf_base_laser odom_to_base_link base_link_to_laser_frame",
+          "pgid": 501769,
+          "pid": 501812,
+          "role": "static_tf_base_laser",
+          "roles": [
+            "static_tf_base_laser",
+            "static_tf_odom_base"
+          ],
+          "source_type": "single_rclpy_static_transform_broadcaster"
+        }
+      ],
+      "source_strategy": "single_rclpy_static_transform_broadcaster_transient_local"
+    },
+    "map_consumed": false,
+    "map_frame_observed": false,
+    "map_inputs": {
+      "inputs_ready": false,
+      "map_artifact_dir": "/root/rober/onboard/runtime/maps",
+      "map_image_candidates": [
+        {
+          "mtime_ms": 1782061700286,
+          "name": "field_first_jog_20260622_0135.pgm",
+          "path": "/root/rober/onboard/runtime/maps/field_first_jog_20260622_0135.pgm",
+          "size_bytes": 31280,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1781118091538,
+          "name": "final_direct_save.pgm",
+          "path": "/root/rober/onboard/runtime/maps/final_direct_save.pgm",
+          "size_bytes": 13266,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1782062002493,
+          "name": "fixed_free_cells_20260622_0112.pgm",
+          "path": "/root/rober/onboard/runtime/maps/fixed_free_cells_20260622_0112.pgm",
+          "size_bytes": 33062,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1782061841826,
+          "name": "manual_motion_map_20260622_0135.pgm",
+          "path": "/root/rober/onboard/runtime/maps/manual_motion_map_20260622_0135.pgm",
+          "size_bytes": 44198,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1781140891863,
+          "name": "pc_integrated_current_20260611_0920.pgm",
+          "path": "/root/rober/onboard/runtime/maps/pc_integrated_current_20260611_0920.pgm",
+          "size_bytes": 19316,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1781141101886,
+          "name": "pc_integrated_current_retry_20260611_0920.pgm",
+          "path": "/root/rober/onboard/runtime/maps/pc_integrated_current_retry_20260611_0920.pgm",
+          "size_bytes": 7036,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1781133958365,
+          "name": "pc_integrated_smoke_20260611_0735.pgm",
+          "path": "/root/rober/onboard/runtime/maps/pc_integrated_smoke_20260611_0735.pgm",
+          "size_bytes": 42883,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1781156934777,
+          "name": "pc_map_lifecycle_20260611_1350.pgm",
+          "path": "/root/rober/onboard/runtime/maps/pc_map_lifecycle_20260611_1350.pgm",
+          "size_bytes": 28892,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1781166497889,
+          "name": "pc_no_motion_20260611_162507.pgm",
+          "path": "/root/rober/onboard/runtime/maps/pc_no_motion_20260611_162507.pgm",
+          "size_bytes": 31758,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1781117808598,
+          "name": "pc_proxy_save2.pgm",
+          "path": "/root/rober/onboard/runtime/maps/pc_proxy_save2.pgm",
+          "size_bytes": 52223,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1781135890521,
+          "name": "pc_proxy_scan_stabilize_20260611_0758.pgm",
+          "path": "/root/rober/onboard/runtime/maps/pc_proxy_scan_stabilize_20260611_0758.pgm",
+          "size_bytes": 29318,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1781117645935,
+          "name": "pc_proxy_start.pgm",
+          "path": "/root/rober/onboard/runtime/maps/pc_proxy_start.pgm",
+          "size_bytes": 47468,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1781117556603,
+          "name": "pc_runtime_v1.pgm",
+          "path": "/root/rober/onboard/runtime/maps/pc_runtime_v1.pgm",
+          "size_bytes": 8218,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1781135633986,
+          "name": "scan_stabilize_20260611_075301.pgm",
+          "path": "/root/rober/onboard/runtime/maps/scan_stabilize_20260611_075301.pgm",
+          "size_bytes": 30502,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1781135815398,
+          "name": "scan_stabilize_fixed_20260611_0756.pgm",
+          "path": "/root/rober/onboard/runtime/maps/scan_stabilize_fixed_20260611_0756.pgm",
+          "size_bytes": 8070,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1782749748961,
+          "name": "trashbot_map.pgm",
+          "path": "/root/rober/onboard/runtime/maps/trashbot_map.pgm",
+          "size_bytes": 29531,
+          "suffix": ".pgm"
+        }
+      ],
+      "map_metadata": {
+        "frame_id": "map",
+        "height": 113,
+        "resolution": 0.05000000074505806,
+        "width": 261
+      },
+      "map_proof_path": "/root/rober/onboard/runtime/map_lifecycle_latest.json",
+      "map_yaml_candidates": [
+        {
+          "mtime_ms": 1782061700294,
+          "name": "field_first_jog_20260622_0135.yaml",
+          "path": "/root/rober/onboard/runtime/maps/field_first_jog_20260622_0135.yaml",
+          "size_bytes": 182,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1781118091546,
+          "name": "final_direct_save.yaml",
+          "path": "/root/rober/onboard/runtime/maps/final_direct_save.yaml",
+          "size_bytes": 169,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1782062002501,
+          "name": "fixed_free_cells_20260622_0112.yaml",
+          "path": "/root/rober/onboard/runtime/maps/fixed_free_cells_20260622_0112.yaml",
+          "size_bytes": 183,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1782061841830,
+          "name": "manual_motion_map_20260622_0135.yaml",
+          "path": "/root/rober/onboard/runtime/maps/manual_motion_map_20260622_0135.yaml",
+          "size_bytes": 182,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1781140891871,
+          "name": "pc_integrated_current_20260611_0920.yaml",
+          "path": "/root/rober/onboard/runtime/maps/pc_integrated_current_20260611_0920.yaml",
+          "size_bytes": 172,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1781141101890,
+          "name": "pc_integrated_current_retry_20260611_0920.yaml",
+          "path": "/root/rober/onboard/runtime/maps/pc_integrated_current_retry_20260611_0920.yaml",
+          "size_bytes": 178,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1781133958369,
+          "name": "pc_integrated_smoke_20260611_0735.yaml",
+          "path": "/root/rober/onboard/runtime/maps/pc_integrated_smoke_20260611_0735.yaml",
+          "size_bytes": 184,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1781156934781,
+          "name": "pc_map_lifecycle_20260611_1350.yaml",
+          "path": "/root/rober/onboard/runtime/maps/pc_map_lifecycle_20260611_1350.yaml",
+          "size_bytes": 182,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1781166497893,
+          "name": "pc_no_motion_20260611_162507.yaml",
+          "path": "/root/rober/onboard/runtime/maps/pc_no_motion_20260611_162507.yaml",
+          "size_bytes": 181,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1781117808606,
+          "name": "pc_proxy_save2.yaml",
+          "path": "/root/rober/onboard/runtime/maps/pc_proxy_save2.yaml",
+          "size_bytes": 165,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1781135890525,
+          "name": "pc_proxy_scan_stabilize_20260611_0758.yaml",
+          "path": "/root/rober/onboard/runtime/maps/pc_proxy_scan_stabilize_20260611_0758.yaml",
+          "size_bytes": 171,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1781117645955,
+          "name": "pc_proxy_start.yaml",
+          "path": "/root/rober/onboard/runtime/maps/pc_proxy_start.yaml",
+          "size_bytes": 165,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1781117556611,
+          "name": "pc_runtime_v1.yaml",
+          "path": "/root/rober/onboard/runtime/maps/pc_runtime_v1.yaml",
+          "size_bytes": 166,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1781135634030,
+          "name": "scan_stabilize_20260611_075301.yaml",
+          "path": "/root/rober/onboard/runtime/maps/scan_stabilize_20260611_075301.yaml",
+          "size_bytes": 181,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1781135815410,
+          "name": "scan_stabilize_fixed_20260611_0756.yaml",
+          "path": "/root/rober/onboard/runtime/maps/scan_stabilize_fixed_20260611_0756.yaml",
+          "size_bytes": 188,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1782749748969,
+          "name": "trashbot_map.yaml",
+          "path": "/root/rober/onboard/runtime/maps/trashbot_map.yaml",
+          "size_bytes": 148,
+          "suffix": ".yaml"
+        }
+      ],
+      "root_causes": [
+        {
+          "layer": "canonical map proof",
+          "reason": "map_lifecycle_proof_not_clean"
+        }
+      ],
+      "source_evidence_ref": "o3-map-lifecycle-1782749676965",
+      "source_evidence_type": "blocked_with_root_cause",
+      "source_proof_status": "blocked_with_root_cause"
+    },
+    "map_inputs_ready": false,
+    "map_lifecycle_preflight": {
+      "amcl_active": false,
+      "classification": "map_lifecycle_preflight_lifecycle_probe_skipped_after_graph_blocked",
+      "executed": true,
+      "map_server_active": false,
+      "results": {
+        "amcl": {
+          "boundary": "managed_runtime_lifecycle_check_not_run",
+          "executed": false,
+          "ok": false
+        },
+        "map_server": {
+          "boundary": "managed_runtime_lifecycle_check_not_run",
+          "executed": false,
+          "ok": false
+        },
+        "planner_server": {
+          "boundary": "managed_runtime_lifecycle_check_not_run",
+          "executed": false,
+          "ok": false
+        }
+      },
+      "root_causes": [],
+      "skipped_nodes": [
+        "map_server",
+        "amcl"
+      ]
+    },
+    "map_once_observed": false,
+    "map_server_active": false,
+    "not_proven": [
+      "nav2_goal_execution",
+      "controller_cmd_vel_output",
+      "fixed_route_execution",
+      "delivery_success",
+      "hil_pass",
+      "safe_to_control_true"
+    ],
+    "odom_frame_observed": false,
+    "package_availability": {
+      "nav2_amcl": false,
+      "nav2_lifecycle_manager": false,
+      "nav2_map_server": false,
+      "ros2_trashbot_bringup": false,
+      "ros2_trashbot_nav": false
+    },
+    "package_check_mode": "single_sourced_pkg_list_diagnostic",
+    "package_checks_batch_ok": false,
+    "path_generated": false,
+    "path_generation_attempted": false,
+    "path_generation_boundary": "path_generation_blocked_by_localization_not_ready",
+    "path_generation_gate": {
+      "amcl_gate_ready": false,
+      "attempted": false,
+      "blocked_reason": "path_generation_blocked_by_localization_not_ready",
+      "boundary": "path_generation_blocked_by_localization_not_ready",
+      "generated": false,
+      "localization_root_causes": [
+        {
+          "layer": "Nav2 sensor input",
+          "reason": "/scan_no_publisher"
+        },
+        {
+          "layer": "Nav2 map input",
+          "reason": "/map_once_not_observed"
+        },
+        {
+          "layer": "AMCL initialpose",
+          "reason": "initialpose_skipped_after_managed_runtime_graph_wait_blocked"
+        },
+        {
+          "layer": "AMCL localization",
+          "reason": "/amcl_pose_topic_missing"
+        },
+        {
+          "layer": "Localization TF",
+          "reason": "map_to_odom_dynamic_source_missing"
+        },
+        {
+          "detail": "/tf_topic_missing",
+          "layer": "Localization TF",
+          "reason": "map_to_base_link_blocked_by_missing_map_to_odom",
+          "source": "map_to_odom"
+        },
+        {
+          "detail": "static_lidar_tf_missing_or_not_yet_observed",
+          "layer": "Managed static TF",
+          "reason": "base_link_to_laser_frame_not_observed",
+          "source": "base_link_to_laser_frame"
+        }
+      ],
+      "localization_tf_gate_ready": false,
+      "planner_server_ready_for_path_generation": false,
+      "point_count": 0,
+      "requested": true
+    },
+    "path_generation_ready": false,
+    "path_generation_requested": true,
+    "path_generation_service_available": false,
+    "path_generation_service_name": null,
+    "path_generation_succeeded": false,
+    "path_goal_request": null,
+    "path_goal_response": {
+      "accepted": false,
+      "attempted": false,
+      "result_received": false
+    },
+    "path_point_count": 0,
+    "path_preview_frame_id": null,
+    "path_preview_point_count": 0,
+    "path_preview_points": [],
+    "path_preview_source_point_count": 0,
+    "phase_history": [
+      {
+        "at_ms": 1783794740001,
+        "detail": {
+          "mode": "no_motion_amcl_nav2_runtime_proof"
+        },
+        "ok": true,
+        "phase": "start"
+      },
+      {
+        "at_ms": 1783794740023,
+        "detail": {
+          "source_proof_status": "blocked_with_root_cause"
+        },
+        "ok": false,
+        "phase": "map_inputs"
+      },
+      {
+        "at_ms": 1783794740030,
+        "phase": "board_source_preflight"
+      },
+      {
+        "at_ms": 1783794759889,
+        "detail": {
+          "classification": "board_source_preflight_ready",
+          "cli_ready": true,
+          "rclpy_import_ok": true,
+          "ros2_cli_ok": true,
+          "runtime_ready": true
+        },
+        "ok": true,
+        "phase": "board_source_preflight"
+      },
+      {
+        "at_ms": 1783794759909,
+        "detail": {
+          "map_yaml_source": "explicit_cli_managed_map_yaml",
+          "requested": true
+        },
+        "phase": "managed_runtime"
+      },
+      {
+        "at_ms": 1783794759945,
+        "detail": {
+          "map_yaml": "/root/rober/onboard/runtime/maps/trashbot_map.yaml",
+          "process_group": 501769
+        },
+        "ok": true,
+        "phase": "managed_runtime_started"
+      },
+      {
+        "at_ms": 1783794820025,
+        "detail": {
+          "reason": "ros2_node_list_timeout"
+        },
+        "ok": false,
+        "phase": "managed_runtime_wait",
+        "root_cause": {
+          "layer": "Managed runtime wait",
+          "reason": "ros2_node_list_timeout"
+        }
+      },
+      {
+        "at_ms": 1783794820277,
+        "detail": {
+          "graph_wait_blocked": true
+        },
+        "phase": "ros2_graph_timeout_root_cause_probe"
+      },
+      {
+        "at_ms": 1783794842020,
+        "detail": {
+          "classification": "ros2_cli_plugin_or_import_timeout",
+          "primary_reason": "ros2_node_list_help_timeout_and_rclpy_graph_segment_probe_timeout"
+        },
+        "ok": true,
+        "phase": "ros2_graph_timeout_root_cause_probe"
+      },
+      {
+        "at_ms": 1783794842093,
+        "phase": "initialpose"
+      },
+      {
+        "at_ms": 1783794842275,
+        "detail": {
+          "enabled": true,
+          "method": "skipped_after_managed_runtime_graph_wait_blocked",
+          "publish_attempts": 0,
+          "subscriber_count": null
+        },
+        "ok": false,
+        "phase": "initialpose"
+      },
+      {
+        "at_ms": 1783794842386,
+        "phase": "amcl_pose_probe"
+      },
+      {
+        "at_ms": 1783794842483,
+        "ok": false,
+        "phase": "amcl_pose_probe",
+        "root_cause": {
+          "layer": "AMCL localization",
+          "reason": "/amcl_pose_once_not_observed"
+        }
+      },
+      {
+        "at_ms": 1783794842517,
+        "phase": "tf_source_probe"
+      },
+      {
+        "at_ms": 1783794867973,
+        "detail": {
+          "amcl_tf_root_cause": "/tf_topic_missing"
+        },
+        "ok": false,
+        "phase": "tf_source_probe"
+      },
+      {
+        "at_ms": 1783794868000,
+        "phase": "tf_probe"
+      },
+      {
+        "at_ms": 1783794868103,
+        "ok": false,
+        "phase": "tf_probe_map_to_odom",
+        "root_cause": {
+          "detail": "tf2_empty_output_or_timing",
+          "layer": "Localization TF",
+          "reason": "map_to_odom_not_observed",
+          "source": "map_to_odom"
+        }
+      },
+      {
+        "at_ms": 1783794868199,
+        "ok": false,
+        "phase": "tf_probe_odom_to_base_link",
+        "root_cause": {
+          "detail": "tf2_empty_output_or_timing",
+          "layer": "Localization TF",
+          "reason": "odom_to_base_link_not_observed",
+          "source": "odom_to_base_link"
+        }
+      },
+      {
+        "at_ms": 1783794868290,
+        "ok": false,
+        "phase": "tf_probe_map_to_base_link",
+        "root_cause": {
+          "detail": "/tf_topic_missing",
+          "layer": "Localization TF",
+          "reason": "map_to_base_link_blocked_by_missing_map_to_odom",
+          "source": "map_to_odom"
+        }
+      },
+      {
+        "at_ms": 1783794868358,
+        "ok": false,
+        "phase": "tf_probe_base_link_to_laser_frame",
+        "root_cause": {
+          "detail": "tf2_empty_output_or_timing",
+          "layer": "Managed static TF",
+          "reason": "base_link_to_laser_frame_not_observed",
+          "source": "base_link_to_laser_frame"
+        }
+      },
+      {
+        "at_ms": 1783794868393,
+        "detail": {
+          "tf_chain_observed": {
+            "base_link_to_laser_frame": false,
+            "map_to_base_link": false,
+            "map_to_odom": false,
+            "odom_to_base_link": false
+          },
+          "tf_failure_classification": {
+            "amcl_tf_root_cause": "/tf_topic_missing",
+            "blocking_segment": "map_to_odom",
+            "frame_naming_consistent": true,
+            "map_to_base_link": "blocked_by_missing_map_to_odom",
+            "reason": "/tf_topic_missing"
+          }
+        },
+        "ok": false,
+        "phase": "tf_probe",
+        "root_cause": {
+          "detail": "/tf_topic_missing",
+          "layer": "Localization TF",
+          "reason": "map_to_base_link_blocked_by_missing_map_to_odom",
+          "source": "map_to_odom"
+        }
+      },
+      {
+        "at_ms": 1783794868426,
+        "detail": {
+          "mode": "single_sourced_pkg_list_diagnostic"
+        },
+        "phase": "package_checks"
+      },
+      {
+        "at_ms": 1783794873697,
+        "detail": {
+          "mode": "single_sourced_pkg_list_diagnostic",
+          "packages": {
+            "nav2_amcl": false,
+            "nav2_lifecycle_manager": false,
+            "nav2_map_server": false,
+            "ros2_trashbot_bringup": false,
+            "ros2_trashbot_nav": false
+          }
+        },
+        "ok": false,
+        "phase": "package_checks"
+      },
+      {
+        "at_ms": 1783794873775,
+        "detail": {
+          "mode": "managed_runtime_graph_wait_blocked"
+        },
+        "ok": false,
+        "phase": "graph_discovery",
+        "root_cause": {
+          "layer": "Managed runtime wait",
+          "reason": "ros2_node_list_timeout"
+        }
+      },
+      {
+        "at_ms": 1783794873813,
+        "detail": {
+          "managed_runtime_wait_reason": "ros2_node_list_timeout",
+          "mode": "managed_runtime_graph_wait_blocked"
+        },
+        "ok": false,
+        "phase": "topic_probe"
+      },
+      {
+        "at_ms": 1783794873941,
+        "detail": {
+          "requested": true
+        },
+        "phase": "path_generation"
+      },
+      {
+        "at_ms": 1783794874014,
+        "detail": {
+          "boundary": "path_generation_blocked_by_localization_not_ready"
+        },
+        "ok": false,
+        "phase": "path_generation"
+      },
+      {
+        "at_ms": 1783794874046,
+        "detail": {
+          "process_group": 501769
+        },
+        "phase": "cleanup"
+      },
+      {
+        "at_ms": 1783794875929,
+        "detail": {
+          "cleanup_result": {
+            "attempted": true,
+            "group_present_after_cleanup": false,
+            "killed_with_sigkill": true,
+            "ok": true,
+            "process_group": 501769,
+            "remaining_processes": [],
+            "sent_signal": "SIGINT"
+          }
+        },
+        "ok": true,
+        "phase": "cleanup"
+      },
+      {
+        "at_ms": 1783794876006,
+        "detail": {
+          "status": "blocked_with_root_cause"
+        },
+        "ok": false,
+        "phase": "final"
+      }
+    ],
+    "planner_active": false,
+    "planner_readiness_summary": {
+      "controller_server_active": false,
+      "controller_server_observed": false,
+      "controller_server_requested": false,
+      "localization_ready": false,
+      "managed_runtime_boundary": "explicit_opt_in_managed_path_generation_runtime_no_motion",
+      "managed_runtime_requested": true,
+      "managed_runtime_started": true,
+      "path_generated": false,
+      "path_generation_attempted": false,
+      "path_generation_requested": true,
+      "path_generation_succeeded": false,
+      "path_point_count": 0,
+      "planner_server_active": false,
+      "planner_server_observed": false
+    },
+    "planner_server_active": false,
+    "planner_server_observed": false,
+    "planner_server_ready_for_path_generation": false,
+    "publishes_cmd_vel": false,
+    "recent_commands": [
+      {
+        "command": "ros2 topic list",
+        "elapsed_ms": 2554,
+        "error": {
+          "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; ros2 topic list']' timed out after 2.5 seco",
+          "type": "TimeoutExpired"
+        },
+        "finished_at_ms": 1783794835553,
+        "ok": false,
+        "returncode": null
+      },
+      {
+        "command": "python3 -c 'import json\nimport os\nimport shutil\n\ndef split_paths(value):\n    return [item for item in str(value or \"\").split(os.pathsep) if item]\n\ndef matches(entries, markers):\n    return [entry for entry in entries if any(marker in entry for marker in markers)][:8]\n\ndef summarize_path(name, workspace_markers):\n    entries = split_paths(os.environ.get(name, \"\"))\n    ros_matches = matches(entries, (\"/opt/ros/\", \"/opt/ros\"))\n    workspace_matches = matches(entries, workspace_markers)\n    return {\n        \"entry_count\": len(entries),\n        \"contains_ros\": bool(ros_matches),\n        \"contains_onboard_workspace\": bool(workspace_matches),\n        \"ros_matches\": ros_matches,\n        \"workspace_matches\": workspace_matches,\n    }\n\nworkspace_markers = tuple([\"/root/rober/onboard\", \"/root/rober/onboard\", \"/ws\", \"ros2_trashbot\"])\npayload = {\n    \"ROS_DISTRO\": os.environ.get(\"ROS_DISTRO\"),\n    \"ROS_DOMAIN_ID\": os.environ.get(\"ROS_DOMAIN_ID\"),\n    \"RMW_IMPLEMENTATION\": os.environ.get(\"RMW_IMPLEMENTATION\"),\n    \"AMENT_PREFIX_PATH\": summarize_path(\"AMENT_PREFIX_PATH\", workspace_markers),\n    \"PYTHONPATH\": summarize_path(\"PYTHONPATH\", workspace_markers),\n    \"LD_LIBRARY_PATH\": summarize_path(\"LD_LIBRARY_PATH\", workspace_markers),\n    \"which_ros2\": shutil.which(\"ros2\"),\n}\nprint(json.dumps(payload, ensure_ascii=False))'",
+        "elapsed_ms": 2099,
+        "error": {
+          "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; python3 -c \\'import json\\nimport os\\nimport",
+          "type": "TimeoutExpired"
+        },
+        "finished_at_ms": 1783794837732,
+        "ok": false,
+        "returncode": null
+      },
+      {
+        "command": "python3 -c 'import json\nimport time\n\npayload = {\n    \"executed\": True,\n    \"ok\": False,\n    \"node_names\": [],\n    \"segments\": [],\n    \"boundary\": \"rclpy_graph_segments_not_started\",\n    \"error\": None,\n}\nnode = None\nrclpy_initialized = False\nstarted = time.monotonic()\n\ndef mark(name, start):\n    payload[\"segments\"].append({\"name\": name, \"elapsed_ms\": int((time.monotonic() - start) * 1000)})\n\ntry:\n    segment_started = time.monotonic()\n    import rclpy\n    mark(\"import_rclpy\", segment_started)\n\n    segment_started = time.monotonic()\n    if not rclpy.ok():\n        rclpy.init(args=None)\n    rclpy_initialized = True\n    mark(\"rclpy_init\", segment_started)\n\n    segment_started = time.monotonic()\n    node = rclpy.create_node(\"o10_graph_timeout_segment_probe\")\n    mark(\"create_node\", segment_started)\n\n    segment_started = time.monotonic()\n    deadline = time.monotonic() + 1.1\n    names = []\n    while time.monotonic() < deadline:\n        rclpy.spin_once(node, timeout_sec=0.05)\n        names = sorted({name for name in node.get_node_names() if name})\n        if names:\n            break\n    mark(\"graph_wait\", segment_started)\n    payload[\"node_names\"] = names\n    payload[\"ok\"] = bool(names)\n    payload[\"boundary\"] = \"rclpy_graph_nodes_observed\" if names else \"rclpy_graph_empty_after_segment_wait\"\nexcept Exception as exc:\n    payload[\"error\"] = {\"type\": type(exc).__name__, \"message\": str(exc)[:240]}\n    payload[\"boundary\"] = \"rclpy_graph_segment_probe_failed\"\nfinally:\n    payload[\"elapsed_ms\"] = int((time.monotonic() - started) * 1000)\n    if node is not None:\n        try:\n            node.destroy_node()\n        except Exception:\n            pass\n    if rclpy_initialized:\n        try:\n            if rclpy.ok():\n                rclpy.shutdown()\n        except Exception:\n            pass\n\nprint(json.dumps(payload, ensure_ascii=False))'",
+        "elapsed_ms": 4110,
+        "error": {
+          "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; python3 -c \\'import json\\nimport time\\n\\npa",
+          "type": "TimeoutExpired"
+        },
+        "finished_at_ms": 1783794841905,
+        "ok": false,
+        "returncode": null
+      },
+      {
+        "command": "ros2 topic list -t",
+        "elapsed_ms": 3063,
+        "error": {
+          "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; ros2 topic list -t']' timed out after 3.0 s",
+          "type": "TimeoutExpired"
+        },
+        "finished_at_ms": 1783794845664,
+        "ok": false,
+        "returncode": null
+      },
+      {
+        "command": "ros2 node info /amcl",
+        "elapsed_ms": 3088,
+        "error": {
+          "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; ros2 node info /amcl']' timed out after 3.0",
+          "type": "TimeoutExpired"
+        },
+        "finished_at_ms": 1783794848806,
+        "ok": false,
+        "returncode": null
+      },
+      {
+        "command": "ros2 topic info /tf --verbose",
+        "elapsed_ms": 3123,
+        "error": {
+          "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; ros2 topic info /tf --verbose']' timed out ",
+          "type": "TimeoutExpired"
+        },
+        "finished_at_ms": 1783794852039,
+        "ok": false,
+        "returncode": null
+      },
+      {
+        "command": "ros2 topic info /tf_static --verbose",
+        "elapsed_ms": 3152,
+        "error": {
+          "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; ros2 topic info /tf_static --verbose']' tim",
+          "type": "TimeoutExpired"
+        },
+        "finished_at_ms": 1783794855288,
+        "ok": false,
+        "returncode": null
+      },
+      {
+        "command": "ros2 param get /amcl tf_broadcast",
+        "elapsed_ms": 3045,
+        "error": {
+          "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; ros2 param get /amcl tf_broadcast']' timed ",
+          "type": "TimeoutExpired"
+        },
+        "finished_at_ms": 1783794858372,
+        "ok": false,
+        "returncode": null
+      },
+      {
+        "command": "ros2 param get /amcl global_frame_id",
+        "elapsed_ms": 3117,
+        "error": {
+          "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; ros2 param get /amcl global_frame_id']' tim",
+          "type": "TimeoutExpired"
+        },
+        "finished_at_ms": 1783794861580,
+        "ok": false,
+        "returncode": null
+      },
+      {
+        "command": "ros2 param get /amcl odom_frame_id",
+        "elapsed_ms": 3048,
+        "error": {
+          "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; ros2 param get /amcl odom_frame_id']' timed",
+          "type": "TimeoutExpired"
+        },
+        "finished_at_ms": 1783794864717,
+        "ok": false,
+        "returncode": null
+      },
+      {
+        "command": "ros2 param get /amcl base_frame_id",
+        "elapsed_ms": 3081,
+        "error": {
+          "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; ros2 param get /amcl base_frame_id']' timed",
+          "type": "TimeoutExpired"
+        },
+        "finished_at_ms": 1783794867891,
+        "ok": false,
+        "returncode": null
+      },
+      {
+        "command": "ros2 pkg list",
+        "elapsed_ms": 5060,
+        "error": {
+          "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; ros2 pkg list']' timed out after 5.0 second",
+          "type": "TimeoutExpired"
+        },
+        "finished_at_ms": 1783794873545,
+        "ok": false,
+        "returncode": null
+      }
+    ],
+    "robot_control_executed": false,
+    "root_causes": [
+      {
+        "layer": "Managed runtime wait",
+        "reason": "ros2_node_list_timeout"
+      },
+      {
+        "layer": "canonical map proof",
+        "reason": "map_lifecycle_proof_not_clean"
+      },
+      {
+        "layer": "ROS install/source",
+        "reason": "ros2_trashbot_bringup_missing"
+      },
+      {
+        "layer": "ROS install/source",
+        "reason": "ros2_trashbot_nav_missing"
+      },
+      {
+        "layer": "ROS install/source",
+        "reason": "nav2_map_server_missing"
+      },
+      {
+        "layer": "ROS install/source",
+        "reason": "nav2_amcl_missing"
+      },
+      {
+        "layer": "ROS install/source",
+        "reason": "nav2_lifecycle_manager_missing"
+      },
+      {
+        "layer": "Nav2 sensor input",
+        "reason": "/scan_no_publisher"
+      },
+      {
+        "layer": "Nav2 map input",
+        "reason": "/map_once_not_observed"
+      },
+      {
+        "layer": "AMCL initialpose",
+        "reason": "initialpose_skipped_after_managed_runtime_graph_wait_blocked"
+      },
+      {
+        "layer": "AMCL localization",
+        "reason": "/amcl_pose_topic_missing"
+      },
+      {
+        "layer": "Localization TF",
+        "reason": "map_to_odom_dynamic_source_missing"
+      },
+      {
+        "detail": "/tf_topic_missing",
+        "layer": "Localization TF",
+        "reason": "map_to_base_link_blocked_by_missing_map_to_odom",
+        "source": "map_to_odom"
+      },
+      {
+        "detail": "static_lidar_tf_missing_or_not_yet_observed",
+        "layer": "Managed static TF",
+        "reason": "base_link_to_laser_frame_not_observed",
+        "source": "base_link_to_laser_frame"
+      },
+      {
+        "layer": "planner readiness",
+        "reason": "localization_not_ready_for_path_generation"
+      }
+    ],
+    "ros2_graph_timeout_root_cause": {
+      "classification": "ros2_cli_plugin_or_import_timeout",
+      "evidence_boundary": {
+        "calls_base_manual": false,
+        "delivery_success": false,
+        "graph_wait_blocked": true,
+        "hil_pass": false,
+        "path_generated": false,
+        "path_generation_attempted_when_gate_blocked": false,
+        "publishes_cmd_vel": false,
+        "robot_control_executed": false,
+        "route_execution_success": false,
+        "safe_to_control": false,
+        "scope": "strict_no_motion_read_only_ros2_graph_timeout_probe",
+        "uses_base_uart": false
+      },
+      "excluded_candidates": [],
+      "primary_candidate": {
+        "classification": "ros2_cli_plugin_or_import_timeout",
+        "reason": "ros2_node_list_help_timeout_and_rclpy_graph_segment_probe_timeout"
+      },
+      "probes": {
+        "managed_process": {
+          "expected_nodes": [
+            "/map_server",
+            "/amcl",
+            "/planner_server"
+          ],
+          "graph_wait_blocked": true,
+          "lifecycle_probe_skipped": {
+            "amcl": true,
+            "map_server": true,
+            "planner_server": true
+          },
+          "lifecycle_probe_status": "skipped_after_ros2_graph_timeout",
+          "lifecycle_results": {
+            "amcl": {
+              "boundary": "managed_runtime_lifecycle_check_not_run",
+              "executed": false,
+              "ok": false
+            },
+            "map_server": {
+              "boundary": "managed_runtime_lifecycle_check_not_run",
+              "executed": false,
+              "ok": false
+            },
+            "planner_server": {
+              "boundary": "managed_runtime_lifecycle_check_not_run",
+              "executed": false,
+              "ok": false
+            }
+          },
+          "log_tail": "lation into the past.  Requested time 1783794788.523291 but the earliest data is at time 1783794862.126676, when looking up transform from frame [base_link] to frame [map]\n[INFO] [1783794862.723897379] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Lookup would require extrapolation into the past.  Requested time 1783794788.523291 but the earliest data is at time 1783794862.626646, when looking up transform from frame [base_link] to frame [map]\n[INFO] [1783794863.227460967] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Lookup would require extrapolation into the past.  Requested time 1783794788.523291 but the earliest data is at time 1783794863.126620, when looking up transform from frame [base_link] to frame [map]\n[INFO] [1783794863.723882272] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Lookup would require extrapolation into the past.  Requested time 1783794788.523291 but the earliest data is at time 1783794863.626741, when looking up transform from frame [base_link] to frame [map]\n[INFO] [1783794864.223860989] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Lookup would require extrapolation into the past.  Requested time 1783794788.523291 but the earliest data is at time 1783794864.126834, when looking up transform from frame [base_link] to frame [map]\n[INFO] [1783794864.723903790] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Lookup would require extrapolation into the past.  Requested time 1783794788.523291 but the earliest data is at time 1783794864.626806, when looking up transform from frame [base_link] to frame [map]\n[INFO] [1783794865.223903048] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Lookup would require extrapolation into the past.  Requested time 1783794788.523291 but the earliest data is at time 1783794865.126801, when looking up transform from frame [base_link] to frame [map]\n[INFO] [1783794865.723888224] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Lookup would require extrapolation into the past.  Requested time 1783794788.523291 but the earliest data is at time 1783794865.626780, when looking up transform from frame [base_link] to frame [map]\n[INFO] [1783794866.223893899] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Lookup would require extrapolation into the past.  Requested time 1783794788.523291 but the earliest data is at time 1783794866.126694, when looking up transform from frame [base_link] to frame [map]\n[INFO] [1783794866.723885117] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Lookup would require extrapolation into the past.  Requested time 1783794788.523291 but the earliest data is at time 1783794866.626720, when looking up transform from frame [base_link] to frame [map]\n[INFO] [1783794867.223882334] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Lookup would require extrapolation into the past.  Requested time 1783794788.523291 but the earliest data is at time 1783794867.126662, when looking up transform from frame [base_link] to frame [map]\n[INFO] [1783794867.723914509] [global_costmap.global_costmap]: Timed out waiting for transform from base_link to map to become available, tf error: Lookup would require extrapolation into the past.  Requested time 1783794788.523291 but the earliest data is at time 1783794867.627575, when looking up transform from frame [base_link] to frame [map]\n",
+          "managed_runtime_started": true,
+          "missing_expected_nodes": [
+            "/map_server",
+            "/amcl",
+            "/planner_server"
+          ],
+          "observed_nodes": [],
+          "process_alive": true,
+          "process_group": 501769,
+          "process_returncode": null,
+          "wait_reason": "ros2_node_list_timeout"
+        },
+        "rclpy_graph_segments": {
+          "boundary": "rclpy_graph_segment_probe_timeout",
+          "command": "python3 -c 'import json\nimport time\n\npayload = {\n    \"executed\": True,\n    \"ok\": False,\n    \"node_names\": [],\n    \"segments\": [],\n    \"boundary\": \"rclpy_graph_segments_not_started\",\n    \"error\": None,\n}\nnode = None\nrclpy_initialized = False\nstarted = time.monotonic()\n\ndef mark(name, start):\n    payload[\"segments\"].append({\"name\": name, \"elapsed_ms\": int((time.monotonic() - start) * 1000)})\n\ntry:\n    segment_started = time.monotonic()\n    import rclpy\n    mark(\"import_rclpy\", segment_started)\n\n    segment_started = time.monotonic()\n    if not rclpy.ok():\n        rclpy.init(args=None)\n    rclpy_initialized = True\n    mark(\"rclpy_init\", segment_started)\n\n    segment_started = time.monotonic()\n    node = rclpy.create_node(\"o10_graph_timeout_segment_probe\")\n    mark(\"create_node\", segment_started)\n\n    segment_started = time.monotonic()\n    deadline = time.monotonic() + 1.1\n    names = []\n    while time.monotonic() < deadline:\n        rclpy.spin_once(node, timeout_sec=0.05)\n        names = sorted({name for name in node.get_node_names() if name})\n        if names:\n            break\n    mark(\"graph_wait\", segment_started)\n    payload[\"node_names\"] = names\n    payload[\"ok\"] = bool(names)\n    payload[\"boundary\"] = \"rclpy_graph_nodes_observed\" if names else \"rclpy_graph_empty_after_segment_wait\"\nexcept Exception as exc:\n    payload[\"error\"] = {\"type\": type(exc).__name__, \"message\": str(exc)[:240]}\n    payload[\"boundary\"] = \"rclpy_graph_segment_probe_failed\"\nfinally:\n    payload[\"elapsed_ms\"] = int((time.monotonic() - started) * 1000)\n    if node is not None:\n        try:\n            node.destroy_node()\n        except Exception:\n            pass\n    if rclpy_initialized:\n        try:\n            if rclpy.ok():\n                rclpy.shutdown()\n        except Exception:\n            pass\n\nprint(json.dumps(payload, ensure_ascii=False))'",
+          "elapsed_ms": 4110,
+          "error": {
+            "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; python3 -c \\'import json\\nimport time\\n\\npa",
+            "type": "TimeoutExpired"
+          },
+          "ok": false,
+          "payload": {},
+          "returncode": null,
+          "stderr_summary": "",
+          "stdout_summary": "",
+          "timed_out": true,
+          "timeout_s": 4.0
+        },
+        "ros2_daemon_status": {
+          "boundary": "ros2_daemon_status_timeout",
+          "command": "ros2 daemon status",
+          "elapsed_ms": 2111,
+          "error": {
+            "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; ros2 daemon status']' timed out after 2.0 s",
+            "type": "TimeoutExpired"
+          },
+          "ok": false,
+          "returncode": null,
+          "stderr_summary": "",
+          "stdout_summary": "",
+          "timed_out": true,
+          "timeout_s": 2.0
+        },
+        "ros2_node_list": {
+          "boundary": "ros2_node_list_timeout",
+          "command": "ros2 node list",
+          "elapsed_ms": 2598,
+          "error": {
+            "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; ros2 node list']' timed out after 2.5 secon",
+            "type": "TimeoutExpired"
+          },
+          "ok": false,
+          "returncode": null,
+          "stderr_summary": "",
+          "stdout_summary": "",
+          "timed_out": true,
+          "timeout_s": 2.5
+        },
+        "ros2_node_list_help": {
+          "boundary": "ros2_node_list_help_timeout",
+          "command": "ros2 node list --help",
+          "elapsed_ms": 5093,
+          "error": {
+            "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; ros2 node list --help']' timed out after 5.",
+            "type": "TimeoutExpired"
+          },
+          "ok": false,
+          "returncode": null,
+          "stderr_summary": "",
+          "stdout_summary": "",
+          "timed_out": true,
+          "timeout_s": 5.0
+        },
+        "ros2_node_list_no_daemon": {
+          "boundary": "ros2_node_list_no_daemon_timeout",
+          "command": "ros2 node list --no-daemon",
+          "elapsed_ms": 2617,
+          "error": {
+            "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; ros2 node list --no-daemon']' timed out aft",
+            "type": "TimeoutExpired"
+          },
+          "ok": false,
+          "returncode": null,
+          "stderr_summary": "",
+          "stdout_summary": "",
+          "timed_out": true,
+          "timeout_s": 2.5
+        },
+        "ros2_topic_list": {
+          "boundary": "ros2_topic_list_timeout",
+          "command": "ros2 topic list",
+          "elapsed_ms": 2554,
+          "error": {
+            "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; ros2 topic list']' timed out after 2.5 seco",
+            "type": "TimeoutExpired"
+          },
+          "ok": false,
+          "returncode": null,
+          "stderr_summary": "",
+          "stdout_summary": "",
+          "timed_out": true,
+          "timeout_s": 2.5
+        },
+        "workspace_environment": {
+          "boundary": "workspace_environment_timeout",
+          "command": "python3 -c 'import json\nimport os\nimport shutil\n\ndef split_paths(value):\n    return [item for item in str(value or \"\").split(os.pathsep) if item]\n\ndef matches(entries, markers):\n    return [entry for entry in entries if any(marker in entry for marker in markers)][:8]\n\ndef summarize_path(name, workspace_markers):\n    entries = split_paths(os.environ.get(name, \"\"))\n    ros_matches = matches(entries, (\"/opt/ros/\", \"/opt/ros\"))\n    workspace_matches = matches(entries, workspace_markers)\n    return {\n        \"entry_count\": len(entries),\n        \"contains_ros\": bool(ros_matches),\n        \"contains_onboard_workspace\": bool(workspace_matches),\n        \"ros_matches\": ros_matches,\n        \"workspace_matches\": workspace_matches,\n    }\n\nworkspace_markers = tuple([\"/root/rober/onboard\", \"/root/rober/onboard\", \"/ws\", \"ros2_trashbot\"])\npayload = {\n    \"ROS_DISTRO\": os.environ.get(\"ROS_DISTRO\"),\n    \"ROS_DOMAIN_ID\": os.environ.get(\"ROS_DOMAIN_ID\"),\n    \"RMW_IMPLEMENTATION\": os.environ.get(\"RMW_IMPLEMENTATION\"),\n    \"AMENT_PREFIX_PATH\": summarize_path(\"AMENT_PREFIX_PATH\", workspace_markers),\n    \"PYTHONPATH\": summarize_path(\"PYTHONPATH\", workspace_markers),\n    \"LD_LIBRARY_PATH\": summarize_path(\"LD_LIBRARY_PATH\", workspace_markers),\n    \"which_ros2\": shutil.which(\"ros2\"),\n}\nprint(json.dumps(payload, ensure_ascii=False))'",
+          "elapsed_ms": 2099,
+          "error": {
+            "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; python3 -c \\'import json\\nimport os\\nimport",
+            "type": "TimeoutExpired"
+          },
+          "ok": false,
+          "returncode": null,
+          "stderr_summary": "",
+          "stdout_summary": "",
+          "summary": {},
+          "timed_out": true,
+          "timeout_s": 2.0
+        }
+      },
+      "remaining_candidates": [
+        {
+          "classification": "workspace_source_or_env_mismatch",
+          "reason": "workspace_environment_summary_not_observed_but_board_source_preflight_cli_ready"
+        },
+        {
+          "classification": "managed_process_lifecycle_not_ready",
+          "reason": "process_started_but_lifecycle_or_expected_nodes_not_proven_ready"
+        },
+        {
+          "classification": "tf_runtime_secondary_after_graph_blocked",
+          "reason": "/tf_topic_missing_recorded_as_secondary_readback_after_graph_blocked"
+        }
+      ]
+    },
+    "route_execution_success": false,
+    "safe_to_control": false,
+    "scan_consumed": false,
+    "scan_once_observed": false,
+    "sends_base_motion_commands": false,
+    "sends_motion_commands": false,
+    "source_map_evidence_ref": "o3-map-lifecycle-1782749676965",
+    "source_map_evidence_type": "blocked_with_root_cause",
+    "started_at_ms": 1783794740000,
+    "static_tf_source_observed": false,
+    "status": "blocked_with_root_cause",
+    "tf_chain_diagnostics": {
+      "frame_contract": {
+        "actual": {
+          "base": "base_link",
+          "laser": "laser_frame",
+          "map": "map",
+          "odom": "odom"
+        },
+        "consistent_with_defaults": true,
+        "expected": {
+          "base": "base_link",
+          "laser": "laser_frame",
+          "map": "map",
+          "odom": "odom"
+        }
+      },
+      "pairs": {
+        "base_link_to_laser_frame": {
+          "boundary": "tf_probe_skipped_after_managed_runtime_graph_wait_blocked",
+          "elapsed_ms": null,
+          "error": null,
+          "executed": false,
+          "failure_reason": "tf2_empty_output_or_timing",
+          "observed": false,
+          "returncode": null,
+          "source_frame": "base_link",
+          "stderr_preview": "",
+          "stdout_preview": "",
+          "target_frame": "laser_frame"
+        },
+        "map_to_base_link": {
+          "boundary": "tf_probe_skipped_after_managed_runtime_graph_wait_blocked",
+          "elapsed_ms": null,
+          "error": null,
+          "executed": false,
+          "failure_reason": "tf2_empty_output_or_timing",
+          "observed": false,
+          "returncode": null,
+          "source_frame": "map",
+          "stderr_preview": "",
+          "stdout_preview": "",
+          "target_frame": "base_link"
+        },
+        "map_to_odom": {
+          "boundary": "tf_probe_skipped_after_managed_runtime_graph_wait_blocked",
+          "elapsed_ms": null,
+          "error": null,
+          "executed": false,
+          "failure_reason": "tf2_empty_output_or_timing",
+          "observed": false,
+          "returncode": null,
+          "source_frame": "map",
+          "stderr_preview": "",
+          "stdout_preview": "",
+          "target_frame": "odom"
+        },
+        "odom_to_base_link": {
+          "boundary": "tf_probe_skipped_after_managed_runtime_graph_wait_blocked",
+          "elapsed_ms": null,
+          "error": null,
+          "executed": false,
+          "failure_reason": "tf2_empty_output_or_timing",
+          "observed": false,
+          "returncode": null,
+          "source_frame": "odom",
+          "stderr_preview": "",
+          "stdout_preview": "",
+          "target_frame": "base_link"
+        }
+      },
+      "source_diagnostics": {
+        "amcl_broadcast_conditions": {
+          "amcl_active": false,
+          "amcl_frame_params_match_helper": false,
+          "amcl_pose_frame_id_is_map": false,
+          "amcl_pose_observed": false,
+          "base_link_to_laser_frame_source_observed": false,
+          "initialpose_published": false,
+          "map_once_observed": false,
+          "map_server_active": false,
+          "map_to_odom_source_observed": false,
+          "odom_to_base_link_dynamic_source_observed": false,
+          "odom_to_base_link_source_observed": false,
+          "odom_to_base_link_static_source_observed": false,
+          "scan_once_observed": false,
+          "static_tf_processes_observed": true,
+          "tf_broadcast_enabled": false
+        },
+        "amcl_frame_params": {
+          "base_frame_id": "",
+          "global_frame_id": "",
+          "odom_frame_id": ""
+        },
+        "amcl_node_info_observed": false,
+        "amcl_node_publishers": [],
+        "amcl_node_subscribers": [],
+        "amcl_param_probe_ok": true,
+        "amcl_pose_frame_id": null,
+        "amcl_tf_broadcast_param": "",
+        "amcl_tf_root_cause": "/tf_topic_missing",
+        "base_frame_observed": false,
+        "base_link_to_laser_frame_source_observed": false,
+        "base_link_to_laser_frame_source_transform": null,
+        "frame_contract": {
+          "actual": {
+            "base": "base_link",
+            "laser": "laser_frame",
+            "map": "map",
+            "odom": "odom"
+          },
+          "consistent_with_defaults": true,
+          "expected": {
+            "base": "base_link",
+            "laser": "laser_frame",
+            "map": "map",
+            "odom": "odom"
+          }
+        },
+        "laser_frame_observed": false,
+        "map_frame_observed": false,
+        "map_to_odom_source_observed": false,
+        "odom_frame_observed": false,
+        "odom_to_base_link_dynamic_source_observed": false,
+        "odom_to_base_link_source_observed": false,
+        "odom_to_base_link_static_source_observed": false,
+        "tf_frame_inventory": {
+          "command_statuses": {
+            "tf": null,
+            "tf_static": null,
+            "topic_list": null
+          },
+          "dynamic_edges": [],
+          "dynamic_transforms": [],
+          "edges": [],
+          "frames": [],
+          "static_edges": [],
+          "static_transforms": [],
+          "topic_types": {},
+          "transforms": []
+        },
+        "tf_source_root_cause_detail": {
+          "amcl_broadcast_conditions": {
+            "amcl_active": false,
+            "amcl_frame_params_match_helper": false,
+            "amcl_pose_frame_id_is_map": false,
+            "amcl_pose_observed": false,
+            "base_link_to_laser_frame_source_observed": false,
+            "initialpose_published": false,
+            "map_once_observed": false,
+            "map_server_active": false,
+            "map_to_odom_source_observed": false,
+            "odom_to_base_link_dynamic_source_observed": false,
+            "odom_to_base_link_source_observed": false,
+            "odom_to_base_link_static_source_observed": false,
+            "scan_once_observed": false,
+            "static_tf_processes_observed": true,
+            "tf_broadcast_enabled": false
+          },
+          "amcl_node_info_observed": false,
+          "amcl_param_probe_boundary": "cli_amcl_inventory_observed_amcl_params",
+          "amcl_param_probe_error": {
+            "message": "No module named 'rclpy'",
+            "type": "ModuleNotFoundError"
+          },
+          "amcl_param_probe_ok": true,
+          "amcl_pose_frame_id": null,
+          "base_link_to_laser_frame_source_observed": false,
+          "base_link_to_laser_frame_source_transform": null,
+          "expected_params": {
+            "base_frame_id": "base_link",
+            "global_frame_id": "map",
+            "odom_frame_id": "odom",
+            "tf_broadcast": "true"
+          },
+          "map_to_odom_source_observed": false,
+          "observed_params": {
+            "base_frame_id": "",
+            "global_frame_id": "",
+            "odom_frame_id": "",
+            "tf_broadcast": ""
+          },
+          "odom_to_base_link_dynamic_source_observed": false,
+          "odom_to_base_link_source_observed": false,
+          "odom_to_base_link_static_source_observed": false,
+          "reason": "/tf_topic_missing",
+          "tf_command_statuses": {
+            "tf": null,
+            "tf_static": null,
+            "topic_list": null
+          }
+        },
+        "tf_static_observed": false,
+        "tf_topics_observed": {
+          "/tf": false,
+          "/tf_static": false
+        },
+        "topic_endpoint_summaries": {
+          "/amcl_pose": {
+            "error": null,
+            "inventory_observed": false,
+            "publisher_count": 0,
+            "publishers": [],
+            "subscriber_count": 0,
+            "subscribers": []
+          },
+          "/odom": {
+            "error": null,
+            "inventory_observed": false,
+            "publisher_count": 0,
+            "publishers": [],
+            "subscriber_count": 0,
+            "subscribers": []
+          },
+          "/scan": {
+            "error": null,
+            "inventory_observed": false,
+            "publisher_count": 0,
+            "publishers": [],
+            "subscriber_count": 0,
+            "subscribers": []
+          },
+          "/tf": {
+            "error": {
+              "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; ros2 topic info /tf --verbose']' timed out ",
+              "type": "TimeoutExpired"
+            },
+            "inventory_observed": false,
+            "publisher_count": 0,
+            "publishers": [],
+            "subscriber_count": 0,
+            "subscribers": []
+          },
+          "/tf_static": {
+            "error": {
+              "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; ros2 topic info /tf_static --verbose']' tim",
+              "type": "TimeoutExpired"
+            },
+            "inventory_observed": false,
+            "publisher_count": 0,
+            "publishers": [],
+            "subscriber_count": 0,
+            "subscribers": []
+          }
+        }
+      }
+    },
+    "tf_chain_observed": {
+      "base_link_to_laser_frame": false,
+      "map_to_base_link": false,
+      "map_to_odom": false,
+      "odom_to_base_link": false
+    },
+    "tf_failure_classification": {
+      "amcl_tf_root_cause": "/tf_topic_missing",
+      "blocking_segment": "map_to_odom",
+      "frame_naming_consistent": true,
+      "map_to_base_link": "blocked_by_missing_map_to_odom",
+      "reason": "/tf_topic_missing"
+    },
+    "tf_frame_inventory": {
+      "command_statuses": {
+        "tf": null,
+        "tf_static": null,
+        "topic_list": null
+      },
+      "dynamic_edges": [],
+      "dynamic_transforms": [],
+      "edges": [],
+      "frames": [],
+      "static_edges": [],
+      "static_transforms": [],
+      "topic_types": {},
+      "transforms": []
+    },
+    "tf_readiness_summary": {
+      "blocked_reason": "/tf_topic_missing",
+      "map_to_base_link": {
+        "blocked_reason": "/tf_topic_missing",
+        "blocking_segment": "map_to_odom",
+        "boundary": "blocked_by_missing_map_to_odom",
+        "freshness": {
+          "reason": "/tf_topic_missing",
+          "status": "not_observed"
+        },
+        "observed": false,
+        "source_class": "missing",
+        "source_edges": [
+          "map_to_odom",
+          "odom_to_base_link"
+        ]
+      },
+      "map_to_odom_dynamic": {
+        "boundary": "tf_probe_skipped_after_managed_runtime_graph_wait_blocked",
+        "dynamic_source_observed": false,
+        "failure_reason": "tf2_empty_output_or_timing",
+        "freshness": {
+          "age_ms": null,
+          "reason": "probe_or_source_not_observed",
+          "status": "not_observed"
+        },
+        "observed": false,
+        "required_source_class": "dynamic",
+        "source_class": "missing",
+        "source_topic": null,
+        "static_source_observed": false,
+        "timestamp": {
+          "parsed": false,
+          "reason": "transform_stamp_not_observed",
+          "source": "map_to_odom.header.stamp"
+        }
+      },
+      "odom_to_base_link": {
+        "boundary": "tf_probe_skipped_after_managed_runtime_graph_wait_blocked",
+        "dynamic_source_observed": false,
+        "failure_reason": "tf2_empty_output_or_timing",
+        "freshness": {
+          "age_ms": null,
+          "reason": "probe_or_source_not_observed",
+          "status": "not_observed"
+        },
+        "observed": false,
+        "required_source_class": null,
+        "source_class": "missing",
+        "source_topic": null,
+        "static_source_observed": false,
+        "timestamp": {
+          "parsed": false,
+          "reason": "transform_stamp_not_observed",
+          "source": "odom_to_base_link.header.stamp"
+        }
+      },
+      "ready": false
+    },
+    "tf_source_freshness": {
+      "dynamic_edge_count": 0,
+      "dynamic_edges": [],
+      "edges": {
+        "base_link_to_laser_frame": {
+          "child_frame_id": "laser_frame",
+          "dynamic_source_observed": false,
+          "edge": "base_link_to_laser_frame",
+          "freshness": {
+            "age_ms": null,
+            "reason": "probe_or_source_not_observed",
+            "status": "not_observed"
+          },
+          "observed": false,
+          "parent_frame_id": "base_link",
+          "required_source_class": "static",
+          "source_class": "missing",
+          "source_topic": null,
+          "static_source_observed": false,
+          "timestamp": {
+            "parsed": false,
+            "reason": "transform_stamp_not_observed",
+            "source": "base_link_to_laser_frame.header.stamp"
+          }
+        },
+        "map_to_odom": {
+          "child_frame_id": "odom",
+          "dynamic_source_observed": false,
+          "edge": "map_to_odom",
+          "freshness": {
+            "age_ms": null,
+            "reason": "probe_or_source_not_observed",
+            "status": "not_observed"
+          },
+          "observed": false,
+          "parent_frame_id": "map",
+          "required_source_class": "dynamic",
+          "source_class": "missing",
+          "source_topic": null,
+          "static_source_observed": false,
+          "timestamp": {
+            "parsed": false,
+            "reason": "transform_stamp_not_observed",
+            "source": "map_to_odom.header.stamp"
+          }
+        },
+        "odom_to_base_link": {
+          "child_frame_id": "base_link",
+          "dynamic_source_observed": false,
+          "edge": "odom_to_base_link",
+          "freshness": {
+            "age_ms": null,
+            "reason": "probe_or_source_not_observed",
+            "status": "not_observed"
+          },
+          "observed": false,
+          "parent_frame_id": "odom",
+          "required_source_class": null,
+          "source_class": "missing",
+          "source_topic": null,
+          "static_source_observed": false,
+          "timestamp": {
+            "parsed": false,
+            "reason": "transform_stamp_not_observed",
+            "source": "odom_to_base_link.header.stamp"
+          }
+        }
+      },
+      "static_edge_count": 0,
+      "static_edges": []
+    },
+    "tf_source_root_cause_detail": {
+      "amcl_broadcast_conditions": {
+        "amcl_active": false,
+        "amcl_frame_params_match_helper": false,
+        "amcl_pose_frame_id_is_map": false,
+        "amcl_pose_observed": false,
+        "base_link_to_laser_frame_source_observed": false,
+        "initialpose_published": false,
+        "map_once_observed": false,
+        "map_server_active": false,
+        "map_to_odom_source_observed": false,
+        "odom_to_base_link_dynamic_source_observed": false,
+        "odom_to_base_link_source_observed": false,
+        "odom_to_base_link_static_source_observed": false,
+        "scan_once_observed": false,
+        "static_tf_processes_observed": true,
+        "tf_broadcast_enabled": false
+      },
+      "amcl_node_info_observed": false,
+      "amcl_param_probe_boundary": "cli_amcl_inventory_observed_amcl_params",
+      "amcl_param_probe_error": {
+        "message": "No module named 'rclpy'",
+        "type": "ModuleNotFoundError"
+      },
+      "amcl_param_probe_ok": true,
+      "amcl_pose_frame_id": null,
+      "base_link_to_laser_frame_source_observed": false,
+      "base_link_to_laser_frame_source_transform": null,
+      "expected_params": {
+        "base_frame_id": "base_link",
+        "global_frame_id": "map",
+        "odom_frame_id": "odom",
+        "tf_broadcast": "true"
+      },
+      "map_to_odom_source_observed": false,
+      "observed_params": {
+        "base_frame_id": "",
+        "global_frame_id": "",
+        "odom_frame_id": "",
+        "tf_broadcast": ""
+      },
+      "odom_to_base_link_dynamic_source_observed": false,
+      "odom_to_base_link_source_observed": false,
+      "odom_to_base_link_static_source_observed": false,
+      "reason": "/tf_topic_missing",
+      "tf_command_statuses": {
+        "tf": null,
+        "tf_static": null,
+        "topic_list": null
+      }
+    },
+    "tf_static_observed": false,
+    "tf_topics_observed": {
+      "/tf": false,
+      "/tf_static": false
+    },
+    "uses_base_uart": false
+  },
+  "publishes_cmd_vel": false,
+  "robot_control_executed": false,
+  "route_execution_success": false,
+  "safe_to_control": false,
+  "schema": "trashbot.upper_robot_api.v1.nav2_lifecycle_runtime_proof",
+  "sends_base_motion_commands": false,
+  "sends_motion_commands": false,
+  "software_guard": true,
+  "status": "blocked_with_root_cause",
+  "uses_base_uart": false
+}

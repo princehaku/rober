@@ -1,0 +1,83 @@
+{
+  "schema": "trashbot.product_acceptance.same_task_replay_packet_readback.v1",
+  "sprint": "sprints/2026.07.13_06-05_o6_o7_same_task_replay_packet_readback/",
+  "closeout_time_cst": "2026-07-13 06:59:25 CST",
+  "product_acceptance_result": "accepted_conservative",
+  "proof_boundary": "software_proof_o6_o7_same_task_replay_packet_readback_only",
+  "source_artifact_boundary": "software_proof_o3_o1_strict_no_motion_same_task_route_replay_packet_only",
+  "accepted_scope": [
+    "O6 local/mock archive readback",
+    "O6 consumer detail include same_task_replay_packet_readback",
+    "O7 PC consumer detail default display",
+    "same-task replay packet identity and count readback"
+  ],
+  "accepted_facts": {
+    "o6_schema": "trashbot.o6.same_task_replay_packet_readback.v1",
+    "o7_schema": "trashbot.pc_tools_workstation.o7_same_task_replay_packet_readback.v1",
+    "include_name": "same_task_replay_packet_readback",
+    "packet_id": "packet_o3_28_pose_same_task_replay_7d57826142b0c79c",
+    "task_id": "task_o3_28_pose_fixed_route_consumer_20260713_0402",
+    "route_intent_id": "route_intent_20260713_0402_from_20260713_0300_28_pose_structured_path",
+    "route_csv_row_count": 28,
+    "replay_jsonl_event_count": 28,
+    "path_structured_pose_count": 28,
+    "same_task_identity_verified": true,
+    "same_task_replay_packet_ready": true
+  },
+  "fixed_false_fields": {
+    "route_execution_success": false,
+    "delivery_success": false,
+    "hil_pass": false,
+    "safe_to_control": false,
+    "robot_control_executed": false,
+    "primary_actions_enabled": false,
+    "publishes_cmd_vel": false,
+    "calls_base_manual": false,
+    "uses_base_uart": false,
+    "connects_cloud_production": false
+  },
+  "rejected_claims": [
+    "route_execution_success",
+    "fixed_route_movement",
+    "NavigateToPose",
+    "controller_or_behavior_tree_execution",
+    "cmd_vel_published",
+    "base_manual_called",
+    "wave_rover_uart_used",
+    "delivery_success",
+    "operator_acceptance",
+    "current_live_hil_pass",
+    "safe_to_control",
+    "o5_production_external_evidence",
+    "production_cloud_ready"
+  ],
+  "okr_decision": {
+    "direction": "continue_o6_o7_read_only_evidence_consumption",
+    "o5_progress_approx": "85%",
+    "o1_progress_approx": "94%",
+    "o6_progress_approx": "93%",
+    "o7_progress_approx": "93%",
+    "progress_changed": false,
+    "kr_archived": false,
+    "archive_reason": "not_archived_readback_only_no_route_execution_delivery_hil_or_production_evidence"
+  },
+  "validation_results": {
+    "implementation_backend_tests": "Ran 185 tests in 81.295s OK",
+    "implementation_workstation_tests": "Tests 491 passed (491); build exit 0; lint exit 0",
+    "implementation_diff_check": "exit 0",
+    "product_json_tool": "exit 0",
+    "product_structured_assertions": "product_same_task_replay_packet_readback_acceptance_ok",
+    "product_rg_anchors": "anchors_found",
+    "product_diff_check": "exit 0"
+  },
+  "next_owner_action": {
+    "owner": "robot-algorithm-engineer",
+    "action": "after explicit safety gate, collect controlled route execution record using the same packet_id and route_intent_id",
+    "do_not_repeat": [
+      "helper packaging",
+      "export readiness packaging",
+      "readback-only wrapper",
+      "route-intent-only packaging"
+    ]
+  }
+}

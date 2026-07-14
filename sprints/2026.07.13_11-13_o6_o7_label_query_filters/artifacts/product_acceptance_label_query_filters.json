@@ -1,0 +1,118 @@
+{
+  "schema": "trashbot.product_acceptance.v1",
+  "sprint": "sprints/2026.07.13_11-13_o6_o7_label_query_filters",
+  "accepted_at": "2026-07-13 11:13 CST",
+  "accepted_by": "product-okr-owner",
+  "acceptance_status": "accepted",
+  "product_status": "accepted_as_o6_o7_local_mock_label_query_filters_contract_hardening_only",
+  "proof_boundary": "software_proof_o6_o7_label_query_filters_only",
+  "label_query_filters_ready_not_production_proof": true,
+  "user_value": "Operators can query local/mock O6 label summaries by robot_id, task_id, date, status, and limit without scanning broad label lists.",
+  "north_star": "Make trash-delivery task evidence searchable and reviewable by non-ROS users while preserving strict proof boundaries.",
+  "okr_mapping": {
+    "O5": {
+      "direction": "continue_blocked",
+      "percentage": "~85%",
+      "reason": "No real production cloud, HTTPS/TLS, 4G/SIM, production DB/queue, worker cutover, OSS/CDN live traffic, real phone, or real browser evidence was produced."
+    },
+    "O6": {
+      "direction": "continue",
+      "percentage": "~93%",
+      "accepted_delta": "local/mock label list query filters contract hardening for O6 KR2"
+    },
+    "O7": {
+      "direction": "continue_observe_only",
+      "percentage": "~93%",
+      "accepted_delta": "no O7 code delta; O7 adapter does not consume label-list filter semantics"
+    },
+    "O1": {
+      "direction": "blocked_pending_explicit_operator_current_live_HIL",
+      "percentage": "~94%"
+    }
+  },
+  "accepted_facts": {
+    "endpoint": "GET /api/o6/archive/labels",
+    "filters_added": [
+      "robot_id",
+      "task_id",
+      "date"
+    ],
+    "existing_filters_preserved": [
+      "status",
+      "limit"
+    ],
+    "filter_semantics": "and",
+    "limit_application": "after_filtering",
+    "metadata_fields": [
+      "label_query_filters_ready_not_production_proof",
+      "applied_filters",
+      "filter_semantics",
+      "filtered_result_count",
+      "date_filter_source"
+    ],
+    "fail_closed_blocker": "invalid_label_query_filter",
+    "date_filter_source_priority": [
+      "label.updated_at_ms",
+      "label.created_at_ms",
+      "compatible_label_timestamp",
+      "task.finished_at_ms",
+      "task.started_at_ms"
+    ],
+    "safe_unknown_filters": "return_empty_result_with_filtered_result_count_zero"
+  },
+  "verification_evidence": {
+    "full_stack_py_compile": {
+      "command": "python3 -m py_compile onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior/remote_cloud_relay.py",
+      "result": "passed"
+    },
+    "full_stack_unittest": {
+      "command": "python3 -m unittest onboard.src.ros2_trashbot_behavior.test.test_remote_cloud_relay",
+      "result": "passed",
+      "key_output": "Ran 187 tests in 83.049s OK"
+    },
+    "anchor_rg": {
+      "result": "passed"
+    },
+    "scoped_git_diff_check": {
+      "result": "passed"
+    },
+    "product_json_tool": {
+      "command": "python3 -m json.tool sprints/2026.07.13_11-13_o6_o7_label_query_filters/artifacts/product_acceptance_label_query_filters.json >/dev/null",
+      "result": "to_run_after_write"
+    }
+  },
+  "direction_judgment": {
+    "decision": "continue_o6_o7_software_gap_without_score_change",
+    "reason": "O5 remains blocked on external production evidence, and O1/O3 next useful step requires explicit operator approval plus current live HIL. This O6/O7 software contract gap is movable and does not repeat the prior readback-only wrapper."
+  },
+  "next_priority": [
+    "explicit operator-approved current live HIL",
+    "real production/cloud evidence",
+    "if unavailable, another non-repeating software contract gap"
+  ],
+  "responsible_engineer": "full-stack-software-engineer",
+  "production_cloud_proven": false,
+  "real_robot_data_proven": false,
+  "real_annotation_api_proven": false,
+  "real_dataset_export_proven": false,
+  "route_execution_success": false,
+  "delivery_success": false,
+  "operator_acceptance_proven": false,
+  "hil_pass": false,
+  "safe_to_control": false,
+  "real_phone_or_browser_proven": false,
+  "o5_external_evidence_proven": false,
+  "okr_main_percentage_changed": false,
+  "kr_archived": false,
+  "okr_percentages_after_closeout": {
+    "O5": "~85%",
+    "O6": "~93%",
+    "O7": "~93%",
+    "O1": "~94%"
+  },
+  "remaining_risks": [
+    "Local/mock file-backed filtering is not production query capacity proof.",
+    "No production cloud, real robot data, real annotation API/export, route execution, delivery, HIL, or safe-to-control evidence was produced.",
+    "O7 was not retested because no O7 adapter or UI code was touched by this sprint."
+  ]
+}

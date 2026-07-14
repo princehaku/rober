@@ -91,6 +91,133 @@ keeps `delivery_success=false`, `safe_to_control=false`,
 does not prove field delivery, HIL, route execution, production cloud, or real
 phone/browser proof.
 
+O6/O7 now has a local/mock `phone_browser_terminal_material` intake/readback
+section for the same `task_id`. Its boundary is fixed to
+`software_proof_o6_o7_phone_browser_terminal_material_intake_only`; the relay
+only stores safe material enums (`true_phone_browser_evidence`,
+`diagnostics_mobile_safe_summary`, `terminal_result_summary`), a terminal result
+type, a basename `safe_evidence_ref`, blocked reasons, and next evidence. It
+must keep `safe_to_control=false`, `delivery_success=false`,
+`route_execution_success=false`, `hil_pass=false`,
+`connects_cloud_production=false`, and `robot_control_executed=false`. Raw URL,
+cookie, Authorization, token, local path, screenshot body, DOM dump, traceback,
+`/cmd_vel`, serial/UART, WAVE ROVER, or any dangerous true field fails closed to
+`blocked_not_proven`. This section gives Full-stack a stable read model for
+safe phone/browser terminal material summaries, but it is still not true
+phone/browser proof, not production cloud, not 4G/SIM, not route execution, not
+delivery success, and not HIL.
+
+O6/O7 also has a local/mock `bounded_route_execution_gate_material`
+intake/readback section for the same 07:07 controlled route execution gate and
+08:09 bounded route command plan. Its boundary is fixed to
+`software_proof_o6_o7_bounded_route_gate_material_intake_only`, and its ready
+status is `bounded_route_execution_gate_material_ready_not_route_execution_proof`;
+the relay only stores exact packet/task/route identity, `route_csv_row_count=28`,
+`path_structured_pose_count=28`, `segment_count=27`,
+`execution_plan_status=blocked_pending_live_safety_gate`, source boundaries,
+blocked reasons, and next evidence. It must keep `safe_to_control=false`,
+`delivery_success=false`, `route_execution_success=false`, `hil_pass=false`,
+`robot_control_executed=false`, and `connects_cloud_production=false`. Raw local
+path, raw command body, `/cmd_vel`, `/api/base/manual`, NavigateToPose,
+serial/UART, WAVE ROVER, or any route/delivery/HIL/control true field fails
+closed to `blocked_not_proven`. This section is O6/O7 bounded gate material
+intake only, not route execution, not delivery success, not HIL, not
+safe-to-control, not control capability, not production cloud, and not 4G/SIM
+proof.
+
+O6/O7 now also exposes `bounded_route_terminal_result_material` for the 00:24
+O5 terminal-result bridge summary. Its O6 schema is
+`trashbot.o6.bounded_route_terminal_result_material.v1`, source schema is
+`trashbot.o5.bounded_route_terminal_result_bridge.v1`, and the proof boundary is
+fixed to `software_proof_o6_o7_bounded_route_terminal_result_intake_only`. The
+ready status is `bounded_route_terminal_result_material_ready_not_delivery_proof`;
+the relay only stores exact `task_id=task_o3_28_pose_fixed_route_consumer_20260713_0402`,
+`packet_id=packet_o3_28_pose_same_task_replay_7d57826142b0c79c`,
+`route_intent_id=route_intent_20260713_0402_from_20260713_0300_28_pose_structured_path`,
+route/pose/segment counts, `result_code=mock_route_execution_completed_not_live_delivery`,
+`terminal_result_state=terminal_result_recorded`, `reconciliation_state=terminal_result_recorded`,
+safe basename refs, blocked reasons, and next evidence. It must keep
+`delivery_success=false`, `route_execution_success=false`,
+`safe_to_control=false`, `hil_pass=false`, `robot_control_executed=false`, and
+`connects_cloud_production=false`. Raw local path, raw command body, URL/token,
+`/cmd_vel`, `/api/base/manual`, NavigateToPose, serial/UART, WAVE ROVER, or any
+route/delivery/HIL/control true field fails closed to `blocked_not_proven`. This
+section is intake/readback only, not delivery proof, not route execution, not
+safe-to-control, not production cloud, and not 4G/SIM proof.
+
+O5 now has a local/mock `bounded_route_terminal_result_bridge` CLI for the same
+bounded route chain. Its artifact schema is
+`trashbot.o5.bounded_route_terminal_result_bridge.v1`, and its proof boundary is
+`software_proof_o5_bounded_route_terminal_result_bridge_only`. The bridge
+consumes the O3 `trashbot.o3.bounded_route_mock_execution.v1` summary by safe
+basename and same-task identity, then uses only the existing relay HTTP routes:
+`POST /api/commands/collect`,
+`POST /robots/{robot_id}/commands/{command_id}/terminal-result`, and
+`GET /api/commands/{command_id}/result?robot_id=...`. The terminal result code
+is `mock_route_execution_completed_not_live_delivery`, and the required readback
+state is `terminal_result_recorded` through
+`cloud_command_result_reconciliation`. The summary must keep
+`delivery_success=false`, `route_execution_success=false`,
+`safe_to_control=false`, `hil_pass=false`, `robot_control_executed=false`,
+`connects_cloud_production=false`, `uses_base_uart=false`,
+`publishes_cmd_vel=false`, and `calls_base_manual=false`. This bridge is only
+local relay command/result/reconciliation software proof, not production cloud,
+not public HTTPS/TLS, not 4G/SIM, not production DB/queue, not OSS/CDN live
+traffic, not route execution, not delivery/operator acceptance, not HIL, and not
+safe-to-control proof.
+
+O5 also has a `DeliveryStateMachine` offline terminal-result reconciliation for
+that bridge output. The generated summary schema is
+`trashbot.o5.delivery_state_terminal_reconciliation.v1`; it accepts only source
+schema `trashbot.o5.bounded_route_terminal_result_bridge.v1`, proof boundary
+`software_proof_o5_bounded_route_terminal_result_bridge_only`, result code
+`mock_route_execution_completed_not_live_delivery`, complete same-task identity,
+`terminal_result_state=terminal_result_recorded`,
+`reconciliation_state=terminal_result_recorded`, and strict false safety fields.
+Schema drift, missing identity, dangerous true fields, or unexpected live/success
+states fail closed before writing an artifact. A valid mock terminal result is
+still reconciled as `final_state=error` with
+`terminal_result_accepted_for_delivery=false`, `delivery_success=false`,
+`route_execution_success=false`, `safe_to_control=false`, and `hil_pass=false`.
+It is a readable state-machine rejection of mock material, not delivery proof,
+not dropoff success, not route execution, not operator acceptance, not HIL, not
+safe-to-control proof, and not production cloud or 4G/SIM proof.
+
+O5 now also has a `DeliveryStateMachine.delivery_state_live_success_gate`
+contract for future true delivery success. Its artifact schema is
+`trashbot.o5.delivery_state_live_success_gate.v1`, and its proof boundary is
+`software_proof_o5_delivery_state_live_success_gate_only`. The gate accepts
+success only when the source mode is real/live, task/robot/packet/route/terminal
+result identity stays same-task, live route execution success is recorded,
+operator/dropoff acceptance is recorded, HIL passes, `safe_to_control=true` is
+backed by live safety evidence, terminal result record exists, and all evidence
+is fresh in the same window. The current CLI only writes a
+synthetic-current-live-shaped summary with `live_success_gate_contract_ready=true`,
+`current_live_evidence_observed=false`,
+`delivery_success_claimed_by_this_run=false`,
+`real_world_delivery_proven=false`, `safe_to_control=false`, `hil_pass=false`,
+and `delivery_success_accepted_for_state_machine=false`. This is a live success
+admission contract only, not real delivery proof, not route execution proof, not
+operator acceptance, not HIL, not safe-to-control proof, not production cloud,
+not true phone/browser proof, and not 4G/SIM proof.
+
+O5 now has an independent `operator_dropoff_acceptance` evidence gate for the
+operator/user dropoff action. Its artifact schema is
+`trashbot.o5.operator_dropoff_acceptance_gate.v1`, and its proof boundary is
+`software_proof_o5_operator_dropoff_acceptance_gate_only`. This gate is a
+necessary input for `delivery_state_live_success_gate`, not a sufficient delivery
+success decision. Positive acceptance requires `source_mode=live`, same-task
+terminal result recorded, live route execution success, same-task
+`operator_dropoff_acceptance`, HIL pass, `safe_to_control=true`, and same-window
+freshness. Missing evidence, identity mismatch, unsafe evidence refs, stale
+evidence, or non-live sources carrying dangerous true values fail closed with
+`acceptance_decision=blocked_missing_live_success_evidence`. The current
+synthetic CLI artifact keeps `delivery_success=false`,
+`route_execution_success=false`, `safe_to_control=false`, `hil_pass=false`, and
+`operator_dropoff_acceptance_gate_accepted=false`; it is only an operator
+acceptance intake contract, not true phone/browser proof, not production cloud,
+not 4G/SIM, not route execution, not HIL, and not real delivery success.
+
 The first implementation uses HTTP polling so it is testable without a real 4G SIM or cloud account. A future MQTT or WebSocket transport must preserve the same command/status/ack semantics.
 
 The Docker/local proof now has two control-plane surfaces:
@@ -247,6 +374,18 @@ not verified terminal result, not HIL, not PR #5 resolution, and no OKR
 percentage lift. It does not replay or resubmit commands, post ACKs, mutate
 cursors or persistence, upload materials, perform a GitHub action, trigger
 Nav2, touch WAVE ROVER, use UART, or authorize robot control.
+
+2026-07-14 `sprints/2026.07.14_14-38_o5_command_lifecycle_cli_export_refresh/`
+refreshes that same CLI path as a fresh O5 field-owner review artifact:
+`artifacts/o5_command_lifecycle_cli_export.json`. The artifact remains
+`cloud_command_lifecycle_replay_acceptance_packet_cli_export`, keeps
+`software_proof_docker_cloud_command_lifecycle_replay_acceptance_packet_cli_export_gate`,
+`export_ready_for_field_owner_review_not_proven`,
+`accepted_processing_only_not_delivery_success`, `terminal_result_pending`,
+`delivery_success=false`, `primary_actions_enabled=false`, and
+`safe_to_control=false`. O5 remains about `85%`; this refresh is support-only,
+does not prove production cloud, true phone/browser, delivery, HIL, route
+execution, safe-to-control, or robot control, and the KR remains `不归档`.
 
 The independent relay HTTP server now exposes the same support / field-owner
 review metadata through a read-only route:
@@ -2471,9 +2610,9 @@ Start Delivery, Confirm Dropoff, or Cancel semantics.
 
 ## Cloud External Evidence Review Decision
 
-`cloud_external_evidence_review_decision` is the read-only phone/support panel for the O5 external evidence review step after `trashbot.external_evidence_intake`. The phone consumes only `robot_diagnostics_cloud_external_evidence_review_decision_summary` or the same safe summary fallback from status/readiness/diagnostics; it must not fetch raw diagnostics, raw artifacts, raw materials, response bodies, ACK/cursor routes, upload routes, review mutation routes, GitHub mutation routes, replay/resubmit routes, or robot control paths. The panel shows safe command/evidence refs, material-family statuses, review decision, next required evidence, PR #5 `PRRT_kwDOSWB9286CJ3tX` with `hardware_material_pending`, proof boundary, and false-state flags.
+`cloud_external_evidence_review_decision` is the read-only phone/support panel for the O5 external evidence review step after `trashbot.external_evidence_intake`. The executable local gate is `pc-tools/evidence/cloud_external_evidence_review_decision.py`, with artifact schema `trashbot.cloud_external_evidence_review_decision.v1` and summary schema `trashbot.cloud_external_evidence_review_decision_summary.v1`. The phone consumes only `robot_diagnostics_cloud_external_evidence_review_decision_summary` or the same safe summary fallback from status/readiness/diagnostics; it must not fetch raw diagnostics, raw artifacts, raw materials, response bodies, ACK/cursor routes, upload routes, review mutation routes, GitHub mutation routes, replay/resubmit routes, or robot control paths. The panel shows safe command/evidence refs, material-family statuses, review decision, next required evidence, PR #5 `PRRT_kwDOSWB9286CJ3tX` with `hardware_material_pending`, proof boundary, and false-state flags.
 
-Supported review states are `accepted_external_evidence_not_proven`, `needs_external_evidence_backfill_not_proven`, `rejected_unsafe_external_evidence_not_proven`, `blocked_missing_external_evidence_intake_not_proven`, and `external_evidence_ref_mismatch_not_proven`. The evidence boundary is `software_proof_docker_cloud_external_evidence_review_decision_gate`; the source capability remains `trashbot.external_evidence_intake`. Start Delivery、Confirm Dropoff、Cancel 继续 disabled, and every surface must keep `source=software_proof`, `not_proven`, `delivery_success=false`, `primary_actions_enabled=false`, `safe_to_control=false`, `not true phone/browser proof`, and `no OKR percentage lift`. This is not O5 external proof, not public HTTPS/TLS, not 4G/SIM, not OSS/CDN live traffic, not production DB/queue, not worker/cutover, not verified terminal result, not HIL, not PR #5 resolution, and not delivery success.
+Supported review states are `accepted_external_evidence_not_proven`, `needs_external_evidence_backfill_not_proven`, `rejected_unsafe_external_evidence_not_proven`, `blocked_missing_external_evidence_intake_not_proven`, and `external_evidence_ref_mismatch_not_proven`. The evidence boundary is `software_proof_docker_cloud_external_evidence_review_decision_gate`; the source capability remains `trashbot.external_evidence_intake`. Preflight and the O5 cutover readiness packet consume the artifact through `TRASHBOT_REMOTE_CLOUD_EXTERNAL_EVIDENCE_REVIEW_DECISION_ARTIFACT` or `--cloud-external-evidence-review-decision-artifact`, but this only adds a support-safe `cloud_external_evidence_review_decision` source slot. Start Delivery、Confirm Dropoff、Cancel 继续 disabled, and every surface must keep `source=software_proof`, `not_proven`, `delivery_success=false`, `primary_actions_enabled=false`, `safe_to_control=false`, `not true phone/browser proof`, and `no OKR percentage lift`. This is not O5 external proof, not public HTTPS/TLS, not 4G/SIM, not OSS/CDN live traffic, not production DB/queue, not worker/cutover, not verified terminal result, not HIL, not PR #5 resolution, and not delivery success.
 
 ## Cloud External Evidence Review Handoff
 

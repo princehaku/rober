@@ -1,0 +1,107 @@
+{
+  "schema": "trashbot.pc_tools_workstation.o7_operator_dropoff_browser_artifact.v1",
+  "artifact_status": "local_browser_dom_operator_dropoff_capture_observed_not_real_operator_action",
+  "proof_boundary": "software_proof_o7_operator_dropoff_browser_artifact_only",
+  "source_receipt_proof_boundary": "software_proof_o6_o7_operator_dropoff_action_capture_only",
+  "selected_task_id": "task-consumer-001",
+  "task_id": "task-consumer-001",
+  "triggered_button_label": "记录 operator dropoff capture",
+  "endpoint_path": "/api/o7/consumer-read/tasks/task-consumer-001/operator/dropoff-acceptance/request",
+  "endpoint_template": "/api/o7/consumer-read/tasks/<task_id>/operator/dropoff-acceptance/request",
+  "endpoint_query_keys": [
+    "baseUrl"
+  ],
+  "endpoint_transport": "vitest_fetch_stub_no_socket",
+  "remote_endpoint_path": "/api/o6/archive/events",
+  "receipt_schema": "trashbot.pc_tools_workstation.o7_operator_dropoff_action_capture_result.v1",
+  "receipt_status_field": "capture_status",
+  "receipt_status": "local_mock_operator_dropoff_acceptance_event_written",
+  "receipt_http_status": 201,
+  "write_status": "created",
+  "archive_event_written": true,
+  "event_type": "operator.dropoff_acceptance",
+  "event_id": "evt-o7-operator-dropoff-task-consumer-001",
+  "operator_action_id": "dropoff-action-task-consumer-001",
+  "operator_display_name": "pc-o7-operator",
+  "evidence_refs_consumed": [
+    "operator-dropoff-acceptance.json"
+  ],
+  "fixed_false_fields": {
+    "real_operator_action_proven": false,
+    "delivery_success": false,
+    "route_execution_success": false,
+    "safe_to_control": false,
+    "hil_pass": false,
+    "robot_control_executed": false,
+    "connects_cloud_production": false
+  },
+  "fixed_false_field_text": [
+    "real_operator_action_proven=false",
+    "delivery_success=false",
+    "route_execution_success=false",
+    "safe_to_control=false",
+    "hil_pass=false",
+    "robot_control_executed=false",
+    "connects_cloud_production=false"
+  ],
+  "not_proven": [
+    "real_operator_action",
+    "delivery_success",
+    "route_execution_success",
+    "hil",
+    "safe_to_control",
+    "production_cloud_db_queue_oss_cdn_4g_sim",
+    "true_mobile_phone_browser",
+    "robot_motion",
+    "/cmd_vel",
+    "/api/base/manual",
+    "NavigateToPose",
+    "WAVE_ROVER_UART"
+  ],
+  "receipt_not_proven": [
+    "real_operator_action_not_proven",
+    "delivery_success_false",
+    "route_execution_success_false",
+    "safe_to_control_false",
+    "hil_pass_false",
+    "robot_control_not_executed"
+  ],
+  "blocked_reasons": [
+    "real_operator_action_proven_false",
+    "delivery_success_false",
+    "route_execution_success_false",
+    "safe_to_control_false",
+    "hil_pass_false",
+    "robot_control_executed_false",
+    "connects_cloud_production_false"
+  ],
+  "local_loopback_only": true,
+  "real_operator_action_proven": false,
+  "delivery_success": false,
+  "route_execution_success": false,
+  "safe_to_control": false,
+  "hil_pass": false,
+  "robot_control_executed": false,
+  "connects_cloud_production": false,
+  "dom_assertions": {
+    "rendered_receipt_schema": true,
+    "rendered_receipt_status": true,
+    "rendered_event_type": true,
+    "rendered_source_receipt_proof_boundary": true,
+    "rendered_real_operator_action_false": true,
+    "rendered_delivery_success_false": true,
+    "rendered_route_execution_success_false": true,
+    "rendered_safe_to_control_false": true,
+    "rendered_hil_pass_false": true,
+    "rendered_robot_control_executed_false": true,
+    "rendered_connects_cloud_production_false": true
+  },
+  "artifact_limits": {
+    "stores_raw_screenshot": false,
+    "stores_raw_dom": false,
+    "stores_credentials": false,
+    "connects_production_cloud": false,
+    "uses_real_mobile_phone": false,
+    "sends_robot_motion_command": false
+  }
+}

@@ -1,0 +1,1211 @@
+{
+  "calls_base_manual": false,
+  "delivery_success": false,
+  "evidence_type": "partial_runtime_material",
+  "generated_at_ms": 1783781936586,
+  "hil_pass": false,
+  "not_proven": true,
+  "proof": {
+    "amcl_active": false,
+    "amcl_broadcast_conditions": {
+      "amcl_frame_params_match_helper": false,
+      "amcl_pose_frame_id_is_map": true,
+      "amcl_pose_observed": true,
+      "base_link_to_laser_frame_source_observed": false,
+      "initialpose_published": null,
+      "map_once_observed": null,
+      "map_to_odom_source_observed": false,
+      "odom_to_base_link_dynamic_source_observed": false,
+      "odom_to_base_link_source_observed": false,
+      "odom_to_base_link_static_source_observed": false,
+      "scan_once_observed": null,
+      "tf_broadcast_enabled": false
+    },
+    "amcl_frame_params": {
+      "base_frame_id": null,
+      "global_frame_id": null,
+      "odom_frame_id": null
+    },
+    "amcl_log_tail": "l started: /dev/ttyACM0 @ 230400\n[INFO] [1783781903.868002156] [lifecycle_manager]: Creating\n[INFO] [1783781905.382545947] [lifecycle_manager]: \u001b[34m\u001b[1mCreating and initializing lifecycle service clients\u001b[0m\u001b[0m\n[INFO] [1783781907.771927308] [lifecycle_manager]: \u001b[34m\u001b[1mStarting managed nodes bringup...\u001b[0m\u001b[0m\n[INFO] [1783781907.772208974] [lifecycle_manager]: \u001b[34m\u001b[1mConfiguring map_server\u001b[0m\u001b[0m\n[INFO] [1783781907.811458630] [map_server]: Configuring\n[INFO] [1783781907.811769963] [map_io]: Loading yaml file: /root/rober/onboard/runtime/maps/trashbot_map.yaml\n[INFO] [1783781907.813000669] [map_io]: resolution: 0.05\n[INFO] [1783781907.813112836] [map_io]: origin[0]: -5.47385\n[INFO] [1783781907.813142086] [map_io]: origin[1]: 0\n[INFO] [1783781907.813169961] [map_io]: origin[2]: 0\n[INFO] [1783781907.813198378] [map_io]: free_thresh: 0.196\n[INFO] [1783781907.813227294] [map_io]: occupied_thresh: 0.65\n[INFO] [1783781907.813259086] [map_io]: mode: trinary\n[INFO] [1783781907.813291544] [map_io]: negate: 0\n[INFO] [1783781907.815491499] [map_io]: Loading image_file: /root/rober/onboard/runtime/maps/trashbot_map.pgm\n[INFO] [1783781907.896979140] [lifecycle_manager]: \u001b[34m\u001b[1mConfiguring amcl\u001b[0m\u001b[0m\n[INFO] [1783781907.909454039] [amcl]: Configuring\n[INFO] [1783781907.909830747] [amcl]: initTransforms\n[ERROR] [1783781907.957257892] [lifecycle_manager]: Failed to change state for node: amcl\n[ERROR] [1783781907.957543475] [lifecycle_manager]: Failed to bring up all requested nodes. Aborting bringup.\n[INFO] [1783781908.427436049] [map_io]: Read map /root/rober/onboard/runtime/maps/trashbot_map.pgm: 261 X 113 map @ 0.05 m/cell\n[INFO] [1783781908.704152968] [amcl]: initPubSub\n[INFO] [1783781909.346745643] [amcl]: Subscribed to map topic.\n[INFO] [1783781909.641307329] [amcl]: Received a 261 X 113 map @ 0.050 m/pix\nTraceback (most recent call last):\n  File \"/root/rober/onboard/install/ros2_trashbot_hardware/lib/ros2_trashbot_hardware/lidar_driver\", line 33, in <module>\n    sys.exit(load_entry_point('ros2-trashbot-hardware', 'console_scripts', 'lidar_driver')())\n  File \"/root/rober/onboard/build/ros2_trashbot_hardware/ros2_trashbot_hardware/lidar_driver.py\", line 596, in main\n    rclpy.spin(node)\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/__init__.py\", line 229, in spin\n    executor.spin_once()\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py\", line 808, in spin_once\n    self._spin_once_impl(timeout_sec)\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py\", line 805, in _spin_once_impl\n    raise handler.exception()\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/task.py\", line 272, in _execute_coroutine_step\n    result = coro.send(None)\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py\", line 488, in handler\n    await call_coroutine(entity, arg)\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py\", line 396, in _execute_timer\n    await await_or_execute(tmr.callback)\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py\", line 110, in await_or_execute\n    return callback(*args)\n  File \"/root/rober/onboard/build/ros2_trashbot_hardware/ros2_trashbot_hardware/lidar_driver.py\", line 459, in _tick\n    packets = self._next_packets()\n  File \"/root/rober/onboard/build/ros2_trashbot_hardware/ros2_trashbot_hardware/lidar_driver.py\", line 472, in _next_packets\n    return self.serial_session.read_packets()\n  File \"/root/rober/onboard/build/ros2_trashbot_hardware/ros2_trashbot_hardware/lidar_driver.py\", line 128, in read_packets\n    chunk = self._serial.read(int(self.config.read_size)) or b\"\"\n  File \"/usr/local/lib/python3.10/dist-packages/serial/serialposix.py\", line 595, in read\n    raise SerialException(\nserial.serialutil.SerialException: device reports readiness to read but returned no data (device disconnected or multiple access on port?)\n[ros2run]: Process exited with failure 1\n",
+    "amcl_node_info_observed": false,
+    "amcl_node_publishers": [],
+    "amcl_node_subscribers": [],
+    "amcl_param_probe_ok": false,
+    "amcl_pose_frame_id": "map",
+    "amcl_pose_observed": false,
+    "amcl_readiness_summary": {
+      "amcl_lifecycle": {
+        "active": false,
+        "classification": "map_lifecycle_preflight_map_server_and_amcl_inactive",
+        "map_server_active": false,
+        "observed": false,
+        "result": {
+          "boundary": "managed_runtime_lifecycle_check_not_run",
+          "executed": false,
+          "ok": false
+        }
+      },
+      "amcl_pose_sample": {
+        "blocked_reason": "amcl_lifecycle_not_active",
+        "observed": false,
+        "publishers": {
+          "count": 0,
+          "nodes": []
+        },
+        "sample_timing": {
+          "elapsed_ms": 11116,
+          "freshness": {
+            "age_ms": null,
+            "reason": "probe_or_source_not_observed",
+            "status": "not_observed"
+          },
+          "probe_executed": true,
+          "sample_observed": false,
+          "stamp": {
+            "epoch_ms": 1783781907272,
+            "nanosec": 272476607,
+            "parsed": true,
+            "sec": 1783781907,
+            "source": "/amcl_pose.header.stamp"
+          },
+          "timed_out": true,
+          "timeout_s": 20.0
+        },
+        "subscribers": {
+          "count": 0,
+          "nodes": []
+        },
+        "topic_present": false,
+        "topic_type": null
+      },
+      "blocked_reason": "amcl_lifecycle_not_active",
+      "ready": false
+    },
+    "amcl_tf_broadcast_param": null,
+    "amcl_tf_root_cause": "/tf_topic_missing",
+    "artifact_closeout": {
+      "artifact_kind": "partial",
+      "current_command": {
+        "command": "timeout 10 ros2 run tf2_ros tf2_echo odom base_link",
+        "started_at_ms": 1783781936586,
+        "timeout_s": 14.0
+      },
+      "interruption_does_not_override_primary_root_cause": false,
+      "last_phase": "tf_probe_map_to_odom",
+      "primary_root_cause": {
+        "layer": "AMCL localization",
+        "reason": "/amcl_pose_once_not_observed"
+      },
+      "root_cause_count": 2,
+      "signal_root_causes": [],
+      "status": "partial_runtime_in_progress"
+    },
+    "base_link_to_laser_frame_transform": null,
+    "blocked_commands_not_sent": [
+      "T=1",
+      "T=13",
+      "T=130",
+      "T=131",
+      "/cmd_vel",
+      "/api/base/manual",
+      "/api/base/",
+      "/api/nav2/start",
+      "/api/nav2/stop",
+      "navigate_to_pose"
+    ],
+    "blocked_devices_not_opened": [
+      "/dev/ttyS5"
+    ],
+    "blockers": [
+      {
+        "layer": "AMCL localization",
+        "reason": "/amcl_pose_once_not_observed"
+      },
+      {
+        "detail": "frame_missing_or_name_mismatch",
+        "layer": "Localization TF",
+        "reason": "map_to_odom_not_observed",
+        "source": "map_to_odom"
+      }
+    ],
+    "board_source_preflight": {
+      "classification": "board_source_preflight_ready",
+      "cli_invocation": {
+        "command": "ros2 --help >/dev/null",
+        "elapsed_ms": 2533,
+        "executed": true,
+        "finished_at_ms": 1783781872549,
+        "label": "ros2_help",
+        "ok": true,
+        "returncode": 0,
+        "started_at_ms": 1783781870016,
+        "stderr": "",
+        "stdout": "",
+        "timed_out": false,
+        "timeout_s": 4.0
+      },
+      "cli_invocation_timeout_s": 4.0,
+      "cli_ready": true,
+      "commands": {
+        "rclpy_import": {
+          "command": "python3 -c 'import json\nimport sys\n\npayload = {\n    \"python_executable\": sys.executable,\n    \"python_version\": sys.version.split()[0],\n    \"sys_path_head\": sys.path[:8],\n    \"rclpy_import_ok\": False,\n    \"rclpy_file\": None,\n    \"error\": None,\n}\n\ntry:\n    import rclpy\n    payload[\"rclpy_import_ok\"] = True\n    payload[\"rclpy_file\"] = getattr(rclpy, \"__file__\", None)\nexcept Exception as exc:\n    payload[\"error\"] = {\n        \"type\": type(exc).__name__,\n        \"message\": str(exc)[:240],\n    }\n\nprint(json.dumps(payload, ensure_ascii=False))'",
+          "elapsed_ms": 2692,
+          "executed": true,
+          "finished_at_ms": 1783781875302,
+          "ok": true,
+          "returncode": 0,
+          "started_at_ms": 1783781872610,
+          "stderr": "",
+          "stdout": "{\"python_executable\": \"/usr/bin/python3\", \"python_version\": \"3.10.12\", \"sys_path_head\": [\"\", \"/root/rober/onboard/build/ros2_trashbot_behavior\", \"/root/rober/onboard/install/ros2_trashbot_behavior/lib/python3.10/site-packages\", \"/root/rober/onboard/build/ros2_trashbot_vision\", \"/root/rober/onboard/install/ros2_trashbot_vision/lib/python3.10/site-packages\", \"/root/rober/onboard/build/ros2_trashbot_nav\", \"/root/rober/onboard/install/ros2_trashbot_nav/lib/python3.10/site-packages\", \"/root/rober/onboard/build/ros2_trashbot_hardware\"], \"rclpy_import_ok\": true, \"rclpy_file\": \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/__init__.py\", \"error\": null}\n",
+          "timed_out": false,
+          "timeout_s": 6.0
+        },
+        "ros2_cli": {
+          "command": "command -v ros2",
+          "elapsed_ms": 17,
+          "executed": true,
+          "finished_at_ms": 1783781869987,
+          "label": "command_v",
+          "ok": true,
+          "returncode": 0,
+          "started_at_ms": 1783781869970,
+          "stderr": "",
+          "stdout": "/opt/ros/humble/bin/ros2\n",
+          "timed_out": false,
+          "timeout_s": 2.0
+        },
+        "ros2_cli_invocation": {
+          "command": "ros2 --help >/dev/null",
+          "elapsed_ms": 2533,
+          "executed": true,
+          "finished_at_ms": 1783781872549,
+          "label": "ros2_help",
+          "ok": true,
+          "returncode": 0,
+          "started_at_ms": 1783781870016,
+          "stderr": "",
+          "stdout": "",
+          "timed_out": false,
+          "timeout_s": 4.0
+        },
+        "ros2_cli_layer": {
+          "command": "python3 -c 'import json\nimport os\nimport subprocess\nimport time\n\nPATH_TIMEOUT_S = 2.0\nINVOCATION_TIMEOUT_S = 4.0\n\ndef now_ms():\n    return int(time.time() * 1000)\n\ndef compact(text, limit):\n    return (text or \"\")[-limit:]\n\ndef run_layer(label, command, timeout_s):\n    started_ms = now_ms()\n    try:\n        completed = subprocess.run(\n            [\"bash\", \"-lc\", command],\n            check=False,\n            text=True,\n            stdout=subprocess.PIPE,\n            stderr=subprocess.PIPE,\n            timeout=timeout_s,\n        )\n        return {\n            \"label\": label,\n            \"command\": command,\n            \"executed\": True,\n            \"ok\": completed.returncode == 0,\n            \"returncode\": completed.returncode,\n            \"started_at_ms\": started_ms,\n            \"finished_at_ms\": now_ms(),\n            \"timeout_s\": timeout_s,\n            \"timed_out\": False,\n            \"elapsed_ms\": now_ms() - started_ms,\n            \"stdout\": compact(completed.stdout, 2000),\n            \"stderr\": compact(completed.stderr, 1000),\n        }\n    except subprocess.TimeoutExpired as exc:\n        stdout = exc.stdout if isinstance(exc.stdout, str) else \"\"\n        stderr = exc.stderr if isinstance(exc.stderr, str) else \"\"\n        return {\n            \"label\": label,\n            \"command\": command,\n            \"executed\": True,\n            \"ok\": False,\n            \"returncode\": None,\n            \"started_at_ms\": started_ms,\n            \"finished_at_ms\": now_ms(),\n            \"timeout_s\": timeout_s,\n            \"timed_out\": True,\n            \"elapsed_ms\": now_ms() - started_ms,\n            \"stdout\": compact(stdout, 2000),\n            \"stderr\": compact(stderr, 1000),\n            \"error\": {\"type\": \"TimeoutExpired\", \"message\": f\"{label} timed out after {timeout_s}s\"},\n        }\n\npath_lookup = {\n    \"command_v\": run_layer(\"command_v\", \"command -v ros2\", PATH_TIMEOUT_S),\n    \"type_a\": run_layer(\"type_a\", \"type -a ros2\", PATH_TIMEOUT_S),\n    \"which\": run_layer(\"which\", \"which ros2\", PATH_TIMEOUT_S),\n}\nros2_path = \"\"\nfor key in (\"command_v\", \"which\"):\n    candidate = str(path_lookup[key].get(\"stdout\") or \"\").strip().splitlines()\n    if candidate:\n        ros2_path = candidate[0].strip()\n        break\nif ros2_path:\n    cli_invocation = run_layer(\"ros2_help\", \"ros2 --help >/dev/null\", INVOCATION_TIMEOUT_S)\nelse:\n    cli_invocation = {\n        \"label\": \"ros2_help\",\n        \"command\": \"ros2 --help >/dev/null\",\n        \"executed\": False,\n        \"ok\": False,\n        \"timeout_s\": INVOCATION_TIMEOUT_S,\n        \"timed_out\": False,\n        \"boundary\": \"ros2_path_missing_skip_cli_invocation\",\n        \"stdout\": \"\",\n        \"stderr\": \"\",\n    }\npayload = {\n    \"environment\": {\n        \"PATH\": os.environ.get(\"PATH\", \"\"),\n        \"AMENT_PREFIX_PATH\": os.environ.get(\"AMENT_PREFIX_PATH\", \"\"),\n        \"PYTHONPATH\": os.environ.get(\"PYTHONPATH\", \"\"),\n        \"LD_LIBRARY_PATH\": os.environ.get(\"LD_LIBRARY_PATH\", \"\"),\n    },\n    \"path_lookup\": path_lookup,\n    \"ros2_cli_path\": ros2_path or None,\n    \"cli_invocation\": cli_invocation,\n}\nprint(json.dumps(payload, ensure_ascii=False))'",
+          "elapsed_ms": 5012,
+          "executed": true,
+          "finished_at_ms": 1783781872604,
+          "ok": true,
+          "returncode": 0,
+          "started_at_ms": 1783781867592,
+          "stderr": "",
+          "stdout": "{\"environment\": {\"PATH\": \"/opt/ros/humble/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin\", \"AMENT_PREFIX_PATH\": \"/root/rober/onboard/install/ros2_trashbot_bringup:/root/rober/onboard/install/ros2_trashbot_behavior:/root/rober/onboard/install/ros2_trashbot_vision:/root/rober/onboard/install/ros2_trashbot_nav:/root/rober/onboard/install/ros2_trashbot_hardware:/root/rober/onboard/install/ros2_trashbot_interfaces:/opt/ros/humble\", \"PYTHONPATH\": \"/root/rober/onboard/build/ros2_trashbot_behavior:/root/rober/onboard/install/ros2_trashbot_behavior/lib/python3.10/site-packages:/root/rober/onboard/build/ros2_trashbot_vision:/root/rober/onboard/install/ros2_trashbot_vision/lib/python3.10/site-packages:/root/rober/onboard/build/ros2_trashbot_nav:/root/rober/onboard/install/ros2_trashbot_nav/lib/python3.10/site-packages:/root/rober/onboard/build/ros2_trashbot_hardware:/root/rober/onboard/install/ros2_trashbot_hardware/lib/python3.10/site-packages:/root/rober/onboard/install/ros2_trashbot_interfaces/local/lib/python3.10/dist-packages:/opt/ros/humble/lib/python3.10/site-packages:/opt/ros/humble/local/lib/python3.10/dist-packages\", \"LD_LIBRARY_PATH\": \"/root/rober/onboard/install/ros2_trashbot_interfaces/lib:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/aarch64-linux-gnu:/opt/ros/humble/lib\"}, \"path_lookup\": {\"command_v\": {\"label\": \"command_v\", \"command\": \"command -v ros2\", \"executed\": true, \"ok\": true, \"returncode\": 0, \"started_at_ms\": 1783781869970, \"finished_at_ms\": 1783781869987, \"timeout_s\": 2.0, \"timed_out\": false, \"elapsed_ms\": 17, \"stdout\": \"/opt/ros/humble/bin/ros2\\n\", \"stderr\": \"\"}, \"type_a\": {\"label\": \"type_a\", \"command\": \"type -a ros2\", \"executed\": true, \"ok\": true, \"returncode\": 0, \"started_at_ms\": 1783781869987, \"finished_at_ms\": 1783781870000, \"timeout_s\": 2.0, \"timed_out\": false, \"elapsed_ms\": 13, \"stdout\": \"ros2 is /opt/ros/humble/bin/ros2\\n\", \"stderr\": \"\"}, \"which\": {\"label\": \"which\", \"command\": \"which ros2\", \"executed\": true, \"ok\": true, \"returncode\": 0, \"started_at_ms\": 1783781870000, \"finished_at_ms\": 1783781870016, \"timeout_s\": 2.0, \"timed_out\": false, \"elapsed_ms\": 16, \"stdout\": \"/opt/ros/humble/bin/ros2\\n\", \"stderr\": \"\"}}, \"ros2_cli_path\": \"/opt/ros/humble/bin/ros2\", \"cli_invocation\": {\"label\": \"ros2_help\", \"command\": \"ros2 --help >/dev/null\", \"executed\": true, \"ok\": true, \"returncode\": 0, \"started_at_ms\": 1783781870016, \"finished_at_ms\": 1783781872549, \"timeout_s\": 4.0, \"timed_out\": false, \"elapsed_ms\": 2533, \"stdout\": \"\", \"stderr\": \"\"}}\n",
+          "timed_out": false,
+          "timeout_s": 12.0
+        },
+        "ros2_type": {
+          "command": "type -a ros2",
+          "elapsed_ms": 13,
+          "executed": true,
+          "finished_at_ms": 1783781870000,
+          "label": "type_a",
+          "ok": true,
+          "returncode": 0,
+          "started_at_ms": 1783781869987,
+          "stderr": "",
+          "stdout": "ros2 is /opt/ros/humble/bin/ros2\n",
+          "timed_out": false,
+          "timeout_s": 2.0
+        },
+        "ros2_which": {
+          "command": "which ros2",
+          "elapsed_ms": 16,
+          "executed": true,
+          "finished_at_ms": 1783781870016,
+          "label": "which",
+          "ok": true,
+          "returncode": 0,
+          "started_at_ms": 1783781870000,
+          "stderr": "",
+          "stdout": "/opt/ros/humble/bin/ros2\n",
+          "timed_out": false,
+          "timeout_s": 2.0
+        },
+        "source_stage": {
+          "command": "board_source_stage_probe",
+          "elapsed_ms": 3129,
+          "executed": true,
+          "finished_at_ms": 1783781867586,
+          "ok": true,
+          "returncode": 0,
+          "started_at_ms": 1783781864457,
+          "stderr": "",
+          "stdout": "{\"started_at_ms\": 1783781864542, \"finished_at_ms\": 1783781867370, \"elapsed_ms\": 2828, \"ros_setup\": {\"path\": \"/opt/ros/humble/setup.bash\", \"exists\": true, \"sourced\": true, \"returncode\": 0, \"elapsed_ms\": 1067}, \"workspace_setup\": {\"path\": \"/root/rober/onboard/install/setup.bash\", \"exists\": true, \"sourced\": true, \"skipped\": false, \"returncode\": 0, \"elapsed_ms\": 1314, \"failure_tolerated\": false}, \"workdir\": \"/root/rober/onboard\", \"cd_ok\": true}\n",
+          "timed_out": false,
+          "timeout_s": 8.0
+        }
+      },
+      "executed": true,
+      "path_lookup": {
+        "command_v": {
+          "command": "command -v ros2",
+          "elapsed_ms": 17,
+          "executed": true,
+          "finished_at_ms": 1783781869987,
+          "label": "command_v",
+          "ok": true,
+          "returncode": 0,
+          "started_at_ms": 1783781869970,
+          "stderr": "",
+          "stdout": "/opt/ros/humble/bin/ros2\n",
+          "timed_out": false,
+          "timeout_s": 2.0
+        },
+        "type_a": {
+          "command": "type -a ros2",
+          "elapsed_ms": 13,
+          "executed": true,
+          "finished_at_ms": 1783781870000,
+          "label": "type_a",
+          "ok": true,
+          "returncode": 0,
+          "started_at_ms": 1783781869987,
+          "stderr": "",
+          "stdout": "ros2 is /opt/ros/humble/bin/ros2\n",
+          "timed_out": false,
+          "timeout_s": 2.0
+        },
+        "which": {
+          "command": "which ros2",
+          "elapsed_ms": 16,
+          "executed": true,
+          "finished_at_ms": 1783781870016,
+          "label": "which",
+          "ok": true,
+          "returncode": 0,
+          "started_at_ms": 1783781870000,
+          "stderr": "",
+          "stdout": "/opt/ros/humble/bin/ros2\n",
+          "timed_out": false,
+          "timeout_s": 2.0
+        }
+      },
+      "path_lookup_timeout_s": 2.0,
+      "python_executable": "/usr/bin/python3",
+      "python_rclpy": {
+        "error": null,
+        "python_executable": "/usr/bin/python3",
+        "python_version": "3.10.12",
+        "rclpy_file": "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/__init__.py",
+        "rclpy_import_ok": true,
+        "sys_path_head": [
+          "",
+          "/root/rober/onboard/build/ros2_trashbot_behavior",
+          "/root/rober/onboard/install/ros2_trashbot_behavior/lib/python3.10/site-packages",
+          "/root/rober/onboard/build/ros2_trashbot_vision",
+          "/root/rober/onboard/install/ros2_trashbot_vision/lib/python3.10/site-packages",
+          "/root/rober/onboard/build/ros2_trashbot_nav",
+          "/root/rober/onboard/install/ros2_trashbot_nav/lib/python3.10/site-packages",
+          "/root/rober/onboard/build/ros2_trashbot_hardware"
+        ]
+      },
+      "python_version": "3.10.12",
+      "rclpy_error": null,
+      "rclpy_file": "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/__init__.py",
+      "rclpy_import_ok": true,
+      "rclpy_import_timeout_s": 6.0,
+      "ready": true,
+      "ros2_cli_invocation_ok": true,
+      "ros2_cli_ok": true,
+      "ros2_cli_path": "/opt/ros/humble/bin/ros2",
+      "ros2_cli_path_ok": true,
+      "ros2_cli_timeout_s": 6.0,
+      "runtime_ready": true,
+      "source_stage": {
+        "cd_ok": true,
+        "elapsed_ms": 2828,
+        "finished_at_ms": 1783781867370,
+        "ros_setup": {
+          "elapsed_ms": 1067,
+          "exists": true,
+          "path": "/opt/ros/humble/setup.bash",
+          "returncode": 0,
+          "sourced": true
+        },
+        "started_at_ms": 1783781864542,
+        "workdir": "/root/rober/onboard",
+        "workspace_setup": {
+          "elapsed_ms": 1314,
+          "exists": true,
+          "failure_tolerated": false,
+          "path": "/root/rober/onboard/install/setup.bash",
+          "returncode": 0,
+          "skipped": false,
+          "sourced": true
+        }
+      },
+      "source_stage_ok": true,
+      "source_stage_timeout_s": 8.0,
+      "sys_path_head": [
+        "",
+        "/root/rober/onboard/build/ros2_trashbot_behavior",
+        "/root/rober/onboard/install/ros2_trashbot_behavior/lib/python3.10/site-packages",
+        "/root/rober/onboard/build/ros2_trashbot_vision",
+        "/root/rober/onboard/install/ros2_trashbot_vision/lib/python3.10/site-packages",
+        "/root/rober/onboard/build/ros2_trashbot_nav",
+        "/root/rober/onboard/install/ros2_trashbot_nav/lib/python3.10/site-packages",
+        "/root/rober/onboard/build/ros2_trashbot_hardware"
+      ]
+    },
+    "board_source_ready": true,
+    "calls_base_manual": false,
+    "current_command": {
+      "command": "timeout 10 ros2 run tf2_ros tf2_echo odom base_link",
+      "started_at_ms": 1783781936586,
+      "timeout_s": 14.0
+    },
+    "delivery_success": false,
+    "elapsed_ms": 72164,
+    "evidence_ref": "o10-amcl-nav2-runtime-partial-1783781864422",
+    "evidence_type": "partial_runtime_material",
+    "generated_at_ms": 1783781936586,
+    "hil_pass": false,
+    "initialpose_publish_attempted": true,
+    "initialpose_publish_attempts": 1,
+    "initialpose_publish_elapsed_ms": 10506,
+    "initialpose_publish_error": {
+      "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; ros2 topic pub --once /initialpose geometry",
+      "type": "TimeoutExpired"
+    },
+    "initialpose_publish_method": "ros2_topic_pub_once_cli_fallback",
+    "initialpose_published": false,
+    "initialpose_subscriber_count": null,
+    "last_phase": "tf_probe_map_to_odom",
+    "last_successful_phase": "managed_runtime_started",
+    "localization_signal_freshness": {
+      "/amcl_pose": {
+        "endpoint_error": {
+          "message": "tf source probe has not run yet",
+          "type": "endpoint_inventory_not_yet_collected"
+        },
+        "endpoint_inventory_observed": false,
+        "expected_type": "geometry_msgs/msg/PoseWithCovarianceStamped",
+        "freshness": {
+          "age_ms": null,
+          "reason": "probe_or_source_not_observed",
+          "status": "not_observed"
+        },
+        "probe": {
+          "boundary": "/amcl_pose_probe_not_observed",
+          "elapsed_ms": 11116,
+          "error": null,
+          "executed": true,
+          "observed": false,
+          "returncode": 124,
+          "timed_out": true,
+          "timeout_s": 20.0
+        },
+        "publishers": {
+          "count": 0,
+          "nodes": []
+        },
+        "source_class": "message",
+        "subscribers": {
+          "count": 0,
+          "nodes": []
+        },
+        "timestamp": {
+          "epoch_ms": 1783781907272,
+          "nanosec": 272476607,
+          "parsed": true,
+          "sec": 1783781907,
+          "source": "/amcl_pose.header.stamp"
+        },
+        "topic": "/amcl_pose",
+        "topic_present": false,
+        "topic_type": null
+      }
+    },
+    "localization_tf_observed": {
+      "map_to_base_link": false,
+      "map_to_odom": false
+    },
+    "managed_runtime_boundary": "explicit_opt_in_managed_path_generation_runtime_no_motion",
+    "managed_runtime_cleanup_ok": false,
+    "managed_runtime_process_group": 486522,
+    "managed_runtime_requested": true,
+    "managed_runtime_started": true,
+    "managed_runtime_wait_result": {
+      "boundary": "managed_runtime_wait_timeout",
+      "history": [
+        {
+          "lifecycle_active": {
+            "amcl": false,
+            "map_server": false,
+            "planner_server": false
+          },
+          "node_list": {
+            "boundary": "rclpy_node_names_failed",
+            "elapsed_ms": 8192,
+            "error": {
+              "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; python3 - <<\\'PY\\'\\nimport json\\nimport tim",
+              "type": "TimeoutExpired"
+            },
+            "executed": false,
+            "node_names": [],
+            "ok": false,
+            "stderr": "",
+            "stdout": ""
+          }
+        },
+        {
+          "lifecycle_active": {
+            "amcl": false,
+            "map_server": false,
+            "planner_server": false
+          },
+          "node_list": {
+            "boundary": "rclpy_node_names_failed",
+            "elapsed_ms": 6423,
+            "error": {
+              "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; python3 - <<\\'PY\\'\\nimport json\\nimport tim",
+              "type": "TimeoutExpired"
+            },
+            "executed": false,
+            "node_names": [],
+            "ok": false,
+            "stderr": "",
+            "stdout": ""
+          }
+        },
+        {
+          "lifecycle_active": {
+            "amcl": false,
+            "map_server": false,
+            "planner_server": false
+          },
+          "node_list": {
+            "boundary": "rclpy_node_names_failed",
+            "elapsed_ms": 6332,
+            "error": {
+              "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; python3 - <<\\'PY\\'\\nimport json\\nimport tim",
+              "type": "TimeoutExpired"
+            },
+            "executed": false,
+            "node_names": [],
+            "ok": false,
+            "stderr": "",
+            "stdout": ""
+          }
+        }
+      ],
+      "lifecycle_active": {
+        "amcl": false,
+        "map_server": false,
+        "planner_server": false
+      },
+      "lifecycle_history": [],
+      "lifecycle_results": {
+        "amcl": {
+          "boundary": "managed_runtime_lifecycle_check_not_run",
+          "executed": false,
+          "ok": false
+        },
+        "map_server": {
+          "boundary": "managed_runtime_lifecycle_check_not_run",
+          "executed": false,
+          "ok": false
+        },
+        "planner_server": {
+          "boundary": "managed_runtime_lifecycle_check_not_run",
+          "executed": false,
+          "ok": false
+        }
+      },
+      "log_tail": "managed_map_yaml=/root/rober/onboard/runtime/maps/trashbot_map.yaml\nmanaged_runtime_boundary=no_motion_path_generation_planner_only\nblocked_device=/dev/ttyS5\nstarting role=lidar_driver\nstarted role=lidar_driver pid=486562\nstarting role=static_tf_broadcaster\nstarted role=static_tf_broadcaster pid=486563\nstarting role=map_server\nstarted role=map_server pid=486564\nstarting role=amcl\nstarted role=amcl pid=486565\nstarting role=planner_server\nstarted role=planner_server pid=486566\nwaiting before lifecycle_manager start delay_s=3\nstarting role=lifecycle_manager\nstarted role=lifecycle_manager pid=486588\n[INFO] [1783781887.082784830] [map_server]: \n\tmap_server lifecycle node launched. \n\tWaiting on external lifecycle transitions to activate\n\tSee https://design.ros2.org/articles/node_lifecycle.html for more information.\n[INFO] [1783781887.083904496] [map_server]: Creating\n[INFO] [1783781887.341292732] [amcl]: \n\tamcl lifecycle node launched. \n\tWaiting on external lifecycle transitions to activate\n\tSee https://design.ros2.org/articles/node_lifecycle.html for more information.\n[INFO] [1783781887.551994364] [amcl]: Creating\n[INFO] [1783781892.852721592] [planner_server]: \n\tplanner_server lifecycle node launched. \n\tWaiting on external lifecycle transitions to activate\n\tSee https://design.ros2.org/articles/node_lifecycle.html for more information.\n[INFO] [1783781893.184560645] [planner_server]: Creating\n[INFO] [1783781896.164608501] [global_costmap.global_costmap]: \n\tglobal_costmap lifecycle node launched. \n\tWaiting on external lifecycle transitions to activate\n\tSee https://design.ros2.org/articles/node_lifecycle.html for more information.\n[INFO] [1783781896.178112358] [global_costmap.global_costmap]: Creating Costmap\n[INFO] [1783781897.747264117] [lidar_driver]: LiDAR serial started: /dev/ttyACM0 @ 230400\n",
+      "observed_node_names": [],
+      "ok": false,
+      "reason": "managed_runtime_wait_timeout"
+    },
+    "managed_static_tf_processes": {
+      "all_expected_processes_observed": true,
+      "checked_before_cleanup": true,
+      "expected": [
+        {
+          "child": "base_link",
+          "parent": "odom",
+          "role": "static_tf_odom_base"
+        },
+        {
+          "child": "laser_frame",
+          "parent": "base_link",
+          "role": "static_tf_base_laser"
+        }
+      ],
+      "observed_roles": [
+        "static_tf_base_laser",
+        "static_tf_odom_base"
+      ],
+      "process_group": 486522,
+      "processes": [
+        {
+          "command": "bash -lc set -e; set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; pids=(); cleanup(){ for pid in \"${pids[@]}\"; do kill -INT \"$pid\" 2>/dev/null || true; done; wait || true; }; trap cleanup EXIT INT TERM; printf '%s\\n' 'managed_map_yaml=/root/rober/onboard/runtime/maps/trashbot_map.yaml' > /tmp/rober_nav2_localization_lhs3n528.log; printf '%s\\n' 'managed_runtime_boundary=no_motion_path_generation_planner_only' >> /tmp/rober_nav2_localization_lhs3n528.log; printf '%s\\n' 'blocked_device=/dev/ttyS5' >> /tmp/rober_nav2_localization_lhs3n528.log; printf '%s\\n' 'starting role=lidar_driver' >> /tmp/rober_nav2_localization_lhs3n528.log; (ros2 run ros2_trashbot_hardware lidar_driver --ros-args -p serial_port:=/dev/ttyACM0 -p serial_baudrate:=230400 -p frame_id:=laser_frame -p scan_topic:=/scan -p publish_raw_packets:=false) >> /tmp/rober_nav2_localization_lhs3n528.log 2>&1 & pid=$!; pids+=($pid); printf '%s\\n' 'started role=lidar_driver pid='$pid >> /tmp/rober_nav2_localization_lhs3n528.log; printf '%s\\n' 'starting role=static_tf_broadcaster' >> /tmp/rober_nav2_localization_lhs3n528.log; (python3 -c 'import json import sys  import rclpy from geometry_msgs.msg import TransformStamped from tf2_ros.static_transform_broadcaster import StaticTransformBroadcaster   def make_transform(node, parent, child):     # 两条边都是 no-motion proof 的固定几何关系；这里显式置零，避免引入底盘里程计假设。     transform = TransformStamped()     transform.header.stamp = node.get_clock().now().to_msg()     transform.header.frame_id = parent     transform.child_frame_id = child     transform.transform.translation.x = 0.0     transform.transform.translation.y = 0.0     transform.transform.translation.z = 0.0     transform.transform.rotation.x = 0.0     transform.transform.rotation.y = 0.0     transform.transform.rotation.z = 0.0     transform.transform.rotation.w = 1.0     return transform   def main():     frames = json.loads(sys.argv[1])     rclpy.init(args=None)     node = rclpy.create_node(\"managed_static_tf_broadcaster\")     broadcaster = StaticTransformBroadcaster(node)      def publish_static_transforms():         # 同一个 TFMessage 同时包含 odom->base_link 与 base_link->laser_frame。         # transient-local late subscriber 因此不再依赖两个独立 CLI publisher 的发现时序。         broadcaster.sendTransform(             [                 make_transform(node, frames[\"odom\"], frames[\"base\"]),                 make_transform(node, frames[\"base\"], frames[\"laser\"]),             ]         )      publish_static_transforms()     node.create_timer(0.5, publish_static_transforms)     try:         rclpy.spin(node)     finally:         node.destroy_node()         if rclpy.ok():             rclpy.shutdown()   if __name__ == \"__main__\":     main()' '{\"odom\": \"odom\", \"base\": \"base_link\", \"laser\": \"laser_frame\"}' static_tf_odom_base static_tf_base_laser odom_to_base_link base_link_to_laser_frame) >> /tmp/rober_nav2_localization_lhs3n528.log 2>&1 & pid=$!; pids+=($pid); printf '%s\\n' 'started role=static_tf_broadcaster pid='$pid >> /tmp/rober_nav2_localization_lhs3n528.log; printf '%s\\n' 'starting role=map_server' >> /tmp/rober_nav2_localization_lhs3n528.log; (ros2 run nav2_map_server map_server --ros-args --params-file /tmp/rober_nav2_localization_g3u6t3tn.yaml -r __node:=map_server) >> /tmp/rober_nav2_localization_lhs3n528.log 2>&1 & pid=$!; pids+=($pid); printf '%s\\n' 'started role=map_server pid='$pid >> /tmp/rober_nav2_localization_lhs3n528.log; printf '%s\\n' 'starting role=amcl' >> /tmp/rober_nav2_localization_lhs3n528.log; (ros2 run nav2_amcl amcl --ros-args --params-file /tmp/rober_nav2_localization_g3u6t3tn.yaml -r __node:=amcl) >> /tmp/rober_nav2_localization_lhs3n528.log 2>&1 & pid=$!; pids+=($pid); printf '%s\\n' 'started role=amcl pid='$pid >> /tmp/rober_nav2_localization_lhs3n528.log; printf '%s\\n' 'starting role=planner_server' >> /tmp/rober_nav2_localization_lhs3n528.log; (ros2 run nav2_planner planner_server --ros-args --params-file /tmp/rober_nav2_localization_g3u6t3tn.yaml -r __node:=planner_server) >> /tmp/rober_nav2_localization_lhs3n528.log 2>&1 & pid=$!; pids+=($pid); printf '%s\\n' 'started role=planner_server pid='$pid >> /tmp/rober_nav2_localization_lhs3n528.log; printf '%s\\n' 'waiting before lifecycle_manager start delay_s=3' >> /tmp/rober_nav2_localization_lhs3n528.log; sleep 3; printf '%s\\n' 'starting role=lifecycle_manager' >> /tmp/rober_nav2_localization_lhs3n528.log; (ros2 run nav2_lifecycle_manager lifecycle_manager --ros-args --params-file /tmp/rober_nav2_localization_g3u6t3tn.yaml -r __node:=lifecycle_manager) >> /tmp/rober_nav2_localization_lhs3n528.log 2>&1 & pid=$!; pids+=($pid); printf '%s\\n' 'started role=lifecycle_manager pid='$pid >> /tmp/rober_nav2_localization_lhs3n528.log; wait",
+          "pgid": 486522,
+          "pid": 486522,
+          "role": "static_tf_base_laser",
+          "roles": [
+            "static_tf_base_laser",
+            "static_tf_odom_base"
+          ],
+          "source_type": "single_rclpy_static_transform_broadcaster"
+        },
+        {
+          "command": "python3 -c import json import sys  import rclpy from geometry_msgs.msg import TransformStamped from tf2_ros.static_transform_broadcaster import StaticTransformBroadcaster   def make_transform(node, parent, child):     # 两条边都是 no-motion proof 的固定几何关系；这里显式置零，避免引入底盘里程计假设。     transform = TransformStamped()     transform.header.stamp = node.get_clock().now().to_msg()     transform.header.frame_id = parent     transform.child_frame_id = child     transform.transform.translation.x = 0.0     transform.transform.translation.y = 0.0     transform.transform.translation.z = 0.0     transform.transform.rotation.x = 0.0     transform.transform.rotation.y = 0.0     transform.transform.rotation.z = 0.0     transform.transform.rotation.w = 1.0     return transform   def main():     frames = json.loads(sys.argv[1])     rclpy.init(args=None)     node = rclpy.create_node(\"managed_static_tf_broadcaster\")     broadcaster = StaticTransformBroadcaster(node)      def publish_static_transforms():         # 同一个 TFMessage 同时包含 odom->base_link 与 base_link->laser_frame。         # transient-local late subscriber 因此不再依赖两个独立 CLI publisher 的发现时序。         broadcaster.sendTransform(             [                 make_transform(node, frames[\"odom\"], frames[\"base\"]),                 make_transform(node, frames[\"base\"], frames[\"laser\"]),             ]         )      publish_static_transforms()     node.create_timer(0.5, publish_static_transforms)     try:         rclpy.spin(node)     finally:         node.destroy_node()         if rclpy.ok():             rclpy.shutdown()   if __name__ == \"__main__\":     main() {\"odom\": \"odom\", \"base\": \"base_link\", \"laser\": \"laser_frame\"} static_tf_odom_base static_tf_base_laser odom_to_base_link base_link_to_laser_frame",
+          "pgid": 486522,
+          "pid": 486563,
+          "role": "static_tf_base_laser",
+          "roles": [
+            "static_tf_base_laser",
+            "static_tf_odom_base"
+          ],
+          "source_type": "single_rclpy_static_transform_broadcaster"
+        }
+      ],
+      "source_strategy": "single_rclpy_static_transform_broadcaster_transient_local"
+    },
+    "map_frame_observed": false,
+    "map_inputs_ready": false,
+    "map_lifecycle_preflight": {
+      "amcl_active": false,
+      "classification": "map_lifecycle_preflight_map_server_and_amcl_inactive",
+      "executed": true,
+      "map_server_active": false,
+      "results": {
+        "amcl": {
+          "boundary": "managed_runtime_lifecycle_check_not_run",
+          "executed": false,
+          "ok": false
+        },
+        "map_server": {
+          "boundary": "managed_runtime_lifecycle_check_not_run",
+          "executed": false,
+          "ok": false
+        },
+        "planner_server": {
+          "boundary": "managed_runtime_lifecycle_check_not_run",
+          "executed": false,
+          "ok": false
+        }
+      },
+      "root_causes": [
+        {
+          "layer": "Nav2 lifecycle",
+          "reason": "map_server_lifecycle_not_active_during_preflight"
+        },
+        {
+          "layer": "Nav2 lifecycle",
+          "reason": "amcl_lifecycle_not_active_during_preflight"
+        }
+      ]
+    },
+    "map_server_active": false,
+    "odom_frame_observed": false,
+    "package_availability": {
+      "nav2_amcl": null,
+      "nav2_lifecycle_manager": null,
+      "nav2_map_server": null,
+      "ros2_trashbot_bringup": null,
+      "ros2_trashbot_nav": null
+    },
+    "package_check_mode": "deferred_after_localization_main_path",
+    "package_checks_batch_ok": false,
+    "path_generated": false,
+    "path_generation_attempted": false,
+    "path_generation_gate": {
+      "amcl_gate_ready": false,
+      "attempted": false,
+      "blocked_reason": "path_generation_blocked_by_localization_not_ready",
+      "boundary": null,
+      "generated": false,
+      "localization_root_causes": [
+        {
+          "layer": "AMCL localization",
+          "reason": "/amcl_pose_once_not_observed"
+        },
+        {
+          "detail": "frame_missing_or_name_mismatch",
+          "layer": "Localization TF",
+          "reason": "map_to_odom_not_observed",
+          "source": "map_to_odom"
+        }
+      ],
+      "localization_tf_gate_ready": false,
+      "planner_server_ready_for_path_generation": false,
+      "point_count": 0,
+      "requested": true
+    },
+    "path_generation_requested": true,
+    "path_generation_succeeded": false,
+    "path_point_count": 0,
+    "phase_history": [
+      {
+        "at_ms": 1783781864423,
+        "detail": {
+          "mode": "no_motion_amcl_nav2_runtime_proof"
+        },
+        "ok": true,
+        "phase": "start"
+      },
+      {
+        "at_ms": 1783781864438,
+        "detail": {
+          "source_proof_status": "blocked_with_root_cause"
+        },
+        "ok": false,
+        "phase": "map_inputs"
+      },
+      {
+        "at_ms": 1783781864450,
+        "phase": "board_source_preflight"
+      },
+      {
+        "at_ms": 1783781875319,
+        "detail": {
+          "classification": "board_source_preflight_ready",
+          "cli_ready": true,
+          "rclpy_import_ok": true,
+          "ros2_cli_ok": true,
+          "runtime_ready": true
+        },
+        "ok": true,
+        "phase": "board_source_preflight"
+      },
+      {
+        "at_ms": 1783781875362,
+        "detail": {
+          "map_yaml_source": "explicit_cli_managed_map_yaml",
+          "requested": true
+        },
+        "phase": "managed_runtime"
+      },
+      {
+        "at_ms": 1783781875383,
+        "detail": {
+          "map_yaml": "/root/rober/onboard/runtime/maps/trashbot_map.yaml",
+          "process_group": 486522
+        },
+        "ok": true,
+        "phase": "managed_runtime_started"
+      },
+      {
+        "at_ms": 1783781898514,
+        "detail": {
+          "reason": "managed_runtime_wait_timeout"
+        },
+        "ok": false,
+        "phase": "managed_runtime_wait"
+      },
+      {
+        "at_ms": 1783781901436,
+        "phase": "initialpose"
+      },
+      {
+        "at_ms": 1783781912266,
+        "detail": {
+          "enabled": true,
+          "method": "ros2_topic_pub_once_cli_fallback",
+          "publish_attempts": 1,
+          "subscriber_count": null
+        },
+        "ok": false,
+        "phase": "initialpose"
+      },
+      {
+        "at_ms": 1783781912298,
+        "phase": "amcl_pose_probe"
+      },
+      {
+        "at_ms": 1783781923453,
+        "ok": false,
+        "phase": "amcl_pose_probe",
+        "root_cause": {
+          "layer": "AMCL localization",
+          "reason": "/amcl_pose_once_not_observed"
+        }
+      },
+      {
+        "at_ms": 1783781923464,
+        "phase": "tf_source_probe"
+      },
+      {
+        "at_ms": 1783781923526,
+        "detail": {
+          "amcl_tf_root_cause": "/tf_topic_missing"
+        },
+        "ok": false,
+        "phase": "tf_source_probe"
+      },
+      {
+        "at_ms": 1783781923539,
+        "phase": "tf_probe"
+      },
+      {
+        "at_ms": 1783781936560,
+        "ok": false,
+        "phase": "tf_probe_map_to_odom",
+        "root_cause": {
+          "detail": "frame_missing_or_name_mismatch",
+          "layer": "Localization TF",
+          "reason": "map_to_odom_not_observed",
+          "source": "map_to_odom"
+        }
+      }
+    ],
+    "publishes_cmd_vel": false,
+    "recent_commands": [
+      {
+        "command": "board_source_stage_probe",
+        "elapsed_ms": 3129,
+        "error": null,
+        "finished_at_ms": 1783781867586,
+        "ok": true,
+        "returncode": 0
+      },
+      {
+        "command": "python3 -c 'import json\nimport os\nimport subprocess\nimport time\n\nPATH_TIMEOUT_S = 2.0\nINVOCATION_TIMEOUT_S = 4.0\n\ndef now_ms():\n    return int(time.time() * 1000)\n\ndef compact(text, limit):\n    return (text or \"\")[-limit:]\n\ndef run_layer(label, command, timeout_s):\n    started_ms = now_ms()\n    try:\n        completed = subprocess.run(\n            [\"bash\", \"-lc\", command],\n            check=False,\n            text=True,\n            stdout=subprocess.PIPE,\n            stderr=subprocess.PIPE,\n            timeout=timeout_s,\n        )\n        return {\n            \"label\": label,\n            \"command\": command,\n            \"executed\": True,\n            \"ok\": completed.returncode == 0,\n            \"returncode\": completed.returncode,\n            \"started_at_ms\": started_ms,\n            \"finished_at_ms\": now_ms(),\n            \"timeout_s\": timeout_s,\n            \"timed_out\": False,\n            \"elapsed_ms\": now_ms() - started_ms,\n            \"stdout\": compact(completed.stdout, 2000),\n            \"stderr\": compact(completed.stderr, 1000),\n        }\n    except subprocess.TimeoutExpired as exc:\n        stdout = exc.stdout if isinstance(exc.stdout, str) else \"\"\n        stderr = exc.stderr if isinstance(exc.stderr, str) else \"\"\n        return {\n            \"label\": label,\n            \"command\": command,\n            \"executed\": True,\n            \"ok\": False,\n            \"returncode\": None,\n            \"started_at_ms\": started_ms,\n            \"finished_at_ms\": now_ms(),\n            \"timeout_s\": timeout_s,\n            \"timed_out\": True,\n            \"elapsed_ms\": now_ms() - started_ms,\n            \"stdout\": compact(stdout, 2000),\n            \"stderr\": compact(stderr, 1000),\n            \"error\": {\"type\": \"TimeoutExpired\", \"message\": f\"{label} timed out after {timeout_s}s\"},\n        }\n\npath_lookup = {\n    \"command_v\": run_layer(\"command_v\", \"command -v ros2\", PATH_TIMEOUT_S),\n    \"type_a\": run_layer(\"type_a\", \"type -a ros2\", PATH_TIMEOUT_S),\n    \"which\": run_layer(\"which\", \"which ros2\", PATH_TIMEOUT_S),\n}\nros2_path = \"\"\nfor key in (\"command_v\", \"which\"):\n    candidate = str(path_lookup[key].get(\"stdout\") or \"\").strip().splitlines()\n    if candidate:\n        ros2_path = candidate[0].strip()\n        break\nif ros2_path:\n    cli_invocation = run_layer(\"ros2_help\", \"ros2 --help >/dev/null\", INVOCATION_TIMEOUT_S)\nelse:\n    cli_invocation = {\n        \"label\": \"ros2_help\",\n        \"command\": \"ros2 --help >/dev/null\",\n        \"executed\": False,\n        \"ok\": False,\n        \"timeout_s\": INVOCATION_TIMEOUT_S,\n        \"timed_out\": False,\n        \"boundary\": \"ros2_path_missing_skip_cli_invocation\",\n        \"stdout\": \"\",\n        \"stderr\": \"\",\n    }\npayload = {\n    \"environment\": {\n        \"PATH\": os.environ.get(\"PATH\", \"\"),\n        \"AMENT_PREFIX_PATH\": os.environ.get(\"AMENT_PREFIX_PATH\", \"\"),\n        \"PYTHONPATH\": os.environ.get(\"PYTHONPATH\", \"\"),\n        \"LD_LIBRARY_PATH\": os.environ.get(\"LD_LIBRARY_PATH\", \"\"),\n    },\n    \"path_lookup\": path_lookup,\n    \"ros2_cli_path\": ros2_path or None,\n    \"cli_invocation\": cli_invocation,\n}\nprint(json.dumps(payload, ensure_ascii=False))'",
+        "elapsed_ms": 5012,
+        "error": null,
+        "finished_at_ms": 1783781872604,
+        "ok": true,
+        "returncode": 0
+      },
+      {
+        "command": "python3 -c 'import json\nimport sys\n\npayload = {\n    \"python_executable\": sys.executable,\n    \"python_version\": sys.version.split()[0],\n    \"sys_path_head\": sys.path[:8],\n    \"rclpy_import_ok\": False,\n    \"rclpy_file\": None,\n    \"error\": None,\n}\n\ntry:\n    import rclpy\n    payload[\"rclpy_import_ok\"] = True\n    payload[\"rclpy_file\"] = getattr(rclpy, \"__file__\", None)\nexcept Exception as exc:\n    payload[\"error\"] = {\n        \"type\": type(exc).__name__,\n        \"message\": str(exc)[:240],\n    }\n\nprint(json.dumps(payload, ensure_ascii=False))'",
+        "elapsed_ms": 2692,
+        "error": null,
+        "finished_at_ms": 1783781875302,
+        "ok": true,
+        "returncode": 0
+      },
+      {
+        "command": "python3 - <<'PY'\nimport json\nimport time\n\npayload = {\n    \"executed\": False,\n    \"ok\": False,\n    \"node_names\": [],\n    \"boundary\": \"rclpy_node_names_not_started\",\n    \"error\": None,\n}\nnode = None\nrclpy_initialized = False\nstarted_ms = int(time.time() * 1000)\ntry:\n    import rclpy\n\n    payload[\"executed\"] = True\n    if not rclpy.ok():\n        rclpy.init(args=None)\n    rclpy_initialized = True\n    node = rclpy.create_node(\"o10_managed_runtime_graph_probe\")\n    deadline = time.time() + 0.8\n    names = []\n    while time.time() < deadline:\n        rclpy.spin_once(node, timeout_sec=0.05)\n        names = sorted({name for name in node.get_node_names() if name})\n        if names:\n            break\n    payload.update({\n        \"ok\": bool(names),\n        \"node_names\": names,\n        \"boundary\": \"rclpy_node_names_observed\" if names else \"rclpy_node_names_empty_after_wait\",\n    })\nexcept Exception as exc:\n    payload[\"error\"] = {\"type\": type(exc).__name__, \"message\": str(exc)[:240]}\n    payload[\"boundary\"] = \"rclpy_node_names_failed\"\nfinally:\n    payload[\"elapsed_ms\"] = int(time.time() * 1000) - started_ms\n    if node is not None:\n        try:\n            node.destroy_node()\n        except Exception:\n            pass\n    if rclpy_initialized:\n        try:\n            if rclpy.ok():\n                rclpy.shutdown()\n        except Exception:\n            pass\nprint(json.dumps(payload, ensure_ascii=False))\nPY",
+        "elapsed_ms": 8192,
+        "error": {
+          "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; python3 - <<\\'PY\\'\\nimport json\\nimport tim",
+          "type": "TimeoutExpired"
+        },
+        "finished_at_ms": 1783781883589,
+        "ok": false,
+        "returncode": null
+      },
+      {
+        "command": "python3 - <<'PY'\nimport json\nimport time\n\npayload = {\n    \"executed\": False,\n    \"ok\": False,\n    \"node_names\": [],\n    \"boundary\": \"rclpy_node_names_not_started\",\n    \"error\": None,\n}\nnode = None\nrclpy_initialized = False\nstarted_ms = int(time.time() * 1000)\ntry:\n    import rclpy\n\n    payload[\"executed\"] = True\n    if not rclpy.ok():\n        rclpy.init(args=None)\n    rclpy_initialized = True\n    node = rclpy.create_node(\"o10_managed_runtime_graph_probe\")\n    deadline = time.time() + 0.8\n    names = []\n    while time.time() < deadline:\n        rclpy.spin_once(node, timeout_sec=0.05)\n        names = sorted({name for name in node.get_node_names() if name})\n        if names:\n            break\n    payload.update({\n        \"ok\": bool(names),\n        \"node_names\": names,\n        \"boundary\": \"rclpy_node_names_observed\" if names else \"rclpy_node_names_empty_after_wait\",\n    })\nexcept Exception as exc:\n    payload[\"error\"] = {\"type\": type(exc).__name__, \"message\": str(exc)[:240]}\n    payload[\"boundary\"] = \"rclpy_node_names_failed\"\nfinally:\n    payload[\"elapsed_ms\"] = int(time.time() * 1000) - started_ms\n    if node is not None:\n        try:\n            node.destroy_node()\n        except Exception:\n            pass\n    if rclpy_initialized:\n        try:\n            if rclpy.ok():\n                rclpy.shutdown()\n        except Exception:\n            pass\nprint(json.dumps(payload, ensure_ascii=False))\nPY",
+        "elapsed_ms": 6423,
+        "error": {
+          "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; python3 - <<\\'PY\\'\\nimport json\\nimport tim",
+          "type": "TimeoutExpired"
+        },
+        "finished_at_ms": 1783781890625,
+        "ok": false,
+        "returncode": null
+      },
+      {
+        "command": "python3 - <<'PY'\nimport json\nimport time\n\npayload = {\n    \"executed\": False,\n    \"ok\": False,\n    \"node_names\": [],\n    \"boundary\": \"rclpy_node_names_not_started\",\n    \"error\": None,\n}\nnode = None\nrclpy_initialized = False\nstarted_ms = int(time.time() * 1000)\ntry:\n    import rclpy\n\n    payload[\"executed\"] = True\n    if not rclpy.ok():\n        rclpy.init(args=None)\n    rclpy_initialized = True\n    node = rclpy.create_node(\"o10_managed_runtime_graph_probe\")\n    deadline = time.time() + 0.8\n    names = []\n    while time.time() < deadline:\n        rclpy.spin_once(node, timeout_sec=0.05)\n        names = sorted({name for name in node.get_node_names() if name})\n        if names:\n            break\n    payload.update({\n        \"ok\": bool(names),\n        \"node_names\": names,\n        \"boundary\": \"rclpy_node_names_observed\" if names else \"rclpy_node_names_empty_after_wait\",\n    })\nexcept Exception as exc:\n    payload[\"error\"] = {\"type\": type(exc).__name__, \"message\": str(exc)[:240]}\n    payload[\"boundary\"] = \"rclpy_node_names_failed\"\nfinally:\n    payload[\"elapsed_ms\"] = int(time.time() * 1000) - started_ms\n    if node is not None:\n        try:\n            node.destroy_node()\n        except Exception:\n            pass\n    if rclpy_initialized:\n        try:\n            if rclpy.ok():\n                rclpy.shutdown()\n        except Exception:\n            pass\nprint(json.dumps(payload, ensure_ascii=False))\nPY",
+        "elapsed_ms": 6332,
+        "error": {
+          "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; python3 - <<\\'PY\\'\\nimport json\\nimport tim",
+          "type": "TimeoutExpired"
+        },
+        "finished_at_ms": 1783781897598,
+        "ok": false,
+        "returncode": null
+      },
+      {
+        "command": "ros2 topic pub --once /initialpose geometry_msgs/msg/PoseWithCovarianceStamped '{\"header\": {\"frame_id\": \"map\", \"stamp\": {\"sec\": 0, \"nanosec\": 0}}, \"pose\": {\"pose\": {\"position\": {\"x\": 0.0, \"y\": 0.0, \"z\": 0.0}, \"orientation\": {\"x\": 0.0, \"y\": 0.0, \"z\": 0.0, \"w\": 1.0}}, \"covariance\": [0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.06853891945200942]}}'",
+        "elapsed_ms": 8051,
+        "error": {
+          "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; ros2 topic pub --once /initialpose geometry",
+          "type": "TimeoutExpired"
+        },
+        "finished_at_ms": 1783781912233,
+        "ok": false,
+        "returncode": null
+      },
+      {
+        "command": "timeout 8 ros2 topic echo --once /amcl_pose",
+        "elapsed_ms": 11116,
+        "error": null,
+        "finished_at_ms": 1783781923426,
+        "ok": false,
+        "returncode": 124
+      },
+      {
+        "command": "timeout 10 ros2 run tf2_ros tf2_echo map odom",
+        "elapsed_ms": 12955,
+        "error": null,
+        "finished_at_ms": 1783781936507,
+        "ok": false,
+        "returncode": 124
+      }
+    ],
+    "robot_control_executed": false,
+    "root_causes": [
+      {
+        "layer": "AMCL localization",
+        "reason": "/amcl_pose_once_not_observed"
+      },
+      {
+        "detail": "frame_missing_or_name_mismatch",
+        "layer": "Localization TF",
+        "reason": "map_to_odom_not_observed",
+        "source": "map_to_odom"
+      }
+    ],
+    "route_execution_success": false,
+    "safe_to_control": false,
+    "sends_base_motion_commands": false,
+    "sends_motion_commands": false,
+    "started_at_ms": 1783781864422,
+    "static_tf_source_observed": false,
+    "status": "partial_runtime_in_progress",
+    "tf_chain_diagnostics": {
+      "frame_contract": {
+        "actual": {
+          "base": "base_link",
+          "laser": "laser_frame",
+          "map": "map",
+          "odom": "odom"
+        },
+        "consistent_with_defaults": true,
+        "expected": {
+          "base": "base_link",
+          "laser": "laser_frame",
+          "map": "map",
+          "odom": "odom"
+        }
+      },
+      "pairs": {
+        "base_link_to_laser_frame": {
+          "boundary": "tf_probe_not_requested_without_initialpose_opt_in",
+          "elapsed_ms": null,
+          "error": null,
+          "executed": false,
+          "failure_reason": "tf2_empty_output_or_timing",
+          "observed": false,
+          "returncode": null,
+          "source_frame": "base_link",
+          "stderr_preview": "",
+          "stdout_preview": "",
+          "target_frame": "laser_frame"
+        },
+        "map_to_base_link": {
+          "boundary": "tf_probe_not_requested_without_initialpose_opt_in",
+          "elapsed_ms": null,
+          "error": null,
+          "executed": false,
+          "failure_reason": "tf2_empty_output_or_timing",
+          "observed": false,
+          "returncode": null,
+          "source_frame": "map",
+          "stderr_preview": "",
+          "stdout_preview": "",
+          "target_frame": "base_link"
+        },
+        "map_to_odom": {
+          "boundary": null,
+          "elapsed_ms": 12955,
+          "error": null,
+          "executed": true,
+          "failure_reason": "frame_missing_or_name_mismatch",
+          "observed": false,
+          "returncode": 124,
+          "source_frame": "map",
+          "stderr_preview": "783781935.006913001] [tf2_echo]: Waiting for transform map ->  odom: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1783781936.006966736] [tf2_echo]: Waiting for transform map ->  odom: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1783781936.021085550] [rclcpp]: signal_handler(SIGINT/SIGTERM)\n",
+          "stdout_preview": "",
+          "target_frame": "odom"
+        },
+        "odom_to_base_link": {
+          "boundary": "tf_probe_not_requested_without_initialpose_opt_in",
+          "elapsed_ms": null,
+          "error": null,
+          "executed": false,
+          "failure_reason": "tf2_empty_output_or_timing",
+          "observed": false,
+          "returncode": null,
+          "source_frame": "odom",
+          "stderr_preview": "",
+          "stdout_preview": "",
+          "target_frame": "base_link"
+        }
+      },
+      "source_diagnostics": {
+        "amcl_broadcast_conditions": {
+          "amcl_frame_params_match_helper": false,
+          "amcl_pose_frame_id_is_map": true,
+          "amcl_pose_observed": true,
+          "base_link_to_laser_frame_source_observed": false,
+          "initialpose_published": null,
+          "map_once_observed": null,
+          "map_to_odom_source_observed": false,
+          "odom_to_base_link_dynamic_source_observed": false,
+          "odom_to_base_link_source_observed": false,
+          "odom_to_base_link_static_source_observed": false,
+          "scan_once_observed": null,
+          "tf_broadcast_enabled": false
+        },
+        "amcl_frame_params": {
+          "base_frame_id": null,
+          "global_frame_id": null,
+          "odom_frame_id": null
+        },
+        "amcl_node_info_observed": false,
+        "amcl_node_publishers": [],
+        "amcl_node_subscribers": [],
+        "amcl_param_probe_ok": false,
+        "amcl_pose_frame_id": "map",
+        "amcl_tf_broadcast_param": null,
+        "amcl_tf_root_cause": "/tf_topic_missing",
+        "base_frame_observed": false,
+        "base_link_to_laser_frame_source_observed": false,
+        "base_link_to_laser_frame_source_transform": null,
+        "frame_contract": {
+          "actual": {
+            "base": "base_link",
+            "laser": "laser_frame",
+            "map": "map",
+            "odom": "odom"
+          },
+          "consistent_with_defaults": true,
+          "expected": {
+            "base": "base_link",
+            "laser": "laser_frame",
+            "map": "map",
+            "odom": "odom"
+          }
+        },
+        "laser_frame_observed": false,
+        "map_frame_observed": false,
+        "map_to_odom_source_observed": false,
+        "odom_frame_observed": false,
+        "odom_to_base_link_dynamic_source_observed": false,
+        "odom_to_base_link_source_observed": false,
+        "odom_to_base_link_static_source_observed": false,
+        "tf_frame_inventory": {
+          "command_statuses": {
+            "tf": null,
+            "tf_static": null,
+            "topic_list": null
+          },
+          "dynamic_edges": [],
+          "dynamic_transforms": [],
+          "edges": [],
+          "frames": [],
+          "static_edges": [],
+          "static_transforms": [],
+          "topic_types": {},
+          "transforms": []
+        },
+        "tf_source_root_cause_detail": {
+          "amcl_node_info_observed": false,
+          "amcl_param_probe_boundary": "rclpy_amcl_probe_failed",
+          "amcl_param_probe_error": {
+            "message": "librcl_action.so: cannot open shared object file: No such file or directory\nThe C extension '/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/_rclpy_pybind11.cpython-310-aarch64-linux-gnu.so' failed to be imported while being presen",
+            "type": "ImportError"
+          },
+          "amcl_param_probe_ok": false,
+          "amcl_pose_frame_id": "map",
+          "base_link_to_laser_frame_source_observed": false,
+          "base_link_to_laser_frame_source_transform": null,
+          "expected_params": {
+            "base_frame_id": "base_link",
+            "global_frame_id": "map",
+            "odom_frame_id": "odom",
+            "tf_broadcast": "true"
+          },
+          "map_to_odom_source_observed": false,
+          "observed_params": {
+            "base_frame_id": null,
+            "global_frame_id": null,
+            "odom_frame_id": null,
+            "tf_broadcast": null
+          },
+          "odom_to_base_link_dynamic_source_observed": false,
+          "odom_to_base_link_source_observed": false,
+          "odom_to_base_link_static_source_observed": false,
+          "reason": "/tf_topic_missing",
+          "tf_command_statuses": {
+            "tf": null,
+            "tf_static": null,
+            "topic_list": null
+          }
+        },
+        "tf_static_observed": false,
+        "tf_topics_observed": {
+          "/tf": false,
+          "/tf_static": false
+        },
+        "topic_endpoint_summaries": {
+          "/amcl_pose": {
+            "error": null,
+            "publisher_count": 0,
+            "publishers": [],
+            "subscriber_count": 0,
+            "subscribers": []
+          },
+          "/odom": {
+            "error": null,
+            "publisher_count": 0,
+            "publishers": [],
+            "subscriber_count": 0,
+            "subscribers": []
+          },
+          "/scan": {
+            "error": null,
+            "publisher_count": 0,
+            "publishers": [],
+            "subscriber_count": 0,
+            "subscribers": []
+          },
+          "/tf": {
+            "error": null,
+            "publisher_count": 0,
+            "publishers": [],
+            "subscriber_count": 0,
+            "subscribers": []
+          },
+          "/tf_static": {
+            "error": null,
+            "publisher_count": 0,
+            "publishers": [],
+            "subscriber_count": 0,
+            "subscribers": []
+          }
+        }
+      }
+    },
+    "tf_chain_observed": {
+      "base_link_to_laser_frame": false,
+      "map_to_base_link": false,
+      "map_to_odom": false,
+      "odom_to_base_link": false
+    },
+    "tf_failure_classification": {
+      "amcl_tf_root_cause": "/tf_topic_missing",
+      "blocking_segment": "map_to_odom",
+      "frame_naming_consistent": true,
+      "map_to_base_link": "blocked_by_missing_map_to_odom",
+      "reason": "/tf_topic_missing"
+    },
+    "tf_frame_inventory": {
+      "command_statuses": {
+        "tf": null,
+        "tf_static": null,
+        "topic_list": null
+      },
+      "dynamic_edges": [],
+      "dynamic_transforms": [],
+      "edges": [],
+      "frames": [],
+      "static_edges": [],
+      "static_transforms": [],
+      "topic_types": {},
+      "transforms": []
+    },
+    "tf_readiness_summary": {
+      "blocked_reason": "/tf_topic_missing",
+      "map_to_base_link": {
+        "blocked_reason": "/tf_topic_missing",
+        "blocking_segment": "map_to_odom",
+        "boundary": "blocked_by_missing_map_to_odom",
+        "freshness": {
+          "reason": "/tf_topic_missing",
+          "status": "not_observed"
+        },
+        "observed": false,
+        "source_class": "missing",
+        "source_edges": [
+          "map_to_odom",
+          "odom_to_base_link"
+        ]
+      },
+      "map_to_odom_dynamic": {
+        "boundary": null,
+        "dynamic_source_observed": false,
+        "failure_reason": "frame_missing_or_name_mismatch",
+        "freshness": {},
+        "observed": false,
+        "required_source_class": "dynamic",
+        "source_class": "missing",
+        "source_topic": null,
+        "static_source_observed": false,
+        "timestamp": {}
+      },
+      "odom_to_base_link": {
+        "boundary": "tf_probe_not_requested_without_initialpose_opt_in",
+        "dynamic_source_observed": false,
+        "failure_reason": "tf2_empty_output_or_timing",
+        "freshness": {},
+        "observed": false,
+        "required_source_class": null,
+        "source_class": "missing",
+        "source_topic": null,
+        "static_source_observed": false,
+        "timestamp": {}
+      },
+      "ready": false
+    },
+    "tf_source_freshness": {
+      "dynamic_edge_count": 0,
+      "edges": {},
+      "static_edge_count": 0
+    },
+    "tf_source_root_cause_detail": {
+      "amcl_node_info_observed": false,
+      "amcl_param_probe_boundary": "rclpy_amcl_probe_failed",
+      "amcl_param_probe_error": {
+        "message": "librcl_action.so: cannot open shared object file: No such file or directory\nThe C extension '/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/_rclpy_pybind11.cpython-310-aarch64-linux-gnu.so' failed to be imported while being presen",
+        "type": "ImportError"
+      },
+      "amcl_param_probe_ok": false,
+      "amcl_pose_frame_id": "map",
+      "base_link_to_laser_frame_source_observed": false,
+      "base_link_to_laser_frame_source_transform": null,
+      "expected_params": {
+        "base_frame_id": "base_link",
+        "global_frame_id": "map",
+        "odom_frame_id": "odom",
+        "tf_broadcast": "true"
+      },
+      "map_to_odom_source_observed": false,
+      "observed_params": {
+        "base_frame_id": null,
+        "global_frame_id": null,
+        "odom_frame_id": null,
+        "tf_broadcast": null
+      },
+      "odom_to_base_link_dynamic_source_observed": false,
+      "odom_to_base_link_source_observed": false,
+      "odom_to_base_link_static_source_observed": false,
+      "reason": "/tf_topic_missing",
+      "tf_command_statuses": {
+        "tf": null,
+        "tf_static": null,
+        "topic_list": null
+      }
+    },
+    "tf_static_observed": false,
+    "tf_topics_observed": {
+      "/tf": false,
+      "/tf_static": false
+    },
+    "uses_base_uart": false
+  },
+  "publishes_cmd_vel": false,
+  "robot_control_executed": false,
+  "route_execution_success": false,
+  "safe_to_control": false,
+  "schema": "trashbot.upper_robot_api.v1.nav2_lifecycle_runtime_proof",
+  "sends_base_motion_commands": false,
+  "sends_motion_commands": false,
+  "software_guard": true,
+  "status": "partial_runtime_in_progress",
+  "uses_base_uart": false
+}

@@ -136,6 +136,71 @@ class WaveRoverMotionMapHilMaterialBundleTest(unittest.TestCase):
         self.assertFalse(summary["sends_motion_commands"])
         self.assertTrue(summary["wheel_feedback_diagnostic_context_present"])
         self.assertTrue(summary["wheel_feedback_sweep_all_nonzero_lr_count_zero"])
+        self.assertTrue(summary["same_session_wheel_feedback_material_present"])
+        self.assertEqual(
+            summary["same_session_wheel_feedback_material_status"],
+            "same_session_wheel_feedback_material_ready_not_hil_pass",
+        )
+        self.assertTrue(summary["same_session_wheel_feedback_lr_nonzero_material_present"])
+        self.assertEqual(summary["same_session_wheel_feedback_latest_nonzero_pair"]["left_speed"], 61.0)
+        self.assertEqual(summary["same_session_wheel_feedback_latest_nonzero_pair"]["right_speed"], 61.0)
+        self.assertEqual(
+            summary["same_session_wheel_feedback_latest_nonzero_pair"]["sign_pattern"],
+            "both_positive",
+        )
+        self.assertEqual(summary["same_session_wheel_feedback_motion_window_nonzero_pair_count"], 1)
+        self.assertEqual(summary["same_session_wheel_feedback_motion_window_t1001_count"], 1)
+        self.assertTrue(summary["same_session_wheel_feedback_feedback_request_t130_observed"])
+        self.assertFalse(summary["same_session_wheel_feedback_current_live_rerun"])
+        self.assertEqual(
+            summary["same_session_hil_acceptance_status"],
+            "blocked_missing_current_live_acceptance",
+        )
+        self.assertEqual(
+            summary["same_session_hil_acceptance_missing_fields"],
+            [
+                "external_video_recorded",
+                "physical_motion_lidar_delta_proven",
+                "current_live_hil_acceptance_record",
+                "current_live_nav2_route_execution_success",
+            ],
+        )
+        self.assertTrue(summary["same_session_hil_acceptance_ready_not_hil_pass"])
+        self.assertTrue(summary["same_session_pc_command_material_present"])
+        self.assertEqual(
+            summary["same_session_pc_command_material_status"],
+            "same_session_pc_command_material_ready_not_hil_pass",
+        )
+        self.assertEqual(summary["same_session_pc_command_requested_direction"], "forward")
+        self.assertEqual(summary["same_session_pc_command_applied_direction"], "forward")
+        self.assertEqual(summary["same_session_pc_command_clamped_speed_mps"], 0.04)
+        self.assertEqual(summary["same_session_pc_command_clamped_duration_ms"], 800)
+        self.assertTrue(summary["same_session_pc_command_checklist_confirmed"])
+        self.assertEqual(summary["same_session_pc_command_evidence_capture_status"], "captured")
+        self.assertTrue(summary["same_session_pc_command_wheel_feedback_lr_nonzero_material_present"])
+        self.assertEqual(summary["same_session_pc_command_motion_window_nonzero_frame_count"], 1)
+        self.assertEqual(summary["same_session_pc_command_latest_nonzero_pair"]["left_speed"], 20.0)
+        self.assertEqual(summary["same_session_pc_command_latest_nonzero_pair"]["right_speed"], 20.0)
+        self.assertEqual(
+            summary["same_session_pc_command_latest_nonzero_pair"]["sign_pattern"],
+            "both_positive",
+        )
+        self.assertTrue(summary["same_session_pc_command_feedback_during_motion_attempted"])
+        self.assertTrue(summary["same_session_pc_command_feedback_after_stop_attempted"])
+        self.assertTrue(summary["same_session_pc_command_manual_command_executed"])
+        self.assertTrue(summary["same_session_pc_command_auto_stop_executed"])
+        self.assertTrue(summary["same_session_pc_command_after_jog_t1001_observed"])
+        self.assertEqual(summary["same_session_pc_command_after_jog_feedback_source"], "fresh_readback")
+        self.assertEqual(summary["same_session_pc_command_after_jog_latest_pair"]["left_speed"], 0.0)
+        self.assertEqual(summary["same_session_pc_command_after_jog_latest_pair"]["right_speed"], 0.0)
+        self.assertEqual(
+            summary["same_session_pc_command_after_jog_latest_pair"]["sign_pattern"],
+            "both_zero",
+        )
+        self.assertTrue(summary["same_session_pc_command_after_jog_wheel_feedback_lr_zero_readback"])
+        self.assertEqual(summary["same_session_pc_command_after_jog_feedback_samples_freshness_status"], "stale")
+        self.assertTrue(summary["same_session_pc_command_after_jog_readback_sends_commands"])
+        self.assertNotIn("wheel_feedback_lr_nonzero_proven", summary)
         self.assertEqual(summary["blocked_reasons"], [])
         self.assertFalse(summary["hil_pass"])
         self.assertFalse(summary["safe_to_control"])
@@ -166,6 +231,10 @@ class WaveRoverMotionMapHilMaterialBundleTest(unittest.TestCase):
         self.assertNotIn("camera_visible", rendered)
         self.assertNotIn("safe_command_boundary", rendered)
         self.assertNotIn("scan_delta_ref", rendered)
+        self.assertNotIn("serial_motion_transaction", rendered)
+        self.assertNotIn("compact_frames", rendered)
+        self.assertNotIn("/api/base", rendered)
+        self.assertNotIn("ttyS5", rendered)
         self.assertNotIn("token-secret", rendered.lower())
         self.assertNotIn("secret", rendered.lower())
         self.assertNotIn("baudrate", rendered.lower())
@@ -824,6 +893,89 @@ class WaveRoverMotionMapHilMaterialBundleTest(unittest.TestCase):
         )
         self.assertNotIn("example.invalid", rendered)
         self.assertNotIn("token-secret", rendered)
+
+    def test_same_session_wheel_feedback_dangerous_true_blocks(self):
+        material = _module()
+        same_session = _load_json_path(Path(material.DEFAULT_PATHS["same_session_wheel_feedback_json"]))
+        same_session["safe_to_control"] = True
+        same_session["nav2_route_execution_success"] = True
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            broken_path = Path(tmpdir) / "same_session.json"
+            broken_path.write_text(json.dumps(same_session), encoding="utf-8")
+            paths = _default_paths()
+            paths["same_session_wheel_feedback_json"] = broken_path
+            summary = material.build_motion_map_hil_material_bundle_from_files(paths)
+
+        self.assertEqual(summary["status"], "blocked_invalid_motion_map_hil_material_bundle")
+        self.assertIn(
+            "same_session_wheel_feedback_top_level_safe_to_control_not_false",
+            summary["blocked_reasons"],
+        )
+        self.assertIn(
+            "same_session_wheel_feedback_top_level_nav2_route_execution_success_not_false",
+            summary["blocked_reasons"],
+        )
+        self.assertFalse(summary["same_session_wheel_feedback_material_present"])
+        self.assertEqual(
+            summary["same_session_wheel_feedback_material_status"],
+            "same_session_wheel_feedback_material_blocked_not_hil_pass",
+        )
+        self.assertFalse(summary["same_session_hil_acceptance_ready_not_hil_pass"])
+        self.assertFalse(summary["safe_to_control"])
+        self.assertFalse(summary["nav2_route_execution_success"])
+
+    def test_same_session_wheel_feedback_unsafe_consumed_pair_blocks_without_leakage(self):
+        material = _module()
+        same_session = _load_json_path(Path(material.DEFAULT_PATHS["same_session_wheel_feedback_json"]))
+        latest_pair = same_session["feedback_during_motion"]["wheel_feedback_summary"]["latest_nonzero_pair"]
+        latest_pair["source"] = "https://example.invalid/token-secret"
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            broken_path = Path(tmpdir) / "same_session.json"
+            broken_path.write_text(json.dumps(same_session), encoding="utf-8")
+            paths = _default_paths()
+            paths["same_session_wheel_feedback_json"] = broken_path
+            summary = material.build_motion_map_hil_material_bundle_from_files(paths)
+        rendered = _render(summary)
+
+        self.assertEqual(summary["status"], "blocked_invalid_motion_map_hil_material_bundle")
+        self.assertIn(
+            "same_session_wheel_feedback_latest_pair_source_invalid",
+            summary["blocked_reasons"],
+        )
+        self.assertFalse(summary["same_session_wheel_feedback_material_present"])
+        self.assertNotIn("example.invalid", rendered)
+        self.assertNotIn("token-secret", rendered)
+
+    def test_same_session_pc_command_after_jog_nonzero_blocks_without_leakage(self):
+        material = _module()
+        after_jog = _load_json_path(Path(material.DEFAULT_PATHS["same_session_pc_after_jog_base_status_json"]))
+        latest_pair = after_jog["feedback_readback"]["wheel_feedback_summary"]["latest_pair"]
+        latest_pair["left_speed"] = 1
+        latest_pair["right_speed"] = 1
+        after_jog["feedback_readback"]["wheel_feedback_lr_nonzero_proven"] = True
+        after_jog["port"] = "/dev/tty-secret"
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            broken_path = Path(tmpdir) / "after_jog.json"
+            broken_path.write_text(json.dumps(after_jog), encoding="utf-8")
+            paths = _default_paths()
+            paths["same_session_pc_after_jog_base_status_json"] = broken_path
+            summary = material.build_motion_map_hil_material_bundle_from_files(paths)
+        rendered = _render(summary)
+
+        self.assertEqual(summary["status"], "blocked_invalid_motion_map_hil_material_bundle")
+        self.assertIn(
+            "same_session_pc_command_after_jog_lr_nonzero_not_false",
+            summary["blocked_reasons"],
+        )
+        self.assertIn(
+            "same_session_pc_command_after_jog_latest_pair_left_not_zero",
+            summary["blocked_reasons"],
+        )
+        self.assertFalse(summary["same_session_pc_command_material_present"])
+        self.assertNotIn("/dev/tty-secret", rendered)
 
 
 if __name__ == "__main__":

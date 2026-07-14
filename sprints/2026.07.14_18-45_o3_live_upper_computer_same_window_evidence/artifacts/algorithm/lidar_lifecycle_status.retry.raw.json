@@ -1,0 +1,41 @@
+{
+  "baudrate": 150000,
+  "blocked_base_uart": "/dev/ttyS5",
+  "blocked_commands_not_sent": [
+    "T=1",
+    "T=13",
+    "T=130",
+    "T=131",
+    "/cmd_vel",
+    "/api/base/manual"
+  ],
+  "calls_base_manual": false,
+  "delivery_success": false,
+  "driver": "ros2_trashbot_hardware lidar_driver",
+  "driver_diagnostics_path": "/tmp/rober_lidar_lifecycle/lidar_driver_diagnostics.json",
+  "frame_id": "laser_frame",
+  "generated_at_ms": 1783862229828,
+  "hil_pass": false,
+  "log_dir": "/tmp/rober_lidar_lifecycle/logs",
+  "message": "LiDAR lifecycle manager running",
+  "pid": 550851,
+  "publishes_cmd_vel": false,
+  "robot_control_executed": false,
+  "route_execution_success": false,
+  "running": true,
+  "runtime_dir": "/tmp/rober_lidar_lifecycle",
+  "safe_to_control": false,
+  "schema": "trashbot.o1.lidar_lifecycle.v1",
+  "sends_base_motion_commands": false,
+  "serial_port": "/dev/ttyACM0",
+  "state": "running",
+  "static_tf": "base_link -> laser_frame",
+  "uses_base_uart": false,
+  "vendor_readback_boundary": {
+    "dedicated_lidar_vendor_doc_present_in_local_tree": false,
+    "historical_field_baudrate_candidate": 150000,
+    "vendor_index": "docs/vendor/VENDOR_INDEX.md",
+    "wave_rover_lidar_reference": "docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py",
+    "wave_rover_reference_baudrate": 230400
+  }
+}

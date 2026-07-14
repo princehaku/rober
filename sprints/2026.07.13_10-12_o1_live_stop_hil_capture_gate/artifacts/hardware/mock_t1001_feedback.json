@@ -1,0 +1,15 @@
+{
+  "boundary": "mock_fixture_not_live_uart",
+  "feedback_frames": [
+    {
+      "line": "{\"T\":1001,\"L\":0,\"R\":0,\"r\":0,\"p\":0,\"y\":\"null\",\"v\":12.3}\n",
+      "phase": "after_stop"
+    }
+  ],
+  "schema": "trashbot.o1.mock_t1001_feedback_fixture.v1",
+  "vendor_sources": [
+    "docs/vendor/VENDOR_INDEX.md",
+    "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h",
+    "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/movtion_module.h"
+  ]
+}

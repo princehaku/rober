@@ -25,6 +25,10 @@
 
 `POST /api/o6/archive/artifact-bundle` 是本轮新增的 additive ingest alias。它接受 `trashbot.o6.artifact_bundle.v1` 的结构化 route/replay/keyframe/evidence 摘要，复用同一份 file-backed store，成功响应固定保持 `safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`、`connects_cloud_production=false`、`robot_control_executed=false`、`real_cloud_db_connected=false`、`real_oss_connected=false`，并使用 `source=local_mock_artifact_bundle_archive`。为兼容现有入口，`POST /api/o6/archive/field-evidence` 在 body 顶层为 `artifact_bundle` wrapper 或 `schema=trashbot.o6.artifact_bundle.v1` 时，也会路由到同一条 artifact bundle ingest 逻辑。
 
+`POST /api/o6/archive/events` 的白名单事件类型新增 `operator.dropoff_acceptance`，用于 PC/O7 selected-task operator dropoff action capture。该事件只允许记录 task-bound local/mock action request 摘要，幂等键仍为 `task_id + event_id`，成功响应仍固定 `schema=trashbot.o6.archive_events.v1`、`source=local_mock_event_archive`、`proof_status=not_proven`、`archive_event_written=true`、`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`、`connects_cloud_production=false`、`robot_control_executed=false`、`real_cloud_db_connected=false`、`real_oss_connected=false`。payload 或 metadata 中出现 `real_operator_action_proven=true`、`delivery_success=true`、`route_execution_success=true`、`safe_to_control=true`、`hil_pass=true`、`robot_control_executed=true`、`connects_cloud_production=true`、`/cmd_vel`、`/api/base/manual`、NavigateToPose、WAVE ROVER UART、token、credential、raw/base64 或串口/baudrate 内容时必须 fail-closed。该事件不证明 real operator action、delivery success、route execution、HIL、safe-to-control、production cloud 或 robot control。
+
+`POST /api/o6/archive/events` 的白名单事件类型还包含 `voice.speaker_ack` 和 `voice.speaker_failure`，用于 O7 selected-task voice speaker ACK/failure event-write。两者只记录本机 local/mock ACK receipt 摘要，幂等键仍为 `task_id + event_id`，不得创建 task 或调度 speaker。payload 或 metadata 中出现 `speaker_dispatch_enabled=true`、`real_speaker_ack_proven=true`、`tts_send_enabled=true`、`real_voice_api_connected=true`、`real_asr_tts_runtime_connected=true`、`safe_to_control=true`、`delivery_success=true`、`robot_control_executed=true` 或 `connects_cloud_production=true` 时必须 fail-closed。proof boundary 固定为 `software_proof_o6_o7_voice_speaker_ack_event_write_only`，不证明真实音频播放、真实 speaker ACK、真实 voice API、真实 ASR/TTS runtime、production cloud、delivery、HIL、safe-to-control 或 robot control。
+
 `artifact_access_probe` 是新增 additive 只读摘要，schema 为 `trashbot.o6.artifact_access_probe.v1`，证据边界固定为 `software_proof_local_mock_artifact_access_probe_only`。它只在请求字段 `artifact_access_root` 或环境变量 `TRASHBOT_O6_ARTIFACT_ACCESS_ROOT` 指定 allowlist root 后，对 artifact bundle 原始相对 refs 或 field evidence 安全 basename refs 做本机小文件探测；响应只返回存在性、大小、sha256、detected_type、blocked_reason、proof_scope 和计数，不回显 allowlist root、绝对路径、token、URL query、base64/raw 内容或控制字段。没有 root、root 无效、ref 不安全、越界、目录、缺文件或超过 64KB 时均返回 blocked probe，不读取文件内容。
 
 `offline_artifact_seed_smoke` 是本轮新增的 additive 离线种子摘要，schema 为 `trashbot.o6.offline_artifact_seed_smoke.v1`，source 为 `local_mock_offline_artifact_seed_smoke`，proof_scope 为 `software_proof_offline_artifact_seed_smoke_only`。它由 `artifact_access_probe` 与 artifact bundle / field evidence refs 派生，只保留 counts、sample basename refs、sha256 prefix、blocked_reasons、next_required_evidence、proof_boundary 和全 false 安全旗标，不回显 allowlist root、绝对路径、原始文件内容、token、URL query、base64、串口路径或 `/cmd_vel`。
@@ -49,11 +53,21 @@
 
 `same_task_field_material_packet` 是 additive same-task 准现场材料包安全摘要，输入 schema 为 `trashbot.same_task_field_material_packet.v1`，O6 回读 schema 为 `trashbot.o6.same_task_field_material_packet.v1`，proof_scope 固定为 `software_proof_same_task_field_material_packet_only`。它允许由 `field_evidence_manifest`、`artifact_bundle` 或其中的 `field_motion_evidence_packet` 携带后写入同一 `task_id`，并在 archive task detail、`field_evidence`、`artifact_bundle`、`field_evidence_consumer_ingest`、`artifact_bundle_consumer_ingest`、consumer detail 顶层 alias 与 `include=same_task_field_material_packet` 中回读。Algorithm 实际 packet 支持 `present_materials` / `missing_materials` 中包含 `map_yaml`、`route_csv`、`keyframes`、`route_bag_or_rosbag`、`replay_jsonl`，并把 per-material 摘要放在 `material_summaries.<material>.basename|size_bytes|sha256_prefix|sample_refs|count|present`，顶层 `sample_refs` 保持 list 形态。O6 回读时保留 `task_id/status/source/source_schema/task_id_source/present_materials/missing_materials/map_yaml_present/route_csv_present/keyframes_present/route_bag_or_rosbag_present/replay_jsonl_present/counts/sample_refs/material_sample_refs/same_task_id_consumed/live_or_field_material_consumed/blocked_reasons/next_required_evidence` 和全 false safety flags；其中顶层 `sample_refs` 会被安全降级为 basename list，`material_sample_refs` 保留每种材料的 basename、size、sha256 短前缀、sample refs 与 count。`map_yaml` 当前是 optional：缺失时可保留 `same_task_field_material_map_yaml_missing_optional`，但不会单独把其他已消费材料打成 failed。坏 schema、proof scope mismatch、task mismatch、危险 true、unsafe text/raw/base64、绝对路径、URL/credential query、token 或缺关键材料字段时一律只把该 section 降级为 `blocked_not_proven`，不阻断整条 archive 写入。
 
+`same_task_replay_packet_readback` 是 additive same-task replay packet 只读回读，输入可为 05:02 O3 packet `trashbot.o3.same_task_route_replay_packet.v1` 或 O6 wrapper `trashbot.o6.same_task_replay_packet_readback.v1`，O6 回读 schema 统一为 `trashbot.o6.same_task_replay_packet_readback.v1`，proof_scope 固定为 `software_proof_o6_o7_same_task_replay_packet_readback_only`，source artifact boundary 保留 `software_proof_o3_o1_strict_no_motion_same_task_route_replay_packet_only`。它允许由 `field_evidence_manifest`、`artifact_bundle` 或其中的 `field_motion_evidence_packet` 携带后写入同一 `task_id`，并在 archive task detail、`field_evidence`、`artifact_bundle`、`field_evidence_consumer_ingest`、`artifact_bundle_consumer_ingest`、consumer detail 顶层 alias 与 `include=same_task_replay_packet_readback` 中回读。O6 只保留 `packet_id`、`task_id`、`route_intent_id`、`route_csv_row_count`、`replay_jsonl_event_count`、`path_structured_pose_count`、`same_task_identity_verified`、`same_task_replay_packet_ready`、basename `source_refs`、sha256 短前缀、blocked reasons、next required evidence 和固定 false 字段：`route_execution_success=false`、`delivery_success=false`、`hil_pass=false`、`safe_to_control=false`、`robot_control_executed=false`、`primary_actions_enabled=false`、`publishes_cmd_vel=false`、`calls_base_manual=false`、`uses_base_uart=false`、`connects_cloud_production=false`。该 readback 只证明 O6/O7 能安全消费同一 task 的 replay packet identity/count，不证明 route execution、delivery、HIL、safe-to-control、NavigateToPose/controller/BT、`/cmd_vel`、`/api/base/manual`、WAVE ROVER UART 或生产云证据。
+
+`bounded_route_execution_gate_material` 是 additive 07:07 controlled route execution gate 与 08:09 bounded route command plan 的安全摘要 intake/readback，输入和回读 schema 统一为 `trashbot.o6.bounded_route_execution_gate_material.v1`，proof_scope / evidence_boundary 固定为 `software_proof_o6_o7_bounded_route_gate_material_intake_only`，ready status 统一为 `bounded_route_execution_gate_material_ready_not_route_execution_proof`。它允许由 `field_evidence_manifest`、`artifact_bundle` 或其中的 `field_motion_evidence_packet` 携带后写入同一 `task_id`，并在 archive task detail、`field_evidence`、`artifact_bundle`、`field_evidence_consumer_ingest`、`artifact_bundle_consumer_ingest`、consumer detail 顶层 alias 与 `include=bounded_route_execution_gate_material` 中回读。O6 只保留 exact `packet_id=packet_o3_28_pose_same_task_replay_7d57826142b0c79c`、`task_id=task_o3_28_pose_fixed_route_consumer_20260713_0402`、`route_intent_id=route_intent_20260713_0402_from_20260713_0300_28_pose_structured_path`、`route_csv_row_count=28`、`path_structured_pose_count=28`、`segment_count=27`、`execution_plan_status=blocked_pending_live_safety_gate`、gate/plan source boundary、abort/segment counts、blocked reasons、next required evidence 和固定 false 字段：`safe_to_control=false`、`delivery_success=false`、`route_execution_success=false`、`hil_pass=false`、`robot_control_executed=false`、`connects_cloud_production=false`。raw local path、raw command body、`/cmd_vel`、`/api/base/manual`、NavigateToPose、serial/UART、WAVE ROVER 或任何 route/delivery/HIL/control true field 都只会让该 section fail-closed 为 `blocked_not_proven`，不污染其它 section。该 section 只证明 O6/O7 能回读 bounded gate material，不证明 route execution、delivery、HIL、safe-to-control 或 control capability。
+
+`bounded_route_terminal_result_material` 是 additive O5 bounded route terminal result bridge 安全摘要 intake/readback，输入 source schema 必须为 `trashbot.o5.bounded_route_terminal_result_bridge.v1`，source proof boundary 必须为 `software_proof_o5_bounded_route_terminal_result_bridge_only`，O6 回读 schema 固定为 `trashbot.o6.bounded_route_terminal_result_material.v1`，proof_scope / evidence_boundary 固定为 `software_proof_o6_o7_bounded_route_terminal_result_intake_only`，ready status 固定为 `bounded_route_terminal_result_material_ready_not_delivery_proof`。它允许由 `field_evidence_manifest`、`artifact_bundle` 或其中的 `field_motion_evidence_packet` 携带后写入同一 `task_id`，并在 archive task detail、`field_evidence`、`artifact_bundle`、`field_evidence_consumer_ingest`、`artifact_bundle_consumer_ingest`、consumer detail 顶层 alias 与 `include=bounded_route_terminal_result_material` 中回读。O6 只保留 exact `packet_id=packet_o3_28_pose_same_task_replay_7d57826142b0c79c`、`task_id=task_o3_28_pose_fixed_route_consumer_20260713_0402`、`route_intent_id=route_intent_20260713_0402_from_20260713_0300_28_pose_structured_path`、`route_csv_row_count=28`、`path_structured_pose_count=28`、`segment_count=27`、`result_code=mock_route_execution_completed_not_live_delivery`、`terminal_result_state=terminal_result_recorded`、`reconciliation_state=terminal_result_recorded`、安全 basename ref、blocked reasons、next required evidence 和固定 false 字段：`safe_to_control=false`、`delivery_success=false`、`route_execution_success=false`、`hil_pass=false`、`robot_control_executed=false`、`connects_cloud_production=false`。raw local path、raw command body、URL、token、`/cmd_vel`、`/api/base/manual`、NavigateToPose、serial/UART、WAVE ROVER 或任何 route/delivery/HIL/control true field 都只会让该 section fail-closed 为 `blocked_not_proven`，不污染其它 section。该 section 只证明 O6/O7 能安全消费 00:24 O5 terminal result bridge 摘要，不证明 route execution、delivery、HIL、safe-to-control、真实生产云或机器人控制。
+
+`phone_browser_terminal_material` 是 additive phone/browser terminal material 安全 intake/readback 摘要，输入和回读 schema 统一为 `trashbot.o6.phone_browser_terminal_material.v1`，proof_scope / evidence_boundary 固定为 `software_proof_o6_o7_phone_browser_terminal_material_intake_only`。它允许由 `field_evidence_manifest`、`artifact_bundle` 或其中的 `field_motion_evidence_packet` 携带后写入同一 `task_id`，并在 archive task detail、`field_evidence`、`artifact_bundle`、`field_evidence_consumer_ingest`、`artifact_bundle_consumer_ingest`、consumer detail 顶层 alias 与 `include=phone_browser_terminal_material` 中回读。O6 只保留 `task_id/status/source/source_schema/task_origin/same_task_id_consumed/phone_browser_terminal_material_written/phone_browser_terminal_material_readback/true_phone_browser_evidence/diagnostics_mobile_safe_summary/terminal_result_type/safe_evidence_ref/accepted_materials/missing_materials/rejected_materials/material_counts/blocked_reasons/next_required_evidence` 和固定 false 字段：`safe_to_control=false`、`delivery_success=false`、`route_execution_success=false`、`hil_pass=false`、`connects_cloud_production=false`、`robot_control_executed=false`、`primary_actions_enabled=false`、`real_cloud_db_connected=false`、`real_oss_connected=false`。该 section 只接受安全枚举材料 `true_phone_browser_evidence`、`diagnostics_mobile_safe_summary`、`terminal_result_summary` 和 basename 形态 `safe_evidence_ref`；raw URL、cookie、Authorization、token、本地路径、screenshot body、DOM dump、traceback、`/cmd_vel`、serial/UART、WAVE ROVER、raw/body/payload/content 以及任何 dangerous true field 一律 fail-closed 为 `blocked_not_proven`，且不回显原始输入。它只证明同一 task 的 O6/O7 本地/mock 摘要 intake/readback，不证明真实手机/browser 操作、生产云、4G/SIM、route execution、delivery、HIL 或机器人控制。
+
 `current_field_evidence_material` 是 additive current field evidence 安全摘要，输入 schema 为 `trashbot.current_field_evidence_material.v1`，O6 回读 schema 为 `trashbot.o6.current_field_evidence_material.v1`，proof_scope 固定为 `software_proof_current_field_evidence_material_only`。它允许由 `field_evidence_manifest`、`artifact_bundle` 或其中的 `field_motion_evidence_packet` 携带后写入同一 `task_id`，并在 archive task detail、`field_evidence`、`artifact_bundle`、`field_evidence_consumer_ingest`、`artifact_bundle_consumer_ingest`、consumer detail 顶层 alias 与 `include=current_field_evidence_material` 中回读。O6 只保留 `task_id/status/source/source_schema/task_id_source/present_materials/missing_materials/camera_frame_observed/radar_scan_observed/map_material_observed/nav2_no_motion_path_generated/manual_gate_blocked_expected/live_or_field_material_consumed/current_field_evidence_ready_not_route_execution_proof/blocked_reasons/next_required_evidence` 和全 false safety flags；坏 schema、proof_scope 不匹配、task mismatch、危险 true、unsafe text/raw/base64、绝对路径、URL/token、traceback 或 response body 一律只把该 section 降级为 `blocked_not_proven`，不回显敏感原文。算法侧 legacy 输入 `current_field_evidence_material_ready_not_route_execution_proof` 仍兼容，但 O6 回读统一规范化为 `current_field_evidence_ready_not_route_execution_proof`，避免把 current-field 材料误读成 route execution proof。
 
 `field_operator_confirmation_material` 是 additive 现场人工报告/确认材料安全摘要，输入 schema 可为 `trashbot.field_operator_confirmation_material.v1` 或 `trashbot.o6.field_operator_confirmation_material.v1`，O6 回读 schema 统一为 `trashbot.o6.field_operator_confirmation_material.v1`，proof_scope 固定为 `software_proof_field_operator_confirmation_material_only`。它允许由 `field_evidence_manifest`、`artifact_bundle`、`field_motion_evidence_packet`、`route_execution_result_delivery_readiness` 或 consumer detail 摘要携带后写入同一 `task_id`，并在 archive task detail、`field_evidence`、`artifact_bundle`、`field_evidence_consumer_ingest`、`artifact_bundle_consumer_ingest`、consumer detail 顶层 alias 与 `include=field_operator_confirmation_material` 中回读。O6 只保留 `schema/source_schema/proof_scope/status/task_id/task_origin/task_id_source/source/operator_report_present/operator_report_status/operator_confirmation_present/operator_confirmation_status/operator_present/physical_clearance_confirmed/emergency_stop_ready/observed_motion/observed_stop/reported_at/same_task_id_consumed/linked_route_material_present/linked_delivery_material_present/operator_material_consumed/support_only_reason/blocked_reasons/next_required_evidence/material_summaries` 和固定 false safety flags；回读 ready status 统一为 `field_operator_confirmation_material_ready_not_delivery_proof`。缺字段、task mismatch、proof_scope mismatch、危险 true、unsafe raw/path/token/url/base64/traceback、缺 operator material identity 或缺 confirmation source 均只把该 section 降级为 `blocked_not_proven`，不污染其它 additive section，也不回显原始人工报告、路径、URL、token 或任何 delivery/control 成功字段。
 
 `clean_baseline_nav2_path_material` 是 additive clean-baseline Nav2 no-motion path 安全摘要，输入 schema 为 `trashbot.clean_baseline_nav2_path_material.v1`，O6 回读 schema 为 `trashbot.o6.clean_baseline_nav2_path_material.v1`，proof_scope 固定为 `software_proof_clean_baseline_nav2_path_material_only`。它允许由 `field_evidence_manifest`、`artifact_bundle` 或其中的 `field_motion_evidence_packet` 携带后写入同一 `task_id`，并在 archive task detail、`field_evidence`、`artifact_bundle`、`field_evidence_consumer_ingest`、`artifact_bundle_consumer_ingest`、consumer detail 顶层 alias 与 `include=clean_baseline_nav2_path_material` 中回读。O6 只保留 `task_id/status/source/source_schema/task_id_source/first_attempt_status/retry_status/path_generation_succeeded/path_generated/path_point_count/planner_server_active/managed_runtime_started/managed_runtime_cleanup_ok/initialpose_published/amcl_pose_observed/map_server_active/amcl_active/cleanup_readback_clean/material_sample_refs/blocked_reasons/next_required_evidence` 和固定 false safety flags：`delivery_success=false`、`safe_to_control=false`、`primary_actions_enabled=false`、`robot_control_executed=false`、`route_execution_success=false`、`hil_pass=false`、`connects_cloud_production=false`。`material_sample_refs` 只回显 `refresh_summary`、`latest_readback`、`status_artifact` 的 basename/size/sha256 prefix/sample refs 摘要；坏 schema、proof_scope 不匹配、task mismatch、危险 true、unsafe text/raw/base64、绝对路径、URL/token、traceback 或 response body 一律只把该 section 降级为 `blocked_not_proven`，不污染其它 section。
+
+`pc_live_nav2_execution_material` 是 additive PC live Nav2/bridge 安全摘要，输入 schema 为 `trashbot.pc_live_nav2_execution_material.v1`，O6 回读 schema 为 `trashbot.o6.pc_live_nav2_execution_material.v1`，proof_scope 固定为 `software_proof_pc_live_nav2_execution_material_only`。它允许由 `field_evidence_manifest`、`artifact_bundle` 或其中的 `field_motion_evidence_packet` 携带后写入同一 `task_id`，并在 archive task detail、`field_evidence`、`artifact_bundle`、`field_evidence_consumer_ingest`、`artifact_bundle_consumer_ingest`、consumer detail 顶层 alias 与 `include=pc_live_nav2_execution_material` 中回读。O6 只保留 `task_id/status/source/source_schema/source_sprint/task_id_source/goal_accepted/cancel_accepted/goal_result_status/result_status/uses_base_uart/base_command_nonzero_observed/base_command_nonzero_count/base_feedback_sample_count/base_feedback_lr_nonzero_proven/base_feedback_imu_attitude_delta_observed/blocked_reasons/next_required_evidence` 和固定 false 安全旗标。该 section 读取 `goal_accepted` 时优先 canonical `goal_accepted`，fallback `nav2_goal_accepted`；读取结果状态时优先 canonical `goal_result_status`，fallback `result_status`、`nav2_terminal_status`、`terminal_status`。O6 输出必须带 canonical `goal_result_status`，同时保留 `result_status` alias 兼容旧测试与旧文档。该 section 允许 `goal_accepted=true`、`cancel_accepted=true`、`uses_base_uart=true`、`base_command_nonzero_observed=true` 与 IMU motion fact，但固定要求 `base_feedback_lr_nonzero_proven=false`，且不证明真实 route execution success、delivery success、HIL pass 或 production cloud。缺字段、坏 schema/proof_scope、task mismatch、wheel L/R 非零宣称、路径/URL/token/traceback/raw body 等 unsafe text 时只把该 section 降级为 `blocked_not_proven`，不污染其它 section。
 
 `localization_path_material_readback` 是 additive same-run localization/path readback 安全摘要，输入 schema 为 `trashbot.localization_path_material_readback.v1`，O6 回读 schema 为 `trashbot.o6.localization_path_material_readback.v1`，proof_scope 固定为 `software_proof_localization_path_material_readback_only`。它允许由 `field_evidence_manifest`、`artifact_bundle` 或其中的 `field_motion_evidence_packet` 携带后写入同一 `task_id`，并在 archive task detail、`field_evidence`、`artifact_bundle`、`field_evidence_consumer_ingest`、`artifact_bundle_consumer_ingest`、consumer detail 顶层 alias 与 `include=localization_path_material_readback` 中回读。O6 兼容 Algorithm 当前字段 `same_run_localization_tf_map_to_odom` / `same_run_localization_tf_map_to_base_link` 与旧测试字段 `same_run_tf_map_to_odom_observed` / `same_run_tf_map_to_base_link_observed`；回读时会同时保留旧字段，并额外输出 O7 依赖的 aliases：`localization_path_material_bridge_present`、`same_run_localization_material_present`、`same_run_localization_tf_map_to_odom`、`same_run_localization_tf_map_to_base_link`。ready status 接受 `localization_path_material_readback_ready_not_route_execution_proof` 与 legacy `ready_not_route_execution_proof`。其余字段仍只保留 same-run localization 布尔位、same-run path false 字段、`same_run_path_point_count=0`、cross-run clean-baseline comparator 摘要、comparator blocked reasons、blocked reasons、next required evidence 和固定 false 安全旗标；其中 June 11 comparator 只能通过 `cross_run_clean_baseline_*` 字段展示，不能把 `same_run_path_generation_succeeded`、`same_run_path_generated`、`same_run_path_proven` 或 `same_run_path_point_count` 覆盖成成功。坏 schema、proof_scope 不匹配、task mismatch、危险 true、same-run path success claim、cross-run override claim、unsafe text/raw/base64、绝对路径、URL/token/traceback/response body 一律只把该 section 降级为 `blocked_not_proven`，不污染其它 section。
 
@@ -100,8 +114,12 @@ bundle 建议字段：
 - 可选 `route_execution_result_delivery_readiness`：只接收 `trashbot.route_execution_result_delivery_readiness.v1` 的结果链 readiness 摘要；也可放在 `field_motion_evidence_packet.route_execution_result_delivery_readiness`
 - 可选 `route_delivery_closure_packet`：只接收 `trashbot.route_delivery_closure_packet.v1` 的 delivery closure 摘要；也可放在 `field_motion_evidence_packet.route_delivery_closure_packet`
 - 可选 `same_task_field_material_packet`：只接收 `trashbot.same_task_field_material_packet.v1` 的 same-task 材料包摘要；可含 `map_yaml` optional 材料，也可放在 `field_motion_evidence_packet.same_task_field_material_packet`
+- 可选 `same_task_replay_packet_readback`：只接收 05:02 O3 `trashbot.o3.same_task_route_replay_packet.v1` 或 O6 `trashbot.o6.same_task_replay_packet_readback.v1` 的 same-task replay packet 只读摘要；也可放在 `field_motion_evidence_packet.same_task_replay_packet_readback`
+- 可选 `bounded_route_execution_gate_material`：只接收 `trashbot.o6.bounded_route_execution_gate_material.v1` 的 07:07/08:09 gate/plan 安全摘要；也可放在 `field_motion_evidence_packet.bounded_route_execution_gate_material`，只回读 exact identity/count/status、source boundary、blocked reasons 与固定 false fields
+- 可选 `phone_browser_terminal_material`：只接收 `trashbot.o6.phone_browser_terminal_material.v1` 的 phone/browser terminal material 安全摘要；也可放在 `field_motion_evidence_packet.phone_browser_terminal_material`，只回读 `true_phone_browser_evidence`、diagnostics 摘要、terminal result 类型、安全 ref、blocked reasons 与固定 false flags
 - 可选 `current_field_evidence_material`：只接收 `trashbot.current_field_evidence_material.v1` 的 current field evidence 安全摘要；也可放在 `field_motion_evidence_packet.current_field_evidence_material`
 - 可选 `clean_baseline_nav2_path_material`：只接收 `trashbot.clean_baseline_nav2_path_material.v1` 的 clean-baseline Nav2 no-motion path 安全摘要；也可放在 `field_motion_evidence_packet.clean_baseline_nav2_path_material`
+- 可选 `pc_live_nav2_execution_material`：只接收 `trashbot.pc_live_nav2_execution_material.v1` 的 PC live Nav2/bridge 安全摘要；也可放在 `field_motion_evidence_packet.pc_live_nav2_execution_material`
 - 可选 `localization_path_material_readback`：只接收 `trashbot.localization_path_material_readback.v1` 的 same-run localization/path readback 安全摘要；也可放在 `field_motion_evidence_packet.localization_path_material_readback`
 - 可选 `same_task_route_execution_material_packet`：只接收 `trashbot.same_task_route_execution_material_packet.v1` 的 same-task route execution 材料包摘要；也可放在 `field_motion_evidence_packet.same_task_route_execution_material_packet`
 - 可选 `same_task_mission_evidence_gate`：只接收 `trashbot.same_task_mission_evidence_gate.v1` 的同 task mission gate 摘要；也可放在 `field_motion_evidence_packet.same_task_mission_evidence_gate`
@@ -142,6 +160,9 @@ bundle 建议字段：
 - `nav2_goal_execution_evidence` 会继续围绕同一 `task_id` 暴露 Nav2 goal/request/result 摘要；它只证明 software proof readback，不证明真实 live Nav2 run、真实底盘控制或 delivery success
 - `route_execution_result_delivery_readiness` 会继续围绕同一 `task_id` 暴露 route execution result / delivery readiness / operator confirmation readiness 摘要；它只证明 software proof readback，不证明真实 route execution、真实 delivery result、真实 operator confirmation 或 delivery success
 - `same_task_mission_evidence_gate` 会继续围绕同一 `task_id` 暴露 terminal result、route execution readiness、closure packet 和 pose progress 的 gate 摘要；它只证明 software proof readback，不证明真实 production cloud、真实 route execution、真实 operator confirmation 或 delivery success
+- `same_task_replay_packet_readback` 会继续围绕同一 `task_id` 暴露 05:02 O3 same-task replay packet 的 exact identity、28/28/28 counts、basename refs 和固定 false fields；它只证明 software proof readback，不证明真实 route execution、delivery、HIL 或 robot control
+- `bounded_route_execution_gate_material` 会继续围绕同一 `task_id` 暴露 07:07 controlled gate 与 08:09 bounded plan 的 exact identity、28/28/27 counts、`execution_plan_status=blocked_pending_live_safety_gate` 和固定 false fields；它只证明 software proof intake/readback，不证明 route execution、delivery、HIL、safe-to-control 或 control capability
+- `phone_browser_terminal_material` 会继续围绕同一 `task_id` 暴露 phone/browser terminal material 的安全 intake/readback 摘要；它固定 `safe_to_control=false`、`delivery_success=false`、`route_execution_success=false`、`hil_pass=false`、`connects_cloud_production=false`、`robot_control_executed=false`，不证明真实手机/browser、生产云、路线执行、送达或 HIL
 - `route_bag_evidence` 会继续围绕同一 `task_id` 暴露 DB3 metadata/topic/message/timestamp 摘要；它只证明 software proof readback，不证明真实 live Nav2 run、路线执行成功或 delivery success
 
 失败时返回 `400`，且不得写入 store：
@@ -172,8 +193,12 @@ bundle 建议字段：
 - 可选 `route_execution_result_delivery_readiness` 可放在 manifest 顶层或 `field_motion_evidence_packet` 内；O6 只回读白名单字段，坏包降级为 `blocked_not_proven`
 - 可选 `route_delivery_closure_packet` 可放在 manifest 顶层或 `field_motion_evidence_packet` 内；O6 只回读 linked readiness flags、blocked reasons、next evidence 与 false safety flags，坏包降级为 `blocked_not_proven`
 - 可选 `same_task_field_material_packet` 可放在 manifest 顶层或 `field_motion_evidence_packet` 内；O6 优先读取 `material_summaries`，兼容旧的 dict-shaped `sample_refs` 或顶层材料字段，并回读材料 presence、safe counts、basename/size/sha256 prefix、顶层 basename list `sample_refs` 与 false safety flags，坏包降级为 `blocked_not_proven`
+- 可选 `same_task_replay_packet_readback` 可放在 manifest 顶层或 `field_motion_evidence_packet` 内；O6 只回读 05:02 O3 same-task replay packet 的 exact `packet_id`、`task_id`、`route_intent_id`、28/28/28 counts、basename refs、sha256 prefix 和固定 false safety/control fields，坏包只降级当前 section
+- 可选 `bounded_route_execution_gate_material` 可放在 manifest 顶层或 `field_motion_evidence_packet` 内；O6 只回读 07:07/08:09 gate/plan 的 exact identity、28/28/27 counts、`blocked_pending_live_safety_gate`、source boundary、blocked reasons、next evidence 和固定 false fields，坏包只降级当前 section
+- 可选 `phone_browser_terminal_material` 可放在 manifest 顶层或 `field_motion_evidence_packet` 内；O6 只回读 phone/browser terminal material 的安全枚举、terminal result 类型、basename ref、blocked reasons、next evidence 与固定 false flags，坏包只降级当前 section
 - 可选 `current_field_evidence_material` 可放在 manifest 顶层或 `field_motion_evidence_packet` 内；O6 回读 current field evidence 的 `present_materials`、`missing_materials`、camera/radar/map/nav2/manual gate 布尔、`live_or_field_material_consumed`、`current_field_evidence_ready_not_route_execution_proof`、`blocked_reasons`、`next_required_evidence` 与 false safety flags，坏包降级为 `blocked_not_proven`
 - 可选 `clean_baseline_nav2_path_material` 可放在 manifest 顶层或 `field_motion_evidence_packet` 内；O6 回读 clean-baseline no-motion path 的 `first_attempt_status`、`retry_status`、`path_generation_succeeded/path_generated/path_point_count`、planner/runtime/localization/cleanup 布尔、`material_sample_refs`、`blocked_reasons`、`next_required_evidence` 与 false safety flags，坏包降级为 `blocked_not_proven`
+- 可选 `pc_live_nav2_execution_material` 可放在 manifest 顶层或 `field_motion_evidence_packet` 内；O6 回读 canonical `goal_accepted` / `goal_result_status`（兼容 legacy `nav2_goal_accepted` / `nav2_terminal_status`）、cancel accepted、UART/base command/IMU 摘要、wheel L/R false 结论、blocked reasons、next required evidence 与 false safety flags，坏包降级为 `blocked_not_proven`
 - 可选 `localization_path_material_readback` 可放在 manifest 顶层或 `field_motion_evidence_packet` 内；O6 回读 same-run localization/path 的 map/AMCL/TF 布尔、`localization_path_material_bridge_present` / `same_run_localization_material_present` aliases、兼容的新旧 TF 字段、same-run path false 字段、cross-run clean-baseline comparator 摘要、blocked reasons、next required evidence 和 false safety flags，坏包降级为 `blocked_not_proven`
 - 可选 `same_task_route_execution_material_packet` 可放在 manifest 顶层或 `field_motion_evidence_packet` 内；O6 只回读同 task route execution 材料的 `source_sections`、`material_summaries`、`material_sample_refs`、same-task / material consumed 标记，以及 `live_or_field_command_evidence_present`、`delivery_or_operator_material_consumed`、`route_execution_credit_candidate`、`credit_support_only_reason`、`credit_required_evidence` 等 credit-aware 安全字段和 false safety flags，坏包只降级当前 section
 - 可选 `same_task_mission_evidence_gate` 可放在 manifest 顶层或 `field_motion_evidence_packet` 内；O6 只回读 terminal refs basename、mission artifact delta、linked readiness flags 与 false safety flags，坏包降级为 `blocked_not_proven`
@@ -241,10 +266,26 @@ bundle 建议字段：
 - `task.field_evidence_consumer_ingest.same_task_field_material_packet`
 - `GET /api/o6/consumer/tasks/<task_id>?include=field_evidence` 顶层 alias `same_task_field_material_packet`
 - `GET /api/o6/consumer/tasks/<task_id>?include=same_task_field_material_packet` 可单独读取 same-task material packet section
+- `task.field_evidence.same_task_replay_packet_readback`
+- `task.field_evidence_consumer_ingest.same_task_replay_packet_readback`
+- `GET /api/o6/consumer/tasks/<task_id>?include=field_evidence` 顶层 alias `same_task_replay_packet_readback`
+- `GET /api/o6/consumer/tasks/<task_id>?include=same_task_replay_packet_readback` 可单独读取 same-task replay packet readback section
+- `task.field_evidence.bounded_route_execution_gate_material`
+- `task.field_evidence_consumer_ingest.bounded_route_execution_gate_material`
+- `GET /api/o6/consumer/tasks/<task_id>?include=field_evidence` 顶层 alias `bounded_route_execution_gate_material`
+- `GET /api/o6/consumer/tasks/<task_id>?include=bounded_route_execution_gate_material` 可单独读取 bounded route execution gate material section
+- `task.field_evidence.bounded_route_terminal_result_material`
+- `task.field_evidence_consumer_ingest.bounded_route_terminal_result_material`
+- `GET /api/o6/consumer/tasks/<task_id>?include=field_evidence` 顶层 alias `bounded_route_terminal_result_material`
+- `GET /api/o6/consumer/tasks/<task_id>?include=bounded_route_terminal_result_material` 可单独读取 bounded route terminal result material section
 - `task.field_evidence.clean_baseline_nav2_path_material`
 - `task.field_evidence_consumer_ingest.clean_baseline_nav2_path_material`
 - `GET /api/o6/consumer/tasks/<task_id>?include=field_evidence` 顶层 alias `clean_baseline_nav2_path_material`
 - `GET /api/o6/consumer/tasks/<task_id>?include=clean_baseline_nav2_path_material` 可单独读取 clean-baseline path material section
+- `task.field_evidence.pc_live_nav2_execution_material`
+- `task.field_evidence_consumer_ingest.pc_live_nav2_execution_material`
+- `GET /api/o6/consumer/tasks/<task_id>?include=field_evidence` 顶层 alias `pc_live_nav2_execution_material`
+- `GET /api/o6/consumer/tasks/<task_id>?include=pc_live_nav2_execution_material` 可单独读取 PC live Nav2 execution material section
 - `task.field_evidence.localization_path_material_readback`
 - `task.field_evidence_consumer_ingest.localization_path_material_readback`
 - `GET /api/o6/consumer/tasks/<task_id>?include=field_evidence` 顶层 alias `localization_path_material_readback`
@@ -514,11 +555,16 @@ bundle 建议字段：
 - `limit`（默认 50，最大 200；非法或过大直接 fail-closed）
 - `before_started_at_ms`
 - `view=default|summary`
-- `include=trajectory,events,evidence,field_evidence,artifact_access_probe,nav2_goal_execution_evidence,delivery_result_evidence,route_execution_result_delivery_readiness,route_delivery_closure_packet,same_task_field_material_packet,current_field_evidence_material,clean_baseline_nav2_path_material,localization_path_material_readback,same_task_route_execution_material_packet,same_task_mission_evidence_gate,route_bag_evidence,route_bag_payload_replay,route_bag_semantic_replay,route_bag_full_semantic_decode_matrix,offline_artifact_seed_smoke,route_root_seed_gate,labeling,inference,tunnel`（白名单外直接 fail-closed）
+- `include=trajectory,events,evidence,field_evidence,artifact_access_probe,nav2_goal_execution_evidence,delivery_result_evidence,route_execution_result_delivery_readiness,route_delivery_closure_packet,same_task_field_material_packet,same_task_replay_packet_readback,bounded_route_execution_gate_material,bounded_route_terminal_result_material,phone_browser_terminal_material,current_field_evidence_material,clean_baseline_nav2_path_material,pc_live_nav2_execution_material,localization_path_material_readback,same_task_route_execution_material_packet,same_task_mission_evidence_gate,route_bag_evidence,route_bag_payload_replay,route_bag_semantic_replay,route_bag_full_semantic_decode_matrix,offline_artifact_seed_smoke,route_root_seed_gate,labeling,inference,tunnel`（白名单外直接 fail-closed）
 - `include=route_delivery_closure_packet`：单独返回 delivery closure 摘要；仍固定 `safe_to_control=false`、`delivery_success=false`
 - `include=same_task_field_material_packet`：单独返回 same-task 材料包摘要；ready 仍不是真实 delivery success proof
+- `include=same_task_replay_packet_readback`：单独返回 same-task replay packet identity/count readback 摘要；ready 仍不是真实 route execution、delivery、HIL 或控制 proof
+- `include=bounded_route_execution_gate_material`：单独返回 bounded route gate/plan 安全摘要；ready 仍不是真实 route execution、delivery、HIL、safe-to-control 或控制 proof
+- `include=bounded_route_terminal_result_material`：单独返回 bounded route terminal result bridge 摘要；ready 仍不是真实 route execution、delivery、HIL、safe-to-control 或控制 proof
+- `include=phone_browser_terminal_material`：单独返回 phone/browser terminal material 安全摘要；ready 仍不是真实手机/browser、生产云、路线执行、delivery、HIL 或控制 proof
 - `include=current_field_evidence_material`：单独返回 current field evidence 安全摘要；ready 仍不是真实 route execution proof
 - `include=clean_baseline_nav2_path_material`：单独返回 clean-baseline no-motion path 摘要；ready 仍不是真实 route execution proof
+- `include=pc_live_nav2_execution_material`：单独返回 PC live Nav2/bridge 摘要；ready 仍不是真实 wheel L/R proof、route execution proof 或 delivery proof
 - `include=localization_path_material_readback`：单独返回 same-run localization/path readback 摘要；ready 仍不是真实 path success 或 route execution proof
 - `include=same_task_route_execution_material_packet`：单独返回 same-task route execution 材料包摘要；ready 仍不是真实 route execution 或 delivery success proof
 - `include=same_task_mission_evidence_gate`：单独返回 same-task mission gate 摘要；ready 仍不是真实 delivery success proof
@@ -559,7 +605,7 @@ bundle 建议字段：
 
 - `robot_id`
 - `view=default|summary`
-- `include=trajectory,events,evidence,field_evidence,artifact_access_probe,nav2_goal_execution_evidence,delivery_result_evidence,route_execution_result_delivery_readiness,route_delivery_closure_packet,same_task_field_material_packet,current_field_evidence_material,clean_baseline_nav2_path_material,localization_path_material_readback,same_task_route_execution_material_packet,same_task_mission_evidence_gate,route_bag_evidence,route_bag_payload_replay,route_bag_semantic_replay,route_bag_full_semantic_decode_matrix,offline_artifact_seed_smoke,route_root_seed_gate,labeling,inference,tunnel`
+- `include=trajectory,events,evidence,field_evidence,artifact_access_probe,nav2_goal_execution_evidence,delivery_result_evidence,route_execution_result_delivery_readiness,route_delivery_closure_packet,same_task_field_material_packet,same_task_replay_packet_readback,bounded_route_execution_gate_material,bounded_route_terminal_result_material,phone_browser_terminal_material,current_field_evidence_material,clean_baseline_nav2_path_material,pc_live_nav2_execution_material,localization_path_material_readback,same_task_route_execution_material_packet,same_task_mission_evidence_gate,route_bag_evidence,route_bag_payload_replay,route_bag_semantic_replay,route_bag_full_semantic_decode_matrix,offline_artifact_seed_smoke,route_root_seed_gate,labeling,inference,tunnel`
 
 固定 section：
 
@@ -575,8 +621,13 @@ bundle 建议字段：
 - `route_execution_result_delivery_readiness`
 - `route_delivery_closure_packet`
 - `same_task_field_material_packet`
+- `same_task_replay_packet_readback`
+- `bounded_route_execution_gate_material`
+- `bounded_route_terminal_result_material`
+- `phone_browser_terminal_material`
 - `current_field_evidence_material`
 - `clean_baseline_nav2_path_material`
+- `pc_live_nav2_execution_material`
 - `localization_path_material_readback`
 - `same_task_route_execution_material_packet`
 - `same_task_mission_evidence_gate`
@@ -600,8 +651,13 @@ bundle 建议字段：
 - `route_execution_result_delivery_readiness` 是 `field_evidence` / artifact bundle 的结果链 readiness 摘要；它只返回 route execution result、delivery readiness、operator confirmation readiness、三类 linked flags 和 false 安全旗标，坏 schema、危险 true、unsafe path/topic/url/token/raw/base64/text 或缺必填字段一律降级为 `blocked_not_proven`
 - `route_delivery_closure_packet` 是 `field_evidence` / artifact bundle 的 delivery closure 摘要；它只返回 closure status、五个 linked readiness flags、blocked reasons、next required evidence 和 false 安全旗标，坏 schema、危险 true、unsafe path/topic/url/token/raw/base64/text 或缺关键 linked flag 一律降级为 `blocked_not_proven`
 - `same_task_field_material_packet` 是 `field_evidence` / artifact bundle 的 same-task 材料包摘要；它返回 materials presence、`map_yaml` optional flag、safe counts、顶层 basename list `sample_refs`、按材料分组的 `material_sample_refs`、same-task 消费标记、blocked reasons、next required evidence 和 false 安全旗标，坏 schema、proof scope mismatch、task mismatch、危险 true、unsafe text/raw/base64/绝对路径/URL/token 一律降级为 `blocked_not_proven`
+- `same_task_replay_packet_readback` 是 `field_evidence` / artifact bundle 的 same-task replay packet 只读摘要；它返回 exact `packet_id`、`task_id`、`route_intent_id`、`route_csv_row_count=28`、`replay_jsonl_event_count=28`、`path_structured_pose_count=28`、`same_task_replay_packet_ready=true`、basename refs、sha256 prefix、blocked reasons、next required evidence 和固定 false safety/control fields，坏 schema、proof scope mismatch、task mismatch、危险 true、unsafe text/raw/base64/绝对路径/URL/token/`/cmd_vel` 一律降级为 `blocked_not_proven`
+- `bounded_route_execution_gate_material` 是 `field_evidence` / artifact bundle 的 07:07 controlled gate 与 08:09 bounded plan 安全摘要；它返回 exact `packet_id`、`task_id`、`route_intent_id`、`route_csv_row_count=28`、`path_structured_pose_count=28`、`segment_count=27`、`execution_plan_status=blocked_pending_live_safety_gate`、source boundary、blocked reasons、next required evidence 和固定 false fields，raw path、raw command、`/cmd_vel`、`/api/base/manual`、NavigateToPose、serial/UART、WAVE ROVER 或危险 true 一律降级为 `blocked_not_proven`
+- `bounded_route_terminal_result_material` 是 `field_evidence` / artifact bundle 的 O5 terminal result bridge 安全摘要；它返回 exact `packet_id`、`task_id`、`route_intent_id`、`route_csv_row_count=28`、`path_structured_pose_count=28`、`segment_count=27`、`result_code=mock_route_execution_completed_not_live_delivery`、`terminal_result_state=terminal_result_recorded`、`reconciliation_state=terminal_result_recorded`、source boundary、blocked reasons、next required evidence 和固定 false fields，raw path、raw command、URL/token、`/cmd_vel`、`/api/base/manual`、NavigateToPose、serial/UART、WAVE ROVER 或危险 true 一律降级为 `blocked_not_proven`
+- `phone_browser_terminal_material` 是 `field_evidence` / artifact bundle 的 phone/browser terminal material 安全 intake/readback 摘要；它只返回安全枚举、terminal result 类型、basename ref、blocked reasons、next evidence 和固定 false flags，raw URL、cookie、Authorization、token、本地路径、screenshot body、DOM dump、traceback、`/cmd_vel`、serial/UART、WAVE ROVER 或危险 true 一律降级为 `blocked_not_proven`
 - `current_field_evidence_material` 是 `field_evidence` / artifact bundle 的 current field evidence 安全摘要；它返回 `present_materials`、`missing_materials`、camera/radar/map/nav2/manual gate 布尔、`live_or_field_material_consumed`、`current_field_evidence_ready_not_route_execution_proof`、blocked reasons、next required evidence 和 false 安全旗标，坏 schema、proof scope mismatch、task mismatch、危险 true、unsafe text/raw/base64/绝对路径/URL/token/traceback/response body 一律降级为 `blocked_not_proven`
 - `clean_baseline_nav2_path_material` 是 `field_evidence` / artifact bundle 的 clean-baseline no-motion path 摘要；它返回 first/retry status、path point count、planner/runtime/localization/cleanup 布尔、sample refs、blocked reasons、next required evidence 和 false 安全旗标，坏 schema、proof scope mismatch、task mismatch、危险 true、unsafe text/raw/base64/绝对路径/URL/token/traceback/response body 一律降级为 `blocked_not_proven`
+- `pc_live_nav2_execution_material` 是 `field_evidence` / artifact bundle 的 PC live Nav2/bridge 摘要；它返回 source sprint、canonical `goal_accepted`、canonical `goal_result_status`（并保留 `result_status` alias）、cancel accepted、UART/base command/IMU 摘要、wheel L/R false 结论、blocked reasons、next required evidence 和 false 安全旗标，坏 schema、proof scope mismatch、task mismatch、wheel L/R 非零宣称、unsafe text/raw/base64/绝对路径/URL/token/traceback/response body 一律降级为 `blocked_not_proven`
 - `localization_path_material_readback` 是 `field_evidence` / artifact bundle 的 same-run localization/path readback 摘要；它返回 same-run map/AMCL/TF 布尔、`localization_path_material_bridge_present` / `same_run_localization_material_present`、兼容的新旧 TF 字段、same-run path false 字段、cross-run comparator 摘要、blocked reasons、next required evidence 和 false 安全旗标，cross-run comparator 不能把 same-run false 结论改成成功，坏 schema、proof scope mismatch、task mismatch、危险 true、same-run path success claim、unsafe text/raw/base64/绝对路径/URL/token/traceback/response body 一律降级为 `blocked_not_proven`
 - `same_task_route_execution_material_packet` 是 `field_evidence` / artifact bundle 的 same-task route execution 材料包摘要；它返回 O6 顶层 status、`same_task_id_consumed`、`route_execution_material_consumed`、`same_task_field_material_packet_status`、`source_sections`、`material_summaries`、`material_sample_refs`、blocked reasons、next required evidence 和 false 安全旗标，坏 schema、proof scope / evidence boundary mismatch、task mismatch、危险 true、unsafe text/raw/base64/绝对路径/credential URL/token/secret/connection string/traceback/response body 一律只降级为 `blocked_not_proven`
 - `same_task_mission_evidence_gate` 是 `field_evidence` / artifact bundle 的同 task mission gate 摘要；它只返回 terminal basename refs、mission artifact delta、linked readiness flags、blocked reasons、next required evidence 和 false 安全旗标，坏 schema、proof scope mismatch、task mismatch、危险 true、unsafe text/raw/base64/绝对路径/credential URL/token 一律降级为 `blocked_not_proven`
@@ -694,6 +750,40 @@ bundle 建议字段：
 - `latest_task`
 - `summary`
 
+### Archive Task Query Filters（GET /api/o6/archive/tasks）
+
+2026-07-13 起，archive task query filters 补齐 lower-level archive task list 与 consumer tasks/query 的合同 gap，proof boundary 固定为 `software_proof_o6_archive_task_query_filters_only`。它只证明 local/mock file-backed archive task list 可以 fail-closed 查询，不证明 production cloud、production DB/queue、真实机器人数据、route execution、delivery、HIL、safe-to-control、O5 external evidence 或真实手机/browser。
+
+支持 query：
+
+- `robot_id`：可选，短安全标识精确匹配；安全但不存在的 `robot_id` 返回空 `task_list.tasks[]`。
+- `task_id`：可选，短安全标识精确匹配；安全但不存在的 `task_id` 返回空 `task_list.tasks[]`。
+- `date=YYYY-MM-DD`：可选，按 UTC 日过滤。实现优先使用 task `started_at_ms`，只有 `started_at_ms` 缺失时才回落 `finished_at_ms`，并在请求带 `date` 时输出 `date_filter_source`。
+- `status=all|completed_mock|failed_mock|in_progress_mock|unknown_not_proven|local_mock_archive_ready`：可选，默认 `all`。`completed_mock/failed_mock/in_progress_mock/unknown_not_proven` 对齐 consumer `task_status_summary`，`local_mock_archive_ready` 兼容 archive row status。
+- `limit`：可选，正整数，默认 50，上限 200。
+
+过滤语义：
+
+- `robot_id`、`task_id`、`date`、`status` 使用 AND 组合，`filter_semantics=and`。
+- `limit` 在过滤后应用；`filtered_result_count` 是过滤后、limit 前的结果数，`task_list.total_tasks` 是本次响应实际返回数。
+- safe unknown `robot_id` / `task_id` 返回 `200` + 空 `task_list.tasks[]` + `filtered_result_count=0`。
+- unknown query key、重复 query、非法日期、过长 id、path-like、URL-like、credential/token、raw/base64-like 值返回 `400 bad_request`，错误 message 包含 `invalid_archive_task_query_filter`，且不得写 store 或回显危险原文。
+
+响应 metadata：
+
+- `archive_task_query_filters_ready_not_production_proof=true`
+- `archive_task_query_filters_proof_scope=software_proof_o6_archive_task_query_filters_only`
+- `applied_filters.robot_id`
+- `applied_filters.task_id`
+- `applied_filters.date`
+- `applied_filters.status`
+- `applied_filters.limit`
+- `filter_semantics=and`
+- `filtered_result_count`
+- `date_filter_source`：仅当请求带 `date` 时出现；可能是 `started_at_ms`、`finished_at_ms` 或 `no_matching_task_timestamp`。
+
+`GET /api/o6/archive/tasks` 响应继续固定 false：`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`、`connects_cloud_production=false`、`robot_control_executed=false`、`real_cloud_db_connected=false`、`real_oss_connected=false`。
+
 ## Duplicate Semantics
 
 同一 `task_id` 采用 idempotent upsert，不返回 `409 conflict`。再次 `POST` 同一 `task_id` 会覆盖该任务的安全摘要并返回：
@@ -739,6 +829,13 @@ event_type 白名单：
 - `task.failure`
 - `task.recovery`
 - `operator.note`
+- `voice.tts_draft`
+- `voice.speaker_ack`
+- `voice.speaker_failure`
+
+`voice.tts_draft` 只允许保存安全的 TTS 草稿事件摘要，用于 O7 selected-task voice/TTS draft event-write software proof。它可以携带短 `summary`、basename 级 `evidence_refs[]` 和小型 primitive `metadata`，但不得携带 raw audio、完整音频 payload、真实 voice API 响应、speaker dispatch ACK、控制命令、URL、绝对路径、token 或 base64/raw 内容。O6 仍按原有 fail-closed 安全检查执行，并显式拒绝 `tts_send_enabled=true`、`speaker_dispatch_enabled=true`、`real_voice_api_connected=true`、`real_asr_tts_runtime_connected=true`、`safe_to_control=true`、`delivery_success=true`、`robot_control_executed=true` 或 `connects_cloud_production=true`。该 event type 的 proof boundary 只能是 `software_proof_o6_o7_voice_tts_draft_event_write_only`，不证明真实 TTS 发送、真实 ASR/TTS runtime、喇叭调度、生产云、delivery、HIL 或 safe-to-control。
+
+`voice.speaker_ack` / `voice.speaker_failure` 只允许保存 selected-task speaker ACK/failure 的本地事件摘要。O7 的 `ack_status=ack` 映射为 `voice.speaker_ack`，`ack_status=failure` 映射为 `voice.speaker_failure`；两者都必须固定 `speaker_dispatch_enabled=false`、`real_speaker_ack_proven=false`、`tts_send_enabled=false`、`real_voice_api_connected=false`、`real_asr_tts_runtime_connected=false`、`safe_to_control=false`、`delivery_success=false`、`robot_control_executed=false`、`connects_cloud_production=false`。该 event type 的 proof boundary 只能是 `software_proof_o6_o7_voice_speaker_ack_event_write_only`，不证明真实播放、真实 speaker ACK、真实语音 runtime、production cloud、route execution、delivery、HIL、safe-to-control 或 robot control。
 
 成功响应固定：
 
@@ -1147,10 +1244,23 @@ evidence_type 白名单：
 
 ### Labeling List Contract（GET /api/o6/archive/labels）
 
-`task_summary` 仅返回任务级摘要，不原样回显完整 `labels`。支持：
+`task_summary` 仅返回任务级摘要，不原样回显完整 `labels`。2026-07-13 起，label query filters 已作为 O6/O7 local/mock 查询合同补齐，proof boundary 固定为 `software_proof_o6_o7_label_query_filters_only`；它只证明本地/mock 标注列表可以安全查询，不证明 production cloud、真实机器人数据、route execution、delivery、HIL、safe-to-control、真实 annotation API 或真实 dataset export。
 
+支持 query：
+
+- `robot_id`：可选，短安全标识精确匹配；安全但不存在的 `robot_id` 返回空 `task_summary[]`，不泄漏其它机器人数据。
+- `task_id`：可选，短安全标识精确匹配；安全但不存在的 `task_id` 返回空 `task_summary[]`。
+- `date=YYYY-MM-DD`：可选，按 UTC 日过滤。实现优先使用 label item 的 `updated_at_ms`，其次 `created_at_ms`，再兼容其它 label timestamp；如果 label item 没有任何 timestamp，才回落 task 的 `finished_at_ms` / `started_at_ms`，并在响应中暴露 `date_filter_source`。
 - `status=pending|labeled|all`（默认 `all`）
 - `limit`（正整数，默认 50，上限 100）
+
+过滤语义：
+
+- `robot_id`、`task_id`、`date`、`status` 使用 AND 组合。
+- `limit` 在过滤后应用。
+- `status=pending` 继续包含 `pending` 与 `partial` task；`status=labeled` 只返回 fully labeled task。
+- safe unknown filter value 返回 `200` + 空 `task_summary[]` + `filtered_result_count=0` + `blocked_reasons=["label_query_filter_no_matches"]`。
+- invalid/unsafe query 返回 `400 bad_request`，错误 message 必须包含 `invalid_label_query_filter`，且不得写 store。
 
 响应字段包含：
 
@@ -1158,11 +1268,22 @@ evidence_type 白名单：
 - `status_filter`
 - `limit`
 - `task_summary[]`（`task_id/robot_id/task_status/pending_item_count/labeled_item_count/latest_label_updated_at_ms/itemized_label_count/selected`）
+- `label_query_filters_ready_not_production_proof=true`
+- `applied_filters.robot_id`
+- `applied_filters.task_id`
+- `applied_filters.date`
+- `applied_filters.status`
+- `applied_filters.limit`
+- `filter_semantics=and`
+- `filtered_result_count`：过滤后、limit 前的结果数；`task_summary.length` 仍受 `limit` 约束。
+- `date_filter_source`：仅当请求带 `date` 时出现；例如 `label.updated_at_ms`、`label.created_at_ms`、`task.finished_at_ms` 或 `task.started_at_ms`。
 - `label_summary.task_count`
 - `label_summary.pending_task_count`
 - `label_summary.partial_task_count`
 - `label_summary.labeled_task_count`
 - `blocked_reasons`
+
+`GET /api/o6/archive/labels` 响应继续固定 false：`safe_to_control=false`、`delivery_success=false`、`primary_actions_enabled=false`、`submit_enabled=false`、`rollback_enabled=false`、`dataset_export_available=false`、`real_annotation_api_connected=false`、`real_dataset_export_connected=false`、`connects_cloud_production=false`、`robot_control_executed=false`。
 
 ### Labeling Detail Contract（GET /api/o6/archive/labels/<task_id>）
 
@@ -1246,6 +1367,10 @@ evidence_type 白名单：
   - `labels` 空数组
   - 超大数组
   - 字段类型错 / 长度越界
+  - list query 中 `robot_id` / `task_id` / `date` / `status` / `limit` 出现重复值
+  - list query 中 `date` 不是合法 `YYYY-MM-DD`
+  - list query 中 `robot_id` / `task_id` 过长、含路径、URL、credential/token、raw/base64-like blob 或非法字符
+  - list query 含未知参数
   - `unknown_task`
   - `unauthorized_task`
   - 不安全内容（`Authorization` / `Bearer` / token / `/cmd_vel` / 串口路径 / baudrate / traceback / credentials URL）

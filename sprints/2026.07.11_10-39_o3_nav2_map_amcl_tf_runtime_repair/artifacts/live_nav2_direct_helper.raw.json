@@ -1,0 +1,5171 @@
+{
+  "calls_base_manual": false,
+  "delivery_success": false,
+  "evidence_type": "blocked_with_root_cause",
+  "generated_at_ms": 1783739231842,
+  "hil_pass": false,
+  "not_proven": true,
+  "proof": {
+    "amcl_active": true,
+    "amcl_broadcast_conditions": {
+      "amcl_active": true,
+      "amcl_frame_params_match_helper": true,
+      "amcl_pose_frame_id_is_map": true,
+      "amcl_pose_observed": true,
+      "base_link_to_laser_frame_source_observed": true,
+      "initialpose_published": true,
+      "map_once_observed": true,
+      "map_server_active": true,
+      "map_to_odom_source_observed": false,
+      "odom_to_base_link_dynamic_source_observed": false,
+      "odom_to_base_link_source_observed": true,
+      "odom_to_base_link_static_source_observed": true,
+      "scan_once_observed": true,
+      "static_tf_processes_observed": true,
+      "tf_broadcast_enabled": true
+    },
+    "amcl_frame_params": {
+      "base_frame_id": "base_link",
+      "global_frame_id": "map",
+      "odom_frame_id": "odom"
+    },
+    "amcl_log_tail": "py/__init__.py\", line 229, in spin\n    executor.spin_once()\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py\", line 808, in spin_once\n    self._spin_once_impl(timeout_sec)\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py\", line 805, in _spin_once_impl\n    raise handler.exception()\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/task.py\", line 272, in _execute_coroutine_step\n    result = coro.send(None)\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py\", line 488, in handler\n    await call_coroutine(entity, arg)\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py\", line 396, in _execute_timer\n    await await_or_execute(tmr.callback)\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py\", line 110, in await_or_execute\n    return callback(*args)\n  File \"/root/rober/onboard/build/ros2_trashbot_hardware/ros2_trashbot_hardware/lidar_driver.py\", line 459, in _tick\n    packets = self._next_packets()\n  File \"/root/rober/onboard/build/ros2_trashbot_hardware/ros2_trashbot_hardware/lidar_driver.py\", line 472, in _next_packets\n    return self.serial_session.read_packets()\n  File \"/root/rober/onboard/build/ros2_trashbot_hardware/ros2_trashbot_hardware/lidar_driver.py\", line 128, in read_packets\n    chunk = self._serial.read(int(self.config.read_size)) or b\"\"\n  File \"/usr/local/lib/python3.10/dist-packages/serial/serialposix.py\", line 595, in read\n    raise SerialException(\nserial.serialutil.SerialException: device reports readiness to read but returned no data (device disconnected or multiple access on port?)\n[ros2run]: Process exited with failure 1\n[INFO] [1783739229.400586137] [rclcpp]: signal_handler(SIGINT/SIGTERM)\n[INFO] [1783739229.400723011] [rclcpp]: signal_handler(SIGINT/SIGTERM)\n[INFO] [1783739229.400751553] [rclcpp]: signal_handler(SIGINT/SIGTERM)\n[INFO] [1783739229.400984344] [lifecycle_manager]: Running Nav2 LifecycleManager rcl preshutdown (lifecycle_manager)\n[INFO] [1783739229.401006678] [amcl]: Running Nav2 LifecycleNode rcl preshutdown (amcl)\n[INFO] [1783739229.401019261] [planner_server]: Running Nav2 LifecycleNode rcl preshutdown (planner_server)\n[INFO] [1783739229.401188303] [planner_server]: Destroying bond (planner_server) to lifecycle manager.\n[INFO] [1783739229.401269261] [amcl]: Cleaning up\n[INFO] [1783739229.402543551] [rclcpp]: signal_handler(SIGINT/SIGTERM)\n[INFO] [1783739229.402993675] [map_server]: Running Nav2 LifecycleNode rcl preshutdown (map_server)\n[INFO] [1783739229.403287175] [map_server]: Cleaning up\n[INFO] [1783739229.403426550] [map_server]: Destroying bond (map_server) to lifecycle manager.\n[INFO] [1783739229.468153181] [global_costmap.global_costmap]: Destroying\n[INFO] [1783739229.590366786] [map_server]: Destroying\n[INFO] [1783739229.731110744] [amcl]: Destroying bond (amcl) to lifecycle manager.\n[INFO] [1783739229.875043031] [lifecycle_manager]: Destroying lifecycle_manager\n[INFO] [1783739230.137440011] [amcl]: Destroying\nTraceback (most recent call last):\n  File \"<string>\", line 52, in <module>\n  File \"<string>\", line 44, in main\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/__init__.py\", line 229, in spin\n    executor.spin_once()\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py\", line 808, in spin_once\n    self._spin_once_impl(timeout_sec)\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py\", line 797, in _spin_once_impl\n    handler, entity, node = self.wait_for_ready_callbacks(timeout_sec=timeout_sec)\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py\", line 780, in wait_for_ready_callbacks\n    return next(self._cb_iter)\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py\", line 677, in _wait_for_ready_callbacks\n    wait_set.wait(timeout_nsec)\nKeyboardInterrupt\n[INFO] [1783739230.634442170] [planner_server]: Destroying\n",
+    "amcl_node_info_observed": true,
+    "amcl_node_publishers": [
+      {
+        "topic": "/amcl/transition_event",
+        "type": "lifecycle_msgs/msg/TransitionEvent"
+      },
+      {
+        "topic": "/amcl_pose",
+        "type": "geometry_msgs/msg/PoseWithCovarianceStamped"
+      },
+      {
+        "topic": "/bond",
+        "type": "bond/msg/Status"
+      },
+      {
+        "topic": "/parameter_events",
+        "type": "rcl_interfaces/msg/ParameterEvent"
+      },
+      {
+        "topic": "/particle_cloud",
+        "type": "nav2_msgs/msg/ParticleCloud"
+      },
+      {
+        "topic": "/rosout",
+        "type": "rcl_interfaces/msg/Log"
+      },
+      {
+        "topic": "/tf",
+        "type": "tf2_msgs/msg/TFMessage"
+      }
+    ],
+    "amcl_node_subscribers": [
+      {
+        "topic": "/bond",
+        "type": "bond/msg/Status"
+      },
+      {
+        "topic": "/initialpose",
+        "type": "geometry_msgs/msg/PoseWithCovarianceStamped"
+      },
+      {
+        "topic": "/map",
+        "type": "nav_msgs/msg/OccupancyGrid"
+      },
+      {
+        "topic": "/parameter_events",
+        "type": "rcl_interfaces/msg/ParameterEvent"
+      },
+      {
+        "topic": "/scan",
+        "type": "sensor_msgs/msg/LaserScan"
+      }
+    ],
+    "amcl_param_probe_ok": true,
+    "amcl_pose": {
+      "frame_id": "map",
+      "source": "/amcl_pose",
+      "x": -0.006751760871577799,
+      "y": -0.007333650427929111,
+      "yaw": -0.001421670386649147,
+      "z": 0.0
+    },
+    "amcl_pose_frame_id": "map",
+    "amcl_pose_observed": true,
+    "amcl_tf_broadcast_param": "true",
+    "amcl_tf_root_cause": "amcl_map_to_odom_tf_not_observed_on_tf",
+    "base_link_to_laser_frame_transform": {
+      "child_frame_id": "laser_frame",
+      "parent_frame_id": "base_link",
+      "rotation": {
+        "quaternion": {
+          "w": 1.0,
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "yaw": 0.0
+      },
+      "source": "/tf_static",
+      "translation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      }
+    },
+    "blocked_commands_not_sent": [
+      "T=1",
+      "T=13",
+      "T=130",
+      "T=131",
+      "/cmd_vel",
+      "/api/base/manual",
+      "/api/base/",
+      "/api/nav2/start",
+      "/api/nav2/stop",
+      "navigate_to_pose",
+      "compute_path_to_pose"
+    ],
+    "blocked_devices_not_opened": [
+      "/dev/ttyS5"
+    ],
+    "blockers": [
+      {
+        "layer": "Localization TF",
+        "reason": "map_to_odom_not_observed"
+      },
+      {
+        "detail": "amcl_map_to_odom_tf_not_observed_on_tf",
+        "layer": "Localization TF",
+        "reason": "map_to_base_link_blocked_by_missing_map_to_odom",
+        "source": "map_to_odom"
+      },
+      {
+        "layer": "planner readiness",
+        "reason": "localization_not_ready_for_path_generation"
+      }
+    ],
+    "calls_base_manual": false,
+    "collector_mode": "managed_no_motion_path_generation_runtime",
+    "commands": {
+      "amcl_node_info": {
+        "boundary": "amcl_node_info_skipped_after_managed_runtime_lifecycle_ready",
+        "executed": false,
+        "ok": true
+      },
+      "amcl_pose_once": {
+        "boundary": "pre_initialpose_amcl_pose_probe_skipped_to_prioritize_initialpose",
+        "executed": false,
+        "ok": false
+      },
+      "base_link_to_laser_frame_tf": {
+        "boundary": "tf_probe_not_requested_without_initialpose_opt_in",
+        "executed": false,
+        "ok": false
+      },
+      "controller_node_info": {
+        "boundary": "controller_never_requested_no_motion",
+        "executed": false,
+        "ok": false
+      },
+      "initialpose_info": {
+        "boundary": "initialpose_info_skipped_after_managed_runtime_lifecycle_ready",
+        "executed": false,
+        "ok": true
+      },
+      "initialpose_publish": {
+        "boundary": "rclpy_initialpose_publish_observed",
+        "command": "rclpy in-process /initialpose burst",
+        "elapsed_ms": 15582,
+        "error": null,
+        "executed": true,
+        "ok": true,
+        "publish_attempts": 5,
+        "publish_method": "rclpy_inprocess_burst",
+        "rmw_fastrtps_use_shm": "0",
+        "subscriber_count": 1,
+        "subscription_match_proven": true
+      },
+      "lifecycle": {
+        "amcl": {
+          "boundary": "managed_runtime_wait_node_observed",
+          "executed": false,
+          "ok": true
+        },
+        "map_server": {
+          "boundary": "managed_runtime_wait_node_observed",
+          "executed": false,
+          "ok": true
+        }
+      },
+      "lifecycle_recheck": {
+        "boundary": "managed_runtime_localization_root_cause_fast_path",
+        "executed": false
+      },
+      "managed_runtime": {
+        "cleanup_guard": {
+          "boundary": "managed_runtime_process_group_cleanup_guard",
+          "ok": true,
+          "remaining_processes": []
+        },
+        "cleanup_result": {
+          "attempted": true,
+          "group_present_after_cleanup": false,
+          "killed_with_sigkill": true,
+          "ok": true,
+          "process_group": 429978,
+          "remaining_processes": [],
+          "sent_signal": "SIGINT"
+        },
+        "log_path": "/tmp/rober_nav2_localization__ibhvtt1.log",
+        "log_tail": "py/__init__.py\", line 229, in spin\n    executor.spin_once()\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py\", line 808, in spin_once\n    self._spin_once_impl(timeout_sec)\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py\", line 805, in _spin_once_impl\n    raise handler.exception()\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/task.py\", line 272, in _execute_coroutine_step\n    result = coro.send(None)\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py\", line 488, in handler\n    await call_coroutine(entity, arg)\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py\", line 396, in _execute_timer\n    await await_or_execute(tmr.callback)\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py\", line 110, in await_or_execute\n    return callback(*args)\n  File \"/root/rober/onboard/build/ros2_trashbot_hardware/ros2_trashbot_hardware/lidar_driver.py\", line 459, in _tick\n    packets = self._next_packets()\n  File \"/root/rober/onboard/build/ros2_trashbot_hardware/ros2_trashbot_hardware/lidar_driver.py\", line 472, in _next_packets\n    return self.serial_session.read_packets()\n  File \"/root/rober/onboard/build/ros2_trashbot_hardware/ros2_trashbot_hardware/lidar_driver.py\", line 128, in read_packets\n    chunk = self._serial.read(int(self.config.read_size)) or b\"\"\n  File \"/usr/local/lib/python3.10/dist-packages/serial/serialposix.py\", line 595, in read\n    raise SerialException(\nserial.serialutil.SerialException: device reports readiness to read but returned no data (device disconnected or multiple access on port?)\n[ros2run]: Process exited with failure 1\n[INFO] [1783739229.400586137] [rclcpp]: signal_handler(SIGINT/SIGTERM)\n[INFO] [1783739229.400723011] [rclcpp]: signal_handler(SIGINT/SIGTERM)\n[INFO] [1783739229.400751553] [rclcpp]: signal_handler(SIGINT/SIGTERM)\n[INFO] [1783739229.400984344] [lifecycle_manager]: Running Nav2 LifecycleManager rcl preshutdown (lifecycle_manager)\n[INFO] [1783739229.401006678] [amcl]: Running Nav2 LifecycleNode rcl preshutdown (amcl)\n[INFO] [1783739229.401019261] [planner_server]: Running Nav2 LifecycleNode rcl preshutdown (planner_server)\n[INFO] [1783739229.401188303] [planner_server]: Destroying bond (planner_server) to lifecycle manager.\n[INFO] [1783739229.401269261] [amcl]: Cleaning up\n[INFO] [1783739229.402543551] [rclcpp]: signal_handler(SIGINT/SIGTERM)\n[INFO] [1783739229.402993675] [map_server]: Running Nav2 LifecycleNode rcl preshutdown (map_server)\n[INFO] [1783739229.403287175] [map_server]: Cleaning up\n[INFO] [1783739229.403426550] [map_server]: Destroying bond (map_server) to lifecycle manager.\n[INFO] [1783739229.468153181] [global_costmap.global_costmap]: Destroying\n[INFO] [1783739229.590366786] [map_server]: Destroying\n[INFO] [1783739229.731110744] [amcl]: Destroying bond (amcl) to lifecycle manager.\n[INFO] [1783739229.875043031] [lifecycle_manager]: Destroying lifecycle_manager\n[INFO] [1783739230.137440011] [amcl]: Destroying\nTraceback (most recent call last):\n  File \"<string>\", line 52, in <module>\n  File \"<string>\", line 44, in main\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/__init__.py\", line 229, in spin\n    executor.spin_once()\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py\", line 808, in spin_once\n    self._spin_once_impl(timeout_sec)\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py\", line 797, in _spin_once_impl\n    handler, entity, node = self.wait_for_ready_callbacks(timeout_sec=timeout_sec)\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py\", line 780, in wait_for_ready_callbacks\n    return next(self._cb_iter)\n  File \"/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py\", line 677, in _wait_for_ready_callbacks\n    wait_set.wait(timeout_nsec)\nKeyboardInterrupt\n[INFO] [1783739230.634442170] [planner_server]: Destroying\n",
+        "map_analysis": {
+          "bounds": {
+            "max_x": 7.5761512648662785,
+            "max_y": 5.650000084191561,
+            "min_x": -5.473848929593875,
+            "min_y": 0.0
+          },
+          "cell_counts": {
+            "free": 425,
+            "occupied": 45,
+            "other": 0,
+            "unknown": 29023
+          },
+          "error": null,
+          "executed": true,
+          "height": 113,
+          "image": "/root/rober/onboard/runtime/maps/trashbot_map.pgm",
+          "map_yaml": "/root/rober/onboard/runtime/maps/trashbot_map.yaml",
+          "ok": true,
+          "origin": [
+            -5.473848929593875,
+            0.0,
+            0.0
+          ],
+          "resolution": 0.05000000074505806,
+          "width": 261
+        },
+        "map_yaml": "/root/rober/onboard/runtime/maps/trashbot_map.yaml",
+        "map_yaml_source": "explicit_cli_managed_map_yaml",
+        "process_group": 429978,
+        "requested": true,
+        "started": true,
+        "startup_error": null,
+        "wait_result": {
+          "boundary": "managed_runtime_nodes_observed",
+          "history": [
+            {
+              "cumulative_lifecycle_active": {
+                "amcl": true,
+                "map_server": true,
+                "planner_server": true
+              },
+              "cumulative_node_names": [
+                "/_ros2cli_351048",
+                "/_ros2cli_371665",
+                "/_ros2cli_378563",
+                "/_ros2cli_386305",
+                "/_ros2cli_391938",
+                "/_ros2cli_406648",
+                "/_ros2cli_411855",
+                "/amcl",
+                "/esp32_bridge",
+                "/global_costmap",
+                "/map_server",
+                "/o10_managed_runtime_graph_probe",
+                "/planner_server",
+                "/transform_listener_impl_aaab091d32f0",
+                "/transform_listener_impl_aaab0c3c8190"
+              ],
+              "elapsed_ms": 2523,
+              "lifecycle_active": {
+                "amcl": true,
+                "map_server": true,
+                "planner_server": true
+              },
+              "node_list_command": {
+                "boundary": "rclpy_node_names_observed",
+                "elapsed_ms": 1914,
+                "error": null,
+                "executed": true,
+                "node_names": [
+                  "_ros2cli_351048",
+                  "_ros2cli_371665",
+                  "_ros2cli_378563",
+                  "_ros2cli_386305",
+                  "_ros2cli_391938",
+                  "_ros2cli_406648",
+                  "_ros2cli_411855",
+                  "amcl",
+                  "esp32_bridge",
+                  "global_costmap",
+                  "map_server",
+                  "o10_managed_runtime_graph_probe",
+                  "planner_server",
+                  "transform_listener_impl_aaab091d32f0",
+                  "transform_listener_impl_aaab0c3c8190"
+                ],
+                "ok": true
+              }
+            }
+          ],
+          "node_list": {
+            "boundary": "rclpy_node_names_observed",
+            "elapsed_ms": 1914,
+            "error": null,
+            "executed": true,
+            "node_names": [
+              "_ros2cli_351048",
+              "_ros2cli_371665",
+              "_ros2cli_378563",
+              "_ros2cli_386305",
+              "_ros2cli_391938",
+              "_ros2cli_406648",
+              "_ros2cli_411855",
+              "amcl",
+              "esp32_bridge",
+              "global_costmap",
+              "map_server",
+              "o10_managed_runtime_graph_probe",
+              "planner_server",
+              "transform_listener_impl_aaab091d32f0",
+              "transform_listener_impl_aaab0c3c8190"
+            ],
+            "ok": true
+          },
+          "observed_node_names": [
+            "/_ros2cli_351048",
+            "/_ros2cli_371665",
+            "/_ros2cli_378563",
+            "/_ros2cli_386305",
+            "/_ros2cli_391938",
+            "/_ros2cli_406648",
+            "/_ros2cli_411855",
+            "/amcl",
+            "/esp32_bridge",
+            "/global_costmap",
+            "/map_server",
+            "/o10_managed_runtime_graph_probe",
+            "/planner_server",
+            "/transform_listener_impl_aaab091d32f0",
+            "/transform_listener_impl_aaab0c3c8190"
+          ],
+          "ok": true
+        }
+      },
+      "map_once": {
+        "boundary": "map_probe_skipped_after_managed_runtime_lifecycle_ready",
+        "executed": false,
+        "ok": true,
+        "stdout": "inferred: map_server lifecycle already observed in managed runtime window; skip repeated /map echo to return current AMCL/TF blocker before HTTP timeout"
+      },
+      "map_server_info": {
+        "boundary": "map_server_info_skipped_after_managed_runtime_lifecycle_ready",
+        "executed": false,
+        "ok": true
+      },
+      "map_to_base_link_tf": {
+        "boundary": "map_to_base_link_tf_probe_skipped_until_chain_inputs_observed",
+        "executed": false,
+        "ok": false
+      },
+      "map_to_odom_tf": {
+        "command": "timeout 10 ros2 run tf2_ros tf2_echo map odom",
+        "elapsed_ms": 12833,
+        "executed": true,
+        "ok": false,
+        "returncode": 124,
+        "stderr": "[INFO] [1783739219.450380446] [tf2_echo]: Waiting for transform map ->  odom: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1783739221.101987880] [tf2_echo]: Waiting for transform map ->  odom: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1783739223.101769837] [tf2_echo]: Waiting for transform map ->  odom: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1783739225.101782294] [tf2_echo]: Waiting for transform map ->  odom: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1783739226.101784752] [tf2_echo]: Waiting for transform map ->  odom: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1783739227.101790668] [tf2_echo]: Waiting for transform map ->  odom: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1783739228.166164003] [rclcpp]: signal_handler(SIGINT/SIGTERM)\n",
+        "stdout": ""
+      },
+      "node_list": {
+        "boundary": "managed_runtime_localization_root_cause_fast_path",
+        "executed": false,
+        "ok": true,
+        "stdout": "/_ros2cli_351048\n/_ros2cli_371665\n/_ros2cli_378563\n/_ros2cli_386305\n/_ros2cli_391938\n/_ros2cli_406648\n/_ros2cli_411855\n/amcl\n/esp32_bridge\n/global_costmap\n/map_server\n/o10_managed_runtime_graph_probe\n/planner_server\n/transform_listener_impl_aaab091d32f0\n/transform_listener_impl_aaab0c3c8190"
+      },
+      "odom_to_base_link_tf": {
+        "boundary": "tf_probe_not_requested_without_initialpose_opt_in",
+        "executed": false,
+        "ok": false
+      },
+      "package_checks": {
+        "nav2_amcl": {
+          "boundary": "managed_runtime_started_implies_required_package_loaded",
+          "command": "managed runtime observed package nav2_amcl",
+          "diagnostic_mode": "managed_runtime_localization_fast_path",
+          "executed": false,
+          "ok": true
+        },
+        "nav2_lifecycle_manager": {
+          "boundary": "managed_runtime_started_implies_required_package_loaded",
+          "command": "managed runtime observed package nav2_lifecycle_manager",
+          "diagnostic_mode": "managed_runtime_localization_fast_path",
+          "executed": false,
+          "ok": true
+        },
+        "nav2_map_server": {
+          "boundary": "managed_runtime_started_implies_required_package_loaded",
+          "command": "managed runtime observed package nav2_map_server",
+          "diagnostic_mode": "managed_runtime_localization_fast_path",
+          "executed": false,
+          "ok": true
+        },
+        "ros2_trashbot_bringup": {
+          "boundary": "managed_runtime_started_implies_required_package_loaded",
+          "command": "managed runtime observed package ros2_trashbot_bringup",
+          "diagnostic_mode": "managed_runtime_localization_fast_path",
+          "executed": false,
+          "ok": true
+        },
+        "ros2_trashbot_nav": {
+          "boundary": "managed_runtime_started_implies_required_package_loaded",
+          "command": "managed runtime observed package ros2_trashbot_nav",
+          "diagnostic_mode": "managed_runtime_localization_fast_path",
+          "executed": false,
+          "ok": true
+        }
+      },
+      "package_checks_batch": {
+        "boundary": "managed_runtime_localization_fast_path",
+        "executed": false,
+        "ok": true
+      },
+      "path_generation": {
+        "request": {
+          "enabled": true,
+          "frame_id": "map",
+          "map_free_cell_count": 425,
+          "map_goal_diagnostics": {
+            "adapted": false,
+            "bounds": {
+              "max_x": 7.5761512648662785,
+              "max_y": 5.650000084191561,
+              "min_x": -5.473848929593875,
+              "min_y": 0.0
+            },
+            "cell_counts": {
+              "free": 425,
+              "occupied": 45,
+              "other": 0,
+              "unknown": 29023
+            },
+            "goal_in_bounds": true,
+            "map_analysis_ok": true,
+            "original_goal": {
+              "x": 0.8,
+              "y": 0.0
+            },
+            "original_start": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "start_in_bounds": true
+          },
+          "map_has_free_cells_for_path_proof": true,
+          "orientation_w": 1.0,
+          "orientation_z": 0.0,
+          "planner_id": "",
+          "start_x": 0.0,
+          "start_y": 0.0,
+          "use_start": false,
+          "x": 0.8,
+          "y": 0.0,
+          "yaw": 0.0
+        },
+        "result": {
+          "attempted": false,
+          "boundary": "path_generation_blocked_by_localization_not_ready",
+          "ok": false
+        }
+      },
+      "planner_lifecycle": {
+        "controller_server": {
+          "boundary": "planner_probe_deferred_until_localization_ready",
+          "executed": false,
+          "ok": false
+        },
+        "planner_server": {
+          "boundary": "planner_probe_deferred_until_localization_ready",
+          "executed": false,
+          "ok": false
+        }
+      },
+      "planner_lifecycle_recheck": {
+        "boundary": "path_generation_planner_recheck_not_requested",
+        "executed": false
+      },
+      "planner_node_info": {
+        "boundary": "planner_probe_deferred_until_localization_ready",
+        "executed": false,
+        "ok": false
+      },
+      "post_initialpose_amcl_pose_once": {
+        "command": "timeout 8 ros2 topic echo --once /amcl_pose",
+        "elapsed_ms": 18560,
+        "executed": true,
+        "ok": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "header:\n  stamp:\n    sec: 1783739202\n    nanosec: 699829647\n  frame_id: map\npose:\n  pose:\n    position:\n      x: -0.006751760871577799\n      y: -0.007333650427929111\n      z: 0.0\n    orientation:\n      x: 0.0\n      y: 0.0\n      z: -0.0007108351334619835\n      w: 0.9999997473566746\n  covariance:\n  - 0.23886870342106276\n  - 0.0001681640319956289\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0001681640319956294\n  - 0.24613773737224284\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0\n  - 0.0672561022467693\n---\n"
+      },
+      "ros2_check": {
+        "command": "command -v ros2",
+        "elapsed_ms": 5025,
+        "executed": true,
+        "ok": true,
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "/opt/ros/humble/bin/ros2\n"
+      },
+      "scan_once": {
+        "boundary": "scan_probe_skipped_after_managed_runtime_lifecycle_ready",
+        "executed": false,
+        "ok": true,
+        "stdout": "inferred: lidar runtime already observed in managed runtime window; skip repeated /scan echo to return current localization blocker before HTTP timeout"
+      },
+      "tf_source_probe": {
+        "amcl_rclpy_probe": {
+          "boundary": "rclpy_amcl_params_graph_tf_probe_observed",
+          "command_statuses": {
+            "rclpy_graph": 0,
+            "tf": 124,
+            "tf_static": 0
+          },
+          "dynamic_edges": [],
+          "dynamic_transforms": [],
+          "elapsed_ms": 4638,
+          "error": null,
+          "executed": true,
+          "node_info_error": {
+            "message": "cannot get publisher names and types for nonexistent node: error not set",
+            "type": "NodeNameNonExistentError"
+          },
+          "node_info_observed": true,
+          "ok": true,
+          "param_probe_ok": true,
+          "params": {
+            "base_frame_id": "base_link",
+            "global_frame_id": "map",
+            "odom_frame_id": "odom",
+            "tf_broadcast": true
+          },
+          "publishers": [
+            {
+              "topic": "/amcl/transition_event",
+              "type": "lifecycle_msgs/msg/TransitionEvent"
+            },
+            {
+              "topic": "/amcl_pose",
+              "type": "geometry_msgs/msg/PoseWithCovarianceStamped"
+            },
+            {
+              "topic": "/bond",
+              "type": "bond/msg/Status"
+            },
+            {
+              "topic": "/parameter_events",
+              "type": "rcl_interfaces/msg/ParameterEvent"
+            },
+            {
+              "topic": "/particle_cloud",
+              "type": "nav2_msgs/msg/ParticleCloud"
+            },
+            {
+              "topic": "/rosout",
+              "type": "rcl_interfaces/msg/Log"
+            },
+            {
+              "topic": "/tf",
+              "type": "tf2_msgs/msg/TFMessage"
+            }
+          ],
+          "static_edges": [
+            {
+              "child": "base_link",
+              "parent": "odom",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "laser_frame",
+              "parent": "base_link",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "base_link",
+              "parent": "odom",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "laser_frame",
+              "parent": "base_link",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "base_link",
+              "parent": "odom",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "laser_frame",
+              "parent": "base_link",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "base_link",
+              "parent": "odom",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "laser_frame",
+              "parent": "base_link",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "base_link",
+              "parent": "odom",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "laser_frame",
+              "parent": "base_link",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "base_link",
+              "parent": "odom",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "laser_frame",
+              "parent": "base_link",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "base_link",
+              "parent": "odom",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "laser_frame",
+              "parent": "base_link",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "base_link",
+              "parent": "odom",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "laser_frame",
+              "parent": "base_link",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "base_link",
+              "parent": "odom",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "laser_frame",
+              "parent": "base_link",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "base_link",
+              "parent": "odom",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "laser_frame",
+              "parent": "base_link",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "base_link",
+              "parent": "odom",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "laser_frame",
+              "parent": "base_link",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "base_link",
+              "parent": "odom",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "laser_frame",
+              "parent": "base_link",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "base_link",
+              "parent": "odom",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "laser_frame",
+              "parent": "base_link",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "laser_frame",
+              "parent": "base_link",
+              "topic": "/tf_static"
+            }
+          ],
+          "static_transforms": [
+            {
+              "child_frame_id": "base_link",
+              "parent_frame_id": "odom",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "laser_frame",
+              "parent_frame_id": "base_link",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "base_link",
+              "parent_frame_id": "odom",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "laser_frame",
+              "parent_frame_id": "base_link",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "base_link",
+              "parent_frame_id": "odom",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "laser_frame",
+              "parent_frame_id": "base_link",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "base_link",
+              "parent_frame_id": "odom",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "laser_frame",
+              "parent_frame_id": "base_link",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "base_link",
+              "parent_frame_id": "odom",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "laser_frame",
+              "parent_frame_id": "base_link",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "base_link",
+              "parent_frame_id": "odom",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "laser_frame",
+              "parent_frame_id": "base_link",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "base_link",
+              "parent_frame_id": "odom",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "laser_frame",
+              "parent_frame_id": "base_link",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "base_link",
+              "parent_frame_id": "odom",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "laser_frame",
+              "parent_frame_id": "base_link",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "base_link",
+              "parent_frame_id": "odom",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "laser_frame",
+              "parent_frame_id": "base_link",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "base_link",
+              "parent_frame_id": "odom",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "laser_frame",
+              "parent_frame_id": "base_link",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "base_link",
+              "parent_frame_id": "odom",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "laser_frame",
+              "parent_frame_id": "base_link",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "base_link",
+              "parent_frame_id": "odom",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "laser_frame",
+              "parent_frame_id": "base_link",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "base_link",
+              "parent_frame_id": "odom",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "laser_frame",
+              "parent_frame_id": "base_link",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "laser_frame",
+              "parent_frame_id": "base_link",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            }
+          ],
+          "subscribers": [
+            {
+              "topic": "/bond",
+              "type": "bond/msg/Status"
+            },
+            {
+              "topic": "/initialpose",
+              "type": "geometry_msgs/msg/PoseWithCovarianceStamped"
+            },
+            {
+              "topic": "/map",
+              "type": "nav_msgs/msg/OccupancyGrid"
+            },
+            {
+              "topic": "/parameter_events",
+              "type": "rcl_interfaces/msg/ParameterEvent"
+            },
+            {
+              "topic": "/scan",
+              "type": "sensor_msgs/msg/LaserScan"
+            }
+          ],
+          "tf_inventory_observed": true,
+          "topic_types": {
+            "/amcl/transition_event": "lifecycle_msgs/msg/TransitionEvent",
+            "/amcl_pose": "geometry_msgs/msg/PoseWithCovarianceStamped",
+            "/bond": "bond/msg/Status",
+            "/cmd_vel": "geometry_msgs/msg/Twist",
+            "/compute_path_through_poses/_action/feedback": "nav2_msgs/action/ComputePathThroughPoses_FeedbackMessage",
+            "/compute_path_through_poses/_action/status": "action_msgs/msg/GoalStatusArray",
+            "/compute_path_to_pose/_action/feedback": "nav2_msgs/action/ComputePathToPose_FeedbackMessage",
+            "/compute_path_to_pose/_action/status": "action_msgs/msg/GoalStatusArray",
+            "/diagnostics": "diagnostic_msgs/msg/DiagnosticArray",
+            "/global_costmap/costmap": "nav_msgs/msg/OccupancyGrid",
+            "/global_costmap/costmap_raw": "nav2_msgs/msg/Costmap",
+            "/global_costmap/costmap_updates": "map_msgs/msg/OccupancyGridUpdate",
+            "/global_costmap/footprint": "geometry_msgs/msg/Polygon",
+            "/global_costmap/global_costmap/transition_event": "lifecycle_msgs/msg/TransitionEvent",
+            "/global_costmap/published_footprint": "geometry_msgs/msg/PolygonStamped",
+            "/initialpose": "geometry_msgs/msg/PoseWithCovarianceStamped",
+            "/lidar/raw_packet": "std_msgs/msg/UInt8MultiArray",
+            "/map": "nav_msgs/msg/OccupancyGrid",
+            "/map_server/transition_event": "lifecycle_msgs/msg/TransitionEvent",
+            "/odom": "nav_msgs/msg/Odometry",
+            "/parameter_events": "rcl_interfaces/msg/ParameterEvent",
+            "/particle_cloud": "nav2_msgs/msg/ParticleCloud",
+            "/plan": "nav_msgs/msg/Path",
+            "/planner_server/transition_event": "lifecycle_msgs/msg/TransitionEvent",
+            "/rosout": "rcl_interfaces/msg/Log",
+            "/scan": "sensor_msgs/msg/LaserScan",
+            "/tf": "tf2_msgs/msg/TFMessage",
+            "/tf_static": "tf2_msgs/msg/TFMessage"
+          }
+        },
+        "boundary": "rclpy_amcl_params_graph_tf_probe_observed",
+        "elapsed_ms": 4638,
+        "executed": true,
+        "ok": true,
+        "stderr": "",
+        "stdout": ""
+      },
+      "topic_list": {
+        "boundary": "managed_runtime_localization_root_cause_fast_path",
+        "executed": false,
+        "ok": true,
+        "stdout": "/amcl/transition_event\n/amcl_pose\n/bond\n/cmd_vel\n/compute_path_through_poses/_action/feedback\n/compute_path_through_poses/_action/status\n/compute_path_to_pose/_action/feedback\n/compute_path_to_pose/_action/status\n/diagnostics\n/global_costmap/costmap\n/global_costmap/costmap_raw\n/global_costmap/costmap_updates\n/global_costmap/footprint\n/global_costmap/global_costmap/transition_event\n/global_costmap/published_footprint\n/initialpose\n/lidar/raw_packet\n/map\n/map_server/transition_event\n/odom\n/parameter_events\n/particle_cloud\n/plan\n/planner_server/transition_event\n/rosout\n/scan\n/tf\n/tf_static"
+      }
+    },
+    "controller_active": false,
+    "controller_server_active": false,
+    "controller_server_observed": false,
+    "controller_server_requested": false,
+    "current_command": null,
+    "delivery_success": false,
+    "effective_map_inputs_ready": true,
+    "elapsed_ms": 64285,
+    "evidence_ref": "o10-amcl-nav2-runtime-1783739167515",
+    "evidence_type": "blocked_with_root_cause",
+    "generated_at_ms": 1783739231800,
+    "hil_pass": false,
+    "initialpose_boundary": "explicit_opt_in_single_initialpose_for_amcl_localization_only",
+    "initialpose_publish_attempted": true,
+    "initialpose_publish_attempts": 5,
+    "initialpose_publish_elapsed_ms": 15582,
+    "initialpose_publish_error": null,
+    "initialpose_publish_method": "rclpy_inprocess_burst",
+    "initialpose_published": true,
+    "initialpose_request": {
+      "enabled": true,
+      "frame_id": "map",
+      "orientation_w": 1.0,
+      "orientation_z": 0.0,
+      "x": 0.0,
+      "y": 0.0,
+      "yaw": 0.0
+    },
+    "initialpose_subscriber_count": 1,
+    "last_phase": "final",
+    "last_successful_phase": "cleanup",
+    "localization_tf_observed": {
+      "map_to_base_link": false,
+      "map_to_odom": false
+    },
+    "managed_runtime_boundary": "explicit_opt_in_managed_path_generation_runtime_no_motion",
+    "managed_runtime_cleanup_ok": true,
+    "managed_runtime_map_analysis": {
+      "bounds": {
+        "max_x": 7.5761512648662785,
+        "max_y": 5.650000084191561,
+        "min_x": -5.473848929593875,
+        "min_y": 0.0
+      },
+      "cell_counts": {
+        "free": 425,
+        "occupied": 45,
+        "other": 0,
+        "unknown": 29023
+      },
+      "error": null,
+      "executed": true,
+      "height": 113,
+      "image": "/root/rober/onboard/runtime/maps/trashbot_map.pgm",
+      "map_yaml": "/root/rober/onboard/runtime/maps/trashbot_map.yaml",
+      "ok": true,
+      "origin": [
+        -5.473848929593875,
+        0.0,
+        0.0
+      ],
+      "resolution": 0.05000000074505806,
+      "width": 261
+    },
+    "managed_runtime_map_inputs_ready": true,
+    "managed_runtime_map_yaml": "/root/rober/onboard/runtime/maps/trashbot_map.yaml",
+    "managed_runtime_map_yaml_source": "explicit_cli_managed_map_yaml",
+    "managed_runtime_process_group": 429978,
+    "managed_runtime_requested": true,
+    "managed_runtime_started": true,
+    "managed_runtime_vendor_boundary": "Vendor facts from docs/vendor/VENDOR_INDEX.md: WAVE ROVER base is newline-delimited UART JSON, vendor Raspberry Pi UART path is not Orange Pi fixed fact; this proof only opens LiDAR /dev/ttyACM0 and never opens /dev/ttyS5.",
+    "managed_runtime_wait_result": {
+      "boundary": "managed_runtime_nodes_observed",
+      "history": [
+        {
+          "cumulative_lifecycle_active": {
+            "amcl": true,
+            "map_server": true,
+            "planner_server": true
+          },
+          "cumulative_node_names": [
+            "/_ros2cli_351048",
+            "/_ros2cli_371665",
+            "/_ros2cli_378563",
+            "/_ros2cli_386305",
+            "/_ros2cli_391938",
+            "/_ros2cli_406648",
+            "/_ros2cli_411855",
+            "/amcl",
+            "/esp32_bridge",
+            "/global_costmap",
+            "/map_server",
+            "/o10_managed_runtime_graph_probe",
+            "/planner_server",
+            "/transform_listener_impl_aaab091d32f0",
+            "/transform_listener_impl_aaab0c3c8190"
+          ],
+          "elapsed_ms": 2523,
+          "lifecycle_active": {
+            "amcl": true,
+            "map_server": true,
+            "planner_server": true
+          },
+          "node_list_command": {
+            "boundary": "rclpy_node_names_observed",
+            "elapsed_ms": 1914,
+            "error": null,
+            "executed": true,
+            "node_names": [
+              "_ros2cli_351048",
+              "_ros2cli_371665",
+              "_ros2cli_378563",
+              "_ros2cli_386305",
+              "_ros2cli_391938",
+              "_ros2cli_406648",
+              "_ros2cli_411855",
+              "amcl",
+              "esp32_bridge",
+              "global_costmap",
+              "map_server",
+              "o10_managed_runtime_graph_probe",
+              "planner_server",
+              "transform_listener_impl_aaab091d32f0",
+              "transform_listener_impl_aaab0c3c8190"
+            ],
+            "ok": true
+          }
+        }
+      ],
+      "node_list": {
+        "boundary": "rclpy_node_names_observed",
+        "elapsed_ms": 1914,
+        "error": null,
+        "executed": true,
+        "node_names": [
+          "_ros2cli_351048",
+          "_ros2cli_371665",
+          "_ros2cli_378563",
+          "_ros2cli_386305",
+          "_ros2cli_391938",
+          "_ros2cli_406648",
+          "_ros2cli_411855",
+          "amcl",
+          "esp32_bridge",
+          "global_costmap",
+          "map_server",
+          "o10_managed_runtime_graph_probe",
+          "planner_server",
+          "transform_listener_impl_aaab091d32f0",
+          "transform_listener_impl_aaab0c3c8190"
+        ],
+        "ok": true
+      },
+      "observed_node_names": [
+        "/_ros2cli_351048",
+        "/_ros2cli_371665",
+        "/_ros2cli_378563",
+        "/_ros2cli_386305",
+        "/_ros2cli_391938",
+        "/_ros2cli_406648",
+        "/_ros2cli_411855",
+        "/amcl",
+        "/esp32_bridge",
+        "/global_costmap",
+        "/map_server",
+        "/o10_managed_runtime_graph_probe",
+        "/planner_server",
+        "/transform_listener_impl_aaab091d32f0",
+        "/transform_listener_impl_aaab0c3c8190"
+      ],
+      "ok": true
+    },
+    "managed_static_tf_processes": {
+      "all_expected_processes_observed": true,
+      "checked_before_cleanup": true,
+      "expected": [
+        {
+          "child": "base_link",
+          "parent": "odom",
+          "role": "static_tf_odom_base"
+        },
+        {
+          "child": "laser_frame",
+          "parent": "base_link",
+          "role": "static_tf_base_laser"
+        }
+      ],
+      "observed_roles": [
+        "static_tf_base_laser",
+        "static_tf_odom_base"
+      ],
+      "process_group": 429978,
+      "processes": [
+        {
+          "command": "bash -lc set -e; set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; cd /root/rober/onboard; pids=(); cleanup(){ for pid in \"${pids[@]}\"; do kill -INT \"$pid\" 2>/dev/null || true; done; wait || true; }; trap cleanup EXIT INT TERM; printf '%s\\n' 'managed_map_yaml=/root/rober/onboard/runtime/maps/trashbot_map.yaml' > /tmp/rober_nav2_localization__ibhvtt1.log; printf '%s\\n' 'managed_runtime_boundary=no_motion_path_generation_planner_only' >> /tmp/rober_nav2_localization__ibhvtt1.log; printf '%s\\n' 'blocked_device=/dev/ttyS5' >> /tmp/rober_nav2_localization__ibhvtt1.log; printf '%s\\n' 'starting role=lidar_driver' >> /tmp/rober_nav2_localization__ibhvtt1.log; (ros2 run ros2_trashbot_hardware lidar_driver --ros-args -p serial_port:=/dev/ttyACM0 -p serial_baudrate:=230400 -p frame_id:=laser_frame -p scan_topic:=/scan -p publish_raw_packets:=false) >> /tmp/rober_nav2_localization__ibhvtt1.log 2>&1 & pid=$!; pids+=($pid); printf '%s\\n' 'started role=lidar_driver pid='$pid >> /tmp/rober_nav2_localization__ibhvtt1.log; printf '%s\\n' 'starting role=static_tf_broadcaster' >> /tmp/rober_nav2_localization__ibhvtt1.log; (python3 -c 'import json import sys  import rclpy from geometry_msgs.msg import TransformStamped from tf2_ros.static_transform_broadcaster import StaticTransformBroadcaster   def make_transform(node, parent, child):     # 两条边都是 no-motion proof 的固定几何关系；这里显式置零，避免引入底盘里程计假设。     transform = TransformStamped()     transform.header.stamp = node.get_clock().now().to_msg()     transform.header.frame_id = parent     transform.child_frame_id = child     transform.transform.translation.x = 0.0     transform.transform.translation.y = 0.0     transform.transform.translation.z = 0.0     transform.transform.rotation.x = 0.0     transform.transform.rotation.y = 0.0     transform.transform.rotation.z = 0.0     transform.transform.rotation.w = 1.0     return transform   def main():     frames = json.loads(sys.argv[1])     rclpy.init(args=None)     node = rclpy.create_node(\"managed_static_tf_broadcaster\")     broadcaster = StaticTransformBroadcaster(node)      def publish_static_transforms():         # 同一个 TFMessage 同时包含 odom->base_link 与 base_link->laser_frame。         # transient-local late subscriber 因此不再依赖两个独立 CLI publisher 的发现时序。         broadcaster.sendTransform(             [                 make_transform(node, frames[\"odom\"], frames[\"base\"]),                 make_transform(node, frames[\"base\"], frames[\"laser\"]),             ]         )      publish_static_transforms()     node.create_timer(0.5, publish_static_transforms)     try:         rclpy.spin(node)     finally:         node.destroy_node()         if rclpy.ok():             rclpy.shutdown()   if __name__ == \"__main__\":     main()' '{\"odom\": \"odom\", \"base\": \"base_link\", \"laser\": \"laser_frame\"}' static_tf_odom_base static_tf_base_laser odom_to_base_link base_link_to_laser_frame) >> /tmp/rober_nav2_localization__ibhvtt1.log 2>&1 & pid=$!; pids+=($pid); printf '%s\\n' 'started role=static_tf_broadcaster pid='$pid >> /tmp/rober_nav2_localization__ibhvtt1.log; printf '%s\\n' 'starting role=map_server' >> /tmp/rober_nav2_localization__ibhvtt1.log; (ros2 run nav2_map_server map_server --ros-args --params-file /tmp/rober_nav2_localization_5cpex57w.yaml -r __node:=map_server) >> /tmp/rober_nav2_localization__ibhvtt1.log 2>&1 & pid=$!; pids+=($pid); printf '%s\\n' 'started role=map_server pid='$pid >> /tmp/rober_nav2_localization__ibhvtt1.log; printf '%s\\n' 'starting role=amcl' >> /tmp/rober_nav2_localization__ibhvtt1.log; (ros2 run nav2_amcl amcl --ros-args --params-file /tmp/rober_nav2_localization_5cpex57w.yaml -r __node:=amcl) >> /tmp/rober_nav2_localization__ibhvtt1.log 2>&1 & pid=$!; pids+=($pid); printf '%s\\n' 'started role=amcl pid='$pid >> /tmp/rober_nav2_localization__ibhvtt1.log; printf '%s\\n' 'starting role=planner_server' >> /tmp/rober_nav2_localization__ibhvtt1.log; (ros2 run nav2_planner planner_server --ros-args --params-file /tmp/rober_nav2_localization_5cpex57w.yaml -r __node:=planner_server) >> /tmp/rober_nav2_localization__ibhvtt1.log 2>&1 & pid=$!; pids+=($pid); printf '%s\\n' 'started role=planner_server pid='$pid >> /tmp/rober_nav2_localization__ibhvtt1.log; printf '%s\\n' 'waiting before lifecycle_manager start delay_s=3' >> /tmp/rober_nav2_localization__ibhvtt1.log; sleep 3; printf '%s\\n' 'starting role=lifecycle_manager' >> /tmp/rober_nav2_localization__ibhvtt1.log; (ros2 run nav2_lifecycle_manager lifecycle_manager --ros-args --params-file /tmp/rober_nav2_localization_5cpex57w.yaml -r __node:=lifecycle_manager) >> /tmp/rober_nav2_localization__ibhvtt1.log 2>&1 & pid=$!; pids+=($pid); printf '%s\\n' 'started role=lifecycle_manager pid='$pid >> /tmp/rober_nav2_localization__ibhvtt1.log; wait",
+          "pgid": 429978,
+          "pid": 429978,
+          "role": "static_tf_base_laser",
+          "roles": [
+            "static_tf_base_laser",
+            "static_tf_odom_base"
+          ],
+          "source_type": "single_rclpy_static_transform_broadcaster"
+        }
+      ],
+      "source_strategy": "single_rclpy_static_transform_broadcaster_transient_local"
+    },
+    "map_consumed": false,
+    "map_frame_observed": false,
+    "map_inputs": {
+      "inputs_ready": false,
+      "map_artifact_dir": "/root/rober/onboard/runtime/maps",
+      "map_image_candidates": [
+        {
+          "mtime_ms": 1782061700286,
+          "name": "field_first_jog_20260622_0135.pgm",
+          "path": "/root/rober/onboard/runtime/maps/field_first_jog_20260622_0135.pgm",
+          "size_bytes": 31280,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1781118091538,
+          "name": "final_direct_save.pgm",
+          "path": "/root/rober/onboard/runtime/maps/final_direct_save.pgm",
+          "size_bytes": 13266,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1782062002493,
+          "name": "fixed_free_cells_20260622_0112.pgm",
+          "path": "/root/rober/onboard/runtime/maps/fixed_free_cells_20260622_0112.pgm",
+          "size_bytes": 33062,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1782061841826,
+          "name": "manual_motion_map_20260622_0135.pgm",
+          "path": "/root/rober/onboard/runtime/maps/manual_motion_map_20260622_0135.pgm",
+          "size_bytes": 44198,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1781140891863,
+          "name": "pc_integrated_current_20260611_0920.pgm",
+          "path": "/root/rober/onboard/runtime/maps/pc_integrated_current_20260611_0920.pgm",
+          "size_bytes": 19316,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1781141101886,
+          "name": "pc_integrated_current_retry_20260611_0920.pgm",
+          "path": "/root/rober/onboard/runtime/maps/pc_integrated_current_retry_20260611_0920.pgm",
+          "size_bytes": 7036,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1781133958365,
+          "name": "pc_integrated_smoke_20260611_0735.pgm",
+          "path": "/root/rober/onboard/runtime/maps/pc_integrated_smoke_20260611_0735.pgm",
+          "size_bytes": 42883,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1781156934777,
+          "name": "pc_map_lifecycle_20260611_1350.pgm",
+          "path": "/root/rober/onboard/runtime/maps/pc_map_lifecycle_20260611_1350.pgm",
+          "size_bytes": 28892,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1781166497889,
+          "name": "pc_no_motion_20260611_162507.pgm",
+          "path": "/root/rober/onboard/runtime/maps/pc_no_motion_20260611_162507.pgm",
+          "size_bytes": 31758,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1781117808598,
+          "name": "pc_proxy_save2.pgm",
+          "path": "/root/rober/onboard/runtime/maps/pc_proxy_save2.pgm",
+          "size_bytes": 52223,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1781135890521,
+          "name": "pc_proxy_scan_stabilize_20260611_0758.pgm",
+          "path": "/root/rober/onboard/runtime/maps/pc_proxy_scan_stabilize_20260611_0758.pgm",
+          "size_bytes": 29318,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1781117645935,
+          "name": "pc_proxy_start.pgm",
+          "path": "/root/rober/onboard/runtime/maps/pc_proxy_start.pgm",
+          "size_bytes": 47468,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1781117556603,
+          "name": "pc_runtime_v1.pgm",
+          "path": "/root/rober/onboard/runtime/maps/pc_runtime_v1.pgm",
+          "size_bytes": 8218,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1781135633986,
+          "name": "scan_stabilize_20260611_075301.pgm",
+          "path": "/root/rober/onboard/runtime/maps/scan_stabilize_20260611_075301.pgm",
+          "size_bytes": 30502,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1781135815398,
+          "name": "scan_stabilize_fixed_20260611_0756.pgm",
+          "path": "/root/rober/onboard/runtime/maps/scan_stabilize_fixed_20260611_0756.pgm",
+          "size_bytes": 8070,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1782749748961,
+          "name": "trashbot_map.pgm",
+          "path": "/root/rober/onboard/runtime/maps/trashbot_map.pgm",
+          "size_bytes": 29531,
+          "suffix": ".pgm"
+        }
+      ],
+      "map_metadata": {
+        "frame_id": "map",
+        "height": 113,
+        "resolution": 0.05000000074505806,
+        "width": 261
+      },
+      "map_proof_path": "/root/rober/onboard/runtime/map_lifecycle_latest.json",
+      "map_yaml_candidates": [
+        {
+          "mtime_ms": 1782061700294,
+          "name": "field_first_jog_20260622_0135.yaml",
+          "path": "/root/rober/onboard/runtime/maps/field_first_jog_20260622_0135.yaml",
+          "size_bytes": 182,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1781118091546,
+          "name": "final_direct_save.yaml",
+          "path": "/root/rober/onboard/runtime/maps/final_direct_save.yaml",
+          "size_bytes": 169,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1782062002501,
+          "name": "fixed_free_cells_20260622_0112.yaml",
+          "path": "/root/rober/onboard/runtime/maps/fixed_free_cells_20260622_0112.yaml",
+          "size_bytes": 183,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1782061841830,
+          "name": "manual_motion_map_20260622_0135.yaml",
+          "path": "/root/rober/onboard/runtime/maps/manual_motion_map_20260622_0135.yaml",
+          "size_bytes": 182,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1781140891871,
+          "name": "pc_integrated_current_20260611_0920.yaml",
+          "path": "/root/rober/onboard/runtime/maps/pc_integrated_current_20260611_0920.yaml",
+          "size_bytes": 172,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1781141101890,
+          "name": "pc_integrated_current_retry_20260611_0920.yaml",
+          "path": "/root/rober/onboard/runtime/maps/pc_integrated_current_retry_20260611_0920.yaml",
+          "size_bytes": 178,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1781133958369,
+          "name": "pc_integrated_smoke_20260611_0735.yaml",
+          "path": "/root/rober/onboard/runtime/maps/pc_integrated_smoke_20260611_0735.yaml",
+          "size_bytes": 184,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1781156934781,
+          "name": "pc_map_lifecycle_20260611_1350.yaml",
+          "path": "/root/rober/onboard/runtime/maps/pc_map_lifecycle_20260611_1350.yaml",
+          "size_bytes": 182,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1781166497893,
+          "name": "pc_no_motion_20260611_162507.yaml",
+          "path": "/root/rober/onboard/runtime/maps/pc_no_motion_20260611_162507.yaml",
+          "size_bytes": 181,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1781117808606,
+          "name": "pc_proxy_save2.yaml",
+          "path": "/root/rober/onboard/runtime/maps/pc_proxy_save2.yaml",
+          "size_bytes": 165,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1781135890525,
+          "name": "pc_proxy_scan_stabilize_20260611_0758.yaml",
+          "path": "/root/rober/onboard/runtime/maps/pc_proxy_scan_stabilize_20260611_0758.yaml",
+          "size_bytes": 171,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1781117645955,
+          "name": "pc_proxy_start.yaml",
+          "path": "/root/rober/onboard/runtime/maps/pc_proxy_start.yaml",
+          "size_bytes": 165,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1781117556611,
+          "name": "pc_runtime_v1.yaml",
+          "path": "/root/rober/onboard/runtime/maps/pc_runtime_v1.yaml",
+          "size_bytes": 166,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1781135634030,
+          "name": "scan_stabilize_20260611_075301.yaml",
+          "path": "/root/rober/onboard/runtime/maps/scan_stabilize_20260611_075301.yaml",
+          "size_bytes": 181,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1781135815410,
+          "name": "scan_stabilize_fixed_20260611_0756.yaml",
+          "path": "/root/rober/onboard/runtime/maps/scan_stabilize_fixed_20260611_0756.yaml",
+          "size_bytes": 188,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1782749748969,
+          "name": "trashbot_map.yaml",
+          "path": "/root/rober/onboard/runtime/maps/trashbot_map.yaml",
+          "size_bytes": 148,
+          "suffix": ".yaml"
+        }
+      ],
+      "root_causes": [
+        {
+          "layer": "canonical map proof",
+          "reason": "map_lifecycle_proof_not_clean"
+        }
+      ],
+      "source_evidence_ref": "o3-map-lifecycle-1782749676965",
+      "source_evidence_type": "blocked_with_root_cause",
+      "source_proof_status": "blocked_with_root_cause"
+    },
+    "map_inputs_ready": false,
+    "map_once_observed": true,
+    "map_server_active": true,
+    "not_proven": [
+      "nav2_goal_execution",
+      "controller_cmd_vel_output",
+      "fixed_route_execution",
+      "delivery_success",
+      "hil_pass",
+      "safe_to_control_true"
+    ],
+    "odom_frame_observed": true,
+    "package_availability": {
+      "nav2_amcl": true,
+      "nav2_lifecycle_manager": true,
+      "nav2_map_server": true,
+      "ros2_trashbot_bringup": true,
+      "ros2_trashbot_nav": true
+    },
+    "package_check_mode": "single_sourced_pkg_list_diagnostic",
+    "package_checks_batch_ok": true,
+    "path_generated": false,
+    "path_generation_attempted": false,
+    "path_generation_boundary": "path_generation_blocked_by_localization_not_ready",
+    "path_generation_ready": false,
+    "path_generation_requested": true,
+    "path_generation_service_available": false,
+    "path_generation_service_name": null,
+    "path_generation_succeeded": false,
+    "path_goal_request": null,
+    "path_goal_response": {
+      "accepted": false,
+      "attempted": false,
+      "result_received": false
+    },
+    "path_point_count": 0,
+    "path_preview_frame_id": null,
+    "path_preview_point_count": 0,
+    "path_preview_points": [],
+    "path_preview_source_point_count": 0,
+    "phase_history": [
+      {
+        "at_ms": 1783739167516,
+        "detail": {
+          "mode": "no_motion_amcl_nav2_runtime_proof"
+        },
+        "ok": true,
+        "phase": "start"
+      },
+      {
+        "at_ms": 1783739167523,
+        "detail": {
+          "source_proof_status": "blocked_with_root_cause"
+        },
+        "ok": false,
+        "phase": "map_inputs"
+      },
+      {
+        "at_ms": 1783739167526,
+        "detail": {
+          "map_yaml_source": "explicit_cli_managed_map_yaml",
+          "requested": true
+        },
+        "phase": "managed_runtime"
+      },
+      {
+        "at_ms": 1783739167535,
+        "detail": {
+          "map_yaml": "/root/rober/onboard/runtime/maps/trashbot_map.yaml",
+          "process_group": 429978
+        },
+        "ok": true,
+        "phase": "managed_runtime_started"
+      },
+      {
+        "at_ms": 1783739170052,
+        "detail": {
+          "reason": null
+        },
+        "ok": true,
+        "phase": "managed_runtime_wait"
+      },
+      {
+        "at_ms": 1783739170124,
+        "phase": "ros2_preflight"
+      },
+      {
+        "at_ms": 1783739175156,
+        "ok": true,
+        "phase": "ros2_preflight"
+      },
+      {
+        "at_ms": 1783739175160,
+        "phase": "initialpose"
+      },
+      {
+        "at_ms": 1783739192046,
+        "detail": {
+          "enabled": true,
+          "method": "rclpy_inprocess_burst",
+          "publish_attempts": 5,
+          "subscriber_count": 1
+        },
+        "ok": true,
+        "phase": "initialpose"
+      },
+      {
+        "at_ms": 1783739192051,
+        "phase": "amcl_pose_probe"
+      },
+      {
+        "at_ms": 1783739210623,
+        "ok": true,
+        "phase": "amcl_pose_probe"
+      },
+      {
+        "at_ms": 1783739210625,
+        "phase": "tf_source_probe"
+      },
+      {
+        "at_ms": 1783739215691,
+        "detail": {
+          "amcl_tf_root_cause": "amcl_map_to_odom_tf_not_observed_on_tf"
+        },
+        "ok": true,
+        "phase": "tf_source_probe"
+      },
+      {
+        "at_ms": 1783739215714,
+        "phase": "tf_probe"
+      },
+      {
+        "at_ms": 1783739228630,
+        "ok": false,
+        "phase": "tf_probe_map_to_odom",
+        "root_cause": {
+          "detail": "frame_missing_or_name_mismatch",
+          "layer": "Localization TF",
+          "reason": "map_to_odom_not_observed",
+          "source": "map_to_odom"
+        }
+      },
+      {
+        "at_ms": 1783739228710,
+        "ok": true,
+        "phase": "tf_probe_odom_to_base_link"
+      },
+      {
+        "at_ms": 1783739228790,
+        "ok": false,
+        "phase": "tf_probe_map_to_base_link",
+        "root_cause": {
+          "detail": "amcl_map_to_odom_tf_not_observed_on_tf",
+          "layer": "Localization TF",
+          "reason": "map_to_base_link_blocked_by_missing_map_to_odom",
+          "source": "map_to_odom"
+        }
+      },
+      {
+        "at_ms": 1783739228871,
+        "ok": true,
+        "phase": "tf_probe_base_link_to_laser_frame"
+      },
+      {
+        "at_ms": 1783739228910,
+        "detail": {
+          "tf_chain_observed": {
+            "base_link_to_laser_frame": true,
+            "map_to_base_link": false,
+            "map_to_odom": false,
+            "odom_to_base_link": true
+          },
+          "tf_failure_classification": {
+            "amcl_tf_root_cause": "amcl_map_to_odom_tf_not_observed_on_tf",
+            "blocking_segment": "map_to_odom",
+            "frame_naming_consistent": true,
+            "map_to_base_link": "blocked_by_missing_map_to_odom",
+            "reason": "amcl_map_to_odom_tf_not_observed_on_tf"
+          }
+        },
+        "ok": false,
+        "phase": "tf_probe",
+        "root_cause": {
+          "detail": "amcl_map_to_odom_tf_not_observed_on_tf",
+          "layer": "Localization TF",
+          "reason": "map_to_base_link_blocked_by_missing_map_to_odom",
+          "source": "map_to_odom"
+        }
+      },
+      {
+        "at_ms": 1783739228950,
+        "detail": {
+          "mode": "single_sourced_pkg_list_diagnostic"
+        },
+        "phase": "package_checks"
+      },
+      {
+        "at_ms": 1783739229031,
+        "detail": {
+          "mode": "single_sourced_pkg_list_diagnostic",
+          "packages": {
+            "nav2_amcl": true,
+            "nav2_lifecycle_manager": true,
+            "nav2_map_server": true,
+            "ros2_trashbot_bringup": true,
+            "ros2_trashbot_nav": true
+          }
+        },
+        "ok": true,
+        "phase": "package_checks"
+      },
+      {
+        "at_ms": 1783739229073,
+        "detail": {
+          "mode": "managed_runtime_localization_root_cause_fast_path"
+        },
+        "ok": true,
+        "phase": "graph_discovery"
+      },
+      {
+        "at_ms": 1783739229113,
+        "detail": {
+          "amcl_pose_observed_pre_initialpose": false,
+          "map_once_observed": true,
+          "mode": "managed_runtime_localization_root_cause_fast_path",
+          "scan_once_observed": true
+        },
+        "ok": true,
+        "phase": "topic_probe"
+      },
+      {
+        "at_ms": 1783739229237,
+        "detail": {
+          "requested": true
+        },
+        "phase": "path_generation"
+      },
+      {
+        "at_ms": 1783739229318,
+        "detail": {
+          "boundary": "path_generation_blocked_by_localization_not_ready"
+        },
+        "ok": false,
+        "phase": "path_generation"
+      },
+      {
+        "at_ms": 1783739229359,
+        "detail": {
+          "process_group": 429978
+        },
+        "phase": "cleanup"
+      },
+      {
+        "at_ms": 1783739231701,
+        "detail": {
+          "cleanup_result": {
+            "attempted": true,
+            "group_present_after_cleanup": false,
+            "killed_with_sigkill": true,
+            "ok": true,
+            "process_group": 429978,
+            "remaining_processes": [],
+            "sent_signal": "SIGINT"
+          }
+        },
+        "ok": true,
+        "phase": "cleanup"
+      },
+      {
+        "at_ms": 1783739231801,
+        "detail": {
+          "status": "blocked_with_root_cause"
+        },
+        "ok": false,
+        "phase": "final"
+      }
+    ],
+    "planner_active": false,
+    "planner_readiness_summary": {
+      "controller_server_active": false,
+      "controller_server_observed": false,
+      "controller_server_requested": false,
+      "localization_ready": false,
+      "managed_runtime_boundary": "explicit_opt_in_managed_path_generation_runtime_no_motion",
+      "managed_runtime_requested": true,
+      "managed_runtime_started": true,
+      "path_generated": false,
+      "path_generation_attempted": false,
+      "path_generation_requested": true,
+      "path_generation_succeeded": false,
+      "path_point_count": 0,
+      "planner_server_active": false,
+      "planner_server_observed": true
+    },
+    "planner_server_active": false,
+    "planner_server_observed": true,
+    "planner_server_ready_for_path_generation": true,
+    "publishes_cmd_vel": false,
+    "recent_commands": [
+      {
+        "command": "command -v ros2",
+        "elapsed_ms": 5025,
+        "error": null,
+        "finished_at_ms": 1783739175152,
+        "ok": true,
+        "returncode": 0
+      },
+      {
+        "command": "timeout 8 ros2 topic echo --once /amcl_pose",
+        "elapsed_ms": 18560,
+        "error": null,
+        "finished_at_ms": 1783739210616,
+        "ok": true,
+        "returncode": 0
+      },
+      {
+        "command": "timeout 10 ros2 run tf2_ros tf2_echo map odom",
+        "elapsed_ms": 12833,
+        "error": null,
+        "finished_at_ms": 1783739228567,
+        "ok": false,
+        "returncode": 124
+      }
+    ],
+    "robot_control_executed": false,
+    "root_causes": [
+      {
+        "layer": "Localization TF",
+        "reason": "map_to_odom_not_observed"
+      },
+      {
+        "detail": "amcl_map_to_odom_tf_not_observed_on_tf",
+        "layer": "Localization TF",
+        "reason": "map_to_base_link_blocked_by_missing_map_to_odom",
+        "source": "map_to_odom"
+      },
+      {
+        "layer": "planner readiness",
+        "reason": "localization_not_ready_for_path_generation"
+      }
+    ],
+    "safe_to_control": false,
+    "scan_consumed": false,
+    "scan_once_observed": true,
+    "sends_base_motion_commands": false,
+    "sends_motion_commands": false,
+    "source_map_evidence_ref": "o3-map-lifecycle-1782749676965",
+    "source_map_evidence_type": "blocked_with_root_cause",
+    "started_at_ms": 1783739167515,
+    "static_tf_source_observed": true,
+    "status": "blocked_with_root_cause",
+    "tf_chain_diagnostics": {
+      "frame_contract": {
+        "actual": {
+          "base": "base_link",
+          "laser": "laser_frame",
+          "map": "map",
+          "odom": "odom"
+        },
+        "consistent_with_defaults": true,
+        "expected": {
+          "base": "base_link",
+          "laser": "laser_frame",
+          "map": "map",
+          "odom": "odom"
+        }
+      },
+      "pairs": {
+        "base_link_to_laser_frame": {
+          "boundary": "tf_probe_not_requested_without_initialpose_opt_in",
+          "elapsed_ms": null,
+          "error": null,
+          "executed": false,
+          "failure_reason": "tf2_empty_output_or_timing",
+          "observed": true,
+          "returncode": null,
+          "source_frame": "base_link",
+          "stderr_preview": "",
+          "stdout_preview": "",
+          "target_frame": "laser_frame"
+        },
+        "map_to_base_link": {
+          "boundary": "map_to_base_link_tf_probe_skipped_until_chain_inputs_observed",
+          "elapsed_ms": null,
+          "error": null,
+          "executed": false,
+          "failure_reason": "tf2_empty_output_or_timing",
+          "observed": false,
+          "returncode": null,
+          "source_frame": "map",
+          "stderr_preview": "",
+          "stdout_preview": "",
+          "target_frame": "base_link"
+        },
+        "map_to_odom": {
+          "boundary": null,
+          "elapsed_ms": 12833,
+          "error": null,
+          "executed": true,
+          "failure_reason": "frame_missing_or_name_mismatch",
+          "observed": false,
+          "returncode": 124,
+          "source_frame": "map",
+          "stderr_preview": "783739226.101784752] [tf2_echo]: Waiting for transform map ->  odom: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1783739227.101790668] [tf2_echo]: Waiting for transform map ->  odom: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1783739228.166164003] [rclcpp]: signal_handler(SIGINT/SIGTERM)\n",
+          "stdout_preview": "",
+          "target_frame": "odom"
+        },
+        "odom_to_base_link": {
+          "boundary": "tf_probe_not_requested_without_initialpose_opt_in",
+          "elapsed_ms": null,
+          "error": null,
+          "executed": false,
+          "failure_reason": "tf2_empty_output_or_timing",
+          "observed": true,
+          "returncode": null,
+          "source_frame": "odom",
+          "stderr_preview": "",
+          "stdout_preview": "",
+          "target_frame": "base_link"
+        }
+      },
+      "source_diagnostics": {
+        "amcl_broadcast_conditions": {
+          "amcl_active": true,
+          "amcl_frame_params_match_helper": true,
+          "amcl_pose_frame_id_is_map": true,
+          "amcl_pose_observed": true,
+          "base_link_to_laser_frame_source_observed": true,
+          "initialpose_published": true,
+          "map_once_observed": true,
+          "map_server_active": true,
+          "map_to_odom_source_observed": false,
+          "odom_to_base_link_dynamic_source_observed": false,
+          "odom_to_base_link_source_observed": true,
+          "odom_to_base_link_static_source_observed": true,
+          "scan_once_observed": true,
+          "static_tf_processes_observed": true,
+          "tf_broadcast_enabled": true
+        },
+        "amcl_frame_params": {
+          "base_frame_id": "base_link",
+          "global_frame_id": "map",
+          "odom_frame_id": "odom"
+        },
+        "amcl_node_info_observed": true,
+        "amcl_node_publishers": [
+          {
+            "topic": "/amcl/transition_event",
+            "type": "lifecycle_msgs/msg/TransitionEvent"
+          },
+          {
+            "topic": "/amcl_pose",
+            "type": "geometry_msgs/msg/PoseWithCovarianceStamped"
+          },
+          {
+            "topic": "/bond",
+            "type": "bond/msg/Status"
+          },
+          {
+            "topic": "/parameter_events",
+            "type": "rcl_interfaces/msg/ParameterEvent"
+          },
+          {
+            "topic": "/particle_cloud",
+            "type": "nav2_msgs/msg/ParticleCloud"
+          },
+          {
+            "topic": "/rosout",
+            "type": "rcl_interfaces/msg/Log"
+          },
+          {
+            "topic": "/tf",
+            "type": "tf2_msgs/msg/TFMessage"
+          }
+        ],
+        "amcl_node_subscribers": [
+          {
+            "topic": "/bond",
+            "type": "bond/msg/Status"
+          },
+          {
+            "topic": "/initialpose",
+            "type": "geometry_msgs/msg/PoseWithCovarianceStamped"
+          },
+          {
+            "topic": "/map",
+            "type": "nav_msgs/msg/OccupancyGrid"
+          },
+          {
+            "topic": "/parameter_events",
+            "type": "rcl_interfaces/msg/ParameterEvent"
+          },
+          {
+            "topic": "/scan",
+            "type": "sensor_msgs/msg/LaserScan"
+          }
+        ],
+        "amcl_param_probe_ok": true,
+        "amcl_pose_frame_id": "map",
+        "amcl_tf_broadcast_param": "true",
+        "amcl_tf_root_cause": "amcl_map_to_odom_tf_not_observed_on_tf",
+        "base_frame_observed": true,
+        "base_link_to_laser_frame_source_observed": true,
+        "base_link_to_laser_frame_source_transform": {
+          "child_frame_id": "laser_frame",
+          "parent_frame_id": "base_link",
+          "rotation": {
+            "quaternion": {
+              "w": 1.0,
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "yaw": 0.0
+          },
+          "source": "/tf_static",
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        "frame_contract": {
+          "actual": {
+            "base": "base_link",
+            "laser": "laser_frame",
+            "map": "map",
+            "odom": "odom"
+          },
+          "consistent_with_defaults": true,
+          "expected": {
+            "base": "base_link",
+            "laser": "laser_frame",
+            "map": "map",
+            "odom": "odom"
+          }
+        },
+        "laser_frame_observed": true,
+        "map_frame_observed": false,
+        "map_to_odom_source_observed": false,
+        "odom_frame_observed": true,
+        "odom_to_base_link_dynamic_source_observed": false,
+        "odom_to_base_link_source_observed": true,
+        "odom_to_base_link_static_source_observed": true,
+        "tf_frame_inventory": {
+          "command_statuses": {
+            "tf": 124,
+            "tf_static": 0,
+            "topic_list": 0
+          },
+          "dynamic_edges": [],
+          "dynamic_transforms": [],
+          "edges": [
+            {
+              "child": "base_link",
+              "parent": "odom",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "laser_frame",
+              "parent": "base_link",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "base_link",
+              "parent": "odom",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "laser_frame",
+              "parent": "base_link",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "base_link",
+              "parent": "odom",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "laser_frame",
+              "parent": "base_link",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "base_link",
+              "parent": "odom",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "laser_frame",
+              "parent": "base_link",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "base_link",
+              "parent": "odom",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "laser_frame",
+              "parent": "base_link",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "base_link",
+              "parent": "odom",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "laser_frame",
+              "parent": "base_link",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "base_link",
+              "parent": "odom",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "laser_frame",
+              "parent": "base_link",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "base_link",
+              "parent": "odom",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "laser_frame",
+              "parent": "base_link",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "base_link",
+              "parent": "odom",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "laser_frame",
+              "parent": "base_link",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "base_link",
+              "parent": "odom",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "laser_frame",
+              "parent": "base_link",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "base_link",
+              "parent": "odom",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "laser_frame",
+              "parent": "base_link",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "base_link",
+              "parent": "odom",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "laser_frame",
+              "parent": "base_link",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "base_link",
+              "parent": "odom",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "laser_frame",
+              "parent": "base_link",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "laser_frame",
+              "parent": "base_link",
+              "topic": "/tf_static"
+            }
+          ],
+          "frames": [
+            "base_link",
+            "laser_frame",
+            "odom"
+          ],
+          "static_edges": [
+            {
+              "child": "base_link",
+              "parent": "odom",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "laser_frame",
+              "parent": "base_link",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "base_link",
+              "parent": "odom",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "laser_frame",
+              "parent": "base_link",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "base_link",
+              "parent": "odom",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "laser_frame",
+              "parent": "base_link",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "base_link",
+              "parent": "odom",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "laser_frame",
+              "parent": "base_link",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "base_link",
+              "parent": "odom",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "laser_frame",
+              "parent": "base_link",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "base_link",
+              "parent": "odom",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "laser_frame",
+              "parent": "base_link",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "base_link",
+              "parent": "odom",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "laser_frame",
+              "parent": "base_link",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "base_link",
+              "parent": "odom",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "laser_frame",
+              "parent": "base_link",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "base_link",
+              "parent": "odom",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "laser_frame",
+              "parent": "base_link",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "base_link",
+              "parent": "odom",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "laser_frame",
+              "parent": "base_link",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "base_link",
+              "parent": "odom",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "laser_frame",
+              "parent": "base_link",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "base_link",
+              "parent": "odom",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "laser_frame",
+              "parent": "base_link",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "base_link",
+              "parent": "odom",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "laser_frame",
+              "parent": "base_link",
+              "topic": "/tf_static"
+            },
+            {
+              "child": "laser_frame",
+              "parent": "base_link",
+              "topic": "/tf_static"
+            }
+          ],
+          "static_transforms": [
+            {
+              "child_frame_id": "base_link",
+              "parent_frame_id": "odom",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "laser_frame",
+              "parent_frame_id": "base_link",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "base_link",
+              "parent_frame_id": "odom",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "laser_frame",
+              "parent_frame_id": "base_link",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "base_link",
+              "parent_frame_id": "odom",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "laser_frame",
+              "parent_frame_id": "base_link",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "base_link",
+              "parent_frame_id": "odom",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "laser_frame",
+              "parent_frame_id": "base_link",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "base_link",
+              "parent_frame_id": "odom",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "laser_frame",
+              "parent_frame_id": "base_link",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "base_link",
+              "parent_frame_id": "odom",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "laser_frame",
+              "parent_frame_id": "base_link",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "base_link",
+              "parent_frame_id": "odom",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "laser_frame",
+              "parent_frame_id": "base_link",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "base_link",
+              "parent_frame_id": "odom",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "laser_frame",
+              "parent_frame_id": "base_link",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "base_link",
+              "parent_frame_id": "odom",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "laser_frame",
+              "parent_frame_id": "base_link",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "base_link",
+              "parent_frame_id": "odom",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "laser_frame",
+              "parent_frame_id": "base_link",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "base_link",
+              "parent_frame_id": "odom",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "laser_frame",
+              "parent_frame_id": "base_link",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "base_link",
+              "parent_frame_id": "odom",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "laser_frame",
+              "parent_frame_id": "base_link",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "base_link",
+              "parent_frame_id": "odom",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "laser_frame",
+              "parent_frame_id": "base_link",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "laser_frame",
+              "parent_frame_id": "base_link",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            }
+          ],
+          "topic_types": {
+            "/amcl/transition_event": "lifecycle_msgs/msg/TransitionEvent",
+            "/amcl_pose": "geometry_msgs/msg/PoseWithCovarianceStamped",
+            "/bond": "bond/msg/Status",
+            "/cmd_vel": "geometry_msgs/msg/Twist",
+            "/compute_path_through_poses/_action/feedback": "nav2_msgs/action/ComputePathThroughPoses_FeedbackMessage",
+            "/compute_path_through_poses/_action/status": "action_msgs/msg/GoalStatusArray",
+            "/compute_path_to_pose/_action/feedback": "nav2_msgs/action/ComputePathToPose_FeedbackMessage",
+            "/compute_path_to_pose/_action/status": "action_msgs/msg/GoalStatusArray",
+            "/diagnostics": "diagnostic_msgs/msg/DiagnosticArray",
+            "/global_costmap/costmap": "nav_msgs/msg/OccupancyGrid",
+            "/global_costmap/costmap_raw": "nav2_msgs/msg/Costmap",
+            "/global_costmap/costmap_updates": "map_msgs/msg/OccupancyGridUpdate",
+            "/global_costmap/footprint": "geometry_msgs/msg/Polygon",
+            "/global_costmap/global_costmap/transition_event": "lifecycle_msgs/msg/TransitionEvent",
+            "/global_costmap/published_footprint": "geometry_msgs/msg/PolygonStamped",
+            "/initialpose": "geometry_msgs/msg/PoseWithCovarianceStamped",
+            "/lidar/raw_packet": "std_msgs/msg/UInt8MultiArray",
+            "/map": "nav_msgs/msg/OccupancyGrid",
+            "/map_server/transition_event": "lifecycle_msgs/msg/TransitionEvent",
+            "/odom": "nav_msgs/msg/Odometry",
+            "/parameter_events": "rcl_interfaces/msg/ParameterEvent",
+            "/particle_cloud": "nav2_msgs/msg/ParticleCloud",
+            "/plan": "nav_msgs/msg/Path",
+            "/planner_server/transition_event": "lifecycle_msgs/msg/TransitionEvent",
+            "/rosout": "rcl_interfaces/msg/Log",
+            "/scan": "sensor_msgs/msg/LaserScan",
+            "/tf": "tf2_msgs/msg/TFMessage",
+            "/tf_static": "tf2_msgs/msg/TFMessage"
+          },
+          "transforms": [
+            {
+              "child_frame_id": "base_link",
+              "parent_frame_id": "odom",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "laser_frame",
+              "parent_frame_id": "base_link",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "base_link",
+              "parent_frame_id": "odom",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "laser_frame",
+              "parent_frame_id": "base_link",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "base_link",
+              "parent_frame_id": "odom",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "laser_frame",
+              "parent_frame_id": "base_link",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "base_link",
+              "parent_frame_id": "odom",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "laser_frame",
+              "parent_frame_id": "base_link",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "base_link",
+              "parent_frame_id": "odom",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "laser_frame",
+              "parent_frame_id": "base_link",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "base_link",
+              "parent_frame_id": "odom",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "laser_frame",
+              "parent_frame_id": "base_link",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "base_link",
+              "parent_frame_id": "odom",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "laser_frame",
+              "parent_frame_id": "base_link",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "base_link",
+              "parent_frame_id": "odom",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "laser_frame",
+              "parent_frame_id": "base_link",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "base_link",
+              "parent_frame_id": "odom",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "laser_frame",
+              "parent_frame_id": "base_link",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "base_link",
+              "parent_frame_id": "odom",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "laser_frame",
+              "parent_frame_id": "base_link",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "base_link",
+              "parent_frame_id": "odom",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "laser_frame",
+              "parent_frame_id": "base_link",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "base_link",
+              "parent_frame_id": "odom",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "laser_frame",
+              "parent_frame_id": "base_link",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "base_link",
+              "parent_frame_id": "odom",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "laser_frame",
+              "parent_frame_id": "base_link",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            },
+            {
+              "child_frame_id": "laser_frame",
+              "parent_frame_id": "base_link",
+              "rotation": {
+                "quaternion": {
+                  "w": 1.0,
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "yaw": 0.0
+              },
+              "source": "/tf_static",
+              "translation": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              }
+            }
+          ]
+        },
+        "tf_source_root_cause_detail": {
+          "amcl_broadcast_conditions": {
+            "amcl_active": true,
+            "amcl_frame_params_match_helper": true,
+            "amcl_pose_frame_id_is_map": true,
+            "amcl_pose_observed": true,
+            "base_link_to_laser_frame_source_observed": true,
+            "initialpose_published": true,
+            "map_once_observed": true,
+            "map_server_active": true,
+            "map_to_odom_source_observed": false,
+            "odom_to_base_link_dynamic_source_observed": false,
+            "odom_to_base_link_source_observed": true,
+            "odom_to_base_link_static_source_observed": true,
+            "scan_once_observed": true,
+            "static_tf_processes_observed": true,
+            "tf_broadcast_enabled": true
+          },
+          "amcl_node_info_observed": true,
+          "amcl_param_probe_boundary": "rclpy_amcl_params_graph_tf_probe_observed",
+          "amcl_param_probe_error": null,
+          "amcl_param_probe_ok": true,
+          "amcl_pose_frame_id": "map",
+          "base_link_to_laser_frame_source_observed": true,
+          "base_link_to_laser_frame_source_transform": {
+            "child_frame_id": "laser_frame",
+            "parent_frame_id": "base_link",
+            "rotation": {
+              "quaternion": {
+                "w": 1.0,
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              },
+              "yaw": 0.0
+            },
+            "source": "/tf_static",
+            "translation": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            }
+          },
+          "expected_params": {
+            "base_frame_id": "base_link",
+            "global_frame_id": "map",
+            "odom_frame_id": "odom",
+            "tf_broadcast": "true"
+          },
+          "map_to_odom_source_observed": false,
+          "observed_params": {
+            "base_frame_id": "base_link",
+            "global_frame_id": "map",
+            "odom_frame_id": "odom",
+            "tf_broadcast": "true"
+          },
+          "odom_to_base_link_dynamic_source_observed": false,
+          "odom_to_base_link_source_observed": true,
+          "odom_to_base_link_static_source_observed": true,
+          "reason": "amcl_map_to_odom_tf_not_observed_on_tf",
+          "tf_command_statuses": {
+            "tf": 124,
+            "tf_static": 0,
+            "topic_list": 0
+          }
+        },
+        "tf_static_observed": true,
+        "tf_topics_observed": {
+          "/tf": true,
+          "/tf_static": true
+        }
+      }
+    },
+    "tf_chain_observed": {
+      "base_link_to_laser_frame": true,
+      "map_to_base_link": false,
+      "map_to_odom": false,
+      "odom_to_base_link": true
+    },
+    "tf_failure_classification": {
+      "amcl_tf_root_cause": "amcl_map_to_odom_tf_not_observed_on_tf",
+      "blocking_segment": "map_to_odom",
+      "frame_naming_consistent": true,
+      "map_to_base_link": "blocked_by_missing_map_to_odom",
+      "reason": "amcl_map_to_odom_tf_not_observed_on_tf"
+    },
+    "tf_frame_inventory": {
+      "command_statuses": {
+        "tf": 124,
+        "tf_static": 0,
+        "topic_list": 0
+      },
+      "dynamic_edges": [],
+      "dynamic_transforms": [],
+      "edges": [
+        {
+          "child": "base_link",
+          "parent": "odom",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "laser_frame",
+          "parent": "base_link",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "base_link",
+          "parent": "odom",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "laser_frame",
+          "parent": "base_link",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "base_link",
+          "parent": "odom",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "laser_frame",
+          "parent": "base_link",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "base_link",
+          "parent": "odom",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "laser_frame",
+          "parent": "base_link",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "base_link",
+          "parent": "odom",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "laser_frame",
+          "parent": "base_link",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "base_link",
+          "parent": "odom",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "laser_frame",
+          "parent": "base_link",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "base_link",
+          "parent": "odom",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "laser_frame",
+          "parent": "base_link",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "base_link",
+          "parent": "odom",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "laser_frame",
+          "parent": "base_link",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "base_link",
+          "parent": "odom",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "laser_frame",
+          "parent": "base_link",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "base_link",
+          "parent": "odom",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "laser_frame",
+          "parent": "base_link",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "base_link",
+          "parent": "odom",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "laser_frame",
+          "parent": "base_link",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "base_link",
+          "parent": "odom",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "laser_frame",
+          "parent": "base_link",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "base_link",
+          "parent": "odom",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "laser_frame",
+          "parent": "base_link",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "laser_frame",
+          "parent": "base_link",
+          "topic": "/tf_static"
+        }
+      ],
+      "frames": [
+        "base_link",
+        "laser_frame",
+        "odom"
+      ],
+      "static_edges": [
+        {
+          "child": "base_link",
+          "parent": "odom",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "laser_frame",
+          "parent": "base_link",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "base_link",
+          "parent": "odom",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "laser_frame",
+          "parent": "base_link",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "base_link",
+          "parent": "odom",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "laser_frame",
+          "parent": "base_link",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "base_link",
+          "parent": "odom",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "laser_frame",
+          "parent": "base_link",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "base_link",
+          "parent": "odom",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "laser_frame",
+          "parent": "base_link",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "base_link",
+          "parent": "odom",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "laser_frame",
+          "parent": "base_link",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "base_link",
+          "parent": "odom",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "laser_frame",
+          "parent": "base_link",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "base_link",
+          "parent": "odom",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "laser_frame",
+          "parent": "base_link",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "base_link",
+          "parent": "odom",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "laser_frame",
+          "parent": "base_link",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "base_link",
+          "parent": "odom",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "laser_frame",
+          "parent": "base_link",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "base_link",
+          "parent": "odom",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "laser_frame",
+          "parent": "base_link",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "base_link",
+          "parent": "odom",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "laser_frame",
+          "parent": "base_link",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "base_link",
+          "parent": "odom",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "laser_frame",
+          "parent": "base_link",
+          "topic": "/tf_static"
+        },
+        {
+          "child": "laser_frame",
+          "parent": "base_link",
+          "topic": "/tf_static"
+        }
+      ],
+      "static_transforms": [
+        {
+          "child_frame_id": "base_link",
+          "parent_frame_id": "odom",
+          "rotation": {
+            "quaternion": {
+              "w": 1.0,
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "yaw": 0.0
+          },
+          "source": "/tf_static",
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        {
+          "child_frame_id": "laser_frame",
+          "parent_frame_id": "base_link",
+          "rotation": {
+            "quaternion": {
+              "w": 1.0,
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "yaw": 0.0
+          },
+          "source": "/tf_static",
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        {
+          "child_frame_id": "base_link",
+          "parent_frame_id": "odom",
+          "rotation": {
+            "quaternion": {
+              "w": 1.0,
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "yaw": 0.0
+          },
+          "source": "/tf_static",
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        {
+          "child_frame_id": "laser_frame",
+          "parent_frame_id": "base_link",
+          "rotation": {
+            "quaternion": {
+              "w": 1.0,
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "yaw": 0.0
+          },
+          "source": "/tf_static",
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        {
+          "child_frame_id": "base_link",
+          "parent_frame_id": "odom",
+          "rotation": {
+            "quaternion": {
+              "w": 1.0,
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "yaw": 0.0
+          },
+          "source": "/tf_static",
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        {
+          "child_frame_id": "laser_frame",
+          "parent_frame_id": "base_link",
+          "rotation": {
+            "quaternion": {
+              "w": 1.0,
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "yaw": 0.0
+          },
+          "source": "/tf_static",
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        {
+          "child_frame_id": "base_link",
+          "parent_frame_id": "odom",
+          "rotation": {
+            "quaternion": {
+              "w": 1.0,
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "yaw": 0.0
+          },
+          "source": "/tf_static",
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        {
+          "child_frame_id": "laser_frame",
+          "parent_frame_id": "base_link",
+          "rotation": {
+            "quaternion": {
+              "w": 1.0,
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "yaw": 0.0
+          },
+          "source": "/tf_static",
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        {
+          "child_frame_id": "base_link",
+          "parent_frame_id": "odom",
+          "rotation": {
+            "quaternion": {
+              "w": 1.0,
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "yaw": 0.0
+          },
+          "source": "/tf_static",
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        {
+          "child_frame_id": "laser_frame",
+          "parent_frame_id": "base_link",
+          "rotation": {
+            "quaternion": {
+              "w": 1.0,
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "yaw": 0.0
+          },
+          "source": "/tf_static",
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        {
+          "child_frame_id": "base_link",
+          "parent_frame_id": "odom",
+          "rotation": {
+            "quaternion": {
+              "w": 1.0,
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "yaw": 0.0
+          },
+          "source": "/tf_static",
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        {
+          "child_frame_id": "laser_frame",
+          "parent_frame_id": "base_link",
+          "rotation": {
+            "quaternion": {
+              "w": 1.0,
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "yaw": 0.0
+          },
+          "source": "/tf_static",
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        {
+          "child_frame_id": "base_link",
+          "parent_frame_id": "odom",
+          "rotation": {
+            "quaternion": {
+              "w": 1.0,
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "yaw": 0.0
+          },
+          "source": "/tf_static",
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        {
+          "child_frame_id": "laser_frame",
+          "parent_frame_id": "base_link",
+          "rotation": {
+            "quaternion": {
+              "w": 1.0,
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "yaw": 0.0
+          },
+          "source": "/tf_static",
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        {
+          "child_frame_id": "base_link",
+          "parent_frame_id": "odom",
+          "rotation": {
+            "quaternion": {
+              "w": 1.0,
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "yaw": 0.0
+          },
+          "source": "/tf_static",
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        {
+          "child_frame_id": "laser_frame",
+          "parent_frame_id": "base_link",
+          "rotation": {
+            "quaternion": {
+              "w": 1.0,
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "yaw": 0.0
+          },
+          "source": "/tf_static",
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        {
+          "child_frame_id": "base_link",
+          "parent_frame_id": "odom",
+          "rotation": {
+            "quaternion": {
+              "w": 1.0,
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "yaw": 0.0
+          },
+          "source": "/tf_static",
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        {
+          "child_frame_id": "laser_frame",
+          "parent_frame_id": "base_link",
+          "rotation": {
+            "quaternion": {
+              "w": 1.0,
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "yaw": 0.0
+          },
+          "source": "/tf_static",
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        {
+          "child_frame_id": "base_link",
+          "parent_frame_id": "odom",
+          "rotation": {
+            "quaternion": {
+              "w": 1.0,
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "yaw": 0.0
+          },
+          "source": "/tf_static",
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        {
+          "child_frame_id": "laser_frame",
+          "parent_frame_id": "base_link",
+          "rotation": {
+            "quaternion": {
+              "w": 1.0,
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "yaw": 0.0
+          },
+          "source": "/tf_static",
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        {
+          "child_frame_id": "base_link",
+          "parent_frame_id": "odom",
+          "rotation": {
+            "quaternion": {
+              "w": 1.0,
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "yaw": 0.0
+          },
+          "source": "/tf_static",
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        {
+          "child_frame_id": "laser_frame",
+          "parent_frame_id": "base_link",
+          "rotation": {
+            "quaternion": {
+              "w": 1.0,
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "yaw": 0.0
+          },
+          "source": "/tf_static",
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        {
+          "child_frame_id": "base_link",
+          "parent_frame_id": "odom",
+          "rotation": {
+            "quaternion": {
+              "w": 1.0,
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "yaw": 0.0
+          },
+          "source": "/tf_static",
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        {
+          "child_frame_id": "laser_frame",
+          "parent_frame_id": "base_link",
+          "rotation": {
+            "quaternion": {
+              "w": 1.0,
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "yaw": 0.0
+          },
+          "source": "/tf_static",
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        {
+          "child_frame_id": "base_link",
+          "parent_frame_id": "odom",
+          "rotation": {
+            "quaternion": {
+              "w": 1.0,
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "yaw": 0.0
+          },
+          "source": "/tf_static",
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        {
+          "child_frame_id": "laser_frame",
+          "parent_frame_id": "base_link",
+          "rotation": {
+            "quaternion": {
+              "w": 1.0,
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "yaw": 0.0
+          },
+          "source": "/tf_static",
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        {
+          "child_frame_id": "laser_frame",
+          "parent_frame_id": "base_link",
+          "rotation": {
+            "quaternion": {
+              "w": 1.0,
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "yaw": 0.0
+          },
+          "source": "/tf_static",
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        }
+      ],
+      "topic_types": {
+        "/amcl/transition_event": "lifecycle_msgs/msg/TransitionEvent",
+        "/amcl_pose": "geometry_msgs/msg/PoseWithCovarianceStamped",
+        "/bond": "bond/msg/Status",
+        "/cmd_vel": "geometry_msgs/msg/Twist",
+        "/compute_path_through_poses/_action/feedback": "nav2_msgs/action/ComputePathThroughPoses_FeedbackMessage",
+        "/compute_path_through_poses/_action/status": "action_msgs/msg/GoalStatusArray",
+        "/compute_path_to_pose/_action/feedback": "nav2_msgs/action/ComputePathToPose_FeedbackMessage",
+        "/compute_path_to_pose/_action/status": "action_msgs/msg/GoalStatusArray",
+        "/diagnostics": "diagnostic_msgs/msg/DiagnosticArray",
+        "/global_costmap/costmap": "nav_msgs/msg/OccupancyGrid",
+        "/global_costmap/costmap_raw": "nav2_msgs/msg/Costmap",
+        "/global_costmap/costmap_updates": "map_msgs/msg/OccupancyGridUpdate",
+        "/global_costmap/footprint": "geometry_msgs/msg/Polygon",
+        "/global_costmap/global_costmap/transition_event": "lifecycle_msgs/msg/TransitionEvent",
+        "/global_costmap/published_footprint": "geometry_msgs/msg/PolygonStamped",
+        "/initialpose": "geometry_msgs/msg/PoseWithCovarianceStamped",
+        "/lidar/raw_packet": "std_msgs/msg/UInt8MultiArray",
+        "/map": "nav_msgs/msg/OccupancyGrid",
+        "/map_server/transition_event": "lifecycle_msgs/msg/TransitionEvent",
+        "/odom": "nav_msgs/msg/Odometry",
+        "/parameter_events": "rcl_interfaces/msg/ParameterEvent",
+        "/particle_cloud": "nav2_msgs/msg/ParticleCloud",
+        "/plan": "nav_msgs/msg/Path",
+        "/planner_server/transition_event": "lifecycle_msgs/msg/TransitionEvent",
+        "/rosout": "rcl_interfaces/msg/Log",
+        "/scan": "sensor_msgs/msg/LaserScan",
+        "/tf": "tf2_msgs/msg/TFMessage",
+        "/tf_static": "tf2_msgs/msg/TFMessage"
+      },
+      "transforms": [
+        {
+          "child_frame_id": "base_link",
+          "parent_frame_id": "odom",
+          "rotation": {
+            "quaternion": {
+              "w": 1.0,
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "yaw": 0.0
+          },
+          "source": "/tf_static",
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        {
+          "child_frame_id": "laser_frame",
+          "parent_frame_id": "base_link",
+          "rotation": {
+            "quaternion": {
+              "w": 1.0,
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "yaw": 0.0
+          },
+          "source": "/tf_static",
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        {
+          "child_frame_id": "base_link",
+          "parent_frame_id": "odom",
+          "rotation": {
+            "quaternion": {
+              "w": 1.0,
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "yaw": 0.0
+          },
+          "source": "/tf_static",
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        {
+          "child_frame_id": "laser_frame",
+          "parent_frame_id": "base_link",
+          "rotation": {
+            "quaternion": {
+              "w": 1.0,
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "yaw": 0.0
+          },
+          "source": "/tf_static",
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        {
+          "child_frame_id": "base_link",
+          "parent_frame_id": "odom",
+          "rotation": {
+            "quaternion": {
+              "w": 1.0,
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "yaw": 0.0
+          },
+          "source": "/tf_static",
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        {
+          "child_frame_id": "laser_frame",
+          "parent_frame_id": "base_link",
+          "rotation": {
+            "quaternion": {
+              "w": 1.0,
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "yaw": 0.0
+          },
+          "source": "/tf_static",
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        {
+          "child_frame_id": "base_link",
+          "parent_frame_id": "odom",
+          "rotation": {
+            "quaternion": {
+              "w": 1.0,
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "yaw": 0.0
+          },
+          "source": "/tf_static",
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        {
+          "child_frame_id": "laser_frame",
+          "parent_frame_id": "base_link",
+          "rotation": {
+            "quaternion": {
+              "w": 1.0,
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "yaw": 0.0
+          },
+          "source": "/tf_static",
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        {
+          "child_frame_id": "base_link",
+          "parent_frame_id": "odom",
+          "rotation": {
+            "quaternion": {
+              "w": 1.0,
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "yaw": 0.0
+          },
+          "source": "/tf_static",
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        {
+          "child_frame_id": "laser_frame",
+          "parent_frame_id": "base_link",
+          "rotation": {
+            "quaternion": {
+              "w": 1.0,
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "yaw": 0.0
+          },
+          "source": "/tf_static",
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        {
+          "child_frame_id": "base_link",
+          "parent_frame_id": "odom",
+          "rotation": {
+            "quaternion": {
+              "w": 1.0,
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "yaw": 0.0
+          },
+          "source": "/tf_static",
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        {
+          "child_frame_id": "laser_frame",
+          "parent_frame_id": "base_link",
+          "rotation": {
+            "quaternion": {
+              "w": 1.0,
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "yaw": 0.0
+          },
+          "source": "/tf_static",
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        {
+          "child_frame_id": "base_link",
+          "parent_frame_id": "odom",
+          "rotation": {
+            "quaternion": {
+              "w": 1.0,
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "yaw": 0.0
+          },
+          "source": "/tf_static",
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        {
+          "child_frame_id": "laser_frame",
+          "parent_frame_id": "base_link",
+          "rotation": {
+            "quaternion": {
+              "w": 1.0,
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "yaw": 0.0
+          },
+          "source": "/tf_static",
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        {
+          "child_frame_id": "base_link",
+          "parent_frame_id": "odom",
+          "rotation": {
+            "quaternion": {
+              "w": 1.0,
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "yaw": 0.0
+          },
+          "source": "/tf_static",
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        {
+          "child_frame_id": "laser_frame",
+          "parent_frame_id": "base_link",
+          "rotation": {
+            "quaternion": {
+              "w": 1.0,
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "yaw": 0.0
+          },
+          "source": "/tf_static",
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        {
+          "child_frame_id": "base_link",
+          "parent_frame_id": "odom",
+          "rotation": {
+            "quaternion": {
+              "w": 1.0,
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "yaw": 0.0
+          },
+          "source": "/tf_static",
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        {
+          "child_frame_id": "laser_frame",
+          "parent_frame_id": "base_link",
+          "rotation": {
+            "quaternion": {
+              "w": 1.0,
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "yaw": 0.0
+          },
+          "source": "/tf_static",
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        {
+          "child_frame_id": "base_link",
+          "parent_frame_id": "odom",
+          "rotation": {
+            "quaternion": {
+              "w": 1.0,
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "yaw": 0.0
+          },
+          "source": "/tf_static",
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        {
+          "child_frame_id": "laser_frame",
+          "parent_frame_id": "base_link",
+          "rotation": {
+            "quaternion": {
+              "w": 1.0,
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "yaw": 0.0
+          },
+          "source": "/tf_static",
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        {
+          "child_frame_id": "base_link",
+          "parent_frame_id": "odom",
+          "rotation": {
+            "quaternion": {
+              "w": 1.0,
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "yaw": 0.0
+          },
+          "source": "/tf_static",
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        {
+          "child_frame_id": "laser_frame",
+          "parent_frame_id": "base_link",
+          "rotation": {
+            "quaternion": {
+              "w": 1.0,
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "yaw": 0.0
+          },
+          "source": "/tf_static",
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        {
+          "child_frame_id": "base_link",
+          "parent_frame_id": "odom",
+          "rotation": {
+            "quaternion": {
+              "w": 1.0,
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "yaw": 0.0
+          },
+          "source": "/tf_static",
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        {
+          "child_frame_id": "laser_frame",
+          "parent_frame_id": "base_link",
+          "rotation": {
+            "quaternion": {
+              "w": 1.0,
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "yaw": 0.0
+          },
+          "source": "/tf_static",
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        {
+          "child_frame_id": "base_link",
+          "parent_frame_id": "odom",
+          "rotation": {
+            "quaternion": {
+              "w": 1.0,
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "yaw": 0.0
+          },
+          "source": "/tf_static",
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        {
+          "child_frame_id": "laser_frame",
+          "parent_frame_id": "base_link",
+          "rotation": {
+            "quaternion": {
+              "w": 1.0,
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "yaw": 0.0
+          },
+          "source": "/tf_static",
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        },
+        {
+          "child_frame_id": "laser_frame",
+          "parent_frame_id": "base_link",
+          "rotation": {
+            "quaternion": {
+              "w": 1.0,
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "yaw": 0.0
+          },
+          "source": "/tf_static",
+          "translation": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          }
+        }
+      ]
+    },
+    "tf_source_root_cause_detail": {
+      "amcl_broadcast_conditions": {
+        "amcl_active": true,
+        "amcl_frame_params_match_helper": true,
+        "amcl_pose_frame_id_is_map": true,
+        "amcl_pose_observed": true,
+        "base_link_to_laser_frame_source_observed": true,
+        "initialpose_published": true,
+        "map_once_observed": true,
+        "map_server_active": true,
+        "map_to_odom_source_observed": false,
+        "odom_to_base_link_dynamic_source_observed": false,
+        "odom_to_base_link_source_observed": true,
+        "odom_to_base_link_static_source_observed": true,
+        "scan_once_observed": true,
+        "static_tf_processes_observed": true,
+        "tf_broadcast_enabled": true
+      },
+      "amcl_node_info_observed": true,
+      "amcl_param_probe_boundary": "rclpy_amcl_params_graph_tf_probe_observed",
+      "amcl_param_probe_error": null,
+      "amcl_param_probe_ok": true,
+      "amcl_pose_frame_id": "map",
+      "base_link_to_laser_frame_source_observed": true,
+      "base_link_to_laser_frame_source_transform": {
+        "child_frame_id": "laser_frame",
+        "parent_frame_id": "base_link",
+        "rotation": {
+          "quaternion": {
+            "w": 1.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "yaw": 0.0
+        },
+        "source": "/tf_static",
+        "translation": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        }
+      },
+      "expected_params": {
+        "base_frame_id": "base_link",
+        "global_frame_id": "map",
+        "odom_frame_id": "odom",
+        "tf_broadcast": "true"
+      },
+      "map_to_odom_source_observed": false,
+      "observed_params": {
+        "base_frame_id": "base_link",
+        "global_frame_id": "map",
+        "odom_frame_id": "odom",
+        "tf_broadcast": "true"
+      },
+      "odom_to_base_link_dynamic_source_observed": false,
+      "odom_to_base_link_source_observed": true,
+      "odom_to_base_link_static_source_observed": true,
+      "reason": "amcl_map_to_odom_tf_not_observed_on_tf",
+      "tf_command_statuses": {
+        "tf": 124,
+        "tf_static": 0,
+        "topic_list": 0
+      }
+    },
+    "tf_static_observed": true,
+    "tf_topics_observed": {
+      "/tf": true,
+      "/tf_static": true
+    },
+    "uses_base_uart": false
+  },
+  "publishes_cmd_vel": false,
+  "robot_control_executed": false,
+  "safe_to_control": false,
+  "schema": "trashbot.upper_robot_api.v1.nav2_lifecycle_runtime_proof",
+  "sends_base_motion_commands": false,
+  "sends_motion_commands": false,
+  "software_guard": true,
+  "status": "blocked_with_root_cause",
+  "uses_base_uart": false
+}
