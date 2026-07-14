@@ -178,6 +178,9 @@ INITIALPOSE_TOPIC = "/initialpose"
 INITIALPOSE_TOPIC_TYPE = "geometry_msgs/msg/PoseWithCovarianceStamped"
 FRESHNESS_WALL_CLOCK_MIN_MS = 946684800000
 FRESHNESS_STALE_AFTER_MS = 3000
+# TF header 与 callback receipt 都来自同一台主机时，只容忍很小的调度/取整误差；
+# 更大的负 age 代表时钟语义不可证明，必须 fail-closed，不能用绝对值掩盖。
+TF_RECEIPT_CLOCK_SKEW_TOLERANCE_MS = 250
 ROS2_PREFLIGHT_COMMAND = "command -v ros2"
 # 板端 API 子进程首次 source ROS/workspace 可能超过 3 秒；preflight 只查可执行文件，允许稍宽窗口。
 ROS2_PREFLIGHT_TIMEOUT_S = 6.0
@@ -5781,6 +5784,96 @@ def freshness_from_stamp(
     }
 
 
+def tf_freshness_from_callback_receipt(
+    stamp: dict[str, Any],
+    *,
+    observed: bool,
+    source_class: str,
+    received_at_ms: Any,
+    evaluated_at_ms: Any,
+    stale_after_ms: int = FRESHNESS_STALE_AFTER_MS,
+) -> dict[str, Any]:
+    """dynamic TF 只按 callback receipt 时的 header age 判定，evaluation 延迟仅供诊断。"""
+    # 三种 age 始终保留同形字段，unknown artifact 才能明确指出缺了哪一个时间事实。
+    timing = {
+        "header_stamp_epoch_ms": stamp.get("epoch_ms") if stamp.get("parsed") else None,
+        "received_at_ms": received_at_ms,
+        "evaluated_at_ms": evaluated_at_ms,
+        "header_age_at_receipt_ms": None,
+        "receipt_age_at_evaluation_ms": None,
+        "header_age_at_evaluation_ms": None,
+        "decision_basis": "header_age_at_receipt_ms" if source_class == "dynamic" else "static_source_not_age_gated",
+        # `age_ms` 是既有 reader 的兼容字段；dynamic 时与 decision age 保持完全相同。
+        "age_ms": None,
+    }
+    # edge 本身未观察到时，receipt 语义也无从建立，保持原有 not_observed 合同。
+    if not observed:
+        return {**timing, "status": "not_observed", "reason": "probe_or_source_not_observed"}
+    # static TF 是 latched 几何关系；receipt 仅留档，不能把它误套到动态新鲜度门禁。
+    if source_class == "static":
+        return {
+            **timing,
+            "status": "static_source_observed_not_age_gated",
+            "reason": "static_tf_is_latched",
+        }
+    # header 解析失败要优先暴露原始 reason，便于区分缺字段与数字格式错误。
+    if not stamp.get("parsed"):
+        return {**timing, "status": "unknown", "reason": str(stamp.get("reason") or "stamp_not_parseable")}
+
+    # receipt/evaluation 只接受本 helper 写入的整数墙钟；禁止拿 CLI finish 或 artifact 生成时间补洞。
+    header_epoch_ms = stamp.get("epoch_ms")
+    header_valid = isinstance(header_epoch_ms, int) and not isinstance(header_epoch_ms, bool)
+    receipt_valid = isinstance(received_at_ms, int) and not isinstance(received_at_ms, bool)
+    evaluation_valid = isinstance(evaluated_at_ms, int) and not isinstance(evaluated_at_ms, bool)
+    # ROS 仿真时间和 zero stamp 不能直接与主机 wall clock 相减，否则会生成巨大伪 age。
+    if not header_valid or int(header_epoch_ms) < FRESHNESS_WALL_CLOCK_MIN_MS:
+        return {**timing, "status": "unknown", "reason": "header_stamp_not_wall_clock"}
+    # 即使 receipt 缺失，旧 evaluation 口径仍可作为诊断材料，但绝不参与 clean decision。
+    if evaluation_valid and int(evaluated_at_ms) >= FRESHNESS_WALL_CLOCK_MIN_MS:
+        timing["header_age_at_evaluation_ms"] = int(evaluated_at_ms) - int(header_epoch_ms)
+    # CLI fallback 没有 callback 事实；这里禁止把任何后段时间戳静默回填为 receipt。
+    if not receipt_valid:
+        return {**timing, "status": "unknown", "reason": "callback_receipt_missing_or_invalid"}
+    # receipt 本身也必须是 wall clock，避免把 monotonic tick 与 ROS epoch 混算。
+    if int(received_at_ms) < FRESHNESS_WALL_CLOCK_MIN_MS:
+        return {**timing, "status": "unknown", "reason": "callback_receipt_not_wall_clock"}
+    timing["header_age_at_receipt_ms"] = int(received_at_ms) - int(header_epoch_ms)
+    timing["age_ms"] = timing["header_age_at_receipt_ms"]
+    # evaluation 缺失时可保留 receipt decision age，但完整三时刻顺序不可证明，仍应 unknown。
+    if not evaluation_valid or int(evaluated_at_ms) < FRESHNESS_WALL_CLOCK_MIN_MS:
+        return {**timing, "status": "unknown", "reason": "evaluation_time_missing_or_invalid"}
+    timing["receipt_age_at_evaluation_ms"] = int(evaluated_at_ms) - int(received_at_ms)
+
+    # header 明显晚于 callback，或 receipt 晚于 evaluation，均表示时钟顺序不可证明。
+    if int(timing["header_age_at_receipt_ms"]) < -TF_RECEIPT_CLOCK_SKEW_TOLERANCE_MS:
+        return {
+            **timing,
+            "status": "unknown",
+            "reason": "header_stamp_is_in_future_relative_to_callback_receipt",
+            "clock_skew_tolerance_ms": TF_RECEIPT_CLOCK_SKEW_TOLERANCE_MS,
+            "threshold_ms": stale_after_ms,
+        }
+    if int(timing["receipt_age_at_evaluation_ms"]) < -TF_RECEIPT_CLOCK_SKEW_TOLERANCE_MS:
+        return {
+            **timing,
+            "status": "unknown",
+            "reason": "callback_receipt_is_in_future_relative_to_evaluation",
+            "clock_skew_tolerance_ms": TF_RECEIPT_CLOCK_SKEW_TOLERANCE_MS,
+            "threshold_ms": stale_after_ms,
+        }
+    # 只有经过完整时间有效性与顺序检查后，才可用 receipt-time age 进入 3000ms gate。
+    decision_age_ms = int(timing["header_age_at_receipt_ms"])
+    return {
+        **timing,
+        "status": "fresh" if decision_age_ms <= stale_after_ms else "stale",
+        "reason": "within_threshold_at_callback_receipt"
+        if decision_age_ms <= stale_after_ms
+        else "older_than_threshold_at_callback_receipt",
+        "threshold_ms": stale_after_ms,
+        "clock_skew_tolerance_ms": TF_RECEIPT_CLOCK_SKEW_TOLERANCE_MS,
+    }
+
+
 def parse_tf_topic_transforms(text: str, *, source_topic: str) -> list[dict[str, Any]]:
     """从 `/tf(_static)` echo 的 YAML 文本提取 transform 数值，超时时也能保留雷达外参。"""
     transforms: list[dict[str, Any]] = []
@@ -5997,8 +6090,13 @@ def tf_message_edges(message: Any, *, source_topic: str) -> list[dict[str, str]]
     return edges
 
 
-def tf_message_transforms(message: Any, *, source_topic: str) -> list[dict[str, Any]]:
-    """从 rclpy TFMessage 直接提取 transform 数值，避免 partial artifact 缺少雷达外参。"""
+def tf_message_transforms(
+    message: Any,
+    *,
+    source_topic: str,
+    received_at_ms: int | None = None,
+) -> list[dict[str, Any]]:
+    """提取 TF 数值，并把同一 callback receipt 固化到每条 transform。"""
     transforms: list[dict[str, Any]] = []
     for transform in getattr(message, "transforms", []) or []:
         header = getattr(transform, "header", None)
@@ -6026,6 +6124,8 @@ def tf_message_transforms(message: Any, *, source_topic: str) -> list[dict[str, 
                 },
                 "rotation": {"yaw": yaw, "quaternion": {"x": qx, "y": qy, "z": qz, "w": qw}},
                 "source": source_topic,
+                # receipt 必须来自 callback 入口；CLI 或旧 artifact 没有该事实时保持 None。
+                "received_at_ms": received_at_ms,
             }
         )
     return transforms
@@ -6165,12 +6265,20 @@ def collect_amcl_rclpy_probe(args: argparse.Namespace | None = None, timeout_s: 
         amcl_pose_samples: list[dict[str, Any]] = []
 
         def on_dynamic_tf(message: Any) -> None:
+            # 一条 TFMessage 只取一次 receipt，避免 transforms 循环耗时制造伪造的接收先后。
+            received_at_ms = now_ms()
             dynamic_edges.extend(tf_message_edges(message, source_topic="/tf"))
-            dynamic_transforms.extend(tf_message_transforms(message, source_topic="/tf"))
+            dynamic_transforms.extend(
+                tf_message_transforms(message, source_topic="/tf", received_at_ms=received_at_ms)
+            )
 
         def on_static_tf(message: Any) -> None:
+            # static TF 也保留 callback receipt 供审计，但 latched source 仍不参与动态 freshness gate。
+            received_at_ms = now_ms()
             static_edges.extend(tf_message_edges(message, source_topic="/tf_static"))
-            static_transforms.extend(tf_message_transforms(message, source_topic="/tf_static"))
+            static_transforms.extend(
+                tf_message_transforms(message, source_topic="/tf_static", received_at_ms=received_at_ms)
+            )
 
         def on_amcl_pose(message: Any) -> None:
             """只读采样 pose；本轮禁止 initialpose，所以必须直接记录当前 runtime 是否自行出样本。"""
@@ -11125,6 +11233,14 @@ def tf_edge_freshness_entry(
         if isinstance(transform, dict) and isinstance(transform.get("stamp"), dict)
         else {"parsed": False, "reason": "transform_stamp_not_observed", "source": f"{name}.header.stamp"}
     )
+    received_at_ms = transform.get("received_at_ms") if isinstance(transform, dict) else None
+    freshness = tf_freshness_from_callback_receipt(
+        stamp,
+        observed=bool(source_class != "missing"),
+        source_class=source_class,
+        received_at_ms=received_at_ms,
+        evaluated_at_ms=generated_at_ms,
+    )
     accepted_source = source_class != "missing" and (required_source_class is None or source_class == required_source_class)
     entry = {
         "edge": name,
@@ -11137,12 +11253,12 @@ def tf_edge_freshness_entry(
         "dynamic_source_observed": dynamic_observed,
         "static_source_observed": static_observed,
         "timestamp": stamp,
-        "freshness": freshness_from_stamp(
-            stamp,
-            observed=bool(source_class != "missing"),
-            source_class=source_class,
-            reference_ms=generated_at_ms,
-        ),
+        "received_at_ms": received_at_ms,
+        "evaluated_at_ms": generated_at_ms,
+        "header_age_at_receipt_ms": freshness.get("header_age_at_receipt_ms"),
+        "receipt_age_at_evaluation_ms": freshness.get("receipt_age_at_evaluation_ms"),
+        "header_age_at_evaluation_ms": freshness.get("header_age_at_evaluation_ms"),
+        "freshness": freshness,
     }
     # publisher attribution 只属于 dynamic map->odom；其他 edge 不复制 AMCL 身份，避免误读。
     if isinstance(publisher_attribution, dict):
@@ -11218,6 +11334,7 @@ def build_tf_source_freshness(
         ),
     }
     return {
+        "evaluated_at_ms": generated_at_ms,
         "edges": edges,
         "dynamic_edge_count": len(dynamic_edges),
         "static_edge_count": len(static_edges),

@@ -1590,3 +1590,29 @@ managed runtime cleanup 继续只作用于 helper 以 `start_new_session=True` �
 UART 或修改 LiDAR/硬件参数。即使 clean，proof boundary 仍为
 `robot_runtime_o3_strict_no_motion_controlled_initialpose_localization_proof_only`；不证明真实物理位姿
 准确、route execution、delivery、HIL 或 safe-to-control。
+
+`2026-07-15 06:54` 起，dynamic TF freshness 改为 callback receipt-time 合同。`/tf` 与
+`/tf_static` 的 rclpy callback 会在入口各取一次 `received_at_ms`，同一 TFMessage 内每条
+transform 共享该值；CLI fallback、旧 artifact 或解析文本没有 callback receipt 事实时必须保持
+`received_at_ms=null`，禁止使用命令 `finished_at_ms` 或 artifact `generated_at_ms` 回填。
+
+`proof.tf_source_freshness.evaluated_at_ms` 记录 summary 判定时刻；每条 edge 同时输出：
+
+- `header_age_at_receipt_ms = received_at_ms - header_stamp_epoch_ms`：dynamic clean gate 的唯一
+  decision age；threshold 继续固定为 `3000ms`。
+- `receipt_age_at_evaluation_ms = evaluated_at_ms - received_at_ms`：collector 收到消息后的剩余耗时，
+  只作诊断，不能追加到 stale gate。
+- `header_age_at_evaluation_ms = evaluated_at_ms - header_stamp_epoch_ms`：保留旧口径作兼容审计，
+  但不再作为 dynamic freshness decision。
+
+既有 `freshness.age_ms` 继续保留给旧 reader，但 dynamic edge 上它现在严格等于
+`header_age_at_receipt_ms`，并以 `decision_basis=header_age_at_receipt_ms` 明示口径。因此 header 在
+receipt 时不超过 `3000ms`，即使 collector 后续又运行数秒，仍可判为 fresh；header 到达 callback
+时已经超过 `3000ms` 则仍为 stale。缺失/非法 receipt、header stamp 不可解析、非墙钟时间，或
+header/receipt/evaluation 出现超出小量取整容差的逆序，都必须 `unknown` / fail-closed。
+
+`/tf_static` 仍保持 latched/static source 语义，不把 zero/static stamp 套入 dynamic age gate；
+source class、`timestamp` 和 unique AMCL publisher attribution 均保持原合同。该修复只是
+read-only、no-topic-write、no-motion 的 freshness 证据语义，不授权 `/initialpose`、managed runtime
+start/stop、planner/controller/path、NavigateToPose、`/cmd_vel`、`/api/base/manual`、UART 或运动，
+也不证明定位 ground truth、route execution、delivery、HIL 或 safe-to-control。

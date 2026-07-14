@@ -6,6 +6,29 @@
 
 ---
 
+## 2026-07-15 O3 TF receipt-time freshness 离线合同收口
+
+`sprints/2026.07.15_05-55_o3_tf_receipt_time_freshness_recovery/` 已完成 Product acceptance closeout。
+Algorithm 修复 TF receipt-time freshness 合同：transform 记录 `received_at_ms`，artifact 同时保留 header、
+receipt/evaluation time、`header_age_at_receipt_ms`、`receipt_age_at_evaluation_ms` 与
+`header_age_at_evaluation_ms`；current observation decision 使用 callback receipt 时的 header age
+`header_age_at_receipt_ms`，不是简单“receipt age”。missing/invalid receipt fail-closed，threshold 保持
+`3000ms`。
+
+验证证据：`py_compile` exit `0`；`python3 -m unittest onboard/tests/test_nav2_runtime_proof_helper.py`
+输出 `Ran 160 tests in 2.244s`、`OK`；offline structural assertions、required `rg` 与 scoped
+`git diff --check` 通过。只读 SSH `date` + `ps` 显示 localization runtime inactive，因此未部署、未执行
+live capture、未写 topic、未启停 runtime，也无 control、route、delivery 或 HIL。
+
+Product 接受 proof boundary=`software_proof_o3_tf_receipt_time_freshness_contract_only`，拒绝 live localization、
+Mission Objective 0 与 OKR credit。`current_run_artifact_delta=false`、`external_artifact_delta=false`、
+`live_control_delta=false`、`user_action_delta=false`，`okr_credit=false`，KR `不归档`。O5 约 `85%`、
+O6/O7 各约 `93%`、O1 约 `94%` 全保持；`safe_to_control=false`、`robot_control_executed=false`、
+`route_execution_success=false`、`delivery_success=false`、`hil_pass=false`。
+
+下一步只允许 existing localization runtime 已 active，或 CEO/operator 新授权 strict no-motion
+localization-only runtime 后，由 `robot-algorithm-engineer` 采一次 live receipt artifact；禁止再包装离线合同。
+
 ## 2026-07-15 系列
 
 ### 2026-07-15 05-38｜o3_controlled_initialpose_localization_proof｜Current live delta accepted，TF freshness fail-closed

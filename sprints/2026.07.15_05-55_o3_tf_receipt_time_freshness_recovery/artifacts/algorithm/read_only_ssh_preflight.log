@@ -1,0 +1,20 @@
+boundary=read_only_ssh_preflight_no_deploy_no_topic_write_no_motion
+command=ssh -p 37878 -o BatchMode=yes -o ConnectTimeout=8 root@192.168.1.11 date-and-process-inventory
+exit=0
+captured_at_utc=2026-07-14T23:10:35Z
+remote_output_begin
+2026-07-14T23:10:35Z
+ 649909  649710  649909 Wed Jul 15 07:10:34 2026 zsh -c date -u +%Y-%m-%dT%H:%M:%SZ; ps -eo pid=,ppid=,pgid=,lstart=,args= | grep -E "[m]ap_server|[a]mcl|[l]ifecycle_manager|[o]10_amcl_nav2_runtime_proof"
+ 649912  649909  649909 Wed Jul 15 07:10:34 2026 grep -E [m]ap_server|[a]mcl|[l]ifecycle_manager|[o]10_amcl_nav2_runtime_proof
+remote_output_end
+decision=skip_optional_live_capture_existing_runtime_not_active
+map_server_process_observed=false
+amcl_process_observed=false
+lifecycle_manager_process_observed=false
+existing_helper_process_observed=false
+deployed_helper=false
+initialpose_publish_attempts=0
+managed_runtime_start_attempts=0
+managed_runtime_stop_attempts=0
+topic_write_attempts=0
+control_route_delivery_hil_actions=0

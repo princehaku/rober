@@ -1,0 +1,86 @@
+{
+  "schema": "trashbot.product_acceptance.o3_tf_receipt_time_freshness.v1",
+  "status": "accepted_offline_contract_repair_rejected_live_mission_credit",
+  "proof_boundary": "software_proof_o3_tf_receipt_time_freshness_contract_only",
+  "sprint": "sprints/2026.07.15_05-55_o3_tf_receipt_time_freshness_recovery/",
+  "accepted_claim": "offline_tf_receipt_time_freshness_contract_repaired",
+  "freshness_contract": {
+    "received_at_field": "received_at_ms",
+    "decision_basis": "header_age_at_receipt_ms",
+    "decision_definition": "received_at_ms_minus_header_stamp_epoch_ms",
+    "decision_is_simple_receipt_age": false,
+    "diagnostic_fields": [
+      "receipt_age_at_evaluation_ms",
+      "header_age_at_evaluation_ms"
+    ],
+    "threshold_ms": 3000,
+    "missing_or_invalid_receipt_fail_closed": true
+  },
+  "rejected_claims": [
+    "live_localization_proven",
+    "mission_objective_0_satisfied",
+    "route_execution_success",
+    "delivery_success",
+    "hil_pass",
+    "safe_to_control",
+    "okr_credit"
+  ],
+  "verification": {
+    "py_compile_exit_code": 0,
+    "unittest": {
+      "tests_run": 160,
+      "duration_seconds": 2.244,
+      "status": "OK"
+    },
+    "offline_structural_assertions_passed": true,
+    "required_rg_passed": true,
+    "scoped_git_diff_check_passed": true
+  },
+  "live_preflight": {
+    "read_only_ssh_date_ps_executed": true,
+    "localization_runtime_active": false,
+    "helper_deployed": false,
+    "live_capture_executed": false,
+    "topic_write_executed": false,
+    "runtime_started_by_this_run": false,
+    "runtime_stopped_by_this_run": false
+  },
+  "deltas": {
+    "current_run_artifact_delta": false,
+    "external_artifact_delta": false,
+    "live_control_delta": false,
+    "user_action_delta": false
+  },
+  "mission_objective_0_satisfied": false,
+  "okr": {
+    "okr_credit": false,
+    "kr_archive_status": "不归档",
+    "percentages_unchanged": true,
+    "objective_5_percent": 85,
+    "objective_6_percent": 93,
+    "objective_7_percent": 93,
+    "objective_1_percent": 94
+  },
+  "safety": {
+    "safe_to_control": false,
+    "robot_control_executed": false,
+    "route_execution_success": false,
+    "delivery_success": false,
+    "hil_pass": false,
+    "publishes_cmd_vel": false,
+    "calls_base_manual": false,
+    "uses_base_uart": false,
+    "initialpose_published": false
+  },
+  "next_step": {
+    "owner": "robot-algorithm-engineer",
+    "action": "capture_once_live_tf_receipt_artifact",
+    "allowed_when": [
+      "existing_localization_runtime_confirmed_active_by_read_only_check",
+      "ceo_or_operator_newly_authorizes_strict_no_motion_localization_only_runtime"
+    ],
+    "offline_contract_repackaging_forbidden": true,
+    "initialpose_forbidden": true,
+    "motion_forbidden": true
+  }
+}

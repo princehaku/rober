@@ -14,6 +14,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest import mock
 
 
@@ -2908,6 +2909,7 @@ __TF_STATIC_ONCE__
                     "parent_frame_id": "map",
                     "child_frame_id": "odom",
                     "stamp": HELPER.ros_stamp_parts_to_artifact(1_780_000_000, 0, source="/tf.header.stamp"),
+                    "received_at_ms": generated_at_ms,
                     "source": "/tf",
                 }
             ],
@@ -2932,6 +2934,9 @@ __TF_STATIC_ONCE__
         self.assertEqual("attributed_unique_amcl", edge["publisher_attribution_status"])
         self.assertEqual("/amcl", edge["publisher_endpoint"]["node_full_name"])
         self.assertTrue(edge["timestamp"]["parsed"])
+        self.assertEqual(generated_at_ms, freshness["evaluated_at_ms"])
+        self.assertEqual(generated_at_ms, edge["evaluated_at_ms"])
+        self.assertEqual(generated_at_ms, edge["received_at_ms"])
         self.assertEqual("fresh", edge["freshness"]["status"])
 
     def test_dynamic_map_to_odom_multiple_amcl_endpoints_stays_ambiguous(self) -> None:
@@ -3027,13 +3032,165 @@ __TF_STATIC_ONCE__
         }
         stale = HELPER.tf_edge_freshness_entry(
             **common,
-            dynamic_transforms=[{"parent_frame_id": "map", "child_frame_id": "odom", "stamp": HELPER.ros_stamp_parts_to_artifact(1_779_999_990, 0, source="/tf.header.stamp")}],
+            dynamic_transforms=[{
+                "parent_frame_id": "map",
+                "child_frame_id": "odom",
+                "stamp": HELPER.ros_stamp_parts_to_artifact(1_779_999_990, 0, source="/tf.header.stamp"),
+                "received_at_ms": 1_780_000_000_000,
+            }],
         )
         missing = HELPER.tf_edge_freshness_entry(**common, dynamic_transforms=[])
 
         self.assertEqual("stale", stale["freshness"]["status"])
         self.assertEqual("unknown", missing["freshness"]["status"])
         self.assertEqual("transform_stamp_not_observed", missing["freshness"]["reason"])
+
+    def test_tf_receipt_time_keeps_clean_header_fresh_despite_late_evaluation(self) -> None:
+        """上轮 5090ms 形态中，collector 延迟不得再被追加到 dynamic TF stale gate。"""
+        header_ms = 1_780_000_000_000
+        received_at_ms = header_ms + 90
+        evaluated_at_ms = header_ms + 5090
+        edge = HELPER.tf_edge_freshness_entry(
+            name="map_to_odom",
+            parent="map",
+            child="odom",
+            required_source_class="dynamic",
+            dynamic_edges=[{"parent": "map", "child": "odom", "topic": "/tf"}],
+            static_edges=[],
+            dynamic_transforms=[{
+                "parent_frame_id": "map",
+                "child_frame_id": "odom",
+                "stamp": HELPER.ros_stamp_parts_to_artifact(1_780_000_000, 0, source="/tf.header.stamp"),
+                "received_at_ms": received_at_ms,
+            }],
+            static_transforms=[],
+            generated_at_ms=evaluated_at_ms,
+        )
+
+        self.assertEqual("fresh", edge["freshness"]["status"])
+        self.assertEqual("header_age_at_receipt_ms", edge["freshness"]["decision_basis"])
+        self.assertEqual(90, edge["header_age_at_receipt_ms"])
+        self.assertEqual(5000, edge["receipt_age_at_evaluation_ms"])
+        self.assertEqual(5090, edge["header_age_at_evaluation_ms"])
+        self.assertEqual(90, edge["freshness"]["age_ms"])
+        self.assertEqual(3000, edge["freshness"]["threshold_ms"])
+
+    def test_tf_header_already_stale_at_receipt_stays_stale(self) -> None:
+        """新 receipt 不能洗白真正迟到的 header，decision age 超过 3000ms 必须 stale。"""
+        header_ms = 1_780_000_000_000
+        edge = HELPER.tf_edge_freshness_entry(
+            name="map_to_odom",
+            parent="map",
+            child="odom",
+            required_source_class="dynamic",
+            dynamic_edges=[{"parent": "map", "child": "odom", "topic": "/tf"}],
+            static_edges=[],
+            dynamic_transforms=[{
+                "parent_frame_id": "map",
+                "child_frame_id": "odom",
+                "stamp": HELPER.ros_stamp_parts_to_artifact(1_780_000_000, 0, source="/tf.header.stamp"),
+                "received_at_ms": header_ms + 3001,
+            }],
+            static_transforms=[],
+            generated_at_ms=header_ms + 3500,
+        )
+
+        self.assertEqual("stale", edge["freshness"]["status"])
+        self.assertEqual(3001, edge["freshness"]["header_age_at_receipt_ms"])
+        self.assertEqual("older_than_threshold_at_callback_receipt", edge["freshness"]["reason"])
+
+    def test_dynamic_tf_missing_or_invalid_receipt_fails_closed(self) -> None:
+        """CLI/旧 artifact 没有 callback receipt 时，禁止拿 evaluation time 冒充接收时间。"""
+        common = {
+            "name": "map_to_odom",
+            "parent": "map",
+            "child": "odom",
+            "required_source_class": "dynamic",
+            "dynamic_edges": [{"parent": "map", "child": "odom", "topic": "/tf"}],
+            "static_edges": [],
+            "static_transforms": [],
+            "generated_at_ms": 1_780_000_000_500,
+        }
+        stamp = HELPER.ros_stamp_parts_to_artifact(1_780_000_000, 0, source="/tf.header.stamp")
+        missing = HELPER.tf_edge_freshness_entry(
+            **common,
+            dynamic_transforms=[{"parent_frame_id": "map", "child_frame_id": "odom", "stamp": stamp}],
+        )
+        invalid = HELPER.tf_edge_freshness_entry(
+            **common,
+            dynamic_transforms=[{
+                "parent_frame_id": "map",
+                "child_frame_id": "odom",
+                "stamp": stamp,
+                "received_at_ms": "command-finished-at",
+            }],
+        )
+
+        self.assertEqual("unknown", missing["freshness"]["status"])
+        self.assertEqual("callback_receipt_missing_or_invalid", missing["freshness"]["reason"])
+        self.assertEqual("unknown", invalid["freshness"]["status"])
+        self.assertIsNone(invalid["header_age_at_receipt_ms"])
+
+    def test_dynamic_tf_invalid_header_or_clock_order_fails_closed(self) -> None:
+        """header 不可解析或明显晚于 callback receipt 时必须 unknown，不能 clamp 成 fresh。"""
+        common = {
+            "name": "map_to_odom",
+            "parent": "map",
+            "child": "odom",
+            "required_source_class": "dynamic",
+            "dynamic_edges": [{"parent": "map", "child": "odom", "topic": "/tf"}],
+            "static_edges": [],
+            "static_transforms": [],
+            "generated_at_ms": 1_780_000_001_000,
+        }
+        invalid_header = HELPER.tf_edge_freshness_entry(
+            **common,
+            dynamic_transforms=[{
+                "parent_frame_id": "map",
+                "child_frame_id": "odom",
+                "stamp": {"parsed": False, "reason": "stamp_sec_parse_failed"},
+                "received_at_ms": 1_780_000_000_000,
+            }],
+        )
+        future_header = HELPER.tf_edge_freshness_entry(
+            **common,
+            dynamic_transforms=[{
+                "parent_frame_id": "map",
+                "child_frame_id": "odom",
+                "stamp": HELPER.ros_stamp_parts_to_artifact(1_780_000_001, 0, source="/tf.header.stamp"),
+                "received_at_ms": 1_780_000_000_000,
+            }],
+        )
+
+        self.assertEqual("unknown", invalid_header["freshness"]["status"])
+        self.assertEqual("stamp_sec_parse_failed", invalid_header["freshness"]["reason"])
+        self.assertEqual("unknown", future_header["freshness"]["status"])
+        self.assertEqual(
+            "header_stamp_is_in_future_relative_to_callback_receipt",
+            future_header["freshness"]["reason"],
+        )
+
+    def test_tf_message_transforms_share_single_callback_receipt(self) -> None:
+        """同一 TFMessage 的多条 transform 必须共享 callback 入口记录的一次 receipt。"""
+        def transform(parent: str, child: str) -> SimpleNamespace:
+            return SimpleNamespace(
+                header=SimpleNamespace(frame_id=parent, stamp=SimpleNamespace(sec=1_780_000_000, nanosec=0)),
+                child_frame_id=child,
+                transform=SimpleNamespace(
+                    translation=SimpleNamespace(x=0.0, y=0.0, z=0.0),
+                    rotation=SimpleNamespace(x=0.0, y=0.0, z=0.0, w=1.0),
+                ),
+            )
+
+        receipt = 1_780_000_000_123
+        transforms = HELPER.tf_message_transforms(
+            SimpleNamespace(transforms=[transform("map", "odom"), transform("odom", "base_link")]),
+            source_topic="/tf",
+            received_at_ms=receipt,
+        )
+
+        self.assertEqual(2, len(transforms))
+        self.assertEqual([receipt, receipt], [item["received_at_ms"] for item in transforms])
 
     def test_static_map_to_odom_does_not_inherit_dynamic_publisher_attribution(self) -> None:
         """即使 AMCL endpoint 存在，`/tf_static` 的 map->odom 也不得冒充 dynamic AMCL source。"""
