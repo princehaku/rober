@@ -5012,6 +5012,118 @@ def signal_topic_endpoint_summaries(node: Any) -> dict[str, Any]:
     return {topic: topic_endpoint_summary(node, topic) for topic in LOCALIZATION_SIGNAL_TOPICS}
 
 
+def endpoint_node_full_name(endpoint: dict[str, Any]) -> str:
+    """把 graph endpoint 的 namespace/name 规范成 ROS 全名，避免根命名空间出现双斜杠。"""
+    namespace = str(endpoint.get("node_namespace") or "/").strip()
+    node_name = str(endpoint.get("node_name") or "").strip().strip("/")
+    if not node_name:
+        return ""
+    if namespace in {"", "/"}:
+        return f"/{node_name}"
+    return f"/{namespace.strip('/')}/{node_name}"
+
+
+def endpoint_identity(endpoint: dict[str, Any]) -> tuple[str, str, str, str]:
+    """端点去重只比较可审计字段；QoS 纳入身份可保留同节点异常重复端点。"""
+    qos = endpoint.get("qos_profile") if isinstance(endpoint.get("qos_profile"), dict) else {}
+    return (
+        endpoint_node_full_name(endpoint),
+        str(endpoint.get("topic_type") or ""),
+        str(qos.get("reliability") or ""),
+        str(qos.get("durability") or ""),
+    )
+
+
+def normalize_publisher_endpoint(endpoint: dict[str, Any], *, source_topic: str) -> dict[str, Any]:
+    """publisher endpoint 补 source topic/full name，供 artifact 直接建立 edge-to-source 关联。"""
+    normalized = {
+        "node_name": str(endpoint.get("node_name") or ""),
+        "node_namespace": str(endpoint.get("node_namespace") or ""),
+        "node_full_name": endpoint_node_full_name(endpoint),
+        "topic_type": str(endpoint.get("topic_type") or ""),
+        "qos_profile": endpoint.get("qos_profile") if isinstance(endpoint.get("qos_profile"), dict) else None,
+        "source_topic": source_topic,
+    }
+    return normalized
+
+
+def tf_map_to_odom_publisher_attribution(
+    *,
+    dynamic_source_observed: bool,
+    tf_endpoint_summary: dict[str, Any],
+    amcl_publishers: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """用 `/amcl` node graph 与 `/tf` endpoint 的交集归因，绝不把其他 TF publisher 冒充 AMCL。"""
+    raw_publishers = tf_endpoint_summary.get("publishers") if isinstance(tf_endpoint_summary.get("publishers"), list) else []
+    endpoints: list[dict[str, Any]] = []
+    seen: set[tuple[str, str, str, str]] = set()
+    for raw_endpoint in raw_publishers:
+        if not isinstance(raw_endpoint, dict):
+            continue
+        endpoint = normalize_publisher_endpoint(raw_endpoint, source_topic="/tf")
+        identity = endpoint_identity(endpoint)
+        if identity in seen:
+            continue
+        seen.add(identity)
+        endpoints.append(endpoint)
+    # `/amcl` node info 明确列出 `/tf` 才能建立交集；只看 endpoint 节点名会把同名残留误归因。
+    amcl_tf_publishers = [
+        publisher
+        for publisher in amcl_publishers
+        if isinstance(publisher, dict)
+        and str(publisher.get("topic") or "") == "/tf"
+        and str(publisher.get("type") or "") in {"", "tf2_msgs/msg/TFMessage"}
+    ]
+    matching = [endpoint for endpoint in endpoints if endpoint.get("node_full_name") == "/amcl"]
+    base = {
+        "source_topic": "/tf" if dynamic_source_observed else None,
+        "dynamic_source_observed": bool(dynamic_source_observed),
+        "publisher_endpoint_inventory_observed": bool(tf_endpoint_summary.get("inventory_observed")),
+        "publisher_endpoint_count": int(tf_endpoint_summary.get("publisher_count") or len(endpoints)),
+        "publisher_endpoint_candidates": endpoints,
+        "amcl_node_tf_publisher_observed": bool(amcl_tf_publishers),
+        "amcl_node_tf_publishers": amcl_tf_publishers,
+        "publisher_endpoint": None,
+    }
+    if not dynamic_source_observed:
+        return {
+            **base,
+            "publisher_attribution_status": "not_attributed_dynamic_map_to_odom_not_observed",
+            "publisher_attribution_reason": "dynamic_map_to_odom_edge_missing_from_current_tf_sample",
+        }
+    if not tf_endpoint_summary.get("inventory_observed"):
+        return {
+            **base,
+            "publisher_attribution_status": "unavailable_tf_publisher_endpoint_inventory_not_observed",
+            "publisher_attribution_reason": "tf_graph_endpoint_inventory_not_observed_in_current_window",
+        }
+    if not amcl_tf_publishers:
+        return {
+            **base,
+            "publisher_attribution_status": "unavailable_amcl_tf_publisher_not_observed_in_node_graph",
+            "publisher_attribution_reason": "amcl_node_graph_did_not_list_tf_publisher",
+        }
+    if len(matching) == 1:
+        return {
+            **base,
+            "publisher_attribution_status": "attributed_to_amcl_graph_endpoint",
+            "publisher_attribution_reason": "unique_amcl_tf_endpoint_matches_amcl_node_publisher_inventory",
+            "publisher_endpoint": matching[0],
+        }
+    if len(matching) > 1:
+        return {
+            **base,
+            "publisher_attribution_status": "ambiguous_multiple_amcl_tf_publisher_endpoints",
+            "publisher_attribution_reason": "multiple_amcl_named_tf_endpoints_prevent_unique_attribution",
+            "publisher_endpoint_candidates": matching,
+        }
+    return {
+        **base,
+        "publisher_attribution_status": "unmatched_amcl_endpoint_not_present_in_tf_inventory",
+        "publisher_attribution_reason": "amcl_lists_tf_but_tf_endpoint_inventory_has_no_amcl_identity",
+    }
+
+
 def parse_tf_edges(text: str, *, source_topic: str) -> list[dict[str, str]]:
     """从 TFMessage echo 文本中提取 parent->child；只看 frame_id/child_frame_id。"""
     edges: list[dict[str, str]] = []
@@ -5198,11 +5310,25 @@ def find_tf_topic_transform(
     parent_frame_id: str,
     child_frame_id: str,
 ) -> dict[str, Any] | None:
-    """按 parent/child 精确取 transform，避免 frame 名相近时串用外参。"""
-    for transform in transforms:
-        if transform.get("parent_frame_id") == parent_frame_id and transform.get("child_frame_id") == child_frame_id:
-            return transform
-    return None
+    """按 parent/child 精确取当前窗口最新 transform，避免首个旧 stamp 污染 freshness。"""
+    matches = [
+        transform
+        for transform in transforms
+        if transform.get("parent_frame_id") == parent_frame_id
+        and transform.get("child_frame_id") == child_frame_id
+    ]
+    if not matches:
+        return None
+    # callback 追加顺序本身可作为兜底；stamp 可解析时优先取 epoch 最大项。
+    return max(
+        enumerate(matches),
+        key=lambda item: (
+            int((item[1].get("stamp") or {}).get("epoch_ms") or 0)
+            if isinstance(item[1].get("stamp"), dict)
+            else 0,
+            item[0],
+        ),
+    )[1]
 
 
 def parse_pose_frame_id(text: str) -> str | None:
@@ -5534,7 +5660,11 @@ def collect_amcl_rclpy_probe(args: argparse.Namespace | None = None, timeout_s: 
                         for name, value in zip(names, values)
                     }
                     param_boundary = "amcl_parameter_response_observed"
-            if dynamic_edges and static_edges and params and result["node_info_observed"]:
+            # `/tf` 上先出现 odom->base_link 很常见；只有目标 map->odom 已采到才可提前结束，
+            # 否则必须用完有界窗口，避免把 AMCL 的较低频广播误判为 current-window 缺失。
+            expected_odom_frame = str(getattr(args, "managed_odom_frame_id", DEFAULT_MANAGED_ODOM_FRAME_ID))
+            map_to_odom_observed = edge_observed(dynamic_edges, "map", expected_odom_frame)
+            if map_to_odom_observed and static_edges and params and result["node_info_observed"]:
                 break
         result["dynamic_edges"] = dynamic_edges
         result["static_edges"] = static_edges
@@ -5585,6 +5715,146 @@ def collect_amcl_rclpy_probe(args: argparse.Namespace | None = None, timeout_s: 
                     rclpy.shutdown()
             except Exception:
                 pass
+
+
+def collect_amcl_sourced_rclpy_probe(args: argparse.Namespace, timeout_s: float = 4.0) -> dict[str, Any]:
+    """在已 source 的 child Python 运行 rclpy probe，避免 SSH parent 缺 PYTHONPATH 后退成十条慢 CLI。"""
+    child_timeout_s = max(min(float(timeout_s), 5.0), 1.0)
+    command = (
+        f"python3 {shlex.quote(str(Path(__file__).resolve()))} "
+        f"--tf-source-child-probe --timeout-s {child_timeout_s:g}"
+    )
+    command_result = run_ros(args, command, timeout_s=child_timeout_s + 8.0)
+    stdout = str(command_result.get("stdout") or "").strip()
+    try:
+        payload = json.loads(stdout.splitlines()[-1]) if stdout else None
+    except json.JSONDecodeError as exc:
+        payload = None
+        parse_error = compact_error(exc)
+    else:
+        parse_error = None
+    if not isinstance(payload, dict):
+        return {
+            "executed": bool(command_result.get("executed")),
+            "ok": False,
+            "param_probe_ok": False,
+            "node_info_observed": False,
+            "tf_inventory_observed": False,
+            "params": {},
+            "publishers": [],
+            "subscribers": [],
+            "topic_types": {},
+            "topic_endpoint_summaries": {},
+            "dynamic_edges": [],
+            "static_edges": [],
+            "dynamic_transforms": [],
+            "static_transforms": [],
+            "command_statuses": {"rclpy_graph": None, "tf": None, "tf_static": None},
+            "error": parse_error or command_result.get("error") or {
+                "type": "sourced_rclpy_child_output_missing",
+                "message": str(command_result.get("stderr") or "child returned no JSON")[-400:],
+            },
+            "elapsed_ms": command_result.get("elapsed_ms"),
+            "boundary": "sourced_rclpy_child_probe_failed",
+            "probe_mode": "sourced_rclpy_child",
+            "child_command": command_result,
+        }
+    payload["probe_mode"] = "sourced_rclpy_child"
+    payload["child_command"] = {
+        "executed": bool(command_result.get("executed")),
+        "ok": bool(command_result.get("ok")),
+        "returncode": command_result.get("returncode"),
+        "elapsed_ms": command_result.get("elapsed_ms"),
+        "timed_out": bool(command_result.get("timed_out")),
+    }
+    return payload
+
+
+def compact_tf_source_child_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    """压缩 child JSON 到 run_bash 8KB 上限内；只保留 attribution 所需 endpoint/edge/stamp。"""
+    compact = {
+        key: payload.get(key)
+        for key in (
+            "executed",
+            "ok",
+            "param_probe_ok",
+            "node_info_observed",
+            "tf_inventory_observed",
+            "params",
+            "publishers",
+            "subscribers",
+            "command_statuses",
+            "error",
+            "elapsed_ms",
+            "boundary",
+            "fallback_used",
+            "fallback_boundary",
+            "param_probe_boundary",
+            "probe_mode",
+            "node_info_error",
+        )
+    }
+    topic_types = payload.get("topic_types") if isinstance(payload.get("topic_types"), dict) else {}
+    compact["topic_types"] = {
+        topic: topic_types.get(topic)
+        for topic in LOCALIZATION_SIGNAL_TOPICS
+        if topic in topic_types
+    }
+    endpoint_summaries = payload.get("topic_endpoint_summaries") if isinstance(payload.get("topic_endpoint_summaries"), dict) else {}
+    compact_endpoints: dict[str, Any] = {}
+    for topic in ("/tf", "/tf_static", "/amcl_pose"):
+        summary = endpoint_summaries.get(topic) if isinstance(endpoint_summaries.get(topic), dict) else {}
+        compact_summary = {
+            "publisher_count": int(summary.get("publisher_count") or 0),
+            "subscriber_count": int(summary.get("subscriber_count") or 0),
+            "inventory_observed": bool(summary.get("inventory_observed")),
+            "error": summary.get("error"),
+        }
+        for endpoint_kind in ("publishers", "subscribers"):
+            endpoints = summary.get(endpoint_kind) if isinstance(summary.get(endpoint_kind), list) else []
+            compact_summary[endpoint_kind] = []
+            for endpoint in endpoints[:8]:
+                if not isinstance(endpoint, dict):
+                    continue
+                qos = endpoint.get("qos_profile") if isinstance(endpoint.get("qos_profile"), dict) else {}
+                compact_summary[endpoint_kind].append(
+                    {
+                        "node_name": endpoint.get("node_name"),
+                        "node_namespace": endpoint.get("node_namespace"),
+                        "topic_type": endpoint.get("topic_type"),
+                        "qos_profile": {
+                            key: qos.get(key)
+                            for key in ("reliability", "durability", "history", "depth")
+                            if key in qos
+                        },
+                    }
+                )
+        compact_endpoints[topic] = compact_summary
+    compact["topic_endpoint_summaries"] = compact_endpoints
+
+    # 同一 broadcaster 在窗口内会产生大量重复 edge；只保留唯一 edge 与该 edge 最新 stamp。
+    for edge_key, transform_key in (("dynamic_edges", "dynamic_transforms"), ("static_edges", "static_transforms")):
+        raw_edges = payload.get(edge_key) if isinstance(payload.get(edge_key), list) else []
+        edge_map: dict[tuple[str, str, str], dict[str, Any]] = {}
+        for edge in raw_edges:
+            if not isinstance(edge, dict):
+                continue
+            identity = (str(edge.get("parent") or ""), str(edge.get("child") or ""), str(edge.get("topic") or ""))
+            edge_map[identity] = edge
+        compact[edge_key] = list(edge_map.values())[:16]
+        raw_transforms = payload.get(transform_key) if isinstance(payload.get(transform_key), list) else []
+        transform_map: dict[tuple[str, str], dict[str, Any]] = {}
+        for transform in raw_transforms:
+            if not isinstance(transform, dict):
+                continue
+            identity = (str(transform.get("parent_frame_id") or ""), str(transform.get("child_frame_id") or ""))
+            previous = transform_map.get(identity)
+            current_epoch = int((transform.get("stamp") or {}).get("epoch_ms") or 0) if isinstance(transform.get("stamp"), dict) else 0
+            previous_epoch = int((previous.get("stamp") or {}).get("epoch_ms") or 0) if isinstance(previous, dict) and isinstance(previous.get("stamp"), dict) else 0
+            if previous is None or current_epoch >= previous_epoch:
+                transform_map[identity] = transform
+        compact[transform_key] = list(transform_map.values())[:16]
+    return compact
 
 
 def parse_section_status(text: str, marker: str) -> int | None:
@@ -5792,7 +6062,7 @@ def collect_tf_source_diagnostics(
             diagnostics["amcl_tf_root_cause"] = "tf_source_probe_rclpy_runtime_unavailable_after_board_preflight"
             diagnostics["tf_source_root_cause_detail"]["reason"] = diagnostics["amcl_tf_root_cause"]
         return result, diagnostics
-    amcl_probe = collect_amcl_rclpy_probe(args, timeout_s=4.0)
+    amcl_probe = collect_amcl_sourced_rclpy_probe(args, timeout_s=4.0)
     result = {
         "executed": True,
         "ok": bool(amcl_probe.get("ok")),
@@ -5843,6 +6113,18 @@ def default_tf_source_diagnostics(
         "base_frame_observed": False,
         "laser_frame_observed": False,
         "map_to_odom_source_observed": False,
+        "map_to_odom_publisher_attribution": {
+            "source_topic": None,
+            "dynamic_source_observed": False,
+            "publisher_attribution_status": "not_attributed_dynamic_map_to_odom_not_observed",
+            "publisher_attribution_reason": root_cause_reason,
+            "publisher_endpoint_inventory_observed": False,
+            "publisher_endpoint_count": 0,
+            "publisher_endpoint": None,
+            "publisher_endpoint_candidates": [],
+            "amcl_node_tf_publisher_observed": False,
+            "amcl_node_tf_publishers": [],
+        },
         "odom_to_base_link_source_observed": False,
         "base_link_to_laser_frame_source_observed": False,
         "base_link_to_laser_frame_source_transform": None,
@@ -5925,6 +6207,23 @@ def build_tf_source_diagnostics(
         if isinstance(probe.get("subscribers"), list) and probe.get("subscribers")
         else parse_node_info_topics(amcl_info, "Subscribers")
     )
+    tf_endpoint_summary = (
+        topic_endpoints.get("/tf")
+        if isinstance(topic_endpoints.get("/tf"), dict)
+        else {
+            "publishers": [],
+            "subscribers": [],
+            "publisher_count": 0,
+            "subscriber_count": 0,
+            "inventory_observed": False,
+            "error": {"type": "tf_endpoint_inventory_missing", "message": "current probe did not return /tf endpoints"},
+        }
+    )
+    publisher_attribution = tf_map_to_odom_publisher_attribution(
+        dynamic_source_observed=map_to_odom_source_observed,
+        tf_endpoint_summary=tf_endpoint_summary,
+        amcl_publishers=amcl_publishers,
+    )
     node_info_observed = bool(probe.get("node_info_observed") or amcl_publishers or amcl_subscribers)
     amcl_pose_frame_id = parse_pose_frame_id(str(amcl_pose_result.get("stdout") or ""))
     root_cause = "source_inventory_observed"
@@ -5946,6 +6245,8 @@ def build_tf_source_diagnostics(
         root_cause = "amcl_base_frame_id_mismatch"
     elif not map_to_odom_source_observed:
         root_cause = "amcl_map_to_odom_tf_not_observed_on_tf"
+    elif publisher_attribution["publisher_attribution_status"] != "attributed_to_amcl_graph_endpoint":
+        root_cause = str(publisher_attribution["publisher_attribution_status"])
     elif not odom_to_base_source_observed:
         root_cause = "odom_to_base_link_tf_not_observed"
     elif not base_to_laser_source_observed:
@@ -5971,6 +6272,7 @@ def build_tf_source_diagnostics(
         },
         "amcl_pose_frame_id": amcl_pose_frame_id,
         "map_to_odom_source_observed": map_to_odom_source_observed,
+        "map_to_odom_publisher_attribution": publisher_attribution,
         "odom_to_base_link_source_observed": odom_to_base_source_observed,
         "odom_to_base_link_dynamic_source_observed": odom_to_base_dynamic_observed,
         "odom_to_base_link_static_source_observed": odom_to_base_static_observed,
@@ -5988,6 +6290,7 @@ def build_tf_source_diagnostics(
             and params.get("base_frame_id") == frame_ids["base"]
         ),
         "map_to_odom_source_observed": map_to_odom_source_observed,
+        "map_to_odom_publisher_attribution": publisher_attribution,
         "odom_to_base_link_source_observed": odom_to_base_source_observed,
         "odom_to_base_link_dynamic_source_observed": odom_to_base_dynamic_observed,
         "odom_to_base_link_static_source_observed": odom_to_base_static_observed,
@@ -6032,6 +6335,7 @@ def build_tf_source_diagnostics(
         "base_frame_observed": frame_ids["base"] in frames,
         "laser_frame_observed": frame_ids["laser"] in frames,
         "map_to_odom_source_observed": map_to_odom_source_observed,
+        "map_to_odom_publisher_attribution": publisher_attribution,
         "odom_to_base_link_source_observed": odom_to_base_source_observed,
         "odom_to_base_link_dynamic_source_observed": odom_to_base_dynamic_observed,
         "odom_to_base_link_static_source_observed": odom_to_base_static_observed,
@@ -10129,6 +10433,7 @@ def tf_edge_freshness_entry(
     dynamic_transforms: list[dict[str, Any]],
     static_transforms: list[dict[str, Any]],
     generated_at_ms: int,
+    publisher_attribution: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """按 edge 明确 dynamic/static source，避免把 static 兜底误当 AMCL 定位闭环。"""
     dynamic_observed = edge_observed(dynamic_edges, parent, child)
@@ -10146,7 +10451,7 @@ def tf_edge_freshness_entry(
         else {"parsed": False, "reason": "transform_stamp_not_observed", "source": f"{name}.header.stamp"}
     )
     accepted_source = source_class != "missing" and (required_source_class is None or source_class == required_source_class)
-    return {
+    entry = {
         "edge": name,
         "parent_frame_id": parent,
         "child_frame_id": child,
@@ -10164,6 +10469,23 @@ def tf_edge_freshness_entry(
             reference_ms=generated_at_ms,
         ),
     }
+    # publisher attribution 只属于 dynamic map->odom；其他 edge 不复制 AMCL 身份，避免误读。
+    if isinstance(publisher_attribution, dict):
+        entry.update(
+            {
+                "publisher_attribution_status": publisher_attribution.get("publisher_attribution_status"),
+                "publisher_attribution_reason": publisher_attribution.get("publisher_attribution_reason"),
+                "publisher_endpoint": publisher_attribution.get("publisher_endpoint"),
+                "publisher_endpoint_candidates": publisher_attribution.get("publisher_endpoint_candidates", []),
+                "publisher_endpoint_inventory_observed": bool(
+                    publisher_attribution.get("publisher_endpoint_inventory_observed")
+                ),
+                "amcl_node_tf_publisher_observed": bool(
+                    publisher_attribution.get("amcl_node_tf_publisher_observed")
+                ),
+            }
+        )
+    return entry
 
 
 def build_tf_source_freshness(
@@ -10178,6 +10500,11 @@ def build_tf_source_freshness(
     static_edges = inventory.get("static_edges") if isinstance(inventory.get("static_edges"), list) else []
     dynamic_transforms = inventory.get("dynamic_transforms") if isinstance(inventory.get("dynamic_transforms"), list) else []
     static_transforms = inventory.get("static_transforms") if isinstance(inventory.get("static_transforms"), list) else []
+    publisher_attribution = (
+        tf_source_diagnostics.get("map_to_odom_publisher_attribution")
+        if isinstance(tf_source_diagnostics.get("map_to_odom_publisher_attribution"), dict)
+        else {}
+    )
     frames = tf_chain_frame_contract(args)["actual"]
     edges = {
         "map_to_odom": tf_edge_freshness_entry(
@@ -10190,6 +10517,7 @@ def build_tf_source_freshness(
             dynamic_transforms=dynamic_transforms,
             static_transforms=static_transforms,
             generated_at_ms=generated_at_ms,
+            publisher_attribution=publisher_attribution,
         ),
         "odom_to_base_link": tf_edge_freshness_entry(
             name="odom_to_base_link",
@@ -10851,7 +11179,7 @@ def tf_summary_edge(
     pairs = tf_chain_diagnostics.get("pairs") if isinstance(tf_chain_diagnostics.get("pairs"), dict) else {}
     pair = pairs.get(edge_name) if isinstance(pairs.get(edge_name), dict) else {}
     required_source_default = "dynamic" if edge_name == "map_to_odom" else "static" if edge_name == "base_link_to_laser_frame" else None
-    return {
+    summary = {
         "observed": bool(observed or edge.get("observed")),
         "source_class": edge.get("source_class", "missing"),
         "required_source_class": edge.get("required_source_class", required_source_default),
@@ -10863,6 +11191,17 @@ def tf_summary_edge(
         "boundary": pair.get("boundary"),
         "failure_reason": pair.get("failure_reason"),
     }
+    for key in (
+        "publisher_attribution_status",
+        "publisher_attribution_reason",
+        "publisher_endpoint",
+        "publisher_endpoint_candidates",
+        "publisher_endpoint_inventory_observed",
+        "amcl_node_tf_publisher_observed",
+    ):
+        if key in edge:
+            summary[key] = edge.get(key)
+    return summary
 
 
 def build_tf_readiness_summary(proof: dict[str, Any]) -> dict[str, Any]:
@@ -10913,10 +11252,21 @@ def build_tf_readiness_summary(proof: dict[str, Any]) -> dict[str, Any]:
         "blocking_segment": classification.get("blocking_segment"),
         "blocked_reason": None if map_to_base_observed else str(classification.get("reason") or "map_to_base_link_not_observed"),
     }
+    map_attribution_status = str(map_to_odom.get("publisher_attribution_status") or "")
+    map_freshness = map_to_odom.get("freshness") if isinstance(map_to_odom.get("freshness"), dict) else {}
+    map_source_accepted = bool(
+        map_to_odom["observed"]
+        and map_attribution_status == "attributed_to_amcl_graph_endpoint"
+        and map_freshness.get("status") == "fresh"
+    )
     if tf_signal and not tf_topic["topic_present"]:
         blocked_reason = "/tf_topic_missing"
     elif not map_to_odom["observed"]:
         blocked_reason = tf_edge_root_cause_reason(freshness, "map_to_odom", "map_to_odom_not_observed")
+    elif map_attribution_status != "attributed_to_amcl_graph_endpoint":
+        blocked_reason = map_attribution_status or "map_to_odom_publisher_attribution_missing"
+    elif map_freshness.get("status") != "fresh":
+        blocked_reason = f"map_to_odom_dynamic_timestamp_{map_freshness.get('status') or 'missing'}"
     elif not map_to_base_link["observed"]:
         blocked_reason = map_to_base_link["blocked_reason"]
     else:
@@ -10927,7 +11277,7 @@ def build_tf_readiness_summary(proof: dict[str, Any]) -> dict[str, Any]:
         "map_to_odom_dynamic": map_to_odom,
         "odom_to_base_link": odom_to_base,
         "map_to_base_link": map_to_base_link,
-        "ready": bool(map_to_odom["observed"] and odom_to_base["observed"] and map_to_base_link["observed"]),
+        "ready": bool(map_source_accepted and odom_to_base["observed"] and map_to_base_link["observed"]),
         "blocked_reason": blocked_reason,
     }
 
@@ -12145,10 +12495,11 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         ),
     )
     phase_writer.record_phase("tf_source_probe")
-    if pre_downstream_lifecycle_clean:
+    if board_source_ready:
         tf_source_probe_result, tf_source_diagnostics = collect_tf_source_diagnostics(
             args,
-            # lifecycle clean 后才继续读 `/tf` 与 AMCL source；未 clean 时不能消费下游 blocker。
+            # 本轮 source inventory 是独立只读事实；lifecycle 不 clean 也要采 endpoint/edge，
+            # 但后续 readiness 仍由 lifecycle gate fail closed，不能把 source probe 当成 AMCL ready。
             ros2_cli_ready=ros2_ok and board_source_cli_ready,
             rclpy_runtime_ready=board_source_runtime_ready,
             board_source_preflight_result=board_source,
@@ -12158,14 +12509,14 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         tf_source_probe_result = {
             "executed": False,
             "ok": False,
-            "boundary": "tf_source_probe_skipped_until_lifecycle_cli_readback_clean",
-            "lifecycle_readback_clean": False,
+            "boundary": "tf_source_probe_skipped_without_board_source_readiness",
+            "board_source_ready": False,
         }
         tf_source_diagnostics = default_tf_source_diagnostics(
             args,
             amcl_pose_result=post_initialpose_amcl_pose_once,
-            root_cause_reason="tf_source_probe_skipped_until_lifecycle_cli_readback_clean",
-            probe_boundary="tf_source_probe_skipped_until_lifecycle_cli_readback_clean",
+            root_cause_reason="tf_source_probe_skipped_without_board_source_readiness",
+            probe_boundary="tf_source_probe_skipped_without_board_source_readiness",
         )
     ros2_graph_timeout_root_cause = build_ros2_graph_timeout_root_cause(
         board_source_preflight=board_source,
@@ -12202,7 +12553,7 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
     )
     phase_writer.record_phase(
         "tf_source_probe",
-        ok=bool(tf_source_diagnostics["tf_topics_observed"].get("/tf")) if board_source_ready and pre_downstream_lifecycle_clean else False,
+        ok=bool(tf_source_diagnostics["tf_topics_observed"].get("/tf")) if board_source_ready else False,
         detail={"amcl_tf_root_cause": tf_source_diagnostics["amcl_tf_root_cause"]},
     )
     phase_writer.record_phase("tf_probe")
@@ -12409,6 +12760,12 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         and tf_chain_observed.get("base_link_to_laser_frame")
         and tf_chain_observed.get("map_to_base_link")
     )
+    read_only_tf_source_inventory_fast_path = bool(
+        args.strict_no_motion
+        and not managed_runtime.get("requested")
+        and not initialpose_request_payload["enabled"]
+        and not args.path_generation_opt_in
+    )
     planner_nodes = {"planner_server": "/planner_server", "controller_server": "/controller_server"}
     planner_lifecycle_active = {key: False for key in planner_nodes}
     planner_lifecycle_results = {
@@ -12481,7 +12838,23 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         and board_source_ready
     )
     phase_writer.record_phase("package_checks", detail={"mode": "single_sourced_pkg_list_diagnostic"})
-    if managed_runtime_localization_fast_path:
+    if read_only_tf_source_inventory_fast_path:
+        # source-only live 采集不需要再次枚举 Nav2 package；跳过可避免板端 CLI 冷启动吞掉 90s 窗口。
+        packages = {package: False for package in EXPECTED_PACKAGES}
+        package_results = {
+            package: {
+                "executed": False,
+                "ok": False,
+                "boundary": "read_only_tf_source_inventory_scope_package_check_not_required",
+            }
+            for package in EXPECTED_PACKAGES
+        }
+        package_batch_result = {
+            "executed": False,
+            "ok": True,
+            "boundary": "read_only_tf_source_inventory_scope_package_check_not_required",
+        }
+    elif managed_runtime_localization_fast_path:
         # managed runtime 已经把 map_server/amcl 拉起时，再跑 pkg/topic/node/echo 全套 CLI
         # 会把 HTTP refresh 窗口消耗在重复采样上；这里直接保留当前定位根因并快速收口。
         packages = {package: True for package in EXPECTED_PACKAGES}
@@ -12517,7 +12890,48 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         detail={"mode": "single_sourced_pkg_list_diagnostic", "packages": packages},
     )
     phase_writer.update_snapshot(map_lifecycle_preflight=map_lifecycle_preflight)
-    if source_chain_complete:
+    if read_only_tf_source_inventory_fast_path:
+        # lifecycle 已在前置只读 readback 中保留；此处只复用 TF probe 结果，禁止扩展到 signal/planner。
+        topic_names = sorted((tf_source_diagnostics.get("tf_frame_inventory") or {}).get("topic_types", {}).keys())
+        skipped_source_scope = {
+            "executed": False,
+            "ok": False,
+            "boundary": "read_only_tf_source_inventory_scope_no_additional_probe",
+        }
+        topic_list = {**skipped_source_scope, "ok": bool(topic_names), "stdout": "\n".join(topic_names)}
+        node_list = {
+            **skipped_source_scope,
+            "ok": bool(tf_source_diagnostics.get("amcl_node_info_observed")),
+            "stdout": "/amcl" if tf_source_diagnostics.get("amcl_node_info_observed") else "",
+        }
+        phase_writer.record_phase(
+            "graph_discovery",
+            ok=bool(topic_names),
+            detail={"mode": "read_only_tf_source_inventory_fast_path"},
+        )
+        lifecycle_active = dict(pre_downstream_lifecycle_active)
+        lifecycle_results = dict(pre_downstream_lifecycle_results)
+        map_lifecycle_preflight = dict(pre_downstream_lifecycle_preflight)
+        scan_once = {**skipped_source_scope, "boundary": "scan_probe_out_of_tf_source_inventory_scope"}
+        map_once = {**skipped_source_scope, "boundary": "map_probe_out_of_tf_source_inventory_scope"}
+        odom_once = {**skipped_source_scope, "boundary": "odom_probe_out_of_tf_source_inventory_scope"}
+        phase_writer.record_phase(
+            "topic_probe",
+            ok=True,
+            detail={"mode": "read_only_tf_source_inventory_fast_path", "additional_signal_probes": False},
+        )
+        initialpose_info = {**skipped_source_scope, "boundary": "initialpose_forbidden_in_tf_source_inventory_scope"}
+        amcl_node_info = {
+            **skipped_source_scope,
+            "ok": bool(tf_source_diagnostics.get("amcl_node_info_observed")),
+            "boundary": "amcl_node_inventory_reused_from_tf_source_probe",
+        }
+        map_server_info = {**skipped_source_scope, "boundary": "map_server_info_out_of_tf_source_inventory_scope"}
+        lifecycle_recheck = {
+            "executed": False,
+            "boundary": "initial_lifecycle_snapshot_sufficient_for_tf_source_inventory",
+        }
+    elif source_chain_complete:
         # TF source inventory 已证明定位链完整时，继续跑多条 ROS2 CLI 会反而触发 upper timeout。
         # path proof 也复用这个 fast path；planner active 由后面的 recheck 单独确认。
         topic_names = sorted((tf_source_diagnostics.get("tf_frame_inventory") or {}).get("topic_types", {}).keys())
@@ -13439,6 +13853,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     # 接受它们是为了让 automation 命令不因兼容参数提前退出。
     parser.add_argument("--strict-no-motion", action="store_true")
     parser.add_argument("--no-base-uart", action="store_true")
+    parser.add_argument("--tf-source-child-probe", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--managed-runtime-opt-in", action="store_true")
     parser.add_argument("--managed-timeout-s", type=float, default=DEFAULT_MANAGED_TIMEOUT_S)
     parser.add_argument("--managed-lifecycle-start-delay-s", type=float, default=DEFAULT_MANAGED_LIFECYCLE_START_DELAY_S)
@@ -13468,6 +13883,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
+    if args.tf_source_child_probe:
+        # 该内部模式仅在 run_ros 已 source 的 child shell 中执行，只输出 graph/TF JSON，不写 runtime artifact。
+        payload = compact_tf_source_child_payload(
+            collect_amcl_rclpy_probe(args=None, timeout_s=float(args.timeout_s))
+        )
+        print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
+        return 0 if payload.get("executed") else 2
     try:
         payload = build_proof(args)
     except Exception as exc:  # noqa: BLE001 - 未预期异常也必须尽量落 latest，避免 live 只剩 nonzero。

@@ -1,0 +1,125 @@
+{
+  "schema": "trashbot.product_acceptance.o3_dynamic_tf_source_and_lidar_status_semantics.v1",
+  "generated_at": "2026-07-15T00:27:13+08:00",
+  "sprint": "sprints/2026.07.14_23-49_o3_dynamic_tf_source_and_lidar_status_semantics/",
+  "status": "accepted_robot_software_live_clean_algorithm_live_fail_closed_no_okr_credit",
+  "proof_boundary": "product_acceptance_o3_o1_dynamic_tf_source_and_lidar_status_semantics_fail_closed_no_mission_credit",
+  "overall_clean": false,
+  "robot_software_lane": {
+    "clean": true,
+    "proof_boundary": "live_lidar_lifecycle_current_reference_semantics_readback_only",
+    "local_validation": {
+      "lifecycle_tests_passed": 8,
+      "lifecycle_tests_total": 8,
+      "upper_api_tests_passed": 2,
+      "upper_api_tests_total": 2
+    },
+    "live_window": {
+      "target": "root@192.168.1.11:37878",
+      "started_at_utc": "2026-07-14T16:09:22Z",
+      "finished_at_utc": "2026-07-14T16:09:26Z",
+      "lifecycle_status_exit_code": 0,
+      "radar_status_exit_code": 0,
+      "local_script_sha256": "5e65abc31ebc7a08019bf4631c1fd0316956fc216f1456893e285239fbd77cb1",
+      "remote_script_sha256": "5e65abc31ebc7a08019bf4631c1fd0316956fc216f1456893e285239fbd77cb1",
+      "sha256_match": true
+    },
+    "current_runtime": {
+      "lifecycle_running": true,
+      "lifecycle_pid": 550851,
+      "serial_port": "/dev/ttyACM0",
+      "baudrate": 150000,
+      "lifecycle_baudrate_source": "running_holder.argv.--serial-baudrate",
+      "api_baudrate_source": "lifecycle_status_readback.latest_result.baudrate",
+      "current_candidates": [
+        "running_holder.argv.--serial-baudrate",
+        "persisted_status.pid_matched.baudrate",
+        "driver_diagnostics.serial.serial_baudrate"
+      ],
+      "vendor_reference_baudrate": 230400,
+      "vendor_reference_status": "reference_only_not_current"
+    }
+  },
+  "algorithm_lane": {
+    "clean": false,
+    "fail_closed": true,
+    "proof_boundary": "robot_runtime_o3_strict_no_motion_dynamic_tf_source_inventory_fail_closed_only",
+    "local_validation": {
+      "pycompile_passed": true,
+      "tests_passed": 145,
+      "json_validation_passed": true,
+      "structural_assertion_passed": true,
+      "diff_check_passed": true
+    },
+    "final_live_window": {
+      "target": "root@192.168.1.11:37878",
+      "started_at_utc": "2026-07-14T16:14:28Z",
+      "finished_at_utc": "2026-07-14T16:15:41Z",
+      "elapsed_ms": 68562,
+      "deploy_scp_exit_code": 0,
+      "install_ssh_exit_code": 0,
+      "capture_ssh_exit_code": 2,
+      "pull_scp_exit_code": 0,
+      "capture_time_local_sha256": "638abe142175a0b797852421321ed48c1caa9517c8088de0236ce9b8686b8318",
+      "capture_time_remote_sha256": "638abe142175a0b797852421321ed48c1caa9517c8088de0236ce9b8686b8318",
+      "capture_time_sha256_match": true
+    },
+    "current_graph": {
+      "tf_publisher_count": 1,
+      "tf_publishers": [
+        "/esp32_bridge"
+      ],
+      "dynamic_transforms": [
+        "odom->base_link"
+      ],
+      "amcl_node_observed": false,
+      "map_server_node_observed": false,
+      "map_to_odom_dynamic_source_promoted": false,
+      "publisher_attribution_status": "unavailable_amcl_tf_publisher_not_observed_in_node_graph",
+      "publisher_attribution_reason": "current_graph_has_only_esp32_bridge_tf_endpoint_and_no_amcl_node_or_amcl_tf_endpoint"
+    },
+    "root_causes": [
+      "map_server_and_amcl_nodes_absent_in_current_existing_ros_graph",
+      "amcl_tf_publisher_endpoint_not_observed",
+      "sourced_rclpy_child_json_truncated_before_parent_parse"
+    ],
+    "post_capture_local_fix": {
+      "status": "local_fix_not_live_verified",
+      "local_sha256": "f4f0b668cc796b81732836147b41f60da3a826f12ab8a1fe4961f2e7dab0100e",
+      "redeployed_after_fix": false,
+      "live_verified_after_fix": false
+    }
+  },
+  "okr_decision": {
+    "credit": false,
+    "percentage_changed": false,
+    "objective_5_percent": 85,
+    "objective_1_percent": 94,
+    "objective_6_percent": 93,
+    "objective_7_percent": 93,
+    "kr_archival": "not_archived",
+    "kr_archival_label": "不归档",
+    "lowest_objective": "Objective 5",
+    "o5_skip_reason_still_valid": true
+  },
+  "safety": {
+    "safe_to_control": false,
+    "publishes_cmd_vel": false,
+    "calls_base_manual": false,
+    "uses_base_uart": false,
+    "robot_control_executed": false,
+    "route_execution_success": false,
+    "delivery_success": false,
+    "hil_pass": false
+  },
+  "rejected_claims": [
+    "clean_dynamic_tf_source_contract",
+    "route_execution",
+    "delivery_success",
+    "operator_acceptance",
+    "current_live_hil",
+    "safe_to_control",
+    "o5_external_success"
+  ],
+  "next_step": "robot-algorithm-engineer must first start or confirm map_server and AMCL in one current no-motion window, then retry only the compact dynamic TF source collector without planner; controlled route evidence is allowed only after explicit operator approval and current HIL."
+}

@@ -1509,3 +1509,28 @@ ActionClient，helper 允许转入 `ros2 action send_goal` CLI fallback，但 ac
 `/scan -> /amcl_pose -> map->odom -> ComputePathToPose` 的 planner-only same-run path generation；
 `safe_to_control`、`publishes_cmd_vel`、`calls_base_manual`、`uses_base_uart`、
 `route_execution_success`、`delivery_success` 和 `hil_pass` 必须继续为 false。
+
+`2026-07-14 23:49` 起，strict no-motion helper 对 dynamic `map->odom` 增加 publisher
+attribution 合同。tf2 buffer 中能查到变换、或 `/tf` sample 中仅出现目标 edge，都不足以证明
+AMCL 是当前广播源；应同时读取
+`proof.tf_readiness_summary.map_to_odom_dynamic` 的以下字段：
+
+- `source_topic=/tf`、`source_class=dynamic`、`dynamic_source_observed=true`；
+- `timestamp.parsed=true` 与 `freshness.status=fresh`；
+- `publisher_attribution_status=attributed_to_amcl_graph_endpoint`；
+- `publisher_endpoint.node_full_name=/amcl`、topic type 与 QoS；
+- `publisher_endpoint_candidates`，用于保留同窗其他 `/tf` publisher，而不把它们冒充 AMCL。
+
+归因通过 `/amcl` node publisher inventory 与 `/tf` publisher endpoint inventory 的唯一交集建立。
+多个 `/tf` publisher 本身不等于歧义；只要唯一 `/amcl` endpoint 与 node graph 一致，仍可 clean。
+如果同窗出现多个可匹配的 AMCL endpoint、endpoint inventory 不可读、AMCL node graph 未列出
+`/tf`、stamp missing/stale，artifact 必须分别收口为
+`ambiguous_multiple_amcl_tf_publisher_endpoints`、
+`unavailable_tf_publisher_endpoint_inventory_not_observed`、
+`unavailable_amcl_tf_publisher_not_observed_in_node_graph` 或
+`map_to_odom_dynamic_timestamp_*`，并保留 candidates/root cause，不能用 tf2 buffer 成功洗白。
+
+source probe 仍是有界 read-only 采集。它会在窗口内等待目标 dynamic `map->odom`，避免先收到
+`odom->base_link` 就提前退出；不会调用 planner、NavigateToPose、controller/BT、`/cmd_vel`、
+`/api/base/manual`、LiDAR start/stop 或底盘 UART。`/tf_static` 的 `map->odom` 只能记为 static，
+不得继承 AMCL publisher attribution 或冒充 dynamic source。

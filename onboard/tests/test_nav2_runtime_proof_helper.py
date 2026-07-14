@@ -2630,6 +2630,23 @@ __TF_STATIC_ONCE__
             "publishers": [{"topic": "/tf", "type": "tf2_msgs/msg/TFMessage"}],
             "subscribers": [{"topic": "/scan", "type": "sensor_msgs/msg/LaserScan"}],
             "topic_types": {"/tf": "tf2_msgs/msg/TFMessage", "/tf_static": "tf2_msgs/msg/TFMessage"},
+            "topic_endpoint_summaries": {
+                "/tf": {
+                    "publishers": [
+                        {
+                            "node_name": "amcl",
+                            "node_namespace": "/",
+                            "topic_type": "tf2_msgs/msg/TFMessage",
+                            "qos_profile": {"reliability": "RELIABLE", "durability": "VOLATILE"},
+                        }
+                    ],
+                    "subscribers": [],
+                    "publisher_count": 1,
+                    "subscriber_count": 0,
+                    "inventory_observed": True,
+                    "error": None,
+                }
+            },
             "dynamic_edges": [
                 {"parent": "map", "child": "odom", "topic": "/tf"},
                 {"parent": "odom", "child": "base_link", "topic": "/tf"},
@@ -2652,6 +2669,140 @@ __TF_STATIC_ONCE__
         self.assertFalse(source["odom_to_base_link_static_source_observed"])
         self.assertTrue(source["base_link_to_laser_frame_source_observed"])
         self.assertEqual("source_inventory_observed", source["amcl_tf_root_cause"])
+        self.assertEqual(
+            "attributed_to_amcl_graph_endpoint",
+            source["map_to_odom_publisher_attribution"]["publisher_attribution_status"],
+        )
+
+    def test_dynamic_map_to_odom_is_attributed_to_amcl_endpoint_with_fresh_stamp(self) -> None:
+        """clean dynamic edge 必须同时关联 `/tf`、AMCL endpoint、可解析 stamp 和 fresh 判定。"""
+        args = HELPER.parse_args([])
+        generated_at_ms = 1_780_000_000_000
+        amcl_probe = {
+            "param_probe_ok": True,
+            "node_info_observed": True,
+            "params": {"tf_broadcast": True, "global_frame_id": "map", "odom_frame_id": "odom", "base_frame_id": "base_link"},
+            "publishers": [{"topic": "/tf", "type": "tf2_msgs/msg/TFMessage"}],
+            "subscribers": [{"topic": "/scan", "type": "sensor_msgs/msg/LaserScan"}],
+            "topic_types": {"/tf": "tf2_msgs/msg/TFMessage"},
+            "topic_endpoint_summaries": {
+                "/tf": {
+                    "publishers": [
+                        {"node_name": "amcl", "node_namespace": "/", "topic_type": "tf2_msgs/msg/TFMessage", "qos_profile": {"reliability": "RELIABLE"}},
+                        {"node_name": "odom_bridge", "node_namespace": "/", "topic_type": "tf2_msgs/msg/TFMessage", "qos_profile": {"reliability": "RELIABLE"}},
+                    ],
+                    "subscribers": [],
+                    "publisher_count": 2,
+                    "subscriber_count": 0,
+                    "inventory_observed": True,
+                    "error": None,
+                }
+            },
+            "dynamic_edges": [{"parent": "map", "child": "odom", "topic": "/tf"}],
+            "static_edges": [],
+            "dynamic_transforms": [
+                {
+                    "parent_frame_id": "map",
+                    "child_frame_id": "odom",
+                    "stamp": HELPER.ros_stamp_parts_to_artifact(1_780_000_000, 0, source="/tf.header.stamp"),
+                    "source": "/tf",
+                }
+            ],
+            "static_transforms": [],
+            "command_statuses": {"rclpy_graph": 0, "tf": 0, "tf_static": 124},
+            "boundary": "rclpy_amcl_params_graph_tf_probe_observed",
+        }
+        source = HELPER.build_tf_source_diagnostics(
+            args,
+            {"stdout": "", "ok": True},
+            amcl_pose_result={"stdout": "header:\n  frame_id: map\n"},
+            amcl_probe=amcl_probe,
+        )
+        freshness = HELPER.build_tf_source_freshness(
+            args=args,
+            generated_at_ms=generated_at_ms,
+            tf_source_diagnostics=source,
+        )
+        edge = freshness["edges"]["map_to_odom"]
+
+        self.assertEqual("/tf", edge["source_topic"])
+        self.assertEqual("attributed_to_amcl_graph_endpoint", edge["publisher_attribution_status"])
+        self.assertEqual("/amcl", edge["publisher_endpoint"]["node_full_name"])
+        self.assertTrue(edge["timestamp"]["parsed"])
+        self.assertEqual("fresh", edge["freshness"]["status"])
+
+    def test_dynamic_map_to_odom_multiple_amcl_endpoints_stays_ambiguous(self) -> None:
+        """同名 AMCL endpoint 出现多份时必须保留候选并 fail closed，不能任选一个。"""
+        attribution = HELPER.tf_map_to_odom_publisher_attribution(
+            dynamic_source_observed=True,
+            tf_endpoint_summary={
+                "inventory_observed": True,
+                "publisher_count": 2,
+                "publishers": [
+                    {"node_name": "amcl", "node_namespace": "/", "topic_type": "tf2_msgs/msg/TFMessage", "qos_profile": {"reliability": "RELIABLE"}},
+                    {"node_name": "amcl", "node_namespace": "/", "topic_type": "tf2_msgs/msg/TFMessage", "qos_profile": {"reliability": "BEST_EFFORT"}},
+                ],
+            },
+            amcl_publishers=[{"topic": "/tf", "type": "tf2_msgs/msg/TFMessage"}],
+        )
+
+        self.assertEqual("ambiguous_multiple_amcl_tf_publisher_endpoints", attribution["publisher_attribution_status"])
+        self.assertIsNone(attribution["publisher_endpoint"])
+        self.assertEqual(2, len(attribution["publisher_endpoint_candidates"]))
+
+    def test_dynamic_map_to_odom_stale_or_missing_timestamp_is_not_fresh(self) -> None:
+        """publisher 已归因也不能覆盖 stale/missing stamp；freshness 必须单独 fail closed。"""
+        common = {
+            "name": "map_to_odom",
+            "parent": "map",
+            "child": "odom",
+            "required_source_class": "dynamic",
+            "dynamic_edges": [{"parent": "map", "child": "odom", "topic": "/tf"}],
+            "static_edges": [],
+            "static_transforms": [],
+            "generated_at_ms": 1_780_000_000_000,
+        }
+        stale = HELPER.tf_edge_freshness_entry(
+            **common,
+            dynamic_transforms=[{"parent_frame_id": "map", "child_frame_id": "odom", "stamp": HELPER.ros_stamp_parts_to_artifact(1_779_999_990, 0, source="/tf.header.stamp")}],
+        )
+        missing = HELPER.tf_edge_freshness_entry(**common, dynamic_transforms=[])
+
+        self.assertEqual("stale", stale["freshness"]["status"])
+        self.assertEqual("unknown", missing["freshness"]["status"])
+        self.assertEqual("transform_stamp_not_observed", missing["freshness"]["reason"])
+
+    def test_static_map_to_odom_does_not_inherit_dynamic_publisher_attribution(self) -> None:
+        """即使 AMCL endpoint 存在，`/tf_static` 的 map->odom 也不得冒充 dynamic AMCL source。"""
+        args = HELPER.parse_args([])
+        source = {
+            "tf_frame_inventory": {
+                "dynamic_edges": [],
+                "static_edges": [{"parent": "map", "child": "odom", "topic": "/tf_static"}],
+                "dynamic_transforms": [],
+                "static_transforms": [],
+            },
+            "map_to_odom_publisher_attribution": HELPER.tf_map_to_odom_publisher_attribution(
+                dynamic_source_observed=False,
+                tf_endpoint_summary={
+                    "inventory_observed": True,
+                    "publisher_count": 1,
+                    "publishers": [{"node_name": "amcl", "node_namespace": "/", "topic_type": "tf2_msgs/msg/TFMessage"}],
+                },
+                amcl_publishers=[{"topic": "/tf", "type": "tf2_msgs/msg/TFMessage"}],
+            ),
+        }
+        edge = HELPER.build_tf_source_freshness(
+            args=args,
+            generated_at_ms=1_780_000_000_000,
+            tf_source_diagnostics=source,
+        )["edges"]["map_to_odom"]
+
+        self.assertFalse(edge["observed"])
+        self.assertEqual("static", edge["source_class"])
+        self.assertEqual("/tf_static", edge["source_topic"])
+        self.assertFalse(edge["dynamic_source_observed"])
+        self.assertEqual("not_attributed_dynamic_map_to_odom_not_observed", edge["publisher_attribution_status"])
 
     def test_signal_freshness_records_scan_probe_timeout_root_cause(self) -> None:
         """`/scan` topic 存在但 once probe timeout 时，root cause 必须落到 probe/freshness 层。"""
@@ -3411,11 +3562,52 @@ __TF_STATIC_ONCE__
         self.assertFalse(source["tf_static_observed"])
         self.assertEqual("amcl_param_probe_failed", source["amcl_tf_root_cause"])
 
+    def test_sourced_rclpy_probe_parses_child_json_without_cli_fallback(self) -> None:
+        """SSH parent 未 source 时应使用单个 sourced child，避免串行 CLI 吞掉 90 秒窗口。"""
+        child_payload = {
+            "executed": True,
+            "ok": True,
+            "param_probe_ok": True,
+            "node_info_observed": True,
+            "tf_inventory_observed": True,
+            "params": {"tf_broadcast": True},
+            "publishers": [{"topic": "/tf", "type": "tf2_msgs/msg/TFMessage"}],
+            "subscribers": [],
+            "topic_types": {"/tf": "tf2_msgs/msg/TFMessage"},
+            "topic_endpoint_summaries": {},
+            "dynamic_edges": [{"parent": "map", "child": "odom", "topic": "/tf"}],
+            "static_edges": [],
+            "dynamic_transforms": [],
+            "static_transforms": [],
+            "command_statuses": {"rclpy_graph": 0, "tf": 0, "tf_static": 124},
+            "boundary": "rclpy_amcl_params_graph_tf_probe_observed",
+        }
+        with mock.patch.object(
+            HELPER,
+            "run_ros",
+            return_value={
+                "executed": True,
+                "ok": True,
+                "returncode": 0,
+                "elapsed_ms": 1200,
+                "timed_out": False,
+                "stdout": json.dumps(child_payload) + "\n",
+                "stderr": "",
+            },
+        ) as run_mock:
+            result = HELPER.collect_amcl_sourced_rclpy_probe(HELPER.parse_args([]), timeout_s=4.0)
+
+        self.assertEqual("sourced_rclpy_child", result["probe_mode"])
+        self.assertEqual([{"parent": "map", "child": "odom", "topic": "/tf"}], result["dynamic_edges"])
+        self.assertTrue(result["child_command"]["ok"])
+        self.assertIn("--tf-source-child-probe", run_mock.call_args.args[1])
+
     def test_tf_probe_uses_wider_echo_window_after_source_probe(self) -> None:
         """现场 ros2 CLI 启动慢，四段 fallback tf2_echo 必须使用统一宽窗口。"""
         text = SCRIPT.read_text(encoding="utf-8")
 
-        self.assertIn("collect_amcl_rclpy_probe(args, timeout_s=4.0)", text)
+        self.assertIn("collect_amcl_sourced_rclpy_probe(args, timeout_s=4.0)", text)
+        self.assertIn("--tf-source-child-probe", text)
         self.assertIn("TF_ECHO_SHELL_TIMEOUT_S = 10.0", text)
         self.assertIn("TF_ECHO_PROCESS_TIMEOUT_S = 14.0", text)
         self.assertEqual(4, text.count("timeout {TF_ECHO_SHELL_TIMEOUT_S:g} ros2 run tf2_ros tf2_echo"))

@@ -8,6 +8,16 @@
 
 ## 2026-07-14 系列
 
+### 2026-07-15 00-27｜o3_dynamic_tf_source_and_lidar_status_semantics｜LiDAR status clean，dynamic TF source fail-closed
+
+本轮 `sprints/2026.07.14_23-49_o3_dynamic_tf_source_and_lidar_status_semantics/` 完成 Product acceptance closeout。Robot Software lane 现场 clean：lifecycle `8/8`、Upper API `2/2`，PID `550851`，holder、PID-matched persisted status、driver diagnostics 与 API 均证明 current `/dev/ttyACM0@150000`；vendor `230400` 是 `reference_only_not_current`。SSH/API exit 均为 `0`，local/remote script SHA match。该 lane proof boundary 为 `live_lidar_lifecycle_current_reference_semantics_readback_only`。
+
+Algorithm 本地 `py_compile`、145 tests、JSON/assert/diff 均通过。最终 live deploy/install/pull exit 均为 `0`，capture natural exit `2`，耗时 `68.562s` 且 capture-time SHA match。Current graph 只有 `/esp32_bridge` 发布 `/tf`，dynamic transform 只有 `odom->base_link`，没有 `/amcl`、没有 `/map_server`，所以 AMCL dynamic `map->odom` source 不能归因。capture 后 compact child repair 未重部署和现场复验，状态固定为 `local_fix_not_live_verified`。该 lane proof boundary 为 `robot_runtime_o3_strict_no_motion_dynamic_tf_source_inventory_fail_closed_only`。
+
+Product 接受“Robot Software clean + Algorithm fail-closed”两个独立事实，但整轮 `overall_clean=false`，总 proof boundary 为 `product_acceptance_o3_o1_dynamic_tf_source_and_lidar_status_semantics_fail_closed_no_mission_credit`。O5 约 `85%`、O1 约 `94%`、O6/O7 各约 `93%`，主百分比不调整，OKR credit=false，KR `不归档`。固定 `safe_to_control=false`、`route_execution_success=false`、`delivery_success=false`、`hil_pass=false`；不证明 route execution、delivery/operator acceptance、current live HIL、safe-to-control 或 O5 success。
+
+下一轮：`robot-algorithm-engineer` 只启动或确认 current `/map_server` 与 `/amcl` runtime，再重试 compact dynamic TF source collector，不带 planner；只有 explicit operator approval + current HIL 后才可进入 controlled route evidence。不要再做 status/readiness/export/browser/voice wrapper。
+
 ### 2026-07-14 18-45｜o3_live_upper_computer_same_window_evidence｜Fresh true-board planner material accepted with dynamic-source gap
 
 本轮 `sprints/2026.07.14_18-45_o3_live_upper_computer_same_window_evidence/` 完成 Product acceptance closeout。O5 仍约 `85%` 且最低，但 14:38 CLI export、15:38 live HTTP 和 16:40 headless Chrome 已连续证明同一类 support-only surface，没有 success-class external evidence；CEO 新提供的真实上位机入口使本轮切到 O3 current-window robot-runtime evidence。该切换在 final 复核后仍成立，因为本轮确实产生 fresh live artifact，而不是 readiness wrapper。

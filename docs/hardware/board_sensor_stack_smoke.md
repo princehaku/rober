@@ -153,6 +153,37 @@ holder。`safe_to_control=false`、`publishes_cmd_vel=false`、`calls_base_manua
 `uses_base_uart=false`、`robot_control_executed=false`、`route_execution_success=false`、
 `delivery_success=false`、`hil_pass=false` 必须继续保持 false。
 
+## 2026-07-14 Lifecycle Current/Reference Semantics
+
+`sprints/2026.07.14_23-49_o3_dynamic_tf_source_and_lidar_status_semantics/` 进一步修复
+`o1_lidar_lifecycle.sh status` 自身的 readback。旧版 bare `status` 会复用脚本默认
+`230400`，即使当前 manager 实际以 `150000` 运行，也会把 reference/default 写进
+top-level `baudrate`。新版只按以下顺序选择 current：
+
+1. 当前 running manager `/proc/<pid>/cmdline` 的显式 `--serial-baudrate`；
+2. 与当前 manager PID 一致的 `lidar_lifecycle_status.json`；
+3. running lifecycle 下已加载的 `lidar_driver_diagnostics.json`，兼容
+   `serial.serial_baudrate` 与 `config.serial_baudrate`；
+4. `start` / `__run` 当前命令的显式 `--serial-baudrate`。
+
+holder 是最高优先级：若 holder 与 persisted status/diagnostics 冲突，top-level current
+采用 holder，并返回 `baudrate_readback_status=current_with_candidate_conflict` 和
+`baudrate_conflicts`。没有 holder 且多个可信 current 候选冲突时 fail closed；没有任何
+current 证据时返回 `baudrate=null`、`baudrate_readback_source=unknown`、
+`baudrate_readback_status=unknown_no_current_readback`。PID 不一致的 persisted status 只作为
+`pid_mismatch_stale` 候选保留。
+
+硬件事实继续分层：本地 `docs/vendor/VENDOR_INDEX.md` 指向的
+`docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py` 第 31、128 行只证明 vendor
+Raspberry Pi 上位机参考会打开 `/dev/ttyACM* @ 230400`。真实上位机当前
+`/dev/ttyACM0 @ 150000` 必须由 holder/PID-matched status/diagnostics 等 current readback
+证明，不能写成 vendor confirmed。对应 JSON 固定保留
+`vendor_reference_baudrate=230400`、`vendor_reference_status=reference_only_not_current`。
+
+该 status 仍只读文件、`/proc` 和进程信息，不打开 LiDAR/底盘串口，也不 start/stop
+lifecycle。所有 `safe_to_control`、运动、route、delivery 与 HIL 字段继续为 false；
+current baudrate 正确不等于 LiDAR HIL、Nav2 路线执行或 delivery success。
+
 ## 2026-06-22 Map Lifecycle Quality Gate
 
 `sprints/2026.06.22_00-00_map_lifecycle_quality_gate/` 在真实上位机

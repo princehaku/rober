@@ -1,0 +1,68 @@
+{
+  "schema": "trashbot.o3.dynamic_tf_source_attribution.fail_closed.v1",
+  "target": "root@192.168.1.11:37878",
+  "remote_hostname": "op-z3-b6.home",
+  "capture_started_at_utc": "2026-07-14T16:14:28Z",
+  "capture_finished_at_utc": "2026-07-14T16:15:41Z",
+  "source_artifact": "dynamic_tf_source_inventory.raw.json",
+  "derived_from_current_window_raw": true,
+  "clean": false,
+  "collector_mode": "read_only_existing_ros_graph_no_motion",
+  "path_generation_requested": false,
+  "path_generation_attempted": false,
+  "tf_source_child_boundary": "sourced_rclpy_child_probe_failed",
+  "tf_source_child_output_boundary": "current_child_json_exceeded_run_bash_8000_byte_tail_and_was_not_parseable_by_parent",
+  "current_graph_facts_from_embedded_child_tail": {
+    "amcl_node_info_observed": false,
+    "amcl_node_tf_publisher_observed": false,
+    "tf_topic_observed_in_child": true,
+    "tf_publisher_endpoint": {
+      "node_name": "esp32_bridge",
+      "node_namespace": "/",
+      "node_full_name": "/esp32_bridge",
+      "topic_type": "tf2_msgs/msg/TFMessage",
+      "source_topic": "/tf",
+      "qos_profile": {
+        "reliability": "RELIABLE",
+        "durability": "VOLATILE"
+      }
+    },
+    "observed_dynamic_edge_in_child_tail": {
+      "parent_frame_id": "odom",
+      "child_frame_id": "base_link",
+      "source_topic": "/tf",
+      "timestamp_parsed": true,
+      "latest_visible_epoch_ms": 1784045738126
+    },
+    "map_to_odom_dynamic_source_promoted": false
+  },
+  "publisher_attribution_status": "unavailable_amcl_tf_publisher_not_observed_in_node_graph",
+  "publisher_attribution_reason": "current_graph_has_only_esp32_bridge_tf_endpoint_and_no_amcl_node_or_amcl_tf_endpoint",
+  "publisher_endpoint": null,
+  "publisher_endpoint_candidates": [
+    {
+      "node_name": "esp32_bridge",
+      "node_namespace": "/",
+      "node_full_name": "/esp32_bridge",
+      "topic_type": "tf2_msgs/msg/TFMessage",
+      "source_topic": "/tf"
+    }
+  ],
+  "root_causes": [
+    "map_server_and_amcl_nodes_absent_in_current_existing_ros_graph",
+    "amcl_tf_publisher_endpoint_not_observed",
+    "sourced_rclpy_child_json_truncated_before_parent_parse"
+  ],
+  "ssh_capture_exit_code": 2,
+  "scp_pull_exit_code": 0,
+  "local_remote_helper_sha256": "638abe142175a0b797852421321ed48c1caa9517c8088de0236ce9b8686b8318",
+  "safe_to_control": false,
+  "publishes_cmd_vel": false,
+  "calls_base_manual": false,
+  "uses_base_uart": false,
+  "robot_control_executed": false,
+  "route_execution_success": false,
+  "delivery_success": false,
+  "hil_pass": false,
+  "proof_boundary": "robot_runtime_o3_strict_no_motion_dynamic_tf_source_inventory_fail_closed_only"
+}
