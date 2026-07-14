@@ -1,0 +1,92 @@
+2026-07-14T17:31:05Z
+sprints/2026.07.15_00-53_o3_current_localization_runtime_recovery/tech-done.md:37:  与 bond clean 时，以 `managed_lifecycle_log_active_graph_probe_blocked` 有界提前收口；graph
+sprints/2026.07.15_00-53_o3_current_localization_runtime_recovery/tech-done.md:43:  `amcl_requires_initial_pose_but_initialpose_forbidden_in_current_safety_scope`，不再把 lifecycle
+sprints/2026.07.15_00-53_o3_current_localization_runtime_recovery/tech-done.md:66:- `amcl_pose_sample` 是 additive 字段；包含 `observed`、`sample_count`、`received_at_ms`、
+sprints/2026.07.15_00-53_o3_current_localization_runtime_recovery/tech-done.md:68:- managed wait 新增 `early_closeout=managed_lifecycle_log_active_graph_probe_blocked`；它只表示
+sprints/2026.07.15_00-53_o3_current_localization_runtime_recovery/tech-done.md:70:- `--reuse-existing-lidar-lifecycle` 下 helper 默认 `230400` 只是未使用的 requested/reference
+sprints/2026.07.15_00-53_o3_current_localization_runtime_recovery/tech-done.md:139:  - `amcl_requires_initial_pose_but_initialpose_forbidden_in_current_safety_scope`
+sprints/2026.07.15_00-53_o3_current_localization_runtime_recovery/tech-done.md:181:- Proof boundary 仅为 strict-no-motion live fail-closed；不证明 path generation、route
+docs/navigation/field_route_evidence_preflight.md:442:`--reuse-existing-lidar-lifecycle`，artifact 需要回写：
+docs/navigation/field_route_evidence_preflight.md:706:latest 仍保留旧 blocked 状态。helper 现在会在未显式指定 `--managed-map-yaml` 时，从
+docs/navigation/field_route_evidence_preflight.md:1050:- `proof.amcl_readiness_summary.amcl_pose_sample`：记录 `/amcl_pose` topic type、
+docs/navigation/field_route_evidence_preflight.md:1269:   本轮真的走了 `--managed-runtime-opt-in` recovery，而不是继续只读 existing graph。
+docs/navigation/field_route_evidence_preflight.md:1491:`--reuse-existing-lidar-lifecycle` 与 `--managed-lidar-serial-baudrate 150000` 同时出现时，helper
+docs/navigation/field_route_evidence_preflight.md:1541:active 与 bond，wait 会以 `managed_lifecycle_log_active_graph_probe_blocked` 提前收口，把 graph
+docs/navigation/field_route_evidence_preflight.md:1545:同一 compact child 现在会只读订阅 `/amcl_pose`，输出 `amcl_pose_sample` 的 count、frame、接收时间
+docs/navigation/field_route_evidence_preflight.md:1547:`observed=false` 与 timestamp/freshness fail-closed。使用 `--reuse-existing-lidar-lifecycle` 时，
+docs/navigation/field_route_evidence_preflight.md:1559:`amcl_requires_initial_pose_but_initialpose_forbidden_in_current_safety_scope`、
+onboard/tests/test_nav2_runtime_proof_helper.py:172:            "--strict-no-motion",
+onboard/tests/test_nav2_runtime_proof_helper.py:173:            "--no-base-uart",
+onboard/tests/test_nav2_runtime_proof_helper.py:174:            "--managed-runtime-opt-in",
+onboard/tests/test_nav2_runtime_proof_helper.py:177:            "--managed-map-yaml",
+onboard/tests/test_nav2_runtime_proof_helper.py:178:            "--reuse-existing-lidar-lifecycle",
+onboard/tests/test_nav2_runtime_proof_helper.py:272:        args = HELPER.parse_args(["--strict-no-motion", "--no-base-uart", "--output-json", "/tmp/o10.json"])
+onboard/tests/test_nav2_runtime_proof_helper.py:333:                "--managed-runtime-opt-in",
+onboard/tests/test_nav2_runtime_proof_helper.py:336:                "--managed-map-yaml",
+onboard/tests/test_nav2_runtime_proof_helper.py:413:                "--managed-runtime-opt-in",
+onboard/tests/test_nav2_runtime_proof_helper.py:414:                "--managed-map-yaml",
+onboard/tests/test_nav2_runtime_proof_helper.py:1119:        self.assertEqual("managed_lifecycle_log_active_graph_probe_blocked", result["early_closeout"])
+onboard/tests/test_nav2_runtime_proof_helper.py:1935:                "--managed-runtime-opt-in",
+onboard/tests/test_nav2_runtime_proof_helper.py:1936:                "--managed-map-yaml",
+onboard/tests/test_nav2_runtime_proof_helper.py:1979:                "--managed-runtime-opt-in",
+onboard/tests/test_nav2_runtime_proof_helper.py:1980:                "--managed-map-yaml",
+onboard/tests/test_nav2_runtime_proof_helper.py:1982:                "--reuse-existing-lidar-lifecycle",
+onboard/tests/test_nav2_runtime_proof_helper.py:2055:                "--managed-runtime-opt-in",
+onboard/tests/test_nav2_runtime_proof_helper.py:2056:                "--managed-map-yaml",
+onboard/tests/test_nav2_runtime_proof_helper.py:2823:        diagnostics["amcl_pose_sample"] = sample
+onboard/tests/test_nav2_runtime_proof_helper.py:2856:        compact = HELPER.compact_tf_source_child_payload({"amcl_pose_sample": sample})
+onboard/tests/test_nav2_runtime_proof_helper.py:2859:        self.assertEqual("amcl_pose_sample_observed_by_tf_source_child", pose["probe"]["boundary"])
+onboard/tests/test_nav2_runtime_proof_helper.py:2863:        self.assertEqual(sample, compact["amcl_pose_sample"])
+onboard/tests/test_nav2_runtime_proof_helper.py:3758:            args = HELPER.parse_args(["--output", str(output), "--managed-runtime-opt-in", "--initialpose-opt-in"])
+onboard/tests/test_nav2_runtime_proof_helper.py:3781:            args = HELPER.parse_args(["--output", str(output), "--managed-runtime-opt-in", "--initialpose-opt-in"])
+onboard/tests/test_nav2_runtime_proof_helper.py:3843:        self.assertFalse(summary["amcl_pose_sample"]["observed"])
+onboard/tests/test_nav2_runtime_proof_helper.py:3844:        self.assertEqual("geometry_msgs/msg/PoseWithCovarianceStamped", summary["amcl_pose_sample"]["topic_type"])
+onboard/tests/test_nav2_runtime_proof_helper.py:3845:        self.assertEqual(1, summary["amcl_pose_sample"]["publishers"]["count"])
+onboard/tests/test_nav2_runtime_proof_helper.py:3846:        self.assertTrue(summary["amcl_pose_sample"]["sample_timing"]["timed_out"])
+onboard/tests/test_nav2_runtime_proof_helper.py:3900:            "amcl_requires_initial_pose_but_initialpose_forbidden_in_current_safety_scope",
+onboard/tests/test_nav2_runtime_proof_helper.py:5828:            "--managed-runtime-opt-in",
+onboard/tests/test_nav2_runtime_proof_helper.py:5830:            "--managed-map-yaml",
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:5553:        "amcl_pose_sample": {
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:5621:        amcl_pose_samples: list[dict[str, Any]] = []
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:5634:            amcl_pose_samples.append(
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:5693:            if map_to_odom_observed and static_edges and params and result["node_info_observed"] and amcl_pose_samples:
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:5699:        latest_pose = amcl_pose_samples[-1] if amcl_pose_samples else {}
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:5700:        result["amcl_pose_sample"] = {
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:5701:            "observed": bool(amcl_pose_samples),
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:5702:            "sample_count": len(amcl_pose_samples),
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:5870:    compact["amcl_pose_sample"] = (
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:5871:        dict(payload["amcl_pose_sample"])
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:5872:        if isinstance(payload.get("amcl_pose_sample"), dict)
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:6150:        "amcl_pose_sample": {
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:6282:    amcl_pose_sample = (
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:6283:        dict(probe["amcl_pose_sample"])
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:6284:        if isinstance(probe.get("amcl_pose_sample"), dict)
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:6293:    amcl_pose_frame_id = str(amcl_pose_sample.get("frame_id") or "") or parse_pose_frame_id(
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:6341:        "amcl_pose_sample": amcl_pose_sample,
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:6391:        "amcl_pose_sample": amcl_pose_sample,
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:10378:    direct_amcl_pose_sample = (
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:10379:        tf_source_diagnostics.get("amcl_pose_sample")
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:10380:        if isinstance(tf_source_diagnostics.get("amcl_pose_sample"), dict)
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:10383:    if direct_amcl_pose_sample.get("observed"):
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:10384:        # strict-no-motion 不发布 initialpose；source child 的只读订阅是本轮唯一同窗 pose 样本来源。
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:10390:            "finished_at_ms": direct_amcl_pose_sample.get("received_at_ms"),
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:10394:            "boundary": "amcl_pose_sample_observed_by_tf_source_child",
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:10472:            observed=bool(direct_amcl_pose_sample.get("observed") or topic_once_observed(amcl_probe)),
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:10474:                dict(direct_amcl_pose_sample["stamp"])
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:10475:                if isinstance(direct_amcl_pose_sample.get("stamp"), dict)
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:10479:            reference_ms=int(direct_amcl_pose_sample.get("received_at_ms") or reference(amcl_probe)),
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:10480:            extra={"direct_read_only_sample": direct_amcl_pose_sample},
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:10763:def amcl_pose_sample_timing(entry: dict[str, Any]) -> dict[str, Any]:
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:11247:        "amcl_pose_sample": {
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:11253:            "sample_timing": amcl_pose_sample_timing(amcl_pose),
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:11792:                    "early_closeout": "managed_lifecycle_log_active_graph_probe_blocked",
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:11942:                    "reason": "amcl_requires_initial_pose_but_initialpose_forbidden_in_current_safety_scope",
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:13448:    direct_amcl_pose_sample = (
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:13449:        tf_source_diagnostics.get("amcl_pose_sample")
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:13450:        if isinstance(tf_source_diagnostics.get("amcl_pose_sample"), dict)
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:13456:        or direct_amcl_pose_sample.get("observed")
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:14005:    parser.add_argument("--strict-no-motion", action="store_true")
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:14006:    parser.add_argument("--no-base-uart", action="store_true")
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:14008:    parser.add_argument("--managed-runtime-opt-in", action="store_true")
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:14011:    parser.add_argument("--managed-map-yaml", default="")
+onboard/scripts/o10_amcl_nav2_runtime_proof.py:14012:    parser.add_argument("--reuse-existing-lidar-lifecycle", action="store_true")

@@ -5550,6 +5550,13 @@ def collect_amcl_rclpy_probe(args: argparse.Namespace | None = None, timeout_s: 
         "static_edges": [],
         "dynamic_transforms": [],
         "static_transforms": [],
+        "amcl_pose_sample": {
+            "observed": False,
+            "sample_count": 0,
+            "received_at_ms": None,
+            "frame_id": None,
+            "stamp": {"parsed": False, "reason": "sample_not_observed", "source": "/amcl_pose.header.stamp"},
+        },
         "command_statuses": {"rclpy_graph": None, "tf": None, "tf_static": None},
         "error": None,
         "elapsed_ms": 0,
@@ -5565,6 +5572,7 @@ def collect_amcl_rclpy_probe(args: argparse.Namespace | None = None, timeout_s: 
     try:
         import rclpy
         from rcl_interfaces.srv import GetParameters  # type: ignore[import-not-found]
+        from geometry_msgs.msg import PoseWithCovarianceStamped  # type: ignore[import-not-found]
         from rclpy.qos import DurabilityPolicy, QoSProfile  # type: ignore[import-not-found]
         from tf2_msgs.msg import TFMessage  # type: ignore[import-not-found]
 
@@ -5610,6 +5618,7 @@ def collect_amcl_rclpy_probe(args: argparse.Namespace | None = None, timeout_s: 
         static_edges: list[dict[str, str]] = []
         dynamic_transforms: list[dict[str, Any]] = []
         static_transforms: list[dict[str, Any]] = []
+        amcl_pose_samples: list[dict[str, Any]] = []
 
         def on_dynamic_tf(message: Any) -> None:
             dynamic_edges.extend(tf_message_edges(message, source_topic="/tf"))
@@ -5619,6 +5628,21 @@ def collect_amcl_rclpy_probe(args: argparse.Namespace | None = None, timeout_s: 
             static_edges.extend(tf_message_edges(message, source_topic="/tf_static"))
             static_transforms.extend(tf_message_transforms(message, source_topic="/tf_static"))
 
+        def on_amcl_pose(message: Any) -> None:
+            """只读采样 pose；本轮禁止 initialpose，所以必须直接记录当前 runtime 是否自行出样本。"""
+            stamp = getattr(getattr(message, "header", None), "stamp", None)
+            amcl_pose_samples.append(
+                {
+                    "received_at_ms": now_ms(),
+                    "frame_id": str(getattr(getattr(message, "header", None), "frame_id", "") or ""),
+                    "stamp": ros_stamp_parts_to_artifact(
+                        int(getattr(stamp, "sec", 0) or 0),
+                        int(getattr(stamp, "nanosec", 0) or 0),
+                        source="/amcl_pose.header.stamp",
+                    ),
+                }
+            )
+
         # transient local QoS 是读取 /tf_static 的关键，避免 CLI echo 的启动成本和时序抖动。
         node.create_subscription(TFMessage, "/tf", on_dynamic_tf, QoSProfile(depth=10))
         node.create_subscription(
@@ -5627,6 +5651,8 @@ def collect_amcl_rclpy_probe(args: argparse.Namespace | None = None, timeout_s: 
             on_static_tf,
             QoSProfile(depth=10, durability=DurabilityPolicy.TRANSIENT_LOCAL),
         )
+        # 订阅本身不发布位姿、不触发运动；它只把 `/amcl_pose` 同窗 timestamp/freshness 带回 artifact。
+        node.create_subscription(PoseWithCovarianceStamped, "/amcl_pose", on_amcl_pose, QoSProfile(depth=10))
         end_time = time.time() + max(min(timeout_s, 3.0), 0.8)
         while time.time() < end_time:
             # 参数服务偶发晚于 /amcl 节点出现在 graph；不要因此跳过 TF/static TF 采样。
@@ -5664,12 +5690,22 @@ def collect_amcl_rclpy_probe(args: argparse.Namespace | None = None, timeout_s: 
             # 否则必须用完有界窗口，避免把 AMCL 的较低频广播误判为 current-window 缺失。
             expected_odom_frame = str(getattr(args, "managed_odom_frame_id", DEFAULT_MANAGED_ODOM_FRAME_ID))
             map_to_odom_observed = edge_observed(dynamic_edges, "map", expected_odom_frame)
-            if map_to_odom_observed and static_edges and params and result["node_info_observed"]:
+            if map_to_odom_observed and static_edges and params and result["node_info_observed"] and amcl_pose_samples:
                 break
         result["dynamic_edges"] = dynamic_edges
         result["static_edges"] = static_edges
         result["dynamic_transforms"] = dynamic_transforms
         result["static_transforms"] = static_transforms
+        latest_pose = amcl_pose_samples[-1] if amcl_pose_samples else {}
+        result["amcl_pose_sample"] = {
+            "observed": bool(amcl_pose_samples),
+            "sample_count": len(amcl_pose_samples),
+            "received_at_ms": latest_pose.get("received_at_ms"),
+            "frame_id": latest_pose.get("frame_id"),
+            "stamp": latest_pose.get("stamp")
+            if isinstance(latest_pose.get("stamp"), dict)
+            else {"parsed": False, "reason": "sample_not_observed", "source": "/amcl_pose.header.stamp"},
+        }
         result["command_statuses"]["tf"] = 0 if dynamic_edges else 124
         result["command_statuses"]["tf_static"] = 0 if static_edges else 124
         result["tf_inventory_observed"] = bool(dynamic_edges or static_edges or result["topic_types"])
@@ -5831,6 +5867,17 @@ def compact_tf_source_child_payload(payload: dict[str, Any]) -> dict[str, Any]:
                 )
         compact_endpoints[topic] = compact_summary
     compact["topic_endpoint_summaries"] = compact_endpoints
+    compact["amcl_pose_sample"] = (
+        dict(payload["amcl_pose_sample"])
+        if isinstance(payload.get("amcl_pose_sample"), dict)
+        else {
+            "observed": False,
+            "sample_count": 0,
+            "received_at_ms": None,
+            "frame_id": None,
+            "stamp": {"parsed": False, "reason": "sample_not_observed", "source": "/amcl_pose.header.stamp"},
+        }
+    )
 
     # 同一 broadcaster 在窗口内会产生大量重复 edge；只保留唯一 edge 与该 edge 最新 stamp。
     for edge_key, transform_key in (("dynamic_edges", "dynamic_transforms"), ("static_edges", "static_transforms")):
@@ -6100,6 +6147,13 @@ def default_tf_source_diagnostics(
             for topic in LOCALIZATION_SIGNAL_TOPICS
         },
         "amcl_pose_frame_id": amcl_pose_frame_id,
+        "amcl_pose_sample": {
+            "observed": False,
+            "sample_count": 0,
+            "received_at_ms": None,
+            "frame_id": amcl_pose_frame_id or None,
+            "stamp": {"parsed": False, "reason": "sample_not_observed", "source": "/amcl_pose.header.stamp"},
+        },
         "amcl_node_publishers": [],
         "amcl_node_subscribers": [],
         "amcl_param_probe_ok": False,
@@ -6225,7 +6279,20 @@ def build_tf_source_diagnostics(
         amcl_publishers=amcl_publishers,
     )
     node_info_observed = bool(probe.get("node_info_observed") or amcl_publishers or amcl_subscribers)
-    amcl_pose_frame_id = parse_pose_frame_id(str(amcl_pose_result.get("stdout") or ""))
+    amcl_pose_sample = (
+        dict(probe["amcl_pose_sample"])
+        if isinstance(probe.get("amcl_pose_sample"), dict)
+        else {
+            "observed": False,
+            "sample_count": 0,
+            "received_at_ms": None,
+            "frame_id": None,
+            "stamp": {"parsed": False, "reason": "sample_not_observed", "source": "/amcl_pose.header.stamp"},
+        }
+    )
+    amcl_pose_frame_id = str(amcl_pose_sample.get("frame_id") or "") or parse_pose_frame_id(
+        str(amcl_pose_result.get("stdout") or "")
+    )
     root_cause = "source_inventory_observed"
     if "/tf" not in topic_types and command_statuses["topic_list"] not in (0, None):
         root_cause = "tf_topic_list_timeout_or_unavailable"
@@ -6271,6 +6338,7 @@ def build_tf_source_diagnostics(
             "base_frame_id": params.get("base_frame_id"),
         },
         "amcl_pose_frame_id": amcl_pose_frame_id,
+        "amcl_pose_sample": amcl_pose_sample,
         "map_to_odom_source_observed": map_to_odom_source_observed,
         "map_to_odom_publisher_attribution": publisher_attribution,
         "odom_to_base_link_source_observed": odom_to_base_source_observed,
@@ -6320,6 +6388,7 @@ def build_tf_source_diagnostics(
             for topic in LOCALIZATION_SIGNAL_TOPICS
         },
         "amcl_pose_frame_id": amcl_pose_frame_id,
+        "amcl_pose_sample": amcl_pose_sample,
         "amcl_node_publishers": amcl_publishers,
         "amcl_node_subscribers": amcl_subscribers,
         "amcl_param_probe_ok": param_probe_ok,
@@ -10306,6 +10375,24 @@ def build_localization_signal_freshness(
     static_transforms = inventory.get("static_transforms") if isinstance(inventory.get("static_transforms"), list) else []
     command_statuses = inventory.get("command_statuses") if isinstance(inventory.get("command_statuses"), dict) else {}
     amcl_probe = select_amcl_pose_probe(amcl_pose_once, post_initialpose_amcl_pose_once)
+    direct_amcl_pose_sample = (
+        tf_source_diagnostics.get("amcl_pose_sample")
+        if isinstance(tf_source_diagnostics.get("amcl_pose_sample"), dict)
+        else {}
+    )
+    if direct_amcl_pose_sample.get("observed"):
+        # strict-no-motion 不发布 initialpose；source child 的只读订阅是本轮唯一同窗 pose 样本来源。
+        amcl_probe = {
+            "executed": True,
+            "ok": True,
+            "observed": True,
+            "returncode": 0,
+            "finished_at_ms": direct_amcl_pose_sample.get("received_at_ms"),
+            "elapsed_ms": tf_source_probe_result.get("elapsed_ms"),
+            "timeout_s": None,
+            "timed_out": False,
+            "boundary": "amcl_pose_sample_observed_by_tf_source_child",
+        }
 
     def endpoint(topic: str) -> dict[str, Any]:
         if topic == "/scan":
@@ -10382,10 +10469,15 @@ def build_localization_signal_freshness(
             topic_type=topic_types.get("/amcl_pose"),
             endpoint_summary=endpoint("/amcl_pose"),
             probe_result=amcl_probe,
-            observed=topic_once_observed(amcl_probe),
-            stamp=parse_first_ros_stamp(str(amcl_probe.get("stdout") or ""), source="/amcl_pose.header.stamp"),
+            observed=bool(direct_amcl_pose_sample.get("observed") or topic_once_observed(amcl_probe)),
+            stamp=(
+                dict(direct_amcl_pose_sample["stamp"])
+                if isinstance(direct_amcl_pose_sample.get("stamp"), dict)
+                else parse_first_ros_stamp(str(amcl_probe.get("stdout") or ""), source="/amcl_pose.header.stamp")
+            ),
             source_class="message",
-            reference_ms=reference(amcl_probe),
+            reference_ms=int(direct_amcl_pose_sample.get("received_at_ms") or reference(amcl_probe)),
+            extra={"direct_read_only_sample": direct_amcl_pose_sample},
         ),
         "/odom": build_signal_entry(
             topic="/odom",
@@ -11491,7 +11583,9 @@ PY
     }
     if payload["ok"]:
         return payload
-    fallback = run_ros(args, "ros2 node list", timeout_s=fallback_timeout)
+    # 板端 daemon 在高频自动化窗口里可能被旧 discovery 请求拖住；managed runtime 只需要
+    # 当前 DDS graph，因此 fallback 固定绕过 daemon，避免 70 秒预算被重复 CLI timeout 吃完。
+    fallback = run_ros(args, "ros2 node list --no-daemon", timeout_s=fallback_timeout)
     fallback_names = sorted(node_names_from_graph_result(fallback))
     fallback_boundary = (
         "ros2_node_list_observed"
@@ -11671,6 +11765,33 @@ def wait_for_managed_runtime(
                     "probe_timeouts": {"child_command_timeout_s": child_timeout, "fallback_timeout_s": fallback_timeout},
                 },
             )
+            # 当前板端 graph CLI/rclpy discovery 偶发同时阻塞，但本轮自有 lifecycle manager
+            # 会把两个节点 active/bond 的完整顺序写进同一进程组日志。日志 clean 后立即把
+            # graph blocker 作为 secondary 返回，让后续 compact TF endpoint probe 接管验证，
+            # 不能继续空转到 managed_timeout 再挤掉 final artifact 与 cleanup 预算。
+            log_tail = preview_file(runtime["log_path"], limit=12000)
+            lifecycle_log = managed_runtime_log_lifecycle_active_readback(log_tail)
+            if lifecycle_log.get("clean"):
+                graph_summary = managed_wait_graph_summary(history, cumulative_node_lines)
+                reason = managed_wait_timeout_reason(
+                    history=history,
+                    observed_node_names=cumulative_node_lines,
+                    nodes_observed=False,
+                )
+                return {
+                    "ok": False,
+                    "reason": reason,
+                    "boundary": reason,
+                    "history": history,
+                    "graph_wait_summary": graph_summary,
+                    "lifecycle_active": dict(lifecycle_log.get("active") or {}),
+                    "lifecycle_results": dict(lifecycle_log.get("results") or {}),
+                    "lifecycle_history": lifecycle_history,
+                    "observed_node_names": sorted(cumulative_node_lines),
+                    "log_tail": log_tail,
+                    "early_closeout": "managed_lifecycle_log_active_graph_probe_blocked",
+                    "lifecycle_log_readback": lifecycle_log,
+                }
             time.sleep(0.6)
             continue
         snapshot = {
@@ -11751,6 +11872,7 @@ def classify_root_causes(
     tf_failure_classification: dict[str, Any],
     initialpose_enabled: bool,
     initialpose_publish: dict[str, Any],
+    localization_outputs_required: bool = False,
     lifecycle_results: dict[str, dict[str, Any]] | None = None,
     localization_signal_freshness: dict[str, Any] | None = None,
     tf_source_freshness: dict[str, Any] | None = None,
@@ -11805,6 +11927,21 @@ def classify_root_causes(
             boundary = str(initialpose_publish.get("boundary") or "initialpose_publish_failed")
             if boundary not in {"default_read_only_no_initialpose_publish", "ros2_unavailable_no_initialpose_publish"}:
                 causes.append({"layer": "AMCL initialpose", "reason": boundary})
+    if initialpose_enabled or localization_outputs_required:
+        if (
+            localization_outputs_required
+            and not initialpose_enabled
+            and not amcl_pose_observed
+            and not localization_tf_observed.get("map_to_odom")
+        ):
+            # 本轮 safety contract 禁止 initialpose；AMCL 日志若同时无 pose/map->odom，
+            # 最窄根因是缺定位初值，不应继续让 graph timeout 冒充主 blocker。
+            causes.append(
+                {
+                    "layer": "AMCL initialization",
+                    "reason": "amcl_requires_initial_pose_but_initialpose_forbidden_in_current_safety_scope",
+                }
+            )
         if not amcl_pose_observed:
             causes.append(
                 {
@@ -13308,7 +13445,16 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
     phase_writer.update_snapshot(initialpose_subscriber_count=initialpose_subscriber_count)
     scan_observed = topic_once_observed(scan_once)
     map_observed = topic_once_observed(map_once)
-    amcl_pose_observed = bool(topic_once_observed(amcl_pose_once) or topic_once_observed(post_initialpose_amcl_pose_once))
+    direct_amcl_pose_sample = (
+        tf_source_diagnostics.get("amcl_pose_sample")
+        if isinstance(tf_source_diagnostics.get("amcl_pose_sample"), dict)
+        else {}
+    )
+    amcl_pose_observed = bool(
+        topic_once_observed(amcl_pose_once)
+        or topic_once_observed(post_initialpose_amcl_pose_once)
+        or direct_amcl_pose_sample.get("observed")
+    )
     amcl_pose = parse_amcl_pose(str(post_initialpose_amcl_pose_once.get("stdout") or "")) or parse_amcl_pose(str(amcl_pose_once.get("stdout") or ""))
     base_link_to_laser_frame_transform = tf_source_diagnostics.get("base_link_to_laser_frame_source_transform") or parse_tf_echo_transform(
         base_link_to_laser_frame_tf,
@@ -13429,7 +13575,11 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
     localization_ready = bool(
         scan_observed and map_observed and lifecycle_active.get("map_server") and lifecycle_active.get("amcl")
     )
-    if initialpose_request_payload["enabled"]:
+    localization_outputs_required = bool(
+        initialpose_request_payload["enabled"]
+        or (args.strict_no_motion and managed_runtime.get("requested"))
+    )
+    if localization_outputs_required:
         localization_ready = bool(
             localization_ready
             and amcl_pose_observed
@@ -13490,6 +13640,7 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         tf_failure_classification=tf_failure_classification,
         initialpose_enabled=initialpose_request_payload["enabled"],
         initialpose_publish=initialpose_publish,
+        localization_outputs_required=localization_outputs_required,
         localization_signal_freshness=localization_signal_freshness,
         tf_source_freshness=tf_source_freshness,
     )

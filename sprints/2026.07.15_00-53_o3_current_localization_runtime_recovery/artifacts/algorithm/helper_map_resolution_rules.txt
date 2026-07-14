@@ -1,0 +1,182 @@
+29:DEFAULT_MANAGED_MAP_YAML = "/root/rober/onboard/runtime/maps/trashbot_map.yaml"
+105:    "managed_map_yaml_missing",
+106:    "managed_map_yaml_unreadable",
+118:    "map_server_yaml_image_unreadable",
+119:    "map_server_yaml_invalid_fields",
+234:NAV2_PLANNER_CONFIG_PATH = Path(__file__).resolve().parents[1] / "src" / "ros2_trashbot_nav" / "config" / "nav2_params.yaml"
+3257:    yaml_files = successful_files(proof.get("map_files"), ".yaml")
+3275:        if not yaml_files:
+3276:            root_causes.append({"layer": "map artifact", "reason": "map_yaml_missing_or_stale"})
+3286:        "map_yaml_candidates": yaml_files,
+3298:    managed_map_analysis: dict[str, Any],
+3306:        and map_has_free_cells_for_path_proof(managed_map_analysis)
+3318:def resolve_managed_map_yaml(args: argparse.Namespace, map_inputs: dict[str, Any]) -> tuple[str | None, str]:
+3319:    """managed runtime 优先用显式 map yaml；缺省时才回退到 canonical artifact。"""
+3320:    explicit = str(args.managed_map_yaml or "").strip()
+3324:            return str(path), "explicit_cli_managed_map_yaml"
+3325:        return None, "explicit_cli_managed_map_yaml_missing"
+3328:    for candidate in map_inputs.get("map_yaml_candidates") or []:
+3334:        analysis = map_yaml_runtime_analysis(path)
+3340:        return usable_candidates[0][2], "canonical_map_proof_usable_yaml_candidate"
+3342:        return fallback_candidate, "canonical_map_proof_yaml_candidate_without_free_cells"
+3343:    return None, "canonical_map_yaml_candidate_missing"
+3520:def map_yaml_runtime_analysis(map_yaml: str | None) -> dict[str, Any]:
+3521:    """轻量解析当前 map yaml/PGM；用于判断 proof 目标是否落在地图范围内。"""
+3523:        "executed": bool(map_yaml),
+3525:        "map_yaml": map_yaml,
+3535:    if not map_yaml:
+3536:        result["error"] = {"type": "map_yaml_missing", "message": "managed map yaml is not resolved"}
+3539:        yaml_path = Path(map_yaml)
+3540:        text = yaml_path.read_text(encoding="utf-8", errors="replace")
+3563:            raise ValueError("map yaml missing resolution or origin")
+3564:        image_path = (yaml_path.parent / image_name) if image_name else yaml_path.with_suffix(".pgm")
+4357:def cli_yamlish_scalar(value: str) -> str:
+4367:def cli_yamlish_section(block: str, section_name: str) -> str:
+4390:def cli_yamlish_field(block: str, field_name: str) -> str | None:
+4396:    return cli_yamlish_scalar(match.group(1))
+4399:def cli_yamlish_float(block: str, field_name: str) -> float | None:
+4401:    value = cli_yamlish_field(block, field_name)
+4411:def cli_yamlish_int(block: str, field_name: str) -> int | None:
+4413:    value = cli_yamlish_field(block, field_name)
+4430:    return cli_yamlish_field(scoped, "frame_id")
+4451:        position = cli_yamlish_section(block, "position")
+4452:        orientation = cli_yamlish_section(block, "orientation")
+4453:        stamp_block = cli_yamlish_section(block, "stamp")
+4454:        x = cli_yamlish_float(position, "x")
+4455:        y = cli_yamlish_float(position, "y")
+4458:        z = cli_yamlish_float(position, "z")
+4459:        qx = cli_yamlish_float(orientation, "x")
+4460:        qy = cli_yamlish_float(orientation, "y")
+4461:        qz = cli_yamlish_float(orientation, "z")
+4462:        qw = cli_yamlish_float(orientation, "w")
+4463:        sec = cli_yamlish_int(stamp_block, "sec")
+4464:        nanosec = cli_yamlish_int(stamp_block, "nanosec")
+4467:            "frame_id": cli_yamlish_field(block, "frame_id") or default_frame_id,
+7213:def map_yaml_presence_policy(proof: dict[str, Any]) -> dict[str, Any]:
+7214:    """把 managed map yaml 压成安全摘要；消费者默认看 basename，不依赖板端绝对路径。"""
+7218:        proof.get("managed_runtime_map_yaml")
+7219:        or proof.get("managed_runtime_requested_map_yaml")
+7220:        or managed.get("map_yaml")
+7221:        or managed.get("requested_map_yaml")
+7224:    source = str(proof.get("managed_runtime_map_yaml_source") or managed.get("map_yaml_source") or "")
+7245:        yaml_path = Path(path_text)
+7246:        stat = yaml_path.stat()
+7249:        # hash 只取 yaml 本身的短前缀，便于比较地图版本，又避免 artifact 过大。
+7250:        policy["sha256_prefix"] = hashlib.sha256(yaml_path.read_bytes()).hexdigest()[:16]
+7264:    map_yaml_policy: dict[str, Any],
+7299:            "rerun_with_managed_runtime_opt_in_and_managed_map_yaml",
+7301:    map_error = map_yaml_policy.get("error") if isinstance(map_yaml_policy.get("error"), dict) else {}
+7303:    if not map_yaml_policy.get("provided") or map_error_type in {"map_yaml_missing", "FileNotFoundError"}:
+7304:        return "managed_map_yaml_missing", "managed_map_yaml_missing_or_not_resolved", "provide_existing_managed_map_yaml"
+7305:    if map_yaml_policy.get("analysis_ok") is False and map_error:
+7306:        return "managed_map_yaml_unreadable", "managed_map_yaml_analysis_failed", "repair_or_regenerate_managed_map_yaml"
+7315:            "inspect_map_server_configure_error_and_map_yaml_runtime_log",
+7355:            "inspect_map_yaml_and_lifecycle_transition_errors",
+7385:    map_yaml_policy = map_yaml_presence_policy(proof)
+7388:        map_yaml_policy=map_yaml_policy,
+7422:        "managed_map_yaml": map_yaml_policy,
+7439:            "log_inferred_map_yaml_loaded": "loading yaml file:" in log_tail_lower and "trashbot_map.yaml" in log_tail_lower,
+7504:    """map yaml 字段需要转成数值；失败时保留 None，让 classifier 给出 invalid_fields。"""
+7511:def parse_map_yaml_fields(text: str, *, yaml_dir: Path | None = None) -> dict[str, Any]:
+7534:            if not image_path.is_absolute() and yaml_dir is not None:
+7535:                image_path = yaml_dir / value
+7584:def map_yaml_activation_readback(proof: dict[str, Any]) -> dict[str, Any]:
+7585:    """本轮 activation proof 要把 yaml/pgm 字段和 hash 放到同一块里。"""
+7588:    map_yaml = str(
+7589:        proof.get("managed_runtime_map_yaml")
+7590:        or proof.get("managed_runtime_requested_map_yaml")
+7591:        or managed.get("map_yaml")
+7592:        or managed.get("requested_map_yaml")
+7598:    yaml_file = file_readback(map_yaml)
+7612:    if yaml_file["readable"]:
+7614:            yaml_path = Path(map_yaml)
+7615:            fields = parse_map_yaml_fields(
+7616:                yaml_path.read_text(encoding="utf-8", errors="replace"),
+7617:                yaml_dir=yaml_path.parent,
+7625:        "yaml_readable": bool(yaml_file["readable"]),
+7627:        "yaml_fields_valid": bool(fields.get("valid_for_map_server")),
+7635:        "yaml": yaml_file,
+7688:        "yaml_load_started",
+7730:    yaml_index = first_line_index(lines, "loading yaml file:")
+7795:            "yaml_load_started": yaml_index,
+7816:            "yaml_load_started": first_ros_timestamp(lines, yaml_index),
+7839:            "yaml_load_started": yaml_index is not None,
+7882:                        and yaml_index is None
+7900:    map_yaml = str(proof.get("managed_runtime_map_yaml") or proof.get("managed_runtime_requested_map_yaml") or "")
+7906:                "yaml_filename_basename": Path(map_yaml).name if map_yaml else None,
+7949:        "yaml_load_to_state_failure_ms": event_delta_ms(event_timestamps, "yaml_load_started", "state_change_failed"),
+8040:    yaml_file = map_readback.get("yaml") if isinstance(map_readback.get("yaml"), dict) else {}
+8043:    if not yaml_file.get("readable"):
+8044:        return "map_server_yaml_image_unreadable", "map_yaml_file_missing_or_unreadable", "repair_managed_map_yaml_path"
+8045:    if not validation.get("yaml_fields_valid"):
+8046:        return "map_server_yaml_invalid_fields", "map_yaml_required_fields_missing_or_invalid", "repair_map_yaml_required_fields"
+8048:        return "map_server_yaml_image_unreadable", "map_yaml_image_file_missing_or_unreadable", "repair_map_yaml_image_path"
+8095:    map_readback = map_yaml_activation_readback(proof)
+8109:                "yaml_load_started": "map_yaml_loaded",
+8139:        "map_yaml_pgm_readback": map_readback,
+8201:    if events.get("configure_started") or events.get("yaml_load_started") or events.get("image_load_started"):
+8207:    """只在 yaml 字段、image 文件和 runtime 分析都通过时，才排除参数/文件类 root cause。"""
+8209:        activation_summary.get("map_yaml_pgm_readback")
+8210:        if isinstance(activation_summary.get("map_yaml_pgm_readback"), dict)
+8215:        validation.get("yaml_readable")
+8217:        and validation.get("yaml_fields_valid")
+8222:def map_server_load_map_response_from_yaml_summary(
+8255:        "schema": "trashbot.o10.map_server_load_map_response_from_yaml.v1",
+8264:            "yaml_load_started": bool(events.get("yaml_load_started")),
+8316:        activation_summary.get("map_yaml_pgm_readback")
+8317:        if isinstance(activation_summary.get("map_yaml_pgm_readback"), dict)
+8325:    load_map_response = load_map_response_summary or map_server_load_map_response_from_yaml_summary(
+8373:            "yaml_readable": bool(validation.get("yaml_readable")),
+8375:            "yaml_fields_valid": bool(validation.get("yaml_fields_valid")),
+8389:            "yaml_load_started": bool(events.get("yaml_load_started")),
+8399:        "load_map_response_from_yaml": load_map_response,
+8431:            "rerun_with_managed_runtime_opt_in_and_managed_map_yaml",
+8599:    load_map_response = map_server_load_map_response_from_yaml_summary(
+8630:                "yaml_load_started": bool(events.get("yaml_load_started")),
+8681:        "load_map_response_from_yaml": load_map_response,
+8711:            "map_yaml_pgm_valid": bool(
+8712:                ((activation_summary.get("map_yaml_pgm_readback") or {}).get("validation") or {}).get("yaml_fields_valid")
+9351:    map_yaml: str,
+9360:        f"    yaml_filename: {json.dumps(map_yaml)}",
+9536:    map_yaml: str,
+9545:    map_yaml_quoted = shlex.quote(map_yaml)
+9602:        f"printf '%s\\n' 'managed_map_yaml={map_yaml_quoted}' > {log}",
+9732:def start_managed_runtime(args: argparse.Namespace, *, map_yaml: str) -> dict[str, Any]:
+9736:    params_fd, params_path = tempfile.mkstemp(prefix="rober_nav2_localization_", suffix=".yaml")
+9742:        managed_param_file_text(args, map_yaml, include_planner_server=include_planner_server),
+9751:                map_yaml=map_yaml,
+9770:        "map_yaml": map_yaml,
+11832:    managed_map_analysis: dict[str, Any] | None = None,
+11852:        "map_yaml_analysis_ok": bool((managed_map_analysis or {}).get("ok")),
+11856:        "map_yaml_loaded": "loading yaml file:" in lowered and "trashbot_map.yaml" in lowered,
+11906:    managed_map_analysis: dict[str, Any] | None = None,
+11909:    evidence = managed_runtime_presence_log_evidence(managed_runtime, managed_map_analysis)
+11916:            or evidence["map_yaml_loaded"]
+11934:    elif evidence["map_server_state_change_failed"] and evidence["map_yaml_analysis_ok"] and evidence.get("dds_shm_transport_error"):
+11940:    elif evidence["map_server_state_change_failed"] and evidence["map_yaml_analysis_ok"]:
+12002:        elif layer == "canonical map proof" and reason == "map_lifecycle_proof_not_clean" and evidence["map_yaml_loaded"]:
+12003:            # 旧 map proof 不能覆盖本轮 managed map yaml 已加载的事实。
+12122:    managed_map_yaml, managed_map_yaml_source = resolve_managed_map_yaml(args, map_inputs)
+12123:    managed_map_analysis = map_yaml_runtime_analysis(managed_map_yaml)
+12130:        "map_yaml": managed_map_yaml,
+12131:        "requested_map_yaml": str(args.managed_map_yaml or ""),
+12132:        "map_yaml_source": managed_map_yaml_source,
+12133:        "map_analysis": managed_map_analysis,
+12178:            detail={"requested": True, "map_yaml_source": managed_map_yaml_source},
+12180:        if managed_map_yaml is None:
+12181:            managed_runtime["boundary"] = "managed_runtime_requested_but_map_yaml_missing"
+12184:                "reason": managed_map_yaml_source,
+12189:                root_cause={"layer": "managed runtime", "reason": managed_map_yaml_source},
+12193:                managed_runtime.update(start_managed_runtime(args, map_yaml=managed_map_yaml))
+12204:                        "map_yaml": managed_runtime.get("map_yaml"),
+13443:        managed_map_analysis=managed_map_analysis,
+13505:        map_analysis=managed_map_analysis,
+13548:            managed_map_analysis=managed_map_analysis,
+13740:        "managed_runtime_map_yaml": managed_runtime.get("map_yaml"),
+13741:        "managed_runtime_requested_map_yaml": managed_runtime.get("requested_map_yaml"),
+13742:        "managed_runtime_map_yaml_source": managed_runtime.get("map_yaml_source"),
+13748:        "managed_runtime_map_analysis": managed_map_analysis,
+13787:                "map_yaml": managed_runtime.get("map_yaml"),
+13788:                "requested_map_yaml": managed_runtime.get("requested_map_yaml"),
+13789:                "map_yaml_source": managed_runtime.get("map_yaml_source"),
+13860:    parser.add_argument("--managed-map-yaml", default="")

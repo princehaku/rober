@@ -1,0 +1,104 @@
+{
+  "schema": "trashbot.product_acceptance.o3.current_localization_runtime_recovery.v1",
+  "sprint": "sprints/2026.07.15_00-53_o3_current_localization_runtime_recovery/",
+  "accepted_at": "2026-07-15T01:34:00+08:00",
+  "product_status": "accepted_live_runtime_recovery_fresh_scan_exact_blocker_cleanup_no_okr_credit",
+  "proof_boundary": "robot_runtime_o3_strict_no_motion_localization_runtime_active_but_initial_pose_pose_sample_dynamic_map_to_odom_fail_closed_only",
+  "source_artifacts": {
+    "final_attempt": 3,
+    "runtime_proof": "artifacts/algorithm/runtime-proof.json",
+    "acceptance_summary": "artifacts/algorithm/acceptance_summary.json",
+    "cleanup_process_group_after": "artifacts/algorithm/process_group_after_final.txt",
+    "local_sha": "artifacts/algorithm/helper_local_sha256.txt",
+    "remote_sha": "artifacts/algorithm/helper_remote_sha256.txt",
+    "runtime_exit": "artifacts/algorithm/runtime.exit",
+    "pull_exit": "artifacts/algorithm/pull.exit"
+  },
+  "engineering_validation": {
+    "py_compile_exit": 0,
+    "tests_run": 148,
+    "tests_status": "OK",
+    "required_rg_passed": true,
+    "scoped_diff_check_exit": 0
+  },
+  "live_attempt": {
+    "local_sha256": "75e5722f1a050df5174d52fffa7df40302dbbb31bb498bab1550a297d0a1e9b2",
+    "remote_sha256": "75e5722f1a050df5174d52fffa7df40302dbbb31bb498bab1550a297d0a1e9b2",
+    "runtime_exit": 2,
+    "pull_exit": 0,
+    "elapsed_ms": 97743,
+    "outer_timeout": false,
+    "started_at": "2026-07-14T17:24:46Z",
+    "finished_at": "2026-07-14T17:26:25Z"
+  },
+  "accepted_facts": {
+    "live_localization_runtime_recovered": true,
+    "map_server_active": true,
+    "amcl_active": true,
+    "scan_observed": true,
+    "scan_fresh": true,
+    "scan_age_ms": 22,
+    "exact_blocker_accepted": true,
+    "helper_owned_cleanup_accepted": true
+  },
+  "rejected_facts": {
+    "clean_localization": false,
+    "amcl_pose_sample_observed": false,
+    "amcl_pose_sample_count": 0,
+    "dynamic_map_to_odom_observed": false,
+    "dynamic_map_to_odom_source_class": "missing",
+    "route_execution": false,
+    "delivery": false,
+    "hil": false,
+    "safe_to_control": false
+  },
+  "cleanup": {
+    "managed_runtime_process_group": 643654,
+    "process_group_residual_count": 0,
+    "cleanup_ok": true,
+    "cleanup_scope": "helper_owned_process_group_only"
+  },
+  "blockers": {
+    "primary": "amcl_requires_initial_pose_but_initialpose_forbidden_in_current_safety_scope",
+    "secondary": [
+      "/amcl_pose_once_not_observed",
+      "map_to_odom_dynamic_source_missing"
+    ],
+    "diagnostic_only": "ros2_node_list_timeout"
+  },
+  "safety": {
+    "initialpose_forbidden_in_current_safety_scope": true,
+    "initialpose_published": false,
+    "path_generation_requested": false,
+    "path_generation_attempted": false,
+    "path_generated": false,
+    "publishes_cmd_vel": false,
+    "calls_base_manual": false,
+    "uses_base_uart": false,
+    "robot_control_executed": false,
+    "safe_to_control": false,
+    "route_execution_success": false,
+    "delivery_success": false,
+    "hil_pass": false
+  },
+  "okr_decision": {
+    "okr_credit": false,
+    "kr_archived": false,
+    "kr_status": "not_archived",
+    "o5_no_repeat": true,
+    "o5_no_repeat_reason": "production_external_evidence_missing_and_support_only_already_repeated",
+    "percentages": {
+      "O5": 85,
+      "O1": 94,
+      "O6": 93,
+      "O7": 93
+    }
+  },
+  "next_step": {
+    "authorization_required": true,
+    "allowed_recommendation": "product_or_ceo_authorize_one_controlled_no_motion_initialpose_or_verified_persisted_initial_pose",
+    "execute_in_current_sprint": false,
+    "collector_scope_after_authorization": "localization_only_fresh_amcl_pose_and_unique_dynamic_map_to_odom",
+    "planner_controller_motion_forbidden": true
+  }
+}

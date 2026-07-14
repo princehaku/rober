@@ -905,7 +905,7 @@ pose:
                     "returncode": 0,
                 },
             ],
-        ):
+        ) as run_ros_mock:
             result = HELPER.rclpy_node_names(args, timeout_s=0.8)
 
         self.assertTrue(result["ok"])
@@ -916,6 +916,8 @@ pose:
             result["boundary"],
         )
         self.assertEqual("ros2_node_list_observed", result["fallback"]["boundary"])
+
+        self.assertEqual("ros2 node list --no-daemon", run_ros_mock.call_args_list[1].args[1])
 
     def test_rclpy_node_names_accepts_bounded_fallback_timeout(self) -> None:
         """managed wait 内部要能缩短 `ros2 node list`，避免外层只留下 current_command。"""
@@ -1069,6 +1071,56 @@ pose:
         self.assertTrue(probe_calls)
         self.assertLessEqual(max(call["child_command_timeout_s"] for call in probe_calls), HELPER.MANAGED_RUNTIME_GRAPH_CHILD_COMMAND_TIMEOUT_S)
         self.assertLessEqual(max(call["fallback_timeout_s"] for call in probe_calls), HELPER.MANAGED_RUNTIME_GRAPH_FALLBACK_TIMEOUT_S)
+
+    def test_wait_for_managed_runtime_closes_early_when_owned_lifecycle_log_is_active(self) -> None:
+        """自有 runtime 日志已 clean 时应给 compact TF probe 留出 final/cleanup 预算。"""
+        args = HELPER.parse_args(["--managed-timeout-s", "70"])
+        runtime = {
+            "process": mock.Mock(poll=mock.Mock(return_value=None)),
+            "started_at_ms": 1000,
+            "log_path": "/tmp/o10-managed.log",
+        }
+        graph_timeout = {
+            "ok": False,
+            "node_names": [],
+            "boundary": "rclpy_node_names_failed_with_ros2_node_list_timeout",
+            "fallback_used": True,
+            "fallback": {
+                "executed": True,
+                "ok": False,
+                "node_names": [],
+                "timed_out": True,
+                "boundary": "ros2_node_list_timeout",
+            },
+        }
+        lifecycle_log = "\n".join(
+            [
+                "[INFO] [lifecycle_manager]: Activating map_server",
+                "[INFO] [map_server]: Activating",
+                "[INFO] [map_server]: Creating bond (map_server) to lifecycle manager.",
+                "[INFO] [lifecycle_manager]: Server map_server connected with bond.",
+                "[INFO] [lifecycle_manager]: Activating amcl",
+                "[INFO] [amcl]: Activating",
+                "[INFO] [amcl]: Creating bond (amcl) to lifecycle manager.",
+                "[INFO] [lifecycle_manager]: Server amcl connected with bond.",
+                "[INFO] [lifecycle_manager]: Managed nodes are active",
+            ]
+        )
+
+        with mock.patch.object(HELPER, "rclpy_node_names", return_value=graph_timeout) as graph_mock, mock.patch.object(
+            HELPER,
+            "preview_file",
+            return_value=lifecycle_log,
+        ):
+            result = HELPER.wait_for_managed_runtime(args, runtime)
+
+        self.assertFalse(result["ok"])
+        self.assertEqual("ros2_node_list_timeout", result["reason"])
+        self.assertEqual("managed_lifecycle_log_active_graph_probe_blocked", result["early_closeout"])
+        self.assertTrue(result["lifecycle_active"]["map_server"])
+        self.assertTrue(result["lifecycle_active"]["amcl"])
+        self.assertEqual("active [3]\n", result["lifecycle_results"]["amcl"]["stdout"])
+        graph_mock.assert_called_once()
 
     def test_managed_graph_wait_blocker_skips_downstream_slow_probes(self) -> None:
         """managed graph wait 已 final blocked 后，不能继续用 TF echo/topic echo 把 artifact 卡回 partial。"""
@@ -2750,6 +2802,66 @@ __TF_STATIC_ONCE__
         self.assertIsNone(attribution["publisher_endpoint"])
         self.assertEqual(2, len(attribution["publisher_endpoint_candidates"]))
 
+    def test_tf_source_child_pose_sample_drives_same_window_freshness_without_initialpose(self) -> None:
+        """strict no-motion 禁发 initialpose 时，child 只读订阅仍应回写 pose stamp/freshness。"""
+        generated_at_ms = 1_780_000_000_500
+        sample = {
+            "observed": True,
+            "sample_count": 2,
+            "received_at_ms": generated_at_ms,
+            "frame_id": "map",
+            "stamp": HELPER.ros_stamp_parts_to_artifact(
+                1_780_000_000,
+                400_000_000,
+                source="/amcl_pose.header.stamp",
+            ),
+        }
+        diagnostics = HELPER.default_tf_source_diagnostics(
+            HELPER.parse_args([]),
+            amcl_pose_result={"executed": False, "ok": False},
+        )
+        diagnostics["amcl_pose_sample"] = sample
+        diagnostics["tf_frame_inventory"]["topic_types"] = {
+            "/amcl_pose": "geometry_msgs/msg/PoseWithCovarianceStamped"
+        }
+        diagnostics["topic_endpoint_summaries"]["/amcl_pose"] = {
+            "publishers": [
+                {
+                    "node_name": "amcl",
+                    "node_namespace": "/",
+                    "topic_type": "geometry_msgs/msg/PoseWithCovarianceStamped",
+                    "qos_profile": {"reliability": "RELIABLE"},
+                }
+            ],
+            "subscribers": [],
+            "publisher_count": 1,
+            "subscriber_count": 0,
+            "inventory_observed": True,
+            "error": None,
+        }
+
+        signals = HELPER.build_localization_signal_freshness(
+            generated_at_ms=generated_at_ms,
+            tf_source_diagnostics=diagnostics,
+            tf_source_probe_result={"executed": True, "elapsed_ms": 3200},
+            topic_list_result={"stdout": ""},
+            scan_once={"executed": False, "ok": False},
+            map_once={"executed": False, "ok": False},
+            amcl_pose_once={"executed": False, "ok": False},
+            post_initialpose_amcl_pose_once={"executed": False, "ok": False},
+            odom_once={"executed": False, "ok": False},
+            managed_runtime_started=True,
+        )
+        pose = signals["/amcl_pose"]
+        compact = HELPER.compact_tf_source_child_payload({"amcl_pose_sample": sample})
+
+        self.assertTrue(pose["probe"]["observed"])
+        self.assertEqual("amcl_pose_sample_observed_by_tf_source_child", pose["probe"]["boundary"])
+        self.assertTrue(pose["timestamp"]["parsed"])
+        self.assertEqual("fresh", pose["freshness"]["status"])
+        self.assertEqual(2, pose["direct_read_only_sample"]["sample_count"])
+        self.assertEqual(sample, compact["amcl_pose_sample"])
+
     def test_dynamic_map_to_odom_stale_or_missing_timestamp_is_not_fresh(self) -> None:
         """publisher 已归因也不能覆盖 stale/missing stamp；freshness 必须单独 fail closed。"""
         common = {
@@ -3734,6 +3846,63 @@ __TF_STATIC_ONCE__
         self.assertTrue(summary["amcl_pose_sample"]["sample_timing"]["timed_out"])
         self.assertEqual("/amcl_pose_probe_timeout", summary["blocked_reason"])
         self.assertFalse(summary["ready"])
+
+    def test_strict_managed_localization_requires_outputs_without_publishing_initialpose(self) -> None:
+        """禁发 initialpose 时仍要验收 pose/map->odom，并把缺初值写成最窄 blocker。"""
+        causes = HELPER.classify_root_causes(
+            map_inputs={"root_causes": []},
+            ros2_ok=True,
+            board_source_preflight={"ros2_cli_ok": True, "rclpy_import_ok": True},
+            map_lifecycle_preflight={"root_causes": []},
+            packages={package: True for package in HELPER.EXPECTED_PACKAGES},
+            lifecycle_active={"map_server": True, "amcl": True},
+            lifecycle_results={},
+            scan_once_observed=True,
+            map_once_observed=True,
+            amcl_pose_observed=False,
+            localization_tf_observed={"map_to_odom": False, "map_to_base_link": False},
+            tf_chain_observed={
+                "map_to_odom": False,
+                "odom_to_base_link": True,
+                "base_link_to_laser_frame": True,
+                "map_to_base_link": False,
+            },
+            tf_failure_classification={
+                "map_to_base_link": "blocked_by_missing_map_to_odom",
+                "blocking_segment": "map_to_odom",
+                "reason": "amcl_map_to_odom_tf_not_observed_on_tf",
+            },
+            initialpose_enabled=False,
+            initialpose_publish={"ok": False, "boundary": "default_read_only_no_initialpose_publish"},
+            localization_outputs_required=True,
+            localization_signal_freshness={
+                "/amcl_pose": {
+                    "topic_present": True,
+                    "endpoint_inventory_observed": True,
+                    "publishers": {"count": 1},
+                    "probe": {"executed": True, "observed": False},
+                    "freshness": {"status": "not_observed"},
+                }
+            },
+            tf_source_freshness={
+                "edges": {
+                    "map_to_odom": {
+                        "observed": False,
+                        "source_class": "missing",
+                        "required_source_class": "dynamic",
+                    }
+                }
+            },
+        )
+        reasons = [cause["reason"] for cause in causes]
+
+        self.assertEqual(
+            "amcl_requires_initial_pose_but_initialpose_forbidden_in_current_safety_scope",
+            reasons[0],
+        )
+        self.assertIn("/amcl_pose_once_not_observed", reasons)
+        self.assertIn("map_to_odom_dynamic_source_missing", reasons)
+        self.assertNotIn("default_read_only_no_initialpose_publish", reasons)
 
     def test_tf_summary_exposes_dynamic_map_odom_and_downstream_map_base(self) -> None:
         """TF summary 必须把 dynamic map->odom 缺失和 downstream map->base_link 阻塞拆开。"""

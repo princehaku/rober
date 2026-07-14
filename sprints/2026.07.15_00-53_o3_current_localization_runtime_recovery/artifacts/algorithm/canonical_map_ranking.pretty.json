@@ -1,0 +1,88 @@
+{
+    "ranking": [
+        {
+            "free_cells": 425,
+            "mtime_ms": 1782749748969,
+            "path": "/root/rober/onboard/runtime/maps/trashbot_map.yaml"
+        },
+        {
+            "free_cells": 394,
+            "mtime_ms": 1782062002501,
+            "path": "/root/rober/onboard/runtime/maps/fixed_free_cells_20260622_0112.yaml"
+        },
+        {
+            "free_cells": 0,
+            "mtime_ms": 1782061841830,
+            "path": "/root/rober/onboard/runtime/maps/manual_motion_map_20260622_0135.yaml"
+        },
+        {
+            "free_cells": 0,
+            "mtime_ms": 1782061700294,
+            "path": "/root/rober/onboard/runtime/maps/field_first_jog_20260622_0135.yaml"
+        },
+        {
+            "free_cells": 0,
+            "mtime_ms": 1781166497893,
+            "path": "/root/rober/onboard/runtime/maps/pc_no_motion_20260611_162507.yaml"
+        },
+        {
+            "free_cells": 0,
+            "mtime_ms": 1781156934781,
+            "path": "/root/rober/onboard/runtime/maps/pc_map_lifecycle_20260611_1350.yaml"
+        },
+        {
+            "free_cells": 0,
+            "mtime_ms": 1781141101890,
+            "path": "/root/rober/onboard/runtime/maps/pc_integrated_current_retry_20260611_0920.yaml"
+        },
+        {
+            "free_cells": 0,
+            "mtime_ms": 1781140891871,
+            "path": "/root/rober/onboard/runtime/maps/pc_integrated_current_20260611_0920.yaml"
+        },
+        {
+            "free_cells": 0,
+            "mtime_ms": 1781135890525,
+            "path": "/root/rober/onboard/runtime/maps/pc_proxy_scan_stabilize_20260611_0758.yaml"
+        },
+        {
+            "free_cells": 0,
+            "mtime_ms": 1781135815410,
+            "path": "/root/rober/onboard/runtime/maps/scan_stabilize_fixed_20260611_0756.yaml"
+        },
+        {
+            "free_cells": 0,
+            "mtime_ms": 1781135634030,
+            "path": "/root/rober/onboard/runtime/maps/scan_stabilize_20260611_075301.yaml"
+        },
+        {
+            "free_cells": 0,
+            "mtime_ms": 1781133958369,
+            "path": "/root/rober/onboard/runtime/maps/pc_integrated_smoke_20260611_0735.yaml"
+        },
+        {
+            "free_cells": 0,
+            "mtime_ms": 1781118091546,
+            "path": "/root/rober/onboard/runtime/maps/final_direct_save.yaml"
+        },
+        {
+            "free_cells": 0,
+            "mtime_ms": 1781117808606,
+            "path": "/root/rober/onboard/runtime/maps/pc_proxy_save2.yaml"
+        },
+        {
+            "free_cells": 0,
+            "mtime_ms": 1781117645955,
+            "path": "/root/rober/onboard/runtime/maps/pc_proxy_start.yaml"
+        },
+        {
+            "free_cells": 0,
+            "mtime_ms": 1781117556611,
+            "path": "/root/rober/onboard/runtime/maps/pc_runtime_v1.yaml"
+        }
+    ],
+    "resolved_map_yaml": "/root/rober/onboard/runtime/maps/trashbot_map.yaml",
+    "rule": "sort_reverse_by_free_cells_mtime_ms_path",
+    "source": "canonical_map_proof_usable_yaml_candidate",
+    "unique_top": true
+}

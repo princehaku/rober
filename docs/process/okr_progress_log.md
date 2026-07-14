@@ -6,6 +6,18 @@
 
 ---
 
+## 2026-07-15 系列
+
+### 2026-07-15 01-34｜o3_current_localization_runtime_recovery｜Runtime recovered，initial-pose scope fail-closed
+
+本轮 `sprints/2026.07.15_00-53_o3_current_localization_runtime_recovery/` 完成 Product acceptance closeout。Final Attempt local/remote helper SHA 均为 `75e5722f1a050df5174d52fffa7df40302dbbb31bb498bab1550a297d0a1e9b2`；本地 `py_compile`、`Ran 148 tests ... OK`、required `rg` 与 scoped diff 通过。真实上位机 run natural exit `2`、pull exit `0`、elapsed `97.743s`，不是 outer timeout；helper-owned PGID residual `0`。
+
+Product 接受 live localization runtime recovery、map_server/AMCL active、fresh `/scan` age `22ms`、exact blocker 与 clean helper-owned cleanup。拒绝 clean localization：`/amcl_pose` endpoint visible 但 `sample_count=0`、timestamp/freshness not observed；AMCL `/tf` endpoint visible 但 dynamic `map->odom` edge/source/timestamp missing。Primary exact blocker 为 `amcl_requires_initial_pose_but_initialpose_forbidden_in_current_safety_scope`，继发 `/amcl_pose_once_not_observed` 与 `map_to_odom_dynamic_source_missing`；本轮 initialpose forbidden，Product 不自行授权或执行。
+
+Proof boundary 为 `robot_runtime_o3_strict_no_motion_localization_runtime_active_but_initial_pose_pose_sample_dynamic_map_to_odom_fail_closed_only`。O5=`85%` 且最低，但 production external evidence 缺失，继续执行 `O5 no-repeat` 跳过；O1=`94%`、O6=`93%`、O7=`93%` 均保持。主百分比不调整，`okr_credit=false`，KR `不归档`；固定 `safe_to_control=false`、`route_execution_success=false`、`delivery_success=false`、`hil_pass=false`。本轮不证明 clean localization、path generation、route execution、delivery/operator acceptance、HIL、safe-to-control 或 O5 success。
+
+下一轮唯一建议：由 Product/CEO 明确授权受控无运动一次 `/initialpose`，或授权并验证 persisted initial pose；授权前不得执行。授权后只复用 localization-only collector，先验收 fresh `/amcl_pose` 与唯一 AMCL dynamic `map->odom` endpoint/timestamp/freshness，仍禁止 planner/controller、NavigateToPose、path opt-in 和 motion。
+
 ## 2026-07-14 系列
 
 ### 2026-07-15 00-27｜o3_dynamic_tf_source_and_lidar_status_semantics｜LiDAR status clean，dynamic TF source fail-closed

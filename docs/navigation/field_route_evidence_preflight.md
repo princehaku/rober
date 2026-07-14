@@ -1534,3 +1534,29 @@ source probe 仍是有界 read-only 采集。它会在窗口内等待目标 dyna
 `odom->base_link` 就提前退出；不会调用 planner、NavigateToPose、controller/BT、`/cmd_vel`、
 `/api/base/manual`、LiDAR start/stop 或底盘 UART。`/tf_static` 的 `map->odom` 只能记为 static，
 不得继承 AMCL publisher attribution 或冒充 dynamic source。
+
+`2026-07-15 00:53` 起，managed localization 的 graph wait 在 sourced rclpy child 失败后使用
+`ros2 node list --no-daemon`，避免旧 daemon discovery 把 70 秒窗口全部消耗在重复 timeout。
+若两层 graph probe 仍 blocked，但本轮自有 lifecycle manager 日志已经完整记录 map_server/AMCL
+active 与 bond，wait 会以 `managed_lifecycle_log_active_graph_probe_blocked` 提前收口，把 graph
+timeout 保留为 secondary，并把剩余预算交给 compact TF endpoint probe、final artifact 和自有
+process-group cleanup；日志 active 不能替代后续 endpoint/timestamp/freshness 验收。
+
+同一 compact child 现在会只读订阅 `/amcl_pose`，输出 `amcl_pose_sample` 的 count、frame、接收时间
+和 header stamp。该订阅不会发布 `/initialpose`，也不会触发 planner 或运动；没有样本时必须保持
+`observed=false` 与 timestamp/freshness fail-closed。使用 `--reuse-existing-lidar-lifecycle` 时，
+helper 日志里的 managed baudrate 仅是未使用的 requested/reference 参数，`driver_started_by_helper=false`；
+current LiDAR 必须以既有 holder/lifecycle 的独立 readback 为准，不能把默认 `230400` 冒充现场值。
+managed static TF 可能与既有 `odom->base_link` / `base_link->laser_frame` source 重叠，因此目标
+`map->odom` 仍只能接受唯一 AMCL dynamic endpoint，不能从 static 或其他 publisher 推断。
+
+本规则在 `2026-07-15 01:24-01:26` 的真实上位机复验中自然收口：helper `75e5722f...`
+两端 SHA 一致，运行 `97.743s` 后 exit `2`（非外层 timeout），pull exit `0`，自有 PGID
+`643654` 清理后残留 `0`。map_server/AMCL 均 active，`/scan` 由既有
+`/dev/ttyACM0@150000` LiDAR 发布且样本 fresh；`/amcl_pose` 的 AMCL publisher endpoint 与
+只读 subscriber 可见，但 sample count 为 `0`。AMCL 日志明确要求设置 initial pose，而本轮
+safety scope 禁止发布 `/initialpose`，所以 dynamic `map->odom` 无 current edge/stamp，必须以
+`amcl_requires_initial_pose_but_initialpose_forbidden_in_current_safety_scope`、
+`/amcl_pose_once_not_observed` 和 `map_to_odom_dynamic_source_missing` fail closed。该证据只证明
+localization runtime active 与 blocker 收紧，不证明定位 ready、路线执行、HIL、delivery 或
+safe-to-control。

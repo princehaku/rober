@@ -1,0 +1,10 @@
+--- sprints/2026.07.15_00-53_o3_current_localization_runtime_recovery/artifacts/algorithm/graph_before.txt	2026-07-15 01:19:38
++++ sprints/2026.07.15_00-53_o3_current_localization_runtime_recovery/artifacts/algorithm/graph_after.txt	2026-07-15 01:21:26
+@@ -1,7 +1,5 @@
+ /esp32_bridge
+-/lidar_driver
+ /static_transform_publisher_IQ8q3xoF0rfVrijI
+-/upper_robot_api_cmd_vel_publisher
+ /battery
+ /cmd_vel
+ /imu/data
