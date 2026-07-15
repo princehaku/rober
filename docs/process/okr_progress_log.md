@@ -6,6 +6,16 @@
 
 ---
 
+## 2026-07-15 O5 public health tunnel failed live preflight 收口
+
+`sprints/2026.07.15_09-04_o5_public_health_tunnel_external_evidence/` 已完成 Product acceptance closeout。Full-stack 已实现纯标准库 health-only proxy，6 tests 覆盖精确 GET/HEAD `/healthz`、完整负向 path/query/encoding/method、敏感 header 隔离、upstream timeout/error 和非 loopback 拒绝；compose host publish 收紧到 `127.0.0.1`，bearer token 仍显式必填，README 明确 quick tunnel 直连 relay `NO-GO`。本地 `py_compile`、两种 unittest 入口、显式非生产 token 的 compose config、artifact `json.tool`、结构/脱敏断言与 scoped diff 均通过。
+
+唯一 live invocation=`1`。Cloudflare official metadata HTTPS 成功，version=`2026.7.1`，remote arch=`aarch64`；随后 remote `provider_runtime_preflight` 在完整 SHA/version gate 前 exit `1`。这不是已证明的 SHA mismatch，当前过度脱敏使 download/SHA/chmod/version 子步骤不可判。`tunnel_start_attempt_count=0`、`public_capture_count=0`、`public_probe_attempt_count=0`；没有 public URL、TLS/certificate、GET/HEAD `2xx/3xx`、公网 negative matrix 或 state checksum。cleanup residual=`0`，远端无本轮进程或临时目录。
+
+Product 接受本地安全收口和 honest failed live preflight，proof boundary=`software_and_failed_live_preflight_o5_public_health_tunnel_external_evidence`；拒绝 external artifact、public HTTPS success、production ready、Mission Objective 0 与 OKR credit。`current_run_artifact_delta=false`、`external_artifact_delta=false`、`live_control_delta=false`、`user_action_delta=false`，`production_ready=false`；`route_execution_success=false`、`delivery_success=false`、`hil_pass=false`、`safe_to_control=false`。O5 保持约 `85%`，O1 约 `94%`、O6/O7 各约 `93%` 保持，KR `不归档`。
+
+本轮不是重复 loopback wrapper，因为确实触达官方 provider metadata/runtime preflight并收紧 relay 公网暴露面；但没有跨过 external gate，所以不计分。当前 sprint **不得重跑**，不得把 proxy/README/失败 artifact/cleanup 重新包装。若继续 O5，下一新 sprint 先由 `full-stack-software-engineer` 离线补 download/sha/chmod/version 的枚举化非敏感 stage 并完成 official provenance dry gate，再由 Product/CEO 新授权决定一次 public capture；同一 `provider_runtime_preflight` blocker 最多再消费一轮，否则切换到不重复 blocker 的次低 Objective 或升级 CEO，禁止回到 O6/O7 wrapper。
+
 ## 2026-07-15 O3 live TF receipt artifact 收口
 
 `sprints/2026.07.15_08-06_o3_live_tf_receipt_capture/` 已完成 Product acceptance closeout。唯一 true-board

@@ -1,0 +1,48 @@
+{
+  "capture_invocation_count": 1,
+  "control_actions_executed": false,
+  "delivery_success": false,
+  "deltas": {
+    "current_run_artifact_delta": false,
+    "external_artifact_delta": false,
+    "live_control_delta": false,
+    "user_action_delta": false
+  },
+  "failure": {
+    "reason": "official_metadata_succeeded_then_remote_staging_or_binary_gate_exit_1_before_sha256_verification",
+    "stage": "provider_runtime_preflight"
+  },
+  "generated_at_bucket": "2026-07-15T01:33:00+00:00",
+  "hil_pass": false,
+  "mission_objective_0_satisfied": false,
+  "negative_matrix": {
+    "all_fail_closed": false,
+    "cases": [],
+    "cleanup_residual_count": 0,
+    "executed": false,
+    "state_check_status": "not_run_before_provider_gate_failed",
+    "state_unchanged": false
+  },
+  "overall_status": "blocked",
+  "production_ready": false,
+  "proof_scope": "blocked_provider_runtime_preflight_before_tunnel_or_public_capture",
+  "provider": {
+    "architecture": "aarch64",
+    "name": "cloudflare",
+    "release_metadata_https": true,
+    "sha256_verified": false,
+    "version": "2026.7.1"
+  },
+  "public_capture_count": 0,
+  "public_probe": {
+    "get_status_class": "not_run",
+    "head_status_class": "not_run",
+    "host_sha256": "not_observed",
+    "public_probe_attempt_count": 0,
+    "tls_certificate_valid": false
+  },
+  "route_execution_success": false,
+  "safe_to_control": false,
+  "schema": "trashbot.o5.public_health_tunnel_external_evidence.v1",
+  "tunnel_start_attempt_count": 0
+}

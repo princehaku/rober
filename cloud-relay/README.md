@@ -64,21 +64,45 @@
 | `cloud-relay/docker/` | Dockerfile | 复制 cloud-relay 入口、onboard 纯 Python relay 模块和 `mobile/web/` 静态壳，不拉入 ROS2/Humble 构建链路 |
 | `cloud-relay/test/` | 单测 + 集成测试 | 后续可迁入 cloud relay 专属测试；当前仍复用 onboard compatibility fence |
 | `cloud-relay/scripts/` | 部署脚本 | `cloud-relay/scripts/docker_smoke.sh` 以 cloud-relay runtime 为主入口 |
-| `cloud-relay/docker-compose.yml` | compose 入口（公网 8088 端口） | 在 `cloud-relay/` 下执行，使用仓库根 context 复用唯一协议实现 |
+| `cloud-relay/docker-compose.yml` | compose 入口（主机 loopback 8088） | 在 `cloud-relay/` 下执行，使用仓库根 context 复用唯一协议实现 |
 
 ## 部署目标（Deployment target）
 
-- **公网 VM**：4C8G Linux（Ubuntu 22.04 / Debian 12 等），独立 IP，TCP 8088 入口（未来反向代理加 TLS）。
+- **公网 VM**：4C8G Linux（Ubuntu 22.04 / Debian 12 等）；当前 compose 只把 relay 发布到 `127.0.0.1:8088`，生产公网入口仍需独立反向代理、认证、防火墙和 TLS 证据。
 - **依赖**：Docker 24+、Docker Compose 2.x。**不依赖 ROS2**（Python 3.12 slim 镜像即可）。
 - **持久化**：当前 file-backed JSON / sqlite 仅作 deploy proof；生产仍需替换为真实 DB（PostgreSQL / MySQL）+ 消息队列（Redis / RabbitMQ / NATS）。
 
 ## 标准入口
 
+### Health-only 临时公网验证边界
+
+`docker-compose.yml` 现在只发布 `127.0.0.1:${TRASHBOT_REMOTE_CLOUD_PUBLISHED_PORT:-8088}`。局域网中过去直接访问主机 `8088` 的开发方式不再可用；本机 smoke 仍使用 `http://127.0.0.1:8088`。
+
+compose 不提供 bearer token 默认值。即使只做本地结构检查或 loopback smoke，也必须显式传入一次性、非生产的 `TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN`；共享主机或 production 部署必须使用独立 secret，且仍不得把 relay 原始端口发布到公网。例如仅检查 compose 结构时使用：
+
+```bash
+TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN=local-structure-check-only \
+  docker compose -f docker-compose.yml config >/dev/null
+```
+
+临时 Cloudflare quick tunnel 的唯一允许 target 是独立 allowlist proxy，例如：
+
+```bash
+python3 scripts/healthz_allowlist_proxy.py \
+  --listen-host 127.0.0.1 --listen-port 18089 \
+  --upstream-host 127.0.0.1 --upstream-port 8088
+cloudflared tunnel --url http://127.0.0.1:18089 --no-autoupdate
+```
+
+**NO-GO**：不得把 `cloudflared`、其他 tunnel、反向代理或端口映射直接指向 relay `8088`。proxy 只允许精确 `GET /healthz` 和 `HEAD /healthz`；`/readyz`、`/preflightz`、`/api/*`、`/robots/*`、带 query/编码/双斜杠的 target 返回 `404`，精确 `/healthz` 的其他 method 返回 `405` 和 `Allow: GET, HEAD`。外部 `Authorization`、`Cookie`、`Host`、forwarded header 与 body 都不会转发上游。
+
+该入口仅用于一次性、只读、certificate-valid HTTPS health capture。它不是稳定 DNS、4G、production DB/queue、OSS/CDN、真实手机、route、delivery、HIL 或 `safe_to_control` 证据；capture 完成后必须清理 proxy、relay、cloudflared 和临时目录。
+
 构建上下文为仓库根，请在 **`cloud-relay/`** 下执行 compose（相对路径 `dockerfile: cloud-relay/docker/Dockerfile` 已写死）：
 
 ```bash
 cd cloud-relay
-TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN=dev-placeholder docker compose up -d
+TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN=local-smoke-only-not-production docker compose up -d
 sleep 3
 curl http://127.0.0.1:8088/healthz
 curl http://127.0.0.1:8088/readyz

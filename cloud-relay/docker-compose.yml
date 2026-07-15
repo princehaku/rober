@@ -10,6 +10,7 @@ services:
       TRASHBOT_REMOTE_CLOUD_HOST: ${TRASHBOT_REMOTE_CLOUD_HOST:-0.0.0.0}
       TRASHBOT_REMOTE_CLOUD_PORT: ${TRASHBOT_REMOTE_CLOUD_PORT:-8088}
       TRASHBOT_REMOTE_CLOUD_STATE: ${TRASHBOT_REMOTE_CLOUD_STATE:-/data/remote_cloud_relay_state.json}
+      # 即使只做 loopback smoke 也必须显式注入非空 token，避免空鉴权合同被误用。
       TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN: ${TRASHBOT_REMOTE_CLOUD_BEARER_TOKEN:?set-dev-placeholder-token}
       TRASHBOT_REMOTE_CLOUD_PUBLIC_BASE_URL: ${TRASHBOT_REMOTE_CLOUD_PUBLIC_BASE_URL:-http://127.0.0.1:8088}
       TRASHBOT_REMOTE_CLOUD_TLS_MODE: ${TRASHBOT_REMOTE_CLOUD_TLS_MODE:-future_reverse_proxy}
@@ -22,7 +23,8 @@ services:
       # 可切到 sqlite 做单机恢复 proof；生产 DB/queue、多实例和灾备仍需要单独证据。
       TRASHBOT_REMOTE_CLOUD_STATE_BACKEND: ${TRASHBOT_REMOTE_CLOUD_STATE_BACKEND:-file}
     ports:
-      - "${TRASHBOT_REMOTE_CLOUD_PUBLISHED_PORT:-8088}:${TRASHBOT_REMOTE_CLOUD_PORT:-8088}"
+      # 主机发布面固定为 loopback；公网 tunnel 只能指向独立 health-only proxy。
+      - "127.0.0.1:${TRASHBOT_REMOTE_CLOUD_PUBLISHED_PORT:-8088}:${TRASHBOT_REMOTE_CLOUD_PORT:-8088}"
     volumes:
       # named volume 只证明 Docker deploy 的本地持久化；不代表生产数据库。
       - remote-cloud-relay-state:/data
