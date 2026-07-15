@@ -6,6 +6,24 @@
 
 ---
 
+## 2026-07-15 O6/O7 live localization bag replay orchestration blocked 收口
+
+`sprints/2026.07.15_20-07_o6_o7_live_localization_bag_replay/` 已按
+`blocked_subagent_runtime_orchestration_timeout_no_okr_credit` 收口。O5 约 `85%` 的 provider blocker 已连续消费
+两轮，因此本轮正确切换到 O6/O7 约 `93%` 的 live localization bag/replay lane，并避开已退役的 `/scan` 与
+camera blocker。Product planning agent 两次零落盘，主节点 bounded fallback 只补三份前置计划；随后 Algorithm
+原派单和无历史上下文重派均在零产品文件、零测试、零 SSH/live invocation 处停滞并被中断。
+
+本轮无 helper、测试、navigation 文档、DB3、metadata、manifest、replay JSONL 或 O6/O7 consumer 改动；
+`inventory_invocation_count=0`、`live_capture_invocation_count=0`、`full_stack_phase_b_allowed=false`。仅计划 required
+anchors、closeout absence gate 与 scoped diff check 通过，未运行产品测试、构建、SSH、ROS inventory 或 capture。
+`current_run_artifact_delta=false`、`external_artifact_delta=false`、`live_control_delta=false`、
+`user_action_delta=false`、`route_execution_success=false`、`delivery_success=false`、`hil_pass=false`、
+`safe_to_control=false`、`okr_credit=false`。O5 `85%`、O6/O7 `93%`、O1 `94%` 全平，KR `不归档`。
+
+下一轮复用本 sprint tech-plan，直接重派 Algorithm Phase A；只有真实 bag/manifest/replay clean 才进入 Full-stack
+Phase B。禁止第三轮 O5 provider、重跑 `/scan`/camera blocker或新增 wrapper。
+
 ## 2026-07-15 O6/O7 live camera keyframe annotation flow blocked 收口
 
 `sprints/2026.07.15_11-58_o7_live_camera_keyframe_annotation_flow/` 已完成 Product acceptance closeout。Algorithm 完成 daemon-off camera inventory/single-frame helper、39-test suite、vision doc 与三个 JSON；`py_compile` exit `0`、`Ran 39 tests ... OK`、中文注释 `20.7108%/21%`。唯一 SSH inventory invocation=`1`、exit=`2`、blocker=`inventory_ssh_or_payload_failed`；capture invocation=`0`，无 retry、无 keyframe/PNG/hash，`annotation_ready=false`。
