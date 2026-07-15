@@ -50,3 +50,43 @@ O5 保持约 `85%`，O6/O7 各保持约 `93%`，O1 保持约 `94%`；KR `不归�
 2. 上位机 `/tf`、`/odom`、`/amcl_pose` 当前 publisher 状态仍未知；本轮没有消费 live gate。
 3. 下一轮优先复用本 sprint 已批准计划，直接重派 `robot-algorithm-engineer` Phase A；无需重做 Product 规划。
 4. 不重开 O5 provider、`/scan` 或 camera blocker，也不增加 wrapper；只有 Algorithm clean live manifest 才派 Full-stack。
+
+## 第二次 continuation audit（2026-07-15 22:26 Asia/Shanghai）
+
+### 与原 blocked closeout 的区分
+
+以上内容是本 Epic 第一次 blocked closeout。当时“直接重派 Algorithm Phase A”仍是待验证建议；本次是在该
+`final.md` 已存在之后进行的第二次 continuation audit，不把原计划或原 blocked 结论重新包装成新进展。
+
+主节点本次严格复用 `tech-plan.md`，连续派发两个 Algorithm Phase A worker，其中第二个为不继承历史的
+fallback。两个 worker 都完成资料读取，均未报告 repo、SSH、ROS、publisher 或 rosbag 的具体阻塞，并承诺立即
+`apply_patch`；但多次等待与催促后仍没有执行任何文件写入或验收命令，随后被中断。本次 Product 留档前共享
+worktree 保持 clean，产品文件、测试文件与 artifact delta 均为零。
+
+### 本次 invocation 与验证记账
+
+- `inventory_invocation_count=0`
+- `live_capture_invocation_count=0`
+- `full_stack_phase_b_allowed=false`
+- 产品测试、构建、SSH、ROS inventory、rosbag capture：未运行。
+- Full-stack Phase B：未派发；没有 frozen live manifest，正确保持 skip。
+- `current_run_artifact_delta=false`
+- `external_artifact_delta=false`
+- `live_control_delta=false`
+- `user_action_delta=false`
+- `okr_credit=false`
+
+因此本次 continuation audit 的精确 blocker 为
+`subagent_runtime_orchestration_timeout_before_file_or_command_execution`。它发生在文件或命令执行前，不能归因到
+repo code、测试、SSH 连通性、ROS graph、localization publisher、rosbag/storage、上位机或 Full-stack 消费链。
+
+### Product 决策与剩余风险
+
+O5 保持约 `85%`，O6/O7 各保持约 `93%`，O1 保持约 `94%`；百分比不变，KR `不归档`。本次没有新业务
+事实，因此不更新 `OKR.md`，也不向 `docs/process/okr_progress_log.md` 追加零进展记录。
+
+原“下一轮直接重派 Algorithm Phase A”的建议已被本次重复超时证伪并由本段取代。下一轮暂停自动重派相同
+worker 包装，先升级 CEO / sub-agent runtime owner 修复编排执行通道。恢复业务派单前，只允许在 sprint 外做一次
+不消费 SSH/ROS/live gate 的 runtime canary，证明 worker 能实际执行一个只读命令与一次隔离文件写入；canary 未通过
+不得第三次派发同一 Algorithm 任务。产品方向仍继续 O6/O7 live localization bag，不改成 support wrapper；风险是
+DB3、manifest、replay 与 same-task consumption 仍全部缺失，publisher 当前状态也仍未知。
