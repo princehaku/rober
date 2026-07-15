@@ -2450,6 +2450,54 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
             ),
         }
 
+    def _live_camera_keyframe_annotation_material_payload(self, task_id="artifact-bundle-task-001"):
+        # fixture 只提供冻结 metadata；0/0 invocation 与四 delta=false 防止被误标成 live。
+        return {
+            "schema": relay_module.LIVE_CAMERA_KEYFRAME_MANIFEST_SCHEMA,
+            "task_id": task_id,
+            "source_mode": "fixture",
+            "source_proof": "fixture_contract_only",
+            "topic": "/camera/image_raw",
+            "message_type": "sensor_msgs/msg/Image",
+            "publisher_count_at_inventory": 1,
+            "stamp_sec": 1784091091,
+            "stamp_nanosec": 123456789,
+            "width": 640,
+            "height": 480,
+            "step": 1920,
+            "encoding": "rgb8",
+            "is_bigendian": False,
+            "media_basename": "fixture-camera-keyframe.png",
+            "media_byte_size": 4096,
+            "sha256": "9f" * 32,
+            "captured_at_utc": "2026-07-15T04:11:31Z",
+            "inventory_ssh_invocation_count": 0,
+            "single_frame_capture_invocation_count": 0,
+            "redaction_boundary": {
+                "classification": "metadata_only_camera_keyframe",
+                "raw_pixels_in_manifest": False,
+                "binary_inline_in_api": False,
+                "binary_logged": False,
+                "absolute_path_exposed": False,
+                "remote_host_exposed": False,
+                "ui_metadata_only": True,
+                "privacy_review_status": "not_approved_metadata_only",
+                "media_access_scope": "sprint_local_artifact_only",
+            },
+            "annotation_ready": True,
+            "blocked_reasons": [],
+            "not_proven": ["live_camera_keyframe_not_captured", "privacy_review_not_approved"],
+            "current_run_artifact_delta": False,
+            "external_artifact_delta": False,
+            "live_control_delta": False,
+            "user_action_delta": False,
+            "safe_to_control": False,
+            "robot_control_executed": False,
+            "route_execution_success": False,
+            "delivery_success": False,
+            "hil_pass": False,
+        }
+
     def _artifact_bundle_payload(self):
         # artifact bundle 只提供结构化 ref 和少量轨迹/事件摘要，不读取真实文件内容。
         return {
@@ -4557,6 +4605,122 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertTrue(alias["artifact_bundle_written"])
         self.assertTrue(alias["duplicate"])
+
+    def test_o6_live_camera_keyframe_annotation_material_fixture_lineage_and_hostile_fail_closed(self):
+        # fixture 走既有 artifact-bundle 写入和 consumer detail；它只能获得 fixture badge。
+        payload = self._artifact_bundle_payload()
+        payload["artifact_bundle"]["live_camera_keyframe_annotation_material"] = (
+            self._live_camera_keyframe_annotation_material_payload()
+        )
+        status, created = self.client.request("POST", "/api/o6/archive/artifact-bundle", payload)
+        self.assertEqual(status, 201)
+        material = created["task"]["live_camera_keyframe_annotation_material"]
+        self.assertEqual(material["schema"], relay_module.O6_LIVE_CAMERA_KEYFRAME_ANNOTATION_MATERIAL_SCHEMA)
+        self.assertEqual(material["status"], "annotation_ready_fixture_contract_only")
+        self.assertEqual(material["source_badge"], "fixture")
+        self.assertTrue(material["annotation_ready"])
+        self.assertTrue(material["lineage_verified"])
+        self.assertEqual(material["task_id"], "artifact-bundle-task-001")
+        self.assertEqual(material["sha256"], "9f" * 32)
+        self.assertEqual(material["stamp_nanosec"], 123456789)
+        self.assertFalse(material["current_run_artifact_delta"])
+        self.assertFalse(material["external_artifact_delta"])
+        self.assertFalse(material["live_control_delta"])
+        self.assertFalse(material["user_action_delta"])
+        self.assertFalse(material["safe_to_control"])
+        self.assertFalse(material["route_execution_success"])
+        self.assertFalse(material["delivery_success"])
+        self.assertFalse(material["hil_pass"])
+        # task detail 与 include readback 必须保持相同 task/hash/topic/stamp/dimensions/encoding。
+        status, detail = self.client.request("GET", "/api/o6/archive/tasks/artifact-bundle-task-001")
+        self.assertEqual(status, 200)
+        detail_material = detail["task"]["live_camera_keyframe_annotation_material"]
+        self.assertEqual(
+            [detail_material[key] for key in ("task_id", "sha256", "topic", "stamp_sec", "stamp_nanosec", "width", "height", "encoding")],
+            [material[key] for key in ("task_id", "sha256", "topic", "stamp_sec", "stamp_nanosec", "width", "height", "encoding")],
+        )
+        status, consumer = self.client.request(
+            "GET",
+            "/api/o6/consumer/tasks/artifact-bundle-task-001?include=live_camera_keyframe_annotation_material",
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(consumer["live_camera_keyframe_annotation_material"], material)
+
+        # Algorithm 本轮 inventory blocked(1/0) 也走同一 section；保留来源计数，但绝不 annotation-ready。
+        blocked_payload = self._artifact_bundle_payload()
+        blocked_task_id = "task_o7_live_camera_keyframe_annotation_20260715_1158"
+        blocked_payload["artifact_bundle"]["task_id"] = blocked_task_id
+        blocked_manifest = self._live_camera_keyframe_annotation_material_payload(blocked_task_id)
+        blocked_manifest.update(
+            {
+                "source_mode": "live_ros_graph_single_frame",
+                "source_proof": "live_inventory_blocked",
+                "topic": "",
+                "publisher_count_at_inventory": 0,
+                "stamp_sec": 0,
+                "stamp_nanosec": 0,
+                "width": 0,
+                "height": 0,
+                "step": 0,
+                "encoding": "",
+                "media_basename": "",
+                "media_byte_size": 0,
+                "sha256": "",
+                "captured_at_utc": "",
+                "inventory_ssh_invocation_count": 1,
+                "single_frame_capture_invocation_count": 0,
+                "redaction_boundary": {
+                    **blocked_manifest["redaction_boundary"],
+                    "classification": "metadata_only_pending_privacy_review",
+                    "privacy_review_status": "pending_not_approved",
+                },
+                "annotation_ready": False,
+                "blocked_reasons": ["inventory_ssh_or_payload_failed"],
+                "not_proven": ["live_single_frame_captured", "privacy_approved"],
+            }
+        )
+        blocked_payload["artifact_bundle"]["live_camera_keyframe_annotation_material"] = blocked_manifest
+        status, blocked_created = self.client.request("POST", "/api/o6/archive/artifact-bundle", blocked_payload)
+        self.assertEqual(status, 201)
+        blocked_material = blocked_created["task"]["live_camera_keyframe_annotation_material"]
+        self.assertEqual(blocked_material["status"], "blocked_not_proven")
+        self.assertEqual(blocked_material["source_schema"], relay_module.LIVE_CAMERA_KEYFRAME_MANIFEST_SCHEMA)
+        self.assertEqual(blocked_material["source_proof"], "live_inventory_blocked")
+        self.assertEqual(blocked_material["task_id"], blocked_task_id)
+        self.assertEqual(blocked_material["inventory_ssh_invocation_count"], 1)
+        self.assertEqual(blocked_material["single_frame_capture_invocation_count"], 0)
+        self.assertFalse(blocked_material["annotation_ready"])
+        self.assertFalse(blocked_material["current_run_artifact_delta"])
+
+        # hostile matrix 必须 section-local blocked，且响应不能回显原路径/URL/base64/raw pixels。
+        hostile_cases = (
+            ("absolute_path", lambda item: item.update({"media_path": "/tmp/private/frame.png"})),
+            ("url_query", lambda item: item.update({"url": "https://example.test/frame.png?token=secret"})),
+            ("data_url", lambda item: item.update({"data": "data:image/png;base64,AAAA"})),
+            ("raw_pixels", lambda item: item.update({"pixels": [0, 1, 2, 3]})),
+            ("hash", lambda item: item.update({"sha256": "bad"})),
+            ("stamp", lambda item: item.update({"stamp_nanosec": 1_000_000_000})),
+            ("task", lambda item: item.update({"task_id": "other-task"})),
+            ("source_count", lambda item: item.update({"single_frame_capture_invocation_count": 1})),
+            ("dangerous_true", lambda item: item.update({"delivery_success": True})),
+        )
+        for index, (name, mutate) in enumerate(hostile_cases):
+            hostile = self._artifact_bundle_payload()
+            hostile_task_id = f"camera-hostile-{name}-{index}"
+            hostile["artifact_bundle"]["task_id"] = hostile_task_id
+            section = self._live_camera_keyframe_annotation_material_payload(hostile_task_id)
+            mutate(section)
+            hostile["artifact_bundle"]["live_camera_keyframe_annotation_material"] = section
+            status, blocked = self.client.request("POST", "/api/o6/archive/artifact-bundle", hostile)
+            self.assertEqual(status, 201)
+            blocked_material = blocked["task"]["live_camera_keyframe_annotation_material"]
+            self.assertEqual(blocked_material["status"], "blocked_not_proven")
+            self.assertEqual(blocked_material["source_badge"], "blocked")
+            self.assertFalse(blocked_material["annotation_ready"])
+            self.assertFalse(blocked_material["lineage_verified"])
+            self.assertNotIn("/tmp/private", json.dumps(blocked, ensure_ascii=False))
+            self.assertNotIn("example.test", json.dumps(blocked, ensure_ascii=False))
+            self.assertNotIn("base64", json.dumps(blocked, ensure_ascii=False).lower())
 
     def test_o6_delivery_result_evidence_preserves_cloud_terminal_source_schema(self):
         # 云端终态结果是 Algorithm 转换后的 delivery_result_evidence 来源；O6 只能保留摘要，不能放宽控制边界。

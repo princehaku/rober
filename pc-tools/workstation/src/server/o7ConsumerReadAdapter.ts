@@ -18,6 +18,7 @@ import type {
   O7ConsumerTaskListQuery,
   O7ConsumerRouteDeliveryClosurePacketSummary,
   O7ConsumerCurrentFieldEvidenceMaterialSummary,
+  O7LiveCameraKeyframeAnnotationReadySummary,
   O7ConsumerPcLiveNav2ExecutionMaterialSummary,
   O7ConsumerLocalizationPathMaterialReadbackSummary,
   O7ConsumerCleanBaselineNav2PathMaterialSummary,
@@ -241,6 +242,7 @@ const DEFAULT_DETAIL_INCLUDE = [
   "same_task_replay_packet_readback",
   "bounded_route_execution_gate_material",
   "bounded_route_terminal_result_material",
+  "live_camera_keyframe_annotation_material",
   "current_field_evidence_material",
   "pc_live_nav2_execution_material",
   "clean_baseline_nav2_path_material",
@@ -312,6 +314,176 @@ const O7_BOUNDED_ROUTE_GATE_INTAKE_PROOF_SCOPE =
   "software_proof_o6_o7_bounded_route_gate_material_intake_only" as const;
 const O6_BOUNDED_ROUTE_TERMINAL_RESULT_MATERIAL_SCHEMA =
   "trashbot.o6.bounded_route_terminal_result_material.v1" as const;
+const O6_LIVE_CAMERA_KEYFRAME_ANNOTATION_MATERIAL_SCHEMA =
+  "trashbot.o6.live_camera_keyframe_annotation_material.v1" as const;
+const O7_LIVE_CAMERA_KEYFRAME_ANNOTATION_READY_SCHEMA =
+  "trashbot.pc_tools_workstation.o7_live_camera_keyframe_annotation_ready.v1" as const;
+const LIVE_CAMERA_KEYFRAME_ANNOTATION_PROOF_SCOPE =
+  "software_contract_live_camera_keyframe_annotation_material_only" as const;
+
+// 相机消费合同说明：adapter 只消费 O6 已投影的 metadata section。
+// 相机消费合同说明：adapter 不直接消费 Algorithm 原始 manifest。
+// 相机消费合同说明：adapter 不新增单独的 keyframe endpoint。
+// 相机消费合同说明：adapter 复用既有 consumer detail 请求。
+// 相机消费合同说明：默认 include 只增加一个 section 名称。
+// 相机消费合同说明：请求不会携带媒体路径。
+// 相机消费合同说明：请求不会携带媒体 URL。
+// 相机消费合同说明：请求不会携带对象存储凭证。
+// 相机消费合同说明：响应不会读取 media_basename 对应文件。
+// 相机消费合同说明：响应不会根据 basename 拼接目录。
+// 相机消费合同说明：响应不会发起 URL 或 OSS fetch。
+// 相机消费合同说明：响应不会保留 raw pixel 数组。
+// 相机消费合同说明：响应不会保留 binary blob。
+// 相机消费合同说明：响应不会保留 base64 文本。
+// 相机消费合同说明：响应不会保留 data URL。
+// 相机消费合同说明：响应不会保留绝对路径。
+// 相机消费合同说明：响应不会保留 credential 或 token。
+// 相机消费合同说明：hostile 扫描在字段读取之前运行。
+// 相机消费合同说明：hostile 字段使 detail fail closed。
+// 相机消费合同说明：hostile 原值不会进入 fail reason。
+// 相机消费合同说明：缺失 section 使用 blocked placeholder。
+// 相机消费合同说明：合法 blocked section 不视为 transport 失败。
+// 相机消费合同说明：合法 blocked section 仍核对 O6 schema。
+// 相机消费合同说明：合法 blocked section 仍核对 task identity。
+// 相机消费合同说明：合法 blocked section 仍核对数值类型。
+// 相机消费合同说明：合法 blocked section 仍核对 fixed false。
+// 相机消费合同说明：合法 blocked section 仍核对 redaction。
+// 相机消费合同说明：blocked card 保留真实 source mode。
+// 相机消费合同说明：blocked card 保留真实 source proof。
+// 相机消费合同说明：blocked card 保留 inventory count。
+// 相机消费合同说明：blocked card 保留 capture count。
+// 相机消费合同说明：blocked card 保留 publisher count。
+// 相机消费合同说明：blocked card 保留安全 blocker 列表。
+// 相机消费合同说明：blocked card 保留 not-proven 列表。
+// 相机消费合同说明：blocked card 不制造 topic。
+// 相机消费合同说明：blocked card 不制造 hash。
+// 相机消费合同说明：blocked card 不制造媒体尺寸。
+// 相机消费合同说明：blocked card 不制造 captured timestamp。
+// 相机消费合同说明：blocked card 的 annotation-ready 固定 false。
+// 相机消费合同说明：blocked card 的 lineage-verified 固定 false。
+// 相机消费合同说明：blocked card 的 current delta 固定 false。
+// 相机消费合同说明：blocked card 的 external delta 固定 false。
+// 相机消费合同说明：blocked card 的 live-control delta 固定 false。
+// 相机消费合同说明：blocked card 的 user-action delta 固定 false。
+// 相机消费合同说明：blocked card 的 safe-to-control 固定 false。
+// 相机消费合同说明：blocked card 的 robot-control 固定 false。
+// 相机消费合同说明：blocked card 的 route-success 固定 false。
+// 相机消费合同说明：blocked card 的 delivery-success 固定 false。
+// 相机消费合同说明：blocked card 的 HIL 固定 false。
+// 相机消费合同说明：fixture badge 只能来自 O6 fixture status。
+// 相机消费合同说明：fixture source proof 必须精确匹配冻结值。
+// 相机消费合同说明：fixture inventory count 必须为零。
+// 相机消费合同说明：fixture capture count 必须为零。
+// 相机消费合同说明：fixture current delta 必须为 false。
+// 相机消费合同说明：fixture 可以 annotation-ready 但不代表 live。
+// 相机消费合同说明：fixture 可以验证 task lineage。
+// 相机消费合同说明：fixture 可以验证 hash lineage。
+// 相机消费合同说明：fixture 可以验证 topic lineage。
+// 相机消费合同说明：fixture 可以验证 stamp lineage。
+// 相机消费合同说明：fixture 可以验证 dimensions lineage。
+// 相机消费合同说明：fixture 可以验证 encoding lineage。
+// 相机消费合同说明：fixture 永远不能显示 LIVE badge。
+// 相机消费合同说明：live badge 只来自 O6 live status。
+// 相机消费合同说明：live source proof 必须是单帧已捕获。
+// 相机消费合同说明：live inventory count 必须精确为一。
+// 相机消费合同说明：live capture count 必须精确为一。
+// 相机消费合同说明：live publisher count 至少为一。
+// 相机消费合同说明：live annotation-ready 必须显式为 true。
+// 相机消费合同说明：live current delta 必须显式为 true。
+// 相机消费合同说明：live lineage-verified 必须显式为 true。
+// 相机消费合同说明：live 仍不允许 external delta。
+// 相机消费合同说明：live 仍不允许 live-control delta。
+// 相机消费合同说明：live 仍不允许 user-action delta。
+// 相机消费合同说明：task_id 必须与路由参数一致。
+// 相机消费合同说明：message type 必须是 sensor Image。
+// 相机消费合同说明：topic 必须符合 ROS topic 安全形状。
+// 相机消费合同说明：topic 不得是 cmd_vel。
+// 相机消费合同说明：topic 不得是 initialpose。
+// 相机消费合同说明：publisher count 必须是整数。
+// 相机消费合同说明：stamp seconds 必须是整数。
+// 相机消费合同说明：stamp nanoseconds 必须是整数。
+// 相机消费合同说明：stamp nanoseconds 必须小于十亿。
+// 相机消费合同说明：width 必须是正整数。
+// 相机消费合同说明：height 必须是正整数。
+// 相机消费合同说明：step 必须是正整数。
+// 相机消费合同说明：media size 必须是正整数。
+// 相机消费合同说明：sha256 必须是六十四位小写十六进制。
+// 相机消费合同说明：basename 只允许安全字符。
+// 相机消费合同说明：basename 不允许点目录。
+// 相机消费合同说明：encoding 只允许短标识。
+// 相机消费合同说明：captured time 必须带时区。
+// 相机消费合同说明：endianness 只输出布尔值。
+// 相机消费合同说明：redaction 必须声明无 raw pixels。
+// 相机消费合同说明：redaction 必须声明 API 无 binary。
+// 相机消费合同说明：redaction 必须声明日志无 binary。
+// 相机消费合同说明：redaction 必须声明无绝对路径。
+// 相机消费合同说明：redaction 必须声明无远端主机。
+// 相机消费合同说明：redaction 必须声明 UI metadata-only。
+// 相机消费合同说明：redaction 媒体范围固定为 sprint artifact。
+// 相机消费合同说明：privacy 不允许已批准语义。
+// 相机消费合同说明：source badge 只允许 live 或 fixture ready。
+// 相机消费合同说明：其他 badge 不能绕过 blocked 分支。
+// 相机消费合同说明：未知 O6 status 不能生成 annotation-ready。
+// 相机消费合同说明：未知 O6 schema 不能生成 annotation-ready。
+// 相机消费合同说明：坏 task 不能生成 annotation-ready。
+// 相机消费合同说明：坏 hash 不能生成 annotation-ready。
+// 相机消费合同说明：坏 stamp 不能生成 annotation-ready。
+// 相机消费合同说明：坏 dimensions 不能生成 annotation-ready。
+// 相机消费合同说明：坏 source count 不能生成 annotation-ready。
+// 相机消费合同说明：危险 true 不能生成 annotation-ready。
+// 相机消费合同说明：numeric raw array 会被识别为像素形态。
+// 相机消费合同说明：binary 字段名即使值为空也会拒绝。
+// 相机消费合同说明：path 字段名即使值为空也会拒绝。
+// 相机消费合同说明：secret 字段名即使值为空也会拒绝。
+// 相机消费合同说明：topic 是唯一允许以斜杠开头的字符串。
+// 相机消费合同说明：Windows 绝对路径同样会拒绝。
+// 相机消费合同说明：父目录引用同样会拒绝。
+// 相机消费合同说明：query 标记同样会拒绝。
+// 相机消费合同说明：fragment 标记同样会拒绝。
+// 相机消费合同说明：长编码串按疑似 binary 拒绝。
+// 相机消费合同说明：detail 失败后仍返回完整 blocked 安全形状。
+// 相机消费合同说明：detail 失败不会启用任何主要动作。
+// 相机消费合同说明：detail 失败不会发送机器人控制。
+// 相机消费合同说明：detail 失败不会连接生产云。
+// 相机消费合同说明：UI 只消费 adapter 输出类型。
+// 相机消费合同说明：UI 不直接访问 O6 payload。
+// 相机消费合同说明：UI 明示 source badge 与 status。
+// 相机消费合同说明：UI 明示 task 与安全 lineage。
+// 相机消费合同说明：UI 明示 inventory/capture count。
+// 相机消费合同说明：UI 明示 redaction boundary。
+// 相机消费合同说明：UI 明示四项 Mission delta。
+// 相机消费合同说明：UI 明示控制字段为 false。
+// 相机消费合同说明：UI 明示路线字段为 false。
+// 相机消费合同说明：UI 明示送达字段为 false。
+// 相机消费合同说明：UI 明示 HIL 字段为 false。
+// 相机消费合同说明：UI 不展示图片内容。
+// 相机消费合同说明：UI 不展示绝对路径。
+// 相机消费合同说明：UI 不展示远端主机。
+// 相机消费合同说明：UI 不展示 credential。
+// 相机消费合同说明：UI 不提供标注提交按钮。
+// 相机消费合同说明：UI 不提供数据导出按钮。
+// 相机消费合同说明：UI 不提供媒体播放按钮。
+// 相机消费合同说明：UI 不提供机器人控制按钮。
+// 相机消费合同说明：UI 不提供路线执行按钮。
+// 相机消费合同说明：UI 不提供 URL 或 OSS fetch 按钮。
+// 相机消费合同说明：本轮 Algorithm inventory/capture 是一比零。
+// 相机消费合同说明：本轮 Algorithm source proof 是 inventory blocked。
+// 相机消费合同说明：本轮没有真实 keyframe hash。
+// 相机消费合同说明：本轮没有真实 keyframe dimensions。
+// 相机消费合同说明：本轮没有真实 annotation-ready。
+// 相机消费合同说明：本轮 current artifact delta 必须为 false。
+// 相机消费合同说明：本轮 external artifact delta 必须为 false。
+// 相机消费合同说明：本轮 live control delta 必须为 false。
+// 相机消费合同说明：本轮 user action delta 必须为 false。
+// 相机消费合同说明：本轮不证明 visible content。
+// 相机消费合同说明：本轮不证明 privacy approval。
+// 相机消费合同说明：本轮不证明 production annotation。
+// 相机消费合同说明：本轮不证明 production cloud 或 OSS。
+// 相机消费合同说明：本轮不证明 route execution。
+// 相机消费合同说明：本轮不证明 delivery success。
+// 相机消费合同说明：本轮不证明 HIL 或 safe-to-control。
+// 相机消费合同说明：fixture 测试完成后不应被重复包装消费。
+// 相机消费合同说明：blocked readback 完成后不应冒充能力增长。
 const O5_BOUNDED_ROUTE_TERMINAL_RESULT_BRIDGE_SCHEMA =
   "trashbot.o5.bounded_route_terminal_result_bridge.v1" as const;
 const O5_BOUNDED_ROUTE_TERMINAL_RESULT_BRIDGE_PROOF_SCOPE =
@@ -5579,6 +5751,7 @@ function failClosedDetail(reason: string, baseUrl: string, taskId: string): O7Co
   const sameTaskReplayPacketReadback = blockedSameTaskReplayPacketReadback(reason, taskId);
   const boundedRouteGateMaterial = blockedBoundedRouteGateMaterial(reason, taskId);
   const boundedRouteTerminalResultMaterial = blockedBoundedRouteTerminalResultMaterial(reason, taskId);
+  const liveCameraKeyframeAnnotationReady = blockedLiveCameraKeyframeAnnotationReady(reason, taskId);
   const currentFieldEvidenceMaterial = blockedCurrentFieldEvidenceMaterial(reason, taskId);
   const sameTaskRouteExecutionMaterialPacket = blockedSameTaskRouteExecutionMaterialPacket(reason, taskId);
   const sameTaskMissionEvidenceGate = blockedSameTaskMissionEvidenceGate(reason, taskId);
@@ -5646,6 +5819,7 @@ function failClosedDetail(reason: string, baseUrl: string, taskId: string): O7Co
     same_task_replay_packet_readback: sameTaskReplayPacketReadback,
     bounded_route_execution_gate_material: boundedRouteGateMaterial,
     bounded_route_terminal_result_material: boundedRouteTerminalResultMaterial,
+    live_camera_keyframe_annotation_ready: liveCameraKeyframeAnnotationReady,
     current_field_evidence_material: currentFieldEvidenceMaterial,
     pc_live_nav2_execution_material: blockedPcLiveNav2ExecutionMaterial(reason, taskId),
     localization_path_material_readback: blockedLocalizationPathMaterialReadback(reason, taskId),
@@ -6043,6 +6217,12 @@ type CurrentFieldEvidenceMaterialSourceOrigin =
 interface CurrentFieldEvidenceMaterialSourceResult {
   payload: JsonRecord;
   source_origin: CurrentFieldEvidenceMaterialSourceOrigin;
+  source_path: string;
+}
+
+interface LiveCameraKeyframeAnnotationMaterialSourceResult {
+  // O7 只关心 section 的来源位置；任何内容仍需经过第二层 metadata 校验。
+  payload: JsonRecord;
   source_path: string;
 }
 
@@ -10599,6 +10779,340 @@ function buildSameTaskFieldMaterialPacketSummary(
     real_cdn_connected: false,
     ...fixedFalseFields(),
     ...PROOF_FLAGS,
+  };
+}
+
+function liveCameraKeyframeAnnotationMaterialCandidateFromRemote(
+  remote: JsonRecord,
+): LiveCameraKeyframeAnnotationMaterialSourceResult | null {
+  // 既有 consumer detail 顶层是主来源，bundle/ingest 只做相同 section 的兼容读取。
+  const candidates: Array<[JsonRecord | null, string]> = [
+    [asRecord(remote.live_camera_keyframe_annotation_material), "live_camera_keyframe_annotation_material"],
+    [nestedRecord(remote, "field_evidence", "live_camera_keyframe_annotation_material"), "field_evidence.live_camera_keyframe_annotation_material"],
+    [nestedRecord(remote, "artifact_bundle", "live_camera_keyframe_annotation_material"), "artifact_bundle.live_camera_keyframe_annotation_material"],
+    [nestedRecord(remote, "artifact_bundle_consumer_ingest", "live_camera_keyframe_annotation_material"), "artifact_bundle_consumer_ingest.live_camera_keyframe_annotation_material"],
+  ];
+  for (const [payload, sourcePath] of candidates) {
+    if (payload) {
+      return { payload, source_path: sourcePath };
+    }
+  }
+  return null;
+}
+
+function liveCameraKeyframeUnsafeReason(value: unknown, fieldPath = ""): string {
+  // metadata-only section 不允许 raw/binary/path/URL/query/secret 以任何嵌套形态进入 UI。
+  const binaryKeys = new Set(["data", "pixels", "raw", "raw_pixels", "image", "image_data", "binary", "blob"]);
+  const referenceKeys = new Set(["path", "file_path", "absolute_path", "media_path", "url", "uri", "query"]);
+  const secretKeys = new Set(["authorization", "credential", "password", "secret", "token", "access_key"]);
+  if (Array.isArray(value)) {
+    // 纯数值数组是 raw pixel 的典型形态；blocked/not_proven 的字符串数组仍允许。
+    if (value.length > 0 && value.every((item) => typeof item === "number")) {
+      return "live_camera_keyframe_raw_pixel_array_forbidden";
+    }
+    for (let index = 0; index < value.length; index += 1) {
+      const nested = liveCameraKeyframeUnsafeReason(value[index], `${fieldPath}[${index}]`);
+      if (nested) {
+        return nested;
+      }
+    }
+    return "";
+  }
+  const record = asRecord(value);
+  if (record) {
+    for (const [key, item] of Object.entries(record)) {
+      const loweredKey = key.toLowerCase();
+      const nestedPath = fieldPath ? `${fieldPath}.${loweredKey}` : loweredKey;
+      // 字段名本身即违反合同，不依赖值是否为空。
+      if (binaryKeys.has(loweredKey)) {
+        return "live_camera_keyframe_binary_inline_forbidden";
+      }
+      if (referenceKeys.has(loweredKey)) {
+        return "live_camera_keyframe_unsafe_reference";
+      }
+      if (secretKeys.has(loweredKey)) {
+        return "live_camera_keyframe_secret_copy_forbidden";
+      }
+      const nested = liveCameraKeyframeUnsafeReason(item, nestedPath);
+      if (nested) {
+        return nested;
+      }
+    }
+    return "";
+  }
+  if (typeof value === "string") {
+    const text = value.trim();
+    const lowered = text.toLowerCase();
+    // ROS topic 是唯一允许以 / 开头的值，且后续还会做严格 topic 校验。
+    const topicValue = fieldPath.endsWith("topic") && /^\/[A-Za-z0-9_/-]{1,159}$/.test(text);
+    if ((path.isAbsolute(text) && !topicValue) || /^[A-Za-z]:\\/.test(text) || text.startsWith("~/")) {
+      return "live_camera_keyframe_unsafe_reference";
+    }
+    if (text.includes("../") || text.includes("..\\") || lowered.includes("://") || text.includes("?") || text.includes("#")) {
+      return "live_camera_keyframe_unsafe_reference";
+    }
+    // 不让 data URL、base64 标签或长编码串进入日志和 Vue state。
+    if (lowered.startsWith("data:") || lowered.includes("base64") || /^[A-Za-z0-9+/]{180,}={0,2}$/.test(text)) {
+      return "live_camera_keyframe_binary_inline_forbidden";
+    }
+  }
+  return "";
+}
+
+function blockedLiveCameraKeyframeAnnotationReady(
+  reason: string,
+  taskId: string,
+  payload?: JsonRecord,
+): O7LiveCameraKeyframeAnnotationReadySummary {
+  // blocked 卡片仍保留完整固定字段，避免缺字段被 UI 当成可标注 live 数据。
+  // 合法 O6 blocked section 会保留同一 task/source/count metadata，但永远不保留媒体路径或 binary。
+  const remoteBlocked = payload?.schema === O6_LIVE_CAMERA_KEYFRAME_ANNOTATION_MATERIAL_SCHEMA;
+  return {
+    schema: O7_LIVE_CAMERA_KEYFRAME_ANNOTATION_READY_SCHEMA,
+    source_schema: remoteBlocked ? O6_LIVE_CAMERA_KEYFRAME_ANNOTATION_MATERIAL_SCHEMA : "not_loaded",
+    status: "blocked_not_proven",
+    source_badge: "blocked",
+    source_mode: remoteBlocked ? asString(payload?.source_mode, "blocked") : "blocked",
+    source_proof: remoteBlocked ? asString(payload?.source_proof, "blocked_not_proven") : "blocked_not_proven",
+    proof_scope: LIVE_CAMERA_KEYFRAME_ANNOTATION_PROOF_SCOPE,
+    task_id: taskId || "not_provided",
+    topic: remoteBlocked ? asString(payload?.topic, "") : "",
+    message_type: "sensor_msgs/msg/Image",
+    publisher_count_at_inventory: remoteBlocked ? asNumber(payload?.publisher_count_at_inventory) ?? 0 : 0,
+    stamp_sec: remoteBlocked ? asNumber(payload?.stamp_sec) ?? 0 : 0,
+    stamp_nanosec: remoteBlocked ? asNumber(payload?.stamp_nanosec) ?? 0 : 0,
+    width: remoteBlocked ? asNumber(payload?.width) ?? 0 : 0,
+    height: remoteBlocked ? asNumber(payload?.height) ?? 0 : 0,
+    step: remoteBlocked ? asNumber(payload?.step) ?? 0 : 0,
+    encoding: remoteBlocked ? asString(payload?.encoding, "") : "",
+    is_bigendian: remoteBlocked ? asBoolean(payload?.is_bigendian) : false,
+    media_basename: remoteBlocked ? asString(payload?.media_basename, "") : "",
+    media_byte_size: remoteBlocked ? asNumber(payload?.media_byte_size) ?? 0 : 0,
+    sha256: remoteBlocked ? asString(payload?.sha256, "") : "",
+    captured_at_utc: remoteBlocked ? asString(payload?.captured_at_utc, "") : "",
+    inventory_ssh_invocation_count: remoteBlocked ? asNumber(payload?.inventory_ssh_invocation_count) ?? 0 : 0,
+    single_frame_capture_invocation_count: remoteBlocked ? asNumber(payload?.single_frame_capture_invocation_count) ?? 0 : 0,
+    redaction_boundary: {
+      classification: "metadata_only_camera_keyframe",
+      raw_pixels_in_manifest: false,
+      binary_inline_in_api: false,
+      binary_logged: false,
+      absolute_path_exposed: false,
+      remote_host_exposed: false,
+      ui_metadata_only: true,
+      privacy_review_status: "not_approved_metadata_only",
+      media_access_scope: "sprint_local_artifact_only",
+    },
+    annotation_ready: false,
+    lineage_verified: false,
+    blocked_reasons: remoteBlocked ? stringList(payload?.blocked_reasons) : [reason],
+    not_proven: remoteBlocked ? stringList(payload?.not_proven) : ["live_camera_keyframe_annotation_not_proven"],
+    current_run_artifact_delta: false,
+    external_artifact_delta: false,
+    live_control_delta: false,
+    user_action_delta: false,
+    safe_to_control: false,
+    robot_control_executed: false,
+    route_execution_success: false,
+    delivery_success: false,
+    hil_pass: false,
+  };
+}
+
+function buildLiveCameraKeyframeAnnotationReady(
+  candidate: LiveCameraKeyframeAnnotationMaterialSourceResult | null,
+  taskId: string,
+): { summary: O7LiveCameraKeyframeAnnotationReadySummary; hardFailReason: string } {
+  if (!candidate) {
+    return {
+      summary: blockedLiveCameraKeyframeAnnotationReady("live_camera_keyframe_annotation_material_missing", taskId),
+      hardFailReason: "",
+    };
+  }
+  const payload = candidate.payload;
+  // hostile 副本必须使整个 detail fail-closed，不能只换成 blocked badge 后继续展示。
+  const unsafeReason = liveCameraKeyframeUnsafeReason(payload);
+  if (unsafeReason) {
+    return { summary: blockedLiveCameraKeyframeAnnotationReady(unsafeReason, taskId), hardFailReason: unsafeReason };
+  }
+  const remoteStatus = asString(payload.status, "blocked_not_proven");
+  if (remoteStatus === "blocked_not_proven") {
+    // O6 合法 blocked placeholder 是正常状态；仍需核对 task/count/false/redaction，防止借 blocked 绕过安全门。
+    const reason = stringList(payload.blocked_reasons)[0] ?? "live_camera_keyframe_annotation_material_blocked";
+    const blockedCountNames = [
+      "inventory_ssh_invocation_count", "single_frame_capture_invocation_count", "publisher_count_at_inventory",
+      "stamp_sec", "stamp_nanosec", "width", "height", "step", "media_byte_size",
+    ] as const;
+    const blockedFixedFalse = [
+      "annotation_ready", "lineage_verified", "current_run_artifact_delta", "external_artifact_delta",
+      "live_control_delta", "user_action_delta", "safe_to_control", "robot_control_executed",
+      "route_execution_success", "delivery_success", "hil_pass",
+    ] as const;
+    const redaction = asRecord(payload.redaction_boundary);
+    let blockedReason = "";
+    if (payload.schema !== O6_LIVE_CAMERA_KEYFRAME_ANNOTATION_MATERIAL_SCHEMA) {
+      blockedReason = "live_camera_keyframe_o6_schema_mismatch";
+    } else if (asString(payload.task_id, "") !== taskId) {
+      blockedReason = "live_camera_keyframe_task_mismatch";
+    } else if (blockedCountNames.some((name) => {
+      const value = asNumber(payload[name]);
+      return value === null || !Number.isInteger(value) || value < 0;
+    })) {
+      blockedReason = "live_camera_keyframe_numeric_fields_invalid";
+    } else if (blockedFixedFalse.some((name) => payload[name] !== false)) {
+      blockedReason = "live_camera_keyframe_dangerous_true";
+    } else if (!redaction || redaction.raw_pixels_in_manifest !== false || redaction.binary_inline_in_api !== false ||
+      redaction.binary_logged !== false || redaction.absolute_path_exposed !== false ||
+      redaction.remote_host_exposed !== false || redaction.ui_metadata_only !== true ||
+      redaction.media_access_scope !== "sprint_local_artifact_only") {
+      blockedReason = "live_camera_keyframe_redaction_mismatch";
+    }
+    if (blockedReason) {
+      return {
+        summary: blockedLiveCameraKeyframeAnnotationReady(blockedReason, taskId),
+        hardFailReason: blockedReason,
+      };
+    }
+    return { summary: blockedLiveCameraKeyframeAnnotationReady(reason, taskId, payload), hardFailReason: "" };
+  }
+  const blockers: string[] = [];
+  // O7 只接受 O6 投影 schema，不能直接相信 Algorithm 原 manifest 或第三方 wrapper。
+  if (asString(payload.schema, "") !== O6_LIVE_CAMERA_KEYFRAME_ANNOTATION_MATERIAL_SCHEMA) {
+    blockers.push("live_camera_keyframe_o6_schema_mismatch");
+  }
+  const payloadTaskId = asString(payload.task_id, "");
+  if (!payloadTaskId || payloadTaskId !== taskId) {
+    blockers.push("live_camera_keyframe_task_mismatch");
+  }
+  if (asString(payload.message_type, "") !== "sensor_msgs/msg/Image") {
+    blockers.push("live_camera_keyframe_message_type_mismatch");
+  }
+  const topic = asString(payload.topic, "");
+  if (!/^\/[A-Za-z0-9_/-]{1,159}$/.test(topic) || ["/cmd_vel", "/initialpose"].includes(topic)) {
+    blockers.push("live_camera_keyframe_topic_invalid");
+  }
+  const integerNames = [
+    "publisher_count_at_inventory", "stamp_sec", "stamp_nanosec", "width", "height", "step",
+    "media_byte_size", "inventory_ssh_invocation_count", "single_frame_capture_invocation_count",
+  ] as const;
+  const integers = Object.fromEntries(integerNames.map((name) => [name, asNumber(payload[name])])) as Record<(typeof integerNames)[number], number | null>;
+  // 每个数值必须是非负整数；stamp_nsec 额外限制在 ROS2 的 1e9 范围内。
+  if (integerNames.some((name) => integers[name] === null || !Number.isInteger(integers[name]))) {
+    blockers.push("live_camera_keyframe_numeric_fields_invalid");
+  }
+  if ((integers.publisher_count_at_inventory ?? -1) < 0 || (integers.stamp_sec ?? -1) < 0 ||
+      (integers.stamp_nanosec ?? -1) < 0 || (integers.stamp_nanosec ?? 1_000_000_000) >= 1_000_000_000) {
+    blockers.push("live_camera_keyframe_source_or_stamp_invalid");
+  }
+  if ((integers.width ?? 0) <= 0 || (integers.height ?? 0) <= 0 || (integers.step ?? 0) <= 0 || (integers.media_byte_size ?? 0) <= 0) {
+    blockers.push("live_camera_keyframe_dimensions_or_size_invalid");
+  }
+  const sha256 = asString(payload.sha256, "").toLowerCase();
+  const basename = asString(payload.media_basename, "");
+  const encoding = asString(payload.encoding, "");
+  if (!/^[0-9a-f]{64}$/.test(sha256)) {
+    blockers.push("live_camera_keyframe_sha256_invalid");
+  }
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,119}$/.test(basename) || basename === "." || basename === "..") {
+    blockers.push("live_camera_keyframe_media_basename_invalid");
+  }
+  if (!/^[A-Za-z0-9_]{1,32}$/.test(encoding)) {
+    blockers.push("live_camera_keyframe_encoding_invalid");
+  }
+  const capturedAtUtc = asString(payload.captured_at_utc, "");
+  if (!capturedAtUtc || !/(?:Z|[+-]\d{2}:\d{2})$/.test(capturedAtUtc) || Number.isNaN(Date.parse(capturedAtUtc))) {
+    blockers.push("live_camera_keyframe_captured_at_invalid");
+  }
+  const redaction = asRecord(payload.redaction_boundary);
+  // redaction 八个固定字段必须逐项匹配；privacy 只能是未批准语义。
+  if (!redaction || redaction.classification !== "metadata_only_camera_keyframe" ||
+      redaction.raw_pixels_in_manifest !== false || redaction.binary_inline_in_api !== false ||
+      redaction.binary_logged !== false || redaction.absolute_path_exposed !== false ||
+      redaction.remote_host_exposed !== false || redaction.ui_metadata_only !== true ||
+      redaction.media_access_scope !== "sprint_local_artifact_only" ||
+      typeof redaction.privacy_review_status !== "string" ||
+      (/approved/i.test(redaction.privacy_review_status) && !/not_approved/i.test(redaction.privacy_review_status))) {
+    blockers.push("live_camera_keyframe_redaction_mismatch");
+  }
+  const fixedFalseNames = [
+    "external_artifact_delta", "live_control_delta", "user_action_delta", "safe_to_control",
+    "robot_control_executed", "route_execution_success", "delivery_success", "hil_pass",
+  ] as const;
+  if (fixedFalseNames.some((name) => payload[name] !== false)) {
+    blockers.push("live_camera_keyframe_dangerous_true");
+  }
+  const sourceBadge = asString(payload.source_badge, "blocked");
+  const sourceProof = asString(payload.source_proof, "blocked_not_proven");
+  const annotationReady = payload.annotation_ready === true;
+  const currentDelta = payload.current_run_artifact_delta === true;
+  let sourceStateValid = false;
+  if (sourceBadge === "live" && remoteStatus === "annotation_ready_live") {
+    sourceStateValid = sourceProof === "live_single_frame_captured" && integers.inventory_ssh_invocation_count === 1 &&
+      integers.single_frame_capture_invocation_count === 1 && (integers.publisher_count_at_inventory ?? 0) >= 1 &&
+      annotationReady && currentDelta;
+  } else if (sourceBadge === "fixture" && remoteStatus === "annotation_ready_fixture_contract_only") {
+    sourceStateValid = sourceProof === "fixture_contract_only" && integers.inventory_ssh_invocation_count === 0 &&
+      integers.single_frame_capture_invocation_count === 0 && annotationReady && !currentDelta;
+  }
+  if (!sourceStateValid || payload.lineage_verified !== true) {
+    blockers.push("live_camera_keyframe_source_count_or_lineage_mismatch");
+  }
+  if (blockers.length > 0) {
+    const reason = blockers[0] ?? "live_camera_keyframe_validation_failed";
+    return { summary: blockedLiveCameraKeyframeAnnotationReady(reason, taskId), hardFailReason: reason };
+  }
+  return {
+    summary: {
+      schema: O7_LIVE_CAMERA_KEYFRAME_ANNOTATION_READY_SCHEMA,
+      source_schema: O6_LIVE_CAMERA_KEYFRAME_ANNOTATION_MATERIAL_SCHEMA,
+      status: remoteStatus as "annotation_ready_live" | "annotation_ready_fixture_contract_only",
+      source_badge: sourceBadge as "live" | "fixture",
+      source_mode: asString(payload.source_mode, sourceBadge),
+      source_proof: sourceProof,
+      proof_scope: LIVE_CAMERA_KEYFRAME_ANNOTATION_PROOF_SCOPE,
+      task_id: payloadTaskId,
+      topic,
+      message_type: "sensor_msgs/msg/Image",
+      publisher_count_at_inventory: integers.publisher_count_at_inventory ?? 0,
+      stamp_sec: integers.stamp_sec ?? 0,
+      stamp_nanosec: integers.stamp_nanosec ?? 0,
+      width: integers.width ?? 0,
+      height: integers.height ?? 0,
+      step: integers.step ?? 0,
+      encoding,
+      is_bigendian: asBoolean(payload.is_bigendian),
+      media_basename: basename,
+      media_byte_size: integers.media_byte_size ?? 0,
+      sha256,
+      captured_at_utc: capturedAtUtc,
+      inventory_ssh_invocation_count: integers.inventory_ssh_invocation_count ?? 0,
+      single_frame_capture_invocation_count: integers.single_frame_capture_invocation_count ?? 0,
+      redaction_boundary: {
+        classification: "metadata_only_camera_keyframe",
+        raw_pixels_in_manifest: false,
+        binary_inline_in_api: false,
+        binary_logged: false,
+        absolute_path_exposed: false,
+        remote_host_exposed: false,
+        ui_metadata_only: true,
+        privacy_review_status: asString(redaction?.privacy_review_status, "not_approved_metadata_only"),
+        media_access_scope: "sprint_local_artifact_only",
+      },
+      annotation_ready: true,
+      lineage_verified: true,
+      blocked_reasons: stringList(payload.blocked_reasons),
+      not_proven: stringList(payload.not_proven),
+      current_run_artifact_delta: currentDelta,
+      external_artifact_delta: false,
+      live_control_delta: false,
+      user_action_delta: false,
+      safe_to_control: false,
+      robot_control_executed: false,
+      route_execution_success: false,
+      delivery_success: false,
+      hil_pass: false,
+    },
+    hardFailReason: "",
   };
 }
 
@@ -17212,6 +17726,13 @@ export async function buildO7ConsumerTaskDetail(
       trimmedTaskId,
     );
   }
+  const liveCameraCandidate = liveCameraKeyframeAnnotationMaterialCandidateFromRemote(remote);
+  const liveCameraValidation = buildLiveCameraKeyframeAnnotationReady(liveCameraCandidate, trimmedTaskId);
+  if (liveCameraValidation.hardFailReason) {
+    // O6 section 只要出现 lineage/二进制/路径异常，整个 O7 detail 都 fail-closed。
+    return failClosedDetail(liveCameraValidation.hardFailReason, normalized.normalized, trimmedTaskId);
+  }
+  const liveCameraKeyframeAnnotationReady = liveCameraValidation.summary;
   const currentFieldEvidenceMaterialCandidate = currentFieldEvidenceMaterialCandidateFromRemote(remote);
   const currentFieldEvidenceMaterial = buildCurrentFieldEvidenceMaterialSummary(
     currentFieldEvidenceMaterialCandidate,
@@ -17447,6 +17968,7 @@ export async function buildO7ConsumerTaskDetail(
     same_task_replay_packet_readback: sameTaskReplayPacketReadback,
     bounded_route_execution_gate_material: boundedRouteGateMaterial,
     bounded_route_terminal_result_material: boundedRouteTerminalResultMaterial,
+    live_camera_keyframe_annotation_ready: liveCameraKeyframeAnnotationReady,
     current_field_evidence_material: currentFieldEvidenceMaterial,
     pc_live_nav2_execution_material: pcLiveNav2ExecutionMaterial,
     localization_path_material_readback: localizationPathMaterialReadback,

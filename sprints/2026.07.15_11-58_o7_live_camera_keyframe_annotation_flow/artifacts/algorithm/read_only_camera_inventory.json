@@ -1,0 +1,37 @@
+{
+  "blocked_reasons": [
+    "inventory_ssh_or_payload_failed"
+  ],
+  "candidate_count": 0,
+  "current_run_artifact_delta": false,
+  "daemon_process_count_post": 0,
+  "daemon_process_count_pre": 0,
+  "daemon_process_drift": false,
+  "delivery_success": false,
+  "external_artifact_delta": false,
+  "hil_pass": false,
+  "inventory_ssh_invocation_count": 1,
+  "live_control_delta": false,
+  "message_type": "sensor_msgs/msg/Image",
+  "not_proven": [
+    "camera_device_identity",
+    "camera_resolution",
+    "visible_content",
+    "privacy_approved"
+  ],
+  "publisher_count_at_inventory": 0,
+  "robot_control_executed": false,
+  "ros2cli_no_daemon": true,
+  "route_execution_success": false,
+  "runtime_started_or_stopped": false,
+  "safe_to_control": false,
+  "schema": "trashbot.o7.read_only_camera_inventory.v1",
+  "single_frame_capture_invocation_count": 0,
+  "source_mode": "live_ros_graph_read_only_inventory",
+  "source_proof": "live_read_only_inventory",
+  "status": "blocked_fail_closed",
+  "task_id": "task_o7_live_camera_keyframe_annotation_20260715_1158",
+  "topic": "",
+  "topic_written": false,
+  "user_action_delta": false
+}

@@ -182,3 +182,19 @@ UI 同时展示 `safe_command_inspector` 的 command session、sample commands�
 ## O7 Impact
 
 本接口推动 O7 的方式是建立统一数据源雏形：KR3 可以消费 trajectory/events，KR4 可以消费 labels，KR5 可以消费 voice，KR6 可以消费 selected task 级 command envelope 和 ACK 缺口检查视图。cloud relay HTTP fixture-backed 只读 contract 只证明 endpoint shape 可由 relay runtime 从显式本地 fixture 暴露；它仍是 software proof，不提升真实 O7 完成度，不证明真实生产云 archive、RTC/视频、真实标注提交、真实 ASR/TTS runtime、真实手控/寻路、机器人 ACK 或硬件 HIL。
+
+## Consumer Detail：Live Camera Keyframe Annotation Ready（2026-07-15）
+
+PC adapter 继续使用既有 O6 consumer detail，并在默认 `include` 中加入
+`live_camera_keyframe_annotation_material`。安全投影字段为
+`live_camera_keyframe_annotation_ready`，schema 是
+`trashbot.pc_tools_workstation.o7_live_camera_keyframe_annotation_ready.v1`；没有新增 O7 endpoint 或 wrapper。
+
+O7 只接受 O6 schema，并复核 `task_id`、hash、topic、stamp、dimensions、encoding、source/count、
+redaction、四 delta 与控制/路线/送达/HIL false 字段。合法 O6 blocked section 保留同 task/source/count 与 blocker，
+显示 `BLOCKED`；fixture 显示 `FIXTURE`；只有完整 live lineage 才显示 `LIVE`。绝对路径、URL/query、
+base64/data URL、raw pixel 数组、坏 hash/stamp、task/source-count mismatch 或危险 true 会使 consumer detail fail closed。
+
+本轮 Algorithm 只读 inventory 结果是 `source_proof=live_inventory_blocked`、inventory/capture `1/0`，
+没有 keyframe，因此 O7 必须显示 `annotation_ready=false`、`current_run_artifact_delta=false`。
+它不读取 `media_basename` 所指文件、不拼接路径、不展示像素、不 fetch URL/OSS，也没有 submit/export/control action。

@@ -3216,6 +3216,60 @@ function sampleBoundedRouteTerminalResultMaterial(
   };
 }
 
+function sampleLiveCameraKeyframeAnnotationMaterial(taskId = "task-consumer-camera-001") {
+  // fixture 合同明确保持 0/0 invocation 与四 delta=false，不能获得 live badge。
+  return {
+    schema: "trashbot.o6.live_camera_keyframe_annotation_material.v1",
+    source_schema: "trashbot.o7.live_camera_keyframe_manifest.v1",
+    status: "annotation_ready_fixture_contract_only",
+    source_badge: "fixture",
+    source_mode: "fixture",
+    source_proof: "fixture_contract_only",
+    proof_scope: "software_contract_live_camera_keyframe_annotation_material_only",
+    task_id: taskId,
+    topic: "/camera/image_raw",
+    message_type: "sensor_msgs/msg/Image",
+    publisher_count_at_inventory: 1,
+    stamp_sec: 1784091091,
+    stamp_nanosec: 123456789,
+    width: 640,
+    height: 480,
+    step: 1920,
+    encoding: "rgb8",
+    is_bigendian: false,
+    media_basename: "fixture-camera-keyframe.png",
+    media_byte_size: 4096,
+    sha256: "9f".repeat(32),
+    captured_at_utc: "2026-07-15T04:11:31Z",
+    inventory_ssh_invocation_count: 0,
+    single_frame_capture_invocation_count: 0,
+    redaction_boundary: {
+      classification: "metadata_only_camera_keyframe",
+      raw_pixels_in_manifest: false,
+      binary_inline_in_api: false,
+      binary_logged: false,
+      absolute_path_exposed: false,
+      remote_host_exposed: false,
+      ui_metadata_only: true,
+      privacy_review_status: "not_approved_metadata_only",
+      media_access_scope: "sprint_local_artifact_only",
+    },
+    annotation_ready: true,
+    lineage_verified: true,
+    blocked_reasons: [],
+    not_proven: ["live_camera_keyframe_not_captured", "privacy_review_not_approved"],
+    current_run_artifact_delta: false,
+    external_artifact_delta: false,
+    live_control_delta: false,
+    user_action_delta: false,
+    safe_to_control: false,
+    robot_control_executed: false,
+    route_execution_success: false,
+    delivery_success: false,
+    hil_pass: false,
+  };
+}
+
 function sampleBoundedRouteTerminalResultFieldEvidenceArchive(
   taskId = "task_o3_28_pose_fixed_route_consumer_20260713_0402",
   robotId = "robot_fixture",
@@ -6098,7 +6152,7 @@ describe("workstation fail-closed API contracts", () => {
 
       expect(detail.schema).toBe("trashbot.pc_tools_workstation.o7_consumer_task_detail.v1");
       expect(detail.remote_endpoint).toBe(
-        "/api/o6/consumer/tasks/task-consumer-001?view=default&include=trajectory,events,evidence,field_evidence,labeling,inference,tunnel,artifact_access_probe,offline_artifact_seed_smoke,route_root_seed_gate,route_bag_evidence,route_bag_payload_replay,route_bag_semantic_replay,route_bag_full_semantic_decode_matrix,route_bag_pose_progress_replay,nav2_goal_execution_evidence,delivery_result_evidence,route_execution_result_delivery_readiness,route_delivery_closure_packet,same_task_field_material_packet,same_task_replay_packet_readback,bounded_route_execution_gate_material,bounded_route_terminal_result_material,current_field_evidence_material,pc_live_nav2_execution_material,clean_baseline_nav2_path_material,localization_path_material_readback,same_task_route_execution_material_packet,same_task_mission_evidence_gate,field_operator_confirmation_material,phone_browser_terminal_material",
+        "/api/o6/consumer/tasks/task-consumer-001?view=default&include=trajectory,events,evidence,field_evidence,labeling,inference,tunnel,artifact_access_probe,offline_artifact_seed_smoke,route_root_seed_gate,route_bag_evidence,route_bag_payload_replay,route_bag_semantic_replay,route_bag_full_semantic_decode_matrix,route_bag_pose_progress_replay,nav2_goal_execution_evidence,delivery_result_evidence,route_execution_result_delivery_readiness,route_delivery_closure_packet,same_task_field_material_packet,same_task_replay_packet_readback,bounded_route_execution_gate_material,bounded_route_terminal_result_material,live_camera_keyframe_annotation_material,current_field_evidence_material,pc_live_nav2_execution_material,clean_baseline_nav2_path_material,localization_path_material_readback,same_task_route_execution_material_packet,same_task_mission_evidence_gate,field_operator_confirmation_material,phone_browser_terminal_material",
       );
       expect(detail.query_strategy.include).toEqual([
         "trajectory",
@@ -6124,6 +6178,7 @@ describe("workstation fail-closed API contracts", () => {
         "same_task_replay_packet_readback",
         "bounded_route_execution_gate_material",
         "bounded_route_terminal_result_material",
+        "live_camera_keyframe_annotation_material",
         "current_field_evidence_material",
         "pc_live_nav2_execution_material",
         "clean_baseline_nav2_path_material",
@@ -7035,7 +7090,7 @@ describe("workstation fail-closed API contracts", () => {
     try {
       const detail = await buildO7ConsumerTaskDetail(server.baseUrl, exactTaskId);
 
-      expect(detail.detail_status).toBe("loaded_fail_closed_summary");
+      expect(detail.detail_status, detail.fail_closed_reason).toBe("loaded_fail_closed_summary");
       expect(detail.same_task_replay_packet_readback).toMatchObject({
         schema: "trashbot.pc_tools_workstation.o7_same_task_replay_packet_readback.v1",
         status: "same_task_replay_packet_ready_not_route_execution_proof",
@@ -9746,6 +9801,7 @@ describe("workstation fail-closed API contracts", () => {
         "same_task_replay_packet_readback",
         "bounded_route_execution_gate_material",
         "bounded_route_terminal_result_material",
+        "live_camera_keyframe_annotation_material",
         "current_field_evidence_material",
         "pc_live_nav2_execution_material",
         "clean_baseline_nav2_path_material",
@@ -28471,6 +28527,136 @@ describe("workstation fail-closed API contracts", () => {
       expect(dangerous.primary_actions_enabled).toBe(false);
     } finally {
       await dangerousServer.close();
+    }
+  });
+
+  it("consumes live camera keyframe metadata with fixture badge and fails closed on hostile lineage", async () => {
+    const taskId = "task-consumer-camera-001";
+    const baseResponse = {
+      schema: "trashbot.o6.consumer_read.v1",
+      task_summary: { task_id: taskId, robot_id: "robot-fixture", task_status_summary: "completed_mock" },
+      field_evidence: sampleConsumerFieldEvidenceSummary("camera-consumer-field-evidence.json"),
+      live_camera_keyframe_annotation_material: sampleLiveCameraKeyframeAnnotationMaterial(taskId),
+      blocked_reasons: [],
+      not_proven: ["live_camera_keyframe_not_captured"],
+      safe_to_control: false,
+      delivery_success: false,
+      primary_actions_enabled: false,
+      connects_cloud_production: false,
+      robot_control_executed: false,
+      route_execution_success: false,
+      hil_pass: false,
+    };
+    const server = await listenConsumerRead(
+      { schema: "trashbot.o6.consumer_read.v1", task_list: { tasks: [] }, blocked_reasons: [], not_proven: [] },
+      baseResponse,
+    );
+    try {
+      const detail = await buildO7ConsumerTaskDetail(server.baseUrl, taskId);
+      const camera = detail.live_camera_keyframe_annotation_ready;
+      expect(detail.detail_status, detail.fail_closed_reason).toBe("loaded_fail_closed_summary");
+      expect(detail.query_strategy.include).toContain("live_camera_keyframe_annotation_material");
+      expect(camera.schema).toBe("trashbot.pc_tools_workstation.o7_live_camera_keyframe_annotation_ready.v1");
+      expect(camera.source_schema).toBe("trashbot.o6.live_camera_keyframe_annotation_material.v1");
+      expect(camera.status).toBe("annotation_ready_fixture_contract_only");
+      expect(camera.source_badge).toBe("fixture");
+      expect(camera.task_id).toBe(taskId);
+      expect(camera.sha256).toBe("9f".repeat(32));
+      expect(camera.topic).toBe("/camera/image_raw");
+      expect([camera.stamp_sec, camera.stamp_nanosec]).toEqual([1784091091, 123456789]);
+      expect([camera.width, camera.height, camera.encoding]).toEqual([640, 480, "rgb8"]);
+      expect(camera.annotation_ready).toBe(true);
+      expect(camera.lineage_verified).toBe(true);
+      expect(camera.current_run_artifact_delta).toBe(false);
+      expect(camera.external_artifact_delta).toBe(false);
+      expect(camera.live_control_delta).toBe(false);
+      expect(camera.user_action_delta).toBe(false);
+      expect(camera.safe_to_control).toBe(false);
+      expect(camera.robot_control_executed).toBe(false);
+      expect(camera.route_execution_success).toBe(false);
+      expect(camera.delivery_success).toBe(false);
+      expect(camera.hil_pass).toBe(false);
+    } finally {
+      await server.close();
+    }
+
+    // Algorithm 本轮 live inventory blocked(1/0) 必须保留来源 metadata，同时保持 blocked badge 与全部 false。
+    const blockedTaskId = "task_o7_live_camera_keyframe_annotation_20260715_1158";
+    const blockedMaterial = {
+      ...sampleLiveCameraKeyframeAnnotationMaterial(blockedTaskId),
+      status: "blocked_not_proven",
+      source_badge: "blocked",
+      source_mode: "live_ros_graph_single_frame",
+      source_proof: "live_inventory_blocked",
+      topic: "",
+      publisher_count_at_inventory: 0,
+      stamp_sec: 0,
+      stamp_nanosec: 0,
+      width: 0,
+      height: 0,
+      step: 0,
+      encoding: "",
+      media_basename: "",
+      media_byte_size: 0,
+      sha256: "",
+      captured_at_utc: "",
+      inventory_ssh_invocation_count: 1,
+      single_frame_capture_invocation_count: 0,
+      annotation_ready: false,
+      lineage_verified: false,
+      blocked_reasons: ["inventory_ssh_or_payload_failed"],
+      not_proven: ["live_single_frame_captured", "privacy_approved"],
+    };
+    const blockedServer = await listenConsumerRead(
+      { schema: "trashbot.o6.consumer_read.v1", task_list: { tasks: [] }, blocked_reasons: [], not_proven: [] },
+      { ...baseResponse, task_summary: { ...baseResponse.task_summary, task_id: blockedTaskId }, live_camera_keyframe_annotation_material: blockedMaterial },
+    );
+    try {
+      const detail = await buildO7ConsumerTaskDetail(blockedServer.baseUrl, blockedTaskId);
+      const camera = detail.live_camera_keyframe_annotation_ready;
+      expect(detail.detail_status).toBe("loaded_fail_closed_summary");
+      expect(camera.source_badge).toBe("blocked");
+      expect(camera.source_schema).toBe("trashbot.o6.live_camera_keyframe_annotation_material.v1");
+      expect(camera.source_proof).toBe("live_inventory_blocked");
+      expect(camera.task_id).toBe(blockedTaskId);
+      expect(camera.inventory_ssh_invocation_count).toBe(1);
+      expect(camera.single_frame_capture_invocation_count).toBe(0);
+      expect(camera.blocked_reasons).toContain("inventory_ssh_or_payload_failed");
+      expect(camera.annotation_ready).toBe(false);
+      expect(camera.current_run_artifact_delta).toBe(false);
+      expect(camera.safe_to_control).toBe(false);
+    } finally {
+      await blockedServer.close();
+    }
+
+    const hostileMutations: Array<[string, (material: Record<string, unknown>) => void, string]> = [
+      ["absolute_path", (material) => { material.media_path = "/tmp/private/frame.png"; }, "live_camera_keyframe_unsafe_reference"],
+      ["url_query", (material) => { material.url = "https://example.test/frame.png?token=secret"; }, "live_camera_keyframe_unsafe_reference"],
+      ["data_url", (material) => { material.data = "data:image/png;base64,AAAA"; }, "live_camera_keyframe_binary_inline_forbidden"],
+      ["raw_pixels", (material) => { material.pixels = [0, 1, 2, 3]; }, "live_camera_keyframe_binary_inline_forbidden"],
+      ["hash", (material) => { material.sha256 = "bad"; }, "live_camera_keyframe_sha256_invalid"],
+      ["stamp", (material) => { material.stamp_nanosec = 1_000_000_000; }, "live_camera_keyframe_source_or_stamp_invalid"],
+      ["task", (material) => { material.task_id = "other-task"; }, "live_camera_keyframe_task_mismatch"],
+      ["source_count", (material) => { material.single_frame_capture_invocation_count = 1; }, "live_camera_keyframe_source_count_or_lineage_mismatch"],
+      ["dangerous_true", (material) => { material.delivery_success = true; }, "dangerous_true_fields"],
+    ];
+    for (const [, mutate, expectedReason] of hostileMutations) {
+      const material = structuredClone(sampleLiveCameraKeyframeAnnotationMaterial(taskId)) as Record<string, unknown>;
+      mutate(material);
+      const hostileServer = await listenConsumerRead(
+        { schema: "trashbot.o6.consumer_read.v1", task_list: { tasks: [] }, blocked_reasons: [], not_proven: [] },
+        { ...baseResponse, live_camera_keyframe_annotation_material: material },
+      );
+      try {
+        const detail = await buildO7ConsumerTaskDetail(hostileServer.baseUrl, taskId);
+        expect(detail.detail_status).toBe("fail_closed");
+        expect(detail.fail_closed_reason).toContain(expectedReason);
+        expect(detail.live_camera_keyframe_annotation_ready.source_badge).toBe("blocked");
+        expect(detail.live_camera_keyframe_annotation_ready.annotation_ready).toBe(false);
+        expect(detail.live_camera_keyframe_annotation_ready.safe_to_control).toBe(false);
+      } finally {
+        await hostileServer.close();
+      }
     }
   });
 });

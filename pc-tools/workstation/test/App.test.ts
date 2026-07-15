@@ -521,6 +521,60 @@ function sampleCurrentFieldEvidenceMaterialFixture(
   };
 }
 
+function sampleLiveCameraKeyframeAnnotationReadyFixture(taskId: string) {
+  // UI fixture 是 O7 已校验的 metadata-only 结果；fixture badge 与四 delta=false 必须同时出现。
+  return {
+    schema: "trashbot.pc_tools_workstation.o7_live_camera_keyframe_annotation_ready.v1",
+    source_schema: "trashbot.o6.live_camera_keyframe_annotation_material.v1",
+    status: "annotation_ready_fixture_contract_only",
+    source_badge: "fixture",
+    source_mode: "fixture",
+    source_proof: "fixture_contract_only",
+    proof_scope: "software_contract_live_camera_keyframe_annotation_material_only",
+    task_id: taskId,
+    topic: "/camera/image_raw",
+    message_type: "sensor_msgs/msg/Image",
+    publisher_count_at_inventory: 1,
+    stamp_sec: 1784091091,
+    stamp_nanosec: 123456789,
+    width: 640,
+    height: 480,
+    step: 1920,
+    encoding: "rgb8",
+    is_bigendian: false,
+    media_basename: "fixture-camera-keyframe.png",
+    media_byte_size: 4096,
+    sha256: "9f".repeat(32),
+    captured_at_utc: "2026-07-15T04:11:31Z",
+    inventory_ssh_invocation_count: 0,
+    single_frame_capture_invocation_count: 0,
+    redaction_boundary: {
+      classification: "metadata_only_camera_keyframe",
+      raw_pixels_in_manifest: false,
+      binary_inline_in_api: false,
+      binary_logged: false,
+      absolute_path_exposed: false,
+      remote_host_exposed: false,
+      ui_metadata_only: true,
+      privacy_review_status: "not_approved_metadata_only",
+      media_access_scope: "sprint_local_artifact_only",
+    },
+    annotation_ready: true,
+    lineage_verified: true,
+    blocked_reasons: [],
+    not_proven: ["live_camera_keyframe_not_captured", "privacy_review_not_approved"],
+    current_run_artifact_delta: false,
+    external_artifact_delta: false,
+    live_control_delta: false,
+    user_action_delta: false,
+    safe_to_control: false,
+    robot_control_executed: false,
+    route_execution_success: false,
+    delivery_success: false,
+    hil_pass: false,
+  };
+}
+
 function samplePcLiveNav2ExecutionMaterialFixture(
   taskId: string,
   sourceOrigin = "remote_pc_live_nav2_execution_material",
@@ -6911,7 +6965,7 @@ const fixtures: Record<string, unknown> = {
         detail_status: "loaded_fail_closed_summary",
         source_base_url: "http://127.0.0.1:8088",
         remote_endpoint:
-          "/api/o6/consumer/tasks/task-consumer-001?view=default&include=trajectory,events,evidence,field_evidence,labeling,inference,tunnel,artifact_access_probe,offline_artifact_seed_smoke,route_root_seed_gate,route_bag_evidence,route_bag_payload_replay,nav2_goal_execution_evidence,delivery_result_evidence,route_execution_result_delivery_readiness,route_delivery_closure_packet,same_task_field_material_packet,same_task_replay_packet_readback,bounded_route_execution_gate_material,bounded_route_terminal_result_material,current_field_evidence_material,pc_live_nav2_execution_material,clean_baseline_nav2_path_material,localization_path_material_readback,same_task_route_execution_material_packet,same_task_mission_evidence_gate,field_operator_confirmation_material,phone_browser_terminal_material",
+          "/api/o6/consumer/tasks/task-consumer-001?view=default&include=trajectory,events,evidence,field_evidence,labeling,inference,tunnel,artifact_access_probe,offline_artifact_seed_smoke,route_root_seed_gate,route_bag_evidence,route_bag_payload_replay,nav2_goal_execution_evidence,delivery_result_evidence,route_execution_result_delivery_readiness,route_delivery_closure_packet,same_task_field_material_packet,same_task_replay_packet_readback,bounded_route_execution_gate_material,bounded_route_terminal_result_material,live_camera_keyframe_annotation_material,current_field_evidence_material,pc_live_nav2_execution_material,clean_baseline_nav2_path_material,localization_path_material_readback,same_task_route_execution_material_packet,same_task_mission_evidence_gate,field_operator_confirmation_material,phone_browser_terminal_material",
         remote_schema: "trashbot.o6.consumer_read.v1",
         requested_task_id: "task-consumer-001",
         query_strategy: {
@@ -7221,6 +7275,7 @@ const fixtures: Record<string, unknown> = {
     route_delivery_closure_packet: sampleRouteDeliveryClosurePacketFixture("task-consumer-001"),
     same_task_field_material_packet: sampleSameTaskFieldMaterialPacketFixture("task-consumer-001"),
     current_field_evidence_material: sampleCurrentFieldEvidenceMaterialFixture("task-consumer-001"),
+    live_camera_keyframe_annotation_ready: sampleLiveCameraKeyframeAnnotationReadyFixture("task-consumer-001"),
     pc_live_nav2_execution_material: samplePcLiveNav2ExecutionMaterialFixture("task-consumer-001"),
     clean_baseline_nav2_path_material: sampleCleanBaselineNav2PathMaterialFixture("task-consumer-001"),
     localization_path_material_readback: sampleLocalizationPathMaterialReadbackFixture("task-consumer-001"),
@@ -8379,7 +8434,7 @@ const fixtures: Record<string, unknown> = {
     export_status: "local_mock_mission_evidence_bundle_ready",
     source_base_url: "http://127.0.0.1:8088",
     remote_endpoint:
-      "/api/o6/consumer/tasks/task-consumer-001?view=default&include=trajectory,events,evidence,field_evidence,labeling,inference,tunnel,artifact_access_probe,offline_artifact_seed_smoke,route_root_seed_gate,route_bag_evidence,route_bag_payload_replay,route_bag_semantic_replay,route_bag_full_semantic_decode_matrix,route_bag_pose_progress_replay,nav2_goal_execution_evidence,delivery_result_evidence,route_execution_result_delivery_readiness,route_delivery_closure_packet,same_task_field_material_packet,same_task_replay_packet_readback,bounded_route_execution_gate_material,bounded_route_terminal_result_material,current_field_evidence_material,pc_live_nav2_execution_material,clean_baseline_nav2_path_material,localization_path_material_readback,same_task_route_execution_material_packet,same_task_mission_evidence_gate,field_operator_confirmation_material,phone_browser_terminal_material",
+      "/api/o6/consumer/tasks/task-consumer-001?view=default&include=trajectory,events,evidence,field_evidence,labeling,inference,tunnel,artifact_access_probe,offline_artifact_seed_smoke,route_root_seed_gate,route_bag_evidence,route_bag_payload_replay,route_bag_semantic_replay,route_bag_full_semantic_decode_matrix,route_bag_pose_progress_replay,nav2_goal_execution_evidence,delivery_result_evidence,route_execution_result_delivery_readiness,route_delivery_closure_packet,same_task_field_material_packet,same_task_replay_packet_readback,bounded_route_execution_gate_material,bounded_route_terminal_result_material,live_camera_keyframe_annotation_material,current_field_evidence_material,pc_live_nav2_execution_material,clean_baseline_nav2_path_material,localization_path_material_readback,same_task_route_execution_material_packet,same_task_mission_evidence_gate,field_operator_confirmation_material,phone_browser_terminal_material",
     remote_schema: "trashbot.o6.consumer_read.v1",
     requested_task_id: "task-consumer-001",
     o6_http_status: 200,
@@ -36581,6 +36636,21 @@ describe("App", () => {
     expect(wrapper.text()).toContain("Bundle source");
     expect(wrapper.text()).toContain("Bundle blockers");
     expect(wrapper.text()).toContain("Bundle next evidence");
+    expect(wrapper.text()).toContain("Live camera keyframe annotation-ready metadata");
+    expect(wrapper.text()).toContain("FIXTURE · annotation_ready_fixture_contract_only");
+    expect(wrapper.text()).toContain("trashbot.pc_tools_workstation.o7_live_camera_keyframe_annotation_ready.v1");
+    expect(wrapper.text()).toContain("trashbot.o6.live_camera_keyframe_annotation_material.v1");
+    expect(wrapper.text()).toContain("task_id=task-consumer-001");
+    expect(wrapper.text()).toContain(`sha256=${"9f".repeat(32)}`);
+    expect(wrapper.text()).toContain("topic=/camera/image_raw");
+    expect(wrapper.text()).toContain("stamp=1784091091.123456789");
+    expect(wrapper.text()).toContain("dimensions=640x480 · step=1920 · encoding=rgb8");
+    expect(wrapper.text()).toContain("current_run_artifact_delta=false");
+    expect(wrapper.text()).toContain("external_artifact_delta=false");
+    expect(wrapper.text()).toContain("live_control_delta=false");
+    expect(wrapper.text()).toContain("user_action_delta=false");
+    expect(wrapper.text()).toContain("ui_metadata_only=true");
+    expect(wrapper.text()).toContain("media_access_scope=sprint_local_artifact_only");
     expect(wrapper.text()).toContain("Offline artifact seed smoke");
     expect(wrapper.text()).toContain("offline_artifact_seed_smoke");
     expect(wrapper.text()).toContain("local_mock_offline_artifact_seed_smoke_ready");
@@ -37366,7 +37436,7 @@ describe("App", () => {
         detail_status: "loaded_fail_closed_summary",
         source_base_url: "http://127.0.0.1:8088",
         remote_endpoint:
-          "/api/o6/consumer/tasks/task-consumer-summary-001?view=default&include=trajectory,events,evidence,field_evidence,labeling,inference,tunnel,artifact_access_probe,offline_artifact_seed_smoke,route_root_seed_gate,route_bag_evidence,route_bag_payload_replay,route_bag_semantic_replay,route_bag_full_semantic_decode_matrix,route_bag_pose_progress_replay,nav2_goal_execution_evidence,delivery_result_evidence,route_execution_result_delivery_readiness,route_delivery_closure_packet,same_task_field_material_packet,same_task_replay_packet_readback,bounded_route_execution_gate_material,bounded_route_terminal_result_material,current_field_evidence_material,pc_live_nav2_execution_material,clean_baseline_nav2_path_material,localization_path_material_readback,same_task_route_execution_material_packet,same_task_mission_evidence_gate,field_operator_confirmation_material,phone_browser_terminal_material",
+          "/api/o6/consumer/tasks/task-consumer-summary-001?view=default&include=trajectory,events,evidence,field_evidence,labeling,inference,tunnel,artifact_access_probe,offline_artifact_seed_smoke,route_root_seed_gate,route_bag_evidence,route_bag_payload_replay,route_bag_semantic_replay,route_bag_full_semantic_decode_matrix,route_bag_pose_progress_replay,nav2_goal_execution_evidence,delivery_result_evidence,route_execution_result_delivery_readiness,route_delivery_closure_packet,same_task_field_material_packet,same_task_replay_packet_readback,bounded_route_execution_gate_material,bounded_route_terminal_result_material,live_camera_keyframe_annotation_material,current_field_evidence_material,pc_live_nav2_execution_material,clean_baseline_nav2_path_material,localization_path_material_readback,same_task_route_execution_material_packet,same_task_mission_evidence_gate,field_operator_confirmation_material,phone_browser_terminal_material",
         remote_schema: "trashbot.o6.consumer_read.v1",
         requested_task_id: "task-consumer-summary-001",
         query_strategy: {
@@ -38508,7 +38578,7 @@ describe("App", () => {
         detail_status: "loaded_fail_closed_summary",
         source_base_url: "http://127.0.0.1:8088",
           remote_endpoint:
-          "/api/o6/consumer/tasks/task-consumer-labeling-blocked?view=default&include=trajectory,events,evidence,field_evidence,labeling,inference,tunnel,artifact_access_probe,offline_artifact_seed_smoke,route_root_seed_gate,route_bag_evidence,route_bag_payload_replay,route_bag_semantic_replay,route_bag_full_semantic_decode_matrix,route_bag_pose_progress_replay,nav2_goal_execution_evidence,delivery_result_evidence,route_execution_result_delivery_readiness,route_delivery_closure_packet,same_task_field_material_packet,same_task_replay_packet_readback,bounded_route_execution_gate_material,bounded_route_terminal_result_material,current_field_evidence_material,pc_live_nav2_execution_material,clean_baseline_nav2_path_material,localization_path_material_readback,same_task_route_execution_material_packet,same_task_mission_evidence_gate,field_operator_confirmation_material,phone_browser_terminal_material",
+          "/api/o6/consumer/tasks/task-consumer-labeling-blocked?view=default&include=trajectory,events,evidence,field_evidence,labeling,inference,tunnel,artifact_access_probe,offline_artifact_seed_smoke,route_root_seed_gate,route_bag_evidence,route_bag_payload_replay,route_bag_semantic_replay,route_bag_full_semantic_decode_matrix,route_bag_pose_progress_replay,nav2_goal_execution_evidence,delivery_result_evidence,route_execution_result_delivery_readiness,route_delivery_closure_packet,same_task_field_material_packet,same_task_replay_packet_readback,bounded_route_execution_gate_material,bounded_route_terminal_result_material,live_camera_keyframe_annotation_material,current_field_evidence_material,pc_live_nav2_execution_material,clean_baseline_nav2_path_material,localization_path_material_readback,same_task_route_execution_material_packet,same_task_mission_evidence_gate,field_operator_confirmation_material,phone_browser_terminal_material",
         remote_schema: "trashbot.o6.consumer_read.v1",
         requested_task_id: "task-consumer-labeling-blocked",
         query_strategy: {

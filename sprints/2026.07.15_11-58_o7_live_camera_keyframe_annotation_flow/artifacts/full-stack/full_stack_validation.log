@@ -1,0 +1,51 @@
+run_at=2026-07-15 12:51:11 CST
+owner=full-stack-software-engineer
+scope=o6_o7_live_camera_keyframe_annotation_metadata_only
+
+algorithm_manifest_status=blocked_fail_closed
+algorithm_source_proof=live_inventory_blocked
+algorithm_inventory_ssh_invocation_count=1
+algorithm_single_frame_capture_invocation_count=0
+algorithm_keyframe_generated=false
+o6_status=blocked_not_proven
+o7_status=blocked_not_proven
+annotation_ready=false
+current_run_artifact_delta=false
+external_artifact_delta=false
+live_control_delta=false
+user_action_delta=false
+safe_to_control=false
+robot_control_executed=false
+route_execution_success=false
+delivery_success=false
+hil_pass=false
+
+python_py_compile=PASS exit=0
+python_targeted_camera_test=PASS tests=1 exit=0
+python_full_remote_cloud_relay=PASS tests=202 duration_s=91.473 exit=0
+workstation_targeted_camera_test=PASS tests=1 skipped=256 exit=0
+workstation_full_test=PASS files=4 tests=530 exit=0
+workstation_build=PASS exit=0 warning=existing_vite_chunk_over_500kb
+workstation_lint=PASS exit=0
+json_tool=PASS files=4
+algorithm_manifest_to_o6_exact_readback=PASS status=blocked_not_proven counts=1/0
+artifact_forbidden_binary_path_url_scan=PASS
+required_rg=PASS
+scoped_git_diff_check=PASS
+python_added_chinese_comment_ratio=20.4748% comments=138 nonblank_added=674
+ts_vue_added_chinese_comment_ratio=20.4372% comments=187 nonblank_added=915
+
+failure_1=initial targeted unittest used wrong class name and failed before loading the test
+fix_1=used canonical RemoteCloudRelayHttpTest dotted path
+failure_2=hostile scanner initially treated the ROS topic as an absolute path
+fix_2=allowed slash-prefixed strings only for a validated topic field
+failure_3=stored O6 section was blocked during its second sanitization pass
+fix_3=allowed the frozen O6 schema only for store reload while preserving every field gate
+failure_4=TypeScript build rejected direct blockers[0] access under noUncheckedIndexedAccess
+fix_4=added a safe fallback reason and rebuilt successfully
+failure_5=catalog test used the realtime snapshot mock helper and received a 404 consumer schema mismatch
+fix_5=used the existing O6 consumer list/detail mock helper; targeted and full tests passed
+failure_6=full workstation tests refreshed two historical DOM smoke timestamps outside this owner scope
+fix_6=restored both timestamps exactly to their pre-test tracked values and verified final git status has no diff for them
+
+remaining_risk=No live keyframe exists because the single allowed inventory was blocked; no hash, dimensions, visible-content, privacy approval, production annotation, production cloud or OSS, route, delivery, HIL, or safe-to-control proof exists.

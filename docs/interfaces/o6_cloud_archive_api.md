@@ -1407,3 +1407,32 @@ unsafe content 出现时，接口不会尝试“修复”原始请求，只会�
 ## O7 Consumption Note
 
 O7 后续可以把这个 O6-shaped 数据源当作历史任务基础输入，再派生 route replay / labeling / voice / command 的只读视图；但这仍然只是本地 mock archive，不等于真实 O6 云存档、真实 DB 或真实 OSS 接通。
+
+## Live Camera Keyframe Annotation Material（2026-07-15）
+
+既有 `POST /api/o6/archive/artifact-bundle` 接受可选
+`artifact_bundle.live_camera_keyframe_annotation_material`，并在既有
+`GET /api/o6/archive/tasks/<task_id>` 与
+`GET /api/o6/consumer/tasks/<task_id>?include=live_camera_keyframe_annotation_material`
+返回安全投影。没有新增 endpoint、文件读取参数、URL/OSS fetch 或 media 下载能力。
+
+输入 schema 是 `trashbot.o7.live_camera_keyframe_manifest.v1`，O6 投影 schema 是
+`trashbot.o6.live_camera_keyframe_annotation_material.v1`。三层只允许保留同一组 metadata：
+`task_id`、`sha256`、`topic`、`stamp_sec/stamp_nanosec`、`width/height/step`、
+`encoding/is_bigendian`、安全 `media_basename/media_byte_size`、source/count、redaction 与状态字段。
+禁止出现绝对路径、URL/query、credential/token、base64/data URL、raw pixel 数组或任意 binary 字段；
+响应也不会回显 hostile 原值。
+
+状态规则：
+
+- clean live 仅接受 `source_proof=live_single_frame_captured`、inventory/capture `1/1`、publisher `>=1`、
+  `annotation_ready=true` 且同 task/hash/topic/stamp/dimensions/encoding 校验通过，`source_badge=live`。
+- synthetic fixture 固定 `source_proof=fixture_contract_only`、inventory/capture `0/0`、
+  `source_badge=fixture`，只证明合同和 UI，不证明真实相机帧。
+- inventory/capture blocked 保留安全的同 task/source/count/blocker metadata，`source_badge=blocked`、
+  `annotation_ready=false`。2026-07-15 本轮 Algorithm manifest 是 `live_inventory_blocked`、`1/0`，因此只能走此状态。
+
+所有状态固定 `external_artifact_delta=false`、`live_control_delta=false`、`user_action_delta=false`、
+`safe_to_control=false`、`robot_control_executed=false`、`route_execution_success=false`、
+`delivery_success=false`、`hil_pass=false`。fixture/blocked 的 `current_run_artifact_delta=false`；
+只有 clean live metadata lineage 才允许该字段为 `true`，仍不等于隐私批准、生产标注、真实云/OSS、路线、送达或 HIL。

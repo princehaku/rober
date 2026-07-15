@@ -160,6 +160,115 @@ O6_BOUNDED_ROUTE_EXECUTION_GATE_MATERIAL_SCHEMA = (
 O6_BOUNDED_ROUTE_TERMINAL_RESULT_MATERIAL_SCHEMA = (
     "trashbot.o6.bounded_route_terminal_result_material.v1"
 )
+LIVE_CAMERA_KEYFRAME_MANIFEST_SCHEMA = "trashbot.o7.live_camera_keyframe_manifest.v1"
+O6_LIVE_CAMERA_KEYFRAME_ANNOTATION_MATERIAL_SCHEMA = (
+    "trashbot.o6.live_camera_keyframe_annotation_material.v1"
+)
+O6_LIVE_CAMERA_KEYFRAME_ANNOTATION_MATERIAL_PROOF_SCOPE = (
+    "software_contract_live_camera_keyframe_annotation_material_only"
+)
+
+# 相机 metadata 合同说明：本节只定义 Algorithm manifest 到 O6 的安全投影。
+# 相机 metadata 合同说明：输入必须作为既有 artifact bundle 的内嵌对象传入。
+# 相机 metadata 合同说明：接口不会接受 manifest 文件路径作为请求参数。
+# 相机 metadata 合同说明：接口不会根据 basename 读取 sprint 本地媒体。
+# 相机 metadata 合同说明：接口不会访问远端主机上的相机媒体。
+# 相机 metadata 合同说明：接口不会根据 URL 或 URI 拉取对象。
+# 相机 metadata 合同说明：接口不会连接真实 OSS 或 CDN。
+# 相机 metadata 合同说明：接口不会把图片二进制写入 task store。
+# 相机 metadata 合同说明：接口不会把 raw pixel 数组写入响应。
+# 相机 metadata 合同说明：接口不会把 base64 或 data URL 写入日志。
+# 相机 metadata 合同说明：接口不会把绝对路径回显给消费者。
+# 相机 metadata 合同说明：接口不会复制 credential、token 或 Authorization。
+# 相机 metadata 合同说明：task_id 是三层 lineage 的第一项硬门。
+# 相机 metadata 合同说明：sha256 是非 blocked 媒体身份的第二项硬门。
+# 相机 metadata 合同说明：topic 必须是只读 ROS Image topic 形状。
+# 相机 metadata 合同说明：topic 不得是 cmd_vel 或 initialpose。
+# 相机 metadata 合同说明：stamp_sec 必须是非负整数。
+# 相机 metadata 合同说明：stamp_nanosec 必须小于十亿。
+# 相机 metadata 合同说明：width 和 height 仅在 annotation-ready 时要求非零。
+# 相机 metadata 合同说明：step 仅在 annotation-ready 时要求非零。
+# 相机 metadata 合同说明：media_byte_size 仅在有媒体时要求非零。
+# 相机 metadata 合同说明：encoding 只允许短字母数字下划线标识。
+# 相机 metadata 合同说明：is_bigendian 必须是显式布尔值。
+# 相机 metadata 合同说明：media_basename 不允许目录分隔符。
+# 相机 metadata 合同说明：captured_at_utc 必须携带时区。
+# 相机 metadata 合同说明：blocked manifest 可以没有 topic。
+# 相机 metadata 合同说明：blocked manifest 可以没有 hash。
+# 相机 metadata 合同说明：blocked manifest 可以没有 media basename。
+# 相机 metadata 合同说明：blocked manifest 可以使用全零尺寸与 stamp。
+# 相机 metadata 合同说明：blocked manifest 必须携带非空 blocker。
+# 相机 metadata 合同说明：blocked manifest 不得 annotation-ready。
+# 相机 metadata 合同说明：blocked manifest 的 current delta 必须为 false。
+# 相机 metadata 合同说明：blocked source 保留真实 inventory/capture count。
+# 相机 metadata 合同说明：blocked source 保留 Algorithm source proof。
+# 相机 metadata 合同说明：blocked source 不会被改写成 fixture。
+# 相机 metadata 合同说明：fixture 的 inventory/capture count 固定为零比零。
+# 相机 metadata 合同说明：fixture 可以验证 schema 和 UI 数据形状。
+# 相机 metadata 合同说明：fixture 永远不能获得 live badge。
+# 相机 metadata 合同说明：fixture 的 current delta 永远为 false。
+# 相机 metadata 合同说明：live source 必须精确 inventory/capture 一比一。
+# 相机 metadata 合同说明：live source 必须在 inventory 看到 publisher。
+# 相机 metadata 合同说明：live source 必须声明单帧已捕获。
+# 相机 metadata 合同说明：live source 必须没有 blocked reasons。
+# 相机 metadata 合同说明：live source 仅允许 current delta 为 true。
+# 相机 metadata 合同说明：external artifact delta 始终固定为 false。
+# 相机 metadata 合同说明：live control delta 始终固定为 false。
+# 相机 metadata 合同说明：user action delta 始终固定为 false。
+# 相机 metadata 合同说明：safe_to_control 始终固定为 false。
+# 相机 metadata 合同说明：robot_control_executed 始终固定为 false。
+# 相机 metadata 合同说明：route_execution_success 始终固定为 false。
+# 相机 metadata 合同说明：delivery_success 始终固定为 false。
+# 相机 metadata 合同说明：hil_pass 始终固定为 false。
+# 相机 metadata 合同说明：redaction 必须声明 manifest 不含 raw pixels。
+# 相机 metadata 合同说明：redaction 必须声明 API 不内联 binary。
+# 相机 metadata 合同说明：redaction 必须声明日志不含 binary。
+# 相机 metadata 合同说明：redaction 必须声明没有暴露绝对路径。
+# 相机 metadata 合同说明：redaction 必须声明没有暴露远端主机。
+# 相机 metadata 合同说明：redaction 必须声明 UI 仅展示 metadata。
+# 相机 metadata 合同说明：redaction 的媒体范围固定为 sprint 本地 artifact。
+# 相机 metadata 合同说明：privacy 状态不能声称已经批准。
+# 相机 metadata 合同说明：O6 对外统一使用未批准的隐私表述。
+# 相机 metadata 合同说明：Algorithm 待审核 classification 会安全归一化。
+# 相机 metadata 合同说明：不支持的 schema 只产生 blocked section。
+# 相机 metadata 合同说明：task mismatch 只产生 blocked section。
+# 相机 metadata 合同说明：坏 hash 只产生 blocked section。
+# 相机 metadata 合同说明：坏 stamp 只产生 blocked section。
+# 相机 metadata 合同说明：坏 source count 只产生 blocked section。
+# 相机 metadata 合同说明：危险 true 只产生 blocked section。
+# 相机 metadata 合同说明：hostile 路径不会污染 bundle 其他 section。
+# 相机 metadata 合同说明：hostile 二进制不会污染 bundle 其他 section。
+# 相机 metadata 合同说明：blocked 响应使用稳定 reason，不回显原值。
+# 相机 metadata 合同说明：task store 重载会再次执行同一白名单投影。
+# 相机 metadata 合同说明：重载允许 O6 schema，但不放宽字段校验。
+# 相机 metadata 合同说明：artifact detail 保留同一安全 section。
+# 相机 metadata 合同说明：consumer include 保留同一安全 section。
+# 相机 metadata 合同说明：consumer 默认缺失时返回 blocked placeholder。
+# 相机 metadata 合同说明：placeholder 具有完整 false 字段集合。
+# 相机 metadata 合同说明：placeholder 不制造 hash、topic 或 stamp。
+# 相机 metadata 合同说明：placeholder 不制造 annotation-ready lineage。
+# 相机 metadata 合同说明：lineage_verified 只用于 live 或 fixture ready。
+# 相机 metadata 合同说明：合法 blocked lineage 仍明确标记未验证。
+# 相机 metadata 合同说明：本合同不证明画面具有可见内容。
+# 相机 metadata 合同说明：本合同不证明隐私审核通过。
+# 相机 metadata 合同说明：本合同不证明生产标注动作。
+# 相机 metadata 合同说明：本合同不证明生产标注提交。
+# 相机 metadata 合同说明：本合同不证明真实云数据库连接。
+# 相机 metadata 合同说明：本合同不证明真实对象存储连接。
+# 相机 metadata 合同说明：本合同不证明真实 RTC 或视频流。
+# 相机 metadata 合同说明：本合同不证明真实路线执行。
+# 相机 metadata 合同说明：本合同不证明真实垃圾送达。
+# 相机 metadata 合同说明：本合同不证明硬件在环通过。
+# 相机 metadata 合同说明：本合同不会触发 ROS topic 写入。
+# 相机 metadata 合同说明：本合同不会触发 action 或 service 写操作。
+# 相机 metadata 合同说明：本合同不会触发 UART 或底盘控制。
+# 相机 metadata 合同说明：本合同不会启动或停止 camera runtime。
+# 相机 metadata 合同说明：本合同不会发起第二次 inventory 或 capture。
+# 相机 metadata 合同说明：Algorithm blocked 一比零必须保持 blocked。
+# 相机 metadata 合同说明：Mission Objective 0 四 delta 必须逐项展示。
+# 相机 metadata 合同说明：只有完整 live chain 才能产生 current delta。
+# 相机 metadata 合同说明：即使 current delta 为真也不满足其他三项 delta。
+# 相机 metadata 合同说明：本节完成后应退役同类 wrapper 重复消费。
 O5_BOUNDED_ROUTE_TERMINAL_RESULT_BRIDGE_SCHEMA = (
     "trashbot.o5.bounded_route_terminal_result_bridge.v1"
 )
@@ -451,6 +560,7 @@ O6_CONSUMER_ALLOWED_INCLUDES = {
     "same_task_replay_packet_readback",
     "bounded_route_execution_gate_material",
     "bounded_route_terminal_result_material",
+    "live_camera_keyframe_annotation_material",
     "same_task_mission_evidence_gate",
     "same_task_route_execution_material_packet",
     "route_bag_evidence",
@@ -19962,6 +20072,362 @@ def _o6_current_field_evidence_material_summary(
     }
 
 
+def _o6_live_camera_keyframe_annotation_material_without_evidence(value):
+    """全局安全扫描前剥离 camera section，让 hostile 输入只关闭本 section。"""
+
+    if isinstance(value, dict):
+        # 二进制、路径或危险 true 由专用校验器给出稳定 blocker，不污染 bundle 其余材料。
+        return {
+            key: _o6_live_camera_keyframe_annotation_material_without_evidence(item)
+            for key, item in value.items()
+            if str(key) != "live_camera_keyframe_annotation_material"
+        }
+    if isinstance(value, list):
+        # 递归处理嵌套 bundle，避免 field motion packet 内的同名 section 绕过剥离。
+        return [_o6_live_camera_keyframe_annotation_material_without_evidence(item) for item in value]
+    return value
+
+
+def _o6_live_camera_keyframe_annotation_material_request(payload, container):
+    """只从既有 artifact bundle/field evidence 容器读取 metadata section。"""
+
+    for candidate in (payload, container):
+        if not isinstance(candidate, dict):
+            continue
+        # 本轮不接受路径参数或 URL；调用方必须把 Algorithm manifest JSON 作为 section 传入。
+        material = candidate.get("live_camera_keyframe_annotation_material")
+        if isinstance(material, dict):
+            return material
+    return {}
+
+
+def _o6_live_camera_keyframe_annotation_material_unsafe_reason(value, path=""):
+    """递归拒绝路径、URL、base64、raw pixel 与凭证副本。"""
+
+    binary_keys = {"data", "pixels", "raw", "raw_pixels", "image", "image_data", "binary", "blob"}
+    path_keys = {"path", "file_path", "absolute_path", "media_path", "url", "uri", "query"}
+    secret_keys = {"authorization", "credential", "password", "secret", "token", "access_key"}
+    if isinstance(value, dict):
+        for key, item in value.items():
+            key_text = str(key).lower()
+            key_path = f"{path}.{key_text}" if path else key_text
+            # raw/binary 容器即使为空也不属于 metadata-only 合同，直接 fail closed。
+            if key_text in binary_keys:
+                return "live_camera_keyframe_binary_inline_forbidden"
+            # 任意路径、URL/query 或凭证字段都不得进入 archive/readback/UI。
+            if key_text in path_keys:
+                return "live_camera_keyframe_unsafe_reference"
+            if key_text in secret_keys:
+                return "live_camera_keyframe_secret_copy_forbidden"
+            nested = _o6_live_camera_keyframe_annotation_material_unsafe_reason(item, key_path)
+            if nested:
+                return nested
+        return ""
+    if isinstance(value, list):
+        # blocked_reasons/not_proven 是短字符串数组；数值数组会被视为 raw pixel 形态。
+        if value and all(isinstance(item, (int, float)) and not isinstance(item, bool) for item in value):
+            return "live_camera_keyframe_raw_pixel_array_forbidden"
+        for index, item in enumerate(value):
+            nested = _o6_live_camera_keyframe_annotation_material_unsafe_reason(item, f"{path}[{index}]")
+            if nested:
+                return nested
+        return ""
+    if isinstance(value, str):
+        text = value.strip()
+        lowered = text.lower()
+        # 绝对路径、父目录、Windows 路径与 URL/query 都不能被 basename 伪装带入。
+        # topic 是唯一允许以 / 开头的字符串；它随后还会经过 ROS topic 白名单校验。
+        is_topic = path.endswith("topic") and re.fullmatch(r"/[A-Za-z0-9_/-]{1,159}", text)
+        if (text.startswith(("/", "~/", "\\\\")) and not is_topic) or re.match(r"^[A-Za-z]:\\", text):
+            return "live_camera_keyframe_unsafe_reference"
+        if "../" in text or "..\\" in text or "://" in lowered or "?" in text or "#" in text:
+            return "live_camera_keyframe_unsafe_reference"
+        # data URL、base64 标签与长编码串均按二进制内联处理。
+        if lowered.startswith("data:") or "base64" in lowered or re.fullmatch(r"[A-Za-z0-9+/]{180,}={0,2}", text):
+            return "live_camera_keyframe_binary_inline_forbidden"
+    return ""
+
+
+def _o6_live_camera_keyframe_annotation_material_fixed_boundary():
+    """O6/O7 只暴露冻结的 metadata/redaction 与安全 false 字段。"""
+
+    return {
+        "classification": "metadata_only_camera_keyframe",
+        "raw_pixels_in_manifest": False,
+        "binary_inline_in_api": False,
+        "binary_logged": False,
+        "absolute_path_exposed": False,
+        "remote_host_exposed": False,
+        "ui_metadata_only": True,
+        "privacy_review_status": "not_approved_metadata_only",
+        "media_access_scope": "sprint_local_artifact_only",
+    }
+
+
+def _o6_live_camera_keyframe_annotation_material_placeholder(
+    *, task_id="", task_origin="artifact_bundle", blocked_reasons=None
+):
+    """缺失或 hostile camera section 只返回 blocked badge 与空 lineage。"""
+
+    reasons = _o6_same_task_field_material_packet_safe_list(
+        blocked_reasons,
+        default_items=["live_camera_keyframe_annotation_material_not_available"],
+    )
+    return {
+        "schema": O6_LIVE_CAMERA_KEYFRAME_ANNOTATION_MATERIAL_SCHEMA,
+        "source_schema": "not_loaded",
+        "status": "blocked_not_proven",
+        "source_badge": "blocked",
+        "source_mode": "blocked",
+        "source_proof": "blocked_not_proven",
+        "proof_scope": O6_LIVE_CAMERA_KEYFRAME_ANNOTATION_MATERIAL_PROOF_SCOPE,
+        "task_id": _o6_cloud_archive_safe_text(task_id or "", 80),
+        "task_origin": _o6_cloud_archive_safe_text(task_origin or "artifact_bundle", 80),
+        "topic": "",
+        "message_type": "sensor_msgs/msg/Image",
+        "publisher_count_at_inventory": 0,
+        "stamp_sec": 0,
+        "stamp_nanosec": 0,
+        "width": 0,
+        "height": 0,
+        "step": 0,
+        "encoding": "",
+        "is_bigendian": False,
+        "media_basename": "",
+        "media_byte_size": 0,
+        "sha256": "",
+        "captured_at_utc": "",
+        "inventory_ssh_invocation_count": 0,
+        "single_frame_capture_invocation_count": 0,
+        "redaction_boundary": _o6_live_camera_keyframe_annotation_material_fixed_boundary(),
+        "annotation_ready": False,
+        "lineage_verified": False,
+        "blocked_reasons": reasons,
+        "not_proven": ["live_camera_keyframe_annotation_not_proven"],
+        "current_run_artifact_delta": False,
+        "external_artifact_delta": False,
+        "live_control_delta": False,
+        "user_action_delta": False,
+        "safe_to_control": False,
+        "robot_control_executed": False,
+        "route_execution_success": False,
+        "delivery_success": False,
+        "hil_pass": False,
+    }
+
+
+def _o6_live_camera_keyframe_annotation_material_time_is_valid(value):
+    """captured_at_utc 必须是带时区的 ISO-8601，避免本地时间歧义。"""
+
+    text = str(value or "").strip()
+    if not text or len(text) > 80:
+        return False
+    try:
+        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    return parsed.tzinfo is not None
+
+
+def _o6_live_camera_keyframe_annotation_material_summary(
+    raw_material, *, task_id="", task_origin="artifact_bundle"
+):
+    """校验冻结 manifest，并投影成 O6 metadata-only annotation material。"""
+
+    material = _o6_cloud_archive_dict(raw_material)
+    expected_task_id = _o6_cloud_archive_safe_text(task_id or "", 80)
+    if not material:
+        return _o6_live_camera_keyframe_annotation_material_placeholder(
+            task_id=expected_task_id,
+            task_origin=task_origin,
+        )
+    # hostile 副本在读取任何字段前阻断，避免错误响应回显路径或 binary。
+    unsafe_reason = _o6_live_camera_keyframe_annotation_material_unsafe_reason(material)
+    if unsafe_reason:
+        return _o6_live_camera_keyframe_annotation_material_placeholder(
+            task_id=expected_task_id,
+            task_origin=task_origin,
+            blocked_reasons=[unsafe_reason],
+        )
+    actual_task_id = _o6_cloud_archive_safe_text(material.get("task_id") or "", 80)
+    # 必需字段必须完整存在；缺字段时不尝试用默认值拼出 annotation-ready。
+    required_fields = {
+        "schema", "task_id", "source_mode", "source_proof", "topic", "message_type",
+        "publisher_count_at_inventory", "stamp_sec", "stamp_nanosec", "width", "height",
+        "step", "encoding", "is_bigendian", "media_basename", "media_byte_size", "sha256",
+        "captured_at_utc", "inventory_ssh_invocation_count", "single_frame_capture_invocation_count",
+        "redaction_boundary", "annotation_ready", "blocked_reasons", "not_proven",
+        "current_run_artifact_delta", "external_artifact_delta", "live_control_delta",
+        "user_action_delta", "safe_to_control", "robot_control_executed",
+        "route_execution_success", "delivery_success", "hil_pass",
+    }
+    missing = sorted(required_fields - set(material))
+    if missing:
+        return _o6_live_camera_keyframe_annotation_material_placeholder(
+            task_id=expected_task_id or actual_task_id,
+            task_origin=task_origin,
+            blocked_reasons=[f"live_camera_keyframe_missing_fields:{','.join(missing)}"],
+        )
+    blockers = []
+    # schema/task identity 是 O6/O7 lineage 的第一层硬门。
+    # store 重载时会再次白名单化 O6 section；原始 ingest 只允许 Algorithm schema。
+    if material.get("schema") not in {
+        LIVE_CAMERA_KEYFRAME_MANIFEST_SCHEMA,
+        O6_LIVE_CAMERA_KEYFRAME_ANNOTATION_MATERIAL_SCHEMA,
+    }:
+        blockers.append("live_camera_keyframe_schema_unsupported")
+    if not actual_task_id or (expected_task_id and actual_task_id != expected_task_id):
+        blockers.append("live_camera_keyframe_task_mismatch")
+    if material.get("message_type") != "sensor_msgs/msg/Image":
+        blockers.append("live_camera_keyframe_message_type_mismatch")
+    source_proof = str(material.get("source_proof") or "").strip()
+    blocked_source = source_proof not in {"live_single_frame_captured", "fixture_contract_only"}
+    topic = str(material.get("topic") or "").strip()
+    # Algorithm 的 blocked manifest 允许尚未选出 topic；非空 topic 仍必须满足只读 Image 白名单。
+    if (topic or not blocked_source) and (
+        not re.fullmatch(r"/[A-Za-z0-9_/-]{1,159}", topic) or topic in {"/cmd_vel", "/initialpose"}
+    ):
+        blockers.append("live_camera_keyframe_topic_invalid")
+    # 数值与 hash/stamp 必须可复核，不能接受 bool 伪装成整数。
+    int_fields = (
+        "publisher_count_at_inventory", "stamp_sec", "stamp_nanosec", "width", "height", "step",
+        "media_byte_size", "inventory_ssh_invocation_count", "single_frame_capture_invocation_count",
+    )
+    if any(not isinstance(material.get(name), int) or isinstance(material.get(name), bool) for name in int_fields):
+        blockers.append("live_camera_keyframe_numeric_fields_invalid")
+    publisher_count = material.get("publisher_count_at_inventory", 0)
+    stamp_sec = material.get("stamp_sec", 0)
+    stamp_nanosec = material.get("stamp_nanosec", -1)
+    width = material.get("width", 0)
+    height = material.get("height", 0)
+    step = material.get("step", 0)
+    byte_size = material.get("media_byte_size", 0)
+    if not all(isinstance(item, int) and not isinstance(item, bool) for item in (publisher_count, stamp_sec, stamp_nanosec, width, height, step, byte_size)):
+        publisher_count = stamp_sec = width = height = step = byte_size = 0
+        stamp_nanosec = -1
+    if publisher_count < 0 or stamp_sec < 0 or not 0 <= stamp_nanosec < 1_000_000_000:
+        blockers.append("live_camera_keyframe_source_or_stamp_invalid")
+    # blocked inventory/capture 可使用全零媒体 metadata；annotation-ready 才强制非零。
+    if (not blocked_source and (width <= 0 or height <= 0 or step <= 0 or byte_size <= 0)) or (
+        blocked_source and any(item < 0 for item in (width, height, step, byte_size))
+    ):
+        blockers.append("live_camera_keyframe_dimensions_or_size_invalid")
+    sha256 = str(material.get("sha256") or "").strip().lower()
+    if (sha256 or not blocked_source) and not re.fullmatch(r"[0-9a-f]{64}", sha256):
+        blockers.append("live_camera_keyframe_sha256_invalid")
+    basename = str(material.get("media_basename") or "").strip()
+    if (basename or not blocked_source) and (
+        not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,119}", basename) or basename in {".", ".."}
+    ):
+        blockers.append("live_camera_keyframe_media_basename_invalid")
+    encoding = str(material.get("encoding") or "").strip()
+    if (encoding or not blocked_source) and not re.fullmatch(r"[A-Za-z0-9_]{1,32}", encoding):
+        blockers.append("live_camera_keyframe_encoding_invalid")
+    if not isinstance(material.get("is_bigendian"), bool):
+        blockers.append("live_camera_keyframe_endianness_invalid")
+    captured_at_utc = str(material.get("captured_at_utc") or "").strip()
+    if (captured_at_utc or not blocked_source) and not _o6_live_camera_keyframe_annotation_material_time_is_valid(
+        captured_at_utc
+    ):
+        blockers.append("live_camera_keyframe_captured_at_invalid")
+    # redaction 必须逐字段命中冻结值；privacy 文本不允许伪装成 approved。
+    redaction = _o6_cloud_archive_dict(material.get("redaction_boundary"))
+    required_redaction = _o6_live_camera_keyframe_annotation_material_fixed_boundary()
+    for key, expected in required_redaction.items():
+        actual = redaction.get(key)
+        if key == "classification":
+            # Algorithm 冻结值表达“待隐私审核”，O6 对外统一投影为 metadata-only camera keyframe。
+            if actual not in {"metadata_only_pending_privacy_review", expected}:
+                blockers.append("live_camera_keyframe_redaction_mismatch:classification")
+        elif key == "privacy_review_status":
+            if not isinstance(actual, str) or "approved" in actual.lower() and "not_approved" not in actual.lower():
+                blockers.append("live_camera_keyframe_privacy_claim_invalid")
+        elif actual != expected:
+            blockers.append(f"live_camera_keyframe_redaction_mismatch:{key}")
+    # 所有控制/路线/送达/HIL 与三项非 current delta 都必须显式 false。
+    fixed_false_fields = (
+        "external_artifact_delta", "live_control_delta", "user_action_delta", "safe_to_control",
+        "robot_control_executed", "route_execution_success", "delivery_success", "hil_pass",
+    )
+    if any(material.get(name) is not False for name in fixed_false_fields):
+        blockers.append("live_camera_keyframe_dangerous_true")
+    source_mode = str(material.get("source_mode") or "").strip()
+    inventory_count = material.get("inventory_ssh_invocation_count", -1)
+    capture_count = material.get("single_frame_capture_invocation_count", -1)
+    annotation_ready = material.get("annotation_ready") is True
+    current_delta = material.get("current_run_artifact_delta") is True
+    # live/fixture/blocked 三态使用互斥 count/delta 规则，防止 fixture 冒充 live。
+    if source_proof == "live_single_frame_captured":
+        source_badge = "live"
+        expected_source = source_mode in {"live", "live_camera"}
+        state_valid = expected_source and inventory_count == 1 and capture_count == 1 and publisher_count >= 1
+        state_valid = state_valid and annotation_ready and current_delta and not material.get("blocked_reasons")
+    elif source_proof == "fixture_contract_only":
+        source_badge = "fixture"
+        expected_source = source_mode in {"fixture", "synthetic_fixture"}
+        state_valid = expected_source and inventory_count == 0 and capture_count == 0
+        state_valid = state_valid and annotation_ready and not current_delta
+    else:
+        source_badge = "blocked"
+        # 真实只读 inventory/capture 失败保留 Algorithm source_mode/source_proof，不伪造为 fixture。
+        expected_source = source_mode in {"blocked", "live_ros_graph_single_frame"}
+        state_valid = expected_source and inventory_count in {0, 1} and capture_count in {0, 1}
+        state_valid = state_valid and not annotation_ready and not current_delta and bool(material.get("blocked_reasons"))
+    if not state_valid:
+        blockers.append("live_camera_keyframe_source_count_or_delta_mismatch")
+    if not isinstance(material.get("blocked_reasons"), list) or not isinstance(material.get("not_proven"), list):
+        blockers.append("live_camera_keyframe_reason_lists_invalid")
+    if blockers:
+        return _o6_live_camera_keyframe_annotation_material_placeholder(
+            task_id=expected_task_id or actual_task_id,
+            task_origin=task_origin,
+            blocked_reasons=blockers,
+        )
+    return {
+        "schema": O6_LIVE_CAMERA_KEYFRAME_ANNOTATION_MATERIAL_SCHEMA,
+        "source_schema": LIVE_CAMERA_KEYFRAME_MANIFEST_SCHEMA,
+        "status": "annotation_ready_live" if source_badge == "live" else (
+            "annotation_ready_fixture_contract_only" if source_badge == "fixture" else "blocked_not_proven"
+        ),
+        "source_badge": source_badge,
+        "source_mode": source_mode,
+        "source_proof": source_proof,
+        "proof_scope": O6_LIVE_CAMERA_KEYFRAME_ANNOTATION_MATERIAL_PROOF_SCOPE,
+        "task_id": actual_task_id,
+        "task_origin": _o6_cloud_archive_safe_text(task_origin or "artifact_bundle", 80),
+        "topic": topic,
+        "message_type": "sensor_msgs/msg/Image",
+        "publisher_count_at_inventory": publisher_count,
+        "stamp_sec": stamp_sec,
+        "stamp_nanosec": stamp_nanosec,
+        "width": width,
+        "height": height,
+        "step": step,
+        "encoding": encoding,
+        "is_bigendian": material["is_bigendian"],
+        "media_basename": basename,
+        "media_byte_size": byte_size,
+        "sha256": sha256,
+        "captured_at_utc": captured_at_utc,
+        "inventory_ssh_invocation_count": inventory_count,
+        "single_frame_capture_invocation_count": capture_count,
+        "redaction_boundary": required_redaction,
+        "annotation_ready": annotation_ready,
+        "lineage_verified": source_badge in {"live", "fixture"},
+        "blocked_reasons": _o6_same_task_field_material_packet_safe_list(material.get("blocked_reasons")),
+        "not_proven": _o6_same_task_field_material_packet_safe_list(material.get("not_proven")),
+        "current_run_artifact_delta": current_delta,
+        "external_artifact_delta": False,
+        "live_control_delta": False,
+        "user_action_delta": False,
+        "safe_to_control": False,
+        "robot_control_executed": False,
+        "route_execution_success": False,
+        "delivery_success": False,
+        "hil_pass": False,
+    }
+
+
 def _o6_field_operator_confirmation_material_without_evidence(value):
     """全局安全扫描前剥离 operator material，让坏人工确认包只降级自身摘要。"""
 
@@ -25255,6 +25721,11 @@ def _o6_artifact_bundle_summary_payload(field_evidence):
             task_id=_o6_cloud_archive_safe_text(data.get("task_id") or "", 80),
             task_origin="artifact_bundle",
         ),
+        "live_camera_keyframe_annotation_material": _o6_live_camera_keyframe_annotation_material_summary(
+            data.get("live_camera_keyframe_annotation_material"),
+            task_id=_o6_cloud_archive_safe_text(data.get("task_id") or "", 80),
+            task_origin="artifact_bundle",
+        ),
         "field_operator_confirmation_material": _o6_field_operator_confirmation_material_summary(
             data.get("field_operator_confirmation_material"),
             task_id=_o6_cloud_archive_safe_text(data.get("task_id") or "", 80),
@@ -25392,6 +25863,9 @@ def _o6_field_evidence_validate_manifest(payload):
         payload_for_global_gate
     )
     payload_for_global_gate = _o6_current_field_evidence_material_without_evidence(payload_for_global_gate)
+    payload_for_global_gate = _o6_live_camera_keyframe_annotation_material_without_evidence(
+        payload_for_global_gate
+    )
     payload_for_global_gate = _o6_field_operator_confirmation_material_without_evidence(
         payload_for_global_gate
     )
@@ -25531,6 +26005,12 @@ def _o6_field_evidence_validate_manifest(payload):
     )
     current_field_evidence_material = _o6_current_field_evidence_material_summary(
         _o6_current_field_evidence_material_request(payload, manifest),
+        task_id=task_id,
+        task_origin="field_evidence_manifest",
+    )
+    # camera keyframe 仍走现有 field-evidence/artifact-bundle 主路径，只存 metadata 白名单。
+    live_camera_keyframe_annotation_material = _o6_live_camera_keyframe_annotation_material_summary(
+        _o6_live_camera_keyframe_annotation_material_request(payload, manifest),
         task_id=task_id,
         task_origin="field_evidence_manifest",
     )
@@ -25703,6 +26183,7 @@ def _o6_field_evidence_validate_manifest(payload):
         "phone_browser_terminal_material": phone_browser_terminal_material,
         "localization_path_material_readback": localization_path_material_readback,
         "current_field_evidence_material": current_field_evidence_material,
+        "live_camera_keyframe_annotation_material": live_camera_keyframe_annotation_material,
         "field_operator_confirmation_material": field_operator_confirmation_material,
         "clean_baseline_nav2_path_material": clean_baseline_nav2_path_material,
         "pc_live_nav2_execution_material": pc_live_nav2_execution_material,
@@ -25794,6 +26275,9 @@ def _o6_artifact_bundle_validate_payload(payload):
         payload_for_global_gate
     )
     payload_for_global_gate = _o6_current_field_evidence_material_without_evidence(payload_for_global_gate)
+    payload_for_global_gate = _o6_live_camera_keyframe_annotation_material_without_evidence(
+        payload_for_global_gate
+    )
     payload_for_global_gate = _o6_field_operator_confirmation_material_without_evidence(
         payload_for_global_gate
     )
@@ -25960,6 +26444,12 @@ def _o6_artifact_bundle_validate_payload(payload):
     )
     current_field_evidence_material = _o6_current_field_evidence_material_summary(
         _o6_current_field_evidence_material_request(payload, bundle),
+        task_id=task_id,
+        task_origin="artifact_bundle",
+    )
+    # artifact-bundle 入口消费 Algorithm manifest JSON，不读取 media_basename 指向的文件。
+    live_camera_keyframe_annotation_material = _o6_live_camera_keyframe_annotation_material_summary(
+        _o6_live_camera_keyframe_annotation_material_request(payload, bundle),
         task_id=task_id,
         task_origin="artifact_bundle",
     )
@@ -26132,6 +26622,7 @@ def _o6_artifact_bundle_validate_payload(payload):
         "phone_browser_terminal_material": phone_browser_terminal_material,
         "localization_path_material_readback": localization_path_material_readback,
         "current_field_evidence_material": current_field_evidence_material,
+        "live_camera_keyframe_annotation_material": live_camera_keyframe_annotation_material,
         "field_operator_confirmation_material": field_operator_confirmation_material,
         "clean_baseline_nav2_path_material": clean_baseline_nav2_path_material,
         "pc_live_nav2_execution_material": pc_live_nav2_execution_material,
@@ -26324,6 +26815,11 @@ def _o6_cloud_archive_field_evidence_payload(field_evidence):
         ),
         "current_field_evidence_material": _o6_current_field_evidence_material_summary(
             data.get("current_field_evidence_material"),
+            task_id=_o6_cloud_archive_safe_text(data.get("task_id") or "", 80),
+            task_origin=task_origin,
+        ),
+        "live_camera_keyframe_annotation_material": _o6_live_camera_keyframe_annotation_material_summary(
+            data.get("live_camera_keyframe_annotation_material"),
             task_id=_o6_cloud_archive_safe_text(data.get("task_id") or "", 80),
             task_origin=task_origin,
         ),
@@ -26637,6 +27133,11 @@ def _o6_cloud_archive_field_evidence_consumer_ingest_payload(field_evidence):
         ),
         "current_field_evidence_material": _o6_current_field_evidence_material_summary(
             manifest.get("current_field_evidence_material"),
+            task_id=_o6_cloud_archive_safe_text(manifest.get("task_id") or "", 80),
+            task_origin=_o6_cloud_archive_safe_text(manifest.get("task_origin") or "field_evidence_manifest", 80),
+        ),
+        "live_camera_keyframe_annotation_material": _o6_live_camera_keyframe_annotation_material_summary(
+            manifest.get("live_camera_keyframe_annotation_material"),
             task_id=_o6_cloud_archive_safe_text(manifest.get("task_id") or "", 80),
             task_origin=_o6_cloud_archive_safe_text(manifest.get("task_origin") or "field_evidence_manifest", 80),
         ),
@@ -27205,6 +27706,9 @@ def _o6_cloud_archive_task_detail(task):
         ]
         detail["phone_browser_terminal_material"] = field_evidence["phone_browser_terminal_material"]
         detail["current_field_evidence_material"] = field_evidence["current_field_evidence_material"]
+        detail["live_camera_keyframe_annotation_material"] = field_evidence[
+            "live_camera_keyframe_annotation_material"
+        ]
         detail["field_operator_confirmation_material"] = field_evidence[
             "field_operator_confirmation_material"
         ]
@@ -27866,6 +28370,13 @@ def _o6_consumer_build_field_evidence_section(task):
                     80,
                 ),
             ),
+            "live_camera_keyframe_annotation_material": _o6_live_camera_keyframe_annotation_material_placeholder(
+                task_id=_o6_cloud_archive_dict(task).get("task_id") or "",
+                task_origin=_o6_cloud_archive_safe_text(
+                    _o6_cloud_archive_dict(task).get("task_origin") or "local_mock_archive",
+                    80,
+                ),
+            ),
             "field_operator_confirmation_material": _o6_field_operator_confirmation_material_placeholder(
                 task_id=_o6_cloud_archive_dict(task).get("task_id") or "",
                 task_origin=_o6_cloud_archive_safe_text(
@@ -27972,6 +28483,9 @@ def _o6_consumer_build_field_evidence_section(task):
         ],
         "phone_browser_terminal_material": field_evidence["phone_browser_terminal_material"],
         "current_field_evidence_material": field_evidence["current_field_evidence_material"],
+        "live_camera_keyframe_annotation_material": field_evidence[
+            "live_camera_keyframe_annotation_material"
+        ],
         "field_operator_confirmation_material": field_evidence["field_operator_confirmation_material"],
         "clean_baseline_nav2_path_material": field_evidence["clean_baseline_nav2_path_material"],
         "pc_live_nav2_execution_material": field_evidence["pc_live_nav2_execution_material"],
@@ -28157,6 +28671,20 @@ def _o6_consumer_build_current_field_evidence_material_section(task):
     if field_evidence and "current_field_evidence_material" in field_evidence:
         return field_evidence["current_field_evidence_material"]
     return _o6_current_field_evidence_material_placeholder(
+        task_id=task_payload.get("task_id") or "",
+        task_origin=_o6_cloud_archive_safe_text(task_payload.get("task_origin") or "local_mock_archive", 80),
+    )
+
+
+def _o6_consumer_build_live_camera_keyframe_annotation_material_section(task):
+    """camera annotation material 可单独 include，但仍只回读安全 metadata。"""
+
+    task_payload = _o6_cloud_archive_dict(task)
+    # 只从 store 中已白名单化的 field_evidence 读取，不跟随 media_basename 访问文件。
+    field_evidence = _o6_cloud_archive_field_evidence_payload(task_payload.get("field_evidence"))
+    if field_evidence and "live_camera_keyframe_annotation_material" in field_evidence:
+        return field_evidence["live_camera_keyframe_annotation_material"]
+    return _o6_live_camera_keyframe_annotation_material_placeholder(
         task_id=task_payload.get("task_id") or "",
         task_origin=_o6_cloud_archive_safe_text(task_payload.get("task_origin") or "local_mock_archive", 80),
     )
@@ -28477,6 +29005,10 @@ def _o6_consumer_build_task_detail(task, store, *, view, includes):
             payload["current_field_evidence_material"] = field_evidence_section[
                 "current_field_evidence_material"
             ]
+        if "live_camera_keyframe_annotation_material" in field_evidence_section:
+            payload["live_camera_keyframe_annotation_material"] = field_evidence_section[
+                "live_camera_keyframe_annotation_material"
+            ]
         if "field_operator_confirmation_material" in field_evidence_section:
             payload["field_operator_confirmation_material"] = field_evidence_section[
                 "field_operator_confirmation_material"
@@ -28581,6 +29113,13 @@ def _o6_consumer_build_task_detail(task, store, *, view, includes):
     ):
         payload["current_field_evidence_material"] = _o6_consumer_build_current_field_evidence_material_section(
             task
+        )
+    if (
+        "live_camera_keyframe_annotation_material" in requested_includes
+        and "live_camera_keyframe_annotation_material" not in payload
+    ):
+        payload["live_camera_keyframe_annotation_material"] = (
+            _o6_consumer_build_live_camera_keyframe_annotation_material_section(task)
         )
     if (
         "field_operator_confirmation_material" in requested_includes

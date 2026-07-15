@@ -72,6 +72,7 @@ import type {
   O7ConsumerOfflineArtifactSeedSmokeSummary,
   O7ConsumerRouteDeliveryClosurePacketSummary,
   O7ConsumerCurrentFieldEvidenceMaterialSummary,
+  O7LiveCameraKeyframeAnnotationReadySummary,
   O7ConsumerPcLiveNav2ExecutionMaterialSummary,
   O7ConsumerLocalizationPathMaterialReadbackSummary,
   O7ConsumerCleanBaselineNav2PathMaterialSummary,
@@ -1260,6 +1261,10 @@ const consumerSameTaskReplayPacketReadback = computed<O7ConsumerSameTaskReplayPa
 );
 const consumerCurrentFieldEvidenceMaterial = computed<O7ConsumerCurrentFieldEvidenceMaterialSummary | null>(
   () => consumerTaskDetailResult.value?.current_field_evidence_material ?? null,
+);
+const consumerLiveCameraKeyframe = computed<O7LiveCameraKeyframeAnnotationReadySummary | null>(
+  // UI 只绑定 adapter 的安全投影；不根据 media_basename 拼路径，也不发起媒体 fetch。
+  () => consumerTaskDetailResult.value?.live_camera_keyframe_annotation_ready ?? null,
 );
 const consumerPcLiveNav2ExecutionMaterial = computed<O7ConsumerPcLiveNav2ExecutionMaterialSummary | null>(
   () =>
@@ -4442,6 +4447,60 @@ function consumerCurrentFieldEvidenceMaterialSummary(): string {
   ].join(" · ");
 }
 
+function consumerLiveCameraKeyframeBadge(): string {
+  const material = consumerLiveCameraKeyframe.value;
+  // badge 必须直接显示 live/fixture/blocked，避免仅凭 annotation_ready 混淆来源等级。
+  if (!material) {
+    return "BLOCKED · metadata missing";
+  }
+  return `${material.source_badge.toUpperCase()} · ${material.status}`;
+}
+
+function consumerLiveCameraKeyframeLineage(): string[] {
+  const material = consumerLiveCameraKeyframe.value;
+  if (!material) {
+    return ["task_id=not_loaded", "sha256=not_loaded", "topic=not_loaded", "stamp=not_loaded"];
+  }
+  // 这里只渲染冻结 metadata，不渲染媒体内容、绝对路径、URL、base64 或 raw array。
+  return [
+    `task_id=${material.task_id}`,
+    `sha256=${material.sha256 || "not_loaded"}`,
+    `topic=${material.topic || "not_loaded"}`,
+    `stamp=${material.stamp_sec}.${String(material.stamp_nanosec).padStart(9, "0")}`,
+    `dimensions=${material.width}x${material.height} · step=${material.step} · encoding=${material.encoding || "not_loaded"}`,
+    `media_basename=${material.media_basename || "not_loaded"} · media_byte_size=${material.media_byte_size}`,
+    `publisher_count_at_inventory=${material.publisher_count_at_inventory}`,
+    `inventory_ssh_invocation_count=${material.inventory_ssh_invocation_count} · single_frame_capture_invocation_count=${material.single_frame_capture_invocation_count}`,
+  ];
+}
+
+function consumerLiveCameraKeyframeProofBoundary(): string[] {
+  const material = consumerLiveCameraKeyframe.value;
+  if (!material) {
+    return ["annotation_ready=false", "lineage_verified=false", "ui_metadata_only=true"];
+  }
+  // fixture 即使合同 ready，也必须继续显示四 delta=false 与控制/送达/HIL false。
+  return [
+    `annotation_ready=${material.annotation_ready}`,
+    `lineage_verified=${material.lineage_verified}`,
+    `current_run_artifact_delta=${material.current_run_artifact_delta}`,
+    `external_artifact_delta=${material.external_artifact_delta}`,
+    `live_control_delta=${material.live_control_delta}`,
+    `user_action_delta=${material.user_action_delta}`,
+    `safe_to_control=${material.safe_to_control}`,
+    `robot_control_executed=${material.robot_control_executed}`,
+    `route_execution_success=${material.route_execution_success}`,
+    `delivery_success=${material.delivery_success}`,
+    `hil_pass=${material.hil_pass}`,
+    `raw_pixels_in_manifest=${material.redaction_boundary.raw_pixels_in_manifest}`,
+    `binary_inline_in_api=${material.redaction_boundary.binary_inline_in_api}`,
+    `absolute_path_exposed=${material.redaction_boundary.absolute_path_exposed}`,
+    `ui_metadata_only=${material.redaction_boundary.ui_metadata_only}`,
+    `privacy_review_status=${material.redaction_boundary.privacy_review_status}`,
+    `media_access_scope=${material.redaction_boundary.media_access_scope}`,
+  ];
+}
+
 function consumerCurrentFieldEvidenceMaterialSources(): string[] {
   const current = consumerCurrentFieldEvidenceMaterial.value;
   if (!current) {
@@ -7434,7 +7493,7 @@ async function loadPreview(kind: O7FixturePreviewKind): Promise<void> {
             <dt>view</dt>
             <dd>{{ consumerTaskDetailResult?.query_strategy.view ?? "default" }}</dd>
             <dt>include</dt>
-            <dd>{{ consumerTaskDetailResult?.query_strategy.include.join(",") ?? "trajectory,events,evidence,field_evidence,labeling,inference,tunnel,artifact_access_probe,offline_artifact_seed_smoke,route_root_seed_gate,route_bag_evidence,route_bag_payload_replay,route_bag_semantic_replay,route_bag_full_semantic_decode_matrix,route_bag_pose_progress_replay,nav2_goal_execution_evidence,delivery_result_evidence,route_execution_result_delivery_readiness,route_delivery_closure_packet,same_task_field_material_packet,same_task_replay_packet_readback,bounded_route_execution_gate_material,bounded_route_terminal_result_material,current_field_evidence_material,pc_live_nav2_execution_material,clean_baseline_nav2_path_material,localization_path_material_readback,same_task_route_execution_material_packet,same_task_mission_evidence_gate" }}</dd>
+            <dd>{{ consumerTaskDetailResult?.query_strategy.include.join(",") ?? "trajectory,events,evidence,field_evidence,labeling,inference,tunnel,artifact_access_probe,offline_artifact_seed_smoke,route_root_seed_gate,route_bag_evidence,route_bag_payload_replay,route_bag_semantic_replay,route_bag_full_semantic_decode_matrix,route_bag_pose_progress_replay,nav2_goal_execution_evidence,delivery_result_evidence,route_execution_result_delivery_readiness,route_delivery_closure_packet,same_task_field_material_packet,same_task_replay_packet_readback,bounded_route_execution_gate_material,bounded_route_terminal_result_material,live_camera_keyframe_annotation_material,current_field_evidence_material,pc_live_nav2_execution_material,clean_baseline_nav2_path_material,localization_path_material_readback,same_task_route_execution_material_packet,same_task_mission_evidence_gate" }}</dd>
             <dt>fail-closed visible</dt>
             <dd>{{ consumerTaskDetailResult?.query_strategy.fail_closed_visible ?? true }}</dd>
             <dt>field evidence contract</dt>
@@ -8299,6 +8358,39 @@ async function loadPreview(kind: O7FixturePreviewKind): Promise<void> {
           <h5>Bounded route terminal result next evidence</h5>
           <ul class="dense">
             <li v-for="item in consumerBoundedRouteTerminalResultIntakeResult?.bounded_route_terminal_result_material.next_required_evidence ?? consumerBoundedRouteTerminalResultMaterial?.next_required_evidence ?? ['current_live_route_execution_result_for_same_packet']" :key="item">{{ item }}</li>
+          </ul>
+          <h4>Live camera keyframe annotation-ready metadata</h4>
+          <div class="notice" role="note">
+            <!-- badge 明示来源等级；fixture ready 只证明合同，不等于真实相机帧或隐私批准。 -->
+            <span :class="['pill', consumerLiveCameraKeyframe?.source_badge === 'blocked' ? 'danger' : '']">
+              {{ consumerLiveCameraKeyframeBadge() }}
+            </span>
+            · metadata-only · 不读取任意路径 · 不内联 binary/base64/data URL/raw pixels · 不 fetch URL/OSS
+          </div>
+          <dl class="kv compact-kv">
+            <dt>schema</dt>
+            <dd>{{ consumerLiveCameraKeyframe?.schema ?? "trashbot.pc_tools_workstation.o7_live_camera_keyframe_annotation_ready.v1" }}</dd>
+            <dt>source_schema</dt>
+            <dd>{{ consumerLiveCameraKeyframe?.source_schema ?? "not_loaded" }}</dd>
+            <dt>source_mode</dt>
+            <dd>{{ consumerLiveCameraKeyframe?.source_mode ?? "blocked" }}</dd>
+            <dt>source_proof</dt>
+            <dd>{{ consumerLiveCameraKeyframe?.source_proof ?? "blocked_not_proven" }}</dd>
+            <dt>proof_scope</dt>
+            <dd>{{ consumerLiveCameraKeyframe?.proof_scope ?? "software_contract_live_camera_keyframe_annotation_material_only" }}</dd>
+          </dl>
+          <h5>Camera lineage</h5>
+          <ul class="dense">
+            <li v-for="line in consumerLiveCameraKeyframeLineage()" :key="line">{{ line }}</li>
+          </ul>
+          <h5>Redaction and Mission Objective 0 boundary</h5>
+          <ul class="dense">
+            <li v-for="line in consumerLiveCameraKeyframeProofBoundary()" :key="line">{{ line }}</li>
+          </ul>
+          <h5>Camera blockers / not proven</h5>
+          <ul class="dense">
+            <li v-for="reason in consumerLiveCameraKeyframe?.blocked_reasons ?? ['live_camera_keyframe_annotation_material_missing']" :key="`camera-blocked-${reason}`">{{ reason }}</li>
+            <li v-for="item in consumerLiveCameraKeyframe?.not_proven ?? ['live_camera_keyframe_annotation_not_proven']" :key="`camera-not-proven-${item}`">not_proven={{ item }}</li>
           </ul>
           <h4>Current field evidence material</h4>
           <div class="notice" role="note">

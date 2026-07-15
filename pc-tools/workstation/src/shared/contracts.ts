@@ -4692,6 +4692,58 @@ export interface O7MissionEvidenceBundleExportResult extends ProofFlags {
   local_loopback_only: true;
 }
 
+export interface O7LiveCameraKeyframeAnnotationReadySummary {
+  // O7 只消费 O6 已脱敏的 metadata；类型中不存在 path、URL、binary 或 raw pixel 字段。
+  schema: "trashbot.pc_tools_workstation.o7_live_camera_keyframe_annotation_ready.v1";
+  source_schema: "trashbot.o6.live_camera_keyframe_annotation_material.v1" | "not_loaded";
+  status: "annotation_ready_live" | "annotation_ready_fixture_contract_only" | "blocked_not_proven";
+  source_badge: "live" | "fixture" | "blocked";
+  source_mode: string;
+  source_proof: string;
+  proof_scope: "software_contract_live_camera_keyframe_annotation_material_only";
+  task_id: string;
+  topic: string;
+  message_type: "sensor_msgs/msg/Image";
+  publisher_count_at_inventory: number;
+  stamp_sec: number;
+  stamp_nanosec: number;
+  width: number;
+  height: number;
+  step: number;
+  encoding: string;
+  is_bigendian: boolean;
+  media_basename: string;
+  media_byte_size: number;
+  sha256: string;
+  captured_at_utc: string;
+  inventory_ssh_invocation_count: number;
+  single_frame_capture_invocation_count: number;
+  redaction_boundary: {
+    classification: "metadata_only_camera_keyframe";
+    raw_pixels_in_manifest: false;
+    binary_inline_in_api: false;
+    binary_logged: false;
+    absolute_path_exposed: false;
+    remote_host_exposed: false;
+    ui_metadata_only: true;
+    privacy_review_status: string;
+    media_access_scope: "sprint_local_artifact_only";
+  };
+  annotation_ready: boolean;
+  lineage_verified: boolean;
+  blocked_reasons: string[];
+  not_proven: string[];
+  current_run_artifact_delta: boolean;
+  external_artifact_delta: false;
+  live_control_delta: false;
+  user_action_delta: false;
+  safe_to_control: false;
+  robot_control_executed: false;
+  route_execution_success: false;
+  delivery_success: false;
+  hil_pass: false;
+}
+
 export interface O7ConsumerTaskDetailResponse extends ProofFlags {
   schema: "trashbot.pc_tools_workstation.o7_consumer_task_detail.v1";
   detail_status: "loaded_fail_closed_summary" | "fail_closed";
@@ -4785,6 +4837,7 @@ export interface O7ConsumerTaskDetailResponse extends ProofFlags {
   same_task_replay_packet_readback: O7ConsumerSameTaskReplayPacketReadbackSummary;
   bounded_route_execution_gate_material: O7ConsumerBoundedRouteGateMaterialSummary;
   bounded_route_terminal_result_material: O7ConsumerBoundedRouteTerminalResultMaterialSummary;
+  live_camera_keyframe_annotation_ready: O7LiveCameraKeyframeAnnotationReadySummary;
   current_field_evidence_material: O7ConsumerCurrentFieldEvidenceMaterialSummary;
   pc_live_nav2_execution_material: O7ConsumerPcLiveNav2ExecutionMaterialSummary;
   localization_path_material_readback: O7ConsumerLocalizationPathMaterialReadbackSummary;

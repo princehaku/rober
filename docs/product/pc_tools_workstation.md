@@ -6191,3 +6191,16 @@ manual、keyboard、free-roam、Nav2、delivery、stop 或 `/cmd_vel`。
 同轮 recovery 继续覆盖 `userptr` 和 `mmap + --stream-no-query` 两类直接采集路径，并在 PC 回包顶层暴露
 `userptr_zero_byte_no_frame_observed`、`no_query_zero_byte_no_frame_observed` 与尝试次数。真实 7001
 复验显示这两类路径也都是 STREAMON 成功但 0 buffer，进一步排除 mmap 缓冲和 DV timing query 差异。
+
+## O7 相机关键帧标注 metadata 卡片（2026-07-15）
+
+`O7 Previews` 的 consumer task detail 新增只读 `Live camera keyframe annotation-ready metadata` 卡片。
+卡片只绑定 adapter 已校验的 `live_camera_keyframe_annotation_ready`，并显式显示 `LIVE`、`FIXTURE` 或
+`BLOCKED` badge、task/hash/topic/stamp/dimensions/encoding、inventory/capture count、redaction、blockers、
+四 delta 与控制/路线/送达/HIL false 字段。
+
+页面不会根据 `media_basename` 拼路径，不读取任意文件，不内联 binary/base64/data URL/raw pixels，
+不 fetch URL/OSS，也不新增 submit、export、播放或控制入口。fixture 的 annotation-ready 只表示合同可消费，
+四 delta 仍全 false；本轮真实 Algorithm inventory 是 blocked `1/0`，因此卡片必须显示
+`BLOCKED · blocked_not_proven`、`source_proof=live_inventory_blocked`、`annotation_ready=false` 和
+`current_run_artifact_delta=false`，不得用 fixture badge 或 fixture 图片冒充真实关键帧。
