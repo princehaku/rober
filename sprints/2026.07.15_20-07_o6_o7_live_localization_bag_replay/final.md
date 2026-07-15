@@ -130,3 +130,57 @@ manifest clean 后才允许 Full-stack Phase B。不得转 O5 provider、`/scan`
 剩余风险不变：Algorithm helper、产品测试、DB3、metadata、manifest、replay JSONL 与 O6/O7 same-task consumption
 全部缺失，上位机 localization publisher 当前状态未知，route、delivery、HIL、safe-to-control 与 Mission Objective 0
 继续为 false。
+
+## 第四次 continuation / business canary 后收口（2026-07-16，Asia/Shanghai）
+
+### 最终新增事实与 blocker
+
+最低 O5 约 `85%` 仍因同一 provider/runtime blocker 已连续消费两轮而跳过；产品方向继续 O6/O7 各约 `93%`
+的 live localization bag。业务级 execution canary 在
+`/tmp/rober_o6_o7_business_canary_20260716/` clean：worker 通过 `apply_patch` 创建两个 scratch Python 文件，
+`py_compile` 通过，`unittest` 输出 `Ran 2 tests` 与 `OK`，repo untouched，SSH/ROS invocation=`0`。该
+business_canary 只证明隔离 scratch 执行，不是产品实现、产品验证、mission artifact 或 OKR 进展。
+
+canary 后恢复 Algorithm Phase A：第一个复用 worker 读完计划并两次声称将进入 `apply_patch`，但两个硬检查点均为
+repo clean、零业务文件、零命令，随后中断；第二个无历史 offline-only worker 在两个硬检查点同样零业务文件、零
+命令，随后中断。最终 repo 仍 clean；无 helper、测试、navigation 文档、DB3、metadata、manifest、replay JSONL、
+O6/O7 same-task consumption、SSH、ROS 或 rosbag。Full-stack Phase B 未解锁。
+
+本轮 blocker 固定为
+`subagent_runtime_orchestration_timeout_before_business_file_or_command_execution_after_business_canary`。它不是 repo、
+产品测试、SSH、ROS graph、localization publisher、rosbag/storage、上位机或 Full-stack blocker，因为这些业务路径
+均未触达。
+
+### OKR、KR 与 Mission 收口
+
+- `inventory_invocation_count=0`
+- `live_capture_invocation_count=0`
+- `full_stack_phase_b_allowed=false`
+- `current_run_artifact_delta=false`
+- `external_artifact_delta=false`
+- `live_control_delta=false`
+- `user_action_delta=false`
+- `route_execution_success=false`
+- `delivery_success=false`
+- `hil_pass=false`
+- `safe_to_control=false`
+- `robot_control_executed=false`
+- `mission_objective_0_satisfied=false`
+- `okr_credit=false`
+- KR：`不归档`
+
+O5 保持约 `85%`，O6/O7 各保持约 `93%`，O1 保持约 `94%`，百分比 flat；无完成 KR 可移入历史区，也无
+Mission Objective 0 进展。由于本轮 `current_run_artifact_delta=false` 且所有业务 delta 为零，不修改 `OKR.md`
+或 `docs/process/okr_progress_log.md`。
+
+### Product 最终判断与下一轮唯一动作
+
+用户价值与北极星仍是 current-run localization DB3、replay lineage 与 O6/O7 same-task consumption。本轮核心抓手
+仍是已批准的 Algorithm Phase A；`robot-algorithm-engineer` 是恢复后的责任 Engineer，只有 frozen live manifest
+clean 后才允许 `full-stack-software-engineer` 进入 Phase B。方向继续，但执行暂停。
+
+下一轮不得再派相同 Algorithm wrapper，也不得再做 canary；立即升级 CEO / sub-agent runtime owner。只有编排通道
+发生可确认的外部状态变化后，才恢复既有 Phase A 及其原验收口径。不得转 O5 provider、`/scan`、camera 或任何
+wrapper。剩余风险为 Algorithm helper、产品测试、DB3、metadata、manifest、replay JSONL 与 O6/O7 same-task
+consumption 全部缺失，上位机 localization publisher 状态未知；route、delivery、HIL、safety、control 与 Mission
+Objective 0 均未推进。

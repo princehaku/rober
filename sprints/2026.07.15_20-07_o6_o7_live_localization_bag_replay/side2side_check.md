@@ -97,3 +97,43 @@ repo/SSH/ROS invocation=`0`。但它只验证通用命令与隔离写入，不�
 准入是隔离 scratch scope 的“业务级 execution canary”在同一任务中实际完成 `apply_patch` 与一条轻量本地测试，
 同时保持 SSH/ROS/live invocation=`0`；clean 后才恢复同一 Algorithm Phase A。不得转 O5 provider、`/scan`、
 camera 或 wrapper。
+
+## 第四次 continuation / business canary 后对照（2026-07-16，Asia/Shanghai）
+
+O5 约 `85%` 仍是最低 Objective，但同一 provider/runtime blocker 已连续消费两轮，本次正确继续跳过；方向保持
+O6/O7 各约 `93%` 的 live localization bag。用户价值与北极星仍是 current-run localization DB3、replay lineage
+与 O6/O7 same-task consumption，canary、重派动作和收口文档均不等于该业务结果。
+
+| 第四次续跑验收项 | 期望 | 实际 | Product 判定 |
+| --- | --- | --- | --- |
+| business_canary | 隔离 scratch 内完成补丁与轻量测试 | `/tmp/rober_o6_o7_business_canary_20260716/` 内两个 Python 文件经 `apply_patch` 落盘，`py_compile` 通过，`unittest` 为 `Ran 2 tests ... OK`；repo untouched、SSH/ROS=`0` | clean，但非产品进展 |
+| canary 后 Algorithm Phase A | 进入 helper/tests 实现与离线验收 | 复用 worker 与无历史 offline-only worker 均在两个硬检查点零业务文件、零命令后中断 | business orchestration blocker |
+| 只读 live gate | helper 管理唯一 inventory | `inventory_invocation_count=0` | 未消费 live gate |
+| localization capture | inventory clean 后最多一次 | `live_capture_invocation_count=0` | 未触达上位机 |
+| Full-stack Phase B | frozen manifest clean 后解锁 | `full_stack_phase_b_allowed=false` | 继续正确 skip |
+| Mission / OKR | mission-grade artifact/action 才可计分 | 所有 delta、route/delivery/HIL/safety/control/`okr_credit` 均 false | 无 credit，KR 不归档 |
+
+### 第四次 Product 验收与方向判断
+
+- `current_run_artifact_delta=false`
+- `external_artifact_delta=false`
+- `live_control_delta=false`
+- `user_action_delta=false`
+- `route_execution_success=false`
+- `delivery_success=false`
+- `hil_pass=false`
+- `safe_to_control=false`
+- `robot_control_executed=false`
+- `mission_objective_0_satisfied=false`
+- `okr_credit=false`
+- KR：`不归档`
+
+精确 blocker 为
+`subagent_runtime_orchestration_timeout_before_business_file_or_command_execution_after_business_canary`；它发生在业务
+文件或命令执行前，不能归因到 repo、产品测试、SSH、ROS graph、publisher、rosbag/storage、上位机或 Full-stack。
+O5 约 `85%`、O6/O7 各约 `93%`、O1 约 `94%` 全部 flat，无 Mission Objective 0 进展。
+
+Product 判断为“继续 O6/O7 产品目标，但执行暂停”。核心抓手、优先级与验收口径仍是既有 Algorithm Phase A；
+责任 Engineer 仍为 `robot-algorithm-engineer`，Full-stack 保持未解锁。下一轮不得再派相同 Algorithm wrapper，也不得
+再做 canary；升级 CEO / sub-agent runtime owner，只有编排通道出现可确认的外部状态变化后才恢复 Phase A。不得转
+O5 provider、`/scan`、camera 或 wrapper。由于零业务 delta，不更新 `OKR.md`、进度日志或 KR 历史区。
