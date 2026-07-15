@@ -6,6 +6,16 @@
 
 ---
 
+## 2026-07-15 O5 provider runtime stage diagnostics 离线合同收口
+
+`sprints/2026.07.15_10-00_o5_provider_runtime_preflight_stage_diagnostics/` 已完成 Product acceptance closeout。Full-stack 新增 `trashbot.o5.provider_runtime_preflight_stage_diagnostics.v1`，固化 `download_started -> download_completed -> sha_command_completed -> sha_matched -> chmod_completed -> version_executed -> version_matched` 七阶段有序前缀、固定 failure enums、local-only runner、脱敏白名单、dry artifact 与稳定接口文档。Proof boundary=`software_proof_o5_provider_runtime_preflight_stage_diagnostics_offline_only`。
+
+验证事实：`py_compile` exit `0`；原计划 `python3 -m unittest <含点 sprint 路径/test.py>` exit `1`，错误为 `ModuleNotFoundError: No module named 'sprints.2026'`，发生在测试文件加载前。该偏差没有被掩盖；直接文件入口与 canonical `unittest discover` 均实际加载全部 18 tests，分别输出 `Ran 18 tests ... OK`。CLI、artifact `json.tool`、结构脱敏断言、required rg 与 scoped diff 通过；中文注释比例实现 `21.5%`、测试 `21.1%`。
+
+Product accepted 离线 stage diagnostics contract，但 dry fixture 不等于真实 official provider runtime。`current_run_artifact_delta=false`、`external_artifact_delta=false`、`live_control_delta=false`、`user_action_delta=false`，`production_ready=false`、`mission_objective_0_satisfied=false`、`route_execution_success=false`、`delivery_success=false`、`hil_pass=false`、`safe_to_control=false`，`okr_credit=false`。O5 保持约 `85%`，O1 约 `94%`、O6/O7 各约 `93%`，KR `不归档`，无已完成 KR 移入历史区。
+
+本轮是同一 `provider_runtime_preflight` blocker 的第二轮、最后一轮消费。下一轮必须切换 Objective，优先获取不依赖该 blocker 的 mission-grade artifact/action；或升级 CEO 决策 provider 策略、新授权、暂停 KR。禁止第三轮 O5 wrapper、diagnostic、readback 或 live 重跑。
+
 ## 2026-07-15 O5 public health tunnel failed live preflight 收口
 
 `sprints/2026.07.15_09-04_o5_public_health_tunnel_external_evidence/` 已完成 Product acceptance closeout。Full-stack 已实现纯标准库 health-only proxy，6 tests 覆盖精确 GET/HEAD `/healthz`、完整负向 path/query/encoding/method、敏感 header 隔离、upstream timeout/error 和非 loopback 拒绝；compose host publish 收紧到 `127.0.0.1`，bearer token 仍显式必填，README 明确 quick tunnel 直连 relay `NO-GO`。本地 `py_compile`、两种 unittest 入口、显式非生产 token 的 compose config、artifact `json.tool`、结构/脱敏断言与 scoped diff 均通过。

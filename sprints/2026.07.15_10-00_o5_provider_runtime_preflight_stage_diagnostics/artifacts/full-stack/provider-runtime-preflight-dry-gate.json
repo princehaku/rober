@@ -1,0 +1,33 @@
+{
+  "completed_stages": [
+    "download_started",
+    "download_completed",
+    "sha_command_completed",
+    "sha_matched",
+    "chmod_completed",
+    "version_executed",
+    "version_matched"
+  ],
+  "current_run_artifact_delta": false,
+  "delivery_success": false,
+  "external_artifact_delta": false,
+  "failure_reason": null,
+  "hil_pass": false,
+  "last_reached_stage": "version_matched",
+  "live_control_delta": false,
+  "mission_objective_0_satisfied": false,
+  "network_access_attempted": false,
+  "next_expected_stage": null,
+  "official_provenance_contract_checked": true,
+  "production_ready": false,
+  "proof_boundary": "software_proof_o5_provider_runtime_preflight_stage_diagnostics_offline_only",
+  "provider_runtime_preflight_status": "passed_offline_dry_gate",
+  "public_capture_count": 0,
+  "public_probe_attempt_count": 0,
+  "route_execution_success": false,
+  "safe_to_control": false,
+  "schema": "trashbot.o5.provider_runtime_preflight_stage_diagnostics.v1",
+  "ssh_attempted": false,
+  "tunnel_start_attempt_count": 0,
+  "user_action_delta": false
+}
