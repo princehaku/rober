@@ -6,6 +6,14 @@
 
 ---
 
+## 2026-07-15 O6/O7 live sensor dataset replay blocked 收口
+
+`sprints/2026.07.15_10-59_o6_o7_live_sensor_dataset_replay/` 已完成 Product blocked acceptance。Proof boundary=`live_upper_computer_read_only_sensor_inventory_blocked_scan_publisher_unconfirmed`，status=`blocked_scan_publisher_unconfirmed`。唯一 SSH inventory exit `0`；ROS setup、rosbag/sqlite3、`--max-bag-size`、磁盘 `994639872` bytes 与 `conflicting_recorder_count=0` 均通过，但 `/scan` 仅在 topic list 中为 `sensor_msgs/msg/LaserScan`，verbose info exit `1` / `Unknown topic '/scan'`，publisher count 未确认；ROS CLI 自动 daemon 副作用使 `runtime_mutation_free=false`。
+
+Artifact 固定 `inventory_invocation_count=1`、`live_capture_invocation_count=0`、`capture_gate=false`。本轮没有 DB3、metadata、keyframe、semantic replay、artifact-bundle input 或 Full-stack Phase C；两次 helper 实现派单均在产品代码、测试、文档零文件落盘前中断。Inventory 只用于解释 gate，不计 current-run mission artifact：`current_run_artifact_delta=false`、`external_artifact_delta=false`、`live_control_delta=false`、`user_action_delta=false`；`route_execution_success=false`、`delivery_success=false`、`hil_pass=false`、`safe_to_control=false`。
+
+O5 保持约 `85%`，O6/O7 各保持约 `93%`，O1 保持约 `94%`，主百分比全平，KR `不归档`，没有已完成 KR 移入历史区。本 sprint **不得重跑** inventory/capture，也不得新增 helper/review/readback/wrapper/fixture/Full-stack 消费来包装同一 blocker。下一轮默认切换 Objective；只有新 sprint + fresh authorization 时，才由 Algorithm 用 `ROS2CLI_NO_DAEMON=1` 或 daemon-off 的同 shell graph-stabilized bounded probe 恢复 `/scan publisher_count>=1` gate。
+
 ## 2026-07-15 O5 provider runtime stage diagnostics 离线合同收口
 
 `sprints/2026.07.15_10-00_o5_provider_runtime_preflight_stage_diagnostics/` 已完成 Product acceptance closeout。Full-stack 新增 `trashbot.o5.provider_runtime_preflight_stage_diagnostics.v1`，固化 `download_started -> download_completed -> sha_command_completed -> sha_matched -> chmod_completed -> version_executed -> version_matched` 七阶段有序前缀、固定 failure enums、local-only runner、脱敏白名单、dry artifact 与稳定接口文档。Proof boundary=`software_proof_o5_provider_runtime_preflight_stage_diagnostics_offline_only`。

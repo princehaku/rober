@@ -1,0 +1,248 @@
+{
+  "schema": "trashbot.o6_o7.live_sensor_dataset_read_only_inventory.v1",
+  "observed_at_utc": "2026-07-15T03:31:13Z",
+  "source_mode": "current_live_upper_computer_existing_publishers",
+  "target": {
+    "host_label": "live_upper_computer",
+    "host": "192.168.1.11",
+    "port": 37878,
+    "remote_hostname": "op-z3-b6.home"
+  },
+  "inventory_invocation_count": 1,
+  "live_capture_invocation_count": 0,
+  "ssh": {
+    "ok": true,
+    "exit_code": 0,
+    "summary": "single bounded read-only invocation completed"
+  },
+  "ros_setup": {
+    "path": "/opt/ros/humble/setup.bash",
+    "readable": true,
+    "source_exit_code": 0,
+    "ros2_help_exit_code": 0,
+    "available": true
+  },
+  "rosbag_capability": {
+    "record_help_exit_code": 0,
+    "storage_option_present": true,
+    "sqlite3_storage_present": true,
+    "max_bag_size_option_present": true,
+    "ready": true,
+    "summary": "record help exposes --storage with sqlite3 and --max-bag-size"
+  },
+  "topic_list": {
+    "exit_code": 0,
+    "observed_topics": [
+      {
+        "name": "/cmd_vel",
+        "type": "geometry_msgs/msg/Twist"
+      },
+      {
+        "name": "/lidar/raw_packet",
+        "type": "std_msgs/msg/UInt8MultiArray"
+      },
+      {
+        "name": "/parameter_events",
+        "type": "rcl_interfaces/msg/ParameterEvent"
+      },
+      {
+        "name": "/rosout",
+        "type": "rcl_interfaces/msg/Log"
+      },
+      {
+        "name": "/scan",
+        "type": "sensor_msgs/msg/LaserScan"
+      },
+      {
+        "name": "/tf_static",
+        "type": "tf2_msgs/msg/TFMessage"
+      }
+    ]
+  },
+  "topics": [
+    {
+      "name": "/scan",
+      "required": true,
+      "expected_type": "sensor_msgs/msg/LaserScan",
+      "type": "sensor_msgs/msg/LaserScan",
+      "type_evidence": "topic_list_t",
+      "publisher_count": 0,
+      "publisher_count_confirmed": false,
+      "info_exit_code": 1,
+      "info_summary": "Unknown topic '/scan'",
+      "candidate_if_gate_clean": true,
+      "eligible": false
+    },
+    {
+      "name": "/camera/image_raw",
+      "required": false,
+      "expected_type": "sensor_msgs/msg/Image",
+      "type": null,
+      "type_evidence": "not_observed",
+      "publisher_count": 0,
+      "publisher_count_confirmed": false,
+      "info_exit_code": 1,
+      "info_summary": "Unknown topic '/camera/image_raw'",
+      "candidate_if_gate_clean": false,
+      "eligible": false
+    },
+    {
+      "name": "/odom",
+      "required": false,
+      "expected_type": "nav_msgs/msg/Odometry",
+      "type": "nav_msgs/msg/Odometry",
+      "type_evidence": "topic_info_verbose",
+      "publisher_count": 1,
+      "publisher_count_confirmed": true,
+      "info_exit_code": 0,
+      "info_summary": "matching type with one publisher",
+      "candidate_if_gate_clean": true,
+      "eligible": true
+    },
+    {
+      "name": "/tf",
+      "required": false,
+      "expected_type": "tf2_msgs/msg/TFMessage",
+      "type": "tf2_msgs/msg/TFMessage",
+      "type_evidence": "topic_info_verbose",
+      "publisher_count": 1,
+      "publisher_count_confirmed": true,
+      "info_exit_code": 0,
+      "info_summary": "matching type with one publisher",
+      "candidate_if_gate_clean": true,
+      "eligible": true
+    },
+    {
+      "name": "/tf_static",
+      "required": false,
+      "expected_type": "tf2_msgs/msg/TFMessage",
+      "type": "tf2_msgs/msg/TFMessage",
+      "type_evidence": "topic_info_verbose",
+      "publisher_count": 1,
+      "publisher_count_confirmed": true,
+      "info_exit_code": 0,
+      "info_summary": "matching type with one publisher",
+      "candidate_if_gate_clean": true,
+      "eligible": true
+    },
+    {
+      "name": "/diagnostics",
+      "required": false,
+      "expected_type": "diagnostic_msgs/msg/DiagnosticArray",
+      "type": null,
+      "type_evidence": "not_observed",
+      "publisher_count": 0,
+      "publisher_count_confirmed": false,
+      "info_exit_code": 1,
+      "info_summary": "Unknown topic '/diagnostics'",
+      "candidate_if_gate_clean": false,
+      "eligible": false
+    }
+  ],
+  "candidate_topics_if_required_gate_recovers": [
+    "/scan",
+    "/odom",
+    "/tf",
+    "/tf_static"
+  ],
+  "eligible_optional_topic_candidates": [
+    "/odom",
+    "/tf",
+    "/tf_static"
+  ],
+  "selected_topics": [],
+  "explicitly_excluded_topics": [
+    "/map",
+    "/amcl_pose"
+  ],
+  "disk": {
+    "path": "/tmp",
+    "df_exit_code": 0,
+    "block_size_bytes": 1024,
+    "available_blocks": 971328,
+    "disk_available_bytes": 994639872,
+    "minimum_required_bytes": 67108864,
+    "minimum_satisfied": true
+  },
+  "process_inventory": {
+    "ps_exit_code": 0,
+    "conflicting_recorder_count": 0,
+    "critical_runtime_summary": {
+      "esp32_bridge_process_count": 2,
+      "lidar_lifecycle_process_count": 1,
+      "lidar_driver_process_count": 2,
+      "static_transform_publisher_process_count": 2,
+      "camera_smoke_process_count": 1,
+      "camera_topic_hz_monitor_process_count": 17,
+      "odom_topic_hz_monitor_process_count": 1,
+      "upper_robot_api_process_count": 1,
+      "ros2_daemon_process_count": 1
+    },
+    "summary": "existing LiDAR, ESP32 bridge, static TF, camera/API and stale topic-hz monitor processes observed; no ros2 bag recorder observed"
+  },
+  "runtime_safety": {
+    "explicit_runtime_start_stop_command_executed": false,
+    "runtime_start_or_stop_required_for_capture": false,
+    "automatic_ros2_cli_daemon_start_observed": true,
+    "automatic_ros2_cli_daemon_start_attribution": "process start time falls inside inventory window; treated as an inventory side effect",
+    "runtime_mutation_free": false
+  },
+  "capture_gate": false,
+  "capture_gate_status": "blocked_fail_closed",
+  "blockers": [
+    "required_scan_publisher_count_not_confirmed",
+    "scan_topic_info_verbose_exit_1_unknown_topic",
+    "automatic_ros2_cli_daemon_started_during_inventory_window"
+  ],
+  "command_evidence": [
+    {
+      "command": "date -u",
+      "exit_code": 0,
+      "safe_summary": "UTC captured"
+    },
+    {
+      "command": "hostname",
+      "exit_code": 0,
+      "safe_summary": "hostname captured"
+    },
+    {
+      "command": "source /opt/ros/humble/setup.bash",
+      "exit_code": 0,
+      "safe_summary": "system ROS setup available"
+    },
+    {
+      "command": "ros2 bag record --help",
+      "exit_code": 0,
+      "safe_summary": "sqlite3 storage and max bag size options present"
+    },
+    {
+      "command": "ros2 topic list -t",
+      "exit_code": 0,
+      "safe_summary": "six topics observed; required scan type listed"
+    },
+    {
+      "command": "bounded ros2 topic info -v for six allowlist topics",
+      "exit_code": 1,
+      "safe_summary": "scan, camera and diagnostics returned unknown; odom, tf and tf_static returned matching types with one publisher"
+    },
+    {
+      "command": "df -Pk /tmp",
+      "exit_code": 0,
+      "safe_summary": "994639872 bytes available"
+    },
+    {
+      "command": "ps -eo pid,ppid,pgid,lstart,args",
+      "exit_code": 0,
+      "safe_summary": "critical runtime summarized and command arguments redacted; conflicting recorder count zero"
+    }
+  ],
+  "capture_attempted": false,
+  "runtime_start_stop_attempted": false,
+  "topic_write_attempted": false,
+  "rosbag_play_attempted": false,
+  "safe_to_control": false,
+  "robot_control_executed": false,
+  "route_execution_success": false,
+  "delivery_success": false,
+  "hil_pass": false
+}
