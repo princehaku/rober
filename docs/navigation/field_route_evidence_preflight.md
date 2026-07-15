@@ -1616,3 +1616,33 @@ source class、`timestamp` 和 unique AMCL publisher attribution 均保持原合
 read-only、no-topic-write、no-motion 的 freshness 证据语义，不授权 `/initialpose`、managed runtime
 start/stop、planner/controller/path、NavigateToPose、`/cmd_vel`、`/api/base/manual`、UART 或运动，
 也不证明定位 ground truth、route execution、delivery、HIL 或 safe-to-control。
+
+`2026-07-15 08:12-08:14` 的真实上位机 capture 首次把该 receipt-time 合同带入 fresh
+managed localization-only 窗口。local/remote helper SHA 均为
+`78fd2e88aa6e272db52a45db8d8f5eef07108a4a010e73c50119bb23c18ca368`，final live run count 固定为
+`1`；命令只包含 `--strict-no-motion --no-base-uart --managed-runtime-opt-in`、既有 LiDAR lifecycle
+复用和 `/dev/ttyACM0@150000` 的当前现场参数，不包含 `--initialpose-opt-in` 或
+`--path-generation-opt-in`。helper 只启动 map_server、AMCL、lifecycle manager 与必要 static TF，
+没有启动 planner/controller。
+
+artifact `sprints/2026.07.15_08-06_o3_live_tf_receipt_capture/artifacts/algorithm/runtime-proof.json`
+自然 exit `2`，但证明 map_server/AMCL active、`/scan` fresh（`age_ms=21`），并让本轮 `/tf` /
+`/tf_static` inventory 的 `3/3` transforms 都带整数 `received_at_ms`。观测到的 dynamic
+`odom->base_link` 可复算：
+
+- `1784074406732 - 1784074406726 = header_age_at_receipt_ms=6`；
+- `1784074446409 - 1784074406732 = receipt_age_at_evaluation_ms=39677`；
+- `1784074446409 - 1784074406726 = header_age_at_evaluation_ms=39683`。
+
+decision 仍以 `header_age_at_receipt_ms` 对 `3000ms` threshold 判为 fresh；约 39.7 秒的 collector
+后续耗时没有被错误追加到 freshness gate。目标 dynamic `map->odom` 在未发布 `/initialpose` 的本轮
+没有出现，因此其 receipt/三类 age 均保持 `null`，exact blocker 为
+`amcl_requires_initial_pose_but_initialpose_forbidden_in_current_safety_scope` 与
+`map_to_odom_dynamic_source_missing`，不能用相邻 `odom->base_link` edge 洗白。
+
+本轮 `initialpose_publish_attempts=0`，path generation、UART、`/cmd_vel`、`/api/base/manual`、route、
+delivery 与 HIL 全部为 false。helper-owned PGID identity 已核对，cleanup residual=`0`，post inventory
+也没有 map_server/AMCL/lifecycle/static-TF/helper 残留。proof boundary 是
+`live_strict_no_motion_localization_receipt_artifact_blocked_missing_map_to_odom`：它是 current-run live
+sensor/localization artifact，不是定位 ready、route execution、delivery、HIL、safe-to-control 或
+Mission Objective 0 完成证明。

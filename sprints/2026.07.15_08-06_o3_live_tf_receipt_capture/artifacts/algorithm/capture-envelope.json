@@ -1,0 +1,112 @@
+{
+  "schema": "trashbot.o3.live_tf_receipt_capture_envelope.v1",
+  "captured_at": "2026-07-15T08:14:09.320+08:00",
+  "target": {
+    "host": "192.168.1.11",
+    "port": 37878,
+    "hostname": "op-z3-b6.home"
+  },
+  "preflight": {
+    "checked_at": "2026-07-15T08:11:36+08:00",
+    "ros_setup_readable": true,
+    "onboard_setup_readable": true,
+    "ros2_binary": "/opt/ros/humble/bin/ros2",
+    "managed_map_yaml": "/root/rober/onboard/runtime/maps/trashbot_map.yaml",
+    "managed_map_yaml_sha256": "1b54312162c67b74f4c67294e287c4f1b2c2df9e12b7008d39660b26134810f4",
+    "lidar_device": "/dev/ttyACM0",
+    "lidar_runtime_baudrate": 150000,
+    "lidar_lifecycle_running": true,
+    "lidar_lifecycle_pid": 550851,
+    "lidar_holder_pid": 550922,
+    "existing_localization_or_helper_process_count": 0,
+    "existing_lidar_reused": true
+  },
+  "helper": {
+    "local_sha256": "78fd2e88aa6e272db52a45db8d8f5eef07108a4a010e73c50119bb23c18ca368",
+    "remote_sha256": "78fd2e88aa6e272db52a45db8d8f5eef07108a4a010e73c50119bb23c18ca368",
+    "remote_path": "/tmp/rober_o3_live_tf_receipt_capture.py",
+    "sha_match": true
+  },
+  "run": {
+    "final_live_run_count": 1,
+    "started_at_ms": 1784074336849,
+    "generated_at_ms": 1784074449320,
+    "elapsed_ms": 112471,
+    "exit_code": 2,
+    "status": "blocked_with_root_cause",
+    "artifact_sha256": "2674af26a84a4e9ebd40327c742d1f83bc7916c83d5deaf83658a064810204c2",
+    "strict_no_motion": true,
+    "no_base_uart": true,
+    "managed_runtime_opt_in": true,
+    "reuse_existing_lidar_lifecycle": true,
+    "initialpose_opt_in": false,
+    "path_generation_opt_in": false,
+    "planner_or_controller_started": false
+  },
+  "observations": {
+    "managed_runtime_started": true,
+    "managed_runtime_boundary": "explicit_opt_in_managed_localization_runtime_no_motion",
+    "map_server_active": true,
+    "amcl_active": true,
+    "scan_once_observed": true,
+    "scan_freshness_status": "fresh",
+    "scan_age_ms": 21,
+    "amcl_pose_observed": false,
+    "tf_topic_observed": true,
+    "tf_static_topic_observed": true,
+    "dynamic_map_to_odom_observed": false,
+    "dynamic_odom_to_base_link_observed": true,
+    "tf_transform_count": 3,
+    "tf_transform_with_received_at_ms_count": 3,
+    "exact_blockers": [
+      "ros2_node_list_timeout",
+      "amcl_requires_initial_pose_but_initialpose_forbidden_in_current_safety_scope",
+      "/amcl_pose_probe_timeout",
+      "map_to_odom_dynamic_source_missing",
+      "map_to_base_link_blocked_by_missing_map_to_odom"
+    ]
+  },
+  "observed_dynamic_receipt_age_example": {
+    "edge": "odom_to_base_link",
+    "header_stamp_epoch_ms": 1784074406726,
+    "received_at_ms": 1784074406732,
+    "evaluated_at_ms": 1784074446409,
+    "header_age_at_receipt_ms": 6,
+    "receipt_age_at_evaluation_ms": 39677,
+    "header_age_at_evaluation_ms": 39683,
+    "decision_basis": "header_age_at_receipt_ms",
+    "threshold_ms": 3000,
+    "freshness_status": "fresh"
+  },
+  "cleanup": {
+    "helper_owned_process_group": 651190,
+    "identity_verified": true,
+    "residual_count": 0,
+    "group_present_after_cleanup": false,
+    "post_inventory_checked_at": "2026-07-15T08:14:27+08:00",
+    "post_inventory_localization_or_helper_process_count": 0
+  },
+  "safety": {
+    "initialpose_publish_attempts": 0,
+    "path_generation_requested": false,
+    "path_generation_attempted": false,
+    "path_generated": false,
+    "uses_base_uart": false,
+    "publishes_cmd_vel": false,
+    "calls_base_manual": false,
+    "robot_control_executed": false,
+    "safe_to_control": false,
+    "route_execution_success": false,
+    "delivery_success": false,
+    "hil_pass": false
+  },
+  "mission_credit": {
+    "current_run_artifact_delta": true,
+    "external_artifact_delta": false,
+    "live_control_delta": false,
+    "user_action_delta": false,
+    "mission_objective_0_met": false,
+    "okr_credit": false,
+    "proof_boundary": "live_strict_no_motion_localization_receipt_artifact_blocked_missing_map_to_odom"
+  }
+}

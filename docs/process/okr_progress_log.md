@@ -6,6 +6,33 @@
 
 ---
 
+## 2026-07-15 O3 live TF receipt artifact 收口
+
+`sprints/2026.07.15_08-06_o3_live_tf_receipt_capture/` 已完成 Product acceptance closeout。唯一 true-board
+live run natural exit=`2`；map_server/AMCL active，`/scan` fresh `21ms`，TF inventory `3/3` transforms
+均有整数 `received_at_ms`。Observed dynamic `odom->base_link` 的
+`header_age_at_receipt_ms/receipt_age_at_evaluation_ms/header_age_at_evaluation_ms=6/39677/39683ms`，
+decision basis=`header_age_at_receipt_ms`，threshold=`3000ms`，证明 collector evaluation delay 未污染
+receipt-time freshness gate。
+
+目标 dynamic `map->odom` 仍 missing，exact blockers 为
+`amcl_requires_initial_pose_but_initialpose_forbidden_in_current_safety_scope`、`/amcl_pose_probe_timeout` 与
+`map_to_odom_dynamic_source_missing`。本轮 `initialpose_publish_attempts=0`，path/planner/controller/UART/
+control/route/delivery/HIL 均 false；helper-owned cleanup residual=`0`，post inventory residual=`0`。
+验证为 `py_compile` exit `0`、`Ran 160 tests in 2.267s OK`、artifact `json.tool`、structure assertion、
+required `rg` 与 scoped `git diff --check` 全通过。
+
+Product 接受 proof boundary=`live_strict_no_motion_localization_receipt_artifact_blocked_missing_map_to_odom`，
+拒绝 clean localization、Mission Objective 0 与 OKR credit。`current_run_artifact_delta=true`、
+`external_artifact_delta=false`、`live_control_delta=false`、`user_action_delta=false`，`okr_credit=false`，
+KR `不归档`。O5 约 `85%`、O6/O7 各约 `93%`、O1 约 `94%` 全保持。
+
+同 sprint 前置的 O5 live tunnel 只读审计未观察到 cloudflared/ngrok/frp/WireGuard/tailscale 或
+relay/tunnel runtime；exact blocker 是缺 tunnel/provider runtime、public endpoint、TLS/DNS 与 credential。
+该审计不是 external production artifact，O5 preflight/readback/export/browser/voice/packet/mock wrapper 继续
+退役。下一轮不得重复无 initial pose 的同一 runtime；只允许 verified persisted pose、新明确授权的
+controlled localization input，或 O5 success-class public-cloud external evidence。
+
 ## 2026-07-15 O3 TF receipt-time freshness 离线合同收口
 
 `sprints/2026.07.15_05-55_o3_tf_receipt_time_freshness_recovery/` 已完成 Product acceptance closeout。
