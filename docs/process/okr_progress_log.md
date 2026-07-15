@@ -6,6 +6,30 @@
 
 ---
 
+## 2026-07-15 O6/O7 live localization bag replay 第三次 continuation / post-canary flat 收口
+
+`sprints/2026.07.15_20-07_o6_o7_live_localization_bag_replay/` 完成第三次 continuation acceptance。上一轮要求的
+sprint 外 runtime canary 已 clean：worker 执行 `pwd`、两次 clean `git status --short`，通过 `apply_patch` 创建两行
+`/tmp/rober_algorithm_runtime_canary_20260715.txt`，`wc=29`；repo、SSH、ROS invocation 均为 `0`。该 canary 只证明
+通用命令和隔离写入可执行，不是产品实现、测试或 mission artifact。
+
+恢复 Algorithm Phase A 后业务执行编排仍失败：第一个 worker 完整核对 tech-plan 并声称进入 `apply_patch`，但硬检查点仍为零产品文件、
+零命令，随后中断；无历史 generic-worker fallback 同样在硬检查点前零落盘、零命令，随后中断。收口文档写入前
+产品 worktree 仍 clean；无 helper、测试、navigation 文档、DB3、metadata、manifest、replay JSONL 或 O6/O7
+same-task consumption，也没有产品
+测试、构建、SSH 或 ROS 执行。`inventory_invocation_count=0`、`live_capture_invocation_count=0`、
+`full_stack_phase_b_allowed=false`。
+
+`current_run_artifact_delta=false`、`external_artifact_delta=false`、`live_control_delta=false`、
+`user_action_delta=false`、`route_execution_success=false`、`delivery_success=false`、`hil_pass=false`、
+`safe_to_control=false`、`okr_credit=false`。O5 `85%`、O6/O7 `93%`、O1 `94%` 全 flat，KR `不归档`。
+Proof boundary=`runtime_canary_clean_but_business_subagent_orchestration_blocked_no_engineering_or_live_execution`。
+
+方向继续 O6/O7 live localization bag，但暂停自动重派同一 Algorithm Phase A，并升级 CEO / sub-agent runtime owner。
+下一轮唯一准入是隔离 scratch scope 的“业务级 execution canary”在同一任务中实际完成 `apply_patch` 与一条轻量
+本地测试，同时保持 SSH/ROS/live invocation=`0`；clean 后才恢复同一 Algorithm Phase A。不得转 O5 provider、
+`/scan`、camera 或 wrapper。
+
 ## 2026-07-15 O6/O7 live localization bag replay orchestration blocked 收口
 
 `sprints/2026.07.15_20-07_o6_o7_live_localization_bag_replay/` 已按

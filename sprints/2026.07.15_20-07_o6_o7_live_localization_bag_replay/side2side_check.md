@@ -62,3 +62,38 @@ orchestration runtime timeout。
 rosbag/storage、上位机或 Full-stack。责任路由应先升级 CEO / sub-agent runtime owner；恢复派 Engineer 的准入是
 一次 sprint 外、无 live invocation 的 runtime canary 已证明命令与隔离写入均可执行。禁止第三个相同 Algorithm worker
 包装。由于本次无新 artifact 或风险状态变化，不更新 `OKR.md` 与 `docs/process/okr_progress_log.md`。
+
+## 第三次 continuation / post-canary 对照（2026-07-15，Asia/Shanghai）
+
+上一轮设置的 sprint 外 runtime canary 已 clean：worker 实际执行 `pwd`、两次 clean
+`git status --short`，通过 `apply_patch` 写入两行 `/tmp/rober_algorithm_runtime_canary_20260715.txt`，`wc=29`，且
+repo/SSH/ROS invocation=`0`。但它只验证通用命令与隔离写入，不构成业务执行或 OKR 证据。
+
+| 第三次续跑验收项 | 期望 | 实际 | Product 判定 |
+| --- | --- | --- | --- |
+| 通用 runtime canary | 只读命令与隔离写入可执行 | `pwd`、两次 clean status、`apply_patch`、`wc=29` | clean，但非业务结果 |
+| canary 后 Algorithm Phase A | 进入 helper/tests 实现与离线验收 | 原 worker 与无历史 generic fallback 均零产品文件、零命令 | business orchestration blocker |
+| 只读 live gate | helper 管理唯一 inventory | `inventory_invocation_count=0` | 未消费 live gate |
+| localization capture | inventory clean 后最多一次 | `live_capture_invocation_count=0` | 未触达上位机 |
+| Full-stack Phase B | frozen manifest clean 后解锁 | `full_stack_phase_b_allowed=false` | 继续正确 skip |
+| Mission / OKR | mission-grade artifact/action 才可计分 | 四 delta、route/delivery/HIL/safe/`okr_credit` 全 false | 无 credit，KR 不归档 |
+
+### post-canary Product 验收
+
+- 用户价值与产品北极星仍是 current-run localization DB3、replay lineage 与 O6/O7 same-task consumption；canary、
+  重派动作与文档都不是业务结果。
+- `current_run_artifact_delta=false`
+- `external_artifact_delta=false`
+- `live_control_delta=false`
+- `user_action_delta=false`
+- `route_execution_success=false`
+- `delivery_success=false`
+- `hil_pass=false`
+- `safe_to_control=false`
+- `okr_credit=false`
+- O5 约 `85%`、O6/O7 各约 `93%`、O1 约 `94%`，全部 flat；KR：`不归档`。
+
+方向继续 O6/O7 live localization bag，但暂停自动重派同一 Phase A，升级 CEO / sub-agent runtime owner。下一轮唯一
+准入是隔离 scratch scope 的“业务级 execution canary”在同一任务中实际完成 `apply_patch` 与一条轻量本地测试，
+同时保持 SSH/ROS/live invocation=`0`；clean 后才恢复同一 Algorithm Phase A。不得转 O5 provider、`/scan`、
+camera 或 wrapper。

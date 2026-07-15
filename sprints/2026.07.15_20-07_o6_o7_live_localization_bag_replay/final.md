@@ -84,3 +84,49 @@ clean 后才允许 Full-stack Phase B。
 preflight/readback/export/browser/mock wrapper。剩余风险是 Algorithm helper、测试、DB3、metadata、manifest、replay
 JSONL 与 O6/O7 same-task consumption 仍全部缺失，上位机 localization publisher 当前状态仍未知；所有 route、delivery、
 HIL、safe-to-control 与 Mission Objective 0 声明继续为 false。
+
+## 第三次 continuation / post-canary 收口（2026-07-15，Asia/Shanghai）
+
+### 最终事实与 proof boundary
+
+上一轮要求的 sprint 外 runtime canary 已 clean：canary worker 执行 `pwd`、两次 clean
+`git status --short`，通过 `apply_patch` 创建两行 `/tmp/rober_algorithm_runtime_canary_20260715.txt`，`wc=29`；
+repo、SSH、ROS invocation 均为 `0`。但恢复业务派单后，第一个 Algorithm worker 完整核对 tech-plan 并声称进入
+`apply_patch`，在硬检查点仍零产品文件、零命令，随后中断；无历史 generic-worker fallback 也在硬检查点前零落盘、
+零命令，随后中断。
+
+业务恢复尝试结束、收口文档写入前的产品 worktree 仍 clean；本次 diff 仅包含五个允许的收口文档。没有 helper、
+测试、navigation 文档、DB3、metadata、manifest、replay JSONL、O6/O7 消费，也没有产品测试、构建、SSH 或 ROS
+执行。Proof boundary 固定为
+`runtime_canary_clean_but_business_subagent_orchestration_blocked_no_engineering_or_live_execution`。
+
+- `inventory_invocation_count=0`
+- `live_capture_invocation_count=0`
+- `full_stack_phase_b_allowed=false`
+- `current_run_artifact_delta=false`
+- `external_artifact_delta=false`
+- `live_control_delta=false`
+- `user_action_delta=false`
+- `route_execution_success=false`
+- `delivery_success=false`
+- `hil_pass=false`
+- `safe_to_control=false`
+- `mission_objective_0_satisfied=false`
+- `okr_credit=false`
+- KR：`不归档`
+
+O5 保持约 `85%`，O6/O7 各保持约 `93%`，O1 保持约 `94%`，全部 flat；无完成 KR 可移入历史区。runtime canary
+clean 只排除了“所有 worker 都无法执行命令或隔离写入”的宽泛假设；业务执行编排仍失败，停在产品文件或命令前。
+当前 blocker 更新为 `subagent_runtime_orchestration_timeout_before_business_file_or_command_execution_post_canary`，
+不是 repo、SSH、ROS、publisher、rosbag/storage、上位机或 Full-stack blocker。
+
+### 最终方向与下一轮唯一准入
+
+继续 O6/O7 live localization bag 产品目标，但暂停自动重派同一 Algorithm Phase A，并升级 CEO / sub-agent runtime
+owner。下一轮只有“业务级 execution canary”可先行：必须在隔离 scratch scope 内由 worker 实际完成 `apply_patch` 与
+一条轻量本地测试，同时不触达 SSH/ROS/live gate。该 canary clean 后才恢复同一 Algorithm Phase A；真实 frozen
+manifest clean 后才允许 Full-stack Phase B。不得转 O5 provider、`/scan`、camera 或任何 wrapper。
+
+剩余风险不变：Algorithm helper、产品测试、DB3、metadata、manifest、replay JSONL 与 O6/O7 same-task consumption
+全部缺失，上位机 localization publisher 当前状态未知，route、delivery、HIL、safe-to-control 与 Mission Objective 0
+继续为 false。

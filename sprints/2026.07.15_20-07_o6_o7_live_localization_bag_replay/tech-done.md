@@ -90,3 +90,47 @@ worker 包装，先升级 CEO / sub-agent runtime owner 修复编排执行通道
 不消费 SSH/ROS/live gate 的 runtime canary，证明 worker 能实际执行一个只读命令与一次隔离文件写入；canary 未通过
 不得第三次派发同一 Algorithm 任务。产品方向仍继续 O6/O7 live localization bag，不改成 support wrapper；风险是
 DB3、manifest、replay 与 same-task consumption 仍全部缺失，publisher 当前状态也仍未知。
+
+## 第三次 continuation / post-canary audit（2026-07-15，Asia/Shanghai）
+
+### runtime canary 与业务恢复事实
+
+上一段要求的 sprint 外 runtime canary 已实际 clean：canary worker 执行 `pwd`、两次
+`git status --short`，并通过 `apply_patch` 创建隔离文件
+`/tmp/rober_algorithm_runtime_canary_20260715.txt`。文件内容为两行，`wc` 结果为 `29`；repo、SSH、ROS
+invocation 均为 `0`。该 canary 只证明通用 worker 可执行命令和隔离写入，不是产品实现、测试或 mission artifact。
+
+canary clean 后恢复同一 Algorithm Phase A 业务派单。第一个 worker 完整核对 `tech-plan.md` 并声称进入
+`apply_patch`，但硬检查点时仍为零产品文件、零命令，随后中断；无历史 generic-worker fallback 同样在硬检查点前
+零落盘、零命令，随后中断。本次收口前 repo 仍 clean，且没有 helper、测试、navigation 文档、DB3、metadata、
+manifest、replay JSONL 或 O6/O7 same-task consumption。
+
+### post-canary invocation 与验证记账
+
+- `inventory_invocation_count=0`
+- `live_capture_invocation_count=0`
+- `full_stack_phase_b_allowed=false`
+- 产品测试、构建、SSH、ROS inventory/capture：未运行。
+- `current_run_artifact_delta=false`
+- `external_artifact_delta=false`
+- `live_control_delta=false`
+- `user_action_delta=false`
+- `route_execution_success=false`
+- `delivery_success=false`
+- `hil_pass=false`
+- `safe_to_control=false`
+- `okr_credit=false`
+- KR：`不归档`
+
+runtime canary clean 没有解除业务执行 blocker；精确定位仍是
+`subagent_runtime_orchestration_timeout_before_business_file_or_command_execution_post_canary`。它不能归因到 repo
+代码、产品测试、SSH、ROS graph、localization publisher、rosbag/storage、上位机或 Full-stack，因为这些路径均未
+触达。O5 保持约 `85%`，O6/O7 各保持约 `93%`，O1 保持约 `94%`。
+
+### Product 方向与唯一准入
+
+暂停自动重派同一 Algorithm Phase A，并升级 CEO / sub-agent runtime owner；不把通用 canary clean 误计为工程恢复。
+下一轮唯一准入是先在隔离 scratch scope 运行一次“业务级 execution canary”，要求 worker 在同一任务中实际完成
+`apply_patch` 与一条轻量本地测试，且 SSH/ROS/live invocation 继续为 `0`。只有该 canary clean 后，才恢复同一
+Algorithm Phase A；frozen live manifest clean 后才允许 Full-stack Phase B。产品方向继续 O6/O7 live localization
+bag，不转 O5 provider、`/scan`、camera 或 wrapper。
