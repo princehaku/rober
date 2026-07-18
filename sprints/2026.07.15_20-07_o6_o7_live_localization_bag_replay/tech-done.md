@@ -186,3 +186,53 @@ O5 保持约 `85%`，O6/O7 各保持约 `93%`，O1 保持约 `94%`，全部 flat
 历史区，因此不修改 `OKR.md` 或 `docs/process/okr_progress_log.md`。剩余风险是 helper、产品测试、DB3、metadata、
 manifest、replay 与 same-task consumption 全部缺失，上位机 localization publisher 状态未知，Mission Objective 0
 没有进展。
+
+## 第五次 continuation / 2026-07-18 Product 事实收口
+
+### 本次执行事实与验证边界
+
+本次 continuation 复用既有 `tech-plan.md`，只派一个 `robot-algorithm-engineer` 执行 Phase A。worker 完整读取
+资料并报告正在落 helper/tests；但两个硬检查点均显示 repo clean、零业务文件、零实现/测试命令，随后在任何 SSH、
+ROS、publisher inventory、rosbag 或 live capture 触发前被中断。因此，本次没有 Algorithm helper、测试、navigation
+文档、DB3、metadata、manifest、replay JSONL 或 O6/O7 same-task consumption；Full-stack Phase B 未解锁。
+
+- `inventory_invocation_count=0`
+- `live_capture_invocation_count=0`
+- `full_stack_phase_b_allowed=false`
+- `current_run_artifact_delta=false`
+- `external_artifact_delta=false`
+- `live_control_delta=false`
+- `user_action_delta=false`
+- `route_execution_success=false`
+- `delivery_success=false`
+- `hil_pass=false`
+- `safe_to_control=false`
+- `robot_control_executed=false`
+- `mission_objective_0_satisfied=false`
+- `okr_credit=false`
+- KR：`不归档`
+
+第五次 continuation 证明，在第四次收口之后，既有
+`subagent_runtime_orchestration_timeout_before_business_file_or_command_execution_after_business_canary` 仍未发生可确认
+外部变化。该 blocker 仍发生在业务文件或命令执行前，不是 repo、SSH、ROS graph、localization publisher、
+rosbag/storage、上位机或 Full-stack blocker；本次也没有运行产品测试、构建、SSH、ROS 或 live capture，安全 gate
+保持未消费。
+
+### Product、OKR/KR 与历史归档决策
+
+用户价值与产品北极星继续指向 current-run localization DB3、replay lineage 与 O6/O7 same-task consumption，而不是
+新 wrapper、canary 或文档 readback。O5 约 `85%` 因 provider blocker 已连续消费两轮而继续暂停；O6/O7 各约
+`93%`、O1 约 `94%` 全部 flat。方向判断为继续 O6/O7 产品目标、暂停当前执行入口；既有 Phase A 仍是业务抓手，
+但本次零业务 delta，Mission Objective 0 仍未满足。
+
+没有完成 KR 可移入 `OKR.md` 历史区，故 KR 不归档；也没有新的状态或证据可改变主进度，因此不修改 `OKR.md`
+或 `docs/process/okr_progress_log.md`。本次仅在本 epic 的 `tech-done.md` 与 `final.md` 追加事实，避免把相同 blocker
+包装成新 sprint 或虚假进度。
+
+### 风险与下一轮唯一允许入口
+
+剩余风险不变：helper、产品测试、DB3、metadata、manifest、replay 与 same-task consumption 全部缺失，上位机
+localization publisher 状态仍未知。下一轮不得再次重派相同 Algorithm 任务或 canary，不得创建新的
+wrapper/escalation/preflight。只允许以下入口之一：sub-agent runtime owner 提供业务执行通道已修复的可确认外部状态
+证据；或 CEO 提供 fresh bounded-motion 明确授权 / 另行指定 Objective。通用“持续推进”和 SSH endpoint 只提供
+连接上下文，不构成运动授权。
