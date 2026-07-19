@@ -56,3 +56,21 @@
 ## 剩余风险
 
 当前缺 fresh CEO/operator motion authorization，也缺 operator 在场、路线清空、stop ready、真实 route terminal、same-window `T=1001` 与 post-stop 事实。任何一项缺失都继续 fail closed。
+
+## 2026-07-20 fresh authorization continuation closeout
+
+### 最新对照验收
+
+| 检查项 | 预期 | 当前事实 | 判定 |
+| --- | --- | --- | --- |
+| Fresh authorization | operator 看护、路线清空、物理位置受限、单次有界动作 | CEO 本轮已明确授权并冻结四项 identity | 通过，`authorization=true` |
+| Algorithm dispatch | Engineer 进入 helper/test/live 业务执行 | `algorithm_bounded_live_route`、`algorithm_live_route_fallback`、`algorithm_helper_implement` 均在业务文件或命令前停滞 | blocked |
+| Live action count | 最多一次，且不得重试 | live helper=`0`，goal=`0`，pre/post stop=`0/0` | 未消费授权 |
+| 工程证据 | helper、test、doc、manifest 与验证日志 | 全部不存在，没有 SSH/ROS/test/build/T1001 | 不接受为工程进展 |
+| OKR/KR | 只有 mission evidence 才计分 | O5/O6/O7/O1 flat，`okr_credit=false` | 通过，KR `不归档` |
+
+最新状态为 `authorization=true_but_engineering_runtime_blocked`；旧主体的 authorization blocker 已被 CEO 输入解除。当前精确 blocker 是 `subagent_runtime_stalled_before_business_file_or_command_execution_after_fresh_authorization`，不能解释为 endpoint、ROS graph、Nav2 terminal、stop 或硬件失败。
+
+所有 mission delta 仍为 false：`route_execution_success=false`、`delivery_success=false`、`hil_pass=false`、`safe_to_control=false`、`robot_control_executed=false`、`mission_objective_0_satisfied=false`、`okr_credit=false`。本轮只接受三份前置文档的授权状态更新；不接受 mission 交付，不调整百分比，不归档 KR。
+
+下一轮不得第四次重复消费相同 worker runtime blocker，也不得生成 wrapper/preflight/mock-only surface。唯一执行入口是在 runtime owner 给出业务 worker 已恢复的可确认外部证据后，复用本 sprint frozen identity 派 Algorithm；否则由 CEO 明确切换 Objective。

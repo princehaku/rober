@@ -78,3 +78,20 @@ Sprint 以 `blocked_pending_fresh_ceo_motion_authorization_no_okr_credit` 完整
 ## 剩余风险
 
 当前 endpoint/runtime、定位、Nav2、stop path、WAVE ROVER `T=1001`、路线清空与 operator 现场条件均未知。未经选项 A 的完整 fresh 授权，不得启动工程或 live 验证；选择选项 B 时必须切换方向，不能再以同一 blocker 开新 sprint。
+
+## 2026-07-20 fresh authorization continuation closeout
+
+CEO 已选择并满足有界动作授权口径：operator 看护、路线清空、物理位置受限，授权窗口为当前 automation turn。Product 已把本 sprint 三份前置文档更新为 `authorization=true` / Phase A ready，并冻结：
+
+- `ceo_20260720_rober_okr_bounded_motion_v1`
+- `run_20260720_rober_okr_bounded_route_01`
+- `task_o1_bounded_live_route_20260720_01`
+- `route_o1_map_0p8_0p25_20260720_01`
+
+因此本节覆盖旧 final 的 `blocked_pending_fresh_ceo_motion_authorization`：最新状态为 `authorization=true_but_engineering_runtime_blocked`。授权已经打开，但 `algorithm_bounded_live_route`、`algorithm_live_route_fallback`、`algorithm_helper_implement` 三次调度均停在业务文件或命令执行前。精确 blocker 为 `subagent_runtime_stalled_before_business_file_or_command_execution_after_fresh_authorization`；不是 repo、SSH、ROS、Nav2、stop 或 WAVE ROVER failure。
+
+本轮实际改动只有 `pre_start.md`、`prd.md`、`tech-plan.md` 的 fresh authorization continuation，以及本节三份 closeout 留档。planned helper/test/doc/manifest 不存在；live helper 调用次数=`0`，goal=`0`，pre-stop=`0`，post-stop=`0`，T1001 capture=`0`。未执行 SSH、ROS、工程测试、构建或物理运动。
+
+OKR 保守保持：O5 约 `85%`、O6/O7 各约 `93%`、O1 约 `94%`；`route_execution_success=false`、`delivery_success=false`、`hil_pass=false`、`safe_to_control=false`、`robot_control_executed=false`、`mission_objective_0_satisfied=false`、`okr_credit=false`，KR `不归档`。没有业务 evidence 或百分比变化，因此不修改 `OKR.md` 或 `docs/process/okr_progress_log.md`。
+
+下一轮不得第四次重复消费同一 runtime blocker，不得新建 wrapper/preflight/mock-only sprint。唯一允许的 mission 入口是 sub-agent runtime owner 先提供业务执行通道已恢复的可确认外部证据，再复用本 sprint 和 frozen identity 派 Algorithm；若该外部状态未改变，则由 CEO 明确切换 Objective。

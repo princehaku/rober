@@ -9,13 +9,13 @@
 
 ## 当前执行状态
 
-- 当前：`authorization=false`。
-- Sprint 状态：`blocked_pending_fresh_ceo_motion_authorization_no_okr_credit`。
-- Proof boundary：`planning_and_ceo_escalation_only_no_engineering_or_live_execution`。
-- SSH endpoint：`root@192.168.1.11:37878`，仅为连接信息，不是 SSH 连接授权或任何物理运动授权。
-- 当前全部 Engineering phase：`disabled_pending_fresh_ceo_authorization`。
-- 授权前禁止启动 Engineer，禁止 SSH、ROS、测试、构建、部署、capture、stop、UART 与物理动作。
-- 本轮只验证 sprint 文档契约；不创建或声称任何工程完成证据。Epic closeout 仅记录 planning/CEO escalation 的实际变更、验证范围与 blocker。
+- 当前：`authorization=true_current_automation_turn_only`。
+- Sprint 状态：`reactivated_phase_a_ready_current_automation_turn_no_live_result_yet`。
+- Proof boundary：`fresh_authorization_phase_a_ready_no_live_result_yet`。
+- SSH endpoint：`root@192.168.1.11:37878`，本轮只允许 Algorithm helper 按冻结合同使用；它不授权手工补跑或其他 owner 发控制命令。
+- 当前 Engineering phase：Algorithm=`Phase A ready`；Hardware=`waiting_frozen_phase_a_live_artifact`；Full-stack=`waiting_phase_a_b_clean`。
+- 授权只覆盖当前 automation turn 的一次有界现场动作；超窗后自动恢复 fail closed。
+- 当前只证明工程派单准入，不创建或声称任何 route/HIL/delivery 完成证据；实际结果必须由 Engineer 写入 `tech-done.md` 后再验收。
 
 ## Authorization gate
 
@@ -130,7 +130,7 @@ python3 -m py_compile onboard/scripts/o3_bounded_live_route_hil_operator_evidenc
 python3 onboard/tests/test_o3_bounded_live_route_hil_operator_evidence.py
 python3 onboard/scripts/o3_bounded_live_route_hil_operator_evidence.py --help
 # 下列 live 命令只能由 Product 注入 fresh AUTHORIZATION_REF/RUN_ID 后执行一次；helper 内部承担 pre/post stop，禁止手工补跑。
-python3 onboard/scripts/o3_bounded_live_route_hil_operator_evidence.py --ssh-host 192.168.1.11 --ssh-port 37878 --authorization-ref "$AUTHORIZATION_REF" --run-id "$RUN_ID" --target-frame map --target-x 0.8 --target-y 0.25 --target-yaw 0 --max-goals 1 --no-retry --require-pre-stop --require-post-stop --capture-t1001
+python3 onboard/scripts/o3_bounded_live_route_hil_operator_evidence.py --ssh-host 192.168.1.11 --ssh-port 37878 --authorization-ref "$AUTHORIZATION_REF" --run-id "$RUN_ID" --task-id "$TASK_ID" --route-intent-id "$ROUTE_INTENT_ID" --target-frame map --target-x 0.8 --target-y 0.25 --target-yaw 0 --max-goals 1 --no-retry --require-pre-stop --require-post-stop --capture-t1001
 python3 -m json.tool sprints/2026.07.16_04-21_mission_authorization_ceo_escalation/artifacts/algorithm/route_attempt_manifest.json >/dev/null
 git diff --check -- onboard/scripts/o3_bounded_live_route_hil_operator_evidence.py onboard/tests/test_o3_bounded_live_route_hil_operator_evidence.py docs/navigation/bounded_live_route_hil_operator_evidence.md sprints/2026.07.16_04-21_mission_authorization_ceo_escalation
 ```
@@ -186,3 +186,9 @@ git status --short
 - `192.168.1.11:37878` 当前连通性、ROS/Nav2 状态、stop path 和 WAVE ROVER feedback 均未知；未授权前不验证。
 - 真实动作存在碰撞、定位漂移、stop 失败、网络中断和反馈归因风险，必须由现场 operator、清空路线、stop ready 与 exactly-one/no-retry 共同约束。
 - 当前最大 blocker 是 CEO/operator 未给出完整 fresh authorization；这是方向/风险授权问题，不是可由另一个软件 wrapper 消除的工程问题。
+
+## 2026-07-20 fresh authorization reactivation（本轮冻结口径）
+
+CEO fresh 原话：`小车运动已经授权，我已经限制了它物理位置，不会有风险。我已授权有 operator 看护、路线清空`。执行门禁现为 `authorization=true`，窗口仅当前 2026-07-20 automation turn；operator owner=`CEO-designated on-site operator`，并要求 operator 看护、路线清空、物理位置受限持续成立。唯一入口为 `ssh root@192.168.1.11 -p 37878`。O5 `85%` blocker `2/2` 不重开，O6/O7 保持 `93%`；只推进 O1 `94%` 的 live route/HIL 缺口，不改 OKR 或旧 closeout。
+
+执行时必须逐字注入 `AUTHORIZATION_REF=ceo_20260720_rober_okr_bounded_motion_v1`、`RUN_ID=run_20260720_rober_okr_bounded_route_01`、`task_id=task_o1_bounded_live_route_20260720_01`、`route_intent_id=route_o1_map_0p8_0p25_20260720_01`。Algorithm helper 当前不存在，因此 `Phase A ready` 的强制顺序为：先实现 helper 和离线测试；离线 clean 后，由同一 helper 对 `map (0.8, 0.25, yaw=0)` live exactly one 次，no retry，并执行 pre-stop、post-stop 与证据冻结。禁止 `/initialpose`、manual、direct `/cmd_vel`、direct UART、unattended；Hardware 只读验证 frozen artifact，Full-stack 仅在 Phase A/B clean 时消费。
