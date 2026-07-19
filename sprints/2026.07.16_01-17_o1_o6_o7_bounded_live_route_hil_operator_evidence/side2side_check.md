@@ -37,3 +37,9 @@
 ## 未完成与风险
 
 未获得 operator 在场、路线清空、stop ready 和 exactly one live goal 的授权；未验证 SSH、ROS、Nav2、底盘反馈或 stop endpoint 当前状态。子 agent 业务执行通道仍复现 `subagent_runtime_orchestration_timeout_before_business_file_or_command_execution`。下一轮必须先由 CEO/operator 给出精确授权；否则继续保持 blocked，不转去 support-only 替代品。
+
+## 2026-07-20 hardware-first continuation closeout
+
+Fresh authorization 已令 safety gate clean，Product 三文档也已把 `ROUTE=HARDWARE_PRE_GATE` 与 frozen identity 落盘；但 Hardware worker 在业务文件、测试及 SSH/pre-stop 前停滞，故执行验收不通过。当前事实为 helper/test/doc/artifact=`0`、`SSH=0`、`pre-stop=0`、`feedback capture=0`、`goal=0`、authorization 未消费；没有 route、HIL、operator action 或 current-run artifact。
+
+Product 接受诚实 blocker 收口，不接受 mission/OKR 交付：精确 blocker=`business_subagent_runtime_stalled_before_business_file_or_command_execution_across_product_and_hardware_owners`；O5/O6/O7/O1=`85% / 93% / 93% / 94%` flat，`okr_credit=false`，KR `不归档`。禁止再次派 Algorithm/Hardware wrapper、fallback 或 canary。唯一 reopen signal 是 runtime owner 提供当前 worker-pool fix version、recovery time 与业务成功证据，或 CEO 指定其他 Objective。

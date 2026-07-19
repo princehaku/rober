@@ -61,3 +61,9 @@ combined exit code: 0
 ## 剩余风险与下一步
 
 唯一准入是 CEO/operator 明确授权 exactly one `NavigateToPose` to `map (0.8, 0.25, yaw=0)`，同时确认 operator 在场、路线清空、stop ready、允许 pre/post stop 和同窗口 `T=1001` capture，并接受 no retry/no `/initialpose`/no manual/no unattended motion。授权出现前，本 sprint 不允许实现离线 helper 来绕过 gate，也不允许再次消费 O5、`/scan`、camera、localization bag、canary 或 wrapper 类工作。
+
+## 2026-07-20 hardware-first continuation closeout
+
+Product 实际增量仅为在 `pre_start.md`、`prd.md`、`tech-plan.md` 追加 `ROUTE=HARDWARE_PRE_GATE` continuation，冻结 authorization/run/task/route identity，并把未消费的 O1 current-live Hardware pre-gate 排在 Algorithm 前。随后派出的真实 `rober-hardware-engineer` 经等待与催促仍停在任何允许业务文件、测试或 SSH/pre-stop 前，已被中止；hardware helper/test/doc/artifact 均不存在，`SSH=0`、`pre-stop=0`、`feedback capture=0`、`goal=0`，authorization 未消费。
+
+精确失败为 `business_subagent_runtime_stalled_before_business_file_or_command_execution_across_product_and_hardware_owners`，不是 repo、SSH、ROS、Nav2 或 WAVE ROVER 失败。O5/O6/O7/O1=`85% / 93% / 93% / 94%` flat，`okr_credit=false`，KR `不归档`；不修改 `OKR.md` 或 progress log。禁止再次派 Algorithm/Hardware wrapper、fallback 或 canary。唯一 reopen signal：runtime owner 提供当前 worker-pool fix version、recovery time 与业务成功证据，或 CEO 指定其他 Objective。

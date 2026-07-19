@@ -50,3 +50,9 @@
 - 只有真实终态、同窗口 nonzero/zero feedback、operator acceptance 与安全收尾同时满足，Product 才评估 O1/O6/O7 是否上调。
 - 任意 pre-gate、stop、feedback、localization、controller 或 operator 条件失败都 fail closed；不重试、不换入口。
 - 当前剩余 blocker 是 CEO/operator 的显式 live-motion 授权，不是 SSH、ROS、Nav2 或 WAVE ROVER 故障，因为这些路径本轮没有触达。
+
+## 2026-07-20 fresh authorization hardware-first continuation
+
+`ROUTE=HARDWARE_PRE_GATE`，`authorization=true`。CEO 已 fresh authorization：小车运动已授权，物理位置受限，operator 看护且路线清空。冻结 identity 为 `AUTHORIZATION_REF=ceo_20260720_rober_okr_bounded_motion_v1`、`RUN_ID=run_20260720_rober_okr_bounded_route_01`、`task_id=task_o1_bounded_live_route_20260720_01`、`route_intent_id=route_o1_map_0p8_0p25_20260720_01`。
+
+本 continuation 将 Phase 1 `Hardware pre-gate` 设为 ready：先派 `rober-hardware-engineer` 只执行 current live pre-stop、合法 WAVE ROVER `T=1001` 反馈采集和 operator physical gate，不发送独立运动命令。该路径属于 O1 尚未消费的 current-live stop/feedback 证据，不是再次包装或重派已反复 stall 的 Algorithm worker。任一 Hardware gate 不 clean 即 stop、no retry；只有 Hardware clean 后才允许派 `robot-algorithm-engineer` 执行 frozen identity 下 exactly one bounded goal，仍保持 no retry。当前不提前写 `tech-done.md`、`side2side_check.md` 或 `final.md`，KR 不归档，OKR 百分比不变。

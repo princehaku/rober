@@ -70,3 +70,9 @@
 ## Proof boundary
 
 当前边界为 `planning_only_blocked_pending_explicit_live_motion_authorization`。它不证明 SSH 可用、ROS graph ready、Nav2 ready、WAVE ROVER safe、route execution、delivery、HIL、operator acceptance 或 Mission Objective 0；也不产生 OKR credit。
+
+## 2026-07-20 fresh authorization hardware-first continuation
+
+产品裁决为 `ROUTE=HARDWARE_PRE_GATE`、`authorization=true`。冻结 `AUTHORIZATION_REF=ceo_20260720_rober_okr_bounded_motion_v1`、`RUN_ID=run_20260720_rober_okr_bounded_route_01`、`task_id=task_o1_bounded_live_route_20260720_01`、`route_intent_id=route_o1_map_0p8_0p25_20260720_01`。本轮核心抓手从直接派 Algorithm 调整为先验证 O1 current-live Hardware pre-gate：`rober-hardware-engineer` 只记录 operator 在场/路线清空/stop ready，执行一次 current live pre-stop，并采集至少一帧包含 `T/L/R/r/p/y/v` 的合法 vendor `T=1001`；禁止 `/api/base/manual`、直接 `/cmd_vel`、direct UART 或任何独立非零运动命令。
+
+验收口径：pre-stop、合法 `T=1001`、operator physical gate 和 frozen identity 全部同窗且可核验才算 Hardware clean；该结果只解锁后续 `robot-algorithm-engineer`，本身不宣称 `hil_pass=true`、`safe_to_control=true`、`route_execution_success=true` 或 `delivery_success=true`。任一项失败立即 stop、no retry；Hardware clean 后 Algorithm 仍只允许 exactly one bounded goal、no retry。该 owner/证据类别未在旧 Algorithm runtime blocker 中消费，因此方向判断为继续 O1、条件联动 O6/O7；暂无完成 KR 可进入历史区。

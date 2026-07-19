@@ -127,3 +127,15 @@ git diff --check -- onboard/src/ros2_trashbot_behavior/ros2_trashbot_behavior/re
 - 当前 Proof boundary：`planning_only_blocked_pending_explicit_live_motion_authorization`。
 - 当前固定：`current_run_artifact_delta=false`、`external_artifact_delta=false`、`live_control_delta=false`、`user_action_delta=false`、`route_execution_success=false`、`delivery_success=false`、`hil_pass=false`、`safe_to_control=false`、`okr_credit=false`。
 - 获授权后即使产生 mission attempt，也只有 Product 能依据真实终态决定 credit tier；失败 attempt 不能宣称 success，成功 route 也不能自动宣称 delivery。
+
+## 2026-07-20 fresh authorization hardware-first continuation
+
+### OKR 最低优先级核对与路由
+
+`ROUTE=HARDWARE_PRE_GATE`、`authorization=true`。O5 约 `85%` 仍最低但 blocker 已消费 `2/2`；本次切换到 O1 约 `94%` 的未消费 current-live stop/feedback 证据。冻结 `AUTHORIZATION_REF=ceo_20260720_rober_okr_bounded_motion_v1`、`RUN_ID=run_20260720_rober_okr_bounded_route_01`、`task_id=task_o1_bounded_live_route_20260720_01`、`route_intent_id=route_o1_map_0p8_0p25_20260720_01`。这不是 Algorithm wrapper/canary 重试；旧 Algorithm business runtime blocker 保留，只有 Hardware business gate clean 才允许重新派 `robot-algorithm-engineer`。
+
+### Phase 1 Hardware pre-gate（ready）
+
+先派 `rober-hardware-engineer`，文件范围仅为本 sprint `artifacts/hardware/**` 与后续实际执行时的 `tech-done.md` Hardware 段；本次 Product continuation 不提前创建二者。Hardware 必须重读 `docs/vendor/VENDOR_INDEX.md`、`json_cmd.h` 与 vendor feedback tutorial，只执行 current live pre-stop、bridge-owned `T=1001` 反馈采集和 operator physical gate；禁止独立 motion、`/api/base/manual`、直接 `/cmd_vel`、direct UART、第二次 stop 或手工补跑。验收命令必须覆盖 artifact JSON parse、`T=1001` 必需字段、frozen identity、operator present/route clear/stop ready、pre-stop invocation count=`1`、motion invocation count=`0`、`git diff --check` 和 `git status --short`。
+
+任一 SSH、operator、stop、反馈 freshness、schema/field 或 cleanup gate 失败，立即 fail closed，`no retry`，不得派 Algorithm。只有 Hardware clean 后才允许 `robot-algorithm-engineer` 复用既有 Phase 2 文件范围和验收命令，执行 `map (0.8, 0.25, yaw=0)` 的 exactly one bounded goal；Algorithm 禁止 wrapper/canary/fallback、第二个 goal 或独立 motion。Hardware clean 只是 Algorithm gate，不自动产生 OKR credit、HIL pass、safe-to-control、route success 或 delivery success。

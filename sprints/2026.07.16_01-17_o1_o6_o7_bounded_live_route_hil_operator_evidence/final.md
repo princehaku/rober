@@ -59,3 +59,9 @@ CEO/operator 需要明确提供等价于以下内容的 fresh 授权：
 ## 剩余风险
 
 当前 SSH/ROS/Nav2/stop/WAVE ROVER runtime 状态未知；真实 route terminal result、same-window nonzero feedback、post-stop zero、operator acceptance、delivery 与 HIL 均缺失。子 agent 业务落盘通道也仍未恢复。以上风险全部保持显式，不声明 safe-to-control 或 mission 完成。
+
+## 2026-07-20 hardware-first continuation closeout
+
+本次先由 Product 在前三份 Epic 文档追加 `ROUTE=HARDWARE_PRE_GATE`，把 fresh authorization、frozen identity、Hardware-first 范围、验收和 stop rule 落盘。这是实际文档路由增量，但不是 mission artifact。随后真实 `rober-hardware-engineer` 经等待与催促仍未进入任何业务文件、测试或 SSH/pre-stop，已被中止；hardware helper/test/doc/artifact 不存在，`SSH=0`、`pre-stop=0`、`feedback capture=0`、`goal=0`，authorization 未消费。
+
+最终 blocker 为 `business_subagent_runtime_stalled_before_business_file_or_command_execution_across_product_and_hardware_owners`，不能归因到 repo、SSH、ROS、Nav2 或 WAVE ROVER。O5/O6/O7/O1=`85% / 93% / 93% / 94%` flat，`okr_credit=false`，KR `不归档`；没有依据修改 `OKR.md` 或 progress log。禁止再次派 Algorithm/Hardware wrapper、fallback 或 canary。唯一 reopen signal 是 runtime owner 提供当前 worker-pool fix version、recovery time 与业务成功证据，或 CEO 指定其他 Objective；在此之前 route/HIL/delivery 与 Mission Objective 0 均保持未满足。
