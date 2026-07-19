@@ -3,10 +3,10 @@
 ## Sprint metadata
 
 - `sprint_type: epic`
-- Sprint 状态：`reactivated_phase_a_ready_current_automation_turn_no_live_result_yet`
+- Sprint 状态：`authorization_refreshed_phase_a_frozen_pending_confirmed_subagent_runtime_recovery`
 - Product owner：`product-okr-owner`
 - Engineering owners（仅授权后按顺序）：`robot-algorithm-engineer` → `rober-hardware-engineer` → `full-stack-software-engineer`
-- Proof boundary：`fresh_authorization_phase_a_ready_no_live_result_yet`
+- Proof boundary：`fresh_authorization_present_no_business_runtime_recovery_no_live_result`
 
 ## 升级原因
 
@@ -68,3 +68,9 @@ CEO 需要明确选择其一：
 CEO fresh 原话：`小车运动已经授权，我已经限制了它物理位置，不会有风险。我已授权有 operator 看护、路线清空`。据此冻结 `authorization=true`，授权窗口仅限当前 2026-07-20 automation turn，operator owner=`CEO-designated on-site operator`，且以 operator 看护、路线清空、物理位置受限持续成立为前提；执行入口为 `ssh root@192.168.1.11 -p 37878`。O5 `85%` 的 blocker `2/2` 不重开，O6/O7 保持 `93%`；本轮只解锁 O1 `94%` 的 live route/HIL 缺口，不形成新的完成结论。
 
 本轮唯一执行 identity 为 `AUTHORIZATION_REF=ceo_20260720_rober_okr_bounded_motion_v1`、`RUN_ID=run_20260720_rober_okr_bounded_route_01`、`task_id=task_o1_bounded_live_route_20260720_01`、`route_intent_id=route_o1_map_0p8_0p25_20260720_01`。目标固定为 `map (0.8, 0.25, yaw=0)`；Algorithm helper 当前不存在，故 `Phase A ready` 的顺序是先实现并通过离线测试，再由同一 helper live 执行 exactly one 次，no retry，且必须执行 pre-stop 与 post-stop。禁止 `/initialpose`、manual、direct `/cmd_vel`、direct UART、unattended；Hardware 只读冻结 artifact，Full-stack 仅在 clean 时消费。
+
+## 2026-07-20 后续 automation turn 准入覆盖
+
+CEO 再次 fresh 明确小车运动授权、operator 看护、路线清空和物理位置受限，因此安全 `authorization=true`，上述 frozen identity 保留。但 fresh authorization 只刷新现场安全门禁，不构成 `subagent_runtime` 业务执行通道恢复证据。上一 automation turn 的三个 Algorithm dispatch 均在业务文件或命令前 stall，且 `tech-done.md` / `final.md` 已明确禁止无恢复信号的第四次 continuation。
+
+本轮 Product 裁决为 `ROUTE=NONE`；Algorithm Phase A 从旧的 ready 口径覆盖为 `frozen_pending_confirmed_subagent_runtime_recovery`，Hardware 与 Full-stack 继续等待，不派任何 Engineer。只有 runtime owner 给出与当前 worker 池关联的修复确认，或另一个真实业务 Engineer 在 repo 内完成业务文件写入并运行至少一条业务验收命令的可核验证据，才可复用本 sprint 和 frozen identity 重开；Product/read-only worker 成功、`/tmp` canary、仅 `pwd`/`git status`、新 automation turn 或再次授权均不算恢复信号。

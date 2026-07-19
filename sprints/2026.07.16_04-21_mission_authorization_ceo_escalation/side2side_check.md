@@ -74,3 +74,19 @@
 所有 mission delta 仍为 false：`route_execution_success=false`、`delivery_success=false`、`hil_pass=false`、`safe_to_control=false`、`robot_control_executed=false`、`mission_objective_0_satisfied=false`、`okr_credit=false`。本轮只接受三份前置文档的授权状态更新；不接受 mission 交付，不调整百分比，不归档 KR。
 
 下一轮不得第四次重复消费相同 worker runtime blocker，也不得生成 wrapper/preflight/mock-only surface。唯一执行入口是在 runtime owner 给出业务 worker 已恢复的可确认外部证据后，复用本 sprint frozen identity 派 Algorithm；否则由 CEO 明确切换 Objective。
+
+## 2026-07-20 当前 automation turn Product routing 对照验收
+
+| 检查项 | 当前事实 | 判定 |
+| --- | --- | --- |
+| Fresh authorization | CEO 再次确认运动授权、operator 看护、路线清空、物理位置受限 | safety gate 通过 |
+| Runtime no-repeat gate | 没有 runtime owner 修复证明；此前三个 Algorithm dispatch 均在业务文件/命令前 stall | `frozen_pending_confirmed_subagent_runtime_recovery` |
+| Product audit | Product business audit 已完成读取、裁决、六文档落盘和文档验收 | 通过，但不是 Algorithm runtime recovery |
+| Engineering route | `ROUTE=NONE`，没有第四次 Algorithm continuation | 通过 |
+| 实际范围 | 只改本 sprint 六份文档 | 通过 |
+| 工程/现场动作 | 无 Engineering、SSH、ROS、Nav2、UART、control、build、test 或 live motion | 通过 |
+| OKR/KR | O5/O6/O7/O1=`85/93/93/94%` flat | `okr_credit=false`，KR `不归档` |
+
+文档 required-anchor、scoped `git diff --check` 与 staged diff hygiene 均要求 exit `0`；结果只接受为 Product closeout clean，不外推为业务 runtime、route、HIL 或 delivery 恢复。所有 mission/OKR success 字段保持：`route_execution_success=false`、`delivery_success=false`、`hil_pass=false`、`safe_to_control=false`、`robot_control_executed=false`、`mission_objective_0_satisfied=false`、`okr_credit=false`。
+
+精确 reopen signal 是 runtime owner 提供关联当前业务 worker 池的修复版本、恢复时间及成功业务执行记录，或真实业务 Engineer 在 repo 内完成业务文件写入并跑通对应业务验收命令 exit `0`。Product/read-only、scratch canary、`pwd`/`git status`、新 turn 和重复授权均不满足。

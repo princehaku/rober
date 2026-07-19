@@ -103,3 +103,28 @@ CEO 已明确授权本 automation turn 内在 operator 看护、路线清空且�
 - KR：`不归档`
 
 该失败发生在业务执行入口之前，不是 repo、SSH、ROS、Nav2、stop path 或 WAVE ROVER 硬件失败。下一轮只允许在 sub-agent runtime owner 提供执行通道已恢复的可确认外部证据后，复用本 sprint 和上述 frozen identity 派 Algorithm；否则由 CEO 明确切换 Objective。不得新建 wrapper、preflight、mock-only sprint 或第四次相同 worker continuation。
+
+## 2026-07-20 当前 automation turn Product routing closeout
+
+CEO 再次 fresh 确认小车运动授权、operator 看护、路线清空和物理位置受限，故 safety authorization gate clean；但该授权只解除现场安全门禁，不证明 Algorithm `subagent_runtime` 业务执行通道已经恢复。本轮 Product business audit 成功完成 sprint 事实读取、`ROUTE=NONE` 裁决、文档落盘与文档验收；Product 文档任务成功不是 Algorithm runtime recovery，也不得用来触发第四次相同 continuation。
+
+- 最新状态：`frozen_pending_confirmed_subagent_runtime_recovery`
+- Product route：`ROUTE=NONE`
+- 实际改动：仅本 sprint 的 `pre_start.md`、`prd.md`、`tech-plan.md`、`tech-done.md`、`side2side_check.md`、`final.md`
+- 文档 required-anchor 与 scoped diff 验收：exit `0`
+- Engineering/SSH/ROS/Nav2/UART/control/build/test/live motion：均未执行
+- O5/O6/O7/O1：约 `85% / 93% / 93% / 94%`，全部 flat
+- `current_run_artifact_delta=false`
+- `external_artifact_delta=false`
+- `live_control_delta=false`
+- `user_action_delta=false`
+- `route_execution_success=false`
+- `delivery_success=false`
+- `hil_pass=false`
+- `safe_to_control=false`
+- `robot_control_executed=false`
+- `mission_objective_0_satisfied=false`
+- `okr_credit=false`
+- KR：`不归档`
+
+精确 reopen signal 二选一：sub-agent runtime owner 提供与当前业务 worker 池关联的修复版本、恢复时间和成功业务执行记录；或另一个真实业务 Engineer 在 repo 范围内完成至少一次业务文件写入，并成功运行至少一条对应业务验收命令，返回文件路径、命令与 exit `0` 日志。Product/read-only 成功、scratch `/tmp` canary、仅 `pwd`/`git status`、新 automation turn 或再次 fresh authorization 均不满足 reopen。计划提交消息为 `docs: keep live route frozen on runtime gate`；实际 commit hash 与 push 结果以本轮最终返回为准。

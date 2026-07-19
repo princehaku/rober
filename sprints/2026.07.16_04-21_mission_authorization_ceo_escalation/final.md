@@ -95,3 +95,13 @@ CEO 已选择并满足有界动作授权口径：operator 看护、路线清空�
 OKR 保守保持：O5 约 `85%`、O6/O7 各约 `93%`、O1 约 `94%`；`route_execution_success=false`、`delivery_success=false`、`hil_pass=false`、`safe_to_control=false`、`robot_control_executed=false`、`mission_objective_0_satisfied=false`、`okr_credit=false`，KR `不归档`。没有业务 evidence 或百分比变化，因此不修改 `OKR.md` 或 `docs/process/okr_progress_log.md`。
 
 下一轮不得第四次重复消费同一 runtime blocker，不得新建 wrapper/preflight/mock-only sprint。唯一允许的 mission 入口是 sub-agent runtime owner 先提供业务执行通道已恢复的可确认外部证据，再复用本 sprint 和 frozen identity 派 Algorithm；若该外部状态未改变，则由 CEO 明确切换 Objective。
+
+## 2026-07-20 当前 automation turn Product routing final
+
+本轮 CEO fresh motion authorization 已确认，operator 看护、路线清空和物理位置受限继续成立；这只解除 safety gate。Product business audit 本轮成功并完成 `ROUTE=NONE` 裁决，但 Product 文档执行成功不是 Algorithm `subagent_runtime` recovery。由于没有可确认的 runtime owner 恢复证明，Phase A 最新状态为 `frozen_pending_confirmed_subagent_runtime_recovery`，不派 Algorithm/Hardware/Full-stack，也不产生第四次相同 continuation。
+
+本轮实际改动仅为同一 Epic 的六份文档：`pre_start.md`、`prd.md`、`tech-plan.md`、`tech-done.md`、`side2side_check.md`、`final.md`。文档 required-anchor、scoped diff 与 staged diff 验收均以 exit `0` 为接受门槛；未执行 Engineering、SSH、ROS、Nav2、UART、control、build、test 或 live motion。计划 commit message 为 `docs: keep live route frozen on runtime gate`，实际 hash 与 push 输出由最终返回记录。
+
+O5/O6/O7/O1 保守保持约 `85% / 93% / 93% / 94%`，全部 flat；`current_run_artifact_delta=false`、`external_artifact_delta=false`、`live_control_delta=false`、`user_action_delta=false`、`route_execution_success=false`、`delivery_success=false`、`hil_pass=false`、`safe_to_control=false`、`robot_control_executed=false`、`mission_objective_0_satisfied=false`、`okr_credit=false`，KR `不归档`。没有证据支持修改 `OKR.md` 或 `docs/process/okr_progress_log.md`。
+
+精确 reopen signal 二选一：runtime owner 提供与当前业务 worker 池关联的修复版本、恢复时间和成功业务执行记录；或另一个真实业务 Engineer 在 repo 内完成至少一次业务文件写入，并成功运行至少一条对应业务验收命令，返回文件路径、命令与 exit `0` 日志。Product/read-only worker 成功、scratch `/tmp` canary、只执行 `pwd`/`git status`、新的 automation turn 或重复 fresh authorization 均不满足 reopen。剩余风险仍是 helper、产品测试、live route terminal、同窗 `T=1001`、post-stop、operator acceptance、delivery 与 HIL 材料全部缺失；当前不能声称 route、delivery、HIL 或 safe-to-control 成功。
