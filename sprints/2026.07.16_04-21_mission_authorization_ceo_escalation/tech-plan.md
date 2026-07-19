@@ -210,3 +210,16 @@ CEO 再次 fresh 提供相同 motion authorization，故安全 gate clean；但�
 Product/read-only worker 成功、scratch `/tmp` canary、只执行 `pwd`/`git status`、重新创建任务、再次进入 automation turn 或再次 fresh 授权均不满足 reopen。恢复后才允许复用本计划从 Phase A 开始；不得新建 wrapper/preflight/mock-only sprint，也不得手工执行本节上方的工程验收命令。
 
 执行时必须逐字注入 `AUTHORIZATION_REF=ceo_20260720_rober_okr_bounded_motion_v1`、`RUN_ID=run_20260720_rober_okr_bounded_route_01`、`task_id=task_o1_bounded_live_route_20260720_01`、`route_intent_id=route_o1_map_0p8_0p25_20260720_01`。Algorithm helper 当前不存在，因此 `Phase A ready` 的强制顺序为：先实现 helper 和离线测试；离线 clean 后，由同一 helper 对 `map (0.8, 0.25, yaw=0)` live exactly one 次，no retry，并执行 pre-stop、post-stop 与证据冻结。禁止 `/initialpose`、manual、direct `/cmd_vel`、direct UART、unattended；Hardware 只读验证 frozen artifact，Full-stack 仅在 Phase A/B clean 时消费。
+
+## 2026-07-20 blocker reset 执行计划的实际覆盖
+
+CEO fresh 明确继续攻坚后，按 `AGENTS.md` 例外将同一 runtime blocker 计数重置一次，并复用本 Epic 与 frozen identity，不创建新 sprint。主节点先派 `algorithm_bounded_route`，在其只读核对和薄封装方案后要求立即落盘、运行验收并进入有界 live 流程；共享工作树仍 clean，业务文件/命令计数为 `0`，故中止。随后派窄上下文 `algorithm_route_fallback`，明确要求立即 `apply_patch`；催促后仍无业务文件或业务命令，故中止。
+
+本轮计划执行结果为：planned helper/test/doc/artifact 仍不存在；live helper=`0`、goal=`0`、pre-stop=`0`、post-stop=`0`、`T=1001` capture=`0`；未运行 SSH、ROS/Nav2、测试或构建。`safety_gate=true_for_this_turn`，但 `execution_gate=false`，authorization 未消费。精确 blocker 是 `subagent_runtime_stalled_before_business_file_or_command_execution_after_fresh_authorization`，不是工程链路或硬件失败。
+
+### 后续唯一允许的执行门禁
+
+1. 当前 worker pool runtime owner 必须先提供修复版本、恢复时间和业务成功证据；最低证据包含 repo 内业务文件落盘、对应业务验收命令与 exit `0` 日志。
+2. 证据 clean 后才可复用本 sprint 派新的 Algorithm business worker；不得继续派 `algorithm_bounded_route`、`algorithm_route_fallback` 或同类 continuation。
+3. 若 runtime owner 不能提供恢复证据，保持 Mission Objective 0 `paused`，由 CEO 指定其他 Objective；不得新开 wrapper、preflight、readback 或 mock-only sprint。
+4. O5/O6/O7/O1=`85% / 93% / 93% / 94%` flat，`okr_credit=false`，KR `不归档`。

@@ -105,3 +105,19 @@ OKR 保守保持：O5 约 `85%`、O6/O7 各约 `93%`、O1 约 `94%`；`route_exe
 O5/O6/O7/O1 保守保持约 `85% / 93% / 93% / 94%`，全部 flat；`current_run_artifact_delta=false`、`external_artifact_delta=false`、`live_control_delta=false`、`user_action_delta=false`、`route_execution_success=false`、`delivery_success=false`、`hil_pass=false`、`safe_to_control=false`、`robot_control_executed=false`、`mission_objective_0_satisfied=false`、`okr_credit=false`，KR `不归档`。没有证据支持修改 `OKR.md` 或 `docs/process/okr_progress_log.md`。
 
 精确 reopen signal 二选一：runtime owner 提供与当前业务 worker 池关联的修复版本、恢复时间和成功业务执行记录；或另一个真实业务 Engineer 在 repo 内完成至少一次业务文件写入，并成功运行至少一条对应业务验收命令，返回文件路径、命令与 exit `0` 日志。Product/read-only worker 成功、scratch `/tmp` canary、只执行 `pwd`/`git status`、新的 automation turn 或重复 fresh authorization 均不满足 reopen。剩余风险仍是 helper、产品测试、live route terminal、同窗 `T=1001`、post-stop、operator acceptance、delivery 与 HIL 材料全部缺失；当前不能声称 route、delivery、HIL 或 safe-to-control 成功。
+
+## 2026-07-20 fresh authorization blocker reset 最终收口
+
+### 产品裁决
+
+用户价值和北极星仍是同一 authorization/run/task/route 窗口的一次真实有界路线终态、pre/post stop、同窗 `T=1001` 和 operator evidence。CEO fresh 明确继续攻坚触发且只触发一次 `blocker reset`，但 `algorithm_bounded_route` 与窄上下文 fallback `algorithm_route_fallback` 经催促后都停在业务文件或业务命令之前并被中止。因此 `safety_gate=true_for_this_turn`，`execution_gate=false`，authorization 未消费；Mission Objective 0 保持 `paused`。
+
+### 实际结果与验证边界
+
+planned helper/test/doc/artifact 仍不存在；live helper 调用次数=`0`、goal 调用次数=`0`、pre-stop=`0`、post-stop=`0`、`T=1001` capture=`0`。两名 worker 均未 SSH，未运行 ROS/Nav2、stop、goal、测试、构建或物理运动。本轮实际增量仅为原 Epic 六份 sprint 文档的追加收口；文档 anchor、scoped/staged diff、commit、push 和分支状态由本轮命令核验，不构成 route、delivery、HIL 或工程成功证据。
+
+精确 blocker 为 `subagent_runtime_stalled_before_business_file_or_command_execution_after_fresh_authorization`，不是 repo、SSH、ROS、Nav2 或硬件失败。O5/O6/O7/O1=`85% / 93% / 93% / 94%` flat，`route_execution_success=false`、`delivery_success=false`、`hil_pass=false`、`safe_to_control=false`、`okr_credit=false`，KR `不归档`；不修改 `OKR.md` 或 progress log。
+
+### 下一步与剩余风险
+
+禁止继续派相同 worker，禁止新开 wrapper/preflight/readback/mock-only sprint。当前 worker pool runtime owner 必须先提供修复版本、恢复时间和业务成功证据；最低证据为 repo 内业务文件路径、对应业务验收命令及 exit `0` 日志。若不能提供，由 CEO 指定其他 Objective。剩余风险是业务 worker 执行通道未恢复，helper/test/doc/manifest、live route terminal、同窗 `T=1001`、post-stop、operator acceptance、delivery 与 HIL 材料全部缺失。

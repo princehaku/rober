@@ -74,3 +74,11 @@ CEO fresh 原话：`小车运动已经授权，我已经限制了它物理位置
 CEO 再次 fresh 明确小车运动授权、operator 看护、路线清空和物理位置受限，因此安全 `authorization=true`，上述 frozen identity 保留。但 fresh authorization 只刷新现场安全门禁，不构成 `subagent_runtime` 业务执行通道恢复证据。上一 automation turn 的三个 Algorithm dispatch 均在业务文件或命令前 stall，且 `tech-done.md` / `final.md` 已明确禁止无恢复信号的第四次 continuation。
 
 本轮 Product 裁决为 `ROUTE=NONE`；Algorithm Phase A 从旧的 ready 口径覆盖为 `frozen_pending_confirmed_subagent_runtime_recovery`，Hardware 与 Full-stack 继续等待，不派任何 Engineer。只有 runtime owner 给出与当前 worker 池关联的修复确认，或另一个真实业务 Engineer 在 repo 内完成业务文件写入并运行至少一条业务验收命令的可核验证据，才可复用本 sprint 和 frozen identity 重开；Product/read-only worker 成功、`/tmp` canary、仅 `pwd`/`git status`、新 automation turn 或再次授权均不算恢复信号。
+
+## 2026-07-20 fresh authorization blocker reset 后的最终准入事实
+
+CEO 本轮明确要求“持续推进 OKR”，并再次确认小车运动授权、物理位置受限、operator 看护、路线清空。依据 `AGENTS.md`“CEO 明确继续攻坚同一 blocker 后计数重置”例外，本轮对既有 runtime blocker 执行且只执行一次 `blocker reset`；这一 reset 只允许重新尝试业务执行，不等于 runtime 已恢复，也不产生 OKR credit。
+
+主节点先后派发 `algorithm_bounded_route` 与窄上下文 fallback `algorithm_route_fallback`。两者经明确催促后仍停滞在业务文件或业务命令之前，并被中止；均未 SSH，未执行 ROS/Nav2、stop、goal、`T=1001`、测试或构建。planned helper/test/doc/artifact 仍不存在，live helper 调用次数=`0`、goal 调用次数=`0`、pre-stop=`0`、post-stop=`0`。因此本轮 `authorization 未消费`。
+
+本节覆盖上一节的“本轮不派 Engineer”调度判断，但不改写其历史事实。最新门禁为 `safety_gate=true_for_this_turn`、`execution_gate=false`；精确 blocker 为 `subagent_runtime_stalled_before_business_file_or_command_execution_after_fresh_authorization`，不是 repo、SSH、ROS、Nav2 或硬件失败。Mission Objective 0 保持 `paused`；O5/O6/O7/O1 保持 `85% / 93% / 93% / 94%` flat，`okr_credit=false`，KR `不归档`。禁止继续派相同 worker 或新开 wrapper；下一步只能由当前 worker pool runtime owner 提供修复版本、恢复时间和业务成功证据，或由 CEO 指定其他 Objective。

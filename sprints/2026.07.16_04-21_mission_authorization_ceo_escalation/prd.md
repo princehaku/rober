@@ -108,3 +108,20 @@ CEO fresh 原话：`小车运动已经授权，我已经限制了它物理位置
 CEO 本轮再次提供相同 fresh motion authorization，安全合同继续满足；但它没有改变上一 automation turn 已确认的 `subagent_runtime_stalled_before_business_file_or_command_execution_after_fresh_authorization`。授权解决的是“是否允许受看护运动”，runtime gate 解决的是“业务 Engineer 是否能实际落盘和执行命令”，两者必须同时 clean。
 
 因此本轮不派 Engineer，`ROUTE=NONE`，不产生第四次相同 continuation。用户价值和北极星仍是同一 authorization/run/task/route 窗口的一次真实 `NavigateToPose` 终态、pre/post stop、`T=1001` 和 operator evidence；方向继续 O1 live route/HIL，但执行入口暂停。O5 `85%` provider/runtime blocker `2/2` 不重开，O6/O7 `93%` 与 O1 `94%` 均保持 flat，KR 不归档。
+
+## 2026-07-20 blocker reset 后产品收口
+
+### 用户价值与产品北极星
+
+北极星仍是让受看护的小车在同一 authorization/run/task/route 窗口内形成一次真实有界路线终态、pre/post stop、同窗 `T=1001` 与 operator 观察，而不是继续生产 review、handoff、wrapper 或 readback。CEO 的 fresh 继续攻坚指令触发一次 `blocker reset` 后，`algorithm_bounded_route` 与 `algorithm_route_fallback` 仍未进入业务文件或命令执行；因此没有用户可感知动作，authorization 未消费。
+
+### OKR 映射、方向与优先级
+
+- O5/O6/O7/O1=`85% / 93% / 93% / 94%` flat，`okr_credit=false`，KR `不归档`。
+- Mission Objective 0 方向仍有价值，但在执行通道恢复前保持 `paused`；本轮是继续目标、暂停执行，不是替换目标，也不把文档收口计为 KR。
+- P0：当前 worker pool runtime owner 给出修复版本、恢复时间、以及同一业务池真实业务文件落盘和业务验收命令成功的证据。
+- P1：若 P0 无法提供，由 CEO 指定其他 Objective；禁止继续派相同 worker或另开 wrapper/preflight/mock-only sprint。
+
+### 验收口径、责任与证据缺口
+
+责任 owner 为 worker pool runtime owner；恢复后业务执行仍由 `robot-algorithm-engineer` 主责，Hardware/Full-stack 只能按原冻结顺序消费真实 artifact。恢复的最低验收不是 Product/read-only 成功，而是可核对的修复版本、恢复时间、业务成功记录、repo 内业务文件路径、业务验收命令及 exit `0`。当前 planned helper/test/doc/artifact 不存在，goal=`0`、pre-stop=`0`、post-stop=`0`、live helper=`0`；未发生 SSH、ROS/Nav2、`T=1001`、测试或构建。故 `safety_gate=true_for_this_turn` 但 `execution_gate=false`，route、delivery、HIL 与 safe-to-control 均未证明。

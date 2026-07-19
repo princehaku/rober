@@ -90,3 +90,19 @@
 文档 required-anchor、scoped `git diff --check` 与 staged diff hygiene 均要求 exit `0`；结果只接受为 Product closeout clean，不外推为业务 runtime、route、HIL 或 delivery 恢复。所有 mission/OKR success 字段保持：`route_execution_success=false`、`delivery_success=false`、`hil_pass=false`、`safe_to_control=false`、`robot_control_executed=false`、`mission_objective_0_satisfied=false`、`okr_credit=false`。
 
 精确 reopen signal 是 runtime owner 提供关联当前业务 worker 池的修复版本、恢复时间及成功业务执行记录，或真实业务 Engineer 在 repo 内完成业务文件写入并跑通对应业务验收命令 exit `0`。Product/read-only、scratch canary、`pwd`/`git status`、新 turn 和重复授权均不满足。
+
+## 2026-07-20 blocker reset 后最终对照验收
+
+| 检查项 | 当前事实 | 判定 |
+| --- | --- | --- |
+| CEO reset 条件 | fresh 明确继续攻坚、运动授权、物理位置受限、operator 看护、路线清空 | `blocker reset` 一次成立，`safety_gate=true_for_this_turn` |
+| Algorithm worker 1 | `algorithm_bounded_route` 只读核对后经催促仍未创建业务文件或运行命令 | stall，已中止 |
+| Algorithm worker 2 | `algorithm_route_fallback` 承诺 `apply_patch` 后经催促仍无业务文件或命令 | stall，已中止 |
+| Live/action | SSH/ROS/Nav2/stop/goal/`T=1001`/test/build 均未执行；goal=`0`、pre/post stop=`0/0` | authorization 未消费，`execution_gate=false` |
+| 工程 artifact | helper、test、navigation doc、manifest 均不存在 | 无 current-run artifact delta |
+| OKR/KR | O5/O6/O7/O1=`85% / 93% / 93% / 94%` flat | `okr_credit=false`，KR `不归档` |
+| Mission gate | 没有 route terminal、delivery、HIL 或 user action | Mission Objective 0 `paused` |
+
+精确 blocker 为 `subagent_runtime_stalled_before_business_file_or_command_execution_after_fresh_authorization`。该结论只定位业务 worker 在业务落盘/命令之前停滞，不得外推为 repo、SSH、ROS、Nav2 或硬件故障。文档验证只能验收 closeout 一致性，不能替代业务成功证据。
+
+下一步必须由当前 worker pool runtime owner 给出修复版本、恢复时间和业务成功证据；否则由 CEO 指定其他 Objective。禁止继续派相同 worker、开 wrapper/preflight/readback/mock-only sprint，或把 Product/read-only 成功当作 runtime recovery。
