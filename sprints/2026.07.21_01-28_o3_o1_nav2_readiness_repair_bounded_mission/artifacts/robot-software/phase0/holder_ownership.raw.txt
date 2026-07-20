@@ -1,0 +1,24 @@
+DATE=2026-07-21T04:10:22+08:00
+/dev/ttyS5 root PID=3765 ACCESS=F COMMAND=esp32_bridge
+/dev/ttyACM0 root PID=4014 ACCESS=F COMMAND=lidar_driver
+
+PID=3765 PPID=1218 PGID=1218
+CMD=/usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_hardware/lib/ros2_trashbot_hardware/esp32_bridge --ros-args -r __node:=esp32_bridge -p serial_port:=/dev/ttyS5 -p serial_baudrate:=115200 -p command_mode:=pwm -p command_transport:=http -p wave_rover_http_base_url:=http://192.168.1.3
+CGROUP=/system.slice/trashbot-esp32-bridge.service
+
+PID=3934 PPID=1 PGID=3934
+CMD=bash /root/rober/onboard/scripts/o1_lidar_lifecycle.sh __run --onboard-root /root/rober/onboard --serial-port /dev/ttyACM0 --serial-baudrate 150000 --frame-id laser_frame --runtime-dir /tmp/rober_lidar_lifecycle
+CGROUP=/system.slice/trashbot-lidar-lifecycle.service
+
+PID=3996 PPID=3934 PGID=3934
+CMD=/usr/bin/python3 /opt/ros/humble/bin/ros2 run ros2_trashbot_hardware lidar_driver --ros-args -p serial_port:=/dev/ttyACM0 -p serial_baudrate:=150000 -p frame_id:=laser_frame -p publish_raw_packets:=true
+CGROUP=/system.slice/trashbot-lidar-lifecycle.service
+
+PID=4014 PPID=3996 PGID=3934
+CMD=/usr/bin/python3 /root/rober/onboard/install/ros2_trashbot_hardware/lib/ros2_trashbot_hardware/lidar_driver --ros-args -p serial_port:=/dev/ttyACM0 -p serial_baudrate:=150000 -p frame_id:=laser_frame -p publish_raw_packets:=true
+CGROUP=/system.slice/trashbot-lidar-lifecycle.service
+
+OWNERSHIP_DECISION=non_o11_runtime_and_serial_holders_present_fail_closed
+NO_STOP_SENT=true
+NO_KILL_SENT=true
+NO_DEPLOYMENT_MUTATION=true

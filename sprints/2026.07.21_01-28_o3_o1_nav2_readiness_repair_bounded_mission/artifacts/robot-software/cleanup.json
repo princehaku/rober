@@ -1,0 +1,14 @@
+{
+  "schema": "trashbot.o3_o1.cleanup.v1",
+  "generated_at": "2026-07-21T04:11:57+08:00",
+  "cleanup_attempted": false,
+  "reason": "phase0_failed_before_any_owned_runtime_was_created",
+  "o11_lifecycle_running": false,
+  "o11_lifecycle_pid": null,
+  "o11_pid_files_present": 0,
+  "o11_owned_residual_process_count": 0,
+  "non_owned_processes_untouched": true,
+  "broad_kill_used": false,
+  "base_stop_sent": false,
+  "motion_command_sent": false
+}

@@ -1,68 +1,72 @@
 # Same-Window Route Readiness Precheck
 
-本文记录 `sprints/2026.07.14_13-38_o3_same_window_route_readiness_precheck/` 的 O3/O1 严格 no-motion same-window route readiness precheck。
+本文定义 `sprints/2026.07.21_01-28_o3_o1_nav2_readiness_repair_bounded_mission/` 使用的 O10 严格 no-motion readiness 合同。历史 precheck 只证明软件侧 blocker 清单；本轮把门禁收紧为一个 current natural-final 内可复算的九门结果，但仍不执行导航或底盘控制。
 
-## 目标
+## 运行所有权与安全边界
 
-- 输入：
-  - `sprints/2026.07.13_07-07_o3_controlled_route_execution_gate_record/artifacts/algorithm/controlled_route_execution_gate_record.json`
-  - `sprints/2026.07.13_08-09_o3_bounded_route_command_plan/artifacts/algorithm/bounded_route_command_plan.json`
-  - `sprints/2026.07.13_23-23_o3_bounded_route_mock_execution/artifacts/algorithm/bounded_route_mock_execution_summary.json`
-  - `sprints/2026.07.13_23-23_o3_bounded_route_mock_execution/artifacts/algorithm/bounded_route_mock_execution_progress.jsonl`
-- 输出：`same_window_route_readiness_precheck_summary.json`
-- 边界：`software_proof_o3_o1_same_window_route_readiness_precheck_only`
-- 状态：`blocked_missing_same_window_live_evidence`
+- O11 持有当前 LiDAR lifecycle。O10 使用 managed runtime 时必须显式传入 `--reuse-existing-lidar-lifecycle`，只复用当前 ROS graph，不启动第二个串口驱动，也不清理 O11 的进程组。
+- `/initialpose` 只有同时传入 `--initialpose-opt-in` 与 `--initialpose-canonical-free-cell-opt-in` 时才允许发布，并且最多一次、零重试。坐标必须来自当前 canonical map 可复算 free cell。
+- O10 只允许调用 `ComputePathToPose` 生成 planner-only path；可以读取 `FollowPath` action 是否存在来证明 controller readiness，但不得创建或发送 FollowPath/NavigateToPose goal。
+- 全程保持 `publishes_cmd_vel=false`、`calls_base_manual=false`、`uses_base_uart=false`、`robot_control_executed=false`、`route_execution_success=false`、`delivery_success=false`、`hil_pass=false`、`safe_to_control=false`。
 
-该材料只把 07:07 controlled gate、08:09 bounded plan、23:23 bounded route mock execution 汇总成下一次 same-window live route/HIL capture 前的 blocker checklist。它不是 live route execution，不证明 fixed-route movement、Nav2 controller/BT execution、`/cmd_vel`、`/api/base/manual`、NavigateToPose、WAVE ROVER UART、HIL、delivery、safe-to-control 或 O5 production/cloud evidence。
+## Current natural-final 合同
 
-## 输入校验
+`proof.current_natural_final_readiness` 使用 schema `trashbot.o10.current_natural_final_readiness.v1`。只有以下 natural-final 条件和九门全部为真时，`proof.READINESS_GO` 才能为 `true`：
 
-CLI `onboard/scripts/o3_same_window_route_readiness_precheck.py` 在写出 summary 前必须校验：
+- `artifact_kind=final`
+- `last_phase=final`
+- `current_command=null`
+- `generated_at_ms >= started_at_ms`
 
-- gate record schema 为 `trashbot.o3.controlled_route_execution_gate_record.v1`，且 `controlled_route_execution_gate_status=fail_closed_input_packet_validated`。
-- bounded plan schema 为 `trashbot.o3.bounded_route_command_plan.v1`，且 `execution_plan_status=blocked_pending_live_safety_gate`。
-- mock summary schema 为 `trashbot.o3.bounded_route_mock_execution.v1`，且 `mock_execution_status=mock_route_execution_completed_not_live_route_execution`。
-- progress JSONL 正好 27 条 `mock_segment_completed_not_live_control` event。
-- route identity 完全一致：`packet_id=packet_o3_28_pose_same_task_replay_7d57826142b0c79c`、`task_id=task_o3_28_pose_fixed_route_consumer_20260713_0402`、`route_intent_id=route_intent_20260713_0402_from_20260713_0300_28_pose_structured_path`。
-- `route_csv_row_count=28` 且 `segment_count=27`。
-- no-motion guards 同时包含 `no /cmd_vel`、`no /api/base/manual`、`no NavigateToPose`、`no WAVE ROVER UART`。
-- 顶层、`fixed_false_fields` 和 progress events 均保持 `route_execution_success=false`、`delivery_success=false`、`hil_pass=false`、`safe_to_control=false`、`robot_control_executed=false`、`publishes_cmd_vel=false`、`calls_base_manual=false`、`uses_base_uart=false`。
+九门固定为：
 
-任一字段漂移时脚本返回非零，不写 success-shaped summary，并在 stderr 继续固定 false safety fields。
+1. `map`：map_server active；canonical YAML/image 审计干净；current transient-local `/map` 已接收且处于本轮窗口；frame 为 `map`；宽高、分辨率、origin、数据长度和 OccupancyGrid 内容 hash 与 canonical map 一致。
+2. `amcl`：AMCL active；current pose 门通过；AMCL 当前订阅 `/scan`。
+3. `planner`：planner_server active；当前 interface inventory 中存在 lifecycle service 和 `ComputePathToPose` action。
+4. `controller`：controller_server active；当前 interface inventory 中存在 lifecycle service 和 `FollowPath` action。这里只读接口，不调用 FollowPath。
+5. `current_pose`：current `/amcl_pose` sample 已接收；header stamp 可解析，stamp 与 receipt 在 natural-final 时仍 fresh；frame 为 `map`；6x6 covariance 为有限、非负且位置/偏航对角项不全为零。
+6. `persisted_pose`：来源是 current runtime persisted AMCL 参数，或 canonical free-cell 单次 `/initialpose`；来源时间、地图身份、pre/post 顺序均可审计；不存在 current/reference conflict；live 输出确实晚于来源并消费该状态。
+7. `dynamic_tf`：`map->odom` 必须是 fresh dynamic TF 且唯一归因 AMCL；`odom->base_link` 必须是 fresh dynamic TF；两条 edge 的 callback receipt 同窗，且在 natural-final 时仍 fresh，并可组成 `map->base_link`。static、stale 或多 publisher 一律 NO-GO。
+8. `planner_only_path`：固定 `task_id`、`route_intent_id` 与固定目标必须完全一致；`ComputePathToPose` 返回 map-frame 非空 path，result receipt 与 path header stamp 在 natural-final 时仍 fresh；不得调用 NavigateToPose/FollowPath。
+9. `obstacle_clear`：复用本轮 `/scan` 门的同一个 `sample_id`；publisher 必须恰好一个，stamp 与 callback receipt 在 natural-final 时仍 fresh，存在有限正数距离；最小距离必须 `>= 0.45m`。
 
-## 输出语义
+原始 `/scan` 证据是 `amcl` 和 `obstacle_clear` 的共同输入，不另算第十门。任一字段 missing、stale、conflict、static、ambiguous 或阈值不足都会产生稳定的 `blockers`，并保持 `READINESS_GO=false`。
 
-`same_window_route_readiness_precheck_summary.json` 是下一轮 route/HIL capture 的机器可读前置门。核心字段：
+## 固定 planner-only 请求
 
-- `schema=trashbot.o3.same_window_route_readiness_precheck.v1`
-- `same_window_route_readiness_status=blocked_missing_same_window_live_evidence`
-- `proof_boundary=software_proof_o3_o1_same_window_route_readiness_precheck_only`
-- `next_live_capture_allowed=false`
-- `missing_evidence` 必须包含：
-  - `explicit_operator_approval`
-  - `current_live_stop_hil`
-  - `same_window_scan_readiness`
-  - `same_window_amcl_pose_readiness`
-  - `same_window_map_to_odom_tf_readiness`
-  - `nav2_controller_result`
-  - `delivery_or_operator_acceptance`
+本轮请求身份不可由 helper 自适应：
 
-这些 missing evidence 是本轮的真实结论：已有 route material 可以被离线复核，但同窗口 live route/HIL 前置材料仍缺失，所以不能发车，也不能把 mock progress 转成 route execution success。
+- `task_id=task_o3_28_pose_fixed_route_consumer_20260713_0402`
+- `route_intent_id=route_intent_20260713_0402_from_20260713_0300_28_pose_structured_path`
+- goal：`frame_id=map, x=0.8, y=0.25, yaw=0.0`
 
-## 验收边界
+如果固定目标越出 current map bounds，helper 必须在 action 前失败并记录 `path_generation_blocked_by_fixed_goal_out_of_map_bounds`；禁止把目标夹到地图内制造 success-shaped path artifact。
 
-本轮可接受结论：
+## Current evidence 字段
 
-- accepted route chain 的 `packet_id`、`task_id`、`route_intent_id`、28 行 route 与 27 段 mock progress 可被离线统一复核。
-- same-window live blocker 被明确列出。
-- summary 与 source progress 均固定 false safety fields。
+- `/scan` current sample：`ranges_count`、`finite_positive_count`、`invalid_count`、`min_distance_m`、`ranges_sha256`、`sample_id`、header stamp、receipt 与 endpoint inventory。
+- `/map` current sample：frame、receipt、width、height、resolution、origin、data_count、`occupancy_data_sha256`。
+- `/amcl_pose` current sample：frame、pose、6x6 covariance、header stamp、receipt。
+- ROS graph：actions 与 services 当前 inventory，用于 planner/controller lifecycle 和 action readiness 判定。
+- TF：source class、freshness、publisher attribution 与 current chain。
+- planner result：固定 request identity、action name、path frame、point count、result receipt。
 
-本轮不可接受结论：
+这些字段都必须来自同一个 O10 natural-final，不允许把历史 readback、旧 artifact、partial closeout 或 reference snapshot 拼成 GO。
 
-- `route_execution_success=false` 不能改成 true。
-- `delivery_success=false` 不能改成 true。
-- `hil_pass=false` 不能改成 true。
-- `safe_to_control=false` 不能改成 true。
-- 不能声明 `/cmd_vel`、`/api/base/manual`、NavigateToPose、WAVE ROVER UART、fixed-route movement、Nav2 controller result、delivery/operator acceptance、current live HIL 或 O5 production evidence 已完成。
+## Nav2 参数边界
 
-下一步只有在 explicit operator approval、current live stop/HIL、同窗口 `/scan`、AMCL pose、dynamic `map_to_odom` TF、Nav2/controller result 和 delivery/operator acceptance 都可采集时，才可以进入 controlled route execution evidence sprint。
+local costmap 的 obstacle layer 必须消费 current `/scan`：
+
+- `observation_persistence: 0.0`，不让历史障碍观测继续伪装 current clearance。
+- `expected_update_rate: 10.0`（Hz），让 scan 断流可被诊断；该值不是 0.10Hz 的十秒容忍窗口。
+- `use_collision_detection: true`，平滑器不得绕过碰撞检查。
+
+参数只提高软件门禁，不证明真实环境已清障，也不授予发车权限。
+
+## 结果解释
+
+- `READINESS_GO=true` 只表示当前 no-motion readiness 九门 9/9；它不是 route execution、HIL、delivery 或 safe-to-control 证据。
+- `READINESS_GO=false` 时应直接消费 `current_natural_final_readiness.blockers` 修复当前 blocker，不得引用旧 artifact 抵消红门。
+- partial、exception 或超时 artifact 必须保持 fail-closed；没有 natural final 时不能沿用先前的 GO。
+
+只有后续独立获得明确 bounded-motion 授权并进入受控执行阶段，才可把本合同作为发车前置输入；本合同本身不扩大任何运动权限。

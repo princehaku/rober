@@ -261,7 +261,7 @@ class Nav2RuntimeProofHelperTests(unittest.TestCase):
         self.assertEqual(20.0, args.path_generation_timeout_s)
         self.assertEqual("map", args.path_goal_frame_id)
         self.assertEqual(0.8, args.path_goal_x)
-        self.assertEqual(0.0, args.path_goal_y)
+        self.assertEqual(0.25, args.path_goal_y)
         self.assertEqual(0.0, args.path_goal_yaw)
 
     def test_source_prefix_forces_udp_only_fastdds_transport(self) -> None:
@@ -484,6 +484,19 @@ pose:
 
         self.assertFalse(audit["ok"])
         self.assertFalse(audit["free_cell_verified"])
+
+    def test_canonical_occupancy_order_matches_bottom_left_grid_origin(self) -> None:
+        """PGM 顶行必须翻到 OccupancyGrid 尾行，避免非对称地图 hash 永久不相等。"""
+        values = HELPER.canonical_occupancy_values(
+            bytes([0, 254, 205, 0]),
+            width=2,
+            height=2,
+            negate=0,
+            occupied_thresh=0.65,
+            free_thresh=0.196,
+        )
+
+        self.assertEqual([-1, 100, 100, 0], values)
 
     def test_persisted_config_true_does_not_equal_live_consumption(self) -> None:
         """仓库 `set_initial_pose: true` 只算静态事实；上一轮 helper effective false 必须保留。"""
@@ -2628,8 +2641,8 @@ pose:
         for forbidden in ("controller_server", "bt_navigator", "FollowPath", "/cmd_vel", "ros2 action send_goal"):
             self.assertNotIn(forbidden, shell)
 
-    def test_path_generation_request_adapts_out_of_bounds_goal_to_map(self) -> None:
-        """固定 proof 点越过新地图边界时，只能改 planner-only 起终点，不能触发运动层。"""
+    def test_path_generation_request_fails_closed_without_adapting_fixed_goal(self) -> None:
+        """固定目标越过地图边界时必须保持原值，由 action 前门禁给出 NO-GO。"""
         args = HELPER.parse_args(
             [
                 "--initialpose-opt-in",
@@ -2658,11 +2671,11 @@ pose:
         )
 
         self.assertTrue(request["enabled"])
-        self.assertTrue(request["use_start"])
-        self.assertTrue(request["adapted_from_map_bounds"])
-        self.assertEqual("map_bounds_adapted_no_motion_planner_probe", request["adaptation_boundary"])
-        self.assertAlmostEqual(-0.27, request["start_y"], places=2)
-        self.assertAlmostEqual(-0.27, request["y"], places=2)
+        self.assertFalse(request["use_start"])
+        self.assertFalse(request["map_goal_diagnostics"]["adapted"])
+        self.assertTrue(request["map_goal_diagnostics"]["fixed_goal_immutable"])
+        self.assertAlmostEqual(0.0, request["start_y"], places=2)
+        self.assertAlmostEqual(0.0, request["y"], places=2)
         self.assertAlmostEqual(0.8, request["x"])
         self.assertFalse(request["map_goal_diagnostics"]["start_in_bounds"])
         self.assertFalse(request["map_goal_diagnostics"]["goal_in_bounds"])
@@ -3044,12 +3057,14 @@ status: STATUS_SUCCEEDED
 
         for forbidden in (
             "NavigateToPose",
-            "FollowPath",
             "ros2 run nav2_bt_navigator",
             "controller_server --ros-args",
             "serial.Serial(",
         ):
             self.assertNotIn(forbidden, text)
+        # 允许读取 FollowPath action inventory 作为 controller readiness 证据，但严禁创建或发送控制目标。
+        self.assertNotIn("ActionClient(node, FollowPath", text)
+        self.assertNotIn("send_goal_async(follow_path", text)
         self.assertIn("nav2_msgs/action/ComputePathToPose", text)
 
     def test_static_opt_in_initialpose_collector_shape(self) -> None:
@@ -6534,20 +6549,21 @@ __TF_STATIC_ONCE__
 
         for forbidden in (
             "NavigateToPose",
-            "FollowPath",
             "delivery_success=true",
         ):
             self.assertNotIn(forbidden, text)
+        self.assertNotIn("ActionClient(node, FollowPath", text)
+        self.assertNotIn("send_goal_async(follow_path", text)
 
     def test_upper_api_passes_managed_and_initialpose_opt_in_only_from_body(self) -> None:
         """正式 HTTP refresh 必须显式透传 managed runtime 与 initialpose 两类 opt-in。"""
         api_text = (SCRIPT.parent / "upper_robot_api.py").read_text(encoding="utf-8")
 
         for required in (
-            "managed_runtime_opt_in=bool(body.get(\"managed_runtime_opt_in\") is True)",
+            "managed_runtime_opt_in = bool(body.get(\"managed_runtime_opt_in\") is True)",
             "managed_timeout_s=clamp_float(body.get(\"managed_timeout_s\")",
             "managed_map_yaml=str(body.get(\"managed_map_yaml\") or \"\")[:400]",
-            "initialpose_opt_in=bool(body.get(\"initialpose_opt_in\") is True)",
+            "initialpose_opt_in = bool(body.get(\"initialpose_opt_in\") is True)",
             "path_generation_opt_in=bool(body.get(\"path_generation_opt_in\") is True)",
             "path_generation_timeout_s=clamp_float(body.get(\"path_generation_timeout_s\")",
             "path_goal_frame_id=str(body.get(\"path_goal_frame_id\") or \"map\")[:80]",
@@ -6564,6 +6580,10 @@ __TF_STATIC_ONCE__
             "--path-goal-x",
             "--path-goal-y",
             "--path-goal-yaw",
+            "reuse_existing_lidar_lifecycle = bool(body.get(\"reuse_existing_lidar_lifecycle\") is True)",
+            "body.get(\"initialpose_canonical_free_cell_opt_in\") is True",
+            "reuse_existing_lidar_lifecycle=reuse_existing_lidar_lifecycle",
+            "initialpose_canonical_free_cell_opt_in=initialpose_canonical_free_cell_opt_in",
         ):
             self.assertIn(required, api_text)
 
@@ -6996,6 +7016,438 @@ __TF_STATIC_ONCE__
 
         self.assertFalse(HELPER.tf_echo_transform_observed(failure))
         self.assertFalse(HELPER.tf_echo_transform_observed(empty))
+
+    def _current_readiness_fixture(self) -> dict[str, object]:
+        """构造严格同窗 9/9 fixture；每个负例只破坏一个可审计事实。"""
+        # fixture 使用墙钟量级毫秒，避免测试绕过生产 freshness 的时钟基准判断。
+        # started/generated 相差两秒，给 scan、pose、TF、path 留出可审计同窗顺序。
+        # 所有 header stamp 位于 receipt 之前，模拟正常 ROS message 产生与接收关系。
+        # scan endpoint 恰好一个 publisher，锁定零 publisher 与多 publisher 的负例基线。
+        # scan sample 同时包含有限点、最近距离与 sample_id，保证 obstacle 门可独立复算。
+        # sample timing 的 callback receipt 与 sample statistics 来自同一 fixture 分支。
+        # pose 使用 map frame，避免 happy path 依赖 frame alias 或隐式转换。
+        # covariance 恰好 36 项，并只给 x/y/yaw 对角项非零，覆盖最小有效矩阵。
+        # map->odom 指定 dynamic 与唯一 AMCL 归因，禁止 fixture 靠 observed 布尔偷过门。
+        # odom->base_link 同样使用 dynamic source，符合真实底盘里程计输入边界。
+        # 两条 TF receipt 只差十毫秒，明确满足 same-window 而不是碰巧低于阈值。
+        # fixed request 直接引用生产常量，常量漂移时测试会连同合同一起暴露。
+        # request 禁止 adapted 标记，防止旧 map-bounds 夹取逻辑回归。
+        # path result 同时提供 attempted、ok、generated 与正 point_count，避免顶层别名独撑成功。
+        # action name 精确为 ComputePathToPose，确保 planner-only 边界在正例中也被检查。
+        # path header stamp 与 result receipt 都在 natural-final 三秒窗口内。
+        # canonical map 同时给 YAML/image hash 与 occupancy hash，覆盖文件和 ROS 内容身份。
+        # current map metadata 完整含 x/y/quaternion，避免 origin 缺字段被默认零掩盖。
+        # current OccupancyGrid receipt 落在本轮，但静态 map 不被错误套三秒动态门。
+        # runtime persisted pose 来源通过 set_initial_pose 参数表示，仍需 current pose/TF 消费。
+        # runtime start 早于 pose receipt，证明 persisted source 的时序是正向的。
+        # initialpose attempts 为零，正例验证无需写动作也能消费 persisted source。
+        # AMCL subscriber 明确列出 /scan，避免 lifecycle active 单独让 AMCL 门转绿。
+        # planner/controller 各有 lifecycle service 与 action，测试 graph inventory 双条件。
+        # path 顶层与 command result 字段保持一致，负例可只破坏一层验证 fail-closed。
+        # natural-final 的 artifact_kind、last_phase 与 current_command 构成完整冻结条件。
+        # fixture 固定所有 safety flags 由生产函数生成，不在测试里硬写 success-shaped 值。
+        # 该正例只证明离线计算可达 9/9，不代表任何 live runtime 已满足这些事实。
+        # 每个负例都从新 fixture 开始，避免 mutation 在 subTest 之间串扰结果。
+        # helper 纯函数不访问 ROS，因此该 fixture 测试不会触发网络、action 或运动。
+        covariance = [0.0] * 36
+        covariance[0] = covariance[7] = covariance[35] = 0.1
+        started_at_ms = 1_700_000_000_000
+        generated_at_ms = 1_700_000_002_000
+        stamp = {"parsed": True, "epoch_ms": 1_700_000_001_500, "source": "fixture"}
+        scan_endpoint = {
+            "inventory_observed": True,
+            "publisher_count": 1,
+            "subscriber_count": 2,
+            "publishers": [{"node_name": "lidar_driver", "node_namespace": "/", "topic_type": "sensor_msgs/msg/LaserScan"}],
+            "subscribers": [],
+        }
+        signals = {
+            "/scan": {
+                "topic_type": "sensor_msgs/msg/LaserScan",
+                "endpoint_inventory": scan_endpoint,
+                "probe": {"observed": True},
+                "timestamp": dict(stamp),
+                "freshness": {"status": "fresh", "age_ms": 20},
+                "sample_timing": {"last_sample_received_at_ms": 1_700_000_001_600},
+                "current_sample": {
+                    "ranges_count": 720,
+                    "finite_positive_count": 720,
+                    "invalid_count": 0,
+                    "min_distance_m": 0.72,
+                    "ranges_sha256": "scan-data",
+                    "sample_id": "scan-sample-1",
+                },
+            },
+            "/amcl_pose": {
+                "probe": {"observed": True},
+                "timestamp": dict(stamp),
+                "freshness": {"status": "fresh", "age_ms": 25},
+                "direct_read_only_sample": {
+                    "observed": True,
+                    "received_at_ms": 1_700_000_001_800,
+                    "frame_id": "map",
+                    "pose": {"x": 0.0, "y": 0.0, "yaw_qz": 0.0, "yaw_qw": 1.0},
+                    "covariance": covariance,
+                },
+            },
+        }
+        map_to_odom = {
+            "observed": True,
+            "source_class": "dynamic",
+            "required_source_class": "dynamic",
+            "dynamic_source_observed": True,
+            "static_source_observed": False,
+            "timestamp": dict(stamp),
+            "freshness": {"status": "fresh"},
+            "received_at_ms": 1_700_000_001_700,
+            "publisher_attribution_status": "attributed_unique_amcl",
+        }
+        odom_to_base = {
+            "observed": True,
+            "source_class": "dynamic",
+            "required_source_class": None,
+            "dynamic_source_observed": True,
+            "static_source_observed": False,
+            "timestamp": dict(stamp),
+            "freshness": {"status": "fresh"},
+            "received_at_ms": 1_700_000_001_710,
+        }
+        request = {
+            "enabled": True,
+            "frame_id": "map",
+            "x": 0.8,
+            "y": 0.25,
+            "yaw": 0.0,
+            "task_id": HELPER.READINESS_TASK_ID,
+            "route_intent_id": HELPER.READINESS_ROUTE_INTENT_ID,
+            "adapted_from_map_bounds": False,
+        }
+        path_result = {
+            "attempted": True,
+            "attempt_count": 1,
+            "ok": True,
+            "path_generated": True,
+            "path_point_count": 9,
+            "path_preview_frame_id": "map",
+            "result_received_at_ms": 1_700_000_001_900,
+            "path_stamp": dict(stamp),
+            "action_name": "/compute_path_to_pose",
+        }
+        return {
+            "artifact_kind": "final",
+            "partial": False,
+            "last_phase": "final",
+            "current_command": None,
+            "started_at_ms": started_at_ms,
+            "generated_at_ms": generated_at_ms,
+            "map_server_active": True,
+            "amcl_active": True,
+            "planner_server_active": True,
+            "controller_server_active": True,
+            "canonical_initialpose_map_audit": {
+                "ok": True,
+                "map_yaml": HELPER.DEFAULT_MANAGED_MAP_YAML,
+                "map_yaml_sha256": "yaml-hash",
+                "map_image_sha256": "image-hash",
+                "occupancy_data_sha256": "occupancy-hash",
+                "occupancy_data_count": 4,
+                "width": 2,
+                "height": 2,
+                "resolution": 0.05,
+                "origin": [0.0, 0.0, 0.0],
+            },
+            "current_map_sample": {
+                "observed": True,
+                "received_at_ms": 1_700_000_001_600,
+                "frame_id": "map",
+                "occupancy_data_sha256": "occupancy-hash",
+                "data_count": 4,
+                "width": 2,
+                "height": 2,
+                "resolution": 0.05,
+                "origin": {"x": 0.0, "y": 0.0, "qz": 0.0, "qw": 1.0},
+            },
+            "localization_signal_freshness": signals,
+            "tf_source_freshness": {"edges": {"map_to_odom": map_to_odom, "odom_to_base_link": odom_to_base}},
+            "tf_chain_observed": {"map_to_odom": True, "odom_to_base_link": True, "map_to_base_link": True},
+            "tf_chain_diagnostics": {"pairs": {}},
+            "tf_failure_classification": {},
+            "amcl_runtime_params": {"set_initial_pose": True, "initial_pose.x": 0.0, "initial_pose.y": 0.0, "initial_pose.yaw": 0.0},
+            "managed_runtime_started_at_ms": 1_700_000_001_100,
+            "managed_runtime_external_reused": True,
+            "managed_lidar_policy": "reuse_existing_o11_owned_lidar_and_nav2_runtime",
+            "initialpose_publish_attempts": 0,
+            "persisted_pose_audit": {"pre_publish_live_outputs": {}},
+            "amcl_node_subscribers": [{"topic": "/scan", "type": "sensor_msgs/msg/LaserScan"}],
+            "runtime_interfaces": {
+                "inventory_observed": True,
+                "received_at_ms": 1_700_000_001_750,
+                "actions": [
+                    {"topic": "/compute_path_to_pose", "type": "nav2_msgs/action/ComputePathToPose"},
+                    {"topic": "/follow_path", "type": "nav2_msgs/action/FollowPath"},
+                ],
+                "services": [
+                    {"topic": "/planner_server/get_state", "type": "lifecycle_msgs/srv/GetState"},
+                    {"topic": "/controller_server/get_state", "type": "lifecycle_msgs/srv/GetState"},
+                ],
+            },
+            "path_generation_requested": True,
+            "path_generation_attempted": True,
+            "path_generation_succeeded": True,
+            "path_generated": True,
+            "path_point_count": 9,
+            "path_preview_frame_id": "map",
+            "commands": {"path_generation": {"request": request, "result": path_result}, "initialpose_publish": {}},
+        }
+
+    def test_current_readiness_nine_of_nine_go_fixture(self) -> None:
+        """完整 fixture 必须恰好九门全绿，且保持所有控制/交付声明为 false。"""
+        # 正例必须校验 gate_count，避免未来新增宽松门后仍只看 READINESS_GO。
+        # ready_count 必须与 gate_count 同为九，禁止部分通过被解释为可发车。
+        # 控制与路线成功字段必须保持 false，锁定 readiness 与执行证据的边界。
+        # 这条测试是所有单点 hostile mutation 的共同可信基线。
+        readiness = HELPER.build_current_natural_final_readiness(self._current_readiness_fixture())
+
+        self.assertTrue(readiness["READINESS_GO"])
+        self.assertEqual(9, readiness["gate_count"])
+        self.assertEqual(9, readiness["ready_count"])
+        self.assertTrue(all(readiness[f"{name}_ready"] for name in readiness["gates"]))
+        self.assertFalse(readiness["robot_control_executed"])
+        self.assertFalse(readiness["route_execution_success"])
+
+    def test_current_readiness_canonical_map_mismatch_fails_closed(self) -> None:
+        """current OccupancyGrid hash 与 canonical image 派生内容不一致时 map 门必须红。"""
+        # 只改 current hash，确保失败确实来自内容身份而非 lifecycle 或 metadata。
+        # blocker 名锁定 gate/check 形状，方便外层 jq 精确消费。
+        proof = self._current_readiness_fixture()
+        proof["current_map_sample"]["occupancy_data_sha256"] = "different"  # type: ignore[index]
+
+        readiness = HELPER.build_current_natural_final_readiness(proof)
+
+        self.assertFalse(readiness["gates"]["map"]["ready"])
+        self.assertIn("map:content_hash_match", readiness["blockers"])
+
+    def test_current_readiness_missing_map_origin_component_fails_closed(self) -> None:
+        """origin 任一坐标缺失都不能被跳过后误判 metadata 一致。"""
+        # 删除 x 而保留 y/yaw，专门覆盖旧生成器跳过 None 的漏洞。
+        # metadata blocker 证明缺字段不会被默认零值补齐。
+        proof = self._current_readiness_fixture()
+        del proof["current_map_sample"]["origin"]["x"]  # type: ignore[index]
+
+        readiness = HELPER.build_current_natural_final_readiness(proof)
+
+        self.assertFalse(readiness["gates"]["map"]["ready"])
+        self.assertIn("map:metadata_match", readiness["blockers"])
+
+    def test_current_readiness_map_origin_requires_all_components(self) -> None:
+        """current map origin 缺任一坐标都不能被其余匹配项洗成 metadata clean。"""
+        proof = self._current_readiness_fixture()
+        del proof["current_map_sample"]["origin"]["x"]  # type: ignore[index]
+
+        readiness = HELPER.build_current_natural_final_readiness(proof)
+
+        self.assertFalse(readiness["map_ready"])
+        self.assertIn("map:metadata_match", readiness["blockers"])
+
+    def test_current_readiness_scan_stale_no_or_multi_publisher_fail_closed(self) -> None:
+        """scan stale、零 publisher、多 publisher 三类均不可被 observed sample 洗绿。"""
+        # 三个 mutation 共享其余有效证据，定位 freshness/source 任何一项都能独立 NO-GO。
+        # observed sample 不得覆盖 publisher ambiguity，这是来源可信与内容可信的分离测试。
+        # obstacle 门必须继承 scan 原始门，而不是只比较 min_distance。
+        mutations = {
+            "stale": lambda scan: scan["freshness"].update(status="stale"),
+            "no_publisher": lambda scan: scan["endpoint_inventory"].update(publisher_count=0),
+            "multi_publisher": lambda scan: scan["endpoint_inventory"].update(publisher_count=2),
+        }
+        for label, mutate in mutations.items():
+            with self.subTest(label=label):
+                proof = self._current_readiness_fixture()
+                scan = proof["localization_signal_freshness"]["/scan"]  # type: ignore[index]
+                mutate(scan)
+                readiness = HELPER.build_current_natural_final_readiness(proof)
+                self.assertFalse(readiness["READINESS_GO"])
+                self.assertFalse(readiness["gates"]["obstacle_clear"]["ready"])
+
+    def test_current_readiness_scan_wrong_owner_or_invalid_ranges_fail_closed(self) -> None:
+        """单 publisher 也必须属于 O11 lidar_driver；NaN/Inf/out-of-range 统计不能判净空。"""
+        for label in ("wrong_owner", "invalid_ranges", "runtime_not_owned"):
+            with self.subTest(label=label):
+                proof = self._current_readiness_fixture()
+                scan = proof["localization_signal_freshness"]["/scan"]  # type: ignore[index]
+                if label == "wrong_owner":
+                    scan["endpoint_inventory"]["publishers"][0]["node_name"] = "foreign_scan"  # type: ignore[index]
+                elif label == "invalid_ranges":
+                    scan["current_sample"]["invalid_count"] = 1  # type: ignore[index]
+                    scan["current_sample"]["finite_positive_count"] = 719  # type: ignore[index]
+                else:
+                    proof["managed_runtime_external_reused"] = False
+
+                readiness = HELPER.build_current_natural_final_readiness(proof)
+
+                self.assertFalse(readiness["obstacle_clear_ready"])
+                self.assertFalse(readiness["READINESS_GO"])
+
+    def test_current_readiness_scan_receipt_stale_at_natural_final_fails_closed(self) -> None:
+        """回调时 fresh 但 natural-final 时已过期的 scan 不能通过 obstacle-clear。"""
+        # 保留旧 freshness 标签为 fresh，专门证明 natural-final 会重新按 receipt 计算。
+        # receipt 移到 run 之前，覆盖跨轮旧 scan 不能洗绿最终净空门。
+        proof = self._current_readiness_fixture()
+        proof["localization_signal_freshness"]["/scan"]["sample_timing"]["last_sample_received_at_ms"] = 1_699_999_990_000  # type: ignore[index]
+
+        readiness = HELPER.build_current_natural_final_readiness(proof)
+
+        self.assertFalse(readiness["gates"]["obstacle_clear"]["ready"])
+
+    def test_current_readiness_pose_timestamp_freshness_and_covariance_fail_closed(self) -> None:
+        """pose 必须同时有可解析 stamp、fresh receipt、map frame 与有效 covariance。"""
+        # timestamp、freshness、covariance 分别破坏，避免一个宽松 aggregate 掩盖子条件。
+        # 零 covariance 模拟默认初始化数组，必须拒绝为“完美定位”。
+        # 每个 subTest 使用全新 fixture，保证失败原因可独立复现。
+        for label in ("timestamp", "freshness", "covariance"):
+            with self.subTest(label=label):
+                proof = self._current_readiness_fixture()
+                pose = proof["localization_signal_freshness"]["/amcl_pose"]  # type: ignore[index]
+                if label == "timestamp":
+                    pose["timestamp"]["parsed"] = False
+                elif label == "freshness":
+                    pose["freshness"]["status"] = "stale"
+                else:
+                    pose["direct_read_only_sample"]["covariance"] = [0.0] * 36
+                readiness = HELPER.build_current_natural_final_readiness(proof)
+                self.assertFalse(readiness["gates"]["current_pose"]["ready"])
+
+    def test_current_readiness_persisted_pose_pre_post_conflict_fails_closed(self) -> None:
+        """persisted source 晚于 current pose receipt 时属于 pre/post conflict，不能算 live consumed。"""
+        # 只把 source time 推到 pose receipt 之后，保留 current pose 与 TF 本身仍 ready。
+        # 这样可证明 persisted 门审计真实消费顺序，而不是复用 current_pose 布尔。
+        proof = self._current_readiness_fixture()
+        proof["managed_runtime_started_at_ms"] = 1_700_000_001_850
+
+        readiness = HELPER.build_current_natural_final_readiness(proof)
+
+        evidence = readiness["gates"]["persisted_pose"]["evidence"]
+        self.assertTrue(evidence["pre_post_conflict"])
+        self.assertFalse(readiness["gates"]["persisted_pose"]["ready"])
+
+    def test_current_readiness_tf_static_ambiguous_or_stale_fails_closed(self) -> None:
+        """dynamic map->odom 必须 fresh 且唯一归因 AMCL；static/ambiguous/stale 都拒绝。"""
+        # static mutation 锁定 no-motion 假 TF 不可替代 AMCL 动态输出。
+        # ambiguous mutation 锁定多个来源时不得按节点顺序猜归因。
+        # stale mutation 锁定 header freshness 与 observed edge 必须同时满足。
+        for label in ("static", "ambiguous", "stale"):
+            with self.subTest(label=label):
+                proof = self._current_readiness_fixture()
+                edge = proof["tf_source_freshness"]["edges"]["map_to_odom"]  # type: ignore[index]
+                if label == "static":
+                    edge["source_class"] = "static"
+                elif label == "ambiguous":
+                    edge["publisher_attribution_status"] = "ambiguous_multiple_publishers"
+                else:
+                    edge["freshness"]["status"] = "stale"
+                readiness = HELPER.build_current_natural_final_readiness(proof)
+                self.assertFalse(readiness["gates"]["dynamic_tf"]["ready"])
+
+    def test_current_readiness_tf_receipt_stale_at_natural_final_fails_closed(self) -> None:
+        """TF header 在回调时 fresh 仍不够，natural-final 必须继续处于 current 窗口。"""
+        # 保持 edge freshness 标签不变，仅把 callback receipt 移出本轮。
+        # 该负例防止早期 TF 在后段 planner 工作结束后仍被当成 current。
+        proof = self._current_readiness_fixture()
+        proof["tf_source_freshness"]["edges"]["map_to_odom"]["received_at_ms"] = 1_699_999_990_000  # type: ignore[index]
+
+        readiness = HELPER.build_current_natural_final_readiness(proof)
+
+        self.assertFalse(readiness["gates"]["dynamic_tf"]["ready"])
+
+    def test_current_readiness_planner_controller_lifecycle_and_interfaces_fail_closed(self) -> None:
+        """仅 graph node 可见不够；planner/controller lifecycle 与 action/service 必须同时 ready。"""
+        # 同时破坏 planner lifecycle 与 action inventory，验证两类 blocker 均被保留。
+        # controller action 也随 inventory 清空而失败，证明两门没有共享宽松 fallback。
+        proof = self._current_readiness_fixture()
+        proof["planner_server_active"] = False
+        proof["runtime_interfaces"]["actions"] = []  # type: ignore[index]
+
+        readiness = HELPER.build_current_natural_final_readiness(proof)
+
+        self.assertFalse(readiness["gates"]["planner"]["ready"])
+        self.assertFalse(readiness["gates"]["controller"]["ready"])
+
+    def test_current_readiness_interface_inventory_outside_run_fails_closed(self) -> None:
+        """历史 action/service inventory 不得替代 current planner/controller graph。"""
+        proof = self._current_readiness_fixture()
+        proof["runtime_interfaces"]["received_at_ms"] = 1_699_999_999_000  # type: ignore[index]
+
+        readiness = HELPER.build_current_natural_final_readiness(proof)
+
+        self.assertFalse(readiness["planner_ready"])
+        self.assertFalse(readiness["controller_ready"])
+
+    def test_current_readiness_fixed_path_failure_or_goal_drift_fails_closed(self) -> None:
+        """ComputePathToPose 失败或 fixed goal 漂移都不能拿任意路径替代。"""
+        # path_failed 只破坏顶层 success，验证顶层与原始 result 必须一致。
+        # goal_drift 把 y 改回旧值，锁定 helper 不得为成功任意调整冻结目标。
+        # 两种失败都保持非空 path，证明 success-shaped payload 仍会被合同拒绝。
+        for label in ("path_failed", "goal_drift"):
+            with self.subTest(label=label):
+                proof = self._current_readiness_fixture()
+                if label == "path_failed":
+                    proof["path_generation_succeeded"] = False
+                else:
+                    proof["commands"]["path_generation"]["request"]["y"] = 0.0  # type: ignore[index]
+                readiness = HELPER.build_current_natural_final_readiness(proof)
+                self.assertFalse(readiness["gates"]["planner_only_path"]["ready"])
+
+    def test_current_readiness_path_stamp_stale_at_natural_final_fails_closed(self) -> None:
+        """非空 path 若 header stamp 陈旧，也不能作为 current planner-only 材料。"""
+        # 保留 result receipt 当前，只把 path header 移出窗口，验证双时间事实不可互相替代。
+        # 非空 point_count 不能覆盖陈旧 stamp，避免缓存 path 被重新包装成 current。
+        proof = self._current_readiness_fixture()
+        proof["commands"]["path_generation"]["result"]["path_stamp"]["epoch_ms"] = 1_699_999_990_000  # type: ignore[index]
+
+        readiness = HELPER.build_current_natural_final_readiness(proof)
+
+        self.assertFalse(readiness["gates"]["planner_only_path"]["ready"])
+
+    def test_current_readiness_path_retry_or_partial_artifact_fails_closed(self) -> None:
+        """第二次 planner attempt 或 partial closeout 都不能沿用第一次成功结果判 GO。"""
+        for label in ("retry", "partial"):
+            with self.subTest(label=label):
+                proof = self._current_readiness_fixture()
+                if label == "retry":
+                    proof["commands"]["path_generation"]["result"]["attempt_count"] = 2  # type: ignore[index]
+                else:
+                    proof["partial"] = True
+
+                readiness = HELPER.build_current_natural_final_readiness(proof)
+
+                self.assertFalse(readiness["READINESS_GO"])
+
+    def test_current_readiness_obstacle_threshold_uses_same_scan_sample(self) -> None:
+        """最近点低于 0.45m 时 obstacle 门独立 NO-GO，并保留同一 scan sample id。"""
+        # 0.44m 明确低于阈值但仍是有效有限值，区分“有数据”与“环境净空”。
+        # evidence 必须回传原 sample_id，证明阈值结论没有换用另一帧 scan。
+        # threshold 也进入 artifact，防止外部消费者猜测或硬编码不同安全距离。
+        proof = self._current_readiness_fixture()
+        proof["localization_signal_freshness"]["/scan"]["current_sample"]["min_distance_m"] = 0.44  # type: ignore[index]
+
+        readiness = HELPER.build_current_natural_final_readiness(proof)
+
+        obstacle = readiness["gates"]["obstacle_clear"]
+        self.assertFalse(obstacle["ready"])
+        self.assertEqual("scan-sample-1", obstacle["evidence"]["scan_sample_id"])
+        self.assertEqual(0.45, obstacle["evidence"]["threshold_m"])
+
+    def test_reuse_existing_lifecycle_branch_does_not_start_or_cleanup_second_stack(self) -> None:
+        """O11-owned reuse 分支必须显式禁止第二套 runtime 与外部 PID cleanup。"""
+        # source inspection 锁定 ownership 分支，不需要执行真实进程或 ROS lifecycle。
+        # reuse 必须明确“不启动第二套”，否则同一 LiDAR/graph 会产生多 publisher 歧义。
+        # cleanup 只允许 helper-owned process group，外部 O11 PID 不属于 Algorithm 权限。
+        # 该测试保持完全离线，不因验证 ownership 而触发任何 stop 或 kill。
+        # 直接读取脚本文本，避免并行集成期间 linecache 行号漂移让 inspect 截到错误函数片段。
+        source = SCRIPT.read_text(encoding="utf-8")
+
+        self.assertIn("explicit_opt_in_verify_existing_o11_owned_runtime_no_second_stack", source)
+        self.assertIn('managed_runtime.get("helper_owns_process_group")', source)
+        self.assertIn("external_runtime_reused_not_owned_not_stopped", source)
 
 
 if __name__ == "__main__":

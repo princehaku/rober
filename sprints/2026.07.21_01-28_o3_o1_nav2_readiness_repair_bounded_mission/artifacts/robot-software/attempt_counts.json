@@ -1,0 +1,25 @@
+{
+  "schema": "trashbot.o3_o1.attempt_counts.v1",
+  "generated_at": "2026-07-21T04:11:57+08:00",
+  "authorization": "ceo_20260721_0128_operator_watch_route_clear_physical_limit_v5",
+  "authorization_consumed": false,
+  "phase_a": {
+    "start_attempt_count": 0,
+    "proof_attempt_count": 0,
+    "latest_attempt_count": 0,
+    "owned_stop_attempt_count": 0,
+    "retry_count": 0
+  },
+  "phase_b": {
+    "pre_base_stop_attempt_count": 0,
+    "execute_attempt_count": 0,
+    "post_base_stop_attempt_count": 0,
+    "goal_retry_count": 0
+  },
+  "initialpose_publish_attempt_count": 0,
+  "final_state": "PHASE0_BLOCKED_NON_OWNED_SERIAL_HOLDERS",
+  "robot_control_executed": false,
+  "safe_to_control": false,
+  "hil_pass": false,
+  "delivery_success": false
+}

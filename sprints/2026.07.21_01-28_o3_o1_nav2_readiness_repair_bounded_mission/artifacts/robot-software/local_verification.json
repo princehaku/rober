@@ -1,0 +1,69 @@
+{
+  "schema": "trashbot.o3_o1.local_verification.v1",
+  "generated_at": "2026-07-21T04:11:57+08:00",
+  "sprint_type": "epic",
+  "commands": [
+    {
+      "command": "bash -n onboard/scripts/o11_nav2_lifecycle.sh",
+      "exit_code": 0,
+      "passed": true
+    },
+    {
+      "command": "python3 -m py_compile onboard/scripts/upper_robot_api.py onboard/scripts/o10_amcl_nav2_runtime_proof.py",
+      "exit_code": 0,
+      "passed": true
+    },
+    {
+      "command": "python3 -m unittest onboard/tests/test_o11_nav2_lifecycle_script.py",
+      "exit_code": 0,
+      "tests_run": 7,
+      "passed": true
+    },
+    {
+      "command": "python3 -m unittest onboard/tests/test_upper_robot_api.py",
+      "exit_code": 0,
+      "tests_run": 128,
+      "skipped": 1,
+      "passed": true
+    },
+    {
+      "command": "python3 -m unittest onboard/tests/test_nav2_runtime_proof_helper.py",
+      "exit_code": 0,
+      "tests_run": 189,
+      "passed": true
+    },
+    {
+      "command": "python3 -m unittest onboard/tests/test_nav2_params_contract.py",
+      "exit_code": 0,
+      "tests_run": 4,
+      "passed": true
+    },
+    {
+      "command": "python3 -m unittest onboard/tests/test_o11_nav2_lifecycle_script.py onboard/tests/test_upper_robot_api.py onboard/tests/test_nav2_runtime_proof_helper.py onboard/tests/test_nav2_params_contract.py",
+      "exit_code": 0,
+      "tests_run": 328,
+      "skipped": 1,
+      "passed": true
+    },
+    {
+      "command": "bash onboard/scripts/docker_humble_build.sh",
+      "exit_code": 0,
+      "packages_finished": 6,
+      "elapsed_s": 46.3,
+      "evidence_scope": "software_proof_docker_only",
+      "passed": true
+    },
+    {
+      "command": "git diff --check -- <approved integrated files>",
+      "exit_code": 0,
+      "passed": true
+    }
+  ],
+  "first_run_recovered_findings": [
+    "Upper argv assertion fixture initially omitted path_generation_opt_in and was corrected before the final green run",
+    "Algorithm static guard tests briefly observed an in-flight shared-workspace mismatch and passed after the Algorithm owner repair landed"
+  ],
+  "all_required_offline_gates_passed": true,
+  "hil_pass": false,
+  "safe_to_control": false
+}

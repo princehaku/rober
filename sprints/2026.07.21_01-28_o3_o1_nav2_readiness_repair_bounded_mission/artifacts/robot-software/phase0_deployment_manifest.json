@@ -1,0 +1,73 @@
+{
+  "schema": "trashbot.o3_o1.phase0_deployment_manifest.v1",
+  "generated_at": "2026-07-21T04:11:57+08:00",
+  "phase": "P0_PRECHECK_BLOCKED_BEFORE_DEPLOYMENT",
+  "target_host": "root@192.168.1.11:37878",
+  "scripts": {
+    "onboard/scripts/upper_robot_api.py": {
+      "local_sha256": "e5588a27184d05ea6ff3bd0555a264b0352f3b1a5ef2dada207ee5590a59593d",
+      "remote_pre_sha256": "8c0f6eebb786e1cd6b1cb5d17485e59972140bf76a94e7669773ef438228b4c3",
+      "deployed": false
+    },
+    "onboard/scripts/o11_nav2_lifecycle.sh": {
+      "local_sha256": "a177e7deca3f6270377eeae170813b9e86f9c787d7a5b1aefe214139c5624329",
+      "remote_pre_sha256": "fc6edde3e9ac11e33bf6aa02e47353c0d2ae9231f0305751543f22b2ef06c5f8",
+      "deployed": false
+    },
+    "onboard/scripts/o10_amcl_nav2_runtime_proof.py": {
+      "local_sha256": "c03e7a1fc2248190384bb966f3c7bbf9572b9746bb933fc4e23d64ded152812a",
+      "remote_pre_sha256": "d9f92d708bdac6feec35798e4acfcd50b58349a3de3315a24a605cf5c82307eb",
+      "deployed": false
+    },
+    "onboard/src/ros2_trashbot_nav/config/nav2_params.yaml": {
+      "local_sha256": "9bbce345f0b6726c593d1a56e146a51aa6b53170d18a2cffc4cd5f67bd14eef1",
+      "remote_pre_sha256": "045db5032bc301802182864010b687c34724c575c3375eacb62325a0f4328129",
+      "deployed": false
+    }
+  },
+  "deployment_attempted": false,
+  "service_restart_attempted": false,
+  "remote_temp_validation_attempted": false,
+  "remote_py_compile_attempted": false,
+  "remote_bash_syntax_attempted": false,
+  "service": {
+    "name": "trashbot-upper-robot-api.service",
+    "main_pid": 1221,
+    "active_state": "active",
+    "sub_state": "running"
+  },
+  "endpoints": {
+    "/api/health": {"http_status": 200, "json_parse_ok": true, "status": "ready"},
+    "/api/status": {"http_status": 200, "json_parse_ok": true, "robot_control_executed": false},
+    "/api/nav2/status": {"http_status": 200, "json_parse_ok": true, "lifecycle_running": false, "lifecycle_state": "stopped", "owned_pid": null}
+  },
+  "owned_state": {
+    "o11_pid_files_present": 0,
+    "o11_residual_process_count": 0
+  },
+  "non_owned_blockers": [
+    {
+      "resource": "/dev/ttyS5",
+      "pid": 3765,
+      "owner": "trashbot-esp32-bridge.service",
+      "process": "esp32_bridge"
+    },
+    {
+      "resource": "/dev/ttyACM0",
+      "pid": 4014,
+      "owner": "trashbot-lidar-lifecycle.service",
+      "process": "lidar_driver"
+    }
+  ],
+  "base_uart_holder_pre_count": 1,
+  "base_uart_holder_post_count": 1,
+  "base_uart_holder_delta": 0,
+  "lidar_holder_pre_count": 1,
+  "lidar_holder_post_count": 1,
+  "lidar_holder_delta": 0,
+  "phase0_gate_pass": false,
+  "failure_reason": "non_owned_base_and_lidar_serial_holders_present",
+  "authorization_consumed": false,
+  "motion_command_attempts": 0,
+  "control_endpoint_invocations": 0
+}

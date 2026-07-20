@@ -6,6 +6,16 @@
 
 ---
 
+## 2026-07-21 O3/O1 readiness capability offline green + Phase 0 holder blocked flat 收口
+
+`sprints/2026.07.21_01-28_o3_o1_nav2_readiness_repair_bounded_mission/` 完成 Product acceptance：`PRODUCT_CLOSEOUT=ACCEPT_IMPLEMENTATION_OFFLINE_GREEN_PHASE0_BLOCKED`。Robot/Algorithm 已修改 O11、Upper、O10、Nav2 params、测试与相关 docs，形成 `sensor-enabled/base-disabled` single-owner lifecycle 和 current map/scan/pose/persisted pose/dynamic TF/planner/controller/path/obstacle 九门 fail-closed contract。验证 O11 `7`、Upper `128`（skip1）、O10 `189`、params `4`、combined `328`（skip1）、Docker `6 packages finished` 全绿；最终中文技术注释比例 Upper `20.54%`、O11 `20.09%`、O10 `23.82%`。
+
+真实板 Phase 0 只读发现 `/dev/ttyS5` holder PID `3765` 为 `esp32_bridge`、归属 `trashbot-esp32-bridge.service`；`/dev/ttyACM0` holder PID `4014` 为 `lidar_driver`、归属 `trashbot-lidar-lifecycle.service`。两者均非本 run/O11 owned，exact blocker=`non_owned_base_and_lidar_serial_holders_present`，本轮消费 `1/2`。Robot 正确未 deploy/restart/stop/kill/broad-kill；remote 仍旧 SHA，v5 authorization unconsumed。Phase A start/proof/latest/owned-stop=`0/0/0/0`、Phase B pre-stop/execute/post-stop=`0/0/0`、control/motion=`0`，Hardware 未派。
+
+Proof boundary=`readiness_capability_implemented_offline_docker_green_board_phase0_holder_evidence_no_deploy_no_live_readiness_no_mission`。`current_run_artifact_delta=true` 仅表示代码/docs、测试、Docker proof 和 board Phase 0 holder evidence；`external_artifact_delta=false`、`live_control_delta=false`、`user_action_delta=false`、`robot_control_executed=false`、`route_execution_success=false`、`hil_pass=false`、`delivery_success=false`、`safe_to_control=false`、`mission_objective_0_satisfied=false`、`okr_credit=false`。O5 约 `85%` 且 provider/runtime `2/2` 继续暂停，O6/O7 各约 `93%`、O1 约 `94%` 及其他主百分比全 flat，KR `不归档`、历史区无新增。
+
+下一轮唯一入口是 CEO/当前服务 owner 明确提供独占维护窗口，确认可安全释放 `trashbot-esp32-bridge.service` 与 `trashbot-lidar-lifecycle.service` 且没有并发 live task，再从完整 Phase 0 重新开始；v5 仍只在唯一 start pipe 创建时消费。若维护窗口不可得，切换下一个低进度可行动 Objective；不得把 holder blocker 再包装成 preflight、summary、handoff 或 readiness-only sprint。
+
 ## 2026-07-21 O3/O1 frozen stdin validated + natural-final readiness NO-GO flat 收口
 
 `sprints/2026.07.21_00-27_o3_o1_frozen_stdin_readiness_bounded_route/` 完成 Product acceptance：`PRODUCT_CLOSEOUT=ACCEPT_NO_GO`、`FROZEN_STDIN_TRANSPORT_LIVE_VALIDATED=true`。Frozen `jq -c` request body 经 stdin 到 remote curl 后，request/sent SHA、bytes、lines、cmp 一致，remote handler invocation=`1` 且 semantic success；上一 blocker `phase_a_start_json_transport_corrupted_before_remote_handler` 已关闭，但只关闭 transport，不计 readiness/route credit。Fresh authorization 已由唯一 start attempt 消费并永久封存。

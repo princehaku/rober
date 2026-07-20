@@ -1539,6 +1539,120 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertEqual("cmd_vel_subscription_count_unproven", result["warning"]["type"])
         self.assertNotIn("error", result)
 
+    def test_latency_trace_whitelist_and_invalid_values(self) -> None:
+        """trace 只回传固定字段，恶意字符和非有限数必须在任何控制前拒绝。"""
+        trace = upper_robot_api.normalize_latency_trace(
+            {
+                "schema": upper_robot_api.LATENCY_TRACE_SCHEMA,
+                "latency_trace_id": "trace-001",
+                "client_keydown_perf_ms": 12.5,
+                "client_time_origin_ms": 1_784_570_000_000,
+                "hold_session_id": "keyboard-owner-1",
+                "hold_sequence": 1,
+                "sample_kind": "warm",
+                "secret": "must-not-reflect",
+            }
+        )
+        self.assertNotIn("secret", trace)
+        self.assertEqual("trace-001", trace["latency_trace_id"])
+        with self.assertRaisesRegex(ValueError, "latency_trace_invalid_latency_trace_id"):
+            upper_robot_api.normalize_latency_trace({**trace, "latency_trace_id": "bad\nvalue"})
+        with self.assertRaisesRegex(ValueError, "latency_trace_invalid_client_keydown_perf_ms"):
+            upper_robot_api.normalize_latency_trace({**trace, "client_keydown_perf_ms": float("inf")})
+
+    def test_ros_cmd_vel_publishes_first_frame_before_any_sleep(self) -> None:
+        """首次 publish 必须先于 discovery/burst sleep，避免 keydown 承担固定等待。"""
+
+        class FakeVector:
+            def __init__(self) -> None:
+                self.x = self.y = self.z = 0.0
+
+        class FakeTwist:
+            def __init__(self) -> None:
+                self.linear = FakeVector()
+                self.angular = FakeVector()
+
+        events: list[str] = []
+
+        class FakePublisher:
+            def get_subscription_count(self) -> int:
+                return 1
+
+            def publish(self, _message: FakeTwist) -> None:
+                events.append("publish")
+
+        class FakeRclpy:
+            @staticmethod
+            def spin_once(_node: object, timeout_sec: float = 0.0) -> None:
+                events.append(f"spin:{timeout_sec}")
+
+        context = {
+            "status": "ready",
+            "prewarm_status": "ready",
+            "ready_mono_ns": 1,
+            "rclpy": FakeRclpy(),
+            "twist_type": FakeTwist,
+            "node": object(),
+            "publisher": FakePublisher(),
+        }
+        with mock.patch.object(upper_robot_api, "_ensure_ros_cmd_vel_context", return_value=context):
+            with mock.patch.object(upper_robot_api.time, "sleep", side_effect=lambda _seconds: events.append("sleep")):
+                result = upper_robot_api.publish_ros_cmd_vel_inprocess_burst(0.08, 0.0, hold_s=0.1, rate_hz=20.0)
+        self.assertEqual("publish", events[0])
+        self.assertLess(events.index("publish"), events.index("sleep"))
+        self.assertEqual("ready", result["rclpy_context_status"])
+        self.assertIn("cmd_vel_first_publish_mono_ns", result)
+
+    def test_ros_cmd_vel_prewarm_matches_graph_without_publishing(self) -> None:
+        """startup 只预热 context/DDS graph，绝不能为了探测订阅者发送任何 Twist。"""
+
+        class FakePublisher:
+            def __init__(self) -> None:
+                self.read_count = 0
+
+            def get_subscription_count(self) -> int:
+                self.read_count += 1
+                return 1 if self.read_count >= 2 else 0
+
+            def publish(self, _message: object) -> None:
+                raise AssertionError("prewarm_must_not_publish")
+
+        class FakeRclpy:
+            @staticmethod
+            def spin_once(_node: object, timeout_sec: float = 0.0) -> None:
+                self.assertGreaterEqual(timeout_sec, 0.0)
+
+        context = {
+            "status": "ready",
+            "rclpy": FakeRclpy(),
+            "node": object(),
+            "publisher": FakePublisher(),
+        }
+        with mock.patch.object(upper_robot_api, "_ensure_ros_cmd_vel_context", return_value=context):
+            result = upper_robot_api.prewarm_ros_cmd_vel_context(wait_subscription_s=0.1)
+        self.assertEqual("ready", result["prewarm_status"])
+        self.assertEqual(1, result["prewarm_subscription_count"])
+
+    def test_realtime_hold_does_not_use_cli_fallback_when_prewarm_failed(self) -> None:
+        """键盘热路径预热失败必须 fail-closed，不能把秒级 CLI 算成 latency pass。"""
+        failed = {
+            "ok": False,
+            "publish_backend": "rclpy_inprocess_burst",
+            "rclpy_context_status": "unavailable_fail_closed",
+            "error": {"type": "rclpy_unavailable"},
+        }
+        with mock.patch.object(upper_robot_api, "publish_ros_cmd_vel_inprocess_burst", return_value=failed):
+            with mock.patch.object(upper_robot_api, "publish_ros_cmd_vel_cli_burst") as cli_mock:
+                result = upper_robot_api.manual_motion_ros_cmd_vel_hold_refresh_transaction(
+                    port="/dev/ttyS5",
+                    baudrate=115200,
+                    command={"T": 13, "X": 0.08, "Z": 0.0},
+                )
+        cli_mock.assert_not_called()
+        self.assertFalse(result["command_result"]["ok"])
+        self.assertFalse(result["command_result"]["cli_fallback_attempted"])
+        self.assertFalse(result["command_result"]["latency_pass_eligible"])
+
     def test_manual_control_ros_persists_fresh_bridge_feedback_without_opening_uart(self) -> None:
         """ROS 手控后只读 bridge debug log 回灌 L/R，不为了证明轮速再抢 UART。"""
         api = upper_robot_api.UpperRobotApi(
@@ -1743,6 +1857,51 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertTrue(payload["auto_stop_deferred_to_watchdog"])
         self.assertTrue(payload["manual_hold_watchdog"]["active"])
         self.assertEqual("ros_cmd_vel_realtime_hold", payload["ros_cmd_vel_transaction"]["mode"])
+        if api._manual_hold_watchdog_task is not None:
+            api._manual_hold_watchdog_task.cancel()
+
+    def test_manual_control_realtime_hold_prewarm_failure_is_rejected(self) -> None:
+        """publisher 预热不可用时 manual HTTP 必须可据 accepted=false 返回 fail-closed。"""
+        api = upper_robot_api.UpperRobotApi(
+            camera_base_url="http://127.0.0.1:8088",
+            base_port="/dev/ttyS5",
+            base_baudrate=115200,
+            max_speed=0.12,
+        )
+        transaction = {
+            "mode": "ros_cmd_vel_realtime_hold",
+            "command_result": {
+                "ok": False,
+                "rclpy_context_status": "unavailable_fail_closed",
+                "cli_fallback_attempted": False,
+                "latency_pass_eligible": False,
+            },
+            "stop_result": {"ok": False, "skipped_reason": "realtime_hold_stop_deferred_to_release_or_watchdog"},
+            "feedback_during_motion": upper_robot_api.skipped_manual_feedback_payload("/dev/ttyS5", 115200, "realtime_hold_feedback_skipped_until_release_readback"),
+            "feedback_after_stop": upper_robot_api.skipped_manual_feedback_payload("/dev/ttyS5", 115200, "realtime_hold_feedback_skipped_until_release_readback"),
+            "serial_session_error": None,
+        }
+
+        async def run_case():
+            with mock.patch.object(upper_robot_api, "manual_motion_ros_cmd_vel_hold_refresh_transaction", return_value=transaction):
+                return await api.manual_control(
+                    {
+                        "direction": "forward",
+                        "speed": 0.08,
+                        "duration_ms": 240,
+                        "command_mode": "ros",
+                        "feedback_mode": "realtime_hold",
+                        "hold_session_id": "vitest-keyboard",
+                        "hold_sequence": 8,
+                        "hold_watchdog_ms": 780,
+                    }
+                )
+
+        payload = asyncio.run(run_case())
+        self.assertFalse(payload["accepted"])
+        self.assertFalse(payload["manual_command_executed"])
+        self.assertEqual("blocked_realtime_hold_rclpy_not_ready", payload["status"])
+        self.assertEqual("realtime_hold_rclpy_prewarm_unavailable", payload["failure_reason"])
         if api._manual_hold_watchdog_task is not None:
             api._manual_hold_watchdog_task.cancel()
 
@@ -2858,7 +3017,7 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
     # Nav2 strict-start 回归组用下列原因拆分安全边界，避免只测快乐路径。
     # 默认命令要单独验收，因为部署环境可能没有显式设置环境变量。
     # body 消费要单独验收，因为历史 handler 会直接忽略 JSON。
-    # false/false argv 要从实际调用参数验收，不能只检查常量。
+    # base=false 与传感器模式 argv 要从实际调用参数验收，不能只检查常量。
     # argv 按语义而非字符串顺序比较，因为安全重建会重排 flag。
     # lifecycle readback 要独立验收，因为 start returncode=0 不足以证明存活。
     # base_enabled readback 要单独验收，因为最终生效值可能与请求不同。
@@ -3023,8 +3182,28 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertEqual("false", parsed["lidar_enabled"])
         self.assertTrue(parsed["motion_requires_explicit_goal_execute"])
 
+    def test_configured_command_preview_preserves_large_single_line_json(self) -> None:
+        """O11 status 超过普通日志上限时仍必须保留完整 JSON，不能截掉 ownership 字段。"""
+        # 真实 O11 status 同时携带 map hash、holder 与 publisher，体积会自然超过 1200 字符。
+        # 本用例不调用子进程，只验证通用预览器对完整结构化末行的选择逻辑。
+        payload = {
+            "running": True,
+            "state": "running",
+            # filler 模拟 sensor ownership、map hash 与 holder 列表扩展后的真实 status 体积。
+            "filler": "x" * 2400,
+            "start_owned_process_created": True,
+        }
+
+        # 末尾换行模拟 bash `print` 的真实输出，不能影响最后 JSON 行识别。
+        preview = upper_robot_api.command_stdout_preview(json.dumps(payload) + "\n")
+
+        # 长度断言证明没有回落到普通日志截断分支。
+        self.assertGreater(len(preview), 1200)
+        # round-trip 断言证明 ownership 字段与 filler 都未被截断或改写。
+        self.assertEqual(payload, json.loads(preview))
+
     def test_nav2_control_uses_default_managed_lifecycle_command(self) -> None:
-        """strict body 必须被消费，生效 argv 固定 false/false 且不执行 NavigateToPose。"""
+        """legacy strict body 必须被消费，生效 argv 固定 false/false/true 且不执行目标。"""
         # 测试使用真实默认命令，只替换最终 subprocess 边界，不伪造命令构造器。
         api = upper_robot_api.UpperRobotApi(
             camera_base_url="http://127.0.0.1:8088",
@@ -3039,13 +3218,24 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
             "reuse_existing_scan": True,
             "timeout_s": 20,
         }
-        # 成功读回必须显式带回 false/false，仅 running=true 不足以过门禁。
+        # legacy 成功读回必须显式带回 false/false/true，仅 running=true 不足以过门禁。
         lifecycle_status = json.dumps(
             {
+                # start 自身必须认领 current manager，独立 status 不能替代该归属事实。
                 "running": True,
                 "state": "running",
+                "start_owned_process_created": True,
                 "base_enabled": "false",
                 "lidar_enabled": "false",
+                "reuse_existing_scan": "true",
+                "sensor_mode": "legacy_existing_scan",
+                # legacy 复用外部 scan，但 base 与 LiDAR 都不得出现本轮新 holder。
+                "base_uart_new_open_count": 0,
+                "lidar_serial_new_open_count": 0,
+                "scan_publisher_post_count": 1,
+                # start API 不发送目标或 cleanup broad kill，所以两项必须显式为 false。
+                "physical_motion": False,
+                "broad_kill_used": False,
                 "motion_requires_explicit_goal_execute": True,
             }
         )
@@ -3054,19 +3244,28 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
             upper_robot_api,
             "run_configured_command",
             side_effect=[
-                {"mode": "command", "executed": True, "ok": True, "returncode": 0},
+                {
+                    # 第一个完整 JSON 是 start 回包，用于证明 current request ownership。
+                    "mode": "command",
+                    "executed": True,
+                    "ok": True,
+                    "returncode": 0,
+                    "stdout_preview": lifecycle_status,
+                },
+                # 第二个相同 JSON 模拟独立 status readback，两份事实必须一致。
                 {"mode": "command", "executed": True, "ok": True, "returncode": 0, "stdout_preview": lifecycle_status},
             ],
         ) as run_mock:
             payload = api.nav2_control("start", request_body)
 
         # 两次调用分别是 start 与后置 status；成功路径不应提前 cleanup。
-        # 安全构造器会删除原 flag 后在 argv 尾部追加唯一 false/false，因此按语义而非字符串顺序验收。
+        # 安全构造器会删除原 flag 后追加唯一模式值，因此按语义而非字符串顺序验收。
         executed_start_argv = shlex.split(run_mock.call_args_list[0].args[0])
         self.assertEqual(20.0, run_mock.call_args_list[0].kwargs["timeout_s"])
         self.assertEqual("start", executed_start_argv[2])
         self.assertEqual("false", executed_start_argv[executed_start_argv.index("--base-enabled") + 1])
         self.assertEqual("false", executed_start_argv[executed_start_argv.index("--lidar-enabled") + 1])
+        self.assertEqual("true", executed_start_argv[executed_start_argv.index("--reuse-existing-scan") + 1])
         self.assertEqual(run_mock.call_args_list[1], mock.call(upper_robot_api.DEFAULT_NAV2_STATUS_COMMAND, timeout_s=20.0))
         self.assertEqual(run_mock.call_count, 2)
         self.assertTrue(payload["semantic_success"])
@@ -3078,6 +3277,7 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         effective_argv = payload["evidence"]["effective_contract"]["effective_argv"]
         self.assertEqual("false", effective_argv[effective_argv.index("--base-enabled") + 1])
         self.assertEqual("false", effective_argv[effective_argv.index("--lidar-enabled") + 1])
+        self.assertEqual("true", effective_argv[effective_argv.index("--reuse-existing-scan") + 1])
         self.assertTrue(payload["command_result"]["executed"])
         self.assertTrue(payload["command_result"]["ok"])
         self.assertEqual(executed_start_argv, payload["configured_command"]["argv"])
@@ -3092,12 +3292,242 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertEqual("false", argv[argv.index("--base-enabled") + 1])
         self.assertIn("--lidar-enabled", argv)
         self.assertEqual("false", argv[argv.index("--lidar-enabled") + 1])
+        self.assertEqual("true", argv[argv.index("--reuse-existing-scan") + 1])
         self.assertIn("--lidar-serial-port", argv)
         self.assertEqual("/dev/ttyACM0", argv[argv.index("--lidar-serial-port") + 1])
         self.assertIn("--lidar-serial-baudrate", argv)
         self.assertEqual("230400", argv[argv.index("--lidar-serial-baudrate") + 1])
         self.assertIn("--static-laser-tf-enabled", argv)
         self.assertEqual("true", argv[argv.index("--static-laser-tf-enabled") + 1])
+
+    def test_nav2_sensor_owned_start_requires_owned_holder_publisher_and_zero_base_open(self) -> None:
+        """sensor-owned 合法组合只有在 holder/publisher 归属与 base zero-open 同时成立时成功。"""
+        # 测试使用真实 Upper 对象，只替换子进程执行边界。
+        # 底盘串口参数仅用于验收服务端重建的安全 argv。
+        api = upper_robot_api.UpperRobotApi(
+            camera_base_url="http://127.0.0.1:8088",
+            base_port="/dev/ttyS5",
+            base_baudrate=115200,
+            max_speed=0.12,
+        )
+        # 请求体精确选择 sensor-owned 互斥模式。
+        # base=false 是 Phase A 不触发底盘 UART 的核心围栏。
+        request_body = {
+            "strict_no_motion": True,
+            "base_enabled": False,
+            "lidar_enabled": True,
+            "reuse_existing_scan": False,
+            "timeout_s": 20,
+        }
+        # status 同时提供有效模式和运行时所有权事实。
+        # LiDAR new-open=1 只表示本轮打开了一个新 holder。
+        # holder_owned=true 才能把该 holder 归因到 O11 进程组。
+        # publisher pre=0/post=1 避免把历史 `/scan` 冒充本轮产物。
+        # physical_motion=false 是独立的运行时事实，不从 HTTP 成功推导。
+        lifecycle_status = json.dumps(
+            {
+                # sensor-owned 成功同样要求 start 自身明确创建并保持 manager running。
+                "running": True,
+                "state": "running",
+                "start_owned_process_created": True,
+                "base_enabled": "false",
+                "lidar_enabled": "true",
+                "reuse_existing_scan": "false",
+                "sensor_mode": "sensor_owned_scan",
+                "base_uart_new_open_count": 0,
+                "lidar_serial_new_open_count": 1,
+                "lidar_holder_owned": True,
+                "scan_publisher_pre_count": 0,
+                "scan_publisher_post_count": 1,
+                "scan_publisher_owned": True,
+                "physical_motion": False,
+                "broad_kill_used": False,
+                "sensor_ownership": {
+                    "lidar_serial": "owned_process_group",
+                    "scan_publisher": "owned_process_group",
+                },
+            }
+        )
+
+        # 第一次调用是 O11 start，第二次是独立 status readback。
+        # 成功路径不调用 stop，因为 Algorithm proof 需要复用 owned runtime。
+        with mock.patch.object(
+            upper_robot_api,
+            "run_configured_command",
+            side_effect=[
+                {
+                    # start stdout 与 status stdout 分开提供，防止测试只覆盖单一读回。
+                    "mode": "command",
+                    "executed": True,
+                    "ok": True,
+                    "returncode": 0,
+                    "stdout_preview": lifecycle_status,
+                },
+                # 独立 status 继续携带同一 ownership 事实，不使用历史 artifact 兜底。
+                {"mode": "command", "executed": True, "ok": True, "returncode": 0, "stdout_preview": lifecycle_status},
+            ],
+        ) as run_mock:
+            payload = api.nav2_control("start", request_body)
+
+        # 从真实执行字符串反解参数，不仅验收请求体。
+        executed_argv = shlex.split(run_mock.call_args_list[0].args[0])
+        # 底盘有效值必须始终是 false。
+        self.assertEqual("false", executed_argv[executed_argv.index("--base-enabled") + 1])
+        # 传感器模式必须是 lidar=true/reuse=false 的唯一组合。
+        self.assertEqual("true", executed_argv[executed_argv.index("--lidar-enabled") + 1])
+        self.assertEqual("false", executed_argv[executed_argv.index("--reuse-existing-scan") + 1])
+        # 地图路径由服务端锁定，请求不能替换为未审计地图。
+        self.assertEqual(upper_robot_api.DEFAULT_NAV2_MAP_FILE, executed_argv[executed_argv.index("--map-file") + 1])
+        # 两次调用证明没有隐藏 cleanup 或额外运动入口。
+        self.assertEqual(2, run_mock.call_count)
+        self.assertTrue(payload["semantic_success"])
+        # 串口差集是 Phase A 安全性的直接证据。
+        self.assertEqual(0, payload["evidence"]["base_uart_new_open_count"])
+        self.assertEqual(1, payload["evidence"]["lidar_serial_new_open_count"])
+        # holder 和 publisher 两个 ownership 门必须同时为真。
+        self.assertTrue(payload["evidence"]["lidar_holder_owned"])
+        self.assertTrue(payload["evidence"]["scan_publisher_owned"])
+        # 打开 LiDAR 不能被误读为已开放底盘控制。
+        self.assertTrue(payload["opens_lidar_serial"])
+        self.assertFalse(payload["sends_base_motion_commands"])
+        self.assertFalse(payload["safe_to_control"])
+
+    def test_nav2_sensor_owned_semantic_failure_runs_only_owned_cleanup(self) -> None:
+        """sensor-owned 缺 holder 归属时必须 cleanup，不能把 publisher 可见误判为成功。"""
+        # 本用例覆盖 command exit=0 但运行时语义不成立的路径。
+        # 这能防止 HTTP/command 成功码掩盖串口归属冲突。
+        api = upper_robot_api.UpperRobotApi(
+            camera_base_url="http://127.0.0.1:8088",
+            base_port="/dev/ttyS5",
+            base_baudrate=115200,
+            max_speed=0.12,
+        )
+        # 请求合同本身合法，故失败必须发生在后置语义验收。
+        request_body = {
+            "strict_no_motion": True,
+            "base_enabled": False,
+            "lidar_enabled": True,
+            "reuse_existing_scan": False,
+            "timeout_s": 20,
+        }
+        # publisher 已可见但 holder 不属于 O11，必须 fail closed。
+        # base new-open 为零不能抵消 LiDAR ownership 缺口。
+        unowned = json.dumps(
+            {
+                "running": True,
+                "state": "running",
+                "base_enabled": "false",
+                "lidar_enabled": "true",
+                "reuse_existing_scan": "false",
+                "base_uart_new_open_count": 0,
+                "lidar_serial_new_open_count": 1,
+                "lidar_holder_owned": False,
+                "scan_publisher_post_count": 1,
+                "scan_publisher_owned": False,
+                "physical_motion": False,
+                "broad_kill_used": False,
+            }
+        )
+        # cleanup 回包必须结构化确认 stopped，单看 returncode 不够。
+        stopped = json.dumps({"running": False, "state": "stopped"})
+
+        # 三次调用依次为 start、status 和 owned stop。
+        # stop 命令不携带底盘串口或传感器启动参数。
+        with mock.patch.object(
+            upper_robot_api,
+            "run_configured_command",
+            side_effect=[
+                {"mode": "command", "executed": True, "ok": True, "returncode": 0},
+                {"mode": "command", "executed": True, "ok": True, "returncode": 0, "stdout_preview": unowned},
+                {"mode": "command", "executed": True, "ok": True, "returncode": 0, "stdout_preview": stopped},
+            ],
+        ) as run_mock:
+            payload = api.nav2_control("start", request_body)
+
+        # semantic failure 必须保留可路由的 root cause。
+        self.assertEqual(3, run_mock.call_count)
+        self.assertFalse(payload["semantic_success"])
+        self.assertIn("owned_lidar_holder_not_confirmed", [item["reason"] for item in payload["root_causes"]])
+        # cleanup 仅回收本轮 O11 PID/process group。
+        self.assertTrue(payload["cleanup"]["attempted"])
+        self.assertTrue(payload["cleanup"]["ok"])
+        self.assertEqual("o11_owned_pid_process_group_only", payload["cleanup"]["scope"])
+        # timeout 与请求一致，避免 cleanup 意外拖长 live window。
+        self.assertEqual(mock.call(upper_robot_api.DEFAULT_NAV2_STOP_COMMAND, timeout_s=20.0), run_mock.call_args_list[2])
+
+    def test_nav2_preexisting_owner_conflict_does_not_stop_existing_runtime(self) -> None:
+        """start 明确未创建 current owner 时不得调用 stop 误杀既有 O11 process group。"""
+        # 本用例专门区分 current request owner 与既有 owner。
+        # 冲突是安全拒绝，不是自动抢占或恢复机会。
+        api = upper_robot_api.UpperRobotApi(
+            camera_base_url="http://127.0.0.1:8088",
+            base_port="/dev/ttyS5",
+            base_baudrate=115200,
+            max_speed=0.12,
+        )
+        # 请求仍然是合法 sensor-owned，用来确保冲突来自 runtime。
+        request_body = {
+            "strict_no_motion": True,
+            "base_enabled": False,
+            "lidar_enabled": True,
+            "reuse_existing_scan": False,
+            "timeout_s": 20,
+        }
+        # start stdout 明确标记本请求没有创建进程。
+        # Upper 必须优先使用该归属事实决定是否 cleanup。
+        conflict = json.dumps(
+            {
+                "running": False,
+                "state": "failed_owned_runtime_conflict",
+                "start_owned_process_created": False,
+            }
+        )
+        # 后置 status 展示既有 runtime 仍在运行。
+        # status 中的 owner=true 属于先前请求，不能覆盖 start stdout=false。
+        existing = json.dumps(
+            {
+                "running": True,
+                "state": "running",
+                "base_enabled": "false",
+                "lidar_enabled": "true",
+                "reuse_existing_scan": "false",
+                "start_owned_process_created": True,
+                "base_uart_new_open_count": 0,
+                "lidar_serial_new_open_count": 1,
+                "lidar_holder_owned": True,
+                "scan_publisher_post_count": 1,
+                "scan_publisher_owned": True,
+                "physical_motion": False,
+                "broad_kill_used": False,
+            }
+        )
+
+        # 只允许 start 和 status 两次调用，第三次 stop 就是回归。
+        with mock.patch.object(
+            upper_robot_api,
+            "run_configured_command",
+            side_effect=[
+                {
+                    "mode": "command",
+                    "executed": True,
+                    "ok": False,
+                    "returncode": 1,
+                    "stdout_preview": conflict,
+                },
+                {"mode": "command", "executed": True, "ok": True, "returncode": 0, "stdout_preview": existing},
+            ],
+        ) as run_mock:
+            payload = api.nav2_control("start", request_body)
+
+        # 冲突不是语义成功，但 cleanup 应标记为不需要。
+        self.assertEqual(2, run_mock.call_count)
+        self.assertFalse(payload["semantic_success"])
+        self.assertFalse(payload["cleanup"]["attempted"])
+        self.assertTrue(payload["cleanup"]["ok"])
+        # 明确状态便于 live orchestrator 停止，不自动重试。
+        self.assertEqual("not_required_no_current_owned_process_started", payload["cleanup"]["status"])
+        # root cause 保留 start nonzero，不被既有 running status 粉饰。
+        self.assertEqual("nav2_start_command_failed_or_timed_out", payload["root_causes"][0]["reason"])
 
     def test_nav2_lifecycle_validation_rejects_unsafe_command_without_execution(self) -> None:
         """Nav2 lifecycle 命令不能夹带 shell、直接 /cmd_vel 或错误底盘串口。"""
@@ -3167,7 +3597,7 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertFalse(payload["sends_base_motion_commands"])
         self.assertFalse(payload["safe_to_control"])
 
-    def test_nav2_start_rejects_legacy_and_invalid_contracts_without_invocation(self) -> None:
+    def test_nav2_start_rejects_bodyless_and_invalid_contracts_without_invocation(self) -> None:
         """bodyless/旧 `{}`/auto/true/未知字段/非法 timeout 必须在 subprocess 前 fail closed。"""
         # 这组用例只验证请求门禁，所以任何 run_configured_command 调用都是回归。
         api = upper_robot_api.UpperRobotApi(
@@ -3194,6 +3624,11 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
             {**valid, "lidar_enabled": "auto"},
             {**valid, "lidar_enabled": True},
             {**valid, "reuse_existing_scan": False},
+            # 两位同真/同假都违反互斥模式；字符串 bool 也不得隐式转换。
+            {**valid, "lidar_enabled": True, "reuse_existing_scan": True},
+            {**valid, "lidar_enabled": False, "reuse_existing_scan": False},
+            {**valid, "lidar_enabled": "true", "reuse_existing_scan": False},
+            {**valid, "lidar_enabled": True, "reuse_existing_scan": "false"},
             # 未知字段和缺字段都会提醒客户端合同漂移，不做静默忽略。
             {**valid, "mode": "legacy"},
             {key: value for key, value in valid.items() if key != "reuse_existing_scan"},
@@ -3239,7 +3674,14 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         running = json.dumps(
             {"running": True, "state": "running", "base_enabled": "false", "lidar_enabled": "false"}
         )
-        stopped = json.dumps({"running": False, "state": "stopped"})
+        stopped = json.dumps(
+            {
+                "running": False,
+                "state": "stopped",
+                "base_uart_new_open_count": 0,
+                "lidar_serial_new_open_count": 0,
+            }
+        )
 
         with mock.patch.object(
             upper_robot_api,
@@ -3285,7 +3727,14 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
             "reuse_existing_scan": True,
             "timeout_s": 12,
         }
-        stopped = json.dumps({"running": False, "state": "stopped"})
+        stopped = json.dumps(
+            {
+                "running": False,
+                "state": "stopped",
+                "base_uart_new_open_count": 0,
+                "lidar_serial_new_open_count": 0,
+            }
+        )
 
         with mock.patch.object(
             upper_robot_api,
@@ -4974,6 +5423,110 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertTrue(payload["readback_sends_base_motion_commands"])
         self.assertFalse(payload["safe_to_control"])
 
+    def test_nav2_proof_helper_argv_reuses_o11_lidar_and_canonical_initialpose(self) -> None:
+        """Upper helper argv 必须把 O11 LiDAR 复用和 canonical free-cell 两个护栏传给 O10。"""
+        # helper 进程本身在测试中不启动，只验收最终 argv。
+        # 成功的 process-group 回包用来证明参数构建路径已完整执行。
+        completed = {
+            "timed_out": False,
+            "returncode": 0,
+            "stdout": "ok",
+            "stderr": "",
+            "process_group": 7701,
+            "cleanup_result": {"attempted": False, "ok": True},
+        }
+        # 只 mock 最底层进程运行器，保留 Upper 的白名单逻辑。
+        with mock.patch.object(
+            upper_robot_api,
+            "run_helper_bash_process_group",
+            return_value=completed,
+        ):
+            # managed runtime 与 initialpose 同时开启，才能验证两个护栏。
+            # 传入的 99/99 只是注入防护；canonical 开关要求 helper 重算 free-cell。
+            result = upper_robot_api.run_nav2_runtime_proof_helper(
+                artifact_path="/tmp/nav2-proof.json",
+                map_proof_path="/tmp/map-proof.json",
+                map_artifact_dir="/tmp/maps",
+                timeout_s=8.0,
+                managed_runtime_opt_in=True,
+                managed_timeout_s=8.0,
+                managed_map_yaml=upper_robot_api.DEFAULT_NAV2_MAP_FILE,
+                initialpose_opt_in=True,
+                initialpose_x=99.0,
+                initialpose_y=99.0,
+                initialpose_yaw=0.0,
+                initialpose_frame_id="map",
+                path_generation_opt_in=True,
+                path_generation_timeout_s=8.0,
+                path_goal_frame_id="map",
+                path_goal_x=0.8,
+                path_goal_y=0.25,
+                path_goal_yaw=0.0,
+                reuse_existing_lidar_lifecycle=True,
+                initialpose_canonical_free_cell_opt_in=True,
+            )
+
+        # argv 必须显式携带 LiDAR 复用，禁止 O10 再打开串口。
+        helper_argv = result["helper_argv"]
+        # 复用标志是串口单 owner 合同，不是可选优化项。
+        self.assertIn("--reuse-existing-lidar-lifecycle", helper_argv)
+        # canonical free-cell 护栏与 initialpose 开关必须成对传递。
+        # 两者分离时会导致 HTTP 坐标绕过地图净空审计。
+        self.assertIn("--initialpose-canonical-free-cell-opt-in", helper_argv)
+        self.assertIn("--initialpose-opt-in", helper_argv)
+        # map 与 fixed-goal 坐标必须完整进入 argv，防止调用层只传开关未传任务身份。
+        self.assertEqual(
+            upper_robot_api.DEFAULT_NAV2_MAP_FILE,
+            helper_argv[helper_argv.index("--managed-map-yaml") + 1],
+        )
+        self.assertEqual("map", helper_argv[helper_argv.index("--path-goal-frame-id") + 1])
+        self.assertEqual("0.8", helper_argv[helper_argv.index("--path-goal-x") + 1])
+        self.assertEqual("0.25", helper_argv[helper_argv.index("--path-goal-y") + 1])
+        self.assertEqual("0.0", helper_argv[helper_argv.index("--path-goal-yaw") + 1])
+        # proof helper 仍是 no-motion，不发送任何底盘控制。
+        # 即使进程返回成功，两个运动标志也必须保持 false。
+        self.assertFalse(result["sends_base_motion_commands"])
+        self.assertFalse(result["publishes_cmd_vel"])
+
+    def test_nav2_proof_refresh_rejects_unowned_lidar_or_noncanonical_initialpose(self) -> None:
+        """managed/initialpose 缺任一 ownership 护栏时必须在 helper subprocess 前拒绝。"""
+        # 这条回归保证 HTTP 默认值不会暗中开启二个 LiDAR driver。
+        # 同时防止未经 canonical map 审计的 initialpose 坐标直接下发。
+        api = upper_robot_api.UpperRobotApi(
+            camera_base_url="http://127.0.0.1:8088",
+            base_port="/dev/ttyS5",
+            base_baudrate=115200,
+            max_speed=0.12,
+        )
+        # 只提交旧的两个 opt-in，故必须同时返回两个缺失原因。
+        with mock.patch.object(upper_robot_api, "run_nav2_runtime_proof_helper") as helper_mock:
+            payload = asyncio.run(
+                api.nav2_proof_refresh(
+                    {
+                        "managed_runtime_opt_in": True,
+                        "initialpose_opt_in": True,
+                    }
+                )
+            )
+
+        # invocation count=0 是 subprocess 前 fail-closed 的可机器验收证据。
+        helper_mock.assert_not_called()
+        self.assertEqual("blocked_proof_request_contract", payload["status"])
+        self.assertEqual(0, payload["helper_invocation_count"])
+        # 第一个原因把 managed runtime 绑定到 O11-owned LiDAR。
+        self.assertIn(
+            "reuse_existing_lidar_lifecycle_required_for_managed_runtime",
+            [item["reason"] for item in payload["root_causes"]],
+        )
+        # 第二个原因把 initialpose 绑定到 canonical free-cell。
+        self.assertIn(
+            "initialpose_canonical_free_cell_opt_in_required",
+            [item["reason"] for item in payload["root_causes"]],
+        )
+        # 拒绝回包不得因为 helper 未调用就省略安全标志。
+        self.assertFalse(payload["sends_motion_commands"])
+        self.assertFalse(payload["safe_to_control"])
+
     def test_nav2_proof_refresh_managed_path_generation_stays_no_motion(self) -> None:
         """PC 检查路径使用 managed runtime，但不能被包装成 Nav2 start 或底盘控制。"""
         clean_artifact = {
@@ -5034,18 +5587,17 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
                         {
                             "timeout_s": 20,
                             "managed_runtime_opt_in": True,
+                            "reuse_existing_lidar_lifecycle": True,
                             "managed_timeout_s": 20,
-                            "managed_map_yaml": "/root/rober/onboard/runtime/maps/trashbot_map.yaml",
+                            "managed_map_yaml": upper_robot_api.DEFAULT_NAV2_MAP_FILE,
                             "initialpose_opt_in": True,
+                            "initialpose_canonical_free_cell_opt_in": True,
                             "initialpose_x": 0.0,
                             "initialpose_y": 0.0,
                             "initialpose_yaw": 0.0,
                             "path_generation_opt_in": True,
                             "path_generation_timeout_s": 20,
-                            "path_goal_frame_id": "map",
-                            "path_goal_x": 0.8,
-                            "path_goal_y": 0.0,
-                            "path_goal_yaw": 0.0,
+                            # 故意省略 fixed-goal 字段，验收 Upper 采用已审计默认终点。
                         }
                     )
                 )
@@ -5053,17 +5605,28 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         helper_mock.assert_called_once()
         helper_kwargs = helper_mock.call_args.kwargs
         self.assertTrue(helper_kwargs["managed_runtime_opt_in"])
+        self.assertTrue(helper_kwargs["reuse_existing_lidar_lifecycle"])
         self.assertEqual(20.0, helper_kwargs["managed_timeout_s"])
         self.assertTrue(helper_kwargs["initialpose_opt_in"])
+        self.assertTrue(helper_kwargs["initialpose_canonical_free_cell_opt_in"])
         self.assertTrue(helper_kwargs["path_generation_opt_in"])
         self.assertEqual(20.0, helper_kwargs["path_generation_timeout_s"])
+        # proof request 未给坐标时，helper 仍必须收到 canonical map 与固定目标。
+        self.assertEqual(upper_robot_api.DEFAULT_NAV2_MAP_FILE, helper_kwargs["managed_map_yaml"])
+        self.assertEqual("map", helper_kwargs["path_goal_frame_id"])
+        self.assertEqual(0.8, helper_kwargs["path_goal_x"])
+        self.assertEqual(0.25, helper_kwargs["path_goal_y"])
+        self.assertEqual(0.0, helper_kwargs["path_goal_yaw"])
         self.assertEqual("refreshed", payload["status"])
         self.assertEqual("nav2_no_motion_path_generation_runtime_observed", payload["proof_state"])
         self.assertTrue(payload["starts_ros2"])
         self.assertTrue(payload["starts_nav2"])
         self.assertTrue(payload["managed_runtime_opt_in"])
+        self.assertTrue(payload["reuse_existing_lidar_lifecycle"])
         self.assertTrue(payload["initialpose_opt_in"])
+        self.assertTrue(payload["initialpose_canonical_free_cell_opt_in"])
         self.assertTrue(payload["path_generation_opt_in"])
+        self.assertEqual(0.25, payload["path_goal_y"])
         self.assertTrue(payload["path_generated"])
         self.assertEqual(31, payload["path_point_count"])
         self.assertTrue(payload["planner_server_active"])

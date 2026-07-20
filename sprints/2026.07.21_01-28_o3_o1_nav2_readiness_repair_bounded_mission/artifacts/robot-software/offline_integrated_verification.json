@@ -1,0 +1,97 @@
+{
+  "schema": "trashbot.o3_o1.offline_integrated_verification.v1",
+  "generated_at": "2026-07-21T04:09:30+08:00",
+  "sprint": "2026.07.21_01-28_o3_o1_nav2_readiness_repair_bounded_mission",
+  "owner": "robot-software-engineer",
+  "result": "offline_integrated_tests_and_docker_build_passed",
+  "proof_boundary": "software_proof_docker_plus_o11_o10_offline_contract_only_with_separate_o1_live_control_transport_signal_not_route_hil_or_delivery",
+  "verification": {
+    "o11_bash_syntax": "exit_0",
+    "upper_and_o10_py_compile": "exit_0",
+    "o11_unittest": "Ran 7 tests; OK",
+    "upper_unittest": "Ran 128 tests; OK; skipped=1",
+    "o10_unittest": "Ran 189 tests; OK",
+    "nav2_params_unittest": "Ran 4 tests; OK",
+    "combined_unittest": "Ran 328 tests; OK; skipped=1",
+    "docker_humble_build": "Summary: 6 packages finished [46.4s]",
+    "git_diff_check": "exit_0",
+    "epic_artifact_json_tool": "all_json_valid",
+    "parallel_jog_artifact_json_tool": "18_json_valid"
+  },
+  "docker": {
+    "image": "ros-rbs-humble:dev",
+    "image_id": "sha256:c152da720b6d2d101fe911a74c092e3cf17c04cd9bba1f6a13bd05fa06358593",
+    "repo_digest": "ros-rbs-humble@sha256:c152da720b6d2d101fe911a74c092e3cf17c04cd9bba1f6a13bd05fa06358593",
+    "image_architecture": "amd64",
+    "host_architecture": "arm64",
+    "platform_warning": "InvalidBaseImagePlatform; build and colcon passed under Docker Desktop emulation",
+    "evidence_scope": "software_proof_docker_only"
+  },
+  "comment_ratio_review": {
+    "robot_owner_freeze_all_files_strictly_greater_than_20_percent": true,
+    "robot_artifact": "artifacts/robot-software/offline_targeted_verification.txt",
+    "algorithm_implementation_ratio_percent": 32.969283,
+    "algorithm_tests_ratio_percent": 21.582734,
+    "algorithm_combined_ratio_percent": 30.446334,
+    "algorithm_all_scopes_strictly_greater_than_20_percent": true,
+    "algorithm_artifact": "artifacts/algorithm/offline_nine_gate_verification.json",
+    "shared_tree_exclusion": "Concurrent 03:50 latency sprint additive hunks are integration-tested but excluded from this Epic owner-ratio accounting"
+  },
+  "phase_counts": {
+    "deployment_attempt_count": 0,
+    "phase_a_start_attempt_count": 0,
+    "phase_a_proof_attempt_count": 0,
+    "phase_a_latest_attempt_count": 0,
+    "phase_a_owned_stop_attempt_count": 0,
+    "phase_a_retry_count": 0,
+    "phase_b_pre_stop_attempt_count": 0,
+    "phase_b_execute_attempt_count": 0,
+    "phase_b_post_stop_attempt_count": 0,
+    "phase_b_retry_count": 0
+  },
+  "parallel_o1_jog_reference": {
+    "sprint": "2026.07.21_01-54_o1_minimal_wheel_jog",
+    "authorization": "ceo_20260721_0154_minimal_wheel_jog_v6",
+    "authorization_status": "consumed_no_retry",
+    "nonzero_request_count": 1,
+    "bridge_nonzero_command_observed": true,
+    "imu_motion_signal_observed": true,
+    "wheel_feedback_lr_nonzero_proven": false,
+    "post_stop_wheel_zero_proven": false,
+    "hil_pass": false,
+    "safe_to_control": false,
+    "route_execution_success": false,
+    "delivery_success": false,
+    "claim_boundary": "separate_live_control_transport_and_imu_motion_signal_only_not_epic_route_or_hil_evidence"
+  },
+  "live_or_control_in_this_integration": {
+    "ssh_used": false,
+    "scp_used": false,
+    "http_live_used": false,
+    "ros_live_used": false,
+    "nav2_start_used": false,
+    "nav2_proof_used": false,
+    "initialpose_used": false,
+    "goal_used": false,
+    "base_stop_used": false,
+    "manual_control_used": false,
+    "uart_used": false,
+    "physical_motion": false
+  },
+  "false_claims": {
+    "readiness_go": false,
+    "robot_control_executed_by_this_epic": false,
+    "route_execution_success": false,
+    "delivery_success": false,
+    "hil_pass": false,
+    "safe_to_control": false,
+    "okr_credit": false
+  },
+  "remaining_risks": [
+    "No code was deployed to the upper computer in this integration run.",
+    "No current natural-final exists, so none of the nine readiness gates is claimed green on the robot.",
+    "No Phase B goal or current route terminal exists for this Epic.",
+    "The amd64 Docker image passed on an arm64 host through emulation and is not native target or HIL proof.",
+    "Concurrent latency-sprint changes in shared files passed the unified suites but remain owned and closed separately."
+  ]
+}

@@ -1,0 +1,79 @@
+{
+  "schema": "trashbot.o10.algorithm_offline_nine_gate_verification.v1",
+  "generated_at": "2026-07-21T03:56:09+08:00",
+  "sprint": "2026.07.21_01-28_o3_o1_nav2_readiness_repair_bounded_mission",
+  "owner": "robot-algorithm-engineer",
+  "result": "offline_contract_tests_passed",
+  "proof_boundary": "software_proof_o10_nine_gate_fail_closed_contract_only_no_live_runtime_or_control",
+  "readiness_go_observed_live": false,
+  "gate_coverage": {
+    "map": "canonical/current hash and metadata match; missing origin and hash mismatch fail closed",
+    "amcl": "active lifecycle, current pose, and scan subscription required",
+    "planner": "active lifecycle plus current lifecycle service and ComputePathToPose action inventory required",
+    "controller": "active lifecycle plus current lifecycle service and FollowPath action inventory required without action invocation",
+    "current_pose": "stamp, callback receipt, map frame, covariance, run window, and natural-final freshness required",
+    "persisted_pose": "source, timestamp, canonical map identity, pre/post ordering, at-most-once initialpose, and live consumption required",
+    "dynamic_tf": "dynamic fresh map-to-odom uniquely attributed to AMCL plus dynamic odom-to-base receipt in the same natural-final window required",
+    "planner_only_path": "fixed task, route and goal plus exact ComputePathToPose result, non-empty map-frame path, fresh result receipt, and fresh path header required",
+    "obstacle_clear": "same current scan identity, exactly one publisher, finite points, natural-final freshness, and minimum distance at least 0.45m required"
+  },
+  "verification": {
+    "py_compile": "exit_0",
+    "runtime_helper_unittest": "Ran 189 tests; OK",
+    "nav2_params_unittest": "Ran 4 tests; OK",
+    "combined_unittest": "Ran 193 tests; OK",
+    "scoped_diff_check": "exit_0"
+  },
+  "changed_scope": [
+    "onboard/scripts/o10_amcl_nav2_runtime_proof.py",
+    "onboard/tests/test_nav2_runtime_proof_helper.py",
+    "onboard/src/ros2_trashbot_nav/config/nav2_params.yaml",
+    "onboard/tests/test_nav2_params_contract.py",
+    "docs/navigation/same_window_route_readiness_precheck.md"
+  ],
+  "strict_added_nonblank_chinese_comment_ratio": {
+    "audit_definition": "Chinese technical comment or Chinese docstring line divided by all added nonblank Python lines in the current uncommitted Algorithm diff",
+    "implementation": {
+      "chinese_comment_lines": 483,
+      "added_nonblank_python_lines": 1465,
+      "ratio_percent": 32.969283,
+      "passes_strictly_greater_than_20_percent": true
+    },
+    "tests": {
+      "chinese_comment_lines": 90,
+      "added_nonblank_python_lines": 417,
+      "ratio_percent": 21.582734,
+      "passes_strictly_greater_than_20_percent": true
+    },
+    "combined": {
+      "chinese_comment_lines": 573,
+      "added_nonblank_python_lines": 1882,
+      "ratio_percent": 30.446334,
+      "passes_strictly_greater_than_20_percent": true
+    }
+  },
+  "live_or_control": {
+    "ssh_used": false,
+    "scp_used": false,
+    "http_live_used": false,
+    "ros_live_used": false,
+    "nav2_action_used": false,
+    "initialpose_used": false,
+    "goal_used": false,
+    "cmd_vel_used": false,
+    "manual_control_used": false,
+    "uart_used": false,
+    "physical_motion": false
+  },
+  "false_claims": {
+    "route_execution_success": false,
+    "delivery_success": false,
+    "hil_pass": false,
+    "safe_to_control": false,
+    "robot_control_executed": false
+  },
+  "remaining_risks": [
+    "No live natural-final was collected, so no gate is claimed green on the robot.",
+    "Planner/controller action readiness is proven offline only as a fail-closed graph contract, not as current server availability."
+  ]
+}

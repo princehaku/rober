@@ -1,0 +1,53 @@
+Robot Software offline targeted verification
+generated_at: 2026-07-21 04:09:30 CST
+proof_boundary: offline_targeted_only_no_ssh_no_live_no_control_no_authorization_consumption
+
+Commands:
+  bash -n onboard/scripts/o11_nav2_lifecycle.sh
+  python3 -m py_compile onboard/scripts/upper_robot_api.py
+  python3 -m unittest onboard/tests/test_o11_nav2_lifecycle_script.py
+  python3 -m unittest onboard/tests/test_upper_robot_api.py
+  git diff --check -- onboard/scripts/upper_robot_api.py onboard/scripts/o11_nav2_lifecycle.sh onboard/tests/test_upper_robot_api.py onboard/tests/test_o11_nav2_lifecycle_script.py docs/interfaces/ros_runtime_contracts.md
+
+Owner-freeze result before the concurrent 03:50 latency sprint added shared-file hunks:
+  bash -n: PASS
+  py_compile: PASS
+  O11 unittest: Ran 7 tests, OK
+  Upper API unittest: Ran 125 tests, OK (skipped=1)
+  scoped git diff --check: PASS
+
+Failure discovery and repair:
+  Initial targeted tests passed, but contract review found that run_configured_command
+  truncated stdout to 1200 characters. The expanded O11 one-line status JSON could lose
+  its opening brace, making current owner and serial ownership evidence unparseable.
+  The preview logic now preserves a complete single-line JSON object within a 12000
+  character safety limit while ordinary ROS logs retain the 1200-character tail.
+  Upper now requires the start response to prove the current owned manager and reconciles
+  it with an independent status readback. O11 also treats every base UART holder PID seen
+  during the polling window as sticky evidence, so a transient new open blocks running.
+  One test-only assertion initially matched the word xargs inside a Chinese comment; it was
+  narrowed to the executable pipe token and the complete targeted suite was rerun green.
+
+Added-line Chinese technical comment audit at Robot owner freeze:
+  onboard/scripts/upper_robot_api.py: chinese_hash_comment=61 added_nonblank=295 ratio=20.68%
+  onboard/scripts/o11_nav2_lifecycle.sh: chinese_hash_comment=48 added_nonblank=232 ratio=20.69%
+  onboard/tests/test_upper_robot_api.py: chinese_hash_comment=77 added_nonblank=383 ratio=20.10%
+  onboard/tests/test_o11_nav2_lifecycle_script.py: chinese_hash_comment=10 added_nonblank=48 ratio=20.83%
+  audit rule: nonblank added lines from git diff -U0; counted lines begin with # and contain Chinese text.
+  Every file is strictly greater than 20 percent without relying on docstrings.
+
+Shared-tree note:
+  The separate 2026.07.21_03-50_o1_keyboard_to_wheel_latency sprint later added additive
+  hunks to upper_robot_api.py, test_upper_robot_api.py and ros_runtime_contracts.md.
+  Those hunks are covered by the final integrated tests but are not part of this Epic's
+  changed scope, comment-ratio numerator or mission claim.
+
+Safety boundary:
+  ssh_executed=false
+  scp_executed=false
+  http_live_executed=false
+  ros_live_executed=false
+  serial_executed=false
+  motion_command_sent=false
+  phase_a_invocations=0
+  phase_b_invocations=0

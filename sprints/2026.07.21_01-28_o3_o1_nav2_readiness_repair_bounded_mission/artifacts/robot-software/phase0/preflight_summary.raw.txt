@@ -1,0 +1,29 @@
+DATE=2026-07-21T04:09:51+08:00
+SERVICE
+MainPID=1221
+ActiveState=active
+SubState=running
+O11_STATUS
+running=false
+pid=null
+state=stopped
+message=Nav2 lifecycle not running
+O11_PID_FILES
+count=0
+BASE_HOLDERS_PRE
+3765
+LIDAR_HOLDERS_PRE
+4014
+O1_LIDAR_PID
+3934
+SCAN_GRAPH
+Unknown topic '/scan'
+ENDPOINTS
+/api/health http_status=200 status=ready robot_control_executed=false safe_to_control=false
+/api/status http_status=200 robot_control_executed=false safe_to_control=false
+/api/nav2/status http_status=200 status=blocked_with_root_cause lifecycle_running=false lifecycle_state=stopped lifecycle_pid=null robot_control_executed=false safe_to_control=false
+POST_READBACK
+base_holders=3765
+lidar_holders=4014
+o11_pid_files=0
+o11_residual_processes=0

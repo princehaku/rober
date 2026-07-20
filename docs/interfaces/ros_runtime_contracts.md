@@ -1,5 +1,72 @@
 # ROS Runtime Contracts
 
+## nav2_sensor_owned_no_motion_lifecycle
+
+`POST /api/nav2/start` 只接受完整五字段 JSON，且所有布尔字段必须是 JSON boolean：
+
+```json
+{
+  "strict_no_motion": true,
+  "base_enabled": false,
+  "lidar_enabled": true,
+  "reuse_existing_scan": false,
+  "timeout_s": 20
+}
+```
+
+合法模式只有两种：
+
+- `base=false, lidar=false, reuse_existing_scan=true`：legacy existing-scan 模式，继续复用已有
+  `/scan` publisher，不打开新的 LiDAR 串口。
+- `base=false, lidar=true, reuse_existing_scan=false`：sensor-owned 模式，由 O11 的 PID/process group
+  独占打开 LiDAR，并启动 canonical map、LiDAR 与 Nav2 stack。
+
+`base=true`、`auto`、`lidar/reuse` 同真或同假、字符串/数字布尔值、缺字段、多字段和超界 timeout
+全部在 subprocess 前 fail closed。Upper 会把最终 argv 固定到 canonical map
+`/root/rober/onboard/runtime/maps/trashbot_map.yaml`，并按所选模式唯一写入
+`--base-enabled`、`--lidar-enabled` 与 `--reuse-existing-scan`；HTTP body 不能提供 shell、路径或任意 launch
+参数。
+
+sensor-owned start 的 semantic success 不能由 HTTP `200` 或 O11 command exit `0` 单独推出，必须同时满足：
+
+- lifecycle manager 当前为 `running`；
+- effective flags 为 `base=false, lidar=true, reuse_existing_scan=false`；
+- `base_uart_new_open_count=0`；
+- `lidar_serial_new_open_count>=1` 且 `lidar_holder_owned=true`；
+- current `/scan` publisher 存在且 `scan_publisher_owned=true`；
+- `physical_motion=false`、`broad_kill_used=false`。
+
+O11 status 保存 base/LiDAR port 的 pre/post holder PID、new-open 差集、`/scan` publisher pre/post count、
+owner process-group PID、sensor ownership、effective flags，以及 canonical map YAML/image SHA-256。已有非 owned
+`/scan` publisher、LiDAR holder 或 O11 manager 时，sensor-owned start 只报告冲突，不抢占、不清理对方。
+start 不发送 `NavigateToPose`、`FollowPath`、`/cmd_vel`、`/api/base/manual`、`T=1`、`T=11` 或 `T=13`。
+
+base UART new-open 采用 start 轮询窗口内见过 PID 的 sticky 并集，而不是只取最后一次 post 快照；任何短暂新
+holder 都会阻止 O11 进入 `running`。Upper 同时要求 start 回包明确
+`start_owned_process_created=true/running=true/state=running`，再与独立 status 的 mode、holder、publisher 和
+zero-open 事实对账，避免把旧 runtime 的 status 误认成本请求成功。单行结构化 lifecycle JSON 在受控上限内完整
+保留，普通 ROS 日志仍只保留短尾部。
+
+semantic failure 在当前请求确实创建 manager 后，只允许调用 `o11_nav2_lifecycle.sh stop` 回收 PID 文件归属的
+process group；若 preflight/owner 冲突明确 `start_owned_process_created=false`，则禁止自动 stop，以免终止既有
+runtime。显式 stop 同样只操作该 owned process group，不按进程名扫描，不使用 `pkill/killall`，不发送 base stop，
+也不打开 base UART 或新的 LiDAR serial 会话。cleanup 成功仍固定 `safe_to_control=false`、
+`delivery_success=false`。
+
+同窗口 `POST /api/nav2/proof/refresh` 若启用 managed runtime，必须同时提交
+`reuse_existing_lidar_lifecycle=true`，Upper 才会向 O10 透传 `--reuse-existing-lidar-lifecycle`，避免第二个
+LiDAR driver。若启用 `/initialpose`，还必须提交 `initialpose_canonical_free_cell_opt_in=true`，Upper 才会透传
+`--initialpose-canonical-free-cell-opt-in`；缺任一 ownership/canonical 护栏时，helper invocation count 为 `0`。
+这两个 flag 只授权 O10 复用 O11-owned runtime 与使用 canonical map 可复算 free-cell，不授权运动或 route
+execution。proof refresh 的 canonical map 固定为
+`/root/rober/onboard/runtime/maps/trashbot_map.yaml`，短路径终点固定为
+`frame_id=map, x=0.8, y=0.25, yaw=0.0`；请求省略终点字段时 Upper 也必须使用并回显这组值，随后将 map、
+两个 opt-in flag 与完整 fixed-goal argv 传给 O10。
+
+硬件边界依据 `docs/vendor/VENDOR_INDEX.md`：WAVE ROVER base UART 仍是 vendor newline-delimited JSON 控制面，
+本 lifecycle 在 Phase A 固定 base disabled，不发送 vendor motion command。LiDAR 串口参数仍由部署配置和现场材料
+核对；本合同只规定 exclusive ownership 与证据字段，不把离线测试升级为真实串口、HIL 或 safe-to-control 证明。
+
 ## nav2_goal_execution_proof
 
 `nav2_goal_execution_proof` 是上位机 `POST /api/nav2/goal/execute` 写入的 bounded
@@ -922,3 +989,43 @@ The alias is metadata-only and fail-closed:
 Allowed Robot-visible fields are limited to sanitized field follow-up metadata: `safe_evidence_ref`, `status`, `followup_status`, `material_group`, `field_owner`, `due_status`, `blocked_reason`, `next_required_evidence`, `escalation_level`, `rerun_status_summary`, `source_review_handoff_status`, `owner_handoff`, `material_groups`, `robot_diagnostics_summary`, `safe_copy`, `safe_phone_copy`, and `not_proven`.
 
 This alias is scoped to field-evidence follow-up, including PR review context such as `PRRT_kwDOSWB9286CJ3tX` and comment/material reference `3269642220`, but it does not resolve PR review state. It must not expose raw artifacts, raw review-handoff materials, raw diagnostics, unsafe material, mismatched `evidence_ref`, success/control claims, ROS topic names, `/cmd_vel`, serial/UART or WAVE ROVER details, credentials, DB/queue URLs, OSS secrets, local paths, checksum values, tracebacks, ACK/cursor/control routes, HIL/pass wording, field-pass wording, delivery result success, or complete artifact bodies. Missing canonical summary, unsupported schema or boundary, enabled action flag, unsafe copy, raw artifact/review marker, local path, checksum, credential, DB/queue URL, traceback marker, ACK/cursor route, HIL/pass wording, or hardware/control wording keeps the summary blocked/not_proven and leaves task_orchestrator, Start, Confirm Dropoff, Cancel, ACK, cursor, Nav2, HIL, dropoff/cancel completion, delivery result, and primary robot actions disabled.
+
+## Keyboard-to-wheel latency trace v1
+
+`POST /api/robot-control/base/manual` and Upper `POST /api/base/manual` accept an optional additive envelope:
+
+```json
+{
+  "latency_trace": {
+    "schema": "trashbot.keyboard_wheel_latency_trace.v1",
+    "latency_trace_id": "trace-001",
+    "client_keydown_perf_ms": 42.5,
+    "client_time_origin_ms": 1784570000000,
+    "hold_session_id": "keyboard-owner-1",
+    "hold_sequence": 1,
+    "sample_kind": "warm"
+  }
+}
+```
+
+The envelope is diagnostic metadata only. Tokens are limited to 96 characters from `[A-Za-z0-9._:-]`; numeric fields must
+be finite and non-negative; sequence must be an integer; unknown fields are discarded. Missing envelopes preserve legacy
+request behavior. An invalid supplied envelope is rejected before forwarding/publishing and does not authorize motion.
+
+PC responses may include `pc_latency_timing` with `clock_id=node_process_hrtime`, receive/validation/forward/headers/done
+nanoseconds encoded as decimal strings, plus already computed local millisecond spans. Upper responses may include
+`latency_timing` with `clock_id=python_monotonic_ns`, request receive, gate done, rclpy ready, first publish, publish done and
+response ready points plus local spans. Raw clocks from browser, Node, Upper and bridge must never be directly subtracted.
+
+Upper startup calls `prewarm_ros_cmd_vel_context()` before opening the HTTP listener. `prewarm_status=ready` means the current
+DDS graph matched a subscriber; `degraded_subscription_unproven` means the publisher exists but graph match was not proven;
+`unavailable_fail_closed` means keyboard `realtime_hold` cannot use the in-process path. The keyboard path never starts ROS CLI
+fallback and only reports `latency_pass_eligible=true` for a prewarmed, matched, in-process publish. Existing non-keyboard
+compatibility paths remain unchanged.
+
+`esp32_bridge` command debug v1 adds `bridge_callback_mono_ns`, `vendor_command_built_mono_ns`,
+`transport_write_start_mono_ns`, `transport_write_end_mono_ns`, `bridge_transport_write_ms` and
+`bridge_callback_to_transport_end_ms`. Transport write remains before debug append. HTTP `/js` uses one locked persistent
+connection per configured origin; a connection failure closes the connection without retrying the current command, and only a
+later request may rebuild it. The configured transport, `/js` path, vendor command mapping, speed/PWM values and stop ordering
+are unchanged. `transport_write_returned=true` is host-side transport evidence, not firmware parse or wheel-motion evidence.

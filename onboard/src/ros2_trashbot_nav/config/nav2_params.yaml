@@ -103,8 +103,8 @@ controller_server:
     FollowPath:
       plugin: "nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController"
       desired_linear_vel: 0.3
-      # 当前真机路线执行证明不能被雷达/局部 costmap 的误障碍卡死；现场安全仍由执行前确认和上层 fail-closed 状态承担。
-      use_collision_detection: false
+      # controller 的碰撞预测必须保持启用；同窗 scan 净空门只负责发车准入，不能替代执行期制动。
+      use_collision_detection: true
       lookahead_dist: 0.6
       min_lookahead_dist: 0.3
       max_lookahead_dist: 0.9
@@ -141,6 +141,9 @@ costmap:
       scan:
         topic: /scan
         max_obstacle_height: 2.0
+        # 障碍层只消费 current scan；不把历史观测持久化成当前净空，也不容忍无期限的传感器失联。
+        observation_persistence: 0.0
+        expected_update_rate: 10.0
         clearing: true
         marking: true
         data_type: "LaserScan"

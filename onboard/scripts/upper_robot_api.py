@@ -17,6 +17,7 @@ import struct
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import zlib
 from pathlib import Path
@@ -125,6 +126,11 @@ MAX_FEEDBACK_SAMPLE_INTERVAL_S = 2.0
 BASE_FEEDBACK_REQUEST_COMMAND = {"T": 130}
 BASE_FEEDBACK_ID = 1001
 _ROS_CMD_VEL_CONTEXT: dict[str, Any] = {}
+# rclpy node 不能被 watchdog thread 与 aiohttp request 同时 spin/publish；短临界区不包含 burst sleep。
+_ROS_CMD_VEL_LOCK = threading.RLock()
+LATENCY_TRACE_SCHEMA = "trashbot.keyboard_wheel_latency_trace.v1"
+# trace 只接受短关联键，避免把诊断 envelope 变成任意字符串回显面。
+LATENCY_TRACE_TOKEN_PATTERN = re.compile(r"^[A-Za-z0-9._:-]+$")
 BLOCKED_BASE_FEEDBACK_COMMANDS = [
     "T=1",
     "T=13",
@@ -151,12 +157,14 @@ DEFAULT_RADAR_START_COMMAND = (
     "--serial-port /dev/ttyACM0 --serial-baudrate 230400 --frame-id laser_frame"
 )
 DEFAULT_RADAR_STOP_COMMAND = "bash /root/rober/onboard/scripts/o1_lidar_lifecycle.sh stop"
+DEFAULT_NAV2_MAP_FILE = "/root/rober/onboard/runtime/maps/trashbot_map.yaml"
 DEFAULT_NAV2_START_COMMAND = (
     "bash /root/rober/onboard/scripts/o11_nav2_lifecycle.sh start "
-    "--map-file /root/rober/onboard/runtime/maps/trashbot_map.yaml "
+    f"--map-file {DEFAULT_NAV2_MAP_FILE} "
     "--base-port /dev/ttyS5 --base-baudrate 115200 --command-mode ros "
     "--base-enabled false --lidar-enabled false --lidar-serial-port /dev/ttyACM0 "
-    "--lidar-serial-baudrate 230400 --static-laser-tf-enabled true"
+    "--lidar-serial-baudrate 230400 --reuse-existing-scan true "
+    "--static-laser-tf-enabled true"
 )
 DEFAULT_NAV2_STOP_COMMAND = "bash /root/rober/onboard/scripts/o11_nav2_lifecycle.sh stop"
 DEFAULT_NAV2_STATUS_COMMAND = "bash /root/rober/onboard/scripts/o11_nav2_lifecycle.sh status"
@@ -287,6 +295,77 @@ LIDAR_HISTORICAL_FIELD_BAUDRATE_CANDIDATE = 150000
 def now_ms() -> int:
     """统一毫秒时间戳，方便 PC、上位机和远端日志对齐。"""
     return int(time.time() * 1000)
+
+
+def normalize_latency_trace(value: Any) -> dict[str, Any] | None:
+    """校验可选 latency envelope；未知字段不回显，缺 envelope 保持旧接口兼容。"""
+    if value is None:
+        return None
+    if not isinstance(value, dict):
+        raise ValueError("latency_trace_invalid_object")
+
+    def safe_token(field: str, max_length: int = 96) -> str:
+        # trace id/session 不是授权凭证，只允许短关联字符，拒绝控制字符和路径片段。
+        normalized = str(value.get(field) or "").strip()
+        if not normalized or len(normalized) > max_length or not LATENCY_TRACE_TOKEN_PATTERN.fullmatch(normalized):
+            raise ValueError(f"latency_trace_invalid_{field}")
+        return normalized
+
+    def finite_nonnegative(field: str) -> float:
+        # browser 数值只原样关联；upper 不拿它与 monotonic 时钟做跨机相减。
+        raw = value.get(field)
+        if isinstance(raw, bool) or not isinstance(raw, (int, float)) or not math.isfinite(float(raw)) or float(raw) < 0:
+            raise ValueError(f"latency_trace_invalid_{field}")
+        return float(raw)
+
+    if value.get("schema") != LATENCY_TRACE_SCHEMA:
+        raise ValueError("latency_trace_invalid_schema")
+    sequence_value = finite_nonnegative("hold_sequence")
+    if not sequence_value.is_integer() or sequence_value > 1_000_000_000:
+        raise ValueError("latency_trace_invalid_hold_sequence")
+    sample_kind = value.get("sample_kind")
+    if sample_kind not in {"cold", "warm"}:
+        raise ValueError("latency_trace_invalid_sample_kind")
+    return {
+        "schema": LATENCY_TRACE_SCHEMA,
+        "latency_trace_id": safe_token("latency_trace_id"),
+        "client_keydown_perf_ms": finite_nonnegative("client_keydown_perf_ms"),
+        "client_time_origin_ms": finite_nonnegative("client_time_origin_ms"),
+        "hold_session_id": safe_token("hold_session_id"),
+        "hold_sequence": int(sequence_value),
+        "sample_kind": sample_kind,
+    }
+
+
+def upper_latency_timing(
+    upper_receive_mono_ns: int,
+    manual_gate_done_mono_ns: int,
+    command_result: dict[str, Any],
+    upper_response_ready_mono_ns: int,
+) -> dict[str, Any]:
+    """只计算 upper 本进程 span；browser、PC、bridge 时钟必须在各自进程内分账。"""
+    first_publish = int(command_result.get("cmd_vel_first_publish_mono_ns") or 0)
+    publish_done = int(command_result.get("cmd_vel_publish_done_mono_ns") or 0)
+    timing = {
+        "clock_id": "python_monotonic_ns",
+        "upper_receive_mono_ns": upper_receive_mono_ns,
+        "manual_gate_done_mono_ns": manual_gate_done_mono_ns,
+        "rclpy_context_status": command_result.get("rclpy_context_status", "not_applicable"),
+        "rclpy_ready_mono_ns": command_result.get("rclpy_ready_mono_ns"),
+        "cmd_vel_first_publish_mono_ns": first_publish or None,
+        "cmd_vel_publish_done_mono_ns": publish_done or None,
+        "upper_response_ready_mono_ns": upper_response_ready_mono_ns,
+        "upper_receive_to_gate_ms": round((manual_gate_done_mono_ns - upper_receive_mono_ns) / 1_000_000, 6),
+        "upper_receive_to_response_ready_ms": round((upper_response_ready_mono_ns - upper_receive_mono_ns) / 1_000_000, 6),
+        "latency_pass_eligible": bool(command_result.get("latency_pass_eligible")),
+        "cli_fallback_attempted": bool(command_result.get("cli_fallback_attempted")),
+    }
+    if first_publish:
+        timing["upper_receive_to_first_publish_ms"] = round((first_publish - upper_receive_mono_ns) / 1_000_000, 6)
+        timing["manual_gate_to_first_publish_ms"] = round((first_publish - manual_gate_done_mono_ns) / 1_000_000, 6)
+    if first_publish and publish_done:
+        timing["cmd_vel_publish_span_ms"] = round((publish_done - first_publish) / 1_000_000, 6)
+    return timing
 
 
 def proof_flags() -> dict[str, Any]:
@@ -1954,6 +2033,8 @@ def run_nav2_runtime_proof_helper(
     path_goal_x: float,
     path_goal_y: float,
     path_goal_yaw: float,
+    reuse_existing_lidar_lifecycle: bool = False,
+    initialpose_canonical_free_cell_opt_in: bool = False,
 ) -> dict[str, Any]:
     """运行 no-motion AMCL/Nav2 collector；managed runtime 与 initialpose 都必须显式 opt-in。"""
     script_path = Path(__file__).resolve().with_name("o10_amcl_nav2_runtime_proof.py")
@@ -2012,6 +2093,9 @@ def run_nav2_runtime_proof_helper(
         )
         if managed_map_yaml:
             helper_argv.extend(["--managed-map-yaml", managed_map_yaml])
+        if reuse_existing_lidar_lifecycle:
+            # O11 已拥有 LiDAR 时，O10 只能复用当前 lifecycle，禁止再启动第二个 serial driver。
+            helper_argv.append("--reuse-existing-lidar-lifecycle")
     if initialpose_opt_in:
         # 只有 HTTP body 明确 opt-in 时才把定位种子传给 helper，避免默认 refresh 变成写 topic。
         helper_argv.extend(
@@ -2027,6 +2111,9 @@ def run_nav2_runtime_proof_helper(
                 initialpose_frame_id,
             ]
         )
+        if initialpose_canonical_free_cell_opt_in:
+            # initialpose 只能消费 canonical map 可复算 free-cell，不允许 HTTP x/y 直接落地。
+            helper_argv.append("--initialpose-canonical-free-cell-opt-in")
     if path_generation_opt_in:
         # 路径生成同样必须显式 opt-in，默认 refresh 只做只读定位 proof。
         helper_argv.extend(
@@ -2594,6 +2681,28 @@ def command_config_info(env_name: str, command: str | None) -> dict[str, Any]:
     }
 
 
+def command_stdout_preview(stdout: str, *, text_limit: int = 1200, json_limit: int = 12000) -> str:
+    """普通命令只保留短尾部；完整单行 JSON 在受控上限内原样保留。"""
+    # 只提升最后一条完整 JSON 行，避免普通 ROS 日志意外放大 API 响应。
+    # 空行先剔除，避免命令末尾换行让最后一条结构化记录无法识别。
+    nonempty_lines = [line for line in stdout.splitlines() if line.strip()]
+    if nonempty_lines:
+        # strip 仅删除行边界空白，不改动 JSON 字符串内部的证据内容。
+        candidate = nonempty_lines[-1].strip()
+        if len(candidate) <= json_limit:
+            # 必须真实解析成功才扩大预览，不能只凭首尾大括号猜测日志类型。
+            try:
+                parsed = json.loads(candidate)
+            except json.JSONDecodeError:
+                # 解析失败仍走普通短预览，防止半截 JSON 被调用方误当作完整事实。
+                parsed = None
+            # O11/O10 的结构化回包都是 JSON object；数组或标量不扩大预览窗口。
+            if isinstance(parsed, dict):
+                return candidate
+    # 普通日志保留既有 1200 字符边界，避免本修复影响其它命令响应体积。
+    return stdout[-text_limit:]
+
+
 def run_configured_command(command: str | None, timeout_s: float = 12.0) -> dict[str, Any]:
     """只执行显式配置的非 shell 命令；默认 dry-run，保持 HTTP 合同先行。"""
     if not command or not command.strip():
@@ -2625,7 +2734,9 @@ def run_configured_command(command: str | None, timeout_s: float = 12.0) -> dict
         "ok": completed.returncode == 0,
         "argv": argv,
         "returncode": completed.returncode,
-        "stdout_preview": completed.stdout[-1200:],
+        # lifecycle status 是单行结构化 JSON，字段扩展后可能超过普通日志预览上限；
+        # 若仍只截取尾部，JSON 起始括号会丢失，Upper 就无法证明 current owner 与串口归属。
+        "stdout_preview": command_stdout_preview(completed.stdout),
         "stderr_preview": completed.stderr[-1200:],
     }
 
@@ -3329,18 +3440,25 @@ def normalize_strict_nav2_start_request(
             "type": "base_must_be_disabled",
             "message": "base_enabled must be false",
         }
-    # LiDAR 开关也要求精确 false，因为本轮仅能复用已有 scan holder。
-    if body.get("lidar_enabled") is not False:
-        # 本轮复用既有 `/scan`；start 不得再打开新的 LiDAR serial holder。
+    # LiDAR 与 scan 复用位都必须是 JSON bool，拒绝 auto、0/1 与字符串造成模式歧义。
+    lidar_enabled = body.get("lidar_enabled")
+    reuse_existing_scan = body.get("reuse_existing_scan")
+    if type(lidar_enabled) is not bool or type(reuse_existing_scan) is not bool:
         return None, {
-            "type": "lidar_must_be_disabled",
-            "message": "lidar_enabled must be false",
+            "type": "invalid_nav2_sensor_mode_types",
+            "message": "lidar_enabled and reuse_existing_scan must be JSON booleans",
         }
-    # 只有显式声明复用 scan 才能与 lidar_enabled=false 形成无歧义合同。
-    if body.get("reuse_existing_scan") is not True:
+    # 仅保留 legacy 外部 scan 与 sensor-owned 两个互斥模式；其余组合全部 fail closed。
+    legacy_existing_scan = lidar_enabled is False and reuse_existing_scan is True
+    sensor_owned_scan = lidar_enabled is True and reuse_existing_scan is False
+    if not (legacy_existing_scan or sensor_owned_scan):
         return None, {
-            "type": "existing_scan_reuse_required",
-            "message": "reuse_existing_scan must be true",
+            "type": "invalid_nav2_sensor_mode",
+            "message": "allowed modes are lidar=false/reuse=true or lidar=true/reuse=false",
+            "allowed_modes": [
+                {"lidar_enabled": False, "reuse_existing_scan": True},
+                {"lidar_enabled": True, "reuse_existing_scan": False},
+            ],
         }
     # bool 是 int 的子类，必须先单独拦截，避免 true 被当成 1 秒。
     raw_timeout = body.get("timeout_s")
@@ -3364,10 +3482,11 @@ def normalize_strict_nav2_start_request(
         "strict_no_motion": True,
         # 底盘禁用值在规范化后始终为布尔 false。
         "base_enabled": False,
-        # LiDAR 禁用值在规范化后始终为布尔 false。
-        "lidar_enabled": False,
-        # scan 复用标志在规范化后始终为布尔 true。
-        "reuse_existing_scan": True,
+        # LiDAR 与复用位来自已经验证的互斥安全模式，不做服务端隐式翻转。
+        "lidar_enabled": lidar_enabled,
+        "reuse_existing_scan": reuse_existing_scan,
+        # 模式名用于后置 holder/publisher 语义验收，避免只看两个裸布尔值。
+        "sensor_mode": "sensor_owned_scan" if sensor_owned_scan else "legacy_existing_scan",
         # timeout 统一为浮点秒，便于直接传给 subprocess 运行器。
         "timeout_s": timeout_s,
     }, None
@@ -3395,15 +3514,23 @@ def replace_nav2_lifecycle_flag(argv: list[str], flag: str, value: str) -> list[
     return [*result, flag, value]
 
 
-def strict_no_motion_nav2_start_command(command: str | None) -> tuple[str | None, dict[str, Any] | None]:
-    """从受管 o11 start 配置构造固定 false/false argv，不允许 HTTP body 注入命令。"""
+def strict_no_motion_nav2_start_command(
+    command: str | None,
+    contract: dict[str, Any],
+) -> tuple[str | None, dict[str, Any] | None]:
+    """从受管 o11 配置构造 canonical no-motion argv；body 只能选择已验证的传感器模式。"""
     # 先审计原命令的脚本路径、action、串口与禁止 token。
     argv, error = validate_nav2_lifecycle_command(command, "start")
     if error is not None:
         return None, error
-    # 即使环境变量仍保留历史 auto/true，也要在执行前重写成唯一 false/false 组合。
+    # 底盘永远重写为 false；LiDAR 只取规范化合同中的精确 bool，不接受任意字符串。
     argv = replace_nav2_lifecycle_flag(argv, "--base-enabled", "false")
-    argv = replace_nav2_lifecycle_flag(argv, "--lidar-enabled", "false")
+    lidar_value = "true" if contract.get("lidar_enabled") is True else "false"
+    reuse_value = "true" if contract.get("reuse_existing_scan") is True else "false"
+    argv = replace_nav2_lifecycle_flag(argv, "--lidar-enabled", lidar_value)
+    argv = replace_nav2_lifecycle_flag(argv, "--reuse-existing-scan", reuse_value)
+    # strict start 固定 canonical map，不能由部署环境中的旧命令切换到未知地图。
+    argv = replace_nav2_lifecycle_flag(argv, "--map-file", DEFAULT_NAV2_MAP_FILE)
     # shlex.join 只序列化已验证 token，不接收 body 中的任何字符串。
     effective_command = shlex.join(argv)
     # 重建后再跑一次同一白名单，防止参数重写破坏脚本合同。
@@ -3413,9 +3540,14 @@ def strict_no_motion_nav2_start_command(command: str | None) -> tuple[str | None
     # 底盘有效值必须从最终 argv 反解，不仅信任重写函数。
     if _extract_flag_value(effective_argv, "--base-enabled") != "false":
         return None, {"type": "unsafe_effective_base_flag", "message": "effective base_enabled must be false"}
-    # LiDAR 有效值也必须从最终 argv 反解，确保没有重复 flag 漂移。
-    if _extract_flag_value(effective_argv, "--lidar-enabled") != "false":
-        return None, {"type": "unsafe_effective_lidar_flag", "message": "effective lidar_enabled must be false"}
+    # LiDAR 与复用位必须逐项等于已验证模式，避免重复 flag 或配置默认值漂移。
+    if _extract_flag_value(effective_argv, "--lidar-enabled") != lidar_value:
+        return None, {"type": "unsafe_effective_lidar_flag", "message": "effective lidar_enabled mismatch"}
+    if _extract_flag_value(effective_argv, "--reuse-existing-scan") != reuse_value:
+        return None, {"type": "unsafe_effective_scan_reuse_flag", "message": "effective scan reuse mismatch"}
+    # map 路径也从最终 argv 反解，确保本轮不会消费非 canonical map。
+    if _extract_flag_value(effective_argv, "--map-file") != DEFAULT_NAV2_MAP_FILE:
+        return None, {"type": "unsafe_effective_map_file", "message": "effective map file must be canonical"}
     return effective_command, None
 
 
@@ -3457,7 +3589,7 @@ def validate_nav2_lifecycle_command(command: str | None, action: str) -> tuple[l
     lidar_port = _extract_flag_value(argv, "--lidar-serial-port")
     if lidar_port and not _is_lidar_serial_path(lidar_port):
         return [], {"type": "unsafe_lidar_serial_path", "message": f"refusing unexpected LiDAR serial path: {lidar_port}"}
-    for bool_flag in ("--base-enabled", "--lidar-enabled", "--static-laser-tf-enabled"):
+    for bool_flag in ("--base-enabled", "--lidar-enabled", "--reuse-existing-scan", "--static-laser-tf-enabled"):
         bool_value = _extract_flag_value(argv, bool_flag)
         if bool_value and bool_value not in ("true", "false", "auto"):
             return [], {"type": "unsupported_nav2_lifecycle_flag", "message": f"{bool_flag} must be true, false, or auto"}
@@ -3495,6 +3627,11 @@ def parse_nav2_lifecycle_status_result(command_result: dict[str, Any]) -> dict[s
     running = payload.get("running") if payload else "not_loaded"
     state = payload.get("state") if payload else "not_loaded"
     message = payload.get("message") if payload else command_result.get("reason") or "not_loaded"
+    # 数值型 holder/publisher 事实必须保持整数；bool 虽是 int 子类，但不能冒充计数。
+    def payload_count(key: str) -> int | str:
+        value = payload.get(key) if payload else None
+        return value if isinstance(value, int) and not isinstance(value, bool) else "not_loaded"
+
     return {
         "schema": "trashbot.upper_robot_api.v1.nav2_lifecycle_manager_status",
         "status": "loaded" if payload else "not_loaded",
@@ -3502,9 +3639,35 @@ def parse_nav2_lifecycle_status_result(command_result: dict[str, Any]) -> dict[s
         "state": str(state or "not_loaded"),
         "message": str(message or "not_loaded"),
         "pid": payload.get("pid") if payload else None,
+        "start_owned_process_created": (
+            payload.get("start_owned_process_created")
+            if payload and isinstance(payload.get("start_owned_process_created"), bool)
+            else "not_loaded"
+        ),
         # start 语义验收必须读取脚本最终生效值，不能只相信请求或配置 argv。
         "base_enabled": str(payload.get("base_enabled")) if payload and payload.get("base_enabled") is not None else "not_loaded",
         "lidar_enabled": str(payload.get("lidar_enabled")) if payload and payload.get("lidar_enabled") is not None else "not_loaded",
+        "reuse_existing_scan": (
+            str(payload.get("reuse_existing_scan"))
+            if payload and payload.get("reuse_existing_scan") is not None
+            else "not_loaded"
+        ),
+        # sensor mode 与 ownership 来自 O11 当前 status，不从请求体或历史 artifact 推导。
+        "sensor_mode": str(payload.get("sensor_mode") or "not_loaded") if payload else "not_loaded",
+        "sensor_ownership": payload.get("sensor_ownership") if payload and isinstance(payload.get("sensor_ownership"), dict) else {},
+        "base_uart_pre_holder_pids": payload.get("base_uart_pre_holder_pids") if payload and isinstance(payload.get("base_uart_pre_holder_pids"), list) else [],
+        "base_uart_post_holder_pids": payload.get("base_uart_post_holder_pids") if payload and isinstance(payload.get("base_uart_post_holder_pids"), list) else [],
+        "base_uart_new_open_count": payload_count("base_uart_new_open_count"),
+        "lidar_serial_pre_holder_pids": payload.get("lidar_serial_pre_holder_pids") if payload and isinstance(payload.get("lidar_serial_pre_holder_pids"), list) else [],
+        "lidar_serial_post_holder_pids": payload.get("lidar_serial_post_holder_pids") if payload and isinstance(payload.get("lidar_serial_post_holder_pids"), list) else [],
+        "lidar_serial_new_open_count": payload_count("lidar_serial_new_open_count"),
+        "lidar_holder_owned": payload.get("lidar_holder_owned") if payload and isinstance(payload.get("lidar_holder_owned"), bool) else "not_loaded",
+        "scan_publisher_pre_count": payload_count("scan_publisher_pre_count"),
+        "scan_publisher_post_count": payload_count("scan_publisher_post_count"),
+        "scan_publisher_owned": payload.get("scan_publisher_owned") if payload and isinstance(payload.get("scan_publisher_owned"), bool) else "not_loaded",
+        "physical_motion": payload.get("physical_motion") if payload and isinstance(payload.get("physical_motion"), bool) else "not_loaded",
+        "broad_kill_used": payload.get("broad_kill_used") if payload and isinstance(payload.get("broad_kill_used"), bool) else "not_loaded",
+        "map_identity": payload.get("map_identity") if payload and isinstance(payload.get("map_identity"), dict) else {},
         "motion_requires_explicit_goal_execute": (
             payload.get("motion_requires_explicit_goal_execute")
             if payload and isinstance(payload.get("motion_requires_explicit_goal_execute"), bool)
@@ -7510,11 +7673,36 @@ def _ensure_ros_cmd_vel_context() -> dict[str, Any]:
             "twist_type": Twist,
             "node": node,
             "publisher": publisher,
+            "ready_mono_ns": time.monotonic_ns(),
             "topic": ROS_CMD_VEL_TOPIC,
             "rmw_fastrtps_use_shm": os.environ.get("RMW_FASTRTPS_USE_SHM"),
         }
     )
     return _ROS_CMD_VEL_CONTEXT
+
+
+def prewarm_ros_cmd_vel_context(wait_subscription_s: float = 0.6) -> dict[str, Any]:
+    """服务启动时预热 publisher/DDS graph；不发布任何运动或停车帧。"""
+    context = _ensure_ros_cmd_vel_context()
+    if context.get("status") != "ready":
+        context["prewarm_status"] = "unavailable_fail_closed"
+        context["prewarm_subscription_count"] = 0
+        return context
+    publisher = context["publisher"]
+    rclpy = context["rclpy"]
+    node = context["node"]
+    deadline = time.monotonic() + max(float(wait_subscription_s), 0.0)
+    with _ROS_CMD_VEL_LOCK:
+        subscription_count = int(publisher.get_subscription_count())
+    while subscription_count <= 0 and time.monotonic() < deadline:
+        # discovery 只在 startup 等待；正常 keydown hot path 不再承担这段等待。
+        with _ROS_CMD_VEL_LOCK:
+            rclpy.spin_once(node, timeout_sec=min(0.05, max(deadline - time.monotonic(), 0.0)))
+            subscription_count = int(publisher.get_subscription_count())
+    context["prewarm_subscription_count"] = subscription_count
+    context["prewarm_done_mono_ns"] = time.monotonic_ns()
+    context["prewarm_status"] = "ready" if subscription_count > 0 else "degraded_subscription_unproven"
+    return context
 
 
 def publish_ros_cmd_vel_inprocess_burst(
@@ -7524,6 +7712,7 @@ def publish_ros_cmd_vel_inprocess_burst(
     hold_s: float,
     rate_hz: float = ROS_CMD_VEL_BURST_RATE_HZ,
     wait_subscription_s: float = ROS_CMD_VEL_SUBSCRIPTION_WAIT_S,
+    require_subscription_match: bool = False,
 ) -> dict[str, Any]:
     """进程内连续发布 cmd_vel；这是 PC 键盘手控的低延迟主路径。"""
     linear_x = round(float(linear_x), 6)
@@ -7546,19 +7735,47 @@ def publish_ros_cmd_vel_inprocess_burst(
     if context.get("status") != "ready":
         result["error"] = context.get("error") or {"type": "rclpy_unavailable", "message": "rclpy context unavailable"}
         result["fallback_required"] = True
+        result["rclpy_context_status"] = context.get("prewarm_status", "unavailable_fail_closed")
+        result["rclpy_ready_mono_ns"] = context.get("ready_mono_ns")
         return result
 
     rclpy = context["rclpy"]
     twist_type = context["twist_type"]
     node = context["node"]
     publisher = context["publisher"]
+    function_enter_mono_ns = time.monotonic_ns()
     wait_started = time.monotonic()
-    subscription_count = int(publisher.get_subscription_count())
-    while subscription_count <= 0 and time.monotonic() - wait_started < wait_subscription_s:
-        # graph discovery 需要 spin；否则刚创建 publisher 时可能看不到 esp32_bridge 订阅。
-        rclpy.spin_once(node, timeout_sec=0.05)
+    with _ROS_CMD_VEL_LOCK:
+        if require_subscription_match:
+            # 零等待 spin 只刷新当前 graph cache；bridge 未出现时立即 fail-closed，不阻塞 keydown。
+            rclpy.spin_once(node, timeout_sec=0.0)
         subscription_count = int(publisher.get_subscription_count())
-
+    if require_subscription_match and subscription_count <= 0:
+        context["prewarm_status"] = "degraded_subscription_unproven"
+        context["prewarm_subscription_count"] = 0
+        failed_mono_ns = time.monotonic_ns()
+        return {
+            **result,
+            "subscription_match_required": True,
+            "subscription_match_proven": False,
+            "subscription_count": 0,
+            "frames_published": 0,
+            "rclpy_context_status": "degraded_subscription_unproven",
+            "rclpy_ready_mono_ns": context.get("ready_mono_ns"),
+            "publish_function_enter_mono_ns": function_enter_mono_ns,
+            "cmd_vel_first_publish_mono_ns": None,
+            "cmd_vel_publish_done_mono_ns": failed_mono_ns,
+            "error": {
+                "type": "cmd_vel_subscription_unavailable_fail_closed",
+                "message": "realtime_hold requires a currently matched /cmd_vel subscriber",
+            },
+            "fallback_required": False,
+            "wait_subscription_s": 0.0,
+        }
+    if require_subscription_match:
+        # bridge 后启动/重启后，当前 count 一旦恢复即可把 context 从 degraded 提升回 ready。
+        context["prewarm_status"] = "ready"
+        context["prewarm_subscription_count"] = subscription_count
     frame_interval_s = 1.0 / rate_hz
     frame_count = max(1, int(math.ceil(max(hold_s, frame_interval_s) * rate_hz)))
     message = twist_type()
@@ -7570,13 +7787,24 @@ def publish_ros_cmd_vel_inprocess_burst(
     message.angular.z = angular_z
     publish_started = time.monotonic()
     frames_published = 0
-    for index in range(frame_count):
+    # 首帧在任何 sleep/discovery wait 前发出；startup prewarm 已承担正常 DDS graph 等待。
+    cmd_vel_first_publish_mono_ns = time.monotonic_ns()
+    with _ROS_CMD_VEL_LOCK:
         publisher.publish(message)
-        frames_published += 1
-        # spin_once 让 DDS 事件及时推进，短脉冲不会等到函数结束才出队。
         rclpy.spin_once(node, timeout_sec=0.0)
-        if index < frame_count - 1:
-            time.sleep(frame_interval_s)
+    frames_published = 1
+    while subscription_count <= 0 and time.monotonic() - wait_started < wait_subscription_s:
+        # 若 subscriber 重启，只在首帧后推进 discovery；这段等待不再增加按下到首次 publish 的延迟。
+        with _ROS_CMD_VEL_LOCK:
+            rclpy.spin_once(node, timeout_sec=min(0.05, wait_subscription_s))
+            subscription_count = int(publisher.get_subscription_count())
+    for _index in range(1, frame_count):
+        time.sleep(frame_interval_s)
+        with _ROS_CMD_VEL_LOCK:
+            publisher.publish(message)
+            rclpy.spin_once(node, timeout_sec=0.0)
+        frames_published += 1
+    cmd_vel_publish_done_mono_ns = time.monotonic_ns()
     subscription_match_proven = subscription_count > 0
     payload = {
         **result,
@@ -7584,8 +7812,16 @@ def publish_ros_cmd_vel_inprocess_burst(
         # 所以发布成功和订阅匹配证明分开，避免 PC 键盘手控被 CLI 兜底拖到 HTTP 超时。
         "ok": frames_published > 0,
         "subscription_match_proven": subscription_match_proven,
+        "subscription_match_required": require_subscription_match,
         "subscription_count": subscription_count,
         "frames_published": frames_published,
+        "rclpy_context_status": context.get("prewarm_status", "ready_not_preheated"),
+        "rclpy_ready_mono_ns": context.get("ready_mono_ns"),
+        "publish_function_enter_mono_ns": function_enter_mono_ns,
+        "cmd_vel_first_publish_mono_ns": cmd_vel_first_publish_mono_ns,
+        "cmd_vel_publish_done_mono_ns": cmd_vel_publish_done_mono_ns,
+        "context_ready_to_first_publish_ms": round((cmd_vel_first_publish_mono_ns - int(context.get("ready_mono_ns") or cmd_vel_first_publish_mono_ns)) / 1_000_000, 6),
+        "publish_call_to_done_ms": round((cmd_vel_publish_done_mono_ns - cmd_vel_first_publish_mono_ns) / 1_000_000, 6),
         "elapsed_s": round(time.monotonic() - publish_started, 6),
         "wait_subscription_s": round(time.monotonic() - wait_started, 6),
     }
@@ -7956,10 +8192,16 @@ def manual_motion_ros_cmd_vel_hold_refresh_transaction(
         linear_x,
         angular_z,
         hold_s=1.0 / ROS_CMD_VEL_BURST_RATE_HZ,
-        wait_subscription_s=0.15,
+        wait_subscription_s=0.0,
+        require_subscription_match=True,
     )
-    if not command_result.get("ok"):
-        command_result = publish_ros_cmd_vel_cli_burst(linear_x, angular_z, hold_s=1.0 / ROS_CMD_VEL_BURST_RATE_HZ, timeout_s=2.0)
+    # 键盘 hot path 若预热失败就结构化 fail-closed；秒级 CLI 只能保留给旧的非 hold 接口。
+    command_result["cli_fallback_attempted"] = False
+    command_result["latency_pass_eligible"] = bool(
+        command_result.get("ok")
+        and command_result.get("publish_backend") == "rclpy_inprocess_burst"
+        and command_result.get("rclpy_context_status") == "ready"
+    )
     stop_result = {
         "ok": False,
         "skipped_reason": "realtime_hold_stop_deferred_to_release_or_watchdog",
@@ -9959,16 +10201,67 @@ class UpperRobotApi:
             4.0,
             30.0,
         )
+        managed_runtime_opt_in = bool(body.get("managed_runtime_opt_in") is True)
+        initialpose_opt_in = bool(body.get("initialpose_opt_in") is True)
+        # O11-owned runtime 下这两个门禁必须显式为 true，缺失时 helper 仍会执行只读/NO-GO 路径。
+        reuse_existing_lidar_lifecycle = bool(body.get("reuse_existing_lidar_lifecycle") is True)
+        initialpose_canonical_free_cell_opt_in = bool(
+            body.get("initialpose_canonical_free_cell_opt_in") is True
+        )
+        proof_contract_errors: list[str] = []
+        if managed_runtime_opt_in and not reuse_existing_lidar_lifecycle:
+            # managed proof 与 O11 同窗时只能复用既有 LiDAR，缺 flag 必须在创建子进程前拒绝。
+            proof_contract_errors.append("reuse_existing_lidar_lifecycle_required_for_managed_runtime")
+        if initialpose_opt_in and not initialpose_canonical_free_cell_opt_in:
+            # initialpose 写 topic 前必须绑定 canonical free-cell 审计，禁止回退请求中的任意坐标。
+            proof_contract_errors.append("initialpose_canonical_free_cell_opt_in_required")
+        if proof_contract_errors:
+            return software_guard_payload(
+                schema_suffix="nav2_runtime_proof_refresh_result",
+                action="nav2_proof_refresh",
+                endpoint=ROUTE_PATHS["nav2_proof_refresh"],
+                artifact=nav2_lifecycle_artifact_info(self.nav2_lifecycle_artifact_path),
+                extra={
+                    "status": "blocked_proof_request_contract",
+                    "proof_state": "blocked_proof_request_contract",
+                    "evidence_type": "blocked_with_root_cause",
+                    "failure_reason": proof_contract_errors[0],
+                    "root_causes": [
+                        {"layer": "proof_request_contract", "reason": reason}
+                        for reason in proof_contract_errors
+                    ],
+                    "blockers": proof_contract_errors,
+                    # invocation_count=0 是请求门禁证据，不能用旧 latest artifact 覆盖。
+                    "managed_runtime_opt_in": managed_runtime_opt_in,
+                    "reuse_existing_lidar_lifecycle": reuse_existing_lidar_lifecycle,
+                    "initialpose_opt_in": initialpose_opt_in,
+                    "initialpose_canonical_free_cell_opt_in": initialpose_canonical_free_cell_opt_in,
+                    "helper_invocation_count": 0,
+                    "sends_motion_commands": False,
+                    "publishes_cmd_vel": False,
+                    "calls_base_manual": False,
+                    "uses_base_uart": False,
+                    "robot_control_executed": False,
+                    "safe_to_control": False,
+                    "delivery_success": False,
+                    "hil_pass": False,
+                    "transition_to_proven": [
+                        # 修复动作只补 ownership/canonical opt-in，不扩大运动或控制权限。
+                        "set reuse_existing_lidar_lifecycle=true when managed_runtime_opt_in=true",
+                        "set initialpose_canonical_free_cell_opt_in=true when initialpose_opt_in=true",
+                    ],
+                },
+            )
         command_result = await asyncio.to_thread(
             run_nav2_runtime_proof_helper,
             artifact_path=self.nav2_lifecycle_artifact_path,
             map_proof_path=self.map_lifecycle_proof_artifact_path,
             map_artifact_dir=self.map_artifact_dir,
             timeout_s=timeout_s,
-            managed_runtime_opt_in=bool(body.get("managed_runtime_opt_in") is True),
+            managed_runtime_opt_in=managed_runtime_opt_in,
             managed_timeout_s=clamp_float(body.get("managed_timeout_s"), timeout_s, 4.0, 45.0),
             managed_map_yaml=str(body.get("managed_map_yaml") or "")[:400],
-            initialpose_opt_in=bool(body.get("initialpose_opt_in") is True),
+            initialpose_opt_in=initialpose_opt_in,
             initialpose_x=clamp_float(body.get("initialpose_x"), 0.0, -1000.0, 1000.0),
             initialpose_y=clamp_float(body.get("initialpose_y"), 0.0, -1000.0, 1000.0),
             initialpose_yaw=clamp_float(body.get("initialpose_yaw"), 0.0, -6.283185307179586, 6.283185307179586),
@@ -9977,8 +10270,11 @@ class UpperRobotApi:
             path_generation_timeout_s=clamp_float(body.get("path_generation_timeout_s"), timeout_s, 4.0, 45.0),
             path_goal_frame_id=str(body.get("path_goal_frame_id") or "map")[:80],
             path_goal_x=clamp_float(body.get("path_goal_x"), 0.8, -1000.0, 1000.0),
-            path_goal_y=clamp_float(body.get("path_goal_y"), 0.0, -1000.0, 1000.0),
+            # 固定短路径终点与已审计 route 合同一致，避免请求省略 y 时退回旧坐标。
+            path_goal_y=clamp_float(body.get("path_goal_y"), 0.25, -1000.0, 1000.0),
             path_goal_yaw=clamp_float(body.get("path_goal_yaw"), 0.0, -6.283185307179586, 6.283185307179586),
+            reuse_existing_lidar_lifecycle=reuse_existing_lidar_lifecycle,
+            initialpose_canonical_free_cell_opt_in=initialpose_canonical_free_cell_opt_in,
         )
         http_status, latest = self.nav2_proof_latest()
         proof = latest.get("latest_result", {}).get("proof") if isinstance(latest.get("latest_result"), dict) else {}
@@ -10001,15 +10297,18 @@ class UpperRobotApi:
                 "status": "refreshed" if evidence_type == "robot_runtime_material" else "blocked_with_root_cause",
                 "proof_state": proof_status,
                 "evidence_type": evidence_type,
-                "managed_runtime_opt_in": bool(body.get("managed_runtime_opt_in") is True),
+                "managed_runtime_opt_in": managed_runtime_opt_in,
+                "reuse_existing_lidar_lifecycle": reuse_existing_lidar_lifecycle,
                 "managed_timeout_s": clamp_float(body.get("managed_timeout_s"), timeout_s, 4.0, 45.0),
                 "managed_map_yaml": str(body.get("managed_map_yaml") or "")[:400],
-                "initialpose_opt_in": bool(body.get("initialpose_opt_in") is True),
+                "initialpose_opt_in": initialpose_opt_in,
+                "initialpose_canonical_free_cell_opt_in": initialpose_canonical_free_cell_opt_in,
                 "path_generation_opt_in": bool(body.get("path_generation_opt_in") is True),
                 "path_generation_timeout_s": clamp_float(body.get("path_generation_timeout_s"), timeout_s, 4.0, 45.0),
                 "path_goal_frame_id": str(body.get("path_goal_frame_id") or "map")[:80],
                 "path_goal_x": clamp_float(body.get("path_goal_x"), 0.8, -1000.0, 1000.0),
-                "path_goal_y": clamp_float(body.get("path_goal_y"), 0.0, -1000.0, 1000.0),
+                # readback 必须回显实际采用的固定 y，便于冻结请求与 helper argv 对照。
+                "path_goal_y": clamp_float(body.get("path_goal_y"), 0.25, -1000.0, 1000.0),
                 "path_goal_yaw": clamp_float(body.get("path_goal_yaw"), 0.0, -6.283185307179586, 6.283185307179586),
                 "latest_readback_http_status": http_status,
                 "latest_result": latest.get("latest_result"),
@@ -10024,7 +10323,7 @@ class UpperRobotApi:
                 "publishes_cmd_vel": False,
                 "calls_base_manual": False,
                 "sends_base_motion_commands": False,
-                "starts_ros2": bool(body.get("managed_runtime_opt_in") is True),
+                "starts_ros2": managed_runtime_opt_in,
                 "starts_nav2": managed_runtime_started,
                 "robot_control_executed": False,
                 "safe_to_control": False,
@@ -10044,7 +10343,7 @@ class UpperRobotApi:
                 "controller_server_active": bool(proof.get("controller_server_active")) if isinstance(proof, dict) else False,
                 "controller_server_requested": bool(proof.get("controller_server_requested")) if isinstance(proof, dict) else False,
                 "planner_readiness_summary": proof.get("planner_readiness_summary") if isinstance(proof, dict) else None,
-                "read_only_existing_ros_graph": bool(body.get("managed_runtime_opt_in") is not True),
+                "read_only_existing_ros_graph": not managed_runtime_opt_in,
                 "blocked_commands_not_sent": ["T=1", "T=13", "T=130", "T=131", "/cmd_vel", "/api/base/manual"],
                 "transition_to_proven": [
                     "managed runtime or existing graph keeps map_server/amcl active without /dev/ttyS5",
@@ -10901,8 +11200,26 @@ class UpperRobotApi:
     # 必须要求精确字段集，否则调用方无法知道哪些字段被忽略。
     # 必须要求 strict_no_motion 为布尔 true，不接受 truthy 替代值。
     # 必须要求 base_enabled 为布尔 false，防止 auto 意外打开 UART。
-    # 必须要求 lidar_enabled 为布尔 false，防止新建串口 holder。
-    # 必须要求 reuse_existing_scan 为 true，明确本轮依赖已有 `/scan`。
+    # LiDAR 与 scan 复用只接受 legacy false/true 或 sensor-owned true/false。
+    # legacy 的合法性只表示请求可执行，实际仍需已有 `/scan` 才能由 O11 返回成功。
+    # sensor-owned 的合法性只表示允许尝试，不能跳过串口 holder 与 publisher 后置验收。
+    # 两个模式共享 canonical map，避免同一 endpoint 因环境变量读取不同地图。
+    # sensor_mode 是服务端派生字段，客户端不能自行提交并影响分支。
+    # O11 status 是 effective truth；请求值与最终 argv 只能作为交叉核对材料。
+    # base UART 只看 pre/post holder 差集，现场既有 holder 不等于本轮打开。
+    # LiDAR holder 必须是 post 新增且 PGID 归属 O11，单纯端口忙不能判 owned。
+    # `/scan` publisher 必须当前可见，历史 artifact 或 topic name 不能替代 publisher count。
+    # publisher ownership 依赖 start 前零 publisher、start 后新增 publisher 与 owned holder 同时成立。
+    # physical_motion=false 是 O11 status 明示事实，不从“未发送 goal”一句话间接推导。
+    # broad_kill_used=false 防止 cleanup 以扫描式杀进程换取表面 stopped。
+    # start command stdout 区分“当前请求创建进程”和“请求前已有 owner 冲突”。
+    # 明确未创建 current owner 时禁止自动 stop，避免误杀前一请求的仍用 runtime。
+    # timeout 或不可解析 stdout 仍保守执行 owned cleanup，因为子进程可能已经落地。
+    # cleanup 成功只关闭安全尾巴，不会把 semantic failure 改写为 start success。
+    # Upper 回包保留 holder/publisher 原始计数，调用方不得用 HTTP 状态码覆盖这些字段。
+    # O10 managed proof 必须复用 O11 LiDAR，避免同一 `/dev/ttyACM0` 出现第二个 driver。
+    # O10 initialpose 必须绑定 canonical free-cell，HTTP x/y 不能直接绕过地图审计。
+    # 以上所有门禁仍固定 no-motion，不授予 NavigateToPose、cmd_vel 或 manual 权限。
     # timeout 必须有限且在安全窗口内，避免 worker 被异常占用。
     # timeout 不允许静默 clamp，否则客户端会误以为原值已生效。
     # body 不得参与 shell 拼接，从源头切断路径与参数注入。
@@ -10917,12 +11234,13 @@ class UpperRobotApi:
     # start returncode=0 只是一个输入，不得直接推导语义成功。
     # start 后必须独立读回 lifecycle running，避免接受已退出进程。
     # start 后必须读回 base_enabled=false，避免只相信命令行外观。
-    # start 后必须读回 lidar_enabled=false，确认服务实际生效值。
+    # start 后必须读回 lidar/reuse 生效值，确认服务没有改变请求模式。
+    # sensor-owned 成功还必须证明 owned holder/current publisher 与 base UART zero-open。
     # 任一语义失败都必须回收本次 o11 可能留下的 owned 进程组。
     # 语义成功时不自动 stop，因为后续 Algorithm proof 需要 persistent lifecycle。
     # cleanup 仅能通过 o11 stop，不允许按进程名扫描式杀进程。
     # cleanup 不得发送底盘 stop，因为本合同没有打开底盘 UART。
-    # cleanup 不得打开 LiDAR 串口，因为既有 scan holder 的归属在本 API 之外。
+    # cleanup 不得另开 LiDAR 串口；sensor-owned holder 只能随 O11 owned process group 回收。
     # stop 必须同时验收命令回包与独立 status readback。
     # stop 只要任一 stopped 观测未成立，即使 HTTP 200 也必须 NO-GO。
     # root_causes 必须标注 request、config、runtime 或 cleanup 层，便于精确路由修复。
@@ -11011,7 +11329,7 @@ class UpperRobotApi:
                     },
                 )
 
-            effective_command, command_error = strict_no_motion_nav2_start_command(self.nav2_start_command)
+            effective_command, command_error = strict_no_motion_nav2_start_command(self.nav2_start_command, contract)
             if command_error is not None or effective_command is None:
                 # 配置命令不在 o11 白名单时同样禁止执行，不能退回默认 shell 或直接 ros2 launch。
                 command_result = {
@@ -11065,12 +11383,14 @@ class UpperRobotApi:
                     },
                 )
 
-            # start 只执行代码生成的 false/false argv；请求体永远不能携带路径或 shell 片段。
+            # start 只执行代码生成的 base=false 与已验证传感器模式；body 永远不能携带路径或 shell。
             command_result = run_nav2_lifecycle_command(
                 effective_command,
                 "start",
                 timeout_s=float(contract["timeout_s"]),
             )
+            # start 自身的结构化 stdout 用于区分“本次未创建进程的冲突”和“可能已创建需回收的进程”。
+            start_command_status = parse_nav2_lifecycle_status_result(command_result)
             nav2_lifecycle_status = self.nav2_status()
             lifecycle_manager = nav2_lifecycle_status.get("lifecycle_manager")
             lifecycle_manager = lifecycle_manager if isinstance(lifecycle_manager, dict) else {}
@@ -11083,6 +11403,24 @@ class UpperRobotApi:
                         "layer": "start_command",
                         "reason": "nav2_start_command_failed_or_timed_out",
                         "detail": command_result.get("error") or command_result.get("stderr_preview"),
+                    }
+                )
+            # 独立 status 可能恰好读到旧 runtime；成功必须先证明 start 回包属于本次新建 manager。
+            if not (
+                # 三项来自同一 start stdout，缺一项都不能把独立 status 归到本请求。
+                start_command_status.get("start_owned_process_created") is True
+                and start_command_status.get("running") is True
+                and start_command_status.get("state") == "running"
+            ):
+                root_causes.append(
+                    {
+                        "layer": "start_ownership",
+                        "reason": "current_start_owned_process_not_confirmed",
+                        "start_owned_process_created": start_command_status.get(
+                            "start_owned_process_created", "not_loaded"
+                        ),
+                        "running": start_command_status.get("running", "not_loaded"),
+                        "state": start_command_status.get("state", "not_loaded"),
                     }
                 )
             if lifecycle_manager.get("running") is not True:
@@ -11101,14 +11439,62 @@ class UpperRobotApi:
                         "observed": lifecycle_manager.get("base_enabled", "not_loaded"),
                     }
                 )
-            if lifecycle_manager.get("lidar_enabled") != "false":
+            expected_lidar = "true" if contract.get("lidar_enabled") is True else "false"
+            expected_reuse = "true" if contract.get("reuse_existing_scan") is True else "false"
+            if lifecycle_manager.get("lidar_enabled") != expected_lidar:
                 root_causes.append(
                     {
                         "layer": "effective_contract",
-                        "reason": "lidar_enabled_false_not_confirmed",
+                        "reason": "lidar_enabled_mode_not_confirmed",
                         "observed": lifecycle_manager.get("lidar_enabled", "not_loaded"),
                     }
                 )
+            if lifecycle_manager.get("reuse_existing_scan") != expected_reuse:
+                root_causes.append(
+                    {
+                        "layer": "effective_contract",
+                        "reason": "reuse_existing_scan_mode_not_confirmed",
+                        "observed": lifecycle_manager.get("reuse_existing_scan", "not_loaded"),
+                    }
+                )
+            if lifecycle_manager.get("sensor_mode") != contract.get("sensor_mode"):
+                root_causes.append(
+                    {
+                        "layer": "effective_contract",
+                        "reason": "sensor_mode_not_confirmed",
+                        "observed": lifecycle_manager.get("sensor_mode", "not_loaded"),
+                    }
+                )
+            # 两种合法模式都必须证明 base-disabled 没有产生新 UART holder，且整个 start 保持无运动。
+            common_runtime_requirements = (
+                # UART、运动和 broad-kill 是与传感器选择无关的共同安全不变量。
+                (lifecycle_manager.get("base_uart_new_open_count") == 0, "base_uart_zero_open_not_confirmed"),
+                (lifecycle_manager.get("physical_motion") is False, "physical_motion_false_not_confirmed"),
+                (lifecycle_manager.get("broad_kill_used") is False, "broad_kill_false_not_confirmed"),
+            )
+            for requirement_met, reason in common_runtime_requirements:
+                if not requirement_met:
+                    root_causes.append({"layer": "runtime_safety", "reason": reason})
+            # sensor-owned 模式必须用当前 O11 status 证明串口与 publisher 都属于本进程组。
+            if contract.get("sensor_mode") == "sensor_owned_scan":
+                sensor_requirements = (
+                    (lifecycle_manager.get("lidar_serial_new_open_count", 0) >= 1 if isinstance(lifecycle_manager.get("lidar_serial_new_open_count"), int) else False, "owned_lidar_serial_new_open_not_confirmed"),
+                    (lifecycle_manager.get("lidar_holder_owned") is True, "owned_lidar_holder_not_confirmed"),
+                    (lifecycle_manager.get("scan_publisher_post_count", 0) >= 1 if isinstance(lifecycle_manager.get("scan_publisher_post_count"), int) else False, "current_scan_publisher_not_confirmed"),
+                    (lifecycle_manager.get("scan_publisher_owned") is True, "owned_scan_publisher_not_confirmed"),
+                )
+                for requirement_met, reason in sensor_requirements:
+                    if not requirement_met:
+                        root_causes.append({"layer": "sensor_ownership", "reason": reason})
+            else:
+                # legacy 模式不拥有 LiDAR，但必须证明没有新开串口且 current `/scan` 确实仍存在。
+                legacy_requirements = (
+                    (lifecycle_manager.get("lidar_serial_new_open_count") == 0, "legacy_lidar_zero_open_not_confirmed"),
+                    (lifecycle_manager.get("scan_publisher_post_count", 0) >= 1 if isinstance(lifecycle_manager.get("scan_publisher_post_count"), int) else False, "legacy_current_scan_publisher_not_confirmed"),
+                )
+                for requirement_met, reason in legacy_requirements:
+                    if not requirement_met:
+                        root_causes.append({"layer": "sensor_reuse", "reason": reason})
 
             cleanup: dict[str, Any] = {
                 # 语义成功后保持 persistent runtime，留给 Algorithm 串行执行 proof。
@@ -11119,7 +11505,9 @@ class UpperRobotApi:
                 "scope": "o11_owned_pid_process_group_only",
             }
             lifecycle_invocation_count = 2
-            if root_causes:
+            # timeout/不可解析响应仍保守 cleanup；只有脚本明确证明未创建 current owner 才跳过 stop。
+            cleanup_required = start_command_status.get("start_owned_process_created") is not False
+            if root_causes and cleanup_required:
                 # 任何语义失败都只调用 o11 stop，收口本次可能留下的 owned process group。
                 cleanup_result = run_nav2_lifecycle_command(self.nav2_stop_command, "stop")
                 cleanup_status = parse_nav2_lifecycle_status_result(cleanup_result)
@@ -11146,6 +11534,17 @@ class UpperRobotApi:
                     root_causes.append(
                         {"layer": "cleanup", "reason": "owned_process_group_cleanup_not_confirmed"}
                     )
+            elif root_causes:
+                cleanup = {
+                    # preflight/owner 冲突未创建本次进程；调用 stop 反而可能终止既有 runtime。
+                    "status": "not_required_no_current_owned_process_started",
+                    "attempted": False,
+                    "ok": True,
+                    "scope": "o11_current_request_owned_pid_process_group_only",
+                    "start_command_status": start_command_status,
+                    "sends_base_stop_command": False,
+                    "uses_base_uart": False,
+                }
 
             semantic_success = not root_causes
             effective_contract = {
@@ -11181,19 +11580,31 @@ class UpperRobotApi:
                         "request_body_consumed": True,
                         # 生效合同同时保留请求值与服务端重建 argv，支持双向对账。
                         "effective_contract": effective_contract,
-                        # 这两个 0 由 false/false argv 与 lifecycle status 共同支撑，真机仍需 holder delta。
-                        "base_uart_new_open_count": 0,
-                        "lidar_serial_new_open_count": 0,
+                        # 串口增量只能来自 O11 status；sensor-owned 模式不再把 LiDAR new-open 写死为零。
+                        "base_uart_new_open_count": lifecycle_manager.get("base_uart_new_open_count", "not_loaded"),
+                        "lidar_serial_new_open_count": lifecycle_manager.get("lidar_serial_new_open_count", "not_loaded"),
+                        "sensor_ownership": lifecycle_manager.get("sensor_ownership", {}),
+                        "scan_publisher_post_count": lifecycle_manager.get("scan_publisher_post_count", "not_loaded"),
+                        "lidar_holder_owned": lifecycle_manager.get("lidar_holder_owned", "not_loaded"),
+                        "scan_publisher_owned": lifecycle_manager.get("scan_publisher_owned", "not_loaded"),
                         # 计数包含 start/status，语义失败时再加一次 owned stop。
                         "lifecycle_command_invocation_count": lifecycle_invocation_count,
-                        "new_open_count_source": "effective_o11_false_false_argv_and_status_readback",
+                        "new_open_count_source": "o11_current_holder_and_publisher_status_readback",
                     },
                     "cleanup": cleanup,
+                    "start_command_status": start_command_status,
                     "nav2_lifecycle_status": nav2_lifecycle_status,
                     "opens_base_uart": False,
-                    "opens_lidar_serial": False,
+                    # capability 不等于事实；只有本次 owner 回包与 new-open readback 同时成立才声明已打开。
+                    "opens_lidar_serial": bool(
+                        contract.get("sensor_mode") == "sensor_owned_scan"
+                        and start_command_status.get("start_owned_process_created") is True
+                        and isinstance(lifecycle_manager.get("lidar_serial_new_open_count"), int)
+                        and lifecycle_manager.get("lidar_serial_new_open_count", 0) >= 1
+                    ),
                     "transition_to_proven": [
-                        "effective o11 argv and status both confirm base_enabled=false and lidar_enabled=false",
+                        "effective o11 argv and status confirm the selected legacy or sensor-owned mode",
+                        "sensor-owned mode confirms base UART zero-open, owned LiDAR holder and current /scan publisher",
                         "map_server/amcl/planner/controller lifecycle states observed by the proof collector",
                         "fresh persisted localization and planner-only path are verified in the next serial phase",
                     ],
@@ -11552,6 +11963,8 @@ class UpperRobotApi:
 
     async def manual_control(self, body: dict[str, Any]) -> dict[str, Any]:
         """低速点动控制：发送方向命令后等待短窗口，再无条件发送停车命令。"""
+        upper_receive_mono_ns = int(body.get("_upper_receive_mono_ns") or time.monotonic_ns())
+        latency_trace = normalize_latency_trace(body.get("latency_trace"))
         direction = str(body.get("direction", "stop")).strip().lower()
         if direction not in ALLOWED_DIRECTIONS:
             return {
@@ -11633,6 +12046,8 @@ class UpperRobotApi:
         motion_read_timeout_s = clamp_float(body.get("motion_read_timeout_s"), 0.05, 0.01, 0.2)
         read_timeout_s = clamp_float(body.get("read_timeout_s"), DEFAULT_FEEDBACK_READ_TIMEOUT_S, 0.01, MAX_FEEDBACK_READ_TIMEOUT_S)
         read_window_s = clamp_float(body.get("read_window_s"), DEFAULT_FEEDBACK_READ_WINDOW_S, 0.01, MAX_FEEDBACK_READ_WINDOW_S)
+        # 到这里方向、速度、持续时间、模式和 watchdog 均已收敛；首帧只能发生在 gate 完成之后。
+        manual_gate_done_mono_ns = time.monotonic_ns()
         feedback_during_motion_attempted = direction != "stop" and pulse_ms > 0
         serial_motion_transaction: dict[str, Any] | None = None
         ros_cmd_vel_transaction: dict[str, Any] | None = None
@@ -11660,7 +12075,9 @@ class UpperRobotApi:
                     stop = serial_motion_transaction["stop_result"]
                     feedback_during_motion = serial_motion_transaction["feedback_during_motion"]
                     feedback_evidence = serial_motion_transaction["feedback_after_stop"]
-                manual_hold_watchdog = self._schedule_manual_hold_watchdog(hold_session_id, hold_sequence, command_mode, hold_watchdog_ms)
+                # 只有首帧真实交给 backend 后才延长 hold；失败请求不能留下“仍在运动”的假 watchdog 状态。
+                if first.get("ok"):
+                    manual_hold_watchdog = self._schedule_manual_hold_watchdog(hold_session_id, hold_sequence, command_mode, hold_watchdog_ms)
                 feedback_after_stop_attempted = False
             elif command_mode == "ros":
                 ros_cmd_vel_transaction = manual_motion_ros_cmd_vel_transaction(
@@ -11837,10 +12254,30 @@ class UpperRobotApi:
         feedback_ack = feedback_during_motion.get("feedback_ack") if isinstance(feedback_during_motion.get("feedback_ack"), dict) else {}
         if feedback_ack.get("t1001_observed") is not True:
             feedback_ack = feedback_evidence.get("feedback_ack", t1001_boundary("manual feedback evidence unavailable"))
+        upper_response_ready_mono_ns = time.monotonic_ns()
+        latency_fields = (
+            {
+                "latency_trace": latency_trace,
+                "latency_timing": upper_latency_timing(
+                    upper_receive_mono_ns,
+                    manual_gate_done_mono_ns,
+                    first,
+                    upper_response_ready_mono_ns,
+                ),
+            }
+            if latency_trace is not None
+            else {}
+        )
+        # realtime_hold 不允许 CLI fallback；进程内 publisher 失败时 HTTP 也必须 fail-closed，不能报 command_forwarded。
+        realtime_hold_hot_path_blocked = bool(
+            use_realtime_hold and command_mode == "ros" and not first.get("ok")
+        )
         return {
             "schema": f"{SCHEMA}.base_manual_result",
             "generated_at_ms": now_ms(),
-            "accepted": True,
+            "accepted": not realtime_hold_hot_path_blocked,
+            "status": "blocked_realtime_hold_rclpy_not_ready" if realtime_hold_hot_path_blocked else "manual_command_completed",
+            "failure_reason": "realtime_hold_rclpy_prewarm_unavailable" if realtime_hold_hot_path_blocked else "",
             "direction": direction,
             "speed": speed,
             "base_command_mode": command_mode,
@@ -11857,7 +12294,7 @@ class UpperRobotApi:
             "command_result": first,
             "stop_result": stop,
             "serial_write_failures": serial_write_failures,
-            "auto_stop_attempted": not bool(manual_hold_watchdog),
+            "auto_stop_attempted": False if realtime_hold_hot_path_blocked else not bool(manual_hold_watchdog),
             "auto_stop_executed": False if manual_hold_watchdog else bool(stop.get("ok")),
             "auto_stop_deferred_to_watchdog": bool(manual_hold_watchdog),
             "manual_command_executed": bool(first.get("ok")),
@@ -11908,6 +12345,7 @@ class UpperRobotApi:
             "delivery_success": False,
             "hil_pass": False,
             "primary_actions_enabled": False,
+            **latency_fields,
         }
 
 
@@ -12029,12 +12467,26 @@ async def run_server(args: argparse.Namespace) -> None:
         nav2_stop_command=args.nav2_stop_command,
         nav2_status_command=args.nav2_status_command,
     )
+    # 在开始监听 HTTP 前完成 rclpy import/node/publisher/DDS graph 预热；该步骤绝不发布 /cmd_vel。
+    prewarm = prewarm_ros_cmd_vel_context()
     app = create_app(api)
     runner = web.AppRunner(app)
     await runner.setup()
     site = web.TCPSite(runner, args.host, args.port)
     await site.start()
-    print(json.dumps({"event": "upper_robot_api_started", "host": args.host, "port": args.port}, ensure_ascii=False), flush=True)
+    print(
+        json.dumps(
+            {
+                "event": "upper_robot_api_started",
+                "host": args.host,
+                "port": args.port,
+                "rclpy_cmd_vel_prewarm_status": prewarm.get("prewarm_status"),
+                "rclpy_cmd_vel_subscription_count": prewarm.get("prewarm_subscription_count", 0),
+            },
+            ensure_ascii=False,
+        ),
+        flush=True,
+    )
     while True:
         await asyncio.sleep(3600)
 
@@ -12331,8 +12783,29 @@ def create_app(api: UpperRobotApi) -> Any:
         return json_response(payload, status=http_status)
 
     async def base_manual(request: web.Request) -> Any:
+        # receive 点位必须在 JSON 解析前记录；但只在 upper 本进程内计算 span。
+        upper_receive_mono_ns = time.monotonic_ns()
         body = await request.json()
-        payload = await api.manual_control(body if isinstance(body, dict) else {})
+        body = body if isinstance(body, dict) else {}
+        try:
+            latency_trace = normalize_latency_trace(body.get("latency_trace"))
+        except ValueError as exc:
+            return json_response(
+                {
+                    "schema": f"{SCHEMA}.base_manual_result",
+                    "accepted": False,
+                    "error": {"type": "latency_trace_invalid", "message": str(exc)},
+                    "safe_to_control": False,
+                    "robot_control_executed": False,
+                    "delivery_success": False,
+                    "hil_pass": False,
+                },
+                status=400,
+            )
+        if latency_trace is not None:
+            # 只把白名单后的 envelope 和内部 receive 点交给 manual_control，未知字段已丢弃。
+            body = {**body, "latency_trace": latency_trace, "_upper_receive_mono_ns": upper_receive_mono_ns}
+        payload = await api.manual_control(body)
         return json_response(payload, status=200 if payload.get("accepted", True) else 400)
 
     app = web.Application()

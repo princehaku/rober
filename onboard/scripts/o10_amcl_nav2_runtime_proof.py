@@ -178,6 +178,12 @@ INITIALPOSE_TOPIC = "/initialpose"
 INITIALPOSE_TOPIC_TYPE = "geometry_msgs/msg/PoseWithCovarianceStamped"
 FRESHNESS_WALL_CLOCK_MIN_MS = 946684800000
 FRESHNESS_STALE_AFTER_MS = 3000
+# 发车前净空门采用自主策略已有的保守停止距离；它只做 NO-GO 判定，不授权运动。
+READINESS_OBSTACLE_CLEARANCE_M = 0.45
+# O3/O1 本轮只能验证既有固定目标，现场不得为了让 planner 成功而改写目标。
+READINESS_FIXED_GOAL = {"frame_id": "map", "x": 0.8, "y": 0.25, "yaw": 0.0}
+READINESS_TASK_ID = "task_o3_28_pose_fixed_route_consumer_20260713_0402"
+READINESS_ROUTE_INTENT_ID = "route_intent_20260713_0402_from_20260713_0300_28_pose_structured_path"
 # TF header 与 callback receipt 都来自同一台主机时，只容忍很小的调度/取整误差；
 # 更大的负 age 代表时钟语义不可证明，必须 fail-closed，不能用绝对值掩盖。
 TF_RECEIPT_CLOCK_SKEW_TOLERANCE_MS = 250
@@ -4024,6 +4030,42 @@ def pixel_is_free(value: int, *, negate: int, free_thresh: float, mode: str) -> 
     return normalized < free_thresh
 
 
+def canonical_occupancy_values(
+    pixels: bytes,
+    *,
+    width: int,
+    height: int,
+    negate: int,
+    occupied_thresh: float,
+    free_thresh: float,
+) -> list[int]:
+    """按 map_server trinary 与坐标翻转规则生成 OccupancyGrid 数据。"""
+    if width <= 0 or height <= 0 or len(pixels) != width * height:
+        # image 原点在左上，OccupancyGrid 原点在左下；维度不可信时不能继续制造 identity。
+        raise ValueError("canonical map pixels do not match width and height")
+    values: list[int] = []
+    for map_row in range(height):
+        # map_server 写 data[y * width + x] 时读取 image[height - y - 1][x]；
+        # 如果漏掉这次纵向翻转，同一张非对称地图会被稳定误判为 hash mismatch。
+        image_row = height - map_row - 1
+        for column in range(width):
+            pixel = int(pixels[image_row * width + column])
+            # PGM 白色代表 free、黑色代表 occupied；negate 只反转归一化方向。
+            occupancy = (float(pixel) / 255.0) if negate else ((255.0 - float(pixel)) / 255.0)
+            if occupancy > occupied_thresh:
+                values.append(100)
+            elif occupancy < free_thresh:
+                values.append(0)
+            else:
+                values.append(-1)
+    return values
+
+
+def signed_int8_sha256(values: list[int]) -> str:
+    """OccupancyGrid 使用 signed int8；转成同位模式后 hash，避免 JSON 空格影响 identity。"""
+    return hashlib.sha256(bytes((int(value) + 256) % 256 for value in values)).hexdigest()
+
+
 def canonical_initialpose_map_audit(
     map_yaml: str | None,
     *,
@@ -4066,6 +4108,14 @@ def canonical_initialpose_map_audit(
         ]
         if not free_cells:
             raise ValueError("canonical map contains no verified free cell")
+        occupancy_values = canonical_occupancy_values(
+            pixels,
+            width=width,
+            height=height,
+            negate=int(fields["negate"]),
+            occupied_thresh=float(fields["occupied_thresh"]),
+            free_thresh=float(fields["free_thresh"]),
+        )
         # 中心最近点减少把 seed 放在地图边缘的风险；row/column 作为稳定 tie-break。
         center_row = (height - 1) / 2.0
         center_column = (width - 1) / 2.0
@@ -4112,6 +4162,8 @@ def canonical_initialpose_map_audit(
                 "map_yaml_sha256": sha256_file(yaml_path),
                 "map_image": str(image_path),
                 "map_image_sha256": sha256_file(image_path),
+                "occupancy_data_sha256": signed_int8_sha256(occupancy_values),
+                "occupancy_data_count": len(occupancy_values),
                 "width": width,
                 "height": height,
                 "max_value": max_value,
@@ -4166,86 +4218,6 @@ def map_has_free_cells_for_path_proof(map_analysis: dict[str, Any] | None) -> bo
     return int(cell_counts.get("free") or 0) > 0
 
 
-def clamp_point_to_map_bounds(x: float, y: float, map_analysis: dict[str, Any]) -> tuple[float, float]:
-    """no-motion planner proof 允许把测试点夹到地图内侧，避免固定点因新地图裁剪失效。"""
-    bounds = map_analysis.get("bounds") if isinstance(map_analysis.get("bounds"), dict) else {}
-    resolution = float(map_analysis.get("resolution") or 0.05)
-    margin = max(resolution * 5.0, 0.25)
-    min_x = float(bounds["min_x"]) + margin
-    max_x = float(bounds["max_x"]) - margin
-    min_y = float(bounds["min_y"]) + margin
-    max_y = float(bounds["max_y"]) - margin
-    if min_x > max_x:
-        min_x = max_x = (float(bounds["min_x"]) + float(bounds["max_x"])) / 2.0
-    if min_y > max_y:
-        min_y = max_y = (float(bounds["min_y"]) + float(bounds["max_y"])) / 2.0
-    return min(max(x, min_x), max_x), min(max(y, min_y), max_y)
-
-
-def adapt_path_request_to_map_bounds(
-    request: dict[str, Any],
-    *,
-    map_analysis: dict[str, Any],
-    initialpose_payload: dict[str, Any] | None,
-) -> dict[str, Any]:
-    """当固定 no-motion 起终点越界时，生成地图内的 planner-only 测试请求。"""
-    if not map_analysis.get("ok"):
-        request["map_goal_diagnostics"] = {"map_analysis_ok": False, "adapted": False}
-        return request
-    start_x = float(request.get("start_x", (initialpose_payload or {}).get("x", 0.0)))
-    start_y = float(request.get("start_y", (initialpose_payload or {}).get("y", 0.0)))
-    goal_x = float(request["x"])
-    goal_y = float(request["y"])
-    start_in_bounds = point_in_map_bounds(start_x, start_y, map_analysis)
-    goal_in_bounds = point_in_map_bounds(goal_x, goal_y, map_analysis)
-    diagnostics = {
-        "map_analysis_ok": True,
-        "adapted": False,
-        "start_in_bounds": start_in_bounds,
-        "goal_in_bounds": goal_in_bounds,
-        "bounds": map_analysis.get("bounds"),
-        "cell_counts": map_analysis.get("cell_counts"),
-        "original_start": {"x": start_x, "y": start_y},
-        "original_goal": {"x": goal_x, "y": goal_y},
-    }
-    if start_in_bounds and goal_in_bounds:
-        request["start_x"] = start_x
-        request["start_y"] = start_y
-        request["map_goal_diagnostics"] = diagnostics
-        return request
-    adapted_start_x, adapted_start_y = clamp_point_to_map_bounds(start_x, start_y, map_analysis)
-    adapted_goal_x, adapted_goal_y = clamp_point_to_map_bounds(goal_x, goal_y, map_analysis)
-    if math.hypot(adapted_goal_x - adapted_start_x, adapted_goal_y - adapted_start_y) < 0.25:
-        # 如果起终点被夹到同一小片区域，优先沿 x 方向制造一段仍在地图内的 planner-only 目标。
-        bounds = map_analysis.get("bounds") if isinstance(map_analysis.get("bounds"), dict) else {}
-        candidate_x = adapted_start_x + 0.8
-        if candidate_x > float(bounds.get("max_x", candidate_x)):
-            candidate_x = adapted_start_x - 0.8
-        adapted_goal_x, adapted_goal_y = clamp_point_to_map_bounds(candidate_x, adapted_start_y, map_analysis)
-    request.update(
-        {
-            "x": adapted_goal_x,
-            "y": adapted_goal_y,
-            "start_x": adapted_start_x,
-            "start_y": adapted_start_y,
-            "use_start": True,
-            "adapted_from_map_bounds": True,
-            "adaptation_boundary": "map_bounds_adapted_no_motion_planner_probe",
-            "original_goal": {"x": goal_x, "y": goal_y, "yaw": request["yaw"]},
-        }
-    )
-    diagnostics.update(
-        {
-            "adapted": True,
-            "adaptation_boundary": request["adaptation_boundary"],
-            "adapted_start": {"x": adapted_start_x, "y": adapted_start_y},
-            "adapted_goal": {"x": adapted_goal_x, "y": adapted_goal_y},
-        }
-    )
-    request["map_goal_diagnostics"] = diagnostics
-    return request
-
-
 def path_generation_request(
     args: argparse.Namespace,
     *,
@@ -4272,6 +4244,9 @@ def path_generation_request(
         "planner_id": "",
         "orientation_z": math.sin(yaw / 2.0),
         "orientation_w": math.cos(yaw / 2.0),
+        "task_id": READINESS_TASK_ID,
+        "route_intent_id": READINESS_ROUTE_INTENT_ID,
+        "fixed_goal_contract": dict(READINESS_FIXED_GOAL),
     }
     if isinstance(observed_start_pose, dict) and observed_start_pose.get("frame_id") == request["frame_id"]:
         # 板端 TF buffer 窗口较短时，`use_start=false` 会让 planner 在 action 时刻回查
@@ -4292,11 +4267,15 @@ def path_generation_request(
     elif isinstance(observed_start_pose, dict):
         request["start_source"] = "amcl_pose_ignored_frame_mismatch"
     if map_analysis is not None:
-        request = adapt_path_request_to_map_bounds(
-            request,
-            map_analysis=map_analysis,
-            initialpose_payload=initialpose_payload,
-        )
+        # 本轮 fixed goal 不可被 helper 悄悄夹到地图内；越界应在 planner action 前明确 NO-GO。
+        request["map_goal_diagnostics"] = {
+            "map_analysis_ok": bool(map_analysis.get("ok")),
+            "adapted": False,
+            "start_in_bounds": point_in_map_bounds(float(request["start_x"]), float(request["start_y"]), map_analysis),
+            "goal_in_bounds": point_in_map_bounds(float(request["x"]), float(request["y"]), map_analysis),
+            "bounds": map_analysis.get("bounds"),
+            "fixed_goal_immutable": True,
+        }
         cell_counts = map_analysis.get("cell_counts") if isinstance(map_analysis.get("cell_counts"), dict) else {}
         request["map_free_cell_count"] = int(cell_counts.get("free") or 0)
         request["map_has_free_cells_for_path_proof"] = map_has_free_cells_for_path_proof(map_analysis)
@@ -4964,6 +4943,24 @@ def maybe_compute_path_generation(
             "ok": False,
             "boundary": "path_generation_blocked_by_map_has_no_free_cells",
         }, [{"layer": "map quality", "reason": "map_has_no_free_cells_for_nav2_path_proof"}]
+    goal_diagnostics = request.get("map_goal_diagnostics") if isinstance(request.get("map_goal_diagnostics"), dict) else {}
+    if map_analysis is not None and goal_diagnostics.get("map_analysis_ok") and not goal_diagnostics.get("goal_in_bounds"):
+        # fixed route identity 优先于“生成任意一条路径”；越界时不能改目标制造 success-shaped artifact。
+        return request, {
+            "attempted": False,
+            "ok": False,
+            "boundary": "path_generation_blocked_fixed_goal_outside_canonical_map",
+            "service_name": None,
+            "service_available": False,
+            "path_generated": False,
+            "path_point_count": 0,
+            "path_goal_request": goal_diagnostics,
+            "path_goal_response": {"accepted": False, "result_received": False, "blocked_before_action": True},
+        }, {
+            "attempted": False,
+            "ok": False,
+            "boundary": "path_generation_blocked_fixed_goal_outside_canonical_map",
+        }, [{"layer": "planner fixed goal", "reason": "fixed_goal_outside_canonical_map"}]
     try:
         import rclpy
         from geometry_msgs.msg import PoseStamped  # type: ignore[import-not-found]
@@ -4986,13 +4983,14 @@ def maybe_compute_path_generation(
                 "fallback_after_boundary": boundary,
             }, fallback_causes
         return request, {
-            "attempted": True,
+            "attempted": False,
+            "attempt_count": 0,
             "ok": False,
             "boundary": boundary,
             "error": error,
             "fallback_used": False,
         }, {
-            "attempted": True,
+            "attempted": False,
             "ok": False,
             "boundary": boundary,
             "error": error,
@@ -5001,7 +4999,11 @@ def maybe_compute_path_generation(
     started_ms = now_ms()
     action_name = ""
     result_payload: dict[str, Any] = {
-        "attempted": True,
+        "attempted": False,
+        "attempt_count": 0,
+        "started_at_ms": started_ms,
+        "result_received_at_ms": None,
+        "finished_at_ms": None,
         "ok": False,
         "boundary": "path_generation_attempt_started",
         "service_name": None,
@@ -5073,6 +5075,9 @@ def maybe_compute_path_generation(
                 action_name = candidate
                 result_payload["service_name"] = candidate
                 result_payload["service_available"] = True
+                # wait_for_server 只是只读探测；只有真正 send_goal 才消费唯一 planner attempt。
+                result_payload["attempted"] = True
+                result_payload["attempt_count"] = 1
                 goal_future = client.send_goal_async(build_goal())
                 rclpy.spin_until_future_complete(node, goal_future, timeout_sec=max(float(args.path_generation_timeout_s), 5.0))
                 goal_handle = goal_future.result()
@@ -5103,12 +5108,19 @@ def maybe_compute_path_generation(
                 error_msg = getattr(result.result, "error_msg", None)
                 path_preview_points = compact_path_preview_points(path, poses)
                 path_frame_id = getattr(path.header, "frame_id", None) if path is not None else None
+                path_stamp = (
+                    ros_message_stamp_to_artifact(getattr(path.header, "stamp", None), source="computed_path.header.stamp")
+                    if path is not None
+                    else {"parsed": False, "reason": "path_missing", "source": "computed_path.header.stamp"}
+                )
+                result_received_at_ms = now_ms()
                 planning_time_ms = None
                 if planning_time is not None:
                     planning_time_ms = int((float(getattr(planning_time, "sec", 0)) * 1000) + (float(getattr(planning_time, "nanosec", 0)) / 1_000_000.0))
                 result_payload.update(
                     {
                         "result_received": True,
+                        "result_received_at_ms": result_received_at_ms,
                         "result_ok": True,
                         "path_generated": bool(poses),
                         "path_point_count": len(poses),
@@ -5116,6 +5128,7 @@ def maybe_compute_path_generation(
                         "path_preview_point_count": len(path_preview_points),
                         "path_preview_source_point_count": len(poses),
                         "path_preview_frame_id": path_frame_id,
+                        "path_stamp": path_stamp,
                         "planning_time_ms": planning_time_ms,
                         "path_goal_response": {
                             "accepted": True,
@@ -5141,6 +5154,7 @@ def maybe_compute_path_generation(
         result_payload["error"] = compact_error(exc)
     finally:
         result_payload["elapsed_ms"] = now_ms() - started_ms
+        result_payload["finished_at_ms"] = now_ms()
         result_payload["action_name"] = action_name
         if node is not None:
             try:
@@ -5429,6 +5443,7 @@ def parse_cli_compute_path_result(command_result: dict[str, Any], *, action_name
     error_code_match = re.search(r"(?m)^\s*error_code:\s*([0-9]+)", stdout)
     error_msg_match = re.search(r"(?m)^\s*error_msg:\s*['\"]?([^'\"\n]*)", stdout)
     status_match = re.search(r"(?m)^\s*status:\s*([A-Z_0-9]+)", stdout)
+    path_stamp = parse_first_ros_stamp(cli_compute_path_poses_text(stdout), source="computed_path.header.stamp")
     if runtime_unavailable:
         boundary = "path_generation_cli_action_runtime_unavailable"
     elif goal_rejected:
@@ -5464,6 +5479,7 @@ def parse_cli_compute_path_result(command_result: dict[str, Any], *, action_name
         "path_preview_point_count": len(path_preview_points),
         "path_preview_source_point_count": len(structured_poses),
         "path_preview_frame_id": path_preview_frame_id,
+        "path_stamp": path_stamp,
         "status": status_match.group(1) if status_match else None,
         "planner_error_code": int(error_code_match.group(1)) if error_code_match else None,
         "planner_error_msg": error_msg_match.group(1).strip() if error_msg_match else None,
@@ -5485,7 +5501,11 @@ def compute_path_generation_cli_fallback(
     observed_actions = compute_path_action_names_from_cli(str(action_list.get("stdout") or ""))
     attempts: list[dict[str, Any]] = []
     result_payload: dict[str, Any] = {
-        "attempted": True,
+        "attempted": False,
+        "attempt_count": 0,
+        "started_at_ms": started_ms,
+        "result_received_at_ms": None,
+        "finished_at_ms": None,
         "ok": False,
         "boundary": "path_generation_cli_action_fallback_started",
         "service_name": None,
@@ -5535,66 +5555,73 @@ def compute_path_generation_cli_fallback(
         },
         "fallback_attempts": attempts,
     }
-    if action_list.get("ok") and not observed_actions:
+    if not action_list.get("ok"):
+        # action inventory 不可读时不能轮询猜测别名；那会把一次 proof 变成多次 goal attempt。
+        result_payload["boundary"] = "path_generation_cli_action_inventory_unavailable"
+        result_payload["elapsed_ms"] = now_ms() - started_ms
+        result_payload["finished_at_ms"] = now_ms()
+        return result_payload, [{"layer": "planner action", "reason": "compute_path_to_pose_action_inventory_unavailable"}]
+    if not observed_actions:
         result_payload["boundary"] = "path_generation_cli_action_unavailable"
         result_payload["elapsed_ms"] = now_ms() - started_ms
+        result_payload["finished_at_ms"] = now_ms()
         return result_payload, [{"layer": "planner action", "reason": "compute_path_to_pose_action_unavailable"}]
+    if len(observed_actions) != 1:
+        # 多个 ComputePathToPose endpoint 的 ownership 不唯一；不能任选一个制造成功材料。
+        result_payload["boundary"] = "path_generation_cli_action_ambiguous_multiple_servers"
+        result_payload["elapsed_ms"] = now_ms() - started_ms
+        result_payload["finished_at_ms"] = now_ms()
+        return result_payload, [{"layer": "planner action", "reason": "compute_path_to_pose_action_ambiguous_multiple_servers"}]
 
     goal_payload = cli_compute_path_goal_payload(request)
-    for action_name in ordered_compute_path_action_candidates(action_list):
-        command = (
-            f"timeout {cli_timeout_s:g} "
-            f"ros2 action send_goal {shlex.quote(action_name)} "
-            f"nav2_msgs/action/ComputePathToPose {shlex.quote(goal_payload)}"
-        )
-        command_result = run_ros(args, command, timeout_s=command_timeout_s)
-        parsed = parse_cli_compute_path_result(command_result, action_name=action_name)
-        attempts.append(parsed)
-        result_payload["service_name"] = action_name
-        result_payload["service_available"] = bool(
-            parsed["goal_accepted"]
-            or parsed["result_received"]
-            or parsed["path_generated"]
-            or action_name in observed_actions
-        )
-        result_payload["goal_accepted"] = bool(parsed["goal_accepted"])
-        result_payload["result_received"] = bool(parsed["result_received"])
-        result_payload["result_ok"] = bool(parsed["path_generated"])
-        result_payload["path_generated"] = bool(parsed["path_generated"])
-        result_payload["path_point_count"] = int(parsed["path_point_count"])
-        result_payload["path_structured_poses"] = parsed["path_structured_poses"]
-        result_payload["path_structured_pose_count"] = int(parsed["path_structured_pose_count"])
-        result_payload["path_preview_points"] = parsed["path_preview_points"]
-        result_payload["path_preview_point_count"] = int(parsed["path_preview_point_count"])
-        result_payload["path_preview_source_point_count"] = int(parsed["path_preview_source_point_count"])
-        result_payload["path_preview_frame_id"] = parsed["path_preview_frame_id"] or request["frame_id"]
-        result_payload["path_goal_response"] = {
-            "accepted": bool(parsed["goal_accepted"]),
-            "result_received": bool(parsed["result_received"]),
-            "path_frame_id": result_payload["path_preview_frame_id"] if parsed["path_generated"] else None,
-            "path_point_count": int(parsed["path_point_count"]),
-            "path_structured_pose_count": int(parsed["path_structured_pose_count"]),
-            "path_structured_poses": parsed["path_structured_poses"],
-            "path_preview_points": parsed["path_preview_points"],
-            "path_preview_point_count": int(parsed["path_preview_point_count"]),
-            "path_preview_source_point_count": int(parsed["path_preview_source_point_count"]),
-            "planner_error_code": parsed["planner_error_code"],
-            "planner_error_msg": parsed["planner_error_msg"],
-            "status": parsed["status"],
-            "runtime_unavailable": bool(parsed["runtime_unavailable"]),
-        }
-        result_payload["boundary"] = str(parsed["boundary"])
-        result_payload["planner_error_code"] = parsed["planner_error_code"]
-        result_payload["planner_error_msg"] = parsed["planner_error_msg"]
-        if parsed["path_generated"]:
-            break
-        if parsed["runtime_unavailable"]:
-            break
-        if action_name in observed_actions:
-            # action list 已确认该 server；失败已足够具体，不再让后续别名重复超时。
-            break
+    action_name = observed_actions[0]
+    command = (
+        f"timeout {cli_timeout_s:g} "
+        f"ros2 action send_goal {shlex.quote(action_name)} "
+        f"nav2_msgs/action/ComputePathToPose {shlex.quote(goal_payload)}"
+    )
+    # CLI fallback 同样只能发一次 fixed planner goal；失败后禁止换别名 retry。
+    result_payload["attempted"] = True
+    result_payload["attempt_count"] = 1
+    command_result = run_ros(args, command, timeout_s=command_timeout_s)
+    parsed = parse_cli_compute_path_result(command_result, action_name=action_name)
+    attempts.append(parsed)
+    result_payload["service_name"] = action_name
+    result_payload["service_available"] = True
+    result_payload["goal_accepted"] = bool(parsed["goal_accepted"])
+    result_payload["result_received"] = bool(parsed["result_received"])
+    result_payload["result_received_at_ms"] = now_ms() if parsed["result_received"] else None
+    result_payload["result_ok"] = bool(parsed["path_generated"])
+    result_payload["path_generated"] = bool(parsed["path_generated"])
+    result_payload["path_point_count"] = int(parsed["path_point_count"])
+    result_payload["path_structured_poses"] = parsed["path_structured_poses"]
+    result_payload["path_structured_pose_count"] = int(parsed["path_structured_pose_count"])
+    result_payload["path_preview_points"] = parsed["path_preview_points"]
+    result_payload["path_preview_point_count"] = int(parsed["path_preview_point_count"])
+    result_payload["path_preview_source_point_count"] = int(parsed["path_preview_source_point_count"])
+    result_payload["path_preview_frame_id"] = parsed["path_preview_frame_id"] or request["frame_id"]
+    result_payload["path_stamp"] = parsed["path_stamp"]
+    result_payload["path_goal_response"] = {
+        "accepted": bool(parsed["goal_accepted"]),
+        "result_received": bool(parsed["result_received"]),
+        "path_frame_id": result_payload["path_preview_frame_id"] if parsed["path_generated"] else None,
+        "path_point_count": int(parsed["path_point_count"]),
+        "path_structured_pose_count": int(parsed["path_structured_pose_count"]),
+        "path_structured_poses": parsed["path_structured_poses"],
+        "path_preview_points": parsed["path_preview_points"],
+        "path_preview_point_count": int(parsed["path_preview_point_count"]),
+        "path_preview_source_point_count": int(parsed["path_preview_source_point_count"]),
+        "planner_error_code": parsed["planner_error_code"],
+        "planner_error_msg": parsed["planner_error_msg"],
+        "status": parsed["status"],
+        "runtime_unavailable": bool(parsed["runtime_unavailable"]),
+    }
+    result_payload["boundary"] = str(parsed["boundary"])
+    result_payload["planner_error_code"] = parsed["planner_error_code"]
+    result_payload["planner_error_msg"] = parsed["planner_error_msg"]
 
     result_payload["elapsed_ms"] = now_ms() - started_ms
+    result_payload["finished_at_ms"] = now_ms()
     result_payload["ok"] = bool(result_payload["path_generated"])
     if result_payload["ok"]:
         result_payload["boundary"] = "explicit_opt_in_compute_path_to_pose_cli_action_no_motion"
@@ -5659,6 +5686,7 @@ def probe_attempt_artifact(
         "child_runtime",
         "requested_qos_profile",
         "sample_timing",
+        "scan_statistics",
     ):
         if result.get(optional_key) is not None:
             artifact[optional_key] = result.get(optional_key)
@@ -6556,6 +6584,21 @@ def collect_amcl_rclpy_probe(args: argparse.Namespace | None = None, timeout_s: 
             "received_at_ms": None,
             "frame_id": None,
             "stamp": {"parsed": False, "reason": "sample_not_observed", "source": "/amcl_pose.header.stamp"},
+            "pose": None,
+            "covariance": [],
+        },
+        "map_sample": {
+            "observed": False,
+            "sample_count": 0,
+            "received_at_ms": None,
+            "frame_id": None,
+            "stamp": {"parsed": False, "reason": "sample_not_observed", "source": "/map.header.stamp"},
+        },
+        "runtime_interfaces": {
+            "actions": [],
+            "services": [],
+            "inventory_observed": False,
+            "received_at_ms": None,
         },
         "command_statuses": {"rclpy_graph": None, "tf": None, "tf_static": None},
         "error": None,
@@ -6573,6 +6616,7 @@ def collect_amcl_rclpy_probe(args: argparse.Namespace | None = None, timeout_s: 
         import rclpy
         from rcl_interfaces.srv import GetParameters  # type: ignore[import-not-found]
         from geometry_msgs.msg import PoseWithCovarianceStamped  # type: ignore[import-not-found]
+        from nav_msgs.msg import OccupancyGrid  # type: ignore[import-not-found]
         from rclpy.qos import DurabilityPolicy, QoSProfile  # type: ignore[import-not-found]
         from tf2_msgs.msg import TFMessage  # type: ignore[import-not-found]
 
@@ -6630,6 +6674,7 @@ def collect_amcl_rclpy_probe(args: argparse.Namespace | None = None, timeout_s: 
         dynamic_transforms: list[dict[str, Any]] = []
         static_transforms: list[dict[str, Any]] = []
         amcl_pose_samples: list[dict[str, Any]] = []
+        map_samples: list[dict[str, Any]] = []
 
         def on_dynamic_tf(message: Any) -> None:
             # 一条 TFMessage 只取一次 receipt，避免 transforms 循环耗时制造伪造的接收先后。
@@ -6650,6 +6695,10 @@ def collect_amcl_rclpy_probe(args: argparse.Namespace | None = None, timeout_s: 
         def on_amcl_pose(message: Any) -> None:
             """只读采样 pose；本轮禁止 initialpose，所以必须直接记录当前 runtime 是否自行出样本。"""
             stamp = getattr(getattr(message, "header", None), "stamp", None)
+            pose_with_covariance = getattr(message, "pose", None)
+            pose = getattr(pose_with_covariance, "pose", None)
+            position = getattr(pose, "position", None)
+            orientation = getattr(pose, "orientation", None)
             amcl_pose_samples.append(
                 {
                     "received_at_ms": now_ms(),
@@ -6659,6 +6708,45 @@ def collect_amcl_rclpy_probe(args: argparse.Namespace | None = None, timeout_s: 
                         int(getattr(stamp, "nanosec", 0) or 0),
                         source="/amcl_pose.header.stamp",
                     ),
+                    "pose": {
+                        "x": float(getattr(position, "x", 0.0)),
+                        "y": float(getattr(position, "y", 0.0)),
+                        "yaw_qz": float(getattr(orientation, "z", 0.0)),
+                        "yaw_qw": float(getattr(orientation, "w", 0.0)),
+                    },
+                    "covariance": [float(value) for value in list(getattr(pose_with_covariance, "covariance", []) or [])],
+                }
+            )
+
+        def on_map(message: Any) -> None:
+            """current `/map` 只保留 metadata 与内容 hash，避免完整栅格挤爆 natural-final。"""
+            received_at_ms = now_ms()
+            stamp = getattr(getattr(message, "header", None), "stamp", None)
+            info = getattr(message, "info", None)
+            origin = getattr(info, "origin", None)
+            position = getattr(origin, "position", None)
+            orientation = getattr(origin, "orientation", None)
+            data = [int(value) for value in list(getattr(message, "data", []) or [])]
+            map_samples.append(
+                {
+                    "received_at_ms": received_at_ms,
+                    "frame_id": str(getattr(getattr(message, "header", None), "frame_id", "") or ""),
+                    "stamp": ros_stamp_parts_to_artifact(
+                        int(getattr(stamp, "sec", 0) or 0),
+                        int(getattr(stamp, "nanosec", 0) or 0),
+                        source="/map.header.stamp",
+                    ),
+                    "width": int(getattr(info, "width", 0) or 0),
+                    "height": int(getattr(info, "height", 0) or 0),
+                    "resolution": float(getattr(info, "resolution", 0.0) or 0.0),
+                    "origin": {
+                        "x": float(getattr(position, "x", 0.0) or 0.0),
+                        "y": float(getattr(position, "y", 0.0) or 0.0),
+                        "qz": float(getattr(orientation, "z", 0.0) or 0.0),
+                        "qw": float(getattr(orientation, "w", 0.0) or 0.0),
+                    },
+                    "data_count": len(data),
+                    "occupancy_data_sha256": signed_int8_sha256(data),
                 }
             )
 
@@ -6672,6 +6760,12 @@ def collect_amcl_rclpy_probe(args: argparse.Namespace | None = None, timeout_s: 
         )
         # 订阅本身不发布位姿、不触发运动；它只把 `/amcl_pose` 同窗 timestamp/freshness 带回 artifact。
         node.create_subscription(PoseWithCovarianceStamped, "/amcl_pose", on_amcl_pose, QoSProfile(depth=10))
+        node.create_subscription(
+            OccupancyGrid,
+            "/map",
+            on_map,
+            QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL),
+        )
         end_time = time.time() + max(min(timeout_s, 3.0), 0.8)
         while time.time() < end_time:
             # 参数服务偶发晚于 /amcl 节点出现在 graph；不要因此跳过 TF/static TF 采样。
@@ -6680,6 +6774,21 @@ def collect_amcl_rclpy_probe(args: argparse.Namespace | None = None, timeout_s: 
             result["topic_types"] = {topic: ",".join(types) for topic, types in topic_pairs}
             result["topic_endpoint_summaries"] = signal_topic_endpoint_summaries(node)
             result["command_statuses"]["rclpy_graph"] = 0
+            try:
+                result["runtime_interfaces"] = {
+                    "actions": graph_topics_to_artifact(node.get_action_names_and_types()),
+                    "services": graph_topics_to_artifact(node.get_service_names_and_types()),
+                    "inventory_observed": True,
+                    "received_at_ms": now_ms(),
+                }
+            except Exception as interface_exc:  # noqa: BLE001 - interface inventory 缺失必须 fail-closed，但不终止 TF 采样。
+                result["runtime_interfaces"] = {
+                    "actions": [],
+                    "services": [],
+                    "inventory_observed": False,
+                    "received_at_ms": None,
+                    "error": compact_error(interface_exc),
+                }
             try:
                 publishers = node.get_publisher_names_and_types_by_node("amcl", "/")
                 subscribers = node.get_subscriber_names_and_types_by_node("amcl", "/")
@@ -6724,6 +6833,14 @@ def collect_amcl_rclpy_probe(args: argparse.Namespace | None = None, timeout_s: 
             "stamp": latest_pose.get("stamp")
             if isinstance(latest_pose.get("stamp"), dict)
             else {"parsed": False, "reason": "sample_not_observed", "source": "/amcl_pose.header.stamp"},
+            "pose": latest_pose.get("pose") if isinstance(latest_pose.get("pose"), dict) else None,
+            "covariance": latest_pose.get("covariance") if isinstance(latest_pose.get("covariance"), list) else [],
+        }
+        latest_map = map_samples[-1] if map_samples else {}
+        result["map_sample"] = {
+            "observed": bool(map_samples),
+            "sample_count": len(map_samples),
+            **latest_map,
         }
         result["command_statuses"]["tf"] = 0 if dynamic_edges else 124
         result["command_statuses"]["tf_static"] = 0 if static_edges else 124
@@ -6857,7 +6974,7 @@ def compact_tf_source_child_payload(payload: dict[str, Any]) -> dict[str, Any]:
     }
     endpoint_summaries = payload.get("topic_endpoint_summaries") if isinstance(payload.get("topic_endpoint_summaries"), dict) else {}
     compact_endpoints: dict[str, Any] = {}
-    for topic in ("/tf", "/tf_static", "/amcl_pose", INITIALPOSE_TOPIC):
+    for topic in ("/scan", "/map", "/tf", "/tf_static", "/amcl_pose", INITIALPOSE_TOPIC):
         summary = endpoint_summaries.get(topic) if isinstance(endpoint_summaries.get(topic), dict) else {}
         compact_summary = {
             "publisher_count": int(summary.get("publisher_count") or 0),
@@ -6897,6 +7014,25 @@ def compact_tf_source_child_payload(payload: dict[str, Any]) -> dict[str, Any]:
             "stamp": {"parsed": False, "reason": "sample_not_observed", "source": "/amcl_pose.header.stamp"},
         }
     )
+    compact["map_sample"] = (
+        dict(payload["map_sample"])
+        if isinstance(payload.get("map_sample"), dict)
+        else {
+            "observed": False,
+            "sample_count": 0,
+            "received_at_ms": None,
+            "frame_id": None,
+            "stamp": {"parsed": False, "reason": "sample_not_observed", "source": "/map.header.stamp"},
+        }
+    )
+    interfaces = payload.get("runtime_interfaces") if isinstance(payload.get("runtime_interfaces"), dict) else {}
+    compact["runtime_interfaces"] = {
+        "inventory_observed": bool(interfaces.get("inventory_observed")),
+        "received_at_ms": interfaces.get("received_at_ms"),
+        "actions": [dict(item) for item in (interfaces.get("actions") or [])[:24] if isinstance(item, dict)],
+        "services": [dict(item) for item in (interfaces.get("services") or [])[:40] if isinstance(item, dict)],
+        "error": interfaces.get("error"),
+    }
 
     # 同一 broadcaster 在窗口内会产生大量重复 edge；只保留唯一 edge 与该 edge 最新 stamp。
     for edge_key, transform_key in (("dynamic_edges", "dynamic_transforms"), ("static_edges", "static_transforms")):
@@ -7310,6 +7446,17 @@ def build_tf_source_diagnostics(
             "stamp": {"parsed": False, "reason": "sample_not_observed", "source": "/amcl_pose.header.stamp"},
         }
     )
+    map_sample = (
+        dict(probe["map_sample"])
+        if isinstance(probe.get("map_sample"), dict)
+        else {
+            "observed": False,
+            "sample_count": 0,
+            "received_at_ms": None,
+            "frame_id": None,
+            "stamp": {"parsed": False, "reason": "sample_not_observed", "source": "/map.header.stamp"},
+        }
+    )
     amcl_pose_frame_id = str(amcl_pose_sample.get("frame_id") or "") or parse_pose_frame_id(
         str(amcl_pose_result.get("stdout") or "")
     )
@@ -7359,6 +7506,12 @@ def build_tf_source_diagnostics(
         },
         "amcl_pose_frame_id": amcl_pose_frame_id,
         "amcl_pose_sample": amcl_pose_sample,
+        "map_sample": map_sample,
+        "runtime_interfaces": (
+            dict(probe["runtime_interfaces"])
+            if isinstance(probe.get("runtime_interfaces"), dict)
+            else {"actions": [], "services": [], "inventory_observed": False}
+        ),
         "map_to_odom_source_observed": map_to_odom_source_observed,
         "map_to_odom_publisher_attribution": publisher_attribution,
         "odom_to_base_link_source_observed": odom_to_base_source_observed,
@@ -8254,6 +8407,31 @@ def build_map_server_graph_lifecycle_visibility_summary(proof: dict[str, Any]) -
     graph_visibility = lifecycle_summary.get("graph_visibility") if isinstance(lifecycle_summary.get("graph_visibility"), dict) else {}
     graph_target = (graph_visibility.get("target_nodes") or {}).get("map_server") if isinstance(graph_visibility.get("target_nodes"), dict) else {}
     commands = proof.get("commands") if isinstance(proof.get("commands"), dict) else {}
+    # path 门消费冻结 command request/result，不能只看顶层 path_generated 聚合别名。
+    # request 必须绑定既有 task 与 route intent，防止同坐标的临时目标冒充固定路线。
+    # frame、x、y、yaw 都精确匹配 frozen goal，helper 不允许现场自适应或夹边界。
+    # adapted_from_map_bounds 为真即失败，因为成功生成任意路径不是本 sprint 目标。
+    # proof 与 result 两层 attempted/ok 必须一致，避免只改顶层字段制造 success。
+    # action 名必须精确落到 ComputePathToPose，service_name 不能代替 action 身份。
+    # result path_generated 与顶层布尔同时为真，且双方 point_count 都必须大于零。
+    # path frame 必须为 map，局部 costmap frame 的非空路径不能满足固定全局目标。
+    # result receipt 需属于本轮，并在 natural-final 时仍处于三秒 current 窗口。
+    # path header stamp 也必须可解析且最终 fresh，不能只靠较新的 callback receipt。
+    # header 与 receipt 双时刻约束可揭露缓存 path 被晚到回调重新包装的情况。
+    # 导航执行与路径跟随 token 明确禁止，保持 O10 planner-only 无运动边界。
+    # result_received_at 优先于 finished_at，后者只作为旧 result 的保守诊断回退。
+    # CLI fallback 若无法提供 path header stamp 会诚实 NO-GO，不用 stdout 猜测时间。
+    # fixed identity 与 fresh path 同时成立才算 planner-only 路径门通过。
+    # path 门不推断 route success、controller output、到达状态或 delivery。
+    # goal 越界会在 action 前阻断，且不能通过修改 fixed goal 来制造绿门。
+    # start pose 可以来自 current AMCL，但不能改变 frozen destination identity。
+    # path point preview 仅供可读性，point_count 以完整 result 字段为判据。
+    # 任何 missing result 字段都转为 false，不对旧 schema 做乐观兼容。
+    # 该门的 evidence 同时保存 receipt/stamp natural-final 重算，支持独立验收。
+    # freshness 超时只意味着本次 NO-GO，不触发 action retry 或重新规划。
+    # planner-only 成功仍受 map、pose、persisted、TF、obstacle 等其他门约束。
+    # action result failure 与 goal drift 使用不同 blocker，便于定位而不重跑 wrapper。
+    # 离线 hostile fixtures 分别破坏 result、goal 和 timestamp，锁定 fail-closed 行为。
     managed_runtime = commands.get("managed_runtime") if isinstance(commands.get("managed_runtime"), dict) else {}
     managed_wait = proof.get("managed_runtime_wait_result") if isinstance(proof.get("managed_runtime_wait_result"), dict) else {}
     graph_root = proof.get("ros2_graph_timeout_root_cause") if isinstance(proof.get("ros2_graph_timeout_root_cause"), dict) else {}
@@ -9932,6 +10110,7 @@ def rclpy_scan_child_python_command(
 ) -> str:
     """生成在 sourced ROS shell 内执行的 Python probe，隔离主进程未 source 的动态库环境。"""
     return """python3 - <<'PY'
+import hashlib
 import json
 import math
 import os
@@ -10001,6 +10180,15 @@ payload = {
     "environment_check": environment_check(),
     "frame_observed": False,
     "frame_stamp": None,
+    "scan_statistics": {
+        "ranges_count": 0,
+        "finite_positive_count": 0,
+        "invalid_count": 0,
+        "min_distance_m": None,
+        "ranges_sha256": None,
+        "sample_id": None,
+        "received_at_ms": None,
+    },
     "endpoint_inventory": {
         "publishers": [],
         "subscribers": [],
@@ -10168,6 +10356,20 @@ try:
     header = getattr(message, "header", None)
     stamp_payload = stamp_payload_from_message(message)
     ranges = list(getattr(message, "ranges", []) or [])
+    range_min = float(getattr(message, "range_min", 0.0))
+    range_max = float(getattr(message, "range_max", 0.0))
+    finite_ranges = []
+    digest = hashlib.sha256()
+    for value in ranges:
+        try:
+            numeric = float(value)
+        except Exception:
+            numeric = float("nan")
+        # hash 保留 NaN/Inf/负值事实；净空只消费传感器声明量程内的有限正数。
+        token = f"{numeric:.9g}" if math.isfinite(numeric) else str(numeric)
+        digest.update(token.encode("ascii", errors="replace") + b"\n")
+        if math.isfinite(numeric) and numeric > 0.0 and numeric >= range_min and (range_max <= 0.0 or numeric <= range_max):
+            finite_ranges.append(numeric)
     preview = []
     for value in ranges[:6]:
         try:
@@ -10178,6 +10380,18 @@ try:
     payload["ok"] = True
     payload["frame_observed"] = True
     payload["frame_stamp"] = stamp_payload
+    ranges_sha256 = digest.hexdigest()
+    sample_identity = f"{stamp_payload.get('epoch_ms')}:{ranges_sha256}"
+    payload["scan_statistics"] = {
+        "ranges_count": len(ranges),
+        "finite_positive_count": len(finite_ranges),
+        "invalid_count": len(ranges) - len(finite_ranges),
+        "min_distance_m": min(finite_ranges) if finite_ranges else None,
+        "ranges_sha256": ranges_sha256,
+        "sample_id": hashlib.sha256(sample_identity.encode("ascii", errors="replace")).hexdigest(),
+        # 净空门必须把 ranges 锁回同一个 callback receipt，不能用 probe finish time 补洞。
+        "received_at_ms": payload["sample_timing"]["last_sample_received_at_ms"],
+    }
     payload["boundary"] = "rclpy_scan_child_observed"
     payload["stdout"] = json.dumps(
         {
@@ -10185,9 +10399,12 @@ try:
             "angle_min": float(getattr(message, "angle_min", 0.0)),
             "angle_max": float(getattr(message, "angle_max", 0.0)),
             "angle_increment": float(getattr(message, "angle_increment", 0.0)),
-            "range_min": float(getattr(message, "range_min", 0.0)),
-            "range_max": float(getattr(message, "range_max", 0.0)),
+            "range_min": range_min,
+            "range_max": range_max,
             "ranges_count": len(ranges),
+            "finite_positive_count": len(finite_ranges),
+            "min_distance_m": min(finite_ranges) if finite_ranges else None,
+            "ranges_sha256": ranges_sha256,
             "ranges_preview": preview,
             "stamp": stamp_payload,
         },
@@ -10291,6 +10508,15 @@ def rclpy_scan_once(
             "last_sample_received_at_ms": None,
             "timed_out": False,
         },
+        "scan_statistics": {
+            "ranges_count": 0,
+            "finite_positive_count": 0,
+            "invalid_count": 0,
+            "min_distance_m": None,
+            "ranges_sha256": None,
+            "sample_id": None,
+            "received_at_ms": None,
+        },
         "environment_check": {
             "ros_setup": str(args.ros_setup),
             "onboard_setup": str(args.onboard_setup),
@@ -10378,6 +10604,11 @@ def rclpy_scan_once(
                 else result["requested_qos_profile"]
             ),
             "sample_timing": payload.get("sample_timing") if isinstance(payload.get("sample_timing"), dict) else result["sample_timing"],
+            "scan_statistics": (
+                payload.get("scan_statistics")
+                if isinstance(payload.get("scan_statistics"), dict)
+                else result["scan_statistics"]
+            ),
         }
     )
     if isinstance(result.get("sample_timing"), dict):
@@ -11392,6 +11623,17 @@ def child_runtime_from_probe(probe_result: dict[str, Any]) -> dict[str, Any] | N
     return None
 
 
+def scan_statistics_from_probe(probe_result: dict[str, Any]) -> dict[str, Any]:
+    """只接受真正观测到样本的 child 统计，CLI preview 或失败 attempt 不得补造净空。"""
+    attempts = probe_result.get("attempts") if isinstance(probe_result.get("attempts"), list) else []
+    for attempt in attempts:
+        statistics = attempt.get("scan_statistics") if isinstance(attempt, dict) else None
+        if isinstance(statistics, dict) and attempt.get("observed"):
+            return dict(statistics)
+    statistics = probe_result.get("scan_statistics")
+    return dict(statistics) if isinstance(statistics, dict) and topic_once_observed(probe_result) else {}
+
+
 def select_amcl_pose_probe(
     amcl_pose_once: dict[str, Any],
     post_initialpose_amcl_pose_once: dict[str, Any],
@@ -11463,6 +11705,7 @@ def build_signal_entry(
                 "publisher_inventory": publisher_inventory,
                 "endpoint_inventory": endpoint_inventory,
                 "sample_timing": sample_timing,
+                "current_sample": scan_statistics_from_probe(probe_result),
                 "managed_runtime_scan_status": {
                     "managed_runtime_started": managed_runtime_started,
                     "topic_visible": topic_type is not None,
@@ -11510,6 +11753,11 @@ def build_localization_signal_freshness(
     direct_amcl_pose_sample = (
         tf_source_diagnostics.get("amcl_pose_sample")
         if isinstance(tf_source_diagnostics.get("amcl_pose_sample"), dict)
+        else {}
+    )
+    direct_map_sample = (
+        tf_source_diagnostics.get("map_sample")
+        if isinstance(tf_source_diagnostics.get("map_sample"), dict)
         else {}
     )
     if direct_amcl_pose_sample.get("observed"):
@@ -11590,11 +11838,26 @@ def build_localization_signal_freshness(
             topic="/map",
             topic_type=topic_types.get("/map"),
             endpoint_summary=endpoint("/map"),
-            probe_result=map_once or {"executed": False, "ok": False, "boundary": "map_probe_not_run"},
-            observed=topic_once_observed(map_once or {}),
-            stamp=parse_first_ros_stamp(str((map_once or {}).get("stdout") or ""), source="/map.header.stamp"),
+            probe_result=(
+                {
+                    "executed": True,
+                    "ok": True,
+                    "stdout": "current /map sampled by sourced rclpy probe",
+                    "finished_at_ms": direct_map_sample.get("received_at_ms"),
+                    "boundary": "map_sample_observed_by_tf_source_child",
+                }
+                if direct_map_sample.get("observed")
+                else map_once or {"executed": False, "ok": False, "boundary": "map_probe_not_run"}
+            ),
+            observed=bool(direct_map_sample.get("observed") or topic_once_observed(map_once or {})),
+            stamp=(
+                dict(direct_map_sample["stamp"])
+                if isinstance(direct_map_sample.get("stamp"), dict)
+                else parse_first_ros_stamp(str((map_once or {}).get("stdout") or ""), source="/map.header.stamp")
+            ),
             source_class="message",
-            reference_ms=reference(map_once or {}),
+            reference_ms=int(direct_map_sample.get("received_at_ms") or reference(map_once or {})),
+            extra={"direct_read_only_sample": direct_map_sample},
         ),
         "/amcl_pose": build_signal_entry(
             topic="/amcl_pose",
@@ -12421,6 +12684,8 @@ def tf_summary_edge(
         "static_source_observed": bool(edge.get("static_source_observed")),
         "freshness": edge.get("freshness") if isinstance(edge.get("freshness"), dict) else {},
         "timestamp": edge.get("timestamp") if isinstance(edge.get("timestamp"), dict) else {},
+        # callback receipt 是 current-window 判定的唯一可比较墙钟，不能只藏在旧 freshness 子对象里。
+        "received_at_ms": edge.get("received_at_ms"),
         "boundary": pair.get("boundary"),
         "failure_reason": pair.get("failure_reason"),
     }
@@ -12552,6 +12817,1021 @@ def build_path_generation_gate_summary(proof: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def finite_float(value: Any) -> float | None:
+    """readiness 只消费有限数值；bool、NaN、Inf 与不可解析字符串都保持缺失。"""
+    if isinstance(value, bool):
+        return None
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return None
+    return parsed if math.isfinite(parsed) else None
+
+
+def natural_final_receipt_audit(
+    received_at_ms: Any,
+    *,
+    started_at_ms: int,
+    generated_at_ms: int,
+) -> dict[str, Any]:
+    """采样必须属于本轮且在 natural-final 时仍新鲜，禁止用早期回调洗绿最终门禁。"""
+    # 这里同时检查“属于本轮”和“最终仍新鲜”，因为两个概念不能互相替代。
+    # 只检查 receipt 非空会接受上一轮残留 artifact，破坏 current-run 边界。
+    # 只检查 started 之后会接受本轮很早的样本，无法代表发车前的最终状态。
+    # generated_at 是 natural-final 的统一裁决时刻，九门不得各自选择便利基准。
+    # receipt 使用 helper 写入的 wall clock，不拿 ROS header 或 monotonic tick 补洞。
+    # 缺失 receipt 时 age 保持 None，调用方会显式产生稳定 blocker。
+    # 未来 receipt 同样拒绝，避免负 age 被错误解释为非常新鲜。
+    # 三秒阈值沿用定位信号合同，避免不同门使用不同 freshness 语义。
+    # 返回原始 receipt 是为了让 artifact 消费者无需回到大段 probe 原文。
+    # 返回 age 而非只有布尔值，便于现场判断是轻微超时还是完全跨窗。
+    # in_run_window 约束 lineage，fresh_at_natural_final 约束时效，两者都必须为真。
+    # 本函数不修正时钟、不取绝对值，也不允许旧 reference 覆盖 current 事实。
+    # 该审计只读，不触发订阅、action、initialpose 或任何底盘控制副作用。
+    # 所有调用方都把 false 直接传给 readiness checks，从而保持 fail-closed。
+    # 统一函数还避免 scan、pose、TF、path 四套时间计算日后再次漂移。
+    receipt = int(received_at_ms or 0)
+    age_ms = generated_at_ms - receipt if generated_at_ms and receipt else None
+    return {
+        "received_at_ms": receipt or None,
+        "age_at_natural_final_ms": age_ms,
+        "in_run_window": bool(receipt and started_at_ms <= receipt <= generated_at_ms),
+        "fresh_at_natural_final": bool(age_ms is not None and 0 <= age_ms <= FRESHNESS_STALE_AFTER_MS),
+        "threshold_ms": FRESHNESS_STALE_AFTER_MS,
+    }
+
+
+def readiness_gate(gate_id: str, checks: dict[str, bool], evidence: dict[str, Any]) -> dict[str, Any]:
+    """九门共享 fail-closed 形状，任一 missing/false 都必须成为稳定 blocker。"""
+    failed = [name for name, clean in checks.items() if not clean]
+    return {
+        "gate_id": gate_id,
+        "ready": not failed,
+        "checks": checks,
+        "blocking_reasons": [f"{gate_id}:{name}" for name in failed],
+        "evidence": evidence,
+    }
+
+
+def covariance_readiness(covariance: Any) -> dict[str, Any]:
+    """AMCL covariance 必须是 6x6 有限矩阵，且 x/y/yaw 三个对角项不能全为零。"""
+    values = list(covariance) if isinstance(covariance, list) else []
+    finite_values = [finite_float(value) for value in values]
+    diagonals = [finite_values[index] if index < len(finite_values) else None for index in (0, 7, 35)]
+    valid = bool(
+        len(values) == 36
+        and all(value is not None for value in finite_values)
+        and all(value is not None and value >= 0.0 for value in diagonals)
+        and any(value is not None and value > 0.0 for value in diagonals)
+    )
+    return {"valid": valid, "value_count": len(values), "xyyaw_diagonal": diagonals}
+
+
+def current_map_identity_audit(proof: dict[str, Any]) -> dict[str, Any]:
+    """把 canonical YAML/image identity 与同窗 OccupancyGrid metadata/data hash 严格对齐。"""
+    # canonical map 既是定位坐标系来源，也是 fixed goal 合法性的唯一地图身份。
+    # 因此不能只比较 YAML 路径；同名文件内容变化仍必须让 map 门变红。
+    # current OccupancyGrid 优先取同窗 rclpy sample，历史 map_once 只能作为缺失诊断。
+    # receipt 只用于说明 current sample 的时间位置，不把静态地图误做动态传感器。
+    # width/height 必须同时为正，零尺寸地图不能凭 hash 空值碰巧相等而通过。
+    # resolution 使用严格小容差，防止地图缩放漂移后 fixed goal 落到错误栅格。
+    # origin 的 x、y、yaw 三项缺一不可，不能用生成器跳过 None 制造部分匹配。
+    # qz/qw 先转有限浮点；NaN/Inf 或不可解析 quaternion 都属于身份不确定。
+    # 这里只支持二维 yaw 合同，因为 Nav2 map origin 的滚转和俯仰不参与该地图格式。
+    # occupancy hash 比 JSON 文本稳定，不受空格、换行或 signed int8 展示方式影响。
+    # data_count 与 width*height 的关系由 current sample 和 canonical count 双重约束。
+    # canonical audit 本身必须 ok，单独出现 hash 字段不代表 YAML/image 已被验证。
+    # current frame 必须由上层 gate 明确等于 map，这里只负责内容与 metadata 对齐。
+    # map 是 transient-local 静态材料，所以不套用三秒动态 freshness 阈值。
+    # 但 current receipt 仍必须在本轮自然结束窗口内，避免引用旧 runtime 样本。
+    # 任一 metadata 不可解析时 metadata_match 为 false，不尝试默认零值容错。
+    # 返回 canonical/current 原始摘要，方便审计者复算而不是只相信聚合布尔值。
+    # 该函数不读取文件或 ROS graph，保证 natural-final 计算是纯函数且可离线测试。
+    # 纯函数形态让同一 frozen proof 多次复算得到完全相同的 gate 结果。
+    # 内容不一致只产生 NO-GO，不会尝试改 map、重载 lifecycle 或移动 fixed goal。
+    canonical = proof.get("canonical_initialpose_map_audit") if isinstance(proof.get("canonical_initialpose_map_audit"), dict) else {}
+    current = proof.get("current_map_sample") if isinstance(proof.get("current_map_sample"), dict) else {}
+    if not current:
+        signals = proof.get("localization_signal_freshness") if isinstance(proof.get("localization_signal_freshness"), dict) else {}
+        map_entry = signals.get("/map") if isinstance(signals.get("/map"), dict) else {}
+        current = map_entry.get("direct_read_only_sample") if isinstance(map_entry.get("direct_read_only_sample"), dict) else {}
+    generated_at_ms = int(proof.get("generated_at_ms") or 0)
+    received_at_ms = int(current.get("received_at_ms") or 0)
+    receipt_age_ms = generated_at_ms - received_at_ms if generated_at_ms and received_at_ms else None
+    canonical_origin = canonical.get("origin") if isinstance(canonical.get("origin"), list) else []
+    current_origin = current.get("origin") if isinstance(current.get("origin"), dict) else {}
+    current_x = finite_float(current_origin.get("x"))
+    current_y = finite_float(current_origin.get("y"))
+    current_yaw = None
+    qz = finite_float(current_origin.get("qz"))
+    qw = finite_float(current_origin.get("qw"))
+    if qz is not None and qw is not None:
+        current_yaw = math.atan2(2.0 * qw * qz, 1.0 - 2.0 * qz * qz)
+    canonical_resolution = finite_float(canonical.get("resolution"))
+    current_resolution = finite_float(current.get("resolution"))
+    canonical_origin_values = [finite_float(value) for value in canonical_origin]
+    metadata_match = bool(
+        int(canonical.get("width") or 0) == int(current.get("width") or 0) > 0
+        and int(canonical.get("height") or 0) == int(current.get("height") or 0) > 0
+        and canonical_resolution is not None
+        and current_resolution is not None
+        and abs(canonical_resolution - current_resolution) <= 1e-9
+        and len(canonical_origin) == 3
+        and all(value is not None for value in canonical_origin_values)
+        and current_x is not None
+        and current_y is not None
+        and current_yaw is not None
+        and all(
+            abs(float(canonical_origin_values[index]) - value) <= 1e-6
+            for index, value in enumerate((current_x, current_y, current_yaw))
+        )
+    )
+    return {
+        "canonical": canonical,
+        "current": current,
+        "receipt_age_ms": receipt_age_ms,
+        "metadata_match": metadata_match,
+        "content_hash_match": bool(
+            canonical.get("occupancy_data_sha256")
+            and canonical.get("occupancy_data_sha256") == current.get("occupancy_data_sha256")
+            and int(canonical.get("occupancy_data_count") or 0) == int(current.get("data_count") or 0)
+        ),
+    }
+
+
+def runtime_interface_names(runtime_interfaces: dict[str, Any], key: str) -> dict[str, str]:
+    """把 rclpy graph 的 action/service 数组压成 name->type，方便固定合同精确匹配。"""
+    entries = runtime_interfaces.get(key) if isinstance(runtime_interfaces.get(key), list) else []
+    return {
+        str(entry.get("topic") or ""): str(entry.get("type") or "")
+        for entry in entries
+        if isinstance(entry, dict) and entry.get("topic")
+    }
+
+
+def current_persisted_pose_audit(
+    proof: dict[str, Any],
+    *,
+    current_pose_ready: bool,
+    dynamic_tf_ready: bool,
+    map_identity_clean: bool,
+) -> dict[str, Any]:
+    """记录 persisted pose 的来源、时间、地图身份与 pre/post 一致性，不复用静态配置 presence。"""
+    # persisted pose 门回答的是“本 runtime 是否真的消费了位姿”，不是配置里有没有键。
+    # AMCL 参数 presence 只能说明候选来源存在，不能单独证明定位输出已经形成。
+    # canonical `/initialpose` 是另一种来源，但必须恰好一次且写入成功才可接受。
+    # 两种来源互斥选择，避免失败 publish 与旧 persisted 参数拼出虚假成功。
+    # source_timestamp 绑定来源产生时刻，后续 pose receipt 必须严格晚于该时刻。
+    # runtime 启动时间来自本 helper/O11 lineage，不能用文件 mtime 或人工时间代替。
+    # canonical write 优先使用 publish finished_at，确保 callback 不会早于写动作完成。
+    # source 缺失时 timestamp 固定为空，调用方会产生 source_known blocker。
+    # current pose 必须来自同一个 localization_signal_freshness，而不是历史摘要别名。
+    # legacy pre_publish 输出仅用于检查顺序冲突，不能覆盖 current pose 的最终真值。
+    # pre stamp 晚于 post stamp 表示时间倒退，必须保守判定 current/reference conflict。
+    # pose receipt 不晚于来源表示无法证明 live consumption，即使 pose header 看似 fresh。
+    # attempts 大于一次违反 no-retry 合同，无论最后一次成功与否都直接 fail closed。
+    # dynamic TF 也必须 ready，因为 AMCL pose 没有 map->odom 输出仍不算定位链闭合。
+    # map identity 必须 clean，避免把一张地图保存的 pose 应用到另一张地图坐标系。
+    # current_pose_ready 会继承 frame、covariance、stamp 与 natural-final receipt 校验。
+    # live_consumed 汇总上述事实，但 artifact 仍保留每个原始字段供独立复算。
+    # canonical map hash 同时保留 YAML 和 image，不能只靠路径或 basename 建立绑定。
+    # pose_received_after_source 单独输出，便于区分缺时刻与真实顺序冲突。
+    # 不在这里主动发布 `/initialpose`，该函数只审计已经冻结的命令结果。
+    # 不在这里重试来源选择，失败必须留给当前 readiness blocker 而非隐藏修复。
+    # persisted source 可以来自参数，但参数值必须由当前 runtime probe 实际读回。
+    # 布尔字符串只接受 true/1，其他模糊值都按未启用处理，避免宽松 truthiness。
+    # source map clean 依赖 current OccupancyGrid 内容，不能只引用启动参数 map_yaml。
+    # pre/post audit 在 no publish 分支仍有意义，可揭露残留 AMCL 输出早于 runtime。
+    # canonical publish 分支要求 request source 明确为可复算 free-cell，不接受手填坐标。
+    # 失败 publish 不获得 canonical_write 身份，防止 attempt_count 被误读成消费完成。
+    # 返回结构不声明 route、control 或 delivery，仅表达 localization 输入消费事实。
+    # 该门通过也只是 planner 前置之一，不能单独令 READINESS_GO 变成 true。
+    # 所有判断都是离线纯计算，便于 hostile fixture 覆盖每个 fail-closed 分支。
+    runtime_params = proof.get("amcl_runtime_params") if isinstance(proof.get("amcl_runtime_params"), dict) else {}
+    commands = proof.get("commands") if isinstance(proof.get("commands"), dict) else {}
+    publish = commands.get("initialpose_publish") if isinstance(commands.get("initialpose_publish"), dict) else {}
+    initialpose_request_value = proof.get("initialpose_request") if isinstance(proof.get("initialpose_request"), dict) else {}
+    attempts = int(proof.get("initialpose_publish_attempts") or publish.get("publish_attempts") or 0)
+    runtime_set_initial_pose = str(runtime_params.get("set_initial_pose") or "").strip().lower() in {"true", "1"}
+    canonical_write = bool(
+        attempts == 1
+        and publish.get("ok")
+        and initialpose_request_value.get("source") == "canonical_map_free_cell_world_pose"
+    )
+    source = (
+        "canonical_initialpose_once"
+        if canonical_write
+        else "runtime_persisted_amcl_params"
+        if runtime_set_initial_pose
+        else "missing"
+    )
+    source_timestamp_ms = (
+        int(publish.get("finished_at_ms") or publish.get("started_at_ms") or 0)
+        if canonical_write
+        else int(proof.get("managed_runtime_started_at_ms") or proof.get("started_at_ms") or 0)
+        if runtime_set_initial_pose
+        else 0
+    )
+    signals = proof.get("localization_signal_freshness") if isinstance(proof.get("localization_signal_freshness"), dict) else {}
+    pose_entry = signals.get("/amcl_pose") if isinstance(signals.get("/amcl_pose"), dict) else {}
+    direct_pose = pose_entry.get("direct_read_only_sample") if isinstance(pose_entry.get("direct_read_only_sample"), dict) else {}
+    pose_received_at_ms = int(direct_pose.get("received_at_ms") or 0)
+    legacy = proof.get("persisted_pose_audit") if isinstance(proof.get("persisted_pose_audit"), dict) else {}
+    pre_outputs = legacy.get("pre_publish_live_outputs") if isinstance(legacy.get("pre_publish_live_outputs"), dict) else {}
+    pre_pose = pre_outputs.get("amcl_pose") if isinstance(pre_outputs.get("amcl_pose"), dict) else {}
+    pre_stamp_ms = int((pre_pose.get("timestamp") or {}).get("epoch_ms") or 0) if isinstance(pre_pose.get("timestamp"), dict) else 0
+    post_stamp_ms = int((pose_entry.get("timestamp") or {}).get("epoch_ms") or 0) if isinstance(pose_entry.get("timestamp"), dict) else 0
+    pre_post_conflict = bool(
+        (pre_stamp_ms and post_stamp_ms and post_stamp_ms < pre_stamp_ms)
+        or (source != "missing" and source_timestamp_ms and pose_received_at_ms <= source_timestamp_ms)
+        or attempts > 1
+    )
+    live_consumed = bool(
+        source != "missing"
+        and source_timestamp_ms > 0
+        and current_pose_ready
+        and dynamic_tf_ready
+        and map_identity_clean
+        and not pre_post_conflict
+        and (not canonical_write or pose_received_at_ms > source_timestamp_ms)
+    )
+    canonical = proof.get("canonical_initialpose_map_audit") if isinstance(proof.get("canonical_initialpose_map_audit"), dict) else {}
+    return {
+        "source": source,
+        "source_timestamp_ms": source_timestamp_ms or None,
+        "map_identity": {
+            "yaml_sha256": canonical.get("map_yaml_sha256"),
+            "image_sha256": canonical.get("map_image_sha256"),
+            "current_map_identity_clean": map_identity_clean,
+        },
+        "publish_attempts": attempts,
+        "pre_pose_stamp_ms": pre_stamp_ms or None,
+        "post_pose_stamp_ms": post_stamp_ms or None,
+        "pre_post_conflict": pre_post_conflict,
+        "pose_received_after_source": bool(pose_received_at_ms and source_timestamp_ms and pose_received_at_ms > source_timestamp_ms),
+        "live_consumed": live_consumed,
+    }
+
+
+# 九门实现不变量：以下说明与 natural-final 计算同处，修改字段时必须同步审查对应原因。
+# 时间基准 01：started_at_ms 冻结本次 helper 的墙钟起点，历史样本不得早于它。
+# 时间基准 02：generated_at_ms 是判定时点，不使用采样阶段的旧 age 代替最终 age。
+# 时间基准 03：header stamp 证明消息生成时间，callback receipt 证明本进程实际收到时间。
+# 时间基准 04：stamp 与 receipt 都要通过，避免缓存消息在新窗口被误当作 current。
+# 时间基准 05：所有墙钟比较只消费 epoch_ms，不把 monotonic 秒直接混入 ROS 时间。
+# 时间基准 06：outer monotonic deadline 只控制预算，不参与传感器 freshness 计算。
+# 时间基准 07：receipt 必须位于 started 与 generated 之间，未来时间同样失败关闭。
+# 时间基准 08：最终 age 必须非负，时钟倒退不能被绝对值洗成 fresh。
+# 时间基准 09：scan、pose、TF 与 path 共享同一个 generated_at_ms 判定截面。
+# 时间基准 10：旧 freshness 子对象只作原始证据，九门会从 stamp 再计算一次。
+# 时间基准 11：path receipt 表示 planner 结果到达，不以 action 请求时间冒充结果时间。
+# 时间基准 12：path header stamp 还要独立 fresh，避免返回缓存 path。
+# 时间基准 13：TF 每条 edge 保留 callback receipt，不能只依赖 transform header。
+# 时间基准 14：两条 TF edge receipt 间隔受同一 stale 阈值约束，防止拼接异步历史边。
+# 时间基准 15：map 的 transient-local 允许旧 header，但 receipt 仍必须属于本次运行。
+# 时间基准 16：map 内容身份比 header 新旧更关键，所以另做 canonical hash 对齐。
+# 时间基准 17：pose receipt 必须晚于 persisted source，才能证明 runtime 已消费来源。
+# 时间基准 18：canonical initialpose publish 的完成时间是 persisted source 时间。
+# 时间基准 19：静态 runtime persisted 参数以本轮 managed runtime 启动时间为来源时间。
+# 时间基准 20：pre/post pose stamp 倒序属于冲突，不能按最终 observed 布尔值放行。
+# 时间基准 21：partial artifact 缺少自然结束截面，即使字段齐全也不能判 GO。
+# 时间基准 22：current_command 非空表示命令仍在执行，禁止提前冻结 readiness。
+# 时间基准 23：last_phase 必须为 final，cleanup 或 probe 中间态不是自然收口。
+# 时间基准 24：artifact_kind 必须为 final，旧 partial schema 不能伪装完整证据。
+# 时间基准 25：各门只读同一个 proof 对象，禁止跨 artifact 回填缺失时间。
+# 时间基准 26：缺失 stamp 的样本保持 missing，不使用 receipt 推测消息生成时间。
+# 时间基准 27：缺失 receipt 的样本保持 missing，不使用 stamp 推测本进程已消费。
+# 时间基准 28：阈值边界采用小于等于 fresh，超过一毫秒即按 stale 处理。
+# 时间基准 29：测试 fixture 使用真实 epoch 量级，防止秒与毫秒单位混淆漏测。
+# 时间基准 30：所有时间 blocker 保留具体 check 名，便于现场只修最窄根因。
+# Canonical map 01：固定 YAML 路径是本轮身份根，不允许从候选列表临时漂移。
+# Canonical map 02：YAML SHA 证明元数据配置，image SHA 证明像素源，两者缺一不可。
+# Canonical map 03：current OccupancyGrid 必须来自本轮 transient-local readback。
+# Canonical map 04：map_server active 只证明 lifecycle，不证明加载了正确地图。
+# Canonical map 05：topic 可见只证明 graph，不证明拿到了 current grid 内容。
+# Canonical map 06：width 与 height 同时匹配，避免不同裁剪地图碰巧共享像素数。
+# Canonical map 07：resolution 精确到保守容差，防止同图不同尺度被判成同地图。
+# Canonical map 08：origin x、y、yaw 三项必须全部有限，缺一项不能跳过比较。
+# Canonical map 09：四元数先还原 yaw，再与 YAML origin yaw 比较。
+# Canonical map 10：PGM 左上原点要翻转到 OccupancyGrid 左下原点后再计算内容 hash。
+# Canonical map 11：signed int8 统一转同位字节，避免 JSON 序列化形式改变 hash。
+# Canonical map 12：occupied、free、unknown 依照 map_server trinary 阈值重建。
+# Canonical map 13：data_count 与 hash 同时相等，避免空数据或截断数据碰巧通过。
+# Canonical map 14：canonical audit 失败时不继续消费其 free-cell 结果。
+# Canonical map 15：候选地图 ranking 必须唯一指向固定 YAML，防止同窗选错地图。
+# Canonical map 16：free cell 只从明确 free 像素选择，unknown 不可作为定位种子。
+# Canonical map 17：free-cell image 坐标转换到 map 坐标时必须应用 origin yaw。
+# Canonical map 18：free-cell world pose 必须有限且仍在地图局部边界内。
+# Canonical map 19：中心最近排序减少把定位种子放在地图边缘的风险。
+# Canonical map 20：row 与 column 是稳定 tie-break，确保相同地图每次选同一点。
+# Canonical map 21：固定目标越界时直接 NO-GO，不夹点、不平移、不制造替代路径。
+# Canonical map 22：地图没有 free cell 时在 planner action 前停止，避免 success-shaped 假象。
+# Canonical map 23：current frame 必须是 map，其他 frame 的 OccupancyGrid 不参与身份对齐。
+# Canonical map 24：current receipt 位于本轮窗口，历史 map artifact 不可跨 run 拼接。
+# Canonical map 25：map hash 只比较栅格内容，文件路径文字不能替代内容身份。
+# Canonical map 26：YAML/image hash 同时写入 persisted pose map identity 供追溯。
+# Canonical map 27：map metadata mismatch 与 content hash mismatch 分开成为 blocker。
+# Canonical map 28：缺失 origin 数值必须失败，生成器不可通过跳过 None 洗绿。
+# Canonical map 29：非对称小地图测试用于锁定行翻转，防止对称 fixture 掩盖错误。
+# Canonical map 30：地图门只证明当前 canonical 输入，不声称道路、净空或可控制。
+# Persisted pose 01：仓库 set_initial_pose 配置存在不等于本轮 runtime 已消费位姿。
+# Persisted pose 02：effective AMCL 参数来自当前参数服务，不从静态 YAML 猜测。
+# Persisted pose 03：source 必须明确为 runtime persisted 参数或 canonical 单次写入。
+# Persisted pose 04：source=missing 时保持红门，不能用 current pose observed 反推来源。
+# Persisted pose 05：source timestamp 必须存在，才能与 live pose receipt 建立先后关系。
+# Persisted pose 06：runtime persisted source 绑定本轮 managed runtime 启动时点。
+# Persisted pose 07：canonical 写入 source 绑定 publish 完成或开始时点。
+# Persisted pose 08：canonical 写入必须 publish ok 且 attempt 恰好为一次。
+# Persisted pose 09：initialpose source 字符串必须是 canonical free-cell 合同值。
+# Persisted pose 10：initialpose attempt 大于一次直接构成 pre/post conflict。
+# Persisted pose 11：attempt 等于零允许 runtime persisted 分支，但必须有 effective 参数。
+# Persisted pose 12：pre pose stamp 晚于 post pose stamp 表示证据顺序冲突。
+# Persisted pose 13：current pose receipt 不晚于 source 时不能称为 live consumed。
+# Persisted pose 14：current pose 门先通过，persisted 门才消费其 fresh/frame/covariance 事实。
+# Persisted pose 15：dynamic TF 门先通过，才能证明 pose 已进入当前定位链。
+# Persisted pose 16：canonical map 门先通过，才能把 pose 与正确地图身份绑定。
+# Persisted pose 17：pre/post conflict 一旦成立，不由后续 observed 布尔值覆盖。
+# Persisted pose 18：map identity 同时记录 YAML 与 image SHA，便于离线复核来源。
+# Persisted pose 19：live_consumed 是复合结论，不是 AMCL 参数的简单别名。
+# Persisted pose 20：canonical publish 时 pose receipt 必须严格晚于 publish source。
+# Persisted pose 21：runtime persisted 分支仍要求 source 时间为正，缺启动时间失败。
+# Persisted pose 22：旧 persisted_pose_audit 只提供 pre 输出，不直接决定新门状态。
+# Persisted pose 23：pose frame 必须是 map，odom/base frame 样本不可替代全局位姿。
+# Persisted pose 24：covariance 非法时 current pose 红，因此 persisted 也必须连带红。
+# Persisted pose 25：pose stamp stale 时 current pose 红，禁止 persisted 参数洗白。
+# Persisted pose 26：map hash mismatch 时 persisted map identity 必须显式为 false。
+# Persisted pose 27：TF static 或 attribution ambiguous 时 live_consumed 必须为 false。
+# Persisted pose 28：source、timestamp、pre/post 与 consumption 全部作为原始 evidence 返回。
+# Persisted pose 29：失败 reason 按子检查命名，避免笼统写成 localization not ready。
+# Persisted pose 30：该门只证明定位状态消费，不证明机器人在物理位置上绝对准确。
+# TF attribution 01：map->odom 必须来自 dynamic /tf，static source 一律不接受。
+# TF attribution 02：map->odom publisher 必须唯一归因 AMCL，多 publisher 保持 ambiguous。
+# TF attribution 03：AMCL endpoint 可见不等于该 transform 确由 AMCL 发布。
+# TF attribution 04：publisher attribution 使用当前 graph inventory，不复用旧节点列表。
+# TF attribution 05：map->odom header stamp 必须可解析并在 final 截面 fresh。
+# TF attribution 06：map->odom callback receipt 也必须在本轮且在 final 截面 fresh。
+# TF attribution 07：odom->base_link 同样要求 dynamic source，static 不能冒充里程计。
+# TF attribution 08：odom->base_link header 与 receipt 分别做 freshness 检查。
+# TF attribution 09：两条 edge 的 receipt 必须处于同一 freshness 窗口。
+# TF attribution 10：map->base_link 必须由当前两条 edge 在同窗可解析。
+# TF attribution 11：最终 chain observed 不会反向洗白缺失或 stale 的组成 edge。
+# TF attribution 12：source_class 缺失保持 missing，不从 topic 名字猜 dynamic。
+# TF attribution 13：/tf_static 采样仅用于外参，不参与 dynamic map->odom 判定。
+# TF attribution 14：base_link->laser_frame 可为 static，但它不是本九门 dynamic TF 子项。
+# TF attribution 15：每个 TFMessage 的 transforms 共享一次 callback receipt。
+# TF attribution 16：循环处理 transform 不重复取墙钟，避免制造伪先后顺序。
+# TF attribution 17：header_age_at_receipt 与 final age 是不同审计维度。
+# TF attribution 18：迟到 header 不能因新 receipt 被洗成 fresh。
+# TF attribution 19：采集后计算延迟不能重复累加到 receipt 时年龄。
+# TF attribution 20：tf2_echo timeout 有输出时仅作辅助，source inventory 仍是归因依据。
+# TF attribution 21：空 tf2_echo 或 lookup failure 不能计为 observed transform。
+# TF attribution 22：frame 名称统一去斜杠只为比较，不改变真实父子方向。
+# TF attribution 23：map/odom/base 参数漂移会单独暴露 frame naming blocker。
+# TF attribution 24：缺 odom->base_link 与缺 map->odom 必须分别记录最窄根因。
+# TF attribution 25：AMCL tf_broadcast 参数为 false 时不得声称 dynamic source ready。
+# TF attribution 26：publisher candidates 全部保留，便于现场排查多义来源。
+# TF attribution 27：唯一归因状态使用固定枚举，避免自由文本误判成 ready。
+# TF attribution 28：TF 门只验证定位链 current，不证明 controller 已可执行。
+# TF attribution 29：TF 缺失时 path action 在前置 gate 停止，不靠 planner 自己报错。
+# TF attribution 30：任何 static、stale、missing、ambiguous 都保持 READINESS_GO=false。
+# Planner interface 01：planner_server lifecycle active 是必要条件，但不是充分条件。
+# Planner interface 02：当前 action inventory 必须包含 ComputePathToPose 的精确类型。
+# Planner interface 03：当前 service inventory 必须包含 planner lifecycle get_state。
+# Planner interface 04：interface inventory 采集失败时不能用节点名可见替代。
+# Planner interface 05：controller_server lifecycle active 同样是独立九门之一。
+# Planner interface 06：controller action inventory 只读检查 FollowPath 是否 ready。
+# Planner interface 07：读取 FollowPath 类型不等于创建 ActionClient 或发送目标。
+# Planner interface 08：controller lifecycle service 必须当前可见，历史 ready 不可复用。
+# Planner interface 09：planner-only 请求固定 frame 为 map，禁止现场改 frame。
+# Planner interface 10：固定 goal x=0.8、y=0.25、yaw=0，不允许 map bounds 自适应。
+# Planner interface 11：固定 task_id 继承已接受的 28 pose 消费任务身份。
+# Planner interface 12：固定 route_intent_id 继承既有 structured path lineage。
+# Planner interface 13：请求身份漂移时即使得到 path 也必须判红。
+# Planner interface 14：ComputePathToPose 必须实际 attempted，requested 布尔值不足。
+# Planner interface 15：result 必须 ok，goal accepted 单独不能代表规划成功。
+# Planner interface 16：path point_count 必须大于零，空 path 不能包装成 success。
+# Planner interface 17：顶层与 result 内的 generated/point_count 必须同时一致。
+# Planner interface 18：path frame 必须为 map，避免跨 frame 的不可消费路径。
+# Planner interface 19：path result receipt 必须属于本轮且在 final 时仍 fresh。
+# Planner interface 20：path header stamp 必须解析并在 final 时仍 fresh。
+# Planner interface 21：action_name 必须精确落在 compute_path_to_pose。
+# Planner interface 22：导航执行与路径跟随 action 出现在调用结果即失败关闭。
+# Planner interface 23：Python import 失败可回退 CLI，但只能在未发送 action 时回退。
+# Planner interface 24：候选 action 名只选择首个可用服务，不对已发送目标重试。
+# Planner interface 25：固定目标越界在 action 前返回具体 blocker。
+# Planner interface 26：无 free cell 在 action 前返回 map quality blocker。
+# Planner interface 27：定位前置门不 clean 时 path_attempted 必须保持 false。
+# Planner interface 28：planner path 只证明几何可生成，不证明 controller 执行结果。
+# Planner interface 29：controller readiness 只为 Phase B 准入输入，不授权本 helper 控制。
+# Planner interface 30：所有 path evidence 保留 request/result/receipt 供冻结 artifact 复核。
+# Same-scan obstacle 01：净空门必须复用生成本 final 的同一 scan sample_id。
+# Same-scan obstacle 02：scan sample_id 同时绑定 header epoch 与 ranges 内容 hash。
+# Same-scan obstacle 03：ranges hash 保留 NaN、Inf、负值事实，不能只 hash 有效点。
+# Same-scan obstacle 04：publisher endpoint inventory 必须在当前 child graph 中采集。
+# Same-scan obstacle 05：publisher 数量必须恰好一个，零或多个都失败关闭。
+# Same-scan obstacle 06：唯一 publisher 必须是 O11-owned lidar_driver 身份。
+# Same-scan obstacle 07：O10 必须显式记录复用 O11 runtime，不能启动第二个串口实例。
+# Same-scan obstacle 08：topic type 必须精确为 sensor_msgs/msg/LaserScan。
+# Same-scan obstacle 09：scan header stamp 必须解析，零时间或缺字段不可放行。
+# Same-scan obstacle 10：scan callback receipt 必须位于本次 natural-final 窗口。
+# Same-scan obstacle 11：scan stamp 与 receipt 在 final 时都必须仍然 fresh。
+# Same-scan obstacle 12：ranges_count 必须大于零，空数组不代表环境清空。
+# Same-scan obstacle 13：每个 range 必须有限、为正且位于传感器声明量程内。
+# Same-scan obstacle 14：invalid_count 必须为零，NaN/Inf 不得被过滤后洗绿。
+# Same-scan obstacle 15：finite_positive_count 必须与 ranges_count 完全相等。
+# Same-scan obstacle 16：min_distance 只从通过量程检查的 current ranges 计算。
+# Same-scan obstacle 17：最小距离阈值固定 0.45m，等于阈值允许通过。
+# Same-scan obstacle 18：低于阈值一律红门，不由平均距离或大多数点覆盖。
+# Same-scan obstacle 19：BEST_EFFORT 优先符合常见 LiDAR QoS，不省略 RELIABLE 对照诊断。
+# Same-scan obstacle 20：QoS fallback 只用于拿同一窗口样本，不复用旧 scan artifact。
+# Same-scan obstacle 21：endpoint 可见但无样本时保留 readback timeout，而非宣称净空。
+# Same-scan obstacle 22：scan topic 可见但无 publisher 时记录 publisher blocker。
+# Same-scan obstacle 23：publisher 多义时不选择任意一个作为 owned source。
+# Same-scan obstacle 24：sample preview 只用于诊断，净空使用完整 ranges 统计。
+# Same-scan obstacle 25：range_min/range_max 来自同一 LaserScan 消息。
+# Same-scan obstacle 26：sample receipt 与统计在同一 child payload 中原子返回。
+# Same-scan obstacle 27：AMCL 门也消费同一 scan 订阅事实，避免传感器链割裂。
+# Same-scan obstacle 28：obstacle_clear 不读取 costmap 历史 observation persistence。
+# Same-scan obstacle 29：collision detection 仍由 controller 参数持续开启，准入不能替代运行保护。
+# Same-scan obstacle 30：净空门只说明采样瞬间阈值，不声称之后路线持续无障碍。
+# 九门聚合 01：gates 字典固定恰好九项，scan 原始门不额外算第十门。
+# 九门聚合 02：map、amcl、planner、controller 分别保留 lifecycle 与原始依据。
+# 九门聚合 03：current_pose 与 persisted_pose 分开，避免“有位姿”掩盖来源不明。
+# 九门聚合 04：dynamic_tf 独立成门，避免 AMCL active 掩盖未广播 transform。
+# 九门聚合 05：planner_only_path 独立成门，避免接口 ready 掩盖实际未规划。
+# 九门聚合 06：obstacle_clear 独立成门，避免 path 成功掩盖当前障碍物。
+# 九门聚合 07：每门 ready 只由该门 checks 全真得出。
+# 九门聚合 08：每个 false check 生成 gate_id:check_name 稳定 blocker。
+# 九门聚合 09：blocker 不去重合并成笼统文本，现场可直接定位字段。
+# 九门聚合 10：natural-final 任一检查失败时，即便九门值齐全也不能 GO。
+# 九门聚合 11：READINESS_GO 要求 natural_final、无 blocker 且 gate_count=9。
+# 九门聚合 12：ready_count 仅用于展示，不能代替逐门结构。
+# 九门聚合 13：顶层 *_ready alias 仅供决策器读取，不复制或改写原始 evidence。
+# 九门聚合 14：attach_artifact_summaries 每次从当前 proof 重算，不继承旧 GO。
+# 九门聚合 15：partial/exception/timeout artifact 也运行同一聚合并自然失败关闭。
+# 九门聚合 16：严格门失败会把 proof status 收紧为 blocked_with_root_cause。
+# 九门聚合 17：旧 aggregate success 不得覆盖 current natural-final blocker。
+# 九门聚合 18：initialpose attempt 与 retry count 显式输出，便于 exactly-once 审计。
+# 九门聚合 19：fixed goal、task 与 route identity 在 readiness 顶层再次冻结。
+# 九门聚合 20：proof_boundary 明确仅 same-current readiness，不是导航或控制。
+# 九门聚合 21：所有 safety flags 继续固定 false，不随 GO 改变。
+# 九门聚合 22：READINESS_GO=true 不等于 route_execution_success=true。
+# 九门聚合 23：readiness 全绿不等于已经形成真实送达成功证据。
+# 九门聚合 24：READINESS_GO=true 不等于 hil_pass=true 或 safe_to_control=true。
+# 九门聚合 25：Phase B 是否运行由外部受控 orchestrator 决定，O10 不自行触发。
+# 九门聚合 26：O10 cleanup 只处理 helper 自有进程组，不停止外部 O11 runtime。
+# 九门聚合 27：外部 runtime reuse 必须显式记录 ownership，防止 broad kill。
+# 九门聚合 28：失败 artifact 仍保留完整 gates/evidence，不能只返回一个布尔值。
+# 九门聚合 29：单测对每类负例只破坏一项，确保 blocker 具有可诊断性。
+# 九门聚合 30：9/9 fixture 证明合同可达，但不替代真实板端 current 采样。
+def build_current_natural_final_readiness(proof: dict[str, Any]) -> dict[str, Any]:
+    """从同一个 natural-final 计算九门；任一 stale/missing/conflict/static/ambiguous 都 NO-GO。"""
+    # natural-final 是九门共同的证据容器，禁止从 partial 或历史 latest 拼接单门真值。
+    # artifact_kind 证明 helper 已进入最终收口，而不是仍在执行中途快照。
+    # last_phase 再次锁定状态机位置，避免 status 文本被单独改写成成功形状。
+    # current_command 必须为空，说明没有 probe/action 尚在后台改变 readiness 事实。
+    # generated_at 必须不早于 started_at，时钟逆序时整份材料都不可作为当前证据。
+    # 这些 natural-final 条件位于九门之外，但任一失败同样强制 READINESS_GO=false。
+    # 九门不读取外部文件、不调用 ROS，也不修补 proof，确保判定可以稳定复算。
+    # generated_at 同时是动态信号最终 freshness 的统一 reference，防止各门各算各的。
+    # started_at 划定当前 run lineage，receipt 早于它即使很新也属于上一轮材料。
+    # scan 原始门不单列为第十门，而是 obstacle_clear 与 AMCL 的共同可信输入。
+    # 仍先构造完整 scan_gate，确保 topic、publisher、stamp、sample 与 identity 同时成立。
+    # topic type 精确匹配 LaserScan，拒绝同名 topic 被其他 message 类型占用。
+    # endpoint inventory 必须来自当前 probe，topic list 中有名称不足以证明 publisher。
+    # publisher 必须恰好一个，零 publisher 无数据，多 publisher 则来源身份有歧义。
+    # sample observed 与 sample statistics 必须来自同一个成功 child attempt。
+    # header freshness 检查传感器生成时间，receipt freshness 检查 helper 实际接收时间。
+    # 两种 freshness 都在 natural-final 重算，不能沿用 callback 当时的旧 fresh 标签。
+    # finite_positive_count 拒绝空、全 NaN、全 Inf 或全部越出传感器量程的 scan。
+    # min_distance 必须有限，布尔或不可解析字符串不能进入距离比较。
+    # sample_id 绑定 header 与 ranges hash，防止阈值结论引用另一个 scan 样本。
+    # scan 门只表达原始证据可信，是否净空仍由 obstacle threshold 独立裁决。
+    # scan evidence 保留 signal 与 sample，便于审计 endpoint、QoS、时刻和距离来源。
+    # 缺字段全部按 false 处理，不允许旧 schema 因默认值而获得兼容性放行。
+    # 当前实现不对 scan 做平滑或过滤，避免算法加工掩盖最近障碍的保守下界。
+    # scan 门失败后仍计算其余门，artifact 能一次列全 blocker 而不是只报首错。
+    generated_at_ms = int(proof.get("generated_at_ms") or 0)
+    started_at_ms = int(proof.get("started_at_ms") or 0)
+    natural_final_checks = {
+        "artifact_kind_final": proof.get("artifact_kind") == "final",
+        "partial_false": proof.get("partial") is False,
+        "last_phase_final": proof.get("last_phase") == "final",
+        "current_command_none": proof.get("current_command") is None,
+        "generated_after_started": bool(generated_at_ms and started_at_ms and generated_at_ms >= started_at_ms),
+    }
+    signals = proof.get("localization_signal_freshness") if isinstance(proof.get("localization_signal_freshness"), dict) else {}
+    scan_entry = signals.get("/scan") if isinstance(signals.get("/scan"), dict) else {}
+    scan_endpoint = scan_entry.get("endpoint_inventory") if isinstance(scan_entry.get("endpoint_inventory"), dict) else {}
+    scan_probe = scan_entry.get("probe") if isinstance(scan_entry.get("probe"), dict) else {}
+    scan_timestamp = scan_entry.get("timestamp") if isinstance(scan_entry.get("timestamp"), dict) else {}
+    scan_freshness = scan_entry.get("freshness") if isinstance(scan_entry.get("freshness"), dict) else {}
+    scan_sample = scan_entry.get("current_sample") if isinstance(scan_entry.get("current_sample"), dict) else {}
+    scan_min = finite_float(scan_sample.get("min_distance_m"))
+    scan_timing = scan_entry.get("sample_timing") if isinstance(scan_entry.get("sample_timing"), dict) else {}
+    scan_publishers = scan_endpoint.get("publishers") if isinstance(scan_endpoint.get("publishers"), list) else []
+    owned_scan_publishers = [
+        publisher
+        for publisher in scan_publishers
+        if isinstance(publisher, dict)
+        and str(publisher.get("node_name") or "").strip("/") == "lidar_driver"
+        and str(publisher.get("node_namespace") or "/") in {"", "/"}
+        and str(publisher.get("topic_type") or "") == LOCALIZATION_SIGNAL_TOPICS["/scan"]
+    ]
+    scan_receipt = natural_final_receipt_audit(
+        scan_sample.get("received_at_ms") or scan_timing.get("last_sample_received_at_ms"),
+        started_at_ms=started_at_ms,
+        generated_at_ms=generated_at_ms,
+    )
+    scan_final_freshness = freshness_from_stamp(
+        scan_timestamp,
+        observed=bool(scan_probe.get("observed")),
+        source_class="message",
+        reference_ms=generated_at_ms,
+    )
+    scan_gate = readiness_gate(
+        "scan",
+        {
+            "topic_type_laserscan": scan_entry.get("topic_type") == LOCALIZATION_SIGNAL_TOPICS["/scan"],
+            "endpoint_inventory_current": bool(scan_endpoint.get("inventory_observed")),
+            "exactly_one_publisher": int(scan_endpoint.get("publisher_count") or 0) == 1,
+            "publisher_identity_owned_lidar_driver": len(owned_scan_publishers) == 1,
+            "o11_owned_runtime_explicitly_reused": bool(
+                proof.get("managed_runtime_external_reused")
+                and proof.get("managed_lidar_policy") == "reuse_existing_o11_owned_lidar_and_nav2_runtime"
+            ),
+            "sample_observed": bool(scan_probe.get("observed")),
+            "stamp_parsed": scan_timestamp.get("parsed") is True,
+            "sample_fresh": scan_freshness.get("status") == "fresh",
+            "sample_receipt_in_run_window": bool(scan_receipt["in_run_window"]),
+            "sample_receipt_fresh_at_natural_final": bool(scan_receipt["fresh_at_natural_final"]),
+            "stamp_fresh_at_natural_final": scan_final_freshness.get("status") == "fresh",
+            "finite_points_present": int(scan_sample.get("finite_positive_count") or 0) > 0,
+            "all_ranges_finite_and_in_sensor_bounds": bool(
+                int(scan_sample.get("ranges_count") or 0) > 0
+                and int(scan_sample.get("invalid_count") or 0) == 0
+                and int(scan_sample.get("finite_positive_count") or 0) == int(scan_sample.get("ranges_count") or 0)
+            ),
+            "finite_min_distance": scan_min is not None,
+            "sample_identity_present": bool(scan_sample.get("sample_id")),
+        },
+        {
+            "signal": scan_entry,
+            "sample": scan_sample,
+            "receipt_at_natural_final": scan_receipt,
+            "stamp_at_natural_final": scan_final_freshness,
+        },
+    )
+
+    map_identity = current_map_identity_audit(proof)
+    # map 门把 lifecycle、canonical 文件审计和 current ROS sample 绑定成一个身份闭环。
+    # map_server active 只说明节点状态，不说明它发布的就是冻结 canonical map。
+    # canonical audit ok 要求 YAML、image、threshold、尺寸和 hash 均可复算。
+    # current map observed 必须来自本轮 rclpy sample，单纯 topic 可见不能替代消息。
+    # frame_id 精确为 map，防止同一栅格数据被放在错误坐标系中使用。
+    # receipt 需落在 started/generated 窗口，拒绝 transient-local 的跨轮旧缓存。
+    # metadata match 覆盖宽高、分辨率和完整二维 origin，不接受部分字段相等。
+    # content hash 覆盖 signed int8 OccupancyGrid 数据，避免只比 metadata 漏掉地图变化。
+    # map 是相对静态材料，所以这里只要求本轮 receipt，不套动态三秒过期阈值。
+    # identity clean 会继续传入 persisted pose，确保位姿与地图不可跨身份混用。
+    # current pose 门单独验证定位输出，不能由 amcl lifecycle active 自动推断。
+    # pose sample observed 必须来自 direct read-only callback，而非 CLI stdout 猜测。
+    # pose header stamp 解析失败时不使用 receipt 代替消息产生时间。
+    # callback 时 fresh 与 natural-final 时 fresh 都要满足，防止长路径计算后过期。
+    # receipt 必须在本轮且距 natural-final 不超过统一阈值，防止旧 pose 洗绿。
+    # frame 必须为 map，odom/base frame 的 pose 不能冒充全局定位结果。
+    # covariance 必须是完整 6x6 有限矩阵，不能接收截断或含 NaN 的估计。
+    # x/y/yaw 对角项不能全零，防止默认零数组伪装成极高置信定位。
+    # covariance 非负约束拒绝不符合方差语义的 hostile 数据。
+    # pose 数值与 covariance 原样保留，但 readiness 不夸大为定位长期鲁棒性。
+    # current_pose 通过只证明当前样本可用，不说明 persisted 来源已经被消费。
+    # 因此 persisted_pose 仍是独立一门，二者不能合并成一个宽松布尔值。
+    # pose receipt 与 source timestamp 的顺序稍后会再次进入 persisted 审计。
+    # 任何 pose blocker 都会同步让 AMCL 聚合门失败，避免 active 节点单独放行。
+    # 所有比较都保持 fail-closed，不做 frame alias 或 covariance 默认值兼容。
+    current_map = map_identity["current"]
+    map_gate = readiness_gate(
+        "map",
+        {
+            "map_server_active": bool(proof.get("map_server_active")),
+            "canonical_yaml_image_clean": bool((map_identity["canonical"] or {}).get("ok")),
+            "canonical_map_path_exact": str((map_identity["canonical"] or {}).get("map_yaml") or "")
+            == DEFAULT_MANAGED_MAP_YAML,
+            "canonical_yaml_hash_present": bool((map_identity["canonical"] or {}).get("map_yaml_sha256")),
+            "canonical_image_hash_present": bool((map_identity["canonical"] or {}).get("map_image_sha256")),
+            "current_map_observed": bool(current_map.get("observed")),
+            "current_map_frame": current_map.get("frame_id") == "map",
+            "current_map_in_window": bool(
+                current_map.get("received_at_ms")
+                and started_at_ms <= int(current_map["received_at_ms"]) <= generated_at_ms
+            ),
+            "metadata_match": bool(map_identity["metadata_match"]),
+            "content_hash_match": bool(map_identity["content_hash_match"]),
+        },
+        map_identity,
+    )
+
+    pose_entry = signals.get("/amcl_pose") if isinstance(signals.get("/amcl_pose"), dict) else {}
+    pose_probe = pose_entry.get("probe") if isinstance(pose_entry.get("probe"), dict) else {}
+    pose_timestamp = pose_entry.get("timestamp") if isinstance(pose_entry.get("timestamp"), dict) else {}
+    pose_freshness = pose_entry.get("freshness") if isinstance(pose_entry.get("freshness"), dict) else {}
+    direct_pose = pose_entry.get("direct_read_only_sample") if isinstance(pose_entry.get("direct_read_only_sample"), dict) else {}
+    covariance = covariance_readiness(direct_pose.get("covariance"))
+    pose_receipt = natural_final_receipt_audit(
+        direct_pose.get("received_at_ms"),
+        started_at_ms=started_at_ms,
+        generated_at_ms=generated_at_ms,
+    )
+    pose_final_freshness = freshness_from_stamp(
+        pose_timestamp,
+        observed=bool(pose_probe.get("observed")),
+        source_class="message",
+        reference_ms=generated_at_ms,
+    )
+    current_pose_gate = readiness_gate(
+        "current_pose",
+        {
+            "sample_observed": bool(pose_probe.get("observed")),
+            "stamp_parsed": pose_timestamp.get("parsed") is True,
+            "sample_fresh": pose_freshness.get("status") == "fresh",
+            "receipt_present": int(direct_pose.get("received_at_ms") or 0) > 0,
+            "receipt_in_run_window": bool(pose_receipt["in_run_window"]),
+            "receipt_fresh_at_natural_final": bool(pose_receipt["fresh_at_natural_final"]),
+            "stamp_fresh_at_natural_final": pose_final_freshness.get("status") == "fresh",
+            "frame_is_map": direct_pose.get("frame_id") == "map",
+            "covariance_valid": bool(covariance["valid"]),
+        },
+        {
+            "signal": pose_entry,
+            "covariance": covariance,
+            "receipt_at_natural_final": pose_receipt,
+            "stamp_at_natural_final": pose_final_freshness,
+        },
+    )
+
+    tf_summary = build_tf_readiness_summary(proof)
+    # TF 门只接受动态 map->odom，static/fake 边即使几何可解析也不能代表 AMCL 输出。
+    # map->odom header freshness 先验证消息生成时效，callback receipt 再验证同窗性。
+    # publisher attribution 必须唯一匹配 /amcl，不能只看到 /tf 上存在相同 edge。
+    # `/tf` 常有多个合法 publisher，所以归因按 edge 与 AMCL node graph 交集完成。
+    # 归因 ambiguous 时宁可 NO-GO，也不从候选顺序猜哪个 publisher 负责该 edge。
+    # odom->base_link 同样要求 dynamic，禁止 no-motion 历史 static 兜底进入发车门。
+    # 两条 edge 都要在 natural-final 时仍新鲜，callback 当时 fresh 不足以放行。
+    # 两条 receipt 的差值受统一阈值约束，避免把相隔很久的边拼成同窗链。
+    # map->base_link observed 是完整链可解析的额外事实，不由两布尔值盲目推断。
+    # TF header 若不是 wall clock 会返回 unknown，禁止与主机时间做伪年龄计算。
+    # header 明显未来或 receipt 晚于 final 都会在纯函数审计中变成 blocker。
+    # map->odom 与 odom->base 均保留原始 stamp、receipt 和 source_class 供复算。
+    # source_class 缺失不回退到 observed 布尔，避免旧 schema 绕过 dynamic 要求。
+    # publisher endpoint 缺 inventory 时不接受节点名字符串作为唯一归因证据。
+    # AMCL 的 /tf publisher presence 与 edge presence 必须同时成立才可唯一绑定。
+    # dynamic_tf 通过只说明坐标链当前可用，不代表 controller 已执行或可安全控制。
+    # 该门不会调用 tf2 lookup；它消费 natural-final 已冻结的只读采样结果。
+    # 不在门内重采 TF，可避免前后门分别看到不同窗口却被合并成 9/9。
+    # edge_receipts_same_window 使用 callback 时刻，不使用 header 差值掩盖传输延迟。
+    # 三秒只是 current readiness 上限，不代表长期 TF 发布频率或鲁棒性保证。
+    # 任何静态、陈旧、缺 receipt 或多义归因均形成独立稳定 blocker 名称。
+    # 完整 evidence 追加 natural-final 重算结果，避免消费者误读旧 freshness 字段。
+    # persisted pose 会复用本门 ready，确保 live consumption 同时产生可信 TF。
+    # path 门也间接受 TF 前置限制，但仍独立验证 planner action 的结果时间。
+    # TF 门失败不会触发 initialpose、runtime restart 或任何修复动作。
+    map_to_odom = tf_summary.get("map_to_odom_dynamic") if isinstance(tf_summary.get("map_to_odom_dynamic"), dict) else {}
+    odom_to_base = tf_summary.get("odom_to_base_link") if isinstance(tf_summary.get("odom_to_base_link"), dict) else {}
+    map_to_base = tf_summary.get("map_to_base_link") if isinstance(tf_summary.get("map_to_base_link"), dict) else {}
+    map_tf_receipt = natural_final_receipt_audit(
+        map_to_odom.get("received_at_ms"),
+        started_at_ms=started_at_ms,
+        generated_at_ms=generated_at_ms,
+    )
+    odom_tf_receipt = natural_final_receipt_audit(
+        odom_to_base.get("received_at_ms"),
+        started_at_ms=started_at_ms,
+        generated_at_ms=generated_at_ms,
+    )
+    map_tf_final_freshness = freshness_from_stamp(
+        map_to_odom.get("timestamp") if isinstance(map_to_odom.get("timestamp"), dict) else {},
+        observed=bool(map_to_odom.get("observed")),
+        source_class="dynamic",
+        reference_ms=generated_at_ms,
+    )
+    odom_tf_final_freshness = freshness_from_stamp(
+        odom_to_base.get("timestamp") if isinstance(odom_to_base.get("timestamp"), dict) else {},
+        observed=bool(odom_to_base.get("observed")),
+        source_class="dynamic",
+        reference_ms=generated_at_ms,
+    )
+    map_tf_received_at_ms = int(map_to_odom.get("received_at_ms") or 0)
+    odom_tf_received_at_ms = int(odom_to_base.get("received_at_ms") or 0)
+    dynamic_tf_gate = readiness_gate(
+        "dynamic_tf",
+        {
+            "map_to_odom_dynamic": map_to_odom.get("source_class") == "dynamic",
+            "map_to_odom_dynamic_observed": bool(map_to_odom.get("dynamic_source_observed")),
+            "map_to_odom_static_conflict_absent": not bool(map_to_odom.get("static_source_observed")),
+            "map_to_odom_fresh": (map_to_odom.get("freshness") or {}).get("status") == "fresh",
+            "map_to_odom_fresh_at_natural_final": map_tf_final_freshness.get("status") == "fresh",
+            "map_to_odom_receipt_in_run_window": bool(map_tf_receipt["in_run_window"]),
+            "map_to_odom_receipt_fresh_at_natural_final": bool(map_tf_receipt["fresh_at_natural_final"]),
+            "map_to_odom_unique_amcl": map_to_odom.get("publisher_attribution_status") == "attributed_unique_amcl",
+            "odom_to_base_dynamic": odom_to_base.get("source_class") == "dynamic",
+            "odom_to_base_dynamic_observed": bool(odom_to_base.get("dynamic_source_observed")),
+            "odom_to_base_static_conflict_absent": not bool(odom_to_base.get("static_source_observed")),
+            "odom_to_base_fresh": (odom_to_base.get("freshness") or {}).get("status") == "fresh",
+            "odom_to_base_fresh_at_natural_final": odom_tf_final_freshness.get("status") == "fresh",
+            "odom_to_base_receipt_in_run_window": bool(odom_tf_receipt["in_run_window"]),
+            "odom_to_base_receipt_fresh_at_natural_final": bool(odom_tf_receipt["fresh_at_natural_final"]),
+            "edge_receipts_same_window": bool(
+                map_tf_received_at_ms
+                and odom_tf_received_at_ms
+                and abs(map_tf_received_at_ms - odom_tf_received_at_ms) <= FRESHNESS_STALE_AFTER_MS
+            ),
+            "same_window_map_to_base_link": bool(map_to_base.get("observed")),
+        },
+        {
+            **tf_summary,
+            "map_to_odom_receipt_at_natural_final": map_tf_receipt,
+            "odom_to_base_receipt_at_natural_final": odom_tf_receipt,
+            "map_to_odom_stamp_at_natural_final": map_tf_final_freshness,
+            "odom_to_base_stamp_at_natural_final": odom_tf_final_freshness,
+        },
+    )
+
+    persisted = current_persisted_pose_audit(
+        proof,
+        current_pose_ready=current_pose_gate["ready"],
+        dynamic_tf_ready=dynamic_tf_gate["ready"],
+        map_identity_clean=map_gate["ready"],
+    )
+    persisted_source_receipt = natural_final_receipt_audit(
+        persisted.get("source_timestamp_ms"),
+        started_at_ms=started_at_ms,
+        generated_at_ms=generated_at_ms,
+    )
+    persisted["source_time_at_natural_final"] = persisted_source_receipt
+    persisted_gate = readiness_gate(
+        # persisted 门不接受“参数存在即 ready”，所有来源必须出现 current live 输出。
+        "persisted_pose",
+        {
+            "source_known": persisted["source"] != "missing",
+            "source_timestamp_present": persisted["source_timestamp_ms"] is not None,
+            "source_timestamp_in_run_window": bool(persisted_source_receipt["in_run_window"]),
+            "canonical_yaml_hash_bound": bool(persisted["map_identity"].get("yaml_sha256")),
+            "canonical_image_hash_bound": bool(persisted["map_identity"].get("image_sha256")),
+            "canonical_map_identity_clean": bool(persisted["map_identity"]["current_map_identity_clean"]),
+            "pre_post_not_conflicting": not persisted["pre_post_conflict"],
+            "initialpose_at_most_once": int(persisted["publish_attempts"]) <= 1,
+            "live_consumed": bool(persisted["live_consumed"]),
+        },
+        persisted,
+    )
+
+    interfaces = proof.get("runtime_interfaces") if isinstance(proof.get("runtime_interfaces"), dict) else {}
+    # planner/controller 门刻意分开，因为 path 可生成不代表 controller server 可执行。
+    # interface inventory 必须来自 current rclpy graph，旧 node info 文本不参与放行。
+    # action 和 service 同时要求存在，避免 lifecycle active 但 action server 未注册。
+    # lifecycle get_state service 提供节点受管状态入口，单纯 action 名称仍不够。
+    # planner 只接受 ComputePathToPose，其他 planner action 不满足本轮 fixed path 合同。
+    # controller 只读确认 FollowPath presence，绝不在 O10 内创建或发送 action goal。
+    # action 名按 suffix 匹配以容忍 namespace，但类型仍必须精确包含 Nav2 action。
+    # service 名按 server/get_state 匹配，确保不是无关 lifecycle 节点的服务。
+    # inventory_observed 为 false 时，即使手工 fixture 填了 action 名也必须 NO-GO。
+    # lifecycle active 使用当前 proof 顶层字段，它来自实际 lifecycle readback 合并结果。
+    # graph observed node 不能替代 active，因为节点可见时仍可能 unconfigured/inactive。
+    # planner 门通过也不会自动令 path 门通过，必须实际获得 ComputePathToPose result。
+    # controller 门通过只表达发车前服务准备度，不证明 collision behavior 或制动效果。
+    # 两门 evidence 保留完整 name->type 字典，方便识别 namespace/type 漂移。
+    # 重复 action endpoint 不在这里去重为成功，graph collector 已按当前 inventory 冻结。
+    # 缺 service/action 时不尝试启动 lifecycle，O10 维持只读/规划边界。
+    # controller inactive 会在 path 生成前置门阻断，即使 planner-only action本身可用。
+    # 这是产品九门合同要求，不允许旧 helper 的 planner_server_observed 宽松路径绕过。
+    # planner/controller 当前状态与 O11 ownership 独立，O10 不获得清理外部进程权限。
+    # readiness 只消费接口事实，不读取 PID 或串口，因此不会扩大 hardware 范围。
+    # action 类型缺失或错型都 fail closed，避免名称碰撞导致错误 server 被接受。
+    # service presence 表示 graph 可发现，不夸大为已完成业务 action 调用。
+    # 后续 Phase B 仍需独立 operator/stop/route freshness 门，本门不是发车授权。
+    # 离线 fixture 对 lifecycle false 与接口缺失同时覆盖，避免 happy path 单测偏置。
+    # planner/controller blocker 分别输出，便于现场只修真实缺失节点。
+    interface_receipt = natural_final_receipt_audit(
+        interfaces.get("received_at_ms"),
+        started_at_ms=started_at_ms,
+        generated_at_ms=generated_at_ms,
+    )
+    actions = runtime_interface_names(interfaces, "actions")
+    services = runtime_interface_names(interfaces, "services")
+    planner_action_ready = any(
+        name.endswith("/compute_path_to_pose") and "nav2_msgs/action/ComputePathToPose" in action_type
+        for name, action_type in actions.items()
+    )
+    controller_action_ready = any(
+        name.endswith("/follow_path") and "nav2_msgs/action/FollowPath" in action_type
+        for name, action_type in actions.items()
+    )
+    planner_service_ready = any(name.endswith("/planner_server/get_state") for name in services)
+    controller_service_ready = any(name.endswith("/controller_server/get_state") for name in services)
+    planner_gate = readiness_gate(
+        "planner",
+        {
+            "lifecycle_active": bool(proof.get("planner_server_active")),
+            "interface_inventory_current": bool(interfaces.get("inventory_observed")),
+            "interface_inventory_in_run_window": bool(interface_receipt["in_run_window"]),
+            "lifecycle_service_ready": planner_service_ready,
+            "compute_path_action_ready": planner_action_ready,
+        },
+        {"actions": actions, "services": services, "receipt": interface_receipt},
+    )
+    controller_gate = readiness_gate(
+        "controller",
+        {
+            "lifecycle_active": bool(proof.get("controller_server_active")),
+            "interface_inventory_current": bool(interfaces.get("inventory_observed")),
+            "interface_inventory_in_run_window": bool(interface_receipt["in_run_window"]),
+            "lifecycle_service_ready": controller_service_ready,
+            "follow_path_action_ready": controller_action_ready,
+        },
+        {"actions": actions, "services": services, "receipt": interface_receipt},
+    )
+
+    commands = proof.get("commands") if isinstance(proof.get("commands"), dict) else {}
+    path_command = commands.get("path_generation") if isinstance(commands.get("path_generation"), dict) else {}
+    path_request = path_command.get("request") if isinstance(path_command.get("request"), dict) else {}
+    path_result = path_command.get("result") if isinstance(path_command.get("result"), dict) else {}
+    path_received_at_ms = int(path_result.get("result_received_at_ms") or path_result.get("finished_at_ms") or 0)
+    path_receipt = natural_final_receipt_audit(
+        path_received_at_ms,
+        started_at_ms=started_at_ms,
+        generated_at_ms=generated_at_ms,
+    )
+    path_stamp = path_result.get("path_stamp") if isinstance(path_result.get("path_stamp"), dict) else {}
+    path_final_freshness = freshness_from_stamp(
+        path_stamp,
+        observed=bool(path_result.get("path_generated")),
+        source_class="message",
+        reference_ms=generated_at_ms,
+    )
+    goal_exact = bool(
+        path_request.get("frame_id") == READINESS_FIXED_GOAL["frame_id"]
+        and finite_float(path_request.get("x")) == READINESS_FIXED_GOAL["x"]
+        and finite_float(path_request.get("y")) == READINESS_FIXED_GOAL["y"]
+        and finite_float(path_request.get("yaw")) == READINESS_FIXED_GOAL["yaw"]
+        and not path_request.get("adapted_from_map_bounds")
+    )
+    path_gate = readiness_gate(
+        "planner_only_path",
+        {
+            "fixed_task_identity": path_request.get("task_id") == READINESS_TASK_ID,
+            "fixed_route_identity": path_request.get("route_intent_id") == READINESS_ROUTE_INTENT_ID,
+            "fixed_goal_exact": goal_exact,
+            "compute_path_requested": bool(proof.get("path_generation_requested")),
+            "compute_path_attempted": bool(proof.get("path_generation_attempted") and path_result.get("attempted")),
+            "compute_path_attempted_exactly_once": int(path_result.get("attempt_count") or 0) == 1,
+            "compute_path_succeeded": bool(proof.get("path_generation_succeeded") and path_result.get("ok")),
+            "compute_path_action_exact": str(path_result.get("action_name") or "").endswith("/compute_path_to_pose"),
+            "path_generated": bool(
+                proof.get("path_generated")
+                and path_result.get("path_generated")
+                and int(proof.get("path_point_count") or 0) > 0
+                and int(path_result.get("path_point_count") or 0) > 0
+            ),
+            "path_frame_map": (proof.get("path_preview_frame_id") or path_result.get("path_preview_frame_id")) == "map",
+            "path_receipt_current": bool(path_receipt["in_run_window"]),
+            "path_receipt_fresh_at_natural_final": bool(path_receipt["fresh_at_natural_final"]),
+            "path_stamp_parsed": path_stamp.get("parsed") is True,
+            "path_stamp_fresh_at_natural_final": path_final_freshness.get("status") == "fresh",
+            "navigate_or_follow_not_called": all(
+                token not in str(path_result.get("action_name") or path_result.get("service_name") or "").lower()
+                for token in ("navigate_to_pose", "follow_path")
+            ),
+        },
+        {
+            "request": path_request,
+            "result": path_result,
+            "result_received_at_ms": path_received_at_ms or None,
+            "receipt_at_natural_final": path_receipt,
+            "stamp_at_natural_final": path_final_freshness,
+        },
+    )
+
+    obstacle_gate = readiness_gate(
+        # obstacle_clear 必须复用前面 scan_gate，禁止另找更有利的历史 scan 样本。
+        # same sample_id 让 stamp、ranges hash、min distance 与 endpoint inventory 形成闭环。
+        # publisher 不唯一、stamp 陈旧或 receipt 过期都会先让 same_scan_gate_ready 失败。
+        # finite point 数必须大于零，空数组和全 NaN/Inf 不可得出环境净空结论。
+        # 阈值 0.45m 是保守发车前门槛，不代表执行期可关闭 controller 碰撞检测。
+        # 等于阈值允许通过，小于阈值严格 NO-GO，避免浮点比较边界漂移。
+        # min distance 使用传感器声明量程内的有限正数，不消费负值或无穷大。
+        # 本门不做角度裁剪，因此结论是当前 scan 全局最近点的保守下界。
+        # operator 口头路线清空不能替代 current scan，二者属于不同证据层。
+        # scan 只读采样不发送 cmd_vel、goal、manual 或 UART 命令。
+        # threshold 与 sample_id 落入 evidence，消费者无需从代码常量猜本轮口径。
+        # obstacle 门通过只说明采样瞬间满足软件阈值，不证明现场长期保持净空。
+        # natural-final freshness 防止路径计算耗时后仍引用早期无遮挡 scan。
+        # 如果最终过期，正确动作是 NO-GO，而不是在本 helper 内自动重采或重试。
+        # obstacle blocker 独立于 AMCL，便于定位是感知净空问题还是定位链问题。
+        # scan gate 不作为第十门，但其每个失败原因会通过本门稳定向上暴露。
+        # range hash 不用于安全比较，只用于证明 threshold 与 stamp 属于同一 payload。
+        # 当前门不读取 costmap，因为 costmap 可能含历史 persistence，与 same-scan 目标不同。
+        # Nav2 参数仍保持 execution-time collision detection，形成准入与运行期双层保护。
+        # 任何解析异常都由 finite_float 变成 None，不能让 Python NaN 比较产生意外放行。
+        # 本门不会把 operator 授权转换成 safe_to_control，最终安全字段继续为 false。
+        # 通过 9/9 也只产生 readiness input，Phase B 仍由 Robot owner 独立裁决。
+        # 离线测试覆盖 0.44m 负例，锁定阈值下方不得获得 success-shaped artifact。
+        # future live artifact 必须保留 callback receipt，缺失时无法证明 natural-final freshness。
+        # 所有结论都限制在当前 O10 natural-final，不能跨 run 复用为后续净空证明。
+        "obstacle_clear",
+        {
+            "same_scan_gate_ready": bool(scan_gate["ready"]),
+            "same_scan_identity_present": bool(scan_sample.get("sample_id")),
+            "finite_points_present": int(scan_sample.get("finite_positive_count") or 0) > 0,
+            "minimum_distance_at_or_above_threshold": bool(
+                scan_min is not None and scan_min >= READINESS_OBSTACLE_CLEARANCE_M
+            ),
+        },
+        {
+            "scan_sample_id": scan_sample.get("sample_id"),
+            "scan_stamp": scan_timestamp,
+            "scan_freshness": scan_freshness,
+            "scan_receipt_at_natural_final": scan_receipt,
+            "ranges_count": int(scan_sample.get("ranges_count") or 0),
+            "finite_positive_count": int(scan_sample.get("finite_positive_count") or 0),
+            "invalid_count": int(scan_sample.get("invalid_count") or 0),
+            "min_distance_m": scan_min,
+            "threshold_m": READINESS_OBSTACLE_CLEARANCE_M,
+        },
+    )
+
+    gates = {
+        # 固定九个 key 是外部 consumer 合同；新增诊断不得暗中变成第十个宽松门。
+        # dict 顺序用于 artifact 可读性，但 readiness 只依据每门 ready 和固定数量九。
+        # blockers 展开每个失败 check，让一次离线/现场采样可同时暴露所有缺口。
+        # natural-final blocker 放在九门 blocker 之前，明确容器无效优先于单门内容。
+        # ready_count 仅供审计，不得被 8/9 或百分比阈值解释为部分放行。
+        # READINESS_GO 要求 natural-final、零 blocker、gate_count 恰好九三项同时成立。
+        # initialpose retry count 从 attempts 派生，任何超过一次的情况已在 persisted 门失败。
+        # fixed goal/task/route 在顶层重复输出，方便 Phase A decision 做 identity 断言。
+        # proof boundary 明确无 navigation/control，防止 9/9 被误写为 route execution。
+        # safety_flags 强制 route/delivery/HIL/control 均为 false，不由 readiness 结果覆盖。
+        # attach_artifact_summaries 会复用本纯函数，partial/final 都保持相同 schema。
+        # final build 还会用 READINESS_GO 覆盖旧 aggregate complete，阻止旁路成功。
+        # blocker 字符串稳定包含 gate/check，测试和外部 jq 可以精确审计。
+        # evidence 原始字段保留在各门内，不能只有 opaque success 布尔值。
+        # 任一字段 missing 会产生 false check，而不是抛异常中断 final artifact 落盘。
+        # gate_count 变化本身即 NO-GO，未来扩展必须经过 schema/consumer 同步升级。
+        # ready_count 九只说明软件门全部满足，不自动设置 safe_to_control。
+        # 本层不消费 operator、路线清空或 emergency stop，它们属于 Phase B 独立准入。
+        # 本层也不消费 T=1001 或轮速反馈，HIL 事实由 Hardware owner 条件复核。
+        # 返回值可直接写 JSON，不含 Python 对象或不可序列化 ROS message。
+        # 所有时间以整数毫秒留档，避免浮点舍入让阈值边界不可复算。
+        # 所有距离以米留档，与 LaserScan/Nav2 配置单位保持一致。
+        # 九门评估完成后不再启动 probe，保证 frozen decision 不被后续状态改变。
+        # NO-GO 仍是有效离线合同结果，但不能获得 OKR live/route/HIL 直接信用。
+        # 该聚合是发车前输入，不是发车命令，也不拥有任何外部副作用。
+        "map": map_gate,
+        "amcl": readiness_gate(
+            "amcl",
+            {
+                "lifecycle_active": bool(proof.get("amcl_active")),
+                "current_pose_ready": bool(current_pose_gate["ready"]),
+                "scan_subscription_observed": any(
+                    str(item.get("topic") or "") in {"/scan", "scan"}
+                    for item in (proof.get("amcl_node_subscribers") or [])
+                    if isinstance(item, dict)
+                ),
+            },
+            {"amcl_node_subscribers": proof.get("amcl_node_subscribers") or []},
+        ),
+        "planner": planner_gate,
+        "controller": controller_gate,
+        "current_pose": current_pose_gate,
+        "persisted_pose": persisted_gate,
+        "dynamic_tf": dynamic_tf_gate,
+        "planner_only_path": path_gate,
+        "obstacle_clear": obstacle_gate,
+    }
+    blockers = [reason for gate in gates.values() for reason in gate["blocking_reasons"]]
+    natural_final = all(natural_final_checks.values())
+    readiness_go = bool(natural_final and not blockers and len(gates) == 9)
+    gate_flags = {f"{name}_ready": bool(gate["ready"]) for name, gate in gates.items()}
+    return {
+        "schema": "trashbot.o10.current_natural_final_readiness.v1",
+        "natural_final": natural_final,
+        "natural_final_checks": natural_final_checks,
+        "gate_count": len(gates),
+        "ready_count": sum(1 for gate in gates.values() if gate["ready"]),
+        "gates": gates,
+        # 顶层 alias 供 Phase A 决策器读取；原始依据仍只存在同一个九门 gates 对象中。
+        **gate_flags,
+        "blockers": ([] if natural_final else [f"natural_final:{name}" for name, clean in natural_final_checks.items() if not clean]) + blockers,
+        "READINESS_GO": readiness_go,
+        "initialpose_publish_attempts": int(proof.get("initialpose_publish_attempts") or 0),
+        "initialpose_retry_count": max(int(proof.get("initialpose_publish_attempts") or 0) - 1, 0),
+        "fixed_goal": dict(READINESS_FIXED_GOAL),
+        "task_id": READINESS_TASK_ID,
+        "route_intent_id": READINESS_ROUTE_INTENT_ID,
+        "proof_boundary": "same_current_natural_final_readiness_only_no_navigation_or_control",
+        **safety_flags(),
+    }
+
+
 def build_downstream_recovery_summary(proof: dict[str, Any]) -> dict[str, Any]:
     """07-53 downstream recovery 汇总层：只读分辨 map/AMCL/scan/TF 当前 blocker。"""
     board = proof.get("board_source_preflight") if isinstance(proof.get("board_source_preflight"), dict) else {}
@@ -12603,6 +13883,8 @@ def build_downstream_recovery_summary(proof: dict[str, Any]) -> dict[str, Any]:
 
 def attach_artifact_summaries(proof: dict[str, Any], *, status: str) -> None:
     """给 final/partial proof 补齐同形摘要字段，所有调用点共享同一派生逻辑。"""
+    proof["current_natural_final_readiness"] = build_current_natural_final_readiness(proof)
+    proof["READINESS_GO"] = bool(proof["current_natural_final_readiness"]["READINESS_GO"])
     root_causes = [cause for cause in (proof.get("root_causes") or proof.get("blockers") or []) if isinstance(cause, dict)]
     scan_split = build_scan_qos_endpoint_readback_split(proof)
     proof["scan_qos_endpoint_readback_split"] = scan_split
@@ -13486,7 +14768,29 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
             )
         else:
             try:
-                managed_runtime.update(start_managed_runtime(args, map_yaml=managed_map_yaml))
+                if bool(getattr(args, "reuse_existing_lidar_lifecycle", False)):
+                    # O11 已拥有 LiDAR/Nav2 时，managed opt-in 的语义是验证同一 runtime；
+                    # O10 绝不能再拉第二套 map_server/AMCL/planner/controller 或清理外部 PID。
+                    managed_runtime.update(
+                        {
+                            "requested": True,
+                            "started": True,
+                            "started_at_ms": now_ms(),
+                            "process": None,
+                            "process_group": None,
+                            "params_path": None,
+                            "log_path": "",
+                            "helper_owns_process_group": False,
+                            "external_runtime_reused": True,
+                            "managed_lidar_policy": "reuse_existing_o11_owned_lidar_and_nav2_runtime",
+                            "managed_lidar_driver_started_by_helper": False,
+                            "boundary": "explicit_opt_in_verify_existing_o11_owned_runtime_no_second_stack",
+                        }
+                    )
+                else:
+                    managed_runtime.update(start_managed_runtime(args, map_yaml=managed_map_yaml))
+                    managed_runtime["helper_owns_process_group"] = True
+                    managed_runtime["external_runtime_reused"] = False
                 phase_writer.update_snapshot(
                     managed_runtime_started=True,
                     managed_runtime_process_group=managed_runtime.get("process_group"),
@@ -13552,7 +14856,18 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
                     ),
                     detail={"reason": managed_runtime["wait_result"].get("reason")},
                 )
-                managed_static_tf_processes = managed_static_tf_process_summary(args, managed_runtime)
+                managed_static_tf_processes = (
+                    {
+                        "expected": [],
+                        "observed_roles": [],
+                        "processes": [],
+                        "all_expected_processes_observed": False,
+                        "checked_before_cleanup": True,
+                        "boundary": "external_o11_runtime_tf_sources_must_be_proven_from_current_topics",
+                    }
+                    if managed_runtime.get("external_runtime_reused")
+                    else managed_static_tf_process_summary(args, managed_runtime)
+                )
                 phase_writer.update_snapshot(
                     managed_static_tf_processes=managed_static_tf_processes,
                     static_tf_source_observed=False,
@@ -15023,7 +16338,7 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         else "blocked_with_root_cause"
     )
 
-    if managed_runtime.get("started"):
+    if managed_runtime.get("started") and managed_runtime.get("helper_owns_process_group"):
         phase_writer.record_phase("cleanup", detail={"process_group": managed_runtime.get("process_group")})
         cleanup_result = cleanup_process_group(
             int(managed_runtime["process_group"]),
@@ -15039,7 +16354,14 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         except OSError:
             pass
     else:
-        phase_writer.record_phase("cleanup", ok=True, detail={"managed_runtime_started": False})
+        phase_writer.record_phase(
+            "cleanup",
+            ok=True,
+            detail={
+                "managed_runtime_started": bool(managed_runtime.get("started")),
+                "external_runtime_reused_not_owned_not_stopped": bool(managed_runtime.get("external_runtime_reused")),
+            },
+        )
     cleanup_guard = managed_runtime_cleanup_guard(managed_runtime.get("process_group"))
     cleanup_contract_clean = bool(managed_runtime.get("cleanup_ok", True) and cleanup_guard.get("ok"))
     if not cleanup_contract_clean:
@@ -15085,6 +16407,7 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         path_goal_response_summary = {"accepted": False, "result_received": False}
     proof = {
         "artifact_kind": "final",
+        "partial": False,
         "status": proof_status,
         "evidence_ref": f"o10-amcl-nav2-runtime-{started_ms}",
         "evidence_type": "robot_runtime_material" if complete else "blocked_with_root_cause",
@@ -15177,6 +16500,8 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         "tf_topics_observed": tf_source_diagnostics["tf_topics_observed"],
         "tf_static_observed": tf_source_diagnostics["tf_static_observed"],
         "tf_frame_inventory": tf_source_diagnostics["tf_frame_inventory"],
+        "current_map_sample": tf_source_diagnostics.get("map_sample", {}),
+        "runtime_interfaces": tf_source_diagnostics.get("runtime_interfaces", {}),
         "amcl_pose_frame_id": tf_source_diagnostics["amcl_pose_frame_id"],
         "amcl_node_publishers": tf_source_diagnostics["amcl_node_publishers"],
         "amcl_node_subscribers": tf_source_diagnostics["amcl_node_subscribers"],
@@ -15199,6 +16524,9 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         "tf_failure_classification": tf_failure_classification,
         "managed_runtime_requested": bool(managed_runtime["requested"]),
         "managed_runtime_started": bool(managed_runtime.get("started")),
+        "managed_runtime_started_at_ms": managed_runtime.get("started_at_ms"),
+        "managed_runtime_external_reused": bool(managed_runtime.get("external_runtime_reused")),
+        "managed_runtime_helper_owned": bool(managed_runtime.get("helper_owns_process_group")),
         "managed_runtime_process_group": managed_runtime.get("process_group"),
         "managed_runtime_cleanup_ok": bool(managed_runtime.get("cleanup_ok", True)) and bool(cleanup_guard.get("ok")),
         "managed_runtime_cleanup": managed_runtime.get("cleanup_result"),
@@ -15290,6 +16618,20 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         "blocked_devices_not_opened": ["/dev/ttyS5"],
         **safety_flags(),
     }
+    current_readiness = build_current_natural_final_readiness(proof)
+    proof["current_natural_final_readiness"] = current_readiness
+    proof["READINESS_GO"] = bool(current_readiness["READINESS_GO"])
+    if not current_readiness["READINESS_GO"]:
+        # natural-final 的最终状态必须以严格九门为准，不能让旧 aggregate success 绕过新门禁。
+        complete = False
+        proof_status = "blocked_with_root_cause"
+        proof["status"] = proof_status
+        proof["evidence_type"] = "blocked_with_root_cause"
+        existing_reasons = {str(cause.get("reason") or "") for cause in proof["root_causes"] if isinstance(cause, dict)}
+        for reason in current_readiness["blockers"]:
+            if reason not in existing_reasons:
+                proof["root_causes"].append({"layer": "Current natural-final readiness", "reason": reason})
+        proof["blockers"] = proof["root_causes"]
     attach_artifact_summaries(proof, status=proof_status)
     phase_writer.record_phase("final", ok=complete, detail={"status": proof_status})
     proof["phase_history"] = phase_writer.phase_history[-80:]
@@ -15350,7 +16692,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--path-generation-timeout-s", type=float, default=20.0)
     parser.add_argument("--path-goal-frame-id", default="map")
     parser.add_argument("--path-goal-x", type=float, default=0.8)
-    parser.add_argument("--path-goal-y", type=float, default=0.0)
+    parser.add_argument("--path-goal-y", type=float, default=READINESS_FIXED_GOAL["y"])
     parser.add_argument("--path-goal-yaw", type=float, default=0.0)
     parser.add_argument("--ros-setup", default=DEFAULT_ROS_SETUP)
     parser.add_argument("--onboard-setup", default=DEFAULT_ONBOARD_SETUP)
