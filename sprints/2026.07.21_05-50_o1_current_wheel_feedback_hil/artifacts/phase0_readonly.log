@@ -1,0 +1,37 @@
+Phase0 read-only window: 2026-07-21T07:10:09+08:00 to 2026-07-21T07:11:26+08:00
+Remote: ssh root@192.168.1.11 -p 37878
+
+Commands executed were read-only only:
+- date/hostname/uname
+- systemctl list-units/show for existing trashbot services
+- ss/ps/lsof/fuser
+- sha256sum and grep/sed of deployed Upper source
+- GET /api/health, GET /, GET /api/base/status, GET /api/base/feedback-samples/latest, GET /api/nav2/status
+- ROS2CLI_NO_DAEMON=1 ros2 topic info /cmd_vel --verbose and ros2 node list
+- tail existing bridge command/feedback logs and journalctl
+
+Observed service facts:
+- trashbot-upper-robot-api.service active/running, PID 30857, listener 0.0.0.0:8787
+- trashbot-esp32-bridge.service active/running, PID 30869/31428
+- trashbot-lidar-lifecycle.service active/running, untouched
+- deployed Upper sha256=8c0f6eebb786e1cd6b1cb5d17485e59972140bf76a94e7669773ef438228b4c3
+- /dev/ttyS5 owner: esp32_bridge PID 31428 only
+- /cmd_vel publisher count 0; subscription count 1; subscriber /esp32_bridge
+
+Observed API facts:
+- GET /api/health: HTTP 200, status=ready
+- root route discovery exposes /api/base/manual, /api/base/stop, /api/base/status,
+  /api/base/feedback-request, /api/base/feedback-samples and /api/base/feedback-samples/latest
+- deployed /api/base/manual recognizes direction/speed/duration_ms/command_mode/feedback_mode
+- deployed /api/base/stop ignores request body and covers ROS/speed/PWM zero-stop surfaces
+- base_command_mode=ros; bridge command_mode=pwm; bridge command_transport=http
+
+Observed stopped/hold facts:
+- latest bridge command: T=11,L=0,R=0,sent=true,command_transport=http
+- current feedback debug source=wave_rover_uart_t1001 and latest T=1001,L=0,R=0
+- no established 8787 client connection at either settled check
+- deployed MAX_PULSE_MS=800; a repeated check more than 800ms later showed no new motion command
+- Nav2 lifecycle_running=false and lifecycle_state=stopped
+
+Phase0 command counts: POST=0, serial_write=0, service_change=0, remote_file_change=0.
+PHASE0_PASS=true

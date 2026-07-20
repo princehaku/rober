@@ -1,0 +1,12 @@
+started_at=2026-07-21T07:15:36.155248017+08:00
+started_unix_s=1784589336.158775546
+ended_at=2026-07-21T07:15:36.721761940+08:00
+ended_unix_s=1784589336.724743638
+method=POST
+url=http://127.0.0.1:8787/api/base/manual
+request_source=frozen_nonzero_request.canonical.json_via_stdin
+request_sha256=c94c89fad30ab4d261b94b91407ea6357e5f5d05f05429b22935e33f586becdc
+curl_exit=0
+transport_attempt_count=1
+retry_count=0
+authorization_status_after=consumed_no_retry

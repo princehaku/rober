@@ -1,0 +1,14 @@
+{
+  "T": 1001,
+  "L": 0,
+  "R": 0,
+  "r": -0.354313314,
+  "p": 0.706164241,
+  "y": "null",
+  "v": 10.33985043,
+  "observed_at_unix_s": 1784589297.4466195,
+  "phase": "pre_stop",
+  "source_class": "bridge_debug_serial_derived",
+  "source": "wave_rover_uart_t1001",
+  "raw_serial_byte_capture": false
+}

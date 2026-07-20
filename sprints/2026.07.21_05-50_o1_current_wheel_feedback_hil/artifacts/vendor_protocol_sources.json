@@ -1,0 +1,19 @@
+{
+  "schema": "trashbot.o1.current_wheel_feedback_hil.vendor_sources.v1",
+  "sources": [
+    "docs/vendor/VENDOR_INDEX.md",
+    "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h",
+    "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/uart_ctrl.h",
+    "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/ugv_advance.h",
+    "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/movtion_module.h",
+    "docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py"
+  ],
+  "adopted_facts": {
+    "uart_framing": "one UTF-8 JSON object per newline",
+    "T13": "CMD_ROS_CTRL with X in m/s and Z in rad/s",
+    "T130": "CMD_BASE_FEEDBACK request",
+    "T1001": "FEEDBACK_BASE_INFO; same-frame L/R are sourced from speedGetA/speedGetB",
+    "live_transport": "deployed Upper publishes ROS /cmd_vel and the sole esp32_bridge subscriber maps it to current PWM/HTTP transport",
+    "wire_boundary": "bridge parsed debug is classified separately from byte-for-byte raw serial capture"
+  }
+}

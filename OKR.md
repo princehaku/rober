@@ -93,6 +93,22 @@
 
 **Key Results**
 
+> 2026-07-21 05-50 O1 current wheel feedback live HIL Product closeout：
+> `PRODUCT_CLOSEOUT=ACCEPT_REAL_ATTEMPT_HIL_FAIL_CLOSED_FINAL_STOP_PROVEN`。authorization
+> `ceo_20260721_0651_current_wheel_feedback_hil_v8=consumed_no_retry`，Phase0 GO，唯一窗口
+> pre/nonzero/post/retry=`1/1/1/0`；nonzero frozen stdin curl exit `0`，`0.08m/s`、`300ms`，Upper
+> `/cmd_vel` 发布 6 帧，bridge 同窗记录 `T=11 L=164 R=164 sent=true`。但 during-motion
+> raw-UART-derived `T=1001` 三对全部 `L/R=0/0`，来源类为 `bridge_debug_serial_derived`、不是 raw serial
+> byte dump，因此 wheel feedback nonzero 未证明、`hil_pass=false`；`T=13 wire not proven`，direct `T=130`
+> 未证明（实际 continuous `T=131` flow）。dedicated stop exit `0`，post-stop `T=1001 L/R=0/0`、final
+> `T=11 L=0 R=0` 且无 8787 established connection，Product 接受 final stopped，但保持
+> `safe_to_control=false`、`route_execution_success=false`、`delivery_success=false`，Mission Objective 0 未满足。
+> 本轮接受真实 `live_control_delta=true` / `external_artifact_delta=true`，不因真实 attempt 自动加百分比：O1 保持约
+> `95%`，O5 约 `85%` 且 provider/runtime blocker `2/2` 暂停，O6/O7 各约 `93%`；KR `不归档`、历史区无新增。
+> v8 永久封存，禁止再以相同 `0.08m/s / 300ms minimal jog + readback` 重采同一 blocker。下一唯一入口是
+> non-motion/offline/maintenance diagnostics，定位 encoder、`mainType`、firmware、`speedGetA/speedGetB` 与 bridge
+> 采样根因；任何 service/UART/firmware 修改或再次运动必须另立 lane 并取得对应维护/运动授权。
+>
 > 2026-07-21 O1 latency 链最终 Product closeout：03-50 software hot-path Epic 与 04-31/04-48/05-08/05-24 Micro
 > 后续链完成保守 reconciliation。最终软件验收为 workstation `535`、bridge `32`、current Upper `141/1 skip`、shared
 > `337/1 skip`、current/candidate_v3 targeted 各 `17`、冻结 85ba regression `119/1 skip`；所有新增技术注释比例严格

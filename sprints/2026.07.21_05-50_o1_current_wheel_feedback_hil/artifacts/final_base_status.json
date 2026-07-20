@@ -1,0 +1,39 @@
+{
+  "schema": "trashbot.o1.current_wheel_feedback_hil.final_base_status.v1",
+  "generated_at_ms": 1784589337721,
+  "latest_command": {
+    "observed_at_unix_s": 1784589336.9347193,
+    "command_mode": "pwm",
+    "linear_x": 0.0,
+    "angular_z": 0.0,
+    "vendor_command": {"L": 0, "R": 0, "T": 11},
+    "sent": true,
+    "http_write_returned": true,
+    "transport_write_returned": true,
+    "command_transport": "http"
+  },
+  "latest_sent_nonzero_command": {
+    "observed_at_unix_s": 1784589336.461213,
+    "command_mode": "pwm",
+    "linear_x": 0.08,
+    "angular_z": 0.0,
+    "vendor_command": {"L": 164, "R": 164, "T": 11},
+    "sent": true,
+    "http_write_returned": true,
+    "transport_write_returned": true,
+    "command_transport": "http"
+  },
+  "latest_t1001": {
+    "T": 1001,
+    "L": 0,
+    "R": 0,
+    "r": -0.336913168,
+    "p": 0.655052722,
+    "y": "null",
+    "v": 10.30463028
+  },
+  "wheel_feedback_nonzero_frame_count": 0,
+  "feedback_source": "fresh_bridge_feedback_debug_log",
+  "no_established_8787_connections": true,
+  "final_stopped": true
+}

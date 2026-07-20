@@ -1,0 +1,8 @@
+{
+  "T": 130,
+  "phase": "post_stop",
+  "attempted": false,
+  "observed": false,
+  "reason": "dedicated stop endpoint writes zero commands but does not issue T=130; continuous T=131 feedback supplied post-stop T=1001",
+  "evidence_boundary": "T=130 request not proven"
+}

@@ -1,0 +1,8 @@
+{
+  "T": 130,
+  "phase": "during_motion",
+  "attempted": false,
+  "observed": false,
+  "reason": "ros_cmd_vel path used the bridge-owned continuous UART feedback stream; Upper response explicitly reported no_direct_t130_request_for_ros_manual_pulse",
+  "evidence_boundary": "T=130 request not proven"
+}

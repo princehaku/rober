@@ -6,6 +6,38 @@
 
 ---
 
+## 2026-07-21 O1 current wheel feedback live HIL real attempt fail-closed flat 收口
+
+`sprints/2026.07.21_05-50_o1_current_wheel_feedback_hil/` 完成 Product acceptance：
+`PRODUCT_CLOSEOUT=ACCEPT_REAL_ATTEMPT_HIL_FAIL_CLOSED_FINAL_STOP_PROVEN`。authorization
+`ceo_20260721_0651_current_wheel_feedback_hil_v8=consumed_no_retry`；Phase0 read-only gate 为 GO，唯一 live window
+pre/nonzero/post/retry=`1/1/1/0`，没有重放或第二次 nonzero。
+
+实际命令/证据链为：pre-stop `POST /api/base/stop` curl exit `0`；nonzero 通过 frozen canonical JSON stdin
+`POST /api/base/manual`，curl exit `0`、forward=`0.08m/s`、duration=`300ms`；dedicated post-stop
+`POST /api/base/stop` curl exit `0`。Upper `/cmd_vel` 非零 burst 为 `6` frames、subscriber count=`1`；bridge 同窗
+记录 `6` 帧 `T=11 L=164 R=164 sent=true`，因此 Product 接受真实 `live_control_delta=true` 与
+`external_artifact_delta=true`。
+
+HIL 失败点明确发生在唯一 nonzero 发送之后：运动窗内三对 raw-UART-derived `T=1001 L/R` 全部为 `0/0`，80 帧
+Upper 汇总同样 nonzero count=`0`，故 wheel feedback nonzero 未证明、`hil_pass=false`。证据 source class 为
+`bridge_debug_serial_derived`，不是 byte-for-byte raw serial dump；`T=13 wire not proven`。direct `T=130 request not proven`，
+当前 bridge 使用 continuous `T=131` feedback flow。
+
+失败后关闭与最终停止证据接受：dedicated stop exit `0`，post-stop `T=1001 L/R=0/0`，final bridge command 为
+`T=11 L=0 R=0 sent=true`，且无 8787 established connection。该 final stopped 不能外推为
+`safe_to_control=true`；最终仍是 `safe_to_control=false`、`route_execution_success=false`、
+`delivery_success=false`、Mission Objective 0 未满足。
+
+OKR 保守 flat：O1 保持约 `95%`，真实 attempt 不自动涨分；O5 保持约 `85%` 且 provider/runtime blocker `2/2`
+继续暂停；O6/O7 各保持约 `93%`。KR `不归档`，历史区无新增完成项。v8 已永久封存为 `consumed_no_retry`；
+禁止再以相同 `0.08m/s / 300ms minimal jog + readback` 重采、补采或重新包装同一 blocker。
+
+下一唯一入口为 non-motion / offline / maintenance diagnostics：定位已发送 `T=11` nonzero 而
+`speedGetA/speedGetB` 仍为零的 encoder、`mainType`、firmware 与 bridge 采样/解析根因。若需要修改 service、UART、
+firmware 或再次运动，必须另立清晰 lane，并分别取得维护或新的 bounded-motion 授权。Product 本轮仅执行离线 artifact
+校验与文档收口，没有执行 SSH、HTTP、ROS、串口、control、stop、nonzero 或其他 live 命令，也未触碰范围外 dirty WIP。
+
 ## 2026-07-21 O1 latency chain final Product closeout, candidate_v3 deployment pending
 
 03-50 software hot-path Epic 与 04-31/04-48/05-08/05-24 Micro 后续链已完成 Product reconciliation。最终 Engineer

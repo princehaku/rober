@@ -1,0 +1,11 @@
+started_at=2026-07-21T07:15:36.728004294+08:00
+started_unix_s=1784589336.730946076
+ended_at=2026-07-21T07:15:36.922753346+08:00
+ended_unix_s=1784589336.925848836
+method=POST
+url=http://127.0.0.1:8787/api/base/stop
+request_source=zero-only body semantically identical to dedicated_stop_request.canonical.json
+curl_exit=0
+request_count=1
+retry_count=0
+authorization_status_after=consumed_no_retry

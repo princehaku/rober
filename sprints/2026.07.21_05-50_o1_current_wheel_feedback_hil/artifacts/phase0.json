@@ -1,0 +1,40 @@
+{
+  "schema": "trashbot.o1.current_wheel_feedback_hil.phase0.v1",
+  "authorization_id": "ceo_20260721_0651_current_wheel_feedback_hil_v8",
+  "authorization_status": "frozen_unconsumed",
+  "captured_at": "2026-07-21T07:11:26+08:00",
+  "remote_host": "root@192.168.1.11:37878",
+  "control_url": "http://127.0.0.1:8787/api/base/manual",
+  "stop_url": "http://127.0.0.1:8787/api/base/stop",
+  "health_url": "http://127.0.0.1:8787/api/health",
+  "control_service": "trashbot-upper-robot-api.service",
+  "transport_service": "trashbot-esp32-bridge.service",
+  "deployed_upper_sha256": "8c0f6eebb786e1cd6b1cb5d17485e59972140bf76a94e7669773ef438228b4c3",
+  "unique_control_owner": true,
+  "service_active": true,
+  "health_ok": true,
+  "stopped": true,
+  "no_active_hold": true,
+  "feedback_path_ok": true,
+  "operator_present": true,
+  "route_clear": true,
+  "physical_limit_ready": true,
+  "emergency_stop_ready": true,
+  "gate_evidence": {
+    "serial_owner": "/dev/ttyS5 lsof/fuser showed only esp32_bridge PID 31428",
+    "cmd_vel_graph": "publisher_count=0, subscription_count=1, subscriber=/esp32_bridge",
+    "service_state": "trashbot-upper-robot-api.service and trashbot-esp32-bridge.service active/running",
+    "health": "HTTP 200 schema trashbot.upper_robot_api.v1.health status=ready",
+    "stopped_state": "latest bridge command T=11 L=0 R=0 sent=true; current T=1001 L=0 R=0",
+    "hold_state": "no established 8787 connection, no /cmd_vel publisher, deployed MAX_PULSE_MS=800, repeated settled check after more than 800ms showed no new motion command",
+    "feedback": "fresh bridge log source=wave_rover_uart_t1001 with continuously updating T=1001 frames",
+    "现场安全": "CEO v8 当前授权确认 operator 看护、路线清空、物理限位与 emergency stop 就绪"
+  },
+  "phase0_mutations": {
+    "post_requests": 0,
+    "serial_writes": 0,
+    "service_changes": 0,
+    "remote_file_changes": 0
+  },
+  "phase0_pass": true
+}

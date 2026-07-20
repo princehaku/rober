@@ -1,0 +1,13 @@
+{
+  "attempt_id": "o1-current-wheel-feedback-hil-v8-attempt-1",
+  "authorization_id": "ceo_20260721_0651_current_wheel_feedback_hil_v8",
+  "auto_retry": false,
+  "command_mode": "ros",
+  "direction": "forward",
+  "duration_ms": 300,
+  "feedback_mode": "bridge_debug",
+  "forward_mps": 0.08,
+  "motion_read_window_s": 0.25,
+  "retry": 0,
+  "speed": 0.08
+}

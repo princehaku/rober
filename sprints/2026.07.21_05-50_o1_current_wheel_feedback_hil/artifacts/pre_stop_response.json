@@ -1,0 +1,30 @@
+{
+  "schema": "trashbot.upper_robot_api.v1.base_stop_result",
+  "generated_at_ms": 1784589297084,
+  "stop_result": {
+    "ok": true,
+    "command": {"T": 13, "X": 0, "Z": 0},
+    "bytes_written": 21
+  },
+  "ros_stop_result": {
+    "ok": true,
+    "mode": "ros_cmd_vel_once",
+    "publish_backend": "rclpy_inprocess_burst",
+    "topic": "/cmd_vel",
+    "linear_x": 0.0,
+    "angular_z": 0.0,
+    "subscription_match_proven": true,
+    "subscription_count": 1,
+    "frames_published": 4,
+    "elapsed_s": 0.156076
+  },
+  "serial_stop_results": [
+    {"ok": true, "command": {"T": 13, "X": 0, "Z": 0}, "bytes_written": 21},
+    {"ok": true, "command": {"T": 11, "L": 0, "R": 0}, "bytes_written": 21},
+    {"ok": true, "command": {"T": 1, "L": 0, "R": 0}, "bytes_written": 20}
+  ],
+  "serial_write_failures": [],
+  "robot_control_executed": true,
+  "safe_to_control": false,
+  "delivery_success": false
+}

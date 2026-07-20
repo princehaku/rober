@@ -1,0 +1,8 @@
+{
+  "T": 130,
+  "phase": "pre_stop",
+  "attempted": false,
+  "observed": false,
+  "reason": "deployed bridge already owns UART and provides continuous T=131 feedback flow; no direct T=130 request was issued",
+  "evidence_boundary": "request_contract_only_not_wire_receipt"
+}

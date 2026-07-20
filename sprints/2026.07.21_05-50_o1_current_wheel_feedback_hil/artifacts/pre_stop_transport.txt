@@ -1,0 +1,8 @@
+started_at=2026-07-21T07:14:56.111861959+08:00
+ended_at=2026-07-21T07:14:57.093293318+08:00
+method=POST
+url=http://127.0.0.1:8787/api/base/stop
+request_source=dedicated_stop_request.canonical.json_via_stdin
+curl_exit=0
+request_count=1
+authorization_status_after=frozen_unconsumed
