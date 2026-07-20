@@ -6,15 +6,21 @@
 
 ---
 
-## 2026-07-20 O3 strict-no-motion contract accepted / final-window PLANNER_ONLY_NO_GO flat 收口
+## 2026-07-20 O3 strict-no-motion contract accepted / dual-window race reconciled PLANNER_ONLY_NO_GO flat 收口
 
 `sprints/2026.07.20_13-20_o3_nav2_localization_readiness_recovery/` 完成最终 Product acceptance。Robot Software 与 Algorithm 的跨 owner 代码、回归和 navigation 文档 accepted：Robot `114 tests OK (skipped=1 aiohttp)`、中文注释 `20.2%`；Algorithm `167 tests OK`、中文注释 `20.946%`；diff 与静态断言均绿。远端 API/helper SHA 与本地一致，proof boundary=`strict_no_motion_persistent_lifecycle_fresh_pose_planner_only_path_readiness`。
 
-真实上位机 final-window 外部调用为 `start/refresh/stop=1/1/1`、proof latest GET=1、`retries=0`。Start request body consumed，effective `base_enabled=false/lidar_enabled=false`；既存 base/LiDAR holders 不变，new-open=`0/0`，command log delta=`0`，`initialpose/goal/cmd_vel/UART=0/0/0/0`，无物理运动。Final stop `status=stopped_owned_process_group`、`semantic_success=true`、scope=`o11_owned_pid_process_group_only`，PID `684474` 与 owned PID file 已移除，`OWNED_STOP_CLEAN=yes`。`readiness_assertion.json` 是 pre-stop snapshot；最终 cleanup 以 `lifecycle_safety_manifest.json.final_stop` 与 `api_nav2_stop_response.json` 为准。
+已计划首窗口外部调用为 start/proof/latest/owned-stop=`1/1/1/1`，helper `81243ms`；roots 保留为 `amcl_pose_probe_interrupted_before_observation`、`sigint_before_final_artifact`、`helper_process_timeout_after_partial_artifact`。Start request body consumed，effective `base_enabled=false/lidar_enabled=false`；既存 base/LiDAR holders不变，new-open=`0/0`，command log delta=`0`，`initialpose/goal/cmd_vel/UART=0/0/0/0`。
 
 Product 拒绝 current readiness：Algorithm=`PLANNER_ONLY_NO_GO`。Helper elapsed=`80444ms` 超过 API 80s process budget，partial artifact 保留，last successful phase=`tf_probe`，timeout command=`ros2 pkg list`；root causes 包含 `helper_process_timeout_after_partial_artifact` 与 `sigint_before_final_artifact`。Partial current evidence 仅证明 map_server/amcl active、dynamic `map->odom` observed 且 unique AMCL attribution、`map->base_link=true`、`initialpose_publish_attempts=0`；不证明 fresh `/amcl_pose`、persisted pose final gate、formal TF freshness、planner/controller active 或 path。Path requested=true，但 attempted/succeeded/generated=false、count=0。
 
-`current_run_artifact_delta=true` 只表示 fresh no-motion current artifact、strict contract 与 clean stop；`external_artifact_delta=false`、`live_control_delta=false`、`user_action_delta=false`、`robot_control_executed=false`、route/HIL/delivery/safe/`okr_credit=false`。Mission Objective 0 状态=`blocked_before_attempt_on_current_localization_readiness`；fresh motion authorization 存在但本 sprint 未消费。
+### post_publish_race_window
+
+commit `3fe3c053ceada54c10dd8414098863a66e5f08e1` 发布后，非预期后台/编排竞态产生第二个 strict-no-motion 窗口，违反 no-retry 边界；artifact 无 agent/session/operator identity 字段，调用者身份无法判定。第二窗口 helper=`80444ms`、lifecycle PID/PG=`684474`、proof PG=`685333`，窗口内 start/proof/latest/owned-stop=`1/1/1/1`；与首窗口合计 `2/2/2/2`，但不产生第二份进展或 OKR credit。
+
+第二窗口只增加 partial source facts：`map_server_active=true`、`amcl_active=true`，dynamic `map->odom` observed/timestamp parsed/`attributed_unique_amcl`，`map->base_link=true`；formal freshness gate、current AMCL pose、persisted pose audit、planner/controller active 与 path 均未证明，path attempted/generated=false，故 `READINESS_GO=false`。16:54 第二 owned stop clean；16:55 `post_publish_race_cleanup` 新增 stop=`0`，最终 lifecycle stopped、Upper API healthy、tty holders/command log unchanged、owned residual=0、`physical_motion=false`。最终状态以 manifest race cleanup 为准，不能被 pre-stop readiness assertion 覆盖。禁止第三个 proof/window。
+
+`current_run_artifact_delta=true` 只表示 fresh no-motion current artifact、strict contract 与 clean stop；`external_artifact_delta=false`、`live_control_delta=false`、`user_action_delta=false`、`robot_control_executed=false`、route/HIL/delivery/safe/`okr_credit=false`。Mission Objective 0 状态=`blocked_before_attempt_on_current_localization_readiness`；旧 motion authorization 的 current context 已经过两个窗口，任何新动作不得直接复用，必须重新确认 current operator、route、obstacle 与 readiness。
 
 O5 保持约 `85%` 且 provider/runtime blocker `2/2`，O6/O7 各约 `93%`、O1 约 `94%` 全 flat；O3 不新增 Mission credit，主百分比不调整，KR `不归档`，历史区无新增。暂停重复 strict-start wrapper/live refresh；下一轮 `next_offline_runtime_budget_fix` 由 Robot Software + Algorithm 先在本地/离线修复或剖析 O10 helper 在 `ros2 pkg list` / TF probe 后超出 API 80s budget 的 runtime path、probe order 与 final artifact 时序，只有新测试证明预算内完成才开新的 no-motion current proof。若仍缺 persisted pose，必须显式建立 localization input gate，禁止隐式 `/initialpose`。
 

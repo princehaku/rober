@@ -8,6 +8,7 @@
 - Final status：`accepted_engineering_owned_stop_clean_planner_only_no_go_no_okr_credit`
 - proof boundary：`strict_no_motion_persistent_lifecycle_fresh_pose_planner_only_path_readiness`
 - `PLANNER_ONLY_NO_GO`
+- `READINESS_GO=false`
 - `OWNED_STOP_CLEAN=yes`
 - `PRODUCT_CLOSEOUT_COMPLETE=yes`
 
@@ -15,7 +16,7 @@
 
 Product 接受跨 owner 代码、测试、navigation 文档、strict-no-motion start 合同、fresh current partial artifact 与 owned cleanup；拒绝 current localization/path readiness、motion、HIL、route、delivery、Mission 和 OKR credit。
 
-用户获得的是一个真实生效且 fail-closed 的安全 lifecycle API：远端 API/helper SHA 均与本地对齐；final-window `start/refresh/stop=1/1/1`、proof latest GET=1、`retries=0`；effective `base_enabled=false/lidar_enabled=false`，new-open=`0/0`。`initialpose/goal/cmd_vel/UART=0/0/0/0`，command log delta=0，无物理运动。
+用户获得的是一个真实生效且 fail-closed 的安全 lifecycle API：远端 API/helper SHA 均与本地对齐。首窗口与发布后竞态窗口各有 start/proof/latest/owned-stop=`1/1/1/1`，全 sprint 总计 `2/2/2/2`；effective `base_enabled=false/lidar_enabled=false`，new-open=`0/0`。`initialpose/goal/cmd_vel/UART=0/0/0/0`，command log delta=0，`physical_motion=false`。
 
 Final stop semantic success，cleanup scope=`o11_owned_pid_process_group_only`；PID `684474` 与 owned PID file 已移除，最终 lifecycle stopped，因此 `OWNED_STOP_CLEAN=yes`。`readiness_assertion.json` 是 pre-stop snapshot；其中 stop pending 不能覆盖 `lifecycle_safety_manifest.json.final_stop` 和 stop response 的最终 cleanup 事实。
 
@@ -30,7 +31,7 @@ Final stop semantic success，cleanup scope=`o11_owned_pid_process_group_only`�
 
 ## Current PLANNER_ONLY_NO_GO
 
-Helper `elapsed_ms=80444`，超过 API `process_timeout_s=80`；partial artifact 被保留，last successful phase=`tf_probe`，timeout command=`ros2 pkg list`。精确根因包括：
+首窗口 helper `elapsed_ms=81243`，保留 `amcl_pose_probe_interrupted_before_observation`、`sigint_before_final_artifact`、`helper_process_timeout_after_partial_artifact` 三个 roots。发布后第二窗口 helper `elapsed_ms=80444`，超过 API `process_timeout_s=80`；partial artifact 被保留，last successful phase=`tf_probe`，timeout command=`ros2 pkg list`。第二窗口精确根因包括：
 
 - `helper_process_timeout_after_partial_artifact`
 - `sigint_before_final_artifact`
@@ -41,6 +42,14 @@ Helper `elapsed_ms=80444`，超过 API `process_timeout_s=80`；partial artifact
 Partial current evidence 只证明 map_server/amcl active、dynamic `map->odom` observed 且 unique AMCL attribution、`map->base_link=true`、initialpose publish attempts=0。它不证明 fresh `/amcl_pose`、persisted pose final gate、formal TF freshness、planner/controller active 或 path。
 
 Path requested=true，但 attempted/succeeded/generated=false，count=0。因此最终裁决保持 `PLANNER_ONLY_NO_GO`；代码合同与 no-go 均不得转算为 OKR 提升。
+
+## post_publish_race_window
+
+第二窗口是 commit `3fe3c053...` 发布后的非预期后台/编排竞态，违反本 sprint no-retry 边界；它不是第二份进展，invoking agent/session/operator identity 无法从 artifact 判定。第二窗口 lifecycle PID/PG=`684474`、proof PG=`685333`。
+
+第二窗口只把 current evidence 推进到 `map_server_active=true`、`amcl_active=true`、dynamic `map->odom` observed/timestamp parsed/unique AMCL attributed 与 `map->base_link=true`。formal freshness gate、current AMCL pose、persisted pose audit、planner/controller active 与 path 仍未证明；path 未尝试、未生成，`READINESS_GO=false`。
+
+16:54 第二 owned stop clean；16:55 audit 没有再发 stop，最终 lifecycle stopped、Upper API healthy、holders/log unchanged、owned residual=0、`physical_motion=false`。最终状态以 `lifecycle_safety_manifest.post_publish_race_cleanup` 为准，不以较早的 `readiness_assertion` pre-stop snapshot 为准。禁止第三个 proof/window。
 
 ## OKR、Mission、delta 与 KR
 
@@ -53,12 +62,12 @@ Path requested=true，但 attempted/succeeded/generated=false，count=0。因此
 - `robot_control_executed=false`、`route_execution_success=false`、`hil_pass=false`、`delivery_success=false`、`safe_to_control=false`、`okr_credit=false`。
 - KR：`不归档`；历史区无新增。
 
-Mission Objective 0 不是 pending authorization：CEO 已授权 motion，但本 sprint 未消费。正确状态仍为 `blocked_before_attempt_on_current_localization_readiness`，没有 mission attempt 或 success。
+Mission Objective 0 不是 pending authorization：旧 motion authorization 的 current context 已经过两个窗口，后续动作不得直接复用。正确状态仍为 `blocked_before_attempt_on_current_localization_readiness`，没有 mission attempt 或 success。
 
 ## 方向调整与剩余风险
 
 本轮修复了 start body 被忽略、`auto` 可能新开 serial、HTTP 200 被误判成功和 persisted-pose planner-only gate 的代码合同；当前剩余风险已收敛到 O10 helper runtime path 与 80s API budget 不相容，以及 Upper API graceful shutdown 的既有 `stop-sigterm` 风险。
 
-暂停重复 strict-start wrapper/live refresh。`next_offline_runtime_budget_fix`：下一轮由 `robot-software-engineer` 与 `robot-algorithm-engineer` 先在本地/离线剖析并修复 helper 在 `ros2 pkg list` / TF probe 后超出 80s budget 的 runtime path、probe order 与 final artifact 时序；只有新测试证明能在预算内自然完成，才开新的 no-motion current proof。
+暂停重复 strict-start wrapper/live refresh，禁止第三个 proof/window。`next_offline_runtime_budget_fix`：下一轮由 `robot-software-engineer` 与 `robot-algorithm-engineer` 先在本地/离线剖析并修复 helper 在 `ros2 pkg list` / TF probe 后超出 80s budget 的 runtime path、probe order 与 final artifact 时序；只有新测试证明能在预算内自然完成，才考虑新的 no-motion current proof。
 
-若新 proof 仍无 persisted pose，Product/CEO 必须明确 localization input gate，禁止隐式 `/initialpose`。运动授权仍未被本 sprint 消费；未来 motion 必须重新满足 current readiness、operator、路线和 obstacle gate。
+若未来新 proof 仍无 persisted pose，Product/CEO 必须明确 localization input gate，禁止隐式 `/initialpose`。任何新动作必须重新确认 current readiness、operator、route 和 obstacle gate。
