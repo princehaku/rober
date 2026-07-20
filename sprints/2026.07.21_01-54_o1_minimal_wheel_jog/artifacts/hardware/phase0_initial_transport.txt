@@ -1,0 +1,7 @@
+read_only_endpoint_count=4
+/api/health curl_exit=0 http_status=200 json_clean=true
+/api/status curl_exit=0 http_status=200 json_clean=true
+/api/base/status curl_exit=0 http_status=200 json_clean=true
+/api/nav2/status curl_exit=0 http_status=200 json_clean=true
+initial_gate_observation=recent_preexisting_nonzero_command_seen
+corrective_action_allowed=one_fixed_proxy_pre_stop

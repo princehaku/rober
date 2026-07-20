@@ -1,0 +1,8 @@
+method=POST
+url=http://127.0.0.1:7001/api/robot-control/base/stop?baseUrl=http://192.168.1.11:8787
+curl_exit_code=0
+http_status=200
+time_total_seconds=1.944946
+size_download_bytes=15205
+remote_ip=127.0.0.1
+request_count=1

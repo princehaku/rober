@@ -1,0 +1,3 @@
+/api/base/status curl_exit=0 http_status=200 time_total_seconds=0.133755 size_download_bytes=20785 json_clean=true
+/api/base/feedback-samples/latest curl_exit=0 http_status=200 time_total_seconds=0.020582 size_download_bytes=13679 json_clean=true
+/api/nav2/status curl_exit=0 http_status=200 time_total_seconds=0.290727 size_download_bytes=30058 json_clean=true

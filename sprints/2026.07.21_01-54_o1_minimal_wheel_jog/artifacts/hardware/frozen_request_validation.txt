@@ -1,0 +1,7 @@
+python3_json_tool_exit=0
+jq_contract_exit=0
+jq_contract_result=true
+sha256=082da6a24deb68bfaec2f81bf2bcc3ef63d2f4f6f039278e2b7e69cd96697b3c
+bytes=126
+transport=stdin_curl_data_binary_at_dash
+inline_json=false

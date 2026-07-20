@@ -1,0 +1,22 @@
+{
+  "schema": "trashbot.o1.wheel_jog_vendor_protocol_sources.v1",
+  "sources": [
+    "docs/vendor/VENDOR_INDEX.md",
+    "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h",
+    "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/ugv_advance.h",
+    "docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py"
+  ],
+  "adopted_facts": {
+    "T13": "CMD_ROS_CTRL with X in m/s and Z in rad/s",
+    "T130": "CMD_BASE_FEEDBACK request",
+    "T1001": "FEEDBACK_BASE_INFO with same-frame L/R wheel speed, r/p/y attitude and v voltage",
+    "uart_framing": "one UTF-8 JSON object per newline",
+    "orange_pi_uart_path": "not_assumed_or_opened_in_this_sprint",
+    "control_path": "predeployed Upper API and ESP32 HTTP bridge via fixed PC proxy"
+  },
+  "project_proxy_limits": {
+    "max_speed_mps": 0.12,
+    "max_duration_ms": 800,
+    "stop_override_available": true
+  }
+}

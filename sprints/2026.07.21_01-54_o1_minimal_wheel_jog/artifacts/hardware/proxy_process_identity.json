@@ -1,0 +1,9 @@
+{
+  "schema": "trashbot.o1.workstation_proxy_process_identity.v1",
+  "endpoint": "http://127.0.0.1:7001",
+  "pid": 21549,
+  "process_state": "preexisting_listener_reused",
+  "owned_by_this_sprint": false,
+  "stop_on_closeout": false,
+  "checked_at": "2026-07-21T01:58:44+08:00"
+}

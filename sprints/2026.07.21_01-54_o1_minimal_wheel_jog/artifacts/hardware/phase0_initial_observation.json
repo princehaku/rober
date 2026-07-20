@@ -1,0 +1,38 @@
+{
+  "schema": "trashbot.o1.minimal_wheel_jog_phase0_observation.v1",
+  "transport_clean": true,
+  "health_ready": true,
+  "nav2_lifecycle_running": false,
+  "nav2_lifecycle_state": "stopped",
+  "nav2_goal_active_observed": false,
+  "manual_hold_active_observed": false,
+  "preexisting_nonzero_observed": true,
+  "preexisting_latest_nonzero_command": {
+    "observed_at_unix_s": 1784570321.6565998,
+    "command_mode": "pwm",
+    "linear_x": -0.08,
+    "angular_z": 0.0,
+    "vendor_command": {
+      "T": 11,
+      "L": -164,
+      "R": -164
+    },
+    "sent": true,
+    "command_transport": "http"
+  },
+  "latest_command_before_corrective_stop": {
+    "observed_at_unix_s": 1784570323.8890164,
+    "command_mode": "pwm",
+    "linear_x": 0.0,
+    "angular_z": 0.0,
+    "vendor_command": {
+      "T": 11,
+      "L": 0,
+      "R": 0
+    },
+    "sent": true,
+    "command_transport": "http"
+  },
+  "initial_gate_clean": false,
+  "required_action": "one_fixed_proxy_pre_stop_then_read_only_recheck"
+}

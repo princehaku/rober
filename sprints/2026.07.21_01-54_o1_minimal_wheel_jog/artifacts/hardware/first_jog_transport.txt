@@ -1,0 +1,14 @@
+method=POST
+url=http://127.0.0.1:7001/api/robot-control/base/first-jog?baseUrl=http://192.168.1.11:8787
+content_type=application/json
+body_source=frozen_first_jog_request.json
+body_transport=jq_compact_to_stdin_curl_data_binary_at_dash
+inline_json=false
+curl_retry_enabled=false
+curl_exit_code=0
+http_status=200
+time_total_seconds=1.551276
+size_download_bytes=17593
+remote_ip=127.0.0.1
+nonzero_request_count=1
+authorization_consumed=true

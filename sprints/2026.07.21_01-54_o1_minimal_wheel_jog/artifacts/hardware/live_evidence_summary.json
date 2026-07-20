@@ -1,0 +1,104 @@
+{
+  "schema": "trashbot.o1.minimal_wheel_jog_live_evidence.v1",
+  "authorization_ref": "ceo_20260721_0154_minimal_wheel_jog_v6",
+  "request": {
+    "direction": "forward",
+    "speed_mps": 0.08,
+    "duration_ms": 300,
+    "command_mode": "ros",
+    "confirm_hil_checklist": true
+  },
+  "proxy_result": {
+    "http_status": 200,
+    "proxy_status": "command_forwarded",
+    "remote_http_status": 200,
+    "upper_status": "loaded",
+    "upper_manual_command_executed": true,
+    "upper_auto_stop_executed": true,
+    "upper_command_result_ok": true,
+    "upper_stop_result_ok": true
+  },
+  "command_evidence": {
+    "upper_reported_base_command_mode": "ros",
+    "command_raw_latest_left": 164,
+    "command_raw_latest_right": 164,
+    "command_raw_latest_linear_x": 0.08,
+    "command_raw_latest_angular_z": 0.0,
+    "command_raw_lr_nonzero_proven": true,
+    "bridge_debug_latest_nonzero_command_mode": "pwm",
+    "bridge_debug_latest_nonzero_vendor_command": {
+      "T": 11,
+      "L": 164,
+      "R": 164
+    },
+    "bridge_debug_nonzero_sent": true,
+    "bridge_debug_command_transport": "http",
+    "requested_ros_T13_observed_in_bridge_debug": false,
+    "command_mode_discrepancy": "Upper semantic reports ros but final bridge debug attributes the live nonzero to pwm T=11; T=13 wire frame is not proven"
+  },
+  "t1001_evidence": {
+    "request_command": {
+      "T": 130
+    },
+    "requested_sample_count": 2,
+    "completed_sample_count": 2,
+    "partial_samples_observed_t1001": true,
+    "all_samples_observed_t1001": false,
+    "during_motion_t1001_frame_count": 80,
+    "after_stop_dedicated_t1001_frame_count": 0,
+    "first_frame": {
+      "T": 1001,
+      "L": 0,
+      "R": 0,
+      "r": -0.402946323,
+      "p": 0.601586998,
+      "y": "null",
+      "v": 11.8633194
+    },
+    "last_frame": {
+      "T": 1001,
+      "L": 0,
+      "R": 0,
+      "r": -1.621548653,
+      "p": 1.080849051,
+      "y": "null",
+      "v": 11.88290024
+    },
+    "wheel_feedback_lr_nonzero_proven": false,
+    "wheel_feedback_nonzero_frame_count": 0,
+    "wheel_feedback_latest_left": 0.0,
+    "wheel_feedback_latest_right": 0.0,
+    "imu_attitude_delta_observed": true,
+    "imu_max_abs_roll_delta_degrees": 1.218602,
+    "imu_max_abs_pitch_delta_degrees": 0.479262,
+    "imu_motion_threshold_degrees": 0.35,
+    "motion_signal_observed": true,
+    "motion_signal_source": "imu_attitude_delta"
+  },
+  "post_stop_evidence": {
+    "explicit_post_stop_proxy_status": "command_forwarded",
+    "explicit_post_stop_remote_http_status": 200,
+    "explicit_post_stop_upper_status": "stopped",
+    "final_latest_command": {
+      "observed_at_unix_s": 1784575636.148464,
+      "command_mode": "pwm",
+      "linear_x": 0.0,
+      "angular_z": 0.0,
+      "vendor_command": {
+        "T": 11,
+        "L": 0,
+        "R": 0
+      },
+      "sent": true,
+      "command_transport": "http"
+    },
+    "final_latest_t1001_pair": {
+      "left_speed": 0.0,
+      "right_speed": 0.0
+    },
+    "final_nav2_lifecycle_running": false,
+    "final_nav2_lifecycle_state": "stopped",
+    "final_nav2_goal_active_observed": false,
+    "final_manual_hold_active_observed": false
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "direction": "forward",
+  "speed": 0.08,
+  "duration_ms": 300,
+  "command_mode": "ros",
+  "confirm_hil_checklist": true
+}

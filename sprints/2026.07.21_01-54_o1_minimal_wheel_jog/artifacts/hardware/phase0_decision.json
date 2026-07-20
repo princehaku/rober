@@ -1,0 +1,35 @@
+{
+  "schema": "trashbot.o1.minimal_wheel_jog_phase0_decision.v1",
+  "authorization_ref": "ceo_20260721_0154_minimal_wheel_jog_v6",
+  "initial_gate_clean": false,
+  "initial_blocker": "recent_preexisting_nonzero_command_observed",
+  "corrective_pre_stop_count": 1,
+  "corrective_pre_stop_via_fixed_proxy": true,
+  "corrective_pre_stop_http_status": 200,
+  "recheck_transport_clean": true,
+  "recheck_health_ready": true,
+  "recheck_nav2_lifecycle_running": false,
+  "recheck_nav2_lifecycle_state": "stopped",
+  "recheck_nav2_goal_active_observed": false,
+  "recheck_manual_hold_active_observed": false,
+  "recheck_latest_command": {
+    "observed_at_unix_s": 1784570408.04661,
+    "command_mode": "pwm",
+    "linear_x": 0.0,
+    "angular_z": 0.0,
+    "vendor_command": {
+      "T": 11,
+      "L": 0,
+      "R": 0
+    },
+    "sent": true,
+    "command_transport": "http"
+  },
+  "new_nonzero_after_corrective_pre_stop_observed": false,
+  "current_control_state_clean": true,
+  "phase0_go": true,
+  "authorization_consumed": false,
+  "nonzero_request_count": 0,
+  "no_retry": true,
+  "decision_boundary": "historical_nonzero_remains_in_tail_but_latest_current_command_is_confirmed_zero_and_no_hold_nav2_goal_is_active"
+}

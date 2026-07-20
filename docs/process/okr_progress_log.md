@@ -6,6 +6,18 @@
 
 ---
 
+## 2026-07-21 O1 exactly-one minimal wheel jog live-control delta +1 收口
+
+`sprints/2026.07.21_01-54_o1_minimal_wheel_jog/` 的 frozen current-live evidence 完成 Product acceptance。唯一非零 manual 请求为 `forward / 0.08m/s / 300ms`；proxy HTTP=`200`、remote HTTP=`200`、`proxy_status=command_forwarded`，bridge 记录实际 nonzero vendor command `T=11,L=164,R=164` 且 sent，`manual_command_executed=true`、`auto_stop_executed=true`。同窗读取 `80` 帧 `T=1001`，IMU roll/pitch 最大变化为 `1.218602°/0.479262°`，超过 `0.35°` 阈值，故接受 `motion_signal_observed=true`、source=`imu_attitude_delta`。最终 bridge command 为 `T=11,L=0,R=0` sent，显式 post-stop HTTP=`200`，最终 Nav2 lifecycle stopped、无 active goal/manual hold。
+
+Exactly-once/no-retry 合同成立：pre-stop/nonzero/post-stop=`1/1/1`，upper internal auto-stop=`1`，retry=`0`。v6 authorization `ceo_20260721_0154_minimal_wheel_jog_v6` 已由唯一 first-jog transport attempt 消费，状态=`consumed_no_retry`；当前 sprint 永久封存，不得复用、补采或重发。
+
+Product 只窄化接受 current live-control transport + physical motion signal，并记录本轮总账 `live_control_delta=true`。O1 从约 `94%` 保守上调到约 `95%`，理由是该 current live evidence 实质补强 O1 KR1/KR2/KR3 的通信、控制发送与反馈解析先决条件，强于历史 material/readback；但所有 KR 仍 `不归档`。
+
+拒绝边界不变：`80` 帧 T1001 的 L/R nonzero frame count=`0`，dedicated post-stop T1001 wheel feedback frame=`0`，requested ROS `T=13` wire frame 未证明；顶层 `robot_control_executed=false`、`hil_pass=false`、`safe_to_control=false`、`route_execution_success=false`、`delivery_success=false`、`mission_attempt=false`。嵌套 bridge sent 不能覆盖顶层安全 envelope。Mission Objective 0 仍低于 `C2 bounded_mission_attempt`，不接受为 HIL、safe-to-control、bounded mission、route terminal、delivery 或 operator/dropoff closure。
+
+O5 保持约 `85%` 且 provider/runtime blocker=`2/2` 继续暂停；O6/O7 各保持约 `93%`，不因 jog 涨分。下一步若继续 O1，只能在新的 fresh authorization 和独立安全 gate 下，将部署后的 01:28 readiness capability 与同窗口九门、nonzero T1001 L/R、方向、dedicated post-stop wheel-zero、route terminal 和 operator result连成同 lineage；不得重跑本 micro。
+
 ## 2026-07-21 O3/O1 readiness capability offline green + Phase 0 holder blocked flat 收口
 
 `sprints/2026.07.21_01-28_o3_o1_nav2_readiness_repair_bounded_mission/` 完成 Product acceptance：`PRODUCT_CLOSEOUT=ACCEPT_IMPLEMENTATION_OFFLINE_GREEN_PHASE0_BLOCKED`。Robot/Algorithm 已修改 O11、Upper、O10、Nav2 params、测试与相关 docs，形成 `sensor-enabled/base-disabled` single-owner lifecycle 和 current map/scan/pose/persisted pose/dynamic TF/planner/controller/path/obstacle 九门 fail-closed contract。验证 O11 `7`、Upper `128`（skip1）、O10 `189`、params `4`、combined `328`（skip1）、Docker `6 packages finished` 全绿；最终中文技术注释比例 Upper `20.54%`、O11 `20.09%`、O10 `23.82%`。
