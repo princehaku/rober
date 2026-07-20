@@ -6,6 +6,16 @@
 
 ---
 
+## 2026-07-20 O3 O10 offline runtime budget contract accepted flat 收口
+
+`sprints/2026.07.20_17-23_o3_offline_runtime_budget_fix/` 完成 Product acceptance。Robot Software 让 Upper API 将实际 `process_timeout_s` 同值传给 O10 helper，80s fixture 锁定 helper argv 与外层 wait 同为 `80.0s`；Algorithm 新增 monotonic deadline 与 `4.0s` final artifact reserve，将非关键 `ros2 pkg list` 后移，并在预算不足时输出 `package_check_skipped_to_preserve_final_artifact_budget`、`executed=false`、`timeout_s=null`、availability=`null`。Package fork 前第二次 clamp 进入 reserve 的 race 已修复，hostile fake-monotonic 与本地 offline fixture 均自然写 `artifact_kind=final`、`last_phase=final`、`current_command=null`，不依赖 SIGINT、partial preservation 或 timeout fallback。
+
+验证留档：Robot `Ran 116 tests ... OK (skipped=1)`、中文注释 `27.3%`；Algorithm `Ran 169 tests ... OK`、中文注释 `25.166%`；集成 `Ran 285 tests ... OK (skipped=1)`，双方 `py_compile`、contract `rg` 与 scoped/full `git diff --check` 均通过。Product 只读核对，不重跑工程 tests。
+
+Proof boundary=`software_proof_o3_o10_offline_runtime_budget_contract_only`。本轮未执行 SSH、ROS live、Nav2 action、`/initialpose`、goal、`/cmd_vel`、UART 或任何 control/motion；`current_run_artifact_delta=false`、`external_artifact_delta=false`、`live_control_delta=false`、`user_action_delta=false`，current localization/path、route execution、HIL、delivery、safe-to-control、robot control、Mission Objective 0 均未证明，`okr_credit=false`。
+
+O5 保持约 `85%` 且 provider/runtime blocker `2/2` 仍成立，本轮没有第三次消费；O1 保持约 `94%`，O6/O7 各保持约 `93%`，所有主百分比 flat，KR `不归档`，历史区无新增。`tech-plan.md` 的最低 Objective 切换理由在收口时仍成立。禁止复用旧两窗口授权开启第三个 proof/window；下一步只在重新确认 current operator、route、obstacle、readiness gate 并取得新授权后，开启一个新的 no-motion current proof。
+
 ## 2026-07-20 O3 strict-no-motion contract accepted / dual-window race reconciled PLANNER_ONLY_NO_GO flat 收口
 
 `sprints/2026.07.20_13-20_o3_nav2_localization_readiness_recovery/` 完成最终 Product acceptance。Robot Software 与 Algorithm 的跨 owner 代码、回归和 navigation 文档 accepted：Robot `114 tests OK (skipped=1 aiohttp)`、中文注释 `20.2%`；Algorithm `167 tests OK`、中文注释 `20.946%`；diff 与静态断言均绿。远端 API/helper SHA 与本地一致，proof boundary=`strict_no_motion_persistent_lifecycle_fresh_pose_planner_only_path_readiness`。

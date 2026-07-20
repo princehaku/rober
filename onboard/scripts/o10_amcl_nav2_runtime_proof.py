@@ -216,6 +216,10 @@ EXPECTED_PACKAGES = [
     "nav2_lifecycle_manager",
 ]
 PACKAGE_CHECK_BATCH_TIMEOUT_S = 5.0
+# final reserve 只服务于 root-cause 聚合、atomic JSON 落盘和正常退出，不能被诊断命令借用。
+DEFAULT_FINAL_ARTIFACT_RESERVE_S = 4.0
+# 小于该窗口时启动子进程的收益低于其调度成本，直接进入 final 能给外层 API 更稳定的结果。
+MIN_COMMAND_BUDGET_S = 0.05
 TF_ECHO_SHELL_TIMEOUT_S = 10.0
 # 板端 ros2 run/tf2_echo 退出会比 shell timeout 多耗一段启动和清理时间；外层必须留足余量。
 TF_ECHO_PROCESS_TIMEOUT_S = 14.0
@@ -243,6 +247,115 @@ ACTIVE_PHASE_WRITER: PhaseArtifactWriter | None = None
 def now_ms() -> int:
     """统一毫秒时间戳，方便和 upper API latest/readback 做同轮对齐。"""
     return int(time.time() * 1000)
+
+
+class OuterProcessBudget:
+    """用 monotonic deadline 约束 helper 全程，并保留 final artifact 收口窗口。"""
+
+    def __init__(
+        self,
+        outer_timeout_s: float | None,
+        *,
+        final_reserve_s: float = DEFAULT_FINAL_ARTIFACT_RESERVE_S,
+        clock: Any | None = None,
+    ) -> None:
+        # 测试可注入 fake clock；生产路径固定使用 monotonic，绝不受系统时间校准影响。
+        self._clock = clock or time.monotonic
+        # 起点只采样一次，所有 remaining 都相对同一个 monotonic 原点计算。
+        self.started_monotonic_s = float(self._clock())
+        # None 是兼容旧 CLI 的显式状态，不能用一个超大伪预算替代。
+        self.outer_timeout_s = (
+            max(float(outer_timeout_s), 0.0)
+            if outer_timeout_s is not None
+            else None
+        )
+        # reserve 独立于单命令 timeout，避免命令配置变化悄悄挤占落盘窗口。
+        self.final_reserve_s = max(float(final_reserve_s), 0.0)
+        # deadline 保存 monotonic 绝对点，后续禁止用 wall-clock 毫秒做差。
+        self.deadline_monotonic_s = (
+            self.started_monotonic_s + self.outer_timeout_s
+            if self.outer_timeout_s is not None
+            else None
+        )
+        # normal_completion 是无预算压力时的默认事实，不代表 readiness 成功。
+        self.finalization_reason = "normal_completion"
+        # reserve_reached 只表达调度边界，不参与业务 ready/no-go 判定。
+        self.reserve_reached = False
+
+    @property
+    def enabled(self) -> bool:
+        """直接 CLI 缺省不启用 outer deadline，保持历史调用兼容。"""
+        return self.deadline_monotonic_s is not None
+
+    def remaining_s(self) -> float | None:
+        """剩余预算只从 monotonic clock 计算，避免 wall clock 跳变造成越界。"""
+        # 未启用 outer budget 时返回 None，让旧调用继续使用原命令窗口。
+        if self.deadline_monotonic_s is None:
+            return None
+        # 归零可防止负 timeout 继续传入 subprocess。
+        return max(self.deadline_monotonic_s - float(self._clock()), 0.0)
+
+    def available_before_final_reserve_s(self) -> float | None:
+        """返回可分配给新命令的预算；final reserve 本身始终不可借用。"""
+        remaining = self.remaining_s()
+        # None 继续表示 unbounded compatibility，而不是 0 秒可用。
+        if remaining is None:
+            return None
+        # reserve 从每次实时 remaining 中扣除，保证前后阶段共享同一约束。
+        return max(remaining - self.final_reserve_s, 0.0)
+
+    def bounded_command_timeout_s(self, requested_s: float, *, noncritical: bool = False) -> float | None:
+        """把单命令 timeout 收敛到 outer remaining 减 final reserve。"""
+        requested = max(float(requested_s), 0.0)
+        available = self.available_before_final_reserve_s()
+        # 缺省 CLI 不做 clamp，保持既有 helper 独立运行行为。
+        if available is None:
+            return requested
+        # 极小窗口不值得 fork；直接收口比启动后再被外层中断更可靠。
+        if available <= MIN_COMMAND_BUDGET_S:
+            # reserve 一旦触发，后续 run_bash 都会返回 skipped，不会重新启动子进程。
+            self.reserve_reached = True
+            self.finalization_reason = (
+                "budget_reserve_reached_before_noncritical_command"
+                if noncritical
+                else "budget_reserve_reached_before_command"
+            )
+            return None
+        # 可用预算充足时仍尊重命令自己的更小 timeout，不主动放大探针。
+        return min(requested, available)
+
+    def summary(self) -> dict[str, Any]:
+        """artifact 同时记录 outer truth、reserve、remaining 与自然收口原因。"""
+        return {
+            # enabled 供消费者区分 API 管理路径与直接 CLI 兼容路径。
+            "enabled": self.enabled,
+            # clock 固定为 monotonic，禁止消费者拿它和 epoch 时间戳比较。
+            "clock": "monotonic",
+            # outer timeout 是 API 传入的原值，不包含 helper 私自扩展。
+            "outer_process_timeout_s": self.outer_timeout_s,
+            # reserve 明示后，package skip/clamp 可以由 artifact 独立复算。
+            "final_artifact_reserve_s": self.final_reserve_s,
+            # deadline 用于同进程诊断；跨进程只消费 timeout/remaining 语义。
+            "deadline_monotonic_s": self.deadline_monotonic_s,
+            # remaining 是生成 summary 当刻的快照，不能当成未来保证。
+            "remaining_s": self.remaining_s(),
+            # available 已扣除 reserve，正是新命令允许消费的最大窗口。
+            "available_before_final_reserve_s": self.available_before_final_reserve_s(),
+            # reserve_reached 解释为何后续命令为 skipped。
+            "reserve_reached": self.reserve_reached,
+            # finalization_reason 只描述收口路径，不覆盖 root_causes。
+            "finalization_reason": self.finalization_reason,
+        }
+
+    def begin_finalization(self) -> None:
+        """进入纯内存 assembly 前冻结收口原因，之后不得再启动非关键命令。"""
+        available = self.available_before_final_reserve_s()
+        # 正好踩到 reserve 也按 reached 处理，避免边界值在不同主机上漂移。
+        if available is not None and available <= MIN_COMMAND_BUDGET_S:
+            self.reserve_reached = True
+            # 已由 package/command 写出的更具体原因优先保留。
+            if self.finalization_reason == "normal_completion":
+                self.finalization_reason = "budget_reserve_reached_during_finalization"
 
 
 def safety_flags() -> dict[str, Any]:
@@ -277,6 +390,10 @@ class PhaseArtifactWriter:
     def __init__(self, args: argparse.Namespace, started_ms: int) -> None:
         self.output = str(args.output)
         self.started_ms = started_ms
+        # build_proof 会预先挂载同一个 budget；直接构造 writer 的旧测试仍走无 deadline 兼容路径。
+        self.runtime_budget = getattr(args, "_outer_process_budget", None)
+        if not isinstance(self.runtime_budget, OuterProcessBudget):
+            self.runtime_budget = OuterProcessBudget(None)
         self.last_phase = "start"
         self.last_successful_phase: str | None = None
         self.current_command: dict[str, Any] | None = None
@@ -409,6 +526,7 @@ class PhaseArtifactWriter:
     def write_partial(self, *, status: str = "partial_runtime_in_progress") -> None:
         """写入可被 upper 合并的 partial artifact；写失败不打断主 proof 流程。"""
         proof = {
+            "artifact_kind": "partial",
             "status": status,
             "evidence_ref": f"o10-amcl-nav2-runtime-partial-{self.started_ms}",
             "evidence_type": "partial_runtime_material",
@@ -422,12 +540,17 @@ class PhaseArtifactWriter:
             "recent_commands": self.recent_commands[-12:],
             "root_causes": list(self.root_causes),
             "blockers": list(self.root_causes),
+            "runtime_budget": self.runtime_budget.summary(),
+            "outer_process_timeout_s": self.runtime_budget.outer_timeout_s,
+            "final_artifact_reserve_s": self.runtime_budget.final_reserve_s,
+            "finalization_reason": self.runtime_budget.finalization_reason,
             **self.snapshot,
             **safety_flags(),
         }
         attach_artifact_summaries(proof, status=status)
         payload = {
             "schema": SCHEMA,
+            "artifact_kind": "partial",
             "generated_at_ms": now_ms(),
             "status": status,
             "evidence_type": "partial_runtime_material",
@@ -521,6 +644,32 @@ def run_bash(
     started_ms = now_ms()
     process: subprocess.Popen[str] | None = None
     display_command = artifact_command or command
+    runtime_budget = (
+        phase_writer.runtime_budget
+        if isinstance(phase_writer, PhaseArtifactWriter)
+        else None
+    )
+    if isinstance(runtime_budget, OuterProcessBudget):
+        # 所有带 phase writer 的子命令共享同一 outer deadline；这样早期 critical probe
+        # 即使异常变慢，也不能侵占 final artifact 的固定 reserve。
+        bounded_timeout_s = runtime_budget.bounded_command_timeout_s(timeout_s)
+        if bounded_timeout_s is None:
+            return {
+                "command": display_command,
+                "executed": False,
+                "ok": False,
+                "returncode": None,
+                "started_at_ms": started_ms,
+                "finished_at_ms": now_ms(),
+                "timeout_s": 0.0,
+                "requested_timeout_s": float(timeout_s),
+                "timed_out": False,
+                "elapsed_ms": 0,
+                "stdout": "",
+                "stderr": "",
+                "boundary": "outer_process_budget_final_reserve_reached",
+            }
+        timeout_s = bounded_timeout_s
     if isinstance(phase_writer, PhaseArtifactWriter):
         phase_writer.before_command(display_command, timeout_s)
     try:
@@ -3227,6 +3376,52 @@ def write_json_atomic(path: str, payload: dict[str, Any]) -> None:
     tmp_path = output_path.with_suffix(output_path.suffix + ".tmp")
     tmp_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
     os.replace(tmp_path, output_path)
+
+
+def finalize_artifact_contract(
+    payload: dict[str, Any],
+    *,
+    phase_writer: PhaseArtifactWriter,
+    runtime_budget: OuterProcessBudget,
+) -> dict[str, Any]:
+    """冻结自然 final 语义；调用后只允许 atomic write 和正常进程退出。"""
+    runtime_budget.begin_finalization()
+    # current_command 必须先清空，避免 final artifact 继承上一条已结束命令的 partial 状态。
+    phase_writer.current_command = None
+    # writer 自身也切到 final，防止后续摘要仍引用旧 phase。
+    phase_writer.last_phase = "final"
+    # build_proof 正常返回必须带 proof；保守空对象只用于异常防御。
+    proof = payload.get("proof") if isinstance(payload.get("proof"), dict) else {}
+    # 在冻结原因之后只采样一次 summary，顶层和 proof 共享同一份预算事实。
+    budget_summary = runtime_budget.summary()
+    proof.update(
+        {
+            # final 类型与 partial 类型显式分离，消费者不再靠 status 猜测。
+            "artifact_kind": "final",
+            # final phase 是自然 assembly 已完成，不代表业务 complete。
+            "last_phase": "final",
+            # final 绝不能留下仍在运行的命令指针。
+            "current_command": None,
+            # 嵌套 summary 提供完整的 monotonic budget 复核字段。
+            "runtime_budget": budget_summary,
+            # 常用字段平铺，保持 latest API 消费简单。
+            "outer_process_timeout_s": runtime_budget.outer_timeout_s,
+            "final_artifact_reserve_s": runtime_budget.final_reserve_s,
+            # reason 与 root_causes 正交，不能替代业务 blocker。
+            "finalization_reason": runtime_budget.finalization_reason,
+        }
+    )
+    # envelope 同样带 final/budget 字段，避免只读顶层的消费者误判 partial。
+    payload.update(
+        {
+            "artifact_kind": "final",
+            "proof": proof,
+            "outer_process_timeout_s": runtime_budget.outer_timeout_s,
+            "final_artifact_reserve_s": runtime_budget.final_reserve_s,
+            "finalization_reason": runtime_budget.finalization_reason,
+        }
+    )
+    return payload
 
 
 def read_json(path: str) -> tuple[dict[str, Any] | None, dict[str, str] | None]:
@@ -7326,12 +7521,85 @@ def tf_chain_root_causes(classification: dict[str, Any], observed: dict[str, boo
     return causes
 
 
-def package_checks(args: argparse.Namespace) -> tuple[dict[str, bool], dict[str, dict[str, Any]], dict[str, Any]]:
-    """Nav2 包检查只做单次 source 的批量诊断，避免 preflight 吃掉定位主路径预算。"""
-    available: dict[str, bool] = {}
+def package_checks(args: argparse.Namespace) -> tuple[dict[str, bool | None], dict[str, dict[str, Any]], dict[str, Any]]:
+    """非关键 package inventory 只能使用 critical readiness 完成后的剩余预算。"""
+    available: dict[str, bool | None] = {}
     results: dict[str, dict[str, Any]] = {}
     command = "ros2 pkg list"
-    batch_result = run_ros(args, command, timeout_s=PACKAGE_CHECK_BATCH_TIMEOUT_S)
+    # build_proof 会挂载共享 budget；直接单测/CLI 未挂载时继续使用固定 5 秒。
+    runtime_budget = getattr(args, "_outer_process_budget", None)
+    timeout_s = PACKAGE_CHECK_BATCH_TIMEOUT_S
+    if isinstance(runtime_budget, OuterProcessBudget):
+        # package 明确标记 noncritical，使 reserve reason 能与关键命令区分。
+        bounded_timeout_s = runtime_budget.bounded_command_timeout_s(timeout_s, noncritical=True)
+        if bounded_timeout_s is None:
+            # package 缺省为 unknown，而不是 false；预算跳过绝不能伪装成包缺失。
+            boundary = "package_check_skipped_to_preserve_final_artifact_budget"
+            batch_result = {
+                # command 仅用于诊断，没有实际启动进程。
+                "command": command,
+                # executed=false 是 skipped 的核心事实，不能省略。
+                "executed": False,
+                "ok": False,
+                "returncode": None,
+                # timeout_s=None 表示未分配窗口，不是 0 秒执行失败。
+                "timeout_s": None,
+                # requested 保留原始 5 秒配置，便于解释为何发生 clamp/skip。
+                "requested_timeout_s": PACKAGE_CHECK_BATCH_TIMEOUT_S,
+                # remaining 与 reserve 允许 readback 验证 skip 判定。
+                "remaining_s": runtime_budget.remaining_s(),
+                "final_artifact_reserve_s": runtime_budget.final_reserve_s,
+                "timed_out": False,
+                "elapsed_ms": 0,
+                "stdout": "",
+                "stderr": "",
+                # boundary 必须使用 PRD 指定 literal，供 API/测试稳定消费。
+                "boundary": boundary,
+            }
+            for package in EXPECTED_PACKAGES:
+                # None 表示 not-proven，避免 skipped 被归类为 missing。
+                available[package] = None
+                results[package] = {
+                    "command": f"ros2 pkg list contains {package}",
+                    "executed": False,
+                    "ok": False,
+                    # available 单独保留三态语义，不能复用 ok 布尔值。
+                    "available": None,
+                    "boundary": boundary,
+                    "diagnostic_mode": "single_sourced_pkg_list_package_check_budget_aware",
+                    "batch_command": command,
+                }
+            return available, results, batch_result
+        # 非关键命令只获得扣除 final reserve 后的收敛窗口。
+        timeout_s = bounded_timeout_s
+    batch_result = run_ros(args, command, timeout_s=timeout_s)
+    if (
+        batch_result.get("executed") is False
+        and batch_result.get("boundary") == "outer_process_budget_final_reserve_reached"
+    ):
+        # 首次预算检查与真正 fork 之间仍可能跨入 reserve；二次 clamp 的 generic skip
+        # 必须翻译回 package 专用 boundary，并继续保持 availability unknown。
+        boundary = "package_check_skipped_to_preserve_final_artifact_budget"
+        batch_result["boundary"] = boundary
+        batch_result["timeout_s"] = None
+        if isinstance(runtime_budget, OuterProcessBudget):
+            batch_result["remaining_s"] = runtime_budget.remaining_s()
+            batch_result["final_artifact_reserve_s"] = runtime_budget.final_reserve_s
+        for package in EXPECTED_PACKAGES:
+            # race-window skip 与 pre-check skip 使用完全相同的三态 package 语义。
+            available[package] = None
+            results[package] = {
+                "command": f"ros2 pkg list contains {package}",
+                "executed": False,
+                "ok": False,
+                "available": None,
+                "boundary": boundary,
+                "diagnostic_mode": "single_sourced_pkg_list_package_check_budget_aware",
+                "batch_command": command,
+            }
+        return available, results, batch_result
+    # run_bash 会做最终一次 monotonic clamp；实际 timeout 必须进入 batch artifact，不能只留请求值。
+    batch_result.setdefault("boundary", "package_check_completed" if batch_result.get("ok") else "package_check_failed")
     installed_packages = {
         line.strip()
         for line in str(batch_result.get("stdout") or "").splitlines()
@@ -7344,11 +7612,12 @@ def package_checks(args: argparse.Namespace) -> tuple[dict[str, bool], dict[str,
             "command": f"ros2 pkg list contains {package}",
             "executed": bool(batch_result.get("executed")),
             "ok": ok,
+            "available": ok,
             "returncode": batch_result.get("returncode"),
             "elapsed_ms": batch_result.get("elapsed_ms"),
             "stdout": package if ok else "",
             "stderr": "" if ok else f"{package} not found in ros2 pkg list",
-            "diagnostic_mode": "single_sourced_pkg_list_package_check",
+            "diagnostic_mode": "single_sourced_pkg_list_package_check_budget_aware",
             "batch_command": command,
         }
     return available, results, batch_result
@@ -12670,7 +12939,7 @@ def classify_root_causes(
     ros2_ok: bool,
     board_source_preflight: dict[str, Any],
     map_lifecycle_preflight: dict[str, Any],
-    packages: dict[str, bool],
+    packages: dict[str, bool | None],
     lifecycle_active: dict[str, bool],
     scan_once_observed: bool,
     map_once_observed: bool,
@@ -12711,7 +12980,8 @@ def classify_root_causes(
         return causes
     causes.extend(map_lifecycle_preflight.get("root_causes") or [])
     for package, available in packages.items():
-        if not available:
+        # None 表示非关键 inventory 尚未执行或为 final reserve 跳过，不能伪造成 package missing。
+        if available is False:
             causes.append({"layer": "ROS install/source", "reason": f"{package}_missing"})
     for key, active in lifecycle_active.items():
         if not active:
@@ -13054,12 +13324,22 @@ def demote_managed_wait_after_successful_path_generation(
 def build_proof(args: argparse.Namespace) -> dict[str, Any]:
     """执行一次 no-motion AMCL/Nav2 proof；成功或失败都写 latest artifact。"""
     started_ms = now_ms()
+    # deadline 必须在首个阶段写入和首条命令之前建立，保证全程只消费同一 monotonic 预算。
+    runtime_budget = OuterProcessBudget(getattr(args, "outer_process_timeout_s", None))
+    setattr(args, "_outer_process_budget", runtime_budget)
     phase_writer = PhaseArtifactWriter(args, started_ms)
     global ACTIVE_PHASE_WRITER
     ACTIVE_PHASE_WRITER = phase_writer
     install_phase_signal_handlers(phase_writer)
     setattr(args, "_phase_writer", phase_writer)
-    phase_writer.record_phase("start", ok=True, detail={"mode": "no_motion_amcl_nav2_runtime_proof"})
+    phase_writer.record_phase(
+        "start",
+        ok=True,
+        detail={
+            "mode": "no_motion_amcl_nav2_runtime_proof",
+            "runtime_budget": runtime_budget.summary(),
+        },
+    )
     map_inputs = map_input_summary(args)
     phase_writer.update_snapshot(map_inputs_ready=bool(map_inputs.get("inputs_ready")))
     phase_writer.record_phase(
@@ -13816,58 +14096,15 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         and initialpose_request_payload["enabled"]
         and board_source_ready
     )
-    phase_writer.record_phase("package_checks", detail={"mode": "single_sourced_pkg_list_diagnostic"})
-    if read_only_tf_source_inventory_fast_path:
-        # source-only live 采集不需要再次枚举 Nav2 package；跳过可避免板端 CLI 冷启动吞掉 90s 窗口。
-        packages = {package: False for package in EXPECTED_PACKAGES}
-        package_results = {
-            package: {
-                "executed": False,
-                "ok": False,
-                "boundary": "read_only_tf_source_inventory_scope_package_check_not_required",
-            }
-            for package in EXPECTED_PACKAGES
-        }
-        package_batch_result = {
-            "executed": False,
-            "ok": True,
-            "boundary": "read_only_tf_source_inventory_scope_package_check_not_required",
-        }
-    elif managed_runtime_localization_fast_path:
-        # managed runtime 已经把 map_server/amcl 拉起时，再跑 pkg/topic/node/echo 全套 CLI
-        # 会把 HTTP refresh 窗口消耗在重复采样上；这里直接保留当前定位根因并快速收口。
-        packages = {package: True for package in EXPECTED_PACKAGES}
-        package_results = {
-            package: {
-                "command": f"managed runtime observed package {package}",
-                "diagnostic_mode": "managed_runtime_localization_fast_path",
-                "executed": False,
-                "ok": True,
-                "boundary": "managed_runtime_started_implies_required_package_loaded",
-            }
-            for package in EXPECTED_PACKAGES
-        }
-        package_batch_result = {
-            "executed": False,
-            "ok": True,
-            "boundary": "managed_runtime_localization_fast_path",
-        }
-    elif ros2_ok:
-        packages, package_results, package_batch_result = package_checks(args)
-    else:
-        packages = {package: False for package in EXPECTED_PACKAGES}
-        package_results = {}
-        package_batch_result = {"executed": False, "ok": False, "boundary": "ros2_unavailable_package_check_skipped"}
-    phase_writer.update_snapshot(
-        package_availability=packages,
-        package_check_mode="single_sourced_pkg_list_diagnostic",
-        package_checks_batch_ok=bool(package_batch_result.get("ok")),
-    )
-    phase_writer.record_phase(
-        "package_checks",
-        ok=bool(all(packages.values())),
-        detail={"mode": "single_sourced_pkg_list_diagnostic", "packages": packages},
-    )
+    # package inventory 是非关键诊断，先保持 unknown；必须等 localization/planner/path
+    # 关键链全部判定完，才允许用剩余预算执行，不能再卡在 readiness 中间。
+    packages: dict[str, bool | None] = {package: None for package in EXPECTED_PACKAGES}
+    package_results: dict[str, dict[str, Any]] = {}
+    package_batch_result: dict[str, Any] = {
+        "executed": False,
+        "ok": False,
+        "boundary": "package_check_deferred_until_critical_readiness_complete",
+    }
     phase_writer.update_snapshot(map_lifecycle_preflight=map_lifecycle_preflight)
     if read_only_tf_source_inventory_fast_path:
         # lifecycle 已在前置只读 readback 中保留；此处只复用 TF probe 结果，禁止扩展到 signal/planner。
@@ -14575,6 +14812,80 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         ok=bool(path_generation_result.get("ok")) if path_generation_request["enabled"] else True,
         detail={"boundary": path_generation_result.get("boundary")},
     )
+    phase_writer.record_phase(
+        "package_checks",
+        detail={"mode": "single_sourced_pkg_list_diagnostic_budget_aware"},
+    )
+    if read_only_tf_source_inventory_fast_path:
+        # source-only 采集不需要 package inventory；unknown 不得被解释为 missing。
+        package_batch_result = {
+            "executed": False,
+            "ok": True,
+            "timeout_s": None,
+            "boundary": "read_only_tf_source_inventory_scope_package_check_not_required",
+        }
+        package_results = {
+            package: {
+                "executed": False,
+                "ok": False,
+                "available": None,
+                "boundary": package_batch_result["boundary"],
+            }
+            for package in EXPECTED_PACKAGES
+        }
+    elif managed_runtime_localization_fast_path:
+        # 已运行的 map_server/amcl 是更强的当前事实，无需再次枚举 package。
+        packages = {package: True for package in EXPECTED_PACKAGES}
+        package_results = {
+            package: {
+                "command": f"managed runtime observed package {package}",
+                "diagnostic_mode": "managed_runtime_localization_fast_path",
+                "executed": False,
+                "ok": True,
+                "available": True,
+                "boundary": "managed_runtime_started_implies_required_package_loaded",
+            }
+            for package in EXPECTED_PACKAGES
+        }
+        package_batch_result = {
+            "executed": False,
+            "ok": True,
+            "timeout_s": None,
+            "boundary": "managed_runtime_localization_fast_path",
+        }
+    elif ros2_ok:
+        packages, package_results, package_batch_result = package_checks(args)
+    else:
+        package_results = {
+            package: {
+                "executed": False,
+                "ok": False,
+                "available": None,
+                "boundary": "ros2_unavailable_package_check_skipped",
+            }
+            for package in EXPECTED_PACKAGES
+        }
+        package_batch_result = {
+            "executed": False,
+            "ok": False,
+            "timeout_s": None,
+            "boundary": "ros2_unavailable_package_check_skipped",
+        }
+    phase_writer.update_snapshot(
+        package_availability=packages,
+        package_check_mode="single_sourced_pkg_list_diagnostic_budget_aware",
+        package_checks_batch_ok=bool(package_batch_result.get("ok")),
+        package_checks_batch=package_batch_result,
+    )
+    phase_writer.record_phase(
+        "package_checks",
+        ok=bool(package_batch_result.get("ok")),
+        detail={
+            "mode": "single_sourced_pkg_list_diagnostic_budget_aware",
+            "boundary": package_batch_result.get("boundary"),
+            "packages": packages,
+        },
+    )
     managed_wait_root_causes: list[dict[str, str]] = []
     wait_result = managed_runtime.get("wait_result") if isinstance(managed_runtime.get("wait_result"), dict) else {}
     if managed_runtime.get("started") and wait_result and not wait_result.get("ok"):
@@ -14667,6 +14978,9 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         root_causes.append({"layer": "Managed runtime cleanup", "reason": "helper_owned_process_group_residual_not_zero"})
         complete = False
         proof_status = "blocked_with_root_cause"
+    # cleanup 是最后一个允许的运行时动作；从这里起只做内存 assembly 和 atomic final write。
+    # 先冻结 finalization reason，确保 reserve 后不会再通过后续重构意外启动非关键命令。
+    runtime_budget.begin_finalization()
     blocked_commands_not_sent = list(BLOCKED_COMMAND_TOKENS)
     if not initialpose_request_payload["enabled"]:
         blocked_commands_not_sent.append("/initialpose")
@@ -14702,6 +15016,7 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
     elif not path_generation_request["enabled"]:
         path_goal_response_summary = {"accepted": False, "result_received": False}
     proof = {
+        "artifact_kind": "final",
         "status": proof_status,
         "evidence_ref": f"o10-amcl-nav2-runtime-{started_ms}",
         "evidence_type": "robot_runtime_material" if complete else "blocked_with_root_cause",
@@ -14714,6 +15029,10 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         "phase_history": phase_writer.phase_history[-80:],
         "current_command": phase_writer.current_command,
         "recent_commands": phase_writer.recent_commands[-12:],
+        "runtime_budget": runtime_budget.summary(),
+        "outer_process_timeout_s": runtime_budget.outer_timeout_s,
+        "final_artifact_reserve_s": runtime_budget.final_reserve_s,
+        "finalization_reason": runtime_budget.finalization_reason,
         "source_map_evidence_ref": map_inputs.get("source_evidence_ref"),
         "source_map_evidence_type": map_inputs.get("source_evidence_type"),
         "map_inputs_ready": bool(map_inputs.get("inputs_ready")),
@@ -14723,7 +15042,7 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         "ros2_graph_timeout_root_cause": ros2_graph_timeout_root_cause,
         "map_lifecycle_preflight": map_lifecycle_preflight,
         "package_availability": packages,
-        "package_check_mode": "single_sourced_pkg_list_diagnostic",
+        "package_check_mode": "single_sourced_pkg_list_diagnostic_budget_aware",
         "package_checks_batch_ok": bool(package_batch_result.get("ok")),
         "map_server_active": lifecycle_active.get("map_server", False),
         "amcl_active": lifecycle_active.get("amcl", False),
@@ -14907,8 +15226,9 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
     proof["phase_history"] = phase_writer.phase_history[-80:]
     proof["last_successful_phase"] = phase_writer.last_successful_phase
     attach_artifact_summaries(proof, status=proof_status)
-    return {
+    payload = {
         "schema": SCHEMA,
+        "artifact_kind": "final",
         "generated_at_ms": now_ms(),
         "status": proof_status,
         "evidence_type": proof["evidence_type"],
@@ -14918,6 +15238,11 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         **path_generation_envelope_fields(proof),
         **safety_flags(),
     }
+    return finalize_artifact_contract(
+        payload,
+        phase_writer=phase_writer,
+        runtime_budget=runtime_budget,
+    )
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -14927,6 +15252,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--map-proof", default=DEFAULT_MAP_PROOF)
     parser.add_argument("--map-dir", default=DEFAULT_MAP_DIR)
     parser.add_argument("--timeout-s", type=float, default=8.0)
+    # Upper API 传入时启用 monotonic outer deadline；直接 CLI 缺省仍保留历史无外层预算路径。
+    parser.add_argument("--outer-process-timeout-s", type=float, default=None)
     # 这两个 flag 是现场 strict no-motion 命令的显式护栏；helper 本身始终 fail-closed，
     # 接受它们是为了让 automation 命令不因兼容参数提前退出。
     parser.add_argument("--strict-no-motion", action="store_true")

@@ -171,6 +171,7 @@ class Nav2RuntimeProofHelperTests(unittest.TestCase):
             "--map-proof",
             "--map-dir",
             "--timeout-s",
+            "--outer-process-timeout-s",
             "--strict-no-motion",
             "--no-base-uart",
             "--managed-runtime-opt-in",
@@ -756,6 +757,7 @@ pose:
     def test_package_checks_use_single_sourced_pkg_list_command(self) -> None:
         """包可用性是诊断信息，必须一次 pkg list 检查，不能逐包 prefix 阻塞主路径。"""
         args = HELPER.parse_args([])
+        self.assertIsNone(args.outer_process_timeout_s)
         stdout = "\n".join(HELPER.EXPECTED_PACKAGES)
         with mock.patch.object(
             HELPER,
@@ -781,7 +783,131 @@ pose:
         self.assertEqual(set(HELPER.EXPECTED_PACKAGES), set(results))
         for package in HELPER.EXPECTED_PACKAGES:
             self.assertEqual(f"ros2 pkg list contains {package}", results[package]["command"])
-            self.assertEqual("single_sourced_pkg_list_package_check", results[package]["diagnostic_mode"])
+            self.assertEqual("single_sourced_pkg_list_package_check_budget_aware", results[package]["diagnostic_mode"])
+
+    def test_hostile_slow_package_check_skips_or_clamps_and_writes_final_artifact(self) -> None:
+        """慢 package inventory 必须被 clamp/skip，且自然 final 不依赖 signal fallback。"""
+        clock_state = {"now": 0.0}
+
+        def fake_clock() -> float:
+            # fake monotonic 只推进逻辑时间，测试不会真实等待 outer 80 秒。
+            return clock_state["now"]
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            output = Path(temp_dir) / "budgeted-final.json"
+            args = HELPER.parse_args(
+                ["--output", str(output), "--outer-process-timeout-s", "10"]
+            )
+            budget = HELPER.OuterProcessBudget(10.0, final_reserve_s=4.0, clock=fake_clock)
+            setattr(args, "_outer_process_budget", budget)
+            writer = HELPER.PhaseArtifactWriter(args, HELPER.now_ms())
+
+            # 还剩 5 秒时，pkg list 只能拿到 remaining-final_reserve=1 秒。
+            clock_state["now"] = 5.0
+            hostile_result = {
+                "command": "ros2 pkg list",
+                "executed": True,
+                "ok": False,
+                "returncode": None,
+                "timeout_s": 1.0,
+                "timed_out": True,
+                "elapsed_ms": 1000,
+                "stdout": "",
+                "stderr": "",
+            }
+            with mock.patch.object(HELPER, "run_ros", return_value=hostile_result) as run_mock:
+                _packages, _results, clamped_batch = HELPER.package_checks(args)
+            self.assertEqual(1.0, run_mock.call_args.kwargs["timeout_s"])
+            self.assertTrue(clamped_batch["timed_out"])
+
+            # 一旦进入 reserve，新的非关键命令必须明确 skipped，不能再调用 runner。
+            clock_state["now"] = 6.1
+            with mock.patch.object(HELPER, "run_ros") as skipped_runner:
+                packages, results, skipped_batch = HELPER.package_checks(args)
+            skipped_runner.assert_not_called()
+            self.assertEqual(
+                "package_check_skipped_to_preserve_final_artifact_budget",
+                skipped_batch["boundary"],
+            )
+            self.assertTrue(all(value is None for value in packages.values()))
+            self.assertTrue(all(value["available"] is None for value in results.values()))
+
+            writer.record_phase("package_checks", ok=False, detail={"boundary": skipped_batch["boundary"]})
+            writer.record_phase("final", ok=False, detail={"status": "blocked_with_root_cause"})
+            payload = {
+                "schema": HELPER.SCHEMA,
+                "status": "blocked_with_root_cause",
+                "proof": {
+                    "status": "blocked_with_root_cause",
+                    "root_causes": [],
+                    "commands": {"package_checks_batch": skipped_batch},
+                    **HELPER.safety_flags(),
+                },
+                **HELPER.safety_flags(),
+            }
+            final_payload = HELPER.finalize_artifact_contract(
+                payload,
+                phase_writer=writer,
+                runtime_budget=budget,
+            )
+            HELPER.write_json_atomic(str(output), final_payload)
+            artifact = json.loads(output.read_text(encoding="utf-8"))
+
+        proof = artifact["proof"]
+        self.assertEqual("final", artifact["artifact_kind"])
+        self.assertEqual("final", proof["artifact_kind"])
+        self.assertEqual("final", proof["last_phase"])
+        self.assertIsNone(proof["current_command"])
+        self.assertEqual(10.0, proof["outer_process_timeout_s"])
+        self.assertEqual(4.0, proof["final_artifact_reserve_s"])
+        self.assertEqual(
+            "budget_reserve_reached_before_noncritical_command",
+            proof["finalization_reason"],
+        )
+        self.assertNotIn("sigint_before_final_artifact", json.dumps(artifact))
+        self.assertNotIn("helper_process_timeout_after_partial_artifact", json.dumps(artifact))
+
+    def test_offline_budget_fixture_writes_final_without_sigint_or_partial_fallback(self) -> None:
+        """ROS/source 缺失时也应在短 outer budget 内自然写 final blocked artifact。"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            output = Path(temp_dir) / "offline-final.json"
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(SCRIPT),
+                    "--output",
+                    str(output),
+                    "--map-proof",
+                    str(Path(temp_dir) / "missing-map-proof.json"),
+                    "--map-dir",
+                    str(Path(temp_dir) / "missing-maps"),
+                    "--ros-setup",
+                    str(Path(temp_dir) / "missing-ros-setup.bash"),
+                    "--onboard-setup",
+                    str(Path(temp_dir) / "missing-onboard-setup.bash"),
+                    "--workdir",
+                    temp_dir,
+                    "--outer-process-timeout-s",
+                    "0.75",
+                ],
+                check=False,
+                text=True,
+                capture_output=True,
+                timeout=5,
+            )
+            artifact = json.loads(output.read_text(encoding="utf-8"))
+
+        self.assertEqual(2, result.returncode)
+        self.assertEqual("final", artifact["artifact_kind"])
+        self.assertEqual("final", artifact["proof"]["artifact_kind"])
+        self.assertEqual("final", artifact["proof"]["last_phase"])
+        self.assertIsNone(artifact["proof"]["current_command"])
+        self.assertEqual(0.75, artifact["proof"]["outer_process_timeout_s"])
+        self.assertTrue(artifact["proof"]["runtime_budget"]["reserve_reached"])
+        self.assertNotIn("partial_artifact_preserved", artifact["proof"])
+        encoded = json.dumps(artifact)
+        self.assertNotIn("sigint_before_final_artifact", encoded)
+        self.assertNotIn("helper_process_timeout_after_partial_artifact", encoded)
 
     def test_initialpose_phase_precedes_slow_topic_probe(self) -> None:
         """board source 与写前只读门禁必须先完成，才能决定是否允许 `/initialpose`。"""

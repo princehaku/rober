@@ -1895,6 +1895,17 @@ def run_nav2_runtime_proof_helper(
 ) -> dict[str, Any]:
     """运行 no-motion AMCL/Nav2 collector；managed runtime 与 initialpose 都必须显式 opt-in。"""
     script_path = Path(__file__).resolve().with_name("o10_amcl_nav2_runtime_proof.py")
+    # 外层进程预算仍由 API 的既有公式计算，不能为了 helper 收口而放大 HTTP 等待窗口。
+    timeout_budget = nav2_runtime_proof_process_timeout_budget(
+        timeout_s=timeout_s,
+        managed_runtime_opt_in=managed_runtime_opt_in,
+        managed_timeout_s=managed_timeout_s,
+        initialpose_opt_in=initialpose_opt_in,
+        path_generation_opt_in=path_generation_opt_in,
+        path_generation_timeout_s=path_generation_timeout_s,
+    )
+    # 传给子进程的是公式钳制后的实际值，确保 helper 看到的预算与 Popen wait 完全一致。
+    process_timeout_s = timeout_budget["process_timeout_s"]
     helper_argv = [
         sys.executable,
         str(script_path),
@@ -1906,6 +1917,9 @@ def run_nav2_runtime_proof_helper(
         map_artifact_dir,
         "--timeout-s",
         str(timeout_s),
+        # helper 必须消费同一 outer budget，才能在 API 发信号前主动预留 final artifact 收口时间。
+        "--outer-process-timeout-s",
+        str(process_timeout_s),
     ]
     if managed_runtime_opt_in:
         # managed runtime 默认关闭；只有 body 明确 opt-in 才允许 helper 短暂拉起 localization graph。
@@ -1955,15 +1969,6 @@ def run_nav2_runtime_proof_helper(
         f"if [ -f {shlex.quote(str(Path(DEFAULT_ONBOARD_WORKDIR) / 'install' / 'setup.bash'))} ]; then source {shlex.quote(str(Path(DEFAULT_ONBOARD_WORKDIR) / 'install' / 'setup.bash'))}; fi",
     ]
     helper_command = " && ".join(ros_setup_parts + [shlex.join(helper_argv)])
-    timeout_budget = nav2_runtime_proof_process_timeout_budget(
-        timeout_s=timeout_s,
-        managed_runtime_opt_in=managed_runtime_opt_in,
-        managed_timeout_s=managed_timeout_s,
-        initialpose_opt_in=initialpose_opt_in,
-        path_generation_opt_in=path_generation_opt_in,
-        path_generation_timeout_s=path_generation_timeout_s,
-    )
-    process_timeout_s = timeout_budget["process_timeout_s"]
     started_ms = now_ms()
     try:
         completed = run_helper_bash_process_group(

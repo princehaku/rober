@@ -1685,3 +1685,20 @@ delivery 与 HIL 全部为 false。helper-owned PGID identity 已核对，cleanu
 `live_strict_no_motion_localization_receipt_artifact_blocked_missing_map_to_odom`：它是 current-run live
 sensor/localization artifact，不是定位 ready、route execution、delivery、HIL、safe-to-control 或
 Mission Objective 0 完成证明。
+
+## 2026-07-20 offline runtime budget contract
+
+上一轮 current no-motion proof 的 helper 在 API `process_timeout_s=80` 秒后才被 SIGINT，中断时仍在
+非关键 `ros2 pkg list`，因此只保留 partial artifact。为让 helper 在外层发 signal 前主动进入 final
+assembly，Upper API 现在把 `nav2_runtime_proof_process_timeout_budget()` 计算出的同一个实际预算通过
+`--outer-process-timeout-s <process_timeout_s>` 传给 O10 helper。
+
+这个参数是 API 与 helper 的内部预算合同，不是新的 HTTP body 字段，也不会扩大外层 timeout。80 秒
+case 的 helper argv 和 `run_helper_bash_process_group(..., timeout_s=80)` 必须保持同值；helper 自然写出
+`artifact_kind=final`、`last_phase=final`、`current_command=null` 后，即使结果是 fail-closed NO-GO，
+API 也直接保留该结果，不读取 partial artifact、不写 timeout fallback、不发送 timeout cleanup signal。
+
+原有 SIGINT、partial preservation 与结构化 timeout artifact 仍作为真正进程超时/异常时的兜底，不能
+作为正常验收路径。该离线合同不执行 SSH、ROS live、Nav2 action、`/initialpose`、`/cmd_vel`、
+`/api/base/manual`、UART 或任何运动；也不证明 current localization、path、route execution、HIL、
+delivery、safe-to-control 或 Mission Objective 0 完成。

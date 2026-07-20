@@ -33,6 +33,119 @@ SPEC.loader.exec_module(upper_robot_api)
 class UpperRobotApiFeedbackAckTests(unittest.TestCase):
     """锁定 `/api/base/status.feedback_ack` 的新鲜证据和安全字段。"""
 
+    def test_nav2_runtime_proof_passes_outer_process_timeout_to_helper(self) -> None:
+        """API 计算出的 80 秒进程预算必须原样下传，不能扩张 helper 或 HTTP 窗口。"""
+        completed = {
+            "timed_out": False,
+            "returncode": 2,
+            "stdout": "blocked final artifact written",
+            "stderr": "",
+            "process_group": 41001,
+            "cleanup_result": {"attempted": False, "ok": True, "reason": "process_exited_before_timeout"},
+        }
+        with tempfile.TemporaryDirectory() as temp_dir:
+            artifact_path = str(Path(temp_dir) / "runtime-proof.json")
+            with mock.patch.object(
+                upper_robot_api,
+                "run_helper_bash_process_group",
+                return_value=completed,
+            ) as process_mock:
+                result = upper_robot_api.run_nav2_runtime_proof_helper(
+                    artifact_path=artifact_path,
+                    map_proof_path=str(Path(temp_dir) / "map-proof.json"),
+                    map_artifact_dir=str(Path(temp_dir) / "maps"),
+                    timeout_s=20.0,
+                    managed_runtime_opt_in=True,
+                    managed_timeout_s=10.0,
+                    managed_map_yaml=str(Path(temp_dir) / "map.yaml"),
+                    initialpose_opt_in=True,
+                    initialpose_x=0.0,
+                    initialpose_y=0.0,
+                    initialpose_yaw=0.0,
+                    initialpose_frame_id="map",
+                    path_generation_opt_in=True,
+                    path_generation_timeout_s=20.0,
+                    path_goal_frame_id="map",
+                    path_goal_x=0.8,
+                    path_goal_y=0.0,
+                    path_goal_yaw=0.0,
+                )
+
+        # 这组输入按现有公式正好得到 80 秒，用来锁定现场兼容 case 而不真实等待。
+        self.assertEqual(80.0, result["process_timeout_s"])
+        helper_argv = result["helper_argv"]
+        outer_budget_index = helper_argv.index("--outer-process-timeout-s")
+        self.assertEqual("80.0", helper_argv[outer_budget_index + 1])
+        # subprocess 的外层 timeout 与 helper argv 必须来自同一个值，防止两套预算漂移。
+        self.assertEqual(80.0, process_mock.call_args.args[1])
+        self.assertFalse(result["safe_to_control"])
+        self.assertFalse(result["robot_control_executed"])
+
+    def test_nav2_runtime_proof_natural_final_result_does_not_use_timeout_fallback(self) -> None:
+        """helper 自然写出 blocked final 时必须直接返回，不能读取 partial 或发送清理 signal。"""
+        final_artifact = {
+            "schema": "trashbot.upper_robot_api.v1.nav2_lifecycle_runtime_proof",
+            "status": "blocked_with_root_cause",
+            "proof": {
+                "artifact_kind": "final",
+                "last_phase": "final",
+                "current_command": None,
+                "safe_to_control": False,
+                "robot_control_executed": False,
+            },
+        }
+        with tempfile.TemporaryDirectory() as temp_dir:
+            artifact_path = Path(temp_dir) / "runtime-proof.json"
+
+            def natural_final(*_args, **_kwargs):
+                # 返回码 2 是 helper 的合法 fail-closed final，不等同于进程超时或异常。
+                artifact_path.write_text(json.dumps(final_artifact), encoding="utf-8")
+                return {
+                    "timed_out": False,
+                    "returncode": 2,
+                    "stdout": "blocked final artifact written",
+                    "stderr": "",
+                    "process_group": 41002,
+                    "cleanup_result": {"attempted": False, "ok": True, "reason": "process_exited_before_timeout"},
+                }
+
+            with mock.patch.object(upper_robot_api, "run_helper_bash_process_group", side_effect=natural_final):
+                with mock.patch.object(upper_robot_api, "wait_for_nav2_helper_partial_artifact") as partial_mock:
+                    with mock.patch.object(upper_robot_api, "write_nav2_helper_failure_artifact") as fallback_mock:
+                        with mock.patch.object(upper_robot_api.os, "killpg") as signal_mock:
+                            result = upper_robot_api.run_nav2_runtime_proof_helper(
+                                artifact_path=str(artifact_path),
+                                map_proof_path=str(Path(temp_dir) / "map-proof.json"),
+                                map_artifact_dir=str(Path(temp_dir) / "maps"),
+                                timeout_s=20.0,
+                                managed_runtime_opt_in=True,
+                                managed_timeout_s=10.0,
+                                managed_map_yaml=str(Path(temp_dir) / "map.yaml"),
+                                initialpose_opt_in=True,
+                                initialpose_x=0.0,
+                                initialpose_y=0.0,
+                                initialpose_yaw=0.0,
+                                initialpose_frame_id="map",
+                                path_generation_opt_in=True,
+                                path_generation_timeout_s=20.0,
+                                path_goal_frame_id="map",
+                                path_goal_x=0.8,
+                                path_goal_y=0.0,
+                                path_goal_yaw=0.0,
+                            )
+
+        # 自然 final 即使是 NO-GO 也必须保留 helper 的原始 returncode，不得转成 timeout fallback。
+        self.assertEqual(2, result["returncode"])
+        self.assertFalse(result["ok"])
+        self.assertEqual("final", final_artifact["proof"]["artifact_kind"])
+        self.assertEqual("final", final_artifact["proof"]["last_phase"])
+        self.assertIsNone(final_artifact["proof"]["current_command"])
+        partial_mock.assert_not_called()
+        fallback_mock.assert_not_called()
+        signal_mock.assert_not_called()
+        self.assertFalse(result["safe_to_control"])
+        self.assertFalse(result["robot_control_executed"])
+
     def test_unified_status_returns_partial_payload_when_nav2_section_times_out(self) -> None:
         """单个 ROS2/status 区块卡住时，聚合 status 仍要返回给 PC 首屏。"""
         api = upper_robot_api.UpperRobotApi(

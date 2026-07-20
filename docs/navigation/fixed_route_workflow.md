@@ -3215,6 +3215,25 @@ no /api/base/manual、no NavigateToPose、no WAVE ROVER UART 作为本 sprint �
 同窗口定位与 planner readiness，可交给后续独立 motion gate 复核；不证明 route execution、
 wheel feedback、HIL、safe-to-control、delivery 或 Mission Objective 0 已完成。
 
+同日起，Upper API 会把实际外层等待预算通过 `--outer-process-timeout-s` 传给 O10 helper。
+helper 从启动时建立 monotonic deadline，并固定预留 final artifact reserve；直接运行 CLI 且不传
+该参数时仍保持兼容，不额外施加 outer deadline。所有带阶段记录的子命令 timeout 都会收敛到
+`remaining - final_artifact_reserve_s`，因此外层预算进入 reserve 后不会再启动新子进程。
+
+`ros2 pkg list` 只属于非关键 package inventory，执行顺序必须晚于 localization、TF、lifecycle、
+planner 与 planner-only path 的关键判定。剩余预算足够时，它的 timeout 会 clamp 到
+`remaining - final_artifact_reserve_s`；预算不足时必须返回
+`boundary=package_check_skipped_to_preserve_final_artifact_budget`、`executed=false`，并把 package
+availability 保持为 unknown/null，不能伪装成 installed、missing 或 command success。
+
+自然收口的 JSON 必须同时满足 `artifact_kind=final`、`last_phase=final`、
+`current_command=null`，并记录 `outer_process_timeout_s`、`final_artifact_reserve_s`、
+`runtime_budget.remaining_s`、`finalization_reason` 与 package batch boundary。blocked/offline 仍是
+合法 final outcome；`SIGINT` partial artifact 和 Upper API timeout fallback 只保留为异常兜底，
+不能作为这一预算合同的通过条件。该离线合同只证明
+`software_proof_o3_o10_offline_runtime_budget_contract_only`，不证明 current ROS graph、定位、
+path、route execution、HIL、delivery、safe-to-control、robot control 或 Mission Objective 0。
+
 ### 7.4 Route code structure after 2026-05-25 refactor
 
 The fixed-route autonomy code is now split by proof responsibility:
