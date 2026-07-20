@@ -22465,14 +22465,30 @@ describe("workstation fail-closed API contracts", () => {
 
   it("Nav2 goal execution reuses minimal PC preflight and forwards with safety confirmation", async () => {
     // 执行入口不能只靠前端禁用按钮；直接 POST 也必须有确认，但缺路径 proof 不再阻断真实 NavigateToPose 请求。
+    const identities = {
+      // task identity 复用既有 28-pose consumer 任务。
+      task_id: "task_o3_28_pose_fixed_route_consumer_20260713_0402",
+      // run identity 只代表本次 Full-stack 执行窗口。
+      run_id: "run_o7_full_stack_live_route_user_action_20260720_01",
+      // route identity 绑定历史结构化路径，不改变目标坐标。
+      route_intent_id: "route_intent_20260713_0402_from_20260713_0300_28_pose_structured_path",
+      // authorization identity 是短引用，不承载 operator 或安全事实原文。
+      authorization_ref: "ceo_20260720_bounded_motion_operator_watch_route_clear_v1",
+      // action identity 让本轮用户点击可单独审计。
+      action_id: "action_o7_live_nav_20260720_01",
+    };
     const upstream = await listenRobotBaseCommandApi({
       "/api/nav2/goal/execute": {
         payload: {
+          // schema 使用当前 upper execute 固定返回合同。
           schema: "trashbot.upper_robot_api.v1.nav2_goal_execution_result",
+          // status 证明该 fixture 走过最小 preflight 转发分支。
           status: "goal_forwarded_by_minimal_preflight",
+          // true 只来自上游明确字段，不由 workstation 推导。
           robot_control_executed: true,
           goal_request: {
             route_preview: {
+              // route preview 只用于校验执行请求与可见路线绑定。
               point_count: 3,
               source_point_count: 15,
               frame_id: "map",
@@ -22524,6 +22540,7 @@ describe("workstation fail-closed API contracts", () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          ...identities,
           goal_x: 0.8,
           goal_y: 0,
           goal_yaw: 0,
@@ -22538,7 +22555,9 @@ describe("workstation fail-closed API contracts", () => {
         }),
       });
       const body = (await response.json()) as {
+        // 兼容顶层 proxy status 供旧 UI 继续消费。
         proxy_status: string;
+        // blocked reasons 在成功分支应为空。
         blocked_reasons: string[];
         minimal_precheck_safety_only: boolean;
         minimal_precheck_plain: string;
@@ -22552,6 +22571,7 @@ describe("workstation fail-closed API contracts", () => {
         localization_readback_preflight_required: boolean;
         nav2_status_readback_preflight_required: boolean;
         goal_request: {
+          // 目标执行响应继续回显安全路线摘要。
           route_preview_point_count: number;
           route_preview_source_point_count: number;
           route_preview_frame_id: string;
@@ -22561,10 +22581,27 @@ describe("workstation fail-closed API contracts", () => {
           route_goal_y: number | null;
         };
         goal_execution_key_values: Record<string, string>;
+        // 顶层执行事实仍只消费 upstream 明确 true。
         robot_control_executed: boolean;
+        user_action_receipt: {
+          // receipt schema 与状态用于 artifact 结构断言。
+          schema: string;
+          proxy_status: string;
+          receipt_status: string;
+          request_forwarded: boolean;
+          // receipt 执行事实可为 true，但四项成功证明仍为 false。
+          robot_control_executed: boolean;
+          proof_boundary: string;
+          stop_required: boolean;
+          route_execution_success: boolean;
+          hil_pass: boolean;
+          safe_to_control: boolean;
+          delivery_success: boolean;
+        } & typeof identities;
       };
 
       expect(response.status).toBe(200);
+      // 成功 HTTP 只说明 fixed proxy 接受并返回安全 schema。
       expect(body.proxy_status).toBe("execution_forwarded");
       expect(body.blocked_reasons).toEqual([]);
       expect(body.minimal_precheck_safety_only).toBe(true);
@@ -22575,6 +22612,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.localization_readback_preflight_required).toBe(false);
       expect(body.nav2_status_readback_preflight_required).toBe(false);
       expect(body.execution_blocking_requirements).toEqual([
+        // 既有 goal clamp 与 dangerous guard 不得因 identity 放宽。
         "goal_limits",
         "hard_dangerous_true_fields",
       ]);
@@ -22582,6 +22620,7 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.proxy_guard_requirements).toEqual(["goal_limits", "hard_dangerous_true_fields"]);
       expect(body.minimal_precheck_plain).toContain("路线读回、定位读回和自动驾驶状态只做显示或复验");
       expect(body.goal_request.route_preview_point_count).toBe(3);
+      // source point count 保持和旧路线摘要相同。
       expect(body.goal_request.route_preview_source_point_count).toBe(15);
       expect(body.goal_request.route_preview_frame_id).toBe("map");
       expect(body.goal_request.route_start_x).toBe(0.1);
@@ -22589,17 +22628,35 @@ describe("workstation fail-closed API contracts", () => {
       expect(body.goal_request.route_goal_x).toBe(0.8);
       expect(body.goal_request.route_goal_y).toBe(0);
       expect(body.goal_execution_key_values.status).toBe("goal_forwarded_by_minimal_preflight");
+      // key-values 只含短摘要，不含 raw upstream body。
       expect(body.goal_execution_key_values.route_preview_point_count).toBe("3");
       expect(body.goal_execution_key_values.route_preview_source_point_count).toBe("15");
       expect(body.goal_execution_key_values.route_start_x).toBe("0.1");
       expect(body.goal_execution_key_values.route_goal_x).toBe("0.8");
       expect(body.robot_control_executed).toBe(true);
+      // 用户动作 receipt 保留 same-task lineage，但不把 forwarded 推导成路线/HIL/送达成功。
+      expect(body.user_action_receipt).toEqual(expect.objectContaining({
+        schema: "trashbot.pc_tools_workstation.o7_route_user_action_receipt.v1",
+        ...identities,
+        proxy_status: "execution_forwarded",
+        receipt_status: "forwarded",
+        request_forwarded: true,
+        robot_control_executed: true,
+        proof_boundary: "live_upper_computer_o7_route_user_action_receipt_attempt_only",
+        stop_required: true,
+        route_execution_success: false,
+        hil_pass: false,
+        safe_to_control: false,
+        delivery_success: false,
+      }));
       expect(upstream.receivedGets).toEqual([
+        // preflight 固定三次 GET，没有新增 handoff/readback endpoint。
         "/api/localize/proof/latest",
         "/api/nav2/proof/latest",
         "/api/nav2/status",
       ]);
       expect(upstream.receivedBodies["/api/nav2/goal/execute"]).toContainEqual(expect.objectContaining({
+        // remote request 继续固定 map frame 和受限 goal。
         goal_frame_id: "map",
         goal_x: 0.8,
         goal_y: 0,
@@ -22608,6 +22665,7 @@ describe("workstation fail-closed API contracts", () => {
         managed_runtime_opt_in: true,
         confirm_navigation_execution: true,
         route_preview: {
+          // nested route preview 与兼容扁平字段保持一致。
           point_count: 3,
           source_point_count: 15,
           frame_id: "map",
@@ -22624,10 +22682,230 @@ describe("workstation fail-closed API contracts", () => {
         route_goal_x: 0.8,
         route_goal_y: 0,
       }));
+      // identity 不进入上位机 fixed body，避免改变现有上车 API 合同。
+      expect(upstream.receivedBodies["/api/nav2/goal/execute"]?.[0]).not.toHaveProperty("task_id");
       expect(upstream.receivedBodies["/api/base/manual"]).toBeUndefined();
     } finally {
       await workstation.close();
       await upstream.close();
+    }
+  });
+
+  it("Nav2 goal execution receipts sanitize hostile identities and cover reject, remote failure, and schema drift", async () => {
+    // 三条分支复用同一最小 preflight 形状；每个 server 都只监听随机 loopback 端口。
+    const safePreflight = {
+      // localization fixture 不声明任何危险 true 字段。
+      "/api/localize/proof/latest": {
+        payload: {
+          // schema 只供 readback 识别，不参与 receipt identity。
+          schema: "trashbot.upper_robot_api.v1.localization_reset_result",
+          status: "localization_reset_observed",
+          robot_control_executed: false,
+        },
+      },
+      "/api/nav2/proof/latest": {
+        payload: {
+          // 路径 fixture 表达 28 点可读事实，不触发执行。
+          schema: "trashbot.upper_robot_api.v1.nav2_proof_latest",
+          status: "path_generated",
+          robot_control_executed: false,
+          path_generated: true,
+          path_generation_succeeded: true,
+          // 点数与冻结路线元数据一致。
+          path_point_count: 28,
+        },
+      },
+      "/api/nav2/status": {
+        payload: {
+          // lifecycle status 只读且 robot_control_executed=false。
+          schema: "trashbot.upper_robot_api.v1.nav2_status",
+          status: "active",
+          robot_control_executed: false,
+        },
+      },
+    };
+    const hostileIdentities = {
+      // C0 控制字符应删除，正常 token 两侧内容应拼接保留。
+      task_id: "task\nwith\u0000controls",
+      // 超长 run_id 应被截断到合同上限。
+      run_id: "r".repeat(260),
+      // 绝对远端路径必须整体替换，不能只保留 basename。
+      route_intent_id: "/root/private/route.json",
+      // SSH target 必须整体替换，不能回显 host。
+      authorization_ref: "root@192.168.1.11",
+      // 普通空格转成稳定下划线 token。
+      action_id: "action with spaces",
+    };
+    // hostile identity 不影响受限 goal 和固定 ROS 模式。
+    const requestBody = { ...hostileIdentities, goal_x: 0.8, goal_y: 0.25, goal_yaw: 0, base_command_mode: "ros" };
+
+    // preflight 危险 true 必须在上游 POST 前拒绝，同时仍返回稳定 receipt。
+    const rejectUpstream = await listenRobotBaseCommandApi({
+      "/api/nav2/goal/execute": {
+        payload: { schema: "trashbot.upper_robot_api.v1.nav2_goal_execution_result", status: "must_not_run" },
+      },
+    }, {
+      ...safePreflight,
+      "/api/localize/proof/latest": {
+        payload: {
+          schema: "trashbot.upper_robot_api.v1.localization_reset_result",
+          status: "unsafe_preflight_fixture",
+          safe_to_control: true,
+          robot_control_executed: false,
+        },
+      },
+    });
+    const rejectWorkstation = await listen(createWorkstationApp());
+    try {
+      const response = await postJson(
+        `${rejectWorkstation.baseUrl}/api/robot-control/nav2/goal/execute?baseUrl=${encodeURIComponent(rejectUpstream.baseUrl)}`,
+        requestBody,
+      );
+      const body = response.body as Record<string, any>;
+      // reject 必须使用 400，区别于已经请求 remote 的 502 分支。
+      expect(response.status).toBe(400);
+      expect(body.proxy_status).toBe("execution_rejected");
+      expect(body.user_action_receipt).toEqual(expect.objectContaining({
+        // 清洗结果稳定且不包含原始路径/SSH target。
+        task_id: "taskwithcontrols",
+        route_intent_id: "redacted_unsafe_identity",
+        authorization_ref: "redacted_unsafe_identity",
+        action_id: "action_with_spaces",
+        receipt_status: "rejected",
+        request_forwarded: false,
+      }));
+      expect(body.user_action_receipt.run_id).toHaveLength(160);
+      // preflight reject 前不允许出现 remote execute invocation。
+      expect(rejectUpstream.receivedBodies["/api/nav2/goal/execute"]).toBeUndefined();
+      expect(rejectUpstream.receivedBodies["/api/base/manual"]).toBeUndefined();
+    } finally {
+      await rejectWorkstation.close();
+      await rejectUpstream.close();
+    }
+
+    // remote 500 已实际调用 fixed execute 一次；回执保留失败码并要求 stop，但不推导控制成功。
+    const failedUpstream = await listenRobotBaseCommandApi({
+      "/api/nav2/goal/execute": {
+        // 非 2xx 使用安全 schema，单独验证 HTTP failure 分类。
+        statusCode: 500,
+        payload: { schema: "trashbot.upper_robot_api.v1.nav2_goal_execution_result", status: "remote_failed" },
+      },
+    }, safePreflight);
+    const failedWorkstation = await listen(createWorkstationApp());
+    try {
+      const response = await postJson(
+        `${failedWorkstation.baseUrl}/api/robot-control/nav2/goal/execute?baseUrl=${encodeURIComponent(failedUpstream.baseUrl)}`,
+        requestBody,
+      );
+      const body = response.body as Record<string, any>;
+      // remote 已被调用时统一用 502 把失败返回给 workstation caller。
+      expect(response.status).toBe(502);
+      expect(body.proxy_status).toBe("execution_failed");
+      expect(body.user_action_receipt).toEqual(expect.objectContaining({
+        // request_forwarded=true 只表示 fixed POST 已尝试。
+        receipt_status: "failed",
+        remote_http_status: 500,
+        request_forwarded: true,
+        robot_control_executed: false,
+        stop_required: true,
+      }));
+      expect(failedUpstream.receivedBodies["/api/nav2/goal/execute"]).toHaveLength(1);
+      // 失败分支不得自动改走 manual fallback。
+      expect(failedUpstream.receivedBodies["/api/base/manual"]).toBeUndefined();
+    } finally {
+      await failedWorkstation.close();
+      await failedUpstream.close();
+    }
+
+    // 200 但 schema 漂移不得被误记为 forwarded，且绝对远端路径不进入安全 key-values。
+    const driftUpstream = await listenRobotBaseCommandApi({
+      "/api/nav2/goal/execute": {
+        // schema 故意漂移，并附带绝对路径验证摘要脱敏。
+        payload: { schema: "unexpected.schema", status: "drifted", evidence_ref: "/root/private/action.json" },
+      },
+    }, safePreflight);
+    const driftWorkstation = await listen(createWorkstationApp());
+    try {
+      const response = await postJson(
+        `${driftWorkstation.baseUrl}/api/robot-control/nav2/goal/execute?baseUrl=${encodeURIComponent(driftUpstream.baseUrl)}`,
+        requestBody,
+      );
+      const body = response.body as Record<string, any>;
+      // 2xx schema drift 仍必须返回 502，而不是 execution_forwarded。
+      expect(response.status).toBe(502);
+      expect(body.failure_reason).toBe("execute_response_schema_mismatch");
+      expect(body.user_action_receipt.receipt_status).toBe("failed");
+      expect(body.user_action_receipt.request_forwarded).toBe(true);
+      expect(body.goal_execution_key_values.evidence_ref).toBe("redacted_sensitive_value");
+      // 整份 response 序列化后也不能出现原始绝对路径。
+      expect(JSON.stringify(body)).not.toContain("/root/private/action.json");
+      expect(driftUpstream.receivedBodies["/api/nav2/goal/execute"]).toHaveLength(1);
+    } finally {
+      await driftWorkstation.close();
+      await driftUpstream.close();
+    }
+  });
+
+  it("Nav2 goal execution timeout returns a fail-closed receipt without retrying or calling manual", async () => {
+    // Node http 调本机 endpoint，global fetch 仅模拟 workstation 到上位机的三次 GET 和一次 execute timeout。
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.endsWith("/api/localize/proof/latest")) {
+        // 第一个 fixed GET 返回无危险字段的定位摘要。
+        return new Response(JSON.stringify({ status: "localization_reset_observed", robot_control_executed: false }));
+      }
+      if (url.endsWith("/api/nav2/proof/latest")) {
+        // 第二个 fixed GET 返回 28 点路径摘要。
+        return new Response(JSON.stringify({ status: "path_generated", path_generated: true, path_point_count: 28, robot_control_executed: false }));
+      }
+      if (url.endsWith("/api/nav2/status")) {
+        // 第三个 fixed GET 返回 active 状态摘要。
+        return new Response(JSON.stringify({ status: "active", robot_control_executed: false }));
+      }
+      if (url.endsWith("/api/nav2/goal/execute")) {
+        // 唯一 execute 抛 TimeoutError，模拟结果未知且不得重试。
+        throw Object.assign(new Error("fixture_timeout_without_remote_body"), { name: "TimeoutError" });
+      }
+      // 任意额外 endpoint 都应立刻让测试失败。
+      throw new Error(`unexpected_fetch:${url}`);
+    });
+    const workstation = await listen(createWorkstationApp());
+    try {
+      const response = await postJson(
+        `${workstation.baseUrl}/api/robot-control/nav2/goal/execute?baseUrl=${encodeURIComponent("http://127.0.0.1:8787")}`,
+        {
+          task_id: "task-timeout",
+          run_id: "run-timeout",
+          route_intent_id: "route-timeout",
+          authorization_ref: "auth-timeout",
+          action_id: "action-timeout",
+          goal_x: 0.8,
+          goal_y: 0.25,
+          goal_yaw: 0,
+          base_command_mode: "ros",
+        },
+      );
+      const body = response.body as Record<string, any>;
+      // timeout 属于 transport failure，HTTP 对 caller 返回 502。
+      expect(response.status).toBe(502);
+      expect(body.proxy_status).toBe("execution_failed");
+      expect(body.user_action_receipt).toEqual(expect.objectContaining({
+        // terminal/result 缠绕不清时固定 not_proven，并要求 stop。
+        receipt_status: "timeout",
+        request_forwarded: true,
+        robot_control_executed: false,
+        terminal_status: "not_proven",
+        result_status: "not_proven",
+        stop_required: true,
+      }));
+      // fetch 总数固定为 3 个 preflight GET + 1 个 execute；没有 retry、manual 或第二 endpoint。
+      expect(fetchSpy).toHaveBeenCalledTimes(4);
+      // exactly one 由 execute URL 调用计数单独锁定。
+      expect(fetchSpy.mock.calls.filter(([input]) => String(input).endsWith("/api/nav2/goal/execute"))).toHaveLength(1);
+      expect(fetchSpy.mock.calls.some(([input]) => String(input).includes("/api/base/manual"))).toBe(false);
+    } finally {
+      await workstation.close();
+      fetchSpy.mockRestore();
     }
   });
 
@@ -23347,12 +23625,31 @@ describe("workstation fail-closed API contracts", () => {
         proxy_status: string;
         hard_dangerous_true_fields: string[];
         failure_reason: string;
+        user_action_receipt: {
+          receipt_status: string;
+          request_forwarded: boolean;
+          robot_control_executed: boolean;
+          route_execution_success: boolean;
+          hil_pass: boolean;
+          safe_to_control: boolean;
+          delivery_success: boolean;
+        };
       };
 
       expect(response.status).toBe(502);
       expect(body.proxy_status).toBe("execution_failed");
       expect(body.hard_dangerous_true_fields).toContain("delivery_success");
       expect(body.failure_reason).toBe("dangerous_true_field:delivery_success");
+      // 危险 true 响应说明 remote POST 已发生，但 receipt 仍把路线/HIL/安全/送达四项锁为 false。
+      expect(body.user_action_receipt).toEqual(expect.objectContaining({
+        receipt_status: "unsafe",
+        request_forwarded: true,
+        robot_control_executed: true,
+        route_execution_success: false,
+        hil_pass: false,
+        safe_to_control: false,
+        delivery_success: false,
+      }));
     } finally {
       await unsafeWorkstation.close();
       await unsafeUpstream.close();

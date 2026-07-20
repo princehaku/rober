@@ -6,6 +6,33 @@
 
 ---
 
+## 2026-07-20 O7 Full-stack live route 用户动作回执 flat 收口
+
+`sprints/2026.07.20_11-20_o7_full_stack_live_route_user_action_receipt/` 完成 Product acceptance closeout。
+Full-stack 在既有 `POST /api/robot-control/nav2/goal/execute` 增加五项 same-task audit identity、统一
+`trashbot.pc_tools_workstation.o7_route_user_action_receipt.v1`、敏感 identity/summary 脱敏、remote schema drift
+fail-closed 和 timeout/no-retry 合同；没有新增 endpoint，也没有修改 upper API、ROS2、Algorithm、Hardware 或 UART。
+验证为 targeted 最终 `5 passed`、全量 `Tests 532 passed (532)`、build/lint/scoped diff exit `0`，新增中文注释比例
+`23.26%/20.28%/20.20%`。
+
+Live 序列 local execute curl=`1`、local stop curl=`1`、`no_retry_observed=true`、PID cleanup clean；但当前 exec
+loopback isolation 在 Express handler 前统一返回 header-only `HTTP 400` 和空 body，workstation execute/stop handler=`0/0`、
+remote execute/stop=`0/0`，六个 live response artifact 均为 `0 bytes`，没有 receipt、terminal 或 readback，真车未运动。
+Blocker=`local_loopback_interceptor_header_only_http_400`，runtime failure class=
+`localhost_exec_network_interception_before_workstation_handler`。它不同于此前 Algorithm/Hardware business worker 在业务文件或
+命令前 stall；本轮代码交付和产品验证已完成，但 live acceptance 被本机网络隔离阻断。
+
+Product 接受 `software_proof_o7_route_user_action_receipt_contract_only`，拒绝 live acceptance；live Proof boundary=
+`blocked_live_attempt_no_receipt_no_remote_action`。`current_run_artifact_delta=true` 仅表示工程合同/manifest 增量，
+`external_artifact_delta=false`、`live_control_delta=false`、`user_action_delta=false`、`robot_control_executed=false`、
+`route_execution_success=false`、`delivery_success=false`、`hil_pass=false`、`safe_to_control=false`、
+`mission_objective_0_satisfied=false`、`okr_credit=false`。O5 `85%`、O6/O7 `93%`、O1 `94%` 全 flat，百分比不调整，
+KR `不归档`，历史区无新增完成项。
+
+本 sprint 的 exactly-once execute/stop sequence 已消费，禁止重跑、换端口补跑或创建 wrapper/canary/mock receipt。下一轮只在
+runtime owner 提供 loopback/network 修复证据、只读 `/api/health` 已进入 Express 并返回 JSON，再加新的 fresh bounded-motion
+authorization 后重开；或由 CEO/Product 批准非 loopback 执行环境，先完成只读 health/summary，再给 fresh authorization。
+
 ## 2026-07-15 O6/O7 live localization bag replay 第三次 continuation / post-canary flat 收口
 
 `sprints/2026.07.15_20-07_o6_o7_live_localization_bag_replay/` 完成第三次 continuation acceptance。上一轮要求的

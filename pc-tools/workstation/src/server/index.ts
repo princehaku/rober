@@ -105,6 +105,7 @@ import type {
   RobotControlReadOnlyStatusWorkstationEndpoint,
   RobotControlNavGoalExecutionResponse,
   RobotControlNavGoalExecutionLatestResponse,
+  RobotControlUserActionReceipt,
   RobotControlDeliveryCompleteRequest,
   RobotControlDeliveryCompleteResponse,
   RobotControlDeliveryLatestResponse,
@@ -734,6 +735,123 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 function shortText(value: unknown, fallback: string): string {
   // 响应只保留短摘要，避免把远端 traceback、路径或超长文本直接暴露给 UI。
   return typeof value === "string" && value.trim() ? value.trim().slice(0, 240) : fallback;
+}
+
+const USER_ACTION_IDENTITY_MAX_LENGTH = 160;
+
+function stripUserActionControlCharacters(value: string, replacement = ""): string {
+  // ESLint 禁止控制字符正则；逐字符过滤同时覆盖 C0、DEL 与 C1，避免 receipt 日志注入。
+  return Array.from(value, (character) => {
+    // charCodeAt 足够覆盖这里要拒绝的 ASCII/C1 控制区，不改写正常 Unicode 文本。
+    const code = character.charCodeAt(0);
+    // identity 用空串删除，摘要用空格替换，调用方决定是否保留单词边界。
+    return code <= 31 || (code >= 127 && code <= 159) ? replacement : character;
+  }).join("");
+}
+
+function safeUserActionIdentity(value: unknown): string {
+  // identity 允许稳定 token 字符；控制字符先删除，路径、凭证和 URL 形状直接替换为固定占位。
+  if (typeof value !== "string") {
+    // 缺字段与非法类型都使用固定值，避免 String(object) 暴露结构。
+    return "not_provided";
+  }
+  const withoutControls = stripUserActionControlCharacters(value).trim();
+  if (!withoutControls) {
+    // 清洗后为空说明没有可审计 identity，不保留原输入。
+    return "not_provided";
+  }
+  // 这些分隔符可能承载 SSH target、credential、query 或绝对路径，回执不得做部分回显。
+  if (/[\\/@?#=]/.test(withoutControls) || withoutControls.includes("://")) {
+    // 整体替换比删除单个敏感分隔符更安全，避免凭证仍可从剩余文本复原。
+    return "redacted_unsafe_identity";
+  }
+  // 其余非 token 字符统一替换，既保持审计稳定，也避免日志注入。
+  return withoutControls
+    .replace(/[^A-Za-z0-9_.:-]+/g, "_")
+    .slice(0, USER_ACTION_IDENTITY_MAX_LENGTH) || "not_provided";
+}
+
+function safeUserActionSummary(value: unknown, fallback: string): string {
+  // terminal/result/failure 只允许短摘要；远端绝对路径、URL、SSH target 与 credential 统一隐藏。
+  // 非字符串不做 JSON.stringify，确保 raw upstream object 永远不会进入 receipt。
+  const text = typeof value === "string"
+    ? stripUserActionControlCharacters(value, " ").replace(/\s+/g, " ").trim().slice(0, 160)
+    : "";
+  if (!text) {
+    // 缺失终态使用 not_proven，缺失 failure reason 使用调用方给出的空值。
+    return fallback;
+  }
+  if (/^(?:\/|[A-Za-z]:\\)/.test(text) || /:\/\//.test(text) || /\bssh\b/i.test(text) || /\b[^\s:@]+:[^\s@]+@/.test(text)) {
+    // 路径和 credential 一旦命中就整体隐藏，不保留 basename 或 host 片段。
+    return "redacted_sensitive_value";
+  }
+  // 返回值已经完成控制字符清洗、空白归一和 160 字符截断。
+  return text;
+}
+
+function safeUserActionBlockedReasons(value: string[]): string[] {
+  // blocked reason 数量和长度都受限，避免把上游错误页或 traceback 变成回执内容。
+  // 十二项足够表达 preflight/HTTP/schema/dangerous gate，同时限制响应膨胀。
+  return value.slice(0, 12).map((item) => safeUserActionSummary(item, "blocked_without_safe_reason"));
+}
+
+function safeUserActionKeyValues(value: Record<string, string>): Record<string, string> {
+  // execute/latest 的机器可读摘要也要去控制字符并隐藏绝对路径或 credential 形状。
+  // 只映射既有白名单 key，不会把上游未知字段带入响应。
+  return Object.fromEntries(Object.entries(value).map(([key, item]) => [
+    key,
+    safeUserActionSummary(item, "not_loaded"),
+  ]));
+}
+
+function buildUserActionReceipt(input: {
+  identities: Pick<RobotControlUserActionReceipt, "task_id" | "run_id" | "route_intent_id" | "authorization_ref" | "action_id">;
+  receivedAtMs: number;
+  receiptStatus: RobotControlUserActionReceipt["receipt_status"];
+  proxyStatus: RobotControlUserActionReceipt["proxy_status"];
+  remoteHttpStatus?: number | null;
+  requestForwarded: boolean;
+  remotePayload?: Record<string, unknown> | null;
+  robotControlExecuted?: boolean;
+  failureReason?: string;
+  blockedReasons?: string[];
+}): RobotControlUserActionReceipt {
+  // latest_result 优先代表 action terminal；缺失时只消费上游顶层短状态，不推导路线成功。
+  const latestResult = asRecord(input.remotePayload?.latest_result);
+  // 上游有 latest_result 时，它比外层 wrapper 更接近本次 action terminal。
+  const terminalStatus = latestResult?.status ?? input.remotePayload?.status;
+  // result_status 同样优先消费 terminal 内的明确值，缺失不做成功推导。
+  const resultStatus = latestResult?.result_status ?? input.remotePayload?.result_status;
+  // failure reason 与 blocked reasons 使用同一敏感信息清洗策略。
+  const failureReason = safeUserActionSummary(input.failureReason, "");
+  const blockedReasons = safeUserActionBlockedReasons(input.blockedReasons ?? []);
+  return {
+    // schema 固定，便于 Product 和 artifact 断言稳定读取。
+    schema: "trashbot.pc_tools_workstation.o7_route_user_action_receipt.v1",
+    // identity 已在请求入口清洗，此处只原样组装安全值。
+    ...input.identities,
+    received_at_ms: input.receivedAtMs,
+    workstation_endpoint: "/api/robot-control/nav2/goal/execute",
+    remote_endpoint: "/api/nav2/goal/execute",
+    receipt_status: input.receiptStatus,
+    proxy_status: input.proxyStatus,
+    remote_http_status: input.remoteHttpStatus ?? null,
+    request_forwarded: input.requestForwarded,
+    // 只接受上游明确 true；缺失、超时或 preflight reject 一律 false。
+    robot_control_executed: input.robotControlExecuted === true,
+    terminal_status: safeUserActionSummary(terminalStatus, "not_proven"),
+    result_status: safeUserActionSummary(resultStatus, "not_proven"),
+    failure_reason: failureReason,
+    blocked_reasons: blockedReasons,
+    stop_required: true,
+    // receipt 只证明用户动作尝试，proof boundary 不随 terminal status 升级。
+    proof_boundary: "live_upper_computer_o7_route_user_action_receipt_attempt_only",
+    // 四项成功声明必须由后续 Algorithm/Hardware/Product 证据链单独验收。
+    route_execution_success: false,
+    hil_pass: false,
+    safe_to_control: false,
+    delivery_success: false,
+  };
 }
 
 function cameraSourceDisplayName(value: unknown, fallback = "UVC 设备"): string {
@@ -1431,7 +1549,7 @@ function navGoalExecutionKeyValues(payload: Record<string, unknown> | null): Rec
     }
     return "{}";
   })();
-  return {
+  return safeUserActionKeyValues({
     status: executionStatus,
     evidence_ref: shortValue(payload?.evidence_ref ?? latestResult?.evidence_ref),
     generated_at_ms: shortValue(latestResult?.generated_at_ms ?? payload?.generated_at_ms),
@@ -1487,7 +1605,7 @@ function navGoalExecutionKeyValues(payload: Record<string, unknown> | null): Rec
     sends_base_motion_commands: shortValue(latestResult?.sends_base_motion_commands ?? payload?.sends_base_motion_commands, "not_loaded"),
     uses_base_uart: shortValue(latestResult?.uses_base_uart ?? payload?.uses_base_uart, "not_loaded"),
     delivery_success: shortValue(payload?.delivery_success ?? latestResult?.delivery_success, "false"),
-  };
+  });
 }
 
 function navGoalLatestNextMode(keyValues: Record<string, string>): string {
@@ -5660,9 +5778,20 @@ export function createWorkstationApp(): express.Express {
 
   workstationApp.post("/api/robot-control/nav2/goal/execute", async (req, res) => {
     // 目标执行只转发固定 NavigateToPose proof endpoint；不开放任意上位机 POST。
+    // 时间戳在任何 await 之前冻结，所有分支共享同一用户动作接收时间。
+    const receivedAtMs = Date.now();
     const sourceBaseUrl = robotControlFixedProxyQueryBaseUrl(req.query.baseUrl);
     const normalized = normalizeRobotApiBaseUrl(sourceBaseUrl);
     const payload = asRecord(req.body);
+    // 五项 identity 只进入本机用户动作回执；不改变上游固定 body、goal clamp 或 preflight。
+    const userActionIdentities = {
+      // 每项独立清洗，某一 hostile identity 不影响其它 lineage 字段。
+      task_id: safeUserActionIdentity(payload?.task_id),
+      run_id: safeUserActionIdentity(payload?.run_id),
+      route_intent_id: safeUserActionIdentity(payload?.route_intent_id),
+      authorization_ref: safeUserActionIdentity(payload?.authorization_ref),
+      action_id: safeUserActionIdentity(payload?.action_id),
+    };
     // 现场普通页打开即用；PC 固定代理自动写入上车兼容确认字段，不再要求用户额外勾选。
     const confirmNavigationExecution = true;
     const goalX = clamp(Number(payload?.goal_x ?? 0.8), -3, 3);
@@ -5749,11 +5878,22 @@ export function createWorkstationApp(): express.Express {
         route_goal_y: routeGoalY,
       },
       goal_execution_key_values: {},
+      user_action_receipt: buildUserActionReceipt({
+        // URL normalize 失败属于本机拒绝，不能标记 remote request 已发出。
+        identities: userActionIdentities,
+        receivedAtMs,
+        receiptStatus: "rejected",
+        proxyStatus: "execution_rejected",
+        requestForwarded: false,
+        failureReason: normalized.ok ? "" : normalized.reason,
+        blockedReasons: normalized.ok ? [] : [normalized.reason],
+      }),
       failure_reason: normalized.ok ? "" : normalized.reason,
       blocked_reasons: normalized.ok ? [] : [normalized.reason],
       hard_dangerous_true_fields: [],
     };
     if (!normalized.ok) {
+      // normalize gate 在任何 preflight GET 或 execute POST 之前返回。
       res.status(400).json(fallbackBase);
       return;
     }
@@ -5765,6 +5905,7 @@ export function createWorkstationApp(): express.Express {
       confirm_navigation_preflight: true,
     });
     if (preflight.proxy_status !== "preflight_passed") {
+      // preflight blocked reason 已是固定 gate 摘要，再经过 receipt 二次安全清洗。
       const blockedReasons = preflight.blocked_reasons.length > 0 ? preflight.blocked_reasons : ["nav_goal_preflight_failed"];
       res.status(400).json({
         ...fallbackBase,
@@ -5775,6 +5916,16 @@ export function createWorkstationApp(): express.Express {
         failure_reason: blockedReasons[0],
         blocked_reasons: blockedReasons,
         hard_dangerous_true_fields: preflight.hard_dangerous_true_fields,
+        user_action_receipt: buildUserActionReceipt({
+          // preflight reject 同样保留 identity，便于 operator 理解哪次动作被拒绝。
+          identities: userActionIdentities,
+          receivedAtMs,
+          receiptStatus: "rejected",
+          proxyStatus: "execution_rejected",
+          requestForwarded: false,
+          failureReason: blockedReasons[0],
+          blockedReasons,
+        }),
       });
       return;
     }
@@ -5783,6 +5934,7 @@ export function createWorkstationApp(): express.Express {
       fallbackBase.goal_request.base_command_mode = baseCommandMode;
     }
     try {
+      // try 块开始后只有一个 fixed remote execute fetch，异常分支不会重试。
       const remote = await fetch(endpointUrl(normalized.normalized, "/api/nav2/goal/execute"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -5811,27 +5963,81 @@ export function createWorkstationApp(): express.Express {
         signal: AbortSignal.timeout(Math.round((resultTimeoutS + 90) * 1000)),
       });
       const remotePayload = asRecord(await remote.json().catch(() => null));
+      // JSON parse 失败返回 null，后续 schema gate 会把 2xx HTML/array 同样锁成失败。
       const dangerous = scanDangerousTrueFields(remotePayload).filter(
         (field) => !nav2GoalExecutionAllowedTrueField(field),
       );
+      // 200 但不是既有 execute schema 也必须 fail closed，避免 HTML/error object 被误记为 forwarded。
+      const remoteSchemaValid = remotePayload?.schema === "trashbot.upper_robot_api.v1.nav2_goal_execution_result";
+      const proxyStatus: RobotControlNavGoalExecutionResponse["proxy_status"] = remote.ok && remoteSchemaValid && dangerous.length === 0
+        ? "execution_forwarded"
+        : "execution_failed";
+      const failureReason = dangerous.length > 0
+        ? `dangerous_true_field:${dangerous[0]}`
+        : !remote.ok
+          ? `execute_http_status_${remote.status}`
+          : !remotePayload
+            ? "execute_response_not_json_object"
+            : !remoteSchemaValid
+              ? "execute_response_schema_mismatch"
+              : "";
+      const blockedReasons = [
+        // blocked reasons 只由本机固定分类生成，不抄上游 raw error body。
+        ...(!remote.ok ? [`execute_http_status_${remote.status}`] : []),
+        ...(!remotePayload ? ["execute_response_not_json_object"] : []),
+        ...(remotePayload && !remoteSchemaValid ? ["execute_response_schema_mismatch"] : []),
+        ...dangerous.map((field) => `dangerous_true_field:${field}`),
+      ];
+      const robotControlExecuted = remotePayload?.robot_control_executed === true;
+      // 顶层兼容字段保留上游明确执行事实，但 receipt 的四个成功结论仍固定 false。
       const responseBody: RobotControlNavGoalExecutionResponse = {
         ...fallbackBase,
-        proxy_status: remote.ok && dangerous.length === 0 ? "execution_forwarded" : "execution_failed",
+        proxy_status: proxyStatus,
         remote_http_status: remote.status,
-        status: remote.ok ? "loaded_fail_closed_summary" : "blocked",
+        status: proxyStatus === "execution_forwarded" ? "loaded_fail_closed_summary" : "blocked",
         goal_execution_key_values: navGoalExecutionKeyValues(remotePayload),
-        failure_reason: dangerous.length > 0 ? `dangerous_true_field:${dangerous[0]}` : remote.ok ? "" : `execute_http_status_${remote.status}`,
-        blocked_reasons: [
-          ...(remote.ok ? [] : [`execute_http_status_${remote.status}`]),
-          ...dangerous.map((field) => `dangerous_true_field:${field}`),
-        ],
+        failure_reason: failureReason,
+        blocked_reasons: blockedReasons,
         hard_dangerous_true_fields: dangerous,
-        robot_control_executed: remotePayload?.robot_control_executed === true,
+        robot_control_executed: robotControlExecuted,
+        user_action_receipt: buildUserActionReceipt({
+          // remote fetch 已完成或收到响应，因此 non-2xx/schema/unsafe 都记录 request_forwarded=true。
+          identities: userActionIdentities,
+          receivedAtMs,
+          receiptStatus: dangerous.length > 0 ? "unsafe" : proxyStatus === "execution_forwarded" ? "forwarded" : "failed",
+          proxyStatus,
+          remoteHttpStatus: remote.status,
+          requestForwarded: true,
+          remotePayload,
+          robotControlExecuted,
+          failureReason,
+          blockedReasons,
+        }),
       };
       res.status(responseBody.proxy_status === "execution_forwarded" ? 200 : 502).json(responseBody);
     } catch (error) {
+      // catch 只处理 fixed fetch 的 transport/timeout 失败；不会再次调用 execute。
       const reason = error instanceof Error ? shortText(error.message, "nav2_goal_execute_failed") : "nav2_goal_execute_failed";
-      res.status(502).json({ ...fallbackBase, proxy_status: "execution_failed", failure_reason: reason, blocked_reasons: [reason] });
+      // fetch timeout 与其它 transport failure 都证明请求已尝试，但终态未知；receipt 必须要求 stop 且不得重试。
+      const timeout = error instanceof Error
+        // Node fetch 可能使用 TimeoutError 或 AbortError；消息匹配兼容测试和旧 runtime。
+        && (error.name === "TimeoutError" || error.name === "AbortError" || /timeout/i.test(error.message));
+      res.status(502).json({
+        ...fallbackBase,
+        proxy_status: "execution_failed",
+        failure_reason: reason,
+        blocked_reasons: [reason],
+        user_action_receipt: buildUserActionReceipt({
+          // 连接结果未知也算一次 request attempt，调用方必须 stop 且 no retry。
+          identities: userActionIdentities,
+          receivedAtMs,
+          receiptStatus: timeout ? "timeout" : "failed",
+          proxyStatus: "execution_failed",
+          requestForwarded: true,
+          failureReason: reason,
+          blockedReasons: [reason],
+        }),
+      });
     }
   });
 

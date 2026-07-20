@@ -5168,6 +5168,12 @@ export interface RobotControlNavGoalPreflightResponse extends ProofFlags {
 }
 
 export interface RobotControlNavGoalExecutionRequest {
+  // 五项 identity 只用于用户动作审计，不参与目标点、模式或超时判定。
+  task_id?: string;
+  run_id?: string;
+  route_intent_id?: string;
+  authorization_ref?: string;
+  action_id?: string;
   goal_frame_id?: "map";
   goal_x?: number;
   goal_y?: number;
@@ -5186,6 +5192,42 @@ export interface RobotControlNavGoalExecutionRequest {
   managed_ready_timeout_s?: number;
   base_command_mode?: "ros" | "speed" | "pwm";
   confirm_navigation_execution?: boolean;
+}
+
+export interface RobotControlUserActionReceipt {
+  // 回执只保留安全摘要；上游原始 body、凭证和远端文件路径不得进入该合同。
+  schema: "trashbot.pc_tools_workstation.o7_route_user_action_receipt.v1";
+  // task_id 绑定既有 O3/O6/O7 同任务材料。
+  task_id: string;
+  // run_id 区分本次 exactly-once 执行窗口。
+  run_id: string;
+  // route_intent_id 绑定已批准路线，不允许 receipt 改写路线。
+  route_intent_id: string;
+  // authorization_ref 仅记录 CEO 授权引用，不承载授权正文。
+  authorization_ref: string;
+  // action_id 是用户触点动作的幂等审计标识。
+  action_id: string;
+  // received_at_ms 记录 workstation 收到请求的本机时间。
+  received_at_ms: number;
+  // 两个 endpoint 都是固定字面量，不能从请求中覆盖。
+  workstation_endpoint: "/api/robot-control/nav2/goal/execute";
+  remote_endpoint: "/api/nav2/goal/execute";
+  receipt_status: "forwarded" | "rejected" | "failed" | "timeout" | "unsafe";
+  proxy_status: "execution_forwarded" | "execution_rejected" | "execution_failed";
+  remote_http_status: number | null;
+  request_forwarded: boolean;
+  robot_control_executed: boolean;
+  terminal_status: string;
+  result_status: string;
+  failure_reason: string;
+  blocked_reasons: string[];
+  stop_required: true;
+  proof_boundary: "live_upper_computer_o7_route_user_action_receipt_attempt_only";
+  // 用户动作回执不是路线、HIL、安全控制或送达成功证明，四项始终 fail closed。
+  route_execution_success: false;
+  hil_pass: false;
+  safe_to_control: false;
+  delivery_success: false;
 }
 
 export interface RobotControlNavGoalExecutionResponse extends ProofFlags {
@@ -5227,6 +5269,7 @@ export interface RobotControlNavGoalExecutionResponse extends ProofFlags {
     route_goal_y: number | null;
   };
   goal_execution_key_values: Record<string, string>;
+  user_action_receipt: RobotControlUserActionReceipt;
   failure_reason: string;
   blocked_reasons: string[];
   hard_dangerous_true_fields: string[];

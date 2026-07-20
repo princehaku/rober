@@ -2434,6 +2434,33 @@ PC evidence capture 同步改为串行固定 GET，单 endpoint timeout 提到 5
 但仍不解锁 `delivery_success`、`safe_to_control` 或 `primary_actions_enabled`。完整 Nav2
 路线执行与真实交付成功仍需后续路线运行、到达/投放验收和 operator report 收口。
 
+## 2026-07-20 O7 路线用户动作回执
+
+既有 `POST /api/robot-control/nav2/goal/execute` 现在接受五项只用于审计的 identity：
+`task_id`、`run_id`、`route_intent_id`、`authorization_ref`、`action_id`。它们不进入上位机
+request body，不改变 fixed `/api/nav2/goal/execute` 路径、goal clamp、base URL allowlist、
+minimal preflight、模式选择或危险 true field guard。每项最长 160 字符；控制字符会被删除，
+SSH target、credential、URL、query/hash 或绝对路径形状会被固定替换为
+`redacted_unsafe_identity`，不会部分回显。
+
+execute 的 forwarded、preflight/URL rejected、remote non-2xx、timeout/transport failure、
+schema drift 和危险 true response 都返回
+`user_action_receipt.schema=trashbot.pc_tools_workstation.o7_route_user_action_receipt.v1`。回执保留五项
+identity、`received_at_ms`、固定 workstation/remote endpoint、`proxy_status`、`receipt_status`、
+`remote_http_status`、`request_forwarded`、上游明确的 `robot_control_executed`、安全的
+terminal/result 摘要、blocked reasons 和 `stop_required=true`。它不返回 credential、SSH target、
+远端绝对文件路径或 raw upstream body；200 但非既有
+`trashbot.upper_robot_api.v1.nav2_goal_execution_result` schema 也按 `execution_failed` 收口。
+
+该回执的 Proof boundary 固定为
+`live_upper_computer_o7_route_user_action_receipt_attempt_only`。`request_forwarded=true` 只表示 fixed
+proxy 已尝试一次 remote POST；不等于 goal accepted/succeeded。回执内部始终固定
+`route_execution_success=false`、`hil_pass=false`、`safe_to_control=false`、
+`delivery_success=false`，上游 terminal/readback 仍须分别审计。现场 exactly-once 流程在 execute
+返回、拒绝、失败、超时或 unknown 后最多调用一次既有
+`POST /api/robot-control/base/stop`；execute endpoint 本身不暗中重试，也不调用 manual、free-roam、
+`/cmd_vel`、`/initialpose` 或 UART。
+
 ## 2026-06-22 Nav2 NavigateToPose Execution Proof
 
 `sprints/2026.06.22_11-30_nav2_goal_execution_pc_proxy/` 新增 PC 固定高级代理

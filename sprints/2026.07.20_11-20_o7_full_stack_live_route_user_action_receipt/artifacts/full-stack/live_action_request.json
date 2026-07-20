@@ -1,0 +1,21 @@
+{
+  "task_id": "task_o3_28_pose_fixed_route_consumer_20260713_0402",
+  "run_id": "run_o7_full_stack_live_route_user_action_20260720_01",
+  "route_intent_id": "route_intent_20260713_0402_from_20260713_0300_28_pose_structured_path",
+  "authorization_ref": "ceo_20260720_bounded_motion_operator_watch_route_clear_v1",
+  "action_id": "action_o7_live_nav_20260720_01",
+  "goal_x": 0.8,
+  "goal_y": 0.25,
+  "goal_yaw": 0,
+  "base_command_mode": "ros",
+  "managed_runtime_opt_in": true,
+  "result_timeout_s": 8,
+  "server_timeout_s": 12,
+  "route_preview_point_count": 28,
+  "route_preview_source_point_count": 28,
+  "route_preview_frame_id": "map",
+  "route_start_x": 0.07615115310756959,
+  "route_start_y": 0.2500000037252903,
+  "route_goal_x": 0.8,
+  "route_goal_y": 0.2500000037252903
+}
