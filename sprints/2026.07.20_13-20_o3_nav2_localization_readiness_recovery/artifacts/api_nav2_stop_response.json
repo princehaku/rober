@@ -1,0 +1,809 @@
+{
+  "schema": "trashbot.upper_robot_api.v1.nav2_lifecycle_result",
+  "generated_at_ms": 1784536634441,
+  "action": "nav2_stop",
+  "endpoint": "/api/nav2/stop",
+  "status": "stopped_owned_process_group",
+  "proof_state": "owned_lifecycle_stopped",
+  "software_guard": true,
+  "not_proven": true,
+  "configured_command": {
+    "env": "ROBER_NAV2_STOP_COMMAND",
+    "configured": true,
+    "mode": "command",
+    "argv": [
+      "bash",
+      "/root/rober/onboard/scripts/o11_nav2_lifecycle.sh",
+      "stop"
+    ],
+    "error": null
+  },
+  "command_result": {
+    "mode": "command",
+    "executed": true,
+    "ok": true,
+    "argv": [
+      "bash",
+      "/root/rober/onboard/scripts/o11_nav2_lifecycle.sh",
+      "stop"
+    ],
+    "returncode": 0,
+    "stdout_preview": "{\"schema\": \"trashbot.o11.nav2_lifecycle.v1\", \"generated_at_ms\": 1784536634199, \"running\": false, \"pid\": null, \"state\": \"stopped\", \"message\": \"Nav2 lifecycle stopped\", \"onboard_root\": \"/root/rober/onboard\", \"map_file\": \"/root/rober/onboard/runtime/maps/trashbot_map.yaml\", \"base_port\": \"/dev/ttyS5\", \"base_baudrate\": 115200, \"command_mode\": \"ros\", \"base_enabled\": \"auto\", \"lidar_enabled\": \"auto\", \"lidar_serial_port\": \"/dev/ttyACM0\", \"lidar_serial_baudrate\": 230400, \"static_laser_tf_enabled\": \"true\", \"launch\": \"ros2_trashbot_bringup autonomous.launch.py nav2_stack_only:=true\", \"runtime_dir\": \"/tmp/rober_nav2_lifecycle\", \"log_dir\": \"/tmp/rober_nav2_lifecycle/logs\", \"vendor_sources\": [\"docs/vendor/VENDOR_INDEX.md\", \"docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py\", \"docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h\"], \"motion_requires_explicit_goal_execute\": true, \"sends_base_motion_commands\": false, \"robot_control_executed\": false, \"safe_to_control\": false, \"delivery_success\": false, \"blocked_commands_not_sent_by_start\": [\"/cmd_vel\", \"NavigateToPose goal\", \"/api/base/manual\", \"T=1\", \"T=11\", \"T=13\"]}\n",
+    "stderr_preview": ""
+  },
+  "artifact": {
+    "path": "/root/rober/onboard/runtime/nav2_lifecycle_latest.json",
+    "configured_path": "/root/rober/onboard/runtime/nav2_lifecycle_latest.json",
+    "resolved_path": "/root/rober/onboard/runtime/nav2_lifecycle_latest.json",
+    "canonical_path": "/root/rober/onboard/runtime/nav2_lifecycle_latest.json",
+    "configured_by": "ROBER_NAV2_LIFECYCLE_ARTIFACT_PATH or --nav2-lifecycle-artifact-path",
+    "format": "json",
+    "schema": "trashbot.upper_robot_api.v1.nav2_lifecycle_runtime_proof",
+    "expected_material": [
+      "map_server lifecycle state",
+      "amcl lifecycle state",
+      "planner/controller lifecycle state",
+      "Nav2 consumes /scan + map",
+      "path generated or explicitly blocked"
+    ]
+  },
+  "ros2_runtime_proven": false,
+  "map_artifact_proven": false,
+  "localization_proven": false,
+  "scan_runtime_proven": false,
+  "sends_base_motion_commands": false,
+  "uses_base_uart": false,
+  "blocked_devices_not_touched": [
+    "/dev/ttyS5",
+    "/dev/ttyS5"
+  ],
+  "blocked_commands_not_sent": [
+    "T=1",
+    "T=13",
+    "T=130",
+    "T=131",
+    "/cmd_vel",
+    "/api/base/manual"
+  ],
+  "failure_reason": null,
+  "operator_message": "command executed but ROS2/runtime proof is still not attached",
+  "sends_commands": true,
+  "safe_to_control": false,
+  "delivery_success": false,
+  "primary_actions_enabled": false,
+  "robot_control_executed": false,
+  "cloud_relay": false,
+  "semantic_success": true,
+  "root_causes": [],
+  "evidence": {
+    "effective_contract": {
+      "cleanup_scope": "o11_owned_pid_process_group_only",
+      "sends_base_stop_command": false,
+      "uses_base_uart": false
+    },
+    "base_uart_new_open_count": 0,
+    "lidar_serial_new_open_count": 0,
+    "lifecycle_command_invocation_count": 2,
+    "new_open_count_source": "owned_stop_contains_no_base_or_lidar_command"
+  },
+  "cleanup": {
+    "status": "owned_process_group_stopped",
+    "attempted": true,
+    "ok": true,
+    "scope": "o11_owned_pid_process_group_only",
+    "command_status": {
+      "schema": "trashbot.upper_robot_api.v1.nav2_lifecycle_manager_status",
+      "status": "loaded",
+      "running": false,
+      "state": "stopped",
+      "message": "Nav2 lifecycle stopped",
+      "pid": null,
+      "base_enabled": "auto",
+      "lidar_enabled": "auto",
+      "motion_requires_explicit_goal_execute": true,
+      "command_result": {
+        "mode": "command",
+        "executed": true,
+        "ok": true,
+        "argv": [
+          "bash",
+          "/root/rober/onboard/scripts/o11_nav2_lifecycle.sh",
+          "stop"
+        ],
+        "returncode": 0,
+        "stdout_preview": "{\"schema\": \"trashbot.o11.nav2_lifecycle.v1\", \"generated_at_ms\": 1784536634199, \"running\": false, \"pid\": null, \"state\": \"stopped\", \"message\": \"Nav2 lifecycle stopped\", \"onboard_root\": \"/root/rober/onboard\", \"map_file\": \"/root/rober/onboard/runtime/maps/trashbot_map.yaml\", \"base_port\": \"/dev/ttyS5\", \"base_baudrate\": 115200, \"command_mode\": \"ros\", \"base_enabled\": \"auto\", \"lidar_enabled\": \"auto\", \"lidar_serial_port\": \"/dev/ttyACM0\", \"lidar_serial_baudrate\": 230400, \"static_laser_tf_enabled\": \"true\", \"launch\": \"ros2_trashbot_bringup autonomous.launch.py nav2_stack_only:=true\", \"runtime_dir\": \"/tmp/rober_nav2_lifecycle\", \"log_dir\": \"/tmp/rober_nav2_lifecycle/logs\", \"vendor_sources\": [\"docs/vendor/VENDOR_INDEX.md\", \"docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py\", \"docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h\"], \"motion_requires_explicit_goal_execute\": true, \"sends_base_motion_commands\": false, \"robot_control_executed\": false, \"safe_to_control\": false, \"delivery_success\": false, \"blocked_commands_not_sent_by_start\": [\"/cmd_vel\", \"NavigateToPose goal\", \"/api/base/manual\", \"T=1\", \"T=11\", \"T=13\"]}\n",
+        "stderr_preview": ""
+      },
+      "sends_motion_commands": false,
+      "sends_base_motion_commands": false,
+      "robot_control_executed": false,
+      "safe_to_control": false,
+      "delivery_success": false
+    },
+    "readback_status": {
+      "schema": "trashbot.upper_robot_api.v1.nav2_lifecycle_manager_status",
+      "status": "loaded",
+      "running": false,
+      "state": "stopped",
+      "message": "Nav2 lifecycle not running",
+      "pid": null,
+      "base_enabled": "auto",
+      "lidar_enabled": "auto",
+      "motion_requires_explicit_goal_execute": true,
+      "command_result": {
+        "mode": "command",
+        "executed": true,
+        "ok": true,
+        "argv": [
+          "bash",
+          "/root/rober/onboard/scripts/o11_nav2_lifecycle.sh",
+          "status"
+        ],
+        "returncode": 0,
+        "stdout_preview": "{\"schema\": \"trashbot.o11.nav2_lifecycle.v1\", \"generated_at_ms\": 1784536634398, \"running\": false, \"pid\": null, \"state\": \"stopped\", \"message\": \"Nav2 lifecycle not running\", \"onboard_root\": \"/root/rober/onboard\", \"map_file\": \"/root/rober/onboard/runtime/maps/trashbot_map.yaml\", \"base_port\": \"/dev/ttyS5\", \"base_baudrate\": 115200, \"command_mode\": \"ros\", \"base_enabled\": \"auto\", \"lidar_enabled\": \"auto\", \"lidar_serial_port\": \"/dev/ttyACM0\", \"lidar_serial_baudrate\": 230400, \"static_laser_tf_enabled\": \"true\", \"launch\": \"ros2_trashbot_bringup autonomous.launch.py nav2_stack_only:=true\", \"runtime_dir\": \"/tmp/rober_nav2_lifecycle\", \"log_dir\": \"/tmp/rober_nav2_lifecycle/logs\", \"vendor_sources\": [\"docs/vendor/VENDOR_INDEX.md\", \"docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py\", \"docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h\"], \"motion_requires_explicit_goal_execute\": true, \"sends_base_motion_commands\": false, \"robot_control_executed\": false, \"safe_to_control\": false, \"delivery_success\": false, \"blocked_commands_not_sent_by_start\": [\"/cmd_vel\", \"NavigateToPose goal\", \"/api/base/manual\", \"T=1\", \"T=11\", \"T=13\"]}\n",
+        "stderr_preview": ""
+      },
+      "sends_motion_commands": false,
+      "sends_base_motion_commands": false,
+      "robot_control_executed": false,
+      "safe_to_control": false,
+      "delivery_success": false
+    },
+    "sends_base_stop_command": false,
+    "uses_base_uart": false
+  },
+  "nav2_lifecycle_status": {
+    "schema": "trashbot.upper_robot_api.v1.nav2_lifecycle_status",
+    "generated_at_ms": 1784536634435,
+    "status": "blocked_with_root_cause",
+    "proof_state": "blocked_with_root_cause",
+    "base_command_mode": "ros",
+    "nav2_base_command_mode": "pwm",
+    "nav2_goal_execute_default_base_command_mode": "pwm",
+    "software_guard": true,
+    "not_proven": true,
+    "artifact": {
+      "path": "/root/rober/onboard/runtime/nav2_lifecycle_latest.json",
+      "configured_path": "/root/rober/onboard/runtime/nav2_lifecycle_latest.json",
+      "resolved_path": "/root/rober/onboard/runtime/nav2_lifecycle_latest.json",
+      "canonical_path": "/root/rober/onboard/runtime/nav2_lifecycle_latest.json",
+      "configured_by": "ROBER_NAV2_LIFECYCLE_ARTIFACT_PATH or --nav2-lifecycle-artifact-path",
+      "format": "json",
+      "schema": "trashbot.upper_robot_api.v1.nav2_lifecycle_runtime_proof",
+      "expected_material": [
+        "map_server lifecycle state",
+        "amcl lifecycle state",
+        "planner/controller lifecycle state",
+        "Nav2 consumes /scan + map",
+        "path generated or explicitly blocked"
+      ]
+    },
+    "proof_latest": {
+      "schema": "trashbot.upper_robot_api.v1.nav2_lifecycle_proof_latest_summary",
+      "generated_at_ms": 1784536634434,
+      "endpoint": "/api/nav2/proof/latest",
+      "http_status": 200,
+      "artifact": {
+        "path": "/root/rober/onboard/runtime/nav2_lifecycle_latest.json",
+        "configured_path": "/root/rober/onboard/runtime/nav2_lifecycle_latest.json",
+        "resolved_path": "/root/rober/onboard/runtime/nav2_lifecycle_latest.json",
+        "canonical_path": "/root/rober/onboard/runtime/nav2_lifecycle_latest.json",
+        "configured_by": "ROBER_NAV2_LIFECYCLE_ARTIFACT_PATH or --nav2-lifecycle-artifact-path",
+        "format": "json",
+        "schema": "trashbot.upper_robot_api.v1.nav2_lifecycle_runtime_proof",
+        "expected_material": [
+          "map_server lifecycle state",
+          "amcl lifecycle state",
+          "planner/controller lifecycle state",
+          "Nav2 consumes /scan + map",
+          "path generated or explicitly blocked"
+        ],
+        "ok": true,
+        "status": "loaded",
+        "bytes_read": 11749
+      },
+      "latest_result_schema": "trashbot.upper_robot_api.v1.nav2_lifecycle_runtime_proof",
+      "latest_proof_status": "blocked_with_root_cause",
+      "latest_evidence_ref": "o10-amcl-nav2-runtime-wrapper-failure-1784536208075",
+      "status": "not_proven",
+      "software_guard": true,
+      "not_proven": true,
+      "boundary": "software_guard_only_not_real_nav2_runtime_or_path_execution",
+      "readback_sends_commands": false,
+      "sends_commands": false,
+      "sends_motion_commands": false,
+      "sends_base_motion_commands": false,
+      "uses_base_uart": false,
+      "opens_serial": false,
+      "starts_ros2": false,
+      "ros2_runtime_proven": false,
+      "map_artifact_proven": false,
+      "localization_proven": false,
+      "nav2_runtime_proven": false,
+      "elevator_runtime_proven": false,
+      "field_hil_material": false,
+      "safe_to_control": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false,
+      "robot_control_executed": false,
+      "cloud_relay": false,
+      "latest_map_server_active": null,
+      "latest_amcl_active": null,
+      "latest_planner_active": null,
+      "latest_controller_active": null,
+      "latest_scan_consumed": null,
+      "latest_map_consumed": null,
+      "latest_amcl_pose_observed": false,
+      "latest_path_generation_ready": null,
+      "latest_path_generated": false,
+      "latest_path_generation_requested": true,
+      "latest_path_generation_attempted": false,
+      "latest_path_generation_service_name": null,
+      "latest_path_generation_service_available": null,
+      "latest_path_generation_succeeded": false,
+      "latest_path_point_count": 0,
+      "base_link_to_laser_frame_transform": null,
+      "tf_chain_observed": {
+        "map_to_odom": false,
+        "odom_to_base_link": false,
+        "base_link_to_laser_frame": false,
+        "map_to_base_link": false
+      },
+      "tf_chain_diagnostics": {},
+      "tf_topics_observed": {
+        "/tf": false,
+        "/tf_static": false
+      },
+      "tf_static_observed": false,
+      "tf_frame_inventory": {
+        "dynamic_edges": [],
+        "edges": [],
+        "frames": [],
+        "static_edges": [],
+        "transforms": []
+      },
+      "localization_tf_observed": {
+        "map_to_odom": false,
+        "map_to_base_link": false
+      },
+      "amcl_pose": null,
+      "amcl_pose_observed": false,
+      "last_phase": "interrupted",
+      "last_successful_phase": "canonical_initialpose_map_audit",
+      "partial_artifact_preserved": true,
+      "path_generation_requested": true,
+      "path_generation_attempted": false,
+      "path_generated": false,
+      "path_generation_service_name": null,
+      "path_generation_service_available": false,
+      "path_generation_succeeded": false,
+      "path_point_count": 0,
+      "blocked_commands_not_sent": [
+        "T=1",
+        "T=13",
+        "T=130",
+        "T=131",
+        "/cmd_vel",
+        "/api/base/manual",
+        "/api/nav2/start",
+        "/api/nav2/stop",
+        "navigate_to_pose",
+        "compute_path_to_pose"
+      ],
+      "blocked_devices_not_opened": [
+        "/dev/ttyS5"
+      ],
+      "publishes_cmd_vel": false,
+      "calls_base_manual": false,
+      "path_preview_points": [],
+      "path_preview_status": "not_observed",
+      "path_preview_point_count": 0,
+      "path_preview_source_point_count": null,
+      "path_preview_reported_point_count": 0,
+      "path_preview_frame_id": "map",
+      "path_preview_next_action_plain": "先刷新 Nav2 路径 proof，再刷新地图画面。",
+      "path_wysiwyg_status_plain": "图上路线未显示；不能把旧路线或空路线当作当前所见。",
+      "path_wysiwyg_next_action_plain": "先刷新 Nav2 路径 proof，再刷新地图画面。",
+      "nav2_route_overlay_status": "not_observed",
+      "nav2_route_overlay_point_count": 0,
+      "nav2_route_overlay_next_action_plain": "先刷新 Nav2 路径 proof，再刷新地图画面。"
+    },
+    "amcl_nav2_readiness": {
+      "schema": "trashbot.upper_robot_api.v1.amcl_nav2_readiness_from_map_proof.v1",
+      "generated_at_ms": 1784536634437,
+      "status": "blocked_with_root_cause",
+      "evidence_type": "software_guard",
+      "source_evidence_type": "blocked_with_root_cause",
+      "source_evidence_ref": "o3-map-lifecycle-1782749676965",
+      "source_http_status": 200,
+      "source_latest_status": "blocked_with_root_cause",
+      "map_proof_artifact": {
+        "path": "/root/rober/onboard/runtime/map_lifecycle_latest.json",
+        "configured_path": "/root/rober/onboard/runtime/map_lifecycle_latest.json",
+        "resolved_path": "/root/rober/onboard/runtime/map_lifecycle_latest.json",
+        "canonical_path": "/root/rober/onboard/runtime/map_lifecycle_latest.json",
+        "legacy_path": "/root/rober/runtime/map_lifecycle_latest.json",
+        "compatibility_paths": [
+          "/root/rober/runtime/map_lifecycle_latest.json"
+        ],
+        "legacy_exists": true,
+        "configured_by": "ROBER_MAP_LIFECYCLE_PROOF_ARTIFACT_PATH or --map-lifecycle-proof-artifact-path",
+        "format": "json",
+        "schema": "trashbot.upper_robot_api.v1.map_lifecycle_runtime_proof",
+        "expected_material": [
+          "/scan once",
+          "/map once",
+          "map yaml/image or pbstream",
+          "map metadata",
+          "slam_toolbox lifecycle state"
+        ],
+        "ok": true,
+        "status": "loaded",
+        "bytes_read": 19860
+      },
+      "expected_map_artifact_dir": "/root/rober/onboard/runtime/maps",
+      "observed_map_artifact_dir": "/root/rober/onboard/runtime/maps",
+      "map_yaml_candidates": [
+        {
+          "mtime_ms": 1782061700294,
+          "name": "field_first_jog_20260622_0135.yaml",
+          "path": "/root/rober/onboard/runtime/maps/field_first_jog_20260622_0135.yaml",
+          "size_bytes": 182,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1781118091546,
+          "name": "final_direct_save.yaml",
+          "path": "/root/rober/onboard/runtime/maps/final_direct_save.yaml",
+          "size_bytes": 169,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1782062002501,
+          "name": "fixed_free_cells_20260622_0112.yaml",
+          "path": "/root/rober/onboard/runtime/maps/fixed_free_cells_20260622_0112.yaml",
+          "size_bytes": 183,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1782061841830,
+          "name": "manual_motion_map_20260622_0135.yaml",
+          "path": "/root/rober/onboard/runtime/maps/manual_motion_map_20260622_0135.yaml",
+          "size_bytes": 182,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1781140891871,
+          "name": "pc_integrated_current_20260611_0920.yaml",
+          "path": "/root/rober/onboard/runtime/maps/pc_integrated_current_20260611_0920.yaml",
+          "size_bytes": 172,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1781141101890,
+          "name": "pc_integrated_current_retry_20260611_0920.yaml",
+          "path": "/root/rober/onboard/runtime/maps/pc_integrated_current_retry_20260611_0920.yaml",
+          "size_bytes": 178,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1781133958369,
+          "name": "pc_integrated_smoke_20260611_0735.yaml",
+          "path": "/root/rober/onboard/runtime/maps/pc_integrated_smoke_20260611_0735.yaml",
+          "size_bytes": 184,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1781156934781,
+          "name": "pc_map_lifecycle_20260611_1350.yaml",
+          "path": "/root/rober/onboard/runtime/maps/pc_map_lifecycle_20260611_1350.yaml",
+          "size_bytes": 182,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1781166497893,
+          "name": "pc_no_motion_20260611_162507.yaml",
+          "path": "/root/rober/onboard/runtime/maps/pc_no_motion_20260611_162507.yaml",
+          "size_bytes": 181,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1781117808606,
+          "name": "pc_proxy_save2.yaml",
+          "path": "/root/rober/onboard/runtime/maps/pc_proxy_save2.yaml",
+          "size_bytes": 165,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1781135890525,
+          "name": "pc_proxy_scan_stabilize_20260611_0758.yaml",
+          "path": "/root/rober/onboard/runtime/maps/pc_proxy_scan_stabilize_20260611_0758.yaml",
+          "size_bytes": 171,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1781117645955,
+          "name": "pc_proxy_start.yaml",
+          "path": "/root/rober/onboard/runtime/maps/pc_proxy_start.yaml",
+          "size_bytes": 165,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1781117556611,
+          "name": "pc_runtime_v1.yaml",
+          "path": "/root/rober/onboard/runtime/maps/pc_runtime_v1.yaml",
+          "size_bytes": 166,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1781135634030,
+          "name": "scan_stabilize_20260611_075301.yaml",
+          "path": "/root/rober/onboard/runtime/maps/scan_stabilize_20260611_075301.yaml",
+          "size_bytes": 181,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1781135815410,
+          "name": "scan_stabilize_fixed_20260611_0756.yaml",
+          "path": "/root/rober/onboard/runtime/maps/scan_stabilize_fixed_20260611_0756.yaml",
+          "size_bytes": 188,
+          "suffix": ".yaml"
+        },
+        {
+          "mtime_ms": 1782749748969,
+          "name": "trashbot_map.yaml",
+          "path": "/root/rober/onboard/runtime/maps/trashbot_map.yaml",
+          "size_bytes": 148,
+          "suffix": ".yaml"
+        }
+      ],
+      "map_image_candidates": [
+        {
+          "mtime_ms": 1782061700286,
+          "name": "field_first_jog_20260622_0135.pgm",
+          "path": "/root/rober/onboard/runtime/maps/field_first_jog_20260622_0135.pgm",
+          "size_bytes": 31280,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1781118091538,
+          "name": "final_direct_save.pgm",
+          "path": "/root/rober/onboard/runtime/maps/final_direct_save.pgm",
+          "size_bytes": 13266,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1782062002493,
+          "name": "fixed_free_cells_20260622_0112.pgm",
+          "path": "/root/rober/onboard/runtime/maps/fixed_free_cells_20260622_0112.pgm",
+          "size_bytes": 33062,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1782061841826,
+          "name": "manual_motion_map_20260622_0135.pgm",
+          "path": "/root/rober/onboard/runtime/maps/manual_motion_map_20260622_0135.pgm",
+          "size_bytes": 44198,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1781140891863,
+          "name": "pc_integrated_current_20260611_0920.pgm",
+          "path": "/root/rober/onboard/runtime/maps/pc_integrated_current_20260611_0920.pgm",
+          "size_bytes": 19316,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1781141101886,
+          "name": "pc_integrated_current_retry_20260611_0920.pgm",
+          "path": "/root/rober/onboard/runtime/maps/pc_integrated_current_retry_20260611_0920.pgm",
+          "size_bytes": 7036,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1781133958365,
+          "name": "pc_integrated_smoke_20260611_0735.pgm",
+          "path": "/root/rober/onboard/runtime/maps/pc_integrated_smoke_20260611_0735.pgm",
+          "size_bytes": 42883,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1781156934777,
+          "name": "pc_map_lifecycle_20260611_1350.pgm",
+          "path": "/root/rober/onboard/runtime/maps/pc_map_lifecycle_20260611_1350.pgm",
+          "size_bytes": 28892,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1781166497889,
+          "name": "pc_no_motion_20260611_162507.pgm",
+          "path": "/root/rober/onboard/runtime/maps/pc_no_motion_20260611_162507.pgm",
+          "size_bytes": 31758,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1781117808598,
+          "name": "pc_proxy_save2.pgm",
+          "path": "/root/rober/onboard/runtime/maps/pc_proxy_save2.pgm",
+          "size_bytes": 52223,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1781135890521,
+          "name": "pc_proxy_scan_stabilize_20260611_0758.pgm",
+          "path": "/root/rober/onboard/runtime/maps/pc_proxy_scan_stabilize_20260611_0758.pgm",
+          "size_bytes": 29318,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1781117645935,
+          "name": "pc_proxy_start.pgm",
+          "path": "/root/rober/onboard/runtime/maps/pc_proxy_start.pgm",
+          "size_bytes": 47468,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1781117556603,
+          "name": "pc_runtime_v1.pgm",
+          "path": "/root/rober/onboard/runtime/maps/pc_runtime_v1.pgm",
+          "size_bytes": 8218,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1781135633986,
+          "name": "scan_stabilize_20260611_075301.pgm",
+          "path": "/root/rober/onboard/runtime/maps/scan_stabilize_20260611_075301.pgm",
+          "size_bytes": 30502,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1781135815398,
+          "name": "scan_stabilize_fixed_20260611_0756.pgm",
+          "path": "/root/rober/onboard/runtime/maps/scan_stabilize_fixed_20260611_0756.pgm",
+          "size_bytes": 8070,
+          "suffix": ".pgm"
+        },
+        {
+          "mtime_ms": 1782749748961,
+          "name": "trashbot_map.pgm",
+          "path": "/root/rober/onboard/runtime/maps/trashbot_map.pgm",
+          "size_bytes": 29531,
+          "suffix": ".pgm"
+        }
+      ],
+      "map_metadata": {
+        "frame_id": "map",
+        "height": 113,
+        "resolution": 0.05000000074505806,
+        "width": 261
+      },
+      "readiness_inputs": {
+        "canonical_latest_loaded": true,
+        "map_once_observed": true,
+        "map_file_observed": true,
+        "map_metadata_observed": true,
+        "canonical_map_dir_matched": true,
+        "map_yaml_available": true,
+        "map_image_available": true
+      },
+      "root_causes": [
+        {
+          "layer": "map proof latest",
+          "reason": "map_lifecycle_proof_not_clean"
+        }
+      ],
+      "blockers": [
+        {
+          "layer": "map proof latest",
+          "reason": "map_lifecycle_proof_not_clean"
+        }
+      ],
+      "next_no_motion_steps": [
+        "run map quality gate against selected YAML and same-frame waypoints",
+        "collect AMCL /initialpose and /amcl_pose material under a new artifact",
+        "collect map_server/amcl/planner/controller lifecycle readback without /cmd_vel"
+      ],
+      "not_proven": [
+        "map_quality_pass",
+        "real_amcl_localization",
+        "real_nav2_scan_map_consumption",
+        "path_generated",
+        "fixed_route_execution",
+        "delivery_success"
+      ],
+      "software_guard": true,
+      "readback_sends_commands": false,
+      "sends_commands": false,
+      "sends_motion_commands": false,
+      "sends_base_motion_commands": false,
+      "publishes_cmd_vel": false,
+      "calls_base_manual": false,
+      "uses_base_uart": false,
+      "starts_ros2": false,
+      "robot_control_executed": false,
+      "safe_to_control": false,
+      "hil_pass": false,
+      "delivery_success": false,
+      "primary_actions_enabled": false,
+      "cloud_relay": false
+    },
+    "amcl_pose": null,
+    "amcl_pose_observed": false,
+    "localization_tf_observed": {
+      "map_to_odom": false,
+      "map_to_base_link": false
+    },
+    "tf_chain_observed": {
+      "map_to_odom": false,
+      "odom_to_base_link": false,
+      "base_link_to_laser_frame": false,
+      "map_to_base_link": false
+    },
+    "base_link_to_laser_frame_transform": null,
+    "path_generation_requested": true,
+    "path_generation_attempted": false,
+    "path_generated": false,
+    "path_point_count": 0,
+    "path_generation_service_name": null,
+    "path_generation_service_available": false,
+    "path_generation_succeeded": false,
+    "path_preview_points": [],
+    "path_preview_status": "not_observed",
+    "path_preview_point_count": 0,
+    "path_preview_source_point_count": null,
+    "path_preview_frame_id": "map",
+    "path_preview_next_action_plain": "先刷新 Nav2 路径 proof，再刷新地图画面。",
+    "path_wysiwyg_status_plain": "图上路线未显示；不能把旧路线或空路线当作当前所见。",
+    "path_wysiwyg_next_action_plain": "先刷新 Nav2 路径 proof，再刷新地图画面。",
+    "nav2_route_overlay_status": "not_observed",
+    "nav2_route_overlay_point_count": 0,
+    "nav2_route_overlay_next_action_plain": "先刷新 Nav2 路径 proof，再刷新地图画面。",
+    "planner_server_active": null,
+    "controller_server_active": null,
+    "controller_server_requested": null,
+    "planner_readiness_summary": null,
+    "path_goal_request": null,
+    "path_goal_response": null,
+    "path_generation_boundary": null,
+    "blocked_reasons": [
+      "nav2_lifecycle_not_running"
+    ],
+    "root_causes": [
+      "nav2_lifecycle_not_running"
+    ],
+    "next_action": "先刷新 Nav2 路径 proof",
+    "routes": {
+      "status": "/api/nav2/status",
+      "proof_refresh": "/api/nav2/proof/refresh",
+      "proof_latest": "/api/nav2/proof/latest",
+      "goal_execute": "/api/nav2/goal/execute",
+      "goal_execution_latest": "/api/nav2/goal/execution/latest",
+      "start": "/api/nav2/start",
+      "stop": "/api/nav2/stop"
+    },
+    "commands": {
+      "start": {
+        "env": "ROBER_NAV2_START_COMMAND",
+        "configured": true,
+        "mode": "command",
+        "argv": [
+          "bash",
+          "/root/rober/onboard/scripts/o11_nav2_lifecycle.sh",
+          "start",
+          "--map-file",
+          "/root/rober/onboard/runtime/maps/trashbot_map.yaml",
+          "--base-port",
+          "/dev/ttyS5",
+          "--base-baudrate",
+          "115200",
+          "--command-mode",
+          "ros",
+          "--base-enabled",
+          "false",
+          "--lidar-enabled",
+          "false",
+          "--lidar-serial-port",
+          "/dev/ttyACM0",
+          "--lidar-serial-baudrate",
+          "230400",
+          "--static-laser-tf-enabled",
+          "true"
+        ],
+        "error": null
+      },
+      "stop": {
+        "env": "ROBER_NAV2_STOP_COMMAND",
+        "configured": true,
+        "mode": "command",
+        "argv": [
+          "bash",
+          "/root/rober/onboard/scripts/o11_nav2_lifecycle.sh",
+          "stop"
+        ],
+        "error": null
+      },
+      "status": {
+        "env": "ROBER_NAV2_STATUS_COMMAND",
+        "configured": true,
+        "mode": "command",
+        "argv": [
+          "bash",
+          "/root/rober/onboard/scripts/o11_nav2_lifecycle.sh",
+          "status"
+        ],
+        "error": null
+      }
+    },
+    "sends_commands": false,
+    "sends_motion_commands": false,
+    "sends_base_motion_commands": false,
+    "publishes_cmd_vel": false,
+    "calls_base_manual": false,
+    "uses_base_uart": false,
+    "lifecycle_manager": {
+      "schema": "trashbot.upper_robot_api.v1.nav2_lifecycle_manager_status",
+      "status": "loaded",
+      "running": false,
+      "state": "stopped",
+      "message": "Nav2 lifecycle not running",
+      "pid": null,
+      "base_enabled": "auto",
+      "lidar_enabled": "auto",
+      "motion_requires_explicit_goal_execute": true,
+      "command_result": {
+        "mode": "command",
+        "executed": true,
+        "ok": true,
+        "argv": [
+          "bash",
+          "/root/rober/onboard/scripts/o11_nav2_lifecycle.sh",
+          "status"
+        ],
+        "returncode": 0,
+        "stdout_preview": "{\"schema\": \"trashbot.o11.nav2_lifecycle.v1\", \"generated_at_ms\": 1784536634398, \"running\": false, \"pid\": null, \"state\": \"stopped\", \"message\": \"Nav2 lifecycle not running\", \"onboard_root\": \"/root/rober/onboard\", \"map_file\": \"/root/rober/onboard/runtime/maps/trashbot_map.yaml\", \"base_port\": \"/dev/ttyS5\", \"base_baudrate\": 115200, \"command_mode\": \"ros\", \"base_enabled\": \"auto\", \"lidar_enabled\": \"auto\", \"lidar_serial_port\": \"/dev/ttyACM0\", \"lidar_serial_baudrate\": 230400, \"static_laser_tf_enabled\": \"true\", \"launch\": \"ros2_trashbot_bringup autonomous.launch.py nav2_stack_only:=true\", \"runtime_dir\": \"/tmp/rober_nav2_lifecycle\", \"log_dir\": \"/tmp/rober_nav2_lifecycle/logs\", \"vendor_sources\": [\"docs/vendor/VENDOR_INDEX.md\", \"docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py\", \"docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h\"], \"motion_requires_explicit_goal_execute\": true, \"sends_base_motion_commands\": false, \"robot_control_executed\": false, \"safe_to_control\": false, \"delivery_success\": false, \"blocked_commands_not_sent_by_start\": [\"/cmd_vel\", \"NavigateToPose goal\", \"/api/base/manual\", \"T=1\", \"T=11\", \"T=13\"]}\n",
+        "stderr_preview": ""
+      },
+      "sends_motion_commands": false,
+      "sends_base_motion_commands": false,
+      "robot_control_executed": false,
+      "safe_to_control": false,
+      "delivery_success": false
+    },
+    "lifecycle_running": false,
+    "lifecycle_state": "stopped",
+    "runtime_entrypoints": {
+      "autonomous_launch": "ros2 launch ros2_trashbot_bringup autonomous.launch.py map_file:=<map.yaml>",
+      "lifecycle_nodes_expected": [
+        "map_server",
+        "amcl",
+        "planner_server",
+        "controller_server"
+      ],
+      "required_inputs": [
+        "/scan",
+        "map yaml/image",
+        "tf map->base_link"
+      ],
+      "proof_refresh": "/api/nav2/proof/refresh",
+      "proof_latest": "/api/nav2/proof/latest",
+      "goal_execute": "/api/nav2/goal/execute",
+      "goal_execution_latest": "/api/nav2/goal/execution/latest"
+    },
+    "readback_sends_commands": false,
+    "opens_serial": false,
+    "starts_ros2": false,
+    "ros2_runtime_proven": false,
+    "map_artifact_proven": false,
+    "localization_proven": false,
+    "nav2_runtime_proven": false,
+    "elevator_runtime_proven": false,
+    "field_hil_material": false,
+    "safe_to_control": false,
+    "delivery_success": false,
+    "primary_actions_enabled": false,
+    "robot_control_executed": false,
+    "cloud_relay": false
+  },
+  "opens_base_uart": false,
+  "opens_lidar_serial": false
+}

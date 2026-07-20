@@ -6,6 +6,18 @@
 
 ---
 
+## 2026-07-20 O3 strict-no-motion readiness contract accepted / current proof timeout NO-GO flat 收口
+
+`sprints/2026.07.20_13-20_o3_nav2_localization_readiness_recovery/` 完成 Product acceptance closeout。Robot Software 与 Algorithm 的跨 owner 实现、回归和导航文档 accepted：Robot `114 tests OK`、5 targeted、中文注释 `20.63%+`；Algorithm `167 tests OK`、中文注释 `22.38%`。8 个 JSON 均通过 `json.tool`，integration marker=`O3_STRICT_NO_MOTION_FINAL_NO_GO_CLEANUP_OK`，proof boundary=`strict_no_motion_persistent_lifecycle_fresh_pose_planner_only_path_readiness`。
+
+真实上位机 exactly-one current sequence 为 start/proof/latest/stop=`1/1/1/1`。Start semantic contract 真正生效：request body consumed，effective `base_enabled=false`、`lidar_enabled=false`，既存 base/LiDAR holders 不变，new-open=`0/0`；goal/manual/base-stop/cmd_vel publish/initialpose publish/UART motion invocation 全为 0，无物理运动。Owned stop cleanup clean，scope=`o11_owned_pid_process_group_only`，Upper API 保持 healthy。
+
+Product 拒绝 current readiness：`READINESS_GO=false`。Helper elapsed=`81243ms` 超过 80s process budget，partial artifact 保留；roots 为 `amcl_pose_probe_interrupted_before_observation`、`sigint_before_final_artifact`、`helper_process_timeout_after_partial_artifact`。Lifecycle active fields、persisted pose audit、fresh `/amcl_pose`、fresh dynamic uniquely-attributed `map->odom`、`map->base_link` 未在 timeout 前证明；path requested=true，但 attempted/succeeded/generated=false、count=0；`initialpose_publish_attempts=0`。
+
+`current_run_artifact_delta=true` 仅表示 current upper 安全合同、真实 NO-GO evidence 和 clean cleanup；`external_artifact_delta=false`，因为证据仍来自项目自有上位机/runtime，并非 external provider、production、用户交付或第三方验收；`live_control_delta=false`、`user_action_delta=false`、route/HIL/delivery/safe/`okr_credit=false`。Mission Objective 0 不是 pending authorization：fresh CEO motion authorization 已存在但本轮未消费；当前状态=`blocked_before_attempt_on_current_localization_readiness`。
+
+O5 保持约 `85%` 且 provider blocker `2/2` 仍成立；O6/O7 各保持约 `93%`，O1 保持约 `94%`，主百分比 flat，KR `不归档`，历史区无新增。下一轮不得重复同一 proof/window 或 wrapper；唯一入口是先本地修 O10 helper 80s budget、probe order 与 partial artifact，通过完整回归后才开新 no-motion proof。若仍缺 persisted pose，必须由 Product/CEO 明确 localization input gate，禁止隐式发布 `/initialpose`；任何新 live action仍须重新确认 current operator、路线、obstacle 与 readiness。
+
 ## 2026-07-20 O7 direct upper live route action read-only no-go flat 收口
 
 `sprints/2026.07.20_12-20_o7_direct_upper_live_route_action/` 完成 Product acceptance closeout。Full-stack 通过

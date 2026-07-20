@@ -3195,6 +3195,26 @@ live execution 输入，必须另行满足 operator approval、current live HIL/
 LiDAR/localization/TF readiness 和 Nav2/controller result，并继续保留 no /cmd_vel、
 no /api/base/manual、no NavigateToPose、no WAVE ROVER UART 作为本 sprint 的不可越界 guard。
 
+`2026-07-20` 起，O10 的 current path gate 不再把 `path_generation_opt_in` 硬绑到
+`initialpose_opt_in=true`。固定路线可以在 persistent Nav2 stack 已由安全入口启动后，走
+`current_fresh_persisted_pose_no_publish` 分支生成 planner-only path；该分支必须同时满足：
+
+- `/map_server`、`/amcl`、`/planner_server`、`/controller_server` lifecycle 均为 active；
+- `persisted_pose_audit.persisted_pose_live_consumed=true`；
+- 当前 `/amcl_pose` 已观测、timestamp 可解析且 freshness 为 `fresh`；
+- 当前 `map->odom` 来自 dynamic TF、timestamp 可解析且 freshness 为 `fresh`；
+- `map->odom.publisher_attribution_status=attributed_unique_amcl`，不能是 static、missing 或
+  ambiguous multiple publishers；
+- `map->base_link` 已观测，且 localization root causes 为空；
+- `initialpose_publish_attempts=0`，helper `managed_runtime_opt_in=false`。
+
+任一条件 missing、stale 或 ambiguous 时，`path_generation_precondition_gate.clean=false`，
+`path_generation_attempted=false`，并在 `Persisted localization path gate` 中保留具体 blocker。
+只有 gate clean 后才允许一次 `ComputePathToPose`；它只计算路线，不调用 `NavigateToPose`、
+`FollowPath`、`/cmd_vel`、`/api/base/manual` 或 WAVE ROVER UART。该 path 即使生成成功，也只表示
+同窗口定位与 planner readiness，可交给后续独立 motion gate 复核；不证明 route execution、
+wheel feedback、HIL、safe-to-control、delivery 或 Mission Objective 0 已完成。
+
 ### 7.4 Route code structure after 2026-05-25 refactor
 
 The fixed-route autonomy code is now split by proof responsibility:

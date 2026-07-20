@@ -1,0 +1,212 @@
+{
+  "schema_version": "trashbot.o3_nav2_lifecycle_safety_manifest.v1",
+  "generated_at": "2026-07-20T16:42:29+08:00",
+  "proof_boundary": "strict_no_motion_persistent_lifecycle_start_only",
+  "deploy_state": "final_local_source_deployed_healthy",
+  "integration_result": "GO_FOR_ALGORITHM_PROOF",
+  "robot_live_start_ready": true,
+  "current_for_this_capture_window": true,
+  "vendor_sources": [
+    "docs/vendor/VENDOR_INDEX.md",
+    "docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py",
+    "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h"
+  ],
+  "deployment": {
+    "local_source": "/Users/m1/apps/rober/onboard/scripts/upper_robot_api.py",
+    "remote_source": "/root/rober/onboard/scripts/upper_robot_api.py",
+    "service": "trashbot-upper-robot-api.service",
+    "service_unit": "/etc/systemd/system/trashbot-upper-robot-api.service",
+    "service_exec_start": "/usr/bin/env bash /root/rober/onboard/scripts/upper_robot_api.sh",
+    "remote_process_command": "python3 /root/rober/onboard/scripts/upper_robot_api.py --host 0.0.0.0 --port 8787 --camera-base-url http://127.0.0.1:8088 --base-port /dev/ttyS5 --base-baudrate 115200 --max-speed 0.12",
+    "remote_sha_before": "944fe3ba43201c8363b175959e0efc5b440369f4005a1ca0a03dec40328f6bd8",
+    "local_sha256": "1503193fb05309c630448fa723ae90f4acd0f70d332e5673ab307e8b2c4836e1",
+    "remote_sha256": "1503193fb05309c630448fa723ae90f4acd0f70d332e5673ab307e8b2c4836e1",
+    "sha_match": true,
+    "remote_py_compile_exit": 0,
+    "atomic_install_exit": 0,
+    "restart": {
+      "mechanism": "systemctl kill --kill-who=all --signal=SIGKILL then systemctl start",
+      "scope": "trashbot-upper-robot-api.service control-group only",
+      "reason": "reuse the previously verified bounded unit-scoped restart path instead of waiting for the unit 90 second graceful stop timeout",
+      "old_pid": 679127,
+      "new_pid": 684106,
+      "active_state": "active",
+      "sub_state": "running",
+      "exec_main_start_timestamp": "2026-07-20T16:40:15+08:00",
+      "bounded_health_poll_exit": 0,
+      "health_status": "ready"
+    },
+    "final_contract_markers": {
+      "strict_nav2_start_timeout_max_s": 20.0,
+      "forbidden_actions_include": [
+        "NavigateToPose",
+        "NavigateThroughPoses",
+        "FollowPath"
+      ],
+      "success_evidence_type": "strict_no_motion_lifecycle_runtime_material"
+    },
+    "api_restart_started_nav2": false,
+    "api_restart_touched_base_uart": false,
+    "api_restart_touched_lidar_serial": false
+  },
+  "pre_start": {
+    "captured_at_ms": 1784536785424,
+    "lifecycle_running": false,
+    "lifecycle_state": "stopped",
+    "lifecycle_pid": null,
+    "api_status_after_final_deploy_generated_at_ms": 1784536849982,
+    "base_uart": {
+      "device": "/dev/ttyS5",
+      "holder_count": 1,
+      "holders": [
+        {
+          "pid": 13543,
+          "command": "esp32_bridge"
+        }
+      ]
+    },
+    "lidar_serial": {
+      "device": "/dev/ttyACM0",
+      "holder_count": 1,
+      "holders": [
+        {
+          "pid": 550922,
+          "command": "lidar_driver"
+        }
+      ]
+    }
+  },
+  "request": {
+    "endpoint": "/api/nav2/start",
+    "body": {
+      "strict_no_motion": true,
+      "base_enabled": false,
+      "lidar_enabled": false,
+      "reuse_existing_scan": true,
+      "timeout_s": 20
+    },
+    "body_transport": "ssh_stdin_to_curl_data_binary",
+    "body_bytes_include_trailing_newline": true,
+    "body_sha256": "a6f2e1eed6152ee903a4fec9b32521e2065d27536e7a63fef6f51f39c0ddd9bc",
+    "external_start_post_invocation_count_this_final_deploy_window": 1,
+    "known_external_start_post_invocation_count_across_sprint": 2,
+    "external_start_post_exit": 0,
+    "start_retry_count": 0,
+    "response_generated_at_ms": 1784536862253
+  },
+  "semantic_result": {
+    "status": "started_strict_no_motion",
+    "semantic_success": true,
+    "evidence_type": "strict_no_motion_lifecycle_runtime_material",
+    "command_result_executed": true,
+    "command_result_ok": true,
+    "command_result_returncode": 0,
+    "request_body_consumed": true,
+    "effective_contract": {
+      "strict_no_motion": true,
+      "base_enabled": false,
+      "lidar_enabled": false,
+      "reuse_existing_scan": true,
+      "timeout_s": 20.0,
+      "persistent_lifecycle": true,
+      "motion_requires_explicit_goal_execute": true
+    },
+    "effective_argv_base_enabled": "false",
+    "effective_argv_lidar_enabled": "false",
+    "effective_argv_base_enabled_occurrences": 1,
+    "effective_argv_lidar_enabled_occurrences": 1,
+    "root_causes": [],
+    "cleanup": {
+      "status": "not_required_persistent_owned_lifecycle",
+      "attempted": false,
+      "ok": true,
+      "scope": "o11_owned_pid_process_group_only"
+    },
+    "lifecycle_command_invocation_count_inside_api": 2
+  },
+  "post_start": {
+    "captured_at_ms": 1784536934089,
+    "api_status_generated_at_ms": 1784536909451,
+    "api_status": "not_proven",
+    "api_blocked_reasons": [],
+    "lifecycle_running": true,
+    "lifecycle_state": "running",
+    "lifecycle_pid": 684474,
+    "lifecycle_process_group_id": 684474,
+    "base_enabled": "false",
+    "lidar_enabled": "false",
+    "motion_requires_explicit_goal_execute": true,
+    "base_uart": {
+      "device": "/dev/ttyS5",
+      "holder_count": 1,
+      "holders": [
+        {
+          "pid": 13543,
+          "command": "esp32_bridge"
+        }
+      ]
+    },
+    "lidar_serial": {
+      "device": "/dev/ttyACM0",
+      "holder_count": 1,
+      "holders": [
+        {
+          "pid": 550922,
+          "command": "lidar_driver"
+        }
+      ]
+    },
+    "base_uart_new_holder_pids": [],
+    "lidar_serial_new_holder_pids": [],
+    "base_uart_new_open_count": 0,
+    "lidar_serial_new_open_count": 0
+  },
+  "command_log_delta": {
+    "path": "/root/rober/onboard/runtime/wave_rover_command_debug.jsonl",
+    "before_lines": 3570,
+    "after_lines": 3570,
+    "line_delta": 0,
+    "before_size_bytes": 1245562,
+    "after_size_bytes": 1245562,
+    "before_mtime_epoch_s": 1783532582,
+    "after_mtime_epoch_s": 1783532582,
+    "uart_motion_command_delta": 0
+  },
+  "invocation_counts": {
+    "nav2_start_post_this_final_deploy_window": 1,
+    "nav2_status_get_this_task": 3,
+    "nav2_status_get_after_final_deploy": 2,
+    "nav2_status_get_after_start": 1,
+    "nav2_proof_refresh_post": 0,
+    "nav2_goal_execute_post": 0,
+    "nav2_stop_post": 0,
+    "base_stop_invocation": 0,
+    "base_manual_invocation": 0,
+    "initialpose_publish_invocation": 0,
+    "cmd_vel_publish_invocation": 0,
+    "uart_motion_invocation": 0,
+    "wave_rover_T1_invocation": 0,
+    "wave_rover_T11_invocation": 0,
+    "wave_rover_T13_invocation": 0
+  },
+  "motion_boundary": {
+    "command_debug_log_unchanged": true,
+    "sends_base_motion_commands": false,
+    "robot_control_executed": false,
+    "safe_to_control": false,
+    "delivery_success": false,
+    "route_execution_success": false,
+    "hil_pass": false
+  },
+  "artifacts": {
+    "start_response": "sprints/2026.07.20_13-20_o3_nav2_localization_readiness_recovery/artifacts/api_nav2_start_response.json",
+    "start_status": "sprints/2026.07.20_13-20_o3_nav2_localization_readiness_recovery/artifacts/api_nav2_start_status.json",
+    "stop_response": null,
+    "stop_response_reason": "not_created_because_successful_persistent_lifecycle_must_remain_running_for_algorithm_proof"
+  },
+  "remaining_risks": [
+    "Top-level nav2 status intentionally remains not_proven until the Algorithm owner captures current persisted localization and planner-only path proof.",
+    "Lifecycle remains running by contract; Robot Software must perform one owned stop after Algorithm proof, including on Algorithm semantic failure.",
+    "This stage proves strict-no-motion lifecycle start only and does not prove localization, path success, route execution, HIL, safe-to-control, or delivery."
+  ]
+}

@@ -775,6 +775,45 @@ PC 工作站新增固定 `POST /api/robot-control/nav2/start|stop?baseUrl=...` �
 这条入口解决的是 planner/controller runtime 未运行导致的“自动驾驶无法准备/无法动”，不是摄像头问题，也不要求雷达作为
 低速底盘能动的前置条件；真实完整路线执行、wheel raw L/R 非零和 delivery success 仍要后续独立证明。
 
+## 2026-07-20 Nav2 strict-no-motion start 合同
+
+2026-06-28 记录的 PC 空 body `{}` 代理合同已被本节取代。`POST /api/nav2/start`
+现在必须消费下列完整 JSON，不再忽略 request body：
+
+```json
+{
+  "strict_no_motion": true,
+  "base_enabled": false,
+  "lidar_enabled": false,
+  "reuse_existing_scan": true,
+  "timeout_s": 20
+}
+```
+
+合同只接受上述 5 个字段。bodyless、旧 `{}`、`base_enabled/lidar_enabled=auto`、
+任一 enabled 为 `true`、未知字段、缺字段、非 JSON 数字/非有限或超出 `4..20` 秒的
+`timeout_s` 都在 subprocess 前 fail closed，并回包
+`lifecycle_command_invocation_count=0`。旧 PC 代理必须改为发送该 strict body，
+否则 HTTP 即使为 200 也只是结构化 NO-GO。
+
+服务端不会把 body 字段拼到 shell，而是从受管 `o11_nav2_lifecycle.sh start`
+命令重建唯一生效 argv，强制 `--base-enabled false --lidar-enabled false`。
+`reuse_existing_scan=true` 表示只复用已有 `/scan`；本 start 阶段的
+`base_uart_new_open_count=0` 且 `lidar_serial_new_open_count=0`。成功判定必须同时满足：
+
+- `command_result.executed=true` 且 `command_result.ok=true`；
+- lifecycle 后置 readback 显示 `running=true`；
+- readback 同时确认 `base_enabled=false` 和 `lidar_enabled=false`。
+
+因此 HTTP 200 本身不等于 start 成功，调用方必须检查 `semantic_success`、
+`evidence_type`、`root_causes`、`command_result`、`nav2_lifecycle_status`、`evidence.effective_contract`
+和 `cleanup`。任一语义验收失败时，API 仅调用受管 `o11 stop` 回收该脚本拥有的
+PID/process group。`POST /api/nav2/stop` 也只做同样的 owned cleanup，不发底盘 stop、
+不访问 WAVE ROVER UART，不关闭非 o11 拥有的外部进程。
+
+该改动只建立本地可验证的 strict-no-motion API 合同；它不是上车部署证据、
+不是 HIL、不是路线执行，也不证明 wheel raw L/R、dropoff 或 delivery success。
+
 ## 2026-06-29 Nav2 现场失败分层
 
 2026-06-29 04:00 对 `root@192.168.1.11:37878` 做了一次受控复核：

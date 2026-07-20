@@ -4400,6 +4400,114 @@ def build_persisted_pose_audit(
     }
 
 
+def build_path_generation_precondition_gate(
+    *,
+    initialpose_request: dict[str, Any],
+    initialpose_publish: dict[str, Any],
+    controlled_initialpose_gate: dict[str, Any],
+    persisted_pose_audit: dict[str, Any],
+    localization_signal_freshness: dict[str, Any],
+    tf_source_freshness: dict[str, Any],
+    localization_tf_observed: dict[str, bool],
+    lifecycle_active: dict[str, bool],
+    planner_server_active: bool,
+    controller_server_active: bool,
+    localization_ready: bool,
+    localization_root_causes: list[dict[str, str]],
+) -> dict[str, Any]:
+    """只在定位来源、生命周期和 freshness 同时可信时开放 planner-only action。"""
+    # 最终窗口的 `/amcl_pose` 必须同时有样本、可解析时间戳和 fresh 判定；
+    # persisted 配置存在本身不能代替 current pose 消费事实。
+    # 这里重新读取 final summary，而不是沿用启动时的单个布尔值，避免旧 pose
+    # 在长 collector 窗口末尾已经过期后仍被 planner action 消费。
+    pose_entry = (
+        localization_signal_freshness.get("/amcl_pose")
+        if isinstance(localization_signal_freshness.get("/amcl_pose"), dict)
+        else {}
+    )
+    pose_probe = pose_entry.get("probe") if isinstance(pose_entry.get("probe"), dict) else {}
+    pose_timestamp = pose_entry.get("timestamp") if isinstance(pose_entry.get("timestamp"), dict) else {}
+    pose_freshness = pose_entry.get("freshness") if isinstance(pose_entry.get("freshness"), dict) else {}
+
+    # `map->odom` 只能来自 dynamic `/tf`，并且必须能唯一归属 AMCL；
+    # static、stale、无 timestamp 或多 publisher 都要在 action 前 fail closed。
+    # callback receipt freshness 是本项目已经接受的判定基准，不能退回只看
+    # transform 是否曾经出现在 frame inventory 中。
+    tf_edges = tf_source_freshness.get("edges") if isinstance(tf_source_freshness.get("edges"), dict) else {}
+    map_edge = tf_edges.get("map_to_odom") if isinstance(tf_edges.get("map_to_odom"), dict) else {}
+    map_timestamp = map_edge.get("timestamp") if isinstance(map_edge.get("timestamp"), dict) else {}
+    map_freshness = map_edge.get("freshness") if isinstance(map_edge.get("freshness"), dict) else {}
+
+    # 初始位姿写路径保持原有一次写入合同；当前 sprint 则走 publish=0 的
+    # persisted pose 路径，两者只允许满足其一，绝不能因 opt-in 字段缺失而默认放行。
+    # 只有一次真实 publish 且后置 gate clean 才算写路径成功；零次 publish
+    # 必须由 current persisted pose 全套证据单独承担可信来源责任。
+    publish_attempts = int(initialpose_publish.get("publish_attempts") or 0)
+    initialpose_write_ready = bool(
+        initialpose_request.get("enabled")
+        and publish_attempts == 1
+        and initialpose_publish.get("ok")
+        and controlled_initialpose_gate.get("clean")
+    )
+    persisted_checks = {
+        # 零发布是本轮硬安全边界；它不是“未记录”，而是明确的 invocation 计数。
+        "initialpose_publish_attempts_zero": publish_attempts == 0,
+        # audit 汇总只在 fresh pose 与唯一 AMCL dynamic TF 同时成立时为真。
+        "persisted_pose_live_consumed": bool(persisted_pose_audit.get("persisted_pose_live_consumed")),
+        # pose 的 observed、parsed、fresh 三层必须分别保留，便于精确报告缺口。
+        "amcl_pose_sample_observed": bool(pose_probe.get("observed")),
+        "amcl_pose_timestamp_parsed": pose_timestamp.get("parsed") is True,
+        "amcl_pose_fresh": pose_freshness.get("status") == "fresh",
+        # TF 同样拆开 source class、时间戳、freshness 与 publisher 归属。
+        "map_to_odom_dynamic": map_edge.get("source_class") == "dynamic",
+        "map_to_odom_timestamp_parsed": map_timestamp.get("parsed") is True,
+        "map_to_odom_fresh": map_freshness.get("status") == "fresh",
+        "map_to_odom_attributed_unique_amcl": (
+            map_edge.get("publisher_attribution_status") == "attributed_unique_amcl"
+        ),
+        "map_to_base_link_observed": bool(localization_tf_observed.get("map_to_base_link")),
+    }
+    persisted_pose_ready = all(persisted_checks.values())
+
+    # planner-only 仍依赖 persistent Nav2 四个 lifecycle active；仅看到节点名
+    # 或 action server 不能替代 active 状态，尤其不能绕过 controller readiness。
+    # controller 虽不会被本 helper 调用，但它的 active 状态是下一 motion gate 的
+    # 同窗口 readiness 前置，因此不能用 planner success 反向补齐。
+    shared_checks = {
+        "map_server_lifecycle_active": bool(lifecycle_active.get("map_server")),
+        "amcl_lifecycle_active": bool(lifecycle_active.get("amcl")),
+        "planner_server_lifecycle_active": bool(planner_server_active),
+        "controller_server_lifecycle_active": bool(controller_server_active),
+        "localization_ready": bool(localization_ready),
+        "localization_root_causes_empty": not localization_root_causes,
+        "initialpose_write_or_persisted_pose_ready": bool(initialpose_write_ready or persisted_pose_ready),
+    }
+    blocking_reasons = [name for name, clean in shared_checks.items() if not clean]
+    if not initialpose_write_ready and not persisted_pose_ready:
+        # 当前无发布模式需要把具体 freshness/source 缺口展开，避免只留下泛化的
+        # `localization_not_ready`，让下一轮能直接定位 missing/stale/ambiguous。
+        # 展开只发生在 action 之前；这些 blocker 不会触发重试、publish 或控制命令。
+        # 去重保留首次出现顺序，使 live artifact 的主因在多次采集间稳定可比较。
+        blocking_reasons.extend(name for name, clean in persisted_checks.items() if not clean)
+    return {
+        "clean": not blocking_reasons,
+        "source_mode": (
+            "controlled_initialpose_write"
+            if initialpose_write_ready
+            else "current_fresh_persisted_pose_no_publish"
+            if persisted_pose_ready
+            else "blocked_no_trusted_localization_source"
+        ),
+        "initialpose_write_ready": initialpose_write_ready,
+        "persisted_pose_ready": persisted_pose_ready,
+        "initialpose_publish_attempts": publish_attempts,
+        "shared_checks": shared_checks,
+        "persisted_checks": persisted_checks,
+        "blocking_reasons": list(dict.fromkeys(blocking_reasons)),
+        "motion_boundary": "planner_only_compute_path_to_pose_no_navigation_or_base_control",
+    }
+
+
 def build_initialpose_subscriber_audit(tf_source_diagnostics: dict[str, Any]) -> dict[str, Any]:
     """写前只接受归属清楚的 AMCL `/initialpose` subscriber。"""
     endpoints = (
@@ -13618,8 +13726,13 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
             "tf_failure_classification": tf_failure_classification,
         },
     )
+    # persisted pose 与受控 initialpose 都可建立完整 source chain；后续仍会经过
+    # final freshness 与四 lifecycle gate，因此这里仅用于减少重复慢探针。
     source_chain_complete = bool(
-        initialpose_request_payload["enabled"]
+        (
+            initialpose_request_payload["enabled"]
+            or persisted_pose_audit.get("persisted_pose_live_consumed")
+        )
         and amcl_pose_probe_ok
         and tf_chain_observed.get("map_to_odom")
         and tf_chain_observed.get("odom_to_base_link")
@@ -14335,8 +14448,11 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
     localization_ready = bool(
         scan_observed and map_observed and lifecycle_active.get("map_server") and lifecycle_active.get("amcl")
     )
+    # planner-only path 也必须消费 current pose 与 TF；即使既不启动 managed runtime、
+    # 也不发布 `/initialpose`，仍不能把 scan/map lifecycle 误当成定位已完成。
     localization_outputs_required = bool(
         initialpose_request_payload["enabled"]
+        or args.path_generation_opt_in
         or (args.strict_no_motion and managed_runtime.get("requested"))
     )
     if localization_outputs_required:
@@ -14412,15 +14528,37 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
                 localization_root_causes.append(
                     {"layer": "AMCL controlled initialpose post-write gate", "reason": str(reason)}
                 )
-    path_generation_preconditions_ready = bool(
-        initialpose_request_payload["enabled"] and localization_ready and not localization_root_causes
+    path_generation_precondition_gate = build_path_generation_precondition_gate(
+        initialpose_request=initialpose_request_payload,
+        initialpose_publish=initialpose_publish,
+        controlled_initialpose_gate=controlled_initialpose_post_write_gate,
+        persisted_pose_audit=persisted_pose_audit,
+        localization_signal_freshness=localization_signal_freshness,
+        tf_source_freshness=tf_source_freshness,
+        localization_tf_observed=localization_tf_observed,
+        lifecycle_active=lifecycle_active,
+        planner_server_active=planner_server_active,
+        controller_server_active=controller_server_active,
+        localization_ready=localization_ready,
+        localization_root_causes=localization_root_causes,
     )
+    if args.path_generation_opt_in and not path_generation_precondition_gate["clean"]:
+        # gate blocker 属于 planner action 前置事实；加入 root causes 后仍保持 attempted=false，
+        # 不允许 maybe_compute_path_generation 通过其它 fallback 绕过 freshness/source 检查。
+        existing_reasons = {str(item.get("reason") or "") for item in localization_root_causes}
+        for reason in path_generation_precondition_gate["blocking_reasons"]:
+            if reason not in existing_reasons:
+                localization_root_causes.append(
+                    {"layer": "Persisted localization path gate", "reason": str(reason)}
+                )
+    path_generation_preconditions_ready = bool(path_generation_precondition_gate["clean"])
     phase_writer.record_phase("path_generation", detail={"requested": bool(args.path_generation_opt_in)})
     path_generation_request, path_generation_result, _path_generation_summary, path_generation_root_causes = maybe_compute_path_generation(
         args,
         ros2_ok=ros2_ok,
         localization_ready=path_generation_preconditions_ready,
-        planner_server_active=planner_server_ready_for_path_generation,
+        # Product 修订合同要求 lifecycle active；仅 graph observed 不足以调用 planner action。
+        planner_server_active=planner_server_active,
         map_analysis=managed_map_analysis,
         initialpose_payload=initialpose_request_payload,
         observed_start_pose=amcl_pose,
@@ -14486,8 +14624,11 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
     complete = bool(
         effective_map_inputs["inputs_ready"]
         and localization_ready
-        and pre_initialpose_gate.get("clean")
-        and controlled_initialpose_post_write_gate.get("clean")
+        and (
+            path_generation_precondition_gate.get("clean")
+            if path_generation_request["enabled"]
+            else bool(pre_initialpose_gate.get("clean") and controlled_initialpose_post_write_gate.get("clean"))
+        )
         and not localization_root_causes
         and (
             not path_generation_request["enabled"]
@@ -14614,6 +14755,7 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         "path_goal_request": path_goal_request_summary,
         "path_goal_response": path_goal_response_summary,
         "path_generation_boundary": path_generation_result.get("boundary"),
+        "path_generation_precondition_gate": path_generation_precondition_gate,
         "planner_readiness_summary": planner_readiness,
         "scan_consumed": localization_ready,
         "map_consumed": localization_ready,

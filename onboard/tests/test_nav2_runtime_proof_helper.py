@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import importlib.util
+import inspect
 import json
 import os
 import subprocess
@@ -573,6 +574,184 @@ pose:
         self.assertEqual(0, result["publish_attempts"])
         self.assertEqual("pre_initialpose_gate_not_clean_no_publish", result["boundary"])
         publish_mock.assert_not_called()
+
+    def _persisted_pose_path_gate(
+        self,
+        *,
+        pose_status: str = "fresh",
+        pose_parsed: bool = True,
+        pose_observed: bool = True,
+        map_status: str = "fresh",
+        map_parsed: bool = True,
+        map_source: str = "dynamic",
+        attribution: str = "attributed_unique_amcl",
+        persisted_live: bool = True,
+        publish_attempts: int = 0,
+        map_server_active: bool = True,
+        amcl_active: bool = True,
+        planner_server_active: bool = True,
+        controller_server_active: bool = True,
+    ) -> dict[str, object]:
+        """构造 no-publish current persisted pose gate，供缺失、过期和归属冲突矩阵复用。"""
+        # 测试 fixture 把四个 lifecycle 与发布计数独立暴露，避免只验证 happy path；
+        # 任一 active/read-only 安全条件变化都应在 action 前得到稳定 blocker。
+        return HELPER.build_path_generation_precondition_gate(
+            initialpose_request={"enabled": False},
+            initialpose_publish={"ok": False, "publish_attempts": publish_attempts},
+            controlled_initialpose_gate={"clean": True},
+            persisted_pose_audit={"persisted_pose_live_consumed": persisted_live},
+            localization_signal_freshness={
+                "/amcl_pose": {
+                    "probe": {"observed": pose_observed},
+                    "timestamp": {"parsed": pose_parsed},
+                    "freshness": {"status": pose_status},
+                }
+            },
+            tf_source_freshness={
+                "edges": {
+                    "map_to_odom": {
+                        "source_class": map_source,
+                        "publisher_attribution_status": attribution,
+                        "timestamp": {"parsed": map_parsed},
+                        "freshness": {"status": map_status},
+                    }
+                }
+            },
+            localization_tf_observed={"map_to_odom": True, "map_to_base_link": True},
+            lifecycle_active={"map_server": map_server_active, "amcl": amcl_active},
+            planner_server_active=planner_server_active,
+            controller_server_active=controller_server_active,
+            localization_ready=True,
+            localization_root_causes=[],
+        )
+
+    def test_fresh_persisted_pose_opens_planner_only_gate_without_publish(self) -> None:
+        """fresh pose、唯一 AMCL dynamic TF 与四 lifecycle active 才能走零发布 path。"""
+        gate = self._persisted_pose_path_gate()
+        args = HELPER.parse_args(["--strict-no-motion", "--path-generation-opt-in"])
+        _, publish = HELPER.maybe_publish_initialpose(args, True)
+
+        self.assertTrue(gate["clean"])
+        self.assertTrue(gate["persisted_pose_ready"])
+        self.assertEqual("current_fresh_persisted_pose_no_publish", gate["source_mode"])
+        self.assertEqual(0, gate["initialpose_publish_attempts"])
+        self.assertEqual(0, publish["publish_attempts"])
+        self.assertFalse(args.initialpose_opt_in)
+        self.assertFalse(args.managed_runtime_opt_in)
+        self.assertTrue(args.path_generation_opt_in)
+
+    def test_persisted_pose_gate_requires_zero_publish_and_all_four_lifecycle_active(self) -> None:
+        """零发布与四 lifecycle 必须逐项成立，不能由 fresh pose/TF 反向补齐。"""
+        blocked_cases = {
+            # 当前 sprint 禁止 initialpose；历史写计数非零必须直接关闭 persisted 分支。
+            "initialpose_publish_attempts_zero": {"publish_attempts": 1},
+            # map/amcl/planner/controller 分别承担地图、定位、规划和下轮控制 readiness。
+            "map_server_lifecycle_active": {"map_server_active": False},
+            "amcl_lifecycle_active": {"amcl_active": False},
+            "planner_server_lifecycle_active": {"planner_server_active": False},
+            "controller_server_lifecycle_active": {"controller_server_active": False},
+        }
+
+        for expected_reason, overrides in blocked_cases.items():
+            with self.subTest(expected_reason=expected_reason):
+                # 每次只破坏一个条件，确认 blocker 精确且 gate 不会被其它 clean 条件掩盖。
+                gate = self._persisted_pose_path_gate(**overrides)
+
+                self.assertFalse(gate["clean"])
+                self.assertIn(expected_reason, gate["blocking_reasons"])
+                # source_mode 只描述定位来源；总 gate 的 clean 才决定 planner action 是否可调用。
+                if expected_reason == "initialpose_publish_attempts_zero":
+                    self.assertFalse(gate["persisted_pose_ready"])
+                else:
+                    self.assertTrue(gate["persisted_pose_ready"])
+
+    def test_missing_persisted_pose_blocks_before_compute_path_attempt(self) -> None:
+        """pose/source missing 时必须在 action 前 no-go，不能让 planner fallback 形成尝试。"""
+        gate = self._persisted_pose_path_gate(
+            pose_status="not_observed",
+            pose_parsed=False,
+            pose_observed=False,
+            map_status="not_observed",
+            map_parsed=False,
+            map_source="missing",
+            attribution="not_attributed",
+            persisted_live=False,
+        )
+        args = HELPER.parse_args(["--path-generation-opt-in"])
+        _, result, _, causes = HELPER.maybe_compute_path_generation(
+            args,
+            ros2_ok=True,
+            localization_ready=bool(gate["clean"]),
+            planner_server_active=True,
+        )
+
+        self.assertFalse(gate["clean"])
+        self.assertIn("persisted_pose_live_consumed", gate["blocking_reasons"])
+        self.assertIn("amcl_pose_sample_observed", gate["blocking_reasons"])
+        self.assertIn("map_to_odom_dynamic", gate["blocking_reasons"])
+        self.assertFalse(result["attempted"])
+        self.assertEqual("path_generation_blocked_by_localization_not_ready", result["boundary"])
+        self.assertEqual("localization_not_ready_for_path_generation", causes[0]["reason"])
+
+    def test_stale_persisted_pose_or_tf_blocks_planner_action(self) -> None:
+        """样本虽存在但 pose 或 map->odom stale 时仍必须 path_attempted=false。"""
+        gate = self._persisted_pose_path_gate(pose_status="stale", map_status="stale")
+        args = HELPER.parse_args(["--path-generation-opt-in"])
+        _, result, _, _ = HELPER.maybe_compute_path_generation(
+            args,
+            ros2_ok=True,
+            localization_ready=bool(gate["clean"]),
+            planner_server_active=True,
+        )
+
+        self.assertFalse(gate["clean"])
+        self.assertFalse(gate["persisted_pose_ready"])
+        self.assertIn("amcl_pose_fresh", gate["blocking_reasons"])
+        self.assertIn("map_to_odom_fresh", gate["blocking_reasons"])
+        self.assertFalse(result["attempted"])
+
+    def test_ambiguous_map_to_odom_attribution_blocks_planner_action(self) -> None:
+        """多个 AMCL publisher 或无法唯一归属时不能消费 dynamic TF 作为 persisted pose。"""
+        gate = self._persisted_pose_path_gate(attribution="ambiguous_multiple_amcl_publishers")
+        args = HELPER.parse_args(["--path-generation-opt-in"])
+        _, result, _, _ = HELPER.maybe_compute_path_generation(
+            args,
+            ros2_ok=True,
+            localization_ready=bool(gate["clean"]),
+            planner_server_active=True,
+        )
+
+        self.assertFalse(gate["clean"])
+        self.assertFalse(gate["persisted_pose_ready"])
+        self.assertIn("map_to_odom_attributed_unique_amcl", gate["blocking_reasons"])
+        self.assertFalse(result["attempted"])
+
+    def test_persisted_pose_gate_and_compute_path_remain_planner_only(self) -> None:
+        """新增 gate 与 ComputePath helper 不得包含导航、速度、manual 或底盘 UART token。"""
+        source = "\n".join(
+            (
+                inspect.getsource(HELPER.build_path_generation_precondition_gate),
+                inspect.getsource(HELPER.maybe_compute_path_generation),
+            )
+        )
+
+        for forbidden in ("NavigateToPose", "FollowPath", "/cmd_vel", "/api/base/manual", "/dev/ttyS5"):
+            self.assertNotIn(forbidden, source)
+        self.assertIn("ComputePathToPose", source)
+
+    def test_build_proof_wires_persisted_gate_before_compute_path(self) -> None:
+        """gate 必须接入真实 build_proof 调用链，不能只停留在孤立 helper 单测。"""
+        source = inspect.getsource(HELPER.build_proof)
+
+        # build_proof 先聚合 final freshness/lifecycle/source，再把唯一 clean 布尔传给 action helper。
+        gate_build = source.index("path_generation_precondition_gate = build_path_generation_precondition_gate(")
+        gate_result = source.index("path_generation_preconditions_ready = bool(path_generation_precondition_gate[\"clean\"])")
+        compute_call = source.index("maybe_compute_path_generation(")
+        self.assertLess(gate_build, gate_result)
+        self.assertLess(gate_result, compute_call)
+        self.assertIn("localization_ready=path_generation_preconditions_ready", source)
+        self.assertIn("planner_server_active=planner_server_active", source)
+        self.assertIn('"path_generation_precondition_gate": path_generation_precondition_gate', source)
 
     def test_package_checks_use_single_sourced_pkg_list_command(self) -> None:
         """包可用性是诊断信息，必须一次 pkg list 检查，不能逐包 prefix 阻塞主路径。"""

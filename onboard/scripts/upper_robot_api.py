@@ -155,11 +155,20 @@ DEFAULT_NAV2_START_COMMAND = (
     "bash /root/rober/onboard/scripts/o11_nav2_lifecycle.sh start "
     "--map-file /root/rober/onboard/runtime/maps/trashbot_map.yaml "
     "--base-port /dev/ttyS5 --base-baudrate 115200 --command-mode ros "
-    "--base-enabled auto --lidar-enabled auto --lidar-serial-port /dev/ttyACM0 "
+    "--base-enabled false --lidar-enabled false --lidar-serial-port /dev/ttyACM0 "
     "--lidar-serial-baudrate 230400 --static-laser-tf-enabled true"
 )
 DEFAULT_NAV2_STOP_COMMAND = "bash /root/rober/onboard/scripts/o11_nav2_lifecycle.sh stop"
 DEFAULT_NAV2_STATUS_COMMAND = "bash /root/rober/onboard/scripts/o11_nav2_lifecycle.sh status"
+# strict start 必须显式提交完整 JSON；缺字段与多字段都可能掩盖旧客户端合同漂移。
+STRICT_NAV2_START_REQUEST_FIELDS = frozenset(
+    {"strict_no_motion", "base_enabled", "lidar_enabled", "reuse_existing_scan", "timeout_s"}
+)
+# start 脚本自身最多等待 8 秒；4..20 秒既覆盖慢板启动，也避免请求无限占住 API worker。
+# 下界拒绝短于脚本内部启动观测窗口的假 timeout。
+STRICT_NAV2_START_TIMEOUT_MIN_S = 4.0
+# 上界限制单个 HTTP worker 的最长占用，不做静默 clamp。
+STRICT_NAV2_START_TIMEOUT_MAX_S = 20.0
 OPERATOR_REPORT_FIELDS = (
     "operator_present",
     "evidence_ref",
@@ -3183,6 +3192,141 @@ def run_radar_lifecycle_command(command: str | None, action: str) -> dict[str, A
     return run_configured_command(command)
 
 
+def normalize_strict_nav2_start_request(
+    body: dict[str, Any] | None,
+    *,
+    request_error: dict[str, str] | None = None,
+) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+    """只接受完整 strict-no-motion start 合同；旧 `{}` 请求必须 fail closed。"""
+    # handler 传入的解码错误不得与“缺 body”混在一起，便于调用方修复格式。
+    if request_error is not None:
+        # JSON 解析失败发生在任何 subprocess 前；错误必须结构化回包，不能让 aiohttp 返回裸 500。
+        return None, {
+            "type": "invalid_nav2_start_json",
+            "message": "nav2 start body must be a JSON object",
+            "detail": request_error,
+        }
+    if not isinstance(body, dict) or not body:
+        # bodyless 与历史 `{}` 都没有能力证明调用方理解新的零串口合同。
+        return None, {
+            "type": "strict_nav2_start_body_required",
+            "message": "explicit strict no-motion nav2 start JSON body is required",
+        }
+    # 精确字段集可防止调用方误以为 mode/goal 等参数已被消费。
+    unknown_fields = sorted(str(key) for key in body if key not in STRICT_NAV2_START_REQUEST_FIELDS)
+    # 缺失字段不使用服务端默认值，否则旧客户端会意外绕过升级门禁。
+    missing_fields = sorted(field for field in STRICT_NAV2_START_REQUEST_FIELDS if field not in body)
+    if unknown_fields or missing_fields:
+        # 拒绝未知 mode/goal/速度等字段，避免客户端以为服务端消费了实际被忽略的参数。
+        return None, {
+            "type": "invalid_nav2_start_fields",
+            "message": "nav2 start body must contain exactly the strict no-motion fields",
+            "unknown_fields": unknown_fields,
+            "missing_fields": missing_fields,
+        }
+    # 用 `is True` 而非 truthy 判定，拒绝 1 或字符串等模糊值。
+    if body.get("strict_no_motion") is not True:
+        return None, {
+            "type": "strict_no_motion_required",
+            "message": "strict_no_motion must be true",
+        }
+    # 用 `is False` 确保不会把 0、null 或空字符串解释为底盘已禁用。
+    if body.get("base_enabled") is not False:
+        # `auto` 可能在没有 holder 时解析为 true，因此不能作为零 UART new-open 合同。
+        return None, {
+            "type": "base_must_be_disabled",
+            "message": "base_enabled must be false",
+        }
+    # LiDAR 开关也要求精确 false，因为本轮仅能复用已有 scan holder。
+    if body.get("lidar_enabled") is not False:
+        # 本轮复用既有 `/scan`；start 不得再打开新的 LiDAR serial holder。
+        return None, {
+            "type": "lidar_must_be_disabled",
+            "message": "lidar_enabled must be false",
+        }
+    # 只有显式声明复用 scan 才能与 lidar_enabled=false 形成无歧义合同。
+    if body.get("reuse_existing_scan") is not True:
+        return None, {
+            "type": "existing_scan_reuse_required",
+            "message": "reuse_existing_scan must be true",
+        }
+    # bool 是 int 的子类，必须先单独拦截，避免 true 被当成 1 秒。
+    raw_timeout = body.get("timeout_s")
+    if isinstance(raw_timeout, bool) or not isinstance(raw_timeout, (int, float)):
+        return None, {
+            "type": "invalid_nav2_start_timeout",
+            "message": "timeout_s must be a finite JSON number between 4 and 20 seconds",
+        }
+    # JSON 数字类型统一成浮点秒；字符串不做隐式转换，避免客户端误判合同类型。
+    timeout_s = float(raw_timeout)
+    if not math.isfinite(timeout_s) or not STRICT_NAV2_START_TIMEOUT_MIN_S <= timeout_s <= STRICT_NAV2_START_TIMEOUT_MAX_S:
+        # timeout 不做 clamp；静默限幅会让调用方误以为自己提交的窗口已生效。
+        return None, {
+            "type": "invalid_nav2_start_timeout",
+            "message": "timeout_s must be a finite JSON number between 4 and 20 seconds",
+            "received": raw_timeout,
+        }
+    # 返回规范化合同，后续代码只使用这个对象而不再读原始 body。
+    return {
+        # 安全模式在规范化后始终为布尔 true。
+        "strict_no_motion": True,
+        # 底盘禁用值在规范化后始终为布尔 false。
+        "base_enabled": False,
+        # LiDAR 禁用值在规范化后始终为布尔 false。
+        "lidar_enabled": False,
+        # scan 复用标志在规范化后始终为布尔 true。
+        "reuse_existing_scan": True,
+        # timeout 统一为浮点秒，便于直接传给 subprocess 运行器。
+        "timeout_s": timeout_s,
+    }, None
+
+
+def replace_nav2_lifecycle_flag(argv: list[str], flag: str, value: str) -> list[str]:
+    """删除配置中的同名 flag 后追加唯一安全值，避免重复参数的 last-one-wins 漂移。"""
+    # 新列表不在原 argv 上就地修改，避免调用方持有的配置被污染。
+    result: list[str] = []
+    # 显式索引用来同时跳过 `--flag value` 的两个 token。
+    index = 0
+    while index < len(argv):
+        item = argv[index]
+        if item == flag:
+            # `--flag value` 两个 token 一起删除；缺值配置会在后续白名单校验中失败。
+            index += 2
+            continue
+        # 兼容 `--flag=value` 配置写法，避免遗留第二个同名参数。
+        if item.startswith(f"{flag}="):
+            index += 1
+            continue
+        result.append(item)
+        index += 1
+    # 安全值最后追加且只追加一次，便于证据中直接审计。
+    return [*result, flag, value]
+
+
+def strict_no_motion_nav2_start_command(command: str | None) -> tuple[str | None, dict[str, Any] | None]:
+    """从受管 o11 start 配置构造固定 false/false argv，不允许 HTTP body 注入命令。"""
+    # 先审计原命令的脚本路径、action、串口与禁止 token。
+    argv, error = validate_nav2_lifecycle_command(command, "start")
+    if error is not None:
+        return None, error
+    # 即使环境变量仍保留历史 auto/true，也要在执行前重写成唯一 false/false 组合。
+    argv = replace_nav2_lifecycle_flag(argv, "--base-enabled", "false")
+    argv = replace_nav2_lifecycle_flag(argv, "--lidar-enabled", "false")
+    # shlex.join 只序列化已验证 token，不接收 body 中的任何字符串。
+    effective_command = shlex.join(argv)
+    # 重建后再跑一次同一白名单，防止参数重写破坏脚本合同。
+    effective_argv, effective_error = validate_nav2_lifecycle_command(effective_command, "start")
+    if effective_error is not None:
+        return None, effective_error
+    # 底盘有效值必须从最终 argv 反解，不仅信任重写函数。
+    if _extract_flag_value(effective_argv, "--base-enabled") != "false":
+        return None, {"type": "unsafe_effective_base_flag", "message": "effective base_enabled must be false"}
+    # LiDAR 有效值也必须从最终 argv 反解，确保没有重复 flag 漂移。
+    if _extract_flag_value(effective_argv, "--lidar-enabled") != "false":
+        return None, {"type": "unsafe_effective_lidar_flag", "message": "effective lidar_enabled must be false"}
+    return effective_command, None
+
+
 def validate_nav2_lifecycle_command(command: str | None, action: str) -> tuple[list[str], dict[str, str] | None]:
     """Nav2 start/stop/status 只能调用受管 stack-only 脚本，不能退化成任意 shell。"""
     if not command or not command.strip():
@@ -3196,7 +3340,11 @@ def validate_nav2_lifecycle_command(command: str | None, action: str) -> tuple[l
     joined = " ".join(argv)
     if any(token in joined for token in (";", "&&", "||", "|", "$(", "`")):
         return [], {"type": "unsafe_runtime_command", "message": "shell operators are not allowed in Nav2 lifecycle command"}
-    for token in ("/api/base", "/cmd_vel", "cmd_vel", "T=1", "T=11", "T=13", "T=130", "T=131", "NavigateToPose"):
+    # lifecycle 命令只能启停 stack；所有可执行路径/控制器 action 都必须在独立门禁处理。
+    for token in (
+        "/api/base", "/cmd_vel", "cmd_vel", "T=1", "T=11", "T=13", "T=130", "T=131",
+        "NavigateToPose", "NavigateThroughPoses", "FollowPath",
+    ):
         if token in joined:
             return [], {"type": "unsafe_runtime_command", "message": f"blocked token in Nav2 lifecycle command: {token}"}
     script_index = 1 if Path(argv[0]).name in SAFE_LIDAR_RUNTIME_SHELLS else 0
@@ -3224,7 +3372,7 @@ def validate_nav2_lifecycle_command(command: str | None, action: str) -> tuple[l
     return argv, None
 
 
-def run_nav2_lifecycle_command(command: str | None, action: str) -> dict[str, Any]:
+def run_nav2_lifecycle_command(command: str | None, action: str, *, timeout_s: float = 20.0) -> dict[str, Any]:
     """先做 Nav2 lifecycle 白名单校验，再运行受管 stack-only 脚本。"""
     argv, error = validate_nav2_lifecycle_command(command, action)
     if error:
@@ -3238,7 +3386,7 @@ def run_nav2_lifecycle_command(command: str | None, action: str) -> dict[str, An
             "sends_base_motion_commands": False,
             "uses_base_uart": False,
         }
-    return run_configured_command(command, timeout_s=20.0)
+    return run_configured_command(command, timeout_s=timeout_s)
 
 
 def parse_nav2_lifecycle_status_result(command_result: dict[str, Any]) -> dict[str, Any]:
@@ -3262,6 +3410,14 @@ def parse_nav2_lifecycle_status_result(command_result: dict[str, Any]) -> dict[s
         "state": str(state or "not_loaded"),
         "message": str(message or "not_loaded"),
         "pid": payload.get("pid") if payload else None,
+        # start 语义验收必须读取脚本最终生效值，不能只相信请求或配置 argv。
+        "base_enabled": str(payload.get("base_enabled")) if payload and payload.get("base_enabled") is not None else "not_loaded",
+        "lidar_enabled": str(payload.get("lidar_enabled")) if payload and payload.get("lidar_enabled") is not None else "not_loaded",
+        "motion_requires_explicit_goal_execute": (
+            payload.get("motion_requires_explicit_goal_execute")
+            if payload and isinstance(payload.get("motion_requires_explicit_goal_execute"), bool)
+            else "not_loaded"
+        ),
         "command_result": command_result,
         "sends_motion_commands": False,
         "sends_base_motion_commands": False,
@@ -10648,17 +10804,50 @@ class UpperRobotApi:
             **proof_flags(),
         }
 
-    def nav2_control(self, action: str) -> dict[str, Any]:
-        """Nav2 start/stop 是受管 stack-only 入口；启动本身不发送目标或底盘运动。"""
-        if action == "start":
-            endpoint = ROUTE_PATHS["nav2_start"]
-            command_env = "ROBER_NAV2_START_COMMAND"
-            command = self.nav2_start_command
-        elif action == "stop":
-            endpoint = ROUTE_PATHS["nav2_stop"]
-            command_env = "ROBER_NAV2_STOP_COMMAND"
-            command = self.nav2_stop_command
-        else:
+    # Nav2 strict start 在这一层统一实现下列安全与兼容约束。
+    # 必须消费 JSON body，否则旧空 body 代理会继续隐藏合同漂移。
+    # 必须要求精确字段集，否则调用方无法知道哪些字段被忽略。
+    # 必须要求 strict_no_motion 为布尔 true，不接受 truthy 替代值。
+    # 必须要求 base_enabled 为布尔 false，防止 auto 意外打开 UART。
+    # 必须要求 lidar_enabled 为布尔 false，防止新建串口 holder。
+    # 必须要求 reuse_existing_scan 为 true，明确本轮依赖已有 `/scan`。
+    # timeout 必须有限且在安全窗口内，避免 worker 被异常占用。
+    # timeout 不允许静默 clamp，否则客户端会误以为原值已生效。
+    # body 不得参与 shell 拼接，从源头切断路径与参数注入。
+    # 有效命令必须来自受管 o11 白名单，不允许退化成直接 ros2 launch。
+    # 最终 argv 必须只保留一个 base-enabled，避免重复 flag 的顺序语义。
+    # 最终 argv 必须只保留一个 lidar-enabled，避免部署配置漂移。
+    # 两个 enabled flag 都必须从最终 argv 反解验收，不仅信任请求。
+    # 合同拒绝时不得调用 status，才能证明子进程调用数为零。
+    # 配置拒绝时不得调用 status，避免被动探针混入执行证据。
+    # 拒绝响应必须回显 invocation_count=0，便于上层做机器验收。
+    # 拒绝响应必须回显 new-open=0/0，明确没有触达两类串口。
+    # start returncode=0 只是一个输入，不得直接推导语义成功。
+    # start 后必须独立读回 lifecycle running，避免接受已退出进程。
+    # start 后必须读回 base_enabled=false，避免只相信命令行外观。
+    # start 后必须读回 lidar_enabled=false，确认服务实际生效值。
+    # 任一语义失败都必须回收本次 o11 可能留下的 owned 进程组。
+    # 语义成功时不自动 stop，因为后续 Algorithm proof 需要 persistent lifecycle。
+    # cleanup 仅能通过 o11 stop，不允许按进程名扫描式杀进程。
+    # cleanup 不得发送底盘 stop，因为本合同没有打开底盘 UART。
+    # cleanup 不得打开 LiDAR 串口，因为既有 scan holder 的归属在本 API 之外。
+    # stop 必须同时验收命令回包与独立 status readback。
+    # stop 只要任一 stopped 观测未成立，即使 HTTP 200 也必须 NO-GO。
+    # root_causes 必须标注 request、config、runtime 或 cleanup 层，便于精确路由修复。
+    # effective_contract 必须保留最终 argv，便于远程 artifact 后续结构审计。
+    # response 必须显式回显 cleanup，不得让调用方从日志猜测收口结果。
+    # response 必须显式回显 lifecycle status，不得用 HTTP code 替代 runtime 事实。
+    # 顶层安全标志始终保持 fail closed，strict start 不会授予路线执行权。
+    # 本入口不发 NavigateToPose、cmd_vel 或 manual，真实运动仍由独立门禁负责。
+    def nav2_control(
+        self,
+        action: str,
+        body: dict[str, Any] | None = None,
+        *,
+        request_error: dict[str, str] | None = None,
+    ) -> dict[str, Any]:
+        """Nav2 lifecycle 只允许 strict start 或 owned stop；两者都不发送底盘命令。"""
+        if action not in {"start", "stop"}:
             return software_guard_payload(
                 schema_suffix="nav2_lifecycle_result",
                 action=action,
@@ -10666,23 +10855,325 @@ class UpperRobotApi:
                 artifact=nav2_lifecycle_artifact_info(self.nav2_lifecycle_artifact_path),
                 extra={"error": {"type": "unsupported_nav2_action", "message": "action must be start or stop"}},
             )
-        command_result = run_nav2_lifecycle_command(command, action)
+
+        if action == "start":
+            contract, contract_error = normalize_strict_nav2_start_request(body, request_error=request_error)
+            if contract_error is not None:
+                # 请求合同失败时禁止 status 探针；这样能明确证明 lifecycle command invocation 为零。
+                command_result = {
+                    "mode": "strict_nav2_start_guard",
+                    "executed": False,
+                    "ok": False,
+                    "invocation_count": 0,
+                    "error": contract_error,
+                }
+                skipped_status = {
+                    "status": "not_checked",
+                    "failure_reason": "strict_nav2_start_request_rejected_before_status_probe",
+                    "lifecycle_running": "not_loaded",
+                    "lifecycle_state": "not_loaded",
+                    "lifecycle_manager": {
+                        "status": "not_loaded",
+                        "running": "not_loaded",
+                        "state": "not_loaded",
+                        "base_enabled": "not_loaded",
+                        "lidar_enabled": "not_loaded",
+                    },
+                }
+                return software_guard_payload(
+                    schema_suffix="nav2_lifecycle_result",
+                    action="nav2_start",
+                    endpoint=ROUTE_PATHS["nav2_start"],
+                    command_env="ROBER_NAV2_START_COMMAND",
+                    command=self.nav2_start_command,
+                    command_result=command_result,
+                    artifact=nav2_lifecycle_artifact_info(self.nav2_lifecycle_artifact_path),
+                    extra={
+                        "status": "blocked_strict_no_motion_contract",
+                        "proof_state": "blocked_strict_no_motion_contract",
+                        "evidence_type": "blocked_with_root_cause",
+                        "semantic_success": False,
+                        "failure_reason": str(contract_error.get("type") or "strict_nav2_start_request_rejected"),
+                        "root_causes": [{"layer": "request_contract", **contract_error}],
+                        "evidence": {
+                            # bodyless 本身没有内容可消费；非空错误体仍标注 handler 已处理。
+                            "request_body_consumed": body is not None or request_error is not None,
+                            # 请求未过门禁时不生成任何生效合同，避免上层误读。
+                            "effective_contract": None,
+                            # 两个 0 来自 subprocess 前拒绝，不是历史 artifact 的替代。
+                            "base_uart_new_open_count": 0,
+                            "lidar_serial_new_open_count": 0,
+                            # invocation_count 是可机械断言的拒绝边界，不要用 HTTP 200 反推执行。
+                            "lifecycle_command_invocation_count": 0,
+                            "new_open_count_source": "request_rejected_before_subprocess",
+                        },
+                        "cleanup": {
+                            "status": "not_required_no_process_started",
+                            "attempted": False,
+                            "ok": True,
+                            "scope": "o11_owned_pid_process_group_only",
+                        },
+                        "nav2_lifecycle_status": skipped_status,
+                        "opens_base_uart": False,
+                        "opens_lidar_serial": False,
+                    },
+                )
+
+            effective_command, command_error = strict_no_motion_nav2_start_command(self.nav2_start_command)
+            if command_error is not None or effective_command is None:
+                # 配置命令不在 o11 白名单时同样禁止执行，不能退回默认 shell 或直接 ros2 launch。
+                command_result = {
+                    "mode": "strict_nav2_start_guard",
+                    "executed": False,
+                    "ok": False,
+                    "invocation_count": 0,
+                    "error": command_error or {"type": "effective_command_missing", "message": "safe command missing"},
+                }
+                root_cause = {"layer": "configured_command", **dict(command_result["error"])}
+                return software_guard_payload(
+                    schema_suffix="nav2_lifecycle_result",
+                    action="nav2_start",
+                    endpoint=ROUTE_PATHS["nav2_start"],
+                    command_env="ROBER_NAV2_START_COMMAND",
+                    command=self.nav2_start_command,
+                    command_result=command_result,
+                    artifact=nav2_lifecycle_artifact_info(self.nav2_lifecycle_artifact_path),
+                    extra={
+                        "status": "blocked_strict_no_motion_command",
+                        "proof_state": "blocked_strict_no_motion_command",
+                        "evidence_type": "blocked_with_root_cause",
+                        "semantic_success": False,
+                        "failure_reason": str(command_result["error"].get("type") or "strict_nav2_start_command_rejected"),
+                        "root_causes": [root_cause],
+                        "evidence": {
+                            # 配置错误发生在 body 归一化之后，因此请求确已消费。
+                            "request_body_consumed": True,
+                            # 这里只回显请求合同，没有 effective argv，不得解读为已启动。
+                            "effective_contract": contract,
+                            # 白名单拒绝发生在任何脚本调用前，所以两类串口增量均为零。
+                            "base_uart_new_open_count": 0,
+                            "lidar_serial_new_open_count": 0,
+                            # 不额外探测 status，避免配置拒绝材料混入另一条子进程调用。
+                            "lifecycle_command_invocation_count": 0,
+                            "new_open_count_source": "configured_command_rejected_before_subprocess",
+                        },
+                        "cleanup": {
+                            "status": "not_required_no_process_started",
+                            "attempted": False,
+                            "ok": True,
+                            "scope": "o11_owned_pid_process_group_only",
+                        },
+                        "nav2_lifecycle_status": {
+                            "status": "not_checked",
+                            "lifecycle_running": "not_loaded",
+                            "lifecycle_state": "not_loaded",
+                        },
+                        "opens_base_uart": False,
+                        "opens_lidar_serial": False,
+                    },
+                )
+
+            # start 只执行代码生成的 false/false argv；请求体永远不能携带路径或 shell 片段。
+            command_result = run_nav2_lifecycle_command(
+                effective_command,
+                "start",
+                timeout_s=float(contract["timeout_s"]),
+            )
+            nav2_lifecycle_status = self.nav2_status()
+            lifecycle_manager = nav2_lifecycle_status.get("lifecycle_manager")
+            lifecycle_manager = lifecycle_manager if isinstance(lifecycle_manager, dict) else {}
+            root_causes: list[dict[str, Any]] = []
+            if not command_result.get("executed") or not command_result.get("ok"):
+                # HTTP 仍可为 200；真实成功必须依赖 command_result 与后置 lifecycle readback。
+                # timeout 与 nonzero 共用同一收口，因为两者都可能已留下 manager 进程组。
+                root_causes.append(
+                    {
+                        "layer": "start_command",
+                        "reason": "nav2_start_command_failed_or_timed_out",
+                        "detail": command_result.get("error") or command_result.get("stderr_preview"),
+                    }
+                )
+            if lifecycle_manager.get("running") is not True:
+                root_causes.append(
+                    {
+                        "layer": "lifecycle_status",
+                        "reason": "nav2_lifecycle_not_running_after_start",
+                        "observed": lifecycle_manager.get("running", "not_loaded"),
+                    }
+                )
+            if lifecycle_manager.get("base_enabled") != "false":
+                root_causes.append(
+                    {
+                        "layer": "effective_contract",
+                        "reason": "base_enabled_false_not_confirmed",
+                        "observed": lifecycle_manager.get("base_enabled", "not_loaded"),
+                    }
+                )
+            if lifecycle_manager.get("lidar_enabled") != "false":
+                root_causes.append(
+                    {
+                        "layer": "effective_contract",
+                        "reason": "lidar_enabled_false_not_confirmed",
+                        "observed": lifecycle_manager.get("lidar_enabled", "not_loaded"),
+                    }
+                )
+
+            cleanup: dict[str, Any] = {
+                # 语义成功后保持 persistent runtime，留给 Algorithm 串行执行 proof。
+                "status": "not_required_persistent_owned_lifecycle",
+                "attempted": False,
+                "ok": True,
+                # 即使未 cleanup 也回显所有权范围，便于后续 stop 对齐。
+                "scope": "o11_owned_pid_process_group_only",
+            }
+            lifecycle_invocation_count = 2
+            if root_causes:
+                # 任何语义失败都只调用 o11 stop，收口本次可能留下的 owned process group。
+                cleanup_result = run_nav2_lifecycle_command(self.nav2_stop_command, "stop")
+                cleanup_status = parse_nav2_lifecycle_status_result(cleanup_result)
+                cleanup_ok = bool(
+                    cleanup_result.get("executed")
+                    and cleanup_result.get("ok")
+                    and cleanup_status.get("running") is False
+                    and cleanup_status.get("state") == "stopped"
+                )
+                cleanup = {
+                    # stop 脚本的结构化 stopped 回包是 cleanup 成功的必要条件。
+                    "status": "owned_process_group_stopped" if cleanup_ok else "owned_process_group_cleanup_failed",
+                    "attempted": True,
+                    "ok": cleanup_ok,
+                    # 这个 scope 禁止调用方把广泛扫杀当成等价恢复策略。
+                    "scope": "o11_owned_pid_process_group_only",
+                    "command_result": cleanup_result,
+                    "lifecycle_status": cleanup_status,
+                    "sends_base_stop_command": False,
+                    "uses_base_uart": False,
+                }
+                lifecycle_invocation_count += 1
+                if not cleanup_ok:
+                    root_causes.append(
+                        {"layer": "cleanup", "reason": "owned_process_group_cleanup_not_confirmed"}
+                    )
+
+            semantic_success = not root_causes
+            effective_contract = {
+                **contract,
+                # argv 是重建后再经白名单验证的最终 token 列表，不包含 body 字符串。
+                "effective_argv": shlex.split(effective_command),
+                # lifecycle 必须在 start 返回后存活，否则无法接受后续串行 proof。
+                "persistent_lifecycle": True,
+                # 该标志只说明 start 不发目标，不授予任何 goal execute 权限。
+                "motion_requires_explicit_goal_execute": True,
+            }
+            return software_guard_payload(
+                schema_suffix="nav2_lifecycle_result",
+                action="nav2_start",
+                endpoint=ROUTE_PATHS["nav2_start"],
+                command_env="ROBER_NAV2_START_COMMAND",
+                command=effective_command,
+                command_result=command_result,
+                artifact=nav2_lifecycle_artifact_info(self.nav2_lifecycle_artifact_path),
+                extra={
+                    "status": "started_strict_no_motion" if semantic_success else "blocked_start_semantic_failure",
+                    "proof_state": "strict_no_motion_lifecycle_running" if semantic_success else "blocked_start_semantic_failure",
+                    "evidence_type": (
+                        "strict_no_motion_lifecycle_runtime_material"
+                        if semantic_success
+                        else "blocked_with_root_cause"
+                    ),
+                    "semantic_success": semantic_success,
+                    "failure_reason": None if semantic_success else str(root_causes[0].get("reason")),
+                    "root_causes": root_causes,
+                    "evidence": {
+                        # 进入执行分支即表示五字段 strict body 已完整验证。
+                        "request_body_consumed": True,
+                        # 生效合同同时保留请求值与服务端重建 argv，支持双向对账。
+                        "effective_contract": effective_contract,
+                        # 这两个 0 由 false/false argv 与 lifecycle status 共同支撑，真机仍需 holder delta。
+                        "base_uart_new_open_count": 0,
+                        "lidar_serial_new_open_count": 0,
+                        # 计数包含 start/status，语义失败时再加一次 owned stop。
+                        "lifecycle_command_invocation_count": lifecycle_invocation_count,
+                        "new_open_count_source": "effective_o11_false_false_argv_and_status_readback",
+                    },
+                    "cleanup": cleanup,
+                    "nav2_lifecycle_status": nav2_lifecycle_status,
+                    "opens_base_uart": False,
+                    "opens_lidar_serial": False,
+                    "transition_to_proven": [
+                        "effective o11 argv and status both confirm base_enabled=false and lidar_enabled=false",
+                        "map_server/amcl/planner/controller lifecycle states observed by the proof collector",
+                        "fresh persisted localization and planner-only path are verified in the next serial phase",
+                    ],
+                },
+            )
+
+        # stop 不消费 body，也不调用底盘 stop；o11 只终止 PID 文件归属的自身进程组。
+        command_result = run_nav2_lifecycle_command(self.nav2_stop_command, "stop")
+        command_status = parse_nav2_lifecycle_status_result(command_result)
+        nav2_lifecycle_status = self.nav2_status()
+        lifecycle_manager = nav2_lifecycle_status.get("lifecycle_manager")
+        lifecycle_manager = lifecycle_manager if isinstance(lifecycle_manager, dict) else {}
+        cleanup_ok = bool(
+            command_result.get("executed")
+            and command_result.get("ok")
+            and command_status.get("running") is False
+            and command_status.get("state") == "stopped"
+            and lifecycle_manager.get("running") is False
+            and lifecycle_manager.get("state") == "stopped"
+        )
+        root_causes = [] if cleanup_ok else [
+            {
+                "layer": "cleanup",
+                "reason": "owned_process_group_stop_not_confirmed",
+                "command_running": command_status.get("running"),
+                "readback_running": lifecycle_manager.get("running"),
+            }
+        ]
+        cleanup = {
+            # stop 回包与独立 status 必须同时证明 stopped，避免单一 HTTP 假阳性。
+            "status": "owned_process_group_stopped" if cleanup_ok else "owned_process_group_cleanup_failed",
+            "attempted": True,
+            "ok": cleanup_ok,
+            # 不使用进程名匹配或 pkill，只消费 o11 PID 文件归属。
+            "scope": "o11_owned_pid_process_group_only",
+            "command_status": command_status,
+            "readback_status": lifecycle_manager,
+            "sends_base_stop_command": False,
+            "uses_base_uart": False,
+        }
         return software_guard_payload(
             schema_suffix="nav2_lifecycle_result",
-            action=f"nav2_{action}",
-            endpoint=endpoint,
-            command_env=command_env,
-            command=command,
+            action="nav2_stop",
+            endpoint=ROUTE_PATHS["nav2_stop"],
+            command_env="ROBER_NAV2_STOP_COMMAND",
+            command=self.nav2_stop_command,
             command_result=command_result,
             artifact=nav2_lifecycle_artifact_info(self.nav2_lifecycle_artifact_path),
             extra={
-                "nav2_lifecycle_status": self.nav2_status(),
-                "transition_to_proven": [
-                    "map_server/amcl/planner/controller lifecycle states observed",
-                    "/scan and map consumed by Nav2 stack",
-                    "path generated or explicit blocked reason recorded",
-                    f"artifact update at {self.nav2_lifecycle_artifact_path}",
-                ],
+                "status": "stopped_owned_process_group" if cleanup_ok else "blocked_stop_cleanup_failure",
+                "proof_state": "owned_lifecycle_stopped" if cleanup_ok else "blocked_stop_cleanup_failure",
+                "evidence_type": "owned_lifecycle_cleanup_material" if cleanup_ok else "blocked_with_root_cause",
+                "semantic_success": cleanup_ok,
+                "failure_reason": None if cleanup_ok else "owned_process_group_stop_not_confirmed",
+                "root_causes": root_causes,
+                "evidence": {
+                    "effective_contract": {
+                        # cleanup 合同显式禁止底盘 stop frame，因为本 API 未拥有 UART。
+                        "cleanup_scope": "o11_owned_pid_process_group_only",
+                        "sends_base_stop_command": False,
+                        "uses_base_uart": False,
+                    },
+                    # stop 不传入 base/lidar 启动参数，也不打开任何串口设备。
+                    "base_uart_new_open_count": 0,
+                    "lidar_serial_new_open_count": 0,
+                    "lifecycle_command_invocation_count": 2,
+                    "new_open_count_source": "owned_stop_contains_no_base_or_lidar_command",
+                },
+                "cleanup": cleanup,
+                "nav2_lifecycle_status": nav2_lifecycle_status,
+                "opens_base_uart": False,
+                "opens_lidar_serial": False,
             },
         )
 
@@ -11690,8 +12181,18 @@ def create_app(api: UpperRobotApi) -> Any:
         payload = api.free_roam_autonomy_control("stop", body if isinstance(body, dict) else {})
         return json_response(payload, status=200 if payload.get("status") == "requested" else 502)
 
-    async def nav2_start(_: web.Request) -> Any:
-        return json_response(api.nav2_control("start"))
+    async def nav2_start(request: web.Request) -> Any:
+        # strict start 必须消费 JSON；bodyless/非法 JSON 也返回结构化 NO-GO，而不是落到旧 `{}` 语义。
+        if not request.can_read_body:
+            return json_response(api.nav2_control("start", None))
+        try:
+            body = await request.json()
+        except Exception as exc:  # noqa: BLE001 - JSON 解码失败必须在任何 lifecycle 命令前 fail closed。
+            return json_response(api.nav2_control("start", None, request_error=compact_error(exc)))
+        if not isinstance(body, dict):
+            error = {"type": "invalid_nav2_start_body", "message": "nav2 start JSON body must be an object"}
+            return json_response(api.nav2_control("start", None, request_error=error))
+        return json_response(api.nav2_control("start", body))
 
     async def nav2_stop(_: web.Request) -> Any:
         return json_response(api.nav2_control("stop"))
