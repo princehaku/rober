@@ -1727,3 +1727,32 @@ fail-closed 规则如下：如果 deadline 在 `Popen` 前已经耗尽，parent 
 Nav2 action、`/initialpose`、`/cmd_vel`、`/api/base/manual`、UART 或任何运动。proof boundary 固定为
 `software_proof_o3_o10_parent_absolute_deadline_end_to_end_contract_only`；它不证明 current
 localization、path、route execution、HIL、delivery、safe-to-control 或 Mission Objective 0 完成。
+
+## 2026-07-20 live control JSON 传输防复发
+
+真实板 exactly-once 控制请求不得把内联 JSON 嵌套在多层本地/SSH shell 引号中。即使冻结文件里的
+JSON 本身正确，外层双引号仍可能在到达远端 `curl` 前剥掉属性名的双引号，使 Upper API 收到
+`{strict_no_motion:true,...}` 之类的损坏 payload。HTTP endpoint 已调用就表示授权窗口已消费；此类
+client transport 错误也不得用第二次 POST 修复。
+
+后续 live owner 必须从已经冻结并通过解析的 request artifact 取 body，再经 stdin 原样送入远端
+`curl --data-binary @-`：
+
+```bash
+ART=sprints/<current-sprint>/artifacts/robot-software
+python3 -m json.tool "$ART/frozen_requests.json" >/dev/null
+jq -e '.phase_a.nav2_start | type == "object" and
+  .strict_no_motion == true and .base_enabled == false and
+  .lidar_enabled == false and .reuse_existing_scan == true' \
+  "$ART/frozen_requests.json" >/dev/null
+jq -c '.phase_a.nav2_start' "$ART/frozen_requests.json" |
+  ssh -p 37878 root@192.168.1.11 \
+    "curl -fsS --max-time 30 -X POST http://127.0.0.1:8787/api/nav2/start \
+      -H 'Content-Type: application/json' --data-binary @-"
+```
+
+`proof/refresh` 与后续请求沿用同一模式：先对 frozen request 做 `python3 -m json.tool` 和字段结构
+断言，再由 `jq -c` 输出单个对象并通过 stdin 传输。禁止复制响应后拼造 raw；必须先保存实际响应
+body 与 transport metadata，再做语义判定。若 body parse 失败、remote command
+`invocation_count=0`、semantic status 非成功或 lifecycle 未达到预期，立即 fail closed，保持
+`READINESS_GO=false`，执行计划允许的唯一 owned cleanup，并把 goal/Phase B 保持为 `0`。

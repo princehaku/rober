@@ -1,0 +1,22 @@
+{
+  "schema_version": "trashbot.o3_o1.phase0_transport.v1",
+  "captured_at": "2026-07-20T13:46:03Z",
+  "source_host": "root@192.168.1.11:37878",
+  "phase": "pre_deploy_read_only",
+  "ssh_exit": 0,
+  "remote_git_commit": null,
+  "remote_git_authority": "remote_git_commit_unavailable_or_not_authoritative",
+  "health_http_status": 200,
+  "health_json_parse_ok": true,
+  "status_http_status": 200,
+  "status_json_parse_ok": true,
+  "nav2_status_http_status": 200,
+  "nav2_status_json_parse_ok": true,
+  "raw_sha256": {
+    "phase0_remote_pre.raw.txt": "edcfef55b670472cd19db8cb08a897f43a5f4b54a7bcf0c4f27ff23ba5df09ea",
+    "phase0_health.raw.json": "9459c7cc67130122839c21b39b0f282ebfa62701bcc8cfdf844f52c9c11cd85f",
+    "phase0_status.raw.json": "52e4cedf59ba826f3432924e6fb3c3e1eddf535658f87f1911a67ef5a9761eea",
+    "phase0_nav2_status.raw.json": "1214f7f0029a77499d24205b8eb692218dcf0862ea4590ac9dae14cb354467e7"
+  },
+  "control_invocations": 0
+}

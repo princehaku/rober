@@ -1,0 +1,81 @@
+{
+  "schema_version": "trashbot.o3_o1.phase0_deployment.v2",
+  "captured_at": "2026-07-20T13:49:24.150Z",
+  "source_host": "root@192.168.1.11:37878",
+  "authorization_ref": "ceo_20260720_2124_operator_watch_route_clear_physical_limit_v2",
+  "target_commit": "85ba7308785aa3c4033180a097e3d388358a97de",
+  "remote_git_commit": null,
+  "remote_git_authority": "remote_git_commit_unavailable_or_not_authoritative",
+  "phase0_gate": "PASS",
+  "scripts": {
+    "upper_robot_api": {
+      "expected_sha256": "8c0f6eebb786e1cd6b1cb5d17485e59972140bf76a94e7669773ef438228b4c3",
+      "remote_sha256_before": "df7a71c662a074c6e9eecb1523f7daf7ce78a33507193e3779192fc61a71461a",
+      "remote_temp_sha256": "8c0f6eebb786e1cd6b1cb5d17485e59972140bf76a94e7669773ef438228b4c3",
+      "remote_sha256_after": "8c0f6eebb786e1cd6b1cb5d17485e59972140bf76a94e7669773ef438228b4c3",
+      "sha_match": true
+    },
+    "o10_runtime_proof": {
+      "expected_sha256": "d9f92d708bdac6feec35798e4acfcd50b58349a3de3315a24a605cf5c82307eb",
+      "remote_sha256_before": "2ecdbb977ae1a211e4f6af3555d7f623f12f1bf2a161d10cf9443c3538af3fa2",
+      "remote_temp_sha256": "d9f92d708bdac6feec35798e4acfcd50b58349a3de3315a24a605cf5c82307eb",
+      "remote_sha256_after": "d9f92d708bdac6feec35798e4acfcd50b58349a3de3315a24a605cf5c82307eb",
+      "sha_match": true
+    }
+  },
+  "local_verification": {
+    "head_target_match_exit": 0,
+    "target_content_sha_assertions_exit": 0,
+    "target_worktree_diff_quiet_exit": 0,
+    "py_compile_exit": 0,
+    "targeted_tests_run": 1,
+    "targeted_test_exit": 0,
+    "upper_tests_run": 119,
+    "upper_tests_skipped": 1,
+    "upper_test_exit": 0,
+    "o10_tests_run": 170,
+    "o10_test_exit": 0,
+    "combined_tests_run": 289,
+    "combined_tests_skipped": 1,
+    "combined_test_exit": 0
+  },
+  "remote_verification": {
+    "preflight_exit": 0,
+    "scp_upper_exit": 0,
+    "scp_o10_exit": 0,
+    "temp_py_compile_exit": 0,
+    "temp_sha_assertions_exit": 0,
+    "atomic_replace_exit": 0,
+    "post_py_compile_exit": 0,
+    "service_restart_exit": 0,
+    "service_pre_pid": 689027,
+    "service_post_pid": 693117,
+    "service_active": true,
+    "service_substate": "running",
+    "service_active_since": "2026-07-20 21:48:44 CST",
+    "health_http_status": 200,
+    "health_json_parse_ok": true,
+    "health_status": "ready",
+    "status_http_status": 200,
+    "status_json_parse_ok": true,
+    "nav2_status_http_status": 200,
+    "nav2_status_json_parse_ok": true,
+    "initial_nav2_lifecycle_state": "stopped",
+    "initial_nav2_lifecycle_pid": null,
+    "initial_existing_motion": false,
+    "initial_robot_control_executed": false,
+    "remote_sha_hard_gate": true,
+    "remote_compile_service_health_gate": true
+  },
+  "control_invocations": {
+    "nav2_start": 0,
+    "nav2_proof_refresh": 0,
+    "nav2_stop": 0,
+    "goal_execute": 0,
+    "base_stop": 0,
+    "manual": 0,
+    "direct_cmd_vel": 0,
+    "initialpose": 0,
+    "uart": 0
+  }
+}

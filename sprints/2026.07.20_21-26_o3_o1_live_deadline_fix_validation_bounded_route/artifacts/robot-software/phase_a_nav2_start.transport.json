@@ -1,0 +1,16 @@
+{
+  "schema_version": "trashbot.o3_o1.http_transport.v1",
+  "source_host": "root@192.168.1.11:37878",
+  "endpoint": "/api/nav2/start",
+  "method": "POST",
+  "started_at": "2026-07-20T13:50:52.892Z",
+  "finished_at": "2026-07-20T13:50:53.714Z",
+  "ssh_curl_exit": 0,
+  "http_status": 200,
+  "json_parse_ok": true,
+  "response_bytes": 3601,
+  "invocation_count": 1,
+  "retry_count": 0,
+  "no_retry": true,
+  "semantic_status": "blocked_strict_no_motion_contract"
+}

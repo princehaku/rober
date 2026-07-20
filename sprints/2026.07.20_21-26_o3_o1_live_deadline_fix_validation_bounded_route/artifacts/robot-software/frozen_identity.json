@@ -1,0 +1,22 @@
+{
+  "schema_version": "trashbot.o3_o1.bounded_route_identity.v1",
+  "frozen_at": "2026-07-20T21:44:49+08:00",
+  "source_host": "root@192.168.1.11:37878",
+  "target_commit": "85ba7308785aa3c4033180a097e3d388358a97de",
+  "authorization_ref": "ceo_20260720_2124_operator_watch_route_clear_physical_limit_v2",
+  "run_id": "run_o3_o1_current_readiness_route_20260720_2124_01",
+  "task_id": "task_o3_28_pose_fixed_route_consumer_20260713_0402",
+  "route_intent_id": "route_intent_20260713_0402_from_20260713_0300_28_pose_structured_path",
+  "action_id": "action_o3_o1_bounded_nav_20260720_2124_01",
+  "operator_watch_authorized": true,
+  "route_clear_authorized": true,
+  "physical_position_limited": true,
+  "bounded_motion_authorized": true,
+  "goal": {
+    "frame_id": "map",
+    "x": 0.8,
+    "y": 0.25,
+    "yaw": 0.0
+  },
+  "no_retry": true
+}

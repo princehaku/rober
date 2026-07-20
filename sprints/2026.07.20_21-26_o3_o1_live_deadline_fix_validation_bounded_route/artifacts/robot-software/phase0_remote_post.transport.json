@@ -1,0 +1,28 @@
+{
+  "schema_version": "trashbot.o3_o1.phase0_transport.v1",
+  "captured_at": "2026-07-20T13:49:03Z",
+  "source_host": "root@192.168.1.11:37878",
+  "phase": "post_deploy_hard_gate",
+  "ssh_exit": 0,
+  "target_commit": "85ba7308785aa3c4033180a097e3d388358a97de",
+  "remote_git_commit": null,
+  "remote_git_authority": "remote_git_commit_unavailable_or_not_authoritative",
+  "remote_temp_py_compile_exit": 0,
+  "remote_post_py_compile_exit": 0,
+  "service_restart_exit": 0,
+  "service_active": true,
+  "health_http_status": 200,
+  "health_json_parse_ok": true,
+  "status_http_status": 200,
+  "status_json_parse_ok": true,
+  "nav2_status_http_status": 200,
+  "nav2_status_json_parse_ok": true,
+  "remote_sha_hard_gate": true,
+  "raw_sha256": {
+    "phase0_remote_post.raw.txt": "5a0c8ae65065b70dadc32329a42ceda2725073859ea4e85fa441e5983cfdf715",
+    "phase0_health_post.raw.json": "93a999b9177bf2e41cc2ce42283f5bacf0bb86195e1b829c5248f76d0057f5f9",
+    "phase0_status_post.raw.json": "00ff00cc62e115a5450da74ec176b0f2c77675f9fe109c92454803a3d555740a",
+    "phase0_nav2_status_post.raw.json": "f6e81dd5179701083ff103539d8a03c23055669820100959ffda4e9424fb0373"
+  },
+  "control_invocations": 0
+}

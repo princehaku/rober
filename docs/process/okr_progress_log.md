@@ -6,6 +6,20 @@
 
 ---
 
+## 2026-07-20 O3/O1 live deadline validated + start transport NO-GO flat 收口
+
+`sprints/2026.07.20_21-26_o3_o1_live_deadline_fix_validation_bounded_route/` 完成 Product acceptance，`PRODUCT_CLOSEOUT=ACCEPT_NO_GO`。Phase 0 通过：远端 Upper/O10 SHA 分别为 `8c0f6e...b4c3` / `d9f92d...07eb`，remote py_compile、service 与 health clean，新 PID=`693117`。授权 `ceo_20260720_2124_operator_watch_route_clear_physical_limit_v2` 已被唯一 start transport attempt 消费，不得重用。
+
+Phase A start/proof/latest/owned-stop=`1/1/1/1`。Start transport exit `0`、HTTP `200`、response JSON parse clean，但 semantic=false：多层本地/SSH shell quoting 破坏 request JSON，server 返回 `invalid_nav2_start_json`，remote start command executed=false、invocation=`0`，Nav2 lifecycle 未启动，base/LiDAR new-open=`0/0`，motion=false。依 no-retry 合同没有第二次 start。新 blocker 精确命名为 `phase_a_start_json_transport_corrupted_before_remote_handler`，本轮消费 `1/2`；它与已关闭的 deadline blocker、ROS readiness 和硬件 blocker相互独立。新增文档合同要求对 frozen request 先做结构验证，再以 `jq -c` 提取 body并经 stdin pipe 到远端 `curl --data-binary @-`；该 docs fix 尚未 live 验证。
+
+另一条真实板事实是 proof wrapper 在 `77717ms` 自然返回 current final：`artifact_kind=final`、`last_phase=final`、`current_command=null`、`deadline_source=parent_absolute_monotonic`，无 timeout、partial preservation 或 fallback。Algorithm 冻结 review=`ACCEPT_NO_GO` 且 `DEADLINE_LIVE_VALIDATED=true`；因此上一 sprint 的 `parent_helper_monotonic_clock_origin_mismatch` / absolute-deadline blocker 已经真实板验证关闭。Wrapper raw 因终端 token truncation 未完整持久化，transport 固定 unknown；canonical latest `343156` bytes raw 完整且 parse clean，没有补调用或伪造。
+
+Readiness 仍为 `READINESS_GO=false`：map_server/amcl/planner/controller 均 inactive，current pose、persisted pose live consume、dynamic TF、path 和 obstacle clear 未 ready。Phase B pre-stop/goal/post-stop=`0/0/0`，T1001/manual/cmd_vel/UART/delivery=`0`，`physical_motion=false`；cleanup lifecycle stopped、PID null、residual=`0`。Engineer 留档测试为 targeted `1`、Upper `119`（skip1）、O10 `170`、combined `289`（skip1），JSON/rg/SHA/diff checks pass。Product 只读核证，不重跑工程 tests、SSH/live/control；Hardware/Full-stack 因 execute=`0` 未派。
+
+Proof boundary=`current_live_deadline_validation_plus_start_transport_no_go_not_readiness_or_route`。`current_run_artifact_delta=true` 只表示 live deadline validation 与 current safe NO-GO；`external_artifact_delta=false`、`live_control_delta=false`、`user_action_delta=false`、`robot_control_executed=false`、`route_execution_success=false`、`hil_pass=false`、`delivery_success=false`、`safe_to_control=false`、`mission_objective_0_satisfied=false`、`okr_credit=false`。O5 约 `85%` 且 provider/runtime blocker `2/2` 继续暂停；O6/O7 各约 `93%`、O1 约 `94%` 全 flat，O3 只记 supporting，KR `不归档`、历史区无新增。
+
+下一轮唯一入口：取得新的 fresh authorization；先复核 remote target SHA/service health 和 initial stopped/no-motion，冻结新 request；使用 `jq -c` 从 `frozen_requests.json` 取单个 object并经 stdin pipe到远端 curl，exactly-one Phase A。只有 GO 才进入 Phase B；NO-GO 立即封存。不得复用当前授权、不得再用 inline JSON，也不得把 docs fix 当成 transport live validation。
+
 ## 2026-07-20 O3/O1 current readiness NO-GO + absolute deadline contract flat 收口
 
 `sprints/2026.07.20_20-25_o3_o1_current_readiness_bounded_route/` 完成 Product acceptance。CEO fresh 授权只被唯一 Phase A 消费：start/proof/latest/owned-stop=`1/1/1/1`，strict-no-motion effective base/lidar=`false/false`、new-open=`0/0`。Proof parent elapsed=`80395ms` 超过 80 秒预算，只留下 partial/interrupted；current pose/persisted pose、planner/controller、path final 与 obstacle clear 未证明，故 `READINESS_GO=false`。Phase B pre-base-stop/goal/post-base-stop=`0/0/0`、`physical_motion=false`；owned cleanup 最终 lifecycle stopped、PID file absent、residual=`0`，没有 retry 或第二个 live window。

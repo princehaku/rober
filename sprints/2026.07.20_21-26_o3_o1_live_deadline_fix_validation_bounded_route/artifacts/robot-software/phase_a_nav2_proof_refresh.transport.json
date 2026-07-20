@@ -1,0 +1,43 @@
+{
+  "schema_version": "trashbot.o3_o1.http_transport.v1",
+  "source_host": "root@192.168.1.11:37878",
+  "endpoint": "/api/nav2/proof/refresh",
+  "method": "POST",
+  "invocation_count": 1,
+  "retry_count": 0,
+  "no_retry": true,
+  "ssh_curl_exit": 0,
+  "http_status": 200,
+  "response_raw_persisted": false,
+  "response_json_parse_ok": null,
+  "capture_failure_reason": "client_tool_output_truncated_after_http_response_completed",
+  "client_tool_original_token_count": 90373,
+  "wrapper_observed_fields": {
+    "schema": "trashbot.upper_robot_api.v1.nav2_runtime_proof_refresh_result",
+    "generated_at_ms": 1784555573916,
+    "status": "blocked_with_root_cause",
+    "command_executed": true,
+    "command_ok": false,
+    "helper_returncode": 2,
+    "elapsed_ms": 77717,
+    "timeout": false,
+    "process_timeout_s": 80.0,
+    "process_wait_timeout_s": 79.99757383600809,
+    "outer_process_deadline_monotonic_s": 1436141.827847227,
+    "deadline_source": "parent_absolute_monotonic",
+    "helper_process_group": 694056,
+    "helper_cleanup_attempted": false,
+    "helper_cleanup_reason": "process_exited_before_timeout"
+  },
+  "canonical_readback": {
+    "endpoint": "/api/nav2/proof/latest",
+    "invocation_count": 1,
+    "raw_file": "phase_a_nav2_proof_latest.raw.json",
+    "json_parse_ok": true,
+    "artifact_kind": "final",
+    "last_phase": "final",
+    "current_command": null,
+    "partial_artifact_preserved": false
+  },
+  "proof_boundary": "transport_wrapper_raw_not_persisted_canonical_latest_frozen_no_retry"
+}

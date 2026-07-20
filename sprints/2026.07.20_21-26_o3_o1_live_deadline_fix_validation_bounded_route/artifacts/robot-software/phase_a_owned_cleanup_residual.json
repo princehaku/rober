@@ -1,0 +1,12 @@
+{
+  "schema_version": "trashbot.o3_o1.owned_cleanup_residual.v1",
+  "checked_at": "2026-07-20T13:55:16.600Z",
+  "source_host": "root@192.168.1.11:37878",
+  "ssh_exit": 0,
+  "nav2_pid_file_absent": true,
+  "nav2_lifecycle_pid_file_absent": true,
+  "helper_pid_694056_absent": true,
+  "matching_owned_runtime_processes": [],
+  "residual_count": 0,
+  "cleanup_residual_zero": true
+}

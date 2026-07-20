@@ -1,0 +1,18 @@
+{
+  "schema_version": "trashbot.o3_o1.http_transport.v1",
+  "source_host": "root@192.168.1.11:37878",
+  "endpoint": "/api/nav2/status",
+  "method": "GET",
+  "phase": "after_owned_stop",
+  "started_at": "2026-07-20T13:54:39.172Z",
+  "finished_at": "2026-07-20T13:54:40.287Z",
+  "ssh_curl_exit": 0,
+  "http_status": 200,
+  "json_parse_ok": true,
+  "response_bytes": 37812,
+  "invocation_count": 1,
+  "semantic_status": "blocked_with_root_cause",
+  "lifecycle_running": false,
+  "lifecycle_state": "stopped",
+  "lifecycle_pid": null
+}

@@ -1,0 +1,57 @@
+{
+  "schema_version": "trashbot.o3_o1.bounded_route_requests.v1",
+  "frozen_at": "2026-07-20T21:44:49+08:00",
+  "authorization_ref": "ceo_20260720_2124_operator_watch_route_clear_physical_limit_v2",
+  "phase_a": {
+    "nav2_start": {
+      "strict_no_motion": true,
+      "base_enabled": false,
+      "lidar_enabled": false,
+      "reuse_existing_scan": true,
+      "timeout_s": 20
+    },
+    "nav2_proof_refresh": {
+      "timeout_s": 30,
+      "managed_runtime_opt_in": false,
+      "managed_timeout_s": 30,
+      "managed_map_yaml": "",
+      "initialpose_opt_in": false,
+      "path_generation_opt_in": true,
+      "path_generation_timeout_s": 30,
+      "path_goal_frame_id": "map",
+      "path_goal_x": 0.8,
+      "path_goal_y": 0.25,
+      "path_goal_yaw": 0.0
+    }
+  },
+  "phase_b": {
+    "pre_base_stop": {},
+    "nav2_goal_execute": {
+      "confirm_navigation_execution": true,
+      "goal_frame_id": "map",
+      "goal_x": 0.8,
+      "goal_y": 0.25,
+      "goal_yaw": 0.0,
+      "base_command_mode": "ros",
+      "managed_runtime_opt_in": false,
+      "result_timeout_s": 20,
+      "server_timeout_s": 12,
+      "task_id": "task_o3_28_pose_fixed_route_consumer_20260713_0402",
+      "run_id": "run_o3_o1_current_readiness_route_20260720_2124_01",
+      "route_intent_id": "route_intent_20260713_0402_from_20260713_0300_28_pose_structured_path",
+      "authorization_ref": "ceo_20260720_2124_operator_watch_route_clear_physical_limit_v2",
+      "action_id": "action_o3_o1_bounded_nav_20260720_2124_01"
+    },
+    "post_base_stop": {},
+    "nav2_owned_stop": {}
+  },
+  "forbidden_invocation_contract": {
+    "initialpose": 0,
+    "manual": 0,
+    "direct_cmd_vel": 0,
+    "uart_direct_control": 0,
+    "free_roam": 0,
+    "delivery": 0
+  },
+  "no_retry": true
+}
