@@ -6,6 +6,52 @@
 
 ---
 
+## 2026-07-21 O1 latency chain final Product closeout, candidate_v3 deployment pending
+
+03-50 software hot-path Epic 与 04-31/04-48/05-08/05-24 Micro 后续链已完成 Product reconciliation。最终 Engineer
+machine-readable evidence 为 workstation `535`、bridge `32`、current Upper `141/1 skip`、shared `337/1 skip`、
+current/candidate_v3 targeted 各 `17`、冻结 85ba regression `119/1 skip`。03-50 trace/prewarm/keepalive/no-replay、
+stop/watchdog 与 trace hold identity fail-closed 继续接受；这些仍是 software contract，不是 physical latency。
+
+04-31 只读 preflight 因本地 Upper 混有未部署 c8 合同而未部署/sample；04-48 生成可复现 latency-only candidate，但在
+first target move 前因 source/build symlink alias 停止；05-08 完成 alias-safe replacement 后，旧 Upper 卡
+`deactivating/stop-sigterm`，post-deploy health 未形成，随后按 no-retry 合同完整 rollback 到旧 hashes 与 ready。05-24
+离线修复 shutdown admission、唯一 stop owner、watchdog/release/runtime stop lock 与 rclpy teardown fail-closed；candidate_v3
+是唯一后续部署输入，04-48 `adadb0...` 与 candidate_v2 均已 superseded。
+
+05-45 追加的本地 input gate 在首次 SSH 前发现 bridge/index 冻结 SHA 与当前已验收修复版本不一致并 hard stop；
+remote/restart/zero/nonzero/control=`0/0/0/0/0`。其历史 local gate 中 candidate manifest `fe79...` 已被最终对齐的
+`d31ca5...` supersede，candidate 仍为 `ceaf8...`、incremental patch 为 `c0a965...`；该 input gate 不计 Mission 进展，
+05-45 authorization 封存不得复用。下一入口须在精确提交后重新冻结 current bridge/index hashes并申请独立部署授权。
+
+05-58 v4 已冻结最终 current inputs，并通过 bridge `32`、workstation `535`/build/lint 与远端旧版本静止/health preflight。
+两个 canonical replacement 后 bridge 新实例成功，但旧 Upper 仍卡 `deactivating/stop-sigterm`，目标 systemd 拒绝预定
+`--kill-whom=all`；新版 Upper 未启动、PC 未重启、sample 未发送。随后只使用目标支持的 exact-unit
+`--kill-who=all` 完成一次 SIGKILL 释放，并从独立备份完整恢复旧 Upper `8c0f...`、旧 bridge source/build
+`6e82...`、两服务 active 与 Upper health ready。Product 仅接受 deployment attempt + complete rollback；
+zero/stop/nonzero/control=`0/0/0/0`、Nav2/route=`0/0`，O1 `95%` flat、KR 不归档、Mission false。v4 授权封存；下一入口
+必须新授权并预先冻结目标 systemd 兼容命令。bridge 退出 warning 只记后续软件清洁项，本轮不新开 sprint。
+
+最终 source/candidate_v3/85ba patch/adadb0 incremental patch=`52c99.../ceaf8.../c2eb.../c0a965...`，manifest 证明 AST
+allowed/actual 18 项相等、7 个 c8 sentinel 为零、生成 byte-identical、两级 patch dry-run/apply/reverse/reapply/hash 全绿，
+中文注释 `99/466=21.24%`。整个后续链 zero/nonzero/control=`0/0/0`，`physical_latency_not_measured=true`、
+`mission_objective_0_satisfied=false`、HIL/safe/route/delivery 均 false。
+
+Product 保持 O1 约 `95%`、O5 约 `85%` 且 provider/runtime blocker `2/2` 暂停、O6/O7 各约 `93%`；KR `不归档`、历史区
+无新增。下一唯一入口是新的独立部署授权，冻结 exact unit/current old hashes/静止/唯一 owner/rollback gate，只部署
+candidate_v3；先验证正常 SIGTERM、旧进程退出与新 health，失败 no-retry/rollback。在另获完整 physical-latency
+authorization 与外部 observer 前，禁止非零样本。
+
+## 2026-07-21 O1/O7 keyboard-to-wheel software hot path accepted, physical pending flat 收口
+
+`sprints/2026.07.21_03-50_o1_keyboard_to_wheel_latency/` 完成 Product acceptance：`PRODUCT_CLOSEOUT=ACCEPT_SOFTWARE_HOT_PATH_PHYSICAL_PENDING`，proof boundary=`deterministic_segmented_software_hot_path_accepted_not_physical_wheel_latency`。Vue/Node 已提供受限 trace 与进程内 monotonic spans；Upper 在 service startup 预热 rclpy/DDS publisher，realtime_hold 不再走 CLI fallback，并修复 subscriber race：当前无 matched `/cmd_vel` subscriber 时零 publish、`accepted=false`、`latency_pass=false`，subscriber 后续出现时可在首帧前无 sleep 恢复。Bridge 增加 callback/build/transport timing，并在单 owner lock 中复用 ESP32 HTTP `/js` 连接；失败不 retry 当前 command。keyup/all-release、pointer、blur、page hidden、stop button 与 watchdog 合同保持。
+
+Engineer 留档验证：workstation `535 passed`、Upper `132 passed / 1 skipped`、bridge `31 passed`、Upper + Nav2 shared `328 passed / 1 skipped`、subscriber race targeted `5 passed`，build/lint、py_compile 与 scoped diff-check 通过。Docker/Humble 保留 repair 前同轮 `Summary: 6 packages finished [49.3s]`；repair 只改 Upper Python graph gate/tests，未重跑 Docker，故该构建证据不外推为 repair 的容器、HIL 或 live 复验。
+
+`software_latency_summary.json` 的 `120` 个 deterministic fake-clock warm samples 给出 modeled `keydown_to_fake_transport_write_ms` p50/p95/max=`9.2ms`；旧 modeled baseline=`159.2ms`，其中包含已移出热路径的源码配置 `150ms` wait budget。Product 接受的是等待预算移除与 segmented software model，不接受 `9.2ms` 为真实 browser event-loop、PC 到 Upper 网络/Wi-Fi、DDS scheduling、ESP32 firmware、电机死区或 physical wheel-onset 延迟；cross-process direct subtraction=false。
+
+本轮未执行 SSH、部署、live HTTP control、ROS publish、串口或 nonzero motion，`live_nonzero_request_count=0`、`physical_latency_not_measured=true`、`live_control_delta=false`、`external_artifact_delta=false`、`user_action_delta=false`、`safe_to_control=false`、`hil_pass=false`、`delivery_success=false`。O1 保持约 `95%`、O7 保持约 `93%`，主百分比 flat；KR `不归档`，Mission Objective 0 不新增 credit。前序 `ceo_20260721_0154_minimal_wheel_jog_v6` 已消费且永久不得复用；下一次物理延迟采样必须取得新的 fresh bounded authorization，并冻结 operator/route/限位、方向、速度、时长、样本上限、pre/post stop、watchdog、紧急停止、abort/no-retry 与外部高帧率视频/编码器/可信 observer 的时钟和 uncertainty。
+
 ## 2026-07-21 O1 exactly-one minimal wheel jog live-control delta +1 收口
 
 `sprints/2026.07.21_01-54_o1_minimal_wheel_jog/` 的 frozen current-live evidence 完成 Product acceptance。唯一非零 manual 请求为 `forward / 0.08m/s / 300ms`；proxy HTTP=`200`、remote HTTP=`200`、`proxy_status=command_forwarded`，bridge 记录实际 nonzero vendor command `T=11,L=164,R=164` 且 sent，`manual_command_executed=true`、`auto_stop_executed=true`。同窗读取 `80` 帧 `T=1001`，IMU roll/pitch 最大变化为 `1.218602°/0.479262°`，超过 `0.35°` 阈值，故接受 `motion_signal_observed=true`、source=`imu_attitude_delta`。最终 bridge command 为 `T=11,L=0,R=0` sent，显式 post-stop HTTP=`200`，最终 Nav2 lifecycle stopped、无 active goal/manual hold。

@@ -1,0 +1,102 @@
+{
+  "schema": "trashbot.o1.latency_deploy_retry_v2.deployment_and_rollback.v1",
+  "generated_at": "2026-07-21T04:57:30+08:00",
+  "remote_directory": "/root/rober/onboard/runtime/latency_deploy_retry_v2_20260721_0508",
+  "backup": {
+    "upper_sha256": "8c0f6eebb786e1cd6b1cb5d17485e59972140bf76a94e7669773ef438228b4c3",
+    "upper_mode_uid_gid": "0644:0:0",
+    "bridge_sha256": "6e82e493a8d63ae5ff47546f689c28deb92d1647b5937836bed38e0f55ef8304",
+    "bridge_mode_uid_gid": "0644:501:50",
+    "independent_runtime_directory": true
+  },
+  "stage": {
+    "same_directory_as_each_canonical_target": true,
+    "upper_sha256": "adadb0fb31d9c35805bf15906534f7963626116d1ec7374cbd2c611800a95013",
+    "upper_mode_uid_gid": "0644:0:0",
+    "bridge_sha256": "ff7871ffceb907bda65f442ced079df782a850135c604b169b6aa8a7234c114f",
+    "bridge_mode_uid_gid": "0644:501:50",
+    "remote_py_compile_pass": true,
+    "upper_hash_and_sentinel_gate_pass": true,
+    "bridge_hash_gate_pass": true
+  },
+  "replacement": {
+    "canonical_target_count": 2,
+    "atomic_rename_count": 2,
+    "build_side_temp_or_backup_created": false,
+    "upper_post_replace_sha256": "adadb0fb31d9c35805bf15906534f7963626116d1ec7374cbd2c611800a95013",
+    "bridge_source_post_replace_sha256": "ff7871ffceb907bda65f442ced079df782a850135c604b169b6aa8a7234c114f",
+    "bridge_build_resolved_post_replace_sha256": "ff7871ffceb907bda65f442ced079df782a850135c604b169b6aa8a7234c114f",
+    "bridge_source_build_realpath_equal": true,
+    "completed_before_restart": true
+  },
+  "restart_attempt": {
+    "bridge_old_wrapper_pid": 1218,
+    "bridge_old_child_pid": 3765,
+    "bridge_new_wrapper_pid": 26582,
+    "bridge_new_child_pid": 27031,
+    "bridge_restart_completed": true,
+    "upper_old_pid": 1221,
+    "upper_new_pid": null,
+    "upper_state": "deactivating_stop_sigterm",
+    "upper_restart_completed": false,
+    "upper_health_gate_reached": false,
+    "failure": "upper_old_process_did_not_exit_during_exact_systemd_restart",
+    "journal_context": "existing rclpy generator already executing traceback was present in the old Upper process log",
+    "post_deploy_gate_pass": false
+  },
+  "rollback": {
+    "triggered": true,
+    "reason": "upper_restart_health_not_reached",
+    "retry_count": 0,
+    "deployment_orchestration_pgid": 26560,
+    "stuck_systemctl_pid": 26588,
+    "orchestration_exactly_terminated": true,
+    "upper_unit_scoped_sigkill_used": true,
+    "broad_kill_used": false,
+    "upper_restored_sha256": "8c0f6eebb786e1cd6b1cb5d17485e59972140bf76a94e7669773ef438228b4c3",
+    "bridge_source_restored_sha256": "6e82e493a8d63ae5ff47546f689c28deb92d1647b5937836bed38e0f55ef8304",
+    "bridge_build_restored_sha256": "6e82e493a8d63ae5ff47546f689c28deb92d1647b5937836bed38e0f55ef8304",
+    "upper_restored_mode_uid_gid": "0644:0:0",
+    "bridge_restored_mode_uid_gid": "0644:501:50",
+    "bridge_source_build_same_inode": true,
+    "upper_recovery_pid": 27616,
+    "bridge_recovery_wrapper_pid": 27827,
+    "bridge_recovery_child_pid": 28276,
+    "upper_active_and_health_ready": true,
+    "bridge_active": true,
+    "nav2_running": false,
+    "nav2_state": "stopped",
+    "latest_t1001_left": 0,
+    "latest_t1001_right": 0,
+    "latest_bridge_command": {"T": 11, "L": 0, "R": 0},
+    "cmd_vel_publisher_count": 1,
+    "cmd_vel_subscription_count": 1,
+    "serial_owner_pid": 28276,
+    "temporary_names_cleaned": true,
+    "restored_gate_pass": true
+  },
+  "pc": {
+    "restart_attempted": false,
+    "old_process_chain_preserved": [21515, 21548, 21549]
+  },
+  "sample": {
+    "attempted": false,
+    "zero_speed_request_count": 0,
+    "stop_request_count": 0,
+    "readback_count": 0,
+    "pc_local_span_ms": null,
+    "network_rtt_envelope_ms": null,
+    "upper_local_span_ms": null,
+    "bridge_local_span_ms": null,
+    "reason": "post_deploy_service_gate_failed_and_all_files_were_rolled_back"
+  },
+  "claims": {
+    "live_nonzero_request_count": 0,
+    "physical_wheel_onset_observed": false,
+    "physical_latency_not_measured": true,
+    "hil_pass": false,
+    "safe_to_control": false,
+    "robot_control_executed": false,
+    "delivery_success": false
+  }
+}

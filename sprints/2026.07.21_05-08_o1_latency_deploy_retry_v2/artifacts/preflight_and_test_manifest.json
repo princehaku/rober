@@ -1,0 +1,60 @@
+{
+  "schema": "trashbot.o1.latency_deploy_retry_v2.preflight.v1",
+  "generated_at": "2026-07-21T04:57:30+08:00",
+  "authorization_id": "goal_20260721_latency_deploy_retry_v2",
+  "authorization_scope": "deploy_verified_latency_only_software_and_one_zero_speed_probe_only",
+  "fresh_nonzero_authorization": "none",
+  "artifacts": {
+    "upper_candidate_sha256": "adadb0fb31d9c35805bf15906534f7963626116d1ec7374cbd2c611800a95013",
+    "upper_candidate_ast_and_sentinel_audit_pass": true,
+    "bridge_worktree_sha256": "ff7871ffceb907bda65f442ced079df782a850135c604b169b6aa8a7234c114f",
+    "workstation_server_sha256": "92956fc6a67b4a16072c6bf5e438d63552e49115269564f0e5383bfafd7af5db",
+    "workstation_latency_helper_sha256": "f082347d003dc62932fa3f2f77d228eb362e1bb2dc8bbdde03413ec0162ffae6",
+    "workstation_vue_sha256": "ba55ed08490c4289aba93c20d59884cc6b76e03942d634b0892acd822bb1821e"
+  },
+  "tests": {
+    "upper_candidate_py_compile": "passed",
+    "bridge_py_compile": "passed",
+    "bridge_tests": {"run": 31, "passed": 31, "failed": 0},
+    "workstation_latency_tests": {"run": 3, "passed": 3, "failed": 0},
+    "workstation_build": "passed_with_existing_large_chunk_warning"
+  },
+  "remote_preflight": {
+    "upper_sha256": "8c0f6eebb786e1cd6b1cb5d17485e59972140bf76a94e7669773ef438228b4c3",
+    "bridge_source_sha256": "6e82e493a8d63ae5ff47546f689c28deb92d1647b5937836bed38e0f55ef8304",
+    "bridge_build_sha256": "6e82e493a8d63ae5ff47546f689c28deb92d1647b5937836bed38e0f55ef8304",
+    "bridge_source_realpath": "/root/rober/onboard/src/ros2_trashbot_hardware/ros2_trashbot_hardware/esp32_bridge_node.py",
+    "bridge_build_realpath": "/root/rober/onboard/src/ros2_trashbot_hardware/ros2_trashbot_hardware/esp32_bridge_node.py",
+    "bridge_source_build_same_inode": true,
+    "upper_mode_uid_gid": "0644:0:0",
+    "bridge_mode_uid_gid": "0644:501:50",
+    "upper_main_pid": 1221,
+    "bridge_wrapper_pid": 1218,
+    "bridge_child_pid": 3765,
+    "bridge_kill_mode": "control-group",
+    "upper_health": "ready",
+    "nav2_running": false,
+    "nav2_state": "stopped",
+    "latest_t1001_left": 0,
+    "latest_t1001_right": 0,
+    "latest_bridge_command": {"T": 11, "L": 0, "R": 0},
+    "cmd_vel_publisher_count": 1,
+    "cmd_vel_subscription_count": 1,
+    "serial_owner_pid": 3765,
+    "pass": true
+  },
+  "pc_preflight": {
+    "listener_count": 1,
+    "port": 7001,
+    "process_chain": [21515, 21548, 21549],
+    "startup_chain": "npm run api -> tsx src/server/index.ts -> node tsx loader",
+    "current_process_is_new_latency_build": false,
+    "restart_attempted": false
+  },
+  "claims": {
+    "live_nonzero_request_count": 0,
+    "physical_latency_not_measured": true,
+    "hil_pass": false,
+    "safe_to_control": false
+  }
+}

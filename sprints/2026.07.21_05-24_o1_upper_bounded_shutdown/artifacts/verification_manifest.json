@@ -1,0 +1,98 @@
+{
+  "schema": "trashbot.o1.upper_bounded_shutdown_verification.v2",
+  "verified_at": "2026-07-21T05:37:24+08:00",
+  "proof_boundary": "offline_bounded_shutdown_candidate_v3_software_proof_only",
+  "source_sha256": "52c99ca3b63480e841884aed7fca5f0d0b8350a028b0186af86a264bb4f2c272",
+  "test_sha256": "0e03348d5c2fa94a44bd354ae215940735b4e77aa1bfb27c2b2ba70b173b63d7",
+  "docs_sha256": "5c8d8c226ceea9107f117b01fc8faacea6af536ecbbfeba8d0daa91922d2d400",
+  "candidate_v3": {
+    "deployment_input": true,
+    "base_commit": "85ba7308785aa3c4033180a097e3d388358a97de",
+    "base_sha256": "8c0f6eebb786e1cd6b1cb5d17485e59972140bf76a94e7669773ef438228b4c3",
+    "previous_candidate_sha256": "adadb0fb31d9c35805bf15906534f7963626116d1ec7374cbd2c611800a95013",
+    "generator_sha256": "fb1d3b250a61c595ce16d23b2562d48dbd2fd7ed695e6e230eeaa739f4bd9dea",
+    "candidate_sha256": "ceaf8f610eb5c1e4d1666fd8c5bce375986f2d18625d8bc29ce98c163d6e08d4",
+    "base_patch_sha256": "c2eb76596a75f232acdd0bbb542c283f7db253a66ee7c033b3476214038155c4",
+    "incremental_patch_sha256": "c0a965b4610047bb36eb756c68a07bdcd0911740c0ef6634a90274f0e173c021",
+    "candidate_manifest_sha256": "d31ca5eae51f70fe1b86d047f96aa679ce1005d18edd49f32b86b4389770ddbb",
+    "ast_changed_symbol_count": 18,
+    "allowed_symbols_equal_actual_symbols": true,
+    "forbidden_c8_sentinel_total": 0,
+    "ast_and_sentinel_audit_pass": true,
+    "reproducible_generation_byte_identical": true,
+    "base_patch_dry_run_apply_reverse_reapply_hash_pass": true,
+    "incremental_patch_dry_run_apply_reverse_reapply_hash_pass": true
+  },
+  "candidate_v2": {
+    "deployment_input": false,
+    "status": "historical_intermediate_only",
+    "reason": "superseded_by_reconciled_candidate_v3"
+  },
+  "tests": {
+    "py_compile_current_test_generator_candidate": "pass",
+    "current_targeted": {
+      "run": 17,
+      "passed": 17,
+      "failed": 0
+    },
+    "current_upper_full": {
+      "run": 141,
+      "passed": 141,
+      "skipped": 1,
+      "failed": 0
+    },
+    "current_shared_upper_nav2": {
+      "run": 337,
+      "passed": 337,
+      "skipped": 1,
+      "failed": 0
+    },
+    "candidate_v3_targeted": {
+      "run": 17,
+      "passed": 17,
+      "failed": 0
+    },
+    "base_85ba_upper_regression_with_candidate_v3": {
+      "run": 119,
+      "passed": 119,
+      "skipped": 1,
+      "failed": 0
+    }
+  },
+  "comment_ratio_added_nonblank": {
+    "candidate_v3_incremental": {
+      "added_nonblank": 466,
+      "chinese_comment_or_docstring_lines": 99,
+      "ratio": 0.2124,
+      "pass_over_20_percent": true
+    }
+  },
+  "failure_repair": {
+    "failure": "incremental patch used different before and after file labels and git apply could not resolve the target",
+    "repair": "bind both patch labels to onboard/scripts/upper_robot_api.py while retaining the adadb0 input hash gate",
+    "reverification": "second generation byte-identical and incremental dry-run apply reverse reapply hash chain passed"
+  },
+  "hygiene": {
+    "json_pass": true,
+    "diff_check_pass": true,
+    "secret_scan_pass": true,
+    "local_absolute_path_scan_pass": true,
+    "temporary_file_scan_pass": true,
+    "todo_scan_pass": true
+  },
+  "live_actions": {
+    "ssh": 0,
+    "deploy": 0,
+    "service_restart": 0,
+    "ros_publish": 0,
+    "serial_write": 0,
+    "control_request": 0,
+    "zero_request": 0,
+    "nonzero_request": 0
+  },
+  "proof_limits": {
+    "physical_latency_not_measured": true,
+    "hil_pass": false,
+    "safe_to_control": false
+  }
+}

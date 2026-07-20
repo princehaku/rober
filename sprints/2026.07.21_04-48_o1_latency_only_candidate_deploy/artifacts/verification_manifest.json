@@ -1,0 +1,104 @@
+{
+  "schema": "trashbot.o1.latency_only_candidate_verification.v1",
+  "generated_at": "2026-07-21T04:49:21+08:00",
+  "candidate": {
+    "base_commit": "85ba7308785aa3c4033180a097e3d388358a97de",
+    "base_sha256": "8c0f6eebb786e1cd6b1cb5d17485e59972140bf76a94e7669773ef438228b4c3",
+    "source_sha256": "417c81ce4aa2a1c24376c1c74e34e4eae4977dba65a807d5107c45b153a5fb64",
+    "candidate_sha256": "adadb0fb31d9c35805bf15906534f7963626116d1ec7374cbd2c611800a95013",
+    "patch_sha256": "930ffa5b61316760c8ed0bef5b6327b0632a32ec09b9b26bb7332973c628e535",
+    "second_generation_byte_identical": true,
+    "py_compile_pass": true,
+    "git_diff_check_pass": true,
+    "manifest_location_independent_paths": true
+  },
+  "whitelist_audit": {
+    "pass": true,
+    "allowed_changed_symbols": [
+      "UpperRobotApi.manual_control",
+      "_ensure_ros_cmd_vel_context",
+      "create_app",
+      "manual_motion_ros_cmd_vel_hold_refresh_transaction",
+      "normalize_latency_trace",
+      "prewarm_ros_cmd_vel_context",
+      "publish_ros_cmd_vel_inprocess_burst",
+      "run_server",
+      "upper_latency_timing"
+    ],
+    "actual_changed_symbols_equal_allowed": true,
+    "forbidden_sensor_owned_sentinel_count": 0,
+    "forbidden_canonical_initialpose_sentinel_count": 0,
+    "forbidden_lifecycle_ownership_sentinel_count": 0
+  },
+  "patch_reversibility": {
+    "dry_run_pass": true,
+    "apply_hash_match": true,
+    "reverse_dry_run_pass": true,
+    "rollback_hash_match": true,
+    "reapply_hash_match": true
+  },
+  "tests": {
+    "latency_specific_upper": {
+      "run": 8,
+      "passed": 8,
+      "failed": 0,
+      "selection": "current latency test methods loaded against the isolated 85ba candidate path",
+      "coverage": [
+        "trace hostile and unknown field validation",
+        "first frame before sleep",
+        "startup prewarm without publish",
+        "subscriber absent zero-publish fail-closed",
+        "late subscriber recovery",
+        "realtime_hold no CLI fallback",
+        "watchdog deferred stop",
+        "prewarm failure HTTP rejection"
+      ]
+    },
+    "base_85ba_upper_regression": {
+      "run": 119,
+      "passed": 119,
+      "skipped": 1,
+      "failed": 0,
+      "selection": "entire test_upper_robot_api.py from commit 85ba; therefore its non-Nav2 subset also passed",
+      "current_c8_nav2_tests_loaded": false
+    },
+      "bridge": {
+        "py_compile_pass": true,
+        "run": 32,
+        "passed": 32,
+        "failed": 0
+    },
+    "workstation": {
+      "latency_tests_run": 3,
+      "latency_tests_passed": 3,
+      "build_pass": true,
+      "existing_large_chunk_warning": true
+    }
+  },
+  "claims": {
+    "live_nonzero_request_count": 0,
+    "physical_latency_not_measured": true,
+    "hil_pass": false,
+    "safe_to_control": false
+  },
+  "release_integration_reverification": {
+    "verified_at": "2026-07-21T05:01:56+08:00",
+    "current_upper_tests_run": 132,
+    "current_upper_tests_passed": 132,
+    "current_upper_tests_skipped": 1,
+    "candidate_latency_tests_run": 8,
+    "candidate_latency_tests_passed": 8,
+    "current_bridge_tests_run": 32,
+    "current_bridge_tests_passed": 32,
+    "current_workstation_latency_tests_run": 3,
+    "current_workstation_latency_tests_passed": 3,
+    "current_workstation_keyboard_manual_stop_watchdog_latency_tests_run": 22,
+    "current_workstation_keyboard_manual_stop_watchdog_latency_tests_passed": 22,
+    "candidate_and_patch_byte_identical_after_regeneration": true,
+    "patch_apply_reverse_rollback_reapply_pass": true,
+    "secret_scan_pass": true,
+    "local_absolute_path_scan_pass": true,
+    "candidate_temporary_file_scan_pass": true,
+    "live_or_control_command_count": 0
+  }
+}

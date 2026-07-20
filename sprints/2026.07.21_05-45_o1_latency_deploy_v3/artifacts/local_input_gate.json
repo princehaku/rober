@@ -1,0 +1,65 @@
+{
+  "schema": "trashbot.o1.latency_deploy_v3.local_input_gate.v1",
+  "generated_at": "2026-07-21T05:36:15+08:00",
+  "authorization_id": "goal_20260721_latency_deploy_v3_exact_unit_bounded_migration",
+  "result": "blocked_before_ssh_due_frozen_input_hash_mismatch",
+  "candidate_v3": {
+    "expected_sha256": "ceaf8f610eb5c1e4d1666fd8c5bce375986f2d18625d8bc29ce98c163d6e08d4",
+    "actual_sha256": "ceaf8f610eb5c1e4d1666fd8c5bce375986f2d18625d8bc29ce98c163d6e08d4",
+    "manifest_expected_sha256_prefix": "fe79f530",
+    "manifest_actual_sha256": "fe79f530ad1ce12b7a3c2a0f04a6e4d661d4d1cf7a65c25d46a3a7c4384897ee",
+    "json_parse_pass": true,
+    "py_compile_pass": true,
+    "ast_and_sentinel_audit_pass": true
+  },
+  "bridge": {
+    "path": "onboard/src/ros2_trashbot_hardware/ros2_trashbot_hardware/esp32_bridge_node.py",
+    "expected_worktree_sha256": "ff7871ffceb907bda65f442ced079df782a850135c604b169b6aa8a7234c114f",
+    "actual_worktree_sha256": "4f369ef66793ac018eee3e0b7431c823f6a1e300fcb9c33e0e3abf9bc2ef08a2",
+    "matches_frozen_input": false,
+    "py_compile_pass": true
+  },
+  "workstation": {
+    "reference_manifest": "sprints/2026.07.21_04-31_o1_zero_speed_live_latency_probe/artifacts/hash_manifest.json",
+    "files": {
+      "pc-tools/workstation/src/server/index.ts": {
+        "expected_sha256": "92956fc6a67b4a16072c6bf5e438d63552e49115269564f0e5383bfafd7af5db",
+        "actual_sha256": "555080645216e69e4adb6bcc3b5474dff6752fa718b201a3a42ed58f8cf39dca",
+        "matches_frozen_input": false
+      },
+      "pc-tools/workstation/src/server/robotControlLatency.ts": {
+        "expected_sha256": "f082347d003dc62932fa3f2f77d228eb362e1bb2dc8bbdde03413ec0162ffae6",
+        "actual_sha256": "f082347d003dc62932fa3f2f77d228eb362e1bb2dc8bbdde03413ec0162ffae6",
+        "matches_frozen_input": true
+      },
+      "pc-tools/workstation/src/components/RobotControlConsolePanel.vue": {
+        "expected_sha256": "ba55ed08490c4289aba93c20d59884cc6b76e03942d634b0892acd822bb1821e",
+        "actual_sha256": "ba55ed08490c4289aba93c20d59884cc6b76e03942d634b0892acd822bb1821e",
+        "matches_frozen_input": true
+      }
+    },
+    "listener_7001_pid_observed_read_only": 21549,
+    "listener_restart_count": 0
+  },
+  "stop_boundary": {
+    "ssh_attempt_count": 0,
+    "remote_preflight_count": 0,
+    "remote_stage_count": 0,
+    "remote_replacement_count": 0,
+    "service_stop_count": 0,
+    "service_restart_count": 0,
+    "forced_exact_unit_sigkill_count": 0,
+    "rollback_required": false,
+    "zero_speed_request_count": 0,
+    "stop_request_count": 0,
+    "live_nonzero_request_count": 0,
+    "reason": "Two locally frozen deploy inputs changed byte-for-byte; deployment equivalence was not authorized."
+  },
+  "claims": {
+    "physical_latency_not_measured": true,
+    "physical_wheel_onset_observed": false,
+    "hil_pass": false,
+    "safe_to_control": false,
+    "robot_control_executed": false
+  }
+}

@@ -14,6 +14,8 @@ import importlib.util
 import asyncio
 import json
 import shlex
+import signal
+import threading
 import time
 import tempfile
 import unittest
@@ -1633,6 +1635,110 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertEqual("ready", result["prewarm_status"])
         self.assertEqual(1, result["prewarm_subscription_count"])
 
+    def test_realtime_hold_degraded_graph_does_not_publish(self) -> None:
+        """startup degraded 且当前仍无 subscriber 时，nonzero 必须零 publish、零 CLI、fail-closed。"""
+
+        class FakeVector:
+            def __init__(self) -> None:
+                self.x = self.y = self.z = 0.0
+
+        class FakeTwist:
+            def __init__(self) -> None:
+                self.linear = FakeVector()
+                self.angular = FakeVector()
+
+        class FakePublisher:
+            def __init__(self) -> None:
+                self.messages: list[object] = []
+
+            def get_subscription_count(self) -> int:
+                return 0
+
+            def publish(self, message: object) -> None:
+                self.messages.append(message)
+
+        class FakeRclpy:
+            @staticmethod
+            def spin_once(_node: object, timeout_sec: float = 0.0) -> None:
+                self.assertEqual(0.0, timeout_sec)
+
+        publisher = FakePublisher()
+        context = {
+            "status": "ready",
+            "prewarm_status": "degraded_subscription_unproven",
+            "rclpy": FakeRclpy(),
+            "twist_type": FakeTwist,
+            "node": object(),
+            "publisher": publisher,
+        }
+        with mock.patch.object(upper_robot_api, "_ensure_ros_cmd_vel_context", return_value=context):
+            with mock.patch.object(upper_robot_api, "publish_ros_cmd_vel_cli_burst") as cli_mock:
+                result = upper_robot_api.manual_motion_ros_cmd_vel_hold_refresh_transaction(
+                    port="/dev/ttyS5",
+                    baudrate=115200,
+                    command={"T": 13, "X": 0.08, "Z": 0.0},
+                )
+        cli_mock.assert_not_called()
+        self.assertEqual([], publisher.messages)
+        self.assertEqual(0, result["command_result"]["frames_published"])
+        self.assertFalse(result["command_result"]["ok"])
+        self.assertFalse(result["command_result"]["latency_pass_eligible"])
+        self.assertEqual("cmd_vel_subscription_unavailable_fail_closed", result["command_result"]["error"]["type"])
+
+    def test_realtime_hold_recovers_after_subscriber_matches_without_sleep(self) -> None:
+        """bridge 后启动后零等待 graph refresh 可恢复 ready，并在任何 sleep 前发布首帧。"""
+
+        class FakeVector:
+            def __init__(self) -> None:
+                self.x = self.y = self.z = 0.0
+
+        class FakeTwist:
+            def __init__(self) -> None:
+                self.linear = FakeVector()
+                self.angular = FakeVector()
+
+        events: list[str] = []
+
+        class FakePublisher:
+            matched = False
+
+            def get_subscription_count(self) -> int:
+                return 1 if self.matched else 0
+
+            def publish(self, _message: object) -> None:
+                events.append("publish")
+
+        class FakeRclpy:
+            @staticmethod
+            def spin_once(_node: object, timeout_sec: float = 0.0) -> None:
+                events.append(f"spin:{timeout_sec}")
+
+        publisher = FakePublisher()
+        context = {
+            "status": "ready",
+            "rclpy": FakeRclpy(),
+            "twist_type": FakeTwist,
+            "node": object(),
+            "publisher": publisher,
+        }
+        with mock.patch.object(upper_robot_api, "_ensure_ros_cmd_vel_context", return_value=context):
+            startup = upper_robot_api.prewarm_ros_cmd_vel_context(wait_subscription_s=0.0)
+            self.assertEqual("degraded_subscription_unproven", startup["prewarm_status"])
+            publisher.matched = True
+            events.clear()
+            with mock.patch.object(upper_robot_api.time, "sleep", side_effect=lambda _seconds: events.append("sleep")):
+                result = upper_robot_api.manual_motion_ros_cmd_vel_hold_refresh_transaction(
+                    port="/dev/ttyS5",
+                    baudrate=115200,
+                    command={"T": 13, "X": 0.08, "Z": 0.0},
+                )
+        self.assertTrue(result["command_result"]["ok"])
+        self.assertTrue(result["command_result"]["latency_pass_eligible"])
+        self.assertEqual("ready", result["command_result"]["rclpy_context_status"])
+        self.assertEqual(1, result["command_result"]["frames_published"])
+        self.assertIn("publish", events)
+        self.assertNotIn("sleep", events)
+
     def test_realtime_hold_does_not_use_cli_fallback_when_prewarm_failed(self) -> None:
         """键盘热路径预热失败必须 fail-closed，不能把秒级 CLI 算成 latency pass。"""
         failed = {
@@ -1652,6 +1758,674 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         self.assertFalse(result["command_result"]["ok"])
         self.assertFalse(result["command_result"]["cli_fallback_attempted"])
         self.assertFalse(result["command_result"]["latency_pass_eligible"])
+
+    def test_rclpy_shutdown_is_idempotent_and_destroys_single_owner_once(self) -> None:
+        """重复 shutdown 只能 destroy/shutdown 一次，且第二次必须立即返回 already_shutdown。"""
+        # 这个用例覆盖 systemd 连续发送 stop、或 finally 被重复调用时的幂等边界。
+        # 旧实现没有统一 teardown owner，重复路径可能再次进入同一个 rclpy executor。
+        # 保存全局 context 是为了让测试只观察本用例注入的 fake，不污染后续热路径测试。
+        # FakeNode 只记录 destroy 次数，因为这里关注 owner 数量而不是 ROS 图行为。
+        # FakeRclpy 的 ok 状态由 shutdown 次数推导，模拟 Humble context 的一次性关闭语义。
+        # 第一次调用必须启动并等到唯一 daemon worker 完成。
+        # 第二次调用必须读取已完成状态，不能再启动线程。
+        # timeout 取 0.2 秒，足够 fake 完成，同时仍验证 API 接受显式预算。
+        # finally 无条件恢复 context，保证断言失败时也不会把 shutdown 状态泄漏到别的测试。
+        # destroy_count=1 证明 node 生命周期只有一个 owner。
+        # shutdown_count=1 证明 rclpy context 没有重复关闭。
+        # already_shutdown 证明重复信号走快速返回，而不是等待新的 worker。
+        # 本用例不创建真实 ROS node，不依赖 DDS、串口或物理轮子。
+        # 本用例也不调用手控接口，因此不会产生零速或非零控制帧。
+        previous_context = dict(upper_robot_api._ROS_CMD_VEL_CONTEXT)
+
+        class FakeNode:
+            destroy_count = 0
+
+            def destroy_node(self) -> None:
+                self.destroy_count += 1
+
+        class FakeRclpy:
+            shutdown_count = 0
+
+            def ok(self) -> bool:
+                return self.shutdown_count == 0
+
+            def shutdown(self) -> None:
+                self.shutdown_count += 1
+
+        node = FakeNode()
+        rclpy = FakeRclpy()
+        try:
+            upper_robot_api._ROS_CMD_VEL_CONTEXT.clear()
+            upper_robot_api._ROS_CMD_VEL_CONTEXT.update(
+                {"status": "ready", "node": node, "rclpy": rclpy, "shutdown_attempts": 0}
+            )
+            first = upper_robot_api.shutdown_ros_cmd_vel_context(timeout_s=0.2)
+            second = upper_robot_api.shutdown_ros_cmd_vel_context(timeout_s=0.2)
+        finally:
+            upper_robot_api._ROS_CMD_VEL_CONTEXT.clear()
+            upper_robot_api._ROS_CMD_VEL_CONTEXT.update(previous_context)
+        self.assertEqual("shutdown_complete", first["status"])
+        self.assertTrue(first["shutdown_completed"])
+        self.assertEqual("already_shutdown", second["status"])
+        self.assertEqual(1, node.destroy_count)
+        self.assertEqual(1, rclpy.shutdown_count)
+
+    def test_rclpy_teardown_error_is_never_reported_as_clean_shutdown(self) -> None:
+        """destroy/shutdown worker 即使已退出，异常也必须让 clean gate 保持 false。"""
+        # 这个用例区分“线程已经返回”和“资源确实成功释放”两个不同事实。
+        # destroy_node 抛错代表 owner 尝试结束，但底层资源没有成功释放。
+        # shutdown_completed 仍可为 true，便于 systemd 知道 worker 没有继续挂住。
+        # shutdown_succeeded 必须为 false，避免 stopped 日志把 teardown error 包装成 clean。
+        # 重复调用保留第一次 error，不能因为走 already_shutdown 快速路径而洗掉失败。
+        # FakeRclpy 不访问 ROS graph，本用例只锁定结构化状态合同。
+        # 该错误路径也不触发任何 fallback、串口或控制命令。
+        previous_context = dict(upper_robot_api._ROS_CMD_VEL_CONTEXT)
+
+        class FailingNode:
+            def destroy_node(self) -> None:
+                raise RuntimeError("destroy_failed")
+
+        class FakeRclpy:
+            shutdown_count = 0
+
+            def ok(self) -> bool:
+                return True
+
+            def shutdown(self) -> None:
+                self.shutdown_count += 1
+
+        rclpy = FakeRclpy()
+        try:
+            upper_robot_api._ROS_CMD_VEL_CONTEXT.clear()
+            upper_robot_api._ROS_CMD_VEL_CONTEXT.update(
+                {"status": "ready", "node": FailingNode(), "rclpy": rclpy, "shutdown_attempts": 0}
+            )
+            failed = upper_robot_api.shutdown_ros_cmd_vel_context(timeout_s=0.2)
+            repeated = upper_robot_api.shutdown_ros_cmd_vel_context(timeout_s=0.2)
+        finally:
+            upper_robot_api._ROS_CMD_VEL_CONTEXT.clear()
+            upper_robot_api._ROS_CMD_VEL_CONTEXT.update(previous_context)
+        self.assertEqual("shutdown_failed", failed["status"])
+        self.assertTrue(failed["shutdown_completed"])
+        self.assertFalse(failed["shutdown_succeeded"])
+        self.assertEqual("RuntimeError", failed["error"]["type"])
+        self.assertEqual("already_shutdown", repeated["status"])
+        self.assertFalse(repeated["shutdown_succeeded"])
+        self.assertEqual(0, rclpy.shutdown_count)
+
+    def test_shutdown_while_spin_is_bounded_and_never_reenters_generator(self) -> None:
+        """spin 持锁时 shutdown 只能有界等待；释放后由同一 owner teardown，不能重入 generator。"""
+        # 这个用例复现现场日志中的“generator already executing”竞争窗口。
+        # publish worker 故意在 spin_once 内停住，代表请求线程仍拥有 executor generator。
+        # shutdown 随后只允许等待统一 ROS owner 锁，绝不能并发调用 rclpy.shutdown。
+        # 第一次 shutdown 预算极短，预期返回 bounded timeout，而不是拖住 server finally。
+        # daemon teardown worker 保持等待，模拟进程若立即退出也不会被非 daemon 线程阻塞。
+        # release_spin 放行后，worker 才能按 destroy_node -> rclpy.shutdown 顺序收口。
+        # generator_owner 是独立探针；它不等同实现锁，因此能检测实现是否真的串行。
+        # errors 列表保留精确旧故障字符串，避免只凭线程最终退出误判通过。
+        # FakePublisher 匹配一个 subscriber，使 publish 路径不会被 discovery gate 提前拒绝。
+        # FakeTwist 只提供消息字段，避免引入 geometry_msgs 运行依赖。
+        # publish_result 证明竞争发生前的首帧仍然发布成功。
+        # shutdown_thread join 仅用于让测试读取稳定终态，不改变生产超时语义。
+        # 第二次 shutdown 应看见 already_shutdown，证明超时调用没有创建第二个 owner。
+        # finally 先放行事件再恢复 context，避免断言异常留下测试线程。
+        # thread.is_alive=false 证明请求线程没有死锁。
+        # destroy/shutdown 各一次证明锁竞争没有通过重复 teardown 被“修复”。
+        # 整个竞争使用 fake 和本地线程，不访问网络、ROS graph 或硬件。
+        # 零线速度参数仅构造内存 Twist，不构成真实控制动作。
+        previous_context = dict(upper_robot_api._ROS_CMD_VEL_CONTEXT)
+        spin_started = threading.Event()
+        release_spin = threading.Event()
+        generator_owner = threading.Lock()
+        errors: list[str] = []
+
+        class FakeVector:
+            def __init__(self) -> None:
+                self.x = self.y = self.z = 0.0
+
+        class FakeTwist:
+            def __init__(self) -> None:
+                self.linear = FakeVector()
+                self.angular = FakeVector()
+
+        class FakePublisher:
+            def get_subscription_count(self) -> int:
+                return 1
+
+            def publish(self, _message: object) -> None:
+                return None
+
+        class FakeNode:
+            destroy_count = 0
+
+            def destroy_node(self) -> None:
+                self.destroy_count += 1
+
+        class FakeRclpy:
+            shutdown_count = 0
+
+            def spin_once(self, _node: object, timeout_sec: float = 0.0) -> None:
+                if not generator_owner.acquire(blocking=False):
+                    errors.append("generator already executing")
+                    return
+                spin_started.set()
+                release_spin.wait(timeout=0.5)
+                generator_owner.release()
+
+            def ok(self) -> bool:
+                return self.shutdown_count == 0
+
+            def shutdown(self) -> None:
+                if not generator_owner.acquire(blocking=False):
+                    errors.append("generator already executing")
+                    return
+                self.shutdown_count += 1
+                generator_owner.release()
+
+        node = FakeNode()
+        rclpy = FakeRclpy()
+        context = {
+            "status": "ready",
+            "node": node,
+            "rclpy": rclpy,
+            "publisher": FakePublisher(),
+            "twist_type": FakeTwist,
+            "ready_mono_ns": 1,
+            "shutdown_attempts": 0,
+        }
+        publish_result: dict[str, object] = {}
+        try:
+            upper_robot_api._ROS_CMD_VEL_CONTEXT.clear()
+            upper_robot_api._ROS_CMD_VEL_CONTEXT.update(context)
+
+            def publish_worker() -> None:
+                publish_result.update(
+                    upper_robot_api.publish_ros_cmd_vel_inprocess_burst(
+                        0.0, 0.0, hold_s=0.01, rate_hz=20.0, wait_subscription_s=0.0
+                    )
+                )
+
+            thread = threading.Thread(target=publish_worker)
+            thread.start()
+            self.assertTrue(spin_started.wait(timeout=0.2))
+            timed = upper_robot_api.shutdown_ros_cmd_vel_context(timeout_s=0.01)
+            self.assertEqual("shutdown_timeout_process_exit_required", timed["status"])
+            release_spin.set()
+            thread.join(timeout=0.5)
+            shutdown_thread = upper_robot_api._ROS_CMD_VEL_CONTEXT.get("shutdown_thread")
+            if isinstance(shutdown_thread, threading.Thread):
+                shutdown_thread.join(timeout=0.5)
+            final = upper_robot_api.shutdown_ros_cmd_vel_context(timeout_s=0.1)
+        finally:
+            release_spin.set()
+            upper_robot_api._ROS_CMD_VEL_CONTEXT.clear()
+            upper_robot_api._ROS_CMD_VEL_CONTEXT.update(previous_context)
+        self.assertFalse(thread.is_alive())
+        self.assertEqual([], errors)
+        self.assertEqual("already_shutdown", final["status"])
+        self.assertEqual(1, node.destroy_count)
+        self.assertEqual(1, rclpy.shutdown_count)
+        self.assertEqual(1, publish_result["frames_published"])
+
+    def test_concurrent_prewarm_manual_and_shutdown_use_one_rclpy_owner(self) -> None:
+        """prewarm、manual 与 shutdown 并发时也只能串行 spin/destroy，不能出现 executor generator 重入。"""
+        # 这个用例把三个真实 owner 类型同时放到起跑线：startup prewarm、HTTP manual 与 shutdown。
+        # Barrier 保证竞争不是偶然的顺序执行，从而持续覆盖统一锁的不变量。
+        # FakePublisher 返回零 subscriber，让 prewarm 至少执行一次 spin_once。
+        # manual 请求要求 subscription match，也会执行零等待 spin_once。
+        # shutdown 同时尝试 destroy/shutdown，形成现场最危险的三方竞争。
+        # generator_owner 作为外部探针，在任意两个 fake rclpy 调用重叠时记录旧异常。
+        # spin 内短暂停顿扩大竞争窗口，使遗漏锁保护时测试更稳定地失败。
+        # stopped 标志模拟 rclpy.ok 在 shutdown 后变为 false。
+        # destroy_node 无需做工作；此用例只检查它与 spin 的串行关系。
+        # 两个 worker 都必须在 0.5 秒内退出，避免通过线程泄漏掩盖死锁。
+        # shutdown 预算 0.2 秒，高于 fake 临界区但远低于 systemd 默认 stop 超时。
+        # shutdown_completed=true 证明正常短竞争可以干净收口。
+        # errors 为空才证明 executor generator 从未重入。
+        # finally 恢复模块级 context，使测试顺序不会影响结论。
+        # 本用例不判断哪一个 worker先拿锁，因为生产合同只要求串行，不要求公平性。
+        # 本用例不调用 CLI fallback，避免把子进程启动噪声混入锁验证。
+        # 本用例不连接真实 DDS subscriber，所以结果不能外推为 HIL 通过。
+        # 所有速度均为零且只写入 fake publisher，不产生机器人动作。
+        previous_context = dict(upper_robot_api._ROS_CMD_VEL_CONTEXT)
+        generator_owner = threading.Lock()
+        start_barrier = threading.Barrier(3)
+        errors: list[str] = []
+
+        class FakeVector:
+            def __init__(self) -> None:
+                self.x = self.y = self.z = 0.0
+
+        class FakeTwist:
+            def __init__(self) -> None:
+                self.linear = FakeVector()
+                self.angular = FakeVector()
+
+        class FakePublisher:
+            def get_subscription_count(self) -> int:
+                return 0
+
+            def publish(self, _message: object) -> None:
+                return None
+
+        class FakeNode:
+            def destroy_node(self) -> None:
+                return None
+
+        class FakeRclpy:
+            stopped = False
+
+            def spin_once(self, _node: object, timeout_sec: float = 0.0) -> None:
+                if not generator_owner.acquire(blocking=False):
+                    errors.append("generator already executing")
+                    return
+                time.sleep(0.005)
+                generator_owner.release()
+
+            def ok(self) -> bool:
+                return not self.stopped
+
+            def shutdown(self) -> None:
+                if not generator_owner.acquire(blocking=False):
+                    errors.append("generator already executing")
+                    return
+                self.stopped = True
+                generator_owner.release()
+
+        context = {
+            "status": "ready",
+            "node": FakeNode(),
+            "rclpy": FakeRclpy(),
+            "publisher": FakePublisher(),
+            "twist_type": FakeTwist,
+            "shutdown_attempts": 0,
+        }
+        try:
+            upper_robot_api._ROS_CMD_VEL_CONTEXT.clear()
+            upper_robot_api._ROS_CMD_VEL_CONTEXT.update(context)
+
+            def prewarm_worker() -> None:
+                start_barrier.wait()
+                upper_robot_api.prewarm_ros_cmd_vel_context(wait_subscription_s=0.02)
+
+            def manual_worker() -> None:
+                start_barrier.wait()
+                upper_robot_api.publish_ros_cmd_vel_inprocess_burst(
+                    0.0,
+                    0.0,
+                    hold_s=0.01,
+                    wait_subscription_s=0.0,
+                    require_subscription_match=True,
+                )
+
+            prewarm_thread = threading.Thread(target=prewarm_worker)
+            manual_thread = threading.Thread(target=manual_worker)
+            prewarm_thread.start()
+            manual_thread.start()
+            start_barrier.wait()
+            shutdown = upper_robot_api.shutdown_ros_cmd_vel_context(timeout_s=0.2)
+            prewarm_thread.join(timeout=0.5)
+            manual_thread.join(timeout=0.5)
+        finally:
+            upper_robot_api._ROS_CMD_VEL_CONTEXT.clear()
+            upper_robot_api._ROS_CMD_VEL_CONTEXT.update(previous_context)
+        self.assertFalse(prewarm_thread.is_alive())
+        self.assertFalse(manual_thread.is_alive())
+        self.assertEqual([], errors)
+        self.assertTrue(shutdown["shutdown_completed"])
+
+    def test_signal_callback_and_runtime_teardown_are_bounded_and_stop_active_hold(self) -> None:
+        """signal callback 只 set event；finally 对 active hold 补零速并有界 cleanup runner/rclpy。"""
+
+        # 这个用例验证 signal ownership 与 teardown ownership 被明确分离。
+        # FakeLoop 记录 handler，不向当前 unittest 进程安装真实 SIGTERM handler。
+        # 直接调用已登记 callback 能证明信号路径只唤醒 event loop。
+        # callback 返回后 event 必须立刻置位，不能等待 ROS 锁或硬件 I/O。
+        # remove 记录保证 run_server finally 不残留自己安装的 handler。
+        # active hold 状态模拟 systemd stop 恰好发生在用户仍按键时。
+        # stop_mock 代表既有 all-surface 零速合同，避免测试打开串口或发布 ROS 消息。
+        # stop_mock 只允许调用一次，防止 watchdog 与 shutdown 重复停车。
+        # FakeRunner.cleanup 代表 aiohttp 停止接收新请求的阶段。
+        # FakeNode/FakeRclpy 代表 runner 之后的 ROS owner teardown。
+        # runtime helper 必须按 watchdog/hold stop/runner/ROS 分层记录结果。
+        # timeout=0.2 秒证明每层都接受明确预算，而非无限 await。
+        # runner.cleaned=true 证明 HTTP owner 即使在 active hold 场景也会收口。
+        # result.completed=true 只描述所有 fake owner 完成，不代表现场服务已重启。
+        # 精确检查旧异常字符串，防止结构化 error 隐藏 executor 重入。
+        # finally 恢复全局 ROS context，保证 teardown 后其它单测仍可初始化 fake。
+        # 安装顺序固定为 SIGTERM、SIGINT，文档与 systemd 操作可据此审计。
+        # 该用例没有发送信号给操作系统，也没有执行任何部署或 restart。
+        # 该用例只证明软件合同，不测量按键到物理轮子开始转动的时延。
+
+        async def run_case() -> tuple[dict[str, object], list[signal.Signals], list[signal.Signals], mock.Mock]:
+            previous_context = dict(upper_robot_api._ROS_CMD_VEL_CONTEXT)
+            callbacks: dict[signal.Signals, object] = {}
+            removed: list[signal.Signals] = []
+
+            class FakeLoop:
+                def add_signal_handler(self, sig: signal.Signals, callback: object, *args: object) -> None:
+                    callbacks[sig] = (callback, args)
+
+                def remove_signal_handler(self, sig: signal.Signals) -> bool:
+                    removed.append(sig)
+                    return True
+
+            class FakeNode:
+                def destroy_node(self) -> None:
+                    return None
+
+            class FakeRclpy:
+                active = True
+
+                def ok(self) -> bool:
+                    return self.active
+
+                def shutdown(self) -> None:
+                    self.active = False
+
+            class FakeRunner:
+                cleaned = False
+
+                async def cleanup(self) -> None:
+                    self.cleaned = True
+
+            api = upper_robot_api.UpperRobotApi(
+                camera_base_url="http://127.0.0.1:8088",
+                base_port="/dev/ttyS5",
+                base_baudrate=115200,
+                max_speed=0.12,
+            )
+            api._manual_hold_state = {"active": True, "command_mode": "ros"}
+            stop_mock = mock.Mock(return_value={"ok": True, "command": {"T": 11, "L": 0, "R": 0}})
+            api._manual_hold_stop_sync = stop_mock
+            event = asyncio.Event()
+            fake_loop = FakeLoop()
+            installed = upper_robot_api.install_upper_shutdown_signal_handlers(fake_loop, event)
+            callback, args = callbacks[signal.SIGTERM]
+            callback(*args)
+            self.assertTrue(event.is_set())
+            upper_robot_api.remove_upper_shutdown_signal_handlers(fake_loop, installed)
+            runner = FakeRunner()
+            try:
+                upper_robot_api._ROS_CMD_VEL_CONTEXT.clear()
+                upper_robot_api._ROS_CMD_VEL_CONTEXT.update(
+                    {"status": "ready", "node": FakeNode(), "rclpy": FakeRclpy(), "shutdown_attempts": 0}
+                )
+                result = await upper_robot_api.shutdown_upper_runtime(api, runner, timeout_s=0.2)
+            finally:
+                upper_robot_api._ROS_CMD_VEL_CONTEXT.clear()
+                upper_robot_api._ROS_CMD_VEL_CONTEXT.update(previous_context)
+            self.assertTrue(runner.cleaned)
+            return result, installed, removed, stop_mock
+
+        result, installed, removed, stop_mock = asyncio.run(run_case())
+        self.assertEqual([signal.SIGTERM, signal.SIGINT], installed)
+        self.assertEqual(installed, removed)
+        self.assertTrue(result["completed"])
+        self.assertTrue(result["active_hold_stop"]["completed"])
+        stop_mock.assert_called_once_with("ros")
+        self.assertNotIn("generator already executing", json.dumps(result))
+
+    def test_runtime_shutdown_gate_rejects_new_manual_before_any_control(self) -> None:
+        """signal teardown 一旦开始，排队到达的 manual 请求必须零 publish/零串口拒绝。"""
+        # gate 模拟 signal owner 已进入 finally，但 aiohttp runner 尚未清空排队请求。
+        # manual 必须在解析方向和派发 worker 前拒绝，才能保证 shutdown 后零新动作。
+        # publish mock 与 serial mock 均要求零调用，不能只检查 HTTP payload 状态。
+        # 返回体保留 trace，便于调用方关联被拒绝请求而不误判网络丢包。
+        # command_result/stop_result 均为空，证明没有半执行的控制事务。
+        # blocked 状态只用于 shutdown 窗口，不改变正常 keydown 热路径。
+        # 本用例不执行真实控制，因此不能当作现场 stop 或安全证明。
+        api = upper_robot_api.UpperRobotApi(
+            camera_base_url="http://127.0.0.1:8088",
+            base_port="/dev/ttyS5",
+            base_baudrate=115200,
+            max_speed=0.12,
+        )
+        api._runtime_shutdown_started = True
+        with mock.patch.object(upper_robot_api, "manual_motion_ros_cmd_vel_hold_refresh_transaction") as hold_mock:
+            with mock.patch.object(upper_robot_api, "manual_motion_serial_transaction") as serial_mock:
+                payload = asyncio.run(
+                    api.manual_control(
+                        {
+                            "direction": "forward",
+                            "speed": 0.08,
+                            "duration_ms": 240,
+                            "command_mode": "ros",
+                            "feedback_mode": "realtime_hold",
+                            "hold_session_id": "shutdown-race",
+                            "hold_sequence": 1,
+                        }
+                    )
+                )
+        hold_mock.assert_not_called()
+        serial_mock.assert_not_called()
+        self.assertFalse(payload["accepted"])
+        self.assertFalse(payload["manual_command_executed"])
+        self.assertEqual("blocked_runtime_shutting_down", payload["status"])
+
+    def test_watchdog_stop_claim_prevents_duplicate_runtime_shutdown_stop(self) -> None:
+        """watchdog 已认领零速 worker 时，runtime shutdown 不得再启动第二个 stop。"""
+
+        # stop_started 把 watchdog 精确停在已认领、但底层 stop 尚未返回的窗口。
+        # active=false 是认领凭据；runtime 必须据此判断无需派第二个 stop worker。
+        # release_stop 只释放 fake worker，不代表真实底盘已经停车。
+        # shutdown ROS 结果用 clean fake 隔离，避免本用例同时测试两套 owner 状态机。
+        # stop_mock 调用一次是核心安全断言，防止两组三种 vendor 零命令交叉。
+        # runtime completed=true 说明等待中的 watchdog stop 不会让 cleanup 重复接管。
+        # 该竞争窗口完全由本地 Event 控制，结果不依赖线程调度运气。
+        async def run_case() -> tuple[dict[str, object], mock.Mock]:
+            api = upper_robot_api.UpperRobotApi(
+                camera_base_url="http://127.0.0.1:8088",
+                base_port="/dev/ttyS5",
+                base_baudrate=115200,
+                max_speed=0.12,
+            )
+            stop_started = threading.Event()
+            release_stop = threading.Event()
+
+            def blocking_stop(_command_mode: str) -> dict[str, object]:
+                stop_started.set()
+                release_stop.wait(timeout=0.5)
+                return {"ok": True}
+
+            stop_mock = mock.Mock(side_effect=blocking_stop)
+            api._manual_hold_stop_sync = stop_mock
+            api._manual_hold_state = {
+                "active": True,
+                "session_id": "watchdog-shutdown-race",
+                "sequence": 3,
+                "command_mode": "ros",
+                "expires_at_monotonic": 0.0,
+            }
+            task = asyncio.create_task(api._manual_hold_watchdog("watchdog-shutdown-race", 3))
+            api._manual_hold_watchdog_task = task
+            self.assertTrue(await asyncio.to_thread(stop_started.wait, 0.2))
+            self.assertFalse(api._manual_hold_state["active"])
+            clean_ros = {
+                "status": "shutdown_complete",
+                "shutdown_completed": True,
+                "shutdown_succeeded": True,
+                "error": None,
+            }
+            with mock.patch.object(upper_robot_api, "shutdown_ros_cmd_vel_context", return_value=clean_ros):
+                result = await upper_robot_api.shutdown_upper_runtime(api, None, timeout_s=0.02)
+            release_stop.set()
+            await asyncio.sleep(0.02)
+            return result, stop_mock
+
+        result, stop_mock = asyncio.run(run_case())
+        self.assertTrue(result["completed"])
+        self.assertFalse(result["active_hold_stop"]["attempted"])
+        stop_mock.assert_called_once_with("ros")
+
+    def test_release_and_watchdog_stop_share_one_serial_owner_lock(self) -> None:
+        """release build_stop 与 watchdog helper 必须串行，不能让两组 vendor 零命令交叉。"""
+        # Barrier 同时放行 release 与 watchdog 两条真实 stop 入口。
+        # serial_owner 是实现锁之外的探针，能发现任何两个 fake write 的时间重叠。
+        # 每个 fake write 短暂持锁，主动放大遗漏 stop lock 时的失败窗口。
+        # ROS stop 被 fake 成功隔离，本用例只审计串口零命令是否串行。
+        # 两个线程都必须退出，避免“没有重叠”其实是某一路死锁未执行。
+        # overlaps 为空证明 release 与 watchdog 共享同一 stop owner。
+        # 这里的 command 只进入 fake_serial，不打开 `/dev/ttyS5`。
+        api = upper_robot_api.UpperRobotApi(
+            camera_base_url="http://127.0.0.1:8088",
+            base_port="/dev/ttyS5",
+            base_baudrate=115200,
+            max_speed=0.12,
+        )
+        start = threading.Barrier(3)
+        serial_owner = threading.Lock()
+        overlaps: list[dict[str, object]] = []
+
+        def fake_serial(_port: str, _baudrate: int, command: dict[str, object]) -> dict[str, object]:
+            if not serial_owner.acquire(blocking=False):
+                overlaps.append(command)
+                return {"ok": False}
+            try:
+                time.sleep(0.003)
+                return {"ok": True, "command": command}
+            finally:
+                serial_owner.release()
+
+        def watchdog_stop() -> None:
+            start.wait()
+            api._manual_hold_stop_sync("ros")
+
+        def release_stop() -> None:
+            start.wait()
+            upper_robot_api.build_stop_payload("/dev/ttyS5", 115200)
+
+        with mock.patch.object(upper_robot_api, "publish_ros_cmd_vel_inprocess_burst", return_value={"ok": True}):
+            with mock.patch.object(upper_robot_api, "write_serial_json", side_effect=fake_serial):
+                first = threading.Thread(target=watchdog_stop)
+                second = threading.Thread(target=release_stop)
+                first.start()
+                second.start()
+                start.wait()
+                first.join(timeout=0.5)
+                second.join(timeout=0.5)
+        self.assertFalse(first.is_alive())
+        self.assertFalse(second.is_alive())
+        self.assertEqual([], overlaps)
+
+    def test_run_server_shutdown_event_cleans_runner_and_ros_context(self) -> None:
+        """server owner event 必须结束永久等待并进入 finally，不能依赖真实 SIGTERM 或真实监听端口。"""
+
+        # 断言 site_started 可防止实现绕过 startup、直接执行 cleanup 也被误判为通过。
+        # 断言 runner_cleaned 可防止只关闭 ROS 而遗留 HTTP socket owner。
+        # 断言 node_destroyed 可防止只把 rclpy 状态标记为 shutdown 而不释放 node。
+        # 断言 rclpy_stopped 可防止只 destroy node 而遗留 context。
+        # 这些断言共同约束完整 owner 链，而不是某一条日志是否出现。
+        # mock.patch 的嵌套范围覆盖完整 run_server，退出后自动恢复真实构造器。
+        # sys.modules 注入也只在该 await 内有效，不改变其它 aiohttp 测试环境。
+        # 测试若在预算外卡住会由 unittest 运行被发现，不能以部分断言代替完成。
+        # 这个用例直接覆盖旧版 `while True: sleep(3600)` 无法结束的根因。
+        # 预先 set event 表示 signal callback 已完成，run_server 必须立即越过等待点。
+        # Fake aiohttp module 让测试不依赖 macOS 主机是否安装 aiohttp。
+        # FakeRunner.setup 保留 server 生命周期顺序，但不绑定端口。
+        # FakeSite.start 只记录监听阶段已到达，不创建 socket。
+        # runner.cleanup 必须在 finally 中执行，证明 HTTP owner 可以停止接收新请求。
+        # FakeNode.destroyed 必须变为 true，证明 ROS node 随 server 生命周期收口。
+        # FakeRclpy.active 必须变为 false，证明 context 也被唯一 worker 关闭。
+        # install_signal_handlers=false 避免单测修改宿主进程的真实 signal table。
+        # create_app 被替换为 object，避免路由细节干扰 owner 生命周期验证。
+        # UpperRobotApi 被替换为最小 fake，避免摄像头、串口和后台任务初始化。
+        # prewarm 返回 ready 只是让 started log 保持完整，不触碰 DDS graph。
+        # event 在 site.start 后才被 await，因此同时验证 startup 与 finally 两端。
+        # runner/site 实例列表让断言检查实际由 run_server 创建的对象。
+        # finally 恢复 ROS context，防止 shutdown 状态泄漏到后续测试。
+        # 四个布尔返回值把关键 side effect 带出 async scope，便于同步 unittest 断言。
+        # 本用例不声称真实 Linux signal delivery 已验证；该部分留给后续部署 smoke。
+        # 本用例不声称 systemd kill budget 已验证；只证明 Python owner 能自行退出。
+        # 本用例不启动服务、不部署候选、不发送控制帧。
+        # 因此它是 software-only shutdown proof，而不是 HIL 或 safe-to-control 证据。
+
+        async def run_case() -> tuple[bool, bool, bool, bool]:
+            previous_context = dict(upper_robot_api._ROS_CMD_VEL_CONTEXT)
+            runner_instances: list[object] = []
+            site_instances: list[object] = []
+
+            class FakeNode:
+                destroyed = False
+
+                def destroy_node(self) -> None:
+                    self.destroyed = True
+
+            class FakeRclpy:
+                active = True
+
+                def ok(self) -> bool:
+                    return self.active
+
+                def shutdown(self) -> None:
+                    self.active = False
+
+            class FakeApi:
+                _manual_hold_watchdog_task = None
+                _manual_hold_state: dict[str, object] = {"active": False}
+
+            class FakeRunner:
+                cleaned = False
+
+                def __init__(self, _app: object) -> None:
+                    runner_instances.append(self)
+
+                async def setup(self) -> None:
+                    return None
+
+                async def cleanup(self) -> None:
+                    self.cleaned = True
+
+            class FakeSite:
+                started = False
+
+                def __init__(self, _runner: object, _host: object, _port: object) -> None:
+                    site_instances.append(self)
+
+                async def start(self) -> None:
+                    self.started = True
+
+            node = FakeNode()
+            rclpy = FakeRclpy()
+            event = asyncio.Event()
+            event.set()
+            args = mock.Mock(host="127.0.0.1", port=8787)
+            try:
+                upper_robot_api._ROS_CMD_VEL_CONTEXT.clear()
+                upper_robot_api._ROS_CMD_VEL_CONTEXT.update(
+                    {"status": "ready", "node": node, "rclpy": rclpy, "shutdown_attempts": 0}
+                )
+                with mock.patch.object(upper_robot_api, "UpperRobotApi", return_value=FakeApi()):
+                    with mock.patch.object(upper_robot_api, "create_app", return_value=object()):
+                        with mock.patch.object(
+                            upper_robot_api,
+                            "prewarm_ros_cmd_vel_context",
+                            return_value={"prewarm_status": "ready", "prewarm_subscription_count": 1},
+                        ):
+                            fake_aiohttp = mock.Mock()
+                            fake_aiohttp.web = mock.Mock(AppRunner=FakeRunner, TCPSite=FakeSite)
+                            # 当前 macOS Python 没有 aiohttp；注入最小模块即可验证 server owner/finally，不打开端口。
+                            with mock.patch.dict("sys.modules", {"aiohttp": fake_aiohttp}):
+                                await upper_robot_api.run_server(
+                                    args,
+                                    shutdown_event=event,
+                                    install_signal_handlers=False,
+                                )
+                return (
+                    node.destroyed,
+                    not rclpy.active,
+                    bool(runner_instances and runner_instances[0].cleaned),
+                    bool(site_instances and site_instances[0].started),
+                )
+            finally:
+                upper_robot_api._ROS_CMD_VEL_CONTEXT.clear()
+                upper_robot_api._ROS_CMD_VEL_CONTEXT.update(previous_context)
+
+        node_destroyed, rclpy_stopped, runner_cleaned, site_started = asyncio.run(run_case())
+        self.assertTrue(node_destroyed)
+        self.assertTrue(rclpy_stopped)
+        self.assertTrue(runner_cleaned)
+        self.assertTrue(site_started)
 
     def test_manual_control_ros_persists_fresh_bridge_feedback_without_opening_uart(self) -> None:
         """ROS 手控后只读 bridge debug log 回灌 L/R，不为了证明轮速再抢 UART。"""
@@ -1872,9 +2646,11 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
             "mode": "ros_cmd_vel_realtime_hold",
             "command_result": {
                 "ok": False,
-                "rclpy_context_status": "unavailable_fail_closed",
+                "rclpy_context_status": "degraded_subscription_unproven",
+                "frames_published": 0,
                 "cli_fallback_attempted": False,
                 "latency_pass_eligible": False,
+                "error": {"type": "cmd_vel_subscription_unavailable_fail_closed"},
             },
             "stop_result": {"ok": False, "skipped_reason": "realtime_hold_stop_deferred_to_release_or_watchdog"},
             "feedback_during_motion": upper_robot_api.skipped_manual_feedback_payload("/dev/ttyS5", 115200, "realtime_hold_feedback_skipped_until_release_readback"),
@@ -1900,6 +2676,7 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         payload = asyncio.run(run_case())
         self.assertFalse(payload["accepted"])
         self.assertFalse(payload["manual_command_executed"])
+        self.assertEqual(0, payload["command_result"]["frames_published"])
         self.assertEqual("blocked_realtime_hold_rclpy_not_ready", payload["status"])
         self.assertEqual("realtime_hold_rclpy_prewarm_unavailable", payload["failure_reason"])
         if api._manual_hold_watchdog_task is not None:

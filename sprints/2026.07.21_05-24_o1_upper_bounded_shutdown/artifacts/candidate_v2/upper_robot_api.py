@@ -126,25 +126,20 @@ MAX_FEEDBACK_SAMPLE_INTERVAL_S = 2.0
 BASE_FEEDBACK_REQUEST_COMMAND = {"T": 130}
 BASE_FEEDBACK_ID = 1001
 _ROS_CMD_VEL_CONTEXT: dict[str, Any] = {}
-# rclpy executor 内部持有 generator，任何两个线程并发 spin 都会触发不可重入异常。
-# request thread、watchdog thread 与 shutdown worker 因而必须共享一个 ROS owner 锁。
-# owner 锁只覆盖 init/spin/publish/destroy/shutdown，不覆盖 burst 的 sleep。
-# 这样既保留首帧热路径，也让 teardown 不会与最后一帧交叉。
 # rclpy node 不能被 watchdog thread 与 aiohttp request 同时 spin/publish；短临界区不包含 burst sleep。
 _ROS_CMD_VEL_LOCK = threading.RLock()
-# shutdown state lock 与 ROS owner lock 分离，锁序固定为“短状态锁后释放，再等待 ROS 锁”。
-# worker 完成时只在退出 ROS owner lock 后更新状态，避免形成反向锁序。
-# signal callback 不获取这两把锁；它只唤醒 asyncio event。
+# shutdown state lock 与 ROS owner lock 分离，状态快照不能扩大 ROS 临界区。
+# signal callback 不获取任何 owner 锁；它只负责唤醒 asyncio event。
+# teardown worker 先退出 ROS 锁，再更新 terminal state，避免反向锁序。
 # shutdown 状态不用 ROS 锁保护，避免 signal/teardown 为了记状态反而等待正在执行的 spin。
 _ROS_CMD_VEL_SHUTDOWN_STATE_LOCK = threading.Lock()
-# hold stop 可能来自 watchdog、release 或 runtime shutdown，三者都只能发送零速收口。
-# 单独 stop 锁避免两个零速事务同时打开串口或交叉 ROS stop burst。
-# 该锁不参与 keydown publish，因此不会拉长按键到首帧的延迟。
+# hold stop 可能来自 watchdog、release 或 runtime shutdown，三者只能串行发送零速。
+# stop owner 锁不参与 keyboard publish，因此不会增加首帧 latency。
 # watchdog、release 与 runtime shutdown 的零速收口不能并发抢 ROS/串口；该锁不在 keydown 热路径。
 _MANUAL_HOLD_STOP_LOCK = threading.Lock()
-# 0.8 秒是进程内 ROS teardown 的硬等待上限；超时后 daemon worker 不阻止进程退出。
+# ROS teardown 的 join 使用短硬上限，超时 daemon worker 不阻止解释器退出。
 ROS_CMD_VEL_SHUTDOWN_TIMEOUT_S = 0.8
-# aiohttp、watchdog cancel 与 active-hold stop 各自使用同一短上限，但分层记录结果。
+# watchdog、hold stop 与 runner cleanup 都使用显式层级预算并分别记录结果。
 UPPER_RUNNER_CLEANUP_TIMEOUT_S = 1.0
 LATENCY_TRACE_SCHEMA = "trashbot.keyboard_wheel_latency_trace.v1"
 # trace 只接受短关联键，避免把诊断 envelope 变成任意字符串回显面。
@@ -175,14 +170,12 @@ DEFAULT_RADAR_START_COMMAND = (
     "--serial-port /dev/ttyACM0 --serial-baudrate 230400 --frame-id laser_frame"
 )
 DEFAULT_RADAR_STOP_COMMAND = "bash /root/rober/onboard/scripts/o1_lidar_lifecycle.sh stop"
-DEFAULT_NAV2_MAP_FILE = "/root/rober/onboard/runtime/maps/trashbot_map.yaml"
 DEFAULT_NAV2_START_COMMAND = (
     "bash /root/rober/onboard/scripts/o11_nav2_lifecycle.sh start "
-    f"--map-file {DEFAULT_NAV2_MAP_FILE} "
+    "--map-file /root/rober/onboard/runtime/maps/trashbot_map.yaml "
     "--base-port /dev/ttyS5 --base-baudrate 115200 --command-mode ros "
     "--base-enabled false --lidar-enabled false --lidar-serial-port /dev/ttyACM0 "
-    "--lidar-serial-baudrate 230400 --reuse-existing-scan true "
-    "--static-laser-tf-enabled true"
+    "--lidar-serial-baudrate 230400 --static-laser-tf-enabled true"
 )
 DEFAULT_NAV2_STOP_COMMAND = "bash /root/rober/onboard/scripts/o11_nav2_lifecycle.sh stop"
 DEFAULT_NAV2_STATUS_COMMAND = "bash /root/rober/onboard/scripts/o11_nav2_lifecycle.sh status"
@@ -354,7 +347,6 @@ def normalize_latency_trace(value: Any) -> dict[str, Any] | None:
         "sample_kind": sample_kind,
     }
 
-
 def upper_latency_timing(
     upper_receive_mono_ns: int,
     manual_gate_done_mono_ns: int,
@@ -384,6 +376,317 @@ def upper_latency_timing(
     if first_publish and publish_done:
         timing["cmd_vel_publish_span_ms"] = round((publish_done - first_publish) / 1_000_000, 6)
     return timing
+
+def prewarm_ros_cmd_vel_context(wait_subscription_s: float = 0.6) -> dict[str, Any]:
+    """服务启动时预热 publisher/DDS graph；不发布任何运动或停车帧。"""
+    context = _ensure_ros_cmd_vel_context()
+    if context.get("status") != "ready":
+        context["prewarm_status"] = "unavailable_fail_closed"
+        context["prewarm_subscription_count"] = 0
+        return context
+    publisher = context["publisher"]
+    rclpy = context["rclpy"]
+    node = context["node"]
+    deadline = time.monotonic() + max(float(wait_subscription_s), 0.0)
+    with _ROS_CMD_VEL_LOCK:
+        if context.get("status") != "ready":
+            context["prewarm_status"] = "shutdown_fail_closed"
+            context["prewarm_subscription_count"] = 0
+            return context
+        subscription_count = int(publisher.get_subscription_count())
+    while subscription_count <= 0 and time.monotonic() < deadline:
+        # discovery 只在 startup 等待；正常 keydown hot path 不再承担这段等待。
+        with _ROS_CMD_VEL_LOCK:
+            if context.get("status") != "ready":
+                context["prewarm_status"] = "shutdown_fail_closed"
+                context["prewarm_subscription_count"] = 0
+                return context
+            rclpy.spin_once(node, timeout_sec=min(0.05, max(deadline - time.monotonic(), 0.0)))
+            subscription_count = int(publisher.get_subscription_count())
+    context["prewarm_subscription_count"] = subscription_count
+    context["prewarm_done_mono_ns"] = time.monotonic_ns()
+    context["prewarm_status"] = "ready" if subscription_count > 0 else "degraded_subscription_unproven"
+    return context
+
+
+def shutdown_ros_cmd_vel_context(timeout_s: float = ROS_CMD_VEL_SHUTDOWN_TIMEOUT_S) -> dict[str, Any]:
+    """幂等、有界关闭 rclpy；卡住的 destroy/shutdown 只能留在 daemon worker，不能拖住进程退出。"""
+    # 状态机只允许以下主路径：ready -> shutting_down -> shutdown。
+    # unavailable 也可以进入 shutting_down，以便统一返回而不为缺少 rclpy 建立旁路。
+    # shutdown 是终态；后续调用只返回快照，不重新打开或关闭 context。
+    # shutting_down 且 worker 存活时只报告 in-progress，调用方可选择让进程退出。
+    # worker 超时并不把状态伪装成 shutdown，现场日志因而能区分 clean 与 bounded exit。
+    # 不使用 concurrent.futures 默认 executor，因为 asyncio.run 会等待它的线程结束。
+    # 调用线程只负责状态快照、启动 worker 和 bounded join，不直接进入 rclpy。
+    # 这样 asyncio finally 永远不会在 destroy_node 或 rclpy.shutdown 内无限等待。
+    started_ns = time.monotonic_ns()
+    timeout_s = max(float(timeout_s), 0.0)
+    with _ROS_CMD_VEL_SHUTDOWN_STATE_LOCK:
+        # 已完成 teardown 时复用第一次结果；重复 signal 不得再次 destroy node。
+        existing_thread = _ROS_CMD_VEL_CONTEXT.get("shutdown_thread")
+        if _ROS_CMD_VEL_CONTEXT.get("status") == "shutdown":
+            # terminal snapshot 仍要保留首次 teardown error，重复调用不能把失败洗成成功。
+            # shutdown_completed 只表示 worker 已退出，shutdown_succeeded 才是 clean gate。
+            # process replacement 后才允许重新初始化，当前进程内不做第二次 destroy。
+            existing_error = _ROS_CMD_VEL_CONTEXT.get("shutdown_error")
+            return {
+                "status": "already_shutdown",
+                "shutdown_completed": True,
+                "shutdown_succeeded": existing_error is None,
+                "shutdown_attempts": int(_ROS_CMD_VEL_CONTEXT.get("shutdown_attempts") or 1),
+                "error": existing_error,
+                "elapsed_ms": round((time.monotonic_ns() - started_ns) / 1_000_000, 6),
+            }
+        if isinstance(existing_thread, threading.Thread) and existing_thread.is_alive():
+            # 第二个调用只报告 in-progress，不能再创建另一个 teardown owner。
+            return {
+                "status": "shutdown_in_progress",
+                "shutdown_completed": False,
+                "shutdown_attempts": int(_ROS_CMD_VEL_CONTEXT.get("shutdown_attempts") or 1),
+                "worker_alive": True,
+                "elapsed_ms": round((time.monotonic_ns() - started_ns) / 1_000_000, 6),
+            }
+        attempts = int(_ROS_CMD_VEL_CONTEXT.get("shutdown_attempts") or 0) + 1
+        # rclpy/node 先快照；status 切换后新的 request 会在任何 publish 前 fail-closed。
+        rclpy = _ROS_CMD_VEL_CONTEXT.get("rclpy")
+        node = _ROS_CMD_VEL_CONTEXT.get("node")
+        _ROS_CMD_VEL_CONTEXT.update(
+            {
+                "status": "shutting_down",
+                "shutdown_attempts": attempts,
+                "shutdown_started_mono_ns": started_ns,
+                "shutdown_completed": False,
+            }
+        )
+
+        def teardown_worker() -> None:
+            """所有 rclpy teardown 与 spin/publish 共享同一 owner 锁，禁止重入 executor generator。"""
+            # error 只写结构化 compact 值，不向客户端或日志泄漏任意 traceback。
+            error: dict[str, str] | None = None
+            destroy_attempted = False
+            rclpy_shutdown_attempted = False
+            try:
+                # 必须等最后一次 spin/publish 退出后再 destroy；不能靠捕获 generator 异常继续。
+                with _ROS_CMD_VEL_LOCK:
+                    if node is not None:
+                        # node 先销毁，避免 context shutdown 后 publisher 仍保留半初始化句柄。
+                        destroy_attempted = True
+                        destroy_result = node.destroy_node()
+                        # rclpy 明确返回 false 时等价于 teardown 失败，不能只因线程结束就报 clean。
+                        if destroy_result is False:
+                            raise RuntimeError("rclpy_destroy_node_returned_false")
+                    if rclpy is not None and bool(rclpy.ok()):
+                        # ok=false 说明 context 已由外部收口；此处不重复 shutdown。
+                        rclpy_shutdown_attempted = True
+                        rclpy.shutdown()
+            except Exception as exc:  # noqa: BLE001 - teardown 错误必须可观测，但不能阻塞进程退出。
+                error = compact_error(exc)
+            completed_ns = time.monotonic_ns()
+            with _ROS_CMD_VEL_SHUTDOWN_STATE_LOCK:
+                # 即使 destroy/shutdown 报错也标记 worker 已完成，并把错误留给 systemd/runbook 判定。
+                _ROS_CMD_VEL_CONTEXT.update(
+                    {
+                        "status": "shutdown",
+                        "shutdown_completed": True,
+                        "shutdown_completed_mono_ns": completed_ns,
+                        "destroy_node_attempted": destroy_attempted,
+                        "rclpy_shutdown_attempted": rclpy_shutdown_attempted,
+                        "shutdown_error": error,
+                    }
+                )
+
+        worker = threading.Thread(target=teardown_worker, name="upper-rclpy-shutdown", daemon=True)
+        # thread identity 保存在 context，重复调用才能判断唯一 owner 是否仍活着。
+        _ROS_CMD_VEL_CONTEXT["shutdown_thread"] = worker
+        worker.start()
+    # join 有硬上限；daemon=true 确保超时 worker 不会让 Python interpreter 等待。
+    worker.join(timeout=timeout_s)
+    completed = not worker.is_alive()
+    shutdown_error = _ROS_CMD_VEL_CONTEXT.get("shutdown_error")
+    # timeout、worker error 与 clean completion 三类结果必须分账，供 systemd gate 精确拒绝。
+    # error 不为空时 node/context 可能只关闭了一半，后续请求仍保持终态 fail-closed。
+    succeeded = completed and shutdown_error is None
+    # 返回 local elapsed 只描述本进程 cleanup，不与 systemd 或 PC 时钟相减。
+    return {
+        "status": "shutdown_complete" if succeeded else ("shutdown_failed" if completed else "shutdown_timeout_process_exit_required"),
+        "shutdown_completed": completed,
+        "shutdown_succeeded": succeeded,
+        "shutdown_attempts": attempts,
+        "worker_alive": worker.is_alive(),
+        "elapsed_ms": round((time.monotonic_ns() - started_ns) / 1_000_000, 6),
+        "destroy_node_attempted": bool(_ROS_CMD_VEL_CONTEXT.get("destroy_node_attempted")),
+        "rclpy_shutdown_attempted": bool(_ROS_CMD_VEL_CONTEXT.get("rclpy_shutdown_attempted")),
+        "error": shutdown_error,
+    }
+
+def install_upper_shutdown_signal_handlers(
+    loop: asyncio.AbstractEventLoop,
+    shutdown_event: asyncio.Event,
+) -> list[signal.Signals]:
+    """signal callback 只设置 event；不能在信号路径等待 ROS 锁、runner 或硬件 I/O。"""
+    # asyncio loop 是 server 生命周期唯一 owner，rclpy 初始化时显式关闭其 signal handler。
+    # handler 不直接 cancel task，避免在任意 await 点打断 all-surface stop 合同。
+    # handler 不读全局 ROS context，因此即使 executor 卡住也能立即记录 shutdown 请求。
+    # event 自带幂等语义，SIGTERM 后紧接 SIGINT 仍只触发一条 finally 路径。
+    # 返回安装列表是为了精确移除本函数的副作用，不猜测外部 handler 状态。
+    installed: list[signal.Signals] = []
+
+    def request_shutdown(received_signal: signal.Signals) -> None:
+        # add_signal_handler 会把 callback 调度回 event loop；这里仍禁止 ROS/串口/runner I/O。
+        print(
+            json.dumps(
+                {"event": "upper_robot_api_shutdown_requested", "signal": received_signal.name},
+                ensure_ascii=False,
+            ),
+            flush=True,
+        )
+        shutdown_event.set()
+
+    for handled_signal in (signal.SIGTERM, signal.SIGINT):
+        try:
+            # 两个信号共用同一个 event，连续触发天然幂等。
+            loop.add_signal_handler(handled_signal, request_shutdown, handled_signal)
+            installed.append(handled_signal)
+        except (NotImplementedError, RuntimeError):
+            # 非主线程或不支持 add_signal_handler 的平台只用于离线测试，生产 Linux 必须安装成功。
+            continue
+    return installed
+
+def remove_upper_shutdown_signal_handlers(
+    loop: asyncio.AbstractEventLoop,
+    installed: list[signal.Signals],
+) -> None:
+    """只移除本函数安装的 handler，避免测试或嵌入式调用覆盖外部 owner。"""
+    for handled_signal in installed:
+        try:
+            loop.remove_signal_handler(handled_signal)
+        except (NotImplementedError, RuntimeError):
+            continue
+
+def bounded_manual_hold_stop_for_shutdown(
+    api: UpperRobotApi,
+    *,
+    timeout_s: float = UPPER_RUNNER_CLEANUP_TIMEOUT_S,
+) -> dict[str, Any]:
+    """active hold 在进程退出前最多补一次零速收口；daemon worker 超时不会拖住 systemd stop。"""
+    # 退出期间“有界”不能等价于静默丢弃 active hold 的停车义务。
+    # 因此先按快照决定是否需要 stop，再把可能阻塞的串口/ROS I/O 放进 daemon worker。
+    # worker 复用已有 stop helper，确保 ROS 零速与三种 vendor 零命令的顺序不分叉。
+    # timeout 只限制调用方等待时间；结构化 worker_alive 会保留未完成风险。
+    # 普通无 active hold 的服务退出不产生任何控制面副作用。
+    # 该 helper 只在 shutdown finally 使用，不进入 keydown 到首帧的热路径。
+    state = dict(api._manual_hold_state)
+    # 非 active 请求不发送任何 stop，避免普通只读服务退出产生额外控制帧。
+    if state.get("active") is not True:
+        return {"attempted": False, "completed": True, "reason": "no_active_manual_hold"}
+    holder: dict[str, Any] = {}
+
+    def stop_worker() -> None:
+        try:
+            # 复用既有 all-surface stop 合同，不发明新的 vendor 或 ROS 命令。
+            holder["result"] = api._manual_hold_stop_sync(str(state.get("command_mode") or api.base_command_mode))
+        except Exception as exc:  # noqa: BLE001 - stop 错误必须可观测，process teardown 仍继续。
+            holder["error"] = compact_error(exc)
+
+    worker = threading.Thread(target=stop_worker, name="upper-hold-stop-shutdown", daemon=True)
+    # stop worker 也是 daemon；硬件阻塞时 systemd stop 仍能在预算后退出。
+    worker.start()
+    worker.join(timeout=max(float(timeout_s), 0.0))
+    completed = not worker.is_alive()
+    return {
+        "attempted": True,
+        "completed": completed,
+        "worker_alive": worker.is_alive(),
+        "result": holder.get("result"),
+        "error": holder.get("error") if completed else {"type": "hold_stop_timeout", "message": "zero-stop worker exceeded shutdown budget"},
+    }
+
+async def shutdown_upper_runtime(
+    api: UpperRobotApi,
+    runner: Any | None,
+    *,
+    timeout_s: float = UPPER_RUNNER_CLEANUP_TIMEOUT_S,
+) -> dict[str, Any]:
+    """有界收口 watchdog、aiohttp 与 rclpy；任何一层失败都结构化返回并继续下一层。"""
+    # 收口顺序优先冻结 watchdog，避免它在 finally 中又派生一个并发 stop owner。
+    # active hold 的零速义务随后独立完成，不依赖 watchdog cancel 是否及时响应。
+    # runner 在 ROS node 前关闭，保证 teardown 期间不会再接受新的 manual 请求。
+    # ROS 最后关闭，允许前面的 active-hold stop 复用仍然有效的 publisher。
+    # 每一层错误只降低 completed，不阻止后续层继续释放资源。
+    # 最终 elapsed_ms 使用单机 monotonic clock，只衡量本进程预算执行，不跨机比较。
+    # 这个顺序既保护安全停车，也避免 systemd stop 被任何单一资源永久卡住。
+    # late-writer reconciliation 还要求 ROS worker 无异常完成，不能只凭线程结束宣称成功。
+    # shutdown_succeeded 比 shutdown_completed 更强：前者同时约束完成状态和 error 为空。
+    # runtime gate 在第一个 await 前置位，排队中的 manual 请求不会趁 runner cleanup 前发布首帧。
+    # watchdog 先认领 stop owner，runtime 快照只会为尚未认领的 active hold 补一次零速。
+    started_ns = time.monotonic_ns()
+    timeout_s = max(float(timeout_s), 0.0)
+    # 必须在第一次 await 前关闭 manual 准入，防止 runner cleanup 前的排队请求建立新 hold。
+    # asyncio signal callback 与本赋值由同一 loop 串行执行，因而不需要额外线程锁。
+    # 已在执行且跨 await 的旧请求仍由 runner cleanup 与 ROS shutdown gate 共同收口。
+    # 显式 base stop 保持可用，runtime active-hold stop 也不经过 manual admission gate。
+    api._runtime_shutdown_started = True
+    watchdog_result: dict[str, Any] = {"attempted": False, "completed": True}
+    watchdog_task = api._manual_hold_watchdog_task
+    # active 快照发生在改状态前，决定本次退出是否必须补零速收口。
+    hold_was_active = api._manual_hold_state.get("active") is True
+    # 先冻结状态，让尚未进入 stop 的 watchdog 退出；真正零速收口由下方单 owner worker 完成。
+    api._manual_hold_state = {**api._manual_hold_state, "active": False, "runtime_shutdown_at_ms": now_ms()}
+    if watchdog_task is not None and not watchdog_task.done():
+        # cancel 只终止计时 owner，不直接承担 stop；stop 委托给下方有界 worker。
+        watchdog_result = {"attempted": True, "completed": False}
+        watchdog_task.cancel()
+        try:
+            await asyncio.wait_for(asyncio.shield(watchdog_task), timeout=timeout_s)
+        except asyncio.CancelledError:
+            watchdog_result["completed"] = True
+        except asyncio.TimeoutError:
+            watchdog_result["error"] = "watchdog_cancel_timeout"
+        except Exception as exc:  # noqa: BLE001 - shutdown 必须继续收口其它 owner。
+            watchdog_result["error"] = compact_error(exc)
+        else:
+            watchdog_result["completed"] = True
+    # active 快照只决定是否需要停车；helper 内部再次读取的状态已冻结，避免 watchdog 重复进入。
+    if hold_was_active:
+        # helper 只读取 active 快照；临时恢复 true 不会重启已经取消的 watchdog task。
+        frozen_state = dict(api._manual_hold_state)
+        frozen_state["active"] = True
+        api._manual_hold_state = frozen_state
+        hold_stop_result = bounded_manual_hold_stop_for_shutdown(api, timeout_s=timeout_s)
+        api._manual_hold_state = {**api._manual_hold_state, "active": False}
+    else:
+        hold_stop_result = {"attempted": False, "completed": True, "reason": "no_active_manual_hold"}
+
+    runner_result: dict[str, Any] = {"attempted": runner is not None, "completed": runner is None}
+    if runner is not None:
+        try:
+            # runner cleanup 先停止接收新请求，随后 ROS teardown 才能安全销毁 publisher。
+            await asyncio.wait_for(runner.cleanup(), timeout=timeout_s)
+        except asyncio.TimeoutError:
+            runner_result["error"] = "aiohttp_runner_cleanup_timeout"
+        except Exception as exc:  # noqa: BLE001 - runner 错误不能阻止 ROS teardown。
+            runner_result["error"] = compact_error(exc)
+        else:
+            runner_result["completed"] = True
+
+    # ROS teardown 自己用 daemon worker+bounded join，不能交给 asyncio 默认 executor 拖住 asyncio.run 退出。
+    ros_result = shutdown_ros_cmd_vel_context(timeout_s=timeout_s)
+    # 三个 owner 都完成才叫 clean shutdown；任一超时都保留 incomplete 供 v3 gate 拒绝。
+    completed = bool(
+        watchdog_result.get("completed")
+        and hold_stop_result.get("completed")
+        and runner_result.get("completed")
+        and ros_result.get("shutdown_succeeded")
+    )
+    return {
+        "status": "shutdown_complete" if completed else "shutdown_bounded_with_incomplete_cleanup",
+        "completed": completed,
+        "watchdog": watchdog_result,
+        "active_hold_stop": hold_stop_result,
+        "aiohttp_runner": runner_result,
+        "ros_cmd_vel": ros_result,
+        "elapsed_ms": round((time.monotonic_ns() - started_ns) / 1_000_000, 6),
+    }
 
 
 def proof_flags() -> dict[str, Any]:
@@ -2051,8 +2354,6 @@ def run_nav2_runtime_proof_helper(
     path_goal_x: float,
     path_goal_y: float,
     path_goal_yaw: float,
-    reuse_existing_lidar_lifecycle: bool = False,
-    initialpose_canonical_free_cell_opt_in: bool = False,
 ) -> dict[str, Any]:
     """运行 no-motion AMCL/Nav2 collector；managed runtime 与 initialpose 都必须显式 opt-in。"""
     script_path = Path(__file__).resolve().with_name("o10_amcl_nav2_runtime_proof.py")
@@ -2111,9 +2412,6 @@ def run_nav2_runtime_proof_helper(
         )
         if managed_map_yaml:
             helper_argv.extend(["--managed-map-yaml", managed_map_yaml])
-        if reuse_existing_lidar_lifecycle:
-            # O11 已拥有 LiDAR 时，O10 只能复用当前 lifecycle，禁止再启动第二个 serial driver。
-            helper_argv.append("--reuse-existing-lidar-lifecycle")
     if initialpose_opt_in:
         # 只有 HTTP body 明确 opt-in 时才把定位种子传给 helper，避免默认 refresh 变成写 topic。
         helper_argv.extend(
@@ -2129,9 +2427,6 @@ def run_nav2_runtime_proof_helper(
                 initialpose_frame_id,
             ]
         )
-        if initialpose_canonical_free_cell_opt_in:
-            # initialpose 只能消费 canonical map 可复算 free-cell，不允许 HTTP x/y 直接落地。
-            helper_argv.append("--initialpose-canonical-free-cell-opt-in")
     if path_generation_opt_in:
         # 路径生成同样必须显式 opt-in，默认 refresh 只做只读定位 proof。
         helper_argv.extend(
@@ -2699,28 +2994,6 @@ def command_config_info(env_name: str, command: str | None) -> dict[str, Any]:
     }
 
 
-def command_stdout_preview(stdout: str, *, text_limit: int = 1200, json_limit: int = 12000) -> str:
-    """普通命令只保留短尾部；完整单行 JSON 在受控上限内原样保留。"""
-    # 只提升最后一条完整 JSON 行，避免普通 ROS 日志意外放大 API 响应。
-    # 空行先剔除，避免命令末尾换行让最后一条结构化记录无法识别。
-    nonempty_lines = [line for line in stdout.splitlines() if line.strip()]
-    if nonempty_lines:
-        # strip 仅删除行边界空白，不改动 JSON 字符串内部的证据内容。
-        candidate = nonempty_lines[-1].strip()
-        if len(candidate) <= json_limit:
-            # 必须真实解析成功才扩大预览，不能只凭首尾大括号猜测日志类型。
-            try:
-                parsed = json.loads(candidate)
-            except json.JSONDecodeError:
-                # 解析失败仍走普通短预览，防止半截 JSON 被调用方误当作完整事实。
-                parsed = None
-            # O11/O10 的结构化回包都是 JSON object；数组或标量不扩大预览窗口。
-            if isinstance(parsed, dict):
-                return candidate
-    # 普通日志保留既有 1200 字符边界，避免本修复影响其它命令响应体积。
-    return stdout[-text_limit:]
-
-
 def run_configured_command(command: str | None, timeout_s: float = 12.0) -> dict[str, Any]:
     """只执行显式配置的非 shell 命令；默认 dry-run，保持 HTTP 合同先行。"""
     if not command or not command.strip():
@@ -2752,9 +3025,7 @@ def run_configured_command(command: str | None, timeout_s: float = 12.0) -> dict
         "ok": completed.returncode == 0,
         "argv": argv,
         "returncode": completed.returncode,
-        # lifecycle status 是单行结构化 JSON，字段扩展后可能超过普通日志预览上限；
-        # 若仍只截取尾部，JSON 起始括号会丢失，Upper 就无法证明 current owner 与串口归属。
-        "stdout_preview": command_stdout_preview(completed.stdout),
+        "stdout_preview": completed.stdout[-1200:],
         "stderr_preview": completed.stderr[-1200:],
     }
 
@@ -3458,25 +3729,18 @@ def normalize_strict_nav2_start_request(
             "type": "base_must_be_disabled",
             "message": "base_enabled must be false",
         }
-    # LiDAR 与 scan 复用位都必须是 JSON bool，拒绝 auto、0/1 与字符串造成模式歧义。
-    lidar_enabled = body.get("lidar_enabled")
-    reuse_existing_scan = body.get("reuse_existing_scan")
-    if type(lidar_enabled) is not bool or type(reuse_existing_scan) is not bool:
+    # LiDAR 开关也要求精确 false，因为本轮仅能复用已有 scan holder。
+    if body.get("lidar_enabled") is not False:
+        # 本轮复用既有 `/scan`；start 不得再打开新的 LiDAR serial holder。
         return None, {
-            "type": "invalid_nav2_sensor_mode_types",
-            "message": "lidar_enabled and reuse_existing_scan must be JSON booleans",
+            "type": "lidar_must_be_disabled",
+            "message": "lidar_enabled must be false",
         }
-    # 仅保留 legacy 外部 scan 与 sensor-owned 两个互斥模式；其余组合全部 fail closed。
-    legacy_existing_scan = lidar_enabled is False and reuse_existing_scan is True
-    sensor_owned_scan = lidar_enabled is True and reuse_existing_scan is False
-    if not (legacy_existing_scan or sensor_owned_scan):
+    # 只有显式声明复用 scan 才能与 lidar_enabled=false 形成无歧义合同。
+    if body.get("reuse_existing_scan") is not True:
         return None, {
-            "type": "invalid_nav2_sensor_mode",
-            "message": "allowed modes are lidar=false/reuse=true or lidar=true/reuse=false",
-            "allowed_modes": [
-                {"lidar_enabled": False, "reuse_existing_scan": True},
-                {"lidar_enabled": True, "reuse_existing_scan": False},
-            ],
+            "type": "existing_scan_reuse_required",
+            "message": "reuse_existing_scan must be true",
         }
     # bool 是 int 的子类，必须先单独拦截，避免 true 被当成 1 秒。
     raw_timeout = body.get("timeout_s")
@@ -3500,11 +3764,10 @@ def normalize_strict_nav2_start_request(
         "strict_no_motion": True,
         # 底盘禁用值在规范化后始终为布尔 false。
         "base_enabled": False,
-        # LiDAR 与复用位来自已经验证的互斥安全模式，不做服务端隐式翻转。
-        "lidar_enabled": lidar_enabled,
-        "reuse_existing_scan": reuse_existing_scan,
-        # 模式名用于后置 holder/publisher 语义验收，避免只看两个裸布尔值。
-        "sensor_mode": "sensor_owned_scan" if sensor_owned_scan else "legacy_existing_scan",
+        # LiDAR 禁用值在规范化后始终为布尔 false。
+        "lidar_enabled": False,
+        # scan 复用标志在规范化后始终为布尔 true。
+        "reuse_existing_scan": True,
         # timeout 统一为浮点秒，便于直接传给 subprocess 运行器。
         "timeout_s": timeout_s,
     }, None
@@ -3532,23 +3795,15 @@ def replace_nav2_lifecycle_flag(argv: list[str], flag: str, value: str) -> list[
     return [*result, flag, value]
 
 
-def strict_no_motion_nav2_start_command(
-    command: str | None,
-    contract: dict[str, Any],
-) -> tuple[str | None, dict[str, Any] | None]:
-    """从受管 o11 配置构造 canonical no-motion argv；body 只能选择已验证的传感器模式。"""
+def strict_no_motion_nav2_start_command(command: str | None) -> tuple[str | None, dict[str, Any] | None]:
+    """从受管 o11 start 配置构造固定 false/false argv，不允许 HTTP body 注入命令。"""
     # 先审计原命令的脚本路径、action、串口与禁止 token。
     argv, error = validate_nav2_lifecycle_command(command, "start")
     if error is not None:
         return None, error
-    # 底盘永远重写为 false；LiDAR 只取规范化合同中的精确 bool，不接受任意字符串。
+    # 即使环境变量仍保留历史 auto/true，也要在执行前重写成唯一 false/false 组合。
     argv = replace_nav2_lifecycle_flag(argv, "--base-enabled", "false")
-    lidar_value = "true" if contract.get("lidar_enabled") is True else "false"
-    reuse_value = "true" if contract.get("reuse_existing_scan") is True else "false"
-    argv = replace_nav2_lifecycle_flag(argv, "--lidar-enabled", lidar_value)
-    argv = replace_nav2_lifecycle_flag(argv, "--reuse-existing-scan", reuse_value)
-    # strict start 固定 canonical map，不能由部署环境中的旧命令切换到未知地图。
-    argv = replace_nav2_lifecycle_flag(argv, "--map-file", DEFAULT_NAV2_MAP_FILE)
+    argv = replace_nav2_lifecycle_flag(argv, "--lidar-enabled", "false")
     # shlex.join 只序列化已验证 token，不接收 body 中的任何字符串。
     effective_command = shlex.join(argv)
     # 重建后再跑一次同一白名单，防止参数重写破坏脚本合同。
@@ -3558,14 +3813,9 @@ def strict_no_motion_nav2_start_command(
     # 底盘有效值必须从最终 argv 反解，不仅信任重写函数。
     if _extract_flag_value(effective_argv, "--base-enabled") != "false":
         return None, {"type": "unsafe_effective_base_flag", "message": "effective base_enabled must be false"}
-    # LiDAR 与复用位必须逐项等于已验证模式，避免重复 flag 或配置默认值漂移。
-    if _extract_flag_value(effective_argv, "--lidar-enabled") != lidar_value:
-        return None, {"type": "unsafe_effective_lidar_flag", "message": "effective lidar_enabled mismatch"}
-    if _extract_flag_value(effective_argv, "--reuse-existing-scan") != reuse_value:
-        return None, {"type": "unsafe_effective_scan_reuse_flag", "message": "effective scan reuse mismatch"}
-    # map 路径也从最终 argv 反解，确保本轮不会消费非 canonical map。
-    if _extract_flag_value(effective_argv, "--map-file") != DEFAULT_NAV2_MAP_FILE:
-        return None, {"type": "unsafe_effective_map_file", "message": "effective map file must be canonical"}
+    # LiDAR 有效值也必须从最终 argv 反解，确保没有重复 flag 漂移。
+    if _extract_flag_value(effective_argv, "--lidar-enabled") != "false":
+        return None, {"type": "unsafe_effective_lidar_flag", "message": "effective lidar_enabled must be false"}
     return effective_command, None
 
 
@@ -3607,7 +3857,7 @@ def validate_nav2_lifecycle_command(command: str | None, action: str) -> tuple[l
     lidar_port = _extract_flag_value(argv, "--lidar-serial-port")
     if lidar_port and not _is_lidar_serial_path(lidar_port):
         return [], {"type": "unsafe_lidar_serial_path", "message": f"refusing unexpected LiDAR serial path: {lidar_port}"}
-    for bool_flag in ("--base-enabled", "--lidar-enabled", "--reuse-existing-scan", "--static-laser-tf-enabled"):
+    for bool_flag in ("--base-enabled", "--lidar-enabled", "--static-laser-tf-enabled"):
         bool_value = _extract_flag_value(argv, bool_flag)
         if bool_value and bool_value not in ("true", "false", "auto"):
             return [], {"type": "unsupported_nav2_lifecycle_flag", "message": f"{bool_flag} must be true, false, or auto"}
@@ -3645,11 +3895,6 @@ def parse_nav2_lifecycle_status_result(command_result: dict[str, Any]) -> dict[s
     running = payload.get("running") if payload else "not_loaded"
     state = payload.get("state") if payload else "not_loaded"
     message = payload.get("message") if payload else command_result.get("reason") or "not_loaded"
-    # 数值型 holder/publisher 事实必须保持整数；bool 虽是 int 子类，但不能冒充计数。
-    def payload_count(key: str) -> int | str:
-        value = payload.get(key) if payload else None
-        return value if isinstance(value, int) and not isinstance(value, bool) else "not_loaded"
-
     return {
         "schema": "trashbot.upper_robot_api.v1.nav2_lifecycle_manager_status",
         "status": "loaded" if payload else "not_loaded",
@@ -3657,35 +3902,9 @@ def parse_nav2_lifecycle_status_result(command_result: dict[str, Any]) -> dict[s
         "state": str(state or "not_loaded"),
         "message": str(message or "not_loaded"),
         "pid": payload.get("pid") if payload else None,
-        "start_owned_process_created": (
-            payload.get("start_owned_process_created")
-            if payload and isinstance(payload.get("start_owned_process_created"), bool)
-            else "not_loaded"
-        ),
         # start 语义验收必须读取脚本最终生效值，不能只相信请求或配置 argv。
         "base_enabled": str(payload.get("base_enabled")) if payload and payload.get("base_enabled") is not None else "not_loaded",
         "lidar_enabled": str(payload.get("lidar_enabled")) if payload and payload.get("lidar_enabled") is not None else "not_loaded",
-        "reuse_existing_scan": (
-            str(payload.get("reuse_existing_scan"))
-            if payload and payload.get("reuse_existing_scan") is not None
-            else "not_loaded"
-        ),
-        # sensor mode 与 ownership 来自 O11 当前 status，不从请求体或历史 artifact 推导。
-        "sensor_mode": str(payload.get("sensor_mode") or "not_loaded") if payload else "not_loaded",
-        "sensor_ownership": payload.get("sensor_ownership") if payload and isinstance(payload.get("sensor_ownership"), dict) else {},
-        "base_uart_pre_holder_pids": payload.get("base_uart_pre_holder_pids") if payload and isinstance(payload.get("base_uart_pre_holder_pids"), list) else [],
-        "base_uart_post_holder_pids": payload.get("base_uart_post_holder_pids") if payload and isinstance(payload.get("base_uart_post_holder_pids"), list) else [],
-        "base_uart_new_open_count": payload_count("base_uart_new_open_count"),
-        "lidar_serial_pre_holder_pids": payload.get("lidar_serial_pre_holder_pids") if payload and isinstance(payload.get("lidar_serial_pre_holder_pids"), list) else [],
-        "lidar_serial_post_holder_pids": payload.get("lidar_serial_post_holder_pids") if payload and isinstance(payload.get("lidar_serial_post_holder_pids"), list) else [],
-        "lidar_serial_new_open_count": payload_count("lidar_serial_new_open_count"),
-        "lidar_holder_owned": payload.get("lidar_holder_owned") if payload and isinstance(payload.get("lidar_holder_owned"), bool) else "not_loaded",
-        "scan_publisher_pre_count": payload_count("scan_publisher_pre_count"),
-        "scan_publisher_post_count": payload_count("scan_publisher_post_count"),
-        "scan_publisher_owned": payload.get("scan_publisher_owned") if payload and isinstance(payload.get("scan_publisher_owned"), bool) else "not_loaded",
-        "physical_motion": payload.get("physical_motion") if payload and isinstance(payload.get("physical_motion"), bool) else "not_loaded",
-        "broad_kill_used": payload.get("broad_kill_used") if payload and isinstance(payload.get("broad_kill_used"), bool) else "not_loaded",
-        "map_identity": payload.get("map_identity") if payload and isinstance(payload.get("map_identity"), dict) else {},
         "motion_requires_explicit_goal_execute": (
             payload.get("motion_requires_explicit_goal_execute")
             if payload and isinstance(payload.get("motion_requires_explicit_goal_execute"), bool)
@@ -7706,149 +7925,6 @@ def _ensure_ros_cmd_vel_context() -> dict[str, Any]:
         return _ROS_CMD_VEL_CONTEXT
 
 
-def shutdown_ros_cmd_vel_context(timeout_s: float = ROS_CMD_VEL_SHUTDOWN_TIMEOUT_S) -> dict[str, Any]:
-    """幂等、有界关闭 rclpy；卡住的 destroy/shutdown 只能留在 daemon worker，不能拖住进程退出。"""
-    # 状态机只允许以下主路径：ready -> shutting_down -> shutdown。
-    # unavailable 也可以进入 shutting_down，以便统一返回而不为缺少 rclpy 建立旁路。
-    # shutdown 是终态；后续调用只返回快照，不重新打开或关闭 context。
-    # shutting_down 且 worker 存活时只报告 in-progress，调用方可选择让进程退出。
-    # worker 超时并不把状态伪装成 shutdown，现场日志因而能区分 clean 与 bounded exit。
-    # 不使用 concurrent.futures 默认 executor，因为 asyncio.run 会等待它的线程结束。
-    # 调用线程只负责状态快照、启动 worker 和 bounded join，不直接进入 rclpy。
-    # 这样 asyncio finally 永远不会在 destroy_node 或 rclpy.shutdown 内无限等待。
-    started_ns = time.monotonic_ns()
-    timeout_s = max(float(timeout_s), 0.0)
-    with _ROS_CMD_VEL_SHUTDOWN_STATE_LOCK:
-        # 已完成 teardown 时复用第一次结果；重复 signal 不得再次 destroy node。
-        existing_thread = _ROS_CMD_VEL_CONTEXT.get("shutdown_thread")
-        if _ROS_CMD_VEL_CONTEXT.get("status") == "shutdown":
-            # terminal snapshot 仍要保留首次 teardown error，重复调用不能把失败洗成成功。
-            # shutdown_completed 只表示 worker 已退出，shutdown_succeeded 才是 clean gate。
-            # process replacement 后才允许重新初始化，当前进程内不做第二次 destroy。
-            existing_error = _ROS_CMD_VEL_CONTEXT.get("shutdown_error")
-            return {
-                "status": "already_shutdown",
-                "shutdown_completed": True,
-                "shutdown_succeeded": existing_error is None,
-                "shutdown_attempts": int(_ROS_CMD_VEL_CONTEXT.get("shutdown_attempts") or 1),
-                "error": existing_error,
-                "elapsed_ms": round((time.monotonic_ns() - started_ns) / 1_000_000, 6),
-            }
-        if isinstance(existing_thread, threading.Thread) and existing_thread.is_alive():
-            # 第二个调用只报告 in-progress，不能再创建另一个 teardown owner。
-            return {
-                "status": "shutdown_in_progress",
-                "shutdown_completed": False,
-                "shutdown_attempts": int(_ROS_CMD_VEL_CONTEXT.get("shutdown_attempts") or 1),
-                "worker_alive": True,
-                "elapsed_ms": round((time.monotonic_ns() - started_ns) / 1_000_000, 6),
-            }
-        attempts = int(_ROS_CMD_VEL_CONTEXT.get("shutdown_attempts") or 0) + 1
-        # rclpy/node 先快照；status 切换后新的 request 会在任何 publish 前 fail-closed。
-        rclpy = _ROS_CMD_VEL_CONTEXT.get("rclpy")
-        node = _ROS_CMD_VEL_CONTEXT.get("node")
-        _ROS_CMD_VEL_CONTEXT.update(
-            {
-                "status": "shutting_down",
-                "shutdown_attempts": attempts,
-                "shutdown_started_mono_ns": started_ns,
-                "shutdown_completed": False,
-            }
-        )
-
-        def teardown_worker() -> None:
-            """所有 rclpy teardown 与 spin/publish 共享同一 owner 锁，禁止重入 executor generator。"""
-            # error 只写结构化 compact 值，不向客户端或日志泄漏任意 traceback。
-            error: dict[str, str] | None = None
-            destroy_attempted = False
-            rclpy_shutdown_attempted = False
-            try:
-                # 必须等最后一次 spin/publish 退出后再 destroy；不能靠捕获 generator 异常继续。
-                with _ROS_CMD_VEL_LOCK:
-                    if node is not None:
-                        # node 先销毁，避免 context shutdown 后 publisher 仍保留半初始化句柄。
-                        destroy_attempted = True
-                        destroy_result = node.destroy_node()
-                        # rclpy 明确返回 false 时等价于 teardown 失败，不能只因线程结束就报 clean。
-                        if destroy_result is False:
-                            raise RuntimeError("rclpy_destroy_node_returned_false")
-                    if rclpy is not None and bool(rclpy.ok()):
-                        # ok=false 说明 context 已由外部收口；此处不重复 shutdown。
-                        rclpy_shutdown_attempted = True
-                        rclpy.shutdown()
-            except Exception as exc:  # noqa: BLE001 - teardown 错误必须可观测，但不能阻塞进程退出。
-                error = compact_error(exc)
-            completed_ns = time.monotonic_ns()
-            with _ROS_CMD_VEL_SHUTDOWN_STATE_LOCK:
-                # 即使 destroy/shutdown 报错也标记 worker 已完成，并把错误留给 systemd/runbook 判定。
-                _ROS_CMD_VEL_CONTEXT.update(
-                    {
-                        "status": "shutdown",
-                        "shutdown_completed": True,
-                        "shutdown_completed_mono_ns": completed_ns,
-                        "destroy_node_attempted": destroy_attempted,
-                        "rclpy_shutdown_attempted": rclpy_shutdown_attempted,
-                        "shutdown_error": error,
-                    }
-                )
-
-        worker = threading.Thread(target=teardown_worker, name="upper-rclpy-shutdown", daemon=True)
-        # thread identity 保存在 context，重复调用才能判断唯一 owner 是否仍活着。
-        _ROS_CMD_VEL_CONTEXT["shutdown_thread"] = worker
-        worker.start()
-    # join 有硬上限；daemon=true 确保超时 worker 不会让 Python interpreter 等待。
-    worker.join(timeout=timeout_s)
-    completed = not worker.is_alive()
-    shutdown_error = _ROS_CMD_VEL_CONTEXT.get("shutdown_error")
-    # timeout、worker error 与 clean completion 三类结果必须分账，供 systemd gate 精确拒绝。
-    # error 不为空时 node/context 可能只关闭了一半，后续请求仍保持终态 fail-closed。
-    succeeded = completed and shutdown_error is None
-    # 返回 local elapsed 只描述本进程 cleanup，不与 systemd 或 PC 时钟相减。
-    return {
-        "status": "shutdown_complete" if succeeded else ("shutdown_failed" if completed else "shutdown_timeout_process_exit_required"),
-        "shutdown_completed": completed,
-        "shutdown_succeeded": succeeded,
-        "shutdown_attempts": attempts,
-        "worker_alive": worker.is_alive(),
-        "elapsed_ms": round((time.monotonic_ns() - started_ns) / 1_000_000, 6),
-        "destroy_node_attempted": bool(_ROS_CMD_VEL_CONTEXT.get("destroy_node_attempted")),
-        "rclpy_shutdown_attempted": bool(_ROS_CMD_VEL_CONTEXT.get("rclpy_shutdown_attempted")),
-        "error": shutdown_error,
-    }
-
-
-def prewarm_ros_cmd_vel_context(wait_subscription_s: float = 0.6) -> dict[str, Any]:
-    """服务启动时预热 publisher/DDS graph；不发布任何运动或停车帧。"""
-    context = _ensure_ros_cmd_vel_context()
-    if context.get("status") != "ready":
-        context["prewarm_status"] = "unavailable_fail_closed"
-        context["prewarm_subscription_count"] = 0
-        return context
-    publisher = context["publisher"]
-    rclpy = context["rclpy"]
-    node = context["node"]
-    deadline = time.monotonic() + max(float(wait_subscription_s), 0.0)
-    with _ROS_CMD_VEL_LOCK:
-        if context.get("status") != "ready":
-            context["prewarm_status"] = "shutdown_fail_closed"
-            context["prewarm_subscription_count"] = 0
-            return context
-        subscription_count = int(publisher.get_subscription_count())
-    while subscription_count <= 0 and time.monotonic() < deadline:
-        # discovery 只在 startup 等待；正常 keydown hot path 不再承担这段等待。
-        with _ROS_CMD_VEL_LOCK:
-            if context.get("status") != "ready":
-                context["prewarm_status"] = "shutdown_fail_closed"
-                context["prewarm_subscription_count"] = 0
-                return context
-            rclpy.spin_once(node, timeout_sec=min(0.05, max(deadline - time.monotonic(), 0.0)))
-            subscription_count = int(publisher.get_subscription_count())
-    context["prewarm_subscription_count"] = subscription_count
-    context["prewarm_done_mono_ns"] = time.monotonic_ns()
-    context["prewarm_status"] = "ready" if subscription_count > 0 else "degraded_subscription_unproven"
-    return context
-
-
 def publish_ros_cmd_vel_inprocess_burst(
     linear_x: float,
     angular_z: float,
@@ -10374,67 +10450,16 @@ class UpperRobotApi:
             4.0,
             30.0,
         )
-        managed_runtime_opt_in = bool(body.get("managed_runtime_opt_in") is True)
-        initialpose_opt_in = bool(body.get("initialpose_opt_in") is True)
-        # O11-owned runtime 下这两个门禁必须显式为 true，缺失时 helper 仍会执行只读/NO-GO 路径。
-        reuse_existing_lidar_lifecycle = bool(body.get("reuse_existing_lidar_lifecycle") is True)
-        initialpose_canonical_free_cell_opt_in = bool(
-            body.get("initialpose_canonical_free_cell_opt_in") is True
-        )
-        proof_contract_errors: list[str] = []
-        if managed_runtime_opt_in and not reuse_existing_lidar_lifecycle:
-            # managed proof 与 O11 同窗时只能复用既有 LiDAR，缺 flag 必须在创建子进程前拒绝。
-            proof_contract_errors.append("reuse_existing_lidar_lifecycle_required_for_managed_runtime")
-        if initialpose_opt_in and not initialpose_canonical_free_cell_opt_in:
-            # initialpose 写 topic 前必须绑定 canonical free-cell 审计，禁止回退请求中的任意坐标。
-            proof_contract_errors.append("initialpose_canonical_free_cell_opt_in_required")
-        if proof_contract_errors:
-            return software_guard_payload(
-                schema_suffix="nav2_runtime_proof_refresh_result",
-                action="nav2_proof_refresh",
-                endpoint=ROUTE_PATHS["nav2_proof_refresh"],
-                artifact=nav2_lifecycle_artifact_info(self.nav2_lifecycle_artifact_path),
-                extra={
-                    "status": "blocked_proof_request_contract",
-                    "proof_state": "blocked_proof_request_contract",
-                    "evidence_type": "blocked_with_root_cause",
-                    "failure_reason": proof_contract_errors[0],
-                    "root_causes": [
-                        {"layer": "proof_request_contract", "reason": reason}
-                        for reason in proof_contract_errors
-                    ],
-                    "blockers": proof_contract_errors,
-                    # invocation_count=0 是请求门禁证据，不能用旧 latest artifact 覆盖。
-                    "managed_runtime_opt_in": managed_runtime_opt_in,
-                    "reuse_existing_lidar_lifecycle": reuse_existing_lidar_lifecycle,
-                    "initialpose_opt_in": initialpose_opt_in,
-                    "initialpose_canonical_free_cell_opt_in": initialpose_canonical_free_cell_opt_in,
-                    "helper_invocation_count": 0,
-                    "sends_motion_commands": False,
-                    "publishes_cmd_vel": False,
-                    "calls_base_manual": False,
-                    "uses_base_uart": False,
-                    "robot_control_executed": False,
-                    "safe_to_control": False,
-                    "delivery_success": False,
-                    "hil_pass": False,
-                    "transition_to_proven": [
-                        # 修复动作只补 ownership/canonical opt-in，不扩大运动或控制权限。
-                        "set reuse_existing_lidar_lifecycle=true when managed_runtime_opt_in=true",
-                        "set initialpose_canonical_free_cell_opt_in=true when initialpose_opt_in=true",
-                    ],
-                },
-            )
         command_result = await asyncio.to_thread(
             run_nav2_runtime_proof_helper,
             artifact_path=self.nav2_lifecycle_artifact_path,
             map_proof_path=self.map_lifecycle_proof_artifact_path,
             map_artifact_dir=self.map_artifact_dir,
             timeout_s=timeout_s,
-            managed_runtime_opt_in=managed_runtime_opt_in,
+            managed_runtime_opt_in=bool(body.get("managed_runtime_opt_in") is True),
             managed_timeout_s=clamp_float(body.get("managed_timeout_s"), timeout_s, 4.0, 45.0),
             managed_map_yaml=str(body.get("managed_map_yaml") or "")[:400],
-            initialpose_opt_in=initialpose_opt_in,
+            initialpose_opt_in=bool(body.get("initialpose_opt_in") is True),
             initialpose_x=clamp_float(body.get("initialpose_x"), 0.0, -1000.0, 1000.0),
             initialpose_y=clamp_float(body.get("initialpose_y"), 0.0, -1000.0, 1000.0),
             initialpose_yaw=clamp_float(body.get("initialpose_yaw"), 0.0, -6.283185307179586, 6.283185307179586),
@@ -10443,11 +10468,8 @@ class UpperRobotApi:
             path_generation_timeout_s=clamp_float(body.get("path_generation_timeout_s"), timeout_s, 4.0, 45.0),
             path_goal_frame_id=str(body.get("path_goal_frame_id") or "map")[:80],
             path_goal_x=clamp_float(body.get("path_goal_x"), 0.8, -1000.0, 1000.0),
-            # 固定短路径终点与已审计 route 合同一致，避免请求省略 y 时退回旧坐标。
-            path_goal_y=clamp_float(body.get("path_goal_y"), 0.25, -1000.0, 1000.0),
+            path_goal_y=clamp_float(body.get("path_goal_y"), 0.0, -1000.0, 1000.0),
             path_goal_yaw=clamp_float(body.get("path_goal_yaw"), 0.0, -6.283185307179586, 6.283185307179586),
-            reuse_existing_lidar_lifecycle=reuse_existing_lidar_lifecycle,
-            initialpose_canonical_free_cell_opt_in=initialpose_canonical_free_cell_opt_in,
         )
         http_status, latest = self.nav2_proof_latest()
         proof = latest.get("latest_result", {}).get("proof") if isinstance(latest.get("latest_result"), dict) else {}
@@ -10470,18 +10492,15 @@ class UpperRobotApi:
                 "status": "refreshed" if evidence_type == "robot_runtime_material" else "blocked_with_root_cause",
                 "proof_state": proof_status,
                 "evidence_type": evidence_type,
-                "managed_runtime_opt_in": managed_runtime_opt_in,
-                "reuse_existing_lidar_lifecycle": reuse_existing_lidar_lifecycle,
+                "managed_runtime_opt_in": bool(body.get("managed_runtime_opt_in") is True),
                 "managed_timeout_s": clamp_float(body.get("managed_timeout_s"), timeout_s, 4.0, 45.0),
                 "managed_map_yaml": str(body.get("managed_map_yaml") or "")[:400],
-                "initialpose_opt_in": initialpose_opt_in,
-                "initialpose_canonical_free_cell_opt_in": initialpose_canonical_free_cell_opt_in,
+                "initialpose_opt_in": bool(body.get("initialpose_opt_in") is True),
                 "path_generation_opt_in": bool(body.get("path_generation_opt_in") is True),
                 "path_generation_timeout_s": clamp_float(body.get("path_generation_timeout_s"), timeout_s, 4.0, 45.0),
                 "path_goal_frame_id": str(body.get("path_goal_frame_id") or "map")[:80],
                 "path_goal_x": clamp_float(body.get("path_goal_x"), 0.8, -1000.0, 1000.0),
-                # readback 必须回显实际采用的固定 y，便于冻结请求与 helper argv 对照。
-                "path_goal_y": clamp_float(body.get("path_goal_y"), 0.25, -1000.0, 1000.0),
+                "path_goal_y": clamp_float(body.get("path_goal_y"), 0.0, -1000.0, 1000.0),
                 "path_goal_yaw": clamp_float(body.get("path_goal_yaw"), 0.0, -6.283185307179586, 6.283185307179586),
                 "latest_readback_http_status": http_status,
                 "latest_result": latest.get("latest_result"),
@@ -10496,7 +10515,7 @@ class UpperRobotApi:
                 "publishes_cmd_vel": False,
                 "calls_base_manual": False,
                 "sends_base_motion_commands": False,
-                "starts_ros2": managed_runtime_opt_in,
+                "starts_ros2": bool(body.get("managed_runtime_opt_in") is True),
                 "starts_nav2": managed_runtime_started,
                 "robot_control_executed": False,
                 "safe_to_control": False,
@@ -10516,7 +10535,7 @@ class UpperRobotApi:
                 "controller_server_active": bool(proof.get("controller_server_active")) if isinstance(proof, dict) else False,
                 "controller_server_requested": bool(proof.get("controller_server_requested")) if isinstance(proof, dict) else False,
                 "planner_readiness_summary": proof.get("planner_readiness_summary") if isinstance(proof, dict) else None,
-                "read_only_existing_ros_graph": not managed_runtime_opt_in,
+                "read_only_existing_ros_graph": bool(body.get("managed_runtime_opt_in") is not True),
                 "blocked_commands_not_sent": ["T=1", "T=13", "T=130", "T=131", "/cmd_vel", "/api/base/manual"],
                 "transition_to_proven": [
                     "managed runtime or existing graph keeps map_server/amcl active without /dev/ttyS5",
@@ -11373,26 +11392,8 @@ class UpperRobotApi:
     # 必须要求精确字段集，否则调用方无法知道哪些字段被忽略。
     # 必须要求 strict_no_motion 为布尔 true，不接受 truthy 替代值。
     # 必须要求 base_enabled 为布尔 false，防止 auto 意外打开 UART。
-    # LiDAR 与 scan 复用只接受 legacy false/true 或 sensor-owned true/false。
-    # legacy 的合法性只表示请求可执行，实际仍需已有 `/scan` 才能由 O11 返回成功。
-    # sensor-owned 的合法性只表示允许尝试，不能跳过串口 holder 与 publisher 后置验收。
-    # 两个模式共享 canonical map，避免同一 endpoint 因环境变量读取不同地图。
-    # sensor_mode 是服务端派生字段，客户端不能自行提交并影响分支。
-    # O11 status 是 effective truth；请求值与最终 argv 只能作为交叉核对材料。
-    # base UART 只看 pre/post holder 差集，现场既有 holder 不等于本轮打开。
-    # LiDAR holder 必须是 post 新增且 PGID 归属 O11，单纯端口忙不能判 owned。
-    # `/scan` publisher 必须当前可见，历史 artifact 或 topic name 不能替代 publisher count。
-    # publisher ownership 依赖 start 前零 publisher、start 后新增 publisher 与 owned holder 同时成立。
-    # physical_motion=false 是 O11 status 明示事实，不从“未发送 goal”一句话间接推导。
-    # broad_kill_used=false 防止 cleanup 以扫描式杀进程换取表面 stopped。
-    # start command stdout 区分“当前请求创建进程”和“请求前已有 owner 冲突”。
-    # 明确未创建 current owner 时禁止自动 stop，避免误杀前一请求的仍用 runtime。
-    # timeout 或不可解析 stdout 仍保守执行 owned cleanup，因为子进程可能已经落地。
-    # cleanup 成功只关闭安全尾巴，不会把 semantic failure 改写为 start success。
-    # Upper 回包保留 holder/publisher 原始计数，调用方不得用 HTTP 状态码覆盖这些字段。
-    # O10 managed proof 必须复用 O11 LiDAR，避免同一 `/dev/ttyACM0` 出现第二个 driver。
-    # O10 initialpose 必须绑定 canonical free-cell，HTTP x/y 不能直接绕过地图审计。
-    # 以上所有门禁仍固定 no-motion，不授予 NavigateToPose、cmd_vel 或 manual 权限。
+    # 必须要求 lidar_enabled 为布尔 false，防止新建串口 holder。
+    # 必须要求 reuse_existing_scan 为 true，明确本轮依赖已有 `/scan`。
     # timeout 必须有限且在安全窗口内，避免 worker 被异常占用。
     # timeout 不允许静默 clamp，否则客户端会误以为原值已生效。
     # body 不得参与 shell 拼接，从源头切断路径与参数注入。
@@ -11407,13 +11408,12 @@ class UpperRobotApi:
     # start returncode=0 只是一个输入，不得直接推导语义成功。
     # start 后必须独立读回 lifecycle running，避免接受已退出进程。
     # start 后必须读回 base_enabled=false，避免只相信命令行外观。
-    # start 后必须读回 lidar/reuse 生效值，确认服务没有改变请求模式。
-    # sensor-owned 成功还必须证明 owned holder/current publisher 与 base UART zero-open。
+    # start 后必须读回 lidar_enabled=false，确认服务实际生效值。
     # 任一语义失败都必须回收本次 o11 可能留下的 owned 进程组。
     # 语义成功时不自动 stop，因为后续 Algorithm proof 需要 persistent lifecycle。
     # cleanup 仅能通过 o11 stop，不允许按进程名扫描式杀进程。
     # cleanup 不得发送底盘 stop，因为本合同没有打开底盘 UART。
-    # cleanup 不得另开 LiDAR 串口；sensor-owned holder 只能随 O11 owned process group 回收。
+    # cleanup 不得打开 LiDAR 串口，因为既有 scan holder 的归属在本 API 之外。
     # stop 必须同时验收命令回包与独立 status readback。
     # stop 只要任一 stopped 观测未成立，即使 HTTP 200 也必须 NO-GO。
     # root_causes 必须标注 request、config、runtime 或 cleanup 层，便于精确路由修复。
@@ -11502,7 +11502,7 @@ class UpperRobotApi:
                     },
                 )
 
-            effective_command, command_error = strict_no_motion_nav2_start_command(self.nav2_start_command, contract)
+            effective_command, command_error = strict_no_motion_nav2_start_command(self.nav2_start_command)
             if command_error is not None or effective_command is None:
                 # 配置命令不在 o11 白名单时同样禁止执行，不能退回默认 shell 或直接 ros2 launch。
                 command_result = {
@@ -11556,14 +11556,12 @@ class UpperRobotApi:
                     },
                 )
 
-            # start 只执行代码生成的 base=false 与已验证传感器模式；body 永远不能携带路径或 shell。
+            # start 只执行代码生成的 false/false argv；请求体永远不能携带路径或 shell 片段。
             command_result = run_nav2_lifecycle_command(
                 effective_command,
                 "start",
                 timeout_s=float(contract["timeout_s"]),
             )
-            # start 自身的结构化 stdout 用于区分“本次未创建进程的冲突”和“可能已创建需回收的进程”。
-            start_command_status = parse_nav2_lifecycle_status_result(command_result)
             nav2_lifecycle_status = self.nav2_status()
             lifecycle_manager = nav2_lifecycle_status.get("lifecycle_manager")
             lifecycle_manager = lifecycle_manager if isinstance(lifecycle_manager, dict) else {}
@@ -11576,24 +11574,6 @@ class UpperRobotApi:
                         "layer": "start_command",
                         "reason": "nav2_start_command_failed_or_timed_out",
                         "detail": command_result.get("error") or command_result.get("stderr_preview"),
-                    }
-                )
-            # 独立 status 可能恰好读到旧 runtime；成功必须先证明 start 回包属于本次新建 manager。
-            if not (
-                # 三项来自同一 start stdout，缺一项都不能把独立 status 归到本请求。
-                start_command_status.get("start_owned_process_created") is True
-                and start_command_status.get("running") is True
-                and start_command_status.get("state") == "running"
-            ):
-                root_causes.append(
-                    {
-                        "layer": "start_ownership",
-                        "reason": "current_start_owned_process_not_confirmed",
-                        "start_owned_process_created": start_command_status.get(
-                            "start_owned_process_created", "not_loaded"
-                        ),
-                        "running": start_command_status.get("running", "not_loaded"),
-                        "state": start_command_status.get("state", "not_loaded"),
                     }
                 )
             if lifecycle_manager.get("running") is not True:
@@ -11612,62 +11592,14 @@ class UpperRobotApi:
                         "observed": lifecycle_manager.get("base_enabled", "not_loaded"),
                     }
                 )
-            expected_lidar = "true" if contract.get("lidar_enabled") is True else "false"
-            expected_reuse = "true" if contract.get("reuse_existing_scan") is True else "false"
-            if lifecycle_manager.get("lidar_enabled") != expected_lidar:
+            if lifecycle_manager.get("lidar_enabled") != "false":
                 root_causes.append(
                     {
                         "layer": "effective_contract",
-                        "reason": "lidar_enabled_mode_not_confirmed",
+                        "reason": "lidar_enabled_false_not_confirmed",
                         "observed": lifecycle_manager.get("lidar_enabled", "not_loaded"),
                     }
                 )
-            if lifecycle_manager.get("reuse_existing_scan") != expected_reuse:
-                root_causes.append(
-                    {
-                        "layer": "effective_contract",
-                        "reason": "reuse_existing_scan_mode_not_confirmed",
-                        "observed": lifecycle_manager.get("reuse_existing_scan", "not_loaded"),
-                    }
-                )
-            if lifecycle_manager.get("sensor_mode") != contract.get("sensor_mode"):
-                root_causes.append(
-                    {
-                        "layer": "effective_contract",
-                        "reason": "sensor_mode_not_confirmed",
-                        "observed": lifecycle_manager.get("sensor_mode", "not_loaded"),
-                    }
-                )
-            # 两种合法模式都必须证明 base-disabled 没有产生新 UART holder，且整个 start 保持无运动。
-            common_runtime_requirements = (
-                # UART、运动和 broad-kill 是与传感器选择无关的共同安全不变量。
-                (lifecycle_manager.get("base_uart_new_open_count") == 0, "base_uart_zero_open_not_confirmed"),
-                (lifecycle_manager.get("physical_motion") is False, "physical_motion_false_not_confirmed"),
-                (lifecycle_manager.get("broad_kill_used") is False, "broad_kill_false_not_confirmed"),
-            )
-            for requirement_met, reason in common_runtime_requirements:
-                if not requirement_met:
-                    root_causes.append({"layer": "runtime_safety", "reason": reason})
-            # sensor-owned 模式必须用当前 O11 status 证明串口与 publisher 都属于本进程组。
-            if contract.get("sensor_mode") == "sensor_owned_scan":
-                sensor_requirements = (
-                    (lifecycle_manager.get("lidar_serial_new_open_count", 0) >= 1 if isinstance(lifecycle_manager.get("lidar_serial_new_open_count"), int) else False, "owned_lidar_serial_new_open_not_confirmed"),
-                    (lifecycle_manager.get("lidar_holder_owned") is True, "owned_lidar_holder_not_confirmed"),
-                    (lifecycle_manager.get("scan_publisher_post_count", 0) >= 1 if isinstance(lifecycle_manager.get("scan_publisher_post_count"), int) else False, "current_scan_publisher_not_confirmed"),
-                    (lifecycle_manager.get("scan_publisher_owned") is True, "owned_scan_publisher_not_confirmed"),
-                )
-                for requirement_met, reason in sensor_requirements:
-                    if not requirement_met:
-                        root_causes.append({"layer": "sensor_ownership", "reason": reason})
-            else:
-                # legacy 模式不拥有 LiDAR，但必须证明没有新开串口且 current `/scan` 确实仍存在。
-                legacy_requirements = (
-                    (lifecycle_manager.get("lidar_serial_new_open_count") == 0, "legacy_lidar_zero_open_not_confirmed"),
-                    (lifecycle_manager.get("scan_publisher_post_count", 0) >= 1 if isinstance(lifecycle_manager.get("scan_publisher_post_count"), int) else False, "legacy_current_scan_publisher_not_confirmed"),
-                )
-                for requirement_met, reason in legacy_requirements:
-                    if not requirement_met:
-                        root_causes.append({"layer": "sensor_reuse", "reason": reason})
 
             cleanup: dict[str, Any] = {
                 # 语义成功后保持 persistent runtime，留给 Algorithm 串行执行 proof。
@@ -11678,9 +11610,7 @@ class UpperRobotApi:
                 "scope": "o11_owned_pid_process_group_only",
             }
             lifecycle_invocation_count = 2
-            # timeout/不可解析响应仍保守 cleanup；只有脚本明确证明未创建 current owner 才跳过 stop。
-            cleanup_required = start_command_status.get("start_owned_process_created") is not False
-            if root_causes and cleanup_required:
+            if root_causes:
                 # 任何语义失败都只调用 o11 stop，收口本次可能留下的 owned process group。
                 cleanup_result = run_nav2_lifecycle_command(self.nav2_stop_command, "stop")
                 cleanup_status = parse_nav2_lifecycle_status_result(cleanup_result)
@@ -11707,17 +11637,6 @@ class UpperRobotApi:
                     root_causes.append(
                         {"layer": "cleanup", "reason": "owned_process_group_cleanup_not_confirmed"}
                     )
-            elif root_causes:
-                cleanup = {
-                    # preflight/owner 冲突未创建本次进程；调用 stop 反而可能终止既有 runtime。
-                    "status": "not_required_no_current_owned_process_started",
-                    "attempted": False,
-                    "ok": True,
-                    "scope": "o11_current_request_owned_pid_process_group_only",
-                    "start_command_status": start_command_status,
-                    "sends_base_stop_command": False,
-                    "uses_base_uart": False,
-                }
 
             semantic_success = not root_causes
             effective_contract = {
@@ -11753,31 +11672,19 @@ class UpperRobotApi:
                         "request_body_consumed": True,
                         # 生效合同同时保留请求值与服务端重建 argv，支持双向对账。
                         "effective_contract": effective_contract,
-                        # 串口增量只能来自 O11 status；sensor-owned 模式不再把 LiDAR new-open 写死为零。
-                        "base_uart_new_open_count": lifecycle_manager.get("base_uart_new_open_count", "not_loaded"),
-                        "lidar_serial_new_open_count": lifecycle_manager.get("lidar_serial_new_open_count", "not_loaded"),
-                        "sensor_ownership": lifecycle_manager.get("sensor_ownership", {}),
-                        "scan_publisher_post_count": lifecycle_manager.get("scan_publisher_post_count", "not_loaded"),
-                        "lidar_holder_owned": lifecycle_manager.get("lidar_holder_owned", "not_loaded"),
-                        "scan_publisher_owned": lifecycle_manager.get("scan_publisher_owned", "not_loaded"),
+                        # 这两个 0 由 false/false argv 与 lifecycle status 共同支撑，真机仍需 holder delta。
+                        "base_uart_new_open_count": 0,
+                        "lidar_serial_new_open_count": 0,
                         # 计数包含 start/status，语义失败时再加一次 owned stop。
                         "lifecycle_command_invocation_count": lifecycle_invocation_count,
-                        "new_open_count_source": "o11_current_holder_and_publisher_status_readback",
+                        "new_open_count_source": "effective_o11_false_false_argv_and_status_readback",
                     },
                     "cleanup": cleanup,
-                    "start_command_status": start_command_status,
                     "nav2_lifecycle_status": nav2_lifecycle_status,
                     "opens_base_uart": False,
-                    # capability 不等于事实；只有本次 owner 回包与 new-open readback 同时成立才声明已打开。
-                    "opens_lidar_serial": bool(
-                        contract.get("sensor_mode") == "sensor_owned_scan"
-                        and start_command_status.get("start_owned_process_created") is True
-                        and isinstance(lifecycle_manager.get("lidar_serial_new_open_count"), int)
-                        and lifecycle_manager.get("lidar_serial_new_open_count", 0) >= 1
-                    ),
+                    "opens_lidar_serial": False,
                     "transition_to_proven": [
-                        "effective o11 argv and status confirm the selected legacy or sensor-owned mode",
-                        "sensor-owned mode confirms base UART zero-open, owned LiDAR holder and current /scan publisher",
+                        "effective o11 argv and status both confirm base_enabled=false and lidar_enabled=false",
                         "map_server/amcl/planner/controller lifecycle states observed by the proof collector",
                         "fresh persisted localization and planner-only path are verified in the next serial phase",
                     ],
@@ -12630,179 +12537,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--nav2-stop-command", default=os.getenv("ROBER_NAV2_STOP_COMMAND", DEFAULT_NAV2_STOP_COMMAND))
     parser.add_argument("--nav2-status-command", default=os.getenv("ROBER_NAV2_STATUS_COMMAND", DEFAULT_NAV2_STATUS_COMMAND))
     return parser.parse_args()
-
-
-def install_upper_shutdown_signal_handlers(
-    loop: asyncio.AbstractEventLoop,
-    shutdown_event: asyncio.Event,
-) -> list[signal.Signals]:
-    """signal callback 只设置 event；不能在信号路径等待 ROS 锁、runner 或硬件 I/O。"""
-    # asyncio loop 是 server 生命周期唯一 owner，rclpy 初始化时显式关闭其 signal handler。
-    # handler 不直接 cancel task，避免在任意 await 点打断 all-surface stop 合同。
-    # handler 不读全局 ROS context，因此即使 executor 卡住也能立即记录 shutdown 请求。
-    # event 自带幂等语义，SIGTERM 后紧接 SIGINT 仍只触发一条 finally 路径。
-    # 返回安装列表是为了精确移除本函数的副作用，不猜测外部 handler 状态。
-    installed: list[signal.Signals] = []
-
-    def request_shutdown(received_signal: signal.Signals) -> None:
-        # add_signal_handler 会把 callback 调度回 event loop；这里仍禁止 ROS/串口/runner I/O。
-        print(
-            json.dumps(
-                {"event": "upper_robot_api_shutdown_requested", "signal": received_signal.name},
-                ensure_ascii=False,
-            ),
-            flush=True,
-        )
-        shutdown_event.set()
-
-    for handled_signal in (signal.SIGTERM, signal.SIGINT):
-        try:
-            # 两个信号共用同一个 event，连续触发天然幂等。
-            loop.add_signal_handler(handled_signal, request_shutdown, handled_signal)
-            installed.append(handled_signal)
-        except (NotImplementedError, RuntimeError):
-            # 非主线程或不支持 add_signal_handler 的平台只用于离线测试，生产 Linux 必须安装成功。
-            continue
-    return installed
-
-
-def remove_upper_shutdown_signal_handlers(
-    loop: asyncio.AbstractEventLoop,
-    installed: list[signal.Signals],
-) -> None:
-    """只移除本函数安装的 handler，避免测试或嵌入式调用覆盖外部 owner。"""
-    for handled_signal in installed:
-        try:
-            loop.remove_signal_handler(handled_signal)
-        except (NotImplementedError, RuntimeError):
-            continue
-
-
-def bounded_manual_hold_stop_for_shutdown(
-    api: UpperRobotApi,
-    *,
-    timeout_s: float = UPPER_RUNNER_CLEANUP_TIMEOUT_S,
-) -> dict[str, Any]:
-    """active hold 在进程退出前最多补一次零速收口；daemon worker 超时不会拖住 systemd stop。"""
-    # 退出期间“有界”不能等价于静默丢弃 active hold 的停车义务。
-    # 因此先按快照决定是否需要 stop，再把可能阻塞的串口/ROS I/O 放进 daemon worker。
-    # worker 复用已有 stop helper，确保 ROS 零速与三种 vendor 零命令的顺序不分叉。
-    # timeout 只限制调用方等待时间；结构化 worker_alive 会保留未完成风险。
-    # 普通无 active hold 的服务退出不产生任何控制面副作用。
-    # 该 helper 只在 shutdown finally 使用，不进入 keydown 到首帧的热路径。
-    state = dict(api._manual_hold_state)
-    # 非 active 请求不发送任何 stop，避免普通只读服务退出产生额外控制帧。
-    if state.get("active") is not True:
-        return {"attempted": False, "completed": True, "reason": "no_active_manual_hold"}
-    holder: dict[str, Any] = {}
-
-    def stop_worker() -> None:
-        try:
-            # 复用既有 all-surface stop 合同，不发明新的 vendor 或 ROS 命令。
-            holder["result"] = api._manual_hold_stop_sync(str(state.get("command_mode") or api.base_command_mode))
-        except Exception as exc:  # noqa: BLE001 - stop 错误必须可观测，process teardown 仍继续。
-            holder["error"] = compact_error(exc)
-
-    worker = threading.Thread(target=stop_worker, name="upper-hold-stop-shutdown", daemon=True)
-    # stop worker 也是 daemon；硬件阻塞时 systemd stop 仍能在预算后退出。
-    worker.start()
-    worker.join(timeout=max(float(timeout_s), 0.0))
-    completed = not worker.is_alive()
-    return {
-        "attempted": True,
-        "completed": completed,
-        "worker_alive": worker.is_alive(),
-        "result": holder.get("result"),
-        "error": holder.get("error") if completed else {"type": "hold_stop_timeout", "message": "zero-stop worker exceeded shutdown budget"},
-    }
-
-
-async def shutdown_upper_runtime(
-    api: UpperRobotApi,
-    runner: Any | None,
-    *,
-    timeout_s: float = UPPER_RUNNER_CLEANUP_TIMEOUT_S,
-) -> dict[str, Any]:
-    """有界收口 watchdog、aiohttp 与 rclpy；任何一层失败都结构化返回并继续下一层。"""
-    # 收口顺序优先冻结 watchdog，避免它在 finally 中又派生一个并发 stop owner。
-    # active hold 的零速义务随后独立完成，不依赖 watchdog cancel 是否及时响应。
-    # runner 在 ROS node 前关闭，保证 teardown 期间不会再接受新的 manual 请求。
-    # ROS 最后关闭，允许前面的 active-hold stop 复用仍然有效的 publisher。
-    # 每一层错误只降低 completed，不阻止后续层继续释放资源。
-    # 最终 elapsed_ms 使用单机 monotonic clock，只衡量本进程预算执行，不跨机比较。
-    # 这个顺序既保护安全停车，也避免 systemd stop 被任何单一资源永久卡住。
-    # late-writer reconciliation 还要求 ROS worker 无异常完成，不能只凭线程结束宣称成功。
-    # shutdown_succeeded 比 shutdown_completed 更强：前者同时约束完成状态和 error 为空。
-    # runtime gate 在第一个 await 前置位，排队中的 manual 请求不会趁 runner cleanup 前发布首帧。
-    # watchdog 先认领 stop owner，runtime 快照只会为尚未认领的 active hold 补一次零速。
-    started_ns = time.monotonic_ns()
-    timeout_s = max(float(timeout_s), 0.0)
-    # 必须在第一次 await 前关闭 manual 准入，防止 runner cleanup 前的排队请求建立新 hold。
-    # asyncio signal callback 与本赋值由同一 loop 串行执行，因而不需要额外线程锁。
-    # 已在执行且跨 await 的旧请求仍由 runner cleanup 与 ROS shutdown gate 共同收口。
-    # 显式 base stop 保持可用，runtime active-hold stop 也不经过 manual admission gate。
-    api._runtime_shutdown_started = True
-    watchdog_result: dict[str, Any] = {"attempted": False, "completed": True}
-    watchdog_task = api._manual_hold_watchdog_task
-    # active 快照发生在改状态前，决定本次退出是否必须补零速收口。
-    hold_was_active = api._manual_hold_state.get("active") is True
-    # 先冻结状态，让尚未进入 stop 的 watchdog 退出；真正零速收口由下方单 owner worker 完成。
-    api._manual_hold_state = {**api._manual_hold_state, "active": False, "runtime_shutdown_at_ms": now_ms()}
-    if watchdog_task is not None and not watchdog_task.done():
-        # cancel 只终止计时 owner，不直接承担 stop；stop 委托给下方有界 worker。
-        watchdog_result = {"attempted": True, "completed": False}
-        watchdog_task.cancel()
-        try:
-            await asyncio.wait_for(asyncio.shield(watchdog_task), timeout=timeout_s)
-        except asyncio.CancelledError:
-            watchdog_result["completed"] = True
-        except asyncio.TimeoutError:
-            watchdog_result["error"] = "watchdog_cancel_timeout"
-        except Exception as exc:  # noqa: BLE001 - shutdown 必须继续收口其它 owner。
-            watchdog_result["error"] = compact_error(exc)
-        else:
-            watchdog_result["completed"] = True
-    # active 快照只决定是否需要停车；helper 内部再次读取的状态已冻结，避免 watchdog 重复进入。
-    if hold_was_active:
-        # helper 只读取 active 快照；临时恢复 true 不会重启已经取消的 watchdog task。
-        frozen_state = dict(api._manual_hold_state)
-        frozen_state["active"] = True
-        api._manual_hold_state = frozen_state
-        hold_stop_result = bounded_manual_hold_stop_for_shutdown(api, timeout_s=timeout_s)
-        api._manual_hold_state = {**api._manual_hold_state, "active": False}
-    else:
-        hold_stop_result = {"attempted": False, "completed": True, "reason": "no_active_manual_hold"}
-
-    runner_result: dict[str, Any] = {"attempted": runner is not None, "completed": runner is None}
-    if runner is not None:
-        try:
-            # runner cleanup 先停止接收新请求，随后 ROS teardown 才能安全销毁 publisher。
-            await asyncio.wait_for(runner.cleanup(), timeout=timeout_s)
-        except asyncio.TimeoutError:
-            runner_result["error"] = "aiohttp_runner_cleanup_timeout"
-        except Exception as exc:  # noqa: BLE001 - runner 错误不能阻止 ROS teardown。
-            runner_result["error"] = compact_error(exc)
-        else:
-            runner_result["completed"] = True
-
-    # ROS teardown 自己用 daemon worker+bounded join，不能交给 asyncio 默认 executor 拖住 asyncio.run 退出。
-    ros_result = shutdown_ros_cmd_vel_context(timeout_s=timeout_s)
-    # 三个 owner 都完成才叫 clean shutdown；任一超时都保留 incomplete 供 v3 gate 拒绝。
-    completed = bool(
-        watchdog_result.get("completed")
-        and hold_stop_result.get("completed")
-        and runner_result.get("completed")
-        and ros_result.get("shutdown_succeeded")
-    )
-    return {
-        "status": "shutdown_complete" if completed else "shutdown_bounded_with_incomplete_cleanup",
-        "completed": completed,
-        "watchdog": watchdog_result,
-        "active_hold_stop": hold_stop_result,
-        "aiohttp_runner": runner_result,
-        "ros_cmd_vel": ros_result,
-        "elapsed_ms": round((time.monotonic_ns() - started_ns) / 1_000_000, 6),
-    }
 
 
 async def run_server(

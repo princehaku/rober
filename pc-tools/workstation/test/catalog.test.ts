@@ -3702,7 +3702,7 @@ describe("workstation fail-closed API contracts", () => {
     expect(source).toContain('data-keyboard-event-scope="page_non_editable"');
     expect(source).toContain('data-keyboard-smooth-hold-refresh-paused');
     expect(source).toContain("function shouldPauseLiveSurfaceRefreshForKeyboard()");
-    expect(source).toContain("sendStop({ refreshAfter: false })");
+    expect(source).toContain("sendStop({ refreshAfter: false, allowDuringManual: true })");
     expect(source).toContain('const DEFAULT_KEYBOARD_MANUAL_COMMAND_MODE: ManualCommandMode = "ros"');
     expect(source).toContain("command_mode: keyboardManualCommandMode()");
     expect(source).not.toContain('data-keyboard-event-scope="focused_panel_or_page_non_editable"');
@@ -27845,6 +27845,11 @@ describe("workstation fail-closed API contracts", () => {
             auto_stop_deferred_to_watchdog: true,
             command_result: { ok: true },
             stop_result: { ok: false, skipped_reason: "realtime_hold_stop_deferred_to_release_or_watchdog" },
+            latency_timing: {
+              clock_id: "python_monotonic_ns",
+              upper_receive_to_first_publish_ms: 1.25,
+              latency_pass_eligible: true,
+            },
             safe_to_control: false,
             delivery_success: false,
             primary_actions_enabled: false,
@@ -27871,6 +27876,16 @@ describe("workstation fail-closed API contracts", () => {
           hold_session_id: "keyboard-session-1",
           hold_sequence: 4,
           hold_watchdog_ms: 780,
+          latency_trace: {
+            schema: "trashbot.keyboard_wheel_latency_trace.v1",
+            latency_trace_id: "trace-keyboard-4",
+            client_keydown_perf_ms: 42.5,
+            client_time_origin_ms: 1_784_570_000_000,
+            hold_session_id: "keyboard-session-1",
+            hold_sequence: 4,
+            sample_kind: "warm",
+            unknown_field: "must-not-forward",
+          },
           confirm_hil_checklist: true,
         }),
       });
@@ -27878,12 +27893,23 @@ describe("workstation fail-closed API contracts", () => {
         proxy_status: string;
         feedback_mode: string;
         remote_motion_key_values: Record<string, string>;
+        latency_trace: { latency_trace_id: string };
+        pc_latency_timing: { clock_id: string; pc_proxy_total_ms: number };
+        upper_latency_timing: { clock_id: string; upper_receive_to_first_publish_ms: number };
       };
 
       expect(response.status).toBe(200);
       expect(body.proxy_status).toBe("command_forwarded");
       expect(body.feedback_mode).toBe("realtime_hold");
       expect(body.remote_motion_key_values.feedback_mode).toBe("realtime_hold");
+      expect(body.latency_trace.latency_trace_id).toBe("trace-keyboard-4");
+      expect(body.pc_latency_timing.clock_id).toBe("node_process_hrtime");
+      expect(body.pc_latency_timing.pc_proxy_total_ms).toBeGreaterThanOrEqual(0);
+      expect(body.upper_latency_timing).toEqual({
+        clock_id: "python_monotonic_ns",
+        upper_receive_to_first_publish_ms: 1.25,
+        latency_pass_eligible: true,
+      });
       expect(upstream.receivedBodies["/api/base/manual"]).toEqual([
         expect.objectContaining({
           feedback_mode: "realtime_hold",
@@ -27892,8 +27918,45 @@ describe("workstation fail-closed API contracts", () => {
           hold_watchdog_ms: 780,
           command_mode: "ros",
           duration_ms: 240,
+          latency_trace: {
+            schema: "trashbot.keyboard_wheel_latency_trace.v1",
+            latency_trace_id: "trace-keyboard-4",
+            client_keydown_perf_ms: 42.5,
+            client_time_origin_ms: 1_784_570_000_000,
+            hold_session_id: "keyboard-session-1",
+            hold_sequence: 4,
+            sample_kind: "warm",
+          },
         }),
       ]);
+      const mismatchedTraceResponse = await fetch(`${workstation.baseUrl}/api/robot-control/base/manual?baseUrl=${encodeURIComponent(upstream.baseUrl)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          direction: "forward",
+          speed: 0.08,
+          duration_ms: 240,
+          command_mode: "ros",
+          feedback_mode: "realtime_hold",
+          hold_session_id: "keyboard-session-1",
+          hold_sequence: 5,
+          hold_watchdog_ms: 780,
+          latency_trace: {
+            schema: "trashbot.keyboard_wheel_latency_trace.v1",
+            latency_trace_id: "trace-keyboard-stale-4",
+            client_keydown_perf_ms: 43,
+            client_time_origin_ms: 1_784_570_000_000,
+            hold_session_id: "keyboard-session-1",
+            hold_sequence: 4,
+            sample_kind: "warm",
+          },
+        }),
+      });
+      const mismatchedTraceBody = (await mismatchedTraceResponse.json()) as { failure_reason: string };
+      // trace 与 watchdog sequence 不一致时必须在 PC 侧拒绝，不能把旧按键证据送到 Upper。
+      expect(mismatchedTraceResponse.status).toBe(400);
+      expect(mismatchedTraceBody.failure_reason).toBe("latency_trace_hold_identity_mismatch");
+      expect(upstream.receivedBodies["/api/base/manual"]).toHaveLength(1);
       expect(upstream.receivedGets).toEqual([]);
     } finally {
       await workstation.close();

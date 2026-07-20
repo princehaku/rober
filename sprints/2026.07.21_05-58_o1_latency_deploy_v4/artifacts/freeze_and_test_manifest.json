@@ -1,0 +1,82 @@
+{
+  "schema": "trashbot.o1.latency_deploy_v4.freeze_and_test.v1",
+  "generated_at": "2026-07-21T06:30:00+08:00",
+  "authorization_id": "goal_20260721_latency_deploy_v4_exact_frozen_inputs",
+  "result": "pass",
+  "vendor_sources": [
+    "docs/vendor/VENDOR_INDEX.md",
+    "docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py",
+    "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h"
+  ],
+  "frozen_inputs": {
+    "upper_candidate_v3": {
+      "path": "sprints/2026.07.21_05-24_o1_upper_bounded_shutdown/artifacts/candidate_v3/upper_robot_api.py",
+      "sha256": "ceaf8f610eb5c1e4d1666fd8c5bce375986f2d18625d8bc29ce98c163d6e08d4"
+    },
+    "upper_candidate_manifest": {
+      "path": "sprints/2026.07.21_05-24_o1_upper_bounded_shutdown/artifacts/candidate_v3/candidate_v3_manifest.json",
+      "sha256": "d31ca5eae51f70fe1b86d047f96aa679ce1005d18edd49f32b86b4389770ddbb"
+    },
+    "bridge": {
+      "path": "onboard/src/ros2_trashbot_hardware/ros2_trashbot_hardware/esp32_bridge_node.py",
+      "sha256": "4f369ef66793ac018eee3e0b7431c823f6a1e300fcb9c33e0e3abf9bc2ef08a2",
+      "mtime_local": "2026-07-21T04:56:03+08:00"
+    },
+    "workstation_server": {
+      "path": "pc-tools/workstation/src/server/index.ts",
+      "sha256": "555080645216e69e4adb6bcc3b5474dff6752fa718b201a3a42ed58f8cf39dca",
+      "mtime_local": "2026-07-21T04:56:30+08:00"
+    },
+    "workstation_latency_helper": {
+      "path": "pc-tools/workstation/src/server/robotControlLatency.ts",
+      "sha256": "f082347d003dc62932fa3f2f77d228eb362e1bb2dc8bbdde03413ec0162ffae6"
+    },
+    "workstation_vue": {
+      "path": "pc-tools/workstation/src/components/RobotControlConsolePanel.vue",
+      "sha256": "ba55ed08490c4289aba93c20d59884cc6b76e03942d634b0892acd822bb1821e"
+    }
+  },
+  "scope_audit": {
+    "bridge_changed_symbols": [
+      "ESP32Bridge.__init__",
+      "ESP32Bridge._send_json_http",
+      "ESP32Bridge._cmd_vel_callback",
+      "ESP32Bridge._append_command_debug_line"
+    ],
+    "bridge_change_boundary": "HTTP keep-alive, connection reuse, close-on-failure without command replay, and latency spans/debug only",
+    "bridge_control_contract_changed": false,
+    "workstation_change_boundary": "manual-control trace validation/forwarding, hold binding, fail-closed checks, and local monotonic spans only",
+    "workstation_control_contract_changed": false,
+    "upper_candidate_ast_and_sentinel_audit_pass": true,
+    "git_diff_check_pass": true
+  },
+  "verification": {
+    "bridge_tests": {
+      "passed": 32,
+      "failed": 0
+    },
+    "workstation_latency_tests": {
+      "passed": 3,
+      "failed": 0
+    },
+    "workstation_targeted_tests": {
+      "passed": 70,
+      "skipped": 465,
+      "failed": 0
+    },
+    "workstation_full_tests": {
+      "passed": 535,
+      "failed": 0
+    },
+    "workstation_build_pass": true,
+    "workstation_lint_pass": true,
+    "warnings": [
+      "Vite reported the existing large-chunk warning; build still passed."
+    ]
+  },
+  "post_verification_freeze": {
+    "hashes_stable": true,
+    "workstation_7001_listener_pid": 21549,
+    "workstation_7001_restart_count": 0
+  }
+}

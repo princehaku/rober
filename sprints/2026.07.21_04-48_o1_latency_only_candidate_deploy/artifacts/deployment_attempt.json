@@ -1,0 +1,89 @@
+{
+  "schema": "trashbot.o1.latency_only_candidate_deployment_attempt.v1",
+  "generated_at": "2026-07-21T04:49:21+08:00",
+  "target": "root@192.168.1.11:37878",
+  "remote_directory": "/root/rober/onboard/runtime/latency_only_deploy_20260721_0448",
+  "preflight": {
+    "pass": true,
+    "upper_sha256": "8c0f6eebb786e1cd6b1cb5d17485e59972140bf76a94e7669773ef438228b4c3",
+    "bridge_source_sha256": "6e82e493a8d63ae5ff47546f689c28deb92d1647b5937836bed38e0f55ef8304",
+    "bridge_runtime_sha256": "6e82e493a8d63ae5ff47546f689c28deb92d1647b5937836bed38e0f55ef8304",
+    "nav2_running": false,
+    "nav2_state": "stopped",
+    "latest_t1001_left": 0,
+    "latest_t1001_right": 0,
+    "latest_bridge_command": {"T": 11, "L": 0, "R": 0},
+    "cmd_vel_publisher_count": 1,
+    "cmd_vel_subscription_count": 1,
+    "unique_serial_owner_pid": 3765
+  },
+  "rollback_backups": {
+    "created": true,
+    "upper_sha256": "8c0f6eebb786e1cd6b1cb5d17485e59972140bf76a94e7669773ef438228b4c3",
+    "bridge_source_sha256": "6e82e493a8d63ae5ff47546f689c28deb92d1647b5937836bed38e0f55ef8304",
+    "bridge_runtime_sha256": "6e82e493a8d63ae5ff47546f689c28deb92d1647b5937836bed38e0f55ef8304"
+  },
+  "staging": {
+    "uploaded": true,
+    "upper_candidate_sha256": "adadb0fb31d9c35805bf15906534f7963626116d1ec7374cbd2c611800a95013",
+    "bridge_candidate_sha256": "ff7871ffceb907bda65f442ced079df782a850135c604b169b6aa8a7234c114f",
+    "remote_py_compile_pass": true,
+    "remote_hash_gate_pass": true,
+    "remote_upper_forbidden_sentinel_gate_pass": true
+  },
+  "replacement": {
+    "attempted": true,
+    "completed": false,
+    "target_file_replacement_count": 0,
+    "failure_before_first_target_move": true,
+    "failure": "bridge_build_package_directory_is_symlink_to_source_so_dual_path_temp_names_alias",
+    "error": "ln failed because cleanup of build-path latency_new removed the same source-path temporary file",
+    "retry_count": 0
+  },
+  "service_state_after_stop": {
+    "upper_main_pid": 1221,
+    "upper_active": true,
+    "bridge_wrapper_main_pid": 1218,
+    "bridge_node_pid": 3765,
+    "bridge_active": true,
+    "service_restart_count": 0,
+    "upper_sha256": "8c0f6eebb786e1cd6b1cb5d17485e59972140bf76a94e7669773ef438228b4c3",
+    "bridge_source_sha256": "6e82e493a8d63ae5ff47546f689c28deb92d1647b5937836bed38e0f55ef8304",
+    "bridge_runtime_sha256": "6e82e493a8d63ae5ff47546f689c28deb92d1647b5937836bed38e0f55ef8304",
+    "nav2_running": false,
+    "nav2_state": "stopped",
+    "latest_t1001_left": 0,
+    "latest_t1001_right": 0,
+    "latest_bridge_command": {"T": 11, "L": 0, "R": 0},
+    "cmd_vel_publisher_count": 1,
+    "cmd_vel_subscription_count": 1,
+    "unique_serial_owner_pid": 3765,
+    "temporary_target_names_cleaned": true
+  },
+  "sample": {
+    "attempted": false,
+    "zero_speed_request_count": 0,
+    "stop_request_count": 0,
+    "readback_after_sample_attempted": false,
+    "network_rtt_envelope_ms": null,
+    "pc_local_span_ms": null,
+    "upper_local_span_ms": null,
+    "bridge_local_span_ms": null,
+    "reason": "deployment_failed_before_target_replacement_and_no_retry_was_allowed"
+  },
+  "counts": {
+    "live_nonzero_request_count": 0,
+    "direct_cmd_vel_publish_count": 0,
+    "direct_uart_write_count": 0,
+    "nav2_control_invocation_count": 0,
+    "workstation_restart_count": 0
+  },
+  "claims": {
+    "physical_latency_not_measured": true,
+    "physical_wheel_onset_observed": false,
+    "hil_pass": false,
+    "safe_to_control": false,
+    "delivery_success": false,
+    "robot_control_executed": false
+  }
+}

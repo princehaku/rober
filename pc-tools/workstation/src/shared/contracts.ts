@@ -9793,6 +9793,31 @@ export type RobotControlEvidenceCaptureEndpointPath =
   | "/api/radar/status"
   | "/api/radar/scan-proof/latest";
 
+// latency trace 只承载关联信息；每个进程返回自己计算的 span，禁止 UI 跨主机相减 monotonic 值。
+export interface RobotControlLatencyTrace {
+  schema: "trashbot.keyboard_wheel_latency_trace.v1";
+  latency_trace_id: string;
+  client_keydown_perf_ms: number;
+  client_time_origin_ms: number;
+  hold_session_id: string;
+  hold_sequence: number;
+  sample_kind: "cold" | "warm";
+}
+
+export interface RobotControlPcLatencyTiming {
+  clock_id: "node_process_hrtime";
+  pc_receive_mono_ns: string;
+  pc_validation_done_mono_ns: string;
+  pc_forward_start_mono_ns: string;
+  pc_upstream_headers_mono_ns: string;
+  pc_response_done_mono_ns: string;
+  pc_receive_to_validation_ms: number;
+  pc_validation_to_forward_ms: number;
+  pc_forward_to_headers_ms: number;
+  pc_headers_to_response_done_ms: number;
+  pc_proxy_total_ms: number;
+}
+
 export interface RobotControlEvidenceEndpointCapture {
   phase: RobotControlEvidenceCapturePhase;
   id: RobotControlEvidenceCaptureEndpointId;
@@ -9823,6 +9848,7 @@ export interface RobotControlBaseCommandRequest {
   hold_session_id?: string;
   hold_sequence?: number;
   hold_watchdog_ms?: number;
+  latency_trace?: RobotControlLatencyTrace;
   confirm_hil_checklist: boolean;
 }
 
@@ -9895,6 +9921,9 @@ export interface RobotControlBaseCommandProxyResponse extends ProofFlags {
   failure_reason: string;
   blocked_reasons: string[];
   hard_dangerous_true_fields: string[];
+  latency_trace?: RobotControlLatencyTrace;
+  pc_latency_timing?: RobotControlPcLatencyTiming;
+  upper_latency_timing?: Record<string, unknown>;
   robot_control_executed: false;
 }
 

@@ -42,6 +42,7 @@ import type {
   RobotControlBaseCommandRequest,
   RobotControlBaseCommandProxyResponse,
   RobotControlBaseFeedbackSamplesProxyResponse,
+  RobotControlLatencyTrace,
   RobotControlCameraFirstFrameProbeProxyResponse,
   RobotControlCameraMjpegStatusResponse,
   RobotControlCameraUsbRecoveryProxyResponse,
@@ -625,6 +626,8 @@ const keyboardManualMapPointSequence = ref(0);
 const keyboardManualMapPoints = ref<KeyboardManualMapPoint[]>([]);
 const keyboardManualPulsePending = ref(false);
 const keyboardHoldSequence = ref(0);
+// 首个 trace 单列 cold，之后按键和 hold refresh 都标为 warm，避免混淆启动开销。
+let keyboardLatencyColdSamplePending = true;
 let previewFrameSampleTimers: number[] = [];
 let mjpegPreviewRetryTimer: number | null = null;
 let keyboardJogTimer: number | null = null;
@@ -16709,11 +16712,24 @@ function roundedKeyboardTwistValue(value: number): number {
   return Math.round(value * 1000) / 1000;
 }
 
-function requestBodyForKeyboardDirection(direction: KeyboardMotionDirection) {
+function requestBodyForKeyboardDirection(direction: KeyboardMotionDirection, clientKeydownPerfMs: number) {
   // 键盘连续手控采用快速短脉冲；组合键通过 ROS X/Z 透传实现，不扩展 direction 枚举。
   const speed = Math.min(Math.max(jogSpeedMps.value, 0), manualSpeedLimit.value);
   const vector = keyboardMotionVector(direction);
   keyboardHoldSequence.value += 1;
+  // browser monotonic 只在 browser 内计算；timeOrigin 仅用于离线关联，不能与 upper monotonic 直接相减。
+  const latencyTrace: RobotControlLatencyTrace = {
+    schema: "trashbot.keyboard_wheel_latency_trace.v1",
+    latency_trace_id: typeof globalThis.crypto?.randomUUID === "function"
+      ? globalThis.crypto.randomUUID()
+      : `latency-${Date.now()}-${keyboardHoldSequence.value}`,
+    client_keydown_perf_ms: clientKeydownPerfMs,
+    client_time_origin_ms: performance.timeOrigin,
+    hold_session_id: keyboardControlOwnerId,
+    hold_sequence: keyboardHoldSequence.value,
+    sample_kind: keyboardLatencyColdSamplePending ? "cold" : "warm",
+  };
+  keyboardLatencyColdSamplePending = false;
   return {
     direction: vector.requestDirection,
     speed,
@@ -16725,6 +16741,7 @@ function requestBodyForKeyboardDirection(direction: KeyboardMotionDirection) {
     hold_session_id: keyboardControlOwnerId,
     hold_sequence: keyboardHoldSequence.value,
     hold_watchdog_ms: keyboardHoldWatchdogMs.value,
+    latency_trace: latencyTrace,
     confirm_hil_checklist: plainManualSafetyConfirmed.value,
   } as const;
 }
@@ -19973,7 +19990,7 @@ async function sendManualMotion(direction: ManualDirection): Promise<void> {
   }
 }
 
-async function sendKeyboardManualPulse(): Promise<void> {
+async function sendKeyboardManualPulse(clientKeydownPerfMs = performance.now()): Promise<void> {
   // 连续键盘脉冲复用同一个后端 manual 代理；不新增浏览器直连或 /cmd_vel 通道。
   const direction = keyboardHeldDirection.value;
   if (!keyboardMotionReady.value || keyboardJogInFlight || manualCommandPending.value || !direction) {
@@ -19984,7 +20001,10 @@ async function sendKeyboardManualPulse(): Promise<void> {
   keyboardManualPulsePending.value = true;
   keyboardControlStatus.value = "sending_keyboard_pulse";
   try {
-    const result = await postRobotControlBaseManual(robotApiBaseUrl.value, requestBodyForKeyboardDirection(direction));
+    const result = await postRobotControlBaseManual(
+      robotApiBaseUrl.value,
+      requestBodyForKeyboardDirection(direction, clientKeydownPerfMs),
+    );
     manualCommandResult.value = result;
     if (result.remote_motion_key_values) {
       keyboardLastWheelFeedbackValues.value = result.remote_motion_key_values;
@@ -20190,7 +20210,8 @@ function stopKeyboardControl(reason: string): void {
   keyboardHoldPulseCount.value = 0;
   keyboardLastStopReason.value = reason;
   keyboardControlStatus.value = `released:${reason}`;
-  if (shouldSendStop && canSendStop.value) {
+  if (shouldSendStop && robotApiBaseUrl.value.trim()) {
+    // stop 使用独立高优先级请求，即使 motion response 尚未返回也不能等待它收口。
     void sendKeyboardReleaseStop(reason);
   } else if (shouldSendStop && manualCommandPending.value) {
     keyboardStopAfterPulseReason = reason;
@@ -20207,11 +20228,11 @@ async function refreshKeyboardPostHoldReadbacks(): Promise<void> {
 
 async function sendKeyboardReleaseStop(reason: string): Promise<void> {
   // 键盘验收必须等 release stop 真正转发成功；失败或不可发都不能算已验证。
-  if (!canSendStop.value) {
+  if (!robotApiBaseUrl.value.trim()) {
     keyboardControlStatus.value = "blocked_keyboard_stop_failed:stop_unavailable";
     return;
   }
-  await sendStop({ refreshAfter: false });
+  await sendStop({ refreshAfter: false, allowDuringManual: true });
   const result = manualCommandResult.value;
   const stopForwarded = result?.command_kind === "stop"
     && result.proxy_status === "command_forwarded"
@@ -20233,7 +20254,7 @@ async function sendKeyboardReleaseStop(reason: string): Promise<void> {
   }
 }
 
-function startKeyboardControl(direction: KeyboardMotionDirection): void {
+function startKeyboardControl(direction: KeyboardMotionDirection, clientKeydownPerfMs = performance.now()): void {
   // 组合键变化不重启 hold 窗口；下一次短脉冲直接读取当前方向，保证 W+A 能顺滑前进左转。
   if (!keyboardControlArmed.value) {
     keyboardControlStatus.value = "blocked_keyboard_not_armed";
@@ -20261,10 +20282,10 @@ function startKeyboardControl(direction: KeyboardMotionDirection): void {
   keyboardLastDirection.value = direction;
   keyboardControlStatus.value = "holding_keyboard_jog";
   if (startNewHold) {
-    void sendKeyboardManualPulse();
+    void sendKeyboardManualPulse(clientKeydownPerfMs);
   } else if (!keyboardJogInFlight) {
     clearKeyboardJogTimer();
-    void sendKeyboardManualPulse();
+    void sendKeyboardManualPulse(clientKeydownPerfMs);
   }
 }
 
@@ -20290,6 +20311,7 @@ function handleKeyboardDirectionPointerEnd(direction: ManualDirection, reason: s
 
 function handleGlobalKeyDown(event: KeyboardEvent): void {
   // 长按产生的 repeat 事件由 timer 接管，避免浏览器 repeat 频率影响底盘命令节奏。
+  const keydownPerfMs = performance.now();
   const direction = keyboardDirectionFromKey(event.key);
   if (!direction || eventTargetIsEditable(event.target) || !keyboardControlArmed.value || !ownsKeyboardControl() || !eventTargetIsKeyboardControlScope(event.target)) {
     return;
@@ -20300,7 +20322,7 @@ function handleGlobalKeyDown(event: KeyboardEvent): void {
   if (!nextDirection || keyboardHeldDirection.value === nextDirection) {
     return;
   }
-  startKeyboardControl(nextDirection);
+  startKeyboardControl(nextDirection, keydownPerfMs);
 }
 
 function handleGlobalKeyUp(event: KeyboardEvent): void {
@@ -20353,6 +20375,7 @@ function handleWindowFocus(): void {
 
 type StopCommandOptions = {
   refreshAfter?: boolean;
+  allowDuringManual?: boolean;
 };
 
 function shouldRefreshAfterStop(options?: StopCommandOptions | Event): boolean {
@@ -20362,9 +20385,11 @@ function shouldRefreshAfterStop(options?: StopCommandOptions | Event): boolean {
 
 async function sendStop(options?: StopCommandOptions | Event): Promise<RobotControlBaseCommandProxyResponse | null> {
   // stop 始终保留，是为了在 checklist 未完成时也有 fail-safe 退路。
-  if (!robotApiBaseUrl.value.trim() || manualCommandPending.value) {
+  const allowDuringManual = Boolean(options && "allowDuringManual" in options && options.allowDuringManual);
+  if (!robotApiBaseUrl.value.trim() || (manualCommandPending.value && !allowDuringManual)) {
     return null;
   }
+  const motionWasPending = manualCommandPending.value;
   manualCommandPending.value = true;
   let stopResult: RobotControlBaseCommandProxyResponse | null = null;
   try {
@@ -20412,7 +20437,8 @@ async function sendStop(options?: StopCommandOptions | Event): Promise<RobotCont
     manualCommandResult.value = stopResult;
     recordPlainTripStopResult(stopResult);
   } finally {
-    manualCommandPending.value = false;
+    // 并发 stop 不得把仍在飞行的 motion request 误标为空闲；原 motion finally 会自行清理。
+    manualCommandPending.value = motionWasPending;
     if (shouldRefreshAfterStop(options)) {
       await refreshConsole();
     }

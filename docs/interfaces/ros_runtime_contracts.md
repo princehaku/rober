@@ -1023,6 +1023,49 @@ DDS graph matched a subscriber; `degraded_subscription_unproven` means the publi
 fallback and only reports `latency_pass_eligible=true` for a prewarmed, matched, in-process publish. Existing non-keyboard
 compatibility paths remain unchanged.
 
+### Upper bounded shutdown and first migration runbook
+
+Upper owns the rclpy node/publisher and the aiohttp runner in one process. `rclpy.init()` disables rclpy-owned signal
+handlers; the asyncio loop owns `SIGTERM`/`SIGINT`, and its callback only sets a shutdown event. It never waits for the ROS
+lock, runner cleanup, serial I/O or a hardware response from the signal callback. The async `finally` path then:
+
+1. freezes and cancels an active manual-hold watchdog;
+2. if a hold was active, runs the existing all-surface zero-stop once in a daemon worker with a fixed timeout;
+3. runs `aiohttp.AppRunner.cleanup()` with a fixed timeout;
+4. destroys the rclpy node and shuts down the context in a daemon worker serialized by `_ROS_CMD_VEL_LOCK`.
+
+The shutdown state is observable as `shutting_down`, `shutdown_complete`, `shutdown_timeout_process_exit_required` or
+`already_shutdown`. New prewarm/publish work sees `shutting_down`/`shutdown` and fails closed with zero published frames.
+Repeated shutdown calls never destroy the node or context twice. A stuck cleanup worker is daemonized and cannot keep the
+systemd process alive beyond the bounded wait. This does not move the first keydown publish after a sleep and does not enable
+the realtime-hold CLI fallback.
+
+The runtime marks `manual` admission closed before the teardown coroutine's first `await`, so requests already queued behind
+the signal callback return `blocked_runtime_shutting_down` with zero publish and zero serial writes. A watchdog marks its hold
+inactive before handing stop work to a thread; runtime shutdown therefore does not enqueue a second all-surface stop for the
+same hold. Explicit release stop, watchdog stop and runtime stop share one stop-owner lock, while ROS init/spin/publish/destroy
+share the separate ROS owner lock. Teardown worker completion is not enough for a clean gate: any `destroy_node()` or
+`rclpy.shutdown()` error yields `shutdown_failed`/`shutdown_succeeded=false` and requires process replacement.
+
+The first migration from the old 85ba runtime is different: that process let rclpy own SIGTERM and may stay in
+`deactivating/stop-sigterm`. The deploy owner must use only the exact unit and a bounded stop:
+
+```bash
+systemctl stop trashbot-upper-robot-api.service
+# Poll only this unit's ActiveState/MainPID for the approved bounded window.
+systemctl show trashbot-upper-robot-api.service -p ActiveState -p MainPID
+# Only after the bounded window expires, kill this unit's complete control group; never scan by process name.
+systemctl kill --kill-who=all --signal=SIGKILL trashbot-upper-robot-api.service
+systemctl show trashbot-upper-robot-api.service -p ActiveState -p MainPID
+systemctl start trashbot-upper-robot-api.service
+```
+
+Before `start`, `MainPID=0` and no residual process belonging to this exact unit must be confirmed. `pkill`, `killall`, broad
+process-name scans and killing unrelated ROS nodes are forbidden. After the first migration, a normal exact service restart is
+expected to emit `upper_robot_api_shutdown_requested` and `upper_robot_api_stopped` and exit without SIGKILL; that clean exit
+is a mandatory v3 deployment gate. These logs are software runtime evidence only, not wheel onset, HIL or safe-to-control
+proof.
+
 `esp32_bridge` command debug v1 adds `bridge_callback_mono_ns`, `vendor_command_built_mono_ns`,
 `transport_write_start_mono_ns`, `transport_write_end_mono_ns`, `bridge_transport_write_ms` and
 `bridge_callback_to_transport_end_ms`. Transport write remains before debug append. HTTP `/js` uses one locked persistent

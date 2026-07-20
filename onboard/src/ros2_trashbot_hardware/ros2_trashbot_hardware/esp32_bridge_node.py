@@ -12,6 +12,8 @@ Vendor 来源：
 
 from __future__ import annotations
 
+# 使用标准库长连接客户端，才能显式控制连接复用和失败后的连接淘汰。
+import http.client
 import json
 import math
 from pathlib import Path
@@ -77,6 +79,11 @@ class ESP32Bridge(Node):
         self.command_debug_log_path = config.command_debug_log_path
 
         self._serial_lock = threading.Lock()
+        # HTTP transport 也只有 bridge 单 owner；锁保证 keep-alive 请求不交叉并保持 stop 顺序。
+        self._http_lock = threading.Lock()
+        # 连接对象与 origin key 配对，配置切换时不能误复用旧主机上的 socket。
+        self._http_connection = None
+        self._http_connection_key = ""
         self._running = True
         self._last_send_time = 0.0
         self._last_cmd_linear = 0.0
@@ -285,17 +292,53 @@ class ESP32Bridge(Node):
 
     def _send_json_http(self, command: dict[str, Any]) -> bool:
         """通过 ESP32 原厂 HTTP `/js` 控制面下发 JSON，绕过现场 UART TX 断点。"""
+        # 连接只在后续请求复用；当前 nonzero 失败绝不自动重发，避免一次按键变成两次运动。
+        http_lock = getattr(self, "_http_lock", None)
+        if http_lock is None:
+            http_lock = threading.Lock()
+            self._http_lock = http_lock
         try:
+            # 紧凑 JSON 延续既有 vendor `/js?json=...` 线协议，不改写 T/L/R/X/Z 语义。
             payload = json.dumps(command, separators=(",", ":"))
             query = urllib.parse.urlencode({"json": payload})
-            url = f"{self.wave_rover_http_base_url.rstrip('/')}/js?{query}"
-            with urllib.request.urlopen(url, timeout=self.http_timeout_s) as response:
-                response.read(512)
+            # 拆分 origin 与可选 base path，避免把完整 URL 交给连接层后丢失部署前缀。
+            parsed = urllib.parse.urlsplit(self.wave_rover_http_base_url.rstrip("/"))
+            # origin 变化必须换连接，否则动态参数更新后可能仍把命令送往旧 ESP32。
+            connection_key = f"{parsed.scheme}://{parsed.netloc}"
+            request_path = f"{parsed.path.rstrip('/')}/js?{query}"
+            # 锁覆盖 request、response 和 body 消费，保证同一连接上响应不会串到下一条命令。
+            with http_lock:
+                connection = getattr(self, "_http_connection", None)
+                if connection is None or getattr(self, "_http_connection_key", "") != connection_key:
+                    # 替换 origin 前先关闭旧连接，避免持有无效 socket 或泄漏文件描述符。
+                    if connection is not None:
+                        connection.close()
+                    # HTTP/HTTPS 只改变传输封装，vendor `/js` 请求内容保持完全相同。
+                    connection_type = http.client.HTTPSConnection if parsed.scheme == "https" else http.client.HTTPConnection
+                    connection = connection_type(parsed.hostname, parsed.port, timeout=self.http_timeout_s)
+                    self._http_connection = connection
+                    self._http_connection_key = connection_key
+                # 显式 keep-alive 便于现场确认意图；是否复用仍由服务端响应和客户端状态共同决定。
+                connection.request("GET", request_path, headers={"Connection": "keep-alive"})
+                response = connection.getresponse()
+                # 必须完整消费 body，标准库才能安全地把同一连接留给下一条独立命令。
+                response.read()
                 ok = 200 <= int(response.status) < 300
+            # 只有 2xx 才更新成功时间，HTTP 错误响应不能伪装成已下发。
             if ok:
                 self._last_send_time = time.time()
             return ok
-        except (OSError, urllib.error.URLError, TimeoutError) as exc:
+        except (OSError, http.client.HTTPException, urllib.error.URLError, TimeoutError) as exc:
+            # 失败连接只为下一请求重建；这里不重放当前 command，stop/nonzero 顺序保持一进一出。
+            with http_lock:
+                connection = getattr(self, "_http_connection", None)
+                if connection is not None:
+                    try:
+                        connection.close()
+                    except OSError:
+                        pass
+                self._http_connection = None
+                self._http_connection_key = ""
             self.get_logger().error(f"WAVE ROVER HTTP command error: {exc}")
             return False
 
@@ -376,6 +419,8 @@ class ESP32Bridge(Node):
             self.get_logger().warn(f"Failed to append WAVE ROVER feedback debug log: {exc}")
 
     def _cmd_vel_callback(self, msg: Twist) -> None:
+        # callback 入口点位必须先于校验和映射，才能覆盖 bridge 内完整软件处理段。
+        bridge_callback_mono_ns = time.monotonic_ns()
         try:
             command = build_cmd_vel_command(
                 linear_x=msg.linear.x,
@@ -390,15 +435,38 @@ class ESP32Bridge(Node):
             self.get_logger().error(str(exc))
             return
 
+        # build 完成点位只表示 vendor JSON 已构造，不代表网络、固件或轮子已响应。
+        vendor_command_built_mono_ns = time.monotonic_ns()
+        # 传输开始/结束包住 `_send_json`，同时覆盖 serial 与 HTTP 的同步返回边界。
+        transport_write_start_mono_ns = time.monotonic_ns()
         sent = self._send_json(command)
-        self._append_command_debug_line(msg, command, sent)
+        transport_write_end_mono_ns = time.monotonic_ns()
+        # 原始点位随日志一次写入，避免第二次读钟引入不可解释的统计偏移。
+        self._append_command_debug_line(
+            msg,
+            command,
+            sent,
+            timing={
+                "bridge_callback_mono_ns": bridge_callback_mono_ns,
+                "vendor_command_built_mono_ns": vendor_command_built_mono_ns,
+                "transport_write_start_mono_ns": transport_write_start_mono_ns,
+                "transport_write_end_mono_ns": transport_write_end_mono_ns,
+            },
+        )
         if sent:
             self._last_cmd_linear = float(msg.linear.x)
             self._last_cmd_angular = float(msg.angular.z)
         else:
             self.get_logger().warn("Failed to forward /cmd_vel to WAVE ROVER ESP32")
 
-    def _append_command_debug_line(self, msg: Twist, command: dict[str, Any], sent: bool) -> None:
+    def _append_command_debug_line(
+        self,
+        msg: Twist,
+        command: dict[str, Any],
+        sent: bool,
+        *,
+        timing: dict[str, int] | None = None,
+    ) -> None:
         """按需记录 /cmd_vel 到 vendor JSON 的映射和串口写入结果。"""
         log_path = getattr(self, "command_debug_log_path", "")
         if not log_path:
@@ -424,6 +492,23 @@ class ESP32Bridge(Node):
             "transport_write_returned": bool(sent),
             "sends_motion": sends_motion,
         }
+        if timing:
+            # 原始点位只在本进程 clock_id 内有效；对外优先消费已计算的 local spans。
+            callback_ns = timing["bridge_callback_mono_ns"]
+            built_ns = timing["vendor_command_built_mono_ns"]
+            write_start_ns = timing["transport_write_start_mono_ns"]
+            write_end_ns = timing["transport_write_end_mono_ns"]
+            # 所有差值来自同一 monotonic clock，禁止与 PC/Upper 的原始纳秒直接相减。
+            record.update(
+                {
+                    "clock_id": "python_monotonic_ns",
+                    **timing,
+                    "bridge_callback_to_command_built_ms": (built_ns - callback_ns) / 1_000_000,
+                    "bridge_command_built_to_transport_begin_ms": (write_start_ns - built_ns) / 1_000_000,
+                    "bridge_transport_write_ms": (write_end_ns - write_start_ns) / 1_000_000,
+                    "bridge_callback_to_transport_end_ms": (write_end_ns - callback_ns) / 1_000_000,
+                }
+            )
         try:
             # 命令日志只在 proof 显式打开时使用，失败不能阻断停车或速度转发。
             with open(log_path, "a", encoding="utf-8") as log_file:

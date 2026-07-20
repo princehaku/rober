@@ -1,0 +1,65 @@
+{
+  "schema": "trashbot.o1.zero_speed_live_latency_probe.preflight.v1",
+  "generated_at": "2026-07-21T04:38:00+08:00",
+  "status": "blocked_before_deployment",
+  "proof_boundary": "read_only_live_preflight_only_not_zero_speed_sample_not_physical_latency",
+  "target": "root@192.168.1.11:37878",
+  "local_verification": {
+    "workstation_latency_targeted_tests": "3 passed",
+    "workstation_build": "passed_with_existing_large_chunk_warning",
+    "upper_py_compile": "passed",
+    "bridge_py_compile": "passed"
+  },
+  "static_preflight": {
+    "upper_health_http_status": 200,
+    "upper_health_status": "ready",
+    "nav2_running": false,
+    "nav2_state": "stopped",
+    "latest_t1001_left": 0,
+    "latest_t1001_right": 0,
+    "latest_bridge_command": {"T": 11, "L": 0, "R": 0},
+    "latest_bridge_command_sends_motion": false,
+    "cmd_vel_publisher_count": 1,
+    "cmd_vel_subscription_count": 1,
+    "serial_device": "/dev/ttyS5",
+    "serial_owner_pid": 3765,
+    "systemd_wrapper_pid": 1218,
+    "wrapper_child_relationship_proven": true,
+    "unique_bridge_node_proven": true,
+    "unique_serial_owner_proven": true
+  },
+  "version_gate": {
+    "remote_upper_sha256": "8c0f6eebb786e1cd6b1cb5d17485e59972140bf76a94e7669773ef438228b4c3",
+    "remote_upper_known_commit": "85ba7308785aa3c4033180a097e3d388358a97de",
+    "local_verified_upper_sha256": "417c81ce4aa2a1c24376c1c74e34e4eae4977dba65a807d5107c45b153a5fb64",
+    "remote_bridge_sha256": "6e82e493a8d63ae5ff47546f689c28deb92d1647b5937836bed38e0f55ef8304",
+    "local_head_bridge_sha256": "6e82e493a8d63ae5ff47546f689c28deb92d1647b5937836bed38e0f55ef8304",
+    "local_latency_bridge_sha256": "ff7871ffceb907bda65f442ced079df782a850135c604b169b6aa8a7234c114f",
+    "bridge_source_build_same_inode": true,
+    "pc_api_process_started_at": "2026-07-09T01:57:14+08:00",
+    "pc_api_current_latency_version_proven": false,
+    "upper_delta_is_latency_only": false,
+    "upper_delta_also_contains": "c8f93486_sensor_owned_nav2_contract_not_deployed_with_companion_files"
+  },
+  "hard_stop": {
+    "triggered": true,
+    "reason": "local_verified_upper_combines_latency_with_undeployed_c8_cross_file_nav2_contract",
+    "why": "Replacing the remote Upper file would also deploy Nav2 contract changes whose companion o10, o11 and nav2_params files were previously not deployed. A hand-split latency-only remote patch has no matching verified artifact.",
+    "deployment_attempted": false,
+    "service_restart_attempted": false,
+    "zero_speed_sample_attempted": false,
+    "zero_speed_request_count": 0,
+    "live_nonzero_request_count": 0,
+    "nav2_control_invocation_count": 0,
+    "direct_cmd_vel_publish_count": 0,
+    "direct_uart_write_count": 0
+  },
+  "claims": {
+    "physical_latency_not_measured": true,
+    "wheel_onset_observed": false,
+    "hil_pass": false,
+    "safe_to_control": false,
+    "delivery_success": false,
+    "robot_control_executed": false
+  }
+}

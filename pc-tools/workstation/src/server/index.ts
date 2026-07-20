@@ -73,6 +73,11 @@ import {
 } from "./robotControlSummary";
 import { WORKSTATION_NODE_PORT, WORKSTATION_PUBLIC_HOST } from "../shared/workstationDefaults";
 import { PROOF_FLAGS } from "../shared/contracts";
+import {
+  buildPcLatencyTiming,
+  monotonicNs,
+  normalizeRobotControlLatencyTrace,
+} from "./robotControlLatency";
 import type { Response } from "express";
 import type { RobotControlKeyboardLocalEvidence } from "./robotControlSummary";
 import type {
@@ -2896,11 +2901,18 @@ async function fetchFixedRobotPostSummary(
   baseUrl: string,
   endpoint: "/api/base/manual" | "/api/base/stop" | RobotControlFreeRoamAutonomyEndpoint,
   body: Record<string, unknown>,
-): Promise<{ remote_http_status: number | null; payload: Record<string, unknown> | null; error: string }> {
+): Promise<{
+  remote_http_status: number | null;
+  payload: Record<string, unknown> | null;
+  error: string;
+  upstream_headers_mono_ns: bigint;
+  response_done_mono_ns: bigint;
+}> {
   // 这里专门服务固定 base manual/stop 代理，不接受动态 endpoint，避免扩展成万能 POST 转发器。
   const normalized = normalizeRobotApiBaseUrl(baseUrl);
   if (!normalized.ok) {
-    return { remote_http_status: null, payload: null, error: normalized.reason };
+    const failedAt = monotonicNs();
+    return { remote_http_status: null, payload: null, error: normalized.reason, upstream_headers_mono_ns: failedAt, response_done_mono_ns: failedAt };
   }
   // 上位机 ROS2 CLI /cmd_vel 短 pulse 本身很短，但进程启动和 DDS 匹配现场实测可到约 15s；PC 只放宽等待响应，不放宽运动时长。
   const timeoutMs = endpoint.startsWith("/api/free-roam/autonomy/") ? 60000 : 25000;
@@ -2913,24 +2925,34 @@ async function fetchFixedRobotPostSummary(
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(timeoutMs),
     });
+    const upstreamHeadersMonoNs = monotonicNs();
     const json = await response.json().catch(() => null);
+    const responseDoneMonoNs = monotonicNs();
     return {
       remote_http_status: response.status,
       payload: asRecord(json),
       error: "",
+      upstream_headers_mono_ns: upstreamHeadersMonoNs,
+      response_done_mono_ns: responseDoneMonoNs,
     };
   } catch (error) {
+    // 失败也使用同一单调时钟收口，诊断可区分 forward 等待与响应解析，但不会伪造 upper receive。
+    const failedAt = monotonicNs();
     if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")) {
       return {
         remote_http_status: null,
         payload: null,
         error: `fetch_timeout_${timeoutMs}ms`,
+        upstream_headers_mono_ns: failedAt,
+        response_done_mono_ns: failedAt,
       };
     }
     return {
       remote_http_status: null,
       payload: null,
       error: error instanceof Error ? shortText(error.message, "upper_api_unreachable") : "upper_api_unreachable",
+      upstream_headers_mono_ns: failedAt,
+      response_done_mono_ns: failedAt,
     };
   }
 }
@@ -5396,6 +5418,7 @@ export function createWorkstationApp(): express.Express {
 
   workstationApp.post("/api/robot-control/base/manual", async (req, res) => {
     // 点动代理只允许固定 manual endpoint；WASD 要低延迟，松手后再补只读证据快照。
+    const pcReceiveMonoNs = monotonicNs();
     const sourceBaseUrl = robotControlFixedProxyQueryBaseUrl(req.query.baseUrl);
     const normalized = normalizeRobotApiBaseUrl(sourceBaseUrl);
     const payload = asRecord(req.body);
@@ -5403,6 +5426,14 @@ export function createWorkstationApp(): express.Express {
     const speed = finiteManualSpeedFromPayload(payload);
     const durationMs = finiteNumber(payload?.duration_ms);
     const confirmHilChecklist = true;
+    let latencyTrace = null;
+    try {
+      latencyTrace = normalizeRobotControlLatencyTrace(payload?.latency_trace);
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : "latency_trace_invalid";
+      res.status(400).json(baseCommandFailure(sourceBaseUrl, "manual", "/api/base/manual", reason, "stop", speed, durationMs, confirmHilChecklist));
+      return;
+    }
     if (!normalized.ok) {
       res.status(400).json(baseCommandFailure(sourceBaseUrl, "manual", "/api/base/manual", normalized.reason, "stop", speed, durationMs, confirmHilChecklist));
       return;
@@ -5432,6 +5463,24 @@ export function createWorkstationApp(): express.Express {
     const holdSequence = finiteNumber(payload?.hold_sequence);
     const holdWatchdogMs = finiteNumber(payload?.hold_watchdog_ms);
     const holdSessionId = String(payload?.hold_session_id ?? "").trim();
+    const forwardedHoldSequence = holdSequence === null ? null : Math.max(0, Math.floor(holdSequence));
+    const forwardedHoldSessionId = holdSessionId.slice(0, 96);
+    if (
+      latencyTrace
+      && (
+        feedbackMode !== "realtime_hold"
+        || !forwardedHoldSessionId
+        || forwardedHoldSequence === null
+        || latencyTrace.hold_session_id !== forwardedHoldSessionId
+        || latencyTrace.hold_sequence !== forwardedHoldSequence
+      )
+    ) {
+      // trace 必须绑定实际 watchdog hold；身份错配时禁止转发，避免把另一轮按键证据串入当前请求。
+      res.status(400).json(baseCommandFailure(sourceBaseUrl, "manual", "/api/base/manual", "latency_trace_hold_identity_mismatch", direction, speed, durationMs, confirmHilChecklist));
+      return;
+    }
+    const pcValidationDoneMonoNs = monotonicNs();
+    const pcForwardStartMonoNs = monotonicNs();
     const remote = await fetchFixedRobotPostSummary(sourceBaseUrl, "/api/base/manual", {
       direction,
       speed: clampedSpeed,
@@ -5439,10 +5488,18 @@ export function createWorkstationApp(): express.Express {
       duration_ms: clampedDurationMs,
       command_mode: manualCommandMode,
       feedback_mode: feedbackMode,
-      ...(feedbackMode === "realtime_hold" && holdSessionId ? { hold_session_id: holdSessionId.slice(0, 96) } : {}),
-      ...(feedbackMode === "realtime_hold" && holdSequence !== null ? { hold_sequence: Math.max(0, Math.floor(holdSequence)) } : {}),
+      ...(feedbackMode === "realtime_hold" && forwardedHoldSessionId ? { hold_session_id: forwardedHoldSessionId } : {}),
+      ...(feedbackMode === "realtime_hold" && forwardedHoldSequence !== null ? { hold_sequence: forwardedHoldSequence } : {}),
       ...(feedbackMode === "realtime_hold" && holdWatchdogMs !== null ? { hold_watchdog_ms: clamp(holdWatchdogMs, 0, ROBOT_CONTROL_MANUAL_DURATION_LIMIT_MS) } : {}),
+      ...(latencyTrace ? { latency_trace: latencyTrace } : {}),
       confirm_hil_checklist: true,
+    });
+    const pcLatencyTiming = buildPcLatencyTiming({
+      receive: pcReceiveMonoNs,
+      validationDone: pcValidationDoneMonoNs,
+      forwardStart: pcForwardStartMonoNs,
+      upstreamHeaders: remote.upstream_headers_mono_ns,
+      responseDone: remote.response_done_mono_ns,
     });
     const remoteMotionKeyValues = baseManualMotionKeyValues(remote.payload);
     const evidenceCapture = realtimeManualEvidenceCapture(remoteMotionKeyValues);
@@ -5508,6 +5565,8 @@ export function createWorkstationApp(): express.Express {
         ...dangerous.map((field) => `dangerous_true_field:${field}`),
       ],
       hard_dangerous_true_fields: dangerous,
+      ...(latencyTrace ? { latency_trace: latencyTrace, pc_latency_timing: pcLatencyTiming } : {}),
+      ...(asRecord(remote.payload?.latency_timing) ? { upper_latency_timing: asRecord(remote.payload?.latency_timing)! } : {}),
     };
     updateKeyboardEvidenceAfterManual(cameraMjpegRelayKey(normalized.normalized), direction, responseBody);
     res.status(responseBody.proxy_status === "command_forwarded" ? 200 : 502).json(responseBody);

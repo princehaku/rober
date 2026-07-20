@@ -1,0 +1,395 @@
+--- a/onboard/scripts/upper_robot_api.py
++++ b/onboard/scripts/upper_robot_api.py
+@@ -17,6 +17,7 @@
+ import subprocess
+ import sys
+ import tempfile
++import threading
+ import time
+ import zlib
+ from pathlib import Path
+@@ -125,6 +126,11 @@
+ BASE_FEEDBACK_REQUEST_COMMAND = {"T": 130}
+ BASE_FEEDBACK_ID = 1001
+ _ROS_CMD_VEL_CONTEXT: dict[str, Any] = {}
++# rclpy node 不能被 watchdog thread 与 aiohttp request 同时 spin/publish；短临界区不包含 burst sleep。
++_ROS_CMD_VEL_LOCK = threading.RLock()
++LATENCY_TRACE_SCHEMA = "trashbot.keyboard_wheel_latency_trace.v1"
++# trace 只接受短关联键，避免把诊断 envelope 变成任意字符串回显面。
++LATENCY_TRACE_TOKEN_PATTERN = re.compile(r"^[A-Za-z0-9._:-]+$")
+ BLOCKED_BASE_FEEDBACK_COMMANDS = [
+     "T=1",
+     "T=13",
+@@ -287,6 +293,99 @@
+ def now_ms() -> int:
+     """统一毫秒时间戳，方便 PC、上位机和远端日志对齐。"""
+     return int(time.time() * 1000)
++
++
++def normalize_latency_trace(value: Any) -> dict[str, Any] | None:
++    """校验可选 latency envelope；未知字段不回显，缺 envelope 保持旧接口兼容。"""
++    if value is None:
++        return None
++    if not isinstance(value, dict):
++        raise ValueError("latency_trace_invalid_object")
++
++    def safe_token(field: str, max_length: int = 96) -> str:
++        # trace id/session 不是授权凭证，只允许短关联字符，拒绝控制字符和路径片段。
++        normalized = str(value.get(field) or "").strip()
++        if not normalized or len(normalized) > max_length or not LATENCY_TRACE_TOKEN_PATTERN.fullmatch(normalized):
++            raise ValueError(f"latency_trace_invalid_{field}")
++        return normalized
++
++    def finite_nonnegative(field: str) -> float:
++        # browser 数值只原样关联；upper 不拿它与 monotonic 时钟做跨机相减。
++        raw = value.get(field)
++        if isinstance(raw, bool) or not isinstance(raw, (int, float)) or not math.isfinite(float(raw)) or float(raw) < 0:
++            raise ValueError(f"latency_trace_invalid_{field}")
++        return float(raw)
++
++    if value.get("schema") != LATENCY_TRACE_SCHEMA:
++        raise ValueError("latency_trace_invalid_schema")
++    sequence_value = finite_nonnegative("hold_sequence")
++    if not sequence_value.is_integer() or sequence_value > 1_000_000_000:
++        raise ValueError("latency_trace_invalid_hold_sequence")
++    sample_kind = value.get("sample_kind")
++    if sample_kind not in {"cold", "warm"}:
++        raise ValueError("latency_trace_invalid_sample_kind")
++    return {
++        "schema": LATENCY_TRACE_SCHEMA,
++        "latency_trace_id": safe_token("latency_trace_id"),
++        "client_keydown_perf_ms": finite_nonnegative("client_keydown_perf_ms"),
++        "client_time_origin_ms": finite_nonnegative("client_time_origin_ms"),
++        "hold_session_id": safe_token("hold_session_id"),
++        "hold_sequence": int(sequence_value),
++        "sample_kind": sample_kind,
++    }
++
++def upper_latency_timing(
++    upper_receive_mono_ns: int,
++    manual_gate_done_mono_ns: int,
++    command_result: dict[str, Any],
++    upper_response_ready_mono_ns: int,
++) -> dict[str, Any]:
++    """只计算 upper 本进程 span；browser、PC、bridge 时钟必须在各自进程内分账。"""
++    first_publish = int(command_result.get("cmd_vel_first_publish_mono_ns") or 0)
++    publish_done = int(command_result.get("cmd_vel_publish_done_mono_ns") or 0)
++    timing = {
++        "clock_id": "python_monotonic_ns",
++        "upper_receive_mono_ns": upper_receive_mono_ns,
++        "manual_gate_done_mono_ns": manual_gate_done_mono_ns,
++        "rclpy_context_status": command_result.get("rclpy_context_status", "not_applicable"),
++        "rclpy_ready_mono_ns": command_result.get("rclpy_ready_mono_ns"),
++        "cmd_vel_first_publish_mono_ns": first_publish or None,
++        "cmd_vel_publish_done_mono_ns": publish_done or None,
++        "upper_response_ready_mono_ns": upper_response_ready_mono_ns,
++        "upper_receive_to_gate_ms": round((manual_gate_done_mono_ns - upper_receive_mono_ns) / 1_000_000, 6),
++        "upper_receive_to_response_ready_ms": round((upper_response_ready_mono_ns - upper_receive_mono_ns) / 1_000_000, 6),
++        "latency_pass_eligible": bool(command_result.get("latency_pass_eligible")),
++        "cli_fallback_attempted": bool(command_result.get("cli_fallback_attempted")),
++    }
++    if first_publish:
++        timing["upper_receive_to_first_publish_ms"] = round((first_publish - upper_receive_mono_ns) / 1_000_000, 6)
++        timing["manual_gate_to_first_publish_ms"] = round((first_publish - manual_gate_done_mono_ns) / 1_000_000, 6)
++    if first_publish and publish_done:
++        timing["cmd_vel_publish_span_ms"] = round((publish_done - first_publish) / 1_000_000, 6)
++    return timing
++
++def prewarm_ros_cmd_vel_context(wait_subscription_s: float = 0.6) -> dict[str, Any]:
++    """服务启动时预热 publisher/DDS graph；不发布任何运动或停车帧。"""
++    context = _ensure_ros_cmd_vel_context()
++    if context.get("status") != "ready":
++        context["prewarm_status"] = "unavailable_fail_closed"
++        context["prewarm_subscription_count"] = 0
++        return context
++    publisher = context["publisher"]
++    rclpy = context["rclpy"]
++    node = context["node"]
++    deadline = time.monotonic() + max(float(wait_subscription_s), 0.0)
++    with _ROS_CMD_VEL_LOCK:
++        subscription_count = int(publisher.get_subscription_count())
++    while subscription_count <= 0 and time.monotonic() < deadline:
++        # discovery 只在 startup 等待；正常 keydown hot path 不再承担这段等待。
++        with _ROS_CMD_VEL_LOCK:
++            rclpy.spin_once(node, timeout_sec=min(0.05, max(deadline - time.monotonic(), 0.0)))
++            subscription_count = int(publisher.get_subscription_count())
++    context["prewarm_subscription_count"] = subscription_count
++    context["prewarm_done_mono_ns"] = time.monotonic_ns()
++    context["prewarm_status"] = "ready" if subscription_count > 0 else "degraded_subscription_unproven"
++    return context
+ 
+ 
+ def proof_flags() -> dict[str, Any]:
+@@ -7510,6 +7609,7 @@
+             "twist_type": Twist,
+             "node": node,
+             "publisher": publisher,
++            "ready_mono_ns": time.monotonic_ns(),
+             "topic": ROS_CMD_VEL_TOPIC,
+             "rmw_fastrtps_use_shm": os.environ.get("RMW_FASTRTPS_USE_SHM"),
+         }
+@@ -7524,6 +7624,7 @@
+     hold_s: float,
+     rate_hz: float = ROS_CMD_VEL_BURST_RATE_HZ,
+     wait_subscription_s: float = ROS_CMD_VEL_SUBSCRIPTION_WAIT_S,
++    require_subscription_match: bool = False,
+ ) -> dict[str, Any]:
+     """进程内连续发布 cmd_vel；这是 PC 键盘手控的低延迟主路径。"""
+     linear_x = round(float(linear_x), 6)
+@@ -7546,19 +7647,47 @@
+     if context.get("status") != "ready":
+         result["error"] = context.get("error") or {"type": "rclpy_unavailable", "message": "rclpy context unavailable"}
+         result["fallback_required"] = True
++        result["rclpy_context_status"] = context.get("prewarm_status", "unavailable_fail_closed")
++        result["rclpy_ready_mono_ns"] = context.get("ready_mono_ns")
+         return result
+ 
+     rclpy = context["rclpy"]
+     twist_type = context["twist_type"]
+     node = context["node"]
+     publisher = context["publisher"]
++    function_enter_mono_ns = time.monotonic_ns()
+     wait_started = time.monotonic()
+-    subscription_count = int(publisher.get_subscription_count())
+-    while subscription_count <= 0 and time.monotonic() - wait_started < wait_subscription_s:
+-        # graph discovery 需要 spin；否则刚创建 publisher 时可能看不到 esp32_bridge 订阅。
+-        rclpy.spin_once(node, timeout_sec=0.05)
++    with _ROS_CMD_VEL_LOCK:
++        if require_subscription_match:
++            # 零等待 spin 只刷新当前 graph cache；bridge 未出现时立即 fail-closed，不阻塞 keydown。
++            rclpy.spin_once(node, timeout_sec=0.0)
+         subscription_count = int(publisher.get_subscription_count())
+-
++    if require_subscription_match and subscription_count <= 0:
++        context["prewarm_status"] = "degraded_subscription_unproven"
++        context["prewarm_subscription_count"] = 0
++        failed_mono_ns = time.monotonic_ns()
++        return {
++            **result,
++            "subscription_match_required": True,
++            "subscription_match_proven": False,
++            "subscription_count": 0,
++            "frames_published": 0,
++            "rclpy_context_status": "degraded_subscription_unproven",
++            "rclpy_ready_mono_ns": context.get("ready_mono_ns"),
++            "publish_function_enter_mono_ns": function_enter_mono_ns,
++            "cmd_vel_first_publish_mono_ns": None,
++            "cmd_vel_publish_done_mono_ns": failed_mono_ns,
++            "error": {
++                "type": "cmd_vel_subscription_unavailable_fail_closed",
++                "message": "realtime_hold requires a currently matched /cmd_vel subscriber",
++            },
++            "fallback_required": False,
++            "wait_subscription_s": 0.0,
++        }
++    if require_subscription_match:
++        # bridge 后启动/重启后，当前 count 一旦恢复即可把 context 从 degraded 提升回 ready。
++        context["prewarm_status"] = "ready"
++        context["prewarm_subscription_count"] = subscription_count
+     frame_interval_s = 1.0 / rate_hz
+     frame_count = max(1, int(math.ceil(max(hold_s, frame_interval_s) * rate_hz)))
+     message = twist_type()
+@@ -7570,13 +7699,24 @@
+     message.angular.z = angular_z
+     publish_started = time.monotonic()
+     frames_published = 0
+-    for index in range(frame_count):
++    # 首帧在任何 sleep/discovery wait 前发出；startup prewarm 已承担正常 DDS graph 等待。
++    cmd_vel_first_publish_mono_ns = time.monotonic_ns()
++    with _ROS_CMD_VEL_LOCK:
+         publisher.publish(message)
++        rclpy.spin_once(node, timeout_sec=0.0)
++    frames_published = 1
++    while subscription_count <= 0 and time.monotonic() - wait_started < wait_subscription_s:
++        # 若 subscriber 重启，只在首帧后推进 discovery；这段等待不再增加按下到首次 publish 的延迟。
++        with _ROS_CMD_VEL_LOCK:
++            rclpy.spin_once(node, timeout_sec=min(0.05, wait_subscription_s))
++            subscription_count = int(publisher.get_subscription_count())
++    for _index in range(1, frame_count):
++        time.sleep(frame_interval_s)
++        with _ROS_CMD_VEL_LOCK:
++            publisher.publish(message)
++            rclpy.spin_once(node, timeout_sec=0.0)
+         frames_published += 1
+-        # spin_once 让 DDS 事件及时推进，短脉冲不会等到函数结束才出队。
+-        rclpy.spin_once(node, timeout_sec=0.0)
+-        if index < frame_count - 1:
+-            time.sleep(frame_interval_s)
++    cmd_vel_publish_done_mono_ns = time.monotonic_ns()
+     subscription_match_proven = subscription_count > 0
+     payload = {
+         **result,
+@@ -7584,8 +7724,16 @@
+         # 所以发布成功和订阅匹配证明分开，避免 PC 键盘手控被 CLI 兜底拖到 HTTP 超时。
+         "ok": frames_published > 0,
+         "subscription_match_proven": subscription_match_proven,
++        "subscription_match_required": require_subscription_match,
+         "subscription_count": subscription_count,
+         "frames_published": frames_published,
++        "rclpy_context_status": context.get("prewarm_status", "ready_not_preheated"),
++        "rclpy_ready_mono_ns": context.get("ready_mono_ns"),
++        "publish_function_enter_mono_ns": function_enter_mono_ns,
++        "cmd_vel_first_publish_mono_ns": cmd_vel_first_publish_mono_ns,
++        "cmd_vel_publish_done_mono_ns": cmd_vel_publish_done_mono_ns,
++        "context_ready_to_first_publish_ms": round((cmd_vel_first_publish_mono_ns - int(context.get("ready_mono_ns") or cmd_vel_first_publish_mono_ns)) / 1_000_000, 6),
++        "publish_call_to_done_ms": round((cmd_vel_publish_done_mono_ns - cmd_vel_first_publish_mono_ns) / 1_000_000, 6),
+         "elapsed_s": round(time.monotonic() - publish_started, 6),
+         "wait_subscription_s": round(time.monotonic() - wait_started, 6),
+     }
+@@ -7956,10 +8104,16 @@
+         linear_x,
+         angular_z,
+         hold_s=1.0 / ROS_CMD_VEL_BURST_RATE_HZ,
+-        wait_subscription_s=0.15,
++        wait_subscription_s=0.0,
++        require_subscription_match=True,
+     )
+-    if not command_result.get("ok"):
+-        command_result = publish_ros_cmd_vel_cli_burst(linear_x, angular_z, hold_s=1.0 / ROS_CMD_VEL_BURST_RATE_HZ, timeout_s=2.0)
++    # 键盘 hot path 若预热失败就结构化 fail-closed；秒级 CLI 只能保留给旧的非 hold 接口。
++    command_result["cli_fallback_attempted"] = False
++    command_result["latency_pass_eligible"] = bool(
++        command_result.get("ok")
++        and command_result.get("publish_backend") == "rclpy_inprocess_burst"
++        and command_result.get("rclpy_context_status") == "ready"
++    )
+     stop_result = {
+         "ok": False,
+         "skipped_reason": "realtime_hold_stop_deferred_to_release_or_watchdog",
+@@ -11552,6 +11706,8 @@
+ 
+     async def manual_control(self, body: dict[str, Any]) -> dict[str, Any]:
+         """低速点动控制：发送方向命令后等待短窗口，再无条件发送停车命令。"""
++        upper_receive_mono_ns = int(body.get("_upper_receive_mono_ns") or time.monotonic_ns())
++        latency_trace = normalize_latency_trace(body.get("latency_trace"))
+         direction = str(body.get("direction", "stop")).strip().lower()
+         if direction not in ALLOWED_DIRECTIONS:
+             return {
+@@ -11633,6 +11789,8 @@
+         motion_read_timeout_s = clamp_float(body.get("motion_read_timeout_s"), 0.05, 0.01, 0.2)
+         read_timeout_s = clamp_float(body.get("read_timeout_s"), DEFAULT_FEEDBACK_READ_TIMEOUT_S, 0.01, MAX_FEEDBACK_READ_TIMEOUT_S)
+         read_window_s = clamp_float(body.get("read_window_s"), DEFAULT_FEEDBACK_READ_WINDOW_S, 0.01, MAX_FEEDBACK_READ_WINDOW_S)
++        # 到这里方向、速度、持续时间、模式和 watchdog 均已收敛；首帧只能发生在 gate 完成之后。
++        manual_gate_done_mono_ns = time.monotonic_ns()
+         feedback_during_motion_attempted = direction != "stop" and pulse_ms > 0
+         serial_motion_transaction: dict[str, Any] | None = None
+         ros_cmd_vel_transaction: dict[str, Any] | None = None
+@@ -11660,7 +11818,9 @@
+                     stop = serial_motion_transaction["stop_result"]
+                     feedback_during_motion = serial_motion_transaction["feedback_during_motion"]
+                     feedback_evidence = serial_motion_transaction["feedback_after_stop"]
+-                manual_hold_watchdog = self._schedule_manual_hold_watchdog(hold_session_id, hold_sequence, command_mode, hold_watchdog_ms)
++                # 只有首帧真实交给 backend 后才延长 hold；失败请求不能留下“仍在运动”的假 watchdog 状态。
++                if first.get("ok"):
++                    manual_hold_watchdog = self._schedule_manual_hold_watchdog(hold_session_id, hold_sequence, command_mode, hold_watchdog_ms)
+                 feedback_after_stop_attempted = False
+             elif command_mode == "ros":
+                 ros_cmd_vel_transaction = manual_motion_ros_cmd_vel_transaction(
+@@ -11837,10 +11997,30 @@
+         feedback_ack = feedback_during_motion.get("feedback_ack") if isinstance(feedback_during_motion.get("feedback_ack"), dict) else {}
+         if feedback_ack.get("t1001_observed") is not True:
+             feedback_ack = feedback_evidence.get("feedback_ack", t1001_boundary("manual feedback evidence unavailable"))
++        upper_response_ready_mono_ns = time.monotonic_ns()
++        latency_fields = (
++            {
++                "latency_trace": latency_trace,
++                "latency_timing": upper_latency_timing(
++                    upper_receive_mono_ns,
++                    manual_gate_done_mono_ns,
++                    first,
++                    upper_response_ready_mono_ns,
++                ),
++            }
++            if latency_trace is not None
++            else {}
++        )
++        # realtime_hold 不允许 CLI fallback；进程内 publisher 失败时 HTTP 也必须 fail-closed，不能报 command_forwarded。
++        realtime_hold_hot_path_blocked = bool(
++            use_realtime_hold and command_mode == "ros" and not first.get("ok")
++        )
+         return {
+             "schema": f"{SCHEMA}.base_manual_result",
+             "generated_at_ms": now_ms(),
+-            "accepted": True,
++            "accepted": not realtime_hold_hot_path_blocked,
++            "status": "blocked_realtime_hold_rclpy_not_ready" if realtime_hold_hot_path_blocked else "manual_command_completed",
++            "failure_reason": "realtime_hold_rclpy_prewarm_unavailable" if realtime_hold_hot_path_blocked else "",
+             "direction": direction,
+             "speed": speed,
+             "base_command_mode": command_mode,
+@@ -11857,7 +12037,7 @@
+             "command_result": first,
+             "stop_result": stop,
+             "serial_write_failures": serial_write_failures,
+-            "auto_stop_attempted": not bool(manual_hold_watchdog),
++            "auto_stop_attempted": False if realtime_hold_hot_path_blocked else not bool(manual_hold_watchdog),
+             "auto_stop_executed": False if manual_hold_watchdog else bool(stop.get("ok")),
+             "auto_stop_deferred_to_watchdog": bool(manual_hold_watchdog),
+             "manual_command_executed": bool(first.get("ok")),
+@@ -11908,6 +12088,7 @@
+             "delivery_success": False,
+             "hil_pass": False,
+             "primary_actions_enabled": False,
++            **latency_fields,
+         }
+ 
+ 
+@@ -12029,12 +12210,26 @@
+         nav2_stop_command=args.nav2_stop_command,
+         nav2_status_command=args.nav2_status_command,
+     )
++    # 在开始监听 HTTP 前完成 rclpy import/node/publisher/DDS graph 预热；该步骤绝不发布 /cmd_vel。
++    prewarm = prewarm_ros_cmd_vel_context()
+     app = create_app(api)
+     runner = web.AppRunner(app)
+     await runner.setup()
+     site = web.TCPSite(runner, args.host, args.port)
+     await site.start()
+-    print(json.dumps({"event": "upper_robot_api_started", "host": args.host, "port": args.port}, ensure_ascii=False), flush=True)
++    print(
++        json.dumps(
++            {
++                "event": "upper_robot_api_started",
++                "host": args.host,
++                "port": args.port,
++                "rclpy_cmd_vel_prewarm_status": prewarm.get("prewarm_status"),
++                "rclpy_cmd_vel_subscription_count": prewarm.get("prewarm_subscription_count", 0),
++            },
++            ensure_ascii=False,
++        ),
++        flush=True,
++    )
+     while True:
+         await asyncio.sleep(3600)
+ 
+@@ -12331,8 +12526,29 @@
+         return json_response(payload, status=http_status)
+ 
+     async def base_manual(request: web.Request) -> Any:
++        # receive 点位必须在 JSON 解析前记录；但只在 upper 本进程内计算 span。
++        upper_receive_mono_ns = time.monotonic_ns()
+         body = await request.json()
+-        payload = await api.manual_control(body if isinstance(body, dict) else {})
++        body = body if isinstance(body, dict) else {}
++        try:
++            latency_trace = normalize_latency_trace(body.get("latency_trace"))
++        except ValueError as exc:
++            return json_response(
++                {
++                    "schema": f"{SCHEMA}.base_manual_result",
++                    "accepted": False,
++                    "error": {"type": "latency_trace_invalid", "message": str(exc)},
++                    "safe_to_control": False,
++                    "robot_control_executed": False,
++                    "delivery_success": False,
++                    "hil_pass": False,
++                },
++                status=400,
++            )
++        if latency_trace is not None:
++            # 只把白名单后的 envelope 和内部 receive 点交给 manual_control，未知字段已丢弃。
++            body = {**body, "latency_trace": latency_trace, "_upper_receive_mono_ns": upper_receive_mono_ns}
++        payload = await api.manual_control(body)
+         return json_response(payload, status=200 if payload.get("accepted", True) else 400)
+ 
+     app = web.Application()

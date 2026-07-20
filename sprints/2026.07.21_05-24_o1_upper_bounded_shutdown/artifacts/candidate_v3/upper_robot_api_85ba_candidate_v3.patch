@@ -1,0 +1,978 @@
+--- a/onboard/scripts/upper_robot_api.py
++++ b/onboard/scripts/upper_robot_api.py
+@@ -17,6 +17,7 @@
+ import subprocess
+ import sys
+ import tempfile
++import threading
+ import time
+ import zlib
+ from pathlib import Path
+@@ -125,6 +126,17 @@
+ BASE_FEEDBACK_REQUEST_COMMAND = {"T": 130}
+ BASE_FEEDBACK_ID = 1001
+ _ROS_CMD_VEL_CONTEXT: dict[str, Any] = {}
++# rclpy node 不能被 watchdog thread 与 aiohttp request 同时 spin/publish；短临界区不包含 burst sleep。
++_ROS_CMD_VEL_LOCK = threading.RLock()
++# shutdown 状态不用 ROS 锁保护，避免 signal/teardown 为了记状态反而等待正在执行的 spin。
++_ROS_CMD_VEL_SHUTDOWN_STATE_LOCK = threading.Lock()
++# watchdog、release 与 runtime shutdown 的零速收口不能并发抢 ROS/串口；该锁不在 keydown 热路径。
++_MANUAL_HOLD_STOP_LOCK = threading.Lock()
++ROS_CMD_VEL_SHUTDOWN_TIMEOUT_S = 0.8
++UPPER_RUNNER_CLEANUP_TIMEOUT_S = 1.0
++LATENCY_TRACE_SCHEMA = "trashbot.keyboard_wheel_latency_trace.v1"
++# trace 只接受短关联键，避免把诊断 envelope 变成任意字符串回显面。
++LATENCY_TRACE_TOKEN_PATTERN = re.compile(r"^[A-Za-z0-9._:-]+$")
+ BLOCKED_BASE_FEEDBACK_COMMANDS = [
+     "T=1",
+     "T=13",
+@@ -287,6 +299,387 @@
+ def now_ms() -> int:
+     """统一毫秒时间戳，方便 PC、上位机和远端日志对齐。"""
+     return int(time.time() * 1000)
++
++
++def normalize_latency_trace(value: Any) -> dict[str, Any] | None:
++    """校验可选 latency envelope；未知字段不回显，缺 envelope 保持旧接口兼容。"""
++    if value is None:
++        return None
++    if not isinstance(value, dict):
++        raise ValueError("latency_trace_invalid_object")
++
++    def safe_token(field: str, max_length: int = 96) -> str:
++        # trace id/session 不是授权凭证，只允许短关联字符，拒绝控制字符和路径片段。
++        normalized = str(value.get(field) or "").strip()
++        if not normalized or len(normalized) > max_length or not LATENCY_TRACE_TOKEN_PATTERN.fullmatch(normalized):
++            raise ValueError(f"latency_trace_invalid_{field}")
++        return normalized
++
++    def finite_nonnegative(field: str) -> float:
++        # browser 数值只原样关联；upper 不拿它与 monotonic 时钟做跨机相减。
++        raw = value.get(field)
++        if isinstance(raw, bool) or not isinstance(raw, (int, float)) or not math.isfinite(float(raw)) or float(raw) < 0:
++            raise ValueError(f"latency_trace_invalid_{field}")
++        return float(raw)
++
++    if value.get("schema") != LATENCY_TRACE_SCHEMA:
++        raise ValueError("latency_trace_invalid_schema")
++    sequence_value = finite_nonnegative("hold_sequence")
++    if not sequence_value.is_integer() or sequence_value > 1_000_000_000:
++        raise ValueError("latency_trace_invalid_hold_sequence")
++    sample_kind = value.get("sample_kind")
++    if sample_kind not in {"cold", "warm"}:
++        raise ValueError("latency_trace_invalid_sample_kind")
++    return {
++        "schema": LATENCY_TRACE_SCHEMA,
++        "latency_trace_id": safe_token("latency_trace_id"),
++        "client_keydown_perf_ms": finite_nonnegative("client_keydown_perf_ms"),
++        "client_time_origin_ms": finite_nonnegative("client_time_origin_ms"),
++        "hold_session_id": safe_token("hold_session_id"),
++        "hold_sequence": int(sequence_value),
++        "sample_kind": sample_kind,
++    }
++
++def upper_latency_timing(
++    upper_receive_mono_ns: int,
++    manual_gate_done_mono_ns: int,
++    command_result: dict[str, Any],
++    upper_response_ready_mono_ns: int,
++) -> dict[str, Any]:
++    """只计算 upper 本进程 span；browser、PC、bridge 时钟必须在各自进程内分账。"""
++    first_publish = int(command_result.get("cmd_vel_first_publish_mono_ns") or 0)
++    publish_done = int(command_result.get("cmd_vel_publish_done_mono_ns") or 0)
++    timing = {
++        "clock_id": "python_monotonic_ns",
++        "upper_receive_mono_ns": upper_receive_mono_ns,
++        "manual_gate_done_mono_ns": manual_gate_done_mono_ns,
++        "rclpy_context_status": command_result.get("rclpy_context_status", "not_applicable"),
++        "rclpy_ready_mono_ns": command_result.get("rclpy_ready_mono_ns"),
++        "cmd_vel_first_publish_mono_ns": first_publish or None,
++        "cmd_vel_publish_done_mono_ns": publish_done or None,
++        "upper_response_ready_mono_ns": upper_response_ready_mono_ns,
++        "upper_receive_to_gate_ms": round((manual_gate_done_mono_ns - upper_receive_mono_ns) / 1_000_000, 6),
++        "upper_receive_to_response_ready_ms": round((upper_response_ready_mono_ns - upper_receive_mono_ns) / 1_000_000, 6),
++        "latency_pass_eligible": bool(command_result.get("latency_pass_eligible")),
++        "cli_fallback_attempted": bool(command_result.get("cli_fallback_attempted")),
++    }
++    if first_publish:
++        timing["upper_receive_to_first_publish_ms"] = round((first_publish - upper_receive_mono_ns) / 1_000_000, 6)
++        timing["manual_gate_to_first_publish_ms"] = round((first_publish - manual_gate_done_mono_ns) / 1_000_000, 6)
++    if first_publish and publish_done:
++        timing["cmd_vel_publish_span_ms"] = round((publish_done - first_publish) / 1_000_000, 6)
++    return timing
++
++def prewarm_ros_cmd_vel_context(wait_subscription_s: float = 0.6) -> dict[str, Any]:
++    """服务启动时预热 publisher/DDS graph；不发布任何运动或停车帧。"""
++    context = _ensure_ros_cmd_vel_context()
++    if context.get("status") != "ready":
++        context["prewarm_status"] = "unavailable_fail_closed"
++        context["prewarm_subscription_count"] = 0
++        return context
++    publisher = context["publisher"]
++    rclpy = context["rclpy"]
++    node = context["node"]
++    deadline = time.monotonic() + max(float(wait_subscription_s), 0.0)
++    with _ROS_CMD_VEL_LOCK:
++        if context.get("status") != "ready":
++            context["prewarm_status"] = "shutdown_fail_closed"
++            context["prewarm_subscription_count"] = 0
++            return context
++        subscription_count = int(publisher.get_subscription_count())
++    while subscription_count <= 0 and time.monotonic() < deadline:
++        # discovery 只在 startup 等待；正常 keydown hot path 不再承担这段等待。
++        with _ROS_CMD_VEL_LOCK:
++            if context.get("status") != "ready":
++                context["prewarm_status"] = "shutdown_fail_closed"
++                context["prewarm_subscription_count"] = 0
++                return context
++            rclpy.spin_once(node, timeout_sec=min(0.05, max(deadline - time.monotonic(), 0.0)))
++            subscription_count = int(publisher.get_subscription_count())
++    context["prewarm_subscription_count"] = subscription_count
++    context["prewarm_done_mono_ns"] = time.monotonic_ns()
++    context["prewarm_status"] = "ready" if subscription_count > 0 else "degraded_subscription_unproven"
++    return context
++
++
++def shutdown_ros_cmd_vel_context(timeout_s: float = ROS_CMD_VEL_SHUTDOWN_TIMEOUT_S) -> dict[str, Any]:
++    """幂等、有界关闭 rclpy；卡住的 destroy/shutdown 只能留在 daemon worker，不能拖住进程退出。"""
++    # 状态机只允许以下主路径：ready -> shutting_down -> shutdown。
++    # unavailable 也可以进入 shutting_down，以便统一返回而不为缺少 rclpy 建立旁路。
++    # shutdown 是终态；后续调用只返回快照，不重新打开或关闭 context。
++    # shutting_down 且 worker 存活时只报告 in-progress，调用方可选择让进程退出。
++    # worker 超时并不把状态伪装成 shutdown，现场日志因而能区分 clean 与 bounded exit。
++    # 不使用 concurrent.futures 默认 executor，因为 asyncio.run 会等待它的线程结束。
++    # 调用线程只负责状态快照、启动 worker 和 bounded join，不直接进入 rclpy。
++    # 这样 asyncio finally 永远不会在 destroy_node 或 rclpy.shutdown 内无限等待。
++    started_ns = time.monotonic_ns()
++    timeout_s = max(float(timeout_s), 0.0)
++    with _ROS_CMD_VEL_SHUTDOWN_STATE_LOCK:
++        # 已完成 teardown 时复用第一次结果；重复 signal 不得再次 destroy node。
++        existing_thread = _ROS_CMD_VEL_CONTEXT.get("shutdown_thread")
++        if _ROS_CMD_VEL_CONTEXT.get("status") == "shutdown":
++            # terminal snapshot 仍要保留首次 teardown error，重复调用不能把失败洗成成功。
++            # shutdown_completed 只表示 worker 已退出，shutdown_succeeded 才是 clean gate。
++            # process replacement 后才允许重新初始化，当前进程内不做第二次 destroy。
++            existing_error = _ROS_CMD_VEL_CONTEXT.get("shutdown_error")
++            return {
++                "status": "already_shutdown",
++                "shutdown_completed": True,
++                "shutdown_succeeded": existing_error is None,
++                "shutdown_attempts": int(_ROS_CMD_VEL_CONTEXT.get("shutdown_attempts") or 1),
++                "error": existing_error,
++                "elapsed_ms": round((time.monotonic_ns() - started_ns) / 1_000_000, 6),
++            }
++        if isinstance(existing_thread, threading.Thread) and existing_thread.is_alive():
++            # 第二个调用只报告 in-progress，不能再创建另一个 teardown owner。
++            return {
++                "status": "shutdown_in_progress",
++                "shutdown_completed": False,
++                "shutdown_attempts": int(_ROS_CMD_VEL_CONTEXT.get("shutdown_attempts") or 1),
++                "worker_alive": True,
++                "elapsed_ms": round((time.monotonic_ns() - started_ns) / 1_000_000, 6),
++            }
++        attempts = int(_ROS_CMD_VEL_CONTEXT.get("shutdown_attempts") or 0) + 1
++        # rclpy/node 先快照；status 切换后新的 request 会在任何 publish 前 fail-closed。
++        rclpy = _ROS_CMD_VEL_CONTEXT.get("rclpy")
++        node = _ROS_CMD_VEL_CONTEXT.get("node")
++        _ROS_CMD_VEL_CONTEXT.update(
++            {
++                "status": "shutting_down",
++                "shutdown_attempts": attempts,
++                "shutdown_started_mono_ns": started_ns,
++                "shutdown_completed": False,
++            }
++        )
++
++        def teardown_worker() -> None:
++            """所有 rclpy teardown 与 spin/publish 共享同一 owner 锁，禁止重入 executor generator。"""
++            # error 只写结构化 compact 值，不向客户端或日志泄漏任意 traceback。
++            error: dict[str, str] | None = None
++            destroy_attempted = False
++            rclpy_shutdown_attempted = False
++            try:
++                # 必须等最后一次 spin/publish 退出后再 destroy；不能靠捕获 generator 异常继续。
++                with _ROS_CMD_VEL_LOCK:
++                    if node is not None:
++                        # node 先销毁，避免 context shutdown 后 publisher 仍保留半初始化句柄。
++                        destroy_attempted = True
++                        destroy_result = node.destroy_node()
++                        # rclpy 明确返回 false 时等价于 teardown 失败，不能只因线程结束就报 clean。
++                        if destroy_result is False:
++                            raise RuntimeError("rclpy_destroy_node_returned_false")
++                    if rclpy is not None and bool(rclpy.ok()):
++                        # ok=false 说明 context 已由外部收口；此处不重复 shutdown。
++                        rclpy_shutdown_attempted = True
++                        rclpy.shutdown()
++            except Exception as exc:  # noqa: BLE001 - teardown 错误必须可观测，但不能阻塞进程退出。
++                error = compact_error(exc)
++            completed_ns = time.monotonic_ns()
++            with _ROS_CMD_VEL_SHUTDOWN_STATE_LOCK:
++                # 即使 destroy/shutdown 报错也标记 worker 已完成，并把错误留给 systemd/runbook 判定。
++                _ROS_CMD_VEL_CONTEXT.update(
++                    {
++                        "status": "shutdown",
++                        "shutdown_completed": True,
++                        "shutdown_completed_mono_ns": completed_ns,
++                        "destroy_node_attempted": destroy_attempted,
++                        "rclpy_shutdown_attempted": rclpy_shutdown_attempted,
++                        "shutdown_error": error,
++                    }
++                )
++
++        worker = threading.Thread(target=teardown_worker, name="upper-rclpy-shutdown", daemon=True)
++        # thread identity 保存在 context，重复调用才能判断唯一 owner 是否仍活着。
++        _ROS_CMD_VEL_CONTEXT["shutdown_thread"] = worker
++        worker.start()
++    # join 有硬上限；daemon=true 确保超时 worker 不会让 Python interpreter 等待。
++    worker.join(timeout=timeout_s)
++    completed = not worker.is_alive()
++    shutdown_error = _ROS_CMD_VEL_CONTEXT.get("shutdown_error")
++    # timeout、worker error 与 clean completion 三类结果必须分账，供 systemd gate 精确拒绝。
++    # error 不为空时 node/context 可能只关闭了一半，后续请求仍保持终态 fail-closed。
++    succeeded = completed and shutdown_error is None
++    # 返回 local elapsed 只描述本进程 cleanup，不与 systemd 或 PC 时钟相减。
++    return {
++        "status": "shutdown_complete" if succeeded else ("shutdown_failed" if completed else "shutdown_timeout_process_exit_required"),
++        "shutdown_completed": completed,
++        "shutdown_succeeded": succeeded,
++        "shutdown_attempts": attempts,
++        "worker_alive": worker.is_alive(),
++        "elapsed_ms": round((time.monotonic_ns() - started_ns) / 1_000_000, 6),
++        "destroy_node_attempted": bool(_ROS_CMD_VEL_CONTEXT.get("destroy_node_attempted")),
++        "rclpy_shutdown_attempted": bool(_ROS_CMD_VEL_CONTEXT.get("rclpy_shutdown_attempted")),
++        "error": shutdown_error,
++    }
++
++def install_upper_shutdown_signal_handlers(
++    loop: asyncio.AbstractEventLoop,
++    shutdown_event: asyncio.Event,
++) -> list[signal.Signals]:
++    """signal callback 只设置 event；不能在信号路径等待 ROS 锁、runner 或硬件 I/O。"""
++    # asyncio loop 是 server 生命周期唯一 owner，rclpy 初始化时显式关闭其 signal handler。
++    # handler 不直接 cancel task，避免在任意 await 点打断 all-surface stop 合同。
++    # handler 不读全局 ROS context，因此即使 executor 卡住也能立即记录 shutdown 请求。
++    # event 自带幂等语义，SIGTERM 后紧接 SIGINT 仍只触发一条 finally 路径。
++    # 返回安装列表是为了精确移除本函数的副作用，不猜测外部 handler 状态。
++    installed: list[signal.Signals] = []
++
++    def request_shutdown(received_signal: signal.Signals) -> None:
++        # add_signal_handler 会把 callback 调度回 event loop；这里仍禁止 ROS/串口/runner I/O。
++        print(
++            json.dumps(
++                {"event": "upper_robot_api_shutdown_requested", "signal": received_signal.name},
++                ensure_ascii=False,
++            ),
++            flush=True,
++        )
++        shutdown_event.set()
++
++    for handled_signal in (signal.SIGTERM, signal.SIGINT):
++        try:
++            # 两个信号共用同一个 event，连续触发天然幂等。
++            loop.add_signal_handler(handled_signal, request_shutdown, handled_signal)
++            installed.append(handled_signal)
++        except (NotImplementedError, RuntimeError):
++            # 非主线程或不支持 add_signal_handler 的平台只用于离线测试，生产 Linux 必须安装成功。
++            continue
++    return installed
++
++def remove_upper_shutdown_signal_handlers(
++    loop: asyncio.AbstractEventLoop,
++    installed: list[signal.Signals],
++) -> None:
++    """只移除本函数安装的 handler，避免测试或嵌入式调用覆盖外部 owner。"""
++    for handled_signal in installed:
++        try:
++            loop.remove_signal_handler(handled_signal)
++        except (NotImplementedError, RuntimeError):
++            continue
++
++def bounded_manual_hold_stop_for_shutdown(
++    api: UpperRobotApi,
++    *,
++    timeout_s: float = UPPER_RUNNER_CLEANUP_TIMEOUT_S,
++) -> dict[str, Any]:
++    """active hold 在进程退出前最多补一次零速收口；daemon worker 超时不会拖住 systemd stop。"""
++    # 退出期间“有界”不能等价于静默丢弃 active hold 的停车义务。
++    # 因此先按快照决定是否需要 stop，再把可能阻塞的串口/ROS I/O 放进 daemon worker。
++    # worker 复用已有 stop helper，确保 ROS 零速与三种 vendor 零命令的顺序不分叉。
++    # timeout 只限制调用方等待时间；结构化 worker_alive 会保留未完成风险。
++    # 普通无 active hold 的服务退出不产生任何控制面副作用。
++    # 该 helper 只在 shutdown finally 使用，不进入 keydown 到首帧的热路径。
++    state = dict(api._manual_hold_state)
++    # 非 active 请求不发送任何 stop，避免普通只读服务退出产生额外控制帧。
++    if state.get("active") is not True:
++        return {"attempted": False, "completed": True, "reason": "no_active_manual_hold"}
++    holder: dict[str, Any] = {}
++
++    def stop_worker() -> None:
++        try:
++            # 复用既有 all-surface stop 合同，不发明新的 vendor 或 ROS 命令。
++            holder["result"] = api._manual_hold_stop_sync(str(state.get("command_mode") or api.base_command_mode))
++        except Exception as exc:  # noqa: BLE001 - stop 错误必须可观测，process teardown 仍继续。
++            holder["error"] = compact_error(exc)
++
++    worker = threading.Thread(target=stop_worker, name="upper-hold-stop-shutdown", daemon=True)
++    # stop worker 也是 daemon；硬件阻塞时 systemd stop 仍能在预算后退出。
++    worker.start()
++    worker.join(timeout=max(float(timeout_s), 0.0))
++    completed = not worker.is_alive()
++    return {
++        "attempted": True,
++        "completed": completed,
++        "worker_alive": worker.is_alive(),
++        "result": holder.get("result"),
++        "error": holder.get("error") if completed else {"type": "hold_stop_timeout", "message": "zero-stop worker exceeded shutdown budget"},
++    }
++
++async def shutdown_upper_runtime(
++    api: UpperRobotApi,
++    runner: Any | None,
++    *,
++    timeout_s: float = UPPER_RUNNER_CLEANUP_TIMEOUT_S,
++) -> dict[str, Any]:
++    """有界收口 watchdog、aiohttp 与 rclpy；任何一层失败都结构化返回并继续下一层。"""
++    # 收口顺序优先冻结 watchdog，避免它在 finally 中又派生一个并发 stop owner。
++    # active hold 的零速义务随后独立完成，不依赖 watchdog cancel 是否及时响应。
++    # runner 在 ROS node 前关闭，保证 teardown 期间不会再接受新的 manual 请求。
++    # ROS 最后关闭，允许前面的 active-hold stop 复用仍然有效的 publisher。
++    # 每一层错误只降低 completed，不阻止后续层继续释放资源。
++    # 最终 elapsed_ms 使用单机 monotonic clock，只衡量本进程预算执行，不跨机比较。
++    # 这个顺序既保护安全停车，也避免 systemd stop 被任何单一资源永久卡住。
++    # late-writer reconciliation 还要求 ROS worker 无异常完成，不能只凭线程结束宣称成功。
++    # shutdown_succeeded 比 shutdown_completed 更强：前者同时约束完成状态和 error 为空。
++    # runtime gate 在第一个 await 前置位，排队中的 manual 请求不会趁 runner cleanup 前发布首帧。
++    # watchdog 先认领 stop owner，runtime 快照只会为尚未认领的 active hold 补一次零速。
++    started_ns = time.monotonic_ns()
++    timeout_s = max(float(timeout_s), 0.0)
++    # 必须在第一次 await 前关闭 manual 准入，防止 runner cleanup 前的排队请求建立新 hold。
++    # asyncio signal callback 与本赋值由同一 loop 串行执行，因而不需要额外线程锁。
++    # 已在执行且跨 await 的旧请求仍由 runner cleanup 与 ROS shutdown gate 共同收口。
++    # 显式 base stop 保持可用，runtime active-hold stop 也不经过 manual admission gate。
++    api._runtime_shutdown_started = True
++    watchdog_result: dict[str, Any] = {"attempted": False, "completed": True}
++    watchdog_task = api._manual_hold_watchdog_task
++    # active 快照发生在改状态前，决定本次退出是否必须补零速收口。
++    hold_was_active = api._manual_hold_state.get("active") is True
++    # 先冻结状态，让尚未进入 stop 的 watchdog 退出；真正零速收口由下方单 owner worker 完成。
++    api._manual_hold_state = {**api._manual_hold_state, "active": False, "runtime_shutdown_at_ms": now_ms()}
++    if watchdog_task is not None and not watchdog_task.done():
++        # cancel 只终止计时 owner，不直接承担 stop；stop 委托给下方有界 worker。
++        watchdog_result = {"attempted": True, "completed": False}
++        watchdog_task.cancel()
++        try:
++            await asyncio.wait_for(asyncio.shield(watchdog_task), timeout=timeout_s)
++        except asyncio.CancelledError:
++            watchdog_result["completed"] = True
++        except asyncio.TimeoutError:
++            watchdog_result["error"] = "watchdog_cancel_timeout"
++        except Exception as exc:  # noqa: BLE001 - shutdown 必须继续收口其它 owner。
++            watchdog_result["error"] = compact_error(exc)
++        else:
++            watchdog_result["completed"] = True
++    # active 快照只决定是否需要停车；helper 内部再次读取的状态已冻结，避免 watchdog 重复进入。
++    if hold_was_active:
++        # helper 只读取 active 快照；临时恢复 true 不会重启已经取消的 watchdog task。
++        frozen_state = dict(api._manual_hold_state)
++        frozen_state["active"] = True
++        api._manual_hold_state = frozen_state
++        hold_stop_result = bounded_manual_hold_stop_for_shutdown(api, timeout_s=timeout_s)
++        api._manual_hold_state = {**api._manual_hold_state, "active": False}
++    else:
++        hold_stop_result = {"attempted": False, "completed": True, "reason": "no_active_manual_hold"}
++
++    runner_result: dict[str, Any] = {"attempted": runner is not None, "completed": runner is None}
++    if runner is not None:
++        try:
++            # runner cleanup 先停止接收新请求，随后 ROS teardown 才能安全销毁 publisher。
++            await asyncio.wait_for(runner.cleanup(), timeout=timeout_s)
++        except asyncio.TimeoutError:
++            runner_result["error"] = "aiohttp_runner_cleanup_timeout"
++        except Exception as exc:  # noqa: BLE001 - runner 错误不能阻止 ROS teardown。
++            runner_result["error"] = compact_error(exc)
++        else:
++            runner_result["completed"] = True
++
++    # ROS teardown 自己用 daemon worker+bounded join，不能交给 asyncio 默认 executor 拖住 asyncio.run 退出。
++    ros_result = shutdown_ros_cmd_vel_context(timeout_s=timeout_s)
++    # 三个 owner 都完成才叫 clean shutdown；任一超时都保留 incomplete 供 v3 gate 拒绝。
++    completed = bool(
++        watchdog_result.get("completed")
++        and hold_stop_result.get("completed")
++        and runner_result.get("completed")
++        and ros_result.get("shutdown_succeeded")
++    )
++    return {
++        "status": "shutdown_complete" if completed else "shutdown_bounded_with_incomplete_cleanup",
++        "completed": completed,
++        "watchdog": watchdog_result,
++        "active_hold_stop": hold_stop_result,
++        "aiohttp_runner": runner_result,
++        "ros_cmd_vel": ros_result,
++        "elapsed_ms": round((time.monotonic_ns() - started_ns) / 1_000_000, 6),
++    }
+ 
+ 
+ def proof_flags() -> dict[str, Any]:
+@@ -7470,51 +7863,59 @@
+ 
+ def _ensure_ros_cmd_vel_context() -> dict[str, Any]:
+     """懒加载 rclpy publisher；成功后每次 WASD 复用同一个 node，避免 CLI 冷启动。"""
+-    if _ROS_CMD_VEL_CONTEXT.get("status") == "ready":
+-        return _ROS_CMD_VEL_CONTEXT
+-    if _ROS_CMD_VEL_CONTEXT.get("status") == "unavailable":
+-        return _ROS_CMD_VEL_CONTEXT
+-    # 现场 Orange Pi 的 FastDDS SHM 锁文件会让 rclpy/ros2 pub 初始化抖到数秒；
+-    # 上位机进程内 publisher 和 CLI 兜底都统一关闭 SHM，优先走稳定的 UDP 发现。
+-    os.environ.setdefault("RMW_FASTRTPS_USE_SHM", "0")
+-    for path in _ros_python_import_paths():
+-        if path not in sys.path:
+-            sys.path.append(path)
+-    try:
+-        import rclpy  # type: ignore[import-not-found]
+-        from geometry_msgs.msg import Twist  # type: ignore[import-not-found]
+-    except Exception as exc:  # noqa: BLE001 - ROS 环境缺失时必须保留 CLI 回退。
++    with _ROS_CMD_VEL_LOCK:
++        if _ROS_CMD_VEL_CONTEXT.get("status") in {"ready", "unavailable", "shutting_down", "shutdown"}:
++            return _ROS_CMD_VEL_CONTEXT
++        # 现场 Orange Pi 的 FastDDS SHM 锁文件会让 rclpy/ros2 pub 初始化抖到数秒；
++        # 上位机进程内 publisher 和 CLI 兜底都统一关闭 SHM，优先走稳定的 UDP 发现。
++        os.environ.setdefault("RMW_FASTRTPS_USE_SHM", "0")
++        for path in _ros_python_import_paths():
++            if path not in sys.path:
++                sys.path.append(path)
++        try:
++            import rclpy  # type: ignore[import-not-found]
++            from geometry_msgs.msg import Twist  # type: ignore[import-not-found]
++        except Exception as exc:  # noqa: BLE001 - ROS 环境缺失时必须保留 CLI 回退。
++            _ROS_CMD_VEL_CONTEXT.clear()
++            _ROS_CMD_VEL_CONTEXT.update(
++                {
++                    "status": "unavailable",
++                    "error": compact_error(exc),
++                    "next_action": "start upper_robot_api from sourced ROS environment",
++                }
++            )
++            return _ROS_CMD_VEL_CONTEXT
++        try:
++            if not rclpy.ok():
++                # SIGTERM 必须由 asyncio server owner 接管；否则 rclpy 只关 context，不会结束永久 sleep 的 HTTP loop。
++                try:
++                    from rclpy.signals import SignalHandlerOptions  # type: ignore[import-not-found]
++
++                    rclpy.init(args=None, signal_handler_options=SignalHandlerOptions.NO)
++                except (ImportError, TypeError):
++                    # 旧测试 fake 或不支持该关键字的 rclpy 仍可初始化；部署环境 Humble 支持显式 NO。
++                    rclpy.init(args=None)
++            node = rclpy.create_node("upper_robot_api_cmd_vel_publisher")
++            publisher = node.create_publisher(Twist, ROS_CMD_VEL_TOPIC, 10)
++        except Exception as exc:  # noqa: BLE001 - ROS graph 初始化失败时继续走 CLI 兜底。
++            _ROS_CMD_VEL_CONTEXT.clear()
++            _ROS_CMD_VEL_CONTEXT.update({"status": "unavailable", "error": compact_error(exc)})
++            return _ROS_CMD_VEL_CONTEXT
+         _ROS_CMD_VEL_CONTEXT.clear()
+         _ROS_CMD_VEL_CONTEXT.update(
+             {
+-                "status": "unavailable",
+-                "error": compact_error(exc),
+-                "next_action": "start upper_robot_api from sourced ROS environment",
++                "status": "ready",
++                "rclpy": rclpy,
++                "twist_type": Twist,
++                "node": node,
++                "publisher": publisher,
++                "ready_mono_ns": time.monotonic_ns(),
++                "topic": ROS_CMD_VEL_TOPIC,
++                "rmw_fastrtps_use_shm": os.environ.get("RMW_FASTRTPS_USE_SHM"),
++                "shutdown_attempts": 0,
+             }
+         )
+         return _ROS_CMD_VEL_CONTEXT
+-    try:
+-        if not rclpy.ok():
+-            rclpy.init(args=None)
+-        node = rclpy.create_node("upper_robot_api_cmd_vel_publisher")
+-        publisher = node.create_publisher(Twist, ROS_CMD_VEL_TOPIC, 10)
+-    except Exception as exc:  # noqa: BLE001 - ROS graph 初始化失败时继续走 CLI 兜底。
+-        _ROS_CMD_VEL_CONTEXT.clear()
+-        _ROS_CMD_VEL_CONTEXT.update({"status": "unavailable", "error": compact_error(exc)})
+-        return _ROS_CMD_VEL_CONTEXT
+-    _ROS_CMD_VEL_CONTEXT.clear()
+-    _ROS_CMD_VEL_CONTEXT.update(
+-        {
+-            "status": "ready",
+-            "rclpy": rclpy,
+-            "twist_type": Twist,
+-            "node": node,
+-            "publisher": publisher,
+-            "topic": ROS_CMD_VEL_TOPIC,
+-            "rmw_fastrtps_use_shm": os.environ.get("RMW_FASTRTPS_USE_SHM"),
+-        }
+-    )
+-    return _ROS_CMD_VEL_CONTEXT
+ 
+ 
+ def publish_ros_cmd_vel_inprocess_burst(
+@@ -7524,6 +7925,7 @@
+     hold_s: float,
+     rate_hz: float = ROS_CMD_VEL_BURST_RATE_HZ,
+     wait_subscription_s: float = ROS_CMD_VEL_SUBSCRIPTION_WAIT_S,
++    require_subscription_match: bool = False,
+ ) -> dict[str, Any]:
+     """进程内连续发布 cmd_vel；这是 PC 键盘手控的低延迟主路径。"""
+     linear_x = round(float(linear_x), 6)
+@@ -7546,19 +7948,55 @@
+     if context.get("status") != "ready":
+         result["error"] = context.get("error") or {"type": "rclpy_unavailable", "message": "rclpy context unavailable"}
+         result["fallback_required"] = True
++        result["rclpy_context_status"] = context.get("prewarm_status", "unavailable_fail_closed")
++        result["rclpy_ready_mono_ns"] = context.get("ready_mono_ns")
+         return result
+ 
+     rclpy = context["rclpy"]
+     twist_type = context["twist_type"]
+     node = context["node"]
+     publisher = context["publisher"]
++    function_enter_mono_ns = time.monotonic_ns()
+     wait_started = time.monotonic()
+-    subscription_count = int(publisher.get_subscription_count())
+-    while subscription_count <= 0 and time.monotonic() - wait_started < wait_subscription_s:
+-        # graph discovery 需要 spin；否则刚创建 publisher 时可能看不到 esp32_bridge 订阅。
+-        rclpy.spin_once(node, timeout_sec=0.05)
++    with _ROS_CMD_VEL_LOCK:
++        if context.get("status") != "ready":
++            return {
++                **result,
++                "rclpy_context_status": context.get("status", "shutdown_fail_closed"),
++                "frames_published": 0,
++                "fallback_required": False,
++                "error": {"type": "rclpy_shutdown_fail_closed", "message": "rclpy context is shutting down"},
++            }
++        if require_subscription_match:
++            # 零等待 spin 只刷新当前 graph cache；bridge 未出现时立即 fail-closed，不阻塞 keydown。
++            rclpy.spin_once(node, timeout_sec=0.0)
+         subscription_count = int(publisher.get_subscription_count())
+-
++    if require_subscription_match and subscription_count <= 0:
++        context["prewarm_status"] = "degraded_subscription_unproven"
++        context["prewarm_subscription_count"] = 0
++        failed_mono_ns = time.monotonic_ns()
++        return {
++            **result,
++            "subscription_match_required": True,
++            "subscription_match_proven": False,
++            "subscription_count": 0,
++            "frames_published": 0,
++            "rclpy_context_status": "degraded_subscription_unproven",
++            "rclpy_ready_mono_ns": context.get("ready_mono_ns"),
++            "publish_function_enter_mono_ns": function_enter_mono_ns,
++            "cmd_vel_first_publish_mono_ns": None,
++            "cmd_vel_publish_done_mono_ns": failed_mono_ns,
++            "error": {
++                "type": "cmd_vel_subscription_unavailable_fail_closed",
++                "message": "realtime_hold requires a currently matched /cmd_vel subscriber",
++            },
++            "fallback_required": False,
++            "wait_subscription_s": 0.0,
++        }
++    if require_subscription_match:
++        # bridge 后启动/重启后，当前 count 一旦恢复即可把 context 从 degraded 提升回 ready。
++        context["prewarm_status"] = "ready"
++        context["prewarm_subscription_count"] = subscription_count
+     frame_interval_s = 1.0 / rate_hz
+     frame_count = max(1, int(math.ceil(max(hold_s, frame_interval_s) * rate_hz)))
+     message = twist_type()
+@@ -7570,13 +8008,37 @@
+     message.angular.z = angular_z
+     publish_started = time.monotonic()
+     frames_published = 0
+-    for index in range(frame_count):
++    # 首帧在任何 sleep/discovery wait 前发出；startup prewarm 已承担正常 DDS graph 等待。
++    cmd_vel_first_publish_mono_ns = time.monotonic_ns()
++    with _ROS_CMD_VEL_LOCK:
++        if context.get("status") != "ready":
++            return {
++                **result,
++                "rclpy_context_status": context.get("status", "shutdown_fail_closed"),
++                "frames_published": 0,
++                "fallback_required": False,
++                "cmd_vel_first_publish_mono_ns": None,
++                "error": {"type": "rclpy_shutdown_fail_closed", "message": "rclpy context stopped before first publish"},
++            }
+         publisher.publish(message)
++        rclpy.spin_once(node, timeout_sec=0.0)
++    frames_published = 1
++    while subscription_count <= 0 and time.monotonic() - wait_started < wait_subscription_s:
++        # 若 subscriber 重启，只在首帧后推进 discovery；这段等待不再增加按下到首次 publish 的延迟。
++        with _ROS_CMD_VEL_LOCK:
++            if context.get("status") != "ready":
++                break
++            rclpy.spin_once(node, timeout_sec=min(0.05, wait_subscription_s))
++            subscription_count = int(publisher.get_subscription_count())
++    for _index in range(1, frame_count):
++        time.sleep(frame_interval_s)
++        with _ROS_CMD_VEL_LOCK:
++            if context.get("status") != "ready":
++                break
++            publisher.publish(message)
++            rclpy.spin_once(node, timeout_sec=0.0)
+         frames_published += 1
+-        # spin_once 让 DDS 事件及时推进，短脉冲不会等到函数结束才出队。
+-        rclpy.spin_once(node, timeout_sec=0.0)
+-        if index < frame_count - 1:
+-            time.sleep(frame_interval_s)
++    cmd_vel_publish_done_mono_ns = time.monotonic_ns()
+     subscription_match_proven = subscription_count > 0
+     payload = {
+         **result,
+@@ -7584,8 +8046,16 @@
+         # 所以发布成功和订阅匹配证明分开，避免 PC 键盘手控被 CLI 兜底拖到 HTTP 超时。
+         "ok": frames_published > 0,
+         "subscription_match_proven": subscription_match_proven,
++        "subscription_match_required": require_subscription_match,
+         "subscription_count": subscription_count,
+         "frames_published": frames_published,
++        "rclpy_context_status": context.get("prewarm_status", "ready_not_preheated"),
++        "rclpy_ready_mono_ns": context.get("ready_mono_ns"),
++        "publish_function_enter_mono_ns": function_enter_mono_ns,
++        "cmd_vel_first_publish_mono_ns": cmd_vel_first_publish_mono_ns,
++        "cmd_vel_publish_done_mono_ns": cmd_vel_publish_done_mono_ns,
++        "context_ready_to_first_publish_ms": round((cmd_vel_first_publish_mono_ns - int(context.get("ready_mono_ns") or cmd_vel_first_publish_mono_ns)) / 1_000_000, 6),
++        "publish_call_to_done_ms": round((cmd_vel_publish_done_mono_ns - cmd_vel_first_publish_mono_ns) / 1_000_000, 6),
+         "elapsed_s": round(time.monotonic() - publish_started, 6),
+         "wait_subscription_s": round(time.monotonic() - wait_started, 6),
+     }
+@@ -7956,10 +8426,16 @@
+         linear_x,
+         angular_z,
+         hold_s=1.0 / ROS_CMD_VEL_BURST_RATE_HZ,
+-        wait_subscription_s=0.15,
++        wait_subscription_s=0.0,
++        require_subscription_match=True,
+     )
+-    if not command_result.get("ok"):
+-        command_result = publish_ros_cmd_vel_cli_burst(linear_x, angular_z, hold_s=1.0 / ROS_CMD_VEL_BURST_RATE_HZ, timeout_s=2.0)
++    # 键盘 hot path 若预热失败就结构化 fail-closed；秒级 CLI 只能保留给旧的非 hold 接口。
++    command_result["cli_fallback_attempted"] = False
++    command_result["latency_pass_eligible"] = bool(
++        command_result.get("ok")
++        and command_result.get("publish_backend") == "rclpy_inprocess_burst"
++        and command_result.get("rclpy_context_status") == "ready"
++    )
+     stop_result = {
+         "ok": False,
+         "skipped_reason": "realtime_hold_stop_deferred_to_release_or_watchdog",
+@@ -8408,28 +8884,32 @@
+ 
+ def build_stop_payload(port: str, baudrate: int) -> dict[str, Any]:
+     """停车接口必须以写入结果为准，不能把 HTTP 调用成功当成底盘已停车。"""
+-    stop_commands = stop_commands_for_mode("ros")
+-    ros_stop_result = publish_ros_cmd_vel_inprocess_burst(0.0, 0.0, hold_s=ROS_CMD_VEL_STOP_HOLD_S, wait_subscription_s=0.15)
+-    if not ros_stop_result.get("ok"):
+-        ros_stop_result = publish_ros_cmd_vel_cli_burst(0.0, 0.0, hold_s=ROS_CMD_VEL_STOP_HOLD_S, timeout_s=2.0)
+-    serial_stop_results = [write_serial_json(port, baudrate, command) for command in stop_commands]
+-    stop_result = serial_stop_results[0] if serial_stop_results else {"ok": False, "error": {"type": "stop_plan_empty"}}
+-    stop_ok = bool(ros_stop_result.get("ok")) or any(bool(result.get("ok")) for result in serial_stop_results)
+-    return {
+-        "schema": f"{SCHEMA}.base_stop_result",
+-        "generated_at_ms": now_ms(),
+-        "stop_result": stop_result,
+-        "ros_stop_result": ros_stop_result,
+-        "serial_stop_results": serial_stop_results,
+-        "serial_write_failures": [result.get("error") for result in serial_stop_results if not result.get("ok")],
+-        "stop_covers_command_modes": ["ros", "speed", "pwm"],
+-        "feedback_ack": t1001_boundary("stop write does not prove T=1001 or ACK"),
+-        "safe_to_control": False,
+-        "sends_commands": True,
+-        "robot_control_executed": stop_ok,
+-        "delivery_success": False,
+-        "primary_actions_enabled": False,
+-    }
++    # release stop 与 watchdog/runtime stop 必须共用同一 owner 锁，避免 ROS/串口零命令交叉。
++    # 该锁只覆盖停车事务，不进入 nonzero keydown 热路径，也不改变 vendor stop 顺序。
++    # 锁内仍执行原有 ROS-first、serial-all-surfaces 合同，响应字段保持兼容。
++    with _MANUAL_HOLD_STOP_LOCK:
++        stop_commands = stop_commands_for_mode("ros")
++        ros_stop_result = publish_ros_cmd_vel_inprocess_burst(0.0, 0.0, hold_s=ROS_CMD_VEL_STOP_HOLD_S, wait_subscription_s=0.15)
++        if not ros_stop_result.get("ok"):
++            ros_stop_result = publish_ros_cmd_vel_cli_burst(0.0, 0.0, hold_s=ROS_CMD_VEL_STOP_HOLD_S, timeout_s=2.0)
++        serial_stop_results = [write_serial_json(port, baudrate, command) for command in stop_commands]
++        stop_result = serial_stop_results[0] if serial_stop_results else {"ok": False, "error": {"type": "stop_plan_empty"}}
++        stop_ok = bool(ros_stop_result.get("ok")) or any(bool(result.get("ok")) for result in serial_stop_results)
++        return {
++            "schema": f"{SCHEMA}.base_stop_result",
++            "generated_at_ms": now_ms(),
++            "stop_result": stop_result,
++            "ros_stop_result": ros_stop_result,
++            "serial_stop_results": serial_stop_results,
++            "serial_write_failures": [result.get("error") for result in serial_stop_results if not result.get("ok")],
++            "stop_covers_command_modes": ["ros", "speed", "pwm"],
++            "feedback_ack": t1001_boundary("stop write does not prove T=1001 or ACK"),
++            "safe_to_control": False,
++            "sends_commands": True,
++            "robot_control_executed": stop_ok,
++            "delivery_success": False,
++            "primary_actions_enabled": False,
++        }
+ 
+ 
+ async def fetch_json(url: str, method: str = "GET", payload: dict[str, Any] | None = None) -> tuple[int, dict[str, Any]]:
+@@ -8948,6 +9428,10 @@
+         self.operator_report_artifact_path = operator_report_artifact_path
+         self._manual_hold_state: dict[str, Any] = {}
+         self._manual_hold_watchdog_task: asyncio.Task[Any] | None = None
++        # signal owner 在第一次 await 前置位；之后排队到达的 manual 请求必须零 publish fail-closed。
++        # 该标志是单进程终态 gate，不用于跨进程状态同步，也不在重启前清零。
++        # stop endpoint 不受此 gate 限制，确保退出期间仍可执行显式零速收口。
++        self._runtime_shutdown_started = False
+         self.radar_start_command = radar_start_command
+         self.radar_stop_command = radar_stop_command
+         self.lidar_scan_proof_runtime_command = lidar_scan_proof_runtime_command
+@@ -11500,18 +11984,19 @@
+ 
+     def _manual_hold_stop_sync(self, command_mode: str) -> dict[str, Any]:
+         """watchdog/release 共用停车兜底；ROS 先发 /cmd_vel 零速度，串口再补三种 vendor 零命令。"""
+-        stop_plan = stop_commands_for_mode(command_mode)
+-        ros_stop = publish_ros_cmd_vel_inprocess_burst(0.0, 0.0, hold_s=ROS_CMD_VEL_STOP_HOLD_S, wait_subscription_s=0.15)
+-        if not ros_stop.get("ok"):
+-            ros_stop = publish_ros_cmd_vel_cli_burst(0.0, 0.0, hold_s=ROS_CMD_VEL_STOP_HOLD_S, timeout_s=2.0)
+-        serial_results = [write_serial_json(self.base_port, self.base_baudrate, stop_command) for stop_command in stop_plan]
+-        return {
+-            "mode": "manual_hold_stop_all_surfaces",
+-            "command_mode": command_mode,
+-            "ros_stop_result": ros_stop,
+-            "serial_stop_results": serial_results,
+-            "ok": bool(ros_stop.get("ok")) or any(bool(item.get("ok")) for item in serial_results),
+-        }
++        with _MANUAL_HOLD_STOP_LOCK:
++            stop_plan = stop_commands_for_mode(command_mode)
++            ros_stop = publish_ros_cmd_vel_inprocess_burst(0.0, 0.0, hold_s=ROS_CMD_VEL_STOP_HOLD_S, wait_subscription_s=0.15)
++            if not ros_stop.get("ok"):
++                ros_stop = publish_ros_cmd_vel_cli_burst(0.0, 0.0, hold_s=ROS_CMD_VEL_STOP_HOLD_S, timeout_s=2.0)
++            serial_results = [write_serial_json(self.base_port, self.base_baudrate, stop_command) for stop_command in stop_plan]
++            return {
++                "mode": "manual_hold_stop_all_surfaces",
++                "command_mode": command_mode,
++                "ros_stop_result": ros_stop,
++                "serial_stop_results": serial_results,
++                "ok": bool(ros_stop.get("ok")) or any(bool(item.get("ok")) for item in serial_results),
++            }
+ 
+     async def _manual_hold_watchdog(self, session_id: str, sequence: int) -> None:
+         """如果 PC 按住循环断拍，最后一次 hold 到期后自动停车。"""
+@@ -11524,6 +12009,13 @@
+                 if delay_s > 0:
+                     await asyncio.sleep(delay_s)
+                     continue
++                # 在交给 worker 前先原子认领 stop；shutdown coroutine 看到 inactive 后不得再补第二次零速。
++                # 这三次字典写在 event-loop 线程连续完成，中间没有 await，因此 shutdown 无法读到半状态。
++                # to_thread 即使随后被 task cancel 也会继续完成已认领的零速 worker。
++                # stop owner 留在 state 中，日志可区分 watchdog 已承担收口而非 runtime 静默跳过。
++                state["active"] = False
++                state["stop_owner"] = "watchdog"
++                state["stop_started_at_ms"] = now_ms()
+                 result = await asyncio.to_thread(self._manual_hold_stop_sync, str(state.get("command_mode") or self.base_command_mode))
+                 state["watchdog_stop_result"] = result
+                 state["watchdog_stopped_at_ms"] = now_ms()
+@@ -11552,6 +12044,30 @@
+ 
+     async def manual_control(self, body: dict[str, Any]) -> dict[str, Any]:
+         """低速点动控制：发送方向命令后等待短窗口，再无条件发送停车命令。"""
++        upper_receive_mono_ns = int(body.get("_upper_receive_mono_ns") or time.monotonic_ns())
++        latency_trace = normalize_latency_trace(body.get("latency_trace"))
++        if self._runtime_shutdown_started:
++            # stop endpoint 仍可独立收口；新的 motion/manual 请求在 signal 后一律零执行拒绝。
++            # 这里位于任何 direction backend、watchdog schedule 或 serial/ROS helper 之前。
++            # latency trace 仍可安全回传白名单字段，便于 PC 解释请求为何未执行。
++            # failure response 固定所有控制/交付证明为 false，不把 shutdown 当 command success。
++            return {
++                "schema": f"{SCHEMA}.base_manual_result",
++                "generated_at_ms": now_ms(),
++                "accepted": False,
++                "status": "blocked_runtime_shutting_down",
++                "failure_reason": "upper_runtime_shutdown_started",
++                "latency_trace": latency_trace,
++                "command_result": None,
++                "stop_result": None,
++                "manual_command_executed": False,
++                "auto_stop_attempted": False,
++                "safe_to_control": False,
++                "robot_control_executed": False,
++                "delivery_success": False,
++                "hil_pass": False,
++                "primary_actions_enabled": False,
++            }
+         direction = str(body.get("direction", "stop")).strip().lower()
+         if direction not in ALLOWED_DIRECTIONS:
+             return {
+@@ -11633,6 +12149,8 @@
+         motion_read_timeout_s = clamp_float(body.get("motion_read_timeout_s"), 0.05, 0.01, 0.2)
+         read_timeout_s = clamp_float(body.get("read_timeout_s"), DEFAULT_FEEDBACK_READ_TIMEOUT_S, 0.01, MAX_FEEDBACK_READ_TIMEOUT_S)
+         read_window_s = clamp_float(body.get("read_window_s"), DEFAULT_FEEDBACK_READ_WINDOW_S, 0.01, MAX_FEEDBACK_READ_WINDOW_S)
++        # 到这里方向、速度、持续时间、模式和 watchdog 均已收敛；首帧只能发生在 gate 完成之后。
++        manual_gate_done_mono_ns = time.monotonic_ns()
+         feedback_during_motion_attempted = direction != "stop" and pulse_ms > 0
+         serial_motion_transaction: dict[str, Any] | None = None
+         ros_cmd_vel_transaction: dict[str, Any] | None = None
+@@ -11660,7 +12178,9 @@
+                     stop = serial_motion_transaction["stop_result"]
+                     feedback_during_motion = serial_motion_transaction["feedback_during_motion"]
+                     feedback_evidence = serial_motion_transaction["feedback_after_stop"]
+-                manual_hold_watchdog = self._schedule_manual_hold_watchdog(hold_session_id, hold_sequence, command_mode, hold_watchdog_ms)
++                # 只有首帧真实交给 backend 后才延长 hold；失败请求不能留下“仍在运动”的假 watchdog 状态。
++                if first.get("ok"):
++                    manual_hold_watchdog = self._schedule_manual_hold_watchdog(hold_session_id, hold_sequence, command_mode, hold_watchdog_ms)
+                 feedback_after_stop_attempted = False
+             elif command_mode == "ros":
+                 ros_cmd_vel_transaction = manual_motion_ros_cmd_vel_transaction(
+@@ -11837,10 +12357,30 @@
+         feedback_ack = feedback_during_motion.get("feedback_ack") if isinstance(feedback_during_motion.get("feedback_ack"), dict) else {}
+         if feedback_ack.get("t1001_observed") is not True:
+             feedback_ack = feedback_evidence.get("feedback_ack", t1001_boundary("manual feedback evidence unavailable"))
++        upper_response_ready_mono_ns = time.monotonic_ns()
++        latency_fields = (
++            {
++                "latency_trace": latency_trace,
++                "latency_timing": upper_latency_timing(
++                    upper_receive_mono_ns,
++                    manual_gate_done_mono_ns,
++                    first,
++                    upper_response_ready_mono_ns,
++                ),
++            }
++            if latency_trace is not None
++            else {}
++        )
++        # realtime_hold 不允许 CLI fallback；进程内 publisher 失败时 HTTP 也必须 fail-closed，不能报 command_forwarded。
++        realtime_hold_hot_path_blocked = bool(
++            use_realtime_hold and command_mode == "ros" and not first.get("ok")
++        )
+         return {
+             "schema": f"{SCHEMA}.base_manual_result",
+             "generated_at_ms": now_ms(),
+-            "accepted": True,
++            "accepted": not realtime_hold_hot_path_blocked,
++            "status": "blocked_realtime_hold_rclpy_not_ready" if realtime_hold_hot_path_blocked else "manual_command_completed",
++            "failure_reason": "realtime_hold_rclpy_prewarm_unavailable" if realtime_hold_hot_path_blocked else "",
+             "direction": direction,
+             "speed": speed,
+             "base_command_mode": command_mode,
+@@ -11857,7 +12397,7 @@
+             "command_result": first,
+             "stop_result": stop,
+             "serial_write_failures": serial_write_failures,
+-            "auto_stop_attempted": not bool(manual_hold_watchdog),
++            "auto_stop_attempted": False if realtime_hold_hot_path_blocked else not bool(manual_hold_watchdog),
+             "auto_stop_executed": False if manual_hold_watchdog else bool(stop.get("ok")),
+             "auto_stop_deferred_to_watchdog": bool(manual_hold_watchdog),
+             "manual_command_executed": bool(first.get("ok")),
+@@ -11908,6 +12448,7 @@
+             "delivery_success": False,
+             "hil_pass": False,
+             "primary_actions_enabled": False,
++            **latency_fields,
+         }
+ 
+ 
+@@ -11991,8 +12532,19 @@
+     return parser.parse_args()
+ 
+ 
+-async def run_server(args: argparse.Namespace) -> None:
+-    """启动 aiohttp API，所有硬件子面都挂在 /api 下。"""
++async def run_server(
++    args: argparse.Namespace,
++    *,
++    shutdown_event: asyncio.Event | None = None,
++    install_signal_handlers: bool = True,
++) -> None:
++    """启动 aiohttp API；SIGTERM 只唤醒 stop event，所有 owner 在 finally 中有界收口。"""
++    # run_server 自己创建并持有 event、handler、runner 和 ROS prewarm 的生命周期。
++    # 外部注入 event 只用于离线测试；生产路径仍由 asyncio loop 安装 SIGTERM/SIGINT。
++    # runner 在 setup 成功后才写入 owner 变量，startup 半途失败也能安全进入 finally。
++    # started 日志明确 signal owner，便于首次迁移时区分旧版 rclpy handler 进程。
++    # stopped 日志包含分层结果，后续 v3 可据此拒绝不完整 cleanup。
++    # 永久 sleep 被 event.wait 取代，使 systemd SIGTERM 能实际推动 Python coroutine 退出。
+     from aiohttp import web
+ 
+     api = UpperRobotApi(
+@@ -12029,14 +12581,40 @@
+         nav2_stop_command=args.nav2_stop_command,
+         nav2_status_command=args.nav2_status_command,
+     )
+-    app = create_app(api)
+-    runner = web.AppRunner(app)
+-    await runner.setup()
+-    site = web.TCPSite(runner, args.host, args.port)
+-    await site.start()
+-    print(json.dumps({"event": "upper_robot_api_started", "host": args.host, "port": args.port}, ensure_ascii=False), flush=True)
+-    while True:
+-        await asyncio.sleep(3600)
++    loop = asyncio.get_running_loop()
++    shutdown_event = shutdown_event or asyncio.Event()
++    installed_handlers = install_upper_shutdown_signal_handlers(loop, shutdown_event) if install_signal_handlers else []
++    runner: Any | None = None
++    try:
++        # 在开始监听 HTTP 前完成 rclpy import/node/publisher/DDS graph 预热；该步骤绝不发布 /cmd_vel。
++        prewarm = prewarm_ros_cmd_vel_context()
++        app = create_app(api)
++        runner = web.AppRunner(app)
++        await runner.setup()
++        site = web.TCPSite(runner, args.host, args.port)
++        await site.start()
++        print(
++            json.dumps(
++                {
++                    "event": "upper_robot_api_started",
++                    "host": args.host,
++                    "port": args.port,
++                    "rclpy_cmd_vel_prewarm_status": prewarm.get("prewarm_status"),
++                    "rclpy_cmd_vel_subscription_count": prewarm.get("prewarm_subscription_count", 0),
++                    "shutdown_signal_owner": "asyncio_event",
++                },
++                ensure_ascii=False,
++            ),
++            flush=True,
++        )
++        await shutdown_event.wait()
++    finally:
++        shutdown_result = await shutdown_upper_runtime(api, runner)
++        remove_upper_shutdown_signal_handlers(loop, installed_handlers)
++        print(
++            json.dumps({"event": "upper_robot_api_stopped", "shutdown": shutdown_result}, ensure_ascii=False),
++            flush=True,
++        )
+ 
+ 
+ def create_app(api: UpperRobotApi) -> Any:
+@@ -12331,8 +12909,29 @@
+         return json_response(payload, status=http_status)
+ 
+     async def base_manual(request: web.Request) -> Any:
++        # receive 点位必须在 JSON 解析前记录；但只在 upper 本进程内计算 span。
++        upper_receive_mono_ns = time.monotonic_ns()
+         body = await request.json()
+-        payload = await api.manual_control(body if isinstance(body, dict) else {})
++        body = body if isinstance(body, dict) else {}
++        try:
++            latency_trace = normalize_latency_trace(body.get("latency_trace"))
++        except ValueError as exc:
++            return json_response(
++                {
++                    "schema": f"{SCHEMA}.base_manual_result",
++                    "accepted": False,
++                    "error": {"type": "latency_trace_invalid", "message": str(exc)},
++                    "safe_to_control": False,
++                    "robot_control_executed": False,
++                    "delivery_success": False,
++                    "hil_pass": False,
++                },
++                status=400,
++            )
++        if latency_trace is not None:
++            # 只把白名单后的 envelope 和内部 receive 点交给 manual_control，未知字段已丢弃。
++            body = {**body, "latency_trace": latency_trace, "_upper_receive_mono_ns": upper_receive_mono_ns}
++        payload = await api.manual_control(body)
+         return json_response(payload, status=200 if payload.get("accepted", True) else 400)
+ 
+     app = web.Application()

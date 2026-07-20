@@ -213,12 +213,17 @@ class _FakeLogger:
     def __init__(self):
         self.warnings = []
         self.infos = []
+        # HTTP 失败测试需要保存 error，而不是吞掉 no-retry 分支的可观测结果。
+        self.errors = []
 
     def warn(self, message):
         self.warnings.append(message)
 
     def info(self, message):
         self.infos.append(message)
+
+    def error(self, message):
+        self.errors.append(message)
 
 
 class _FakeBridgeNode:
@@ -650,47 +655,129 @@ class WaveshareJsonBridgeTest(unittest.TestCase):
             self.assertTrue(record["serial_write_returned"])
             self.assertTrue(record["transport_write_returned"])
             self.assertTrue(record["sends_motion"])
+            self.assertEqual(record["clock_id"], "python_monotonic_ns")
+            self.assertGreaterEqual(record["bridge_callback_to_command_built_ms"], 0)
+            # build 到 transport begin 也是独立本地段，不能只靠总时长反推。
+            self.assertGreaterEqual(record["bridge_command_built_to_transport_begin_ms"], 0)
+            self.assertGreaterEqual(record["bridge_transport_write_ms"], 0)
+            self.assertGreaterEqual(record["bridge_callback_to_transport_end_ms"], 0)
             self.assertEqual(node._last_cmd_linear, 0.2)
 
     def test_send_json_http_uses_vendor_js_endpoint(self):
         bridge = _bridge_module()
 
-        opened_urls = []
+        # 分开记录连接创建和请求，才能同时证明复用次数与命令顺序。
+        requests = []
+        connections = []
 
         class _FakeResponse:
             status = 200
 
-            def __enter__(self):
-                return self
-
-            def __exit__(self, *args):
-                return False
-
-            def read(self, _size):
+            def read(self):
+                # 返回有限 body，模拟完整消费后连接仍可复用的标准库语义。
                 return b'{"T":139,"L":0,"R":0}'
 
-        def fake_urlopen(url, timeout):
-            opened_urls.append((url, timeout))
-            return _FakeResponse()
+        class _FakeConnection:
+            def __init__(self, host, port, timeout):
+                # 构造事件用于断言两个独立命令只建立一次同源连接。
+                connections.append((host, port, timeout))
 
+            def request(self, method, path, headers):
+                # 保存完整 path 与 header，锁定 vendor `/js` 和 keep-alive 合同。
+                requests.append((method, path, headers))
+
+            def getresponse(self):
+                # 每次请求都返回新响应对象，避免测试依赖共享 response 的偶然状态。
+                return _FakeResponse()
+
+            def close(self):
+                return None
+
+        # 跳过 ROS/串口构造，只离线验证 HTTP transport，不触碰真实硬件。
         node = bridge.ESP32Bridge.__new__(bridge.ESP32Bridge)
         node.wave_rover_http_base_url = "http://192.168.1.3"
         node.http_timeout_s = 0.25
         node._last_send_time = 0.0
         node.get_logger = lambda: _FakeLogger()
 
-        urllib_module = bridge.ESP32Bridge._send_json_http.__globals__["urllib"]
-        original = urllib_module.request.urlopen
-        urllib_module.request.urlopen = fake_urlopen
+        http_module = bridge.ESP32Bridge._send_json_http.__globals__["http"]
+        original = http_module.client.HTTPConnection
+        http_module.client.HTTPConnection = _FakeConnection
         try:
+            # 先发非零再发 stop，验证复用不会颠倒安全停车顺序。
             self.assertTrue(node._send_json_http({"T": 11, "L": 180, "R": 180}))
+            self.assertTrue(node._send_json_http({"T": 11, "L": 0, "R": 0}))
         finally:
-            urllib_module.request.urlopen = original
+            # 还原模块级构造器，避免污染后续 stop 与参数测试。
+            http_module.client.HTTPConnection = original
 
-        self.assertEqual(opened_urls[0][1], 0.25)
-        self.assertTrue(opened_urls[0][0].startswith("http://192.168.1.3/js?"))
-        self.assertIn("%7B%22T%22%3A11%2C%22L%22%3A180%2C%22R%22%3A180%7D", opened_urls[0][0])
+        # 同一 host 只建一次连接；两个请求仍严格按调用顺序一进一出。
+        self.assertEqual(connections, [("192.168.1.3", None, 0.25)])
+        self.assertEqual([item[0] for item in requests], ["GET", "GET"])
+        # 首条请求必须继续使用 vendor 固定 `/js` 入口，而不是新建控制协议。
+        self.assertTrue(requests[0][1].startswith("/js?"))
+        self.assertIn("%7B%22T%22%3A11%2C%22L%22%3A180%2C%22R%22%3A180%7D", requests[0][1])
+        self.assertEqual(requests[0][2], {"Connection": "keep-alive"})
         self.assertGreater(node._last_send_time, 0.0)
+
+    def test_send_json_http_failure_is_not_retried_and_rebuilds_only_later(self):
+        """nonzero 连接失败不能自动重发；下一次独立请求才允许创建新连接。"""
+        bridge = _bridge_module()
+        attempts = []
+
+        class _FailingConnection:
+            def __init__(self, host, port, timeout):
+                # connect 事件与 request 事件分离，避免把建连误算成 command retry。
+                attempts.append(("connect", host, port, timeout))
+
+            def request(self, method, path, headers):
+                # 在真正 request 处失败，覆盖最危险的“已发送状态未知”边界。
+                attempts.append(("request", method, path, headers))
+                raise OSError("connection_lost")
+
+            def close(self):
+                # close 事件证明坏连接被淘汰，但不得触发当前 command 再发送。
+                attempts.append(("close",))
+
+        # 仍使用无硬件实例，确保此验证没有 SSH、HTTP 网络或串口副作用。
+        node = bridge.ESP32Bridge.__new__(bridge.ESP32Bridge)
+        node.wave_rover_http_base_url = "http://192.168.1.3"
+        node.http_timeout_s = 0.25
+        node._last_send_time = 0.0
+        node.get_logger = lambda: _FakeLogger()
+        http_module = bridge.ESP32Bridge._send_json_http.__globals__["http"]
+        original = http_module.client.HTTPConnection
+        http_module.client.HTTPConnection = _FailingConnection
+        try:
+            # 单次调用是 no-retry 合同边界；下一独立请求不在本次 attempt 内。
+            self.assertFalse(node._send_json_http({"T": 11, "L": 180, "R": 180}))
+        finally:
+            # 即使断言失败也必须恢复构造器，保持整个 suite 可重复执行。
+            http_module.client.HTTPConnection = original
+        # request 计数必须精确为一；connect/close 都不能被当作额外命令。
+        self.assertEqual(1, sum(1 for item in attempts if item[0] == "request"))
+        # 失败连接清空后，只允许未来的独立调用重建，不自动重放当前 nonzero。
+        self.assertIsNone(node._http_connection)
+
+    def test_send_stop_preserves_vendor_command_order(self):
+        """停车必须依次覆盖 T=11、T=1、T=13，keep-alive 不能重排控制面。"""
+        bridge = _bridge_module()
+        sent_commands = []
+
+        # 绕过 ROS/串口构造，只记录同步调用顺序，不产生任何真实控制副作用。
+        node = bridge.ESP32Bridge.__new__(bridge.ESP32Bridge)
+        node._send_json = lambda command: sent_commands.append(command) or True
+
+        self.assertTrue(node._send_stop())
+        # 顺序沿用现有 release-stop 合同：PWM、speed、ROS 三种模式依次归零。
+        self.assertEqual(
+            sent_commands,
+            [
+                {"T": 11, "L": 0, "R": 0},
+                {"T": 1, "L": 0, "R": 0},
+                {"T": 13, "X": 0, "Z": 0},
+            ],
+        )
 
     def test_runtime_pwm_parameter_update_changes_next_cmd_vel_mapping(self):
         bridge = _bridge_module()

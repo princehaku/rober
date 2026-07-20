@@ -93,6 +93,28 @@
 
 **Key Results**
 
+> 2026-07-21 O1 latency 链最终 Product closeout：03-50 software hot-path Epic 与 04-31/04-48/05-08/05-24 Micro
+> 后续链完成保守 reconciliation。最终软件验收为 workstation `535`、bridge `32`、current Upper `141/1 skip`、shared
+> `337/1 skip`、current/candidate_v3 targeted 各 `17`、冻结 85ba regression `119/1 skip`；所有新增技术注释比例严格
+> `>20%`。04-31 只读 version gate 未部署；04-48 candidate 在 first target move 前被 symlink alias 阻断；05-08
+> alias-safe replacement 成功但旧 Upper 卡 `deactivating/stop-sigterm`，随后完整 rollback；05-24 只在离线层修复
+> shutdown admission、唯一 stop owner、watchdog/release/runtime stop lock 与 rclpy teardown fail-closed。最终唯一部署输入
+> 是 candidate_v3：source/candidate/base-patch/incremental-patch=`52c99.../ceaf8.../c2eb.../c0a965...`；manifest 证明
+> AST 白名单、7 个 c8 sentinel、可复现生成和两级 patch 可逆 gate 全绿。整个后续链 zero/nonzero/control=`0/0/0`，
+> `physical_latency_not_measured=true`、`mission_objective_0_satisfied=false`、HIL/safe/route/delivery 均 false；O1 保持约
+> `95%`、O5 约 `85%` provider/runtime `2/2` 继续暂停、O6/O7 各约 `93%`，KR `不归档`。下一唯一入口是新独立部署授权
+> + exact unit/current old hashes/静止/rollback gate，只部署 candidate_v3，先验证正常 SIGTERM 与新 health；失败
+> no-retry/rollback。只有另获完整 physical-latency authorization 与外部 observer 才允许非零样本。
+>
+> 2026-07-21 05-58 v4 追记：最终 current inputs、离线 bridge `32`、workstation `535`/build/lint 与远端旧版本
+> 静止/health preflight 均通过；两个 canonical replacement 后 bridge 新实例成功，但旧 Upper 再次卡
+> `deactivating/stop-sigterm`，目标 systemd 不支持预定 `--kill-whom`。新版 Upper/PC/sample=`0/0/0`；随后只用目标支持的
+> exact-unit `--kill-who=all` 完成一次 SIGKILL 释放并完整恢复旧 Upper `8c0f...`、旧 bridge `6e82...` 与 health ready。
+> Product 仅接受 deployment attempt + complete rollback，zero/nonzero/control=`0/0/0`，O1 `95%` flat、Mission false、KR
+> 不归档；v4 授权封存，下一次须新授权并预先冻结目标兼容命令。
+>
+> 2026-07-21 03-50 Epic 收口：`sprints/2026.07.21_03-50_o1_keyboard_to_wheel_latency/` 完成 Product acceptance，`PRODUCT_CLOSEOUT=ACCEPT_SOFTWARE_HOT_PATH_PHYSICAL_PENDING`。本轮实质实现 Vue/Node latency trace、Upper startup rclpy/DDS publisher prewarm、realtime_hold no-CLI fail-closed、subscriber race 修复与无 sleep 恢复、bridge monotonic timing、ESP32 HTTP keepalive/no-retry，并保持 release stop/watchdog 合同。Engineer 留档验证为 workstation `535 passed`、Upper `132 passed / 1 skipped`、bridge `31 passed`、shared `328 passed / 1 skipped`、subscriber race targeted `5 passed`；Docker/Humble 保留 repair 前同轮 `6 packages finished`，repair 仅涉及 Upper Python graph gate/tests。`120` 个 deterministic fake-clock samples 的 modeled p50/p95/max 均为 `9.2ms`，旧 modeled baseline `159.2ms` 包含已移出热路径的 `150ms` 配置等待；这些数值只证明 segmented software model，不是真实 browser/network/Wi-Fi/DDS/firmware 或轮子起动延迟。本轮 `live_nonzero_request_count=0`、`physical_latency_not_measured=true`、`live_control_delta=false`、`safe_to_control=false`、`hil_pass=false`、`delivery_success=false`；O1 保持约 `95%`、O7 保持约 `93%`，主百分比 flat，KR `不归档`。前序 v6 authorization 已消费且不得复用；物理 keydown-to-wheel 验证只可在新的 fresh bounded authorization、外部 observer 与明确 stop/abort/no-retry 围栏下开展。
+>
 > 2026-07-21 01-54 独立 Micro 收口：`sprints/2026.07.21_01-54_o1_minimal_wheel_jog/` 的 frozen current-live evidence 完成 Product acceptance。Exactly-one nonzero manual 为 `forward / 0.08m/s / 300ms`，proxy 与 remote 均 HTTP `200`，bridge 记录 `T=11,L=164,R=164` sent，`manual_command_executed=true`、`auto_stop_executed=true`；同窗读取 `80` 帧 `T=1001`，IMU attitude delta 支持 `motion_signal_observed=true`，最终 bridge sent `T=11,L=0,R=0` 且显式 stop 成功。该证据足以窄化接受 current live-control transport + physical motion signal，因此本轮总账 `live_control_delta=true`，O1 从约 `94%` 保守上调到约 `95%`。拒绝边界保持：T1001 L/R nonzero=`0`、dedicated post-stop wheel feedback=`0`、`T=13` wire 未证明、顶层 `robot_control_executed=false`、`hil_pass=false`、`safe_to_control=false`、`route_execution_success=false`、`delivery_success=false`、`mission_attempt=false`。Mission Objective 0 仍低于 `C2 bounded_mission_attempt`；KR `不归档`，O5 约 `85%` 且 provider/runtime `2/2` 继续暂停，O6/O7 各约 `93%` flat。v6 authorization=`consumed_no_retry`，不得复用、补采或重发。
 >
 > 2026-07-21 01-28 收口：`sprints/2026.07.21_01-28_o3_o1_nav2_readiness_repair_bounded_mission/` 完成 Product acceptance，`PRODUCT_CLOSEOUT=ACCEPT_IMPLEMENTATION_OFFLINE_GREEN_PHASE0_BLOCKED`。Robot/Algorithm 已实质实现 O11/Upper sensor-enabled/base-disabled lifecycle、O10 current map/scan/pose/persisted pose/dynamic TF/planner/controller/path/obstacle 九门、Nav2 params、测试与 docs；验证 O11 `7`、Upper `128`（skip1）、O10 `189`、params `4`、combined `328`（skip1）、Docker `6 packages finished` 全绿，中文技术注释 Upper `20.54%`、O11 `20.09%`、O10 `23.82%`。真实板 Phase 0 只读发现 `/dev/ttyS5` PID `3765` 属于 `trashbot-esp32-bridge.service`、`/dev/ttyACM0` PID `4014` 属于 `trashbot-lidar-lifecycle.service`，均非本 run/O11 owned，故按 `non_owned_base_and_lidar_serial_holders_present` fail closed；本 blocker 消费 `1/2`。没有 deploy/restart/stop/kill，v5 authorization unconsumed，Phase A=`0/0/0/0`、Phase B=`0/0/0`、control/motion=`0`，Hardware 未派。`current_run_artifact_delta=true` 仅指代码/docs、测试、Docker 与 board Phase 0 holder evidence；`external_artifact_delta=false`、`live_control_delta=false`、`user_action_delta=false`、`route_execution_success=false`、`hil_pass=false`、`delivery_success=false`、`safe_to_control=false`、`mission_objective_0_satisfied=false`、`okr_credit=false`。O5 约 `85%` 且 provider/runtime `2/2` 继续暂停，O6/O7 各约 `93%`、O1 约 `94%` 及其他主百分比全 flat，KR `不归档`、历史区无新增。下一入口只能由 CEO/当前服务 owner 提供独占维护窗口，确认可安全释放两个 systemd 服务且无并发 live task，再从完整 Phase 0 开始；v5 仍只在唯一 start pipe 消费。维护窗口不可得则切换下一个低进度可行动 Objective，禁止再包装 holder preflight/wrapper。

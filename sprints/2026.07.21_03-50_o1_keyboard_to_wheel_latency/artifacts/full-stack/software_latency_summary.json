@@ -1,0 +1,61 @@
+{
+  "schema": "trashbot.keyboard_wheel_latency_software_summary.v1",
+  "sample_kind": "warm",
+  "benchmark_kind": "deterministic_segmented_software_model_not_physical_wheel_latency",
+  "valid_sample_count": 120,
+  "dropped_sample_count": 0,
+  "error_sample_count": 0,
+  "raw_sample_representation": {
+    "kind": "deterministic_repeated_fixture",
+    "sample_indexes": "0..119",
+    "clock": "fake_monotonic_ns",
+    "fixture_test": "pc-tools/workstation/test/robotControlLatency.test.ts",
+    "note": "The same finite local-span fixture is evaluated 120 times; this is not a network, DDS, firmware, or physical-wheel measurement."
+  },
+  "baseline": {
+    "method": "source_contract_deterministic_model",
+    "p95_ms": 159.2,
+    "model_components_ms": {
+      "former_realtime_hold_subscription_wait_budget": 150.0,
+      "browser_dispatch": 0.4,
+      "pc_proxy": 4.7,
+      "upper_gate_and_publish": 1.5,
+      "fake_bridge_transport": 2.6
+    },
+    "measurement_boundary": "The former 150ms wait was a configured source budget, not an observed physical baseline."
+  },
+  "keydown_to_fake_transport_write_ms": {
+    "p50": 9.2,
+    "p95": 9.2,
+    "max": 9.2
+  },
+  "segment_ms": {
+    "browser_dispatch": { "p50": 0.4, "p95": 0.4, "max": 0.4 },
+    "pc_receive_to_forward": { "p50": 0.3, "p95": 0.3, "max": 0.3 },
+    "pc_forward_to_response_done": { "p50": 4.4, "p95": 4.4, "max": 4.4 },
+    "upper_receive_to_first_fake_publish": { "p50": 1.5, "p95": 1.5, "max": 1.5 },
+    "fake_bridge_callback_to_transport_end": { "p50": 2.6, "p95": 2.6, "max": 2.6 }
+  },
+  "baseline_p95_improvement_percent": 94.22,
+  "stop_latency_regression_ms": {
+    "p50": 0.0,
+    "p95": 0.0,
+    "max": 0.0,
+    "method": "unchanged_stop_routes_and_watchdog_contract_regression_tests"
+  },
+  "trace_continuity": {
+    "browser_to_pc": "tested_by_catalog_loopback",
+    "pc_to_upper": "tested_by_catalog_loopback",
+    "upper_local_spans": "tested_with_fake_publisher",
+    "bridge_local_spans": "tested_with_fake_transport",
+    "cross_process_direct_subtraction": false,
+    "clock_calibration": "not_required_for_segmented_software_result"
+  },
+  "live_nonzero_request_count": 0,
+  "ssh_invocation_count": 0,
+  "deployment_count": 0,
+  "physical_latency_not_measured": true,
+  "safe_to_control": false,
+  "hil_pass": false,
+  "delivery_success": false
+}

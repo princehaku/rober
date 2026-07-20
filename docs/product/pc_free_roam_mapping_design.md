@@ -1298,3 +1298,25 @@ USB `3-1` reauthorize 并重启服务；mmap/userptr/ffmpeg 对 MJPG/YUYV 多格
 随后通过固定只读刷新链路恢复到 `radar_status=loaded`、当前雷达点 `101`。PC WASD forward/backward
 均读到 command raw L/R 非零、IMU 动作信号和 stop OK。扫图/自由移动页面仍应保持当前策略：
 实时图传缺口只阻塞视觉验收，不阻塞低速移动、键盘手控或图上路线观察。
+
+## 2026-07-21 键盘首帧低延迟合同
+
+WASD/方向键继续只走固定链路：Vue `keydown` -> PC Node `/api/robot-control/base/manual` -> Upper
+`/api/base/manual` -> 进程内 `/cmd_vel` publisher -> `esp32_bridge` -> 当前配置 transport。页面不会直连 Upper、
+不会直接发布 `/cmd_vel`、不会打开 UART，也不会因追求启动速度绕过 armed/editable/owner/safety gate。
+
+首个有效 keydown 会附带可选 `trashbot.keyboard_wheel_latency_trace.v1`。envelope 只有短 trace id、browser
+`performance.now()`/`timeOrigin`、hold session/sequence 和 cold/warm 标签；PC/Upper 会丢弃未知字段并拒绝超长、
+非法字符或非有限数。浏览器、Node、Upper、bridge 各自只用本进程 monotonic clock 计算 local span，UI 不把不同
+主机或不同进程的原始 monotonic 数值直接相减。Node 还要求 trace 的 hold session/sequence 与实际 watchdog hold
+完全一致；错配会在固定代理内 fail-closed，且不会把旧 trace 转发给 Upper。
+
+Upper 在 HTTP service 开始监听前预热 rclpy node/publisher 和 DDS graph。正常键盘路径第一帧在任何 sleep 前
+发布；startup 预热不可用时返回 `unavailable_fail_closed`，订阅关系尚未证明时返回
+`degraded_subscription_unproven`。`realtime_hold` 不再用秒级 ROS CLI fallback 冒充低延迟成功；旧的非键盘接口
+仍保持兼容。keyup、all release、pointer cancel/leave、blur、page hidden、停止按钮和 watchdog 的原路径不变。
+
+bridge 保持 `command_transport` 默认和现场 HTTP `/js` 路径不变，不改速度/PWM/T=1/T=11/T=13 映射。
+HTTP transport 在 bridge 单 owner 锁内复用连接；失败的当前 nonzero 绝不自动重发，只让后续独立请求重建连接，
+因此 stop 与 motion 的调用顺序不被连接优化改写。软件 timing/transport return 仍不等于物理轮子 onset；本轮没有
+新的真实控制授权，物理按键到轮动延迟仍需外部视频、编码器或可信同窗 observer 后续测量。

@@ -1,0 +1,32 @@
+{
+  "schema": "trashbot.o1.zero_speed_live_latency_probe.hash_manifest.v1",
+  "generated_at": "2026-07-21T04:38:00+08:00",
+  "local_git_head": "da7cdece6eae9cb47e084b1f62ee268002ac8c4e",
+  "files": {
+    "onboard/scripts/upper_robot_api.py": {
+      "remote_sha256": "8c0f6eebb786e1cd6b1cb5d17485e59972140bf76a94e7669773ef438228b4c3",
+      "remote_exact_history_commit": "85ba7308785aa3c4033180a097e3d388358a97de",
+      "local_head_sha256": "417c81ce4aa2a1c24376c1c74e34e4eae4977dba65a807d5107c45b153a5fb64",
+      "local_worktree_sha256": "417c81ce4aa2a1c24376c1c74e34e4eae4977dba65a807d5107c45b153a5fb64",
+      "classification": "known_remote_baseline_but_non_latency_only_delta"
+    },
+    "onboard/src/ros2_trashbot_hardware/ros2_trashbot_hardware/esp32_bridge_node.py": {
+      "remote_sha256": "6e82e493a8d63ae5ff47546f689c28deb92d1647b5937836bed38e0f55ef8304",
+      "remote_build_sha256": "6e82e493a8d63ae5ff47546f689c28deb92d1647b5937836bed38e0f55ef8304",
+      "local_head_sha256": "6e82e493a8d63ae5ff47546f689c28deb92d1647b5937836bed38e0f55ef8304",
+      "local_worktree_sha256": "ff7871ffceb907bda65f442ced079df782a850135c604b169b6aa8a7234c114f",
+      "classification": "known_head_baseline_plus_latency_only_worktree_delta"
+    },
+    "pc-tools/workstation/src/server/index.ts": {
+      "local_worktree_sha256": "92956fc6a67b4a16072c6bf5e438d63552e49115269564f0e5383bfafd7af5db"
+    },
+    "pc-tools/workstation/src/server/robotControlLatency.ts": {
+      "local_worktree_sha256": "f082347d003dc62932fa3f2f77d228eb362e1bb2dc8bbdde03413ec0162ffae6"
+    },
+    "pc-tools/workstation/src/components/RobotControlConsolePanel.vue": {
+      "local_worktree_sha256": "ba55ed08490c4289aba93c20d59884cc6b76e03942d634b0892acd822bb1821e"
+    }
+  },
+  "supporting_artifact": "sprints/2026.07.20_21-26_o3_o1_live_deadline_fix_validation_bounded_route/artifacts/robot-software/phase0_deployment_manifest.json",
+  "c8_deployment_block_artifact": "sprints/2026.07.21_01-28_o3_o1_nav2_readiness_repair_bounded_mission/artifacts/robot-software/phase0_deployment_manifest.json"
+}

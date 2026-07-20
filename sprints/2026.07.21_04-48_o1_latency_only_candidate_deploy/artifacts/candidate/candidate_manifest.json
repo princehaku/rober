@@ -1,0 +1,45 @@
+{
+  "actual_changed_symbols": [
+    "UpperRobotApi.manual_control",
+    "_ensure_ros_cmd_vel_context",
+    "create_app",
+    "manual_motion_ros_cmd_vel_hold_refresh_transaction",
+    "normalize_latency_trace",
+    "prewarm_ros_cmd_vel_context",
+    "publish_ros_cmd_vel_inprocess_burst",
+    "run_server",
+    "upper_latency_timing"
+  ],
+  "allowed_changed_symbols": [
+    "UpperRobotApi.manual_control",
+    "_ensure_ros_cmd_vel_context",
+    "create_app",
+    "manual_motion_ros_cmd_vel_hold_refresh_transaction",
+    "normalize_latency_trace",
+    "prewarm_ros_cmd_vel_context",
+    "publish_ros_cmd_vel_inprocess_burst",
+    "run_server",
+    "upper_latency_timing"
+  ],
+  "ast_and_sentinel_audit_pass": true,
+  "base_commit": "85ba7308785aa3c4033180a097e3d388358a97de",
+  "base_path": "85ba7308785aa3c4033180a097e3d388358a97de:onboard/scripts/upper_robot_api.py",
+  "base_sha256": "8c0f6eebb786e1cd6b1cb5d17485e59972140bf76a94e7669773ef438228b4c3",
+  "candidate_sha256": "adadb0fb31d9c35805bf15906534f7963626116d1ec7374cbd2c611800a95013",
+  "forbidden_hits": {},
+  "forbidden_sentinel_counts": {
+    "DEFAULT_NAV2_MAP_FILE": 0,
+    "initialpose_canonical_free_cell_opt_in": 0,
+    "lidar_holder_owned": 0,
+    "reuse_existing_lidar_lifecycle": 0,
+    "scan_publisher_owned": 0,
+    "sensor_owned_scan": 0,
+    "start_owned_process_created": 0
+  },
+  "live_nonzero_request_count": 0,
+  "patch_sha256": "930ffa5b61316760c8ed0bef5b6327b0632a32ec09b9b26bb7332973c628e535",
+  "physical_latency_not_measured": true,
+  "schema": "trashbot.o1.latency_only_upper_candidate.v1",
+  "source_path": "onboard/scripts/upper_robot_api.py",
+  "source_sha256": "417c81ce4aa2a1c24376c1c74e34e4eae4977dba65a807d5107c45b153a5fb64"
+}
