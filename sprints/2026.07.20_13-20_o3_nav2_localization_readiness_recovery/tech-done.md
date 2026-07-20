@@ -1,70 +1,69 @@
 # O3 Nav2 Localization Readiness Recovery - Tech Done
 
 - `sprint_type: epic`
-- 状态：`implemented_live_no_go_owned_cleanup_complete`
+- 状态：`implemented_live_planner_only_no_go_owned_stop_clean`
 - proof boundary：`strict_no_motion_persistent_lifecycle_fresh_pose_planner_only_path_readiness`
 - `READINESS_GO=false`
-- `OWNED_STOP_CLEANUP_OK=yes`
+- `PLANNER_ONLY_NO_GO`
+- `OWNED_STOP_CLEAN=yes`
 - `OKR_CREDIT=false`
 
 ## 实际改动
 
 Robot Software 交付：
 
-- `onboard/scripts/upper_robot_api.py`：`POST /api/nav2/start` 改为必须消费完整 strict-no-motion JSON；bodyless、旧 `{}`、auto/true、未知字段和非法 timeout 在 subprocess 前 fail closed。
-- 受管 o11 start 有效 argv 固定 `--base-enabled false --lidar-enabled false`；response 显式提供 `command_result/effective_contract/root_causes/cleanup/nav2_lifecycle_status/new-open`，HTTP 200 不作为成功条件。
+- `onboard/scripts/upper_robot_api.py`：`POST /api/nav2/start` 必须消费完整 strict-no-motion JSON；bodyless、旧 `{}`、auto/true、未知字段和非法 timeout 在 subprocess 前 fail closed。
+- o11 start 有效 argv 固定 `--base-enabled false --lidar-enabled false`；response 显式提供 `command_result/effective_contract/root_causes/cleanup/nav2_lifecycle_status/new-open`，HTTP 200 不作为成功条件。
 - `POST /api/nav2/stop` 只验收 o11 owned PID/process group cleanup 与 stopped readback，不发底盘 stop、不打开 UART。
-- `onboard/tests/test_upper_robot_api.py` 新增 strict body、legacy zero invocation、false/false argv、semantic failure cleanup、timeout 与 owned stop 回归。
-- `docs/navigation/field_route_evidence_preflight.md` 记录新合同、旧 PC `{}` 代理的兼容迁移和 no-motion 边界。
+- `onboard/tests/test_upper_robot_api.py` 和 `docs/navigation/field_route_evidence_preflight.md` 同步 strict lifecycle 合同、兼容迁移和 no-motion 边界。
 
 Algorithm 交付：
 
-- `onboard/scripts/o10_amcl_nav2_runtime_proof.py` 新增 persisted-pose planner-only gate；只有 current fresh `/amcl_pose`、dynamic fresh `map->odom`、unique AMCL attribution、`map->base_link` 和四 lifecycle active 同时成立才可尝试 ComputePathToPose。
+- `onboard/scripts/o10_amcl_nav2_runtime_proof.py` 新增 persisted-pose planner-only gate；只有 current fresh `/amcl_pose`、fresh dynamic `map->odom`、unique AMCL attribution、`map->base_link` 和所需 lifecycle active 同时成立才可尝试 `ComputePathToPose`。
 - `initialpose_opt_in=false` 时 publish attempts 固定为 0；missing/stale/ambiguous 在 planner action 前 NO-GO。
-- `onboard/tests/test_nav2_runtime_proof_helper.py` 覆盖 fresh success gate、missing/stale/ambiguous no-go、四 lifecycle、zero publish 与 forbidden motion token。
-- `docs/navigation/fixed_route_workflow.md` 同步 current persisted localization 与 planner-only 合同。
+- `onboard/tests/test_nav2_runtime_proof_helper.py` 与 `docs/navigation/fixed_route_workflow.md` 覆盖并记录 fresh/missing/stale/ambiguous、零发布与 planner-only 合同。
 
-## 真机集成与失败修复
+## 本地验证
 
-1. 远端旧 `upper_robot_api.py` SHA 为 `e3cdae050bff8539c7312db4032cf414ee92afdd96b82a8ca08ec252d0a8271f`。staged SCP、远端 `py_compile`、原子覆盖均 exit 0；最终本地/远端 SHA 均为 `944fe3ba43201c8363b175959e0efc5b440369f4005a1ca0a03dec40328f6bd8`。
-2. 首次 bounded `systemctl restart trashbot-upper-robot-api.service` exit 124；根因为旧 PID `553724` 长时停在 `stop-sigterm`。仅对该 unit cgroup 执行 `systemctl kill -s SIGKILL`，再受管 start；新 API PID `679127`，health poll exit 0、`status=ready`。未扫杀 ROS/串口进程。
-3. exactly-one strict start POST exit 0；`status=started_strict_no_motion`、`semantic_success=true`、effective false/false、owned lifecycle PID/PG `679928`。
-4. Algorithm exactly-one proof refresh 保留 partial artifact 后 helper timeout；wrapper cleanup 成功，managed-runtime cleanup 为 `not_required`，未重试 proof。
-5. pre-stop status 仍确认 PID `679928` running 且 false/false。exactly-one stop POST exit 0；`status=stopped_owned_process_group`、`semantic_success=true`、`command_result.executed/ok=true`、`cleanup.ok=true`、scope=`o11_owned_pid_process_group_only`、`root_causes=[]`。
-6. final status 为 stopped/PID null；Nav2/AMCL/planner/controller 节点已清空，Upper API PID `679127` 仍 active/ready。
+- Robot：`python3 -m py_compile onboard/scripts/upper_robot_api.py` exit 0；`python3 -m unittest onboard/tests/test_upper_robot_api.py` 为 `Ran 114 tests ... OK (skipped=1)`，skip 为缺 `aiohttp`；中文注释比例 `20.2%`。
+- Algorithm：`python3 -m py_compile onboard/scripts/o10_amcl_nav2_runtime_proof.py` exit 0；`python3 -m unittest onboard/tests/test_nav2_runtime_proof_helper.py` 为 `Ran 167 tests ... OK`；中文注释比例 `20.946%`。
+- 双方 diff、静态断言及文档验收均为绿；本 Product 收口不重跑工程 tests、SSH、ROS2 或 live。
 
-## 唯一 Proof 结果
+## Final live 序列与安全边界
 
-`READINESS_GO=false`，且 `path_generation_attempted=false`、`path_generated=false`、`initialpose_publish_attempts=0`。精确 blockers：
+- 远端 API 与 helper 均和本地 SHA 对齐；远端 `py_compile` 通过。
+- final-window 外部调用为 `start/refresh/stop=1/1/1`，proof latest GET=`1`，`retries=0`。已发布 commit `3fe3c053c` 之前的第一窗口保留为历史；最终结论只采用当前 artifacts 记录的第二窗口与其最终 stop。
+- strict start 为 `status=started_strict_no_motion`、`semantic_success=true`、effective `base_enabled=false/lidar_enabled=false`；既存 base/LiDAR holder 未变化，new-open=`0/0`。
+- `initialpose/goal/cmd_vel/UART=0/0/0/0`；base manual/base stop、T1/T11/T13 均为 0；WAVE ROVER command log delta=`0`，无物理运动。
+- 最终 stop 为 `status=stopped_owned_process_group`、`semantic_success=true`、`cleanup.ok=true`、scope=`o11_owned_pid_process_group_only`；owned PID `684474` 已移除、PID 文件已移除，最终 lifecycle stopped。结论：`OWNED_STOP_CLEAN=yes`。
+- `readiness_assertion.json` 是 stop 前 snapshot，其中 `owned_lifecycle_stop_pending=true` 属于当时事实；最终 cleanup 必须以 `lifecycle_safety_manifest.json.final_stop` 与 `api_nav2_stop_response.json` 为准，不能把 pre-stop 字段误当最终状态。
+
+## Algorithm 结果：PLANNER_ONLY_NO_GO
+
+Helper 在 `80444ms` 超出 API `80s` process budget；partial artifact 保留，最后成功 phase=`tf_probe`，中断时 command=`ros2 pkg list`，根因包含：
 
 - `helper_process_timeout_after_partial_artifact`
-- `amcl_pose_probe_interrupted_before_observation`
-- `lifecycle_active_fields_not_proven_in_current_proof`
-- `persisted_pose_audit_not_reached_before_timeout`
-- `current_amcl_pose_stamp_and_freshness_not_proven`
-- `dynamic_map_to_odom_stamp_freshness_and_unique_amcl_attribution_not_proven`
-- `map_to_base_link_not_observed`
+- `sigint_before_final_artifact`
+- `current_amcl_pose_sample_timestamp_and_freshness_not_proven`
+- `persisted_pose_audit_and_final_tf_freshness_gate_not_reached`
+- `planner_and_controller_lifecycle_active_not_proven_before_timeout`
 - `path_generation_not_attempted`
 
-本轮保持 `safe_to_control=false`、`route_execution_success=false`、`hil_pass=false`、`delivery_success=false`、`mission_objective_0_satisfied=false`和 `okr_credit=false`。
+Partial current evidence 已证明：
 
-## 串口、节点与调用边界
+- `map_server_active=true`、`amcl_active=true`；
+- `map->odom` observed、dynamic、timestamp parsed，publisher attribution=`attributed_unique_amcl`；
+- `map->base_link=true`；
+- `initialpose_publish_attempts=0`。
 
-- `/dev/ttyS5` 全窗口仍由既存 `esp32_bridge` PID `13543` 持有；`/dev/ttyACM0` 仍由既存 `lidar_driver` PID `550922` 持有。start/stop 前后 holder PID 不变，new-open=`0/0`。
-- WAVE ROVER command debug 在全窗口始终为 `3570` 行、`1245562` bytes、mtime `1783532582`，UART motion delta=0。
-- invocation counts：start=1、proof refresh=1、proof latest GET=1、stop=1；goal/manual/base-stop/cmd_vel publish/initialpose/UART motion/T1/T11/T13 均为 0。
-- 物理运动未发生。
+但 partial evidence 不证明 fresh `/amcl_pose`、persisted pose final gate、`map->odom` formal freshness、planner/controller active 或 path。最终 `path_generation_requested=true`，但 attempted/succeeded/generated=`false/false/false`、count=`0`。因此 `PLANNER_ONLY_NO_GO`，不得用 partial lifecycle/TF 事实升级为 readiness GO。
 
-## 验证结果
+## OKR 与证据增量
 
-- Robot `python3 -m py_compile onboard/scripts/upper_robot_api.py`：exit 0。
-- Robot `python3 -m unittest onboard/tests/test_upper_robot_api.py`：最终 `Ran 114 tests ... OK (skipped=1)`；五项 targeted strict lifecycle tests `Ran 5 ... OK`。
-- Algorithm `python3 -m py_compile onboard/scripts/o10_amcl_nav2_runtime_proof.py`：exit 0。
-- Algorithm `python3 -m unittest onboard/tests/test_nav2_runtime_proof_helper.py`：`Ran 167 tests ... OK`。
-- 8 份 JSON 全部 `python3 -m json.tool`：exit 0，`JSON_TOOL_COUNT=8`。
-- 跨 artifact 结构断言：`INTEGRATION_ASSERTION=O3_STRICT_NO_MOTION_FINAL_NO_GO_CLEANUP_OK`。
-- combined scoped `git diff --check`：exit 0。
-- Robot source+test 中文注释 owner 验收为 `20.63%`，集成时当前 diff 复核为 `25.24%`；Algorithm 产品源文件中文注释 `32/143=22.38%`。
+- `current_run_artifact_delta=true`：只表示 fresh no-motion current artifact、strict contract 与 clean owned stop。
+- `external_artifact_delta=false`、`live_control_delta=false`、`user_action_delta=false`。
+- `robot_control_executed=false`、`route_execution_success=false`、`hil_pass=false`、`delivery_success=false`、`safe_to_control=false`、`okr_credit=false`。
+- O5 保持约 `85%`（provider/runtime blocker `2/2`），O6/O7 各保持约 `93%`，O1 保持约 `94%`；O3 不新增 Mission credit，主百分比 flat，KR `不归档`。
 
 ## 完整文件清单
 
@@ -94,10 +93,13 @@ Sprint：
 - `prd.md`
 - `tech-plan.md`
 - `tech-done.md`
+- `side2side_check.md`
+- `final.md`
 
-## 剩余风险
+## 剩余风险与下一轮
 
-- start transport 原始 bytes 在中断前未落盘；start artifact 明确保留该边界并恢复了合同关键字段，status 与 stop 为完整 raw JSON。
-- Upper API graceful shutdown 仍可卡在 `stop-sigterm`，本轮仅使用 unit-scoped recovery，未修复该既有问题。
-- current fresh persisted pose、dynamic fresh uniquely-attributed `map->odom`、`map->base_link` 与 planner-only path 未在同一 proof 窗口成立；下轮必须从这些 root cause 修复，不得用新 wrapper 重复消费 timeout。
-- 本 sprint 不创建 `side2side_check.md` / `final.md`，不修改 OKR/progress，不归档 KR。
+- O10 helper 在 `ros2 pkg list` / TF probe 之后仍会超出 API 80s runtime budget；current fresh `/amcl_pose`、persisted final gate、planner/controller 和 path 仍未证明。
+- Upper API graceful shutdown 的既有 `stop-sigterm` 风险不因本轮 unit-scoped cleanup 消失。
+- 暂停重复 strict-start wrapper/live refresh；不得重跑本窗口或用旧 pose、文档、wrapper 补齐 readiness。
+- `next_offline_runtime_budget_fix`：下一轮由 `robot-software-engineer` + `robot-algorithm-engineer` 先在本地/离线剖析并修复 O10 helper 的 runtime path、probe order 与 budget 分配；只有新测试证明能在 80s 内完成 final artifact，才开一个新的 no-motion current proof。
+- CEO 的运动授权本 sprint 未消费；后续 motion 仍需新的 readiness、operator、路线和 obstacle current gate。

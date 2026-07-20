@@ -1,10 +1,11 @@
 {
   "schema_version": "trashbot.o3_current_localization_source_audit.v1",
-  "captured_at": "2026-07-20T16:31:40+08:00",
-  "generated_at_ms": 1784536266565,
+  "captured_at": "2026-07-20T16:51:26+08:00",
+  "generated_at_ms": 1784537486207,
   "source_host": "root@192.168.1.11:37878",
   "current_for_this_capture_window": true,
   "proof_boundary": "strict_no_motion_persistent_lifecycle_fresh_pose_planner_only_path_readiness",
+  "result": "PLANNER_ONLY_NO_GO",
   "source_artifacts": {
     "lifecycle_safety_manifest": "lifecycle_safety_manifest.json",
     "nav2_proof_refresh_response": "nav2_proof_refresh_response.json",
@@ -13,19 +14,22 @@
   "helper_deployment": {
     "local_path": "onboard/scripts/o10_amcl_nav2_runtime_proof.py",
     "remote_path": "/root/rober/onboard/scripts/o10_amcl_nav2_runtime_proof.py",
-    "remote_sha_before": "8212a95c89a5d4626df3e418867e7bb265199f7d0e9404280136a6022d50f2f7",
     "local_sha256": "4cad938e91cb3e19317ef0b9e058e24df7665268ad8fb6d00423d19980b15341",
     "remote_sha256": "4cad938e91cb3e19317ef0b9e058e24df7665268ad8fb6d00423d19980b15341",
     "sha_match": true,
-    "scp_exit": 0,
+    "deployment_action": "verified_already_deployed_sha_match_no_copy_needed",
     "remote_py_compile_exit": 0,
     "api_restart_required": false,
     "api_restart_performed": false
   },
   "request_contract": {
+    "timeout_s": 30,
     "managed_runtime_opt_in": false,
+    "managed_timeout_s": 30,
+    "managed_map_yaml": "",
     "initialpose_opt_in": false,
     "path_generation_opt_in": true,
+    "path_generation_timeout_s": 30,
     "path_goal": {
       "frame_id": "map",
       "x": 0.8,
@@ -34,17 +38,19 @@
     },
     "initialpose_publish_attempts": 0,
     "initialpose_publish_attempted": false,
-    "initialpose_published": false
+    "initialpose_published": false,
+    "initialpose_attempt_count_source": "current_partial_phase_history.initialpose"
   },
   "helper_execution": {
     "executed": true,
     "ok": false,
-    "elapsed_ms": 81243,
+    "elapsed_ms": 80444,
     "process_timeout_s": 80.0,
     "status": "helper_process_timeout_after_partial_artifact",
     "partial_artifact_preserved": true,
     "last_phase": "interrupted",
-    "last_successful_phase": "canonical_initialpose_map_audit",
+    "last_successful_phase": "tf_probe",
+    "current_command_at_timeout": "ros2 pkg list",
     "managed_runtime_requested": false,
     "managed_runtime_started": false,
     "managed_runtime_cleanup": {
@@ -54,23 +60,26 @@
     },
     "helper_process_cleanup": {
       "attempted": true,
-      "process_group": 681973,
+      "process_group": 685333,
       "signal": "SIGINT",
       "killed_with_sigkill": false,
       "ok": true,
-      "external_runtime_cleanup_attempted": false
+      "external_runtime_cleanup_attempted": false,
+      "external_runtime_cleanup_reason": "skipped_external_runtime_cleanup"
     }
   },
   "lifecycle": {
-    "persistent_manager_running_at_start_gate": true,
-    "persistent_manager_pid": 679928,
-    "nodes_present_after_start": true,
-    "map_server_active": false,
-    "amcl_active": false,
+    "persistent_manager_running_after_algorithm_proof": true,
+    "persistent_manager_pid": 684474,
+    "base_enabled": false,
+    "lidar_enabled": false,
+    "map_server_active": true,
+    "amcl_active": true,
+    "map_amcl_state_source": "current_partial_phase_history.lifecycle_cli_budget_recovery.map_lifecycle_preflight_all_active",
     "planner_server_active": false,
     "controller_server_active": false,
-    "active_state_source": "not_proven_in_current_proof_before_timeout",
-    "node_presence_is_not_active_state": true
+    "planner_controller_state_source": "not_proven_before_helper_timeout",
+    "all_four_active": false
   },
   "persisted_pose_audit": {
     "present_in_final_artifact": false,
@@ -82,19 +91,25 @@
     "sample": null,
     "timestamp_parsed": false,
     "freshness": "not_proven",
-    "status": "amcl_pose_probe_interrupted_before_observation"
+    "status": "current_partial_proof_amcl_pose_observed_false"
   },
   "map_to_odom": {
-    "observed": false,
-    "source_class": "not_proven",
-    "dynamic": false,
-    "timestamp_parsed": false,
+    "observed": true,
+    "source_class": "dynamic",
+    "dynamic": true,
+    "timestamp_parsed": true,
+    "stamp_epoch_ms": 1784537321229,
+    "received_at_ms": 1784537320292,
+    "header_age_at_receipt_ms": -937,
     "freshness": "not_proven",
-    "publisher_attribution_status": "not_proven"
+    "formal_freshness_gate_present": false,
+    "publisher_attribution_status": "attributed_unique_amcl",
+    "publisher_attribution_clean": true,
+    "status": "raw_current_tf_source_facts_present_but_final_freshness_gate_not_reached"
   },
   "map_to_base_link": {
-    "observed": false,
-    "status": "not_proven_before_helper_timeout"
+    "observed": true,
+    "status": "current_partial_tf_chain_observed"
   },
   "path": {
     "requested": true,
@@ -108,7 +123,15 @@
   "source_root_causes": [
     {
       "layer": "AMCL localization",
-      "reason": "amcl_pose_probe_interrupted_before_observation"
+      "reason": "current_amcl_pose_sample_timestamp_and_freshness_not_proven"
+    },
+    {
+      "layer": "Persisted localization path gate",
+      "reason": "persisted_pose_audit_and_final_tf_freshness_gate_not_reached"
+    },
+    {
+      "layer": "Nav2 lifecycle",
+      "reason": "planner_and_controller_lifecycle_active_not_proven_before_timeout"
     },
     {
       "layer": "helper process",

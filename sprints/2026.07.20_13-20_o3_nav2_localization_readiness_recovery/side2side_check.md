@@ -5,84 +5,62 @@
 - `sprint_type: epic`
 - Product owner：`product-okr-owner`
 - Implementation owners：`robot-software-engineer`、`robot-algorithm-engineer`
-- Product decision：`accept_implementation_and_live_safety_contract_reject_current_readiness_go`
+- Product decision：`accept_contract_and_owned_stop_reject_current_readiness_and_okr_credit`
 - proof boundary：`strict_no_motion_persistent_lifecycle_fresh_pose_planner_only_path_readiness`
-- `READINESS_GO=false`
+- `PLANNER_ONLY_NO_GO`
+- `OWNED_STOP_CLEAN=yes`
 - `PRODUCT_CLOSEOUT_COMPLETE=yes`
 
-## 用户价值与北极星对照
+## 用户价值与产品北极星
 
-北极星是让真实路线 action 建立在同一 current window 的安全 lifecycle、可信定位/TF、planner-only path 和零控制证据上。本轮交付了真实上位机可执行的 strict-no-motion lifecycle 合同与保守 NO-GO，消除了 `/api/nav2/start` 忽略 body、`auto` 可能新开串口的风险；但 current AMCL pose/TF/path 未在 proof budget 内被证明，因此仍停在 mission attempt 之前。
+北极星是让真实路线 action 建立在同一 current window 的安全 lifecycle、可信定位/TF、planner-only path 与零控制证据上。本轮用户获得了真实生效的 strict-no-motion lifecycle 合同和 clean owned stop，消除了 `/api/nav2/start` 忽略 body、`auto` 可能新开串口的风险；但 helper 未在 80s budget 内形成 final readiness artifact，因此仍停在 mission attempt 之前。
 
-这不是又一层 wrapper/readback：代码合同、双方回归、导航文档、真实 start/proof/latest/stop 与 8 个 JSON artifact 均已发生。但 NO-GO 也不能包装为 mission success。
+代码合同、双方回归、导航文档和 current artifacts 是实际工程增量；`PLANNER_ONLY_NO_GO` 不是 mission、route、HIL 或 delivery 结果，也不产生 OKR credit。
 
-## 计划与实际 side-by-side
+## 计划与最终事实 side-by-side
 
-| 验收项 | 计划口径 | 实际证据 | Product 裁决 |
+| 验收项 | 计划口径 | 最终事实 | Product 裁决 |
 | --- | --- | --- | --- |
-| Start 合同 | body 必须被消费；effective `base=false/lidar=false` | `status=started_strict_no_motion`、`semantic_success=true`、effective false/false | 接受 |
-| 串口隔离 | base UART / LiDAR new-open=`0/0` | `/dev/ttyS5` 与 `/dev/ttyACM0` 既存 holder 未变，new-open=`0/0` | 接受 |
-| 零运动边界 | goal/manual/cmd_vel/initialpose/UART motion 均 0 | start/proof/latest/stop=`1/1/1/1`；控制与发布 invocation 均 0；无物理运动 | 接受 |
-| Safe cleanup | proof 成败都只停 owned lifecycle | stop `semantic_success=true`、cleanup scope=`o11_owned_pid_process_group_only`、Upper API healthy | 接受 |
-| Current localization | fresh persisted pose、unique dynamic `map->odom`、`map->base_link` | helper `81243ms` 超过 80s process budget；AMCL/TF probe 未完成 | 拒绝 readiness |
-| Planner-only path | requested/attempted/succeeded/generated 且 point count > 0 | requested=true；attempted/succeeded/generated=false；count=0 | 拒绝 readiness |
-| OKR/Mission | 只有 readiness 真成立才考虑计分/attempt | `READINESS_GO=false`、所有 route/HIL/delivery/safe/OKR 字段 false | 不计分 |
+| Start 合同 | body consumed；effective false/false | final-window start=`1`；`started_strict_no_motion`、semantic success、false/false | 接受 |
+| 串口隔离 | base/LiDAR new-open=`0/0` | holder 未变化，new-open=`0/0`，command log delta=`0` | 接受 |
+| 零控制边界 | initialpose/goal/cmd_vel/UART 全 0 | `initialpose/goal/cmd_vel/UART=0/0/0/0`；无物理运动 | 接受 |
+| Exactly-once | start/refresh/stop 各 1，不重试 | `start/refresh/stop=1/1/1`，proof latest GET=1，`retries=0` | 接受 |
+| Safe cleanup | 只停 owned lifecycle | stop semantic success；PID `684474` 与 PID file 均 removed | `OWNED_STOP_CLEAN=yes` |
+| Current lifecycle | map/amcl/planner/controller active | partial 仅证明 map/amcl active；planner/controller 未证明 | 拒绝 readiness |
+| Current localization | fresh pose、fresh unique dynamic TF、map-to-base | partial 证明 dynamic `map->odom` unique AMCL attribution 与 `map->base_link=true`；未证明 fresh `/amcl_pose`、formal TF freshness、persisted final gate | 拒绝 readiness |
+| Planner-only path | attempted/succeeded，count > 0 | requested=true；attempted/succeeded/generated=false；count=0 | 拒绝 readiness |
+| OKR/Mission | readiness 成立后再进入 attempt | route/HIL/delivery/safe/control/`okr_credit=false` | 不计分，不归档 |
 
 ## 工程交付验收
 
-Robot Software diff 被接受：
+- Robot Software：`py_compile` exit 0；`114 tests OK (skipped=1 aiohttp)`；中文注释比例 `20.2%`。
+- Algorithm：`py_compile` exit 0；`167 tests OK`；中文注释比例 `20.946%`。
+- 双方 diff 与静态断言均绿，代码、测试和 navigation 文档合同接受。
+- Product 本阶段不重跑工程 tests、SSH、ROS2、Nav2 或 control；只读交叉核对六文档、当前 8 个 JSON、测试留档与 final stop。
 
-- `upper_robot_api.py` 读取并严格验证 start body，默认与 effective argv 均固定 `--base-enabled false --lidar-enabled false`；legacy/未知字段/非法 timeout 在 subprocess 前 fail closed。
-- response 把 `command_result`、`status`、`evidence`、`root_causes`、cleanup 和 lifecycle readback 纳入语义成功，HTTP 200 本身不再等于成功。
-- stop 只清理由 `o11_nav2_lifecycle.sh` 拥有的 PID/process group，不发送底盘 stop。
-- `test_upper_robot_api.py` 最终 `114 tests OK`，其中 strict lifecycle targeted `5` 项通过；Robot 源码+测试中文注释 owner 验收 `20.63%+`，集成 diff 复核 `25.24%`。
+## Artifact 时序与证据边界
 
-Algorithm diff 被接受：
+- remote API/helper SHA 均与本地一致。
+- Helper `elapsed_ms=80444`，`process_timeout_s=80`，partial artifact preserved；last successful phase=`tf_probe`，timeout command=`ros2 pkg list`。
+- 精确 runtime roots 包含 `helper_process_timeout_after_partial_artifact` 与 `sigint_before_final_artifact`。
+- `readiness_assertion.json` 是 pre-stop snapshot，保留 PID `684474` running、stop pending 是正确的时点事实；最终 cleanup 只以 `lifecycle_safety_manifest.json.final_stop` 与 `api_nav2_stop_response.json` 为准，两者证明 lifecycle stopped、PID removed、cleanup clean。
+- commit `3fe3c053c` 发生在最终 Algorithm proof / owned stop 之前；Product 不沿用该 commit 中的初版派生结论，当前四个修正 artifact 是最终事实来源。
 
-- O10 新增 persisted-pose planner-only precondition gate，要求 current fresh pose、fresh dynamic TF、唯一 AMCL attribution、四 lifecycle active 与零 initialpose publish。
-- missing/stale/ambiguous 在 `ComputePathToPose` 前 fail closed，path attempt 保持 0。
-- 真实测试路径 `test_nav2_runtime_proof_helper.py` 最终 `167 tests OK`；Algorithm 产品源文件中文注释 `22.38%`。
+## OKR 映射与方向判断
 
-Product 未重跑 Engineer tests；本阶段只读核对双方 scoped diff、`tech-done.md`、测试留档、导航文档和 JSON evidence。
-
-## Artifact 与结构验收
-
-8 份 JSON 均通过 Engineer `json.tool`，跨 artifact 结构断言 marker 为：
-
-`O3_STRICT_NO_MOTION_FINAL_NO_GO_CLEANUP_OK`
-
-Artifact 是阶段化证据：readiness assertion 在 stop 前记录 stop pending，start safety manifest 记录 lifecycle handoff；最终 stop response 与 `tech-done.md` 补齐 owned cleanup。Product 只接受跨 artifact 一致结论，不要求单一中间 artifact 伪装成最终全序列。
-
-Current proof 的直接根因：
-
-- `amcl_pose_probe_interrupted_before_observation`
-- `sigint_before_final_artifact`
-- `helper_process_timeout_after_partial_artifact`
-
-因此 lifecycle active、persisted pose audit、fresh unique `map->odom`、`map->base_link` 没有在 timeout 前得到 current proof；`initialpose_publish_attempts=0` 正确保持，path 未尝试。
-
-## OKR、Mission、delta 与 KR 裁决
-
-- O5 保持约 85%，provider/runtime blocker `2/2` 仍成立；跳过最低项的理由仍成立。
-- O6 / O7 各保持约 93%；O1 保持约 94%；主百分比 flat。
-- `current_run_artifact_delta=true`：只表示真实 current upper 的安全 start 合同、NO-GO partial evidence 和 clean cleanup。
-- `external_artifact_delta=false`：证据来自项目自有上位机/runtime，并非独立 external provider、用户交付、production cloud 或第三方验收材料。
-- `live_control_delta=false`
-- `user_action_delta=false`
-- `route_execution_success=false`
-- `hil_pass=false`
-- `delivery_success=false`
-- `safe_to_control=false`
-- `okr_credit=false`
+- O5：约 `85%`，provider/runtime blocker `2/2`，继续暂停重复消费。
+- O6/O7：各约 `93%`，flat；O1：约 `94%`，flat。
+- O3：本轮只增加 current no-motion artifact，不新增 Mission credit，主百分比不调整。
+- `current_run_artifact_delta=true`；`external_artifact_delta=false`、`live_control_delta=false`、`user_action_delta=false`。
+- `robot_control_executed=false`、`route_execution_success=false`、`hil_pass=false`、`delivery_success=false`、`safe_to_control=false`、`okr_credit=false`。
 - KR：`不归档`；历史区无新增完成记录。
 
-Mission Objective 0 状态为 `blocked_before_attempt_on_current_localization_readiness`。本轮已有 fresh CEO motion authorization，但 strict-no-motion sprint 没有消费它；因此不是 pending authorization，也不是 mission attempt/success。
+Mission Objective 0 状态仍为 `blocked_before_attempt_on_current_localization_readiness`。CEO 的 motion authorization 是真实 gate 变化，但本 sprint 未消费，不能反算为 user action 或 live control。
 
-## 剩余风险与唯一入口
+## 剩余风险与下一轮唯一入口
 
-- O10 helper 的 80s process budget、probe order 与 partial artifact 写入仍需修复；当前 timeout 发生在 AMCL pose probe 完成前。
-- Upper API graceful shutdown 仍可能卡在 `stop-sigterm`；本轮只证明 unit-scoped recovery 有效，没有根治该既有问题。
-- 不得重复本 proof/window，不得再开 wrapper/summary/readback sprint。
-- 下一轮唯一入口：先由 Algorithm 在本地修 helper budget/probe order/partial artifact，使 current AMCL pose 与 TF 可在 80s no-motion window 内完成并通过完整回归；然后才允许一个新的 no-motion proof。
-- 若优化后仍没有 persisted pose，必须由 Product/CEO 明确新的 localization input gate；不得隐式发布 `/initialpose`。
-- motion authorization 本轮未消费；任何新的 live action 仍须重新确认 current operator、路线、obstacle 与 readiness。
+- 当前直接 blocker 是 O10 helper 在 TF probe 后又进入 `ros2 pkg list`，最终超出 API 80s budget；不是缺少另一个 wrapper/readback。
+- 暂停重复 strict-start wrapper/live refresh，避免第三次消费同一 runtime-budget blocker。
+- `next_offline_runtime_budget_fix`：由 Robot Software + Algorithm 先在本地/离线剖析 helper/API budget、probe order 和 final artifact 时序，补齐能在 80s 内自然完成的测试；只有这些新测试 clean 后，才允许新的 no-motion current proof。
+- 若新窗口仍缺 persisted pose，应由 Product/CEO 明确 localization input gate；不得隐式发布 `/initialpose`。
+- motion authorization 本轮未消费；未来 motion 仍需 current readiness、operator、路线与 obstacle gate。

@@ -1,10 +1,11 @@
 {
   "schema_version": "trashbot.o3_nav2_lifecycle_safety_manifest.v1",
-  "generated_at": "2026-07-20T16:42:29+08:00",
-  "proof_boundary": "strict_no_motion_persistent_lifecycle_start_only",
+  "generated_at": "2026-07-20T16:56:14+08:00",
+  "proof_boundary": "strict_no_motion_persistent_lifecycle_fresh_pose_planner_only_path_readiness",
   "deploy_state": "final_local_source_deployed_healthy",
-  "integration_result": "GO_FOR_ALGORITHM_PROOF",
-  "robot_live_start_ready": true,
+  "integration_result": "OWNED_STOP_CLEAN",
+  "algorithm_proof_result": "PLANNER_ONLY_NO_GO",
+  "robot_live_start_ready": false,
   "current_for_this_capture_window": true,
   "vendor_sources": [
     "docs/vendor/VENDOR_INDEX.md",
@@ -124,6 +125,47 @@
     },
     "lifecycle_command_invocation_count_inside_api": 2
   },
+  "algorithm_proof": {
+    "captured_at": "2026-07-20T16:51:26+08:00",
+    "generated_at_ms": 1784537486207,
+    "result": "PLANNER_ONLY_NO_GO",
+    "readiness_go": false,
+    "nav2_proof_refresh_post_invocation_count": 1,
+    "nav2_proof_refresh_retry_count": 0,
+    "helper_process_timeout_s": 80.0,
+    "helper_process_timeout": true,
+    "partial_artifact_preserved": true,
+    "last_successful_phase": "tf_probe",
+    "current_command_at_timeout": "ros2 pkg list",
+    "helper_process_cleanup_ok": true,
+    "helper_managed_runtime_cleanup": "not_required",
+    "managed_runtime_opt_in": false,
+    "managed_runtime_started": false,
+    "initialpose_publish_attempts": 0,
+    "path_generation_requested": true,
+    "path_generation_attempted": false,
+    "path_generation_succeeded": false,
+    "path_pose_count": 0,
+    "source_root_causes": [
+      "current_amcl_pose_sample_timestamp_and_freshness_not_proven",
+      "persisted_pose_audit_and_final_tf_freshness_gate_not_reached",
+      "planner_and_controller_lifecycle_active_not_proven_before_timeout",
+      "sigint_before_final_artifact",
+      "helper_process_timeout_after_partial_artifact"
+    ],
+    "next_motion_gate_blockers": [
+      "current_obstacle_clear_not_proven",
+      "current_localization_and_planner_path_readiness_not_proven"
+    ],
+    "pre_stop_lifecycle_pid": 684474,
+    "pre_stop_lifecycle_running": true,
+    "readiness_assertion_owned_stop_fields_are_pre_stop_snapshot": true,
+    "safe_to_control": false,
+    "route_execution_success": false,
+    "hil_pass": false,
+    "delivery_success": false,
+    "okr_credit": false
+  },
   "post_start": {
     "captured_at_ms": 1784536934089,
     "api_status_generated_at_ms": 1784536909451,
@@ -161,25 +203,94 @@
     "base_uart_new_open_count": 0,
     "lidar_serial_new_open_count": 0
   },
+  "final_stop": {
+    "endpoint": "/api/nav2/stop",
+    "captured_at_ms": 1784537724009,
+    "response_generated_at_ms": 1784537688271,
+    "post_stop_status_generated_at_ms": 1784537724262,
+    "external_stop_post_invocation_count": 1,
+    "stop_retry_count": 0,
+    "action": "nav2_stop",
+    "status": "stopped_owned_process_group",
+    "semantic_success": true,
+    "evidence_type": "owned_lifecycle_cleanup_material",
+    "command_result_executed": true,
+    "command_result_ok": true,
+    "command_result_returncode": 0,
+    "root_causes": [],
+    "cleanup": {
+      "status": "owned_process_group_stopped",
+      "attempted": true,
+      "ok": true,
+      "scope": "o11_owned_pid_process_group_only",
+      "sends_base_stop_command": false,
+      "uses_base_uart": false
+    },
+    "lifecycle_command_invocation_count_inside_api": 2,
+    "command_status_running": false,
+    "command_status_state": "stopped",
+    "readback_status_running": false,
+    "readback_status_state": "stopped",
+    "final_status": "blocked_with_root_cause",
+    "final_status_blocked_reasons": [
+      "nav2_lifecycle_not_running"
+    ],
+    "final_lifecycle_running": false,
+    "final_lifecycle_state": "stopped",
+    "final_lifecycle_pid": null,
+    "owned_pid_684474_present": false,
+    "owned_pid_file_present": false,
+    "base_uart": {
+      "device": "/dev/ttyS5",
+      "holder_count": 1,
+      "holders": [
+        {
+          "pid": 13543,
+          "command": "esp32_bridge"
+        }
+      ]
+    },
+    "lidar_serial": {
+      "device": "/dev/ttyACM0",
+      "holder_count": 1,
+      "holders": [
+        {
+          "pid": 550922,
+          "command": "lidar_driver"
+        }
+      ]
+    },
+    "base_uart_new_holder_pids": [],
+    "lidar_serial_new_holder_pids": [],
+    "base_uart_new_open_count": 0,
+    "lidar_serial_new_open_count": 0
+  },
   "command_log_delta": {
     "path": "/root/rober/onboard/runtime/wave_rover_command_debug.jsonl",
     "before_lines": 3570,
     "after_lines": 3570,
+    "after_final_stop_lines": 3570,
     "line_delta": 0,
     "before_size_bytes": 1245562,
     "after_size_bytes": 1245562,
+    "after_final_stop_size_bytes": 1245562,
     "before_mtime_epoch_s": 1783532582,
     "after_mtime_epoch_s": 1783532582,
+    "after_final_stop_mtime_epoch_s": 1783532582,
     "uart_motion_command_delta": 0
   },
   "invocation_counts": {
     "nav2_start_post_this_final_deploy_window": 1,
-    "nav2_status_get_this_task": 3,
+    "nav2_status_get_across_robot_software_windows": 5,
     "nav2_status_get_after_final_deploy": 2,
     "nav2_status_get_after_start": 1,
-    "nav2_proof_refresh_post": 0,
+    "nav2_status_get_before_final_stop": 1,
+    "nav2_status_get_after_final_stop": 1,
+    "nav2_proof_refresh_post": 1,
+    "nav2_proof_refresh_retry_count": 0,
     "nav2_goal_execute_post": 0,
-    "nav2_stop_post": 0,
+    "nav2_stop_post": 1,
+    "nav2_stop_retry_count": 0,
     "base_stop_invocation": 0,
     "base_manual_invocation": 0,
     "initialpose_publish_invocation": 0,
@@ -201,12 +312,129 @@
   "artifacts": {
     "start_response": "sprints/2026.07.20_13-20_o3_nav2_localization_readiness_recovery/artifacts/api_nav2_start_response.json",
     "start_status": "sprints/2026.07.20_13-20_o3_nav2_localization_readiness_recovery/artifacts/api_nav2_start_status.json",
-    "stop_response": null,
-    "stop_response_reason": "not_created_because_successful_persistent_lifecycle_must_remain_running_for_algorithm_proof"
+    "proof_refresh_response": "sprints/2026.07.20_13-20_o3_nav2_localization_readiness_recovery/artifacts/nav2_proof_refresh_response.json",
+    "readiness_assertion": "sprints/2026.07.20_13-20_o3_nav2_localization_readiness_recovery/artifacts/readiness_assertion.json",
+    "stop_response": "sprints/2026.07.20_13-20_o3_nav2_localization_readiness_recovery/artifacts/api_nav2_stop_response.json",
+    "readiness_assertion_stop_note": "readiness_assertion.json is the Algorithm pre-stop snapshot; final stop truth is recorded by api_nav2_stop_response.json and final_stop above"
   },
   "remaining_risks": [
-    "Top-level nav2 status intentionally remains not_proven until the Algorithm owner captures current persisted localization and planner-only path proof.",
-    "Lifecycle remains running by contract; Robot Software must perform one owned stop after Algorithm proof, including on Algorithm semantic failure.",
-    "This stage proves strict-no-motion lifecycle start only and does not prove localization, path success, route execution, HIL, safe-to-control, or delivery."
-  ]
+    "Algorithm proof timed out after preserving a partial artifact, so current AMCL pose freshness, persisted-pose audit, planner/controller active state, and planner-only path remain unproven.",
+    "The final top-level nav2 status is blocked because the owned lifecycle is intentionally stopped; this is expected cleanup truth, not a new runtime failure.",
+    "This integration does not prove localization readiness, path success, route execution, HIL, safe-to-control, delivery, Mission Objective 0, or OKR credit."
+  ],
+  "post_publish_race_cleanup": {
+    "audited_at": "2026-07-20T16:55:40+08:00",
+    "published_commit": "3fe3c053ceada54c10dd8414098863a66e5f08e1",
+    "trigger": "derived artifacts changed after publish and recorded a second lifecycle/proof window",
+    "preserved_windows": {
+      "first_window": {
+        "lifecycle_pid": 679928,
+        "lifecycle_process_group_id": 679928,
+        "nav2_start_post": 1,
+        "nav2_proof_refresh_post": 1,
+        "nav2_proof_latest_get": 1,
+        "nav2_stop_post": 1,
+        "stop_response_generated_at_ms": 1784536634441,
+        "owned_cleanup_ok": true
+      },
+      "second_window": {
+        "lifecycle_pid": 684474,
+        "lifecycle_process_group_id": 684474,
+        "nav2_start_post": 1,
+        "proof_process_group_id": 685333,
+        "proof_elapsed_ms": 80444,
+        "nav2_proof_refresh_post": 1,
+        "nav2_proof_latest_get": 1,
+        "algorithm_snapshot_nav2_stop_post": 0,
+        "algorithm_snapshot_stop_pending": true,
+        "nav2_stop_post_after_algorithm_snapshot": 1,
+        "stop_response_generated_at_ms": 1784537688271,
+        "owned_cleanup_ok": true
+      }
+    },
+    "total_invocation_counts_across_sprint_after_race_audit": {
+      "nav2_start_post": 2,
+      "nav2_status_get": 6,
+      "nav2_proof_refresh_post": 2,
+      "nav2_proof_latest_get": 2,
+      "nav2_goal_execute_post": 0,
+      "nav2_stop_post": 2,
+      "nav2_stop_post_by_this_race_audit": 0,
+      "base_stop_invocation": 0,
+      "base_manual_invocation": 0,
+      "cmd_vel_publish_invocation": 0,
+      "initialpose_publish_invocation": 0,
+      "uart_motion_invocation": 0,
+      "wave_rover_T1_invocation": 0,
+      "wave_rover_T11_invocation": 0,
+      "wave_rover_T13_invocation": 0
+    },
+    "current_runtime_audit": {
+      "upper_api_health_status": "ready",
+      "upper_api_safe_to_control": false,
+      "upper_api_pid": 684106,
+      "nav2_status": "blocked_with_root_cause",
+      "lifecycle_running": false,
+      "lifecycle_state": "stopped",
+      "lifecycle_pid": null,
+      "o11_status_generated_at_ms": 1784537740825,
+      "owned_lifecycle_or_proof_process_present": false,
+      "nav2_nodes_present": false,
+      "observed_ros_nodes": [
+        "/lidar_driver",
+        "/static_transform_publisher_IQ8q3xoF0rfVrijI"
+      ],
+      "cmd_vel_once_exit": 124,
+      "cmd_vel_observed_message_count": 0,
+      "initialpose_once_exit": 1,
+      "initialpose_publisher_observed": false,
+      "base_uart": {
+        "device": "/dev/ttyS5",
+        "holder_count": 1,
+        "holders": [
+          {
+            "pid": 13543,
+            "command": "esp32_bridge"
+          }
+        ],
+        "new_open_count": 0
+      },
+      "lidar_serial": {
+        "device": "/dev/ttyACM0",
+        "holder_count": 1,
+        "holders": [
+          {
+            "pid": 550922,
+            "command": "lidar_driver"
+          }
+        ],
+        "new_open_count": 0
+      },
+      "command_log": {
+        "path": "/root/rober/onboard/runtime/wave_rover_command_debug.jsonl",
+        "lines": 3570,
+        "size_bytes": 1245562,
+        "mtime_epoch_s": 1783532582,
+        "delta_across_both_windows_and_audit": 0
+      },
+      "physical_motion_observed": false
+    },
+    "race_audit_action": {
+      "stop_required": false,
+      "stop_executed": false,
+      "stop_invocation_count": 0,
+      "reason": "the owned lifecycle had already been stopped before this audit"
+    },
+    "late_artifact_source_assessment": {
+      "algorithm_artifact_source_determined": true,
+      "algorithm_artifact_source": "the second-window proof refresh and proof latest responses produced the 2026-07-20T16:51:26+08:00 pre-stop snapshots",
+      "cleanup_artifact_source_determined": true,
+      "cleanup_artifact_source": "POST /api/nav2/stop produced api_nav2_stop_response.json at generated_at_ms 1784537688271",
+      "invoking_actor_identity_determined": false,
+      "reason_actor_identity_not_determined": "the derived artifacts contain endpoint, process, and timestamp evidence but no agent, session, or operator identity field"
+    },
+    "cleanup_ok": true,
+    "physical_motion_observed": false,
+    "proof_boundary": "post-publish race cleanup and strict-no-motion runtime absence only; localization readiness, path generation, route execution, HIL, safe-to-control, and delivery remain unproven"
+  }
 }

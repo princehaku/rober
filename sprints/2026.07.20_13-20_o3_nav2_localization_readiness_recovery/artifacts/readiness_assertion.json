@@ -1,20 +1,23 @@
 {
   "schema_version": "trashbot.o3_nav2_current_readiness.v2",
-  "captured_at": "2026-07-20T16:31:40+08:00",
-  "generated_at_ms": 1784536266565,
+  "captured_at": "2026-07-20T16:51:26+08:00",
+  "generated_at_ms": 1784537486207,
   "source_host": "root@192.168.1.11:37878",
   "current_for_this_capture_window": true,
   "proof_boundary": "strict_no_motion_persistent_lifecycle_fresh_pose_planner_only_path_readiness",
+  "result": "PLANNER_ONLY_NO_GO",
   "readiness_go": false,
   "strict_no_motion_contract_effective": true,
   "robot_live_start_ready": true,
   "lifecycle_manager_running": true,
-  "lifecycle_manager_pid": 679928,
+  "lifecycle_manager_pid": 684474,
+  "lifecycle_manager_left_running_for_robot_software_stop": true,
   "base_enabled": false,
   "lidar_enabled": false,
   "base_uart_new_open_count": 0,
   "lidar_serial_new_open_count": 0,
   "helper_deployment": {
+    "remote_path": "/root/rober/onboard/scripts/o10_amcl_nav2_runtime_proof.py",
     "local_sha256": "4cad938e91cb3e19317ef0b9e058e24df7665268ad8fb6d00423d19980b15341",
     "remote_sha256": "4cad938e91cb3e19317ef0b9e058e24df7665268ad8fb6d00423d19980b15341",
     "sha_match": true,
@@ -22,12 +25,14 @@
     "api_restart_performed": false
   },
   "lifecycle": {
-    "map_server_active": false,
-    "amcl_active": false,
+    "map_server_active": true,
+    "amcl_active": true,
     "planner_server_active": false,
     "controller_server_active": false,
     "active_state_proven_in_current_proof": false,
-    "nodes_present_after_start": true
+    "all_four_active": false,
+    "map_amcl_state_source": "current_partial_phase_history.lifecycle_cli_budget_recovery.map_lifecycle_preflight_all_active",
+    "planner_controller_state_source": "not_proven_before_helper_timeout"
   },
   "localization": {
     "persisted_pose_audit_present": false,
@@ -35,12 +40,13 @@
     "amcl_pose_observed": false,
     "amcl_pose_timestamp_parsed": false,
     "amcl_pose_fresh": false,
-    "map_to_odom_observed": false,
-    "map_to_odom_dynamic": false,
-    "map_to_odom_timestamp_parsed": false,
+    "map_to_odom_observed": true,
+    "map_to_odom_dynamic": true,
+    "map_to_odom_timestamp_parsed": true,
     "map_to_odom_fresh": false,
-    "map_to_odom_attributed_unique_amcl": false,
-    "map_to_base_link_observed": false,
+    "map_to_odom_formal_freshness_gate_present": false,
+    "map_to_odom_attributed_unique_amcl": true,
+    "map_to_base_link_observed": true,
     "source_clean": false
   },
   "initialpose_publish_attempts": 0,
@@ -56,24 +62,26 @@
   "proof_command_result": {
     "executed": true,
     "ok": false,
-    "elapsed_ms": 81243,
+    "elapsed_ms": 80444,
     "process_timeout_s": 80.0,
     "timeout": true,
-    "partial_artifact_preserved": true
+    "partial_artifact_preserved": true,
+    "last_successful_phase": "tf_probe",
+    "current_command_at_timeout": "ros2 pkg list"
   },
   "source_root_causes": [
-    "amcl_pose_probe_interrupted_before_observation",
+    "current_amcl_pose_sample_timestamp_and_freshness_not_proven",
+    "persisted_pose_audit_and_final_tf_freshness_gate_not_reached",
+    "planner_and_controller_lifecycle_active_not_proven_before_timeout",
     "sigint_before_final_artifact",
     "helper_process_timeout_after_partial_artifact"
   ],
   "blockers": [
     "helper_process_timeout_after_partial_artifact",
-    "amcl_pose_probe_interrupted_before_observation",
-    "lifecycle_active_fields_not_proven_in_current_proof",
+    "current_amcl_pose_sample_timestamp_and_freshness_not_proven",
     "persisted_pose_audit_not_reached_before_timeout",
-    "current_amcl_pose_stamp_and_freshness_not_proven",
-    "dynamic_map_to_odom_stamp_freshness_and_unique_amcl_attribution_not_proven",
-    "map_to_base_link_not_observed",
+    "map_to_odom_final_freshness_gate_not_reached",
+    "planner_and_controller_lifecycle_active_not_proven_before_timeout",
     "path_generation_not_attempted"
   ],
   "obstacle_clear": "not_proven",
@@ -82,9 +90,11 @@
     "current_localization_and_planner_path_readiness_not_proven"
   ],
   "invocation_counts": {
-    "nav2_start_post": 1,
-    "nav2_proof_refresh_post": 1,
-    "nav2_proof_latest_get": 1,
+    "nav2_start_post_this_final_deploy_window": 1,
+    "known_nav2_start_post_across_sprint": 2,
+    "nav2_proof_refresh_post_this_algorithm_window": 1,
+    "nav2_proof_refresh_retry_count": 0,
+    "nav2_proof_latest_get_this_algorithm_window": 1,
     "nav2_goal_execute_post": 0,
     "nav2_stop_post": 0,
     "base_stop_invocation": 0,
