@@ -1,0 +1,9 @@
+JSON syntax validation
+- action_identity.json: exit 0
+- direct_upper_request.json: exit 0
+- pre_gate_decision.json: exit 0
+- live_sequence_invocation_manifest.json: exit 0
+
+Tech-plan section 7 structure assertion
+- exit 0
+- o7_direct_upper_live_route_action_structure_ok

@@ -6,6 +6,36 @@
 
 ---
 
+## 2026-07-20 O7 direct upper live route action read-only no-go flat 收口
+
+`sprints/2026.07.20_12-20_o7_direct_upper_live_route_action/` 完成 Product acceptance closeout。Full-stack 通过
+`ssh root@192.168.1.11 -p 37878` 在真实上位机内部访问 `127.0.0.1:8787`；`/health`、`/api/health`、
+`/api/status` 与 `/api/nav2/goal/execution/latest` 均 SSH/curl exit `0`、HTTP `200`、JSON parse ok。该事实证明已绕过
+上一轮开发机 7072 handler 前 interceptor，但 health/SSH 只属于 transport/read-only gate，不是业务结果。
+
+Current status 明确 `nav2_lifecycle_not_running`、lifecycle stopped、planner/controller inactive、localization not ready、
+`map_to_odom=false`、`map_to_base_link=false`、path generation 未尝试/未生成；sensor summary 为
+`lidar_min_distance_m=0.03500000014901161`、`obstacle_clear=false/not_proven`。因此
+`explicit_unsafe_blocker_present=true`、`pre_gate_pass=false`、decision=`no_go_fail_closed`。Operator 路线清空声明不能覆盖
+current sensor 反证。Nav2 latest 中旧 `goal_succeeded/robot_control_executed=true` 比 current response 老
+`1414019199ms`，明确不属于本 action window，未用于放宽 gate 或计分。
+
+动作序列正确保持 execute invocation=`0`、stop invocation=`0`、`no.retry=true`；manual/free-roam/keyboard/direct
+`/cmd_vel`/`/initialpose`/UART/delivery/mock invocation 全为 `0`。四个核心 JSON `json.tool` exit `0`，结构断言输出
+`o7_direct_upper_live_route_action_structure_ok`；workstation targeted `5 passed`、full `532 passed`、build/lint/scoped diff
+通过，无 product/test/ROS2/hardware/vendor/runtime config 改动。
+
+Product 接受 Proof boundary=`direct_upper_current_read_only_pre_gate_blocked_nav2_lifecycle_not_running`。
+`current_run_artifact_delta=true` 只表示 fresh read-only no-go evidence；`external_artifact_delta=false`、
+`user_action_delta=false`、`live_control_delta=false`、`robot_control_executed=false`、`route_execution_success=false`、
+`hil_pass=false`、`delivery_success=false`、`safe_to_control=false`、`mission_objective_0_satisfied=false`、`okr_credit=false`。
+O5 保持约 `85%`、O6/O7 各保持约 `93%`、O1 保持约 `94%`，主百分比全 flat，KR `不归档`，历史区无新增完成项。
+
+本 action window 以 no-go 封存，禁止重跑 execute/stop，也禁止再开 health/wrapper/summary sprint。下一轮唯一入口是
+Algorithm/Robot owner 在新的 strict no-motion readiness window 中消除并证明 lifecycle、planner/controller、localization/TF、
+current path blocker；operator 重新摆位/清场并取得 clean obstacle-clear readback；随后 CEO 给出新的 fresh bounded-motion
+authorization。Product closeout 本身不计 business worker recovery，也不授权 motion。
+
 ## 2026-07-20 O7 Full-stack live route 用户动作回执 flat 收口
 
 `sprints/2026.07.20_11-20_o7_full_stack_live_route_user_action_receipt/` 完成 Product acceptance closeout。

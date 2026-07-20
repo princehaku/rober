@@ -1,0 +1,7 @@
+{
+  "task_id": "task_o3_28_pose_fixed_route_consumer_20260713_0402",
+  "run_id": "run_o7_direct_upper_live_route_20260720_02",
+  "route_intent_id": "route_intent_20260713_0402_from_20260713_0300_28_pose_structured_path",
+  "authorization_ref": "ceo_20260720_1220_bounded_motion_operator_watch_route_clear_v2",
+  "action_id": "action_o7_direct_upper_nav_20260720_02"
+}

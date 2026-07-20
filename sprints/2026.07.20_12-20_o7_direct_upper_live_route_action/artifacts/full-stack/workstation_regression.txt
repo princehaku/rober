@@ -1,0 +1,26 @@
+O7 direct upper live route action workstation regression
+
+1. npm run test -- test/catalog.test.ts -t "Nav2 goal execution"
+- exit: 0
+- Test Files: 1 passed (1)
+- Tests: 5 passed | 254 skipped (259)
+- Duration: 1.87s
+
+2. npm run test
+- exit: 0
+- Test Files: 4 passed (4)
+- Tests: 532 passed (532)
+- Duration: 49.64s
+- Scope note: the test generator refreshed checked_at in two historical DOM smoke artifacts. Both files were clean before this run and were restored exactly to their HEAD checked_at values with apply_patch; no scope-external diff remains.
+
+3. npm run build
+- exit: 0
+- 34 modules transformed
+- built in 1.91s
+- Existing non-blocking warning: output chunk exceeds 500 kB after minification.
+
+4. npm run lint
+- exit: 0
+- eslint completed without diagnostics.
+
+No product code, test code, ROS2, hardware, vendor, or runtime configuration was modified.

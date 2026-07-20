@@ -1,0 +1,18 @@
+{
+  "confirm_navigation_execution": true,
+  "goal_frame_id": "map",
+  "goal_x": 0.8,
+  "goal_y": 0.25,
+  "goal_yaw": 0.0,
+  "base_command_mode": "ros",
+  "managed_runtime_opt_in": true,
+  "result_timeout_s": 8,
+  "server_timeout_s": 12,
+  "route_preview_point_count": 28,
+  "route_preview_source_point_count": 28,
+  "route_preview_frame_id": "map",
+  "route_start_x": 0.07615115310756959,
+  "route_start_y": 0.2500000037252903,
+  "route_goal_x": 0.8,
+  "route_goal_y": 0.2500000037252903
+}

@@ -1,0 +1,127 @@
+{
+  "schema": "trashbot.o7.direct_upper_pre_gate_decision.v1",
+  "generated_at_ms": 1784522140000,
+  "ssh_transport": "direct_upper_remote_curl",
+  "ssh_target": "root@192.168.1.11:37878",
+  "upper_loopback_base": "http://127.0.0.1:8787",
+  "task_id": "task_o3_28_pose_fixed_route_consumer_20260713_0402",
+  "run_id": "run_o7_direct_upper_live_route_20260720_02",
+  "route_intent_id": "route_intent_20260713_0402_from_20260713_0300_28_pose_structured_path",
+  "authorization_ref": "ceo_20260720_1220_bounded_motion_operator_watch_route_clear_v2",
+  "action_id": "action_o7_direct_upper_nav_20260720_02",
+  "operator_watch": true,
+  "route_clear": true,
+  "physical_position_bounded": true,
+  "motion_post_invocation_count_before_gate": 0,
+  "reads": {
+    "health_compat": {
+      "endpoint": "/health",
+      "method": "GET",
+      "invocation_count": 1,
+      "ssh_exit": 0,
+      "curl_exit": 0,
+      "http_status": 200,
+      "json_parse_status": "ok",
+      "schema": "trashbot.upper_robot_api.v1.health",
+      "status": "ready",
+      "artifact_path": "artifacts/full-stack/pre_gate_health_compat.raw"
+    },
+    "api_health": {
+      "endpoint": "/api/health",
+      "method": "GET",
+      "invocation_count": 1,
+      "ssh_exit": 0,
+      "curl_exit": 0,
+      "http_status": 200,
+      "json_parse_status": "ok",
+      "schema": "trashbot.upper_robot_api.v1.health",
+      "status": "ready",
+      "artifact_path": "artifacts/full-stack/pre_gate_api_health.raw"
+    },
+    "status": {
+      "endpoint": "/api/status",
+      "method": "GET",
+      "invocation_count": 2,
+      "ssh_exit": 0,
+      "curl_exit": 0,
+      "http_status": 200,
+      "json_parse_status": "ok",
+      "schema": "trashbot.upper_robot_api.v1.status",
+      "response_generated_at_ms": 1784522039835,
+      "first_capture_status": "tool_output_truncated_before_artifact_write",
+      "second_capture_status": "raw_body_saved",
+      "artifact_path": "artifacts/full-stack/pre_gate_status.raw"
+    },
+    "nav2_latest": {
+      "endpoint": "/api/nav2/goal/execution/latest",
+      "method": "GET",
+      "invocation_count": 1,
+      "ssh_exit": 0,
+      "curl_exit": 0,
+      "http_status": 200,
+      "json_parse_status": "ok",
+      "schema": "trashbot.upper_robot_api.v1.nav2_goal_execution_latest",
+      "response_generated_at_ms": 1784522062612,
+      "latest_result_generated_at_ms": 1783108043413,
+      "latest_result_age_ms": 1414019199,
+      "latest_result_current_for_this_action_window": false,
+      "artifact_path": "artifacts/full-stack/pre_gate_nav2_latest.raw"
+    }
+  },
+  "canonical_health_json": true,
+  "status_schema_valid": true,
+  "latest_schema_valid": true,
+  "runtime_attribution": {
+    "upper_api_current_response_attributed": true,
+    "nav2_latest_result_current_for_this_action_window": false,
+    "status_nav2_lifecycle_running": false,
+    "status_nav2_lifecycle_state": "stopped",
+    "status_nav2_proof_state": "blocked_with_root_cause"
+  },
+  "existing_motion_active": false,
+  "existing_motion_evidence": {
+    "status_sends_motion_commands": false,
+    "status_robot_control_executed": false,
+    "nav2_status_sends_motion_commands": false,
+    "nav2_status_robot_control_executed": false,
+    "free_roam_cmd_vel_publish_enabled": false,
+    "free_roam_external_stop_requested": true,
+    "stale_latest_base_command_linear_x": 0.0,
+    "stale_latest_base_command_angular_z": 0.0
+  },
+  "explicit_unsafe_blocker_present": true,
+  "unsafe_and_readiness_blockers": [
+    "nav2_lifecycle_not_running",
+    "planner_server_active_false",
+    "controller_server_active_false",
+    "localization_not_ready",
+    "map_to_odom_and_map_to_base_link_not_observed",
+    "path_generation_not_attempted_or_generated",
+    "lidar_min_distance_0_035m_obstacle_clear_not_proven"
+  ],
+  "route_readiness": {
+    "nav2_status": "blocked_with_root_cause",
+    "blocked_reasons": [
+      "nav2_lifecycle_not_running"
+    ],
+    "planner_server_active": false,
+    "controller_server_active": false,
+    "localization_ready": false,
+    "path_generated": false,
+    "path_generation_boundary": "path_generation_blocked_by_localization_not_ready",
+    "lidar_min_distance_m": 0.03500000014901161,
+    "obstacle_clear": false
+  },
+  "pre_gate_pass": false,
+  "decision": "no_go_fail_closed",
+  "reasons": [
+    "current_upper_status_reports_nav2_lifecycle_not_running",
+    "current_upper_status_reports_planner_and_controller_inactive",
+    "current_upper_status_reports_localization_and_tf_chain_not_ready",
+    "current_upper_status_reports_route_path_not_generated",
+    "current_upper_sensor_summary_does_not_prove_obstacle_clear"
+  ],
+  "execute_allowed": false,
+  "stop_allowed_without_execute": false,
+  "no_retry": true
+}
