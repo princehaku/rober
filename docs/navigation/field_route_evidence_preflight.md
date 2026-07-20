@@ -1741,11 +1741,11 @@ client transport 错误也不得用第二次 POST 修复。
 ```bash
 ART=sprints/<current-sprint>/artifacts/robot-software
 python3 -m json.tool "$ART/frozen_requests.json" >/dev/null
-jq -e '.phase_a.nav2_start | type == "object" and
+jq -e '.phase_a_start | type == "object" and
   .strict_no_motion == true and .base_enabled == false and
   .lidar_enabled == false and .reuse_existing_scan == true' \
   "$ART/frozen_requests.json" >/dev/null
-jq -c '.phase_a.nav2_start' "$ART/frozen_requests.json" |
+jq -c '.phase_a_start' "$ART/frozen_requests.json" |
   ssh -p 37878 root@192.168.1.11 \
     "curl -fsS --max-time 30 -X POST http://127.0.0.1:8787/api/nav2/start \
       -H 'Content-Type: application/json' --data-binary @-"
@@ -1756,3 +1756,35 @@ jq -c '.phase_a.nav2_start' "$ART/frozen_requests.json" |
 body 与 transport metadata，再做语义判定。若 body parse 失败、remote command
 `invocation_count=0`、semantic status 非成功或 lifecycle 未达到预期，立即 fail closed，保持
 `READINESS_GO=false`，执行计划允许的唯一 owned cleanup，并把 goal/Phase B 保持为 `0`。
+
+## 2026-07-21 frozen stdin live validation boundary
+
+本轮 fresh authorization
+`ceo_20260721_0025_operator_watch_route_clear_physical_limit_v4` 首次在真实上位机验证了上述
+stdin transport：`phase_a_start`、`phase_a_proof` 与 `phase_a_owned_stop` 都只从同一份
+`frozen_requests.json` 经本地 `jq -c` 提取；每个 body 在 transport 前分别完成 JSON parse、
+SHA-256、byte、line、object/count 与 `cmp` 断言，再通过 stdin 送入远端
+`curl --data-binary @-`。没有 inline JSON、heredoc body 或远端变量拼 JSON。
+
+唯一 start HTTP `200` 且 `semantic_success=true`，服务端回显
+`started_strict_no_motion`、`base_enabled=false`、`lidar_enabled=false`，base/LiDAR new-open=`0/0`；
+因此上一轮 `phase_a_start_json_transport_corrupted_before_remote_handler` 在本轮 live transport 层关闭。
+授权仍在 start pipe 发出时立即消费，后续没有第二次 start 或 proof。
+
+唯一 proof 在 `79587ms` 自然返回，canonical artifact 为
+`artifact_kind=final`、`last_phase=final`、`current_command=null`、
+`partial_artifact_preserved=false`，deadline source 为 `parent_absolute_monotonic`。Proof response
+里的 `latest_result` 与随后唯一 GET `/api/nav2/proof/latest` 的 canonical `latest_result` 具有相同
+SHA-256 和 `generated_at_ms`，所以 same-current/natural-final 成立；但 readiness 仍 fail closed：
+
+- map server 与 AMCL lifecycle active，但 canonical map proof 不 clean，current `/map`/`/scan` 材料不足；
+- planner/controller inactive；current pose 虽被末段采到，但 timestamp/freshness 与 persisted pose live
+  consumption 未通过；
+- dynamic `map->odom`、`map->base_link`、unique AMCL attribution 未证明；
+- planner-only path 未执行/未生成，current obstacle-clear 未证明。
+
+因此 `READINESS_GO=false`，Phase B pre-stop/goal/post-stop=`0/0/0`，没有 `T=1001` current-run
+采集、route execution、HIL、delivery 或 physical motion。唯一 owned `/api/nav2/stop` 语义成功，最终
+lifecycle stopped、PID null、owned PID files=`0`、精确 owner residual=`0`。本轮 proof boundary 是
+`current_live_frozen_stdin_transport_validated_natural_final_readiness_no_go_owned_cleanup_no_route`；
+transport clean 与 natural final 都不等于 readiness、route success、HIL、delivery 或 safe-to-control。

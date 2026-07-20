@@ -1,0 +1,50 @@
+{
+  "schema": "trashbot.o3_o1.frozen_stdin_readiness_identity.v1",
+  "frozen_at": "2026-07-21T00:50:23+08:00",
+  "authorization_ref": "ceo_20260721_0025_operator_watch_route_clear_physical_limit_v4",
+  "authorization_fresh_for_this_run": true,
+  "authorization_consumption_point": "phase_a_start_stdin_transport_attempt",
+  "run_id": "run_o3_o1_frozen_stdin_readiness_route_20260721_0025_01",
+  "action_id": "action_o3_o1_bounded_nav_20260721_0025_01",
+  "task_id": "task_o3_28_pose_fixed_route_consumer_20260713_0402",
+  "route_intent_id": "route_intent_20260713_0402_from_20260713_0300_28_pose_structured_path",
+  "source_host": "macos-development-host",
+  "target_host": "root@192.168.1.11:37878",
+  "target_commit": "af08e6545819758b1b3e6127903d55d5664fa93a",
+  "target_content_sha256": {
+    "onboard/scripts/upper_robot_api.py": "8c0f6eebb786e1cd6b1cb5d17485e59972140bf76a94e7669773ef438228b4c3",
+    "onboard/scripts/o10_amcl_nav2_runtime_proof.py": "d9f92d708bdac6feec35798e4acfcd50b58349a3de3315a24a605cf5c82307eb"
+  },
+  "fixed_goal": {
+    "frame_id": "map",
+    "x": 0.8,
+    "y": 0.25,
+    "yaw": 0.0
+  },
+  "operator_watch": true,
+  "route_clear": true,
+  "physical_position_limited": true,
+  "bounded_motion_authorized": true,
+  "no_retry": true,
+  "forbidden": {
+    "initialpose": true,
+    "manual": true,
+    "free_roam": true,
+    "direct_cmd_vel": true,
+    "direct_uart": true,
+    "second_goal": true,
+    "old_authorization_or_artifact_reuse": true
+  },
+  "expected_endpoint_counts": {
+    "phase_a_start": 1,
+    "phase_a_proof": 1,
+    "phase_a_latest": 1,
+    "phase_a_owned_stop": 1,
+    "phase_b_pre_base_stop_if_go": 1,
+    "phase_b_goal_if_go": 1,
+    "phase_b_post_base_stop_if_goal_attempted": 1,
+    "phase_b_terminal_if_goal_attempted": 1,
+    "phase_b_feedback_if_goal_attempted": 1,
+    "phase_b_owned_cleanup_if_go": 1
+  }
+}

@@ -1,0 +1,1 @@
+{"timeout_s":30,"managed_runtime_opt_in":false,"managed_timeout_s":30,"managed_map_yaml":"","initialpose_opt_in":false,"path_generation_opt_in":true,"path_generation_timeout_s":30,"path_goal_frame_id":"map","path_goal_x":0.8,"path_goal_y":0.25,"path_goal_yaw":0.0}

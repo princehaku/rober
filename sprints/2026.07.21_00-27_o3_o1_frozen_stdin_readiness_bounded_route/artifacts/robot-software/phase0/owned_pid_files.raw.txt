@@ -1,0 +1,2 @@
+absent /tmp/rober_nav2_lifecycle/nav2.pid
+absent /tmp/rober_nav2_lifecycle/nav2_lifecycle.pid

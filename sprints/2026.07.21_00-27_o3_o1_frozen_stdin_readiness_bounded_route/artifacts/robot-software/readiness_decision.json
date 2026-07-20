@@ -1,0 +1,101 @@
+{
+  "schema": "trashbot.o3_o1.readiness_decision.v1",
+  "generated_at": "2026-07-21T01:00:07+08:00",
+  "authorization_ref": "ceo_20260721_0025_operator_watch_route_clear_physical_limit_v4",
+  "run_id": "run_o3_o1_frozen_stdin_readiness_route_20260721_0025_01",
+  "action_id": "action_o3_o1_bounded_nav_20260721_0025_01",
+  "task_id": "task_o3_28_pose_fixed_route_consumer_20260713_0402",
+  "route_intent_id": "route_intent_20260713_0402_from_20260713_0300_28_pose_structured_path",
+  "same_current": true,
+  "same_current_basis": {
+    "proof_nested_latest_sha256": "7dacf37534d81dfcdba4c37641b045b6aa2f5ffc526ca055e37210a9ab474c32",
+    "latest_nested_latest_sha256": "7dacf37534d81dfcdba4c37641b045b6aa2f5ffc526ca055e37210a9ab474c32",
+    "generated_at_ms": 1784566573168,
+    "hash_and_timestamp_match": true
+  },
+  "natural_final": true,
+  "natural_final_basis": {
+    "artifact_kind": "final",
+    "last_phase": "final",
+    "current_command": null,
+    "partial_artifact_preserved": false,
+    "process_timeout": false,
+    "deadline_source": "parent_absolute_monotonic",
+    "helper_returncode": 2,
+    "helper_status": "blocked_with_root_cause"
+  },
+  "map_ready": false,
+  "map_detail": {
+    "map_server_active": true,
+    "map_once_observed": false,
+    "canonical_map_proof_clean": false,
+    "blocker": "map_lifecycle_proof_not_clean"
+  },
+  "amcl_ready": false,
+  "amcl_detail": {
+    "amcl_active": true,
+    "amcl_pose_observed": true,
+    "amcl_pose_current_and_fresh": false,
+    "persisted_pose_live_consumed": false
+  },
+  "planner_ready": false,
+  "controller_ready": false,
+  "current_pose_ready": false,
+  "current_pose_detail": {
+    "pose_observed": true,
+    "timestamp_parsed": false,
+    "fresh": false,
+    "conflict": "top_level_pose_observed_but_persisted_audit_pre_publish_sample_not_observed"
+  },
+  "persisted_pose_ready": false,
+  "dynamic_tf_ready": false,
+  "dynamic_tf_detail": {
+    "map_to_odom_dynamic_observed": false,
+    "map_to_odom_fresh": false,
+    "map_to_odom_unique_amcl_attribution": false,
+    "map_to_base_link_observed": false,
+    "blocked_reason": "/tf_topic_missing"
+  },
+  "planner_only_path_ready": false,
+  "planner_only_path_detail": {
+    "requested": true,
+    "attempted": false,
+    "succeeded": false,
+    "generated": false,
+    "point_count": 0,
+    "fixed_goal_materialized": false
+  },
+  "obstacle_clear": false,
+  "obstacle_clear_detail": {
+    "current_clearance_proven": false,
+    "latest_scan_proof_freshness": "stale",
+    "observed_lidar_min_distance_m": 0.03500000014901161,
+    "reason": "current_obstacle_clear_not_proven"
+  },
+  "initialpose_publish_attempts": 0,
+  "base_uart_new_open_count": 0,
+  "lidar_serial_new_open_count": 0,
+  "physical_motion": false,
+  "READINESS_GO": false,
+  "decision": "NO_GO_CLEAN",
+  "blockers": [
+    "map_lifecycle_proof_not_clean",
+    "/scan_no_publisher",
+    "/map_once_not_observed",
+    "current_pose_not_fresh_or_timestamped",
+    "persisted_pose_live_consumed_false",
+    "map_to_odom_dynamic_source_missing",
+    "map_to_base_link_blocked_by_missing_map_to_odom",
+    "planner_server_inactive",
+    "controller_server_inactive",
+    "localization_not_ready_for_path_generation",
+    "path_generation_not_attempted",
+    "current_obstacle_clear_not_proven"
+  ],
+  "phase_b_unlocked": false,
+  "route_execution_success": false,
+  "delivery_success": false,
+  "hil_pass": false,
+  "safe_to_control": false,
+  "proof_boundary": "current_live_frozen_stdin_transport_validated_natural_final_readiness_no_go_owned_cleanup_no_route"
+}

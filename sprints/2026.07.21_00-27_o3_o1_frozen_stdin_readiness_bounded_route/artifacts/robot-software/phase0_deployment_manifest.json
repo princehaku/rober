@@ -1,0 +1,80 @@
+{
+  "schema": "trashbot.o3_o1.phase0_deployment_manifest.v1",
+  "generated_at": "2026-07-21T00:55:00+08:00",
+  "phase": "P0_PRECHECK",
+  "target_host": "root@192.168.1.11:37878",
+  "target_commit": "af08e6545819758b1b3e6127903d55d5664fa93a",
+  "remote_git_commit": null,
+  "remote_git_provenance": "remote_git_metadata_unavailable_not_authoritative",
+  "scripts": {
+    "onboard/scripts/upper_robot_api.py": {
+      "local_sha256": "8c0f6eebb786e1cd6b1cb5d17485e59972140bf76a94e7669773ef438228b4c3",
+      "remote_pre_sha256": "8c0f6eebb786e1cd6b1cb5d17485e59972140bf76a94e7669773ef438228b4c3",
+      "remote_temp_sha256": null,
+      "remote_post_sha256": "8c0f6eebb786e1cd6b1cb5d17485e59972140bf76a94e7669773ef438228b4c3",
+      "deployed": false,
+      "reason": "remote_pre_sha_already_matches_local_verified_sha"
+    },
+    "onboard/scripts/o10_amcl_nav2_runtime_proof.py": {
+      "local_sha256": "d9f92d708bdac6feec35798e4acfcd50b58349a3de3315a24a605cf5c82307eb",
+      "remote_pre_sha256": "d9f92d708bdac6feec35798e4acfcd50b58349a3de3315a24a605cf5c82307eb",
+      "remote_temp_sha256": null,
+      "remote_post_sha256": "d9f92d708bdac6feec35798e4acfcd50b58349a3de3315a24a605cf5c82307eb",
+      "deployed": false,
+      "reason": "remote_pre_sha_already_matches_local_verified_sha"
+    }
+  },
+  "remote_py_compile": {
+    "exit_code": 0,
+    "passed": true
+  },
+  "service": {
+    "name": "trashbot-upper-robot-api.service",
+    "restart_attempted": false,
+    "pre_pid": 1221,
+    "temp_pid": null,
+    "post_pid": 1221,
+    "active_state": "active",
+    "sub_state": "running",
+    "active_enter_timestamp": "Mon 2026-07-20 22:17:10 CST",
+    "is_active_exit_code": 0
+  },
+  "health": {
+    "curl_exit_code": 0,
+    "http_status": 200,
+    "json_parse_ok": true,
+    "semantic_status": "ready"
+  },
+  "status": {
+    "curl_exit_code": 0,
+    "http_status": 200,
+    "json_parse_ok": true,
+    "robot_control_executed": false
+  },
+  "initial_nav2_status": {
+    "curl_exit_code": 0,
+    "http_status": 200,
+    "json_parse_ok": true,
+    "lifecycle_running": false,
+    "lifecycle_state": "stopped",
+    "owned_pid": null,
+    "owned_pid_files_present": 0,
+    "owned_residual_process_count": 0,
+    "robot_control_executed": false
+  },
+  "phase_a_counts_before_gate": {
+    "start_attempt_count": 0,
+    "proof_attempt_count": 0,
+    "latest_attempt_count": 0,
+    "owned_stop_attempt_count": 0
+  },
+  "authorization_consumed": false,
+  "phase0_gate_pass": true,
+  "motion": false,
+  "control_endpoint_invocations": 0,
+  "raw_artifact_sha256": {
+    "health.raw.json": "d3fced9bfc679df2fb358cc582565662e03f1bb853e19e4e25e189d26a7583ea",
+    "status.raw.json": "18d8065489733d560daf7a64ff02f77a420bafe99b9d38b07793ca2ca1b5524d",
+    "nav2_status.raw.json": "a0f3040fc414789d880a3fda6b91afc151d67b9d5dcbd1dd65b445f5a9d60e57"
+  }
+}

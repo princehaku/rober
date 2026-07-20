@@ -1,0 +1,241 @@
+{
+  "schema": "trashbot.o3_o1.algorithm_frozen_readiness_review.v1",
+  "generated_at": "2026-07-21T01:09:56+08:00",
+  "review_role": "robot-algorithm-engineer",
+  "review_mode": "strict_read_only_frozen_artifact_review",
+  "live_delta_created": false,
+  "FROZEN_STDIN_TRANSPORT_LIVE_VALIDATED": true,
+  "authorization_ref": "ceo_20260721_0025_operator_watch_route_clear_physical_limit_v4",
+  "run_id": "run_o3_o1_frozen_stdin_readiness_route_20260721_0025_01",
+  "action_id": "action_o3_o1_bounded_nav_20260721_0025_01",
+  "task_id": "task_o3_28_pose_fixed_route_consumer_20260713_0402",
+  "route_intent_id": "route_intent_20260713_0402_from_20260713_0300_28_pose_structured_path",
+  "lineage_review": {
+    "same_authorization_run_action": true,
+    "same_current": true,
+    "consistent": true,
+    "basis": [
+      "frozen_identity, frozen_requests, phase_a_invocation_manifest and readiness_decision carry the same authorization/run/action lineage",
+      "attempt_counts and cleanup carry the same authorization",
+      "raw response SHA-256 values match the transport manifest",
+      "proof nested latest and GET latest nested latest have identical canonical SHA-256 and generated_at_ms"
+    ],
+    "raw_response_identity_boundary": "raw endpoint payloads do not embed authorization/run/action; binding is provided by the frozen request, ordered manifest entries, exact response SHA-256 and same-current nested artifact match"
+  },
+  "evidence_sha256": {
+    "frozen_identity.json": "d9611bf5c1b43d3b86cfa8ebb73799fc4435bb34efe183352d576c98b920e4bf",
+    "frozen_requests.json": "3b86a005bad1bc04d314a4c7a18518fc543a35d1b4d4320d5d1f23feafc5f7ca",
+    "phase0_deployment_manifest.json": "cfbb6937aed93283ea80675c2081d787583d21bd47bdd50e688064cec75367a2",
+    "phase_a_invocation_manifest.json": "9834cb7894e857cc4df34862127833a5da5c5307682c1606e0cbdf60b893597e",
+    "readiness_decision.json": "5a30e9e0d1ed62cb7b304049f2b1a4189b733dc85c0ffbcb0becf93cf7c8337f",
+    "attempt_counts.json": "76c14dd96fac871f58f667e30e5d13f99d3da3412a2c86598155b6477d52ec1a",
+    "cleanup.json": "1d4e70c03d39af080ba6a33ba52de0854307cedd20f667dce50edd5ac0eb3556",
+    "phase_a_start.response.raw.json": "cf63421e5b4467fc86a179f973ae353ebdf89fca0f6bc103565db5e33a932bc6",
+    "phase_a_proof.response.raw.json": "a3317371419508d87dbb5df7582a1f163f47e4f7b41e58022b138d1a82e62e3f",
+    "phase_a_latest.response.raw.json": "7632865ab7e036d540b60b8556c4d6cbde7674f7548625079cd6f4aa85f6a706",
+    "phase_a_owned_stop.response.raw.json": "28bb4f2f004812e05d357d5ada262f6a9fa93ed225b72c71f05f23c49effb6fb",
+    "cleanup_nav2_status.response.raw.json": "14d652676944b99343d4f5bf950bc8b8bf9ae4df0a3ba182a4f5d360db7f832b",
+    "cleanup_status.response.raw.json": "362b226f90965e5dcb20a8de2b48f3d96b990d7b4a4c868bdc38ed24e71af9d5"
+  },
+  "transport_review": {
+    "closed_blocker": "phase_a_start_json_transport_corrupted_before_remote_handler",
+    "claim_boundary": "transport_only_not_readiness_or_route",
+    "request_source": "frozen_requests.json.phase_a_start",
+    "body": {
+      "json_parse_ok": true,
+      "object_field_count": 5,
+      "request_sha256": "a6f2e1eed6152ee903a4fec9b32521e2065d27536e7a63fef6f51f39c0ddd9bc",
+      "sent_body_sha256": "a6f2e1eed6152ee903a4fec9b32521e2065d27536e7a63fef6f51f39c0ddd9bc",
+      "bytes": 111,
+      "lines": 1,
+      "source_body_cmp_sent_body": true
+    },
+    "transport": {
+      "source": "local_jq_c_extraction_from_frozen_requests_json",
+      "method": "local_stdin_pipe_to_ssh_remote_curl_data_binary_at_dash",
+      "inline_json_used": false,
+      "local_pipeline_exit": 0,
+      "ssh_exit": 0,
+      "curl_exit": 0,
+      "http_status": 200,
+      "response_json_parse_ok": true
+    },
+    "remote_semantics": {
+      "raw_request_body_consumed": true,
+      "remote_handler_invocation_count": 1,
+      "remote_lifecycle_command_executed": true,
+      "remote_lifecycle_command_ok": true,
+      "semantic_success": true,
+      "status": "started_strict_no_motion",
+      "effective_base_enabled": false,
+      "effective_lidar_enabled": false,
+      "base_uart_new_open_count": 0,
+      "lidar_serial_new_open_count": 0,
+      "physical_motion": false
+    }
+  },
+  "current_final_review": {
+    "natural_final": true,
+    "helper_returncode": 2,
+    "helper_status": "blocked_with_root_cause",
+    "outer_wrapper_elapsed_ms": 79587,
+    "nested_final_elapsed_ms": 75711,
+    "process_timeout": false,
+    "artifact_kind": "final",
+    "last_phase": "final",
+    "current_command": null,
+    "partial_artifact_preserved": false,
+    "finalization_reason": "budget_reserve_reached_before_noncritical_command",
+    "deadline_source": "parent_absolute_monotonic",
+    "proof_nested_latest_sha256": "7dacf37534d81dfcdba4c37641b045b6aa2f5ffc526ca055e37210a9ab474c32",
+    "latest_nested_latest_sha256": "7dacf37534d81dfcdba4c37641b045b6aa2f5ffc526ca055e37210a9ab474c32",
+    "nested_latest_generated_at_ms": 1784566573168,
+    "hash_and_timestamp_match": true
+  },
+  "readiness_gates": {
+    "map": {
+      "ready": false,
+      "map_server_active": true,
+      "current_map_once_observed": false,
+      "canonical_map_proof_clean": false,
+      "reason": "map_lifecycle_proof_not_clean_and_current_map_once_not_observed"
+    },
+    "amcl": {
+      "ready": false,
+      "amcl_active": true,
+      "top_level_amcl_pose_observed": true,
+      "strict_current_pose_and_persisted_pose_requirements_met": false,
+      "reason": "lifecycle_active_does_not_override_unparsed_unfresh_current_pose_and_unconsumed_persisted_pose"
+    },
+    "planner": {
+      "ready": false,
+      "planner_server_active": false,
+      "reason": "planner_server_inactive"
+    },
+    "controller": {
+      "ready": false,
+      "controller_server_active": false,
+      "reason": "controller_server_inactive"
+    },
+    "current_pose": {
+      "ready": false,
+      "pose_observed": true,
+      "timestamp_parsed": false,
+      "fresh": false,
+      "conflict": "top_level_pose_observed_but_persisted_audit_pre_publish_sample_not_observed"
+    },
+    "persisted_pose": {
+      "ready": false,
+      "audited": false,
+      "persisted_pose_live_consumed": false,
+      "reason": "persisted_pose_not_live_consumed"
+    },
+    "dynamic_tf": {
+      "ready": false,
+      "map_to_odom_dynamic_observed": false,
+      "map_to_odom_fresh": false,
+      "map_to_odom_unique_amcl_attribution": false,
+      "map_to_base_link_observed": false,
+      "reason": "/tf_topic_missing"
+    },
+    "planner_only_path": {
+      "ready": false,
+      "requested": true,
+      "attempted": false,
+      "succeeded": false,
+      "generated": false,
+      "point_count": 0,
+      "fixed_goal_materialized": false,
+      "reason": "localization_not_ready_for_path_generation"
+    },
+    "obstacle_clear": {
+      "ready": false,
+      "current_clearance_proven": false,
+      "current_scan_observed": false,
+      "historical_scan_freshness": "stale",
+      "historical_lidar_min_distance_m": 0.03500000014901161,
+      "reason": "current_obstacle_clear_not_proven"
+    }
+  },
+  "READINESS_GO": false,
+  "READINESS_REVIEW": "ACCEPT_NO_GO",
+  "review_decision_reason": "same-current natural final and transport evidence are internally consistent, but readiness is fail-closed because all required gates are not green",
+  "attempt_counts": {
+    "phase_a_start_proof_latest_owned_stop": "1/1/1/1",
+    "start_attempt_count": 1,
+    "proof_attempt_count": 1,
+    "latest_attempt_count": 1,
+    "owned_stop_attempt_count": 1,
+    "retry_count": 0,
+    "phase_b_pre_stop_goal_post_stop": "0/0/0",
+    "phase_b_pre_base_stop_attempt_count": 0,
+    "phase_b_goal_attempt_count": 0,
+    "phase_b_post_base_stop_attempt_count": 0,
+    "phase_b_terminal_readback_count": 0,
+    "phase_b_feedback_readback_count": 0,
+    "phase_b_status_readback_count": 0,
+    "phase_b_owned_cleanup_count": 0,
+    "initialpose_publish_attempt_count": 0,
+    "manual_attempt_count": 0,
+    "direct_cmd_vel_attempt_count": 0,
+    "direct_uart_attempt_count": 0,
+    "t1001_current_run_sample_count": 0,
+    "T=1001": "0 current-run samples"
+  },
+  "phase_b_review": {
+    "unlocked": false,
+    "executed": false,
+    "counts": "0/0/0",
+    "physical_motion": false,
+    "robot_control_executed": false,
+    "route_execution_success": false,
+    "hil_pass": false,
+    "delivery_success": false,
+    "safe_to_control": false,
+    "claim_review": "reject_all_phase_b_route_hil_delivery_safe_claims"
+  },
+  "cleanup_review": {
+    "clean": true,
+    "final_state": "NO_GO_CLEAN",
+    "owned_stop_semantic_success": true,
+    "lifecycle_stopped": true,
+    "lifecycle_state": "stopped",
+    "owned_pid": null,
+    "start_pid_exists_after_cleanup": false,
+    "owned_pid_file_count": 0,
+    "residual_process_count": 0,
+    "broad_kill_used": false,
+    "cleanup_scope": "o11_owned_pid_process_group_only"
+  },
+  "blockers": [
+    "map_lifecycle_proof_not_clean",
+    "/scan_no_publisher",
+    "/map_once_not_observed",
+    "current_pose_not_fresh_or_timestamped",
+    "persisted_pose_live_consumed_false",
+    "map_to_odom_dynamic_source_missing",
+    "map_to_base_link_blocked_by_missing_map_to_odom",
+    "planner_server_inactive",
+    "controller_server_inactive",
+    "localization_not_ready_for_path_generation",
+    "path_generation_not_attempted",
+    "current_obstacle_clear_not_proven"
+  ],
+  "proof_boundary": "current_live_frozen_stdin_transport_validated_natural_final_readiness_no_go_owned_cleanup_no_route",
+  "claims_accepted": [
+    "FROZEN_STDIN_TRANSPORT_LIVE_VALIDATED=true",
+    "same-current natural final",
+    "READINESS_REVIEW=ACCEPT_NO_GO",
+    "NO_GO_CLEAN"
+  ],
+  "claims_rejected": [
+    "READINESS_GO",
+    "Phase B execution",
+    "route execution success",
+    "current-run T=1001 evidence",
+    "HIL pass",
+    "delivery success",
+    "safe to control"
+  ],
+  "next_unique_capability_build": "在新的 fresh authorization 下只推进一次 same-current no-motion Nav2 readiness closure：恢复 current /scan 与 /map、timestamped persisted localization 和 dynamic map->odom，激活 planner/controller，并在同一 natural final 中生成 fixed-goal planner-only path 与 current obstacle-clear；九门全绿前不得进入 Phase B。"
+}

@@ -1,0 +1,41 @@
+{
+  "schema": "trashbot.o3_o1.local_verification.v1",
+  "generated_at": "2026-07-21T00:50:23+08:00",
+  "target_commit": "af08e6545819758b1b3e6127903d55d5664fa93a",
+  "commands": [
+    {
+      "command": "python3 -m py_compile onboard/scripts/upper_robot_api.py onboard/scripts/o10_amcl_nav2_runtime_proof.py",
+      "exit_code": 0,
+      "result": "pass"
+    },
+    {
+      "command": "python3 -m unittest onboard.tests.test_upper_robot_api.UpperRobotApiFeedbackAckTests.test_nav2_runtime_proof_parent_absolute_deadline_starts_before_popen",
+      "exit_code": 0,
+      "tests_run": 1,
+      "result": "OK"
+    },
+    {
+      "command": "python3 -m unittest onboard/tests/test_upper_robot_api.py",
+      "exit_code": 0,
+      "tests_run": 119,
+      "skipped": 1,
+      "result": "OK"
+    },
+    {
+      "command": "python3 -m unittest onboard/tests/test_nav2_runtime_proof_helper.py",
+      "exit_code": 0,
+      "tests_run": 170,
+      "result": "OK"
+    },
+    {
+      "command": "python3 -m unittest onboard/tests/test_upper_robot_api.py onboard/tests/test_nav2_runtime_proof_helper.py",
+      "exit_code": 0,
+      "tests_run": 289,
+      "skipped": 1,
+      "result": "OK"
+    }
+  ],
+  "product_code_changed": false,
+  "test_code_changed": false,
+  "offline_gate_pass": true
+}

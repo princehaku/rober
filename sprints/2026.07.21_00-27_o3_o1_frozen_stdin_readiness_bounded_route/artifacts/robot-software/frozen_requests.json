@@ -1,0 +1,86 @@
+{
+  "schema": "trashbot.o3_o1.frozen_stdin_requests.v1",
+  "authorization_ref": "ceo_20260721_0025_operator_watch_route_clear_physical_limit_v4",
+  "run_id": "run_o3_o1_frozen_stdin_readiness_route_20260721_0025_01",
+  "action_id": "action_o3_o1_bounded_nav_20260721_0025_01",
+  "task_id": "task_o3_28_pose_fixed_route_consumer_20260713_0402",
+  "route_intent_id": "route_intent_20260713_0402_from_20260713_0300_28_pose_structured_path",
+  "target_host": "root@192.168.1.11:37878",
+  "target_commit": "af08e6545819758b1b3e6127903d55d5664fa93a",
+  "no_retry": true,
+  "phase_a_start": {
+    "strict_no_motion": true,
+    "base_enabled": false,
+    "lidar_enabled": false,
+    "reuse_existing_scan": true,
+    "timeout_s": 20
+  },
+  "phase_a_proof": {
+    "timeout_s": 30,
+    "managed_runtime_opt_in": false,
+    "managed_timeout_s": 30,
+    "managed_map_yaml": "",
+    "initialpose_opt_in": false,
+    "path_generation_opt_in": true,
+    "path_generation_timeout_s": 30,
+    "path_goal_frame_id": "map",
+    "path_goal_x": 0.8,
+    "path_goal_y": 0.25,
+    "path_goal_yaw": 0.0
+  },
+  "phase_a_latest": {
+    "method": "GET",
+    "endpoint": "/api/nav2/proof/latest"
+  },
+  "phase_a_owned_stop": {},
+  "phase_b_pre_base_stop": {},
+  "phase_b_goal": {
+    "confirm_navigation_execution": true,
+    "goal_frame_id": "map",
+    "goal_x": 0.8,
+    "goal_y": 0.25,
+    "goal_yaw": 0.0,
+    "base_command_mode": "ros",
+    "managed_runtime_opt_in": false,
+    "result_timeout_s": 20,
+    "server_timeout_s": 12,
+    "task_id": "task_o3_28_pose_fixed_route_consumer_20260713_0402",
+    "run_id": "run_o3_o1_frozen_stdin_readiness_route_20260721_0025_01",
+    "route_intent_id": "route_intent_20260713_0402_from_20260713_0300_28_pose_structured_path",
+    "authorization_ref": "ceo_20260721_0025_operator_watch_route_clear_physical_limit_v4",
+    "action_id": "action_o3_o1_bounded_nav_20260721_0025_01"
+  },
+  "phase_b_post_base_stop": {},
+  "phase_b_terminal": {
+    "method": "GET",
+    "endpoint": "/api/nav2/goal/execution/latest"
+  },
+  "phase_b_feedback": {
+    "method": "GET",
+    "endpoint": "/api/base/feedback-samples/latest"
+  },
+  "phase_b_status": {
+    "method": "GET",
+    "endpoint": "/api/status"
+  },
+  "phase_b_owned_cleanup": {},
+  "expected_endpoint_counts": {
+    "/api/nav2/start": 1,
+    "/api/nav2/proof/refresh": 1,
+    "/api/nav2/proof/latest": 1,
+    "/api/nav2/stop": 1,
+    "/api/base/stop_if_go": 1,
+    "/api/nav2/goal/execute_if_go": 1,
+    "/api/base/stop_after_goal_if_go": 1,
+    "/api/nav2/goal/execution/latest_if_goal_attempted": 1,
+    "/api/base/feedback-samples/latest_if_goal_attempted": 1
+  },
+  "forbidden_endpoint_counts": {
+    "/api/base/manual": 0,
+    "/api/free-roam/autonomy/start": 0,
+    "/initialpose": 0,
+    "/cmd_vel_direct": 0,
+    "uart_direct": 0,
+    "retry": 0
+  }
+}
