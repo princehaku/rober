@@ -8,6 +8,8 @@
 - `OWNED_STOP_CLEAN=yes`
 - `OKR_CREDIT=false`
 - `RACE_RECONCILIATION_COMPLETE=yes`
+- `no_identity_inference=true`
+- `final_runtime=stopped/healthy/residual=0/physical_motion=false`
 
 ## 实际改动
 
@@ -46,7 +48,7 @@ commit `3fe3c053ceada54c10dd8414098863a66e5f08e1` 发布后，第二窗口以 li
 
 第二窗口 partial artifact 证明 `map_server_active=true`、`amcl_active=true`，dynamic `map->odom` observed、timestamp parsed、publisher attribution=`attributed_unique_amcl`，并且 `map->base_link=true`。但 formal TF freshness gate 未成立，current AMCL pose sample/timestamp/freshness 未证明，persisted pose audit 未完成，planner/controller active 未证明，path requested=true 但 attempted/succeeded/generated=false、count=0；因此 `READINESS_GO=false`。
 
-第二 owned stop 在 16:54 完成；16:55 `post_publish_race_cleanup` 审计没有再发 stop（新增 stop invocation=`0`），因为 lifecycle 已 stopped、PID null、无 owned lifecycle/proof 残留。Upper API healthy，tty holders 与 command log 不变，`physical_motion=false`。禁止第三个 proof/window。
+第二 owned stop 在 16:54 完成；16:55 `post_publish_race_cleanup` 审计没有再发 stop（新增 stop invocation=`0`），因为 lifecycle 已 stopped、PID null、无 owned lifecycle/proof 残留。Upper API healthy，tty holders 与 command log 不变，`physical_motion=false`。`禁止第三窗口`，不得再开 proof/window。
 
 ## Algorithm 结果：PLANNER_ONLY_NO_GO
 
