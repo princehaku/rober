@@ -1,0 +1,92 @@
+{
+  "schema_version": "trashbot.o3_o10.parent_absolute_deadline_integration.v1",
+  "generated_at": "2026-07-20T21:13:52+08:00",
+  "mode": "offline_only",
+  "root_cause": {
+    "classification": "parent_helper_monotonic_clock_origin_mismatch",
+    "parent_elapsed_ms": 80395,
+    "helper_start_to_sigint_ms": 76764,
+    "unbudgeted_parent_startup_ms": 3631,
+    "helper_final_reserve_s": 4.0
+  },
+  "algorithm_consumer": {
+    "argument": "--outer-process-deadline-monotonic-s",
+    "clock": "time.monotonic",
+    "selection": "earlier_of_absolute_and_relative_deadline",
+    "invalid_absolute_deadline": "fail_closed",
+    "source_files_read_only_by_robot_owner": [
+      "onboard/scripts/o10_amcl_nav2_runtime_proof.py",
+      "onboard/tests/test_nav2_runtime_proof_helper.py"
+    ]
+  },
+  "robot_parent_producer": {
+    "deadline_created_before_argv_and_popen": true,
+    "passes_relative_timeout": true,
+    "passes_absolute_deadline": true,
+    "communicate_uses_remaining_absolute_budget": true,
+    "expired_before_popen": "skip_popen_and_write_existing_structured_timeout_fallback",
+    "expired_after_popen": "existing_owned_process_group_sigint_cleanup_and_fallback",
+    "legacy_call_without_absolute_deadline_preserved": true,
+    "budget_expanded": false
+  },
+  "regression": {
+    "target": "onboard.tests.test_upper_robot_api.UpperRobotApiFeedbackAckTests.test_nav2_runtime_proof_parent_absolute_deadline_starts_before_popen",
+    "startup_consumed_s": 3.6,
+    "parent_process_timeout_s": 80.0,
+    "communicate_remaining_timeout_s": 76.4,
+    "simulated_critical_probe_s": 72.0,
+    "natural_final_artifact_preserved": true,
+    "partial_fallback_used": false,
+    "timeout_signal_sent": false,
+    "result": "OK"
+  },
+  "validation": {
+    "py_compile_exit_code": 0,
+    "targeted_tests_run": 1,
+    "targeted_result": "OK",
+    "upper_tests_run": 119,
+    "upper_skipped": 1,
+    "upper_result": "OK",
+    "o10_tests_run": 170,
+    "o10_result": "OK",
+    "integrated_tests_run": 289,
+    "integrated_skipped": 1,
+    "integrated_result": "OK"
+  },
+  "strict_added_nonblank_chinese_comment_ratio": {
+    "audit_definition": "Chinese technical comment or Chinese docstring line divided by added nonblank code lines",
+    "robot": {
+      "files": [
+        "onboard/scripts/upper_robot_api.py",
+        "onboard/tests/test_upper_robot_api.py"
+      ],
+      "chinese_comment_lines": 75,
+      "added_nonblank_lines": 317,
+      "ratio_percent": 23.66,
+      "passes_strictly_greater_than_20_percent": true
+    },
+    "algorithm": {
+      "files": [
+        "onboard/scripts/o10_amcl_nav2_runtime_proof.py",
+        "onboard/tests/test_nav2_runtime_proof_helper.py"
+      ],
+      "chinese_comment_lines": 36,
+      "added_nonblank_lines": 163,
+      "ratio_percent": 22.09,
+      "passes_strictly_greater_than_20_percent": true
+    }
+  },
+  "proof_boundary": "software_proof_o3_o10_parent_absolute_deadline_end_to_end_contract_only",
+  "live_or_control": {
+    "ssh_used": false,
+    "ros_live_used": false,
+    "control_endpoint_called": false,
+    "physical_motion": false,
+    "route_execution_success": false,
+    "hil_pass": false,
+    "delivery_success": false,
+    "safe_to_control": false
+  },
+  "product_closeout_ready": true,
+  "remaining_risk": "The contract is verified offline only; a future live Phase A requires fresh authorization and must remain exactly once."
+}

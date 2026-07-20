@@ -6,6 +6,16 @@
 
 ---
 
+## 2026-07-20 O3/O1 current readiness NO-GO + absolute deadline contract flat 收口
+
+`sprints/2026.07.20_20-25_o3_o1_current_readiness_bounded_route/` 完成 Product acceptance。CEO fresh 授权只被唯一 Phase A 消费：start/proof/latest/owned-stop=`1/1/1/1`，strict-no-motion effective base/lidar=`false/false`、new-open=`0/0`。Proof parent elapsed=`80395ms` 超过 80 秒预算，只留下 partial/interrupted；current pose/persisted pose、planner/controller、path final 与 obstacle clear 未证明，故 `READINESS_GO=false`。Phase B pre-base-stop/goal/post-base-stop=`0/0/0`、`physical_motion=false`；owned cleanup 最终 lifecycle stopped、PID file absent、residual=`0`，没有 retry 或第二个 live window。
+
+Algorithm 将 parent `80395ms` 与 helper start-to-SIGINT `76764ms` 对齐，定位约 `3631ms` startup 没有进入 helper-relative deadline，使 4 秒 reserve 实际只剩约 `0.764s`。Algorithm 已实现 optional absolute monotonic deadline consumer；Robot Software 已在 argv/Popen 前生成同一 deadline，并让 `communicate()` 只等待 remaining，覆盖 pre/post-Popen fail-closed 且保持 legacy compatibility。Engineer 验证 Upper `119` OK(skip1)、O10 `170` OK、集成 `289` OK(skip1)，py_compile/JSON/rg/diff 通过；中文注释 Robot `23.66%`、Algorithm integration `22.09%`，Algorithm 自身 final audit `22.619%`。Product 只读验收，不重跑工程测试或 live。
+
+Proof boundary=`software_proof_plus_current_no_go_not_live_fix_validation`。`current_run_artifact_delta=true` 仅表示 current safe NO-GO 与 clean cleanup；`external_artifact_delta=false`、`live_control_delta=false`、`user_action_delta=false`、`route_execution_success=false`、`hil_pass=false`、`delivery_success=false`、`safe_to_control=false`、`okr_credit=false`。O5 保持约 `85%` 且 provider/runtime blocker `2/2` 继续暂停；O6/O7 各保持约 `93%`、O1 保持约 `94%`，O3 只记 supporting，主百分比全 flat，KR `不归档`，历史区无新增。
+
+Planning 阶段 Product worker 两次零文件 stall 不是 mission result；主节点按白名单补 planning 后，真实 Robot/Algorithm business worker 已恢复并产出业务代码、测试、docs、artifact 与验证。该恢复不改变 NO-GO。当前授权窗口已消费，**不得重跑**；下一步只能重新确认新的 current operator/route/obstacle/readiness 条件并取得新的 fresh 授权，再用已修复版本 exactly once 执行新 Phase A。未重新 live 验证前不得升级 proof boundary。
+
 ## 2026-07-20 O3 O10 offline runtime budget contract accepted flat 收口
 
 `sprints/2026.07.20_17-23_o3_offline_runtime_budget_fix/` 完成 Product acceptance。Robot Software 让 Upper API 将实际 `process_timeout_s` 同值传给 O10 helper，80s fixture 锁定 helper argv 与外层 wait 同为 `80.0s`；Algorithm 新增 monotonic deadline 与 `4.0s` final artifact reserve，将非关键 `ros2 pkg list` 后移，并在预算不足时输出 `package_check_skipped_to_preserve_final_artifact_budget`、`executed=false`、`timeout_s=null`、availability=`null`。Package fork 前第二次 clamp 进入 reserve 的 race 已修复，hostile fake-monotonic 与本地 offline fixture 均自然写 `artifact_kind=final`、`last_phase=final`、`current_command=null`，不依赖 SIGINT、partial preservation 或 timeout fallback。

@@ -1,0 +1,10 @@
+{
+  "schema": "trashbot.upper_robot_api.v1.health",
+  "status": "ready",
+  "generated_at_ms": 1784551184351,
+  "safe_to_control": false,
+  "delivery_success": false,
+  "primary_actions_enabled": false,
+  "robot_control_executed": false,
+  "cloud_relay": false
+}

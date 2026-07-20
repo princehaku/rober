@@ -256,6 +256,7 @@ class OuterProcessBudget:
         self,
         outer_timeout_s: float | None,
         *,
+        outer_deadline_monotonic_s: float | None = None,
         final_reserve_s: float = DEFAULT_FINAL_ARTIFACT_RESERVE_S,
         clock: Any | None = None,
     ) -> None:
@@ -269,12 +270,61 @@ class OuterProcessBudget:
             if outer_timeout_s is not None
             else None
         )
+        # absolute deadline 必须来自同一台主机的 CLOCK_MONOTONIC；这样 parent 在 Popen
+        # 之前已消费的 bash/source/Python startup 也会进入 helper 的同一预算。
+        # 这里传递的是“截止点”而不是“剩余时长”，否则两端各自重启倒计时仍会重现漏账。
+        # CLOCK_MONOTONIC 只在同机同一次开机内可比，跨主机或 epoch 时间戳都必须由 parent 禁止。
+        supplied_deadline = (
+            float(outer_deadline_monotonic_s)
+            if outer_deadline_monotonic_s is not None
+            else None
+        )
+        # NaN/Inf 不能参与 deadline 比较；显式坏值按预算已耗尽处理，避免静默扩窗。
+        # 坏 absolute 值不能回退到完整 relative 窗口，否则格式错误反而会获得额外运行时间。
+        self.parent_deadline_valid = supplied_deadline is None or math.isfinite(supplied_deadline)
+        self.parent_deadline_monotonic_s = supplied_deadline if self.parent_deadline_valid else None
         # reserve 独立于单命令 timeout，避免命令配置变化悄悄挤占落盘窗口。
+        # reserve 只负责结果聚合和原子落盘，parent startup 必须由 absolute 起点单独扣除。
         self.final_reserve_s = max(float(final_reserve_s), 0.0)
-        # deadline 保存 monotonic 绝对点，后续禁止用 wall-clock 毫秒做差。
-        self.deadline_monotonic_s = (
+        # relative deadline 仅保留旧 parent/直接 CLI 兼容；它无法覆盖 helper 启动前开销。
+        # 兼容路径不能宣称已修复 parent timeout；artifact 会用 deadline_source 明确标出该边界。
+        helper_relative_deadline = (
             self.started_monotonic_s + self.outer_timeout_s
             if self.outer_timeout_s is not None
+            else None
+        )
+        if outer_deadline_monotonic_s is not None and not self.parent_deadline_valid:
+            # parent 明确传了无效 absolute 值时从当前时刻收口，不能回退到更晚的 relative deadline。
+            # 立即收口仍会产出结构化 blocked final，比等待 parent 信号后仅剩 partial 更可诊断。
+            self.deadline_monotonic_s = self.started_monotonic_s
+            self.deadline_source = "invalid_parent_absolute_monotonic_fail_closed"
+        elif self.parent_deadline_monotonic_s is not None:
+            # 两种预算同时存在时取更早者，防止错误 future deadline 扩大既有 outer timeout。
+            # 取最小值还保证升级只会收紧命令窗口，不会改变既有 HTTP/PC proxy 的等待上限。
+            self.deadline_monotonic_s = (
+                min(self.parent_deadline_monotonic_s, helper_relative_deadline)
+                if helper_relative_deadline is not None
+                else self.parent_deadline_monotonic_s
+            )
+            self.deadline_source = "parent_absolute_monotonic"
+        else:
+            # 未升级的 parent 继续使用历史 relative 语义，接口保持向后兼容但 artifact 明示边界。
+            self.deadline_monotonic_s = helper_relative_deadline
+            self.deadline_source = (
+                "helper_relative_timeout_legacy"
+                if helper_relative_deadline is not None
+                else "disabled"
+            )
+        # 只有 absolute + timeout 同时出现时才能复算 parent launch；负值说明 future clock/domain 错误。
+        self.parent_launch_monotonic_s = (
+            self.parent_deadline_monotonic_s - self.outer_timeout_s
+            if self.parent_deadline_monotonic_s is not None and self.outer_timeout_s is not None
+            else None
+        )
+        self.startup_budget_consumed_s = (
+            # 该差值把 Popen、source 和 Python startup 统一变成可复核的“已消费预算”。
+            max(self.started_monotonic_s - self.parent_launch_monotonic_s, 0.0)
+            if self.parent_launch_monotonic_s is not None
             else None
         )
         # normal_completion 是无预算压力时的默认事实，不代表 readiness 成功。
@@ -306,6 +356,7 @@ class OuterProcessBudget:
 
     def bounded_command_timeout_s(self, requested_s: float, *, noncritical: bool = False) -> float | None:
         """把单命令 timeout 收敛到 outer remaining 减 final reserve。"""
+        # 不能用固定放大 reserve 猜测 startup 抖动；只有共享 absolute deadline 才能覆盖任意已耗时。
         requested = max(float(requested_s), 0.0)
         available = self.available_before_final_reserve_s()
         # 缺省 CLI 不做 clamp，保持既有 helper 独立运行行为。
@@ -333,6 +384,17 @@ class OuterProcessBudget:
             "clock": "monotonic",
             # outer timeout 是 API 传入的原值，不包含 helper 私自扩展。
             "outer_process_timeout_s": self.outer_timeout_s,
+            # absolute deadline 是 parent/helper 对齐 clock origin 的唯一可靠合同。
+            "outer_process_deadline_monotonic_s": self.parent_deadline_monotonic_s,
+            # source 明示 legacy relative 或 parent absolute，避免验收只看数值误判。
+            "deadline_source": self.deadline_source,
+            # validity=false 时 helper 已按预算耗尽 fail closed，不会启动 runtime probe。
+            "parent_deadline_valid": self.parent_deadline_valid,
+            # helper start 与反推 parent launch 都是同机 monotonic 点，禁止跨主机比较。
+            "helper_budget_started_monotonic_s": self.started_monotonic_s,
+            "parent_launch_monotonic_s": self.parent_launch_monotonic_s,
+            # startup 消耗量覆盖 parent Popen 前后到 build_proof 的 source/Python/CLI 开销。
+            "startup_budget_consumed_s": self.startup_budget_consumed_s,
             # reserve 明示后，package skip/clamp 可以由 artifact 独立复算。
             "final_artifact_reserve_s": self.final_reserve_s,
             # deadline 用于同进程诊断；跨进程只消费 timeout/remaining 语义。
@@ -542,6 +604,7 @@ class PhaseArtifactWriter:
             "blockers": list(self.root_causes),
             "runtime_budget": self.runtime_budget.summary(),
             "outer_process_timeout_s": self.runtime_budget.outer_timeout_s,
+            "outer_process_deadline_monotonic_s": self.runtime_budget.parent_deadline_monotonic_s,
             "final_artifact_reserve_s": self.runtime_budget.final_reserve_s,
             "finalization_reason": self.runtime_budget.finalization_reason,
             **self.snapshot,
@@ -3406,6 +3469,7 @@ def finalize_artifact_contract(
             "runtime_budget": budget_summary,
             # 常用字段平铺，保持 latest API 消费简单。
             "outer_process_timeout_s": runtime_budget.outer_timeout_s,
+            "outer_process_deadline_monotonic_s": runtime_budget.parent_deadline_monotonic_s,
             "final_artifact_reserve_s": runtime_budget.final_reserve_s,
             # reason 与 root_causes 正交，不能替代业务 blocker。
             "finalization_reason": runtime_budget.finalization_reason,
@@ -13325,7 +13389,11 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
     """执行一次 no-motion AMCL/Nav2 proof；成功或失败都写 latest artifact。"""
     started_ms = now_ms()
     # deadline 必须在首个阶段写入和首条命令之前建立，保证全程只消费同一 monotonic 预算。
-    runtime_budget = OuterProcessBudget(getattr(args, "outer_process_timeout_s", None))
+    runtime_budget = OuterProcessBudget(
+        getattr(args, "outer_process_timeout_s", None),
+        # 新 parent 传 absolute deadline 后，helper 不再把自身 startup 当作免费预算。
+        outer_deadline_monotonic_s=getattr(args, "outer_process_deadline_monotonic_s", None),
+    )
     setattr(args, "_outer_process_budget", runtime_budget)
     phase_writer = PhaseArtifactWriter(args, started_ms)
     global ACTIVE_PHASE_WRITER
@@ -15031,6 +15099,7 @@ def build_proof(args: argparse.Namespace) -> dict[str, Any]:
         "recent_commands": phase_writer.recent_commands[-12:],
         "runtime_budget": runtime_budget.summary(),
         "outer_process_timeout_s": runtime_budget.outer_timeout_s,
+        "outer_process_deadline_monotonic_s": runtime_budget.parent_deadline_monotonic_s,
         "final_artifact_reserve_s": runtime_budget.final_reserve_s,
         "finalization_reason": runtime_budget.finalization_reason,
         "source_map_evidence_ref": map_inputs.get("source_evidence_ref"),
@@ -15254,6 +15323,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--timeout-s", type=float, default=8.0)
     # Upper API 传入时启用 monotonic outer deadline；直接 CLI 缺省仍保留历史无外层预算路径。
     parser.add_argument("--outer-process-timeout-s", type=float, default=None)
+    # parent 必须在 Popen 前用同机 time.monotonic() 计算 absolute deadline；旧调用可不传。
+    parser.add_argument("--outer-process-deadline-monotonic-s", type=float, default=None)
     # 这两个 flag 是现场 strict no-motion 命令的显式护栏；helper 本身始终 fail-closed，
     # 接受它们是为了让 automation 命令不因兼容参数提前退出。
     parser.add_argument("--strict-no-motion", action="store_true")

@@ -1,0 +1,9 @@
+{
+  "endpoint": "POST /api/nav2/start",
+  "started_at": "2026-07-20T12:40:52.039Z",
+  "completed_at": "2026-07-20T12:40:53.287Z",
+  "ssh_curl_exit": 0,
+  "http_status": 200,
+  "json_parse_ok": true,
+  "response_bytes": 67349
+}

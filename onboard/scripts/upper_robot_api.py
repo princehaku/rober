@@ -1722,8 +1722,46 @@ def wait_for_nav2_helper_partial_artifact(artifact_path: str, wait_s: float = 2.
     return latest
 
 
-def run_helper_bash_process_group(command: str, timeout_s: float, cwd: str, *, cleanup_residuals: bool = True) -> dict[str, Any]:
-    """运行 helper shell 时单独建进程组，timeout 必须清掉 ROS2 子进程。"""
+def run_helper_bash_process_group(
+    command: str,
+    timeout_s: float,
+    cwd: str,
+    *,
+    cleanup_residuals: bool = True,
+    deadline_monotonic_s: float | None = None,
+) -> dict[str, Any]:
+    """运行 helper shell；absolute deadline 存在时 Popen 开销也计入同一预算。"""
+    # absolute deadline 是同机 parent/helper 的一次性预算上界，不是允许外部传入的新控制参数。
+    # 选择 monotonic clock 是为了避免墙钟校时、时区或 NTP 跳变改变 timeout 的安全语义。
+    # 检查发生在 Popen 之前，确保命令构造与调度延迟不会在进程创建后被偷偷重置。
+    # 这里不尝试把 absolute deadline 换算成 epoch；跨时钟域换算会重新引入 clock origin 漂移。
+    # 非有限 deadline 与已经耗尽的 deadline 都属于不可信预算，必须采用同一 fail-closed 结果。
+    # pre-Popen 耗尽时没有自有子进程需要 cleanup，因此禁止为了“清理”而创建一个新进程。
+    # 返回结构仍模拟 timeout runner，目的是让上层复用既有结构化 artifact 路径而非另造分支。
+    # wait_timeout_s 固定为零，给 artifact 留下明确的“未获得主等待预算”审计事实。
+    # 旧调用不传 absolute deadline 时保留原 communicate timeout，避免影响 goal helper 等既有路径。
+    if deadline_monotonic_s is not None:
+        remaining_before_popen_s = float(deadline_monotonic_s) - time.monotonic()
+        if not math.isfinite(float(deadline_monotonic_s)) or remaining_before_popen_s <= 0.0:
+            # 已耗尽时禁止再创建子进程；上层会沿用 timeout fallback 写结构化 fail-closed artifact。
+            return {
+                "timed_out": True,
+                "returncode": None,
+                "stdout": "",
+                "stderr": "",
+                "process_group": None,
+                "deadline_monotonic_s": deadline_monotonic_s,
+                "wait_timeout_s": 0.0,
+                "cleanup_result": {
+                    "attempted": False,
+                    "ok": True,
+                    "reason": "absolute_deadline_exhausted_before_popen",
+                },
+                "error": {
+                    "type": "TimeoutExpired",
+                    "message": "helper absolute monotonic deadline exhausted before Popen",
+                },
+            }
     process = subprocess.Popen(  # noqa: S603 - command 由本 API 固定生成，不能来自用户输入。
         ["bash", "-lc", command],
         text=True,
@@ -1733,13 +1771,35 @@ def run_helper_bash_process_group(command: str, timeout_s: float, cwd: str, *, c
         start_new_session=True,
     )
     try:
-        stdout, stderr = process.communicate(timeout=timeout_s)
+        # Popen 返回只说明进程已经创建，不说明剩余预算仍等于最初的 relative timeout。
+        # 因此必须再次读取同一 monotonic clock，扣除 bash 调度、source 与 Python startup 的成本。
+        # communicate 的 timeout 是 parent 剩余量；helper 自己也消费同一个 absolute deadline。
+        # 两层使用同一截止点，才能保证 helper 的 final reserve 不被 parent startup 抢占。
+        # legacy 分支没有 absolute deadline，才允许继续使用调用者传入的完整 relative timeout。
+        # parent/helper 共用 absolute deadline 时，bash/source/Python startup 不再获得免费预算。
+        remaining_after_popen_s = (
+            float(deadline_monotonic_s) - time.monotonic()
+            if deadline_monotonic_s is not None
+            else float(timeout_s)
+        )
+        # artifact/result 中的 remaining 固定非负；负值只作为“Popen 已耗尽预算”的判定事实。
+        # 钳制为零只服务于序列化和 TimeoutExpired；它绝不能变成下一轮新的完整等待预算。
+        # 非有限 remaining 同样 fail closed，避免 NaN 绕过 <=0 比较后进入不可预测的 wait。
+        # post-Popen 耗尽与 pre-Popen 不同：此时 parent 已拥有进程组，必须进入既有清理路径。
+        # 手工抛 TimeoutExpired 可复用同一 SIGINT、grace wait、residual cleanup 与 fallback 合同。
+        # 该路径只清理 start_new_session 创建的自有 PGID，不扩大到系统上其他 ROS 进程。
+        wait_timeout_s = max(remaining_after_popen_s, 0.0) if math.isfinite(remaining_after_popen_s) else 0.0
+        if not math.isfinite(remaining_after_popen_s) or remaining_after_popen_s <= 0.0:
+            raise subprocess.TimeoutExpired(["bash", "-lc", command], wait_timeout_s)
+        stdout, stderr = process.communicate(timeout=wait_timeout_s)
         return {
             "timed_out": False,
             "returncode": process.returncode,
             "stdout": stdout,
             "stderr": stderr,
             "process_group": process.pid,
+            "deadline_monotonic_s": deadline_monotonic_s,
+            "wait_timeout_s": wait_timeout_s,
             "cleanup_result": {"attempted": False, "ok": True, "reason": "process_exited_before_timeout"},
         }
     except subprocess.TimeoutExpired as exc:
@@ -1785,6 +1845,8 @@ def run_helper_bash_process_group(command: str, timeout_s: float, cwd: str, *, c
             "stdout": stdout or preview_text(exc.stdout, 4000),
             "stderr": stderr or preview_text(exc.stderr, 4000),
             "process_group": process.pid,
+            "deadline_monotonic_s": deadline_monotonic_s,
+            "wait_timeout_s": wait_timeout_s,
             "cleanup_result": cleanup_result,
             "error": compact_error(exc),
         }
@@ -1904,8 +1966,21 @@ def run_nav2_runtime_proof_helper(
         path_generation_opt_in=path_generation_opt_in,
         path_generation_timeout_s=path_generation_timeout_s,
     )
-    # 传给子进程的是公式钳制后的实际值，确保 helper 看到的预算与 Popen wait 完全一致。
+    # producer 合同先冻结 absolute deadline，再开始拼接 argv；这样 argv 构造也不能免费消耗 reserve。
+    # relative timeout 仍是预算公式的结果，absolute deadline 只是把这份预算绑定到 parent clock origin。
+    # 两个参数同时下发是兼容迁移要求：旧审计仍能读取 relative，更新后的 helper 取二者更早值。
+    # 禁止只把 absolute deadline 传给 helper 却让 parent communicate 重开 80 秒，否则双层仍会漂移。
+    # 禁止只收紧 parent 却不给 helper deadline，否则 helper 无法在 SIGINT 前主动进入 final assembly。
+    # deadline 在本函数每次调用只计算一次；重复读取并重算会把准备开销重新送回预算。
+    # 该 monotonic 数值只在同机子进程间有效，不写成可跨主机重放的长期业务时间戳。
+    # parent 在命令构造和 Popen 前冻结同机 monotonic deadline，startup 也必须消费 80s 外层预算。
     process_timeout_s = timeout_budget["process_timeout_s"]
+    parent_deadline_monotonic_s = time.monotonic() + process_timeout_s
+    timeout_budget = {
+        **timeout_budget,
+        "outer_process_deadline_monotonic_s": parent_deadline_monotonic_s,
+        "deadline_source": "parent_absolute_monotonic",
+    }
     helper_argv = [
         sys.executable,
         str(script_path),
@@ -1920,6 +1995,11 @@ def run_nav2_runtime_proof_helper(
         # helper 必须消费同一 outer budget，才能在 API 发信号前主动预留 final artifact 收口时间。
         "--outer-process-timeout-s",
         str(process_timeout_s),
+        # absolute 值来自 relative 预算的一次加法，因此它只能维持或收紧剩余时间，不能扩大预算。
+        # helper 对无效 absolute 值 fail closed；parent 也会在 Popen 前独立检查，形成双层防线。
+        # relative 参数继续保留；absolute 参数只收紧 clock origin，不能扩大兼容预算。
+        "--outer-process-deadline-monotonic-s",
+        str(parent_deadline_monotonic_s),
     ]
     if managed_runtime_opt_in:
         # managed runtime 默认关闭；只有 body 明确 opt-in 才允许 helper 短暂拉起 localization graph。
@@ -1976,6 +2056,7 @@ def run_nav2_runtime_proof_helper(
             process_timeout_s,
             DEFAULT_ONBOARD_WORKDIR,
             cleanup_residuals=managed_runtime_opt_in,
+            deadline_monotonic_s=parent_deadline_monotonic_s,
         )
         if completed.get("timed_out"):
             partial_artifact = wait_for_nav2_helper_partial_artifact(artifact_path)
@@ -1993,6 +2074,8 @@ def run_nav2_runtime_proof_helper(
                 "elapsed_ms": now_ms() - started_ms,
                 "timeout_budget": timeout_budget,
                 "process_timeout_s": process_timeout_s,
+                "outer_process_deadline_monotonic_s": parent_deadline_monotonic_s,
+                "process_wait_timeout_s": completed.get("wait_timeout_s"),
                 "error": completed.get("error") or {"type": "TimeoutExpired", "message": "helper process timed out"},
                 "stdout_preview": str(completed.get("stdout") or "")[-4000:],
                 "stderr_preview": str(completed.get("stderr") or "")[-4000:],
@@ -2032,6 +2115,8 @@ def run_nav2_runtime_proof_helper(
             "elapsed_ms": now_ms() - started_ms,
             "timeout_budget": timeout_budget,
             "process_timeout_s": process_timeout_s,
+            "outer_process_deadline_monotonic_s": parent_deadline_monotonic_s,
+            "process_wait_timeout_s": completed.get("wait_timeout_s"),
             "stdout_preview": str(completed.get("stdout") or "")[-4000:],
             "stderr_preview": str(completed.get("stderr") or "")[-4000:],
             "helper_process_group": completed.get("process_group"),
@@ -2065,6 +2150,7 @@ def run_nav2_runtime_proof_helper(
             "elapsed_ms": now_ms() - started_ms,
             "timeout_budget": timeout_budget,
             "process_timeout_s": process_timeout_s,
+            "outer_process_deadline_monotonic_s": parent_deadline_monotonic_s,
             "error": compact_error(exc),
             "stdout_preview": preview_text(exc.stdout, 4000),
             "stderr_preview": preview_text(exc.stderr, 4000),
@@ -2105,6 +2191,7 @@ def run_nav2_runtime_proof_helper(
             "elapsed_ms": now_ms() - started_ms,
             "timeout_budget": timeout_budget,
             "process_timeout_s": process_timeout_s,
+            "outer_process_deadline_monotonic_s": parent_deadline_monotonic_s,
             "error": compact_error(exc),
             "safe_to_control": False,
             "sends_base_motion_commands": False,

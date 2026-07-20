@@ -1,0 +1,210 @@
+{
+  "schema_version": "trashbot.o3_o1.algorithm_runtime_budget_readiness_review.v1",
+  "generated_at": "2026-07-20T13:01:50Z",
+  "owner": "robot-algorithm-engineer",
+  "artifact_kind": "offline_algorithm_readiness_review",
+  "status": "helper_absolute_deadline_consumer_ready_parent_producer_followup_required",
+  "review_scope": "current_partial_transport_vs_17_23_offline_contract_vs_o10_deadline_and_probe_order",
+  "decision": {
+    "helper_single_sided_fix_sufficient": false,
+    "parent_absolute_deadline_required": true,
+    "reason": "Only the parent knows when its outer timer starts. A helper-relative timeout cannot account for bash/source/Python startup before build_proof, and increasing a fixed reserve would only guess at board jitter.",
+    "current_board_end_to_end_fixed": false,
+    "helper_consumer_implemented": true
+  },
+  "current_evidence": {
+    "source": "artifacts/robot-software/phase_a_nav2_proof_latest.raw.json plus phase_a_nav2_proof_refresh.transport.json",
+    "parent_command_result": {
+      "elapsed_ms": 80395,
+      "process_timeout_s": 80,
+      "error_type": "TimeoutExpired",
+      "partial_artifact_preserved": true
+    },
+    "helper_timeline": {
+      "start_at_ms": 1784551271854,
+      "parent_sigint_at_ms": 1784551348618,
+      "helper_start_to_sigint_ms": 76764,
+      "parent_elapsed_minus_helper_timeline_ms": 3631,
+      "configured_final_reserve_ms": 4000,
+      "effective_internal_reserve_before_parent_sigint_ms_approx": 764,
+      "last_successful_phase": "initialpose",
+      "last_phase": "interrupted",
+      "current_command": null
+    },
+    "slow_path": [
+      {
+        "command": "source_amortized_cli_preflight",
+        "elapsed_ms": 17792
+      },
+      {
+        "command": "source_amortized_ros2_graph_probe_batch",
+        "elapsed_ms": 31891
+      },
+      {
+        "command": "ros2 node list",
+        "elapsed_ms": 5117
+      },
+      {
+        "command": "ros2 lifecycle get /map_server",
+        "elapsed_ms": 8803
+      },
+      {
+        "command": "ros2 lifecycle get /amcl",
+        "elapsed_ms": 8278
+      },
+      {
+        "command": "timeout 6 ros2 topic echo --once /amcl_pose",
+        "elapsed_ms": 3127,
+        "error_type": "TimeoutExpired"
+      }
+    ],
+    "readiness_result": {
+      "artifact_kind": "partial",
+      "natural_final": false,
+      "initialpose_publish_attempts": 0,
+      "path_generation_attempted": false,
+      "planner_server_active": false,
+      "controller_server_active": false,
+      "phase_b_invocation_count": 0,
+      "physical_motion": false,
+      "cleanup_clean": true
+    }
+  },
+  "exact_root_cause": {
+    "classification": "parent_helper_monotonic_clock_origin_mismatch",
+    "detail": "Upper API starts its 80 second wait around the outer bash process. O10 starts OuterProcessBudget only after bash setup, Python startup, argparse and entry into build_proof. The helper therefore computed deadline=helper_start+80 while the parent kill boundary was approximately helper_start+76.369. Its 4 second reserve began at helper elapsed 76 seconds, leaving only about 0.764 seconds before SIGINT instead of 4 seconds.",
+    "why_reserve_did_not_form_final": "The final reserve was measured against a later helper-relative deadline. The critical localization path, not package inventory, reached that late reserve as the earlier parent timeout fired, so the parent preserved partial and wrote a TimeoutExpired fallback before O10 could assemble and atomically write final.",
+    "probe_order_finding": "Moving ros2 pkg list behind localization/planner/path was valid but insufficient. The current run never reached package_checks; startup and critical probes consumed the parent budget first.",
+    "timeout_clamp_finding": "run_bash clamps each probe to helper remaining minus reserve, but remaining was based on the wrong origin. A correct clamp formula cannot protect a deadline it does not know."
+  },
+  "superseded_assumptions": [
+    {
+      "assumption": "--outer-process-timeout-s makes the helper and parent share one 80 second deadline",
+      "superseded_by": "The helper start-to-SIGINT interval was 76.764 seconds while the parent elapsed 80.395 seconds."
+    },
+    {
+      "assumption": "A 4 second helper-relative final reserve is sufficient on the board",
+      "superseded_by": "Approximately 3.631 seconds of parent-counted startup occurred before the helper budget started, reducing the effective reserve to about 0.764 seconds."
+    },
+    {
+      "assumption": "Keeping package inventory later is enough to guarantee natural final",
+      "superseded_by": "The interruption occurred after tf_source_probe and before tf_probe/package_checks; package inventory was never the active consumer."
+    }
+  ],
+  "helper_changes": {
+    "files": [
+      "onboard/scripts/o10_amcl_nav2_runtime_proof.py",
+      "onboard/tests/test_nav2_runtime_proof_helper.py",
+      "docs/navigation/fixed_route_workflow.md",
+      "sprints/2026.07.20_20-25_o3_o1_current_readiness_bounded_route/artifacts/algorithm/readiness_review.json"
+    ],
+    "cli_consumer": "--outer-process-deadline-monotonic-s <absolute_seconds>",
+    "behavior": "OuterProcessBudget uses the earlier of parent absolute deadline and helper-relative deadline, so the new field can never enlarge the existing outer timeout. Explicit NaN or Inf fails closed as exhausted budget. Missing absolute deadline preserves legacy behavior.",
+    "artifact_fields": [
+      "outer_process_deadline_monotonic_s",
+      "runtime_budget.deadline_source",
+      "runtime_budget.parent_deadline_valid",
+      "runtime_budget.helper_budget_started_monotonic_s",
+      "runtime_budget.parent_launch_monotonic_s",
+      "runtime_budget.startup_budget_consumed_s"
+    ],
+    "readiness_semantics_preserved": "Critical readiness remains first, package availability stays null when skipped, blocked outcome remains valid, and finalization remains fail closed with current_command=null."
+  },
+  "hostile_regression": {
+    "test_id": "onboard.tests.test_nav2_runtime_proof_helper.Nav2RuntimeProofHelperTests.test_parent_deadline_started_before_popen_includes_startup_and_critical_probe_and_writes_natural_final",
+    "model": {
+      "parent_timer_starts_before_popen": true,
+      "outer_timeout_s": 10.0,
+      "popen_startup_source_python_cli_overhead_s": 3.25,
+      "helper_remaining_on_entry_s": 6.75,
+      "final_reserve_s": 4.0,
+      "critical_probe_requested_s": 30.0,
+      "critical_probe_clamped_s": 2.75,
+      "package_probe_skipped_after_critical_path": true
+    },
+    "acceptance": {
+      "artifact_kind": "final",
+      "last_phase": "final",
+      "current_command": null,
+      "natural_final": true,
+      "sigint_required": false,
+      "partial_required": false,
+      "helper_timeout_fallback_required": false,
+      "finished_before_parent_absolute_deadline": true
+    }
+  },
+  "parent_api_followup_contract": {
+    "required_owner": "robot-software-engineer",
+    "producer_location": "run_nav2_runtime_proof_helper and run_helper_bash_process_group in onboard/scripts/upper_robot_api.py",
+    "fields": [
+      "--outer-process-timeout-s <existing_process_timeout_s>",
+      "--outer-process-deadline-monotonic-s <parent_deadline_monotonic_s>"
+    ],
+    "clock_domain": "Same host and same boot CLOCK_MONOTONIC via Python time.monotonic(). Do not use epoch, time.time(), generated_at_ms, remote timestamps or a deadline computed on the PC proxy.",
+    "launch_rule": "Compute parent_deadline_monotonic_s=time.monotonic()+process_timeout_s immediately before the helper Popen path, include the absolute value in helper argv, and make the parent communicate wait consume only max(deadline-time.monotonic(), 0) after Popen so both sides terminate against the identical boundary.",
+    "compatibility": "Keep --outer-process-timeout-s and the existing HTTP request/response schema. The new helper CLI field is optional for direct/legacy callers; parent rollout adds it only to the internal helper argv. Do not increase process_timeout_s or the PC proxy timeout.",
+    "required_tests": [
+      "Parent fake monotonic starts before Popen and advances through command construction/Popen; communicate receives remaining time, not a fresh full timeout.",
+      "helper argv contains relative timeout and the exact same absolute deadline used by the parent wait.",
+      "Natural blocked final with return code 2 bypasses SIGINT, partial read and wrapper failure artifact.",
+      "Expired/stale deadline fails closed without starting an unbounded helper probe.",
+      "Existing callers without the absolute field and existing HTTP schemas remain compatible."
+    ]
+  },
+  "verification": [
+    {
+      "command": "python3 -m py_compile onboard/scripts/o10_amcl_nav2_runtime_proof.py",
+      "exit_code": 0,
+      "result": "passed"
+    },
+    {
+      "command": "python3 -m unittest onboard.tests.test_nav2_runtime_proof_helper.Nav2RuntimeProofHelperTests.test_parent_deadline_started_before_popen_includes_startup_and_critical_probe_and_writes_natural_final",
+      "exit_code": 0,
+      "result": "Ran 1 test in 0.002s; OK"
+    },
+    {
+      "command": "python3 -m unittest onboard/tests/test_nav2_runtime_proof_helper.py",
+      "exit_code": 0,
+      "result": "Ran 170 tests in 2.450s; OK"
+    },
+    {
+      "command": "strict added-nonblank-line Chinese comment audit for O10 helper plus helper tests",
+      "exit_code": 0,
+      "result": "38 Chinese comment lines / 168 added nonblank lines = 22.619%, strictly greater than 20%"
+    }
+  ],
+  "proof_boundary": {
+    "name": "software_proof_o3_o10_parent_absolute_deadline_consumer_only",
+    "current_run_artifact_delta": false,
+    "external_artifact_delta": false,
+    "live_control_delta": false,
+    "user_action_delta": false,
+    "robot_control_executed": false,
+    "route_execution_success": false,
+    "hil_pass": false,
+    "delivery_success": false,
+    "safe_to_control": false,
+    "okr_credit": false,
+    "not_proven": [
+      "parent producer integration",
+      "board natural final",
+      "current localization",
+      "planner/controller readiness",
+      "path generation",
+      "route execution",
+      "HIL",
+      "delivery",
+      "Mission Objective 0"
+    ]
+  },
+  "remaining_risks": [
+    "Upper API currently passes only the relative 80 second timeout, so deployed board behavior is not fixed until Robot Software produces and waits on the shared absolute deadline.",
+    "The 4 second final reserve still needs one future separately authorized current no-motion proof after parent integration; offline fake-clock coverage cannot prove board filesystem or scheduling latency.",
+    "Command process-group cleanup can consume part of reserve after a child timeout; the parent-aligned hostile integration test must preserve natural final under that path before any live retry."
+  ],
+  "next_step": {
+    "unique_owner": "robot-software-engineer",
+    "unique_command_after_implementation": "python3 -m unittest onboard.tests.test_upper_robot_api.UpperRobotApiFeedbackAckTests.test_nav2_runtime_proof_parent_absolute_deadline_starts_before_popen",
+    "instruction": "Implement the parent producer/wait contract above, run the targeted test, then run the full Upper API plus O10 helper suites. Do not SSH or open another live proof window in this follow-up."
+  }
+}

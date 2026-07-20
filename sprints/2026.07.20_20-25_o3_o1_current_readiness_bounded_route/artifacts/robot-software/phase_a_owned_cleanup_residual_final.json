@@ -1,0 +1,10 @@
+{
+  "checked_at_ms": 1784551521597,
+  "cleanup_residual_zero": true,
+  "helper_pid_690233_absent": true,
+  "lifecycle_pid_689975_absent": true,
+  "matching_owned_runtime_processes": [],
+  "owned_pid_file_absent": true,
+  "residual_count": 0,
+  "schema_version": "trashbot.o3_o1.owned_cleanup_residual.v1"
+}

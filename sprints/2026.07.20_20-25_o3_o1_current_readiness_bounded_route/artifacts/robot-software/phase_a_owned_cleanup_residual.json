@@ -1,0 +1,13 @@
+{
+  "checked_at_ms": 1784551494105,
+  "helper_pid_690233_exists": false,
+  "lifecycle_pid_689975_exists": false,
+  "matching_processes": [
+    {
+      "cmdline": "python3 -c import json,os,pathlib; needles=(\"ros2_trashbot_bringup autonomous.launch.py nav2_stack_only:=true\",\"o10_amcl_nav2_runtime_proof.py --output\"); rows=[]; [rows.append({\"pid\":int(p.name),\"cmdline\":pathlib.Path(p,\"cmdline\").read_bytes().replace(b\"\\x00\",b\" \").decode(errors=\"replace\")}) for p in pathlib.Path(\"/proc\").iterdir() if p.name.isdigit() and pathlib.Path(p,\"cmdline\").exists() for _ in [0] if any(n in pathlib.Path(p,\"cmdline\").read_bytes().replace(b\"\\x00\",b\" \").decode(errors=\"replace\") for n in needles)]; print(json.dumps({\"checked_at_ms\":int(__import__(\"time\").time()*1000),\"owned_pid_file_exists\":os.path.exists(\"/tmp/rober_nav2_lifecycle/nav2_lifecycle.pid\"),\"lifecycle_pid_689975_exists\":os.path.exists(\"/proc/689975\"),\"helper_pid_690233_exists\":os.path.exists(\"/proc/690233\"),\"matching_processes\":rows,\"residual_count\":len(rows)},sort_keys=True)) ",
+      "pid": 691477
+    }
+  ],
+  "owned_pid_file_exists": false,
+  "residual_count": 1
+}

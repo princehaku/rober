@@ -1,0 +1,66 @@
+{
+  "schema_version": "trashbot.o3_o1.phase0_deployment.v1",
+  "captured_at": "2026-07-20T12:39:48.060Z",
+  "source_host": "root@192.168.1.11:37878",
+  "authorization_ref": "ceo_20260720_2025_operator_watch_route_clear_physical_limit_v1",
+  "git_status": "untracked sprint only; product code clean before live",
+  "local_tests": {
+    "py_compile_exit": 0,
+    "unittest_exit": 0,
+    "tests_run": 285,
+    "skipped": 1
+  },
+  "deployment_required": true,
+  "service": "trashbot-upper-robot-api.service",
+  "service_pre": {
+    "active": true,
+    "main_pid": 684106,
+    "active_since": "2026-07-20 16:40:15 CST"
+  },
+  "service_post": {
+    "active": true,
+    "main_pid": 689027,
+    "active_since": "2026-07-20 20:38:57 CST",
+    "health_ready": true
+  },
+  "deployment_attempt": {
+    "exit_code": 7,
+    "reason": "service restart readiness delay; immediate health curl saw connection refused before listener startup",
+    "repaired_by": "read-only health poll after service listener startup",
+    "final_health_exit": 0
+  },
+  "scripts": {
+    "upper_robot_api": {
+      "path": "/root/rober/onboard/scripts/upper_robot_api.py",
+      "local_sha256": "df7a71c662a074c6e9eecb1523f7daf7ce78a33507193e3779192fc61a71461a",
+      "remote_sha256_before": "1503193fb05309c630448fa723ae90f4acd0f70d332e5673ab307e8b2c4836e1",
+      "remote_sha256_after": "df7a71c662a074c6e9eecb1523f7daf7ce78a33507193e3779192fc61a71461a",
+      "sha_match": true,
+      "remote_py_compile_exit": 0
+    },
+    "o10_runtime_proof": {
+      "path": "/root/rober/onboard/scripts/o10_amcl_nav2_runtime_proof.py",
+      "local_sha256": "2ecdbb977ae1a211e4f6af3555d7f623f12f1bf2a161d10cf9443c3538af3fa2",
+      "remote_sha256_before": "4cad938e91cb3e19317ef0b9e058e24df7665268ad8fb6d00423d19980b15341",
+      "remote_sha256_after": "2ecdbb977ae1a211e4f6af3555d7f623f12f1bf2a161d10cf9443c3538af3fa2",
+      "sha_match": true,
+      "remote_py_compile_exit": 0
+    }
+  },
+  "read_only_gets": {
+    "health": 1,
+    "status": 1,
+    "nav2_status": 1
+  },
+  "control_invocations": {
+    "nav2_start": 0,
+    "nav2_proof_refresh": 0,
+    "nav2_stop": 0,
+    "goal_execute": 0,
+    "base_stop": 0,
+    "manual": 0,
+    "direct_cmd_vel": 0,
+    "initialpose": 0,
+    "uart": 0
+  }
+}

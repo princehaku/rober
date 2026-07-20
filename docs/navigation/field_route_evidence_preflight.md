@@ -1702,3 +1702,28 @@ API 也直接保留该结果，不读取 partial artifact、不写 timeout fallb
 作为正常验收路径。该离线合同不执行 SSH、ROS live、Nav2 action、`/initialpose`、`/cmd_vel`、
 `/api/base/manual`、UART 或任何运动；也不证明 current localization、path、route execution、HIL、
 delivery、safe-to-control 或 Mission Objective 0 完成。
+
+## 2026-07-20 parent absolute deadline integration
+
+现场证据进一步确认，Upper API 从请求开始到发出 SIGINT 共耗时 `80395ms`，helper 从自身启动到收到
+SIGINT 共耗时 `76764ms`；两者相差约 `3631ms`。这段 bash、ROS environment source、Python startup 与
+argparse 时间此前没有进入 helper 自己的相对 80 秒预算，因而会消费原本用于 final assembly 的 4 秒
+reserve。根因分类固定为 `parent_helper_monotonic_clock_origin_mismatch`，不是扩大 timeout 可以掩盖的
+探针失败。
+
+Upper API 现在必须在构造 helper argv 和调用 `Popen` 之前，以同机 `time.monotonic()` 计算唯一的
+`outer_process_deadline_monotonic_s`。argv 同时保留
+`--outer-process-timeout-s <process_timeout_s>` 兼容参数，并新增
+`--outer-process-deadline-monotonic-s <deadline>`；helper 取 relative/absolute 中更早者作为自己的
+deadline。parent 的 `communicate()` 也只能等待 `deadline - time.monotonic()` 的剩余值，不得在
+`Popen` 后重新取得完整 80 秒。
+
+fail-closed 规则如下：如果 deadline 在 `Popen` 前已经耗尽，parent 不创建 helper 子进程，直接沿用
+结构化 timeout artifact 路径；如果进程已经创建但在 `communicate()` 前耗尽，只对 parent 自己创建的
+进程组执行既有 SIGINT/cleanup/fallback，不能获得第二份主预算。未传 absolute deadline 的旧调用继续
+使用原 relative timeout，避免改变 goal helper 等兼容路径。
+
+该集成只完成 parent producer 与 helper consumer 的离线端到端预算合同，没有执行 SSH、ROS live、
+Nav2 action、`/initialpose`、`/cmd_vel`、`/api/base/manual`、UART 或任何运动。proof boundary 固定为
+`software_proof_o3_o10_parent_absolute_deadline_end_to_end_contract_only`；它不证明 current
+localization、path、route execution、HIL、delivery、safe-to-control 或 Mission Objective 0 完成。

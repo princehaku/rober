@@ -1,0 +1,139 @@
+{
+  "schema_version": "trashbot.o3_o1.phase_a_invocation_manifest.v1",
+  "generated_at": "2026-07-20T12:46:44.172Z",
+  "source_host": "root@192.168.1.11:37878",
+  "authorization_ref": "ceo_20260720_2025_operator_watch_route_clear_physical_limit_v1",
+  "run_id": "run_o3_o1_current_readiness_route_20260720_2025_01",
+  "task_id": "task_o3_28_pose_fixed_route_consumer_20260713_0402",
+  "route_intent_id": "route_intent_20260713_0402_from_20260713_0300_28_pose_structured_path",
+  "action_id": "action_o3_o1_bounded_nav_20260720_2025_01",
+  "no_retry": true,
+  "phase_a_closed": true,
+  "phase_b_admitted": false,
+  "physical_motion": false,
+  "deployment": {
+    "required": true,
+    "local_remote_sha_match_after": true,
+    "upper_robot_api_sha256": "df7a71c662a074c6e9eecb1523f7daf7ce78a33507193e3779192fc61a71461a",
+    "o10_runtime_proof_sha256": "2ecdbb977ae1a211e4f6af3555d7f623f12f1bf2a161d10cf9443c3538af3fa2"
+  },
+  "invocations": {
+    "nav2_start": {
+      "method": "POST",
+      "endpoint": "/api/nav2/start",
+      "count": 1,
+      "retry_count": 0,
+      "ssh_curl_exit": 0,
+      "http_status": 200,
+      "json_parse_ok": true,
+      "semantic_status": "started_strict_no_motion"
+    },
+    "nav2_proof_refresh": {
+      "method": "POST",
+      "endpoint": "/api/nav2/proof/refresh",
+      "count": 1,
+      "retry_count": 0,
+      "ssh_curl_exit": 0,
+      "http_status": 200,
+      "json_parse_ok": true,
+      "semantic_status": "blocked_with_root_cause",
+      "elapsed_ms": 80395,
+      "timeout": true
+    },
+    "nav2_proof_latest": {
+      "method": "GET",
+      "endpoint": "/api/nav2/proof/latest",
+      "count": 1,
+      "ssh_curl_exit": 0,
+      "http_status": 200,
+      "json_parse_ok": true,
+      "semantic_status": "not_proven"
+    },
+    "nav2_status_after_proof": {
+      "method": "GET",
+      "endpoint": "/api/nav2/status",
+      "count": 1,
+      "ssh_curl_exit": 0,
+      "http_status": 200,
+      "json_parse_ok": true
+    },
+    "unified_status_after_proof": {
+      "method": "GET",
+      "endpoint": "/api/status",
+      "count": 1,
+      "ssh_curl_exit": 0,
+      "http_status": 200,
+      "json_parse_ok": true
+    },
+    "nav2_owned_stop": {
+      "method": "POST",
+      "endpoint": "/api/nav2/stop",
+      "count": 1,
+      "retry_count": 0,
+      "ssh_curl_exit": 0,
+      "http_status": 200,
+      "json_parse_ok": true,
+      "semantic_status": "stopped_owned_process_group"
+    },
+    "nav2_status_after_stop": {
+      "method": "GET",
+      "endpoint": "/api/nav2/status",
+      "count": 1,
+      "ssh_curl_exit": 0,
+      "http_status": 200,
+      "json_parse_ok": true,
+      "semantic_status": "stopped"
+    }
+  },
+  "phase_b_invocations": {
+    "pre_base_stop": 0,
+    "goal_invocation": 0,
+    "post_base_stop": 0,
+    "goal_latest_get": 0,
+    "feedback_samples_latest_get": 0,
+    "status_get": 0,
+    "nav2_owned_stop": 0
+  },
+  "forbidden_invocations": {
+    "initialpose_publish": 0,
+    "base_manual": 0,
+    "free_roam": 0,
+    "direct_cmd_vel": 0,
+    "uart_direct_control": 0,
+    "wave_rover_T1": 0,
+    "wave_rover_T11": 0,
+    "wave_rover_T13": 0,
+    "T=1001": 0,
+    "delivery": 0
+  },
+  "final_cleanup": {
+    "status": "stopped_owned_process_group",
+    "scope": "o11_owned_pid_process_group_only",
+    "cleanup_ok": true,
+    "lifecycle_running": false,
+    "lifecycle_state": "stopped",
+    "owned_pid_file_absent": true,
+    "lifecycle_pid_absent": true,
+    "helper_pid_absent": true,
+    "residual_count": 0
+  },
+  "artifacts_sha256": {
+    "phase0_health.raw.json": "68fd8a8ac984d74fe4fbf4e6a8241438b65165e40913700ca1c9212aff065ddb",
+    "phase0_nav2_status.raw.json": "5a9b357cbb2e933e70cb9ab4def1ddd74c6b00d9e299e615b01114e97a1be8d5",
+    "phase0_status.raw.json": "5a9818a66439a1ce8a1b91e71aa7c22bd22dce7f640103306fb7f3d98fa6c0f5",
+    "phase_a_nav2_owned_stop.raw.json": "ce2b2666b8799c16ab534064156f929fd45f92f45a4dce319dfe2d63d744dc43",
+    "phase_a_nav2_proof_latest.raw.json": "7e3177546ddf109f67aa03d06e8db8df293f5abe710b04a60633ce11549872cc",
+    "phase_a_nav2_start.raw.json": "56e5916b131940fea6563577ec230b5fa9e014de827a3bfb288ac4928b707c92",
+    "phase_a_nav2_status_after_proof.raw.json": "54cd802ae9fc2b82fa2290e653d3a7881f28ce66133e6b21dc919ec570a87f22",
+    "phase_a_nav2_status_after_stop.raw.json": "37e86f8a67d317f84b928e5ea82d32fd2a025ac935cb1435daee8790f989a012",
+    "phase_a_status_after_proof.raw.json": "c99d4d340414e083a0c4a2360ac204fe421518c2fcf748331b88a46b1489c1f4",
+    "phase_a_nav2_owned_stop.transport.json": "c4bdd8294e4c06f956aa7c1b2d2b4e4a0991e6c2517386a15d14a655f61525db",
+    "phase_a_nav2_proof_latest.transport.json": "16fe427c00ee2d26b30f78b823a7763e94fdf10f2842284bb6dc480dc0648b37",
+    "phase_a_nav2_proof_refresh.transport.json": "d573d2b2e2c79cd62738bcf822c9c97260111a2c0ab6814bdf57f8ce2f214f86",
+    "phase_a_nav2_start.transport.json": "cc65656284ec4868f5202fe36c3b442f0b203938cd91529dc5f704b2d4777b93",
+    "phase_a_nav2_status_after_proof.transport.json": "d9991bc6cd1a8cb24e893ac9ef98e0f01404245fd9b644569ef6ba819bf13f6f",
+    "phase_a_nav2_status_after_stop.transport.json": "faeb1cff15d6545da8be7e7bc2206ba272aedc66b727ccc6f77d4cc414526b67",
+    "phase_a_status_after_proof.transport.json": "441cc1b4a4cd47c1b5bf1093924a8d016a2a61fcd6ab8de0888fe758a4a160b2",
+    "phase_a_owned_cleanup_residual_final.json": "0fd21320df769787581d30c1cf404bf2661fa37dc442d1a15f4a85fd63e1bbcf"
+  }
+}

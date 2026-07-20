@@ -45,41 +45,259 @@ class UpperRobotApiFeedbackAckTests(unittest.TestCase):
         }
         with tempfile.TemporaryDirectory() as temp_dir:
             artifact_path = str(Path(temp_dir) / "runtime-proof.json")
-            with mock.patch.object(
-                upper_robot_api,
-                "run_helper_bash_process_group",
-                return_value=completed,
-            ) as process_mock:
-                result = upper_robot_api.run_nav2_runtime_proof_helper(
-                    artifact_path=artifact_path,
-                    map_proof_path=str(Path(temp_dir) / "map-proof.json"),
-                    map_artifact_dir=str(Path(temp_dir) / "maps"),
-                    timeout_s=20.0,
-                    managed_runtime_opt_in=True,
-                    managed_timeout_s=10.0,
-                    managed_map_yaml=str(Path(temp_dir) / "map.yaml"),
-                    initialpose_opt_in=True,
-                    initialpose_x=0.0,
-                    initialpose_y=0.0,
-                    initialpose_yaw=0.0,
-                    initialpose_frame_id="map",
-                    path_generation_opt_in=True,
-                    path_generation_timeout_s=20.0,
-                    path_goal_frame_id="map",
-                    path_goal_x=0.8,
-                    path_goal_y=0.0,
-                    path_goal_yaw=0.0,
-                )
+            with mock.patch.object(upper_robot_api.time, "monotonic", return_value=100.0):
+                with mock.patch.object(
+                    upper_robot_api,
+                    "run_helper_bash_process_group",
+                    return_value=completed,
+                ) as process_mock:
+                    result = upper_robot_api.run_nav2_runtime_proof_helper(
+                        artifact_path=artifact_path,
+                        map_proof_path=str(Path(temp_dir) / "map-proof.json"),
+                        map_artifact_dir=str(Path(temp_dir) / "maps"),
+                        timeout_s=20.0,
+                        managed_runtime_opt_in=True,
+                        managed_timeout_s=10.0,
+                        managed_map_yaml=str(Path(temp_dir) / "map.yaml"),
+                        initialpose_opt_in=True,
+                        initialpose_x=0.0,
+                        initialpose_y=0.0,
+                        initialpose_yaw=0.0,
+                        initialpose_frame_id="map",
+                        path_generation_opt_in=True,
+                        path_generation_timeout_s=20.0,
+                        path_goal_frame_id="map",
+                        path_goal_x=0.8,
+                        path_goal_y=0.0,
+                        path_goal_yaw=0.0,
+                    )
 
         # 这组输入按现有公式正好得到 80 秒，用来锁定现场兼容 case 而不真实等待。
         self.assertEqual(80.0, result["process_timeout_s"])
         helper_argv = result["helper_argv"]
         outer_budget_index = helper_argv.index("--outer-process-timeout-s")
         self.assertEqual("80.0", helper_argv[outer_budget_index + 1])
+        absolute_deadline_index = helper_argv.index("--outer-process-deadline-monotonic-s")
+        self.assertEqual("180.0", helper_argv[absolute_deadline_index + 1])
         # subprocess 的外层 timeout 与 helper argv 必须来自同一个值，防止两套预算漂移。
         self.assertEqual(80.0, process_mock.call_args.args[1])
+        self.assertEqual(180.0, process_mock.call_args.kwargs["deadline_monotonic_s"])
         self.assertFalse(result["safe_to_control"])
         self.assertFalse(result["robot_control_executed"])
+
+    def test_nav2_runtime_proof_parent_absolute_deadline_starts_before_popen(self) -> None:
+        """Popen/startup 与慢关键探针必须共用 parent absolute deadline 并自然写 final。"""
+        # 该回归复现现场约 3.6 秒 parent/helper 起点差，但完全使用 fake clock，不触发 ROS 或运动。
+        # clock 从 100 开始，80 秒预算的唯一 absolute deadline 因而必须固定为 180。
+        # 如果生产代码在 Popen 后重算 deadline，communicate 会错误得到 80 而不是 76.4。
+        # 如果 parent 仍只传 relative timeout，helper 将无法感知已经消耗的 startup 时间。
+        # final artifact 使用 blocked 状态，强调自然收口不等于 localization 或 route readiness。
+        # 本测试关心预算所有权与 artifact 完整性，不把模拟探针输出当作现场传感器事实。
+        clock_state = {"now": 100.0}
+        communicate_timeouts: list[float] = []
+        final_artifact = {
+            "schema": "trashbot.upper_robot_api.v1.nav2_lifecycle_runtime_proof",
+            "artifact_kind": "final",
+            "status": "blocked_with_root_cause",
+            "proof": {
+                "artifact_kind": "final",
+                "last_phase": "final",
+                "current_command": None,
+                "runtime_budget": {
+                    "deadline_source": "parent_absolute_monotonic",
+                    "startup_budget_consumed_s": 3.6,
+                },
+            },
+        }
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            artifact_path = Path(temp_dir) / "runtime-proof.json"
+
+            class FakeProcess:
+                """模拟 bash/source/Python startup 后，关键探针在 reserve 前自然收口。"""
+
+                pid = 41003
+                returncode = 2
+
+                def communicate(self, timeout=None):  # noqa: ANN001 - 模拟 Popen.communicate 签名。
+                    # 记录传入值而非自行计算，才能直接验证 parent producer 是否扣除了 startup。
+                    # 72 秒模拟关键探针；与 3.6 秒 startup 合计后仍应给 final reserve 留 4.4 秒。
+                    # artifact 在 communicate 返回前写入，模拟 helper 自然完成而不是 timeout fallback。
+                    communicate_timeouts.append(float(timeout))
+                    # critical probe 消费 72 秒，但仍在 parent absolute deadline 前留下 4.4 秒。
+                    clock_state["now"] += 72.0
+                    artifact_path.write_text(json.dumps(final_artifact), encoding="utf-8")
+                    return "blocked natural final written", ""
+
+            def fake_popen(*_args, **_kwargs):
+                # 修改同一 fake monotonic clock，避免测试因真实机器调度速度产生抖动。
+                # 只消费时间而不执行 command，确保回归严格保持 offline/no-live 边界。
+                # Popen 调度、ROS source、Python startup/argparse 合计消费现场复现的 3.6 秒。
+                clock_state["now"] += 3.6
+                return FakeProcess()
+
+            with mock.patch.object(upper_robot_api.time, "monotonic", side_effect=lambda: clock_state["now"]):
+                with mock.patch.object(upper_robot_api.subprocess, "Popen", side_effect=fake_popen) as popen_mock:
+                    with mock.patch.object(upper_robot_api, "wait_for_nav2_helper_partial_artifact") as partial_mock:
+                        with mock.patch.object(upper_robot_api, "write_nav2_helper_failure_artifact") as fallback_mock:
+                            with mock.patch.object(upper_robot_api.os, "killpg") as signal_mock:
+                                result = upper_robot_api.run_nav2_runtime_proof_helper(
+                                    artifact_path=str(artifact_path),
+                                    map_proof_path=str(Path(temp_dir) / "map-proof.json"),
+                                    map_artifact_dir=str(Path(temp_dir) / "maps"),
+                                    timeout_s=30.0,
+                                    managed_runtime_opt_in=False,
+                                    managed_timeout_s=30.0,
+                                    managed_map_yaml="",
+                                    initialpose_opt_in=False,
+                                    initialpose_x=0.0,
+                                    initialpose_y=0.0,
+                                    initialpose_yaw=0.0,
+                                    initialpose_frame_id="map",
+                                    path_generation_opt_in=True,
+                                    path_generation_timeout_s=30.0,
+                                    path_goal_frame_id="map",
+                                    path_goal_x=0.8,
+                                    path_goal_y=0.25,
+                                    path_goal_yaw=0.0,
+                                )
+            captured_artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
+
+        helper_argv = result["helper_argv"]
+        # argv 断言锁定 consumer 输入，communicate 断言锁定 producer 自己的等待上界。
+        # 两侧都通过才证明不是单边修补；任一侧回到 relative-only 都会让本测试失败。
+        # 不发送 SIGINT 的断言保证自然 final 是常态路径，cleanup 仍只是异常兜底。
+        deadline_index = helper_argv.index("--outer-process-deadline-monotonic-s")
+        self.assertEqual("180.0", helper_argv[deadline_index + 1])
+        self.assertAlmostEqual(76.4, communicate_timeouts[0])
+        self.assertAlmostEqual(76.4, result["process_wait_timeout_s"])
+        self.assertLess(clock_state["now"], result["outer_process_deadline_monotonic_s"])
+        self.assertEqual(2, result["returncode"])
+        self.assertEqual("final", captured_artifact["proof"]["last_phase"])
+        popen_mock.assert_called_once()
+        partial_mock.assert_not_called()
+        fallback_mock.assert_not_called()
+        signal_mock.assert_not_called()
+
+    def test_nav2_runtime_proof_expired_parent_deadline_fails_closed_before_popen(self) -> None:
+        """命令构造已耗尽 absolute deadline 时不得启动 helper，必须复用 timeout fallback。"""
+        # 第一次 clock 读取创建 deadline=180，第二次直接推进到 181，模拟 pre-Popen 预算耗尽。
+        # 这里必须断言 Popen 未调用；否则会为了报告 timeout 而额外创建需要清理的 ROS 子进程。
+        # 没有进程组时 cleanup 不应伪造 signal，结构化 fallback 已足够表达 fail-closed。
+        # wait_timeout_s=0 是可审计事实，不能被上层再次解释为默认 80 秒。
+        # 该场景验证 command/argv 准备时间也属于 parent 预算，而不仅是 communicate 时间。
+        clock_values = iter([100.0, 181.0])
+        fallback_result = {"artifact": {"write": {"ok": True}}}
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with mock.patch.object(upper_robot_api.time, "monotonic", side_effect=lambda: next(clock_values)):
+                with mock.patch.object(upper_robot_api.subprocess, "Popen") as popen_mock:
+                    with mock.patch.object(upper_robot_api, "wait_for_nav2_helper_partial_artifact", return_value=None):
+                        with mock.patch.object(
+                            upper_robot_api,
+                            "write_nav2_helper_failure_artifact",
+                            return_value=fallback_result,
+                        ):
+                            result = upper_robot_api.run_nav2_runtime_proof_helper(
+                                artifact_path=str(Path(temp_dir) / "runtime-proof.json"),
+                                map_proof_path=str(Path(temp_dir) / "map-proof.json"),
+                                map_artifact_dir=str(Path(temp_dir) / "maps"),
+                                timeout_s=30.0,
+                                managed_runtime_opt_in=False,
+                                managed_timeout_s=30.0,
+                                managed_map_yaml="",
+                                initialpose_opt_in=False,
+                                initialpose_x=0.0,
+                                initialpose_y=0.0,
+                                initialpose_yaw=0.0,
+                                initialpose_frame_id="map",
+                                path_generation_opt_in=True,
+                                path_generation_timeout_s=30.0,
+                                path_goal_frame_id="map",
+                                path_goal_x=0.8,
+                                path_goal_y=0.25,
+                                path_goal_yaw=0.0,
+                            )
+
+        popen_mock.assert_not_called()
+        # 即使没有启动 helper，API 仍返回稳定的 TimeoutExpired 类型供既有 consumer 识别。
+        # fallback 写入成功只证明失败被结构化记录，不证明任何现场 readiness。
+        self.assertFalse(result["ok"])
+        self.assertEqual(0.0, result["process_wait_timeout_s"])
+        self.assertEqual("TimeoutExpired", result["error"]["type"])
+        self.assertTrue(result["fallback_artifact_written"])
+
+    def test_nav2_runtime_proof_popen_consumes_deadline_uses_cleanup_fallback(self) -> None:
+        """Popen 本身耗尽 remaining 时必须 SIGINT 自有进程组，不能获得新的完整 80 秒。"""
+        # 该分支与 pre-Popen 耗尽的关键区别是已经存在 parent-owned PGID，必须负责清理。
+        # fake Popen 将 clock 推进 81 秒，强制 remaining 为负并被钳制成零。
+        # 主 communicate 不得被调用；只有既有 timeout cleanup grace 可以调用 communicate。
+        # 因此最终列表只能包含 4 秒 cleanup wait，出现 80 即代表预算被错误重置。
+        # SIGINT 目标必须是 FakeProcess.pid 对应的 PGID，不能扫描或终止无关 ROS 进程。
+        # fallback artifact 继续保持 safe/no-control 语义，cleanup 成功也不能提升 proof boundary。
+        clock_state = {"now": 100.0}
+        communicate_timeouts: list[float] = []
+
+        class FakeProcess:
+            # returncode=130 对应中断退出，只用于模拟 owned cleanup 的确定性结果。
+            # poll 立即返回，避免测试走 SIGKILL 分支；本用例只锁定首次 SIGINT 与 no-reset。
+            pid = 41004
+            returncode = 130
+
+            def communicate(self, timeout=None):  # noqa: ANN001 - 模拟 timeout 后的既有 cleanup wait。
+                communicate_timeouts.append(float(timeout))
+                return "", ""
+
+            def poll(self):
+                return self.returncode
+
+        def fake_popen(*_args, **_kwargs):
+            # fake 只建立进程对象并推进时钟，不执行 shell、SSH、ROS 或硬件操作。
+            # 81 秒大于 80 秒预算，确保结果不依赖浮点边界或真实调度抖动。
+            # 模拟极端调度：进程已创建，但 parent deadline 在进入 communicate 前已经耗尽。
+            clock_state["now"] += 81.0
+            return FakeProcess()
+
+        fallback_result = {"artifact": {"write": {"ok": True}}}
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with mock.patch.object(upper_robot_api.time, "monotonic", side_effect=lambda: clock_state["now"]):
+                with mock.patch.object(upper_robot_api.subprocess, "Popen", side_effect=fake_popen) as popen_mock:
+                    with mock.patch.object(upper_robot_api.os, "killpg") as signal_mock:
+                        with mock.patch.object(upper_robot_api, "wait_for_nav2_helper_partial_artifact", return_value=None):
+                            with mock.patch.object(
+                                upper_robot_api,
+                                "write_nav2_helper_failure_artifact",
+                                return_value=fallback_result,
+                            ):
+                                result = upper_robot_api.run_nav2_runtime_proof_helper(
+                                    artifact_path=str(Path(temp_dir) / "runtime-proof.json"),
+                                    map_proof_path=str(Path(temp_dir) / "map-proof.json"),
+                                    map_artifact_dir=str(Path(temp_dir) / "maps"),
+                                    timeout_s=30.0,
+                                    managed_runtime_opt_in=False,
+                                    managed_timeout_s=30.0,
+                                    managed_map_yaml="",
+                                    initialpose_opt_in=False,
+                                    initialpose_x=0.0,
+                                    initialpose_y=0.0,
+                                    initialpose_yaw=0.0,
+                                    initialpose_frame_id="map",
+                                    path_generation_opt_in=True,
+                                    path_generation_timeout_s=30.0,
+                                    path_goal_frame_id="map",
+                                    path_goal_x=0.8,
+                                    path_goal_y=0.25,
+                                    path_goal_yaw=0.0,
+                                )
+
+        popen_mock.assert_called_once()
+        # signal 与 wait 顺序由既有 cleanup 实现负责；本回归只验证其输入没有越界。
+        # result 必须保留 process_wait_timeout_s=0，防止未来 reader 混淆主等待与 grace wait。
+        signal_mock.assert_called_once_with(41004, upper_robot_api.signal.SIGINT)
+        # 只有既有 cleanup grace 4 秒被使用；helper 主 wait 没有重新获得 80 秒。
+        self.assertEqual([4.0], communicate_timeouts)
+        self.assertEqual(0.0, result["process_wait_timeout_s"])
+        self.assertEqual("TimeoutExpired", result["error"]["type"])
+        self.assertTrue(result["fallback_artifact_written"])
 
     def test_nav2_runtime_proof_natural_final_result_does_not_use_timeout_fallback(self) -> None:
         """helper 自然写出 blocked final 时必须直接返回，不能读取 partial 或发送清理 signal。"""

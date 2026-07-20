@@ -172,6 +172,7 @@ class Nav2RuntimeProofHelperTests(unittest.TestCase):
             "--map-dir",
             "--timeout-s",
             "--outer-process-timeout-s",
+            "--outer-process-deadline-monotonic-s",
             "--strict-no-motion",
             "--no-base-uart",
             "--managed-runtime-opt-in",
@@ -246,6 +247,8 @@ class Nav2RuntimeProofHelperTests(unittest.TestCase):
         """默认参数必须保持旧 collector 语义，不因新增 managed flag 产生副作用。"""
         args = HELPER.parse_args([])
 
+        self.assertIsNone(args.outer_process_timeout_s)
+        self.assertIsNone(args.outer_process_deadline_monotonic_s)
         self.assertFalse(args.managed_runtime_opt_in)
         self.assertFalse(args.strict_no_motion)
         self.assertFalse(args.no_base_uart)
@@ -866,6 +869,103 @@ pose:
         )
         self.assertNotIn("sigint_before_final_artifact", json.dumps(artifact))
         self.assertNotIn("helper_process_timeout_after_partial_artifact", json.dumps(artifact))
+
+    def test_parent_deadline_started_before_popen_includes_startup_and_critical_probe_and_writes_natural_final(self) -> None:
+        """parent 启动前计时、startup 与慢关键探针都必须占用同一 absolute deadline。"""
+        clock_state = {"now": 100.0}
+
+        def fake_clock() -> float:
+            # parent 在 Popen 之前启动 10 秒计时器；该 monotonic 点与 helper 位于同一主机。
+            return clock_state["now"]
+
+        # 模拟 Popen 调度、bash/source、Python startup/CLI 解析共消耗 3.25 秒。
+        # 分段推进是为了证明这些成本发生在 helper 构造 budget 之前，而不是普通 probe timeout。
+        # 如果实现仍用 helper_start+timeout，下面 remaining 会错误回到完整 10 秒并使测试失败。
+        parent_deadline = clock_state["now"] + 10.0
+        clock_state["now"] += 0.5
+        clock_state["now"] += 1.75
+        clock_state["now"] += 1.0
+        budget = HELPER.OuterProcessBudget(
+            10.0,
+            outer_deadline_monotonic_s=parent_deadline,
+            final_reserve_s=4.0,
+            clock=fake_clock,
+        )
+        budget_summary = budget.summary()
+        self.assertEqual("parent_absolute_monotonic", budget_summary["deadline_source"])
+        # startup 消耗必须显式进入 artifact，方便现场把 parent elapsed 与 helper phase 对齐。
+        self.assertAlmostEqual(3.25, budget_summary["startup_budget_consumed_s"])
+        self.assertAlmostEqual(6.75, budget_summary["remaining_s"])
+
+        # 关键探针请求 30 秒也只能消费扣除 final reserve 后的 2.75 秒，不能把 reserve 借走。
+        # 该断言位于 package 之前，确保修复针对 critical slow path，而非仅调整 inventory 顺序。
+        critical_timeout_s = budget.bounded_command_timeout_s(30.0)
+        self.assertAlmostEqual(2.75, critical_timeout_s)
+        clock_state["now"] += float(critical_timeout_s or 0.0)
+        # 模拟关键探针结果解析/phase write 的小额开销；此时已经进入 final reserve。
+        clock_state["now"] += 0.1
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            output = Path(temp_dir) / "parent-deadline-final.json"
+            args = HELPER.parse_args(
+                [
+                    "--output",
+                    str(output),
+                    "--outer-process-timeout-s",
+                    "10",
+                    "--outer-process-deadline-monotonic-s",
+                    str(parent_deadline),
+                ]
+            )
+            setattr(args, "_outer_process_budget", budget)
+            writer = HELPER.PhaseArtifactWriter(args, HELPER.now_ms())
+
+            # package 后移不是修复本身：它只能在共享 absolute deadline 已进入 reserve 后被跳过。
+            # runner 不得被调用，避免 reserve 内再发生一次 fork/source 抖动而撞上 parent kill。
+            with mock.patch.object(HELPER, "run_ros") as package_runner:
+                packages, _results, package_batch = HELPER.package_checks(args)
+            package_runner.assert_not_called()
+            self.assertEqual(
+                "package_check_skipped_to_preserve_final_artifact_budget",
+                package_batch["boundary"],
+            )
+            self.assertTrue(all(value is None for value in packages.values()))
+
+            # 直接生成 natural final，不安装 signal handler，也不读取或保留 partial artifact。
+            # 因此最终通过条件来自正常 assembly/atomic write，不能由 SIGINT fallback 冒充。
+            payload = HELPER.finalize_artifact_contract(
+                {
+                    "schema": HELPER.SCHEMA,
+                    "status": "blocked_with_root_cause",
+                    "proof": {
+                        "status": "blocked_with_root_cause",
+                        "root_causes": [
+                            {"layer": "critical readiness", "reason": "critical_probe_budget_exhausted"}
+                        ],
+                        "commands": {"package_checks_batch": package_batch},
+                        **HELPER.safety_flags(),
+                    },
+                    **HELPER.safety_flags(),
+                },
+                phase_writer=writer,
+                runtime_budget=budget,
+            )
+            HELPER.write_json_atomic(str(output), payload)
+            artifact = json.loads(output.read_text(encoding="utf-8"))
+
+        proof = artifact["proof"]
+        self.assertEqual("final", artifact["artifact_kind"])
+        self.assertEqual("final", proof["artifact_kind"])
+        self.assertEqual("final", proof["last_phase"])
+        self.assertIsNone(proof["current_command"])
+        self.assertEqual("parent_absolute_monotonic", proof["runtime_budget"]["deadline_source"])
+        # fake clock 仍早于 parent absolute deadline，证明 final reserve 在同一时钟域内兑现。
+        self.assertLessEqual(clock_state["now"], parent_deadline)
+        encoded = json.dumps(artifact)
+        # 三个否定断言共同防止测试退化成“父进程杀掉后仍能读到某个 JSON”这种弱证明。
+        self.assertNotIn("sigint_before_final_artifact", encoded)
+        self.assertNotIn("helper_process_timeout_after_partial_artifact", encoded)
+        self.assertNotIn("partial_artifact_preserved", encoded)
 
     def test_offline_budget_fixture_writes_final_without_sigint_or_partial_fallback(self) -> None:
         """ROS/source 缺失时也应在短 outer budget 内自然写 final blocked artifact。"""

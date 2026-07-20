@@ -1,0 +1,23 @@
+{
+  "READINESS_GO": false,
+  "cleanup_residual": 0,
+  "forbidden_all_zero": true,
+  "phase_a_counts": {
+    "latest": 1,
+    "owned_stop": 1,
+    "proof": 1,
+    "start": 1
+  },
+  "phase_b_counts": {
+    "feedback_samples_latest_get": 0,
+    "goal_invocation": 0,
+    "goal_latest_get": 0,
+    "nav2_owned_stop": 0,
+    "post_base_stop": 0,
+    "pre_base_stop": 0,
+    "status_get": 0
+  },
+  "phase_b_manifest_absent": true,
+  "physical_motion": false,
+  "structure_assertion": "ok"
+}

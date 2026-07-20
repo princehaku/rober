@@ -1,0 +1,64 @@
+{
+  "schema_version": "trashbot.o3_o1.robot_software_verification.v1",
+  "generated_at": "2026-07-20T20:46:00+08:00",
+  "commands": [
+    {
+      "command": "python3 -m py_compile onboard/scripts/upper_robot_api.py onboard/scripts/o10_amcl_nav2_runtime_proof.py",
+      "exit_code": 0
+    },
+    {
+      "command": "python3 -m unittest onboard/tests/test_upper_robot_api.py onboard/tests/test_nav2_runtime_proof_helper.py",
+      "exit_code": 0,
+      "tests_run": 285,
+      "skipped": 1,
+      "result": "OK"
+    },
+    {
+      "command": "python3 -m json.tool phase_a_invocation_manifest.json",
+      "exit_code": 0
+    },
+    {
+      "command": "python3 -m json.tool readiness_assertion.json",
+      "exit_code": 0
+    },
+    {
+      "command": "Python identity/invocation/no-retry/forbidden/cleanup structural assertion",
+      "exit_code": 0,
+      "result": "structure_assertion=ok"
+    },
+    {
+      "command": "python3 -m py_compile onboard/scripts/upper_robot_api.py onboard/scripts/o10_amcl_nav2_runtime_proof.py",
+      "exit_code": 0,
+      "phase": "offline_parent_absolute_deadline_integration"
+    },
+    {
+      "command": "python3 -m unittest onboard.tests.test_upper_robot_api.UpperRobotApiFeedbackAckTests.test_nav2_runtime_proof_parent_absolute_deadline_starts_before_popen",
+      "exit_code": 0,
+      "tests_run": 1,
+      "result": "OK"
+    },
+    {
+      "command": "python3 -m unittest onboard/tests/test_upper_robot_api.py",
+      "exit_code": 0,
+      "tests_run": 119,
+      "skipped": 1,
+      "result": "OK"
+    },
+    {
+      "command": "python3 -m unittest onboard/tests/test_nav2_runtime_proof_helper.py",
+      "exit_code": 0,
+      "tests_run": 170,
+      "result": "OK"
+    },
+    {
+      "command": "python3 -m unittest onboard/tests/test_upper_robot_api.py onboard/tests/test_nav2_runtime_proof_helper.py",
+      "exit_code": 0,
+      "tests_run": 289,
+      "skipped": 1,
+      "result": "OK"
+    }
+  ],
+  "offline_followup_generated_at": "2026-07-20T21:13:52+08:00",
+  "offline_followup_proof_boundary": "software_proof_o3_o10_parent_absolute_deadline_end_to_end_contract_only",
+  "offline_followup_live_or_control_used": false
+}

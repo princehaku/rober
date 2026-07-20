@@ -1,0 +1,614 @@
+{
+  "schema": "trashbot.upper_robot_api.v1.nav2_runtime_proof_latest",
+  "generated_at_ms": 1784551431591,
+  "endpoint": "/api/nav2/proof/latest",
+  "source": "nav2_lifecycle_runtime_artifact",
+  "artifact": {
+    "path": "/root/rober/onboard/runtime/nav2_lifecycle_latest.json",
+    "configured_path": "/root/rober/onboard/runtime/nav2_lifecycle_latest.json",
+    "resolved_path": "/root/rober/onboard/runtime/nav2_lifecycle_latest.json",
+    "canonical_path": "/root/rober/onboard/runtime/nav2_lifecycle_latest.json",
+    "configured_by": "ROBER_NAV2_LIFECYCLE_ARTIFACT_PATH or --nav2-lifecycle-artifact-path",
+    "format": "json",
+    "schema": "trashbot.upper_robot_api.v1.nav2_lifecycle_runtime_proof",
+    "expected_material": [
+      "map_server lifecycle state",
+      "amcl lifecycle state",
+      "planner/controller lifecycle state",
+      "Nav2 consumes /scan + map",
+      "path generated or explicitly blocked"
+    ],
+    "ok": true,
+    "status": "loaded",
+    "bytes_read": 16743
+  },
+  "latest_result": {
+    "calls_base_manual": false,
+    "delivery_success": false,
+    "evidence_type": "blocked_with_root_cause",
+    "generated_at_ms": 1784551348930,
+    "hil_pass": false,
+    "not_proven": true,
+    "opens_serial": false,
+    "proof": {
+      "amcl_broadcast_conditions": {
+        "amcl_frame_params_match_helper": false,
+        "amcl_pose_frame_id_is_map": false,
+        "amcl_pose_observed": false,
+        "base_link_to_laser_frame_source_observed": false,
+        "initialpose_published": null,
+        "map_once_observed": null,
+        "map_to_odom_publisher_attribution": {
+          "amcl_node_tf_publisher_observed": false,
+          "amcl_node_tf_publishers": [],
+          "dynamic_source_observed": false,
+          "publisher_attribution_reason": "dynamic_map_to_odom_edge_missing_from_current_tf_sample",
+          "publisher_attribution_status": "not_attributed_dynamic_map_to_odom_not_observed",
+          "publisher_endpoint": null,
+          "publisher_endpoint_candidates": [],
+          "publisher_endpoint_count": 0,
+          "publisher_endpoint_inventory_observed": false,
+          "source_topic": null
+        },
+        "map_to_odom_source_observed": false,
+        "odom_to_base_link_dynamic_source_observed": false,
+        "odom_to_base_link_source_observed": false,
+        "odom_to_base_link_static_source_observed": false,
+        "scan_once_observed": null,
+        "tf_broadcast_enabled": false
+      },
+      "amcl_frame_params": {
+        "base_frame_id": null,
+        "global_frame_id": null,
+        "odom_frame_id": null
+      },
+      "amcl_log_tail": "",
+      "amcl_node_info_observed": false,
+      "amcl_node_publishers": [],
+      "amcl_node_subscribers": [],
+      "amcl_param_probe_ok": false,
+      "amcl_pose_frame_id": null,
+      "amcl_pose_observed": false,
+      "amcl_tf_broadcast_param": null,
+      "amcl_tf_root_cause": "/tf_topic_missing",
+      "base_link_to_laser_frame_transform": null,
+      "blocked_commands_not_sent": [
+        "T=1",
+        "T=13",
+        "T=130",
+        "T=131",
+        "/cmd_vel",
+        "/api/base/manual",
+        "/api/nav2/start",
+        "/api/nav2/stop",
+        "navigate_to_pose",
+        "compute_path_to_pose"
+      ],
+      "blocked_devices_not_opened": [
+        "/dev/ttyS5"
+      ],
+      "blockers": [
+        {
+          "layer": "helper process",
+          "reason": "sigint_before_final_artifact"
+        },
+        {
+          "layer": "upper API helper process",
+          "reason": "helper_process_timeout_after_partial_artifact"
+        }
+      ],
+      "calls_base_manual": false,
+      "command_result": {
+        "argv": [
+          "bash",
+          "-lc",
+          "source /opt/ros/humble/setup.bash && if [ -f /root/rober/onboard/install/setup.bash ]; then source /root/rober/onboard/install/setup.bash; fi && /usr/bin/python3 /root/rober/onboard/scripts/o10_amcl_nav2_runtime_proof.py --output /root/rober/onboard/runtime/nav2_lifecycle_latest.json --map-proof /root/rober/onboard/runtime/map_lifecycle_latest.json --map-dir /root/rober/onboard/runtime/maps --timeout-s 30.0 --outer-process-timeout-s 80.0 --path-generation-opt-in --path-generation-timeout-s 30.0 --path-goal-frame-id map --path-goal-x 0.8 --path-goal-y 0.25 --path-goal-yaw 0.0"
+        ],
+        "calls_base_manual": false,
+        "elapsed_ms": 80395,
+        "error": {
+          "message": "Command '['bash', '-lc', 'source /opt/ros/humble/setup.bash && if [ -f /root/rober/onboard/install/setup.bash ]; then source /root/rober/onboard/install/setup.bash; fi && /usr/bin/python3 /root/rober/onboard/scripts/o10_amcl_nav2_runtime_pr",
+          "type": "TimeoutExpired"
+        },
+        "executed": true,
+        "helper_argv": [
+          "/usr/bin/python3",
+          "/root/rober/onboard/scripts/o10_amcl_nav2_runtime_proof.py",
+          "--output",
+          "/root/rober/onboard/runtime/nav2_lifecycle_latest.json",
+          "--map-proof",
+          "/root/rober/onboard/runtime/map_lifecycle_latest.json",
+          "--map-dir",
+          "/root/rober/onboard/runtime/maps",
+          "--timeout-s",
+          "30.0",
+          "--outer-process-timeout-s",
+          "80.0",
+          "--path-generation-opt-in",
+          "--path-generation-timeout-s",
+          "30.0",
+          "--path-goal-frame-id",
+          "map",
+          "--path-goal-x",
+          "0.8",
+          "--path-goal-y",
+          "0.25",
+          "--path-goal-yaw",
+          "0.0"
+        ],
+        "helper_cleanup_result": {
+          "attempted": true,
+          "error": null,
+          "killed_with_sigkill": false,
+          "ok": true,
+          "process_group": 690233,
+          "residual_cleanup": {
+            "attempted": false,
+            "ok": true,
+            "reason": "skipped_external_runtime_cleanup"
+          },
+          "sent_signal": "SIGINT"
+        },
+        "helper_process_group": 690233,
+        "hil_pass": false,
+        "initialpose_opt_in": false,
+        "managed_runtime_opt_in": false,
+        "mode": "o10_amcl_nav2_runtime_proof_helper",
+        "ok": false,
+        "path_generation_opt_in": true,
+        "process_timeout_s": 80,
+        "publishes_cmd_vel": false,
+        "robot_control_executed": false,
+        "safe_to_control": false,
+        "sends_base_motion_commands": false,
+        "stderr_preview": "",
+        "stdout_preview": "",
+        "timeout_budget": {
+          "base_margin_s": 12,
+          "budget_policy": "finish_before_pc_proxy_timeout_or_return_structured_timeout",
+          "cap_s": 132,
+          "collector_timeout_s": 30,
+          "initialpose_margin_s": 0,
+          "managed_margin_s": 0,
+          "managed_runtime_timeout_s": 0,
+          "path_generation_timeout_s": 30,
+          "path_margin_s": 8,
+          "pc_proxy_budget_s": 150,
+          "process_timeout_s": 80,
+          "raw_timeout_s": 80
+        }
+      },
+      "current_command": null,
+      "delivery_success": false,
+      "evidence_ref": "o10-amcl-nav2-runtime-wrapper-failure-1784551348930",
+      "evidence_type": "blocked_with_root_cause",
+      "generated_at_ms": 1784551348930,
+      "hil_pass": false,
+      "initialpose_publish_attempted": false,
+      "initialpose_published": false,
+      "last_phase": "interrupted",
+      "last_successful_phase": "initialpose",
+      "localization_tf_observed": {
+        "map_to_base_link": false,
+        "map_to_odom": false
+      },
+      "managed_runtime_cleanup_ok": false,
+      "managed_runtime_requested": false,
+      "managed_runtime_started": false,
+      "managed_static_tf_processes": {
+        "all_expected_processes_observed": false,
+        "checked_before_cleanup": false,
+        "expected": [],
+        "observed_roles": [],
+        "processes": []
+      },
+      "map_frame_observed": false,
+      "odom_frame_observed": false,
+      "opens_serial": false,
+      "package_availability": {
+        "nav2_amcl": null,
+        "nav2_lifecycle_manager": null,
+        "nav2_map_server": null,
+        "ros2_trashbot_bringup": null,
+        "ros2_trashbot_nav": null
+      },
+      "package_check_mode": "deferred_after_localization_main_path",
+      "package_checks_batch_ok": false,
+      "partial_artifact_preserved": true,
+      "path_generated": false,
+      "path_generation_attempted": false,
+      "path_generation_requested": true,
+      "path_generation_succeeded": false,
+      "path_point_count": 0,
+      "phase_history": [
+        {
+          "at_ms": 1784551271854,
+          "detail": {
+            "mode": "no_motion_amcl_nav2_runtime_proof",
+            "runtime_budget": {
+              "available_before_final_reserve_s": 75.99964283406734,
+              "clock": "monotonic",
+              "deadline_monotonic_s": 1431917.557850298,
+              "enabled": true,
+              "final_artifact_reserve_s": 4,
+              "finalization_reason": "normal_completion",
+              "outer_process_timeout_s": 80,
+              "remaining_s": 79.99965141690336,
+              "reserve_reached": false
+            }
+          },
+          "ok": true,
+          "phase": "start"
+        },
+        {
+          "at_ms": 1784551271910,
+          "detail": {
+            "source_proof_status": "blocked_with_root_cause"
+          },
+          "ok": false,
+          "phase": "map_inputs"
+        },
+        {
+          "at_ms": 1784551271951,
+          "phase": "board_source_preflight"
+        },
+        {
+          "at_ms": 1784551289822,
+          "detail": {
+            "classification": "board_source_preflight_ready",
+            "cli_ready": true,
+            "rclpy_import_ok": true,
+            "ros2_cli_ok": true,
+            "runtime_ready": true
+          },
+          "ok": true,
+          "phase": "board_source_preflight"
+        },
+        {
+          "at_ms": 1784551289853,
+          "detail": {
+            "requested": false
+          },
+          "ok": true,
+          "phase": "managed_runtime"
+        },
+        {
+          "at_ms": 1784551289886,
+          "detail": {
+            "downstream_readback_allowed_after_lifecycle_log": false,
+            "graph_wait_blocked": false,
+            "lifecycle_log_clean": false
+          },
+          "phase": "ros2_graph_timeout_root_cause_probe"
+        },
+        {
+          "at_ms": 1784551321877,
+          "detail": {
+            "classification": "root_cause_unclassified_after_probe",
+            "primary_reason": "graph_timeout_not_uniquely_explained_by_low_budget_probes"
+          },
+          "ok": false,
+          "phase": "ros2_graph_timeout_root_cause_probe"
+        },
+        {
+          "at_ms": 1784551321911,
+          "phase": "lifecycle_cli_budget_recovery"
+        },
+        {
+          "at_ms": 1784551344332,
+          "detail": {
+            "blocking_reasons": {},
+            "classification": "map_lifecycle_preflight_all_active",
+            "clean": true
+          },
+          "ok": true,
+          "phase": "lifecycle_cli_budget_recovery"
+        },
+        {
+          "at_ms": 1784551344659,
+          "detail": {
+            "free_cell_verified": true,
+            "world_pose_auditable": true
+          },
+          "ok": true,
+          "phase": "canonical_initialpose_map_audit"
+        },
+        {
+          "at_ms": 1784551344739,
+          "phase": "pre_initialpose_read_only_audit"
+        },
+        {
+          "at_ms": 1784551348108,
+          "detail": {
+            "blocking_reasons": [
+              "scan_current_window_fresh",
+              "initialpose_amcl_subscriber_active",
+              "initialpose_subscriber_ownership_clear",
+              "persisted_pose_audited"
+            ]
+          },
+          "ok": false,
+          "phase": "pre_initialpose_read_only_audit"
+        },
+        {
+          "at_ms": 1784551348187,
+          "phase": "initialpose"
+        },
+        {
+          "at_ms": 1784551348343,
+          "detail": {
+            "enabled": false,
+            "method": "disabled",
+            "publish_attempts": 0,
+            "subscriber_count": 0
+          },
+          "ok": true,
+          "phase": "initialpose"
+        },
+        {
+          "at_ms": 1784551348423,
+          "phase": "tf_source_probe"
+        },
+        {
+          "at_ms": 1784551348586,
+          "detail": {
+            "amcl_tf_root_cause": "/tf_topic_missing"
+          },
+          "ok": false,
+          "phase": "tf_source_probe"
+        },
+        {
+          "at_ms": 1784551348618,
+          "ok": false,
+          "phase": "interrupted",
+          "root_cause": {
+            "layer": "helper process",
+            "reason": "sigint_before_final_artifact"
+          }
+        }
+      ],
+      "publishes_cmd_vel": false,
+      "recent_commands": [
+        {
+          "command": "source_amortized_cli_preflight",
+          "elapsed_ms": 17792,
+          "error": null,
+          "finished_at_ms": 1784551289766,
+          "ok": true,
+          "returncode": 0
+        },
+        {
+          "command": "source_amortized_ros2_graph_probe_batch",
+          "elapsed_ms": 31891,
+          "error": null,
+          "finished_at_ms": 1784551321808,
+          "ok": true,
+          "returncode": 0
+        },
+        {
+          "command": "ros2 node list",
+          "elapsed_ms": 5117,
+          "error": null,
+          "finished_at_ms": 1784551327063,
+          "ok": true,
+          "returncode": 0
+        },
+        {
+          "command": "ros2 lifecycle get /map_server",
+          "elapsed_ms": 8803,
+          "error": null,
+          "finished_at_ms": 1784551335905,
+          "ok": true,
+          "returncode": 0
+        },
+        {
+          "command": "ros2 lifecycle get /amcl",
+          "elapsed_ms": 8278,
+          "error": null,
+          "finished_at_ms": 1784551344221,
+          "ok": true,
+          "returncode": 0
+        },
+        {
+          "command": "timeout 6 ros2 topic echo --once /amcl_pose",
+          "elapsed_ms": 3127,
+          "error": {
+            "message": "Command '['bash', '-lc', 'set -e; source /opt/ros/humble/setup.bash; [ -f /root/rober/onboard/install/setup.bash ] && source /root/rober/onboard/install/setup.bash || true; export RMW_FASTRTPS_USE_SHM=0; export FASTDDS_BUILTIN_TRANSPORTS=UD",
+            "type": "TimeoutExpired"
+          },
+          "finished_at_ms": 1784551347943,
+          "ok": false,
+          "returncode": null
+        }
+      ],
+      "robot_control_executed": false,
+      "root_causes": [
+        {
+          "layer": "helper process",
+          "reason": "sigint_before_final_artifact"
+        },
+        {
+          "layer": "upper API helper process",
+          "reason": "helper_process_timeout_after_partial_artifact"
+        }
+      ],
+      "safe_to_control": false,
+      "sends_base_motion_commands": false,
+      "sends_motion_commands": false,
+      "static_tf_source_observed": false,
+      "status": "blocked_with_root_cause",
+      "tf_chain_diagnostics": {},
+      "tf_chain_observed": {
+        "base_link_to_laser_frame": false,
+        "map_to_base_link": false,
+        "map_to_odom": false,
+        "odom_to_base_link": false
+      },
+      "tf_failure_classification": {
+        "frame_naming_consistent": true,
+        "map_to_base_link": "not_evaluated"
+      },
+      "tf_frame_inventory": {
+        "command_statuses": {
+          "tf": null,
+          "tf_static": null,
+          "topic_list": null
+        },
+        "dynamic_edges": [],
+        "dynamic_transforms": [],
+        "edges": [],
+        "frames": [],
+        "static_edges": [],
+        "static_transforms": [],
+        "topic_types": {},
+        "transforms": []
+      },
+      "tf_source_root_cause_detail": {
+        "amcl_node_info_observed": false,
+        "amcl_param_probe_boundary": "sourced_rclpy_child_probe_failed",
+        "amcl_param_probe_error": {
+          "message": "child returned no JSON",
+          "type": "sourced_rclpy_child_output_missing"
+        },
+        "amcl_param_probe_ok": false,
+        "amcl_pose_frame_id": null,
+        "amcl_pose_sample": {
+          "frame_id": null,
+          "observed": false,
+          "received_at_ms": null,
+          "sample_count": 0,
+          "stamp": {
+            "parsed": false,
+            "reason": "sample_not_observed",
+            "source": "/amcl_pose.header.stamp"
+          }
+        },
+        "base_link_to_laser_frame_source_observed": false,
+        "base_link_to_laser_frame_source_transform": null,
+        "expected_params": {
+          "base_frame_id": "base_link",
+          "global_frame_id": "map",
+          "odom_frame_id": "odom",
+          "tf_broadcast": "true"
+        },
+        "map_to_odom_publisher_attribution": {
+          "amcl_node_tf_publisher_observed": false,
+          "amcl_node_tf_publishers": [],
+          "dynamic_source_observed": false,
+          "publisher_attribution_reason": "dynamic_map_to_odom_edge_missing_from_current_tf_sample",
+          "publisher_attribution_status": "not_attributed_dynamic_map_to_odom_not_observed",
+          "publisher_endpoint": null,
+          "publisher_endpoint_candidates": [],
+          "publisher_endpoint_count": 0,
+          "publisher_endpoint_inventory_observed": false,
+          "source_topic": null
+        },
+        "map_to_odom_source_observed": false,
+        "observed_params": {
+          "base_frame_id": null,
+          "global_frame_id": null,
+          "odom_frame_id": null,
+          "tf_broadcast": null
+        },
+        "odom_to_base_link_dynamic_source_observed": false,
+        "odom_to_base_link_source_observed": false,
+        "odom_to_base_link_static_source_observed": false,
+        "reason": "/tf_topic_missing",
+        "tf_command_statuses": {
+          "tf": null,
+          "tf_static": null,
+          "topic_list": null
+        }
+      },
+      "tf_static_observed": false,
+      "tf_topics_observed": {
+        "/tf": false,
+        "/tf_static": false
+      },
+      "timeout_budget": {
+        "base_margin_s": 12,
+        "budget_policy": "finish_before_pc_proxy_timeout_or_return_structured_timeout",
+        "cap_s": 132,
+        "collector_timeout_s": 30,
+        "initialpose_margin_s": 0,
+        "managed_margin_s": 0,
+        "managed_runtime_timeout_s": 0,
+        "path_generation_timeout_s": 30,
+        "path_margin_s": 8,
+        "pc_proxy_budget_s": 150,
+        "process_timeout_s": 80,
+        "raw_timeout_s": 80
+      },
+      "uses_base_uart": false
+    },
+    "publishes_cmd_vel": false,
+    "robot_control_executed": false,
+    "safe_to_control": false,
+    "schema": "trashbot.upper_robot_api.v1.nav2_lifecycle_runtime_proof",
+    "sends_base_motion_commands": false,
+    "sends_motion_commands": false,
+    "software_guard": true,
+    "status": "blocked_with_root_cause",
+    "uses_base_uart": false
+  },
+  "status": "not_proven",
+  "proof_state": "not_proven",
+  "software_guard": true,
+  "not_proven": true,
+  "boundary": "software_guard_only_not_real_nav2_path_execution_or_delivery",
+  "readback_sends_commands": false,
+  "sends_commands": false,
+  "sends_motion_commands": false,
+  "sends_base_motion_commands": false,
+  "uses_base_uart": false,
+  "opens_serial": false,
+  "starts_ros2": false,
+  "ros2_runtime_proven": false,
+  "map_artifact_proven": false,
+  "localization_proven": false,
+  "nav2_runtime_proven": false,
+  "elevator_runtime_proven": false,
+  "field_hil_material": false,
+  "safe_to_control": false,
+  "delivery_success": false,
+  "primary_actions_enabled": false,
+  "robot_control_executed": false,
+  "cloud_relay": false,
+  "base_link_to_laser_frame_transform": null,
+  "tf_chain_observed": {
+    "map_to_odom": false,
+    "odom_to_base_link": false,
+    "base_link_to_laser_frame": false,
+    "map_to_base_link": false
+  },
+  "tf_chain_diagnostics": {},
+  "tf_topics_observed": {
+    "/tf": false,
+    "/tf_static": false
+  },
+  "tf_static_observed": false,
+  "tf_frame_inventory": {
+    "command_statuses": {
+      "tf": null,
+      "tf_static": null,
+      "topic_list": null
+    },
+    "dynamic_edges": [],
+    "dynamic_transforms": [],
+    "edges": [],
+    "frames": [],
+    "static_edges": [],
+    "static_transforms": [],
+    "topic_types": {},
+    "transforms": []
+  },
+  "localization_tf_observed": {
+    "map_to_odom": false,
+    "map_to_base_link": false
+  },
+  "amcl_pose": null,
+  "amcl_pose_observed": false,
+  "last_phase": "interrupted",
+  "last_successful_phase": "initialpose",
+  "partial_artifact_preserved": true
+}

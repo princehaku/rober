@@ -3216,9 +3216,25 @@ no /api/base/manual、no NavigateToPose、no WAVE ROVER UART 作为本 sprint �
 wheel feedback、HIL、safe-to-control、delivery 或 Mission Objective 0 已完成。
 
 同日起，Upper API 会把实际外层等待预算通过 `--outer-process-timeout-s` 传给 O10 helper。
-helper 从启动时建立 monotonic deadline，并固定预留 final artifact reserve；直接运行 CLI 且不传
+该 relative 参数只能从 helper 进入 `build_proof()` 时建立 monotonic deadline；直接运行 CLI 且不传
 该参数时仍保持兼容，不额外施加 outer deadline。所有带阶段记录的子命令 timeout 都会收敛到
-`remaining - final_artifact_reserve_s`，因此外层预算进入 reserve 后不会再启动新子进程。
+`remaining - final_artifact_reserve_s`，因此 helper 自身预算进入 reserve 后不会再启动新子进程。
+
+`2026-07-20` current Phase A 暴露了这个 relative 合同的 clock-origin 缺口：Upper API 在外层
+`bash -lc` 的 `Popen/communicate` 处开始 80 秒计时，但 helper 直到 ROS setup source、Python startup
+和 CLI 解析之后才从 80 秒重新起算。现场 parent `elapsed_ms=80395`，而 helper phase history 从
+`start` 到 parent SIGINT 只有约 `76.764s`；约 `3.6s` startup 已被 parent 消费，却没有从 helper 的
+`4s` final reserve 前扣除。因此“只把 `ros2 pkg list` 后移即可稳定自然 final”的假设已被 current
+artifact supersede；本次 timeout 发生在 critical localization/TF 路径，package 尚未执行。
+
+O10 现可向后兼容消费 `--outer-process-deadline-monotonic-s <absolute>`。该值必须由同机 Upper API
+在 `Popen` 前用 `time.monotonic() + process_timeout_s` 计算，并与既有
+`--outer-process-timeout-s` 一起传入；clock domain 是同一 Linux boot 的 `CLOCK_MONOTONIC`，禁止使用
+epoch、`time.time()`、毫秒时间戳或跨主机 deadline。helper 取 parent absolute 与 legacy relative
+deadline 的更早者，不允许新字段扩窗；NaN/Inf 显式坏值按预算已耗尽 fail closed。未传 absolute
+字段的旧调用仍可运行，但 artifact 会写 `deadline_source=helper_relative_timeout_legacy`，不能宣称
+已覆盖 parent startup。Robot Software 完成 producer 透传前，这仍是 consumer-ready 合同，不是
+板端自然 final 已修复的证明。
 
 `ros2 pkg list` 只属于非关键 package inventory，执行顺序必须晚于 localization、TF、lifecycle、
 planner 与 planner-only path 的关键判定。剩余预算足够时，它的 timeout 会 clamp 到
@@ -3228,7 +3244,9 @@ availability 保持为 unknown/null，不能伪装成 installed、missing 或 co
 
 自然收口的 JSON 必须同时满足 `artifact_kind=final`、`last_phase=final`、
 `current_command=null`，并记录 `outer_process_timeout_s`、`final_artifact_reserve_s`、
-`runtime_budget.remaining_s`、`finalization_reason` 与 package batch boundary。blocked/offline 仍是
+`outer_process_deadline_monotonic_s`、`runtime_budget.deadline_source`、
+`runtime_budget.startup_budget_consumed_s`、`runtime_budget.remaining_s`、`finalization_reason` 与
+package batch boundary。blocked/offline 仍是
 合法 final outcome；`SIGINT` partial artifact 和 Upper API timeout fallback 只保留为异常兜底，
 不能作为这一预算合同的通过条件。该离线合同只证明
 `software_proof_o3_o10_offline_runtime_budget_contract_only`，不证明 current ROS graph、定位、

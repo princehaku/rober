@@ -1,0 +1,41 @@
+{
+  "schema_version": "trashbot.o3_o1.phase_a_proof_refresh_transport.v1",
+  "endpoint": "POST /api/nav2/proof/refresh",
+  "authorization_ref": "ceo_20260720_2025_operator_watch_route_clear_physical_limit_v1",
+  "invocation_count": 1,
+  "retry_count": 0,
+  "ssh_curl_exit": 0,
+  "http_status": 200,
+  "json_parse_ok": true,
+  "response_body_capture": "canonical_latest_preserved_in_phase_a_nav2_proof_latest.raw.json; full refresh wrapper observed in client stream but not duplicated",
+  "status": "blocked_with_root_cause",
+  "proof_state": "blocked_with_root_cause",
+  "command_result": {
+    "executed": true,
+    "ok": false,
+    "elapsed_ms": 80395,
+    "process_timeout_s": 80,
+    "error_type": "TimeoutExpired",
+    "partial_artifact_preserved": true,
+    "fallback_artifact_written": true,
+    "helper_cleanup_ok": true
+  },
+  "artifact": {
+    "artifact_kind": "partial",
+    "last_phase": "interrupted",
+    "last_successful_phase": "initialpose",
+    "current_command": null,
+    "initialpose_publish_attempts": 0,
+    "path_generation_attempted": false,
+    "path_generation_succeeded": false,
+    "path_generated": false,
+    "path_point_count": 0,
+    "planner_server_active": false,
+    "controller_server_active": false
+  },
+  "root_causes": [
+    "sigint_before_final_artifact",
+    "helper_process_timeout_after_partial_artifact"
+  ],
+  "physical_motion": false
+}

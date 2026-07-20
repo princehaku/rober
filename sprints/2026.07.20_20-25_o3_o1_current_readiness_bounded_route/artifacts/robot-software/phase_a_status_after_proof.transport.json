@@ -1,0 +1,9 @@
+{
+  "endpoint": "GET /api/status",
+  "started_at": "2026-07-20T12:43:52.598Z",
+  "completed_at": "2026-07-20T12:43:55.257Z",
+  "ssh_curl_exit": 0,
+  "http_status": 200,
+  "json_parse_ok": true,
+  "response_bytes": 190588
+}
