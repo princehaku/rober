@@ -93,6 +93,16 @@
 
 **Key Results**
 
+> 2026-07-21 08-50 O1 wheel-feedback root-cause Epic 收口：O5 约 `85%` 的 production provider/runtime blocker
+> 已消费 `2/2`，O6/O7 各约 `93%` 的路线入口需要未获授权的 service/UART 独占维护窗口，因此本轮选择 O1 约
+> `95%` 的全新 non-motion/offline diagnosis 入口。`sprints/2026.07.21_08-50_o1_wheel_feedback_root_cause/`
+> 已冻结 `pre_start/prd/tech-plan`，但 Product 三次、Hardware 两次派发均在首个业务文件或命令前零产出，收口为
+> `INTEGRATION_CLOSEOUT=BLOCKED_SUBAGENT_RUNTIME_BEFORE_IMPLEMENTATION`。没有诊断模块、测试、CLI artifact、SSH、HTTP、
+> ROS、UART、motion/control/stop/nonzero、service/firmware mutation 或新硬件事实；`current_run_artifact_delta=false`、
+> `external_artifact_delta=false`、`live_control_delta=false`、`user_action_delta=false`、`okr_credit=false`。O1/O5/O6/O7
+> 全部 flat，KR `不归档`，HIL/safe/route/delivery/Mission false。下一轮只在 Hardware/business-worker runtime 恢复后复用
+> 本 sprint `tech-plan.md`，禁止再开规划 wrapper；任何维护或再次运动仍需独立授权。
+>
 > 2026-07-21 05-50 O1 current wheel feedback live HIL Product closeout：
 > `PRODUCT_CLOSEOUT=ACCEPT_REAL_ATTEMPT_HIL_FAIL_CLOSED_FINAL_STOP_PROVEN`。authorization
 > `ceo_20260721_0651_current_wheel_feedback_hil_v8=consumed_no_retry`，Phase0 GO，唯一窗口

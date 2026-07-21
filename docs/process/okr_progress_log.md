@@ -6,6 +6,24 @@
 
 ---
 
+## 2026-07-21 O1 wheel-feedback root-cause planning landed, implementation runtime-blocked flat 收口
+
+`sprints/2026.07.21_08-50_o1_wheel_feedback_root_cause/` 在 O5 production blocker `2/2`、O6/O7 maintenance
+authorization 不足的路由事实下，选择 O1 的 non-motion/offline diagnosis 新入口，并冻结 Epic 的 `pre_start.md`、`prd.md`、
+`tech-plan.md`。计划明确 Hardware 单 owner、vendor source、离线 root-cause CLI/schema、v8 artifact 回归、可选严格只读上位机
+inventory、中文注释比例、测试命令与零 mutation 围栏；v8 exact motion slice 不得复用。
+
+执行未启动：Product planning 三次、Hardware implementation 两次均在首个业务文件或命令之前持续零产出，blocker 为
+`business_subagent_runtime_stalled_before_business_file_or_command_execution_across_product_and_hardware_owners`。没有创建诊断
+模块、单测或 CLI artifact；tech-plan 的 py_compile/unittest/CLI/JSON assertion/comment ratio/SSH inventory 全部 `NOT RUN`。
+本轮 SSH/HTTP/ROS/UART/motion/control/stop/nonzero/service mutation/deploy/firmware mutation/retry 全为 `0`，当前运动授权未
+消费，既有 dirty WIP 未触碰。
+
+Proof boundary=`planning_artifacts_only_subagent_runtime_blocked_no_diagnostic_implementation`。O1 约 `95%`、O5 约 `85%`、
+O6/O7 各约 `93%` 全部 flat；KR `不归档`，HIL/safe/route/delivery/Mission Objective 0 均 false。下一轮仅在
+Hardware/business-worker runtime 恢复后复用现有 `tech-plan.md`，禁止再开规划/review/handoff wrapper；若需要 service/UART/
+firmware mutation 或再次运动，仍需分别取得维护或新的具体 bounded-motion authorization。
+
 ## 2026-07-21 O1 current wheel feedback live HIL real attempt fail-closed flat 收口
 
 `sprints/2026.07.21_05-50_o1_current_wheel_feedback_hil/` 完成 Product acceptance：
