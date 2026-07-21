@@ -1,0 +1,64 @@
+{
+  "schema": "trashbot.pc_workstation.keyboard_post_hold_readback_comparison.v1",
+  "generated_at": "2026-07-21T06:31:04+08:00",
+  "source": "real_in_app_chromium_to_loopback_mock_upper",
+  "loopback_mock_only": true,
+  "baseline": {
+    "source": "sprints/2026.07.21_06-20_o1_browser_keydown_dispatch_latency/artifacts/raw_requests.jsonl",
+    "warm_cycles": 100,
+    "manual": 100,
+    "stop": 100,
+    "support_readbacks_between_warm_manual_cycles": {
+      "total": 4158,
+      "minimum": 27,
+      "p50": 45,
+      "p95": 46,
+      "maximum": 198,
+      "mean": 41.58
+    }
+  },
+  "after": {
+    "source": "artifacts/after_v2b_raw_requests.jsonl",
+    "cold_cycles": 10,
+    "warm_cycles": 100,
+    "manual": 110,
+    "stop": 110,
+    "unique_trace_ids": 110,
+    "duplicate_trace_ids": 0,
+    "manual_stop_ordered_pairing_pass": true,
+    "dropped": 0,
+    "errors": 0,
+    "non_loopback_guard_records": 0,
+    "support_readbacks_between_warm_manual_cycles": {
+      "total": 1024,
+      "minimum": 8,
+      "p50": 8,
+      "p95": 9,
+      "maximum": 140,
+      "mean": 10.24,
+      "distribution": {
+        "8": 90,
+        "9": 5,
+        "10": 2,
+        "49": 1,
+        "50": 1,
+        "140": 1
+      }
+    },
+    "complete_post_hold_readback_batches": {
+      "total": 2,
+      "after_final_cold_cycle": 1,
+      "after_final_warm_cycle": 1,
+      "feedback_post_sequences": [635, 1821],
+      "definition": "POST /api/base/feedback-samples followed by the full summary readback request set"
+    }
+  },
+  "reduction_percent": {
+    "support_total": 75.37277537277538,
+    "support_p50": 82.22222222222223,
+    "support_p95": 80.43478260869566,
+    "support_mean": 75.37277537277537
+  },
+  "interpretation": "Rapid warm cycles preserve one manual and one stop per key press while coalescing the full post-hold readback to one batch after the final warm cycle.",
+  "boundary": "Support HTTP traffic and browser-to-loopback timing only; physical wheel onset, HIL, safe_to_control, route execution and delivery remain unproven."
+}

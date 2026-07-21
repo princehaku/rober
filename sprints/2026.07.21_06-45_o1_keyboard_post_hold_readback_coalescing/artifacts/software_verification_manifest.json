@@ -1,0 +1,55 @@
+{
+  "schema": "trashbot.pc_workstation.keyboard_post_hold_readback_software_verification.v1",
+  "generated_at": "2026-07-21T06:31:04+08:00",
+  "result": "pass",
+  "commands": [
+    {
+      "command": "npm test -- test/App.test.ts -t 'keyboard|manual|stop|watchdog|coalesc|pointer|window loses focus|page is hidden|unmount'",
+      "result": "pass",
+      "test_files": "1 passed",
+      "tests": "46 passed, 209 skipped",
+      "duration_seconds": 10.98
+    },
+    {
+      "command": "npm test",
+      "result": "pass",
+      "test_files": "5 passed",
+      "tests": "539 passed",
+      "duration_seconds": 45.75
+    },
+    {
+      "command": "npm run build",
+      "result": "pass_with_existing_chunk_size_warning",
+      "vite_modules": 34,
+      "vite_build_seconds": 1.82
+    },
+    {
+      "command": "npm run lint",
+      "result": "pass",
+      "duration_seconds": 7.74
+    }
+  ],
+  "deterministic_100_cycle": {
+    "manual": 100,
+    "stop": 100,
+    "feedback_increment_before_idle": 0,
+    "summary_increment_before_idle": 0,
+    "idle_ms": 400,
+    "complete_readback_batches_after_idle": 1,
+    "stale_generation_ui_writes": 0
+  },
+  "initial_failures_and_repairs": [
+    "Two new tests first failed because a compact feedback fixture omitted sample_key_values; replaced it with the full safe 0/0 fixture.",
+    "Three existing tests expected synchronous keyup readbacks; updated them to assert scheduled state and the 400 ms fake-timer boundary."
+  ],
+  "final_sha256": {
+    "pc-tools/workstation/src/components/RobotControlConsolePanel.vue": "4021108833da9d8a24acd84774a3bedd5b08a7e107583e14c27775f7b81bd352",
+    "pc-tools/workstation/test/App.test.ts": "80d76b00a3bcf4ea0b3032387faeeb52163af5c7c2ac599d29fd06358024a81f",
+    "docs/product/pc_free_roam_mapping_design.md": "e306d0ad2b697cade597dbedb0399646c23ead90d4fb92912399bc25d65e58c5"
+  },
+  "incremental_vue_comment_ratio": {
+    "added_lines": 174,
+    "added_chinese_comment_lines": 37,
+    "ratio_percent": 21.26
+  }
+}

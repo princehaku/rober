@@ -120,6 +120,8 @@ type PlainMapWysiwygLayerItem = {
 const KEYBOARD_JOG_INTERVAL_MS = 260;
 const KEYBOARD_JOG_DURATION_MS = 240;
 const KEYBOARD_HOLD_WATCHDOG_MIN_MS = 620;
+// 松开后的轮速与 summary 只读复验等待短暂空闲，快速 tap 只保留最后一批。
+const KEYBOARD_POST_HOLD_READBACK_IDLE_MS = 400;
 const KEYBOARD_VERIFIED_MIN_FORWARDED_PULSES = 2;
 const MANUAL_COMMAND_MODES = ["ros", "speed", "pwm"] as const;
 type ManualCommandMode = typeof MANUAL_COMMAND_MODES[number];
@@ -626,6 +628,11 @@ const keyboardManualMapPointSequence = ref(0);
 const keyboardManualMapPoints = ref<KeyboardManualMapPoint[]>([]);
 const keyboardManualPulsePending = ref(false);
 const keyboardHoldSequence = ref(0);
+// post-hold 状态与 stop 状态分离：前者描述只读复验，后者才描述停车是否成功。
+// 批次数用于自动验收快速 tap 是否真的合并，不能用请求总数间接猜测。
+const keyboardPostHoldReadbackStatus = ref("idle_not_scheduled");
+const keyboardPostHoldReadbackFailure = ref("");
+const keyboardPostHoldReadbackBatchCount = ref(0);
 // 首个 trace 单列 cold，之后按键和 hold refresh 都标为 warm，避免混淆启动开销。
 let keyboardLatencyColdSamplePending = true;
 let previewFrameSampleTimers: number[] = [];
@@ -633,6 +640,11 @@ let mjpegPreviewRetryTimer: number | null = null;
 let keyboardJogTimer: number | null = null;
 let keyboardJogInFlight = false;
 let keyboardStopAfterPulseReason: string | null = null;
+// timer 只代表尚未开始的只读批次；running 生命周期由 generation 管理。
+// disposed 单独存在，是为了阻止卸载后异步 stop 回包重新排队。
+let keyboardPostHoldReadbackTimer: number | null = null;
+let keyboardPostHoldReadbackGeneration = 0;
+let keyboardPostHoldReadbackDisposed = false;
 const keyboardPressedDirections = new Set<ManualDirection>();
 let liveMapRefreshTimer: number | null = null;
 let liveCameraStatusTimer: number | null = null;
@@ -12383,6 +12395,28 @@ const plainKeyboardLiveStatus = computed(() => {
   return plainKeyboardMissingSummary.value || "键盘手控暂未满足。";
 });
 
+const plainKeyboardPostHoldReadbackStatus = computed(() => {
+  // 只读复验单独展示，绝不把 readback failure 混成 stop failure。
+  // 文案始终先确认 stop 的既有结果，再说明后台状态，避免用户误以为车仍在动。
+  // failure 保留恢复入口，但不要求用户重新发送 stop 或重复一次运动。
+  if (keyboardPostHoldReadbackStatus.value.startsWith("scheduled")) {
+    return `停止已收口；空闲 ${KEYBOARD_POST_HOLD_READBACK_IDLE_MS} ms 后合并读取轮速和总览。`;
+  }
+  if (keyboardPostHoldReadbackStatus.value.startsWith("running")) {
+    return "停止已收口；正在后台读取轮速和总览，不阻塞下一次按键。";
+  }
+  if (keyboardPostHoldReadbackStatus.value.startsWith("completed")) {
+    return "停止已收口；后台轮速和总览已合并刷新。";
+  }
+  if (keyboardPostHoldReadbackStatus.value.startsWith("failed")) {
+    return `停止已成功；后台读回失败（${keyboardPostHoldReadbackFailure.value || "unknown"}），可点“复查手控条件”恢复。`;
+  }
+  if (keyboardPostHoldReadbackStatus.value.startsWith("superseded")) {
+    return "新按住已开始；旧的后台只读批次已取消，不影响当前手控。";
+  }
+  return "松开后的轮速和总览会在空闲窗口合并读回。";
+});
+
 const plainKeyboardTelemetrySummary = computed(() => {
   // 现场最常看的五件事压成一行：方向、连续 pulse、轮速、停止收口和当前是否会发运动。
   const values = keyboardLastWheelFeedbackValues.value;
@@ -18855,6 +18889,11 @@ async function refreshPlainKeyboardGate(): Promise<void> {
     return;
   }
   await refreshPlainGoalProgress();
+  if (!error.value && keyboardPostHoldReadbackStatus.value.startsWith("failed")) {
+    // 手动复查成功后清理后台失败提示；它始终不改变上一条 stop 的成功事实。
+    keyboardPostHoldReadbackStatus.value = "recovered_by_manual_recheck";
+    keyboardPostHoldReadbackFailure.value = "";
+  }
   await nextTick();
   focusPlainKeyboardNextTarget();
 }
@@ -19855,16 +19894,18 @@ async function runCameraFirstFrameProbe(): Promise<void> {
   }
 }
 
-async function runBaseFeedbackSamples(options: { refreshAfter?: boolean; allowDuringMapRefresh?: boolean } = {}): Promise<void> {
+async function runBaseFeedbackSamples(options: { refreshAfter?: boolean; allowDuringMapRefresh?: boolean } = {}): Promise<boolean> {
   // 反馈样本采集只走固定 T=130 只读代理，不发送方向、速度或 stop/manual 命令。
   if (!robotApiBaseUrl.value.trim()
     || baseFeedbackSamplesPending.value
     || (!options.allowDuringMapRefresh && mapWysiwygRefreshPending.value)) {
-    return;
+    return false;
   }
   baseFeedbackSamplesPending.value = true;
+  let refreshed = false;
   try {
     baseFeedbackSamplesResult.value = await postRobotControlBaseFeedbackSamples(robotApiBaseUrl.value);
+    refreshed = true;
   } catch (err) {
     baseFeedbackSamplesResult.value = makeBaseFeedbackSamplesFallback(
       err instanceof Error ? err.message : "base_feedback_samples_request_failed",
@@ -19876,6 +19917,7 @@ async function runBaseFeedbackSamples(options: { refreshAfter?: boolean; allowDu
     }
     await focusPlainWheelZeroCheckAfterReadback();
   }
+  return refreshed;
 }
 
 async function focusPlainWheelZeroCheckAfterReadback(): Promise<void> {
@@ -20052,8 +20094,8 @@ async function sendKeyboardManualPulse(clientKeydownPerfMs = performance.now()):
     } else if (keepHoldingAfterPulse) {
       // 不用 setInterval 固定跳拍；上一拍慢了就立刻补下一拍，上一拍快了才按剩余节奏等待。
       scheduleKeyboardJogPulse(Math.max(0, keyboardJogIntervalMs.value - (performance.now() - pulseStartedAt)));
-    } else if (!keepHoldingAfterPulse) {
-      // 按住期间不能被慢 summary 打断；回包里的轮速已足够刷新手控状态，完整读数等松开或失败后再补。
+    } else if (keyboardControlStatus.value.startsWith("blocked_keyboard_pulse_failed")) {
+      // pulse 自身失败仍立即刷新诊断；正常 release 已由 stop 后 idle 合并批次负责，不能每个 tap 再刷一整套。
       await refreshConsole();
     }
   }
@@ -20201,6 +20243,101 @@ function clearKeyboardPressedDirections(): void {
   keyboardPressedDirections.clear();
 }
 
+function cancelKeyboardPostHoldReadback(reason: string): void {
+  // 新 hold、切换地址或卸载都会让旧代次失效；已经发出的 stop 不在这里取消。
+  // generation 先递增，保证即使旧 Promise 在 clearTimeout 同时完成，也会在写 UI 前被挡住。
+  // running 请求无法从 fetch 层安全撤销；这里采用忽略迟到结果，避免共享 AbortSignal 影响其它读回。
+  keyboardPostHoldReadbackGeneration += 1;
+  if (keyboardPostHoldReadbackTimer !== null) {
+    // 浏览器 timer 可以被精确取消；已经进入 fetch 的批次改由 generation 丢弃结果。
+    window.clearTimeout(keyboardPostHoldReadbackTimer);
+    keyboardPostHoldReadbackTimer = null;
+  }
+  if (keyboardPostHoldReadbackStatus.value.startsWith("scheduled") || keyboardPostHoldReadbackStatus.value.startsWith("running")) {
+    keyboardPostHoldReadbackStatus.value = `superseded:${reason}`;
+  }
+  keyboardPostHoldReadbackFailure.value = "";
+}
+
+function keyboardPostHoldReadbackGenerationCurrent(generation: number): boolean {
+  // 异步批次只能写回自己那一代；新按键开始后，旧轮速或 summary 结果不能覆盖当前 hold 状态。
+  // heldDirection 作为第二道门，防止未来调用方漏掉显式 cancel 时仍写入运动中的界面。
+  return !keyboardPostHoldReadbackDisposed
+    && generation === keyboardPostHoldReadbackGeneration
+    && keyboardHeldDirection.value === null;
+}
+
+async function runKeyboardPostHoldReadbackBatch(generation: number): Promise<void> {
+  // timer 只负责进入批次；进入后立即清空句柄，后续 stop 才能独立安排下一代。
+  keyboardPostHoldReadbackTimer = null;
+  if (!keyboardPostHoldReadbackGenerationCurrent(generation)) {
+    return;
+  }
+  // 其它只读轮速请求尚未结束时继续等空闲，不能并发复制同一整批 readback。
+  // 这里不等待已有 Promise，因为它没有归属 generation；重新排队可保持状态机边界清楚。
+  if (baseFeedbackSamplesPending.value) {
+    // 已有轮速采样不计入本轮批次，避免把别的 UI 操作误记为 post-hold 验收。
+    keyboardPostHoldReadbackStatus.value = `scheduled_waiting_existing:${generation}`;
+    keyboardPostHoldReadbackTimer = window.setTimeout(() => {
+      void runKeyboardPostHoldReadbackBatch(generation);
+    }, KEYBOARD_POST_HOLD_READBACK_IDLE_MS);
+    return;
+  }
+  keyboardPostHoldReadbackStatus.value = `running:${generation}`;
+  // 计数在真正进入网络批次时增加，scheduled/superseded 不应被算成一次完整复验。
+  keyboardPostHoldReadbackBatchCount.value += 1;
+  try {
+    // 先读轮速再读 summary，保持原产品合同的顺序；两者仍然都是纯只读端点。
+    const feedbackRefreshed = await runBaseFeedbackSamples({ refreshAfter: false, allowDuringMapRefresh: true });
+    // 每个 await 后都复核 generation，避免慢回包跨过一次新的 keydown。
+    if (!keyboardPostHoldReadbackGenerationCurrent(generation)) {
+      return;
+    }
+    if (!feedbackRefreshed) {
+      // 没有发出请求也视为本批失败，防止随后 summary 成功掩盖轮速证据缺口。
+      throw new Error("keyboard_post_hold_feedback_readback_failed");
+    }
+    const summaryRefreshed = await refreshConsole();
+    // summary 返回后再次复核，旧批次不得把新批次的 scheduled/running 改成 completed。
+    if (!keyboardPostHoldReadbackGenerationCurrent(generation)) {
+      return;
+    }
+    if (!summaryRefreshed) {
+      // summary 是 post_hold_summary_refresh_required 的第二半，缺失时必须保留独立失败状态。
+      throw new Error("keyboard_post_hold_summary_refresh_failed");
+    }
+    keyboardPostHoldReadbackStatus.value = `completed:${generation}`;
+    keyboardPostHoldReadbackFailure.value = "";
+  } catch (error) {
+    if (!keyboardPostHoldReadbackGenerationCurrent(generation)) {
+      return;
+    }
+    // 后台复验失败只记录结构化状态；成功 stop 的 stop_sent 状态必须保持不变。
+    keyboardPostHoldReadbackFailure.value = error instanceof Error ? error.message : "keyboard_post_hold_readback_failed";
+    keyboardPostHoldReadbackStatus.value = `failed:${generation}`;
+  }
+}
+
+function scheduleKeyboardPostHoldReadback(): void {
+  // 每次成功 stop 都把 idle 窗口推后；100 个快速 release 最终只执行最后一批完整读回。
+  // disposed 门确保卸载期间迟到的 stop 回包不会重新创建 timer。
+  if (keyboardPostHoldReadbackDisposed) {
+    return;
+  }
+  if (keyboardPostHoldReadbackTimer !== null) {
+    // 快速 tap 的每个 stop 只重置窗口，不提前发起 support 请求。
+    window.clearTimeout(keyboardPostHoldReadbackTimer);
+  }
+  const generation = keyboardPostHoldReadbackGeneration + 1;
+  // 每次成功 stop 都拥有新代次；这也让 DOM 可以明确展示当前 scheduled 属于哪一轮。
+  keyboardPostHoldReadbackGeneration = generation;
+  keyboardPostHoldReadbackStatus.value = `scheduled:${generation}`;
+  keyboardPostHoldReadbackFailure.value = "";
+  keyboardPostHoldReadbackTimer = window.setTimeout(() => {
+    void runKeyboardPostHoldReadbackBatch(generation);
+  }, KEYBOARD_POST_HOLD_READBACK_IDLE_MS);
+}
+
 function stopKeyboardControl(reason: string): void {
   // 只有真实进入过按住态才发送 stop；普通误按 blocked 时不制造额外请求。
   const shouldSendStop = keyboardHeldDirection.value !== null || keyboardJogTimer !== null;
@@ -20218,12 +20355,6 @@ function stopKeyboardControl(reason: string): void {
   } else if (shouldSendStop) {
     keyboardControlStatus.value = "blocked_keyboard_stop_failed:stop_unavailable";
   }
-}
-
-async function refreshKeyboardPostHoldReadbacks(): Promise<void> {
-  // 键盘松开后的验收必须读一次固定轮速样本，再刷新 summary；这只是只读复验，不会再发 manual 或 stop。
-  await runBaseFeedbackSamples({ refreshAfter: false, allowDuringMapRefresh: true });
-  await refreshConsole();
 }
 
 async function sendKeyboardReleaseStop(reason: string): Promise<void> {
@@ -20247,7 +20378,9 @@ async function sendKeyboardReleaseStop(reason: string): Promise<void> {
     keyboardHoldPulseCount.value = 0;
   }
   if (stopForwarded) {
-    await refreshKeyboardPostHoldReadbacks();
+    // stop 回包一到就保持 stop_sent；完整轮速/summary 复验改为空闲合并，不再阻塞下一次 keydown。
+    // 调度函数不返回 Promise，调用方不会因为慢 readback 延后下一轮 manual 或安全 stop。
+    scheduleKeyboardPostHoldReadback();
   }
   if (stopForwarded && mapRuntimeStarted.value && robotApiBaseUrl.value.trim()) {
     void refreshMapPreview({ countForFreeRoamSession: true });
@@ -20273,6 +20406,11 @@ function startKeyboardControl(direction: KeyboardMotionDirection, clientKeydownP
     return;
   }
   const startNewHold = keyboardHeldDirection.value === null && keyboardJogTimer === null;
+  if (startNewHold) {
+    // 新 hold 优先于旧只读复验；已发 stop 不受影响，尚未执行的 timer 立即取消。
+    // 取消发生在写 heldDirection 前，generation 门与 heldDirection 门都能拦截旧结果。
+    cancelKeyboardPostHoldReadback("new_hold_started");
+  }
   keyboardHeldDirection.value = direction;
   if (startNewHold) {
     keyboardHoldPulseCount.value = 0;
@@ -20595,6 +20733,7 @@ watch(robotApiBaseUrl, async (nextValue, previousValue) => {
   if (nextValue.trim() === previousValue.trim()) {
     return;
   }
+  cancelKeyboardPostHoldReadback("base_url_changed");
   previewAutoConnectSuppressed.value = false;
   resetCameraAutoUsbRecoveryState();
   clearMjpegPreviewRetryTimer();
@@ -20657,7 +20796,13 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
-  // 卸载时先退出键盘循环，再释放视频资源；远端 cleanup 尽量执行但不能阻塞组件销毁。
+  // 卸载仍先走固定 stop；随后只取消纯只读 timer，已经发出的 stop 不会被撤回。
+  // 必须在 disposed 前发 stop，否则 sendKeyboardReleaseStop 会正确拒绝安排只读批次，但 stop 本身仍需发出。
+  if (keyboardHeldDirection.value !== null || keyboardJogTimer !== null || keyboardJogInFlight) {
+    stopKeyboardControl("component_unmounted");
+  }
+  keyboardPostHoldReadbackDisposed = true;
+  cancelKeyboardPostHoldReadback("component_unmounted");
   clearKeyboardControlOwner();
   clearKeyboardPressedDirections();
   clearKeyboardJogTimer();
@@ -26900,6 +27045,11 @@ onBeforeUnmount(() => {
             :data-keyboard-summary-endpoint="plainLiveClosureSummary?.keyboard_summary_endpoint ?? plainKeyboardDirectionButtonEvidence.fixedSummaryEndpoint"
             :data-keyboard-readback-endpoints="plainLiveKeyboardControlReadback.readbackEndpoints.join(',')"
             :data-keyboard-smooth-hold-refresh-paused="String(keyboardSmoothHoldRefreshPaused)"
+            data-post-hold-readback-mode="idle_debounced_coalesced"
+            :data-post-hold-readback-idle-ms="String(KEYBOARD_POST_HOLD_READBACK_IDLE_MS)"
+            :data-post-hold-readback-status="keyboardPostHoldReadbackStatus"
+            :data-post-hold-readback-batch-count="String(keyboardPostHoldReadbackBatchCount)"
+            :data-post-hold-readback-failure="keyboardPostHoldReadbackFailure || 'none'"
             data-keyboard-event-scope="page_non_editable"
             data-keyboard-auto-arm-on-load="true"
             data-keyboard-click-to-arm-required="false"
@@ -27045,6 +27195,18 @@ onBeforeUnmount(() => {
               {{ plainKeyboardContinuousProofSummary.text }}
             </p>
             <p class="panel-note" data-testid="keyboard-live-status">{{ plainKeyboardLiveStatus }}</p>
+            <p
+              class="panel-note"
+              data-testid="keyboard-post-hold-readback-status"
+              data-readback-only="true"
+              data-stop-result-independent="true"
+              :data-state="keyboardPostHoldReadbackStatus"
+              :data-idle-ms="String(KEYBOARD_POST_HOLD_READBACK_IDLE_MS)"
+              :data-batch-count="String(keyboardPostHoldReadbackBatchCount)"
+              :data-failure="keyboardPostHoldReadbackFailure || 'none'"
+            >
+              {{ plainKeyboardPostHoldReadbackStatus }}
+            </p>
             <p
               v-if="plainKeyboardWheelFeedbackSummary"
               class="panel-note"

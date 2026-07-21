@@ -1320,3 +1320,22 @@ bridge 保持 `command_transport` 默认和现场 HTTP `/js` 路径不变，不�
 HTTP transport 在 bridge 单 owner 锁内复用连接；失败的当前 nonzero 绝不自动重发，只让后续独立请求重建连接，
 因此 stop 与 motion 的调用顺序不被连接优化改写。软件 timing/transport return 仍不等于物理轮子 onset；本轮没有
 新的真实控制授权，物理按键到轮动延迟仍需外部视频、编码器或可信同窗 observer 后续测量。
+
+### 松开后的只读复验合并
+
+2026-07-21 06:45 CST 起，成功的键盘 release stop 仍由固定 stop 代理立即发送并等待回包；一旦 stop 成功，界面
+立即保持 `stop_sent:*`，不再同步等待轮速样本与全量 summary。轮速和 summary 改为 stop 后空闲 `400 ms` 的
+单批只读复验：连续快速 tap 会不断推后窗口，只执行最后一批；新 keydown、Robot API 地址变化或组件卸载会让旧
+generation 失效，已经开始但迟到的旧批次不得覆盖新 hold 状态。正在运行的只读请求也不占用 manual/stop 发送链路。
+
+blur、page hidden、pointer cancel/leave 与组件卸载仍保持“先 stop”边界；卸载只取消尚未执行的只读 timer，不撤销
+已经发出的 stop。后台轮速或 summary 失败通过 `data-post-hold-readback-status/failure` 和普通页独立提示展示，不能
+把成功 stop 改写成停止失败；“复查手控条件”成功后可以清理该只读失败。DOM 同时暴露
+`data-post-hold-readback-mode=idle_debounced_coalesced`、`data-post-hold-readback-idle-ms=400`、批次数和 generation
+状态，供自动验收读取。`post_hold_summary_refresh_required=true` 的产品合同不变；变化只在执行时机和合并策略。
+
+隔离 in-app Chromium 验收采用 10 个 reload-level cold 加同页 100 个 warm rapid tap：manual/stop 均为 110，
+trace 110 个且全部唯一，顺序配对和 non-loopback guard 均通过。warm 100 轮相邻 manual 区间内的 support readback
+由改动前总计 `4158`、p50 `45`、p95 `46` 降至总计 `1024`、p50 `8`、p95 `9`；cold 最后一轮和 warm
+最后一轮各在空闲后完成一批完整读回。warm `keydown -> loopback mock ingress` p50/p95 为 `2.100/2.600 ms`。
+这些数字只证明浏览器到本机 mock 的软件路径和读回降噪，不是现场 Wi-Fi、UART、电机驱动或物理轮子起转延迟。

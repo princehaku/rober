@@ -1,0 +1,1181 @@
+{
+  "schema": "trashbot.o1.browser_keydown_dispatch_latency.summary.v1",
+  "generated_at": "2026-07-20T22:26:54.603Z",
+  "source": "real_in_app_chromium_to_loopback_mock_upper",
+  "loopback_mock_only": true,
+  "counts": {
+    "raw_records": 2262,
+    "manual": 110,
+    "stop": 110,
+    "support_readback": 2042,
+    "cold": 11,
+    "warm": 99,
+    "unique_trace_ids": 110,
+    "duplicate_trace_ids": 0,
+    "parse_errors": 0,
+    "guard_records": 2262,
+    "manual_forward_guard_records": 110,
+    "non_loopback_guard_records": 0
+  },
+  "browser_to_mock_wall_envelope": {
+    "cold": {
+      "count": 11,
+      "p50_ms": 2.699951171875,
+      "p95_ms": 4,
+      "max_ms": 4
+    },
+    "warm": {
+      "count": 99,
+      "p50_ms": 2.199951171875,
+      "p95_ms": 2.800048828125,
+      "max_ms": 4.89990234375
+    },
+    "clock_boundary": "browser performance.timeOrigin+performance.now versus mock Date.now on the same Mac",
+    "uncertainty": "Includes browser event handling, request construction, fetch scheduling, Vite proxy, PC validation/forwarding, loopback transport, and wall-clock alignment uncertainty; it is not physical wheel latency."
+  },
+  "mock_ingress_to_body_parsed": {
+    "cold": {
+      "count": 11,
+      "p50_ms": 0.098583,
+      "p95_ms": 0.19075,
+      "max_ms": 0.19075
+    },
+    "warm": {
+      "count": 99,
+      "p50_ms": 0.081667,
+      "p95_ms": 0.110625,
+      "max_ms": 0.160917
+    }
+  },
+  "pc_fetch_guard_to_mock_ingress_wall_envelope": {
+    "cold": {
+      "count": 11,
+      "p50_ms": 0,
+      "p95_ms": 1,
+      "max_ms": 1
+    },
+    "warm": {
+      "count": 99,
+      "p50_ms": 0,
+      "p95_ms": 1,
+      "max_ms": 1
+    },
+    "clock_boundary": "PC guard Date.now versus mock Upper Date.now on the same Mac"
+  },
+  "threshold": {
+    "warm_p50_target_ms": 10,
+    "warm_p95_target_ms": 20,
+    "warm_p50_pass": true,
+    "warm_p95_pass": true
+  },
+  "integrity": {
+    "trace_unique": true,
+    "all_manual_have_trace": true,
+    "manual_stop_ordered_pairing_pass": true,
+    "manual_stop_pairing_note": "Each keydown cycle is paired when manual_i < stop_i < manual_i+1; stop intentionally has no latency trace envelope.",
+    "dropped": 0,
+    "errors": []
+  },
+  "samples": [
+    {
+      "sequence": 307,
+      "trace_id": "98a39677-44da-4a99-8621-60700507b23b",
+      "sample_kind": "cold",
+      "hold_session_id": "keyboard-owner-1784586356448-6a851910af1c6",
+      "hold_sequence": 1,
+      "browser_to_mock_wall_envelope_ms": 4,
+      "mock_ingress_to_body_parsed_ms": 0.154666,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 1
+    },
+    {
+      "sequence": 357,
+      "trace_id": "307c6dec-e324-48e1-bc6c-ce0dc4082bd6",
+      "sample_kind": "cold",
+      "hold_session_id": "keyboard-owner-1784586356863-8f43a7f6c9d47",
+      "hold_sequence": 1,
+      "browser_to_mock_wall_envelope_ms": 2.800048828125,
+      "mock_ingress_to_body_parsed_ms": 0.127542,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 1
+    },
+    {
+      "sequence": 407,
+      "trace_id": "e9c724a5-7c12-4211-8fa2-2f1fe51477c2",
+      "sample_kind": "cold",
+      "hold_session_id": "keyboard-owner-1784586357267-394d4b10cf487",
+      "hold_sequence": 1,
+      "browser_to_mock_wall_envelope_ms": 2.300048828125,
+      "mock_ingress_to_body_parsed_ms": 0.098583,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 459,
+      "trace_id": "583d6bd1-52d8-4786-8b60-38916812c9e3",
+      "sample_kind": "cold",
+      "hold_session_id": "keyboard-owner-1784586357686-3543fdeba55a",
+      "hold_sequence": 1,
+      "browser_to_mock_wall_envelope_ms": 2.300048828125,
+      "mock_ingress_to_body_parsed_ms": 0.19075,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 510,
+      "trace_id": "cb4784e3-e228-4d79-bae9-65a82fc8d3ec",
+      "sample_kind": "cold",
+      "hold_session_id": "keyboard-owner-1784586358072-d91fdfd924ce4",
+      "hold_sequence": 1,
+      "browser_to_mock_wall_envelope_ms": 2.7001953125,
+      "mock_ingress_to_body_parsed_ms": 0.095,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 1
+    },
+    {
+      "sequence": 561,
+      "trace_id": "2be8e380-981d-4ec1-8497-a221b8fef3b7",
+      "sample_kind": "cold",
+      "hold_session_id": "keyboard-owner-1784586358475-b70f1be527b78",
+      "hold_sequence": 1,
+      "browser_to_mock_wall_envelope_ms": 2.800048828125,
+      "mock_ingress_to_body_parsed_ms": 0.087708,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 1
+    },
+    {
+      "sequence": 612,
+      "trace_id": "d35de846-c53e-4fdf-9ebb-b7ebaab006f7",
+      "sample_kind": "cold",
+      "hold_session_id": "keyboard-owner-1784586358875-7fcd0a576b007",
+      "hold_sequence": 1,
+      "browser_to_mock_wall_envelope_ms": 2.699951171875,
+      "mock_ingress_to_body_parsed_ms": 0.125042,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 1
+    },
+    {
+      "sequence": 664,
+      "trace_id": "1f3731f6-1588-44aa-a094-a919885624ed",
+      "sample_kind": "cold",
+      "hold_session_id": "keyboard-owner-1784586359273-412d1217b51468",
+      "hold_sequence": 1,
+      "browser_to_mock_wall_envelope_ms": 1.699951171875,
+      "mock_ingress_to_body_parsed_ms": 0.093042,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 716,
+      "trace_id": "01307ca0-c583-45e3-ad84-295de8cb88a5",
+      "sample_kind": "cold",
+      "hold_session_id": "keyboard-owner-1784586359680-8c7752d1659c68",
+      "hold_sequence": 1,
+      "browser_to_mock_wall_envelope_ms": 2.60009765625,
+      "mock_ingress_to_body_parsed_ms": 0.114792,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 768,
+      "trace_id": "728cfbc4-2704-491a-afc2-ce8b15b51f4f",
+      "sample_kind": "cold",
+      "hold_session_id": "keyboard-owner-1784586360085-f47a4d721f90f8",
+      "hold_sequence": 1,
+      "browser_to_mock_wall_envelope_ms": 2.39990234375,
+      "mock_ingress_to_body_parsed_ms": 0.092583,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 955,
+      "trace_id": "96c0053a-8b04-45bb-9092-cb69c0048d7a",
+      "sample_kind": "cold",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 1,
+      "browser_to_mock_wall_envelope_ms": 2.800048828125,
+      "mock_ingress_to_body_parsed_ms": 0.089667,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 966,
+      "trace_id": "8e10fda0-acb8-4a28-8afc-a858c3cf12ab",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 2,
+      "browser_to_mock_wall_envelope_ms": 2.699951171875,
+      "mock_ingress_to_body_parsed_ms": 0.075917,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 1
+    },
+    {
+      "sequence": 976,
+      "trace_id": "dbe7913b-6760-4a2e-8427-511c7bce367f",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 3,
+      "browser_to_mock_wall_envelope_ms": 2.5,
+      "mock_ingress_to_body_parsed_ms": 0.088125,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 1
+    },
+    {
+      "sequence": 986,
+      "trace_id": "95463c46-7321-4989-aa07-9ec8ff017943",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 4,
+      "browser_to_mock_wall_envelope_ms": 2.39990234375,
+      "mock_ingress_to_body_parsed_ms": 0.100792,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 1
+    },
+    {
+      "sequence": 996,
+      "trace_id": "20c53968-8897-482c-802c-03bb4c809ccf",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 5,
+      "browser_to_mock_wall_envelope_ms": 1.800048828125,
+      "mock_ingress_to_body_parsed_ms": 0.110625,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 1006,
+      "trace_id": "a4230380-e62f-44d1-8642-a32284335a2c",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 6,
+      "browser_to_mock_wall_envelope_ms": 2.699951171875,
+      "mock_ingress_to_body_parsed_ms": 0.080958,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 1
+    },
+    {
+      "sequence": 1016,
+      "trace_id": "82880852-fe00-4faf-9ccb-c888d8796bfb",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 7,
+      "browser_to_mock_wall_envelope_ms": 1.89990234375,
+      "mock_ingress_to_body_parsed_ms": 0.081083,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 1026,
+      "trace_id": "5542aaa6-8e7c-4b23-ac70-45164add32d3",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 8,
+      "browser_to_mock_wall_envelope_ms": 2,
+      "mock_ingress_to_body_parsed_ms": 0.081708,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 1036,
+      "trace_id": "634e36a3-77aa-47de-81da-10eda5a58f3e",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 9,
+      "browser_to_mock_wall_envelope_ms": 2.800048828125,
+      "mock_ingress_to_body_parsed_ms": 0.079208,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 1
+    },
+    {
+      "sequence": 1046,
+      "trace_id": "db6dcb13-2e1e-4976-bda1-9772506160cb",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 10,
+      "browser_to_mock_wall_envelope_ms": 2,
+      "mock_ingress_to_body_parsed_ms": 0.085042,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 1056,
+      "trace_id": "5b27b0d5-8a80-4de2-a943-a590d265ae26",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 11,
+      "browser_to_mock_wall_envelope_ms": 2.5,
+      "mock_ingress_to_body_parsed_ms": 0.079916,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 1
+    },
+    {
+      "sequence": 1066,
+      "trace_id": "be9757e5-c8f7-424c-af05-b1b0e85f9d0f",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 12,
+      "browser_to_mock_wall_envelope_ms": 2,
+      "mock_ingress_to_body_parsed_ms": 0.078792,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 1076,
+      "trace_id": "807e448a-a807-42ee-8187-b62f86f6a6cf",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 13,
+      "browser_to_mock_wall_envelope_ms": 2.800048828125,
+      "mock_ingress_to_body_parsed_ms": 0.082041,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 1
+    },
+    {
+      "sequence": 1086,
+      "trace_id": "85164436-79c2-4bf6-aef2-42aa44f33ba2",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 14,
+      "browser_to_mock_wall_envelope_ms": 2.10009765625,
+      "mock_ingress_to_body_parsed_ms": 0.087292,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 1096,
+      "trace_id": "ed605842-04d7-45d2-94b8-aa4e1552ffc8",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 15,
+      "browser_to_mock_wall_envelope_ms": 2,
+      "mock_ingress_to_body_parsed_ms": 0.079833,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 1106,
+      "trace_id": "cd4d0f97-cd18-40e8-a558-3b960a6eb9c4",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 16,
+      "browser_to_mock_wall_envelope_ms": 2.60009765625,
+      "mock_ingress_to_body_parsed_ms": 0.0925,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 1
+    },
+    {
+      "sequence": 1116,
+      "trace_id": "fe803e3d-6f25-4e2a-b62a-c36cc1e379f1",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 17,
+      "browser_to_mock_wall_envelope_ms": 2,
+      "mock_ingress_to_body_parsed_ms": 0.100209,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 1126,
+      "trace_id": "741d0f33-fee7-406e-b4ce-ba0fe931b729",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 18,
+      "browser_to_mock_wall_envelope_ms": 2,
+      "mock_ingress_to_body_parsed_ms": 0.082625,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 1136,
+      "trace_id": "21891fd5-93c6-4517-a48a-09a672f56f27",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 19,
+      "browser_to_mock_wall_envelope_ms": 2.5,
+      "mock_ingress_to_body_parsed_ms": 0.079084,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 1
+    },
+    {
+      "sequence": 1146,
+      "trace_id": "b42ae152-32ec-4848-9032-f7c60c053f68",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 20,
+      "browser_to_mock_wall_envelope_ms": 2.199951171875,
+      "mock_ingress_to_body_parsed_ms": 0.077834,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 1
+    },
+    {
+      "sequence": 1156,
+      "trace_id": "1ae83339-1fbe-47b0-9dc5-aea239d1d887",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 21,
+      "browser_to_mock_wall_envelope_ms": 1.800048828125,
+      "mock_ingress_to_body_parsed_ms": 0.085875,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 1166,
+      "trace_id": "4c537143-b68b-45b3-86bd-f8ea447766f1",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 22,
+      "browser_to_mock_wall_envelope_ms": 2.5,
+      "mock_ingress_to_body_parsed_ms": 0.095,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 1
+    },
+    {
+      "sequence": 1176,
+      "trace_id": "07a16dd6-27b8-4fec-913b-d69ef049009d",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 23,
+      "browser_to_mock_wall_envelope_ms": 2.5,
+      "mock_ingress_to_body_parsed_ms": 0.079833,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 1
+    },
+    {
+      "sequence": 1206,
+      "trace_id": "81b06400-282b-412f-b8a3-ae9be787020b",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 24,
+      "browser_to_mock_wall_envelope_ms": 2.199951171875,
+      "mock_ingress_to_body_parsed_ms": 0.123834,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 1239,
+      "trace_id": "daa99de2-67bd-4eb8-b553-30c92b0ecc24",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 25,
+      "browser_to_mock_wall_envelope_ms": 2.39990234375,
+      "mock_ingress_to_body_parsed_ms": 0.078625,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 1
+    },
+    {
+      "sequence": 1249,
+      "trace_id": "12d1ae4e-a9bf-48f4-8f59-c2899929df25",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 26,
+      "browser_to_mock_wall_envelope_ms": 2,
+      "mock_ingress_to_body_parsed_ms": 0.084583,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 1259,
+      "trace_id": "b71aafe3-8fcc-42c1-9585-57fc16fb943b",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 27,
+      "browser_to_mock_wall_envelope_ms": 2.60009765625,
+      "mock_ingress_to_body_parsed_ms": 0.097583,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 1
+    },
+    {
+      "sequence": 1269,
+      "trace_id": "03e1cc61-8e08-4df5-818a-9a9aa7d842b1",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 28,
+      "browser_to_mock_wall_envelope_ms": 2.5,
+      "mock_ingress_to_body_parsed_ms": 0.083541,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 1
+    },
+    {
+      "sequence": 1279,
+      "trace_id": "49062477-ee89-426e-a8fd-023164d8452d",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 29,
+      "browser_to_mock_wall_envelope_ms": 1.89990234375,
+      "mock_ingress_to_body_parsed_ms": 0.091,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 1289,
+      "trace_id": "e704381f-93a3-4361-b8ce-6d51d9ac96a8",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 30,
+      "browser_to_mock_wall_envelope_ms": 1.699951171875,
+      "mock_ingress_to_body_parsed_ms": 0.079167,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 1299,
+      "trace_id": "009fddff-4905-4a66-997f-6a42889d44f7",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 31,
+      "browser_to_mock_wall_envelope_ms": 2.60009765625,
+      "mock_ingress_to_body_parsed_ms": 0.083833,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 1
+    },
+    {
+      "sequence": 1309,
+      "trace_id": "1862e08c-5152-4f51-8251-4086733ccaae",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 32,
+      "browser_to_mock_wall_envelope_ms": 2.199951171875,
+      "mock_ingress_to_body_parsed_ms": 0.098666,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 1319,
+      "trace_id": "254054f1-51e3-42de-a4f2-f21de4c1c706",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 33,
+      "browser_to_mock_wall_envelope_ms": 2.199951171875,
+      "mock_ingress_to_body_parsed_ms": 0.077625,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 1329,
+      "trace_id": "e41bdeab-03e4-4ea5-9ab8-c29bde8f31cc",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 34,
+      "browser_to_mock_wall_envelope_ms": 2,
+      "mock_ingress_to_body_parsed_ms": 0.084041,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 1339,
+      "trace_id": "b6637f99-e69f-4333-a271-dc8c59cae838",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 35,
+      "browser_to_mock_wall_envelope_ms": 2.300048828125,
+      "mock_ingress_to_body_parsed_ms": 0.080875,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 1
+    },
+    {
+      "sequence": 1349,
+      "trace_id": "a9e6ff97-b01c-4cf2-be7b-09a10e12e0e9",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 36,
+      "browser_to_mock_wall_envelope_ms": 1.89990234375,
+      "mock_ingress_to_body_parsed_ms": 0.0805,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 1359,
+      "trace_id": "227310d8-48e6-4380-bc25-2b0bab1ccdda",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 37,
+      "browser_to_mock_wall_envelope_ms": 2,
+      "mock_ingress_to_body_parsed_ms": 0.078084,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 1369,
+      "trace_id": "a2c6710b-65e9-4077-8e0f-58c3491c94d9",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 38,
+      "browser_to_mock_wall_envelope_ms": 2.800048828125,
+      "mock_ingress_to_body_parsed_ms": 0.090792,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 1
+    },
+    {
+      "sequence": 1379,
+      "trace_id": "879aed04-f944-4007-b9cb-0c6ec08627b7",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 39,
+      "browser_to_mock_wall_envelope_ms": 1.89990234375,
+      "mock_ingress_to_body_parsed_ms": 0.080958,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 1389,
+      "trace_id": "c6ac7835-076b-4535-8993-b06f07479ccb",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 40,
+      "browser_to_mock_wall_envelope_ms": 2.199951171875,
+      "mock_ingress_to_body_parsed_ms": 0.091792,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 1
+    },
+    {
+      "sequence": 1399,
+      "trace_id": "66c5433a-be8e-476e-8fd8-f06bd4710e80",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 41,
+      "browser_to_mock_wall_envelope_ms": 1.89990234375,
+      "mock_ingress_to_body_parsed_ms": 0.080417,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 1409,
+      "trace_id": "f1966909-f78f-4fb9-b145-4c72b49bd003",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 42,
+      "browser_to_mock_wall_envelope_ms": 1.800048828125,
+      "mock_ingress_to_body_parsed_ms": 0.092792,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 1419,
+      "trace_id": "0f24bf07-4f83-4a4c-9c75-e92ea38ba705",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 43,
+      "browser_to_mock_wall_envelope_ms": 2.89990234375,
+      "mock_ingress_to_body_parsed_ms": 0.090667,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 1
+    },
+    {
+      "sequence": 1429,
+      "trace_id": "1a4a034c-8d1f-43dc-aac3-5365ca4c8278",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 44,
+      "browser_to_mock_wall_envelope_ms": 2,
+      "mock_ingress_to_body_parsed_ms": 0.102708,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 1439,
+      "trace_id": "25983fd8-8108-46e2-af4b-b9756e9805da",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 45,
+      "browser_to_mock_wall_envelope_ms": 2.199951171875,
+      "mock_ingress_to_body_parsed_ms": 0.115583,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 1
+    },
+    {
+      "sequence": 1449,
+      "trace_id": "a02e24a3-2a93-4719-938f-a7bc1fcf2bf7",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 46,
+      "browser_to_mock_wall_envelope_ms": 2,
+      "mock_ingress_to_body_parsed_ms": 0.078875,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 1459,
+      "trace_id": "f13ff7b1-cd59-4411-a142-045a29c58e90",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 47,
+      "browser_to_mock_wall_envelope_ms": 2,
+      "mock_ingress_to_body_parsed_ms": 0.078792,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 1469,
+      "trace_id": "0f802efd-b1f1-462e-9453-a7fbf6c77895",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 48,
+      "browser_to_mock_wall_envelope_ms": 2.60009765625,
+      "mock_ingress_to_body_parsed_ms": 0.078667,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 1
+    },
+    {
+      "sequence": 1479,
+      "trace_id": "ba8b6c87-1476-48c3-af02-fe52c19b4ede",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 49,
+      "browser_to_mock_wall_envelope_ms": 1.89990234375,
+      "mock_ingress_to_body_parsed_ms": 0.0795,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 1489,
+      "trace_id": "985bfc5c-234b-4070-a0e6-167f82348e0b",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 50,
+      "browser_to_mock_wall_envelope_ms": 1.89990234375,
+      "mock_ingress_to_body_parsed_ms": 0.096041,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 1499,
+      "trace_id": "d5a7fc90-e0a3-4af1-aa65-f1c59c4fc5c6",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 51,
+      "browser_to_mock_wall_envelope_ms": 1.60009765625,
+      "mock_ingress_to_body_parsed_ms": 0.081292,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 1509,
+      "trace_id": "a8f4c77f-c5eb-44f9-b1a9-9f3ca761921b",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 52,
+      "browser_to_mock_wall_envelope_ms": 2.60009765625,
+      "mock_ingress_to_body_parsed_ms": 0.106375,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 1
+    },
+    {
+      "sequence": 1520,
+      "trace_id": "50a08415-ac8e-4a41-af56-ae4dad2cbe3b",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 53,
+      "browser_to_mock_wall_envelope_ms": 2.10009765625,
+      "mock_ingress_to_body_parsed_ms": 0.081167,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 1530,
+      "trace_id": "83909bac-ab16-4543-a38a-132ff792c41f",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 54,
+      "browser_to_mock_wall_envelope_ms": 2.300048828125,
+      "mock_ingress_to_body_parsed_ms": 0.080666,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 1
+    },
+    {
+      "sequence": 1540,
+      "trace_id": "89b55fd4-6210-45bf-85f0-4e0142cda887",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 55,
+      "browser_to_mock_wall_envelope_ms": 2.300048828125,
+      "mock_ingress_to_body_parsed_ms": 0.095125,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 1550,
+      "trace_id": "c2d129b1-5ab9-41a1-8f3f-ee470eb53cae",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 56,
+      "browser_to_mock_wall_envelope_ms": 2,
+      "mock_ingress_to_body_parsed_ms": 0.080375,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 1560,
+      "trace_id": "cc1bdd38-2370-4875-bb8d-cff83fc68938",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 57,
+      "browser_to_mock_wall_envelope_ms": 2.699951171875,
+      "mock_ingress_to_body_parsed_ms": 0.083833,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 1
+    },
+    {
+      "sequence": 1570,
+      "trace_id": "1b2a8918-4c87-4079-834b-683ce0d55a49",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 58,
+      "browser_to_mock_wall_envelope_ms": 2,
+      "mock_ingress_to_body_parsed_ms": 0.085125,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 1580,
+      "trace_id": "066c5ee8-de99-4ab3-aa38-0149e54d7833",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 59,
+      "browser_to_mock_wall_envelope_ms": 3,
+      "mock_ingress_to_body_parsed_ms": 0.081292,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 1
+    },
+    {
+      "sequence": 1590,
+      "trace_id": "fb385f59-2002-4b35-af53-1e8de2d7ae52",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 60,
+      "browser_to_mock_wall_envelope_ms": 2.10009765625,
+      "mock_ingress_to_body_parsed_ms": 0.10225,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 1600,
+      "trace_id": "fc5a66b1-4df3-497b-a8c3-65907d064202",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 61,
+      "browser_to_mock_wall_envelope_ms": 2.800048828125,
+      "mock_ingress_to_body_parsed_ms": 0.061584,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 1
+    },
+    {
+      "sequence": 1610,
+      "trace_id": "114c727c-2fe1-419f-8656-5e4998230b40",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 62,
+      "browser_to_mock_wall_envelope_ms": 2.39990234375,
+      "mock_ingress_to_body_parsed_ms": 0.08525,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 1
+    },
+    {
+      "sequence": 1620,
+      "trace_id": "8f7d606f-a22d-474b-967b-bd265fff2226",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 63,
+      "browser_to_mock_wall_envelope_ms": 2.10009765625,
+      "mock_ingress_to_body_parsed_ms": 0.081417,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 1630,
+      "trace_id": "f918c145-3362-4251-b9a0-89387520891a",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 64,
+      "browser_to_mock_wall_envelope_ms": 2.5,
+      "mock_ingress_to_body_parsed_ms": 0.089041,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 1
+    },
+    {
+      "sequence": 1640,
+      "trace_id": "8e3b538b-43a2-44e2-8143-bba0e866fb24",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 65,
+      "browser_to_mock_wall_envelope_ms": 2.5,
+      "mock_ingress_to_body_parsed_ms": 0.079,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 1
+    },
+    {
+      "sequence": 1650,
+      "trace_id": "547b63cf-585a-4f9a-ae02-4e355229a634",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 66,
+      "browser_to_mock_wall_envelope_ms": 2.39990234375,
+      "mock_ingress_to_body_parsed_ms": 0.090834,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 1660,
+      "trace_id": "566b3c7b-5db1-4bee-ac09-c1030637a91f",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 67,
+      "browser_to_mock_wall_envelope_ms": 2,
+      "mock_ingress_to_body_parsed_ms": 0.078583,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 1670,
+      "trace_id": "42d7c3fb-1ce9-4644-b550-210032d2d17a",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 68,
+      "browser_to_mock_wall_envelope_ms": 1.89990234375,
+      "mock_ingress_to_body_parsed_ms": 0.084875,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 1680,
+      "trace_id": "f97a1427-c627-45fb-b511-d43cb0bb614e",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 69,
+      "browser_to_mock_wall_envelope_ms": 2.800048828125,
+      "mock_ingress_to_body_parsed_ms": 0.094417,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 1
+    },
+    {
+      "sequence": 1690,
+      "trace_id": "fae012cf-72b7-4033-b0fd-7c4256b6b318",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 70,
+      "browser_to_mock_wall_envelope_ms": 1.89990234375,
+      "mock_ingress_to_body_parsed_ms": 0.07925,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 1700,
+      "trace_id": "2f171de7-7570-44d1-801f-0391a9ea36f7",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 71,
+      "browser_to_mock_wall_envelope_ms": 2.60009765625,
+      "mock_ingress_to_body_parsed_ms": 0.083208,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 1
+    },
+    {
+      "sequence": 1710,
+      "trace_id": "739b1af9-aa33-465b-be62-c23aec9624c7",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 72,
+      "browser_to_mock_wall_envelope_ms": 2.10009765625,
+      "mock_ingress_to_body_parsed_ms": 0.081167,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 1720,
+      "trace_id": "cc9baee3-40a4-4d77-9491-005f9dc5df44",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 73,
+      "browser_to_mock_wall_envelope_ms": 1.800048828125,
+      "mock_ingress_to_body_parsed_ms": 0.090875,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 1730,
+      "trace_id": "4071fe1a-6952-4c6e-bd13-bdabbcdaea20",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 74,
+      "browser_to_mock_wall_envelope_ms": 2,
+      "mock_ingress_to_body_parsed_ms": 0.127208,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 1740,
+      "trace_id": "f1a06fd7-b711-4657-b052-529af2c20d00",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 75,
+      "browser_to_mock_wall_envelope_ms": 2.60009765625,
+      "mock_ingress_to_body_parsed_ms": 0.087209,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 1
+    },
+    {
+      "sequence": 1750,
+      "trace_id": "90b8eaeb-53a8-4162-ab13-8372b63f0420",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 76,
+      "browser_to_mock_wall_envelope_ms": 3.800048828125,
+      "mock_ingress_to_body_parsed_ms": 0.092084,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 1760,
+      "trace_id": "5835e1ef-1600-4e07-8e59-635634d5c481",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 77,
+      "browser_to_mock_wall_envelope_ms": 2.5,
+      "mock_ingress_to_body_parsed_ms": 0.074583,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 1770,
+      "trace_id": "b5249c74-5415-4d5a-84bc-00467cc0cf68",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 78,
+      "browser_to_mock_wall_envelope_ms": 2.300048828125,
+      "mock_ingress_to_body_parsed_ms": 0.079667,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 1780,
+      "trace_id": "5a2db869-d2e6-42fc-b00d-afa7bb905fdb",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 79,
+      "browser_to_mock_wall_envelope_ms": 2,
+      "mock_ingress_to_body_parsed_ms": 0.081167,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 1790,
+      "trace_id": "cfd81b9d-c1ae-4887-9c92-1cfc5fb6fec8",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 80,
+      "browser_to_mock_wall_envelope_ms": 2,
+      "mock_ingress_to_body_parsed_ms": 0.078167,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 1800,
+      "trace_id": "56cdb215-24f1-46ff-8083-cfddba75dfa1",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 81,
+      "browser_to_mock_wall_envelope_ms": 2.5,
+      "mock_ingress_to_body_parsed_ms": 0.0985,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 1
+    },
+    {
+      "sequence": 1811,
+      "trace_id": "f23764c0-5de0-4661-8ab4-fc4b13d3af28",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 82,
+      "browser_to_mock_wall_envelope_ms": 4.89990234375,
+      "mock_ingress_to_body_parsed_ms": 0.110208,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 1
+    },
+    {
+      "sequence": 1821,
+      "trace_id": "da668f77-4d1b-4c7a-862c-2279823291d8",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 83,
+      "browser_to_mock_wall_envelope_ms": 2,
+      "mock_ingress_to_body_parsed_ms": 0.079125,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 1831,
+      "trace_id": "d6c316c6-7e75-413f-aec4-ff511bf47c8a",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 84,
+      "browser_to_mock_wall_envelope_ms": 2.300048828125,
+      "mock_ingress_to_body_parsed_ms": 0.081375,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 1841,
+      "trace_id": "e650571b-0169-4b1c-aefc-4a696025f2f9",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 85,
+      "browser_to_mock_wall_envelope_ms": 2.5,
+      "mock_ingress_to_body_parsed_ms": 0.080292,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 1
+    },
+    {
+      "sequence": 1851,
+      "trace_id": "ab35ed78-1ade-4992-84d5-9c0e92fac9cb",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 86,
+      "browser_to_mock_wall_envelope_ms": 2.10009765625,
+      "mock_ingress_to_body_parsed_ms": 0.079625,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 1861,
+      "trace_id": "9b649406-37f2-457c-b958-70430dd62d5c",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 87,
+      "browser_to_mock_wall_envelope_ms": 2.300048828125,
+      "mock_ingress_to_body_parsed_ms": 0.077375,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 1
+    },
+    {
+      "sequence": 1871,
+      "trace_id": "3143ae05-d969-412d-9c61-53d043b6972a",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 88,
+      "browser_to_mock_wall_envelope_ms": 2.60009765625,
+      "mock_ingress_to_body_parsed_ms": 0.105583,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 1
+    },
+    {
+      "sequence": 1881,
+      "trace_id": "e340c800-8f37-4385-ae3d-e1ba7f5680ea",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 89,
+      "browser_to_mock_wall_envelope_ms": 1.800048828125,
+      "mock_ingress_to_body_parsed_ms": 0.082792,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 1891,
+      "trace_id": "cf3a5ebe-4b07-4544-a6ea-172a1b2adb49",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 90,
+      "browser_to_mock_wall_envelope_ms": 2.300048828125,
+      "mock_ingress_to_body_parsed_ms": 0.160917,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 1
+    },
+    {
+      "sequence": 1901,
+      "trace_id": "d217b476-325d-4ca0-a4a6-f8f8a5f0714b",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 91,
+      "browser_to_mock_wall_envelope_ms": 1.89990234375,
+      "mock_ingress_to_body_parsed_ms": 0.0775,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 1911,
+      "trace_id": "99032bd7-ed6d-440d-ad1c-feb35a0ec5e6",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 92,
+      "browser_to_mock_wall_envelope_ms": 1.89990234375,
+      "mock_ingress_to_body_parsed_ms": 0.081583,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 1921,
+      "trace_id": "3fb55b61-fb10-4ee2-806b-96d392ffbbb7",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 93,
+      "browser_to_mock_wall_envelope_ms": 2,
+      "mock_ingress_to_body_parsed_ms": 0.077875,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 1931,
+      "trace_id": "b34dfeaa-15cb-4dc0-abad-03675aa5cd14",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 94,
+      "browser_to_mock_wall_envelope_ms": 2,
+      "mock_ingress_to_body_parsed_ms": 0.107292,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 1941,
+      "trace_id": "e5557d75-453a-4053-9195-3f2e6ede43b9",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 95,
+      "browser_to_mock_wall_envelope_ms": 2.10009765625,
+      "mock_ingress_to_body_parsed_ms": 0.0835,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 1951,
+      "trace_id": "878b41bc-298f-412e-8759-46f390748b05",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 96,
+      "browser_to_mock_wall_envelope_ms": 2.199951171875,
+      "mock_ingress_to_body_parsed_ms": 0.081667,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 1
+    },
+    {
+      "sequence": 1963,
+      "trace_id": "e26f10d4-4775-40b5-b397-9d86314a6cbc",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 97,
+      "browser_to_mock_wall_envelope_ms": 2.800048828125,
+      "mock_ingress_to_body_parsed_ms": 0.073875,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 1
+    },
+    {
+      "sequence": 1973,
+      "trace_id": "52225e43-1ea6-4f35-9255-3382a7e6b722",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 98,
+      "browser_to_mock_wall_envelope_ms": 2.10009765625,
+      "mock_ingress_to_body_parsed_ms": 0.067834,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 1983,
+      "trace_id": "493b98ef-c274-4c2d-a33c-e1e4a144587a",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 99,
+      "browser_to_mock_wall_envelope_ms": 1.800048828125,
+      "mock_ingress_to_body_parsed_ms": 0.073041,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    },
+    {
+      "sequence": 1993,
+      "trace_id": "d8650bbf-3552-4782-a1aa-5445ea3145dd",
+      "sample_kind": "warm",
+      "hold_session_id": "keyboard-owner-1784586361525-ac07d46b230198",
+      "hold_sequence": 100,
+      "browser_to_mock_wall_envelope_ms": 1.89990234375,
+      "mock_ingress_to_body_parsed_ms": 0.080959,
+      "pc_fetch_guard_to_mock_ingress_wall_ms": 0
+    }
+  ]
+}

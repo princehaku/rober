@@ -1,0 +1,108 @@
+{
+  "schema": "trashbot.o1.browser_keydown_dispatch_latency.process_and_safety.v1",
+  "generated_at": "2026-07-21T06:05:59+08:00",
+  "result": "pass_loopback_fixture_cleaned",
+  "topology": {
+    "browser": {
+      "kind": "real_in_app_chromium",
+      "url": "http://127.0.0.1:15173/",
+      "vite_pid": 46521,
+      "default_robot_api_base_url": "http://127.0.0.1:18081",
+      "default_override_method": "fixture Vite resolve hook; product source unchanged"
+    },
+    "pc_api": {
+      "url": "http://127.0.0.1:17001",
+      "listener_pid": 46645,
+      "implementation": "current pc-tools/workstation/src/server/index.ts",
+      "loopback_fetch_guard": true
+    },
+    "mock_upper": {
+      "url": "http://127.0.0.1:18081",
+      "listener_pid": 46522,
+      "source": "loopback_mock_only",
+      "records_only": true,
+      "imports_ros_or_hardware": false
+    }
+  },
+  "pre_sample_health": {
+    "vite_http_status": 200,
+    "pc_health_status": "software_proof_not_proven",
+    "mock_health_status": "ready",
+    "mock_safe_to_control": false,
+    "mock_robot_control_executed": false
+  },
+  "browser_ui_evidence": {
+    "default_address_locator": "[data-testid=robot-api-default-address]",
+    "default_address_observed": "127.0.0.1:18081",
+    "safety_container_locator": "[data-testid=pc-simple-user-first-screen]",
+    "safety_mode": "site_safe_by_default",
+    "visible_safety_checkbox_count": 0,
+    "keyboard_panel_locator": "[data-testid=keyboard-control-panel]",
+    "keyboard_arm_locator": "[data-testid=keyboard-control-arm]",
+    "keyboard_status_locator": "[data-testid=keyboard-live-status]",
+    "keyboard_trigger": "real browser keyboard press('w') with keydown and keyup",
+    "post_cycle_status": "已停止",
+    "cold_method": "10 reload-level samples; not independent Chromium process samples",
+    "warm_method": "100 keydown/keyup cycles in one loaded page"
+  },
+  "frozen_artifacts": {
+    "raw_requests_jsonl": {
+      "path": "artifacts/raw_requests.jsonl",
+      "sha256": "5ade6a7dec726e4f083e4a41be0b90e059828a29179809963da3da3570942e5e",
+      "bytes": 3047100,
+      "line_count": 7038
+    },
+    "network_guard_jsonl": {
+      "path": "artifacts/network_guard.jsonl",
+      "sha256": "8edeeb64a3357f097360b61bc9d6d3231d89da64ee1e092f14fc6ea6931b4b52",
+      "bytes": 886031,
+      "line_count": 7038
+    },
+    "summary_json": {
+      "path": "artifacts/summary.json",
+      "sha256": "b697380d21add9ea53e72a445805827d62eede8cf2705c922a0a292136de3084"
+    }
+  },
+  "network_guard": {
+    "record_count": 7038,
+    "allowed_hosts": [
+      "127.0.0.1"
+    ],
+    "non_loopback_record_count": 0,
+    "active_192_168_1_11_connection_count_before_cleanup": 0,
+    "active_192_168_1_11_connection_count_after_cleanup": 0
+  },
+  "process_cleanup": {
+    "method": "SIGINT sent to the three exact controlled sessions",
+    "vite_15173_listener_count_after": 0,
+    "pc_17001_listener_count_after": 0,
+    "mock_18081_listener_count_after": 0,
+    "existing_7001_pid_before": 21549,
+    "existing_7001_pid_after": 21549,
+    "existing_7001_restarted": false,
+    "residual_fixture_listener_count": 0
+  },
+  "action_counts": {
+    "real_browser_keydown_cycles": 110,
+    "loopback_mock_manual_requests": 110,
+    "loopback_mock_stop_requests": 110,
+    "loopback_support_readback_requests": 6818,
+    "ssh": 0,
+    "remote_robot_request": 0,
+    "live_nonzero": 0,
+    "direct_cmd_vel": 0,
+    "direct_uart": 0,
+    "ros": 0,
+    "nav2_or_route": 0
+  },
+  "claims": {
+    "loopback_mock_only": true,
+    "physical_latency_not_measured": true,
+    "physical_wheel_onset_observed": false,
+    "robot_control_executed": false,
+    "hil_pass": false,
+    "safe_to_control": false,
+    "route_execution_success": false,
+    "delivery_success": false
+  }
+}

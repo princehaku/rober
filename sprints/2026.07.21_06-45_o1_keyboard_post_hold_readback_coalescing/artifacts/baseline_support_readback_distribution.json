@@ -1,0 +1,29 @@
+{
+  "schema": "trashbot.pc_workstation.keyboard_post_hold_readback_baseline.v1",
+  "source_sprint": "sprints/2026.07.21_06-20_o1_browser_keydown_dispatch_latency",
+  "source_artifact": "artifacts/loopback_keyboard_latency_raw.jsonl",
+  "sample_kind": "warm_rapid_keyboard_cycles",
+  "cycle_count": 100,
+  "manual_count": 100,
+  "stop_count": 100,
+  "support_readbacks_between_manual_cycles": {
+    "total": 4158,
+    "minimum": 27,
+    "p50": 45,
+    "p95": 46,
+    "maximum": 198,
+    "mean": 41.58,
+    "distribution": {
+      "27": 37,
+      "28": 1,
+      "29": 1,
+      "45": 53,
+      "46": 4,
+      "87": 1,
+      "108": 1,
+      "140": 1,
+      "198": 1
+    }
+  },
+  "boundary": "Loopback browser traffic only. Counts are support HTTP readbacks between consecutive warm manual requests; they are not physical wheel-onset measurements."
+}

@@ -9064,6 +9064,44 @@ function stubWorkstationFetch(fixtureOverrides: Record<string, unknown> = {}) {
   return mockedFetch;
 }
 
+function keyboardPostHoldFeedbackFixture() {
+  // 合并读回测试只需要安全的 0/0 轮速材料；完整字段避免模板把精简 mock 误判成结构损坏。
+  return {
+    schema: "trashbot.pc_tools_workstation.robot_control_base_feedback_samples_proxy.v1",
+    proxy_status: "samples_forwarded",
+    source: "software_proof",
+    proof_status: "not_proven",
+    safe_to_control: false,
+    delivery_success: false,
+    primary_actions_enabled: false,
+    pc_only: true,
+    robot_control_executed: false,
+    source_base_url: "http://192.168.1.11:8787",
+    normalized_base_url: "http://192.168.1.11:8787",
+    remote_endpoint: "/api/base/feedback-samples",
+    remote_http_status: 200,
+    status: "loaded",
+    sample_key_values: {
+      t1001_observed_count: "1",
+      completed_sample_count: "1",
+      feedback_ack_t1001_observed: "true",
+      wheel_feedback_lr_nonzero_proven: "false",
+      wheel_feedback_nonzero_observed: "false",
+      wheel_feedback_nonzero_frame_count: "0",
+      wheel_feedback_latest_left_speed: "0",
+      wheel_feedback_latest_right_speed: "0",
+      wheel_feedback_source: "vendor_t1001_L_R",
+      observed_feedback_types: "[1001]",
+      sends_motion_commands: "false",
+      robot_control_executed: "false",
+    },
+    failure_reason: "",
+    blocked_reasons: [],
+    hard_dangerous_true_fields: [],
+    sends_motion_commands: false,
+  };
+}
+
 function writePlainHomeSmokeArtifact(firstScreenText: string, advancedText: string, advancedDetailsClosed: boolean): void {
   // 该 artifact 只证明默认 DOM 文案收敛，不把折叠区的诊断能力解释成已联调。
   mkdirSync(SPRINT_ARTIFACT_DIR, { recursive: true });
@@ -25874,6 +25912,7 @@ describe("App", () => {
 
   it("counts nonzero wheel readback from keyboard pulses toward the wheel raw goal", async () => {
     // 键盘 pulse 走固定 manual 代理；如果回包带本轮 T1001 非零 L/R，应同步推进 wheel raw 收口。
+    vi.useFakeTimers();
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
     summaryFixture.operator_hil_material_summary.report_status = "ready_for_review";
     summaryFixture.operator_hil_material_summary.operator_present = "true";
@@ -25921,6 +25960,7 @@ describe("App", () => {
         blocked_reasons: [],
         robot_control_executed: false,
       },
+      "/api/robot-control/base/feedback-samples": keyboardPostHoldFeedbackFixture(),
     });
 
     const wrapper = mount(App);
@@ -25954,6 +25994,10 @@ describe("App", () => {
     window.dispatchEvent(new KeyboardEvent("keyup", { key: "w" }));
     await flushPromises();
     await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="keyboard-post-hold-readback-status"]').attributes("data-state")).toMatch(/^scheduled:/);
+    await vi.advanceTimersByTimeAsync(400);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
     const keyboardReleaseUrls = mockedFetch.mock.calls
       .slice(callsBeforeKeyboardRelease)
       .map(([url]) => String(url));
@@ -25976,6 +26020,7 @@ describe("App", () => {
 
   it("keeps keyboard wheel readback unproven when manual pulse returns only zero L/R", async () => {
     // 真机可出现 manual 请求已转发、自动停止也执行，但底盘 T1001 轮速仍为 0/0；普通 UI 必须指向底盘排查。
+    vi.useFakeTimers();
     const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
     summaryFixture.operator_hil_material_summary.report_status = "ready_for_review";
     summaryFixture.operator_hil_material_summary.operator_present = "true";
@@ -26029,6 +26074,7 @@ describe("App", () => {
         blocked_reasons: [],
         robot_control_executed: false,
       },
+      "/api/robot-control/base/feedback-samples": keyboardPostHoldFeedbackFixture(),
     });
 
     const wrapper = mount(App);
@@ -26059,6 +26105,10 @@ describe("App", () => {
 
     const callsBeforeKeyboardZeroRelease = mockedFetch.mock.calls.length;
     window.dispatchEvent(new KeyboardEvent("keyup", { key: "w" }));
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="keyboard-post-hold-readback-status"]').attributes("data-state")).toMatch(/^scheduled:/);
+    await vi.advanceTimersByTimeAsync(400);
     await flushPromises();
     await wrapper.vm.$nextTick();
     const keyboardZeroReleaseEndpointOrder = mockedFetch.mock.calls
@@ -30290,15 +30340,249 @@ describe("App", () => {
     expect(countCalls("/api/robot-control/camera/mjpeg/status")).toBe(cameraStatusCallsAfterHold);
 
     const summaryCallsBeforeRelease = countCalls("/api/robot-control/summary");
+    const feedbackCallsBeforeRelease = countCalls("/api/robot-control/base/feedback-samples");
     await keyboardPanel.trigger("keyup", { key: "w" });
     await flushPromises();
     await wrapper.vm.$nextTick();
 
     expect(countCalls("/api/robot-control/base/stop")).toBe(1);
-    expect(countCalls("/api/robot-control/base/feedback-samples")).toBe(1);
+    expect(countCalls("/api/robot-control/base/feedback-samples")).toBe(feedbackCallsBeforeRelease);
+    expect(countCalls("/api/robot-control/summary")).toBe(summaryCallsBeforeRelease);
+    expect(keyboardPanel.attributes("data-post-hold-readback-status")).toMatch(/^scheduled:/);
+    await vi.advanceTimersByTimeAsync(400);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(countCalls("/api/robot-control/base/feedback-samples")).toBe(feedbackCallsBeforeRelease + 1);
     expect(countCalls("/api/robot-control/summary")).toBe(summaryCallsBeforeRelease + 1);
     expect(wrapper.find('[data-testid="keyboard-control-panel"]').attributes("data-keyboard-smooth-hold-refresh-paused")).toBe("false");
     wrapper.unmount();
+  });
+
+  it("coalesces 100 rapid keyboard releases into one idle post-hold readback batch", async () => {
+    // 真实浏览器基线每个 rapid tap 会触发几十条 support readback；fake timer 固定证明 100 次只留下最后一批。
+    vi.useFakeTimers();
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.safe_command_boundary.keyboard_control_mode = "bounded_repeating_manual_pulse";
+    summaryFixture.safe_command_boundary.keyboard_reuses_manual_gate = true;
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/base/manual": {
+        command_kind: "manual",
+        proxy_status: "command_forwarded",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        failure_reason: "",
+      },
+      "/api/robot-control/base/stop": {
+        command_kind: "stop",
+        proxy_status: "command_forwarded",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        failure_reason: "",
+      },
+      "/api/robot-control/base/feedback-samples": keyboardPostHoldFeedbackFixture(),
+    });
+    const countCalls = (prefix: string) => mockedFetch.mock.calls
+      .filter(([url]) => String(url).startsWith(prefix))
+      .length;
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    const keyboardPanel = wrapper.find('[data-testid="keyboard-control-panel"]');
+    const feedbackBefore = countCalls("/api/robot-control/base/feedback-samples");
+    const summaryBefore = countCalls("/api/robot-control/summary");
+
+    for (let index = 0; index < 100; index += 1) {
+      await keyboardPanel.trigger("keydown", { key: "w" });
+      await flushPromises();
+      await keyboardPanel.trigger("keyup", { key: "w" });
+      await flushPromises();
+    }
+
+    expect(countCalls("/api/robot-control/base/manual")).toBe(100);
+    expect(countCalls("/api/robot-control/base/stop")).toBe(100);
+    expect(countCalls("/api/robot-control/base/feedback-samples")).toBe(feedbackBefore);
+    expect(countCalls("/api/robot-control/summary")).toBe(summaryBefore);
+    expect(keyboardPanel.attributes("data-post-hold-readback-mode")).toBe("idle_debounced_coalesced");
+    expect(keyboardPanel.attributes("data-post-hold-readback-idle-ms")).toBe("400");
+    expect(keyboardPanel.attributes("data-post-hold-readback-batch-count")).toBe("0");
+    expect(keyboardPanel.attributes("data-post-hold-readback-status")).toMatch(/^scheduled:/);
+    expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("已停止，按住方向键可继续点动。");
+
+    await vi.advanceTimersByTimeAsync(399);
+    await flushPromises();
+    expect(countCalls("/api/robot-control/base/feedback-samples")).toBe(feedbackBefore);
+    await vi.advanceTimersByTimeAsync(1);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(countCalls("/api/robot-control/base/feedback-samples")).toBe(feedbackBefore + 1);
+    expect(countCalls("/api/robot-control/summary")).toBe(summaryBefore + 1);
+    expect(keyboardPanel.attributes("data-post-hold-readback-batch-count")).toBe("1");
+    expect(keyboardPanel.attributes("data-post-hold-readback-status")).toMatch(/^completed:/);
+    expect(wrapper.find('[data-testid="keyboard-post-hold-readback-status"]').text()).toContain("已合并刷新");
+  });
+
+  it("suppresses a stale post-hold batch when a new hold starts", async () => {
+    // 已开始的旧 readback 可以自然返回，但 generation 失效后不能刷新 summary 或覆盖新一轮 scheduled 状态。
+    vi.useFakeTimers();
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.safe_command_boundary.keyboard_control_mode = "bounded_repeating_manual_pulse";
+    summaryFixture.safe_command_boundary.keyboard_reuses_manual_gate = true;
+    const fallbackFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/base/manual": {
+        command_kind: "manual",
+        proxy_status: "command_forwarded",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        failure_reason: "",
+      },
+      "/api/robot-control/base/stop": {
+        command_kind: "stop",
+        proxy_status: "command_forwarded",
+        remote_http_status: 200,
+        status: "loaded_fail_closed_summary",
+        failure_reason: "",
+      },
+      "/api/robot-control/base/feedback-samples": keyboardPostHoldFeedbackFixture(),
+    });
+    const originalFetch = fallbackFetch.getMockImplementation();
+    let resolveFirstFeedback!: (value: { ok: boolean; json: () => Promise<unknown> }) => void;
+    let delayFirstFeedback = true;
+    const mockedFetch = vi.fn((url: string, options?: RequestInit) => {
+      if (delayFirstFeedback && String(url).startsWith("/api/robot-control/base/feedback-samples?")) {
+        delayFirstFeedback = false;
+        return new Promise<{ ok: boolean; json: () => Promise<unknown> }>((resolve) => {
+          resolveFirstFeedback = resolve;
+        });
+      }
+      if (!originalFetch) {
+        throw new Error("missing default fetch mock");
+      }
+      return originalFetch(url, options);
+    });
+    vi.stubGlobal("fetch", mockedFetch);
+    const countCalls = (prefix: string) => mockedFetch.mock.calls
+      .filter(([url]) => String(url).startsWith(prefix))
+      .length;
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    const keyboardPanel = wrapper.find('[data-testid="keyboard-control-panel"]');
+    await keyboardPanel.trigger("keydown", { key: "w" });
+    await flushPromises();
+    await keyboardPanel.trigger("keyup", { key: "w" });
+    await flushPromises();
+    const summaryBeforeRunningBatch = countCalls("/api/robot-control/summary");
+
+    await vi.advanceTimersByTimeAsync(400);
+    await flushPromises();
+    expect(countCalls("/api/robot-control/base/feedback-samples")).toBe(1);
+    expect(keyboardPanel.attributes("data-post-hold-readback-status")).toMatch(/^running:/);
+
+    await keyboardPanel.trigger("keydown", { key: "w" });
+    await flushPromises();
+    expect(keyboardPanel.attributes("data-post-hold-readback-status")).toBe("superseded:new_hold_started");
+    expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toContain("正在前进");
+    resolveFirstFeedback({ ok: true, json: async () => keyboardPostHoldFeedbackFixture() });
+    await flushPromises();
+    expect(countCalls("/api/robot-control/summary")).toBe(summaryBeforeRunningBatch);
+    expect(keyboardPanel.attributes("data-post-hold-readback-status")).toBe("superseded:new_hold_started");
+
+    await keyboardPanel.trigger("keyup", { key: "w" });
+    await flushPromises();
+    expect(countCalls("/api/robot-control/base/manual")).toBe(2);
+    expect(countCalls("/api/robot-control/base/stop")).toBe(2);
+    expect(keyboardPanel.attributes("data-post-hold-readback-status")).toMatch(/^scheduled:/);
+    await vi.advanceTimersByTimeAsync(400);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(countCalls("/api/robot-control/base/feedback-samples")).toBe(2);
+    expect(countCalls("/api/robot-control/summary")).toBe(summaryBeforeRunningBatch + 1);
+    expect(keyboardPanel.attributes("data-post-hold-readback-status")).toMatch(/^completed:/);
+  });
+
+  it("keeps successful stop state when the idle post-hold readback fails", async () => {
+    // 只读失败要显示结构化原因，但不能把已经成功的 stop_sent 降级成停止失败。
+    vi.useFakeTimers();
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.safe_command_boundary.keyboard_control_mode = "bounded_repeating_manual_pulse";
+    summaryFixture.safe_command_boundary.keyboard_reuses_manual_gate = true;
+    const fallbackFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/base/manual": { command_kind: "manual", proxy_status: "command_forwarded", remote_http_status: 200, status: "loaded", failure_reason: "" },
+      "/api/robot-control/base/stop": { command_kind: "stop", proxy_status: "command_forwarded", remote_http_status: 200, status: "loaded", failure_reason: "" },
+    });
+    const originalFetch = fallbackFetch.getMockImplementation();
+    let rejectPostHoldReadback = true;
+    const mockedFetch = vi.fn((url: string, options?: RequestInit) => {
+      if (rejectPostHoldReadback && String(url).startsWith("/api/robot-control/base/feedback-samples?")) {
+        return Promise.reject(new Error("loopback_readback_unavailable"));
+      }
+      if (!originalFetch) {
+        throw new Error("missing default fetch mock");
+      }
+      return originalFetch(url, options);
+    });
+    vi.stubGlobal("fetch", mockedFetch);
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    const keyboardPanel = wrapper.find('[data-testid="keyboard-control-panel"]');
+    await keyboardPanel.trigger("keydown", { key: "w" });
+    await flushPromises();
+    await keyboardPanel.trigger("keyup", { key: "w" });
+    await flushPromises();
+    await vi.advanceTimersByTimeAsync(400);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="keyboard-live-status"]').text()).toBe("已停止，按住方向键可继续点动。");
+    expect(keyboardPanel.attributes("data-post-hold-readback-status")).toMatch(/^failed:/);
+    expect(keyboardPanel.attributes("data-post-hold-readback-failure")).toBe("keyboard_post_hold_feedback_readback_failed");
+    expect(wrapper.find('[data-testid="keyboard-post-hold-readback-status"]').text()).toContain("停止已成功；后台读回失败");
+    expect(keyboardPanel.attributes("data-state")).not.toBe("停止失败");
+
+    rejectPostHoldReadback = false;
+    await wrapper.find('[data-testid="keyboard-control-recheck"]').trigger("click");
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    expect(keyboardPanel.attributes("data-post-hold-readback-status")).toBe("recovered_by_manual_recheck");
+    expect(keyboardPanel.attributes("data-post-hold-readback-failure")).toBe("none");
+  });
+
+  it("sends stop on unmount and cancels only the pending readback timer", async () => {
+    // 组件销毁不能遗失 stop；stop 成功后因为组件已销毁，不再启动纯只读 idle timer。
+    vi.useFakeTimers();
+    const summaryFixture = cloneFixture(fixtures["/api/robot-control/summary"]) as Record<string, any>;
+    summaryFixture.safe_command_boundary.keyboard_control_mode = "bounded_repeating_manual_pulse";
+    summaryFixture.safe_command_boundary.keyboard_reuses_manual_gate = true;
+    const mockedFetch = stubWorkstationFetch({
+      "/api/robot-control/summary": summaryFixture,
+      "/api/robot-control/base/manual": { command_kind: "manual", proxy_status: "command_forwarded", remote_http_status: 200, status: "loaded", failure_reason: "" },
+      "/api/robot-control/base/stop": { command_kind: "stop", proxy_status: "command_forwarded", remote_http_status: 200, status: "loaded", failure_reason: "" },
+      "/api/robot-control/base/feedback-samples": keyboardPostHoldFeedbackFixture(),
+    });
+    const countCalls = (prefix: string) => mockedFetch.mock.calls
+      .filter(([url]) => String(url).startsWith(prefix))
+      .length;
+
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+    document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "w", bubbles: true }));
+    await flushPromises();
+    expect(countCalls("/api/robot-control/base/manual")).toBe(1);
+    wrapper.unmount();
+    await flushPromises();
+    expect(countCalls("/api/robot-control/base/stop")).toBe(1);
+    await vi.advanceTimersByTimeAsync(1000);
+    await flushPromises();
+    expect(countCalls("/api/robot-control/base/feedback-samples")).toBe(0);
   });
 
   it("keeps keyboard hold smooth when a pulse response spans the interval", async () => {

@@ -1,0 +1,70 @@
+{
+  "schema": "trashbot.o1.keyboard_post_hold_readback.process_and_safety.v1",
+  "generated_at": "2026-07-21T06:31:04+08:00",
+  "result": "pass_loopback_fixture_cleaned",
+  "accepted_run": "after_v2b",
+  "topology": {
+    "browser": "real in-app Chromium at http://127.0.0.1:15174/",
+    "vite_pid": 24987,
+    "pc_api": "http://127.0.0.1:17002",
+    "pc_pid": 24715,
+    "mock_upper": "http://127.0.0.1:18082",
+    "mock_pid": 24450,
+    "loopback_fetch_guard": true
+  },
+  "frozen_artifacts": {
+    "after_v2b_raw_requests_jsonl": {
+      "sha256": "4b03d37fb0f71d72d45b74b77c395e4508a45a9472d1f61628df80f824f6d6d3",
+      "lines": 1951,
+      "bytes": 913720
+    },
+    "after_v2b_network_guard_jsonl": {
+      "sha256": "7a41a8303f1ffd87604a02ae238d4561be889abccce251f1b0a4d7ff8d085ee6",
+      "lines": 1951,
+      "bytes": 246016
+    },
+    "after_v2b_latency_summary_json": {
+      "sha256": "ff0a8bbd4177f56821d912a1c654ee7791e06279101be4c3e78a63cc72aa1ea3"
+    }
+  },
+  "accepted_integrity": {
+    "cold": 10,
+    "warm": 100,
+    "manual": 110,
+    "stop": 110,
+    "unique_trace_ids": 110,
+    "manual_stop_ordered_pairing_pass": true,
+    "parse_errors": 0,
+    "non_loopback_guard_records": 0
+  },
+  "cleanup": {
+    "method": "SIGINT to the three exact controlled sessions",
+    "vite_15174_listener_count_after": 0,
+    "pc_17002_listener_count_after": 0,
+    "mock_18082_listener_count_after": 0,
+    "existing_7001_pid_before": 21549,
+    "existing_7001_pid_after": 21549,
+    "existing_7001_restarted": false,
+    "active_192_168_1_11_connection_count_after": 0
+  },
+  "excluded_attempts": [
+    {
+      "prefix": "after_",
+      "reason": "Vite HMR after a comment-only source edit reset the first warm trace label; retained for diagnosis and excluded from acceptance."
+    },
+    {
+      "prefix": "after_v2_",
+      "reason": "The browser tab on the reused 15173 port auto-reconnected and generated 134 support rows before the zero-line gate; retained and excluded."
+    }
+  ],
+  "claims": {
+    "loopback_mock_only": true,
+    "live_nonzero": 0,
+    "physical_latency_not_measured": true,
+    "robot_control_executed": false,
+    "hil_pass": false,
+    "safe_to_control": false,
+    "route_execution_success": false,
+    "delivery_success": false
+  }
+}
