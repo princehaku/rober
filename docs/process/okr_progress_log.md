@@ -6,6 +6,34 @@
 
 ---
 
+## 2026-07-21 O6/O7 bounded mission current Phase 0 NO-GO flat 收口
+
+`sprints/2026.07.21_09-50_o6_o7_bounded_mission_attempt/` 在 O5 provider/runtime blocker `2/2` 暂停后，选择 O6/O7
+各约 `93%` 的 current bounded mission lane。CEO 提供 fresh motion authorization、物理限制、operator 看护和路线清空；计划只在
+Phase 0 全绿后执行一次 `NavigateToPose map(0.8,0.25,yaw=0)`，并明确禁止 service/UART/firmware mutation、`/initialpose`、
+manual、direct `/cmd_vel`、retry 与 second goal。
+
+Robot current Phase 0 exactly once exit `7` 并 fail closed。既有 `trashbot-esp32-bridge.service`、
+`trashbot-lidar-lifecycle.service` 和 `/dev/ttyS5`/`/dev/ttyACM0` holders preserved；Upper process/health 实际位于
+`8787`，但冻结 probe 使用 `8000`；非登录 shell 未 source ROS 2 Humble；O11 phase0 local/remote SHA match，但 Upper
+local/remote SHA mismatch，systemd/service ownership 未满足计划门。因此 `READINESS_GO=false`，未进入 live pipe，
+authorization=`unconsumed_phase0_no_go`，pre-stop/goal/post-stop/cancel=`0/0/0/0`，current mission-window T=1001=`0`。
+
+Robot 新增 O11 NO-GO manifest builder、双层合同测试、Upper 验收 shim和导航文档；验证为 py_compile PASS，O11 scripts `4`、
+O11 tests `14`、lifecycle `7`、Upper `141` tests OK（`1 skipped`），JSON/counter/cleanup/scoped diff PASS，changed Python
+中文注释全部 `>20%`。Algorithm 只读 frozen artifacts，JSON/assertion/rg/diff 全绿，`REVIEW=ACCEPT_NO_GO`。service/UART/
+firmware/manual/cmd_vel/initialpose/retry/second-goal 全部 `0`，cleanup goal inactive、residual=`0`。
+
+Product 保守接受 `current_run_artifact_delta=true`，它只表示 current NO-GO + code/tests/docs/review；
+`external_artifact_delta=false`、`live_control_delta=false`、`user_action_delta=false`、`okr_credit=false`。
+`mission_attempt=false`、`route_execution_success=false`、`delivery_success=false`、`hil_pass=false`、`safe_to_control=false`，
+Mission Objective 0 未满足。O5/O6/O7/O1 保持约 `85%/93%/93%/95%`，KR `不归档`。
+
+新 blocker `phase0_frozen_probe_endpoint_ros_env_upper_sha_service_ownership_mismatch` 计 `1/2`。本 sprint 禁止换 wrapper
+重跑；下一轮只允许新 sprint/new frozen Phase 0 正确 source Humble、使用 `8787`、对齐或明确 Upper SHA/service ownership，
+再验证 current Nav2/localization/path/obstacle/action/stop/readback 全门，并在 live pipe 前取得新的 fresh authorization。若同根因
+第二次失败达到 `2/2`，必须切换 Objective 或升级 CEO。
+
 ## 2026-07-21 O1 wheel-feedback root-cause planning landed, implementation runtime-blocked flat 收口
 
 `sprints/2026.07.21_08-50_o1_wheel_feedback_root_cause/` 在 O5 production blocker `2/2`、O6/O7 maintenance

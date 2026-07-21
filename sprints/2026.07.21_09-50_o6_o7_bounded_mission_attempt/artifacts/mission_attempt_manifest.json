@@ -1,0 +1,197 @@
+{
+  "schema": "trashbot.o6_o7.current_bounded_mission_attempt.v1",
+  "generated_at_ms": 1784600015000,
+  "status": "phase0_no_go_frozen",
+  "task_id": "o6-o7-bounded-mission-20260721-0950",
+  "action_id": null,
+  "target": {
+    "frame_id": "map",
+    "x": 0.8,
+    "y": 0.25,
+    "yaw": 0.0
+  },
+  "authorization_id": "ceo-2026-07-21-fresh-bounded-motion-operator-watched-route-clear",
+  "authorization_state": "unconsumed_phase0_no_go",
+  "authorization_consumed": false,
+  "READINESS_GO": false,
+  "phase0": {
+    "started_at": "2026-07-21T10:10:13.489753906+08:00",
+    "invocation_count": 1,
+    "overall_exit_code": 7,
+    "read_only": true,
+    "first_failure": "trashbot_upper_api_service_inactive",
+    "blocking_failures": [
+      "trashbot_upper_api_service_inactive",
+      "ros2_cli_not_on_non_login_shell_path",
+      "nav2_action_and_lifecycle_readiness_not_proven",
+      "upper_probe_wrong_port_8000_connection_refused"
+    ],
+    "upper_process_observed": {
+      "pid": 1201,
+      "listen_port": 8787,
+      "command": "python3 /root/rober/onboard/scripts/upper_robot_api.py --host 0.0.0.0 --port 8787"
+    },
+    "existing_services": {
+      "trashbot-upper-api.service": {
+        "active_state": "inactive",
+        "sub_state": "dead",
+        "main_pid": 0
+      },
+      "trashbot-esp32-bridge.service": {
+        "active_state": "active",
+        "sub_state": "running",
+        "main_pid": 1198
+      },
+      "trashbot-lidar-lifecycle.service": {
+        "active_state": "active",
+        "sub_state": "running",
+        "main_pid": 3840
+      }
+    },
+    "existing_holders": {
+      "/dev/ttyS5": [3538],
+      "/dev/ttyACM0": [3911]
+    },
+    "gates": {
+      "service_holder_reuse": false,
+      "upper_health": false,
+      "concurrent_task_clear": "not_proven",
+      "scan": "not_proven",
+      "map": "not_proven",
+      "pose": "not_proven",
+      "dynamic_tf": "not_proven",
+      "planner": "not_proven",
+      "controller": "not_proven",
+      "planner_only_path": "not_proven",
+      "obstacle_clear": "not_proven",
+      "navigate_to_pose_action": "not_proven",
+      "base_stop_endpoint": "not_proven",
+      "feedback_readback_endpoint": "not_proven"
+    },
+    "decision": "NO_GO_DO_NOT_RERUN_PHASE0"
+  },
+  "command_ledger": [
+    {
+      "phase": "phase0",
+      "category": "systemctl_is_active",
+      "target": "trashbot-upper-api.service",
+      "exit_code": 3,
+      "stdout_summary": "inactive"
+    },
+    {
+      "phase": "phase0",
+      "category": "systemctl_is_active",
+      "target": "trashbot-esp32-bridge.service",
+      "exit_code": 0,
+      "stdout_summary": "active"
+    },
+    {
+      "phase": "phase0",
+      "category": "systemctl_is_active",
+      "target": "trashbot-lidar-lifecycle.service",
+      "exit_code": 0,
+      "stdout_summary": "active"
+    },
+    {
+      "phase": "phase0",
+      "category": "process_socket_holder_inventory",
+      "exit_code": 0,
+      "stdout_summary": "Upper PID 1201 listens 8787; ttyS5 holder 3538; ttyACM0 holder 3911"
+    },
+    {
+      "phase": "phase0",
+      "category": "ros2_read_only_inventory",
+      "exit_code": 127,
+      "stdout_summary": "ros2 not found because frozen non-login shell did not source Humble"
+    },
+    {
+      "phase": "phase0",
+      "category": "upper_get_endpoints",
+      "target": "http://127.0.0.1:8000",
+      "exit_code": 7,
+      "stdout_summary": "connection refused; process inventory showed actual port 8787"
+    },
+    {
+      "phase": "final_readback",
+      "category": "sha256_service_holder_and_get_readback",
+      "exit_code": 0,
+      "stdout_summary": "services and holders unchanged; GET 8787 health/base status succeeded"
+    }
+  ],
+  "local_remote_sha": {
+    "phase0_o11_local": "773573e08e56223a5d04306b6f2e544507244696b6b5d44038962552d5cc8238",
+    "phase0_o11_remote": "773573e08e56223a5d04306b6f2e544507244696b6b5d44038962552d5cc8238",
+    "final_o11_local_after_no_go_builder": "805b16e0f2ac7915143424f41829c2599af0f77ea133acafc8f1125c3465e935",
+    "final_o11_remote_not_deployed": "773573e08e56223a5d04306b6f2e544507244696b6b5d44038962552d5cc8238",
+    "upper_local": "52c99ca3b63480e841884aed7fca5f0d0b8350a028b0186af86a264bb4f2c272",
+    "upper_remote": "8c0f6eebb786e1cd6b1cb5d17485e59972140bf76a94e7669773ef438228b4c3",
+    "upper_match": false
+  },
+  "user_action_receipt": null,
+  "goal_accepted": false,
+  "feedback_count": 0,
+  "route_progress": null,
+  "terminal_status": "not_invoked_phase0_no_go",
+  "t1001_observed_count": 0,
+  "t1001_nonzero_count": 0,
+  "t1001_latest_pair": null,
+  "final_base_status": {
+    "http_status": 200,
+    "schema": "trashbot.upper_robot_api.v1.base_status",
+    "safe_to_control": false,
+    "fresh_background_t1001_count": 80,
+    "fresh_background_t1001_latest_pair": {
+      "left_speed": 0.0,
+      "right_speed": 0.0
+    },
+    "current_mission_window_t1001_count": 0,
+    "boundary": "background bridge readback only; no mission pipe entered"
+  },
+  "phase0_invocation_count": 1,
+  "pre_stop_invocation_count": 0,
+  "user_action_receipt_count": 0,
+  "navigate_to_pose_invocation_count": 0,
+  "post_stop_invocation_count": 0,
+  "cancel_invocation_count": 0,
+  "feedback_sample_invocation_count": 0,
+  "service_mutation_count": 0,
+  "uart_open_count": 0,
+  "uart_write_count": 0,
+  "firmware_mutation_count": 0,
+  "initialpose_publish_attempts": 0,
+  "manual_command_count": 0,
+  "direct_cmd_vel_publish_count": 0,
+  "retry_count": 0,
+  "second_goal_count": 0,
+  "final_readback": {
+    "captured_at": "2026-07-21T10:10:43.793285650+08:00",
+    "upper_health_http_status": 200,
+    "upper_health_status": "ready",
+    "upper_health_safe_to_control": false,
+    "esp32_service_active": true,
+    "esp32_service_main_pid": 1198,
+    "lidar_service_active": true,
+    "lidar_service_main_pid": 3840,
+    "upper_process_pid": 1201,
+    "upper_listen_port": 8787,
+    "base_holder_pids": [3538],
+    "lidar_holder_pids": [3911],
+    "service_or_holder_changed_by_run": false
+  },
+  "cleanup": {
+    "required": false,
+    "completed": true,
+    "goal_active": false,
+    "run_owned_residual_process_count": 0,
+    "existing_services_and_holders_preserved": true,
+    "final_stop_confirmation": "not_required_no_pre_stop_or_goal_invoked",
+    "reason": "no live pipe entered"
+  },
+  "mission_attempt": false,
+  "route_execution_success": false,
+  "delivery_success": false,
+  "hil_pass": false,
+  "safe_to_control": false,
+  "algorithm_review_required": true,
+  "proof_boundary": "current_read_only_phase0_no_go_no_motion_authorization_unconsumed"
+}

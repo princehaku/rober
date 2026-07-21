@@ -93,6 +93,22 @@
 
 **Key Results**
 
+> 2026-07-21 09-50 O6/O7 bounded mission Phase 0 Epic 收口：O5 约 `85%` 的 production provider/runtime blocker
+> 继续暂停在 `2/2`，本轮优先 O6/O7 各约 `93%`。`sprints/2026.07.21_09-50_o6_o7_bounded_mission_attempt/`
+> 完成 current board exactly-once 只读 Phase 0、O11 NO-GO manifest builder/tests、导航文档、结构化
+> `mission_attempt_manifest.json` 与 Algorithm frozen review。Phase 0 exit `7`、`READINESS_GO=false`：Upper 实际
+> process/health 在 `8787`，冻结 probe 却访问 `8000`；非登录 shell 未 source Humble；Upper local/remote SHA mismatch，
+> systemd/service ownership 门也未对齐。existing ESP32/LiDAR services/holders preserved，cleanup residual=`0`。
+> Robot 验证 `4 + 14 + 7 + 141` tests 全绿（`1 skipped`），py_compile、JSON/counter/cleanup/scoped diff 与中文注释
+> `>20%` 通过；Algorithm `REVIEW=ACCEPT_NO_GO`。pre-stop/goal/post-stop/cancel=`0/0/0/0`，所有 service/UART/
+> firmware/manual/cmd_vel/initialpose/retry/second-goal counters=`0`，authorization=`unconsumed_phase0_no_go`。
+> `current_run_artifact_delta=true` 仅指 current NO-GO + code/tests/docs/review；`external_artifact_delta=false`、
+> `live_control_delta=false`、`user_action_delta=false`、`okr_credit=false`，mission/route/delivery/HIL/safe 全 false。
+> O5/O6/O7/O1 保持 `85%/93%/93%/95%`，KR `不归档`。新 blocker
+> `phase0_frozen_probe_endpoint_ros_env_upper_sha_service_ownership_mismatch` 消费 `1/2`；下一轮只允许新 sprint/new
+> frozen Phase 0 正确 source Humble、使用 `8787`、对齐/明确 Upper SHA 与 service ownership，并在 live pipe 前取得新的
+> fresh current authorization；相同 blocker 若第二次失败达到 `2/2`，切换 Objective 或升级 CEO。
+>
 > 2026-07-21 08-50 O1 wheel-feedback root-cause Epic 收口：O5 约 `85%` 的 production provider/runtime blocker
 > 已消费 `2/2`，O6/O7 各约 `93%` 的路线入口需要未获授权的 service/UART 独占维护窗口，因此本轮选择 O1 约
 > `95%` 的全新 non-motion/offline diagnosis 入口。`sprints/2026.07.21_08-50_o1_wheel_feedback_root_cause/`

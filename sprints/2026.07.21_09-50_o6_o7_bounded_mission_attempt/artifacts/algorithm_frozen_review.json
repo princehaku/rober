@@ -1,0 +1,124 @@
+{
+  "schema": "trashbot.o6_o7.algorithm_frozen_review.v1",
+  "generated_at": "2026-07-21T10:23:09+08:00",
+  "review_role": "robot-algorithm-engineer",
+  "review_mode": "strict_frozen_artifact_only_no_ssh_no_ros_no_api_no_live_no_control_no_retry",
+  "source_manifest": "artifacts/mission_attempt_manifest.json",
+  "REVIEW": "ACCEPT_NO_GO",
+  "accepted": true,
+  "reason": "The frozen manifest is internally consistent: the single read-only Phase 0 failed closed before pre-stop or goal, all action and hazardous counters remain zero, authorization is unconsumed, cleanup is a clean zero-action closeout, and no current mission or route-execution evidence exists.",
+  "target_review": {
+    "expected": {
+      "frame_id": "map",
+      "x": 0.8,
+      "y": 0.25,
+      "yaw": 0.0
+    },
+    "observed": {
+      "frame_id": "map",
+      "x": 0.8,
+      "y": 0.25,
+      "yaw": 0.0
+    },
+    "consistent": true,
+    "path_or_goal_materialized": false,
+    "finding": "The governed target is consistent, but a target declaration without a current planner path or goal invocation is planning input only."
+  },
+  "phase0_review": {
+    "READINESS_GO": false,
+    "decision": "NO_GO_DO_NOT_RERUN_PHASE0",
+    "invocation_count": 1,
+    "overall_exit_code": 7,
+    "read_only": true,
+    "first_failure": "trashbot_upper_api_service_inactive",
+    "all_required_gates_green": false,
+    "accepted_no_go": true
+  },
+  "environment_and_sha_blockers": {
+    "upper_service_active": false,
+    "upper_process_observed": true,
+    "upper_process_listen_port": 8787,
+    "upper_probe_port": 8000,
+    "upper_probe_port_mismatch": true,
+    "upper_probe_result": "connection_refused",
+    "ros2_cli_available_in_frozen_non_login_shell": false,
+    "ros_environment_result": "ros2_not_found_non_login_shell_humble_not_sourced",
+    "phase0_o11_local_remote_sha_match": true,
+    "final_o11_builder_deployed": false,
+    "upper_local_remote_sha_match": false,
+    "blockers": [
+      "trashbot_upper_api_service_inactive",
+      "upper_probe_wrong_port_8000_actual_8787",
+      "ros2_cli_not_on_non_login_shell_path",
+      "nav2_action_and_lifecycle_readiness_not_proven",
+      "upper_local_remote_sha_mismatch"
+    ]
+  },
+  "counter_review": {
+    "phase0_invocation_count": 1,
+    "pre_stop_invocation_count": 0,
+    "user_action_receipt_count": 0,
+    "navigate_to_pose_invocation_count": 0,
+    "post_stop_invocation_count": 0,
+    "cancel_invocation_count": 0,
+    "feedback_sample_invocation_count": 0,
+    "service_mutation_count": 0,
+    "uart_open_count": 0,
+    "uart_write_count": 0,
+    "firmware_mutation_count": 0,
+    "initialpose_publish_attempts": 0,
+    "manual_command_count": 0,
+    "direct_cmd_vel_publish_count": 0,
+    "retry_count": 0,
+    "second_goal_count": 0,
+    "current_mission_window_t1001_count": 0,
+    "all_action_and_hazardous_counters_consistent": true
+  },
+  "authorization_review": {
+    "authorization_id": "ceo-2026-07-21-fresh-bounded-motion-operator-watched-route-clear",
+    "authorization_state": "unconsumed_phase0_no_go",
+    "authorization_consumed": false,
+    "consistent_with_pre_stop_zero": true,
+    "current_sprint_window_sealed": true
+  },
+  "cleanup_review": {
+    "required": false,
+    "completed": true,
+    "goal_active": false,
+    "run_owned_residual_process_count": 0,
+    "existing_services_and_holders_preserved": true,
+    "final_stop_confirmation": "not_required_no_pre_stop_or_goal_invoked",
+    "accepted": true
+  },
+  "mission_semantics_review": {
+    "user_action_receipt": null,
+    "goal_accepted": false,
+    "feedback_count": 0,
+    "route_progress": null,
+    "terminal_status": "not_invoked_phase0_no_go",
+    "mission_attempt": false,
+    "route_execution_success": false,
+    "delivery_success": false,
+    "hil_pass": false,
+    "safe_to_control": false,
+    "consistent": true,
+    "finding": "A read-only Phase 0 NO-GO and local code or planning artifacts do not satisfy mission_attempt; with no goal or route progress they cannot satisfy route_execution_success."
+  },
+  "proof_boundary": "current_read_only_phase0_no_go_no_motion_authorization_unconsumed",
+  "next_admissible_change": {
+    "action": "Open a new sprint with a newly frozen Phase 0 command that sources ROS 2 Humble, probes the observed Upper port 8787, and reconciles the Upper local/remote SHA and service ownership before evaluating all current Nav2, localization, path, obstacle, action, stop, and readback gates.",
+    "requires_new_sprint": true,
+    "requires_new_frozen_phase0": true,
+    "requires_fresh_bounded_motion_authorization_before_live_pipe": true,
+    "must_not_reuse_current_window": true
+  },
+  "review_execution_boundary": {
+    "ssh_executed": false,
+    "ros_command_executed": false,
+    "api_called": false,
+    "live_service_called": false,
+    "control_or_motion_called": false,
+    "phase0_regenerated": false,
+    "product_code_changed": false
+  }
+}

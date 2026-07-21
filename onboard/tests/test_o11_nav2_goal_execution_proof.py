@@ -23,6 +23,28 @@ SPEC.loader.exec_module(HELPER)
 class O11Nav2GoalExecutionProofTests(unittest.TestCase):
     """锁定 O11 从 NavigateToPose 到真实底盘反馈的证明边界。"""
 
+    def test_phase0_no_go_does_not_emit_current_mission_evidence(self) -> None:
+        """只读准入失败不能消费授权，也不能借历史反馈提升 mission/HIL 字段。"""
+        manifest = HELPER.build_phase0_no_go_manifest(
+            # 测试授权只验证状态机，不授予任何真实动作。
+            authorization_id="bounded-motion-test",
+            # Phase 0 明确红门，构造器必须直接封存 NO-GO。
+            phase0={"READINESS_GO": False},
+            # 空账本用于证明构造器不会凭空产生调用。
+            command_ledger=[],
+            # 即使 final readback 含历史反馈，也不得算 current window。
+            final_readback={"base_status": {"t1001_observed_count": 80}},
+        )
+
+        # mission、route 与 HIL 三层结论必须同时保持 false。
+        self.assertFalse(manifest["mission_attempt"])
+        self.assertFalse(manifest["route_execution_success"])
+        self.assertFalse(manifest["hil_pass"])
+        self.assertEqual(manifest["t1001_observed_count"], 0)
+        self.assertEqual(manifest["feedback_sample_invocation_count"], 0)
+        self.assertTrue(manifest["cleanup"]["completed"])
+        self.assertEqual(manifest["cleanup"]["run_owned_residual_process_count"], 0)
+
     def test_managed_bridge_defaults_to_pwm_motion_path(self) -> None:
         """自动驾驶托管 bridge 默认走 vendor T=11 PWM164，不把雷达作为底盘发命令前置。"""
         command = HELPER.managed_esp32_bridge_command("/tmp/o11_feedback.jsonl", "/tmp/o11_command.jsonl")

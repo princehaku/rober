@@ -70,3 +70,10 @@ local costmap 的 obstacle layer 必须消费 current `/scan`：
 - partial、exception 或超时 artifact 必须保持 fail-closed；没有 natural final 时不能沿用先前的 GO。
 
 只有后续独立获得明确 bounded-motion 授权并进入受控执行阶段，才可把本合同作为发车前置输入；本合同本身不扩大任何运动权限。
+# Current bounded mission Phase 0 NO-GO contract
+
+`o11_nav2_goal_execution_proof.py` 提供 `build_phase0_no_go_manifest`，用于在严格只读准入未全绿时冻结
+`trashbot.o6_o7.current_bounded_mission_attempt.v1`。该产物显式固定 pre-stop、NavigateToPose、post-stop、
+UART、service mutation、manual、`/cmd_vel`、`/initialpose`、retry 与 second-goal 计数为 `0`，并保留
+`authorization_state=unconsumed_phase0_no_go`。历史 goal、命令日志或 T=1001 反馈不得补成 current evidence；
+失败后不得改用另一 wrapper 重跑 Phase 0。

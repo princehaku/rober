@@ -16,6 +16,96 @@ from typing import Any
 
 
 SCHEMA = "trashbot.upper_robot_api.v1.nav2_goal_execution_proof"
+BOUNDED_MISSION_SCHEMA = "trashbot.o6_o7.current_bounded_mission_attempt.v1"
+BOUNDED_MISSION_TARGET = {"frame_id": "map", "x": 0.8, "y": 0.25, "yaw": 0.0}
+
+
+def build_phase0_no_go_manifest(
+    *,
+    authorization_id: str,
+    phase0: dict[str, Any],
+    command_ledger: list[dict[str, Any]],
+    final_readback: dict[str, Any],
+) -> dict[str, Any]:
+    """冻结 Phase 0 NO-GO；所有动作计数显式为零，避免缺字段被误读成安全。"""
+    generated_at_ms = now_ms()
+    # Phase 0 一旦不全绿就不允许进入 stop/goal pipe，因此授权仍保持未消费。
+    counters = {
+        # Phase 0 本身允许且必须恰好执行一次。
+        "phase0_invocation_count": 1,
+        # 停车属于动作 pipe；NO-GO 不能提前消费。
+        "pre_stop_invocation_count": 0,
+        # 用户动作回执只能与真实 goal 同窗产生。
+        "user_action_receipt_count": 0,
+        # 导航目标严格保持零次，不能继承历史 latest。
+        "navigate_to_pose_invocation_count": 0,
+        # 未进入 pipe 时不需要发送 post-stop。
+        "post_stop_invocation_count": 0,
+        # 没有 active goal，因此 cancel 也必须为零。
+        "cancel_invocation_count": 0,
+        # 背景反馈日志不算本轮主动采样。
+        "feedback_sample_invocation_count": 0,
+        # 当前服务只读复用，绝不启停或替换。
+        "service_mutation_count": 0,
+        # 已有 holder 不等于本轮新开串口。
+        "uart_open_count": 0,
+        # 本轮只读路径不写任何底盘指令。
+        "uart_write_count": 0,
+        # 固件维护完全不在本次授权范围内。
+        "firmware_mutation_count": 0,
+        # 定位发布明确禁止，失败后也不修补。
+        "initialpose_publish_attempts": 0,
+        # 手动控制不能替代唯一 NavigateToPose。
+        "manual_command_count": 0,
+        # controller 之外禁止直接发布速度。
+        "direct_cmd_vel_publish_count": 0,
+        # NO-GO 后不允许换参数或换 wrapper 重试。
+        "retry_count": 0,
+        # 单目标合同要求第二目标永远为零。
+        "second_goal_count": 0,
+    }
+    # NO-GO 只封存 current readiness 缺口，不把历史 goal、命令或 T=1001 当成本轮材料。
+    return {
+        "schema": BOUNDED_MISSION_SCHEMA,
+        "generated_at_ms": generated_at_ms,
+        "status": "phase0_no_go_frozen",
+        "task_id": f"o6-o7-bounded-mission-{generated_at_ms}",
+        "action_id": None,
+        "target": dict(BOUNDED_MISSION_TARGET),
+        "authorization_id": authorization_id,
+        "authorization_state": "unconsumed_phase0_no_go",
+        "authorization_consumed": False,
+        # READINESS_GO 固定 false，调用方不得从子门历史值重新推导 true。
+        "READINESS_GO": False,
+        "phase0": phase0,
+        "command_ledger": command_ledger,
+        "user_action_receipt": None,
+        "goal_accepted": False,
+        "feedback_count": 0,
+        "route_progress": None,
+        "terminal_status": "not_invoked_phase0_no_go",
+        "t1001_observed_count": 0,
+        "t1001_nonzero_count": 0,
+        "t1001_latest_pair": None,
+        # final readback 只用于确认现场未被本轮扰动，不计入 current mission。
+        "final_base_status": final_readback.get("base_status"),
+        "final_readback": final_readback,
+        **counters,
+        "cleanup": {
+            # 没有 run-owned 进程或 active goal，cleanup 是零动作完成。
+            "required": False,
+            "completed": True,
+            "goal_active": False,
+            "run_owned_residual_process_count": 0,
+            "reason": "no live pipe entered",
+        },
+        "mission_attempt": False,
+        "route_execution_success": False,
+        "delivery_success": False,
+        "hil_pass": False,
+        "safe_to_control": False,
+        "proof_boundary": "current_read_only_phase0_no_go_no_motion_authorization_unconsumed",
+    }
 NAVIGATE_ACTION_CANDIDATES = ("/navigate_to_pose", "navigate_to_pose")
 DEFAULT_ONBOARD_SETUP = "/root/rober/onboard/install/setup.bash"
 DEFAULT_WORKDIR = "/root/rober/onboard"
