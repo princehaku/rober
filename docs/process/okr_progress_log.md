@@ -70,23 +70,38 @@ Mission Objective 0 未满足。O5/O6/O7/O1 保持约 `85%/93%/93%/95%`，KR `�
 再验证 current Nav2/localization/path/obstacle/action/stop/readback 全门，并在 live pipe 前取得新的 fresh authorization。若同根因
 第二次失败达到 `2/2`，必须切换 Objective 或升级 CEO。
 
-## 2026-07-21 O1 wheel-feedback root-cause planning landed, implementation runtime-blocked flat 收口
+## 2026-07-21 O1 wheel-feedback root-cause implementation + readonly inventory supporting flat 收口
 
-`sprints/2026.07.21_08-50_o1_wheel_feedback_root_cause/` 在 O5 production blocker `2/2`、O6/O7 maintenance
-authorization 不足的路由事实下，选择 O1 的 non-motion/offline diagnosis 新入口，并冻结 Epic 的 `pre_start.md`、`prd.md`、
-`tech-plan.md`。计划明确 Hardware 单 owner、vendor source、离线 root-cause CLI/schema、v8 artifact 回归、可选严格只读上位机
-inventory、中文注释比例、测试命令与零 mutation 围栏；v8 exact motion slice 不得复用。
+`sprints/2026.07.21_08-50_o1_wheel_feedback_root_cause/` 的旧 planning-only/runtime-blocked closeout 已被同一 sprint 后续 Hardware
+business-worker 的真实实现、验证与只读 runtime inventory supersede；`pre_start.md` 旧状态只保留历史调度事实，不再代表最终
+交付。Hardware 复用既有 `tech-plan.md`，新增 fail-closed 离线 CLI、`12` 个正常/hostile tests、3 个结构化 artifacts，并同步
+`docs/hardware/wave_rover_nonzero_feedback_hil_gate.md`，没有再开 planning/review/handoff wrapper。
 
-执行未启动：Product planning 三次、Hardware implementation 两次均在首个业务文件或命令之前持续零产出，blocker 为
-`business_subagent_runtime_stalled_before_business_file_or_command_execution_across_product_and_hardware_owners`。没有创建诊断
-模块、单测或 CLI artifact；tech-plan 的 py_compile/unittest/CLI/JSON assertion/comment ratio/SSH inventory 全部 `NOT RUN`。
-本轮 SSH/HTTP/ROS/UART/motion/control/stop/nonzero/service mutation/deploy/firmware mutation/retry 全为 `0`，当前运动授权未
-消费，既有 dirty WIP 未触碰。
+Hardware 留档验证为 py_compile exit `0`、`Ran 12 tests in 0.055s / OK`、真实 CLI exit `0`、safety assertions PASS、3 个 JSON
+parse PASS、中文技术注释 `20.40%` 与 scoped diff PASS。Product 不重跑 Engineer tests/SSH/control，只读解析三个 artifact 并核对：
+diagnostic schema=`trashbot.wave_rover.feedback_root_cause_diagnostic.v1`、status=`diagnostic_complete_fail_closed`、
+`input_valid=true`；primary=`encoder_update_path_not_observed`、status=`highest_priority_unconfirmed`。candidate 边界明确本地 vendor
+source 只证明参考更新链存在，v8 只证明同窗 `T=1001 L/R=0/0`，不确认 encoder 损坏；parser 对冻结 vendor frame 一致，但
+byte-for-byte raw UART timing 未证明。
 
-Proof boundary=`planning_artifacts_only_subagent_runtime_blocked_no_diagnostic_implementation`。O1 约 `95%`、O5 约 `85%`、
-O6/O7 各约 `93%` 全部 flat；KR `不归档`，HIL/safe/route/delivery/Mission Objective 0 均 false。下一轮仅在
-Hardware/business-worker runtime 恢复后复用现有 `tech-plan.md`，禁止再开规划/review/handoff wrapper；若需要 service/UART/
-firmware mutation 或再次运动，仍需分别取得维护或新的具体 bounded-motion authorization。
+一次严格只读 SSH inventory session exit `0`；inventory schema=`trashbot.wave_rover.readonly_runtime_inventory.v1`，allowlist 与
+实际五类命令均为 `systemctl_show/systemctl_cat/ps/ss/sha256sum`，逐条 exit `0`。只读事实包括 bridge service active/running、
+unit 配置 `command_mode=pwm`、`bridge_main_type=1`、`module_type=0`、`/dev/ttyS5@115200` 及五个 deployed file hash。
+`bridge_main_type=1` 不是 ESP32 runtime `mainType` 证明；firmware build/hash 未由只读接口暴露，因此
+`runtime_main_type_not_observed`、`runtime_firmware_identity_not_observed` 保持成立。
+
+Proof boundary=`offline_vendor_v8_diagnostic_plus_single_remote_readonly_inventory_supporting_only`。Product 接受
+`current_run_artifact_delta=true`，只表示 current diagnostic implementation、tests、3 artifacts、hardware docs 与 current read-only
+inventory supporting delta；`external_artifact_delta=false`、`live_control_delta=false`、`user_action_delta=false`、
+`okr_credit=false`。motion/control/stop/nonzero/service mutation/UART write/firmware mutation=`0/0/0/0/0/0/0`；
+`mission_attempt=false`、`hil_pass=false`、`safe_to_control=false`、`route_execution_success=false`、
+`delivery_success=false`、Mission Objective 0 未满足。v8 仍为 `consumed_no_retry`，没有 reuse/retry，本 sprint 未消费用户运动授权。
+
+O1 保持约 `95%`、KR `不归档`、历史区无新增；O5 保持约 `85%` 且 production provider/runtime blocker `2/2` 继续暂停，O6/O7
+各保持约 `93%` 且 corrected Phase0 lane `2/2` 继续暂停。唯一下一动作=
+`maintenance_freeze_runtime_identity_then_observe_raw_encoder_counters`：取得独占 service/UART/firmware 维护授权后，先冻结 deployed
+ESP32 firmware identity 与 runtime `mainType`，再增加或读取 raw encoder A/B counter delta；counter path 可观测前不得重试运动，
+也不得以新的 wrapper/Phase0/readback 继续包装既有 blocker。
 
 ## 2026-07-21 O1 current wheel feedback live HIL real attempt fail-closed flat 收口
 

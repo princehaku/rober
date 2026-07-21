@@ -1,0 +1,79 @@
+{
+  "schema": "trashbot.wave_rover.readonly_runtime_inventory.v1",
+  "captured_at": "2026-07-21T13:01:39+08:00",
+  "transport": {
+    "type": "ssh_readonly",
+    "exit_code": 0,
+    "raw_remote_output_saved": false,
+    "stderr_summary": "empty"
+  },
+  "readonly_only": true,
+  "readonly_allowlist": [
+    "systemctl_show",
+    "systemctl_cat",
+    "ps",
+    "ss",
+    "sha256sum"
+  ],
+  "commands": [
+    {
+      "category": "systemctl_show",
+      "command": "systemctl show trashbot-esp32-bridge.service --no-pager --property=Id,ActiveState,SubState,MainPID,ExecStart,FragmentPath",
+      "exit_code": 0,
+      "stdout_summary": "service active/running; ExecStart uses esp32_bridge_http.sh; MainPID observed",
+      "stderr_summary": ""
+    },
+    {
+      "category": "systemctl_cat",
+      "command": "systemctl cat trashbot-esp32-bridge.service --no-pager",
+      "exit_code": 0,
+      "stdout_summary": "configured command_mode=pwm, bridge_main_type=1, module_type=0, serial_port=/dev/ttyS5, baudrate=115200, HTTP transport",
+      "stderr_summary": ""
+    },
+    {
+      "category": "ps",
+      "command": "ps -C python3 -o pid=,ppid=,comm=,args=",
+      "exit_code": 0,
+      "stdout_summary": "existing upper API, camera smoke and ROS daemon processes observed; no process mutation",
+      "stderr_summary": ""
+    },
+    {
+      "category": "ss",
+      "command": "ss -ltnp",
+      "exit_code": 0,
+      "stdout_summary": "existing listeners inventoried; upper API 8787 listener observed; no connection or listener mutation",
+      "stderr_summary": ""
+    },
+    {
+      "category": "sha256sum",
+      "command": "sha256sum /root/rober/onboard/src/ros2_trashbot_hardware/ros2_trashbot_hardware/esp32_bridge_node.py /root/rober/onboard/src/ros2_trashbot_hardware/ros2_trashbot_hardware/wave_rover_feedback.py /root/rober/onboard/src/ros2_trashbot_hardware/ros2_trashbot_hardware/wave_rover_protocol.py /root/rober/onboard/scripts/esp32_bridge_http.sh /etc/systemd/system/trashbot-esp32-bridge.service",
+      "exit_code": 0,
+      "stdout_summary": "five deployed bridge/script/unit files hashed successfully; hashes recorded under observations",
+      "stderr_summary": ""
+    }
+  ],
+  "observations": {
+    "service_active_state": "active",
+    "service_sub_state": "running",
+    "bridge_command_mode": "pwm",
+    "bridge_configured_main_type": 1,
+    "runtime_main_type": null,
+    "runtime_main_type_boundary": "systemd bridge configuration is not ESP32 runtime mainType proof",
+    "firmware_identity": null,
+    "firmware_identity_boundary": "ESP32 deployed firmware binary/build identity is not exposed by this read-only inventory",
+    "deployed_bridge_sha256": "6e82e493a8d63ae5ff47546f689c28deb92d1647b5937836bed38e0f55ef8304",
+    "deployed_wave_rover_feedback_sha256": "9c1329346395d8a5bd866c15d67ca9b569dbccb70aea2dbe38ec3ef92db6734e",
+    "deployed_wave_rover_protocol_sha256": "7c0d749d6669d658297e682aa89ccf867749f4e643602cb54cb6ed56b8c83fd5",
+    "deployed_bridge_script_sha256": "c6d02c47ffe624b8b340416d06607e3812e61b74988f82fbf9ba735054dc9a3e",
+    "deployed_service_unit_sha256": "1416c24689de1562d9e7feb03b7f3399fd25e4583db70d07d1ffb4a7336e2bc9"
+  },
+  "safety_counters": {
+    "motion": 0,
+    "control": 0,
+    "stop": 0,
+    "nonzero": 0,
+    "service_mutation": 0,
+    "uart_write": 0,
+    "firmware_mutation": 0
+  }
+}

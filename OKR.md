@@ -127,15 +127,21 @@
 > frozen Phase 0 正确 source Humble、使用 `8787`、对齐/明确 Upper SHA 与 service ownership，并在 live pipe 前取得新的
 > fresh current authorization；相同 blocker 若第二次失败达到 `2/2`，切换 Objective 或升级 CEO。
 >
-> 2026-07-21 08-50 O1 wheel-feedback root-cause Epic 收口：O5 约 `85%` 的 production provider/runtime blocker
-> 已消费 `2/2`，O6/O7 各约 `93%` 的路线入口需要未获授权的 service/UART 独占维护窗口，因此本轮选择 O1 约
-> `95%` 的全新 non-motion/offline diagnosis 入口。`sprints/2026.07.21_08-50_o1_wheel_feedback_root_cause/`
-> 已冻结 `pre_start/prd/tech-plan`，但 Product 三次、Hardware 两次派发均在首个业务文件或命令前零产出，收口为
-> `INTEGRATION_CLOSEOUT=BLOCKED_SUBAGENT_RUNTIME_BEFORE_IMPLEMENTATION`。没有诊断模块、测试、CLI artifact、SSH、HTTP、
-> ROS、UART、motion/control/stop/nonzero、service/firmware mutation 或新硬件事实；`current_run_artifact_delta=false`、
-> `external_artifact_delta=false`、`live_control_delta=false`、`user_action_delta=false`、`okr_credit=false`。O1/O5/O6/O7
-> 全部 flat，KR `不归档`，HIL/safe/route/delivery/Mission false。下一轮只在 Hardware/business-worker runtime 恢复后复用
-> 本 sprint `tech-plan.md`，禁止再开规划 wrapper；任何维护或再次运动仍需独立授权。
+> 2026-07-21 08-50 O1 wheel-feedback root-cause Epic 最终收口：旧 planning-only/runtime-blocked closeout 已被同一
+> sprint 后续 Hardware business-worker 的真实实现与验证 supersede。`sprints/2026.07.21_08-50_o1_wheel_feedback_root_cause/`
+> 新增 fail-closed 离线 CLI、`12` tests、3 个 artifacts 与硬件文档，并执行一次严格只读 SSH inventory。Hardware 留档
+> py_compile/CLI/JSON/safety/diff 全绿、`Ran 12 tests in 0.055s / OK`、中文技术注释 `20.40%`；Product 解析 3 个 JSON 并
+> 结构核证 schema=`trashbot.wave_rover.feedback_root_cause_diagnostic.v1`、status=`diagnostic_complete_fail_closed`、
+> `input_valid=true`。primary=`encoder_update_path_not_observed` 且 status=`highest_priority_unconfirmed`，不能外推 encoder
+> 损坏；只读 runtime 仅观察上位机配置 `bridge_main_type=1`，ESP32 runtime `mainType` 与 firmware identity 均
+> `not_observed`，candidate id 分别为 `runtime_main_type_not_observed`、`runtime_firmware_identity_not_observed`。proof boundary=
+> `offline_vendor_v8_diagnostic_plus_single_remote_readonly_inventory_supporting_only`。motion/control/stop/nonzero/service mutation/
+> UART write/firmware mutation 全 `0`，`mission_attempt=false`、
+> HIL/safe/route/delivery 全 false。Product 仅接受 `current_run_artifact_delta=true` 的 current diagnostic implementation +
+> read-only inventory supporting delta；`external_artifact_delta=false`、`live_control_delta=false`、`user_action_delta=false`、
+> `okr_credit=false`。O1 保持约 `95%`，KR `不归档`、历史区无新增；O5 约 `85%` provider/runtime `2/2` 与 O6/O7 各约
+> `93%` corrected Phase0 lane `2/2` 继续暂停。唯一下一动作=`maintenance_freeze_runtime_identity_then_observe_raw_encoder_counters`，
+> 必须先取得独占 service/UART/firmware 维护授权，不得先重试运动。
 >
 > 2026-07-21 05-50 O1 current wheel feedback live HIL Product closeout：
 > `PRODUCT_CLOSEOUT=ACCEPT_REAL_ATTEMPT_HIL_FAIL_CLOSED_FINAL_STOP_PROVEN`。authorization

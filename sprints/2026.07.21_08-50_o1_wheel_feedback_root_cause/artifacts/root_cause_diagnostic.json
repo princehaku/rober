@@ -1,0 +1,443 @@
+{
+  "control_command_count": 0,
+  "delivery_success": false,
+  "firmware_mutation_count": 0,
+  "hil_pass": false,
+  "input_valid": true,
+  "motion_command_count": 0,
+  "nonzero_command_count": 0,
+  "not_proven": [
+    "deployed_esp32_firmware_matches_local_vendor_source",
+    "runtime_main_type",
+    "raw_encoder_counter_delta",
+    "raw_uart_byte_timing",
+    "nonzero_wheel_feedback",
+    "hil_pass",
+    "safe_to_control"
+  ],
+  "primary_classification": "encoder_update_path_not_observed",
+  "proof_boundary": "offline_vendor_v8_diagnostic_with_optional_readonly_inventory_only",
+  "retry_count": 0,
+  "root_cause_candidates": [
+    {
+      "candidate_id": "encoder_update_path_not_observed",
+      "confidence_boundary": "Vendor source proves the reference update path exists; v8 proves zero output, not why encoder counters stayed zero.",
+      "evidence_refs": [
+        "vendor:setup_initializes_encoders",
+        "vendor:loop_refreshes_left_encoder",
+        "vendor:loop_refreshes_right_encoder",
+        "v8:during_window_t1001_frames=3",
+        "v8:during_window_pairs=0/0,0/0,0/0"
+      ],
+      "next_readonly_or_maintenance_action": "在独占维护窗口先冻结 runtime firmware/mainType，再增加或读取 raw encoder A/B counter delta；不得先重试运动。",
+      "priority": 1,
+      "requires_maintenance": true,
+      "status": "highest_priority_unconfirmed"
+    },
+    {
+      "candidate_id": "runtime_main_type_not_observed",
+      "confidence_boundary": "Source default mainType=1 is not proof of the value running on the ESP32.",
+      "evidence_refs": [
+        "vendor:source_default_main_type_wave_rover",
+        "runtime:runtime_main_type"
+      ],
+      "next_readonly_or_maintenance_action": "在获批维护窗口读取或由受控 firmware instrumentation 回报 runtime mainType。",
+      "priority": 2,
+      "requires_maintenance": true,
+      "status": "not_observed"
+    },
+    {
+      "candidate_id": "runtime_firmware_identity_not_observed",
+      "confidence_boundary": "Local V0.9 source is a reference until the deployed ESP32 binary/build identity is matched.",
+      "evidence_refs": [
+        "vendor:WAVE_ROVER_V0.9.ino",
+        "runtime:firmware_identity"
+      ],
+      "next_readonly_or_maintenance_action": "在获批维护窗口冻结 ESP32 deployed firmware build/hash identity，不刷写 firmware。",
+      "priority": 3,
+      "requires_maintenance": true,
+      "status": "not_observed"
+    },
+    {
+      "candidate_id": "feedback_sampling_alignment_not_proven",
+      "confidence_boundary": "Bridge-debug timestamps align three frames with the command window, but byte-for-byte UART timing is absent.",
+      "evidence_refs": [
+        "v8:command_window_timestamps",
+        "v8:during_window_t1001_frames=3",
+        "v8:raw_serial_byte_capture=false"
+      ],
+      "next_readonly_or_maintenance_action": "若 encoder counters 非零，再在独占 UART 维护窗口获取只读 raw frame timing；此前不优先消费该候选。",
+      "priority": 4,
+      "requires_maintenance": true,
+      "status": "partially_excluded_bridge_debug_only"
+    },
+    {
+      "candidate_id": "bridge_parser_consistent_with_vendor_frame",
+      "confidence_boundary": "Consistency is proven for frozen bridge debug rows, not for unseen raw serial bytes.",
+      "evidence_refs": [
+        "v8:normalized_left_right_equal_vendor_frame",
+        "vendor:t1001_left_source",
+        "vendor:t1001_right_source"
+      ],
+      "next_readonly_or_maintenance_action": "保留现有 parser；除非 raw UART 与 bridge debug 冲突，不修改 parser。",
+      "priority": 5,
+      "requires_maintenance": false,
+      "status": "observed"
+    },
+    {
+      "candidate_id": "artifact_inconsistent_or_invalid",
+      "confidence_boundary": "This candidate is excluded only when every required input and safety assertion passes.",
+      "evidence_refs": [
+        "vendor:validation",
+        "v8:validation",
+        "runtime:validation"
+      ],
+      "next_readonly_or_maintenance_action": "修复输入一致性后重新离线运行诊断；不得用坏 artifact 推动维护或运动。",
+      "priority": 6,
+      "requires_maintenance": false,
+      "status": "excluded_inputs_valid"
+    }
+  ],
+  "route_execution_success": false,
+  "runtime_inventory_validation": {
+    "errors": [],
+    "input_artifact": null,
+    "observations": {
+      "firmware_identity": null,
+      "runtime_main_type": null
+    },
+    "provided": false,
+    "status": "not_provided",
+    "valid": true
+  },
+  "safe_to_control": false,
+  "schema": "trashbot.wave_rover.feedback_root_cause_diagnostic.v1",
+  "service_mutation_count": 0,
+  "status": "diagnostic_complete_fail_closed",
+  "stop_command_count": 0,
+  "uart_write_count": 0,
+  "unique_next_maintenance_action": {
+    "action": "取得独占 service/UART/firmware 维护授权后，先冻结 deployed ESP32 firmware identity 与 runtime mainType，再增加或读取 raw encoder A/B counter delta；在 counter path 可观测前不批准新的 motion retry。",
+    "action_id": "maintenance_freeze_runtime_identity_then_observe_raw_encoder_counters",
+    "motion_authorized_by_this_diagnostic": false,
+    "requires_explicit_service_uart_firmware_maintenance_authorization": true
+  },
+  "v8_validation": {
+    "attempt_id": "o1-current-wheel-feedback-hil-v8-attempt-1",
+    "authorization_id": "ceo_20260721_0651_current_wheel_feedback_hil_v8",
+    "authorization_status": "consumed_no_retry",
+    "bridge_parser_consistent_with_vendor_frame": true,
+    "command_window": {
+      "start_unix_s": 1784589336.2314317,
+      "stop_unix_s": 1784589336.483469
+    },
+    "during_window_pairs": [
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ]
+    ],
+    "errors": [],
+    "feedback_evidence_source_class": "bridge_debug_serial_derived",
+    "final_stopped": true,
+    "historical_bridge_command_counts": {
+      "nonzero_t11_frames": 6,
+      "zero_t11_frames": 8
+    },
+    "historical_exactly_once_counts": {
+      "nonzero": 1,
+      "post_stop": 1,
+      "pre_stop": 1,
+      "retry": 0
+    },
+    "historical_feedback_counts": {
+      "during_window_nonzero_pairs": 0,
+      "during_window_t1001_frames": 3,
+      "total_t1001_frames": 14
+    },
+    "input_artifacts": {
+      "acceptance_summary.json": {
+        "sha256": "11a8d75f5d1bcced2d0fc417ea6643345b12df23520ea6b2c6510a6bccca5571",
+        "size_bytes": 1967
+      },
+      "during_motion_t1001.json": {
+        "sha256": "e51c3e487d4fe4ef71ba34cc6f14b3eedc4cf31a1114a249d94e3a5a6dfe5ef3",
+        "size_bytes": 461
+      },
+      "final_base_status.json": {
+        "sha256": "07df1f2929066b9496f6574d8ec935d4b00c5c3a76ca4877b172be0d9725a363",
+        "size_bytes": 1071
+      },
+      "live_bridge_command_delta.jsonl": {
+        "sha256": "cdcb16af9a9d2360b7c7e207f58047eba72828ea1df1e8c6f4a4c14833b20a27",
+        "size_bytes": 5185
+      },
+      "live_bridge_feedback_delta.jsonl": {
+        "sha256": "fbb296395f43d9f58bac3e99667dbcbe87c5bbc3598e607b82a23af443c79d81",
+        "size_bytes": 4919
+      },
+      "post_stop_t1001.json": {
+        "sha256": "08869a66c5973c86c2c2bb12e91efc77e4c20818f36db75a1e69e53fc9f41d82",
+        "size_bytes": 392
+      }
+    },
+    "raw_serial_byte_capture": false,
+    "valid": true
+  },
+  "validation_errors": [],
+  "vendor_validation": {
+    "errors": [],
+    "facts": [
+      {
+        "expected_value": "1001",
+        "fact_id": "vendor_feedback_type_t1001",
+        "observed_definitions": [
+          {
+            "line": 1,
+            "value": "1001"
+          }
+        ],
+        "source_ref": "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h",
+        "status": "verified",
+        "symbol": "FEEDBACK_BASE_INFO"
+      },
+      {
+        "expected_value": "11",
+        "fact_id": "vendor_pwm_command_t11",
+        "observed_definitions": [
+          {
+            "line": 58,
+            "value": "11"
+          }
+        ],
+        "source_ref": "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h",
+        "status": "verified",
+        "symbol": "CMD_PWM_INPUT"
+      },
+      {
+        "expected_value": "13",
+        "fact_id": "vendor_ros_command_t13",
+        "observed_definitions": [
+          {
+            "line": 61,
+            "value": "13"
+          }
+        ],
+        "source_ref": "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h",
+        "status": "verified",
+        "symbol": "CMD_ROS_CTRL"
+      },
+      {
+        "expected_value": "130",
+        "fact_id": "vendor_feedback_request_t130",
+        "observed_definitions": [
+          {
+            "line": 102,
+            "value": "130"
+          }
+        ],
+        "source_ref": "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h",
+        "status": "verified",
+        "symbol": "CMD_BASE_FEEDBACK"
+      },
+      {
+        "expected_value": "131",
+        "fact_id": "vendor_feedback_flow_t131",
+        "observed_definitions": [
+          {
+            "line": 106,
+            "value": "131"
+          }
+        ],
+        "source_ref": "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h",
+        "status": "verified",
+        "symbol": "CMD_BASE_FEEDBACK_FLOW"
+      },
+      {
+        "expected_value": "900",
+        "fact_id": "vendor_main_module_type_command_t900",
+        "observed_definitions": [
+          {
+            "line": 575,
+            "value": "900"
+          }
+        ],
+        "source_ref": "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h",
+        "status": "verified",
+        "symbol": "CMD_MM_TYPE_SET"
+      },
+      {
+        "fact_id": "pwm_dispatch_branch",
+        "lines": [
+          16
+        ],
+        "source_ref": "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/uart_ctrl.h",
+        "status": "verified",
+        "symbol": "case CMD_PWM_INPUT:"
+      },
+      {
+        "fact_id": "pwm_left_dispatch",
+        "lines": [
+          19
+        ],
+        "source_ref": "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/uart_ctrl.h",
+        "status": "verified",
+        "symbol": "leftCtrl(jsonCmdReceive[\"L\"]);"
+      },
+      {
+        "fact_id": "pwm_right_dispatch",
+        "lines": [
+          20
+        ],
+        "source_ref": "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/uart_ctrl.h",
+        "status": "verified",
+        "symbol": "rightCtrl(jsonCmdReceive[\"R\"]);"
+      },
+      {
+        "fact_id": "encoder_init_function",
+        "lines": [
+          141
+        ],
+        "source_ref": "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/movtion_module.h",
+        "status": "verified",
+        "symbol": "void initEncoders()"
+      },
+      {
+        "fact_id": "left_encoder_update_function",
+        "lines": [
+          170
+        ],
+        "source_ref": "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/movtion_module.h",
+        "status": "verified",
+        "symbol": "void getLeftSpeed()"
+      },
+      {
+        "fact_id": "right_encoder_update_function",
+        "lines": [
+          182
+        ],
+        "source_ref": "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/movtion_module.h",
+        "status": "verified",
+        "symbol": "void getRightSpeed()"
+      },
+      {
+        "fact_id": "main_type_feedback_branch",
+        "lines": [
+          234,
+          264
+        ],
+        "source_ref": "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/movtion_module.h",
+        "status": "verified",
+        "symbol": "if (mainType != 3)"
+      },
+      {
+        "fact_id": "left_pwm_value_assignment",
+        "lines": [
+          235
+        ],
+        "source_ref": "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/movtion_module.h",
+        "status": "verified",
+        "symbol": "speedGetA = pwmIntA;"
+      },
+      {
+        "fact_id": "right_pwm_value_assignment",
+        "lines": [
+          265
+        ],
+        "source_ref": "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/movtion_module.h",
+        "status": "verified",
+        "symbol": "speedGetB = pwmIntB;"
+      },
+      {
+        "fact_id": "t1001_left_source",
+        "lines": [
+          386
+        ],
+        "source_ref": "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/ugv_advance.h",
+        "status": "verified",
+        "symbol": "jsonInfoHttp[\"L\"] = speedGetA;"
+      },
+      {
+        "fact_id": "t1001_right_source",
+        "lines": [
+          387
+        ],
+        "source_ref": "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/ugv_advance.h",
+        "status": "verified",
+        "symbol": "jsonInfoHttp[\"R\"] = speedGetB;"
+      },
+      {
+        "fact_id": "source_default_main_type_wave_rover",
+        "lines": [
+          38
+        ],
+        "source_ref": "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/ugv_config.h",
+        "status": "verified",
+        "symbol": "byte mainType = 1;"
+      },
+      {
+        "fact_id": "setup_initializes_encoders",
+        "lines": [
+          216
+        ],
+        "source_ref": "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/WAVE_ROVER_V0.9.ino",
+        "status": "verified",
+        "symbol": "initEncoders();"
+      },
+      {
+        "fact_id": "loop_refreshes_left_encoder",
+        "lines": [
+          248
+        ],
+        "source_ref": "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/WAVE_ROVER_V0.9.ino",
+        "status": "verified",
+        "symbol": "getLeftSpeed();"
+      },
+      {
+        "fact_id": "loop_refreshes_right_encoder",
+        "lines": [
+          252
+        ],
+        "source_ref": "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/WAVE_ROVER_V0.9.ino",
+        "status": "verified",
+        "symbol": "getRightSpeed();"
+      },
+      {
+        "fact_id": "loop_feedback_flow_gate",
+        "lines": [
+          260
+        ],
+        "source_ref": "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/WAVE_ROVER_V0.9.ino",
+        "status": "verified",
+        "symbol": "if (baseFeedbackFlow)"
+      },
+      {
+        "fact_id": "newline_json_uart_write",
+        "lines": [
+          182
+        ],
+        "source_ref": "docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py",
+        "status": "verified",
+        "symbol": "self.ser.write((json.dumps(data) + '\\n').encode(\"utf-8\"))"
+      }
+    ],
+    "source_hashes": {
+      "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/WAVE_ROVER_V0.9.ino": "1203fbc8c07a57213898068ff7bd5a05f7c3eeccb113a0d85cee711415cdaf0b",
+      "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/json_cmd.h": "ce6a9dff14359e09db4472dd184ca63413877e8a2f826a0ef0fe47c8b72bc997",
+      "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/movtion_module.h": "3964c2702925b1af0f1e42784f75ecee37b9eafe0ebe2966c28b03f569205768",
+      "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/uart_ctrl.h": "258a08727270f23789e4c9e48886c64dca040a0c793eee746f1698626d4c32c7",
+      "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/ugv_advance.h": "7b7b7d011c20704e372db26d298d31afb277d89db75a569cf56a4274391e99b9",
+      "docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/ugv_config.h": "9a752ae8e2fafb319fdbcc0f92223c7277e1e377804c0c8b739ef6e2da2c601a",
+      "docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py": "2b616c0701f187c0a4322e9222f6288f5d9be71aa37c7c39f1f1dba58f9779f6"
+    },
+    "valid": true
+  }
+}
