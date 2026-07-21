@@ -93,6 +93,24 @@
 
 **Key Results**
 
+> 2026-07-21 10-50 O6/O7 corrected Phase 0 Epic 收口：
+> `sprints/2026.07.21_10-50_o6_o7_corrected_phase0_bounded_mission/` 完成 corrected contract、离线测试、唯一
+> current board 只读 Phase 0 与 Algorithm frozen review。Robot py_compile、O11 `7+16`、Upper `141+141`、manifest/
+> safety assertions、中文技术注释 `>20%` 与 scoped diff 全绿；唯一 SSH/runner exit `0`。Corrected Upper 子门已闭合：
+> ROS env、唯一 PID/listener=`1201/8787`、health `200`、inactive unit compatibility、current routes/source、SHA mismatch
+> capability、stop-only 与 feedback readback 全绿；但 `READINESS_GO=false`、`6/15`，first failure=
+> `concurrent_task_goal_clear`，且 map/pose/`map->odom`、planner/controller、ComputePathToPose/NavigateToPose 与
+> obstacle min `0.035m` 仍红。phase0/pre/receipt/goal/post/cancel/retry/second=`1/0/0/0/0/0/0/0`，危险计数全 `0`，
+> cleanup clean，authorization=`unconsumed_phase0_no_go`，Algorithm `REVIEW=ACCEPT_NO_GO`。
+> `mission_attempt=false`、`route_execution_success=false`、`delivery_success=false`、`hil_pass=false`、
+> `safe_to_control=false`；`current_run_artifact_delta=true` 只接受 code/tests/current read-only NO-GO/frozen review，
+> `external_artifact_delta=false`、`live_control_delta=false`、`user_action_delta=false`、`okr_credit=false`。Mission Objective 0
+> 未达到 C2；O5/O6/O7/O1 保持约 `85%/93%/93%/95%`，KR `不归档`、历史区无新增。blocker
+> `phase0_frozen_probe_endpoint_ros_env_upper_sha_service_ownership_mismatch` lane 达到 `2/2`，禁止第三轮 Phase0/
+> preflight/wrapper。下一轮优先在 Hardware business-worker runtime 恢复后复用 08-50 O1 non-motion/offline
+> wheel-feedback root-cause `tech-plan.md` 实现；或由 CEO 给独立 service/runtime maintenance 权限后另立不同 blocker 的
+> 恢复 sprint，不得复用本 route Phase0 lane。
+>
 > 2026-07-21 09-50 O6/O7 bounded mission Phase 0 Epic 收口：O5 约 `85%` 的 production provider/runtime blocker
 > 继续暂停在 `2/2`，本轮优先 O6/O7 各约 `93%`。`sprints/2026.07.21_09-50_o6_o7_bounded_mission_attempt/`
 > 完成 current board exactly-once 只读 Phase 0、O11 NO-GO manifest builder/tests、导航文档、结构化
@@ -453,6 +471,17 @@
 ## 4.1 当前 OKR 进度快照
 
 更新时间：2026-07-21。
+
+2026-07-21 10-50 当前进展记录：corrected Phase 0 唯一 SSH/runner exit `0`，Upper 的 ROS env、`8787` 唯一
+PID/listener/health、inactive unit compatibility、current routes/source、SHA mismatch capability、stop-only 与 feedback readback
+已闭合；但 `READINESS_GO=false`、`6/15`、first failure=`concurrent_task_goal_clear`，map/pose/`map->odom`、planner/controller、
+ComputePathToPose/NavigateToPose 与 obstacle min `0.035m` 仍红。动作/危险计数为
+phase0/pre/receipt/goal/post/cancel/retry/second=`1/0/0/0/0/0/0/0` 且其余 mutation 全零，authorization unconsumed，
+Algorithm=`ACCEPT_NO_GO`，cleanup clean。`current_run_artifact_delta=true` 只计 code/tests/current read-only NO-GO/frozen
+review；external/live-control/user-action/okr-credit=false，mission/route/delivery/HIL/safe=false。Mission Objective 0 未达 C2，
+O5/O6/O7/O1=`85%/93%/93%/95%` flat，KR `不归档`。本 route Phase0 blocker lane 已 `2/2`，禁止第三轮；下一轮切到
+08-50 O1 wheel-feedback root-cause implementation（须先确认 Hardware business-worker runtime），或取得独立 maintenance 权限后
+另立不同 blocker，不得复用本 route lane。
 
 2026-07-21 01-54 当前进展记录：独立 micro 的 exactly-one nonzero manual `forward / 0.08m/s / 300ms` 经 proxy/remote HTTP `200` 到 bridge `T=11,L=164,R=164` sent，manual/auto-stop 成功；同窗 `80` 帧 T1001 的 IMU attitude delta 支持 physical motion signal，最终 `T=11,L=0,R=0` 与显式 stop 成功。因此窄化接受 `live_control_delta=true`，O1 从约 `94%` 上调到约 `95%`。由于 T1001 L/R nonzero=`0`、dedicated post-stop wheel feedback=`0`、T13 wire 未证明，顶层 robot control/HIL/safe/route/delivery/mission attempt 全 false；Mission Objective 0 仍低于 `C2 bounded_mission_attempt`，KR `不归档`，O5/O6/O7 flat，v6 authorization=`consumed_no_retry`。
 

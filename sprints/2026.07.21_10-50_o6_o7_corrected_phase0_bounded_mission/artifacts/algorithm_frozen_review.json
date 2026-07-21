@@ -1,0 +1,260 @@
+{
+  "schema": "trashbot.o6_o7.algorithm_frozen_review.v1",
+  "generated_at": "2026-07-21T11:39:05+08:00",
+  "review_role": "robot-algorithm-engineer",
+  "review_mode": "strict_frozen_artifact_only_no_ssh_no_ros_no_api_no_live_no_control_no_retry",
+  "source_manifest": "artifacts/mission_attempt_manifest.json",
+  "source_manifest_schema": "trashbot.o6_o7.corrected_current_bounded_mission_attempt.v1",
+  "source_manifest_sha256": "79692bcae232f4f70dae9072283f7cf9e303a92a010e0f664301b2e5b8869b0f",
+  "source_raw": "artifacts/corrected_phase0_raw.json",
+  "source_raw_schema": "trashbot.o6_o7.corrected_phase0_once_raw.v1",
+  "source_raw_sha256": "488c908a3ac54e3b52ac4ba4da506ed6e1c55ff01ef3853b70204b2de5e74b54",
+  "REVIEW": "ACCEPT_NO_GO",
+  "accepted": true,
+  "reason": "The frozen raw artifact and manifest are internally consistent: corrected Phase 0 ran exactly once, failed closed at current action-clear evidence, never entered the live pipe, left authorization unconsumed, preserved services and holders, and contains no mission, route, delivery, HIL, or safe-to-control proof.",
+  "READINESS_GO": false,
+  "phase0_invocation_count": 1,
+  "pre_stop_invocation_count": 0,
+  "user_action_receipt_count": 0,
+  "navigate_to_pose_invocation_count": 0,
+  "post_stop_invocation_count": 0,
+  "cancel_invocation_count": 0,
+  "feedback_sample_invocation_count": 0,
+  "retry_count": 0,
+  "second_goal_count": 0,
+  "authorization_consumed": false,
+  "goal_active": false,
+  "cleanup_completed": true,
+  "run_owned_residual_process_count": 0,
+  "existing_services_and_holders_preserved": true,
+  "mission_attempt": false,
+  "route_execution_success": false,
+  "delivery_success": false,
+  "hil_pass": false,
+  "safe_to_control": false,
+  "blocker_count": 2,
+  "third_retry_forbidden": true,
+  "source_review": {
+    "manifest": {
+      "path": "artifacts/mission_attempt_manifest.json",
+      "schema": "trashbot.o6_o7.corrected_current_bounded_mission_attempt.v1",
+      "sha256": "79692bcae232f4f70dae9072283f7cf9e303a92a010e0f664301b2e5b8869b0f"
+    },
+    "raw": {
+      "path": "artifacts/corrected_phase0_raw.json",
+      "schema": "trashbot.o6_o7.corrected_phase0_once_raw.v1",
+      "sha256": "488c908a3ac54e3b52ac4ba4da506ed6e1c55ff01ef3853b70204b2de5e74b54",
+      "matches_manifest_reference": true
+    }
+  },
+  "identity_review": {
+    "task_id": "o6-o7-corrected-phase0-20260721-1050",
+    "expected_target": {
+      "frame_id": "map",
+      "x": 0.8,
+      "y": 0.25,
+      "yaw": 0.0
+    },
+    "observed_target": {
+      "frame_id": "map",
+      "x": 0.8,
+      "y": 0.25,
+      "yaw": 0.0
+    },
+    "target_consistent": true,
+    "authorization_id": "ceo_20260721_1048_corrected_phase0_bounded_mission_v1",
+    "authorization_state": "unconsumed_phase0_no_go",
+    "authorization_consumed": false,
+    "consistent": true
+  },
+  "phase0_review": {
+    "READINESS_GO": false,
+    "decision": "NO_GO_DO_NOT_RERUN_CORRECTED_PHASE0",
+    "invocation_count": 1,
+    "overall_exit_code": 0,
+    "read_only_except_planner_only_compute_path": true,
+    "gate_counts": {
+      "green": 6,
+      "total": 15
+    },
+    "first_failure": "concurrent_task_goal_clear",
+    "gates": {
+      "ros_environment": true,
+      "upper_process_listener_health": true,
+      "upper_current_capability": true,
+      "concurrent_task_goal_clear": false,
+      "map": false,
+      "scan": true,
+      "pose": false,
+      "dynamic_tf": false,
+      "planner": false,
+      "controller": false,
+      "planner_only_path": false,
+      "obstacle_clear": false,
+      "navigate_to_pose_action": false,
+      "base_stop_endpoint": true,
+      "feedback_readback_endpoint": true
+    },
+    "all_required_gates_green": false,
+    "accepted_no_go": true
+  },
+  "upper_compatibility_review": {
+    "ros_environment_sourced": true,
+    "ros2_path": "/opt/ros/humble/bin/ros2",
+    "expected_port": 8787,
+    "health_http_status": 200,
+    "process_pids": [
+      1201
+    ],
+    "listener_pids": [
+      1201
+    ],
+    "unique_process_listener": true,
+    "systemd_inactive_accepted_only_with_full_compatibility": true,
+    "required_route_capability_ok": true,
+    "stop_only_contract_proven": true,
+    "feedback_readback_route_registered": true,
+    "local_remote_sha_match": false,
+    "capability_accepted_despite_sha_mismatch": true,
+    "mismatch_triggered_deploy": false,
+    "resolved_corrected_subgates": true
+  },
+  "current_readiness_review": {
+    "action_clear": {
+      "observed": false,
+      "clear": false,
+      "sample_exit_code": 124,
+      "finding": "No current action-status sample was observed, so absence of a concurrent goal was not proven."
+    },
+    "map": {
+      "observed": false,
+      "sample_exit_code": 124
+    },
+    "scan": {
+      "observed": true,
+      "finite_positive_count": 181,
+      "min_distance_m": 0.03500000014901161
+    },
+    "pose": {
+      "observed": false,
+      "sample_exit_code": 124
+    },
+    "dynamic_tf": {
+      "map_to_odom_observed": false,
+      "map_to_odom_exit_code": 124,
+      "odom_to_base_link_observed": true,
+      "odom_to_base_link_bounded_probe_exit_code": 124
+    },
+    "planner": {
+      "active": false,
+      "finding": "planner_server node not found"
+    },
+    "controller": {
+      "active": false,
+      "finding": "controller_server node not found"
+    },
+    "planner_only_path": {
+      "generated": false,
+      "point_count": 0,
+      "exit_code": 124,
+      "finding": "ComputePathToPose action server unavailable"
+    },
+    "obstacle_clear": {
+      "clear": false,
+      "threshold_m": 0.45,
+      "observed_min_distance_m": 0.03500000014901161
+    },
+    "navigate_to_pose_action": {
+      "available": false,
+      "inventory_empty": true
+    },
+    "nav2_status": "blocked_with_root_cause",
+    "nav2_blocked_reasons": [
+      "nav2_lifecycle_not_running"
+    ]
+  },
+  "counter_review": {
+    "phase0_invocation_count": 1,
+    "pre_stop_invocation_count": 0,
+    "user_action_receipt_count": 0,
+    "navigate_to_pose_invocation_count": 0,
+    "post_stop_invocation_count": 0,
+    "cancel_invocation_count": 0,
+    "feedback_sample_invocation_count": 0,
+    "service_mutation_count": 0,
+    "remote_write_count": 0,
+    "deploy_count": 0,
+    "uart_open_count": 0,
+    "uart_write_count": 0,
+    "firmware_mutation_count": 0,
+    "initialpose_publish_attempts": 0,
+    "manual_command_count": 0,
+    "direct_cmd_vel_publish_count": 0,
+    "retry_count": 0,
+    "second_goal_count": 0,
+    "current_mission_window_t1001_count": 0,
+    "all_action_and_hazardous_counters_consistent": true
+  },
+  "authorization_review": {
+    "authorization_id": "ceo_20260721_1048_corrected_phase0_bounded_mission_v1",
+    "authorization_state": "unconsumed_phase0_no_go",
+    "authorization_consumed": false,
+    "consistent_with_pre_stop_zero": true,
+    "current_sprint_window_sealed": true
+  },
+  "cleanup_review": {
+    "required": false,
+    "completed": true,
+    "goal_active": false,
+    "run_owned_residual_process_count": 0,
+    "existing_services_and_holders_preserved": true,
+    "services_before_equal_after": true,
+    "holders_before_equal_after": true,
+    "final_stopped": true,
+    "final_stop_confirmation": "not_required_no_pre_stop_or_goal_invoked",
+    "accepted": true
+  },
+  "mission_semantics_review": {
+    "user_action_receipt": null,
+    "goal_accepted": false,
+    "feedback_count": 0,
+    "route_progress": null,
+    "terminal_status": "not_invoked_corrected_phase0_no_go",
+    "current_mission_window_t1001_count": 0,
+    "background_t1001_is_not_mission_evidence": true,
+    "mission_attempt": false,
+    "route_execution_success": false,
+    "delivery_success": false,
+    "hil_pass": false,
+    "safe_to_control": false,
+    "consistent": true,
+    "finding": "The corrected Phase 0 produced current readiness input only; no receipt, stop, goal, feedback, route progress, terminal result, or mission-window T=1001 sample exists."
+  },
+  "same_blocker_review": {
+    "blocker": "phase0_frozen_probe_endpoint_ros_env_upper_sha_service_ownership_mismatch",
+    "blocker_count": 2,
+    "blocker_limit": 2,
+    "prior_sprint_count": 1,
+    "current_sprint_count": 1,
+    "third_retry_forbidden": true,
+    "next_rule": "switch_objective_or_escalate_ceo_no_third_consumption",
+    "finding": "The lane is exhausted at 2/2 even though the corrected Upper and ROS subgates are now green; the sprint still closed NO-GO before mission execution, so no third Phase 0, preflight, wrapper, or equivalent retry is admissible."
+  },
+  "proof_boundary": "current_corrected_read_only_phase0_no_go_authorization_unconsumed",
+  "next_admissible_change": {
+    "action": "Switch Objective or escalate to the CEO; do not consume a third sprint on this Phase 0 or an equivalent wrapper/preflight retry.",
+    "requires_new_decision": true,
+    "requires_new_authorization_before_any_future_live_pipe": true,
+    "must_not_reuse_current_window": true,
+    "third_phase0_retry_forbidden": true
+  },
+  "review_execution_boundary": {
+    "ssh_executed": false,
+    "ros_command_executed": false,
+    "api_called": false,
+    "live_service_called": false,
+    "control_or_motion_called": false,
+    "phase0_regenerated": false,
+    "product_code_changed": false
+  }
+}

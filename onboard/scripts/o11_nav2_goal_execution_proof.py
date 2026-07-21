@@ -17,9 +17,241 @@ from typing import Any
 
 SCHEMA = "trashbot.upper_robot_api.v1.nav2_goal_execution_proof"
 BOUNDED_MISSION_SCHEMA = "trashbot.o6_o7.current_bounded_mission_attempt.v1"
+CORRECTED_BOUNDED_MISSION_SCHEMA = "trashbot.o6_o7.corrected_current_bounded_mission_attempt.v1"
 BOUNDED_MISSION_TARGET = {"frame_id": "map", "x": 0.8, "y": 0.25, "yaw": 0.0}
 
 
+def build_corrected_phase0_no_go_manifest(
+    *,
+    authorization_id: str,
+    task_id: str,
+    phase0: dict[str, Any],
+    command_ledger: list[dict[str, Any]],
+    final_readback: dict[str, Any],
+    local_remote_sha: dict[str, Any],
+) -> dict[str, Any]:
+    """冻结 corrected Phase 0 NO-GO，并把未消费授权与零危险调用写成显式合同。"""
+    # 专用构造器只接受红门；调用方若传入 GO，必须改走唯一动作 pipe，不能伪造零动作收口。
+    if phase0.get("READINESS_GO") is True:
+        raise ValueError("corrected_phase0_no_go_builder_rejects_readiness_go")
+    generated_at_ms = now_ms()
+    # 所有调用次数都在顶层展开，审阅方无需从缺字段推断“没有发生”。
+    counters = {
+        # corrected Phase 0 在本 sprint 内恰好只允许一个冻结窗口。
+        "phase0_invocation_count": 1,
+        # pre-stop 尚未发出，因此本轮授权保持未消费。
+        "pre_stop_invocation_count": 0,
+        # user-action receipt 只能在动作 pipe 内与 current task 同窗产生。
+        "user_action_receipt_count": 0,
+        # planner-only path 不属于 NavigateToPose；真实导航目标仍为零。
+        "navigate_to_pose_invocation_count": 0,
+        # 未进入动作 pipe 时不调用 stop；GO 后 Upper stop-only 合同由独立计数覆盖。
+        "post_stop_invocation_count": 0,
+        # current goal 未激活，禁止制造多余 cancel 调用。
+        "cancel_invocation_count": 0,
+        # GET latest/background feedback 不算本轮主动采样。
+        "feedback_sample_invocation_count": 0,
+        # 本轮只读兼容门禁止变更任何 systemd service。
+        "service_mutation_count": 0,
+        # capability/source 读取不允许落盘、部署或覆盖远端文件。
+        "remote_write_count": 0,
+        # deploy 单列，避免“没有远端写”掩盖镜像或源码覆盖动作。
+        "deploy_count": 0,
+        # 这里只计 agent/新进程 direct UART；Upper 既有 stop-only 内部写入由 pre/post-stop 计数覆盖。
+        "uart_open_count": 0,
+        "uart_write_count": 0,
+        # 固件、定位播种与旁路运动面均不在本次授权范围。
+        "firmware_mutation_count": 0,
+        "initialpose_publish_attempts": 0,
+        "manual_command_count": 0,
+        "direct_cmd_vel_publish_count": 0,
+        # Phase 0 失败后不换端口、不换 shell、不发送第二目标。
+        "retry_count": 0,
+        "second_goal_count": 0,
+    }
+    # final readback 只证明未扰动现场，不能把历史 latest 提升为 current mission evidence。
+    return {
+        # schema 与旧 Phase 0 分离，避免上一轮 consumer 误合并。
+        "schema": CORRECTED_BOUNDED_MISSION_SCHEMA,
+        # 生成时间只表示本地 manifest 冻结时刻，不替代 live command timestamps。
+        "generated_at_ms": generated_at_ms,
+        "status": "corrected_phase0_no_go_frozen",
+        "task_id": task_id,
+        "action_id": None,
+        "target": dict(BOUNDED_MISSION_TARGET),
+        "authorization_id": authorization_id,
+        "authorization_state": "unconsumed_phase0_no_go",
+        "authorization_consumed": False,
+        # readiness 只能由全部 current gates 共同决定；NO-GO 构造器固定为 false。
+        "READINESS_GO": False,
+        "phase0": phase0,
+        "command_ledger": command_ledger,
+        "local_remote_sha": local_remote_sha,
+        "user_action_receipt": None,
+        "goal_accepted": False,
+        "feedback_count": 0,
+        "route_progress": None,
+        "terminal_status": "not_invoked_corrected_phase0_no_go",
+        # 顶层 feedback_count 对应 goal feedback，不能混入底盘背景流。
+        "t1001_observed_count": 0,
+        "t1001_nonzero_count": 0,
+        "t1001_latest_pair": None,
+        # 背景 T=1001 只在 final_base_status 中原样保留，顶层 current 计数仍为零。
+        "final_base_status": final_readback.get("base_status"),
+        "final_readback": final_readback,
+        **counters,
+        "cleanup": {
+            # 未进入 pipe 时 cleanup 是零动作 readback，而不是一次额外 stop。
+            "required": False,
+            "completed": True,
+            "goal_active": False,
+            "run_owned_residual_process_count": 0,
+            "existing_services_and_holders_preserved": bool(
+                final_readback.get("existing_services_and_holders_preserved")
+            ),
+            "final_stop_confirmation": "not_required_no_pre_stop_or_goal_invoked",
+            "reason": "corrected Phase 0 failed closed before live pipe",
+        },
+        "mission_attempt": False,
+        # planner-only 成功最多是准入输入，不能直接推导 route success。
+        "route_execution_success": False,
+        "delivery_success": False,
+        # stop/readback 合同不完整时 HIL 与 safe-to-control 必须独立保持 false。
+        "hil_pass": False,
+        "safe_to_control": False,
+        "algorithm_review_required": True,
+        "proof_boundary": "current_corrected_read_only_phase0_no_go_authorization_unconsumed",
+    }
+
+
+def build_corrected_bounded_mission_attempt_manifest(
+    *,
+    authorization_id: str,
+    task_id: str,
+    action_id: str,
+    phase0: dict[str, Any],
+    command_ledger: list[dict[str, Any]],
+    action: dict[str, Any],
+    final_readback: dict[str, Any],
+    local_remote_sha: dict[str, Any],
+) -> dict[str, Any]:
+    """冻结唯一 corrected live pipe；失败也不允许通过再次调用构造器重试现场动作。"""
+    # 动作构造器只接受完整绿色 Phase 0，避免跳过 current readiness 直接消费授权。
+    if phase0.get("READINESS_GO") is not True:
+        raise ValueError("corrected_attempt_builder_requires_readiness_go")
+    # action runner 把每个调用写成整数；bool 在 Python 中也是 int，必须显式拒绝。
+    def invocation_count(field: str, maximum: int = 1) -> int:
+        raw = action.get(field, 0)
+        if isinstance(raw, bool) or not isinstance(raw, int) or raw < 0 or raw > maximum:
+            raise ValueError(f"corrected_attempt_invalid_{field}")
+        return raw
+
+    # pre-stop 是授权单向消费点；进入本构造器时必须恰好发生一次。
+    pre_stop_count = invocation_count("pre_stop_invocation_count")
+    if pre_stop_count != 1:
+        raise ValueError("corrected_attempt_requires_exactly_one_pre_stop")
+    # receipt、goal、post-stop 可因中途异常为零，但永远不能超过一次。
+    receipt_count = invocation_count("user_action_receipt_count")
+    goal_count = invocation_count("navigate_to_pose_invocation_count")
+    post_stop_count = invocation_count("post_stop_invocation_count")
+    cancel_count = invocation_count("cancel_invocation_count")
+    feedback_count = invocation_count("feedback_sample_invocation_count")
+    # runner 不得把 retry 或第二目标通过自由字段带入 manifest。
+    if invocation_count("retry_count") != 0 or invocation_count("second_goal_count") != 0:
+        raise ValueError("corrected_attempt_retry_or_second_goal_forbidden")
+    generated_at_ms = now_ms()
+    # route success 只接受 accepted + terminal success + current progress 三项同时成立。
+    goal_accepted = action.get("goal_accepted") is True
+    terminal_status = str(action.get("terminal_status") or "not_observed")
+    route_progress = action.get("route_progress") if isinstance(action.get("route_progress"), dict) else None
+    route_progress_observed = bool(route_progress and route_progress.get("observed") is True)
+    route_execution_success = bool(
+        goal_accepted
+        and terminal_status in {"succeeded", "goal_succeeded"}
+        and route_progress_observed
+        and post_stop_count == 1
+        and final_readback.get("final_stopped") is True
+    )
+    # goal 被调用即可算 bounded attempt；rejected/timeout 仍保留失败事实而不是抹成 planning。
+    mission_attempt = goal_count == 1
+    return {
+        "schema": CORRECTED_BOUNDED_MISSION_SCHEMA,
+        "generated_at_ms": generated_at_ms,
+        "status": "bounded_mission_attempt_frozen",
+        "task_id": task_id,
+        # action id 必须由冻结 runner 注入，不能在构造器内随机变化。
+        "action_id": action_id,
+        "target": dict(BOUNDED_MISSION_TARGET),
+        "authorization_id": authorization_id,
+        "authorization_state": "consumed_pre_stop_sent",
+        # pre-stop 是不可逆消费点，因此布尔位不能随 terminal failure 回退。
+        "authorization_consumed": True,
+        "READINESS_GO": True,
+        "phase0": phase0,
+        # ledger 保留原始 exit/HTTP 顺序，支持审阅 first failure。
+        "command_ledger": command_ledger,
+        "local_remote_sha": local_remote_sha,
+        # receipt 由唯一 runner 在 goal 前冻结，不暗示 delivery 或 terminal success。
+        "user_action_receipt": action.get("user_action_receipt"),
+        "goal_accepted": goal_accepted,
+        # feedback_count 属于 NavigateToPose action feedback，不等于 T=1001 帧数。
+        "feedback_count": int(action.get("feedback_count") or 0),
+        "route_progress": route_progress,
+        "terminal_status": terminal_status,
+        # T=1001 必须来自 action 窗口；背景 latest 不得补入这些字段。
+        "t1001_observed_count": int(action.get("t1001_observed_count") or 0),
+        "t1001_nonzero_count": int(action.get("t1001_nonzero_count") or 0),
+        "t1001_latest_pair": action.get("t1001_latest_pair"),
+        "final_base_status": final_readback.get("base_status"),
+        "final_readback": final_readback,
+        "phase0_invocation_count": 1,
+        # 四个主调用分别计数，不能用一个 pipeline_executed 布尔值代替。
+        "pre_stop_invocation_count": pre_stop_count,
+        "user_action_receipt_count": receipt_count,
+        "navigate_to_pose_invocation_count": goal_count,
+        "post_stop_invocation_count": post_stop_count,
+        "cancel_invocation_count": cancel_count,
+        "feedback_sample_invocation_count": feedback_count,
+        # 以下计数只覆盖 agent/新进程 direct surface；Upper stop-only 内部实现不在 direct UART 计数内。
+        "service_mutation_count": 0,
+        "remote_write_count": 0,
+        # capability mismatch 只能读回，deploy 仍保持独立零计数。
+        "deploy_count": 0,
+        "uart_open_count": 0,
+        # Upper stop-only 内部串口零命令不属于 agent direct write。
+        "uart_write_count": 0,
+        "firmware_mutation_count": 0,
+        "initialpose_publish_attempts": 0,
+        # manual 与 direct cmd_vel 都不能作为 goal 失败后的 fallback。
+        "manual_command_count": 0,
+        "direct_cmd_vel_publish_count": 0,
+        "retry_count": 0,
+        "second_goal_count": 0,
+        # cleanup 直接消费 runner 的 final readback；缺任一证明都保持 completed=false。
+        "cleanup": {
+            "required": True,
+            "completed": bool(final_readback.get("cleanup_completed")),
+            # active goal 在 cleanup 里独立暴露，不能被 completed=true 隐藏。
+            "goal_active": bool(final_readback.get("goal_active")),
+            "run_owned_residual_process_count": int(
+                final_readback.get("run_owned_residual_process_count") or 0
+            ),
+            "existing_services_and_holders_preserved": bool(
+                final_readback.get("existing_services_and_holders_preserved")
+            ),
+            "final_stop_confirmation": final_readback.get("final_stop_confirmation"),
+        },
+        "mission_attempt": mission_attempt,
+        # success 只由 current accepted/terminal/progress/final-stop 联合推导。
+        "route_execution_success": route_execution_success,
+        # route success 也不能自动抬高 delivery/HIL/safe-to-control。
+        "delivery_success": False,
+        "hil_pass": False,
+        "safe_to_control": False,
+        "algorithm_review_required": True,
+        # proof boundary 明确这是 attempt，不是 delivery 或 HIL 闭环。
+        "proof_boundary": "current_corrected_exactly_once_bounded_mission_attempt",
+    }
 def build_phase0_no_go_manifest(
     *,
     authorization_id: str,

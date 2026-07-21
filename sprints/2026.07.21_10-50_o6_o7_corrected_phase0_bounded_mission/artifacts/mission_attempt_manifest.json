@@ -1,0 +1,511 @@
+{
+  "READINESS_GO": false,
+  "action_id": null,
+  "algorithm_review_required": true,
+  "authorization_consumed": false,
+  "authorization_id": "ceo_20260721_1048_corrected_phase0_bounded_mission_v1",
+  "authorization_state": "unconsumed_phase0_no_go",
+  "cancel_invocation_count": 0,
+  "cleanup": {
+    "completed": true,
+    "existing_services_and_holders_preserved": true,
+    "final_stop_confirmation": "not_required_no_pre_stop_or_goal_invoked",
+    "goal_active": false,
+    "reason": "corrected Phase 0 failed closed before live pipe",
+    "required": false,
+    "run_owned_residual_process_count": 0
+  },
+  "command_ledger": [
+    {
+      "category": "ros_environment",
+      "ended_at_ms": 1784604445890,
+      "exit_code": 0,
+      "started_at_ms": 1784604441190,
+      "stdout_summary": "/opt/ros/humble/bin/ros2\n"
+    },
+    {
+      "category": "services_before",
+      "ended_at_ms": 1784604445933,
+      "exit_code": 0,
+      "started_at_ms": 1784604445890,
+      "stdout_summary": "MainPID=0\nId=trashbot-upper-api.service\nActiveState=inactive\nSubState=dead\n\nMainPID=1198\nId=trashbot-esp32-bridge.service\nActiveState=active\nSubState=running\n\nMainPID=3840\nId=trashbot-lidar-lifecycle.service\nActiveState=active\nSubState=running\n"
+    },
+    {
+      "category": "holders_before",
+      "ended_at_ms": 1784604446248,
+      "exit_code": 0,
+      "started_at_ms": 1784604445933,
+      "stdout_summary": "/dev/ttyS5=/dev/ttyS5:           3538\n/dev/ttyACM0=/dev/ttyACM0:         3911\n"
+    },
+    {
+      "category": "upper_process_inventory",
+      "ended_at_ms": 1784604446296,
+      "exit_code": 0,
+      "started_at_ms": 1784604446248,
+      "stdout_summary": "   1201 Tue Jul 21 09:30:02 2026 python3 /root/rober/onboard/scripts/upper_robot_api.py --host 0.0.0.0 --port 8787 --camera-base-url http://127.0.0.1:8088 --base-port /dev/ttyS5 --base-baudrate 115200 --max-speed 0.12\n"
+    },
+    {
+      "category": "upper_listener_8787",
+      "ended_at_ms": 1784604446355,
+      "exit_code": 0,
+      "started_at_ms": 1784604446296,
+      "stdout_summary": "State  Recv-Q Send-Q Local Address:Port Peer Address:PortProcess\nLISTEN 0      128          0.0.0.0:8787      0.0.0.0:*    users:((\"python3\",pid=1201,fd=6))\n"
+    },
+    {
+      "category": "remote_upper_sha256",
+      "ended_at_ms": 1784604446376,
+      "exit_code": 0,
+      "started_at_ms": 1784604446355,
+      "stdout_summary": "8c0f6eebb786e1cd6b1cb5d17485e59972140bf76a94e7669773ef438228b4c3  /root/rober/onboard/scripts/upper_robot_api.py\n"
+    },
+    {
+      "category": "remote_o11_sha256",
+      "ended_at_ms": 1784604446390,
+      "exit_code": 0,
+      "started_at_ms": 1784604446376,
+      "stdout_summary": "773573e08e56223a5d04306b6f2e544507244696b6b5d44038962552d5cc8238  /root/rober/onboard/scripts/o11_nav2_goal_execution_proof.py\n"
+    },
+    {
+      "category": "upper_health",
+      "ended_at_ms": 1784604446422,
+      "exit_code": 0,
+      "http_status": 200,
+      "method": "GET",
+      "path": "/api/health",
+      "started_at_ms": 1784604446407
+    },
+    {
+      "category": "upper_root_routes",
+      "ended_at_ms": 1784604447546,
+      "exit_code": 0,
+      "http_status": 200,
+      "method": "GET",
+      "path": "/",
+      "started_at_ms": 1784604446422
+    },
+    {
+      "category": "upper_nav2_status",
+      "ended_at_ms": 1784604447817,
+      "exit_code": 0,
+      "http_status": 200,
+      "method": "GET",
+      "path": "/api/nav2/status",
+      "started_at_ms": 1784604447546
+    },
+    {
+      "category": "upper_nav2_proof_latest",
+      "ended_at_ms": 1784604447904,
+      "exit_code": 0,
+      "http_status": 200,
+      "method": "GET",
+      "path": "/api/nav2/proof/latest",
+      "started_at_ms": 1784604447817
+    },
+    {
+      "category": "upper_goal_latest_before",
+      "ended_at_ms": 1784604447915,
+      "exit_code": 0,
+      "http_status": 200,
+      "method": "GET",
+      "path": "/api/nav2/goal/execution/latest",
+      "started_at_ms": 1784604447904
+    },
+    {
+      "category": "upper_base_status_before",
+      "ended_at_ms": 1784604447981,
+      "exit_code": 0,
+      "http_status": 200,
+      "method": "GET",
+      "path": "/api/base/status",
+      "started_at_ms": 1784604447915
+    },
+    {
+      "category": "upper_feedback_latest_before",
+      "ended_at_ms": 1784604447992,
+      "exit_code": 0,
+      "http_status": 200,
+      "method": "GET",
+      "path": "/api/base/feedback-samples/latest",
+      "started_at_ms": 1784604447981
+    },
+    {
+      "category": "ros_node_list",
+      "ended_at_ms": 1784604452591,
+      "exit_code": 0,
+      "started_at_ms": 1784604447993
+    },
+    {
+      "category": "ros_topic_list",
+      "ended_at_ms": 1784604456448,
+      "exit_code": 0,
+      "started_at_ms": 1784604452591
+    },
+    {
+      "category": "ros_action_list",
+      "ended_at_ms": 1784604460282,
+      "exit_code": 0,
+      "started_at_ms": 1784604456448
+    },
+    {
+      "category": "map_server_lifecycle",
+      "ended_at_ms": 1784604464138,
+      "exit_code": 1,
+      "started_at_ms": 1784604460282,
+      "stderr_summary": "Node not found\n"
+    },
+    {
+      "category": "amcl_lifecycle",
+      "ended_at_ms": 1784604467958,
+      "exit_code": 1,
+      "started_at_ms": 1784604464138,
+      "stderr_summary": "Node not found\n"
+    },
+    {
+      "category": "planner_lifecycle",
+      "ended_at_ms": 1784604471825,
+      "exit_code": 1,
+      "started_at_ms": 1784604467958,
+      "stderr_summary": "Node not found\n"
+    },
+    {
+      "category": "controller_lifecycle",
+      "ended_at_ms": 1784604475676,
+      "exit_code": 1,
+      "started_at_ms": 1784604471826,
+      "stderr_summary": "Node not found\n"
+    },
+    {
+      "category": "current_map_sample",
+      "ended_at_ms": 1784604483720,
+      "exit_code": 124,
+      "started_at_ms": 1784604475676,
+      "timeout_s": 8.0
+    },
+    {
+      "category": "current_scan_sample",
+      "ended_at_ms": 1784604489082,
+      "exit_code": 0,
+      "started_at_ms": 1784604483720
+    },
+    {
+      "category": "current_amcl_pose_sample",
+      "ended_at_ms": 1784604497106,
+      "exit_code": 124,
+      "started_at_ms": 1784604489082,
+      "timeout_s": 8.0
+    },
+    {
+      "category": "current_dynamic_tf_map_odom",
+      "ended_at_ms": 1784604502121,
+      "exit_code": 124,
+      "started_at_ms": 1784604497106,
+      "stderr_summary": "[INFO] [1784604500.328125523] [tf2_echo]: Waiting for transform map ->  odom: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n[INFO] [1784604501.910357006] [tf2_echo]: Waiting for transform map ->  odom: Invalid frame ID \"map\" passed to canTransform argument target_frame - frame does not exist\n",
+      "timeout_s": 5.0
+    },
+    {
+      "category": "current_dynamic_tf_odom_base_link",
+      "ended_at_ms": 1784604507131,
+      "exit_code": 124,
+      "started_at_ms": 1784604502122,
+      "stderr_summary": "[INFO] [1784604504.998950516] [tf2_echo]: Waiting for transform odom ->  base_link: Invalid frame ID \"odom\" passed to canTransform argument target_frame - frame does not exist\n",
+      "stdout_summary": "At time 1784604505.882766563\n- Translation: [0.000, 0.000, 0.000]\n- Rotation: in Quaternion (xyzw) [0.000, 0.000, 0.000, 1.000]\n- Rotation: in RPY (radian) [0.000, -0.000, 0.000]\n- Rotation: in RPY (degree) [0.000, -0.000, 0.000]\n- Matrix:\n  1.000  0.000  0.000  0.000\n  0.000  1.000  0.000  0.000\n  0.000  0.000  1.000  0.000\n  0.000  0.000  0.000  1.000\nAt time 1784604506.882672204\n- Translation: [0.000, 0.000, 0.000]\n- Rotation: in Quaternion (xyzw) [0.000, 0.000, 0.000, 1.000]\n- Rotation: in RPY (radian) [0.000, -0.000, 0.000]\n- Rotation: in RPY (degree) [0.000, -0.000, 0.000]\n- Matrix:\n  1.000  0.000  0.000  0.000\n  0.000  1.000  0.000  0.000\n  0.000  0.000  1.000  0.000\n  0.000  0.000  0.000  1.000\n",
+      "timeout_s": 5.0
+    },
+    {
+      "category": "current_navigate_goal_status_before",
+      "ended_at_ms": 1784604515156,
+      "exit_code": 124,
+      "started_at_ms": 1784604507132,
+      "timeout_s": 8.0
+    },
+    {
+      "category": "compute_path_to_pose_planner_only",
+      "ended_at_ms": 1784604530185,
+      "exit_code": 124,
+      "started_at_ms": 1784604515156,
+      "stdout_summary": "Waiting for an action server to become available...\n",
+      "timeout_s": 15.0
+    },
+    {
+      "category": "final_navigate_goal_status",
+      "ended_at_ms": 1784604538213,
+      "exit_code": 124,
+      "started_at_ms": 1784604530189,
+      "timeout_s": 8.0
+    },
+    {
+      "category": "services_after",
+      "ended_at_ms": 1784604538257,
+      "exit_code": 0,
+      "started_at_ms": 1784604538213,
+      "stdout_summary": "MainPID=0\nId=trashbot-upper-api.service\nActiveState=inactive\nSubState=dead\n\nMainPID=1198\nId=trashbot-esp32-bridge.service\nActiveState=active\nSubState=running\n\nMainPID=3840\nId=trashbot-lidar-lifecycle.service\nActiveState=active\nSubState=running\n"
+    },
+    {
+      "category": "holders_after",
+      "ended_at_ms": 1784604538579,
+      "exit_code": 0,
+      "started_at_ms": 1784604538257,
+      "stdout_summary": "/dev/ttyS5=/dev/ttyS5:           3538\n/dev/ttyACM0=/dev/ttyACM0:         3911\n"
+    },
+    {
+      "category": "upper_health_after",
+      "ended_at_ms": 1784604538584,
+      "exit_code": 0,
+      "http_status": 200,
+      "method": "GET",
+      "path": "/api/health",
+      "started_at_ms": 1784604538579
+    },
+    {
+      "category": "upper_base_status_after",
+      "ended_at_ms": 1784604538651,
+      "exit_code": 0,
+      "http_status": 200,
+      "method": "GET",
+      "path": "/api/base/status",
+      "started_at_ms": 1784604538584
+    }
+  ],
+  "delivery_success": false,
+  "deploy_count": 0,
+  "direct_cmd_vel_publish_count": 0,
+  "feedback_count": 0,
+  "feedback_sample_invocation_count": 0,
+  "final_base_status": {
+    "boundary": "fresh existing bridge background readback only; corrected Phase 0 did not enter live pipe",
+    "current_mission_window_t1001_count": 0,
+    "fresh_background_t1001_count": 80,
+    "fresh_background_t1001_latest_pair": {
+      "left_speed": 0.0,
+      "right_speed": 0.0,
+      "source": "vendor_t1001_L_R"
+    },
+    "fresh_background_t1001_nonzero_count": 0,
+    "freshness": {
+      "basis": "artifact_mtime_only_bridge_feedback_not_hil_or_safe_to_control",
+      "stale_after_ms": 15000,
+      "status": "fresh"
+    },
+    "safe_to_control": false,
+    "schema": "trashbot.upper_robot_api.v1.base_status"
+  },
+  "final_readback": {
+    "base_status": {
+      "boundary": "fresh existing bridge background readback only; corrected Phase 0 did not enter live pipe",
+      "current_mission_window_t1001_count": 0,
+      "fresh_background_t1001_count": 80,
+      "fresh_background_t1001_latest_pair": {
+        "left_speed": 0.0,
+        "right_speed": 0.0,
+        "source": "vendor_t1001_L_R"
+      },
+      "fresh_background_t1001_nonzero_count": 0,
+      "freshness": {
+        "basis": "artifact_mtime_only_bridge_feedback_not_hil_or_safe_to_control",
+        "stale_after_ms": 15000,
+        "status": "fresh"
+      },
+      "safe_to_control": false,
+      "schema": "trashbot.upper_robot_api.v1.base_status"
+    },
+    "captured_at_ms": 1784604538651,
+    "cleanup_completed": true,
+    "existing_services_and_holders_preserved": true,
+    "final_stop_confirmation": "not_required_phase0_no_go",
+    "final_stopped": true,
+    "goal_active": false,
+    "holders_after": {
+      "/dev/ttyACM0": [
+        3911
+      ],
+      "/dev/ttyS5": [
+        3538
+      ]
+    },
+    "holders_before": {
+      "/dev/ttyACM0": [
+        3911
+      ],
+      "/dev/ttyS5": [
+        3538
+      ]
+    },
+    "run_owned_residual_process_count": 0,
+    "services_after": "MainPID=0\nId=trashbot-upper-api.service\nActiveState=inactive\nSubState=dead\n\nMainPID=1198\nId=trashbot-esp32-bridge.service\nActiveState=active\nSubState=running\n\nMainPID=3840\nId=trashbot-lidar-lifecycle.service\nActiveState=active\nSubState=running\n",
+    "services_before": "MainPID=0\nId=trashbot-upper-api.service\nActiveState=inactive\nSubState=dead\n\nMainPID=1198\nId=trashbot-esp32-bridge.service\nActiveState=active\nSubState=running\n\nMainPID=3840\nId=trashbot-lidar-lifecycle.service\nActiveState=active\nSubState=running\n",
+    "upper_health_http_status": 200
+  },
+  "firmware_mutation_count": 0,
+  "generated_at_ms": 1784604628952,
+  "goal_accepted": false,
+  "hil_pass": false,
+  "initialpose_publish_attempts": 0,
+  "local_remote_sha": {
+    "capability_accepted": true,
+    "local_o11": "c43335cb89bcc3cf10bd70c86fd0eec9c8abea9f496b0581a0a600c54bc11458",
+    "local_upper": "52c99ca3b63480e841884aed7fca5f0d0b8350a028b0186af86a264bb4f2c272",
+    "mismatch_did_not_trigger_deploy": true,
+    "o11_match": false,
+    "remote_o11": "773573e08e56223a5d04306b6f2e544507244696b6b5d44038962552d5cc8238",
+    "remote_upper": "8c0f6eebb786e1cd6b1cb5d17485e59972140bf76a94e7669773ef438228b4c3",
+    "upper_match": false
+  },
+  "manual_command_count": 0,
+  "mission_attempt": false,
+  "navigate_to_pose_invocation_count": 0,
+  "phase0": {
+    "READINESS_GO": false,
+    "blocking_failures": [
+      "concurrent_task_goal_clear",
+      "controller",
+      "dynamic_tf",
+      "map",
+      "navigate_to_pose_action",
+      "obstacle_clear",
+      "planner",
+      "planner_only_path",
+      "pose"
+    ],
+    "current_evidence": {
+      "goal_status_after": {
+        "active_statuses": [],
+        "clear": false,
+        "observed": false,
+        "statuses": []
+      },
+      "goal_status_before": {
+        "active_statuses": [],
+        "clear": false,
+        "observed": false,
+        "statuses": []
+      },
+      "nav2_status": {
+        "blocked_reasons": [
+          "nav2_lifecycle_not_running"
+        ],
+        "controller_server_active": false,
+        "lifecycle_running": false,
+        "lifecycle_state": "stopped",
+        "path_generated": false,
+        "path_point_count": 0,
+        "planner_server_active": false,
+        "schema": "trashbot.upper_robot_api.v1.nav2_lifecycle_status",
+        "status": "blocked_with_root_cause"
+      },
+      "scan": {
+        "finite_positive_count": 181,
+        "min_distance_m": 0.03500000014901161,
+        "observed": true
+      }
+    },
+    "decision": "NO_GO_DO_NOT_RERUN_CORRECTED_PHASE0",
+    "ended_at_ms": 1784604538651,
+    "first_failure": "concurrent_task_goal_clear",
+    "gate_counts": {
+      "green": 6,
+      "total": 15
+    },
+    "gates": {
+      "base_stop_endpoint": true,
+      "concurrent_task_goal_clear": false,
+      "controller": false,
+      "dynamic_tf": false,
+      "feedback_readback_endpoint": true,
+      "map": false,
+      "navigate_to_pose_action": false,
+      "obstacle_clear": false,
+      "planner": false,
+      "planner_only_path": false,
+      "pose": false,
+      "ros_environment": true,
+      "scan": true,
+      "upper_current_capability": true,
+      "upper_process_listener_health": true
+    },
+    "invocation_count": 1,
+    "overall_exit_code": 0,
+    "read_only_except_planner_only_compute_path": true,
+    "started_at_ms": 1784604441190,
+    "upper_compatibility": {
+      "expected_port": 8787,
+      "health_http_status": 200,
+      "listener_pids": [
+        1201
+      ],
+      "process_pids": [
+        1201
+      ],
+      "required_routes": {
+        "base_feedback_samples_latest": "/api/base/feedback-samples/latest",
+        "base_status": "/api/base/status",
+        "base_stop": "/api/base/stop",
+        "health": "/api/health",
+        "nav2_goal_execute": "/api/nav2/goal/execute",
+        "nav2_goal_execution_latest": "/api/nav2/goal/execution/latest",
+        "nav2_proof_latest": "/api/nav2/proof/latest",
+        "nav2_status": "/api/nav2/status"
+      },
+      "route_capability_ok": true,
+      "source_capability": {
+        "base_stop_calls_stop_payload": true,
+        "direct_agent_uart_open_count": 0,
+        "direct_agent_uart_write_count": 0,
+        "route_base_stop_registered": true,
+        "route_feedback_latest_registered": true,
+        "route_nav2_goal_execute_registered": true,
+        "stop_only_contract_proven": true,
+        "stop_payload_ros_zero": true,
+        "stop_payload_vendor_zero_plan": true
+      },
+      "systemd_upper_inactive_accepted_only_with_full_compatibility": true,
+      "unique_process_listener": true
+    }
+  },
+  "phase0_invocation_count": 1,
+  "post_stop_invocation_count": 0,
+  "pre_stop_invocation_count": 0,
+  "proof_boundary": "current_corrected_read_only_phase0_no_go_authorization_unconsumed",
+  "raw_artifacts": {
+    "corrected_phase0_raw": "artifacts/corrected_phase0_raw.json",
+    "corrected_phase0_raw_sha256": "488c908a3ac54e3b52ac4ba4da506ed6e1c55ff01ef3853b70204b2de5e74b54",
+    "corrected_phase0_source": "artifacts/corrected_phase0_once.stdin",
+    "corrected_phase0_source_sha256": "c50846fa0430db69492741d1829075ca6ab0aff2508b9b7d034b9efb1ae9aeed"
+  },
+  "remote_write_count": 0,
+  "retry_count": 0,
+  "route_execution_success": false,
+  "route_progress": null,
+  "safe_to_control": false,
+  "same_blocker_consumption": {
+    "blocker": "phase0_frozen_probe_endpoint_ros_env_upper_sha_service_ownership_mismatch",
+    "count": "2/2",
+    "current_first_failure": "concurrent_task_goal_clear",
+    "next_rule": "switch_objective_or_escalate_ceo_no_third_consumption",
+    "resolved_subgates": [
+      "ros_environment",
+      "upper_process_listener_health",
+      "upper_current_capability",
+      "base_stop_endpoint",
+      "feedback_readback_endpoint"
+    ]
+  },
+  "schema": "trashbot.o6_o7.corrected_current_bounded_mission_attempt.v1",
+  "second_goal_count": 0,
+  "service_mutation_count": 0,
+  "status": "corrected_phase0_no_go_frozen",
+  "t1001_latest_pair": null,
+  "t1001_nonzero_count": 0,
+  "t1001_observed_count": 0,
+  "target": {
+    "frame_id": "map",
+    "x": 0.8,
+    "y": 0.25,
+    "yaw": 0.0
+  },
+  "task_id": "o6-o7-corrected-phase0-20260721-1050",
+  "terminal_status": "not_invoked_corrected_phase0_no_go",
+  "uart_open_count": 0,
+  "uart_write_count": 0,
+  "user_action_receipt": null,
+  "user_action_receipt_count": 0
+}

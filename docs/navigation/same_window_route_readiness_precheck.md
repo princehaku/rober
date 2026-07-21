@@ -77,3 +77,22 @@ local costmap 的 obstacle layer 必须消费 current `/scan`：
 UART、service mutation、manual、`/cmd_vel`、`/initialpose`、retry 与 second-goal 计数为 `0`，并保留
 `authorization_state=unconsumed_phase0_no_go`。历史 goal、命令日志或 T=1001 反馈不得补成 current evidence；
 失败后不得改用另一 wrapper 重跑 Phase 0。
+
+## Corrected Phase 0 compatibility gate
+
+`build_corrected_phase0_no_go_manifest` 使用
+`trashbot.o6_o7.corrected_current_bounded_mission_attempt.v1`，补齐
+`remote_write_count`、`deploy_count` 与全部动作/危险面计数。corrected 探针必须 source
+ROS 2 Humble 与 onboard setup，并使用 current listener 证明的 Upper `8787`；systemd unit inactive
+本身不是红门，只有唯一 PID/listener/health/routes/current-task ownership 的组合不兼容才红。
+
+local/remote SHA 不一致时不得部署或覆盖远端文件。准入只能通过远端 current source route
+registration 与 GET/OPTIONS capability 读回逐项证明；其中 `/api/base/stop` 必须仍是 stop-only
+合同。`uart_open_count=0`、`uart_write_count=0` 只统计本轮 agent 或新进程直接抢占/打开/写
+`/dev/ttyS5`，不把已授权 pre/post-stop 通过现有 Upper stop-only 合同的内部 ROS/serial 零命令
+误算为 direct UART。Phase 0 只读证明 endpoint，不调用它；GO 后 pre/post-stop 各独立计 `1`。
+
+corrected Phase 0 允许一次 `ComputePathToPose` planner-only 计算；它不计
+`navigate_to_pose_invocation_count`。任一 current map/scan/pose/dynamic TF、planner/controller、
+planner-only path、obstacle、NavigateToPose action、current task/goal、stop 或 feedback readback 门不绿，
+必须保持授权 `unconsumed_phase0_no_go`，pre-stop/user receipt/goal/post-stop 全为 `0`，且不得重跑。

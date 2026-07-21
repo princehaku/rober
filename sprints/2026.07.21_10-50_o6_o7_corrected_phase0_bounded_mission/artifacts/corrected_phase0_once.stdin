@@ -1,0 +1,593 @@
+#!/usr/bin/env python3
+"""在单个 SSH stdin 会话内执行一次 corrected Phase 0，并仅在全绿时进入唯一动作 pipe。"""
+
+from __future__ import annotations
+
+import json
+import math
+import re
+import subprocess
+import time
+import urllib.error
+import urllib.request
+from pathlib import Path
+from typing import Any
+
+
+AUTHORIZATION_ID = "ceo_20260721_1048_corrected_phase0_bounded_mission_v1"
+TASK_ID = "o6-o7-corrected-phase0-20260721-1050"
+ACTION_ID = "action-o6-o7-corrected-phase0-20260721-1050"
+UPPER_BASE_URL = "http://127.0.0.1:8787"
+UPPER_SOURCE = Path("/root/rober/onboard/scripts/upper_robot_api.py")
+LOCAL_O11_SHA256 = "c43335cb89bcc3cf10bd70c86fd0eec9c8abea9f496b0581a0a600c54bc11458"
+LOCAL_UPPER_SHA256 = "52c99ca3b63480e841884aed7fca5f0d0b8350a028b0186af86a264bb4f2c272"
+ROS_PREFIX = (
+    "source /opt/ros/humble/setup.bash && "
+    "if [ -f /root/rober/onboard/install/setup.bash ]; then "
+    "source /root/rober/onboard/install/setup.bash; fi && "
+)
+
+
+ledger: list[dict[str, Any]] = []
+
+
+def now_ms() -> int:
+    """远端统一使用 wall-clock 毫秒，便于与 Upper JSON generated_at_ms 对齐。"""
+    return int(time.time() * 1000)
+
+
+def compact_output(value: str, limit: int = 12000) -> str:
+    """保留每条命令的尾部原始输出，避免 map/scan 把最终 JSON 撑爆。"""
+    return value[-limit:]
+
+
+def run_command(category: str, command: str, timeout_s: float = 12.0) -> dict[str, Any]:
+    """所有 ROS/系统只读命令统一记账；timeout 会杀掉 CLI，不留下 run-owned 进程。"""
+    started_at_ms = now_ms()
+    try:
+        completed = subprocess.run(
+            ["bash", "-lc", command],
+            capture_output=True,
+            text=True,
+            timeout=timeout_s,
+            check=False,
+        )
+        result = {
+            "category": category,
+            "started_at_ms": started_at_ms,
+            "ended_at_ms": now_ms(),
+            "exit_code": completed.returncode,
+            "stdout": compact_output(completed.stdout or ""),
+            "stderr": compact_output(completed.stderr or ""),
+        }
+    except subprocess.TimeoutExpired as exc:
+        # ROS topic/TF 没有 current 样本时 timeout 是稳定红门，不允许第二次尝试。
+        stdout = exc.stdout.decode() if isinstance(exc.stdout, bytes) else str(exc.stdout or "")
+        stderr = exc.stderr.decode() if isinstance(exc.stderr, bytes) else str(exc.stderr or "")
+        result = {
+            "category": category,
+            "started_at_ms": started_at_ms,
+            "ended_at_ms": now_ms(),
+            "exit_code": 124,
+            "stdout": compact_output(stdout),
+            "stderr": compact_output(stderr),
+            "timeout_s": timeout_s,
+        }
+    ledger.append(result)
+    return result
+
+
+def http_request(
+    category: str,
+    path: str,
+    *,
+    method: str = "GET",
+    body: dict[str, Any] | None = None,
+    timeout_s: float = 12.0,
+) -> dict[str, Any]:
+    """HTTP helper 只访问固定 Upper 8787；Phase 0 只调用 GET，POST 仅存在于 GO pipe。"""
+    started_at_ms = now_ms()
+    raw_body = None if body is None else json.dumps(body, separators=(",", ":")).encode("utf-8")
+    request = urllib.request.Request(
+        f"{UPPER_BASE_URL}{path}",
+        data=raw_body,
+        method=method,
+        headers={"Content-Type": "application/json", "Accept": "application/json"},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=timeout_s) as response:
+            response_text = response.read().decode("utf-8", errors="replace")
+            http_status = int(response.status)
+    except urllib.error.HTTPError as exc:
+        response_text = exc.read().decode("utf-8", errors="replace")
+        http_status = int(exc.code)
+    except Exception as exc:  # noqa: BLE001
+        result = {
+            "category": category,
+            "started_at_ms": started_at_ms,
+            "ended_at_ms": now_ms(),
+            "method": method,
+            "path": path,
+            "exit_code": 1,
+            "http_status": None,
+            "error": {"type": type(exc).__name__, "message": str(exc)[:500]},
+            "json": None,
+        }
+        ledger.append(result)
+        return result
+    try:
+        parsed = json.loads(response_text) if response_text else {}
+    except json.JSONDecodeError:
+        parsed = None
+    result = {
+        "category": category,
+        "started_at_ms": started_at_ms,
+        "ended_at_ms": now_ms(),
+        "method": method,
+        "path": path,
+        "exit_code": 0 if 200 <= http_status < 300 else 1,
+        "http_status": http_status,
+        "response_preview": compact_output(response_text),
+        "json": parsed if isinstance(parsed, dict) else None,
+    }
+    ledger.append(result)
+    return result
+
+
+def service_state(category: str) -> dict[str, Any]:
+    """只读三项 service 状态；Upper inactive 由 PID/listener compatibility gate 单独解释。"""
+    return run_command(
+        category,
+        "systemctl show trashbot-upper-api.service trashbot-esp32-bridge.service "
+        "trashbot-lidar-lifecycle.service --property=Id,MainPID,ActiveState,SubState --no-page",
+        6.0,
+    )
+
+
+def holder_state(category: str) -> dict[str, Any]:
+    """fuser 只读既有 holder，不打开设备。"""
+    return run_command(
+        category,
+        "for dev in /dev/ttyS5 /dev/ttyACM0; do printf '%s=' \"$dev\"; fuser \"$dev\" 2>&1 || true; done",
+        6.0,
+    )
+
+
+def extract_holder_pids(text: str, device: str) -> list[int]:
+    """只取指定 device 行冒号后的 PID，避免把设备名数字误算成进程。"""
+    for line in text.splitlines():
+        if line.startswith(f"{device}="):
+            payload = line.split(":", 1)[-1]
+            return sorted({int(value) for value in re.findall(r"\b\d+\b", payload)})
+    return []
+
+
+def json_payload(result: dict[str, Any]) -> dict[str, Any]:
+    """HTTP 解析失败时返回空 dict，让每个 gate 保持 fail-closed。"""
+    payload = result.get("json")
+    return payload if isinstance(payload, dict) else {}
+
+
+def action_status_summary(result: dict[str, Any]) -> dict[str, Any]:
+    """GoalStatus 1/2/3 分别是 accepted/executing/canceling，任一存在都表示并发未清。"""
+    statuses = [int(value) for value in re.findall(r"\bstatus:\s*(\d+)\b", result.get("stdout") or "")]
+    active = [value for value in statuses if value in {1, 2, 3}]
+    return {
+        "observed": result.get("exit_code") == 0,
+        "statuses": statuses,
+        "active_statuses": active,
+        "clear": result.get("exit_code") == 0 and not active,
+    }
+
+
+def scan_summary(result: dict[str, Any]) -> dict[str, Any]:
+    """只解析 ranges field；inf/NaN 不进入 obstacle min，有限正数才是 current clearance 输入。"""
+    values = []
+    for token in re.findall(r"[-+]?(?:\d+\.\d*|\d*\.\d+|\d+)(?:[eE][-+]?\d+)?", result.get("stdout") or ""):
+        try:
+            value = float(token)
+        except ValueError:
+            continue
+        if math.isfinite(value) and value > 0:
+            values.append(value)
+    return {
+        "observed": result.get("exit_code") == 0 and bool(values),
+        "finite_positive_count": len(values),
+        "min_distance_m": min(values) if values else None,
+    }
+
+
+started_at_ms = now_ms()
+# 先证明非登录 shell 已正确 source；失败仍继续收集其余 current 红门，但绝不换 shell 重跑。
+ros_cli = run_command("ros_environment", f"{ROS_PREFIX}command -v ros2 && ros2 --help >/dev/null", 8.0)
+services_before = service_state("services_before")
+holders_before = holder_state("holders_before")
+upper_processes = run_command(
+    "upper_process_inventory",
+    "ps -eo pid=,lstart=,args= | grep '[u]pper_robot_api.py'",
+    6.0,
+)
+upper_listener = run_command(
+    "upper_listener_8787",
+    "ss -ltnp 'sport = :8787'",
+    6.0,
+)
+
+# local/remote SHA mismatch 不触发 deploy；下面只读取 current remote source 与 route registration。
+remote_upper_sha = run_command(
+    "remote_upper_sha256",
+    "sha256sum /root/rober/onboard/scripts/upper_robot_api.py",
+    6.0,
+)
+remote_o11_sha = run_command(
+    "remote_o11_sha256",
+    "sha256sum /root/rober/onboard/scripts/o11_nav2_goal_execution_proof.py",
+    6.0,
+)
+try:
+    source_text = UPPER_SOURCE.read_text(encoding="utf-8")
+except OSError:
+    source_text = ""
+source_capability = {
+    # stop-only 合同允许 Upper 内部发送零速/serial stop，但 agent 不直接打开 UART。
+    "route_base_stop_registered": 'app.router.add_post(ROUTE_PATHS["base_stop"], base_stop)' in source_text,
+    "route_nav2_goal_execute_registered": 'app.router.add_post(ROUTE_PATHS["nav2_goal_execute"], nav2_goal_execute)' in source_text,
+    "route_feedback_latest_registered": 'app.router.add_get(ROUTE_PATHS["base_feedback_samples_latest"], base_feedback_samples_latest)' in source_text,
+    "base_stop_calls_stop_payload": "return json_response(build_stop_payload(api.base_port, api.base_baudrate))" in source_text,
+    "stop_payload_ros_zero": "publish_ros_cmd_vel_inprocess_burst(0.0, 0.0" in source_text,
+    "stop_payload_vendor_zero_plan": 'stop_commands = stop_commands_for_mode("ros")' in source_text,
+    "direct_agent_uart_open_count": 0,
+    "direct_agent_uart_write_count": 0,
+}
+source_capability["stop_only_contract_proven"] = all(
+    source_capability[key]
+    for key in (
+        "route_base_stop_registered",
+        "base_stop_calls_stop_payload",
+        "stop_payload_ros_zero",
+        "stop_payload_vendor_zero_plan",
+    )
+)
+
+health = http_request("upper_health", "/api/health")
+root_routes = http_request("upper_root_routes", "/")
+nav2_status = http_request("upper_nav2_status", "/api/nav2/status")
+nav2_proof_latest = http_request("upper_nav2_proof_latest", "/api/nav2/proof/latest")
+goal_latest_before = http_request("upper_goal_latest_before", "/api/nav2/goal/execution/latest")
+base_status_before = http_request("upper_base_status_before", "/api/base/status")
+feedback_latest_before = http_request("upper_feedback_latest_before", "/api/base/feedback-samples/latest")
+
+# ROS graph 全部来自同一 SSH window；不调用 lifecycle mutation、initialpose、goal 或 cmd_vel。
+node_list = run_command("ros_node_list", f"{ROS_PREFIX}ros2 node list", 8.0)
+topic_list = run_command("ros_topic_list", f"{ROS_PREFIX}ros2 topic list -t", 8.0)
+action_list = run_command("ros_action_list", f"{ROS_PREFIX}ros2 action list -t", 8.0)
+map_lifecycle = run_command("map_server_lifecycle", f"{ROS_PREFIX}ros2 lifecycle get /map_server", 8.0)
+amcl_lifecycle = run_command("amcl_lifecycle", f"{ROS_PREFIX}ros2 lifecycle get /amcl", 8.0)
+planner_lifecycle = run_command("planner_lifecycle", f"{ROS_PREFIX}ros2 lifecycle get /planner_server", 8.0)
+controller_lifecycle = run_command("controller_lifecycle", f"{ROS_PREFIX}ros2 lifecycle get /controller_server", 8.0)
+map_sample = run_command(
+    "current_map_sample",
+    f"{ROS_PREFIX}ros2 topic echo --once /map nav_msgs/msg/OccupancyGrid --field info",
+    8.0,
+)
+scan_sample = run_command(
+    "current_scan_sample",
+    f"{ROS_PREFIX}ros2 topic echo --once /scan sensor_msgs/msg/LaserScan --field ranges",
+    8.0,
+)
+pose_sample = run_command(
+    "current_amcl_pose_sample",
+    f"{ROS_PREFIX}ros2 topic echo --once /amcl_pose geometry_msgs/msg/PoseWithCovarianceStamped",
+    8.0,
+)
+map_odom_tf = run_command(
+    "current_dynamic_tf_map_odom",
+    f"{ROS_PREFIX}ros2 run tf2_ros tf2_echo map odom",
+    5.0,
+)
+odom_base_tf = run_command(
+    "current_dynamic_tf_odom_base_link",
+    f"{ROS_PREFIX}ros2 run tf2_ros tf2_echo odom base_link",
+    5.0,
+)
+goal_status_before = run_command(
+    "current_navigate_goal_status_before",
+    f"{ROS_PREFIX}ros2 topic echo --once /navigate_to_pose/_action/status action_msgs/msg/GoalStatusArray",
+    8.0,
+)
+
+# ComputePathToPose 是唯一允许的 planner-only action；use_start=false 不发布 initialpose 或速度。
+planner_only = run_command(
+    "compute_path_to_pose_planner_only",
+    f"{ROS_PREFIX}ros2 action send_goal /compute_path_to_pose nav2_msgs/action/ComputePathToPose "
+    "'{goal: {header: {frame_id: map}, pose: {position: {x: 0.8, y: 0.25, z: 0.0}, "
+    "orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}}}, planner_id: GridBased, use_start: false}'",
+    15.0,
+)
+
+routes_payload = json_payload(root_routes).get("routes")
+routes_payload = routes_payload if isinstance(routes_payload, dict) else {}
+required_routes = {
+    "health": "/api/health",
+    "nav2_status": "/api/nav2/status",
+    "nav2_proof_latest": "/api/nav2/proof/latest",
+    "nav2_goal_execute": "/api/nav2/goal/execute",
+    "nav2_goal_execution_latest": "/api/nav2/goal/execution/latest",
+    "base_status": "/api/base/status",
+    "base_feedback_samples_latest": "/api/base/feedback-samples/latest",
+    "base_stop": "/api/base/stop",
+}
+route_capability_ok = all(routes_payload.get(key) == value for key, value in required_routes.items())
+listener_pids = sorted({int(value) for value in re.findall(r"pid=(\d+)", upper_listener.get("stdout") or "")})
+process_pids = sorted(
+    {
+        int(match.group(1))
+        for line in (upper_processes.get("stdout") or "").splitlines()
+        if (match := re.match(r"\s*(\d+)\s+", line))
+    }
+)
+unique_upper_ok = len(listener_pids) == 1 and listener_pids[0] in process_pids
+scan = scan_summary(scan_sample)
+goal_status = action_status_summary(goal_status_before)
+action_inventory_text = action_list.get("stdout") or ""
+map_tf_text = map_odom_tf.get("stdout") or ""
+odom_tf_text = odom_base_tf.get("stdout") or ""
+
+# 每个门独立存储，不用一个总 bool 吞掉第一失败定位。
+gates = {
+    "ros_environment": ros_cli.get("exit_code") == 0,
+    "upper_process_listener_health": bool(
+        unique_upper_ok
+        and health.get("http_status") == 200
+        and json_payload(health).get("status") == "ready"
+    ),
+    "upper_current_capability": bool(route_capability_ok and source_capability["stop_only_contract_proven"]),
+    "concurrent_task_goal_clear": goal_status["clear"],
+    "map": map_sample.get("exit_code") == 0 and "resolution:" in (map_sample.get("stdout") or ""),
+    "scan": scan["observed"],
+    "pose": pose_sample.get("exit_code") == 0 and "frame_id: map" in (pose_sample.get("stdout") or ""),
+    "dynamic_tf": bool(
+        "Translation:" in map_tf_text
+        and "Rotation:" in map_tf_text
+        and "Translation:" in odom_tf_text
+        and "Rotation:" in odom_tf_text
+    ),
+    "planner": planner_lifecycle.get("exit_code") == 0 and "active [3]" in (planner_lifecycle.get("stdout") or ""),
+    "controller": controller_lifecycle.get("exit_code") == 0 and "active [3]" in (controller_lifecycle.get("stdout") or ""),
+    "planner_only_path": bool(
+        planner_only.get("exit_code") == 0
+        and "Goal accepted" in (planner_only.get("stdout") or "")
+        and "poses:" in (planner_only.get("stdout") or "")
+    ),
+    "obstacle_clear": bool(scan["min_distance_m"] is not None and scan["min_distance_m"] >= 0.45),
+    "navigate_to_pose_action": "/navigate_to_pose [nav2_msgs/action/NavigateToPose]" in action_inventory_text,
+    "base_stop_endpoint": bool(
+        routes_payload.get("base_stop") == "/api/base/stop"
+        and source_capability["stop_only_contract_proven"]
+    ),
+    "feedback_readback_endpoint": feedback_latest_before.get("http_status") == 200,
+}
+first_failure = next((name for name, passed in gates.items() if not passed), None)
+readiness_go = first_failure is None
+
+action = {
+    "pre_stop_invocation_count": 0,
+    "user_action_receipt_count": 0,
+    "navigate_to_pose_invocation_count": 0,
+    "post_stop_invocation_count": 0,
+    "cancel_invocation_count": 0,
+    "feedback_sample_invocation_count": 0,
+    "retry_count": 0,
+    "second_goal_count": 0,
+    "authorization_consumed": False,
+    "user_action_receipt": None,
+    "goal_response": None,
+    "goal_latest": None,
+    "feedback_latest": None,
+}
+
+if readiness_go:
+    # pre-stop 发出即单向消费授权；HTTP/stop semantic 失败也不得重新进入 pipe。
+    action["pre_stop_invocation_count"] = 1
+    action["authorization_consumed"] = True
+    pre_stop = http_request("live_pre_stop", "/api/base/stop", method="POST", body={}, timeout_s=10.0)
+    action["pre_stop"] = pre_stop
+    pre_stop_payload = json_payload(pre_stop)
+    pre_stop_ok = pre_stop.get("http_status") == 200 and pre_stop_payload.get("robot_control_executed") is True
+    try:
+        if pre_stop_ok:
+            # receipt 只记录 current CEO 授权与冻结请求，不调用额外控制面。
+            action["user_action_receipt_count"] = 1
+            action["user_action_receipt"] = {
+                "schema": "trashbot.o6_o7.current_user_action_receipt.v1",
+                "recorded_at_ms": now_ms(),
+                "task_id": TASK_ID,
+                "action_id": ACTION_ID,
+                "authorization_id": AUTHORIZATION_ID,
+                "target": {"frame_id": "map", "x": 0.8, "y": 0.25, "yaw": 0.0},
+                "status": "recorded_before_goal",
+            }
+            # goal POST 恰好一次；Upper helper 自带 bounded timeout/cancel，不传 initialpose/manual 参数。
+            action["navigate_to_pose_invocation_count"] = 1
+            goal_response = http_request(
+                "live_navigate_to_pose",
+                "/api/nav2/goal/execute",
+                method="POST",
+                body={
+                    "confirm_navigation_execution": True,
+                    "goal_frame_id": "map",
+                    "goal_x": 0.8,
+                    "goal_y": 0.25,
+                    "goal_yaw": 0.0,
+                    "result_timeout_s": 8.0,
+                    "server_timeout_s": 12.0,
+                    "managed_runtime_opt_in": False,
+                },
+                timeout_s=135.0,
+            )
+            action["goal_response"] = goal_response
+            # 只读 latest/feedback 各一次，绑定当前 action 结束后的时间窗。
+            goal_latest = http_request("live_goal_latest", "/api/nav2/goal/execution/latest", timeout_s=12.0)
+            action["goal_latest"] = goal_latest
+            action["feedback_sample_invocation_count"] = 1
+            action["feedback_latest"] = http_request(
+                "live_feedback_latest",
+                "/api/base/feedback-samples/latest",
+                timeout_s=12.0,
+            )
+    finally:
+        # 任何 live 错误都只走唯一 post-stop/cleanup；绝不重新发 goal。
+        action["post_stop_invocation_count"] = 1
+        action["post_stop"] = http_request("live_post_stop", "/api/base/stop", method="POST", body={}, timeout_s=10.0)
+
+# final readback 与首次 Phase 0 属于同一 SSH invocation，不是第二次 Phase 0。
+goal_status_after = run_command(
+    "final_navigate_goal_status",
+    f"{ROS_PREFIX}ros2 topic echo --once /navigate_to_pose/_action/status action_msgs/msg/GoalStatusArray",
+    8.0,
+)
+final_goal_summary = action_status_summary(goal_status_after)
+if readiness_go and final_goal_summary["active_statuses"]:
+    # active goal 才调用 CancelGoal；从 current status 提取 UUID，禁止盲 cancel all。
+    uuid_values = [int(value) for value in re.findall(r"-\s+(\d+)\b", goal_status_after.get("stdout") or "")[:16]]
+    if len(uuid_values) == 16:
+        action["cancel_invocation_count"] = 1
+        cancel_yaml = (
+            "{goal_info: {goal_id: {uuid: ["
+            + ", ".join(str(value) for value in uuid_values)
+            + "]}, stamp: {sec: 0, nanosec: 0}}}"
+        )
+        action["cancel_result"] = run_command(
+            "live_conditional_cancel",
+            f"{ROS_PREFIX}ros2 service call /navigate_to_pose/_action/cancel_goal action_msgs/srv/CancelGoal '{cancel_yaml}'",
+            10.0,
+        )
+        # cancel 后只做一次状态 readback，不重新进入 Phase 0 或 goal pipe。
+        goal_status_after = run_command(
+            "final_navigate_goal_status_after_cancel",
+            f"{ROS_PREFIX}ros2 topic echo --once /navigate_to_pose/_action/status action_msgs/msg/GoalStatusArray",
+            8.0,
+        )
+        final_goal_summary = action_status_summary(goal_status_after)
+
+services_after = service_state("services_after")
+holders_after = holder_state("holders_after")
+health_after = http_request("upper_health_after", "/api/health")
+base_status_after = http_request("upper_base_status_after", "/api/base/status")
+
+holders_before_text = (holders_before.get("stdout") or "") + (holders_before.get("stderr") or "")
+holders_after_text = (holders_after.get("stdout") or "") + (holders_after.get("stderr") or "")
+holder_pairs_before = {
+    "/dev/ttyS5": extract_holder_pids(holders_before_text, "/dev/ttyS5"),
+    "/dev/ttyACM0": extract_holder_pids(holders_before_text, "/dev/ttyACM0"),
+}
+holder_pairs_after = {
+    "/dev/ttyS5": extract_holder_pids(holders_after_text, "/dev/ttyS5"),
+    "/dev/ttyACM0": extract_holder_pids(holders_after_text, "/dev/ttyACM0"),
+}
+services_preserved = services_before.get("stdout") == services_after.get("stdout")
+holders_preserved = holder_pairs_before == holder_pairs_after
+post_stop_payload = json_payload(action.get("post_stop") or {})
+final_stopped = bool(
+    not readiness_go
+    or (
+        action["post_stop_invocation_count"] == 1
+        and post_stop_payload.get("robot_control_executed") is True
+        and not final_goal_summary["active_statuses"]
+    )
+)
+
+remote_upper_match = LOCAL_UPPER_SHA256 in (remote_upper_sha.get("stdout") or "")
+remote_o11_match = LOCAL_O11_SHA256 in (remote_o11_sha.get("stdout") or "")
+capability_accepted = bool(route_capability_ok and source_capability["stop_only_contract_proven"])
+
+result = {
+    "schema": "trashbot.o6_o7.corrected_phase0_once_raw.v1",
+    "generated_at_ms": now_ms(),
+    "started_at_ms": started_at_ms,
+    "ended_at_ms": now_ms(),
+    "authorization_id": AUTHORIZATION_ID,
+    "task_id": TASK_ID,
+    "action_id": ACTION_ID,
+    "target": {"frame_id": "map", "x": 0.8, "y": 0.25, "yaw": 0.0},
+    "phase0_invocation_count": 1,
+    "READINESS_GO": readiness_go,
+    "first_failure": first_failure,
+    "gates": gates,
+    "gate_counts": {
+        "green": sum(1 for value in gates.values() if value),
+        "total": len(gates),
+    },
+    "upper_compatibility": {
+        "expected_port": 8787,
+        "listener_pids": listener_pids,
+        "process_pids": process_pids,
+        "unique_process_listener": unique_upper_ok,
+        "health_http_status": health.get("http_status"),
+        "systemd_upper_inactive_accepted_only_with_full_compatibility": True,
+        "required_routes": required_routes,
+        "route_capability_ok": route_capability_ok,
+        "source_capability": source_capability,
+    },
+    "local_remote_sha": {
+        "local_upper": LOCAL_UPPER_SHA256,
+        "remote_upper": (remote_upper_sha.get("stdout") or "").split(" ", 1)[0],
+        "upper_match": remote_upper_match,
+        "local_o11": LOCAL_O11_SHA256,
+        "remote_o11": (remote_o11_sha.get("stdout") or "").split(" ", 1)[0],
+        "o11_match": remote_o11_match,
+        "capability_accepted": capability_accepted,
+        "mismatch_did_not_trigger_deploy": True,
+    },
+    "current_evidence": {
+        "scan": scan,
+        "goal_status_before": goal_status,
+        "goal_status_after": final_goal_summary,
+        "nav2_status": json_payload(nav2_status),
+        "nav2_proof_latest": json_payload(nav2_proof_latest),
+        "goal_latest_before": json_payload(goal_latest_before),
+        "base_status_before": json_payload(base_status_before),
+        "feedback_latest_before": json_payload(feedback_latest_before),
+    },
+    "action": action,
+    "final_readback": {
+        "upper_health_http_status": health_after.get("http_status"),
+        "base_status": json_payload(base_status_after),
+        "services_before": services_before.get("stdout"),
+        "services_after": services_after.get("stdout"),
+        "holders_before": holder_pairs_before,
+        "holders_after": holder_pairs_after,
+        "existing_services_and_holders_preserved": services_preserved and holders_preserved,
+        "goal_active": bool(final_goal_summary["active_statuses"]),
+        "final_stopped": final_stopped,
+        "cleanup_completed": bool(final_stopped and services_preserved and holders_preserved),
+        "run_owned_residual_process_count": 0,
+        "final_stop_confirmation": (
+            "upper_stop_only_confirmed" if readiness_go and final_stopped else
+            "not_required_phase0_no_go" if not readiness_go else
+            "stop_confirmation_missing"
+        ),
+    },
+    "invocation_counters": {
+        "pre_stop_invocation_count": action["pre_stop_invocation_count"],
+        "user_action_receipt_count": action["user_action_receipt_count"],
+        "navigate_to_pose_invocation_count": action["navigate_to_pose_invocation_count"],
+        "post_stop_invocation_count": action["post_stop_invocation_count"],
+        "cancel_invocation_count": action["cancel_invocation_count"],
+        "feedback_sample_invocation_count": action["feedback_sample_invocation_count"],
+        # direct agent/new-process dangerous surfaces remain zero even when Upper stop-only runs.
+        "service_mutation_count": 0,
+        "remote_write_count": 0,
+        "deploy_count": 0,
+        "uart_open_count": 0,
+        "uart_write_count": 0,
+        "firmware_mutation_count": 0,
+        "initialpose_publish_attempts": 0,
+        "manual_command_count": 0,
+        "direct_cmd_vel_publish_count": 0,
+        "retry_count": 0,
+        "second_goal_count": 0,
+    },
+    "command_ledger": ledger,
+}
+print(json.dumps(result, ensure_ascii=False, sort_keys=True))

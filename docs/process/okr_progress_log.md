@@ -6,6 +6,42 @@
 
 ---
 
+## 2026-07-21 O6/O7 corrected Phase 0 current NO-GO lane 2/2 flat 收口
+
+`sprints/2026.07.21_10-50_o6_o7_corrected_phase0_bounded_mission/` 对上一轮 09-50 的冻结探针偏差做一次且仅一次
+corrected Phase 0。Robot 离线验证全部通过：py_compile PASS，O11 两套分别 `Ran 7` / `Ran 16`，Upper 两套分别
+`Ran 141` / `Ran 141`（各 `1 skipped`），manifest/NO-GO safety assertions、changed Python 中文技术注释严格 `>20%`
+与 scoped diff 全绿。唯一 SSH/stdin runner exit `0`，没有第二次 SSH、Phase 0、preflight、wrapper 或 retry。
+
+Corrected Upper 子门已真实闭合：ROS 2 Humble source 后 `ros2=/opt/ros/humble/bin/ros2`；唯一 PID `1201` 监听
+`0.0.0.0:8787`，health HTTP `200`；`trashbot-upper-api.service` inactive/dead 由 current PID/listener/health/routes/source
+compatibility 覆盖；local/remote Upper 与 O11 SHA mismatch 通过 current required capability 解释，deploy/write=`0`；base stop
+只允许 zero-command，feedback latest readback route 可用。
+
+最终仍是 `READINESS_GO=false`、green gates=`6/15`、first failure=`concurrent_task_goal_clear`。current action-status 无样本，
+不能证明无并发 goal；`/map`、`/amcl_pose` timeout，`map->odom` 不存在；planner/controller nodes 不存在；
+ComputePathToPose action server unavailable，NavigateToPose inventory 为空；`/scan` current 有 `181` 个有限正数样本，但
+min=`0.03500000014901161m < 0.45m`，obstacle gate 红。Algorithm frozen-artifact-only review=`ACCEPT_NO_GO`，没有执行
+SSH、ROS、API、service、control 或 motion。
+
+phase0/pre-stop/user-action receipt/NavigateToPose/post-stop/cancel/retry/second goal=`1/0/0/0/0/0/0/0`；feedback sample=`0`。
+service mutation、remote write、deploy、direct UART open/write、firmware、`/initialpose`、manual、direct `/cmd_vel` 全部 `0`。
+authorization `ceo_20260721_1048_corrected_phase0_bounded_mission_v1` 保持 `unconsumed_phase0_no_go`；goal inactive、
+cleanup completed、run-owned residual=`0`、services/holders before=after。
+
+Product 保守接受 `current_run_artifact_delta=true`，且只指 code/tests/current read-only NO-GO/frozen review；
+`external_artifact_delta=false`、`live_control_delta=false`、`user_action_delta=false`、`okr_credit=false`。
+`mission_attempt=false`、`route_execution_success=false`、`delivery_success=false`、`hil_pass=false`、`safe_to_control=false`；
+Mission Objective 0 未达到 `C2 bounded_mission_attempt`。O5/O6/O7/O1 保持约 `85%/93%/93%/95%`，全部 flat；KR
+`不归档`、历史区无新增完成项。
+
+blocker `phase0_frozen_probe_endpoint_ros_env_upper_sha_service_ownership_mismatch` lane 达到 `2/2`。即使 corrected Upper
+子门本轮已绿，route Phase0 lane 仍在 live pipe 前 NO-GO，故禁止第三轮 Phase0、preflight、wrapper、readback 或等价 retry。
+下一轮必须切 Objective 或升级 CEO：优先在 Hardware business-worker runtime 恢复后直接复用
+`sprints/2026.07.21_08-50_o1_wheel_feedback_root_cause/tech-plan.md`，由 `rober-hardware-engineer` 实现 non-motion/offline
+wheel-feedback root-cause diagnosis；不要新开规划包装。若 CEO 明确提供独立 service/runtime maintenance 权限，则另立不同
+blocker 的恢复 sprint，不得复用本 route Phase0 lane；任何未来 live pipe 仍需 fresh current authorization。
+
 ## 2026-07-21 O6/O7 bounded mission current Phase 0 NO-GO flat 收口
 
 `sprints/2026.07.21_09-50_o6_o7_bounded_mission_attempt/` 在 O5 provider/runtime blocker `2/2` 暂停后，选择 O6/O7

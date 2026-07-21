@@ -23,6 +23,55 @@ SPEC.loader.exec_module(HELPER)
 class O11Nav2GoalExecutionProofTests(unittest.TestCase):
     """锁定 O11 从 NavigateToPose 到真实底盘反馈的证明边界。"""
 
+    def test_corrected_phase0_manifest_keeps_forbidden_surfaces_zero(self) -> None:
+        """第二轮 corrected NO-GO 必须显式保留远端写入、部署和 UART 零计数。"""
+        manifest = HELPER.build_corrected_phase0_no_go_manifest(
+            # 当前授权只有 pre-stop 发出后才算消费。
+            authorization_id="ceo_20260721_1048_corrected_phase0_bounded_mission_v1",
+            task_id="o6-o7-corrected-phase0-20260721-1050",
+            # 缺 current user receipt endpoint 时必须在动作 pipe 前封存。
+            phase0={"READINESS_GO": False, "first_failure": "current_task_receipt_capability_missing"},
+            # planner-only probe 可以出现，但 NavigateToPose 计数仍为零。
+            command_ledger=[{"category": "compute_path_to_pose_planner_only", "exit_code": 0}],
+            # holder preservation 是 cleanup 断言的一部分。
+            final_readback={"existing_services_and_holders_preserved": True},
+            local_remote_sha={"upper_match": False, "capability_accepted": False},
+        )
+
+        # 目标和授权必须与冻结 sprint 完全一致。
+        self.assertEqual(manifest["target"], {"frame_id": "map", "x": 0.8, "y": 0.25, "yaw": 0.0})
+        self.assertEqual(manifest["phase0_invocation_count"], 1)
+        self.assertEqual(manifest["navigate_to_pose_invocation_count"], 0)
+        self.assertEqual(manifest["remote_write_count"], 0)
+        self.assertEqual(manifest["deploy_count"], 0)
+        self.assertEqual(manifest["uart_open_count"], 0)
+        self.assertEqual(manifest["uart_write_count"], 0)
+        self.assertFalse(manifest["mission_attempt"])
+        self.assertFalse(manifest["route_execution_success"])
+
+    def test_corrected_attempt_rejects_retry_even_after_green_phase0(self) -> None:
+        """全绿授权也不扩大为 retry；构造器必须在冻结 manifest 前拒绝。"""
+        with self.assertRaisesRegex(ValueError, "retry_or_second_goal_forbidden"):
+            HELPER.build_corrected_bounded_mission_attempt_manifest(
+                # 其余 identity 只用于到达 retry 校验。
+                authorization_id="bounded-motion-test",
+                task_id="task-current",
+                action_id="action-current",
+                phase0={"READINESS_GO": True},
+                command_ledger=[],
+                action={
+                    # pre-stop 已消费授权，但 retry=1 仍必须 fail closed。
+                    "pre_stop_invocation_count": 1,
+                    # 这里故意把 retry 置一，验证不会被静默 clamp。
+                    "retry_count": 1,
+                    # second goal 仍为零，隔离本用例的单一失败原因。
+                    "second_goal_count": 0,
+                },
+                # 构造器应在使用 readback 前就拒绝错误 counter。
+                final_readback={},
+                local_remote_sha={},
+            )
+
     def test_phase0_no_go_does_not_emit_current_mission_evidence(self) -> None:
         """只读准入失败不能消费授权，也不能借历史反馈提升 mission/HIL 字段。"""
         manifest = HELPER.build_phase0_no_go_manifest(
