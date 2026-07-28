@@ -1,0 +1,8 @@
+schema=trashbot.wave_rover.vendor_v0_9_diagnostic_toolchain.v1
+platformio_core=6.1.18
+esptool=4.8.1
+platform=espressif32@6.10.0
+framework=arduino
+board=esp32dev
+environment=wave_rover_v0_9_diagnostic
+build_id=trashbot-wave-rover-v0.9-diagnostic-20260728

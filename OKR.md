@@ -93,6 +93,27 @@
 
 **Key Results**
 
+> 2026-07-28 21-36 O1 verified upload / backup / vendor instrumentation Epic 收口：
+> `sprints/2026.07.28_21-36_o1_verified_upload_backup_vendor_instrumentation/` 完成 runner、19 tests、canonical
+> vendor V0.9 additive patch/toolchain 合同、硬件文档与唯一 current strict-no-motion SSH attempt。Gate U/B/V-prebuild=
+> `false/false/false`，first failure=`verified_esptool_version_unavailable`：唯一 stable alias 为
+> `usb-STC_STC_USB_Serial-if00 -> ttyACM0`，未误认 normal UART `/dev/ttyS5`；bootloader probe/current flash
+> backup/build/diagnostic flash/readback/rollback/motion/T900/retry=`0/0/0/0/0/0/0/0/0`。service/expected holder/final
+> stop=`true/true/true`，deployed hashes unchanged，artifact validation errors=`[]`。live 后 CRLF portability 仅本地加固并
+> 离线复验，没有再次 live，不得倒推 Gate V current green。Product closeout=
+> `ACCEPT_CURRENT_SUPPORTING_MAINTENANCE_DELTA_BLOCKED_FAIL_CLOSED_FLAT_ROUTE_NONE`；proof boundary=
+> `current_verified_upload_backup_vendor_instrumentation_maintenance_evidence_not_hil`。
+> O1/O5/O6/O7 保持约 `95%/85%/93%/93%`，本轮 `0pp`，KR `不归档`、历史区无新增；
+> `hil_pass=false`、`safe_to_control=false`、`route_execution_success=false`、`delivery_success=false`、
+> `mission_attempt=false`、`okr_credit=false`。canonical blocker
+> `verified_esp32_upload_port_flash_backup_vendor_v0_9_diagnostic_toolchain_provenance_missing` 达到 `2/2`，禁止第三轮包装。
+> O5 production lane、O6/O7 corrected Phase0 lane 与 O1 current hardware lane 均已 `2/2`，当前
+> `ROUTE=NONE_REQUIRES_PHYSICAL_ESP32_UPLOAD_PORT_CONNECTION_AND_PINNED_TOOLCHAIN_OR_NEW_EXTERNAL_EVIDENCE`、
+> `SPRINT=SKIPPED_NO_ADMISSIBLE_LANE`。下一轮不新建第三个同 blocker sprint；最小现场解锁是按 vendor wiki 将驱动板中间 USB
+> 接到上位机/维护主机，使 ESP32 bootloader port 真实出现，并预装/pin esptool `4.8.1` + PlatformIO `6.1.18`。
+> 这不是重新授权请求；既有完整 maintenance authorization 仍有效。若出现新的 O5 success-class production evidence 或
+> O6/O7 route/delivery/operator external evidence，也可切换到不同 lane。
+>
 > 2026-07-28 17-59 O1 runtime identity/raw encoder 独占维护 Epic 收口：
 > `sprints/2026.07.28_17-59_o1_runtime_identity_raw_encoder_maintenance/` 在完整
 > `O1_EXCLUSIVE_SERVICE_UART_FIRMWARE_MAINTENANCE_AUTHORIZED=true` 下执行恰好一次 current maintenance window。

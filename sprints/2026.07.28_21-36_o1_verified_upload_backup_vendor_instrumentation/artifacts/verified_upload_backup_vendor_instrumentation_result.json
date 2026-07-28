@@ -1,0 +1,545 @@
+{
+  "additive_patch_apply_count": 1,
+  "artifact_validation_errors": [],
+  "attempt_count": 1,
+  "attempt_id": "o1-verified-upload-backup-vendor-instrumentation-attempt-1",
+  "authorization_id": "ceo_20260728_complete_motion_deploy_service_uart_firmware_maintenance",
+  "backup_manifest": {},
+  "blockers": [
+    "verified_esptool_version_unavailable",
+    "gate_v_prebuild_provenance_not_green",
+    "gate_b_blocked_by_gate_u"
+  ],
+  "bootloader_identity_probe_count": 0,
+  "build_manifest": {},
+  "build_provenance_green": false,
+  "captured_at": "2026-07-28T14:04:25.021208+00:00",
+  "chip_manifest": {},
+  "command_ledger": [
+    {
+      "action": "systemctl_show",
+      "allowed": true,
+      "argv_sha256": "4796f1e65f0f74521d4fc73c74c6e113ff27a248d1185c72ec17e58be5468db8",
+      "ended_at": "2026-07-28T14:04:13.166687+00:00",
+      "exit_code": 0,
+      "phase": "0",
+      "started_at": "2026-07-28T14:04:13.146297+00:00",
+      "summary": "stdout_bytes=112 stderr_bytes=0"
+    },
+    {
+      "action": "lsof_normal_uart",
+      "allowed": true,
+      "argv_sha256": "9031e918d9be0bf5604cb135b95c60daa8fe17ec03793ec871592291500e7975",
+      "ended_at": "2026-07-28T14:04:13.462288+00:00",
+      "exit_code": 0,
+      "phase": "0",
+      "started_at": "2026-07-28T14:04:13.166911+00:00",
+      "summary": "stdout_bytes=5 stderr_bytes=0"
+    },
+    {
+      "action": "fuser_normal_uart",
+      "allowed": true,
+      "argv_sha256": "72bdb8ea7c9b7e8edd12c7641fbbaed15b318bff5e751cd48065af7de86d4a5f",
+      "ended_at": "2026-07-28T14:04:13.616918+00:00",
+      "exit_code": 0,
+      "phase": "0",
+      "started_at": "2026-07-28T14:04:13.462455+00:00",
+      "summary": "stdout_bytes=6 stderr_bytes=21"
+    },
+    {
+      "action": "sha256sum_deployed",
+      "allowed": true,
+      "argv_sha256": "c81d5fd2cdfb593f83b9879e45515b38977597de431ede30940458c8466eb869",
+      "ended_at": "2026-07-28T14:04:13.622590+00:00",
+      "exit_code": 0,
+      "phase": "0",
+      "started_at": "2026-07-28T14:04:13.618194+00:00",
+      "summary": "stdout_bytes=157 stderr_bytes=0"
+    },
+    {
+      "action": "sha256sum_deployed",
+      "allowed": true,
+      "argv_sha256": "9739c4b0b2550c41188bc72ce8ff80a48274221aa3168faae0e83e4a9d063dc2",
+      "ended_at": "2026-07-28T14:04:13.627793+00:00",
+      "exit_code": 0,
+      "phase": "0",
+      "started_at": "2026-07-28T14:04:13.622854+00:00",
+      "summary": "stdout_bytes=159 stderr_bytes=0"
+    },
+    {
+      "action": "sha256sum_deployed",
+      "allowed": true,
+      "argv_sha256": "1aa27c0601ad528b1aae2b12640176bbf5f06bd105f3224438b33c7b53eec13a",
+      "ended_at": "2026-07-28T14:04:13.632852+00:00",
+      "exit_code": 0,
+      "phase": "0",
+      "started_at": "2026-07-28T14:04:13.628041+00:00",
+      "summary": "stdout_bytes=159 stderr_bytes=0"
+    },
+    {
+      "action": "sha256sum_deployed",
+      "allowed": true,
+      "argv_sha256": "bdee1fa5e76006d536759c816bd5e66d8cebf37403afcc0cc3ce39ff2855ebb2",
+      "ended_at": "2026-07-28T14:04:13.636968+00:00",
+      "exit_code": 0,
+      "phase": "0",
+      "started_at": "2026-07-28T14:04:13.633099+00:00",
+      "summary": "stdout_bytes=115 stderr_bytes=0"
+    },
+    {
+      "action": "sha256sum_deployed",
+      "allowed": true,
+      "argv_sha256": "61d439dd752b77dce610609c78343ac6c6970d790d742494c5e9c8b5a82463f2",
+      "ended_at": "2026-07-28T14:04:13.641056+00:00",
+      "exit_code": 0,
+      "phase": "0",
+      "started_at": "2026-07-28T14:04:13.637210+00:00",
+      "summary": "stdout_bytes=116 stderr_bytes=0"
+    },
+    {
+      "action": "pre_stop_post",
+      "allowed": true,
+      "argv_sha256": "c73d4423ea47fe0c04236b841dd333d08ec1f74d33863fba14a1097e258d1d39",
+      "ended_at": "2026-07-28T14:04:13.820899+00:00",
+      "exit_code": 0,
+      "phase": "0",
+      "started_at": "2026-07-28T14:04:13.647184+00:00",
+      "summary": "bytes=1283"
+    },
+    {
+      "action": "systemctl_stop",
+      "allowed": true,
+      "argv_sha256": "45b31a2751d6609261b8d6ef47b8aeb7203ec31d87dc4aff8ffca8bc03e47413",
+      "ended_at": "2026-07-28T14:04:16.595565+00:00",
+      "exit_code": 0,
+      "phase": "U",
+      "started_at": "2026-07-28T14:04:13.821123+00:00",
+      "summary": "stdout_bytes=0 stderr_bytes=0"
+    },
+    {
+      "action": "systemctl_show",
+      "allowed": true,
+      "argv_sha256": "4796f1e65f0f74521d4fc73c74c6e113ff27a248d1185c72ec17e58be5468db8",
+      "ended_at": "2026-07-28T14:04:17.630582+00:00",
+      "exit_code": 0,
+      "phase": "U",
+      "started_at": "2026-07-28T14:04:17.596804+00:00",
+      "summary": "stdout_bytes=108 stderr_bytes=0"
+    },
+    {
+      "action": "lsof_normal_uart",
+      "allowed": true,
+      "argv_sha256": "9031e918d9be0bf5604cb135b95c60daa8fe17ec03793ec871592291500e7975",
+      "ended_at": "2026-07-28T14:04:17.957280+00:00",
+      "exit_code": 1,
+      "phase": "U",
+      "started_at": "2026-07-28T14:04:17.630809+00:00",
+      "summary": "stdout_bytes=0 stderr_bytes=0"
+    },
+    {
+      "action": "fuser_normal_uart",
+      "allowed": true,
+      "argv_sha256": "72bdb8ea7c9b7e8edd12c7641fbbaed15b318bff5e751cd48065af7de86d4a5f",
+      "ended_at": "2026-07-28T14:04:18.105070+00:00",
+      "exit_code": 1,
+      "phase": "U",
+      "started_at": "2026-07-28T14:04:17.957428+00:00",
+      "summary": "stdout_bytes=0 stderr_bytes=0"
+    },
+    {
+      "action": "esptool_version",
+      "allowed": true,
+      "argv_sha256": "9ef1c883e3ee18c40ecd9ada48e336ed1ab5c50fad17830e40a45922b953acf4",
+      "ended_at": "2026-07-28T14:04:18.207721+00:00",
+      "exit_code": 1,
+      "phase": "U",
+      "started_at": "2026-07-28T14:04:18.105241+00:00",
+      "summary": "stdout_bytes=0 stderr_bytes=42"
+    },
+    {
+      "action": "patch_apply",
+      "allowed": true,
+      "argv_sha256": "0299d040a6dc217c86827fce1b8f5d3f6aaa5b97549c37111d5d2ba73d86e762",
+      "ended_at": "2026-07-28T14:04:18.273940+00:00",
+      "exit_code": 1,
+      "phase": "V",
+      "started_at": "2026-07-28T14:04:18.259908+00:00",
+      "summary": "stdout_bytes=143 stderr_bytes=0"
+    },
+    {
+      "action": "systemctl_start",
+      "allowed": true,
+      "argv_sha256": "ff4ebf203895ee39dfe0ca13f3f5a8a545c649c84c278c79b928388a750d2211",
+      "ended_at": "2026-07-28T14:04:18.333940+00:00",
+      "exit_code": 0,
+      "phase": "R",
+      "started_at": "2026-07-28T14:04:18.284199+00:00",
+      "summary": "stdout_bytes=0 stderr_bytes=0"
+    },
+    {
+      "action": "systemctl_show",
+      "allowed": true,
+      "argv_sha256": "4796f1e65f0f74521d4fc73c74c6e113ff27a248d1185c72ec17e58be5468db8",
+      "ended_at": "2026-07-28T14:04:18.355615+00:00",
+      "exit_code": 0,
+      "phase": "R",
+      "started_at": "2026-07-28T14:04:18.334119+00:00",
+      "summary": "stdout_bytes=112 stderr_bytes=0"
+    },
+    {
+      "action": "systemctl_show",
+      "allowed": true,
+      "argv_sha256": "4796f1e65f0f74521d4fc73c74c6e113ff27a248d1185c72ec17e58be5468db8",
+      "ended_at": "2026-07-28T14:04:18.377624+00:00",
+      "exit_code": 0,
+      "phase": "R",
+      "started_at": "2026-07-28T14:04:18.355827+00:00",
+      "summary": "stdout_bytes=112 stderr_bytes=0"
+    },
+    {
+      "action": "lsof_normal_uart",
+      "allowed": true,
+      "argv_sha256": "9031e918d9be0bf5604cb135b95c60daa8fe17ec03793ec871592291500e7975",
+      "ended_at": "2026-07-28T14:04:18.683995+00:00",
+      "exit_code": 1,
+      "phase": "R",
+      "started_at": "2026-07-28T14:04:18.377850+00:00",
+      "summary": "stdout_bytes=0 stderr_bytes=0"
+    },
+    {
+      "action": "fuser_normal_uart",
+      "allowed": true,
+      "argv_sha256": "72bdb8ea7c9b7e8edd12c7641fbbaed15b318bff5e751cd48065af7de86d4a5f",
+      "ended_at": "2026-07-28T14:04:18.836831+00:00",
+      "exit_code": 1,
+      "phase": "R",
+      "started_at": "2026-07-28T14:04:18.684134+00:00",
+      "summary": "stdout_bytes=0 stderr_bytes=0"
+    },
+    {
+      "action": "lsof_normal_uart",
+      "allowed": true,
+      "argv_sha256": "9031e918d9be0bf5604cb135b95c60daa8fe17ec03793ec871592291500e7975",
+      "ended_at": "2026-07-28T14:04:19.649501+00:00",
+      "exit_code": 1,
+      "phase": "R",
+      "started_at": "2026-07-28T14:04:19.337650+00:00",
+      "summary": "stdout_bytes=0 stderr_bytes=0"
+    },
+    {
+      "action": "fuser_normal_uart",
+      "allowed": true,
+      "argv_sha256": "72bdb8ea7c9b7e8edd12c7641fbbaed15b318bff5e751cd48065af7de86d4a5f",
+      "ended_at": "2026-07-28T14:04:19.807372+00:00",
+      "exit_code": 1,
+      "phase": "R",
+      "started_at": "2026-07-28T14:04:19.649641+00:00",
+      "summary": "stdout_bytes=0 stderr_bytes=0"
+    },
+    {
+      "action": "lsof_normal_uart",
+      "allowed": true,
+      "argv_sha256": "9031e918d9be0bf5604cb135b95c60daa8fe17ec03793ec871592291500e7975",
+      "ended_at": "2026-07-28T14:04:20.616698+00:00",
+      "exit_code": 1,
+      "phase": "R",
+      "started_at": "2026-07-28T14:04:20.308197+00:00",
+      "summary": "stdout_bytes=0 stderr_bytes=0"
+    },
+    {
+      "action": "fuser_normal_uart",
+      "allowed": true,
+      "argv_sha256": "72bdb8ea7c9b7e8edd12c7641fbbaed15b318bff5e751cd48065af7de86d4a5f",
+      "ended_at": "2026-07-28T14:04:20.778059+00:00",
+      "exit_code": 1,
+      "phase": "R",
+      "started_at": "2026-07-28T14:04:20.616865+00:00",
+      "summary": "stdout_bytes=0 stderr_bytes=0"
+    },
+    {
+      "action": "lsof_normal_uart",
+      "allowed": true,
+      "argv_sha256": "9031e918d9be0bf5604cb135b95c60daa8fe17ec03793ec871592291500e7975",
+      "ended_at": "2026-07-28T14:04:21.594128+00:00",
+      "exit_code": 1,
+      "phase": "R",
+      "started_at": "2026-07-28T14:04:21.278902+00:00",
+      "summary": "stdout_bytes=0 stderr_bytes=0"
+    },
+    {
+      "action": "fuser_normal_uart",
+      "allowed": true,
+      "argv_sha256": "72bdb8ea7c9b7e8edd12c7641fbbaed15b318bff5e751cd48065af7de86d4a5f",
+      "ended_at": "2026-07-28T14:04:21.751725+00:00",
+      "exit_code": 1,
+      "phase": "R",
+      "started_at": "2026-07-28T14:04:21.594275+00:00",
+      "summary": "stdout_bytes=0 stderr_bytes=0"
+    },
+    {
+      "action": "lsof_normal_uart",
+      "allowed": true,
+      "argv_sha256": "9031e918d9be0bf5604cb135b95c60daa8fe17ec03793ec871592291500e7975",
+      "ended_at": "2026-07-28T14:04:22.565908+00:00",
+      "exit_code": 1,
+      "phase": "R",
+      "started_at": "2026-07-28T14:04:22.252502+00:00",
+      "summary": "stdout_bytes=0 stderr_bytes=0"
+    },
+    {
+      "action": "fuser_normal_uart",
+      "allowed": true,
+      "argv_sha256": "72bdb8ea7c9b7e8edd12c7641fbbaed15b318bff5e751cd48065af7de86d4a5f",
+      "ended_at": "2026-07-28T14:04:22.724593+00:00",
+      "exit_code": 1,
+      "phase": "R",
+      "started_at": "2026-07-28T14:04:22.566058+00:00",
+      "summary": "stdout_bytes=0 stderr_bytes=0"
+    },
+    {
+      "action": "lsof_normal_uart",
+      "allowed": true,
+      "argv_sha256": "9031e918d9be0bf5604cb135b95c60daa8fe17ec03793ec871592291500e7975",
+      "ended_at": "2026-07-28T14:04:23.557032+00:00",
+      "exit_code": 0,
+      "phase": "R",
+      "started_at": "2026-07-28T14:04:23.225402+00:00",
+      "summary": "stdout_bytes=5 stderr_bytes=0"
+    },
+    {
+      "action": "fuser_normal_uart",
+      "allowed": true,
+      "argv_sha256": "72bdb8ea7c9b7e8edd12c7641fbbaed15b318bff5e751cd48065af7de86d4a5f",
+      "ended_at": "2026-07-28T14:04:23.715029+00:00",
+      "exit_code": 0,
+      "phase": "R",
+      "started_at": "2026-07-28T14:04:23.557189+00:00",
+      "summary": "stdout_bytes=6 stderr_bytes=21"
+    },
+    {
+      "action": "sha256sum_deployed",
+      "allowed": true,
+      "argv_sha256": "c81d5fd2cdfb593f83b9879e45515b38977597de431ede30940458c8466eb869",
+      "ended_at": "2026-07-28T14:04:23.720317+00:00",
+      "exit_code": 0,
+      "phase": "R",
+      "started_at": "2026-07-28T14:04:23.716079+00:00",
+      "summary": "stdout_bytes=157 stderr_bytes=0"
+    },
+    {
+      "action": "sha256sum_deployed",
+      "allowed": true,
+      "argv_sha256": "9739c4b0b2550c41188bc72ce8ff80a48274221aa3168faae0e83e4a9d063dc2",
+      "ended_at": "2026-07-28T14:04:23.724697+00:00",
+      "exit_code": 0,
+      "phase": "R",
+      "started_at": "2026-07-28T14:04:23.720605+00:00",
+      "summary": "stdout_bytes=159 stderr_bytes=0"
+    },
+    {
+      "action": "sha256sum_deployed",
+      "allowed": true,
+      "argv_sha256": "1aa27c0601ad528b1aae2b12640176bbf5f06bd105f3224438b33c7b53eec13a",
+      "ended_at": "2026-07-28T14:04:23.729028+00:00",
+      "exit_code": 0,
+      "phase": "R",
+      "started_at": "2026-07-28T14:04:23.724942+00:00",
+      "summary": "stdout_bytes=159 stderr_bytes=0"
+    },
+    {
+      "action": "sha256sum_deployed",
+      "allowed": true,
+      "argv_sha256": "bdee1fa5e76006d536759c816bd5e66d8cebf37403afcc0cc3ce39ff2855ebb2",
+      "ended_at": "2026-07-28T14:04:23.733351+00:00",
+      "exit_code": 0,
+      "phase": "R",
+      "started_at": "2026-07-28T14:04:23.729273+00:00",
+      "summary": "stdout_bytes=115 stderr_bytes=0"
+    },
+    {
+      "action": "sha256sum_deployed",
+      "allowed": true,
+      "argv_sha256": "61d439dd752b77dce610609c78343ac6c6970d790d742494c5e9c8b5a82463f2",
+      "ended_at": "2026-07-28T14:04:23.737911+00:00",
+      "exit_code": 0,
+      "phase": "R",
+      "started_at": "2026-07-28T14:04:23.733604+00:00",
+      "summary": "stdout_bytes=116 stderr_bytes=0"
+    },
+    {
+      "action": "final_stop_post",
+      "allowed": true,
+      "argv_sha256": "c73d4423ea47fe0c04236b841dd333d08ec1f74d33863fba14a1097e258d1d39",
+      "ended_at": "2026-07-28T14:04:23.952458+00:00",
+      "exit_code": 0,
+      "phase": "R",
+      "started_at": "2026-07-28T14:04:23.738159+00:00",
+      "summary": "bytes=1284"
+    },
+    {
+      "action": "final_status_get",
+      "allowed": true,
+      "argv_sha256": "d832c3c4cf215b5315f878c0c944d06b1aa755c0b4ede851e0dd15528c364341",
+      "ended_at": "2026-07-28T14:04:25.018681+00:00",
+      "exit_code": 0,
+      "phase": "R",
+      "started_at": "2026-07-28T14:04:24.953702+00:00",
+      "summary": "bytes=20883"
+    }
+  ],
+  "current_run_artifact_delta": 1,
+  "delivery_success": false,
+  "deployed_hashes_after": {
+    "esp32_bridge_http.sh": "c6d02c47ffe624b8b340416d06607e3812e61b74988f82fbf9ba735054dc9a3e",
+    "esp32_bridge_node.py": "6e82e493a8d63ae5ff47546f689c28deb92d1647b5937836bed38e0f55ef8304",
+    "trashbot-esp32-bridge.service": "1416c24689de1562d9e7feb03b7f3399fd25e4583db70d07d1ffb4a7336e2bc9",
+    "wave_rover_feedback.py": "9c1329346395d8a5bd866c15d67ca9b569dbccb70aea2dbe38ec3ef92db6734e",
+    "wave_rover_protocol.py": "7c0d749d6669d658297e682aa89ccf867749f4e643602cb54cb6ed56b8c83fd5"
+  },
+  "deployed_hashes_before": {
+    "esp32_bridge_http.sh": "c6d02c47ffe624b8b340416d06607e3812e61b74988f82fbf9ba735054dc9a3e",
+    "esp32_bridge_node.py": "6e82e493a8d63ae5ff47546f689c28deb92d1647b5937836bed38e0f55ef8304",
+    "trashbot-esp32-bridge.service": "1416c24689de1562d9e7feb03b7f3399fd25e4583db70d07d1ffb4a7336e2bc9",
+    "wave_rover_feedback.py": "9c1329346395d8a5bd866c15d67ca9b569dbccb70aea2dbe38ec3ef92db6734e",
+    "wave_rover_protocol.py": "7c0d749d6669d658297e682aa89ccf867749f4e643602cb54cb6ed56b8c83fd5"
+  },
+  "diagnostic_flash_count": 0,
+  "diagnostic_readback": {},
+  "errors": [],
+  "external_artifact_delta": 1,
+  "final_stop_verification_count": 1,
+  "final_stopped": true,
+  "first_failure": "verified_esptool_version_unavailable",
+  "flash_backup_read_count": 0,
+  "gate_b": false,
+  "gate_u": false,
+  "gate_v": false,
+  "gate_v_prebuild": false,
+  "hil_pass": false,
+  "holder_after": [
+    {
+      "cmd_hash_prefix": "f0b175786f431502",
+      "expected_bridge": true,
+      "pid": 7966,
+      "start_ticks": "4567679"
+    }
+  ],
+  "holder_before": [
+    {
+      "cmd_hash_prefix": "f0b175786f431502",
+      "expected_bridge": true,
+      "pid": 6872,
+      "start_ticks": "4029942"
+    }
+  ],
+  "holder_restored": true,
+  "holder_termination_count": 0,
+  "instrumentation_build_count": 0,
+  "inventory_invocation_count": 1,
+  "live_control_delta": 0,
+  "mission_attempt": false,
+  "motion_command_count": 0,
+  "okr_credit": false,
+  "patch_manifest": {
+    "additive_fields_present": false,
+    "apply_exit_code": 1,
+    "changed_source_files": [
+      "ugv_advance.h.orig",
+      "ugv_advance.h.rej"
+    ],
+    "diff_allowlist": [
+      "ugv_advance.h"
+    ],
+    "existing_feedback_fields_preserved": true,
+    "expected_patch_sha256": "480b219b622fa0db40efcbfb4961dca95b73b533dac05faed83d2617f40fe5b4",
+    "patch_sha256": "480b219b622fa0db40efcbfb4961dca95b73b533dac05faed83d2617f40fe5b4"
+  },
+  "phase_states": {
+    "0": "complete",
+    "B": "blocked",
+    "R": "complete",
+    "U": "blocked"
+  },
+  "port_manifest": {
+    "candidates": [
+      {
+        "alias_basename": "usb-STC_STC_USB_Serial-if00",
+        "canonical_basename": "ttyACM0",
+        "identity_hash_prefix": "f2dc36fefc7bcfee",
+        "serial_hash_prefix": null,
+        "sysfs_hash_prefix": "d8a5615b2652d260",
+        "vid_hint_present": true
+      }
+    ],
+    "normal_uart_basename": "ttyS5",
+    "normal_uart_is_upload_identity": false,
+    "stable_alias_count": 1
+  },
+  "pre_stop_invocation_count": 1,
+  "proof_boundary": "current_verified_upload_backup_vendor_instrumentation_maintenance_evidence_not_hil",
+  "retry_count": 0,
+  "rollback_flash_count": 0,
+  "rollback_manifest": {},
+  "rollback_result": {
+    "attempted": false,
+    "reason": "no_diagnostic_flash_started",
+    "restored": true
+  },
+  "route_execution_success": false,
+  "run_owned_residual": false,
+  "runner_invocation_count": 1,
+  "safe_to_control": false,
+  "schema": "trashbot.wave_rover.verified_upload_backup_vendor_instrumentation.v1",
+  "second_build_count": 0,
+  "second_flash_count": 0,
+  "service_after": {
+    "ActiveState": "active",
+    "MainPID": "7516",
+    "SubState": "running",
+    "exit_code": 0
+  },
+  "service_before": {
+    "ActiveState": "active",
+    "MainPID": "6422",
+    "SubState": "running",
+    "exit_code": 0
+  },
+  "service_restore_count": 1,
+  "service_restored": true,
+  "service_stop_count": 1,
+  "source_manifest": {
+    "canonical_root_basename": "WAVE_ROVER_V0.9",
+    "file_count": 26,
+    "generic_main_cpp_present": false,
+    "patched_tree_sha256": "de5fa43869fe4b2924e5900e9b762a6f971713f4fdbaf8202c56d33ee7bb5bda",
+    "pristine_tree_sha256": "566916a0bc49b2430aefb374dcb019ce0803f4e555da88a474e738f462cf23f0",
+    "required_source_hashes_match": true,
+    "required_source_mismatches": []
+  },
+  "ssh_transport": {
+    "exit_code": 0,
+    "invocation_count": 1,
+    "request_sha256": "0f441c67afe31dcfd657c3ac277521d7f551fecb6dc8c60f829e3461604baf98",
+    "stderr_bytes": 0,
+    "stderr_summary": "",
+    "stdout_bytes": 15623
+  },
+  "stationary_diagnostic_readback_count": 0,
+  "status": "verified_upload_backup_vendor_instrumentation_blocked_fail_closed",
+  "t900_write_count": 0,
+  "toolchain_manifest": {
+    "board": "esp32dev",
+    "environment": "wave_rover_v0_9_diagnostic",
+    "esptool_version": null,
+    "expected_esptool_version": "4.8.1",
+    "expected_platformio_version": "6.1.18",
+    "framework": "arduino",
+    "platform": "espressif32@6.10.0",
+    "platformio_available": false,
+    "platformio_basename": null,
+    "platformio_ini_sha256": "7944ce60cf1308517c717d7f1c546a3ac7c76e27fa0a9b61e31737712a981e8a",
+    "platformio_version": null,
+    "toolchain_lock_sha256": "b43463b1b324307b84033cda3d275a6ef553cf904031d33eb8ade3444b14b766"
+  },
+  "vendor_tree_prepare_count": 1
+}

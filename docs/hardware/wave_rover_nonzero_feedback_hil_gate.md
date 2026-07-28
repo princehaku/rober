@@ -201,3 +201,45 @@ service/firmware/UART-open/UART-write/motion mutation counts 全部为 `0`，没
 `route_execution_success=false`、`delivery_success=false`、`mission_attempt=false`。后续不得重跑该 maintenance
 window、不得再次发送 `T=900`、不得 motion、不得 build/flash；如另开 instrumentation lane，必须先补 verified upload port、
 current flash backup 与 toolchain，并建立新的计划和 attempt identity。
+
+## 2026-07-28 verified upload / backup / vendor instrumentation 结果
+
+本轮使用 authorization
+`ceo_20260728_complete_motion_deploy_service_uart_firmware_maintenance` 与新 attempt
+`o1-verified-upload-backup-vendor-instrumentation-attempt-1`，执行恰好一次 strict-no-motion SSH runner。旧 maintenance runner、
+旧 attempt 与 `T=900` 均未复用；motion、zero-jog、manual、`/cmd_vel`、Nav2 全部为 `0`。
+
+### Current Gate U/B/V 事实
+
+- current `/dev/serial/by-id` 只有一个 stable alias：
+  `usb-STC_STC_USB_Serial-if00 -> ttyACM0`；identity/sysfs 只在 artifact 中保留 hash prefix。normal UART
+  `/dev/ttyS5@115200` 明确标记为 `normal_uart_is_upload_identity=false`。
+- 目标机没有 pinned esptool `4.8.1`，PlatformIO core `6.1.18` 也不可用。因此
+  `first_failure=verified_esptool_version_unavailable`，未对 STC alias 执行 bootloader probe，
+  `bootloader_identity_probe_count=0`，不能把它认作 WAVE ROVER ESP32 upload port。
+- Gate U 红后 Gate B 正确停止：`flash_backup_read_count=0`，没有 current full-flash backup，也没有 rollback image。
+  factory `target.bin` 仍只读且只作 SHA 比较，未被当作 current backup。
+- canonical top-level V0.9 source 的 6 个 required hashes 与当前 repo 完全一致，pristine manifest 共 26 files，
+  `generic_main_cpp_present=false`。但目标机 patch 对 vendor CRLF 产生 `.orig/.rej`，且 PlatformIO/esptool 均缺失，
+  所以 `gate_v_prebuild=false`。
+- U/B/V-prebuild=`false/false/false`，instrumentation build/diagnostic flash/stationary readback/rollback=`0/0/0/0`。
+  没有创建 udev rule：现场虽有 stable alias，但它标识 STC USB Serial 且没有可用于唯一绑定目标 ESP32 的 current serial
+  identity，不满足 rule 准入。
+
+### 恢复与证据边界
+
+- runner/attempt/inventory/pre-stop/service-stop/service-restore/final-stop verification=
+  `1/1/1/1/1/1/1`，retry/second-build/second-flash/motion/T900=`0/0/0/0/0`。
+- service 从 `active/running MainPID=6422` 恢复为 `active/running MainPID=7516`；expected bridge holder 从 PID `6872`
+  恢复为 PID `7966`，command hash prefix 相同。五个 deployed hashes 前后一致。
+- final stop POST 与 base status zero readback 均成立，`service_restored=true`、`holder_restored=true`、
+  `final_stopped=true`、`run_owned_residual=false`。
+- 主 artifact 是
+  `sprints/2026.07.28_21-36_o1_verified_upload_backup_vendor_instrumentation/artifacts/verified_upload_backup_vendor_instrumentation_result.json`；
+  `artifact_validation_errors=[]`。它只证明 current strict-no-motion upload/backup/toolchain NO-GO 与完整恢复，不证明
+  firmware instrumentation、current flash backup、nonzero wheel feedback、HIL、safe-to-control、route execution、
+  delivery、operator acceptance 或 mission。
+
+live runner 后，本地只加固了 patch portability：在 run-owned vendor copy 中把 `ugv_advance.h` 的 CRLF 统一为 LF 后再应用同一
+versioned patch，targeted offline tests 已通过。该 hardened source 没有再次 live 执行，不得倒推为 current Gate V 已修复。
+本 blocker 已是第 `2/2` 次消费；后续不得第三次包装同一 upload/backup/toolchain lane。

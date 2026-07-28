@@ -1,0 +1,8 @@
+{
+  "attempt_id": "fixture-o1-verified-upload-backup-vendor-instrumentation",
+  "authorization_id": "fixture-authorization",
+  "gate_u": true,
+  "gate_b": true,
+  "gate_v_prebuild": true,
+  "build_provenance_green": true
+}

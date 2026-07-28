@@ -1,0 +1,96 @@
+{
+  "additive_patch_apply_count": 1,
+  "attempt_count": 0,
+  "attempt_id": "fixture-o1-verified-upload-backup-vendor-instrumentation",
+  "authorization_id": "fixture-authorization",
+  "backup_manifest": {
+    "fixture": true
+  },
+  "blockers": [],
+  "bootloader_identity_probe_count": 0,
+  "build_manifest": {},
+  "build_provenance_green": true,
+  "captured_at": "2026-07-28T14:08:07.881497+00:00",
+  "chip_manifest": {
+    "fixture": true
+  },
+  "command_ledger": [],
+  "current_run_artifact_delta": 0,
+  "delivery_success": false,
+  "deployed_hashes_after": {
+    "fixture": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "deployed_hashes_before": {
+    "fixture": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "diagnostic_flash_count": 0,
+  "diagnostic_readback": {},
+  "errors": [],
+  "external_artifact_delta": 0,
+  "final_stop_verification_count": 0,
+  "final_stopped": true,
+  "first_failure": null,
+  "flash_backup_read_count": 0,
+  "gate_b": true,
+  "gate_u": true,
+  "gate_v": false,
+  "gate_v_prebuild": true,
+  "hil_pass": false,
+  "holder_after": [],
+  "holder_before": [],
+  "holder_restored": true,
+  "holder_termination_count": 0,
+  "instrumentation_build_count": 0,
+  "inventory_invocation_count": 0,
+  "live_control_delta": 0,
+  "mission_attempt": false,
+  "motion_command_count": 0,
+  "okr_credit": false,
+  "patch_manifest": {
+    "fixture": true
+  },
+  "phase_states": {
+    "S": "fixture_complete"
+  },
+  "port_manifest": {
+    "fixture": true
+  },
+  "pre_stop_invocation_count": 0,
+  "proof_boundary": "fixture_only_not_hardware",
+  "retry_count": 0,
+  "rollback_flash_count": 0,
+  "rollback_manifest": {
+    "fixture": true
+  },
+  "rollback_result": {
+    "attempted": false,
+    "reason": "fixture",
+    "restored": true
+  },
+  "route_execution_success": false,
+  "run_owned_residual": false,
+  "runner_invocation_count": 0,
+  "safe_to_control": false,
+  "schema": "trashbot.wave_rover.verified_upload_backup_vendor_instrumentation.v1",
+  "second_build_count": 0,
+  "second_flash_count": 0,
+  "service_after": {
+    "fixture": true
+  },
+  "service_before": {
+    "fixture": true
+  },
+  "service_restore_count": 0,
+  "service_restored": true,
+  "service_stop_count": 0,
+  "source_manifest": {
+    "fixture": true
+  },
+  "stationary_diagnostic_readback_count": 0,
+  "status": "fixture_complete",
+  "t900_write_count": 0,
+  "toolchain_manifest": {
+    "fixture": true
+  },
+  "vendor_tree_prepare_count": 1
+}

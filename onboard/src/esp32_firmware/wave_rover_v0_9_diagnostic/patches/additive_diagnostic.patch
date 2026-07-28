@@ -1,0 +1,22 @@
+--- a/ugv_advance.h
++++ b/ugv_advance.h
+@@ -383,9 +383,21 @@
+ 	jsonInfoHttp.clear();
+ 	jsonInfoHttp["T"] = FEEDBACK_BASE_INFO;
+ 
++	// 诊断字段只增加可观测性，不改变既有 T/L/R 反馈语义。
++	jsonInfoHttp["firmwareBuildId"] = "trashbot-wave-rover-v0.9-diagnostic-20260728";
++	jsonInfoHttp["mainType"] = mainType;
++	jsonInfoHttp["moduleType"] = moduleType;
++
++	// raw counter 与已发布轮速同时输出，用于区分编码器采样和换算链。
++	jsonInfoHttp["encA"] = encoderA.getCount();
++	jsonInfoHttp["encB"] = encoderB.getCount();
++	jsonInfoHttp["speedGetA"] = speedGetA;
++	jsonInfoHttp["speedGetB"] = speedGetB;
++
++	// 原始 vendor 字段保持原位置和原赋值，避免 diagnostic image 改协议。
+ 	jsonInfoHttp["L"] = speedGetA;
+ 	jsonInfoHttp["R"] = speedGetB;
+ 
+ 	jsonInfoHttp["r"] = icm_roll;

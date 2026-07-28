@@ -6,6 +6,45 @@
 
 ---
 
+## 2026-07-28 O1 verified upload / backup / vendor instrumentation blocker 2/2 flat 收口
+
+`sprints/2026.07.28_21-36_o1_verified_upload_backup_vendor_instrumentation/` 完成 Product acceptance。Hardware 实现单一
+runner、19 个 targeted tests、fixture/mock artifact、canonical vendor V0.9 additive patch、pinned toolchain contract 与
+硬件文档，并消耗唯一 current strict-no-motion SSH attempt。Engineer 留档 py_compile、`Ran 19 tests in 0.108s / OK`、
+fixture/JSON/schema/assertions、中文技术注释 runner/tests=`20.20%/20.61%` 和 scoped diff 全绿。Product 没有重跑工程测试、
+SSH、service、UART、firmware、build、flash、rollback、T900 或 motion。
+
+Current Gate U/B/V-prebuild=`false/false/false`，first failure=`verified_esptool_version_unavailable`。唯一 stable alias 是
+`usb-STC_STC_USB_Serial-if00 -> ttyACM0`；normal UART `/dev/ttyS5` 明确
+`normal_uart_is_upload_identity=false`，没有把 STC device 猜成目标 ESP32。pinned esptool `4.8.1` 与 PlatformIO `6.1.18`
+不可用，因此 bootloader probe/flash backup/build/diagnostic flash/stationary readback/rollback=`0/0/0/0/0/0`。canonical
+26-file vendor source manifest 与 required hashes 匹配，generic `main.cpp` 未混入；但唯一 live patch 对 CRLF 产生
+`.orig/.rej`，Gate V 仍红。live 后 CRLF normalization 只在本地加固并离线复验，没有再次 live，不得倒推 current Gate V green。
+
+runner/attempt/SSH=`1/1/1`，motion/T900/retry=`0/0/0`。service/expected holder/final stop=
+`true/true/true`，五个 deployed hashes unchanged，`run_owned_residual=false`，artifact validation errors=`[]`。Proof boundary=
+`current_verified_upload_backup_vendor_instrumentation_maintenance_evidence_not_hil`；`current_run_artifact_delta=1` 与
+`external_artifact_delta=1` 只接受为 current real-board supporting maintenance evidence。`live_control_delta=0`、
+`hil_pass=false`、`safe_to_control=false`、`route_execution_success=false`、`delivery_success=false`、
+`mission_attempt=false`、`okr_credit=false`。
+
+Product verdict=`ACCEPT_CURRENT_SUPPORTING_MAINTENANCE_DELTA_BLOCKED_FAIL_CLOSED_FLAT_ROUTE_NONE`。O5/O1/O6/O7 保持约
+`85%/95%/93%/93%`，全部 `0pp`；KR `不归档`，当前推进区不移动、历史区无新增。
+
+canonical blocker
+`verified_esp32_upload_port_flash_backup_vendor_v0_9_diagnostic_toolchain_provenance_missing` 达到 `2/2`，禁止第三轮
+upload inventory、bootloader readiness、backup plan、vendor patch/toolchain summary 或 CRLF-hardening-only wrapper。
+O5 production provider/runtime lane、O6/O7 corrected Phase0 lane 与 O1 current hardware lane 均已 `2/2`，当前：
+
+`ROUTE=NONE_REQUIRES_PHYSICAL_ESP32_UPLOAD_PORT_CONNECTION_AND_PINNED_TOOLCHAIN_OR_NEW_EXTERNAL_EVIDENCE`
+
+`SPRINT=SKIPPED_NO_ADMISSIBLE_LANE`
+
+下一轮不新建第三个同 blocker sprint。CEO/现场最小解锁动作是按 vendor wiki 将驱动板中间 USB 接到上位机或维护主机，使
+目标 ESP32 bootloader port 真实出现，并预装/pin esptool `4.8.1` 与 PlatformIO `6.1.18`；继续保持 operator 在场、路线清空和
+物理限位。这不是重新授权请求，既有完整 maintenance authorization 仍有效。若获得新的 O5 success-class production
+evidence，或 O6/O7 route/delivery/operator current external evidence，也可路由到不同 lane。
+
 ## 2026-07-28 O1 runtime identity/raw encoder current maintenance fail-closed flat 收口
 
 `sprints/2026.07.28_17-59_o1_runtime_identity_raw_encoder_maintenance/` 在 CEO 已明确的完整 service/UART/firmware maintenance
