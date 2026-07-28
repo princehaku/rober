@@ -41,10 +41,12 @@ evidence 或 delivery/user action。`hil_pass=false`、`safe_to_control=false`�
 O5/O1/O6/O7 保持约 `85%/95%/93%/93%`，本轮全 `0pp`；所有 KR `不归档`，当前推进区不移动、历史区无新增。
 O5 仍是最低 Objective，但 production provider/runtime evidence 同根因已 `2/2`，本轮跳过理由继续成立。
 
+旧 blocker `paused_pending_exclusive_maintenance_authority` 已解决并消费。新 canonical blocker=
+`verified_esp32_upload_port_flash_backup_vendor_v0_9_diagnostic_toolchain_provenance_missing`，首次消费 `1/2`。
 下一唯一 lane=`o1_verified_upload_backup_vendor_additive_instrumentation`，owner=`rober-hardware-engineer`。只有 dedicated
-verified ESP32 bootloader/upload port、current flash backup、PlatformIO/esptool provenance 三项新条件全绿后，才创建新
-Epic、新 attempt identity 与新 maintenance window；完整 maintenance authorization 不再误报为缺失，但本 sprint 的
-attempt/window 已消费，不得原地重跑。新条件未出现时固定
+verified ESP32 bootloader/upload port、current flash backup、canonical vendor V0.9 additive diagnostic toolchain/provenance
+三项新条件全绿后，才创建新 Epic、新 attempt identity 与新 maintenance window；完整 maintenance authorization 不再误报为
+缺失，但本 sprint 的 attempt/window 已消费，不得原地重跑 runner、T=900 或 motion。新条件未出现时固定
 `ROUTE=NONE_WAITING_FOR_UPLOAD_BACKUP_TOOLCHAIN_CONDITION`，禁止用 upload-readiness、source-hardening 或 read-only summary
 包装新进度。
 

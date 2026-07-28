@@ -107,9 +107,12 @@
 > `route_execution_success=false`、`delivery_success=false`、`mission_attempt=false`、`okr_credit=false`。
 > live request SHA `6ba79eac…` 不同于 current hardened source SHA `c0d19fd…`；后者 17 个离线测试通过，不得倒推
 > 已 live 执行。O1/O5/O6/O7 保持约 `95%/85%/93%/93%`，本轮均 `0pp`，KR `不归档`、历史区无新增。
-> 下一轮只在 verified upload port + current flash backup + PlatformIO/esptool provenance 三项新条件全绿后，由
+> 旧 blocker `paused_pending_exclusive_maintenance_authority` 已解决并消费；新 canonical blocker=
+> `verified_esp32_upload_port_flash_backup_vendor_v0_9_diagnostic_toolchain_provenance_missing`，首次消费 `1/2`。
+> 下一轮只在 verified upload port + current flash backup + canonical vendor V0.9 additive diagnostic toolchain/provenance
+> 三项新条件全绿后，由
 > `rober-hardware-engineer` 新开 `o1_verified_upload_backup_vendor_additive_instrumentation` Epic/new attempt；
-> 条件未出现时禁止重跑本 window 或用 instrumentation-readiness wrapper 补位。
+> 条件未出现时禁止重跑本 window、runner、T=900、motion 或用 instrumentation-readiness wrapper 补位。
 >
 > 2026-07-21 10-50 O6/O7 corrected Phase 0 Epic 收口：
 > `sprints/2026.07.21_10-50_o6_o7_corrected_phase0_bounded_mission/` 完成 corrected contract、离线测试、唯一
@@ -503,8 +506,11 @@ service/UART/T=900/T=1001/toolchain/restoration 维护。artifact status=`mainte
 不成立，故 `counter_feedback_observability_gate=false`、build/flash/motion/retry=`0/0/0/0`；service、expected holder、
 hash 与 final stop 恢复。`current/external/live/user-action=1/1/0/0`，mission/route/delivery/HIL/safe 全 false。
 live request `6ba79eac…` 与 current source `c0d19fd…` 不同，17 个离线测试不能倒推后者已 live。O5/O1/O6/O7
-保持 `85%/95%/93%/93%`，本轮全 `0pp`，KR `不归档`、历史区无新增。O5 production evidence 仍 `2/2` 跳过；
-下一轮只等待 verified upload port + current flash backup + PlatformIO/esptool provenance 新条件，不重复本 maintenance window。
+保持 `85%/95%/93%/93%`，本轮全 `0pp`，KR `不归档`、历史区无新增。O5 production evidence 仍 `2/2` 跳过。
+旧 exclusive maintenance authority blocker 已解决并消费；新 canonical blocker
+`verified_esp32_upload_port_flash_backup_vendor_v0_9_diagnostic_toolchain_provenance_missing` 首次消费 `1/2`。
+下一轮只等待 verified upload port + current flash backup + canonical vendor V0.9 additive diagnostic toolchain/provenance
+新条件，不重复本 maintenance window、runner、T=900 或 motion。
 
 2026-07-21 10-50 当前进展记录：corrected Phase 0 唯一 SSH/runner exit `0`，Upper 的 ROS env、`8787` 唯一
 PID/listener/health、inactive unit compatibility、current routes/source、SHA mismatch capability、stop-only 与 feedback readback
