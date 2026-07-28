@@ -184,3 +184,33 @@ motion/T900/retry/build/flash/rollback=0/0/0/0/0/0
   Objective 或升级 CEO，不得第三次包装同一 lane。
 - 本轮严格未执行 motion，不证明 current nonzero wheel feedback、HIL、safe-to-control、route execution、delivery、
   operator acceptance 或 mission。Hardware 不调整 OKR 百分比、不归档 KR。
+
+## 2026-07-28 Hardware owner 离线复验
+
+复验开始时仓库状态已从派单时的 staged tree 漂移为 clean published tree：`HEAD=origin/master=dda8af5c3`，没有 cached
+scoped diff。Hardware 仍按本 Epic 允许范围审计该 commit 与 current artifact，全程没有运行 SSH、service、UART、
+bootloader、backup、build、flash、rollback 或 motion 命令。
+
+首次复验的 py_compile、19 tests、fixture、JSON、current artifact assertions 与中文注释比例均通过；但
+`git show --check HEAD` 发现 `additive_diagnostic.patch` 的 nested diff context 有 7 个
+space-before-tab/trailing-whitespace 错误。该缺陷不改变已经封存的 live artifact，但不满足 scoped diff 质量门。
+
+Hardware 将 patch 改为 source-hash 前置校验下的 zero-context additive insertion，去掉 nested context 自身的空白噪声；
+它仍只向 `ugv_advance.h` 增加原 7 个诊断字段。修复后 patch SHA-256=
+`a16cd790279ca218bd2b04bba915ed875649b98c49102eb65c71093e43f83349`，canonical CRLF-to-LF temp copy 上 clean apply。
+完整离线复验结果：
+
+```text
+py_compile exit=0
+Ran 19 tests in 0.109s / OK
+fixture status=fixture_complete / exit=0
+current artifact json.tool exit=0
+o1 verified upload backup vendor instrumentation assertions: PASS
+runner/tests chinese_comment_ratio=20.20%/20.61%
+```
+
+current artifact 未修改，SHA-256 继续为
+`db1019d79bd93162411f81056730763ae7071f41582b28da14a3b9cef7c19903`；Gate
+U/B/V-prebuild 继续为 `false/false/false`，bootloader probe/backup/build/diagnostic flash/readback/rollback/motion/T900/retry
+继续为 `0/0/0/0/0/0/0/0/0`，service/holder/final stop 继续为 `true/true/true`。本地 patch 修复没有 live
+重试，不得倒推 Gate V current green。
