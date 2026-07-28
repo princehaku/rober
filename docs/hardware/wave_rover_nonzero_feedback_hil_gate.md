@@ -114,3 +114,90 @@ hash；但 systemd 配置仍不是 ESP32 runtime `mainType` 证明，ESP32 firmw
 `mainType`，再增加或读取 raw encoder A/B counter delta。在 encoder counter path 可观测前，不批准新的 motion retry。该动作不由
 本 CLI 自动执行；本轮继续固定 `hil_pass=false`、`safe_to_control=false`、`route_execution_success=false`、
 `delivery_success=false`。
+
+## 2026-07-28 current runtime/raw encoder 独占维护结果
+
+本轮已使用新 authorization
+`ceo_20260728_complete_motion_deploy_service_uart_firmware_maintenance` 和新 attempt
+`o1-runtime-identity-raw-encoder-maintenance-attempt-1` 执行恰好一次真实维护 runner。旧 v8 没有复用；runner、maintenance
+window、inventory、pre-stop、service stop、UART open、`T=900`、service restore 和 final stop verification 均为 `1`，
+retry/second motion 均为 `0`。
+
+当前 direct UART 窗口的事实为：
+
+- `pyserial 3.5` 成功独占打开 `/dev/ttyS5@115200`；service stop 后 `lsof/fuser` 都证实 holder empty。
+- TX 恰好包含一次 `T=143`、`T=142`、`T=131`、`T=900,main=1,module=0`、`T=130` 和最终 `T=11,L=0,R=0`。
+- RX 共解析 `57` 帧 current `T=1001`，全部 `L/R=0/0`；字段只有 `T/L/R/r/p/y/v`，没有 firmware build id、runtime
+  `mainType`、module type 或 raw encoder A/B counter。
+- `T=900` 没有 current echo/readback；即使有 echo 也只会证明 command receipt，仍不能证明 runtime `mainType`。
+- observability gate 因 firmware/runtime/raw-counter 三类字段缺失而保持 false，所以唯一允许的
+  `T=11,L=164,R=164,300ms` 没有发送；motion/post-motion-stop/retry=`0/0/0`。
+
+条件式 instrumentation 没有执行：现场存在 Python/pyserial，但 PlatformIO、Arduino CLI、esptool 和 dedicated verified ESP32
+upload alias 都未观测到，无法先完成当前 flash backup 与 upload provenance。按 gate 要求
+instrumentation build/flash/rollback=`0/0/0`；没有创建或刷入 generic binary-protocol `main.cpp`，也没有覆盖 vendor factory
+binary。
+
+恢复阶段已证明 deployed bridge/parser/protocol/script/unit hashes 前后一致、service `active/running`、final
+`POST /api/base/stop` 与 `/api/base/status` zero readback 成立。runner 内首次 holder check 发生在 service child 尚未打开 UART 的
+启动间隙；随后一次有界只读 post-restore 验证确认 MainPID `6422` 的 child `esp32_bridge` PID `6872` 已重新持有
+`/dev/ttyS5`，且 service `NRestarts=0`。该验证只执行 `systemctl show/status`、bounded journal、`ps`、`lsof/fuser`，service/UART
+write/firmware/motion mutation 全为 `0`。
+
+主 artifact 为
+`sprints/2026.07.28_17-59_o1_runtime_identity_raw_encoder_maintenance/artifacts/maintenance_result.json`。结论是
+`maintenance_blocked_fail_closed`：本轮产生了 current runtime/feedback/toolchain/restoration 证据，但尚未让 raw counters
+可观测，也没有执行 motion。因此继续固定 `instrumentation_success=false`、`hil_pass=false`、`safe_to_control=false`、
+`route_execution_success=false`、`delivery_success=false`、`mission_attempt=false`。下一次不得重复本轮 motion；只有先建立
+verified ESP32 upload port、当前 flash backup 和 PlatformIO/esptool provenance，才能在新维护窗口考虑 additive
+instrumentation。
+
+## 2026-07-28 runtime identity/raw encoder maintenance Phase S
+
+`onboard/scripts/o1_runtime_identity_raw_encoder_maintenance.py` 已建立单一 runner 的离线 schema、fixture、hostile validator、
+vendor provenance hash、冻结 SSH request 和 fail-closed 恢复骨架。targeted tests 与 fixture CLI 只证明软件合同，不是
+hardware/HIL 证据；fixture 固定 `maintenance_window_count=0`、`uart_open_count=0`、
+`nonzero_motion_invocation_count=0`、`live_control_delta=0`，并持续固定五个 mission/HIL 安全字段为 `false`。
+
+本轮采用的 vendor 事实与来源如下：
+
+- `json_cmd.h` SHA-256
+  `ce6a9dff14359e09db4472dd184ca63413877e8a2f826a0ef0fe47c8b72bc997`：`CMD_PWM_INPUT=11`、
+  `CMD_BASE_FEEDBACK=130`、`CMD_BASE_FEEDBACK_FLOW=131`、`CMD_MM_TYPE_SET=900`，且 `T=900` 参数为
+  `main/module`。
+- `uart_ctrl.h` SHA-256
+  `258a08727270f23789e4c9e48886c64dca040a0c793eee746f1698626d4c32c7`：`CMD_MM_TYPE_SET` 分支把
+  `main/module` 交给 `mm_settings`。
+- `movtion_module.h` SHA-256
+  `3964c2702925b1af0f1e42784f75ecee37b9eafe0ebe2966c28b03f569205768`：
+  `initEncoders/getLeftSpeed/getRightSpeed` 读取 raw encoder，并更新 `speedGetA/speedGetB`。
+- `ugv_advance.h` SHA-256
+  `7b7b7d011c20704e372db26d298d31afb277d89db75a569cf56a4274391e99b9`：`T=1001` 的 `L/R`
+  来自 `speedGetA/speedGetB`。
+- `ugv_config.h` SHA-256
+  `9a752ae8e2fafb319fdbcc0f92223c7277e1e377804c0c8b739ef6e2da2c601a`：参考源码默认
+  `mainType=1`；该默认值不是目标 ESP32 runtime readback。
+- `WAVE_ROVER_V0.9.ino` SHA-256
+  `1203fbc8c07a57213898068ff7bd5a05f7c3eeccb113a0d85cee711415cdaf0b`：setup 调用
+  `initEncoders`，loop 在反馈前调用 `getLeftSpeed/getRightSpeed`。
+- `ugv_rpi/base_ctrl.py` SHA-256
+  `2b616c0701f187c0a4322e9222f6288f5d9be71aa37c7c39f1f1dba58f9779f6`：UART TX 使用 UTF-8
+  newline-delimited JSON；Raspberry Pi 的 `/dev/ttyAMA0` 不能替代本项目已冻结的 Orange Pi 现场
+  `/dev/ttyS5@115200`。
+
+共享任务在 Phase S 实现落盘期间已经产生一次 current maintenance artifact；后续不得重跑该 maintenance window。该 artifact
+表明：runner/inventory/pre-stop/service-stop/UART-open/T=900/final-stop/service-restore 为
+`1/1/1/1/1/1/1/1`，retry/second-motion/nonzero-motion/build/flash 均为 `0`；service 恢复 active、最终 stop
+确认成功、部署 hash 前后一致。它仍未观测 firmware identity、runtime `mainType`、module type 或 raw encoder counters；
+`counter_feedback_observability_gate=false`，因此正确禁止 motion。
+
+当前 blocker 是 dedicated verified ESP32 upload port 未观测、PlatformIO/Arduino CLI/esptool 不可用，以及
+instrumentation backup/upload gate 未打开。service start 后第一次 `lsof/fuser` 采样发生在 child 尚未打开 UART 的间隙；
+随后一次严格只读 post-restore verification 证明 service 持续 `active/running`、`NRestarts=0`，预期
+`esp32_bridge` child 已重新持有 `/dev/ttyS5`，因此收敛为 `holder_restored=true`。该 recovery 的
+service/firmware/UART-open/UART-write/motion mutation counts 全部为 `0`，没有重开 maintenance window。
+
+这不是 HIL 通过，继续固定 `instrumentation_success=false`、`hil_pass=false`、`safe_to_control=false`、
+`route_execution_success=false`、`delivery_success=false`、`mission_attempt=false`。后续不得重跑该 maintenance
+window、不得再次发送 `T=900`、不得 motion、不得 build/flash；如另开 instrumentation lane，必须先补 verified upload port、
+current flash backup 与 toolchain，并建立新的计划和 attempt identity。

@@ -93,6 +93,24 @@
 
 **Key Results**
 
+> 2026-07-28 17-59 O1 runtime identity/raw encoder 独占维护 Epic 收口：
+> `sprints/2026.07.28_17-59_o1_runtime_identity_raw_encoder_maintenance/` 在完整
+> `O1_EXCLUSIVE_SERVICE_UART_FIRMWARE_MAINTENANCE_AUTHORIZED=true` 下执行恰好一次 current maintenance window。
+> runner/window/inventory/pre-stop=`1/1/1/1`，service stop/UART open/T=900/service restore/final stop verify
+> 均为 `1`，retry/second motion=`0/0`；direct UART 解析 57 个静止 `T=1001` 且全部 `L/R=0/0`，但 firmware
+> identity、runtime `mainType/moduleType` 与 raw encoder A/B counters 未观测，所以
+> `counter_feedback_observability_gate=false`、motion=`0`。verified upload port、current flash backup、
+> PlatformIO/esptool provenance 未成立，instrumentation build/flash/rollback=`0/0/0`；service、expected holder、
+> deployed hashes 与 final stop 已恢复。status=`maintenance_blocked_fail_closed`，proof boundary=
+> `current_exclusive_maintenance_runtime_feedback_toolchain_and_restoration_evidence_not_hil`。
+> `current/external/live/user-action=1/1/0/0`，但 `hil_pass=false`、`safe_to_control=false`、
+> `route_execution_success=false`、`delivery_success=false`、`mission_attempt=false`、`okr_credit=false`。
+> live request SHA `6ba79eac…` 不同于 current hardened source SHA `c0d19fd…`；后者 17 个离线测试通过，不得倒推
+> 已 live 执行。O1/O5/O6/O7 保持约 `95%/85%/93%/93%`，本轮均 `0pp`，KR `不归档`、历史区无新增。
+> 下一轮只在 verified upload port + current flash backup + PlatformIO/esptool provenance 三项新条件全绿后，由
+> `rober-hardware-engineer` 新开 `o1_verified_upload_backup_vendor_additive_instrumentation` Epic/new attempt；
+> 条件未出现时禁止重跑本 window 或用 instrumentation-readiness wrapper 补位。
+>
 > 2026-07-21 10-50 O6/O7 corrected Phase 0 Epic 收口：
 > `sprints/2026.07.21_10-50_o6_o7_corrected_phase0_bounded_mission/` 完成 corrected contract、离线测试、唯一
 > current board 只读 Phase 0 与 Algorithm frozen review。Robot py_compile、O11 `7+16`、Upper `141+141`、manifest/
@@ -476,7 +494,17 @@
 
 ## 4.1 当前 OKR 进度快照
 
-更新时间：2026-07-21。
+更新时间：2026-07-28。
+
+2026-07-28 17-59 当前进展记录：完整 maintenance authorization 已把 automation 中长期等待的 O1 current artifact lane
+真实打开；`sprints/2026.07.28_17-59_o1_runtime_identity_raw_encoder_maintenance/` 完成 exactly-once current
+service/UART/T=900/T=1001/toolchain/restoration 维护。artifact status=`maintenance_blocked_fail_closed`：
+57 个静止 `T=1001` 全为 `0/0`，但 firmware/runtime/raw counters 不可观测，upload port/flash backup/toolchain provenance
+不成立，故 `counter_feedback_observability_gate=false`、build/flash/motion/retry=`0/0/0/0`；service、expected holder、
+hash 与 final stop 恢复。`current/external/live/user-action=1/1/0/0`，mission/route/delivery/HIL/safe 全 false。
+live request `6ba79eac…` 与 current source `c0d19fd…` 不同，17 个离线测试不能倒推后者已 live。O5/O1/O6/O7
+保持 `85%/95%/93%/93%`，本轮全 `0pp`，KR `不归档`、历史区无新增。O5 production evidence 仍 `2/2` 跳过；
+下一轮只等待 verified upload port + current flash backup + PlatformIO/esptool provenance 新条件，不重复本 maintenance window。
 
 2026-07-21 10-50 当前进展记录：corrected Phase 0 唯一 SSH/runner exit `0`，Upper 的 ROS env、`8787` 唯一
 PID/listener/health、inactive unit compatibility、current routes/source、SHA mismatch capability、stop-only 与 feedback readback
@@ -587,10 +615,17 @@ O5/O6/O7/O1=`85%/93%/93%/95%` flat，KR `不归档`。本 route Phase0 blocker l
 
 按当前可推进价值与完成度排序：
 
+> 2026-07-28 17-59 路由补充：O5 仍约 `85%` 且最低，但 production provider/runtime evidence 同根因已 `2/2`，继续跳过。
+> 完整 maintenance authorization 已让 O1 真实 current artifact lane 执行一次并以
+> `maintenance_blocked_fail_closed` 收口；下一 admissible O1 lane 不再缺同一授权，而是缺 dedicated verified ESP32
+> upload port、current flash backup 与 PlatformIO/esptool provenance。三项未全绿时暂停，不得重跑 service/UART/T=900、
+> motion、build/flash 或另开 readiness wrapper；全绿后由 `rober-hardware-engineer` 新开
+> `o1_verified_upload_backup_vendor_additive_instrumentation` Epic/new attempt。
+>
 > 2026-07-15 09-04 路由补充：O5 仍约 `85%` 且最低，但本轮唯一 live invocation 在 `provider_runtime_preflight`、tunnel start 前退出，四个 delta=false。当前 sprint 不得重跑，proxy/README/失败 artifact 不得重新包装。若继续 O5，`full-stack-software-engineer` 必须在新 sprint 先离线补非敏感 provider 子阶段并通过 official provenance dry gate，再由 Product/CEO 新授权决定一次 public capture；同一 blocker 最多再消费一轮，否则切换次低 Objective或升级 CEO。不得回到 O6/O7 wrapper。
 
 1. **O5（~85%）**：当前最低进度项。`cloud_production_cutover_readiness_packet` 已把 production cutover readiness 缺口聚合成 support-only packet；`2026.07.13_13-13_o5_cdn_tls_external_evidence_probe` 证明 TLS/cert observation 但仍 `http_status_class=4xx` / `blocked_http_status_not_success_class`；`2026.07.14_14-38_o5_command_lifecycle_cli_export_refresh` 只是 O5 command lifecycle CLI export support/field-owner review artifact；`2026.07.14_16-40_o7_live_relay_headless_browser_smoke` 已把 15-38 HTTP-only gap 推进到真实 `headless_chrome` live loopback browser proof，但仍是 local/support-only，`delivery_success=false`、`safe_to_control=false`、`route_execution_success=false`、`hil_pass=false`。上述仍全部是 local/mock、contract-only 或 support-only software proof，O5 继续约 `85%`、KR `不归档`。下一轮不要重复 CLI export、readiness packet、terminal-result/readback/export wrapper、voice/offline smoke、live HTTP smoke、headless browser smoke 或 route readiness precheck；只有接入 success HTTP class 的真实 external production evidence（HTTPS/TLS、公网入口、production DB/queue、worker cutover、OSS/CDN origin fetch/live traffic、真实手机/browser），或同窗口 live route execution + terminal result + operator/dropoff + HIL/safe-to-control evidence，才可考虑 OKR 增量；否则转 O1 current same-run HIL 或 live route/delivery/operator evidence。
-2. **O1（~95%）**：`2026.07.12_21-57_o3_radar_status_baudrate_readback_repair` 已产出 same-run strict no-motion planner-only path proof；`2026.07.13_03-00_o3_live_full_structured_path_capture` 已产出 fresh same-run `path_structured_pose_count=28` / `path_point_count=28`；`2026.07.13_04-02_o3_28_pose_fixed_route_consumer` 已把 03:00 material 接成 28-pose fixed-route consumer summary、replay JSONL 和 route CSV；`2026.07.13_05-02_o3_28_pose_same_task_replay_packet` 已合并为 strict no-motion same-task replay packet；`2026.07.13_07-07_o3_controlled_route_execution_gate_record` 已把同一 `packet_id=packet_o3_28_pose_same_task_replay_7d57826142b0c79c` 推进到 fail-closed execution-precheck，`route_csv_row_count=28`、`replay_jsonl_event_count=28`、`packet_jsonl_event_count=28`、`controlled_route_execution_gate_status=fail_closed_input_packet_validated`。当前仍只是执行前 gate，不是 route execution、delivery、HIL 或 safe-to-control。下一步必须在安全准入明确后用同一 `packet_id` / `route_intent_id` 收集受控 route execution evidence；另起 OKR 增量则必须拿 Nav2 route execution、delivery/operator acceptance、current live HIL 或 production readback。
+2. **O1（~95%）**：2026-07-28 已执行完整授权下恰好一次 current runtime/raw encoder maintenance；57 个静止 `T=1001` 全为 `L/R=0/0`，但 firmware identity、runtime `mainType/moduleType`、raw encoder A/B counters 仍未观测，`counter_feedback_observability_gate=false`，build/flash/motion 均为 `0`，service/expected holder/final stop 已恢复。该 current+external artifact 强于只读诊断，但不是 HIL、route、delivery、mission 或 safe-to-control，故 O1 继续约 `95%`、KR `不归档`。下一步只在 dedicated verified ESP32 upload port、current flash backup 与 PlatformIO/esptool provenance 三项全绿后，由 `rober-hardware-engineer` 新开 additive instrumentation Epic/new attempt；新条件前不得重跑当前 window。之后仍需 current nonzero wheel feedback、HIL、Nav2 route execution 和 delivery/operator acceptance。
 3. **O6（~93%）**：已能把 current field evidence material、clean-baseline Nav2 no-motion path material、field operator confirmation material、`localization_path_material_readback`、`pc_live_nav2_execution_material`、label/task query filters、O7 inference/event action-write、delivery result intake、mission evidence bundle export、voice/TTS draft event-write、operator dropoff action capture、voice speaker ACK/failure event write 等接入 local/mock archive/read/write/readback model；16-40 headless browser smoke 未新增 O6 write，只作为 O7 live loopback headless Chrome proof。下一步必须接真实 production cloud、真实隧道、生产 DB/queue、OSS、真实机器人数据，或接 live route execution / delivery record / operator acceptance / production readback，产出真正的 live 或 external evidence；否则 O6 只能保持回归守护，support-only 工作不得继续提升进度。
 4. **O7（~93%）**：当前已能消费 current field evidence material、clean-baseline Nav2 path material、same-task route execution material packet、field operator confirmation material、`localization_path_material_readback` 和 `pc_live_nav2_execution_material`，并支持 selected-task query filters、inference request、mission event append、delivery-result intake、mission evidence bundle export、voice/TTS draft request、operator dropoff action/browser artifact、voice speaker ACK/failure event write、voice runtime preflight/offline smoke 与本轮 headless Chrome live relay smoke artifact。下一步不要重复 preflight/offline-smoke/TTS draft/speaker ACK/jsdom browser/live HTTP smoke/headless browser smoke wrappers；必须继续消费更强的真实或准现场 materials，如 live route execution、delivery record、真实 operator acceptance、真实关键帧可访问、explicitly authorized real phone/browser production runtime 或生产云 readback。
 5. **现场 O3 验证 lane（归档 Objective 临时激活）**：最新 `2026.07.13_07-07_o3_controlled_route_execution_gate_record` 已把 05:02 same-task replay packet 推进为 fail-closed controlled route execution gate record：`packet_id=packet_o3_28_pose_same_task_replay_7d57826142b0c79c`、`route_intent_id=route_intent_20260713_0402_from_20260713_0300_28_pose_structured_path`、`task_id=task_o3_28_pose_fixed_route_consumer_20260713_0402`、`route_csv_row_count=28`、`replay_jsonl_event_count=28`、`packet_jsonl_event_count=28`、`path_structured_pose_count=28`、`controlled_route_execution_gate_status=fail_closed_input_packet_validated`。该 lane 下一步不再重复 helper/export/readiness/route-intent、packet packaging 或 O6/O7 readback-only wrapper，而是在安全准入明确后用同一 `packet_id` / `route_intent_id` 收集受控 route execution evidence；继续 no `/cmd_vel`、no `/api/base/manual`、no NavigateToPose、no WAVE ROVER UART，不把 gate record 说成 route execution、delivery、HIL、safe-to-control 或 production cloud。

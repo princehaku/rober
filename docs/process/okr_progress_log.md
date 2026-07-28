@@ -6,6 +6,48 @@
 
 ---
 
+## 2026-07-28 O1 runtime identity/raw encoder current maintenance fail-closed flat 收口
+
+`sprints/2026.07.28_17-59_o1_runtime_identity_raw_encoder_maintenance/` 在 CEO 已明确的完整 service/UART/firmware maintenance
+authorization 下，执行恰好一次真实 current maintenance runner。它把 automation 中
+`ROUTE=NONE_REQUIRES_EXPLICIT_MAINTENANCE_AUTHORITY` 的等待状态推进为已消费的 current service/UART/toolchain/restoration
+artifact；本轮没有继续 O5 provider wrapper，也没有第三轮 O6/O7 Phase 0。
+
+Hardware 实现单一 runner、17 个 targeted tests、fixture/mock artifact、current `maintenance_result.json`、
+bounded read-only `post_restore_verification.json` 与硬件文档。Hardware 留档 py_compile exit `0`、
+`Ran 17 tests in 0.086s / OK`、fixture/JSON PASS、中文技术注释 `20.18%/20.51%`、scoped diff PASS。
+Product 没有重跑 SSH、service/UART、T=900、motion、flash、build 或工程测试，只做 JSON、结构、文档锚点与 scoped diff 验收。
+
+current exactly-once 计数为 runner/window/inventory/pre-stop=`1/1/1/1`，service stop/UART open/T=900/service restore/final
+stop verify 均为 `1`，retry/second motion=`0/0`。direct UART 解析 57 个静止 `T=1001`，全部 `L/R=0/0`；
+firmware identity、runtime `mainType/moduleType` 与 raw encoder A/B counters 均未观测。因为
+`counter_feedback_observability_gate=false`，nonzero motion/post-motion-stop=`0/0`。
+
+现场没有 verified ESP32 upload port、current flash backup、PlatformIO/Arduino CLI/esptool provenance，因此
+instrumentation build/flash/rollback=`0/0/0`。Product 接受这条 fail-closed 分支，拒绝把 toolchain inventory、
+instrumentation readiness、57 个静止 T=1001 或恢复通过解释成 HIL。service `active/running`、expected bridge holder
+由 bounded read-only post-restore artifact 证明，deployed hashes 前后一致，final zero/stop 成立。
+
+唯一 live SSH request SHA 为 `6ba79eac5efd66de03ba6aeb16800f10f4e822063649ea6ac325fcef95f2dd65`；
+current hardened runner source SHA 为 `c0d19fd50e6b91376f15cfc755cd6920eb0429c69c77e258ab85128d0cd69784`。
+17 个离线测试证明 current source 合同，但不得倒推 `c0d19fd…` 已 live 执行；唯一 live claim 绑定 `6ba79eac…`。
+
+Product verdict=`ACCEPT_CURRENT_MAINTENANCE_FAIL_CLOSED_NO_OKR_PERCENT_DELTA`，status=`maintenance_blocked_fail_closed`，
+proof boundary=`current_exclusive_maintenance_runtime_feedback_toolchain_and_restoration_evidence_not_hil`。
+`current/external/live/user-action=1/1/0/0`，其中 external 仅代表真实板 current maintenance artifact，不是 O5 production
+evidence 或 delivery/user action。`hil_pass=false`、`safe_to_control=false`、`route_execution_success=false`、
+`delivery_success=false`、`mission_attempt=false`、`okr_credit=false`。
+
+O5/O1/O6/O7 保持约 `85%/95%/93%/93%`，本轮全 `0pp`；所有 KR `不归档`，当前推进区不移动、历史区无新增。
+O5 仍是最低 Objective，但 production provider/runtime evidence 同根因已 `2/2`，本轮跳过理由继续成立。
+
+下一唯一 lane=`o1_verified_upload_backup_vendor_additive_instrumentation`，owner=`rober-hardware-engineer`。只有 dedicated
+verified ESP32 bootloader/upload port、current flash backup、PlatformIO/esptool provenance 三项新条件全绿后，才创建新
+Epic、新 attempt identity 与新 maintenance window；完整 maintenance authorization 不再误报为缺失，但本 sprint 的
+attempt/window 已消费，不得原地重跑。新条件未出现时固定
+`ROUTE=NONE_WAITING_FOR_UPLOAD_BACKUP_TOOLCHAIN_CONDITION`，禁止用 upload-readiness、source-hardening 或 read-only summary
+包装新进度。
+
 ## 2026-07-21 O6/O7 corrected Phase 0 current NO-GO lane 2/2 flat 收口
 
 `sprints/2026.07.21_10-50_o6_o7_corrected_phase0_bounded_mission/` 对上一轮 09-50 的冻结探针偏差做一次且仅一次

@@ -1,0 +1,156 @@
+{
+  "attempt_id": "fixture-o1-runtime-identity-raw-encoder-maintenance",
+  "authorization_id": "fixture-only-no-live-authorization",
+  "blockers": [],
+  "build_count": 0,
+  "captured_at": "2026-07-28T12:41:39.339665+00:00",
+  "command_ledger": [],
+  "counter_feedback_observability_gate": true,
+  "current_run_artifact_delta": 1,
+  "delivery_success": false,
+  "deployed_file_hashes_after": {
+    "fixture": "1111111111111111111111111111111111111111111111111111111111111111"
+  },
+  "deployed_file_hashes_before": {
+    "fixture": "1111111111111111111111111111111111111111111111111111111111111111"
+  },
+  "errors": [],
+  "evidence_boundary": "fixture_only_not_hardware",
+  "external_artifact_delta": 0,
+  "feedback_nonzero_observed": false,
+  "final_stop_verification_count": 1,
+  "final_stopped": true,
+  "firmware_identity_after": "fixture-fw",
+  "firmware_identity_before": "fixture-fw",
+  "flash_backup_hash": null,
+  "flash_count": 0,
+  "hil_pass": false,
+  "holder_after": [
+    {
+      "fixture": true
+    }
+  ],
+  "holder_before": [
+    {
+      "fixture": true
+    }
+  ],
+  "holder_restored": true,
+  "holder_termination_count": 0,
+  "host_identity_hash_prefix": "fixture",
+  "instrumentation_build_count": 0,
+  "instrumentation_flash_count": 0,
+  "instrumentation_required": false,
+  "instrumentation_success": false,
+  "instrumented_build_image_hash": null,
+  "instrumented_source_hash": "10f9ec008b4c3cf4cd28c1a99cc08d48aabfd2f549972ae3548fc50c857049d0",
+  "inventory_invocation_count": 1,
+  "live_control_delta": 0,
+  "maintenance_window_count": 0,
+  "mission_attempt": false,
+  "module_type_after": 0,
+  "module_type_before": 0,
+  "nonzero_motion_invocation_count": 0,
+  "phase_counts": {
+    "0": 1,
+    "1": 1,
+    "2": 0,
+    "3": 0,
+    "4": 1,
+    "S": 1
+  },
+  "post_stop_invocation_count": 0,
+  "pre_stop_invocation_count": 1,
+  "raw_counter_delta_a": 0,
+  "raw_counter_delta_b": 0,
+  "raw_encoder_a_samples": [
+    {
+      "observed_at": "2026-07-28T12:41:39.339832+00:00",
+      "sample_class": "fixture",
+      "value": 100
+    },
+    {
+      "observed_at": "2026-07-28T12:41:39.339834+00:00",
+      "sample_class": "fixture",
+      "value": 100
+    }
+  ],
+  "raw_encoder_b_samples": [
+    {
+      "observed_at": "2026-07-28T12:41:39.339836+00:00",
+      "sample_class": "fixture",
+      "value": 200
+    },
+    {
+      "observed_at": "2026-07-28T12:41:39.339840+00:00",
+      "sample_class": "fixture",
+      "value": 200
+    }
+  ],
+  "raw_uart_stop_frame_count": 0,
+  "retry_count": 0,
+  "rollback_flash_count": 0,
+  "rollback_manifest": {
+    "backup_hash": null,
+    "required": false
+  },
+  "rollback_result": {
+    "attempted": false,
+    "reason": "fixture",
+    "restored": true
+  },
+  "route_execution_success": false,
+  "run_owned_residual": false,
+  "runner_invocation_count": 1,
+  "runtime_main_type_after": 1,
+  "runtime_main_type_before": 1,
+  "safe_to_control": false,
+  "schema": "trashbot.wave_rover.runtime_identity_raw_encoder_maintenance.v1",
+  "second_motion_count": 0,
+  "service_after": {
+    "ActiveState": "active"
+  },
+  "service_before": {
+    "ActiveState": "active"
+  },
+  "service_restore_count": 0,
+  "service_restored": true,
+  "service_stop_count": 0,
+  "status": "fixture_complete",
+  "t1001_samples": [
+    {
+      "frame": {
+        "L": 0,
+        "R": 0,
+        "T": 1001,
+        "encA": 100,
+        "encB": 200,
+        "firmwareBuildId": "fixture-v0.9-diagnostic",
+        "mainType": 1,
+        "moduleType": 0
+      }
+    },
+    {
+      "frame": {
+        "L": 0,
+        "R": 0,
+        "T": 1001,
+        "encA": 100,
+        "encB": 200,
+        "firmwareBuildId": "fixture-v0.9-diagnostic",
+        "mainType": 1,
+        "moduleType": 0
+      }
+    }
+  ],
+  "t900_write_count": 0,
+  "toolchain_inventory": {
+    "fixture": true
+  },
+  "uart_frames": [],
+  "uart_open_count": 0,
+  "uart_write_frame_count": 0,
+  "vendor_source_hashes": {
+    "fixture": "0000000000000000000000000000000000000000000000000000000000000000"
+  }
+}

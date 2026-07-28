@@ -1,0 +1,140 @@
+{
+  "bridge_processes": [
+    {
+      "args_hash_prefix": "e36a4b7e45d9",
+      "comm": "ros2",
+      "expected_bridge": true,
+      "pid": 6422,
+      "ppid": 1
+    },
+    {
+      "args_hash_prefix": "9c90dd5346c9",
+      "comm": "esp32_bridge",
+      "expected_bridge": true,
+      "pid": 6872,
+      "ppid": 6422
+    }
+  ],
+  "captured_at": "2026-07-28T12:36:35.097249+00:00",
+  "expected_holder_observed": true,
+  "holder_polls": [
+    {
+      "holders": [
+        {
+          "cmd_hash_prefix": "f0b175786f43",
+          "expected_bridge": true,
+          "pid": 6872,
+          "ppid": 6422,
+          "start_ticks": "4029942"
+        }
+      ],
+      "index": 0,
+      "observed_at": "2026-07-28T12:36:34.618909+00:00"
+    }
+  ],
+  "journal": {
+    "exit_code": 0,
+    "failed_mentions": 7,
+    "lines": 31,
+    "serial_exception_mentions": 0,
+    "sha256": "0181574f5f8bdf7245a75d46576d11669f085aec902cfcdc07da323d954ef3ef",
+    "traceback_mentions": 0,
+    "ttyS5_mentions": 2
+  },
+  "ledger": [
+    {
+      "action": "systemctl_show_before_poll",
+      "ended_at": "2026-07-28T12:36:34.540256+00:00",
+      "exit_code": 0,
+      "started_at": "2026-07-28T12:36:34.519742+00:00",
+      "stderr_bytes": 0,
+      "stdout_bytes": 78,
+      "stdout_sha256": "bf444ffa7caa2c41c51e6715dd08ba9663bdcb9d039650160019b93659f60f80"
+    },
+    {
+      "action": "systemctl_status",
+      "ended_at": "2026-07-28T12:36:34.562956+00:00",
+      "exit_code": 0,
+      "started_at": "2026-07-28T12:36:34.540474+00:00",
+      "stderr_bytes": 0,
+      "stdout_bytes": 3092,
+      "stdout_sha256": "1a2cd1fb17830ef3499cff8b712de0b70f9293b16f94fa527b6f09462d25b336"
+    },
+    {
+      "action": "journal_bounded",
+      "ended_at": "2026-07-28T12:36:34.581181+00:00",
+      "exit_code": 0,
+      "started_at": "2026-07-28T12:36:34.563182+00:00",
+      "stderr_bytes": 0,
+      "stdout_bytes": 4761,
+      "stdout_sha256": "0181574f5f8bdf7245a75d46576d11669f085aec902cfcdc07da323d954ef3ef"
+    },
+    {
+      "action": "ps_readonly",
+      "ended_at": "2026-07-28T12:36:34.618247+00:00",
+      "exit_code": 0,
+      "started_at": "2026-07-28T12:36:34.581635+00:00",
+      "stderr_bytes": 0,
+      "stdout_bytes": 14564,
+      "stdout_sha256": "e31bde6f9cd8bf4efdedf27ef312c949d11bbada980551ee2b2ac7f6f24c76ee"
+    },
+    {
+      "action": "holder_poll_0_lsof",
+      "ended_at": "2026-07-28T12:36:34.921769+00:00",
+      "exit_code": 0,
+      "started_at": "2026-07-28T12:36:34.618955+00:00",
+      "stderr_bytes": 0,
+      "stdout_bytes": 5,
+      "stdout_sha256": "14dc6b2b0a9edef697e1d27b6589e0e10437312813e7d500f6edea5bbf5191de"
+    },
+    {
+      "action": "holder_poll_0_fuser",
+      "ended_at": "2026-07-28T12:36:35.075922+00:00",
+      "exit_code": 0,
+      "started_at": "2026-07-28T12:36:34.921936+00:00",
+      "stderr_bytes": 21,
+      "stdout_bytes": 6,
+      "stdout_sha256": "102e39994a134adf1befd563d0a5a2efc0135d357fc44161a6f43e2fb816e68d"
+    },
+    {
+      "action": "systemctl_show_after_poll",
+      "ended_at": "2026-07-28T12:36:35.097046+00:00",
+      "exit_code": 0,
+      "started_at": "2026-07-28T12:36:35.076844+00:00",
+      "stderr_bytes": 0,
+      "stdout_bytes": 78,
+      "stdout_sha256": "bf444ffa7caa2c41c51e6715dd08ba9663bdcb9d039650160019b93659f60f80"
+    }
+  ],
+  "mutation_counts": {
+    "firmware": 0,
+    "motion": 0,
+    "service": 0,
+    "uart_open": 0,
+    "uart_write": 0
+  },
+  "read_only": true,
+  "schema": "trashbot.wave_rover.post_restore_verification.v1",
+  "service_after_poll": {
+    "ActiveState": "active",
+    "ExecMainStatus": "0",
+    "MainPID": "6422",
+    "NRestarts": "0",
+    "SubState": "running",
+    "exit_code": 0
+  },
+  "service_before_poll": {
+    "ActiveState": "active",
+    "ExecMainStatus": "0",
+    "MainPID": "6422",
+    "NRestarts": "0",
+    "SubState": "running",
+    "exit_code": 0
+  },
+  "systemctl_status": {
+    "active_running_tokens": true,
+    "bytes": 3092,
+    "exit_code": 0,
+    "sha256": "1a2cd1fb17830ef3499cff8b712de0b70f9293b16f94fa527b6f09462d25b336"
+  }
+}

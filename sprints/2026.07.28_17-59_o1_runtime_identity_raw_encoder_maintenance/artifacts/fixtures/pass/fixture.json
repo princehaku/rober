@@ -1,0 +1,38 @@
+{
+  "attempt_id": "fixture-o1-runtime-identity-raw-encoder-maintenance",
+  "authorization_id": "fixture-only-no-live-authorization",
+  "raw_encoder_a": [
+    100,
+    100
+  ],
+  "raw_encoder_b": [
+    200,
+    200
+  ],
+  "t1001_samples": [
+    {
+      "frame": {
+        "L": 0,
+        "R": 0,
+        "T": 1001,
+        "encA": 100,
+        "encB": 200,
+        "firmwareBuildId": "fixture-v0.9-diagnostic",
+        "mainType": 1,
+        "moduleType": 0
+      }
+    },
+    {
+      "frame": {
+        "L": 0,
+        "R": 0,
+        "T": 1001,
+        "encA": 100,
+        "encB": 200,
+        "firmwareBuildId": "fixture-v0.9-diagnostic",
+        "mainType": 1,
+        "moduleType": 0
+      }
+    }
+  ]
+}
