@@ -1,5 +1,13 @@
 # PC Tools Workstation Product Boundary
 
+## 2026-09-17 操作等待与刷新性能
+
+控制台刷新保留视频会话与组件实例，连续点击只保留一次在途刷新。首屏 live panel 携带共用状态采样生成的 direct 摘要，一轮远端 `/api/status` 读取从两次降为一次；状态结果无跨请求缓存。
+
+用户确认后，Stop 和 Space/X 可在点动或长耗时 operator 操作尚未结束时立即提交专用停车接口。普通动作 ACK 返回后按钮释放，状态刷新在后台继续；迟到的旧动作响应不能覆盖停车回执。串口忙显示可重试原因，被 Stop 抢占显示中断状态；固定安全字段继续保持关闭。
+
+证据位于 `sprints/2026.09.17_00-01_control-status-performance-epic/evidence/ui-pc-performance.json`，由 `test/controlStatusPerformance.test.ts` 的真实 Vue DOM 与假 fetch/媒体对象生成。结构计数覆盖请求合并、零媒体卸载、Stop 优先派发；实际 CPU、真实 WebRTC、4G 和物理停车时延仍需现场验证。
+
 ## 定位
 
 `pc-tools/workstation` 是 PC-only Node.js + Vue 工作站，也是 `pc-tools` 的主架构入口。它服务开发、调试、证据复盘、路线 JSON 摘要展示以及训练/标注准备，不服务普通手机用户，也不直接控制机器人。

@@ -87,6 +87,8 @@
 
 ## 4. 2026 H1 OKR（当前推进区）
 
+性能补充（2026-09-18）：CEO 指定的首批控制与状态性能优化已完成软件阶段验收，见 `sprints/2026.09.17_00-01_control-status-performance-epic/final.md`。交付包括 CPU 差分采样、单实例异步串口/Stop 抢占与取消停车、相机缓存、PC 状态去重/媒体保活、手机诊断按需与轻量刷新；证据为 `software_mock_only`，所有完成百分比保持。Robot 108 tests + 静态托管3项、PC110/build/lint、UI动态7+9通过；手机历史415项中405通过/10个基线相同缺文件错误。局部等待及默认执行量改善，不宣称总体 CPU、生产端到端、HIL 或真实送达完成。以下既有产品比例与现场验收要求继续有效。
+
 更新时间：2026-06-05 15-16 CST，对应 `sprints/2026.06.05_15-16_o10-amcl-nav2-runtime-epic/final.md`。本轮 O10 Epic 完成 no-motion AMCL/Nav2 runtime proof collector、8787 `POST /api/nav2/proof/refresh` / `GET /api/nav2/proof/latest` 和 live `blocked_with_root_cause` artifact，并修复 lifecycle parser 不能把 `inactive` 子串误判成 `active`；O10 约 10% -> 约 12%，O8 约 50% -> 约 51%，O1/O2/O3/O5/O6/O7/O9 保持。
 
 本轮方向判断是 **调整：北极星继续，战役目标从 O9 的“真实材料破局”升级到 O10 的“受控送达闭环实战”**。北极星仍是普通手机用户把垃圾交给低成本小车，小车沿固定路线送到垃圾站，必要时 assisted elevator，并在异常时安全停止、请求人工协助和留下可复盘证据；普通用户不需要理解 ROS2、SSH、串口或硬件调试。
@@ -289,6 +291,7 @@
 
 | Objective/KR | 当前处理 | 历史记录位置 | 剩余风险 |
 | --- | --- | --- | --- |
+| KR-O7-Control-Responsiveness-Software、KR-O7-CPU-Sampling-Baseline、KR-O7-Status-Refresh-Cost、KR-O7-Mobile-Primary-Path-Cost | 2026-09-18 软件阶段完成归档：固定 Git 基线与 fake API probe、DOM/HTTP回归已验收；完成率不变，不占用当前产品能力推进区 | `sprints/2026.09.17_00-01_control-status-performance-epic/tech-done.md`、`side2side_check.md`、`final.md`，及 `evidence/robot-performance.json`、`ui-performance.json`、两 owner 实施记录 | software_mock_only；Stop组CPU有增加、冷启动单列；首屏拆分不代表总代码减少。无真实UART/相机/4G/ROS/手机CPU/HIL；手机10个既存缺文件错误保留。 |
 | O7 operator report route/readback | 作为 O7 入口进展保留，仍留当前推进区等待 runtime workflow | `docs/process/okr_progress_log.md` 的 17-18、20-21、22-23 记录 | 不证明 PC WASD、refresh runtime、HIL 或 production archive |
 | O8 Epic governance/evidence gate | 进入历史进展；06-07 后约 47%，08-09 Product closeout 后约 48%，12-13 O10 Epic closeout 后约 49%，13-14 后约 50% | `docs/process/okr_progress_log.md` 的 16-05、17-18、20-21、21-22、22-23、04-05 记录，以及本轮 sprint closeout | 治理不证明产品能力，必须让 O9/O10 交付真实材料 |
 | O2 OpenCV 状态机 software guard | 继续作为 O2 软件入口保留，不进入完成归档 | `sprints/2026.06.04_16-17_o2-elevator-opencv-state-integration/tech-done.md` | 缺真实/受控图片 manifest 和 field eval |

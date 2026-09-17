@@ -1,6 +1,4 @@
-<!doctype html>
-<html lang="zh-CN">
-  <head>
+<!DOCTYPE html><html lang="zh-CN"><head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#0f766e">
@@ -74,7 +72,201 @@
         <p id="primaryJourneyBoundary" class="boundary">software_proof_docker_mobile_primary_journey_gate</p>
       </section>
 
-      <section class="mobile-route-elevator-field-device-precheck-panel" aria-labelledby="mobileRouteElevatorFieldDevicePrecheckTitle">
+      <section class="recovery-decision-panel" aria-labelledby="recoveryDecisionTitle">
+        <div class="section-heading">
+          <h2 id="recoveryDecisionTitle">恢复决策</h2>
+          <span id="recoveryDecisionBadge" class="gate-badge gate-blocked">等待恢复摘要</span>
+        </div>
+        <p id="recoveryDecisionCopy" class="message">
+          等待后端提供恢复决策；缺失时按 blocked-by-design 展示。
+        </p>
+        <dl class="recovery-decision-grid">
+          <div>
+            <dt>恢复状态</dt>
+            <dd id="recoveryDecisionState">blocked-by-design</dd>
+          </div>
+          <div>
+            <dt>建议下一步</dt>
+            <dd id="recoveryDecisionNextAction">等待安全摘要</dd>
+          </div>
+          <div>
+            <dt>阻塞原因</dt>
+            <dd id="recoveryDecisionBlockingReason">缺少恢复决策摘要</dd>
+          </div>
+          <div>
+            <dt>支持入口</dt>
+            <dd id="recoveryDecisionSupportEntry">Diagnostics / Support Handoff 可用</dd>
+          </div>
+          <div>
+            <dt>ACK 语义</dt>
+            <dd id="recoveryDecisionAck">ACK 只代表 accepted/processing。</dd>
+          </div>
+          <div>
+            <dt>Evidence Boundary</dt>
+            <dd id="recoveryDecisionBoundary">software_proof_docker_mobile_recovery_decision_gate</dd>
+          </div>
+        </dl>
+        <p id="recoveryDecisionHint" class="hint">恢复决策只读展示，不会触发 Start、Confirm 或 Cancel。</p>
+        <p id="recoveryDecisionNotProven" class="hint">真实手机设备/browser、真实送达、真实取消完成未证明。</p>
+      </section>
+
+      <section class="action-panel" aria-label="主操作">
+        <div class="start-confirmation" aria-labelledby="startGateTitle">
+          <div class="section-heading">
+            <h2 id="startGateTitle">发车确认</h2>
+            <span id="destinationGateBadge" class="gate-badge gate-blocked">未确认目的地</span>
+          </div>
+          <dl class="confirmation-grid">
+            <div>
+              <dt>目标垃圾站</dt>
+              <dd id="destinationSummary">等待后端提供垃圾站。</dd>
+            </div>
+            <div>
+              <dt>发车阻塞</dt>
+              <dd id="startBlockReason">等待状态刷新。</dd>
+            </div>
+          </dl>
+          <label class="load-confirmation" for="trashLoadedCheckbox">
+            <input id="trashLoadedCheckbox" type="checkbox">
+            <span>我确认垃圾已放入小车（不是自动载荷检测）</span>
+          </label>
+          <p id="startPayloadBoundary" class="hint">
+            Start Delivery 只会提交 phone-safe JSON；ACK 只代表 accepted/processing。
+          </p>
+        </div>
+        <!-- 按钮默认禁用，JS 只能在 command_safety 和旧权限同时允许时打开。 -->
+        <button id="startButton" class="primary-action" type="button" data-action="start" disabled="">
+          开始送达
+        </button>
+        <button id="confirmButton" type="button" data-action="confirm_dropoff" disabled="">
+          确认投放
+        </button>
+        <button id="cancelButton" type="button" data-action="cancel" disabled="">
+          取消任务
+        </button>
+      </section>
+
+      <section id="terminalActionPanel" class="terminal-action-panel" hidden="" aria-labelledby="terminalActionTitle">
+        <div class="section-heading">
+          <h2 id="terminalActionTitle">终端动作二次确认</h2>
+          <span id="terminalActionBadge" class="gate-badge gate-blocked">等待确认</span>
+        </div>
+        <p id="terminalActionCopy" class="message">
+          终端动作首次点击只进入确认，不提交 Confirm Dropoff / Cancel endpoint。
+        </p>
+        <dl class="terminal-action-grid">
+          <div>
+            <dt>Action</dt>
+            <dd id="terminalActionName">暂无</dd>
+          </div>
+          <div>
+            <dt>用户风险</dt>
+            <dd id="terminalActionRisk">等待安全摘要。</dd>
+          </div>
+          <div>
+            <dt>ACK 语义</dt>
+            <dd id="terminalActionAck">ACK 只代表 accepted/processing。</dd>
+          </div>
+          <div>
+            <dt>Client reference</dt>
+            <dd id="terminalActionClientReference">确认后生成</dd>
+          </div>
+          <div>
+            <dt>Evidence Boundary</dt>
+            <dd id="terminalActionBoundary">software_proof_docker_mobile_terminal_action_confirmation_gate</dd>
+          </div>
+          <div>
+            <dt>not_proven</dt>
+            <dd id="terminalActionNotProven">真实投放完成、真实取消完成、真实送达未证明。</dd>
+          </div>
+        </dl>
+        <p id="terminalActionReason" class="hint">缺少 command_safety 或存在 pending ACK 时保持 fail closed。</p>
+        <div class="terminal-action-controls">
+          <button id="terminalActionBackButton" type="button">返回</button>
+          <button id="terminalActionConfirmButton" class="primary-action" type="button" disabled="">确认提交终端动作</button>
+        </div>
+      </section>
+
+      <section class="action-feedback-panel" aria-labelledby="actionFeedbackTitle">
+        <div class="section-heading">
+          <h2 id="actionFeedbackTitle">动作回执</h2>
+          <span id="actionFeedbackStatusBadge" class="gate-badge gate-blocked">等待动作</span>
+        </div>
+        <p id="actionFeedbackCopy" class="message">
+          提交 Start、Confirm 或 Cancel 后，这里只显示 phone-safe 回执和恢复建议。
+        </p>
+        <dl class="feedback-grid">
+          <div>
+            <dt>最近动作</dt>
+            <dd id="actionFeedbackAction">暂无</dd>
+          </div>
+          <div>
+            <dt>提交状态</dt>
+            <dd id="actionFeedbackState">等待提交</dd>
+          </div>
+          <div>
+            <dt>Client reference</dt>
+            <dd id="actionFeedbackClientReference">暂无</dd>
+          </div>
+          <div>
+            <dt>ACK 语义</dt>
+            <dd id="actionFeedbackAck">ACK 只代表 accepted/processing，不代表送达成功。</dd>
+          </div>
+        </dl>
+        <p id="actionFeedbackReason" class="hint">失败原因会由后端或本地提交错误提供。</p>
+        <p id="actionFeedbackRecovery" class="hint">恢复建议会保持可读、可重试、可交接。</p>
+        <p id="actionFeedbackBoundary" class="boundary">software_proof_docker_mobile_action_feedback_gate</p>
+      </section>
+
+      <section class="task-panel" aria-labelledby="taskFlowTitle">
+        <h2 id="taskFlowTitle">任务流程</h2>
+        <ol id="taskFlowList" class="task-flow">
+          <li>等待后端返回任务步骤。</li>
+        </ol>
+      </section>
+
+      <section class="gate-panel" aria-labelledby="gateTitle">
+        <h2 id="gateTitle">操作安全</h2>
+        <p id="commandSafetyCopy" class="message">主操作保持禁用，直到后端 gate 放行。</p>
+        <p id="ackCopy" class="hint">ACK 只代表指令受理或处理中，不代表送达成功。</p>
+        <ul id="actionReasons" class="reason-list"></ul>
+      </section>
+
+      <section class="offline-panel" aria-labelledby="offlineTitle">
+        <h2 id="offlineTitle">离线与恢复</h2>
+        <p id="offlineCopy" class="message">离线壳不会缓存、排队或重放控制请求。</p>
+        <p id="offlineHint" class="hint">重新连接后刷新状态，再按提示继续。</p>
+      </section>
+
+      <section class="voice-panel" aria-labelledby="voiceTitle">
+        <h2 id="voiceTitle">语音提示</h2>
+        <p id="voiceCopy" class="message">等待后端提供 voice prompt readiness。</p>
+        <p id="voiceBoundary" class="hint">本地软件证明不代表真实喇叭或 TTS 播放。</p>
+      </section>
+
+      <section class="operation-log-panel" aria-labelledby="operationLogTitle">
+        <div class="section-heading">
+          <h2 id="operationLogTitle">操作日志</h2>
+          <span id="operationLogSource" class="gate-badge gate-blocked">等待安全事件</span>
+        </div>
+        <p id="operationLogHint" class="hint">仅显示后端 phone-safe 事件；不会打开控制动作。</p>
+        <ol id="operationLogList" class="operation-log">
+          <li>等待后端返回 operation log 或 readiness 摘要。</li>
+        </ol>
+        <p id="operationSupportEntry" class="message">支持交接入口会保持可见，但不触发机器人动作。</p>
+      </section>
+
+      <section class="support-panel" aria-labelledby="supportTitle">
+        <div class="section-heading">
+          <h2 id="supportTitle">诊断与求助</h2>
+          <button id="diagnosticsButton" type="button">打开诊断</button>
+        </div>
+        <p id="supportCopy" class="message">主操作 blocked 时仍可打开诊断或复制脱敏摘要。</p>
+        <button id="supportButton" type="button">Support Handoff</button>
+        <pre id="supportSafeCopy" class="safe-copy" aria-label="脱敏支持摘要">暂无支持摘要。</pre>
+      </section>
+
+    <div id="diagnosticsDetails" hidden=""></div><template id="diagnosticsTemplate"><section class="mobile-route-elevator-field-device-precheck-panel" aria-labelledby="mobileRouteElevatorFieldDevicePrecheckTitle">
         <div class="section-heading">
           <h2 id="mobileRouteElevatorFieldDevicePrecheckTitle">路线电梯现场设备预检</h2>
           <span id="mobileRouteElevatorFieldDevicePrecheckBadge" class="gate-badge gate-blocked">not_proven</span>
@@ -129,9 +321,7 @@
         <p id="mobileRouteElevatorFieldDevicePrecheckHint" class="hint">
           预检 panel 只读展示，不证明真实设备或现场通过，也不改变 Start、Confirm Dropoff 或 Cancel gating。
         </p>
-      </section>
-
-      <section class="mobile-field-material-intake-panel" aria-labelledby="mobileFieldMaterialIntakeTitle">
+      </section><section class="mobile-field-material-intake-panel" aria-labelledby="mobileFieldMaterialIntakeTitle">
         <div class="section-heading">
           <h2 id="mobileFieldMaterialIntakeTitle">现场材料摄取</h2>
           <span id="mobileFieldMaterialIntakeBadge" class="gate-badge gate-blocked">not_proven</span>
@@ -186,9 +376,7 @@
         <p id="mobileFieldMaterialIntakeHint" class="hint">
           intake panel 只读展示并导出白名单 metadata；不证明真实手机或现场通过，也不改变 Start、Confirm Dropoff 或 Cancel gating。
         </p>
-      </section>
-
-      <section class="mobile-field-material-review-decision-panel" aria-labelledby="mobileFieldMaterialReviewDecisionTitle">
+      </section><section class="mobile-field-material-review-decision-panel" aria-labelledby="mobileFieldMaterialReviewDecisionTitle">
         <div class="section-heading">
           <h2 id="mobileFieldMaterialReviewDecisionTitle">现场材料评审决策</h2>
           <span id="mobileFieldMaterialReviewDecisionBadge" class="gate-badge gate-blocked">not_proven</span>
@@ -247,9 +435,7 @@
         <p id="mobileFieldMaterialReviewDecisionHint" class="hint">
           review decision panel 只读展示并导出白名单 metadata；不证明真实手机或现场通过，也不改变 Start、Confirm Dropoff 或 Cancel gating。
         </p>
-      </section>
-
-      <section class="mobile-field-material-retest-request-panel" aria-labelledby="mobileFieldMaterialRetestRequestTitle">
+      </section><section class="mobile-field-material-retest-request-panel" aria-labelledby="mobileFieldMaterialRetestRequestTitle">
         <div class="section-heading">
           <h2 id="mobileFieldMaterialRetestRequestTitle">现场材料复测请求</h2>
           <span id="mobileFieldMaterialRetestRequestBadge" class="gate-badge gate-blocked">not_proven</span>
@@ -312,9 +498,7 @@
         <p id="mobileFieldMaterialRetestRequestHint" class="hint">
           retest request panel 只读展示并导出白名单 metadata；不证明真实手机或现场通过，也不改变 Start、Confirm Dropoff 或 Cancel gating。
         </p>
-      </section>
-
-      <section class="hardware-baseline-review-panel" aria-labelledby="hardwareBaselineReviewTitle">
+      </section><section class="hardware-baseline-review-panel" aria-labelledby="hardwareBaselineReviewTitle">
         <div class="section-heading">
           <h2 id="hardwareBaselineReviewTitle">硬件基线评审状态</h2>
           <span id="hardwareBaselineReviewBadge" class="gate-badge gate-blocked">not_proven</span>
@@ -373,9 +557,7 @@
         <p id="hardwareBaselineReviewHint" class="hint">
           hardware baseline panel 只读展示并导出白名单 metadata；不暴露底层调试字段、内部 payload、硬件路径或成功文案，也不改变 Start、Confirm Dropoff 或 Cancel gating。
         </p>
-      </section>
-
-      <section class="hardware-sensor-procurement-intake-panel" aria-labelledby="hardwareSensorProcurementIntakeTitle">
+      </section><section class="hardware-sensor-procurement-intake-panel" aria-labelledby="hardwareSensorProcurementIntakeTitle">
         <div class="section-heading">
           <h2 id="hardwareSensorProcurementIntakeTitle">传感器采购摄取状态</h2>
           <span id="hardwareSensorProcurementIntakeBadge" class="gate-badge gate-blocked">not_proven</span>
@@ -442,9 +624,7 @@
         <p id="hardwareSensorProcurementIntakeHint" class="hint">
           procurement intake panel 只读展示并导出白名单 metadata；不暴露底层调试字段、完整资料、凭证或成功文案，也不改变 Start、Confirm Dropoff 或 Cancel gating。
         </p>
-      </section>
-
-      <section class="hardware-sensor-procurement-review-panel" aria-labelledby="hardwareSensorProcurementReviewDecisionTitle">
+      </section><section class="hardware-sensor-procurement-review-panel" aria-labelledby="hardwareSensorProcurementReviewDecisionTitle">
         <div class="section-heading">
           <h2 id="hardwareSensorProcurementReviewDecisionTitle">传感器采购评审决策</h2>
           <span id="hardwareSensorProcurementReviewDecisionBadge" class="gate-badge gate-blocked">not_proven</span>
@@ -499,47 +679,7 @@
         <p id="hardwareSensorProcurementReviewDecisionHint" class="hint">
           procurement review panel 只读展示并导出白名单 metadata；不暴露底层调试字段、完整资料、凭证或成功文案，也不改变 Start、Confirm Dropoff 或 Cancel gating。
         </p>
-      </section>
-
-      <section class="recovery-decision-panel" aria-labelledby="recoveryDecisionTitle">
-        <div class="section-heading">
-          <h2 id="recoveryDecisionTitle">恢复决策</h2>
-          <span id="recoveryDecisionBadge" class="gate-badge gate-blocked">等待恢复摘要</span>
-        </div>
-        <p id="recoveryDecisionCopy" class="message">
-          等待后端提供恢复决策；缺失时按 blocked-by-design 展示。
-        </p>
-        <dl class="recovery-decision-grid">
-          <div>
-            <dt>恢复状态</dt>
-            <dd id="recoveryDecisionState">blocked-by-design</dd>
-          </div>
-          <div>
-            <dt>建议下一步</dt>
-            <dd id="recoveryDecisionNextAction">等待安全摘要</dd>
-          </div>
-          <div>
-            <dt>阻塞原因</dt>
-            <dd id="recoveryDecisionBlockingReason">缺少恢复决策摘要</dd>
-          </div>
-          <div>
-            <dt>支持入口</dt>
-            <dd id="recoveryDecisionSupportEntry">Diagnostics / Support Handoff 可用</dd>
-          </div>
-          <div>
-            <dt>ACK 语义</dt>
-            <dd id="recoveryDecisionAck">ACK 只代表 accepted/processing。</dd>
-          </div>
-          <div>
-            <dt>Evidence Boundary</dt>
-            <dd id="recoveryDecisionBoundary">software_proof_docker_mobile_recovery_decision_gate</dd>
-          </div>
-        </dl>
-        <p id="recoveryDecisionHint" class="hint">恢复决策只读展示，不会触发 Start、Confirm 或 Cancel。</p>
-        <p id="recoveryDecisionNotProven" class="hint">真实手机设备/browser、真实送达、真实取消完成未证明。</p>
-      </section>
-
-      <section class="route-review-panel" aria-labelledby="routeTaskReviewTitle">
+      </section><section class="route-review-panel" aria-labelledby="routeTaskReviewTitle">
         <div class="section-heading">
           <h2 id="routeTaskReviewTitle">路线/任务排练复盘</h2>
           <span id="routeTaskReviewBadge" class="gate-badge gate-blocked">等待 review</span>
@@ -575,13 +715,11 @@
         </dl>
         <p id="routeTaskReviewNotProven" class="hint">真实路线运行、HIL、dropoff/cancel completion 和 delivery success 未证明。</p>
         <div class="bundle-copy-row">
-          <button id="copyRouteTaskReviewButton" type="button" disabled>复制复盘 safe_copy</button>
+          <button id="copyRouteTaskReviewButton" type="button" disabled="">复制复盘 safe_copy</button>
           <span id="routeTaskReviewCopyStatus" class="hint">blocked copy unavailable</span>
         </div>
         <pre id="routeTaskReviewSafeCopy" class="safe-copy" aria-label="route_task_rehearsal_operator_review safe_copy">blocked copy unavailable</pre>
-      </section>
-
-      <section class="pc-route-debug-panel" aria-labelledby="pcRouteDebugConsoleTitle">
+      </section><section class="pc-route-debug-panel" aria-labelledby="pcRouteDebugConsoleTitle">
         <div class="section-heading">
           <h2 id="pcRouteDebugConsoleTitle">PC 路线调试 Console</h2>
           <span id="pcRouteDebugConsoleBadge" class="gate-badge gate-blocked">not_proven</span>
@@ -616,9 +754,7 @@
           </div>
         </dl>
         <p id="pcRouteDebugConsoleHint" class="hint">PC console availability 只读展示；不触发 Start、Confirm 或 Cancel。</p>
-      </section>
-
-      <section class="route-field-run-panel" aria-labelledby="routeTaskFieldRunReadinessTitle">
+      </section><section class="route-field-run-panel" aria-labelledby="routeTaskFieldRunReadinessTitle">
         <div class="section-heading">
           <h2 id="routeTaskFieldRunReadinessTitle">路线任务现场联跑准备</h2>
           <span id="routeTaskFieldRunReadinessBadge" class="gate-badge gate-blocked">not_proven</span>
@@ -657,9 +793,7 @@
           </div>
         </dl>
         <p id="routeTaskFieldRunReadinessHint" class="hint">Field-run readiness 只读展示；不触发 Start、Confirm 或 Cancel。</p>
-      </section>
-
-      <section class="route-field-run-console-panel" aria-labelledby="routeTaskFieldRunConsoleTitle">
+      </section><section class="route-field-run-console-panel" aria-labelledby="routeTaskFieldRunConsoleTitle">
         <div class="section-heading">
           <h2 id="routeTaskFieldRunConsoleTitle">路线现场运行准备</h2>
           <span id="routeTaskFieldRunConsoleBadge" class="gate-badge gate-blocked">not_proven</span>
@@ -706,9 +840,7 @@
           </div>
         </dl>
         <p id="routeTaskFieldRunConsoleHint" class="hint">Field-run console 只读展示；不触发 Start Delivery、Confirm Dropoff、Cancel、ACK 或 cursor route。</p>
-      </section>
-
-      <section class="route-field-run-intake-panel" aria-labelledby="routeTaskFieldRunIntakeTitle">
+      </section><section class="route-field-run-intake-panel" aria-labelledby="routeTaskFieldRunIntakeTitle">
         <div class="section-heading">
           <h2 id="routeTaskFieldRunIntakeTitle">路线任务现场材料复核</h2>
           <span id="routeTaskFieldRunIntakeBadge" class="gate-badge gate-blocked">not_proven</span>
@@ -747,9 +879,7 @@
           </div>
         </dl>
         <p id="routeTaskFieldRunIntakeHint" class="hint">Field-run intake crosscheck 只读展示；不触发 Start Delivery、Confirm Dropoff 或 Cancel。</p>
-      </section>
-
-      <section class="route-field-run-review-panel" aria-labelledby="routeTaskFieldRunReviewTitle">
+      </section><section class="route-field-run-review-panel" aria-labelledby="routeTaskFieldRunReviewTitle">
         <div class="section-heading">
           <h2 id="routeTaskFieldRunReviewTitle">路线任务现场复盘 Console</h2>
           <span id="routeTaskFieldRunReviewBadge" class="gate-badge gate-blocked">not_proven</span>
@@ -788,9 +918,7 @@
           </div>
         </dl>
         <p id="routeTaskFieldRunReviewHint" class="hint">Field-run review console 只读展示；不触发 Start Delivery、Confirm Dropoff 或 Cancel。</p>
-      </section>
-
-      <section class="route-field-run-execution-pack-panel" aria-labelledby="routeTaskFieldRunExecutionPackTitle">
+      </section><section class="route-field-run-execution-pack-panel" aria-labelledby="routeTaskFieldRunExecutionPackTitle">
         <div class="section-heading">
           <h2 id="routeTaskFieldRunExecutionPackTitle">路线任务现场执行包</h2>
           <span id="routeTaskFieldRunExecutionPackBadge" class="gate-badge gate-blocked">not_proven</span>
@@ -837,9 +965,7 @@
           </div>
         </dl>
         <p id="routeTaskFieldRunExecutionPackHint" class="hint">Field-run execution pack 只读展示；不触发 Start Delivery、Confirm Dropoff 或 Cancel。</p>
-      </section>
-
-      <section class="route-field-run-reconciliation-panel" aria-labelledby="routeTaskFieldRunReconciliationTitle">
+      </section><section class="route-field-run-reconciliation-panel" aria-labelledby="routeTaskFieldRunReconciliationTitle">
         <div class="section-heading">
           <h2 id="routeTaskFieldRunReconciliationTitle">路线任务现场复账</h2>
           <span id="routeTaskFieldRunReconciliationBadge" class="gate-badge gate-blocked">not_proven</span>
@@ -882,9 +1008,7 @@
           </div>
         </dl>
         <p id="routeTaskFieldRunReconciliationHint" class="hint">Field-run reconciliation 只读展示；不触发 Start Delivery、Confirm Dropoff 或 Cancel。</p>
-      </section>
-
-      <section class="route-field-run-evidence-kit-panel" aria-labelledby="routeTaskFieldRunEvidenceKitTitle">
+      </section><section class="route-field-run-evidence-kit-panel" aria-labelledby="routeTaskFieldRunEvidenceKitTitle">
         <div class="section-heading">
           <h2 id="routeTaskFieldRunEvidenceKitTitle">路线现场证据包</h2>
           <span id="routeTaskFieldRunEvidenceKitBadge" class="gate-badge gate-blocked">not_proven</span>
@@ -935,9 +1059,7 @@
           </div>
         </dl>
         <p id="routeTaskFieldRunEvidenceKitHint" class="hint">Evidence kit 只读展示；不读取敏感原始材料或机器人控制细节，也不触发 Start、Confirm 或 Cancel。</p>
-      </section>
-
-      <section class="route-field-run-material-bundle-panel" aria-labelledby="routeTaskFieldRunMaterialBundleTitle">
+      </section><section class="route-field-run-material-bundle-panel" aria-labelledby="routeTaskFieldRunMaterialBundleTitle">
         <div class="section-heading">
           <h2 id="routeTaskFieldRunMaterialBundleTitle">路线现场材料包</h2>
           <span id="routeTaskFieldRunMaterialBundleBadge" class="gate-badge gate-blocked">not_proven</span>
@@ -980,9 +1102,7 @@
           </div>
         </dl>
         <p id="routeTaskFieldRunMaterialBundleHint" class="hint">现场材料包只读展示；不读取 raw artifact、本机路径、token、serial/UART、/cmd_vel、checksum 或 traceback，也不触发 Start、Confirm 或 Cancel。</p>
-      </section>
-
-      <section class="route-field-run-material-validation-panel" aria-labelledby="routeTaskFieldRunMaterialValidationTitle">
+      </section><section class="route-field-run-material-validation-panel" aria-labelledby="routeTaskFieldRunMaterialValidationTitle">
         <div class="section-heading">
           <h2 id="routeTaskFieldRunMaterialValidationTitle">路线材料校验</h2>
           <span id="routeTaskFieldRunMaterialValidationBadge" class="gate-badge gate-blocked">not_proven</span>
@@ -1029,9 +1149,7 @@
           </div>
         </dl>
         <p id="routeTaskFieldRunMaterialValidationHint" class="hint">路线材料校验只读展示；不读取 raw validation artifact、本机路径、token、serial/UART、/cmd_vel、checksum 或 traceback，也不触发 Start、Confirm 或 Cancel。</p>
-      </section>
-
-      <section class="route-task-completion-panel" aria-labelledby="routeTaskCompletionSignalTitle">
+      </section><section class="route-task-completion-panel" aria-labelledby="routeTaskCompletionSignalTitle">
         <div class="section-heading">
           <h2 id="routeTaskCompletionSignalTitle">路线任务完成信号</h2>
           <span id="routeTaskCompletionSignalBadge" class="gate-badge gate-blocked">not_proven</span>
@@ -1078,9 +1196,7 @@
           </div>
         </dl>
         <p id="routeTaskCompletionSignalHint" class="hint">Completion signal 只读展示；不触发 Start Delivery、Confirm Dropoff、Cancel、ACK 或 cursor route。</p>
-      </section>
-
-      <section class="cloud-panel" aria-labelledby="cloudReadinessTitle">
+      </section><section class="cloud-panel" aria-labelledby="cloudReadinessTitle">
         <div class="section-heading">
           <h2 id="cloudReadinessTitle">云中转状态</h2>
           <span id="cloudReadinessBadge" class="gate-badge gate-blocked">等待摘要</span>
@@ -1108,9 +1224,7 @@
         </dl>
         <p id="cloudRecoveryHint" class="hint">摘要缺失时主操作保持禁用。</p>
         <p id="cloudEvidenceBoundary" class="boundary">software_proof_docker_mobile_cloud_readiness_summary_gate</p>
-      </section>
-
-      <section class="mobile-device-panel" aria-labelledby="mobileDeviceAcceptanceTitle">
+      </section><section class="mobile-device-panel" aria-labelledby="mobileDeviceAcceptanceTitle">
         <div class="section-heading">
           <h2 id="mobileDeviceAcceptanceTitle">手机验收准备</h2>
           <span id="mobileDeviceAcceptanceBadge" class="gate-badge gate-blocked">等待验收摘要</span>
@@ -1145,9 +1259,7 @@
           </div>
         </dl>
         <p id="mobileDeviceRecoveryHint" class="hint">缺少真实设备/browser 验收摘要时，主操作保持禁用。</p>
-      </section>
-
-      <section class="device-evidence-panel" aria-labelledby="mobileDeviceEvidenceTitle">
+      </section><section class="device-evidence-panel" aria-labelledby="mobileDeviceEvidenceTitle">
         <div class="section-heading">
           <h2 id="mobileDeviceEvidenceTitle">手机设备证据采集</h2>
           <span id="mobileDeviceEvidenceBadge" class="gate-badge gate-blocked">证据未证明</span>
@@ -1187,9 +1299,7 @@
           <span id="mobileDeviceEvidenceCopyStatus" class="hint">复制内容只包含脱敏 phone-safe 字段。</span>
         </div>
         <pre id="mobileDeviceEvidenceSafeCopy" class="safe-copy" aria-label="脱敏手机设备证据包">暂无手机设备证据包。</pre>
-      </section>
-
-      <section class="handoff-session-panel" aria-labelledby="mobileDeviceHandoffTitle">
+      </section><section class="handoff-session-panel" aria-labelledby="mobileDeviceHandoffTitle">
         <div class="section-heading">
           <h2 id="mobileDeviceHandoffTitle">真实手机验收交接会话</h2>
           <span id="mobileDeviceHandoffBadge" class="gate-badge gate-blocked">会话阻塞</span>
@@ -1240,9 +1350,7 @@
           <span id="mobileDeviceHandoffCopyStatus" class="hint">复制内容只包含脱敏 phone-safe 字段。</span>
         </div>
         <pre id="mobileDeviceHandoffSafeCopy" class="safe-copy" aria-label="脱敏真实手机验收交接包">暂无真实手机验收交接包。</pre>
-      </section>
-
-      <section class="pwa-install-panel" aria-labelledby="mobilePwaInstallPromptTitle">
+      </section><section class="pwa-install-panel" aria-labelledby="mobilePwaInstallPromptTitle">
         <div class="section-heading">
           <h2 id="mobilePwaInstallPromptTitle">PWA 安装提示导出</h2>
           <span id="mobilePwaInstallPromptBadge" class="gate-badge gate-blocked">export not_proven</span>
@@ -1292,9 +1400,7 @@
         </div>
         <pre id="mobilePwaInstallPromptSafeCopy" class="safe-copy" aria-label="脱敏 PWA 安装提示导出包">暂无 PWA 安装提示导出包。</pre>
         <p class="boundary">software_proof_docker_mobile_pwa_install_prompt_evidence_export_gate</p>
-      </section>
-
-      <section class="real-device-evidence-panel" aria-labelledby="mobileRealDeviceEvidenceTitle">
+      </section><section class="real-device-evidence-panel" aria-labelledby="mobileRealDeviceEvidenceTitle">
         <div class="section-heading">
           <h2 id="mobileRealDeviceEvidenceTitle">真实设备验收材料</h2>
           <span id="mobileRealDeviceEvidenceBadge" class="gate-badge gate-blocked">not_proven</span>
@@ -1304,7 +1410,7 @@
         </p>
         <label class="import-field" for="mobileRealDeviceEvidenceImport">
           <span>JSON 摘要导入</span>
-          <textarea id="mobileRealDeviceEvidenceImport" rows="5" placeholder='{"device":{"platform":"iOS"},"pwa":{"install_prompt_status":"not_observed"}}'></textarea>
+          <textarea id="mobileRealDeviceEvidenceImport" rows="5" placeholder="{&quot;device&quot;:{&quot;platform&quot;:&quot;iOS&quot;},&quot;pwa&quot;:{&quot;install_prompt_status&quot;:&quot;not_observed&quot;}}"></textarea>
         </label>
         <div class="bundle-copy-row">
           <button id="importRealDeviceEvidenceButton" type="button">导入 JSON 摘要</button>
@@ -1367,9 +1473,7 @@
           <span id="mobileRealDeviceEvidenceCopyStatus" class="hint">复制内容只包含脱敏 phone-safe 字段。</span>
         </div>
         <pre id="mobileRealDeviceEvidenceSafeCopy" class="safe-copy" aria-label="redacted 真实设备验收材料包">暂无真实设备验收材料包。</pre>
-      </section>
-
-      <section class="real-device-decision-panel" aria-labelledby="mobileRealDeviceAcceptanceDecisionTitle">
+      </section><section class="real-device-decision-panel" aria-labelledby="mobileRealDeviceAcceptanceDecisionTitle">
         <div class="section-heading">
           <h2 id="mobileRealDeviceAcceptanceDecisionTitle">真实设备验收决策</h2>
           <span id="mobileRealDeviceAcceptanceDecisionBadge" class="gate-badge gate-blocked">blocked_missing_evidence</span>
@@ -1421,9 +1525,7 @@
           <span id="mobileRealDeviceAcceptanceDecisionCopyStatus" class="hint">复制内容只包含 phone-safe decision 字段。</span>
         </div>
         <pre id="mobileRealDeviceAcceptanceDecisionSafeCopy" class="safe-copy" aria-label="真实设备验收 decision package">暂无真实设备验收决策包。</pre>
-      </section>
-
-      <section class="real-device-review-panel" aria-labelledby="mobileRealDeviceReviewHandoffTitle">
+      </section><section class="real-device-review-panel" aria-labelledby="mobileRealDeviceReviewHandoffTitle">
         <div class="section-heading">
           <h2 id="mobileRealDeviceReviewHandoffTitle">真实设备评审交接</h2>
           <span id="mobileRealDeviceReviewHandoffBadge" class="gate-badge gate-blocked">blocked_missing_evidence</span>
@@ -1481,9 +1583,7 @@
           <span id="mobileRealDeviceReviewHandoffCopyStatus" class="hint">复制内容只包含 phone-safe 评审交接字段。</span>
         </div>
         <pre id="mobileRealDeviceReviewHandoffSafeCopy" class="safe-copy" aria-label="真实设备 review handoff package">暂无真实设备评审交接包。</pre>
-      </section>
-
-      <section class="real-device-review-panel" aria-labelledby="mobileRealDeviceReviewExecutionTitle">
+      </section><section class="real-device-review-panel" aria-labelledby="mobileRealDeviceReviewExecutionTitle">
         <div class="section-heading">
           <h2 id="mobileRealDeviceReviewExecutionTitle">真实设备评审执行</h2>
           <span id="mobileRealDeviceReviewExecutionBadge" class="gate-badge gate-blocked">blocked_missing_evidence</span>
@@ -1553,9 +1653,7 @@
           <span id="mobileRealDeviceReviewExecutionCopyStatus" class="hint">复制内容只包含 phone-safe 人工评审执行字段。</span>
         </div>
         <pre id="mobileRealDeviceReviewExecutionSafeCopy" class="safe-copy" aria-label="真实设备 review execution package">暂无真实设备评审执行包。</pre>
-      </section>
-
-      <section class="real-device-retest-panel" aria-labelledby="mobileRealDeviceRetestRequestTitle">
+      </section><section class="real-device-retest-panel" aria-labelledby="mobileRealDeviceRetestRequestTitle">
         <div class="section-heading">
           <h2 id="mobileRealDeviceRetestRequestTitle">真实设备复测请求</h2>
           <span id="mobileRealDeviceRetestRequestBadge" class="gate-badge gate-blocked">blocked_missing_evidence</span>
@@ -1621,9 +1719,7 @@
           <span id="mobileRealDeviceRetestRequestCopyStatus" class="hint">复制内容只包含 phone-safe 复测请求字段。</span>
         </div>
         <pre id="mobileRealDeviceRetestRequestSafeCopy" class="safe-copy" aria-label="真实设备 retest request package">暂无真实设备复测请求包。</pre>
-      </section>
-
-      <section class="real-device-field-trial-panel" aria-labelledby="mobileRealDeviceFieldTrialTitle">
+      </section><section class="real-device-field-trial-panel" aria-labelledby="mobileRealDeviceFieldTrialTitle">
         <div class="section-heading">
           <h2 id="mobileRealDeviceFieldTrialTitle">真实设备现场试跑包</h2>
           <span id="mobileRealDeviceFieldTrialBadge" class="gate-badge gate-blocked">software proof only</span>
@@ -1736,9 +1832,7 @@
           <span id="mobileRealDeviceFieldTrialCopyStatus" class="hint">复制内容只包含 whitelist-only phone-safe 字段。</span>
         </div>
         <pre id="mobileRealDeviceFieldTrialSafeCopy" class="safe-copy" aria-label="mobile_real_device_field_trial_package_copy">暂无 mobile_real_device_field_trial_package_copy。</pre>
-      </section>
-
-      <section class="real-device-field-trial-review-panel" aria-labelledby="mobileRealDeviceFieldTrialReviewTitle">
+      </section><section class="real-device-field-trial-review-panel" aria-labelledby="mobileRealDeviceFieldTrialReviewTitle">
         <div class="section-heading">
           <h2 id="mobileRealDeviceFieldTrialReviewTitle">现场试跑证据复核</h2>
           <span id="mobileRealDeviceFieldTrialReviewBadge" class="gate-badge gate-blocked">not_proven</span>
@@ -1808,9 +1902,7 @@
           <span id="mobileRealDeviceFieldTrialReviewCopyStatus" class="hint">复制内容只包含 whitelist-only phone-safe review 字段。</span>
         </div>
         <pre id="mobileRealDeviceFieldTrialReviewSafeCopy" class="safe-copy" aria-label="mobile_real_device_field_trial_review_copy">暂无 mobile_real_device_field_trial_review_copy。</pre>
-      </section>
-
-      <section class="real-device-field-trial-runbook-execution-panel" aria-labelledby="mobileRealDeviceFieldTrialRunbookExecutionTitle">
+      </section><section class="real-device-field-trial-runbook-execution-panel" aria-labelledby="mobileRealDeviceFieldTrialRunbookExecutionTitle">
         <div class="section-heading">
           <h2 id="mobileRealDeviceFieldTrialRunbookExecutionTitle">现场试跑执行清单</h2>
           <span id="mobileRealDeviceFieldTrialRunbookExecutionBadge" class="gate-badge gate-blocked">not_proven</span>
@@ -1864,9 +1956,7 @@
           <span id="mobileRealDeviceFieldTrialRunbookExecutionCopyStatus" class="hint">复制内容只包含 whitelist-only phone-safe execution 字段。</span>
         </div>
         <pre id="mobileRealDeviceFieldTrialRunbookExecutionSafeCopy" class="safe-copy" aria-label="mobile_real_device_field_trial_runbook_execution_copy">暂无 mobile_real_device_field_trial_runbook_execution_copy。</pre>
-      </section>
-
-      <section class="real-device-field-trial-evidence-record-panel" aria-labelledby="mobileRealDeviceFieldTrialEvidenceRecordTitle">
+      </section><section class="real-device-field-trial-evidence-record-panel" aria-labelledby="mobileRealDeviceFieldTrialEvidenceRecordTitle">
         <div class="section-heading">
           <h2 id="mobileRealDeviceFieldTrialEvidenceRecordTitle">现场证据记录</h2>
           <span id="mobileRealDeviceFieldTrialEvidenceRecordBadge" class="gate-badge gate-blocked">not_proven</span>
@@ -1996,9 +2086,7 @@
           <span id="mobileRealDeviceFieldTrialEvidenceRecordCopyStatus" class="hint">复制/归档只包含 whitelist-only phone-safe record 字段。</span>
         </div>
         <pre id="mobileRealDeviceFieldTrialEvidenceRecordSafeCopy" class="safe-copy" aria-label="mobile_real_device_field_trial_evidence_record_copy">暂无 mobile_real_device_field_trial_evidence_record_copy。</pre>
-      </section>
-
-      <section class="real-device-field-trial-evidence-verdict-panel" aria-labelledby="mobileRealDeviceFieldTrialEvidenceVerdictTitle">
+      </section><section class="real-device-field-trial-evidence-verdict-panel" aria-labelledby="mobileRealDeviceFieldTrialEvidenceVerdictTitle">
         <div class="section-heading">
           <h2 id="mobileRealDeviceFieldTrialEvidenceVerdictTitle">现场证据 verdict</h2>
           <span id="mobileRealDeviceFieldTrialEvidenceVerdictBadge" class="gate-badge gate-blocked">blocked_missing_field_trial_evidence</span>
@@ -2051,9 +2139,7 @@
           <span id="mobileRealDeviceFieldTrialEvidenceVerdictCopyStatus" class="hint">复制只包含 whitelist-only phone-safe verdict 字段。</span>
         </div>
         <pre id="mobileRealDeviceFieldTrialEvidenceVerdictSafeCopy" class="safe-copy" aria-label="mobile_real_device_field_trial_evidence_verdict_copy">暂无 mobile_real_device_field_trial_evidence_verdict_copy。</pre>
-      </section>
-
-      <section class="real-device-field-trial-retest-execution-panel" aria-labelledby="mobileRealDeviceFieldTrialRetestExecutionTitle">
+      </section><section class="real-device-field-trial-retest-execution-panel" aria-labelledby="mobileRealDeviceFieldTrialRetestExecutionTitle">
         <div class="section-heading">
           <h2 id="mobileRealDeviceFieldTrialRetestExecutionTitle">现场复测执行</h2>
           <span id="mobileRealDeviceFieldTrialRetestExecutionBadge" class="gate-badge gate-blocked">blocked_waiting_retest_materials</span>
@@ -2112,9 +2198,7 @@
           <span id="mobileRealDeviceFieldTrialRetestExecutionCopyStatus" class="hint">复制只包含 whitelist-only phone-safe retest execution 字段。</span>
         </div>
         <pre id="mobileRealDeviceFieldTrialRetestExecutionSafeCopy" class="safe-copy" aria-label="mobile_real_device_field_trial_retest_execution_copy">暂无 mobile_real_device_field_trial_retest_execution_copy。</pre>
-      </section>
-
-      <section class="real-device-field-trial-acceptance-session-panel" aria-labelledby="mobileRealDeviceFieldTrialAcceptanceSessionTitle">
+      </section><section class="real-device-field-trial-acceptance-session-panel" aria-labelledby="mobileRealDeviceFieldTrialAcceptanceSessionTitle">
         <div class="section-heading">
           <h2 id="mobileRealDeviceFieldTrialAcceptanceSessionTitle">现场验收会话</h2>
           <span id="mobileRealDeviceFieldTrialAcceptanceSessionBadge" class="gate-badge gate-blocked">blocked_missing_field_trial_acceptance_materials</span>
@@ -2173,9 +2257,7 @@
           <span id="mobileRealDeviceFieldTrialAcceptanceSessionCopyStatus" class="hint">复制只包含 whitelist-only phone-safe acceptance session 字段。</span>
         </div>
         <pre id="mobileRealDeviceFieldTrialAcceptanceSessionSafeCopy" class="safe-copy" aria-label="mobile_real_device_field_trial_acceptance_session_copy">暂无 mobile_real_device_field_trial_acceptance_session_copy。</pre>
-      </section>
-
-      <section class="acceptance-bundle-panel" aria-labelledby="mobileBrowserAcceptanceTitle">
+      </section><section class="acceptance-bundle-panel" aria-labelledby="mobileBrowserAcceptanceTitle">
         <div class="section-heading">
           <h2 id="mobileBrowserAcceptanceTitle">浏览器验收包</h2>
           <span id="mobileBrowserAcceptanceBadge" class="gate-badge gate-blocked">验收包阻塞</span>
@@ -2232,169 +2314,10 @@
           <span id="mobileBrowserCopyStatus" class="hint">复制内容只包含脱敏 phone-safe 字段。</span>
         </div>
         <pre id="mobileBrowserSafeCopy" class="safe-copy" aria-label="脱敏浏览器验收包">暂无浏览器验收包。</pre>
-      </section>
-
-      <section class="action-panel" aria-label="主操作">
-        <div class="start-confirmation" aria-labelledby="startGateTitle">
-          <div class="section-heading">
-            <h2 id="startGateTitle">发车确认</h2>
-            <span id="destinationGateBadge" class="gate-badge gate-blocked">未确认目的地</span>
-          </div>
-          <dl class="confirmation-grid">
-            <div>
-              <dt>目标垃圾站</dt>
-              <dd id="destinationSummary">等待后端提供垃圾站。</dd>
-            </div>
-            <div>
-              <dt>发车阻塞</dt>
-              <dd id="startBlockReason">等待状态刷新。</dd>
-            </div>
-          </dl>
-          <label class="load-confirmation" for="trashLoadedCheckbox">
-            <input id="trashLoadedCheckbox" type="checkbox">
-            <span>我确认垃圾已放入小车（不是自动载荷检测）</span>
-          </label>
-          <p id="startPayloadBoundary" class="hint">
-            Start Delivery 只会提交 phone-safe JSON；ACK 只代表 accepted/processing。
-          </p>
-        </div>
-        <!-- 按钮默认禁用，JS 只能在 command_safety 和旧权限同时允许时打开。 -->
-        <button id="startButton" class="primary-action" type="button" data-action="start" disabled>
-          开始送达
-        </button>
-        <button id="confirmButton" type="button" data-action="confirm_dropoff" disabled>
-          确认投放
-        </button>
-        <button id="cancelButton" type="button" data-action="cancel" disabled>
-          取消任务
-        </button>
-      </section>
-
-      <section id="terminalActionPanel" class="terminal-action-panel" hidden aria-labelledby="terminalActionTitle">
-        <div class="section-heading">
-          <h2 id="terminalActionTitle">终端动作二次确认</h2>
-          <span id="terminalActionBadge" class="gate-badge gate-blocked">等待确认</span>
-        </div>
-        <p id="terminalActionCopy" class="message">
-          终端动作首次点击只进入确认，不提交 Confirm Dropoff / Cancel endpoint。
-        </p>
-        <dl class="terminal-action-grid">
-          <div>
-            <dt>Action</dt>
-            <dd id="terminalActionName">暂无</dd>
-          </div>
-          <div>
-            <dt>用户风险</dt>
-            <dd id="terminalActionRisk">等待安全摘要。</dd>
-          </div>
-          <div>
-            <dt>ACK 语义</dt>
-            <dd id="terminalActionAck">ACK 只代表 accepted/processing。</dd>
-          </div>
-          <div>
-            <dt>Client reference</dt>
-            <dd id="terminalActionClientReference">确认后生成</dd>
-          </div>
-          <div>
-            <dt>Evidence Boundary</dt>
-            <dd id="terminalActionBoundary">software_proof_docker_mobile_terminal_action_confirmation_gate</dd>
-          </div>
-          <div>
-            <dt>not_proven</dt>
-            <dd id="terminalActionNotProven">真实投放完成、真实取消完成、真实送达未证明。</dd>
-          </div>
-        </dl>
-        <p id="terminalActionReason" class="hint">缺少 command_safety 或存在 pending ACK 时保持 fail closed。</p>
-        <div class="terminal-action-controls">
-          <button id="terminalActionBackButton" type="button">返回</button>
-          <button id="terminalActionConfirmButton" class="primary-action" type="button" disabled>确认提交终端动作</button>
-        </div>
-      </section>
-
-      <section class="action-feedback-panel" aria-labelledby="actionFeedbackTitle">
-        <div class="section-heading">
-          <h2 id="actionFeedbackTitle">动作回执</h2>
-          <span id="actionFeedbackStatusBadge" class="gate-badge gate-blocked">等待动作</span>
-        </div>
-        <p id="actionFeedbackCopy" class="message">
-          提交 Start、Confirm 或 Cancel 后，这里只显示 phone-safe 回执和恢复建议。
-        </p>
-        <dl class="feedback-grid">
-          <div>
-            <dt>最近动作</dt>
-            <dd id="actionFeedbackAction">暂无</dd>
-          </div>
-          <div>
-            <dt>提交状态</dt>
-            <dd id="actionFeedbackState">等待提交</dd>
-          </div>
-          <div>
-            <dt>Client reference</dt>
-            <dd id="actionFeedbackClientReference">暂无</dd>
-          </div>
-          <div>
-            <dt>ACK 语义</dt>
-            <dd id="actionFeedbackAck">ACK 只代表 accepted/processing，不代表送达成功。</dd>
-          </div>
-        </dl>
-        <p id="actionFeedbackReason" class="hint">失败原因会由后端或本地提交错误提供。</p>
-        <p id="actionFeedbackRecovery" class="hint">恢复建议会保持可读、可重试、可交接。</p>
-        <p id="actionFeedbackBoundary" class="boundary">software_proof_docker_mobile_action_feedback_gate</p>
-      </section>
-
-      <section class="task-panel" aria-labelledby="taskFlowTitle">
-        <h2 id="taskFlowTitle">任务流程</h2>
-        <ol id="taskFlowList" class="task-flow">
-          <li>等待后端返回任务步骤。</li>
-        </ol>
-      </section>
-
-      <section class="gate-panel" aria-labelledby="gateTitle">
-        <h2 id="gateTitle">操作安全</h2>
-        <p id="commandSafetyCopy" class="message">主操作保持禁用，直到后端 gate 放行。</p>
-        <p id="ackCopy" class="hint">ACK 只代表指令受理或处理中，不代表送达成功。</p>
-        <ul id="actionReasons" class="reason-list"></ul>
-      </section>
-
-      <section class="offline-panel" aria-labelledby="offlineTitle">
-        <h2 id="offlineTitle">离线与恢复</h2>
-        <p id="offlineCopy" class="message">离线壳不会缓存、排队或重放控制请求。</p>
-        <p id="offlineHint" class="hint">重新连接后刷新状态，再按提示继续。</p>
-      </section>
-
-      <section class="voice-panel" aria-labelledby="voiceTitle">
-        <h2 id="voiceTitle">语音提示</h2>
-        <p id="voiceCopy" class="message">等待后端提供 voice prompt readiness。</p>
-        <p id="voiceBoundary" class="hint">本地软件证明不代表真实喇叭或 TTS 播放。</p>
-      </section>
-
-      <section class="operation-log-panel" aria-labelledby="operationLogTitle">
-        <div class="section-heading">
-          <h2 id="operationLogTitle">操作日志</h2>
-          <span id="operationLogSource" class="gate-badge gate-blocked">等待安全事件</span>
-        </div>
-        <p id="operationLogHint" class="hint">仅显示后端 phone-safe 事件；不会打开控制动作。</p>
-        <ol id="operationLogList" class="operation-log">
-          <li>等待后端返回 operation log 或 readiness 摘要。</li>
-        </ol>
-        <p id="operationSupportEntry" class="message">支持交接入口会保持可见，但不触发机器人动作。</p>
-      </section>
-
-      <section class="support-panel" aria-labelledby="supportTitle">
-        <div class="section-heading">
-          <h2 id="supportTitle">诊断与求助</h2>
-          <button id="diagnosticsButton" type="button">打开诊断</button>
-        </div>
-        <p id="supportCopy" class="message">主操作 blocked 时仍可打开诊断或复制脱敏摘要。</p>
-        <button id="supportButton" type="button">Support Handoff</button>
-        <pre id="supportSafeCopy" class="safe-copy" aria-label="脱敏支持摘要">暂无支持摘要。</pre>
-      </section>
-
-      <section id="diagnosticsPanel" class="diagnostics-panel" hidden aria-labelledby="diagnosticsTitle">
+      </section><section id="diagnosticsPanel" class="diagnostics-panel" hidden="" aria-labelledby="diagnosticsTitle">
         <h2 id="diagnosticsTitle">诊断摘要</h2>
         <dl id="diagnosticsSummary" class="diagnostics-grid"></dl>
-      </section>
-    </main>
-    <script src="./app.js" defer></script>
-  </body>
-</html>
+      </section></template></main>
+    <script src="./app.js" defer=""></script>
+
+</body></html>

@@ -671,3 +671,23 @@ python3 onboard/scripts/o1_ttyS5_safe_pulse_acceptance.py \
 - 没有 `T=1001` 或等价 ACK 前，`acceptance_verdict.status` 必须是 `motion_posted_without_ack` 或更保守状态，runner 输出必须保持 `safe_to_control=false`、`delivery_success=false`。
 - 即使 `acceptance_verdict.status=motion_posted_with_t1001` 且 `operator_report_status=ready_for_execution` 或 `ready_for_review`，也只代表 8787 status/manual response 中出现 ACK 线索并携带人工材料；仍不是 HIL pass，不能替代同源 `feedback_T1001.log`、ROS `/odom`、`/imu/data`、`/battery` 和 operator HIL report。
 - 本轮未执行真实 `/api/base/manual`，未发送任何运动 POST。
+
+## 2026-09-18 控制与状态性能契约
+
+单个 `UpperRobotApi` 实例使用专用串口线程执行完整动作。普通请求在串口忙或 Stop 待执行时返回 HTTP `409`，顶层 `accepted=false`、`preempted=false`、`error.type=serial_busy`、`sends_commands=false`；请求不会进入运动队列。未知方向继续返回 HTTP `400`。动作生产者为 PC/本地 HTTP 客户端，消费者为本 API；既有正常响应字段保留。
+
+`POST /api/base/stop` 不受普通动作 busy 拦截：它抢占当前 pulse/反馈等待，已有动作先在 `finally` 中停车，随后执行显式 Stop。客户端取消与异常同样不能跳过停车。已接受的 manual 被抢占时仍返回 HTTP `200`、`accepted=true`、`preempted=true`，实际写入由 `command_result` / `stop_result` / `auto_stop_executed` 表达；尚未反馈时 `feedback_after_stop_attempted=false`、`t1001_feedback_status=skipped_due_to_preemption`。开始反馈后被抢占，可由 `feedback_evidence.serial_read.interrupted=true` 识别。
+
+兼容的 `POST /api/base/manual {"direction":"stop"}` 同样走停止优先入口，保持 manual schema，`duration_ms=0`，跳过 pulse 和反馈采样；它与独立 Stop 并发时只共享底层停车结果，各自返回自己的 schema。Stop 完成前不接受其他动作，Stop 后允许用户发起全新的动作。
+
+串口读片上限 `50 ms`，单次写设置 `200 ms` timeout；这是调度配置，实机停止时延还包含 OS 调度、驱动和下位机响应。普通反馈见到 `T=1001` 即完成，显式 `feedback-samples` 保留完整采样窗。限速与 pulse 最大值保持原合同。仲裁只覆盖本实例/进程：`esp32_bridge` 或其他程序不得同时占用该 UART；跨进程独占和实机时延仍需部署/HIL 验证。
+
+`radar/map/localize/nav2` 的配置型命令在后台运行，HTTP 事件循环可继续服务 Stop/health；重复配置命令返回 `error.type=command_busy`。命令仍使用既有 timeout 与 fail-closed 响应。HTTP 取消不会提前解除配置命令的 single-flight 状态。
+
+`GET /api/status` 不等待摄像头网络请求：首次返回 camera `status=unknown`，后台单飞采样。camera 新增可选字段：`sampled_at_ms`（实际采样完成时间）、`sample_age_ms`、`stale`、`refreshing`。成功采样保存 1 秒后允许刷新；达到 3 秒或没有样本时 `stale=true` 且 `status=unknown`，不会沿用旧成功状态生成新的采样时间。失败样本仍保留对应 HTTP 错误码。相机显式接口复用服务生命周期中的 HTTP session；服务退出会取消并等待采样任务并关闭 session。
+
+本地状态文件在后台构造摘要，同一次请求内同一路径只读取/解析一次；下一次请求重新读取，因此文件替换、坏 JSON、缺失、freshness 变化都能继续 fail-closed 呈现。根路径只返回静态路由，不再触发整套状态查询。
+
+硬件协议依据：`docs/vendor/VENDOR_INDEX.md`、`docs/vendor/waveshare_wave_rover/WAVE_ROVER_V0.9/uart_ctrl.h` 与 `docs/vendor/waveshare_wave_rover/ugv_rpi/base_ctrl.py`；本轮不改 vendor 命令、端口、波特率或速度映射。
+
+离线回归：`python -m unittest onboard.scripts.test_upper_robot_performance`；性能探针：`python onboard/scripts/control_status_performance_probe.py --baseline-ref 869dfe5aaf95bcd1759583752a1a433b9ff1e83c --output <output.json>`。探针对 git 基线和改后代码使用同样 fake UART/camera，记录 baseline/after 与环境。结果仅为软件 mock 性能，不能用作 HIL、真实 4G 或机器人 ACK。

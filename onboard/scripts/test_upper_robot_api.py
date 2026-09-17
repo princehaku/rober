@@ -884,10 +884,12 @@ class UpperRobotApiSafetyTest(unittest.TestCase):
         self.assertTrue(FakeSerial.instances[0].closed)
         self.assertEqual(result["serial_open"]["ok"], True)
         self.assertEqual(result["serial_write"]["ok"], True)
-        self.assertEqual(result["read_line_count"], 3)
-        self.assertEqual(result["parsed_json_count"], 2)
+        # 普通反馈在首个有效 T=1001 完成，后续 T=1002 留给独立采样请求。
+        self.assertEqual(result["read_line_count"], 2)
+        self.assertEqual(result["parsed_json_count"], 1)
         self.assertEqual(result["invalid_json_count"], 1)
-        self.assertEqual(result["observed_feedback_types"], [1001, 1002])
+        # 只统计本次确实读到的材料，不把尚未消费的反馈类型写进证据。
+        self.assertEqual(result["observed_feedback_types"], [1001])
         self.assertEqual(result["t1001_feedback_status"], "observed")
         self.assertTrue(result["feedback_ack"]["t1001_observed"])
         self.assertFalse(result["feedback_ack"]["robot_ack_connected"])

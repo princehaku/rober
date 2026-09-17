@@ -1,5 +1,13 @@
 # O7 Live Operator Panel API
 
+## 2026-09-17 控制与状态性能更新
+
+- 首屏响应新增可选 `direct_upper_status`，与本面板消费同一次上位机 `/api/status` 结果；`/health` 与状态读取并行。聚合函数不保留跨请求缓存，固定安全字段沿用原契约。
+- App 首次进入与手动刷新都消费该聚合响应。连续刷新点击合并在途请求；刷新期间保留控制台组件与已有 WebRTC peer。旧服务缺少扩展字段时，前端兼容补读 direct status。
+- Stop 只合并自身重复点击，保持 operator confirmation。普通 manual/operator 的迟到响应不能覆盖较新的 Stop 回执；动作回执返回后按钮立即释放，只读状态更新在后台执行且不重写动作文案。
+- `serial_busy` 显示“串口忙，请稍后重试”；`preempted=true` 显示动作被 Stop 中断。该信息不证明物理停车或运动闭环成功。
+- 离线验收：`npm test -- --run` 运行真实 Vue DOM/假 fetch/假 WebRTC；`node scripts/control-status-performance-probe.mjs --output ../../sprints/2026.09.17_00-01_control-status-performance-epic/evidence/ui-pc-performance.json` 输出结构计数。基线每轮两次远端 status，更新后每轮一次，状态刷新媒体卸载与 close 请求均为零。无 HIL/4G/物理停车时延或 CPU 降幅结论。
+
 ## Endpoint
 
 `GET /api/o7/live-operator-panel`
@@ -113,11 +121,11 @@ printf '{"T":1,"L":0.08,"R":0.08}\n' > /dev/ttyS5
 
 方向按钮点击不再固定写死“已拦截”。当前行为：
 
-- `前进` / `后退` / `左转` / `右转` / `Stop` 统一 POST PC 同源
-  `/api/o7/direct-upper/base/manual`。
+- `前进` / `后退` / `左转` / `右转` POST PC 同源 `/api/o7/direct-upper/base/manual`。
+- `Stop`、`Space`、`X` 使用独立 `/api/o7/direct-upper/base/stop`，可在点动或 operator 请求尚未返回时发出。
 - UI 请求体包含 `direction`、`speed` 和 `duration_ms`；`forward/back` 使用当前滑块
   speed 和 `250ms`，`left/right` 使用更明显的 turn pulse：`speed=0.08`、
-  `duration_ms=350`，`stop` 使用 `speed=0` 和 `250ms`。PC 后端仍会二次限幅到
+  `duration_ms=350`。Stop 使用专用端点且不带点动时长。PC 后端仍会二次限幅到
   `<=0.08 m/s`、`1..350ms`，上位机 8787 也继续执行 guardrail 和自动停车。
 - PC 本机 manual 代理使用独立 `5500ms` 超时，避免上位机 `/api/base/manual` 的运动
   pulse、自动停车、`T=130` 请求和 `T=1001` 读取窗口被 status 的 `1200ms` 短超时提前打断。

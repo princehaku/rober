@@ -803,8 +803,8 @@ describe("O7 live operator first screen", () => {
     expect(text).not.toContain("TTS");
     expect(text).not.toContain("ready to control");
     expect(mockedFetch.mock.calls.map(([url]) => String(url))).toEqual([
-      "/api/o7/live-operator-panel",
       "/api/o7/local-webrtc-camera",
+      "/api/o7/live-operator-panel",
       "/api/o7/direct-upper/status",
     ]);
   });
@@ -904,7 +904,7 @@ describe("O7 live operator first screen", () => {
     expect(wrapper.text()).not.toContain("ready to control");
   });
 
-  it("supports WASD plus Space/X manual shortcuts while ignoring editable focus and repeat keydown", async () => {
+  it("supports WASD plus independent Space/X stop shortcuts while ignoring editable focus and repeat keydown", async () => {
     stubWebrtc();
     const mockedFetch = stubFetch();
 
@@ -933,10 +933,12 @@ describe("O7 live operator first screen", () => {
 
     const manualCalls = mockedFetch.mock.calls.filter(([url]) => String(url) === "/api/o7/direct-upper/base/manual");
     const bodies = manualCalls.map(([, init]) => JSON.parse(String(init?.body)));
-    expect(bodies.map((body) => body.direction)).toEqual(["forward", "left", "back", "right", "stop", "stop"]);
-    expect(bodies.map((body) => body.duration_ms)).toEqual([250, 350, 250, 350, 250, 250]);
-    expect(bodies.map((body) => body.speed)).toEqual([0.02, 0.08, 0.02, 0.08, 0, 0]);
-    expect(wrapper.text()).toContain("Stop 已发送（仍锁定）：/api/base/manual HTTP 200");
+    expect(bodies.map((body) => body.direction)).toEqual(["forward", "left", "back", "right"]);
+    expect(bodies.map((body) => body.duration_ms)).toEqual([250, 350, 250, 350]);
+    expect(bodies.map((body) => body.speed)).toEqual([0.02, 0.08, 0.02, 0.08]);
+    // Space/X 各自触发独立停车代理，保持人工确认和安全字段。
+    expect(mockedFetch.mock.calls.filter(([url]) => String(url) === "/api/o7/direct-upper/base/stop")).toHaveLength(2);
+    expect(wrapper.text()).toContain("Stop 已发送（仍锁定）：/api/base/stop HTTP 200");
     expect(wrapper.text()).toContain("safe_to_control=false");
     expect(mockedFetch.mock.calls.map(([url]) => String(url))).not.toContain("/api/base/manual");
   });
@@ -1675,7 +1677,7 @@ describe("O7 direct upper PC API", () => {
   });
 
   it("proxies read-only scan proof latest as JSON instead of falling through to the SPA shell", async () => {
-    const mockedFetch = vi.fn(async (_input: RequestInfo | URL) => ({
+    const mockedFetch = vi.fn<(input: RequestInfo | URL) => Promise<{ ok: boolean; status: number; json: () => Promise<unknown> }>>(async () => ({
       ok: true,
       status: 200,
       json: async () => ({

@@ -2,6 +2,16 @@
 
 本目录是 `rober` 的 **用户手机端部署单位**：把机器人能力产品化成手机能操作、能看状态的入口。
 
+## 当前加载与刷新行为（2026-09-17）
+
+默认入口只加载 `web/app.js`，保留任务状态、动作确认、安全 gate、回执和求助摘要。历史诊断、验收与材料交接面板集中到 `web/diagnostics.js`，点击“打开诊断”后加载一次；静态面板留在惰性模板中，展开时挂载。以下历史记录中的“首屏新增”描述当时版本，当前诊断详情统一从此入口展开。
+
+前台每 2 秒读取状态，最多一条状态请求在途；4 秒超时后关闭主操作并退避，最长 30 秒。页面隐藏时中止读取并关闭动作，恢复前台立即获取新状态；相同 JSON 不重复渲染。控制 POST 在途时整个动作组保持锁定，POST 完成后重新读取状态，旧请求不能覆盖新动作状态。控制请求始终由人工触发，失败不会自动重放。
+
+诊断模块不进入 service worker 预缓存。部署须一起更新 `index.html`、`app.js`、`diagnostics.js` 与 `service-worker.js`；云中转静态白名单必须允许 `diagnostics.js`。动态 API/commands/ACK 继续 `no-store`。诊断按人工展开刷新完整材料，后台状态轮询只更新核心区域。
+
+验收命令：`node --test mobile/web/test_mobile_performance.mjs`；静态兼容测试仍使用 `python -m unittest mobile.test_mobile_web_entrypoint mobile.web.test_mobile_web_entrypoint`。本轮证据记录在 `sprints/2026.09.17_00-01_control-status-performance-epic/evidence/ui-mobile-performance.json`，包括未压缩源码字节、真实 script/DOM 加载与 mock 请求计数；未测量真实手机 CPU、4G 传输或实机运动时延。
+
 > 当前状态：sprint `2026.05.13_03-04_mobile-web-entrypoint-gate` 已新增 `mobile/web/` dependency-free PWA 静态入口。证据边界是 `software_proof_docker_mobile_web_entrypoint_gate`，不等于真实手机设备、production app、真实云、4G、OSS/CDN、HIL 或真实送达。
 >
 > 当前增量：sprint `2026.05.13_07-08_mobile-operation-log-gate` 在静态入口中新增 operation log 面板。证据边界是 `software_proof_docker_mobile_operation_log_gate`，只证明 local/Docker fixture 与 static smoke 可展示 phone-safe 最近事件、恢复提示和支持交接入口；不等于真实手机设备/浏览器、production app、真实 PWA install prompt、真实云/4G、OSS/CDN live traffic、Nav2/fixed-route、WAVE ROVER、HIL 或真实送达。

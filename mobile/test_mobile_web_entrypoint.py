@@ -7,6 +7,14 @@ from pathlib import Path
 MOBILE_ROOT = Path(__file__).resolve().parent
 REPO_ROOT = MOBILE_ROOT.parent
 WEB_ROOT = MOBILE_ROOT / "web"
+def read_web_source(relative):
+    # 分模块后显式组合两份源码，所有原有安全断言保持有效。
+    source = (WEB_ROOT / relative).read_text(encoding="utf-8")
+    if relative == "app.js":
+        source += "\n" + (WEB_ROOT / "diagnostics.js").read_text(encoding="utf-8")
+    return source
+
+
 FIXTURE = MOBILE_ROOT / "fixtures" / "mobile_web_status.fixture.json"
 BROWSER_GATE = REPO_ROOT / "pc-tools" / "evidence" / "phone_browser_acceptance_gate.py"
 CLOUD_PWA_GATE = REPO_ROOT / "pc-tools" / "evidence" / "cloud_hosted_pwa_installability_gate.py"
@@ -14,7 +22,7 @@ CLOUD_PWA_GATE = REPO_ROOT / "pc-tools" / "evidence" / "cloud_hosted_pwa_install
 
 class MobileWebEntrypointTest(unittest.TestCase):
     def read(self, relative):
-        return (WEB_ROOT / relative).read_text(encoding="utf-8")
+        return read_web_source(relative)
 
     def test_browser_acceptance_gate_targets_current_mobile_web_pwa(self):
         script = BROWSER_GATE.read_text(encoding="utf-8")

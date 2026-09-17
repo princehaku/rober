@@ -1,0 +1,46 @@
+{
+  "schema": "rober.mobile_performance.v1",
+  "evidence_boundary": "software_mock_dom_only",
+  "environment": {
+    "node": "v24.12.0",
+    "platform": "win32",
+    "dom": "jsdom"
+  },
+  "source_bytes": {
+    "before": 3931297,
+    "core_after": 253304,
+    "diagnostics_after": 3682451
+  },
+  "baseline_observed": false,
+  "baseline_source_render_calls": 215,
+  "scenarios": {
+    "cold_entry": {
+      "heavy_render_calls": 0,
+      "rendered_sections": 14,
+      "diagnostic_requests": 0,
+      "core_render_calls_per_changed_status": 14
+    },
+    "diagnostics": {
+      "load_count_after_reopen": 1,
+      "diagnostic_listener_count": 1,
+      "core_listener_count": 1,
+      "uncaught_errors": []
+    },
+    "unchanged_status": {
+      "reads": 2,
+      "render_calls": 0,
+      "changed_status_render_calls": 1
+    },
+    "polling": {
+      "max_status_concurrency": 1,
+      "background_requests": 0,
+      "foreground_immediate_refresh": true,
+      "period_ms": 2000
+    },
+    "action_race": {
+      "post_count_during_pending": 1,
+      "changed_status_reenabled_controls": false,
+      "action_state_refresh_after_settle": true
+    }
+  }
+}

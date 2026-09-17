@@ -311,3 +311,13 @@ GET latest 真实返回关键字段：
 
 本次验证没有调用 `/api/base/manual`，没有发送 `T=1`、`T=13`、`T=131`
 或 ROS `/cmd_vel`。latest readback 只证明 artifact 可读取，不证明它本身发送过或可以发送命令。
+
+## 2026-09-18 可中断反馈采集
+
+反馈请求已纳入单实例串口仲裁，阻塞 I/O 在专用线程运行。并发普通请求返回 HTTP `409`、`accepted=false`、`error.type=serial_busy`，不排队发送命令；Stop 可抢占读窗口。
+
+`feedback-request` 与 manual 停车后的普通反馈见到有效 `T=1001` 即结束。`read_window_s` 为最大观察窗口；`read_timeout_s` 仍限制等待，实际每个读片额外限制在 `50 ms` 内，跨读片的 JSON 行会累计到换行再解析。早返回之后尚未读取的其他反馈不会计入 `observed_feedback_types`。
+
+`feedback-samples` 保留显式完整窗口材料统计；批内等待可被 Stop/请求取消中断，新增顶层 `preempted`。被抢占时只记录已经采到的材料，`completed_sample_count` 可能小于请求数，`all_samples_observed_t1001=false`，采样结果中的 `serial_read.interrupted` 表示窗口未完整结束。持久化不占用串口 owner，避免慢盘延迟停车。所有 `robot_ack_connected`、`safe_to_control`、`hil_pass` 证据边界保持不变。
+
+API 退出及 HTTP 取消会等待已接受动作的停车收口。该机制只覆盖此实例内部；真实部署中其他串口驱动仍需与它互斥。验证使用 fake UART，无真实运动或串口读写。

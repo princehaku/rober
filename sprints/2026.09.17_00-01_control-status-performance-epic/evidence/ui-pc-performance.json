@@ -1,0 +1,43 @@
+{
+  "schema": "trashbot.pc_control_status_performance.v1",
+  "captured_at": "2026-09-17T16:10:00.867Z",
+  "environment": {
+    "node": "v24.12.0",
+    "platform": "win32",
+    "arch": "x64",
+    "os": "10.0.22631",
+    "packages": {
+      "vue": "3.5.34",
+      "vitest": "4.1.7",
+      "vite": "7.3.3",
+      "jsdom": "27.4.0"
+    }
+  },
+  "injection": "jsdom Vue mount + deferred fake fetch + fake WebRTC; zero hardware/network",
+  "evidence_boundary": "software_mock_only; structural counts; no physical latency or CPU claim",
+  "baseline": {
+    "captured_at": "2026-09-17T15:59:02.818Z",
+    "evidence_boundary": "offline_fake_fetch_before_change",
+    "upper_status_requests": 2,
+    "paths": [
+      "/api/status",
+      "/health",
+      "/api/status"
+    ]
+  },
+  "after": {
+    "manual_pending_stop_dispatched": true,
+    "manual_late_result_overwrote_stop": false,
+    "operator_pending_stop_dispatched": true,
+    "operator_late_result_overwrote_stop": false,
+    "space_uses_independent_stop": true,
+    "action_status_reads_max_inflight": 1,
+    "ack_waits_for_status": false,
+    "upper_status_requests_per_refresh": 1,
+    "refresh_media_unmounts": 0,
+    "refresh_media_close_requests": 0,
+    "refresh_duplicate_click_requests": 1,
+    "busy_contract_preserved": true,
+    "preempted_contract_preserved": true
+  }
+}

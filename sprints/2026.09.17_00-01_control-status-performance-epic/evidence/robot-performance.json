@@ -1,0 +1,637 @@
+{
+  "schema": "rober.control_status_performance.v2",
+  "evidence_boundary": "software_mock_only",
+  "generated_at_utc": "2026-09-17T16:15:38Z",
+  "baseline_ref": "869dfe5aaf95bcd1759583752a1a433b9ff1e83c",
+  "baseline_git_sha": "869dfe5aaf95bcd1759583752a1a433b9ff1e83c",
+  "source_sha256": {
+    "baseline": {
+      "onboard/scripts/upper_robot_api.py": "aa36d7cff3ff06cfe12b0833587a1652931ac818492a654d3c57a00c05936d44",
+      "onboard/scripts/local_webrtc_camera_smoke.py": "f77e1b5ee942de322afdb5b4dd18df0a369e7e3c4be4c0c2b9ab9735f719f8f6"
+    },
+    "after": {
+      "onboard/scripts/upper_robot_api.py": "8fa176d619e70e5a13060e62e2046e4ce9b934d88e2a99f975819df2f8b05b84",
+      "onboard/scripts/local_webrtc_camera_smoke.py": "22b4e09ebed42e7e3e30a646844bd760ab4ed1c7e3a47687daaebe83cde2ddc6",
+      "onboard/scripts/upper_robot_io.py": "24665d25e9639c1c81d450dad3a34a101cd7ec554a12dd5b01f8e58eac58af66"
+    }
+  },
+  "probe_sha256": "07eca78254d82558243a6a34c21075025f69605c48e3f6cc16be67d2a966e47e",
+  "environment": {
+    "python": "3.12.3 (main, Feb  4 2025, 14:48:35) [GCC 13.3.0]",
+    "platform": "Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+    "processor": "x86_64"
+  },
+  "method": {
+    "samples_per_phase": 10,
+    "baseline_source": "git show <resolved SHA>:<path>",
+    "percentiles": "linear interpolation of ordered observed samples",
+    "timings": "direct API method calls; no HTTP transport; perf_counter wall / process_time CPU",
+    "feedback": {
+      "default_read_window_s": 1.2,
+      "fake_first_target_delay_s": 0.001
+    },
+    "stop": {
+      "read_window_s": 0.15,
+      "read_timeout_s": 0.05,
+      "planned_submission_s": 0.02,
+      "heartbeat_s": 0.005
+    },
+    "camera": {
+      "fake_fetch_delay_s": 0.15,
+      "cold_start_samples": 1,
+      "cache": "cold start plus completed warmup; steady state reuses one API and its session"
+    },
+    "reproduce_command": "python3 onboard/scripts/control_status_performance_probe.py --baseline-ref 869dfe5aaf95bcd1759583752a1a433b9ff1e83c --samples 10 --output sprints/2026.09.17_00-01_control-status-performance-epic/evidence/robot-performance.json"
+  },
+  "limitations": [
+    "No real serial, camera, network, ROS runtime, phone CPU or HIL evidence.",
+    "CPU time measures this synthetic probe, not video CPU savings.",
+    "Ten samples describe this run; p99 is not a production tail guarantee.",
+    "Explicit --baseline-ref SHA keeps future reruns comparable after commits.",
+    "Camera cold_start has one sample; no tail reliability is claimed for its percentiles."
+  ],
+  "baseline": {
+    "feedback": {
+      "wall_ms": 12023.133963,
+      "process_cpu_ms": 7.065639999999984,
+      "request_ms": {
+        "count": 10,
+        "unit": "ms",
+        "samples": [
+          1201.922225,
+          1201.966355,
+          1201.977056,
+          1202.011547,
+          1202.050498,
+          1202.191851,
+          1202.025997,
+          1201.987602,
+          1202.039257,
+          1202.041358
+        ],
+        "p50": 1202.018772,
+        "p95": 1202.128242,
+        "p99": 1202.179129,
+        "max": 1202.191851
+      },
+      "read_calls": [
+        7,
+        7,
+        7,
+        7,
+        7,
+        7,
+        7,
+        7,
+        7,
+        7
+      ]
+    },
+    "stop": {
+      "wall_ms": 1561.1779000000006,
+      "process_cpu_ms": 7.7547480000000055,
+      "planned_stop_to_write_ms": {
+        "count": 10,
+        "unit": "ms",
+        "samples": [
+          130.57368,
+          130.643107,
+          130.614626,
+          130.606431,
+          130.623177,
+          130.614821,
+          130.567445,
+          130.626702,
+          130.648947,
+          130.605386
+        ],
+        "p50": 130.614723,
+        "p95": 130.646319,
+        "p99": 130.648421,
+        "max": 130.648947
+      },
+      "stop_submission_lateness_ms": {
+        "count": 10,
+        "unit": "ms",
+        "samples": [
+          130.499228,
+          130.556895,
+          130.544895,
+          130.532549,
+          130.551005,
+          130.535589,
+          130.495974,
+          130.55548,
+          130.565835,
+          130.536905
+        ],
+        "p50": 130.5409,
+        "p95": 130.561812,
+        "p99": 130.56503,
+        "max": 130.565835
+      },
+      "submitted_stop_to_write_ms": {
+        "count": 10,
+        "unit": "ms",
+        "samples": [
+          0.074452,
+          0.086212,
+          0.069731,
+          0.073882,
+          0.072172,
+          0.079232,
+          0.071471,
+          0.071222,
+          0.083112,
+          0.068481
+        ],
+        "p50": 0.073027,
+        "p95": 0.084817,
+        "p99": 0.085933,
+        "max": 0.086212
+      },
+      "heartbeat_max_lag_ms": {
+        "count": 10,
+        "unit": "ms",
+        "samples": [
+          145.698674,
+          145.668217,
+          145.634587,
+          145.626331,
+          145.647947,
+          145.636572,
+          145.586026,
+          145.646572,
+          145.673988,
+          145.623087
+        ],
+        "p50": 145.641572,
+        "p95": 145.687565,
+        "p99": 145.696452,
+        "max": 145.698674
+      },
+      "feedback_request_ms": {
+        "count": 10,
+        "unit": "ms",
+        "samples": [
+          150.446977,
+          150.499344,
+          150.495113,
+          150.476978,
+          150.483733,
+          150.485538,
+          150.447432,
+          150.506349,
+          150.508733,
+          150.488254
+        ],
+        "p50": 150.486896,
+        "p95": 150.50766,
+        "p99": 150.508518,
+        "max": 150.508733
+      }
+    },
+    "camera": {
+      "wall_ms": 1660.6779789999991,
+      "process_cpu_ms": 8.580341000000018,
+      "cold_start": {
+        "wall_ms": 151.19798500000314,
+        "process_cpu_ms": 1.0089739999999958,
+        "status_request_ms": {
+          "count": 1,
+          "unit": "ms",
+          "samples": [
+            151.103053
+          ],
+          "p50": 151.103053,
+          "p95": 151.103053,
+          "p99": 151.103053,
+          "max": 151.103053
+        },
+        "camera_states": [
+          "ok"
+        ],
+        "fake_fetch": {
+          "started": 1,
+          "completed": 1,
+          "cancelled": 0
+        }
+      },
+      "cache_warmup": {
+        "wall_ms": 0.00259999999840943,
+        "process_cpu_ms": 0.0026000000000192536,
+        "fake_fetch": {
+          "started": 0,
+          "completed": 0,
+          "cancelled": 0
+        }
+      },
+      "steady_state": {
+        "wall_ms": 1509.1896790000021,
+        "process_cpu_ms": 7.284760000000001,
+        "status_request_ms": {
+          "count": 10,
+          "unit": "ms",
+          "samples": [
+            151.009776,
+            151.038181,
+            150.838472,
+            150.979449,
+            150.901378,
+            150.936155,
+            150.8134,
+            150.916243,
+            150.894487,
+            150.809846
+          ],
+          "p50": 150.908811,
+          "p95": 151.025399,
+          "p99": 151.035625,
+          "max": 151.038181
+        },
+        "camera_states": [
+          "ok",
+          "ok",
+          "ok",
+          "ok",
+          "ok",
+          "ok",
+          "ok",
+          "ok",
+          "ok",
+          "ok"
+        ],
+        "fake_fetch": {
+          "started": 10,
+          "completed": 10,
+          "cancelled": 0
+        }
+      },
+      "fake_fetch_total": {
+        "started": 11,
+        "completed": 11,
+        "cancelled": 0
+      },
+      "passed_session_count": 0,
+      "after_session_reused_in_steady_state": null,
+      "cache_ttl_s": null,
+      "transport_boundary": "fetch_json is mocked; no TCP/connect timing or baseline session creation measured"
+    },
+    "cpu_sampling": {
+      "wall_ms": 0.5054320000006385,
+      "process_cpu_ms": 0.5056509999999959,
+      "process_creations": 10,
+      "process_sample_calls": 10,
+      "system_sample_calls": 10,
+      "warmup_count": 0,
+      "reported_available_count": 10,
+      "reported_zero_count": 10,
+      "valid_window_count": 0,
+      "samples": [
+        {
+          "available": true,
+          "value": 0.0
+        },
+        {
+          "available": true,
+          "value": 0.0
+        },
+        {
+          "available": true,
+          "value": 0.0
+        },
+        {
+          "available": true,
+          "value": 0.0
+        },
+        {
+          "available": true,
+          "value": 0.0
+        },
+        {
+          "available": true,
+          "value": 0.0
+        },
+        {
+          "available": true,
+          "value": 0.0
+        },
+        {
+          "available": true,
+          "value": 0.0
+        },
+        {
+          "available": true,
+          "value": 0.0
+        },
+        {
+          "available": true,
+          "value": 0.0
+        }
+      ],
+      "all_intervals_none": true
+    }
+  },
+  "after": {
+    "feedback": {
+      "wall_ms": 18.44404699999913,
+      "process_cpu_ms": 8.027555000000019,
+      "request_ms": {
+        "count": 10,
+        "unit": "ms",
+        "samples": [
+          1.659854,
+          1.504856,
+          1.379462,
+          1.364337,
+          1.381937,
+          1.420543,
+          1.390715,
+          1.381755,
+          1.388477,
+          1.387923
+        ],
+        "p50": 1.3882,
+        "p95": 1.590105,
+        "p99": 1.645904,
+        "max": 1.659854
+      },
+      "read_calls": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    "stop": {
+      "wall_ms": 522.9267429999993,
+      "process_cpu_ms": 16.19126599999998,
+      "planned_stop_to_write_ms": {
+        "count": 10,
+        "unit": "ms",
+        "samples": [
+          30.418026,
+          30.50853,
+          30.583544,
+          30.473042,
+          30.447495,
+          30.458547,
+          30.464763,
+          30.475747,
+          30.484842,
+          30.555944
+        ],
+        "p50": 30.474395,
+        "p95": 30.571124,
+        "p99": 30.58106,
+        "max": 30.583544
+      },
+      "stop_submission_lateness_ms": {
+        "count": 10,
+        "unit": "ms",
+        "samples": [
+          0.749511,
+          0.732416,
+          0.879509,
+          0.787647,
+          0.761766,
+          0.773242,
+          0.764591,
+          0.754786,
+          0.776262,
+          0.878664
+        ],
+        "p50": 0.768917,
+        "p95": 0.879129,
+        "p99": 0.879433,
+        "max": 0.879509
+      },
+      "submitted_stop_to_write_ms": {
+        "count": 10,
+        "unit": "ms",
+        "samples": [
+          29.668515,
+          29.776114,
+          29.704035,
+          29.685395,
+          29.685729,
+          29.685305,
+          29.700172,
+          29.720961,
+          29.70858,
+          29.67728
+        ],
+        "p50": 29.692951,
+        "p95": 29.751295,
+        "p99": 29.77115,
+        "max": 29.776114
+      },
+      "heartbeat_max_lag_ms": {
+        "count": 10,
+        "unit": "ms",
+        "samples": [
+          0.397842,
+          0.444558,
+          0.526329,
+          0.422422,
+          0.415116,
+          0.412562,
+          0.411119,
+          0.411337,
+          0.433328,
+          0.54373
+        ],
+        "p50": 0.418769,
+        "p95": 0.5359,
+        "p99": 0.542164,
+        "max": 0.54373
+      },
+      "feedback_request_ms": {
+        "count": 10,
+        "unit": "ms",
+        "samples": [
+          50.554816,
+          50.658341,
+          50.707057,
+          50.58826,
+          50.557914,
+          50.566544,
+          50.589024,
+          50.594865,
+          50.59747,
+          50.699062
+        ],
+        "p50": 50.591945,
+        "p95": 50.703459,
+        "p99": 50.706337,
+        "max": 50.707057
+      }
+    },
+    "camera": {
+      "wall_ms": 244.5136149999989,
+      "process_cpu_ms": 65.53140100000002,
+      "cold_start": {
+        "wall_ms": 88.12842300000057,
+        "process_cpu_ms": 59.30652799999997,
+        "status_request_ms": {
+          "count": 1,
+          "unit": "ms",
+          "samples": [
+            88.028511
+          ],
+          "p50": 88.028511,
+          "p95": 88.028511,
+          "p99": 88.028511,
+          "max": 88.028511
+        },
+        "camera_states": [
+          "unknown"
+        ],
+        "fake_fetch": {
+          "started": 1,
+          "completed": 0,
+          "cancelled": 0
+        }
+      },
+      "cache_warmup": {
+        "wall_ms": 150.32997499999823,
+        "process_cpu_ms": 0.14073199999997676,
+        "fake_fetch": {
+          "started": 0,
+          "completed": 1,
+          "cancelled": 0
+        }
+      },
+      "steady_state": {
+        "wall_ms": 5.491013000000322,
+        "process_cpu_ms": 5.519208000000053,
+        "status_request_ms": {
+          "count": 10,
+          "unit": "ms",
+          "samples": [
+            0.732357,
+            0.517677,
+            0.694571,
+            0.501622,
+            0.441131,
+            0.45742,
+            0.601209,
+            0.454205,
+            0.40818,
+            0.64273
+          ],
+          "p50": 0.509649,
+          "p95": 0.715353,
+          "p99": 0.728956,
+          "max": 0.732357
+        },
+        "camera_states": [
+          "ok",
+          "ok",
+          "ok",
+          "ok",
+          "ok",
+          "ok",
+          "ok",
+          "ok",
+          "ok",
+          "ok"
+        ],
+        "fake_fetch": {
+          "started": 0,
+          "completed": 0,
+          "cancelled": 0
+        }
+      },
+      "fake_fetch_total": {
+        "started": 1,
+        "completed": 1,
+        "cancelled": 0
+      },
+      "passed_session_count": 1,
+      "after_session_reused_in_steady_state": true,
+      "cache_ttl_s": 1.0,
+      "transport_boundary": "fetch_json is mocked; no TCP/connect timing or baseline session creation measured"
+    },
+    "cpu_sampling": {
+      "wall_ms": 0.6072340000002896,
+      "process_cpu_ms": 0.6075339999999652,
+      "process_creations": 1,
+      "process_sample_calls": 10,
+      "system_sample_calls": 10,
+      "warmup_count": 1,
+      "reported_available_count": 9,
+      "reported_zero_count": 0,
+      "valid_window_count": 9,
+      "samples": [
+        {
+          "available": false,
+          "reason": "warming_up",
+          "sample_window_ms": 0.0,
+          "sampled_monotonic_s": 1.0
+        },
+        {
+          "available": true,
+          "value": 125.0,
+          "sample_window_ms": 250.0,
+          "sampled_monotonic_s": 1.25
+        },
+        {
+          "available": true,
+          "value": 125.0,
+          "sample_window_ms": 250.0,
+          "sampled_monotonic_s": 1.5
+        },
+        {
+          "available": true,
+          "value": 125.0,
+          "sample_window_ms": 250.0,
+          "sampled_monotonic_s": 1.75
+        },
+        {
+          "available": true,
+          "value": 125.0,
+          "sample_window_ms": 250.0,
+          "sampled_monotonic_s": 2.0
+        },
+        {
+          "available": true,
+          "value": 125.0,
+          "sample_window_ms": 250.0,
+          "sampled_monotonic_s": 2.25
+        },
+        {
+          "available": true,
+          "value": 125.0,
+          "sample_window_ms": 250.0,
+          "sampled_monotonic_s": 2.5
+        },
+        {
+          "available": true,
+          "value": 125.0,
+          "sample_window_ms": 250.0,
+          "sampled_monotonic_s": 2.75
+        },
+        {
+          "available": true,
+          "value": 125.0,
+          "sample_window_ms": 250.0,
+          "sampled_monotonic_s": 3.0
+        },
+        {
+          "available": true,
+          "value": 125.0,
+          "sample_window_ms": 250.0,
+          "sampled_monotonic_s": 3.25
+        }
+      ],
+      "all_intervals_none": true
+    }
+  }
+}

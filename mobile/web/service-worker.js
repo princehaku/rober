@@ -1,4 +1,4 @@
-const CACHE_VERSION = "2026.05.19-mobile-pwa-cache-recovery-v2";
+const CACHE_VERSION = "2026.09.17-control-status-v1";
 const CACHE_NAME = `rober-mobile-shell-${CACHE_VERSION}`;
 const APP_SHELL_URL = "./index.html";
 const OFFLINE_URL = "./offline.html";
@@ -27,7 +27,7 @@ function isControlOrDynamicRequest(request) {
     path.startsWith("/robots/") ||
     path.includes("/commands") ||
     path.includes("/ack") ||
-    path.includes("/diagnostics") ||
+    (path.includes("/diagnostics") && !path.endsWith("/diagnostics.js")) ||
     path === "/api/collect" ||
     path === "/api/dropoff/confirm" ||
     path === "/api/cancel"
@@ -42,7 +42,9 @@ function isNavigationRequest(request) {
 function isShellAssetRequest(request) {
   const url = new URL(request.url);
   // 当前 shell 关键文件也优先走网络，离线时才回退到本版本缓存。
-  return SHELL_URLS.some((asset) => url.pathname.endsWith(asset.replace("./", "/")));
+  // 诊断模块按需缓存，安装壳时不预取；URL 版本防止与旧入口混用。
+  return url.pathname.endsWith("/diagnostics.js") ||
+    SHELL_URLS.some((asset) => url.pathname.endsWith(asset.replace("./", "/")));
 }
 
 function isOldShellCache(cacheName) {

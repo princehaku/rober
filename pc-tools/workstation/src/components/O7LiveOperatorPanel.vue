@@ -17,6 +17,8 @@ import type {
 
 const props = defineProps<{
   liveOperatorPanel: O7LiveOperatorPanelResponse | null;
+  // App 聚合首屏时延迟独立读取；独立使用本组件的旧入口仍保持兼容。
+  deferInitialStatus?: boolean;
 }>();
 
 const speed = ref(0.2);
@@ -33,6 +35,14 @@ const cameraPreviewMessage = ref("摄像头状态读取中");
 const cameraPeerId = ref<string | null>(null);
 const manualCommandInFlight = ref<O7LiveOperatorDirection | null>(null);
 const operatorCommandInFlight = ref<string | null>(null);
+// Stop 只合并自身的重复点击，不等待普通运动、采样或状态请求。
+const stopCommandInFlight = ref(false);
+// 每次操作递增版本，旧请求完成后不能覆盖较新的 Stop 回执。
+let commandMessageVersion = 0;
+// 展示状态另用采样版本，避免把命令消息顺序和状态新鲜度混为一体。
+let directStatusVersion = 0;
+// 只读合并承诺独立于动作通道，任何状态等待都不能阻塞 Stop。
+let directStatusRequest: Promise<void> | null = null;
 const operatorEvidenceRef = ref("operator_field_report_pending");
 const operatorReportNote = ref("not_proven: waiting for field evidence");
 const mapId = ref("latest");
@@ -474,17 +484,47 @@ async function refreshCameraSmoke(): Promise<void> {
   }
 }
 
-async function refreshDirectUpperStatus(): Promise<void> {
-  // 该入口只读 PC 本机 direct status；不会触发 stop/manual，也不会绕过后端 guardrail。
+// 聚合快照到达后替换显示，旧的独立状态请求不能再覆盖它。
+watch(() => props.liveOperatorPanel, (panel) => {
+  if (panel?.direct_upper_status) {
+    // 新聚合结果优先，旧的独立回读继续完成但不再提交到页面。
+    directStatusVersion += 1;
+    directUpperStatus.value = panel.direct_upper_status;
+    directUpperError.value = "";
+    directUpperLoading.value = false;
+  } else if (panel && props.deferInitialStatus) {
+    // 兼容尚未升级的 PC API，只在其缺少聚合字段时补读一次。
+    void refreshDirectUpperStatus();
+  } else if (!panel && props.deferInitialStatus) {
+    directStatusVersion += 1;
+    // 刷新失败后清空旧状态，媒体会话保留也不能显示旧状态为新鲜证据。
+    directUpperStatus.value = null;
+  }
+}, { immediate: true });
+
+function refreshDirectUpperStatus(): Promise<void> {
+  // 仅合并在途只读请求；结果不缓存，也不写入动作回执文案。
+  if (directStatusRequest) return directStatusRequest;
+  // 在请求发起时固定版本，后续聚合刷新会使这份结果失效。
+  const version = ++directStatusVersion;
   directUpperLoading.value = true;
   directUpperError.value = "";
-  try {
-    directUpperStatus.value = await getO7DirectUpperStatus();
-  } catch (error) {
-    directUpperError.value = error instanceof Error ? error.message : "direct_upper_status_unavailable";
-  } finally {
-    directUpperLoading.value = false;
-  }
+  directStatusRequest = (async () => {
+    try {
+      const status = await getO7DirectUpperStatus();
+      if (version === directStatusVersion) directUpperStatus.value = status;
+    } catch (error) {
+      // 旧读取失败也不能覆盖新快照的成功状态。
+      if (version === directStatusVersion) {
+        directUpperError.value = error instanceof Error ? error.message : "direct_upper_status_unavailable";
+      }
+    } finally {
+      if (version === directStatusVersion) directUpperLoading.value = false;
+      // 结束后立刻释放承诺，不将结果变成隐式状态缓存。
+      directStatusRequest = null;
+    }
+  })();
+  return directStatusRequest;
 }
 
 async function waitForIceGatheringComplete(peerConnection: RTCPeerConnection): Promise<void> {
@@ -648,6 +688,18 @@ function commandResultMessage(action: string, result: O7DirectUpperApiCommandRes
     ? "；read-only map proof latest，不启动 SLAM/AMCL/Nav2；not_proven=AMCL/Nav2/PC WASD/HIL/delivery"
     : "";
   const upperCopy = upperResultCopy(result);
+  // 串口忙属于可重试的业务拒绝；抢占只确认请求被中断，不确认物理停车。
+  if (result.upper_error?.type === "serial_busy") {
+    return `${action} 未执行：串口忙（serial_busy），请稍后重试；${http}；safe_to_control=false`;
+  }
+  // 被抢占的 manual 可能仍返回 HTTP200，必须在通用成功分支前判断。
+  if (result.preempted) {
+    return `${action} 已被 Stop 中断（preempted）；${ack} / ${t1001}；safe_to_control=false`;
+  }
+  // 新板端显式拒绝优先于传输成功；旧板端缺失字段继续原有语义。
+  if (result.upper_accepted === false) {
+    return `${action} 未接受：${result.upper_error?.type ?? result.failure_reason}；${http}；safe_to_control=false`;
+  }
   if (result.upper_api_base_url_source === "fixture" && result.accepted_by_workstation) {
     return `${action} fixture 已记录（仍锁定）：${request.path}；source=${source}；adapter=${adapter}；evidence_ref=${evidence}；${ack} / ${t1001}；锁定原因 ${blockers}；safe_to_control=false${upperCopy}${scanProofBoundary}${mapProofBoundary}`;
   }
@@ -693,14 +745,20 @@ function ensureOperatorConfirmed(action: string): boolean {
 
 async function sendManualControl(direction: O7LiveOperatorDirection): Promise<void> {
   // 方向按钮只调用 PC 同源 direct-upper manual 代理；浏览器不直连 8787、不发 /cmd_vel、不构造 WAVE ROVER JSON。
+  // Space/X 与所有 stop 方向入口都走独立优先通道。
+  if (direction === "stop") return sendStopControl();
   const action = directionLabels[direction];
   if (!ensureOperatorConfirmed(action)) {
     return;
   }
+  // 停车正在提交时禁止插入新动作，避免新方向紧随停车写入。
+  if (stopCommandInFlight.value) return;
   if (manualCommandInFlight.value) {
     lockMessage.value = `${action} 未发送：上一条 ${directionLabels[manualCommandInFlight.value]} 仍在等待；safe_to_control=false`;
     return;
   }
+  // 当前动作独占这版文案，后发 Stop 会立即使旧响应失效。
+  const messageVersion = ++commandMessageVersion;
   manualCommandInFlight.value = direction;
   const pulse = manualPulseForDirection(direction);
   lockMessage.value = `${action} 发送中：通过 PC 同源 /api/o7/direct-upper/base/manual；safe_to_control=false`;
@@ -712,12 +770,16 @@ async function sendManualControl(direction: O7LiveOperatorDirection): Promise<vo
       operatorEvidenceRefValue.value,
       fixtureMode.value,
     );
-    lockMessage.value = commandResultMessage(action, result);
-    await refreshDirectUpperStatus();
+    if (messageVersion === commandMessageVersion) {
+      lockMessage.value = commandResultMessage(action, result);
+      // ACK 立即释放控制按钮，状态回读留在后台并合并在途请求。
+      void refreshDirectUpperStatus();
+    }
   } catch (error) {
     const reason = error instanceof Error ? error.message : "manual_request_failed";
-    lockMessage.value = `${action} 失败：${reason}；只调用 PC 同源 direct-upper manual；safe_to_control=false`;
+    if (messageVersion === commandMessageVersion) lockMessage.value = `${action} 失败：${reason}；只调用 PC 同源 direct-upper manual；safe_to_control=false`;
   } finally {
+    // 这里只释放运动请求锁，后台状态回读不延长按键占用。
     manualCommandInFlight.value = null;
   }
 }
@@ -727,21 +789,22 @@ async function sendStopControl(): Promise<void> {
   if (!ensureOperatorConfirmed("Stop")) {
     return;
   }
-  if (operatorCommandInFlight.value || manualCommandInFlight.value) {
-    lockMessage.value = "Stop 未发送：仍有上一条控制请求在等待；safe_to_control=false";
-    return;
-  }
-  operatorCommandInFlight.value = "stop";
+  // 停车正在提交时禁止插入新动作，避免新方向紧随停车写入。
+  if (stopCommandInFlight.value) return;
+  // 当前动作独占这版文案，后发 Stop 会立即使旧响应失效。
+  const messageVersion = ++commandMessageVersion;
+  stopCommandInFlight.value = true;
   lockMessage.value = "Stop 发送中：通过 PC 同源 /api/o7/direct-upper/base/stop；safe_to_control=false";
   try {
     const result = await postO7DirectUpperStop(operatorEvidenceRefValue.value, fixtureMode.value);
-    lockMessage.value = commandResultMessage("Stop", result);
-    await refreshDirectUpperStatus();
+    if (messageVersion === commandMessageVersion) lockMessage.value = commandResultMessage("Stop", result);
+    void refreshDirectUpperStatus();
   } catch (error) {
     const reason = error instanceof Error ? error.message : "stop_request_failed";
-    lockMessage.value = `Stop 失败：${reason}；只调用 PC 同源 direct-upper stop；safe_to_control=false`;
+    if (messageVersion === commandMessageVersion) lockMessage.value = `Stop 失败：${reason}；只调用 PC 同源 direct-upper stop；safe_to_control=false`;
   } finally {
-    operatorCommandInFlight.value = null;
+    // Stop 只管理自己的在途标记，不能提前释放尚未返回的普通请求。
+    stopCommandInFlight.value = false;
   }
 }
 
@@ -750,10 +813,14 @@ async function sendOperatorControl(control: (typeof operatorControls.value)[numb
   if (!ensureOperatorConfirmed(control.label)) {
     return;
   }
+  // 停车正在提交时禁止插入新动作，避免新方向紧随停车写入。
+  if (stopCommandInFlight.value) return;
   if (operatorCommandInFlight.value || manualCommandInFlight.value) {
     lockMessage.value = `${control.label} 未发送：上一条请求仍在等待；safe_to_control=false`;
     return;
   }
+  // 当前动作独占这版文案，后发 Stop 会立即使旧响应失效。
+  const messageVersion = ++commandMessageVersion;
   operatorCommandInFlight.value = control.id;
   lockMessage.value = `${control.label} 发送中：evidence_ref=${operatorEvidenceRefValue.value}；safe_to_control=false`;
   try {
@@ -762,11 +829,13 @@ async function sendOperatorControl(control: (typeof operatorControls.value)[numb
       evidence_ref: operatorEvidenceRefValue.value,
       fixture_mode: fixtureMode.value,
     });
-    lockMessage.value = commandResultMessage(control.label, result);
-    await refreshDirectUpperStatus();
+    if (messageVersion === commandMessageVersion) {
+      lockMessage.value = commandResultMessage(control.label, result);
+      void refreshDirectUpperStatus();
+    }
   } catch (error) {
     const reason = error instanceof Error ? error.message : `${control.id}_request_failed`;
-    lockMessage.value = `${control.label} 失败：${reason}；只调用 PC 同源 direct-upper 代理；safe_to_control=false`;
+    if (messageVersion === commandMessageVersion) lockMessage.value = `${control.label} 失败：${reason}；只调用 PC 同源 direct-upper 代理；safe_to_control=false`;
   } finally {
     operatorCommandInFlight.value = null;
   }
@@ -777,10 +846,14 @@ async function sendOperatorReport(): Promise<void> {
   if (!ensureOperatorConfirmed("Operator report")) {
     return;
   }
+  // 停车正在提交时禁止插入新动作，避免新方向紧随停车写入。
+  if (stopCommandInFlight.value) return;
   if (operatorCommandInFlight.value || manualCommandInFlight.value) {
     lockMessage.value = "Operator report 未发送：上一条请求仍在等待；safe_to_control=false";
     return;
   }
+  // 当前动作独占这版文案，后发 Stop 会立即使旧响应失效。
+  const messageVersion = ++commandMessageVersion;
   operatorCommandInFlight.value = "operator_report";
   lockMessage.value = `Operator report 发送中：evidence_ref=${operatorEvidenceRefValue.value}；safe_to_control=false`;
   try {
@@ -789,11 +862,13 @@ async function sendOperatorReport(): Promise<void> {
       note: operatorReportNote.value,
       fixture_mode: fixtureMode.value,
     });
-    lockMessage.value = commandResultMessage("Operator report", result);
-    await refreshDirectUpperStatus();
+    if (messageVersion === commandMessageVersion) {
+      lockMessage.value = commandResultMessage("Operator report", result);
+      void refreshDirectUpperStatus();
+    }
   } catch (error) {
     const reason = error instanceof Error ? error.message : "operator_report_failed";
-    lockMessage.value = `Operator report 失败：${reason}；没有报告不得把现场链路写成完成；safe_to_control=false`;
+    if (messageVersion === commandMessageVersion) lockMessage.value = `Operator report 失败：${reason}；没有报告不得把现场链路写成完成；safe_to_control=false`;
   } finally {
     operatorCommandInFlight.value = null;
   }
@@ -816,7 +891,7 @@ onMounted(() => {
   // 首屏只读 camera/direct 状态；offer 与 manual 都必须由用户按钮触发。
   window.addEventListener("keydown", handleManualKeydown);
   void refreshCameraSmoke();
-  void refreshDirectUpperStatus();
+  if (!props.deferInitialStatus) void refreshDirectUpperStatus();
 });
 
 onBeforeUnmount(() => {
@@ -929,11 +1004,11 @@ onBeforeUnmount(() => {
         </div>
       </div>
       <div class="remote-pad" aria-label="方向控制">
-        <button type="button" class="pad-button forward" :disabled="Boolean(manualCommandInFlight)" @click="sendManualControl('forward')">前进</button>
-        <button type="button" class="pad-button left" :disabled="Boolean(manualCommandInFlight)" @click="sendManualControl('left')">左转</button>
-        <button type="button" class="pad-button stop" :disabled="Boolean(manualCommandInFlight || operatorCommandInFlight)" @click="sendStopControl">Stop</button>
-        <button type="button" class="pad-button right" :disabled="Boolean(manualCommandInFlight)" @click="sendManualControl('right')">右转</button>
-        <button type="button" class="pad-button back" :disabled="Boolean(manualCommandInFlight)" @click="sendManualControl('back')">后退</button>
+        <button type="button" class="pad-button forward" :disabled="Boolean(manualCommandInFlight || stopCommandInFlight)" @click="sendManualControl('forward')">前进</button>
+        <button type="button" class="pad-button left" :disabled="Boolean(manualCommandInFlight || stopCommandInFlight)" @click="sendManualControl('left')">左转</button>
+        <button type="button" class="pad-button stop" :disabled="stopCommandInFlight" @click="sendStopControl">Stop</button>
+        <button type="button" class="pad-button right" :disabled="Boolean(manualCommandInFlight || stopCommandInFlight)" @click="sendManualControl('right')">右转</button>
+        <button type="button" class="pad-button back" :disabled="Boolean(manualCommandInFlight || stopCommandInFlight)" @click="sendManualControl('back')">后退</button>
       </div>
       <label class="speed-control">
         <span>速度 {{ speed.toFixed(2) }} {{ liveOperatorPanel?.control.speed.unit ?? "m/s" }}</span>
@@ -988,7 +1063,7 @@ onBeforeUnmount(() => {
           :key="control.id"
           type="button"
           class="primary-link operator-button"
-          :disabled="Boolean(operatorCommandInFlight || manualCommandInFlight)"
+          :disabled="Boolean(operatorCommandInFlight || manualCommandInFlight || stopCommandInFlight)"
           @click="sendOperatorControl(control)"
         >
           {{ control.label }}
@@ -1001,7 +1076,7 @@ onBeforeUnmount(() => {
       <button
         type="button"
         class="primary-link operator-button"
-        :disabled="Boolean(operatorCommandInFlight || manualCommandInFlight)"
+        :disabled="Boolean(operatorCommandInFlight || manualCommandInFlight || stopCommandInFlight)"
         @click="sendOperatorReport"
       >
         Report evidence ref

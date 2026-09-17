@@ -7,6 +7,14 @@ from pathlib import Path
 
 WEB_ROOT = Path(__file__).resolve().parent
 REPO_ROOT = WEB_ROOT.parent.parent
+def read_web_source(relative):
+    # 分模块后显式组合两份源码，所有原有安全断言保持有效。
+    source = (WEB_ROOT / relative).read_text(encoding="utf-8")
+    if relative == "app.js":
+        source += "\n" + (WEB_ROOT / "diagnostics.js").read_text(encoding="utf-8")
+    return source
+
+
 FIXTURE = WEB_ROOT / "fixtures" / "status.json"
 CLOUD_PENDING_ACK_FIXTURE = WEB_ROOT / "fixtures" / "robot_diagnostics_cloud_pending_ack_status_guard.json"
 CLOUD_ACK_LOOKUP_PENDING_FIXTURE = (
@@ -382,7 +390,7 @@ def load_tests(loader, tests, pattern):
 
 class CloudSupportHandoffSafeExportMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_cloud_support_handoff_safe_export_panel_is_read_only(self):
         app = self.read_web("app.js")
@@ -462,7 +470,7 @@ class CloudSupportHandoffSafeExportMobileTest(unittest.TestCase):
 
 class CloudCommandLifecycleAuditExportMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_cloud_command_lifecycle_audit_export_panel_is_read_only(self):
         app = self.read_web("app.js")
@@ -597,7 +605,7 @@ class CloudCommandLifecycleAuditExportMobileTest(unittest.TestCase):
 
 class CloudCommandLifecycleReplayDrillMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_cloud_command_lifecycle_replay_drill_panel_is_read_only(self):
         app = self.read_web("app.js")
@@ -734,7 +742,7 @@ class CloudCommandLifecycleReplayDrillMobileTest(unittest.TestCase):
 
 class CloudCommandLifecycleReplayAcceptancePacketMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_cloud_command_lifecycle_replay_acceptance_packet_panel_is_read_only(self):
         app = self.read_web("app.js")
@@ -879,7 +887,7 @@ class CloudCommandLifecycleReplayAcceptancePacketMobileTest(unittest.TestCase):
 
 class CloudCommandLifecycleReplayAcceptancePacketMobileExportPanelTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_cloud_command_lifecycle_replay_acceptance_packet_mobile_export_panel_is_read_only(self):
         app = self.read_web("app.js")
@@ -1011,7 +1019,7 @@ class CloudCommandLifecycleReplayAcceptancePacketMobileExportPanelTest(unittest.
 
 class CloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_bundle_is_read_only(self):
         app = self.read_web("app.js")
@@ -1151,7 +1159,7 @@ class CloudCommandLifecycleReplayAcceptancePacketSupportHandoffBundleTest(unitte
 
 class CloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseIntakeTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_intake_is_read_only(self):
         app = self.read_web("app.js")
@@ -1312,7 +1320,7 @@ class CloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseInta
 
 class CloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewDecisionTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_decision_is_read_only(self):
         app = self.read_web("app.js")
@@ -1479,7 +1487,7 @@ class CloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseRevi
 
 class CloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewHandoffTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_review_handoff_is_read_only(self):
         app = self.read_web("app.js")
@@ -1647,7 +1655,7 @@ class CloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseRevi
 
 class CloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckIntakeTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_intake_is_read_only(self):
         app = self.read_web("app.js")
@@ -1838,7 +1846,7 @@ class CloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseRevi
 
 class CloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckReviewDecisionTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_decision_is_read_only(self):
         app = self.read_web("app.js")
@@ -2031,7 +2039,7 @@ class CloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseRevi
 
 class CloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckReviewHandoffTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_review_handoff_is_read_only(self):
         app = self.read_web("app.js")
@@ -2227,7 +2235,7 @@ class CloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseRevi
 
 class CloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseReviewerAckFollowupEscalationStatusTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_cloud_command_lifecycle_replay_acceptance_packet_support_handoff_owner_response_reviewer_ack_followup_escalation_status_is_read_only(self):
         app = self.read_web("app.js")
@@ -2612,7 +2620,7 @@ class CloudCommandLifecycleReplayAcceptancePacketSupportHandoffOwnerResponseRevi
 
 class CloudExternalEvidenceReviewDecisionMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_cloud_external_evidence_review_decision_panel_is_read_only(self):
         app = self.read_web("app.js")
@@ -2742,7 +2750,7 @@ class CloudExternalEvidenceReviewDecisionMobileTest(unittest.TestCase):
 
 class CloudExternalEvidenceReviewHandoffMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_cloud_external_evidence_review_handoff_panel_is_read_only(self):
         app = self.read_web("app.js")
@@ -2873,7 +2881,7 @@ class CloudExternalEvidenceReviewHandoffMobileTest(unittest.TestCase):
 
 class VerifiedTerminalResultMaterialIntakeMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_verified_terminal_result_material_intake_panel_is_read_only(self):
         app = self.read_web("app.js")
@@ -3013,7 +3021,7 @@ class VerifiedTerminalResultMaterialIntakeMobileTest(unittest.TestCase):
 
 class VerifiedTerminalResultMaterialReviewDecisionMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_verified_terminal_result_material_review_decision_panel_is_read_only(self):
         app = self.read_web("app.js")
@@ -3166,7 +3174,7 @@ class VerifiedTerminalResultMaterialReviewDecisionMobileTest(unittest.TestCase):
 
 class VerifiedTerminalResultMaterialReviewHandoffMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_verified_terminal_result_material_review_handoff_panel_is_read_only(self):
         app = self.read_web("app.js")
@@ -3336,7 +3344,7 @@ class VerifiedTerminalResultMaterialReviewHandoffMobileTest(unittest.TestCase):
 
 class VerifiedTerminalResultMaterialFollowupEscalationStatusMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_verified_terminal_result_material_followup_escalation_status_panel_is_read_only(self):
         app = self.read_web("app.js")
@@ -3508,7 +3516,7 @@ class VerifiedTerminalResultMaterialFollowupEscalationStatusMobileTest(unittest.
 
 class VerifiedTerminalResultMaterialOwnerResponseIntakeMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_verified_terminal_result_material_owner_response_intake_panel_is_read_only(self):
         app = self.read_web("app.js")
@@ -3694,7 +3702,7 @@ class VerifiedTerminalResultMaterialOwnerResponseIntakeMobileTest(unittest.TestC
 
 class VerifiedTerminalResultMaterialOwnerResponseReviewDecisionMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_verified_terminal_result_material_owner_response_review_decision_panel_is_read_only(self):
         app = self.read_web("app.js")
@@ -3883,7 +3891,7 @@ class VerifiedTerminalResultMaterialOwnerResponseReviewDecisionMobileTest(unitte
 
 class VerifiedTerminalResultMaterialOwnerResponseReviewHandoffMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_verified_terminal_result_material_owner_response_review_handoff_panel_is_read_only(self):
         app = self.read_web("app.js")
@@ -4072,7 +4080,7 @@ class VerifiedTerminalResultMaterialOwnerResponseReviewHandoffMobileTest(unittes
 
 class VerifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_verified_terminal_result_material_owner_response_reviewer_ack_intake_panel_is_read_only(self):
         app = self.read_web("app.js")
@@ -4262,7 +4270,7 @@ class VerifiedTerminalResultMaterialOwnerResponseReviewerAckIntakeMobileTest(uni
 
 class VerifiedTerminalResultMaterialOwnerResponseReviewerAckReviewDecisionMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_verified_terminal_result_material_owner_response_reviewer_ack_review_decision_panel_is_read_only(self):
         app = self.read_web("app.js")
@@ -4456,7 +4464,7 @@ class VerifiedTerminalResultMaterialOwnerResponseReviewerAckReviewDecisionMobile
 
 class VerifiedTerminalResultMaterialOwnerResponseReviewerAckReviewHandoffMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_verified_terminal_result_material_owner_response_reviewer_ack_review_handoff_panel_is_read_only(self):
         app = self.read_web("app.js")
@@ -4656,7 +4664,7 @@ class VerifiedTerminalResultMaterialOwnerResponseReviewerAckReviewHandoffMobileT
 
 class CloudExternalEvidenceReviewHandoffFollowupEscalationStatusMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_cloud_external_evidence_review_handoff_followup_escalation_status_panel_is_read_only(self):
         app = self.read_web("app.js")
@@ -4808,7 +4816,7 @@ class CloudExternalEvidenceReviewHandoffFollowupEscalationStatusMobileTest(unitt
 
 class VerifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationStatusMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_verified_terminal_result_material_owner_response_reviewer_ack_followup_escalation_status_panel_is_read_only(self):
         app = self.read_web("app.js")
@@ -5026,7 +5034,7 @@ class VerifiedTerminalResultMaterialOwnerResponseReviewerAckFollowupEscalationSt
 
 class FieldEvidenceRerunMaterialDispatchMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_field_evidence_rerun_material_dispatch_panel_is_read_only(self):
         app = self.read_web("app.js")
@@ -5106,7 +5114,7 @@ class FieldEvidenceRerunMaterialDispatchMobileTest(unittest.TestCase):
 
 class FieldEvidenceRerunCallbackIntakeMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_field_evidence_rerun_callback_intake_panel_is_read_only(self):
         app = self.read_web("app.js")
@@ -5190,7 +5198,7 @@ class FieldEvidenceRerunCallbackIntakeMobileTest(unittest.TestCase):
 
 class CloudPendingAckStatusGuardMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_cloud_pending_ack_status_guard_is_consumed_fail_closed(self):
         app = self.read_web("app.js")
@@ -5258,7 +5266,7 @@ class CloudPendingAckStatusGuardMobileTest(unittest.TestCase):
 
 class CloudAckLookupPendingStatusGuardMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_cloud_ack_lookup_pending_status_guard_is_consumed_fail_closed(self):
         app = self.read_web("app.js")
@@ -5349,7 +5357,7 @@ class CloudAckLookupPendingStatusGuardMobileTest(unittest.TestCase):
 
 class CloudPhoneCommandApiMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_cloud_phone_command_api_submission_and_receipt_are_phone_safe(self):
         app = self.read_web("app.js")
@@ -5422,7 +5430,7 @@ class CloudPhoneCommandApiMobileTest(unittest.TestCase):
 
 class CloudCommandResultReconciliationMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_cloud_command_result_reconciliation_query_is_fail_closed(self):
         app = self.read_web("app.js")
@@ -5608,7 +5616,7 @@ class CloudCommandResultReconciliationMobileTest(unittest.TestCase):
 
 class CloudAuthFailureStatusGuardMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_cloud_auth_failure_status_guard_is_consumed_fail_closed(self):
         app = self.read_web("app.js")
@@ -5686,7 +5694,7 @@ class CloudAuthFailureStatusGuardMobileTest(unittest.TestCase):
 
 class CloudManualTakeoverCommandSafetyGuardMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_cloud_manual_takeover_command_safety_guard_is_consumed_fail_closed(self):
         app = self.read_web("app.js")
@@ -5772,7 +5780,7 @@ class CloudManualTakeoverCommandSafetyGuardMobileTest(unittest.TestCase):
 
 class CloudAckAcceptedResultPendingGuardMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_cloud_ack_accepted_result_pending_guard_is_consumed_fail_closed(self):
         app = self.read_web("app.js")
@@ -5864,7 +5872,7 @@ class CloudAckAcceptedResultPendingGuardMobileTest(unittest.TestCase):
 
 class CloudTerminalResultVerificationGuardMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_cloud_terminal_result_verification_guard_is_consumed_fail_closed(self):
         app = self.read_web("app.js")
@@ -5958,7 +5966,7 @@ class CloudTerminalResultVerificationGuardMobileTest(unittest.TestCase):
 
 class CloudCancelPendingCommandSafetyGuardMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_cloud_cancel_pending_command_safety_guard_is_consumed_fail_closed(self):
         app = self.read_web("app.js")
@@ -6046,7 +6054,7 @@ class CloudCancelPendingCommandSafetyGuardMobileTest(unittest.TestCase):
 
 class CloudCommandExpirySafetyGuardMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_cloud_command_expiry_safety_guard_is_consumed_fail_closed(self):
         app = self.read_web("app.js")
@@ -6121,7 +6129,7 @@ class CloudCommandExpirySafetyGuardMobileTest(unittest.TestCase):
 
 class CloudCommandIdempotencyVisibilityGuardMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_cloud_command_idempotency_visibility_guard_is_consumed_fail_closed(self):
         app = self.read_web("app.js")
@@ -6199,7 +6207,7 @@ class CloudCommandIdempotencyVisibilityGuardMobileTest(unittest.TestCase):
 
 class CloudPollBackoffRateLimitGuardMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_cloud_poll_backoff_rate_limit_guard_is_consumed_fail_closed(self):
         app = self.read_web("app.js")
@@ -6282,7 +6290,7 @@ class CloudPollBackoffRateLimitGuardMobileTest(unittest.TestCase):
 
 class CloudCommandIdConflictVisibilityGuardMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_cloud_command_id_conflict_visibility_guard_is_consumed_fail_closed(self):
         app = self.read_web("app.js")
@@ -6365,7 +6373,7 @@ class CloudCommandIdConflictVisibilityGuardMobileTest(unittest.TestCase):
 
 class CloudStatusStaleGuardMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_cloud_status_stale_guard_is_consumed_fail_closed(self):
         app = self.read_web("app.js")
@@ -6450,7 +6458,7 @@ class CloudStatusStaleGuardMobileTest(unittest.TestCase):
 
 class CloudMediaDegradationStatusGuardMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_cloud_unreachable_malformed_response_guard_is_consumed_fail_closed(self):
         app = self.read_web("app.js")
@@ -6620,7 +6628,7 @@ class CloudMediaDegradationStatusGuardMobileTest(unittest.TestCase):
 
 class CloudHostedMobileWebDegradationPassthroughTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_hosted_degradation_passthrough_fixture_covers_all_safe_states(self):
         app = self.read_web("app.js")
@@ -6729,7 +6737,7 @@ class CloudHostedMobileWebDegradationPassthroughTest(unittest.TestCase):
 
 class HardwareSensorProcurementExecutionPackMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_hardware_baseline_source_alignment_panel_is_read_only_and_exportable(self):
         app = self.read_web("app.js")
@@ -6892,7 +6900,7 @@ class HardwareSensorProcurementExecutionPackMobileTest(unittest.TestCase):
 
 class Pr5ReviewThreadCloseoutMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_pr5_review_thread_closeout_panel_is_read_only_and_whitelisted(self):
         app = self.read_web("app.js")
@@ -6981,7 +6989,7 @@ class Pr5ReviewThreadCloseoutMobileTest(unittest.TestCase):
 
 class HardwareRealMaterialEscalationRequestMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_hardware_real_material_escalation_request_panel_is_read_only(self):
         app = self.read_web("app.js")
@@ -7068,7 +7076,7 @@ class HardwareRealMaterialEscalationRequestMobileTest(unittest.TestCase):
 
 class Pr5VendorSourceReviewPacketMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_pr5_vendor_source_review_packet_panel_is_read_only(self):
         app = self.read_web("app.js")
@@ -7154,7 +7162,7 @@ class Pr5VendorSourceReviewPacketMobileTest(unittest.TestCase):
 
 class Pr5VendorSourceReviewReplyDispatchMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_pr5_vendor_source_review_reply_dispatch_panel_is_read_only(self):
         app = self.read_web("app.js")
@@ -7251,7 +7259,7 @@ class Pr5VendorSourceReviewReplyDispatchMobileTest(unittest.TestCase):
 
 class Pr5MandatorySensorSourceAlignmentMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_pr5_mandatory_sensor_source_alignment_panel_is_read_only(self):
         app = self.read_web("app.js")
@@ -7358,7 +7366,7 @@ class Pr5MandatorySensorSourceAlignmentMobileTest(unittest.TestCase):
 
 class Pr5MandatorySensorMaterialFollowupEscalationStatusMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_pr5_mandatory_sensor_material_followup_escalation_status_panel_is_read_only(self):
         app = self.read_web("app.js")
@@ -7532,7 +7540,7 @@ class Pr5MandatorySensorMaterialFollowupEscalationStatusMobileTest(unittest.Test
 
 class Pr5MandatorySensorMaterialOwnerResponseIntakeMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_pr5_mandatory_sensor_material_owner_response_intake_panel_is_read_only(self):
         app = self.read_web("app.js")
@@ -7711,7 +7719,7 @@ class Pr5MandatorySensorMaterialOwnerResponseIntakeMobileTest(unittest.TestCase)
 
 class Pr5MandatorySensorMaterialOwnerResponseReviewDecisionMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_pr5_mandatory_sensor_material_owner_response_review_decision_panel_is_read_only(self):
         app = self.read_web("app.js")
@@ -7893,7 +7901,7 @@ class Pr5MandatorySensorMaterialOwnerResponseReviewDecisionMobileTest(unittest.T
 
 class Pr5MandatorySensorMaterialOwnerResponseReviewHandoffMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_pr5_mandatory_sensor_material_owner_response_review_handoff_panel_is_read_only(self):
         app = self.read_web("app.js")
@@ -8088,7 +8096,7 @@ class Pr5MandatorySensorMaterialOwnerResponseReviewHandoffMobileTest(unittest.Te
 
 class Pr5MandatorySensorMaterialOwnerResponseReviewerAckIntakeMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_pr5_mandatory_sensor_material_owner_response_reviewer_ack_intake_panel_is_read_only(self):
         app = self.read_web("app.js")
@@ -8299,7 +8307,7 @@ class Pr5MandatorySensorMaterialOwnerResponseReviewerAckIntakeMobileTest(unittes
 
 class TaskTerminalCompletionMainlineMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_task_terminal_completion_mainline_panel_is_read_only(self):
         app = self.read_web("app.js")
@@ -8391,7 +8399,7 @@ class TaskTerminalCompletionMainlineMobileTest(unittest.TestCase):
 
 class RealMaterialReadinessBoardMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_real_material_readiness_board_panel_is_read_only_and_grouped(self):
         app = self.read_web("app.js")
@@ -8497,7 +8505,7 @@ class RealMaterialReadinessBoardMobileTest(unittest.TestCase):
 
 class RealMaterialEvidenceIntakeMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_real_material_evidence_intake_panel_is_read_only_and_whitelisted(self):
         app = self.read_web("app.js")
@@ -8623,7 +8631,7 @@ class RealMaterialEvidenceIntakeMobileTest(unittest.TestCase):
 
 class RealMaterialFollowupEscalationStatusMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_real_material_followup_escalation_status_panel_is_read_only_and_grouped(self):
         app = self.read_web("app.js")
@@ -8736,7 +8744,7 @@ class RealMaterialFollowupEscalationStatusMobileTest(unittest.TestCase):
 
 class TaskTerminalFieldMaterialIntakeMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_task_terminal_field_material_intake_panel_is_read_only(self):
         app = self.read_web("app.js")
@@ -8834,7 +8842,7 @@ class TaskTerminalFieldMaterialIntakeMobileTest(unittest.TestCase):
 
 class TaskTerminalFieldMaterialReviewDecisionMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_task_terminal_field_material_review_decision_panel_is_read_only(self):
         app = self.read_web("app.js")
@@ -8937,7 +8945,7 @@ class TaskTerminalFieldMaterialReviewDecisionMobileTest(unittest.TestCase):
 
 class MobilePwaCacheRecoveryGateTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_service_worker_uses_versioned_network_first_shell_recovery(self):
         service_worker = self.read_web("service-worker.js")
@@ -8946,7 +8954,7 @@ class MobilePwaCacheRecoveryGateTest(unittest.TestCase):
         doc = DOC.read_text(encoding="utf-8")
 
         # service-worker 必须 bump cache version，并在 activate 只清理旧 shell/offline cache。
-        self.assertIn("2026.05.19-mobile-pwa-cache-recovery-v2", service_worker)
+        self.assertIn("2026.09.17-control-status-v1", service_worker)
         self.assertIn("rober-mobile-shell-${CACHE_VERSION}", service_worker)
         self.assertIn('SHELL_CACHE_PREFIX = "rober-mobile-shell-"', service_worker)
         self.assertIn("cacheName.startsWith(SHELL_CACHE_PREFIX) && cacheName !== CACHE_NAME", service_worker)
@@ -9011,7 +9019,7 @@ class MobilePwaCacheRecoveryGateTest(unittest.TestCase):
 
 class MobilePwaFreshBrowserProofGateTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def read_gate(self):
         return (REPO_ROOT / "pc-tools" / "evidence" / "phone_browser_acceptance_gate.py").read_text(
@@ -9341,7 +9349,7 @@ class MobilePwaFreshBrowserProofGateTest(unittest.TestCase):
 
 class HardwareSensorProcurementReceiptIntakeMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_receipt_intake_panel_is_read_only_and_exportable(self):
         app = self.read_web("app.js")
@@ -9430,7 +9438,7 @@ class HardwareSensorProcurementReceiptIntakeMobileTest(unittest.TestCase):
 
 class HardwareSensorHilEntryConfigPrecheckMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_hil_entry_config_precheck_panel_is_read_only_and_exportable(self):
         app = self.read_web("app.js")
@@ -9521,7 +9529,7 @@ class HardwareSensorHilEntryConfigPrecheckMobileTest(unittest.TestCase):
 
 class HardwareSensorHilEntryReadinessReviewMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_hil_entry_readiness_review_panel_is_read_only_and_exportable(self):
         app = self.read_web("app.js")
@@ -9612,7 +9620,7 @@ class HardwareSensorHilEntryReadinessReviewMobileTest(unittest.TestCase):
 
 class HardwareSensorHilEntryExecutionPackMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_hil_entry_execution_pack_panel_is_read_only_and_exportable(self):
         app = self.read_web("app.js")
@@ -9713,7 +9721,7 @@ class HardwareSensorHilEntryExecutionPackMobileTest(unittest.TestCase):
 
 class HardwareSensorHilEntryCallbackIntakeMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_hil_entry_callback_intake_panel_is_read_only_and_exportable(self):
         app = self.read_web("app.js")
@@ -9813,7 +9821,7 @@ class HardwareSensorHilEntryCallbackIntakeMobileTest(unittest.TestCase):
 
 class HardwareSensorHilEntryCallbackReviewDecisionMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_hil_entry_callback_review_decision_panel_is_read_only_and_prefers_robot_alias(self):
         app = self.read_web("app.js")
@@ -9931,7 +9939,7 @@ class HardwareSensorHilEntryCallbackReviewDecisionMobileTest(unittest.TestCase):
 
 class HardwareSensorHilEntryCallbackReviewHandoffMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_hil_entry_callback_review_handoff_panel_is_read_only_and_prefers_robot_alias(self):
         app = self.read_web("app.js")
@@ -10045,7 +10053,7 @@ class HardwareSensorHilEntryCallbackReviewHandoffMobileTest(unittest.TestCase):
 
 class WaveRoverFeedbackReplayMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_wave_rover_feedback_replay_panel_is_read_only_and_fail_closed(self):
         app = self.read_web("app.js")
@@ -10134,7 +10142,7 @@ class WaveRoverFeedbackReplayMobileTest(unittest.TestCase):
 
 class WaveRoverHilPacketIntakeMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_wave_rover_hil_packet_intake_panel_is_read_only_and_exportable(self):
         app = self.read_web("app.js")
@@ -10230,7 +10238,7 @@ class WaveRoverHilPacketIntakeMobileTest(unittest.TestCase):
 
 class WaveRoverHilPacketReviewDecisionMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_wave_rover_hil_packet_review_decision_panel_is_read_only_and_exportable(self):
         app = self.read_web("app.js")
@@ -10329,7 +10337,7 @@ class WaveRoverHilPacketReviewDecisionMobileTest(unittest.TestCase):
 
 class WaveRoverHilPacketExecutionPackMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_wave_rover_hil_packet_execution_pack_panel_is_read_only_and_exportable(self):
         app = self.read_web("app.js")
@@ -10432,7 +10440,7 @@ class WaveRoverHilPacketExecutionPackMobileTest(unittest.TestCase):
 
 class WaveRoverHilPacketCollectionDrillMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_wave_rover_hil_packet_collection_drill_panel_is_read_only(self):
         app = self.read_web("app.js")
@@ -10531,7 +10539,7 @@ class WaveRoverHilPacketCollectionDrillMobileTest(unittest.TestCase):
 
 class RouteTaskTerminalCompletionRehearsalMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_terminal_completion_rehearsal_panel_is_read_only_and_exportable(self):
         app = self.read_web("app.js")
@@ -10614,7 +10622,7 @@ class RouteTaskTerminalCompletionRehearsalMobileTest(unittest.TestCase):
 
 class RouteTaskTerminalReviewDecisionMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_terminal_review_decision_panel_is_read_only_and_exportable(self):
         app = self.read_web("app.js")
@@ -10699,7 +10707,7 @@ class RouteTaskTerminalReviewDecisionMobileTest(unittest.TestCase):
 
 class RouteTaskFieldRetestExecutionPackMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_field_retest_execution_pack_panel_is_read_only_and_exportable(self):
         app = self.read_web("app.js")
@@ -10782,7 +10790,7 @@ class RouteTaskFieldRetestExecutionPackMobileTest(unittest.TestCase):
 
 class RouteTaskFieldRetestSessionHandoffMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_field_retest_session_handoff_panel_is_read_only_and_copy_gated(self):
         app = self.read_web("app.js")
@@ -10865,7 +10873,7 @@ class RouteTaskFieldRetestSessionHandoffMobileTest(unittest.TestCase):
 
 class RouteTaskFieldRetestResultIntakeMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_field_retest_result_intake_panel_is_read_only_and_copy_gated(self):
         app = self.read_web("app.js")
@@ -12405,7 +12413,7 @@ class RouteTaskFieldRetestResultIntakeMobileTest(unittest.TestCase):
 
 class RouteTaskFieldRetestCallbackIntakeMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_field_retest_callback_intake_panel_is_read_only_and_copy_gated(self):
         app = self.read_web("app.js")
@@ -12500,7 +12508,7 @@ class RouteTaskFieldRetestCallbackIntakeMobileTest(unittest.TestCase):
 
 class RouteTaskFieldRetestCallbackReviewDecisionMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_field_retest_callback_review_decision_panel_is_read_only_and_copy_gated(self):
         app = self.read_web("app.js")
@@ -12600,7 +12608,7 @@ class RouteTaskFieldRetestCallbackReviewDecisionMobileTest(unittest.TestCase):
 
 class RouteTaskFieldRetestReviewResultHandoffMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_field_retest_review_result_handoff_panel_is_read_only_and_copy_gated(self):
         app = self.read_web("app.js")
@@ -12698,7 +12706,7 @@ class RouteTaskFieldRetestReviewResultHandoffMobileTest(unittest.TestCase):
 
 class RouteTaskFieldRetestResultReviewIntakeMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_field_retest_result_review_intake_panel_is_read_only_and_copy_gated(self):
         app = self.read_web("app.js")
@@ -12800,7 +12808,7 @@ class RouteTaskFieldRetestResultReviewIntakeMobileTest(unittest.TestCase):
 
 class RouteTaskFieldRetestAcceptanceReviewDecisionMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_field_retest_acceptance_review_decision_panel_is_read_only_and_alias_first(self):
         app = self.read_web("app.js")
@@ -12908,7 +12916,7 @@ class RouteTaskFieldRetestAcceptanceReviewDecisionMobileTest(unittest.TestCase):
 
 class RouteTaskFieldRetestAcceptanceExecutionPackMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_field_retest_acceptance_execution_pack_panel_is_read_only_and_alias_first(self):
         app = self.read_web("app.js")
@@ -13019,7 +13027,7 @@ class RouteTaskFieldRetestAcceptanceExecutionPackMobileTest(unittest.TestCase):
 
 class RouteTaskFieldRetestAcceptanceExecutionCallbackIntakeMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_field_retest_acceptance_execution_callback_intake_panel_is_read_only_and_alias_first(self):
         app = self.read_web("app.js")
@@ -13156,7 +13164,7 @@ class RouteTaskFieldRetestAcceptanceExecutionCallbackIntakeMobileTest(unittest.T
 
 class RouteTaskFieldRetestAcceptanceExecutionCallbackReviewDecisionMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_field_retest_acceptance_execution_callback_review_decision_panel_is_read_only_and_alias_first(self):
         app = self.read_web("app.js")
@@ -13289,7 +13297,7 @@ class RouteTaskFieldRetestAcceptanceExecutionCallbackReviewDecisionMobileTest(un
 
 class RouteTaskFieldRetestAcceptanceExecutionCallbackReviewHandoffMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_field_retest_acceptance_execution_callback_review_handoff_panel_is_read_only(self):
         app = self.read_web("app.js")
@@ -13408,7 +13416,7 @@ class RouteTaskFieldRetestAcceptanceExecutionCallbackReviewHandoffMobileTest(uni
 
 class RouteTaskFieldRetestAcceptanceExecutionHandoffIntakeMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_field_retest_acceptance_execution_handoff_intake_panel_is_read_only(self):
         app = self.read_web("app.js")
@@ -13531,7 +13539,7 @@ class RouteTaskFieldRetestAcceptanceExecutionHandoffIntakeMobileTest(unittest.Te
 
 class RouteTaskFieldRetestAcceptanceExecutionRerunQueueMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_field_retest_acceptance_execution_rerun_queue_panel_is_read_only(self):
         app = self.read_web("app.js")
@@ -13654,7 +13662,7 @@ class RouteTaskFieldRetestAcceptanceExecutionRerunQueueMobileTest(unittest.TestC
 
 class RouteTaskFieldRetestAcceptanceExecutionRerunResultIntakeMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_field_retest_acceptance_execution_rerun_result_intake_panel_is_read_only(self):
         app = self.read_web("app.js")
@@ -13784,7 +13792,7 @@ class RouteTaskFieldRetestAcceptanceExecutionRerunResultIntakeMobileTest(unittes
 
 class RouteTaskFieldRetestAcceptanceExecutionRerunResultReviewDecisionMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_field_retest_acceptance_execution_rerun_result_review_decision_panel_is_read_only(self):
         app = self.read_web("app.js")
@@ -13914,7 +13922,7 @@ class RouteTaskFieldRetestAcceptanceExecutionRerunResultReviewDecisionMobileTest
 
 class RouteTaskFieldRetestAcceptanceExecutionRerunResultReviewHandoffMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_field_retest_acceptance_execution_rerun_result_review_handoff_panel_is_read_only(self):
         app = self.read_web("app.js")
@@ -14048,7 +14056,7 @@ class RouteTaskFieldRetestAcceptanceExecutionRerunResultReviewHandoffMobileTest(
 
 class RouteTaskFieldRetestResultReviewDecisionMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_field_retest_result_review_decision_panel_is_read_only_and_copy_gated(self):
         app = self.read_web("app.js")
@@ -15229,7 +15237,7 @@ class RouteTaskFieldRetestResultReviewDecisionMobileTest(unittest.TestCase):
 
 class ElevatorRealtimeActionFeedbackMobileTest(unittest.TestCase):
     def read_web(self, name):
-        return (WEB_ROOT / name).read_text(encoding="utf-8")
+        return read_web_source(name)
 
     def test_elevator_realtime_stage_consumes_current_step_whitelist(self):
         app = self.read_web("app.js")

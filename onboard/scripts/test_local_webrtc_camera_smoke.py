@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import asyncio
 import importlib.util
+import sys
+import threading
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -99,6 +101,192 @@ class FakeCv2:
     def VideoCapture(self, source, *_args):  # noqa: N802 - 模拟 OpenCV API 名称。
         self.opened_sources.append(source)
         return FakeCapture(source, self.outcomes)
+
+
+class FakeCpuPsutil:
+    """离线采样替身公开计数，性能探针可复用且不查询真实 CPU。"""
+
+    def __init__(self) -> None:
+        # 创建次数只统计 CPU 路径；内存诊断的独立 Process 不属于本探针。
+        self.process_creations = 0
+        self.process_sample_calls = 0
+        self.system_sample_calls = 0
+        self.intervals = []
+        # 显式故障开关验证恢复过程，钩子用于构造确定性的采样争用。
+        self.process_error = None
+        self.system_error = None
+        self.on_process_sample = None
+
+    def Process(self, _pid):  # noqa: N802 - 保留 psutil 的公开工厂名称。
+        # 工厂计数独立于读取计数，能够识别每请求重建对象的原始回归。
+        self.process_creations += 1
+        owner = self
+
+        class ProcessSample:
+            """每个实例的首个读数为零，用来捕获错误的反复重建。"""
+
+            calls = 0
+
+            def cpu_percent(self, interval=None):
+                owner.process_sample_calls += 1
+                owner.intervals.append(interval)
+                # 钩子在采样锁内执行，其他线程应当立即返回不可用。
+                if owner.on_process_sample is not None:
+                    owner.on_process_sample()
+                if owner.process_error is not None:
+                    raise owner.process_error
+                self.calls += 1
+                return 0.0 if self.calls == 1 else 125.0
+
+        return ProcessSample()
+
+    def cpu_percent(self, interval=None):
+        # 固定值只供路由验证；是否预热由待测采样器的线程窗口判断。
+        self.system_sample_calls += 1
+        self.intervals.append(interval)
+        if self.system_error is not None:
+            raise self.system_error
+        return 25.0
+
+
+class CpuPercentSamplerTest(unittest.TestCase):
+    """差分窗口与并发协议用可控时钟验证，不依赖机器当时的负载。"""
+
+    def setUp(self) -> None:
+        # 每项测试拥有独立基线，避免执行顺序改变预热与故障断言。
+        self.module = load_smoke_module()
+        self.fake = FakeCpuPsutil()
+        self.sampler = self.module.CpuPercentSampler()
+
+    def sample_at(self, at):
+        # 进程和系统读取都返回同一个时刻，让窗口断言保持确定性。
+        with mock.patch.object(self.module.time, "monotonic", return_value=at):
+            return self.sampler.sample(self.fake)
+
+    def test_reuses_process_and_reports_warmup_and_window(self) -> None:
+        """三个请求只创建一次对象，并提供两个可解释的差分窗口。"""
+        first, second, third = [self.sample_at(at) for at in (1.0, 1.25, 1.75)]
+        for name in ("process_cpu_percent", "system_cpu_percent"):
+            # 首样本不能向使用者显示有效的 0% CPU。
+            self.assertFalse(first[name]["available"])
+            self.assertEqual(first[name]["reason"], "warming_up")
+            self.assertNotIn("value", first[name])
+            # 不等长的间隔能揭示固定窗口或沿用首样本时间的错误。
+            self.assertEqual(second[name]["sample_window_ms"], 250.0)
+            self.assertEqual(third[name]["sample_window_ms"], 500.0)
+            self.assertTrue(second[name]["available"])
+        # 多核进程占用允许超过 100%，不能按系统百分比截断。
+        self.assertEqual(second["process_cpu_percent"]["value"], 125.0)
+        # 同时约束查询次数，防止修复过程中引入隐藏的额外 CPU 读取。
+        self.assertEqual(self.fake.process_creations, 1)
+        self.assertEqual(self.fake.process_sample_calls, 3)
+        self.assertEqual(self.fake.system_sample_calls, 3)
+        self.assertTrue(all(interval is None for interval in self.fake.intervals))
+
+    def test_zero_window_stays_unavailable(self) -> None:
+        """同刻度读取属于预热状态，后续请求仍能继续采样。"""
+        self.sample_at(1.0)
+        sample = self.sample_at(1.0)
+        # 连续请求碰到同一计时刻度时也不能宣称存在有效差分窗口。
+        self.assertFalse(sample["process_cpu_percent"]["available"])
+        self.assertEqual(sample["process_cpu_percent"]["sample_window_ms"], 0.0)
+
+    def test_process_and_system_failures_rebuild_and_rewarm(self) -> None:
+        """两种故障入口都恢复到新基线，避免只修复进程异常分支。"""
+        for error_field in ("process_error", "system_error"):
+            with self.subTest(error_field=error_field):
+                self.fake = FakeCpuPsutil()
+                self.sampler = self.module.CpuPercentSampler()
+                self.sample_at(1.0)
+                setattr(self.fake, error_field, RuntimeError("fake_cpu_read_failed"))
+                failed = self.sample_at(2.0)
+                # 部分读取失败后，恢复样本必须重新预热，不能沿用半更新基线。
+                setattr(self.fake, error_field, None)
+                warmup, valid = self.sample_at(3.0), self.sample_at(3.5)
+                # 先核对故障原因，再核对恢复窗口，避免只证明异常被吞掉。
+                for name in ("process_cpu_percent", "system_cpu_percent"):
+                    self.assertEqual(failed[name]["reason"], "psutil_runtime_error")
+                    self.assertEqual(warmup[name]["reason"], "warming_up")
+                    self.assertTrue(valid[name]["available"])
+                    self.assertEqual(valid[name]["sample_window_ms"], 500.0)
+                self.assertEqual(self.fake.process_creations, 2)
+
+    def test_dependency_absence_and_pid_change_reset_baselines(self) -> None:
+        """依赖缺失会清理缓存，进程身份变化也触发相同的恢复路径。"""
+        self.sample_at(1.0)
+        absent = self.sampler.sample(None)
+        self.assertEqual(absent["process_cpu_percent"]["reason"], "psutil_not_installed")
+        # 依赖恢复或进程身份变化均需重建，防止将旧进程窗口带入新进程。
+        self.assertEqual(self.sample_at(2.0)["process_cpu_percent"]["reason"], "warming_up")
+        with mock.patch.object(self.module.os, "getpid", return_value=-1):
+            self.assertEqual(self.sample_at(3.0)["process_cpu_percent"]["reason"], "warming_up")
+        # 统计覆盖初次、依赖恢复、身份变化三个阶段，不依赖内部字段。
+        self.assertEqual(self.fake.process_creations, 3)
+
+    def test_system_warmup_is_independent_for_each_thread(self) -> None:
+        """线程切换只影响系统 CPU 窗口，进程差分对象仍可安全共享。"""
+        self.sample_at(1.0)
+        samples = []
+        worker = threading.Thread(target=lambda: samples.extend((self.sample_at(2.0), self.sample_at(2.5))))
+        worker.start()
+        worker.join(timeout=2.0)
+        # 超时只负责暴露死锁，不作为 CPU 时延的性能测量结果。
+        self.assertFalse(worker.is_alive())
+        # 新线程共享进程对象，但 psutil 系统 CPU 的线程基线仍须单独预热。
+        self.assertTrue(samples[0]["process_cpu_percent"]["available"])
+        self.assertEqual(samples[0]["system_cpu_percent"]["reason"], "warming_up")
+        self.assertTrue(samples[1]["system_cpu_percent"]["available"])
+        # 回到原线程后，其窗口必须延续原线程的上次读数。
+        self.assertEqual(self.sample_at(3.0)["system_cpu_percent"]["sample_window_ms"], 2000.0)
+        self.assertEqual(self.fake.process_creations, 1)
+
+    def test_concurrent_request_does_not_wait_for_sampler(self) -> None:
+        """用事件顺序验证立即返回，避免使用机器速度相关的毫秒阈值。"""
+        entered, release, returned = threading.Event(), threading.Event(), threading.Event()
+        samples = []
+
+        def hold_sample():
+            # 第一线程停在 fake 内，竞争线程必须在 release 之前完成。
+            entered.set()
+            release.wait(timeout=3.0)
+
+        def compete():
+            samples.append(self.sampler.sample(self.fake))
+            returned.set()
+
+        self.fake.on_process_sample = hold_sample
+        owner = threading.Thread(target=lambda: self.sampler.sample(self.fake))
+        owner.start()
+        contender = threading.Thread(target=compete)
+        try:
+            self.assertTrue(entered.wait(timeout=1.0))
+            contender.start()
+            self.assertTrue(returned.wait(timeout=1.0))
+            self.assertEqual(samples[0]["process_cpu_percent"]["reason"], "sampling_in_progress")
+            # 竞争者不能调用后端，否则仍可能交错修改 psutil 内部基线。
+            self.assertEqual(self.fake.process_sample_calls, 1)
+        finally:
+            # 即使断言失败也释放工作线程，避免测试失败后拖住后续验收。
+            release.set()
+            owner.join(timeout=2.0)
+            if contender.ident is not None:
+                contender.join(timeout=2.0)
+        self.assertFalse(owner.is_alive())
+
+    def test_collector_reuses_service_sampler(self) -> None:
+        """替换公开依赖并走 collector，覆盖服务接线与非阻塞采样契约。"""
+        with (
+            # 注入模块不要求本机安装 psutil，回归在离线环境保持可运行。
+            mock.patch.dict(sys.modules, {"psutil": self.fake}),
+            mock.patch.object(self.module.importlib.util, "find_spec", return_value=object()),
+            mock.patch.object(self.module.time, "monotonic", side_effect=[1.0, 1.0, 1.5, 1.5]),
+        ):
+            first = self.module.collect_cpu_diagnostics()
+            second = self.module.collect_cpu_diagnostics()
+        # 验证实际 collector 复用服务级实例，避免仅测试了未接入的帮助类。
+        self.assertEqual(first["process_cpu_percent"]["reason"], "warming_up")
+        self.assertTrue(second["process_cpu_percent"]["available"])
+        self.assertEqual(self.fake.process_creations, 1)
 
 
 class LocalWebrtcCameraSmokeCleanupTest(unittest.TestCase):

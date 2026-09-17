@@ -36,6 +36,8 @@ const FIELD_DEFAULT_ALLOWED: UpperApiBaseUrlPolicy = "field_default_allowed";
 interface DirectUpperOptions {
   env?: NodeJS.ProcessEnv;
   body?: unknown;
+  // 单次聚合调用共享在途结果；完成后不缓存，不用于控制授权。
+  statusSnapshot?: Promise<RemoteJsonResult>;
 }
 
 interface RemoteJsonResult {
@@ -397,7 +399,9 @@ async function fetchUpperJson(
       body: method === "POST" ? JSON.stringify(body ?? {}) : undefined,
     });
     const json = asRecord(await response.json().catch(() => null));
-    const failureReason = response.ok ? (json ? "" : "bad_json") : `upper_http_${response.status}`;
+    // 业务拒绝保留板端原因；串口忙不能被包装为网关或网络故障。
+    const upperError = nestedRecord(json, "error");
+    const failureReason = response.ok ? (json ? "" : "bad_json") : stringField(upperError, "type", `upper_http_${response.status}`);
     return {
       request: requestResult(path, method, true, response.ok && Boolean(json), response.status, failureReason),
       json,
@@ -411,6 +415,11 @@ async function fetchUpperJson(
   } finally {
     clearTimeout(timeout);
   }
+}
+
+// 首屏两个摘要共用这一份只读采样，避免按组件重复读取上位机。
+export function fetchO7UpperStatus(env?: NodeJS.ProcessEnv): Promise<RemoteJsonResult> {
+  return fetchUpperJson(resolveFieldUpperBaseUrl(env).url, "/api/status", "GET");
 }
 
 function blockedStatus(baseUrl: ResolvedUpperBaseUrl, reason: string): O7DirectUpperApiStatusResponse {
@@ -567,7 +576,7 @@ export async function buildO7DirectUpperStatus(options: DirectUpperOptions = {})
 
   const [healthResult, statusResult] = await Promise.all([
     fetchUpperJson(baseUrl.url, "/health", "GET"),
-    fetchUpperJson(baseUrl.url, "/api/status", "GET"),
+    options.statusSnapshot ?? fetchO7UpperStatus(options.env),
   ]);
   const camera = nestedRecord(statusResult.json, "camera");
   const radar = nestedRecord(statusResult.json, "radar");
@@ -723,6 +732,8 @@ function commandResponse(
   const hardBlockedReasons = ["robot_ack_not_connected", "t1001_feedback_not_observed", "field_evidence_not_proven"];
   const fixtureBlockers = baseUrl.source === "fixture" ? ["fixture_mode_no_upper_runtime"] : [];
   const upperSummary = upperResultSummary(command, upperRequest, upperJson);
+  // 只提取已约定的错误字段，不复制板端任意调试数据到浏览器。
+  const upperError = nestedRecord(upperJson, "error");
   const isScanProofReadback = command === "radar_scan_proof_refresh" || command === "radar_scan_proof_latest";
   const isMapProofReadback = command === "map_proof_latest";
   const blockedReasons = uniqueStrings([
@@ -744,6 +755,13 @@ function commandResponse(
     adapter: DIRECT_UPPER_ADAPTER,
     command,
     accepted_by_workstation: acceptedByWorkstation,
+    // 接受与抢占属于上位机业务结果，独立于本地转发和固定安全边界。
+    upper_accepted: optionalBoolField(upperJson, "accepted") ?? undefined,
+    preempted: optionalBoolField(upperJson, "preempted") ?? undefined,
+    upper_error: upperError ? {
+      type: stringField(upperError, "type", "unknown"),
+      message: stringField(upperError, "message", ""),
+    } : undefined,
     upper_request: upperRequest,
     upper_result_summary: upperSummary,
     upper_api_base_url: baseUrl.url,
@@ -751,6 +769,8 @@ function commandResponse(
     cloud_relay_bypassed: true,
     pc_local_only: true,
     fail_closed: !acceptedByWorkstation
+      || optionalBoolField(upperJson, "accepted") === false
+      || optionalBoolField(upperJson, "preempted") === true
       || !upperRequest.ok
       || (command === "radar_scan_proof_refresh" && upperResultIsNotProven(upperSummary))
       || (isMapProofReadback && upperResultIsNotProven(upperSummary)),
@@ -839,7 +859,7 @@ async function proxyOperatorCommand(
   const timeoutMs = command === "radar_scan_proof_refresh" ? SCAN_PROOF_REFRESH_TIMEOUT_MS : REQUEST_TIMEOUT_MS;
   const remote = await fetchUpperJson(baseUrl.url, remotePath, method, remoteBody, timeoutMs);
   return {
-    status: remote.request.ok ? 200 : 502,
+    status: remote.request.ok ? 200 : remote.request.http_status === 409 ? 409 : 502,
     payload: commandResponse(
       schema,
       localEndpoint,
@@ -898,7 +918,7 @@ export async function proxyO7DirectUpperStop(options: DirectUpperOptions = {}): 
   }
   const remote = await fetchUpperJson(baseUrl.url, "/api/base/stop", "POST", {});
   return {
-    status: remote.request.ok ? 200 : 502,
+    status: remote.request.ok ? 200 : remote.request.http_status === 409 ? 409 : 502,
     payload: commandResponse(
       "trashbot.pc_tools_workstation.o7_direct_upper_stop.v1",
       "/api/o7/direct-upper/base/stop",
@@ -908,6 +928,8 @@ export async function proxyO7DirectUpperStop(options: DirectUpperOptions = {}): 
       remote.request,
       remote.request.ok ? "none" : remote.request.failure_reason || "upper_stop_failed",
       summary,
+      // 反馈与停车也保留业务拒绝信息，避免丢失串口仲裁原因。
+      remote.json,
     ),
   };
 }
@@ -958,7 +980,7 @@ export async function proxyO7DirectUpperFeedbackRequest(options: DirectUpperOpti
   }
   const remote = await fetchUpperJson(baseUrl.url, "/api/base/feedback-request", "POST", {});
   return {
-    status: remote.request.ok ? 200 : 502,
+    status: remote.request.ok ? 200 : remote.request.http_status === 409 ? 409 : 502,
     payload: commandResponse(
       "trashbot.pc_tools_workstation.o7_direct_upper_feedback_request.v1",
       "/api/o7/direct-upper/base/feedback-request",
@@ -968,6 +990,8 @@ export async function proxyO7DirectUpperFeedbackRequest(options: DirectUpperOpti
       remote.request,
       remote.request.ok ? "none" : remote.request.failure_reason || "upper_feedback_request_failed",
       summary,
+      // 反馈与停车也保留业务拒绝信息，避免丢失串口仲裁原因。
+      remote.json,
     ),
   };
 }
@@ -1058,7 +1082,7 @@ export async function proxyO7DirectUpperManual(options: DirectUpperOptions = {})
     MANUAL_REQUEST_TIMEOUT_MS,
   );
   return {
-    status: remote.request.ok ? 200 : 502,
+    status: remote.request.ok ? 200 : remote.request.http_status === 409 ? 409 : 502,
     payload: commandResponse(
       "trashbot.pc_tools_workstation.o7_direct_upper_manual.v1",
       "/api/o7/direct-upper/base/manual",
@@ -1068,6 +1092,7 @@ export async function proxyO7DirectUpperManual(options: DirectUpperOptions = {})
       remote.request,
       remote.request.ok ? "none" : remote.request.failure_reason || "upper_manual_failed",
       payloadSummary,
+      remote.json,
     ),
   };
 }

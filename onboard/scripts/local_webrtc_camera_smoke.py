@@ -14,6 +14,7 @@ import shutil
 import socket
 import subprocess
 import sys
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -87,6 +88,83 @@ def collect_temperature_diagnostics() -> dict[str, Any]:
     return {"available": True, "samples": samples}
 
 
+class CpuPercentSampler:
+    """复用进程差分基线；线程争用时跳过诊断，避免健康请求排队。"""
+
+    def __init__(self) -> None:
+        # 同一个 Process 的差分状态必须串行更新，不能交错读取并重置基线。
+        self._lock = threading.Lock()
+        self._reset()
+
+    def _reset(self) -> None:
+        """异常后同时清空两类窗口，下一次成功读取只建立新基线。"""
+        self._process: Any = None
+        self._backend: Any = None
+        self._pid: int | None = None
+        self._process_sample_at: float | None = None
+        # psutil 系统百分比按线程保存基线，短命 HTTP 线程也必须独立预热。
+        self._system_samples = threading.local()
+
+    @staticmethod
+    def _unavailable(reason: str, **detail: Any) -> dict[str, Any]:
+        """保持旧字段结构，每个指标各自持有诊断对象。"""
+        return {name: not_available(reason, **detail) for name in (
+            "process_cpu_percent", "system_cpu_percent",
+        )}
+
+    @staticmethod
+    def _metric(value: float, previous: float | None, sampled_at: float) -> dict[str, Any]:
+        """只暴露已经积累时间的差分值，墙钟校时不会改变窗口。"""
+        window_ms = (sampled_at - previous) * 1000.0 if previous is not None else 0.0
+        timing = {"sample_window_ms": max(window_ms, 0.0), "sampled_monotonic_s": sampled_at}
+        # 首次读取返回的 0 没有负载含义；零长度窗口也不能冒充有效测量。
+        if previous is None or window_ms <= 0:
+            return not_available("warming_up", **timing)
+        return {"available": True, "value": value, **timing}
+
+    def sample(self, psutil_module: Any) -> dict[str, Any]:
+        """依赖可注入供离线计数；生产调用始终使用 interval=None。"""
+        # 竞争方立即返回缺失原因，不等待另一个线程的内核查询。
+        if not self._lock.acquire(blocking=False):
+            return self._unavailable("sampling_in_progress")
+        try:
+            if psutil_module is None:
+                self._reset()
+                return self._unavailable("psutil_not_installed")
+            pid = os.getpid()
+            if self._process is None or self._pid != pid or self._backend is not psutil_module:
+                # 进程身份或依赖改变时不可继续使用旧差分窗口。
+                self._reset()
+                self._process = psutil_module.Process(pid)
+                self._pid, self._backend = pid, psutil_module
+            process_value = self._process.cpu_percent(interval=None)
+            # 分别记录两次读取完成时刻，窗口只描述对应指标的实际采样间隔。
+            process_at = time.monotonic()
+            system_value = psutil_module.cpu_percent(interval=None)
+            system_at = time.monotonic()
+            # 两项读取都成功才发布窗口；部分失败会统一进入重新预热。
+            result = {
+                "process_cpu_percent": self._metric(process_value, self._process_sample_at, process_at),
+                "system_cpu_percent": self._metric(
+                    system_value, getattr(self._system_samples, "sampled_at", None), system_at,
+                ),
+            }
+            self._process_sample_at = process_at
+            self._system_samples.sampled_at = system_at
+            return result
+        except Exception as exc:  # noqa: BLE001 - 指标采样失败不能影响健康接口。
+            # 保留异常类别便于定位权限等环境问题，不把故障伪装成低负载。
+            self._reset()
+            return self._unavailable("psutil_runtime_error", error=type(exc).__name__, detail=str(exc))
+        finally:
+            # 所有失败和提前返回都释放锁，让后续请求能够恢复采样。
+            self._lock.release()
+
+
+# 生命周期覆盖整个服务，禁止在每次 /health 请求内重建采样器。
+CPU_PERCENT_SAMPLER = CpuPercentSampler()
+
+
 def collect_cpu_diagnostics() -> dict[str, Any]:
     """CPU/load 只作为播放期间旁路观测，不参与任何控制或自动降速决策。"""
     payload: dict[str, Any] = {
@@ -101,17 +179,14 @@ def collect_cpu_diagnostics() -> dict[str, Any]:
 
     psutil_spec = importlib.util.find_spec("psutil")
     if psutil_spec is None:
-        payload["process_cpu_percent"] = not_available("psutil_not_installed")
-        payload["system_cpu_percent"] = not_available("psutil_not_installed")
+        payload.update(CPU_PERCENT_SAMPLER.sample(None))
         return payload
 
     try:
         import psutil  # type: ignore[import-not-found]
 
-        process = psutil.Process(os.getpid())
-        # interval=None 不阻塞；首样本可能是 0.0，PC 轮询时后续样本才有趋势意义。
-        payload["process_cpu_percent"] = {"available": True, "value": process.cpu_percent(interval=None)}
-        payload["system_cpu_percent"] = {"available": True, "value": psutil.cpu_percent(interval=None)}
+        # 共享实例保留差分基线，预热与争用会明确标为不可用。
+        payload.update(CPU_PERCENT_SAMPLER.sample(psutil))
     except Exception as exc:  # noqa: BLE001 - psutil 在裁剪系统上可能因 /proc 权限失败。
         detail = {"error": type(exc).__name__, "detail": str(exc)}
         payload["process_cpu_percent"] = not_available("psutil_runtime_error", **detail)

@@ -185,7 +185,7 @@ PC browser smoke 在 3-5 分钟播放期间可以轮询 `GET /health`，把同 L
 - `system_diagnostics.sample.monotonic_s`：进程内 monotonic 采样时间，避免系统时间跳变影响短时趋势。
 - `system_diagnostics.sample.process_started_wall_time_ms` / `process_uptime_s`：smoke 服务启动时间和进程 uptime。
 - `system_diagnostics.cpu.load_average`：`os.getloadavg()` 的 1/5/15 分钟 load；系统不支持时返回 `{ "available": false, "reason": "os_getloadavg_unavailable" }`。
-- `system_diagnostics.cpu.process_cpu_percent` / `system_cpu_percent`：安装 `psutil` 时输出非阻塞 CPU 百分比；缺 `psutil` 或运行时异常时返回结构化 `not_available`，`/health` 不失败。
+- `system_diagnostics.cpu.process_cpu_percent` / `system_cpu_percent`：安装 `psutil` 时输出非阻塞 CPU 百分比。服务复用进程采样对象；首次采样或异常后重建返回 `available=false, reason=warming_up`，省略无效的 `value`。有效读数保留 `available=true, value`，新增 `sample_window_ms` 和 `sampled_monotonic_s` 标明差分窗口与采样时刻。进程百分比可超过 100%；系统百分比按调用线程独立预热。采样竞争时立即返回 `sampling_in_progress`；缺依赖或运行时异常分别返回 `psutil_not_installed` / `psutil_runtime_error`，`/health` 不失败。
 - `system_diagnostics.memory`：优先用 `psutil` 输出进程 RSS/VMS 和系统内存；缺 `psutil` 时尽量退回 `/proc/self/status` 的进程 RSS；两者都不可用时返回 `not_available`。
 - `system_diagnostics.temperature.samples[]`：从 `/sys/class/thermal/thermal_zone*/temp` 和 `/sys/class/hwmon/hwmon*/temp*_input` 读取摄氏温度；没有温度文件时返回 `{ "available": false, "reason": "temperature_files_not_found" }`。
 - `media_stability_summary.active_peers.<peer_id>`：对当前 peer 的 `frames_read`、`camera_read_failures`、`last_frame_age_ms`、最近帧尺寸、连接状态和估算 `fps_estimate` 做稳定摘要。
@@ -193,6 +193,10 @@ PC browser smoke 在 3-5 分钟播放期间可以轮询 `GET /health`，把同 L
 - `media_stability_summary.last_closed_peer`：最近关闭 peer 的清理结果和最终媒体摘要，用于确认 browser smoke 结束后 camera release 是否发生。
 
 所有缺失指标都必须 fail-open 为结构化诊断字段，不能把缺温度文件、缺 `psutil`、裁剪系统 `/proc` 权限差异升级为 HTTP 500。短时稳定性验收仍需结合 browser 侧 `getStats()`、`first_frame_ms`、console/page errors 和 close 后 `/health.active_peer_connections=0` 一起判断。
+
+CPU 窗口使用单调时钟，采样不调用带正数 interval 的阻塞 API，也不等待采样锁。建议轮询间隔至少 100 ms；更短窗口的值可能受计时精度影响，消费者应结合 `sample_window_ms` 解读。aiohttp 服务在同一事件循环线程连续采样；降级 `ThreadingHTTPServer` 的新请求线程首次系统 CPU 读数会保持预热状态，进程指标仍可连续采样。语义依据：[psutil 进程 CPU 文档](https://psutil.readthedocs.io/stable/#psutil.Process.cpu_percent)与[系统 CPU 文档](https://psutil.readthedocs.io/stable/#psutil.cpu_percent)。本次只修复旁路观测，不改变摄像头参数、编码和控制安全字段。
+
+离线回归命令：`python -m unittest onboard.scripts.test_local_webrtc_camera_smoke`。`CpuPercentSampler.sample(psutil_module)` 支持依赖注入；测试模块的 `FakeCpuPsutil` 暴露 `process_creations`、`process_sample_calls`、`system_sample_calls` 计数，可供性能探针复用。该验证不打开摄像头，也不代表真实视频 CPU 降幅或 HIL 通过。
 
 ## 常见失败定位
 

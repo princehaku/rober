@@ -1,9 +1,8 @@
+import { buildO7DirectUpperStatus, fetchO7UpperStatus } from "./o7DirectUpperApi";
 import { PROOF_FLAGS } from "../shared/contracts";
 import type { O7LiveOperatorPanelResponse } from "../shared/contracts";
 
 const ENDPOINT = "/api/o7/live-operator-panel" as const;
-const DEFAULT_UPPER_API_BASE_URL = "http://192.168.1.11:8787";
-const REQUEST_TIMEOUT_MS = 1200;
 
 const BLOCKED_REASONS = [
   "base_serial_identity_not_proven",
@@ -37,24 +36,6 @@ type UpperStatus = {
   map?: Record<string, unknown>;
   slam?: Record<string, unknown>;
 };
-
-async function fetchUpperStatus(env: NodeJS.ProcessEnv = process.env): Promise<UpperStatus | null> {
-  const baseUrl = (env.ROBER_UPPER_API_BASE_URL || DEFAULT_UPPER_API_BASE_URL).replace(/\/+$/, "");
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-  try {
-    const response = await fetch(`${baseUrl}/api/status`, { signal: controller.signal });
-    if (!response.ok) {
-      return null;
-    }
-    const payload = await response.json();
-    return payload && typeof payload === "object" ? (payload as UpperStatus) : null;
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(timeout);
-  }
-}
 
 function stringField(record: Record<string, unknown> | undefined, key: string, fallback: string): string {
   const value = record?.[key];
@@ -113,7 +94,11 @@ function scanProofBlockers(scanProofLatest: Record<string, unknown> | undefined)
 }
 
 export async function buildO7LiveOperatorPanel(): Promise<O7LiveOperatorPanelResponse> {
-  const upperStatus = await fetchUpperStatus();
+  // 状态和健康并行读取，两个展示摘要消费同一个请求结果；没有跨请求缓存。
+  const statusSnapshot = fetchO7UpperStatus();
+  const directStatus = buildO7DirectUpperStatus({ statusSnapshot });
+  const [remote, directUpperStatus] = await Promise.all([statusSnapshot, directStatus]);
+  const upperStatus = remote.request.ok ? remote.json as UpperStatus : null;
   const upperCamera = upperStatus?.camera;
   const upperRadar = upperStatus?.radar;
   const upperBase = upperStatus?.base;
@@ -163,6 +148,8 @@ export async function buildO7LiveOperatorPanel(): Promise<O7LiveOperatorPanelRes
   const response: O7LiveOperatorPanelWithBaseBoundary = {
     schema: "trashbot.o7.live_operator_panel.v1",
     endpoint: ENDPOINT,
+    // 可选扩展兼容旧消费者，前端收到后无需再请求 direct status。
+    direct_upper_status: directUpperStatus,
     ...PROOF_FLAGS,
     ssh: {
       // SSH 可达来自本轮只读联调口径；8787 状态只读消费统一 API，不影响控制锁。

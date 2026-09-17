@@ -623,6 +623,8 @@ PHONE_SAFE_FALSE_ONLY_KEYS = {
 MOBILE_WEB_STATIC_FILES = {
     "index.html",
     "app.js",
+    # 诊断脚本按需加载，仍只开放明确列出的静态资源，不扩大 API 路由范围。
+    "diagnostics.js",
     "styles.css",
     "manifest.webmanifest",
     "service-worker.js",

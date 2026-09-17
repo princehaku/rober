@@ -1,5 +1,21 @@
 # O7 Direct Upper PC API
 
+## 2026-09-17 聚合读取与并发控制结果
+
+首屏 live panel 的可选 `direct_upper_status` 使用同一份在途上位机状态结果构造本接口摘要，因此一次首屏/刷新只请求一次 `/api/status`。独立 `GET /api/o7/direct-upper/status` 继续可用，每次调用读取新数据；没有新增 TTL 缓存或安全授权缓存。
+
+命令 envelope 新增以下可选字段，旧板端未提供时省略：
+
+| 字段 | 来源与语义 |
+| --- | --- |
+| `upper_accepted` | 上位机顶层 `accepted`，与 `accepted_by_workstation` 分开表示。接受不代表送达或运动成功。 |
+| `preempted` | 上位机顶层同名布尔值；`true` 表示普通请求被显式 Stop 抢占。 |
+| `upper_error.type/message` | 上位机结构化业务错误，保留可读原因。 |
+
+上位机 HTTP409 + `error.type=serial_busy` 原样保留 HTTP409，`failure_reason=serial_busy`；前端展示串口忙及重试提示。HTTP200 + `preempted=true` 保留 HTTP200 并显示请求已被 Stop 中断。显式 `upper_accepted=false` 或 `preempted=true` 使本机 `fail_closed=true`；`safe_to_control/sends_commands/robot_control_executed/robot_ack_connected/t1001_observed` 继续为 false。
+
+Stop/Space/X 不等待 manual/operator 在途锁，仍遵循原人工确认和 PC 同源代理。旧动作的回执与状态回读不会覆盖 Stop 消息；ACK 后只读状态刷新退出动作关键链。验证采用延迟 fake fetch 与真实 Vue DOM，覆盖 409、抢占、慢反馈和媒体会话保留，不连接设备。
+
 ## 目标
 
 `pc-tools/workstation` 新增 PC 本机 direct upper-computer mode，用于开发机或现场 PC 直接访问上位机 8787：
@@ -495,8 +511,7 @@ trashbot.pc_tools_workstation.o7_direct_upper_operator_report.v1
 - `雷达 / 建图 / 定位` 按钮区必须提供 `Refresh scan proof`、`Read scan latest`、`Read map proof latest` 和 `Localize reset` 等 PC 同源按钮级入口。`Read scan latest` 只 GET `/api/o7/direct-upper/radar/scan-proof/latest`，展示 artifact、hz、TF、fallback、continuous blockers、`safe_to_control=false`；`Read map proof latest` 只 GET `/api/o7/direct-upper/map/proof/latest`，展示 canonical/resolved/configured/compat paths、artifact status/path、upper blockers、`safe_to_control=false` 和 `robot_control_executed=false`。
 - 上述 readback 按钮结果必须通过同一个 `lock-message` 展示 `upper_request.path`、HTTP 状态、`source`、`adapter`、`evidence_ref`、`ACK not observed`、`T=1001 not observed`、`fail_closed/not_proven` 和剩余安全边界；不得只用页面 status 卡片或 curl 结果替代浏览器按钮证据。
 
-2026-06-03 23-24 micro sprint 后，`前进`、`后退`、`左转`、`右转`、`Stop`
-按钮不再只调用本地 `showLocked()`，而是通过 client helper POST PC 同源：
+当前 `前进`、`后退`、`左转`、`右转` 通过 client helper POST PC 同源：
 
 ```text
 /api/o7/direct-upper/base/manual
@@ -519,10 +534,10 @@ trashbot.pc_tools_workstation.o7_direct_upper_operator_report.v1
 - direct status 不是 `ready` 时，按钮结果会把当前 `direct status` 一并显示，避免
   operator 误以为已进入闭环可控状态。
 - `W/A/S/D` 键盘快捷键与按钮等价，分别请求 `forward/left/back/right`；`Space` 和
-  `X` 请求 `stop`。前端会忽略输入框、滑条、可编辑区域焦点，以及 repeat keydown，避免把长按键变成连续点动。
+  `X` 使用独立 `/api/o7/direct-upper/base/stop`。前端会忽略输入框、滑条、可编辑区域焦点，以及 repeat keydown，避免把长按键变成连续点动。
 - `forward/back` 使用当前速度滑块和 `250ms`；`left/right` 使用更明显的 turn pulse：
   UI 请求 `speed=0.08`、`duration_ms=350`，然后仍由 PC 后端和 8787 做二次 clamp 与
-  fail-closed；`stop` 请求 `speed=0`。
+  fail-closed；Stop 使用专用端点且不带点动参数。
 
 即使按钮 POST 成功，响应仍固定 `safe_to_control=false`、
 `robot_control_executed=false`、`robot_ack_connected=false`、`t1001_observed=false`。

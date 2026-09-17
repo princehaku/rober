@@ -1546,6 +1546,8 @@ class RemoteCloudRelayHttpTest(unittest.TestCase):
             ("/", b"rober", "text/html"),
             ("/index.html", b"rober", "text/html"),
             ("/app.js", b"mobile_web", "application/javascript"),
+            # 通过真实 HTTP handler 验证懒加载块可访问，覆盖单纯 DOM mock 的盲区。
+            ("/diagnostics.js", b"window.mobileDiagnostics", "application/javascript"),
             ("/styles.css", b":root", "text/css"),
             ("/manifest.webmanifest", b"short_name", "application/manifest+json"),
             ("/service-worker.js", b"isControlOrDynamicRequest", "application/javascript"),

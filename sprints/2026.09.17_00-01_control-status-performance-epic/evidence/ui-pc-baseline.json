@@ -1,0 +1,10 @@
+{
+  "captured_at": "2026-09-17T15:59:02.818Z",
+  "evidence_boundary": "offline_fake_fetch_before_change",
+  "upper_status_requests": 2,
+  "paths": [
+    "/api/status",
+    "/health",
+    "/api/status"
+  ]
+}

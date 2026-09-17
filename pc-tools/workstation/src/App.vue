@@ -5,7 +5,7 @@ import { getO7LiveOperatorPanel } from "./client/workstationApi";
 import type { O7LiveOperatorPanelResponse } from "./shared/contracts";
 
 // 首屏只拉 O7 live operator 合同，避免用户控制台默认加载 O5/O6/cloud/验收材料。
-const loading = ref(true);
+const loading = ref(false);
 // API 错误只影响状态展示，不打开任何控制动作。
 const error = ref("");
 // 机器人事实仍来自后端合同；前端不硬编码 ready 或可控状态。
@@ -13,12 +13,16 @@ const o7LiveOperatorPanel = ref<O7LiveOperatorPanelResponse | null>(null);
 
 async function refresh(): Promise<void> {
   // 刷新只读状态，不触发 camera /offer，也不触发任何机器人控制 API。
+  // 连续点击只保留当前读取，避免相同刷新竞争并让旧结果倒灌。
+  if (loading.value) return;
   loading.value = true;
   error.value = "";
   try {
     o7LiveOperatorPanel.value = await getO7LiveOperatorPanel();
   } catch (err) {
     // 后端不可用时保持 fail-closed 文案，避免用户误以为控制可用。
+    // 清空已失效的状态展示，保持媒体组件实例和既有连接。
+    o7LiveOperatorPanel.value = null;
     error.value = err instanceof Error ? err.message : "workstation_api_unavailable";
   } finally {
     loading.value = false;
@@ -49,6 +53,7 @@ onMounted(() => {
       正在读取 Rober 状态...
     </section>
 
-    <O7LiveOperatorPanel v-else :live-operator-panel="o7LiveOperatorPanel" />
+    <!-- 刷新只更新状态，媒体组件持续挂载，已有 WebRTC 会话无需重连。 -->
+    <O7LiveOperatorPanel :live-operator-panel="o7LiveOperatorPanel" defer-initial-status />
   </main>
 </template>

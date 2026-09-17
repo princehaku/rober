@@ -11,13 +11,23 @@ import os
 import shlex
 import subprocess
 import sys
+import threading
 import time
+from contextvars import ContextVar
 from pathlib import Path
 from typing import Any
 from urllib.parse import urljoin
 
+from upper_robot_io import SerialBusyError, SerialCoordinator
+
 
 SCHEMA = "trashbot.upper_robot_api.v1"
+# 缓存只活在单次状态快照中；下一次请求必须重新读取，避免把旧材料当新证据。
+_artifact_snapshot: ContextVar[dict | None] = ContextVar("artifact_snapshot", default=None)
+CAMERA_CACHE_TTL_S = 1.0
+CAMERA_STALE_AFTER_S = 3.0
+SERIAL_READ_SLICE_S = 0.05
+SERIAL_WRITE_TIMEOUT_S = 0.2
 DEFAULT_HOST = "0.0.0.0"
 DEFAULT_PORT = 8787
 DEFAULT_CAMERA_BASE_URL = "http://127.0.0.1:8088"
@@ -209,6 +219,43 @@ def read_text(path: str, max_bytes: int = 4096) -> str | None:
         return None
 
 
+def read_artifact_text(path: str) -> str:
+    """同一状态请求内同一路径只读一次，缺失文件同样复用本次错误。"""
+    cache = _artifact_snapshot.get()
+    # 独立 latest GET 维持即时读取语义，只有统一快照启用临时缓存。
+    if cache is None:
+        return Path(path).read_text(encoding="utf-8")
+    key = ("text", str(Path(path).absolute()))
+    # 缓存缺失/读取错误，使同一快照的 map 与 nav2 不会得出相互矛盾的材料状态。
+    if key not in cache:
+        try:
+            cache[key] = Path(path).read_text(encoding="utf-8")
+        except OSError as exc:
+            cache[key] = exc
+    if isinstance(cache[key], OSError):
+        # 原错误类型必须保留，既有 404/read_failed 合同继续生效。
+        raise cache[key]
+    return cache[key]
+
+
+def parse_artifact_json(path: str, raw: str) -> Any:
+    """仅去重解析结果，返回值只供摘要读取，不跨请求保存 freshness。"""
+    cache = _artifact_snapshot.get()
+    if cache is None:
+        return json.loads(raw)
+    key = ("json", str(Path(path).absolute()))
+    # 路径键与本次读取内容绑定，不引入长期 mtime 缓存及其失效复杂度。
+    if key not in cache:
+        try:
+            cache[key] = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            cache[key] = exc
+    if isinstance(cache[key], json.JSONDecodeError):
+        # 坏 JSON 继续走原有结构化失败路径，不能用上一份成功材料兜底。
+        raise cache[key]
+    return cache[key]
+
+
 def describe_path(path: str) -> dict[str, Any]:
     """描述设备路径元数据，不打开串口或雷达设备。"""
     entry: dict[str, Any] = {
@@ -273,6 +320,9 @@ def write_serial_json(port: str, baudrate: int, command: dict[str, Any]) -> dict
     serial_obj = None
     try:
         serial_obj = serial_module.Serial(port=port, baudrate=baudrate, timeout=0.2)
+        # 写入也必须有界，设备异常不能无限占用串口 owner 阻止停车尝试。
+        serial_obj.write_timeout = SERIAL_WRITE_TIMEOUT_S
+        # 写超时只界定上位机尝试，写成功字段仍不能提升为机器人 ACK。
         frame = (json.dumps(command, separators=(",", ":")) + "\n").encode("utf-8")
         bytes_written = serial_obj.write(frame)
         return {"ok": True, "command": command, "bytes_written": bytes_written}
@@ -1299,7 +1349,7 @@ def read_runtime_artifact_latest(
     """只读 JSON artifact；缺失、坏 JSON、非对象都不能触发 ROS2 或硬件。"""
     artifact = dict(artifact_info)
     try:
-        raw = Path(path).read_text(encoding="utf-8")
+        raw = read_artifact_text(path)
     except FileNotFoundError:
         artifact.update({"ok": False, "status": "missing", "error": {"type": "FileNotFoundError", "message": "latest runtime artifact is missing"}})
         return 404, build_runtime_artifact_readback_payload(
@@ -1321,7 +1371,7 @@ def read_runtime_artifact_latest(
             source=source,
         )
     try:
-        parsed = json.loads(raw)
+        parsed = parse_artifact_json(path, raw)
     except json.JSONDecodeError as exc:
         artifact.update({"ok": False, "status": "bad_json", "bytes_read": len(raw.encode("utf-8")), "error": compact_error(exc)})
         return 422, build_runtime_artifact_readback_payload(
@@ -1633,7 +1683,7 @@ def read_lidar_scan_proof_latest_artifact(path: str) -> tuple[int, dict[str, Any
         "primary_actions_enabled": False,
     }
     try:
-        raw = Path(path).read_text(encoding="utf-8")
+        raw = read_artifact_text(path)
     except FileNotFoundError:
         artifact.update({"ok": False, "status": "missing", "error": {"type": "FileNotFoundError", "message": "latest LiDAR scan proof artifact is missing"}})
         return 404, payload
@@ -1641,7 +1691,7 @@ def read_lidar_scan_proof_latest_artifact(path: str) -> tuple[int, dict[str, Any
         artifact.update({"ok": False, "status": "read_failed", "error": compact_error(exc)})
         return 500, payload
     try:
-        parsed = json.loads(raw)
+        parsed = parse_artifact_json(path, raw)
     except json.JSONDecodeError as exc:
         artifact.update({"ok": False, "status": "bad_json", "error": compact_error(exc)})
         return 422, payload
@@ -1684,7 +1734,7 @@ def read_lidar_raw_packet_proof_latest_artifact(path: str) -> tuple[int, dict[st
     """只读 raw packet artifact，不打开 LiDAR 串口、不发送 A5 60、不启动 ROS2。"""
     artifact = lidar_raw_packet_proof_artifact_info(path)
     try:
-        raw = Path(path).read_text(encoding="utf-8")
+        raw = read_artifact_text(path)
     except FileNotFoundError:
         artifact.update({"ok": False, "status": "missing", "error": {"type": "FileNotFoundError", "message": "latest LiDAR raw packet proof artifact is missing"}})
         return 404, build_lidar_raw_packet_readback_payload(artifact, None)
@@ -1692,7 +1742,7 @@ def read_lidar_raw_packet_proof_latest_artifact(path: str) -> tuple[int, dict[st
         artifact.update({"ok": False, "status": "read_failed", "error": compact_error(exc)})
         return 500, build_lidar_raw_packet_readback_payload(artifact, None)
     try:
-        parsed = json.loads(raw)
+        parsed = parse_artifact_json(path, raw)
     except json.JSONDecodeError as exc:
         artifact.update({"ok": False, "status": "bad_json", "error": compact_error(exc)})
         return 422, build_lidar_raw_packet_readback_payload(artifact, None)
@@ -1874,13 +1924,13 @@ def summarize_lidar_raw_packet_proof_latest_artifact(path: str) -> dict[str, Any
     # freshness 只表达 artifact 文件年龄，不能被 PC 解读成 HIL 或可控状态。
     summary["freshness"]["age_seconds"] = round(age_ms / 1000.0, 3)
     try:
-        raw = Path(path).read_text(encoding="utf-8")
+        raw = read_artifact_text(path)
     except OSError as exc:
         artifact.update({"ok": False, "status": "read_failed", "error": compact_error(exc)})
         summary["freshness"]["status"] = "read_failed"
         return summary
     try:
-        parsed = json.loads(raw)
+        parsed = parse_artifact_json(path, raw)
     except json.JSONDecodeError as exc:
         artifact.update({"ok": False, "status": "bad_json", "bytes_read": len(raw.encode("utf-8")), "error": compact_error(exc)})
         summary["freshness"]["status"] = "bad_json"
@@ -1992,13 +2042,13 @@ def summarize_feedback_samples_latest_artifact(
     age_ms = max(0, generated_at_ms - mtime_ms)
     artifact.update({"mtime_ms": mtime_ms, "age_ms": age_ms})
     try:
-        raw = Path(path).read_text(encoding="utf-8")
+        raw = read_artifact_text(path)
     except OSError as exc:
         artifact.update({"ok": False, "status": "read_failed", "error": compact_error(exc)})
         base_summary["freshness"]["status"] = "read_failed"
         return base_summary
     try:
-        parsed = json.loads(raw)
+        parsed = parse_artifact_json(path, raw)
     except json.JSONDecodeError as exc:
         artifact.update({"ok": False, "status": "bad_json", "bytes_read": len(raw.encode("utf-8")), "error": compact_error(exc)})
         base_summary["freshness"]["status"] = "bad_json"
@@ -2089,7 +2139,7 @@ def read_feedback_samples_latest_artifact(path: str) -> tuple[int, dict[str, Any
     """只读 artifact，不打开 serial、不 import pyserial、不触发任何 T=130/T=1。"""
     artifact = artifact_path_info(path)
     try:
-        raw = Path(path).read_text(encoding="utf-8")
+        raw = read_artifact_text(path)
     except FileNotFoundError:
         artifact.update({"ok": False, "status": "missing", "error": {"type": "FileNotFoundError", "message": "latest feedback samples artifact is missing"}})
         return 404, build_latest_readback_payload(path, artifact, None)
@@ -2097,7 +2147,7 @@ def read_feedback_samples_latest_artifact(path: str) -> tuple[int, dict[str, Any
         artifact.update({"ok": False, "status": "read_failed", "error": compact_error(exc)})
         return 500, build_latest_readback_payload(path, artifact, None)
     try:
-        parsed = json.loads(raw)
+        parsed = parse_artifact_json(path, raw)
     except json.JSONDecodeError as exc:
         artifact.update({"ok": False, "status": "bad_json", "error": compact_error(exc)})
         return 422, build_latest_readback_payload(path, artifact, None)
@@ -2161,7 +2211,7 @@ def read_operator_report_latest_artifact(path: str) -> tuple[int, dict[str, Any]
     """只读 operator report artifact，不调用 stop/status/manual，也不读取串口。"""
     artifact = operator_report_artifact_info(path)
     try:
-        raw = Path(path).read_text(encoding="utf-8")
+        raw = read_artifact_text(path)
     except FileNotFoundError:
         artifact.update({"ok": False, "status": "missing", "error": {"type": "FileNotFoundError", "message": "latest operator report artifact is missing"}})
         return 404, build_operator_report_latest_payload(artifact, None)
@@ -2169,7 +2219,7 @@ def read_operator_report_latest_artifact(path: str) -> tuple[int, dict[str, Any]
         artifact.update({"ok": False, "status": "read_failed", "error": compact_error(exc)})
         return 500, build_operator_report_latest_payload(artifact, None)
     try:
-        parsed = json.loads(raw)
+        parsed = parse_artifact_json(path, raw)
     except json.JSONDecodeError as exc:
         artifact.update({"ok": False, "status": "bad_json", "error": compact_error(exc)})
         return 422, build_operator_report_latest_payload(artifact, None)
@@ -2226,6 +2276,8 @@ def request_base_feedback_once(
     *,
     read_timeout_s: float = DEFAULT_FEEDBACK_READ_TIMEOUT_S,
     read_window_s: float = DEFAULT_FEEDBACK_READ_WINDOW_S,
+    interrupted: threading.Event | None = None,
+    full_window: bool = False,
 ) -> dict[str, Any]:
     """显式发送一次 vendor T=130，并短窗口读取换行 JSON；这里绝不发运动命令。"""
     read_timeout_s = clamp_float(read_timeout_s, DEFAULT_FEEDBACK_READ_TIMEOUT_S, 0.01, MAX_FEEDBACK_READ_TIMEOUT_S)
@@ -2264,7 +2316,9 @@ def request_base_feedback_once(
         )
 
     try:
-        serial_obj = serial_module.Serial(port=port, baudrate=baudrate, timeout=read_timeout_s)
+        # 短读片让优先 Stop 能在完整采样窗之前接管，vendor 波特率和命令保持不变。
+        serial_obj = serial_module.Serial(port=port, baudrate=baudrate, timeout=min(read_timeout_s, SERIAL_READ_SLICE_S, read_window_s))
+        serial_obj.write_timeout = SERIAL_WRITE_TIMEOUT_S
         serial_open["ok"] = True
     except Exception as exc:  # noqa: BLE001 - 现场串口打开失败必须结构化返回。
         serial_open["error"] = compact_error(exc)
@@ -2299,11 +2353,29 @@ def request_base_feedback_once(
 
     if serial_write["ok"]:
         deadline = time.monotonic() + read_window_s
+        # pending 只归属于当前串口请求，避免不同采样之间串帧。
+        pending = bytearray()
         try:
             while time.monotonic() < deadline:
+                if interrupted is not None and interrupted.is_set():
+                    # 显式标注未完成窗口，后续样本汇总可保留被抢占的证据边界。
+                    serial_read["interrupted"] = True
+                    break
+                # 每片 timeout 不得越过总 deadline；串口任务由同一个后台 owner 执行。
+                serial_obj.timeout = min(read_timeout_s, SERIAL_READ_SLICE_S, max(0.001, deadline - time.monotonic()))
                 raw_line = serial_obj.readline()
                 if not raw_line:
                     continue
+                # 短片可能截断一行，累计到换行后再解析，避免把慢反馈误报为坏 JSON。
+                pending.extend(raw_line)
+                if not pending.endswith(b"\n"):
+                    if len(pending) > 65536:
+                        # 异常设备长时间不换行时，限制缓冲内存而不拖延停止调度。
+                        invalid_json_count += 1
+                        pending.clear()
+                    continue
+                raw_line = bytes(pending)
+                pending.clear()
                 read_line_count += 1
                 try:
                     decoded = raw_line.decode("utf-8").strip()
@@ -2318,6 +2390,9 @@ def request_base_feedback_once(
                 feedback_type = parsed.get("T")
                 if isinstance(feedback_type, int):
                     observed_feedback_types.append(feedback_type)
+                    # 普通请求以目标反馈完成；显式 samples 才保留全窗口材料统计。
+                    if feedback_type == BASE_FEEDBACK_ID and not full_window:
+                        break
         except Exception as exc:  # noqa: BLE001 - 读阶段错误独立暴露，不改写 open/write 结果。
             serial_read["error"] = compact_error(exc)
         else:
@@ -2524,7 +2599,7 @@ def skipped_manual_feedback_payload(port: str, baudrate: int, reason: str) -> di
         "feedback_ack": {
             "t1001_observed": False,
             "robot_ack_connected": False,
-            "reason": "manual direction/stop write failed; T=130 feedback request skipped to preserve fail-closed evidence",
+            "reason": f"T=130 feedback skipped: {reason}; robot ACK and HIL remain unproven",
         },
         "safe_to_control": False,
         "sends_commands": False,
@@ -2553,21 +2628,28 @@ def build_stop_payload(port: str, baudrate: int) -> dict[str, Any]:
     }
 
 
-async def fetch_json(url: str, method: str = "GET", payload: dict[str, Any] | None = None) -> tuple[int, dict[str, Any]]:
+async def fetch_json(url: str, method: str = "GET", payload: dict[str, Any] | None = None, *, session: Any = None) -> tuple[int, dict[str, Any]]:
     """代理 camera smoke JSON；远端异常压成结构化错误，不影响统一 API 存活。"""
     from aiohttp import ClientSession, ClientTimeout
 
+    owns_session = session is None
+    # helper 保留独立可调用性；正常服务路径传入应用持有的连接池。
+    if owns_session:
+        session = ClientSession(timeout=ClientTimeout(total=6))
     try:
-        async with ClientSession(timeout=ClientTimeout(total=6)) as session:
-            async with session.request(method, url, json=payload) as response:
-                text = await response.text()
-                try:
-                    parsed = json.loads(text) if text else {}
-                except json.JSONDecodeError:
-                    parsed = {"error": "remote_non_json_response", "body_preview": text[:200]}
-                return response.status, parsed if isinstance(parsed, dict) else {"error": "remote_json_not_object"}
+        async with session.request(method, url, json=payload) as response:
+            text = await response.text()
+            try:
+                parsed = json.loads(text) if text else {}
+            except json.JSONDecodeError:
+                parsed = {"error": "remote_non_json_response", "body_preview": text[:200]}
+            return response.status, parsed if isinstance(parsed, dict) else {"error": "remote_json_not_object"}
     except Exception as exc:  # noqa: BLE001 - camera 子服务不在线时主 API 仍要可查。
         return 502, {"error": "camera_proxy_failed", "detail": compact_error(exc)}
+    finally:
+        # API 生命周期持有的 session 由 cleanup 统一关闭，独立调用仍负责自身资源。
+        if owns_session:
+            await session.close()
 
 
 class UpperRobotApi:
@@ -2624,6 +2706,90 @@ class UpperRobotApi:
         self.localize_reset_command = localize_reset_command
         self.nav2_start_command = nav2_start_command
         self.nav2_stop_command = nav2_stop_command
+        self._serial = SerialCoordinator()
+        # 控制子进程与串口使用不同执行资源，慢 ROS 命令不能占走串口线程。
+        self._command_lock = asyncio.Lock()
+        self._camera_session = None
+        self._camera_refresh_task = None
+        # 元组同时保存墙钟采样时间与单调时钟年龄，时钟校准不会伪造 freshness。
+        self._camera_cache: tuple[int, dict[str, Any], int, float] | None = None
+        self._closed = False
+
+    async def _camera_fetch(self, url: str, method: str = "GET", payload: dict[str, Any] | None = None) -> tuple[int, dict[str, Any]]:
+        """连接池只在异步上下文创建，便于测试和生产 cleanup 共用生命周期。"""
+        # 同一事件循环复用连接池；不会为每个状态请求重新建 TCP 会话。
+        from aiohttp import ClientSession, ClientTimeout
+        if self._camera_session is None or self._camera_session.closed:
+            self._camera_session = ClientSession(timeout=ClientTimeout(total=6))
+        return await fetch_json(url, method, payload, session=self._camera_session)
+
+    async def _refresh_camera_cache(self) -> None:
+        """后台失败也保存一次真实失败样本，避免无限重试或继续显示旧成功。"""
+        try:
+            code, payload = await self.camera_health()
+        except Exception as exc:
+            # CancelledError 不在此捕获，服务退出应能取消网络采样。
+            code, payload = 502, {"error": "camera_proxy_failed", "detail": compact_error(exc)}
+        # 单独记录实际采样完成时间，顶层 generated_at 不能替代摄像头采样年龄。
+        self._camera_cache = (code, payload, now_ms(), time.monotonic())
+
+    def _camera_snapshot(self) -> dict[str, Any]:
+        """读取已完成样本，不把仍在等待网络的刷新任务算作新证据。"""
+        cached = self._camera_cache
+        age_s = time.monotonic() - cached[3] if cached else None
+        refresh_needed = cached is None or age_s >= CAMERA_CACHE_TTL_S
+        # 同时到来的多个状态请求共用一个刷新任务，避免相机故障放大连接数。
+        if not self._closed and refresh_needed and (self._camera_refresh_task is None or self._camera_refresh_task.done()):
+            # 首次请求立即给 unknown，采样单飞在后台执行；慢相机不会拖总状态。
+            self._camera_refresh_task = asyncio.create_task(self._refresh_camera_cache())
+        stale = cached is None or age_s >= CAMERA_STALE_AFTER_S
+        # 未采样的 HTTP 状态为 None，不能默认 200 让旧客户端误判在线。
+        code, payload, sampled_at, _ = cached if cached else (None, {}, None, None)
+        return {
+            "http_status": code,
+            "status": "unknown" if stale else payload.get("status", "unavailable"),
+            "video_source": payload.get("video_source", "not_loaded"),
+            "base_url": self.camera_base_url,
+            "offer_path": "/api/camera/offer",
+            "sampled_at_ms": sampled_at,
+            "sample_age_ms": int(max(0.0, age_s) * 1000) if age_s is not None else None,
+            # stale 与 refreshing 独立：刷新正在进行时，旧样本仍可能已经过期。
+            "stale": stale,
+            "refreshing": self._camera_refresh_task is not None and not self._camera_refresh_task.done(),
+        }
+
+    async def run_control(self, operation: Any, *args: Any) -> dict[str, Any]:
+        """后台执行配置命令并保持单飞；这里只调度，不改原命令的审计结果。"""
+        # 配置型命令不占用 HTTP 线程，也不积压重复点击产生的旧动作。
+        if self._command_lock.locked():
+            return {"error": {"type": "command_busy", "message": "configured command already running"}, **proof_flags()}
+        async with self._command_lock:
+            # shield 保证调用者取消后仍追踪实际子进程收口。
+            work = asyncio.create_task(asyncio.to_thread(operation, *args))
+            try:
+                return await asyncio.shield(work)
+            except asyncio.CancelledError:
+                # 子进程有自己的 timeout；请求取消前仍维持 single-flight 直到它结束。
+                try:
+                    await asyncio.shield(work)
+                finally:
+                    raise
+
+    async def base_stop(self) -> dict[str, Any]:
+        """独立 Stop 与兼容 manual-stop 共用同一种底层写入结果。"""
+        return await self._serial.stop(lambda: build_stop_payload(self.base_port, self.base_baudrate))
+
+    async def close(self) -> None:
+        """先停止采样，再收口已接受动作，最后关闭服务持有的资源。"""
+        self._closed = True
+        if self._camera_refresh_task is not None:
+            self._camera_refresh_task.cancel()
+            await asyncio.gather(self._camera_refresh_task, return_exceptions=True)
+        if self._camera_session is not None:
+            # 网络任务已被等待完成，此处关闭 session 不会产生后台使用已关闭连接池。
+            await self._camera_session.close()
+        # 退出先等后台动作停车，之后释放专用线程；空闲退出不会触碰设备。
+        await self._serial.close(lambda: build_stop_payload(self.base_port, self.base_baudrate))
 
     def base_status(self) -> dict[str, Any]:
         """底盘状态只证明写入口配置和设备存在，不伪造 T=1001 ACK。"""
@@ -3229,20 +3395,20 @@ class UpperRobotApi:
 
     async def camera_health(self) -> tuple[int, dict[str, Any]]:
         """camera 子接口代理 8088 /health，并标注统一 API 来源。"""
-        status, payload = await fetch_json(urljoin(self.camera_base_url + "/", "health"))
+        status, payload = await self._camera_fetch(urljoin(self.camera_base_url + "/", "health"))
         payload["upper_api_proxy"] = True
         payload["upper_api_camera_base_url"] = self.camera_base_url
         return status, payload
 
     async def camera_devices(self) -> tuple[int, dict[str, Any]]:
         """camera 子接口代理 8088 /devices。"""
-        status, payload = await fetch_json(urljoin(self.camera_base_url + "/", "devices"))
+        status, payload = await self._camera_fetch(urljoin(self.camera_base_url + "/", "devices"))
         payload["upper_api_proxy"] = True
         return status, payload
 
     async def camera_offer(self, offer: dict[str, Any]) -> tuple[int, dict[str, Any]]:
         """camera WebRTC 信令只代理媒体 offer，不发送任何机器人控制。"""
-        status, payload = await fetch_json(urljoin(self.camera_base_url + "/", "offer"), method="POST", payload=offer)
+        status, payload = await self._camera_fetch(urljoin(self.camera_base_url + "/", "offer"), method="POST", payload=offer)
         payload["upper_api_proxy"] = True
         payload["safe_to_control"] = False
         payload["robot_control_executed"] = False
@@ -3252,7 +3418,7 @@ class UpperRobotApi:
         """释放 8088 active peer，避免 PC 页面刷新后摄像头被占用。"""
         if not peer_id or not all(char.isalnum() for char in peer_id):
             return 400, {"error": "peer_id_invalid", **proof_flags()}
-        status, payload = await fetch_json(
+        status, payload = await self._camera_fetch(
             urljoin(self.camera_base_url + "/", f"peers/{peer_id}/close"),
             method="POST",
             payload=body,
@@ -3261,18 +3427,26 @@ class UpperRobotApi:
         return status, payload
 
     async def unified_status(self) -> dict[str, Any]:
-        """PC 首屏只拉一个状态接口即可获得 camera/radar/base 总览。"""
-        camera_http_status, camera = await self.camera_health()
+        """相机只读缓存；本地文件摘要离开事件循环，保留停止调度机会。"""
+        camera = self._camera_snapshot()
+        # camera 快照在事件循环中取值；文件读取在默认线程池，不占串口专用线程。
+        return await asyncio.to_thread(self._status_snapshot, camera)
+
+    def _status_snapshot(self, camera: dict[str, Any]) -> dict[str, Any]:
+        """每次调用独享缓存上下文，多个客户端之间没有可变 JSON 共享。"""
+        # 快照上下文限于本次后台调用，重复 map proof 读取/解析共享一次结果。
+        token = _artifact_snapshot.set({})
+        try:
+            return self._build_status(camera)
+        finally:
+            _artifact_snapshot.reset(token)
+
+    def _build_status(self, camera: dict[str, Any]) -> dict[str, Any]:
+        """沿用原有状态字段与安全边界，唯一相机输入来自带年龄的快照。"""
         return {
             "schema": f"{SCHEMA}.status",
             "generated_at_ms": now_ms(),
-            "camera": {
-                "http_status": camera_http_status,
-                "status": camera.get("status", "not_loaded"),
-                "video_source": camera.get("video_source", "not_loaded"),
-                "base_url": self.camera_base_url,
-                "offer_path": "/api/camera/offer",
-            },
+            "camera": camera,
             "radar": self.radar_status(),
             "map": self.map_status(),
             "localization": {
@@ -3311,6 +3485,30 @@ class UpperRobotApi:
 
     async def base_feedback_request(self, body: dict[str, Any]) -> dict[str, Any]:
         """非运动反馈请求必须由显式 POST 触发，状态接口永远不自动探测。"""
+        return await self._serial_operation(
+            "base_feedback_request", lambda interrupted: self._feedback_request(body, interrupted)
+        )
+
+    async def _serial_operation(self, action: str, operation: Any) -> dict[str, Any]:
+        """接受与拒绝在写串口前决定，busy 不会留下未来才执行的运动。"""
+        try:
+            return await self._serial.run(operation)
+        except SerialBusyError:
+            # 忙碌响应不接收、不排队运动，PC 可明确展示并继续独立发送 Stop。
+            return {
+                "schema": f"{SCHEMA}.{action}_result",
+                "accepted": False,
+                "preempted": False,
+                "error": {"type": "serial_busy", "message": "serial operation in progress; stop remains available"},
+                "sends_commands": False,
+                "sends_motion_commands": False,
+                "robot_control_executed": False,
+                **proof_flags(),
+            }
+
+    def _feedback_request(self, body: dict[str, Any], interrupted: threading.Event) -> dict[str, Any]:
+        """普通反馈可早完成，读超时参数仍按既有范围限制。"""
+        # 读串口只在仲裁器线程内执行；短片允许停止请求打断。
         read_timeout_s = clamp_float(
             body.get("read_timeout_s"),
             DEFAULT_FEEDBACK_READ_TIMEOUT_S,
@@ -3328,10 +3526,22 @@ class UpperRobotApi:
             self.base_baudrate,
             read_timeout_s=read_timeout_s,
             read_window_s=read_window_s,
+            interrupted=interrupted,
         )
 
     async def base_feedback_samples(self, body: dict[str, Any]) -> dict[str, Any]:
         """重复执行显式 T=130 采集；默认短批量，不触发 manual 或 feedback-flow。"""
+        payload = await self._serial_operation(
+            "base_feedback_samples", lambda interrupted: self._feedback_samples(body, interrupted)
+        )
+        if payload.get("accepted") is False:
+            # busy 结果没有采样材料，不应覆盖磁盘上已经采集的 latest artifact。
+            return payload
+        # 文件持久化离开串口占用区，慢盘不能延迟 Stop 写入。
+        return await asyncio.to_thread(persist_feedback_samples_artifact, self.feedback_samples_artifact_path, payload)
+
+    def _feedback_samples(self, body: dict[str, Any], interrupted: threading.Event) -> dict[str, Any]:
+        """批量采样保留完整读窗，但每个窗口和批间等待都可让出给 Stop。"""
         sample_count = clamp_int(
             body.get("sample_count"),
             DEFAULT_FEEDBACK_SAMPLE_COUNT,
@@ -3358,17 +3568,22 @@ class UpperRobotApi:
         )
         samples: list[dict[str, Any]] = []
         for index in range(sample_count):
+            # Stop 已发起时禁止再开启下一批 T=130，尽快释放串口 owner。
+            if interrupted.is_set():
+                break
             samples.append(
                 request_base_feedback_once(
                     self.base_port,
                     self.base_baudrate,
                     read_timeout_s=read_timeout_s,
                     read_window_s=read_window_s,
+                    interrupted=interrupted,
+                    full_window=True,
                 )
             )
             # 最后一帧后不额外 sleep，避免默认请求尾部无意义等待。
             if index < sample_count - 1 and sample_interval_s > 0:
-                await asyncio.sleep(sample_interval_s)
+                interrupted.wait(sample_interval_s)
         payload = build_base_feedback_samples_payload(
             port=self.base_port,
             baudrate=self.base_baudrate,
@@ -3378,7 +3593,13 @@ class UpperRobotApi:
             read_window_s=read_window_s,
             samples=samples,
         )
-        return persist_feedback_samples_artifact(self.feedback_samples_artifact_path, payload)
+        payload["preempted"] = interrupted.is_set()
+        # 已经观察到的 T=1001 可保留，批量完整性与机器人 ACK 分开表达。
+        # 被 Stop 截断的短批量不能沿用“全部采样完成”的成功摘要。
+        if payload["preempted"] or len(samples) != sample_count:
+            payload["all_samples_observed_t1001"] = False
+            payload["partial_samples_observed_t1001"] = bool(payload["t1001_observed_count"])
+        return payload
 
     def base_feedback_samples_latest(self) -> tuple[int, dict[str, Any]]:
         """latest 回放只读取 artifact，不能打开串口或发送任何 feedback request。"""
@@ -3418,6 +3639,38 @@ class UpperRobotApi:
                 "delivery_success": False,
                 "primary_actions_enabled": False,
             }
+        if direction == "stop":
+            # 兼容旧 manual-stop 调用，也必须走最高优先级入口，不能被 busy 拒绝。
+            stopped = await self.base_stop()
+            result = stopped["stop_result"]
+            feedback = skipped_manual_feedback_payload(self.base_port, self.base_baudrate, "skipped_for_stop")
+            # 两个入口只共享底层 Stop 结果，各自投影固定 schema，避免并发串包。
+            return {
+                **stopped,
+                "schema": f"{SCHEMA}.base_manual_result",
+                "accepted": True,
+                "preempted": False,
+                "direction": "stop",
+                "speed": 0.0,
+                "duration_ms": 0,
+                "requested_speed": body.get("speed", 0.08),
+                "requested_duration_ms": body.get("duration_ms", DEFAULT_PULSE_MS),
+                # 同一次实际停车满足两个兼容字段；不再为 stop 制造额外 pulse 等待。
+                "command_result": result,
+                "auto_stop_attempted": True,
+                "auto_stop_executed": bool(result.get("ok")),
+                "manual_command_executed": bool(result.get("ok")),
+                "feedback_after_stop_attempted": False,
+                "feedback_evidence": feedback,
+                "t1001_feedback_status": feedback["t1001_feedback_status"],
+            }
+        return await self._serial_operation(
+            "base_manual", lambda interrupted: self._manual_control(body, direction, interrupted)
+        )
+
+    def _manual_control(self, body: dict[str, Any], direction: str, interrupted: threading.Event) -> dict[str, Any]:
+        """串口 owner 执行完整点动，任何异常都在释放预约前尝试停车。"""
+        # 完整动作独立于 HTTP 协程生存期，客户端断开仍能在 finally 中停车。
         try:
             requested_speed = float(body.get("speed", 0.08))
         except (TypeError, ValueError):
@@ -3431,34 +3684,47 @@ class UpperRobotApi:
         # 点动窗口强制限时，任何非 stop 方向都必须进入停车兜底。
         pulse_ms = min(max(requested_pulse_ms, 0), MAX_PULSE_MS)
         command = wheel_command_for_direction(direction, speed)
-        first = write_serial_json(self.base_port, self.base_baudrate, command)
-        await asyncio.sleep(pulse_ms / 1000.0)
-        stop = write_serial_json(self.base_port, self.base_baudrate, {"T": 1, "L": 0, "R": 0})
+        first = {"ok": False, "error": {"type": "preempted", "message": "stop requested before motion began"}}
+        # 线程开始之前可能已经收到 Stop，因此第一条运动写入也要检查抢占标记。
+        try:
+            if not interrupted.is_set():
+                first = write_serial_json(self.base_port, self.base_baudrate, command)
+                if direction != "stop" and first.get("ok"):
+                    # Event.wait 在 Stop 或 HTTP 取消时立即结束；保留正常 pulse 限时。
+                    interrupted.wait(pulse_ms / 1000.0)
+        finally:
+            # 即使方向写函数抛出未预期异常，停车仍在同一线程串行尝试。
+            stop = write_serial_json(self.base_port, self.base_baudrate, {"T": 1, "L": 0, "R": 0})
         serial_write_failures = [
             result["error"]
             for result in (first, stop)
             if isinstance(result, dict) and not result.get("ok") and "error" in result
         ]
-        if first.get("ok") and stop.get("ok"):
+        if first.get("ok") and stop.get("ok") and not interrupted.is_set() and direction != "stop":
+            # 抢占后不再追加诊断窗口；显式 Stop 已在专用线程队列中等待执行。
             # 反馈请求必须排在停车之后，避免读窗口影响点动停车兜底。
             feedback_evidence = request_base_feedback_once(
                 self.base_port,
                 self.base_baudrate,
                 read_timeout_s=body.get("read_timeout_s", DEFAULT_FEEDBACK_READ_TIMEOUT_S),
                 read_window_s=body.get("read_window_s", DEFAULT_FEEDBACK_READ_WINDOW_S),
+                interrupted=interrupted,
             )
             feedback_after_stop_attempted = True
         else:
             feedback_evidence = skipped_manual_feedback_payload(
                 self.base_port,
                 self.base_baudrate,
-                "skipped_due_to_manual_write_failure",
+                "skipped_due_to_preemption" if interrupted.is_set() else (
+                    "skipped_for_stop" if direction == "stop" else "skipped_due_to_manual_write_failure"
+                ),
             )
             feedback_after_stop_attempted = False
         return {
             "schema": f"{SCHEMA}.base_manual_result",
             "generated_at_ms": now_ms(),
             "accepted": True,
+            "preempted": interrupted.is_set(),
             "direction": direction,
             "speed": speed,
             "duration_ms": pulse_ms,
@@ -3578,8 +3844,12 @@ async def run_server(args: argparse.Namespace) -> None:
     site = web.TCPSite(runner, args.host, args.port)
     await site.start()
     print(json.dumps({"event": "upper_robot_api_started", "host": args.host, "port": args.port}, ensure_ascii=False), flush=True)
-    while True:
-        await asyncio.sleep(3600)
+    try:
+        while True:
+            await asyncio.sleep(3600)
+    finally:
+        # asyncio.run 取消主任务时同样执行应用 cleanup，覆盖实际服务退出路径。
+        await runner.cleanup()
 
 
 def create_app(api: UpperRobotApi) -> Any:
@@ -3590,7 +3860,7 @@ def create_app(api: UpperRobotApi) -> Any:
         return json_response({})
 
     async def root(_: web.Request) -> Any:
-        return json_response({"schema": SCHEMA, "status": "ready", "routes": (await api.unified_status())["routes"], **proof_flags()})
+        return json_response({"schema": SCHEMA, "status": "ready", "routes": dict(ROUTE_PATHS), **proof_flags()})
 
     async def health(_: web.Request) -> Any:
         return json_response({"schema": f"{SCHEMA}.health", "status": "ready", "generated_at_ms": now_ms(), **proof_flags()})
@@ -3620,10 +3890,10 @@ def create_app(api: UpperRobotApi) -> Any:
         return json_response(api.radar_status())
 
     async def radar_start(_: web.Request) -> Any:
-        return json_response(api.radar_control("start"))
+        return json_response(await api.run_control(api.radar_control, "start"))
 
     async def radar_stop(_: web.Request) -> Any:
-        return json_response(api.radar_control("stop"))
+        return json_response(await api.run_control(api.radar_control, "stop"))
 
     async def radar_scan_proof_refresh(request: web.Request) -> Any:
         body = await request.json() if request.can_read_body else {}
@@ -3643,19 +3913,19 @@ def create_app(api: UpperRobotApi) -> Any:
 
     async def map_start(request: web.Request) -> Any:
         body = await request.json() if request.can_read_body else {}
-        return json_response(api.map_control("start", body if isinstance(body, dict) else {}))
+        return json_response(await api.run_control(api.map_control, "start", body if isinstance(body, dict) else {}))
 
     async def map_reset(request: web.Request) -> Any:
         body = await request.json() if request.can_read_body else {}
-        return json_response(api.map_control("reset", body if isinstance(body, dict) else {}))
+        return json_response(await api.run_control(api.map_control, "reset", body if isinstance(body, dict) else {}))
 
     async def map_save(request: web.Request) -> Any:
         body = await request.json() if request.can_read_body else {}
-        return json_response(api.map_control("save", body if isinstance(body, dict) else {}))
+        return json_response(await api.run_control(api.map_control, "save", body if isinstance(body, dict) else {}))
 
     async def map_load(request: web.Request) -> Any:
         body = await request.json() if request.can_read_body else {}
-        return json_response(api.map_control("load", body if isinstance(body, dict) else {}))
+        return json_response(await api.run_control(api.map_control, "load", body if isinstance(body, dict) else {}))
 
     async def map_list(_: web.Request) -> Any:
         return json_response(api.map_list())
@@ -3671,7 +3941,7 @@ def create_app(api: UpperRobotApi) -> Any:
 
     async def localize_reset(request: web.Request) -> Any:
         body = await request.json() if request.can_read_body else {}
-        return json_response(api.localize_reset(body if isinstance(body, dict) else {}))
+        return json_response(await api.run_control(api.localize_reset, body if isinstance(body, dict) else {}))
 
     async def localize_proof_latest(_: web.Request) -> Any:
         http_status, payload = api.localize_proof_latest()
@@ -3690,10 +3960,10 @@ def create_app(api: UpperRobotApi) -> Any:
         return json_response(payload, status=http_status)
 
     async def nav2_start(_: web.Request) -> Any:
-        return json_response(api.nav2_control("start"))
+        return json_response(await api.run_control(api.nav2_control, "start"))
 
     async def nav2_stop(_: web.Request) -> Any:
-        return json_response(api.nav2_control("stop"))
+        return json_response(await api.run_control(api.nav2_control, "stop"))
 
     async def elevator_status(_: web.Request) -> Any:
         return json_response(api.elevator_status())
@@ -3719,15 +3989,17 @@ def create_app(api: UpperRobotApi) -> Any:
         return json_response(payload, status=http_status)
 
     async def base_stop(_: web.Request) -> Any:
-        return json_response(build_stop_payload(api.base_port, api.base_baudrate))
+        return json_response(await api.base_stop())
 
     async def base_feedback_request(request: web.Request) -> Any:
         body = await request.json() if request.can_read_body else {}
-        return json_response(await api.base_feedback_request(body if isinstance(body, dict) else {}))
+        payload = await api.base_feedback_request(body if isinstance(body, dict) else {})
+        return json_response(payload, status=409 if payload.get("accepted") is False else 200)
 
     async def base_feedback_samples(request: web.Request) -> Any:
         body = await request.json() if request.can_read_body else {}
-        return json_response(await api.base_feedback_samples(body if isinstance(body, dict) else {}))
+        payload = await api.base_feedback_samples(body if isinstance(body, dict) else {})
+        return json_response(payload, status=409 if payload.get("accepted") is False else 200)
 
     async def base_feedback_samples_latest(_: web.Request) -> Any:
         http_status, payload = api.base_feedback_samples_latest()
@@ -3736,9 +4008,15 @@ def create_app(api: UpperRobotApi) -> Any:
     async def base_manual(request: web.Request) -> Any:
         body = await request.json()
         payload = await api.manual_control(body if isinstance(body, dict) else {})
-        return json_response(payload, status=200 if payload.get("accepted", True) else 400)
+        http_status = 409 if payload.get("error", {}).get("type") == "serial_busy" else 400
+        return json_response(payload, status=200 if payload.get("accepted", True) else http_status)
+
+    async def cleanup(_: web.Application) -> None:
+        # 测试客户端与实际服务共用清理路径，避免采样任务和连接池残留。
+        await api.close()
 
     app = web.Application()
+    app.on_cleanup.append(cleanup)
     app.router.add_route("OPTIONS", "/{tail:.*}", options)
     app.router.add_get("/", root)
     app.router.add_get("/health", health)

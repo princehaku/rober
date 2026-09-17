@@ -2295,6 +2295,10 @@ export interface O7DirectUpperApiCommandResponse extends ProofFlags {
   adapter: O7DirectUpperApiAdapterInfo;
   command: O7DirectUpperApiCommand;
   accepted_by_workstation: boolean;
+  // 可选扩展保留旧上位机兼容性；缺失值不能解释为动作成功。
+  upper_accepted?: boolean;
+  preempted?: boolean;
+  upper_error?: { type: string; message: string };
   upper_request: O7DirectUpperApiRequestResult;
   upper_result_summary: O7DirectUpperApiCommandUpperResultSummary;
   upper_api_base_url: string;
@@ -2329,6 +2333,8 @@ export type O7RealtimeRadarStatus = "ready" | "blocked";
 export type O7RealtimeMapStatus = "ready" | "waiting_for_radar" | "waiting_for_mapping";
 
 export interface O7LiveOperatorPanelResponse extends ProofFlags {
+  // 两个摘要来自同一次状态读取，保留各自固定安全字段。
+  direct_upper_status?: O7DirectUpperApiStatusResponse;
   schema: "trashbot.o7.live_operator_panel.v1";
   endpoint: "/api/o7/live-operator-panel";
   ssh: {
