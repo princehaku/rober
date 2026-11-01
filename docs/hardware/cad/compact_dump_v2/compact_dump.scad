@@ -34,12 +34,12 @@
 // 支撑多边形需要实际轮胎接地测量，厂家外包络不能替代。
 
 /* [运动与展示] */
-dump_angle=30; // [0:1:50]
+dump_angle=0; // [0:1:50]
 max_angle=50;
 animate=false;
-cutaway=true;
-show_cg=true;
-show_drop_envelope=true;
+cutaway=false;
+show_cg=false;
+show_drop_envelope=false;
 show_chassis=true;
 
 /* [斗与原四柱] */
@@ -179,7 +179,7 @@ module fixed_frame(){
 module bucket(){
     moving(){
         // 完整几何含底和三个固定壁，近侧端面可剖开观察丝杆。
-        color([.94,.48,.15,.65]){
+        color([.94,.48,.15,1]){
             translate([xlo,rear,0]) cube([bucket_length,front-rear,wall]);
             translate([xlo,front-wall,wall]) cube([bucket_length,wall,bucket_height-wall]);
             translate([xlo,rear,wall]) cube([wall,front-rear,bucket_height-wall]);
@@ -199,7 +199,7 @@ module bucket(){
 }
 module gate(){
     // 门与斗采用不同刚体角，但角度完全由同一四杆约束求得。
-    color([.96,.7,.22,.9]) translate([0,pivot_y+H.x,pivot_z+H.y]) rotate([gate_phi,0,0])
+    color([.96,.7,.22,1]) translate([0,pivot_y+H.x,pivot_z+H.y]) rotate([gate_phi,0,0])
         translate([xlo,-wall,-bucket_height]) cube([bucket_length,wall,bucket_height]);
     for(s=[-1,1]) let(x=bucket_center_x+s*(bucket_length/2+link_end_clearance)){
         color("#ad5bb9"){

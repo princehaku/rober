@@ -10,7 +10,9 @@
 
 ## 怎么看和改
 
-OpenSCAD打开 [compact_dump.scad](compact_dump.scad)。`dump_angle`设0–50°；`cutaway`控制近侧端面剖切；`animate=true`时由`$t`驱动去回；`show_cg`显示三个垃圾情景点与轨迹，分别为均匀、侧口底部、唇端高半斗。它们是固定局部点的姿态包络，未模拟垃圾实际滑动。
+OpenSCAD打开 [compact_dump.scad](compact_dump.scad)，**默认放平0°、四壁齐全、侧门闭合，斗壁不透明**。`dump_angle`可设0–50°；`cutaway`、`show_cg`、`show_drop_envelope`为单独的调试开关，默认全部关闭。`animate=true`时由`$t`驱动去回；打开`show_cg`才显示均匀、侧口底部、唇端高半斗三个垃圾情景点及轨迹，未模拟垃圾实际滑动。
+
+0°理想闭合几何已单独复核：门内面与底板共享540 mm²，与两端壁各共享201 mm²；底面和四周没有设计通缝，顶部保持敞口。实际打印门缝、压紧方式、细碎垃圾或液体泄漏仍未验证。侧向净空图单独开启绿色测试框，主图与默认模型不显示该调试叠层。
 
 | 参数/部位 | 当前设计值 |
 |---|---|

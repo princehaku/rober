@@ -60,7 +60,7 @@ def main():
     cutaway=bool(re.search(r'^cutaway=true;',source_text,re.M))
     show_cg=bool(re.search(r'^show_cg=true;',source_text,re.M))
     # 显示开关也进入图注；整斗显示时不能仍声称近侧被剖开。
-    display_note=('近侧端面剖切' if cutaway else '完整三壁斗')+'；'+('红点均匀、紫/洋红点偏载垃圾CG' if show_cg else '垃圾重心点隐藏')+'；设备尺寸为占位。'
+    display_note=('端面剖切调试图' if cutaway else '完整斗体外观')+'；'+('红点均匀、紫/洋红点偏载垃圾CG' if show_cg else '重心调试点隐藏')+'；设备尺寸为占位。'
     OUT.mkdir(exist_ok=True)
     # 保留三张原始姿态图，可单独放大检查每个铰接关系。
     # 固定镜头分别显示运输、途中、卸料，避免每帧自动缩放造成运动错觉。
@@ -76,7 +76,7 @@ def main():
     size='×'.join(f'{v:g}' for v in labels['dimensions'])
     d.text((24,15),f'{p["payload_kg"]:g} kg 小侧斗样机 · {size} mm · 原车实测 {p["base_mass_kg"]:g} kg',(25,40,50),font=font(32))
     d.text((24,65),'蓝：固定架 / 前塔   橙：小斗   绿：丝杆   紫：侧门杆   红柱：雷达   黑盒：相机',(45,60,70),font=font(25))
-    for i,(im,title) in enumerate([(images[0],'运输 0°：低位小斗，前塔固定'),(images[2],f'侧卸 {p["max_angle"]:g}°：侧门同步开启，导料唇外伸')]):
+    for i,(im,title) in enumerate([(images[0],'放平 0°：四壁齐全、侧门闭合'),(images[2],f'侧卸 {p["max_angle"]:g}°：开门卸料示意')]):
         # 只作统一缩放，不逐帧裁切到不同大小。
         im=im.resize((900,675))
         board.paste(im,(i*900,155))
@@ -91,7 +91,7 @@ def main():
     board.save(OUT/'overview.png')
     # 沿车长正投影辅助观察轮侧间隙，避免透视投影让绿色通道看似压住轮胎。
     render(args.openscad,OUT/'side_clearance.png',p['max_angle'],'1100,900',
-           ['--projection=o','-D','$vpr=[90,0,90]','-D','$vpt=[-35,-20,100]','-D','$vpd=1200'])
+           ['--projection=o','-D','show_drop_envelope=true','-D','$vpr=[90,0,90]','-D','$vpt=[-35,-20,100]','-D','$vpd=1200'])
     # 动画中也显示同样边界；去程结束后原路回零，避免循环跳变。
     frames=[]
     with tempfile.TemporaryDirectory(prefix='render-',dir=ROOT) as tmp:
