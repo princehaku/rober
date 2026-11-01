@@ -1,23 +1,33 @@
 ﻿param(
     [string]$OpenScad = $env:OPENSCAD_EXE,
     [string]$PythonExe = 'python',
-    [string]$DependencyPath = "$env:LOCALAPPDATA/rober-cad-tools/python",
+    [string]$DependencyPath = '',
     [string]$OutputDirectory = "$PSScriptRoot/exports"
 )
-# 独立工具缓存便于复用，脚本不会下载软件或修改全局环境。
+# 项目工具目录便于用户直接找到，脚本不会下载软件或修改全局环境。
 $ErrorActionPreference = 'Stop'
+# 从脚本位置推导仓库根目录，换工作目录也能找到本地工具和依赖。
+$projectRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../../../..'))
+if (-not $DependencyPath) { $DependencyPath = Join-Path $projectRoot 'tools/cad-python' }
 if (-not $OpenScad) {
-    $found = Get-Command openscad.com, openscad -ErrorAction SilentlyContinue | Select-Object -First 1
-    if ($found) { $OpenScad = $found.Source }
-    else { $OpenScad = "$env:LOCALAPPDATA/rober-cad-tools/openscad-2021.01/openscad.com" }
+    $projectOpenScad = Join-Path $projectRoot 'tools/openscad/openscad.com'
+    # 显式参数及环境变量优先，其后使用项目便携版，最后查询 PATH。
+    if (Test-Path -LiteralPath $projectOpenScad) { $OpenScad = $projectOpenScad }
+    else {
+        $found = Get-Command openscad.com, openscad -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($found) { $OpenScad = $found.Source }
+    }
 }
 # 显式路径和 PATH 均可用，缺失时给用户可操作的提示。
-if (-not (Get-Command $OpenScad -ErrorAction SilentlyContinue)) {
+if (-not $OpenScad -or -not (Get-Command $OpenScad -ErrorAction SilentlyContinue)) {
     throw '找不到 OpenSCAD。请安装官方便携版并用 -OpenScad 传入 openscad.com 路径。'
 }
 $source = Join-Path $PSScriptRoot 'ground_dump.scad'
 # 路径均从脚本自身目录解析，调用者可以在任意工作目录运行。
 New-Item -ItemType Directory -Force $OutputDirectory | Out-Null
+# 输出实际选择路径，便于核对跨目录运行时采用的工具来源。
+Write-Output "OpenSCAD: $OpenScad"
+Write-Output "Python dependency path: $DependencyPath"
 & $OpenScad --version
 # 每次导出都检查返回码和文件长度，避免上次的产物掩盖失败。
 function Export-Cad([string]$Name, [string[]]$Options) {
@@ -50,7 +60,7 @@ Export-Cad 'transport.png' ($view + @('-D','dump_angle=0'))
 Export-Cad 'dump_55.png' ($view + @('-D','dump_angle=55'))
 # 中央执行器会被斗侧壁遮挡，单独输出隐藏斗体的机构检查图。
 Export-Cad 'mechanism_55.png' ($view + @('-D','dump_angle=55','-D','show_bucket=false'))
-# 验证依赖可由本任务缓存或用户自己的 Python 环境提供。
+# 验证依赖默认由项目本地目录提供，也允许使用调用者指定的环境。
 $previousPath = $env:PYTHONPATH
 # 依赖目录临时添加到当前进程，退出时归还调用者原配置。
 try {

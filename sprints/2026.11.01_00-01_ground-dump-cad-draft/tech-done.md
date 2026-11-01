@@ -26,7 +26,7 @@ sprint_type: micro
 
 ## 验证结果
 
-环境：Windows 本机；Python 3.13.12、OpenSCAD 2021.01、trimesh 5.2.0、numpy 2.5.4，Pillow 使用本机已有版本。OpenSCAD 官方便携 ZIP 与额外 Python 库放在 `%LOCALAPPDATA%/rober-cad-tools/`，未改全局 PATH，无 ROS2 构建。
+初始验证环境：Windows 本机；Python 3.13.12、OpenSCAD 2021.01、trimesh 5.2.0、numpy 2.5.4，Pillow 使用本机已有版本。首次验证时工具位于 `%LOCALAPPDATA%/rober-cad-tools/`，后按用户要求迁入项目 `tools/`，具体事实见末节；未改全局 PATH，无 ROS2 构建。
 
 已读来源：`docs/vendor/VENDOR_INDEX.md`；WAVE ROVER 扩展平台 PDF/DXF 文件；`WAVE ROVER_MODEL_STL.stl`；雷达 `models/lidar_mount.stl` 与 `urdf/lidar.urdf`。底盘 STL 546006 面，原始包围尺寸 172.3988×194.0302×99.9392，单位未声明；仅作为毫米量级及长轴朝前的设计假设。扩展平台 PDF 提取文本无尺寸标注，DXF 未采用孔距。雷达 mount 原始尺寸 0.08×0.02953×0.14，单位与适配未确认，故未复用。实际安装孔位全部待测。
 
@@ -71,3 +71,17 @@ git diff --check
 - 四个车架脚、主梁、轴与斗体连接目前只表达连续布局，真实孔位、承力点、紧固工具空间、机械止挡、防夹、线缆与散热维修空间均未定型。
 - 交付范围仅可编辑 CAD、STL 几何及 PNG 布局；下一步由用户量车/传感器并修改，小件试印后进行空载全行程、逐级假载荷及满载重心检查。无 HIL 或 OKR 完成度增量。
 - 最近两轮目录核查：2026.09.17 性能迭代已完成软件范围；2026.06.12 未发现 final.md。本设计任务不重复消费其运行环境或导航 blocker。
+
+## 用户要求的工具路径迁移
+
+- 用户明确要求把工具放到项目内。迁移前确认没有 OpenSCAD 进程，未终止用户进程；在同一 PowerShell 会话逐一核实解析后的精确源路径和目标路径、目标无冲突，再复制并逐文件校验 SHA256，最后仅删除校验通过的两个旧工具目录。
+- 完整便携目录现为 `E:\rober\tools\openscad\`，182 个文件全部哈希一致；GUI 为 `tools/openscad/openscad.exe`，CLI 为 `tools/openscad/openscad.com`，`--version` 输出 `OpenSCAD version 2021.01`。
+- 本任务 Python 依赖现为 `E:\rober\tools\cad-python\`，1742 个文件全部哈希一致；原 `openscad-2021.01` 和 `python` 目录均已迁走。父缓存内下载 ZIP、历史回归目录保持原位。
+- 实际修改仅 `.gitignore`、`export.ps1`、`README.md` 和本 sprint 文件。导出脚本优先显式参数/环境变量，其后从脚本位置找项目 OpenSCAD，最后查询 PATH；默认 Python 依赖也从脚本位置推导到项目目录。保留 UTF-8 BOM，中文技术注释为 19/75 行，超过20%。README 给出项目内双击 exe 与打开现有模型的路径。
+- `.gitignore` 精准忽略 `/tools/openscad/` 和 `/tools/cad-python/`；原文件统一为 LF 以通过行尾空白检查，原忽略规则保持相同。第三方工具和库不进入 Git，模型源文件及已有导出产物保持不变。
+
+验证命令摘要：新路径 `openscad.com --version` 返回0；本次验证进程清空 `OPENSCAD_EXE` 后切到系统临时目录，以绝对路径运行 `E:\rober\docs\hardware\cad\ground_dump_v0\export.ps1 -OutputDirectory "$env:TEMP/rober-project-cad-migration-check-20261101"`，完整返回0。日志明确输出 `OpenSCAD: E:\rober\tools\openscad\openscad.com` 和 `Python dependency path: E:\rober\tools\cad-python`；五个 STL 均封闭、单连通、正体积，参数回归110→120 mm通过，三张CAD PNG及概览生成成功。额外核对 numpy/trimesh 的 `__file__` 均在项目 `tools/cad-python/`。
+
+`git check-ignore` 两个工具目录、exe/com 和 numpy 关键文件均命中；`git diff --check` 通过。首次追加 `.gitignore` 时遇到既有 CRLF 与新增行导致的空白检查失败，统一 LF 后通过。交付仅暂存上述四个文本文件，再运行暂存区空白检查和名单审查；正常提交/推送，不改远端历史。
+
+本轮剩余边界：第三方工具仅在当前本机项目目录，换电脑需另备便携版和 Python 依赖；Python 解释器与原有 Pillow 继续使用本机环境。机械载荷、机构与实物验证风险沿用上节，本次路径迁移没有新增硬件结论。

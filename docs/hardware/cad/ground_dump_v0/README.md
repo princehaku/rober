@@ -13,7 +13,7 @@
 
 ## 打开和修改
 
-1. 从 [OpenSCAD 官方下载页](https://openscad.org/downloads.html) 安装或解压便携版。Windows 便携版可直接打开 `openscad.exe`，再打开 `ground_dump.scad`。本轮 CLI 验证使用 2021.01；未修改全局环境。
+1. 本机便携版已放在项目目录：双击 `E:\rober\tools\openscad\openscad.exe`，再用“文件 → 打开”选择 `E:\rober\docs\hardware\cad\ground_dump_v0\ground_dump.scad`。本轮使用 OpenSCAD 2021.01，未修改全局环境；换电脑可从 [OpenSCAD 官方下载页](https://openscad.org/downloads.html) 获取便携版，完整解压到仓库的 `tools/openscad/`。
 2. 在右侧 Customizer 展开参数组；若未显示，通过“视图 → 隐藏 Customizer”切换显示。也可直接修改源文件顶部参数。所有参数后面的数值范围只是编辑辅助。
 3. `part=assembly` 看整体；`dump_angle=0` 看运输，`55` 看后卸。F5 快速预览，F6 完整布尔运算。透视颜色用于装配辨认，导出的 STL 不带颜色。
 4. 将 `part` 改为 `lidar_plate`、`camera_bracket` 或 `base_adapter`，F6 后通过“文件 → 导出 → STL”导出单个候选件。单件底面均为 Z=0。
@@ -57,13 +57,13 @@
 powershell -NoProfile -ExecutionPolicy Bypass -File docs/hardware/cad/ground_dump_v0/export.ps1
 ```
 
-自定义工具路径可用 `-OpenScad 'C:/tools/openscad/openscad.com' -PythonExe python`。脚本优先 `OPENSCAD_EXE`、PATH，然后本任务用户缓存 `%LOCALAPPDATA%/rober-cad-tools/openscad-2021.01/openscad.com`。Python 需要 numpy、trimesh、Pillow；可安装到自选目录后传 `-DependencyPath`，例如：
+脚本可从任意工作目录运行，源文件、默认工具与依赖均从脚本位置推导。OpenSCAD 选择顺序为显式 `-OpenScad`、`OPENSCAD_EXE`、项目 `tools/openscad/openscad.com`、PATH。Python 依赖默认在本机项目 `E:\rober\tools\cad-python\`，允许 `-DependencyPath` 覆盖；Python 解释器用 `-PythonExe` 指定。换电脑需准备 numpy、trimesh、Pillow，例如在仓库根目录执行：
 
 ```powershell
-python -m pip install --target "$env:LOCALAPPDATA/rober-cad-tools/python" numpy trimesh Pillow
+python -m pip install --target ./tools/cad-python numpy trimesh Pillow
 ```
 
-脚本不自动下载依赖，不改全局 PATH。`export.ps1` 保留 UTF-8 BOM 以兼容 Windows PowerShell 5 的中文解析。导出入口优先采用数值 `part_id=1/2/3`，预览用 `part_id=4` 强制选择装配，避免 Windows 原生命令的字符串引号差异与 GUI 保存值影响批量导出；日常 GUI 保持隐藏的 `part_id=0`，继续使用 `part` 下拉菜单。
+`tools/openscad/` 与 `tools/cad-python/` 已精准加入 `.gitignore`，仅保留本机第三方工具，Git 中保存设计文件与导出入口。脚本不自动下载依赖，不改全局 PATH。`export.ps1` 保留 UTF-8 BOM 以兼容 Windows PowerShell 5 的中文解析。导出入口优先采用数值 `part_id=1/2/3`，预览用 `part_id=4` 强制选择装配，避免 Windows 原生命令的字符串引号差异与 GUI 保存值影响批量导出；日常 GUI 保持隐藏的 `part_id=0`，继续使用 `part` 下拉菜单。
 
 输出包括 3 个 STL、2 个固定柱距 90/100 的对照检查 STL、两张装配 PNG、隐藏斗体的 `mechanism_55.png` 机构检查图、概览 PNG 和 `geometry_report.json`。检查返回码、非空、封闭、法线一致、单连通、正体积与底面落零；固定对照组把柱距 90 改成 100 后板宽须增大 10 mm（原始余量参数下为 110 至 120）。用户修改源文件默认柱距不影响该对照检查，实际打印件始终用当前源文件参数导出。报告不包含装配碰撞、有限元、打印质量、物理载重或传感器视野验证。对照 STL 用于验证参数化，实际打印请使用确认过尺寸的单件。
 

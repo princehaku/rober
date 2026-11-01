@@ -6,3 +6,7 @@ install/
 log/
 .ros_home/
 .vscode
+
+# 项目内本地 CAD 工具与第三方 Python 依赖无需提交版本库。
+/tools/openscad/
+/tools/cad-python/
