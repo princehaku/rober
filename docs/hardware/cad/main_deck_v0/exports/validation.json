@@ -1,0 +1,424 @@
+{
+  "source_sha256": "f4539c397fe6ac9b4ec03d46d255baa0971fc72428c3cce20149375544452518",
+  "openscad": "OpenSCAD version 2021.01",
+  "numpy": "2.5.4",
+  "trimesh": "5.2.0",
+  "production": {
+    "P1_panel": {
+      "size_mm": [
+        52.34154,
+        79.7,
+        12.0
+      ],
+      "z_min": 0.0,
+      "volume_mm3": 34870.34755,
+      "watertight": true,
+      "winding_consistent": true,
+      "components": 1
+    },
+    "P2_panel": {
+      "size_mm": [
+        69.4,
+        79.7,
+        12.0
+      ],
+      "z_min": 0.0,
+      "volume_mm3": 50013.90092,
+      "watertight": true,
+      "winding_consistent": true,
+      "components": 1
+    },
+    "P3_panel": {
+      "size_mm": [
+        77.05846,
+        79.7,
+        12.0
+      ],
+      "z_min": 0.0,
+      "volume_mm3": 49364.08527,
+      "watertight": true,
+      "winding_consistent": true,
+      "components": 1
+    },
+    "P4_panel": {
+      "size_mm": [
+        52.34154,
+        79.7,
+        12.0
+      ],
+      "z_min": 0.0,
+      "volume_mm3": 34745.15676,
+      "watertight": true,
+      "winding_consistent": true,
+      "components": 1
+    },
+    "P5_panel": {
+      "size_mm": [
+        69.4,
+        79.7,
+        12.0
+      ],
+      "z_min": 0.0,
+      "volume_mm3": 50013.90092,
+      "watertight": true,
+      "winding_consistent": true,
+      "components": 1
+    },
+    "P6_panel": {
+      "size_mm": [
+        77.05846,
+        79.7,
+        12.0
+      ],
+      "z_min": 0.0,
+      "volume_mm3": 49364.08527,
+      "watertight": true,
+      "winding_consistent": true,
+      "components": 1
+    },
+    "H1_bridge": {
+      "size_mm": [
+        42.0,
+        42.04154,
+        9.0
+      ],
+      "z_min": 0.0,
+      "volume_mm3": 9293.81278,
+      "watertight": true,
+      "winding_consistent": true,
+      "components": 1
+    },
+    "H2_bridge": {
+      "size_mm": [
+        32.0,
+        59.4,
+        9.0
+      ],
+      "z_min": 0.0,
+      "volume_mm3": 12830.40033,
+      "watertight": true,
+      "winding_consistent": true,
+      "components": 1
+    },
+    "H3_bridge": {
+      "size_mm": [
+        32.0,
+        66.75846,
+        9.0
+      ],
+      "z_min": 0.0,
+      "volume_mm3": 14419.82758,
+      "watertight": true,
+      "winding_consistent": true,
+      "components": 1
+    },
+    "V1_bridge": {
+      "size_mm": [
+        42.0,
+        55.4,
+        9.0
+      ],
+      "z_min": 0.0,
+      "volume_mm3": 12179.24044,
+      "watertight": true,
+      "winding_consistent": true,
+      "components": 1
+    },
+    "V2_bridge": {
+      "size_mm": [
+        42.0,
+        55.4,
+        9.0
+      ],
+      "z_min": 0.0,
+      "volume_mm3": 12179.24044,
+      "watertight": true,
+      "winding_consistent": true,
+      "components": 1
+    },
+    "V3_bridge": {
+      "size_mm": [
+        42.0,
+        55.4,
+        9.0
+      ],
+      "z_min": 0.0,
+      "volume_mm3": 12179.24044,
+      "watertight": true,
+      "winding_consistent": true,
+      "components": 1
+    },
+    "V4_bridge": {
+      "size_mm": [
+        42.0,
+        55.4,
+        9.0
+      ],
+      "z_min": 0.0,
+      "volume_mm3": 12179.24044,
+      "watertight": true,
+      "winding_consistent": true,
+      "components": 1
+    }
+  },
+  "coupons": {
+    "fit_0.2_left": {
+      "size_mm": [
+        27.7,
+        36.0,
+        12.0
+      ],
+      "z_min": 0.0,
+      "volume_mm3": 10008.00286,
+      "watertight": true,
+      "winding_consistent": true,
+      "components": 1
+    },
+    "fit_0.2_right": {
+      "size_mm": [
+        27.7,
+        36.0,
+        12.0
+      ],
+      "z_min": 0.0,
+      "volume_mm3": 9882.81204,
+      "watertight": true,
+      "winding_consistent": true,
+      "components": 1
+    },
+    "fit_0.2_bridge": {
+      "size_mm": [
+        42.0,
+        29.6,
+        9.0
+      ],
+      "z_min": 0.0,
+      "volume_mm3": 6606.43999,
+      "watertight": true,
+      "winding_consistent": true,
+      "components": 1
+    },
+    "fit_0.3_left": {
+      "size_mm": [
+        27.7,
+        36.0,
+        12.0
+      ],
+      "z_min": 0.0,
+      "volume_mm3": 9927.01037,
+      "watertight": true,
+      "winding_consistent": true,
+      "components": 1
+    },
+    "fit_0.3_right": {
+      "size_mm": [
+        27.7,
+        36.0,
+        12.0
+      ],
+      "z_min": 0.0,
+      "volume_mm3": 9801.81955,
+      "watertight": true,
+      "winding_consistent": true,
+      "components": 1
+    },
+    "fit_0.3_bridge": {
+      "size_mm": [
+        42.0,
+        29.4,
+        9.0
+      ],
+      "z_min": 0.0,
+      "volume_mm3": 6563.24023,
+      "watertight": true,
+      "winding_consistent": true,
+      "components": 1
+    },
+    "fit_0.4_left": {
+      "size_mm": [
+        27.7,
+        36.0,
+        12.0
+      ],
+      "z_min": 0.0,
+      "volume_mm3": 9844.80546,
+      "watertight": true,
+      "winding_consistent": true,
+      "components": 1
+    },
+    "fit_0.4_right": {
+      "size_mm": [
+        27.7,
+        36.0,
+        12.0
+      ],
+      "z_min": 0.0,
+      "volume_mm3": 9719.61464,
+      "watertight": true,
+      "winding_consistent": true,
+      "components": 1
+    },
+    "fit_0.4_bridge": {
+      "size_mm": [
+        42.0,
+        29.2,
+        9.0
+      ],
+      "z_min": 0.0,
+      "volume_mm3": 6520.04007,
+      "watertight": true,
+      "winding_consistent": true,
+      "components": 1
+    },
+    "mount_seat_first": {
+      "size_mm": [
+        24.0,
+        24.0,
+        12.0
+      ],
+      "z_min": 0.0,
+      "volume_mm3": 6114.74613,
+      "watertight": true,
+      "winding_consistent": true,
+      "components": 1
+    }
+  },
+  "geometry": {
+    "four_holes": [
+      {
+        "panel": 2,
+        "center": [
+          -29.0,
+          -43.0
+        ],
+        "diameter": 3.000005555351925,
+        "inscribed": 2.993559780944001
+      },
+      {
+        "panel": 5,
+        "center": [
+          -29.0,
+          43.0
+        ],
+        "diameter": 3.000005555354828,
+        "inscribed": 2.993559780935193
+      },
+      {
+        "panel": 3,
+        "center": [
+          29.0,
+          -43.0
+        ],
+        "diameter": 3.0000055553548046,
+        "inscribed": 2.993559780935217
+      },
+      {
+        "panel": 6,
+        "center": [
+          29.0,
+          43.0
+        ],
+        "diameter": 3.000005555351884,
+        "inscribed": 2.993559780944009
+      }
+    ],
+    "body_offset_x": -22.641541,
+    "seam_gap": 0.6,
+    "side_and_roof_clearance": 0.3,
+    "final_overlap_volume": 0.0,
+    "insertion_overlap_volume": 0.0,
+    "positive_lock_volumes": {
+      "z": 2055.025502,
+      "cross": 465.368096,
+      "H2_wall": 167.999268,
+      "H3_wall": 168.000183,
+      "key0_bolt": 14.94177,
+      "key3_bolt": 14.941771,
+      "key4_bolt": 14.941771,
+      "key5_bolt": 14.941767,
+      "key6_bolt": 14.941767
+    },
+    "load_path": "X负端列P1/P4→X=-70双燕尾→中列P2/P5→X=-29孔座；中列/X正端列各两柱；未验证承载",
+    "mounting": {
+      "clamp_thickness": 2.0,
+      "well_diameter": 10.0,
+      "user_approx_stud": 5,
+      "washer_design": 0.5,
+      "nut_design": 2,
+      "nominal_remaining_thread": 0.5,
+      "local_support_required": true
+    },
+    "regressions": [
+      {
+        "case": "c02",
+        "part_id": 2,
+        "size": [
+          69.4,
+          79.7,
+          12.0
+        ]
+      },
+      {
+        "case": "c02",
+        "part_id": 12,
+        "size": [
+          32.0,
+          59.6,
+          9.0
+        ]
+      },
+      {
+        "case": "c04",
+        "part_id": 2,
+        "size": [
+          69.4,
+          79.7,
+          12.0
+        ]
+      },
+      {
+        "case": "c04",
+        "part_id": 12,
+        "size": [
+          32.0,
+          59.2,
+          9.0
+        ]
+      },
+      {
+        "case": "thick14",
+        "part_id": 2,
+        "size": [
+          69.4,
+          79.7,
+          14.0
+        ]
+      },
+      {
+        "case": "thick14",
+        "part_id": 12,
+        "size": [
+          32.0,
+          59.4,
+          9.0
+        ]
+      },
+      {
+        "case": "oversize",
+        "rejected": true,
+        "returncode": 1
+      },
+      {
+        "case": "thin",
+        "rejected": true,
+        "returncode": 1
+      },
+      {
+        "case": "loose",
+        "rejected": true,
+        "returncode": 1
+      }
+    ],
+    "boundary": "几何/文件验证，未切片/实打/逐级加载"
+  }
+}

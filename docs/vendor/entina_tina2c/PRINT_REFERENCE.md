@@ -22,3 +22,5 @@
 - EXE SHA256：`fd7c46023dc3b9dc1dc3bdeded4962e6fd228e9e3b5da20d8e5d56332f74a904`
 
 仅下载/解压并核对完整性，未运行安装器；`/tools/wiibuilder/`精准忽略，第三方文件不提交Git。
+
+新独立 [榫卯大底板打印稿](../../hardware/cad/main_deck_v0/README.md) 分六板七键，单件小于90 mm；安装窝需局部支撑和单座先试，未切片/实打/承载验证。

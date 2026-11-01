@@ -121,3 +121,5 @@ python -m pip install --target ./tools/cad-python numpy trimesh Pillow
 - [OpenSCAD 官方下载](https://openscad.org/downloads.html)与官方站点链接的[用户手册：命令行](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Using_OpenSCAD_in_a_command_line_environment)：便携工具和导出参数入口。
 
 底盘额定载荷未得到本地资料确认；2 kg 仅指垃圾目标，总载荷还包括斗、架、执行器、电池及电子件。丝杆推力和两端距离随翻转变化，运输状态接近低夹角，所需推力可能较大；需要实际机构计算、全行程防卡死、机械止挡、防夹、断电锁定和满载防倾覆评估。雷达扫描平面、相机视野、天线/散热/维修空间及线缆弯曲也需实物检查。本轮不修改 OKR 完成度。
+
+整车四柱大底板见 [main_deck_v0](../main_deck_v0/README.md)；本目录 `base_adapter` 是前端传感器小适配板。
