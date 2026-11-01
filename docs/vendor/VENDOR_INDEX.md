@@ -325,3 +325,10 @@ The local vendor tree currently covers:
 For generated UI assets, placeholder media, fonts, audio clips, and duplicated
 build artifacts, use them only as vendor app reference. They are not project
 architecture sources.
+
+## ENTINA Tina2C Printing Reference
+
+- [Tina2C printing source notes](entina_tina2c/PRINT_REFERENCE.md)
+  - Official domestic/international links, checked 2026-11-01: 100×100×100 mm,
+    0.4 mm nozzle, 1.75 mm PLA, no heated bed, slicer/TF workflow and boundaries.
+  - This is a local printing-tool reference, with no change to robot hardware facts.
