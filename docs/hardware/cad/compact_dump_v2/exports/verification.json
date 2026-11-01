@@ -1,0 +1,243 @@
+{
+  "source_sha256": "1a408cfc66413d669a7c8495c80a2b9ee7de39b4b7e4fd0b91cb292b0217e26d",
+  "parameters": {
+    "dump_angle": 30.0,
+    "max_angle": 50.0,
+    "bucket_length": 180.0,
+    "bucket_width": 200.0,
+    "bucket_height": 70.0,
+    "bucket_center_x": -35.0,
+    "wall": 3.0,
+    "pillar_height": 24.0,
+    "deck_thickness": 12.0,
+    "pivot_y": -80.0,
+    "pivot_above_deck": 27.0,
+    "guide_length": 40.0,
+    "guide_overlap": 6.0,
+    "gate_arm": 25.0,
+    "gate_fixed_z": 20.0,
+    "gate_target_angle": -50.0,
+    "link_end_clearance": 14.0,
+    "fixed_pin_u": 65.0,
+    "fixed_pin_above_deck": 13.0,
+    "moving_pin_u": 145.0,
+    "moving_pin_z": -9.0,
+    "actuator_closed": 75.0,
+    "actuator_stroke": 60.0,
+    "actuator_body_length": 42.0,
+    "mast_x": 70.0,
+    "lidar_center_x": 95.0,
+    "lidar_diameter": 65.0,
+    "lidar_height": 40.0,
+    "lidar_scan_z": 180.0,
+    "camera_x": 100.0,
+    "camera_z": 120.0,
+    "camera_width": 64.0,
+    "camera_depth": 30.0,
+    "camera_height": 40.0,
+    "camera_hfov": 70.0,
+    "camera_vfov": 50.0,
+    "base_mass_kg": 0.7,
+    "base_cg_y": 0.0,
+    "payload_kg": 0.5,
+    "bag_width": 50.0,
+    "bag_height": 50.0,
+    "body_offset_x": -22.641541,
+    "vendor_top_z": 52.7359,
+    "ground_z": -88.52225,
+    "base_cg_y_actual": null
+  },
+  "vendor_bounds": [
+    [
+      -114.1952519375,
+      -86.24939727783203,
+      -88.52225025024414
+    ],
+    [
+      79.83492231787109,
+      86.14939880371094,
+      11.416947290039062
+    ]
+  ],
+  "geometry": {
+    "samples": 102,
+    "start": {
+      "angle": 0,
+      "length": 80.15609770940699,
+      "arm": 18.027324698847174,
+      "gate_angle": 8.142219984546603e-15,
+      "transmission_sin": 0.6874224268802158,
+      "scan_margin": 18.5
+    },
+    "end": {
+      "angle": 50,
+      "length": 124.3476558700709,
+      "arm": 66.30859676873865,
+      "gate_angle": -50.000000000000014,
+      "transmission_sin": 0.8266500668839216,
+      "scan_margin": -65.8831324394738
+    },
+    "stroke": 44.1915581606639,
+    "minimum_moment_arm": 18.027324698847174,
+    "minimum_scan_margin": -65.8831324394738,
+    "scan_occluded_sample_angles": [
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50
+    ],
+    "minimum_clearances": {
+      "body": 25.36963109424447,
+      "frame": 14.355265461536561,
+      "sensors": 4.0,
+      "actuator": 2.128651415344585,
+      "guide": 25.36963109424447
+    }
+  },
+  "variation": {
+    "samples": 102,
+    "start": {
+      "angle": 0,
+      "length": 80.15609770940699,
+      "arm": 18.027324698847174,
+      "gate_angle": 8.142219984546603e-15,
+      "transmission_sin": 0.6874224268802158,
+      "scan_margin": 96.5
+    },
+    "end": {
+      "angle": 50,
+      "length": 124.3476558700709,
+      "arm": 66.30859676873865,
+      "gate_angle": -50.000000000000014,
+      "transmission_sin": 0.8266500668839216,
+      "scan_margin": 12.116867560526202
+    },
+    "stroke": 44.1915581606639,
+    "minimum_moment_arm": 18.027324698847174,
+    "minimum_scan_margin": 12.116867560526202,
+    "scan_occluded_sample_angles": [],
+    "minimum_clearances": {
+      "body": 26.65520631361754,
+      "frame": 14.355265461536561,
+      "sensors": 4.0,
+      "actuator": 2.128651415344585,
+      "guide": 26.65520631361754
+    }
+  },
+  "rejected_invalid": [
+    "行程不足",
+    "低雷达",
+    "无唇搭接"
+  ],
+  "materials": {
+    "vertical_corridors": {
+      "50": {
+        "wheel_envelope_gap_mm": 7.317859303360336,
+        "clear": true
+      },
+      "70": {
+        "wheel_envelope_gap_mm": -2.6821406966396637,
+        "clear": false
+      }
+    },
+    "test_block_mm": [
+      50,
+      50,
+      50
+    ],
+    "rigid_path_samples": 100,
+    "path_chassis_minimum_gap": 28.369631094244454,
+    "release_u": -86.0,
+    "boundary": "仅指定刚体块采样通路；滑动驱动力、柔性垃圾袋、脱离姿态和堵塞需实测"
+  },
+  "loads": {
+    "base_mass_user_measured_kg": 0.7,
+    "payload_target_kg": 0.5,
+    "base_cg_y_actual": null,
+    "new_attachment_mass_cg": "unknown",
+    "status": "not_certified",
+    "screening_tip_edge_y": -65.0,
+    "scenario_scope": "局部固定偏载点的全角包络，非垃圾袋动力学轨迹",
+    "restoring_moment_formula": "0.7*(base_cg_y+65)+0.5*(cargo_cg_y+65)+sum(attachment_mass*(attachment_cg_y+65))",
+    "cases": {
+      "uniform": {
+        "end_cg_y": -55.38854673424108,
+        "minimum_cg_y": -55.38854673424108,
+        "required_base_cg_y_gt": -71.86532376125638,
+        "end_required_base_cg_y_gt": -71.86532376125638,
+        "hypothetical_margin_if_base_cg_y_zero_kg_mm": 50.305726632879455
+      },
+      "mouth_floor": {
+        "end_cg_y": -92.85575219373078,
+        "minimum_cg_y": -100.0,
+        "required_base_cg_y_gt": -40.0,
+        "end_required_base_cg_y_gt": -45.10303414733515,
+        "hypothetical_margin_if_base_cg_y_zero_kg_mm": 28.0
+      },
+      "lip_floor": {
+        "end_cg_y": -118.56725658119237,
+        "minimum_cg_y": -140.0,
+        "required_base_cg_y_gt": -11.428571428571423,
+        "end_required_base_cg_y_gt": -26.737673870576877,
+        "hypothetical_margin_if_base_cg_y_zero_kg_mm": 8.0
+      },
+      "lip_high35": {
+        "end_cg_y": -145.37881209035658,
+        "minimum_cg_y": -149.46152422706632,
+        "required_base_cg_y_gt": -4.67033983780977,
+        "end_required_base_cg_y_gt": -7.586562792602443,
+        "hypothetical_margin_if_base_cg_y_zero_kg_mm": 3.26923788646684
+      },
+      "lip_high70": {
+        "end_cg_y": -172.1903675995208,
+        "minimum_cg_y": -172.19321235502446,
+        "required_base_cg_y_gt": 11.566580253588896,
+        "end_required_base_cg_y_gt": 11.564548285372013,
+        "hypothetical_margin_if_base_cg_y_zero_kg_mm": -8.096606177512228
+      }
+    }
+  },
+  "camera": {
+    "assumed_hfov": 70.0,
+    "assumed_vfov": 50.0,
+    "front_platform_vertical_gap": 29.40430810214002
+  },
+  "not_proven": [
+    "全部销耳/轴承/紧固件公差和真实转动间隙",
+    "真实设备尺寸/出光高度/FOV",
+    "实际车CG与新增附件质量",
+    "0.5kg静态或动态承载",
+    "柔性袋滑动摩擦/脱离/夹袋",
+    "连续碰撞与变形"
+  ]
+}

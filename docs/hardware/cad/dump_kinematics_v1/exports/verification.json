@@ -1,0 +1,119 @@
+{
+  "evidence": "sampled_concept_geometry_only",
+  "parameters": {
+    "dump_angle": 35.0,
+    "max_angle": 55.0,
+    "bucket_length": 400.0,
+    "bucket_width": 200.0,
+    "bucket_height": 200.0,
+    "wall": 3.0,
+    "pillar_height": 24.0,
+    "deck_thickness": 12.0,
+    "body_offset_x": -22.641541,
+    "pivot_x": -110.0,
+    "pivot_above_deck": 74.0,
+    "gate_arm": 35.0,
+    "link_y_clearance": 16.0,
+    "side_support_offset": 12.0,
+    "fixed_pin_dx": 60.0,
+    "fixed_pin_above_deck": 35.0,
+    "moving_pin_dx": 260.0,
+    "moving_pin_dz": -12.0,
+    "actuator_closed": 195.0,
+    "actuator_stroke": 100.0,
+    "actuator_radius": 10.0,
+    "vendor_top_z": 52.7359,
+    "vendor_ground_z": -88.52225
+  },
+  "vendor_bounds_mm": [
+    [
+      -114.1952519375,
+      -86.24939727783203,
+      -88.52225025024414
+    ],
+    [
+      79.83492231787109,
+      86.14939880371094,
+      11.416947290039062
+    ]
+  ],
+  "vendor_sha256": "5209e68563dd90b7a2ab49c4cc961cfb6be2b171147d8334ecc2f2ecb8f75340",
+  "source_sha256": "7ca9a4335ab80be2772e8bcaef4e8aa49833f8a4f0f69ac14d960fc3a9d4d34d",
+  "default": {
+    "samples": 112,
+    "minimum_clearances_mm": {
+      "chassis": 53.10836685707625,
+      "deck": 32.089312136864294,
+      "support": 2.73628666169728,
+      "actuator_floor": 7.4999999999999645,
+      "gate_ground": 23.424445071308057
+    },
+    "start": {
+      "angle": 0,
+      "length_mm": 201.8142710513803,
+      "moment_arm_mm": 46.67658015919867,
+      "fourbar_angle_deg": 28.73189266663374,
+      "gate_ground_mm": 198.52225025024416,
+      "cargo_cg_x_mm": -22.641541000000004,
+      "gate_horizontal_gap_mm": 0.0
+    },
+    "end": {
+      "angle": 55,
+      "length_mm": 264.3205859478739,
+      "moment_arm_mm": 70.23752997325597,
+      "fourbar_angle_deg": 83.73189266663374,
+      "gate_ground_mm": 23.424445071308057,
+      "cargo_cg_x_mm": -141.80845083056022,
+      "gate_horizontal_gap_mm": 163.83040885779835
+    },
+    "required_stroke_mm": 62.50631489649359,
+    "minimum_moment_arm_mm": 46.67658015919867,
+    "minimum_fourbar_angle_deg": 28.73189266663374
+  },
+  "parameter_variation": {
+    "samples": 112,
+    "minimum_clearances_mm": {
+      "chassis": 62.85916627504403,
+      "deck": 38.39865293672581,
+      "support": 3.157417725030699,
+      "actuator_floor": 7.4999999999999645,
+      "gate_ground": 31.895973798328967
+    },
+    "start": {
+      "angle": 0,
+      "length_mm": 203.57799488156869,
+      "moment_arm_mm": 60.32086133446731,
+      "fourbar_angle_deg": 26.49031819330843,
+      "gate_ground_mm": 215.52225025024416,
+      "cargo_cg_x_mm": -22.641541000000004,
+      "gate_horizontal_gap_mm": 0.0
+    },
+    "end": {
+      "angle": 55,
+      "length_mm": 274.5514481294239,
+      "moment_arm_mm": 73.98898055091144,
+      "fourbar_angle_deg": 81.49031819330844,
+      "gate_ground_mm": 31.895973798328967,
+      "cargo_cg_x_mm": -149.99997127345014,
+      "gate_horizontal_gap_mm": 180.2134497435782
+    },
+    "required_stroke_mm": 70.97345324785519,
+    "minimum_moment_arm_mm": 60.32086133446731,
+    "minimum_fourbar_angle_deg": 26.49031819330843
+  },
+  "rejected_invalid": [
+    "行程不足",
+    "主轴过低",
+    "底脚越界"
+  ],
+  "collision_scope": "包含完整三壁和内收圆端边梁的斗体OBB、门OBB；厂家全部STL顶点AABB；底座AABB；侧座/丝杆/电机/门连杆胶囊；前止挡闭盒。每1度去回采样。",
+  "not_proven": [
+    "非连续碰撞证明",
+    "主铰/门铰/销耳连接重合区未设计公差与实体转动间隙",
+    "边梁已纳入外包络碰撞，连接处及强度未验收",
+    "实际电机与紧固件包络待选型",
+    "真实柱高",
+    "2kg满载稳定性及支撑方案",
+    "打印强度、导程制动、摩擦、袋体通过性"
+  ]
+}

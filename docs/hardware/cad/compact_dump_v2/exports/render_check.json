@@ -1,0 +1,137 @@
+{
+  "source_sha256": "1a408cfc66413d669a7c8495c80a2b9ee7de39b4b7e4fd0b91cb292b0217e26d",
+  "captions": {
+    "dimensions": [
+      180.0,
+      200.0,
+      70.0
+    ],
+    "angles": [
+      0,
+      25.0,
+      50.0
+    ],
+    "key_angles": [
+      0,
+      10,
+      20,
+      30,
+      40,
+      50.0
+    ],
+    "lengths": [
+      80.15609770940699,
+      124.3476558700709
+    ],
+    "stroke": 44.1915581606639
+  },
+  "variation_captions": {
+    "dimensions": [
+      180.0,
+      200.0,
+      90.0
+    ],
+    "angles": [
+      0,
+      22.5,
+      45.0
+    ],
+    "key_angles": [
+      0,
+      10,
+      20,
+      30,
+      40,
+      45.0
+    ],
+    "lengths": [
+      80.15609770940699,
+      118.58914310932386
+    ],
+    "stroke": 38.433045399916864
+  },
+  "rendered_angles": [
+    0,
+    25.0,
+    50.0
+  ],
+  "animation_angles": [
+    0,
+    10,
+    20,
+    30,
+    40,
+    50.0,
+    40,
+    30,
+    20,
+    10
+  ],
+  "scad_rejected": [
+    "dump_angle=80",
+    "actuator_stroke=1",
+    "guide_overlap=0"
+  ],
+  "scope": "小侧斗预览与参数断言；0.5kg样机未实物试载",
+  "caption_regressions": [
+    {
+      "original_max": 50,
+      "changed": {
+        "dimensions": [
+          180.0,
+          200.0,
+          90.0
+        ],
+        "angles": [
+          0,
+          22.5,
+          45
+        ],
+        "key_angles": [
+          0,
+          10,
+          20,
+          30,
+          40,
+          45
+        ],
+        "lengths": [
+          80.15609770940699,
+          118.58914310932386
+        ],
+        "stroke": 38.433045399916864
+      }
+    },
+    {
+      "original_max": 40,
+      "changed": {
+        "dimensions": [
+          180.0,
+          200.0,
+          90.0
+        ],
+        "angles": [
+          0,
+          17.5,
+          35
+        ],
+        "key_angles": [
+          0,
+          10,
+          20,
+          30,
+          35
+        ],
+        "lengths": [
+          80.15609770940699,
+          107.41132878354222
+        ],
+        "stroke": 27.255231074135224
+      }
+    }
+  ],
+  "auxiliary_images": [
+    "side_clearance.png"
+  ],
+  "corridor_footer": "0.5 kg仍待逐级实物试载；50mm通道几何净空通过 / 70mm通道未通过；测试块路径仅为几何假设。"
+}
