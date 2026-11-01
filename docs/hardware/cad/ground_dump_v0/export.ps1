@@ -53,6 +53,19 @@ foreach ($partName in @('lidar_plate', 'camera_bracket', 'base_adapter')) {
 # 参数扰动直接重用源文件；宽度增加 10 毫米应反映在输出包围尺寸。
 Export-Cad 'lidar_plate_reference_check.stl' @('--export-format','binstl','-D','part_id=1','-D','mast_spacing=90')
 Export-Cad 'lidar_plate_wide_check.stl' @('--export-format','binstl','-D','part_id=1','-D','mast_spacing=100')
+# 四孔样板与实际金属框架分别导出，后者只供切片测量，不属于打印候选。
+Export-Cad 'mount_template.stl' @('--export-format','binstl','-D','part_id=5')
+foreach ($kind in @('reference','changed')) {
+    $pitchX = 58
+    $pitchY = 86
+    if ($kind -eq 'changed') { $pitchX = 68; $pitchY = 96 }
+    # 固定对照组不依赖用户默认孔距，孔距变化应同时驱动样板和实际四柱。
+    $mountArgs = @('--export-format','binstl','-D',"mount_pitch_x=$pitchX",'-D',"mount_pitch_y=$pitchY",'-D','mount_clearance=3','-D','thread_diameter=2.5','-D','driver_clearance_diameter=10')
+    Export-Cad "mount_template_${kind}_check.stl" ($mountArgs + @('-D','part_id=5'))
+    Export-Cad "mount_frame_${kind}_check.stl" ($mountArgs + @('-D','part_id=7'))
+    # 使用与装配完全相同的前适配板，防止打印件覆盖螺栓头而预览未察觉。
+    Export-Cad "sensor_adapter_${kind}_check.stl" ($mountArgs + @('-D','part_id=8'))
+}
 # 显式选择装配入口，用户保存的 GUI 单件选择不会影响状态预览。
 $view = @('-D','part_id=4','--imgsize','1400,1050','--projection','o','--camera','-420,-600,390,0,0,160','--viewall','--preview','--colorscheme','Tomorrow')
 # 同一机位便于对照运输与卸料，颜色保留零件职责区分。
@@ -60,6 +73,10 @@ Export-Cad 'transport.png' ($view + @('-D','dump_angle=0'))
 Export-Cad 'dump_55.png' ($view + @('-D','dump_angle=55'))
 # 中央执行器会被斗侧壁遮挡，单独输出隐藏斗体的机构检查图。
 Export-Cad 'mechanism_55.png' ($view + @('-D','dump_angle=55','-D','show_bucket=false'))
+# 专门安装图移去业务部件，直接展示四柱和紧固件；俯视图用于孔位对照。
+$installView = @('-D','part_id=6','--imgsize','1300,1050','--projection','o','--viewall','--preview','--colorscheme','Tomorrow')
+Export-Cad 'mount_install_raw.png' ($installView + @('--camera','210,-320,250,0,0,95'))
+Export-Cad 'mount_top_raw.png' ($installView + @('--camera','0,0,500,0,0,110'))
 # 验证依赖默认由项目本地目录提供，也允许使用调用者指定的环境。
 $previousPath = $env:PYTHONPATH
 # 依赖目录临时添加到当前进程，退出时归还调用者原配置。

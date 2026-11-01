@@ -1,0 +1,279 @@
+{
+  "source": "本地 vendor DXF，截图仅用于识别对应轮廓",
+  "ezdxf": "1.4.5",
+  "plates": {
+    "upper": {
+      "file": "docs/vendor/waveshare_wave_rover/WAVE ROVER-EP DXF.dxf",
+      "insunits": 4,
+      "unit": "mm",
+      "measurement": 1,
+      "inserts": [
+        {
+          "name": "ISO_A4(P)_SHEET",
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "rotation_deg": 0
+        },
+        {
+          "name": "ISO_TITLEBLOCK",
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "rotation_deg": 0
+        }
+      ],
+      "holes": [
+        {
+          "handle": "302",
+          "ocs_center": [
+            -101.837759,
+            263.264173,
+            0.0
+          ],
+          "extrusion": [
+            0.0,
+            0.0,
+            -1.0
+          ],
+          "wcs_center": [
+            101.837759,
+            263.264173,
+            0.0
+          ],
+          "diameter_mm": 2.6
+        },
+        {
+          "handle": "303",
+          "ocs_center": [
+            -101.837759,
+            177.264173,
+            0.0
+          ],
+          "extrusion": [
+            0.0,
+            0.0,
+            -1.0
+          ],
+          "wcs_center": [
+            101.837759,
+            177.264173,
+            0.0
+          ],
+          "diameter_mm": 2.6
+        },
+        {
+          "handle": "311",
+          "ocs_center": [
+            -159.837759,
+            263.264173,
+            0.0
+          ],
+          "extrusion": [
+            0.0,
+            0.0,
+            -1.0
+          ],
+          "wcs_center": [
+            159.837759,
+            263.264173,
+            0.0
+          ],
+          "diameter_mm": 2.6
+        },
+        {
+          "handle": "32E",
+          "ocs_center": [
+            -159.837759,
+            177.264173,
+            0.0
+          ],
+          "extrusion": [
+            0.0,
+            0.0,
+            -1.0
+          ],
+          "wcs_center": [
+            159.837759,
+            177.264173,
+            0.0
+          ],
+          "diameter_mm": 2.6
+        }
+      ],
+      "hole_center_wcs": [
+        130.837759,
+        220.26417300000003
+      ],
+      "pitch_wcs_mm": [
+        58.0,
+        86.00000000000003
+      ],
+      "drawing_region_bounds_wcs_mm": [
+        52.16293,
+        173.76417299999994,
+        166.937759,
+        266.7641730000002
+      ],
+      "reference_outline_bounds_wcs_mm": [
+        52.16293,
+        173.76417299999994,
+        166.937759,
+        266.7641730000002
+      ],
+      "outline_center_wcs": [
+        109.5503445,
+        220.26417300000008
+      ],
+      "reference_outline_entities": "上层顶视区域曲线包围框",
+      "hole_group_offset_from_outline_center_mm": [
+        21.28741450000001,
+        -5.684341886080802e-14
+      ]
+    },
+    "lower": {
+      "file": "docs/vendor/waveshare_wave_rover/WAVE ROVER DXF.dxf",
+      "insunits": 4,
+      "unit": "mm",
+      "measurement": 1,
+      "inserts": [
+        {
+          "name": "ISO_A0_SHEET",
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "rotation_deg": 0
+        },
+        {
+          "name": "ISO_TITLEBLOCK",
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "rotation_deg": 0
+        }
+      ],
+      "holes": [
+        {
+          "handle": "2DFB",
+          "ocs_center": [
+            -249.645451,
+            437.694635,
+            0.0
+          ],
+          "extrusion": [
+            0.0,
+            0.0,
+            -1.0
+          ],
+          "wcs_center": [
+            249.645451,
+            437.694635,
+            0.0
+          ],
+          "diameter_mm": 2.05
+        },
+        {
+          "handle": "2DFC",
+          "ocs_center": [
+            -249.645451,
+            495.694635,
+            0.0
+          ],
+          "extrusion": [
+            0.0,
+            0.0,
+            -1.0
+          ],
+          "wcs_center": [
+            249.645451,
+            495.694635,
+            0.0
+          ],
+          "diameter_mm": 2.05
+        },
+        {
+          "handle": "2DFD",
+          "ocs_center": [
+            -335.645451,
+            495.694635,
+            0.0
+          ],
+          "extrusion": [
+            0.0,
+            0.0,
+            -1.0
+          ],
+          "wcs_center": [
+            335.645451,
+            495.694635,
+            0.0
+          ],
+          "diameter_mm": 2.05
+        },
+        {
+          "handle": "2E2F",
+          "ocs_center": [
+            -335.645451,
+            437.694635,
+            0.0
+          ],
+          "extrusion": [
+            0.0,
+            0.0,
+            -1.0
+          ],
+          "wcs_center": [
+            335.645451,
+            437.694635,
+            0.0
+          ],
+          "diameter_mm": 2.05
+        }
+      ],
+      "hole_center_wcs": [
+        292.645451,
+        466.694635
+      ],
+      "pitch_wcs_mm": [
+        85.99999999999997,
+        58.0
+      ],
+      "drawing_region_bounds_wcs_mm": [
+        210.54995486556075,
+        352.499357,
+        374.84094651770835,
+        535.606831
+      ],
+      "reference_outline_bounds_wcs_mm": [
+        210.775454,
+        352.499357,
+        374.515448,
+        535.606831
+      ],
+      "outline_center_wcs": [
+        292.645451,
+        444.053094
+      ],
+      "reference_outline_entities": "2EA6/2EA7/2EA8/2EAB/2EAC",
+      "hole_group_offset_from_outline_center_mm": [
+        0.0,
+        22.641541000000018
+      ]
+    }
+  },
+  "mapping": {
+    "upper": "X=u-130.837759, Y=v-220.264173",
+    "lower": "X=V-466.694635, Y=-(U-292.645451)",
+    "orientation": "两图相差90度；四孔对称无法确定行驶车头，CAD仅提供整体180度展示切换",
+    "thread_user_confirmed_mm": 2.5,
+    "lower_connection": "原图孔径2.05，未见攻牙标注；用户确认M2.5安装，连接类型待实物核对"
+  }
+}

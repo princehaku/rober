@@ -1,14 +1,14 @@
 // 地面后卸翻斗概念稿：所有尺寸为毫米，承载目标为垃圾 2 kg，尚待选型和实测。
-// 资料来源：docs/vendor/VENDOR_INDEX.md 与 WAVE ROVER_MODEL_STL.stl。
-// 底盘模型仅使用该 STL 的包围尺寸参考；朝向、单位和安装孔位尚未实测。
+// 资料来源：vendor 两份 WAVE ROVER DXF，完整原始坐标见 mount_reference.json。
+// 安装原点为四孔组中心；上层58×86毫米经90度映射与下层86×58同轴。
 // 主承力件拟用金属，橙色件仅供传感器适配试装，禁止据此承诺载重。
 
 /* [显示与状态] */
 // 装配或单件导出；单件自动落在打印平台上。
-part = "assembly"; // [assembly,lidar_plate,camera_bracket,base_adapter]
+part = "assembly"; // [assembly,lidar_plate,camera_bracket,base_adapter,mount_template,mount_install]
 // 向后翻转角；零度为运输状态，建议先在 0 至 55 度间检查干涉。
 dump_angle = 0; // [0:1:65]
-// 参考底盘不含真实孔位，隐藏后可看主结构。
+// 参考底盘保留DXF原图四孔，实物连接类型仍待核对，隐藏后可看主结构。
 show_chassis = true;
 // 隐藏斗体后可检查中央执行器与斗底横梁，适合看被斗壁遮挡的机构。
 show_bucket = true;
@@ -18,6 +18,31 @@ show_sensor_envelopes = true;
 show_actuator = true;
 // 地面和方向箭头便于识别向前行驶、向后卸料。
 show_ground = true;
+// 紧固件只展示设计包络，未建螺纹；下层图示2.05孔不能当作贯穿间隙。
+show_fasteners = true;
+
+/* [M2.5四孔安装接口] */
+// 用户纠正为2.5毫米螺纹；原板图示孔径分别2.6和2.05，保持独立。
+thread_diameter = 2.5; // [2:0.1:6]
+// 新金属件及打印样板的设计通孔，打印后须校准，不能当作厂家孔径。
+mount_clearance = 3.0; // [2.7:0.1:6.6]
+// 安装原点是四孔组中心，两个孔距允许按实物调整。
+mount_pitch_x = 58; // [50:1:80]
+mount_pitch_y = 86; // [75:1:100]
+// 对称孔阵无法确定行驶车头；本参数只切换整体展示方向，不改变机械相对位置。
+display_direction = 1; // [-1,1]
+// 板高、板厚及隔柱外径为设计占位，尚未采用厂家或标准件尺寸。
+upper_plate_z = 112; // [108:1:116]
+upper_plate_thickness = 2; // [1:0.5:3]
+mount_post_diameter = 8; // [7:1:12]
+mount_ear_thickness = 4; // [3:0.5:5]
+// 头部与垫片尺寸均为工具空间占位，采购后须按实际标准件外形复核。
+bolt_head_diameter = 5; // [4:0.5:8]
+bolt_head_height = 2; // [1.5:0.5:4]
+washer_diameter = 7; // [6:0.5:10]
+washer_thickness = 0.8; // [0.5:0.1:1.5]
+driver_clearance_diameter = 10; // [8:1:12]
+mount_template_thickness = 2.5; // [2:0.5:4]
 
 /* [垃圾斗占位尺寸] */
 // 加长垃圾斗会改变重心、执行器需求和前端间隙，必须重新评估。
@@ -40,7 +65,8 @@ mast_size = 12; // [10:1:18]
 // 雷达安装面高度；其最低值仍需结合翻斗扫掠与扫描面复核。
 lidar_height = 310; // [280:1:360]
 camera_height = 222; // [205:1:245]
-metal_rail_z = 118; // [115:1:125]
+// 主梁放在上层板和安装耳上方，修改层高时保持实体接触。
+metal_rail_z = upper_plate_z + upper_plate_thickness + mount_ear_thickness;
 
 /* [雷达打印板占位尺寸] */
 // 打印板宽度随立柱间距联动，确保固定孔外保留材料。
@@ -65,14 +91,12 @@ camera_hole_spacing = 28; // [20:1:36]
 camera_hole_diameter = 3.4; // [3:0.2:5]
 
 /* [底座打印适配板占位尺寸] */
-// 这里只提供可测后修改的长槽，未采用任何厂家安装孔距。
-base_length = 140; // [130:1:160]
+// 该打印件仅适配前传感器架；底盘四孔采用独立金属结构及对位样板。
+// 缩短前传感器板，让四个底盘紧固点留在板后方；加长时会自动开工具避让窗。
+base_length = 50; // [45:1:160]
 base_width = 120; // [110:1:140]
 base_thickness = 6; // [5:0.5:9]
-base_hole_spacing_x = 90; // [70:1:100]
-base_hole_spacing_y = 80; // [65:1:90]
-base_hole_diameter = 4.5; // [4:0.5:6]
-base_slot_travel = 12; // [0:1:16]
+sensor_foot_hole_diameter = 4.5; // [4:0.5:6]
 
 /* [Hidden] */
 // 增加圆周细分以减少小孔多边形误差，实际打印还需孔径补偿。
@@ -83,12 +107,58 @@ eps = 0.05;
 lidar_plate_width = mast_spacing + lidar_plate_margin;
 base_center_x = mast_x - base_length/2 + 12;
 mast_bottom = metal_rail_z + 6;
+// 下层顶板孔组比外轮廓中心朝图上偏22.641541，不能用板中心对齐。
+body_offset_x = -22.641541;
+// 主梁位于孔列外侧，给螺栓头、垫片和局部工具通道保留空间。
+rail_y = max(58,mount_pitch_y/2+driver_clearance_diameter/2+8);
+function mount_points(px=mount_pitch_x,py=mount_pitch_y) = [for(x=[-px/2,px/2]) for(y=[-py/2,py/2]) [x,y]];
 // 参数之间存在耦合；超出安全几何范围时明确失败，避免导出破碎件。
 assert(bucket_wall < rear_lip_height && rear_lip_height < bucket_height);
 assert(lidar_hole_spacing_x + lidar_slot_travel + lidar_hole_diameter < lidar_plate_depth-10);
 assert(camera_hole_spacing + camera_hole_diameter < camera_width-12);
-assert(base_hole_spacing_x+base_slot_travel+base_hole_diameter < base_length-8);
-assert(base_hole_spacing_y+base_hole_diameter < base_width-8);
+// 保证金属壁厚、孔间隙及两板之间正的隔柱高度。
+assert(mount_clearance > thread_diameter && mount_post_diameter > mount_clearance+2);
+assert(upper_plate_z>100 && hinge_z>metal_rail_z+24);
+assert(max(washer_diameter,bolt_head_diameter)<=driver_clearance_diameter);
+
+// 连通轻薄四孔样板仅用于先试孔距，绝不可承担垃圾或执行器载荷。
+module mount_template() {
+    difference() {
+        union() {
+            for(p=mount_points()) translate([p[0],p[1],0]) cylinder(d=12,h=mount_template_thickness);
+            for(x=[-mount_pitch_x/2,mount_pitch_x/2]) translate([x-3,-mount_pitch_y/2,0]) cube([6,mount_pitch_y,mount_template_thickness]);
+            for(y=[-mount_pitch_y/2,mount_pitch_y/2]) translate([-mount_pitch_x/2,y-3,0]) cube([mount_pitch_x,6,mount_template_thickness]);
+        }
+        for(p=mount_points()) translate([p[0],p[1],0]) slot_z(mount_clearance,0,mount_template_thickness);
+    }
+}
+
+// 原板外形简化为包络及耳位，原始曲线请查看DXF重画图；原孔径不随新件改变。
+module upper_plate_reference() {
+    color([0.3,0.65,0.75,0.5]) difference() {
+        union() {
+            translate([-78.674829,-30.25,upper_plate_z]) cube([114.774829,60.5,upper_plate_thickness]);
+            for(x=[-29,29]) for(y=[-43,43]) hull() {
+                translate([x,y,upper_plate_z]) cylinder(d=7,h=upper_plate_thickness);
+                translate([x,y>0?28:-28,upper_plate_z]) cylinder(d=7,h=upper_plate_thickness);
+            }
+        }
+        // 这里固定保留DXF的2.6毫米原孔，不能被新件3毫米间隙覆盖。
+        for(p=mount_points(58,86)) translate([p[0],p[1],upper_plate_z-eps]) cylinder(d=2.6,h=upper_plate_thickness+2*eps);
+    }
+}
+
+// 紧固包络落在金属安装耳上；下层接口止于顶面，连接类型待实物核对。
+module mount_fasteners() {
+    for(p=mount_points()) {
+        color([0.82,0.68,0.2]) translate([p[0],p[1],100]) cylinder(d=thread_diameter,h=metal_rail_z-100+washer_thickness);
+        color([0.8,0.7,0.3]) translate([p[0],p[1],metal_rail_z]) difference() {
+            cylinder(d=washer_diameter,h=washer_thickness);
+            translate([0,0,-eps]) cylinder(d=mount_clearance,h=washer_thickness+2*eps);
+        }
+        color([0.72,0.58,0.15]) translate([p[0],p[1],metal_rail_z+washer_thickness]) cylinder(d=bolt_head_diameter,h=bolt_head_height);
+    }
+}
 
 // 长槽两端圆弧贯通，孔径和移动量分别控制，便于先小件试装。
 module slot_z(d, travel, h) {
@@ -140,16 +210,22 @@ module camera_bracket() {
     }
 }
 
-// 底座板连在立柱脚下；长槽仅用于适配，主载荷由金属导轨承担。
+// 前适配板连在立柱脚下，并对底盘紧固点避让，主载荷由金属导轨承担。
 module base_adapter() {
     difference() {
         translate([-base_length/2,-base_width/2,0]) cube([base_length,base_width,base_thickness]);
-        for (x=[-base_hole_spacing_x/2,base_hole_spacing_x/2])
-            for (y=[-base_hole_spacing_y/2,base_hole_spacing_y/2])
-                translate([x,y,0]) slot_z(base_hole_diameter,base_slot_travel,base_thickness);
+        // 用户加长板时，四轴工具窗口随安装孔距联动，确保螺栓头不会埋进塑料。
+        for(p=mount_points()) let(x=p[0]-body_offset_x-base_center_x,y=p[1],r=driver_clearance_diameter/2) {
+            translate([x,y,0]) slot_z(driver_clearance_diameter,0,base_thickness);
+            // 靠边不足3毫米时直接开口到边缘，避免保留易折的薄小筋。
+            if(x-r< -base_length/2+3 && x> -base_length/2)
+                translate([-base_length/2-eps,y-r,-eps]) cube([x+base_length/2+eps,2*r,base_thickness+2*eps]);
+            if(abs(y)+r>base_width/2-3 && abs(y)<base_width/2)
+                translate([x-r,y>0?y: -base_width/2-eps,-eps]) cube([2*r,base_width/2-abs(y)+eps,base_thickness+2*eps]);
+        }
         // 立柱脚孔与装配位置联动，避免柱子在预览里悬空。
         for (y=[-mast_spacing/2,mast_spacing/2])
-            translate([base_length/2-12,y,0]) slot_z(4.5,0,base_thickness);
+            translate([base_length/2-12,y,0]) slot_z(sensor_foot_hole_diameter,0,base_thickness);
     }
 }
 
@@ -175,29 +251,43 @@ module bucket() {
 // 原 STL 包围尺寸约 172.399 × 194.030 × 99.939；此处仅画简化外形。
 // 将长轴作为车长是设计坐标假设，不代表已核实原 STL 的车辆朝向。
 module chassis_reference() {
-    color([0.2,0.24,0.28]) translate([-85,-65,25]) cube([170,130,75]);
+    color([0.2,0.24,0.28]) translate([body_offset_x-85,-65,25]) cube([170,130,73]);
+    // 顶板包络来自DXF顶视边界，仍为简化矩形；原孔保留图示2.05毫米。
+    color([0.36,0.4,0.44]) difference() {
+        translate([body_offset_x-91.553737,-81.869997,98]) cube([183.107474,163.739994,2]);
+        for(p=mount_points(58,86)) translate([p[0],p[1],98-eps]) cylinder(d=2.05,h=2+2*eps);
+    }
     color([0.10,0.11,0.12]) for (x=[-62,62]) for (y=[-77,77])
-        translate([x,y,38]) rotate([90,0,0]) cylinder(d=72,h=18,center=true);
+        translate([body_offset_x+x,y,38]) rotate([90,0,0]) cylinder(d=72,h=18,center=true);
 }
 
 module fixed_metal_frame() {
-    color([0.58,0.63,0.68]) {
-        // 四个占位金属脚把纵梁接到简化底盘顶面，真实安装点仍须量车。
-        for(x=[-60,60]) for(y=[-50,50])
-            translate([x-6,y-6,100]) cube([12,12,metal_rail_z-100]);
+    color([0.58,0.63,0.68]) difference() {
+      union() {
+        // 在车体局部坐标中减去偏置，装配变换后四根隔柱准确落在共用四孔上。
+        for(p=mount_points()) translate([p[0]-body_offset_x,p[1],100]) cylinder(d=mount_post_diameter,h=upper_plate_z-100);
+        // 两根带孔金属横梁跨过上下板耳位，向外连接主纵梁，载荷经金属传递。
+        for(x=[-mount_pitch_x/2,mount_pitch_x/2])
+            translate([x-body_offset_x-8,-rail_y-6,upper_plate_z+upper_plate_thickness]) cube([16,2*rail_y+12,mount_ear_thickness]);
         // 两条纵梁连后铰支座和前传感器架，主骨架拟用金属。
-        for (y=[-50,50]) translate([hinge_x-6,y-6,metal_rail_z]) cube([mast_x-hinge_x+12,12,12]);
+        for (y=[-rail_y,rail_y]) translate([hinge_x-6,y-6,metal_rail_z]) cube([mast_x-hinge_x+12,12,12]);
         translate([hinge_x-6,-80,metal_rail_z+12]) cube([12,160,12]);
         // 中央执行器的下铰点落在金属横梁上，横梁两端与纵梁连接。
-        translate([hinge_x+32,-56,metal_rail_z+12]) cube([12,112,12]);
+        translate([hinge_x+32,-rail_y-6,metal_rail_z+12]) cube([12,2*rail_y+12,12]);
         // 铰轴两侧耳板与横梁实体相接，转轴横穿斗底后缘。
         for (y=[-78,72]) translate([hinge_x-6,y,metal_rail_z+20]) cube([12,6,hinge_z-metal_rail_z-10]);
         rod([hinge_x,-82,hinge_z],[hinge_x,82,hinge_z],8);
+        // 前横梁把立柱脚连到外移后的纵梁，前适配板依然得到金属承托。
+        translate([mast_x-6,-rail_y-6,metal_rail_z]) cube([12,2*rail_y+12,12]);
         // 立柱与底座适配板、顶雷达板直接接触，横梁承托相机底座。
         for (y=[-mast_spacing/2,mast_spacing/2])
             translate([mast_x-mast_size/2,y-mast_size/2,mast_bottom]) cube([mast_size,mast_size,lidar_height-mast_bottom]);
         translate([mast_x-camera_base_depth/2,-mast_spacing/2-mast_size/2,camera_height-8])
             cube([camera_base_depth,mast_spacing+mast_size,8]);
+      }
+      // 从隔柱到上安装耳使用同轴贯穿间隙；上层原板另以原孔径显示。
+      for(p=mount_points()) translate([p[0]-body_offset_x,p[1],100-eps])
+          cylinder(d=mount_clearance,h=metal_rail_z-100+2*eps);
     }
 }
 
@@ -213,8 +303,24 @@ module actuator_placeholder() {
     }
 }
 
-module assembly() {
+// 安装视图移去上层业务部件，能直接检查四柱、耳位、头部和原板。
+module mount_install() {
     if (show_chassis) chassis_reference();
+    upper_plate_reference();
+    // 仅裁切显示安装区域，所有孔与隔柱仍来自实际主框架模块，避免复制假几何。
+    intersection() {
+        translate([body_offset_x,0,0]) fixed_metal_frame();
+        translate([-60,-75,99]) cube([120,150,36]);
+    }
+    if(show_fasteners) mount_fasteners();
+}
+
+module assembly_layout() {
+    if (show_chassis) chassis_reference();
+    upper_plate_reference();
+    if(show_fasteners) mount_fasteners();
+    // 整个既有斗体和前架保留相对车体的位置，再换算到安装原点。
+    translate([body_offset_x,0,0]) {
     fixed_metal_frame();
     // 后铰轴固定；负 Y 转角使前端抬高，垃圾向后方低端滑动。
     translate([hinge_x,0,hinge_z]) rotate([0,-dump_angle,0]) {
@@ -234,6 +340,7 @@ module assembly() {
         color([0.18,0.5,0.85]) translate([mast_x,0,camera_height]) camera_face()
             translate([camera_thickness+18,0,20]) rotate([0,90,0]) cylinder(d=16,h=3);
     }
+    }
     if (show_ground) {
         color([0.89,0.9,0.91]) translate([-240,-150,-4]) cube([490,300,3]);
         color([0.15,0.4,0.25]) translate([165,-20,0]) linear_extrude(1)
@@ -243,14 +350,25 @@ module assembly() {
     }
 }
 
-// 三种 STL 共用同一份参数，导出脚本无需复制几何定义。
+// 四孔中心固定在原点；方向切换同时旋转整机和参考板，避免只翻单个孔组。
+module assembly() { rotate([0,0,display_direction==1?0:180]) assembly_layout(); }
+
+// 候选 STL 共用同一份参数，导出脚本无需复制几何定义。
 // 数字入口优先于 GUI 保存值，修改 part 后也能正确批量导出全部文件。
 if (part_id == 1) lidar_plate();
 else if (part_id == 2) camera_bracket();
 else if (part_id == 3) base_adapter();
 else if (part_id == 4) assembly();
+else if (part_id == 5) mount_template();
+else if (part_id == 6) rotate([0,0,display_direction==1?0:180]) mount_install();
+// 实际金属框架网格仅供切片核对隔柱孔轴线，含多个装配实体，禁止当作打印件。
+else if (part_id == 7) translate([body_offset_x,0,-100]) fixed_metal_frame();
+// 将实际前适配板换算到安装坐标，只用于验证四处头部/工具空间保持开放。
+else if (part_id == 8) translate([body_offset_x+base_center_x,0,0]) base_adapter();
 else if (part == "lidar_plate") lidar_plate();
 else if (part == "camera_bracket") camera_bracket();
 else if (part == "base_adapter") base_adapter();
+else if (part == "mount_template") mount_template();
+else if (part == "mount_install") rotate([0,0,display_direction==1?0:180]) mount_install();
 else if (part == "assembly") assembly();
 else assert(false,"未知零件名称");

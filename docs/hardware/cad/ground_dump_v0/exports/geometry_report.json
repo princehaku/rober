@@ -29,13 +29,13 @@
       "min_z_mm": 0.0
     },
     "base_adapter": {
-      "faces": 1220,
+      "faces": 404,
       "watertight": true,
       "winding_consistent": true,
       "components": 1,
-      "volume_mm3": 98933.079,
+      "volume_mm3": 35809.693,
       "extents_mm": [
-        140.0,
+        50.0,
         120.0,
         6.0
       ],
@@ -66,6 +66,45 @@
         5.0
       ],
       "min_z_mm": 0.0
+    },
+    "mount_template": {
+      "faces": 1328,
+      "watertight": true,
+      "winding_consistent": true,
+      "components": 1,
+      "volume_mm3": 4689.578,
+      "extents_mm": [
+        70.0,
+        98.0,
+        2.5
+      ],
+      "min_z_mm": 0.0
+    },
+    "mount_template_reference_check": {
+      "faces": 1328,
+      "watertight": true,
+      "winding_consistent": true,
+      "components": 1,
+      "volume_mm3": 4689.578,
+      "extents_mm": [
+        70.0,
+        98.0,
+        2.5
+      ],
+      "min_z_mm": 0.0
+    },
+    "mount_template_changed_check": {
+      "faces": 1328,
+      "watertight": true,
+      "winding_consistent": true,
+      "components": 1,
+      "volume_mm3": 5289.578,
+      "extents_mm": [
+        80.0,
+        108.0,
+        2.5
+      ],
+      "min_z_mm": 0.0
     }
   },
   "parameter_check": {
@@ -76,6 +115,196 @@
     "plate_width_mm": [
       110.0,
       120.0
+    ]
+  },
+  "mounting": {
+    "reference_upper_hole_mm": 2.6,
+    "reference_lower_dxf_circle_mm": 2.05,
+    "thread_user_confirmed_mm": 2.5,
+    "new_parts_design_clearance_mm": 3.0,
+    "cases": {
+      "reference": {
+        "pitch_mm": [
+          58,
+          86
+        ],
+        "template_holes": [
+          {
+            "center_mm": [
+              -29.0,
+              -43.0
+            ],
+            "circumdiameter_mm": 3.0,
+            "minimum_clearance_mm": 2.9936
+          },
+          {
+            "center_mm": [
+              -29.0,
+              43.0
+            ],
+            "circumdiameter_mm": 3.0,
+            "minimum_clearance_mm": 2.9936
+          },
+          {
+            "center_mm": [
+              29.0,
+              -43.0
+            ],
+            "circumdiameter_mm": 3.0,
+            "minimum_clearance_mm": 2.9936
+          },
+          {
+            "center_mm": [
+              29.0,
+              43.0
+            ],
+            "circumdiameter_mm": 3.0,
+            "minimum_clearance_mm": 2.9936
+          }
+        ],
+        "actual_frame_post_holes": [
+          {
+            "center_mm": [
+              -29.0,
+              -43.0
+            ],
+            "circumdiameter_mm": 3.0,
+            "minimum_clearance_mm": 2.9936
+          },
+          {
+            "center_mm": [
+              -29.0,
+              43.0
+            ],
+            "circumdiameter_mm": 3.0,
+            "minimum_clearance_mm": 2.9936
+          },
+          {
+            "center_mm": [
+              29.0,
+              -43.0
+            ],
+            "circumdiameter_mm": 3.0,
+            "minimum_clearance_mm": 2.9936
+          },
+          {
+            "center_mm": [
+              29.0,
+              43.0
+            ],
+            "circumdiameter_mm": 3.0,
+            "minimum_clearance_mm": 2.9936
+          }
+        ]
+      },
+      "changed": {
+        "pitch_mm": [
+          68,
+          96
+        ],
+        "template_holes": [
+          {
+            "center_mm": [
+              -34.0,
+              -48.0
+            ],
+            "circumdiameter_mm": 3.0,
+            "minimum_clearance_mm": 2.9936
+          },
+          {
+            "center_mm": [
+              -34.0,
+              48.0
+            ],
+            "circumdiameter_mm": 3.0,
+            "minimum_clearance_mm": 2.9936
+          },
+          {
+            "center_mm": [
+              34.0,
+              -48.0
+            ],
+            "circumdiameter_mm": 3.0,
+            "minimum_clearance_mm": 2.9936
+          },
+          {
+            "center_mm": [
+              34.0,
+              48.0
+            ],
+            "circumdiameter_mm": 3.0,
+            "minimum_clearance_mm": 2.9936
+          }
+        ],
+        "actual_frame_post_holes": [
+          {
+            "center_mm": [
+              -34.0,
+              -48.0
+            ],
+            "circumdiameter_mm": 3.0,
+            "minimum_clearance_mm": 2.9936
+          },
+          {
+            "center_mm": [
+              -34.0,
+              48.0
+            ],
+            "circumdiameter_mm": 3.0,
+            "minimum_clearance_mm": 2.9936
+          },
+          {
+            "center_mm": [
+              34.0,
+              -48.0
+            ],
+            "circumdiameter_mm": 3.0,
+            "minimum_clearance_mm": 2.9936
+          },
+          {
+            "center_mm": [
+              34.0,
+              48.0
+            ],
+            "circumdiameter_mm": 3.0,
+            "minimum_clearance_mm": 2.9936
+          }
+        ]
+      }
+    },
+    "actual_template_holes": [
+      {
+        "center_mm": [
+          -29.0,
+          -43.0
+        ],
+        "circumdiameter_mm": 3.0,
+        "minimum_clearance_mm": 2.9936
+      },
+      {
+        "center_mm": [
+          -29.0,
+          43.0
+        ],
+        "circumdiameter_mm": 3.0,
+        "minimum_clearance_mm": 2.9936
+      },
+      {
+        "center_mm": [
+          29.0,
+          -43.0
+        ],
+        "circumdiameter_mm": 3.0,
+        "minimum_clearance_mm": 2.9936
+      },
+      {
+        "center_mm": [
+          29.0,
+          43.0
+        ],
+        "circumdiameter_mm": 3.0,
+        "minimum_clearance_mm": 2.9936
+      }
     ]
   },
   "preview": "CAD 渲染，仅完成视觉布局检查；没有机械仿真或实物试装。"
