@@ -54,3 +54,5 @@ powershell -NoProfile -ExecutionPolicy Bypass -File E:\rober\docs\hardware\cad\m
 已读 [vendor索引](../../../vendor/VENDOR_INDEX.md)、`WAVE ROVER-EP DXF.dxf` 与 `WAVE ROVER DXF.dxf`，单位 $INSUNITS=4（mm），块比例1。原孔2.6 / 下层图示圆2.05均保留来源事实；下层无攻牙说明。共同四轴来自上层handles302/303/311/32E、下层2DFB/2DFC/2DFD/2E2F；原始坐标和90°映射详见 [既有坐标证据](../ground_dump_v0/mount_reference.json)。外形偏置取下层顶板边界中心与孔组中心差，不从截图估毫米。200×160、厚肋/桥键/新孔/紧固包络均是本稿设计值。
 
 [Tina2C官方核实](../../../vendor/entina_tina2c/PRINT_REFERENCE.md)提供100³/0.4喷嘴/PLA边界；[Prusa打印建模原则](https://help.prusa3d.com/article/modeling-with-3d-printing-in-mind_164135)与[连接切分说明](https://help.prusa3d.com/article/cut-tool_1779?product=cw1)仅用于方向/配合原则，不能证明承重。几何验证包含单体封闭/实际截面、轴线/间隙、插入路径、锁定干涉与工具空间；没有真实切片、试配、逐级加载、HIL或强度证明。发现松脱、裂纹、蠕变或柱牙不足应停止上车试载并改设计。
+
+一体代打试装版见 [main_deck_onepiece_v0](../main_deck_onepiece_v0/README.md)：200×160×12整件保留四柱座，移除拼缝/燕尾槽/止退孔；本目录分块件适配Tina2C，一体版需更大设备，均未验证承载。

@@ -1,0 +1,89 @@
+{
+  "source_sha256": "6231583d3943dacca57173c6641e0e6c2c8700826f5283f520163e4d70041e71",
+  "stl_sha256": "8aeb4f6a97744ae18b300fd2c1e87d27dd281c5062798549ba891852bab80055",
+  "size_mm": [
+    200.0,
+    160.0,
+    12.0
+  ],
+  "volume_mm3": 326219.17623529426,
+  "watertight": true,
+  "winding_consistent": true,
+  "components": 1,
+  "z_min": 0.0,
+  "body_offset_x": -22.641541,
+  "bores": [
+    {
+      "center": [
+        -29.0,
+        -43.0
+      ],
+      "outer_diameter": 3.0000005387417215,
+      "minimum_diameter": 2.9935741799613975
+    },
+    {
+      "center": [
+        -29.0,
+        43.0
+      ],
+      "outer_diameter": 3.000000538741782,
+      "minimum_diameter": 2.993574179961308
+    },
+    {
+      "center": [
+        29.0,
+        -43.0
+      ],
+      "outer_diameter": 3.000000538741852,
+      "minimum_diameter": 2.9935741799612763
+    },
+    {
+      "center": [
+        29.0,
+        43.0
+      ],
+      "outer_diameter": 3.000000538741882,
+      "minimum_diameter": 2.993574179961307
+    }
+  ],
+  "wells": [
+    {
+      "center": [
+        -29.0,
+        -43.0
+      ],
+      "outer_diameter": 10.000001484808823,
+      "minimum_diameter": 9.978585324094826
+    },
+    {
+      "center": [
+        -29.0,
+        43.0
+      ],
+      "outer_diameter": 10.000001484832456,
+      "minimum_diameter": 9.978585324062262
+    },
+    {
+      "center": [
+        29.0,
+        -43.0
+      ],
+      "outer_diameter": 10.00000148483247,
+      "minimum_diameter": 9.978585324062234
+    },
+    {
+      "center": [
+        29.0,
+        43.0
+      ],
+      "outer_diameter": 10.000001484808799,
+      "minimum_diameter": 9.978585324094832
+    }
+  ],
+  "clamp_thickness": 2.0,
+  "old_slot_sample_count": 14,
+  "old_stop_holes_filled": 5,
+  "former_seams_filled": true,
+  "print_pose": "安装顶面朝床；还原安装姿态为绕X180后上移板厚，四窝底需局部支撑",
+  "boundary": "PLA代打试装稿；外牙约5mm/螺母啮合/柱高/总载荷均待实配，非承载批准"
+}
