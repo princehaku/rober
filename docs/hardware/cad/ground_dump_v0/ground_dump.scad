@@ -5,7 +5,7 @@
 
 /* [显示与状态] */
 // 装配或单件导出；单件自动落在打印平台上。
-part = "assembly"; // [assembly,lidar_plate,camera_bracket,base_adapter,mount_template,mount_install]
+part = "assembly"; // [assembly,lidar_plate_assembly_reference,camera_bracket,base_adapter_assembly_reference,mount_template,mount_install,lidar_lower_print,lidar_upper_print,base_lower_print,base_upper_print,split_print_layout,split_assembly_detail]
 // 向后翻转角；零度为运输状态，建议先在 0 至 55 度间检查干涉。
 dump_angle = 0; // [0:1:65]
 // 参考底盘保留DXF原图四孔，实物连接类型仍待核对，隐藏后可看主结构。
@@ -98,6 +98,21 @@ base_width = 120; // [110:1:140]
 base_thickness = 6; // [5:0.5:9]
 sensor_foot_hole_diameter = 4.5; // [4:0.5:6]
 
+/* [Tina2C分体接头设计占位] */
+// 仅肩部XY留间隙；Z搭接面直接接触，避免紧固时把薄舌拉弯。
+split_xy_clearance = 0.2; // [0.1:0.1:0.4]
+split_hole_diameter = 3.4; // [3.2:0.1:3.8]
+// M3头/母/垫片为采购前空间占位，源文件不声明标准件尺寸已确认。
+split_head_diameter = 6;
+split_head_height = 3;
+split_washer_diameter = 7;
+split_washer_thickness = 0.8;
+split_nut_flat = 5.5;
+split_nut_height = 2.4;
+split_tool_diameter = 8;
+// 相交诊断仅排除0.001毫米数值接触壳；实体拼合仍由真实STL测得Z贴合。
+contact_tolerance = 0.001;
+
 /* [Hidden] */
 // 增加圆周细分以减少小孔多边形误差，实际打印还需孔径补偿。
 $fn = 48;
@@ -106,12 +121,27 @@ part_id = 0;
 eps = 0.05;
 lidar_plate_width = mast_spacing + lidar_plate_margin;
 base_center_x = mast_x - base_length/2 + 12;
-mast_bottom = metal_rail_z + 6;
+// 适配板放在前梁顶面，消除原先板与梁的实体重叠，立柱同步从板顶起。
+base_install_z = metal_rail_z + 12;
+mast_bottom = base_install_z + base_thickness;
+lidar_lap_end = min(33,90-lidar_plate_width/2);
+// 较宽板采用8毫米搭接，防止100柱距时设备槽旁只剩过薄全厚材料。
+lidar_lap_start = lidar_lap_end-(lidar_plate_width>116?8:10);
+lidar_joint_y = (lidar_lap_start+lidar_lap_end)/2;
+lidar_joint_x = 28;
+base_lap_start = -8;
+base_lap_end = 8;
+// 打印坐标先重居中，装配时严格逆变换，保留原设备孔与柱槽位置。
+lidar_lower_shift = (lidar_plate_width/2-lidar_lap_end+split_xy_clearance/2)/2;
+lidar_upper_shift = (lidar_plate_width/2+lidar_lap_start+split_xy_clearance/2)/2;
+base_shift = (base_width/2-8+split_xy_clearance/2)/2;
 // 下层顶板孔组比外轮廓中心朝图上偏22.641541，不能用板中心对齐。
 body_offset_x = -22.641541;
 // 主梁位于孔列外侧，给螺栓头、垫片和局部工具通道保留空间。
 rail_y = max(58,mount_pitch_y/2+driver_clearance_diameter/2+8);
 function mount_points(px=mount_pitch_x,py=mount_pitch_y) = [for(x=[-px/2,px/2]) for(y=[-py/2,py/2]) [x,y]];
+// 平台限制只约束实际生产分片入口，参考装配和140毫米工具窗检查仍可运行。
+base_print_requested = part_id==11 || part_id==12 || part_id==13 || (part_id==0 && (part=="base_lower_print" || part=="base_upper_print" || part=="split_print_layout"));
 // 参数之间存在耦合；超出安全几何范围时明确失败，避免导出破碎件。
 assert(bucket_wall < rear_lip_height && rear_lip_height < bucket_height);
 assert(lidar_hole_spacing_x + lidar_slot_travel + lidar_hole_diameter < lidar_plate_depth-10);
@@ -120,6 +150,11 @@ assert(camera_hole_spacing + camera_hole_diameter < camera_width-12);
 assert(mount_clearance > thread_diameter && mount_post_diameter > mount_clearance+2);
 assert(upper_plate_z>100 && hinge_z>metal_rail_z+24);
 assert(max(washer_diameter,bolt_head_diameter)<=driver_clearance_diameter);
+// 打印预算与孔/工具区共同约束，无法容纳的组合明确拒绝，不自动缩放。
+assert(lidar_plate_depth>=68 && lidar_plate_depth<=90,"雷达分体板深需在68至90毫米，给接头边距留材料");
+assert(!base_print_requested || (base_length<=90 && base_width<=140),"生产底座分片超出Tina2C预算；加长板可继续做参考检查");
+assert(lidar_lap_start-split_xy_clearance/2-lidar_hole_spacing_y/2-lidar_hole_diameter/2>=1.2,"雷达设备槽至全厚肩的设计余量需至少1.2毫米");
+assert(norm([lidar_joint_x,lidar_joint_y])>32.5+split_tool_diameter/2+0.5,"雷达工具包络侵入占位圆");
 
 // 连通轻薄四孔样板仅用于先试孔距，绝不可承担垃圾或执行器载荷。
 module mount_template() {
@@ -229,6 +264,114 @@ module base_adapter() {
     }
 }
 
+// 两片半搭接共用分区逻辑；Z接触面为厚度一半，肩侧只留XY间隙。
+module lap_mask(upper,start,end,total_y,depth,t) {
+    // 两肩各退半个间隙，避免打印收缩后肩部顶死；受压面仍不留Z空气层。
+    g=split_xy_clearance/2;
+    if(!upper) union() {
+        translate([-depth/2,-total_y/2,0]) cube([depth,start-g+total_y/2,t]);
+        translate([-depth/2,start-g,0]) cube([depth,end-start,t/2]);
+    }
+    else union() {
+        translate([-depth/2,end+g,0]) cube([depth,total_y/2-end-g,t]);
+        translate([-depth/2,start+g,t/2]) cube([depth,end-start,t/2]);
+    }
+}
+
+// 分件直接裁切既有设备孔槽形状，防止复制孔位造成安装契约漂移。
+module lidar_half(upper=false) {
+    // 两半共享同一设备孔模块，只增加接头穿孔，不挪动传感器安装中心。
+    difference() {
+        intersection() {
+            lidar_plate();
+            lap_mask(upper,lidar_lap_start,lidar_lap_end,lidar_plate_width,lidar_plate_depth,lidar_plate_thickness);
+        }
+        for(x=[-lidar_joint_x,lidar_joint_x])
+            translate([x,lidar_joint_y,0]) slot_z(split_hole_diameter,0,lidar_plate_thickness);
+    }
+}
+
+// 底座接头放在梁后侧；柱孔与底盘工具窗继续从既有模块继承。
+module base_half(upper=false) {
+    // 此处切的是实际前适配板，已有四个底盘螺头工具窗会继续联动。
+    difference() {
+        intersection() {
+            base_adapter();
+            lap_mask(upper,base_lap_start,base_lap_end,base_width,base_length,base_thickness);
+        }
+        for(x=[-15,-1]) translate([x,0,0]) slot_z(split_hole_diameter,0,base_thickness);
+    }
+}
+
+// 高舌片的原顶面翻到打印平台，避免薄舌底部成为悬空层。
+module lidar_print(upper=false) {
+    // 居中平移是可逆的，供打印的文件不会改变装配空间孔距。
+    if(upper) translate([0,lidar_upper_shift,lidar_plate_thickness]) rotate([180,0,0]) lidar_half(true);
+    else translate([0,lidar_lower_shift,0]) lidar_half(false);
+}
+
+module base_print(upper=false) {
+    // 两半用相同Y居中量，高舌片同时翻转Y/Z，防止仅降Z导致悬空。
+    if(upper) translate([0,base_shift,base_thickness]) rotate([180,0,0]) base_half(true);
+    else translate([0,base_shift,0]) base_half(false);
+}
+
+// 螺母外露可用工具夹持；不设置难打印的盲袋，零件翻面后仍保持平底。
+module split_fasteners(points,t) {
+    for(p=points) {
+        color([0.76,0.6,0.2]) translate([p[0],p[1],-split_nut_height-split_washer_thickness-1])
+            cylinder(d=3,h=t+split_nut_height+2*split_washer_thickness+1);
+        color([0.84,0.7,0.32]) for(z=[-split_washer_thickness,t])
+            translate([p[0],p[1],z]) difference() {
+                cylinder(d=split_washer_diameter,h=split_washer_thickness);
+                translate([0,0,-eps]) cylinder(d=split_hole_diameter,h=split_washer_thickness+2*eps);
+            }
+        color([0.72,0.55,0.15]) translate([p[0],p[1],t+split_washer_thickness]) cylinder(d=split_head_diameter,h=split_head_height);
+        // 六角外接径由对边值换算，仅为空间假设，采购后核对实际螺母。
+        color([0.65,0.55,0.3]) translate([p[0],p[1],-split_washer_thickness-split_nut_height])
+            difference() {
+                cylinder(d=split_nut_flat/cos(30),h=split_nut_height,$fn=6);
+                translate([0,0,-eps]) cylinder(d=3,h=split_nut_height+2*eps);
+            }
+    }
+}
+
+module lidar_assembly(fasteners=false) {
+    // 装配入口恢复原始坐标，生产导出入口独立执行翻面变换。
+    color("DarkOrange") lidar_half(false);
+    color([1,0.7,0.25]) lidar_half(true);
+    if(fasteners) split_fasteners([[-lidar_joint_x,lidar_joint_y],[lidar_joint_x,lidar_joint_y]],lidar_plate_thickness);
+}
+
+module base_assembly(fasteners=false) {
+    // 参考STL可包含贴合的多件，用户只从专门生产目录取打印半片。
+    color("DarkOrange") base_half(false);
+    color([1,0.7,0.25]) base_half(true);
+    if(fasteners) split_fasteners([[-15,0],[-1,0]],base_thickness);
+}
+
+// 四个打印件分别置于100毫米方格中心，形状已按各自真实落床方向变换。
+module split_print_layout() {
+    for(x=[-60,60]) for(y=[-60,60])
+        color([0.88,0.9,0.92]) translate([x-50,y-50,-1]) cube([100,100,0.8]);
+    color("DarkOrange") translate([-60,60,0]) lidar_print(false);
+    color([1,0.7,0.25]) translate([60,60,0]) lidar_print(true);
+    color("DarkOrange") translate([-60,-60,0]) base_print(false);
+    color([1,0.7,0.25]) translate([60,-60,0]) base_print(true);
+}
+
+// 装配细节使用真实分片，雷达占位可透明看见，底座梁显示实际局部包络。
+module split_assembly_detail() {
+    translate([-60,0,8]) {
+        lidar_assembly(true);
+        color([0.8,0.1,0.15,0.35]) translate([0,0,lidar_plate_thickness]) cylinder(d=65,h=15);
+    }
+    translate([60,0,8]) {
+        base_assembly(true);
+        color([0.6,0.65,0.7]) translate([7,-base_width/2,-12]) cube([12,base_width,12]);
+    }
+}
+
 // 任意两点间画圆杆，丝杆两端始终随下铰点和斗底上铰点对齐。
 module rod(a,b,d) {
     v=b-a;
@@ -328,8 +471,8 @@ module assembly_layout() {
         // 斗底横向支点把中央执行器受力分给斗体，尺寸仍待结构设计。
         color([0.58,0.63,0.68]) rod([bucket_length*0.78,-bucket_width/2,0],[bucket_length*0.78,bucket_width/2,0],8);
     }
-    color("DarkOrange") translate([base_center_x,0,mast_bottom-base_thickness]) base_adapter();
-    color("DarkOrange") translate([mast_x,0,lidar_height]) lidar_plate();
+    translate([base_center_x,0,base_install_z]) base_assembly(show_fasteners);
+    translate([mast_x,0,lidar_height]) lidar_assembly(show_fasteners);
     color("DarkOrange") translate([mast_x,0,camera_height]) camera_bracket();
     if (show_actuator) actuator_placeholder();
     if (show_sensor_envelopes) {
@@ -355,19 +498,61 @@ module assembly() { rotate([0,0,display_direction==1?0:180]) assembly_layout(); 
 
 // 候选 STL 共用同一份参数，导出脚本无需复制几何定义。
 // 数字入口优先于 GUI 保存值，修改 part 后也能正确批量导出全部文件。
-if (part_id == 1) lidar_plate();
+if (part_id == 1) lidar_assembly();
 else if (part_id == 2) camera_bracket();
-else if (part_id == 3) base_adapter();
+else if (part_id == 3) base_assembly();
 else if (part_id == 4) assembly();
 else if (part_id == 5) mount_template();
 else if (part_id == 6) rotate([0,0,display_direction==1?0:180]) mount_install();
 // 实际金属框架网格仅供切片核对隔柱孔轴线，含多个装配实体，禁止当作打印件。
 else if (part_id == 7) translate([body_offset_x,0,-100]) fixed_metal_frame();
 // 将实际前适配板换算到安装坐标，只用于验证四处头部/工具空间保持开放。
-else if (part_id == 8) translate([body_offset_x+base_center_x,0,0]) base_adapter();
-else if (part == "lidar_plate") lidar_plate();
+else if (part_id == 8) translate([body_offset_x+base_center_x,0,0]) base_assembly();
+else if (part_id == 9) lidar_print(false);
+else if (part_id == 10) lidar_print(true);
+else if (part_id == 11) base_print(false);
+else if (part_id == 12) base_print(true);
+else if (part_id == 13) split_print_layout();
+else if (part_id == 14) split_assembly_detail();
+// 数值清单用于把当前参数映射到独立网格检查，单件尺寸仍从STL实测。
+else if (part_id == 15) {
+    echo(["lidar_size",lidar_plate_depth,lidar_plate_width,lidar_plate_thickness]);
+    echo(["lidar_lap",lidar_lap_start,lidar_lap_end,lidar_joint_x,lidar_joint_y]);
+    echo(["print_shifts",lidar_lower_shift,lidar_upper_shift,base_shift]);
+    echo(["base_size",base_length,base_width,base_thickness]);
+    echo(["clearances",split_xy_clearance,split_hole_diameter,split_tool_diameter]);
+    echo(["install",base_install_z,mast_bottom,metal_rail_z+12,lidar_height,camera_height]);
+    echo(["local_features",lidar_hole_spacing_x,lidar_hole_spacing_y,lidar_slot_travel,lidar_hole_diameter,mast_spacing,base_length/2-12,sensor_foot_hole_diameter]);
+    echo(["base_world_xy",body_offset_x+base_center_x,0]);
+    echo(["contact_tolerance",contact_tolerance]);
+}
+// 一立方毫米见证块让“无实体相交”也能正常导出STL，验证再扣除此体积。
+else if (part_id == 16) union() {
+    translate([400,400,0]) cube(1);
+    intersection() {
+        fixed_metal_frame();
+        // 仅剔除上下共享接触面的数值壳，既有真实接触高度另行核验。
+        translate([base_center_x,0,base_install_z+contact_tolerance])
+            scale([1,1,(base_thickness-2*contact_tolerance)/base_thickness]) base_assembly();
+    }
+}
+else if (part_id == 17) union() {
+    translate([400,400,0]) cube(1);
+    intersection() { lidar_half(false); translate([0,0,contact_tolerance]) lidar_half(true); }
+}
+else if (part_id == 18) union() {
+    translate([400,400,0]) cube(1);
+    intersection() { base_half(false); translate([0,0,contact_tolerance]) base_half(true); }
+}
+else if (part == "lidar_plate_assembly_reference") lidar_assembly();
 else if (part == "camera_bracket") camera_bracket();
-else if (part == "base_adapter") base_adapter();
+else if (part == "base_adapter_assembly_reference") base_assembly();
+else if (part == "lidar_lower_print") lidar_print(false);
+else if (part == "lidar_upper_print") lidar_print(true);
+else if (part == "base_lower_print") base_print(false);
+else if (part == "base_upper_print") base_print(true);
+else if (part == "split_print_layout") split_print_layout();
+else if (part == "split_assembly_detail") split_assembly_detail();
 else if (part == "mount_template") mount_template();
 else if (part == "mount_install") rotate([0,0,display_direction==1?0:180]) mount_install();
 else if (part == "assembly") assembly();

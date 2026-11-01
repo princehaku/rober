@@ -43,12 +43,25 @@ function Export-Cad([string]$Name, [string[]]$Options) {
     }
     Write-Output "EXPORT OK $Name"
 }
-# 三种候选打印件分别导出，不把装配里的多个实体当作单个打印件。
-$partId = 0
-# 数字入口与源文件一一对应，跨 PowerShell 版本不用转义 CAD 字符串。
-foreach ($partName in @('lidar_plate', 'camera_bracket', 'base_adapter')) {
-    $partId++
-    Export-Cad "$partName.stl" @('--export-format','binstl','-D',"part_id=$partId")
+# 两块超界整板改成装配参考名，旧同名文件移除，避免用户继续误选打印。
+foreach ($obsolete in @('lidar_plate.stl','base_adapter.stl')) {
+    $oldTarget = Join-Path $OutputDirectory $obsolete
+    if (Test-Path -LiteralPath $oldTarget) { Remove-Item -LiteralPath $oldTarget }
+}
+Export-Cad 'lidar_plate_assembly_reference.stl' @('--export-format','binstl','-D','part_id=1')
+Export-Cad 'base_adapter_assembly_reference.stl' @('--export-format','binstl','-D','part_id=3')
+Export-Cad 'camera_bracket.stl' @('--export-format','binstl','-D','part_id=2')
+# 专用目录只放四个生产半片；高舌片在CAD入口内已正确翻面落床。
+New-Item -ItemType Directory -Force (Join-Path $OutputDirectory 'tina2c') | Out-Null
+$splitNames = @('lidar_lower','lidar_upper','base_lower','base_upper')
+for ($index=0; $index -lt $splitNames.Count; $index++) {
+    $partId = 9+$index
+    Export-Cad "tina2c/$($splitNames[$index]).stl" @('--export-format','binstl','-D',"part_id=$partId")
+}
+# 参数清单只记录当前映射；尺寸、孔轴、接触和工具空间另从网格检验。
+Export-Cad 'split_parameters.echo' @('-D','part_id=15')
+foreach ($witness in @(@('base_metal_collision_check.stl',16),@('lidar_overlap_check.stl',17),@('base_overlap_check.stl',18))) {
+    Export-Cad $witness[0] @('--export-format','binstl','-D',"part_id=$($witness[1])")
 }
 # 参数扰动直接重用源文件；宽度增加 10 毫米应反映在输出包围尺寸。
 Export-Cad 'lidar_plate_reference_check.stl' @('--export-format','binstl','-D','part_id=1','-D','mast_spacing=90')
@@ -66,6 +79,8 @@ foreach ($kind in @('reference','changed')) {
     # 使用与装配完全相同的前适配板，防止打印件覆盖螺栓头而预览未察觉。
     Export-Cad "sensor_adapter_${kind}_check.stl" ($mountArgs + @('-D','part_id=8'))
 }
+# 140毫米加长底座仍作为工具避让参考，不当作生产分片或放大平台。
+Export-Cad 'sensor_adapter_long_check.stl' @('--export-format','binstl','-D','part_id=8','-D','base_length=140','-D','mount_pitch_x=68','-D','mount_pitch_y=96','-D','driver_clearance_diameter=10')
 # 显式选择装配入口，用户保存的 GUI 单件选择不会影响状态预览。
 $view = @('-D','part_id=4','--imgsize','1400,1050','--projection','o','--camera','-420,-600,390,0,0,160','--viewall','--preview','--colorscheme','Tomorrow')
 # 同一机位便于对照运输与卸料，颜色保留零件职责区分。
@@ -77,6 +92,11 @@ Export-Cad 'mechanism_55.png' ($view + @('-D','dump_angle=55','-D','show_bucket=
 $installView = @('-D','part_id=6','--imgsize','1300,1050','--projection','o','--viewall','--preview','--colorscheme','Tomorrow')
 Export-Cad 'mount_install_raw.png' ($installView + @('--camera','210,-320,250,0,0,95'))
 Export-Cad 'mount_top_raw.png' ($installView + @('--camera','0,0,500,0,0,110'))
+# 新图直接由生产半片及真实拼合模块生成，分别展示打印面与上下紧固工具侧。
+$splitView = @('--imgsize','1400,1000','--projection','o','--viewall','--preview','--colorscheme','Tomorrow')
+Export-Cad 'split_print_raw.png' ($splitView + @('-D','part_id=13','--camera','190,-260,360,0,0,0'))
+Export-Cad 'split_assembly_raw.png' ($splitView + @('-D','part_id=14','--camera','190,-260,190,0,0,5'))
+Export-Cad 'split_underside_raw.png' ($splitView + @('-D','part_id=14','--camera','190,-260,-190,0,0,5'))
 # 验证依赖默认由项目本地目录提供，也允许使用调用者指定的环境。
 $previousPath = $env:PYTHONPATH
 # 依赖目录临时添加到当前进程，退出时归还调用者原配置。

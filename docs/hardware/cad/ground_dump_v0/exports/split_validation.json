@@ -1,0 +1,215 @@
+{
+  "parameters": {
+    "lidar_size": [
+      70,
+      110,
+      5
+    ],
+    "lidar_lap": [
+      23,
+      33,
+      28,
+      28
+    ],
+    "print_shifts": [
+      11.05,
+      39.05,
+      26.05
+    ],
+    "base_size": [
+      50,
+      120,
+      6
+    ],
+    "clearances": [
+      0.2,
+      3.4,
+      8
+    ],
+    "install": [
+      130,
+      136,
+      130,
+      310,
+      222
+    ],
+    "local_features": [
+      35,
+      35,
+      6,
+      3.4,
+      90,
+      13,
+      4.5
+    ],
+    "base_world_xy": [
+      74.3585,
+      0
+    ],
+    "contact_tolerance": [
+      0.001
+    ]
+  },
+  "production": {
+    "lidar_lower": {
+      "extents_mm": [
+        70.0,
+        87.9,
+        5.0
+      ],
+      "volume_mm3": 27870.763,
+      "faces": 1628,
+      "watertight": true,
+      "consistent": true,
+      "components": 1,
+      "min_z_mm": 0.0,
+      "bed_area_mm2": 5915.099
+    },
+    "lidar_upper": {
+      "extents_mm": [
+        70.0,
+        31.9,
+        5.0
+      ],
+      "volume_mm3": 9110.439,
+      "faces": 616,
+      "watertight": true,
+      "consistent": true,
+      "components": 1,
+      "min_z_mm": 0.0,
+      "bed_area_mm2": 2163.035
+    },
+    "base_lower": {
+      "extents_mm": [
+        50.0,
+        67.9,
+        6.0
+      ],
+      "volume_mm3": 17820.527,
+      "faces": 608,
+      "watertight": true,
+      "consistent": true,
+      "components": 1,
+      "min_z_mm": 0.0,
+      "bed_area_mm2": 3361.035
+    },
+    "base_upper": {
+      "extents_mm": [
+        50.0,
+        67.9,
+        6.0
+      ],
+      "volume_mm3": 17820.527,
+      "faces": 608,
+      "watertight": true,
+      "consistent": true,
+      "components": 1,
+      "min_z_mm": 0.0,
+      "bed_area_mm2": 3361.035
+    }
+  },
+  "interfaces": {
+    "lidar": {
+      "z_contact_mm": 2.5,
+      "xy_shoulder_gaps_mm": [
+        0.2,
+        0.2
+      ],
+      "holes": [
+        [
+          {
+            "center_mm": [
+              -28.0,
+              28.0
+            ],
+            "circumdiameter_mm": 3.4,
+            "minimum_clearance_mm": 3.3927
+          },
+          {
+            "center_mm": [
+              28.0,
+              28.0
+            ],
+            "circumdiameter_mm": 3.4,
+            "minimum_clearance_mm": 3.3927
+          }
+        ],
+        [
+          {
+            "center_mm": [
+              -28.0,
+              28.0
+            ],
+            "circumdiameter_mm": 3.4,
+            "minimum_clearance_mm": 3.3927
+          },
+          {
+            "center_mm": [
+              28.0,
+              28.0
+            ],
+            "circumdiameter_mm": 3.4,
+            "minimum_clearance_mm": 3.3927
+          }
+        ]
+      ]
+    },
+    "base": {
+      "z_contact_mm": 3.0,
+      "xy_shoulder_gaps_mm": [
+        0.2,
+        0.2
+      ],
+      "holes": [
+        [
+          {
+            "center_mm": [
+              -15.0,
+              -0.0
+            ],
+            "circumdiameter_mm": 3.4,
+            "minimum_clearance_mm": 3.3927
+          },
+          {
+            "center_mm": [
+              -1.0,
+              -0.0
+            ],
+            "circumdiameter_mm": 3.4,
+            "minimum_clearance_mm": 3.3927
+          }
+        ],
+        [
+          {
+            "center_mm": [
+              -15.0,
+              0.0
+            ],
+            "circumdiameter_mm": 3.4,
+            "minimum_clearance_mm": 3.3927
+          },
+          {
+            "center_mm": [
+              -1.0,
+              0.0
+            ],
+            "circumdiameter_mm": 3.4,
+            "minimum_clearance_mm": 3.3927
+          }
+        ]
+      ]
+    }
+  },
+  "lidar_device_to_shoulder_margin_mm": 3.7,
+  "lidar_overlap_check": {
+    "positive_intersection_mm3": 0.0
+  },
+  "base_overlap_check": {
+    "positive_intersection_mm3": 0.0
+  },
+  "base_metal_collision_check": {
+    "positive_intersection_mm3": 0.0
+  },
+  "intersection_contact_tolerance_mm": 0.001,
+  "lidar_tool_clearance_to_65_mm": 3.098
+}

@@ -13,8 +13,7 @@ out = Path(sys.argv[1]).resolve()
 # 没有自动修网格流程，保持检查对象与用户拿到的 STL 完全一致。
 # 记录依赖版本，后续换环境后可比较导出结果。
 summary = {"trimesh": trimesh.__version__, "numpy": np.__version__, "parts": {}}
-for name in ("lidar_plate", "camera_bracket", "base_adapter", "lidar_plate_reference_check", "lidar_plate_wide_check",
-             "mount_template", "mount_template_reference_check", "mount_template_changed_check"):
+for name in ("camera_bracket", "mount_template", "mount_template_reference_check", "mount_template_changed_check"):
     mesh = trimesh.load(out / f"{name}.stl", force="mesh")
     # 每个命名文件独立验证，某个文件失败时直接指出对应零件。
     # 以顶点邻接判断连通性，不依赖庞大的科学计算库。
@@ -50,9 +49,13 @@ for name in ("lidar_plate", "camera_bracket", "base_adapter", "lidar_plate_refer
     print(f"PASS {name}: {json.dumps(record)}")
 
 # 固定 90/100 对照不依赖用户源文件默认柱距，修改默认值仍可完整导出。
-default_width = summary["parts"]["lidar_plate_reference_check"]["extents_mm"][1]
+# 整板参考可含多个装配实体；它们只用于几何契约，不套用生产单体约束。
+assembly90 = trimesh.load(out/"lidar_plate_reference_check.stl",force="mesh")
+assembly100 = trimesh.load(out/"lidar_plate_wide_check.stl",force="mesh")
+assert assembly90.is_watertight and assembly100.is_watertight
+default_width = float(assembly90.extents[1])
 # 直接比较导出网格包围框，避免只检查源文件里的参数文字。
-changed_width = summary["parts"]["lidar_plate_wide_check"]["extents_mm"][1]
+changed_width = float(assembly100.extents[1])
 assert abs(changed_width - default_width - 10) < 0.001
 summary["parameter_check"] = {"mast_spacing": [90, 100], "plate_width_mm": [default_width, changed_width]}
 
@@ -130,7 +133,7 @@ for kind, pitch in (("reference",(58,86)),("changed",(68,96))):
         assert 2.99<supports["minimum_clearance_mm"]<=3.001
     # 平面奇偶规则直接测实际塑料实体占用，不依赖外部射线加速库。
     # 既检查实际塑料适配板，也检查螺头高度处的金属主梁，不只看预览外观。
-    clearance_sections = [("传感器适配板",sliced_holes(sensor_adapter,float(sensor_adapter.bounds[1,2])/2,True)),
+    clearance_sections = [("传感器适配板",sliced_holes(sensor_adapter,float(sensor_adapter.bounds[1,2])*0.37,True)),
                           ("金属主梁螺头高度",sliced_holes(frame,20,True))]
     for section_name, polygons in clearance_sections:
         for center in expected:
@@ -154,6 +157,10 @@ actual_template = trimesh.load(out/"mount_template.stl",force="mesh")
 # 默认样板采用用户当前源参数，独立于固定对照组保存测量结果。
 summary["mounting"]["actual_template_holes"] = sliced_holes(actual_template,float(actual_template.bounds[1,2])/2)
 assert len(summary["mounting"]["actual_template_holes"]) == 4
+
+# 分体模块复用实际网格切片入口，额外检查逆变换、贴合面和螺母工具空间。
+from verify_split import verify_split
+summary["split"] = verify_split(out,sliced_holes)
 
 # 标注与图例只排版既有 CAD 渲染，没有改写任何机械几何。
 # Windows 使用本机中文字体；其他系统仍可生成图像但需替换字体路径。
