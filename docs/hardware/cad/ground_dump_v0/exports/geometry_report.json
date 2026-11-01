@@ -1,0 +1,82 @@
+{
+  "trimesh": "5.2.0",
+  "numpy": "2.5.4",
+  "parts": {
+    "lidar_plate": {
+      "faces": 1432,
+      "watertight": true,
+      "winding_consistent": true,
+      "components": 1,
+      "volume_mm3": 37141.735,
+      "extents_mm": [
+        70.0,
+        110.0,
+        5.0
+      ],
+      "min_z_mm": 0.0
+    },
+    "camera_bracket": {
+      "faces": 1012,
+      "watertight": true,
+      "winding_consistent": true,
+      "components": 1,
+      "volume_mm3": 27591.447,
+      "extents_mm": [
+        48.87,
+        64.0,
+        43.392
+      ],
+      "min_z_mm": 0.0
+    },
+    "base_adapter": {
+      "faces": 1220,
+      "watertight": true,
+      "winding_consistent": true,
+      "components": 1,
+      "volume_mm3": 98933.079,
+      "extents_mm": [
+        140.0,
+        120.0,
+        6.0
+      ],
+      "min_z_mm": 0.0
+    },
+    "lidar_plate_reference_check": {
+      "faces": 1432,
+      "watertight": true,
+      "winding_consistent": true,
+      "components": 1,
+      "volume_mm3": 37141.735,
+      "extents_mm": [
+        70.0,
+        110.0,
+        5.0
+      ],
+      "min_z_mm": 0.0
+    },
+    "lidar_plate_wide_check": {
+      "faces": 1432,
+      "watertight": true,
+      "winding_consistent": true,
+      "components": 1,
+      "volume_mm3": 40641.735,
+      "extents_mm": [
+        70.0,
+        120.0,
+        5.0
+      ],
+      "min_z_mm": 0.0
+    }
+  },
+  "parameter_check": {
+    "mast_spacing": [
+      90,
+      100
+    ],
+    "plate_width_mm": [
+      110.0,
+      120.0
+    ]
+  },
+  "preview": "CAD 渲染，仅完成视觉布局检查；没有机械仿真或实物试装。"
+}
