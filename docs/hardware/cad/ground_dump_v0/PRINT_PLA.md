@@ -4,7 +4,7 @@
 
 ## 第一件照着做
 
-1. 从[ENTINA官方软件下载页](https://www.entina3d.com/pages/download-1)选择 **Wiibuilder → Windows**。由你安装并打开，选择 **Tina2C、0.4 mm喷嘴及PLA预设**；若版本没有匹配机型配置，先停下核对。下述操作尚未在本机GUI验证，菜单名称随版本可能不同。
+1. 官方Windows包已下载并解压：[双击本地WiiBuilder安装器](../../../../tools/wiibuilder/unpacked/Wiibuilder2.6.7.0_ENTINA_win.exe)，实际路径 `E:\rober\tools\wiibuilder\unpacked\Wiibuilder2.6.7.0_ENTINA_win.exe`（来自[ENTINA官方页](https://www.entina3d.com/pages/download-1)，本轮尚未运行安装器）。由你安装并打开，选择 **Tina2C、0.4 mm喷嘴及PLA预设**；若没有匹配机型配置先停下核对。GUI操作尚未验证，菜单可能随版本不同。
 2. 在WiiBuilder使用“导入/打开模型”功能，选择 `E:\rober\docs\hardware\cad\ground_dump_v0\exports\mount_template.stl`。单位 **mm**、缩放 **100%**，尺寸应为 **70×98×2.5 mm**，居中、平面落床，关闭自动缩放适应平台。STL描述形状，切片器再为该机生成打印文件。
 3. **98 mm方向居中后每侧仅1 mm余量**（70 mm方向每侧15 mm）。首件关闭支撑、brim和skirt，确认机型预设及所有附加路径仍在实际可用范围内。切片预览检查首层连续、孔贯通及边界；若软件仍提示超界/有效区小于98 mm，先停，不扩大机器边界或缩小样板。需要brim才能稳定时也先停，另行调整样板外缘或工艺。
 4. 确认切片预览与Tina2C配置后，由你导出该机适用的G-code并按厂家TF卡（microSD）流程手动打印；直接把STL复制到卡里不能代替切片。本轮没有生成G-code或实打。
