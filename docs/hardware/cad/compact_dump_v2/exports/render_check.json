@@ -1,5 +1,5 @@
 {
-  "source_sha256": "3a6af8bb9b0432c8be0474ac61d66a3201826e2b941a06d845710296b9d7e575",
+  "source_sha256": "0dff1e914c01405a4f1653ca5cbcc568c8b76c76c75bd36e40eb4ab31c8d258f",
   "captions": {
     "dimensions": [
       180.0,
@@ -67,7 +67,9 @@
     "dump_angle=80",
     "actuator_stroke=1",
     "ramp_run=0",
-    "ramp_rise=45"
+    "ramp_rise=45",
+    "electronics_width=82",
+    "allowed_load_height=110"
   ],
   "scope": "无活动门小后卸斗预览与参数断言；0.5kg样机未实物试载"
 }

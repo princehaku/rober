@@ -86,7 +86,7 @@ def section_height(p,u):
 
 def geometry(p,a):
     # 所有位置由同一主轴变换求得，不能靠不同动画把杆端假连在一起。
-    top=p['pillar_height']+p['deck_thickness']
+    top=p['pillar_height']+p['board_thickness']+p['deck_thickness']
     px,pz=p['pivot_x'],top+p['pivot_above_deck']
     xlo,xhi=p['bucket_center_x']-p['bucket_length']/2,p['bucket_center_x']+p['bucket_length']/2
     rear,front=xlo-px,xhi-px
@@ -105,18 +105,36 @@ def geometry(p,a):
     ramp_vertices=np.array([world([u,y,z]) for y in [-w,w] for u,z in [(rear,t),(ramp_start,t),(rear,t+rise)]])
     slope_normal=np.array([rise/p['ramp_run'],0,1]);slope_normal/=np.linalg.norm(slope_normal)
     ramp=(ramp_vertices,[rotation@v for v in [np.array([0,1,0]),np.array([1,0,0]),np.array([0,0,1]),slope_normal]])
-    deck=box([p['body_offset_x']-100,-80,p['pillar_height']],[p['body_offset_x']+100,80,top])
+    frame_bottom=p['pillar_height']+p['board_thickness'];fw=p['frame_half_width'];rw=p['frame_rail_width']
+    # 板是现有轮廓占位；新框各梁明确连接四柱与推杆横梁，未导入旧生产底板。
+    board=box([-65,-55,p['pillar_height']],[65,55,frame_bottom])
+    frame=[box([p['frame_rear'],y,frame_bottom],[p['frame_front'],y+rw,top]) for y in [-fw,fw-rw]]
+    frame += [box([x,-fw,frame_bottom],[x+16,fw,top]) for x in [p['frame_rear'],p['frame_front']-rw,-37,21]]
+    frame += [box([A[0]-22,-fw,frame_bottom],[A[0]+22,fw,top])]
+    deck=box([p['frame_rear'],-fw,p['pillar_height']],[p['frame_front'],fw,top])
+    pillars=[([x,y,0],[x,y,p['pillar_height']],3.5) for x in [-29,29] for y in [-43,43]]
+    # 缩小预算宽度只用于留出柱间名义空隙，不能证明实物线圈可放入。
+    electronics=box([p['electronics_center_x']-p['electronics_length']/2,-p['electronics_width']/2,p['electronics_bottom_z']],
+                    [p['electronics_center_x']+p['electronics_length']/2,p['electronics_width']/2,p['electronics_bottom_z']+p['electronics_height']])
     platez=p['lidar_scan_z']-p['lidar_height']/2-5
-    sensors=[box([p['mast_x']-7,-13,top],[p['mast_x']+7,13,platez]),
-             box([p['lidar_center_x']-36,-36,platez],[p['lidar_center_x']+36,36,platez+5]),
-             box([p['lidar_center_x']-p['lidar_diameter']/2,-p['lidar_diameter']/2,platez+5],
-                 [p['lidar_center_x']+p['lidar_diameter']/2,p['lidar_diameter']/2,platez+5+p['lidar_height']]),
-             box([p['camera_x']-p['camera_depth']/2,-p['camera_width']/2,p['camera_z']-p['camera_height']/2],
-                 [p['camera_x']+p['camera_depth']/2,p['camera_width']/2,p['camera_z']+p['camera_height']/2])]
-    sensors.append(box([p['camera_x']+p['camera_depth']/2,-9,p['camera_z']-9],
-                       [p['camera_x']+p['camera_depth']/2+4,9,p['camera_z']+9]))
-    sensor_arms=[([p['mast_x'],0,platez],[p['lidar_center_x'],0,platez],6),
-                 ([p['mast_x'],0,p['camera_z']],[p['camera_x'],0,p['camera_z']],4.5)]
+    # 细支柱也参与斗体碰撞，不能只检查前移的雷达机身。
+    radar_stem=box([p['lidar_mount_x']-4,-4,top],[p['lidar_mount_x']+4,4,platez])
+    radar_plate=box([p['lidar_center_x']-35,-35,platez],[p['lidar_center_x']+35,35,platez+5])
+    radar=box([p['lidar_center_x']-p['lidar_diameter']/2,-p['lidar_diameter']/2,platez+5],
+              [p['lidar_center_x']+p['lidar_diameter']/2,p['lidar_diameter']/2,platez+5+p['lidar_height']])
+    camera=box([p['camera_x']-p['camera_depth']/2,-p['camera_width']/2,p['camera_z']-p['camera_height']/2],
+               [p['camera_x']+p['camera_depth']/2,p['camera_width']/2,p['camera_z']+p['camera_height']/2])
+    # 镜头突出机壳四毫米，视野起点和实体碰撞都包含该前伸量。
+    lens=box([p['camera_x']+p['camera_depth']/2,-9,p['camera_z']-9],[p['camera_x']+p['camera_depth']/2+4,9,p['camera_z']+9])
+    camera_plate=box([p['camera_x']-p['camera_depth']/2,-p['camera_width']/2,p['camera_z']-p['camera_height']/2-3],
+                     [p['camera_x']+p['camera_depth']/2,p['camera_width']/2,p['camera_z']-p['camera_height']/2])
+    sensors=[radar_stem,radar_plate,radar,camera,lens,camera_plate]
+    sensor_arms=[([p['lidar_mount_x'],0,platez],[p['lidar_center_x'],0,platez],4)]
+    sensor_arms += [([29,y,p['camera_bracket_z']],[p['camera_x'],-24 if y<0 else 24,p['camera_bracket_z']],3) for y in [-43,43]]
+    # 一层前柱局部套脚为接口邻域；同轴孔留空，外部电子净空仍用完整盒保守检查。
+    camera_feet=[box([22.5,y-6.5,0],[35.5,y+6.5,p['camera_bracket_z']]) for y in [-43,43]]
+    # 扫描预算按物品最高点定义，散料深度另受低后沿限制。
+    allowed_load=box([rear+p['wall'],-w+p['wall'],p['wall']],[front-p['wall'],w-p['wall'],p['allowed_load_height']],origin,a)
     # 下铰三角座也参与外部运动件检查，仅与执行器共轴邻域保留接口接触。
     supports=[([A[0]+dx,0,top],A,5) for dx in [-15,15]]
     for side in [-1,1]:
@@ -134,8 +152,10 @@ def scan(p,chassis,ground):
     assert p['wall']<p['ramp_run']<p['bucket_length']-p['wall'] and p['ramp_rise']>p['wall']
     assert p['wall']+p['ramp_rise']<p['bucket_height']
     assert math.degrees(math.atan2(p['ramp_rise'],p['ramp_run']))<p['max_angle'],'最大角度未让后坡向外下行'
-    assert p['mast_x']+7<=p['body_offset_x']+100 and p['mast_x']-7>p['bucket_center_x']+p['bucket_length']/2
-    rows=[];mins={'body':1e9,'deck':1e9,'support_rods':1e9,'sensors':1e9,'actuator':1e9,'ramp_body':1e9}
+    assert p['lidar_mount_x']+4<=p['frame_front'] and p['lidar_mount_x']-4>p['bucket_center_x']+p['bucket_length']/2
+    assert p['electronics_bottom_z']+p['electronics_height']<p['pillar_height'] and p['electronics_width']<79
+    # 分开记录底板、支撑杆和电子盒的净空，避免用较大值代替最紧接口。
+    rows=[];mins={'body':1e9,'deck':1e9,'support_rods':1e9,'sensors':1e9,'actuator':1e9,'ramp_body':1e9,'electronics':1e9}
     for a in list(range(n+1))+list(range(n,-1,-1)):
         g=geometry(p,a);A,B,P=g['A'],g['B'],g['P'];L=np.linalg.norm(B-A)
         assert p['actuator_closed']<=L<=p['actuator_closed']+p['actuator_stroke']
@@ -146,7 +166,7 @@ def scan(p,chassis,ground):
         gap=prism_separation(g['ramp'],chassis);assert gap>.05
         mins['ramp_body']=min(mins['ramp_body'],gap)
         for m in moving:
-            for name,t in [('body',chassis),('deck',g['deck'])]+[('sensors',t) for t in g['sensors']]:
+            for name,t in [('body',chassis),('deck',g['deck']),('electronics',g['electronics'])]+[('sensors',t) for t in g['sensors']]:
                 gap=separation(m,t);assert gap>.05,(name,a,gap)
                 mins[name]=min(mins[name],gap)
             for stop in g['stops']:
@@ -154,7 +174,7 @@ def scan(p,chassis,ground):
             for sa,sb,r in g['supports']:
                 gap=segment_box_distance(sa,sb,m)-r;assert gap>.05,('支架',a,gap)
                 mins['support_rods']=min(mins['support_rods'],gap)
-            for sa,sb,r in g['sensor_arms']:
+            for sa,sb,r in g['sensor_arms']+g['pillars']:
                 assert segment_box_distance(sa,sb,m)-r>.05,('传感器横撑',a)
             assert corners(m)[:,2].min()>ground+5,('地面',a)
         # 固定杆件与前设备独立检查；主轴/丝杆连接邻域仍仅表示共轴关系。
@@ -163,11 +183,11 @@ def scan(p,chassis,ground):
         u=(B-A)/L
         # 绿色外筒、深绿电机以及内杆的外径不同，分别检查。
         for sa,sb,r in [(A+u*7,A+u*p['actuator_body_length'],7),(A+u*12,A+u*30,10),(A+u*(p['actuator_body_length']-7),B,3.5)]:
-            for target in [chassis,g['deck']]+g['sensors']+moving+g['stops']:
+            for target in [chassis,g['deck'],g['electronics']]+g['sensors']+g['camera_feet']+moving+g['stops']:
                 gap=segment_box_distance(sa,sb,target)-r;assert gap>.05,('执行器',a,gap)
                 mins['actuator']=min(mins['actuator'],gap)
         # 假设扫描平面单独检查，设备自身实体不当作自遮挡；真实出光位置未知。
-        highest=max(corners(t)[:,2].max() for t in moving)
+        highest=max(corners(t)[:,2].max() for t in moving+[g['allowed_load']])
         if a==0:assert p['lidar_scan_z']>highest+5
         rows.append({'angle':a,'length':float(L),'arm':float(arm),
                      'scan_margin':float(p['lidar_scan_z']-highest)})
@@ -175,6 +195,52 @@ def scan(p,chassis,ground):
     return {'samples':len(rows),'start':rows[0],'end':rows[n],'stroke':max(r['length'] for r in rows)-min(r['length'] for r in rows),
             'minimum_moment_arm':min(r['arm'] for r in rows),'minimum_scan_margin':min(r['scan_margin'] for r in rows),
             'scan_occluded_sample_angles':[r['angle'] for r in rows[:n+1] if r['scan_margin']<=0],'minimum_clearances':mins}
+
+
+def fixed_layout_check(p,chassis,ground):
+    # 电子和线束只是空间预算，所有固定柱与传感器支架都要一起检查，不能只缩盒宣称实配。
+    g=geometry(p,0);e=g['electronics'];minimum=1e9
+    # 相机套脚使用填实外盒，内孔只在同轴安装邻域豁免。
+    for target in [chassis,g['board']]+g['frame']+g['sensors']+g['camera_feet']:
+        gap=separation(e,target);assert gap>.05,('电子预留与固定件',gap);minimum=min(minimum,gap)
+    for a,b,r in g['pillars']+g['supports']+g['sensor_arms']:
+        gap=segment_box_distance(a,b,e)-r;assert gap>.05,('电子预留与柱/杆',gap);minimum=min(minimum,gap)
+    # 各原柱顶在板下表面接触；孔位横梁与板上面接触，不让推杆载荷通过电子盒。
+    assert abs(g['board'][0][2]-p['pillar_height'])<1e-9
+    for x in [-29,29]:
+        for y in [-43,43]:assert any(t[0][0]<=x<=t[1][0] and t[0][1]<=y<=t[1][1] for t in g['frame'])
+    # 相机机身/镜头/托板位于厂家全车盒外，套脚仅在一层前孔局部有安装接触豁免。
+    for part in [g['camera'],g['lens'],g['camera_plate']]:
+        assert separation(part,chassis)>.05 and corners(part)[:,2].min()>ground
+        for target in [g['board']]+g['frame']+[g['radar_stem'],g['radar_plate'],g['radar']]:assert separation(part,target)>.05
+    for a,b,r in g['sensor_arms']:
+        assert segment_box_distance(a,b,chassis)-r>.05,('设备支臂与厂家全包络',a,b)
+    # 平台与机身的接触面是明确的局部安装面，其余传感器彼此应分离。
+    assert abs(g['camera_plate'][1][2]-g['camera'][0][2])<1e-9
+    assert p['lidar_scan_z']>max(g['pz']+p['allowed_load_height'],g['pz']+p['bucket_height'])+5
+    return {'electronics_minimum_fixed_clearance_mm':minimum,'electronics_dimensions_mm':[p['electronics_length'],p['electronics_width'],p['electronics_height']],
+            'second_level_stack_mm':[p['pillar_height'],p['board_thickness'],p['deck_thickness']],
+            'second_level_top_z':g['top'],'interfaces_not_proven':['一层前孔相机套脚夹持','板框叠层公母牙/紧固件长度','真实电子和线圈能否收入预算盒'],
+            'local_contact_exclusions':'原四柱与底盘孔邻域、前两柱同轴相机套脚、柱顶/板/框及设备托板安装面；无整块电子盒豁免'}
+
+
+def camera_check(p,chassis,ground):
+    # 重新从一层镜头点检查整个前向空间；不复用旧高塔单个平台的专用公式。
+    g=geometry(p,0);lens_x=p['camera_x']+p['camera_depth']/2+4
+    hf=math.tan(math.radians(p['camera_hfov']/2));vf=math.tan(math.radians(p['camera_vfov']/2));gaps=[]
+    for target in [chassis,g['board'],g['electronics'],g['envelope']]+g['frame']+[g['radar_stem'],g['radar_plate'],g['radar']]:
+        v=corners(target);lo,hi=v.min(axis=0),v.max(axis=0)
+        if hi[0]<=lens_x:continue
+        # 用该障碍最远X截面处的最大视锥宽高作保守判据，分离则整个障碍不挡前向视野。
+        dx=hi[0]-lens_x;gap=max(lo[1]-dx*hf,-dx*hf-hi[1],lo[2]-p['camera_z']-dx*vf,p['camera_z']-dx*vf-hi[2])
+        assert gap>.05,('相机前向空间',gap);gaps.append(float(gap))
+    # 近地交点由水平视轴下边界计算，较低安装仍可能存在前方盲区。
+    return {'lens_world':[lens_x,0,p['camera_z']],'assumed_hfov':p['camera_hfov'],'assumed_vfov':p['camera_vfov'],
+            'assumed_pitch_degrees':0,'body_chassis_gap_mm':separation(g['camera'],chassis),
+            'camera_bottom_ground_gap_mm':corners(g['camera'])[:,2].min()-ground,
+            'nearest_ground_distance_from_lens_mm':(p['camera_z']-ground)/vf,
+            'forward_obstacle_conservative_gap_mm':min(gaps) if gaps else None,
+            'boundary':'水平光轴和占位FOV；真实俯仰/FOV/畸变待测，近地交点之前存在盲区'}
 
 
 def section_check(p):
@@ -215,6 +281,7 @@ def load_report(p):
 def material_check(p,chassis,ground):
     g=geometry(p,p['max_angle']);tip=g['world']([g['rear'],0,p['wall']+p['ramp_rise']]);columns={};paths={}
     # 出口附近竖落框与沿真实固定后坡移动的块属于不同假设，分别保留结论。
+    # 七十毫米块只补充落料空间筛查，超出六十七毫米内净高的运输预算。
     for width in [50,70]:
         corridor=box([tip[0]-width/2,tip[1]-width/2,ground],[tip[0]+width/2,tip[1]+width/2,tip[2]+p['bag_height']])
         gap=separation(corridor,chassis)
@@ -229,7 +296,7 @@ def material_check(p,chassis,ground):
         for dz in np.linspace(0,fall,40):
             lo,hi,o,r=released;states.append((lo,hi,o-np.array([0,0,dz]),r))
         min_gap=1e9;hits=[]
-        targets=[('车轮/底盘',chassis)]+[('设备',t) for t in g['sensors']]+[('斗壁',t) for t in g['walls']]
+        targets=[('车轮/底盘',chassis),('电子预留',g['electronics']),('板',g['board'])]+[('固定框',t) for t in g['frame']]+[('设备',t) for t in g['sensors']]+[('斗壁',t) for t in g['walls']]
         for i,block in enumerate(states):
             # 允许理想接触，出现穿透就记录具体物块、帧和障碍，不把所有物体总括为通过。
             for name,target in targets:
@@ -253,25 +320,27 @@ def main():
     lo,hi=v.min(axis=0),v.max(axis=0);chassis=box(lo,hi)
     # 本次直接读取厂家全部顶点外盒；结果比精确车体碰撞更保守。
     default=scan(p,chassis,lo[2]);materials=material_check(p,chassis,lo[2])
-    varied=scan(dict(p,pillar_height=26,lidar_scan_z=260,ramp_run=50,ramp_rise=20),chassis,lo[2])
+    # 联动层高、相机支臂和雷达位置，回归真实有意义的可调布局。
+    variant=dict(p,pillar_height=65,lidar_scan_z=200,ramp_run=50,ramp_rise=20,camera_z=42,camera_bracket_z=19)
+    varied=scan(variant,chassis,lo[2]);fixed_layout_check(variant,chassis,lo[2]);camera_check(variant,chassis,lo[2])
     rejected=[]
-    for name,changes in [('行程不足',{'actuator_stroke':1}),('低雷达',{'lidar_scan_z':130}),('无坡程',{'ramp_run':0}),('后坡不下行',{'ramp_rise':45})]:
+    for name,changes in [('行程不足',{'actuator_stroke':1}),('低雷达',{'lidar_scan_z':130}),('无坡程',{'ramp_run':0}),('后坡不下行',{'ramp_rise':45}),('预留盒撞柱',{'electronics_width':82}),('装载超扫描包络',{'allowed_load_height':110})]:
         try:scan(dict(p,**changes),chassis,lo[2])
         except AssertionError:rejected.append(name)
         else:raise AssertionError('未拒绝'+name)
-    # 相机正前锥在最近的雷达平台前缘仍远低于平台，其他结构全部位于镜头后。
-    lens_x=p['camera_x']+p['camera_depth']/2+4
-    plate_front=p['lidar_center_x']+36;plate_bottom=p['lidar_scan_z']-p['lidar_height']/2-5
-    cone_top=p['camera_z']+max(0,plate_front-lens_x)*math.tan(math.radians(p['camera_vfov']/2))
-    assert plate_bottom-cone_top>5 and p['bucket_center_x']+p['bucket_length']/2<lens_x
+    layout=fixed_layout_check(p,chassis,lo[2]);camera=camera_check(p,chassis,lo[2])
+    # 只比较同一个局部垃圾点假设前移的变化，整车总CG与新附件质量仍然未知。
+    old_loads=load_report(dict(p,bucket_center_x=-35));new_loads=load_report(p)
+    comparison={k:{'previous_end_cg_x':old_loads['cases'][k]['end_cg_x'],'current_end_cg_x':v['end_cg_x'],
+                   'forward_change_mm':v['end_cg_x']-old_loads['cases'][k]['end_cg_x']} for k,v in new_loads['cases'].items()}
     # 报告分别给出几何成功、预期落料失败及稳定性unknown，避免一个总PASS吞掉边界。
     report={'source_sha256':hashlib.sha256(SOURCE.read_bytes()).hexdigest(),'parameters':p,'vendor_bounds':[lo.tolist(),hi.tolist()],
-            'geometry':default,'fixed_section':section_check(p),'variation':varied,'rejected_invalid':rejected,'materials':materials,'loads':load_report(p),
-            'camera':{'assumed_hfov':p['camera_hfov'],'assumed_vfov':p['camera_vfov'],'front_platform_vertical_gap':plate_bottom-cone_top},
+            'geometry':default,'fixed_section':section_check(p),'variation':varied,'rejected_invalid':rejected,'materials':materials,'loads':new_loads,'same_payload_scenario_comparison':comparison,'fixed_layout':layout,
+            'camera':camera,
             'not_proven':['全部销耳/轴承/紧固件公差和真实转动间隙','真实设备尺寸/出光高度/FOV','实际车CG与新增附件质量','0.5kg静态或动态承载','柔性袋滑动摩擦/脱离/夹袋','连续碰撞与变形']}
     out=ROOT/'exports';out.mkdir(exist_ok=True)
     (out/'verification.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
-    print(json.dumps({'geometry':default,'fixed_section':report['fixed_section'],'materials':materials,'loads':report['loads'],'rejected':rejected},ensure_ascii=False,indent=2))
+    print(json.dumps({'geometry':default,'fixed_section':report['fixed_section'],'materials':materials,'loads':report['loads'],'layout':layout,'camera':camera,'rejected':rejected},ensure_ascii=False,indent=2))
 
 
 if __name__=='__main__':

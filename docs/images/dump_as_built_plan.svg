@@ -1,14 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1200" viewBox="0 0 1800 1200">
-<title>现有搭建与最小翻斗新增结构</title>
+<title>批准的二层翻斗与分层传感器布局</title>
 <!-- 非比例原理图：不从照片读取机械尺寸。 -->
 <rect x="0" y="0" width="1800" height="1200" fill="#f8fafc" stroke="none" stroke-width="2" />
-<text x="45" y="69.20" font-family="Microsoft YaHei,sans-serif" font-size="40" fill="#243449">沿用现有搭建，只增加一套翻斗上框</text>
-<text x="45" y="122.40" font-family="Microsoft YaHei,sans-serif" font-size="30" fill="#bb4b39">原理示意，非比例图；上段高度可调，空隙待实测</text>
-<text x="45" y="162.00" font-family="Microsoft YaHei,sans-serif" font-size="25" fill="#243449">保留下层、中层和前摄像头；四根上段柱等高缩短，固定框尽量放低。</text>
+<text x="45" y="69.20" font-family="Microsoft YaHei,sans-serif" font-size="40" fill="#243449">批准布局：二层翻斗，一层相机，二层固定雷达</text>
+<text x="45" y="122.40" font-family="Microsoft YaHei,sans-serif" font-size="30" fill="#bb4b39">原理示意，非比例图；下段柱与净空均为可调占位</text>
+<text x="45" y="162.00" font-family="Microsoft YaHei,sans-serif" font-size="25" fill="#243449">取消上段空长柱，装载区向车身中部移；电子和线束空间按实物复核。</text>
 <rect x="30" y="186" width="845" height="740" fill="#ffffff" stroke="#d9e1e8" stroke-width="2" />
 <rect x="925" y="186" width="845" height="740" fill="#ffffff" stroke="#d9e1e8" stroke-width="2" />
-<text x="55" y="230.28" font-family="Microsoft YaHei,sans-serif" font-size="31" fill="#243449">现有搭建</text>
-<text x="950" y="230.28" font-family="Microsoft YaHei,sans-serif" font-size="31" fill="#243449">只增加的翻斗结构</text>
+<text x="55" y="230.28" font-family="Microsoft YaHei,sans-serif" font-size="31" fill="#243449">照片现状（参考）</text>
+<text x="950" y="230.28" font-family="Microsoft YaHei,sans-serif" font-size="31" fill="#243449">批准后的分层布局</text>
 <!-- 灰色为复用底盘、中层电子与前摄像头，金色为上下分段铜柱。 -->
 <rect x="155" y="750" width="590" height="54" fill="#aeb8c4" stroke="#738091" stroke-width="3" />
 <circle cx="235" cy="819" r="52" fill="#515e6d" stroke="none" stroke-width="2" />
@@ -32,7 +32,7 @@
 <polyline points="422.00,690.00 445.00,683.00 454.00,707.00 428.00,714.00 422.00,690.00" fill="none" stroke="#8e9bab" stroke-width="3" stroke-linejoin="round" />
 <polyline points="457.00,690.00 480.00,683.00 489.00,707.00 463.00,714.00 457.00,690.00" fill="none" stroke="#8e9bab" stroke-width="3" stroke-linejoin="round" />
 <polyline points="492.00,690.00 515.00,683.00 524.00,707.00 498.00,714.00 492.00,690.00" fill="none" stroke="#8e9bab" stroke-width="3" stroke-linejoin="round" />
-<!-- 前摄像头沿用中层已有支架，框前端后退，给相机留出可见间隔。 -->
+<!-- 左图记录原中层相机；右图相机独立下移至一层前端。 -->
 <polyline points="615.00,647.00 656.00,620.00 665.00,587.00" fill="none" stroke="#738091" stroke-width="13" stroke-linejoin="round" />
 <rect x="654" y="560" width="72" height="48" fill="#667383" stroke="#738091" stroke-width="2" />
 <rect x="726" y="574" width="21" height="21" fill="#7cbbc9" stroke="#738091" stroke-width="2" />
@@ -54,79 +54,63 @@
 <circle cx="1130" cy="819" r="25" fill="#bac3ce" stroke="none" stroke-width="2" />
 <circle cx="1560" cy="819" r="52" fill="#515e6d" stroke="none" stroke-width="2" />
 <circle cx="1560" cy="819" r="25" fill="#bac3ce" stroke="none" stroke-width="2" />
-<rect x="1249" y="530" width="10" height="220" fill="#e0c16f" stroke="#c49a43" stroke-width="2" />
-<rect x="1240" y="530" width="10" height="220" fill="#c49a43" stroke="none" stroke-width="2" />
+<rect x="1249" y="641" width="10" height="109" fill="#e0c16f" stroke="#c49a43" stroke-width="2" />
+<rect x="1240" y="641" width="10" height="109" fill="#c49a43" stroke="none" stroke-width="2" />
 <rect x="1236" y="634" width="22" height="14" fill="#b58a34" stroke="#c49a43" stroke-width="2" />
-<circle cx="1245" cy="530" r="6" fill="#c49a43" stroke="none" stroke-width="2" />
-<rect x="1449" y="530" width="10" height="220" fill="#e0c16f" stroke="#c49a43" stroke-width="2" />
-<rect x="1440" y="530" width="10" height="220" fill="#c49a43" stroke="none" stroke-width="2" />
+<circle cx="1245" cy="641" r="6" fill="#c49a43" stroke="none" stroke-width="2" />
+<rect x="1449" y="641" width="10" height="109" fill="#e0c16f" stroke="#c49a43" stroke-width="2" />
+<rect x="1440" y="641" width="10" height="109" fill="#c49a43" stroke="none" stroke-width="2" />
 <rect x="1436" y="634" width="22" height="14" fill="#b58a34" stroke="#c49a43" stroke-width="2" />
-<circle cx="1445" cy="530" r="6" fill="#c49a43" stroke="none" stroke-width="2" />
+<circle cx="1445" cy="641" r="6" fill="#c49a43" stroke="none" stroke-width="2" />
 <!-- 中层载板和盘线占用区保留，推杆与铰座不能放在此块内部。 -->
 <rect x="1205" y="641" width="310" height="17" fill="#5b6573" stroke="none" stroke-width="2" />
-<rect x="1275" y="570" width="175" height="68" fill="#e4e9ef" stroke="#738091" stroke-width="2" />
-<text x="1292" y="608.48" font-family="Microsoft YaHei,sans-serif" font-size="21" fill="#738091">电子设备</text>
-<rect x="1265" y="675" width="195" height="52" fill="#f0f2f5" stroke="#a4afbd" stroke-width="2" />
-<polyline points="1282.00,690.00 1305.00,683.00 1314.00,707.00 1288.00,714.00 1282.00,690.00" fill="none" stroke="#8e9bab" stroke-width="3" stroke-linejoin="round" />
-<polyline points="1317.00,690.00 1340.00,683.00 1349.00,707.00 1323.00,714.00 1317.00,690.00" fill="none" stroke="#8e9bab" stroke-width="3" stroke-linejoin="round" />
-<polyline points="1352.00,690.00 1375.00,683.00 1384.00,707.00 1358.00,714.00 1352.00,690.00" fill="none" stroke="#8e9bab" stroke-width="3" stroke-linejoin="round" />
-<polyline points="1387.00,690.00 1410.00,683.00 1419.00,707.00 1393.00,714.00 1387.00,690.00" fill="none" stroke="#8e9bab" stroke-width="3" stroke-linejoin="round" />
-<!-- 前摄像头沿用中层已有支架，框前端后退，给相机留出可见间隔。 -->
-<polyline points="1510.00,647.00 1551.00,620.00 1560.00,587.00" fill="none" stroke="#738091" stroke-width="13" stroke-linejoin="round" />
-<rect x="1549" y="560" width="72" height="48" fill="#667383" stroke="#738091" stroke-width="2" />
-<rect x="1621" y="574" width="21" height="21" fill="#7cbbc9" stroke="#738091" stroke-width="2" />
-<polyline points="1652.00,585.00 1703.00,585.00" fill="none" stroke="#738091" stroke-width="3" stroke-linejoin="round" />
-<polygon points="1703.00,585.00 1691.29,590.65 1691.29,579.35" fill="#738091" stroke="none" stroke-width="2" />
-<text x="1555" y="637.36" font-family="Microsoft YaHei,sans-serif" font-size="22" fill="#243449">原摄像头</text>
-<text x="1575" y="681.00" font-family="Microsoft YaHei,sans-serif" font-size="25" fill="#243449">车头 →</text>
+<rect x="1265" y="675" width="195" height="52" fill="#e4e9ef" stroke="#a4afbd" stroke-width="2" />
+<!-- 左图记录原中层相机；右图相机独立下移至一层前端。 -->
+<polyline points="1445,750 1535,750 1560,727" fill="none" stroke="#738091" stroke-width="13" stroke-linejoin="round" />
+<rect x="1549" y="700.0" width="72" height="48" fill="#667383" stroke="#738091" stroke-width="2" />
+<rect x="1621" y="714.0" width="21" height="21" fill="#7cbbc9" stroke="#738091" stroke-width="2" />
+<polyline points="1652,725 1703,725" fill="none" stroke="#738091" stroke-width="3" stroke-linejoin="round" />
+<polygon points="1703,725 1691.29,730.65 1691.29,719.35" fill="#738091" stroke="none" stroke-width="2" />
+<text x="1640" y="684.36" font-family="Microsoft YaHei,sans-serif" font-size="22" fill="#243449">一层相机</text>
+<text x="1640" y="797.0" font-family="Microsoft YaHei,sans-serif" font-size="25" fill="#243449">车头 →</text>
 <!-- 固定框连续连接四柱，后端短悬伸承托车尾附近的后横轴。 -->
-<polyline points="1235.00,410.00 1465.00,410.00" fill="none" stroke="#aeb7c2" stroke-width="2" stroke-linejoin="round" stroke-dasharray="9 7" />
-<text x="1494" y="448.48" font-family="Microsoft YaHei,sans-serif" font-size="21" fill="#c49a43">上段等高调低</text>
-<polyline points="1475.00,431.00 1475.00,511.00" fill="none" stroke="#c49a43" stroke-width="2" stroke-linejoin="round" />
-<polygon points="1475.00,511.00 1469.35,499.29 1480.65,499.29" fill="#c49a43" stroke="none" stroke-width="2" />
-<rect x="1018" y="526" width="470" height="18" fill="#d8effb" stroke="#2584b5" stroke-width="4" />
-<rect x="1021" y="450" width="20" height="76" fill="#d8effb" stroke="#2584b5" stroke-width="3" />
-<rect x="1295" y="508" width="21" height="18" fill="#2584b5" stroke="none" stroke-width="2" />
-<circle cx="1305" cy="508" r="7" fill="#f8fafc" stroke="#2584b5" stroke-width="3" />
-<rect x="1446" y="450" width="22" height="76" fill="#d8effb" stroke="#2584b5" stroke-width="3" />
-<rect x="1438" y="444" width="38" height="8" fill="#2584b5" stroke="none" stroke-width="2" />
+<rect x="1018" y="623.0" width="490" height="18" fill="#d8effb" stroke="#2584b5" stroke-width="4" />
+<rect x="1021" y="547.0" width="20" height="76" fill="#d8effb" stroke="#2584b5" stroke-width="3" />
+<rect x="1295" y="605.0" width="21" height="18" fill="#2584b5" stroke="none" stroke-width="2" />
+<circle cx="1305" cy="605.0" r="7" fill="#f8fafc" stroke="#2584b5" stroke-width="3" />
+<rect x="1446" y="547.0" width="22" height="76" fill="#d8effb" stroke="#2584b5" stroke-width="3" />
+<rect x="1438" y="541.0" width="38" height="8" fill="#2584b5" stroke="none" stroke-width="2" />
 <!-- 橙色为固定后斜壁小斗；截面式原理示意，后口不带活动门。 -->
-<polygon points="1025.00,340.00 1480.00,340.00 1480.00,450.00 1025.00,450.00" fill="#ffebd4" stroke="#e78839" stroke-width="3" />
-<polygon points="1025.00,404.00 1110.00,450.00 1025.00,450.00" fill="#efb96f" stroke="#e78839" stroke-width="2" />
-<polyline points="1025,450 1480,450" fill="none" stroke="#e78839" stroke-width="5" stroke-linejoin="round" />
-<rect x="1437" y="450" width="16" height="13" fill="#e78839" stroke="none" stroke-width="2" />
-<circle cx="1031" cy="450" r="10" fill="#fff" stroke="#2584b5" stroke-width="4" />
+<polygon points="1025,437 1480,437 1480,547 1025,547" fill="#ffebd4" stroke="#e78839" stroke-width="3" />
+<polygon points="1025,501 1110,547 1025,547" fill="#efb96f" stroke="#e78839" stroke-width="2" />
+<polyline points="1025,547 1480,547" fill="none" stroke="#e78839" stroke-width="5" stroke-linejoin="round" />
+<rect x="1437" y="547.0" width="16" height="13" fill="#e78839" stroke="none" stroke-width="2" />
+<circle cx="1031" cy="547.0" r="10" fill="#fff" stroke="#2584b5" stroke-width="4" />
 <!-- 绿色推杆两端铰接，下端固定在框中横梁，上端连接斗前半部。 -->
-<polyline points="1305.00,508.00 1445.00,463.00" fill="none" stroke="#32936f" stroke-width="9" stroke-linejoin="round" />
-<polyline points="1305.00,508.00 1388.00,481.00" fill="none" stroke="#32936f" stroke-width="21" stroke-linejoin="round" />
-<circle cx="1305" cy="508" r="6" fill="#fff" stroke="#32936f" stroke-width="3" />
-<circle cx="1445" cy="463" r="6" fill="#fff" stroke="#32936f" stroke-width="3" />
+<polyline points="1305,605 1445,560" fill="none" stroke="#32936f" stroke-width="9" stroke-linejoin="round" />
+<polyline points="1305,605 1388,578" fill="none" stroke="#32936f" stroke-width="21" stroke-linejoin="round" />
+<circle cx="1305" cy="605.0" r="6" fill="#fff" stroke="#32936f" stroke-width="3" />
+<circle cx="1445" cy="560.0" r="6" fill="#fff" stroke="#32936f" stroke-width="3" />
 <!-- 虚线姿态仅辅助理解前端抬起，不代表已验证角度或执行器行程。 -->
-<polyline points="991.30,347.24 1424.03,206.64 1458.02,311.25 1025.29,451.85 991.30,347.24" fill="none" stroke="#e78839" stroke-width="3" stroke-linejoin="round" stroke-dasharray="9 7" />
-<polyline points="1305.00,508.00 1428.75,334.43" fill="none" stroke="#32936f" stroke-width="3" stroke-linejoin="round" stroke-dasharray="9 7" />
-<text x="1488" y="295.24" font-family="Microsoft YaHei,sans-serif" font-size="23" fill="#e78839">抬起示意</text>
-<text x="1005" y="305.24" font-family="Microsoft YaHei,sans-serif" font-size="23" fill="#e78839">固定斜后壁</text>
-<polyline points="1075,319 1010,361 1038,418" fill="none" stroke="#e78839" stroke-width="2" stroke-linejoin="round" />
-<polyline points="1015,427 951,427" fill="none" stroke="#e78839" stroke-width="5" stroke-linejoin="round" />
-<polygon points="951.00,427.00 963.00,421.00 963.00,433.00" fill="#e78839" stroke="none" stroke-width="2" />
-<text x="946" y="412.24" font-family="Microsoft YaHei,sans-serif" font-size="23" fill="#e78839">后卸 ←</text>
-<text x="970" y="579.24" font-family="Microsoft YaHei,sans-serif" font-size="23" fill="#2584b5">后横轴</text>
-<polyline points="1070,575 1010,575 1031,462" fill="none" stroke="#2584b5" stroke-width="2" stroke-linejoin="round" />
-<text x="1486" y="496.24" font-family="Microsoft YaHei,sans-serif" font-size="23" fill="#2584b5">前承托</text>
-<polyline points="1486.00,507.00 1464.00,501.00" fill="none" stroke="#2584b5" stroke-width="2" stroke-linejoin="round" />
-<text x="1040" y="625.24" font-family="Microsoft YaHei,sans-serif" font-size="23" fill="#2584b5">固定框</text>
-<polyline points="1117.00,619.00 1163.00,619.00 1179.00,544.00" fill="none" stroke="#2584b5" stroke-width="2" stroke-linejoin="round" />
-<text x="1474" y="719.48" font-family="Microsoft YaHei,sans-serif" font-size="21" fill="#32936f">单丝杆：两端铰接</text>
-<polyline points="1492.00,694.00 1505.00,683.00 1505.00,518.00 1376.00,489.00" fill="none" stroke="#32936f" stroke-width="2" stroke-linejoin="round" />
-<rect x="1488" y="530" width="36" height="11" fill="#d8effb" stroke="#2584b5" stroke-width="3" />
-<circle cx="1513" cy="535" r="3" fill="#fff" stroke="#2584b5" stroke-width="2" />
-<text x="1540" y="525.48" font-family="Microsoft YaHei,sans-serif" font-size="21" fill="#2584b5">固定雷达接口</text>
-<polyline points="1540,533 1530,533 1514,535" fill="none" stroke="#2584b5" stroke-width="2" stroke-linejoin="round" />
+<polyline points="991.3,444.24 1424.03,303.64 1458.02,408.25 1025.29,548.85 991.3,444.24" fill="none" stroke="#e78839" stroke-width="3" stroke-linejoin="round" stroke-dasharray="9 7" />
+<polyline points="1305,605 1428.75,431.43" fill="none" stroke="#32936f" stroke-width="3" stroke-linejoin="round" stroke-dasharray="9 7" />
+<text x="1005" y="402.24" font-family="Microsoft YaHei,sans-serif" font-size="23" fill="#e78839">固定斜后壁</text>
+<polyline points="1075,416 1010,458 1038,515" fill="none" stroke="#e78839" stroke-width="2" stroke-linejoin="round" />
+<polyline points="1015,524 951,524" fill="none" stroke="#e78839" stroke-width="5" stroke-linejoin="round" />
+<polygon points="951,524 963,518 963,530" fill="#e78839" stroke="none" stroke-width="2" />
+<text x="946" y="509.24" font-family="Microsoft YaHei,sans-serif" font-size="23" fill="#e78839">后卸 ←</text>
+<text x="970" y="676.24" font-family="Microsoft YaHei,sans-serif" font-size="23" fill="#2584b5">后横轴</text>
+<polyline points="1070,672 1010,672 1031,559" fill="none" stroke="#2584b5" stroke-width="2" stroke-linejoin="round" />
+<text x="1530" y="593.24" font-family="Microsoft YaHei,sans-serif" font-size="23" fill="#2584b5">前承托</text>
+<polyline points="1530,604 1464,598" fill="none" stroke="#2584b5" stroke-width="2" stroke-linejoin="round" />
+<text x="1040" y="722.24" font-family="Microsoft YaHei,sans-serif" font-size="23" fill="#2584b5">固定框</text>
+<polyline points="1117,716 1163,716 1179,641" fill="none" stroke="#2584b5" stroke-width="2" stroke-linejoin="round" />
+<text x="1250" y="902.48" font-family="Microsoft YaHei,sans-serif" font-size="21" fill="#32936f">单丝杆：两端铰接</text>
 <text x="950" y="959.36" font-family="Microsoft YaHei,sans-serif" font-size="22" fill="#bb4b39">后轴 / 斗口按车尾与后轮净空定位</text>
 <text x="950" y="992.48" font-family="Microsoft YaHei,sans-serif" font-size="21" fill="#bb4b39">丝杆闭合长度、全程摆动与线束净空待核</text>
 <!-- 功能件数量不等于实际分块打印件数；本图不作制造或承重验收。 -->
 <rect x="30" y="1020" width="1740" height="132" fill="#edf4f8" stroke="none" stroke-width="2" />
 <text x="52" y="1064.76" font-family="Microsoft YaHei,sans-serif" font-size="27" fill="#2584b5">受力路径：斗 / 丝杆 → 连续固定框 → 四根支柱 → 底盘；推杆下端不压电子板。</text>
-<text x="52" y="1109.0" font-family="Microsoft YaHei,sans-serif" font-size="25" fill="#243449">先装框和空斗手动翻转，再定丝杆；雷达只预留固定接口，扫描平面按设备确定。</text>
+<text x="52" y="1109.0" font-family="Microsoft YaHei,sans-serif" font-size="25" fill="#243449">先按净空试装二层框与空斗；相机独立固定一层，雷达扫描面高于运输包络。</text>
 <text x="52" y="1175.6" font-family="Microsoft YaHei,sans-serif" font-size="20" fill="#738091">0.7 kg原车与0.5 kg载荷仅为设计输入；实际加装后的重心、晃动与承载需复核。</text>
-</svg>
+<rect x="1491" y="418" width="8" height="205" fill="#2584b5" /><polyline points="1495,418 1555,418" stroke="#2584b5" stroke-width="8" fill="none" /><rect x="1505" y="410" width="100" height="8" fill="#d8effb" stroke="#2584b5" stroke-width="2" /><rect x="1515" y="367" width="80" height="40" fill="#c85455" stroke="#a94042" stroke-width="2" /><text x="1605" y="395" font-family="Microsoft YaHei,sans-serif" font-size="21" fill="#a94042">二层固定雷达</text><polyline points="1500,387 1600,387" stroke="#c85455" stroke-width="2" stroke-dasharray="9 7" fill="none" /><text x="1275" y="711" font-family="Microsoft YaHei,sans-serif" font-size="21" fill="#738091">电子 + 线束预留</text></svg>

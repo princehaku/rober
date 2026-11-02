@@ -10,12 +10,12 @@
 // 后壁为实心楔形，与底板及两侧壁连续连接，省去门和连杆。
 // 原低位导料唇已删除，物料从真实斜壁上缘离开。
 // 不用加长外伸或提高角度掩盖有限物体落料空间问题。
-// 原底座只表达四柱定位，新轴座承力接口仍未完成制造设计。
+// 中层板只画轮廓占位，新承力框连接四孔，原生产底板不导入。
 // 斗体尺寸不包括横向短轴销和外悬轴座。
 // 所有销耳共轴连接仍为概念接口，轴承和转动间隙尚未设计。
 // 丝杆内外筒重叠表达伸缩运动，深绿色电机仅为外形占位。
 // 自锁、断电保持、双向承载与限位必须在选型后验证。
-// 前塔固定到静止底板，雷达和相机不随斗旋转。
+// 雷达固定二层轻座，相机固定一层独立架，均不随斗旋转。
 // 设备外形与相机视场角为设计输入，真实型号和安装尺寸未知。
 // 运输扫描需留空；停车卸料时遮挡区须由后续控制互锁处理。
 // 该模型不发送控制指令，不证明真实车辆驻车能力。
@@ -38,10 +38,15 @@ show_chassis=true;
 bucket_length=180;
 bucket_width=200;
 bucket_height=70;
-bucket_center_x=-35;
+bucket_center_x=-20;
 wall=3;
-pillar_height=24; // 原柱体高度待实测，外牙约5毫米与柱高不同。
-deck_thickness=12;
+pillar_height=60; // 下段柱设计占位；不从照片读取长度，上段空长柱取消。
+board_thickness=2; // 现有中层板厚度占位，与原200×160生产板无关。
+deck_thickness=8; // 新承力框厚度占位，叠层后的螺纹长度须实配。
+frame_rear=-120;
+frame_front=82;
+frame_half_width=78;
+frame_rail_width=16;
 pivot_x=-105;
 pivot_above_deck=27;
 ramp_run=45;
@@ -58,18 +63,27 @@ actuator_stroke=60;
 actuator_body_length=42;
 
 /* [固定传感器占位] */
-mast_x=70;
-lidar_center_x=95;
+lidar_mount_x=76;
+lidar_center_x=110;
 lidar_diameter=65;
 lidar_height=40;
-lidar_scan_z=180; // 运输无遮挡；驻车卸料时允许斗遮扫描，控制互锁尚未实现。
+lidar_scan_z=190; // 运输无遮挡；驻车卸料时允许斗遮扫描，控制互锁尚未实现。
 camera_x=100;
-camera_z=120;
+camera_z=40;
 camera_width=64;
 camera_depth=30;
 camera_height=40;
 camera_hfov=70; // 视锥仅为设计假设，镜头真实视场角待实测。
 camera_vfov=50;
+camera_bracket_z=17; // 一层支架活动臂高于厂家全包络，底脚只在安装点接触。
+allowed_load_height=70; // 物品顶面不得越过斗壁；散料可填深度仍由25毫米后沿限制。
+
+/* [电子与线束预留] */
+electronics_center_x=-20;
+electronics_length=100;
+electronics_width=72; // 避开四柱名义净空，不证明照片盘线已能收进来。
+electronics_bottom_z=13;
+electronics_height=40;
 
 /* [负载证据边界] */
 base_mass_kg=0.7; // 用户实测整车约700g，不含本稿新斗/塔/执行器。
@@ -84,7 +98,8 @@ $fn=24;
 body_offset_x=-22.641541;
 vendor_top_z=52.7359;
 ground_z=-88.52225;
-deck_top=pillar_height+deck_thickness;
+deck_top=pillar_height+board_thickness+deck_thickness;
+frame_bottom=pillar_height+board_thickness;
 pivot_z=deck_top+pivot_above_deck;
 theta=animate ? max_angle*(1-abs(2*$t-1)) : dump_angle;
 xlo=bucket_center_x-bucket_length/2;
@@ -103,11 +118,13 @@ L=norm(B-A);
 assert(theta>=0 && theta<=max_angle && max_angle<=45);
 assert(ramp_run>wall && ramp_run<bucket_length-wall && ramp_rise>wall,"后斜壁截面无效");
 assert(wall+ramp_rise<bucket_height && ramp_angle<max_angle,"卸料后斜壁必须向外下坡");
-assert(lidar_scan_z>pivot_z+bucket_height+5,"运输时雷达平面过低");
+assert(lidar_scan_z>pivot_z+max(bucket_height,allowed_load_height)+5,"运输时雷达平面过低");
+assert(electronics_bottom_z+electronics_height<pillar_height,"电子与线束预留撞中层板");
+assert(electronics_width<2*43-7,"电子预留宽度侵入四柱");
 assert(L>=actuator_closed && L<=actuator_closed+actuator_stroke,"执行器铰距超出占位范围");
 echo(angle_deg=theta,actuator_length_mm=L,outward_slope_deg=theta-ramp_angle,base_mass_kg=base_mass_kg,base_cg_known=base_cg_known);
 // 整车固定镜头包括较轻的前传感器塔，重斗保持低位。
-$vpt=[-20,0,95];
+$vpt=[-15,0,105];
 $vpr=[67,0,40];
 $vpd=1350;
 
@@ -129,10 +146,26 @@ module chassis(){
         import("../../../vendor/waveshare_wave_rover/WAVE ROVER_MODEL_STL.stl");
 }
 module fixed_frame(){
-    // 原底板只是四柱定位参照，新架真实固定接口尚未定型。
-    color("#4c96bd") translate([0,0,deck_top]) rotate([180,0,0])
-        import("../main_deck_onepiece_v0/exports/main_deck_onepiece.stl");
+    // 黑色中层板为孔位/轮廓占位，未重建厂家所有开槽，不等同旧生产底板。
+    color("#555e68") difference(){
+        translate([-65,-55,pillar_height]) cube([130,110,board_thickness]);
+        for(x=[-29,29]) for(y=[-43,43]) translate([x,y,pillar_height-1]) cylinder(d=3,h=board_thickness+2);
+    }
+    // 新固定框的双侧梁、端梁及中横梁提供闭合受力路径，不把推杆压在电子板上。
+    color("#4c96bd") difference(){
+        union(){
+            for(y=[-frame_half_width,frame_half_width-frame_rail_width])
+                translate([frame_rear,y,frame_bottom]) cube([frame_front-frame_rear,frame_rail_width,deck_thickness]);
+            for(x=[frame_rear,frame_front-frame_rail_width,-37,21])
+                translate([x,-frame_half_width,frame_bottom]) cube([16,2*frame_half_width,deck_thickness]);
+            translate([A.x-22,-frame_half_width,frame_bottom]) cube([44,2*frame_half_width,deck_thickness]);
+        }
+        for(x=[-29,29]) for(y=[-43,43]) translate([x,y,frame_bottom-1]) cylinder(d=3,h=deck_thickness+2);
+    }
     for(x=[-29,29]) for(y=[-43,43]) color("#c5a042") translate([x,y,0]) cylinder(d=7,h=pillar_height);
+    // 单盒预算包含电子设备与盘线，真实尺寸和收线方案必须实配，默认显示以免掩盖占用。
+    color("#727a85") translate([electronics_center_x-electronics_length/2,-electronics_width/2,electronics_bottom_z])
+        cube([electronics_length,electronics_width,electronics_height]);
     for(s=[-1,1]) let(y=s*(bucket_width/2+axle_end_clearance)){
         color("#3b8bb2"){
             // 左右后轴座从板内起脚；外悬耳只表达连接路径，截面需实物验证。
@@ -178,16 +211,21 @@ module actuator(){
     for(p=[A,B]) color("#eed05a") pin(p,20,6);
 }
 module sensors(){
-    // 设备尺寸与孔位未知：圆柱/盒体仅作可调外形占位。
+    // 雷达座只有细立柱和短托板；相机独立下降到一层，不共用旧高塔。
     plate_z=lidar_scan_z-lidar_height/2-5;
     color("#4089ad"){
-        translate([mast_x-7,-13,deck_top]) cube([14,26,plate_z-deck_top]);
-        bar([mast_x,0,plate_z],[lidar_center_x,0,plate_z],12);
-        translate([lidar_center_x-36,-36,plate_z]) cube([72,72,5]);
-        bar([mast_x,0,camera_z],[camera_x,0,camera_z],9);
+        translate([lidar_mount_x,0,deck_top]) cylinder(d=8,h=plate_z-deck_top);
+        bar([lidar_mount_x,0,plate_z],[lidar_center_x,0,plate_z],8);
+        translate([lidar_center_x-35,-35,plate_z]) cube([70,70,5]);
+        // 相机架从一层前两柱安装点分出；底脚局部为接口示意，具体夹持和紧固待设计。
+        for(y=[-43,43]){
+            translate([29,y,0]) difference(){cylinder(d=13,h=camera_bracket_z);translate([0,0,-1]) cylinder(d=7.4,h=camera_bracket_z+2);}
+            bar([29,y,camera_bracket_z],[camera_x,y<0?-24:24,camera_bracket_z],6);
+        }
+        translate([camera_x-camera_depth/2,-camera_width/2,camera_z-camera_height/2-3]) cube([camera_depth,camera_width,3]);
     }
     color("#c85455") translate([lidar_center_x,0,plate_z+5]) cylinder(d=lidar_diameter,h=lidar_height);
-    // 雷达环表示运输扫描平面；卸料会出现遮挡，实车需驻车并做互锁。
+    // 扫描圆环代表运输平面；物品超高或卸料时遮挡须另行处理，当前控制互锁未实现。
     color([.95,.3,.3,.35]) translate([lidar_center_x,0,lidar_scan_z])
         difference(){cylinder(r=44,h=.6);translate([0,0,-1]) cylinder(r=42,h=3);}
     color("#3d4856") translate([camera_x-camera_depth/2,-camera_width/2,camera_z-camera_height/2])

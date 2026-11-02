@@ -74,19 +74,20 @@ def main():
     # 图例颜色对应SCAD材料颜色，读图不需要先理解代码变量名。
     d=ImageDraw.Draw(board)
     size='×'.join(f'{v:g}' for v in labels['dimensions'])
-    d.text((24,15),f'{p["payload_kg"]:g} kg 无活动门小后卸斗 · {size} mm · 原车实测 {p["base_mass_kg"]:g} kg',(25,40,50),font=font(32))
-    d.text((24,65),'蓝：固定架 / 前塔   橙：斗体   浅黄：固定后坡   绿：单丝杆   红柱：雷达   黑盒：相机',(45,60,70),font=font(25))
-    for i,(im,title) in enumerate([(images[0],'放平 0°：底与斜后壁连成一体'),(images[2],f'后倾 {p["max_angle"]:g}°：固定后坡向外下行')]):
+    d.text((24,15),f'{p["payload_kg"]:g} kg 二层翻斗 / 一层相机 · {size} mm · 原车实测 {p["base_mass_kg"]:g} kg',(25,40,50),font=font(32))
+    d.text((24,65),'蓝：二层承力框 / 独立小座   灰：电子与线束预留   橙：斗体   绿：丝杆   红：固定雷达',(45,60,70),font=font(25))
+    for i,(im,title) in enumerate([(images[0],'运输 0°：取消上段空长柱'),(images[2],f'后倾 {p["max_angle"]:g}°：二层框承力，设备固定')]):
         # 只作统一缩放，不逐帧裁切到不同大小。
         im=im.resize((900,675))
         board.paste(im,(i*900,155))
         d.text((i*900+25,115),title,(25,40,50),font=font(26))
     # 重要限制放在整张图内，脱离聊天转发时仍保留证据边界。
-    d.text((24,845),display_note+' 真实整车CG未知。',(45,60,70),font=font(23))
-    l0,l1=labels['lengths']
-    d.text((24,888),f'固定后沿挡料 {p["ramp_rise"]:g} mm / 其余壁高 {p["bucket_height"]:g} mm；单丝杆抬斗，省去活动门和连杆。',(45,60,70),font=font(25))
-    d.text((24,931),'相机与雷达固定在前部；停车后倾卸料，扫描可能受斗遮挡。',(45,60,70),font=font(24))
-    d.text((24,975),f'固定后沿挡料{p["ramp_rise"]:g}mm；{p["payload_kg"]:g}kg / 实际滑出与行驶保持待实测。',(185,55,38),font=font(24))
+    d.text((24,845),'柱高、板厚、设备与线束包络均为设计占位，可调；新叠层的螺纹连接尚未适配。',(45,60,70),font=font(24))
+    # 层级标高从本次数值报告读取，不把设计占位写成照片测量结果。
+    d.text((24,888),f'二层框顶 Z{verified["fixed_layout"]["second_level_top_z"]:g} / 相机中心 Z{p["camera_z"]:g} / 雷达扫描 Z{p["lidar_scan_z"]:g} mm；斗后沿挡料 {p["ramp_rise"]:g} mm。',(45,60,70),font=font(24))
+    # 允许顶面高度与固定后沿的散料挡高不同，图注分别表达两项约束。
+    d.text((24,931),f'允许物品顶面 ≤{p["allowed_load_height"]:g} mm（相对斗底）；运输扫描余量 {verified["geometry"]["start"]["scan_margin"]:g} mm，卸料需驻车。',(45,60,70),font=font(24))
+    d.text((24,975),f'{p["payload_kg"]:g} kg是目标；真实总重心、承载、行驶保持与倒净均待实测。',(185,55,38),font=font(24))
     board.save(OUT/'overview.png')
     # 动画中也显示同样边界；去程结束后原路回零，避免循环跳变。
     frames=[]
@@ -98,8 +99,9 @@ def main():
             canvas=Image.new('RGB',(800,700),'#f8f8f8')
             canvas.paste(Image.open(path).convert('RGB'),(0,45))
             draw=ImageDraw.Draw(canvas)
-            draw.text((12,8),f'后倾 {a:g}° · 固定后坡 · {p["payload_kg"]:g}kg试验目标',(30,45,55),font=font(23))
-            draw.text((12,640),f'原车{p["base_mass_kg"]*1000:.0f}g / 实际CG未知 / 卸料驻车 / 未实物试载',(185,55,38),font=font(20))
+            draw.text((12,8),f'后倾 {a:g}° · 二层斗 / 一层相机 · {p["payload_kg"]:g}kg试验目标',(30,45,55),font=font(23))
+            # 动画保留未知重心与未试载边界，防止单独转发被误作实装证明。
+            draw.text((12,640),f'设计占位可调 / 实际CG未知 / 卸料驻车 / 未试载',(185,55,38),font=font(20))
             frames.append(canvas)
         sequence=frames+list(reversed(frames[1:-1]))
         # 倒序复用同一姿态保证展示连续；真实回程数值另由verify独立计算。
@@ -109,7 +111,7 @@ def main():
         # 直接对SCAD运行非法参数护栏，证明失败并非仅由Python重复公式给出。
         invalid=[]
         # 失效来源分别覆盖倾角、行程、后坡行程和坡向，错误应明确可见。
-        for expression in ['dump_angle=80','actuator_stroke=1','ramp_run=0','ramp_rise=45']:
+        for expression in ['dump_angle=80','actuator_stroke=1','ramp_run=0','ramp_rise=45','electronics_width=82','allowed_load_height=110']:
             result=subprocess.run([args.openscad,'-o',str(Path(tmp)/'invalid.csg'),'-D',expression,str(SOURCE)],
                                   capture_output=True,text=True,encoding='utf-8',errors='replace')
             output=result.stdout+result.stderr
@@ -125,7 +127,7 @@ def main():
     (OUT/'render_check.json').write_text(json.dumps({'source_sha256':source_hash,'captions':labels,'variation_captions':changed,
         'rendered_angles':labels['angles'],'animation_angles':labels['key_angles']+list(reversed(labels['key_angles'][1:-1])),
         'scad_rejected':invalid,'scope':f'无活动门小后卸斗预览与参数断言；{p["payload_kg"]:g}kg样机未实物试载'},ensure_ascii=False,indent=2),encoding='utf-8')
-    print('PASS overview / motion.gif / 4 SCAD invalid-parameter checks',flush=True)
+    print('PASS overview / motion.gif / 6 SCAD invalid-parameter checks',flush=True)
 
 
 if __name__=='__main__':
