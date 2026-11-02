@@ -1,9 +1,9 @@
-"""小侧斗离散几何、传感器占位和条件倾覆力矩筛查。"""
+"""小后卸斗离散几何、传感器占位和条件倾覆力矩筛查。"""
 # 数值报告将几何、视线、材料包络和稳定性边界分开保存。
 # 通过几何检查不代表可以打印、上车或装载目标质量。
 # 厂家STL只用来建立包含车体与轮胎的保守障碍。
 # 厂家外包络不作为轮胎支撑多边形使用。
-# 侧向筛查边Y=-65是显式假设，仍需实车接地测量。
+# 车尾筛查边X=-75是显式假设，仍需实车接地测量。
 # 原车0.7kg为用户实测输入，代码不会据此猜重心位置。
 # 未称重的新附件不计成已获得的抗倾覆力矩。
 # 条件恢复矩的单位为kg·mm，数值不能当电机推力规格。
@@ -21,7 +21,7 @@
 # 扫描遮挡结果只描述几何，驻车和导航互锁尚未写入软件。
 # 相机检查使用显式假设视锥，不能当镜头厂家验收结果。
 # 杆件采用完整胶囊半径，电机段单独用较大半径计算。
-# 前后两个门杆都检查，不能只利用对称假设跳过一侧。
+# 左右两个门杆都检查，不能只利用对称假设跳过一侧。
 # 去程和回程独立计算，检查门分支和位置是否回到原点。
 # 解析公式与源参数绑定，不能以旧JSON证明新参数正确。
 # 非法配置必须明确失败，防止调参后仍显示错误通过状态。
@@ -49,12 +49,12 @@ def parameters():
     # 当前SCAD是唯一设计参数入口；车CG未知状态另行保留为None。
     text=SOURCE.read_text(encoding='utf-8')
     p={m[1]:float(m[2]) for m in re.finditer(r'^([a-z_]+)=(-?[\d.]+);',text,re.M)}
-    p['base_cg_y_actual']=p['base_cg_y'] if re.search(r'^base_cg_known=true;',text,re.M) else None
+    p['base_cg_x_actual']=p['base_cg_x'] if re.search(r'^base_cg_known=true;',text,re.M) else None
     return p
 
 
 def r2(v,a):
-    # 侧向Y-Z平面旋转与SCAD绕X完全同向。
+    # 纵向X-Z平面旋转与SCAD绕Y负转完全同向。
     c,s=math.cos(math.radians(a)),math.sin(math.radians(a))
     return np.array([[c,-s],[s,c]])@np.array(v)
 
@@ -62,22 +62,22 @@ def r2(v,a):
 def box(lo,hi,origin=(0,0,0),a=0):
     # 保存OBB真实旋转，倾斜的门与导料唇不退化为过大的世界AABB。
     c,s=math.cos(math.radians(a)),math.sin(math.radians(a))
-    return np.array(lo),np.array(hi),np.array(origin),np.array([[1,0,0],[0,c,-s],[0,s,c]])
+    return np.array(lo),np.array(hi),np.array(origin),np.array([[c,0,-s],[0,1,0],[s,0,c]])
 
 
 def separation(a,b):
-    # 两盒都绕X，公共X与两组YZ法向构成完整分离轴集合。
+    # 两盒都绕Y，公共Y与两组XZ法向构成完整分离轴集合。
     va,vb=corners(a),corners(b)
-    return max(max((va@n).min()-(vb@n).max(),(vb@n).min()-(va@n).max()) for n in [a[3][:,0],a[3][:,1],a[3][:,2],b[3][:,1],b[3][:,2]])
+    return max(max((va@n).min()-(vb@n).max(),(vb@n).min()-(va@n).max()) for n in [a[3][:,0],a[3][:,1],a[3][:,2],b[3][:,0],b[3][:,2]])
 
 
 def geometry(p,a):
     # 所有位置由同一主轴变换求得，不能靠不同动画把杆端假连在一起。
     top=p['pillar_height']+p['deck_thickness']
-    py,pz=p['pivot_y'],top+p['pivot_above_deck']
+    px,pz=p['pivot_x'],top+p['pivot_above_deck']
     xlo,xhi=p['bucket_center_x']-p['bucket_length']/2,p['bucket_center_x']+p['bucket_length']/2
-    rear,front=-p['bucket_width']/2+p['wall']-py,p['bucket_width']/2-py
-    world=lambda v:np.r_[v[0],np.array([py,pz])+r2(v[1:],a)]
+    rear,front=xlo+p['wall']-px,xhi-px
+    world=lambda v:np.array([px+r2([v[0],v[2]],a)[0],v[1],pz+r2([v[0],v[2]],a)[1]])
     H0=np.array([rear,p['bucket_height']]);Q0=H0+[0,p['gate_arm']]
     Qt=r2(H0,p['max_angle'])+r2([0,p['gate_arm']],p['gate_target_angle'])
     dQ=Q0-Qt
@@ -91,19 +91,25 @@ def geometry(p,a):
     branch=1 if cross(G-H0,Q0-H0)>=0 else -1
     Q=H+q*e+branch*math.sqrt(max(0,p['gate_arm']**2-q*q))*np.array([-e[1],e[0]])
     phi=math.degrees(math.atan2(-(Q-H)[0],(Q-H)[1]))
-    A=np.array([p['bucket_center_x'],py+p['fixed_pin_u'],top+p['fixed_pin_above_deck']])
-    B=world([p['bucket_center_x'],p['moving_pin_u'],p['moving_pin_z']])
-    P=np.array([p['bucket_center_x'],py,pz]);origin=(0,py,pz)
-    # 整体填实包络用于外部障碍，真实壁用于检验物料在斗腔内的通路。
-    envelope=box([xlo,rear,0],[xhi,front,p['bucket_height']],origin,a)
-    walls=[box([xlo,rear,0],[xhi,front,p['wall']],origin,a),
-           box([xlo,front-p['wall'],p['wall']],[xhi,front,p['bucket_height']],origin,a),
-           box([xlo,rear,p['wall']],[xlo+p['wall'],front,p['bucket_height']],origin,a),
-           box([xhi-p['wall'],rear,p['wall']],[xhi,front,p['bucket_height']],origin,a)]
-    gate=box([xlo,-p['wall'],-p['bucket_height']],[xhi,0,0],(0,py+H[0],pz+H[1]),phi)
-    lip_tip=-p['bucket_width']/2-py-p['guide_length']
-    # 6毫米内搭接在底板下方形成共享面，避免仅共一条边的虚假连接。
-    guide=box([xlo,lip_tip,-p['wall']],[xhi,rear+p['guide_overlap'],0],origin,a)
+    A=np.array([px+p['fixed_pin_u'],0,top+p['fixed_pin_above_deck']])
+    B=world([p['moving_pin_u'],0,p['moving_pin_z']])
+    P=np.array([px,0,pz]);origin=(px,0,pz);w=p['bucket_width']/2;h=p['bucket_height'];t=p['wall']
+    # 完整填实盒用于外部碰撞；真实四块壁用于有限物体内部通路。
+    envelope=box([rear,-w,0],[front,w,h],origin,a)
+    walls=[box([rear,-w,0],[front,w,t],origin,a),
+           box([front-t,-w,t],[front,w,h],origin,a),
+           box([rear,-w,t],[front,-w+t,h],origin,a),
+           box([rear,w-t,t],[front,w,h],origin,a)]
+    gate_origin=(px+H[0],0,pz+H[1]);outer=w+p['gate_side_gap']+t
+    gate=box([-t,-outer,-h],[0,outer,0],gate_origin,phi)
+    # 套边处于侧壁外侧，初始0.3mm间隙不作为打印密封保证。
+    wings=[box([-t,-outer,-h],[p['gate_lap'],-w-p['gate_side_gap'],0],gate_origin,phi),
+           box([-t,w+p['gate_side_gap'],-h],[p['gate_lap'],outer,0],gate_origin,phi)]
+    gate_parts=[gate]+wings
+    closing_stops=[box([rear,y,10],[rear+8,y+4,22],origin,a) for y in [-w,w-4]]
+    lip_tip=xlo-px-p['guide_length']
+    # 后唇在斗底下面形成六毫米共享面，沿横向跨过完整后口。
+    guide=box([lip_tip,-w,-t],[rear+p['guide_overlap'],w,0],origin,a)
     deck=box([p['body_offset_x']-100,-80,p['pillar_height']],[p['body_offset_x']+100,80,top])
     platez=p['lidar_scan_z']-p['lidar_height']/2-5
     sensors=[box([p['mast_x']-7,-13,top],[p['mast_x']+7,13,platez]),
@@ -116,24 +122,26 @@ def geometry(p,a):
                        [p['camera_x']+p['camera_depth']/2+4,9,p['camera_z']+9]))
     sensor_arms=[([p['mast_x'],0,platez],[p['lidar_center_x'],0,platez],6),
                  ([p['mast_x'],0,p['camera_z']],[p['camera_x'],0,p['camera_z']],4.5)]
-    supports=[];links=[]
-    for s in [-1,1]:
-        x=p['bucket_center_x']+s*(p['bucket_length']/2+p['link_end_clearance']);foot=-108 if s<0 else 64
-        # 三角座与门固定短臂分别保留真实圆端半径。
-        supports += [([foot,y,top],[x,py,pz],5.5) for y in [-68,-45]]
-        supports += [([x,py,pz],[x,py+G[0],pz+G[1]],4)]
-        links += [([x,py+H[0],pz+H[1]],[x,py+Q[0],pz+Q[1]],3.5),
-                  ([x,py+G[0],pz+G[1]],[x,py+Q[0],pz+Q[1]],3)]
-    stops=[box([x-6,65,top],[x+6,77,pz]) for x in [-95,30]]
+    # 下铰三角座也参与外部运动件检查，仅与执行器共轴邻域保留接口接触。
+    supports=[([A[0]+dx,0,top],A,5) for dx in [-15,15]];links=[]
+    for side in [-1,1]:
+        y=side*(w+p['link_end_clearance'])
+        # 侧座脚位于旧板内；门固定短臂在斗两侧，使用真实圆端半径。
+        supports += [([foot,side*65,top],[px,y,pz],5.5) for foot in [-95,-65]]
+        supports += [([px,y,pz],[px+G[0],y,pz+G[1]],4)]
+        links += [([px+H[0],y,pz+H[1]],[px+Q[0],y,pz+Q[1]],3.5),
+                  ([px+G[0],y,pz+G[1]],[px+Q[0],y,pz+Q[1]],3)]
+    stops=[box([30,y-6,top],[42,y+6,pz]) for y in [-65,65]]
     return locals()
 
 
 def scan(p,chassis,ground):
     # 验证当前范围去回，不外推连续运动、结构弹性或紧固件公差。
-    n=int(p['max_angle']);assert n==p['max_angle'] and 0<n<=55
+    n=int(p['max_angle']);assert n==p['max_angle'] and 0<n<=45
     assert p['guide_overlap']>=4 and p['payload_kg']<=.5
+    assert p['gate_lap']>=4 and p['gate_side_gap']>=.2
     assert p['mast_x']+7<=p['body_offset_x']+100 and p['mast_x']-7>p['bucket_center_x']+p['bucket_length']/2
-    rows=[];mins={'body':1e9,'frame':1e9,'sensors':1e9,'actuator':1e9,'guide':1e9}
+    rows=[];mins={'body':1e9,'deck':1e9,'support_rods':1e9,'sensors':1e9,'actuator':1e9,'guide':1e9}
     for a in list(range(n+1))+list(range(n,-1,-1)):
         g=geometry(p,a);A,B,P=g['A'],g['B'],g['P'];L=np.linalg.norm(B-A)
         assert p['actuator_closed']<=L<=p['actuator_closed']+p['actuator_stroke']
@@ -144,17 +152,20 @@ def scan(p,chassis,ground):
         assert abs(np.linalg.norm(Q-H)-p['gate_arm'])<1e-8 and abs(np.linalg.norm(Q-G)-g['link'])<1e-8
         trans=abs(np.cross(np.r_[Q-H,0],np.r_[G-Q,0])[2])/(p['gate_arm']*g['link'])
         assert trans>.2
-        moving=[g['envelope'],g['gate'],g['guide']]
+        moving=[g['envelope'],g['guide']]+g['gate_parts']
         # 闭门和导料唇仅允许表面接触，穿透不会列作铰接豁免。
-        assert separation(g['gate'],g['envelope'])>=-1e-8 and separation(g['gate'],g['guide'])>=-1e-8
+        for part in g['gate_parts']:
+            for target in [g['envelope'],g['guide']]+g['closing_stops']:
+                assert separation(part,target)>=-1e-8,('后门/套边',a,separation(part,target))
         for m in moving:
-            for name,t in [('body',chassis),('frame',g['deck'])]+[('sensors',t) for t in g['sensors']]:
+            for name,t in [('body',chassis),('deck',g['deck'])]+[('sensors',t) for t in g['sensors']]:
                 gap=separation(m,t);assert gap>.05,(name,a,gap)
                 mins[name]=min(mins[name],gap)
             for stop in g['stops']:
                 assert separation(m,stop)>=-1e-8,('止挡',a)
             for sa,sb,r in g['supports']:
                 gap=segment_box_distance(sa,sb,m)-r;assert gap>.05,('支架',a,gap)
+                mins['support_rods']=min(mins['support_rods'],gap)
             for sa,sb,r in g['sensor_arms']:
                 assert segment_box_distance(sa,sb,m)-r>.05,('传感器横撑',a)
             assert corners(m)[:,2].min()>ground+5,('地面',a)
@@ -183,56 +194,70 @@ def scan(p,chassis,ground):
             'scan_occluded_sample_angles':[r['angle'] for r in rows[:n+1] if r['scan_margin']<=0],'minimum_clearances':mins}
 
 
+def closed_gate_check(p):
+    # 在世界X方向核对闭门接触；套边绕过侧壁，禁止用实体穿插掩盖门缝。
+    g=geometry(p,0);v=corners(g['gate']);gate_inner=v[:,0].max();floor=corners(g['walls'][0])
+    gaps=[float(corners(t)[:,0].min()-gate_inner) for t in [g['walls'][0],g['walls'][2],g['walls'][3]]]
+    assert max(abs(v) for v in gaps)<1e-8
+    for t in g['walls'][1:]:assert abs(corners(t)[:,2].min()-floor[:,2].max())<1e-8
+    for wing in g['wings']:assert separation(wing,g['envelope'])>=p['gate_side_gap']-1e-8
+    for stop in g['closing_stops']:assert abs(separation(stop,g['gate']))<1e-8
+    return {'door_inner_x':gate_inner,'door_floor_contact_mm2':p['bucket_width']*p['wall'],
+            'door_each_side_contact_mm2':p['wall']*(p['bucket_height']-p['wall']),
+            'closed_face_gaps_mm':gaps,'side_lap_mm':p['gate_lap'],'nominal_side_gap_mm':p['gate_side_gap'],
+            'closing_stop_contact':'两块随斗止挡的后面与门内面接触；预压、门锁和密封条未设计',
+            'boundary':'名义模型四周无直接通缝；打印公差、细碎垃圾与液体密封未验证'}
+
+
 def load_report(p):
-    # Y=-65仅作厂家候选接地带的筛查边，轮胎实测支撑多边形尚缺。
-    edge=-65.;cases={};n=int(p['max_angle'])
-    definitions={'uniform':(0,p['bucket_height']/2),'mouth_floor':(-p['bucket_width']/2,0),
-                 'lip_floor':(-p['bucket_width']/2-p['guide_length'],0),
-                 'lip_high35':(-p['bucket_width']/2-p['guide_length'],35),
-                 'lip_high70':(-p['bucket_width']/2-p['guide_length'],70)}
-    for name,(y,z) in definitions.items():
-        # 后两项高度沿倾斜斗底法向定义，与竖直落料框的高度定义分开。
-        values=[p['pivot_y']+r2([y-p['pivot_y'],z],a)[0] for a in range(n+1)]
+    # X=-75来自厂家最低顶点的候选后接地区，实际接地边仍须测量。
+    edge=-75.;cases={};n=int(p['max_angle']);mouth=p['bucket_center_x']-p['bucket_length']/2
+    definitions={'uniform':(p['bucket_center_x'],p['bucket_height']/2),'mouth_floor':(mouth,0),
+                 'mouth_high35':(mouth,35),'lip_floor':(mouth-p['guide_length'],0),
+                 'lip_high35':(mouth-p['guide_length'],35),'lip_high70':(mouth-p['guide_length'],70)}
+    for name,(x,z) in definitions.items():
+        # 局部偏载点逐角包络包括运输姿态，不能仅用卸料终点判稳。
+        values=[p['pivot_x']+r2([x-p['pivot_x'],z],a)[0] for a in range(n+1)]
         threshold=edge-p['payload_kg']*(min(values)-edge)/p['base_mass_kg']
-        cases[name]={'end_cg_y':values[-1],'minimum_cg_y':min(values),'required_base_cg_y_gt':threshold,
-                     'end_required_base_cg_y_gt':edge-p['payload_kg']*(values[-1]-edge)/p['base_mass_kg'],
-                     'hypothetical_margin_if_base_cg_y_zero_kg_mm':p['base_mass_kg']*(-edge)+p['payload_kg']*(min(values)-edge)}
-    # 车CG未实测，保持unknown；示例阈值绝不生成稳定PASS。
+        cases[name]={'end_cg_x':values[-1],'minimum_cg_x':min(values),'required_base_cg_x_gt':threshold,
+                     'end_required_base_cg_x_gt':edge-p['payload_kg']*(values[-1]-edge)/p['base_mass_kg'],
+                     'hypothetical_margin_if_base_cg_x_zero_kg_mm':p['base_mass_kg']*(-edge)+p['payload_kg']*(min(values)-edge)}
+    # 当前质量已知而重心未知，所有数字只表达条件阈值，不生成稳定通过状态。
     return {'base_mass_user_measured_kg':p['base_mass_kg'],'payload_target_kg':p['payload_kg'],
-            'base_cg_y_actual':p['base_cg_y_actual'],'new_attachment_mass_cg':'unknown','status':'not_certified',
-            'screening_tip_edge_y':edge,'scenario_scope':'局部固定偏载点的全角包络，非垃圾袋动力学轨迹',
-            'restoring_moment_formula':f'{p["base_mass_kg"]}*(base_cg_y+65)+{p["payload_kg"]}*(cargo_cg_y+65)+sum(attachment_mass*(attachment_cg_y+65))',
+            'base_cg_x_actual':p['base_cg_x_actual'],'new_attachment_mass_cg':'unknown','status':'not_certified',
+            'screening_tip_edge_x':edge,'scenario_scope':'局部固定偏载点全角包络，非垃圾袋动力学轨迹',
+            'restoring_moment_formula':f'{p["base_mass_kg"]}*(base_cg_x+75)+{p["payload_kg"]}*(cargo_cg_x+75)+sum(attachment_mass*(attachment_cg_x+75))',
             'cases':cases}
 
 
 def material_check(p,chassis,ground):
-    g=geometry(p,p['max_angle']);tip=g['world']([p['bucket_center_x'],g['lip_tip'],0]);columns={}
-    # 先做点出口下的有限宽竖直通道筛查：50与70必须分别报告。
+    g=geometry(p,p['max_angle']);tip=g['world']([g['lip_tip'],0,0]);columns={};paths={}
+    # 点出口附近的竖直通道与沿斗底滑出的旋转块是两种假设，分别保留结论。
     for width in [50,70]:
         corridor=box([tip[0]-width/2,tip[1]-width/2,ground],[tip[0]+width/2,tip[1]+width/2,tip[2]+p['bag_height']])
         gap=separation(corridor,chassis)
         columns[str(width)]={'wheel_envelope_gap_mm':float(gap),'clear':bool(gap>0)}
-    assert columns['50']['clear']
-    if p['guide_length']==40 and p['bucket_width']==200 and p['max_angle']==50:
-        assert not columns['70']['clear']
-    # 50毫米刚体块沿倾斜斗底滑出：先接触3mm底板，再下降到导料唇表面。
-    width=50.;height=50.;states=[];min_gap=1e9
-    release_u=g['lip_tip']-width/2-1
-    for u in np.linspace(30,release_u,60):
-        base=p['wall'] if u+width/2>=g['rear'] else 0
-        states.append(box([p['bucket_center_x']-25,u-25,base],[p['bucket_center_x']+25,u+25,base+height],(0,g['py'],g['pz']),p['max_angle']))
-    # 物体完全离开唇后才进行竖直下落，不能让悬在斜唇上的盒直接穿透下落。
-    released=states[-1];fall=corners(released)[:,2].min()-ground
-    assert fall>0
-    for dz in np.linspace(0,fall,40):
-        lo,hi,o,r=released;states.append((lo,hi,o-np.array([0,0,dz]),r))
-    for block in states:
-        # 斗底和导料唇允许接触；地面终点接触也属于预期状态。
-        for target in [chassis,g['gate']]+g['sensors']+g['walls']+[g['guide']]:
-            gap=separation(block,target);assert gap>=-1e-7,('50mm材料路径',gap)
-        min_gap=min(min_gap,separation(block,chassis))
-    return {'vertical_corridors':columns,'test_block_mm':[50,50,50],'rigid_path_samples':len(states),
-            'path_chassis_minimum_gap':min_gap,'release_u':release_u,'boundary':'仅指定刚体块采样通路；滑动驱动力、柔性垃圾袋、脱离姿态和堵塞需实测'}
+        # 有限立方块先沿斜底滑出，完全离唇才竖落；不模拟摩擦或释放姿态。
+        states=[];release_u=g['lip_tip']-width/2-1
+        for u in np.linspace(60,release_u,60):
+            base=p['wall'] if u+width/2>=g['rear'] else 0
+            states.append(box([u-width/2,-width/2,base],[u+width/2,width/2,base+width],g['origin'],p['max_angle']))
+        released=states[-1];fall=corners(released)[:,2].min()-ground
+        assert fall>0
+        for dz in np.linspace(0,fall,40):
+            lo,hi,o,r=released;states.append((lo,hi,o-np.array([0,0,dz]),r))
+        min_gap=1e9;hits=[]
+        targets=[('车轮/底盘',chassis)]+[('后门/套边',t) for t in g['gate_parts']]+[('设备',t) for t in g['sensors']]+[('斗壁',t) for t in g['walls']+g['closing_stops']]+[('导料唇',g['guide'])]
+        for i,block in enumerate(states):
+            # 允许理想接触，出现穿透就记录具体物块、帧和障碍，不把所有物体总括为通过。
+            for name,target in targets:
+                d=separation(block,target)
+                if d < -1e-7:hits.append({'sample':i,'obstacle':name,'penetration_mm':float(-d)})
+            min_gap=min(min_gap,separation(block,chassis))
+        paths[str(width)]={'test_cube_mm':width,'samples':len(states),'clear':not hits,'minimum_chassis_gap_mm':min_gap,'first_collisions':hits[:4]}
+    assert paths['50']['clear'],paths['50']
+    return {'vertical_corridors':columns,'rigid_paths':paths,'tip_world':tip.tolist(),
+            'boundary':'指定刚体假设路径；宽大或柔性袋的摩擦、夹袋和落地仍需实测'}
 
 
 def main():
@@ -244,7 +269,7 @@ def main():
     default=scan(p,chassis,lo[2]);materials=material_check(p,chassis,lo[2])
     varied=scan(dict(p,pillar_height=26,lidar_scan_z=260),chassis,lo[2])
     rejected=[]
-    for name,changes in [('行程不足',{'actuator_stroke':1}),('低雷达',{'lidar_scan_z':130}),('无唇搭接',{'guide_overlap':0})]:
+    for name,changes in [('行程不足',{'actuator_stroke':1}),('低雷达',{'lidar_scan_z':130}),('无唇搭接',{'guide_overlap':0}),('无门套边',{'gate_lap':0})]:
         try:scan(dict(p,**changes),chassis,lo[2])
         except AssertionError:rejected.append(name)
         else:raise AssertionError('未拒绝'+name)
@@ -255,7 +280,7 @@ def main():
     assert plate_bottom-cone_top>5 and p['bucket_center_x']+p['bucket_length']/2<lens_x
     # 报告分别给出几何成功、预期落料失败及稳定性unknown，避免一个总PASS吞掉边界。
     report={'source_sha256':hashlib.sha256(SOURCE.read_bytes()).hexdigest(),'parameters':p,'vendor_bounds':[lo.tolist(),hi.tolist()],
-            'geometry':default,'variation':varied,'rejected_invalid':rejected,'materials':materials,'loads':load_report(p),
+            'geometry':default,'closed_gate_contact':closed_gate_check(p),'variation':varied,'rejected_invalid':rejected,'materials':materials,'loads':load_report(p),
             'camera':{'assumed_hfov':p['camera_hfov'],'assumed_vfov':p['camera_vfov'],'front_platform_vertical_gap':plate_bottom-cone_top},
             'not_proven':['全部销耳/轴承/紧固件公差和真实转动间隙','真实设备尺寸/出光高度/FOV','实际车CG与新增附件质量','0.5kg静态或动态承载','柔性袋滑动摩擦/脱离/夹袋','连续碰撞与变形']}
     out=ROOT/'exports';out.mkdir(exist_ok=True)

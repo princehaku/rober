@@ -1,5 +1,5 @@
 {
-  "source_sha256": "b7b2eaff60b3b97b35e1564e4f1610288afde23b0c7538cd348a4013153acbb6",
+  "source_sha256": "2e3d645cc75b1f030eede2ed51a6ae04b3adcd3d8a28cbba890807d595f8ec85",
   "captions": {
     "dimensions": [
       180.0,
@@ -8,22 +8,21 @@
     ],
     "angles": [
       0,
-      25.0,
-      50.0
+      20.0,
+      40.0
     ],
     "key_angles": [
       0,
       10,
       20,
       30,
-      40,
-      50.0
+      40.0
     ],
     "lengths": [
       80.15609770940699,
-      124.3476558700709
+      112.92331574805701
     ],
-    "stroke": 44.1915581606639
+    "stroke": 32.767218038650014
   },
   "variation_captions": {
     "dimensions": [
@@ -33,36 +32,33 @@
     ],
     "angles": [
       0,
-      22.5,
-      45.0
+      17.5,
+      35.0
     ],
     "key_angles": [
       0,
       10,
       20,
       30,
-      40,
-      45.0
+      35.0
     ],
     "lengths": [
       80.15609770940699,
-      118.58914310932386
+      107.41132878354222
     ],
-    "stroke": 38.433045399916864
+    "stroke": 27.255231074135224
   },
   "rendered_angles": [
     0,
-    25.0,
-    50.0
+    20.0,
+    40.0
   ],
   "animation_angles": [
     0,
     10,
     20,
     30,
-    40,
-    50.0,
-    40,
+    40.0,
     30,
     20,
     10
@@ -70,7 +66,8 @@
   "scad_rejected": [
     "dump_angle=80",
     "actuator_stroke=1",
-    "guide_overlap=0"
+    "guide_overlap=0",
+    "gate_lap=0"
   ],
-  "scope": "小侧斗预览与参数断言；0.5kg样机未实物试载"
+  "scope": "小后卸斗预览与参数断言；0.5kg样机未实物试载"
 }

@@ -1,8 +1,8 @@
 {
-  "source_sha256": "b7b2eaff60b3b97b35e1564e4f1610288afde23b0c7538cd348a4013153acbb6",
+  "source_sha256": "2e3d645cc75b1f030eede2ed51a6ae04b3adcd3d8a28cbba890807d595f8ec85",
   "parameters": {
     "dump_angle": 0.0,
-    "max_angle": 50.0,
+    "max_angle": 40.0,
     "bucket_length": 180.0,
     "bucket_width": 200.0,
     "bucket_height": 70.0,
@@ -10,14 +10,16 @@
     "wall": 3.0,
     "pillar_height": 24.0,
     "deck_thickness": 12.0,
-    "pivot_y": -80.0,
+    "pivot_x": -105.0,
     "pivot_above_deck": 27.0,
-    "guide_length": 40.0,
+    "guide_length": 30.0,
     "guide_overlap": 6.0,
     "gate_arm": 25.0,
     "gate_fixed_z": 20.0,
-    "gate_target_angle": -50.0,
+    "gate_target_angle": -40.0,
     "link_end_clearance": 14.0,
+    "gate_lap": 6.0,
+    "gate_side_gap": 0.3,
     "fixed_pin_u": 65.0,
     "fixed_pin_above_deck": 13.0,
     "moving_pin_u": 145.0,
@@ -38,14 +40,14 @@
     "camera_hfov": 70.0,
     "camera_vfov": 50.0,
     "base_mass_kg": 0.7,
-    "base_cg_y": 0.0,
+    "base_cg_x": 0.0,
     "payload_kg": 0.5,
     "bag_width": 50.0,
     "bag_height": 50.0,
     "body_offset_x": -22.641541,
     "vendor_top_z": 52.7359,
     "ground_z": -88.52225,
-    "base_cg_y_actual": null
+    "base_cg_x_actual": null
   },
   "vendor_bounds": [
     [
@@ -60,29 +62,27 @@
     ]
   ],
   "geometry": {
-    "samples": 102,
+    "samples": 82,
     "start": {
       "angle": 0,
       "length": 80.15609770940699,
       "arm": 18.027324698847174,
-      "gate_angle": 8.142219984546603e-15,
-      "transmission_sin": 0.6874224268802158,
+      "gate_angle": -3.256887993818641e-14,
+      "transmission_sin": 0.6558705067079672,
       "scan_margin": 18.5
     },
     "end": {
-      "angle": 50,
-      "length": 124.3476558700709,
-      "arm": 66.30859676873865,
-      "gate_angle": -50.000000000000014,
-      "transmission_sin": 0.8266500668839216,
-      "scan_margin": -65.8831324394738
+      "angle": 40,
+      "length": 112.92331574805701,
+      "arm": 64.16919864972829,
+      "gate_angle": -39.99999999999994,
+      "transmission_sin": 0.9655161806173725,
+      "scan_margin": -39.46912856817474
     },
-    "stroke": 44.1915581606639,
+    "stroke": 32.767218038650014,
     "minimum_moment_arm": 18.027324698847174,
-    "minimum_scan_margin": -65.8831324394738,
+    "minimum_scan_margin": -39.46912856817474,
     "scan_occluded_sample_angles": [
-      17,
-      18,
       19,
       20,
       21,
@@ -104,126 +104,174 @@
       37,
       38,
       39,
-      40,
-      41,
-      42,
-      43,
-      44,
-      45,
-      46,
-      47,
-      48,
-      49,
-      50
+      40
     ],
     "minimum_clearances": {
-      "body": 25.36963109424447,
-      "frame": 14.355265461536561,
-      "sensors": 4.0,
+      "body": 30.604316874207754,
+      "deck": 6.34343599363531,
+      "support_rods": 1.2564665510598836,
+      "sensors": 8.0,
       "actuator": 2.128651415344585,
-      "guide": 25.36963109424447
+      "guide": 30.604316874207754
     }
   },
+  "closed_gate_contact": {
+    "door_inner_x": -122.0,
+    "door_floor_contact_mm2": 600.0,
+    "door_each_side_contact_mm2": 201.0,
+    "closed_face_gaps_mm": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "side_lap_mm": 6.0,
+    "nominal_side_gap_mm": 0.3,
+    "closing_stop_contact": "两块随斗止挡的后面与门内面接触；预压、门锁和密封条未设计",
+    "boundary": "名义模型四周无直接通缝；打印公差、细碎垃圾与液体密封未验证"
+  },
   "variation": {
-    "samples": 102,
+    "samples": 82,
     "start": {
       "angle": 0,
       "length": 80.15609770940699,
       "arm": 18.027324698847174,
-      "gate_angle": 8.142219984546603e-15,
-      "transmission_sin": 0.6874224268802158,
+      "gate_angle": -3.256887993818641e-14,
+      "transmission_sin": 0.6558705067079672,
       "scan_margin": 96.5
     },
     "end": {
-      "angle": 50,
-      "length": 124.3476558700709,
-      "arm": 66.30859676873865,
-      "gate_angle": -50.000000000000014,
-      "transmission_sin": 0.8266500668839216,
-      "scan_margin": 12.116867560526202
+      "angle": 40,
+      "length": 112.92331574805701,
+      "arm": 64.16919864972829,
+      "gate_angle": -39.99999999999994,
+      "transmission_sin": 0.9655161806173725,
+      "scan_margin": 38.53087143182526
     },
-    "stroke": 44.1915581606639,
+    "stroke": 32.767218038650014,
     "minimum_moment_arm": 18.027324698847174,
-    "minimum_scan_margin": 12.116867560526202,
+    "minimum_scan_margin": 38.53087143182526,
     "scan_occluded_sample_angles": [],
     "minimum_clearances": {
-      "body": 26.65520631361754,
-      "frame": 14.355265461536561,
-      "sensors": 4.0,
+      "body": 32.13640576044571,
+      "deck": 6.34343599363531,
+      "support_rods": 1.2564665510598836,
+      "sensors": 8.0,
       "actuator": 2.128651415344585,
-      "guide": 26.65520631361754
+      "guide": 32.13640576044571
     }
   },
   "rejected_invalid": [
     "行程不足",
     "低雷达",
-    "无唇搭接"
+    "无唇搭接",
+    "无门套边"
   ],
   "materials": {
     "vertical_corridors": {
       "50": {
-        "wheel_envelope_gap_mm": 7.317859303360336,
+        "wheel_envelope_gap_mm": 4.106970218448893,
         "clear": true
       },
       "70": {
-        "wheel_envelope_gap_mm": -2.6821406966396637,
+        "wheel_envelope_gap_mm": -5.893029781551107,
         "clear": false
       }
     },
-    "test_block_mm": [
-      50,
-      50,
-      50
+    "rigid_paths": {
+      "50": {
+        "test_cube_mm": 50,
+        "samples": 100,
+        "clear": true,
+        "minimum_chassis_gap_mm": 29.873014661567865,
+        "first_collisions": []
+      },
+      "70": {
+        "test_cube_mm": 70,
+        "samples": 100,
+        "clear": false,
+        "minimum_chassis_gap_mm": 29.873014661567865,
+        "first_collisions": [
+          {
+            "sample": 17,
+            "obstacle": "后门/套边",
+            "penetration_mm": 0.06779661016948779
+          },
+          {
+            "sample": 18,
+            "obstacle": "后门/套边",
+            "penetration_mm": 2.5423728813559308
+          },
+          {
+            "sample": 19,
+            "obstacle": "后门/套边",
+            "penetration_mm": 3.8256073368232535
+          },
+          {
+            "sample": 20,
+            "obstacle": "后门/套边",
+            "penetration_mm": 4.255312996812592
+          }
+        ]
+      }
+    },
+    "tip_world": [
+      -143.3022221559489,
+      0.0,
+      30.860619515673037
     ],
-    "rigid_path_samples": 100,
-    "path_chassis_minimum_gap": 28.369631094244454,
-    "release_u": -86.0,
-    "boundary": "仅指定刚体块采样通路；滑动驱动力、柔性垃圾袋、脱离姿态和堵塞需实测"
+    "boundary": "指定刚体假设路径；宽大或柔性袋的摩擦、夹袋和落地仍需实测"
   },
   "loads": {
     "base_mass_user_measured_kg": 0.7,
     "payload_target_kg": 0.5,
-    "base_cg_y_actual": null,
+    "base_cg_x_actual": null,
     "new_attachment_mass_cg": "unknown",
     "status": "not_certified",
-    "screening_tip_edge_y": -65.0,
-    "scenario_scope": "局部固定偏载点的全角包络，非垃圾袋动力学轨迹",
-    "restoring_moment_formula": "0.7*(base_cg_y+65)+0.5*(cargo_cg_y+65)+sum(attachment_mass*(attachment_cg_y+65))",
+    "screening_tip_edge_x": -75.0,
+    "scenario_scope": "局部固定偏载点全角包络，非垃圾袋动力学轨迹",
+    "restoring_moment_formula": "0.7*(base_cg_x+75)+0.5*(cargo_cg_x+75)+sum(attachment_mass*(attachment_cg_x+75))",
     "cases": {
       "uniform": {
-        "end_cg_y": -55.38854673424108,
-        "minimum_cg_y": -55.38854673424108,
-        "required_base_cg_y_gt": -71.86532376125638,
-        "end_required_base_cg_y_gt": -71.86532376125638,
-        "hypothetical_margin_if_base_cg_y_zero_kg_mm": 50.305726632879455
+        "end_cg_x": -73.8744553207004,
+        "minimum_cg_x": -73.8744553207004,
+        "required_base_cg_x_gt": -75.80396048521399,
+        "end_required_base_cg_x_gt": -75.80396048521399,
+        "hypothetical_margin_if_base_cg_x_zero_kg_mm": 53.0627723396498
       },
       "mouth_floor": {
-        "end_cg_y": -92.85575219373078,
-        "minimum_cg_y": -100.0,
-        "required_base_cg_y_gt": -40.0,
-        "end_required_base_cg_y_gt": -45.10303414733515,
-        "hypothetical_margin_if_base_cg_y_zero_kg_mm": 28.0
+        "end_cg_x": -120.32088886237956,
+        "minimum_cg_x": -125.0,
+        "required_base_cg_x_gt": -39.285714285714285,
+        "end_required_base_cg_x_gt": -42.62793652687174,
+        "hypothetical_margin_if_base_cg_x_zero_kg_mm": 27.5
+      },
+      "mouth_high35": {
+        "end_cg_x": -142.81845520140843,
+        "minimum_cg_x": -142.81845520140843,
+        "required_base_cg_x_gt": -26.55824628470826,
+        "end_required_base_cg_x_gt": -26.55824628470826,
+        "hypothetical_margin_if_base_cg_x_zero_kg_mm": 18.590772399295787
       },
       "lip_floor": {
-        "end_cg_y": -118.56725658119237,
-        "minimum_cg_y": -140.0,
-        "required_base_cg_y_gt": -11.428571428571423,
-        "end_required_base_cg_y_gt": -26.737673870576877,
-        "hypothetical_margin_if_base_cg_y_zero_kg_mm": 8.0
+        "end_cg_x": -143.3022221559489,
+        "minimum_cg_x": -155.0,
+        "required_base_cg_x_gt": -17.857142857142854,
+        "end_required_base_cg_x_gt": -26.2126984600365,
+        "hypothetical_margin_if_base_cg_x_zero_kg_mm": 12.5
       },
       "lip_high35": {
-        "end_cg_y": -145.37881209035658,
-        "minimum_cg_y": -149.46152422706632,
-        "required_base_cg_y_gt": -4.67033983780977,
-        "end_required_base_cg_y_gt": -7.586562792602443,
-        "hypothetical_margin_if_base_cg_y_zero_kg_mm": 3.26923788646684
+        "end_cg_x": -165.79978849497778,
+        "minimum_cg_x": -166.0327774867362,
+        "required_base_cg_x_gt": -9.976587509474143,
+        "end_required_base_cg_x_gt": -10.143008217873017,
+        "hypothetical_margin_if_base_cg_x_zero_kg_mm": 6.983611256631903
       },
       "lip_high70": {
-        "end_cg_y": -172.1903675995208,
-        "minimum_cg_y": -172.19321235502446,
-        "required_base_cg_y_gt": 11.566580253588896,
-        "end_required_base_cg_y_gt": 11.564548285372013,
-        "hypothetical_margin_if_base_cg_y_zero_kg_mm": -8.096606177512228
+        "end_cg_x": -188.29735483400665,
+        "minimum_cg_x": -188.29735483400665,
+        "required_base_cg_x_gt": 5.926682024290471,
+        "end_required_base_cg_x_gt": 5.926682024290471,
+        "hypothetical_margin_if_base_cg_x_zero_kg_mm": -4.148677417003327
       }
     }
   },
@@ -239,27 +287,5 @@
     "0.5kg静态或动态承载",
     "柔性袋滑动摩擦/脱离/夹袋",
     "连续碰撞与变形"
-  ],
-  "closed_gate_contact": {
-    "pose_deg": 0,
-    "contacts": [
-      {
-        "wall": "floor",
-        "gap_mm": -1.4210854715202004e-14,
-        "contact_area_mm2": 540.0
-      },
-      {
-        "wall": "rear_end",
-        "gap_mm": -1.4210854715202004e-14,
-        "contact_area_mm2": 201.0
-      },
-      {
-        "wall": "front_end",
-        "gap_mm": -1.4210854715202004e-14,
-        "contact_area_mm2": 201.0
-      }
-    ],
-    "top_open": true,
-    "boundary": "理想几何共面接触；制造间隙、压紧及细碎垃圾/液体泄漏未验证"
-  }
+  ]
 }
