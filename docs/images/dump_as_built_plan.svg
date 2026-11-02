@@ -4,7 +4,7 @@
 <rect x="0" y="0" width="1800" height="1200" fill="#f8fafc" stroke="none" stroke-width="2" />
 <text x="45" y="69.20" font-family="Microsoft YaHei,sans-serif" font-size="40" fill="#243449">批准布局：二层翻斗，一层相机，二层固定雷达</text>
 <text x="45" y="122.40" font-family="Microsoft YaHei,sans-serif" font-size="30" fill="#bb4b39">原理示意，非比例图；下段柱与净空均为可调占位</text>
-<text x="45" y="162.00" font-family="Microsoft YaHei,sans-serif" font-size="25" fill="#243449">取消上段空长柱，装载区向车身中部移；电子和线束空间按实物复核。</text>
+<text x="45" y="162.00" font-family="Microsoft YaHei,sans-serif" font-size="25" fill="#243449">承力框与斗再前移5 mm；3V / 60RPM N20配打印传动，实际扭矩待测。</text>
 <rect x="30" y="186" width="845" height="740" fill="#ffffff" stroke="#d9e1e8" stroke-width="2" />
 <rect x="925" y="186" width="845" height="740" fill="#ffffff" stroke="#d9e1e8" stroke-width="2" />
 <text x="55" y="230.28" font-family="Microsoft YaHei,sans-serif" font-size="31" fill="#243449">照片现状（参考）</text>
@@ -105,9 +105,9 @@
 <polyline points="1530,604 1464,598" fill="none" stroke="#2584b5" stroke-width="2" stroke-linejoin="round" />
 <text x="1040" y="722.24" font-family="Microsoft YaHei,sans-serif" font-size="23" fill="#2584b5">固定框</text>
 <polyline points="1117,716 1163,716 1179,641" fill="none" stroke="#2584b5" stroke-width="2" stroke-linejoin="round" />
-<text x="1250" y="902.48" font-family="Microsoft YaHei,sans-serif" font-size="21" fill="#32936f">单丝杆：两端铰接</text>
+<text x="1210" y="902.48" font-family="Microsoft YaHei,sans-serif" font-size="21" fill="#32936f">N20 + 打印螺杆：双铰接</text>
 <text x="950" y="959.36" font-family="Microsoft YaHei,sans-serif" font-size="22" fill="#bb4b39">后轴 / 斗口按车尾与后轮净空定位</text>
-<text x="950" y="992.48" font-family="Microsoft YaHei,sans-serif" font-size="21" fill="#bb4b39">丝杆闭合长度、全程摆动与线束净空待核</text>
+<text x="950" y="992.48" font-family="Microsoft YaHei,sans-serif" font-size="21" fill="#bb4b39">可打印拟合件已建模；实物夹持与载荷待核</text>
 <!-- 功能件数量不等于实际分块打印件数；本图不作制造或承重验收。 -->
 <rect x="30" y="1020" width="1740" height="132" fill="#edf4f8" stroke="none" stroke-width="2" />
 <text x="52" y="1064.76" font-family="Microsoft YaHei,sans-serif" font-size="27" fill="#2584b5">受力路径：斗 / 丝杆 → 连续固定框 → 四根支柱 → 底盘；推杆下端不压电子板。</text>

@@ -7,7 +7,7 @@ import tempfile
 import hashlib
 import re
 from PIL import Image, ImageDraw, ImageFont
-from verify import parameters, geometry
+from verify import parameters, geometry, drive
 
 ROOT = Path(__file__).resolve().parent
 SOURCE = ROOT/'compact_dump.scad'
@@ -51,9 +51,14 @@ def main():
     args = parser.parse_args()
     # 要求先更新数值报告；源哈希漂移时拒绝把旧验证贴到新图片上。
     p=parameters()
+    dp=drive.parameters();ratio=dp['screw_teeth']/dp['motor_teeth']
+    travel_seconds=dp['working_stroke']/dp['lead']*ratio/dp['motor_rpm']*60
     source_hash=hashlib.sha256(SOURCE.read_bytes()).hexdigest()
+    # 打印模块是整车依赖，单改齿轮或壳后不能沿用旧整车图。
+    drive_hash=hashlib.sha256(drive.SOURCE.read_bytes()).hexdigest()
     verified=json.loads((OUT/'verification.json').read_text(encoding='utf-8'))
     assert verified['source_sha256']==source_hash,'请先运行verify.py更新当前源的验证报告'
+    assert verified['drive_source_sha256']==drive_hash,'打印驱动依赖已改变，请重跑整车verify'
     labels=captions(p)
     # 展示开关从当前源读取，防止整斗/剖切画面与文字互相矛盾。
     source_text=SOURCE.read_text(encoding='utf-8')
@@ -74,8 +79,8 @@ def main():
     # 图例颜色对应SCAD材料颜色，读图不需要先理解代码变量名。
     d=ImageDraw.Draw(board)
     size='×'.join(f'{v:g}' for v in labels['dimensions'])
-    d.text((24,15),f'{p["payload_kg"]:g} kg 二层翻斗 / 一层相机 · {size} mm · 原车实测 {p["base_mass_kg"]:g} kg',(25,40,50),font=font(32))
-    d.text((24,65),'蓝：二层承力框 / 独立小座   灰：电子与线束预留   橙：斗体   绿：丝杆   红：固定雷达',(45,60,70),font=font(25))
+    d.text((24,15),f'{p["payload_kg"]:g} kg 二层翻斗 / N20打印驱动 · {size} mm · 原车实测 {p["base_mass_kg"]:g} kg',(25,40,50),font=font(32))
+    d.text((24,65),'蓝：二层承力框 / 独立小座   灰：电子与线束预留   橙：斗体   绿：N20输入齿轮   红：固定雷达',(45,60,70),font=font(25))
     for i,(im,title) in enumerate([(images[0],'运输 0°：取消上段空长柱'),(images[2],f'后倾 {p["max_angle"]:g}°：二层框承力，设备固定')]):
         # 只作统一缩放，不逐帧裁切到不同大小。
         im=im.resize((900,675))
@@ -84,7 +89,7 @@ def main():
     # 重要限制放在整张图内，脱离聊天转发时仍保留证据边界。
     d.text((24,845),'柱高、板厚、设备与线束包络均为设计占位，可调；新叠层的螺纹连接尚未适配。',(45,60,70),font=font(24))
     # 层级标高从本次数值报告读取，不把设计占位写成照片测量结果。
-    d.text((24,888),f'二层框顶 Z{verified["fixed_layout"]["second_level_top_z"]:g} / 相机中心 Z{p["camera_z"]:g} / 雷达扫描 Z{p["lidar_scan_z"]:g} mm；斗后沿挡料 {p["ramp_rise"]:g} mm。',(45,60,70),font=font(24))
+    d.text((24,888),f'N20 {dp["motor_voltage"]:g}V / {dp["motor_rpm"]:g}RPM，{ratio:g}:1齿轮 + {dp["lead"]:g} mm打印螺杆；理论无载单程{travel_seconds:.1f}秒。',(45,60,70),font=font(24))
     # 允许顶面高度与固定后沿的散料挡高不同，图注分别表达两项约束。
     d.text((24,931),f'允许物品顶面 ≤{p["allowed_load_height"]:g} mm（相对斗底）；运输扫描余量 {verified["geometry"]["start"]["scan_margin"]:g} mm，卸料需驻车。',(45,60,70),font=font(24))
     d.text((24,975),f'{p["payload_kg"]:g} kg是目标；真实总重心、承载、行驶保持与倒净均待实测。',(185,55,38),font=font(24))
@@ -112,7 +117,7 @@ def main():
         invalid=[]
         # 失效来源分别覆盖倾角、行程、后坡行程和坡向，错误应明确可见。
         for expression in ['dump_angle=80','actuator_stroke=1','ramp_run=0','ramp_rise=45','electronics_width=82','allowed_load_height=110']:
-            result=subprocess.run([args.openscad,'-o',str(Path(tmp)/'invalid.csg'),'-D',expression,str(SOURCE)],
+            result=subprocess.run([args.openscad,'-o',str(Path(tmp)/'invalid.csg'),'-D',expression,*(['-D',f'dump_angle={p["max_angle"]}'] if expression.startswith('actuator_stroke') else []),str(SOURCE)],
                                   capture_output=True,text=True,encoding='utf-8',errors='replace')
             output=result.stdout+result.stderr
             assert 'ERROR: Assertion' in output,output
@@ -124,7 +129,8 @@ def main():
     changed=captions(dict(p,bucket_height=p['bucket_height']+20,max_angle=changed_max))
     assert changed['dimensions'][2]==p['bucket_height']+20 and changed['angles']==[0,changed_max/2,changed_max]
     assert changed['lengths'][1] != labels['lengths'][1] and changed['key_angles'][-1]==changed_max
-    (OUT/'render_check.json').write_text(json.dumps({'source_sha256':source_hash,'captions':labels,'variation_captions':changed,
+    assert hashlib.sha256(SOURCE.read_bytes()).hexdigest()==source_hash and hashlib.sha256(drive.SOURCE.read_bytes()).hexdigest()==drive_hash,'渲染期间源变化'
+    (OUT/'render_check.json').write_text(json.dumps({'source_sha256':source_hash,'drive_source_sha256':drive_hash,'captions':labels,'variation_captions':changed,
         'rendered_angles':labels['angles'],'animation_angles':labels['key_angles']+list(reversed(labels['key_angles'][1:-1])),
         'scad_rejected':invalid,'scope':f'无活动门小后卸斗预览与参数断言；{p["payload_kg"]:g}kg样机未实物试载'},ensure_ascii=False,indent=2),encoding='utf-8')
     print('PASS overview / motion.gif / 6 SCAD invalid-parameter checks',flush=True)

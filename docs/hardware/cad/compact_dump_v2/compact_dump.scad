@@ -1,3 +1,4 @@
+use <../n20_printed_drive_v0/drive.scad>
 // 无活动门小后卸斗；厂家原车参照来自本地WAVE ROVER STL/DXF。
 // 用户实测装电池/柱/电子的车重约700g，实际重心尚未测得。
 // 0.5kg是样机目标，本稿只验证空间与运动，不能直接投产。
@@ -13,7 +14,7 @@
 // 中层板只画轮廓占位，新承力框连接四孔，原生产底板不导入。
 // 斗体尺寸不包括横向短轴销和外悬轴座。
 // 所有销耳共轴连接仍为概念接口，轴承和转动间隙尚未设计。
-// 丝杆内外筒重叠表达伸缩运动，深绿色电机仅为外形占位。
+// N20机身来自商家图纸，用户确认3V60RPM，持续扭矩仍未知。
 // 自锁、断电保持、双向承载与限位必须在选型后验证。
 // 雷达固定二层轻座，相机固定一层独立架，均不随斗旋转。
 // 设备外形与相机视场角为设计输入，真实型号和安装尺寸未知。
@@ -38,13 +39,13 @@ show_chassis=true;
 bucket_length=180;
 bucket_width=200;
 bucket_height=70;
-bucket_center_x=-20;
+bucket_center_x=-15;
 wall=3;
 pillar_height=60; // 下段柱设计占位；不从照片读取长度，上段空长柱取消。
 board_thickness=2; // 现有中层板厚度占位，与原200×160生产板无关。
 deck_thickness=8; // 新承力框厚度占位，叠层后的螺纹长度须实配。
-frame_rear=-120;
-frame_front=82;
+frame_rear=-115;
+frame_front=87;
 frame_half_width=78;
 frame_rail_width=16;
 pivot_x=-105;
@@ -57,14 +58,14 @@ axle_end_clearance=14;
 fixed_pin_u=65;
 fixed_pin_above_deck=13;
 moving_pin_u=145;
-moving_pin_z=-9;
-actuator_closed=75;
-actuator_stroke=60;
-actuator_body_length=42;
+moving_pin_z=-12;
+actuator_closed=80.02499609497;
+actuator_stroke=31.77679431348;
+// 驱动外形来自独立打印模块，原外筒长度参数已删除。
 
 /* [固定传感器占位] */
-lidar_mount_x=76;
-lidar_center_x=110;
+lidar_mount_x=81;
+lidar_center_x=115;
 lidar_diameter=65;
 lidar_height=40;
 lidar_scan_z=190; // 运输无遮挡；驻车卸料时允许斗遮扫描，控制互锁尚未实现。
@@ -121,7 +122,7 @@ assert(wall+ramp_rise<bucket_height && ramp_angle<max_angle,"卸料后斜壁必�
 assert(lidar_scan_z>pivot_z+max(bucket_height,allowed_load_height)+5,"运输时雷达平面过低");
 assert(electronics_bottom_z+electronics_height<pillar_height,"电子与线束预留撞中层板");
 assert(electronics_width<2*43-7,"电子预留宽度侵入四柱");
-assert(L>=actuator_closed && L<=actuator_closed+actuator_stroke,"执行器铰距超出占位范围");
+assert(L>=actuator_closed-.00001 && L<=actuator_closed+actuator_stroke+.00001,"执行器铰距超出占位范围");
 echo(angle_deg=theta,actuator_length_mm=L,outward_slope_deg=theta-ramp_angle,base_mass_kg=base_mass_kg,base_cg_known=base_cg_known);
 // 整车固定镜头包括较轻的前传感器塔，重斗保持低位。
 $vpt=[-15,0,105];
@@ -161,6 +162,12 @@ module fixed_frame(){
             translate([A.x-22,-frame_half_width,frame_bottom]) cube([44,2*frame_half_width,deck_thickness]);
         }
         for(x=[-29,29]) for(y=[-43,43]) translate([x,y,frame_bottom-1]) cylinder(d=3,h=deck_thickness+2);
+        // 新下座的四颗M3螺栓落在独立承力横梁，不穿电子载板受力。
+        for(x=[-10,10]) for(y=[-18,18]){
+            translate([A.x+x,y,frame_bottom-1]) cylinder(d=3.4,h=deck_thickness+2);
+            // 防转螺母从框底装入，顶面止推在框内，螺钉不再穿入原黑板。
+            translate([A.x+x,y,frame_bottom-.1]) cylinder(d=5.8/cos(30),h=4.5,$fn=6);
+        }
     }
     for(x=[-29,29]) for(y=[-43,43]) color("#c5a042") translate([x,y,0]) cylinder(d=7,h=pillar_height);
     // 单盒预算包含电子设备与盘线，真实尺寸和收线方案必须实配，默认显示以免掩盖占用。
@@ -177,14 +184,24 @@ module fixed_frame(){
     color("#3b8bb2"){
         // 前方双止挡承托放平斗底，前端抬起后自然脱开。
         for(y=[-65,65]) translate([30,y-6,deck_top]) cube([12,12,pivot_z-deck_top]);
-        bar([A.x-15,A.y,deck_top],A,10);bar([A.x+15,A.y,deck_top],A,10);
+        translate([A.x,0,deck_top]) clevis_mount(13,13);
+        // 下座M3×10沉头齐平，螺母预装在框内开放窝，螺尖在原黑板之上。
+        color("#aeb5bd") for(x=[-10,10]) for(y=[-18,18]){
+            translate([A.x+x,y,deck_top-7]) cylinder(d=3,h=10);
+            translate([A.x+x,y,deck_top+1.3]) cylinder(d1=3.4,d2=6,h=1.7);
+            translate([A.x+x,y,frame_bottom+2]) cylinder(d=5.5/cos(30),h=2.4,$fn=6);
+        }
     }
 }
 module bucket(){
     moving(){
         // 默认三面高壁加低斜后壁，后口与底连续，顶部保持敞开。
         color([.94,.48,.15,1]){
-            translate([rear,-bucket_width/2,0]) cube([front-rear,bucket_width,wall]);
+            difference(){
+                translate([rear,-bucket_width/2,0]) cube([front-rear,bucket_width,wall]);
+                // 上座四孔贯穿斗底，螺母进入内底会占空间，须实物处理防挂袋。
+                for(x=[-10,10]) for(y=[-18,18]) translate([moving_pin_u+14+x,y,-1]) cylinder(d=3.4,h=wall+2);
+            }
             translate([front-wall,-bucket_width/2,wall]) cube([wall,bucket_width,bucket_height-wall]);
             translate([rear,bucket_width/2-wall,wall]) cube([front-rear,wall,bucket_height-wall]);
             if(!cutaway) translate([rear,-bucket_width/2,wall]) cube([front-rear,wall,bucket_height-wall]);
@@ -198,17 +215,33 @@ module bucket(){
             bar([front-2,-bucket_width/2+2,bucket_height-2],[front-2,bucket_width/2-2,bucket_height-2],4);
             // 主轴耳保留真实连接路径；概念共轴邻域仍未完成转动公差设计。
             for(s=[-1,1]) bar([0,s*bucket_width/2,3],[0,s*(bucket_width/2+axle_end_clearance),0],10);
-            bar([moving_pin_u,0,0],[moving_pin_u,0,moving_pin_z],10);
+            translate([moving_pin_u,0,0]) rotate([180,0,0]) clevis_mount(17,12,8,14);
+            // 上座M3×10从斗内穿入，头部需后续防挂袋处理，螺母在座脚下。
+            color("#aeb5bd") for(x=[4,24]) for(y=[-18,18]){
+                translate([moving_pin_u+x,y,-7]) cylinder(d=3,h=10);
+                translate([moving_pin_u+x,y,wall]) cylinder(d=6,h=3);
+                translate([moving_pin_u+x,y,-5.4]) cylinder(d=5.5/cos(30),h=2.4,$fn=6);
+            }
         }
     }
 }
+module mount_pin(p,ear_width,length){
+    // 横销按标准螺栓从一侧装入，含头、垫片、螺母与超出尾端的真实预算。
+    color("#b5bbc1"){
+        translate([p.x,-ear_width/2-.5,p.z]) rotate([-90,0,0]) cylinder(d=3,h=length);
+        translate([p.x,-ear_width/2-3.5,p.z]) rotate([-90,0,0]) cylinder(d=6,h=3);
+        translate([p.x,ear_width/2+.5,p.z]) rotate([-90,0,0]) cylinder(d=5.5/cos(30),h=2.4,$fn=6);
+    }
+}
 module actuator(){
-    // 采用较短伸缩包络，不能沿用大斗125mm外筒塞入80mm闭距。
+    // 使用分件打印驱动的真实壳、齿轮、螺杆和滑块；不再画绿色伸缩筒。
     u=(B-A)/L;
-    color("#4ca78d") bar(A+u*7,A+u*actuator_body_length,14);
-    color("#c4d0d5") bar(A+u*(actuator_body_length-7),B,7);
-    color("#27665b") bar(A+u*12,A+u*30,20);
-    for(p=[A,B]) color("#eed05a") pin(p,20,6);
+    closed=norm(world([moving_pin_u,0,moving_pin_z],0)-A);
+    // 模块Z沿铰线，X沿车横向，Y为铰线法向，右手坐标保持螺纹旋向。
+    multmatrix([[0,-u.z,u.x,A.x],[1,0,0,A.y],[0,u.x,u.z,A.z],[0,0,0,1]])
+        drive_assembly(L-closed,false);
+    mount_pin(A,21,30);
+    mount_pin(B,25,35);
 }
 module sensors(){
     // 雷达座只有细立柱和短托板；相机独立下降到一层，不共用旧高塔。

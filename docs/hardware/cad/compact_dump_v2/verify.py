@@ -21,6 +21,11 @@
 # 扫描遮挡结果只描述几何，驻车和导航互锁尚未写入软件。
 # 相机检查使用显式假设视锥，不能当镜头厂家验收结果。
 # 杆件采用完整胶囊半径，电机段单独用较大半径计算。
+# 新打印驱动的依赖哈希也进入整车报告，防止只改驱动后沿用旧整车证据。
+# 支座螺钉的头和尾端按预算盒纳入运动净空，沉头是必要装配条件。
+# 上耳下移会减小初始力臂，推力需求需要重新计算，不能沿用旧执行器值。
+# 四孔位置固定，框与装载区前移后仍须保留真实出口碰车尾的失败结果。
+# 打印驱动仅输出拟合零件，整车平台和斗没有在本轮完成生产分块。
 # 两侧主轴支撑都检查，不用对称假设跳过实体圆端半径。
 # 去程和回程独立计算，检查执行器端点和长度能否回到原点。
 # 解析公式与源参数绑定，不能以旧JSON证明新参数正确。
@@ -43,6 +48,32 @@ distance=importlib.util.module_from_spec(spec)
 spec.loader.exec_module(distance)
 corners=distance.corners
 segment_box_distance=distance.segment_box_distance
+# 新打印驱动共享实际分件包络，避免旧圆筒验证漏掉齿轮和旁置电机。
+drive_spec=importlib.util.spec_from_file_location('printed_drive',ROOT.parent/'n20_printed_drive_v0/verify.py')
+drive=importlib.util.module_from_spec(drive_spec);drive_spec.loader.exec_module(drive)
+drive_p=drive.parameters()
+
+
+def mount_prisms(origin,angle,gap,height,stem):
+    # 双耳由后退的底部方段与圆耳凸包组成，按真实截面检查摆动净空。
+    points=[(stem+x,z) for x in [-4,4] for z in [3,4]]+[(5*math.cos(a),height+5*math.sin(a)) for a in np.linspace(0,2*math.pi,41)[:-1]]
+    points=sorted(set(points));cross=lambda a,b,c:(b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0])
+    half=[]
+    for seq in [points,list(reversed(points))]:
+        chain=[]
+        for point in seq:
+            while len(chain)>1 and cross(chain[-2],chain[-1],point)<=0:chain.pop()
+            chain.append(point)
+        half.append(chain[:-1])
+    hull=half[0]+half[1];rotation=box([0,0,0],[1,1,1],origin,angle)[3];result=[]
+    for y in [-gap/2-4,gap/2]:
+        vertices=np.array([rotation@np.array([x,yy,z])+origin for yy in [y,y+4] for x,z in hull])
+        axes=[np.array([0,1,0])]
+        for a,b in zip(hull,hull[1:]+hull[:1]):
+            n=np.array([b[1]-a[1],0,a[0]-b[0]]);n=n/np.linalg.norm(n);axes.append(rotation@n)
+        result.append((vertices,axes))
+    return result
+
 
 
 def parameters():
@@ -136,12 +167,28 @@ def geometry(p,a):
     # 扫描预算按物品最高点定义，散料深度另受低后沿限制。
     allowed_load=box([rear+p['wall'],-w+p['wall'],p['wall']],[front-p['wall'],w-p['wall'],p['allowed_load_height']],origin,a)
     # 下铰三角座也参与外部运动件检查，仅与执行器共轴邻域保留接口接触。
-    supports=[([A[0]+dx,0,top],A,5) for dx in [-15,15]]
+    supports=[]
     for side in [-1,1]:
         y=side*(w+p['axle_end_clearance'])
         # 侧座脚位于旧板内，使用实际圆端半径检查运动件。
         supports += [([foot,side*65,top],[px,y,pz],5.5) for foot in [-95,-65]]
     stops=[box([30,y-6,top],[42,y+6,pz]) for y in [-65,65]]
+    # 实际上耳下移后，闭距及行程必须与打印机构一致。
+    closed=np.linalg.norm(np.array([px+p['moving_pin_u'],0,pz+p['moving_pin_z']])-A)
+    extension=np.linalg.norm(B-A)-closed;alpha=math.degrees(math.atan2(B[2]-A[2],B[0]-A[0]))
+    assert abs(closed-drive_p['closed_length'])<1e-7 and -.00001<=extension<=drive_p['working_stroke']+.00001
+    drive_boxes=[(name,box(lo,hi,A,alpha)) for name,lo,hi in drive.envelopes(drive_p,max(0,extension))]
+    lower_mount=box([A[0]-14,-22,top],[A[0]+14,22,top+3])
+    lower_ears=mount_prisms(np.array([A[0],0,top]),0,13,13,-8)
+    upper_mount=box([p['moving_pin_u'], -22,-3],[p['moving_pin_u']+28,22,0],origin,a)
+    # 上座翻面安装：先对局部Z镜像，再施加斗转角；两耳对称无需另换Y。
+    upper_ears=mount_prisms(np.zeros(3),0,17,12,8)
+    upper_ears=[(np.array([world([v[0]+p['moving_pin_u'],v[1],-v[2]]) for v in vv]),[rotation@np.array([n[0],n[1],-n[2]]) for n in nn]) for vv,nn in upper_ears]
+    # 下座沉头齐平，上座螺栓头在斗内；包络含尾端，不能只看轴线孔。
+    mount_bolts=[box([A[0]+x-3.2,y-3.2,top-7],[A[0]+x+3.2,y+3.2,top+3]) for x in [-10,10] for y in [-18,18]]
+    mount_bolts += [box([p['moving_pin_u']+x-3.2,y-3.2,-7],[p['moving_pin_u']+x+3.2,y+3.2,t+3],origin,a) for x in [4,24] for y in [-18,18]]
+    # 长横销包含双耳、垫圈和锁母预算，安装销孔接触只豁免对应耳座。
+    hinge_pins=[box([A[0]-3.2,-14,A[2]-3.2],[A[0]+3.2,19,A[2]+3.2]),box([p['moving_pin_u']-3.2,-16,p['moving_pin_z']-3.2],[p['moving_pin_u']+3.2,22,p['moving_pin_z']+3.2],origin,a)]
     return locals()
 
 
@@ -158,7 +205,7 @@ def scan(p,chassis,ground):
     rows=[];mins={'body':1e9,'deck':1e9,'support_rods':1e9,'sensors':1e9,'actuator':1e9,'ramp_body':1e9,'electronics':1e9}
     for a in list(range(n+1))+list(range(n,-1,-1)):
         g=geometry(p,a);A,B,P=g['A'],g['B'],g['P'];L=np.linalg.norm(B-A)
-        assert p['actuator_closed']<=L<=p['actuator_closed']+p['actuator_stroke']
+        assert p['actuator_closed']-1e-7<=L<=p['actuator_closed']+p['actuator_stroke']+1e-7
         arm=np.linalg.norm(np.cross(B-P,A-P))/L
         assert arm>5,'执行器靠近死点'
         # 外部障碍采用包含整个斗体的保守OBB；斜楔额外记录真实截面分离。
@@ -180,12 +227,20 @@ def scan(p,chassis,ground):
         # 固定杆件与前设备独立检查；主轴/丝杆连接邻域仍仅表示共轴关系。
         for sa,sb,r in g['supports']:
             for sensor in g['sensors']:assert segment_box_distance(sa,sb,sensor)-r>.05,('固定架与设备',a)
-        u=(B-A)/L
-        # 绿色外筒、深绿电机以及内杆的外径不同，分别检查。
-        for sa,sb,r in [(A+u*7,A+u*p['actuator_body_length'],7),(A+u*12,A+u*30,10),(A+u*(p['actuator_body_length']-7),B,3.5)]:
+        # 真实分件外包络包含齿轮、轨道、限位耳和电机尾端预算；不用旧绿色筒半径。
+        for name,part in g['drive_boxes']:
             for target in [chassis,g['deck'],g['electronics']]+g['sensors']+g['camera_feet']+moving+g['stops']:
-                gap=segment_box_distance(sa,sb,target)-r;assert gap>.05,('执行器',a,gap)
+                gap=separation(part,target);assert gap>.05,('打印驱动',name,a,gap)
                 mins['actuator']=min(mins['actuator'],gap)
+            # 两端铰销的孔接触是安装接口；耳外实体仍用真实凸截面逐项检查。
+            for mount in [g['lower_mount'],g['upper_mount']]+g['mount_bolts']:assert separation(part,mount)>=-.00001,('转接底座',name,a)
+            for ear in g['lower_ears']+g['upper_ears']:
+                gap=prism_separation(ear,part);assert gap>=-.00001,('转接耳',name,a,gap)
+        for bolt in g['mount_bolts']:
+            assert separation(bolt,g['electronics'])>.05 and separation(bolt,chassis)>.05
+            assert separation(bolt,g['board'])>.05,('安装螺钉穿入原板',a)
+        for pin in g['hinge_pins']:
+            for target in [chassis,g['electronics']]+g['sensors']+moving:assert separation(pin,target)>.05
         # 假设扫描平面单独检查，设备自身实体不当作自遮挡；真实出光位置未知。
         highest=max(corners(t)[:,2].max() for t in moving+[g['allowed_load']])
         if a==0:assert p['lidar_scan_z']>highest+5
@@ -220,7 +275,7 @@ def fixed_layout_check(p,chassis,ground):
     assert p['lidar_scan_z']>max(g['pz']+p['allowed_load_height'],g['pz']+p['bucket_height'])+5
     return {'electronics_minimum_fixed_clearance_mm':minimum,'electronics_dimensions_mm':[p['electronics_length'],p['electronics_width'],p['electronics_height']],
             'second_level_stack_mm':[p['pillar_height'],p['board_thickness'],p['deck_thickness']],
-            'second_level_top_z':g['top'],'interfaces_not_proven':['一层前孔相机套脚夹持','板框叠层公母牙/紧固件长度','真实电子和线圈能否收入预算盒'],
+            'second_level_top_z':g['top'],'lower_mount_bolt_tip_above_board_mm':g['top']-7-g['frame_bottom'],'nut_pocket_af_mm':5.8,'nut_pocket_load_path':'M3×10沉头→下座→框顶→框内窝顶→螺母；原板无新增孔','interfaces_not_proven':['一层前孔相机套脚夹持','板框叠层公母牙/紧固件长度','真实电子和线圈能否收入预算盒'],
             'local_contact_exclusions':'原四柱与底盘孔邻域、前两柱同轴相机套脚、柱顶/板/框及设备托板安装面；无整块电子盒豁免'}
 
 
@@ -296,7 +351,7 @@ def material_check(p,chassis,ground):
         for dz in np.linspace(0,fall,40):
             lo,hi,o,r=released;states.append((lo,hi,o-np.array([0,0,dz]),r))
         min_gap=1e9;hits=[]
-        targets=[('车轮/底盘',chassis),('电子预留',g['electronics']),('板',g['board'])]+[('固定框',t) for t in g['frame']]+[('设备',t) for t in g['sensors']]+[('斗壁',t) for t in g['walls']]
+        targets=[('车轮/底盘',chassis),('电子预留',g['electronics']),('板',g['board'])]+[('固定框',t) for t in g['frame']]+[('设备',t) for t in g['sensors']]+[('斗壁',t) for t in g['walls']]+[('打印驱动',t) for name,t in g['drive_boxes']]+[('转接座',g['lower_mount']),('转接座',g['upper_mount'])]
         for i,block in enumerate(states):
             # 允许理想接触，出现穿透就记录具体物块、帧和障碍，不把所有物体总括为通过。
             for name,target in targets:
@@ -330,11 +385,11 @@ def main():
         else:raise AssertionError('未拒绝'+name)
     layout=fixed_layout_check(p,chassis,lo[2]);camera=camera_check(p,chassis,lo[2])
     # 只比较同一个局部垃圾点假设前移的变化，整车总CG与新附件质量仍然未知。
-    old_loads=load_report(dict(p,bucket_center_x=-35));new_loads=load_report(p)
+    old_loads=load_report(dict(p,bucket_center_x=-20));new_loads=load_report(p)
     comparison={k:{'previous_end_cg_x':old_loads['cases'][k]['end_cg_x'],'current_end_cg_x':v['end_cg_x'],
                    'forward_change_mm':v['end_cg_x']-old_loads['cases'][k]['end_cg_x']} for k,v in new_loads['cases'].items()}
     # 报告分别给出几何成功、预期落料失败及稳定性unknown，避免一个总PASS吞掉边界。
-    report={'source_sha256':hashlib.sha256(SOURCE.read_bytes()).hexdigest(),'parameters':p,'vendor_bounds':[lo.tolist(),hi.tolist()],
+    report={'source_sha256':hashlib.sha256(SOURCE.read_bytes()).hexdigest(),'drive_source_sha256':hashlib.sha256(drive.SOURCE.read_bytes()).hexdigest(),'parameters':p,'vendor_bounds':[lo.tolist(),hi.tolist()],
             'geometry':default,'fixed_section':section_check(p),'variation':varied,'rejected_invalid':rejected,'materials':materials,'loads':new_loads,'same_payload_scenario_comparison':comparison,'fixed_layout':layout,
             'camera':camera,
             'not_proven':['全部销耳/轴承/紧固件公差和真实转动间隙','真实设备尺寸/出光高度/FOV','实际车CG与新增附件质量','0.5kg静态或动态承载','柔性袋滑动摩擦/脱离/夹袋','连续碰撞与变形']}

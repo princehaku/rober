@@ -1,0 +1,124 @@
+{
+  "source_sha256": "c3f1515925d173ae8c4e5c7d58f357633630ce44d4c96b70e0a2d10b01e9e07f",
+  "compact_source_sha256": "70f29137568adeb88caa862364857e7657f9b04c2498c6c2823b886e9584168a",
+  "parameters": {
+    "phase_error": 0.0,
+    "motor_voltage": 3.0,
+    "motor_rpm": 60.0,
+    "extension": 0.0,
+    "thread_d": 10.0,
+    "lead": 2.0,
+    "thread_depth": 1.0,
+    "thread_clearance": 0.25,
+    "axial_clearance": 0.12,
+    "thread_start": 22.0,
+    "thread_end": 74.0,
+    "nut_start": 23.0,
+    "nut_length": 14.0,
+    "closed_length": 80.02499609497,
+    "working_stroke": 31.77679431348,
+    "guide_end": 71.0,
+    "gear_module": 1.0,
+    "screw_teeth": 20.0,
+    "motor_teeth": 20.0,
+    "backlash": 0.2,
+    "motor_width": 12.0,
+    "motor_height": 10.0,
+    "motor_length": 24.1,
+    "motor_shaft_d": 3.0,
+    "motor_shaft_flat": 1.0,
+    "motor_shaft_length": 10.0,
+    "fit": 0.3,
+    "pin_d": 3.3,
+    "nut_af": 4.3,
+    "shell_boss_r": 3.4,
+    "housing_bolt_length": 22.0,
+    "motor_face": 22.0
+  },
+  "geometry": {
+    "stroke_mm": 31.77679431348,
+    "minimum_thread_engagement_mm": 13.999999999999996,
+    "minimum_guide_overlap_mm": 13.999999999999996,
+    "thread_phase_samples": 41,
+    "gear_phase_samples": 41,
+    "gear_ratio": 1.0,
+    "gear_center_distance_mm": 20.0,
+    "forward_thread_reserve_mm": 5.22320568652,
+    "screw_to_output_pin_reserve_mm": 1.0249960949700068,
+    "theoretical_unloaded_seconds": 15.88839715674,
+    "conditional_motor_torque_50N_Nm": [
+      0.1061032953945969,
+      0.045472840883398674
+    ],
+    "efficiency_assumption": [
+      0.15,
+      0.35
+    ],
+    "cargo_only_push_force_N": {
+      "center": 28.251976606370626,
+      "front_edge": 56.50395321274125
+    },
+    "cargo_only_motor_torque_Nm": {
+      "center": [
+        0.02569395273725986,
+        0.05995255638693967
+      ],
+      "front_edge": [
+        0.05138790547451972,
+        0.11990511277387934
+      ]
+    },
+    "gear_loss_assumption": "未计外齿轮损失，所列扭矩为此模型下限",
+    "actual_motor_working_torque": "unknown",
+    "load_status": "not_certified"
+  },
+  "variation": {
+    "stroke_mm": 31.77679431348,
+    "minimum_thread_engagement_mm": 13.999999999999996,
+    "minimum_guide_overlap_mm": 13.999999999999996,
+    "thread_phase_samples": 41,
+    "gear_phase_samples": 41,
+    "gear_ratio": 1.0,
+    "gear_center_distance_mm": 20.0,
+    "forward_thread_reserve_mm": 5.22320568652,
+    "screw_to_output_pin_reserve_mm": 1.0249960949700068,
+    "theoretical_unloaded_seconds": 15.88839715674,
+    "conditional_motor_torque_50N_Nm": [
+      0.1061032953945969,
+      0.045472840883398674
+    ],
+    "efficiency_assumption": [
+      0.15,
+      0.35
+    ],
+    "cargo_only_push_force_N": {
+      "center": 28.251976606370626,
+      "front_edge": 56.50395321274125
+    },
+    "cargo_only_motor_torque_Nm": {
+      "center": [
+        0.02569395273725986,
+        0.05995255638693967
+      ],
+      "front_edge": [
+        0.05138790547451972,
+        0.11990511277387934
+      ]
+    },
+    "gear_loss_assumption": "未计外齿轮损失，所列扭矩为此模型下限",
+    "actual_motor_working_torque": "unknown",
+    "load_status": "not_certified"
+  },
+  "rejected_invalid": [
+    "牙长不足",
+    "母牙吃光",
+    "电机碰导轨",
+    "上销碰轴"
+  ],
+  "not_proven": [
+    "PLA强度/磨损/实际牙配合",
+    "电机持续扭矩和带载速度",
+    "断电保持和控制限位",
+    "新紧固件与原四柱叠层实配"
+  ]
+}

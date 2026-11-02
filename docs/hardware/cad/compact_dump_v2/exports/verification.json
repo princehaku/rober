@@ -1,18 +1,19 @@
 {
-  "source_sha256": "0dff1e914c01405a4f1653ca5cbcc568c8b76c76c75bd36e40eb4ab31c8d258f",
+  "source_sha256": "70f29137568adeb88caa862364857e7657f9b04c2498c6c2823b886e9584168a",
+  "drive_source_sha256": "c3f1515925d173ae8c4e5c7d58f357633630ce44d4c96b70e0a2d10b01e9e07f",
   "parameters": {
     "dump_angle": 0.0,
     "max_angle": 40.0,
     "bucket_length": 180.0,
     "bucket_width": 200.0,
     "bucket_height": 70.0,
-    "bucket_center_x": -20.0,
+    "bucket_center_x": -15.0,
     "wall": 3.0,
     "pillar_height": 60.0,
     "board_thickness": 2.0,
     "deck_thickness": 8.0,
-    "frame_rear": -120.0,
-    "frame_front": 82.0,
+    "frame_rear": -115.0,
+    "frame_front": 87.0,
     "frame_half_width": 78.0,
     "frame_rail_width": 16.0,
     "pivot_x": -105.0,
@@ -23,12 +24,11 @@
     "fixed_pin_u": 65.0,
     "fixed_pin_above_deck": 13.0,
     "moving_pin_u": 145.0,
-    "moving_pin_z": -9.0,
-    "actuator_closed": 75.0,
-    "actuator_stroke": 60.0,
-    "actuator_body_length": 42.0,
-    "lidar_mount_x": 76.0,
-    "lidar_center_x": 110.0,
+    "moving_pin_z": -12.0,
+    "actuator_closed": 80.02499609497,
+    "actuator_stroke": 31.77679431348,
+    "lidar_mount_x": 81.0,
+    "lidar_center_x": 115.0,
     "lidar_diameter": 65.0,
     "lidar_height": 40.0,
     "lidar_scan_z": 190.0,
@@ -72,19 +72,19 @@
     "samples": 82,
     "start": {
       "angle": 0,
-      "length": 80.15609770940699,
-      "arm": 18.027324698847174,
+      "length": 80.02499609497022,
+      "arm": 15.62011947512692,
       "scan_margin": 23.0
     },
     "end": {
       "angle": 40,
-      "length": 112.92331574805701,
-      "arm": 64.16919864972829,
-      "scan_margin": -73.11094271347281
+      "length": 111.8017904084529,
+      "arm": 63.71827380935296,
+      "scan_margin": -76.32488076190555
     },
-    "stroke": 32.767218038650014,
-    "minimum_moment_arm": 18.027324698847174,
-    "minimum_scan_margin": -73.11094271347281,
+    "stroke": 31.776794313482682,
+    "minimum_moment_arm": 15.62011947512692,
+    "minimum_scan_margin": -76.32488076190555,
     "scan_occluded_sample_angles": [
       8,
       9,
@@ -121,12 +121,12 @@
       40
     ],
     "minimum_clearances": {
-      "body": 82.36911466152824,
-      "deck": 23.786061951567305,
+      "body": 85.58305270996094,
+      "deck": 27.0,
       "support_rods": 1.2564665510598836,
       "sensors": 2.0,
-      "actuator": 2.128651415344578,
-      "ramp_body": 84.66724799088517,
+      "actuator": 1.1345999516809684,
+      "ramp_body": 87.88118603931787,
       "electronics": 44.0
     }
   },
@@ -143,19 +143,19 @@
     "samples": 82,
     "start": {
       "angle": 0,
-      "length": 80.15609770940699,
-      "arm": 18.027324698847174,
+      "length": 80.02499609497022,
+      "arm": 15.62011947512692,
       "scan_margin": 28.0
     },
     "end": {
       "angle": 40,
-      "length": 112.92331574805701,
-      "arm": 64.16919864972829,
-      "scan_margin": -68.11094271347281
+      "length": 111.8017904084529,
+      "arm": 63.71827380935296,
+      "scan_margin": -71.32488076190555
     },
-    "stroke": 32.767218038650014,
-    "minimum_moment_arm": 18.027324698847174,
-    "minimum_scan_margin": -68.11094271347281,
+    "stroke": 31.776794313482682,
+    "minimum_moment_arm": 15.62011947512692,
+    "minimum_scan_margin": -71.32488076190555,
     "scan_occluded_sample_angles": [
       10,
       11,
@@ -190,12 +190,12 @@
       40
     ],
     "minimum_clearances": {
-      "body": 87.36911466152824,
-      "deck": 23.786061951567305,
+      "body": 90.58305270996094,
+      "deck": 27.0,
       "support_rods": 1.2564665510598836,
       "sensors": 2.0,
-      "actuator": 2.128651415344578,
-      "ramp_body": 89.66724799088517,
+      "actuator": 1.1345999516809684,
+      "ramp_body": 92.88118603931787,
       "electronics": 49.0
     }
   },
@@ -210,11 +210,11 @@
   "materials": {
     "vertical_corridors": {
       "50": {
-        "wheel_envelope_gap_mm": -12.36697665068202,
+        "wheel_envelope_gap_mm": -16.197198866276906,
         "clear": false
       },
       "70": {
-        "wheel_envelope_gap_mm": -22.36697665068202,
+        "wheel_envelope_gap_mm": -26.197198866276906,
         "clear": false
       }
     },
@@ -223,21 +223,21 @@
         "test_cube_mm": 50,
         "samples": 100,
         "clear": true,
-        "minimum_chassis_gap_mm": 13.399067792436966,
+        "minimum_chassis_gap_mm": 9.568845576842065,
         "first_collisions": []
       },
       "70": {
         "test_cube_mm": 70,
         "samples": 100,
         "clear": true,
-        "minimum_chassis_gap_mm": 13.399067792436966,
+        "minimum_chassis_gap_mm": 9.568845576842065,
         "first_collisions": []
       }
     },
     "tip_world": [
-      -126.82827528681798,
+      -122.9980530712231,
       0.0,
-      115.2353063588987
+      118.44924440733138
     ],
     "path_assumption": "物块与斗底同姿态，底面取脚印覆盖截面的最高值，完全离开后缘才竖落",
     "boundary": "几何可行路径；未模拟真实驱动力、转动、摩擦、柔性袋或行驶保持"
@@ -253,55 +253,55 @@
     "restoring_moment_formula": "0.7*(base_cg_x+75)+0.5*(cargo_cg_x+75)+sum(attachment_mass*(attachment_cg_x+75))",
     "cases": {
       "centered_shallow_assumption": {
-        "end_cg_x": -49.84943028502823,
-        "minimum_cg_x": -49.84943028502823,
-        "required_base_cg_x_gt": -92.96469265355127,
-        "end_required_base_cg_x_gt": -92.96469265355127,
-        "hypothetical_margin_if_base_cg_x_zero_kg_mm": 65.07528485748588
+        "end_cg_x": -46.01920806943334,
+        "minimum_cg_x": -46.01920806943334,
+        "required_base_cg_x_gt": -95.70056566469047,
+        "end_required_base_cg_x_gt": -95.70056566469047,
+        "hypothetical_margin_if_base_cg_x_zero_kg_mm": 66.99039596528333
       },
       "rim_surface": {
-        "end_cg_x": -126.82827528681798,
-        "minimum_cg_x": -126.82827528681798,
-        "required_base_cg_x_gt": -37.97980336655858,
-        "end_required_base_cg_x_gt": -37.97980336655858,
-        "hypothetical_margin_if_base_cg_x_zero_kg_mm": 26.585862356591008
+        "end_cg_x": -122.9980530712231,
+        "minimum_cg_x": -122.9980530712231,
+        "required_base_cg_x_gt": -40.71567637769778,
+        "end_required_base_cg_x_gt": -40.71567637769778,
+        "hypothetical_margin_if_base_cg_x_zero_kg_mm": 28.50097346438845
       },
       "rim_high35": {
-        "end_cg_x": -149.32584162584686,
-        "minimum_cg_x": -149.32584162584686,
-        "required_base_cg_x_gt": -21.910113124395096,
-        "end_required_base_cg_x_gt": -21.910113124395096,
-        "hypothetical_margin_if_base_cg_x_zero_kg_mm": 15.337079187076569
+        "end_cg_x": -145.49561941025198,
+        "minimum_cg_x": -145.49561941025198,
+        "required_base_cg_x_gt": -24.6459861355343,
+        "end_required_base_cg_x_gt": -24.6459861355343,
+        "hypothetical_margin_if_base_cg_x_zero_kg_mm": 17.252190294874012
       },
       "rim_high70": {
-        "end_cg_x": -171.82340796487574,
-        "minimum_cg_x": -171.82340796487574,
-        "required_base_cg_x_gt": -5.840422882231607,
-        "end_required_base_cg_x_gt": -5.840422882231607,
-        "hypothetical_margin_if_base_cg_x_zero_kg_mm": 4.088296017562129
+        "end_cg_x": -167.99318574928085,
+        "minimum_cg_x": -167.99318574928085,
+        "required_base_cg_x_gt": -8.576295893370812,
+        "end_required_base_cg_x_gt": -8.576295893370812,
+        "hypothetical_margin_if_base_cg_x_zero_kg_mm": 6.003407125359573
       }
     }
   },
   "same_payload_scenario_comparison": {
     "centered_shallow_assumption": {
-      "previous_end_cg_x": -61.340096931812894,
-      "current_end_cg_x": -49.84943028502823,
-      "forward_change_mm": 11.490666646784668
+      "previous_end_cg_x": -49.84943028502823,
+      "current_end_cg_x": -46.01920806943334,
+      "forward_change_mm": 3.830222215594887
     },
     "rim_surface": {
-      "previous_end_cg_x": -138.31894193360267,
-      "current_end_cg_x": -126.82827528681798,
-      "forward_change_mm": 11.490666646784689
+      "previous_end_cg_x": -126.82827528681798,
+      "current_end_cg_x": -122.9980530712231,
+      "forward_change_mm": 3.830222215594887
     },
     "rim_high35": {
-      "previous_end_cg_x": -160.81650827263155,
-      "current_end_cg_x": -149.32584162584686,
-      "forward_change_mm": 11.490666646784689
+      "previous_end_cg_x": -149.32584162584686,
+      "current_end_cg_x": -145.49561941025198,
+      "forward_change_mm": 3.830222215594887
     },
     "rim_high70": {
-      "previous_end_cg_x": -183.3140746116604,
-      "current_end_cg_x": -171.82340796487574,
-      "forward_change_mm": 11.49066664678466
+      "previous_end_cg_x": -171.82340796487574,
+      "current_end_cg_x": -167.99318574928085,
+      "forward_change_mm": 3.830222215594887
     }
   },
   "fixed_layout": {
@@ -317,6 +317,9 @@
       8.0
     ],
     "second_level_top_z": 70.0,
+    "lower_mount_bolt_tip_above_board_mm": 1.0,
+    "nut_pocket_af_mm": 5.8,
+    "nut_pocket_load_path": "M3×10沉头→下座→框顶→框内窝顶→螺母；原板无新增孔",
     "interfaces_not_proven": [
       "一层前孔相机套脚夹持",
       "板框叠层公母牙/紧固件长度",
@@ -336,7 +339,7 @@
     "body_chassis_gap_mm": 8.583052709960938,
     "camera_bottom_ground_gap_mm": 108.52225025024414,
     "nearest_ground_distance_from_lens_mm": 275.61685510110993,
-    "forward_obstacle_conservative_gap_mm": 112.87600088797004,
+    "forward_obstacle_conservative_gap_mm": 110.54446259719505,
     "boundary": "水平光轴和占位FOV；真实俯仰/FOV/畸变待测，近地交点之前存在盲区"
   },
   "not_proven": [

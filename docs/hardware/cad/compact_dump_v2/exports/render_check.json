@@ -1,5 +1,6 @@
 {
-  "source_sha256": "0dff1e914c01405a4f1653ca5cbcc568c8b76c76c75bd36e40eb4ab31c8d258f",
+  "source_sha256": "70f29137568adeb88caa862364857e7657f9b04c2498c6c2823b886e9584168a",
+  "drive_source_sha256": "c3f1515925d173ae8c4e5c7d58f357633630ce44d4c96b70e0a2d10b01e9e07f",
   "captions": {
     "dimensions": [
       180.0,
@@ -19,10 +20,10 @@
       40.0
     ],
     "lengths": [
-      80.15609770940699,
-      112.92331574805701
+      80.02499609497022,
+      111.8017904084529
     ],
-    "stroke": 32.767218038650014
+    "stroke": 31.776794313482682
   },
   "variation_captions": {
     "dimensions": [
@@ -43,10 +44,10 @@
       35.0
     ],
     "lengths": [
-      80.15609770940699,
-      107.41132878354222
+      80.02499609497022,
+      106.33762254794405
     ],
-    "stroke": 27.255231074135224
+    "stroke": 26.31262645297383
   },
   "rendered_angles": [
     0,
@@ -71,5 +72,38 @@
     "electronics_width=82",
     "allowed_load_height=110"
   ],
-  "scope": "无活动门小后卸斗预览与参数断言；0.5kg样机未实物试载"
+  "scope": "无活动门小后卸斗预览与参数断言；0.5kg样机未实物试载",
+  "rendered_driver_source_sha256": "26ae8d43d8b81fe9e522e87d858d5f12746065a255afa06188c079afd6e01e6d",
+  "comment_only_rebind": {
+    "reason": "仅修正首行中文注释，用户3V/60RPM已确认；没有修改几何、参数或模块。",
+    "old_driver_source_sha256": "26ae8d43d8b81fe9e522e87d858d5f12746065a255afa06188c079afd6e01e6d",
+    "new_driver_source_sha256": "c3f1515925d173ae8c4e5c7d58f357633630ce44d4c96b70e0a2d10b01e9e07f",
+    "old_first_line": "// N20打印推举试装件；商品图来源见本地n20_reference，电气版本与扭矩未知。",
+    "new_first_line": "// N20打印推举试装件；商品图来源见本地n20_reference，用户已确认3V/60RPM，持续工作扭矩未知。",
+    "remaining_bytes_sha256": "49f6c9748c1d22a0fbe24a739204d2db94e8d414e40ee0f9472c04127ad5ae13",
+    "reconstructed_original_sha256": "26ae8d43d8b81fe9e522e87d858d5f12746065a255afa06188c079afd6e01e6d",
+    "artifact_sha256_unchanged": {
+      "docs/hardware/cad/n20_printed_drive_v0/exports/assembly.png": "c52130f35ce47318da1856c2b116f75ab394f67a4aef7a1ed52e23730bdc981f",
+      "docs/hardware/cad/n20_printed_drive_v0/exports/exploded.png": "8395b80b452e49f4d2ed6eba987bddddeb2c3da433ac7f55993eedaa3ef11794",
+      "docs/hardware/cad/n20_printed_drive_v0/exports/extended.png": "ccab7cd2f3bc65f2da7344eee5059aad7d48a379f6fab7604ebc2e3c681f8c1f",
+      "docs/hardware/cad/n20_printed_drive_v0/exports/input_gear.stl": "2a75ddbf095d86e3e1a90a572482dec31e7a9ff67943461a817cf738c6eff93f",
+      "docs/hardware/cad/n20_printed_drive_v0/exports/lower_mount.stl": "c44adff3e7fe359173734b32b4501a3e003d59ffc49a301e16cefd811211b3bd",
+      "docs/hardware/cad/n20_printed_drive_v0/exports/lower_shell.stl": "cf469c6d596141ace784f094774a9abfd5b78806b07d9c6d3ef1e5fa37aad6b4",
+      "docs/hardware/cad/n20_printed_drive_v0/exports/male_coupon.stl": "015b43bc47bb19f6fd15e8b868f27946d28585e8fc26a0a0a97b590193cb75b8",
+      "docs/hardware/cad/n20_printed_drive_v0/exports/n20-print-fit-parts.zip": "19fd321a39fff27cfbbc327d3c5a6a7681e2891342e2eddb1a305884894fb123",
+      "docs/hardware/cad/n20_printed_drive_v0/exports/screw.stl": "c0ef68ceb8ec049d85d2da700d88b4c970285a1d35d398db33e00e9f76f3cbc1",
+      "docs/hardware/cad/n20_printed_drive_v0/exports/shaft_coupon.stl": "846ebf3ba2b4f55faefafa67b1bba0b6cda4ada89ae60e0ec0e84706b209fc70",
+      "docs/hardware/cad/n20_printed_drive_v0/exports/slider.stl": "f22bea09bb1113b57897e1e84c0a047010e68de4aa2e04b583cb351334174175",
+      "docs/hardware/cad/n20_printed_drive_v0/exports/thread_coupon.stl": "fdf09cfcaee77ecf3458839d048e6f06786261136613a67cca62987e2d7e10f0",
+      "docs/hardware/cad/n20_printed_drive_v0/exports/upper_mount.stl": "28750175e5275db5c71bfefa3d3173aa02b54c1bf4c40d10426e3a3106fc5a15",
+      "docs/hardware/cad/n20_printed_drive_v0/exports/upper_shell.stl": "4b36518198108cc7ee42894df09e263557d6d2e46cbbefec457c862be9022936",
+      "docs/hardware/cad/n20_printed_drive_v0/exports/washer.stl": "0f7fe3f669ee2ed058bc6f26b23a206422ce7732c0d9dfa86c7e008e381439af",
+      "docs/hardware/cad/compact_dump_v2/exports/dump.png": "20faeb91c275708f584014bc5d082f35a9baf18a95402266c591e67a0c131d12",
+      "docs/hardware/cad/compact_dump_v2/exports/mid.png": "9d007416c82c2bfa9bc57adb170ba650d2de91a7ceb96f0e6c56b6ae3c989685",
+      "docs/hardware/cad/compact_dump_v2/exports/motion.gif": "ae953e91c1357e01396ae044fc50de1d069a3a476c9f7dd0f061f970808ec896",
+      "docs/hardware/cad/compact_dump_v2/exports/overview.png": "b1713dcd5a62da95367f475de4ecd2a3ff0faad1b7ea726bfcd978ebbbe0323e",
+      "docs/hardware/cad/compact_dump_v2/exports/transport.png": "4f82c22bbe6c19027ff58a650487c5aea077c6be5fac5527e03d740f7456c3d1"
+    },
+    "reexported_or_rerendered": false
+  }
 }

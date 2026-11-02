@@ -332,3 +332,10 @@ architecture sources.
   - Official domestic/international links, checked 2026-11-01: 100×100×100 mm,
     0.4 mm nozzle, 1.75 mm PLA, no heated bed, slicer/TF workflow and boundaries.
   - This is a local printing-tool reference, with no change to robot hardware facts.
+
+## JGA12-N20 Printed Drive Reference
+
+- [N20 source notes and interfaces](n20_reference/REFERENCE.md)
+  - 用户提供的商家工程图、尺寸图和配件图；用户确认 3 V、60 RPM。
+  - 机械接口采用商品图，持续扭矩、带载速度及实际配合仍未验证。
+  - 附 Fast-Rite 螺母尺寸基准；Pololu 仅作独立外形家族对照，不替代用户型号。
