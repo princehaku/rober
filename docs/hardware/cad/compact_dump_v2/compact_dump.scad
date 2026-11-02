@@ -1,37 +1,29 @@
-// 小后卸斗整车运动概念；厂家原车参照来自本地WAVE ROVER STL/DXF。
-// 用户称装电池/柱/电子后的车重约700g；其真实重心仍未知。
-// 用户已改选0.5kg样机；当前只用于布局和运动观察，禁止直接投产。
-// 共用原点固定在四柱孔组，斗的外形中心可独立调整。
-// X轴沿车长，Y轴横向，当前设计将垃圾卸向负X车尾。
-// 实车正向仍需装车确认，模型方向不写入ROS坐标配置。
-// 主轴靠近后口可以降低斗体，避免中央轴下扫穿过底板。
-// 后轴上抬三毫米为电机包络留隙，斗体保持低位。
-// 原底板保留厂家孔位参照，不把新后轴座当成已验证的承力接口。
-// 后轴座短悬臂仅表达连接路径，打印截面与固定孔待定。
-// 斗体外尺寸不含门杆、销轴与伸出的导料唇。
-// 导料唇放到斗底下方，并向内搭接以形成连续共享面。
-// 伸唇会增大偏载力矩，不能仅为了大袋避轮持续加长。
-// 当前五厘米块仅作为可重复的刚体几何试验物。
-// 七厘米物体也单独核验，不能外推任意垃圾袋。
-// 门铰与固定门杆位于斗宽两端外侧，让杆避开斗腔。
-// 门的终点角由固定锚构造给出，途中角度由闭环求解。
-// 圆交点支路在放平时选定，全程不切换支路。
-// 后门侧套边包在斗外，内部止挡限定闭门位置，打印密封仍待验证。
-// 所有销耳仍有接口示意重合，不能直接导出整机生产STL。
-// 丝杆外筒与内杆重叠表示套筒内部运动，外部障碍另行检查。
-// 深绿电机包络是占位，采购后必须替换真实外形再校核。
-// 丝杆是否自锁、断电保持、双向承载与限位均未实测。
-// 前传感器塔固定在底板，倾斗时设备不随斗转动。
-// 雷达圆柱只表达空间，不声称对应某个厂家型号。
-// 扫描高度默认兼顾运输，后卸阶段允许遮挡且要求驻车。
-// 未来互锁逻辑需在机器人控制层实现，本稿没有控制真实底盘。
-// 相机视锥角属于设计输入，实际镜头规格未知。
-// 高度参数可调，但每次改动都应重跑当前模型的几何验证。
-// 均匀垃圾重心不能覆盖垃圾向后口聚集的情况。
-// 三条垃圾轨迹是固定局部点的姿态包络，并非柔性袋动力学。
-// 原车七百克只给出质量，无法推导它的真实重心。
-// 新增斗、塔和执行器尚未称重，不给它们填写猜测的稳定收益。
-// 支撑多边形需要实际轮胎接地测量，厂家外包络不能替代。
+// 无活动门小后卸斗；厂家原车参照来自本地WAVE ROVER STL/DXF。
+// 用户实测装电池/柱/电子的车重约700g，实际重心尚未测得。
+// 0.5kg是样机目标，本稿只验证空间与运动，不能直接投产。
+// X沿车长、Y横向，相机朝+X，垃圾向-X车尾卸出。
+// 实车正向仍需装车确认，本稿不修改ROS坐标或控制参数。
+// 后横轴和单丝杆保留，前端抬起时固定后斜壁一同转动。
+// 后斜壁由内底连续上升，运输时提供浅挡料高度。
+// 低后缘限制填充高度，不能按70毫米满壁高度装散料。
+// 卸料时坡向下降不保证滑动，实际摩擦与袋体变形需要实测。
+// 后壁为实心楔形，与底板及两侧壁连续连接，省去门和连杆。
+// 原低位导料唇已删除，物料从真实斜壁上缘离开。
+// 不用加长外伸或提高角度掩盖有限物体落料空间问题。
+// 原底座只表达四柱定位，新轴座承力接口仍未完成制造设计。
+// 斗体尺寸不包括横向短轴销和外悬轴座。
+// 所有销耳共轴连接仍为概念接口，轴承和转动间隙尚未设计。
+// 丝杆内外筒重叠表达伸缩运动，深绿色电机仅为外形占位。
+// 自锁、断电保持、双向承载与限位必须在选型后验证。
+// 前塔固定到静止底板，雷达和相机不随斗旋转。
+// 设备外形与相机视场角为设计输入，真实型号和安装尺寸未知。
+// 运输扫描需留空；停车卸料时遮挡区须由后续控制互锁处理。
+// 该模型不发送控制指令，不证明真实车辆驻车能力。
+// 均匀和后口偏载点只描述条件重心，不能代表柔性垃圾动态。
+// 原车重量不能推出重心，新增机构重量也不填写猜测值。
+// 支撑多边形仍需测真实轮胎接地区，厂家外包络只用于碰撞。
+// 指定刚体路径取脚印最高支承点，空间可行不等于必然自行滑出。
+// 参数修改后须重跑验证，不能沿用之前导出的图片或JSON结论。
 
 /* [运动与展示] */
 dump_angle=0; // [0:1:40]
@@ -52,16 +44,9 @@ pillar_height=24; // 原柱体高度待实测，外牙约5毫米与柱高不同�
 deck_thickness=12;
 pivot_x=-105;
 pivot_above_deck=27;
-guide_length=30;
-guide_overlap=6;
-
-/* [后门闭环] */
-gate_arm=25;
-gate_fixed_z=20;
-gate_target_angle=-40;
-link_end_clearance=14;
-gate_lap=6;
-gate_side_gap=0.3;
+ramp_run=45;
+ramp_rise=25;
+axle_end_clearance=14;
 
 /* [执行器设计占位] */
 fixed_pin_u=65;
@@ -104,39 +89,23 @@ pivot_z=deck_top+pivot_above_deck;
 theta=animate ? max_angle*(1-abs(2*$t-1)) : dump_angle;
 xlo=bucket_center_x-bucket_length/2;
 xhi=bucket_center_x+bucket_length/2;
-// u为纵向X坐标，后轴局部原点靠卸料口；外门厚度独立分配。
-rear=xlo+wall-pivot_x;
+// u沿X，内底到后缘的固定坡高以底板上表面为基准。
+rear=xlo-pivot_x;
 front=xhi-pivot_x;
-H0=[rear,bucket_height];
+ramp_start=rear+ramp_run;
+ramp_angle=atan(ramp_rise/ramp_run);
 function r2(v,a)=[v.x*cos(a)-v.y*sin(a),v.x*sin(a)+v.y*cos(a)];
-function dot(a,b)=a.x*b.x+a.y*b.y;
-function cross2(a,b)=a.x*b.y-a.y*b.x;
 function world(v,a)=[pivot_x+r2([v.x,v.z],a).x,v.y,pivot_z+r2([v.x,v.z],a).y];
-// 固定锚由放平/终点两姿态等杆长约束求得，门角由圆交点计算。
-Q0=H0+[0,gate_arm];
-Ht=r2(H0,max_angle);
-Qt=Ht+r2([0,gate_arm],gate_target_angle);
-dQ=Q0-Qt;
-G=[(dot(Q0,Q0)-dot(Qt,Qt)-2*gate_fixed_z*dQ.y)/(2*dQ.x),gate_fixed_z];
-gate_link=norm(Q0-G);
-branch=cross2(G-H0,Q0-H0)>=0 ? 1 : -1;
-function gate_q(a)=let(h=r2(H0,a),d=norm(G-h),e=(G-h)/d,
-    q=(gate_arm*gate_arm-gate_link*gate_link+d*d)/(2*d),v=sqrt(max(0,gate_arm*gate_arm-q*q)))
-    h+q*e+branch*v*[-e.y,e.x];
-H=r2(H0,theta);
-Q=gate_q(theta);
-gate_phi=atan2(-(Q-H).x,(Q-H).y);
 A=[pivot_x+fixed_pin_u,0,deck_top+fixed_pin_above_deck];
 B=world([moving_pin_u,0,moving_pin_z],theta);
 L=norm(B-A);
 // 这些是概念几何护栏，真实推拉力和断电保持仍须选型验证。
 assert(theta>=0 && theta<=max_angle && max_angle<=45);
-assert(gate_lap>=4 && gate_side_gap>=0.2,"门套边尺寸无效");
-assert(guide_overlap>=4,"导料唇需要有效面搭接");
-assert(lidar_scan_z>pivot_z+bucket_height+gate_arm+5,"运输时雷达平面过低");
+assert(ramp_run>wall && ramp_run<bucket_length-wall && ramp_rise>wall,"后斜壁截面无效");
+assert(wall+ramp_rise<bucket_height && ramp_angle<max_angle,"卸料后斜壁必须向外下坡");
+assert(lidar_scan_z>pivot_z+bucket_height+5,"运输时雷达平面过低");
 assert(L>=actuator_closed && L<=actuator_closed+actuator_stroke,"执行器铰距超出占位范围");
-assert(abs(dQ.x)>1 && norm(G-H)<gate_arm+gate_link && norm(G-H)>abs(gate_arm-gate_link),"门四杆无实数闭环");
-echo(angle_deg=theta,actuator_length_mm=L,gate_angle_deg=gate_phi,base_mass_kg=base_mass_kg,base_cg_known=base_cg_known);
+echo(angle_deg=theta,actuator_length_mm=L,outward_slope_deg=theta-ramp_angle,base_mass_kg=base_mass_kg,base_cg_known=base_cg_known);
 // 整车固定镜头包括较轻的前传感器塔，重斗保持低位。
 $vpt=[-20,0,95];
 $vpr=[67,0,40];
@@ -164,12 +133,11 @@ module fixed_frame(){
     color("#4c96bd") translate([0,0,deck_top]) rotate([180,0,0])
         import("../main_deck_onepiece_v0/exports/main_deck_onepiece.stl");
     for(x=[-29,29]) for(y=[-43,43]) color("#c5a042") translate([x,y,0]) cylinder(d=7,h=pillar_height);
-    for(s=[-1,1]) let(y=s*(bucket_width/2+link_end_clearance)){
+    for(s=[-1,1]) let(y=s*(bucket_width/2+axle_end_clearance)){
         color("#3b8bb2"){
             // 左右后轴座从板内起脚；外悬耳只表达连接路径，截面需实物验证。
             bar([-95,s*65,deck_top],[pivot_x,y,pivot_z],11);
             bar([-65,s*65,deck_top],[pivot_x,y,pivot_z],11);
-            bar([pivot_x,y,pivot_z],[pivot_x+G.x,y,pivot_z+G.y],8);
         }
         color("#d74d45") pin([pivot_x,y,pivot_z],16,7);
     }
@@ -181,43 +149,24 @@ module fixed_frame(){
 }
 module bucket(){
     moving(){
-        // 默认完整三固定壁；仅显式调试开关可移除近侧长壁。
+        // 默认三面高壁加低斜后壁，后口与底连续，顶部保持敞开。
         color([.94,.48,.15,1]){
             translate([rear,-bucket_width/2,0]) cube([front-rear,bucket_width,wall]);
             translate([front-wall,-bucket_width/2,wall]) cube([wall,bucket_width,bucket_height-wall]);
             translate([rear,bucket_width/2-wall,wall]) cube([front-rear,wall,bucket_height-wall]);
             if(!cutaway) translate([rear,-bucket_width/2,wall]) cube([front-rear,wall,bucket_height-wall]);
-            // 止挡与侧壁相连，后面共面接触门内面；实际预压和密封条尚未设计。
-            for(y=[-bucket_width/2,bucket_width/2-4]) translate([rear,y,10]) cube([8,4,12]);
         }
+        // 填实楔形只占坡面以下，验证时同样保留上方开放的实际空间。
+        color("#edb757") translate([0,bucket_width/2,0]) rotate([90,0,0])
+            linear_extrude(height=bucket_width) polygon([[rear,wall],[ramp_start,wall],[rear,wall+ramp_rise]]);
         color("#da8a26"){
-            // 圆端上框内收半径，保持名义斗体包络并避免闭门穿插。
+            // 保留三面上框，后缘不再横跨高杆，以免形成虚假的卸料障碍。
             for(y=[-bucket_width/2+2,bucket_width/2-2]) bar([rear+2,y,bucket_height-2],[front-2,y,bucket_height-2],4);
-            for(x=[rear+2,front-2]) bar([x,-bucket_width/2+2,bucket_height-2],[x,bucket_width/2-2,bucket_height-2],4);
-            for(s=[-1,1]) bar([0,s*bucket_width/2,3],[0,s*(bucket_width/2+link_end_clearance),0],10);
+            bar([front-2,-bucket_width/2+2,bucket_height-2],[front-2,bucket_width/2-2,bucket_height-2],4);
+            // 主轴耳保留真实连接路径；概念共轴邻域仍未完成转动公差设计。
+            for(s=[-1,1]) bar([0,s*bucket_width/2,3],[0,s*(bucket_width/2+axle_end_clearance),0],10);
             bar([moving_pin_u,0,0],[moving_pin_u,0,moving_pin_z],10);
         }
-        // 后导料唇内搭六毫米，底板下面有连续承托共享面。
-        color("#edb757") translate([xlo-pivot_x-guide_length,-bucket_width/2,-wall])
-            cube([guide_length+wall+guide_overlap,bucket_width,wall]);
-    }
-}
-module gate(){
-    // 门角来自同一四杆闭环，后门和斗体作为两个真实相对运动刚体。
-    color([.96,.7,.22,1]) translate([pivot_x+H.x,0,pivot_z+H.y]) rotate([0,-gate_phi,0]){
-        translate([-wall,-bucket_width/2-gate_side_gap-wall,-bucket_height])
-            cube([wall,bucket_width+2*(gate_side_gap+wall),bucket_height]);
-        // 两侧套边向前包住斗壁，留出设计侧隙；密封与压紧依赖后续实配。
-        for(s=[-1,1]) translate([-wall,s<0?-bucket_width/2-gate_side_gap-wall:bucket_width/2+gate_side_gap,-bucket_height])
-            cube([wall+gate_lap,wall,bucket_height]);
-    }
-    for(s=[-1,1]) let(y=s*(bucket_width/2+link_end_clearance)){
-        color("#ad5bb9"){
-            bar([pivot_x+H.x,y,pivot_z+H.y],[pivot_x+Q.x,y,pivot_z+Q.y],7);
-            bar([pivot_x+G.x,y,pivot_z+G.y],[pivot_x+Q.x,y,pivot_z+Q.y],6);
-            bar([pivot_x+H.x,s*bucket_width/2,pivot_z+H.y],[pivot_x+H.x,y,pivot_z+H.y],7);
-        }
-        for(v=[H,Q,G]) color("#eed05a") pin([pivot_x+v.x,y,pivot_z+v.y],10,4);
     }
 }
 module actuator(){
@@ -246,22 +195,22 @@ module sensors(){
     color("#80cde3") translate([camera_x+camera_depth/2,0,camera_z]) rotate([0,90,0]) cylinder(d=18,h=4);
 }
 module load_markers(){
-    // 三点为均匀、后口底部、后唇高半斗的垃圾CG，整车重心仍未知。
-    for(v=[[bucket_center_x,bucket_height/2],[xlo,0],[xlo-guide_length,bucket_height/2]]) let(p=world([v.x-pivot_x,0,v.y],theta)){
-        color(v.x==bucket_center_x?"#e7404c":(v.y==0?"#9b54b4":"#ad1858")) translate(p) sphere(d=9);
+    // 三点为中部浅载假设、后缘表面、后缘高半斗偏载，车CG仍未知。
+    for(v=[[bucket_center_x,wall+ramp_rise/2],[xlo,wall+ramp_rise],[xlo,wall+ramp_rise+bucket_height/2]]) let(p=world([v.x-pivot_x,0,v.y],theta)){
+        color(v.x==bucket_center_x?"#e7404c":(v.y==wall+ramp_rise?"#9b54b4":"#ad1858")) translate(p) sphere(d=9);
         color([.8,.1,.2,.3]) bar(p,[p.x,p.y,ground_z],1);
-        // 固定局部点的全角轨迹只描述条件偏载，不模拟柔性垃圾袋。
+        // 全角轨迹为固定局部点姿态包络，真实垃圾滑动不受这条线约束。
         color([.7,.15,.3,.5]) for(a=[0:5:max_angle-5])
             bar(world([v.x-pivot_x,0,v.y],a),world([v.x-pivot_x,0,v.y],min(a+5,max_angle)),1);
     }
 }
 module drop_envelope(){
-    // 辅助图检查车尾通道，计入试验块高度，默认整车图隐藏该框。
-    p=world([xlo-pivot_x-guide_length,0,0],max_angle);
+    // 真实出口为后斜壁上缘；仅辅助图显式显示有限宽落料通道。
+    p=world([rear,0,wall+ramp_rise],max_angle);
     color([.2,.75,.6,.16]) translate([p.x-bag_width/2,p.y-bag_width/2,ground_z])
         cube([bag_width,bag_width,p.z+bag_height-ground_z]);
 }
 if(show_chassis) chassis();
-fixed_frame();bucket();gate();actuator();sensors();
+fixed_frame();bucket();actuator();sensors();
 if(show_cg) load_markers();
 if(show_drop_envelope) drop_envelope();

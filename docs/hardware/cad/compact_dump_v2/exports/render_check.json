@@ -1,5 +1,5 @@
 {
-  "source_sha256": "2e3d645cc75b1f030eede2ed51a6ae04b3adcd3d8a28cbba890807d595f8ec85",
+  "source_sha256": "3a6af8bb9b0432c8be0474ac61d66a3201826e2b941a06d845710296b9d7e575",
   "captions": {
     "dimensions": [
       180.0,
@@ -66,8 +66,8 @@
   "scad_rejected": [
     "dump_angle=80",
     "actuator_stroke=1",
-    "guide_overlap=0",
-    "gate_lap=0"
+    "ramp_run=0",
+    "ramp_rise=45"
   ],
-  "scope": "小后卸斗预览与参数断言；0.5kg样机未实物试载"
+  "scope": "无活动门小后卸斗预览与参数断言；0.5kg样机未实物试载"
 }
